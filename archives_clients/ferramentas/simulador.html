@@ -527,8 +527,16 @@
                         <input type="text" id="g_valorBem" placeholder="Ex: 500.000,00" oninput="fmtCur(this)">
                     </div>
                     <div class="input-group">
-                        <label>Prazo de Análise (anos)</label>
-                        <input type="number" id="g_prazoAnalise" value="10" min="1" max="50">
+                        <label>Prazo de Análise
+                            <span style="margin-left:0.5rem;">
+                                <button type="button" id="btn-prazo-anos" onclick="setPrazoUnidade('anos')" style="font-size:0.72rem;padding:0.15rem 0.5rem;border-radius:4px 0 0 4px;border:1px solid rgba(212,175,55,0.5);background:rgba(212,175,55,0.25);color:#fbbf24;cursor:pointer;font-weight:bold;">Anos</button><button type="button" id="btn-prazo-meses" onclick="setPrazoUnidade('meses')" style="font-size:0.72rem;padding:0.15rem 0.5rem;border-radius:0 4px 4px 0;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.05);color:#6b7280;cursor:pointer;font-weight:bold;">Meses</button>
+                            </span>
+                        </label>
+                        <div style="display:flex;gap:0.5rem;align-items:center;">
+                            <input type="number" id="g_prazoAnalise" value="10" min="1" max="600" style="flex:1;" oninput="atualizarConversaoPrazo()">
+                            <span id="g_prazoUnidadeLabel" style="color:#9ca3af;font-size:0.82rem;white-space:nowrap;">anos</span>
+                        </div>
+                        <div class="hint" id="g_prazoConversao">= 120 meses</div>
                     </div>
                 </div>
                 <div class="input-row cols-3">
@@ -1267,10 +1275,50 @@
     // ══════════════════════════════════════════════════════════════════════════
     //  CÁLCULOS
     // ══════════════════════════════════════════════════════════════════════════
+    // Unidade do prazo global: 'anos' ou 'meses'
+    let prazoUnidade = 'anos';
+
+    function setPrazoUnidade(u) {
+        const val = gn('g_prazoAnalise') || (u === 'anos' ? 10 : 120);
+        // Converter o valor atual para a nova unidade
+        if (u === 'meses' && prazoUnidade === 'anos') {
+            document.getElementById('g_prazoAnalise').value = Math.round(val * 12);
+        } else if (u === 'anos' && prazoUnidade === 'meses') {
+            document.getElementById('g_prazoAnalise').value = +(val / 12).toFixed(2);
+        }
+        prazoUnidade = u;
+        // Atualizar visual dos botões
+        const btnA = document.getElementById('btn-prazo-anos');
+        const btnM = document.getElementById('btn-prazo-meses');
+        if (u === 'anos') {
+            btnA.style.background = 'rgba(212,175,55,0.25)'; btnA.style.color = '#fbbf24'; btnA.style.borderColor = 'rgba(212,175,55,0.5)';
+            btnM.style.background = 'rgba(255,255,255,0.05)'; btnM.style.color = '#6b7280'; btnM.style.borderColor = 'rgba(255,255,255,0.1)';
+        } else {
+            btnM.style.background = 'rgba(212,175,55,0.25)'; btnM.style.color = '#fbbf24'; btnM.style.borderColor = 'rgba(212,175,55,0.5)';
+            btnA.style.background = 'rgba(255,255,255,0.05)'; btnA.style.color = '#6b7280'; btnA.style.borderColor = 'rgba(255,255,255,0.1)';
+        }
+        atualizarConversaoPrazo();
+    }
+
+    function atualizarConversaoPrazo() {
+        const v = gn('g_prazoAnalise') || 0;
+        const label = document.getElementById('g_prazoUnidadeLabel');
+        const hint = document.getElementById('g_prazoConversao');
+        if (prazoUnidade === 'anos') {
+            label.textContent = 'anos';
+            hint.textContent = `= ${Math.round(v * 12)} meses`;
+        } else {
+            label.textContent = 'meses';
+            hint.textContent = `= ${+(v / 12).toFixed(2)} anos`;
+        }
+    }
+
     function globais() {
+        const prazoRaw = gn('g_prazoAnalise') || (prazoUnidade === 'anos' ? 10 : 120);
+        const prazoAnos = prazoUnidade === 'anos' ? prazoRaw : prazoRaw / 12;
         return {
             valorBem:       parseCur(gv('g_valorBem')),
-            prazoAnos:      gn('g_prazoAnalise') || 10,
+            prazoAnos,
             valorizacao:    gn('g_valorizacao') / 100,
             inflacao:       gn('g_inflacao') / 100,
             custosMensais:  parseCur(gv('g_custosMensais')),
@@ -2071,59 +2119,89 @@
             const efeitoAmort = p[pfx+'_efeitoAmort']||'prazo';
             let prazoRestante = prazoTotal;
             let custoAcum = entrada + g.custosAquisicao;
+            // Price: parcela fixa calculada sobre o saldo inicial (antes da 1ª correção)
             let parcelaPrice = 0;
             if (mod === 'price' && jurosMensal > 0) parcelaPrice = saldo*jurosMensal/(1-Math.pow(1+jurosMensal,-prazoTotal));
             else if (mod === 'price') parcelaPrice = saldo/prazoTotal;
             let rows = '';
-            let totalJuros = 0, totalAmort = 0, totalSeguros = 0;
+            let totalJuros = 0, totalAmort = 0, totalSeguros = 0, totalParcelas = 0, totalEncargos = 0;
+            // Acumuladores para agregação por período (step)
+            let stepJuros=0, stepAmort=0, stepParcela=0, stepSeguros=0;
             for (let m = 1; m <= meses; m++) {
+                // Correção monetária ANTES do cálculo da parcela
                 saldo *= (1+correcaoMensal);
+                // Saldo no início do mês (após correção, antes da amortização) — é o saldo correto para exibir na tabela
+                const saldoInicio = saldo;
                 let amortizacao = 0, juros = 0, parcela = 0;
                 if (m <= carencia) {
-                    juros = saldo*jurosMensal;
-                    if (tipoCarencia==='paga') parcela = juros;
-                    else { saldo += juros; }
+                    // Período de carência
+                    juros = saldo * jurosMensal;
+                    if (tipoCarencia === 'paga') {
+                        parcela = juros; // paga só os juros
+                    } else {
+                        saldo += juros; // capitaliza os juros ao saldo
+                    }
                 } else if (prazoRestante > 0) {
                     if (mod === 'sac') {
-                        amortizacao = saldo/prazoRestante;
-                        juros = saldo*jurosMensal;
-                        parcela = amortizacao+juros;
+                        // SAC: amortização constante = saldo / prazo restante
+                        amortizacao = saldo / prazoRestante;
+                        juros = saldo * jurosMensal;
+                        parcela = amortizacao + juros;
                         saldo -= amortizacao;
                         prazoRestante--;
                     } else {
-                        if (jurosMensal>0) parcelaPrice = saldo*jurosMensal/(1-Math.pow(1+jurosMensal,-prazoRestante));
+                        // Price: recalcular parcela sobre saldo atual (com correção)
+                        if (jurosMensal > 0) parcelaPrice = saldo*jurosMensal/(1-Math.pow(1+jurosMensal,-prazoRestante));
                         else parcelaPrice = saldo/prazoRestante;
-                        juros = saldo*jurosMensal;
-                        amortizacao = parcelaPrice-juros;
+                        juros = saldo * jurosMensal;
+                        amortizacao = parcelaPrice - juros;
                         saldo -= amortizacao;
                         prazoRestante--;
                         parcela = parcelaPrice;
                     }
                 }
-                const segMip = saldo*mip;
-                const segDfi = g.valorBem*dfi;
-                const totalMensal = parcela+segMip+segDfi+taxaAdm+g.custosMensais;
+                // Seguros calculados sobre saldo PÓS-amortização (prática de mercado)
+                const segMip = saldo * mip;
+                const segDfi = g.valorBem * dfi;
+                const encargos = segMip + segDfi + taxaAdm;
+                const totalMensal = parcela + encargos + g.custosMensais;
                 custoAcum += totalMensal;
                 totalJuros += juros;
                 totalAmort += amortizacao;
-                totalSeguros += segMip+segDfi;
+                totalSeguros += segMip + segDfi;
+                totalParcelas += parcela;
+                totalEncargos += encargos;
+                stepJuros += juros; stepAmort += amortizacao;
+                stepParcela += parcela; stepSeguros += segMip+segDfi+taxaAdm;
+                // Amortizações extraordinárias
                 amorts.forEach(a => {
                     let ocorre = false;
                     if (a.period==='unica'&&m===a.mes) ocorre=true;
                     if (a.period==='anual'&&m>=a.mes&&(m-a.mes)%12===0) ocorre=true;
                     if (a.period==='mensal'&&m>=a.mes) ocorre=true;
-                    if (ocorre&&saldo>0) { const av=Math.min(a.valor,saldo); saldo-=av; custoAcum+=av; }
+                    if (ocorre&&saldo>0) {
+                        const av = Math.min(a.valor, saldo);
+                        saldo -= av;
+                        custoAcum += av;
+                        if (efeitoAmort==='prazo'&&prazoRestante>0) {
+                            const reducao = Math.floor(av/(saldo/prazoRestante||1));
+                            prazoRestante = Math.max(0, prazoRestante-reducao);
+                        }
+                    }
                 });
-                if (saldo<0) saldo=0;
-                if (m%step===0) {
+                if (saldo < 0) saldo = 0;
+                if (m % step === 0) {
                     const label = mostrarMeses ? `Mês ${m}` : `Ano ${m/12}`;
-                    const destaque = amorts.some(a=>a.period==='unica'&&a.mes>=m-step+1&&a.mes<=m) ? ' class="destaque"' : '';
-                    rows += `<tr${destaque}><td>${label}</td><td>${fmtBRL(saldo)}</td><td>${fmtBRL(amortizacao)}</td><td>${fmtBRL(juros)}</td><td>${fmtBRL(parcela)}</td><td>${fmtBRL(segMip+segDfi+taxaAdm)}</td><td>${fmtBRL(custoAcum)}</td></tr>`;
+                    const hasAmortExtra = amorts.some(a=>a.period==='unica'&&a.mes>=m-step+1&&a.mes<=m);
+                    const destaque = hasAmortExtra ? ' class="destaque"' : '';
+                    // Exibir saldo no FIM do período (após amortizações)
+                    rows += `<tr${destaque}><td>${label}</td><td>${fmtBRL(saldo)}</td><td>${fmtBRL(stepAmort)}</td><td>${fmtBRL(stepJuros)}</td><td>${fmtBRL(stepParcela)}</td><td>${fmtBRL(stepSeguros)}</td><td>${fmtBRL(custoAcum)}</td></tr>`;
+                    stepJuros=0; stepAmort=0; stepParcela=0; stepSeguros=0;
                 }
             }
-            rows += `<tr style="background:rgba(212,175,55,0.08);font-weight:bold;"><td>TOTAL</td><td>—</td><td>${fmtBRL(totalAmort)}</td><td>${fmtBRL(totalJuros)}</td><td>—</td><td>${fmtBRL(totalSeguros)}</td><td>${fmtBRL(custoAcum)}</td></tr>`;
+            rows += `<tr style="background:rgba(212,175,55,0.08);font-weight:bold;"><td>TOTAL</td><td style="color:#4ade80">${fmtBRL(saldo)} (saldo final)</td><td>${fmtBRL(totalAmort)}</td><td>${fmtBRL(totalJuros)}</td><td>${fmtBRL(totalParcelas)}</td><td>${fmtBRL(totalSeguros)}</td><td>${fmtBRL(custoAcum)}</td></tr>`;
             return `<div class="amort-table-wrap"><table class="amort-table">
-                <thead><tr><th>Período</th><th>Saldo Dev.</th><th>Amortização</th><th>Juros</th><th>Parcela</th><th>Seguros+Taxas</th><th>Custo Acum.</th></tr></thead>
+                <thead><tr><th>Período</th><th>Saldo Dev. (fim)</th><th>Amortização</th><th>Juros</th><th>Parcela</th><th>Seguros+Taxas</th><th>Custo Acum.</th></tr></thead>
                 <tbody>${rows}</tbody></table></div>`;
         }
 
@@ -2398,6 +2476,7 @@
 
     // Inicializar
     trocarAba('avista');
+    atualizarConversaoPrazo();
     </script>
 </body>
 </html>
