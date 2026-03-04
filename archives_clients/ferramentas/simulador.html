@@ -2110,15 +2110,18 @@
             const custosAq = g.custosAquisicao + custosExtra;
             let valorBem = valorPago;
             let custoAcum = valorPago + custosAq;
+            let totalCustosPosse = 0;
             let rows = '';
             for (let m = step; m <= meses; m += step) {
-                const periodos = mostrarMeses ? m : m/12;
                 const label = mostrarMeses ? `Mês ${m}` : `Ano ${m/12}`;
                 for (let i = 1; i <= step; i++) valorBem *= (1+g.valorizacao/12);
-                custoAcum += g.custosMensais * step;
+                const custosStep = g.custosMensais * step;
+                custoAcum += custosStep;
+                totalCustosPosse += custosStep;
                 const real = custoAcum / Math.pow(1+g.inflacao, m/12);
-                rows += `<tr><td>${label}</td><td>${fmtBRL(valorBem)}</td><td>${fmtBRL(g.custosMensais*step)}</td><td>${fmtBRL(custoAcum)}</td><td>${fmtBRL(real)}</td></tr>`;
+                rows += `<tr><td>${label}</td><td>${fmtBRL(valorBem)}</td><td>${fmtBRL(custosStep)}</td><td>${fmtBRL(custoAcum)}</td><td>${fmtBRL(real)}</td></tr>`;
             }
+            rows += `<tr style="background:rgba(212,175,55,0.08);font-weight:bold;"><td>TOTAL</td><td style="color:#4ade80">${fmtBRL(valorBem)} (valor final)</td><td>${fmtBRL(totalCustosPosse)}</td><td>${fmtBRL(custoAcum)}</td><td>${fmtBRL(custoAcum/Math.pow(1+g.inflacao,meses/12))}</td></tr>`;
             return `<div class="amort-table-wrap"><table class="amort-table">
                 <thead><tr><th>Período</th><th>Valor do Bem</th><th>Custos Posse</th><th>Custo Acum. Nominal</th><th>Custo Acum. Real</th></tr></thead>
                 <tbody>${rows}</tbody></table></div>`;
@@ -2133,20 +2136,26 @@
             const aporteInv = parseCur(p.al_aporteInv);
             const rendMensal = Math.pow(1+g.rendimento, 1/12)-1;
             let custoAcum = parseCur(p.al_caucao);
+            let totalDesembolso = 0;
+            let stepPgto = 0;
             let rows = '';
             for (let m = 1; m <= meses; m++) {
                 if (m > 1 && (m-1)%12===0) aluguel *= (1+reajuste);
                 const pgto = aluguel*(1+taxaAdm)+custosExtra;
                 custoAcum += pgto;
+                totalDesembolso += pgto;
+                stepPgto += pgto;
                 capital = capital*(1+rendMensal)+aporteInv;
                 if (m % step === 0) {
                     const label = mostrarMeses ? `Mês ${m}` : `Ano ${m/12}`;
                     const real = custoAcum / Math.pow(1+g.inflacao, m/12);
-                    rows += `<tr><td>${label}</td><td>${fmtBRL(aluguel)}</td><td>${fmtBRL(pgto)}</td><td>${fmtBRL(custoAcum)}</td><td>${fmtBRL(capital)}</td><td>${fmtBRL(real)}</td></tr>`;
+                    rows += `<tr><td>${label}</td><td>${fmtBRL(aluguel)}</td><td>${fmtBRL(stepPgto)}</td><td>${fmtBRL(custoAcum)}</td><td>${fmtBRL(capital)}</td><td>${fmtBRL(real)}</td></tr>`;
+                    stepPgto = 0;
                 }
             }
+            rows += `<tr style="background:rgba(212,175,55,0.08);font-weight:bold;"><td>TOTAL</td><td>${fmtBRL(aluguel)} (aluguel final)</td><td>${fmtBRL(totalDesembolso)}</td><td>${fmtBRL(custoAcum)}</td><td style="color:#4ade80">${fmtBRL(capital)}</td><td>${fmtBRL(custoAcum/Math.pow(1+g.inflacao,meses/12))}</td></tr>`;
             return `<div class="amort-table-wrap"><table class="amort-table">
-                <thead><tr><th>Período</th><th>Aluguel</th><th>Desembolso Mensal</th><th>Custo Acum.</th><th>Capital Investido</th><th>Custo Real</th></tr></thead>
+                <thead><tr><th>Período</th><th>Aluguel</th><th>Desembolso no Período</th><th>Custo Acum.</th><th>Capital Investido</th><th>Custo Real</th></tr></thead>
                 <tbody>${rows}</tbody></table></div>`;
         }
 
@@ -2276,22 +2285,28 @@
             const lanceRec = parseCur(p.co_lanceRecursos);
             let creditoAtual = credito;
             let custoAcum = 0;
+            let totalParcelas = 0;
+            let stepParcela = 0;
             let rows = '';
             for (let m = 1; m <= meses; m++) {
                 creditoAtual *= (1+reajusteMensal);
                 const parcela = m<=prazo ? creditoAtual*(1+taxaAdmTotal+fundoReserva)/prazo+seguroMensal : 0;
                 custoAcum += parcela;
-                if (m===mesLance) custoAcum += lanceRec;
-                if (m===mesContemp) custoAcum += g.custosAquisicao + g.custosMensais*(meses-m);
+                totalParcelas += parcela;
+                stepParcela += parcela;
+                if (m===mesLance) { custoAcum += lanceRec; stepParcela += lanceRec; totalParcelas += lanceRec; }
+                if (m===mesContemp) { custoAcum += g.custosAquisicao + g.custosMensais*(meses-m); }
                 if (m%step===0) {
                     const label = mostrarMeses ? `Mês ${m}` : `Ano ${m/12}`;
                     const ev = (m===mesContemp||m===mesLance) ? ' class="destaque"' : '';
                     const obs = m===mesContemp ? ' ★ Contemplação' : (m===mesLance ? ' ★ Lance' : '');
-                    rows += `<tr${ev}><td>${label}${obs}</td><td>${fmtBRL(creditoAtual)}</td><td>${fmtBRL(parcela)}</td><td>${fmtBRL(custoAcum)}</td></tr>`;
+                    rows += `<tr${ev}><td>${label}${obs}</td><td>${fmtBRL(creditoAtual)}</td><td>${fmtBRL(stepParcela)}</td><td>${fmtBRL(custoAcum)}</td></tr>`;
+                    stepParcela = 0;
                 }
             }
+            rows += `<tr style="background:rgba(212,175,55,0.08);font-weight:bold;"><td>TOTAL</td><td style="color:#4ade80">${fmtBRL(creditoAtual)} (crédito final)</td><td>${fmtBRL(totalParcelas)}</td><td>${fmtBRL(custoAcum)}</td></tr>`;
             return `<div class="amort-table-wrap"><table class="amort-table">
-                <thead><tr><th>Período</th><th>Crédito Atualizado</th><th>Parcela</th><th>Custo Acum.</th></tr></thead>
+                <thead><tr><th>Período</th><th>Crédito Atualizado</th><th>Parcela no Período</th><th>Custo Acum.</th></tr></thead>
                 <tbody>${rows}</tbody></table></div>`;
         }
 
@@ -2401,6 +2416,9 @@
                 const real = capital / Math.pow(1+g.inflacao, m/12);
                 rows += `<tr><td>${label}</td><td>${fmtBRL(capital)}</td><td>${fmtBRL(rendAcum)}</td><td>${fmtBRL(real)}</td></tr>`;
             }
+            const rendTotalFinal = capital - g.valorBem;
+            const realFinal = capital / Math.pow(1+g.inflacao, meses/12);
+            rows += `<tr style="background:rgba(212,175,55,0.08);font-weight:bold;"><td>TOTAL</td><td style="color:#4ade80">${fmtBRL(capital)}</td><td style="color:#4ade80">${fmtBRL(rendTotalFinal)}</td><td>${fmtBRL(realFinal)}</td></tr>`;
             return `<div class="amort-table-wrap"><table class="amort-table">
                 <thead><tr><th>Período</th><th>Capital Acumulado</th><th>Rendimento Acum.</th><th>Capital Real</th></tr></thead>
                 <tbody>${rows}</tbody></table></div>`;
