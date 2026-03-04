@@ -956,476 +956,170 @@
             <div class="tab-panel" id="tab-consorcio">
                 <div class="section-title">🔄 Consórcio</div>
 
-                <!-- Sub-abas internas do consórcio -->
-                <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:18px;">
-                    <button class="co-tab-btn active" onclick="coTab('co_dados')" id="cobtn_dados">📋 Dados do Plano</button>
-                    <button class="co-tab-btn" onclick="coTab('co_custos')" id="cobtn_custos">💰 Custos</button>
-                    <button class="co-tab-btn" onclick="coTab('co_inflacao')" id="cobtn_inflacao">📈 Inflação</button>
-                    <button class="co-tab-btn" onclick="coTab('co_contemplacao')" id="cobtn_contemplacao">🎯 Contemplação</button>
-                    <button class="co-tab-btn" onclick="coTab('co_poscontemp')" id="cobtn_poscontemp">✅ Pós-Contemplação</button>
-                    <button class="co-tab-btn" onclick="coTab('co_cancelamento')" id="cobtn_cancelamento">❌ Cancelamento</button>
-                    <button class="co-tab-btn" onclick="coTab('co_venda')" id="cobtn_venda">🔁 Venda da Cota</button>
-                    <button class="co-tab-btn" onclick="coTab('co_riscos')" id="cobtn_riscos">⚠️ Riscos</button>
-                    <button class="co-tab-btn" onclick="coTab('co_compfin')" id="cobtn_compfin">⚖️ vs Financiamento</button>
-                </div>
-
-                <!-- 1. DADOS BÁSICOS DO PLANO -->
-                <div class="co-panel" id="co_dados">
-                    <div class="section-title" style="font-size:0.82rem;color:#a78bfa;">1. Dados Básicos do Plano</div>
-                    <div class="input-row cols-3">
-                        <div class="input-group">
-                            <label>Valor da carta de crédito (R$)</label>
-                            <input type="text" id="co_credito" placeholder="Ex: 500.000,00" oninput="fmtCur(this);calcCategoria()">
-                            <div class="hint">Valor bruto da carta (antes de lances).</div>
-                        </div>
-                        <div class="input-group">
-                            <label>Percentual do crédito (%)</label>
-                            <input type="number" id="co_pctCredito" placeholder="Ex: 100" value="100" step="0.1" oninput="calcCategoria()">
-                            <div class="hint">Carta efetiva = carta × percentual. Ex: 110% = carta com ágio.</div>
-                        </div>
-                        <div class="input-group">
-                            <label>Prazo total do grupo (meses)</label>
-                            <input type="number" id="co_prazo" placeholder="Ex: 180" min="1" oninput="calcCategoria()">
-                        </div>
+                <!-- FORMULÁRIO CONSÓRCIO v3 - baseado nos parâmetros reais do cliente -->
+                <div class="input-row cols-3">
+                    <div class="input-group">
+                        <label>Crédito desejado (R$)</label>
+                        <input type="text" id="co_creditoDesejado" placeholder="Ex: 565.513,92" oninput="fmtCur(this);coCalcCategoria()">
+                        <div class="hint">Valor que você precisa receber (antes do lance embutido).</div>
                     </div>
-                    <div class="input-row cols-3">
-                        <div class="input-group">
-                            <label>Data da 1ª assembleia</label>
-                            <input type="date" id="co_dataInicio">
-                        </div>
-                        <div class="input-group">
-                            <label>Data de encerramento do grupo</label>
-                            <input type="date" id="co_dataFim">
-                        </div>
-                        <div class="input-group">
-                            <label>Índice de reajuste</label>
-                            <select id="co_reajuste" onchange="calcCategoria()">
-                                <option value="nenhum">Nenhum</option>
-                                <option value="incc">INCC</option>
-                                <option value="ipca">IPCA</option>
-                                <option value="igpm">IGP-M</option>
-                                <option value="custom">Personalizado</option>
-                            </select>
-                        </div>
+                    <div class="input-group">
+                        <label>Lance Embutido (%)</label>
+                        <input type="number" id="co_lanceEmbutido" placeholder="Ex: 0" value="0" step="0.01" min="0" max="100" oninput="coCalcCategoria()">
+                        <div class="hint">% da carta usado como lance embutido. Reduz o crédito líquido.</div>
                     </div>
-                    <div class="input-row cols-3">
-                        <div class="input-group">
-                            <label>Taxa média anual estimada do índice (% a.a.)</label>
-                            <input type="number" id="co_indiceReajuste" placeholder="Ex: 4" step="0.1" oninput="calcCategoria()">
-                        </div>
-                        <div class="input-group">
-                            <label>Periodicidade de reajuste</label>
-                            <select id="co_periodicidadeReajuste">
-                                <option value="anual">Anual</option>
-                                <option value="mensal">Mensal</option>
-                            </select>
-                        </div>
-                        <div class="input-group">
-                            <label>Valor da categoria (R$) — calculado</label>
-                            <input type="text" id="co_categoria" placeholder="Calculado automaticamente" readonly style="opacity:0.7;cursor:default">
-                            <div class="hint">Carta × (1 + Taxa Adm + Fundo Reserva).</div>
-                        </div>
-                    </div>
-                    <div class="input-row cols-3">
-                        <div class="input-group">
-                            <label>Mês estimado de contemplação</label>
-                            <input type="number" id="co_mesContemplacao" placeholder="Ex: 36" min="1">
-                            <div class="hint">Mês em que você prevê ser contemplado.</div>
-                        </div>
+                    <div class="input-group">
+                        <label>Carta de crédito (R$) — calculado</label>
+                        <input type="text" id="co_carta" placeholder="Calculado automaticamente" readonly style="opacity:0.7;cursor:default;background:rgba(255,255,255,0.03)">
+                        <div class="hint">Carta = Crédito desejado ÷ (1 − Lance Embutido%).</div>
                     </div>
                 </div>
-
-                <!-- 2. ESTRUTURA DE CUSTOS -->
-                <div class="co-panel" id="co_custos" style="display:none">
-                    <div class="section-title" style="font-size:0.82rem;color:#a78bfa;">2. Estrutura de Custos</div>
-                    <div class="input-row cols-3">
-                        <div class="input-group">
-                            <label>Taxa de administração total (%)</label>
-                            <input type="number" id="co_taxaAdm" placeholder="Ex: 18" step="0.1" oninput="calcCategoria()">
-                            <div class="hint">% sobre o valor da carta, diluída no prazo.</div>
-                        </div>
-                        <div class="input-group">
-                            <label>Forma de cobrança da taxa de adm.</label>
-                            <select id="co_formaCobranca">
-                                <option value="diluida">Diluída (mensal proporcional)</option>
-                                <option value="linear">Linear (% fixo sobre carta/mês)</option>
-                                <option value="antecipada">Antecipada (cobrada no início)</option>
-                            </select>
-                        </div>
-                        <div class="input-group">
-                            <label>Base de cálculo da parcela</label>
-                            <select id="co_baseCalculo">
-                                <option value="categoria">Valor da categoria (carta × encargos)</option>
-                                <option value="carta">Valor da carta de crédito</option>
-                                <option value="saldo">Saldo devedor atualizado</option>
-                            </select>
-                        </div>
+                <div class="input-row cols-3">
+                    <div class="input-group">
+                        <label>Taxa de Administração (% total)</label>
+                        <input type="number" id="co_taxaAdm" placeholder="Ex: 20" step="0.01" oninput="coCalcCategoria()">
+                        <div class="hint">% total sobre a carta, diluída no prazo.</div>
                     </div>
-                    <div class="input-row cols-3">
-                        <div class="input-group">
-                            <label>Fundo de reserva (%)</label>
-                            <input type="number" id="co_fundoReserva" placeholder="Ex: 2" step="0.1" oninput="calcCategoria()">
-                        </div>
-                        <div class="input-group">
-                            <label>Taxa de adesão (R$)</label>
-                            <input type="text" id="co_taxaAdesao" placeholder="0,00" oninput="fmtCur(this)">
-                            <div class="hint">Cobrada na contratação. Entra no custo total.</div>
-                        </div>
-                        <div class="input-group">
-                            <label>Multa por atraso (%)</label>
-                            <input type="number" id="co_multaAtraso" placeholder="Ex: 2" step="0.1">
-                        </div>
+                    <div class="input-group">
+                        <label>Fundo de Reserva (% total)</label>
+                        <input type="number" id="co_fundoReserva" placeholder="Ex: 2" step="0.01" oninput="coCalcCategoria()">
+                        <div class="hint">% total sobre a carta.</div>
                     </div>
-                    <div class="input-row cols-3">
-                        <div class="input-group">
-                            <label>Juros por atraso (% a.m.)</label>
-                            <input type="number" id="co_jurosAtraso" placeholder="Ex: 1" step="0.1">
-                        </div>
-                        <div class="input-group">
-                            <label>Tipo de seguro</label>
-                            <select id="co_tipoSeguro" onchange="toggleSeguroConsorcio()">
-                                <option value="nenhum">Nenhum / Não informar</option>
-                                <option value="fixo">Valor fixo (R$/mês)</option>
-                                <option value="pct_carta">% da carta ao mês</option>
-                                <option value="pct_saldo">% do saldo devedor ao mês</option>
-                                <option value="pct_categoria">% da categoria ao mês</option>
-                            </select>
-                        </div>
-                        <div class="input-group" id="co_seguro_fixo_grp" style="display:none">
-                            <label>Valor do seguro (R$/mês)</label>
-                            <input type="text" id="co_seguro" placeholder="0,00" oninput="fmtCur(this)">
-                        </div>
-                        <div class="input-group" id="co_seguro_pct_grp" style="display:none">
-                            <label>Taxa do seguro (% a.m.)</label>
-                            <input type="number" id="co_seguroPct" placeholder="Ex: 0.05" step="0.001">
-                        </div>
+                    <div class="input-group">
+                        <label>Seguro (% a.m. sobre a carta)</label>
+                        <input type="number" id="co_seguroPct" placeholder="Ex: 0.035" step="0.001" oninput="coCalcCategoria()">
+                        <div class="hint">Taxa mensal de seguro sobre a carta de crédito.</div>
+                    </div>
+                </div>
+                <div class="input-row cols-3">
+                    <div class="input-group">
+                        <label>CPF / CNPJ</label>
+                        <select id="co_tipoPessoa" onchange="coCalcCategoria()">
+                            <option value="cpf">CPF (Pessoa Física)</option>
+                            <option value="cnpj">CNPJ (Pessoa Jurídica)</option>
+                        </select>
+                        <div class="hint">Tipo de cotista. Pode influenciar o seguro e a contemplação.</div>
+                    </div>
+                    <div class="input-group">
+                        <label>Categoria (R$) — calculado</label>
+                        <input type="text" id="co_categoria" placeholder="Calculado automaticamente" readonly style="opacity:0.7;cursor:default;background:rgba(255,255,255,0.03)">
+                        <div class="hint">Categoria = Carta × (1 + Taxa Adm% + Fundo Reserva%).</div>
+                    </div>
+                    <div class="input-group">
+                        <label>Prazo do grupo (meses)</label>
+                        <input type="number" id="co_prazo" placeholder="Ex: 240" min="1" oninput="coCalcCategoria()">
+                    </div>
+                </div>
+                <div class="input-row cols-3">
+                    <div class="input-group">
+                        <label>Lance Fixo (%)</label>
+                        <input type="number" id="co_lanceFixoPct" placeholder="Ex: 25" step="0.01" oninput="coCalcCategoria()">
+                        <div class="hint">% mínimo exigido para lance fixo.</div>
+                    </div>
+                    <div class="input-group">
+                        <label>Base do Lance Fixo</label>
+                        <select id="co_lanceFixoBase" onchange="coCalcCategoria()">
+                            <option value="carta">Carta de crédito</option>
+                            <option value="categoria">Categoria</option>
+                            <option value="credito">Crédito desejado</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label>Lance Fixo (R$) — calculado</label>
+                        <input type="text" id="co_lanceFixoValor" placeholder="Calculado automaticamente" readonly style="opacity:0.7;cursor:default;background:rgba(255,255,255,0.03)">
+                    </div>
+                </div>
+                <div class="input-row cols-3">
+                    <div class="input-group">
+                        <label>Lance Livre (%)</label>
+                        <input type="number" id="co_lanceLivrePct" placeholder="Ex: 50" step="0.01" oninput="coCalcCategoria()">
+                        <div class="hint">% que você pretende oferecer como lance livre.</div>
+                    </div>
+                    <div class="input-group">
+                        <label>Base do Lance Livre</label>
+                        <select id="co_lanceLivreBase" onchange="coCalcCategoria()">
+                            <option value="carta">Carta de crédito</option>
+                            <option value="categoria">Categoria</option>
+                            <option value="credito">Crédito desejado</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label>Lance Livre (R$) — calculado</label>
+                        <input type="text" id="co_lanceLivreValor" placeholder="Calculado automaticamente" readonly style="opacity:0.7;cursor:default;background:rgba(255,255,255,0.03)">
+                    </div>
+                </div>
+                <div class="input-row cols-3">
+                    <div class="input-group">
+                        <label>Simular Sorteio — mês estimado</label>
+                        <input type="number" id="co_mesContemplacao" placeholder="Ex: 24" min="1" oninput="coCalcCategoria()">
+                        <div class="hint">Mês em que você estima ser contemplado por sorteio.</div>
+                    </div>
+                    <div class="input-group">
+                        <label>Redução de Parcela pós-contemp. (%)</label>
+                        <input type="number" id="co_reducaoParcela" placeholder="Ex: 40" step="0.01" oninput="coCalcCategoria()">
+                        <div class="hint">% de redução da parcela após a contemplação (ex: uso do lance embutido).</div>
+                    </div>
+                    <div class="input-group">
+                        <label>Finalidade</label>
+                        <select id="co_finalidade" onchange="coCalcCategoria()">
+                            <option value="compra">Compra de imóvel</option>
+                            <option value="reforma">Reforma</option>
+                            <option value="terreno">Terreno</option>
+                            <option value="comercial">Imóvel comercial</option>
+                            <option value="veiculo">Veículo</option>
+                            <option value="outro">Outro</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="input-row cols-3">
+                    <div class="input-group">
+                        <label>Adesão (%)</label>
+                        <input type="number" id="co_adesaoPct" placeholder="Ex: 2" step="0.01" oninput="coCalcCategoria()">
+                        <div class="hint">% sobre a carta cobrado na adesão.</div>
+                    </div>
+                    <div class="input-group">
+                        <label>Adesão (R$) — calculado</label>
+                        <input type="text" id="co_adesaoValor" placeholder="Calculado automaticamente" readonly style="opacity:0.7;cursor:default;background:rgba(255,255,255,0.03)">
+                    </div>
+                    <div class="input-group">
+                        <label>Redução Pós-Contemplação</label>
+                        <select id="co_posContempOpcao" onchange="coCalcCategoria()">
+                            <option value="parcela">Reduzir parcela (manter prazo)</option>
+                            <option value="prazo">Reduzir prazo (manter parcela)</option>
+                            <option value="normal">Continuar normalmente</option>
+                        </select>
+                        <div class="hint">O que fazer com o saldo após ser contemplado.</div>
+                    </div>
+                </div>
+                <div class="input-row cols-3">
+                    <div class="input-group">
+                        <label>Índice de Reajuste</label>
+                        <select id="co_indiceReajuste" onchange="coCalcCategoria()">
+                            <option value="nenhum">Nenhum</option>
+                            <option value="ipca">IPCA</option>
+                            <option value="incc">INCC</option>
+                            <option value="igpm">IGP-M</option>
+                            <option value="custom">Personalizado</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label>Reajuste (% a.a.)</label>
+                        <input type="number" id="co_reajusteAA" placeholder="Ex: 5.5" step="0.01" oninput="coCalcCategoria()">
+                        <div class="hint">Taxa anual de reajuste da carta e das parcelas.</div>
+                    </div>
+                    <div class="input-group">
+                        <label>Parcela inicial (R$) — calculado</label>
+                        <input type="text" id="co_parcelaCalc" placeholder="Calculado automaticamente" readonly style="opacity:0.7;cursor:default;background:rgba(255,255,255,0.03)">
+                        <div class="hint">Categoria ÷ Prazo + Seguro mensal.</div>
                     </div>
                 </div>
 
-                <!-- 3. SIMULAÇÃO DE INFLAÇÃO -->
-                <div class="co-panel" id="co_inflacao" style="display:none">
-                    <div class="section-title" style="font-size:0.82rem;color:#a78bfa;">3. Simulação de Inflação</div>
-                    <div class="hint" style="margin-bottom:12px;">Defina três cenários de inflação para projetar o valor futuro da carta e das parcelas.</div>
-                    <div class="input-row cols-3">
-                        <div class="input-group">
-                            <label>Cenário conservador (% a.a.)</label>
-                            <input type="number" id="co_infConservador" placeholder="Ex: 4" step="0.1" value="4">
-                        </div>
-                        <div class="input-group">
-                            <label>Cenário moderado (% a.a.)</label>
-                            <input type="number" id="co_infModerado" placeholder="Ex: 7" step="0.1" value="7">
-                        </div>
-                        <div class="input-group">
-                            <label>Cenário agressivo (% a.a.)</label>
-                            <input type="number" id="co_infAgressivo" placeholder="Ex: 12" step="0.1" value="12">
-                        </div>
-                    </div>
-                    <div id="co_inflacaoResultado" style="margin-top:14px;"></div>
+                <!-- Painel de resumo calculado -->
+                <div id="co_resumoCalc" style="margin-top:16px;padding:14px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:8px;display:none">
+                    <div style="font-size:0.78rem;color:#9ca3af;text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px;">Resumo do Consórcio</div>
+                    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;" id="co_resumoGrid"></div>
                 </div>
 
-                <!-- 4. SIMULAÇÃO DE CONTEMPLAÇÃO -->
-                <div class="co-panel" id="co_contemplacao" style="display:none">
-                    <div class="section-title" style="font-size:0.82rem;color:#a78bfa;">4A. Sorteio — Probabilidade de Contemplação</div>
-                    <div class="input-row cols-3">
-                        <div class="input-group">
-                            <label>Número de participantes no grupo</label>
-                            <input type="number" id="co_numParticipantes" placeholder="Ex: 100" min="1">
-                        </div>
-                        <div class="input-group">
-                            <label>Contemplações por assembleia</label>
-                            <input type="number" id="co_contemplacoesAssembleia" placeholder="Ex: 1" min="1" value="1">
-                        </div>
-                        <div class="input-group">
-                            <label>Excluir inadimplentes do sorteio?</label>
-                            <select id="co_excluirInadimplentes">
-                                <option value="nao">Não</option>
-                                <option value="sim">Sim (reduz concorrência)</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="input-group" style="max-width:260px;">
-                        <label>Taxa estimada de inadimplência (%)</label>
-                        <input type="number" id="co_taxaInadimplencia" placeholder="Ex: 5" step="0.1" value="5">
-                    </div>
-                    <div id="co_sorteioResultado" style="margin-top:14px;"></div>
-
-                    <hr class="divider">
-                    <div class="section-title" style="font-size:0.82rem;color:#a78bfa;">4B. Lance Livre</div>
-                    <div class="input-row cols-3">
-                        <div class="input-group">
-                            <label>Percentual ofertado (% da carta)</label>
-                            <input type="number" id="co_lanceLivrePct" placeholder="Ex: 20" step="0.1">
-                        </div>
-                        <div class="input-group">
-                            <label>Valor absoluto do lance (R$)</label>
-                            <input type="text" id="co_lanceLivreValor" placeholder="0,00" oninput="fmtCur(this)">
-                        </div>
-                        <div class="input-group">
-                            <label>Média histórica de lance do grupo (%)</label>
-                            <input type="number" id="co_mediaHistoricaLance" placeholder="Ex: 25" step="0.1">
-                            <div class="hint">Percentual médio dos lances vencedores nas assembleias anteriores.</div>
-                        </div>
-                    </div>
-                    <div id="co_lanceLivreResultado" style="margin-top:14px;"></div>
-
-                    <hr class="divider">
-                    <div class="section-title" style="font-size:0.82rem;color:#a78bfa;">4C. Lance Fixo</div>
-                    <div class="input-row cols-3">
-                        <div class="input-group">
-                            <label>Percentual fixo exigido (%)</label>
-                            <input type="number" id="co_lanceFixoPct" placeholder="Ex: 30" step="0.1">
-                        </div>
-                        <div class="input-group">
-                            <label>Número de vagas por assembleia</label>
-                            <input type="number" id="co_lanceFixoVagas" placeholder="Ex: 2" min="1">
-                        </div>
-                        <div class="input-group">
-                            <label>Número estimado de concorrentes</label>
-                            <input type="number" id="co_lanceFixoConcorrentes" placeholder="Ex: 10" min="1">
-                        </div>
-                    </div>
-                    <div id="co_lanceFixoResultado" style="margin-top:14px;"></div>
-
-                    <hr class="divider">
-                    <div class="section-title" style="font-size:0.82rem;color:#a78bfa;">4D. Lance Embutido</div>
-                    <div class="input-row cols-3">
-                        <div class="input-group">
-                            <label>Percentual embutido (% da carta)</label>
-                            <input type="number" id="co_lanceEmbutido" placeholder="Ex: 25" step="0.1">
-                            <div class="hint">Reduz o crédito líquido recebido.</div>
-                        </div>
-                        <div class="input-group">
-                            <label>Base de cálculo do lance</label>
-                            <select id="co_baseLance">
-                                <option value="carta">% da carta de crédito</option>
-                                <option value="categoria">% da categoria</option>
-                                <option value="saldo">% do saldo devedor</option>
-                            </select>
-                        </div>
-                        <div class="input-group">
-                            <label>Complemento com recursos próprios (R$)</label>
-                            <input type="text" id="co_lanceRecursos" placeholder="0,00" oninput="fmtCur(this)">
-                        </div>
-                    </div>
-                    <div class="input-row cols-3">
-                        <div class="input-group">
-                            <label>Recursos próprios (% da base)</label>
-                            <input type="number" id="co_lanceRecursosPct" placeholder="Ex: 10" step="0.1">
-                            <div class="hint">Alternativa ao valor fixo acima.</div>
-                        </div>
-                        <div class="input-group">
-                            <label>Mês em que o lance será dado</label>
-                            <input type="number" id="co_mesLance" placeholder="Ex: 12" min="1">
-                        </div>
-                        <div class="input-group">
-                            <label>Lance abate saldo devedor?</label>
-                            <select id="co_lanceAbateSaldo">
-                                <option value="sim">Sim — reduz saldo e parcelas futuras</option>
-                                <option value="nao">Não — apenas antecipa contemplação</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div id="co_lanceEmbutidoResultado" style="margin-top:14px;"></div>
-
-                    <hr class="divider">
-                    <div class="section-title" style="font-size:0.82rem;color:#a78bfa;">4E. Estratégias Comparativas</div>
-                    <div class="hint" style="margin-bottom:10px;">Simule e compare múltiplas estratégias de lance lado a lado.</div>
-                    <div id="co_estrategiasContainer">
-                        <div class="input-row cols-4" style="align-items:flex-end;">
-                            <div class="input-group">
-                                <label>Estratégia</label>
-                                <select id="co_estrategiaTipo">
-                                    <option value="nunca">Nunca ofertar lance</option>
-                                    <option value="pequeno">Lance pequeno mensal</option>
-                                    <option value="esperar">Esperar X meses e ofertar Y%</option>
-                                    <option value="embutido_proprio">Lance embutido + recurso próprio</option>
-                                    <option value="quitar">Quitar após contemplação</option>
-                                </select>
-                            </div>
-                            <div class="input-group">
-                                <label>Parâmetro 1 (mês ou %)</label>
-                                <input type="number" id="co_estrategiaP1" placeholder="Ex: 12 ou 20" step="0.1">
-                            </div>
-                            <div class="input-group">
-                                <label>Parâmetro 2 (% ou R$)</label>
-                                <input type="number" id="co_estrategiaP2" placeholder="Ex: 25" step="0.1">
-                            </div>
-                            <div class="input-group">
-                                <button class="btn-secondary" onclick="adicionarEstrategia()" style="margin-top:20px;">+ Adicionar</button>
-                            </div>
-                        </div>
-                    </div>
-                    <div id="co_estrategiasResultado" style="margin-top:14px;"></div>
-                </div>
-
-                <!-- 5. PÓS-CONTEMPLAÇÃO -->
-                <div class="co-panel" id="co_poscontemp" style="display:none">
-                    <div class="section-title" style="font-size:0.82rem;color:#a78bfa;">5. Pós-Contemplação</div>
-                    <div class="hint" style="margin-bottom:12px;">Simule o que acontece após receber a carta de crédito.</div>
-                    <div class="input-row cols-3">
-                        <div class="input-group">
-                            <label>Mês da contemplação</label>
-                            <input type="number" id="co_posContempMes" placeholder="Ex: 36" min="1">
-                            <div class="hint">Mês em que a carta foi liberada.</div>
-                        </div>
-                        <div class="input-group">
-                            <label>Opção pós-contemplação</label>
-                            <select id="co_posContempOpcao" onchange="togglePosContemp()">
-                                <option value="normal">Continuar pagando normalmente</option>
-                                <option value="reduzir_prazo">Reduzir prazo (manter parcela)</option>
-                                <option value="reduzir_parcela">Reduzir parcela (manter prazo)</option>
-                                <option value="quitar">Quitação antecipada</option>
-                            </select>
-                        </div>
-                        <div class="input-group" id="co_posContempAportGrp">
-                            <label>Aporte para quitação (R$)</label>
-                            <input type="text" id="co_posContempAporte" placeholder="0,00" oninput="fmtCur(this)">
-                            <div class="hint">Valor extra para quitar o saldo devedor.</div>
-                        </div>
-                    </div>
-                    <div id="co_posContempResultado" style="margin-top:14px;"></div>
-                </div>
-
-                <!-- 6. CANCELAMENTO -->
-                <div class="co-panel" id="co_cancelamento" style="display:none">
-                    <div class="section-title" style="font-size:0.82rem;color:#a78bfa;">6. Simulação de Cancelamento</div>
-                    <div class="input-row cols-3">
-                        <div class="input-group">
-                            <label>Mês do cancelamento</label>
-                            <input type="number" id="co_cancelMes" placeholder="Ex: 24" min="1">
-                        </div>
-                        <div class="input-group">
-                            <label>Multa contratual (%)</label>
-                            <input type="number" id="co_cancelMulta" placeholder="Ex: 10" step="0.1">
-                            <div class="hint">% sobre o valor da carta ou total pago.</div>
-                        </div>
-                        <div class="input-group">
-                            <label>Taxa de adm. retida (%)</label>
-                            <input type="number" id="co_cancelAdmRetida" placeholder="Ex: 100" step="0.1" value="100">
-                            <div class="hint">% da taxa de adm. já paga que não é devolvida.</div>
-                        </div>
-                    </div>
-                    <div class="input-row cols-3">
-                        <div class="input-group">
-                            <label>Fundo de reserva devolvido?</label>
-                            <select id="co_cancelFundoDevolvido">
-                                <option value="sim">Sim</option>
-                                <option value="nao">Não</option>
-                            </select>
-                        </div>
-                        <div class="input-group">
-                            <label>Correção monetária aplicada?</label>
-                            <select id="co_cancelCorrecao">
-                                <option value="nao">Não</option>
-                                <option value="sim">Sim (pelo índice do grupo)</option>
-                            </select>
-                        </div>
-                        <div class="input-group">
-                            <label>Prazo de devolução (meses)</label>
-                            <input type="number" id="co_cancelPrazoDevolucao" placeholder="Ex: 12" min="1">
-                            <div class="hint">Prazo legal para receber o valor de volta.</div>
-                        </div>
-                    </div>
-                    <div id="co_cancelResultado" style="margin-top:14px;"></div>
-                </div>
-
-                <!-- 7. VENDA DA COTA -->
-                <div class="co-panel" id="co_venda" style="display:none">
-                    <div class="section-title" style="font-size:0.82rem;color:#a78bfa;">7. Venda da Cota</div>
-                    <div class="input-row cols-3">
-                        <div class="input-group">
-                            <label>Mês da venda</label>
-                            <input type="number" id="co_vendaMes" placeholder="Ex: 24" min="1">
-                        </div>
-                        <div class="input-group">
-                            <label>Situação da cota</label>
-                            <select id="co_vendaSituacao">
-                                <option value="antes">Antes da contemplação</option>
-                                <option value="depois">Após a contemplação</option>
-                            </select>
-                        </div>
-                        <div class="input-group">
-                            <label>Deságio aplicado (%) — antes da contemplação</label>
-                            <input type="number" id="co_vendaDesagio" placeholder="Ex: 15" step="0.1">
-                            <div class="hint">Desconto sobre o valor de mercado da cota.</div>
-                        </div>
-                    </div>
-                    <div class="input-row cols-3">
-                        <div class="input-group">
-                            <label>Preço de venda da cota (R$) — após contemplação</label>
-                            <input type="text" id="co_vendaPreco" placeholder="0,00" oninput="fmtCur(this)">
-                        </div>
-                        <div class="input-group">
-                            <label>Taxa de transferência (R$)</label>
-                            <input type="text" id="co_vendaTaxa" placeholder="0,00" oninput="fmtCur(this)">
-                        </div>
-                    </div>
-                    <div id="co_vendaResultado" style="margin-top:14px;"></div>
-                </div>
-
-                <!-- 8. RISCOS -->
-                <div class="co-panel" id="co_riscos" style="display:none">
-                    <div class="section-title" style="font-size:0.82rem;color:#a78bfa;">8. Análise de Riscos</div>
-                    <div class="input-row cols-3">
-                        <div class="input-group">
-                            <label>Renda mensal atual (R$)</label>
-                            <input type="text" id="co_renda" placeholder="Ex: 10.000,00" oninput="fmtCur(this)">
-                            <div class="hint">Para calcular comprometimento de renda.</div>
-                        </div>
-                        <div class="input-group">
-                            <label>Crescimento anual da renda (% a.a.)</label>
-                            <input type="number" id="co_crescimentoRenda" placeholder="Ex: 5" step="0.1" value="5">
-                        </div>
-                        <div class="input-group">
-                            <label>Meses de inadimplência simulada</label>
-                            <input type="number" id="co_mesesInadimplencia" placeholder="Ex: 3" min="0">
-                            <div class="hint">Simula atraso e acúmulo de multa/juros.</div>
-                        </div>
-                    </div>
-                    <div class="input-row cols-3">
-                        <div class="input-group">
-                            <label>Reajuste extremo simulado (% a.a.)</label>
-                            <input type="number" id="co_reajusteExtremo" placeholder="Ex: 20" step="0.1">
-                            <div class="hint">Cenário de stress: reajuste acima do esperado.</div>
-                        </div>
-                        <div class="input-group">
-                            <label>Atraso em assembleias (meses)</label>
-                            <input type="number" id="co_atrasoAssembleias" placeholder="Ex: 2" min="0">
-                            <div class="hint">Simula atraso no cronograma do grupo.</div>
-                        </div>
-                    </div>
-                    <div id="co_riscosResultado" style="margin-top:14px;"></div>
-                </div>
-
-                <!-- 9. COMPARAÇÃO COM FINANCIAMENTO -->
-                <div class="co-panel" id="co_compfin" style="display:none">
-                    <div class="section-title" style="font-size:0.82rem;color:#a78bfa;">9. Comparação com Financiamento</div>
-                    <div class="hint" style="margin-bottom:12px;">Compare o consórcio com um financiamento equivalente.</div>
-                    <div class="input-row cols-3">
-                        <div class="input-group">
-                            <label>Valor financiado (R$)</label>
-                            <input type="text" id="co_finValor" placeholder="Ex: 500.000,00" oninput="fmtCur(this)">
-                        </div>
-                        <div class="input-group">
-                            <label>Taxa de juros anual (%)</label>
-                            <input type="number" id="co_finJuros" placeholder="Ex: 10.5" step="0.1">
-                        </div>
-                        <div class="input-group">
-                            <label>Prazo (meses)</label>
-                            <input type="number" id="co_finPrazo" placeholder="Ex: 360" min="1">
-                        </div>
-                    </div>
-                    <div class="input-row cols-3">
-                        <div class="input-group">
-                            <label>Sistema de amortização</label>
-                            <select id="co_finSistema">
-                                <option value="price">Price (parcela fixa)</option>
-                                <option value="sac">SAC (amortização constante)</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div id="co_compfinResultado" style="margin-top:14px;"></div>
-                </div>
 
             </div>
 
@@ -1602,7 +1296,7 @@
          'al_aluguel','al_reajuste','al_caucao','al_taxaAdm','al_custosExtra','al_capital','al_aporteInv',
          'sac_entrada','sac_financiado','sac_prazo','sac_juros','sac_cet','sac_indiceCorrecao','sac_mip','sac_dfi','sac_taxaAdm','sac_carencia',
          'pr_entrada','pr_financiado','pr_prazo','pr_juros','pr_cet','pr_indiceCorrecao','pr_mip','pr_dfi','pr_taxaAdm','pr_carencia',
-         'co_credito','co_prazo','co_taxaAdm','co_fundoReserva','co_seguro','co_indiceReajuste','co_mesContemplacao','co_lanceEmbutido','co_lanceRecursos','co_mesLance',
+         'co_creditoDesejado','co_lanceEmbutido','co_taxaAdm','co_fundoReserva','co_seguroPct','co_tipoPessoa','co_prazo','co_lanceFixoPct','co_lanceFixoBase','co_lanceLivrePct','co_lanceLivreBase','co_mesContemplacao','co_reducaoParcela','co_finalidade','co_adesaoPct','co_posContempOpcao','co_indiceReajuste','co_reajusteAA',
          'cu_nomeCredito','cu_entrada','cu_financiado','cu_prazo','cu_juros','cu_iof','cu_parcelaFixa','cu_tarifaFixa','cu_tarifaVar','cu_seguro','cu_seguroVar','cu_indiceCorrecao','cu_balloon','cu_carencia'
         ].forEach(id => { const el = document.getElementById(id); if(el) el.value=''; });
         document.getElementById('sac_amorts').innerHTML = '';
@@ -1739,41 +1433,24 @@
             base.pr_efeitoAmort = gv('pr_efeitoAmort');
             base.pr_amortsList = coletarAmorts('pr');
         } else if (mod === 'consorcio') {
-            // Bloco 1: Carta e Grupo
-            base.co_credito = gv('co_credito');
-            base.co_pctCredito = gv('co_pctCredito');
-            base.co_prazo = gv('co_prazo');
-            base.co_indiceReajuste = gv('co_indiceReajuste');
-            base.co_periodicidadeReajuste = gv('co_periodicidadeReajuste');
-            base.co_mesContemplacao = gv('co_mesContemplacao');
-            // Bloco 2: Taxas
+            base.co_creditoDesejado = gv('co_creditoDesejado');
+            base.co_lanceEmbutido = gv('co_lanceEmbutido');
             base.co_taxaAdm = gv('co_taxaAdm');
             base.co_fundoReserva = gv('co_fundoReserva');
-            base.co_baseCalculo = gv('co_baseCalculo');
-            base.co_taxaAdesao = gv('co_taxaAdesao');
-            base.co_multaAtraso = gv('co_multaAtraso');
-            base.co_jurosAtraso = gv('co_jurosAtraso');
-            // Bloco 3: Seguro
-            base.co_tipoSeguro = gv('co_tipoSeguro');
-            base.co_seguro = gv('co_seguro');
             base.co_seguroPct = gv('co_seguroPct');
-            // Bloco 4: Lance
-            base.co_mesLance = gv('co_mesLance');
-            base.co_baseLance = gv('co_baseLance');
-            base.co_lanceEmbutido = gv('co_lanceEmbutido');
-            base.co_lanceRecursos = gv('co_lanceRecursos');
-            base.co_lanceRecursosPct = gv('co_lanceRecursosPct');
-            base.co_lanceAbateSaldo = gv('co_lanceAbateSaldo');
-            // Bloco 5: Contemplação
-            base.co_numParticipantes = gv('co_numParticipantes');
-            base.co_contemplacoesAssembleia = gv('co_contemplacoesAssembleia');
-            base.co_excluirInadimplentes = gv('co_excluirInadimplentes');
-            base.co_taxaInadimplencia = gv('co_taxaInadimplencia');
-            base.co_lanceLivrePct = gv('co_lanceLivrePct');
-            base.co_mediaHistoricaLance = gv('co_mediaHistoricaLance');
+            base.co_tipoPessoa = gv('co_tipoPessoa');
+            base.co_prazo = gv('co_prazo');
             base.co_lanceFixoPct = gv('co_lanceFixoPct');
-            base.co_lanceFixoVagas = gv('co_lanceFixoVagas');
-            base.co_lanceFixoConcorrentes = gv('co_lanceFixoConcorrentes');
+            base.co_lanceFixoBase = gv('co_lanceFixoBase');
+            base.co_lanceLivrePct = gv('co_lanceLivrePct');
+            base.co_lanceLivreBase = gv('co_lanceLivreBase');
+            base.co_mesContemplacao = gv('co_mesContemplacao');
+            base.co_reducaoParcela = gv('co_reducaoParcela');
+            base.co_finalidade = gv('co_finalidade');
+            base.co_adesaoPct = gv('co_adesaoPct');
+            base.co_posContempOpcao = gv('co_posContempOpcao');
+            base.co_indiceReajuste = gv('co_indiceReajuste');
+            base.co_reajusteAA = gv('co_reajusteAA');
         } else if (mod === 'custom') {
             base.cu_nomeCredito = gv('cu_nomeCredito');
             base.cu_sistema = gv('cu_sistema');
@@ -1839,505 +1516,180 @@
         }
     }
 
-    function toggleSeguroConsorcio() {
-        const tipo = document.getElementById('co_tipoSeguro')?.value || 'nenhum';
-        const fixoGrp = document.getElementById('co_seguro_fixo_grp');
-        const pctGrp = document.getElementById('co_seguro_pct_grp');
-        if (fixoGrp) fixoGrp.style.display = tipo === 'fixo' ? '' : 'none';
-        if (pctGrp) pctGrp.style.display = (tipo !== 'nenhum' && tipo !== 'fixo') ? '' : 'none';
-    }
-    function calcCategoria() {
-        const credito = parseCur(document.getElementById('co_credito')?.value || '0');
-        const pct = parseFloat(document.getElementById('co_pctCredito')?.value) || 100;
-        const creditoEfetivo = credito * (pct / 100);
+    // ══════════════════════════════════════════════════════════════════════════
+    //  CONSÓRCIO v3 — funções JS
+    // ══════════════════════════════════════════════════════════════════════════
+
+    // Calcula e preenche todos os campos calculados do formulário
+    function coCalcCategoria() {
+        const creditoDesejado = parseCur(document.getElementById('co_creditoDesejado')?.value || '0') || 0;
+        const lanceEmbutidoPct = parseFloat(document.getElementById('co_lanceEmbutido')?.value) || 0;
         const taxaAdm = parseFloat(document.getElementById('co_taxaAdm')?.value) || 0;
         const fundo = parseFloat(document.getElementById('co_fundoReserva')?.value) || 0;
-        const cat = creditoEfetivo * (1 + (taxaAdm + fundo) / 100);
-        const el = document.getElementById('co_categoria');
-        if (el) el.value = cat > 0 ? cat.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : '';
-        // Atualizar sub-módulos em tempo real
-        calcSorteio(); calcLanceLivre(); calcLanceFixo(); calcLanceEmbutido();
-        calcInflacaoConsorcio(); calcCancelamento(); calcVendaCota(); calcRiscos(); calcCompFinanciamento();
+        const seguroPct = parseFloat(document.getElementById('co_seguroPct')?.value) || 0;
+        const prazo = parseInt(document.getElementById('co_prazo')?.value) || 0;
+        const adesaoPct = parseFloat(document.getElementById('co_adesaoPct')?.value) || 0;
+        const lanceFixoPct = parseFloat(document.getElementById('co_lanceFixoPct')?.value) || 0;
+        const lanceFixoBase = document.getElementById('co_lanceFixoBase')?.value || 'carta';
+        const lanceLivrePct = parseFloat(document.getElementById('co_lanceLivrePct')?.value) || 0;
+        const lanceLivreBase = document.getElementById('co_lanceLivreBase')?.value || 'carta';
+
+        // Carta = Crédito desejado / (1 - Lance Embutido%)
+        const lanceEmbutidoFrac = lanceEmbutidoPct / 100;
+        const carta = lanceEmbutidoFrac < 1 && creditoDesejado > 0
+            ? creditoDesejado / (1 - lanceEmbutidoFrac)
+            : creditoDesejado;
+
+        // Categoria = Carta × (1 + TaxaAdm% + FundoReserva%)
+        const categoria = carta * (1 + (taxaAdm + fundo) / 100);
+
+        // Parcela mensal = Categoria / Prazo + Seguro mensal
+        const seguroMensal = carta * (seguroPct / 100);
+        const parcela = prazo > 0 ? (categoria / prazo + seguroMensal) : 0;
+
+        // Adesão
+        const adesaoValor = carta * (adesaoPct / 100);
+
+        // Lance Fixo
+        const lanceFixoBaseValor = lanceFixoBase === 'carta' ? carta
+            : lanceFixoBase === 'categoria' ? categoria : creditoDesejado;
+        const lanceFixoValor = lanceFixoBaseValor * (lanceFixoPct / 100);
+
+        // Lance Livre
+        const lanceLivreBaseValor = lanceLivreBase === 'carta' ? carta
+            : lanceLivreBase === 'categoria' ? categoria : creditoDesejado;
+        const lanceLivreValor = lanceLivreBaseValor * (lanceLivrePct / 100);
+
+        // Preencher campos calculados
+        const fmt = v => v > 0 ? v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : '';
+        const setVal = (id, v) => { const el = document.getElementById(id); if (el) el.value = v; };
+        setVal('co_carta', fmt(carta));
+        setVal('co_categoria', fmt(categoria));
+        setVal('co_parcelaCalc', fmt(parcela));
+        setVal('co_adesaoValor', fmt(adesaoValor));
+        setVal('co_lanceFixoValor', fmt(lanceFixoValor));
+        setVal('co_lanceLivreValor', fmt(lanceLivreValor));
+
+        // Resumo
+        if (carta > 0 && prazo > 0) {
+            const resumo = document.getElementById('co_resumoCalc');
+            const grid = document.getElementById('co_resumoGrid');
+            if (resumo && grid) {
+                resumo.style.display = '';
+                const itens = [
+                    ['Crédito desejado', fmt(creditoDesejado)],
+                    ['Carta de crédito', fmt(carta)],
+                    ['Categoria', fmt(categoria)],
+                    ['Parcela inicial', fmt(parcela)],
+                    ['Seguro mensal', fmt(seguroMensal)],
+                    ['Adesão', fmt(adesaoValor)],
+                    ['Lance Embutido', fmt(carta * lanceEmbutidoFrac)],
+                    ['Lance Fixo', fmt(lanceFixoValor)],
+                    ['Lance Livre', fmt(lanceLivreValor)],
+                    ['Total pago (sem reajuste)', fmt(parcela * prazo + adesaoValor)],
+                ];
+                grid.innerHTML = itens.map(([l,v]) =>
+                    `<div style="background:rgba(255,255,255,0.04);border-radius:6px;padding:8px 10px;">
+                        <div style="font-size:0.72rem;color:#9ca3af;margin-bottom:3px;">${l}</div>
+                        <div style="font-size:0.9rem;color:#f9fafb;font-weight:600;">${v||'—'}</div>
+                    </div>`
+                ).join('');
+            }
+        }
     }
 
-    // Navegação entre sub-abas do consórcio
-    function coTab(id) {
-        document.querySelectorAll('.co-panel').forEach(p => p.style.display = 'none');
-        document.querySelectorAll('.co-tab-btn').forEach(b => b.classList.remove('active'));
-        const panel = document.getElementById(id);
-        if (panel) panel.style.display = 'block';
-        const btn = document.getElementById('cobtn_' + id.replace('co_', ''));
-        if (btn) btn.classList.add('active');
-        // Recalcular o painel ativo
-        if (id === 'co_inflacao') calcInflacaoConsorcio();
-        if (id === 'co_contemplacao') { calcSorteio(); calcLanceLivre(); calcLanceFixo(); calcLanceEmbutido(); }
-        if (id === 'co_poscontemp') calcPosContemp();
-        if (id === 'co_cancelamento') calcCancelamento();
-        if (id === 'co_venda') calcVendaCota();
-        if (id === 'co_riscos') calcRiscos();
-        if (id === 'co_compfin') calcCompFinanciamento();
-    }
-
+    // Compatibilidade: calcCategoria ainda chamado por campos antigos
+    function calcCategoria() { coCalcCategoria(); }
+    function toggleSeguroConsorcio() {}
     function togglePosContemp() {}
+    function coTab(id) {}
 
-    // Helper: dados base do consórcio
+    // Helper: dados base do consórcio (novo formulário)
     function coBase() {
-        const credito = parseCur(document.getElementById('co_credito')?.value || '0') || 0;
-        const pct = parseFloat(document.getElementById('co_pctCredito')?.value) || 100;
-        const creditoEfetivo = credito * (pct / 100);
-        const prazo = parseInt(document.getElementById('co_prazo')?.value) || 180;
+        const creditoDesejado = parseCur(document.getElementById('co_creditoDesejado')?.value || '0') || 0;
+        const lanceEmbutidoPct = (parseFloat(document.getElementById('co_lanceEmbutido')?.value) || 0) / 100;
+        const carta = lanceEmbutidoPct < 1 && creditoDesejado > 0
+            ? creditoDesejado / (1 - lanceEmbutidoPct) : creditoDesejado;
         const taxaAdm = (parseFloat(document.getElementById('co_taxaAdm')?.value) || 0) / 100;
         const fundo = (parseFloat(document.getElementById('co_fundoReserva')?.value) || 0) / 100;
-        const reajusteAA = (parseFloat(document.getElementById('co_indiceReajuste')?.value) || 0) / 100;
-        const periodicidade = document.getElementById('co_periodicidadeReajuste')?.value || 'anual';
-        const tipoSeguro = document.getElementById('co_tipoSeguro')?.value || 'nenhum';
-        const seguroFixo = parseCur(document.getElementById('co_seguro')?.value || '0');
         const seguroPct = (parseFloat(document.getElementById('co_seguroPct')?.value) || 0) / 100;
-        const baseCalculo = document.getElementById('co_baseCalculo')?.value || 'categoria';
-        const taxaAdesao = parseCur(document.getElementById('co_taxaAdesao')?.value || '0');
-        const multaAtraso = (parseFloat(document.getElementById('co_multaAtraso')?.value) || 0) / 100;
-        const jurosAtraso = (parseFloat(document.getElementById('co_jurosAtraso')?.value) || 0) / 100;
-        const categoria = creditoEfetivo * (1 + taxaAdm + fundo);
+        const prazo = parseInt(document.getElementById('co_prazo')?.value) || 180;
+        const reajusteAA = (parseFloat(document.getElementById('co_reajusteAA')?.value) || 0) / 100;
         const mesContemp = parseInt(document.getElementById('co_mesContemplacao')?.value) || Math.floor(prazo / 2);
-        return { credito, creditoEfetivo, prazo, taxaAdm, fundo, reajusteAA, periodicidade,
-            tipoSeguro, seguroFixo, seguroPct, baseCalculo, taxaAdesao, multaAtraso, jurosAtraso,
-            categoria, mesContemp };
+        const adesaoPct = (parseFloat(document.getElementById('co_adesaoPct')?.value) || 0) / 100;
+        const reducaoParcela = (parseFloat(document.getElementById('co_reducaoParcela')?.value) || 0) / 100;
+        const posContempOpcao = document.getElementById('co_posContempOpcao')?.value || 'parcela';
+        const lanceFixoPct = (parseFloat(document.getElementById('co_lanceFixoPct')?.value) || 0) / 100;
+        const lanceFixoBase = document.getElementById('co_lanceFixoBase')?.value || 'carta';
+        const lanceLivrePct = (parseFloat(document.getElementById('co_lanceLivrePct')?.value) || 0) / 100;
+        const lanceLivreBase = document.getElementById('co_lanceLivreBase')?.value || 'carta';
+        const categoria = carta * (1 + taxaAdm + fundo);
+        const adesaoValor = carta * adesaoPct;
+        return { creditoDesejado, carta, lanceEmbutidoPct, taxaAdm, fundo, seguroPct, prazo,
+            reajusteAA, mesContemp, adesaoValor, reducaoParcela, posContempOpcao,
+            lanceFixoPct, lanceFixoBase, lanceLivrePct, lanceLivreBase, categoria };
     }
 
-    // Simular parcelas mês a mês do consórcio
+    // Simular parcelas mês a mês do consórcio (novo)
     function coSimularParcelas(b, mesLance, lanceEmb, lanceRec, lanceAbate) {
-        let creditoAtual = b.creditoEfetivo;
+        let cartaAtual = b.carta;
         let categoriaAtual = b.categoria;
-        let saldo = b.creditoEfetivo;
-        let custoAcum = b.taxaAdesao;
-        let totalParcelas = 0, totalAdm = 0, totalSeguro = 0;
+        let saldo = b.carta;
+        let custoAcum = b.adesaoValor;
+        let totalParcelas = 0;
         let parcelaInicial = 0;
         const parcelas = [];
         let lanceJaDado = false;
-        let lanceEmbVal = 0, lanceRecVal = 0;
+        let lanceEmbutidoValor = 0;
+        let lanceRecursosValor = 0;
+
         for (let m = 1; m <= b.prazo; m++) {
-            // Reajuste
-            if (b.reajusteAA > 0) {
-                if (b.periodicidade === 'mensal') {
-                    const rm = Math.pow(1 + b.reajusteAA, 1/12) - 1;
-                    creditoAtual *= (1 + rm);
-                    categoriaAtual = creditoAtual * (1 + b.taxaAdm + b.fundo);
-                    saldo *= (1 + rm);
-                } else if (m > 1 && (m - 1) % 12 === 0) {
-                    creditoAtual *= (1 + b.reajusteAA);
-                    categoriaAtual = creditoAtual * (1 + b.taxaAdm + b.fundo);
-                    saldo *= (1 + b.reajusteAA);
-                }
+            // Reajuste anual
+            if (b.reajusteAA > 0 && m > 1 && (m - 1) % 12 === 0) {
+                cartaAtual *= (1 + b.reajusteAA);
+                categoriaAtual = cartaAtual * (1 + b.taxaAdm + b.fundo);
+                saldo *= (1 + b.reajusteAA);
             }
-            let base;
-            if (b.baseCalculo === 'categoria') base = categoriaAtual;
-            else if (b.baseCalculo === 'carta') base = creditoAtual;
-            else base = saldo;
-            const admM = base * (b.taxaAdm + b.fundo) / b.prazo;
-            const amortM = creditoAtual / b.prazo;
-            let seguroM = 0;
-            if (b.tipoSeguro === 'fixo') seguroM = b.seguroFixo;
-            else if (b.tipoSeguro === 'pct_carta') seguroM = creditoAtual * b.seguroPct;
-            else if (b.tipoSeguro === 'pct_saldo') seguroM = saldo * b.seguroPct;
-            else if (b.tipoSeguro === 'pct_categoria') seguroM = categoriaAtual * b.seguroPct;
+            const amortM = cartaAtual / b.prazo;
+            const seguroM = cartaAtual * b.seguroPct;
+            const admM = categoriaAtual * (b.taxaAdm + b.fundo) / b.prazo;
             const parcelaM = amortM + admM + seguroM;
             saldo = Math.max(0, saldo - amortM);
             custoAcum += parcelaM;
-            totalParcelas += parcelaM; totalAdm += admM; totalSeguro += seguroM;
+            totalParcelas += parcelaM;
             if (m === 1) parcelaInicial = parcelaM;
+            parcelas.push(parcelaM);
+
             // Lance
-            if (mesLance > 0 && m === mesLance && !lanceJaDado) {
+            if (m === mesLance && !lanceJaDado && mesLance > 0) {
                 lanceJaDado = true;
-                lanceEmbVal = creditoAtual * (lanceEmb / 100);
-                lanceRecVal = lanceRec;
-                custoAcum += lanceRecVal;
-                if (lanceAbate) saldo = Math.max(0, saldo - lanceEmbVal - lanceRecVal);
+                lanceEmbutidoValor = cartaAtual * lanceEmb;
+                lanceRecursosValor = lanceRec;
+                custoAcum += lanceRecursosValor;
+                if (lanceAbate) saldo = Math.max(0, saldo - lanceEmbutidoValor - lanceRecursosValor);
             }
-            parcelas.push({ m, parcelaM, saldo, creditoAtual, custoAcum });
         }
-        return { parcelas, custoAcum, totalParcelas, totalAdm, totalSeguro, parcelaInicial,
-            parcelaFinal: parcelas[parcelas.length-1]?.parcelaM || 0,
-            creditoFinal: parcelas[parcelas.length-1]?.creditoAtual || b.creditoEfetivo,
-            saldoFinal: parcelas[parcelas.length-1]?.saldo || 0,
-            lanceEmbVal, lanceRecVal };
+        return { custoAcum, totalParcelas, parcelaInicial,
+            parcelaFinal: parcelas[parcelas.length - 1] || 0,
+            lanceEmbutidoValor, lanceRecursosValor,
+            creditoLiquido: b.carta - lanceEmbutidoValor };
     }
 
-    // 3. INFLAÇÃO
-    function calcInflacaoConsorcio() {
-        const el = document.getElementById('co_inflacaoResultado');
-        if (!el) return;
-        const b = coBase();
-        if (!b.creditoEfetivo) { el.innerHTML = ''; return; }
-        const cenarios = [
-            { nome: 'Conservador', pct: parseFloat(document.getElementById('co_infConservador')?.value) || 4, cor: 'green' },
-            { nome: 'Moderado',    pct: parseFloat(document.getElementById('co_infModerado')?.value)    || 7, cor: 'yellow' },
-            { nome: 'Agressivo',   pct: parseFloat(document.getElementById('co_infAgressivo')?.value)   || 12, cor: 'red' }
-        ];
-        const anos = b.prazo / 12;
-        let html = '<div class="co-resultado-box"><h4>Projeção por Cenário de Inflação</h4><div class="co-kpi-grid">';
-        cenarios.forEach(c => {
-            const cartaFutura = b.creditoEfetivo * Math.pow(1 + c.pct/100, anos);
-            const sim = coSimularParcelas({...b, reajusteAA: c.pct/100}, 0, 0, 0, false);
-            html += `<div class="co-kpi"><div class="co-kpi-label">${c.nome} (${c.pct}% a.a.)</div>
-                <div class="co-kpi-value ${c.cor}">${fmtBRL(cartaFutura)}</div>
-                <div style="font-size:0.72rem;color:#9ca3af;">Carta futura</div>
-                <div style="font-size:0.78rem;margin-top:4px;">Total pago: <strong>${fmtBRL(sim.custoAcum)}</strong></div>
-                <div style="font-size:0.72rem;color:#9ca3af;">Parcela inicial: ${fmtBRL(sim.parcelaInicial)} → final: ${fmtBRL(sim.parcelaFinal)}</div>
-            </div>`;
-        });
-        html += '</div></div>';
-        el.innerHTML = html;
-    }
+    // Funções de sub-módulos (mantidas como stubs — não há mais sub-abas)
+    function calcInflacaoConsorcio() {}
+    function calcSorteio() {}
+    function calcLanceLivre() {}
+    function calcLanceFixo() {}
+    function calcLanceEmbutido() {}
+    function adicionarEstrategia() {}
+    function calcCancelamento() {}
+    function calcVendaCota() {}
+    function calcRiscos() {}
+    function calcCompFinanciamento() {}
+    function calcPosContemp() {}
 
-    // 4A. SORTEIO
-    function calcSorteio() {
-        const el = document.getElementById('co_sorteioResultado');
-        if (!el) return;
-        const n = parseInt(document.getElementById('co_numParticipantes')?.value) || 0;
-        const c = parseInt(document.getElementById('co_contemplacoesAssembleia')?.value) || 1;
-        const excluir = document.getElementById('co_excluirInadimplentes')?.value === 'sim';
-        const txInad = (parseFloat(document.getElementById('co_taxaInadimplencia')?.value) || 5) / 100;
-        if (!n) { el.innerHTML = ''; return; }
-        const nEfetivo = excluir ? Math.round(n * (1 - txInad)) : n;
-        const probMensal = Math.min(1, c / nEfetivo);
-        const probAcum = (mes) => 1 - Math.pow(1 - probMensal, mes);
-        const tempoMedio = Math.ceil(1 / probMensal);
-        let html = '<div class="co-resultado-box"><h4>Análise de Probabilidade — Sorteio</h4><div class="co-kpi-grid">';
-        html += `<div class="co-kpi"><div class="co-kpi-label">Prob. mensal</div><div class="co-kpi-value yellow">${(probMensal*100).toFixed(2)}%</div></div>`;
-        html += `<div class="co-kpi"><div class="co-kpi-label">Tempo médio esperado</div><div class="co-kpi-value">${tempoMedio} meses</div></div>`;
-        html += `<div class="co-kpi"><div class="co-kpi-label">Prob. acumulada 12 meses</div><div class="co-kpi-value">${(probAcum(12)*100).toFixed(1)}%</div></div>`;
-        html += `<div class="co-kpi"><div class="co-kpi-label">Prob. acumulada 24 meses</div><div class="co-kpi-value">${(probAcum(24)*100).toFixed(1)}%</div></div>`;
-        html += `<div class="co-kpi"><div class="co-kpi-label">Melhor cenário</div><div class="co-kpi-value green">Mês 1</div></div>`;
-        html += `<div class="co-kpi"><div class="co-kpi-label">Pior cenário</div><div class="co-kpi-value red">Último mês (${coBase().prazo})</div></div>`;
-        html += '</div>';
-        // Gráfico de probabilidade acumulada
-        html += `<div id="co_sorteioChart" style="max-height:200px;"></div>`;
-        html += '</div>';
-        el.innerHTML = html;
-        // Montar dados para gráfico
-        const prazo = coBase().prazo;
-        const labels = [], data = [];
-        for (let m = 1; m <= prazo; m++) { labels.push('M' + m); data.push(+(probAcum(m)*100).toFixed(2)); }
-        setTimeout(() => {
-            const ctx = document.getElementById('co_sorteioChart');
-            if (!ctx) return;
-            ctx.innerHTML = '<canvas id="co_sorteioCanvas" height="180"></canvas>';
-            new Chart(document.getElementById('co_sorteioCanvas'), {
-                type: 'line',
-                data: { labels, datasets: [{ label: 'Prob. Acumulada (%)', data, borderColor: '#a78bfa', backgroundColor: 'rgba(167,139,250,0.1)', fill: true, tension: 0.3, pointRadius: 0 }] },
-                options: { responsive: true, plugins: { legend: { labels: { color: '#9ca3af' } } }, scales: { x: { ticks: { color: '#9ca3af', maxTicksLimit: 12 } }, y: { ticks: { color: '#9ca3af' }, max: 100 } } }
-            });
-        }, 50);
-    }
 
-    // 4B. LANCE LIVRE
-    function calcLanceLivre() {
-        const el = document.getElementById('co_lanceLivreResultado');
-        if (!el) return;
-        const b = coBase();
-        const pctOfertado = parseFloat(document.getElementById('co_lanceLivrePct')?.value) || 0;
-        const mediaHist = parseFloat(document.getElementById('co_mediaHistoricaLance')?.value) || 0;
-        if (!pctOfertado && !mediaHist) { el.innerHTML = ''; return; }
-        const lanceValor = b.creditoEfetivo * (pctOfertado / 100);
-        const chanceEstimada = mediaHist > 0 ? Math.min(100, (pctOfertado / mediaHist) * 50) : null;
-        const reducaoSaldo = lanceValor;
-        const sim = coSimularParcelas(b, b.mesContemp, 0, lanceValor, true);
-        const simSemLance = coSimularParcelas(b, 0, 0, 0, false);
-        let html = '<div class="co-resultado-box"><h4>Análise — Lance Livre</h4><div class="co-kpi-grid">';
-        html += `<div class="co-kpi"><div class="co-kpi-label">Valor do lance</div><div class="co-kpi-value yellow">${fmtBRL(lanceValor)}</div></div>`;
-        if (chanceEstimada !== null) html += `<div class="co-kpi"><div class="co-kpi-label">Chance estimada</div><div class="co-kpi-value ${chanceEstimada >= 50 ? 'green' : 'yellow'}">${chanceEstimada.toFixed(1)}%</div></div>`;
-        html += `<div class="co-kpi"><div class="co-kpi-label">Redução do saldo</div><div class="co-kpi-value green">${fmtBRL(reducaoSaldo)}</div></div>`;
-        html += `<div class="co-kpi"><div class="co-kpi-label">Custo total com lance</div><div class="co-kpi-value">${fmtBRL(sim.custoAcum)}</div></div>`;
-        html += `<div class="co-kpi"><div class="co-kpi-label">Economia vs sem lance</div><div class="co-kpi-value green">${fmtBRL(simSemLance.custoAcum - sim.custoAcum)}</div></div>`;
-        html += '</div></div>';
-        el.innerHTML = html;
-    }
-
-    // 4C. LANCE FIXO
-    function calcLanceFixo() {
-        const el = document.getElementById('co_lanceFixoResultado');
-        if (!el) return;
-        const pct = parseFloat(document.getElementById('co_lanceFixoPct')?.value) || 0;
-        const vagas = parseInt(document.getElementById('co_lanceFixoVagas')?.value) || 1;
-        const concorrentes = parseInt(document.getElementById('co_lanceFixoConcorrentes')?.value) || 0;
-        if (!pct) { el.innerHTML = ''; return; }
-        const prob = concorrentes > 0 ? Math.min(100, (vagas / (concorrentes + 1)) * 100) : 100;
-        let html = '<div class="co-resultado-box"><h4>Análise — Lance Fixo</h4><div class="co-kpi-grid">';
-        html += `<div class="co-kpi"><div class="co-kpi-label">Lance exigido</div><div class="co-kpi-value yellow">${pct}%</div></div>`;
-        html += `<div class="co-kpi"><div class="co-kpi-label">Probabilidade estimada</div><div class="co-kpi-value ${prob >= 50 ? 'green' : 'red'}">${prob.toFixed(1)}%</div></div>`;
-        html += `<div class="co-kpi"><div class="co-kpi-label">Vagas / Concorrentes</div><div class="co-kpi-value">${vagas} / ${concorrentes}</div></div>`;
-        html += '</div></div>';
-        el.innerHTML = html;
-    }
-
-    // 4D. LANCE EMBUTIDO
-    function calcLanceEmbutido() {
-        const el = document.getElementById('co_lanceEmbutidoResultado');
-        if (!el) return;
-        const b = coBase();
-        const pctEmb = parseFloat(document.getElementById('co_lanceEmbutido')?.value) || 0;
-        const baseLance = document.getElementById('co_baseLance')?.value || 'carta';
-        const lanceRec = parseCur(document.getElementById('co_lanceRecursos')?.value || '0');
-        const lanceRecPct = parseFloat(document.getElementById('co_lanceRecursosPct')?.value) || 0;
-        const lanceAbate = (document.getElementById('co_lanceAbateSaldo')?.value || 'sim') === 'sim';
-        if (!pctEmb && !lanceRec && !lanceRecPct) { el.innerHTML = ''; return; }
-        let baseValor;
-        if (baseLance === 'carta') baseValor = b.creditoEfetivo;
-        else if (baseLance === 'categoria') baseValor = b.categoria;
-        else baseValor = b.creditoEfetivo; // saldo (aproximado)
-        const lanceEmbValor = baseValor * (pctEmb / 100);
-        const lanceRecValor = lanceRec > 0 ? lanceRec : baseValor * (lanceRecPct / 100);
-        const creditoLiquido = b.creditoEfetivo - lanceEmbValor;
-        const mesLance = parseInt(document.getElementById('co_mesLance')?.value) || b.mesContemp;
-        const sim = coSimularParcelas(b, mesLance, pctEmb, lanceRecValor, lanceAbate);
-        let html = '<div class="co-resultado-box"><h4>Análise — Lance Embutido</h4><div class="co-kpi-grid">';
-        html += `<div class="co-kpi"><div class="co-kpi-label">Lance embutido</div><div class="co-kpi-value yellow">${fmtBRL(lanceEmbValor)}</div></div>`;
-        html += `<div class="co-kpi"><div class="co-kpi-label">Crédito líquido</div><div class="co-kpi-value">${fmtBRL(creditoLiquido)}</div></div>`;
-        if (lanceRecValor > 0) html += `<div class="co-kpi"><div class="co-kpi-label">Recursos próprios</div><div class="co-kpi-value red">${fmtBRL(lanceRecValor)}</div></div>`;
-        html += `<div class="co-kpi"><div class="co-kpi-label">Custo total</div><div class="co-kpi-value">${fmtBRL(sim.custoAcum)}</div></div>`;
-        html += `<div class="co-kpi"><div class="co-kpi-label">Complemento necessário</div><div class="co-kpi-value ${lanceRecValor > 0 ? 'red' : 'green'}">${lanceRecValor > 0 ? fmtBRL(lanceRecValor) : 'Nenhum'}</div></div>`;
-        html += '</div>';
-        if (lanceEmbValor > 0) html += `<div class="co-alert info">O lance embutido reduz o crédito líquido recebido de ${fmtBRL(b.creditoEfetivo)} para ${fmtBRL(creditoLiquido)}. Avalie se o bem desejado pode ser adquirido com esse valor.</div>`;
-        html += '</div>';
-        el.innerHTML = html;
-    }
-
-    // 4E. ESTRATÉGIAS
-    const coEstrategias = [];
-    function adicionarEstrategia() {
-        const tipo = document.getElementById('co_estrategiaTipo')?.value;
-        const p1 = parseFloat(document.getElementById('co_estrategiaP1')?.value) || 0;
-        const p2 = parseFloat(document.getElementById('co_estrategiaP2')?.value) || 0;
-        const nomes = { nunca: 'Nunca ofertar lance', pequeno: 'Lance pequeno mensal', esperar: `Esperar ${p1} meses e ofertar ${p2}%`, embutido_proprio: `Lance embutido ${p1}% + R$ ${p2}k próprios`, quitar: 'Quitar após contemplação' };
-        coEstrategias.push({ tipo, p1, p2, nome: nomes[tipo] });
-        renderEstrategias();
-    }
-    function renderEstrategias() {
-        const el = document.getElementById('co_estrategiasResultado');
-        if (!el) return;
-        const b = coBase();
-        let html = '';
-        coEstrategias.forEach((est, i) => {
-            let sim;
-            if (est.tipo === 'nunca') sim = coSimularParcelas(b, 0, 0, 0, false);
-            else if (est.tipo === 'pequeno') sim = coSimularParcelas(b, Math.floor(b.prazo/2), 0, b.creditoEfetivo * 0.05, true);
-            else if (est.tipo === 'esperar') sim = coSimularParcelas(b, est.p1, est.p2, 0, true);
-            else if (est.tipo === 'embutido_proprio') sim = coSimularParcelas(b, b.mesContemp, est.p1, est.p2 * 1000, true);
-            else sim = coSimularParcelas(b, b.mesContemp, 0, 0, false);
-            html += `<div class="co-estrategia-card"><h5>${i+1}. ${est.nome}</h5>
-                <div class="co-kpi-grid">
-                    <div class="co-kpi"><div class="co-kpi-label">Custo total</div><div class="co-kpi-value">${fmtBRL(sim.custoAcum)}</div></div>
-                    <div class="co-kpi"><div class="co-kpi-label">Parcela inicial</div><div class="co-kpi-value">${fmtBRL(sim.parcelaInicial)}</div></div>
-                    <div class="co-kpi"><div class="co-kpi-label">Parcela final</div><div class="co-kpi-value">${fmtBRL(sim.parcelaFinal)}</div></div>
-                    <div class="co-kpi"><div class="co-kpi-label">Saldo final</div><div class="co-kpi-value ${sim.saldoFinal > 0 ? 'red' : 'green'}">${fmtBRL(sim.saldoFinal)}</div></div>
-                </div>
-                <button class="btn-secondary" onclick="coEstrategias.splice(${i},1);renderEstrategias()" style="font-size:0.72rem;padding:3px 8px;margin-top:6px;">Remover</button>
-            </div>`;
-        });
-        if (coEstrategias.length === 0) html = '<div class="hint">Nenhuma estratégia adicionada. Use o formulário acima para adicionar.</div>';
-        el.innerHTML = html;
-    }
-
-    // 5. PÓS-CONTEMPLAÇÃO
-    function calcPosContemp() {
-        const el = document.getElementById('co_posContempResultado');
-        if (!el) return;
-        const b = coBase();
-        const mesContemp = parseInt(document.getElementById('co_posContempMes')?.value) || b.mesContemp;
-        const opcao = document.getElementById('co_posContempOpcao')?.value || 'normal';
-        const aporte = parseCur(document.getElementById('co_posContempAporte')?.value || '0');
-        const sim = coSimularParcelas(b, 0, 0, 0, false);
-        const parcelaContemp = sim.parcelas[mesContemp - 1]?.parcelaM || 0;
-        const saldoContemp = sim.parcelas[mesContemp - 1]?.saldo || 0;
-        const creditoContemp = sim.parcelas[mesContemp - 1]?.creditoAtual || b.creditoEfetivo;
-        const prazoRestante = b.prazo - mesContemp;
-        let html = '<div class="co-resultado-box"><h4>Situação na Contemplação (Mês ' + mesContemp + ')</h4><div class="co-kpi-grid">';
-        html += `<div class="co-kpi"><div class="co-kpi-label">Crédito atualizado</div><div class="co-kpi-value green">${fmtBRL(creditoContemp)}</div></div>`;
-        html += `<div class="co-kpi"><div class="co-kpi-label">Saldo devedor</div><div class="co-kpi-value">${fmtBRL(saldoContemp)}</div></div>`;
-        html += `<div class="co-kpi"><div class="co-kpi-label">Parcela atual</div><div class="co-kpi-value">${fmtBRL(parcelaContemp)}</div></div>`;
-        html += `<div class="co-kpi"><div class="co-kpi-label">Prazo restante</div><div class="co-kpi-value">${prazoRestante} meses</div></div>`;
-        if (opcao === 'reduzir_prazo' && saldoContemp > 0) {
-            const novoPrazo = Math.ceil(saldoContemp / (b.creditoEfetivo / b.prazo));
-            html += `<div class="co-kpi"><div class="co-kpi-label">Novo prazo (reduzir prazo)</div><div class="co-kpi-value green">${novoPrazo} meses</div></div>`;
-            html += `<div class="co-kpi"><div class="co-kpi-label">Economia de prazo</div><div class="co-kpi-value green">${prazoRestante - novoPrazo} meses</div></div>`;
-        } else if (opcao === 'reduzir_parcela' && saldoContemp > 0) {
-            const novaAmort = saldoContemp / prazoRestante;
-            html += `<div class="co-kpi"><div class="co-kpi-label">Nova parcela estimada</div><div class="co-kpi-value green">${fmtBRL(novaAmort * 1.2)}</div></div>`;
-        } else if (opcao === 'quitar') {
-            const saldoAposAporte = Math.max(0, saldoContemp - aporte);
-            html += `<div class="co-kpi"><div class="co-kpi-label">Saldo após aporte</div><div class="co-kpi-value ${saldoAposAporte === 0 ? 'green' : 'red'}">${fmtBRL(saldoAposAporte)}</div></div>`;
-            if (saldoAposAporte === 0) html += `<div class="co-kpi"><div class="co-kpi-label">Economia total</div><div class="co-kpi-value green">${fmtBRL(parcelaContemp * prazoRestante)}</div></div>`;
-        }
-        html += '</div></div>';
-        el.innerHTML = html;
-    }
-
-    // 6. CANCELAMENTO
-    function calcCancelamento() {
-        const el = document.getElementById('co_cancelResultado');
-        if (!el) return;
-        const b = coBase();
-        const mesCancelamento = parseInt(document.getElementById('co_cancelMes')?.value) || 0;
-        const multaPct = (parseFloat(document.getElementById('co_cancelMulta')?.value) || 0) / 100;
-        const admRetidaPct = (parseFloat(document.getElementById('co_cancelAdmRetida')?.value) || 100) / 100;
-        const fundoDevolvido = document.getElementById('co_cancelFundoDevolvido')?.value === 'sim';
-        const correcao = document.getElementById('co_cancelCorrecao')?.value === 'sim';
-        const prazoDevolucao = parseInt(document.getElementById('co_cancelPrazoDevolucao')?.value) || 12;
-        if (!mesCancelamento) { el.innerHTML = ''; return; }
-        const sim = coSimularParcelas(b, 0, 0, 0, false);
-        const parcelasPagas = sim.parcelas.slice(0, mesCancelamento);
-        const totalPago = parcelasPagas.reduce((s, p) => s + p.parcelaM, 0) + b.taxaAdesao;
-        const totalAdm = totalPago * (b.taxaAdm / (b.taxaAdm + b.fundo + 1/b.prazo));
-        const totalFundo = totalPago * (b.fundo / (b.taxaAdm + b.fundo + 1/b.prazo));
-        const admRetida = totalAdm * admRetidaPct;
-        const fundoDevol = fundoDevolvido ? totalFundo : 0;
-        const multa = totalPago * multaPct;
-        let valorDevolvido = totalPago - admRetida - multa + (fundoDevolvido ? fundoDevol : 0);
-        if (correcao) valorDevolvido *= (1 + b.reajusteAA * mesCancelamento / 12);
-        valorDevolvido = Math.max(0, valorDevolvido);
-        const perdaFinanceira = totalPago - valorDevolvido;
-        let html = '<div class="co-resultado-box"><h4>Simulação de Cancelamento — Mês ' + mesCancelamento + '</h4><div class="co-kpi-grid">';
-        html += `<div class="co-kpi"><div class="co-kpi-label">Total pago até o momento</div><div class="co-kpi-value">${fmtBRL(totalPago)}</div></div>`;
-        html += `<div class="co-kpi"><div class="co-kpi-label">Multa contratual</div><div class="co-kpi-value red">${fmtBRL(multa)}</div></div>`;
-        html += `<div class="co-kpi"><div class="co-kpi-label">Taxa adm. retida</div><div class="co-kpi-value red">${fmtBRL(admRetida)}</div></div>`;
-        html += `<div class="co-kpi"><div class="co-kpi-label">Fundo reserva devolvido</div><div class="co-kpi-value ${fundoDevolvido ? 'green' : 'red'}">${fundoDevolvido ? fmtBRL(fundoDevol) : 'Não devolvido'}</div></div>`;
-        html += `<div class="co-kpi"><div class="co-kpi-label">Valor devolvido líquido</div><div class="co-kpi-value green">${fmtBRL(valorDevolvido)}</div></div>`;
-        html += `<div class="co-kpi"><div class="co-kpi-label">Perda financeira</div><div class="co-kpi-value red">${fmtBRL(perdaFinanceira)}</div></div>`;
-        html += `<div class="co-kpi"><div class="co-kpi-label">Prazo para receber</div><div class="co-kpi-value yellow">${prazoDevolucao} meses</div></div>`;
-        html += '</div>';
-        const pctPerda = totalPago > 0 ? (perdaFinanceira / totalPago * 100).toFixed(1) : 0;
-        const alertClass = pctPerda > 30 ? 'danger' : pctPerda > 15 ? 'warning' : 'info';
-        html += `<div class="co-alert ${alertClass}">Você perderá ${pctPerda}% do total pago ao cancelar no mês ${mesCancelamento}.</div>`;
-        html += '</div>';
-        el.innerHTML = html;
-    }
-
-    // 7. VENDA DA COTA
-    function calcVendaCota() {
-        const el = document.getElementById('co_vendaResultado');
-        if (!el) return;
-        const b = coBase();
-        const mesVenda = parseInt(document.getElementById('co_vendaMes')?.value) || 0;
-        const situacao = document.getElementById('co_vendaSituacao')?.value || 'antes';
-        const desagio = (parseFloat(document.getElementById('co_vendaDesagio')?.value) || 0) / 100;
-        const precoVenda = parseCur(document.getElementById('co_vendaPreco')?.value || '0');
-        const taxaTransf = parseCur(document.getElementById('co_vendaTaxa')?.value || '0');
-        if (!mesVenda) { el.innerHTML = ''; return; }
-        const sim = coSimularParcelas(b, 0, 0, 0, false);
-        const totalPagoAteMes = sim.parcelas.slice(0, mesVenda).reduce((s, p) => s + p.parcelaM, 0) + b.taxaAdesao;
-        const creditoAteMes = sim.parcelas[mesVenda - 1]?.creditoAtual || b.creditoEfetivo;
-        const saldoAteMes = sim.parcelas[mesVenda - 1]?.saldo || 0;
-        let valorMercadoCota, valorLiquidoVenda;
-        if (situacao === 'antes') {
-            valorMercadoCota = totalPagoAteMes; // valor pago = valor da cota no mercado
-            valorLiquidoVenda = valorMercadoCota * (1 - desagio) - taxaTransf;
-        } else {
-            valorLiquidoVenda = (precoVenda > 0 ? precoVenda : creditoAteMes) - saldoAteMes - taxaTransf;
-            valorMercadoCota = creditoAteMes;
-        }
-        const ganhoPerda = valorLiquidoVenda - totalPagoAteMes;
-        let html = '<div class="co-resultado-box"><h4>Simulação de Venda da Cota — Mês ' + mesVenda + '</h4><div class="co-kpi-grid">';
-        html += `<div class="co-kpi"><div class="co-kpi-label">Total pago até o mês</div><div class="co-kpi-value">${fmtBRL(totalPagoAteMes)}</div></div>`;
-        html += `<div class="co-kpi"><div class="co-kpi-label">Crédito atualizado</div><div class="co-kpi-value">${fmtBRL(creditoAteMes)}</div></div>`;
-        html += `<div class="co-kpi"><div class="co-kpi-label">Taxa de transferência</div><div class="co-kpi-value red">${fmtBRL(taxaTransf)}</div></div>`;
-        html += `<div class="co-kpi"><div class="co-kpi-label">Valor líquido recebido</div><div class="co-kpi-value ${valorLiquidoVenda >= 0 ? 'green' : 'red'}">${fmtBRL(valorLiquidoVenda)}</div></div>`;
-        html += `<div class="co-kpi"><div class="co-kpi-label">Ganho / Perda real</div><div class="co-kpi-value ${ganhoPerda >= 0 ? 'green' : 'red'}">${ganhoPerda >= 0 ? '+' : ''}${fmtBRL(ganhoPerda)}</div></div>`;
-        html += '</div>';
-        if (ganhoPerda < 0) html += `<div class="co-alert warning">Vender a cota no mês ${mesVenda} resultará em perda de ${fmtBRL(Math.abs(ganhoPerda))}.</div>`;
-        else html += `<div class="co-alert success">Vender a cota no mês ${mesVenda} resultará em ganho de ${fmtBRL(ganhoPerda)}.</div>`;
-        html += '</div>';
-        el.innerHTML = html;
-    }
-
-    // 8. RISCOS
-    function calcRiscos() {
-        const el = document.getElementById('co_riscosResultado');
-        if (!el) return;
-        const b = coBase();
-        const renda = parseCur(document.getElementById('co_renda')?.value || '0');
-        const crescRenda = (parseFloat(document.getElementById('co_crescimentoRenda')?.value) || 5) / 100;
-        const mesesInad = parseInt(document.getElementById('co_mesesInadimplencia')?.value) || 0;
-        const reajExtremo = (parseFloat(document.getElementById('co_reajusteExtremo')?.value) || 0) / 100;
-        const atrasoAssembleias = parseInt(document.getElementById('co_atrasoAssembleias')?.value) || 0;
-        const sim = coSimularParcelas(b, 0, 0, 0, false);
-        const parcelaInicial = sim.parcelaInicial;
-        const comprometimentoInicial = renda > 0 ? (parcelaInicial / renda * 100) : null;
-        // Simulação de inadimplência
-        let custoInadimplencia = 0;
-        if (mesesInad > 0) {
-            const multa = parcelaInicial * b.multaAtraso * mesesInad;
-            const juros = parcelaInicial * b.jurosAtraso * mesesInad;
-            custoInadimplencia = multa + juros;
-        }
-        // Simulação de reajuste extremo
-        let simExtremo = null;
-        if (reajExtremo > 0) simExtremo = coSimularParcelas({...b, reajusteAA: reajExtremo}, 0, 0, 0, false);
-        // Contemplação atrasada
-        const mesContempAtrasado = b.mesContemp + atrasoAssembleias;
-        let html = '<div class="co-resultado-box"><h4>Análise de Riscos</h4><div class="co-kpi-grid">';
-        if (comprometimentoInicial !== null) {
-            const alertClass = comprometimentoInicial > 30 ? 'red' : comprometimentoInicial > 20 ? 'yellow' : 'green';
-            html += `<div class="co-kpi"><div class="co-kpi-label">Comprometimento de renda (inicial)</div><div class="co-kpi-value ${alertClass}">${comprometimentoInicial.toFixed(1)}%</div></div>`;
-            const rendaFinal = renda * Math.pow(1 + crescRenda, b.prazo/12);
-            const comprFinal = sim.parcelaFinal / rendaFinal * 100;
-            html += `<div class="co-kpi"><div class="co-kpi-label">Comprometimento de renda (final)</div><div class="co-kpi-value ${comprFinal > 30 ? 'red' : 'green'}">${comprFinal.toFixed(1)}%</div></div>`;
-        }
-        if (custoInadimplencia > 0) html += `<div class="co-kpi"><div class="co-kpi-label">Custo de ${mesesInad} meses em atraso</div><div class="co-kpi-value red">${fmtBRL(custoInadimplencia)}</div></div>`;
-        if (simExtremo) html += `<div class="co-kpi"><div class="co-kpi-label">Custo total (reajuste ${(reajExtremo*100).toFixed(0)}%)</div><div class="co-kpi-value red">${fmtBRL(simExtremo.custoAcum)}</div></div>`;
-        if (atrasoAssembleias > 0) html += `<div class="co-kpi"><div class="co-kpi-label">Contemplação atrasada para</div><div class="co-kpi-value yellow">Mês ${mesContempAtrasado}</div></div>`;
-        html += '</div>';
-        if (comprometimentoInicial !== null && comprometimentoInicial > 30) html += '<div class="co-alert danger">Comprometimento de renda acima de 30% representa risco elevado de inadimplência.</div>';
-        else if (comprometimentoInicial !== null && comprometimentoInicial > 20) html += '<div class="co-alert warning">Comprometimento de renda entre 20-30%. Avalie a sustentabilidade ao longo do prazo.</div>';
-        html += '</div>';
-        el.innerHTML = html;
-    }
-
-    // 9. COMPARAÇÃO COM FINANCIAMENTO
-    function calcCompFinanciamento() {
-        const el = document.getElementById('co_compfinResultado');
-        if (!el) return;
-        const b = coBase();
-        const finValor = parseCur(document.getElementById('co_finValor')?.value || '0') || b.creditoEfetivo;
-        const finJurosAA = (parseFloat(document.getElementById('co_finJuros')?.value) || 0) / 100;
-        const finPrazo = parseInt(document.getElementById('co_finPrazo')?.value) || b.prazo;
-        const finSistema = document.getElementById('co_finSistema')?.value || 'price';
-        if (!finJurosAA) { el.innerHTML = ''; return; }
-        const jm = Math.pow(1 + finJurosAA, 1/12) - 1;
-        let totalFin = 0, parcelaFinInicial = 0, parcelaFinFinal = 0;
-        if (finSistema === 'price') {
-            parcelaFinInicial = finValor * jm / (1 - Math.pow(1+jm, -finPrazo));
-            parcelaFinFinal = parcelaFinInicial;
-            totalFin = parcelaFinInicial * finPrazo;
-        } else { // SAC
-            const amortSAC = finValor / finPrazo;
-            parcelaFinInicial = amortSAC + finValor * jm;
-            parcelaFinFinal = amortSAC + amortSAC * jm;
-            totalFin = finPrazo * amortSAC + finValor * jm * (finPrazo + 1) / 2;
-        }
-        const simCons = coSimularParcelas(b, 0, 0, 0, false);
-        const totalCons = simCons.custoAcum;
-        const difAbsoluta = totalFin - totalCons;
-        const difPct = totalCons > 0 ? (difAbsoluta / totalCons * 100) : 0;
-        // Tempo até aquisição
-        const tempoFinanciamento = 1; // financiamento: imediato
-        const tempoConsorcio = b.mesContemp;
-        let html = '<div class="co-resultado-box"><h4>Consórcio vs Financiamento</h4><div class="co-kpi-grid">';
-        html += `<div class="co-kpi"><div class="co-kpi-label">Total pago — Consórcio</div><div class="co-kpi-value">${fmtBRL(totalCons)}</div></div>`;
-        html += `<div class="co-kpi"><div class="co-kpi-label">Total pago — Financiamento</div><div class="co-kpi-value">${fmtBRL(totalFin)}</div></div>`;
-        html += `<div class="co-kpi"><div class="co-kpi-label">Diferença absoluta</div><div class="co-kpi-value ${difAbsoluta > 0 ? 'green' : 'red'}">${difAbsoluta >= 0 ? '+' : ''}${fmtBRL(difAbsoluta)}</div></div>`;
-        html += `<div class="co-kpi"><div class="co-kpi-label">Diferença percentual</div><div class="co-kpi-value ${difPct > 0 ? 'green' : 'red'}">${difPct >= 0 ? '+' : ''}${difPct.toFixed(1)}%</div></div>`;
-        html += `<div class="co-kpi"><div class="co-kpi-label">Parcela inicial — Financiamento</div><div class="co-kpi-value">${fmtBRL(parcelaFinInicial)}</div></div>`;
-        html += `<div class="co-kpi"><div class="co-kpi-label">Parcela inicial — Consórcio</div><div class="co-kpi-value">${fmtBRL(simCons.parcelaInicial)}</div></div>`;
-        html += `<div class="co-kpi"><div class="co-kpi-label">Tempo até aquisição — Financiamento</div><div class="co-kpi-value green">Imediato</div></div>`;
-        html += `<div class="co-kpi"><div class="co-kpi-label">Tempo até aquisição — Consórcio</div><div class="co-kpi-value yellow">Mês ${tempoConsorcio}</div></div>`;
-        html += '</div>';
-        if (difAbsoluta > 0) html += `<div class="co-alert success">O consórcio é ${fmtBRL(difAbsoluta)} mais barato que o financiamento no total, mas você só recebe o bem no mês ${tempoConsorcio}.</div>`;
-        else html += `<div class="co-alert warning">O financiamento é ${fmtBRL(Math.abs(difAbsoluta))} mais barato no total, mas você recebe o bem imediatamente.</div>`;
-        html += '</div>';
-        el.innerHTML = html;
-    }
-
-    function globais() {
+        function globais() {
         const prazoRaw = gn('g_prazoAnalise') || (prazoUnidade === 'anos' ? 10 : 120);
         const prazoAnos = prazoUnidade === 'anos' ? prazoRaw : prazoRaw / 12;
         return {
@@ -2574,106 +1926,76 @@
 
     // ── CONSÓRCIO ─────────────────────────────────────────────────────────────
     function calcConsorcio(p, g, meses) {
-        const credito = parseCur(p.co_credito) || g.valorBem;
-        const prazo = parseInt(p.co_prazo) || meses;
-        const taxaAdmTotal = (parseFloat(p.co_taxaAdm)||0) / 100;
-        const fundoReserva = (parseFloat(p.co_fundoReserva)||0) / 100;
-        const baseCalculo = p.co_baseCalculo || 'categoria';
-        const tipoSeguro = p.co_tipoSeguro || 'nenhum';
-        const seguroFixo = parseCur(p.co_seguro);
-        const seguroPct = (parseFloat(p.co_seguroPct)||0) / 100;
-        const reajusteAA = (parseFloat(p.co_indiceReajuste)||0) / 100;
-        const reajusteMensal = Math.pow(1+reajusteAA, 1/12) - 1;
-        const mesContemplacao = parseInt(p.co_mesContemplacao) || Math.floor(prazo/2);
-        const mesLance = parseInt(p.co_mesLance) || mesContemplacao;
-        const baseLance = p.co_baseLance || 'carta';
+        // Leitura dos novos parâmetros
+        const creditoDesejado = parseCur(p.co_creditoDesejado) || g.valorBem;
         const lanceEmbutidoPct = (parseFloat(p.co_lanceEmbutido)||0) / 100;
-        const lanceRecursosPct = (parseFloat(p.co_lanceRecursosPct)||0) / 100;
-        const lanceRecursosFixo = parseCur(p.co_lanceRecursos);
-        const lanceAbateSaldo = (p.co_lanceAbateSaldo || 'sim') === 'sim';
-        const custosAq = g.custosAquisicao;
+        // Carta = Crédito desejado / (1 - Lance Embutido%)
+        const carta = lanceEmbutidoPct < 1 ? creditoDesejado / (1 - lanceEmbutidoPct) : creditoDesejado;
+        const prazo = parseInt(p.co_prazo) || meses;
+        const taxaAdm = (parseFloat(p.co_taxaAdm)||0) / 100;
+        const fundo = (parseFloat(p.co_fundoReserva)||0) / 100;
+        const seguroPct = (parseFloat(p.co_seguroPct)||0) / 100;
+        const reajusteAA = (parseFloat(p.co_reajusteAA)||0) / 100;
+        const mesContemplacao = parseInt(p.co_mesContemplacao) || Math.floor(prazo/2);
+        const adesaoPct = (parseFloat(p.co_adesaoPct)||0) / 100;
+        const reducaoParcela = (parseFloat(p.co_reducaoParcela)||0) / 100;
+        const posContempOpcao = p.co_posContempOpcao || 'parcela';
+        const lanceFixoPct = (parseFloat(p.co_lanceFixoPct)||0) / 100;
+        const lanceFixoBase = p.co_lanceFixoBase || 'carta';
+        const lanceLivrePct = (parseFloat(p.co_lanceLivrePct)||0) / 100;
+        const lanceLivreBase = p.co_lanceLivreBase || 'carta';
 
-        // Categoria = carta × (1 + taxaAdm + fundoReserva)
-        const categoria = credito * (1 + taxaAdmTotal + fundoReserva);
+        // Categoria = Carta × (1 + TaxaAdm + FundoReserva)
+        let cartaAtual = carta;
+        let categoriaAtual = carta * (1 + taxaAdm + fundo);
+        let saldoDevedor = carta;
+        const adesaoValor = carta * adesaoPct;
 
-        let creditoAtual = credito;
-        let categoriaAtual = categoria;
-        // Saldo devedor: parcelas pagas reduzem o saldo (amortização proporcional)
-        let saldoDevedor = credito; // saldo devedor da carta
+        let custoAcum = adesaoValor;
+        let valorBemAtual = g.valorBem;
         let parcelaInicial = 0;
         let parcelaFinal = 0;
-        let custoAcum = 0;
-        let valorBemAtual = g.valorBem;
         const serie = [];
         const serieSD = [];
-        let lanceJaDado = false;
-        let lanceEmbutidoValor = 0;
-        let lanceRecursosValor = 0;
+        let contemplado = false;
+        let prazoRestante = prazo;
 
         for (let m = 1; m <= meses; m++) {
-            // Reajuste anual (a cada 12 meses)
+            // Reajuste anual
             if (reajusteAA > 0 && m > 1 && (m-1) % 12 === 0) {
-                creditoAtual *= (1 + reajusteAA);
-                categoriaAtual = creditoAtual * (1 + taxaAdmTotal + fundoReserva);
-                // Saldo devedor também é reajustado
+                cartaAtual *= (1 + reajusteAA);
+                categoriaAtual = cartaAtual * (1 + taxaAdm + fundo);
                 saldoDevedor *= (1 + reajusteAA);
             }
             valorBemAtual *= (1 + g.valorizacao/12);
 
             let parcela = 0;
-            if (m <= prazo) {
-                // Base de cálculo da parcela
-                let base;
-                if (baseCalculo === 'categoria') base = categoriaAtual;
-                else if (baseCalculo === 'carta') base = creditoAtual;
-                else base = saldoDevedor; // 'saldo'
+            if (m <= prazo && prazoRestante > 0) {
+                const amortM = cartaAtual / prazo;
+                const admM = categoriaAtual * (taxaAdm + fundo) / prazo;
+                const seguroM = cartaAtual * seguroPct;
 
-                const parcelaAdm = base * (taxaAdmTotal + fundoReserva) / prazo;
-                const amortMensal = creditoAtual / prazo; // amortização proporcional da carta
+                // Pós-contemplação: aplicar redução de parcela se configurado
+                if (contemplado && posContempOpcao === 'parcela' && reducaoParcela > 0) {
+                    parcela = (amortM + admM + seguroM) * (1 - reducaoParcela);
+                } else {
+                    parcela = amortM + admM + seguroM;
+                }
 
-                // Seguro
-                let seguro = 0;
-                if (tipoSeguro === 'fixo') seguro = seguroFixo;
-                else if (tipoSeguro === 'pct_carta') seguro = creditoAtual * seguroPct;
-                else if (tipoSeguro === 'pct_saldo') seguro = saldoDevedor * seguroPct;
-                else if (tipoSeguro === 'pct_categoria') seguro = categoriaAtual * seguroPct;
-
-                parcela = amortMensal + parcelaAdm + seguro;
-
-                // Reduzir saldo devedor pela amortização mensal
-                saldoDevedor = Math.max(0, saldoDevedor - amortMensal);
-
+                saldoDevedor = Math.max(0, saldoDevedor - amortM);
+                prazoRestante--;
                 custoAcum += parcela;
                 if (m === 1) parcelaInicial = parcela;
                 parcelaFinal = parcela;
             }
 
-            // Lance no mês configurado
-            if (m === mesLance && !lanceJaDado) {
-                lanceJaDado = true;
-                // Calcular base do lance
-                let baseLanceValor;
-                if (baseLance === 'carta') baseLanceValor = creditoAtual;
-                else if (baseLance === 'categoria') baseLanceValor = categoriaAtual;
-                else baseLanceValor = saldoDevedor;
-
-                lanceEmbutidoValor = baseLanceValor * lanceEmbutidoPct;
-                // Recursos próprios: fixo ou percentual (usa o maior informado)
-                lanceRecursosValor = lanceRecursosFixo > 0 ? lanceRecursosFixo : baseLanceValor * lanceRecursosPct;
-
-                // Lance embutido: reduz crédito líquido (não é custo extra, é desconto no crédito)
-                // Lance recursos próprios: é custo efetivo
-                custoAcum += lanceRecursosValor;
-
-                // Se lance abate saldo, reduzir saldo devedor
-                if (lanceAbateSaldo) {
-                    saldoDevedor = Math.max(0, saldoDevedor - lanceEmbutidoValor - lanceRecursosValor);
-                }
-            }
-
-            // Contemplação
-            if (m === mesContemplacao) {
-                custoAcum += custosAq;
+            // Contemplação: lance embutido abate saldo
+            if (m === mesContemplacao && !contemplado) {
+                contemplado = true;
+                const lanceEmbutidoValor = cartaAtual * lanceEmbutidoPct;
+                saldoDevedor = Math.max(0, saldoDevedor - lanceEmbutidoValor);
+                custoAcum += g.custosAquisicao;
+                // Custos de posse do bem a partir da contemplação
                 custoAcum += g.custosMensais * (meses - m);
             }
 
@@ -2681,7 +2003,16 @@
             serieSD.push(saldoDevedor);
         }
 
-        const creditoLiquido = creditoAtual - lanceEmbutidoValor;
+        // Calcular valores dos lances para exibição
+        const lanceEmbutidoValor = carta * lanceEmbutidoPct;
+        const lanceFixoBaseValor = lanceFixoBase === 'carta' ? carta
+            : lanceFixoBase === 'categoria' ? categoriaAtual : creditoDesejado;
+        const lanceFixoValor = lanceFixoBaseValor * lanceFixoPct;
+        const lanceLivreBaseValor = lanceLivreBase === 'carta' ? carta
+            : lanceLivreBase === 'categoria' ? categoriaAtual : creditoDesejado;
+        const lanceLivreValor = lanceLivreBaseValor * lanceLivrePct;
+        const creditoLiquido = carta - lanceEmbutidoValor;
+
         return {
             custoTotalNominal: custoAcum,
             custoTotalReal: custoAcum / Math.pow(1+g.inflacao, g.prazoAnos),
@@ -2693,13 +2024,14 @@
             parcelaFinal,
             creditoLiquido,
             lanceEmbutidoValor,
-            lanceRecursosValor,
+            lanceFixoValor,
+            lanceLivreValor,
+            adesaoValor,
             serie,
             serieSD
         };
     }
-
-    // ── CRÉDITO PERSONALIZADO ─────────────────────────────────────────────────
+        // ── CRÉDITO PERSONALIZADO ─────────────────────────────────────────────────
     function calcCustom(p, g, meses) {
         const sistema = p.cu_sistema || 'sac';
         const entrada = parseCur(p.cu_entrada);
@@ -2961,7 +2293,9 @@
             parts.push(`Prazo: ${p[pfx+'_prazo']||0} meses`);
             if (p[pfx+'_correcao'] && p[pfx+'_correcao'] !== 'nenhuma') parts.push(`Correção: ${p[pfx+'_correcao'].toUpperCase()}`);
         } else if (mod === 'consorcio') {
-            parts.push(`Crédito: ${fmtBRL(parseCur(p.co_credito))}`);
+            const _carta = (parseCur(p.co_creditoDesejado)||0) / (1 - (parseFloat(p.co_lanceEmbutido)||0)/100 || 1);
+            parts.push(`Crédito: ${fmtBRL(parseCur(p.co_creditoDesejado))}`);
+            parts.push(`Carta: ${fmtBRL(_carta)}`);
             parts.push(`Prazo: ${p.co_prazo||0} meses`);
             parts.push(`Taxa adm: ${p.co_taxaAdm||0}%`);
             parts.push(`Contemplação: mês ${p.co_mesContemplacao||'?'}`);
@@ -3174,23 +2508,24 @@
         }
 
         else if (mod === 'consorcio') {
-            const credito = parseCur(p.co_credito) || g.valorBem;
+            const _lanceEmbPct2 = (parseFloat(p.co_lanceEmbutido)||0)/100;
+            const credito = _lanceEmbPct2 < 1 ? (parseCur(p.co_creditoDesejado)||g.valorBem)/(1-_lanceEmbPct2) : (parseCur(p.co_creditoDesejado)||g.valorBem);
             const prazo = parseInt(p.co_prazo)||0;
             const taxaAdm = parseFloat(p.co_taxaAdm)||0;
             const fundoRes = parseFloat(p.co_fundoReserva)||0;
-            const baseCalculo = p.co_baseCalculo || 'categoria';
-            const baseCalcLabel = {categoria:'categoria', carta:'carta de crédito', saldo:'saldo devedor'}[baseCalculo];
-            const tipoSeguro = p.co_tipoSeguro || 'nenhum';
+            const baseCalculo = 'categoria'; // base padrão
+            
+            const tipoSeguro = 'nenhum';
             const seguroPct = parseFloat(p.co_seguroPct)||0;
             const mesContemp = parseInt(p.co_mesContemplacao)||0;
-            const mesLance = parseInt(p.co_mesLance)||0;
-            const baseLance = p.co_baseLance || 'carta';
-            const baseLanceLabel = {carta:'carta de crédito', categoria:'categoria', saldo:'saldo devedor'}[baseLance];
+            const mesLance = 0;
+            const baseLance = 'carta';
+            
             const lanceEmb = parseFloat(p.co_lanceEmbutido)||0;
-            const lanceRec = parseCur(p.co_lanceRecursos);
-            const lanceRecPct = parseFloat(p.co_lanceRecursosPct)||0;
-            const lanceAbate = (p.co_lanceAbateSaldo||'sim') === 'sim';
-            const reajuste = parseFloat(p.co_indiceReajuste)||0;
+            const lanceRec = 0;
+            const lanceRecPct = 0;
+            const lanceAbate = true;
+            const reajuste = parseFloat(p.co_reajusteAA)||0;
             const categoria = credito * (1 + (taxaAdm+fundoRes)/100);
 
             eventos.push({ mes: 'Dia 0', desc: `Ingresso no consórcio. Carta de crédito: <strong>${fmtBRL(credito)}</strong>. Prazo do grupo: <strong>${prazo} meses</strong>. Categoria: <strong>${fmtBRL(categoria)}</strong> (carta × ${(1+(taxaAdm+fundoRes)/100).toFixed(4)}).` });
@@ -3496,22 +2831,20 @@
         }
 
         if (mod === 'consorcio') {
-            const credito = parseCur(p.co_credito)||g.valorBem;
+            const creditoDesejado = parseCur(p.co_creditoDesejado)||g.valorBem;
+            const lanceEmbutidoPct = (parseFloat(p.co_lanceEmbutido)||0)/100;
+            const credito = lanceEmbutidoPct < 1 ? creditoDesejado/(1-lanceEmbutidoPct) : creditoDesejado;
             const prazo = parseInt(p.co_prazo)||meses;
             const taxaAdmTotal = (parseFloat(p.co_taxaAdm)||0)/100;
             const fundoReserva = (parseFloat(p.co_fundoReserva)||0)/100;
-            const baseCalculo = p.co_baseCalculo || 'categoria';
-            const tipoSeguro = p.co_tipoSeguro || 'nenhum';
-            const seguroFixo = parseCur(p.co_seguro);
             const seguroPct = (parseFloat(p.co_seguroPct)||0)/100;
-            const reajusteAA = (parseFloat(p.co_indiceReajuste)||0)/100;
+            const reajusteAA = (parseFloat(p.co_reajusteAA)||0)/100;
             const mesContemp = parseInt(p.co_mesContemplacao)||Math.floor(prazo/2);
-            const mesLance = parseInt(p.co_mesLance)||mesContemp;
-            const baseLance = p.co_baseLance || 'carta';
-            const lanceEmbutidoPct = (parseFloat(p.co_lanceEmbutido)||0)/100;
-            const lanceRecursosPct = (parseFloat(p.co_lanceRecursosPct)||0)/100;
-            const lanceRecursosFixo = parseCur(p.co_lanceRecursos);
-            const lanceAbateSaldo = (p.co_lanceAbateSaldo||'sim') === 'sim';
+            const reducaoParcela = (parseFloat(p.co_reducaoParcela)||0)/100;
+            const posContempOpcao = p.co_posContempOpcao || 'parcela';
+            const adesaoPct = (parseFloat(p.co_adesaoPct)||0)/100;
+            const adesaoValor = credito * adesaoPct;
+            const lanceEmbutidoValor = credito * lanceEmbutidoPct;
             let creditoAtual = credito;
             let categoriaAtual = credito * (1 + taxaAdmTotal + fundoReserva);
             let saldoDevedor = credito;
