@@ -341,6 +341,115 @@
             }
         }
 
+        /* ── SIMULAÇÕES ─────────────────────────────────────────────────────── */
+        #simulacoes-section {
+            margin-top: 2rem;
+            border-top: 1px solid rgba(255,255,255,0.1);
+            padding-top: 1.5rem;
+        }
+        .sim-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 1rem;
+        }
+        .sim-header h3 {
+            font-size: 1rem;
+            font-weight: bold;
+            color: var(--primary-color);
+            margin: 0;
+        }
+        .sim-count {
+            font-size: 0.75rem;
+            color: #9ca3af;
+        }
+        .sim-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+        .sim-card {
+            background: rgba(255,255,255,0.04);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 8px;
+            padding: 0.75rem 1rem;
+            transition: border-color 0.2s;
+        }
+        .sim-card.active {
+            border-color: var(--primary-color);
+            background: rgba(212,175,55,0.06);
+        }
+        .sim-card-top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 0.5rem;
+        }
+        .sim-name {
+            font-weight: bold;
+            font-size: 0.9rem;
+            color: var(--primary-color);
+            cursor: pointer;
+            border: none;
+            background: transparent;
+            padding: 0;
+            outline: none;
+            max-width: 160px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .sim-name:focus {
+            border-bottom: 1px solid var(--primary-color);
+            color: white;
+        }
+        .sim-actions {
+            display: flex;
+            gap: 0.4rem;
+        }
+        .sim-btn {
+            background: none;
+            border: 1px solid rgba(255,255,255,0.15);
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.75rem;
+            padding: 0.2rem 0.5rem;
+            color: #d1d5db;
+            transition: background 0.2s;
+        }
+        .sim-btn:hover { background: rgba(255,255,255,0.1); }
+        .sim-btn.danger { border-color: rgba(239,68,68,0.4); color: #f87171; }
+        .sim-btn.danger:hover { background: rgba(239,68,68,0.15); }
+        .sim-params {
+            font-size: 0.75rem;
+            color: #9ca3af;
+            margin-bottom: 0.5rem;
+            line-height: 1.6;
+        }
+        .sim-results {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.4rem;
+        }
+        .sim-result-box {
+            background: rgba(0,0,0,0.2);
+            border-radius: 4px;
+            padding: 0.35rem 0.5rem;
+        }
+        .sim-result-label {
+            font-size: 0.65rem;
+            color: #6b7280;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .sim-result-value {
+            font-size: 0.85rem;
+            font-weight: bold;
+            color: white;
+        }
+        .sim-result-value.positive { color: #4ade80; }
+        .sim-result-value.gold { color: var(--primary-color); }
+
     </style>
 </head>
 <body>
@@ -602,6 +711,15 @@
                     </div>
 
                     <button id="btnCalculate" onclick="calculate()" class="btn-primary">Consultar o Oráculo</button>
+
+                    <!-- Seção de Simulações -->
+                    <div id="simulacoes-section" style="display:none;">
+                        <div class="sim-header">
+                            <h3>📊 Simulações Salvas</h3>
+                            <span class="sim-count" id="sim-count-label"></span>
+                        </div>
+                        <div class="sim-grid" id="sim-grid"></div>
+                    </div>
                 </div>
 
                 <!-- Results Column -->
@@ -651,6 +769,167 @@
         let contributionLadder = []; // Array to store { date: 'YYYY-MM', value: 1000.00 }
         let specialContributions = []; // Array to store { name, value, date, recurrence: {value, unit} }
         let chartInstance = null;
+
+        // ── SISTEMA DE SIMULAÇÕES ─────────────────────────────────────────────
+        let simulacoes = [];       // Lista de simulações salvas
+        let simContador = 0;       // Contador para nomear automaticamente
+        let simAtiva = null;       // ID da simulação atualmente visível nos resultados
+
+        // Captura todos os parâmetros de entrada no momento do cálculo
+        function capturarParametros() {
+            return {
+                currentWealth:          document.getElementById('currentWealth').value,
+                monthlyContribution:    document.getElementById('monthlyContribution').value,
+                minReserve:             document.getElementById('minReserve').value,
+                interestRate:           document.getElementById('interestRate').value,
+                inflationRate:          document.getElementById('inflationRate').value,
+                taxRate:                document.getElementById('taxRate').value,
+                projectionValue:        document.getElementById('projectionValue').value,
+                projectionUnit:         document.getElementById('projectionUnit').value,
+                startDate:              document.getElementById('startDate').value,
+                adjustContribution:     document.getElementById('adjustContributionInflation').checked,
+                goals:                  JSON.parse(JSON.stringify(goals)),
+                contributionLadder:     JSON.parse(JSON.stringify(contributionLadder)),
+                specialContributions:   JSON.parse(JSON.stringify(specialContributions))
+            };
+        }
+
+        // Restaura os parâmetros de uma simulação nos campos de entrada
+        function restaurarParametros(p) {
+            document.getElementById('currentWealth').value          = p.currentWealth;
+            document.getElementById('monthlyContribution').value    = p.monthlyContribution;
+            document.getElementById('minReserve').value             = p.minReserve;
+            document.getElementById('interestRate').value           = p.interestRate;
+            document.getElementById('inflationRate').value          = p.inflationRate;
+            document.getElementById('taxRate').value                = p.taxRate;
+            document.getElementById('projectionValue').value        = p.projectionValue;
+            document.getElementById('projectionUnit').value         = p.projectionUnit;
+            document.getElementById('startDate').value              = p.startDate;
+            document.getElementById('adjustContributionInflation').checked = p.adjustContribution;
+            goals                = JSON.parse(JSON.stringify(p.goals));
+            contributionLadder   = JSON.parse(JSON.stringify(p.contributionLadder));
+            specialContributions = JSON.parse(JSON.stringify(p.specialContributions));
+            renderGoals();
+            renderContributionLadder();
+            renderSpecialContributions();
+        }
+
+        // Salva a simulação atual (chamado dentro de calculate() após os cálculos)
+        function salvarSimulacao(resultado) {
+            simContador++;
+            const id = Date.now();
+            const sim = {
+                id,
+                nome: 'Simulação ' + simContador,
+                params: capturarParametros(),
+                resultado
+            };
+            simulacoes.push(sim);
+            simAtiva = id;
+            renderSimulacoes();
+        }
+
+        // Exclui uma simulação pelo ID
+        function excluirSimulacao(id) {
+            simulacoes = simulacoes.filter(s => s.id !== id);
+            if (simAtiva === id) simAtiva = simulacoes.length ? simulacoes[simulacoes.length - 1].id : null;
+            renderSimulacoes();
+        }
+
+        // Carrega os parâmetros de uma simulação e recalcula
+        function editarSimulacao(id) {
+            const sim = simulacoes.find(s => s.id === id);
+            if (!sim) return;
+            restaurarParametros(sim.params);
+            simAtiva = id;
+            renderSimulacoes();
+            calculate(id);   // recalcula com os parâmetros restaurados, sobrescrevendo esta simulação
+        }
+
+        // Atualiza o nome de uma simulação (chamado pelo input inline)
+        function renomearSimulacao(id, novoNome) {
+            const sim = simulacoes.find(s => s.id === id);
+            if (sim) sim.nome = novoNome || sim.nome;
+        }
+
+        // Renderiza a lista de cards de simulações
+        function renderSimulacoes() {
+            const section = document.getElementById('simulacoes-section');
+            const grid    = document.getElementById('sim-grid');
+            const label   = document.getElementById('sim-count-label');
+
+            if (simulacoes.length === 0) {
+                section.style.display = 'none';
+                return;
+            }
+            section.style.display = 'block';
+            label.textContent = simulacoes.length + ' simulação(es)';
+
+            grid.innerHTML = simulacoes.map(sim => {
+                const p = sim.params;
+                const r = sim.resultado;
+                const isAtiva = sim.id === simAtiva;
+
+                // Parâmetros resumidos
+                const prazo = p.projectionUnit === 'years'
+                    ? p.projectionValue + ' anos'
+                    : p.projectionValue + ' meses';
+                const nObjetivos = p.goals.length;
+                const paramsStr = [
+                    'Patrimônio inicial: ' + formatBRL(parseCurrency(p.currentWealth)),
+                    'Aporte mensal: '       + formatBRL(parseCurrency(p.monthlyContribution)),
+                    'Rentabilidade: '       + p.interestRate + '% a.a.',
+                    'Inflação: '            + (p.inflationRate || '0') + '% a.a.',
+                    'Imposto: '             + (p.taxRate || '0') + '%',
+                    'Prazo: '               + prazo,
+                    'Objetivos: '           + nObjetivos
+                ].join(' &bull; ');
+
+                return `
+                <div class="sim-card ${isAtiva ? 'active' : ''}" id="sim-card-${sim.id}">
+                    <div class="sim-card-top">
+                        <input
+                            class="sim-name"
+                            value="${sim.nome}"
+                            title="Clique para renomear"
+                            onblur="renomearSimulacao(${sim.id}, this.value)"
+                            onkeydown="if(event.key==='Enter') this.blur()"
+                        />
+                        <div class="sim-actions">
+                            <button class="sim-btn" onclick="editarSimulacao(${sim.id})" title="Editar e recalcular">&#9998; Editar</button>
+                            <button class="sim-btn danger" onclick="excluirSimulacao(${sim.id})" title="Excluir simulação">✕ Excluir</button>
+                        </div>
+                    </div>
+                    <div class="sim-params">${paramsStr}</div>
+                    <div class="sim-results">
+                        <div class="sim-result-box">
+                            <div class="sim-result-label">Patrimônio Líquido Final</div>
+                            <div class="sim-result-value gold">${formatBRL(r.finalNetBalance)}</div>
+                        </div>
+                        <div class="sim-result-box">
+                            <div class="sim-result-label">Total Investido</div>
+                            <div class="sim-result-value">${formatBRL(r.totalInvested)}</div>
+                        </div>
+                        <div class="sim-result-box">
+                            <div class="sim-result-label">Lucro Líquido</div>
+                            <div class="sim-result-value positive">${formatBRL(r.lucroLiquido)}</div>
+                        </div>
+                        <div class="sim-result-box">
+                            <div class="sim-result-label">Patrimônio Total Consolidado</div>
+                            <div class="sim-result-value gold">${formatBRL(r.totalConsolidado)}</div>
+                        </div>
+                        <div class="sim-result-box">
+                            <div class="sim-result-label">Objetivos Realizados</div>
+                            <div class="sim-result-value">${r.goalsRealizados} / ${r.goalsTotal}</div>
+                        </div>
+                        <div class="sim-result-box">
+                            <div class="sim-result-label">Renda Mensal Líquida Final</div>
+                            <div class="sim-result-value positive">${formatBRL(r.rendaMensalLiquida)}</div>
+                        </div>
+                    </div>
+                </div>`;
+            }).join('');
+        }
 
         // Set default start date to next month
         const today = new Date();
@@ -1166,7 +1445,7 @@
             });
         }
 
-        function calculate() {
+        function calculate(simIdParaAtualizar) {
             const currentWealth = parseCurrency(document.getElementById('currentWealth').value);
             const monthlyContribution = parseCurrency(document.getElementById('monthlyContribution').value);
             const minReserveInitial = parseCurrency(document.getElementById('minReserve').value);
@@ -1638,6 +1917,34 @@
 
             // Render Verdict
             renderVerdict(lastRow.totalConsolidated, totalInvested, inflationRateAnnual, interestRateAnnual, goalStats, lastRow.netBalance, physicalWealth, acquiredAssets, balance, taxRate);
+
+            // ── Salvar / Atualizar Simulação ──────────────────────────────────────────
+            const monthlyRateForYield = Math.pow(1 + interestRateAnnual, 1/12) - 1;
+            const rendaMensalLiquida = balance * monthlyRateForYield * (1 - taxRate);
+
+            const resultado = {
+                finalNetBalance:    lastRow.netBalance,
+                totalInvested:      totalInvested,
+                lucroLiquido:       lastRow.netBalance - totalInvested,
+                totalConsolidado:   lastRow.totalConsolidated,
+                goalsRealizados:    goalStats.realized,
+                goalsTotal:         goalStats.total,
+                rendaMensalLiquida: rendaMensalLiquida
+            };
+
+            if (simIdParaAtualizar) {
+                // Atualiza simulação existente (chamada por editarSimulacao)
+                const sim = simulacoes.find(s => s.id === simIdParaAtualizar);
+                if (sim) {
+                    sim.params    = capturarParametros();
+                    sim.resultado = resultado;
+                }
+                simAtiva = simIdParaAtualizar;
+            } else {
+                // Nova simulação
+                salvarSimulacao(resultado);
+            }
+            renderSimulacoes();
         }
 
         function renderChart(labels, dataWealth, dataInvested, dataPhysical, dataTotalConsolidated, dataGrossTotal, hasPhysicalAssets) {
