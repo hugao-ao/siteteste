@@ -1825,66 +1825,69 @@
         function updateTooltips(data) {
             const fmt = (val) => parseFloat(val).toFixed(4) + '%';
 
-            const tooltipHTML = `
-                <span class="tooltip-title">Variáveis de Mercado (Referência)</span>
+            // ── TOOLTIP DE RENTABILIDADE ──────────────────────────────────────────
+            // Sem inflação, sem aposentadoria. Layout compacto com múltiplas colunas.
+            const rentHTML = `
+                <span class="tooltip-title">Variáveis de Mercado — Rentabilidade</span>
+
                 <table class="tooltip-table">
-                    <tr><th colspan="2">Variáveis de Entrada</th></tr>
-                    <tr><td>SELIC (%)</td><td>${fmt(data.selic)}</td></tr>
-                    <tr><td>CDI 120 meses (%)</td><td>${fmt(data.cdi_120_meses)}</td></tr>
-                    <tr><td>IPCA (%)</td><td>${fmt(data.ipca)}</td></tr>
-                    <tr><td>IPCA 120 meses (%)</td><td>${fmt(data.ipca_120_meses)}</td></tr>
-                    <tr><td>Rent. Anual Aposentadoria (%)</td><td>${fmt(data.rent_anual_aposentadoria)}</td></tr>
+                    <tr>
+                        <th>SELIC</th>
+                        <th>CDI 120m</th>
+                        <th>CDI</th>
+                        <th>CDI Méd. 10a</th>
+                    </tr>
+                    <tr>
+                        <td>${fmt(data.selic)}</td>
+                        <td>${fmt(data.cdi_120_meses)}</td>
+                        <td>${fmt(data.cdi)}</td>
+                        <td>${fmt(data.cdi_aa_medio_10_anos)}</td>
+                    </tr>
                 </table>
+
                 <table class="tooltip-table">
-                    <tr><th colspan="2">Variáveis Calculadas Automaticamente</th></tr>
-                    <tr><td>CDI (%)</td><td>${fmt(data.cdi)}</td></tr>
-                    <tr><td>CDI a.a. Médio 10 anos (%)</td><td>${fmt(data.cdi_aa_medio_10_anos)}</td></tr>
-                    <tr><td>IPCA a.a. Médio 10 anos (%)</td><td>${fmt(data.ipca_aa_medio_10_anos)}</td></tr>
-                    <tr><td>Rent. Mensal Aposentadoria (%)</td><td>${fmt(data.rent_mensal_aposentadoria)}</td></tr>
+                    <tr>
+                        <th>Perfil</th>
+                        <th>Mult. CDI (%)</th>
+                        <th>Méd. 10 anos</th>
+                        <th>Rent. Atual</th>
+                    </tr>
+                    <tr><td>0. Sem Conhecimento</td><td>${data.mult_sem_conhecimento}</td><td>${fmt(data.rent_sem_conhecimento_10_anos)}</td><td>${fmt(data.rent_sem_conhecimento)}</td></tr>
+                    <tr><td>0.5. Iniciante</td><td>${data.mult_iniciante}</td><td>${fmt(data.rent_iniciante_10_anos)}</td><td>${fmt(data.rent_iniciante)}</td></tr>
+                    <tr><td>1. Ultra-Conservador</td><td>${data.mult_ultra_cons}</td><td>${fmt(data.rent_ultra_cons_10_anos)}</td><td>${fmt(data.rent_ultra_cons)}</td></tr>
+                    <tr><td>2. Conservador</td><td>${data.mult_cons}</td><td>${fmt(data.rent_cons_10_anos)}</td><td>${fmt(data.rent_cons)}</td></tr>
+                    <tr><td>3. Conservador-Moderado</td><td>${data.mult_cons_mod}</td><td>${fmt(data.rent_cons_mod_10_anos)}</td><td>${fmt(data.rent_cons_mod)}</td></tr>
+                    <tr><td>4. Moderado</td><td>${data.mult_mod}</td><td>${fmt(data.rent_mod_10_anos)}</td><td>${fmt(data.rent_mod)}</td></tr>
+                    <tr><td>5. Moderado-Arrojado</td><td>${data.mult_mod_arro}</td><td>${fmt(data.rent_mod_arro_10_anos)}</td><td>${fmt(data.rent_mod_arro)}</td></tr>
+                    <tr><td>6. Arrojado</td><td>${data.mult_arro}</td><td>${fmt(data.rent_arro_10_anos)}</td><td>${fmt(data.rent_arro)}</td></tr>
+                    <tr><td>7. Ultra-Arrojado</td><td>${data.mult_ultra_arro}</td><td>${fmt(data.rent_ultra_arro_10_anos)}</td><td>${fmt(data.rent_ultra_arro)}</td></tr>
                 </table>
+            `;
+
+            // ── TOOLTIP DE INFLAÇÃO ───────────────────────────────────────────────
+            // Apenas dados de inflação, sem aposentadoria, sem CDI/rentabilidade.
+            const inflaHTML = `
+                <span class="tooltip-title">Variáveis de Mercado — Inflação</span>
+
                 <table class="tooltip-table">
-                    <tr><th colspan="2">Multiplicadores % do CDI por Perfil</th></tr>
-                    <tr><td>0. Sem Conhecimento (%)</td><td>${data.mult_sem_conhecimento}</td></tr>
-                    <tr><td>0.5. Iniciante (%)</td><td>${data.mult_iniciante}</td></tr>
-                    <tr><td>1. Ultra-Conservador (%)</td><td>${data.mult_ultra_cons}</td></tr>
-                    <tr><td>2. Conservador (%)</td><td>${data.mult_cons}</td></tr>
-                    <tr><td>3. Conservador-Moderado (%)</td><td>${data.mult_cons_mod}</td></tr>
-                    <tr><td>4. Moderado (%)</td><td>${data.mult_mod}</td></tr>
-                    <tr><td>5. Moderado-Arrojado (%)</td><td>${data.mult_mod_arro}</td></tr>
-                    <tr><td>6. Arrojado (%)</td><td>${data.mult_arro}</td></tr>
-                    <tr><td>7. Ultra-Arrojado (%)</td><td>${data.mult_ultra_arro}</td></tr>
-                </table>
-                <table class="tooltip-table">
-                    <tr><th>Rentabilidades 10 anos (%) - 9 Perfis</th><th>Valor</th></tr>
-                    <tr><td>0. Sem Conhecimento</td><td>${fmt(data.rent_sem_conhecimento_10_anos)}</td></tr>
-                    <tr><td>0.5. Iniciante</td><td>${fmt(data.rent_iniciante_10_anos)}</td></tr>
-                    <tr><td>1. Ultra-Conservador</td><td>${fmt(data.rent_ultra_cons_10_anos)}</td></tr>
-                    <tr><td>2. Conservador</td><td>${fmt(data.rent_cons_10_anos)}</td></tr>
-                    <tr><td>3. Conservador-Moderado</td><td>${fmt(data.rent_cons_mod_10_anos)}</td></tr>
-                    <tr><td>4. Moderado</td><td>${fmt(data.rent_mod_10_anos)}</td></tr>
-                    <tr><td>5. Moderado-Arrojado</td><td>${fmt(data.rent_mod_arro_10_anos)}</td></tr>
-                    <tr><td>6. Arrojado</td><td>${fmt(data.rent_arro_10_anos)}</td></tr>
-                    <tr><td>7. Ultra-Arrojado</td><td>${fmt(data.rent_ultra_arro_10_anos)}</td></tr>
-                </table>
-                <table class="tooltip-table">
-                    <tr><th>Rentabilidades Atuais (%) - 9 Perfis</th><th>Valor</th></tr>
-                    <tr><td>0. Sem Conhecimento</td><td>${fmt(data.rent_sem_conhecimento)}</td></tr>
-                    <tr><td>0.5. Iniciante</td><td>${fmt(data.rent_iniciante)}</td></tr>
-                    <tr><td>1. Ultra-Conservador</td><td>${fmt(data.rent_ultra_cons)}</td></tr>
-                    <tr><td>2. Conservador</td><td>${fmt(data.rent_cons)}</td></tr>
-                    <tr><td>3. Conservador-Moderado</td><td>${fmt(data.rent_cons_mod)}</td></tr>
-                    <tr><td>4. Moderado</td><td>${fmt(data.rent_mod)}</td></tr>
-                    <tr><td>5. Moderado-Arrojado</td><td>${fmt(data.rent_mod_arro)}</td></tr>
-                    <tr><td>6. Arrojado</td><td>${fmt(data.rent_arro)}</td></tr>
-                    <tr><td>7. Ultra-Arrojado</td><td>${fmt(data.rent_ultra_arro)}</td></tr>
+                    <tr>
+                        <th>IPCA</th>
+                        <th>IPCA 120 meses</th>
+                        <th>IPCA Méd. 10 anos</th>
+                    </tr>
+                    <tr>
+                        <td>${fmt(data.ipca)}</td>
+                        <td>${fmt(data.ipca_120_meses)}</td>
+                        <td>${fmt(data.ipca_aa_medio_10_anos)}</td>
+                    </tr>
                 </table>
             `;
 
             const rentTooltip = document.getElementById('rentabilidadeTooltip');
-            if (rentTooltip) rentTooltip.innerHTML = tooltipHTML;
+            if (rentTooltip) rentTooltip.innerHTML = rentHTML;
 
             const inflaTooltip = document.getElementById('inflacaoTooltip');
-            if (inflaTooltip) inflaTooltip.innerHTML = tooltipHTML;
+            if (inflaTooltip) inflaTooltip.innerHTML = inflaHTML;
         }
 
         document.addEventListener('DOMContentLoaded', () => {
