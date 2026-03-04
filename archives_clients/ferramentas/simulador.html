@@ -1438,13 +1438,21 @@
         } else if (tipo === 'price') {
             parcelaPrice = saldo / prazoTotal;
         }
+        // parcelaPrice é a parcela "corrente" do Price.
+        // Quando efeitoAmort='parcela': prazoRestante não muda, parcelaPrice é recalculada após amort extra.
+        // Quando efeitoAmort='prazo': parcelaPrice não muda, prazoRestante é recalculado após amort extra.
 
         for (let m = 1; m <= meses; m++) {
-            // Correção monetária: aplicar apenas no aniversário anual (a cada 12 meses a partir do início das parcelas)
-            // mês 1 nunca recebe correção; correção ocorre nos meses 13, 25, 37... (contados a partir do mesInicioParcelas)
+            // Correção monetária: aplicar apenas no aniversário anual
             const mesesDesdeInicio = m - mesInicioParcelas;
             if (correcaoAA > 0 && mesesDesdeInicio > 0 && mesesDesdeInicio % 12 === 0) {
                 saldo *= (1 + correcaoAA);
+                // Após correção, recalcular parcelaPrice sobre o novo saldo (ambos os efeitos)
+                if (tipo === 'price' && prazoRestante > 0) {
+                    parcelaPrice = jurosMensal > 0
+                        ? saldo * jurosMensal / (1 - Math.pow(1+jurosMensal, -prazoRestante))
+                        : saldo / prazoRestante;
+                }
             }
             valorBemAtual *= (1 + g.valorizacao/12);
 
@@ -1459,7 +1467,6 @@
                 }
             } else {
                 if (prazoRestante <= 0) {
-                    // Financiamento quitado
                     parcela = 0;
                 } else if (tipo === 'sac') {
                     const amortizacao = saldo / prazoRestante;
@@ -1468,12 +1475,7 @@
                     saldo -= amortizacao;
                     prazoRestante--;
                 } else {
-                    // Price
-                    if (jurosMensal > 0) {
-                        parcelaPrice = saldo * jurosMensal / (1 - Math.pow(1+jurosMensal, -prazoRestante));
-                    } else {
-                        parcelaPrice = saldo / prazoRestante;
-                    }
+                    // Price: usa parcelaPrice corrente (não recalcula aqui — só recalcula após amort extra ou correção)
                     const juros = saldo * jurosMensal;
                     const amortizacao = parcelaPrice - juros;
                     saldo -= amortizacao;
@@ -1500,15 +1502,28 @@
                     const amortVal = Math.min(a.valor, saldo);
                     saldo -= amortVal;
                     custoAcum += amortVal;
-                    if (efeitoAmort === 'prazo') {
-                        if (saldo <= 0) {
-                            // Saldo zerado: quitar imediatamente
-                            prazoRestante = 0;
-                        } else if (prazoRestante > 0) {
-                            // Recalcular prazo restante com base na amortização mensal atual
-                            const amortMensal = saldo / prazoRestante;
-                            prazoRestante = amortMensal > 0 ? Math.ceil(saldo / amortMensal) : prazoRestante;
+                    if (saldo <= 0) {
+                        prazoRestante = 0;
+                    } else if (efeitoAmort === 'prazo') {
+                        // Mantém parcela, recalcula prazo
+                        if (tipo === 'price' && jurosMensal > 0 && parcelaPrice > 0) {
+                            // número de parcelas necessárias para quitar saldo com a parcela atual
+                            const r = jurosMensal;
+                            const novoN = Math.ceil(-Math.log(1 - saldo * r / parcelaPrice) / Math.log(1 + r));
+                            prazoRestante = isFinite(novoN) && novoN > 0 ? novoN : prazoRestante;
+                        } else if (tipo === 'sac') {
+                            // SAC: prazo = ceil(saldo / amort_mensal_atual)
+                            // amort_mensal_atual = saldo_antes / prazoRestante, mas já amortizamos, então usamos saldo
+                            prazoRestante = prazoRestante > 0 ? Math.ceil(saldo / (saldo / prazoRestante)) : prazoRestante;
                         }
+                    } else {
+                        // Efeito parcela: mantém prazo, recalcula parcelaPrice
+                        if (tipo === 'price' && prazoRestante > 0) {
+                            parcelaPrice = jurosMensal > 0
+                                ? saldo * jurosMensal / (1 - Math.pow(1+jurosMensal, -prazoRestante))
+                                : saldo / prazoRestante;
+                        }
+                        // SAC: não precisa fazer nada — a próxima parcela já é calculada sobre o novo saldo
                     }
                 }
             });
@@ -2269,32 +2284,34 @@
             // Acumuladores para agregação por período (step)
             let stepJuros=0, stepAmort=0, stepParcela=0, stepSeguros=0;
             for (let m = 1; m <= meses; m++) {
-                // Correção monetária: apenas no aniversário anual (meses 13, 25, 37... a partir do início das parcelas)
+                // Correção monetária: apenas no aniversário anual
                 const mesesDesdeInicioTab = m - mesInicioTab;
                 if (correcaoAA > 0 && mesesDesdeInicioTab > 0 && mesesDesdeInicioTab % 12 === 0) {
                     saldo *= (1 + correcaoAA);
+                    // Recalcular parcelaPrice após correção (ambos os efeitos)
+                    if (mod === 'price' && prazoRestante > 0) {
+                        parcelaPrice = jurosMensal > 0
+                            ? saldo * jurosMensal / (1 - Math.pow(1+jurosMensal, -prazoRestante))
+                            : saldo / prazoRestante;
+                    }
                 }
                 let amortizacao = 0, juros = 0, parcela = 0;
                 if (m <= carencia) {
-                    // Período de carência
                     juros = saldo * jurosMensal;
                     if (tipoCarencia === 'paga') {
-                        parcela = juros; // paga só os juros
+                        parcela = juros;
                     } else {
-                        saldo += juros; // capitaliza os juros ao saldo
+                        saldo += juros;
                     }
                 } else if (prazoRestante > 0) {
                     if (mod === 'sac') {
-                        // SAC: amortização constante = saldo / prazo restante
                         amortizacao = saldo / prazoRestante;
                         juros = saldo * jurosMensal;
                         parcela = amortizacao + juros;
                         saldo -= amortizacao;
                         prazoRestante--;
                     } else {
-                        // Price: recalcular parcela sobre saldo atual (com correção)
-                        if (jurosMensal > 0) parcelaPrice = saldo*jurosMensal/(1-Math.pow(1+jurosMensal,-prazoRestante));
-                        else parcelaPrice = saldo/prazoRestante;
+                        // Price: usa parcelaPrice corrente (não recalcula aqui)
                         juros = saldo * jurosMensal;
                         amortizacao = parcelaPrice - juros;
                         saldo -= amortizacao;
@@ -2302,7 +2319,6 @@
                         parcela = parcelaPrice;
                     }
                 }
-                // Seguros calculados sobre saldo PÓS-amortização (prática de mercado)
                 const segMip = saldo * mip;
                 const segDfi = g.valorBem * dfi;
                 const encargos = segMip + segDfi + taxaAdm;
@@ -2315,7 +2331,7 @@
                 totalEncargos += encargos;
                 stepJuros += juros; stepAmort += amortizacao;
                 stepParcela += parcela; stepSeguros += segMip+segDfi+taxaAdm;
-                // Amortizações extraordinárias — contabilizar na coluna Amortização
+                // Amortizações extraordinárias
                 amorts.forEach(a => {
                     let ocorre = false;
                     if (a.period==='unica'&&m===a.mes) ocorre=true;
@@ -2327,12 +2343,22 @@
                         custoAcum += av;
                         stepAmort += av;
                         totalAmort += av;
-                        if (efeitoAmort==='prazo') {
-                            if (saldo <= 0) {
-                                prazoRestante = 0;
-                            } else if (prazoRestante > 0) {
-                                const amortMensal = saldo / prazoRestante;
-                                prazoRestante = amortMensal > 0 ? Math.ceil(saldo / amortMensal) : prazoRestante;
+                        if (saldo <= 0) {
+                            prazoRestante = 0;
+                        } else if (efeitoAmort === 'prazo') {
+                            // Mantém parcela, recalcula prazo
+                            if (mod === 'price' && jurosMensal > 0 && parcelaPrice > 0) {
+                                const r = jurosMensal;
+                                const novoN = Math.ceil(-Math.log(1 - saldo * r / parcelaPrice) / Math.log(1 + r));
+                                prazoRestante = isFinite(novoN) && novoN > 0 ? novoN : prazoRestante;
+                            }
+                            // SAC: prazo já é recalculado implicitamente (amortizacao = saldo/prazoRestante)
+                        } else {
+                            // Efeito parcela: mantém prazo, recalcula parcelaPrice
+                            if (mod === 'price' && prazoRestante > 0) {
+                                parcelaPrice = jurosMensal > 0
+                                    ? saldo * jurosMensal / (1 - Math.pow(1+jurosMensal, -prazoRestante))
+                                    : saldo / prazoRestante;
                             }
                         }
                     }
