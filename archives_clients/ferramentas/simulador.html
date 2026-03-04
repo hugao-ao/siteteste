@@ -1427,6 +1427,7 @@
         let parcelaInicial = 0;
         let parcelaFinal = 0;
         const serie = [];
+        const serieSD = []; // série do saldo devedor mês a mês
         let valorBemAtual = g.valorBem;
 
         // Price: calcular parcela fixa inicial
@@ -1503,6 +1504,7 @@
 
             if (saldo < 0) saldo = 0;
             serie.push(custoAcum);
+            serieSD.push(saldo);
         }
 
         return {
@@ -1514,7 +1516,8 @@
             valorBemFinal: valorBemAtual,
             parcelaInicial,
             parcelaFinal,
-            serie
+            serie,
+            serieSD
         };
     }
 
@@ -1608,6 +1611,7 @@
         let parcelaInicial = 0;
         let parcelaFinal = 0;
         const serie = [];
+        const serieSD = []; // série do saldo devedor mês a mês
         let valorBemAtual = g.valorBem;
 
         let parcelaPrice = 0;
@@ -1674,6 +1678,7 @@
 
             if (saldo < 0) saldo = 0;
             serie.push(custoAcum);
+            serieSD.push(saldo);
         }
 
         return {
@@ -1685,7 +1690,8 @@
             valorBemFinal: valorBemAtual,
             parcelaInicial,
             parcelaFinal,
-            serie
+            serie,
+            serieSD
         };
     }
 
@@ -2352,11 +2358,24 @@
             dataSerie.push((c.resultado?.serie||[])[idx] || 0);
             dataBem.push(g.valorBem * Math.pow(1+g.valorizacao, m/12));
         }
+        // Série do saldo devedor (apenas para cenários que têm saldo devedor)
+        const dataSD = [];
+        const temSD = ['sac','price','custom'].includes(c.modalidade) && (c.resultado?.serieSD||[]).length > 0;
+        if (temSD) {
+            for (let m = step; m <= meses; m += step) {
+                const idx = m - 1;
+                dataSD.push((c.resultado.serieSD)[idx] || 0);
+            }
+        }
+
         const datasets = [
             { label: 'Custo Acumulado', data: dataSerie, borderColor: '#f87171', backgroundColor: 'transparent', borderWidth: 2, pointRadius: 0, tension: 0.3 }
         ];
         if (c.modalidade !== 'aluguel' && c.modalidade !== 'oportunidade') {
             datasets.push({ label: 'Valor do Bem', data: dataBem, borderColor: '#4ade80', backgroundColor: 'transparent', borderWidth: 2, pointRadius: 0, tension: 0.3, borderDash: [4,4] });
+        }
+        if (temSD) {
+            datasets.push({ label: 'Saldo Devedor', data: dataSD, borderColor: '#60a5fa', backgroundColor: 'transparent', borderWidth: 2, pointRadius: 0, tension: 0.3, borderDash: [6,3] });
         }
         if (detalheCharts[id]) detalheCharts[id].destroy();
         detalheCharts[id] = new Chart(canvas.getContext('2d'), {
