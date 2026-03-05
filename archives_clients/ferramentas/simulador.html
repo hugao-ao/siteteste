@@ -1523,6 +1523,38 @@ function itemAtivoNoPeriodo(item, i, data, aquisicaoFeita, aquisicaoData) {
     return true;
 }
 
+/**
+ * Retorna o índice relativo do período i em relação ao início de vigência do item.
+ * Usado para calcular a frequência corretamente a partir do início da vigência.
+ * Retorna -1 se o item não estiver ativo no período.
+ */
+function itemIndiceRelativo(item, i, data, aquisicaoFeita, aquisicaoData, allRows) {
+    // Se não está ativo, retorna -1
+    if (!itemAtivoNoPeriodo(item, i, data, aquisicaoFeita, aquisicaoData)) return -1;
+    // Calcular o primeiro período em que o item ficou ativo
+    const inicioTipo = item.inicioTipo || 'periodo1';
+    if (inicioTipo === 'periodo1') return i - 1; // relativo ao período 1
+    if (inicioTipo === 'aquisicao' && aquisicaoData) {
+        // Contar períodos desde a aquisição
+        if (!allRows) return 0;
+        const aqIdx = allRows.findIndex(r => r.isAquisicao);
+        if (aqIdx < 0) return 0;
+        return i - 1 - aqIdx;
+    }
+    if (inicioTipo === 'data' && item.inicioData) {
+        // Usar a data de início para calcular o offset
+        // Precisamos saber qual período corresponde à data de início
+        // Como não temos acesso direto, usamos a data atual vs data de início
+        const dtInicio = new Date(item.inicioData + 'T00:00:00');
+        if (!data) return 0;
+        // Diferença em meses (aproximado)
+        const diffMs = data.getTime() - dtInicio.getTime();
+        const diffMeses = Math.round(diffMs / (30 * 24 * 3600 * 1000));
+        return Math.max(0, diffMeses);
+    }
+    return i - 1;
+}
+
 function calcAvista(sc) {
     const { n, unit } = getPeriodoInfo();
     if (!n) return [];
@@ -1536,20 +1568,19 @@ function calcAvista(sc) {
     const bemTaxaPre  = parseNum('p_bem_reajuste_pre') / 100;
     const bemTaxaPos  = parseNum('p_bem_reajuste_pos') / 100;
 
-    // Quantos períodos equivalem a 1 ano
-    const periodosMes = unit === 'anos' ? 1 : 12; // se meses: 12 períodos = 1 ano
-    // Taxa mensal equivalente
-    const jurosPer    = unit === 'anos'
+    // Taxa por período
+    const jurosPer = unit === 'anos'
         ? jurosAa
         : Math.pow(1 + jurosAa, 1 / 12) - 1;
 
-    // Rastreamento de aportes únicos já aplicados
+    // Rastreamento de itens únicos já aplicados
     const unicosAplicados = new Set();
 
+    // Estado inicial
     let patBruto       = saldo0;
-    let totalAportado  = saldo0; // base para cálculo do IR (principal)
+    let totalAportado  = saldo0; // principal acumulado (base para IR)
     let bemValor       = bemValor0;
-    let bemAnos        = 0;      // anos completos de reajuste do bem
+    let bemAnos        = 0;      // anos completos de reajuste aplicados ao bem
     let aquisicaoFeita = false;
     let aquisicaoData  = null;
     let descapAcum     = 0;
@@ -1559,84 +1590,43 @@ function calcAvista(sc) {
     for (let i = 1; i <= n; i++) {
         const data = getDataPeriodo(i);
 
-        // ── 1. Rendimento do período (sobre saldo do início do período) ──
+        // ── PASSO A: Rendimento do período ──
+        // Incide sobre o saldo bruto do início do período (antes de qualquer movimento)
         const rendimento = patBruto * jurosPer;
         patBruto += rendimento;
 
-        // ── 2. Aportes do período ──
+        // ── PASSO B: Aportes do período ──
+        // Entram DEPOIS do rendimento (investidor aporta no fim do mês)
         let aportePeriodo = 0;
         aportes.forEach(ap => {
             if (!itemAtivoNoPeriodo(ap, i, data, aquisicaoFeita, aquisicaoData)) return;
-
             if (ap.unit === 'unica') {
-                // Único: aplicar apenas uma vez, no período correto
                 if (unicosAplicados.has('ap_' + ap.id)) return;
-                const deveAplicar = unicoDeveAplicar(ap, i, data, aquisicaoFeita);
-                if (deveAplicar) {
-                    aportePeriodo += ap.valor;
+                if (unicoDeveAplicar(ap, i, data, aquisicaoFeita)) {
+                    const anosDecAp = unit === 'anos' ? (i - 1) : Math.floor((i - 1) / 12);
+                    const fatorAp   = ap.corrInflacao ? Math.pow(1 + inflacaoAa, anosDecAp) : 1;
+                    aportePeriodo  += ap.valor * fatorAp;
                     unicosAplicados.add('ap_' + ap.id);
                 }
             } else {
-                const freqEmPeriodos = freqParaPeriodos(ap.unit, ap.n, unit);
-                if (freqEmPeriodos > 0 && (i - 1) % freqEmPeriodos === 0) {
-                    // Correção anual pela inflação: aplica a cada 12 períodos (meses) ou 1 período (anos)
-                    const anosDecorridos = unit === 'anos' ? (i - 1) : Math.floor((i - 1) / 12);
-                    const fator = ap.corrInflacao ? Math.pow(1 + inflacaoAa, anosDecorridos) : 1;
-                    aportePeriodo += ap.valor * fator;
+                const freqP = freqParaPeriodos(ap.unit, ap.n, unit);
+                if (freqP > 0) {
+                    // Calcular índice relativo ao início de vigência do aporte
+                    const iRel = itemIndiceRelativo(ap, i, data, aquisicaoFeita, aquisicaoData, rows);
+                    if (iRel >= 0 && iRel % freqP === 0) {
+                        const anosDecAp = unit === 'anos' ? (i - 1) : Math.floor((i - 1) / 12);
+                        const fatorAp   = ap.corrInflacao ? Math.pow(1 + inflacaoAa, anosDecAp) : 1;
+                        aportePeriodo  += ap.valor * fatorAp;
+                    }
                 }
             }
         });
-
         patBruto      += aportePeriodo;
         totalAportado += aportePeriodo;
 
-        // ── 3. Descapitalizações universais do período ──
-        let descapUniversal = 0;
-        if (sc.usaDescaps) {
-            descaps.forEach(dc => {
-                if (!itemAtivoNoPeriodo(dc, i, data, aquisicaoFeita, aquisicaoData)) return;
-
-                if (dc.unit === 'unica') {
-                    if (unicosAplicados.has('dc_' + dc.id)) return;
-                    const deveAplicar = unicoDeveAplicar(dc, i, data, aquisicaoFeita);
-                    if (deveAplicar) {
-                        let valorDc = dc.valor;
-                        descapUniversal += valorDc;
-                        unicosAplicados.add('dc_' + dc.id);
-                    }
-                } else {
-                    const freqEmPeriodos = freqParaPeriodos(dc.unit, dc.n, unit);
-                    if (freqEmPeriodos > 0 && (i - 1) % freqEmPeriodos === 0) {
-                        let valorDc = dc.valor;
-                        const anosDecorridos = unit === 'anos' ? (i - 1) : Math.floor((i - 1) / 12);
-                        if (dc.variaInflacao) {
-                            valorDc *= Math.pow(1 + inflacaoAa, anosDecorridos);
-                        } else {
-                            const taxa = (!aquisicaoFeita ? (dc.taxaPre || 0) : (dc.taxaPos || 0)) / 100;
-                            if (taxa !== 0) valorDc *= Math.pow(1 + taxa, anosDecorridos);
-                        }
-                        descapUniversal += valorDc;
-                    }
-                }
-            });
-        }
-
-        // ── Bloquear descap universal que excede o patrimônio líquido disponível ──
-        // Calcular IR provisório antes de aplicar a descap, para saber o líquido real
-        const rendAcumProv   = Math.max(0, patBruto - totalAportado);
-        const irProv         = rendAcumProv * irAliq;
-        const patLiqProv     = patBruto - irProv;
-        // Só aplica a descap universal se o patrimônio líquido comportar
-        const descapUniversalEfetiva = Math.min(descapUniversal, Math.max(0, patLiqProv));
-        patBruto -= descapUniversalEfetiva;
-        if (patBruto < 0) patBruto = 0;
-
-        // Descap. período = aportes (saída de caixa) + descaps universais efetivas
-        let descapPeriodo = aportePeriodo + descapUniversalEfetiva;
-
-        // ── 4. Reajuste do bem: apenas no aniversario anual ──
+        // ── PASSO C: Reajuste anual do bem (apenas no aniversário) ──
+        // Feito ANTES de verificar a aquisição para usar o valor correto do bem
         if (bemValor0 > 0) {
-            // Aniversario = quando completou mais um ano (a cada 12 meses ou a cada 1 ano)
             const anoAtual = unit === 'anos' ? i : Math.floor(i / 12);
             if (anoAtual > bemAnos) {
                 bemAnos = anoAtual;
@@ -1652,34 +1642,129 @@ function calcAvista(sc) {
             }
         }
 
-        // ── 5. Calcular IR acumulado (sobre rendimentos: patBruto - totalAportado) ──
-        const rendAcum = Math.max(0, patBruto - totalAportado);
-        const irAcum   = rendAcum * irAliq;
-        const patLiq   = patBruto - irAcum;
+        // ── PASSO D: IR e patrimônio líquido provisório ──
+        const rendAcumD  = Math.max(0, patBruto - totalAportado);
+        const irD        = rendAcumD * irAliq;
+        const patLiqD    = patBruto - irD;
 
-        // ── 6. Verificar aquisição ──
+        // ── PASSO E: Pré-calcular descaps únicas na aquisição ──
+        // Separar descaps únicas com unicoTipo='aquisicao' das demais para processamento conjunto
+        let descapPeriodo = aportePeriodo; // aportes sempre entram na descap
+
+        // ── PASSO F: Descapitalizações universais ──
+        // Descaps únicas com unicoTipo='aquisicao' são tratadas junto com a aquisição no PASSO E.
+        let descapUniversal = 0;
+        const descapsUnicasAquisicaoPendentes = [];
+        if (sc.usaDescaps) {
+            descaps.forEach(dc => {
+                // Descaps únicas na aquisição: separar para processar junto com a aquisição
+                if (dc.unit === 'unica' && (dc.unicoTipo || 'periodo1') === 'aquisicao') {
+                    if (!unicosAplicados.has('dc_' + dc.id) && !aquisicaoFeita) {
+                        descapsUnicasAquisicaoPendentes.push(dc);
+                    }
+                    return;
+                }
+                if (!itemAtivoNoPeriodo(dc, i, data, aquisicaoFeita, aquisicaoData)) return;
+                if (dc.unit === 'unica') {
+                    if (unicosAplicados.has('dc_' + dc.id)) return;
+                    if (unicoDeveAplicar(dc, i, data, aquisicaoFeita)) {
+                        const anosDecDc = unit === 'anos' ? (i - 1) : Math.floor((i - 1) / 12);
+                        let valorDc = dc.valor;
+                        if (dc.variaInflacao) {
+                            valorDc *= Math.pow(1 + inflacaoAa, anosDecDc);
+                        } else {
+                            const taxa = (aquisicaoFeita ? (dc.taxaPos || 0) : (dc.taxaPre || 0)) / 100;
+                            if (taxa !== 0) valorDc *= Math.pow(1 + taxa, anosDecDc);
+                        }
+                        descapUniversal += valorDc;
+                        unicosAplicados.add('dc_' + dc.id);
+                    }
+                } else {
+                    const freqP = freqParaPeriodos(dc.unit, dc.n, unit);
+                    if (freqP > 0) {
+                        const iRelDc = itemIndiceRelativo(dc, i, data, aquisicaoFeita, aquisicaoData, rows);
+                        if (iRelDc >= 0 && iRelDc % freqP === 0) {
+                            const anosDecDc = unit === 'anos' ? (i - 1) : Math.floor((i - 1) / 12);
+                            let valorDc = dc.valor;
+                            if (dc.variaInflacao) {
+                                valorDc *= Math.pow(1 + inflacaoAa, anosDecDc);
+                            } else {
+                                const taxa = (aquisicaoFeita ? (dc.taxaPos || 0) : (dc.taxaPre || 0)) / 100;
+                                if (taxa !== 0) valorDc *= Math.pow(1 + taxa, anosDecDc);
+                            }
+                            descapUniversal += valorDc;
+                        }
+                    }
+                }
+            });
+        }
+
+        // Calcular o custo total da aquisição (bem + descaps únicas na aquisição)
+        let totalDescapAquisicao = 0;
+        descapsUnicasAquisicaoPendentes.forEach(dc => {
+            const anosDecDc = unit === 'anos' ? (i - 1) : Math.floor((i - 1) / 12);
+            let valorDc = dc.valor;
+            if (dc.variaInflacao) {
+                valorDc *= Math.pow(1 + inflacaoAa, anosDecDc);
+            } else {
+                const taxa = (dc.taxaPre || 0) / 100;
+                if (taxa !== 0) valorDc *= Math.pow(1 + taxa, anosDecDc);
+            }
+            totalDescapAquisicao += valorDc;
+        });
+
+        // ── PASSO E: Verificar aquisição (considerando descaps de aquisição no custo total) ──
         let isAquisicao = false;
-        if (!aquisicaoFeita && bemValor0 > 0 && patLiq >= bemValor) {
+        const custoTotalAquisicao = bemValor + totalDescapAquisicao;
+        if (!aquisicaoFeita && bemValor0 > 0 && patLiqD >= custoTotalAquisicao) {
             isAquisicao    = true;
             aquisicaoFeita = true;
             aquisicaoData  = data;
-            // Saque do bem: desconta do patrimônio bruto
-            // IR incide sobre a fração de rendimentos no saque
-            const propRend = patBruto > 0 ? Math.min(1, rendAcum / patBruto) : 0;
+            // IR proporcional ao saque do bem
+            const propRend = patBruto > 0 ? Math.min(1, rendAcumD / patBruto) : 0;
             const irSaque  = bemValor * propRend * irAliq;
             patBruto      -= (bemValor + irSaque);
-            // Ajusta totalAportado para refletir a retirada do principal
             totalAportado -= bemValor * (1 - propRend);
             if (totalAportado < 0) totalAportado = 0;
-            // Valor do bem entra na descap do período da aquisição
+            if (patBruto < 0) patBruto = 0;
+            // Valor do bem entra como descap no período da aquisição
             descapPeriodo += bemValor;
+            // Aplicar descaps únicas na aquisição (imediatamente após a aquisição)
+            descapsUnicasAquisicaoPendentes.forEach(dc => {
+                const anosDecDc = unit === 'anos' ? (i - 1) : Math.floor((i - 1) / 12);
+                let valorDc = dc.valor;
+                if (dc.variaInflacao) {
+                    valorDc *= Math.pow(1 + inflacaoAa, anosDecDc);
+                } else {
+                    const taxa = (dc.taxaPos || 0) / 100; // pós-aquisição pois acabou de ocorrer
+                    if (taxa !== 0) valorDc *= Math.pow(1 + taxa, anosDecDc);
+                }
+                // Bloquear se exceder o patrimônio líquido disponível
+                const rendAcumDc   = Math.max(0, patBruto - totalAportado);
+                const irDc         = rendAcumDc * irAliq;
+                const patLiqDc     = patBruto - irDc;
+                const valorEfetivo = Math.min(valorDc, Math.max(0, patLiqDc));
+                patBruto      -= valorEfetivo;
+                if (patBruto < 0) patBruto = 0;
+                descapPeriodo += valorEfetivo;
+                unicosAplicados.add('dc_' + dc.id);
+            });
         }
+
+        // Bloquear descap recorrente/outras únicas que excedem o patrimônio líquido
+        const rendAcumF       = Math.max(0, patBruto - totalAportado);
+        const irF             = rendAcumF * irAliq;
+        const patLiqF         = patBruto - irF;
+        const descapUnivEfetiva = Math.min(descapUniversal, Math.max(0, patLiqF));
+        patBruto -= descapUnivEfetiva;
+        if (patBruto < 0) patBruto = 0;
+        descapPeriodo += descapUnivEfetiva;
 
         descapAcum += descapPeriodo;
 
-        // ── 7. Recalcular IR final após possível aquisição ──
-        const rendAcum2   = Math.max(0, patBruto - totalAportado);
-        const irFinal     = rendAcum2 * irAliq;
+        // ── PASSO G: IR e patrimônios finais do período ──
+        const rendAcumG   = Math.max(0, patBruto - totalAportado);
+        const irFinal     = rendAcumG * irAliq;
         const patLiqFinal = patBruto - irFinal;
         // Patrimônio total = financeiro BRUTO + valor do bem (só após aquisição)
         const patTotal    = patBruto + (aquisicaoFeita ? bemValor : 0);
@@ -1697,10 +1782,8 @@ function calcAvista(sc) {
             isAquisicao
         });
     }
-
     return rows;
 }
-
 /**
  * Verifica se um item ÚNICO deve ser aplicado no período i.
  * Considera unicoTipo (periodo1=1º período, aquisicao=quando ocorrer, data=data específica)
@@ -1708,7 +1791,9 @@ function calcAvista(sc) {
 function unicoDeveAplicar(item, i, data, aquisicaoFeita) {
     const tipo = item.unicoTipo || 'periodo1';
     if (tipo === 'periodo1') return i === 1;
-    if (tipo === 'aquisicao') return aquisicaoFeita; // aplica no período em que ocorreu
+    // Para 'aquisicao': só aplica no período em que a aquisição ACABOU de ocorrer.
+    // O controle de "já aplicado" é feito via unicosAplicados no loop.
+    if (tipo === 'aquisicao') return aquisicaoFeita;
     if (tipo === 'data' && item.unicoData) {
         const dtAlvo = new Date(item.unicoData + 'T00:00:00');
         // Aplica no período cuja data seja >= dtAlvo (primeira vez)
