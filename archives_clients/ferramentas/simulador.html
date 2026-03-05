@@ -448,6 +448,13 @@ td.col-patrimonio { color: var(--text); }
 td.col-descap     { color: var(--text-dim); }
 td.cell-empty     { color: var(--text-faint); font-size: 0.70rem; font-style: italic; }
 
+/* Linha de toggle de descaps universais */
+table.sim-table thead tr.row-descaps-toggle th {
+    background: #13131a;
+    border-bottom: 1px solid var(--border);
+    padding: 5px 8px;
+}
+
 .scenario-title-cell {
     display: flex;
     align-items: center;
@@ -841,19 +848,20 @@ td.cell-empty     { color: var(--text-faint); font-size: 0.70rem; font-style: it
 
         <div>
             <label>Valor e Frequência</label>
-            <div class="modal-flow-row">
-                <div>
-                    <div style="font-size:.66rem;color:var(--text-faint);margin-bottom:4px;">Valor (R$)</div>
-                    <input type="text" id="mf_valor" placeholder="0,00" oninput="fmtCur(this)">
-                </div>
-                <div class="sep-label">a cada</div>
-                <div>
-                    <div style="font-size:.66rem;color:var(--text-faint);margin-bottom:4px;">Qtd</div>
-                    <input type="number" id="mf_n" value="1" min="1" style="text-align:center;">
-                </div>
-                <div>
-                    <div style="font-size:.66rem;color:var(--text-faint);margin-bottom:4px;">Unidade</div>
-                    <select id="mf_unit">
+                <div class="modal-flow-row">
+                    <div>
+                        <div style="font-size:.66rem;color:var(--text-faint);margin-bottom:4px;">Valor (R$)</div>
+                        <input type="text" id="mf_valor" placeholder="0,00" oninput="fmtCur(this)">
+                    </div>
+                    <div class="sep-label" id="mf_sep_label">a cada</div>
+                    <div id="mf_n_wrap">
+                        <div style="font-size:.66rem;color:var(--text-faint);margin-bottom:4px;">Qtd</div>
+                        <input type="number" id="mf_n" value="1" min="1" style="text-align:center;">
+                    </div>
+                    <div>
+                        <div style="font-size:.66rem;color:var(--text-faint);margin-bottom:4px;">Unidade</div>
+                    <select id="mf_unit" onchange="toggleFlowQtd()">
+                        <option value="unica">Única (sem recorrência)</option>
                         <option value="dias">Dias</option>
                         <option value="dias_uteis">Dias Úteis</option>
                         <option value="semanas">Semanas</option>
@@ -865,7 +873,7 @@ td.cell-empty     { color: var(--text-faint); font-size: 0.70rem; font-style: it
             </div>
         </div>
 
-        <div>
+        <div id="mf_corr_wrap">
             <div class="check-row">
                 <input type="checkbox" id="mf_corr_inflacao">
                 <label for="mf_corr_inflacao">Corrigir pela inflação anualmente</label>
@@ -897,7 +905,7 @@ td.cell-empty     { color: var(--text-faint); font-size: 0.70rem; font-style: it
 // ═══════════════════════════════════════════════════════════════════════════
 //  ESTADO GLOBAL
 // ═══════════════════════════════════════════════════════════════════════════
-let scenarios = [];   // [{id, name, color}]
+let scenarios = [];   // [{id, name, color, usaDescaps}]
 let nextId    = 1;
 let chartInst = null;
 
@@ -949,6 +957,18 @@ function fmtBRLCompact(v) {
     if (!v && v !== 0) return '—';
     return v.toLocaleString('pt-BR',{style:'currency',currency:'BRL',minimumFractionDigits:2,maximumFractionDigits:2});
 }
+/** Mostra/esconde o campo Qtd no modal de fluxo conforme a unidade selecionada */
+function toggleFlowQtd() {
+    const unit      = document.getElementById('mf_unit').value;
+    const nWrap     = document.getElementById('mf_n_wrap');
+    const sepLbl    = document.getElementById('mf_sep_label');
+    const corrWrap  = document.getElementById('mf_corr_wrap');
+    const isUnica   = unit === 'unica';
+    if (nWrap)    nWrap.style.display    = isUnica ? 'none' : '';
+    if (sepLbl)   sepLbl.style.display   = isUnica ? 'none' : '';
+    if (corrWrap) corrWrap.style.display = isUnica ? 'none' : '';
+}
+
 function addMonths(date, n) {
     const d = new Date(date);
     d.setMonth(d.getMonth() + n);
@@ -1034,11 +1054,14 @@ function renderFlowList(type) {
     el.innerHTML = list.map(item => {
         const corrLabel = item.corrInflacao ? ' · corrigido pela inflação' : '';
         const desc = item.descricao ? `<strong>${escHtml(item.descricao)}</strong> — ` : '';
+        const freqLabel = item.unit === 'unica'
+            ? 'ocorrência única'
+            : `a cada ${item.n} ${UNIT_LABELS[item.unit]||item.unit}`;
         return `
         <div class="flow-item" data-id="${item.id}" data-type="${type}">
             <div class="flow-info">
-                ${desc}${fmtBRLCompact(item.valor)} a cada ${item.n} ${UNIT_LABELS[item.unit]||item.unit}
-                <small>${corrLabel || 'sem correção pela inflação'}</small>
+                ${desc}${fmtBRLCompact(item.valor)} — ${freqLabel}
+                <small>${item.unit !== 'unica' ? (corrLabel || 'sem correção pela inflação') : 'sem recorrência'}</small>
             </div>
             <div class="flow-item-actions">
                 <button class="btn-icon-sm edit" title="Editar" onclick="openFlowModal('${type}', ${item.id})">✎</button>
@@ -1085,6 +1108,7 @@ function openFlowModal(type, editId) {
     }
 
     document.getElementById('modal-flow').classList.add('open');
+    toggleFlowQtd();
     setTimeout(() => document.getElementById('mf_valor').focus(), 80);
 }
 
@@ -1110,7 +1134,10 @@ function confirmFlowModal() {
         list.push(item);
     } else {
         const idx = list.findIndex(x => x.id === _flowEditId);
-        if (idx >= 0) list[idx] = item;
+        if (idx >= 0) {
+            item.id = _flowEditId;
+            list[idx] = item;
+        }
     }
 
     closeFlowModal();
@@ -1189,7 +1216,26 @@ function renderTable() {
         html += `<th class="col-patrimonio scenario-sep-left">Patrimônio</th>`;
         html += `<th class="col-descap">Descapitalização</th>`;
     });
-    html += `</tr></thead><tbody>`;
+    html += `</tr>`;
+
+    // Linha 3: checkbox de descapitalizações universais por cenário
+    const temDescaps = descaps.length > 0;
+    if (temDescaps) {
+        html += `<tr class="row-descaps-toggle">`;
+        html += `<th class="col-period" style="font-size:.60rem;color:var(--text-faint);text-align:left;padding:4px 12px;">Descaps. Universais</th>`;
+        scenarios.forEach(sc => {
+            html += `<th colspan="2" class="scenario-sep-left" style="text-align:center;padding:4px 8px;background:#16161e;">`;
+            html += `<label style="display:inline-flex;align-items:center;gap:6px;cursor:pointer;font-size:.70rem;color:var(--text-dim);font-weight:400;text-transform:none;letter-spacing:0;">`;
+            html += `<input type="checkbox" ${sc.usaDescaps ? 'checked' : ''} `;
+            html += `onchange="toggleScenarioDescaps(${sc.id}, this.checked)" `;
+            html += `style="accent-color:var(--gold);width:13px;height:13px;cursor:pointer;"> `;
+            html += `${sc.usaDescaps ? 'Aplicar' : 'Não aplicar'}</label>`;
+            html += `</th>`;
+        });
+        html += `</tr>`;
+    }
+
+    html += `</thead><tbody>`;
 
     if (n === 0) {
         html += `<tr><td class="col-period" colspan="${1 + scenarios.length * 2}">
@@ -1280,6 +1326,16 @@ function renderChart() {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
+//  TOGGLE DE DESCAPS POR CENÁRIO
+// ═══════════════════════════════════════════════════════════════════════════
+function toggleScenarioDescaps(id, checked) {
+    const sc = scenarios.find(s => s.id === id);
+    if (sc) sc.usaDescaps = checked;
+    // Re-renderiza apenas a tabela (sem destruir o gráfico)
+    renderTable();
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 //  CONTAGEM DE CENÁRIOS
 // ═══════════════════════════════════════════════════════════════════════════
 function updateCount() {
@@ -1335,7 +1391,7 @@ function confirmModal() {
     if (!name) { document.getElementById('modal-scenario-name').focus(); return; }
     if (_modalMode === 'add') {
         const color = PALETTE[scenarios.length % PALETTE.length];
-        scenarios.push({ id: nextId++, name, color });
+        scenarios.push({ id: nextId++, name, color, usaDescaps: true });
     } else {
         const sc = scenarios.find(s => s.id === _editId);
         if (sc) sc.name = name;
