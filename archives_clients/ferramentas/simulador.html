@@ -1621,11 +1621,18 @@ function calcAvista(sc) {
             });
         }
 
-        patBruto -= descapUniversal;
+        // ── Bloquear descap universal que excede o patrimônio líquido disponível ──
+        // Calcular IR provisório antes de aplicar a descap, para saber o líquido real
+        const rendAcumProv   = Math.max(0, patBruto - totalAportado);
+        const irProv         = rendAcumProv * irAliq;
+        const patLiqProv     = patBruto - irProv;
+        // Só aplica a descap universal se o patrimônio líquido comportar
+        const descapUniversalEfetiva = Math.min(descapUniversal, Math.max(0, patLiqProv));
+        patBruto -= descapUniversalEfetiva;
         if (patBruto < 0) patBruto = 0;
 
-        // Descap. período = aportes (saída de caixa) + descaps universais
-        const descapPeriodo = aportePeriodo + descapUniversal;
+        // Descap. período = aportes (saída de caixa) + descaps universais efetivas
+        let descapPeriodo = aportePeriodo + descapUniversalEfetiva;
 
         // ── 4. Reajuste do bem: apenas no aniversario anual ──
         if (bemValor0 > 0) {
@@ -1664,6 +1671,8 @@ function calcAvista(sc) {
             // Ajusta totalAportado para refletir a retirada do principal
             totalAportado -= bemValor * (1 - propRend);
             if (totalAportado < 0) totalAportado = 0;
+            // Valor do bem entra na descap do período da aquisição
+            descapPeriodo += bemValor;
         }
 
         descapAcum += descapPeriodo;
@@ -1672,8 +1681,8 @@ function calcAvista(sc) {
         const rendAcum2   = Math.max(0, patBruto - totalAportado);
         const irFinal     = rendAcum2 * irAliq;
         const patLiqFinal = patBruto - irFinal;
-        // Patrimônio total = financeiro líquido + valor do bem (só após aquisição)
-        const patTotal    = patLiqFinal + (aquisicaoFeita ? bemValor : 0);
+        // Patrimônio total = financeiro BRUTO + valor do bem (só após aquisição)
+        const patTotal    = patBruto + (aquisicaoFeita ? bemValor : 0);
 
         rows.push({
             periodo:      i,
