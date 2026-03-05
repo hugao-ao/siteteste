@@ -1025,6 +1025,20 @@ table.sc-table tr.row-aquisicao td { background: rgba(212,175,55,0.08); border-t
             </div>
         </div>
 
+        <!-- Quando aplicar (apenas para recorrência única) -->
+        <div id="mf_unico_wrap" style="display:none;">
+            <div class="modal-section-title" style="margin-bottom:8px;">Quando Aplicar</div>
+            <select id="mf_unico_tipo" onchange="toggleUnicoData()">
+                <option value="periodo1">No 1º período da análise</option>
+                <option value="aquisicao">Quando ocorrer a aquisição do bem</option>
+                <option value="data">Em uma data específica</option>
+            </select>
+            <div id="mf_unico_data_wrap" style="display:none;margin-top:8px;">
+                <div style="font-size:.66rem;color:var(--text-faint);margin-bottom:4px;">Data</div>
+                <input type="date" id="mf_unico_data">
+            </div>
+        </div>
+
         <!-- Datas de vigência -->
         <div id="mf_datas_wrap">
             <div class="modal-section-title" style="margin-bottom:10px;">Vigência</div>
@@ -1238,16 +1252,24 @@ function calcDataObjetivo() {
 //  MODAL DE FLUXO: toggle de campos
 // ═══════════════════════════════════════════════════════════════════════════
 function toggleFlowQtd() {
-    const unit      = document.getElementById('mf_unit').value;
-    const nWrap     = document.getElementById('mf_n_wrap');
-    const sepLbl    = document.getElementById('mf_sep_label');
-    const corrWrap  = document.getElementById('mf_corr_wrap');
-    const datasWrap = document.getElementById('mf_datas_wrap');
-    const isUnica   = unit === 'unica';
-    if (nWrap)     nWrap.style.display     = isUnica ? 'none' : '';
-    if (sepLbl)    sepLbl.style.display    = isUnica ? 'none' : '';
-    if (corrWrap)  corrWrap.style.display  = isUnica ? 'none' : '';
-    if (datasWrap) datasWrap.style.display = isUnica ? 'none' : '';
+    const unit       = document.getElementById('mf_unit').value;
+    const nWrap      = document.getElementById('mf_n_wrap');
+    const sepLbl     = document.getElementById('mf_sep_label');
+    const corrWrap   = document.getElementById('mf_corr_wrap');
+    const datasWrap  = document.getElementById('mf_datas_wrap');
+    const unicoWrap  = document.getElementById('mf_unico_wrap');
+    const isUnica    = unit === 'unica';
+    if (nWrap)      nWrap.style.display      = isUnica ? 'none' : '';
+    if (sepLbl)     sepLbl.style.display     = isUnica ? 'none' : '';
+    if (corrWrap)   corrWrap.style.display   = isUnica ? 'none' : '';
+    if (datasWrap)  datasWrap.style.display  = isUnica ? 'none' : '';
+    if (unicoWrap)  unicoWrap.style.display  = isUnica ? '' : 'none';
+}
+
+function toggleUnicoData() {
+    const tipo     = document.getElementById('mf_unico_tipo').value;
+    const dataWrap = document.getElementById('mf_unico_data_wrap');
+    if (dataWrap) dataWrap.style.display = tipo === 'data' ? '' : 'none';
 }
 
 function toggleFlowDatas() {
@@ -1301,11 +1323,21 @@ function renderFlowList(type) {
         const vigLabel = item.unit !== 'unica'
             ? ` · ${INICIO_LABELS[item.inicioTipo||'periodo1']} ${FIM_LABELS[item.fimTipo||'ultimo']}` : '';
 
+        // Label de quando o único será aplicado
+        let unicoLabel = '';
+        if (item.unit === 'unica') {
+            const ut = item.unicoTipo || 'periodo1';
+            if (ut === 'periodo1') unicoLabel = 'no 1º período';
+            else if (ut === 'aquisicao') unicoLabel = 'na aquisição do bem';
+            else if (ut === 'data' && item.unicoData) unicoLabel = `em ${new Date(item.unicoData+'T00:00:00').toLocaleDateString('pt-BR')}`;
+            else unicoLabel = 'data não definida';
+        }
+
         return `
         <div class="flow-item" data-id="${item.id}" data-type="${type}">
             <div class="flow-info">
                 ${desc}${fmtBRLCompact(item.valor)} — ${freqLabel}
-                <small>${item.unit !== 'unica' ? (corrLabel || 'sem correção pela inflação') + varLabel + vigLabel : 'sem recorrência'}</small>
+                <small>${item.unit !== 'unica' ? (corrLabel || 'sem correção pela inflação') + varLabel + vigLabel : unicoLabel}</small>
             </div>
             <div class="flow-item-actions">
                 <button class="btn-icon-sm edit" title="Editar" onclick="openFlowModal('${type}', ${item.id})">✎</button>
@@ -1351,6 +1383,8 @@ function openFlowModal(type, editId) {
         document.getElementById('mf_fim_tipo').value     = item.fimTipo     || 'ultimo';
         document.getElementById('mf_inicio_data').value  = item.inicioData  || '';
         document.getElementById('mf_fim_data').value     = item.fimData     || '';
+        document.getElementById('mf_unico_tipo').value   = item.unicoTipo   || 'periodo1';
+        document.getElementById('mf_unico_data').value   = item.unicoData   || '';
         if (!isAporte) {
             document.getElementById('mf_varia_inflacao').checked = !!item.variaInflacao;
             document.getElementById('mf_taxa_pre').value = item.taxaPre || '';
@@ -1367,6 +1401,8 @@ function openFlowModal(type, editId) {
         document.getElementById('mf_fim_tipo').value     = 'ultimo';
         document.getElementById('mf_inicio_data').value  = '';
         document.getElementById('mf_fim_data').value     = '';
+        document.getElementById('mf_unico_tipo').value   = 'periodo1';
+        document.getElementById('mf_unico_data').value   = '';
         if (!isAporte) {
             document.getElementById('mf_varia_inflacao').checked = false;
             document.getElementById('mf_taxa_pre').value = '';
@@ -1378,6 +1414,7 @@ function openFlowModal(type, editId) {
     document.getElementById('modal-flow').classList.add('open');
     toggleFlowQtd();
     toggleFlowDatas();
+    toggleUnicoData();
     setTimeout(() => document.getElementById('mf_valor').focus(), 80);
 }
 
@@ -1401,7 +1438,9 @@ function confirmFlowModal() {
         inicioTipo:   unit === 'unica' ? 'periodo1' : (document.getElementById('mf_inicio_tipo').value || 'periodo1'),
         fimTipo:      unit === 'unica' ? 'ultimo'   : (document.getElementById('mf_fim_tipo').value   || 'ultimo'),
         inicioData:   document.getElementById('mf_inicio_data').value || null,
-        fimData:      document.getElementById('mf_fim_data').value    || null
+        fimData:      document.getElementById('mf_fim_data').value    || null,
+        unicoTipo:    unit === 'unica' ? (document.getElementById('mf_unico_tipo').value || 'periodo1') : null,
+        unicoData:    unit === 'unica' ? (document.getElementById('mf_unico_data').value || null) : null
     };
     if (!isAporte) {
         item.variaInflacao = document.getElementById('mf_varia_inflacao').checked;
@@ -1488,145 +1527,161 @@ function calcAvista(sc) {
     const { n, unit } = getPeriodoInfo();
     if (!n) return [];
 
-    const saldo0       = parseCur('p_saldo');
-    const jurosAa      = parseNum('p_juros') / 100;
-    const irAliq       = parseNum('p_ir') / 100;
-    const inflacaoAa   = parseNum('p_inflacao') / 100;
-    const bemValor0    = parseCur('p_bem_valor');
-    const bemInflacao  = document.getElementById('p_bem_reajuste_inflacao').checked;
-    const bemTaxaPre   = parseNum('p_bem_reajuste_pre') / 100;
-    const bemTaxaPos   = parseNum('p_bem_reajuste_pos') / 100;
+    const saldo0      = parseCur('p_saldo');
+    const jurosAa     = parseNum('p_juros') / 100;
+    const irAliq      = parseNum('p_ir') / 100;
+    const inflacaoAa  = parseNum('p_inflacao') / 100;
+    const bemValor0   = parseCur('p_bem_valor');
+    const bemInflacao = document.getElementById('p_bem_reajuste_inflacao').checked;
+    const bemTaxaPre  = parseNum('p_bem_reajuste_pre') / 100;
+    const bemTaxaPos  = parseNum('p_bem_reajuste_pos') / 100;
 
-    // Taxa por período
-    const periodosMes = unit === 'anos' ? 12 : 1;
-    const jurosPer    = Math.pow(1 + jurosAa, 1 / (12 / periodosMes)) - 1;
-    const inflacaoAa_ = inflacaoAa; // alias
+    // Quantos períodos equivalem a 1 ano
+    const periodosMes = unit === 'anos' ? 1 : 12; // se meses: 12 períodos = 1 ano
+    // Taxa mensal equivalente
+    const jurosPer    = unit === 'anos'
+        ? jurosAa
+        : Math.pow(1 + jurosAa, 1 / 12) - 1;
 
-    let patBruto   = saldo0;
-    let totalAport = saldo0; // total aportado (para cálculo proporcional do IR)
-    let bemValor   = bemValor0;
+    // Rastreamento de aportes únicos já aplicados
+    const unicosAplicados = new Set();
+
+    let patBruto       = saldo0;
+    let totalAportado  = saldo0; // base para cálculo do IR (principal)
+    let bemValor       = bemValor0;
+    let bemAnos        = 0;      // anos completos de reajuste do bem
     let aquisicaoFeita = false;
     let aquisicaoData  = null;
-    let descapAcum = 0;
-    // Contador de aniversarios do bem (para reajuste anual)
-    let bemAniversarios = 0;
+    let descapAcum     = 0;
 
     const rows = [];
 
     for (let i = 1; i <= n; i++) {
         const data = getDataPeriodo(i);
 
-        // ── Aportes do período ──
+        // ── 1. Rendimento do período (sobre saldo do início do período) ──
+        const rendimento = patBruto * jurosPer;
+        patBruto += rendimento;
+
+        // ── 2. Aportes do período ──
         let aportePeriodo = 0;
         aportes.forEach(ap => {
             if (!itemAtivoNoPeriodo(ap, i, data, aquisicaoFeita, aquisicaoData)) return;
+
             if (ap.unit === 'unica') {
-                if (i === 1) aportePeriodo += ap.valor;
+                // Único: aplicar apenas uma vez, no período correto
+                if (unicosAplicados.has('ap_' + ap.id)) return;
+                const deveAplicar = unicoDeveAplicar(ap, i, data, aquisicaoFeita);
+                if (deveAplicar) {
+                    aportePeriodo += ap.valor;
+                    unicosAplicados.add('ap_' + ap.id);
+                }
             } else {
                 const freqEmPeriodos = freqParaPeriodos(ap.unit, ap.n, unit);
                 if (freqEmPeriodos > 0 && (i - 1) % freqEmPeriodos === 0) {
-                    const fator = ap.corrInflacao ? Math.pow(1 + inflacaoAa_, (i - 1) / (12 / periodosMes)) : 1;
+                    // Correção anual pela inflação: aplica a cada 12 períodos (meses) ou 1 período (anos)
+                    const anosDecorridos = unit === 'anos' ? (i - 1) : Math.floor((i - 1) / 12);
+                    const fator = ap.corrInflacao ? Math.pow(1 + inflacaoAa, anosDecorridos) : 1;
                     aportePeriodo += ap.valor * fator;
                 }
             }
         });
 
-        // ── Descapitalizações do período (descaps universais + aportes como saída) ──
-        let descapPeriodo = 0;
-        // Aportes também são descapitalização (saída de caixa para o objetivo)
-        descapPeriodo += aportePeriodo;
+        patBruto      += aportePeriodo;
+        totalAportado += aportePeriodo;
 
+        // ── 3. Descapitalizações universais do período ──
+        let descapUniversal = 0;
         if (sc.usaDescaps) {
             descaps.forEach(dc => {
                 if (!itemAtivoNoPeriodo(dc, i, data, aquisicaoFeita, aquisicaoData)) return;
-                let valorDc = dc.valor;
-                // Variação do valor da descap
-                if (dc.variaInflacao) {
-                    valorDc *= Math.pow(1 + inflacaoAa_, (i - 1) / (12 / periodosMes));
-                } else {
-                    const taxaPre = (dc.taxaPre || 0) / 100;
-                    const taxaPos = (dc.taxaPos || 0) / 100;
-                    if (!aquisicaoFeita && taxaPre !== 0) {
-                        valorDc *= Math.pow(1 + taxaPre, (i - 1) / (12 / periodosMes));
-                    } else if (aquisicaoFeita && taxaPos !== 0) {
-                        valorDc *= Math.pow(1 + taxaPos, (i - 1) / (12 / periodosMes));
-                    }
-                }
 
                 if (dc.unit === 'unica') {
-                    if (i === 1) descapPeriodo += valorDc;
+                    if (unicosAplicados.has('dc_' + dc.id)) return;
+                    const deveAplicar = unicoDeveAplicar(dc, i, data, aquisicaoFeita);
+                    if (deveAplicar) {
+                        let valorDc = dc.valor;
+                        descapUniversal += valorDc;
+                        unicosAplicados.add('dc_' + dc.id);
+                    }
                 } else {
                     const freqEmPeriodos = freqParaPeriodos(dc.unit, dc.n, unit);
                     if (freqEmPeriodos > 0 && (i - 1) % freqEmPeriodos === 0) {
-                        descapPeriodo += valorDc;
+                        let valorDc = dc.valor;
+                        const anosDecorridos = unit === 'anos' ? (i - 1) : Math.floor((i - 1) / 12);
+                        if (dc.variaInflacao) {
+                            valorDc *= Math.pow(1 + inflacaoAa, anosDecorridos);
+                        } else {
+                            const taxa = (!aquisicaoFeita ? (dc.taxaPre || 0) : (dc.taxaPos || 0)) / 100;
+                            if (taxa !== 0) valorDc *= Math.pow(1 + taxa, anosDecorridos);
+                        }
+                        descapUniversal += valorDc;
                     }
                 }
             });
         }
 
-        // ── Rendimento do período ──
-        const rendimento = patBruto * jurosPer;
+        patBruto -= descapUniversal;
+        if (patBruto < 0) patBruto = 0;
 
-        // ── Atualizar patrimônio bruto (aportes entram, descaps saem) ──
-        // Nota: aportes já estão em descapPeriodo, mas também entram no patrimônio
-        patBruto = patBruto + rendimento + aportePeriodo - (descapPeriodo - aportePeriodo);
-        totalAport += aportePeriodo;
+        // Descap. período = aportes (saída de caixa) + descaps universais
+        const descapPeriodo = aportePeriodo + descapUniversal;
 
-        // ── Reajuste do bem: apenas no aniversario (a cada 12 meses / 1 ano) ──
-        if (!aquisicaoFeita && bemValor0 > 0) {
-            // Contar aniversarios: a cada periodosMes períodos = 1 ano
-            if (i % periodosMes === 0) {
-                bemAniversarios++;
-                if (bemInflacao) {
-                    bemValor = bemValor0 * Math.pow(1 + inflacaoAa_, bemAniversarios);
+        // ── 4. Reajuste do bem: apenas no aniversario anual ──
+        if (bemValor0 > 0) {
+            // Aniversario = quando completou mais um ano (a cada 12 meses ou a cada 1 ano)
+            const anoAtual = unit === 'anos' ? i : Math.floor(i / 12);
+            if (anoAtual > bemAnos) {
+                bemAnos = anoAtual;
+                if (!aquisicaoFeita) {
+                    bemValor = bemInflacao
+                        ? bemValor0 * Math.pow(1 + inflacaoAa, bemAnos)
+                        : bemValor0 * Math.pow(1 + bemTaxaPre, bemAnos);
                 } else {
-                    bemValor = bemValor0 * Math.pow(1 + bemTaxaPre, bemAniversarios);
-                }
-            }
-        } else if (aquisicaoFeita && bemValor0 > 0) {
-            // Pós-aquisição: reajuste anual também só no aniversario
-            if (i % periodosMes === 0) {
-                if (bemInflacao) {
-                    bemValor *= (1 + inflacaoAa_);
-                } else {
-                    bemValor *= (1 + bemTaxaPos);
+                    bemValor = bemInflacao
+                        ? bemValor * (1 + inflacaoAa)
+                        : bemValor * (1 + bemTaxaPos);
                 }
             }
         }
 
-        // ── Verificar aquisição ──
-        // IR proporcional: rendimentos = patBruto - totalAport
-        const rendAcum = Math.max(0, patBruto - totalAport);
+        // ── 5. Calcular IR acumulado (sobre rendimentos: patBruto - totalAportado) ──
+        const rendAcum = Math.max(0, patBruto - totalAportado);
         const irAcum   = rendAcum * irAliq;
         const patLiq   = patBruto - irAcum;
 
+        // ── 6. Verificar aquisição ──
         let isAquisicao = false;
         if (!aquisicaoFeita && bemValor0 > 0 && patLiq >= bemValor) {
             isAquisicao    = true;
             aquisicaoFeita = true;
             aquisicaoData  = data;
-            // Saque do bem: reduz patBruto proporcionalmente
-            const propRend = Math.min(1, rendAcum / Math.max(1, patBruto));
+            // Saque do bem: desconta do patrimônio bruto
+            // IR incide sobre a fração de rendimentos no saque
+            const propRend = patBruto > 0 ? Math.min(1, rendAcum / patBruto) : 0;
             const irSaque  = bemValor * propRend * irAliq;
             patBruto      -= (bemValor + irSaque);
-            totalAport    -= bemValor * (1 - propRend);
+            // Ajusta totalAportado para refletir a retirada do principal
+            totalAportado -= bemValor * (1 - propRend);
+            if (totalAportado < 0) totalAportado = 0;
         }
 
         descapAcum += descapPeriodo;
 
-        // Recalcular IR após possível aquisição
-        const rendAcum2 = Math.max(0, patBruto - totalAport);
-        const irFinal   = rendAcum2 * irAliq;
+        // ── 7. Recalcular IR final após possível aquisição ──
+        const rendAcum2   = Math.max(0, patBruto - totalAportado);
+        const irFinal     = rendAcum2 * irAliq;
         const patLiqFinal = patBruto - irFinal;
-        const patTotal  = patLiqFinal + (aquisicaoFeita ? bemValor : 0);
+        // Patrimônio total = financeiro líquido + valor do bem (só após aquisição)
+        const patTotal    = patLiqFinal + (aquisicaoFeita ? bemValor : 0);
 
         rows.push({
-            periodo: i,
+            periodo:      i,
             data,
-            valorBem:      bemValor0 > 0 ? bemValor : null,
+            valorBem:     bemValor0 > 0 ? bemValor : null,
             patBruto,
-            ir:            irFinal,
-            patLiquido:    patLiqFinal,
+            ir:           irFinal,
+            patLiquido:   patLiqFinal,
             descapPeriodo,
             descapAcum,
             patTotal,
@@ -1635,6 +1690,22 @@ function calcAvista(sc) {
     }
 
     return rows;
+}
+
+/**
+ * Verifica se um item ÚNICO deve ser aplicado no período i.
+ * Considera unicoTipo (periodo1=1º período, aquisicao=quando ocorrer, data=data específica)
+ */
+function unicoDeveAplicar(item, i, data, aquisicaoFeita) {
+    const tipo = item.unicoTipo || 'periodo1';
+    if (tipo === 'periodo1') return i === 1;
+    if (tipo === 'aquisicao') return aquisicaoFeita; // aplica no período em que ocorreu
+    if (tipo === 'data' && item.unicoData) {
+        const dtAlvo = new Date(item.unicoData + 'T00:00:00');
+        // Aplica no período cuja data seja >= dtAlvo (primeira vez)
+        return data && data >= dtAlvo;
+    }
+    return i === 1;
 }
 
 /** Converte frequência de um item para número de períodos da tabela */
