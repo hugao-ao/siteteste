@@ -4,6 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Simulador Financeiro</title>
+<link rel="stylesheet" href="../assets/style.css">
+<script src="../assets/layout.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
 <style>
 /* ── RESET & BASE ─────────────────────────────────────────────────────────── */
@@ -35,7 +37,18 @@ body {
     color: var(--text);
     font-family: 'Segoe UI', system-ui, sans-serif;
     min-height: 100vh;
+    padding: 0;
+    display: flex;
+}
+.main-content {
+    flex: 1;
+    margin-left: 260px;
+    min-height: 100vh;
+    width: calc(100% - 260px);
+    background-color: var(--bg);
     padding: 0 0 60px;
+    display: flex;
+    flex-direction: column;
 }
 
 /* ── HEADER ──────────────────────────────────────────────────────────────── */
@@ -524,13 +537,13 @@ tr.row-total td {
 </style>
 </head>
 <body>
-
+<div id="sidebar-container" class="sidebar"></div>
+<main class="main-content">
 <!-- ── HEADER ──────────────────────────────────────────────────────────── -->
 <header class="header">
     <h1>Simulador Financeiro</h1>
     <span>Comparativo de Cenários · Patrimônio &amp; Descapitalização</span>
 </header>
-
 <div class="main-wrap">
 
     <!-- ── PARÂMETROS GERAIS ─────────────────────────────────────────── -->
@@ -1056,5 +1069,6 @@ document.getElementById('modal-del').addEventListener('click', e => {
     renderChart();
 })();
 </script>
+</main>
 </body>
 </html>
