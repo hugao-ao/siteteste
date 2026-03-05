@@ -508,6 +508,61 @@ td.cell-empty     { color: var(--text-faint); font-size: 0.70rem; font-style: it
 }
 
 /* ── MODAL DE CENÁRIO EXPANDIDO ──────────────────────────────────────────── */
+.scenario-table-outer {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    margin-top: .5rem;
+}
+.sc-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: .72rem;
+    white-space: nowrap;
+}
+.sc-table th {
+    background: rgba(255,255,255,.04);
+    color: var(--text-faint);
+    font-weight: 600;
+    padding: .35rem .6rem;
+    text-align: right;
+    border-bottom: 1px solid rgba(255,255,255,.08);
+}
+.sc-table th:first-child { text-align: left; }
+.sc-table td {
+    padding: .3rem .6rem;
+    text-align: right;
+    border-bottom: 1px solid rgba(255,255,255,.04);
+    color: var(--text-main);
+}
+.sc-table td:first-child { text-align: left; }
+.sc-table tr.row-aquisicao td { background: rgba(212,175,55,.12); }
+.sc-table .val-pos  { color: var(--green); }
+.sc-table .val-neg  { color: var(--red); }
+.sc-table .val-gold { color: var(--gold); }
+.scenario-summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: .5rem;
+    margin-top: .4rem;
+}
+.summary-item {
+    background: rgba(255,255,255,.04);
+    border-radius: 6px;
+    padding: .4rem .6rem;
+}
+.summary-item .s-label {
+    font-size: .65rem;
+    color: var(--text-faint);
+    margin-bottom: .15rem;
+}
+.summary-item .s-value {
+    font-size: .82rem;
+    font-weight: 700;
+    color: var(--text-main);
+}
+.summary-item .s-value.highlight { color: var(--gold); }
+.summary-item .s-value.green     { color: var(--green); }
+.summary-item .s-value.red       { color: var(--red); }
 .modal-section-title {
     font-size: 0.65rem;
     font-weight: 700;
@@ -872,7 +927,7 @@ table.sc-table tr.row-aquisicao td { background: rgba(212,175,55,0.08); border-t
         <!-- Checkbox: terá descapitalizações universais? -->
         <div id="modal-descaps-wrap">
             <div class="check-row">
-                <input type="checkbox" id="modal-usa-descaps" checked>
+                <input type="checkbox" id="modal-usa-descaps" checked onchange="renderModalScenarioDetail()">
                 <label for="modal-usa-descaps">Terá descapitalização universal</label>
             </div>
         </div>
@@ -881,6 +936,26 @@ table.sc-table tr.row-aquisicao td { background: rgba(212,175,55,0.08); border-t
         <div id="modal-params-resumo-wrap">
             <div class="modal-section-title">Parâmetros Gerais Ativos</div>
             <div class="params-chips" id="modal-params-chips"></div>
+        </div>
+
+        <!-- Resumo do cenário -->
+        <div id="modal-scenario-resumo-wrap" style="display:none;">
+            <div class="modal-section-title">Resumo</div>
+            <div class="scenario-summary" id="modal-scenario-resumo"></div>
+        </div>
+
+        <!-- Gráfico do cenário -->
+        <div id="modal-scenario-chart-wrap" style="display:none;">
+            <div class="modal-section-title">Evolução</div>
+            <div style="position:relative;height:200px;">
+                <canvas id="modal-sc-chart"></canvas>
+            </div>
+        </div>
+
+        <!-- Tabela detalhada do cenário -->
+        <div id="modal-scenario-table-wrap" style="display:none;">
+            <div class="modal-section-title">Tabela Detalhada</div>
+            <div class="scenario-table-outer" id="modal-scenario-table"></div>
         </div>
 
         <div class="modal-footer">
@@ -1885,8 +1960,130 @@ function buildParamsChips() {
     return chips.map(c => `<span class="param-chip">${c}</span>`).join('');
 }
 
+let _modalScChart = null;
+
 function onTipoCenarioChange() {
     // Por enquanto só tem "À Vista", mas preparado para expansão
+    renderModalScenarioDetail();
+}
+
+/**
+ * Renderiza resumo, gráfico e tabela dentro do modal do cenário.
+ * Usa um cenário temporário com os dados do formulário do modal.
+ */
+function renderModalScenarioDetail() {
+    const tipo       = document.getElementById('modal-scenario-tipo').value;
+    const usaDescaps = document.getElementById('modal-usa-descaps').checked;
+    const name       = document.getElementById('modal-scenario-name').value.trim() || 'Prévia';
+    const color      = _editId ? (scenarios.find(s => s.id === _editId)?.color || PALETTE[0]) : PALETTE[scenarios.length % PALETTE.length];
+
+    // Cenário temporário
+    const scTemp = { id: -1, name, color, tipo, usaDescaps };
+    const rows   = tipo === 'avista' ? calcAvista(scTemp) : [];
+
+    const resumoWrap = document.getElementById('modal-scenario-resumo-wrap');
+    const chartWrap  = document.getElementById('modal-scenario-chart-wrap');
+    const tableWrap  = document.getElementById('modal-scenario-table-wrap');
+
+    if (rows.length === 0) {
+        if (resumoWrap) resumoWrap.style.display = 'none';
+        if (chartWrap)  chartWrap.style.display  = 'none';
+        if (tableWrap)  tableWrap.style.display  = 'none';
+        return;
+    }
+
+    // ── Resumo ──
+    const { label } = getPeriodoInfo();
+    const bemValor0    = parseCur('p_bem_valor');
+    const aquisicaoRow = rows.find(r => r.isAquisicao);
+    const ultimaRow    = rows[rows.length - 1];
+
+    const resumoItems = [];
+    if (aquisicaoRow) {
+        resumoItems.push({ label: 'Aquisição no', value: `${label} ${aquisicaoRow.periodo}${aquisicaoRow.data ? ' (' + fmtMesAno(aquisicaoRow.data) + ')' : ''}`, cls: 'highlight' });
+        resumoItems.push({ label: 'Valor do Bem na Aquisição', value: fmtBRL(aquisicaoRow.valorBem), cls: '' });
+        resumoItems.push({ label: 'Patrim. Líquido na Aquisição', value: fmtBRL(aquisicaoRow.patLiquido), cls: 'green' });
+        resumoItems.push({ label: 'Total Descapitalizado até Aquisição', value: fmtBRL(aquisicaoRow.descapAcum), cls: 'red' });
+        if (bemValor0 > 0 && aquisicaoRow.valorBem) {
+            const valorizacao = aquisicaoRow.valorBem - bemValor0;
+            resumoItems.push({ label: 'Valorização do Bem até Aquisição', value: fmtBRL(valorizacao), cls: valorizacao >= 0 ? 'green' : 'red' });
+        }
+    } else if (bemValor0 > 0) {
+        resumoItems.push({ label: 'Aquisição', value: 'Não atingida no prazo', cls: 'red' });
+    }
+    if (ultimaRow) {
+        resumoItems.push({ label: 'Patrim. Total no Fim', value: fmtBRL(ultimaRow.patTotal), cls: '' });
+        resumoItems.push({ label: 'Total Descapitalizado', value: fmtBRL(ultimaRow.descapAcum), cls: 'red' });
+    }
+
+    if (resumoWrap) {
+        document.getElementById('modal-scenario-resumo').innerHTML =
+            resumoItems.map(s =>
+                `<div class="summary-item">
+                    <div class="s-label">${escHtml(s.label)}</div>
+                    <div class="s-value ${s.cls}">${s.value}</div>
+                </div>`
+            ).join('');
+        resumoWrap.style.display = resumoItems.length > 0 ? '' : 'none';
+    }
+
+    // ── Gráfico ──
+    if (chartWrap) {
+        chartWrap.style.display = '';
+        const canvas = document.getElementById('modal-sc-chart');
+        if (_modalScChart) { _modalScChart.destroy(); _modalScChart = null; }
+        const chartLabels = rows.map(r => `${label} ${r.periodo}`);
+        const hasBem = bemValor0 > 0;
+        const datasets = [
+            { label: 'Patrim. Total', data: rows.map(r => r.patTotal), borderColor: color, backgroundColor: 'transparent', borderWidth: 2.5, pointRadius: 0, tension: 0.3 },
+            { label: 'Patrim. Líquido', data: rows.map(r => r.patLiquido), borderColor: '#60a5fa', backgroundColor: 'transparent', borderWidth: 1.5, borderDash: [4,3], pointRadius: 0, tension: 0.3 },
+            { label: 'Descap. Acum.', data: rows.map(r => r.descapAcum > 0 ? r.descapAcum : null), borderColor: '#f87171', backgroundColor: 'transparent', borderWidth: 1.5, borderDash: [2,4], pointRadius: 0, tension: 0.3 }
+        ];
+        if (hasBem) datasets.push({ label: 'Valor do Bem', data: rows.map(r => r.valorBem), borderColor: '#d4af37', backgroundColor: 'transparent', borderWidth: 1.5, borderDash: [6,3], pointRadius: 0, tension: 0.3 });
+        _modalScChart = new Chart(canvas.getContext('2d'), {
+            type: 'line',
+            data: { labels: chartLabels, datasets },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                interaction: { mode: 'index', intersect: false },
+                plugins: {
+                    legend: { labels: { color: '#9ca3af', font: { size: 9 }, boxWidth: 12 } },
+                    tooltip: { callbacks: { label: ctx => `${ctx.dataset.label}: ${ctx.parsed.y !== null ? fmtBRL(ctx.parsed.y) : '—'}` } }
+                },
+                scales: {
+                    x: { ticks: { color: '#6b7280', maxRotation: 0, font: { size: 8 } }, grid: { color: 'rgba(255,255,255,0.04)' } },
+                    y: { ticks: { color: '#6b7280', font: { size: 8 }, callback: v => v === null ? '' : 'R$ ' + (v >= 1e6 ? (v/1e6).toFixed(1)+'M' : (v/1e3).toFixed(0)+'k') }, grid: { color: 'rgba(255,255,255,0.04)' } }
+                }
+            }
+        });
+    }
+
+    // ── Tabela ──
+    if (tableWrap) {
+        tableWrap.style.display = '';
+        const hasBem = bemValor0 > 0;
+        let tbl = `<table class="sc-table"><thead><tr>`;
+        tbl += `<th style="text-align:left;">${label}</th>`;
+        if (hasBem) tbl += `<th>Valor do Bem</th>`;
+        tbl += `<th>Patrim. Líquido</th><th>IR Acumulado</th><th>Patrim. Bruto</th><th>Descap. Período</th><th>Descap. Acumulada</th><th>Patrim. Total</th>`;
+        tbl += `</tr></thead><tbody>`;
+        rows.forEach(r => {
+            const cls = r.isAquisicao ? ' class="row-aquisicao"' : '';
+            const dateStr = r.data ? `<span class="period-date">(${fmtMesAno(r.data)})</span>` : '';
+            tbl += `<tr${cls}>`;
+            tbl += `<td><span class="period-num">${label} ${r.periodo}</span>${dateStr}</td>`;
+            if (hasBem) tbl += `<td class="${r.isAquisicao ? 'val-gold' : ''}">${r.valorBem !== null ? fmtBRL(r.valorBem) : '—'}</td>`;
+            tbl += `<td class="${r.patLiquido >= 0 ? 'val-pos' : 'val-neg'}">${fmtBRL(r.patLiquido)}</td>`;
+            tbl += `<td class="val-neg">${r.ir > 0 ? fmtBRL(r.ir) : '—'}</td>`;
+            tbl += `<td>${fmtBRL(r.patBruto)}</td>`;
+            tbl += `<td class="${r.descapPeriodo > 0 ? 'val-neg' : ''}">${r.descapPeriodo > 0 ? fmtBRL(r.descapPeriodo) : '—'}</td>`;
+            tbl += `<td class="${r.descapAcum > 0 ? 'val-neg' : ''}">${r.descapAcum > 0 ? fmtBRL(r.descapAcum) : '—'}</td>`;
+            tbl += `<td class="val-gold">${fmtBRL(r.patTotal)}</td>`;
+            tbl += `</tr>`;
+        });
+        tbl += `</tbody></table>`;
+        document.getElementById('modal-scenario-table').innerHTML = tbl;
+    }
 }
 
 function openAddModal() {
@@ -1901,7 +2098,10 @@ function openAddModal() {
     // Chips de parâmetros
     document.getElementById('modal-params-chips').innerHTML = buildParamsChips();
     document.getElementById('modal-edit').classList.add('open');
-    setTimeout(() => document.getElementById('modal-scenario-name').focus(), 80);
+    setTimeout(() => {
+        document.getElementById('modal-scenario-name').focus();
+        renderModalScenarioDetail();
+    }, 80);
 }
 
 function openEditModal(id) {
@@ -1919,11 +2119,13 @@ function openEditModal(id) {
     setTimeout(() => {
         const inp = document.getElementById('modal-scenario-name');
         inp.focus(); inp.select();
+        renderModalScenarioDetail();
     }, 80);
 }
 
 function closeModal() {
     document.getElementById('modal-edit').classList.remove('open');
+    if (_modalScChart) { _modalScChart.destroy(); _modalScChart = null; }
 }
 
 function confirmModal() {
@@ -1939,6 +2141,7 @@ function confirmModal() {
         const sc = scenarios.find(s => s.id === _editId);
         if (sc) { sc.name = name; sc.tipo = tipo; sc.usaDescaps = usaDescaps; }
     }
+    if (_modalScChart) { _modalScChart.destroy(); _modalScChart = null; }
     closeModal();
     updateCount();
     renderTable();
