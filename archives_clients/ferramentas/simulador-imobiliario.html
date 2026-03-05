@@ -1,0 +1,3151 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulador de Aquisição de Bens - MithraSF</title>
+    <link rel="stylesheet" href="../assets/style.css">
+    <script src="../assets/layout.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* ── BASE ────────────────────────────────────────────────────────────── */
+        .input-card {
+            background-color: rgba(255,255,255,0.02);
+            border: 1px solid rgba(255,255,255,0.05);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+        .section-title {
+            font-size: 1rem;
+            font-weight: bold;
+            color: var(--primary-color);
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .input-group {
+            margin-bottom: 1rem;
+        }
+        .input-group label {
+            display: block;
+            font-size: 0.82rem;
+            color: #9ca3af;
+            margin-bottom: 0.4rem;
+        }
+        .input-group input,
+        .input-group select,
+        .input-group textarea {
+            width: 100%;
+            background-color: rgba(0,0,0,0.3);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 6px;
+            padding: 0.65rem 0.75rem;
+            color: white;
+            font-size: 0.95rem;
+            box-sizing: border-box;
+        }
+        .input-group input:focus,
+        .input-group select:focus { outline: none; border-color: var(--primary-color); }
+        .input-row {
+            display: grid;
+            gap: 0.75rem;
+        }
+        .cols-2 { grid-template-columns: 1fr 1fr; }
+        .cols-3 { grid-template-columns: 1fr 1fr 1fr; }
+        .cols-4 { grid-template-columns: 1fr 1fr 1fr 1fr; }
+
+        /* ── BUTTONS ─────────────────────────────────────────────────────────── */
+        .btn-primary {
+            background-color: var(--primary-color);
+            color: black;
+            font-weight: bold;
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            transition: opacity 0.2s;
+            font-size: 0.95rem;
+        }
+        .btn-primary:hover { opacity: 0.85; }
+        .btn-secondary {
+            background-color: rgba(255,255,255,0.08);
+            color: white;
+            font-weight: bold;
+            padding: 0.65rem 1.2rem;
+            border-radius: 8px;
+            border: 1px solid rgba(255,255,255,0.15);
+            cursor: pointer;
+            transition: background 0.2s;
+            font-size: 0.9rem;
+        }
+        .btn-secondary:hover { background-color: rgba(255,255,255,0.15); }
+        .btn-danger {
+            background-color: rgba(239,68,68,0.12);
+            color: #f87171;
+            font-weight: bold;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            border: 1px solid rgba(239,68,68,0.3);
+            cursor: pointer;
+            transition: background 0.2s;
+            font-size: 0.85rem;
+        }
+        .btn-danger:hover { background-color: rgba(239,68,68,0.25); }
+        .btn-edit {
+            background-color: rgba(251,191,36,0.12);
+            color: #fbbf24;
+            font-weight: bold;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            border: 1px solid rgba(251,191,36,0.3);
+            cursor: pointer;
+            transition: background 0.2s;
+            font-size: 0.85rem;
+        }
+        .btn-edit:hover { background-color: rgba(251,191,36,0.25); }
+
+        /* ── MODAL ───────────────────────────────────────────────────────────── */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.75);
+            z-index: 1000;
+            align-items: flex-start;
+            justify-content: center;
+            padding: 2rem 1rem;
+            overflow-y: auto;
+        }
+        .modal-overlay.open { display: flex; }
+        .modal-box {
+            background: #111827;
+            border: 1px solid rgba(212,175,55,0.3);
+            border-radius: 12px;
+            padding: 2rem;
+            width: 100%;
+            max-width: 700px;
+            position: relative;
+        }
+        .modal-title {
+            font-size: 1.1rem;
+            font-weight: bold;
+            color: var(--primary-color);
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .modal-close {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            background: none;
+            border: none;
+            color: #9ca3af;
+            font-size: 1.4rem;
+            cursor: pointer;
+            line-height: 1;
+        }
+        .modal-close:hover { color: white; }
+        .modal-footer {
+            display: flex;
+            justify-content: flex-end;
+            gap: 0.75rem;
+            margin-top: 1.5rem;
+            border-top: 1px solid rgba(255,255,255,0.08);
+            padding-top: 1.25rem;
+        }
+
+        /* ── TABS (modalidade) ───────────────────────────────────────────────── */
+        .tab-bar {
+            display: flex;
+            gap: 0.4rem;
+            flex-wrap: wrap;
+            margin-bottom: 1.5rem;
+        }
+        .tab-btn {
+            padding: 0.4rem 0.9rem;
+            border-radius: 6px;
+            font-size: 0.82rem;
+            cursor: pointer;
+            border: 1px solid rgba(255,255,255,0.12);
+            background: transparent;
+            color: #9ca3af;
+            transition: all 0.2s;
+        }
+        .tab-btn.active {
+            background-color: var(--primary-color);
+            color: black;
+            border-color: var(--primary-color);
+            font-weight: bold;
+        }
+        .tab-panel { display: none; }
+        .tab-panel.active { display: block; }
+
+        /* ── SUB-ABAS CONSÓRCIO ──────────────────────────────────────────────── */
+        .co-tab-btn {
+            padding: 0.35rem 0.75rem;
+            border-radius: 6px;
+            font-size: 0.78rem;
+            cursor: pointer;
+            border: 1px solid rgba(167,139,250,0.3);
+            background: transparent;
+            color: #9ca3af;
+            transition: all 0.2s;
+        }
+        .co-tab-btn.active {
+            background-color: rgba(167,139,250,0.2);
+            color: #a78bfa;
+            border-color: #a78bfa;
+            font-weight: bold;
+        }
+        .co-tab-btn:hover:not(.active) {
+            background: rgba(167,139,250,0.08);
+            color: #c4b5fd;
+        }
+        .co-panel { display: none; }
+        .co-panel.active { display: block; }
+        .co-resultado-box {
+            background: rgba(167,139,250,0.06);
+            border: 1px solid rgba(167,139,250,0.2);
+            border-radius: 8px;
+            padding: 14px 18px;
+            margin-top: 10px;
+        }
+        .co-resultado-box h4 {
+            color: #a78bfa;
+            font-size: 0.85rem;
+            margin-bottom: 10px;
+            font-weight: bold;
+        }
+        .co-kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+        .co-kpi {
+            background: rgba(0,0,0,0.2);
+            border-radius: 6px;
+            padding: 10px 12px;
+        }
+        .co-kpi .co-kpi-label {
+            font-size: 0.7rem;
+            color: #9ca3af;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+        .co-kpi .co-kpi-value {
+            font-size: 1.05rem;
+            font-weight: bold;
+            color: #f0f0f0;
+            margin-top: 2px;
+        }
+        .co-kpi .co-kpi-value.green { color: #4ade80; }
+        .co-kpi .co-kpi-value.red { color: #f87171; }
+        .co-kpi .co-kpi-value.yellow { color: #fbbf24; }
+        .co-alert {
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 0.82rem;
+            margin-top: 8px;
+        }
+        .co-alert.warning { background: rgba(251,191,36,0.1); border-left: 3px solid #fbbf24; color: #fbbf24; }
+        .co-alert.danger  { background: rgba(248,113,113,0.1); border-left: 3px solid #f87171; color: #f87171; }
+        .co-alert.success { background: rgba(74,222,128,0.1);  border-left: 3px solid #4ade80; color: #4ade80; }
+        .co-alert.info    { background: rgba(96,165,250,0.1);  border-left: 3px solid #60a5fa; color: #60a5fa; }
+        .co-estrategia-card {
+            background: rgba(0,0,0,0.25);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 8px;
+            padding: 12px 16px;
+            margin-bottom: 10px;
+        }
+        .co-estrategia-card h5 { color: #a78bfa; font-size: 0.82rem; margin-bottom: 6px; }
+        .co-monte-carlo-bar {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin: 4px 0;
+            font-size: 0.8rem;
+        }
+        .co-monte-carlo-bar .bar-fill {
+            height: 14px;
+            border-radius: 4px;
+            background: linear-gradient(90deg, #a78bfa, #60a5fa);
+            transition: width 0.4s;
+        }
+
+        /* ── CENÁRIOS SALVOS ─────────────────────────────────────────────────── */
+        #cenarios-section {
+            margin-top: 2rem;
+        }
+        .cenarios-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 1rem;
+        }
+        .cenarios-header h3 {
+            font-size: 1rem;
+            font-weight: bold;
+            color: var(--primary-color);
+            margin: 0;
+        }
+        .cenario-card {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 10px;
+            padding: 1rem 1.25rem;
+            margin-bottom: 0.75rem;
+            transition: border-color 0.2s;
+        }
+        .cenario-card:hover { border-color: rgba(212,175,55,0.3); }
+        .cenario-top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 0.6rem;
+        }
+        .cenario-name-input {
+            font-weight: bold;
+            font-size: 0.95rem;
+            color: var(--primary-color);
+            background: transparent;
+            border: none;
+            outline: none;
+            cursor: pointer;
+            max-width: 220px;
+        }
+        .cenario-name-input:focus {
+            border-bottom: 1px solid var(--primary-color);
+            color: white;
+        }
+        .cenario-badge {
+            font-size: 0.72rem;
+            padding: 0.2rem 0.6rem;
+            border-radius: 20px;
+            font-weight: bold;
+            background: rgba(212,175,55,0.15);
+            color: var(--primary-color);
+            border: 1px solid rgba(212,175,55,0.3);
+        }
+        .cenario-params {
+            font-size: 0.75rem;
+            color: #6b7280;
+            margin-bottom: 0.75rem;
+            line-height: 1.7;
+        }
+        .cenario-results {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 0.5rem;
+        }
+        .cenario-result-box {
+            background: rgba(0,0,0,0.25);
+            border-radius: 6px;
+            padding: 0.5rem 0.6rem;
+        }
+        .cenario-result-label {
+            font-size: 0.62rem;
+            color: #6b7280;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            margin-bottom: 0.2rem;
+        }
+        .cenario-result-value {
+            font-size: 0.85rem;
+            font-weight: bold;
+            color: white;
+        }
+        .cenario-result-value.gold { color: var(--primary-color); }
+        .cenario-result-value.green { color: #4ade80; }
+        .cenario-result-value.red { color: #f87171; }
+        .cenario-actions {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 0.75rem;
+            flex-wrap: wrap;
+        }
+
+        /* ── COMPARAÇÃO ──────────────────────────────────────────────────────── */
+        #comparacao-section {
+            margin-top: 2rem;
+        }
+        .comparacao-table-wrap {
+            overflow-x: auto;
+            border-radius: 10px;
+            border: 1px solid rgba(255,255,255,0.08);
+        }
+        .comparacao-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85rem;
+        }
+        .comparacao-table th {
+            background: rgba(255,255,255,0.04);
+            color: var(--primary-color);
+            padding: 0.75rem 1rem;
+            text-align: right;
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+            white-space: nowrap;
+        }
+        .comparacao-table th:first-child { text-align: left; }
+        .comparacao-table td {
+            padding: 0.65rem 1rem;
+            text-align: right;
+            border-bottom: 1px solid rgba(255,255,255,0.04);
+            color: #d1d5db;
+            white-space: nowrap;
+        }
+        .comparacao-table td:first-child { text-align: left; color: #9ca3af; font-size: 0.8rem; }
+        .comparacao-table tr:last-child td { border-bottom: none; }
+        .comparacao-table .best { color: #4ade80; font-weight: bold; }
+        .comparacao-table .worst { color: #f87171; }
+
+        /* ── CHART ───────────────────────────────────────────────────────────── */
+        .chart-container {
+            background-color: rgba(0,0,0,0.2);
+            border: 1px solid rgba(212,175,55,0.3);
+            border-radius: 12px;
+            padding: 1.5rem;
+            height: 380px;
+            position: relative;
+            box-shadow: 0 4px 20px rgba(212,175,55,0.08);
+            width: 100%;
+            overflow: hidden;
+        }
+
+        /* ── AMORTIZAÇÕES EXTRAS ─────────────────────────────────────────────── */
+        .amort-item {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr auto;
+            gap: 0.5rem;
+            align-items: end;
+            margin-bottom: 0.5rem;
+        }
+        .amort-remove {
+            background: none;
+            border: 1px solid rgba(239,68,68,0.4);
+            color: #f87171;
+            border-radius: 4px;
+            cursor: pointer;
+            padding: 0.5rem 0.6rem;
+            font-size: 0.9rem;
+        }
+
+        /* ── MISC ────────────────────────────────────────────────────────────── */
+        .divider {
+            border: none;
+            border-top: 1px solid rgba(255,255,255,0.07);
+            margin: 1.25rem 0;
+        }
+        .hint {
+            font-size: 0.75rem;
+            color: #6b7280;
+            margin-top: 0.3rem;
+        }
+        .badge-modalidade {
+            display: inline-block;
+            font-size: 0.7rem;
+            padding: 0.15rem 0.5rem;
+            border-radius: 20px;
+            font-weight: bold;
+            margin-left: 0.5rem;
+        }
+        .badge-avista   { background: rgba(74,222,128,0.15); color: #4ade80; border: 1px solid rgba(74,222,128,0.3); }
+        .badge-aluguel  { background: rgba(96,165,250,0.15); color: #60a5fa; border: 1px solid rgba(96,165,250,0.3); }
+        .badge-sac      { background: rgba(251,191,36,0.15); color: #fbbf24; border: 1px solid rgba(251,191,36,0.3); }
+        .badge-price    { background: rgba(251,146,60,0.15); color: #fb923c; border: 1px solid rgba(251,146,60,0.3); }
+        .badge-consorcio{ background: rgba(167,139,250,0.15); color: #a78bfa; border: 1px solid rgba(167,139,250,0.3); }
+        .badge-custom   { background: rgba(244,114,182,0.15); color: #f472b6; border: 1px solid rgba(244,114,182,0.3); }
+        .badge-oport    { background: rgba(34,211,238,0.15); color: #22d3ee; border: 1px solid rgba(34,211,238,0.3); }
+
+        /* ── CARD STATES ─────────────────────────────────────────────────────── */
+        .cenario-card.recolhido .cenario-body { display: none; }
+        .cenario-card.recolhido { padding: 0.6rem 1.25rem; }
+        .cenario-card.recolhido .cenario-top { margin-bottom: 0; }
+        .btn-recolher {
+            background: none;
+            border: 1px solid rgba(255,255,255,0.1);
+            color: #6b7280;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.72rem;
+            padding: 0.2rem 0.55rem;
+            transition: all 0.2s;
+        }
+        .btn-recolher:hover { background: rgba(255,255,255,0.08); color: #d1d5db; }
+        .btn-detalhes {
+            background-color: rgba(34,211,238,0.1);
+            color: #22d3ee;
+            font-weight: bold;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            border: 1px solid rgba(34,211,238,0.3);
+            cursor: pointer;
+            transition: background 0.2s;
+            font-size: 0.85rem;
+        }
+        .btn-detalhes:hover { background-color: rgba(34,211,238,0.2); }
+        /* Painel de detalhes */
+        .cenario-detalhes {
+            display: none;
+            margin-top: 1.25rem;
+            border-top: 1px solid rgba(255,255,255,0.07);
+            padding-top: 1.25rem;
+        }
+        .cenario-detalhes.open { display: block; }
+        .detalhe-explicacao {
+            background: rgba(34,211,238,0.05);
+            border: 1px solid rgba(34,211,238,0.15);
+            border-radius: 8px;
+            padding: 1rem 1.25rem;
+            margin-bottom: 1.25rem;
+            font-size: 0.85rem;
+            color: #d1d5db;
+            line-height: 1.7;
+        }
+        .detalhe-explicacao strong { color: #22d3ee; }
+        .detalhe-section-title {
+            font-size: 0.85rem;
+            font-weight: bold;
+            color: var(--primary-color);
+            margin: 1rem 0 0.6rem;
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+        .detalhe-roteiro {
+            font-size: 0.82rem;
+            color: #9ca3af;
+            line-height: 1.9;
+            margin-bottom: 1rem;
+        }
+        .detalhe-roteiro .evento {
+            display: flex;
+            gap: 0.5rem;
+            padding: 0.3rem 0;
+            border-bottom: 1px solid rgba(255,255,255,0.04);
+        }
+        .detalhe-roteiro .evento:last-child { border-bottom: none; }
+        .evento-mes {
+            min-width: 70px;
+            color: var(--primary-color);
+            font-weight: bold;
+            font-size: 0.78rem;
+        }
+        .evento-desc { color: #d1d5db; }
+        /* Tabela de amortização */
+        .amort-table-wrap {
+            overflow-x: auto;
+            border-radius: 8px;
+            border: 1px solid rgba(255,255,255,0.07);
+            margin-bottom: 1rem;
+            max-height: 320px;
+            overflow-y: auto;
+        }
+        .amort-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.78rem;
+        }
+        .amort-table th {
+            background: rgba(255,255,255,0.04);
+            color: var(--primary-color);
+            padding: 0.5rem 0.75rem;
+            text-align: right;
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+            position: sticky;
+            top: 0;
+            white-space: nowrap;
+        }
+        .amort-table th:first-child { text-align: center; }
+        .amort-table td {
+            padding: 0.4rem 0.75rem;
+            text-align: right;
+            border-bottom: 1px solid rgba(255,255,255,0.03);
+            color: #d1d5db;
+            white-space: nowrap;
+        }
+        .amort-table td:first-child { text-align: center; color: #6b7280; }
+        .amort-table tr:hover { background: rgba(255,255,255,0.02); }
+        .amort-table .destaque { background: rgba(212,175,55,0.08); }
+        .detalhe-chart-wrap {
+            background: rgba(0,0,0,0.2);
+            border: 1px solid rgba(212,175,55,0.2);
+            border-radius: 10px;
+            padding: 1rem;
+            height: 260px;
+            position: relative;
+            margin-bottom: 1rem;
+        }
+        @media (max-width: 640px) {
+            .cols-2, .cols-3, .cols-4 { grid-template-columns: 1fr; }
+            .cenario-results { grid-template-columns: 1fr 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <div id="sidebar-container" class="sidebar"></div>
+    <main class="main-content">
+        <div class="container">
+            <!-- Header -->
+            <header class="flex items-center gap-4 mb-8">
+                <a href="../ferramentas.html" class="text-gray-400 hover:text-white text-xl">←</a>
+                <div>
+                    <div class="flex items-center gap-2">
+                        <span class="text-yellow-500 text-2xl">🏠</span>
+                        <h1 class="text-2xl font-bold m-0">Simulador de Aquisição de Bens</h1>
+                    </div>
+                    <p class="text-gray-400 text-sm">Compare cenários de compra à vista, aluguel, financiamento, consórcio e crédito personalizado.</p>
+                </div>
+            </header>
+
+            <!-- Parâmetros Globais do Bem -->
+            <div class="input-card">
+                <div class="section-title">🎯 Parâmetros Globais do Bem</div>
+                <div class="input-row cols-3">
+                    <div class="input-group">
+                        <label>Tipo de Bem</label>
+                        <select id="g_tipoBem">
+                            <option value="imovel">Imóvel</option>
+                            <option value="veiculo">Veículo</option>
+                            <option value="outro">Outro</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label>Valor de Mercado do Bem (R$)</label>
+                        <input type="text" id="g_valorBem" placeholder="Ex: 500.000,00" oninput="fmtCur(this)">
+                    </div>
+                    <div class="input-group">
+                        <label>Prazo de Análise
+                            <span style="margin-left:0.5rem;">
+                                <button type="button" id="btn-prazo-anos" onclick="setPrazoUnidade('anos')" style="font-size:0.72rem;padding:0.15rem 0.5rem;border-radius:4px 0 0 4px;border:1px solid rgba(212,175,55,0.5);background:rgba(212,175,55,0.25);color:#fbbf24;cursor:pointer;font-weight:bold;">Anos</button><button type="button" id="btn-prazo-meses" onclick="setPrazoUnidade('meses')" style="font-size:0.72rem;padding:0.15rem 0.5rem;border-radius:0 4px 4px 0;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.05);color:#6b7280;cursor:pointer;font-weight:bold;">Meses</button>
+                            </span>
+                        </label>
+                        <div style="display:flex;gap:0.5rem;align-items:center;">
+                            <input type="number" id="g_prazoAnalise" value="10" min="1" max="600" style="flex:1;" oninput="atualizarConversaoPrazo()">
+                            <span id="g_prazoUnidadeLabel" style="color:#9ca3af;font-size:0.82rem;white-space:nowrap;">anos</span>
+                        </div>
+                        <div class="hint" id="g_prazoConversao">= 120 meses</div>
+                    </div>
+                </div>
+                <div class="input-row cols-3">
+                    <div class="input-group">
+                        <label>Valorização/Depreciação anual do bem (%)</label>
+                        <input type="number" id="g_valorizacao" placeholder="Ex: 4 ou -15" step="0.1">
+                        <div class="hint">Positivo = valoriza. Negativo = deprecia.</div>
+                    </div>
+                    <div class="input-group">
+                        <label>Inflação anual projetada (% a.a.)</label>
+                        <input type="number" id="g_inflacao" placeholder="Ex: 4.5" step="0.1">
+                    </div>
+                    <div class="input-group">
+                        <label>Custos mensais de posse do bem (R$)</label>
+                        <input type="text" id="g_custosMensais" placeholder="IPTU, cond., seguro, manut." oninput="fmtCur(this)">
+                        <div class="hint">Condomínio, IPTU/IPVA, seguro, manutenção, etc.</div>
+                    </div>
+                </div>
+                <div class="input-row cols-2">
+                    <div class="input-group">
+                        <label>Custos de aquisição (R$)</label>
+                        <input type="text" id="g_custosAquisicao" placeholder="ITBI, cartório, despachante..." oninput="fmtCur(this)">
+                        <div class="hint">Aplicável aos cenários que envolvem compra.</div>
+                    </div>
+                    <div class="input-group">
+                        <label>Custo de oportunidade — Rendimento líquido do capital (% a.a.)</label>
+                        <input type="number" id="g_rendimento" placeholder="Ex: 10.5" step="0.1">
+                        <div class="hint">Retorno líquido se o capital fosse investido em vez de imobilizado.</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Botão novo cenário -->
+            <div style="display:flex; gap:0.75rem; flex-wrap:wrap; margin-bottom:1.5rem;">
+                <button class="btn-primary" onclick="abrirModal()">+ Adicionar Cenário</button>
+                <button class="btn-secondary" onclick="adicionarCenarioOportunidade()">+ Cenário: Só Investir (Custo de Oportunidade)</button>
+                <button class="btn-secondary" onclick="calcularComparacao()" id="btnComparar" style="margin-left:auto;">📊 Comparar Todos</button>
+            </div>
+
+            <!-- Cenários Salvos -->
+            <div id="cenarios-section">
+                <div class="cenarios-header">
+                    <h3>📋 Cenários Salvos</h3>
+                    <span id="cenarios-count" style="font-size:0.75rem;color:#9ca3af;">0 cenário(s)</span>
+                </div>
+                <div id="cenarios-list">
+                    <div style="text-align:center;color:#6b7280;font-size:0.85rem;padding:2rem;">
+                        Nenhum cenário adicionado ainda. Clique em "+ Adicionar Cenário" para começar.
+                    </div>
+                </div>
+            </div>
+
+            <!-- Comparação -->
+            <div id="comparacao-section" style="display:none;">
+                <hr class="divider">
+                <div class="section-title">📊 Comparação entre Cenários</div>
+                <div class="chart-container" style="margin-bottom:1.5rem;">
+                    <canvas id="comparacaoChart"></canvas>
+                </div>
+                <div class="comparacao-table-wrap">
+                    <table class="comparacao-table" id="comparacaoTable">
+                        <thead></thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- ══════════════════════════════════════════════════════════════════════
+         MODAL DE CRIAÇÃO/EDIÇÃO DE CENÁRIO
+    ══════════════════════════════════════════════════════════════════════ -->
+    <div class="modal-overlay" id="modalOverlay">
+        <div class="modal-box">
+            <button class="modal-close" onclick="fecharModal()">✕</button>
+            <div class="modal-title" id="modalTitle">➕ Novo Cenário</div>
+
+            <!-- Nome e Modalidade -->
+            <div class="input-row cols-2" style="margin-bottom:1rem;">
+                <div class="input-group">
+                    <label>Nome do Cenário</label>
+                    <input type="text" id="m_nome" placeholder="Ex: Financiamento Banco X">
+                </div>
+                <div class="input-group">
+                    <label>Modalidade</label>
+                    <select id="m_modalidade" onchange="trocarAba(this.value)">
+                        <option value="avista">Compra à Vista</option>
+                        <option value="aluguel">Aluguel</option>
+                        <option value="sac">Financiamento — Tabela SAC</option>
+                        <option value="price">Financiamento — Tabela Price</option>
+                        <option value="consorcio">Consórcio</option>
+                        <option value="custom">Crédito Personalizado</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- ── À VISTA ────────────────────────────────────────────────── -->
+            <div class="tab-panel active" id="tab-avista">
+                <div class="section-title">💵 Compra à Vista</div>
+                <div class="hint" style="margin-bottom:1rem;">O valor do bem e os custos de aquisição são definidos nos Parâmetros Globais. Aqui você pode sobrescrever o valor se necessário.</div>
+                <div class="input-row cols-2">
+                    <div class="input-group">
+                        <label>Valor pago à vista (R$) — deixe vazio para usar o valor global</label>
+                        <input type="text" id="av_valor" placeholder="Opcional" oninput="fmtCur(this)">
+                    </div>
+                    <div class="input-group">
+                        <label>Custos de aquisição adicionais (R$)</label>
+                        <input type="text" id="av_custosExtra" placeholder="0,00" oninput="fmtCur(this)">
+                    </div>
+                </div>
+            </div>
+
+            <!-- ── ALUGUEL ─────────────────────────────────────────────────── -->
+            <div class="tab-panel" id="tab-aluguel">
+                <div class="section-title">🔑 Aluguel</div>
+                <div class="input-row cols-2">
+                    <div class="input-group">
+                        <label>Aluguel mensal inicial (R$)</label>
+                        <input type="text" id="al_aluguel" placeholder="Ex: 2.500,00" oninput="fmtCur(this)">
+                    </div>
+                    <div class="input-group">
+                        <label>Reajuste anual do aluguel (% a.a.)</label>
+                        <input type="number" id="al_reajuste" placeholder="Ex: 6 (IGP-M ou IPCA)" step="0.1">
+                    </div>
+                </div>
+                <div class="input-row cols-3">
+                    <div class="input-group">
+                        <label>Caução / Depósito inicial (R$)</label>
+                        <input type="text" id="al_caucao" placeholder="0,00" oninput="fmtCur(this)">
+                    </div>
+                    <div class="input-group">
+                        <label>Taxa de administração imobiliária (% do aluguel)</label>
+                        <input type="number" id="al_taxaAdm" placeholder="Ex: 8" step="0.1">
+                    </div>
+                    <div class="input-group">
+                        <label>Custos extras mensais por conta do locatário (R$)</label>
+                        <input type="text" id="al_custosExtra" placeholder="Cond., IPTU..." oninput="fmtCur(this)">
+                    </div>
+                </div>
+                <div class="input-row cols-2">
+                    <div class="input-group">
+                        <label>Capital disponível para investir (R$)</label>
+                        <input type="text" id="al_capital" placeholder="Valor que seria usado na compra" oninput="fmtCur(this)">
+                        <div class="hint">Esse capital fica investido rendendo a taxa de oportunidade global.</div>
+                    </div>
+                    <div class="input-group">
+                        <label>Aporte mensal adicional no investimento (R$)</label>
+                        <input type="text" id="al_aporteInv" placeholder="0,00" oninput="fmtCur(this)">
+                        <div class="hint">Diferença entre o que pagaria de parcela e o que paga de aluguel.</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ── SAC ────────────────────────────────────────────────────── -->
+            <div class="tab-panel" id="tab-sac">
+                <div class="section-title">🏦 Financiamento — Tabela SAC</div>
+                <div class="input-row cols-3">
+                    <div class="input-group">
+                        <label>Entrada (R$)</label>
+                        <input type="text" id="sac_entrada" placeholder="Ex: 100.000,00" oninput="fmtCur(this)">
+                    </div>
+                    <div class="input-group">
+                        <label>Valor financiado (R$) — ou deixe vazio para calcular</label>
+                        <input type="text" id="sac_financiado" placeholder="Calculado automaticamente" oninput="fmtCur(this)">
+                    </div>
+                    <div class="input-group">
+                        <label>Prazo (meses)</label>
+                        <input type="number" id="sac_prazo" placeholder="Ex: 360" min="1">
+                    </div>
+                </div>
+                <div class="input-row cols-3">
+                    <div class="input-group">
+                        <label>Taxa de juros nominal (% a.a.)</label>
+                        <input type="number" id="sac_juros" placeholder="Ex: 10.5" step="0.01">
+                    </div>
+                    <div class="input-group">
+                        <label>CET — Custo Efetivo Total (% a.a.) — opcional</label>
+                        <input type="number" id="sac_cet" placeholder="Se informado, substitui os juros" step="0.01">
+                    </div>
+                    <div class="input-group">
+                        <label>Correção monetária do saldo devedor</label>
+                        <select id="sac_correcao">
+                            <option value="nenhuma">Nenhuma</option>
+                            <option value="tr">TR</option>
+                            <option value="ipca">IPCA</option>
+                            <option value="igpm">IGP-M</option>
+                            <option value="incc">INCC</option>
+                            <option value="custom">Personalizada</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="input-row cols-4">
+                    <div class="input-group">
+                        <label>Índice de correção projetado (% a.a.)</label>
+                        <input type="number" id="sac_indiceCorrecao" placeholder="Ex: 2" step="0.01">
+                    </div>
+                    <div class="input-group">
+                        <label>Seguro MIP (% sobre saldo/mês)</label>
+                        <input type="number" id="sac_mip" placeholder="Ex: 0.03" step="0.001">
+                    </div>
+                    <div class="input-group">
+                        <label>Seguro DFI (% sobre valor do bem/mês)</label>
+                        <input type="number" id="sac_dfi" placeholder="Ex: 0.01" step="0.001">
+                    </div>
+                    <div class="input-group">
+                        <label>Taxa de administração mensal (R$)</label>
+                        <input type="text" id="sac_taxaAdm" placeholder="Ex: 25,00" oninput="fmtCur(this)">
+                    </div>
+                </div>
+                <div class="input-row cols-2">
+                    <div class="input-group">
+                        <label>Carência (meses) — só paga juros</label>
+                        <input type="number" id="sac_carencia" placeholder="0" min="0">
+                    </div>
+                    <div class="input-group">
+                        <label>Tipo de carência</label>
+                        <select id="sac_tipoCarencia">
+                            <option value="paga">Juros pagos mensalmente</option>
+                            <option value="capitaliza">Juros capitalizados ao saldo</option>
+                        </select>
+                    </div>
+                </div>
+                <hr class="divider">
+                <div class="section-title" style="font-size:0.85rem;">Amortizações Extraordinárias</div>
+                <div id="sac_amorts"></div>
+                <button class="btn-secondary" style="width:auto;font-size:0.8rem;padding:0.4rem 0.9rem;" onclick="addAmort('sac')">+ Adicionar Amortização</button>
+                <div class="input-row cols-2" style="margin-top:0.75rem;">
+                    <div class="input-group">
+                        <label>Efeito das amortizações extraordinárias</label>
+                        <select id="sac_efeitoAmort">
+                            <option value="prazo">Reduzir prazo</option>
+                            <option value="parcela">Reduzir parcela</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ── PRICE ──────────────────────────────────────────────────── -->
+            <div class="tab-panel" id="tab-price">
+                <div class="section-title">🏦 Financiamento — Tabela Price</div>
+                <div class="input-row cols-3">
+                    <div class="input-group">
+                        <label>Entrada (R$)</label>
+                        <input type="text" id="pr_entrada" placeholder="Ex: 100.000,00" oninput="fmtCur(this)">
+                    </div>
+                    <div class="input-group">
+                        <label>Valor financiado (R$) — ou deixe vazio para calcular</label>
+                        <input type="text" id="pr_financiado" placeholder="Calculado automaticamente" oninput="fmtCur(this)">
+                    </div>
+                    <div class="input-group">
+                        <label>Prazo (meses)</label>
+                        <input type="number" id="pr_prazo" placeholder="Ex: 360" min="1">
+                    </div>
+                </div>
+                <div class="input-row cols-3">
+                    <div class="input-group">
+                        <label>Taxa de juros nominal (% a.a.)</label>
+                        <input type="number" id="pr_juros" placeholder="Ex: 10.5" step="0.01">
+                    </div>
+                    <div class="input-group">
+                        <label>CET — Custo Efetivo Total (% a.a.) — opcional</label>
+                        <input type="number" id="pr_cet" placeholder="Se informado, substitui os juros" step="0.01">
+                    </div>
+                    <div class="input-group">
+                        <label>Correção monetária do saldo devedor</label>
+                        <select id="pr_correcao">
+                            <option value="nenhuma">Nenhuma</option>
+                            <option value="tr">TR</option>
+                            <option value="ipca">IPCA</option>
+                            <option value="igpm">IGP-M</option>
+                            <option value="incc">INCC</option>
+                            <option value="custom">Personalizada</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="input-row cols-4">
+                    <div class="input-group">
+                        <label>Índice de correção projetado (% a.a.)</label>
+                        <input type="number" id="pr_indiceCorrecao" placeholder="Ex: 2" step="0.01">
+                    </div>
+                    <div class="input-group">
+                        <label>Seguro MIP (% sobre saldo/mês)</label>
+                        <input type="number" id="pr_mip" placeholder="Ex: 0.03" step="0.001">
+                    </div>
+                    <div class="input-group">
+                        <label>Seguro DFI (% sobre valor do bem/mês)</label>
+                        <input type="number" id="pr_dfi" placeholder="Ex: 0.01" step="0.001">
+                    </div>
+                    <div class="input-group">
+                        <label>Taxa de administração mensal (R$)</label>
+                        <input type="text" id="pr_taxaAdm" placeholder="Ex: 25,00" oninput="fmtCur(this)">
+                    </div>
+                </div>
+                <div class="input-row cols-2">
+                    <div class="input-group">
+                        <label>Carência (meses) — só paga juros</label>
+                        <input type="number" id="pr_carencia" placeholder="0" min="0">
+                    </div>
+                    <div class="input-group">
+                        <label>Tipo de carência</label>
+                        <select id="pr_tipoCarencia">
+                            <option value="paga">Juros pagos mensalmente</option>
+                            <option value="capitaliza">Juros capitalizados ao saldo</option>
+                        </select>
+                    </div>
+                </div>
+                <hr class="divider">
+                <div class="section-title" style="font-size:0.85rem;">Amortizações Extraordinárias</div>
+                <div id="pr_amorts"></div>
+                <button class="btn-secondary" style="width:auto;font-size:0.8rem;padding:0.4rem 0.9rem;" onclick="addAmort('pr')">+ Adicionar Amortização</button>
+                <div class="input-row cols-2" style="margin-top:0.75rem;">
+                    <div class="input-group">
+                        <label>Efeito das amortizações extraordinárias</label>
+                        <select id="pr_efeitoAmort">
+                            <option value="prazo">Reduzir prazo</option>
+                            <option value="parcela">Reduzir parcela</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ── CONSÓRCIO ───────────────────────────────────────────────── -->
+            <div class="tab-panel" id="tab-consorcio">
+                <div class="section-title">🔄 Consórcio</div>
+
+                <!-- FORMULÁRIO CONSÓRCIO v3 - baseado nos parâmetros reais do cliente -->
+                <div class="input-row cols-3">
+                    <div class="input-group">
+                        <label>Crédito desejado (R$)</label>
+                        <input type="text" id="co_creditoDesejado" placeholder="Ex: 565.513,92" oninput="fmtCur(this);coCalcCategoria()">
+                        <div class="hint">Valor que você precisa receber (antes do lance embutido).</div>
+                    </div>
+                    <div class="input-group">
+                        <label>Lance Embutido (%)</label>
+                        <input type="number" id="co_lanceEmbutido" placeholder="Ex: 0" value="0" step="0.01" min="0" max="100" oninput="coCalcCategoria()">
+                        <div class="hint">% da carta usado como lance embutido. Reduz o crédito líquido.</div>
+                    </div>
+                    <div class="input-group">
+                        <label>Carta de crédito (R$) — calculado</label>
+                        <input type="text" id="co_carta" placeholder="Calculado automaticamente" readonly style="opacity:0.7;cursor:default;background:rgba(255,255,255,0.03)">
+                        <div class="hint">Carta = Crédito desejado ÷ (1 − Lance Embutido%).</div>
+                    </div>
+                </div>
+                <div class="input-row cols-3">
+                    <div class="input-group">
+                        <label>Taxa de Administração (% total)</label>
+                        <input type="number" id="co_taxaAdm" placeholder="Ex: 20" step="0.01" oninput="coCalcCategoria()">
+                        <div class="hint">% total sobre a carta, diluída no prazo.</div>
+                    </div>
+                    <div class="input-group">
+                        <label>Fundo de Reserva (% total)</label>
+                        <input type="number" id="co_fundoReserva" placeholder="Ex: 2" step="0.01" oninput="coCalcCategoria()">
+                        <div class="hint">% total sobre a carta.</div>
+                    </div>
+                    <div class="input-group">
+                        <label>Seguro (% a.m. sobre a carta)</label>
+                        <input type="number" id="co_seguroPct" placeholder="Ex: 0.035" step="0.001" oninput="coCalcCategoria()">
+                        <div class="hint">Taxa mensal de seguro sobre a carta de crédito.</div>
+                    </div>
+                </div>
+                <div class="input-row cols-3">
+                    <div class="input-group">
+                        <label>CPF / CNPJ</label>
+                        <select id="co_tipoPessoa" onchange="coCalcCategoria()">
+                            <option value="cpf">CPF (Pessoa Física)</option>
+                            <option value="cnpj">CNPJ (Pessoa Jurídica)</option>
+                        </select>
+                        <div class="hint">Tipo de cotista. Pode influenciar o seguro e a contemplação.</div>
+                    </div>
+                    <div class="input-group">
+                        <label>Categoria (R$) — calculado</label>
+                        <input type="text" id="co_categoria" placeholder="Calculado automaticamente" readonly style="opacity:0.7;cursor:default;background:rgba(255,255,255,0.03)">
+                        <div class="hint">Categoria = Carta × (1 + Taxa Adm% + Fundo Reserva%).</div>
+                    </div>
+                    <div class="input-group">
+                        <label>Prazo do grupo (meses)</label>
+                        <input type="number" id="co_prazo" placeholder="Ex: 240" min="1" oninput="coCalcCategoria()">
+                    </div>
+                </div>
+                <div class="input-row cols-4">
+                    <div class="input-group">
+                        <label>Base de Cálculo dos Lances</label>
+                        <select id="co_baseLance" onchange="coCalcCategoria()">
+                            <option value="carta">Carta de crédito</option>
+                            <option value="categoria">Categoria</option>
+                            <option value="saldo">Saldo Devedor</option>
+                        </select>
+                        <div class="hint">Base usada para Lance Fixo e Lance Livre.</div>
+                    </div>
+                    <div class="input-group">
+                        <label>Lance Fixo (%)</label>
+                        <input type="number" id="co_lanceFixoPct" placeholder="Ex: 25" step="0.01" oninput="coCalcCategoria()">
+                        <div class="hint">% mínimo exigido para lance fixo.</div>
+                    </div>
+                    <div class="input-group">
+                        <label>Lance Fixo (R$) — calculado</label>
+                        <input type="text" id="co_lanceFixoValor" placeholder="Calculado automaticamente" readonly style="opacity:0.7;cursor:default;background:rgba(255,255,255,0.03)">
+                    </div>
+                    <div class="input-group">
+                        <label>Lance Livre (%)</label>
+                        <input type="number" id="co_lanceLivrePct" placeholder="Ex: 50" step="0.01" oninput="coCalcCategoria()">
+                        <div class="hint">% que você pretende oferecer como lance livre.</div>
+                    </div>
+                </div>
+                <div class="input-row cols-2">
+                    <div class="input-group">
+                        <label>Lance Livre (R$) — calculado</label>
+                        <input type="text" id="co_lanceLivreValor" placeholder="Calculado automaticamente" readonly style="opacity:0.7;cursor:default;background:rgba(255,255,255,0.03)">
+                    </div>
+                </div>
+                <div class="input-row cols-3">
+                    <div class="input-group">
+                        <label>Tipo de Contemplação</label>
+                        <select id="co_tipoContemp" onchange="coToggleTipoContemp(); coCalcCategoria()">
+                            <option value="sorteio">Sorteio</option>
+                            <option value="lancelivre">Lance Livre</option>
+                            <option value="lancefixo">Lance Fixo</option>
+                        </select>
+                        <div class="hint">Escolha como você pretende ser contemplado.</div>
+                    </div>
+                    <div class="input-group">
+                        <label>Mês estimado de contemplação</label>
+                        <input type="number" id="co_mesContemplacao" placeholder="Ex: 24" min="1" oninput="coCalcCategoria()">
+                        <div class="hint">Mês em que você estima ser contemplado.</div>
+                    </div>
+                    <div class="input-group">
+                        <label>Redutor de Parcela pré-contemp. (%)</label>
+                        <input type="number" id="co_reducaoParcela" placeholder="Ex: 40" step="0.01" oninput="coCalcCategoria()">
+                        <div class="hint">% de redução aplicado à parcela <strong>antes</strong> da contemplação. Reduz a amortização mensal e, consequentemente, o saldo devedor no momento da contemplação.</div>
+                    </div>
+                    <div class="input-group">
+                        <label>Finalidade</label>
+                        <select id="co_finalidade" onchange="coCalcCategoria()">
+                            <option value="compra">Compra de imóvel</option>
+                            <option value="reforma">Reforma</option>
+                            <option value="terreno">Terreno</option>
+                            <option value="comercial">Imóvel comercial</option>
+                            <option value="veiculo">Veículo</option>
+                            <option value="outro">Outro</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="input-row cols-3">
+                    <div class="input-group">
+                        <label>Adesão (%)</label>
+                        <input type="number" id="co_adesaoPct" placeholder="Ex: 2" step="0.01" oninput="coCalcCategoria()">
+                        <div class="hint">% sobre a carta cobrado na adesão.</div>
+                    </div>
+                    <div class="input-group">
+                        <label>Adesão (R$) — calculado</label>
+                        <input type="text" id="co_adesaoValor" placeholder="Calculado automaticamente" readonly style="opacity:0.7;cursor:default;background:rgba(255,255,255,0.03)">
+                    </div>
+                    <div class="input-group">
+                        <label>Redução Pós-Contemplação</label>
+                        <select id="co_posContempOpcao" onchange="coCalcCategoria()">
+                            <option value="parcela">Reduzir parcela (manter prazo)</option>
+                            <option value="prazo">Reduzir prazo (manter parcela)</option>
+                        </select>
+                        <div class="hint">O que fazer com o saldo após ser contemplado.</div>
+                    </div>
+                </div>
+                <div class="input-row cols-3">
+                    <div class="input-group">
+                        <label>Índice de Reajuste</label>
+                        <select id="co_indiceReajuste" onchange="coCalcCategoria()">
+                            <option value="nenhum">Nenhum</option>
+                            <option value="ipca">IPCA</option>
+                            <option value="incc">INCC</option>
+                            <option value="igpm">IGP-M</option>
+                            <option value="custom">Personalizado</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label>Reajuste (% a.a.)</label>
+                        <input type="number" id="co_reajusteAA" placeholder="Ex: 5.5" step="0.01" oninput="coCalcCategoria()">
+                        <div class="hint">Taxa anual de reajuste da carta e das parcelas.</div>
+                    </div>
+                    <div class="input-group">
+                        <label>Parcela inicial (R$) — calculado</label>
+                        <input type="text" id="co_parcelaCalc" placeholder="Calculado automaticamente" readonly style="opacity:0.7;cursor:default;background:rgba(255,255,255,0.03)">
+                        <div class="hint">Categoria ÷ Prazo + Seguro mensal.</div>
+                    </div>
+                </div>
+
+                <!-- Painel de resumo calculado -->
+                <div id="co_resumoCalc" style="margin-top:16px;padding:14px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:8px;display:none">
+                    <div style="font-size:0.78rem;color:#9ca3af;text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px;">Resumo do Consórcio</div>
+                    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;" id="co_resumoGrid"></div>
+                </div>
+
+
+            </div>
+
+            <!-- ── CRÉDITO PERSONALIZADO ───────────────────────────────────── -->
+            <div class="tab-panel" id="tab-custom">
+                <div class="section-title">⚙️ Crédito Personalizado</div>
+                <div class="input-row cols-2">
+                    <div class="input-group">
+                        <label>Nome do tipo de crédito</label>
+                        <input type="text" id="cu_nomeCredito" placeholder="Ex: CDC Banco X, Leasing, Crédito Direto">
+                    </div>
+                    <div class="input-group">
+                        <label>Sistema de amortização</label>
+                        <select id="cu_sistema">
+                            <option value="sac">SAC (amortização constante)</option>
+                            <option value="price">Price (parcela fixa)</option>
+                            <option value="fixo">Parcela fixa definida manualmente</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="input-row cols-3">
+                    <div class="input-group">
+                        <label>Entrada (R$)</label>
+                        <input type="text" id="cu_entrada" placeholder="Ex: 50.000,00" oninput="fmtCur(this)">
+                    </div>
+                    <div class="input-group">
+                        <label>Valor financiado (R$)</label>
+                        <input type="text" id="cu_financiado" placeholder="Calculado automaticamente" oninput="fmtCur(this)">
+                    </div>
+                    <div class="input-group">
+                        <label>Prazo (meses)</label>
+                        <input type="number" id="cu_prazo" placeholder="Ex: 60" min="1">
+                    </div>
+                </div>
+                <div class="input-row cols-3">
+                    <div class="input-group">
+                        <label>Taxa de juros (% a.a.)</label>
+                        <input type="number" id="cu_juros" placeholder="Ex: 18" step="0.01">
+                    </div>
+                    <div class="input-group">
+                        <label>IOF (% sobre o valor financiado)</label>
+                        <input type="number" id="cu_iof" placeholder="Ex: 3" step="0.01">
+                    </div>
+                    <div class="input-group">
+                        <label>Parcela fixa manual (R$) — só se sistema = fixo</label>
+                        <input type="text" id="cu_parcelaFixa" placeholder="0,00" oninput="fmtCur(this)">
+                    </div>
+                </div>
+                <div class="input-row cols-4">
+                    <div class="input-group">
+                        <label>Tarifas mensais fixas (R$)</label>
+                        <input type="text" id="cu_tarifaFixa" placeholder="0,00" oninput="fmtCur(this)">
+                    </div>
+                    <div class="input-group">
+                        <label>Tarifas mensais variáveis (% sobre saldo)</label>
+                        <input type="number" id="cu_tarifaVar" placeholder="Ex: 0.1" step="0.01">
+                    </div>
+                    <div class="input-group">
+                        <label>Seguro mensal (R$)</label>
+                        <input type="text" id="cu_seguro" placeholder="0,00" oninput="fmtCur(this)">
+                    </div>
+                    <div class="input-group">
+                        <label>Seguro mensal variável (% sobre saldo)</label>
+                        <input type="number" id="cu_seguroVar" placeholder="Ex: 0.05" step="0.001">
+                    </div>
+                </div>
+                <div class="input-row cols-3">
+                    <div class="input-group">
+                        <label>Correção monetária</label>
+                        <select id="cu_correcao">
+                            <option value="nenhuma">Nenhuma</option>
+                            <option value="tr">TR</option>
+                            <option value="ipca">IPCA</option>
+                            <option value="igpm">IGP-M</option>
+                            <option value="custom">Personalizada</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label>Índice de correção projetado (% a.a.)</label>
+                        <input type="number" id="cu_indiceCorrecao" placeholder="Ex: 2" step="0.01">
+                    </div>
+                    <div class="input-group">
+                        <label>Valor residual / Balloon (R$)</label>
+                        <input type="text" id="cu_balloon" placeholder="0,00 — parcela final maior" oninput="fmtCur(this)">
+                        <div class="hint">Comum em leasing e CDC de veículos (VRG).</div>
+                    </div>
+                </div>
+                <div class="input-row cols-2">
+                    <div class="input-group">
+                        <label>Carência (meses)</label>
+                        <input type="number" id="cu_carencia" placeholder="0" min="0">
+                    </div>
+                    <div class="input-group">
+                        <label>Tipo de carência</label>
+                        <select id="cu_tipoCarencia">
+                            <option value="paga">Juros pagos mensalmente</option>
+                            <option value="capitaliza">Juros capitalizados ao saldo</option>
+                        </select>
+                    </div>
+                </div>
+                <hr class="divider">
+                <div class="section-title" style="font-size:0.85rem;">Amortizações Extraordinárias</div>
+                <div id="cu_amorts"></div>
+                <button class="btn-secondary" style="width:auto;font-size:0.8rem;padding:0.4rem 0.9rem;" onclick="addAmort('cu')">+ Adicionar Amortização</button>
+                <div class="input-row cols-2" style="margin-top:0.75rem;">
+                    <div class="input-group">
+                        <label>Efeito das amortizações extraordinárias</label>
+                        <select id="cu_efeitoAmort">
+                            <option value="prazo">Reduzir prazo</option>
+                            <option value="parcela">Reduzir parcela</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Footer do Modal -->
+            <div class="modal-footer">
+                <button class="btn-secondary" onclick="fecharModal()">Cancelar</button>
+                <button class="btn-primary" onclick="salvarCenario()">💾 Salvar Cenário</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    // ══════════════════════════════════════════════════════════════════════════
+    //  UTILITÁRIOS
+    // ══════════════════════════════════════════════════════════════════════════
+    function fmtCur(el) {
+        let v = el.value.replace(/\D/g,'');
+        if (!v) { el.value = ''; return; }
+        v = (parseInt(v)/100).toFixed(2);
+        el.value = parseFloat(v).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+    }
+    function parseCur(s) {
+        if (!s) return 0;
+        return parseFloat(String(s).replace(/\./g,'').replace(',','.')) || 0;
+    }
+    function fmtBRL(v) {
+        return 'R$ ' + (v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+    }
+    function fmtPct(v, dec=2) {
+        return (v||0).toFixed(dec) + '%';
+    }
+    function gv(id) { return document.getElementById(id)?.value || ''; }
+    function gn(id) { return parseFloat(gv(id)) || 0; }
+
+    // ══════════════════════════════════════════════════════════════════════════
+    //  ESTADO
+    // ══════════════════════════════════════════════════════════════════════════
+    let cenarios = [];
+    let editandoId = null;
+    let chartInstance = null;
+
+    // ══════════════════════════════════════════════════════════════════════════
+    //  MODAL
+    // ══════════════════════════════════════════════════════════════════════════
+    function abrirModal(id) {
+        editandoId = id || null;
+        document.getElementById('modalTitle').textContent = id ? '✏️ Editar Cenário' : '➕ Novo Cenário';
+        if (id) {
+            const c = cenarios.find(x=>x.id===id);
+            if (c) preencherModal(c);
+        } else {
+            limparModal();
+        }
+        document.getElementById('modalOverlay').classList.add('open');
+    }
+    function fecharModal() {
+        document.getElementById('modalOverlay').classList.remove('open');
+        editandoId = null;
+    }
+    function limparModal() {
+        ['m_nome','av_valor','av_custosExtra',
+         'al_aluguel','al_reajuste','al_caucao','al_taxaAdm','al_custosExtra','al_capital','al_aporteInv',
+         'sac_entrada','sac_financiado','sac_prazo','sac_juros','sac_cet','sac_indiceCorrecao','sac_mip','sac_dfi','sac_taxaAdm','sac_carencia',
+         'pr_entrada','pr_financiado','pr_prazo','pr_juros','pr_cet','pr_indiceCorrecao','pr_mip','pr_dfi','pr_taxaAdm','pr_carencia',
+         'co_creditoDesejado','co_lanceEmbutido','co_taxaAdm','co_fundoReserva','co_seguroPct','co_tipoPessoa','co_prazo','co_baseLance','co_lanceFixoPct','co_lanceLivrePct','co_tipoContemp','co_mesContemplacao','co_reducaoParcela','co_finalidade','co_adesaoPct','co_posContempOpcao','co_indiceReajuste','co_reajusteAA',
+         'cu_nomeCredito','cu_entrada','cu_financiado','cu_prazo','cu_juros','cu_iof','cu_parcelaFixa','cu_tarifaFixa','cu_tarifaVar','cu_seguro','cu_seguroVar','cu_indiceCorrecao','cu_balloon','cu_carencia'
+        ].forEach(id => { const el = document.getElementById(id); if(el) el.value=''; });
+        document.getElementById('sac_amorts').innerHTML = '';
+        document.getElementById('pr_amorts').innerHTML = '';
+        document.getElementById('cu_amorts').innerHTML = '';
+        document.getElementById('m_modalidade').value = 'avista';
+        trocarAba('avista');
+    }
+    function preencherModal(c) {
+        document.getElementById('m_nome').value = c.nome || '';
+        document.getElementById('m_modalidade').value = c.modalidade;
+        trocarAba(c.modalidade);
+        const p = c.params;
+        if (!p) return;
+        Object.keys(p).forEach(k => {
+            const el = document.getElementById(k);
+            if (el) el.value = p[k];
+        });
+        // Amortizações
+        ['sac','pr','cu'].forEach(pfx => {
+            const cont = document.getElementById(pfx+'_amorts');
+            if (cont) cont.innerHTML = '';
+            if (p[pfx+'_amortsList']) {
+                p[pfx+'_amortsList'].forEach(a => addAmortPrefilled(pfx, a));
+            }
+        });
+    }
+    function trocarAba(val) {
+        document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+        document.getElementById('tab-'+val).classList.add('active');
+    }
+
+    // ══════════════════════════════════════════════════════════════════════════
+    //  AMORTIZAÇÕES EXTRAS
+    // ══════════════════════════════════════════════════════════════════════════
+    function addAmort(pfx) { addAmortPrefilled(pfx, {}); }
+    function addAmortPrefilled(pfx, data) {
+        const cont = document.getElementById(pfx+'_amorts');
+        const idx = cont.children.length;
+        const div = document.createElement('div');
+        div.className = 'amort-item';
+        div.innerHTML = `
+            <div class="input-group" style="margin:0">
+                <label style="font-size:0.72rem;">Mês</label>
+                <input type="number" class="amort-mes" placeholder="Ex: 24" value="${data.mes||''}" min="1">
+            </div>
+            <div class="input-group" style="margin:0">
+                <label style="font-size:0.72rem;">Valor (R$)</label>
+                <input type="text" class="amort-valor" placeholder="Ex: 20.000,00" value="${data.valor||''}" oninput="fmtCur(this)">
+            </div>
+            <div class="input-group" style="margin:0">
+                <label style="font-size:0.72rem;">Periodicidade</label>
+                <select class="amort-period">
+                    <option value="unica" ${data.period==='unica'?'selected':''}>Única</option>
+                    <option value="anual" ${data.period==='anual'?'selected':''}>Anual</option>
+                    <option value="mensal" ${data.period==='mensal'?'selected':''}>Mensal</option>
+                </select>
+            </div>
+            <button class="amort-remove" onclick="this.parentElement.remove()">✕</button>
+        `;
+        cont.appendChild(div);
+    }
+    function coletarAmorts(pfx) {
+        const items = document.querySelectorAll(`#${pfx}_amorts .amort-item`);
+        return Array.from(items).map(el => ({
+            mes: parseInt(el.querySelector('.amort-mes').value)||0,
+            valor: parseCur(el.querySelector('.amort-valor').value),
+            period: el.querySelector('.amort-period').value
+        })).filter(a => a.mes > 0 && a.valor > 0);
+    }
+
+    // ══════════════════════════════════════════════════════════════════════════
+    //  SALVAR CENÁRIO
+    // ══════════════════════════════════════════════════════════════════════════
+    function salvarCenario() {
+        const nome = gv('m_nome').trim() || ('Cenário ' + (cenarios.length+1));
+        const modalidade = gv('m_modalidade');
+        const params = coletarParams(modalidade);
+        const resultado = calcularCenario(modalidade, params);
+
+        if (editandoId) {
+            const idx = cenarios.findIndex(c=>c.id===editandoId);
+            if (idx >= 0) {
+                cenarios[idx] = { ...cenarios[idx], nome, modalidade, params, resultado };
+            }
+        } else {
+            cenarios.push({ id: Date.now(), nome, modalidade, params, resultado });
+        }
+        fecharModal();
+        renderCenarios();
+    }
+
+    function coletarParams(mod) {
+        const base = {};
+        if (mod === 'avista') {
+            base.av_valor = gv('av_valor');
+            base.av_custosExtra = gv('av_custosExtra');
+        } else if (mod === 'aluguel') {
+            base.al_aluguel = gv('al_aluguel');
+            base.al_reajuste = gv('al_reajuste');
+            base.al_caucao = gv('al_caucao');
+            base.al_taxaAdm = gv('al_taxaAdm');
+            base.al_custosExtra = gv('al_custosExtra');
+            base.al_capital = gv('al_capital');
+            base.al_aporteInv = gv('al_aporteInv');
+        } else if (mod === 'sac') {
+            base.sac_entrada = gv('sac_entrada');
+            base.sac_financiado = gv('sac_financiado');
+            base.sac_prazo = gv('sac_prazo');
+            base.sac_juros = gv('sac_juros');
+            base.sac_cet = gv('sac_cet');
+            base.sac_correcao = gv('sac_correcao');
+            base.sac_indiceCorrecao = gv('sac_indiceCorrecao');
+            base.sac_mip = gv('sac_mip');
+            base.sac_dfi = gv('sac_dfi');
+            base.sac_taxaAdm = gv('sac_taxaAdm');
+            base.sac_carencia = gv('sac_carencia');
+            base.sac_tipoCarencia = gv('sac_tipoCarencia');
+            base.sac_efeitoAmort = gv('sac_efeitoAmort');
+            base.sac_amortsList = coletarAmorts('sac');
+        } else if (mod === 'price') {
+            base.pr_entrada = gv('pr_entrada');
+            base.pr_financiado = gv('pr_financiado');
+            base.pr_prazo = gv('pr_prazo');
+            base.pr_juros = gv('pr_juros');
+            base.pr_cet = gv('pr_cet');
+            base.pr_correcao = gv('pr_correcao');
+            base.pr_indiceCorrecao = gv('pr_indiceCorrecao');
+            base.pr_mip = gv('pr_mip');
+            base.pr_dfi = gv('pr_dfi');
+            base.pr_taxaAdm = gv('pr_taxaAdm');
+            base.pr_carencia = gv('pr_carencia');
+            base.pr_tipoCarencia = gv('pr_tipoCarencia');
+            base.pr_efeitoAmort = gv('pr_efeitoAmort');
+            base.pr_amortsList = coletarAmorts('pr');
+        } else if (mod === 'consorcio') {
+            base.co_creditoDesejado = gv('co_creditoDesejado');
+            base.co_lanceEmbutido = gv('co_lanceEmbutido');
+            base.co_taxaAdm = gv('co_taxaAdm');
+            base.co_fundoReserva = gv('co_fundoReserva');
+            base.co_seguroPct = gv('co_seguroPct');
+            base.co_tipoPessoa = gv('co_tipoPessoa');
+            base.co_prazo = gv('co_prazo');
+            base.co_lanceFixoPct = gv('co_lanceFixoPct');
+            base.co_baseLance = gv('co_baseLance');
+            base.co_lanceLivrePct = gv('co_lanceLivrePct');
+            base.co_tipoContemp = gv('co_tipoContemp');
+            base.co_mesContemplacao = gv('co_mesContemplacao');
+            base.co_reducaoParcela = gv('co_reducaoParcela');
+            base.co_finalidade = gv('co_finalidade');
+            base.co_adesaoPct = gv('co_adesaoPct');
+            base.co_posContempOpcao = gv('co_posContempOpcao');
+            base.co_indiceReajuste = gv('co_indiceReajuste');
+            base.co_reajusteAA = gv('co_reajusteAA');
+        } else if (mod === 'custom') {
+            base.cu_nomeCredito = gv('cu_nomeCredito');
+            base.cu_sistema = gv('cu_sistema');
+            base.cu_entrada = gv('cu_entrada');
+            base.cu_financiado = gv('cu_financiado');
+            base.cu_prazo = gv('cu_prazo');
+            base.cu_juros = gv('cu_juros');
+            base.cu_iof = gv('cu_iof');
+            base.cu_parcelaFixa = gv('cu_parcelaFixa');
+            base.cu_tarifaFixa = gv('cu_tarifaFixa');
+            base.cu_tarifaVar = gv('cu_tarifaVar');
+            base.cu_seguro = gv('cu_seguro');
+            base.cu_seguroVar = gv('cu_seguroVar');
+            base.cu_correcao = gv('cu_correcao');
+            base.cu_indiceCorrecao = gv('cu_indiceCorrecao');
+            base.cu_balloon = gv('cu_balloon');
+            base.cu_carencia = gv('cu_carencia');
+            base.cu_tipoCarencia = gv('cu_tipoCarencia');
+            base.cu_efeitoAmort = gv('cu_efeitoAmort');
+            base.cu_amortsList = coletarAmorts('cu');
+        }
+        return base;
+    }
+
+    // ══════════════════════════════════════════════════════════════════════════
+    //  CÁLCULOS
+    // ══════════════════════════════════════════════════════════════════════════
+    // Unidade do prazo global: 'anos' ou 'meses'
+    let prazoUnidade = 'anos';
+
+    function setPrazoUnidade(u) {
+        const val = gn('g_prazoAnalise') || (u === 'anos' ? 10 : 120);
+        // Converter o valor atual para a nova unidade
+        if (u === 'meses' && prazoUnidade === 'anos') {
+            document.getElementById('g_prazoAnalise').value = Math.round(val * 12);
+        } else if (u === 'anos' && prazoUnidade === 'meses') {
+            document.getElementById('g_prazoAnalise').value = +(val / 12).toFixed(2);
+        }
+        prazoUnidade = u;
+        // Atualizar visual dos botões
+        const btnA = document.getElementById('btn-prazo-anos');
+        const btnM = document.getElementById('btn-prazo-meses');
+        if (u === 'anos') {
+            btnA.style.background = 'rgba(212,175,55,0.25)'; btnA.style.color = '#fbbf24'; btnA.style.borderColor = 'rgba(212,175,55,0.5)';
+            btnM.style.background = 'rgba(255,255,255,0.05)'; btnM.style.color = '#6b7280'; btnM.style.borderColor = 'rgba(255,255,255,0.1)';
+        } else {
+            btnM.style.background = 'rgba(212,175,55,0.25)'; btnM.style.color = '#fbbf24'; btnM.style.borderColor = 'rgba(212,175,55,0.5)';
+            btnA.style.background = 'rgba(255,255,255,0.05)'; btnA.style.color = '#6b7280'; btnA.style.borderColor = 'rgba(255,255,255,0.1)';
+        }
+        atualizarConversaoPrazo();
+    }
+
+    function atualizarConversaoPrazo() {
+        const v = gn('g_prazoAnalise') || 0;
+        const label = document.getElementById('g_prazoUnidadeLabel');
+        const hint = document.getElementById('g_prazoConversao');
+        if (prazoUnidade === 'anos') {
+            label.textContent = 'anos';
+            hint.textContent = `= ${Math.round(v * 12)} meses`;
+        } else {
+            label.textContent = 'meses';
+            hint.textContent = `= ${+(v / 12).toFixed(2)} anos`;
+        }
+    }
+
+    // ══════════════════════════════════════════════════════════════════════════
+    //  CONSÓRCIO v3 — funções JS
+    // ══════════════════════════════════════════════════════════════════════════
+
+    // Calcula e preenche todos os campos calculados do formulário
+    function coCalcCategoria() {
+        const creditoDesejado = parseCur(document.getElementById('co_creditoDesejado')?.value || '0') || 0;
+        const lanceEmbutidoPct = parseFloat(document.getElementById('co_lanceEmbutido')?.value) || 0;
+        const taxaAdm = parseFloat(document.getElementById('co_taxaAdm')?.value) || 0;
+        const fundo = parseFloat(document.getElementById('co_fundoReserva')?.value) || 0;
+        const seguroPct = parseFloat(document.getElementById('co_seguroPct')?.value) || 0;
+        const prazo = parseInt(document.getElementById('co_prazo')?.value) || 0;
+        const adesaoPct = parseFloat(document.getElementById('co_adesaoPct')?.value) || 0;
+        const lanceFixoPct = parseFloat(document.getElementById('co_lanceFixoPct')?.value) || 0;
+        const baseLance = document.getElementById('co_baseLance')?.value || 'carta';
+        const lanceLivrePct = parseFloat(document.getElementById('co_lanceLivrePct')?.value) || 0;
+
+        // Carta = Crédito desejado / (1 - Lance Embutido%)
+        const lanceEmbutidoFrac = lanceEmbutidoPct / 100;
+        const carta = lanceEmbutidoFrac < 1 && creditoDesejado > 0
+            ? creditoDesejado / (1 - lanceEmbutidoFrac)
+            : creditoDesejado;
+
+        // Categoria = Carta × (1 + TaxaAdm% + FundoReserva%)
+        const categoria = carta * (1 + (taxaAdm + fundo) / 100);
+
+        // Parcela mensal = Categoria / Prazo + Seguro mensal
+        const seguroMensal = carta * (seguroPct / 100);
+        const parcela = prazo > 0 ? (categoria / prazo + seguroMensal) : 0;
+
+        // Adesão
+        const adesaoValor = carta * (adesaoPct / 100);
+
+        // Lance Fixo
+        const lanceFixoBaseValor = baseLance === 'carta' ? carta : baseLance === 'categoria' ? categoria : saldoDevedor;
+        const lanceFixoValor = lanceFixoBaseValor * (lanceFixoPct / 100);
+
+        // Lance Livre
+        const lanceLivreBaseValor = baseLance === 'carta' ? carta : baseLance === 'categoria' ? categoria : saldoDevedor;
+        const lanceLivreValor = lanceLivreBaseValor * (lanceLivrePct / 100);
+
+        // Preencher campos calculados
+        const fmt = v => v > 0 ? v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : '';
+        const setVal = (id, v) => { const el = document.getElementById(id); if (el) el.value = v; };
+        setVal('co_carta', fmt(carta));
+        setVal('co_categoria', fmt(categoria));
+        setVal('co_parcelaCalc', fmt(parcela));
+        setVal('co_adesaoValor', fmt(adesaoValor));
+        setVal('co_lanceFixoValor', fmt(lanceFixoValor));
+        setVal('co_lanceLivreValor', fmt(lanceLivreValor));
+
+        // Resumo
+        if (carta > 0 && prazo > 0) {
+            const resumo = document.getElementById('co_resumoCalc');
+            const grid = document.getElementById('co_resumoGrid');
+            if (resumo && grid) {
+                resumo.style.display = '';
+                const itens = [
+                    ['Crédito desejado', fmt(creditoDesejado)],
+                    ['Carta de crédito', fmt(carta)],
+                    ['Categoria', fmt(categoria)],
+                    ['Parcela inicial', fmt(parcela)],
+                    ['Seguro mensal', fmt(seguroMensal)],
+                    ['Adesão', fmt(adesaoValor)],
+                    ['Lance Embutido', fmt(carta * lanceEmbutidoFrac)],
+                    ['Lance Fixo', fmt(lanceFixoValor)],
+                    ['Lance Livre', fmt(lanceLivreValor)],
+                    ['Total pago (sem reajuste)', fmt(parcela * prazo + adesaoValor)],
+                ];
+                grid.innerHTML = itens.map(([l,v]) =>
+                    `<div style="background:rgba(255,255,255,0.04);border-radius:6px;padding:8px 10px;">
+                        <div style="font-size:0.72rem;color:#9ca3af;margin-bottom:3px;">${l}</div>
+                        <div style="font-size:0.9rem;color:#f9fafb;font-weight:600;">${v||'—'}</div>
+                    </div>`
+                ).join('');
+            }
+        }
+    }
+
+    // Compatibilidade: calcCategoria ainda chamado por campos antigos
+    function calcCategoria() { coCalcCategoria(); }
+    function toggleSeguroConsorcio() {}
+    function togglePosContemp() {}
+    function coTab(id) {}
+
+    // Helper: dados base do consórcio (novo formulário)
+    function coBase() {
+        const creditoDesejado = parseCur(document.getElementById('co_creditoDesejado')?.value || '0') || 0;
+        const lanceEmbutidoPct = (parseFloat(document.getElementById('co_lanceEmbutido')?.value) || 0) / 100;
+        const carta = lanceEmbutidoPct < 1 && creditoDesejado > 0
+            ? creditoDesejado / (1 - lanceEmbutidoPct) : creditoDesejado;
+        const taxaAdm = (parseFloat(document.getElementById('co_taxaAdm')?.value) || 0) / 100;
+        const fundo = (parseFloat(document.getElementById('co_fundoReserva')?.value) || 0) / 100;
+        const seguroPct = (parseFloat(document.getElementById('co_seguroPct')?.value) || 0) / 100;
+        const prazo = parseInt(document.getElementById('co_prazo')?.value) || 180;
+        const reajusteAA = (parseFloat(document.getElementById('co_reajusteAA')?.value) || 0) / 100;
+        const mesContemp = parseInt(document.getElementById('co_mesContemplacao')?.value) || Math.floor(prazo / 2);
+        const adesaoPct = (parseFloat(document.getElementById('co_adesaoPct')?.value) || 0) / 100;
+        const reducaoParcela = (parseFloat(document.getElementById('co_reducaoParcela')?.value) || 0) / 100;
+        const posContempOpcao = document.getElementById('co_posContempOpcao')?.value || 'parcela';
+        const lanceFixoPct = (parseFloat(document.getElementById('co_lanceFixoPct')?.value) || 0) / 100;
+        const baseLance = document.getElementById('co_baseLance')?.value || 'carta';
+        const lanceLivrePct = (parseFloat(document.getElementById('co_lanceLivrePct')?.value) || 0) / 100;
+        const categoria = carta * (1 + taxaAdm + fundo);
+        const adesaoValor = carta * adesaoPct;
+        return { creditoDesejado, carta, lanceEmbutidoPct, taxaAdm, fundo, seguroPct, prazo,
+            reajusteAA, mesContemp, adesaoValor, reducaoParcela, posContempOpcao,
+            lanceFixoPct, baseLance, lanceLivrePct, categoria };
+    }
+
+    // Simular parcelas mês a mês do consórcio (novo)
+    function coToggleTipoContemp() {
+        const tipo = document.getElementById('co_tipoContemp')?.value || 'sorteio';
+        const rowLanceFixo = document.getElementById('co_lanceFixoPct')?.closest('.input-group');
+        const rowLanceLivre = document.getElementById('co_lanceLivrePct')?.closest('.input-group');
+        if (rowLanceFixo) rowLanceFixo.style.display = (tipo === 'lancefixo') ? '' : 'none';
+        if (rowLanceLivre) rowLanceLivre.style.display = (tipo === 'lancelivre') ? '' : 'none';
+    }
+    function coSimularParcelas(b, mesLance, lanceEmb, lanceRec, lanceAbate) {
+        let cartaAtual = b.carta;
+        let categoriaAtual = b.categoria;
+        let saldo = b.carta;
+        let custoAcum = b.adesaoValor;
+        let totalParcelas = 0;
+        let parcelaInicial = 0;
+        const parcelas = [];
+        let lanceJaDado = false;
+        let lanceEmbutidoValor = 0;
+        let lanceRecursosValor = 0;
+
+        for (let m = 1; m <= b.prazo; m++) {
+            // Reajuste anual
+            if (b.reajusteAA > 0 && m > 1 && (m - 1) % 12 === 0) {
+                cartaAtual *= (1 + b.reajusteAA);
+                categoriaAtual = cartaAtual * (1 + b.taxaAdm + b.fundo);
+                saldo *= (1 + b.reajusteAA);
+            }
+            const amortM = cartaAtual / b.prazo;
+            const seguroM = cartaAtual * b.seguroPct;
+            const admM = categoriaAtual * (b.taxaAdm + b.fundo) / b.prazo;
+            const parcelaM = amortM + admM + seguroM;
+            saldo = Math.max(0, saldo - amortM);
+            custoAcum += parcelaM;
+            totalParcelas += parcelaM;
+            if (m === 1) parcelaInicial = parcelaM;
+            parcelas.push(parcelaM);
+
+            // Lance
+            if (m === mesLance && !lanceJaDado && mesLance > 0) {
+                lanceJaDado = true;
+                lanceEmbutidoValor = cartaAtual * lanceEmb;
+                lanceRecursosValor = lanceRec;
+                custoAcum += lanceRecursosValor;
+                if (lanceAbate) saldo = Math.max(0, saldo - lanceEmbutidoValor - lanceRecursosValor);
+            }
+        }
+        return { custoAcum, totalParcelas, parcelaInicial,
+            parcelaFinal: parcelas[parcelas.length - 1] || 0,
+            lanceEmbutidoValor, lanceRecursosValor,
+            creditoLiquido: b.carta - lanceEmbutidoValor };
+    }
+
+    // Funções de sub-módulos (mantidas como stubs — não há mais sub-abas)
+    function calcInflacaoConsorcio() {}
+    function calcSorteio() {}
+    function calcLanceLivre() {}
+    function calcLanceFixo() {}
+    function calcLanceEmbutido() {}
+    function adicionarEstrategia() {}
+    function calcCancelamento() {}
+    function calcVendaCota() {}
+    function calcRiscos() {}
+    function calcCompFinanciamento() {}
+    function calcPosContemp() {}
+
+
+    // ── CONSÓRCIO ─────────────────────────────────────────────────────────────
+    function calcConsorcio(p, g, meses) {
+        const credito = parseFloat(p.co_creditoDesejado?.replace(/[^\d,.-]/g,'').replace(',','.')) || 0;
+        const lanceEmbutidoPct = (parseFloat(p.co_lanceEmbutido) || 0) / 100;
+        const carta = lanceEmbutidoPct > 0 ? credito / (1 - lanceEmbutidoPct) : credito;
+        const taxaAdm = (parseFloat(p.co_taxaAdm) || 0) / 100;
+        const fundo = (parseFloat(p.co_fundoReserva) || 0) / 100;
+        const seguroPct = (parseFloat(p.co_seguroPct) || 0) / 100;
+        const prazo = parseInt(p.co_prazo) || 180;
+        const reajusteAA = (parseFloat(p.co_reajusteAA) || 0) / 100;
+        const tipoContemp = p.co_tipoContemp || 'sorteio';
+        const mesContemp = parseInt(p.co_mesContemplacao) || Math.floor(prazo / 2);
+        const adesaoPct = (parseFloat(p.co_adesaoPct) || 0) / 100;
+        const reducaoParcela = (parseFloat(p.co_reducaoParcela) || 0) / 100;
+        const posContempOpcao = p.co_posContempOpcao || 'parcela';
+        const lanceFixoPct = (parseFloat(p.co_lanceFixoPct) || 0) / 100;
+        const lanceLivrePct = (parseFloat(p.co_lanceLivrePct) || 0) / 100;
+        const baseLance = p.co_baseLance || 'carta';
+        const categoria = carta * (1 + taxaAdm + fundo);
+        const adesaoValor = carta * adesaoPct;
+
+        // Determinar o percentual de lance conforme o tipo de contemplação
+        let lancePct = 0;
+        if (tipoContemp === 'lancefixo') lancePct = lanceFixoPct;
+        else if (tipoContemp === 'lancelivre') lancePct = lanceLivrePct;
+        // sorteio: lancePct = 0
+
+        // Base do lance
+        let baseLanceValor = carta;
+        if (baseLance === 'categoria') baseLanceValor = categoria;
+        else if (baseLance === 'saldo') baseLanceValor = carta; // saldo inicial = carta
+
+        const lanceEmbutidoValor = carta * lanceEmbutidoPct;
+        const lanceRecursosValor = lancePct > 0 ? baseLanceValor * lancePct : 0;
+        const creditoLiquido = carta - lanceEmbutidoValor;
+
+        let cartaAtual = carta;
+        let categoriaAtual = categoria;
+        let saldoDevedor = carta;
+        let custoAcum = adesaoValor;
+        let parcelaInicial = 0;
+        let parcelaOriginalCorrigida = 0;
+        let parcelaFinal = 0;
+        let contemplado = false;
+        let prazoRestante = prazo;
+        const serie = [];
+        const serieSD = [];
+        let valorBemAtual = g.valorBem;
+
+        for (let m = 1; m <= meses; m++) {
+            // Reajuste anual
+            if (reajusteAA > 0 && m > 1 && (m - 1) % 12 === 0) {
+                cartaAtual *= (1 + reajusteAA);
+                categoriaAtual = cartaAtual * (1 + taxaAdm + fundo);
+                saldoDevedor *= (1 + reajusteAA);
+                if (parcelaOriginalCorrigida > 0) parcelaOriginalCorrigida *= (1 + reajusteAA);
+            }
+            valorBemAtual *= (1 + g.valorizacao / 12);
+
+            let parcela = 0;
+            if (m <= prazo && prazoRestante > 0) {
+                const amortBase = cartaAtual / prazo;
+                const admM = categoriaAtual * (taxaAdm + fundo) / prazo;
+                const seguroM = cartaAtual * seguroPct;
+
+                if (!contemplado) {
+                    // PRÉ-contemplação: redutor reduz a amortização efetiva
+                    const amortEfetiva = amortBase * (1 - reducaoParcela);
+                    parcela = amortEfetiva + admM + seguroM;
+                    saldoDevedor = Math.max(0, saldoDevedor - amortEfetiva);
+                } else {
+                    if (posContempOpcao === 'prazo') {
+                        parcela = parcelaOriginalCorrigida;
+                        const amortPos = Math.max(0, parcela - admM - seguroM);
+                        saldoDevedor = Math.max(0, saldoDevedor - amortPos);
+                        if (saldoDevedor === 0) prazoRestante = 0;
+                    } else {
+                        parcela = amortBase + admM + seguroM;
+                        saldoDevedor = Math.max(0, saldoDevedor - amortBase);
+                    }
+                    // Piso: parcela nunca menor que 50% da parcela original corrigida
+                    const piso = parcelaOriginalCorrigida * 0.5;
+                    if (parcela < piso) parcela = piso;
+                }
+
+                prazoRestante--;
+                custoAcum += parcela;
+                if (m === 1) { parcelaInicial = parcela; parcelaOriginalCorrigida = parcela; }
+                parcelaFinal = parcela;
+            }
+
+            // Contemplação no mês configurado
+            if (m === mesContemp && !contemplado) {
+                contemplado = true;
+                saldoDevedor = Math.max(0, saldoDevedor - lanceEmbutidoValor - lanceRecursosValor);
+                custoAcum += lanceRecursosValor + g.custosAquisicao;
+            }
+
+            serie.push(custoAcum);
+            serieSD.push(saldoDevedor);
+        }
+
+        const custoTotalNominal = custoAcum;
+        const inflFator = Math.pow(1 + g.inflacao, g.prazoAnos);
+        const custoTotalReal = custoTotalNominal / inflFator;
+        const patrimonioLiq = valorBemAtual - saldoDevedor;
+        const ganhoPatrimonial = valorBemAtual - carta;
+
+        return {
+            custoTotalNominal, custoTotalReal, patrimonioLiq, ganhoPatrimonial,
+            saldoDevedorFinal: saldoDevedor,
+            valorBemFinal: valorBemAtual,
+            parcelaInicial, parcelaFinal,
+            creditoLiquido, lanceEmbutidoValor, lanceRecursosValor,
+            serie, serieSD
+        };
+    }
+        function globais() {
+        const prazoRaw = gn('g_prazoAnalise') || (prazoUnidade === 'anos' ? 10 : 120);
+        const prazoAnos = prazoUnidade === 'anos' ? prazoRaw : prazoRaw / 12;
+        return {
+            valorBem:       parseCur(gv('g_valorBem')),
+            prazoAnos,
+            valorizacao:    gn('g_valorizacao') / 100,
+            inflacao:       gn('g_inflacao') / 100,
+            custosMensais:  parseCur(gv('g_custosMensais')),
+            custosAquisicao:parseCur(gv('g_custosAquisicao')),
+            rendimento:     gn('g_rendimento') / 100,
+        };
+    }
+
+    function calcularCenario(mod, p) {
+        const g = globais();
+        const meses = g.prazoAnos * 12;
+        if (mod === 'avista')    return calcAvista(p, g, meses);
+        if (mod === 'aluguel')   return calcAluguel(p, g, meses);
+        if (mod === 'sac')       return calcFinanciamento('sac', p, g, meses);
+        if (mod === 'price')     return calcFinanciamento('price', p, g, meses);
+        if (mod === 'consorcio') return calcConsorcio(p, g, meses);
+        if (mod === 'custom')    return calcCustom(p, g, meses);
+        return {};
+    }
+
+    // ── À VISTA ──────────────────────────────────────────────────────────────
+    function calcAvista(p, g, meses) {
+        const valorPago = parseCur(p.av_valor) || g.valorBem;
+        const custosExtra = parseCur(p.av_custosExtra);
+        const custosAq = g.custosAquisicao + custosExtra;
+        let custosMensaisAcum = 0;
+        let valorBemFinal = valorPago;
+        const serie = [];
+        for (let m = 1; m <= meses; m++) {
+            valorBemFinal *= (1 + g.valorizacao/12);
+            custosMensaisAcum += g.custosMensais;
+            serie.push(valorPago + custosAq + custosMensaisAcum);
+        }
+        const custoTotal = valorPago + custosAq + custosMensaisAcum;
+        const patrimonioLiq = valorBemFinal;
+        const ganhoPatrimonial = valorBemFinal - valorPago;
+        return {
+            custoTotalNominal: custoTotal,
+            custoTotalReal: custoTotal / Math.pow(1+g.inflacao, g.prazoAnos),
+            patrimonioLiqFinal: patrimonioLiq,
+            ganhoPatrimonial,
+            saldoDevedorFinal: 0,
+            valorBemFinal,
+            parcelaInicial: 0,
+            parcelaFinal: 0,
+            serie
+        };
+    }
+
+    // ── ALUGUEL ───────────────────────────────────────────────────────────────
+    function calcAluguel(p, g, meses) {
+        let aluguel = parseCur(p.al_aluguel);
+        const reajuste = (parseFloat(p.al_reajuste)||0) / 100;
+        const caucao = parseCur(p.al_caucao);
+        const taxaAdm = (parseFloat(p.al_taxaAdm)||0) / 100;
+        const custosExtra = parseCur(p.al_custosExtra);
+        let capital = parseCur(p.al_capital);
+        const aporteInv = parseCur(p.al_aporteInv);
+        const rend = g.rendimento;
+        const rendMensal = Math.pow(1+rend, 1/12) - 1;
+
+        let custoAcum = caucao;
+        const serie = [];
+        for (let m = 1; m <= meses; m++) {
+            if (m > 1 && (m-1) % 12 === 0) aluguel *= (1 + reajuste);
+            const pgtoMensal = aluguel * (1 + taxaAdm) + custosExtra;
+            custoAcum += pgtoMensal;
+            capital = capital * (1 + rendMensal) + aporteInv;
+            serie.push(custoAcum);
+        }
+        const custoTotal = custoAcum;
+        return {
+            custoTotalNominal: custoTotal,
+            custoTotalReal: custoTotal / Math.pow(1+g.inflacao, g.prazoAnos),
+            patrimonioLiqFinal: capital,
+            ganhoPatrimonial: capital - parseCur(p.al_capital),
+            saldoDevedorFinal: 0,
+            valorBemFinal: 0,
+            parcelaInicial: aluguel,
+            parcelaFinal: aluguel,
+            serie
+        };
+    }
+
+    // ── FINANCIAMENTO (SAC / PRICE) ───────────────────────────────────────────
+    function calcFinanciamento(tipo, p, g, meses) {
+        const pfx = tipo === 'sac' ? 'sac' : 'pr';
+        const entrada = parseCur(p[pfx+'_entrada']);
+        let saldo = parseCur(p[pfx+'_financiado']) || (g.valorBem - entrada);
+        const prazoTotal = parseInt(p[pfx+'_prazo']) || meses;
+        const jurosAA = (parseFloat(p[pfx+'_cet']) || parseFloat(p[pfx+'_juros']) || 0) / 100;
+        const jurosMensal = Math.pow(1+jurosAA, 1/12) - 1;
+        const correcaoAA = (parseFloat(p[pfx+'_indiceCorrecao'])||0) / 100;
+        const mip = (parseFloat(p[pfx+'_mip'])||0) / 100;
+        const dfi = (parseFloat(p[pfx+'_dfi'])||0) / 100;
+        const taxaAdm = parseCur(p[pfx+'_taxaAdm']);
+        const carencia = parseInt(p[pfx+'_carencia'])||0;
+        const tipoCarencia = p[pfx+'_tipoCarencia'] || 'paga';
+        const amorts = p[pfx+'_amortsList'] || [];
+        const efeitoAmort = p[pfx+'_efeitoAmort'] || 'prazo';
+        const custosAq = g.custosAquisicao;
+
+        let custoAcum = entrada + custosAq;
+        let prazoRestante = prazoTotal;
+        let parcelaInicial = 0;
+        let parcelaFinal = 0;
+        const serie = [];
+        const serieSD = [];
+        // Calcular valores dos lances para exibição
+        const lanceEmbutidoValor = carta * lanceEmbutidoPct;
+        const baseLanceValor = baseLance === 'carta' ? cartaAtual
+            : baseLance === 'categoria' ? categoriaAtual : saldoDevedor;
+        const lanceFixoValor = baseLanceValor * lanceFixoPct;
+        const lanceLivreValor = baseLanceValor * lanceLivrePct;
+        const creditoLiquido = carta - lanceEmbutidoValor;
+
+        return {
+            custoTotalNominal: custoAcum,
+            custoTotalReal: custoAcum / Math.pow(1+g.inflacao, g.prazoAnos),
+            patrimonioLiqFinal: valorBemAtual - (saldoDevedor > 0 ? saldoDevedor : 0),
+            ganhoPatrimonial: valorBemAtual - g.valorBem,
+            saldoDevedorFinal: saldoDevedor,
+            valorBemFinal: valorBemAtual,
+            parcelaInicial,
+            parcelaFinal,
+            creditoLiquido,
+            lanceEmbutidoValor,
+            lanceFixoValor,
+            lanceLivreValor,
+            adesaoValor,
+            serie,
+            serieSD
+        };
+    }
+        // ── CRÉDITO PERSONALIZADO ─────────────────────────────────────────────────
+    function calcCustom(p, g, meses) {
+        const sistema = p.cu_sistema || 'sac';
+        const entrada = parseCur(p.cu_entrada);
+        let saldo = parseCur(p.cu_financiado) || (g.valorBem - entrada);
+        const iof = (parseFloat(p.cu_iof)||0) / 100;
+        saldo *= (1 + iof);
+        const prazoTotal = parseInt(p.cu_prazo) || meses;
+        const jurosAA = (parseFloat(p.cu_juros)||0) / 100;
+        const jurosMensal = Math.pow(1+jurosAA, 1/12) - 1;
+        const correcaoAA = (parseFloat(p.cu_indiceCorrecao)||0) / 100;
+        const tarifaFixa = parseCur(p.cu_tarifaFixa);
+        const tarifaVar = (parseFloat(p.cu_tarifaVar)||0) / 100;
+        const seguro = parseCur(p.cu_seguro);
+        const seguroVar = (parseFloat(p.cu_seguroVar)||0) / 100;
+        const balloon = parseCur(p.cu_balloon);
+        const carencia = parseInt(p.cu_carencia)||0;
+        const tipoCarencia = p.cu_tipoCarencia || 'paga';
+        const parcelaFixaManual = parseCur(p.cu_parcelaFixa);
+        const amorts = p.cu_amortsList || [];
+        const efeitoAmort = p.cu_efeitoAmort || 'prazo';
+        const custosAq = g.custosAquisicao;
+
+        let custoAcum = entrada + custosAq;
+        let prazoRestante = prazoTotal;
+        let parcelaInicial = 0;
+        let parcelaFinal = 0;
+        const serie = [];
+        const serieSD = []; // série do saldo devedor mês a mês
+        let valorBemAtual = g.valorBem;
+
+        const mesInicioCustom = carencia + 1;
+        let parcelaPrice = 0;
+        if (sistema === 'price' && jurosMensal > 0) {
+            parcelaPrice = saldo * jurosMensal / (1 - Math.pow(1+jurosMensal, -prazoTotal));
+        }
+
+        for (let m = 1; m <= meses; m++) {
+            // Correção monetária: apenas no aniversário anual
+            const mesesDesdeInicioCustom = m - mesInicioCustom;
+            if (correcaoAA > 0 && mesesDesdeInicioCustom > 0 && mesesDesdeInicioCustom % 12 === 0) {
+                saldo *= (1 + correcaoAA);
+            }
+            valorBemAtual *= (1 + g.valorizacao/12);
+
+            let parcela = 0;
+            if (m <= carencia) {
+                const juros = saldo * jurosMensal;
+                if (tipoCarencia === 'paga') parcela = juros;
+                else { saldo += juros; parcela = 0; }
+            } else if (prazoRestante <= 0) {
+                parcela = 0;
+            } else if (sistema === 'fixo' && parcelaFixaManual > 0) {
+                const amort = Math.max(0, parcelaFixaManual - juros);
+                saldo -= amort;
+                prazoRestante--;
+                parcela = parcelaFixaManual;
+            } else if (sistema === 'sac') {
+                parcela = amort + juros;
+                saldo -= amort;
+                prazoRestante--;
+            } else {
+                if (jurosMensal > 0) parcelaPrice = saldo * jurosMensal / (1 - Math.pow(1+jurosMensal, -prazoRestante));
+                else parcelaPrice = saldo / prazoRestante;
+                saldo -= (parcelaPrice - juros);
+                prazoRestante--;
+                parcela = parcelaPrice;
+            }
+
+            // Balloon no último mês
+            if (m === prazoTotal && balloon > 0) {
+                parcela += balloon;
+                saldo = Math.max(0, saldo - balloon);
+            }
+
+            const encargos = tarifaFixa + saldo * tarifaVar + seguro + saldo * seguroVar;
+            const totalMensal = parcela + encargos + g.custosMensais;
+            custoAcum += totalMensal;
+
+            if (m === 1) parcelaInicial = totalMensal;
+            parcelaFinal = totalMensal;
+
+            amorts.forEach(a => {
+                let ocorre = false;
+                if (a.period === 'unica' && m === a.mes) ocorre = true;
+                if (a.period === 'anual' && m >= a.mes && (m-a.mes)%12===0) ocorre = true;
+                if (a.period === 'mensal' && m >= a.mes) ocorre = true;
+                if (ocorre && saldo > 0) {
+                    const av = Math.min(a.valor, saldo);
+                    saldo -= av;
+                    custoAcum += av;
+                    if (efeitoAmort === 'prazo') {
+                        if (saldo <= 0) {
+                            prazoRestante = 0;
+                        } else if (prazoRestante > 0) {
+                            const amortMensal = saldo / prazoRestante;
+                            prazoRestante = amortMensal > 0 ? Math.ceil(saldo / amortMensal) : prazoRestante;
+                        }
+                    }
+                }
+            });
+
+            if (saldo < 0) saldo = 0;
+            if (saldo === 0) prazoRestante = 0;
+            serie.push(custoAcum);
+            serieSD.push(saldo);
+        }
+
+        return {
+            custoTotalNominal: custoAcum,
+            custoTotalReal: custoAcum / Math.pow(1+g.inflacao, g.prazoAnos),
+            patrimonioLiqFinal: valorBemAtual - saldo,
+            ganhoPatrimonial: valorBemAtual - g.valorBem,
+            saldoDevedorFinal: saldo,
+            valorBemFinal: valorBemAtual,
+            parcelaInicial,
+            parcelaFinal,
+            serie,
+            serieSD
+        };
+    }
+
+    // ── CUSTO DE OPORTUNIDADE ─────────────────────────────────────────────────
+    function adicionarCenarioOportunidade() {
+        const g = globais();
+        const meses = g.prazoAnos * 12;
+        const rendMensal = Math.pow(1+g.rendimento, 1/12) - 1;
+        let capital = g.valorBem;
+        const serie = [];
+        for (let m = 1; m <= meses; m++) {
+            capital *= (1 + rendMensal);
+            serie.push(capital);
+        }
+        cenarios.push({
+            id: Date.now(),
+            nome: 'Só Investir (Custo de Oportunidade)',
+            modalidade: 'oportunidade',
+            params: {},
+            resultado: {
+                custoTotalNominal: 0,
+                custoTotalReal: 0,
+                patrimonioLiqFinal: capital,
+                ganhoPatrimonial: capital - g.valorBem,
+                saldoDevedorFinal: 0,
+                valorBemFinal: 0,
+                parcelaInicial: 0,
+                parcelaFinal: 0,
+                serie
+            }
+        });
+        renderCenarios();
+    }
+
+    // ══════════════════════════════════════════════════════════════════════════
+    //  RENDER CENÁRIOS
+    // ══════════════════════════════════════════════════════════════════════════
+    const LABELS_MOD = {
+        avista: 'À Vista', aluguel: 'Aluguel', sac: 'Financ. SAC',
+        price: 'Financ. Price', consorcio: 'Consórcio',
+        custom: 'Crédito Personalizado', oportunidade: 'Só Investir'
+    };
+    const BADGE_MOD = {
+        avista: 'badge-avista', aluguel: 'badge-aluguel', sac: 'badge-sac',
+        price: 'badge-price', consorcio: 'badge-consorcio',
+        custom: 'badge-custom', oportunidade: 'badge-oport'
+    };
+
+    function renderCenarios() {
+        const list = document.getElementById('cenarios-list');
+        document.getElementById('cenarios-count').textContent = cenarios.length + ' cenário(s)';
+        if (cenarios.length === 0) {
+            list.innerHTML = '<div style="text-align:center;color:#6b7280;font-size:0.85rem;padding:2rem;">Nenhum cenário adicionado ainda. Clique em "+ Adicionar Cenário" para começar.</div>';
+            return;
+        }
+        list.innerHTML = cenarios.map(c => {
+            const r = c.resultado || {};
+            const paramsStr = resumoParams(c);
+            return `
+            <div class="cenario-card" id="card-${c.id}">
+                <div class="cenario-top">
+                    <div style="display:flex;align-items:center;gap:0.5rem;">
+                        <input class="cenario-name-input" value="${c.nome}" onblur="renomearCenario(${c.id}, this.value)" onkeydown="if(event.key==='Enter')this.blur()">
+                        <span class="cenario-badge ${BADGE_MOD[c.modalidade]||''}">${LABELS_MOD[c.modalidade]||c.modalidade}</span>
+                    </div>
+                    <button class="btn-recolher" onclick="toggleRecolher(${c.id})" title="Recolher/Expandir card">▲ Recolher</button>
+                </div>
+                <div class="cenario-body">
+                    <div class="cenario-params">${paramsStr}</div>
+                    <div class="cenario-results">
+                        <div class="cenario-result-box">
+                            <div class="cenario-result-label">Custo Total Nominal</div>
+                            <div class="cenario-result-value gold">${fmtBRL(r.custoTotalNominal)}</div>
+                        </div>
+                        <div class="cenario-result-box">
+                            <div class="cenario-result-label">Custo Total Real</div>
+                            <div class="cenario-result-value">${fmtBRL(r.custoTotalReal)}</div>
+                        </div>
+                        <div class="cenario-result-box">
+                            <div class="cenario-result-label">Patrimônio Líq. Final</div>
+                            <div class="cenario-result-value ${(r.patrimonioLiqFinal||0)>=0?'green':'red'}">${fmtBRL(r.patrimonioLiqFinal)}</div>
+                        </div>
+                        <div class="cenario-result-box">
+                            <div class="cenario-result-label">Ganho Patrimonial</div>
+                            <div class="cenario-result-value ${(r.ganhoPatrimonial||0)>=0?'green':'red'}">${fmtBRL(r.ganhoPatrimonial)}</div>
+                        </div>
+                        <div class="cenario-result-box">
+                            <div class="cenario-result-label">Saldo Devedor Final</div>
+                            <div class="cenario-result-value ${(r.saldoDevedorFinal||0)>0?'red':''}">${fmtBRL(r.saldoDevedorFinal)}</div>
+                        </div>
+                        <div class="cenario-result-box">
+                            <div class="cenario-result-label">Valor do Bem ao Final</div>
+                            <div class="cenario-result-value">${fmtBRL(r.valorBemFinal)}</div>
+                        </div>
+                        <div class="cenario-result-box">
+                            <div class="cenario-result-label">Parcela Inicial</div>
+                            <div class="cenario-result-value">${fmtBRL(r.parcelaInicial)}</div>
+                        </div>
+                        <div class="cenario-result-box">
+                            <div class="cenario-result-label">Parcela Final</div>
+                            <div class="cenario-result-value">${fmtBRL(r.parcelaFinal)}</div>
+                        </div>
+                    </div>
+                    <div class="cenario-actions">
+                        <button class="btn-detalhes" onclick="toggleDetalhes(${c.id})">🔍 Mostrar Detalhes</button>
+                        ${c.modalidade !== 'oportunidade' ? `<button class="btn-edit" onclick="abrirModal(${c.id})">✎ Editar</button>` : ''}
+                        <button class="btn-danger" onclick="excluirCenario(${c.id})">✕ Excluir</button>
+                    </div>
+                    <div class="cenario-detalhes" id="detalhes-${c.id}"></div>
+                </div>
+            </div>`;
+        }).join('');
+    }
+
+    function resumoParams(c) {
+        const g = globais();
+        const p = c.params || {};
+        const mod = c.modalidade;
+        const parts = [];
+        parts.push(`Bem: ${fmtBRL(g.valorBem)}`);
+        if (prazoUnidade === 'meses') {
+            parts.push(`Prazo análise: ${Math.round(g.prazoAnos * 12)} meses`);
+        } else {
+            parts.push(`Prazo análise: ${g.prazoAnos} anos`);
+        }
+        if (mod === 'avista') {
+            const v = parseCur(p.av_valor) || g.valorBem;
+            parts.push(`Valor pago: ${fmtBRL(v)}`);
+        } else if (mod === 'aluguel') {
+            parts.push(`Aluguel: ${fmtBRL(parseCur(p.al_aluguel))}/mês`);
+            parts.push(`Reajuste: ${p.al_reajuste||0}% a.a.`);
+            if (parseCur(p.al_capital)) parts.push(`Capital investido: ${fmtBRL(parseCur(p.al_capital))}`);
+        } else if (mod === 'sac' || mod === 'price') {
+            const pfx = mod === 'sac' ? 'sac' : 'pr';
+            parts.push(`Entrada: ${fmtBRL(parseCur(p[pfx+'_entrada']))}`);
+            parts.push(`Juros: ${p[pfx+'_juros']||0}% a.a.`);
+            parts.push(`Prazo: ${p[pfx+'_prazo']||0} meses`);
+            if (p[pfx+'_correcao'] && p[pfx+'_correcao'] !== 'nenhuma') parts.push(`Correção: ${p[pfx+'_correcao'].toUpperCase()}`);
+        } else if (mod === 'consorcio') {
+            const _carta = (parseCur(p.co_creditoDesejado)||0) / (1 - (parseFloat(p.co_lanceEmbutido)||0)/100 || 1);
+            parts.push(`Crédito: ${fmtBRL(parseCur(p.co_creditoDesejado))}`);
+            parts.push(`Carta: ${fmtBRL(_carta)}`);
+            parts.push(`Prazo: ${p.co_prazo||0} meses`);
+            parts.push(`Taxa adm: ${p.co_taxaAdm||0}%`);
+            parts.push(`Contemplação: mês ${p.co_mesContemplacao||'?'}`);
+        } else if (mod === 'custom') {
+            parts.push(`Tipo: ${p.cu_nomeCredito||'Personalizado'}`);
+            parts.push(`Entrada: ${fmtBRL(parseCur(p.cu_entrada))}`);
+            parts.push(`Juros: ${p.cu_juros||0}% a.a.`);
+            parts.push(`Prazo: ${p.cu_prazo||0} meses`);
+        } else if (mod === 'oportunidade') {
+            parts.push(`Capital: ${fmtBRL(g.valorBem)}`);
+            parts.push(`Rendimento: ${(g.rendimento*100).toFixed(2)}% a.a.`);
+        }
+        return parts.join(' &bull; ');
+    }
+
+    function renomearCenario(id, nome) {
+        const c = cenarios.find(x=>x.id===id);
+        if (c) c.nome = nome.trim() || c.nome;
+    }
+
+    function excluirCenario(id) {
+        cenarios = cenarios.filter(c=>c.id!==id);
+        renderCenarios();
+        document.getElementById('comparacao-section').style.display = 'none';
+    }
+
+    // ── RECOLHER / EXPANDIR ───────────────────────────────────────────────────
+    function toggleRecolher(id) {
+        const card = document.getElementById('card-'+id);
+        if (!card) return;
+        const recolhido = card.classList.toggle('recolhido');
+        const btn = card.querySelector('.btn-recolher');
+        btn.textContent = recolhido ? '▼ Expandir' : '▲ Recolher';
+    }
+
+    // ── MOSTRAR / OCULTAR DETALHES ────────────────────────────────────────────
+    function toggleDetalhes(id) {
+        const painel = document.getElementById('detalhes-'+id);
+        const btn = document.querySelector(`#card-${id} .btn-detalhes`);
+        if (!painel) return;
+        if (painel.classList.contains('open')) {
+            painel.classList.remove('open');
+            btn.textContent = '🔍 Mostrar Detalhes';
+        } else {
+            const c = cenarios.find(x=>x.id===id);
+            if (!c) return;
+            painel.innerHTML = gerarDetalhes(c);
+            painel.classList.add('open');
+            btn.textContent = '▲ Ocultar Detalhes';
+            // Inicializar gráfico do detalhe após render
+            setTimeout(() => renderDetalheChart(id, c), 50);
+        }
+    }
+
+    // ── GERADOR DE DETALHES ───────────────────────────────────────────────────
+    function gerarDetalhes(c) {
+        const g = globais();
+        const mod = c.modalidade;
+        const p = c.params || {};
+        const r = c.resultado || {};
+        const meses = g.prazoAnos * 12;
+
+        const explicacoes = {
+            avista: `<strong>Compra à Vista</strong> significa desembolsar o valor integral do bem de uma só vez, sem financiamento. O custo é imediato e não há juros. Em contrapartida, o capital fica imobilizado no bem, deixando de render no mercado financeiro. O <strong>custo de oportunidade</strong> é o ganho que você abre mão ao não investir esse dinheiro. O patrimônio líquido ao final é o próprio valor de mercado do bem, corrigido pela valorização/depreciação configurada.`,
+            aluguel: `<strong>Aluguel</strong> é a opção de não adquirir o bem, pagando mensalmente pelo uso. O capital que seria usado na compra permanece investido, gerando rendimentos. O custo total acumula os alugueis pagos ao longo do período. O patrimônio ao final é o saldo do capital investido. Essa modalidade é vantajosa quando o rendimento do capital supera a valorização do bem e o custo do aluguel é inferior ao custo de financiar.`,
+            sac: `<strong>Financiamento SAC</strong> (Sistema de Amortização Constante): a amortização do principal é igual todos os meses, enquanto os juros diminuem progressivamente — por isso a parcela cai ao longo do tempo. A primeira parcela é a maior e a última, a menor. O saldo devedor cai de forma linear. Ideal para quem quer pagar menos juros totais e suporta parcelas mais altas no início.`,
+            price: `<strong>Financiamento Price</strong> (Tabela Price): a parcela é fixa durante todo o contrato. No início, a maior parte da parcela é juros e pouco amortiza o principal. Com o tempo, a proporção inverte. Por isso, o saldo devedor cai mais lentamente que no SAC, e o total de juros pagos é maior. Ideal para quem precisa de previsibilidade no orçamento.`,
+            consorcio: `<strong>Consórcio</strong> é uma modalidade sem juros, mas com taxa de administração e fundo de reserva. Os participantes pagam parcelas mensais e são contemplados por sorteio ou lance. O risco é a incerteza do prazo para contemplação: você pode ser contemplado no primeiro mês ou apenas no último. O custo total inclui todas as parcelas pagas até a contemplação e os custos de aquisição após receber o crédito.`,
+            custom: `<strong>Crédito Personalizado</strong> permite modelar qualquer tipo de financiamento: CDC, leasing, crédito direto, etc. Os parâmetros são totalmente flexíveis, incluindo IOF, tarifas, seguros, valor residual (balloon/VRG) e correção monetária. O cálculo segue o sistema de amortização escolhido (SAC, Price ou parcela fixa manual).`,
+            oportunidade: `<strong>Custo de Oportunidade</strong>: simula o que aconteceria se você simplesmente investisse o valor do bem à taxa de rendimento configurada, sem adquirir o bem. É o cenário de referência para avaliar se qualquer modalidade de aquisição é financeiramente vantajosa em relação a simplesmente deixar o dinheiro render.`
+        };
+
+        let html = `<div class="detalhe-explicacao">${explicacoes[mod]||''}</div>`;
+
+        // Roteiro narrativo
+        const roteiro = gerarRoteiro(c, g, meses);
+        html += `<div class="detalhe-section-title">🗓️ Roteiro do Cenário</div>`;
+        html += `<div class="detalhe-roteiro">`;
+        roteiro.forEach(ev => {
+            html += `<div class="evento"><span class="evento-mes">${ev.mes}</span><span class="evento-desc">${ev.desc}</span></div>`;
+        });
+        html += `</div>`;
+
+        // Gráfico de evolução
+        html += `<div class="detalhe-section-title">📈 Evolução ao Longo do Tempo</div>`;
+        html += `<div class="detalhe-chart-wrap"><canvas id="chart-det-${c.id}"></canvas></div>`;
+
+        // Tabela de memória de cálculo
+        const tabela = gerarTabelaCalculo(c, g, meses);
+        if (tabela) {
+            html += `<div class="detalhe-section-title">📊 Memória de Cálculo Detalhada</div>`;
+            html += tabela;
+        }
+
+        return html;
+    }
+
+    // ── ROTEIRO NARRATIVO ─────────────────────────────────────────────────────
+    function gerarRoteiro(c, g, meses) {
+        const mod = c.modalidade;
+        const p = c.params || {};
+        const r = c.resultado || {};
+        const eventos = [];
+
+        function mes(m) {
+            if (m === 0) return 'Dia 0';
+            const a = Math.floor((m-1)/12)+1;
+            if (prazoUnidade === 'meses') {
+                return `Mês ${m}`;
+            }
+            return `Mês ${m} (Ano ${a})`;
+        }
+
+        if (mod === 'avista') {
+            const vp = parseCur(p.av_valor) || g.valorBem;
+            const ce = parseCur(p.av_custosExtra);
+            eventos.push({ mes: 'Dia 0', desc: `Desembolso total de <strong>${fmtBRL(vp + g.custosAquisicao + ce)}</strong>: valor do bem (${fmtBRL(vp)}) + custos de aquisição (${fmtBRL(g.custosAquisicao + ce)}).` });
+            eventos.push({ mes: 'Todo mês', desc: `Pagamento de custos de posse: <strong>${fmtBRL(g.custosMensais)}/mês</strong> (condomínio, IPTU, seguro, manutenção, etc.).` });
+            if (g.valorizacao !== 0) {
+                const vFinal = r.valorBemFinal || 0;
+                const prazoLabel = prazoUnidade === 'meses' ? `${Math.round(g.prazoAnos*12)} meses` : `${g.prazoAnos} anos`;
+                eventos.push({ mes: mes(meses), desc: `Ao final do período, o bem vale <strong>${fmtBRL(vFinal)}</strong> (valorização de ${(g.valorizacao*100).toFixed(2)}% a.a. ao longo de ${prazoLabel}).` });
+            }
+            eventos.push({ mes: mes(meses), desc: `<strong>Custo total acumulado: ${fmtBRL(r.custoTotalNominal)}</strong>. Patrimônio líquido final: <strong>${fmtBRL(r.patrimonioLiqFinal)}</strong>.` });
+        }
+
+        else if (mod === 'aluguel') {
+            const al = parseCur(p.al_aluguel);
+            const cap = parseCur(p.al_capital);
+            const reaj = parseFloat(p.al_reajuste)||0;
+            eventos.push({ mes: 'Dia 0', desc: `Capital de <strong>${fmtBRL(cap)}</strong> fica investido rendendo <strong>${(g.rendimento*100).toFixed(2)}% a.a.</strong> líquido.` });
+            if (parseCur(p.al_caucao)) eventos.push({ mes: 'Dia 0', desc: `Pagamento de caução/depósito: <strong>${fmtBRL(parseCur(p.al_caucao))}</strong>.` });
+            eventos.push({ mes: 'Mês 1', desc: `Primeiro aluguel: <strong>${fmtBRL(al)}/mês</strong>.` });
+            for (let ano = 1; ano <= g.prazoAnos; ano++) {
+                const alReaj = al * Math.pow(1+reaj/100, ano);
+                if (ano <= 3 || ano === g.prazoAnos) {
+                    eventos.push({ mes: `Mês ${ano*12+1} (Ano ${ano+1})`, desc: `Reajuste anual de ${reaj}%: aluguel passa para <strong>${fmtBRL(alReaj)}/mês</strong>.` });
+                } else if (ano === 4) {
+                    eventos.push({ mes: '...', desc: 'Reajustes anuais continuam.' });
+                }
+            }
+            eventos.push({ mes: mes(meses), desc: `Capital investido cresce para <strong>${fmtBRL(r.patrimonioLiqFinal)}</strong>. Custo total de aluguel pago: <strong>${fmtBRL(r.custoTotalNominal)}</strong>.` });
+        }
+
+        else if (mod === 'sac' || mod === 'price') {
+            const pfx = mod === 'sac' ? 'sac' : 'pr';
+            const entrada = parseCur(p[pfx+'_entrada']);
+            const financiado = parseCur(p[pfx+'_financiado']) || (g.valorBem - entrada);
+            const prazo = parseInt(p[pfx+'_prazo'])||0;
+            const juros = parseFloat(p[pfx+'_juros'])||0;
+            const carencia = parseInt(p[pfx+'_carencia'])||0;
+            const amorts = p[pfx+'_amortsList'] || [];
+
+            eventos.push({ mes: 'Dia 0', desc: `Entrada de <strong>${fmtBRL(entrada)}</strong> + custos de aquisição de <strong>${fmtBRL(g.custosAquisicao)}</strong>. Saldo financiado: <strong>${fmtBRL(financiado)}</strong>.` });
+            if (carencia > 0) {
+                eventos.push({ mes: `Meses 1–${carencia}`, desc: `Período de carência: ${p[pfx+'_tipoCarencia']==='paga'?'paga apenas os juros mensais':'juros são capitalizados ao saldo devedor'}.` });
+            }
+            eventos.push({ mes: mes(carencia+1), desc: `Início das parcelas de amortização. Primeira parcela: <strong>${fmtBRL(r.parcelaInicial)}</strong>.` });
+            if (mod === 'sac') {
+                eventos.push({ mes: 'Todo mês', desc: `Amortização constante de <strong>${fmtBRL(financiado/prazo)}</strong> + juros decrescentes sobre o saldo devedor. Parcela diminui a cada mês.` });
+            } else {
+                eventos.push({ mes: 'Todo mês', desc: `Parcela fixa de <strong>${fmtBRL(r.parcelaInicial)}</strong>. No início, a maior parte é juros; ao final, a maior parte é amortização.` });
+            }
+            amorts.forEach(a => {
+                const label = a.period === 'unica' ? mes(a.mes) : (a.period === 'anual' ? `A partir do mês ${a.mes} (anual)` : `A partir do mês ${a.mes} (mensal)`);
+                eventos.push({ mes: label, desc: `Amortização extraordinária de <strong>${fmtBRL(a.valor)}</strong> — efeito: ${p[pfx+'_efeitoAmort']==='prazo'?'reduz o prazo':'reduz a parcela'}.` });
+            });
+            // Detectar quitação antecipada simulando o loop
+            if (amorts.length > 0 || (parseFloat(p[pfx+'_indiceCorrecao'])||0) > 0) {
+                const jurosAA2 = (parseFloat(p[pfx+'_cet'])||parseFloat(p[pfx+'_juros'])||0)/100;
+                const jm2 = Math.pow(1+jurosAA2, 1/12)-1;
+                const corr2 = (parseFloat(p[pfx+'_indiceCorrecao'])||0)/100;
+                const efeitoAmort2 = p[pfx+'_efeitoAmort']||'prazo';
+                let saldo2 = parseCur(p[pfx+'_financiado']) || (g.valorBem - entrada);
+                let prazoR2 = prazo;
+                let mesQuit = prazo;
+                const mesInicio2 = carencia + 1;
+                let parcelaP2 = (mod==='price'&&jm2>0) ? saldo2*jm2/(1-Math.pow(1+jm2,-prazo)) : saldo2/prazo;
+                for (let m2 = 1; m2 <= prazo; m2++) {
+                    const mDI = m2 - mesInicio2;
+                    if (corr2 > 0 && mDI > 0 && mDI % 12 === 0) saldo2 *= (1+corr2);
+                    if (m2 > carencia && prazoR2 > 0) {
+                        if (mod==='sac') { saldo2 -= saldo2/prazoR2; }
+                        else { if (jm2>0) parcelaP2=saldo2*jm2/(1-Math.pow(1+jm2,-prazoR2)); else parcelaP2=saldo2/prazoR2; saldo2 -= (parcelaP2 - saldo2*jm2); }
+                        prazoR2--;
+                    }
+                    amorts.forEach(a => {
+                        let oc = false;
+                        if (a.period==='unica'&&m2===a.mes) oc=true;
+                        if (a.period==='anual'&&m2>=a.mes&&(m2-a.mes)%12===0) oc=true;
+                        if (a.period==='mensal'&&m2>=a.mes) oc=true;
+                        if (oc&&saldo2>0) {
+                            saldo2 -= Math.min(a.valor, saldo2);
+                            if (efeitoAmort2==='prazo'&&saldo2>0&&prazoR2>0) prazoR2=Math.ceil(saldo2/(saldo2/prazoR2));
+                        }
+                    });
+                    if (saldo2 < 0.01) saldo2 = 0;
+                    if (saldo2 === 0) { mesQuit = m2; break; }
+                }
+                if (mesQuit < prazo) {
+                    const mesesEconomizados = prazo - mesQuit;
+                    eventos.push({ mes: mes(mesQuit), desc: `🏁 <strong>Quitação antecipada!</strong> O financiamento foi quitado no mês ${mesQuit}, ou seja, <strong>${mesesEconomizados} meses antes</strong> do prazo original (${prazo} meses). Saldo devedor zerado.` });
+                } else {
+                    eventos.push({ mes: mes(prazo), desc: `Financiamento quitado. Última parcela: <strong>${fmtBRL(r.parcelaFinal)}</strong>.` });
+                }
+            } else {
+                eventos.push({ mes: mes(prazo), desc: `Financiamento quitado. Última parcela: <strong>${fmtBRL(r.parcelaFinal)}</strong>.` });
+            }
+            eventos.push({ mes: mes(meses), desc: `Bem vale <strong>${fmtBRL(r.valorBemFinal)}</strong>. Custo total do financiamento: <strong>${fmtBRL(r.custoTotalNominal)}</strong>.` });
+        }
+
+        else if (mod === 'consorcio') {
+            const _lanceEmbPct2 = (parseFloat(p.co_lanceEmbutido)||0)/100;
+            const credito = _lanceEmbPct2 < 1 ? (parseCur(p.co_creditoDesejado)||g.valorBem)/(1-_lanceEmbPct2) : (parseCur(p.co_creditoDesejado)||g.valorBem);
+            const prazo = parseInt(p.co_prazo)||0;
+            const taxaAdm = parseFloat(p.co_taxaAdm)||0;
+            const fundoRes = parseFloat(p.co_fundoReserva)||0;
+            const tipoContemp = p.co_tipoContemp || 'sorteio';
+            const tipoContempLabel = {sorteio:'Sorteio', lancelivre:'Lance Livre', lancefixo:'Lance Fixo'}[tipoContemp] || 'Sorteio';
+            const seguroPct = parseFloat(p.co_seguroPct)||0;
+            const mesContemp = parseInt(p.co_mesContemplacao)||0;
+            const baseLance = p.co_baseLance || 'carta';
+            const baseLanceLabel = {carta:'carta de crédito', categoria:'categoria', saldo:'saldo devedor'}[baseLance] || 'carta de crédito';
+            const baseCalcLabel = baseLanceLabel;
+            const lanceEmb = parseFloat(p.co_lanceEmbutido)||0;
+            const lancePct = tipoContemp === 'lancefixo' ? (parseFloat(p.co_lanceFixoPct)||0) : tipoContemp === 'lancelivre' ? (parseFloat(p.co_lanceLivrePct)||0) : 0;
+            const lanceRec = lancePct > 0 ? credito * lancePct / 100 : 0;
+            const lanceRecPct = lancePct;
+            const lanceAbate = true;
+            const mesLance = tipoContemp !== 'sorteio' ? mesContemp : 0;
+            const reducaoParcela = (parseFloat(p.co_reducaoParcela)||0)/100;
+            const posContempOpcao = p.co_posContempOpcao || 'parcela';
+            const reajuste = parseFloat(p.co_reajusteAA)||0;
+            const categoria = credito * (1 + (taxaAdm+fundoRes)/100);
+
+            eventos.push({ mes: 'Dia 0', desc: `Ingresso no consórcio. Carta de crédito: <strong>${fmtBRL(credito)}</strong>. Prazo do grupo: <strong>${prazo} meses</strong>. Categoria: <strong>${fmtBRL(categoria)}</strong> (carta × ${(1+(taxaAdm+fundoRes)/100).toFixed(4)}).` });
+            eventos.push({ mes: 'Mês 1', desc: `Início das parcelas. Parcela inicial: <strong>${fmtBRL(r.parcelaInicial)}</strong>. Tipo de contemplação: <strong>${tipoContempLabel}</strong>. Taxa Adm: ${taxaAdm}% + Fundo Reserva: ${fundoRes}% sobre a carta, diluídos em ${prazo} meses.${seguroPct > 0 ? ' Seguro: ' + seguroPct + '% a.m. sobre a carta.' : ''}` });
+            if (reajuste > 0) {
+                eventos.push({ mes: 'Anualmente', desc: `Reajuste anual de <strong>${reajuste}% a.a.</strong> aplicado à carta de crédito, à categoria e ao saldo devedor. As parcelas acompanham o reajuste.` });
+                const creditoAno1 = credito * (1 + reajuste/100);
+                eventos.push({ mes: 'Mês 13', desc: `Após 1º reajuste: carta atualizada para <strong>${fmtBRL(creditoAno1)}</strong>. Parcela sobe proporcionalmente.` });
+            }
+            if (mesLance > 0 && (lanceEmb > 0 || lanceRec > 0 || lanceRecPct > 0)) {
+                const lanceDesc = [];
+                if (lanceEmb > 0) lanceDesc.push(`lance embutido de <strong>${lanceEmb}%</strong> da ${baseLanceLabel}`);
+                if (lanceRec > 0) lanceDesc.push(`<strong>${fmtBRL(lanceRec)}</strong> de recursos próprios`);
+                else if (lanceRecPct > 0) lanceDesc.push(`<strong>${lanceRecPct}%</strong> da ${baseLanceLabel} em recursos próprios`);
+                eventos.push({ mes: mes(mesLance), desc: `Lance dado: ${lanceDesc.join(' + ')}. Base do lance: <strong>${baseLanceLabel}</strong>. ${lanceAbate?'O lance <strong>abate o saldo devedor</strong>, reduzindo as parcelas restantes.':'O lance <strong>não abate o saldo</strong>, apenas antecipa a contemplação.'}` });
+                if (r.lanceEmbutidoValor > 0) eventos.push({ mes: mes(mesLance), desc: `Lance embutido: <strong>${fmtBRL(r.lanceEmbutidoValor)}</strong>. Crédito líquido recebido após contemplação: <strong>${fmtBRL(r.creditoLiquido)}</strong>.` });
+            }
+            const posOpcaoLabel = {parcela:'reduzir parcela (manter prazo)', prazo:'reduzir prazo (manter parcela)'}[posContempOpcao] || 'reduzir parcela';
+            eventos.push({ mes: mes(mesContemp), desc: `🎉 <strong>Contemplação!</strong> Carta de crédito liberada. Crédito líquido: <strong>${fmtBRL(r.creditoLiquido||credito)}</strong>. Custos de aquisição pagos: <strong>${fmtBRL(g.custosAquisicao)}</strong>. Bem adquirido. Opção pós-contemplação: <strong>${posOpcaoLabel}</strong>. Parcelas continuam até o mês ${prazo}.` });
+            if (reducaoParcela > 0) {
+                eventos.push({ mes: `Meses 1–${mesContemp-1}`, desc: `⚠️ Redutor pré-contemplação de <strong>${(reducaoParcela*100).toFixed(2)}%</strong> aplicado. A amortização mensal foi reduzida para <strong>${((1-reducaoParcela)*100).toFixed(2)}%</strong> do valor normal, aumentando o saldo devedor no momento da contemplação. Parcela inicial reduzida: <strong>${fmtBRL(r.parcelaInicial)}</strong>. Piso de 50% da parcela original garantido em todo o período.` });
+            }
+            if (mesContemp < prazo) {
+                const posDesc = posContempOpcao === 'prazo'
+                    ? `Parcela mantida em <strong>${fmtBRL(r.parcelaInicial)}</strong> (com reajustes), prazo reduzido conforme amortização.`
+                    : `Parcela pós-contemplação calculada sobre o saldo devedor restante. Piso garantido: 50% da parcela original corrigida.`;
+                eventos.push({ mes: `Meses ${mesContemp+1}–${prazo}`, desc: `Parcelas pós-contemplação: ${posDesc} Total de <strong>${prazo - mesContemp} parcelas</strong> restantes.` });
+            }
+            eventos.push({ mes: mes(prazo), desc: `Última parcela do consórcio paga. Total desembolsado em parcelas: <strong>${fmtBRL(r.parcelaFinal * prazo)}</strong> (estimativa).` });
+            eventos.push({ mes: mes(meses), desc: `Bem vale <strong>${fmtBRL(r.valorBemFinal)}</strong>. Custo total: <strong>${fmtBRL(r.custoTotalNominal)}</strong>. Custo real (descontada inflação): <strong>${fmtBRL(r.custoTotalReal)}</strong>.` });
+        }
+
+        else if (mod === 'custom') {
+            const entrada = parseCur(p.cu_entrada);
+            const prazo = parseInt(p.cu_prazo)||0;
+            const carencia = parseInt(p.cu_carencia)||0;
+            const balloon = parseCur(p.cu_balloon);
+            const amorts = p.cu_amortsList || [];
+
+            eventos.push({ mes: 'Dia 0', desc: `Entrada de <strong>${fmtBRL(entrada)}</strong> + custos de aquisição de <strong>${fmtBRL(g.custosAquisicao)}</strong>. IOF de ${p.cu_iof||0}% incorporado ao saldo.` });
+            if (carencia > 0) {
+                eventos.push({ mes: `Meses 1–${carencia}`, desc: `Carência: ${p.cu_tipoCarencia==='paga'?'juros pagos mensalmente':'juros capitalizados ao saldo'}.` });
+            }
+            eventos.push({ mes: mes(carencia+1), desc: `Início das parcelas. Sistema: <strong>${{sac:'SAC',price:'Price',fixo:'Parcela Fixa'}[p.cu_sistema]||p.cu_sistema}</strong>. Primeira parcela: <strong>${fmtBRL(r.parcelaInicial)}</strong>.` });
+            amorts.forEach(a => {
+                const label = a.period === 'unica' ? mes(a.mes) : `A partir do mês ${a.mes}`;
+                eventos.push({ mes: label, desc: `Amortização extraordinária de <strong>${fmtBRL(a.valor)}</strong>.` });
+            });
+            if (balloon > 0) {
+                eventos.push({ mes: mes(prazo), desc: `Pagamento do valor residual (balloon/VRG): <strong>${fmtBRL(balloon)}</strong>.` });
+            }
+            // Detectar quitação antecipada simulando o loop
+            if (amorts.length > 0) {
+                const jurosAA3 = (parseFloat(p.cu_juros)||0)/100;
+                const jm3 = Math.pow(1+jurosAA3, 1/12)-1;
+                const corr3 = (parseFloat(p.cu_indiceCorrecao)||0)/100;
+                const efeitoAmort3 = p.cu_efeitoAmort||'prazo';
+                const sistema3 = p.cu_sistema||'sac';
+                const parcelaFixa3 = parseCur(p.cu_parcelaFixa);
+                let saldo3 = parseCur(p.cu_financiado)||(g.valorBem - entrada);
+                saldo3 *= (1 + (parseFloat(p.cu_iof)||0)/100);
+                let prazoR3 = prazo;
+                let mesQuit3 = prazo;
+                const mesInicio3 = carencia + 1;
+                let parcelaP3 = (sistema3==='price'&&jm3>0) ? saldo3*jm3/(1-Math.pow(1+jm3,-prazo)) : saldo3/prazo;
+                for (let m3 = 1; m3 <= prazo; m3++) {
+                    const mDI3 = m3 - mesInicio3;
+                    if (corr3 > 0 && mDI3 > 0 && mDI3 % 12 === 0) saldo3 *= (1+corr3);
+                    if (m3 > carencia && prazoR3 > 0) {
+                        if (sistema3==='fixo'&&parcelaFixa3>0) { saldo3 -= Math.max(0, parcelaFixa3 - saldo3*jm3); prazoR3--; }
+                        else if (sistema3==='sac') { saldo3 -= saldo3/prazoR3; prazoR3--; }
+                        else { if (jm3>0) parcelaP3=saldo3*jm3/(1-Math.pow(1+jm3,-prazoR3)); else parcelaP3=saldo3/prazoR3; saldo3 -= (parcelaP3 - saldo3*jm3); prazoR3--; }
+                    }
+                    amorts.forEach(a => {
+                        let oc3 = false;
+                        if (a.period==='unica'&&m3===a.mes) oc3=true;
+                        if (a.period==='anual'&&m3>=a.mes&&(m3-a.mes)%12===0) oc3=true;
+                        if (a.period==='mensal'&&m3>=a.mes) oc3=true;
+                        if (oc3&&saldo3>0) {
+                            saldo3 -= Math.min(a.valor, saldo3);
+                            if (efeitoAmort3==='prazo'&&saldo3>0&&prazoR3>0) prazoR3=Math.ceil(saldo3/(saldo3/prazoR3));
+                        }
+                    });
+                    if (saldo3 < 0.01) saldo3 = 0;
+                    if (saldo3 === 0) { mesQuit3 = m3; break; }
+                }
+                if (mesQuit3 < prazo) {
+                    const mesesEcon3 = prazo - mesQuit3;
+                    eventos.push({ mes: mes(mesQuit3), desc: `🏁 <strong>Quitação antecipada!</strong> O crédito foi quitado no mês ${mesQuit3}, <strong>${mesesEcon3} meses antes</strong> do prazo original (${prazo} meses). Saldo devedor zerado.` });
+                } else {
+                    eventos.push({ mes: mes(prazo), desc: `Crédito quitado. Última parcela: <strong>${fmtBRL(r.parcelaFinal)}</strong>.` });
+                }
+            } else {
+                eventos.push({ mes: mes(prazo), desc: `Crédito quitado. Última parcela: <strong>${fmtBRL(r.parcelaFinal)}</strong>.` });
+            }
+            eventos.push({ mes: mes(meses), desc: `Custo total: <strong>${fmtBRL(r.custoTotalNominal)}</strong>. Patrimônio líquido: <strong>${fmtBRL(r.patrimonioLiqFinal)}</strong>.` });
+        }
+
+        else if (mod === 'oportunidade') {
+            const rendMensal = Math.pow(1+g.rendimento, 1/12) - 1;
+            eventos.push({ mes: 'Dia 0', desc: `Capital inicial de <strong>${fmtBRL(g.valorBem)}</strong> aplicado a <strong>${(g.rendimento*100).toFixed(2)}% a.a.</strong> líquido (equivalente a ${(rendMensal*100).toFixed(4)}% a.m.).` });
+            if (prazoUnidade === 'meses') {
+                // Mostrar marcos mensais (a cada 12 meses, até 5 marcos)
+                const totalMeses = Math.round(g.prazoAnos * 12);
+                const marcosMax = Math.min(Math.floor(totalMeses / 12), 5);
+                for (let i = 1; i <= marcosMax; i++) {
+                    const m12 = i * 12;
+                    const cap = g.valorBem * Math.pow(1+g.rendimento, i);
+                    eventos.push({ mes: `Mês ${m12}`, desc: `Capital acumulado (${i} ano${i>1?'s':''}): <strong>${fmtBRL(cap)}</strong>.` });
+                }
+            } else {
+                for (let ano = 1; ano <= Math.min(g.prazoAnos, 5); ano++) {
+                    const cap = g.valorBem * Math.pow(1+g.rendimento, ano);
+                    eventos.push({ mes: `Fim do Ano ${ano}`, desc: `Capital acumulado: <strong>${fmtBRL(cap)}</strong>.` });
+                }
+            }
+            if (g.prazoAnos > 5) eventos.push({ mes: '...', desc: 'Capital continua crescendo com juros compostos.' });
+            eventos.push({ mes: mes(meses), desc: `Capital final: <strong>${fmtBRL(r.patrimonioLiqFinal)}</strong>. Ganho total: <strong>${fmtBRL(r.ganhoPatrimonial)}</strong>.` });
+        }
+
+        return eventos;
+    }
+
+    // ── TABELA DE MEMÓRIA DE CÁLCULO ──────────────────────────────────────────
+    function gerarTabelaCalculo(c, g, meses) {
+        const mod = c.modalidade;
+        const p = c.params || {};
+
+        // Usar a unidade escolhida pelo usuário no campo de prazo global
+        const mostrarMeses = prazoUnidade === 'meses';
+        const step = mostrarMeses ? 1 : 12;
+        const totalLinhas = Math.ceil(meses / step);
+
+        if (mod === 'avista') {
+            const valorPago = parseCur(p.av_valor) || g.valorBem;
+            const custosExtra = parseCur(p.av_custosExtra);
+            const custosAq = g.custosAquisicao + custosExtra;
+            let valorBem = valorPago;
+            let custoAcum = valorPago + custosAq;
+            let totalCustosPosse = 0;
+            let rows = '';
+            for (let m = step; m <= meses; m += step) {
+                const label = mostrarMeses ? `Mês ${m}` : `Ano ${m/12}`;
+                for (let i = 1; i <= step; i++) valorBem *= (1+g.valorizacao/12);
+                const custosStep = g.custosMensais * step;
+                custoAcum += custosStep;
+                totalCustosPosse += custosStep;
+                const real = custoAcum / Math.pow(1+g.inflacao, m/12);
+                rows += `<tr><td>${label}</td><td>${fmtBRL(valorBem)}</td><td>${fmtBRL(custosStep)}</td><td>${fmtBRL(custoAcum)}</td><td>${fmtBRL(real)}</td></tr>`;
+            }
+            rows += `<tr style="background:rgba(212,175,55,0.08);font-weight:bold;"><td>TOTAL</td><td style="color:#4ade80">${fmtBRL(valorBem)} (valor final)</td><td>${fmtBRL(totalCustosPosse)}</td><td>${fmtBRL(custoAcum)}</td><td>${fmtBRL(custoAcum/Math.pow(1+g.inflacao,meses/12))}</td></tr>`;
+            return `<div class="amort-table-wrap"><table class="amort-table">
+                <thead><tr><th>Período</th><th>Valor do Bem</th><th>Custos Posse</th><th>Custo Acum. Nominal</th><th>Custo Acum. Real</th></tr></thead>
+                <tbody>${rows}</tbody></table></div>`;
+        }
+
+        if (mod === 'aluguel') {
+            let aluguel = parseCur(p.al_aluguel);
+            const reajuste = (parseFloat(p.al_reajuste)||0)/100;
+            const taxaAdm = (parseFloat(p.al_taxaAdm)||0)/100;
+            const custosExtra = parseCur(p.al_custosExtra);
+            let capital = parseCur(p.al_capital);
+            const aporteInv = parseCur(p.al_aporteInv);
+            const rendMensal = Math.pow(1+g.rendimento, 1/12)-1;
+            let custoAcum = parseCur(p.al_caucao);
+            let totalDesembolso = 0;
+            let stepPgto = 0;
+            let rows = '';
+            for (let m = 1; m <= meses; m++) {
+                if (m > 1 && (m-1)%12===0) aluguel *= (1+reajuste);
+                const pgto = aluguel*(1+taxaAdm)+custosExtra;
+                custoAcum += pgto;
+                totalDesembolso += pgto;
+                stepPgto += pgto;
+                capital = capital*(1+rendMensal)+aporteInv;
+                if (m % step === 0) {
+                    const label = mostrarMeses ? `Mês ${m}` : `Ano ${m/12}`;
+                    const real = custoAcum / Math.pow(1+g.inflacao, m/12);
+                    rows += `<tr><td>${label}</td><td>${fmtBRL(aluguel)}</td><td>${fmtBRL(stepPgto)}</td><td>${fmtBRL(custoAcum)}</td><td>${fmtBRL(capital)}</td><td>${fmtBRL(real)}</td></tr>`;
+                    stepPgto = 0;
+                }
+            }
+            rows += `<tr style="background:rgba(212,175,55,0.08);font-weight:bold;"><td>TOTAL</td><td>${fmtBRL(aluguel)} (aluguel final)</td><td>${fmtBRL(totalDesembolso)}</td><td>${fmtBRL(custoAcum)}</td><td style="color:#4ade80">${fmtBRL(capital)}</td><td>${fmtBRL(custoAcum/Math.pow(1+g.inflacao,meses/12))}</td></tr>`;
+            return `<div class="amort-table-wrap"><table class="amort-table">
+                <thead><tr><th>Período</th><th>Aluguel</th><th>Desembolso no Período</th><th>Custo Acum.</th><th>Capital Investido</th><th>Custo Real</th></tr></thead>
+                <tbody>${rows}</tbody></table></div>`;
+        }
+
+        if (mod === 'sac' || mod === 'price') {
+            const pfx = mod === 'sac' ? 'sac' : 'pr';
+            const entrada = parseCur(p[pfx+'_entrada']);
+            let saldo = parseCur(p[pfx+'_financiado']) || (g.valorBem - entrada);
+            const prazoTotal = parseInt(p[pfx+'_prazo'])||meses;
+            const jurosAA = (parseFloat(p[pfx+'_cet'])||parseFloat(p[pfx+'_juros'])||0)/100;
+            const jurosMensal = Math.pow(1+jurosAA, 1/12)-1;
+            const correcaoAA = (parseFloat(p[pfx+'_indiceCorrecao'])||0)/100;
+            const mip = (parseFloat(p[pfx+'_mip'])||0)/100;
+            const dfi = (parseFloat(p[pfx+'_dfi'])||0)/100;
+            const taxaAdm = parseCur(p[pfx+'_taxaAdm']);
+            const carencia = parseInt(p[pfx+'_carencia'])||0;
+            const tipoCarencia = p[pfx+'_tipoCarencia']||'paga';
+            const amorts = p[pfx+'_amortsList']||[];
+            const efeitoAmort = p[pfx+'_efeitoAmort']||'prazo';
+            let prazoRestante = prazoTotal;
+            let custoAcum = entrada + g.custosAquisicao;
+            const mesInicioTab = carencia + 1; // mês de início das parcelas
+            // Price: parcela fixa calculada sobre o saldo inicial
+            let parcelaPrice = 0;
+            if (mod === 'price' && jurosMensal > 0) parcelaPrice = saldo*jurosMensal/(1-Math.pow(1+jurosMensal,-prazoTotal));
+            else if (mod === 'price') parcelaPrice = saldo/prazoTotal;
+            let rows = '';
+            let totalJuros = 0, totalAmort = 0, totalSeguros = 0, totalParcelas = 0, totalEncargos = 0;
+            // Acumuladores para agregação por período (step)
+            let stepJuros=0, stepAmort=0, stepParcela=0, stepSeguros=0;
+            for (let m = 1; m <= meses; m++) {
+                // Correção monetária: apenas no aniversário anual
+                const mesesDesdeInicioTab = m - mesInicioTab;
+                if (correcaoAA > 0 && mesesDesdeInicioTab > 0 && mesesDesdeInicioTab % 12 === 0) {
+                    saldo *= (1 + correcaoAA);
+                    // Recalcular parcelaPrice após correção (ambos os efeitos)
+                    if (mod === 'price' && prazoRestante > 0) {
+                        parcelaPrice = jurosMensal > 0
+                            ? saldo * jurosMensal / (1 - Math.pow(1+jurosMensal, -prazoRestante))
+                            : saldo / prazoRestante;
+                    }
+                }
+                let amortizacao = 0, juros = 0, parcela = 0;
+                if (m <= carencia) {
+                    juros = saldo * jurosMensal;
+                    if (tipoCarencia === 'paga') {
+                        parcela = juros;
+                    } else {
+                        saldo += juros;
+                    }
+                } else if (prazoRestante > 0) {
+                    if (mod === 'sac') {
+                        amortizacao = saldo / prazoRestante;
+                        juros = saldo * jurosMensal;
+                        parcela = amortizacao + juros;
+                        saldo -= amortizacao;
+                        prazoRestante--;
+                    } else {
+                        // Price: usa parcelaPrice corrente (não recalcula aqui)
+                        juros = saldo * jurosMensal;
+                        amortizacao = parcelaPrice - juros;
+                        saldo -= amortizacao;
+                        prazoRestante--;
+                        parcela = parcelaPrice;
+                    }
+                }
+                const segMip = saldo * mip;
+                const segDfi = g.valorBem * dfi;
+                const encargos = segMip + segDfi + taxaAdm;
+                const totalMensal = parcela + encargos + g.custosMensais;
+                custoAcum += totalMensal;
+                totalJuros += juros;
+                totalAmort += amortizacao;
+                totalSeguros += segMip + segDfi;
+                totalParcelas += parcela;
+                totalEncargos += encargos;
+                stepJuros += juros; stepAmort += amortizacao;
+                stepParcela += parcela; stepSeguros += segMip+segDfi+taxaAdm;
+                // Amortizações extraordinárias
+                amorts.forEach(a => {
+                    let ocorre = false;
+                    if (a.period==='unica'&&m===a.mes) ocorre=true;
+                    if (a.period==='anual'&&m>=a.mes&&(m-a.mes)%12===0) ocorre=true;
+                    if (a.period==='mensal'&&m>=a.mes) ocorre=true;
+                    if (ocorre&&saldo>0) {
+                        const av = Math.min(a.valor, saldo);
+                        saldo -= av;
+                        custoAcum += av;
+                        stepAmort += av;
+                        totalAmort += av;
+                        if (saldo <= 0) {
+                            prazoRestante = 0;
+                        } else if (efeitoAmort === 'prazo') {
+                            // Mantém parcela, recalcula prazo
+                            if (mod === 'price' && jurosMensal > 0 && parcelaPrice > 0) {
+                                const r = jurosMensal;
+                                const novoN = Math.ceil(-Math.log(1 - saldo * r / parcelaPrice) / Math.log(1 + r));
+                                prazoRestante = isFinite(novoN) && novoN > 0 ? novoN : prazoRestante;
+                            }
+                            // SAC: prazo já é recalculado implicitamente (amortizacao = saldo/prazoRestante)
+                        } else {
+                            // Efeito parcela: mantém prazo, recalcula parcelaPrice
+                            if (mod === 'price' && prazoRestante > 0) {
+                                parcelaPrice = jurosMensal > 0
+                                    ? saldo * jurosMensal / (1 - Math.pow(1+jurosMensal, -prazoRestante))
+                                    : saldo / prazoRestante;
+                            }
+                        }
+                    }
+                });
+                if (saldo < 0) saldo = 0;
+                if (saldo === 0) prazoRestante = 0;
+                if (m % step === 0) {
+                    const label = mostrarMeses ? `Mês ${m}` : `Ano ${m/12}`;
+                    const hasAmortExtra = amorts.some(a=>a.period==='unica'&&a.mes>=m-step+1&&a.mes<=m);
+                    const destaque = hasAmortExtra ? ' class="destaque"' : '';
+                    // Exibir saldo no FIM do período (após amortizações)
+                    rows += `<tr${destaque}><td>${label}</td><td>${fmtBRL(saldo)}</td><td>${fmtBRL(stepAmort)}</td><td>${fmtBRL(stepJuros)}</td><td>${fmtBRL(stepParcela)}</td><td>${fmtBRL(stepSeguros)}</td><td>${fmtBRL(custoAcum)}</td></tr>`;
+                    stepJuros=0; stepAmort=0; stepParcela=0; stepSeguros=0;
+                }
+            }
+            rows += `<tr style="background:rgba(212,175,55,0.08);font-weight:bold;"><td>TOTAL</td><td style="color:#4ade80">${fmtBRL(saldo)} (saldo final)</td><td>${fmtBRL(totalAmort)}</td><td>${fmtBRL(totalJuros)}</td><td>${fmtBRL(totalParcelas)}</td><td>${fmtBRL(totalSeguros)}</td><td>${fmtBRL(custoAcum)}</td></tr>`;
+            return `<div class="amort-table-wrap"><table class="amort-table">
+                <thead><tr><th>Período</th><th>Saldo Dev. (fim)</th><th>Amortização</th><th>Juros</th><th>Parcela</th><th>Seguros+Taxas</th><th>Custo Acum.</th></tr></thead>
+                <tbody>${rows}</tbody></table></div>`;
+        }
+
+        if (mod === 'consorcio') {
+            const creditoDesejado = parseCur(p.co_creditoDesejado)||g.valorBem;
+            const lanceEmbutidoPct = (parseFloat(p.co_lanceEmbutido)||0)/100;
+            const credito = lanceEmbutidoPct < 1 ? creditoDesejado/(1-lanceEmbutidoPct) : creditoDesejado;
+            const prazo = parseInt(p.co_prazo)||meses;
+            const taxaAdmTotal = (parseFloat(p.co_taxaAdm)||0)/100;
+            const fundoReserva = (parseFloat(p.co_fundoReserva)||0)/100;
+            const seguroPct = (parseFloat(p.co_seguroPct)||0)/100;
+            const reajusteAA = (parseFloat(p.co_reajusteAA)||0)/100;
+            const mesContemp = parseInt(p.co_mesContemplacao)||Math.floor(prazo/2);
+            const reducaoParcela = (parseFloat(p.co_reducaoParcela)||0)/100;
+            const posContempOpcao = p.co_posContempOpcao || 'parcela';
+            const adesaoPct = (parseFloat(p.co_adesaoPct)||0)/100;
+            const adesaoValor = credito * adesaoPct;
+            const lanceEmbutidoValor = credito * lanceEmbutidoPct;
+            // Tipo de contemplação e lance
+            const tipoContempTab = p.co_tipoContemp || 'sorteio';
+            const baseLance = p.co_baseLance || 'carta';
+            const lancePctTab = tipoContempTab === 'lancefixo' ? (parseFloat(p.co_lanceFixoPct)||0)/100
+                             : tipoContempTab === 'lancelivre' ? (parseFloat(p.co_lanceLivrePct)||0)/100 : 0;
+            const lanceRecursosPct = lancePctTab;
+            const lanceRecursosFixo = 0;
+            const lanceAbateSaldo = true;
+            const mesLance = tipoContempTab !== 'sorteio' ? mesContemp : 0;
+            // Seguro simplificado: percentual sobre a carta
+            let creditoAtual = credito;
+            let categoriaAtual = credito * (1 + taxaAdmTotal + fundoReserva);
+            let saldoDevedor = credito;
+            let custoAcum = adesaoValor;
+            let totalParcelas = 0, totalAmort = 0, totalAdm = 0, totalSeguro = 0;
+            let stepParcela = 0, stepAmort = 0, stepAdm = 0, stepSeguro = 0;
+            let lanceJaDado = false;
+            let parcelaOriginalTab = 0;
+            let rows = '';
+            for (let m = 1; m <= meses; m++) {
+                if (reajusteAA > 0 && m > 1 && (m-1) % 12 === 0) {
+                    creditoAtual *= (1 + reajusteAA);
+                    categoriaAtual = creditoAtual * (1 + taxaAdmTotal + fundoReserva);
+                    saldoDevedor *= (1 + reajusteAA);
+                    if (parcelaOriginalTab > 0) parcelaOriginalTab *= (1 + reajusteAA);
+                }
+                let amortM = 0, admM = 0, seguroM = 0, parcelaM = 0;
+                if (m <= prazo) {
+                    admM = categoriaAtual * (taxaAdmTotal + fundoReserva) / prazo;
+                    const amortBase2 = creditoAtual / prazo;
+                    seguroM = creditoAtual * seguroPct;
+                    // Redutor pré-contemplação afeta a amortização efetiva
+                    const isContemplado2 = m >= mesContemp;
+                    amortM = isContemplado2 ? amortBase2 : amortBase2 * (1 - reducaoParcela);
+                    parcelaM = amortM + admM + seguroM;
+                    if (m === 1) parcelaOriginalTab = parcelaM;
+                    // Piso: 50% da parcela original corrigida
+                    const pisoTab = parcelaOriginalTab * 0.5;
+                    if (parcelaM < pisoTab) parcelaM = pisoTab;
+                    saldoDevedor = Math.max(0, saldoDevedor - amortM);
+                    custoAcum += parcelaM;
+                    totalParcelas += parcelaM; totalAmort += amortM; totalAdm += admM; totalSeguro += seguroM;
+                    stepParcela += parcelaM; stepAmort += amortM; stepAdm += admM; stepSeguro += seguroM;
+                }
+                if (m === mesLance && !lanceJaDado) {
+                    lanceJaDado = true;
+                    let baseLanceValorTab;
+                    if (baseLance === 'carta') baseLanceValorTab = creditoAtual;
+                    else if (baseLance === 'categoria') baseLanceValorTab = categoriaAtual;
+                    else baseLanceValorTab = saldoDevedor;
+                    const lanceEmb = baseLanceValorTab * lanceEmbutidoPct;
+                    const lanceRec = lanceRecursosFixo > 0 ? lanceRecursosFixo : baseLanceValorTab * lanceRecursosPct;
+                    custoAcum += lanceRec;
+                    stepParcela += lanceRec; totalParcelas += lanceRec;
+                    if (lanceAbateSaldo) saldoDevedor = Math.max(0, saldoDevedor - lanceEmb - lanceRec);
+                }
+                if (m === mesContemp) { custoAcum += g.custosAquisicao + g.custosMensais*(meses-m); }
+                if (m % step === 0) {
+                    const label = mostrarMeses ? `Mês ${m}` : `Ano ${m/12}`;
+                    const isContemp = m >= mesContemp - step + 1 && m <= mesContemp;
+                    const isLance = m >= mesLance - step + 1 && m <= mesLance;
+                    const ev = (isContemp || isLance) ? ' class="destaque"' : '';
+                    const obs = isContemp ? ' ★ Contemplação' : (isLance ? ' ★ Lance' : '');
+                    rows += `<tr${ev}><td>${label}${obs}</td><td>${fmtBRL(saldoDevedor)}</td><td>${fmtBRL(stepAmort)}</td><td>${fmtBRL(stepAdm)}</td><td>${fmtBRL(stepSeguro)}</td><td>${fmtBRL(stepParcela)}</td><td>${fmtBRL(creditoAtual)}</td><td>${fmtBRL(custoAcum)}</td></tr>`;
+                    stepParcela=0; stepAmort=0; stepAdm=0; stepSeguro=0;
+                }
+            }
+            rows += `<tr style="background:rgba(212,175,55,0.08);font-weight:bold;"><td>TOTAL</td><td style="color:#4ade80">${fmtBRL(saldoDevedor)} (saldo final)</td><td>${fmtBRL(totalAmort)}</td><td>${fmtBRL(totalAdm)}</td><td>${fmtBRL(totalSeguro)}</td><td>${fmtBRL(totalParcelas)}</td><td style="color:#4ade80">${fmtBRL(creditoAtual)} (crédito final)</td><td>${fmtBRL(custoAcum)}</td></tr>`;
+            return `<div class="amort-table-wrap"><table class="amort-table">
+                <thead><tr><th>Período</th><th>Saldo Dev. (fim)</th><th>Amortização</th><th>Taxa Adm+FR</th><th>Seguro</th><th>Parcela Total</th><th>Crédito Atualizado</th><th>Custo Acum.</th></tr></thead>
+                <tbody>${rows}</tbody></table></div>`;
+        }
+
+        if (mod === 'custom') {
+            const sistema = p.cu_sistema||'sac';
+            const entrada = parseCur(p.cu_entrada);
+            let saldo = parseCur(p.cu_financiado)||(g.valorBem-entrada);
+            const iof = (parseFloat(p.cu_iof)||0)/100;
+            saldo *= (1+iof);
+            const prazoTotal = parseInt(p.cu_prazo)||meses;
+            const jurosAA = (parseFloat(p.cu_juros)||0)/100;
+            const jurosMensal = Math.pow(1+jurosAA, 1/12)-1;
+            const correcaoAA = (parseFloat(p.cu_indiceCorrecao)||0)/100;
+            const tarifaFixa = parseCur(p.cu_tarifaFixa);
+            const tarifaVar = (parseFloat(p.cu_tarifaVar)||0)/100;
+            const seguro = parseCur(p.cu_seguro);
+            const seguroVar = (parseFloat(p.cu_seguroVar)||0)/100;
+            const balloon = parseCur(p.cu_balloon);
+            const carencia = parseInt(p.cu_carencia)||0;
+            const tipoCarencia = p.cu_tipoCarencia||'paga';
+            const parcelaFixaManual = parseCur(p.cu_parcelaFixa);
+            const amorts = p.cu_amortsList || [];
+            const efeitoAmort = p.cu_efeitoAmort || 'prazo';
+            let prazoRestante = prazoTotal;
+            let custoAcum = entrada + g.custosAquisicao;
+            const mesInicioCustomTab = carencia + 1;
+            let parcelaPrice = 0;
+            let totalJurosC=0, totalAmortC=0, totalParcelasC=0, totalEncargosC=0;
+            let stepJurosC=0, stepAmortC=0, stepParcelaC=0, stepEncargosC=0;
+            if (sistema==='price'&&jurosMensal>0) parcelaPrice = saldo*jurosMensal/(1-Math.pow(1+jurosMensal,-prazoTotal));
+            let rows = '';
+            for (let m = 1; m <= meses; m++) {
+                // Correção monetária: apenas no aniversário anual
+                const mDesdeInicioCustomTab = m - mesInicioCustomTab;
+                if (correcaoAA > 0 && mDesdeInicioCustomTab > 0 && mDesdeInicioCustomTab % 12 === 0) {
+                    saldo *= (1 + correcaoAA);
+                }
+                let parcela = 0, juros = 0, amortizacao = 0;
+                if (m<=carencia) {
+                    juros = saldo*jurosMensal;
+                    if (tipoCarencia==='paga') parcela=juros;
+                    else saldo+=juros;
+                } else if (prazoRestante>0) {
+                    if (sistema==='fixo'&&parcelaFixaManual>0) {
+                        juros=saldo*jurosMensal; amortizacao=Math.max(0,parcelaFixaManual-juros);
+                        saldo-=amortizacao; prazoRestante--; parcela=parcelaFixaManual;
+                    } else if (sistema==='sac') {
+                        amortizacao=saldo/prazoRestante; juros=saldo*jurosMensal;
+                        parcela=amortizacao+juros; saldo-=amortizacao; prazoRestante--;
+                    } else {
+                        if (jurosMensal>0) parcelaPrice=saldo*jurosMensal/(1-Math.pow(1+jurosMensal,-prazoRestante));
+                        else parcelaPrice=saldo/prazoRestante;
+                        juros=saldo*jurosMensal; amortizacao=parcelaPrice-juros;
+                        saldo-=amortizacao; prazoRestante--; parcela=parcelaPrice;
+                    }
+                }
+                if (m===prazoTotal&&balloon>0) { parcela+=balloon; saldo=Math.max(0,saldo-balloon); }
+                const encargos = tarifaFixa+saldo*tarifaVar+seguro+saldo*seguroVar;
+                custoAcum += parcela+encargos+g.custosMensais;
+                totalJurosC+=juros; totalAmortC+=amortizacao; totalParcelasC+=parcela; totalEncargosC+=encargos;
+                stepJurosC+=juros; stepAmortC+=amortizacao; stepParcelaC+=parcela; stepEncargosC+=encargos;
+                // Amortizações extraordinárias
+                amorts.forEach(a => {
+                    let ocorre = false;
+                    if (a.period==='unica'&&m===a.mes) ocorre=true;
+                    if (a.period==='anual'&&m>=a.mes&&(m-a.mes)%12===0) ocorre=true;
+                    if (a.period==='mensal'&&m>=a.mes) ocorre=true;
+                    if (ocorre&&saldo>0) {
+                        const av = Math.min(a.valor, saldo);
+                        saldo -= av;
+                        custoAcum += av;
+                        stepAmortC += av;
+                        totalAmortC += av;
+                        if (efeitoAmort==='prazo') {
+                            if (saldo <= 0) { prazoRestante = 0; }
+                            else if (prazoRestante > 0) {
+                                const am = saldo / prazoRestante;
+                                prazoRestante = am > 0 ? Math.ceil(saldo / am) : prazoRestante;
+                            }
+                        }
+                    }
+                });
+                if (saldo<0) saldo=0;
+                if (saldo===0) prazoRestante=0;
+                if (m%step===0) {
+                    const label = mostrarMeses ? `Mês ${m}` : `Ano ${m/12}`;
+                    const hasAmortExtraC = amorts.some(a=>a.period==='unica'&&a.mes>=m-step+1&&a.mes<=m);
+                    const destaqueC = hasAmortExtraC ? ' class="destaque"' : '';
+                    rows += `<tr${destaqueC}><td>${label}</td><td>${fmtBRL(saldo)}</td><td>${fmtBRL(stepAmortC)}</td><td>${fmtBRL(stepJurosC)}</td><td>${fmtBRL(stepParcelaC)}</td><td>${fmtBRL(stepEncargosC)}</td><td>${fmtBRL(custoAcum)}</td></tr>`;
+                    stepJurosC=0; stepAmortC=0; stepParcelaC=0; stepEncargosC=0;
+                }
+            }
+            rows += `<tr style="background:rgba(212,175,55,0.08);font-weight:bold;"><td>TOTAL</td><td style="color:#4ade80">${fmtBRL(saldo)} (saldo final)</td><td>${fmtBRL(totalAmortC)}</td><td>${fmtBRL(totalJurosC)}</td><td>${fmtBRL(totalParcelasC)}</td><td>${fmtBRL(totalEncargosC)}</td><td>${fmtBRL(custoAcum)}</td></tr>`;
+            return `<div class="amort-table-wrap"><table class="amort-table">
+                <thead><tr><th>Período</th><th>Saldo Dev. (fim)</th><th>Amortização</th><th>Juros</th><th>Parcela</th><th>Seguros+Taxas</th><th>Custo Acum.</th></tr></thead>
+                <tbody>${rows}</tbody></table></div>`;
+        }
+
+        if (mod === 'oportunidade') {
+            const rendMensal = Math.pow(1+g.rendimento, 1/12)-1;
+            let capital = g.valorBem;
+            let rows = '';
+            for (let m = step; m <= meses; m += step) {
+                for (let i=1;i<=step;i++) capital *= (1+rendMensal);
+                const label = mostrarMeses ? `Mês ${m}` : `Ano ${m/12}`;
+                const rendAcum = capital - g.valorBem;
+                const real = capital / Math.pow(1+g.inflacao, m/12);
+                rows += `<tr><td>${label}</td><td>${fmtBRL(capital)}</td><td>${fmtBRL(rendAcum)}</td><td>${fmtBRL(real)}</td></tr>`;
+            }
+            const rendTotalFinal = capital - g.valorBem;
+            const realFinal = capital / Math.pow(1+g.inflacao, meses/12);
+            rows += `<tr style="background:rgba(212,175,55,0.08);font-weight:bold;"><td>TOTAL</td><td style="color:#4ade80">${fmtBRL(capital)}</td><td style="color:#4ade80">${fmtBRL(rendTotalFinal)}</td><td>${fmtBRL(realFinal)}</td></tr>`;
+            return `<div class="amort-table-wrap"><table class="amort-table">
+                <thead><tr><th>Período</th><th>Capital Acumulado</th><th>Rendimento Acum.</th><th>Capital Real</th></tr></thead>
+                <tbody>${rows}</tbody></table></div>`;
+        }
+
+        return '';
+    }
+
+    // ── GRÁFICO DO DETALHE ────────────────────────────────────────────────────
+    const detalheCharts = {};
+    function renderDetalheChart(id, c) {
+        const canvas = document.getElementById('chart-det-'+id);
+        if (!canvas) return;
+        const g = globais();
+        const meses = g.prazoAnos * 12;
+        const usarMeses = prazoUnidade === 'meses';
+        const step = usarMeses ? 1 : 12;
+        const labels = [];
+        const dataSerie = [];
+        const dataBem = [];
+        for (let m = step; m <= meses; m += step) {
+            labels.push(usarMeses ? `M${m}` : `A${m/12}`);
+            const idx = m - 1;
+            dataSerie.push((c.resultado?.serie||[])[idx] || 0);
+            dataBem.push(g.valorBem * Math.pow(1+g.valorizacao, m/12));
+        }
+        // Série do saldo devedor (apenas para cenários que têm saldo devedor)
+        const dataSD = [];
+        const temSD = ['sac','price','custom'].includes(c.modalidade) && (c.resultado?.serieSD||[]).length > 0;
+        if (temSD) {
+            for (let m = step; m <= meses; m += step) {
+                const idx = m - 1;
+                dataSD.push((c.resultado.serieSD)[idx] || 0);
+            }
+        }
+
+        const datasets = [
+            { label: 'Custo Acumulado', data: dataSerie, borderColor: '#f87171', backgroundColor: 'transparent', borderWidth: 2, pointRadius: 0, tension: 0.3 }
+        ];
+        if (c.modalidade !== 'aluguel' && c.modalidade !== 'oportunidade') {
+            datasets.push({ label: 'Valor do Bem', data: dataBem, borderColor: '#4ade80', backgroundColor: 'transparent', borderWidth: 2, pointRadius: 0, tension: 0.3, borderDash: [4,4] });
+        }
+        if (temSD) {
+            datasets.push({ label: 'Saldo Devedor', data: dataSD, borderColor: '#60a5fa', backgroundColor: 'transparent', borderWidth: 2, pointRadius: 0, tension: 0.3, borderDash: [6,3] });
+        }
+        if (detalheCharts[id]) detalheCharts[id].destroy();
+        detalheCharts[id] = new Chart(canvas.getContext('2d'), {
+            type: 'line',
+            data: { labels, datasets },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                interaction: { mode: 'index', intersect: false },
+                plugins: {
+                    legend: { labels: { color: '#d1d5db', font: { size: 10 } } },
+                    tooltip: { callbacks: { label: ctx => ctx.dataset.label+': '+fmtBRL(ctx.parsed.y) } }
+                },
+                scales: {
+                    x: { ticks: { color: '#6b7280', font:{size:9} }, grid: { color: 'rgba(255,255,255,0.03)' } },
+                    y: { ticks: { color: '#6b7280', font:{size:9}, callback: v => 'R$'+(v>=1e6?(v/1e6).toFixed(1)+'M':(v/1000).toFixed(0)+'k') }, grid: { color: 'rgba(255,255,255,0.03)' } }
+                }
+            }
+        });
+    }
+
+    // ══════════════════════════════════════════════════════════════════════════
+    //  COMPARAÇÃO
+    // ══════════════════════════════════════════════════════════════════════════
+    function calcularComparacao() {
+        if (cenarios.length < 2) {
+            alert('Adicione pelo menos 2 cenários para comparar.');
+            return;
+        }
+        // Recalcular todos com parâmetros globais atuais
+        cenarios.forEach(c => {
+            if (c.modalidade !== 'oportunidade') {
+                c.resultado = calcularCenario(c.modalidade, c.params);
+            } else {
+                const g = globais();
+                const meses = g.prazoAnos * 12;
+                const rendMensal = Math.pow(1+g.rendimento, 1/12) - 1;
+                let capital = g.valorBem;
+                const serie = [];
+                for (let m = 1; m <= meses; m++) { capital *= (1+rendMensal); serie.push(capital); }
+                c.resultado.patrimonioLiqFinal = capital;
+                c.resultado.ganhoPatrimonial = capital - g.valorBem;
+                c.resultado.serie = serie;
+            }
+        });
+        renderCenarios();
+        renderComparacao();
+        document.getElementById('comparacao-section').style.display = 'block';
+        document.getElementById('comparacao-section').scrollIntoView({behavior:'smooth'});
+    }
+
+    function renderComparacao() {
+        const g = globais();
+        const metricas = [
+            { key: 'custoTotalNominal', label: 'Custo Total Nominal', melhorMin: true },
+            { key: 'custoTotalReal',    label: 'Custo Total Real (hoje)', melhorMin: true },
+            { key: 'patrimonioLiqFinal',label: 'Patrimônio Líq. Final', melhorMin: false },
+            { key: 'ganhoPatrimonial',  label: 'Ganho Patrimonial', melhorMin: false },
+            { key: 'saldoDevedorFinal', label: 'Saldo Devedor Final', melhorMin: true },
+            { key: 'valorBemFinal',     label: 'Valor do Bem ao Final', melhorMin: false },
+            { key: 'parcelaInicial',    label: 'Parcela / Desembolso Inicial', melhorMin: true },
+            { key: 'parcelaFinal',      label: 'Parcela / Desembolso Final', melhorMin: true },
+        ];
+
+        const thead = document.querySelector('#comparacaoTable thead');
+        const tbody = document.querySelector('#comparacaoTable tbody');
+
+        // Cabeçalho
+        thead.innerHTML = '<tr><th>Métrica</th>' + cenarios.map(c =>
+            `<th>${c.nome}<br><span style="font-size:0.7rem;font-weight:normal;color:#9ca3af;">${LABELS_MOD[c.modalidade]||''}</span></th>`
+        ).join('') + '</tr>';
+
+        // Linhas
+        tbody.innerHTML = metricas.map(m => {
+            const vals = cenarios.map(c => (c.resultado||{})[m.key] || 0);
+            const best = m.melhorMin ? Math.min(...vals) : Math.max(...vals);
+            const worst = m.melhorMin ? Math.max(...vals) : Math.min(...vals);
+            return `<tr>
+                <td>${m.label}</td>
+                ${vals.map(v => {
+                    let cls = '';
+                    if (v === best) cls = 'best';
+                    else if (v === worst) cls = 'worst';
+                    return `<td class="${cls}">${fmtBRL(v)}</td>`;
+                }).join('')}
+            </tr>`;
+        }).join('');
+
+        // Gráfico
+        renderChart();
+    }
+
+    function renderChart() {
+        const g = globais();
+        const meses = g.prazoAnos * 12;
+        const usarMeses = prazoUnidade === 'meses';
+        const labels = [];
+        if (usarMeses) {
+            // Um ponto por mês, exibir label a cada 6 meses
+            for (let m = 1; m <= meses; m++) {
+                if (m % 6 === 0) labels.push('M' + m);
+                else labels.push('');
+            }
+        } else {
+            // Um ponto por mês, exibir label apenas nos anos completos
+            for (let m = 1; m <= meses; m++) {
+                if (m % 12 === 0) labels.push('Ano ' + (m/12));
+                else labels.push('');
+            }
+        }
+
+        const COLORS = ['#fbbf24','#4ade80','#60a5fa','#f87171','#a78bfa','#fb923c','#22d3ee','#f472b6'];
+        const datasets = cenarios.map((c,i) => ({
+            label: c.nome,
+            data: (c.resultado?.serie || []),
+            borderColor: COLORS[i % COLORS.length],
+            backgroundColor: 'transparent',
+            borderWidth: 2,
+            pointRadius: 0,
+            tension: 0.3
+        }));
+
+        const ctx = document.getElementById('comparacaoChart').getContext('2d');
+        if (chartInstance) chartInstance.destroy();
+        chartInstance = new Chart(ctx, {
+            type: 'line',
+            data: { labels, datasets },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: { mode: 'index', intersect: false },
+                plugins: {
+                    legend: { labels: { color: '#d1d5db', font: { size: 11 } } },
+                    tooltip: {
+                        callbacks: {
+                            label: ctx => ctx.dataset.label + ': ' + fmtBRL(ctx.parsed.y)
+                        }
+                    }
+                },
+                scales: {
+                    x: { ticks: { color: '#6b7280', maxRotation: 0 }, grid: { color: 'rgba(255,255,255,0.04)' } },
+                    y: { ticks: { color: '#6b7280', callback: v => 'R$ ' + (v/1000).toFixed(0)+'k' }, grid: { color: 'rgba(255,255,255,0.04)' } }
+                }
+            }
+        });
+    }
+
+    // Inicializar
+    trocarAba('avista');
+    atualizarConversaoPrazo();
+    coToggleTipoContemp();
+    </script>
+</body>
+</html>
