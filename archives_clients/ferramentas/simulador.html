@@ -1685,8 +1685,8 @@ function calcAvista(sc) {
 
         // ── PASSO E: Pré-calcular descaps únicas na aquisição ──
         // Separar descaps únicas com unicoTipo='aquisicao' das demais para processamento conjunto
-        // Aportes NÃO entram na descap do período (são entradas, não saídas)
-        let descapPeriodo = 0;
+        // Aportes sempre entram na descap do período (são contabilizados como saída de caixa)
+        let descapPeriodo = aportePeriodo;
 
         // ── PASSO F: Descapitalizações universais ──
         // Descaps únicas com unicoTipo='aquisicao' são tratadas junto com a aquisição no PASSO E.
@@ -1766,8 +1766,9 @@ function calcAvista(sc) {
             totalAportado -= bemValor * (1 - propRend);
             if (totalAportado < 0) totalAportado = 0;
             if (patBruto < 0) patBruto = 0;
-            // Valor do bem entra como descap no período da aquisição
-            descapPeriodo += bemValor;
+            // Valor do bem entra como descap no período da aquisição,
+            // descontando os aportes já contabilizados neste período (evitar dupla contagem)
+            descapPeriodo += Math.max(0, bemValor - aportePeriodo);
             // Aplicar descaps únicas na aquisição (imediatamente após a aquisição)
             descapsUnicasAquisicaoPendentes.forEach(dc => {
                 const anosDecDc = unit === 'anos' ? (i - 1) : Math.floor((i - 1) / 12);
