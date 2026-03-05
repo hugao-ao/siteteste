@@ -45,7 +45,6 @@ body {
     padding: 0;
 }
 
-/* Override do main-content do style.css para garantir que nada fique atrás da sidebar */
 .main-content {
     margin-left: var(--sidebar-w) !important;
     width: calc(100% - var(--sidebar-w)) !important;
@@ -74,10 +73,7 @@ body {
     letter-spacing: 0.03em;
     white-space: nowrap;
 }
-.header span {
-    font-size: 0.80rem;
-    color: var(--text-dim);
-}
+.header span { font-size: 0.80rem; color: var(--text-dim); }
 
 /* ── LAYOUT INTERNO ──────────────────────────────────────────────────────── */
 .main-wrap {
@@ -120,11 +116,7 @@ body {
 }
 
 /* ── PARÂMETROS: SEÇÕES ──────────────────────────────────────────────────── */
-.params-sections {
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
-}
+.params-sections { display: flex; flex-direction: column; gap: 20px; }
 
 .param-section-title {
     font-size: 0.68rem;
@@ -146,11 +138,7 @@ body {
 .params-grid.cols-2 { grid-template-columns: repeat(2, 1fr); }
 .params-grid.cols-3 { grid-template-columns: repeat(3, 1fr); }
 
-.param-group {
-    display: flex;
-    flex-direction: column;
-    gap: 5px;
-}
+.param-group { display: flex; flex-direction: column; gap: 5px; }
 .param-group.span-2 { grid-column: span 2; }
 .param-group.span-full { grid-column: 1 / -1; }
 
@@ -176,30 +164,10 @@ body {
 .param-group input:focus,
 .param-group select:focus { border-color: var(--gold-dim); }
 .param-group input::placeholder { color: var(--text-faint); }
-.param-group .hint {
-    font-size: 0.66rem;
-    color: var(--text-faint);
-    line-height: 1.3;
-}
-
-/* ── LINHA DE APORTE / DESCAPITALIZAÇÃO ──────────────────────────────────── */
-.flow-row {
-    display: flex;
-    gap: 7px;
-    align-items: center;
-    flex-wrap: nowrap;
-}
-.flow-row input.flow-val { flex: 1 1 110px; min-width: 80px; }
-.flow-row .sep { font-size: 0.72rem; color: var(--text-faint); white-space: nowrap; flex-shrink: 0; }
-.flow-row input.flow-n { flex: 0 0 46px; text-align: center; }
-.flow-row select.flow-unit { flex: 0 0 90px; }
+.param-group .hint { font-size: 0.66rem; color: var(--text-faint); line-height: 1.3; }
 
 /* ── LISTA DE APORTES / DESCAPS ──────────────────────────────────────────── */
-.flow-list {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-}
+.flow-list { display: flex; flex-direction: column; gap: 8px; }
 .flow-item {
     display: flex;
     align-items: center;
@@ -209,22 +177,14 @@ body {
     border-radius: var(--radius-sm);
     padding: 8px 10px;
 }
-.flow-item .flow-info {
-    flex: 1;
-    font-size: 0.82rem;
-    color: var(--text);
-}
+.flow-item .flow-info { flex: 1; font-size: 0.82rem; color: var(--text); }
 .flow-item .flow-info small {
     display: block;
     font-size: 0.68rem;
     color: var(--text-faint);
     margin-top: 2px;
 }
-.flow-item-actions {
-    display: flex;
-    gap: 4px;
-    flex-shrink: 0;
-}
+.flow-item-actions { display: flex; gap: 4px; flex-shrink: 0; }
 .btn-icon-sm {
     background: none;
     border: none;
@@ -269,8 +229,7 @@ body {
     margin-top: 2px;
 }
 .check-row input[type=checkbox] {
-    width: 15px;
-    height: 15px;
+    width: 15px; height: 15px;
     accent-color: var(--gold);
     cursor: pointer;
     flex-shrink: 0;
@@ -285,12 +244,8 @@ body {
 }
 
 /* ── PRAZO ROW ───────────────────────────────────────────────────────────── */
-.prazo-row {
-    display: flex;
-    gap: 7px;
-    align-items: center;
-}
-.prazo-row input { flex: 1 1 70px; }
+.prazo-row { display: flex; gap: 7px; align-items: center; }
+.prazo-row input  { flex: 1 1 70px; }
 .prazo-row select { flex: 0 0 85px; }
 
 /* ── REAJUSTE CONDICIONAL ────────────────────────────────────────────────── */
@@ -315,10 +270,7 @@ body {
 
 /* ── GRÁFICO ─────────────────────────────────────────────────────────────── */
 .chart-card { position: relative; }
-.chart-wrap {
-    position: relative;
-    height: 240px;
-}
+.chart-wrap { position: relative; height: 240px; }
 .chart-empty {
     position: absolute;
     inset: 0;
@@ -375,130 +327,96 @@ body {
     margin-left: auto;
     font-size: 0.70rem;
     color: var(--text-faint);
-    white-space: nowrap;
 }
 
-/* ── TABELA ──────────────────────────────────────────────────────────────── */
+/* ── TABELA DE CENÁRIOS ──────────────────────────────────────────────────── */
 .table-outer {
     overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
     border-radius: var(--radius);
     border: 1px solid var(--border);
-    background: var(--surface);
-    box-shadow: var(--shadow);
-    -webkit-overflow-scrolling: touch;
 }
+.table-empty-state {
+    padding: 40px 20px;
+    text-align: center;
+    color: var(--text-faint);
+    font-size: 0.84rem;
+    line-height: 1.7;
+}
+.table-empty-state .ico { font-size: 1.6rem; display: block; margin-bottom: 8px; opacity: .4; }
+
 table.sim-table {
-    border-collapse: separate;
-    border-spacing: 0;
     width: 100%;
-    min-width: 340px;
+    border-collapse: collapse;
     font-size: 0.80rem;
 }
-table.sim-table th.col-period,
-table.sim-table td.col-period {
-    position: sticky;
-    left: 0;
-    z-index: 2;
-    background: var(--surface);
-    min-width: 88px;
-    width: 88px;
-    border-right: 1px solid var(--border);
-}
-table.sim-table th.col-period { background: #16161e; z-index: 3; }
-table.sim-table thead tr.row-scenario-title th {
-    background: #16161e;
-    padding: 10px 0 4px;
-    text-align: center;
-    font-size: 0.73rem;
-    font-weight: 700;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    border-bottom: none;
-}
-table.sim-table thead tr.row-col-labels th {
-    background: #16161e;
-    padding: 4px 10px 10px;
-    text-align: right;
-    font-size: 0.66rem;
-    font-weight: 600;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    color: var(--text-dim);
-    border-bottom: 1px solid var(--border);
-    white-space: nowrap;
-}
-table.sim-table thead tr.row-col-labels th.col-patrimonio { color: var(--green); }
-table.sim-table thead tr.row-col-labels th.col-descap     { color: var(--red); }
-th.scenario-sep-left, td.scenario-sep-left {
-    border-left: 2px solid var(--border) !important;
-}
-table.sim-table tbody td {
-    padding: 6px 10px;
-    text-align: right;
+table.sim-table th,
+table.sim-table td {
+    padding: 7px 10px;
     border-bottom: 1px solid var(--border2);
-    color: var(--text-dim);
     white-space: nowrap;
 }
-table.sim-table tbody tr:last-child td { border-bottom: none; }
-table.sim-table tbody tr:hover td { background: rgba(255,255,255,0.02); }
-table.sim-table tbody td.col-period { text-align: left; padding: 6px 12px; }
-.period-num { font-weight: 700; color: var(--text); font-size: 0.83rem; }
-.period-date { display: block; font-size: 0.63rem; color: var(--text-faint); margin-top: 1px; }
-td.col-patrimonio { color: var(--text); }
-td.col-descap     { color: var(--text-dim); }
-td.cell-empty     { color: var(--text-faint); font-size: 0.70rem; font-style: italic; }
-
-/* Linha de toggle de descaps universais */
-table.sim-table thead tr.row-descaps-toggle th {
-    background: #13131a;
-    border-bottom: 1px solid var(--border);
-    padding: 5px 8px;
+table.sim-table thead th {
+    background: var(--surface3);
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+    position: sticky;
+    top: 0;
+    z-index: 2;
 }
+table.sim-table tbody tr:hover td { background: rgba(255,255,255,0.025); }
+table.sim-table .scenario-sep-left { border-left: 2px solid var(--border); }
+table.sim-table .row-scenario-title th { padding: 10px 10px 6px; }
+table.sim-table .row-col-labels th { padding: 4px 10px 8px; }
 
-.scenario-title-cell {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-}
-.scenario-title-text { font-weight: 700; }
-.scenario-actions { display: flex; gap: 4px; }
+.scenario-title-cell { display: flex; align-items: center; gap: 6px; }
+.scenario-title-text { font-size: 0.80rem; font-weight: 700; letter-spacing: 0.04em; flex: 1; }
+.scenario-actions { display: flex; gap: 3px; flex-shrink: 0; }
 .btn-icon {
-    background: none; border: none; cursor: pointer;
-    padding: 2px 4px; border-radius: 4px; font-size: 0.73rem;
-    line-height: 1; transition: background .15s; opacity: .55;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 2px 5px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    opacity: .45;
+    transition: opacity .15s, background .15s;
 }
 .btn-icon:hover { opacity: 1; background: rgba(255,255,255,0.08); }
 .btn-icon.edit { color: var(--blue); }
 .btn-icon.del  { color: var(--red); }
 
-/* ── EMPTY STATE ─────────────────────────────────────────────────────────── */
-.table-empty-state {
-    padding: 44px 24px;
-    text-align: center;
-    color: var(--text-faint);
-    font-size: 0.80rem;
-}
-.table-empty-state .ico { font-size: 2rem; display: block; margin-bottom: 10px; opacity: .3; }
+.col-period { min-width: 80px; }
+.col-patrimonio { min-width: 130px; text-align: right; }
+.col-descap     { min-width: 130px; text-align: right; color: var(--text-dim); }
+.period-num  { font-weight: 700; color: var(--text); font-size: 0.83rem; }
+.period-date { display: block; font-size: 0.63rem; color: var(--text-faint); margin-top: 1px; }
+td.col-patrimonio { color: var(--text); }
+td.col-descap     { color: var(--text-dim); }
+td.cell-empty     { color: var(--text-faint); font-size: 0.70rem; font-style: italic; }
 
-/* ── MODAL ───────────────────────────────────────────────────────────────── */
+/* ── MODAL OVERLAY ───────────────────────────────────────────────────────── */
 .modal-overlay {
     display: none;
     position: fixed;
     inset: 0;
-    background: rgba(0,0,0,0.65);
-    z-index: 2000;
+    background: rgba(0,0,0,0.72);
+    z-index: 1000;
     align-items: center;
     justify-content: center;
     padding: 16px;
 }
 .modal-overlay.open { display: flex; }
+
 .modal {
     background: var(--surface);
     border: 1px solid var(--border);
     border-radius: var(--radius);
-    padding: 26px 26px 20px;
-    width: 420px;
+    padding: 22px 24px;
+    width: 480px;
     max-width: 100%;
     box-shadow: 0 8px 48px rgba(0,0,0,0.7);
     display: flex;
@@ -506,6 +424,9 @@ table.sim-table thead tr.row-descaps-toggle th {
     gap: 14px;
     max-height: 90vh;
     overflow-y: auto;
+}
+.modal.modal-wide {
+    width: 700px;
 }
 .modal h2 {
     font-size: 0.88rem;
@@ -586,6 +507,133 @@ table.sim-table thead tr.row-descaps-toggle th {
     padding-top: 22px;
 }
 
+/* ── MODAL DE CENÁRIO EXPANDIDO ──────────────────────────────────────────── */
+.modal-section-title {
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.10em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--border2);
+    margin-top: 4px;
+}
+
+/* Lista de parâmetros resumidos (chips) */
+.params-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 2px;
+}
+.param-chip {
+    background: var(--surface3);
+    border: 1px solid var(--border2);
+    border-radius: 20px;
+    padding: 3px 10px;
+    font-size: 0.70rem;
+    color: var(--text-dim);
+    white-space: nowrap;
+}
+.param-chip strong { color: var(--text); font-weight: 600; }
+
+/* ── CARD DE CENÁRIO (tabela detalhada) ──────────────────────────────────── */
+.scenario-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 0;
+    box-shadow: var(--shadow);
+    overflow: hidden;
+}
+.scenario-card-header {
+    background: linear-gradient(135deg, #13130e 0%, #1a1a10 100%);
+    border-bottom: 1px solid var(--border);
+    padding: 14px 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.scenario-card-header h3 {
+    font-size: 0.90rem;
+    font-weight: 700;
+    color: var(--gold);
+    letter-spacing: 0.04em;
+    flex: 1;
+}
+.scenario-card-body { padding: 18px 20px; display: flex; flex-direction: column; gap: 18px; }
+
+/* Resumo do cenário */
+.scenario-summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+    gap: 10px;
+}
+.summary-item {
+    background: var(--surface3);
+    border: 1px solid var(--border2);
+    border-radius: var(--radius-sm);
+    padding: 10px 12px;
+}
+.summary-item .s-label {
+    font-size: 0.62rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+    margin-bottom: 4px;
+}
+.summary-item .s-value {
+    font-size: 0.90rem;
+    font-weight: 700;
+    color: var(--text);
+}
+.summary-item .s-value.highlight { color: var(--gold); }
+.summary-item .s-value.green     { color: var(--green); }
+.summary-item .s-value.red       { color: var(--red); }
+
+/* Gráfico do cenário */
+.scenario-chart-wrap { position: relative; height: 220px; }
+
+/* Tabela do cenário */
+.scenario-table-outer {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border2);
+}
+table.sc-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.78rem;
+}
+table.sc-table th,
+table.sc-table td {
+    padding: 6px 10px;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    white-space: nowrap;
+}
+table.sc-table thead th {
+    background: var(--surface3);
+    font-size: 0.63rem;
+    font-weight: 700;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    text-align: right;
+}
+table.sc-table thead th:first-child { text-align: left; }
+table.sc-table tbody tr:hover td { background: rgba(255,255,255,0.025); }
+table.sc-table td { text-align: right; color: var(--text-dim); }
+table.sc-table td:first-child { text-align: left; }
+table.sc-table td.val-pos  { color: var(--green); }
+table.sc-table td.val-neg  { color: var(--red); }
+table.sc-table td.val-gold { color: var(--gold); font-weight: 700; }
+table.sc-table tr.row-aquisicao td { background: rgba(212,175,55,0.08); border-top: 1px solid var(--border); }
+
 /* ── SCROLLBAR ───────────────────────────────────────────────────────────── */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
@@ -598,7 +646,7 @@ table.sim-table thead tr.row-descaps-toggle th {
     .main-content {
         margin-left: 0 !important;
         width: 100% !important;
-        padding-top: 56px !important; /* espaço para o mobile-toggle */
+        padding-top: 56px !important;
     }
     .main-wrap { padding: 16px 12px 0; gap: 14px; }
     .header { padding: 14px 16px 12px; }
@@ -606,15 +654,14 @@ table.sim-table thead tr.row-descaps-toggle th {
     .params-grid { grid-template-columns: 1fr 1fr; }
     .param-group.span-2 { grid-column: span 2; }
     .reajuste-fields { grid-template-columns: 1fr; }
+    .modal.modal-wide { width: 100%; }
 }
 @media (max-width: 560px) {
     .params-grid { grid-template-columns: 1fr; }
     .param-group.span-2 { grid-column: span 1; }
-    .flow-row { flex-wrap: wrap; }
-    .flow-row input.flow-n { flex: 0 0 60px; }
-    .flow-row select.flow-unit { flex: 1 1 100px; }
     .modal-flow-row { grid-template-columns: 1fr 1fr; }
     .modal-flow-row .sep-label { display: none; }
+    .scenario-summary { grid-template-columns: 1fr 1fr; }
 }
 </style>
 </head>
@@ -744,9 +791,7 @@ table.sim-table thead tr.row-descaps-toggle th {
             <!-- BLOCO 3: Aportes -->
             <div>
                 <div class="param-section-title">Aportes para o Objetivo</div>
-                <div class="flow-list" id="aportes-list">
-                    <!-- itens injetados pelo JS -->
-                </div>
+                <div class="flow-list" id="aportes-list"></div>
                 <button class="btn-add-flow" onclick="openFlowModal('aporte')">
                     ＋ Adicionar Aporte
                 </button>
@@ -755,13 +800,9 @@ table.sim-table thead tr.row-descaps-toggle th {
             <!-- BLOCO 4: Descapitalizações Universais -->
             <div>
                 <div class="param-section-title">Descapitalizações Universais
-                    <span style="font-size:0.62rem;font-weight:400;text-transform:none;letter-spacing:0;color:var(--text-faint);margin-left:6px;">
-                        (despesas independentes do cenário)
-                    </span>
+                    <span style="font-size:0.62rem;font-weight:400;text-transform:none;letter-spacing:0;color:var(--text-faint);margin-left:6px;">(despesas independentes do cenário)</span>
                 </div>
-                <div class="flow-list" id="descaps-list">
-                    <!-- itens injetados pelo JS -->
-                </div>
+                <div class="flow-list" id="descaps-list"></div>
                 <button class="btn-add-flow" onclick="openFlowModal('descap')"
                         style="border-color:rgba(248,113,113,0.4);color:rgba(248,113,113,0.7);">
                     ＋ Adicionar Descapitalização
@@ -771,7 +812,7 @@ table.sim-table thead tr.row-descaps-toggle th {
         </div><!-- /params-sections -->
     </section>
 
-    <!-- ── GRÁFICO ───────────────────────────────────────────────────── -->
+    <!-- ── GRÁFICO GERAL ────────────────────────────────────────────── -->
     <section class="card chart-card" id="sec-chart">
         <div class="card-title">Evolução do Patrimônio por Cenário</div>
         <div class="chart-wrap">
@@ -783,7 +824,7 @@ table.sim-table thead tr.row-descaps-toggle th {
         </div>
     </section>
 
-    <!-- ── TOOLBAR + TABELA ──────────────────────────────────────────── -->
+    <!-- ── TOOLBAR + TABELA GERAL ───────────────────────────────────── -->
     <section>
         <div class="scenarios-toolbar">
             <span class="label">Cenários</span>
@@ -802,18 +843,46 @@ table.sim-table thead tr.row-descaps-toggle th {
         </div>
     </section>
 
+    <!-- ── CARDS DE CENÁRIOS DETALHADOS ─────────────────────────────── -->
+    <div id="scenario-cards-container"></div>
+
 </div><!-- /main-wrap -->
 
 <!-- ── MODAL: ADICIONAR / EDITAR CENÁRIO ──────────────────────────────── -->
 <div class="modal-overlay" id="modal-edit">
-    <div class="modal">
+    <div class="modal modal-wide">
         <h2 id="modal-edit-title">Adicionar Cenário</h2>
+
+        <!-- Nome -->
         <div>
             <label for="modal-scenario-name">Nome do Cenário</label>
             <input type="text" id="modal-scenario-name"
                    placeholder="Ex: Compra à Vista, Financiamento SAC…"
                    onkeydown="if(event.key==='Enter') confirmModal()">
         </div>
+
+        <!-- Tipo de cenário -->
+        <div>
+            <label for="modal-scenario-tipo">Tipo de Cenário</label>
+            <select id="modal-scenario-tipo" onchange="onTipoCenarioChange()">
+                <option value="avista">À Vista</option>
+            </select>
+        </div>
+
+        <!-- Checkbox: terá descapitalizações universais? -->
+        <div id="modal-descaps-wrap">
+            <div class="check-row">
+                <input type="checkbox" id="modal-usa-descaps" checked>
+                <label for="modal-usa-descaps">Terá descapitalização universal</label>
+            </div>
+        </div>
+
+        <!-- Resumo dos parâmetros gerais -->
+        <div id="modal-params-resumo-wrap">
+            <div class="modal-section-title">Parâmetros Gerais Ativos</div>
+            <div class="params-chips" id="modal-params-chips"></div>
+        </div>
+
         <div class="modal-footer">
             <button class="btn-cancel" onclick="closeModal()">Cancelar</button>
             <button class="btn-confirm" onclick="confirmModal()">Confirmar</button>
@@ -848,18 +917,18 @@ table.sim-table thead tr.row-descaps-toggle th {
 
         <div>
             <label>Valor e Frequência</label>
-                <div class="modal-flow-row">
-                    <div>
-                        <div style="font-size:.66rem;color:var(--text-faint);margin-bottom:4px;">Valor (R$)</div>
-                        <input type="text" id="mf_valor" placeholder="0,00" oninput="fmtCur(this)">
-                    </div>
-                    <div class="sep-label" id="mf_sep_label">a cada</div>
-                    <div id="mf_n_wrap">
-                        <div style="font-size:.66rem;color:var(--text-faint);margin-bottom:4px;">Qtd</div>
-                        <input type="number" id="mf_n" value="1" min="1" style="text-align:center;">
-                    </div>
-                    <div>
-                        <div style="font-size:.66rem;color:var(--text-faint);margin-bottom:4px;">Unidade</div>
+            <div class="modal-flow-row">
+                <div>
+                    <div style="font-size:.66rem;color:var(--text-faint);margin-bottom:4px;">Valor (R$)</div>
+                    <input type="text" id="mf_valor" placeholder="0,00" oninput="fmtCur(this)">
+                </div>
+                <div class="sep-label" id="mf_sep_label">a cada</div>
+                <div id="mf_n_wrap">
+                    <div style="font-size:.66rem;color:var(--text-faint);margin-bottom:4px;">Qtd</div>
+                    <input type="number" id="mf_n" value="1" min="1" style="text-align:center;">
+                </div>
+                <div>
+                    <div style="font-size:.66rem;color:var(--text-faint);margin-bottom:4px;">Unidade</div>
                     <select id="mf_unit" onchange="toggleFlowQtd()">
                         <option value="unica">Única (sem recorrência)</option>
                         <option value="dias">Dias</option>
@@ -873,10 +942,33 @@ table.sim-table thead tr.row-descaps-toggle th {
             </div>
         </div>
 
+        <!-- Correção pela inflação (oculto para recorrência única) -->
         <div id="mf_corr_wrap">
             <div class="check-row">
                 <input type="checkbox" id="mf_corr_inflacao">
                 <label for="mf_corr_inflacao">Corrigir pela inflação anualmente</label>
+            </div>
+        </div>
+
+        <!-- Variação própria (apenas para descapitalizações) -->
+        <div id="mf_variacao_wrap" style="display:none;">
+            <div class="modal-section-title" style="margin-bottom:10px;">Variação do Valor</div>
+            <div class="check-row" style="margin-bottom:8px;">
+                <input type="checkbox" id="mf_varia_inflacao" onchange="toggleDescapVariacao()">
+                <label for="mf_varia_inflacao">Varia conforme a inflação</label>
+            </div>
+            <div id="mf_taxas_wrap">
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:6px;">
+                    <div>
+                        <div style="font-size:.66rem;color:var(--text-faint);margin-bottom:4px;">Taxa Pré-Aquisição (% a.a.)</div>
+                        <input type="number" id="mf_taxa_pre" placeholder="Ex: 8,0 ou -2,0" step="0.01">
+                    </div>
+                    <div>
+                        <div style="font-size:.66rem;color:var(--text-faint);margin-bottom:4px;">Taxa Pós-Aquisição (% a.a.)</div>
+                        <input type="number" id="mf_taxa_pos" placeholder="Ex: 5,0 ou -1,0" step="0.01">
+                    </div>
+                </div>
+                <div style="font-size:.63rem;color:var(--text-faint);margin-top:4px;">Se não informado, o valor não varia. Pode ser positivo ou negativo.</div>
             </div>
         </div>
 
@@ -905,14 +997,16 @@ table.sim-table thead tr.row-descaps-toggle th {
 // ═══════════════════════════════════════════════════════════════════════════
 //  ESTADO GLOBAL
 // ═══════════════════════════════════════════════════════════════════════════
-let scenarios = [];   // [{id, name, color, usaDescaps}]
-let nextId    = 1;
-let chartInst = null;
+let scenarios  = [];   // [{id, name, color, tipo, usaDescaps}]
+let nextId     = 1;
+let chartInst  = null;
+let scCharts   = {};   // {id: Chart}
 
 // Listas de aportes e descapitalizações universais
-// [{id, descricao, valor, n, unit, corrInflacao}]
-let aportes   = [];
-let descaps   = [];
+// aportes:  [{id, descricao, valor, n, unit, corrInflacao}]
+// descaps:  [{id, descricao, valor, n, unit, corrInflacao, variaInflacao, taxaPre, taxaPos}]
+let aportes    = [];
+let descaps    = [];
 let nextFlowId = 1;
 
 const PALETTE = [
@@ -922,6 +1016,7 @@ const PALETTE = [
 ];
 
 const UNIT_LABELS = {
+    unica: '(ocorrência única)',
     dias: 'dia(s)', dias_uteis: 'dia(s) útil(eis)',
     semanas: 'semana(s)', quinzenas: 'quinzena(s)',
     meses: 'mês(es)', anos: 'ano(s)'
@@ -957,16 +1052,12 @@ function fmtBRLCompact(v) {
     if (!v && v !== 0) return '—';
     return v.toLocaleString('pt-BR',{style:'currency',currency:'BRL',minimumFractionDigits:2,maximumFractionDigits:2});
 }
-/** Mostra/esconde o campo Qtd no modal de fluxo conforme a unidade selecionada */
-function toggleFlowQtd() {
-    const unit      = document.getElementById('mf_unit').value;
-    const nWrap     = document.getElementById('mf_n_wrap');
-    const sepLbl    = document.getElementById('mf_sep_label');
-    const corrWrap  = document.getElementById('mf_corr_wrap');
-    const isUnica   = unit === 'unica';
-    if (nWrap)    nWrap.style.display    = isUnica ? 'none' : '';
-    if (sepLbl)   sepLbl.style.display   = isUnica ? 'none' : '';
-    if (corrWrap) corrWrap.style.display = isUnica ? 'none' : '';
+function fmtPct(v) {
+    if (v === null || v === undefined || isNaN(v)) return '—';
+    return v.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}) + '%';
+}
+function escHtml(str) {
+    return (str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
 function addMonths(date, n) {
@@ -981,9 +1072,7 @@ function fmtMesAno(date) {
 function fmtDataExtenso(date) {
     return date.toLocaleDateString('pt-BR', {month:'long', year:'numeric'});
 }
-function escHtml(str) {
-    return (str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
+
 function getPeriodoInfo() {
     const prazo = parseNum('p_prazo');
     const unit  = getVal('p_prazo_unit');
@@ -1018,11 +1107,11 @@ function toggleBemReajuste() {
 //  PRAZO-OBJETIVO: calcular data de referência
 // ═══════════════════════════════════════════════════════════════════════════
 function calcDataObjetivo() {
-    const prazo = parseNum('p_objetivo_prazo');
-    const unit  = getVal('p_objetivo_prazo_unit');
+    const prazo  = parseNum('p_objetivo_prazo');
+    const unit   = getVal('p_objetivo_prazo_unit');
     const dataStr = getVal('p_data_inicio');
-    const badge = document.getElementById('p_objetivo_data_badge');
-    const txt   = document.getElementById('p_objetivo_data_txt');
+    const badge  = document.getElementById('p_objetivo_data_badge');
+    const txt    = document.getElementById('p_objetivo_data_txt');
     if (!prazo || !dataStr) { badge.style.display = 'none'; return; }
     const base = new Date(dataStr + 'T00:00:00');
     let dataObj;
@@ -1038,18 +1127,35 @@ function calcDataObjetivo() {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
+//  MODAL DE FLUXO: toggle de campos
+// ═══════════════════════════════════════════════════════════════════════════
+function toggleFlowQtd() {
+    const unit     = document.getElementById('mf_unit').value;
+    const nWrap    = document.getElementById('mf_n_wrap');
+    const sepLbl   = document.getElementById('mf_sep_label');
+    const corrWrap = document.getElementById('mf_corr_wrap');
+    const isUnica  = unit === 'unica';
+    if (nWrap)    nWrap.style.display    = isUnica ? 'none' : '';
+    if (sepLbl)   sepLbl.style.display   = isUnica ? 'none' : '';
+    if (corrWrap) corrWrap.style.display = isUnica ? 'none' : '';
+}
+
+function toggleDescapVariacao() {
+    const usaInflacao = document.getElementById('mf_varia_inflacao').checked;
+    const taxasWrap   = document.getElementById('mf_taxas_wrap');
+    if (taxasWrap) taxasWrap.style.display = usaInflacao ? 'none' : '';
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 //  RENDERIZAÇÃO DE LISTAS DE APORTES / DESCAPS
 // ═══════════════════════════════════════════════════════════════════════════
 function renderFlowList(type) {
-    const list  = type === 'aporte' ? aportes : descaps;
-    const elId  = type === 'aporte' ? 'aportes-list' : 'descaps-list';
-    const el    = document.getElementById(elId);
+    const list = type === 'aporte' ? aportes : descaps;
+    const elId = type === 'aporte' ? 'aportes-list' : 'descaps-list';
+    const el   = document.getElementById(elId);
     if (!el) return;
 
-    if (list.length === 0) {
-        el.innerHTML = '';
-        return;
-    }
+    if (list.length === 0) { el.innerHTML = ''; return; }
 
     el.innerHTML = list.map(item => {
         const corrLabel = item.corrInflacao ? ' · corrigido pela inflação' : '';
@@ -1057,11 +1163,24 @@ function renderFlowList(type) {
         const freqLabel = item.unit === 'unica'
             ? 'ocorrência única'
             : `a cada ${item.n} ${UNIT_LABELS[item.unit]||item.unit}`;
+
+        let varLabel = '';
+        if (type === 'descap') {
+            if (item.variaInflacao) {
+                varLabel = ' · varia com a inflação';
+            } else if (item.taxaPre || item.taxaPos) {
+                const parts = [];
+                if (item.taxaPre) parts.push(`pré: ${fmtPct(item.taxaPre)} a.a.`);
+                if (item.taxaPos) parts.push(`pós: ${fmtPct(item.taxaPos)} a.a.`);
+                varLabel = ' · ' + parts.join(', ');
+            }
+        }
+
         return `
         <div class="flow-item" data-id="${item.id}" data-type="${type}">
             <div class="flow-info">
                 ${desc}${fmtBRLCompact(item.valor)} — ${freqLabel}
-                <small>${item.unit !== 'unica' ? (corrLabel || 'sem correção pela inflação') : 'sem recorrência'}</small>
+                <small>${item.unit !== 'unica' ? (corrLabel || 'sem correção pela inflação') + varLabel : 'sem recorrência'}</small>
             </div>
             <div class="flow-item-actions">
                 <button class="btn-icon-sm edit" title="Editar" onclick="openFlowModal('${type}', ${item.id})">✎</button>
@@ -1074,8 +1193,8 @@ function renderFlowList(type) {
 // ═══════════════════════════════════════════════════════════════════════════
 //  MODAL: APORTE / DESCAP
 // ═══════════════════════════════════════════════════════════════════════════
-let _flowMode = 'add';   // 'add' | 'edit'
-let _flowType = 'aporte'; // 'aporte' | 'descap'
+let _flowMode   = 'add';
+let _flowType   = 'aporte';
 let _flowEditId = null;
 
 function openFlowModal(type, editId) {
@@ -1089,6 +1208,10 @@ function openFlowModal(type, editId) {
         : (isAporte ? 'Editar Aporte'    : 'Editar Descapitalização');
     document.getElementById('modal-flow-title').textContent = title;
 
+    // Mostrar/ocultar seção de variação (apenas para descaps)
+    const varWrap = document.getElementById('mf_variacao_wrap');
+    if (varWrap) varWrap.style.display = isAporte ? 'none' : '';
+
     if (_flowMode === 'edit') {
         const list = isAporte ? aportes : descaps;
         const item = list.find(x => x.id === editId);
@@ -1099,12 +1222,24 @@ function openFlowModal(type, editId) {
         document.getElementById('mf_n').value = item.n;
         document.getElementById('mf_unit').value = item.unit;
         document.getElementById('mf_corr_inflacao').checked = !!item.corrInflacao;
+        if (!isAporte) {
+            document.getElementById('mf_varia_inflacao').checked = !!item.variaInflacao;
+            document.getElementById('mf_taxa_pre').value = item.taxaPre || '';
+            document.getElementById('mf_taxa_pos').value = item.taxaPos || '';
+            toggleDescapVariacao();
+        }
     } else {
         document.getElementById('mf_descricao').value = '';
         document.getElementById('mf_valor').value = '';
         document.getElementById('mf_n').value = 1;
         document.getElementById('mf_unit').value = 'meses';
         document.getElementById('mf_corr_inflacao').checked = false;
+        if (!isAporte) {
+            document.getElementById('mf_varia_inflacao').checked = false;
+            document.getElementById('mf_taxa_pre').value = '';
+            document.getElementById('mf_taxa_pos').value = '';
+            toggleDescapVariacao();
+        }
     }
 
     document.getElementById('modal-flow').classList.add('open');
@@ -1120,24 +1255,27 @@ function confirmFlowModal() {
     const valor = parseCurStr(document.getElementById('mf_valor').value);
     if (!valor) { document.getElementById('mf_valor').focus(); return; }
 
+    const isAporte = _flowType === 'aporte';
     const item = {
-        id:          _flowMode === 'edit' ? _flowEditId : nextFlowId++,
-        descricao:   document.getElementById('mf_descricao').value.trim(),
+        id:           _flowMode === 'edit' ? _flowEditId : nextFlowId++,
+        descricao:    document.getElementById('mf_descricao').value.trim(),
         valor,
-        n:           parseInt(document.getElementById('mf_n').value) || 1,
-        unit:        document.getElementById('mf_unit').value,
-        corrInflacao:document.getElementById('mf_corr_inflacao').checked
+        n:            parseInt(document.getElementById('mf_n').value) || 1,
+        unit:         document.getElementById('mf_unit').value,
+        corrInflacao: document.getElementById('mf_corr_inflacao').checked
     };
+    if (!isAporte) {
+        item.variaInflacao = document.getElementById('mf_varia_inflacao').checked;
+        item.taxaPre       = parseFloat(document.getElementById('mf_taxa_pre').value) || 0;
+        item.taxaPos       = parseFloat(document.getElementById('mf_taxa_pos').value) || 0;
+    }
 
-    const list = _flowType === 'aporte' ? aportes : descaps;
+    const list = isAporte ? aportes : descaps;
     if (_flowMode === 'add') {
         list.push(item);
     } else {
         const idx = list.findIndex(x => x.id === _flowEditId);
-        if (idx >= 0) {
-            item.id = _flowEditId;
-            list[idx] = item;
-        }
+        if (idx >= 0) { item.id = _flowEditId; list[idx] = item; }
     }
 
     closeFlowModal();
@@ -1162,11 +1300,9 @@ function openFlowDelModal(type, id) {
         `Deseja excluir o ${label} <strong>"${escHtml(nome)}"</strong>?`;
     document.getElementById('modal-flow-del').classList.add('open');
 }
-
 function closeFlowDelModal() {
     document.getElementById('modal-flow-del').classList.remove('open');
 }
-
 function confirmFlowDelModal() {
     if (_flowDelType === 'aporte') {
         aportes = aportes.filter(x => x.id !== _flowDelId);
@@ -1179,7 +1315,375 @@ function confirmFlowDelModal() {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-//  RENDERIZAÇÃO DA TABELA
+//  CÁLCULO DO CENÁRIO À VISTA
+// ═══════════════════════════════════════════════════════════════════════════
+/**
+ * Retorna array de linhas para o cenário À Vista.
+ * Cada linha: { periodo, data, valorBem, patBruto, ir, patLiquido, descapPeriodo, descapAcum, patTotal, isAquisicao }
+ */
+function calcAvista(sc) {
+    const { n, unit } = getPeriodoInfo();
+    if (!n) return [];
+
+    const saldo0       = parseCur('p_saldo');
+    const jurosAa      = parseNum('p_juros') / 100;
+    const irAliq       = parseNum('p_ir') / 100;
+    const inflacaoAa   = parseNum('p_inflacao') / 100;
+    const bemValor0    = parseCur('p_bem_valor');
+    const bemInflacao  = document.getElementById('p_bem_reajuste_inflacao').checked;
+    const bemTaxaPre   = parseNum('p_bem_reajuste_pre') / 100;
+    const bemTaxaPos   = parseNum('p_bem_reajuste_pos') / 100;
+
+    // Taxa por período
+    const periodosMes = unit === 'anos' ? 12 : 1;
+    const jurosPer    = Math.pow(1 + jurosAa, 1 / (12 / periodosMes)) - 1;
+    const inflacaoPer = Math.pow(1 + inflacaoAa, 1 / (12 / periodosMes)) - 1;
+
+    let patBruto   = saldo0;
+    let totalAport = saldo0; // total aportado (para cálculo proporcional do IR)
+    let bemValor   = bemValor0;
+    let aquisicaoFeita = false;
+    let descapAcum = 0;
+
+    const rows = [];
+
+    for (let i = 1; i <= n; i++) {
+        const data = getDataPeriodo(i);
+
+        // ── Aportes do período ──
+        let aportePeriodo = 0;
+        aportes.forEach(ap => {
+            if (ap.unit === 'unica') {
+                if (i === 1) aportePeriodo += ap.valor;
+            } else {
+                // simplificação: converter frequência para períodos
+                const freqEmPeriodos = freqParaPeriodos(ap.unit, ap.n, unit);
+                if (freqEmPeriodos > 0 && (i - 1) % freqEmPeriodos === 0) {
+                    // corrigir pela inflação
+                    const fator = ap.corrInflacao ? Math.pow(1 + inflacaoAa, (i - 1) / (12 / periodosMes)) : 1;
+                    aportePeriodo += ap.valor * fator;
+                }
+            }
+        });
+
+        // ── Descapitalizações do período ──
+        let descapPeriodo = 0;
+        if (sc.usaDescaps) {
+            descaps.forEach(dc => {
+                let valorDc = dc.valor;
+                // Variação do valor da descap
+                if (dc.variaInflacao) {
+                    valorDc *= Math.pow(1 + inflacaoAa, (i - 1) / (12 / periodosMes));
+                } else {
+                    const taxaPre = (dc.taxaPre || 0) / 100;
+                    const taxaPos = (dc.taxaPos || 0) / 100;
+                    if (!aquisicaoFeita && taxaPre !== 0) {
+                        valorDc *= Math.pow(1 + taxaPre, (i - 1) / (12 / periodosMes));
+                    } else if (aquisicaoFeita && taxaPos !== 0) {
+                        valorDc *= Math.pow(1 + taxaPos, (i - 1) / (12 / periodosMes));
+                    }
+                }
+
+                if (dc.unit === 'unica') {
+                    if (i === 1) descapPeriodo += valorDc;
+                } else {
+                    const freqEmPeriodos = freqParaPeriodos(dc.unit, dc.n, unit);
+                    if (freqEmPeriodos > 0 && (i - 1) % freqEmPeriodos === 0) {
+                        descapPeriodo += valorDc;
+                    }
+                }
+            });
+        }
+
+        // ── Rendimento do período ──
+        const rendimento = patBruto * jurosPer;
+
+        // ── Atualizar patrimônio bruto ──
+        patBruto = patBruto + rendimento + aportePeriodo - descapPeriodo;
+        totalAport += aportePeriodo;
+
+        // ── Reajuste do bem ──
+        if (!aquisicaoFeita) {
+            if (bemInflacao) {
+                bemValor = bemValor0 * Math.pow(1 + inflacaoAa, i / (12 / periodosMes));
+            } else {
+                bemValor = bemValor0 * Math.pow(1 + bemTaxaPre, i / (12 / periodosMes));
+            }
+        } else {
+            if (bemInflacao) {
+                bemValor *= (1 + inflacaoPer);
+            } else {
+                bemValor *= Math.pow(1 + bemTaxaPos, 1 / (12 / periodosMes));
+            }
+        }
+
+        // ── Verificar aquisição ──
+        // IR proporcional: rendimentos = patBruto - totalAport
+        const rendAcum = Math.max(0, patBruto - totalAport);
+        const irAcum   = rendAcum * irAliq;
+        const patLiq   = patBruto - irAcum;
+
+        let isAquisicao = false;
+        if (!aquisicaoFeita && bemValor0 > 0 && patLiq >= bemValor) {
+            isAquisicao    = true;
+            aquisicaoFeita = true;
+            // Saque do bem: reduz patBruto proporcionalmente
+            const propRend = Math.min(1, rendAcum / Math.max(1, patBruto));
+            const irSaque  = bemValor * propRend * irAliq;
+            patBruto      -= (bemValor + irSaque);
+            totalAport    -= bemValor * (1 - propRend);
+        }
+
+        descapAcum += descapPeriodo;
+
+        // Recalcular IR após possível aquisição
+        const rendAcum2 = Math.max(0, patBruto - totalAport);
+        const irFinal   = rendAcum2 * irAliq;
+        const patLiqFinal = patBruto - irFinal;
+        const patTotal  = patLiqFinal + (aquisicaoFeita ? bemValor : 0);
+
+        rows.push({
+            periodo: i,
+            data,
+            valorBem:      bemValor0 > 0 ? bemValor : null,
+            patBruto,
+            ir:            irFinal,
+            patLiquido:    patLiqFinal,
+            descapPeriodo,
+            descapAcum,
+            patTotal,
+            isAquisicao
+        });
+    }
+
+    return rows;
+}
+
+/** Converte frequência de um item para número de períodos da tabela */
+function freqParaPeriodos(unit, n, periodoUnit) {
+    // Quantos dias tem cada unidade (aproximado)
+    const diasPorUnidade = {
+        dias: 1, dias_uteis: 1.4, semanas: 7,
+        quinzenas: 15, meses: 30, anos: 365
+    };
+    const diasPorPeriodo = periodoUnit === 'anos' ? 365 : 30;
+    const diasItem = (diasPorUnidade[unit] || 30) * n;
+    return Math.max(1, Math.round(diasItem / diasPorPeriodo));
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  RENDERIZAÇÃO DO CARD DE CENÁRIO DETALHADO
+// ═══════════════════════════════════════════════════════════════════════════
+function renderScenarioCards() {
+    const container = document.getElementById('scenario-cards-container');
+    if (!container) return;
+
+    // Destruir gráficos antigos
+    Object.values(scCharts).forEach(c => c && c.destroy());
+    scCharts = {};
+
+    if (scenarios.length === 0) {
+        container.innerHTML = '';
+        return;
+    }
+
+    container.innerHTML = scenarios.map(sc => {
+        const rows = sc.tipo === 'avista' ? calcAvista(sc) : [];
+        return buildScenarioCardHTML(sc, rows);
+    }).join('');
+
+    // Inicializar gráficos
+    scenarios.forEach(sc => {
+        const rows = sc.tipo === 'avista' ? calcAvista(sc) : [];
+        if (rows.length > 0) initScenarioChart(sc, rows);
+    });
+}
+
+function buildScenarioCardHTML(sc, rows) {
+    const { label } = getPeriodoInfo();
+    const tipoLabel = sc.tipo === 'avista' ? 'À Vista' : sc.tipo;
+
+    // Resumo
+    const aquisicaoRow = rows.find(r => r.isAquisicao);
+    const ultimaRow    = rows[rows.length - 1];
+    const bemValor0    = parseCur('p_bem_valor');
+
+    const resumoItems = [];
+    if (aquisicaoRow) {
+        resumoItems.push({ label: 'Aquisição no', value: `${label} ${aquisicaoRow.periodo}${aquisicaoRow.data ? ' (' + fmtMesAno(aquisicaoRow.data) + ')' : ''}`, cls: 'highlight' });
+        resumoItems.push({ label: 'Valor do Bem na Aquisição', value: fmtBRL(aquisicaoRow.valorBem), cls: '' });
+        resumoItems.push({ label: 'Patrim. Líquido na Aquisição', value: fmtBRL(aquisicaoRow.patLiquido), cls: 'green' });
+        resumoItems.push({ label: 'Total Descapitalizado até Aquisição', value: fmtBRL(aquisicaoRow.descapAcum), cls: 'red' });
+        if (bemValor0 > 0 && aquisicaoRow.valorBem) {
+            const valorizacao = aquisicaoRow.valorBem - bemValor0;
+            resumoItems.push({ label: 'Valorização do Bem até Aquisição', value: fmtBRL(valorizacao), cls: valorizacao >= 0 ? 'green' : 'red' });
+        }
+    } else if (bemValor0 > 0) {
+        resumoItems.push({ label: 'Aquisição', value: 'Não atingida no prazo', cls: 'red' });
+    }
+    if (ultimaRow) {
+        resumoItems.push({ label: 'Patrim. Total no Fim', value: fmtBRL(ultimaRow.patTotal), cls: '' });
+        resumoItems.push({ label: 'Total Descapitalizado', value: fmtBRL(ultimaRow.descapAcum), cls: 'red' });
+    }
+
+    const summaryHTML = resumoItems.map(s =>
+        `<div class="summary-item">
+            <div class="s-label">${escHtml(s.label)}</div>
+            <div class="s-value ${s.cls}">${s.value}</div>
+        </div>`
+    ).join('');
+
+    // Tabela
+    const hasBem = bemValor0 > 0;
+    let tableHTML = `
+    <div class="scenario-table-outer">
+    <table class="sc-table">
+    <thead><tr>
+        <th style="text-align:left;">${label}</th>
+        ${hasBem ? '<th>Valor do Bem</th>' : ''}
+        <th>Patrim. Líquido</th>
+        <th>IR Acumulado</th>
+        <th>Patrim. Bruto</th>
+        <th>Descap. Período</th>
+        <th>Descap. Acumulada</th>
+        <th>Patrim. Total</th>
+    </tr></thead>
+    <tbody>`;
+
+    rows.forEach(r => {
+        const cls = r.isAquisicao ? ' class="row-aquisicao"' : '';
+        const dateStr = r.data ? `<span class="period-date">(${fmtMesAno(r.data)})</span>` : '';
+        tableHTML += `<tr${cls}>
+            <td><span class="period-num">${label} ${r.periodo}</span>${dateStr}</td>
+            ${hasBem ? `<td class="${r.isAquisicao ? 'val-gold' : ''}">${r.valorBem !== null ? fmtBRL(r.valorBem) : '—'}</td>` : ''}
+            <td class="${r.patLiquido >= 0 ? 'val-pos' : 'val-neg'}">${fmtBRL(r.patLiquido)}</td>
+            <td class="val-neg">${r.ir > 0 ? fmtBRL(r.ir) : '—'}</td>
+            <td>${fmtBRL(r.patBruto)}</td>
+            <td class="${r.descapPeriodo > 0 ? 'val-neg' : ''}">${r.descapPeriodo > 0 ? fmtBRL(r.descapPeriodo) : '—'}</td>
+            <td class="${r.descapAcum > 0 ? 'val-neg' : ''}">${r.descapAcum > 0 ? fmtBRL(r.descapAcum) : '—'}</td>
+            <td class="val-gold">${fmtBRL(r.patTotal)}</td>
+        </tr>`;
+    });
+
+    tableHTML += `</tbody></table></div>`;
+
+    return `
+    <div class="scenario-card" id="sc-card-${sc.id}">
+        <div class="scenario-card-header">
+            <h3 style="color:${sc.color};">${escHtml(sc.name)}</h3>
+            <span style="font-size:0.70rem;color:var(--text-faint);background:var(--surface3);border:1px solid var(--border2);border-radius:20px;padding:2px 10px;">${tipoLabel}</span>
+        </div>
+        <div class="scenario-card-body">
+            ${resumoItems.length > 0 ? `<div class="scenario-summary">${summaryHTML}</div>` : ''}
+            ${rows.length > 0 ? `<div class="scenario-chart-wrap"><canvas id="sc-chart-${sc.id}"></canvas></div>` : ''}
+            ${rows.length > 0 ? tableHTML : '<div style="color:var(--text-faint);font-size:.80rem;font-style:italic;">Defina o prazo nos parâmetros gerais para ver os dados.</div>'}
+        </div>
+    </div>`;
+}
+
+function initScenarioChart(sc, rows) {
+    const canvas = document.getElementById(`sc-chart-${sc.id}`);
+    if (!canvas) return;
+
+    const { label } = getPeriodoInfo();
+    const labels     = rows.map(r => `${label} ${r.periodo}`);
+    const hasBem     = parseCur('p_bem_valor') > 0;
+
+    const datasets = [
+        {
+            label: 'Patrimônio Total',
+            data: rows.map(r => r.patTotal),
+            borderColor: sc.color,
+            backgroundColor: 'transparent',
+            borderWidth: 2.5,
+            pointRadius: 0,
+            tension: 0.3
+        },
+        {
+            label: 'Patrimônio Líquido',
+            data: rows.map(r => r.patLiquido),
+            borderColor: '#60a5fa',
+            backgroundColor: 'transparent',
+            borderWidth: 1.5,
+            borderDash: [4, 3],
+            pointRadius: 0,
+            tension: 0.3
+        },
+        {
+            label: 'Descap. Acumulada',
+            data: rows.map(r => r.descapAcum > 0 ? r.descapAcum : null),
+            borderColor: '#f87171',
+            backgroundColor: 'transparent',
+            borderWidth: 1.5,
+            borderDash: [2, 4],
+            pointRadius: 0,
+            tension: 0.3
+        }
+    ];
+
+    if (hasBem) {
+        datasets.push({
+            label: 'Valor do Bem',
+            data: rows.map(r => r.valorBem),
+            borderColor: '#d4af37',
+            backgroundColor: 'transparent',
+            borderWidth: 1.5,
+            borderDash: [6, 3],
+            pointRadius: 0,
+            tension: 0.3
+        });
+    }
+
+    // Linha vertical na aquisição
+    const aquisicaoIdx = rows.findIndex(r => r.isAquisicao);
+    const annotations  = {};
+    if (aquisicaoIdx >= 0) {
+        annotations.aquisicao = {
+            type: 'line',
+            xMin: aquisicaoIdx,
+            xMax: aquisicaoIdx,
+            borderColor: 'rgba(212,175,55,0.5)',
+            borderWidth: 1,
+            borderDash: [4, 4],
+            label: { content: 'Aquisição', display: true, position: 'start', color: '#d4af37', font: { size: 10 } }
+        };
+    }
+
+    if (scCharts[sc.id]) scCharts[sc.id].destroy();
+    scCharts[sc.id] = new Chart(canvas.getContext('2d'), {
+        type: 'line',
+        data: { labels, datasets },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: { mode: 'index', intersect: false },
+            plugins: {
+                legend: { labels: { color: '#9ca3af', font: { size: 10 }, boxWidth: 14 } },
+                tooltip: {
+                    callbacks: {
+                        label: ctx => `${ctx.dataset.label}: ${ctx.parsed.y !== null ? fmtBRL(ctx.parsed.y) : '—'}`
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    ticks: { color: '#6b7280', maxRotation: 0, font: { size: 9 } },
+                    grid:  { color: 'rgba(255,255,255,0.04)' }
+                },
+                y: {
+                    ticks: {
+                        color: '#6b7280', font: { size: 9 },
+                        callback: v => v === null ? '' : 'R$ ' + (v >= 1e6 ? (v/1e6).toFixed(1)+'M' : (v/1e3).toFixed(0)+'k')
+                    },
+                    grid: { color: 'rgba(255,255,255,0.04)' }
+                }
+            }
+        }
+    });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  RENDERIZAÇÃO DA TABELA GERAL
 // ═══════════════════════════════════════════════════════════════════════════
 function renderTable() {
     const outer      = document.getElementById('table-outer');
@@ -1204,7 +1708,7 @@ function renderTable() {
         html += `<div class="scenario-title-cell">`;
         html += `<span class="scenario-title-text">${escHtml(sc.name)}</span>`;
         html += `<span class="scenario-actions">`;
-        html += `<button class="btn-icon edit" title="Renomear" onclick="openEditModal(${sc.id})">✎</button>`;
+        html += `<button class="btn-icon edit" title="Editar" onclick="openEditModal(${sc.id})">✎</button>`;
         html += `<button class="btn-icon del"  title="Excluir"  onclick="openDelModal(${sc.id})">✕</button>`;
         html += `</span></div></th>`;
     });
@@ -1216,26 +1720,7 @@ function renderTable() {
         html += `<th class="col-patrimonio scenario-sep-left">Patrimônio</th>`;
         html += `<th class="col-descap">Descapitalização</th>`;
     });
-    html += `</tr>`;
-
-    // Linha 3: checkbox de descapitalizações universais por cenário
-    const temDescaps = descaps.length > 0;
-    if (temDescaps) {
-        html += `<tr class="row-descaps-toggle">`;
-        html += `<th class="col-period" style="font-size:.60rem;color:var(--text-faint);text-align:left;padding:4px 12px;">Descaps. Universais</th>`;
-        scenarios.forEach(sc => {
-            html += `<th colspan="2" class="scenario-sep-left" style="text-align:center;padding:4px 8px;background:#16161e;">`;
-            html += `<label style="display:inline-flex;align-items:center;gap:6px;cursor:pointer;font-size:.70rem;color:var(--text-dim);font-weight:400;text-transform:none;letter-spacing:0;">`;
-            html += `<input type="checkbox" ${sc.usaDescaps ? 'checked' : ''} `;
-            html += `onchange="toggleScenarioDescaps(${sc.id}, this.checked)" `;
-            html += `style="accent-color:var(--gold);width:13px;height:13px;cursor:pointer;"> `;
-            html += `${sc.usaDescaps ? 'Aplicar' : 'Não aplicar'}</label>`;
-            html += `</th>`;
-        });
-        html += `</tr>`;
-    }
-
-    html += `</thead><tbody>`;
+    html += `</tr></thead><tbody>`;
 
     if (n === 0) {
         html += `<tr><td class="col-period" colspan="${1 + scenarios.length * 2}">
@@ -1250,9 +1735,16 @@ function renderTable() {
             html += `<span class="period-num">${label} ${i}</span>`;
             if (dateStr) html += `<span class="period-date">${dateStr}</span>`;
             html += `</td>`;
-            scenarios.forEach(() => {
-                html += `<td class="col-patrimonio cell-empty scenario-sep-left">—</td>`;
-                html += `<td class="col-descap cell-empty">—</td>`;
+            scenarios.forEach(sc => {
+                // Buscar dados do cenário
+                let patVal = null, descapVal = null;
+                if (sc.tipo === 'avista') {
+                    const rows = calcAvista(sc);
+                    const row  = rows[i - 1];
+                    if (row) { patVal = row.patTotal; descapVal = row.descapPeriodo || null; }
+                }
+                html += `<td class="col-patrimonio scenario-sep-left cell-empty">${patVal !== null ? fmtBRL(patVal) : '—'}</td>`;
+                html += `<td class="col-descap cell-empty">${descapVal !== null && descapVal > 0 ? fmtBRL(descapVal) : '—'}</td>`;
             });
             html += `</tr>`;
         }
@@ -1266,7 +1758,7 @@ function renderTable() {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-//  GRÁFICO
+//  GRÁFICO GERAL
 // ═══════════════════════════════════════════════════════════════════════════
 function renderChart() {
     const emptyMsg = document.getElementById('chart-empty-msg');
@@ -1282,15 +1774,22 @@ function renderChart() {
     const { n, label } = getPeriodoInfo();
     const labels = Array.from({length: n}, (_, i) => `${label} ${i+1}`);
 
-    const datasets = scenarios.map(sc => ({
-        label: sc.name,
-        data: Array(n).fill(null),
-        borderColor: sc.color,
-        backgroundColor: 'transparent',
-        borderWidth: 2,
-        pointRadius: 0,
-        tension: 0.35
-    }));
+    const datasets = scenarios.map(sc => {
+        let data = Array(n).fill(null);
+        if (sc.tipo === 'avista' && n > 0) {
+            const rows = calcAvista(sc);
+            data = rows.map(r => r.patTotal);
+        }
+        return {
+            label: sc.name,
+            data,
+            borderColor: sc.color,
+            backgroundColor: 'transparent',
+            borderWidth: 2,
+            pointRadius: 0,
+            tension: 0.35
+        };
+    });
 
     if (chartInst) chartInst.destroy();
     chartInst = new Chart(canvas.getContext('2d'), {
@@ -1326,16 +1825,6 @@ function renderChart() {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-//  TOGGLE DE DESCAPS POR CENÁRIO
-// ═══════════════════════════════════════════════════════════════════════════
-function toggleScenarioDescaps(id, checked) {
-    const sc = scenarios.find(s => s.id === id);
-    if (sc) sc.usaDescaps = checked;
-    // Re-renderiza apenas a tabela (sem destruir o gráfico)
-    renderTable();
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
 //  CONTAGEM DE CENÁRIOS
 // ═══════════════════════════════════════════════════════════════════════════
 function updateCount() {
@@ -1348,11 +1837,12 @@ function updateCount() {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-//  PARÂMETROS → RE-RENDERIZAR
+//  PARÂMETROS → RE-RENDERIZAR TUDO
 // ═══════════════════════════════════════════════════════════════════════════
 function onParamChange() {
     renderTable();
     renderChart();
+    renderScenarioCards();
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -1361,10 +1851,55 @@ function onParamChange() {
 let _modalMode = 'add';
 let _editId    = null;
 
+function buildParamsChips() {
+    const chips = [];
+    const saldo     = parseCur('p_saldo');
+    const inflacao  = parseNum('p_inflacao');
+    const juros     = parseNum('p_juros');
+    const ir        = parseNum('p_ir');
+    const prazo     = parseNum('p_prazo');
+    const prazoUnit = getVal('p_prazo_unit');
+    const dataInicio = getVal('p_data_inicio');
+    const bemValor  = parseCur('p_bem_valor');
+    const bemInfl   = document.getElementById('p_bem_reajuste_inflacao').checked;
+    const bemPre    = parseNum('p_bem_reajuste_pre');
+    const bemPos    = parseNum('p_bem_reajuste_pos');
+
+    if (saldo)     chips.push(`Saldo: <strong>${fmtBRLCompact(saldo)}</strong>`);
+    if (inflacao)  chips.push(`Inflação: <strong>${fmtPct(inflacao)} a.a.</strong>`);
+    if (juros)     chips.push(`Juros: <strong>${fmtPct(juros)} a.a.</strong>`);
+    if (ir)        chips.push(`IR: <strong>${fmtPct(ir)}</strong>`);
+    if (prazo)     chips.push(`Prazo: <strong>${prazo} ${prazoUnit}</strong>`);
+    if (dataInicio) chips.push(`Início: <strong>${new Date(dataInicio+'T00:00:00').toLocaleDateString('pt-BR')}</strong>`);
+    if (bemValor)  chips.push(`Bem: <strong>${fmtBRLCompact(bemValor)}</strong>`);
+    if (bemValor) {
+        if (bemInfl) chips.push(`Reajuste bem: <strong>inflação</strong>`);
+        else {
+            if (bemPre) chips.push(`Pré-compra: <strong>${fmtPct(bemPre)} a.a.</strong>`);
+            if (bemPos) chips.push(`Pós-compra: <strong>${fmtPct(bemPos)} a.a.</strong>`);
+        }
+    }
+    if (aportes.length > 0) chips.push(`Aportes: <strong>${aportes.length}</strong>`);
+    if (descaps.length > 0) chips.push(`Descaps. universais: <strong>${descaps.length}</strong>`);
+
+    return chips.map(c => `<span class="param-chip">${c}</span>`).join('');
+}
+
+function onTipoCenarioChange() {
+    // Por enquanto só tem "À Vista", mas preparado para expansão
+}
+
 function openAddModal() {
     _modalMode = 'add'; _editId = null;
     document.getElementById('modal-edit-title').textContent = 'Adicionar Cenário';
     document.getElementById('modal-scenario-name').value = '';
+    document.getElementById('modal-scenario-tipo').value = 'avista';
+    document.getElementById('modal-usa-descaps').checked = true;
+    // Mostrar/ocultar wrap de descaps
+    const descapsWrap = document.getElementById('modal-descaps-wrap');
+    if (descapsWrap) descapsWrap.style.display = descaps.length > 0 ? '' : 'none';
+    // Chips de parâmetros
+    document.getElementById('modal-params-chips').innerHTML = buildParamsChips();
     document.getElementById('modal-edit').classList.add('open');
     setTimeout(() => document.getElementById('modal-scenario-name').focus(), 80);
 }
@@ -1373,8 +1908,13 @@ function openEditModal(id) {
     const sc = scenarios.find(s => s.id === id);
     if (!sc) return;
     _modalMode = 'edit'; _editId = id;
-    document.getElementById('modal-edit-title').textContent = 'Renomear Cenário';
+    document.getElementById('modal-edit-title').textContent = 'Editar Cenário';
     document.getElementById('modal-scenario-name').value = sc.name;
+    document.getElementById('modal-scenario-tipo').value = sc.tipo || 'avista';
+    document.getElementById('modal-usa-descaps').checked = sc.usaDescaps !== false;
+    const descapsWrap = document.getElementById('modal-descaps-wrap');
+    if (descapsWrap) descapsWrap.style.display = descaps.length > 0 ? '' : 'none';
+    document.getElementById('modal-params-chips').innerHTML = buildParamsChips();
     document.getElementById('modal-edit').classList.add('open');
     setTimeout(() => {
         const inp = document.getElementById('modal-scenario-name');
@@ -1389,17 +1929,21 @@ function closeModal() {
 function confirmModal() {
     const name = document.getElementById('modal-scenario-name').value.trim();
     if (!name) { document.getElementById('modal-scenario-name').focus(); return; }
+    const tipo       = document.getElementById('modal-scenario-tipo').value;
+    const usaDescaps = document.getElementById('modal-usa-descaps').checked;
+
     if (_modalMode === 'add') {
         const color = PALETTE[scenarios.length % PALETTE.length];
-        scenarios.push({ id: nextId++, name, color, usaDescaps: true });
+        scenarios.push({ id: nextId++, name, color, tipo, usaDescaps });
     } else {
         const sc = scenarios.find(s => s.id === _editId);
-        if (sc) sc.name = name;
+        if (sc) { sc.name = name; sc.tipo = tipo; sc.usaDescaps = usaDescaps; }
     }
     closeModal();
     updateCount();
     renderTable();
     renderChart();
+    renderScenarioCards();
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -1416,26 +1960,24 @@ function openDelModal(id) {
          As duas colunas (Patrimônio e Descapitalização) serão removidas.`;
     document.getElementById('modal-del').classList.add('open');
 }
-
 function closeDelModal() {
     document.getElementById('modal-del').classList.remove('open');
 }
-
 function confirmDelModal() {
+    if (scCharts[_delId]) { scCharts[_delId].destroy(); delete scCharts[_delId]; }
     scenarios = scenarios.filter(s => s.id !== _delId);
     closeDelModal();
     updateCount();
     renderTable();
     renderChart();
+    renderScenarioCards();
 }
 
 // Fechar modais clicando fora
 ['modal-edit','modal-del','modal-flow','modal-flow-del'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.addEventListener('click', e => {
-        if (e.target === e.currentTarget) {
-            el.classList.remove('open');
-        }
+        if (e.target === e.currentTarget) el.classList.remove('open');
     });
 });
 
@@ -1447,6 +1989,7 @@ function confirmDelModal() {
     toggleBemReajuste();
     renderTable();
     renderChart();
+    renderScenarioCards();
 })();
 </script>
 </main>
