@@ -932,6 +932,17 @@ table.sc-table tr.row-aquisicao td { background: rgba(212,175,55,0.08); border-t
             </div>
         </div>
 
+        <!-- Checkbox: quitar assim que der (ignora prazo-objetivo) -->
+        <div>
+            <div class="check-row">
+                <input type="checkbox" id="modal-quitar-asap" checked onchange="renderModalScenarioDetail()">
+                <label for="modal-quitar-asap">Quitar assim que der</label>
+            </div>
+            <div id="modal-quitar-asap-info" style="font-size:0.78rem;color:var(--text-muted,#888);margin-top:2px;margin-left:24px;display:none;">
+                Se desmarcado, a aquisição só ocorre quando a data do período atingir o Prazo-Objetivo informado nos parâmetros gerais.
+            </div>
+        </div>
+
         <!-- Resumo dos parâmetros gerais -->
         <div id="modal-params-resumo-wrap">
             <div class="modal-section-title">Parâmetros Gerais Ativos</div>
@@ -1542,15 +1553,22 @@ function itemIndiceRelativo(item, i, data, aquisicaoFeita, aquisicaoData, allRow
         return i - 1 - aqIdx;
     }
     if (inicioTipo === 'data' && item.inicioData) {
-        // Usar a data de início para calcular o offset
-        // Precisamos saber qual período corresponde à data de início
-        // Como não temos acesso direto, usamos a data atual vs data de início
+        // Encontrar o primeiro período em que o item ficou ativo (data >= inicioData)
+        // e contar a partir daí, para que iRel=0 no primeiro período ativo.
+        if (!allRows) return 0;
         const dtInicio = new Date(item.inicioData + 'T00:00:00');
-        if (!data) return 0;
-        // Diferença em meses (aproximado)
-        const diffMs = data.getTime() - dtInicio.getTime();
-        const diffMeses = Math.round(diffMs / (30 * 24 * 3600 * 1000));
-        return Math.max(0, diffMeses);
+        // Primeiro período ativo = menor i tal que data >= dtInicio
+        // Procurar nos rows já calculados o primeiro período ativo
+        let primeiroIdx = -1;
+        for (let r = 0; r < allRows.length; r++) {
+            if (allRows[r].data && allRows[r].data >= dtInicio) {
+                primeiroIdx = allRows[r].periodo;
+                break;
+            }
+        }
+        // Se não encontrou ainda (estamos no primeiro período ativo), iRel = 0
+        if (primeiroIdx < 0) primeiroIdx = i;
+        return i - primeiroIdx;
     }
     return i - 1;
 }
@@ -1567,6 +1585,24 @@ function calcAvista(sc) {
     const bemInflacao = document.getElementById('p_bem_reajuste_inflacao').checked;
     const bemTaxaPre  = parseNum('p_bem_reajuste_pre') / 100;
     const bemTaxaPos  = parseNum('p_bem_reajuste_pos') / 100;
+
+    // Prazo-objetivo: se quitarAsap=false, só permite aquisição após a data-objetivo
+    const quitarAsap = sc.quitarAsap !== false; // default true
+    let dataObjetivo = null;
+    if (!quitarAsap) {
+        const objPrazo = parseNum('p_objetivo_prazo');
+        const objUnit  = getVal('p_objetivo_prazo_unit');
+        const dataStr  = getVal('p_data_inicio');
+        if (objPrazo && dataStr) {
+            const base = new Date(dataStr + 'T00:00:00');
+            if (objUnit === 'anos') {
+                dataObjetivo = new Date(base);
+                dataObjetivo.setFullYear(dataObjetivo.getFullYear() + Math.round(objPrazo));
+            } else {
+                dataObjetivo = addMonths(base, Math.round(objPrazo));
+            }
+        }
+    }
 
     // Taxa por período
     const jurosPer = unit === 'anos'
@@ -1649,7 +1685,8 @@ function calcAvista(sc) {
 
         // ── PASSO E: Pré-calcular descaps únicas na aquisição ──
         // Separar descaps únicas com unicoTipo='aquisicao' das demais para processamento conjunto
-        let descapPeriodo = aportePeriodo; // aportes sempre entram na descap
+        // Aportes NÃO entram na descap do período (são entradas, não saídas)
+        let descapPeriodo = 0;
 
         // ── PASSO F: Descapitalizações universais ──
         // Descaps únicas com unicoTipo='aquisicao' são tratadas junto com a aquisição no PASSO E.
@@ -1716,7 +1753,9 @@ function calcAvista(sc) {
         // ── PASSO E: Verificar aquisição (considerando descaps de aquisição no custo total) ──
         let isAquisicao = false;
         const custoTotalAquisicao = bemValor + totalDescapAquisicao;
-        if (!aquisicaoFeita && bemValor0 > 0 && patLiqD >= custoTotalAquisicao) {
+        // Se quitarAsap=false, só permite aquisição quando data >= dataObjetivo
+        const prazoOK = quitarAsap || !dataObjetivo || (data && data >= dataObjetivo);
+        if (!aquisicaoFeita && bemValor0 > 0 && patLiqD >= custoTotalAquisicao && prazoOK) {
             isAquisicao    = true;
             aquisicaoFeita = true;
             aquisicaoData  = data;
@@ -2240,13 +2279,18 @@ function onTipoCenarioChange() {
  * Usa um cenário temporário com os dados do formulário do modal.
  */
 function renderModalScenarioDetail() {
-    const tipo       = document.getElementById('modal-scenario-tipo').value;
-    const usaDescaps = document.getElementById('modal-usa-descaps').checked;
-    const name       = document.getElementById('modal-scenario-name').value.trim() || 'Prévia';
-    const color      = _editId ? (scenarios.find(s => s.id === _editId)?.color || PALETTE[0]) : PALETTE[scenarios.length % PALETTE.length];
+    const tipo        = document.getElementById('modal-scenario-tipo').value;
+    const usaDescaps  = document.getElementById('modal-usa-descaps').checked;
+    const quitarAsap  = document.getElementById('modal-quitar-asap').checked;
+    const name        = document.getElementById('modal-scenario-name').value.trim() || 'Prévia';
+    const color       = _editId ? (scenarios.find(s => s.id === _editId)?.color || PALETTE[0]) : PALETTE[scenarios.length % PALETTE.length];
+
+    // Mostrar/ocultar info do prazo-objetivo
+    const infoEl = document.getElementById('modal-quitar-asap-info');
+    if (infoEl) infoEl.style.display = quitarAsap ? 'none' : 'block';
 
     // Cenário temporário
-    const scTemp = { id: -1, name, color, tipo, usaDescaps };
+    const scTemp = { id: -1, name, color, tipo, usaDescaps, quitarAsap };
     const rows   = tipo === 'avista' ? calcAvista(scTemp) : [];
 
     const resumoWrap = document.getElementById('modal-scenario-resumo-wrap');
@@ -2360,6 +2404,7 @@ function openAddModal() {
     document.getElementById('modal-scenario-name').value = '';
     document.getElementById('modal-scenario-tipo').value = 'avista';
     document.getElementById('modal-usa-descaps').checked = true;
+    document.getElementById('modal-quitar-asap').checked = true;
     // Mostrar/ocultar wrap de descaps
     const descapsWrap = document.getElementById('modal-descaps-wrap');
     if (descapsWrap) descapsWrap.style.display = descaps.length > 0 ? '' : 'none';
@@ -2380,6 +2425,7 @@ function openEditModal(id) {
     document.getElementById('modal-scenario-name').value = sc.name;
     document.getElementById('modal-scenario-tipo').value = sc.tipo || 'avista';
     document.getElementById('modal-usa-descaps').checked = sc.usaDescaps !== false;
+    document.getElementById('modal-quitar-asap').checked = sc.quitarAsap !== false;
     const descapsWrap = document.getElementById('modal-descaps-wrap');
     if (descapsWrap) descapsWrap.style.display = descaps.length > 0 ? '' : 'none';
     document.getElementById('modal-params-chips').innerHTML = buildParamsChips();
@@ -2399,15 +2445,16 @@ function closeModal() {
 function confirmModal() {
     const name = document.getElementById('modal-scenario-name').value.trim();
     if (!name) { document.getElementById('modal-scenario-name').focus(); return; }
-    const tipo       = document.getElementById('modal-scenario-tipo').value;
-    const usaDescaps = document.getElementById('modal-usa-descaps').checked;
+    const tipo        = document.getElementById('modal-scenario-tipo').value;
+    const usaDescaps  = document.getElementById('modal-usa-descaps').checked;
+    const quitarAsap  = document.getElementById('modal-quitar-asap').checked;
 
     if (_modalMode === 'add') {
         const color = PALETTE[scenarios.length % PALETTE.length];
-        scenarios.push({ id: nextId++, name, color, tipo, usaDescaps });
+        scenarios.push({ id: nextId++, name, color, tipo, usaDescaps, quitarAsap });
     } else {
         const sc = scenarios.find(s => s.id === _editId);
-        if (sc) { sc.name = name; sc.tipo = tipo; sc.usaDescaps = usaDescaps; }
+        if (sc) { sc.name = name; sc.tipo = tipo; sc.usaDescaps = usaDescaps; sc.quitarAsap = quitarAsap; }
     }
     if (_modalScChart) { _modalScChart.destroy(); _modalScChart = null; }
     closeModal();
