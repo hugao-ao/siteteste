@@ -1043,9 +1043,18 @@
                 </div>
                 <div class="input-row cols-3">
                     <div class="input-group">
-                        <label>Simular Sorteio — mês estimado</label>
+                        <label>Tipo de Contemplação</label>
+                        <select id="co_tipoContemp" onchange="coToggleTipoContemp(); coCalcCategoria()">
+                            <option value="sorteio">Sorteio</option>
+                            <option value="lancelivre">Lance Livre</option>
+                            <option value="lancefixo">Lance Fixo</option>
+                        </select>
+                        <div class="hint">Escolha como você pretende ser contemplado.</div>
+                    </div>
+                    <div class="input-group">
+                        <label>Mês estimado de contemplação</label>
                         <input type="number" id="co_mesContemplacao" placeholder="Ex: 24" min="1" oninput="coCalcCategoria()">
-                        <div class="hint">Mês em que você estima ser contemplado por sorteio.</div>
+                        <div class="hint">Mês em que você estima ser contemplado.</div>
                     </div>
                     <div class="input-group">
                         <label>Redutor de Parcela pré-contemp. (%)</label>
@@ -1288,7 +1297,7 @@
          'al_aluguel','al_reajuste','al_caucao','al_taxaAdm','al_custosExtra','al_capital','al_aporteInv',
          'sac_entrada','sac_financiado','sac_prazo','sac_juros','sac_cet','sac_indiceCorrecao','sac_mip','sac_dfi','sac_taxaAdm','sac_carencia',
          'pr_entrada','pr_financiado','pr_prazo','pr_juros','pr_cet','pr_indiceCorrecao','pr_mip','pr_dfi','pr_taxaAdm','pr_carencia',
-         'co_creditoDesejado','co_lanceEmbutido','co_taxaAdm','co_fundoReserva','co_seguroPct','co_tipoPessoa','co_prazo','co_baseLance','co_lanceFixoPct','co_lanceLivrePct','co_mesContemplacao','co_reducaoParcela','co_finalidade','co_adesaoPct','co_posContempOpcao','co_indiceReajuste','co_reajusteAA',
+         'co_creditoDesejado','co_lanceEmbutido','co_taxaAdm','co_fundoReserva','co_seguroPct','co_tipoPessoa','co_prazo','co_baseLance','co_lanceFixoPct','co_lanceLivrePct','co_tipoContemp','co_mesContemplacao','co_reducaoParcela','co_finalidade','co_adesaoPct','co_posContempOpcao','co_indiceReajuste','co_reajusteAA',
          'cu_nomeCredito','cu_entrada','cu_financiado','cu_prazo','cu_juros','cu_iof','cu_parcelaFixa','cu_tarifaFixa','cu_tarifaVar','cu_seguro','cu_seguroVar','cu_indiceCorrecao','cu_balloon','cu_carencia'
         ].forEach(id => { const el = document.getElementById(id); if(el) el.value=''; });
         document.getElementById('sac_amorts').innerHTML = '';
@@ -1435,6 +1444,7 @@
             base.co_lanceFixoPct = gv('co_lanceFixoPct');
             base.co_baseLance = gv('co_baseLance');
             base.co_lanceLivrePct = gv('co_lanceLivrePct');
+            base.co_tipoContemp = gv('co_tipoContemp');
             base.co_mesContemplacao = gv('co_mesContemplacao');
             base.co_reducaoParcela = gv('co_reducaoParcela');
             base.co_finalidade = gv('co_finalidade');
@@ -1618,6 +1628,13 @@
     }
 
     // Simular parcelas mês a mês do consórcio (novo)
+    function coToggleTipoContemp() {
+        const tipo = document.getElementById('co_tipoContemp')?.value || 'sorteio';
+        const rowLanceFixo = document.getElementById('co_lanceFixoPct')?.closest('.input-group');
+        const rowLanceLivre = document.getElementById('co_lanceLivrePct')?.closest('.input-group');
+        if (rowLanceFixo) rowLanceFixo.style.display = (tipo === 'lancefixo') ? '' : 'none';
+        if (rowLanceLivre) rowLanceLivre.style.display = (tipo === 'lancelivre') ? '' : 'none';
+    }
     function coSimularParcelas(b, mesLance, lanceEmb, lanceRec, lanceAbate) {
         let cartaAtual = b.carta;
         let categoriaAtual = b.categoria;
@@ -1676,6 +1693,123 @@
     function calcPosContemp() {}
 
 
+    // ── CONSÓRCIO ─────────────────────────────────────────────────────────────
+    function calcConsorcio(p, g, meses) {
+        const credito = parseFloat(p.co_creditoDesejado?.replace(/[^\d,.-]/g,'').replace(',','.')) || 0;
+        const lanceEmbutidoPct = (parseFloat(p.co_lanceEmbutido) || 0) / 100;
+        const carta = lanceEmbutidoPct > 0 ? credito / (1 - lanceEmbutidoPct) : credito;
+        const taxaAdm = (parseFloat(p.co_taxaAdm) || 0) / 100;
+        const fundo = (parseFloat(p.co_fundoReserva) || 0) / 100;
+        const seguroPct = (parseFloat(p.co_seguroPct) || 0) / 100;
+        const prazo = parseInt(p.co_prazo) || 180;
+        const reajusteAA = (parseFloat(p.co_reajusteAA) || 0) / 100;
+        const tipoContemp = p.co_tipoContemp || 'sorteio';
+        const mesContemp = parseInt(p.co_mesContemplacao) || Math.floor(prazo / 2);
+        const adesaoPct = (parseFloat(p.co_adesaoPct) || 0) / 100;
+        const reducaoParcela = (parseFloat(p.co_reducaoParcela) || 0) / 100;
+        const posContempOpcao = p.co_posContempOpcao || 'parcela';
+        const lanceFixoPct = (parseFloat(p.co_lanceFixoPct) || 0) / 100;
+        const lanceLivrePct = (parseFloat(p.co_lanceLivrePct) || 0) / 100;
+        const baseLance = p.co_baseLance || 'carta';
+        const categoria = carta * (1 + taxaAdm + fundo);
+        const adesaoValor = carta * adesaoPct;
+
+        // Determinar o percentual de lance conforme o tipo de contemplação
+        let lancePct = 0;
+        if (tipoContemp === 'lancefixo') lancePct = lanceFixoPct;
+        else if (tipoContemp === 'lancelivre') lancePct = lanceLivrePct;
+        // sorteio: lancePct = 0
+
+        // Base do lance
+        let baseLanceValor = carta;
+        if (baseLance === 'categoria') baseLanceValor = categoria;
+        else if (baseLance === 'saldo') baseLanceValor = carta; // saldo inicial = carta
+
+        const lanceEmbutidoValor = carta * lanceEmbutidoPct;
+        const lanceRecursosValor = lancePct > 0 ? baseLanceValor * lancePct : 0;
+        const creditoLiquido = carta - lanceEmbutidoValor;
+
+        let cartaAtual = carta;
+        let categoriaAtual = categoria;
+        let saldoDevedor = carta;
+        let custoAcum = adesaoValor;
+        let parcelaInicial = 0;
+        let parcelaOriginalCorrigida = 0;
+        let parcelaFinal = 0;
+        let contemplado = false;
+        let prazoRestante = prazo;
+        const serie = [];
+        const serieSD = [];
+        let valorBemAtual = g.valorBem;
+
+        for (let m = 1; m <= meses; m++) {
+            // Reajuste anual
+            if (reajusteAA > 0 && m > 1 && (m - 1) % 12 === 0) {
+                cartaAtual *= (1 + reajusteAA);
+                categoriaAtual = cartaAtual * (1 + taxaAdm + fundo);
+                saldoDevedor *= (1 + reajusteAA);
+                if (parcelaOriginalCorrigida > 0) parcelaOriginalCorrigida *= (1 + reajusteAA);
+            }
+            valorBemAtual *= (1 + g.valorizacao / 12);
+
+            let parcela = 0;
+            if (m <= prazo && prazoRestante > 0) {
+                const amortBase = cartaAtual / prazo;
+                const admM = categoriaAtual * (taxaAdm + fundo) / prazo;
+                const seguroM = cartaAtual * seguroPct;
+
+                if (!contemplado) {
+                    // PRÉ-contemplação: redutor reduz a amortização efetiva
+                    const amortEfetiva = amortBase * (1 - reducaoParcela);
+                    parcela = amortEfetiva + admM + seguroM;
+                    saldoDevedor = Math.max(0, saldoDevedor - amortEfetiva);
+                } else {
+                    if (posContempOpcao === 'prazo') {
+                        parcela = parcelaOriginalCorrigida;
+                        const amortPos = Math.max(0, parcela - admM - seguroM);
+                        saldoDevedor = Math.max(0, saldoDevedor - amortPos);
+                        if (saldoDevedor === 0) prazoRestante = 0;
+                    } else {
+                        parcela = amortBase + admM + seguroM;
+                        saldoDevedor = Math.max(0, saldoDevedor - amortBase);
+                    }
+                    // Piso: parcela nunca menor que 50% da parcela original corrigida
+                    const piso = parcelaOriginalCorrigida * 0.5;
+                    if (parcela < piso) parcela = piso;
+                }
+
+                prazoRestante--;
+                custoAcum += parcela;
+                if (m === 1) { parcelaInicial = parcela; parcelaOriginalCorrigida = parcela; }
+                parcelaFinal = parcela;
+            }
+
+            // Contemplação no mês configurado
+            if (m === mesContemp && !contemplado) {
+                contemplado = true;
+                saldoDevedor = Math.max(0, saldoDevedor - lanceEmbutidoValor - lanceRecursosValor);
+                custoAcum += lanceRecursosValor + g.custosAquisicao;
+            }
+
+            serie.push(custoAcum);
+            serieSD.push(saldoDevedor);
+        }
+
+        const custoTotalNominal = custoAcum;
+        const inflFator = Math.pow(1 + g.inflacao, g.prazoAnos);
+        const custoTotalReal = custoTotalNominal / inflFator;
+        const patrimonioLiq = valorBemAtual - saldoDevedor;
+        const ganhoPatrimonial = valorBemAtual - carta;
+
+        return {
+            custoTotalNominal, custoTotalReal, patrimonioLiq, ganhoPatrimonial,
+            saldoDevedorFinal: saldoDevedor,
+            valorBemFinal: valorBemAtual,
+            parcelaInicial, parcelaFinal,
+            creditoLiquido, lanceEmbutidoValor, lanceRecursosValor,
+            serie, serieSD
+        };
+    }
         function globais() {
         const prazoRaw = gn('g_prazoAnalise') || (prazoUnidade === 'anos' ? 10 : 120);
         const prazoAnos = prazoUnidade === 'anos' ? prazoRaw : prazoRaw / 12;
@@ -2294,24 +2428,26 @@
             const prazo = parseInt(p.co_prazo)||0;
             const taxaAdm = parseFloat(p.co_taxaAdm)||0;
             const fundoRes = parseFloat(p.co_fundoReserva)||0;
-            const baseCalculo = 'categoria'; // base padrão
-            
-            const tipoSeguro = 'nenhum';
+            const tipoContemp = p.co_tipoContemp || 'sorteio';
+            const tipoContempLabel = {sorteio:'Sorteio', lancelivre:'Lance Livre', lancefixo:'Lance Fixo'}[tipoContemp] || 'Sorteio';
             const seguroPct = parseFloat(p.co_seguroPct)||0;
             const mesContemp = parseInt(p.co_mesContemplacao)||0;
-            const mesLance = 0;
             const baseLance = p.co_baseLance || 'carta';
             const baseLanceLabel = {carta:'carta de crédito', categoria:'categoria', saldo:'saldo devedor'}[baseLance] || 'carta de crédito';
-            
+            const baseCalcLabel = baseLanceLabel;
             const lanceEmb = parseFloat(p.co_lanceEmbutido)||0;
-            const lanceRec = 0;
-            const lanceRecPct = 0;
+            const lancePct = tipoContemp === 'lancefixo' ? (parseFloat(p.co_lanceFixoPct)||0) : tipoContemp === 'lancelivre' ? (parseFloat(p.co_lanceLivrePct)||0) : 0;
+            const lanceRec = lancePct > 0 ? credito * lancePct / 100 : 0;
+            const lanceRecPct = lancePct;
             const lanceAbate = true;
+            const mesLance = tipoContemp !== 'sorteio' ? mesContemp : 0;
+            const reducaoParcela = (parseFloat(p.co_reducaoParcela)||0)/100;
+            const posContempOpcao = p.co_posContempOpcao || 'parcela';
             const reajuste = parseFloat(p.co_reajusteAA)||0;
             const categoria = credito * (1 + (taxaAdm+fundoRes)/100);
 
             eventos.push({ mes: 'Dia 0', desc: `Ingresso no consórcio. Carta de crédito: <strong>${fmtBRL(credito)}</strong>. Prazo do grupo: <strong>${prazo} meses</strong>. Categoria: <strong>${fmtBRL(categoria)}</strong> (carta × ${(1+(taxaAdm+fundoRes)/100).toFixed(4)}).` });
-            eventos.push({ mes: 'Mês 1', desc: `Início das parcelas. Parcela inicial: <strong>${fmtBRL(r.parcelaInicial)}</strong>. Base de cálculo: <strong>${baseCalcLabel}</strong>. Taxa Adm: ${taxaAdm}% + Fundo Reserva: ${fundoRes}% sobre a base, diluídos em ${prazo} meses.${tipoSeguro!=='nenhum'?' Seguro: '+( tipoSeguro==='fixo'?fmtBRL(parseCur(p.co_seguro))+'/mês':seguroPct+'% a.m. sobre '+{pct_carta:'a carta',pct_saldo:'o saldo devedor',pct_categoria:'a categoria'}[tipoSeguro])+'.':''}` });
+            eventos.push({ mes: 'Mês 1', desc: `Início das parcelas. Parcela inicial: <strong>${fmtBRL(r.parcelaInicial)}</strong>. Tipo de contemplação: <strong>${tipoContempLabel}</strong>. Taxa Adm: ${taxaAdm}% + Fundo Reserva: ${fundoRes}% sobre a carta, diluídos em ${prazo} meses.${seguroPct > 0 ? ' Seguro: ' + seguroPct + '% a.m. sobre a carta.' : ''}` });
             if (reajuste > 0) {
                 eventos.push({ mes: 'Anualmente', desc: `Reajuste anual de <strong>${reajuste}% a.a.</strong> aplicado à carta de crédito, à categoria e ao saldo devedor. As parcelas acompanham o reajuste.` });
                 const creditoAno1 = credito * (1 + reajuste/100);
@@ -2634,38 +2770,45 @@
             const adesaoPct = (parseFloat(p.co_adesaoPct)||0)/100;
             const adesaoValor = credito * adesaoPct;
             const lanceEmbutidoValor = credito * lanceEmbutidoPct;
+            // Tipo de contemplação e lance
+            const tipoContempTab = p.co_tipoContemp || 'sorteio';
+            const baseLance = p.co_baseLance || 'carta';
+            const lancePctTab = tipoContempTab === 'lancefixo' ? (parseFloat(p.co_lanceFixoPct)||0)/100
+                             : tipoContempTab === 'lancelivre' ? (parseFloat(p.co_lanceLivrePct)||0)/100 : 0;
+            const lanceRecursosPct = lancePctTab;
+            const lanceRecursosFixo = 0;
+            const lanceAbateSaldo = true;
+            const mesLance = tipoContempTab !== 'sorteio' ? mesContemp : 0;
+            // Seguro simplificado: percentual sobre a carta
             let creditoAtual = credito;
             let categoriaAtual = credito * (1 + taxaAdmTotal + fundoReserva);
             let saldoDevedor = credito;
-            let custoAcum = 0;
+            let custoAcum = adesaoValor;
             let totalParcelas = 0, totalAmort = 0, totalAdm = 0, totalSeguro = 0;
             let stepParcela = 0, stepAmort = 0, stepAdm = 0, stepSeguro = 0;
             let lanceJaDado = false;
+            let parcelaOriginalTab = 0;
             let rows = '';
             for (let m = 1; m <= meses; m++) {
                 if (reajusteAA > 0 && m > 1 && (m-1) % 12 === 0) {
                     creditoAtual *= (1 + reajusteAA);
                     categoriaAtual = creditoAtual * (1 + taxaAdmTotal + fundoReserva);
                     saldoDevedor *= (1 + reajusteAA);
+                    if (parcelaOriginalTab > 0) parcelaOriginalTab *= (1 + reajusteAA);
                 }
                 let amortM = 0, admM = 0, seguroM = 0, parcelaM = 0;
                 if (m <= prazo) {
-                    let base;
-                    if (baseCalculo === 'categoria') base = categoriaAtual;
-                    else if (baseCalculo === 'carta') base = creditoAtual;
-                    else base = saldoDevedor;
-                    admM = base * (taxaAdmTotal + fundoReserva) / prazo;
+                    admM = categoriaAtual * (taxaAdmTotal + fundoReserva) / prazo;
                     const amortBase2 = creditoAtual / prazo;
-                    if (tipoSeguro === 'fixo') seguroM = seguroFixo;
-                    else if (tipoSeguro === 'pct_carta') seguroM = creditoAtual * seguroPct;
-                    else if (tipoSeguro === 'pct_saldo') seguroM = saldoDevedor * seguroPct;
-                    else if (tipoSeguro === 'pct_categoria') seguroM = categoriaAtual * seguroPct;
+                    seguroM = creditoAtual * seguroPct;
                     // Redutor pré-contemplação afeta a amortização efetiva
                     const isContemplado2 = m >= mesContemp;
                     amortM = isContemplado2 ? amortBase2 : amortBase2 * (1 - reducaoParcela);
                     parcelaM = amortM + admM + seguroM;
-                    // Piso: 50% da parcela do mês 1 (com reajuste)
-                    if (isContemplado2 && parcelaM < parcelaM * 0) parcelaM = parcelaM; // placeholder
+                    if (m === 1) parcelaOriginalTab = parcelaM;
+                    // Piso: 50% da parcela original corrigida
+                    const pisoTab = parcelaOriginalTab * 0.5;
+                    if (parcelaM < pisoTab) parcelaM = pisoTab;
                     saldoDevedor = Math.max(0, saldoDevedor - amortM);
                     custoAcum += parcelaM;
                     totalParcelas += parcelaM; totalAmort += amortM; totalAdm += admM; totalSeguro += seguroM;
@@ -2673,12 +2816,12 @@
                 }
                 if (m === mesLance && !lanceJaDado) {
                     lanceJaDado = true;
-                    let baseLanceValor;
-                    if (baseLance === 'carta') baseLanceValor = creditoAtual;
-                    else if (baseLance === 'categoria') baseLanceValor = categoriaAtual;
-                    else baseLanceValor = saldoDevedor;
-                    const lanceEmb = baseLanceValor * lanceEmbutidoPct;
-                    const lanceRec = lanceRecursosFixo > 0 ? lanceRecursosFixo : baseLanceValor * lanceRecursosPct;
+                    let baseLanceValorTab;
+                    if (baseLance === 'carta') baseLanceValorTab = creditoAtual;
+                    else if (baseLance === 'categoria') baseLanceValorTab = categoriaAtual;
+                    else baseLanceValorTab = saldoDevedor;
+                    const lanceEmb = baseLanceValorTab * lanceEmbutidoPct;
+                    const lanceRec = lanceRecursosFixo > 0 ? lanceRecursosFixo : baseLanceValorTab * lanceRecursosPct;
                     custoAcum += lanceRec;
                     stepParcela += lanceRec; totalParcelas += lanceRec;
                     if (lanceAbateSaldo) saldoDevedor = Math.max(0, saldoDevedor - lanceEmb - lanceRec);
@@ -3002,6 +3145,7 @@
     // Inicializar
     trocarAba('avista');
     atualizarConversaoPrazo();
+    coToggleTipoContemp();
     </script>
 </body>
 </html>
