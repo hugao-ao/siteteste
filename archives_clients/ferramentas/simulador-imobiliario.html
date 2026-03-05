@@ -1685,8 +1685,8 @@ function calcAvista(sc) {
 
         // ── PASSO E: Pré-calcular descaps únicas na aquisição ──
         // Separar descaps únicas com unicoTipo='aquisicao' das demais para processamento conjunto
-        // Aportes sempre entram na descap do período (são contabilizados como saída de caixa)
-        let descapPeriodo = aportePeriodo;
+        // descapPeriodo = aportes + descaps universais (+ saque líquido do patrimônio na aquisição)
+        let descapPeriodo = aportePeriodo; // aportes sempre entram
 
         // ── PASSO F: Descapitalizações universais ──
         // Descaps únicas com unicoTipo='aquisicao' são tratadas junto com a aquisição no PASSO E.
@@ -1750,6 +1750,12 @@ function calcAvista(sc) {
             totalDescapAquisicao += valorDc;
         });
 
+        // ── PASSO F2: Calcular descap universal efetiva (antes da aquisição, para usar no saque líquido) ──
+        const rendAcumF       = Math.max(0, patBruto - totalAportado);
+        const irF             = rendAcumF * irAliq;
+        const patLiqF         = patBruto - irF;
+        const descapUnivEfetiva = Math.min(descapUniversal, Math.max(0, patLiqF));
+
         // ── PASSO E: Verificar aquisição (considerando descaps de aquisição no custo total) ──
         let isAquisicao = false;
         const custoTotalAquisicao = bemValor + totalDescapAquisicao;
@@ -1766,9 +1772,12 @@ function calcAvista(sc) {
             totalAportado -= bemValor * (1 - propRend);
             if (totalAportado < 0) totalAportado = 0;
             if (patBruto < 0) patBruto = 0;
-            // Valor do bem entra como descap no período da aquisição,
-            // descontando os aportes já contabilizados neste período (evitar dupla contagem)
-            descapPeriodo += Math.max(0, bemValor - aportePeriodo);
+            // Saque líquido do patrimônio para cobrir o bem:
+            // = valor do bem - aportes do período - descaps universais efetivas do período
+            // (aportes e descaps universais já estão/estarão em descapPeriodo)
+            // Mínimo 0 (caso aportes+descaps já cubram o bem)
+            const saqueLiquidoBem = Math.max(0, bemValor - aportePeriodo - descapUnivEfetiva);
+            descapPeriodo += saqueLiquidoBem;
             // Aplicar descaps únicas na aquisição (imediatamente após a aquisição)
             descapsUnicasAquisicaoPendentes.forEach(dc => {
                 const anosDecDc = unit === 'anos' ? (i - 1) : Math.floor((i - 1) / 12);
@@ -1776,10 +1785,9 @@ function calcAvista(sc) {
                 if (dc.variaInflacao) {
                     valorDc *= Math.pow(1 + inflacaoAa, anosDecDc);
                 } else {
-                    const taxa = (dc.taxaPos || 0) / 100; // pós-aquisição pois acabou de ocorrer
+                    const taxa = (dc.taxaPos || 0) / 100;
                     if (taxa !== 0) valorDc *= Math.pow(1 + taxa, anosDecDc);
                 }
-                // Bloquear se exceder o patrimônio líquido disponível
                 const rendAcumDc   = Math.max(0, patBruto - totalAportado);
                 const irDc         = rendAcumDc * irAliq;
                 const patLiqDc     = patBruto - irDc;
@@ -1791,11 +1799,7 @@ function calcAvista(sc) {
             });
         }
 
-        // Bloquear descap recorrente/outras únicas que excedem o patrimônio líquido
-        const rendAcumF       = Math.max(0, patBruto - totalAportado);
-        const irF             = rendAcumF * irAliq;
-        const patLiqF         = patBruto - irF;
-        const descapUnivEfetiva = Math.min(descapUniversal, Math.max(0, patLiqF));
+        // Aplicar descap universal efetiva no patrimônio e na descapPeriodo
         patBruto -= descapUnivEfetiva;
         if (patBruto < 0) patBruto = 0;
         descapPeriodo += descapUnivEfetiva;
