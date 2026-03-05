@@ -2334,7 +2334,7 @@
                 const posDesc = posContempOpcao === 'prazo'
                     ? `Parcela mantida em <strong>${fmtBRL(r.parcelaInicial)}</strong> (com reajustes), prazo reduzido conforme amortização.`
                     : `Parcela pós-contemplação calculada sobre o saldo devedor restante. Piso garantido: 50% da parcela original corrigida.`;
-                eventos.push({ mes: \`Meses \${mesContemp+1}–\${prazo}\`, desc: \`Parcelas pós-contemplação: \${posDesc} Total de <strong>\${prazo - mesContemp} parcelas</strong> restantes.\` });
+                eventos.push({ mes: `Meses ${mesContemp+1}–${prazo}`, desc: `Parcelas pós-contemplação: ${posDesc} Total de <strong>${prazo - mesContemp} parcelas</strong> restantes.` });
             }
             eventos.push({ mes: mes(prazo), desc: `Última parcela do consórcio paga. Total desembolsado em parcelas: <strong>${fmtBRL(r.parcelaFinal * prazo)}</strong> (estimativa).` });
             eventos.push({ mes: mes(meses), desc: `Bem vale <strong>${fmtBRL(r.valorBemFinal)}</strong>. Custo total: <strong>${fmtBRL(r.custoTotalNominal)}</strong>. Custo real (descontada inflação): <strong>${fmtBRL(r.custoTotalReal)}</strong>.` });
