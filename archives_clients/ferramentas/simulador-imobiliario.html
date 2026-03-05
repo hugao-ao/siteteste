@@ -1025,6 +1025,39 @@ table.sc-table tr.row-aquisicao td { background: rgba(212,175,55,0.08); border-t
             </div>
         </div>
 
+        <!-- Datas de vigência -->
+        <div id="mf_datas_wrap">
+            <div class="modal-section-title" style="margin-bottom:10px;">Vigência</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+                <div>
+                    <div style="font-size:.66rem;color:var(--text-faint);margin-bottom:4px;">Início</div>
+                    <select id="mf_inicio_tipo" onchange="toggleFlowDatas()">
+                        <option value="periodo1">Desde o 1º período</option>
+                        <option value="aquisicao">A partir da aquisição</option>
+                        <option value="data">A partir de uma data</option>
+                    </select>
+                </div>
+                <div>
+                    <div style="font-size:.66rem;color:var(--text-faint);margin-bottom:4px;">Fim</div>
+                    <select id="mf_fim_tipo" onchange="toggleFlowDatas()">
+                        <option value="ultimo">Até o último período</option>
+                        <option value="aquisicao">Até a aquisição</option>
+                        <option value="data">Até uma data</option>
+                    </select>
+                </div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:6px;">
+                <div id="mf_inicio_data_wrap" style="display:none;">
+                    <div style="font-size:.66rem;color:var(--text-faint);margin-bottom:4px;">Data de início</div>
+                    <input type="date" id="mf_inicio_data">
+                </div>
+                <div id="mf_fim_data_wrap" style="display:none;">
+                    <div style="font-size:.66rem;color:var(--text-faint);margin-bottom:4px;">Data de fim</div>
+                    <input type="date" id="mf_fim_data">
+                </div>
+            </div>
+        </div>
+
         <!-- Variação própria (apenas para descapitalizações) -->
         <div id="mf_variacao_wrap" style="display:none;">
             <div class="modal-section-title" style="margin-bottom:10px;">Variação do Valor</div>
@@ -1205,14 +1238,25 @@ function calcDataObjetivo() {
 //  MODAL DE FLUXO: toggle de campos
 // ═══════════════════════════════════════════════════════════════════════════
 function toggleFlowQtd() {
-    const unit     = document.getElementById('mf_unit').value;
-    const nWrap    = document.getElementById('mf_n_wrap');
-    const sepLbl   = document.getElementById('mf_sep_label');
-    const corrWrap = document.getElementById('mf_corr_wrap');
-    const isUnica  = unit === 'unica';
-    if (nWrap)    nWrap.style.display    = isUnica ? 'none' : '';
-    if (sepLbl)   sepLbl.style.display   = isUnica ? 'none' : '';
-    if (corrWrap) corrWrap.style.display = isUnica ? 'none' : '';
+    const unit      = document.getElementById('mf_unit').value;
+    const nWrap     = document.getElementById('mf_n_wrap');
+    const sepLbl    = document.getElementById('mf_sep_label');
+    const corrWrap  = document.getElementById('mf_corr_wrap');
+    const datasWrap = document.getElementById('mf_datas_wrap');
+    const isUnica   = unit === 'unica';
+    if (nWrap)     nWrap.style.display     = isUnica ? 'none' : '';
+    if (sepLbl)    sepLbl.style.display    = isUnica ? 'none' : '';
+    if (corrWrap)  corrWrap.style.display  = isUnica ? 'none' : '';
+    if (datasWrap) datasWrap.style.display = isUnica ? 'none' : '';
+}
+
+function toggleFlowDatas() {
+    const inicioTipo = document.getElementById('mf_inicio_tipo').value;
+    const fimTipo    = document.getElementById('mf_fim_tipo').value;
+    const inicioWrap = document.getElementById('mf_inicio_data_wrap');
+    const fimWrap    = document.getElementById('mf_fim_data_wrap');
+    if (inicioWrap) inicioWrap.style.display = inicioTipo === 'data' ? '' : 'none';
+    if (fimWrap)    fimWrap.style.display    = fimTipo    === 'data' ? '' : 'none';
 }
 
 function toggleDescapVariacao() {
@@ -1251,11 +1295,17 @@ function renderFlowList(type) {
             }
         }
 
+        // Label de vigência
+        const INICIO_LABELS = { periodo1: 'desde o 1º período', aquisicao: 'após aquisição', data: item.inicioData ? `a partir de ${new Date(item.inicioData+'T00:00:00').toLocaleDateString('pt-BR')}` : 'data não definida' };
+        const FIM_LABELS    = { ultimo: 'até o fim', aquisicao: 'até a aquisição', data: item.fimData ? `até ${new Date(item.fimData+'T00:00:00').toLocaleDateString('pt-BR')}` : 'data não definida' };
+        const vigLabel = item.unit !== 'unica'
+            ? ` · ${INICIO_LABELS[item.inicioTipo||'periodo1']} ${FIM_LABELS[item.fimTipo||'ultimo']}` : '';
+
         return `
         <div class="flow-item" data-id="${item.id}" data-type="${type}">
             <div class="flow-info">
                 ${desc}${fmtBRLCompact(item.valor)} — ${freqLabel}
-                <small>${item.unit !== 'unica' ? (corrLabel || 'sem correção pela inflação') + varLabel : 'sem recorrência'}</small>
+                <small>${item.unit !== 'unica' ? (corrLabel || 'sem correção pela inflação') + varLabel + vigLabel : 'sem recorrência'}</small>
             </div>
             <div class="flow-item-actions">
                 <button class="btn-icon-sm edit" title="Editar" onclick="openFlowModal('${type}', ${item.id})">✎</button>
@@ -1297,6 +1347,10 @@ function openFlowModal(type, editId) {
         document.getElementById('mf_n').value = item.n;
         document.getElementById('mf_unit').value = item.unit;
         document.getElementById('mf_corr_inflacao').checked = !!item.corrInflacao;
+        document.getElementById('mf_inicio_tipo').value  = item.inicioTipo  || 'periodo1';
+        document.getElementById('mf_fim_tipo').value     = item.fimTipo     || 'ultimo';
+        document.getElementById('mf_inicio_data').value  = item.inicioData  || '';
+        document.getElementById('mf_fim_data').value     = item.fimData     || '';
         if (!isAporte) {
             document.getElementById('mf_varia_inflacao').checked = !!item.variaInflacao;
             document.getElementById('mf_taxa_pre').value = item.taxaPre || '';
@@ -1309,6 +1363,10 @@ function openFlowModal(type, editId) {
         document.getElementById('mf_n').value = 1;
         document.getElementById('mf_unit').value = 'meses';
         document.getElementById('mf_corr_inflacao').checked = false;
+        document.getElementById('mf_inicio_tipo').value  = 'periodo1';
+        document.getElementById('mf_fim_tipo').value     = 'ultimo';
+        document.getElementById('mf_inicio_data').value  = '';
+        document.getElementById('mf_fim_data').value     = '';
         if (!isAporte) {
             document.getElementById('mf_varia_inflacao').checked = false;
             document.getElementById('mf_taxa_pre').value = '';
@@ -1319,6 +1377,7 @@ function openFlowModal(type, editId) {
 
     document.getElementById('modal-flow').classList.add('open');
     toggleFlowQtd();
+    toggleFlowDatas();
     setTimeout(() => document.getElementById('mf_valor').focus(), 80);
 }
 
@@ -1331,13 +1390,18 @@ function confirmFlowModal() {
     if (!valor) { document.getElementById('mf_valor').focus(); return; }
 
     const isAporte = _flowType === 'aporte';
+    const unit = document.getElementById('mf_unit').value;
     const item = {
         id:           _flowMode === 'edit' ? _flowEditId : nextFlowId++,
         descricao:    document.getElementById('mf_descricao').value.trim(),
         valor,
         n:            parseInt(document.getElementById('mf_n').value) || 1,
-        unit:         document.getElementById('mf_unit').value,
-        corrInflacao: document.getElementById('mf_corr_inflacao').checked
+        unit,
+        corrInflacao: document.getElementById('mf_corr_inflacao').checked,
+        inicioTipo:   unit === 'unica' ? 'periodo1' : (document.getElementById('mf_inicio_tipo').value || 'periodo1'),
+        fimTipo:      unit === 'unica' ? 'ultimo'   : (document.getElementById('mf_fim_tipo').value   || 'ultimo'),
+        inicioData:   document.getElementById('mf_inicio_data').value || null,
+        fimData:      document.getElementById('mf_fim_data').value    || null
     };
     if (!isAporte) {
         item.variaInflacao = document.getElementById('mf_varia_inflacao').checked;
@@ -1396,6 +1460,30 @@ function confirmFlowDelModal() {
  * Retorna array de linhas para o cenário À Vista.
  * Cada linha: { periodo, data, valorBem, patBruto, ir, patLiquido, descapPeriodo, descapAcum, patTotal, isAquisicao }
  */
+/**
+ * Verifica se um item (aporte ou descap) está ativo no período i.
+ * Considera inicioTipo/fimTipo/inicioData/fimData e se a aquisição já ocorreu.
+ */
+function itemAtivoNoPeriodo(item, i, data, aquisicaoFeita, aquisicaoData) {
+    // Verificar início
+    const inicioTipo = item.inicioTipo || 'periodo1';
+    if (inicioTipo === 'aquisicao' && !aquisicaoFeita) return false;
+    if (inicioTipo === 'data' && item.inicioData) {
+        const dtInicio = new Date(item.inicioData + 'T00:00:00');
+        if (data && data < dtInicio) return false;
+    }
+    // Verificar fim
+    const fimTipo = item.fimTipo || 'ultimo';
+    if (fimTipo === 'aquisicao') {
+        if (aquisicaoFeita) return false; // já ocorreu, não aplica mais
+    }
+    if (fimTipo === 'data' && item.fimData) {
+        const dtFim = new Date(item.fimData + 'T00:00:00');
+        if (data && data > dtFim) return false;
+    }
+    return true;
+}
+
 function calcAvista(sc) {
     const { n, unit } = getPeriodoInfo();
     if (!n) return [];
@@ -1412,13 +1500,16 @@ function calcAvista(sc) {
     // Taxa por período
     const periodosMes = unit === 'anos' ? 12 : 1;
     const jurosPer    = Math.pow(1 + jurosAa, 1 / (12 / periodosMes)) - 1;
-    const inflacaoPer = Math.pow(1 + inflacaoAa, 1 / (12 / periodosMes)) - 1;
+    const inflacaoAa_ = inflacaoAa; // alias
 
     let patBruto   = saldo0;
     let totalAport = saldo0; // total aportado (para cálculo proporcional do IR)
     let bemValor   = bemValor0;
     let aquisicaoFeita = false;
+    let aquisicaoData  = null;
     let descapAcum = 0;
+    // Contador de aniversarios do bem (para reajuste anual)
+    let bemAniversarios = 0;
 
     const rows = [];
 
@@ -1428,27 +1519,30 @@ function calcAvista(sc) {
         // ── Aportes do período ──
         let aportePeriodo = 0;
         aportes.forEach(ap => {
+            if (!itemAtivoNoPeriodo(ap, i, data, aquisicaoFeita, aquisicaoData)) return;
             if (ap.unit === 'unica') {
                 if (i === 1) aportePeriodo += ap.valor;
             } else {
-                // simplificação: converter frequência para períodos
                 const freqEmPeriodos = freqParaPeriodos(ap.unit, ap.n, unit);
                 if (freqEmPeriodos > 0 && (i - 1) % freqEmPeriodos === 0) {
-                    // corrigir pela inflação
-                    const fator = ap.corrInflacao ? Math.pow(1 + inflacaoAa, (i - 1) / (12 / periodosMes)) : 1;
+                    const fator = ap.corrInflacao ? Math.pow(1 + inflacaoAa_, (i - 1) / (12 / periodosMes)) : 1;
                     aportePeriodo += ap.valor * fator;
                 }
             }
         });
 
-        // ── Descapitalizações do período ──
+        // ── Descapitalizações do período (descaps universais + aportes como saída) ──
         let descapPeriodo = 0;
+        // Aportes também são descapitalização (saída de caixa para o objetivo)
+        descapPeriodo += aportePeriodo;
+
         if (sc.usaDescaps) {
             descaps.forEach(dc => {
+                if (!itemAtivoNoPeriodo(dc, i, data, aquisicaoFeita, aquisicaoData)) return;
                 let valorDc = dc.valor;
                 // Variação do valor da descap
                 if (dc.variaInflacao) {
-                    valorDc *= Math.pow(1 + inflacaoAa, (i - 1) / (12 / periodosMes));
+                    valorDc *= Math.pow(1 + inflacaoAa_, (i - 1) / (12 / periodosMes));
                 } else {
                     const taxaPre = (dc.taxaPre || 0) / 100;
                     const taxaPos = (dc.taxaPos || 0) / 100;
@@ -1473,22 +1567,30 @@ function calcAvista(sc) {
         // ── Rendimento do período ──
         const rendimento = patBruto * jurosPer;
 
-        // ── Atualizar patrimônio bruto ──
-        patBruto = patBruto + rendimento + aportePeriodo - descapPeriodo;
+        // ── Atualizar patrimônio bruto (aportes entram, descaps saem) ──
+        // Nota: aportes já estão em descapPeriodo, mas também entram no patrimônio
+        patBruto = patBruto + rendimento + aportePeriodo - (descapPeriodo - aportePeriodo);
         totalAport += aportePeriodo;
 
-        // ── Reajuste do bem ──
-        if (!aquisicaoFeita) {
-            if (bemInflacao) {
-                bemValor = bemValor0 * Math.pow(1 + inflacaoAa, i / (12 / periodosMes));
-            } else {
-                bemValor = bemValor0 * Math.pow(1 + bemTaxaPre, i / (12 / periodosMes));
+        // ── Reajuste do bem: apenas no aniversario (a cada 12 meses / 1 ano) ──
+        if (!aquisicaoFeita && bemValor0 > 0) {
+            // Contar aniversarios: a cada periodosMes períodos = 1 ano
+            if (i % periodosMes === 0) {
+                bemAniversarios++;
+                if (bemInflacao) {
+                    bemValor = bemValor0 * Math.pow(1 + inflacaoAa_, bemAniversarios);
+                } else {
+                    bemValor = bemValor0 * Math.pow(1 + bemTaxaPre, bemAniversarios);
+                }
             }
-        } else {
-            if (bemInflacao) {
-                bemValor *= (1 + inflacaoPer);
-            } else {
-                bemValor *= Math.pow(1 + bemTaxaPos, 1 / (12 / periodosMes));
+        } else if (aquisicaoFeita && bemValor0 > 0) {
+            // Pós-aquisição: reajuste anual também só no aniversario
+            if (i % periodosMes === 0) {
+                if (bemInflacao) {
+                    bemValor *= (1 + inflacaoAa_);
+                } else {
+                    bemValor *= (1 + bemTaxaPos);
+                }
             }
         }
 
@@ -1502,6 +1604,7 @@ function calcAvista(sc) {
         if (!aquisicaoFeita && bemValor0 > 0 && patLiq >= bemValor) {
             isAquisicao    = true;
             aquisicaoFeita = true;
+            aquisicaoData  = data;
             // Saque do bem: reduz patBruto proporcionalmente
             const propRend = Math.min(1, rendAcum / Math.max(1, patBruto));
             const irSaque  = bemValor * propRend * irAliq;
