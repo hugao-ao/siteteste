@@ -1750,35 +1750,46 @@ function calcAvista(sc) {
             totalDescapAquisicao += valorDc;
         });
 
-        // ── PASSO F2: Calcular descap universal efetiva (antes da aquisição, para usar no saque líquido) ──
+        // ── PASSO F2: Calcular descap universal efetiva ──
         const rendAcumF       = Math.max(0, patBruto - totalAportado);
         const irF             = rendAcumF * irAliq;
         const patLiqF         = patBruto - irF;
         const descapUnivEfetiva = Math.min(descapUniversal, Math.max(0, patLiqF));
 
-        // ── PASSO E: Verificar aquisição (considerando descaps de aquisição no custo total) ──
+        // ── PASSO E: Verificar aquisição ──
         let isAquisicao = false;
         const custoTotalAquisicao = bemValor + totalDescapAquisicao;
-        // Se quitarAsap=false, só permite aquisição quando data >= dataObjetivo
         const prazoOK = quitarAsap || !dataObjetivo || (data && data >= dataObjetivo);
         if (!aquisicaoFeita && bemValor0 > 0 && patLiqD >= custoTotalAquisicao && prazoOK) {
             isAquisicao    = true;
             aquisicaoFeita = true;
             aquisicaoData  = data;
-            // IR proporcional ao saque do bem
+
+            // Proporção de rendimento no patrimônio bruto (antes do saque)
             const propRend = patBruto > 0 ? Math.min(1, rendAcumD / patBruto) : 0;
-            const irSaque  = bemValor * propRend * irAliq;
-            patBruto      -= (bemValor + irSaque);
-            totalAportado -= bemValor * (1 - propRend);
+
+            // Saque bruto necessário para cobrir o bem líquido:
+            // sacoBruto × (1 - propRend × irAliq) = bemValor
+            // sacoBruto = bemValor / (1 - propRend × irAliq)
+            const fatorIR = 1 - propRend * irAliq;
+            const saqueBrutoBem = fatorIR > 0 ? bemValor / fatorIR : bemValor;
+
+            // IR pago no saque do bem
+            const irSaque = saqueBrutoBem - bemValor;
+
+            // Atualizar patrimônio bruto e capital investido
+            patBruto      -= saqueBrutoBem;
+            totalAportado -= saqueBrutoBem * (1 - propRend);
             if (totalAportado < 0) totalAportado = 0;
             if (patBruto < 0) patBruto = 0;
-            // Saque líquido do patrimônio para cobrir o bem:
-            // = valor do bem - aportes do período - descaps universais efetivas do período
-            // (aportes e descaps universais já estão/estarão em descapPeriodo)
-            // Mínimo 0 (caso aportes+descaps já cubram o bem)
-            const saqueLiquidoBem = Math.max(0, bemValor - aportePeriodo - descapUnivEfetiva);
-            descapPeriodo += saqueLiquidoBem;
-            // Aplicar descaps únicas na aquisição (imediatamente após a aquisição)
+
+            // descapPeriodo na aquisição:
+            // aportes do período (já em descapPeriodo) +
+            // saque bruto × proporção de rendimento (a parte que representa rendimento sacado)
+            // Isso reflete o custo real de oportunidade do saque proporcional
+            descapPeriodo += saqueBrutoBem * propRend;
+
+            // Aplicar descaps únicas na aquisição
             descapsUnicasAquisicaoPendentes.forEach(dc => {
                 const anosDecDc = unit === 'anos' ? (i - 1) : Math.floor((i - 1) / 12);
                 let valorDc = dc.valor;
@@ -1792,9 +1803,15 @@ function calcAvista(sc) {
                 const irDc         = rendAcumDc * irAliq;
                 const patLiqDc     = patBruto - irDc;
                 const valorEfetivo = Math.min(valorDc, Math.max(0, patLiqDc));
-                patBruto      -= valorEfetivo;
+                // Saque bruto para cobrir a descap única de aquisição
+                const propRendDc   = patBruto > 0 ? Math.min(1, rendAcumDc / patBruto) : 0;
+                const fatorIRDc    = 1 - propRendDc * irAliq;
+                const saqueBrutoDc = fatorIRDc > 0 ? valorEfetivo / fatorIRDc : valorEfetivo;
+                patBruto      -= saqueBrutoDc;
+                totalAportado -= saqueBrutoDc * (1 - propRendDc);
+                if (totalAportado < 0) totalAportado = 0;
                 if (patBruto < 0) patBruto = 0;
-                descapPeriodo += valorEfetivo;
+                descapPeriodo += saqueBrutoDc * propRendDc;
                 unicosAplicados.add('dc_' + dc.id);
             });
         }
@@ -1804,6 +1821,7 @@ function calcAvista(sc) {
         if (patBruto < 0) patBruto = 0;
         descapPeriodo += descapUnivEfetiva;
 
+        // descapAcum = soma simples acumulada
         descapAcum += descapPeriodo;
 
         // ── PASSO G: IR e patrimônios finais do período ──
