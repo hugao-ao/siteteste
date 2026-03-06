@@ -898,8 +898,8 @@ table.sc-table tr.row-aquisicao td { background: rgba(212,175,55,0.08); border-t
         </div>
     </section>
 
-    <!-- ── CARDS DE CENÁRIOS DETALHADOS ─────────────────────────────── -->
-    <div id="scenario-cards-container"></div>
+    <!-- Cards de cenários detalhados removidos a pedido do usuário -->
+    <div id="scenario-cards-container" style="display:none;"></div>
 
 </div><!-- /main-wrap -->
 
@@ -2146,7 +2146,7 @@ function renderTable() {
                 if (sc.tipo === 'avista') {
                     const rows = calcAvista(sc);
                     const row  = rows[i - 1];
-                    if (row) { patVal = row.patTotal; descapVal = row.descapPeriodo || null; }
+                    if (row) { patVal = row.patTotal; descapVal = row.descapAcum || null; }
                 }
                 html += `<td class="col-patrimonio scenario-sep-left cell-empty">${patVal !== null ? fmtBRL(patVal) : '—'}</td>`;
                 html += `<td class="col-descap cell-empty">${descapVal !== null && descapVal > 0 ? fmtBRL(descapVal) : '—'}</td>`;
