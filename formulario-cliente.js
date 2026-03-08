@@ -1182,15 +1182,8 @@ function attachFormEventListeners(formId) {
 
                 if (error) throw error;
 
-                // --- Mostrar mensagem de sucesso --- (Mantido)
-                formContentEl.innerHTML = `
-                    <div class="success-message">
-                        <h2>Formulário enviado com sucesso!</h2>
-                        <p>Obrigado por preencher o formulário. Suas respostas foram registradas.</p>
-                    </div>
-                `;
-                // Rolar para o topo para o usuário ver a mensagem
-                 // window.scrollTo({ top: 0, behavior: 'smooth' });
+                // --- Redirecionar para a página de boas-vindas ---
+                window.location.href = 'https://mithrasf.vercel.app/bem-vindo';
 
             } catch (error) {
                 console.error("Erro ao enviar formulário:", error);
