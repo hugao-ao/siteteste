@@ -859,7 +859,7 @@ function handleTableClick(event) {
     } else if (btn.classList.contains('delete-btn')) {
         deleteClient(clientId);
     } else if (btn.classList.contains('view-details-btn')) {
-        alert("Funcionalidade de detalhes em desenvolvimento.");
+        window.location.href = `cliente-detalhes.html?id=${clientId}`;
     }
 }
 
