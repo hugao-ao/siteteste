@@ -15,7 +15,7 @@
 // Configurações do Microsoft OneDrive
 const ONEDRIVE_CONFIG = {
     CLIENT_ID: '0d73f929-0839-4435-bb68-9a29a2143473',
-    REDIRECT_URI: 'https://siteteste-flame.vercel.app',
+    REDIRECT_URI: 'https://app.hvsaudefinanceira.com.br',
     AUTHORITY: 'https://login.microsoftonline.com/common',
     SCOPES: [
         'User.Read',
