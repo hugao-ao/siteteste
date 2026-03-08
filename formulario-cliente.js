@@ -773,7 +773,7 @@ function updateDynamicFormSections(source) {
     // Apenas renderiza as seções dinâmicas pesadas (Plano, Seguro, IR) se a alteração vier de campos que afetam essas seções.
     // Fontes que afetam: 'nome_completo', 'renda_unica', 'outras_pessoas'
     // Fontes que NÃO afetam: 'tem_dependentes', 'tem_patrimonio', 'tem_dividas', etc.
-    if (!source || source === 'nome_completo' || source === 'renda_unica' || source === 'outras_pessoas') {
+    if (!source || source === 'nome_completo' || source === 'renda_unica' || source === 'outras_pessoas' || source === 'dependentes') {
         renderPlanoSaudeQuestions();
         renderSeguroVidaQuestions();
         renderImpostoRendaQuestions();
@@ -902,10 +902,12 @@ function attachFormEventListeners(formId) {
             dependentesListEl.appendChild(newDependenteEntry);
 
             const nomeDependenteInput = newDependenteEntry.querySelector('input[name="dep_nome"]');
-            // Removed updateDynamicFormSections listener as it is not needed for dependents
-
+            nomeDependenteInput.addEventListener('input', () => {
+                updateDynamicFormSections('dependentes');
+            });
             newDependenteEntry.querySelector(".remove-dynamic-entry-btn").addEventListener("click", () => {
                 newDependenteEntry.remove();
+                updateDynamicFormSections('dependentes');
             });
         });
     }
