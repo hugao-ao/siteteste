@@ -1185,7 +1185,7 @@ function attachFormEventListeners(formId) {
                 if (error) throw error;
 
                 // --- Redirecionar para a página de boas-vindas ---
-                window.location.href = 'https://hvsaudefinanceira.vercel.app/bem-vindo';
+                window.location.href = 'https://hvsaudefinanceira.com.br/bem-vindo';
 
             } catch (error) {
                 console.error("Erro ao enviar formulário:", error);
