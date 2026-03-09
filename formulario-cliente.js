@@ -1189,9 +1189,14 @@ function attachFormEventListeners(formId) {
 
             } catch (error) {
                 console.error("Erro ao enviar formulário:", error);
-                showMessage("error", `Erro ao enviar formulário: ${error.message}`);
-                 // Rolar para o topo para o usuário ver a mensagem
-                 // window.scrollTo({ top: 0, behavior: 'smooth' });
+                messageAreaEl.innerHTML = `
+                    <div class="message error">
+                        <p>Erro ao enviar formulário: ${sanitizeInput(error.message)}</p>
+                        <p style="margin-top:0.8rem;">Se o problema persistir, entre em contato pelo WhatsApp:</p>
+                        <a href="https://wa.me/5581994297920?text=Oi%2C%20tive%20um%20problema%20ao%20enviar%20meu%20formul%C3%A1rio%20e%20preciso%20de%20ajuda%2C%20Hugo." target="_blank" rel="noopener noreferrer" style="display:inline-flex;align-items:center;gap:8px;margin-top:0.8rem;padding:0.7rem 1.2rem;background:#16a34a;color:#fff;border-radius:8px;font-weight:600;text-decoration:none;">&#128172; Falar no WhatsApp</a>
+                    </div>
+                `;
+                window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
             }
         });
     }
@@ -1226,6 +1231,8 @@ async function initForm() {
                 <div class="error-message">
                     <h2>Link inválido</h2>
                     <p>O link que você está tentando acessar é inválido ou expirou.</p>
+                    <p style="margin-top:1rem;">Se você acabou de realizar o pagamento, entre em contato pelo WhatsApp e resolveremos agora:</p>
+                    <a href="https://wa.me/5581994297920?text=Oi%2C%20acabei%20de%20me%20tornar%20cliente%20e%20estou%20precisando%20falar%20com%20voc%C3%AA%2C%20Hugo." target="_blank" rel="noopener noreferrer" style="display:inline-flex;align-items:center;gap:8px;margin-top:1rem;padding:0.8rem 1.5rem;background:#16a34a;color:#fff;border-radius:8px;font-weight:600;text-decoration:none;transition:background 0.2s;" onmouseover="this.style.background='#15803d'" onmouseout="this.style.background='#16a34a'">&#128172; Falar no WhatsApp</a>
                 </div>
             `;
             return;
@@ -1243,6 +1250,8 @@ async function initForm() {
                 <div class="error-message">
                     <h2>Link inválido</h2>
                     <p>O link que você está tentando acessar é inválido ou expirou.</p>
+                    <p style="margin-top:1rem;">Se você acabou de realizar o pagamento, entre em contato pelo WhatsApp e resolveremos agora:</p>
+                    <a href="https://wa.me/5581994297920?text=Oi%2C%20acabei%20de%20me%20tornar%20cliente%20e%20estou%20precisando%20falar%20com%20voc%C3%AA%2C%20Hugo." target="_blank" rel="noopener noreferrer" style="display:inline-flex;align-items:center;gap:8px;margin-top:1rem;padding:0.8rem 1.5rem;background:#16a34a;color:#fff;border-radius:8px;font-weight:600;text-decoration:none;transition:background 0.2s;" onmouseover="this.style.background='#15803d'" onmouseout="this.style.background='#16a34a'">&#128172; Falar no WhatsApp</a>
                 </div>
             `;
             return;
@@ -1284,6 +1293,8 @@ async function initForm() {
             <div class="error-message">
                 <h2>Erro ao carregar formulário</h2>
                 <p>Ocorreu um erro ao carregar o formulário. Por favor, tente novamente mais tarde.</p>
+                <p style="margin-top:1rem;">Se você acabou de realizar o pagamento, entre em contato pelo WhatsApp e resolveremos agora:</p>
+                <a href="https://wa.me/5581994297920?text=Oi%2C%20acabei%20de%20me%20tornar%20cliente%20e%20estou%20precisando%20falar%20com%20voc%C3%AA%2C%20Hugo." target="_blank" rel="noopener noreferrer" style="display:inline-flex;align-items:center;gap:8px;margin-top:1rem;padding:0.8rem 1.5rem;background:#16a34a;color:#fff;border-radius:8px;font-weight:600;text-decoration:none;transition:background 0.2s;" onmouseover="this.style.background='#15803d'" onmouseout="this.style.background='#16a34a'">&#128172; Falar no WhatsApp</a>
             </div>
         `;
     }
