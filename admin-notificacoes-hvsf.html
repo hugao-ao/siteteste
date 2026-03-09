@@ -591,6 +591,7 @@
 
     // NOVA FUNÇÃO: Salvar Tarefas Manualmente
     async function saveTasks(id) {
+        id = isNaN(id) ? id : Number(id);
         const notif = window.notifications.find(n => n.id === id);
         if (!notif) return;
 
@@ -645,6 +646,7 @@
     }
 
     async function lancarClienteNoSistema(notifId) {
+        notifId = isNaN(notifId) ? notifId : Number(notifId);
         const notif = window.notifications.find(n => n.id === notifId);
         if (!notif) return;
 
