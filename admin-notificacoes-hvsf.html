@@ -1100,7 +1100,7 @@
                     <td>${lastCharge} ${statusIcon}</td>
                     <td>${nextCharge}</td>
                     <td><span class="badge ${statusClass}">${statusLabel}</span></td>
-                    <td style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap;">
+                    <td>
                         ${isDuplicateCpf ? 
                             `<span class="badge badge-active" style="background-color: #28a745; color: white;">Cadastrado</span>` : 
                             (taskExists ? 
@@ -1110,9 +1110,6 @@
                                 </button>`
                             )
                         }
-                        <button class="btn-import" onclick="excluirCliente('${client.customer_id}', '${client.first_name} ${client.last_name || ''}', '${client.email}', '${cleanDoc}')" title="Excluir cliente definitivamente" style="border-color: #dc3545; color: #dc3545;">
-                            <i class="fas fa-trash-alt"></i> Excluir
-                        </button>
                     </td>
                 `;
                 tbody.appendChild(tr);
@@ -1264,125 +1261,6 @@
         return new Date(parts[2], parts[1] - 1, parts[0]).getTime();
     }
 
-    // --- EXCLUSÃO DEFINITIVA DE CLIENTE ---
-    async function excluirCliente(cyclopayId, nomeCompleto, email, cpfLimpo) {
-        const confirmMsg = `⚠️ ATENÇÃO: Esta ação é IRREVERSÍVEL!\n\nVocê está prestes a excluir definitivamente:\n• Cliente: ${nomeCompleto}\n• Email: ${email}\n\nIsso irá remover o cliente do Cyclopay e de TODAS as tabelas do sistema (clientes, dados cadastrais, formulários, tarefas e aceites).\n\nDigite CONFIRMAR para prosseguir:`;
-        const input = prompt(confirmMsg);
-        if (!input || input.trim().toUpperCase() !== 'CONFIRMAR') {
-            alert('Exclusão cancelada.');
-            return;
-        }
-
-        const CYCLOPAY_API_KEY = 'ak_aeb26f6be167cc077eb227c128262e731523d492';
-        let erros = [];
-        let clienteSupabaseId = null;
-
-        try {
-            // 1. Busca o cliente no Supabase por CPF ou nome para obter o ID
-            if (cpfLimpo) {
-                const { data: dadosRows } = await supabaseClient
-                    .from('dados_cadastrais')
-                    .select('cliente_id')
-                    .eq('cpf', cpfLimpo)
-                    .limit(1);
-                if (dadosRows && dadosRows.length > 0) {
-                    clienteSupabaseId = dadosRows[0].cliente_id;
-                }
-            }
-            if (!clienteSupabaseId) {
-                const { data: clienteRows } = await supabaseClient
-                    .from('clientes')
-                    .select('id')
-                    .ilike('nome', `%${nomeCompleto.trim()}%`)
-                    .limit(1);
-                if (clienteRows && clienteRows.length > 0) {
-                    clienteSupabaseId = clienteRows[0].id;
-                }
-            }
-
-            // 2. Cancela assinatura no Cyclopay (busca subscription_id pelo customer_id)
-            if (cyclopayId && cyclopayId !== 'undefined') {
-                try {
-                    // Busca todas as assinaturas e filtra pelo customer_id
-                    const subsRes = await fetch(`https://api.cyclopay.com/v1/subscriptions?limit=100`, {
-                        headers: { 'api_key': CYCLOPAY_API_KEY, 'Accept': 'application/json' }
-                    });
-                    if (subsRes.ok) {
-                        const subsData = await subsRes.json();
-                        const clientSubs = (subsData.items || []).filter(s => s.customer_id === cyclopayId);
-                        for (const sub of clientSubs) {
-                            if (sub.subscription_id) {
-                                const cancelRes = await fetch(`https://api.cyclopay.com/v1/subscriptions/${sub.subscription_id}/cancel`, {
-                                    method: 'POST',
-                                    headers: { 'api_key': CYCLOPAY_API_KEY, 'Accept': 'application/json', 'Content-Type': 'application/json' },
-                                    body: JSON.stringify({})
-                                });
-                                if (!cancelRes.ok && cancelRes.status !== 400) {
-                                    // 400 = já cancelada/status inválido, pode ignorar
-                                    erros.push('Cyclopay cancelamento: ' + cancelRes.status);
-                                }
-                            }
-                        }
-                    }
-                } catch(cycloErr) {
-                    erros.push('Cyclopay: ' + cycloErr.message);
-                }
-            }
-
-            // 3. Exclui do Supabase (em cascata)
-            if (clienteSupabaseId) {
-                // 3a. formularios_clientes
-                const { error: e1 } = await supabaseClient
-                    .from('formularios_clientes')
-                    .delete()
-                    .eq('cliente_id', clienteSupabaseId);
-                if (e1) erros.push('formularios_clientes: ' + e1.message);
-
-                // 3b. dados_cadastrais
-                const { error: e2 } = await supabaseClient
-                    .from('dados_cadastrais')
-                    .delete()
-                    .eq('cliente_id', clienteSupabaseId);
-                if (e2) erros.push('dados_cadastrais: ' + e2.message);
-
-                // 3c. clientes
-                const { error: e3 } = await supabaseClient
-                    .from('clientes')
-                    .delete()
-                    .eq('id', clienteSupabaseId);
-                if (e3) erros.push('clientes: ' + e3.message);
-            }
-
-            // 3d. hvsf_tasks (por nome)
-            const { error: e4 } = await supabaseClient
-                .from('hvsf_tasks')
-                .delete()
-                .eq('client_name', nomeCompleto.trim());
-            if (e4) erros.push('hvsf_tasks: ' + e4.message);
-
-            // 3e. aceites_contrato (por email)
-            if (email && email !== 'undefined') {
-                const { error: e5 } = await supabaseClient
-                    .from('aceites_contrato')
-                    .delete()
-                    .eq('email', email.toLowerCase().trim());
-                if (e5) erros.push('aceites_contrato: ' + e5.message);
-            }
-
-            if (erros.length > 0) {
-                alert('Cliente excluído parcialmente. Erros encontrados:\n' + erros.join('\n'));
-            } else {
-                alert(`✅ Cliente "${nomeCompleto}" excluído definitivamente do sistema e do Cyclopay.`);
-            }
-
-            // Recarrega os dados
-            loadNotifications();
-            loadCyclopayData();
-
-        } catch (err) {
-            alert('Erro inesperado ao excluir: ' + err.message);
-        }
-    }
   </script>
 </body>
 </html>
