@@ -831,7 +831,7 @@
             // Buscar formulários
             const { data: supabaseForms, error: sbFormError } = await supabaseClient
                 .from('formularios_clientes')
-                .select('*');
+                .select('id, cliente_id, status, dados_formulario, data_preenchimento');
 
             if (supabaseForms && supabaseForms.length > 0) {
                 console.log('Estrutura de formularios_clientes:', supabaseForms[0]);
@@ -1015,9 +1015,10 @@
                     
                     if (clientForms && clientForms.length > 0) {
                         // Verifica se algum formulário foi respondido
+                        // Campos reais da tabela: dados_formulario (jsonb) e status = 'preenchido'
                         const hasAnsweredForm = clientForms.some(f => {
-                            const hasData = f.respostas || f.dados || f.json_respostas;
-                            const isCompleted = f.status === 'concluido' || f.status === 'respondido' || f.status === 'finalizado';
+                            const hasData = f.dados_formulario != null;
+                            const isCompleted = f.status === 'preenchido' || f.status === 'concluido' || f.status === 'respondido' || f.status === 'finalizado';
                             return hasData || isCompleted; 
                         });
 
