@@ -1300,14 +1300,32 @@
                 }
             }
 
-            // 2. Exclui do Cyclopay
+            // 2. Cancela assinatura no Cyclopay (busca subscription_id pelo customer_id)
             if (cyclopayId && cyclopayId !== 'undefined') {
-                const cycloRes = await fetch(`https://api.cyclopay.com/v1/customers/${cyclopayId}`, {
-                    method: 'DELETE',
-                    headers: { 'api_key': CYCLOPAY_API_KEY, 'Accept': 'application/json' }
-                });
-                if (!cycloRes.ok && cycloRes.status !== 404) {
-                    erros.push('Cyclopay: ' + cycloRes.status);
+                try {
+                    // Busca todas as assinaturas e filtra pelo customer_id
+                    const subsRes = await fetch(`https://api.cyclopay.com/v1/subscriptions?limit=100`, {
+                        headers: { 'api_key': CYCLOPAY_API_KEY, 'Accept': 'application/json' }
+                    });
+                    if (subsRes.ok) {
+                        const subsData = await subsRes.json();
+                        const clientSubs = (subsData.items || []).filter(s => s.customer_id === cyclopayId);
+                        for (const sub of clientSubs) {
+                            if (sub.subscription_id) {
+                                const cancelRes = await fetch(`https://api.cyclopay.com/v1/subscriptions/${sub.subscription_id}/cancel`, {
+                                    method: 'POST',
+                                    headers: { 'api_key': CYCLOPAY_API_KEY, 'Accept': 'application/json', 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({})
+                                });
+                                if (!cancelRes.ok && cancelRes.status !== 400) {
+                                    // 400 = já cancelada/status inválido, pode ignorar
+                                    erros.push('Cyclopay cancelamento: ' + cancelRes.status);
+                                }
+                            }
+                        }
+                    }
+                } catch(cycloErr) {
+                    erros.push('Cyclopay: ' + cycloErr.message);
                 }
             }
 
