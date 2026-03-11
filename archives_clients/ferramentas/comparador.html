@@ -3,162 +3,201 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Comparador Inteligente - MithraSF</title>
+  <title>Comparador Inteligente — HV Saúde Financeira</title>
   <link rel="stylesheet" href="../assets/style.css" />
   <script src="../assets/layout.js" defer></script>
   <style>
-    *, *::before, *::after { box-sizing: border-box; }
-    .cmp-wrap { max-width: 1100px; margin: 0 auto; }
+    /* ── Variáveis do tema ── */
+    :root {
+      --bg:        #021C0E;
+      --card-bg:   #052614;
+      --card-bg2:  #0A3520;
+      --border:    rgba(212,175,55,0.18);
+      --border-sub:rgba(255,255,255,0.07);
+      --gold:      #D4AF37;
+      --gold-dim:  rgba(212,175,55,0.12);
+      --gold-dim2: rgba(212,175,55,0.06);
+      --text:      #F2E8C9;
+      --muted:     #A0B8A6;
+      --muted2:    #6b7280;
+      --danger:    #ef4444;
+      --danger-bg: rgba(239,68,68,0.12);
+      --info-bg:   rgba(59,130,246,0.08);
+      --info-bd:   rgba(59,130,246,0.2);
+      --info-txt:  #60a5fa;
+    }
 
+    /* ── Layout geral ── */
+    .cmp-wrap { max-width: 900px; }
+
+    /* ── Cabeçalho ── */
+    .page-header { display:flex; align-items:center; gap:1rem; margin-bottom:2rem; flex-wrap:wrap; }
+    .page-header-back { color:var(--muted); font-size:1.2rem; text-decoration:none; transition:color .2s; }
+    .page-header-back:hover { color:var(--text); }
+    .page-header-icon { font-size:1.8rem; }
+    .page-header-title { font-size:1.5rem; font-weight:800; color:var(--text); margin:0; }
+    .page-header-sub { font-size:.85rem; color:var(--muted); margin:0; }
+
+    /* ── Lista de comparações ── */
     .cmp-list-empty {
-      text-align: center; padding: 3rem 1rem;
-      color: #6b7280; border: 2px dashed rgba(255,255,255,0.08);
-      border-radius: 14px; margin-bottom: 1.5rem;
+      text-align:center; padding:3rem 1rem;
+      background:var(--card-bg); border:1px dashed var(--border);
+      border-radius:12px; color:var(--muted);
     }
     .cmp-card {
-      background: rgba(255,255,255,0.03);
-      border: 1px solid rgba(255,255,255,0.08);
-      border-radius: 14px; padding: 1.25rem 1.5rem;
-      margin-bottom: 1rem; cursor: pointer;
-      transition: border-color .2s, background .2s;
-      display: flex; align-items: center; justify-content: space-between;
+      display:flex; align-items:center; justify-content:space-between; gap:1rem;
+      background:var(--card-bg); border:1px solid var(--border-sub);
+      border-radius:10px; padding:1rem 1.25rem; margin-bottom:.75rem;
+      cursor:pointer; transition:border-color .2s, background .2s;
     }
-    .cmp-card:hover { border-color: var(--primary-color); background: rgba(212,175,55,0.04); }
-    .cmp-card-title { font-weight: 700; font-size: 1rem; color: #fff; }
-    .cmp-card-meta { font-size: 0.8rem; color: #9ca3af; margin-top: 2px; }
-    .cmp-card-actions { display: flex; gap: 8px; flex-shrink: 0; }
+    .cmp-card:hover { border-color:var(--border); background:var(--card-bg2); }
+    .cmp-card-title { font-weight:700; color:var(--text); font-size:.95rem; }
+    .cmp-card-meta  { font-size:.78rem; color:var(--muted); margin-top:2px; }
+    .cmp-card-actions { display:flex; gap:.5rem; flex-shrink:0; }
 
-    .btn { border: none; border-radius: 8px; padding: 0.55rem 1.1rem; font-size: 0.85rem; font-weight: 600; cursor: pointer; transition: opacity .2s, transform .1s; display: inline-flex; align-items: center; gap: 6px; }
-    .btn:hover { opacity: .85; }
-    .btn:active { transform: scale(.97); }
-    .btn-primary { background: var(--primary-color); color: #000; }
-    .btn-ghost { background: rgba(255,255,255,0.07); color: #d1d5db; }
-    .btn-danger { background: rgba(239,68,68,0.15); color: #f87171; }
-    .btn-success { background: rgba(16,185,129,0.15); color: #34d399; }
-    .btn-sm { padding: 0.35rem 0.75rem; font-size: 0.78rem; }
+    /* ── Botões ── */
+    .btn { display:inline-flex; align-items:center; justify-content:center; gap:.35rem;
+           padding:.5rem 1.1rem; border-radius:8px; font-size:.85rem; font-weight:600;
+           cursor:pointer; border:none; transition:all .2s; }
+    .btn-primary { background:var(--gold); color:#021C0E; }
+    .btn-primary:hover { background:#c9a227; }
+    .btn-ghost   { background:transparent; border:1px solid var(--border-sub); color:var(--muted); }
+    .btn-ghost:hover { background:rgba(255,255,255,0.06); color:var(--text); }
+    .btn-danger  { background:var(--danger-bg); border:1px solid rgba(239,68,68,.25); color:var(--danger); }
+    .btn-danger:hover { background:rgba(239,68,68,.22); }
+    .btn-sm { padding:.35rem .75rem; font-size:.78rem; }
 
+    /* ── Modal ── */
     .modal-overlay {
-      position: fixed; inset: 0; background: rgba(0,0,0,0.7);
-      z-index: 1000; display: flex; align-items: flex-start; justify-content: center;
-      padding: 2rem 1rem; overflow-y: auto;
+      position:fixed; inset:0; background:rgba(0,0,0,.72); z-index:200;
+      display:flex; align-items:flex-start; justify-content:center;
+      padding:1.5rem 1rem; overflow-y:auto;
     }
-    .modal-overlay.hidden { display: none; }
+    .modal-overlay.hidden { display:none; }
     .modal-box {
-      background: #111827; border: 1px solid rgba(255,255,255,0.1);
-      border-radius: 16px; width: 100%; max-width: 860px;
-      padding: 2rem; position: relative;
+      background:var(--card-bg); border:1px solid var(--border);
+      border-radius:14px; padding:2rem; width:100%; max-width:720px;
+      position:relative; box-shadow:0 24px 60px rgba(0,0,0,.6);
     }
-    .modal-title { font-size: 1.3rem; font-weight: 700; color: #fff; margin-bottom: 1.5rem; }
     .modal-close {
-      position: absolute; top: 1rem; right: 1rem;
-      background: none; border: none; color: #9ca3af;
-      font-size: 1.4rem; cursor: pointer; line-height: 1;
+      position:absolute; top:1rem; right:1rem;
+      background:transparent; border:none; color:var(--muted);
+      font-size:1.1rem; cursor:pointer; line-height:1;
+      transition:color .2s;
     }
-    .modal-close:hover { color: #fff; }
+    .modal-close:hover { color:var(--text); }
+    .modal-title { font-size:1.2rem; font-weight:800; color:var(--text); margin-bottom:1.5rem; }
 
-    .section-label {
-      font-size: 0.75rem; font-weight: 700; letter-spacing: .08em;
-      text-transform: uppercase; color: #9ca3af; margin: 1.5rem 0 0.75rem;
+    /* ── Tabs ── */
+    .tabs { display:flex; gap:.5rem; margin-bottom:1.5rem; flex-wrap:wrap; }
+    .tab-btn {
+      padding:.4rem .9rem; border-radius:8px;
+      border:1px solid var(--border-sub); background:transparent;
+      color:var(--muted); font-size:.82rem; font-weight:600; cursor:pointer; transition:all .2s;
     }
-    .field-row { display: flex; gap: 10px; align-items: flex-end; margin-bottom: 0.6rem; flex-wrap: wrap; }
-    .field-group { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 120px; }
-    .field-group label { font-size: 0.78rem; color: #9ca3af; font-weight: 600; }
+    .tab-btn.active { background:var(--gold); color:#021C0E; border-color:var(--gold); }
+    .tab-btn:hover:not(.active) { background:rgba(255,255,255,0.05); color:var(--text); }
+
+    /* ── Campos ── */
+    .field-group { display:flex; flex-direction:column; gap:.35rem; }
+    .field-group label { font-size:.78rem; font-weight:600; color:var(--muted); }
     .field-input {
-      background: rgba(0,0,0,0.35); border: 1px solid rgba(255,255,255,0.1);
-      border-radius: 7px; padding: 0.6rem 0.75rem; color: #fff; font-size: 0.9rem; width: 100%;
+      background:rgba(0,0,0,.35); border:1px solid var(--border-sub);
+      border-radius:7px; padding:.55rem .75rem; color:var(--text);
+      font-size:.88rem; width:100%; transition:border-color .2s;
     }
-    .field-input:focus { outline: none; border-color: var(--primary-color); }
-    select.field-input { cursor: pointer; }
-    .field-input:disabled { opacity: 0.35; cursor: not-allowed; }
+    .field-input:focus { outline:none; border-color:var(--gold); }
+    .field-input:disabled { opacity:.4; cursor:not-allowed; }
+    .field-row { display:flex; gap:.75rem; align-items:flex-end; margin-bottom:.75rem; }
 
-    .products-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; margin-bottom: 0.75rem; }
-    .product-chip {
-      background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);
-      border-radius: 10px; padding: 0.75rem 1rem;
-      display: flex; align-items: center; justify-content: space-between; gap: 8px;
-    }
-    .product-chip-name { font-weight: 600; font-size: 0.9rem; color: #fff; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .product-chip-price { font-size: 0.78rem; color: #9ca3af; }
-
+    /* ── Parâmetros ── */
     .param-row {
-      background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.07);
-      border-radius: 10px; padding: 0.9rem 1rem; margin-bottom: 0.6rem;
+      background:rgba(0,0,0,.2); border:1px solid var(--border-sub);
+      border-radius:10px; padding:1rem; margin-bottom:.75rem;
     }
-    .param-row-header { display: flex; gap: 8px; align-items: flex-end; flex-wrap: wrap; }
-    .param-rankings { margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid rgba(255,255,255,0.06); }
-    .param-rankings-title { font-size: 0.75rem; color: #9ca3af; margin-bottom: 0.5rem; font-weight: 600; }
-    .rankings-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 8px; }
-    .ranking-item { display: flex; flex-direction: column; gap: 3px; }
-    .ranking-item label { font-size: 0.75rem; color: #d1d5db; }
-    .ranking-item select { font-size: 0.8rem; }
-    .absence-note { font-size: 0.72rem; color: #9ca3af; margin-top: 2px; }
+    .param-row-header { display:flex; gap:.75rem; align-items:flex-end; flex-wrap:wrap; }
+    .param-rankings { margin-top:.85rem; }
+    .param-rankings-title { font-size:.75rem; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.06em; margin-bottom:.6rem; }
+    .rankings-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); gap:.6rem; }
+    .ranking-item {
+      background:var(--card-bg2); border:1px solid var(--border-sub);
+      border-radius:8px; padding:.6rem .75rem; display:flex; flex-direction:column; gap:.35rem;
+    }
 
+    /* ── Checkbox de presença ── */
+    .presence-check { display:flex; align-items:center; gap:.4rem; font-size:.78rem; color:var(--text); cursor:pointer; }
+    .presence-check input[type="checkbox"] { width:14px; height:14px; cursor:pointer; accent-color:var(--gold); flex-shrink:0; }
+    .absence-note { font-size:.7rem; color:var(--muted2); font-style:italic; }
+
+    /* ── Alert boxes ── */
+    .alert-box { border-radius:8px; padding:.65rem .9rem; font-size:.82rem; margin-bottom:1rem; }
+    .alert-info { background:var(--info-bg); border:1px solid var(--info-bd); color:var(--info-txt); }
+    .alert-warn { background:rgba(251,146,60,.08); border:1px solid rgba(251,146,60,.2); color:#fb923c; }
+
+    /* ── Resultado ── */
     .result-section {
-      background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.08);
-      border-radius: 14px; padding: 1.5rem; margin-top: 2rem;
+      background:var(--card-bg); border:1px solid var(--border);
+      border-radius:14px; padding:1.75rem; margin-top:1.5rem;
     }
-    .result-section.hidden { display: none; }
+    .result-section.hidden { display:none; }
+
     .result-winner {
-      text-align: center; padding: 1.5rem;
-      background: rgba(212,175,55,0.08); border: 1px solid rgba(212,175,55,0.25);
-      border-radius: 12px; margin-bottom: 1.5rem;
+      text-align:center; padding:1.5rem;
+      background:var(--gold-dim); border:1px solid var(--border);
+      border-radius:12px; margin-bottom:1.5rem;
     }
-    .result-winner-label { font-size: 0.8rem; color: #9ca3af; text-transform: uppercase; letter-spacing: .08em; }
-    .result-winner-name { font-size: 2rem; font-weight: 800; color: var(--primary-color); margin: 0.25rem 0; }
-    .result-winner-score { font-size: 1rem; color: #d1d5db; }
+    .result-winner-label { font-size:.75rem; color:var(--muted); text-transform:uppercase; letter-spacing:.08em; }
+    .result-winner-name  { font-size:2rem; font-weight:800; color:var(--gold); margin:.25rem 0; }
+    .result-winner-score { font-size:.9rem; color:var(--muted); }
 
-    .scores-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px; margin-bottom: 1.5rem; }
+    .scores-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(170px,1fr)); gap:.75rem; margin-bottom:1.5rem; }
     .score-card {
-      background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08);
-      border-radius: 10px; padding: 1rem; text-align: center;
+      background:rgba(255,255,255,0.02); border:1px solid var(--border-sub);
+      border-radius:10px; padding:1rem; text-align:center;
     }
-    .score-card.winner { border-color: var(--primary-color); background: rgba(212,175,55,0.06); }
-    .score-card-name { font-size: 0.85rem; font-weight: 600; color: #d1d5db; margin-bottom: 4px; }
-    .score-card-val { font-size: 1.6rem; font-weight: 800; color: #fff; }
-    .score-card-rank { font-size: 0.75rem; color: #9ca3af; margin-top: 2px; }
+    .score-card.winner { border-color:var(--gold); background:var(--gold-dim2); }
+    .score-card-name  { font-size:.82rem; font-weight:600; color:var(--muted); margin-bottom:4px; }
+    .score-card-val   { font-size:1.6rem; font-weight:800; color:var(--text); }
+    .score-card-rank  { font-size:.73rem; color:var(--muted2); margin-top:2px; }
 
-    .memory-toggle { cursor: pointer; color: #9ca3af; font-size: 0.85rem; display: flex; align-items: center; gap: 6px; user-select: none; }
-    .memory-toggle:hover { color: #fff; }
-    .memory-body { margin-top: 1rem; }
-    .memory-body.hidden { display: none; }
-    .memory-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
-    .memory-table th { background: rgba(255,255,255,0.05); color: #9ca3af; padding: 0.5rem 0.75rem; text-align: left; font-weight: 600; border-bottom: 1px solid rgba(255,255,255,0.08); }
-    .memory-table td { padding: 0.5rem 0.75rem; border-bottom: 1px solid rgba(255,255,255,0.04); color: #d1d5db; vertical-align: top; }
-    .memory-table tr:last-child td { border-bottom: none; }
-    .memory-table .td-num { text-align: right; font-variant-numeric: tabular-nums; }
-    .badge { display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: 0.72rem; font-weight: 700; }
-    .badge-top { background: rgba(212,175,55,0.2); color: var(--primary-color); }
-    .badge-very { background: rgba(239,68,68,0.15); color: #f87171; }
-    .badge-imp { background: rgba(59,130,246,0.15); color: #60a5fa; }
-    .badge-ind { background: rgba(156,163,175,0.15); color: #9ca3af; }
-    .badge-neg { background: rgba(251,146,60,0.15); color: #fb923c; }
-    .badge-unac { background: rgba(239,68,68,0.25); color: #ef4444; }
-
-    .tabs { display: flex; gap: 6px; margin-bottom: 1.5rem; flex-wrap: wrap; }
-    .tab-btn { padding: 0.45rem 1rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); background: transparent; color: #9ca3af; font-size: 0.85rem; font-weight: 600; cursor: pointer; transition: all .2s; }
-    .tab-btn.active { background: var(--primary-color); color: #000; border-color: var(--primary-color); }
-    .tab-btn:hover:not(.active) { background: rgba(255,255,255,0.06); color: #fff; }
-
-    .alert-box { border-radius: 10px; padding: 0.75rem 1rem; font-size: 0.85rem; margin-bottom: 1rem; }
-    .alert-warn { background: rgba(251,146,60,0.1); border: 1px solid rgba(251,146,60,0.25); color: #fb923c; }
-    .alert-info { background: rgba(59,130,246,0.1); border: 1px solid rgba(59,130,246,0.2); color: #60a5fa; }
-
-    .divider { border: none; border-top: 1px solid rgba(255,255,255,0.07); margin: 1.25rem 0; }
-    .text-muted { color: #6b7280; font-size: 0.82rem; }
-    .flex-end { display: flex; justify-content: flex-end; gap: 10px; margin-top: 1.5rem; }
-    .w-full { width: 100%; }
-    .mt-1 { margin-top: 0.5rem; }
-
-    /* Checkbox de presença */
-    .presence-check {
-      display: flex; align-items: center; gap: 6px;
-      font-size: 0.75rem; color: #d1d5db; margin-bottom: 3px;
-      cursor: pointer;
+    /* ── Parecer ── */
+    .parecer-box {
+      background:rgba(255,255,255,0.02); border:1px solid var(--border-sub);
+      border-radius:10px; padding:1rem; margin-bottom:1.5rem;
     }
-    .presence-check input[type="checkbox"] {
-      width: 14px; height: 14px; cursor: pointer;
-      accent-color: var(--primary-color);
+    .parecer-label { font-size:.72rem; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:var(--muted2); margin-bottom:.5rem; }
+    .parecer-text  { color:var(--muted); font-size:.88rem; line-height:1.65; margin:0; }
+
+    /* ── Memória de cálculo ── */
+    .memory-toggle { cursor:pointer; color:var(--muted2); font-size:.82rem; display:flex; align-items:center; gap:.4rem; user-select:none; }
+    .memory-toggle:hover { color:var(--text); }
+    .memory-body { margin-top:.85rem; overflow-x:auto; }
+    .memory-body.hidden { display:none; }
+    .memory-table { width:100%; border-collapse:collapse; font-size:.78rem; }
+    .memory-table th {
+      background:rgba(255,255,255,0.04); color:var(--muted2);
+      padding:.5rem .75rem; text-align:left; font-weight:700;
+      border-bottom:1px solid var(--border-sub); white-space:nowrap;
     }
+    .memory-table td { padding:.5rem .75rem; border-bottom:1px solid rgba(255,255,255,.03); color:var(--muted); vertical-align:top; }
+    .memory-table tr:last-child td { border-bottom:none; }
+    .td-num { text-align:right; font-variant-numeric:tabular-nums; }
+
+    /* ── Badges de importância ── */
+    .badge { display:inline-block; padding:2px 8px; border-radius:20px; font-size:.7rem; font-weight:700; }
+    .badge-top  { background:rgba(212,175,55,.18); color:var(--gold); }
+    .badge-very { background:rgba(239,68,68,.14); color:#f87171; }
+    .badge-imp  { background:rgba(59,130,246,.14); color:#60a5fa; }
+    .badge-ind  { background:rgba(156,163,175,.12); color:#9ca3af; }
+    .badge-neg  { background:rgba(251,146,60,.14); color:#fb923c; }
+    .badge-unac { background:rgba(239,68,68,.22); color:#ef4444; }
+
+    /* ── Utilitários ── */
+    .divider { border:none; border-top:1px solid var(--border-sub); margin:1.25rem 0; }
+    .text-muted { color:var(--muted2); font-size:.8rem; }
+    .flex-end { display:flex; justify-content:flex-end; gap:.6rem; margin-top:1.5rem; }
+    .mt-1 { margin-top:.5rem; }
+    .hidden { display:none; }
   </style>
 </head>
 <body>
@@ -166,19 +205,18 @@
   <main class="main-content">
     <div class="container cmp-wrap">
 
-      <header class="flex items-center gap-4 mb-8">
-        <a href="../ferramentas.html" class="text-gray-400 hover:text-white text-xl">←</a>
+      <!-- Cabeçalho -->
+      <div class="page-header">
+        <a href="../ferramentas.html" class="page-header-back">←</a>
+        <span class="page-header-icon">⚖️</span>
         <div>
-          <div class="flex items-center gap-2">
-            <span class="text-2xl">⚖️</span>
-            <h1 class="text-2xl font-bold m-0">Comparador Inteligente</h1>
-          </div>
-          <p class="text-gray-400 text-sm">Compare produtos e serviços com critérios objetivos e subjetivos ponderados.</p>
+          <h1 class="page-header-title">Comparador Inteligente</h1>
+          <p class="page-header-sub">Compare produtos e serviços com critérios objetivos e subjetivos ponderados.</p>
         </div>
-        <button id="mobile-toggle" class="mobile-toggle ml-auto md:hidden">☰</button>
-      </header>
+        <button id="mobile-toggle" class="mobile-toggle ml-auto" style="margin-left:auto;">☰</button>
+      </div>
 
-      <div style="display:flex; justify-content:flex-end; margin-bottom:1rem;">
+      <div style="display:flex;justify-content:flex-end;margin-bottom:1rem;">
         <button class="btn btn-primary" onclick="openNewComparison()">+ Nova Comparação</button>
       </div>
 
@@ -188,37 +226,40 @@
     </div>
   </main>
 
-  <!-- MODAL -->
+  <!-- ══════════════════════ MODAL ══════════════════════ -->
   <div id="modal-overlay" class="modal-overlay hidden">
     <div class="modal-box">
       <button class="modal-close" onclick="closeModal()">✕</button>
       <div class="modal-title" id="modal-title">Nova Comparação</div>
 
-      <div class="field-group" style="max-width:420px;">
+      <div class="field-group" style="max-width:440px;margin-bottom:1.25rem;">
         <label>Nome da comparação</label>
         <input class="field-input" id="cmp-name" placeholder="Ex: Whey Protein — melhor custo-benefício" />
       </div>
 
-      <div class="tabs mt-1" style="margin-top:1.25rem;">
+      <div class="tabs">
         <button class="tab-btn active" onclick="switchTab('products')">Produtos</button>
         <button class="tab-btn" onclick="switchTab('obj')">Parâmetros Objetivos</button>
         <button class="tab-btn" onclick="switchTab('subj')">Parâmetros Subjetivos</button>
       </div>
 
+      <!-- Aba Produtos -->
       <div id="tab-products">
         <div class="alert-info alert-box">Adicione pelo menos 2 produtos para comparar. O preço é o custo total no período analisado.</div>
         <div id="products-list"></div>
         <button class="btn btn-ghost btn-sm" onclick="addProduct()">+ Adicionar Produto</button>
       </div>
 
+      <!-- Aba Parâmetros Objetivos -->
       <div id="tab-obj" style="display:none;">
         <div class="alert-info alert-box">Parâmetros com valor numérico e unidade (ex: 200 ml, 500 g). O sistema calcula o custo por unidade automaticamente. Use o checkbox para indicar se o produto <strong>tem</strong> este parâmetro.</div>
         <div id="obj-list"></div>
         <button class="btn btn-ghost btn-sm" onclick="addObjParam()">+ Adicionar Parâmetro Objetivo</button>
       </div>
 
+      <!-- Aba Parâmetros Subjetivos -->
       <div id="tab-subj" style="display:none;">
-        <div class="alert-info alert-box">Parâmetros qualitativos. Você classifica qual produto é melhor em cada critério (1 = melhor). Use o checkbox para indicar se o produto <strong>tem</strong> este parâmetro — a ausência impacta a pontuação conforme o grau de importância.</div>
+        <div class="alert-info alert-box">Parâmetros qualitativos. Classifique qual produto é melhor em cada critério (1 = melhor). Use o checkbox para indicar se o produto <strong>tem</strong> este parâmetro — a ausência impacta a pontuação conforme o grau de importância.</div>
         <div id="subj-list"></div>
         <button class="btn btn-ghost btn-sm" onclick="addSubjParam()">+ Adicionar Parâmetro Subjetivo</button>
       </div>
@@ -252,15 +293,12 @@
   // ══════════════════════════════════════════════════════════
   //  ESTADO GLOBAL
   // ══════════════════════════════════════════════════════════
-  let comparisons = JSON.parse(localStorage.getItem('hvsf_comparisons') || '[]');
-  let editingId   = null;
-
-  // Dados temporários do modal
-  let tmpProducts   = [];  // { id, name, price }
-  let tmpObjParams  = [];  // { id, name, unit, importance, values:{}, hasParam:{} }
-  let tmpSubjParams = [];  // { id, name, importance, rankings:{}, hasParam:{} }
-
-  let nextId = Date.now();
+  let comparisons   = JSON.parse(localStorage.getItem('hvsf_comparisons') || '[]');
+  let editingId     = null;
+  let tmpProducts   = [];
+  let tmpObjParams  = [];
+  let tmpSubjParams = [];
+  let nextId        = Date.now();
   function uid() { return ++nextId; }
 
   // ══════════════════════════════════════════════════════════
@@ -268,6 +306,38 @@
   // ══════════════════════════════════════════════════════════
   function save() {
     localStorage.setItem('hvsf_comparisons', JSON.stringify(comparisons));
+  }
+
+  // ══════════════════════════════════════════════════════════
+  //  FORMATAÇÃO DE MOEDA
+  // ══════════════════════════════════════════════════════════
+  function formatBRL(raw) {
+    // Remove tudo que não for dígito
+    let digits = raw.replace(/\D/g, '');
+    if (!digits) return '';
+    // Trata como centavos
+    let num = parseInt(digits, 10);
+    let reais = Math.floor(num / 100);
+    let cents = num % 100;
+    let reaisStr = reais.toLocaleString('pt-BR');
+    return `R$ ${reaisStr},${String(cents).padStart(2,'0')}`;
+  }
+
+  function parseBRL(formatted) {
+    if (!formatted && formatted !== 0) return 0;
+    // Se já for número, retorna direto
+    if (typeof formatted === 'number') return formatted;
+    // Remove "R$ ", pontos de milhar e troca vírgula por ponto
+    let clean = String(formatted).replace(/R\$\s?/g,'').replace(/\./g,'').replace(',','.');
+    return parseFloat(clean) || 0;
+  }
+
+  function onPriceInput(id, el) {
+    const raw = el.value;
+    const formatted = formatBRL(raw);
+    el.value = formatted;
+    const p = tmpProducts.find(x => x.id === id);
+    if (p) p.price = parseBRL(formatted);
   }
 
   // ══════════════════════════════════════════════════════════
@@ -293,8 +363,8 @@
     if (comparisons.length === 0) {
       el.innerHTML = `<div class="cmp-list-empty">
         <div style="font-size:2.5rem;margin-bottom:.5rem;">⚖️</div>
-        <div style="font-size:1rem;font-weight:600;color:#d1d5db;margin-bottom:.25rem;">Nenhuma comparação ainda</div>
-        <div>Clique em <strong>+ Nova Comparação</strong> para começar.</div>
+        <div style="font-size:1rem;font-weight:700;color:var(--text);margin-bottom:.35rem;">Nenhuma comparação ainda</div>
+        <div style="font-size:.85rem;">Clique em <strong>+ Nova Comparação</strong> para começar.</div>
       </div>`;
       return;
     }
@@ -338,18 +408,12 @@
     tmpProducts   = JSON.parse(JSON.stringify(c.products));
     tmpObjParams  = JSON.parse(JSON.stringify(c.objParams));
     tmpSubjParams = JSON.parse(JSON.stringify(c.subjParams));
-    // Garante campos hasParam para dados antigos sem esse campo
+    // Garante hasParam para dados antigos
     tmpObjParams.forEach(op => {
-      if (!op.hasParam) {
-        op.hasParam = {};
-        tmpProducts.forEach(p => { op.hasParam[p.id] = true; });
-      }
+      if (!op.hasParam) { op.hasParam = {}; tmpProducts.forEach(p => { op.hasParam[p.id] = true; }); }
     });
     tmpSubjParams.forEach(sp => {
-      if (!sp.hasParam) {
-        sp.hasParam = {};
-        tmpProducts.forEach(p => { sp.hasParam[p.id] = true; });
-      }
+      if (!sp.hasParam) { sp.hasParam = {}; tmpProducts.forEach(p => { sp.hasParam[p.id] = true; }); }
     });
     document.getElementById('cmp-name').value = c.name;
     document.getElementById('modal-title').textContent = 'Editar Comparação';
@@ -380,17 +444,14 @@
   //  PRODUTOS
   // ══════════════════════════════════════════════════════════
   function addProduct() {
-    const newProd = { id: uid(), name: '', price: '' };
+    const newProd = { id: uid(), name: '', price: 0 };
     tmpProducts.push(newProd);
-    // Inicializa hasParam = true para o novo produto em todos os parâmetros existentes
     tmpObjParams.forEach(op => { op.hasParam[newProd.id] = true; });
-    tmpSubjParams.forEach(sp => {
-      sp.hasParam[newProd.id] = true;
-      sp.rankings[newProd.id] = 1;
-    });
+    tmpSubjParams.forEach(sp => { sp.hasParam[newProd.id] = true; sp.rankings[newProd.id] = 1; });
     renderProducts();
-    renderObjParams();
-    renderSubjParams();
+    // Atualiza os grids de parâmetros sem rerenderizar inputs de texto
+    if (document.getElementById('tab-obj').style.display !== 'none') renderObjParams();
+    if (document.getElementById('tab-subj').style.display !== 'none') renderSubjParams();
   }
 
   function removeProduct(id) {
@@ -398,8 +459,8 @@
     tmpSubjParams.forEach(sp => { delete sp.rankings[id]; delete sp.hasParam[id]; });
     tmpObjParams.forEach(op => { delete op.values[id]; delete op.hasParam[id]; });
     renderProducts();
-    renderObjParams();
-    renderSubjParams();
+    if (document.getElementById('tab-obj').style.display !== 'none') renderObjParams();
+    if (document.getElementById('tab-subj').style.display !== 'none') renderSubjParams();
   }
 
   function renderProducts() {
@@ -408,21 +469,23 @@
       el.innerHTML = '<p class="text-muted" style="margin-bottom:.75rem;">Nenhum produto adicionado.</p>';
       return;
     }
-    el.innerHTML = tmpProducts.map(p => `
-      <div class="field-row">
+    el.innerHTML = tmpProducts.map(p => {
+      const priceFormatted = p.price ? formatBRL(String(Math.round(p.price * 100))) : '';
+      return `<div class="field-row">
         <div class="field-group" style="flex:2;">
           <label>Nome do produto</label>
           <input class="field-input" id="pname-${p.id}" placeholder="Ex: Whey Gold 900g" value="${esc(p.name)}"
             oninput="updateProduct(${p.id},'name',this.value)" />
         </div>
         <div class="field-group" style="flex:1;">
-          <label>Preço total (R$)</label>
-          <input class="field-input" id="pprice-${p.id}" type="number" min="0" step="0.01" placeholder="0,00" value="${p.price}"
-            oninput="updateProduct(${p.id},'price',this.value)" />
+          <label>Preço total</label>
+          <input class="field-input" id="pprice-${p.id}" type="text" inputmode="numeric"
+            placeholder="R$ 0,00" value="${esc(priceFormatted)}"
+            oninput="onPriceInput(${p.id},this)" />
         </div>
-        <button class="btn btn-danger btn-sm" style="margin-bottom:2px;" onclick="removeProduct(${p.id})">✕</button>
-      </div>
-    `).join('');
+        <button class="btn btn-danger btn-sm" style="margin-bottom:2px;flex-shrink:0;" onclick="removeProduct(${p.id})">✕</button>
+      </div>`;
+    }).join('');
   }
 
   function updateProduct(id, field, val) {
@@ -432,6 +495,8 @@
 
   // ══════════════════════════════════════════════════════════
   //  PARÂMETROS OBJETIVOS
+  //  IMPORTANTE: os inputs de nome e unidade NÃO rerenderizam
+  //  o DOM ao digitar — usam oninput direto no objeto.
   // ══════════════════════════════════════════════════════════
   function addObjParam() {
     const op = { id: uid(), name: '', unit: '', importance: 'imp', values: {}, hasParam: {} };
@@ -449,7 +514,9 @@
     const op = tmpObjParams.find(x => x.id === paramId);
     if (!op) return;
     op.hasParam[productId] = checked;
-    renderObjParams();
+    // Rerenderiza apenas o grid de valores deste parâmetro
+    const grid = document.getElementById('objgrid-' + paramId);
+    if (grid) grid.innerHTML = buildObjGrid(op);
   }
 
   function renderObjParams() {
@@ -458,58 +525,74 @@
       el.innerHTML = '<p class="text-muted" style="margin-bottom:.75rem;">Nenhum parâmetro objetivo adicionado.</p>';
       return;
     }
-    el.innerHTML = tmpObjParams.map(op => {
-      const prodRows = tmpProducts.length > 0
-        ? `<div class="param-rankings" style="margin-top:.75rem;">
-            <div class="param-rankings-title">Quantidade entregue por produto (${esc(op.unit)||'unidade'})</div>
-            <div class="rankings-grid">
-              ${tmpProducts.map(p => {
-                const has = op.hasParam[p.id] !== false;
-                return `<div class="ranking-item">
-                  <label class="presence-check">
-                    <input type="checkbox" ${has ? 'checked' : ''} onchange="toggleObjHasParam(${op.id},${p.id},this.checked)" />
-                    ${esc(p.name||'Produto')}
-                  </label>
-                  <input class="field-input" id="objval-${op.id}-${p.id}" type="number" min="0" step="any" placeholder="0"
-                    value="${op.values[p.id]||''}"
-                    ${has ? '' : 'disabled'}
-                    oninput="updateObjParamValue(${op.id},${p.id},this.value)" />
-                  ${!has ? `<span class="absence-note">${getAbsenceLabel(op.importance)}</span>` : ''}
-                </div>`;
-              }).join('')}
-            </div>
-          </div>`
-        : '<p class="text-muted" style="margin-top:.5rem;font-size:.78rem;">Adicione produtos primeiro para inserir os valores.</p>';
-
-      return `<div class="param-row">
+    el.innerHTML = tmpObjParams.map(op => `
+      <div class="param-row" id="oprow-${op.id}">
         <div class="param-row-header">
           <div class="field-group" style="flex:2;">
             <label>Nome do parâmetro</label>
             <input class="field-input" placeholder="Ex: Proteína por porção" value="${esc(op.name)}"
-              oninput="updateObjParam(${op.id},'name',this.value)" />
+              oninput="tmpObjParams.find(x=>x.id===${op.id}).name=this.value" />
           </div>
           <div class="field-group" style="flex:1;">
             <label>Unidade</label>
             <input class="field-input" placeholder="g, ml, un…" value="${esc(op.unit)}"
-              oninput="updateObjParam(${op.id},'unit',this.value)" />
+              oninput="updateObjUnit(${op.id},this.value)" />
           </div>
           <div class="field-group" style="flex:2;">
             <label>Grau de importância</label>
-            <select class="field-input" onchange="updateObjParam(${op.id},'importance',this.value)">
+            <select class="field-input" onchange="updateObjImportance(${op.id},this.value)">
               ${importanceOptions(op.importance)}
             </select>
           </div>
-          <button class="btn btn-danger btn-sm" style="margin-bottom:2px;" onclick="removeObjParam(${op.id})">✕</button>
+          <button class="btn btn-danger btn-sm" style="margin-bottom:2px;flex-shrink:0;" onclick="removeObjParam(${op.id})">✕</button>
         </div>
-        ${prodRows}
+        ${tmpProducts.length > 0
+          ? `<div class="param-rankings">
+               <div class="param-rankings-title">Quantidade entregue por produto (${esc(op.unit)||'unidade'})</div>
+               <div class="rankings-grid" id="objgrid-${op.id}">${buildObjGrid(op)}</div>
+             </div>`
+          : '<p class="text-muted" style="margin-top:.5rem;font-size:.78rem;">Adicione produtos primeiro para inserir os valores.</p>'
+        }
+      </div>
+    `).join('');
+  }
+
+  function buildObjGrid(op) {
+    return tmpProducts.map(p => {
+      const has = op.hasParam[p.id] !== false;
+      return `<div class="ranking-item">
+        <label class="presence-check">
+          <input type="checkbox" ${has ? 'checked' : ''} onchange="toggleObjHasParam(${op.id},${p.id},this.checked)" />
+          ${esc(p.name||'Produto')}
+        </label>
+        <input class="field-input" id="objval-${op.id}-${p.id}" type="number" min="0" step="any" placeholder="0"
+          value="${op.values[p.id]||''}"
+          ${has ? '' : 'disabled'}
+          oninput="updateObjParamValue(${op.id},${p.id},this.value)" />
+        ${!has ? `<span class="absence-note">${getAbsenceLabel(op.importance)}</span>` : ''}
       </div>`;
     }).join('');
   }
 
-  function updateObjParam(id, field, val) {
+  function updateObjUnit(id, val) {
     const op = tmpObjParams.find(x => x.id === id);
-    if (op) op[field] = val;
-    if (field === 'unit' || field === 'importance') renderObjParams();
+    if (!op) return;
+    op.unit = val;
+    // Atualiza apenas o título do grid sem rerenderizar os inputs
+    const row = document.getElementById('oprow-' + id);
+    if (row) {
+      const title = row.querySelector('.param-rankings-title');
+      if (title) title.textContent = `Quantidade entregue por produto (${val||'unidade'})`;
+    }
+  }
+
+  function updateObjImportance(id, val) {
+    const op = tmpObjParams.find(x => x.id === id);
+    if (!op) return;
+    op.importance = val;
+    // Atualiza notas de ausência no grid
+    const grid = document.getElementById('objgrid-' + id);
+    if (grid) grid.innerHTML = buildObjGrid(op);
   }
 
   function updateObjParamValue(paramId, productId, val) {
@@ -537,7 +620,8 @@
     if (!sp) return;
     sp.hasParam[productId] = checked;
     if (checked && !sp.rankings[productId]) sp.rankings[productId] = 1;
-    renderSubjParams();
+    const grid = document.getElementById('subjgrid-' + paramId);
+    if (grid) grid.innerHTML = buildSubjGrid(sp);
   }
 
   function renderSubjParams() {
@@ -546,49 +630,57 @@
       el.innerHTML = '<p class="text-muted" style="margin-bottom:.75rem;">Nenhum parâmetro subjetivo adicionado.</p>';
       return;
     }
-    el.innerHTML = tmpSubjParams.map(sp => {
-      // buildRankOptions considera apenas produtos presentes
-      const rankOptions = buildRankOptions(sp);
-      const prodRows = tmpProducts.length > 0
-        ? `<div class="param-rankings">
-            <div class="param-rankings-title">Classificação por produto (1 = melhor · empates permitidos · regra de posição)</div>
-            <div class="rankings-grid">
-              ${tmpProducts.map(p => {
-                const has = sp.hasParam[p.id] !== false;
-                return `<div class="ranking-item">
-                  <label class="presence-check">
-                    <input type="checkbox" ${has ? 'checked' : ''} onchange="toggleSubjHasParam(${sp.id},${p.id},this.checked)" />
-                    ${esc(p.name||'Produto')}
-                  </label>
-                  ${has
-                    ? `<select class="field-input" onchange="updateSubjRanking(${sp.id},${p.id},this.value)">${rankOptions[p.id]||''}</select>`
-                    : `<input class="field-input" disabled value="—" />
-                       <span class="absence-note">${getAbsenceLabel(sp.importance)}</span>`
-                  }
-                </div>`;
-              }).join('')}
-            </div>
-          </div>`
-        : '<p class="text-muted" style="margin-top:.5rem;font-size:.78rem;">Adicione produtos primeiro para classificar.</p>';
-
-      return `<div class="param-row">
+    el.innerHTML = tmpSubjParams.map(sp => `
+      <div class="param-row">
         <div class="param-row-header">
           <div class="field-group" style="flex:2;">
             <label>Nome do parâmetro</label>
             <input class="field-input" placeholder="Ex: Sabor, Embalagem, Atendimento…" value="${esc(sp.name)}"
-              oninput="updateSubjParam(${sp.id},'name',this.value)" />
+              oninput="tmpSubjParams.find(x=>x.id===${sp.id}).name=this.value" />
           </div>
           <div class="field-group" style="flex:2;">
             <label>Grau de importância</label>
-            <select class="field-input" onchange="updateSubjParam(${sp.id},'importance',this.value)">
+            <select class="field-input" onchange="updateSubjImportance(${sp.id},this.value)">
               ${importanceOptions(sp.importance)}
             </select>
           </div>
-          <button class="btn btn-danger btn-sm" style="margin-bottom:2px;" onclick="removeSubjParam(${sp.id})">✕</button>
+          <button class="btn btn-danger btn-sm" style="margin-bottom:2px;flex-shrink:0;" onclick="removeSubjParam(${sp.id})">✕</button>
         </div>
-        ${prodRows}
+        ${tmpProducts.length > 0
+          ? `<div class="param-rankings">
+               <div class="param-rankings-title">Classificação por produto (1 = melhor · empates permitidos · regra de posição)</div>
+               <div class="rankings-grid" id="subjgrid-${sp.id}">${buildSubjGrid(sp)}</div>
+             </div>`
+          : '<p class="text-muted" style="margin-top:.5rem;font-size:.78rem;">Adicione produtos primeiro para classificar.</p>'
+        }
+      </div>
+    `).join('');
+  }
+
+  function buildSubjGrid(sp) {
+    const rankOptions = buildRankOptions(sp);
+    return tmpProducts.map(p => {
+      const has = sp.hasParam[p.id] !== false;
+      return `<div class="ranking-item">
+        <label class="presence-check">
+          <input type="checkbox" ${has ? 'checked' : ''} onchange="toggleSubjHasParam(${sp.id},${p.id},this.checked)" />
+          ${esc(p.name||'Produto')}
+        </label>
+        ${has
+          ? `<select class="field-input" onchange="updateSubjRanking(${sp.id},${p.id},this.value)">${rankOptions[p.id]||''}</select>`
+          : `<input class="field-input" disabled value="—" />
+             <span class="absence-note">${getAbsenceLabel(sp.importance)}</span>`
+        }
       </div>`;
     }).join('');
+  }
+
+  function updateSubjImportance(id, val) {
+    const sp = tmpSubjParams.find(x => x.id === id);
+    if (!sp) return;
+    sp.importance = val;
+    const grid = document.getElementById('subjgrid-' + id);
+    if (grid) grid.innerHTML = buildSubjGrid(sp);
   }
 
   /**
@@ -619,27 +711,56 @@
   }
 
   function computeValidPositions(n, othersRanks) {
-    const positions = [];
+    // Gera todas as posições válidas que o produto atual PODE ocupar,
+    // dado o ranking dos outros produtos.
+    //
+    // Regra: as posições válidas são determinadas pela sequência de posições
+    // possíveis no ranking completo (1..n), pulando posições que seriam
+    // impossíveis dado os empates existentes.
+    //
+    // Exemplo com n=3 e outros dois em 1º:
+    //   Posições do ranking completo: 1, 1, 3 (dois empatados em 1º → próximo é 3º)
+    //   O produto atual pode ser: 1º (empate com os dois) ou 3º (pior dos 3)
+    //
+    // Algoritmo: percorre as posições válidas do ranking completo.
+    // Uma posição P é válida para o produto atual se:
+    //   - P = 1 (sempre pode empatar em 1º)
+    //   - P é a próxima posição após todos os empates dos outros produtos
+    //     que ocupam posições <= P
+
+    const positions = new Set();
+
+    // Conta quantos outros produtos estão em cada posição
+    const rankCount = {};
+    othersRanks.forEach(r => { rankCount[r] = (rankCount[r] || 0) + 1; });
+
+    // Gera todas as posições possíveis no ranking completo (sem o produto atual)
+    // e determina quais são válidas para o produto atual
     let pos = 1;
     while (pos <= n) {
-      positions.push(pos);
-      const countAtPos = othersRanks.filter(r => r === pos).length;
+      positions.add(pos);
+      const countAtPos = rankCount[pos] || 0;
+      // Pula as posições ocupadas pelos empates
       pos += countAtPos + 1;
     }
-    if (!positions.includes(1)) positions.unshift(1);
-    return positions;
-  }
 
-  function updateSubjParam(id, field, val) {
-    const sp = tmpSubjParams.find(x => x.id === id);
-    if (sp) sp[field] = val;
-    if (field === 'importance') renderSubjParams();
+    // Garante que a posição 1 sempre está disponível (empate em 1º)
+    positions.add(1);
+
+    // Garante que a posição n (último lugar) sempre está disponível
+    // quando há pelo menos um outro produto
+    if (othersRanks.length > 0) {
+      positions.add(n);
+    }
+
+    return [...positions].sort((a, b) => a - b);
   }
 
   function updateSubjRanking(paramId, productId, val) {
     const sp = tmpSubjParams.find(x => x.id === paramId);
     if (sp) sp.rankings[productId] = parseInt(val);
-    renderSubjParams();
+    const grid = document.getElementById('subjgrid-' + paramId);
+    if (grid) grid.innerHTML = buildSubjGrid(sp);
   }
 
   // ══════════════════════════════════════════════════════════
@@ -665,15 +786,26 @@
   //  SALVAR
   // ══════════════════════════════════════════════════════════
   function saveComparison() {
-    syncInputValues();
+    // Sincroniza nomes dos produtos (preço já é atualizado via onPriceInput)
+    tmpProducts.forEach(p => {
+      const nameEl = document.getElementById('pname-' + p.id);
+      if (nameEl) p.name = nameEl.value.trim();
+    });
+    // Sincroniza valores dos parâmetros objetivos
+    tmpObjParams.forEach(op => {
+      tmpProducts.forEach(p => {
+        const el = document.getElementById('objval-' + op.id + '-' + p.id);
+        if (el) op.values[p.id] = parseFloat(el.value) || 0;
+      });
+    });
 
     const name = document.getElementById('cmp-name').value.trim();
     if (!name) { alert('Dê um nome para a comparação.'); return; }
     if (tmpProducts.length < 2) { alert('Adicione pelo menos 2 produtos.'); switchTab('products'); return; }
-    if (tmpProducts.some(p => !p.name.trim())) { alert('Todos os produtos precisam ter um nome.'); switchTab('products'); return; }
+    if (tmpProducts.some(p => !String(p.name).trim())) { alert('Todos os produtos precisam ter um nome.'); switchTab('products'); return; }
 
     const allParams = [...tmpObjParams, ...tmpSubjParams];
-    const topCount = allParams.filter(p => p.importance === 'top').length;
+    const topCount  = allParams.filter(p => p.importance === 'top').length;
     if (topCount > 1) {
       alert('Apenas UM parâmetro pode ser marcado como "O mais importante de todos".');
       return;
@@ -703,21 +835,6 @@
     viewComparison(cmp.id);
   }
 
-  function syncInputValues() {
-    tmpProducts.forEach(p => {
-      const nameEl  = document.getElementById('pname-'  + p.id);
-      const priceEl = document.getElementById('pprice-' + p.id);
-      if (nameEl)  p.name  = nameEl.value.trim();
-      if (priceEl) p.price = parseFloat(priceEl.value) || 0;
-    });
-    tmpObjParams.forEach(op => {
-      tmpProducts.forEach(p => {
-        const el = document.getElementById('objval-' + op.id + '-' + p.id);
-        if (el) op.values[p.id] = parseFloat(el.value) || 0;
-      });
-    });
-  }
-
   // ══════════════════════════════════════════════════════════
   //  EXCLUIR
   // ══════════════════════════════════════════════════════════
@@ -745,10 +862,8 @@
   //  MOTOR DE CÁLCULO
   // ══════════════════════════════════════════════════════════
   function calculate(c) {
-    const n = c.products.length;
     const scores = {};
     c.products.forEach(p => { scores[p.id] = 0; });
-
     const memory = [];
 
     // ── Parâmetros Objetivos ──
@@ -757,7 +872,6 @@
       const weight   = level.weight;
       const hasParam = op.hasParam || {};
 
-      // Custo por unidade apenas para produtos que TÊM o parâmetro
       const cpuMap = {};
       c.products.forEach(p => {
         if (hasParam[p.id] === false) { cpuMap[p.id] = null; return; }
@@ -777,23 +891,15 @@
 
         if (absent) {
           absenceNote = getAbsenceLabel(op.importance);
-          if (weight > 0) {
-            paramScore = 0; // ausência em parâmetro desejável = pior pontuação
-          } else if (weight < 0) {
-            paramScore = Math.abs(weight) * 10; // ausência em indesejável = bônus máximo
-          }
-          // weight === 0 → indiferente → sem impacto
+          if (weight > 0)      paramScore = 0;
+          else if (weight < 0) paramScore = Math.abs(weight) * 10;
         } else {
           cpu = cpuMap[p.id];
-          if (isFinite(cpu) && cpu > 0 && minCpu > 0) {
-            normalized = minCpu / cpu;
-          } else if (isFinite(cpu) && cpu === 0) {
-            normalized = 1;
-          }
+          if (isFinite(cpu) && cpu > 0 && minCpu > 0) normalized = minCpu / cpu;
+          else if (isFinite(cpu) && cpu === 0)         normalized = 1;
           if (weight !== 0) {
-            if (weight > 0) {
-              paramScore = normalized * weight * 10;
-            } else {
+            if (weight > 0) paramScore = normalized * weight * 10;
+            else {
               const worstNorm = maxCpu > 0 && isFinite(cpu) ? cpu / maxCpu : 0;
               paramScore = worstNorm * weight * 10;
             }
@@ -801,17 +907,10 @@
         }
 
         scores[p.id] += paramScore;
-        details.push({
-          productId: p.id, productName: p.name,
-          cpu: cpu !== null && isFinite(cpu) ? cpu : null,
-          normalized, score: paramScore, absent, absenceNote,
-        });
+        details.push({ productId: p.id, productName: p.name, cpu: cpu !== null && isFinite(cpu) ? cpu : null, normalized, score: paramScore, absent, absenceNote });
       });
 
-      memory.push({
-        paramName: op.name || '(sem nome)', type: 'objetivo', unit: op.unit,
-        importance: level.label, importanceKey: op.importance, weight, details,
-      });
+      memory.push({ paramName: op.name || '(sem nome)', type: 'objetivo', unit: op.unit, importance: level.label, importanceKey: op.importance, weight, details });
     });
 
     // ── Parâmetros Subjetivos ──
@@ -819,8 +918,6 @@
       const level    = IMPORTANCE_LEVELS.find(l => l.value === sp.importance);
       const weight   = level.weight;
       const hasParam = sp.hasParam || {};
-
-      // n efetivo = apenas produtos presentes
       const presentProds = c.products.filter(p => hasParam[p.id] !== false);
       const nEff = presentProds.length || 1;
 
@@ -831,18 +928,14 @@
 
         if (absent) {
           absenceNote = getAbsenceLabel(sp.importance);
-          if (weight > 0) {
-            paramScore = 0;
-          } else if (weight < 0) {
-            paramScore = Math.abs(weight) * 10;
-          }
+          if (weight > 0)      paramScore = 0;
+          else if (weight < 0) paramScore = Math.abs(weight) * 10;
         } else {
           rank = parseInt(sp.rankings[p.id]) || nEff;
           normalized = (nEff - rank + 1) / nEff;
           if (weight !== 0) {
-            if (weight > 0) {
-              paramScore = normalized * weight * 10;
-            } else {
+            if (weight > 0) paramScore = normalized * weight * 10;
+            else {
               const worstNorm = rank / nEff;
               paramScore = worstNorm * weight * 10;
             }
@@ -850,16 +943,10 @@
         }
 
         scores[p.id] += paramScore;
-        details.push({
-          productId: p.id, productName: p.name,
-          rank, normalized, score: paramScore, absent, absenceNote,
-        });
+        details.push({ productId: p.id, productName: p.name, rank, normalized, score: paramScore, absent, absenceNote });
       });
 
-      memory.push({
-        paramName: sp.name || '(sem nome)', type: 'subjetivo',
-        importance: level.label, importanceKey: sp.importance, weight, details,
-      });
+      memory.push({ paramName: sp.name || '(sem nome)', type: 'subjetivo', importance: level.label, importanceKey: sp.importance, weight, details });
     });
 
     const sorted = c.products
@@ -879,6 +966,12 @@
     const maxScore = Math.max(...sorted.map(p => p.score));
     const minScore = Math.min(...sorted.map(p => p.score));
 
+    // Formata preço para exibição
+    function fmtPrice(val) {
+      const num = typeof val === 'number' ? val : parseBRL(val);
+      return num.toLocaleString('pt-BR', { style:'currency', currency:'BRL' });
+    }
+
     let parecer = '';
     if (c.products.length < 2) {
       parecer = 'Adicione pelo menos 2 produtos para obter um parecer.';
@@ -897,7 +990,6 @@
         parecer += `Atenção: <strong>${esc(worstProduct.productName)}</strong> tem o pior desempenho no parâmetro inaceitável "<em>${esc(m.paramName)}</em>". `;
       });
 
-      // Alerta sobre ausências em parâmetros críticos
       const criticalAbsences = [];
       memory.forEach(m => {
         if (m.importanceKey === 'top' || m.importanceKey === 'very') {
@@ -916,7 +1008,7 @@
         <div class="score-card-name">${esc(p.name)}</div>
         <div class="score-card-val">${p.score.toFixed(1)}</div>
         <div class="score-card-rank">${i===0?'🥇 Melhor opção': i===1?'🥈 2ª opção': i===2?'🥉 3ª opção': `${i+1}ª opção`}</div>
-        <div class="score-card-rank" style="margin-top:4px;">R$ ${parseFloat(p.price||0).toFixed(2)}</div>
+        <div class="score-card-rank" style="margin-top:4px;">${fmtPrice(p.price)}</div>
       </div>
     `).join('');
 
@@ -925,10 +1017,7 @@
       : `<table class="memory-table">
           <thead>
             <tr>
-              <th>Parâmetro</th>
-              <th>Tipo</th>
-              <th>Importância</th>
-              <th>Peso</th>
+              <th>Parâmetro</th><th>Tipo</th><th>Importância</th><th>Peso</th>
               ${c.products.map(p=>`<th class="td-num">${esc(p.name)}</th>`).join('')}
             </tr>
           </thead>
@@ -943,10 +1032,10 @@
                   const scoreStr = d.score.toFixed(2);
                   let extra = '';
                   if (d.absent) {
-                    extra = `<br><span class="text-muted" style="font-size:.7rem;">${esc(d.absenceNote||'não tem')}</span>`;
+                    extra = `<br><span class="text-muted" style="font-size:.68rem;">${esc(d.absenceNote||'não tem')}</span>`;
                   } else if (m.type === 'objetivo') {
                     extra = d.cpu !== null
-                      ? `<br><span class="text-muted">R$${d.cpu.toFixed(4)}/${esc(m.unit||'un')}</span>`
+                      ? `<br><span class="text-muted">${fmtPrice(d.cpu)}/${esc(m.unit||'un')}</span>`
                       : '<br><span class="text-muted">sem dado</span>';
                   } else {
                     extra = d.rank !== null ? `<br><span class="text-muted">${d.rank}º lugar</span>` : '';
@@ -955,16 +1044,16 @@
                 }).join('')}
               </tr>
             `).join('')}
-            <tr style="font-weight:700;border-top:2px solid rgba(255,255,255,0.15);">
-              <td colspan="4">PONTUAÇÃO TOTAL</td>
-              ${sorted.map(p => `<td class="td-num" style="color:${p.id===winner.id?'var(--primary-color)':'#d1d5db'}">${result.scores[p.id].toFixed(2)}</td>`).join('')}
+            <tr style="font-weight:800;border-top:2px solid var(--border);">
+              <td colspan="4" style="color:var(--text);">PONTUAÇÃO TOTAL</td>
+              ${sorted.map(p => `<td class="td-num" style="color:${p.id===winner.id?'var(--gold)':'var(--text)'}">${result.scores[p.id].toFixed(2)}</td>`).join('')}
             </tr>
           </tbody>
         </table>`;
 
     el.innerHTML = `
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;flex-wrap:wrap;gap:10px;">
-        <h2 style="font-size:1.2rem;font-weight:700;color:#fff;margin:0;">📊 Resultado: ${esc(c.name)}</h2>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;flex-wrap:wrap;gap:.75rem;">
+        <h2 style="font-size:1.15rem;font-weight:800;color:var(--text);margin:0;">📊 Resultado: ${esc(c.name)}</h2>
         <button class="btn btn-ghost btn-sm" onclick="openEditComparison('${c.id}')">✏️ Editar</button>
       </div>
 
@@ -976,9 +1065,9 @@
 
       <div class="scores-grid">${scoresHTML}</div>
 
-      <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:1rem;margin-bottom:1.5rem;">
-        <div style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#9ca3af;margin-bottom:.5rem;">Parecer</div>
-        <p style="color:#d1d5db;font-size:.9rem;line-height:1.6;margin:0;">${parecer}</p>
+      <div class="parecer-box">
+        <div class="parecer-label">Parecer</div>
+        <p class="parecer-text">${parecer}</p>
       </div>
 
       <div>
