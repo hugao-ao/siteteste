@@ -350,25 +350,43 @@
     letter-spacing: .06em; color: var(--gold); margin-bottom: 12px;
   }
   .balanco-grid {
-    display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-    gap: 10px;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 12px;
   }
   .balanco-card {
     background: var(--card); border: 1px solid var(--border);
-    border-radius: 8px; padding: 12px 14px;
+    border-radius: 8px; padding: 14px 16px;
+    min-width: 0; /* impede overflow */
   }
   .balanco-card.winner { border-color: var(--gold); background: rgba(212,175,55,.07); }
-  .balanco-card .bc-name { font-weight: 700; font-size: .83rem; margin-bottom: 8px; color: var(--foreground); }
-  .balanco-card .bc-row { display: flex; justify-content: space-between; font-size: .75rem; margin-bottom: 3px; color: var(--muted-foreground); }
+  .balanco-card .bc-name {
+    font-weight: 700; font-size: .88rem; margin-bottom: 10px;
+    color: var(--foreground); word-break: break-word;
+    border-bottom: 1px solid var(--border); padding-bottom: 6px;
+  }
+  .balanco-card .bc-row {
+    display: flex; justify-content: space-between; align-items: baseline;
+    font-size: .78rem; margin-bottom: 4px; color: var(--muted-foreground);
+    gap: 8px;
+  }
+  .balanco-card .bc-row span:first-child { flex: 1; white-space: nowrap; }
+  .balanco-card .bc-row span:last-child  { font-weight: 600; white-space: nowrap; text-align: right; }
   .balanco-card .bc-row.positivo { color: var(--green-lt); }
   .balanco-card .bc-row.negativo { color: var(--red-lt); }
-  .balanco-card .bc-divider { border: none; border-top: 1px solid var(--border); margin: 6px 0; }
+  .balanco-card .bc-divider { border: none; border-top: 1px solid var(--border); margin: 7px 0; }
   .balanco-card .bc-liquido {
-    display: flex; justify-content: space-between;
-    font-size: .88rem; font-weight: 800; margin-top: 4px;
+    display: flex; justify-content: space-between; align-items: center;
+    font-size: .92rem; font-weight: 800; margin-top: 6px; gap: 8px;
   }
+  .balanco-card .bc-liquido span:first-child { white-space: nowrap; }
+  .balanco-card .bc-liquido span:last-child  { white-space: nowrap; text-align: right; }
   .balanco-card .bc-liquido.positivo { color: var(--green-lt); }
   .balanco-card .bc-liquido.negativo { color: var(--red-lt); }
+  .balanco-card .bc-subtitulo {
+    font-size: .65rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .04em; color: var(--muted-foreground); margin: 8px 0 4px;
+  }
 
   /* ── MEMÓRIA ── */
   .mem-toggle {
@@ -649,20 +667,20 @@ const BANDEIRAS_DB = {
    PARÂMETROS OBJETIVOS FIXOS
 ═══════════════════════════════════════════════════════ */
 const OBJ_GROUPS = [
-  { id:'cashback', label:'Cashback', icon:'💰', params:[
-    { id:'cb-nacional', label:'Cashback nacional',  unit:'%', tipo:'nacional', importance:'imp' },
-    { id:'cb-exterior', label:'Cashback exterior',  unit:'%', tipo:'exterior', importance:'imp' },
-    { id:'cb-bonif',    label:'Cashback bonificado',unit:'%', tipo:'bonif',    importance:'imp' },
+  { id:'cashback', label:'Cashback', icon:'💰', groupImp:'imp', params:[
+    { id:'cb-nacional', label:'Cashback nacional',  unit:'%', tipo:'nacional' },
+    { id:'cb-exterior', label:'Cashback exterior',  unit:'%', tipo:'exterior' },
+    { id:'cb-bonif',    label:'Cashback bonificado',unit:'%', tipo:'bonif'    },
   ]},
-  { id:'pontos', label:'Pontos / Milhas', icon:'✈️', params:[
-    { id:'pts-nacional', label:'Pontos por R$1 (nacional)',  unit:'pts/R$',  tipo:'pts-nacional', importance:'imp' },
-    { id:'pts-exterior', label:'Pontos por US$1 (exterior)', unit:'pts/US$', tipo:'pts-exterior', importance:'imp' },
-    { id:'pts-bonif',    label:'Pontos por R$1 (bonificado)',unit:'pts/R$',  tipo:'pts-bonif',    importance:'imp' },
-    { id:'milheiro',     label:'Valor do milheiro (R$/mil)', unit:'R$/mil',  tipo:'milheiro',     importance:'imp' },
+  { id:'pontos', label:'Pontos / Milhas', icon:'✈️', groupImp:'imp', params:[
+    { id:'pts-nacional', label:'Pontos por R$1 (nacional)',  unit:'pts/R$',  tipo:'pts-nacional' },
+    { id:'pts-exterior', label:'Pontos por US$1 (exterior)', unit:'pts/US$', tipo:'pts-exterior' },
+    { id:'pts-bonif',    label:'Pontos por R$1 (bonificado)',unit:'pts/R$',  tipo:'pts-bonif'    },
+    { id:'milheiro',     label:'Valor do milheiro (R$/mil)', unit:'R$/mil',  tipo:'milheiro'     },
   ]},
-  { id:'desconto', label:'Desconto por Gasto Mensal', icon:'🏷️', params:[
-    { id:'desc-gasto', label:'Gasto mínimo para desconto (R$)', unit:'R$', tipo:'desc-gasto', importance:'ind' },
-    { id:'desc-pct',   label:'Desconto na anuidade (%)',        unit:'%',  tipo:'desc-pct',   importance:'imp' },
+  { id:'desconto', label:'Desconto por Gasto Mensal', icon:'🏷️', groupImp:'imp', params:[
+    { id:'desc-gasto', label:'Gasto mínimo para desconto (R$)', unit:'R$', tipo:'desc-gasto' },
+    { id:'desc-pct',   label:'Desconto na anuidade (%)',        unit:'%',  tipo:'desc-pct'   },
   ]},
 ];
 
@@ -798,7 +816,7 @@ function openModal(id = null) {
   } else {
     tmpName = ''; tmpCards = []; tmpObjVals = {}; tmpObjImps = {}; tmpSubjVals = {};
     cidCounter = 1;
-    OBJ_GROUPS.forEach(g => g.params.forEach(p => { tmpObjImps[p.id] = p.importance; }));
+    OBJ_GROUPS.forEach(g => { tmpObjImps[g.id] = g.groupImp; });
     subjItems.forEach(s => { tmpSubjVals[s.id] = { importance: s.importance, hasParam: {}, rankings: {} }; });
     document.getElementById('modal-title').textContent = 'Nova Comparação de Cartões';
   }
@@ -965,24 +983,27 @@ function renderObjSections() {
   }
   let html = '';
   OBJ_GROUPS.forEach(group => {
+    const gImp = tmpObjImps[group.id] || group.groupImp;
     html += `<div style="margin-bottom:18px">
-      <div style="font-size:.82rem;font-weight:700;color:var(--gold);margin-bottom:8px">${group.icon} ${group.label}</div>
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;flex-wrap:wrap">
+        <div style="font-size:.82rem;font-weight:700;color:var(--gold)">${group.icon} ${group.label}</div>
+        <div style="display:flex;align-items:center;gap:6px">
+          <span style="font-size:.7rem;color:var(--muted-foreground);text-transform:uppercase;letter-spacing:.04em">Importância:</span>
+          <select style="font-size:.75rem;padding:3px 8px;border-radius:6px;background:var(--bg3);border:1px solid var(--border);color:var(--foreground)"
+            onchange="tmpObjImps['${group.id}']=this.value">
+            ${IMP_OPTIONS.map(o=>`<option value="${o.value}"${o.value===gImp?' selected':''}>${o.label}</option>`).join('')}
+          </select>
+        </div>
+      </div>
       <div class="param-table-wrap"><table class="param-table">
         <thead><tr>
-          <th class="td-label">Parâmetro</th>
-          <th class="td-imp">Importância</th>
+          <th class="td-label">Sub-parâmetro</th>
           ${tmpCards.map(c=>`<th class="td-val">${escHtml(c.name)||'Cartão'}</th>`).join('')}
         </tr></thead><tbody>`;
     group.params.forEach(param => {
       if (!tmpObjVals[param.id]) tmpObjVals[param.id] = {};
-      const imp = tmpObjImps[param.id] || param.importance;
       html += `<tr>
         <td class="td-label">${param.label} <span class="text-dim">(${param.unit})</span></td>
-        <td class="td-imp">
-          <select onchange="tmpObjImps['${param.id}']=this.value">
-            ${IMP_OPTIONS.map(o=>`<option value="${o.value}"${o.value===imp?' selected':''}>${o.label}</option>`).join('')}
-          </select>
-        </td>
         ${tmpCards.map(c=>{
           const v = tmpObjVals[param.id][c.id] || 0;
           const isMoeda = param.unit === 'R$' || param.unit === 'R$/mil';
@@ -1124,6 +1145,11 @@ function syncAllInputs() {
     const pfSel = document.getElementById('pf-bandeira-'+c.id);
     if (pfSel) c.bandeira = pfSel.value;
   });
+  OBJ_GROUPS.forEach(g => {
+    // Lê a importância do grupo (select do grupo)
+    const gImpEl = document.querySelector(`select[onchange*="tmpObjImps['${g.id}']"]`);
+    if (gImpEl) tmpObjImps[g.id] = gImpEl.value;
+  });
   OBJ_GROUPS.forEach(g => g.params.forEach(p => {
     if (!tmpObjVals[p.id]) tmpObjVals[p.id] = {};
     tmpCards.forEach(c => {
@@ -1186,9 +1212,11 @@ function calcResult(ctx) {
 
   // ── OBJETIVOS ──
   OBJ_GROUPS.forEach(group => {
+    const gImp = tmpObjImps[group.id] || group.groupImp;
+    const gW   = impWeight(gImp);
     group.params.forEach(param => {
-      const imp = tmpObjImps[param.id] || param.importance;
-      const w = impWeight(imp);
+      const imp = gImp;
+      const w   = gW;
       const vals = tmpObjVals[param.id] || {};
 
       const returns = {};
@@ -1257,7 +1285,7 @@ function calcResult(ctx) {
         scores[c.id] += score;
         perProduct[c.id] = { score, detail, formula, ret, rawV };
       });
-      breakdown.push({ paramName:param.label, type:'Objetivo', unit:param.unit, importance:imp, weight:w, perProduct });
+      breakdown.push({ paramName:param.label, groupLabel:group.label, type:'Objetivo', unit:param.unit, importance:imp, weight:w, perProduct });
     });
   });
 
@@ -1442,19 +1470,40 @@ function renderResult(comp) {
       const hasCb   = (b.cb_nac + b.cb_ext + b.cb_bon) > 0;
       const hasPts  = (b.pts_nac + b.pts_ext + b.pts_bon) > 0;
       const hasDesc = b.desconto > 0;
+      const totalEntradas = b.entradas;
+      // Busca dados do cartão para exibir sub-parâmetros
+      const cardData = comp.cards?.find(x=>x.id===c.id) || c;
+      const objV = comp.objVals || {};
+      const mil  = (objV['milheiro']||{})[c.id] || 0;
+      const cbNacPct  = (objV['cb-nacional']||{})[c.id] || 0;
+      const cbExtPct  = (objV['cb-exterior']||{})[c.id] || 0;
+      const cbBonPct  = (objV['cb-bonif']||{})[c.id] || 0;
+      const ptsNac    = (objV['pts-nacional']||{})[c.id] || 0;
+      const ptsExt    = (objV['pts-exterior']||{})[c.id] || 0;
+      const ptsBon    = (objV['pts-bonif']||{})[c.id] || 0;
+      const descGasto = (objV['desc-gasto']||{})[c.id] || 0;
+      const descPct   = (objV['desc-pct']||{})[c.id] || 0;
+      const ctx2 = comp.ctx || {};
       cards += `<div class="balanco-card${isWinner?' winner':''}">
-        <div class="bc-name">${escHtml(c.name)}</div>
+        <div class="bc-name">${isWinner?'🏆 ':''}${escHtml(c.name)}</div>
         ${hasCb ? `
-          ${b.cb_nac > 0 ? `<div class="bc-row positivo"><span>Cashback nacional</span><span>+${fmtBRL(b.cb_nac)}</span></div>` : ''}
-          ${b.cb_ext > 0 ? `<div class="bc-row positivo"><span>Cashback exterior</span><span>+${fmtBRL(b.cb_ext)}</span></div>` : ''}
-          ${b.cb_bon > 0 ? `<div class="bc-row positivo"><span>Cashback bonificado</span><span>+${fmtBRL(b.cb_bon)}</span></div>` : ''}` : ''}
+          <div class="bc-subtitulo">💰 Cashback</div>
+          ${b.cb_nac > 0 ? `<div class="bc-row positivo"><span>Nacional (${fmtN(cbNacPct)}%)</span><span>+${fmtBRL(b.cb_nac)}</span></div>` : ''}
+          ${b.cb_ext > 0 ? `<div class="bc-row positivo"><span>Exterior (${fmtN(cbExtPct)}%)</span><span>+${fmtBRL(b.cb_ext)}</span></div>` : ''}
+          ${b.cb_bon > 0 ? `<div class="bc-row positivo"><span>Bonificado (${fmtN(cbBonPct)}%)</span><span>+${fmtBRL(b.cb_bon)}</span></div>` : ''}` : ''}
         ${hasPts ? `
-          ${b.pts_nac > 0 ? `<div class="bc-row positivo"><span>Pontos nac (em R$)</span><span>+${fmtBRL(b.pts_nac)}</span></div>` : ''}
-          ${b.pts_ext > 0 ? `<div class="bc-row positivo"><span>Pontos ext (em R$)</span><span>+${fmtBRL(b.pts_ext)}</span></div>` : ''}
-          ${b.pts_bon > 0 ? `<div class="bc-row positivo"><span>Pontos bonif (em R$)</span><span>+${fmtBRL(b.pts_bon)}</span></div>` : ''}` : ''}
-        ${hasDesc ? `<div class="bc-row positivo"><span>Desconto anuidade</span><span>+${fmtBRL(b.desconto)}</span></div>` : ''}
+          <div class="bc-subtitulo">✈️ Pontos / Milhas</div>
+          ${b.pts_nac > 0 ? `<div class="bc-row positivo"><span>Nacional (${fmtN(ptsNac)} pts/R$)</span><span>+${fmtBRL(b.pts_nac)}</span></div>` : ''}
+          ${b.pts_ext > 0 ? `<div class="bc-row positivo"><span>Exterior (${fmtN(ptsExt)} pts/US$)</span><span>+${fmtBRL(b.pts_ext)}</span></div>` : ''}
+          ${b.pts_bon > 0 ? `<div class="bc-row positivo"><span>Bonificado (${fmtN(ptsBon)} pts/R$)</span><span>+${fmtBRL(b.pts_bon)}</span></div>` : ''}
+          ${mil > 0 ? `<div class="bc-row" style="color:var(--muted-foreground)"><span>Valor do milheiro</span><span>${fmtBRL(mil)}/mil</span></div>` : ''}` : ''}
+        ${hasDesc ? `
+          <div class="bc-subtitulo">🏷️ Desconto</div>
+          <div class="bc-row" style="color:var(--muted-foreground)"><span>Gasto mín. exigido</span><span>${fmtBRL(descGasto)}</span></div>
+          <div class="bc-row positivo"><span>Desconto (${fmtN(descPct)}%)</span><span>+${fmtBRL(b.desconto)}</span></div>` : ''}
         ${(!hasCb && !hasPts && !hasDesc) ? `<div class="bc-row"><span>Sem retorno financeiro</span><span>R$ 0,00</span></div>` : ''}
         <hr class="bc-divider"/>
+        <div class="bc-row positivo" style="font-weight:700"><span>Total entradas</span><span>+${fmtBRL(totalEntradas)}</span></div>
         <div class="bc-row negativo"><span>Anuidade mensal</span><span>-${fmtBRL(b.saidas)}</span></div>
         <hr class="bc-divider"/>
         <div class="bc-liquido ${liqCls}"><span>Saldo líquido/mês</span><span>${liqSinal}${fmtBRL(b.liquido)}</span></div>
@@ -1501,9 +1550,51 @@ function renderResult(comp) {
       <div class="chart-wrap"><canvas id="${chartId}"></canvas></div>
       <div class="mem-section-title">Detalhamento por parâmetro</div>
       ${memTable}
+      <div class="mem-section-title">Balanço Financeiro — Detalhamento</div>
+      <div style="overflow-x:auto"><table class="mem-table">
+        <thead><tr>
+          <th>Componente</th>
+          ${ranking.map(c=>`<th>${escHtml(c.name)}</th>`).join('')}
+        </tr></thead><tbody>
+        ${(() => {
+          const rows = [
+            { label:'Cashback nacional', key:'cb_nac', fmt:'brl' },
+            { label:'Cashback exterior', key:'cb_ext', fmt:'brl' },
+            { label:'Cashback bonificado', key:'cb_bon', fmt:'brl' },
+            { label:'Pontos nac. (em R$)', key:'pts_nac', fmt:'brl' },
+            { label:'Pontos ext. (em R$)', key:'pts_ext', fmt:'brl' },
+            { label:'Pontos bonif. (em R$)', key:'pts_bon', fmt:'brl' },
+            { label:'Desconto anuidade', key:'desconto', fmt:'brl' },
+          ];
+          let t = '';
+          rows.forEach(r => {
+            const vals = ranking.map(c => (comp.result.balanco[c.id]||{})[r.key]||0);
+            if (vals.every(v=>v===0)) return;
+            t += `<tr><td><b>${r.label}</b></td>${ranking.map(c=>{
+              const v = (comp.result.balanco[c.id]||{})[r.key]||0;
+              return `<td><div class="score-cell" style="color:${v>0?'var(--green-lt)':'var(--muted-foreground)'}">${v>0?'+':''}${fmtBRL(v)}</div></td>`;
+            }).join('')}</tr>`;
+          });
+          t += `<tr><td><b>Total entradas</b></td>${ranking.map(c=>{
+            const v = (comp.result.balanco[c.id]||{}).entradas||0;
+            return `<td><div class="score-cell" style="color:var(--green-lt);font-weight:800">+${fmtBRL(v)}</div></td>`;
+          }).join('')}</tr>`;
+          t += `<tr><td><b>Anuidade mensal</b></td>${ranking.map(c=>{
+            const v = (comp.result.balanco[c.id]||{}).saidas||0;
+            return `<td><div class="score-cell" style="color:var(--red-lt)">-${fmtBRL(v)}</div></td>`;
+          }).join('')}</tr>`;
+          t += `<tr class="total-row"><td><b>Saldo líquido/mês</b></td>${ranking.map(c=>{
+            const b = comp.result.balanco[c.id]||{};
+            const v = b.liquido||0;
+            const s = v>=0?'+':'';
+            return `<td class="score-cell" style="font-size:.95rem;color:${v>=0?'var(--green-lt)':'var(--red-lt)'}">${s}${fmtBRL(v)}</td>`;
+          }).join('')}</tr>`;
+          return t;
+        })()}
+        </tbody></table></div>
       <div class="mem-section-title">Como o cálculo funciona</div>
       <div class="tip">
-        <b>Objetivos:</b> calcula o retorno financeiro mensal (cashback, pontos×milheiro, desconto) e normaliza pelo maior valor.<br>
+        <b>Objetivos:</b> calcula o retorno financeiro mensal (cashback, pontos×milheiro, desconto) e normaliza pelo maior valor. A importância é definida por grupo (Cashback, Pontos/Milhas, Desconto).<br>
         <b>Anuidade:</b> quem paga menos recebe maior pontuação (peso 5 fixo).<br>
         <b>Subjetivos:</b> normaliza pelo ranking — 1º lugar recebe pontuação máxima. Ausência penaliza se grau positivo, bonifica se negativo.
       </div>
@@ -1560,7 +1651,7 @@ function escHtml(s) {
 /* ═══════════════════════════════════════════════════════
    INIT
 ═══════════════════════════════════════════════════════ */
-OBJ_GROUPS.forEach(g => g.params.forEach(p => { tmpObjImps[p.id] = p.importance; }));
+OBJ_GROUPS.forEach(g => { tmpObjImps[g.id] = g.groupImp; });
 subjItems.forEach(s => { tmpSubjVals[s.id] = { importance:s.importance, hasParam:{}, rankings:{} }; });
 
 // Valores padrão do contexto
