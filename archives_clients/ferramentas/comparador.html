@@ -3,51 +3,53 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Comparador Inteligente</title>
+<title>Comparador Inteligente - MithraSF</title>
+<link rel="stylesheet" href="../assets/style.css">
+<script src="../assets/layout.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <style>
+  /* ── VARIÁVEIS LOCAIS (complementam o style.css global) ── */
   :root {
-    --bg:        #0a1a0e;
-    --bg2:       #0f2414;
-    --bg3:       #162d1a;
-    --border:    #1e3d24;
-    --gold:      #c9a227;
-    --gold-dim:  #a07d1a;
-    --green:     #2e7d32;
+    --bg3:       #0a2e14;
+    --gold:      #D4AF37;
+    --gold-dim:  #B8860B;
     --green-lt:  #4caf50;
-    --text:      #e8f5e9;
-    --text-dim:  #8aab8e;
     --red:       #c62828;
     --red-lt:    #ef5350;
     --amber:     #f57f17;
     --amber-lt:  #ffb300;
-    --radius:    10px;
     --shadow:    0 4px 24px rgba(0,0,0,0.5);
   }
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-  body {
-    font-family: 'Segoe UI', system-ui, sans-serif;
-    background: var(--bg);
-    color: var(--text);
-    min-height: 100vh;
-    padding: 0 0 60px;
-  }
 
-  /* ── HEADER ── */
-  .page-header {
-    background: var(--bg2);
-    border-bottom: 1px solid var(--border);
-    padding: 18px 24px;
+  /* ── LAYOUT PRINCIPAL (com sidebar) ── */
+  /* O body já tem display:flex definido no style.css global */
+
+  /* ── HEADER DA FERRAMENTA ── */
+  .tool-header {
     display: flex;
     align-items: center;
     gap: 14px;
+    margin-bottom: 2rem;
+    flex-wrap: wrap;
   }
-  .page-header h1 { font-size: 1.25rem; font-weight: 700; color: var(--gold); }
-  .page-header p  { font-size: .82rem; color: var(--text-dim); margin-top: 2px; }
+  .tool-header-info { flex: 1; min-width: 0; }
+  .tool-header-info h1 {
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: var(--primary);
+    margin: 0 0 4px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .tool-header-info p {
+    font-size: .82rem;
+    color: var(--muted-foreground);
+    margin: 0;
+  }
   .btn-new {
-    margin-left: auto;
-    background: var(--gold);
-    color: #0a1a0e;
+    background: var(--primary);
+    color: var(--primary-foreground);
     border: none;
     border-radius: var(--radius);
     padding: 10px 20px;
@@ -55,21 +57,22 @@
     font-size: .9rem;
     cursor: pointer;
     transition: background .2s;
+    white-space: nowrap;
+    flex-shrink: 0;
   }
-  .btn-new:hover { background: var(--gold-dim); }
+  .btn-new:hover { background: var(--secondary); }
 
   /* ── LISTA DE COMPARAÇÕES ── */
-  #list-container { padding: 20px 24px; }
   .empty-state {
     text-align: center;
     padding: 60px 20px;
-    color: var(--text-dim);
+    color: var(--muted-foreground);
   }
   .empty-state .icon { font-size: 3rem; margin-bottom: 12px; }
   .empty-state p { font-size: .95rem; }
 
   .comp-card {
-    background: var(--bg2);
+    background: var(--card);
     border: 1px solid var(--border);
     border-radius: var(--radius);
     margin-bottom: 14px;
@@ -84,10 +87,11 @@
     cursor: pointer;
     gap: 12px;
     user-select: none;
+    flex-wrap: wrap;
   }
   .comp-card-header .chevron {
     width: 22px; height: 22px;
-    border: 2px solid var(--text-dim);
+    border: 2px solid var(--muted-foreground);
     border-radius: 50%;
     display: flex; align-items: center; justify-content: center;
     font-size: .7rem;
@@ -95,11 +99,11 @@
     flex-shrink: 0;
   }
   .comp-card.open .comp-card-header .chevron { transform: rotate(180deg); border-color: var(--gold); }
-  .comp-card-header .comp-title { font-weight: 600; font-size: 1rem; flex: 1; }
-  .comp-card-header .comp-meta { font-size: .78rem; color: var(--text-dim); }
+  .comp-card-header .comp-title { font-weight: 600; font-size: 1rem; flex: 1; min-width: 120px; }
+  .comp-card-header .comp-meta { font-size: .78rem; color: var(--muted-foreground); }
   .comp-card-header .winner-badge {
     background: var(--gold);
-    color: #0a1a0e;
+    color: var(--primary-foreground);
     border-radius: 20px;
     padding: 3px 10px;
     font-size: .75rem;
@@ -109,7 +113,7 @@
   .btn-icon {
     background: var(--bg3);
     border: 1px solid var(--border);
-    color: var(--text-dim);
+    color: var(--muted-foreground);
     border-radius: 6px;
     padding: 5px 10px;
     font-size: .78rem;
@@ -135,7 +139,7 @@
   }
   .modal-overlay.open { display: flex; }
   .modal {
-    background: var(--bg2);
+    background: var(--card);
     border: 1px solid var(--border);
     border-radius: 14px;
     width: 100%;
@@ -150,13 +154,13 @@
     border-bottom: 1px solid var(--border);
     display: flex; align-items: center; gap: 12px;
   }
-  .modal-header h2 { font-size: 1.1rem; font-weight: 700; flex: 1; }
+  .modal-header h2 { font-size: 1.1rem; font-weight: 700; flex: 1; color: var(--foreground); margin: 0; }
   .btn-close {
-    background: none; border: none; color: var(--text-dim);
+    background: none; border: none; color: var(--muted-foreground);
     font-size: 1.3rem; cursor: pointer; padding: 4px 8px;
     border-radius: 6px; transition: color .2s;
   }
-  .btn-close:hover { color: var(--text); }
+  .btn-close:hover { color: var(--foreground); }
   .modal-body { padding: 22px 24px; }
 
   /* ── FORM FIELDS ── */
@@ -165,7 +169,7 @@
     display: block;
     font-size: .8rem;
     font-weight: 600;
-    color: var(--text-dim);
+    color: var(--muted-foreground);
     text-transform: uppercase;
     letter-spacing: .05em;
     margin-bottom: 7px;
@@ -175,14 +179,14 @@
     background: var(--bg3);
     border: 1px solid var(--border);
     border-radius: 8px;
-    color: var(--text);
+    color: var(--foreground);
     padding: 10px 14px;
     font-size: .95rem;
     transition: border-color .2s;
     outline: none;
   }
-  .field-input:focus { border-color: var(--gold); }
-  .field-input::placeholder { color: var(--text-dim); }
+  .field-input:focus { border-color: var(--gold); box-shadow: 0 0 0 2px rgba(212,175,55,.15); }
+  .field-input::placeholder { color: var(--muted-foreground); }
   select.field-input { cursor: pointer; }
 
   /* ── SECTION BLOCKS ── */
@@ -207,20 +211,20 @@
     font-size: 1rem;
     flex-shrink: 0;
   }
-  .section-block-header .sb-icon.gold { background: rgba(201,162,39,.15); }
+  .section-block-header .sb-icon.gold { background: rgba(212,175,55,.15); }
   .section-block-header .sb-icon.green { background: rgba(46,125,50,.2); }
   .section-block-header .sb-icon.blue { background: rgba(30,100,200,.2); }
-  .section-block-header h3 { font-size: .95rem; font-weight: 600; flex: 1; }
+  .section-block-header h3 { font-size: .95rem; font-weight: 600; flex: 1; color: var(--foreground); margin: 0; }
   .section-block-header .sb-count {
     font-size: .75rem;
-    background: var(--bg2);
+    background: var(--card);
     border: 1px solid var(--border);
     border-radius: 20px;
     padding: 2px 9px;
-    color: var(--text-dim);
+    color: var(--muted-foreground);
   }
   .section-block-header .sb-chevron {
-    font-size: .7rem; color: var(--text-dim);
+    font-size: .7rem; color: var(--muted-foreground);
     transition: transform .2s;
   }
   .section-block.open .section-block-header .sb-chevron { transform: rotate(180deg); }
@@ -235,7 +239,7 @@
     margin-bottom: 12px;
   }
   .product-card {
-    background: var(--bg2);
+    background: var(--card);
     border: 1px solid var(--border);
     border-radius: 8px;
     padding: 12px 14px;
@@ -252,7 +256,7 @@
   .product-card .pc-del {
     position: absolute; top: 8px; right: 8px;
     background: none; border: none;
-    color: var(--text-dim); cursor: pointer;
+    color: var(--muted-foreground); cursor: pointer;
     font-size: .85rem; padding: 2px 5px;
     border-radius: 4px; transition: color .2s;
   }
@@ -261,7 +265,7 @@
   .product-card .field-label { font-size: .72rem; margin-bottom: 4px; }
 
   /* ── PARÂMETROS GRADE ── */
-  .param-table-wrap { overflow-x: auto; margin-bottom: 12px; }
+  .param-table-wrap { overflow-x: auto; margin-bottom: 12px; -webkit-overflow-scrolling: touch; }
   .param-table {
     width: 100%;
     border-collapse: collapse;
@@ -269,12 +273,12 @@
     min-width: 520px;
   }
   .param-table th {
-    background: var(--bg2);
+    background: var(--card);
     padding: 9px 12px;
     text-align: left;
     font-size: .72rem;
     font-weight: 700;
-    color: var(--text-dim);
+    color: var(--muted-foreground);
     text-transform: uppercase;
     letter-spacing: .04em;
     border-bottom: 1px solid var(--border);
@@ -287,21 +291,19 @@
   }
   .param-table tr:last-child td { border-bottom: none; }
   .param-table tr:hover td { background: rgba(255,255,255,.02); }
-  .param-table .td-del {
-    width: 36px; text-align: center;
-  }
+  .param-table .td-del { width: 36px; text-align: center; }
   .param-table .td-del button {
     background: none; border: none;
-    color: var(--text-dim); cursor: pointer;
+    color: var(--muted-foreground); cursor: pointer;
     font-size: .85rem; padding: 3px 6px;
     border-radius: 4px; transition: color .2s;
   }
   .param-table .td-del button:hover { color: var(--red-lt); }
   .param-table input, .param-table select {
-    background: var(--bg3);
+    background: var(--card);
     border: 1px solid var(--border);
     border-radius: 6px;
-    color: var(--text);
+    color: var(--foreground);
     padding: 6px 9px;
     font-size: .83rem;
     width: 100%;
@@ -321,8 +323,6 @@
     accent-color: var(--green-lt);
     cursor: pointer;
   }
-
-  /* rank select */
   .rank-select { cursor: pointer; }
 
   /* ── IMPORTANCE BADGES ── */
@@ -334,7 +334,7 @@
     font-weight: 700;
     white-space: nowrap;
   }
-  .imp-top    { background: rgba(201,162,39,.2); color: var(--gold); border: 1px solid var(--gold-dim); }
+  .imp-top    { background: rgba(212,175,55,.2); color: var(--gold); border: 1px solid var(--gold-dim); }
   .imp-muito  { background: rgba(76,175,80,.15); color: var(--green-lt); border: 1px solid #2e7d32; }
   .imp-imp    { background: rgba(30,136,229,.15); color: #64b5f6; border: 1px solid #1565c0; }
   .imp-ind    { background: rgba(120,120,120,.1); color: #9e9e9e; border: 1px solid #424242; }
@@ -345,7 +345,7 @@
   .btn-add {
     background: none;
     border: 1px dashed var(--border);
-    color: var(--text-dim);
+    color: var(--muted-foreground);
     border-radius: 8px;
     padding: 9px 16px;
     font-size: .83rem;
@@ -361,16 +361,17 @@
     border-top: 1px solid var(--border);
     display: flex; align-items: center; gap: 10px;
     justify-content: flex-end;
+    flex-wrap: wrap;
   }
   .btn-cancel {
     background: none; border: 1px solid var(--border);
-    color: var(--text-dim); border-radius: 8px;
+    color: var(--muted-foreground); border-radius: 8px;
     padding: 10px 20px; font-size: .9rem; cursor: pointer;
     transition: all .2s;
   }
-  .btn-cancel:hover { border-color: var(--text-dim); color: var(--text); }
+  .btn-cancel:hover { border-color: var(--muted-foreground); color: var(--foreground); }
   .btn-save {
-    background: var(--gold); color: #0a1a0e;
+    background: var(--gold); color: var(--primary-foreground);
     border: none; border-radius: 8px;
     padding: 10px 24px; font-size: .9rem;
     font-weight: 700; cursor: pointer;
@@ -397,22 +398,12 @@
   }
   .podium-card.first {
     border-color: var(--gold);
-    background: rgba(201,162,39,.07);
+    background: rgba(212,175,55,.07);
   }
-  .podium-card .pod-rank {
-    font-size: 1.5rem; margin-bottom: 4px;
-  }
-  .podium-card .pod-name {
-    font-weight: 700; font-size: .9rem;
-    margin-bottom: 4px;
-  }
-  .podium-card .pod-score {
-    font-size: 1.6rem; font-weight: 800;
-    color: var(--gold);
-  }
-  .podium-card .pod-price {
-    font-size: .75rem; color: var(--text-dim); margin-top: 4px;
-  }
+  .podium-card .pod-rank { font-size: 1.5rem; margin-bottom: 4px; }
+  .podium-card .pod-name { font-weight: 700; font-size: .9rem; margin-bottom: 4px; color: var(--foreground); }
+  .podium-card .pod-score { font-size: 1.6rem; font-weight: 800; color: var(--gold); }
+  .podium-card .pod-price { font-size: .75rem; color: var(--muted-foreground); margin-top: 4px; }
 
   .parecer-box {
     background: var(--bg3);
@@ -432,7 +423,7 @@
   /* ── MEMÓRIA DE CÁLCULO ── */
   .mem-toggle {
     background: none; border: 1px solid var(--border);
-    color: var(--text-dim); border-radius: 8px;
+    color: var(--muted-foreground); border-radius: 8px;
     padding: 8px 16px; font-size: .83rem;
     cursor: pointer; transition: all .2s;
     display: flex; align-items: center; gap: 6px;
@@ -445,7 +436,7 @@
   .mem-section-title {
     font-size: .72rem; font-weight: 700;
     text-transform: uppercase; letter-spacing: .06em;
-    color: var(--text-dim); margin: 16px 0 8px;
+    color: var(--muted-foreground); margin: 16px 0 8px;
   }
 
   .mem-table {
@@ -454,11 +445,11 @@
     overflow-x: auto; display: block;
   }
   .mem-table th {
-    background: var(--bg2);
+    background: var(--card);
     padding: 8px 12px;
     text-align: left;
     font-size: .7rem; font-weight: 700;
-    color: var(--text-dim);
+    color: var(--muted-foreground);
     text-transform: uppercase; letter-spacing: .04em;
     border-bottom: 1px solid var(--border);
     white-space: nowrap;
@@ -470,13 +461,13 @@
   }
   .mem-table tr:last-child td { border-bottom: none; }
   .mem-table .total-row td {
-    font-weight: 700; background: rgba(201,162,39,.06);
+    font-weight: 700; background: rgba(212,175,55,.06);
     border-top: 2px solid var(--gold-dim);
   }
   .mem-table .score-cell { text-align: right; font-weight: 600; }
   .mem-table .formula-cell {
     font-family: monospace; font-size: .75rem;
-    color: var(--text-dim); max-width: 220px;
+    color: var(--muted-foreground); max-width: 220px;
   }
 
   .chart-wrap {
@@ -505,123 +496,221 @@
 
   /* ── UTIL ── */
   .divider { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
-  .text-dim { color: var(--text-dim); font-size: .82rem; }
+  .text-dim { color: var(--muted-foreground); font-size: .82rem; }
   .mt8 { margin-top: 8px; }
   .flex-row { display: flex; align-items: center; gap: 8px; }
   .tip {
-    background: rgba(201,162,39,.07);
-    border: 1px solid rgba(201,162,39,.2);
+    background: rgba(212,175,55,.07);
+    border: 1px solid rgba(212,175,55,.2);
     border-radius: 8px;
     padding: 10px 14px;
     font-size: .82rem;
-    color: var(--text-dim);
+    color: var(--muted-foreground);
     margin-bottom: 14px;
   }
   .tip b { color: var(--gold); }
 
-  /* ── RESPONSIVE ── */
-  @media (max-width: 600px) {
-    .page-header { flex-wrap: wrap; }
-    .btn-new { margin-left: 0; width: 100%; text-align: center; }
-    .modal { margin: 0; border-radius: 14px 14px 0 0; }
-    .modal-overlay { align-items: flex-end; padding: 0; }
+  /* ── RESPONSIVIDADE ── */
+
+  /* Tablet e mobile: ajustes do main-content (sidebar some) */
+  @media (max-width: 768px) {
+    /* O style.css global já cuida de .sidebar e .main-content em mobile */
+    /* Aqui ajustamos os elementos internos da ferramenta */
+
+    .tool-header {
+      gap: 10px;
+    }
+    .tool-header-info h1 {
+      font-size: 1.1rem;
+    }
+    .btn-new {
+      width: 100%;
+      text-align: center;
+      justify-content: center;
+    }
+
+    /* Modal: ocupa tela toda em mobile */
+    .modal-overlay {
+      align-items: flex-end;
+      padding: 0;
+    }
+    .modal {
+      margin: 0;
+      border-radius: 14px 14px 0 0;
+      max-height: 92vh;
+      overflow-y: auto;
+    }
+
+    /* Cards de comparação */
+    .comp-card-header {
+      padding: 12px 14px;
+      gap: 8px;
+    }
+    .winner-badge { display: none; }
+    .comp-card-actions {
+      width: 100%;
+      justify-content: flex-end;
+    }
+
+    /* Produtos em coluna única */
+    .products-grid {
+      grid-template-columns: 1fr;
+    }
+
+    /* Tabela de parâmetros: scroll horizontal */
+    .param-table-wrap {
+      margin-left: -18px;
+      margin-right: -18px;
+      padding: 0 18px;
+    }
+
+    /* Pódio em coluna única */
+    .podium-grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+
+    /* Memória: tabela com scroll */
+    .mem-table { font-size: .72rem; }
+    .mem-table th, .mem-table td { padding: 6px 8px; }
+
+    /* Modal footer */
+    .modal-footer {
+      flex-direction: column;
+    }
+    .btn-cancel, .btn-save {
+      width: 100%;
+      text-align: center;
+    }
+
+    /* Padding reduzido no container */
+    .container {
+      padding: 0;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .podium-grid {
+      grid-template-columns: 1fr;
+    }
+    .comp-card-header .comp-meta { display: none; }
+    .tool-header-info h1 { font-size: 1rem; }
+    .modal-body { padding: 16px; }
+    .modal-header { padding: 16px 16px 12px; }
+  }
+
+  /* Desktop: padding extra no main */
+  @media (min-width: 1200px) {
+    .container { max-width: 1100px; }
   }
 </style>
 </head>
 <body>
+  <!-- Sidebar Container (Injected by layout.js) -->
+  <div id="sidebar-container" class="sidebar"></div>
 
-<div class="page-header">
-  <div>
-    <h1>⚖️ Comparador Inteligente</h1>
-    <p>Compare produtos e serviços com critérios objetivos e subjetivos ponderados</p>
-  </div>
-  <button class="btn-new" onclick="openModal()">+ Nova Comparação</button>
-</div>
+  <!-- Main Content -->
+  <main class="main-content">
+    <div class="container">
 
-<div id="list-container">
-  <div class="empty-state" id="empty-state">
-    <div class="icon">📊</div>
-    <p>Nenhuma comparação ainda.<br>Clique em <b>+ Nova Comparação</b> para começar.</p>
-  </div>
-</div>
-
-<!-- MODAL -->
-<div class="modal-overlay" id="modal-overlay">
-  <div class="modal">
-    <div class="modal-header">
-      <h2 id="modal-title">Nova Comparação</h2>
-      <button class="btn-close" onclick="closeModal()">✕</button>
-    </div>
-    <div class="modal-body">
-      <div class="val-error" id="val-error"></div>
-
-      <!-- Nome da comparação -->
-      <div class="field-group">
-        <label class="field-label">Nome da comparação</label>
-        <input class="field-input" id="comp-name" placeholder="Ex: Whey Protein — Melhor custo-benefício" />
-      </div>
-
-      <!-- PRODUTOS -->
-      <div class="section-block open" id="sb-produtos">
-        <div class="section-block-header" onclick="toggleSection('sb-produtos')">
-          <div class="sb-icon gold">📦</div>
-          <h3>Produtos / Serviços</h3>
-          <span class="sb-count" id="count-produtos">0 adicionados</span>
-          <span class="sb-chevron">▼</span>
+      <!-- Header da ferramenta -->
+      <header class="tool-header">
+        <a href="../ferramentas.html" style="color:var(--muted-foreground);text-decoration:none;font-size:1.2rem;flex-shrink:0">←</a>
+        <div class="tool-header-info">
+          <h1>⚖️ Comparador Inteligente</h1>
+          <p>Compare produtos e serviços com critérios objetivos e subjetivos ponderados</p>
         </div>
-        <div class="section-block-body">
-          <div class="tip"><b>Dica:</b> Adicione todos os produtos que deseja comparar. O preço é o custo total no período analisado.</div>
-          <div class="products-grid" id="products-grid"></div>
-          <button class="btn-add" onclick="addProduct()">＋ Adicionar produto</button>
+        <button id="mobile-toggle" class="mobile-toggle">☰</button>
+        <button class="btn-new" onclick="openModal()">+ Nova Comparação</button>
+      </header>
+
+      <!-- Lista de comparações -->
+      <div id="list-container">
+        <div class="empty-state" id="empty-state">
+          <div class="icon">📊</div>
+          <p>Nenhuma comparação ainda.<br>Clique em <b>+ Nova Comparação</b> para começar.</p>
         </div>
       </div>
 
-      <!-- PARÂMETROS OBJETIVOS -->
-      <div class="section-block" id="sb-obj">
-        <div class="section-block-header" onclick="toggleSection('sb-obj')">
-          <div class="sb-icon green">📐</div>
-          <h3>Parâmetros Objetivos</h3>
-          <span class="sb-count" id="count-obj">0 adicionados</span>
-          <span class="sb-chevron">▼</span>
+    </div><!-- /container -->
+  </main>
+
+  <!-- MODAL -->
+  <div class="modal-overlay" id="modal-overlay">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 id="modal-title">Nova Comparação</h2>
+        <button class="btn-close" onclick="closeModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="val-error" id="val-error"></div>
+
+        <!-- Nome da comparação -->
+        <div class="field-group">
+          <label class="field-label">Nome da comparação</label>
+          <input class="field-input" id="comp-name" placeholder="Ex: Whey Protein — Melhor custo-benefício" />
         </div>
-        <div class="section-block-body">
-          <div class="tip"><b>Parâmetros com valor numérico e unidade</b> (ex: 200 g, 500 ml). O sistema calcula o custo por unidade automaticamente e ranqueia do mais barato ao mais caro.</div>
-          <div class="param-table-wrap" id="obj-table-wrap">
-            <table class="param-table" id="obj-table">
-              <thead id="obj-thead"></thead>
-              <tbody id="obj-tbody"></tbody>
-            </table>
+
+        <!-- PRODUTOS -->
+        <div class="section-block open" id="sb-produtos">
+          <div class="section-block-header" onclick="toggleSection('sb-produtos')">
+            <div class="sb-icon gold">📦</div>
+            <h3>Produtos / Serviços</h3>
+            <span class="sb-count" id="count-produtos">0 adicionados</span>
+            <span class="sb-chevron">▼</span>
           </div>
-          <button class="btn-add" onclick="addObjParam()">＋ Adicionar parâmetro objetivo</button>
-        </div>
-      </div>
-
-      <!-- PARÂMETROS SUBJETIVOS -->
-      <div class="section-block" id="sb-subj">
-        <div class="section-block-header" onclick="toggleSection('sb-subj')">
-          <div class="sb-icon blue">💬</div>
-          <h3>Parâmetros Subjetivos</h3>
-          <span class="sb-count" id="count-subj">0 adicionados</span>
-          <span class="sb-chevron">▼</span>
-        </div>
-        <div class="section-block-body">
-          <div class="tip"><b>Critérios qualitativos</b> — classifique de 1 (melhor) a N (pior). Empates são permitidos, mas a sequência deve ser válida. O sistema valida antes de salvar.</div>
-          <div class="param-table-wrap" id="subj-table-wrap">
-            <table class="param-table" id="subj-table">
-              <thead id="subj-thead"></thead>
-              <tbody id="subj-tbody"></tbody>
-            </table>
+          <div class="section-block-body">
+            <div class="tip"><b>Dica:</b> Adicione todos os produtos que deseja comparar. O preço é o custo total no período analisado.</div>
+            <div class="products-grid" id="products-grid"></div>
+            <button class="btn-add" onclick="addProduct()">＋ Adicionar produto</button>
           </div>
-          <button class="btn-add" onclick="addSubjParam()">＋ Adicionar parâmetro subjetivo</button>
+        </div>
+
+        <!-- PARÂMETROS OBJETIVOS -->
+        <div class="section-block" id="sb-obj">
+          <div class="section-block-header" onclick="toggleSection('sb-obj')">
+            <div class="sb-icon green">📐</div>
+            <h3>Parâmetros Objetivos</h3>
+            <span class="sb-count" id="count-obj">0 adicionados</span>
+            <span class="sb-chevron">▼</span>
+          </div>
+          <div class="section-block-body">
+            <div class="tip"><b>Parâmetros com valor numérico e unidade</b> (ex: 200 g, 500 ml). O sistema calcula o custo por unidade automaticamente e ranqueia do mais barato ao mais caro.</div>
+            <div class="param-table-wrap" id="obj-table-wrap">
+              <table class="param-table" id="obj-table">
+                <thead id="obj-thead"></thead>
+                <tbody id="obj-tbody"></tbody>
+              </table>
+            </div>
+            <button class="btn-add" onclick="addObjParam()">＋ Adicionar parâmetro objetivo</button>
+          </div>
+        </div>
+
+        <!-- PARÂMETROS SUBJETIVOS -->
+        <div class="section-block" id="sb-subj">
+          <div class="section-block-header" onclick="toggleSection('sb-subj')">
+            <div class="sb-icon blue">💬</div>
+            <h3>Parâmetros Subjetivos</h3>
+            <span class="sb-count" id="count-subj">0 adicionados</span>
+            <span class="sb-chevron">▼</span>
+          </div>
+          <div class="section-block-body">
+            <div class="tip"><b>Critérios qualitativos</b> — classifique de 1 (melhor) a N (pior). Empates são permitidos, mas a sequência deve ser válida. O sistema valida antes de salvar.</div>
+            <div class="param-table-wrap" id="subj-table-wrap">
+              <table class="param-table" id="subj-table">
+                <thead id="subj-thead"></thead>
+                <tbody id="subj-tbody"></tbody>
+              </table>
+            </div>
+            <button class="btn-add" onclick="addSubjParam()">＋ Adicionar parâmetro subjetivo</button>
+          </div>
         </div>
       </div>
-    </div>
-    <div class="modal-footer">
-      <button class="btn-cancel" onclick="closeModal()">Cancelar</button>
-      <button class="btn-save" onclick="saveComparison()">Salvar e Calcular ▶</button>
+      <div class="modal-footer">
+        <button class="btn-cancel" onclick="closeModal()">Cancelar</button>
+        <button class="btn-save" onclick="saveComparison()">Salvar e Calcular ▶</button>
+      </div>
     </div>
   </div>
-</div>
 
 <script>
 /* ═══════════════════════════════════════════════════════════
@@ -710,7 +799,6 @@ function renderAll() {
 function addProduct() {
   const id = pidCounter++;
   tmpProducts.push({ id, name: '', price: 0 });
-  // Inicializar hasParam para todos os parâmetros existentes
   tmpObjParams.forEach(p => { p.hasParam[id] = true; p.values[id] = 0; });
   tmpSubjParams.forEach(p => { p.hasParam[id] = true; p.rankings[id] = 1; });
   renderAll();
@@ -726,7 +814,6 @@ function removeProduct(pid) {
 function updateProductName(pid, val) {
   const p = tmpProducts.find(x=>x.id===pid);
   if (p) p.name = val;
-  // Atualiza cabeçalhos das tabelas sem re-render completo
   updateTableHeaders();
 }
 
@@ -794,7 +881,6 @@ function removeObjParam(id) {
 function updateObjParam(id, field, val) {
   const p = tmpObjParams.find(x=>x.id===id);
   if (p) p[field] = val;
-  if (field === 'name' || field === 'unit') updateObjParamHeader(id);
 }
 
 function updateObjValue(paramId, pid, val) {
@@ -810,12 +896,6 @@ function toggleObjHas(paramId, pid, checked) {
   if (p) p.hasParam[pid] = checked;
 }
 
-function updateObjParamHeader(id) {
-  // Atualiza apenas o header da linha sem re-render
-  const p = tmpObjParams.find(x=>x.id===id);
-  if (!p) return;
-}
-
 function renderObjTable() {
   const n = tmpProducts.length;
   document.getElementById('count-obj').textContent = `${tmpObjParams.length} adicionado${tmpObjParams.length!==1?'s':''}`;
@@ -826,7 +906,6 @@ function renderObjTable() {
     return;
   }
 
-  // Cabeçalho
   let thead = `<tr>
     <th class="td-name">Parâmetro</th>
     <th class="td-unit">Unidade</th>
@@ -838,7 +917,6 @@ function renderObjTable() {
   thead += `<th class="td-del"></th></tr>`;
   document.getElementById('obj-thead').innerHTML = thead;
 
-  // Linhas
   let tbody = '';
   tmpObjParams.forEach(param => {
     tbody += `<tr>
@@ -848,8 +926,7 @@ function renderObjTable() {
           oninput="updateObjParam(${param.id},'name',this.value)" />
       </td>
       <td class="td-unit">
-        <input value="${escHtml(param.unit)}" placeholder="un, ml, g..."
-          id="opunit-${param.id}"
+        <input id="opunit-${param.id}" value="${escHtml(param.unit)}" placeholder="g, ml, km..."
           oninput="updateObjParam(${param.id},'unit',this.value)" />
       </td>
       <td class="td-imp">
@@ -859,16 +936,16 @@ function renderObjTable() {
       </td>`;
     tmpProducts.forEach(p => {
       const has = param.hasParam[p.id] !== false;
-      const val = param.values[p.id] || '';
+      const val = param.values[p.id] || 0;
       tbody += `
       <td class="td-has">
         <input type="checkbox" class="has-check" ${has?'checked':''}
           onchange="toggleObjHas(${param.id},${p.id},this.checked)" title="Produto tem este parâmetro" />
       </td>
       <td class="td-rank">
-        <input type="text" value="${val}" placeholder="0"
-          ${!has?'disabled style="opacity:.3"':''}
+        <input type="number" min="0" step="any" value="${val||''}" placeholder="0"
           id="oval-${param.id}-${p.id}"
+          ${!has?'disabled style="opacity:.3"':''}
           oninput="updateObjValue(${param.id},${p.id},this.value)" />
       </td>`;
     });
@@ -946,7 +1023,6 @@ function renderSubjTable() {
     tmpProducts.forEach(p => {
       const has = param.hasParam[p.id] !== false;
       const rank = param.rankings[p.id] || 1;
-      // Gerar opções 1..n
       const opts = Array.from({length:n},(_,i)=>i+1).map(v =>
         `<option value="${v}"${v===rank?' selected':''}>${v}º</option>`
       ).join('');
@@ -971,26 +1047,16 @@ function renderSubjTable() {
    ATUALIZAR CABEÇALHOS SEM RE-RENDER
 ═══════════════════════════════════════════════════════════ */
 function updateTableHeaders() {
-  // Atualiza os th de nome dos produtos nas tabelas de parâmetros
   renderObjTable();
   renderSubjTable();
 }
 
 /* ═══════════════════════════════════════════════════════════
    VALIDAÇÃO DE RANKING SUBJETIVO
-   Regra: a sequência de classificações (ordenada) deve ser válida.
-   Válida = sem buracos considerando empates.
-   Ex: [1,1,3,3,3,3,7,8,9,10] é válida para n=10
-   Inválida: [1,1,2,2,5] para n=5 — o 5 deveria ser 5 (ok), mas 1,1,2,2 → próximo é 5, não 3
-   
-   Algoritmo de validação:
-   - Ordena as posições
-   - Percorre grupo por grupo
-   - Cada grupo começa na posição = índice_do_primeiro_elemento + 1
-   - Se não, inválido
+   Regra: posições repetidas devem pular os seguintes
+   Ex: [1,1,3] válido; [1,1,2] inválido
 ═══════════════════════════════════════════════════════════ */
 function validateRanking(ranks) {
-  // ranks: array de números (apenas os produtos que TÊM o parâmetro)
   if (ranks.length === 0) return { valid: true };
   const sorted = [...ranks].sort((a,b)=>a-b);
   let i = 0;
@@ -1009,10 +1075,8 @@ function validateRanking(ranks) {
    SINCRONIZAR VALORES DOS INPUTS ANTES DE SALVAR
 ═══════════════════════════════════════════════════════════ */
 function syncAllInputs() {
-  // Nome da comparação
   tmpName = document.getElementById('comp-name').value.trim();
 
-  // Produtos
   tmpProducts.forEach(p => {
     const nameEl = document.getElementById('pname-'+p.id);
     if (nameEl) p.name = nameEl.value.trim();
@@ -1023,7 +1087,6 @@ function syncAllInputs() {
     }
   });
 
-  // Parâmetros objetivos
   tmpObjParams.forEach(param => {
     const nameEl = document.getElementById('opname-'+param.id);
     if (nameEl) param.name = nameEl.value.trim();
@@ -1038,7 +1101,6 @@ function syncAllInputs() {
     });
   });
 
-  // Parâmetros subjetivos — os selects já atualizam via onchange
   tmpSubjParams.forEach(param => {
     const nameEl = document.getElementById('spname-'+param.id);
     if (nameEl) param.name = nameEl.value.trim();
@@ -1059,12 +1121,10 @@ function saveComparison() {
     if (!p.name) errors.push(`Um produto está sem nome.`);
   });
 
-  // Verificar parâmetro "top" duplicado
   const allParams = [...tmpObjParams, ...tmpSubjParams];
   const topCount = allParams.filter(p=>p.importance==='top').length;
   if (topCount > 1) errors.push(`Apenas UM parâmetro pode ser "O mais importante de todos". Você marcou ${topCount}.`);
 
-  // Validar rankings subjetivos
   tmpSubjParams.forEach(param => {
     const presentPids = tmpProducts.filter(p => param.hasParam[p.id] !== false).map(p=>p.id);
     if (presentPids.length === 0) return;
@@ -1081,7 +1141,6 @@ function saveComparison() {
     return;
   }
 
-  // Calcular resultado
   const result = calcResult();
 
   const comp = {
@@ -1114,7 +1173,7 @@ function calcResult() {
   const scores = {};
   tmpProducts.forEach(p => { scores[p.id] = 0; });
 
-  const breakdown = []; // { paramName, type, importance, weight, perProduct:{pid:{score,detail,formula}} }
+  const breakdown = [];
 
   // ── PARÂMETROS OBJETIVOS ──
   tmpObjParams.forEach(param => {
@@ -1122,7 +1181,6 @@ function calcResult() {
     const presentPids = tmpProducts.filter(p => param.hasParam[p.id] !== false).map(p=>p.id);
     const absentPids  = tmpProducts.filter(p => param.hasParam[p.id] === false).map(p=>p.id);
 
-    // Calcular custo/unidade para os presentes
     const costPerUnit = {};
     presentPids.forEach(pid => {
       const prod = tmpProducts.find(p=>p.id===pid);
@@ -1130,7 +1188,6 @@ function calcResult() {
       costPerUnit[pid] = qty > 0 && prod.price > 0 ? prod.price / qty : null;
     });
 
-    // Normalizar: menor custo/unidade = melhor = 1.0
     const validCosts = presentPids.filter(pid => costPerUnit[pid] !== null).map(pid => costPerUnit[pid]);
     const minCost = validCosts.length > 0 ? Math.min(...validCosts) : null;
 
@@ -1138,7 +1195,6 @@ function calcResult() {
     tmpProducts.forEach(p => {
       const pid = p.id;
       if (absentPids.includes(pid)) {
-        // Ausente: aplica consequência conforme grau
         let score = 0, detail = '—', formula = '—';
         if (w > 0) {
           score = 0;
@@ -1165,16 +1221,11 @@ function calcResult() {
           detail = '—';
           formula = '0';
         } else {
-          const norm = minCost / cpu; // 0..1, melhor=1
+          const norm = minCost / cpu;
           if (w >= 0) {
             score = norm * w * 10;
             formula = `(${fmtN(minCost)}/${fmtN(cpu)}) × ${w} × 10 = ${score.toFixed(2)}`;
           } else {
-            // Peso negativo: pior custo = mais penalizado
-            const invNorm = cpu / minCost; // pior=maior
-            score = invNorm * w * 10; // negativo × negativo = positivo para o melhor
-            // Mas queremos penalizar quem tem custo alto com peso negativo:
-            // quem tem menor custo (norm=1) recebe menos penalidade
             score = norm * Math.abs(w) * 10 * -1 + Math.abs(w) * 10;
             formula = `bônus_inv(${fmtN(cpu)}/${fmtN(minCost)}) × |${w}| × 10 = ${score.toFixed(2)}`;
           }
@@ -1227,13 +1278,11 @@ function calcResult() {
         if (nPresent === 0) {
           detail = '—';
         } else {
-          // Normalização: rank 1 = melhor = 1.0, rank nPresent = pior = 1/nPresent
           const norm = (nPresent - rank + 1) / nPresent;
           if (w >= 0) {
             score = norm * w * 10;
             formula = `((${nPresent}-${rank}+1)/${nPresent}) × ${w} × 10 = ${score.toFixed(2)}`;
           } else {
-            // Peso negativo: pior rank = menos penalizado
             const invNorm = rank / nPresent;
             score = invNorm * Math.abs(w) * 10;
             formula = `(${rank}/${nPresent}) × |${w}| × 10 = ${score.toFixed(2)}`;
@@ -1254,7 +1303,6 @@ function calcResult() {
     });
   });
 
-  // Ordenar por score desc
   const ranking = tmpProducts
     .map(p => ({ ...p, score: scores[p.id] }))
     .sort((a,b) => b.score - a.score);
@@ -1276,13 +1324,11 @@ function renderList() {
 
   if (comparisons.length === 0) {
     empty.style.display = 'block';
-    // Remove all cards
     container.querySelectorAll('.comp-card').forEach(el=>el.remove());
     return;
   }
   empty.style.display = 'none';
 
-  // Rebuild
   container.querySelectorAll('.comp-card').forEach(el=>el.remove());
   comparisons.forEach(comp => {
     const card = document.createElement('div');
@@ -1333,7 +1379,6 @@ function renderResult(comp) {
   const medals = ['🥇','🥈','🥉','4️⃣','5️⃣','6️⃣','7️⃣','8️⃣','9️⃣','🔟'];
   const rankLabels = ['1ª opção','2ª opção','3ª opção','4ª opção','5ª opção'];
 
-  // Pódio
   let podium = '<div class="podium-grid">';
   ranking.forEach((p,i) => {
     podium += `
@@ -1347,7 +1392,6 @@ function renderResult(comp) {
   });
   podium += '</div>';
 
-  // Parecer
   const best = ranking[0];
   const second = ranking[1];
   const diff = second ? ((best.score - second.score) / second.score * 100) : 0;
@@ -1356,7 +1400,6 @@ function renderResult(comp) {
   else if (diff < 20) parecer = `<b>${escHtml(best.name)}</b> é a melhor opção com <b>vantagem moderada</b> (${diff.toFixed(1)}% à frente de ${escHtml(second?.name||'')} nos critérios ponderados).`;
   else parecer = `<b>${escHtml(best.name)}</b> é a melhor opção com <b>vantagem expressiva</b> (${diff.toFixed(1)}% à frente de ${escHtml(second?.name||'')}). A análise aponta claramente para esta escolha.`;
 
-  // Alertas de inaceitável
   const inacAlerts = [];
   [...comp.objParams, ...comp.subjParams].forEach(param => {
     if (param.importance === 'inac') {
@@ -1374,11 +1417,9 @@ function renderResult(comp) {
     ${inacAlerts.map(a=>`<p style="margin-top:8px;color:var(--red-lt)">${a}</p>`).join('')}
   </div>`;
 
-  // Memória de cálculo
   const memId = 'mem-'+comp.id;
   const chartId = 'chart-'+comp.id;
 
-  // Tabela de breakdown
   let memTable = `<div class="mem-section-title">Detalhamento por parâmetro</div>
     <div style="overflow-x:auto">
     <table class="mem-table">
@@ -1396,7 +1437,7 @@ function renderResult(comp) {
       <td><b>${escHtml(row.paramName)}</b>${row.unit?` <span class="text-dim">(${escHtml(row.unit)})</span>`:''}</td>
       <td>${row.type}</td>
       <td><span class="imp-badge ${impCls(row.importance)}">${impLabel(row.importance)}</span></td>
-      <td style="text-align:center;font-weight:700;color:${row.weight>0?'var(--green-lt)':row.weight<0?'var(--red-lt)':'var(--text-dim)'}">${row.weight>0?'+':''}${row.weight}</td>
+      <td style="text-align:center;font-weight:700;color:${row.weight>0?'var(--green-lt)':row.weight<0?'var(--red-lt)':'var(--muted-foreground)'}">${row.weight>0?'+':''}${row.weight}</td>
       ${ranking.map(p => {
         const pp = row.perProduct[p.id];
         if (!pp) return '<td>—</td>';
@@ -1409,13 +1450,11 @@ function renderResult(comp) {
     </tr>`;
   });
 
-  // Total
   memTable += `<tr class="total-row">
     <td colspan="4"><b>PONTUAÇÃO TOTAL</b></td>
     ${ranking.map(p=>`<td class="score-cell" style="font-size:1rem">${p.score.toFixed(2)}</td>`).join('')}
   </tr></tbody></table></div>`;
 
-  // Fórmula explicada
   let formula = `<div class="mem-section-title">Como o cálculo funciona</div>
     <div class="tip" style="margin-bottom:8px">
       <b>Parâmetros Objetivos:</b> normaliza pelo custo/unidade — quem entrega mais por real pago recebe pontuação maior.<br>
@@ -1425,11 +1464,10 @@ function renderResult(comp) {
       <b>Ausência de parâmetro:</b> grau positivo → penalidade máxima (0 pts) · grau negativo → bônus máximo.
     </div>`;
 
-  // Gráfico de barras
   const chartData = {
     labels: ranking.map(p=>p.name),
     scores: ranking.map(p=>p.score),
-    colors: ranking.map((_,i)=>i===0?'rgba(201,162,39,0.85)':'rgba(46,125,50,0.6)'),
+    colors: ranking.map((_,i)=>i===0?'rgba(212,175,55,0.85)':'rgba(46,125,50,0.6)'),
   };
 
   const mem = `
@@ -1443,7 +1481,6 @@ function renderResult(comp) {
       ${formula}
     </div>`;
 
-  // Script para inicializar gráfico após render
   setTimeout(() => {
     const ctx = document.getElementById(chartId);
     if (ctx && !ctx._chartInitialized) {
@@ -1472,8 +1509,8 @@ function renderResult(comp) {
             }
           },
           scales: {
-            x: { ticks: { color: '#8aab8e' }, grid: { color: '#1e3d24' } },
-            y: { ticks: { color: '#8aab8e' }, grid: { color: '#1e3d24' }, beginAtZero: true }
+            x: { ticks: { color: '#A0B8A6' }, grid: { color: 'rgba(212,175,55,0.1)' } },
+            y: { ticks: { color: '#A0B8A6' }, grid: { color: 'rgba(212,175,55,0.1)' }, beginAtZero: true }
           }
         }
       });
