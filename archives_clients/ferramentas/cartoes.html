@@ -1,403 +1,1397 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Comparador de Cartões - MithraSF</title>
-    <link rel="stylesheet" href="../assets/style.css">
-    <script src="../assets/layout.js" defer></script>
-    <style>
-        /* Specific styles for Cartoes to match Images 06/07/08 */
-        .input-card {
-            background-color: rgba(255, 255, 255, 0.02);
-            border: 1px solid rgba(255, 255, 255, 0.05);
-            border-radius: 12px;
-            padding: 2rem;
-            margin-bottom: 2rem;
-        }
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Comparador de Cartões - MithraSF</title>
+<link rel="stylesheet" href="../assets/style.css">
+<script src="../assets/layout.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+  :root {
+    --bg3:      #0a2e14;
+    --gold:     #D4AF37;
+    --gold-dim: #B8860B;
+    --green-lt: #4caf50;
+    --red:      #c62828;
+    --red-lt:   #ef5350;
+    --amber:    #f57f17;
+    --amber-lt: #ffb300;
+    --shadow:   0 4px 24px rgba(0,0,0,0.5);
+    --blue:     #1e88e5;
+    --blue-lt:  #64b5f6;
+  }
 
-        .section-title {
-            color: #eab308; /* Yellow-500 */
-            font-weight: bold;
-            margin-bottom: 1.5rem;
-            font-size: 1.1rem;
-        }
+  /* ── TOOL HEADER ── */
+  .tool-header {
+    display: flex; align-items: center; gap: 14px;
+    margin-bottom: 2rem; flex-wrap: wrap;
+  }
+  .tool-header-info { flex: 1; min-width: 0; }
+  .tool-header-info h1 {
+    font-size: 1.4rem; font-weight: 700;
+    color: var(--primary); margin: 0 0 4px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .tool-header-info p { font-size: .82rem; color: var(--muted-foreground); margin: 0; }
+  .btn-new {
+    background: var(--primary); color: var(--primary-foreground);
+    border: none; border-radius: var(--radius);
+    padding: 10px 20px; font-weight: 700; font-size: .9rem;
+    cursor: pointer; transition: background .2s;
+    white-space: nowrap; flex-shrink: 0;
+  }
+  .btn-new:hover { background: var(--secondary); }
 
-        .input-group { margin-bottom: 1rem; }
-        .input-group label { display: block; font-size: 0.85rem; color: #9ca3af; margin-bottom: 0.5rem; font-weight: 600; }
-        .input-group input {
-            width: 100%;
-            background-color: rgba(0, 0, 0, 0.3);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 6px;
-            padding: 0.75rem;
-            color: white;
-            font-size: 1rem;
-        }
-        .input-group input:focus { outline: none; border-color: var(--primary-color); }
+  /* ── CONTEXTO GLOBAL ── */
+  .ctx-bar {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px 20px;
+    margin-bottom: 20px;
+    display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+  }
+  .ctx-bar-title {
+    font-size: .72rem; font-weight: 700;
+    text-transform: uppercase; letter-spacing: .06em;
+    color: var(--gold); flex-shrink: 0;
+  }
+  .ctx-fields { display: flex; gap: 12px; flex-wrap: wrap; flex: 1; }
+  .ctx-field { display: flex; flex-direction: column; gap: 4px; min-width: 130px; }
+  .ctx-field label { font-size: .72rem; font-weight: 600; color: var(--muted-foreground); text-transform: uppercase; letter-spacing: .04em; }
+  .ctx-field input {
+    background: var(--bg3); border: 1px solid var(--border);
+    border-radius: 6px; color: var(--foreground);
+    padding: 7px 10px; font-size: .88rem; outline: none;
+    transition: border-color .2s; width: 100%;
+  }
+  .ctx-field input:focus { border-color: var(--gold); }
+  .ctx-dolar-badge {
+    background: rgba(212,175,55,.1); border: 1px solid var(--gold-dim);
+    border-radius: 6px; padding: 6px 12px;
+    font-size: .82rem; color: var(--gold); font-weight: 700;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .ctx-dolar-badge .live { width: 8px; height: 8px; border-radius: 50%; background: var(--green-lt); animation: pulse 1.5s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
 
-        .card-title-a { color: #a855f7; font-weight: bold; margin-bottom: 1rem; } /* Purple */
-        .card-title-b { color: #3b82f6; font-weight: bold; margin-bottom: 1rem; } /* Blue */
+  /* ── EMPTY STATE ── */
+  .empty-state { text-align: center; padding: 60px 20px; color: var(--muted-foreground); }
+  .empty-state .icon { font-size: 3rem; margin-bottom: 12px; }
+  .empty-state p { font-size: .95rem; }
 
-        .action-btn {
-            width: 100%;
-            background-color: #a855f7; /* Purple-500 */
-            color: white;
-            font-weight: bold;
-            padding: 1rem;
-            border-radius: 8px;
-            border: none;
-            cursor: pointer;
-            transition: background-color 0.2s;
-            font-size: 1rem;
-            margin-top: 1rem;
-        }
-        .action-btn:hover { background-color: #9333ea; }
+  /* ── CARD DE COMPARAÇÃO ── */
+  .comp-card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: var(--radius); margin-bottom: 14px; overflow: hidden;
+    transition: border-color .2s;
+  }
+  .comp-card:hover { border-color: var(--gold-dim); }
+  .comp-card-header {
+    display: flex; align-items: center;
+    padding: 16px 20px; cursor: pointer; gap: 12px;
+    user-select: none; flex-wrap: wrap;
+  }
+  .comp-card-header .chevron {
+    width: 22px; height: 22px; border: 2px solid var(--muted-foreground);
+    border-radius: 50%; display: flex; align-items: center; justify-content: center;
+    font-size: .7rem; transition: transform .25s, border-color .2s; flex-shrink: 0;
+  }
+  .comp-card.open .comp-card-header .chevron { transform: rotate(180deg); border-color: var(--gold); }
+  .comp-card-header .comp-title { font-weight: 600; font-size: 1rem; flex: 1; min-width: 120px; }
+  .comp-card-header .comp-meta { font-size: .78rem; color: var(--muted-foreground); }
+  .comp-card-header .winner-badge {
+    background: var(--gold); color: #000;
+    border-radius: 20px; padding: 3px 10px; font-size: .75rem; font-weight: 700;
+  }
+  .comp-card-actions { display: flex; gap: 8px; }
+  .btn-icon {
+    background: var(--bg3); border: 1px solid var(--border);
+    color: var(--muted-foreground); border-radius: 6px;
+    padding: 5px 10px; font-size: .78rem; cursor: pointer; transition: all .2s;
+  }
+  .btn-icon:hover { border-color: var(--gold); color: var(--gold); }
+  .btn-icon.danger:hover { border-color: var(--red-lt); color: var(--red-lt); }
+  .comp-card-body { display: none; padding: 0 20px 20px; }
+  .comp-card.open .comp-card-body { display: block; }
 
-        /* Result Styles */
-        .result-header {
-            background-color: #a855f7; /* Purple-500 */
-            color: white;
-            text-align: center;
-            padding: 1rem;
-            border-radius: 8px 8px 0 0;
-            font-weight: bold;
-        }
+  /* ── MODAL ── */
+  .modal-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,.78); z-index: 1000;
+    align-items: flex-start; justify-content: center;
+    padding: 20px; overflow-y: auto;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 14px; width: 100%; max-width: 960px;
+    margin: auto; box-shadow: var(--shadow);
+    animation: slideIn .2s ease;
+  }
+  @keyframes slideIn { from{transform:translateY(-20px);opacity:0} to{transform:translateY(0);opacity:1} }
+  .modal-header {
+    padding: 22px 24px 16px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 12px;
+  }
+  .modal-header h2 { font-size: 1.1rem; font-weight: 700; flex: 1; color: var(--foreground); margin: 0; }
+  .btn-close {
+    background: none; border: none; color: var(--muted-foreground);
+    font-size: 1.3rem; cursor: pointer; padding: 4px 8px;
+    border-radius: 6px; transition: color .2s;
+  }
+  .btn-close:hover { color: var(--foreground); }
+  .modal-body { padding: 22px 24px; }
+  .modal-footer {
+    padding: 16px 24px; border-top: 1px solid var(--border);
+    display: flex; align-items: center; gap: 10px;
+    justify-content: flex-end; flex-wrap: wrap;
+  }
 
-        .winner-box {
-            text-align: center;
-            padding: 2rem;
-            background-color: rgba(255, 255, 255, 0.02);
-            border: 1px solid rgba(255, 255, 255, 0.05);
-            border-top: none;
-            margin-bottom: 2rem;
-        }
-        
-        .trophy-icon {
-            font-size: 3rem;
-            color: #eab308;
-            margin-bottom: 1rem;
-            display: block;
-        }
+  /* ── FORM ── */
+  .field-group { margin-bottom: 18px; }
+  .field-label {
+    display: block; font-size: .8rem; font-weight: 600;
+    color: var(--muted-foreground); text-transform: uppercase;
+    letter-spacing: .05em; margin-bottom: 7px;
+  }
+  .field-input {
+    width: 100%; background: var(--bg3); border: 1px solid var(--border);
+    border-radius: 8px; color: var(--foreground);
+    padding: 10px 14px; font-size: .95rem; transition: border-color .2s; outline: none;
+  }
+  .field-input:focus { border-color: var(--gold); box-shadow: 0 0 0 2px rgba(212,175,55,.15); }
+  .field-input::placeholder { color: var(--muted-foreground); }
+  select.field-input { cursor: pointer; }
 
-        .winner-name { font-size: 2rem; font-weight: bold; color: white; margin-bottom: 0.5rem; }
-        .winner-subtitle { color: #9ca3af; font-size: 0.9rem; }
+  /* ── SECTION BLOCKS ── */
+  .section-block {
+    background: var(--bg3); border: 1px solid var(--border);
+    border-radius: var(--radius); margin-bottom: 14px; overflow: hidden;
+  }
+  .section-block-header {
+    display: flex; align-items: center;
+    padding: 14px 18px; cursor: pointer; gap: 10px; user-select: none;
+  }
+  .section-block-header .sb-icon {
+    width: 32px; height: 32px; border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1rem; flex-shrink: 0;
+  }
+  .sb-icon.gold  { background: rgba(212,175,55,.15); }
+  .sb-icon.green { background: rgba(46,125,50,.2); }
+  .sb-icon.blue  { background: rgba(30,100,200,.2); }
+  .section-block-header h3 { font-size: .95rem; font-weight: 600; flex: 1; color: var(--foreground); margin: 0; }
+  .section-block-header .sb-count {
+    font-size: .75rem; background: var(--card); border: 1px solid var(--border);
+    border-radius: 20px; padding: 2px 9px; color: var(--muted-foreground);
+  }
+  .section-block-header .sb-chevron { font-size: .7rem; color: var(--muted-foreground); transition: transform .2s; }
+  .section-block.open .section-block-header .sb-chevron { transform: rotate(180deg); }
+  .section-block-body { display: none; padding: 0 18px 18px; }
+  .section-block.open .section-block-body { display: block; }
 
-        .comparison-grid {
-            display: grid;
-            md:grid-template-columns: 1fr 1fr;
-            gap: 2rem;
-        }
+  /* ── CARTÕES GRID ── */
+  .cards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+    gap: 10px; margin-bottom: 12px;
+  }
+  .card-item {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 8px; padding: 14px; position: relative;
+  }
+  .card-item .ci-num {
+    font-size: .7rem; color: var(--gold); font-weight: 700;
+    text-transform: uppercase; letter-spacing: .05em; margin-bottom: 8px;
+  }
+  .card-item .ci-del {
+    position: absolute; top: 8px; right: 8px;
+    background: none; border: none; color: var(--muted-foreground);
+    cursor: pointer; font-size: .85rem; padding: 2px 5px;
+    border-radius: 4px; transition: color .2s;
+  }
+  .card-item .ci-del:hover { color: var(--red-lt); }
+  .card-item .field-input { font-size: .88rem; padding: 7px 10px; }
+  .card-item .field-label { font-size: .72rem; margin-bottom: 4px; }
 
-        .card-result {
-            background-color: rgba(255, 255, 255, 0.02);
-            border: 1px solid rgba(255, 255, 255, 0.05);
-            border-radius: 12px;
-            padding: 1.5rem;
-        }
+  /* ── PRÉ-PREENCHIMENTO ── */
+  .prefill-bar {
+    background: rgba(212,175,55,.06); border: 1px solid rgba(212,175,55,.2);
+    border-radius: 8px; padding: 10px 12px; margin-top: 8px;
+    display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  }
+  .prefill-bar .pf-label { font-size: .72rem; font-weight: 700; color: var(--gold); flex-shrink: 0; }
+  .prefill-bar select {
+    background: var(--bg3); border: 1px solid var(--border);
+    border-radius: 6px; color: var(--foreground);
+    padding: 5px 8px; font-size: .78rem; outline: none; cursor: pointer; flex: 1; min-width: 100px;
+  }
+  .prefill-bar .btn-prefill {
+    background: var(--gold); color: #000;
+    border: none; border-radius: 6px; padding: 5px 12px;
+    font-size: .78rem; font-weight: 700; cursor: pointer; transition: background .2s; flex-shrink: 0;
+  }
+  .prefill-bar .btn-prefill:hover { background: var(--gold-dim); }
 
-        .result-value-green { color: #10b981; font-size: 1.5rem; font-weight: bold; margin: 0.5rem 0; }
-        .result-value-red { color: #ef4444; font-size: 1.5rem; font-weight: bold; margin: 0.5rem 0; }
-        
-        .result-tag { font-size: 0.8rem; color: #9ca3af; }
+  /* ── PARÂMETROS OBJETIVOS ── */
+  .param-table-wrap { overflow-x: auto; margin-bottom: 12px; -webkit-overflow-scrolling: touch; }
+  .param-table {
+    width: 100%; border-collapse: collapse; font-size: .83rem; min-width: 480px;
+  }
+  .param-table th {
+    background: var(--card); padding: 9px 12px; text-align: left;
+    font-size: .7rem; font-weight: 700; color: var(--muted-foreground);
+    text-transform: uppercase; letter-spacing: .04em;
+    border-bottom: 1px solid var(--border); white-space: nowrap;
+  }
+  .param-table td {
+    padding: 8px 10px; border-bottom: 1px solid var(--border); vertical-align: middle;
+  }
+  .param-table tr:last-child td { border-bottom: none; }
+  .param-table tr:hover td { background: rgba(255,255,255,.02); }
+  .param-table input, .param-table select {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 6px; color: var(--foreground);
+    padding: 6px 9px; font-size: .82rem; width: 100%; outline: none;
+    transition: border-color .2s;
+  }
+  .param-table input:focus, .param-table select:focus { border-color: var(--gold); }
+  .param-table .td-label { min-width: 160px; font-weight: 600; color: var(--foreground); }
+  .param-table .td-imp { min-width: 180px; }
+  .param-table .td-val { min-width: 100px; }
 
-        .calc-memory {
-            margin-top: 1.5rem;
-            border-top: 1px solid rgba(255, 255, 255, 0.1);
-            padding-top: 1rem;
-        }
-        
-        .memory-row {
-            display: flex;
-            justify-content: space-between;
-            font-size: 0.85rem;
-            margin-bottom: 0.5rem;
-            color: #d1d5db;
-        }
-        .memory-row.red { color: #ef4444; }
-        .memory-row.green { color: #10b981; font-weight: bold; border-top: 1px solid rgba(255, 255, 255, 0.1); padding-top: 0.5rem; margin-top: 0.5rem; }
+  /* ── IMPORTÂNCIA ── */
+  .imp-badge {
+    display: inline-block; border-radius: 20px;
+    padding: 2px 9px; font-size: .72rem; font-weight: 700; white-space: nowrap;
+  }
+  .imp-top   { background: rgba(212,175,55,.2);  color: var(--gold);    border: 1px solid var(--gold-dim); }
+  .imp-muito { background: rgba(76,175,80,.15);  color: var(--green-lt);border: 1px solid #2e7d32; }
+  .imp-imp   { background: rgba(30,136,229,.15); color: #64b5f6;        border: 1px solid #1565c0; }
+  .imp-ind   { background: rgba(120,120,120,.1); color: #9e9e9e;        border: 1px solid #424242; }
+  .imp-nao   { background: rgba(245,127,23,.1);  color: var(--amber-lt);border: 1px solid var(--amber); }
+  .imp-inac  { background: rgba(198,40,40,.15);  color: var(--red-lt);  border: 1px solid var(--red); }
 
-        .miles-power-box {
-            background-color: rgba(59, 130, 246, 0.1);
-            border: 1px solid rgba(59, 130, 246, 0.3);
-            border-radius: 8px;
-            padding: 1.5rem;
-            margin-top: 2rem;
-            display: flex;
-            gap: 1rem;
-        }
-        .plane-icon { font-size: 1.5rem; color: #3b82f6; }
-        .power-title { color: #3b82f6; font-weight: bold; margin-bottom: 0.5rem; }
-        .power-text { font-size: 0.9rem; color: #d1d5db; line-height: 1.4; }
+  /* ── BTN ADD ── */
+  .btn-add {
+    background: none; border: 1px dashed var(--border);
+    color: var(--muted-foreground); border-radius: 8px;
+    padding: 9px 16px; font-size: .83rem; cursor: pointer;
+    transition: all .2s; display: inline-flex; align-items: center; gap: 6px;
+  }
+  .btn-add:hover { border-color: var(--gold); color: var(--gold); }
 
-    </style>
+  /* ── MODAL FOOTER BTNS ── */
+  .btn-cancel {
+    background: none; border: 1px solid var(--border);
+    color: var(--muted-foreground); border-radius: 8px;
+    padding: 10px 20px; font-size: .9rem; cursor: pointer; transition: all .2s;
+  }
+  .btn-cancel:hover { border-color: var(--muted-foreground); color: var(--foreground); }
+  .btn-save {
+    background: var(--gold); color: #000;
+    border: none; border-radius: 8px; padding: 10px 24px;
+    font-size: .9rem; font-weight: 700; cursor: pointer; transition: background .2s;
+  }
+  .btn-save:hover { background: var(--gold-dim); }
+
+  /* ── RESULTADO ── */
+  .podium-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 10px; margin-bottom: 16px;
+  }
+  .podium-card {
+    background: var(--bg3); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 14px 16px; text-align: center;
+  }
+  .podium-card.first { border-color: var(--gold); background: rgba(212,175,55,.07); }
+  .podium-card .pod-rank { font-size: 1.5rem; margin-bottom: 4px; }
+  .podium-card .pod-name { font-weight: 700; font-size: .88rem; margin-bottom: 4px; color: var(--foreground); word-break: break-word; }
+  .podium-card .pod-score { font-size: 1.5rem; font-weight: 800; color: var(--gold); }
+  .podium-card .pod-sub { font-size: .7rem; color: var(--muted-foreground); margin-top: 3px; }
+
+  .parecer-box {
+    background: var(--bg3); border-left: 3px solid var(--gold);
+    border-radius: 0 8px 8px 0; padding: 14px 18px; margin-bottom: 16px;
+    font-size: .9rem; line-height: 1.6;
+  }
+  .parecer-box .parecer-title {
+    font-size: .72rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .06em; color: var(--gold); margin-bottom: 6px;
+  }
+
+  /* ── MEMÓRIA ── */
+  .mem-toggle {
+    background: none; border: 1px solid var(--border);
+    color: var(--muted-foreground); border-radius: 8px;
+    padding: 8px 16px; font-size: .83rem; cursor: pointer; transition: all .2s;
+    display: inline-flex; align-items: center; gap: 6px; margin-bottom: 12px;
+  }
+  .mem-toggle:hover { border-color: var(--gold); color: var(--gold); }
+  .mem-body { display: none; }
+  .mem-body.open { display: block; }
+  .mem-section-title {
+    font-size: .72rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .06em; color: var(--muted-foreground); margin: 16px 0 8px;
+  }
+  .mem-table {
+    width: 100%; border-collapse: collapse; font-size: .8rem;
+    margin-bottom: 16px;
+  }
+  .mem-table th {
+    background: var(--card); padding: 8px 12px; text-align: left;
+    font-size: .7rem; font-weight: 700; color: var(--muted-foreground);
+    text-transform: uppercase; letter-spacing: .04em;
+    border-bottom: 1px solid var(--border); white-space: nowrap;
+  }
+  .mem-table td { padding: 8px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  .mem-table tr:last-child td { border-bottom: none; }
+  .mem-table .total-row td {
+    font-weight: 700; background: rgba(212,175,55,.06);
+    border-top: 2px solid var(--gold-dim);
+  }
+  .mem-table .score-cell { text-align: right; font-weight: 600; }
+  .mem-table .formula-cell { font-family: monospace; font-size: .7rem; color: var(--muted-foreground); }
+
+  .chart-wrap {
+    background: var(--bg3); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 16px; margin-bottom: 16px;
+  }
+  .chart-wrap canvas { max-height: 260px; }
+
+  /* ── VALIDAÇÃO ── */
+  .val-error {
+    background: rgba(198,40,40,.1); border: 1px solid var(--red);
+    border-radius: 8px; padding: 12px 16px; margin-bottom: 14px;
+    font-size: .85rem; color: var(--red-lt); display: none;
+  }
+  .val-error.show { display: block; }
+  .val-error ul { margin: 6px 0 0 16px; }
+  .val-error li { margin-bottom: 3px; }
+
+  /* ── UTILS ── */
+  .tip {
+    background: rgba(212,175,55,.07); border: 1px solid rgba(212,175,55,.2);
+    border-radius: 8px; padding: 10px 14px; font-size: .82rem;
+    color: var(--muted-foreground); margin-bottom: 14px;
+  }
+  .tip b { color: var(--gold); }
+  .text-dim { color: var(--muted-foreground); font-size: .82rem; }
+  .divider { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
+
+  /* ── MODAL SUBJ EDIT ── */
+  .modal-sm {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 14px; width: 100%; max-width: 480px;
+    margin: auto; box-shadow: var(--shadow);
+    animation: slideIn .2s ease;
+  }
+
+  /* ── RESPONSIVIDADE ── */
+  @media (max-width: 768px) {
+    .tool-header { gap: 10px; }
+    .tool-header-info h1 { font-size: 1.1rem; }
+    .btn-new { width: 100%; text-align: center; }
+    .modal-overlay { align-items: flex-end; padding: 0; }
+    .modal { margin: 0; border-radius: 14px 14px 0 0; max-height: 92vh; overflow-y: auto; }
+    .modal-sm { margin: 0; border-radius: 14px 14px 0 0; max-height: 80vh; overflow-y: auto; }
+    .cards-grid { grid-template-columns: 1fr; }
+    .podium-grid { grid-template-columns: repeat(2, 1fr); }
+    .modal-footer { flex-direction: column; }
+    .btn-cancel, .btn-save { width: 100%; text-align: center; }
+    .ctx-bar { flex-direction: column; align-items: flex-start; }
+    .ctx-fields { flex-direction: column; }
+    .ctx-field { min-width: 0; width: 100%; }
+    .winner-badge { display: none; }
+  }
+  @media (max-width: 480px) {
+    .podium-grid { grid-template-columns: 1fr; }
+    .modal-body { padding: 16px; }
+    .modal-header { padding: 16px 16px 12px; }
+  }
+</style>
 </head>
 <body>
-    <!-- Sidebar Container (Injected by layout.js) -->
-    <div id="sidebar-container" class="sidebar"></div>
+  <div id="sidebar-container" class="sidebar"></div>
 
-    <!-- Main Content -->
-    <main class="main-content">
-        <div class="container">
-            <header class="flex items-center gap-4 mb-8">
-                <a href="../ferramentas.html" class="text-gray-400 hover:text-white text-xl">←</a>
-                <div>
-                    <div class="flex items-center gap-2">
-                        <span class="text-purple-500 text-2xl">💳</span>
-                        <h1 class="text-2xl font-bold m-0">Comparador de Cartões</h1>
-                    </div>
-                    <p class="text-gray-400 text-sm">Análise de eficiência: Milhas vs Cashback.</p>
-                </div>
-                <button id="mobile-toggle" class="mobile-toggle ml-auto md:hidden">☰</button>
-            </header>
+  <main class="main-content">
+    <div class="container">
 
-            <!-- Input Section -->
-            <div id="input-section">
-                <!-- Profile Inputs -->
-                <div class="input-card">
-                    <div class="section-title">Parâmetros de Consumo</div>
-                    <div class="grid md:grid-cols-3 gap-4">
-                        <div class="input-group">
-                            <label>Gasto Mensal na Fatura (R$)</label>
-                            <input type="text" id="monthlySpend" placeholder="0,00" oninput="formatCurrency(this)">
-                        </div>
-                        <div class="input-group">
-                            <label>Cotação do Dólar (R$)</label>
-                            <input type="number" id="dollarRate" placeholder="5.20" step="0.01">
-                        </div>
-                        <div class="input-group">
-                            <label>Valor do Milheiro (R$)</label>
-                            <input type="text" id="milesValue" placeholder="28,00" oninput="formatCurrency(this)">
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Cards Comparison Inputs -->
-                <div class="grid md:grid-cols-2 gap-6">
-                    <!-- Card A -->
-                    <div class="input-card">
-                        <div class="card-title-a">Cartão A</div>
-                        
-                        <div class="input-group">
-                            <label>Nome do Cartão</label>
-                            <input type="text" id="nameA" placeholder="Ex: Black">
-                        </div>
-                        
-                        <div class="input-group">
-                            <label>Anuidade (R$)</label>
-                            <input type="text" id="feeA" placeholder="0,00" oninput="formatCurrency(this)">
-                        </div>
-
-                        <div class="grid grid-cols-2 gap-4">
-                            <div class="input-group">
-                                <label>Pontos por Dólar</label>
-                                <input type="number" id="pointsA" placeholder="0" step="0.1">
-                            </div>
-                            <div class="input-group">
-                                <label>Cashback (%)</label>
-                                <input type="number" id="cashbackA" placeholder="0" step="0.1">
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Card B -->
-                    <div class="input-card">
-                        <div class="card-title-b">Cartão B</div>
-                        
-                        <div class="input-group">
-                            <label>Nome do Cartão</label>
-                            <input type="text" id="nameB" placeholder="Ex: Platinum">
-                        </div>
-                        
-                        <div class="input-group">
-                            <label>Anuidade (R$)</label>
-                            <input type="text" id="feeB" placeholder="0,00" oninput="formatCurrency(this)">
-                        </div>
-
-                        <div class="grid grid-cols-2 gap-4">
-                            <div class="input-group">
-                                <label>Pontos por Dólar</label>
-                                <input type="number" id="pointsB" placeholder="0" step="0.1">
-                            </div>
-                            <div class="input-group">
-                                <label>Cashback (%)</label>
-                                <input type="number" id="cashbackB" placeholder="0" step="0.1">
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <button onclick="calculate()" class="action-btn">Gerar Relatório Comparativo</button>
-            </div>
-
-            <!-- Result Section (Hidden by default) -->
-            <div id="result-section" class="hidden mt-8">
-                
-                
-                <div class="winner-box">
-                    <span class="trophy-icon">🏆</span>
-                    <div class="winner-name" id="winner-name">Melhor Eficiência: Cartão A</div>
-                    <div class="winner-subtitle">Baseado no Retorno Líquido (Yield) sobre o gasto mensal</div>
-                </div>
-
-                <div class="grid md:grid-cols-2 gap-6">
-                    <!-- Result Card A -->
-                    <div class="card-result">
-                        <div class="font-bold text-lg mb-2" id="res-name-a">Cartão A</div>
-                        <div class="text-sm text-gray-400">Retorno Mensal Líquido</div>
-                        <div id="res-value-a" class="result-value-green">R$ 0,00</div>
-                        <div id="res-tag-a" class="result-tag">(Melhor via Milhas)</div>
-
-                        <div class="calc-memory">
-                            <div class="text-xs text-gray-400 font-bold mb-2">Detalhamento Técnico:</div>
-                            <div class="memory-row"><span>Volume Transacionado:</span><span id="mem-spend-a">R$ 0,00</span></div>
-                            <div class="memory-row"><span>Câmbio Base:</span><span id="mem-dollar-a">R$ 0,00</span></div>
-                            <div class="memory-row"><span>Geração de Milhas:</span><span id="mem-miles-a">0 (R$ 0,00)</span></div>
-                            <div class="memory-row"><span>Cashback Direto:</span><span id="mem-cashback-a">R$ 0,00</span></div>
-                            <div class="memory-row red"><span>Custo de Anuidade:</span><span id="mem-fee-a">-R$ 0,00</span></div>
-                            <div class="memory-row green"><span>Resultado Líquido:</span><span id="mem-final-a">R$ 0,00</span></div>
-                        </div>
-                    </div>
-
-                    <!-- Result Card B -->
-                    <div class="card-result">
-                        <div class="font-bold text-lg mb-2" id="res-name-b">Cartão B</div>
-                        <div class="text-sm text-gray-400">Retorno Mensal Líquido</div>
-                        <div id="res-value-b" class="result-value-red">R$ 0,00</div>
-                        <div id="res-tag-b" class="result-tag">(Melhor via Cashback)</div>
-
-                        <div class="calc-memory">
-                            <div class="text-xs text-gray-400 font-bold mb-2">Detalhamento Técnico:</div>
-                            <div class="memory-row"><span>Volume Transacionado:</span><span id="mem-spend-b">R$ 0,00</span></div>
-                            <div class="memory-row"><span>Câmbio Base:</span><span id="mem-dollar-b">R$ 0,00</span></div>
-                            <div class="memory-row"><span>Geração de Milhas:</span><span id="mem-miles-b">0 (R$ 0,00)</span></div>
-                            <div class="memory-row"><span>Cashback Direto:</span><span id="mem-cashback-b">R$ 0,00</span></div>
-                            <div class="memory-row red"><span>Custo de Anuidade:</span><span id="mem-fee-b">-R$ 0,00</span></div>
-                            <div class="memory-row green"><span>Resultado Líquido:</span><span id="mem-final-b">R$ 0,00</span></div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="miles-power-box">
-                    <span class="plane-icon">✈️</span>
-                    <div>
-                        <div class="power-title">Nota Técnica sobre Milhas</div>
-                        <div class="power-text">
-                            A análise acima considera a liquidação das milhas no mercado secundário. Em emissões estratégicas (passagens aéreas), o valor percebido por milheiro pode superar R$ 40,00, o que aumentaria significativamente o retorno do cartão pontuador.
-                        </div>
-                    </div>
-                </div>
-            </div>
+      <!-- Header -->
+      <header class="tool-header">
+        <a href="../ferramentas.html" style="color:var(--muted-foreground);text-decoration:none;font-size:1.2rem;flex-shrink:0">←</a>
+        <div class="tool-header-info">
+          <h1>💳 Comparador de Cartões</h1>
+          <p>Compare cartões com critérios objetivos (cashback, pontos, desconto) e subjetivos (salas VIP, concierge, seguros) ponderados</p>
         </div>
-    </main>
+        <button id="mobile-toggle" class="mobile-toggle">☰</button>
+        <button class="btn-new" onclick="openModal()">+ Nova Comparação</button>
+      </header>
 
-    <script>
-        function formatCurrency(input) {
-            let value = input.value.replace(/\D/g, '');
-            value = (parseFloat(value) / 100).toFixed(2) + '';
-            value = value.replace('.', ',');
-            value = value.replace(/(\d)(?=(\d{3})+(?!\d))/g, '$1.');
-            if (value === 'NaN') value = '';
-            input.value = value;
+      <!-- Contexto Global -->
+      <div class="ctx-bar">
+        <span class="ctx-bar-title">⚙️ Contexto Global</span>
+        <div class="ctx-fields">
+          <div class="ctx-field">
+            <label>Gasto Nacional (R$/mês)</label>
+            <input type="text" id="ctx-nacional" placeholder="R$ 3.000,00" oninput="fmtCtx(this)"/>
+          </div>
+          <div class="ctx-field">
+            <label>Gasto Exterior (US$/mês)</label>
+            <input type="text" id="ctx-exterior" placeholder="US$ 500,00" oninput="fmtCtxUsd(this)"/>
+          </div>
+          <div class="ctx-field">
+            <label>Gasto Bonificado (R$/mês)</label>
+            <input type="text" id="ctx-bonif" placeholder="R$ 500,00" oninput="fmtCtx(this)"/>
+          </div>
+          <div class="ctx-field">
+            <label>Cotação do Dólar (R$)</label>
+            <input type="text" id="ctx-dolar" placeholder="R$ 5,90" oninput="fmtCtxDolar(this)"/>
+          </div>
+        </div>
+        <div class="ctx-dolar-badge" id="ctx-dolar-badge">
+          <span class="live"></span>
+          <span id="ctx-dolar-display">—</span>
+        </div>
+        <button class="btn-add" onclick="fetchDolar()" title="Buscar cotação atual">🔄 Atualizar cotação</button>
+      </div>
+
+      <!-- Lista -->
+      <div id="list-container">
+        <div class="empty-state" id="empty-state">
+          <div class="icon">💳</div>
+          <p>Nenhuma comparação ainda.<br>Clique em <b>+ Nova Comparação</b> para começar.</p>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- ═══════════════════════════════════════════════════
+       MODAL PRINCIPAL
+  ═══════════════════════════════════════════════════ -->
+  <div class="modal-overlay" id="modal-overlay">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 id="modal-title">Nova Comparação de Cartões</h2>
+        <button class="btn-close" onclick="closeModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="val-error" id="val-error"></div>
+
+        <div class="field-group">
+          <label class="field-label">Nome da comparação</label>
+          <input class="field-input" id="comp-name" placeholder="Ex: Melhor cartão para viagens internacionais"/>
+        </div>
+
+        <!-- CARTÕES -->
+        <div class="section-block open" id="sb-cartoes">
+          <div class="section-block-header" onclick="toggleSection('sb-cartoes')">
+            <div class="sb-icon gold">💳</div>
+            <h3>Cartões a Comparar</h3>
+            <span class="sb-count" id="count-cartoes">0 adicionados</span>
+            <span class="sb-chevron">▼</span>
+          </div>
+          <div class="section-block-body">
+            <div class="tip"><b>Dica:</b> Adicione cada cartão. Informe a anuidade e use o pré-preenchimento por bandeira para agilizar os parâmetros subjetivos.</div>
+            <div class="cards-grid" id="cards-grid"></div>
+            <button class="btn-add" onclick="addCard()">＋ Adicionar cartão</button>
+          </div>
+        </div>
+
+        <!-- PARÂMETROS OBJETIVOS -->
+        <div class="section-block open" id="sb-obj">
+          <div class="section-block-header" onclick="toggleSection('sb-obj')">
+            <div class="sb-icon green">📐</div>
+            <h3>Parâmetros Objetivos</h3>
+            <span class="sb-count">fixos</span>
+            <span class="sb-chevron">▼</span>
+          </div>
+          <div class="section-block-body">
+            <div class="tip"><b>Retorno financeiro calculado automaticamente</b> com base no contexto global. Informe os valores de cada cartão.</div>
+            <div id="obj-sections"></div>
+          </div>
+        </div>
+
+        <!-- PARÂMETROS SUBJETIVOS -->
+        <div class="section-block open" id="sb-subj">
+          <div class="section-block-header" onclick="toggleSection('sb-subj')">
+            <div class="sb-icon blue">💬</div>
+            <h3>Parâmetros Subjetivos</h3>
+            <span class="sb-count" id="count-subj">0 itens</span>
+            <span class="sb-chevron">▼</span>
+          </div>
+          <div class="section-block-body">
+            <div class="tip"><b>Benefícios qualitativos</b> — marque se o cartão possui o benefício (✓) e classifique entre os que possuem (1º = melhor). Os itens são <b>permanentes</b> e podem ser adicionados, editados ou excluídos.</div>
+            <div id="subj-sections"></div>
+            <button class="btn-add" onclick="openSubjEdit(null)">＋ Adicionar benefício</button>
+          </div>
+        </div>
+
+      </div>
+      <div class="modal-footer">
+        <button class="btn-cancel" onclick="closeModal()">Cancelar</button>
+        <button class="btn-save" onclick="saveComparison()">Salvar e Calcular ▶</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════
+       MODAL EDIÇÃO SUBJETIVO
+  ═══════════════════════════════════════════════════ -->
+  <div class="modal-overlay" id="modal-subj-edit">
+    <div class="modal-sm">
+      <div class="modal-header">
+        <h2 id="subj-edit-title">Novo Benefício Subjetivo</h2>
+        <button class="btn-close" onclick="closeSubjEdit()">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="field-group">
+          <label class="field-label">Nome do benefício</label>
+          <input class="field-input" id="subj-edit-name" placeholder="Ex: Acesso a salas VIP Priority Pass"/>
+        </div>
+        <div class="field-group">
+          <label class="field-label">Descrição / instrução</label>
+          <input class="field-input" id="subj-edit-desc" placeholder="Ex: Quantas visitas gratuitas por ano"/>
+        </div>
+        <div class="field-group">
+          <label class="field-label">Importância padrão</label>
+          <select class="field-input" id="subj-edit-imp">
+            <option value="top">O mais importante de todos</option>
+            <option value="muito">Muito Importante</option>
+            <option value="imp" selected>Importante</option>
+            <option value="ind">Indiferente</option>
+            <option value="nao">Gostaria que não tivesse</option>
+            <option value="inac">Inaceitável</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-cancel" onclick="closeSubjEdit()">Cancelar</button>
+        <button class="btn-save" onclick="saveSubjItem()">Salvar</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+/* ═══════════════════════════════════════════════════════
+   BANCO DE DADOS BANDEIRAS
+═══════════════════════════════════════════════════════ */
+const BANDEIRAS_DB = {
+  'visa-infinite':  { label: 'Visa Infinite',      subj: { 'concierge':true,'sala-vip-priority':true,'sala-vip-loungekey':true,'fast-pass':true,'seguro-viagem':true,'seguro-medico':true,'seguro-compra':true,'garantia-estendida':true,'seguro-locadora':true,'luxury-hotel':true,'priceless':false,'surpreenda':false,'isencao-rolha':false } },
+  'visa-signature': { label: 'Visa Signature',     subj: { 'concierge':true,'sala-vip-priority':false,'sala-vip-loungekey':false,'fast-pass':false,'seguro-viagem':true,'seguro-medico':true,'seguro-compra':true,'garantia-estendida':true,'seguro-locadora':true,'luxury-hotel':true,'priceless':false,'surpreenda':false,'isencao-rolha':false } },
+  'visa-platinum':  { label: 'Visa Platinum',      subj: { 'concierge':true,'sala-vip-priority':false,'sala-vip-loungekey':false,'fast-pass':false,'seguro-viagem':false,'seguro-medico':true,'seguro-compra':false,'garantia-estendida':false,'seguro-locadora':false,'luxury-hotel':true,'priceless':false,'surpreenda':false,'isencao-rolha':false } },
+  'visa-gold':      { label: 'Visa Gold',          subj: { 'concierge':false,'sala-vip-priority':false,'sala-vip-loungekey':false,'fast-pass':false,'seguro-viagem':false,'seguro-medico':false,'seguro-compra':true,'garantia-estendida':true,'seguro-locadora':false,'luxury-hotel':false,'priceless':false,'surpreenda':false,'isencao-rolha':false } },
+  'visa-classic':   { label: 'Visa Classic',       subj: { 'concierge':false,'sala-vip-priority':false,'sala-vip-loungekey':false,'fast-pass':false,'seguro-viagem':false,'seguro-medico':false,'seguro-compra':false,'garantia-estendida':false,'seguro-locadora':false,'luxury-hotel':false,'priceless':false,'surpreenda':false,'isencao-rolha':false } },
+  'mc-black':       { label: 'Mastercard Black',   subj: { 'concierge':true,'sala-vip-priority':true,'sala-vip-loungekey':true,'fast-pass':false,'seguro-viagem':true,'seguro-medico':true,'seguro-compra':true,'garantia-estendida':true,'seguro-locadora':true,'luxury-hotel':false,'priceless':true,'surpreenda':true,'isencao-rolha':true } },
+  'mc-platinum':    { label: 'Mastercard Platinum',subj: { 'concierge':true,'sala-vip-priority':false,'sala-vip-loungekey':false,'fast-pass':false,'seguro-viagem':true,'seguro-medico':true,'seguro-compra':false,'garantia-estendida':false,'seguro-locadora':true,'luxury-hotel':false,'priceless':true,'surpreenda':true,'isencao-rolha':true } },
+  'mc-gold':        { label: 'Mastercard Gold',    subj: { 'concierge':false,'sala-vip-priority':false,'sala-vip-loungekey':false,'fast-pass':false,'seguro-viagem':false,'seguro-medico':false,'seguro-compra':true,'garantia-estendida':true,'seguro-locadora':false,'luxury-hotel':false,'priceless':false,'surpreenda':true,'isencao-rolha':false } },
+  'mc-standard':    { label: 'Mastercard Standard',subj: { 'concierge':false,'sala-vip-priority':false,'sala-vip-loungekey':false,'fast-pass':false,'seguro-viagem':false,'seguro-medico':false,'seguro-compra':false,'garantia-estendida':false,'seguro-locadora':false,'luxury-hotel':false,'priceless':false,'surpreenda':true,'isencao-rolha':false } },
+  'amex-platinum':  { label: 'Amex The Platinum',  subj: { 'concierge':true,'sala-vip-priority':true,'sala-vip-loungekey':true,'fast-pass':false,'seguro-viagem':true,'seguro-medico':true,'seguro-compra':true,'garantia-estendida':true,'seguro-locadora':true,'luxury-hotel':true,'priceless':false,'surpreenda':false,'isencao-rolha':false } },
+  'amex-gold':      { label: 'Amex Gold',          subj: { 'concierge':true,'sala-vip-priority':false,'sala-vip-loungekey':false,'fast-pass':false,'seguro-viagem':true,'seguro-medico':false,'seguro-compra':true,'garantia-estendida':true,'seguro-locadora':false,'luxury-hotel':false,'priceless':false,'surpreenda':false,'isencao-rolha':false } },
+  'amex-green':     { label: 'Amex Green',         subj: { 'concierge':false,'sala-vip-priority':false,'sala-vip-loungekey':false,'fast-pass':false,'seguro-viagem':false,'seguro-medico':false,'seguro-compra':false,'garantia-estendida':false,'seguro-locadora':false,'luxury-hotel':false,'priceless':false,'surpreenda':false,'isencao-rolha':false } },
+  'elo-nanquim':    { label: 'Elo Nanquim',        subj: { 'concierge':true,'sala-vip-priority':true,'sala-vip-loungekey':true,'fast-pass':false,'seguro-viagem':true,'seguro-medico':true,'seguro-compra':true,'garantia-estendida':true,'seguro-locadora':true,'luxury-hotel':false,'priceless':false,'surpreenda':false,'isencao-rolha':false } },
+  'elo-grafite':    { label: 'Elo Grafite',        subj: { 'concierge':false,'sala-vip-priority':false,'sala-vip-loungekey':false,'fast-pass':false,'seguro-viagem':true,'seguro-medico':false,'seguro-compra':false,'garantia-estendida':true,'seguro-locadora':false,'luxury-hotel':false,'priceless':false,'surpreenda':false,'isencao-rolha':false } },
+  'elo-classic':    { label: 'Elo Classic',        subj: { 'concierge':false,'sala-vip-priority':false,'sala-vip-loungekey':false,'fast-pass':false,'seguro-viagem':false,'seguro-medico':false,'seguro-compra':false,'garantia-estendida':false,'seguro-locadora':false,'luxury-hotel':false,'priceless':false,'surpreenda':false,'isencao-rolha':false } },
+};
+
+/* ═══════════════════════════════════════════════════════
+   PARÂMETROS OBJETIVOS FIXOS
+═══════════════════════════════════════════════════════ */
+const OBJ_GROUPS = [
+  { id:'cashback', label:'Cashback', icon:'💰', params:[
+    { id:'cb-nacional', label:'Cashback nacional',  unit:'%', tipo:'nacional', importance:'imp' },
+    { id:'cb-exterior', label:'Cashback exterior',  unit:'%', tipo:'exterior', importance:'imp' },
+    { id:'cb-bonif',    label:'Cashback bonificado',unit:'%', tipo:'bonif',    importance:'imp' },
+  ]},
+  { id:'pontos', label:'Pontos / Milhas', icon:'✈️', params:[
+    { id:'pts-nacional', label:'Pontos por R$1 (nacional)',  unit:'pts/R$',  tipo:'pts-nacional', importance:'imp' },
+    { id:'pts-exterior', label:'Pontos por US$1 (exterior)', unit:'pts/US$', tipo:'pts-exterior', importance:'imp' },
+    { id:'pts-bonif',    label:'Pontos por R$1 (bonificado)',unit:'pts/R$',  tipo:'pts-bonif',    importance:'imp' },
+    { id:'milheiro',     label:'Valor do milheiro (R$/mil)', unit:'R$/mil',  tipo:'milheiro',     importance:'imp' },
+  ]},
+  { id:'desconto', label:'Desconto por Gasto Mensal', icon:'🏷️', params:[
+    { id:'desc-gasto', label:'Gasto mínimo para desconto (R$)', unit:'R$', tipo:'desc-gasto', importance:'ind' },
+    { id:'desc-pct',   label:'Desconto na anuidade (%)',        unit:'%',  tipo:'desc-pct',   importance:'imp' },
+  ]},
+];
+
+/* ═══════════════════════════════════════════════════════
+   PARÂMETROS SUBJETIVOS PADRÃO
+═══════════════════════════════════════════════════════ */
+const SUBJ_DEFAULT = [
+  { id:'concierge',          name:'Concierge 24h',                    desc:'Possui serviço de concierge pessoal 24h?',                importance:'imp' },
+  { id:'sala-vip-priority',  name:'Salas VIP Priority Pass',          desc:'Quantas visitas gratuitas/ano (0 = não tem)',             importance:'muito' },
+  { id:'sala-vip-loungekey', name:'Salas VIP LoungeKey / Exclusiva',  desc:'Quantas visitas gratuitas/ano (0 = não tem)',             importance:'muito' },
+  { id:'fast-pass',          name:'Fast Pass / Fila preferencial',    desc:'Possui acesso a fila preferencial em aeroportos?',        importance:'ind' },
+  { id:'seguro-viagem',      name:'Seguro Viagem Internacional',      desc:'Possui seguro viagem para voos internacionais?',          importance:'imp' },
+  { id:'seguro-medico',      name:'Seguro Médico Internacional',      desc:'Possui cobertura médica em viagens internacionais?',      importance:'imp' },
+  { id:'seguro-compra',      name:'Seguro Proteção de Compra',        desc:'Possui proteção contra roubo/dano em compras?',           importance:'ind' },
+  { id:'garantia-estendida', name:'Garantia Estendida',               desc:'Dobra a garantia do fabricante em compras?',              importance:'ind' },
+  { id:'seguro-locadora',    name:'Seguro para Locadora de Veículos', desc:'Possui cobertura ao alugar veículos?',                    importance:'ind' },
+  { id:'luxury-hotel',       name:'Programa Luxury Hotel',            desc:'Possui acesso a coleção de hotéis de luxo?',              importance:'ind' },
+  { id:'priceless',          name:'Priceless Cities / Experiências',  desc:'Possui acesso a experiências e descontos em cidades?',    importance:'ind' },
+  { id:'surpreenda',         name:'Programa Surpreenda / Parceiros',  desc:'Possui programa de benefícios em parceiros (cinema etc)?',importance:'ind' },
+  { id:'isencao-rolha',      name:'Isenção de Rolha em Restaurantes', desc:'Possui isenção de rolha em restaurantes parceiros?',      importance:'ind' },
+];
+
+/* ═══════════════════════════════════════════════════════
+   IMPORTÂNCIA
+═══════════════════════════════════════════════════════ */
+const IMP_OPTIONS = [
+  { value:'top',   label:'O mais importante de todos', weight:10,  cls:'imp-top' },
+  { value:'muito', label:'Muito Importante',           weight:5,   cls:'imp-muito' },
+  { value:'imp',   label:'Importante',                 weight:3,   cls:'imp-imp' },
+  { value:'ind',   label:'Indiferente',                weight:0,   cls:'imp-ind' },
+  { value:'nao',   label:'Gostaria que não tivesse',   weight:-2,  cls:'imp-nao' },
+  { value:'inac',  label:'Inaceitável',                weight:-10, cls:'imp-inac' },
+];
+const impWeight = v => (IMP_OPTIONS.find(x=>x.value===v)||{weight:0}).weight;
+const impLabel  = v => (IMP_OPTIONS.find(x=>x.value===v)||{label:v}).label;
+const impCls    = v => (IMP_OPTIONS.find(x=>x.value===v)||{cls:''}).cls;
+
+/* ═══════════════════════════════════════════════════════
+   ESTADO
+═══════════════════════════════════════════════════════ */
+let comparisons = JSON.parse(localStorage.getItem('hvsf_cartoes_v2') || '[]');
+let subjItems   = JSON.parse(localStorage.getItem('hvsf_cartoes_subj_v2') || 'null') || JSON.parse(JSON.stringify(SUBJ_DEFAULT));
+
+let editingId = null;
+let editingSubjId = null;
+
+let tmpName = '';
+let tmpCards = [];
+let tmpObjVals = {};
+let tmpObjImps = {};
+let tmpSubjVals = {};
+
+let cidCounter = 1;
+
+function saveSubjItems() { localStorage.setItem('hvsf_cartoes_subj_v2', JSON.stringify(subjItems)); }
+
+/* ═══════════════════════════════════════════════════════
+   COTAÇÃO DO DÓLAR
+═══════════════════════════════════════════════════════ */
+async function fetchDolar() {
+  const badge = document.getElementById('ctx-dolar-badge');
+  badge.innerHTML = `<span class="live"></span><span>Buscando...</span>`;
+  try {
+    const r = await fetch('https://economia.awesomeapi.com.br/json/last/USD-BRL');
+    const d = await r.json();
+    const val = parseFloat(d.USDBRL.bid).toFixed(2);
+    const fmtVal = 'R$ ' + val.replace('.',',');
+    document.getElementById('ctx-dolar').value = fmtVal;
+    badge.innerHTML = `<span class="live"></span><span id="ctx-dolar-display">${fmtVal}</span>`;
+  } catch(e) {
+    badge.innerHTML = `<span style="color:var(--red-lt)">⚠️ Erro ao buscar</span>`;
+  }
+}
+
+function fmtCtx(el) {
+  const raw = el.value.replace(/\D/g,'');
+  const n = raw ? parseInt(raw)/100 : 0;
+  el.value = n.toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+}
+function fmtCtxUsd(el) {
+  const raw = el.value.replace(/\D/g,'');
+  const n = raw ? parseInt(raw)/100 : 0;
+  el.value = 'US$ ' + n.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+}
+function fmtCtxDolar(el) {
+  const raw = el.value.replace(/[^\d,\.]/g,'').replace(',','.');
+  const n = parseFloat(raw) || 0;
+  el.value = 'R$ ' + n.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+  const disp = document.getElementById('ctx-dolar-display');
+  if (disp) disp.textContent = el.value;
+}
+
+function getCtx() {
+  const parseBRL = id => {
+    const v = document.getElementById(id)?.value || '0';
+    return parseFloat(v.replace(/[^\d,\.]/g,'').replace(',','.')) || 0;
+  };
+  const parseUSD = id => {
+    const v = document.getElementById(id)?.value || '0';
+    return parseFloat(v.replace(/[^\d,\.]/g,'').replace(',','.')) || 0;
+  };
+  return {
+    nacional: parseBRL('ctx-nacional'),
+    exterior: parseUSD('ctx-exterior'),
+    bonif:    parseBRL('ctx-bonif'),
+    dolar:    parseBRL('ctx-dolar'),
+  };
+}
+
+/* ═══════════════════════════════════════════════════════
+   MODAL
+═══════════════════════════════════════════════════════ */
+function openModal(id = null) {
+  editingId = id;
+  if (id) {
+    const c = comparisons.find(x=>x.id===id);
+    tmpName    = c.name;
+    tmpCards   = JSON.parse(JSON.stringify(c.cards));
+    tmpObjVals = JSON.parse(JSON.stringify(c.objVals));
+    tmpObjImps = JSON.parse(JSON.stringify(c.objImps));
+    tmpSubjVals= JSON.parse(JSON.stringify(c.subjVals));
+    cidCounter = Math.max(...tmpCards.map(p=>p.id), 0) + 1;
+    document.getElementById('modal-title').textContent = 'Editar Comparação';
+  } else {
+    tmpName = ''; tmpCards = []; tmpObjVals = {}; tmpObjImps = {}; tmpSubjVals = {};
+    cidCounter = 1;
+    OBJ_GROUPS.forEach(g => g.params.forEach(p => { tmpObjImps[p.id] = p.importance; }));
+    subjItems.forEach(s => { tmpSubjVals[s.id] = { importance: s.importance, hasParam: {}, rankings: {} }; });
+    document.getElementById('modal-title').textContent = 'Nova Comparação de Cartões';
+  }
+  document.getElementById('comp-name').value = tmpName;
+  hideError();
+  renderAll();
+  document.getElementById('modal-overlay').classList.add('open');
+}
+
+function closeModal() { document.getElementById('modal-overlay').classList.remove('open'); }
+function toggleSection(id) { document.getElementById(id).classList.toggle('open'); }
+
+/* ═══════════════════════════════════════════════════════
+   RENDER ALL
+═══════════════════════════════════════════════════════ */
+function renderAll() { renderCards(); renderObjSections(); renderSubjSections(); }
+
+/* ═══════════════════════════════════════════════════════
+   CARTÕES
+═══════════════════════════════════════════════════════ */
+function addCard() {
+  const id = cidCounter++;
+  tmpCards.push({ id, name:'', anuidade_mensal:0, bandeira:'' });
+  OBJ_GROUPS.forEach(g => g.params.forEach(p => {
+    if (!tmpObjVals[p.id]) tmpObjVals[p.id] = {};
+    tmpObjVals[p.id][id] = 0;
+  }));
+  subjItems.forEach(s => {
+    if (!tmpSubjVals[s.id]) tmpSubjVals[s.id] = { importance:s.importance, hasParam:{}, rankings:{} };
+    tmpSubjVals[s.id].hasParam[id] = false;
+    tmpSubjVals[s.id].rankings[id] = 1;
+  });
+  renderAll();
+}
+
+function removeCard(cid) {
+  tmpCards = tmpCards.filter(c=>c.id!==cid);
+  OBJ_GROUPS.forEach(g => g.params.forEach(p => { if (tmpObjVals[p.id]) delete tmpObjVals[p.id][cid]; }));
+  subjItems.forEach(s => {
+    if (tmpSubjVals[s.id]) { delete tmpSubjVals[s.id].hasParam[cid]; delete tmpSubjVals[s.id].rankings[cid]; }
+  });
+  renderAll();
+}
+
+function updateCardName(cid, val) {
+  const c = tmpCards.find(x=>x.id===cid); if(c) c.name = val;
+  renderObjSections(); renderSubjSections();
+}
+
+function prefillCard(cid) {
+  const sel = document.getElementById('pf-bandeira-'+cid);
+  if (!sel || !sel.value) return;
+  const db = BANDEIRAS_DB[sel.value];
+  if (!db) return;
+  const c = tmpCards.find(x=>x.id===cid);
+  if (c) c.bandeira = sel.value;
+  subjItems.forEach(s => {
+    if (!tmpSubjVals[s.id]) tmpSubjVals[s.id] = { importance:s.importance, hasParam:{}, rankings:{} };
+    tmpSubjVals[s.id].hasParam[cid] = db.subj[s.id] === true;
+  });
+  renderSubjSections();
+  const btn = document.getElementById('pf-btn-'+cid);
+  if (btn) { btn.textContent = '✓ Aplicado!'; setTimeout(()=>{ btn.textContent = '▶ Aplicar'; }, 1500); }
+}
+
+function renderCards() {
+  const grid = document.getElementById('cards-grid');
+  grid.innerHTML = tmpCards.map((c,i) => `
+    <div class="card-item">
+      <div class="ci-num">Cartão ${i+1}</div>
+      <button class="ci-del" onclick="removeCard(${c.id})" title="Remover">✕</button>
+      <div class="field-group" style="margin-bottom:8px">
+        <label class="field-label">Nome do cartão</label>
+        <input class="field-input" id="cname-${c.id}" value="${escHtml(c.name)}"
+          placeholder="Ex: Nubank Ultravioleta"
+          oninput="updateCardName(${c.id}, this.value)"/>
+      </div>
+      <div class="field-group" style="margin-bottom:4px">
+        <label class="field-label">Anuidade (R$/mês)</label>
+        <input class="field-input" id="anuid-${c.id}"
+          value="${c.anuidade_mensal > 0 ? fmtBRL(c.anuidade_mensal) : ''}"
+          placeholder="R$ 0,00"
+          oninput="setAnuidade(${c.id}, this.value, 'mensal')"/>
+      </div>
+      <div style="font-size:.72rem;color:var(--muted-foreground);margin-bottom:8px;display:flex;align-items:center;gap:6px">
+        ou anual:
+        <input type="number" min="0" step="0.01" placeholder="0"
+          style="width:80px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--foreground);padding:3px 6px;font-size:.72rem"
+          onblur="setAnuidade(${c.id}, this.value, 'anual')"/> ÷12
+      </div>
+      <div class="prefill-bar">
+        <span class="pf-label">🏷️ Bandeira</span>
+        <select id="pf-bandeira-${c.id}">
+          <option value="">— selecionar —</option>
+          <optgroup label="Visa">
+            <option value="visa-infinite"${c.bandeira==='visa-infinite'?' selected':''}>Visa Infinite</option>
+            <option value="visa-signature"${c.bandeira==='visa-signature'?' selected':''}>Visa Signature</option>
+            <option value="visa-platinum"${c.bandeira==='visa-platinum'?' selected':''}>Visa Platinum</option>
+            <option value="visa-gold"${c.bandeira==='visa-gold'?' selected':''}>Visa Gold</option>
+            <option value="visa-classic"${c.bandeira==='visa-classic'?' selected':''}>Visa Classic</option>
+          </optgroup>
+          <optgroup label="Mastercard">
+            <option value="mc-black"${c.bandeira==='mc-black'?' selected':''}>Mastercard Black</option>
+            <option value="mc-platinum"${c.bandeira==='mc-platinum'?' selected':''}>Mastercard Platinum</option>
+            <option value="mc-gold"${c.bandeira==='mc-gold'?' selected':''}>Mastercard Gold</option>
+            <option value="mc-standard"${c.bandeira==='mc-standard'?' selected':''}>Mastercard Standard</option>
+          </optgroup>
+          <optgroup label="American Express">
+            <option value="amex-platinum"${c.bandeira==='amex-platinum'?' selected':''}>Amex The Platinum</option>
+            <option value="amex-gold"${c.bandeira==='amex-gold'?' selected':''}>Amex Gold</option>
+            <option value="amex-green"${c.bandeira==='amex-green'?' selected':''}>Amex Green</option>
+          </optgroup>
+          <optgroup label="Elo">
+            <option value="elo-nanquim"${c.bandeira==='elo-nanquim'?' selected':''}>Elo Nanquim</option>
+            <option value="elo-grafite"${c.bandeira==='elo-grafite'?' selected':''}>Elo Grafite</option>
+            <option value="elo-classic"${c.bandeira==='elo-classic'?' selected':''}>Elo Classic</option>
+          </optgroup>
+        </select>
+        <button class="btn-prefill" id="pf-btn-${c.id}" onclick="prefillCard(${c.id})">▶ Aplicar</button>
+      </div>
+    </div>
+  `).join('');
+  document.getElementById('count-cartoes').textContent = `${tmpCards.length} adicionado${tmpCards.length!==1?'s':''}`;
+}
+
+function setAnuidade(cid, val, tipo) {
+  const c = tmpCards.find(x=>x.id===cid); if(!c) return;
+  const raw = String(val).replace(/[^\d,\.]/g,'').replace(',','.');
+  const n = parseFloat(raw) || 0;
+  c.anuidade_mensal = tipo === 'anual' ? n/12 : n;
+  const el = document.getElementById('anuid-'+cid);
+  if (el && tipo === 'mensal') el.value = n > 0 ? fmtBRL(n) : '';
+}
+
+/* ═══════════════════════════════════════════════════════
+   PARÂMETROS OBJETIVOS
+═══════════════════════════════════════════════════════ */
+function renderObjSections() {
+  const container = document.getElementById('obj-sections');
+  if (tmpCards.length === 0) {
+    container.innerHTML = '<p class="text-dim">Adicione pelo menos um cartão para preencher os parâmetros.</p>';
+    return;
+  }
+  let html = '';
+  OBJ_GROUPS.forEach(group => {
+    html += `<div style="margin-bottom:18px">
+      <div style="font-size:.82rem;font-weight:700;color:var(--gold);margin-bottom:8px">${group.icon} ${group.label}</div>
+      <div class="param-table-wrap"><table class="param-table">
+        <thead><tr>
+          <th class="td-label">Parâmetro</th>
+          <th class="td-imp">Importância</th>
+          ${tmpCards.map(c=>`<th class="td-val">${escHtml(c.name)||'Cartão'}</th>`).join('')}
+        </tr></thead><tbody>`;
+    group.params.forEach(param => {
+      if (!tmpObjVals[param.id]) tmpObjVals[param.id] = {};
+      const imp = tmpObjImps[param.id] || param.importance;
+      html += `<tr>
+        <td class="td-label">${param.label} <span class="text-dim">(${param.unit})</span></td>
+        <td class="td-imp">
+          <select onchange="tmpObjImps['${param.id}']=this.value">
+            ${IMP_OPTIONS.map(o=>`<option value="${o.value}"${o.value===imp?' selected':''}>${o.label}</option>`).join('')}
+          </select>
+        </td>
+        ${tmpCards.map(c=>{
+          const v = tmpObjVals[param.id][c.id] || 0;
+          return `<td class="td-val"><input type="number" min="0" step="any" value="${v||''}" placeholder="0"
+            id="oval-${param.id}-${c.id}"
+            oninput="if(!tmpObjVals['${param.id}'])tmpObjVals['${param.id}']={};tmpObjVals['${param.id}'][${c.id}]=parseFloat(this.value)||0"/></td>`;
+        }).join('')}
+      </tr>`;
+    });
+    html += `</tbody></table></div></div>`;
+  });
+  container.innerHTML = html;
+}
+
+/* ═══════════════════════════════════════════════════════
+   PARÂMETROS SUBJETIVOS
+═══════════════════════════════════════════════════════ */
+function renderSubjSections() {
+  const container = document.getElementById('subj-sections');
+  document.getElementById('count-subj').textContent = `${subjItems.length} itens`;
+  if (subjItems.length === 0) { container.innerHTML = '<p class="text-dim">Nenhum benefício cadastrado.</p>'; return; }
+  if (tmpCards.length === 0) { container.innerHTML = '<p class="text-dim">Adicione pelo menos um cartão.</p>'; return; }
+  const n = tmpCards.length;
+  let html = `<div class="param-table-wrap"><table class="param-table">
+    <thead><tr>
+      <th class="td-label">Benefício</th>
+      <th class="td-imp">Importância</th>
+      ${tmpCards.map(c=>`<th style="white-space:nowrap">✓ ${escHtml(c.name)||'Cartão'}</th><th class="td-val">Rank</th>`).join('')}
+      <th style="width:60px">Ações</th>
+    </tr></thead><tbody>`;
+
+  subjItems.forEach(s => {
+    if (!tmpSubjVals[s.id]) {
+      tmpSubjVals[s.id] = { importance:s.importance, hasParam:{}, rankings:{} };
+      tmpCards.forEach(c => { tmpSubjVals[s.id].hasParam[c.id]=false; tmpSubjVals[s.id].rankings[c.id]=1; });
+    }
+    const sv = tmpSubjVals[s.id];
+    const imp = sv.importance || s.importance;
+    html += `<tr>
+      <td class="td-label" title="${escHtml(s.desc)}">${escHtml(s.name)}</td>
+      <td class="td-imp">
+        <select onchange="tmpSubjVals['${s.id}'].importance=this.value">
+          ${IMP_OPTIONS.map(o=>`<option value="${o.value}"${o.value===imp?' selected':''}>${o.label}</option>`).join('')}
+        </select>
+      </td>`;
+    tmpCards.forEach(c => {
+      const has = sv.hasParam[c.id] === true;
+      const rank = sv.rankings[c.id] || 1;
+      const opts = Array.from({length:n},(_,i)=>i+1).map(v=>`<option value="${v}"${v===rank?' selected':''}>${v}º</option>`).join('');
+      html += `
+      <td style="text-align:center">
+        <input type="checkbox" ${has?'checked':''}
+          onchange="tmpSubjVals['${s.id}'].hasParam[${c.id}]=this.checked;this.closest('tr').querySelector('#rank-${s.id}-${c.id}').disabled=!this.checked"/>
+      </td>
+      <td class="td-val">
+        <select id="rank-${s.id}-${c.id}" ${!has?'disabled style="opacity:.35"':''}
+          onchange="tmpSubjVals['${s.id}'].rankings[${c.id}]=parseInt(this.value)">${opts}</select>
+      </td>`;
+    });
+    html += `<td style="text-align:center;white-space:nowrap">
+      <button onclick="openSubjEdit('${s.id}')" title="Editar" style="background:none;border:none;color:var(--muted-foreground);cursor:pointer;padding:3px 5px;font-size:.82rem;border-radius:4px" onmouseover="this.style.color='var(--gold)'" onmouseout="this.style.color='var(--muted-foreground)'">✏️</button>
+      <button onclick="deleteSubjItem('${s.id}')" title="Excluir" style="background:none;border:none;color:var(--muted-foreground);cursor:pointer;padding:3px 5px;font-size:.82rem;border-radius:4px" onmouseover="this.style.color='var(--red-lt)'" onmouseout="this.style.color='var(--muted-foreground)'">🗑️</button>
+    </td></tr>`;
+  });
+  html += `</tbody></table></div>`;
+  container.innerHTML = html;
+}
+
+/* ═══════════════════════════════════════════════════════
+   EDIÇÃO SUBJETIVOS PERMANENTES
+═══════════════════════════════════════════════════════ */
+function openSubjEdit(id) {
+  editingSubjId = id;
+  if (id) {
+    const s = subjItems.find(x=>x.id===id);
+    document.getElementById('subj-edit-title').textContent = 'Editar Benefício';
+    document.getElementById('subj-edit-name').value = s.name;
+    document.getElementById('subj-edit-desc').value = s.desc || '';
+    document.getElementById('subj-edit-imp').value  = s.importance;
+  } else {
+    document.getElementById('subj-edit-title').textContent = 'Novo Benefício Subjetivo';
+    document.getElementById('subj-edit-name').value = '';
+    document.getElementById('subj-edit-desc').value = '';
+    document.getElementById('subj-edit-imp').value  = 'imp';
+  }
+  document.getElementById('modal-subj-edit').classList.add('open');
+}
+function closeSubjEdit() { document.getElementById('modal-subj-edit').classList.remove('open'); }
+
+function saveSubjItem() {
+  const name = document.getElementById('subj-edit-name').value.trim();
+  const desc = document.getElementById('subj-edit-desc').value.trim();
+  const imp  = document.getElementById('subj-edit-imp').value;
+  if (!name) { alert('Informe o nome do benefício.'); return; }
+  if (editingSubjId) {
+    const s = subjItems.find(x=>x.id===editingSubjId);
+    if (s) { s.name=name; s.desc=desc; s.importance=imp; }
+    if (tmpSubjVals[editingSubjId]) tmpSubjVals[editingSubjId].importance = imp;
+  } else {
+    const newId = 'custom-'+Date.now();
+    subjItems.push({ id:newId, name, desc, importance:imp });
+    tmpSubjVals[newId] = { importance:imp, hasParam:{}, rankings:{} };
+    tmpCards.forEach(c => { tmpSubjVals[newId].hasParam[c.id]=false; tmpSubjVals[newId].rankings[c.id]=1; });
+  }
+  saveSubjItems();
+  closeSubjEdit();
+  renderSubjSections();
+}
+
+function deleteSubjItem(id) {
+  if (!confirm('Excluir este benefício permanentemente?')) return;
+  subjItems = subjItems.filter(x=>x.id!==id);
+  delete tmpSubjVals[id];
+  saveSubjItems();
+  renderSubjSections();
+}
+
+/* ═══════════════════════════════════════════════════════
+   SINCRONIZAR INPUTS
+═══════════════════════════════════════════════════════ */
+function syncAllInputs() {
+  tmpName = document.getElementById('comp-name').value.trim();
+  tmpCards.forEach(c => {
+    const nameEl = document.getElementById('cname-'+c.id);
+    if (nameEl) c.name = nameEl.value.trim();
+    const anuidEl = document.getElementById('anuid-'+c.id);
+    if (anuidEl) {
+      const raw = anuidEl.value.replace(/[^\d,\.]/g,'').replace(',','.');
+      c.anuidade_mensal = parseFloat(raw) || c.anuidade_mensal || 0;
+    }
+    const pfSel = document.getElementById('pf-bandeira-'+c.id);
+    if (pfSel) c.bandeira = pfSel.value;
+  });
+  OBJ_GROUPS.forEach(g => g.params.forEach(p => {
+    if (!tmpObjVals[p.id]) tmpObjVals[p.id] = {};
+    tmpCards.forEach(c => {
+      const el = document.getElementById('oval-'+p.id+'-'+c.id);
+      if (el) tmpObjVals[p.id][c.id] = parseFloat(el.value) || 0;
+    });
+  }));
+}
+
+/* ═══════════════════════════════════════════════════════
+   SALVAR
+═══════════════════════════════════════════════════════ */
+function saveComparison() {
+  syncAllInputs();
+  hideError();
+  const errors = [];
+  if (!tmpName) errors.push('Informe o nome da comparação.');
+  if (tmpCards.length < 2) errors.push('Adicione pelo menos 2 cartões para comparar.');
+  tmpCards.forEach(c => { if (!c.name) errors.push('Um cartão está sem nome.'); });
+  const allImps = [...Object.values(tmpObjImps), ...subjItems.map(s=>tmpSubjVals[s.id]?.importance||s.importance)];
+  if (allImps.filter(v=>v==='top').length > 1) errors.push('Apenas UM parâmetro pode ser "O mais importante de todos".');
+  if (errors.length > 0) { showError(errors); return; }
+
+  const ctx = getCtx();
+  const result = calcResult(ctx);
+
+  const comp = {
+    id: editingId || Date.now(),
+    name: tmpName,
+    cards: JSON.parse(JSON.stringify(tmpCards)),
+    objVals: JSON.parse(JSON.stringify(tmpObjVals)),
+    objImps: JSON.parse(JSON.stringify(tmpObjImps)),
+    subjVals: JSON.parse(JSON.stringify(tmpSubjVals)),
+    subjSnapshot: JSON.parse(JSON.stringify(subjItems)),
+    ctx, result,
+    updatedAt: new Date().toISOString(),
+  };
+
+  if (editingId) {
+    const idx = comparisons.findIndex(x=>x.id===editingId);
+    if (idx >= 0) comparisons[idx] = comp;
+  } else {
+    comparisons.push(comp);
+  }
+  localStorage.setItem('hvsf_cartoes_v2', JSON.stringify(comparisons));
+  closeModal();
+  renderList();
+}
+
+/* ═══════════════════════════════════════════════════════
+   MOTOR DE CÁLCULO
+═══════════════════════════════════════════════════════ */
+function calcResult(ctx) {
+  const scores = {};
+  tmpCards.forEach(c => { scores[c.id] = 0; });
+  const breakdown = [];
+
+  // ── OBJETIVOS ──
+  OBJ_GROUPS.forEach(group => {
+    group.params.forEach(param => {
+      const imp = tmpObjImps[param.id] || param.importance;
+      const w = impWeight(imp);
+      const vals = tmpObjVals[param.id] || {};
+
+      const returns = {};
+      tmpCards.forEach(c => {
+        const v = vals[c.id] || 0;
+        let ret = 0;
+        if (param.tipo === 'nacional')     ret = ctx.nacional * (v/100);
+        else if (param.tipo === 'exterior') ret = ctx.exterior * ctx.dolar * (v/100);
+        else if (param.tipo === 'bonif')    ret = ctx.bonif * (v/100);
+        else if (param.tipo === 'pts-nacional') {
+          const mil = (tmpObjVals['milheiro']||{})[c.id] || 0;
+          ret = ctx.nacional * v * (mil/1000);
         }
-
-        function parseCurrency(value) {
-            if (!value) return 0;
-            return parseFloat(value.replace(/\./g, '').replace(',', '.'));
+        else if (param.tipo === 'pts-exterior') {
+          const mil = (tmpObjVals['milheiro']||{})[c.id] || 0;
+          ret = ctx.exterior * ctx.dolar * v * (mil/1000);
         }
-
-        function formatBRL(value) {
-            return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        else if (param.tipo === 'pts-bonif') {
+          const mil = (tmpObjVals['milheiro']||{})[c.id] || 0;
+          ret = ctx.bonif * v * (mil/1000);
         }
-
-        function calculateCard(spend, dollar, milesVal, fee, points, cashback) {
-            const monthlyFee = fee / 12;
-            
-            // Miles Calculation
-            const spendInDollars = spend / dollar;
-            const milesGenerated = spendInDollars * points;
-            const milesReturn = (milesGenerated / 1000) * milesVal;
-
-            // Cashback Calculation
-            const cashbackReturn = spend * (cashback / 100);
-
-            // Total Return
-            const totalReturn = (milesReturn + cashbackReturn) - monthlyFee;
-
-            return {
-                totalReturn,
-                milesGenerated,
-                milesReturn,
-                cashbackReturn,
-                monthlyFee
-            };
+        else if (param.tipo === 'milheiro') ret = 0;
+        else if (param.tipo === 'desc-gasto') ret = 0;
+        else if (param.tipo === 'desc-pct') {
+          const descGasto = (tmpObjVals['desc-gasto']||{})[c.id] || 0;
+          const card = tmpCards.find(x=>x.id===c.id);
+          if (card && ctx.nacional >= descGasto && descGasto > 0) ret = card.anuidade_mensal * (v/100);
         }
+        returns[c.id] = ret;
+      });
 
-        function updateCardResult(suffix, name, result, spend, dollar) {
-            document.getElementById(`res-name-${suffix}`).textContent = name;
-            
-            const valEl = document.getElementById(`res-value-${suffix}`);
-            valEl.textContent = formatBRL(result.totalReturn);
-            valEl.className = result.totalReturn >= 0 ? 'result-value-green' : 'result-value-red';
+      const maxRet = Math.max(...Object.values(returns));
+      const perProduct = {};
+      tmpCards.forEach(c => {
+        const ret = returns[c.id];
+        let score = 0, detail = '—', formula = '—';
+        if (maxRet > 0) {
+          const norm = ret / maxRet;
+          if (w >= 0) { score = norm * w * 10; formula = `(${fmtN(ret)}/${fmtN(maxRet)}) × ${w} × 10 = ${score.toFixed(2)}`; }
+          else { score = (1-norm)*Math.abs(w)*10; formula = `(1-${fmtN(norm)}) × |${w}| × 10 = ${score.toFixed(2)}`; }
+          detail = `R$${fmtN(ret)}/mês`;
+        } else if (w !== 0) { detail = 'Todos zerados'; }
+        scores[c.id] += score;
+        perProduct[c.id] = { score, detail, formula, ret };
+      });
+      breakdown.push({ paramName:param.label, type:'Objetivo', unit:param.unit, importance:imp, weight:w, perProduct });
+    });
+  });
 
-            const tagEl = document.getElementById(`res-tag-${suffix}`);
-            if (result.milesReturn > result.cashbackReturn) {
-                tagEl.textContent = "(Melhor via Milhas)";
-            } else {
-                tagEl.textContent = "(Melhor via Cashback)";
-            }
+  // ── ANUIDADE ──
+  const anuidades = {};
+  tmpCards.forEach(c => { anuidades[c.id] = c.anuidade_mensal; });
+  const maxAnuid = Math.max(...Object.values(anuidades));
+  if (maxAnuid > 0) {
+    const perProduct = {};
+    tmpCards.forEach(c => {
+      const a = anuidades[c.id];
+      const norm = (maxAnuid - a) / maxAnuid;
+      const score = norm * 5 * 10;
+      scores[c.id] += score;
+      perProduct[c.id] = { score, detail:`R$${fmtN(a)}/mês`, formula:`((${fmtN(maxAnuid)}-${fmtN(a)})/${fmtN(maxAnuid)}) × 5 × 10 = ${score.toFixed(2)}`, ret:-a };
+    });
+    breakdown.push({ paramName:'Anuidade Mensal (custo)', type:'Objetivo', unit:'R$/mês', importance:'muito', weight:5, perProduct, note:'Quem paga menos recebe maior pontuação (peso 5 fixo)' });
+  }
 
-            // Memory
-            document.getElementById(`mem-spend-${suffix}`).textContent = formatBRL(spend);
-            document.getElementById(`mem-dollar-${suffix}`).textContent = formatBRL(dollar);
-            document.getElementById(`mem-miles-${suffix}`).textContent = `${Math.floor(result.milesGenerated)} (R$ ${result.milesReturn.toFixed(2)})`;
-            document.getElementById(`mem-cashback-${suffix}`).textContent = formatBRL(result.cashbackReturn);
-            document.getElementById(`mem-fee-${suffix}`).textContent = `- ${formatBRL(result.monthlyFee)}`;
-            document.getElementById(`mem-final-${suffix}`).textContent = formatBRL(result.totalReturn);
+  // ── SUBJETIVOS ──
+  subjItems.forEach(s => {
+    const sv = tmpSubjVals[s.id];
+    if (!sv) return;
+    const imp = sv.importance || s.importance;
+    const w = impWeight(imp);
+    const n = tmpCards.length;
+    const perProduct = {};
+    tmpCards.forEach(c => {
+      const has = sv.hasParam[c.id] === true;
+      const rank = sv.rankings[c.id] || 1;
+      let score = 0, detail = '—', formula = '—';
+      if (!has) {
+        if (w > 0) { score = 0; detail = '⚠️ Não tem'; formula = `ausente × ${w} = 0`; }
+        else if (w < 0) { score = Math.abs(w)*10; detail = '✅ Não tem (bônus)'; formula = `ausente × |${w}| × 10 = ${score.toFixed(2)}`; }
+        else { detail = '— Indiferente'; formula = '0'; }
+      } else {
+        const presentCards = tmpCards.filter(x => sv.hasParam[x.id] === true);
+        const np = presentCards.length;
+        if (np > 0) {
+          const norm = (np - rank + 1) / np;
+          if (w >= 0) { score = norm * w * 10; formula = `((${np}-${rank}+1)/${np}) × ${w} × 10 = ${score.toFixed(2)}`; }
+          else { const inv = rank/np; score = inv*Math.abs(w)*10; formula = `(${rank}/${np}) × |${w}| × 10 = ${score.toFixed(2)}`; }
+          detail = `${rank}º lugar`;
         }
+      }
+      scores[c.id] += score;
+      perProduct[c.id] = { score, detail, formula };
+    });
+    breakdown.push({ paramName:s.name, type:'Subjetivo', importance:imp, weight:w, perProduct });
+  });
 
-        function calculate() {
-            const spend = parseCurrency(document.getElementById('monthlySpend').value);
-            const dollar = parseFloat(document.getElementById('dollarRate').value);
-            const milesVal = parseCurrency(document.getElementById('milesValue').value);
+  const ranking = tmpCards.map(c => ({ ...c, score:scores[c.id] })).sort((a,b)=>b.score-a.score);
+  return { scores, ranking, breakdown };
+}
 
-            if (!spend || !dollar || !milesVal) {
-                alert("Preencha os dados do perfil de gastos.");
-                return;
-            }
+function fmtN(n) {
+  if (n === null || n === undefined) return '—';
+  return Number(n).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:4});
+}
+function fmtBRL(n) {
+  return Number(n).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+}
 
-            // Card A
-            const nameA = document.getElementById('nameA').value || "Cartão A";
-            const feeA = parseCurrency(document.getElementById('feeA').value);
-            const pointsA = parseFloat(document.getElementById('pointsA').value) || 0;
-            const cashbackA = parseFloat(document.getElementById('cashbackA').value) || 0;
-            const resA = calculateCard(spend, dollar, milesVal, feeA, pointsA, cashbackA);
+/* ═══════════════════════════════════════════════════════
+   RENDER LIST
+═══════════════════════════════════════════════════════ */
+function renderList() {
+  const container = document.getElementById('list-container');
+  const empty = document.getElementById('empty-state');
+  if (comparisons.length === 0) { empty.style.display='block'; container.querySelectorAll('.comp-card').forEach(el=>el.remove()); return; }
+  empty.style.display = 'none';
+  container.querySelectorAll('.comp-card').forEach(el=>el.remove());
+  comparisons.forEach(comp => {
+    const card = document.createElement('div');
+    card.className = 'comp-card';
+    card.id = 'card-'+comp.id;
+    const winner = comp.result?.ranking?.[0];
+    const date = new Date(comp.updatedAt).toLocaleDateString('pt-BR');
+    card.innerHTML = `
+      <div class="comp-card-header" onclick="toggleCard(${comp.id})">
+        <div class="chevron">▼</div>
+        <div>
+          <div class="comp-title">${escHtml(comp.name)}</div>
+          <div class="comp-meta">${comp.cards.length} cartões · ${date}</div>
+        </div>
+        ${winner ? `<div class="winner-badge">🏆 ${escHtml(winner.name)}</div>` : ''}
+        <div class="comp-card-actions" onclick="event.stopPropagation()">
+          <button class="btn-icon" onclick="openModal(${comp.id})">✏️ Editar</button>
+          <button class="btn-icon danger" onclick="deleteComp(${comp.id})">🗑️ Excluir</button>
+        </div>
+      </div>
+      <div class="comp-card-body">${renderResult(comp)}</div>`;
+    container.appendChild(card);
+  });
+}
 
-            // Card B
-            const nameB = document.getElementById('nameB').value || "Cartão B";
-            const feeB = parseCurrency(document.getElementById('feeB').value);
-            const pointsB = parseFloat(document.getElementById('pointsB').value) || 0;
-            const cashbackB = parseFloat(document.getElementById('cashbackB').value) || 0;
-            const resB = calculateCard(spend, dollar, milesVal, feeB, pointsB, cashbackB);
+function toggleCard(id) { document.getElementById('card-'+id).classList.toggle('open'); }
 
-            // Update UI
-            updateCardResult('a', nameA, resA, spend, dollar);
-            updateCardResult('b', nameB, resB, spend, dollar);
+function deleteComp(id) {
+  if (!confirm('Excluir esta comparação?')) return;
+  comparisons = comparisons.filter(c=>c.id!==id);
+  localStorage.setItem('hvsf_cartoes_v2', JSON.stringify(comparisons));
+  renderList();
+}
 
-            // Determine Winner
-            const winnerNameEl = document.getElementById('winner-name');
-            if (resA.totalReturn > resB.totalReturn) {
-                winnerNameEl.textContent = `Melhor Eficiência: ${nameA}`;
-            } else if (resB.totalReturn > resA.totalReturn) {
-                winnerNameEl.textContent = `Melhor Eficiência: ${nameB}`;
-            } else {
-                winnerNameEl.textContent = "Eficiência Equivalente";
-            }
+/* ═══════════════════════════════════════════════════════
+   RENDER RESULT
+═══════════════════════════════════════════════════════ */
+function renderResult(comp) {
+  const { ranking, breakdown } = comp.result;
+  if (!ranking || ranking.length === 0) return '<p class="text-dim">Sem cartões.</p>';
+  const medals = ['🥇','🥈','🥉','4️⃣','5️⃣','6️⃣','7️⃣','8️⃣','9️⃣','🔟'];
 
-            document.getElementById('result-section').classList.remove('hidden');
-            // Scroll to result
-            document.getElementById('result-section').scrollIntoView({ behavior: 'smooth' });
+  let podium = '<div class="podium-grid">';
+  ranking.forEach((c,i) => {
+    const bandLabel = c.bandeira ? (BANDEIRAS_DB[c.bandeira]?.label || c.bandeira) : '';
+    podium += `<div class="podium-card ${i===0?'first':''}">
+      <div class="pod-rank">${medals[i]||`${i+1}º`}</div>
+      <div class="pod-name">${escHtml(c.name)}</div>
+      <div class="pod-score">${c.score.toFixed(1)}</div>
+      <div class="pod-sub">${fmtBRL(c.anuidade_mensal)}/mês</div>
+      ${bandLabel?`<div class="pod-sub">${escHtml(bandLabel)}</div>`:''}
+    </div>`;
+  });
+  podium += '</div>';
+
+  const best = ranking[0];
+  const second = ranking[1];
+  const diff = second ? ((best.score - second.score) / (second.score || 1) * 100) : 0;
+  let parecer = '';
+  if (diff < 5) parecer = `<b>${escHtml(best.name)}</b> é o melhor cartão, mas com <b>vantagem pequena</b> (${diff.toFixed(1)}% à frente de ${escHtml(second?.name||'')}). Fatores não mapeados podem influenciar.`;
+  else if (diff < 20) parecer = `<b>${escHtml(best.name)}</b> é o melhor cartão com <b>vantagem moderada</b> (${diff.toFixed(1)}% à frente de ${escHtml(second?.name||'')}).`;
+  else parecer = `<b>${escHtml(best.name)}</b> é o melhor cartão com <b>vantagem expressiva</b> (${diff.toFixed(1)}% à frente de ${escHtml(second?.name||'')}). A análise aponta claramente para esta escolha.`;
+
+  const parecerBox = `<div class="parecer-box">
+    <div class="parecer-title">Parecer</div>
+    <p>${parecer}</p>
+    ${comp.ctx?`<p class="text-dim" style="margin-top:6px;font-size:.78rem">Contexto: Nacional R$${fmtN(comp.ctx.nacional)}/mês · Exterior US$${fmtN(comp.ctx.exterior)}/mês · Dólar R$${fmtN(comp.ctx.dolar)}</p>`:''}
+  </div>`;
+
+  const memId = 'mem-'+comp.id;
+  const chartId = 'chart-'+comp.id;
+
+  let memTable = `<div style="overflow-x:auto"><table class="mem-table">
+    <thead><tr>
+      <th>Parâmetro</th><th>Tipo</th><th>Importância</th><th>Peso</th>
+      ${ranking.map(c=>`<th>${escHtml(c.name)}</th>`).join('')}
+    </tr></thead><tbody>`;
+
+  breakdown.forEach(row => {
+    memTable += `<tr>
+      <td><b>${escHtml(row.paramName)}</b>${row.note?`<br><span class="text-dim" style="font-size:.7rem">${escHtml(row.note)}</span>`:''}</td>
+      <td>${row.type}</td>
+      <td><span class="imp-badge ${impCls(row.importance)}">${impLabel(row.importance)}</span></td>
+      <td style="text-align:center;font-weight:700;color:${row.weight>0?'var(--green-lt)':row.weight<0?'var(--red-lt)':'var(--muted-foreground)'}">${row.weight>0?'+':''}${row.weight}</td>
+      ${ranking.map(c=>{
+        const pp = row.perProduct[c.id];
+        if (!pp) return '<td>—</td>';
+        return `<td><div class="score-cell">${pp.score.toFixed(2)}</div><div class="text-dim" style="font-size:.7rem">${pp.detail||''}</div><div class="formula-cell">${pp.formula||''}</div></td>`;
+      }).join('')}
+    </tr>`;
+  });
+
+  memTable += `<tr class="total-row">
+    <td colspan="4"><b>PONTUAÇÃO TOTAL</b></td>
+    ${ranking.map(c=>`<td class="score-cell" style="font-size:1rem">${c.score.toFixed(2)}</td>`).join('')}
+  </tr></tbody></table></div>`;
+
+  const mem = `
+    <button class="mem-toggle" onclick="toggleMem('${memId}',this)">▶ Ver memória de cálculo</button>
+    <div class="mem-body" id="${memId}">
+      <div class="mem-section-title">Gráfico comparativo</div>
+      <div class="chart-wrap"><canvas id="${chartId}"></canvas></div>
+      <div class="mem-section-title">Detalhamento por parâmetro</div>
+      ${memTable}
+      <div class="mem-section-title">Como o cálculo funciona</div>
+      <div class="tip">
+        <b>Objetivos:</b> calcula o retorno financeiro mensal (cashback, pontos×milheiro, desconto) e normaliza pelo maior valor.<br>
+        <b>Anuidade:</b> quem paga menos recebe maior pontuação (peso 5 fixo).<br>
+        <b>Subjetivos:</b> normaliza pelo ranking — 1º lugar recebe pontuação máxima. Ausência penaliza se grau positivo, bonifica se negativo.
+      </div>
+    </div>`;
+
+  setTimeout(() => {
+    const ctx2 = document.getElementById(chartId);
+    if (ctx2 && !ctx2._chartInitialized) {
+      ctx2._chartInitialized = true;
+      new Chart(ctx2, {
+        type: 'bar',
+        data: {
+          labels: ranking.map(c=>c.name),
+          datasets: [{ label:'Pontuação', data:ranking.map(c=>c.score),
+            backgroundColor: ranking.map((_,i)=>i===0?'rgba(212,175,55,0.85)':'rgba(46,125,50,0.6)'),
+            borderRadius: 6 }]
+        },
+        options: {
+          responsive: true,
+          plugins: { legend:{ display:false } },
+          scales: {
+            x: { ticks:{color:'#A0B8A6'}, grid:{color:'rgba(212,175,55,0.1)'} },
+            y: { ticks:{color:'#A0B8A6'}, grid:{color:'rgba(212,175,55,0.1)'}, beginAtZero:true }
+          }
         }
-    </script>
+      });
+    }
+  }, 100);
+
+  return `<div>${podium}${parecerBox}${mem}</div>`;
+}
+
+function toggleMem(id, btn) {
+  const el = document.getElementById(id);
+  el.classList.toggle('open');
+  btn.textContent = el.classList.contains('open') ? '▼ Ocultar memória de cálculo' : '▶ Ver memória de cálculo';
+}
+
+/* ═══════════════════════════════════════════════════════
+   ERRO / UTILS
+═══════════════════════════════════════════════════════ */
+function showError(errors) {
+  const el = document.getElementById('val-error');
+  el.innerHTML = `<b>Não foi possível salvar:</b><ul>${errors.map(e=>`<li>${e}</li>`).join('')}</ul>`;
+  el.classList.add('show');
+  el.scrollIntoView({ behavior:'smooth', block:'nearest' });
+}
+function hideError() { document.getElementById('val-error').classList.remove('show'); }
+function escHtml(s) {
+  if (!s) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+/* ═══════════════════════════════════════════════════════
+   INIT
+═══════════════════════════════════════════════════════ */
+OBJ_GROUPS.forEach(g => g.params.forEach(p => { tmpObjImps[p.id] = p.importance; }));
+subjItems.forEach(s => { tmpSubjVals[s.id] = { importance:s.importance, hasParam:{}, rankings:{} }; });
+
+// Valores padrão do contexto
+document.getElementById('ctx-nacional').value = 'R$ 3.000,00';
+document.getElementById('ctx-exterior').value = 'US$ 500,00';
+document.getElementById('ctx-bonif').value    = 'R$ 500,00';
+document.getElementById('ctx-dolar').value    = 'R$ 5,90';
+
+renderList();
+fetchDolar().catch(()=>{
+  document.getElementById('ctx-dolar-badge').innerHTML = `<span style="font-size:.78rem;color:var(--muted-foreground)">Cotação manual</span>`;
+});
+</script>
 </body>
 </html>
