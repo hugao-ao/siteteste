@@ -673,14 +673,15 @@ const OBJ_GROUPS = [
     { id:'cb-bonif',    label:'Cashback bonificado',unit:'%', tipo:'bonif'    },
   ]},
   { id:'pontos', label:'Pontos / Milhas', icon:'✈️', groupImp:'imp', params:[
-    { id:'pts-nacional', label:'Pontos por R$1 (nacional)',  unit:'pts/R$',  tipo:'pts-nacional' },
-    { id:'pts-exterior', label:'Pontos por US$1 (exterior)', unit:'pts/US$', tipo:'pts-exterior' },
-    { id:'pts-bonif',    label:'Pontos por R$1 (bonificado)',unit:'pts/R$',  tipo:'pts-bonif'    },
-    { id:'milheiro',     label:'Valor do milheiro (R$/mil)', unit:'R$/mil',  tipo:'milheiro'     },
+    { id:'pts-gasto',    label:'Pontos por gasto',              unit:'pts/gasto', tipo:'pts-gasto'  },
+    { id:'pts-bonif',    label:'Pontos por R$1 (bonificado)',   unit:'pts/R$',    tipo:'pts-bonif'  },
+    { id:'milheiro',     label:'Valor do milheiro (R$/mil)',    unit:'R$/mil',    tipo:'milheiro'   },
   ]},
-  { id:'desconto', label:'Desconto por Gasto Mensal', icon:'🏷️', groupImp:'imp', params:[
-    { id:'desc-gasto', label:'Gasto mínimo para desconto (R$)', unit:'R$', tipo:'desc-gasto' },
-    { id:'desc-pct',   label:'Desconto na anuidade (%)',        unit:'%',  tipo:'desc-pct'   },
+  { id:'desconto', label:'Desconto / Isenção de Anuidade', icon:'🏷️', groupImp:'imp', params:[
+    { id:'desc-gasto',   label:'Gasto mínimo para desconto',      unit:'R$', tipo:'desc-gasto'  },
+    { id:'desc-pct',     label:'Desconto na anuidade (%)',           unit:'%',  tipo:'desc-pct'    },
+    { id:'isent-fatura', label:'Gasto mínimo para isenção total',  unit:'R$', tipo:'isent-fatura' },
+    { id:'isent-invest', label:'Investimento mínimo para isenção', unit:'R$', tipo:'isent-invest' },
   ]},
 ];
 
@@ -732,6 +733,7 @@ let tmpCards = [];
 let tmpObjVals = {};
 let tmpObjImps = {};
 let tmpSubjVals = {};
+let tmpPtsGastoMoeda = {}; // { [cardId]: 'R$' | 'US$' }
 
 let cidCounter = 1;
 
@@ -815,7 +817,7 @@ function openModal(id = null) {
     document.getElementById('modal-title').textContent = 'Editar Comparação';
   } else {
     tmpName = ''; tmpCards = []; tmpObjVals = {}; tmpObjImps = {}; tmpSubjVals = {};
-    cidCounter = 1;
+    tmpPtsGastoMoeda = {}; cidCounter = 1;
     OBJ_GROUPS.forEach(g => { tmpObjImps[g.id] = g.groupImp; });
     subjItems.forEach(s => { tmpSubjVals[s.id] = { importance: s.importance, hasParam: {}, rankings: {} }; });
     document.getElementById('modal-title').textContent = 'Nova Comparação de Cartões';
@@ -1002,14 +1004,40 @@ function renderObjSections() {
         </tr></thead><tbody>`;
     group.params.forEach(param => {
       if (!tmpObjVals[param.id]) tmpObjVals[param.id] = {};
+      const isPtsGasto = param.tipo === 'pts-gasto';
+      const isIsentFatura = param.tipo === 'isent-fatura';
+      const isIsentInvest = param.tipo === 'isent-invest';
+      // Label extra para sub-parâmetros especiais
+      let extraLabel = '';
+      if (isIsentFatura) extraLabel = '<br><span class="text-dim" style="font-size:.68rem">Se atingido, anuidade = R$ 0</span>';
+      if (isIsentInvest) extraLabel = '<br><span class="text-dim" style="font-size:.68rem">Valor investido na instituição que isenta</span>';
       html += `<tr>
-        <td class="td-label">${param.label} <span class="text-dim">(${param.unit})</span></td>
+        <td class="td-label">${param.label}${isPtsGasto?'':''} <span class="text-dim">(${isPtsGasto?'pts/R$ ou pts/US$':param.unit})</span>${extraLabel}</td>
         ${tmpCards.map(c=>{
           const v = tmpObjVals[param.id][c.id] || 0;
           const isMoeda = param.unit === 'R$' || param.unit === 'R$/mil';
           const isPct   = param.unit === '%';
           const dispVal = v > 0 ? (isMoeda ? fmtBRL(v) : (isPct ? v.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})+'%' : String(v))) : '';
           const ph = isMoeda ? 'R$ 0,00' : (isPct ? '0%' : '0');
+          if (isPtsGasto) {
+            const moeda = tmpPtsGastoMoeda[c.id] || 'R$';
+            const dispPts = v > 0 ? String(v) : '';
+            return `<td class="td-val">
+              <div style="display:flex;gap:4px;align-items:center">
+                <input type="text" value="${dispPts}" placeholder="0"
+                  id="oval-pts-gasto-${c.id}"
+                  data-tipo="num"
+                  onblur="fmtObjInput(this,'pts-gasto',${c.id})"
+                  style="flex:1;min-width:0"/>
+                <select id="pts-gasto-moeda-${c.id}"
+                  style="width:52px;font-size:.72rem;padding:2px 4px;border-radius:5px;background:var(--bg3);border:1px solid var(--border);color:var(--foreground)"
+                  onchange="tmpPtsGastoMoeda[${c.id}]=this.value">
+                  <option value="R$"${moeda==='R$'?' selected':''}>R$</option>
+                  <option value="US$"${moeda==='US$'?' selected':''}>US$</option>
+                </select>
+              </div>
+            </td>`;
+          }
           return `<td class="td-val"><input type="text" value="${dispVal}" placeholder="${ph}"
             id="oval-${param.id}-${c.id}"
             data-tipo="${isMoeda?'moeda':(isPct?'pct':'num')}"
@@ -1153,10 +1181,17 @@ function syncAllInputs() {
   OBJ_GROUPS.forEach(g => g.params.forEach(p => {
     if (!tmpObjVals[p.id]) tmpObjVals[p.id] = {};
     tmpCards.forEach(c => {
-      const el = document.getElementById('oval-'+p.id+'-'+c.id);
-      if (el) {
-        const raw = el.value.replace(/[^\d,\.]/g,'').replace(',','.');
-        tmpObjVals[p.id][c.id] = parseFloat(raw) || 0;
+      if (p.tipo === 'pts-gasto') {
+        const el = document.getElementById('oval-pts-gasto-'+c.id);
+        if (el) { const raw = el.value.replace(/[^\d,\.]/g,'').replace(',','.'); tmpObjVals['pts-gasto'][c.id] = parseFloat(raw) || 0; }
+        const sel = document.getElementById('pts-gasto-moeda-'+c.id);
+        if (sel) tmpPtsGastoMoeda[c.id] = sel.value;
+      } else {
+        const el = document.getElementById('oval-'+p.id+'-'+c.id);
+        if (el) {
+          const raw = el.value.replace(/[^\d,\.]/g,'').replace(',','.');
+          tmpObjVals[p.id][c.id] = parseFloat(raw) || 0;
+        }
       }
     });
   }));
@@ -1185,6 +1220,7 @@ function saveComparison() {
     cards: JSON.parse(JSON.stringify(tmpCards)),
     objVals: JSON.parse(JSON.stringify(tmpObjVals)),
     objImps: JSON.parse(JSON.stringify(tmpObjImps)),
+    ptsGastoMoeda: JSON.parse(JSON.stringify(tmpPtsGastoMoeda)),
     subjVals: JSON.parse(JSON.stringify(tmpSubjVals)),
     subjSnapshot: JSON.parse(JSON.stringify(subjItems)),
     ctx, result,
@@ -1226,13 +1262,12 @@ function calcResult(ctx) {
         if (param.tipo === 'nacional')     ret = ctx.nacional * (v/100);
         else if (param.tipo === 'exterior') ret = ctx.exterior * ctx.dolar * (v/100);
         else if (param.tipo === 'bonif')    ret = ctx.bonif * (v/100);
-        else if (param.tipo === 'pts-nacional') {
+        else if (param.tipo === 'pts-gasto') {
           const mil = (tmpObjVals['milheiro']||{})[c.id] || 0;
-          ret = ctx.nacional * v * (mil/1000);
-        }
-        else if (param.tipo === 'pts-exterior') {
-          const mil = (tmpObjVals['milheiro']||{})[c.id] || 0;
-          ret = ctx.exterior * ctx.dolar * v * (mil/1000);
+          const moeda = tmpPtsGastoMoeda[c.id] || 'R$';
+          // Se moeda = US$: usa gasto exterior em US$ × dólar; se R$: usa gasto nacional em R$
+          const base = moeda === 'US$' ? ctx.exterior * ctx.dolar : ctx.nacional;
+          ret = base * v * (mil/1000);
         }
         else if (param.tipo === 'pts-bonif') {
           const mil = (tmpObjVals['milheiro']||{})[c.id] || 0;
@@ -1244,7 +1279,6 @@ function calcResult(ctx) {
         }
         else if (param.tipo === 'desc-gasto') {
           // Gasto mínimo: quem exige MENOS gasto para desconto é melhor (inverso)
-          // Retorno = 1/gasto (quanto menor o gasto exigido, maior o retorno)
           ret = v > 0 ? 1/v : 0;
         }
         else if (param.tipo === 'desc-pct') {
@@ -1252,6 +1286,19 @@ function calcResult(ctx) {
           const card = tmpCards.find(x=>x.id===c.id);
           if (card && ctx.nacional >= descGasto && descGasto > 0) ret = card.anuidade_mensal * (v/100);
           else if (card && descGasto === 0 && v > 0) ret = card.anuidade_mensal * (v/100);
+        }
+        else if (param.tipo === 'isent-fatura') {
+          // Isenção por fatura: quem exige MENOS gasto é melhor (inverso)
+          // Se o gasto nacional já atinge o mínimo, o retorno é a anuidade inteira
+          const card = tmpCards.find(x=>x.id===c.id);
+          if (v > 0 && card) {
+            if (ctx.nacional >= v) ret = card.anuidade_mensal; // isenção total
+            else ret = 1/v; // normaliza inversamente
+          }
+        }
+        else if (param.tipo === 'isent-invest') {
+          // Isenção por investimento: quem exige MENOS investimento é melhor (inverso)
+          ret = v > 0 ? 1/v : 0;
         }
         returns[c.id] = ret;
       });
@@ -1277,6 +1324,16 @@ function calcResult(ctx) {
           if (param.tipo === 'milheiro') detail = `R$${fmtN(rawV)}/mil pts`;
           else if (param.tipo === 'desc-gasto') detail = `Gasto mín: ${fmtBRL(rawV)}`;
           else if (param.tipo === 'desc-pct') detail = `Desc: ${fmtN(rawV)}% → ${fmtBRL(ret)}/mês`;
+          else if (param.tipo === 'isent-fatura') {
+            const card2 = tmpCards.find(x=>x.id===c.id);
+            const atingiu = rawV > 0 && ctx.nacional >= rawV;
+            detail = atingiu ? `✅ Isento (gasto ${fmtBRL(rawV)})` : `Gasto mín: ${fmtBRL(rawV)}`;
+          }
+          else if (param.tipo === 'isent-invest') detail = `Invest. mín: ${fmtBRL(rawV)}`;
+          else if (param.tipo === 'pts-gasto') {
+            const moeda2 = tmpPtsGastoMoeda[c.id] || 'R$';
+            detail = `${fmtN(rawV)} pts/${moeda2} → ${fmtBRL(ret)}/mês`;
+          }
           else detail = `R$${fmtN(ret)}/mês`;
         } else if (w !== 0) {
           if (rawV > 0) detail = param.tipo==='milheiro' ? `R$${fmtN(rawV)}/mil pts` : param.tipo==='desc-gasto' ? `Gasto mín: ${fmtBRL(rawV)}` : (rawV > 0 ? `R$${fmtN(rawV)}/mês` : 'Todos zerados');
@@ -1345,21 +1402,31 @@ function calcResult(ctx) {
     const cb_ext  = ctx.exterior * ctx.dolar * ((tmpObjVals['cb-exterior']||{})[c.id]||0) / 100;
     const cb_bon  = ctx.bonif    * ((tmpObjVals['cb-bonif']||{})[c.id]||0) / 100;
     const mil     = (tmpObjVals['milheiro']||{})[c.id] || 0;
-    const pts_nac = ctx.nacional * ((tmpObjVals['pts-nacional']||{})[c.id]||0) * (mil/1000);
-    const pts_ext = ctx.exterior * ctx.dolar * ((tmpObjVals['pts-exterior']||{})[c.id]||0) * (mil/1000);
-    const pts_bon = ctx.bonif    * ((tmpObjVals['pts-bonif']||{})[c.id]||0) * (mil/1000);
+    // Pontos por gasto (unificado R$ ou US$)
+    const ptsGastoV = (tmpObjVals['pts-gasto']||{})[c.id] || 0;
+    const ptsGastoMoeda = tmpPtsGastoMoeda[c.id] || 'R$';
+    const ptsGastoBase = ptsGastoMoeda === 'US$' ? ctx.exterior * ctx.dolar : ctx.nacional;
+    const pts_gasto = ptsGastoBase * ptsGastoV * (mil/1000);
+    const pts_bon = ctx.bonif * ((tmpObjVals['pts-bonif']||{})[c.id]||0) * (mil/1000);
     const descGasto = (tmpObjVals['desc-gasto']||{})[c.id] || 0;
     const descPct   = (tmpObjVals['desc-pct']||{})[c.id]   || 0;
+    const isentFatura = (tmpObjVals['isent-fatura']||{})[c.id] || 0;
     let desconto = 0;
-    if (descPct > 0 && (descGasto === 0 || ctx.nacional >= descGasto)) {
+    let isentTotal = false;
+    // Isenção total por fatura tem prioridade
+    if (isentFatura > 0 && ctx.nacional >= isentFatura) {
+      desconto = c.anuidade_mensal; // isenção total
+      isentTotal = true;
+    } else if (descPct > 0 && (descGasto === 0 || ctx.nacional >= descGasto)) {
       desconto = c.anuidade_mensal * (descPct/100);
     }
-    const entradas = cb_nac + cb_ext + cb_bon + pts_nac + pts_ext + pts_bon + desconto;
+    const entradas = cb_nac + cb_ext + cb_bon + pts_gasto + pts_bon + desconto;
     const saidas   = c.anuidade_mensal;
     balanco[c.id] = {
       cb_nac, cb_ext, cb_bon,
-      pts_nac, pts_ext, pts_bon,
-      desconto,
+      pts_gasto, pts_bon,
+      ptsGastoMoeda, ptsGastoV,
+      desconto, isentTotal,
       entradas, saidas,
       liquido: entradas - saidas
     };
@@ -1468,7 +1535,7 @@ function renderResult(comp) {
       const liqCls = b.liquido >= 0 ? 'positivo' : 'negativo';
       const liqSinal = b.liquido >= 0 ? '+' : '';
       const hasCb   = (b.cb_nac + b.cb_ext + b.cb_bon) > 0;
-      const hasPts  = (b.pts_nac + b.pts_ext + b.pts_bon) > 0;
+      const hasPts  = ((b.pts_gasto||0) + (b.pts_bon||0)) > 0;
       const hasDesc = b.desconto > 0;
       const totalEntradas = b.entradas;
       // Busca dados do cartão para exibir sub-parâmetros
@@ -1478,9 +1545,9 @@ function renderResult(comp) {
       const cbNacPct  = (objV['cb-nacional']||{})[c.id] || 0;
       const cbExtPct  = (objV['cb-exterior']||{})[c.id] || 0;
       const cbBonPct  = (objV['cb-bonif']||{})[c.id] || 0;
-      const ptsNac    = (objV['pts-nacional']||{})[c.id] || 0;
-      const ptsExt    = (objV['pts-exterior']||{})[c.id] || 0;
+      const ptsGastoV = (objV['pts-gasto']||{})[c.id] || 0;
       const ptsBon    = (objV['pts-bonif']||{})[c.id] || 0;
+      const ptsGastoMoedaComp = (comp.ptsGastoMoeda||{})[c.id] || 'R$';
       const descGasto = (objV['desc-gasto']||{})[c.id] || 0;
       const descPct   = (objV['desc-pct']||{})[c.id] || 0;
       const ctx2 = comp.ctx || {};
@@ -1493,14 +1560,16 @@ function renderResult(comp) {
           ${b.cb_bon > 0 ? `<div class="bc-row positivo"><span>Bonificado (${fmtN(cbBonPct)}%)</span><span>+${fmtBRL(b.cb_bon)}</span></div>` : ''}` : ''}
         ${hasPts ? `
           <div class="bc-subtitulo">✈️ Pontos / Milhas</div>
-          ${b.pts_nac > 0 ? `<div class="bc-row positivo"><span>Nacional (${fmtN(ptsNac)} pts/R$)</span><span>+${fmtBRL(b.pts_nac)}</span></div>` : ''}
-          ${b.pts_ext > 0 ? `<div class="bc-row positivo"><span>Exterior (${fmtN(ptsExt)} pts/US$)</span><span>+${fmtBRL(b.pts_ext)}</span></div>` : ''}
-          ${b.pts_bon > 0 ? `<div class="bc-row positivo"><span>Bonificado (${fmtN(ptsBon)} pts/R$)</span><span>+${fmtBRL(b.pts_bon)}</span></div>` : ''}
+          ${(b.pts_gasto||0) > 0 ? `<div class="bc-row positivo"><span>Por gasto (${fmtN(ptsGastoV)} pts/${ptsGastoMoedaComp})</span><span>+${fmtBRL(b.pts_gasto)}</span></div>` : ''}
+          ${(b.pts_bon||0) > 0 ? `<div class="bc-row positivo"><span>Bonificado (${fmtN(ptsBon)} pts/R$)</span><span>+${fmtBRL(b.pts_bon)}</span></div>` : ''}
           ${mil > 0 ? `<div class="bc-row" style="color:var(--muted-foreground)"><span>Valor do milheiro</span><span>${fmtBRL(mil)}/mil</span></div>` : ''}` : ''}
         ${hasDesc ? `
-          <div class="bc-subtitulo">🏷️ Desconto</div>
-          <div class="bc-row" style="color:var(--muted-foreground)"><span>Gasto mín. exigido</span><span>${fmtBRL(descGasto)}</span></div>
-          <div class="bc-row positivo"><span>Desconto (${fmtN(descPct)}%)</span><span>+${fmtBRL(b.desconto)}</span></div>` : ''}
+          <div class="bc-subtitulo">🏷️ ${b.isentTotal?'Isenção Total':'Desconto'}</div>
+          ${b.isentTotal
+            ? `<div class="bc-row positivo"><span>✅ Anuidade isenta (fatura atingida)</span><span>+${fmtBRL(b.desconto)}</span></div>`
+            : `<div class="bc-row" style="color:var(--muted-foreground)"><span>Gasto mín. exigido</span><span>${fmtBRL(descGasto)}</span></div>
+               <div class="bc-row positivo"><span>Desconto (${fmtN(descPct)}%)</span><span>+${fmtBRL(b.desconto)}</span></div>`
+          }` : ''}
         ${(!hasCb && !hasPts && !hasDesc) ? `<div class="bc-row"><span>Sem retorno financeiro</span><span>R$ 0,00</span></div>` : ''}
         <hr class="bc-divider"/>
         <div class="bc-row positivo" style="font-weight:700"><span>Total entradas</span><span>+${fmtBRL(totalEntradas)}</span></div>
@@ -1561,10 +1630,9 @@ function renderResult(comp) {
             { label:'Cashback nacional', key:'cb_nac', fmt:'brl' },
             { label:'Cashback exterior', key:'cb_ext', fmt:'brl' },
             { label:'Cashback bonificado', key:'cb_bon', fmt:'brl' },
-            { label:'Pontos nac. (em R$)', key:'pts_nac', fmt:'brl' },
-            { label:'Pontos ext. (em R$)', key:'pts_ext', fmt:'brl' },
-            { label:'Pontos bonif. (em R$)', key:'pts_bon', fmt:'brl' },
-            { label:'Desconto anuidade', key:'desconto', fmt:'brl' },
+            { label:'Pontos por gasto (em R$)', key:'pts_gasto', fmt:'brl' },
+            { label:'Pontos bonificado (em R$)', key:'pts_bon', fmt:'brl' },
+            { label:'Desconto / Isenção anuidade', key:'desconto', fmt:'brl' },
           ];
           let t = '';
           rows.forEach(r => {
