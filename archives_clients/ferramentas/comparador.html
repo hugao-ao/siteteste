@@ -1,1094 +1,1519 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Comparador Inteligente — HV Saúde Financeira</title>
-  <link rel="stylesheet" href="../assets/style.css" />
-  <script src="../assets/layout.js" defer></script>
-  <style>
-    /* ── Variáveis do tema ── */
-    :root {
-      --bg:        #021C0E;
-      --card-bg:   #052614;
-      --card-bg2:  #0A3520;
-      --border:    rgba(212,175,55,0.18);
-      --border-sub:rgba(255,255,255,0.07);
-      --gold:      #D4AF37;
-      --gold-dim:  rgba(212,175,55,0.12);
-      --gold-dim2: rgba(212,175,55,0.06);
-      --text:      #F2E8C9;
-      --muted:     #A0B8A6;
-      --muted2:    #6b7280;
-      --danger:    #ef4444;
-      --danger-bg: rgba(239,68,68,0.12);
-      --info-bg:   rgba(59,130,246,0.08);
-      --info-bd:   rgba(59,130,246,0.2);
-      --info-txt:  #60a5fa;
-    }
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Comparador Inteligente</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+  :root {
+    --bg:        #0a1a0e;
+    --bg2:       #0f2414;
+    --bg3:       #162d1a;
+    --border:    #1e3d24;
+    --gold:      #c9a227;
+    --gold-dim:  #a07d1a;
+    --green:     #2e7d32;
+    --green-lt:  #4caf50;
+    --text:      #e8f5e9;
+    --text-dim:  #8aab8e;
+    --red:       #c62828;
+    --red-lt:    #ef5350;
+    --amber:     #f57f17;
+    --amber-lt:  #ffb300;
+    --radius:    10px;
+    --shadow:    0 4px 24px rgba(0,0,0,0.5);
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 0 0 60px;
+  }
 
-    /* ── Layout geral ── */
-    .cmp-wrap { max-width: 900px; }
+  /* ── HEADER ── */
+  .page-header {
+    background: var(--bg2);
+    border-bottom: 1px solid var(--border);
+    padding: 18px 24px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+  .page-header h1 { font-size: 1.25rem; font-weight: 700; color: var(--gold); }
+  .page-header p  { font-size: .82rem; color: var(--text-dim); margin-top: 2px; }
+  .btn-new {
+    margin-left: auto;
+    background: var(--gold);
+    color: #0a1a0e;
+    border: none;
+    border-radius: var(--radius);
+    padding: 10px 20px;
+    font-weight: 700;
+    font-size: .9rem;
+    cursor: pointer;
+    transition: background .2s;
+  }
+  .btn-new:hover { background: var(--gold-dim); }
 
-    /* ── Cabeçalho ── */
-    .page-header { display:flex; align-items:center; gap:1rem; margin-bottom:2rem; flex-wrap:wrap; }
-    .page-header-back { color:var(--muted); font-size:1.2rem; text-decoration:none; transition:color .2s; }
-    .page-header-back:hover { color:var(--text); }
-    .page-header-icon { font-size:1.8rem; }
-    .page-header-title { font-size:1.5rem; font-weight:800; color:var(--text); margin:0; }
-    .page-header-sub { font-size:.85rem; color:var(--muted); margin:0; }
+  /* ── LISTA DE COMPARAÇÕES ── */
+  #list-container { padding: 20px 24px; }
+  .empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--text-dim);
+  }
+  .empty-state .icon { font-size: 3rem; margin-bottom: 12px; }
+  .empty-state p { font-size: .95rem; }
 
-    /* ── Lista de comparações ── */
-    .cmp-list-empty {
-      text-align:center; padding:3rem 1rem;
-      background:var(--card-bg); border:1px dashed var(--border);
-      border-radius:12px; color:var(--muted);
-    }
-    .cmp-card {
-      display:flex; align-items:center; justify-content:space-between; gap:1rem;
-      background:var(--card-bg); border:1px solid var(--border-sub);
-      border-radius:10px; padding:1rem 1.25rem; margin-bottom:.75rem;
-      cursor:pointer; transition:border-color .2s, background .2s;
-    }
-    .cmp-card:hover { border-color:var(--border); background:var(--card-bg2); }
-    .cmp-card-title { font-weight:700; color:var(--text); font-size:.95rem; }
-    .cmp-card-meta  { font-size:.78rem; color:var(--muted); margin-top:2px; }
-    .cmp-card-actions { display:flex; gap:.5rem; flex-shrink:0; }
+  .comp-card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    margin-bottom: 14px;
+    overflow: hidden;
+    transition: border-color .2s;
+  }
+  .comp-card:hover { border-color: var(--gold-dim); }
+  .comp-card-header {
+    display: flex;
+    align-items: center;
+    padding: 16px 20px;
+    cursor: pointer;
+    gap: 12px;
+    user-select: none;
+  }
+  .comp-card-header .chevron {
+    width: 22px; height: 22px;
+    border: 2px solid var(--text-dim);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: .7rem;
+    transition: transform .25s, border-color .2s;
+    flex-shrink: 0;
+  }
+  .comp-card.open .comp-card-header .chevron { transform: rotate(180deg); border-color: var(--gold); }
+  .comp-card-header .comp-title { font-weight: 600; font-size: 1rem; flex: 1; }
+  .comp-card-header .comp-meta { font-size: .78rem; color: var(--text-dim); }
+  .comp-card-header .winner-badge {
+    background: var(--gold);
+    color: #0a1a0e;
+    border-radius: 20px;
+    padding: 3px 10px;
+    font-size: .75rem;
+    font-weight: 700;
+  }
+  .comp-card-actions { display: flex; gap: 8px; }
+  .btn-icon {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    border-radius: 6px;
+    padding: 5px 10px;
+    font-size: .78rem;
+    cursor: pointer;
+    transition: all .2s;
+  }
+  .btn-icon:hover { border-color: var(--gold); color: var(--gold); }
+  .btn-icon.danger:hover { border-color: var(--red-lt); color: var(--red-lt); }
 
-    /* ── Botões ── */
-    .btn { display:inline-flex; align-items:center; justify-content:center; gap:.35rem;
-           padding:.5rem 1.1rem; border-radius:8px; font-size:.85rem; font-weight:600;
-           cursor:pointer; border:none; transition:all .2s; }
-    .btn-primary { background:var(--gold); color:#021C0E; }
-    .btn-primary:hover { background:#c9a227; }
-    .btn-ghost   { background:transparent; border:1px solid var(--border-sub); color:var(--muted); }
-    .btn-ghost:hover { background:rgba(255,255,255,0.06); color:var(--text); }
-    .btn-danger  { background:var(--danger-bg); border:1px solid rgba(239,68,68,.25); color:var(--danger); }
-    .btn-danger:hover { background:rgba(239,68,68,.22); }
-    .btn-sm { padding:.35rem .75rem; font-size:.78rem; }
+  .comp-card-body { display: none; padding: 0 20px 20px; }
+  .comp-card.open .comp-card-body { display: block; }
 
-    /* ── Modal ── */
-    .modal-overlay {
-      position:fixed; inset:0; background:rgba(0,0,0,.72); z-index:200;
-      display:flex; align-items:flex-start; justify-content:center;
-      padding:1.5rem 1rem; overflow-y:auto;
-    }
-    .modal-overlay.hidden { display:none; }
-    .modal-box {
-      background:var(--card-bg); border:1px solid var(--border);
-      border-radius:14px; padding:2rem; width:100%; max-width:720px;
-      position:relative; box-shadow:0 24px 60px rgba(0,0,0,.6);
-    }
-    .modal-close {
-      position:absolute; top:1rem; right:1rem;
-      background:transparent; border:none; color:var(--muted);
-      font-size:1.1rem; cursor:pointer; line-height:1;
-      transition:color .2s;
-    }
-    .modal-close:hover { color:var(--text); }
-    .modal-title { font-size:1.2rem; font-weight:800; color:var(--text); margin-bottom:1.5rem; }
+  /* ── MODAL ── */
+  .modal-overlay {
+    display: none;
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,.75);
+    z-index: 1000;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 20px;
+    overflow-y: auto;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    width: 100%;
+    max-width: 860px;
+    margin: auto;
+    box-shadow: var(--shadow);
+    animation: slideIn .2s ease;
+  }
+  @keyframes slideIn { from { transform: translateY(-20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+  .modal-header {
+    padding: 22px 24px 16px;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 12px;
+  }
+  .modal-header h2 { font-size: 1.1rem; font-weight: 700; flex: 1; }
+  .btn-close {
+    background: none; border: none; color: var(--text-dim);
+    font-size: 1.3rem; cursor: pointer; padding: 4px 8px;
+    border-radius: 6px; transition: color .2s;
+  }
+  .btn-close:hover { color: var(--text); }
+  .modal-body { padding: 22px 24px; }
 
-    /* ── Tabs ── */
-    .tabs { display:flex; gap:.5rem; margin-bottom:1.5rem; flex-wrap:wrap; }
-    .tab-btn {
-      padding:.4rem .9rem; border-radius:8px;
-      border:1px solid var(--border-sub); background:transparent;
-      color:var(--muted); font-size:.82rem; font-weight:600; cursor:pointer; transition:all .2s;
-    }
-    .tab-btn.active { background:var(--gold); color:#021C0E; border-color:var(--gold); }
-    .tab-btn:hover:not(.active) { background:rgba(255,255,255,0.05); color:var(--text); }
+  /* ── FORM FIELDS ── */
+  .field-group { margin-bottom: 20px; }
+  .field-label {
+    display: block;
+    font-size: .8rem;
+    font-weight: 600;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    margin-bottom: 7px;
+  }
+  .field-input {
+    width: 100%;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    padding: 10px 14px;
+    font-size: .95rem;
+    transition: border-color .2s;
+    outline: none;
+  }
+  .field-input:focus { border-color: var(--gold); }
+  .field-input::placeholder { color: var(--text-dim); }
+  select.field-input { cursor: pointer; }
 
-    /* ── Campos ── */
-    .field-group { display:flex; flex-direction:column; gap:.35rem; }
-    .field-group label { font-size:.78rem; font-weight:600; color:var(--muted); }
-    .field-input {
-      background:rgba(0,0,0,.35); border:1px solid var(--border-sub);
-      border-radius:7px; padding:.55rem .75rem; color:var(--text);
-      font-size:.88rem; width:100%; transition:border-color .2s;
-    }
-    .field-input:focus { outline:none; border-color:var(--gold); }
-    .field-input:disabled { opacity:.4; cursor:not-allowed; }
-    .field-row { display:flex; gap:.75rem; align-items:flex-end; margin-bottom:.75rem; }
+  /* ── SECTION BLOCKS ── */
+  .section-block {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    margin-bottom: 14px;
+    overflow: hidden;
+  }
+  .section-block-header {
+    display: flex; align-items: center;
+    padding: 14px 18px;
+    cursor: pointer;
+    gap: 10px;
+    user-select: none;
+  }
+  .section-block-header .sb-icon {
+    width: 32px; height: 32px;
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1rem;
+    flex-shrink: 0;
+  }
+  .section-block-header .sb-icon.gold { background: rgba(201,162,39,.15); }
+  .section-block-header .sb-icon.green { background: rgba(46,125,50,.2); }
+  .section-block-header .sb-icon.blue { background: rgba(30,100,200,.2); }
+  .section-block-header h3 { font-size: .95rem; font-weight: 600; flex: 1; }
+  .section-block-header .sb-count {
+    font-size: .75rem;
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 2px 9px;
+    color: var(--text-dim);
+  }
+  .section-block-header .sb-chevron {
+    font-size: .7rem; color: var(--text-dim);
+    transition: transform .2s;
+  }
+  .section-block.open .section-block-header .sb-chevron { transform: rotate(180deg); }
+  .section-block-body { display: none; padding: 0 18px 18px; }
+  .section-block.open .section-block-body { display: block; }
 
-    /* ── Parâmetros ── */
-    .param-row {
-      background:rgba(0,0,0,.2); border:1px solid var(--border-sub);
-      border-radius:10px; padding:1rem; margin-bottom:.75rem;
-    }
-    .param-row-header { display:flex; gap:.75rem; align-items:flex-end; flex-wrap:wrap; }
-    .param-rankings { margin-top:.85rem; }
-    .param-rankings-title { font-size:.75rem; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.06em; margin-bottom:.6rem; }
-    .rankings-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); gap:.6rem; }
-    .ranking-item {
-      background:var(--card-bg2); border:1px solid var(--border-sub);
-      border-radius:8px; padding:.6rem .75rem; display:flex; flex-direction:column; gap:.35rem;
-    }
+  /* ── PRODUTOS GRID ── */
+  .products-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+  .product-card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 14px;
+    position: relative;
+  }
+  .product-card .pc-num {
+    font-size: .7rem;
+    color: var(--gold);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    margin-bottom: 6px;
+  }
+  .product-card .pc-del {
+    position: absolute; top: 8px; right: 8px;
+    background: none; border: none;
+    color: var(--text-dim); cursor: pointer;
+    font-size: .85rem; padding: 2px 5px;
+    border-radius: 4px; transition: color .2s;
+  }
+  .product-card .pc-del:hover { color: var(--red-lt); }
+  .product-card .field-input { font-size: .88rem; padding: 7px 10px; }
+  .product-card .field-label { font-size: .72rem; margin-bottom: 4px; }
 
-    /* ── Checkbox de presença ── */
-    .presence-check { display:flex; align-items:center; gap:.4rem; font-size:.78rem; color:var(--text); cursor:pointer; }
-    .presence-check input[type="checkbox"] { width:14px; height:14px; cursor:pointer; accent-color:var(--gold); flex-shrink:0; }
-    .absence-note { font-size:.7rem; color:var(--muted2); font-style:italic; }
+  /* ── PARÂMETROS GRADE ── */
+  .param-table-wrap { overflow-x: auto; margin-bottom: 12px; }
+  .param-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: .85rem;
+    min-width: 520px;
+  }
+  .param-table th {
+    background: var(--bg2);
+    padding: 9px 12px;
+    text-align: left;
+    font-size: .72rem;
+    font-weight: 700;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
+  .param-table td {
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: middle;
+  }
+  .param-table tr:last-child td { border-bottom: none; }
+  .param-table tr:hover td { background: rgba(255,255,255,.02); }
+  .param-table .td-del {
+    width: 36px; text-align: center;
+  }
+  .param-table .td-del button {
+    background: none; border: none;
+    color: var(--text-dim); cursor: pointer;
+    font-size: .85rem; padding: 3px 6px;
+    border-radius: 4px; transition: color .2s;
+  }
+  .param-table .td-del button:hover { color: var(--red-lt); }
+  .param-table input, .param-table select {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    padding: 6px 9px;
+    font-size: .83rem;
+    width: 100%;
+    outline: none;
+    transition: border-color .2s;
+  }
+  .param-table input:focus, .param-table select:focus { border-color: var(--gold); }
+  .param-table .td-name { min-width: 140px; }
+  .param-table .td-unit { width: 80px; }
+  .param-table .td-imp { min-width: 180px; }
+  .param-table .td-rank { width: 90px; }
+  .param-table .td-has { width: 60px; text-align: center; }
 
-    /* ── Alert boxes ── */
-    .alert-box { border-radius:8px; padding:.65rem .9rem; font-size:.82rem; margin-bottom:1rem; }
-    .alert-info { background:var(--info-bg); border:1px solid var(--info-bd); color:var(--info-txt); }
-    .alert-warn { background:rgba(251,146,60,.08); border:1px solid rgba(251,146,60,.2); color:#fb923c; }
+  /* presença checkbox */
+  .has-check {
+    width: 18px; height: 18px;
+    accent-color: var(--green-lt);
+    cursor: pointer;
+  }
 
-    /* ── Resultado ── */
-    .result-section {
-      background:var(--card-bg); border:1px solid var(--border);
-      border-radius:14px; padding:1.75rem; margin-top:1.5rem;
-    }
-    .result-section.hidden { display:none; }
+  /* rank select */
+  .rank-select { cursor: pointer; }
 
-    .result-winner {
-      text-align:center; padding:1.5rem;
-      background:var(--gold-dim); border:1px solid var(--border);
-      border-radius:12px; margin-bottom:1.5rem;
-    }
-    .result-winner-label { font-size:.75rem; color:var(--muted); text-transform:uppercase; letter-spacing:.08em; }
-    .result-winner-name  { font-size:2rem; font-weight:800; color:var(--gold); margin:.25rem 0; }
-    .result-winner-score { font-size:.9rem; color:var(--muted); }
+  /* ── IMPORTANCE BADGES ── */
+  .imp-badge {
+    display: inline-block;
+    border-radius: 20px;
+    padding: 2px 9px;
+    font-size: .72rem;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+  .imp-top    { background: rgba(201,162,39,.2); color: var(--gold); border: 1px solid var(--gold-dim); }
+  .imp-muito  { background: rgba(76,175,80,.15); color: var(--green-lt); border: 1px solid #2e7d32; }
+  .imp-imp    { background: rgba(30,136,229,.15); color: #64b5f6; border: 1px solid #1565c0; }
+  .imp-ind    { background: rgba(120,120,120,.1); color: #9e9e9e; border: 1px solid #424242; }
+  .imp-nao    { background: rgba(245,127,23,.1); color: var(--amber-lt); border: 1px solid var(--amber); }
+  .imp-inac   { background: rgba(198,40,40,.15); color: var(--red-lt); border: 1px solid var(--red); }
 
-    .scores-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(170px,1fr)); gap:.75rem; margin-bottom:1.5rem; }
-    .score-card {
-      background:rgba(255,255,255,0.02); border:1px solid var(--border-sub);
-      border-radius:10px; padding:1rem; text-align:center;
-    }
-    .score-card.winner { border-color:var(--gold); background:var(--gold-dim2); }
-    .score-card-name  { font-size:.82rem; font-weight:600; color:var(--muted); margin-bottom:4px; }
-    .score-card-val   { font-size:1.6rem; font-weight:800; color:var(--text); }
-    .score-card-rank  { font-size:.73rem; color:var(--muted2); margin-top:2px; }
+  /* ── BTN ADD ── */
+  .btn-add {
+    background: none;
+    border: 1px dashed var(--border);
+    color: var(--text-dim);
+    border-radius: 8px;
+    padding: 9px 16px;
+    font-size: .83rem;
+    cursor: pointer;
+    transition: all .2s;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .btn-add:hover { border-color: var(--gold); color: var(--gold); }
 
-    /* ── Parecer ── */
-    .parecer-box {
-      background:rgba(255,255,255,0.02); border:1px solid var(--border-sub);
-      border-radius:10px; padding:1rem; margin-bottom:1.5rem;
-    }
-    .parecer-label { font-size:.72rem; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:var(--muted2); margin-bottom:.5rem; }
-    .parecer-text  { color:var(--muted); font-size:.88rem; line-height:1.65; margin:0; }
+  /* ── MODAL FOOTER ── */
+  .modal-footer {
+    padding: 16px 24px;
+    border-top: 1px solid var(--border);
+    display: flex; align-items: center; gap: 10px;
+    justify-content: flex-end;
+  }
+  .btn-cancel {
+    background: none; border: 1px solid var(--border);
+    color: var(--text-dim); border-radius: 8px;
+    padding: 10px 20px; font-size: .9rem; cursor: pointer;
+    transition: all .2s;
+  }
+  .btn-cancel:hover { border-color: var(--text-dim); color: var(--text); }
+  .btn-save {
+    background: var(--gold); color: #0a1a0e;
+    border: none; border-radius: 8px;
+    padding: 10px 24px; font-size: .9rem;
+    font-weight: 700; cursor: pointer;
+    transition: background .2s;
+  }
+  .btn-save:hover { background: var(--gold-dim); }
+  .btn-save:disabled { opacity: .4; cursor: not-allowed; }
 
-    /* ── Memória de cálculo ── */
-    .memory-toggle { cursor:pointer; color:var(--muted2); font-size:.82rem; display:flex; align-items:center; gap:.4rem; user-select:none; }
-    .memory-toggle:hover { color:var(--text); }
-    .memory-body { margin-top:.85rem; overflow-x:auto; }
-    .memory-body.hidden { display:none; }
-    .memory-table { width:100%; border-collapse:collapse; font-size:.78rem; }
-    .memory-table th {
-      background:rgba(255,255,255,0.04); color:var(--muted2);
-      padding:.5rem .75rem; text-align:left; font-weight:700;
-      border-bottom:1px solid var(--border-sub); white-space:nowrap;
-    }
-    .memory-table td { padding:.5rem .75rem; border-bottom:1px solid rgba(255,255,255,.03); color:var(--muted); vertical-align:top; }
-    .memory-table tr:last-child td { border-bottom:none; }
-    .td-num { text-align:right; font-variant-numeric:tabular-nums; }
+  /* ── RESULTADO ── */
+  .result-section { margin-top: 6px; }
+  .podium-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+  .podium-card {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    text-align: center;
+    position: relative;
+  }
+  .podium-card.first {
+    border-color: var(--gold);
+    background: rgba(201,162,39,.07);
+  }
+  .podium-card .pod-rank {
+    font-size: 1.5rem; margin-bottom: 4px;
+  }
+  .podium-card .pod-name {
+    font-weight: 700; font-size: .9rem;
+    margin-bottom: 4px;
+  }
+  .podium-card .pod-score {
+    font-size: 1.6rem; font-weight: 800;
+    color: var(--gold);
+  }
+  .podium-card .pod-price {
+    font-size: .75rem; color: var(--text-dim); margin-top: 4px;
+  }
 
-    /* ── Badges de importância ── */
-    .badge { display:inline-block; padding:2px 8px; border-radius:20px; font-size:.7rem; font-weight:700; }
-    .badge-top  { background:rgba(212,175,55,.18); color:var(--gold); }
-    .badge-very { background:rgba(239,68,68,.14); color:#f87171; }
-    .badge-imp  { background:rgba(59,130,246,.14); color:#60a5fa; }
-    .badge-ind  { background:rgba(156,163,175,.12); color:#9ca3af; }
-    .badge-neg  { background:rgba(251,146,60,.14); color:#fb923c; }
-    .badge-unac { background:rgba(239,68,68,.22); color:#ef4444; }
+  .parecer-box {
+    background: var(--bg3);
+    border-left: 3px solid var(--gold);
+    border-radius: 0 8px 8px 0;
+    padding: 14px 18px;
+    margin-bottom: 16px;
+    font-size: .9rem;
+    line-height: 1.6;
+  }
+  .parecer-box .parecer-title {
+    font-size: .72rem; font-weight: 700;
+    text-transform: uppercase; letter-spacing: .06em;
+    color: var(--gold); margin-bottom: 6px;
+  }
 
-    /* ── Utilitários ── */
-    .divider { border:none; border-top:1px solid var(--border-sub); margin:1.25rem 0; }
-    .text-muted { color:var(--muted2); font-size:.8rem; }
-    .flex-end { display:flex; justify-content:flex-end; gap:.6rem; margin-top:1.5rem; }
-    .mt-1 { margin-top:.5rem; }
-    .hidden { display:none; }
-  </style>
+  /* ── MEMÓRIA DE CÁLCULO ── */
+  .mem-toggle {
+    background: none; border: 1px solid var(--border);
+    color: var(--text-dim); border-radius: 8px;
+    padding: 8px 16px; font-size: .83rem;
+    cursor: pointer; transition: all .2s;
+    display: flex; align-items: center; gap: 6px;
+    margin-bottom: 12px;
+  }
+  .mem-toggle:hover { border-color: var(--gold); color: var(--gold); }
+  .mem-body { display: none; }
+  .mem-body.open { display: block; }
+
+  .mem-section-title {
+    font-size: .72rem; font-weight: 700;
+    text-transform: uppercase; letter-spacing: .06em;
+    color: var(--text-dim); margin: 16px 0 8px;
+  }
+
+  .mem-table {
+    width: 100%; border-collapse: collapse;
+    font-size: .8rem; margin-bottom: 16px;
+    overflow-x: auto; display: block;
+  }
+  .mem-table th {
+    background: var(--bg2);
+    padding: 8px 12px;
+    text-align: left;
+    font-size: .7rem; font-weight: 700;
+    color: var(--text-dim);
+    text-transform: uppercase; letter-spacing: .04em;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
+  .mem-table td {
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+  }
+  .mem-table tr:last-child td { border-bottom: none; }
+  .mem-table .total-row td {
+    font-weight: 700; background: rgba(201,162,39,.06);
+    border-top: 2px solid var(--gold-dim);
+  }
+  .mem-table .score-cell { text-align: right; font-weight: 600; }
+  .mem-table .formula-cell {
+    font-family: monospace; font-size: .75rem;
+    color: var(--text-dim); max-width: 220px;
+  }
+
+  .chart-wrap {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+    margin-bottom: 16px;
+  }
+  .chart-wrap canvas { max-height: 260px; }
+
+  /* ── VALIDATION ERROR ── */
+  .val-error {
+    background: rgba(198,40,40,.1);
+    border: 1px solid var(--red);
+    border-radius: 8px;
+    padding: 12px 16px;
+    margin-bottom: 14px;
+    font-size: .85rem;
+    color: var(--red-lt);
+    display: none;
+  }
+  .val-error.show { display: block; }
+  .val-error ul { margin: 6px 0 0 16px; }
+  .val-error li { margin-bottom: 3px; }
+
+  /* ── UTIL ── */
+  .divider { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
+  .text-dim { color: var(--text-dim); font-size: .82rem; }
+  .mt8 { margin-top: 8px; }
+  .flex-row { display: flex; align-items: center; gap: 8px; }
+  .tip {
+    background: rgba(201,162,39,.07);
+    border: 1px solid rgba(201,162,39,.2);
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: .82rem;
+    color: var(--text-dim);
+    margin-bottom: 14px;
+  }
+  .tip b { color: var(--gold); }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 600px) {
+    .page-header { flex-wrap: wrap; }
+    .btn-new { margin-left: 0; width: 100%; text-align: center; }
+    .modal { margin: 0; border-radius: 14px 14px 0 0; }
+    .modal-overlay { align-items: flex-end; padding: 0; }
+  }
+</style>
 </head>
 <body>
-  <div id="sidebar-container" class="sidebar"></div>
-  <main class="main-content">
-    <div class="container cmp-wrap">
 
-      <!-- Cabeçalho -->
-      <div class="page-header">
-        <a href="../ferramentas.html" class="page-header-back">←</a>
-        <span class="page-header-icon">⚖️</span>
-        <div>
-          <h1 class="page-header-title">Comparador Inteligente</h1>
-          <p class="page-header-sub">Compare produtos e serviços com critérios objetivos e subjetivos ponderados.</p>
-        </div>
-        <button id="mobile-toggle" class="mobile-toggle ml-auto" style="margin-left:auto;">☰</button>
-      </div>
+<div class="page-header">
+  <div>
+    <h1>⚖️ Comparador Inteligente</h1>
+    <p>Compare produtos e serviços com critérios objetivos e subjetivos ponderados</p>
+  </div>
+  <button class="btn-new" onclick="openModal()">+ Nova Comparação</button>
+</div>
 
-      <div style="display:flex;justify-content:flex-end;margin-bottom:1rem;">
-        <button class="btn btn-primary" onclick="openNewComparison()">+ Nova Comparação</button>
-      </div>
+<div id="list-container">
+  <div class="empty-state" id="empty-state">
+    <div class="icon">📊</div>
+    <p>Nenhuma comparação ainda.<br>Clique em <b>+ Nova Comparação</b> para começar.</p>
+  </div>
+</div>
 
-      <div id="cmp-list"></div>
-      <div id="result-section" class="result-section hidden"></div>
-
+<!-- MODAL -->
+<div class="modal-overlay" id="modal-overlay">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="modal-title">Nova Comparação</h2>
+      <button class="btn-close" onclick="closeModal()">✕</button>
     </div>
-  </main>
+    <div class="modal-body">
+      <div class="val-error" id="val-error"></div>
 
-  <!-- ══════════════════════ MODAL ══════════════════════ -->
-  <div id="modal-overlay" class="modal-overlay hidden">
-    <div class="modal-box">
-      <button class="modal-close" onclick="closeModal()">✕</button>
-      <div class="modal-title" id="modal-title">Nova Comparação</div>
-
-      <div class="field-group" style="max-width:440px;margin-bottom:1.25rem;">
-        <label>Nome da comparação</label>
-        <input class="field-input" id="cmp-name" placeholder="Ex: Whey Protein — melhor custo-benefício" />
+      <!-- Nome da comparação -->
+      <div class="field-group">
+        <label class="field-label">Nome da comparação</label>
+        <input class="field-input" id="comp-name" placeholder="Ex: Whey Protein — Melhor custo-benefício" />
       </div>
 
-      <div class="tabs">
-        <button class="tab-btn active" onclick="switchTab('products')">Produtos</button>
-        <button class="tab-btn" onclick="switchTab('obj')">Parâmetros Objetivos</button>
-        <button class="tab-btn" onclick="switchTab('subj')">Parâmetros Subjetivos</button>
+      <!-- PRODUTOS -->
+      <div class="section-block open" id="sb-produtos">
+        <div class="section-block-header" onclick="toggleSection('sb-produtos')">
+          <div class="sb-icon gold">📦</div>
+          <h3>Produtos / Serviços</h3>
+          <span class="sb-count" id="count-produtos">0 adicionados</span>
+          <span class="sb-chevron">▼</span>
+        </div>
+        <div class="section-block-body">
+          <div class="tip"><b>Dica:</b> Adicione todos os produtos que deseja comparar. O preço é o custo total no período analisado.</div>
+          <div class="products-grid" id="products-grid"></div>
+          <button class="btn-add" onclick="addProduct()">＋ Adicionar produto</button>
+        </div>
       </div>
 
-      <!-- Aba Produtos -->
-      <div id="tab-products">
-        <div class="alert-info alert-box">Adicione pelo menos 2 produtos para comparar. O preço é o custo total no período analisado.</div>
-        <div id="products-list"></div>
-        <button class="btn btn-ghost btn-sm" onclick="addProduct()">+ Adicionar Produto</button>
+      <!-- PARÂMETROS OBJETIVOS -->
+      <div class="section-block" id="sb-obj">
+        <div class="section-block-header" onclick="toggleSection('sb-obj')">
+          <div class="sb-icon green">📐</div>
+          <h3>Parâmetros Objetivos</h3>
+          <span class="sb-count" id="count-obj">0 adicionados</span>
+          <span class="sb-chevron">▼</span>
+        </div>
+        <div class="section-block-body">
+          <div class="tip"><b>Parâmetros com valor numérico e unidade</b> (ex: 200 g, 500 ml). O sistema calcula o custo por unidade automaticamente e ranqueia do mais barato ao mais caro.</div>
+          <div class="param-table-wrap" id="obj-table-wrap">
+            <table class="param-table" id="obj-table">
+              <thead id="obj-thead"></thead>
+              <tbody id="obj-tbody"></tbody>
+            </table>
+          </div>
+          <button class="btn-add" onclick="addObjParam()">＋ Adicionar parâmetro objetivo</button>
+        </div>
       </div>
 
-      <!-- Aba Parâmetros Objetivos -->
-      <div id="tab-obj" style="display:none;">
-        <div class="alert-info alert-box">Parâmetros com valor numérico e unidade (ex: 200 ml, 500 g). O sistema calcula o custo por unidade automaticamente. Use o checkbox para indicar se o produto <strong>tem</strong> este parâmetro.</div>
-        <div id="obj-list"></div>
-        <button class="btn btn-ghost btn-sm" onclick="addObjParam()">+ Adicionar Parâmetro Objetivo</button>
+      <!-- PARÂMETROS SUBJETIVOS -->
+      <div class="section-block" id="sb-subj">
+        <div class="section-block-header" onclick="toggleSection('sb-subj')">
+          <div class="sb-icon blue">💬</div>
+          <h3>Parâmetros Subjetivos</h3>
+          <span class="sb-count" id="count-subj">0 adicionados</span>
+          <span class="sb-chevron">▼</span>
+        </div>
+        <div class="section-block-body">
+          <div class="tip"><b>Critérios qualitativos</b> — classifique de 1 (melhor) a N (pior). Empates são permitidos, mas a sequência deve ser válida. O sistema valida antes de salvar.</div>
+          <div class="param-table-wrap" id="subj-table-wrap">
+            <table class="param-table" id="subj-table">
+              <thead id="subj-thead"></thead>
+              <tbody id="subj-tbody"></tbody>
+            </table>
+          </div>
+          <button class="btn-add" onclick="addSubjParam()">＋ Adicionar parâmetro subjetivo</button>
+        </div>
       </div>
-
-      <!-- Aba Parâmetros Subjetivos -->
-      <div id="tab-subj" style="display:none;">
-        <div class="alert-info alert-box">Parâmetros qualitativos. Classifique qual produto é melhor em cada critério (1 = melhor). Use o checkbox para indicar se o produto <strong>tem</strong> este parâmetro — a ausência impacta a pontuação conforme o grau de importância.</div>
-        <div id="subj-list"></div>
-        <button class="btn btn-ghost btn-sm" onclick="addSubjParam()">+ Adicionar Parâmetro Subjetivo</button>
-      </div>
-
-      <hr class="divider" />
-      <div class="flex-end">
-        <button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>
-        <button class="btn btn-primary" onclick="saveComparison()">Salvar e Calcular</button>
-      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closeModal()">Cancelar</button>
+      <button class="btn-save" onclick="saveComparison()">Salvar e Calcular ▶</button>
     </div>
   </div>
+</div>
 
-  <script>
-  // ══════════════════════════════════════════════════════════
-  //  CONSTANTES
-  // ══════════════════════════════════════════════════════════
-  const IMPORTANCE_LEVELS = [
-    { value: 'top',  label: 'O mais importante de todos', weight: 10  },
-    { value: 'very', label: 'Muito Importante',           weight: 5   },
-    { value: 'imp',  label: 'Importante',                 weight: 3   },
-    { value: 'ind',  label: 'Indiferente',                weight: 0   },
-    { value: 'neg',  label: 'Gostaria que não tivesse',   weight: -2  },
-    { value: 'unac', label: 'Inaceitável',                weight: -10 },
-  ];
+<script>
+/* ═══════════════════════════════════════════════════════════
+   ESTADO
+═══════════════════════════════════════════════════════════ */
+let comparisons = JSON.parse(localStorage.getItem('hvsf_comparacoes') || '[]');
+let editingId = null;
 
-  const IMPORTANCE_BADGE = {
-    top: 'badge-top', very: 'badge-very', imp: 'badge-imp',
-    ind: 'badge-ind', neg: 'badge-neg',   unac: 'badge-unac',
-  };
+let tmpName = '';
+let tmpProducts = [];   // { id, name, price }
+let tmpObjParams = [];  // { id, name, unit, importance, values:{pid:num}, hasParam:{pid:bool} }
+let tmpSubjParams = []; // { id, name, importance, rankings:{pid:num}, hasParam:{pid:bool} }
 
-  // ══════════════════════════════════════════════════════════
-  //  ESTADO GLOBAL
-  // ══════════════════════════════════════════════════════════
-  let comparisons   = JSON.parse(localStorage.getItem('hvsf_comparisons') || '[]');
-  let editingId     = null;
-  let tmpProducts   = [];
-  let tmpObjParams  = [];
-  let tmpSubjParams = [];
-  let nextId        = Date.now();
-  function uid() { return ++nextId; }
+let pidCounter = 1;
+let paramCounter = 1;
 
-  // ══════════════════════════════════════════════════════════
-  //  PERSISTÊNCIA
-  // ══════════════════════════════════════════════════════════
-  function save() {
-    localStorage.setItem('hvsf_comparisons', JSON.stringify(comparisons));
-  }
+/* ═══════════════════════════════════════════════════════════
+   IMPORTÂNCIA
+═══════════════════════════════════════════════════════════ */
+const IMP_OPTIONS = [
+  { value: 'top',   label: 'O mais importante de todos', weight: 10, cls: 'imp-top' },
+  { value: 'muito', label: 'Muito Importante',           weight: 5,  cls: 'imp-muito' },
+  { value: 'imp',   label: 'Importante',                 weight: 3,  cls: 'imp-imp' },
+  { value: 'ind',   label: 'Indiferente',                weight: 0,  cls: 'imp-ind' },
+  { value: 'nao',   label: 'Gostaria que não tivesse',   weight: -2, cls: 'imp-nao' },
+  { value: 'inac',  label: 'Inaceitável',                weight: -10, cls: 'imp-inac' },
+];
+function impWeight(v) { return (IMP_OPTIONS.find(x=>x.value===v)||{weight:0}).weight; }
+function impLabel(v)  { return (IMP_OPTIONS.find(x=>x.value===v)||{label:v}).label; }
+function impCls(v)    { return (IMP_OPTIONS.find(x=>x.value===v)||{cls:''}).cls; }
 
-  // ══════════════════════════════════════════════════════════
-  //  FORMATAÇÃO DE MOEDA
-  // ══════════════════════════════════════════════════════════
-  function formatBRL(raw) {
-    // Remove tudo que não for dígito
-    let digits = raw.replace(/\D/g, '');
-    if (!digits) return '';
-    // Trata como centavos
-    let num = parseInt(digits, 10);
-    let reais = Math.floor(num / 100);
-    let cents = num % 100;
-    let reaisStr = reais.toLocaleString('pt-BR');
-    return `R$ ${reaisStr},${String(cents).padStart(2,'0')}`;
-  }
+function impSelectHTML(id, val, onchange) {
+  return `<select class="field-input" id="${id}" onchange="${onchange}" style="font-size:.82rem">
+    ${IMP_OPTIONS.map(o=>`<option value="${o.value}"${o.value===val?' selected':''}>${o.label}</option>`).join('')}
+  </select>`;
+}
 
-  function parseBRL(formatted) {
-    if (!formatted && formatted !== 0) return 0;
-    // Se já for número, retorna direto
-    if (typeof formatted === 'number') return formatted;
-    // Remove "R$ ", pontos de milhar e troca vírgula por ponto
-    let clean = String(formatted).replace(/R\$\s?/g,'').replace(/\./g,'').replace(',','.');
-    return parseFloat(clean) || 0;
-  }
-
-  function onPriceInput(id, el) {
-    const raw = el.value;
-    const formatted = formatBRL(raw);
-    el.value = formatted;
-    const p = tmpProducts.find(x => x.id === id);
-    if (p) p.price = parseBRL(formatted);
-  }
-
-  // ══════════════════════════════════════════════════════════
-  //  HELPER: consequência de ausência de parâmetro
-  // ══════════════════════════════════════════════════════════
-  function getAbsenceLabel(importance) {
-    switch (importance) {
-      case 'top':  return '⚠️ Não tem — penalidade máxima';
-      case 'very': return '⚠️ Não tem — penalidade alta';
-      case 'imp':  return '⚠️ Não tem — penalidade moderada';
-      case 'ind':  return '— Não tem (sem impacto)';
-      case 'neg':  return '✅ Não tem — bônus (era indesejado)';
-      case 'unac': return '✅ Não tem — bônus (era inaceitável)';
-      default:     return '— Não tem';
-    }
-  }
-
-  // ══════════════════════════════════════════════════════════
-  //  RENDER LISTA
-  // ══════════════════════════════════════════════════════════
-  function renderList() {
-    const el = document.getElementById('cmp-list');
-    if (comparisons.length === 0) {
-      el.innerHTML = `<div class="cmp-list-empty">
-        <div style="font-size:2.5rem;margin-bottom:.5rem;">⚖️</div>
-        <div style="font-size:1rem;font-weight:700;color:var(--text);margin-bottom:.35rem;">Nenhuma comparação ainda</div>
-        <div style="font-size:.85rem;">Clique em <strong>+ Nova Comparação</strong> para começar.</div>
-      </div>`;
-      return;
-    }
-    el.innerHTML = comparisons.map(c => {
-      const pCount = c.products.length;
-      const oCount = c.objParams.length;
-      const sCount = c.subjParams.length;
-      return `<div class="cmp-card" onclick="viewComparison('${c.id}')">
-        <div>
-          <div class="cmp-card-title">${esc(c.name)}</div>
-          <div class="cmp-card-meta">${pCount} produto${pCount!==1?'s':''} · ${oCount} param. objetivo${oCount!==1?'s':''} · ${sCount} param. subjetivo${sCount!==1?'s':''}</div>
-        </div>
-        <div class="cmp-card-actions" onclick="event.stopPropagation()">
-          <button class="btn btn-ghost btn-sm" onclick="openEditComparison('${c.id}')">✏️ Editar</button>
-          <button class="btn btn-danger btn-sm" onclick="deleteComparison('${c.id}')">🗑️ Excluir</button>
-        </div>
-      </div>`;
-    }).join('');
-  }
-
-  // ══════════════════════════════════════════════════════════
-  //  ABRIR / FECHAR MODAL
-  // ══════════════════════════════════════════════════════════
-  function openNewComparison() {
-    editingId     = null;
-    tmpProducts   = [];
-    tmpObjParams  = [];
-    tmpSubjParams = [];
-    document.getElementById('cmp-name').value = '';
-    document.getElementById('modal-title').textContent = 'Nova Comparação';
-    switchTab('products');
-    renderModal();
-    document.getElementById('modal-overlay').classList.remove('hidden');
-    document.getElementById('result-section').classList.add('hidden');
-  }
-
-  function openEditComparison(id) {
-    const c = comparisons.find(x => x.id === id);
-    if (!c) return;
-    editingId     = id;
+/* ═══════════════════════════════════════════════════════════
+   MODAL OPEN / CLOSE
+═══════════════════════════════════════════════════════════ */
+function openModal(id = null) {
+  editingId = id;
+  if (id) {
+    const c = comparisons.find(x=>x.id===id);
+    tmpName = c.name;
     tmpProducts   = JSON.parse(JSON.stringify(c.products));
     tmpObjParams  = JSON.parse(JSON.stringify(c.objParams));
     tmpSubjParams = JSON.parse(JSON.stringify(c.subjParams));
-    // Garante hasParam para dados antigos
-    tmpObjParams.forEach(op => {
-      if (!op.hasParam) { op.hasParam = {}; tmpProducts.forEach(p => { op.hasParam[p.id] = true; }); }
-    });
-    tmpSubjParams.forEach(sp => {
-      if (!sp.hasParam) { sp.hasParam = {}; tmpProducts.forEach(p => { sp.hasParam[p.id] = true; }); }
-    });
-    document.getElementById('cmp-name').value = c.name;
+    pidCounter    = Math.max(...tmpProducts.map(p=>p.id), 0) + 1;
+    paramCounter  = Math.max(...[...tmpObjParams,...tmpSubjParams].map(p=>p.id), 0) + 1;
     document.getElementById('modal-title').textContent = 'Editar Comparação';
-    switchTab('products');
-    renderModal();
-    document.getElementById('modal-overlay').classList.remove('hidden');
+  } else {
+    tmpName = ''; tmpProducts = []; tmpObjParams = []; tmpSubjParams = [];
+    pidCounter = 1; paramCounter = 1;
+    document.getElementById('modal-title').textContent = 'Nova Comparação';
   }
+  document.getElementById('comp-name').value = tmpName;
+  hideError();
+  renderAll();
+  document.getElementById('modal-overlay').classList.add('open');
+}
 
-  function closeModal() {
-    document.getElementById('modal-overlay').classList.add('hidden');
+function closeModal() {
+  document.getElementById('modal-overlay').classList.remove('open');
+}
+
+/* ═══════════════════════════════════════════════════════════
+   TOGGLE SECTIONS
+═══════════════════════════════════════════════════════════ */
+function toggleSection(id) {
+  document.getElementById(id).classList.toggle('open');
+}
+
+/* ═══════════════════════════════════════════════════════════
+   RENDER ALL
+═══════════════════════════════════════════════════════════ */
+function renderAll() {
+  renderProducts();
+  renderObjTable();
+  renderSubjTable();
+}
+
+/* ═══════════════════════════════════════════════════════════
+   PRODUTOS
+═══════════════════════════════════════════════════════════ */
+function addProduct() {
+  const id = pidCounter++;
+  tmpProducts.push({ id, name: '', price: 0 });
+  // Inicializar hasParam para todos os parâmetros existentes
+  tmpObjParams.forEach(p => { p.hasParam[id] = true; p.values[id] = 0; });
+  tmpSubjParams.forEach(p => { p.hasParam[id] = true; p.rankings[id] = 1; });
+  renderAll();
+}
+
+function removeProduct(pid) {
+  tmpProducts = tmpProducts.filter(p=>p.id!==pid);
+  tmpObjParams.forEach(p => { delete p.hasParam[pid]; delete p.values[pid]; });
+  tmpSubjParams.forEach(p => { delete p.hasParam[pid]; delete p.rankings[pid]; });
+  renderAll();
+}
+
+function updateProductName(pid, val) {
+  const p = tmpProducts.find(x=>x.id===pid);
+  if (p) p.name = val;
+  // Atualiza cabeçalhos das tabelas sem re-render completo
+  updateTableHeaders();
+}
+
+function updateProductPrice(pid, val) {
+  const p = tmpProducts.find(x=>x.id===pid);
+  if (p) {
+    const raw = val.replace(/\D/g,'');
+    p.price = raw ? parseInt(raw) / 100 : 0;
+    const el = document.getElementById('price-'+pid);
+    if (el) el.value = fmtBRL(p.price);
   }
+}
 
-  // ══════════════════════════════════════════════════════════
-  //  TABS
-  // ══════════════════════════════════════════════════════════
-  function switchTab(tab) {
-    ['products','obj','subj'].forEach(t => {
-      document.getElementById('tab-'+t).style.display = t===tab ? 'block' : 'none';
-    });
-    document.querySelectorAll('.tab-btn').forEach((b,i) => {
-      b.classList.toggle('active', ['products','obj','subj'][i] === tab);
-    });
-    if (tab === 'subj') renderSubjParams();
-    if (tab === 'obj')  renderObjParams();
-  }
+function fmtBRL(n) {
+  return n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+}
 
-  // ══════════════════════════════════════════════════════════
-  //  PRODUTOS
-  // ══════════════════════════════════════════════════════════
-  function addProduct() {
-    const newProd = { id: uid(), name: '', price: 0 };
-    tmpProducts.push(newProd);
-    tmpObjParams.forEach(op => { op.hasParam[newProd.id] = true; });
-    tmpSubjParams.forEach(sp => { sp.hasParam[newProd.id] = true; sp.rankings[newProd.id] = 1; });
-    renderProducts();
-    // Atualiza os grids de parâmetros sem rerenderizar inputs de texto
-    if (document.getElementById('tab-obj').style.display !== 'none') renderObjParams();
-    if (document.getElementById('tab-subj').style.display !== 'none') renderSubjParams();
-  }
-
-  function removeProduct(id) {
-    tmpProducts = tmpProducts.filter(p => p.id !== id);
-    tmpSubjParams.forEach(sp => { delete sp.rankings[id]; delete sp.hasParam[id]; });
-    tmpObjParams.forEach(op => { delete op.values[id]; delete op.hasParam[id]; });
-    renderProducts();
-    if (document.getElementById('tab-obj').style.display !== 'none') renderObjParams();
-    if (document.getElementById('tab-subj').style.display !== 'none') renderSubjParams();
-  }
-
-  function renderProducts() {
-    const el = document.getElementById('products-list');
-    if (tmpProducts.length === 0) {
-      el.innerHTML = '<p class="text-muted" style="margin-bottom:.75rem;">Nenhum produto adicionado.</p>';
-      return;
-    }
-    el.innerHTML = tmpProducts.map(p => {
-      const priceFormatted = p.price ? formatBRL(String(Math.round(p.price * 100))) : '';
-      return `<div class="field-row">
-        <div class="field-group" style="flex:2;">
-          <label>Nome do produto</label>
-          <input class="field-input" id="pname-${p.id}" placeholder="Ex: Whey Gold 900g" value="${esc(p.name)}"
-            oninput="updateProduct(${p.id},'name',this.value)" />
-        </div>
-        <div class="field-group" style="flex:1;">
-          <label>Preço total</label>
-          <input class="field-input" id="pprice-${p.id}" type="text" inputmode="numeric"
-            placeholder="R$ 0,00" value="${esc(priceFormatted)}"
-            oninput="onPriceInput(${p.id},this)" />
-        </div>
-        <button class="btn btn-danger btn-sm" style="margin-bottom:2px;flex-shrink:0;" onclick="removeProduct(${p.id})">✕</button>
-      </div>`;
-    }).join('');
-  }
-
-  function updateProduct(id, field, val) {
-    const p = tmpProducts.find(x => x.id === id);
-    if (p) p[field] = val;
-  }
-
-  // ══════════════════════════════════════════════════════════
-  //  PARÂMETROS OBJETIVOS
-  //  IMPORTANTE: os inputs de nome e unidade NÃO rerenderizam
-  //  o DOM ao digitar — usam oninput direto no objeto.
-  // ══════════════════════════════════════════════════════════
-  function addObjParam() {
-    const op = { id: uid(), name: '', unit: '', importance: 'imp', values: {}, hasParam: {} };
-    tmpProducts.forEach(p => { op.hasParam[p.id] = true; });
-    tmpObjParams.push(op);
-    renderObjParams();
-  }
-
-  function removeObjParam(id) {
-    tmpObjParams = tmpObjParams.filter(x => x.id !== id);
-    renderObjParams();
-  }
-
-  function toggleObjHasParam(paramId, productId, checked) {
-    const op = tmpObjParams.find(x => x.id === paramId);
-    if (!op) return;
-    op.hasParam[productId] = checked;
-    // Rerenderiza apenas o grid de valores deste parâmetro
-    const grid = document.getElementById('objgrid-' + paramId);
-    if (grid) grid.innerHTML = buildObjGrid(op);
-  }
-
-  function renderObjParams() {
-    const el = document.getElementById('obj-list');
-    if (tmpObjParams.length === 0) {
-      el.innerHTML = '<p class="text-muted" style="margin-bottom:.75rem;">Nenhum parâmetro objetivo adicionado.</p>';
-      return;
-    }
-    el.innerHTML = tmpObjParams.map(op => `
-      <div class="param-row" id="oprow-${op.id}">
-        <div class="param-row-header">
-          <div class="field-group" style="flex:2;">
-            <label>Nome do parâmetro</label>
-            <input class="field-input" placeholder="Ex: Proteína por porção" value="${esc(op.name)}"
-              oninput="tmpObjParams.find(x=>x.id===${op.id}).name=this.value" />
-          </div>
-          <div class="field-group" style="flex:1;">
-            <label>Unidade</label>
-            <input class="field-input" placeholder="g, ml, un…" value="${esc(op.unit)}"
-              oninput="updateObjUnit(${op.id},this.value)" />
-          </div>
-          <div class="field-group" style="flex:2;">
-            <label>Grau de importância</label>
-            <select class="field-input" onchange="updateObjImportance(${op.id},this.value)">
-              ${importanceOptions(op.importance)}
-            </select>
-          </div>
-          <button class="btn btn-danger btn-sm" style="margin-bottom:2px;flex-shrink:0;" onclick="removeObjParam(${op.id})">✕</button>
-        </div>
-        ${tmpProducts.length > 0
-          ? `<div class="param-rankings">
-               <div class="param-rankings-title">Quantidade entregue por produto (${esc(op.unit)||'unidade'})</div>
-               <div class="rankings-grid" id="objgrid-${op.id}">${buildObjGrid(op)}</div>
-             </div>`
-          : '<p class="text-muted" style="margin-top:.5rem;font-size:.78rem;">Adicione produtos primeiro para inserir os valores.</p>'
-        }
+function renderProducts() {
+  const grid = document.getElementById('products-grid');
+  grid.innerHTML = tmpProducts.map((p,i) => `
+    <div class="product-card">
+      <div class="pc-num">Produto ${i+1}</div>
+      <button class="pc-del" onclick="removeProduct(${p.id})" title="Remover">✕</button>
+      <div class="field-group" style="margin-bottom:8px">
+        <label class="field-label">Nome</label>
+        <input class="field-input" id="pname-${p.id}" value="${escHtml(p.name)}"
+          placeholder="Ex: Marca A"
+          oninput="updateProductName(${p.id}, this.value)" />
       </div>
-    `).join('');
-  }
-
-  function buildObjGrid(op) {
-    return tmpProducts.map(p => {
-      const has = op.hasParam[p.id] !== false;
-      return `<div class="ranking-item">
-        <label class="presence-check">
-          <input type="checkbox" ${has ? 'checked' : ''} onchange="toggleObjHasParam(${op.id},${p.id},this.checked)" />
-          ${esc(p.name||'Produto')}
-        </label>
-        <input class="field-input" id="objval-${op.id}-${p.id}" type="number" min="0" step="any" placeholder="0"
-          value="${op.values[p.id]||''}"
-          ${has ? '' : 'disabled'}
-          oninput="updateObjParamValue(${op.id},${p.id},this.value)" />
-        ${!has ? `<span class="absence-note">${getAbsenceLabel(op.importance)}</span>` : ''}
-      </div>`;
-    }).join('');
-  }
-
-  function updateObjUnit(id, val) {
-    const op = tmpObjParams.find(x => x.id === id);
-    if (!op) return;
-    op.unit = val;
-    // Atualiza apenas o título do grid sem rerenderizar os inputs
-    const row = document.getElementById('oprow-' + id);
-    if (row) {
-      const title = row.querySelector('.param-rankings-title');
-      if (title) title.textContent = `Quantidade entregue por produto (${val||'unidade'})`;
-    }
-  }
-
-  function updateObjImportance(id, val) {
-    const op = tmpObjParams.find(x => x.id === id);
-    if (!op) return;
-    op.importance = val;
-    // Atualiza notas de ausência no grid
-    const grid = document.getElementById('objgrid-' + id);
-    if (grid) grid.innerHTML = buildObjGrid(op);
-  }
-
-  function updateObjParamValue(paramId, productId, val) {
-    const op = tmpObjParams.find(x => x.id === paramId);
-    if (op) op.values[productId] = parseFloat(val) || 0;
-  }
-
-  // ══════════════════════════════════════════════════════════
-  //  PARÂMETROS SUBJETIVOS
-  // ══════════════════════════════════════════════════════════
-  function addSubjParam() {
-    const sp = { id: uid(), name: '', importance: 'imp', rankings: {}, hasParam: {} };
-    tmpProducts.forEach(p => { sp.rankings[p.id] = 1; sp.hasParam[p.id] = true; });
-    tmpSubjParams.push(sp);
-    renderSubjParams();
-  }
-
-  function removeSubjParam(id) {
-    tmpSubjParams = tmpSubjParams.filter(x => x.id !== id);
-    renderSubjParams();
-  }
-
-  function toggleSubjHasParam(paramId, productId, checked) {
-    const sp = tmpSubjParams.find(x => x.id === paramId);
-    if (!sp) return;
-    sp.hasParam[productId] = checked;
-    if (checked && !sp.rankings[productId]) sp.rankings[productId] = 1;
-    const grid = document.getElementById('subjgrid-' + paramId);
-    if (grid) grid.innerHTML = buildSubjGrid(sp);
-  }
-
-  function renderSubjParams() {
-    const el = document.getElementById('subj-list');
-    if (tmpSubjParams.length === 0) {
-      el.innerHTML = '<p class="text-muted" style="margin-bottom:.75rem;">Nenhum parâmetro subjetivo adicionado.</p>';
-      return;
-    }
-    el.innerHTML = tmpSubjParams.map(sp => `
-      <div class="param-row">
-        <div class="param-row-header">
-          <div class="field-group" style="flex:2;">
-            <label>Nome do parâmetro</label>
-            <input class="field-input" placeholder="Ex: Sabor, Embalagem, Atendimento…" value="${esc(sp.name)}"
-              oninput="tmpSubjParams.find(x=>x.id===${sp.id}).name=this.value" />
-          </div>
-          <div class="field-group" style="flex:2;">
-            <label>Grau de importância</label>
-            <select class="field-input" onchange="updateSubjImportance(${sp.id},this.value)">
-              ${importanceOptions(sp.importance)}
-            </select>
-          </div>
-          <button class="btn btn-danger btn-sm" style="margin-bottom:2px;flex-shrink:0;" onclick="removeSubjParam(${sp.id})">✕</button>
-        </div>
-        ${tmpProducts.length > 0
-          ? `<div class="param-rankings">
-               <div class="param-rankings-title">Classificação por produto (1 = melhor · empates permitidos · regra de posição)</div>
-               <div class="rankings-grid" id="subjgrid-${sp.id}">${buildSubjGrid(sp)}</div>
-             </div>`
-          : '<p class="text-muted" style="margin-top:.5rem;font-size:.78rem;">Adicione produtos primeiro para classificar.</p>'
-        }
+      <div class="field-group" style="margin-bottom:0">
+        <label class="field-label">Preço total (R$)</label>
+        <input class="field-input" id="price-${p.id}" value="${p.price > 0 ? fmtBRL(p.price) : ''}"
+          placeholder="R$ 0,00"
+          oninput="updateProductPrice(${p.id}, this.value)"
+          onblur="syncPriceDisplay(${p.id})" />
       </div>
-    `).join('');
+    </div>
+  `).join('');
+  document.getElementById('count-produtos').textContent = `${tmpProducts.length} adicionado${tmpProducts.length!==1?'s':''}`;
+}
+
+function syncPriceDisplay(pid) {
+  const p = tmpProducts.find(x=>x.id===pid);
+  const el = document.getElementById('price-'+pid);
+  if (p && el) el.value = p.price > 0 ? fmtBRL(p.price) : '';
+}
+
+/* ═══════════════════════════════════════════════════════════
+   PARÂMETROS OBJETIVOS
+═══════════════════════════════════════════════════════════ */
+function addObjParam() {
+  const id = paramCounter++;
+  const hasParam = {}, values = {};
+  tmpProducts.forEach(p => { hasParam[p.id] = true; values[p.id] = 0; });
+  tmpObjParams.push({ id, name: '', unit: '', importance: 'imp', values, hasParam });
+  renderObjTable();
+  document.getElementById('sb-obj').classList.add('open');
+}
+
+function removeObjParam(id) {
+  tmpObjParams = tmpObjParams.filter(p=>p.id!==id);
+  renderObjTable();
+}
+
+function updateObjParam(id, field, val) {
+  const p = tmpObjParams.find(x=>x.id===id);
+  if (p) p[field] = val;
+  if (field === 'name' || field === 'unit') updateObjParamHeader(id);
+}
+
+function updateObjValue(paramId, pid, val) {
+  const p = tmpObjParams.find(x=>x.id===paramId);
+  if (p) {
+    const raw = val.replace(/[^\d,\.]/g,'').replace(',','.');
+    p.values[pid] = parseFloat(raw) || 0;
+  }
+}
+
+function toggleObjHas(paramId, pid, checked) {
+  const p = tmpObjParams.find(x=>x.id===paramId);
+  if (p) p.hasParam[pid] = checked;
+}
+
+function updateObjParamHeader(id) {
+  // Atualiza apenas o header da linha sem re-render
+  const p = tmpObjParams.find(x=>x.id===id);
+  if (!p) return;
+}
+
+function renderObjTable() {
+  const n = tmpProducts.length;
+  document.getElementById('count-obj').textContent = `${tmpObjParams.length} adicionado${tmpObjParams.length!==1?'s':''}`;
+
+  if (tmpObjParams.length === 0) {
+    document.getElementById('obj-thead').innerHTML = '';
+    document.getElementById('obj-tbody').innerHTML = '';
+    return;
   }
 
-  function buildSubjGrid(sp) {
-    const rankOptions = buildRankOptions(sp);
-    return tmpProducts.map(p => {
-      const has = sp.hasParam[p.id] !== false;
-      return `<div class="ranking-item">
-        <label class="presence-check">
-          <input type="checkbox" ${has ? 'checked' : ''} onchange="toggleSubjHasParam(${sp.id},${p.id},this.checked)" />
-          ${esc(p.name||'Produto')}
-        </label>
-        ${has
-          ? `<select class="field-input" onchange="updateSubjRanking(${sp.id},${p.id},this.value)">${rankOptions[p.id]||''}</select>`
-          : `<input class="field-input" disabled value="—" />
-             <span class="absence-note">${getAbsenceLabel(sp.importance)}</span>`
-        }
-      </div>`;
-    }).join('');
-  }
+  // Cabeçalho
+  let thead = `<tr>
+    <th class="td-name">Parâmetro</th>
+    <th class="td-unit">Unidade</th>
+    <th class="td-imp">Importância</th>`;
+  tmpProducts.forEach(p => {
+    thead += `<th class="td-has" title="${escHtml(p.name)||'Produto'}">✓</th>
+              <th class="td-rank">${escHtml(p.name)||'Produto'}</th>`;
+  });
+  thead += `<th class="td-del"></th></tr>`;
+  document.getElementById('obj-thead').innerHTML = thead;
 
-  function updateSubjImportance(id, val) {
-    const sp = tmpSubjParams.find(x => x.id === id);
-    if (!sp) return;
-    sp.importance = val;
-    const grid = document.getElementById('subjgrid-' + id);
-    if (grid) grid.innerHTML = buildSubjGrid(sp);
-  }
-
-  /**
-   * Constrói opções de ranking válidas apenas para produtos PRESENTES.
-   * Regra: quando N produtos empatam em posição P, o próximo disponível é P+N.
-   */
-  function buildRankOptions(sp) {
-    const presentProds = tmpProducts.filter(p => sp.hasParam[p.id] !== false);
-    const n = presentProds.length;
-    const result = {};
-
-    presentProds.forEach(p => {
-      const othersRanks = presentProds
-        .filter(op => op.id !== p.id)
-        .map(op => parseInt(sp.rankings[op.id]) || 1);
-
-      const validPositions = computeValidPositions(n, othersRanks);
-      const current = parseInt(sp.rankings[p.id]) || 1;
-      if (!validPositions.includes(current)) validPositions.push(current);
-      validPositions.sort((a,b) => a-b);
-
-      result[p.id] = validPositions.map(v =>
-        `<option value="${v}" ${v===current?'selected':''}>${v}º</option>`
-      ).join('');
-    });
-
-    return result;
-  }
-
-  function computeValidPositions(n, othersRanks) {
-    // Gera todas as posições válidas que o produto atual PODE ocupar,
-    // dado o ranking dos outros produtos.
-    //
-    // Regra: as posições válidas são determinadas pela sequência de posições
-    // possíveis no ranking completo (1..n), pulando posições que seriam
-    // impossíveis dado os empates existentes.
-    //
-    // Exemplo com n=3 e outros dois em 1º:
-    //   Posições do ranking completo: 1, 1, 3 (dois empatados em 1º → próximo é 3º)
-    //   O produto atual pode ser: 1º (empate com os dois) ou 3º (pior dos 3)
-    //
-    // Algoritmo: percorre as posições válidas do ranking completo.
-    // Uma posição P é válida para o produto atual se:
-    //   - P = 1 (sempre pode empatar em 1º)
-    //   - P é a próxima posição após todos os empates dos outros produtos
-    //     que ocupam posições <= P
-
-    const positions = new Set();
-
-    // Conta quantos outros produtos estão em cada posição
-    const rankCount = {};
-    othersRanks.forEach(r => { rankCount[r] = (rankCount[r] || 0) + 1; });
-
-    // Gera todas as posições possíveis no ranking completo (sem o produto atual)
-    // e determina quais são válidas para o produto atual
-    let pos = 1;
-    while (pos <= n) {
-      positions.add(pos);
-      const countAtPos = rankCount[pos] || 0;
-      // Pula as posições ocupadas pelos empates
-      pos += countAtPos + 1;
-    }
-
-    // Garante que a posição 1 sempre está disponível (empate em 1º)
-    positions.add(1);
-
-    // Garante que a posição n (último lugar) sempre está disponível
-    // quando há pelo menos um outro produto
-    if (othersRanks.length > 0) {
-      positions.add(n);
-    }
-
-    return [...positions].sort((a, b) => a - b);
-  }
-
-  function updateSubjRanking(paramId, productId, val) {
-    const sp = tmpSubjParams.find(x => x.id === paramId);
-    if (sp) sp.rankings[productId] = parseInt(val);
-    const grid = document.getElementById('subjgrid-' + paramId);
-    if (grid) grid.innerHTML = buildSubjGrid(sp);
-  }
-
-  // ══════════════════════════════════════════════════════════
-  //  HELPERS
-  // ══════════════════════════════════════════════════════════
-  function importanceOptions(selected) {
-    return IMPORTANCE_LEVELS.map(l =>
-      `<option value="${l.value}" ${l.value===selected?'selected':''}>${l.label}</option>`
-    ).join('');
-  }
-
-  function renderModal() {
-    renderProducts();
-    renderObjParams();
-    renderSubjParams();
-  }
-
-  function esc(str) {
-    return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-  }
-
-  // ══════════════════════════════════════════════════════════
-  //  SALVAR
-  // ══════════════════════════════════════════════════════════
-  function saveComparison() {
-    // Sincroniza nomes dos produtos (preço já é atualizado via onPriceInput)
+  // Linhas
+  let tbody = '';
+  tmpObjParams.forEach(param => {
+    tbody += `<tr>
+      <td class="td-name">
+        <input value="${escHtml(param.name)}" placeholder="Nome do parâmetro"
+          id="opname-${param.id}"
+          oninput="updateObjParam(${param.id},'name',this.value)" />
+      </td>
+      <td class="td-unit">
+        <input value="${escHtml(param.unit)}" placeholder="un, ml, g..."
+          id="opunit-${param.id}"
+          oninput="updateObjParam(${param.id},'unit',this.value)" />
+      </td>
+      <td class="td-imp">
+        <select onchange="updateObjParam(${param.id},'importance',this.value)">
+          ${IMP_OPTIONS.map(o=>`<option value="${o.value}"${o.value===param.importance?' selected':''}>${o.label}</option>`).join('')}
+        </select>
+      </td>`;
     tmpProducts.forEach(p => {
-      const nameEl = document.getElementById('pname-' + p.id);
-      if (nameEl) p.name = nameEl.value.trim();
+      const has = param.hasParam[p.id] !== false;
+      const val = param.values[p.id] || '';
+      tbody += `
+      <td class="td-has">
+        <input type="checkbox" class="has-check" ${has?'checked':''}
+          onchange="toggleObjHas(${param.id},${p.id},this.checked)" title="Produto tem este parâmetro" />
+      </td>
+      <td class="td-rank">
+        <input type="text" value="${val}" placeholder="0"
+          ${!has?'disabled style="opacity:.3"':''}
+          id="oval-${param.id}-${p.id}"
+          oninput="updateObjValue(${param.id},${p.id},this.value)" />
+      </td>`;
     });
-    // Sincroniza valores dos parâmetros objetivos
-    tmpObjParams.forEach(op => {
-      tmpProducts.forEach(p => {
-        const el = document.getElementById('objval-' + op.id + '-' + p.id);
-        if (el) op.values[p.id] = parseFloat(el.value) || 0;
-      });
+    tbody += `<td class="td-del"><button onclick="removeObjParam(${param.id})">✕</button></td></tr>`;
+  });
+  document.getElementById('obj-tbody').innerHTML = tbody;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   PARÂMETROS SUBJETIVOS
+═══════════════════════════════════════════════════════════ */
+function addSubjParam() {
+  const id = paramCounter++;
+  const hasParam = {}, rankings = {};
+  tmpProducts.forEach(p => { hasParam[p.id] = true; rankings[p.id] = 1; });
+  tmpSubjParams.push({ id, name: '', importance: 'imp', rankings, hasParam });
+  renderSubjTable();
+  document.getElementById('sb-subj').classList.add('open');
+}
+
+function removeSubjParam(id) {
+  tmpSubjParams = tmpSubjParams.filter(p=>p.id!==id);
+  renderSubjTable();
+}
+
+function updateSubjParam(id, field, val) {
+  const p = tmpSubjParams.find(x=>x.id===id);
+  if (p) p[field] = val;
+}
+
+function updateSubjRank(paramId, pid, val) {
+  const p = tmpSubjParams.find(x=>x.id===paramId);
+  if (p) p.rankings[pid] = parseInt(val);
+}
+
+function toggleSubjHas(paramId, pid, checked) {
+  const p = tmpSubjParams.find(x=>x.id===paramId);
+  if (p) p.hasParam[pid] = checked;
+  renderSubjTable();
+}
+
+function renderSubjTable() {
+  const n = tmpProducts.length;
+  document.getElementById('count-subj').textContent = `${tmpSubjParams.length} adicionado${tmpSubjParams.length!==1?'s':''}`;
+
+  if (tmpSubjParams.length === 0) {
+    document.getElementById('subj-thead').innerHTML = '';
+    document.getElementById('subj-tbody').innerHTML = '';
+    return;
+  }
+
+  let thead = `<tr>
+    <th class="td-name">Parâmetro</th>
+    <th class="td-imp">Importância</th>`;
+  tmpProducts.forEach(p => {
+    thead += `<th class="td-has" title="Tem?">✓</th>
+              <th class="td-rank" title="${escHtml(p.name)||'Produto'}">${escHtml(p.name)||'Produto'}</th>`;
+  });
+  thead += `<th class="td-del"></th></tr>`;
+  document.getElementById('subj-thead').innerHTML = thead;
+
+  let tbody = '';
+  tmpSubjParams.forEach(param => {
+    tbody += `<tr>
+      <td class="td-name">
+        <input value="${escHtml(param.name)}" placeholder="Ex: Sabor, Embalagem..."
+          id="spname-${param.id}"
+          oninput="updateSubjParam(${param.id},'name',this.value)" />
+      </td>
+      <td class="td-imp">
+        <select onchange="updateSubjParam(${param.id},'importance',this.value)">
+          ${IMP_OPTIONS.map(o=>`<option value="${o.value}"${o.value===param.importance?' selected':''}>${o.label}</option>`).join('')}
+        </select>
+      </td>`;
+    tmpProducts.forEach(p => {
+      const has = param.hasParam[p.id] !== false;
+      const rank = param.rankings[p.id] || 1;
+      // Gerar opções 1..n
+      const opts = Array.from({length:n},(_,i)=>i+1).map(v =>
+        `<option value="${v}"${v===rank?' selected':''}>${v}º</option>`
+      ).join('');
+      tbody += `
+      <td class="td-has">
+        <input type="checkbox" class="has-check" ${has?'checked':''}
+          onchange="toggleSubjHas(${param.id},${p.id},this.checked)" title="Produto tem este parâmetro" />
+      </td>
+      <td class="td-rank">
+        <select class="rank-select" ${!has?'disabled style="opacity:.3"':''}
+          onchange="updateSubjRank(${param.id},${p.id},this.value)">
+          ${opts}
+        </select>
+      </td>`;
+    });
+    tbody += `<td class="td-del"><button onclick="removeSubjParam(${param.id})">✕</button></td></tr>`;
+  });
+  document.getElementById('subj-tbody').innerHTML = tbody;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   ATUALIZAR CABEÇALHOS SEM RE-RENDER
+═══════════════════════════════════════════════════════════ */
+function updateTableHeaders() {
+  // Atualiza os th de nome dos produtos nas tabelas de parâmetros
+  renderObjTable();
+  renderSubjTable();
+}
+
+/* ═══════════════════════════════════════════════════════════
+   VALIDAÇÃO DE RANKING SUBJETIVO
+   Regra: a sequência de classificações (ordenada) deve ser válida.
+   Válida = sem buracos considerando empates.
+   Ex: [1,1,3,3,3,3,7,8,9,10] é válida para n=10
+   Inválida: [1,1,2,2,5] para n=5 — o 5 deveria ser 5 (ok), mas 1,1,2,2 → próximo é 5, não 3
+   
+   Algoritmo de validação:
+   - Ordena as posições
+   - Percorre grupo por grupo
+   - Cada grupo começa na posição = índice_do_primeiro_elemento + 1
+   - Se não, inválido
+═══════════════════════════════════════════════════════════ */
+function validateRanking(ranks) {
+  // ranks: array de números (apenas os produtos que TÊM o parâmetro)
+  if (ranks.length === 0) return { valid: true };
+  const sorted = [...ranks].sort((a,b)=>a-b);
+  let i = 0;
+  while (i < sorted.length) {
+    const expectedPos = i + 1;
+    const currentPos = sorted[i];
+    if (currentPos !== expectedPos) {
+      return { valid: false, expected: expectedPos, got: currentPos };
+    }
+    while (i < sorted.length && sorted[i] === currentPos) i++;
+  }
+  return { valid: true };
+}
+
+/* ═══════════════════════════════════════════════════════════
+   SINCRONIZAR VALORES DOS INPUTS ANTES DE SALVAR
+═══════════════════════════════════════════════════════════ */
+function syncAllInputs() {
+  // Nome da comparação
+  tmpName = document.getElementById('comp-name').value.trim();
+
+  // Produtos
+  tmpProducts.forEach(p => {
+    const nameEl = document.getElementById('pname-'+p.id);
+    if (nameEl) p.name = nameEl.value.trim();
+    const priceEl = document.getElementById('price-'+p.id);
+    if (priceEl) {
+      const raw = priceEl.value.replace(/[^\d]/g,'');
+      p.price = raw ? parseInt(raw) / 100 : 0;
+    }
+  });
+
+  // Parâmetros objetivos
+  tmpObjParams.forEach(param => {
+    const nameEl = document.getElementById('opname-'+param.id);
+    if (nameEl) param.name = nameEl.value.trim();
+    const unitEl = document.getElementById('opunit-'+param.id);
+    if (unitEl) param.unit = unitEl.value.trim();
+    tmpProducts.forEach(p => {
+      const valEl = document.getElementById('oval-'+param.id+'-'+p.id);
+      if (valEl) {
+        const raw = valEl.value.replace(/[^\d,\.]/g,'').replace(',','.');
+        param.values[p.id] = parseFloat(raw) || 0;
+      }
+    });
+  });
+
+  // Parâmetros subjetivos — os selects já atualizam via onchange
+  tmpSubjParams.forEach(param => {
+    const nameEl = document.getElementById('spname-'+param.id);
+    if (nameEl) param.name = nameEl.value.trim();
+  });
+}
+
+/* ═══════════════════════════════════════════════════════════
+   SALVAR
+═══════════════════════════════════════════════════════════ */
+function saveComparison() {
+  syncAllInputs();
+  hideError();
+  const errors = [];
+
+  if (!tmpName) errors.push('Informe o nome da comparação.');
+  if (tmpProducts.length < 2) errors.push('Adicione pelo menos 2 produtos para comparar.');
+  tmpProducts.forEach(p => {
+    if (!p.name) errors.push(`Um produto está sem nome.`);
+  });
+
+  // Verificar parâmetro "top" duplicado
+  const allParams = [...tmpObjParams, ...tmpSubjParams];
+  const topCount = allParams.filter(p=>p.importance==='top').length;
+  if (topCount > 1) errors.push(`Apenas UM parâmetro pode ser "O mais importante de todos". Você marcou ${topCount}.`);
+
+  // Validar rankings subjetivos
+  tmpSubjParams.forEach(param => {
+    const presentPids = tmpProducts.filter(p => param.hasParam[p.id] !== false).map(p=>p.id);
+    if (presentPids.length === 0) return;
+    const ranks = presentPids.map(pid => param.rankings[pid] || 1);
+    const res = validateRanking(ranks);
+    if (!res.valid) {
+      const pname = param.name || '(sem nome)';
+      errors.push(`Parâmetro subjetivo "${pname}": classificação inválida. Esperava posição ${res.expected}º mas encontrou ${res.got}º. Lembre: após empates, a próxima posição deve pular os empatados (ex: dois 1ºs → próximo é 3º).`);
+    }
+  });
+
+  if (errors.length > 0) {
+    showError(errors);
+    return;
+  }
+
+  // Calcular resultado
+  const result = calcResult();
+
+  const comp = {
+    id: editingId || Date.now(),
+    name: tmpName,
+    products: JSON.parse(JSON.stringify(tmpProducts)),
+    objParams: JSON.parse(JSON.stringify(tmpObjParams)),
+    subjParams: JSON.parse(JSON.stringify(tmpSubjParams)),
+    result,
+    updatedAt: new Date().toISOString(),
+  };
+
+  if (editingId) {
+    const idx = comparisons.findIndex(x=>x.id===editingId);
+    if (idx >= 0) comparisons[idx] = comp;
+  } else {
+    comparisons.push(comp);
+  }
+
+  localStorage.setItem('hvsf_comparacoes', JSON.stringify(comparisons));
+  closeModal();
+  renderList();
+}
+
+/* ═══════════════════════════════════════════════════════════
+   MOTOR DE CÁLCULO
+═══════════════════════════════════════════════════════════ */
+function calcResult() {
+  const n = tmpProducts.length;
+  const scores = {};
+  tmpProducts.forEach(p => { scores[p.id] = 0; });
+
+  const breakdown = []; // { paramName, type, importance, weight, perProduct:{pid:{score,detail,formula}} }
+
+  // ── PARÂMETROS OBJETIVOS ──
+  tmpObjParams.forEach(param => {
+    const w = impWeight(param.importance);
+    const presentPids = tmpProducts.filter(p => param.hasParam[p.id] !== false).map(p=>p.id);
+    const absentPids  = tmpProducts.filter(p => param.hasParam[p.id] === false).map(p=>p.id);
+
+    // Calcular custo/unidade para os presentes
+    const costPerUnit = {};
+    presentPids.forEach(pid => {
+      const prod = tmpProducts.find(p=>p.id===pid);
+      const qty  = param.values[pid] || 0;
+      costPerUnit[pid] = qty > 0 && prod.price > 0 ? prod.price / qty : null;
     });
 
-    const name = document.getElementById('cmp-name').value.trim();
-    if (!name) { alert('Dê um nome para a comparação.'); return; }
-    if (tmpProducts.length < 2) { alert('Adicione pelo menos 2 produtos.'); switchTab('products'); return; }
-    if (tmpProducts.some(p => !String(p.name).trim())) { alert('Todos os produtos precisam ter um nome.'); switchTab('products'); return; }
+    // Normalizar: menor custo/unidade = melhor = 1.0
+    const validCosts = presentPids.filter(pid => costPerUnit[pid] !== null).map(pid => costPerUnit[pid]);
+    const minCost = validCosts.length > 0 ? Math.min(...validCosts) : null;
 
-    const allParams = [...tmpObjParams, ...tmpSubjParams];
-    const topCount  = allParams.filter(p => p.importance === 'top').length;
-    if (topCount > 1) {
-      alert('Apenas UM parâmetro pode ser marcado como "O mais importante de todos".');
-      return;
-    }
-
-    const cmp = {
-      id: editingId || String(uid()),
-      name,
-      products:   JSON.parse(JSON.stringify(tmpProducts)),
-      objParams:  JSON.parse(JSON.stringify(tmpObjParams)),
-      subjParams: JSON.parse(JSON.stringify(tmpSubjParams)),
-      createdAt: editingId
-        ? (comparisons.find(c=>c.id===editingId)?.createdAt || Date.now())
-        : Date.now(),
-    };
-
-    if (editingId) {
-      const idx = comparisons.findIndex(c => c.id === editingId);
-      if (idx >= 0) comparisons[idx] = cmp;
-    } else {
-      comparisons.push(cmp);
-    }
-
-    save();
-    closeModal();
-    renderList();
-    viewComparison(cmp.id);
-  }
-
-  // ══════════════════════════════════════════════════════════
-  //  EXCLUIR
-  // ══════════════════════════════════════════════════════════
-  function deleteComparison(id) {
-    if (!confirm('Excluir esta comparação?')) return;
-    comparisons = comparisons.filter(c => c.id !== id);
-    save();
-    renderList();
-    document.getElementById('result-section').classList.add('hidden');
-  }
-
-  // ══════════════════════════════════════════════════════════
-  //  VER / CALCULAR
-  // ══════════════════════════════════════════════════════════
-  function viewComparison(id) {
-    const c = comparisons.find(x => x.id === id);
-    if (!c) return;
-    const result = calculate(c);
-    renderResult(c, result);
-    document.getElementById('result-section').classList.remove('hidden');
-    document.getElementById('result-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
-  }
-
-  // ══════════════════════════════════════════════════════════
-  //  MOTOR DE CÁLCULO
-  // ══════════════════════════════════════════════════════════
-  function calculate(c) {
-    const scores = {};
-    c.products.forEach(p => { scores[p.id] = 0; });
-    const memory = [];
-
-    // ── Parâmetros Objetivos ──
-    c.objParams.forEach(op => {
-      const level    = IMPORTANCE_LEVELS.find(l => l.value === op.importance);
-      const weight   = level.weight;
-      const hasParam = op.hasParam || {};
-
-      const cpuMap = {};
-      c.products.forEach(p => {
-        if (hasParam[p.id] === false) { cpuMap[p.id] = null; return; }
-        const price = parseFloat(p.price) || 0;
-        const qty   = parseFloat(op.values[p.id]) || 0;
-        cpuMap[p.id] = qty > 0 ? price / qty : Infinity;
-      });
-
-      const validCpus = Object.values(cpuMap).filter(v => v !== null && isFinite(v));
-      const minCpu    = validCpus.length > 0 ? Math.min(...validCpus) : 0;
-      const maxCpu    = validCpus.length > 0 ? Math.max(...validCpus) : 0;
-
-      const details = [];
-      c.products.forEach(p => {
-        const absent = hasParam[p.id] === false;
-        let paramScore = 0, cpu = null, normalized = 0, absenceNote = null;
-
-        if (absent) {
-          absenceNote = getAbsenceLabel(op.importance);
-          if (weight > 0)      paramScore = 0;
-          else if (weight < 0) paramScore = Math.abs(weight) * 10;
+    const perProduct = {};
+    tmpProducts.forEach(p => {
+      const pid = p.id;
+      if (absentPids.includes(pid)) {
+        // Ausente: aplica consequência conforme grau
+        let score = 0, detail = '—', formula = '—';
+        if (w > 0) {
+          score = 0;
+          detail = '⚠️ Não tem — penalidade máxima';
+          formula = `ausente × peso(${w}) = 0`;
+        } else if (w < 0) {
+          score = Math.abs(w) * 10;
+          detail = '✅ Não tem — bônus (grau negativo)';
+          formula = `ausente × |peso(${w})| × 10 = ${score.toFixed(2)}`;
         } else {
-          cpu = cpuMap[p.id];
-          if (isFinite(cpu) && cpu > 0 && minCpu > 0) normalized = minCpu / cpu;
-          else if (isFinite(cpu) && cpu === 0)         normalized = 1;
-          if (weight !== 0) {
-            if (weight > 0) paramScore = normalized * weight * 10;
-            else {
-              const worstNorm = maxCpu > 0 && isFinite(cpu) ? cpu / maxCpu : 0;
-              paramScore = worstNorm * weight * 10;
-            }
-          }
+          score = 0;
+          detail = '— Indiferente';
+          formula = '0';
         }
-
-        scores[p.id] += paramScore;
-        details.push({ productId: p.id, productName: p.name, cpu: cpu !== null && isFinite(cpu) ? cpu : null, normalized, score: paramScore, absent, absenceNote });
-      });
-
-      memory.push({ paramName: op.name || '(sem nome)', type: 'objetivo', unit: op.unit, importance: level.label, importanceKey: op.importance, weight, details });
-    });
-
-    // ── Parâmetros Subjetivos ──
-    c.subjParams.forEach(sp => {
-      const level    = IMPORTANCE_LEVELS.find(l => l.value === sp.importance);
-      const weight   = level.weight;
-      const hasParam = sp.hasParam || {};
-      const presentProds = c.products.filter(p => hasParam[p.id] !== false);
-      const nEff = presentProds.length || 1;
-
-      const details = [];
-      c.products.forEach(p => {
-        const absent = hasParam[p.id] === false;
-        let paramScore = 0, rank = null, normalized = 0, absenceNote = null;
-
-        if (absent) {
-          absenceNote = getAbsenceLabel(sp.importance);
-          if (weight > 0)      paramScore = 0;
-          else if (weight < 0) paramScore = Math.abs(weight) * 10;
+        scores[pid] += score;
+        perProduct[pid] = { score, detail, formula, costPerUnit: null };
+      } else {
+        const cpu = costPerUnit[pid];
+        let score = 0, detail = '—', formula = '—';
+        if (cpu === null) {
+          detail = '⚠️ Sem valor informado';
+          formula = '0';
+        } else if (minCost === null || minCost === 0) {
+          detail = '—';
+          formula = '0';
         } else {
-          rank = parseInt(sp.rankings[p.id]) || nEff;
-          normalized = (nEff - rank + 1) / nEff;
-          if (weight !== 0) {
-            if (weight > 0) paramScore = normalized * weight * 10;
-            else {
-              const worstNorm = rank / nEff;
-              paramScore = worstNorm * weight * 10;
-            }
+          const norm = minCost / cpu; // 0..1, melhor=1
+          if (w >= 0) {
+            score = norm * w * 10;
+            formula = `(${fmtN(minCost)}/${fmtN(cpu)}) × ${w} × 10 = ${score.toFixed(2)}`;
+          } else {
+            // Peso negativo: pior custo = mais penalizado
+            const invNorm = cpu / minCost; // pior=maior
+            score = invNorm * w * 10; // negativo × negativo = positivo para o melhor
+            // Mas queremos penalizar quem tem custo alto com peso negativo:
+            // quem tem menor custo (norm=1) recebe menos penalidade
+            score = norm * Math.abs(w) * 10 * -1 + Math.abs(w) * 10;
+            formula = `bônus_inv(${fmtN(cpu)}/${fmtN(minCost)}) × |${w}| × 10 = ${score.toFixed(2)}`;
           }
+          detail = `R$${fmtN(cpu)}/${param.unit||'un'}`;
         }
-
-        scores[p.id] += paramScore;
-        details.push({ productId: p.id, productName: p.name, rank, normalized, score: paramScore, absent, absenceNote });
-      });
-
-      memory.push({ paramName: sp.name || '(sem nome)', type: 'subjetivo', importance: level.label, importanceKey: sp.importance, weight, details });
+        scores[pid] += score;
+        perProduct[pid] = { score, detail, formula, costPerUnit: cpu };
+      }
     });
 
-    const sorted = c.products
-      .map(p => ({ ...p, score: scores[p.id] }))
-      .sort((a, b) => b.score - a.score);
+    breakdown.push({
+      paramName: param.name || '(sem nome)',
+      type: 'Objetivo',
+      unit: param.unit,
+      importance: param.importance,
+      weight: w,
+      perProduct,
+    });
+  });
 
-    return { scores, sorted, memory };
-  }
+  // ── PARÂMETROS SUBJETIVOS ──
+  tmpSubjParams.forEach(param => {
+    const w = impWeight(param.importance);
+    const presentPids = tmpProducts.filter(p => param.hasParam[p.id] !== false).map(p=>p.id);
+    const absentPids  = tmpProducts.filter(p => param.hasParam[p.id] === false).map(p=>p.id);
+    const nPresent = presentPids.length;
 
-  // ══════════════════════════════════════════════════════════
-  //  RENDER RESULTADO
-  // ══════════════════════════════════════════════════════════
-  function renderResult(c, result) {
-    const el = document.getElementById('result-section');
-    const { sorted, memory } = result;
-    const winner   = sorted[0];
-    const maxScore = Math.max(...sorted.map(p => p.score));
-    const minScore = Math.min(...sorted.map(p => p.score));
-
-    // Formata preço para exibição
-    function fmtPrice(val) {
-      const num = typeof val === 'number' ? val : parseBRL(val);
-      return num.toLocaleString('pt-BR', { style:'currency', currency:'BRL' });
-    }
-
-    let parecer = '';
-    if (c.products.length < 2) {
-      parecer = 'Adicione pelo menos 2 produtos para obter um parecer.';
-    } else if (maxScore === minScore) {
-      parecer = 'Todos os produtos empataram na pontuação total. Considere adicionar mais parâmetros de diferenciação.';
-    } else {
-      const second = sorted[1];
-      const diff   = winner.score - second.score;
-      const pct    = maxScore !== 0 ? Math.abs(diff / Math.abs(maxScore) * 100).toFixed(1) : '0';
-      const margin = diff < 5 ? 'por margem pequena' : diff < 20 ? 'com vantagem moderada' : 'com vantagem expressiva';
-      parecer = `<strong>${esc(winner.name)}</strong> é a melhor opção ${margin} (${pct}% à frente de ${esc(second.name)} nos critérios ponderados). `;
-
-      const unacParams = memory.filter(m => m.importanceKey === 'unac');
-      unacParams.forEach(m => {
-        const worstProduct = m.details.reduce((a,b) => a.score < b.score ? a : b);
-        parecer += `Atenção: <strong>${esc(worstProduct.productName)}</strong> tem o pior desempenho no parâmetro inaceitável "<em>${esc(m.paramName)}</em>". `;
-      });
-
-      const criticalAbsences = [];
-      memory.forEach(m => {
-        if (m.importanceKey === 'top' || m.importanceKey === 'very') {
-          m.details.forEach(d => {
-            if (d.absent) criticalAbsences.push({ prod: d.productName, param: m.paramName });
-          });
+    const perProduct = {};
+    tmpProducts.forEach(p => {
+      const pid = p.id;
+      if (absentPids.includes(pid)) {
+        let score = 0, detail = '—', formula = '—';
+        if (w > 0) {
+          score = 0;
+          detail = '⚠️ Não tem — penalidade máxima';
+          formula = `ausente × peso(${w}) = 0`;
+        } else if (w < 0) {
+          score = Math.abs(w) * 10;
+          detail = '✅ Não tem — bônus (grau negativo)';
+          formula = `ausente × |peso(${w})| × 10 = ${score.toFixed(2)}`;
+        } else {
+          detail = '— Indiferente';
+          formula = '0';
         }
-      });
-      criticalAbsences.forEach(a => {
-        parecer += `Atenção: <strong>${esc(a.prod)}</strong> não possui o parâmetro "<em>${esc(a.param)}</em>", que é de alta importância. `;
-      });
-    }
+        scores[pid] += score;
+        perProduct[pid] = { score, detail, formula };
+      } else {
+        const rank = param.rankings[pid] || 1;
+        let score = 0, detail = '—', formula = '—';
+        if (nPresent === 0) {
+          detail = '—';
+        } else {
+          // Normalização: rank 1 = melhor = 1.0, rank nPresent = pior = 1/nPresent
+          const norm = (nPresent - rank + 1) / nPresent;
+          if (w >= 0) {
+            score = norm * w * 10;
+            formula = `((${nPresent}-${rank}+1)/${nPresent}) × ${w} × 10 = ${score.toFixed(2)}`;
+          } else {
+            // Peso negativo: pior rank = menos penalizado
+            const invNorm = rank / nPresent;
+            score = invNorm * Math.abs(w) * 10;
+            formula = `(${rank}/${nPresent}) × |${w}| × 10 = ${score.toFixed(2)}`;
+          }
+          detail = `${rank}º lugar`;
+        }
+        scores[pid] += score;
+        perProduct[pid] = { score, detail, formula };
+      }
+    });
 
-    const scoresHTML = sorted.map((p, i) => `
-      <div class="score-card ${i===0?'winner':''}">
-        <div class="score-card-name">${esc(p.name)}</div>
-        <div class="score-card-val">${p.score.toFixed(1)}</div>
-        <div class="score-card-rank">${i===0?'🥇 Melhor opção': i===1?'🥈 2ª opção': i===2?'🥉 3ª opção': `${i+1}ª opção`}</div>
-        <div class="score-card-rank" style="margin-top:4px;">${fmtPrice(p.price)}</div>
-      </div>
-    `).join('');
+    breakdown.push({
+      paramName: param.name || '(sem nome)',
+      type: 'Subjetivo',
+      importance: param.importance,
+      weight: w,
+      perProduct,
+    });
+  });
 
-    const memHTML = memory.length === 0
-      ? '<p class="text-muted">Nenhum parâmetro configurado.</p>'
-      : `<table class="memory-table">
-          <thead>
-            <tr>
-              <th>Parâmetro</th><th>Tipo</th><th>Importância</th><th>Peso</th>
-              ${c.products.map(p=>`<th class="td-num">${esc(p.name)}</th>`).join('')}
-            </tr>
-          </thead>
-          <tbody>
-            ${memory.map(m => `
-              <tr>
-                <td><strong>${esc(m.paramName)}</strong>${m.unit?` <span class="text-muted">(${esc(m.unit)})</span>`:''}</td>
-                <td>${m.type === 'objetivo' ? '📐 Objetivo' : '💬 Subjetivo'}</td>
-                <td><span class="badge ${IMPORTANCE_BADGE[m.importanceKey]}">${esc(m.importance)}</span></td>
-                <td class="td-num">${m.weight > 0 ? '+' : ''}${m.weight}</td>
-                ${m.details.map(d => {
-                  const scoreStr = d.score.toFixed(2);
-                  let extra = '';
-                  if (d.absent) {
-                    extra = `<br><span class="text-muted" style="font-size:.68rem;">${esc(d.absenceNote||'não tem')}</span>`;
-                  } else if (m.type === 'objetivo') {
-                    extra = d.cpu !== null
-                      ? `<br><span class="text-muted">${fmtPrice(d.cpu)}/${esc(m.unit||'un')}</span>`
-                      : '<br><span class="text-muted">sem dado</span>';
-                  } else {
-                    extra = d.rank !== null ? `<br><span class="text-muted">${d.rank}º lugar</span>` : '';
-                  }
-                  return `<td class="td-num">${scoreStr}${extra}</td>`;
-                }).join('')}
-              </tr>
-            `).join('')}
-            <tr style="font-weight:800;border-top:2px solid var(--border);">
-              <td colspan="4" style="color:var(--text);">PONTUAÇÃO TOTAL</td>
-              ${sorted.map(p => `<td class="td-num" style="color:${p.id===winner.id?'var(--gold)':'var(--text)'}">${result.scores[p.id].toFixed(2)}</td>`).join('')}
-            </tr>
-          </tbody>
-        </table>`;
+  // Ordenar por score desc
+  const ranking = tmpProducts
+    .map(p => ({ ...p, score: scores[p.id] }))
+    .sort((a,b) => b.score - a.score);
 
-    el.innerHTML = `
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;flex-wrap:wrap;gap:.75rem;">
-        <h2 style="font-size:1.15rem;font-weight:800;color:var(--text);margin:0;">📊 Resultado: ${esc(c.name)}</h2>
-        <button class="btn btn-ghost btn-sm" onclick="openEditComparison('${c.id}')">✏️ Editar</button>
-      </div>
+  return { scores, ranking, breakdown };
+}
 
-      <div class="result-winner">
-        <div class="result-winner-label">Melhor opção</div>
-        <div class="result-winner-name">${esc(winner.name)}</div>
-        <div class="result-winner-score">Pontuação: ${winner.score.toFixed(2)} pts</div>
-      </div>
+function fmtN(n) {
+  if (n === null || n === undefined) return '—';
+  return n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 4 });
+}
 
-      <div class="scores-grid">${scoresHTML}</div>
+/* ═══════════════════════════════════════════════════════════
+   RENDER LIST
+═══════════════════════════════════════════════════════════ */
+function renderList() {
+  const container = document.getElementById('list-container');
+  const empty = document.getElementById('empty-state');
 
-      <div class="parecer-box">
-        <div class="parecer-label">Parecer</div>
-        <p class="parecer-text">${parecer}</p>
-      </div>
+  if (comparisons.length === 0) {
+    empty.style.display = 'block';
+    // Remove all cards
+    container.querySelectorAll('.comp-card').forEach(el=>el.remove());
+    return;
+  }
+  empty.style.display = 'none';
 
-      <div>
-        <div class="memory-toggle" onclick="toggleMemory(this)">
-          <span>▶</span> <span>Ver memória de cálculo</span>
+  // Rebuild
+  container.querySelectorAll('.comp-card').forEach(el=>el.remove());
+  comparisons.forEach(comp => {
+    const card = document.createElement('div');
+    card.className = 'comp-card';
+    card.id = 'card-'+comp.id;
+    const winner = comp.result?.ranking?.[0];
+    const date = new Date(comp.updatedAt).toLocaleDateString('pt-BR');
+    card.innerHTML = `
+      <div class="comp-card-header" onclick="toggleCard(${comp.id})">
+        <div class="chevron">▼</div>
+        <div>
+          <div class="comp-title">${escHtml(comp.name)}</div>
+          <div class="comp-meta">${comp.products.length} produtos · ${date}</div>
         </div>
-        <div class="memory-body hidden">${memHTML}</div>
+        ${winner ? `<div class="winner-badge">🏆 ${escHtml(winner.name)}</div>` : ''}
+        <div class="comp-card-actions" onclick="event.stopPropagation()">
+          <button class="btn-icon" onclick="openModal(${comp.id})">✏️ Editar</button>
+          <button class="btn-icon danger" onclick="deleteComp(${comp.id})">🗑️ Excluir</button>
+        </div>
+      </div>
+      <div class="comp-card-body">
+        ${renderResult(comp)}
       </div>
     `;
-  }
+    container.appendChild(card);
+  });
+}
 
-  function toggleMemory(btn) {
-    const body = btn.nextElementSibling;
-    const isHidden = body.classList.toggle('hidden');
-    btn.querySelector('span').textContent = isHidden ? '▶' : '▼';
-  }
+function toggleCard(id) {
+  document.getElementById('card-'+id).classList.toggle('open');
+}
 
-  // ══════════════════════════════════════════════════════════
-  //  INIT
-  // ══════════════════════════════════════════════════════════
+function deleteComp(id) {
+  if (!confirm('Excluir esta comparação?')) return;
+  comparisons = comparisons.filter(c=>c.id!==id);
+  localStorage.setItem('hvsf_comparacoes', JSON.stringify(comparisons));
   renderList();
-  </script>
+}
+
+/* ═══════════════════════════════════════════════════════════
+   RENDER RESULT
+═══════════════════════════════════════════════════════════ */
+function renderResult(comp) {
+  const { ranking, breakdown } = comp.result;
+  const n = ranking.length;
+  if (n === 0) return '<p class="text-dim">Sem produtos.</p>';
+
+  const medals = ['🥇','🥈','🥉','4️⃣','5️⃣','6️⃣','7️⃣','8️⃣','9️⃣','🔟'];
+  const rankLabels = ['1ª opção','2ª opção','3ª opção','4ª opção','5ª opção'];
+
+  // Pódio
+  let podium = '<div class="podium-grid">';
+  ranking.forEach((p,i) => {
+    podium += `
+      <div class="podium-card ${i===0?'first':''}">
+        <div class="pod-rank">${medals[i]||`${i+1}º`}</div>
+        <div class="pod-name">${escHtml(p.name)}</div>
+        <div class="pod-score">${p.score.toFixed(1)}</div>
+        <div class="pod-price">${fmtBRL(p.price)}</div>
+        <div class="text-dim" style="font-size:.72rem;margin-top:2px">${rankLabels[i]||''}</div>
+      </div>`;
+  });
+  podium += '</div>';
+
+  // Parecer
+  const best = ranking[0];
+  const second = ranking[1];
+  const diff = second ? ((best.score - second.score) / second.score * 100) : 0;
+  let parecer = '';
+  if (diff < 5) parecer = `<b>${escHtml(best.name)}</b> é a melhor opção, mas com <b>vantagem pequena</b> (${diff.toFixed(1)}% à frente de ${escHtml(second?.name||'')}). A escolha pode depender de fatores não mapeados.`;
+  else if (diff < 20) parecer = `<b>${escHtml(best.name)}</b> é a melhor opção com <b>vantagem moderada</b> (${diff.toFixed(1)}% à frente de ${escHtml(second?.name||'')} nos critérios ponderados).`;
+  else parecer = `<b>${escHtml(best.name)}</b> é a melhor opção com <b>vantagem expressiva</b> (${diff.toFixed(1)}% à frente de ${escHtml(second?.name||'')}). A análise aponta claramente para esta escolha.`;
+
+  // Alertas de inaceitável
+  const inacAlerts = [];
+  [...comp.objParams, ...comp.subjParams].forEach(param => {
+    if (param.importance === 'inac') {
+      comp.products.forEach(p => {
+        if (param.hasParam[p.id] !== false) {
+          inacAlerts.push(`⚠️ <b>${escHtml(p.name)}</b> tem o parâmetro "<b>${escHtml(param.name)}</b>" marcado como <b>Inaceitável</b>.`);
+        }
+      });
+    }
+  });
+
+  let parecerBox = `<div class="parecer-box">
+    <div class="parecer-title">Parecer</div>
+    <p>${parecer}</p>
+    ${inacAlerts.map(a=>`<p style="margin-top:8px;color:var(--red-lt)">${a}</p>`).join('')}
+  </div>`;
+
+  // Memória de cálculo
+  const memId = 'mem-'+comp.id;
+  const chartId = 'chart-'+comp.id;
+
+  // Tabela de breakdown
+  let memTable = `<div class="mem-section-title">Detalhamento por parâmetro</div>
+    <div style="overflow-x:auto">
+    <table class="mem-table">
+      <thead><tr>
+        <th>Parâmetro</th>
+        <th>Tipo</th>
+        <th>Importância</th>
+        <th>Peso</th>
+        ${ranking.map(p=>`<th>${escHtml(p.name)}</th>`).join('')}
+      </tr></thead>
+      <tbody>`;
+
+  breakdown.forEach(row => {
+    memTable += `<tr>
+      <td><b>${escHtml(row.paramName)}</b>${row.unit?` <span class="text-dim">(${escHtml(row.unit)})</span>`:''}</td>
+      <td>${row.type}</td>
+      <td><span class="imp-badge ${impCls(row.importance)}">${impLabel(row.importance)}</span></td>
+      <td style="text-align:center;font-weight:700;color:${row.weight>0?'var(--green-lt)':row.weight<0?'var(--red-lt)':'var(--text-dim)'}">${row.weight>0?'+':''}${row.weight}</td>
+      ${ranking.map(p => {
+        const pp = row.perProduct[p.id];
+        if (!pp) return '<td>—</td>';
+        return `<td>
+          <div class="score-cell">${pp.score.toFixed(2)}</div>
+          <div class="text-dim" style="font-size:.72rem">${pp.detail||''}</div>
+          <div class="formula-cell">${pp.formula||''}</div>
+        </td>`;
+      }).join('')}
+    </tr>`;
+  });
+
+  // Total
+  memTable += `<tr class="total-row">
+    <td colspan="4"><b>PONTUAÇÃO TOTAL</b></td>
+    ${ranking.map(p=>`<td class="score-cell" style="font-size:1rem">${p.score.toFixed(2)}</td>`).join('')}
+  </tr></tbody></table></div>`;
+
+  // Fórmula explicada
+  let formula = `<div class="mem-section-title">Como o cálculo funciona</div>
+    <div class="tip" style="margin-bottom:8px">
+      <b>Parâmetros Objetivos:</b> normaliza pelo custo/unidade — quem entrega mais por real pago recebe pontuação maior.<br>
+      Fórmula: <code>(menor_custo_por_unidade ÷ custo_do_produto) × peso × 10</code><br><br>
+      <b>Parâmetros Subjetivos:</b> normaliza pelo ranking — 1º lugar recebe pontuação máxima, último recebe mínima.<br>
+      Fórmula: <code>((n − rank + 1) ÷ n) × peso × 10</code><br><br>
+      <b>Ausência de parâmetro:</b> grau positivo → penalidade máxima (0 pts) · grau negativo → bônus máximo.
+    </div>`;
+
+  // Gráfico de barras
+  const chartData = {
+    labels: ranking.map(p=>p.name),
+    scores: ranking.map(p=>p.score),
+    colors: ranking.map((_,i)=>i===0?'rgba(201,162,39,0.85)':'rgba(46,125,50,0.6)'),
+  };
+
+  const mem = `
+    <button class="mem-toggle" onclick="toggleMem('${memId}',this)">▶ Ver memória de cálculo</button>
+    <div class="mem-body" id="${memId}">
+      <div class="mem-section-title">Gráfico comparativo</div>
+      <div class="chart-wrap">
+        <canvas id="${chartId}"></canvas>
+      </div>
+      ${memTable}
+      ${formula}
+    </div>`;
+
+  // Script para inicializar gráfico após render
+  setTimeout(() => {
+    const ctx = document.getElementById(chartId);
+    if (ctx && !ctx._chartInitialized) {
+      ctx._chartInitialized = true;
+      new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: chartData.labels,
+          datasets: [{
+            label: 'Pontuação total',
+            data: chartData.scores,
+            backgroundColor: chartData.colors,
+            borderColor: chartData.colors.map(c=>c.replace('0.85','1').replace('0.6','1')),
+            borderWidth: 1,
+            borderRadius: 6,
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: ctx => `Pontuação: ${ctx.raw.toFixed(2)}`
+              }
+            }
+          },
+          scales: {
+            x: { ticks: { color: '#8aab8e' }, grid: { color: '#1e3d24' } },
+            y: { ticks: { color: '#8aab8e' }, grid: { color: '#1e3d24' }, beginAtZero: true }
+          }
+        }
+      });
+    }
+  }, 100);
+
+  return `<div class="result-section">${podium}${parecerBox}${mem}</div>`;
+}
+
+function toggleMem(id, btn) {
+  const el = document.getElementById(id);
+  el.classList.toggle('open');
+  btn.textContent = el.classList.contains('open') ? '▼ Ocultar memória de cálculo' : '▶ Ver memória de cálculo';
+}
+
+/* ═══════════════════════════════════════════════════════════
+   ERRO
+═══════════════════════════════════════════════════════════ */
+function showError(errors) {
+  const el = document.getElementById('val-error');
+  el.innerHTML = `<b>Não foi possível salvar:</b><ul>${errors.map(e=>`<li>${e}</li>`).join('')}</ul>`;
+  el.classList.add('show');
+  el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+function hideError() {
+  document.getElementById('val-error').classList.remove('show');
+}
+
+/* ═══════════════════════════════════════════════════════════
+   UTILS
+═══════════════════════════════════════════════════════════ */
+function escHtml(s) {
+  if (!s) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+/* ═══════════════════════════════════════════════════════════
+   INIT
+═══════════════════════════════════════════════════════════ */
+renderList();
+</script>
 </body>
 </html>
