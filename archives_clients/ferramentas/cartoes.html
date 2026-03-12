@@ -195,16 +195,16 @@
   /* ── CARTÕES GRID ── */
   .cards-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
-    gap: 10px; margin-bottom: 12px;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 12px; margin-bottom: 12px;
   }
   .card-item {
     background: var(--card); border: 1px solid var(--border);
-    border-radius: 8px; padding: 14px; position: relative;
+    border-radius: 8px; padding: 16px; position: relative;
   }
   .card-item .ci-num {
     font-size: .7rem; color: var(--gold); font-weight: 700;
-    text-transform: uppercase; letter-spacing: .05em; margin-bottom: 8px;
+    text-transform: uppercase; letter-spacing: .05em; margin-bottom: 10px;
   }
   .card-item .ci-del {
     position: absolute; top: 8px; right: 8px;
@@ -213,8 +213,26 @@
     border-radius: 4px; transition: color .2s;
   }
   .card-item .ci-del:hover { color: var(--red-lt); }
-  .card-item .field-input { font-size: .88rem; padding: 7px 10px; }
+  .card-item .field-input { font-size: .88rem; padding: 8px 10px; width: 100%; box-sizing: border-box; }
   .card-item .field-label { font-size: .72rem; margin-bottom: 4px; }
+  /* Linha anuidade: input ocupa o máximo, select compacto */
+  .anuid-row { display: flex; gap: 6px; align-items: stretch; }
+  .anuid-row .anuid-input {
+    flex: 1 1 0; min-width: 0;
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 6px; color: var(--foreground);
+    padding: 8px 10px; font-size: .88rem; outline: none;
+    transition: border-color .2s; box-sizing: border-box;
+  }
+  .anuid-row .anuid-input:focus { border-color: var(--gold); }
+  .anuid-row .anuid-tipo {
+    flex: 0 0 auto; width: 90px;
+    background: var(--bg3); border: 1px solid var(--border);
+    border-radius: 6px; color: var(--foreground);
+    padding: 8px 6px; font-size: .78rem; outline: none; cursor: pointer;
+    box-sizing: border-box;
+  }
+  .anuid-hint { font-size: .7rem; color: var(--muted-foreground); margin-top: 3px; min-height: 1em; }
 
   /* ── PRÉ-PREENCHIMENTO ── */
   .prefill-bar {
@@ -436,19 +454,19 @@
         <div class="ctx-fields">
           <div class="ctx-field">
             <label>Gasto Nacional (R$/mês)</label>
-            <input type="text" id="ctx-nacional" placeholder="R$ 3.000,00" oninput="fmtCtx(this)"/>
+            <input type="text" id="ctx-nacional" placeholder="R$ 3.000,00" onblur="fmtCtxBlur(this)"/>
           </div>
           <div class="ctx-field">
             <label>Gasto Exterior (US$/mês)</label>
-            <input type="text" id="ctx-exterior" placeholder="US$ 500,00" oninput="fmtCtxUsd(this)"/>
+            <input type="text" id="ctx-exterior" placeholder="US$ 500,00" onblur="fmtCtxUsdBlur(this)"/>
           </div>
           <div class="ctx-field">
             <label>Gasto Bonificado (R$/mês)</label>
-            <input type="text" id="ctx-bonif" placeholder="R$ 500,00" oninput="fmtCtx(this)"/>
+            <input type="text" id="ctx-bonif" placeholder="R$ 500,00" onblur="fmtCtxBlur(this)"/>
           </div>
           <div class="ctx-field">
             <label>Cotação do Dólar (R$)</label>
-            <input type="text" id="ctx-dolar" placeholder="R$ 5,90" oninput="fmtCtxDolar(this)"/>
+            <input type="text" id="ctx-dolar" placeholder="R$ 5,90" onblur="fmtCtxDolarBlur(this)"/>
           </div>
         </div>
         <div class="ctx-dolar-badge" id="ctx-dolar-badge">
@@ -690,21 +708,30 @@ async function fetchDolar() {
 }
 
 function fmtCtx(el) {
-  const raw = el.value.replace(/\D/g,'');
-  const n = raw ? parseInt(raw)/100 : 0;
-  el.value = n.toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+  // formata no blur, não no input
 }
-function fmtCtxUsd(el) {
-  const raw = el.value.replace(/\D/g,'');
-  const n = raw ? parseInt(raw)/100 : 0;
-  el.value = 'US$ ' + n.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
-}
-function fmtCtxDolar(el) {
+function fmtCtxBlur(el) {
   const raw = el.value.replace(/[^\d,\.]/g,'').replace(',','.');
   const n = parseFloat(raw) || 0;
-  el.value = 'R$ ' + n.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+  el.value = n > 0 ? n.toLocaleString('pt-BR',{style:'currency',currency:'BRL'}) : '';
+}
+function fmtCtxUsd(el) {
+  // formata no blur
+}
+function fmtCtxUsdBlur(el) {
+  const raw = el.value.replace(/[^\d,\.]/g,'').replace(',','.');
+  const n = parseFloat(raw) || 0;
+  el.value = n > 0 ? 'US$ ' + n.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}) : '';
+}
+function fmtCtxDolar(el) {
+  // formata no blur
+}
+function fmtCtxDolarBlur(el) {
+  const raw = el.value.replace(/[^\d,\.]/g,'').replace(',','.');
+  const n = parseFloat(raw) || 0;
+  el.value = n > 0 ? 'R$ ' + n.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}) : '';
   const disp = document.getElementById('ctx-dolar-display');
-  if (disp) disp.textContent = el.value;
+  if (disp) disp.textContent = el.value || '—';
 }
 
 function getCtx() {
@@ -821,20 +848,18 @@ function renderCards() {
       </div>
       <div class="field-group" style="margin-bottom:8px">
         <label class="field-label">Anuidade</label>
-        <div style="display:flex;gap:6px;align-items:center">
-          <input class="field-input" id="anuid-${c.id}"
+        <div class="anuid-row">
+          <input class="anuid-input" id="anuid-${c.id}"
             value="${c.anuidade_mensal > 0 ? fmtBRL(c.anuidade_mensal) : ''}"
             placeholder="R$ 0,00"
-            style="flex:1"
             onblur="applyAnuidade(${c.id}, this)"/>
-          <select id="anuid-tipo-${c.id}"
-            style="background:var(--bg3);border:1px solid var(--border);border-radius:6px;color:var(--foreground);padding:7px 8px;font-size:.78rem;outline:none;cursor:pointer;flex-shrink:0"
+          <select class="anuid-tipo" id="anuid-tipo-${c.id}"
             onchange="applyAnuidade(${c.id}, document.getElementById('anuid-${c.id}'))">
             <option value="mensal">por mês</option>
             <option value="anual">por ano</option>
           </select>
         </div>
-        <div id="anuid-hint-${c.id}" style="font-size:.7rem;color:var(--muted-foreground);margin-top:3px"></div>
+        <div class="anuid-hint" id="anuid-hint-${c.id}"></div>
       </div>
       <div class="prefill-bar">
         <span class="pf-label">🏷️ Bandeira</span>
@@ -869,6 +894,18 @@ function renderCards() {
     </div>
   `).join('');
   document.getElementById('count-cartoes').textContent = `${tmpCards.length} adicionado${tmpCards.length!==1?'s':''}`;
+}
+
+function fmtObjInput(el, paramId, cid) {
+  const tipo = el.dataset.tipo || 'num';
+  const raw = el.value.replace(/[^\d,\.]/g,'').replace(',','.');
+  const n = parseFloat(raw) || 0;
+  if (!tmpObjVals[paramId]) tmpObjVals[paramId] = {};
+  tmpObjVals[paramId][cid] = n;
+  if (n === 0) { el.value = ''; return; }
+  if (tipo === 'moeda') el.value = fmtBRL(n);
+  else if (tipo === 'pct') el.value = n.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})+'%';
+  else el.value = String(n);
 }
 
 function applyAnuidade(cid, el) {
@@ -918,9 +955,15 @@ function renderObjSections() {
         </td>
         ${tmpCards.map(c=>{
           const v = tmpObjVals[param.id][c.id] || 0;
-          return `<td class="td-val"><input type="number" min="0" step="any" value="${v||''}" placeholder="0"
+          const isMoeda = param.unit === 'R$' || param.unit === 'R$/mil';
+          const isPct   = param.unit === '%';
+          const dispVal = v > 0 ? (isMoeda ? fmtBRL(v) : (isPct ? v.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})+'%' : String(v))) : '';
+          const ph = isMoeda ? 'R$ 0,00' : (isPct ? '0%' : '0');
+          return `<td class="td-val"><input type="text" value="${dispVal}" placeholder="${ph}"
             id="oval-${param.id}-${c.id}"
-            oninput="if(!tmpObjVals['${param.id}'])tmpObjVals['${param.id}']={};tmpObjVals['${param.id}'][${c.id}]=parseFloat(this.value)||0"/></td>`;
+            data-tipo="${isMoeda?'moeda':(isPct?'pct':'num')}"
+            onblur="fmtObjInput(this,'${param.id}',${c.id})"
+            oninput=""/></td>`;
         }).join('')}
       </tr>`;
     });
@@ -1055,7 +1098,10 @@ function syncAllInputs() {
     if (!tmpObjVals[p.id]) tmpObjVals[p.id] = {};
     tmpCards.forEach(c => {
       const el = document.getElementById('oval-'+p.id+'-'+c.id);
-      if (el) tmpObjVals[p.id][c.id] = parseFloat(el.value) || 0;
+      if (el) {
+        const raw = el.value.replace(/[^\d,\.]/g,'').replace(',','.');
+        tmpObjVals[p.id][c.id] = parseFloat(raw) || 0;
+      }
     });
   }));
 }
