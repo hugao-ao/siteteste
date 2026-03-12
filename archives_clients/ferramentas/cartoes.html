@@ -819,18 +819,22 @@ function renderCards() {
           placeholder="Ex: Nubank Ultravioleta"
           oninput="updateCardName(${c.id}, this.value)"/>
       </div>
-      <div class="field-group" style="margin-bottom:4px">
-        <label class="field-label">Anuidade (R$/mês)</label>
-        <input class="field-input" id="anuid-${c.id}"
-          value="${c.anuidade_mensal > 0 ? fmtBRL(c.anuidade_mensal) : ''}"
-          placeholder="R$ 0,00"
-          oninput="setAnuidade(${c.id}, this.value, 'mensal')"/>
-      </div>
-      <div style="font-size:.72rem;color:var(--muted-foreground);margin-bottom:8px;display:flex;align-items:center;gap:6px">
-        ou anual:
-        <input type="number" min="0" step="0.01" placeholder="0"
-          style="width:80px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--foreground);padding:3px 6px;font-size:.72rem"
-          onblur="setAnuidade(${c.id}, this.value, 'anual')"/> ÷12
+      <div class="field-group" style="margin-bottom:8px">
+        <label class="field-label">Anuidade</label>
+        <div style="display:flex;gap:6px;align-items:center">
+          <input class="field-input" id="anuid-${c.id}"
+            value="${c.anuidade_mensal > 0 ? fmtBRL(c.anuidade_mensal) : ''}"
+            placeholder="R$ 0,00"
+            style="flex:1"
+            onblur="applyAnuidade(${c.id}, this)"/>
+          <select id="anuid-tipo-${c.id}"
+            style="background:var(--bg3);border:1px solid var(--border);border-radius:6px;color:var(--foreground);padding:7px 8px;font-size:.78rem;outline:none;cursor:pointer;flex-shrink:0"
+            onchange="applyAnuidade(${c.id}, document.getElementById('anuid-${c.id}'))">
+            <option value="mensal">por mês</option>
+            <option value="anual">por ano</option>
+          </select>
+        </div>
+        <div id="anuid-hint-${c.id}" style="font-size:.7rem;color:var(--muted-foreground);margin-top:3px"></div>
       </div>
       <div class="prefill-bar">
         <span class="pf-label">🏷️ Bandeira</span>
@@ -867,13 +871,20 @@ function renderCards() {
   document.getElementById('count-cartoes').textContent = `${tmpCards.length} adicionado${tmpCards.length!==1?'s':''}`;
 }
 
-function setAnuidade(cid, val, tipo) {
+function applyAnuidade(cid, el) {
   const c = tmpCards.find(x=>x.id===cid); if(!c) return;
-  const raw = String(val).replace(/[^\d,\.]/g,'').replace(',','.');
+  const raw = String(el.value).replace(/[^\d,\.]/g,'').replace(',','.');
   const n = parseFloat(raw) || 0;
+  const tipoSel = document.getElementById('anuid-tipo-'+cid);
+  const tipo = tipoSel ? tipoSel.value : 'mensal';
   c.anuidade_mensal = tipo === 'anual' ? n/12 : n;
-  const el = document.getElementById('anuid-'+cid);
-  if (el && tipo === 'mensal') el.value = n > 0 ? fmtBRL(n) : '';
+  el.value = n > 0 ? fmtBRL(n) : '';
+  const hint = document.getElementById('anuid-hint-'+cid);
+  if (hint) {
+    if (tipo === 'anual' && n > 0) hint.textContent = '≈ ' + fmtBRL(n/12) + '/mês';
+    else if (tipo === 'mensal' && n > 0) hint.textContent = '≈ ' + fmtBRL(n*12) + '/ano';
+    else hint.textContent = '';
+  }
 }
 
 /* ═══════════════════════════════════════════════════════
@@ -1032,7 +1043,10 @@ function syncAllInputs() {
     const anuidEl = document.getElementById('anuid-'+c.id);
     if (anuidEl) {
       const raw = anuidEl.value.replace(/[^\d,\.]/g,'').replace(',','.');
-      c.anuidade_mensal = parseFloat(raw) || c.anuidade_mensal || 0;
+      const n = parseFloat(raw) || 0;
+      const tipoSel = document.getElementById('anuid-tipo-'+c.id);
+      const tipo = tipoSel ? tipoSel.value : 'mensal';
+      if (n > 0) c.anuidade_mensal = tipo === 'anual' ? n/12 : n;
     }
     const pfSel = document.getElementById('pf-bandeira-'+c.id);
     if (pfSel) c.bandeira = pfSel.value;
