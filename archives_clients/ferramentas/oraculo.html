@@ -2345,8 +2345,10 @@
                 const firstOcc = expandedGoals.find(eg => eg.id === g.id || eg.originalId === g.id);
                 const aquisicaoMes = firstOcc ? firstOcc.monthDue : (g.timeUnit === 'years' ? g.time * 12 : g.time);
 
-                // Fator de inflação até o mês da aquisição (igual ao loop principal: yearsPassed = (m-1)/12)
-                const yearsPassed_acq = (aquisicaoMes - 1) / 12;
+                // Fator de inflação até o mês da aquisição (igual ao loop principal: yearsPassed = Math.floor((m-1)/12))
+                // O reajuste é ANUAL e discreto: ocorre no aniversário (mês 13, 25, 37, 49, 61...)
+                // Ex: mês 60 → Math.floor(59/12) = 4 → fator = (1+inf)^4 (não 4,9167)
+                const yearsPassed_acq = Math.floor((aquisicaoMes - 1) / 12);
                 const inflFactor_acq = g.inflationAdjust ? Math.pow(1 + inflationRateAnnual, yearsPassed_acq) : 1;
 
                 const entrada = g.value * inflFactor_acq; // entrada reajustada até o momento da compra
