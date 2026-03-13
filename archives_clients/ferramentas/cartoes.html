@@ -678,8 +678,7 @@ const OBJ_GROUPS = [
     { id:'milheiro',     label:'Valor do milheiro (R$/mil)',    unit:'R$/mil',    tipo:'milheiro'   },
   ]},
   { id:'desconto', label:'Desconto / Isenção de Anuidade', icon:'🏷️', groupImp:'imp', params:[
-    { id:'desc-gasto',   label:'Gasto mínimo para desconto',      unit:'R$', tipo:'desc-gasto'  },
-    { id:'desc-pct',     label:'Desconto na anuidade (%)',           unit:'%',  tipo:'desc-pct'    },
+    { id:'desc-combo',   label:'Desconto por gasto mensal',         unit:'combo', tipo:'desc-combo'  },
     { id:'isent-fatura', label:'Gasto mínimo para isenção total',  unit:'R$', tipo:'isent-fatura' },
     { id:'isent-invest', label:'Investimento mínimo para isenção', unit:'R$', tipo:'isent-invest' },
   ]},
@@ -813,6 +812,14 @@ function openModal(id = null) {
     tmpObjVals = JSON.parse(JSON.stringify(c.objVals));
     tmpObjImps = JSON.parse(JSON.stringify(c.objImps));
     tmpSubjVals= JSON.parse(JSON.stringify(c.subjVals));
+    tmpPtsGastoMoeda = JSON.parse(JSON.stringify(c.ptsGastoMoeda || {}));
+    // Garantir que desc-gasto e desc-pct estejam presentes
+    if (!tmpObjVals['desc-gasto']) tmpObjVals['desc-gasto'] = {};
+    if (!tmpObjVals['desc-pct'])   tmpObjVals['desc-pct']   = {};
+    tmpCards.forEach(card => {
+      if (tmpObjVals['desc-gasto'][card.id] === undefined) tmpObjVals['desc-gasto'][card.id] = 0;
+      if (tmpObjVals['desc-pct'][card.id]   === undefined) tmpObjVals['desc-pct'][card.id]   = 0;
+    });
     cidCounter = Math.max(...tmpCards.map(p=>p.id), 0) + 1;
     document.getElementById('modal-title').textContent = 'Editar Comparação';
   } else {
@@ -843,8 +850,15 @@ function addCard() {
   const id = cidCounter++;
   tmpCards.push({ id, name:'', anuidade_mensal:0, bandeira:'' });
   OBJ_GROUPS.forEach(g => g.params.forEach(p => {
-    if (!tmpObjVals[p.id]) tmpObjVals[p.id] = {};
-    tmpObjVals[p.id][id] = 0;
+    if (p.tipo === 'desc-combo') {
+      if (!tmpObjVals['desc-gasto']) tmpObjVals['desc-gasto'] = {};
+      if (!tmpObjVals['desc-pct'])   tmpObjVals['desc-pct']   = {};
+      tmpObjVals['desc-gasto'][id] = 0;
+      tmpObjVals['desc-pct'][id]   = 0;
+    } else {
+      if (!tmpObjVals[p.id]) tmpObjVals[p.id] = {};
+      tmpObjVals[p.id][id] = 0;
+    }
   }));
   subjItems.forEach(s => {
     if (!tmpSubjVals[s.id]) tmpSubjVals[s.id] = { importance:s.importance, hasParam:{}, rankings:{} };
@@ -856,7 +870,14 @@ function addCard() {
 
 function removeCard(cid) {
   tmpCards = tmpCards.filter(c=>c.id!==cid);
-  OBJ_GROUPS.forEach(g => g.params.forEach(p => { if (tmpObjVals[p.id]) delete tmpObjVals[p.id][cid]; }));
+  OBJ_GROUPS.forEach(g => g.params.forEach(p => {
+    if (p.tipo === 'desc-combo') {
+      if (tmpObjVals['desc-gasto']) delete tmpObjVals['desc-gasto'][cid];
+      if (tmpObjVals['desc-pct'])   delete tmpObjVals['desc-pct'][cid];
+    } else {
+      if (tmpObjVals[p.id]) delete tmpObjVals[p.id][cid];
+    }
+  }));
   subjItems.forEach(s => {
     if (tmpSubjVals[s.id]) { delete tmpSubjVals[s.id].hasParam[cid]; delete tmpSubjVals[s.id].rankings[cid]; }
   });
@@ -948,7 +969,12 @@ function renderCards() {
 
 function fmtObjInput(el, paramId, cid) {
   const tipo = el.dataset.tipo || 'num';
-  const raw = el.value.replace(/[^\d,\.]/g,'').replace(',','.');
+  // Remove R$, %, pontos de milhar e troca vírgula decimal por ponto
+  const raw = el.value
+    .replace(/R\$\s*/g,'')
+    .replace(/%/g,'')
+    .replace(/\./g,'')
+    .replace(',','.');
   const n = parseFloat(raw) || 0;
   if (!tmpObjVals[paramId]) tmpObjVals[paramId] = {};
   tmpObjVals[paramId][cid] = n;
@@ -960,7 +986,11 @@ function fmtObjInput(el, paramId, cid) {
 
 function applyAnuidade(cid, el) {
   const c = tmpCards.find(x=>x.id===cid); if(!c) return;
-  const raw = String(el.value).replace(/[^\d,\.]/g,'').replace(',','.');
+  const raw = String(el.value)
+    .replace(/R\$\s*/g,'')
+    .replace(/%/g,'')
+    .replace(/\./g,'')
+    .replace(',','.');
   const n = parseFloat(raw) || 0;
   const tipoSel = document.getElementById('anuid-tipo-'+cid);
   const tipo = tipoSel ? tipoSel.value : 'mensal';
@@ -1005,16 +1035,20 @@ function renderObjSections() {
     group.params.forEach(param => {
       if (!tmpObjVals[param.id]) tmpObjVals[param.id] = {};
       const isPtsGasto = param.tipo === 'pts-gasto';
+      const isDescCombo = param.tipo === 'desc-combo';
       const isIsentFatura = param.tipo === 'isent-fatura';
       const isIsentInvest = param.tipo === 'isent-invest';
       // Label extra para sub-parâmetros especiais
       let extraLabel = '';
       if (isIsentFatura) extraLabel = '<br><span class="text-dim" style="font-size:.68rem">Se atingido, anuidade = R$ 0</span>';
       if (isIsentInvest) extraLabel = '<br><span class="text-dim" style="font-size:.68rem">Valor investido na instituição que isenta</span>';
+      if (isDescCombo)   extraLabel = '<br><span class="text-dim" style="font-size:.68rem">Gasto mín. (R$) + desconto (%)</span>';
       html += `<tr>
-        <td class="td-label">${param.label}${isPtsGasto?'':''} <span class="text-dim">(${isPtsGasto?'pts/R$ ou pts/US$':param.unit})</span>${extraLabel}</td>
+        <td class="td-label">${param.label} <span class="text-dim">${isPtsGasto?'(pts/R$ ou pts/US$)':isDescCombo?'':('('+param.unit+')')}</span>${extraLabel}</td>
         ${tmpCards.map(c=>{
-          const v = tmpObjVals[param.id][c.id] || 0;
+          if (!tmpObjVals['desc-gasto']) tmpObjVals['desc-gasto'] = {};
+          if (!tmpObjVals['desc-pct'])   tmpObjVals['desc-pct']   = {};
+          const v = tmpObjVals[param.id] ? (tmpObjVals[param.id][c.id] || 0) : 0;
           const isMoeda = param.unit === 'R$' || param.unit === 'R$/mil';
           const isPct   = param.unit === '%';
           const dispVal = v > 0 ? (isMoeda ? fmtBRL(v) : (isPct ? v.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})+'%' : String(v))) : '';
@@ -1035,6 +1069,24 @@ function renderObjSections() {
                   <option value="R$"${moeda==='R$'?' selected':''}>R$</option>
                   <option value="US$"${moeda==='US$'?' selected':''}>US$</option>
                 </select>
+              </div>
+            </td>`;
+          }
+          if (isDescCombo) {
+            const vGasto = tmpObjVals['desc-gasto'][c.id] || 0;
+            const vPct   = tmpObjVals['desc-pct'][c.id]   || 0;
+            const dispG  = vGasto > 0 ? fmtBRL(vGasto) : '';
+            const dispP  = vPct   > 0 ? vPct.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})+'%' : '';
+            return `<td class="td-val">
+              <div style="display:flex;gap:4px;align-items:center;flex-wrap:nowrap">
+                <input type="text" value="${dispG}" placeholder="R$ 0,00"
+                  id="oval-desc-gasto-${c.id}" data-tipo="moeda"
+                  onblur="fmtObjInput(this,'desc-gasto',${c.id})"
+                  style="flex:1;min-width:0"/>
+                <input type="text" value="${dispP}" placeholder="0%"
+                  id="oval-desc-pct-${c.id}" data-tipo="pct"
+                  onblur="fmtObjInput(this,'desc-pct',${c.id})"
+                  style="width:60px;min-width:0"/>
               </div>
             </td>`;
           }
@@ -1164,7 +1216,7 @@ function syncAllInputs() {
     if (nameEl) c.name = nameEl.value.trim();
     const anuidEl = document.getElementById('anuid-'+c.id);
     if (anuidEl) {
-      const raw = anuidEl.value.replace(/[^\d,\.]/g,'').replace(',','.');
+      const raw = anuidEl.value.replace(/R\$\s*/g,'').replace(/\./g,'').replace(',','.');
       const n = parseFloat(raw) || 0;
       const tipoSel = document.getElementById('anuid-tipo-'+c.id);
       const tipo = tipoSel ? tipoSel.value : 'mensal';
@@ -1183,13 +1235,26 @@ function syncAllInputs() {
     tmpCards.forEach(c => {
       if (p.tipo === 'pts-gasto') {
         const el = document.getElementById('oval-pts-gasto-'+c.id);
-        if (el) { const raw = el.value.replace(/[^\d,\.]/g,'').replace(',','.'); tmpObjVals['pts-gasto'][c.id] = parseFloat(raw) || 0; }
+        if (el) { const raw = el.value.replace(/R\$\s*/g,'').replace(/\./g,'').replace(',','.'); tmpObjVals['pts-gasto'][c.id] = parseFloat(raw) || 0; }
         const sel = document.getElementById('pts-gasto-moeda-'+c.id);
         if (sel) tmpPtsGastoMoeda[c.id] = sel.value;
+      } else if (p.tipo === 'desc-combo') {
+        // Ler os dois campos separados do combo
+        if (!tmpObjVals['desc-gasto']) tmpObjVals['desc-gasto'] = {};
+        if (!tmpObjVals['desc-pct'])   tmpObjVals['desc-pct']   = {};
+        const elG = document.getElementById('oval-desc-gasto-'+c.id);
+        if (elG) { const raw = elG.value.replace(/R\$\s*/g,'').replace(/\./g,'').replace(',','.'); tmpObjVals['desc-gasto'][c.id] = parseFloat(raw) || 0; }
+        const elP = document.getElementById('oval-desc-pct-'+c.id);
+        if (elP) { const raw = elP.value.replace(/%/g,'').replace(/\./g,'').replace(',','.'); tmpObjVals['desc-pct'][c.id] = parseFloat(raw) || 0; }
       } else {
         const el = document.getElementById('oval-'+p.id+'-'+c.id);
         if (el) {
-          const raw = el.value.replace(/[^\d,\.]/g,'').replace(',','.');
+          // Remove prefixo R$, símbolo %, pontos de milhar; troca vírgula decimal por ponto
+          const raw = el.value
+            .replace(/R\$\s*/g,'')
+            .replace(/%/g,'')
+            .replace(/\./g,'')   // remove pontos de milhar
+            .replace(',','.');   // vírgula decimal → ponto
           tmpObjVals[p.id][c.id] = parseFloat(raw) || 0;
         }
       }
@@ -1214,11 +1279,16 @@ function saveComparison() {
   const ctx = getCtx();
   const result = calcResult(ctx);
 
+  // Garantir que desc-gasto e desc-pct sejam incluídos no objVals
+  const objValsToSave = JSON.parse(JSON.stringify(tmpObjVals));
+  if (tmpObjVals['desc-gasto']) objValsToSave['desc-gasto'] = JSON.parse(JSON.stringify(tmpObjVals['desc-gasto']));
+  if (tmpObjVals['desc-pct'])   objValsToSave['desc-pct']   = JSON.parse(JSON.stringify(tmpObjVals['desc-pct']));
+
   const comp = {
     id: editingId || Date.now(),
     name: tmpName,
     cards: JSON.parse(JSON.stringify(tmpCards)),
-    objVals: JSON.parse(JSON.stringify(tmpObjVals)),
+    objVals: objValsToSave,
     objImps: JSON.parse(JSON.stringify(tmpObjImps)),
     ptsGastoMoeda: JSON.parse(JSON.stringify(tmpPtsGastoMoeda)),
     subjVals: JSON.parse(JSON.stringify(tmpSubjVals)),
@@ -1246,103 +1316,135 @@ function calcResult(ctx) {
   tmpCards.forEach(c => { scores[c.id] = 0; });
   const breakdown = [];
 
-  // ── OBJETIVOS ──
+  // ── OBJETIVOS (agrupados por grupo na memória de cálculo) ──
   OBJ_GROUPS.forEach(group => {
     const gImp = tmpObjImps[group.id] || group.groupImp;
     const gW   = impWeight(gImp);
+
+    // Acumula pontuação e detalhes por cartão para o grupo inteiro
+    const groupScores    = {}; // score acumulado do grupo por cartão
+    const groupDetails   = {}; // linhas de detalhe por cartão
+    const groupFormulas  = {}; // linhas de fórmula por cartão
+    tmpCards.forEach(c => { groupScores[c.id]=0; groupDetails[c.id]=[]; groupFormulas[c.id]=[]; });
+
     group.params.forEach(param => {
-      const imp = gImp;
       const w   = gW;
-      const vals = tmpObjVals[param.id] || {};
+      // desc-combo é apenas visual — usa desc-gasto e desc-pct internamente
+      const paramIds = param.tipo === 'desc-combo' ? ['desc-gasto','desc-pct'] : [param.id];
 
-      const returns = {};
-      tmpCards.forEach(c => {
-        const v = vals[c.id] || 0;
-        let ret = 0;
-        if (param.tipo === 'nacional')     ret = ctx.nacional * (v/100);
-        else if (param.tipo === 'exterior') ret = ctx.exterior * ctx.dolar * (v/100);
-        else if (param.tipo === 'bonif')    ret = ctx.bonif * (v/100);
-        else if (param.tipo === 'pts-gasto') {
-          const mil = (tmpObjVals['milheiro']||{})[c.id] || 0;
-          const moeda = tmpPtsGastoMoeda[c.id] || 'R$';
-          // Se moeda = US$: usa gasto exterior em US$ × dólar; se R$: usa gasto nacional em R$
-          const base = moeda === 'US$' ? ctx.exterior * ctx.dolar : ctx.nacional;
-          ret = base * v * (mil/1000);
-        }
-        else if (param.tipo === 'pts-bonif') {
-          const mil = (tmpObjVals['milheiro']||{})[c.id] || 0;
-          ret = ctx.bonif * v * (mil/1000);
-        }
-        else if (param.tipo === 'milheiro') {
-          // Valor do milheiro: normaliza pelo maior valor informado
-          ret = v; // v = R$/mil, usado direto para normalização
-        }
-        else if (param.tipo === 'desc-gasto') {
-          // Gasto mínimo: quem exige MENOS gasto para desconto é melhor (inverso)
-          ret = v > 0 ? 1/v : 0;
-        }
-        else if (param.tipo === 'desc-pct') {
-          const descGasto = (tmpObjVals['desc-gasto']||{})[c.id] || 0;
-          const card = tmpCards.find(x=>x.id===c.id);
-          if (card && ctx.nacional >= descGasto && descGasto > 0) ret = card.anuidade_mensal * (v/100);
-          else if (card && descGasto === 0 && v > 0) ret = card.anuidade_mensal * (v/100);
-        }
-        else if (param.tipo === 'isent-fatura') {
-          // Isenção por fatura: quem exige MENOS gasto é melhor (inverso)
-          // Se o gasto nacional já atinge o mínimo, o retorno é a anuidade inteira
-          const card = tmpCards.find(x=>x.id===c.id);
-          if (v > 0 && card) {
-            if (ctx.nacional >= v) ret = card.anuidade_mensal; // isenção total
-            else ret = 1/v; // normaliza inversamente
+      paramIds.forEach(pid => {
+        const pTipo = pid === 'desc-gasto' ? 'desc-gasto' : pid === 'desc-pct' ? 'desc-pct' : param.tipo;
+        const vals  = tmpObjVals[pid] || {};
+
+        const returns = {};
+        tmpCards.forEach(c => {
+          const v = vals[c.id] || 0;
+          let ret = 0;
+          if (pTipo === 'nacional')     ret = ctx.nacional * (v/100);
+          else if (pTipo === 'exterior') ret = ctx.exterior * ctx.dolar * (v/100);
+          else if (pTipo === 'bonif')    ret = ctx.bonif * (v/100);
+          else if (pTipo === 'pts-gasto') {
+            const mil = (tmpObjVals['milheiro']||{})[c.id] || 0;
+            const moeda = tmpPtsGastoMoeda[c.id] || 'R$';
+            const base = moeda === 'US$' ? ctx.exterior * ctx.dolar : ctx.nacional;
+            ret = base * v * (mil/1000);
           }
-        }
-        else if (param.tipo === 'isent-invest') {
-          // Isenção por investimento: quem exige MENOS investimento é melhor (inverso)
-          ret = v > 0 ? 1/v : 0;
-        }
-        returns[c.id] = ret;
-      });
+          else if (pTipo === 'pts-bonif') {
+            const mil = (tmpObjVals['milheiro']||{})[c.id] || 0;
+            ret = ctx.bonif * v * (mil/1000);
+          }
+          else if (pTipo === 'milheiro') {
+            ret = v;
+          }
+          else if (pTipo === 'desc-gasto') {
+            ret = v > 0 ? 1/v : 0;
+          }
+          else if (pTipo === 'desc-pct') {
+            const descGasto = (tmpObjVals['desc-gasto']||{})[c.id] || 0;
+            const card = tmpCards.find(x=>x.id===c.id);
+            if (card && ctx.nacional >= descGasto && descGasto > 0) ret = card.anuidade_mensal * (v/100);
+            else if (card && descGasto === 0 && v > 0) ret = card.anuidade_mensal * (v/100);
+          }
+          else if (pTipo === 'isent-fatura') {
+            const card = tmpCards.find(x=>x.id===c.id);
+            if (v > 0 && card) {
+              if (ctx.nacional >= v) ret = card.anuidade_mensal;
+              else ret = 1/v;
+            }
+          }
+          else if (pTipo === 'isent-invest') {
+            ret = v > 0 ? 1/v : 0;
+          }
+          returns[c.id] = ret;
+        });
 
-      const maxRet = Math.max(...Object.values(returns));
-      const perProduct = {};
-      tmpCards.forEach(c => {
-        const ret = returns[c.id];
-        const rawV = (tmpObjVals[param.id]||{})[c.id] || 0;
-        let score = 0, detail = '—', formula = '—';
-        if (maxRet > 0) {
-          const norm = ret / maxRet;
-          if (w >= 0) {
-            score = norm * w * 10;
-            // Fórmula legível por tipo
-            if (param.tipo === 'desc-gasto') formula = `(menor gasto exigido é melhor) ${score.toFixed(2)}`;
-            else formula = `(${fmtN(ret)}/${fmtN(maxRet)}) × ${w} × 10 = ${score.toFixed(2)}`;
+        const maxRet = Math.max(...Object.values(returns));
+        tmpCards.forEach(c => {
+          const ret   = returns[c.id];
+          const rawV  = vals[c.id] || 0;
+          let score   = 0;
+          let detail  = '';
+          let formula = '';
+          if (maxRet > 0) {
+            const norm = ret / maxRet;
+            if (w >= 0) {
+              score = norm * w * 10;
+              if (pTipo === 'desc-gasto') formula = `Gasto mín (menor é melhor): ${score.toFixed(2)}`;
+              else formula = `(${fmtN(ret)}/${fmtN(maxRet)}) × ${w} × 10 = ${score.toFixed(2)}`;
+            } else {
+              score = (1-norm)*Math.abs(w)*10;
+              formula = `(1-${fmtN(norm)}) × |${w}| × 10 = ${score.toFixed(2)}`;
+            }
+            if (pTipo === 'milheiro')      detail = `Milheiro: R$${fmtN(rawV)}/mil pts`;
+            else if (pTipo === 'desc-gasto') detail = `Gasto mín: ${fmtBRL(rawV)}`;
+            else if (pTipo === 'desc-pct')   detail = `Desc: ${fmtN(rawV)}% → ${fmtBRL(ret)}/mês`;
+            else if (pTipo === 'isent-fatura') {
+              const atingiu = rawV > 0 && ctx.nacional >= rawV;
+              detail = atingiu ? `✅ Isento fatura (${fmtBRL(rawV)})` : `Isent. fatura mín: ${fmtBRL(rawV)}`;
+            }
+            else if (pTipo === 'isent-invest') detail = `Isent. invest. mín: ${fmtBRL(rawV)}`;
+            else if (pTipo === 'pts-gasto') {
+              const moeda2 = tmpPtsGastoMoeda[c.id] || 'R$';
+              detail = `Pts gasto (${fmtN(rawV)}/${moeda2}): ${fmtBRL(ret)}/mês`;
+            }
+            else detail = `R$${fmtN(ret)}/mês`;
           } else {
-            score = (1-norm)*Math.abs(w)*10;
-            formula = `(1-${fmtN(norm)}) × |${w}| × 10 = ${score.toFixed(2)}`;
+            if (rawV > 0) {
+              if (pTipo === 'milheiro')       detail = `Milheiro: R$${fmtN(rawV)}/mil pts`;
+              else if (pTipo === 'desc-gasto') detail = `Gasto mín: ${fmtBRL(rawV)}`;
+              else                            detail = `R$${fmtN(rawV)}/mês`;
+            }
           }
-          // Detail legível por tipo
-          if (param.tipo === 'milheiro') detail = `R$${fmtN(rawV)}/mil pts`;
-          else if (param.tipo === 'desc-gasto') detail = `Gasto mín: ${fmtBRL(rawV)}`;
-          else if (param.tipo === 'desc-pct') detail = `Desc: ${fmtN(rawV)}% → ${fmtBRL(ret)}/mês`;
-          else if (param.tipo === 'isent-fatura') {
-            const card2 = tmpCards.find(x=>x.id===c.id);
-            const atingiu = rawV > 0 && ctx.nacional >= rawV;
-            detail = atingiu ? `✅ Isento (gasto ${fmtBRL(rawV)})` : `Gasto mín: ${fmtBRL(rawV)}`;
-          }
-          else if (param.tipo === 'isent-invest') detail = `Invest. mín: ${fmtBRL(rawV)}`;
-          else if (param.tipo === 'pts-gasto') {
-            const moeda2 = tmpPtsGastoMoeda[c.id] || 'R$';
-            detail = `${fmtN(rawV)} pts/${moeda2} → ${fmtBRL(ret)}/mês`;
-          }
-          else detail = `R$${fmtN(ret)}/mês`;
-        } else if (w !== 0) {
-          if (rawV > 0) detail = param.tipo==='milheiro' ? `R$${fmtN(rawV)}/mil pts` : param.tipo==='desc-gasto' ? `Gasto mín: ${fmtBRL(rawV)}` : (rawV > 0 ? `R$${fmtN(rawV)}/mês` : 'Todos zerados');
-          else detail = 'Todos zerados';
-        }
-        scores[c.id] += score;
-        perProduct[c.id] = { score, detail, formula, ret, rawV };
+          groupScores[c.id]  += score;
+          scores[c.id]       += score;
+          if (detail)  groupDetails[c.id].push(detail);
+          if (formula) groupFormulas[c.id].push(formula);
+        });
       });
-      breakdown.push({ paramName:param.label, groupLabel:group.label, type:'Objetivo', unit:param.unit, importance:imp, weight:w, perProduct });
+    });
+
+    // Gera UMA linha de breakdown por grupo
+    const perProduct = {};
+    tmpCards.forEach(c => {
+      const totalScore = groupScores[c.id];
+      const details    = groupDetails[c.id].filter(Boolean);
+      const formulas   = groupFormulas[c.id].filter(Boolean);
+      perProduct[c.id] = {
+        score:   totalScore,
+        detail:  details.length  > 0 ? details.join(' | ')  : 'Todos zerados',
+        formula: formulas.length > 0 ? formulas.join('<br>') : '—',
+        ret:     totalScore,
+        rawV:    0
+      };
+    });
+    breakdown.push({
+      paramName:  group.label,
+      groupLabel: group.label,
+      type:       'Objetivo',
+      importance: gImp,
+      weight:     gW,
+      perProduct,
+      note: `Sub-parâmetros: ${group.params.map(p=>p.label).join(', ')}`
     });
   });
 
