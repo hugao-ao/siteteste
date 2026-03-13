@@ -1647,9 +1647,33 @@ function renderResult(comp) {
   else if (diff < 20) parecer = `<b>${escHtml(best.name)}</b> é o melhor cartão com <b>vantagem moderada</b> (${diff.toFixed(1)}% à frente de ${escHtml(second?.name||'')}).`;
   else parecer = `<b>${escHtml(best.name)}</b> é o melhor cartão com <b>vantagem expressiva</b> (${diff.toFixed(1)}% à frente de ${escHtml(second?.name||'')}). A análise aponta claramente para esta escolha.`;
 
+  // Calcular vencedor do balanço para o parecer (antes de construir balHtml)
+  const balanco0 = comp.result.balanco || {};
+  let balWinnerIdParecer = null;
+  let balWinnerLiqParecer = -Infinity;
+  ranking.forEach(c => {
+    const b = balanco0[c.id];
+    if (!b) return;
+    if (b.liquido > balWinnerLiqParecer) { balWinnerLiqParecer = b.liquido; balWinnerIdParecer = c.id; }
+  });
+  const balWinnerParecer = ranking.find(c => c.id === balWinnerIdParecer);
+  const hasBalancoParecer = Object.keys(balanco0).length > 0;
+
+  // Complemento do parecer com informação do balanço
+  let parecerBalanco = '';
+  if (hasBalancoParecer && balWinnerParecer) {
+    const balLiqSinal = balWinnerLiqParecer >= 0 ? '+' : '';
+    const balLiqFmt = `${balLiqSinal}${fmtBRL(balWinnerLiqParecer)}/mês`;
+    if (balWinnerIdParecer === best.id) {
+      parecerBalanco = ` Financeiramente, <b>${escHtml(balWinnerParecer.name)}</b> também lidera o balanço com saldo líquido de <b>${balLiqFmt}</b>.`;
+    } else {
+      parecerBalanco = ` <span style="color:var(--gold)">⚠️ Atenção:</span> o melhor cartão na análise geral é <b>${escHtml(best.name)}</b>, mas o melhor <b>saldo financeiro mensal</b> pertence a <b>${escHtml(balWinnerParecer.name)}</b> (${balLiqFmt}). Avalie qual critério pesa mais para você.`;
+    }
+  }
+
   const parecerBox = `<div class="parecer-box">
     <div class="parecer-title">Parecer</div>
-    <p>${parecer}</p>
+    <p>${parecer}${parecerBalanco}</p>
     ${comp.ctx?`<p class="text-dim" style="margin-top:6px;font-size:.78rem">Contexto: Nacional R$${fmtN(comp.ctx.nacional)}/mês · Exterior US$${fmtN(comp.ctx.exterior)}/mês · Dólar R$${fmtN(comp.ctx.dolar)}</p>`:''}
   </div>`;
 
@@ -1659,11 +1683,20 @@ function renderResult(comp) {
   let balHtml = '';
   if (hasBalanco) {
     const bestId = ranking[0]?.id;
+    // Determinar vencedor PRÓPRIO do balanço (maior saldo líquido)
+    let balWinnerId = null;
+    let balWinnerLiq = -Infinity;
+    ranking.forEach(c => {
+      const b = balanco[c.id];
+      if (!b) return;
+      if (b.liquido > balWinnerLiq) { balWinnerLiq = b.liquido; balWinnerId = c.id; }
+    });
+    const balWinner = ranking.find(c => c.id === balWinnerId);
     let cards = '';
     ranking.forEach(c => {
       const b = balanco[c.id];
       if (!b) return;
-      const isWinner = c.id === bestId;
+      const isWinner = c.id === balWinnerId;
       const liqCls = b.liquido >= 0 ? 'positivo' : 'negativo';
       const liqSinal = b.liquido >= 0 ? '+' : '';
       const hasCb   = (b.cb_nac + b.cb_ext + b.cb_bon) > 0;
@@ -1710,8 +1743,13 @@ function renderResult(comp) {
         <div class="bc-liquido ${liqCls}"><span>Saldo líquido/mês</span><span>${liqSinal}${fmtBRL(b.liquido)}</span></div>
       </div>`;
     });
+    const balWinnerName = balWinner ? escHtml(balWinner.name) : '';
+    const balWinnerSaldo = fmtBRL(Math.abs(balWinnerLiq));
+    const balWinnerSinal = balWinnerLiq >= 0 ? '+' : '-';
     balHtml = `<div class="balanco-section">
-      <div class="balanco-title">💰 Balanço Financeiro Mensal</div>
+      <div class="balanco-title">💰 Balanço Financeiro Mensal
+        ${balWinner ? `<span style="margin-left:10px;font-size:.78rem;color:var(--foreground);font-weight:600;text-transform:none;letter-spacing:0">🏆 Melhor saldo: <b>${balWinnerName}</b> (${balWinnerSinal}R$ ${balWinnerSaldo}/mês)</span>` : ''}
+      </div>
       <div class="balanco-grid">${cards}</div>
     </div>`;
   }
