@@ -2327,49 +2327,43 @@
             // Physical Assets Tracking List
             let acquiredAssets = [];
 
-            // ── PRÉ-PROCESSAMENTO DE FINANCIAMENTOS ─────────────────────────────────
-            // Para cada objetivo do tipo 'spend' com financiamento, gera o cronograma
-            // completo de parcelas e amortizações e armazena em debtSchedules[]
-            // debtSchedules[]: [{goalId, goalName, afetaAportes, saldoDevedor, schedule: [{mes, parcela, amortizacao, saldoDevedor}], amortExtras: [{mes, valor}]}]
+            // ── REGISTRO DE FINANCIAMENTOS PENDENTES ────────────────────────────────
+            // Armazena apenas os metadados do financiamento. O cronograma de parcelas
+            // será gerado DINAMICAMENTE no momento em que o objetivo for efetivamente
+            // realizado no loop, usando o mês real de execução como início do schedule.
+            // Isso garante que atrasos no objetivo atrasem também o início das parcelas.
             let debtSchedules = [];
             let hasDebts = false;
 
+            // Mapa: goalId → dados do financiamento (para lookup rápido no loop)
+            const finPendentes = {};
             goals.filter(g => g.type === 'spend' && g.financiamento && g.financiamento.valueType === 'entrada').forEach(g => {
-                const fin = g.financiamento;
-                // O usuário informa os valores NOMINAIS DE HOJE (g.value = entrada, fin.totalValue = total do bem).
-                // O código reajusta ambos pela inflação até o momento da compra, usando o mesmo fator
-                // que o loop principal aplica ao g.currentValue.
+                if (g.financiamento.modalidade !== 'sem_custo') {
+                    finPendentes[g.id] = { g, fin: g.financiamento };
+                }
+            });
 
-                // Mês de aquisição do bem (mês em que o objetivo será executado)
-                // Usamos o monthDue da primeira ocorrência do objetivo
-                const firstOcc = expandedGoals.find(eg => eg.id === g.id || eg.originalId === g.id);
-                const aquisicaoMes = firstOcc ? firstOcc.monthDue : (g.timeUnit === 'years' ? g.time * 12 : g.time);
+            // Função auxiliar: gera o debtSchedule no mês real de realização do objetivo
+            function gerarDebtSchedule(g, fin, mesRealizacao, currentValue) {
+                // mesRealizacao: mês 1-based na simulação em que o objetivo foi realizado
+                // currentValue: valor atual do objetivo (entrada já reajustada pela inflação)
 
-                // Fator de inflação até o mês da aquisição (igual ao loop principal: yearsPassed = Math.floor((m-1)/12))
-                // O reajuste é ANUAL e discreto: ocorre no aniversário (mês 13, 25, 37, 49, 61...)
-                // Ex: mês 60 → Math.floor(59/12) = 4 → fator = (1+inf)^4 (não 4,9167)
-                const yearsPassed_acq = Math.floor((aquisicaoMes - 1) / 12);
-                const inflFactor_acq = g.inflationAdjust ? Math.pow(1 + inflationRateAnnual, yearsPassed_acq) : 1;
+                // Fator de inflação: proporção entre currentValue e valor nominal original
+                const inflFactor_acq = g.inflationAdjust && g.value > 0 ? currentValue / g.value : 1;
 
-                const entrada = g.value * inflFactor_acq; // entrada reajustada até o momento da compra
-                const totalBem = (fin.totalValue || g.value) * inflFactor_acq; // total do bem reajustado
-                const diferenca = Math.max(0, totalBem - entrada);
+                const totalBem = (fin.totalValue || g.value) * inflFactor_acq;
+                const diferenca = Math.max(0, totalBem - currentValue);
 
-                // Calcular startMonthStr do financiamento = startMonthStr + aquisicaoMes - 1 meses
+                // Converter mesRealizacao para string YYYY-MM (início das parcelas)
                 const [sy, sm] = startMonthStr.split('-').map(Number);
-                const finStartDate = new Date(sy, sm - 1 + aquisicaoMes - 1, 1);
+                const finStartDate = new Date(sy, sm - 1 + mesRealizacao - 1, 1);
                 const finStartStr = `${finStartDate.getFullYear()}-${String(finStartDate.getMonth() + 1).padStart(2, '0')}`;
 
                 let schedule = [];
                 let amortExtras = [];
 
-                if (fin.modalidade === 'sem_custo') {
-                    // Sem dívida, apenas registra o bem pelo valor total
-                    return;
-                } else if (fin.modalidade === 'personalizado') {
-                    // Gera schedule de parcelas personalizadas
+                if (fin.modalidade === 'personalizado') {
                     const events = calcSchedulePersonalizado(fin.parcelas || [], startMonthStr, months);
-                    // Converte para formato de schedule (sem saldo devedor — passivo não rastreado individualmente)
                     events.forEach(e => schedule.push({ mes: e.mes, parcela: e.valor, amortizacao: e.valor, juros: 0, saldoDevedor: 0 }));
                 } else if (fin.modalidade === 'price') {
                     const fgts = fin.fgts || 0;
@@ -2393,7 +2387,6 @@
                     }
                     amortExtras = calcScheduleAmortizacoesAdicionais(fin.amortizacoesAdicionais || [], startMonthStr, months);
                 } else if (fin.modalidade === 'hibrido') {
-                    // Processa cada componente
                     (fin.componentes || []).forEach(comp => {
                         if (comp.tipo === 'personalizado') {
                             const events = calcSchedulePersonalizado([comp], startMonthStr, months);
@@ -2412,22 +2405,21 @@
                 }
 
                 if (schedule.length > 0 || amortExtras.length > 0) {
-                    // Saldo devedor inicial = PV (primeira entrada do schedule com saldoDevedor máximo)
                     const saldoInicial = schedule.length > 0 ? (schedule[0].saldoDevedor + schedule[0].amortizacao) : 0;
                     debtSchedules.push({
-                        goalId:        g.id,
-                        goalName:      g.name,
-                        afetaAportes:  fin.afetaAportes || false,
-                        saldoDevedor:  0,            // Começa em 0; ativa no mês da aquisição
-                        saldoInicial:  saldoInicial,  // PV para ativar no mês da aquisição
-                        aquisicaoMes:  aquisicaoMes,  // Mês em que a dívida começa
+                        goalId:       g.id,
+                        goalName:     g.name,
+                        afetaAportes: fin.afetaAportes || false,
+                        saldoDevedor: saldoInicial,   // Ativa imediatamente com PV real
+                        saldoInicial: saldoInicial,
+                        aquisicaoMes: mesRealizacao,  // Mês REAL de realização (pode ser atrasado)
                         schedule,
                         amortExtras,
-                        trackSaldo:    ['price','sac','up','hibrido'].includes(fin.modalidade)
+                        trackSaldo:   ['price','sac','up','hibrido'].includes(fin.modalidade)
                     });
                     hasDebts = true;
                 }
-            });
+            }
 
             // Arrays para o gráfico de passivo
             let dataPassivo = [];
@@ -2742,6 +2734,13 @@
                             if (estimatedTax < 0) estimatedTax = 0;
                             netBalanceAvailable = balanceAfterEarnings - estimatedTax;
 
+                            // Gerar cronograma de financiamento no mês REAL de realização
+                            // (vincula o início das parcelas ao mês efetivo, não ao planejado)
+                            const finPend = finPendentes[g.id];
+                            if (finPend) {
+                                gerarDebtSchedule(finPend.g, finPend.fin, m, g.currentValue);
+                            }
+
                             goalQueue.splice(i, 1);
                             i--;
                         } else {
@@ -2760,16 +2759,9 @@
                 let parcelasMes = 0;       // Total de parcelas devidas neste mês
 
                 debtSchedules.forEach(debt => {
-                    // Bug 2 fix: Ativar saldo devedor apenas a partir do mês da aquisição
-                    if (m === debt.aquisicaoMes && debt.saldoDevedor === 0 && debt.saldoInicial > 0) {
-                        debt.saldoDevedor = debt.saldoInicial;
-                    }
-
-                    // Só processar parcelas a partir do mês de aquisição
-                    if (m < debt.aquisicaoMes) {
-                        // Antes da aquisição: sem parcelas, sem passivo
-                        return;
-                    }
+                    // O schedule só existe a partir do mês real de realização do objetivo.
+                    // Não há mais necessidade de verificar aquisicaoMes para ativar:
+                    // o debtSchedule é criado dinamicamente no momento da realização.
 
                     // Parcelas do cronograma principal
                     const scheduleEntry = debt.schedule.find(s => s.mes === m);
