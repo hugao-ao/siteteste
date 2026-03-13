@@ -1659,21 +1659,32 @@ function renderResult(comp) {
   const balWinnerParecer = ranking.find(c => c.id === balWinnerIdParecer);
   const hasBalancoParecer = Object.keys(balanco0).length > 0;
 
-  // Complemento do parecer com informação do balanço
-  let parecerBalanco = '';
+  // Reescrever o parecer completo considerando os dois critérios
+  let parecerFinal = '';
   if (hasBalancoParecer && balWinnerParecer) {
     const balLiqSinal = balWinnerLiqParecer >= 0 ? '+' : '';
     const balLiqFmt = `${balLiqSinal}${fmtBRL(balWinnerLiqParecer)}/mês`;
+    const bestName = `<b>${escHtml(best.name)}</b>`;
+    const balName  = `<b>${escHtml(balWinnerParecer.name)}</b>`;
     if (balWinnerIdParecer === best.id) {
-      parecerBalanco = ` Financeiramente, <b>${escHtml(balWinnerParecer.name)}</b> também lidera o balanço com saldo líquido de <b>${balLiqFmt}</b>.`;
+      // Mesmo vencedor em ambos: parecer incisivo e afirmativo
+      const forcaTexto = diff < 5 ? 'leve vantagem' : diff < 20 ? 'vantagem moderada' : 'vantagem expressiva';
+      parecerFinal = `${bestName} se destaca como a melhor escolha tanto na análise geral (${forcaTexto} de ${diff.toFixed(1)}% sobre ${escHtml(second?.name||'')}) quanto no balanço financeiro mensal, com saldo líquido de <b>${balLiqFmt}</b>. A recomendação é clara: este é o cartão mais vantajoso para o seu perfil de gastos.`;
     } else {
-      parecerBalanco = ` <span style="color:var(--gold)">⚠️ Atenção:</span> o melhor cartão na análise geral é <b>${escHtml(best.name)}</b>, mas o melhor <b>saldo financeiro mensal</b> pertence a <b>${escHtml(balWinnerParecer.name)}</b> (${balLiqFmt}). Avalie qual critério pesa mais para você.`;
+      // Vencedores diferentes: neutro, pontua cada perspectiva sem julgamento
+      const forcaTexto = diff < 5 ? 'leve vantagem' : diff < 20 ? 'vantagem moderada' : 'vantagem expressiva';
+      const bestLiq = fmtBRL((comp.result.balanco[best.id]||{}).liquido || 0);
+      parecerFinal = `A análise aponta dois resultados distintos a considerar: sob a ótica dos parâmetros ponderados (cashback, pontos, desconto e benefícios), ${bestName} lidera com ${forcaTexto} de ${diff.toFixed(1)}% sobre ${escHtml(second?.name||'')}. Já sob a ótica do <b>retorno financeiro mensal líquido</b>, ${balName} apresenta o melhor saldo (${balLiqFmt}). A escolha ideal depende do que você prioriza: benefícios e pontuação ou retorno financeiro direto.`;
     }
+  } else {
+    // Sem balanço: parecer padrão
+    parecerFinal = parecer;
   }
+  let parecerBalanco = ''; // mantido para compatibilidade (não usado mais)
 
   const parecerBox = `<div class="parecer-box">
     <div class="parecer-title">Parecer</div>
-    <p>${parecer}${parecerBalanco}</p>
+    <p>${parecerFinal}</p>
     ${comp.ctx?`<p class="text-dim" style="margin-top:6px;font-size:.78rem">Contexto: Nacional R$${fmtN(comp.ctx.nacional)}/mês · Exterior US$${fmtN(comp.ctx.exterior)}/mês · Dólar R$${fmtN(comp.ctx.dolar)}</p>`:''}
   </div>`;
 
