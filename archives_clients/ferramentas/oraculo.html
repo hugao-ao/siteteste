@@ -657,6 +657,239 @@
                             </div>
                         </div>
 
+                        <!-- ── BLOCO DE FINANCIAMENTO (aparece quando tipo = spend) ─────────── -->
+                        <div id="financiamentoGroup" style="display:none; border-left: 2px solid #60a5fa; padding-left: 1rem; margin-bottom: 1rem;">
+
+                            <!-- 1. Tipo do valor informado -->
+                            <div class="input-group">
+                                <label style="color:#60a5fa; font-weight:bold;">O valor informado representa:</label>
+                                <select id="goalValueType" onchange="toggleFinanciamentoFields()">
+                                    <option value="total">Valor total do bem</option>
+                                    <option value="entrada">Apenas uma entrada / parte do valor</option>
+                                </select>
+                            </div>
+
+                            <!-- 2. Valor total real (só aparece se entrada) -->
+                            <div id="totalBemGroup" style="display:none;">
+                                <div class="input-group">
+                                    <label>Valor Total Real do Bem (R$)</label>
+                                    <input type="text" id="goalTotalValue" placeholder="0,00" oninput="formatCurrencyInput(this)">
+                                    <p style="font-size:0.75rem; color:#6b7280; margin-top:0.25rem;">*Valor financiado = Valor total − Entrada − FGTS</p>
+                                </div>
+
+                                <!-- 3. Modalidade de pagamento da diferença -->
+                                <div class="input-group">
+                                    <label style="color:#60a5fa; font-weight:bold;">Como a diferença será paga?</label>
+                                    <select id="goalFinanciamentoTipo" onchange="toggleFinanciamentoModalidade()">
+                                        <option value="sem_custo">Sem custo com a diferença</option>
+                                        <option value="personalizado">Pagamento personalizado (parcelas livres)</option>
+                                        <option value="price">Tabela Price</option>
+                                        <option value="sac">Tabela SAC</option>
+                                        <option value="up">Tabela UP (Consórcio)</option>
+                                        <option value="hibrido">Híbrido (múltiplas tabelas / personalizados)</option>
+                                    </select>
+                                </div>
+
+                                <!-- 4. Afeta aportes? -->
+                                <label class="checkbox-wrapper" style="margin-bottom:0.75rem;">
+                                    <input type="checkbox" id="goalFinanciamentoAfetaAportes">
+                                    As parcelas/custos afetarão meus aportes mensais?
+                                </label>
+
+                                <!-- ── MODALIDADE: PERSONALIZADO ──────────────────────────────── -->
+                                <div id="finModalidadePersonalizado" style="display:none;">
+                                    <label style="font-size:0.85rem; color:#fbbf24; font-weight:bold; display:block; margin-bottom:0.5rem;">Parcelas Personalizadas</label>
+                                    <div id="finParcelasPersonalizadasList" style="margin-bottom:0.5rem;"></div>
+                                    <div style="background:rgba(255,255,255,0.03); padding:0.5rem; border-radius:4px;">
+                                        <div style="display:flex; gap:0.5rem; margin-bottom:0.5rem;">
+                                            <div style="flex:1;">
+                                                <label style="font-size:0.75rem;">Valor (R$):</label>
+                                                <input type="text" id="finParcNome" placeholder="Descrição" style="margin-bottom:0.25rem;">
+                                                <input type="text" id="finParcValor" placeholder="0,00" oninput="formatCurrencyInput(this)">
+                                            </div>
+                                            <div style="flex:1;">
+                                                <label style="font-size:0.75rem;">1ª Parcela em:</label>
+                                                <input type="month" id="finParcData">
+                                            </div>
+                                        </div>
+                                        <label style="font-size:0.75rem;">Reajuste anual (%):</label>
+                                        <input type="number" id="finParcReajuste" placeholder="0" step="0.1" style="margin-bottom:0.5rem;">
+                                        <label style="font-size:0.75rem;">Repetir a cada:</label>
+                                        <div style="display:flex; gap:0.5rem; margin-bottom:0.5rem;">
+                                            <input type="number" id="finParcRecVal" placeholder="Ex: 1" style="flex:1;" oninput="toggleFinParcRecEnd(this.value)">
+                                            <select id="finParcRecUnit" style="width:100px;">
+                                                <option value="months">Meses</option>
+                                                <option value="years">Anos</option>
+                                            </select>
+                                        </div>
+                                        <div id="finParcRecEndContainer" style="display:none; background:rgba(0,0,0,0.2); padding:0.5rem; border-radius:4px; margin-bottom:0.5rem;">
+                                            <label style="font-size:0.75rem; color:#fbbf24;">Terminar recorrência:</label>
+                                            <select id="finParcRecEndType" style="width:100%; margin-bottom:0.5rem; font-size:0.8rem;" onchange="toggleFinParcRecEndInputs()">
+                                                <option value="never">Nunca (até o fim)</option>
+                                                <option value="after_occurrences">Após X ocorrências</option>
+                                                <option value="at_date">Em data específica</option>
+                                            </select>
+                                            <input type="number" id="finParcRecEndOcc" placeholder="Nº de vezes" style="display:none; width:100%; font-size:0.8rem;">
+                                            <input type="month" id="finParcRecEndDate" style="display:none; width:100%; font-size:0.8rem;">
+                                        </div>
+                                        <input type="hidden" id="finParcEditIndex" value="">
+                                        <button onclick="addFinParcPersonalizada()" class="btn-secondary" style="width:100%; font-size:0.85rem; padding:0.25rem;">+ Adicionar Parcela</button>
+                                    </div>
+                                </div>
+
+                                <!-- ── MODALIDADE: PRICE / SAC / UP ───────────────────────────── -->
+                                <div id="finModalidadeTabela" style="display:none;">
+                                    <label style="font-size:0.85rem; color:#fbbf24; font-weight:bold; display:block; margin-bottom:0.5rem;">Parâmetros do Financiamento</label>
+                                    <div class="input-group">
+                                        <label>FGTS disponível (R$)</label>
+                                        <input type="text" id="finFGTS" placeholder="0,00" oninput="formatCurrencyInput(this)">
+                                        <p style="font-size:0.75rem; color:#6b7280; margin-top:0.25rem;">*Reduz o saldo financiado automaticamente</p>
+                                    </div>
+                                    <div class="input-group">
+                                        <label>CET — Custo Efetivo Total (% a.a.)</label>
+                                        <input type="number" id="finCET" placeholder="Ex: 12.5" step="0.01">
+                                    </div>
+                                    <div class="input-group">
+                                        <label>Prazo (meses)</label>
+                                        <input type="number" id="finPrazo" placeholder="Ex: 360">
+                                    </div>
+                                    <div class="input-group">
+                                        <label>Taxa de Reajuste Anual (% a.a.)</label>
+                                        <input type="number" id="finReajuste" placeholder="0" step="0.01">
+                                        <p style="font-size:0.75rem; color:#6b7280; margin-top:0.25rem;">*Aplica-se ao saldo devedor e parcela anualmente</p>
+                                    </div>
+                                    <!-- Amortizações adicionais -->
+                                    <label style="font-size:0.85rem; color:#fbbf24; font-weight:bold; display:block; margin:0.75rem 0 0.5rem;">Amortizações Adicionais</label>
+                                    <div id="finAmortizacoesAdicionaisList" style="margin-bottom:0.5rem;"></div>
+                                    <div style="background:rgba(255,255,255,0.03); padding:0.5rem; border-radius:4px; margin-bottom:0.5rem;">
+                                        <div style="display:flex; gap:0.5rem; margin-bottom:0.5rem;">
+                                            <div style="flex:1;">
+                                                <label style="font-size:0.75rem;">Valor (R$):</label>
+                                                <input type="text" id="finAmortValor" placeholder="0,00" oninput="formatCurrencyInput(this)">
+                                            </div>
+                                            <div style="flex:1;">
+                                                <label style="font-size:0.75rem;">Data:</label>
+                                                <input type="month" id="finAmortData">
+                                            </div>
+                                        </div>
+                                        <label style="font-size:0.75rem;">Repetir a cada:</label>
+                                        <div style="display:flex; gap:0.5rem; margin-bottom:0.5rem;">
+                                            <input type="number" id="finAmortRecVal" placeholder="Ex: 12" style="flex:1;" oninput="toggleFinAmortRecEnd(this.value)">
+                                            <select id="finAmortRecUnit" style="width:100px;">
+                                                <option value="months">Meses</option>
+                                                <option value="years">Anos</option>
+                                            </select>
+                                        </div>
+                                        <div id="finAmortRecEndContainer" style="display:none; background:rgba(0,0,0,0.2); padding:0.5rem; border-radius:4px; margin-bottom:0.5rem;">
+                                            <label style="font-size:0.75rem; color:#fbbf24;">Terminar recorrência:</label>
+                                            <select id="finAmortRecEndType" style="width:100%; margin-bottom:0.5rem; font-size:0.8rem;" onchange="toggleFinAmortRecEndInputs()">
+                                                <option value="never">Nunca (até o fim)</option>
+                                                <option value="after_occurrences">Após X ocorrências</option>
+                                                <option value="at_date">Em data específica</option>
+                                            </select>
+                                            <input type="number" id="finAmortRecEndOcc" placeholder="Nº de vezes" style="display:none; width:100%; font-size:0.8rem;">
+                                            <input type="month" id="finAmortRecEndDate" style="display:none; width:100%; font-size:0.8rem;">
+                                        </div>
+                                        <input type="hidden" id="finAmortEditIndex" value="">
+                                        <button onclick="addFinAmortizacao()" class="btn-secondary" style="width:100%; font-size:0.85rem; padding:0.25rem;">+ Adicionar Amortização</button>
+                                    </div>
+                                </div>
+
+                                <!-- ── MODALIDADE: HÍBRIDO ────────────────────────────────────── -->
+                                <div id="finModalidadeHibrido" style="display:none;">
+                                    <label style="font-size:0.85rem; color:#fbbf24; font-weight:bold; display:block; margin-bottom:0.5rem;">Componentes do Financiamento Híbrido</label>
+                                    <div id="finHibridoComponentesList" style="margin-bottom:0.5rem;"></div>
+                                    <div style="background:rgba(255,255,255,0.03); padding:0.5rem; border-radius:4px;">
+                                        <div class="input-group">
+                                            <label style="font-size:0.85rem;">Tipo de componente:</label>
+                                            <select id="finHibridoTipo" onchange="toggleFinHibridoCampos()">
+                                                <option value="personalizado">Parcela personalizada</option>
+                                                <option value="price">Tabela Price</option>
+                                                <option value="sac">Tabela SAC</option>
+                                                <option value="up">Tabela UP</option>
+                                            </select>
+                                        </div>
+                                        <!-- Campos personalizados para híbrido -->
+                                        <div id="finHibridoCamposPersonalizado">
+                                            <div style="display:flex; gap:0.5rem; margin-bottom:0.5rem;">
+                                                <div style="flex:1;">
+                                                    <label style="font-size:0.75rem;">Descrição:</label>
+                                                    <input type="text" id="finHibParcNome" placeholder="Ex: Parcela extra">
+                                                </div>
+                                                <div style="flex:1;">
+                                                    <label style="font-size:0.75rem;">Valor (R$):</label>
+                                                    <input type="text" id="finHibParcValor" placeholder="0,00" oninput="formatCurrencyInput(this)">
+                                                </div>
+                                            </div>
+                                            <div style="display:flex; gap:0.5rem; margin-bottom:0.5rem;">
+                                                <div style="flex:1;">
+                                                    <label style="font-size:0.75rem;">1ª Parcela em:</label>
+                                                    <input type="month" id="finHibParcData">
+                                                </div>
+                                                <div style="flex:1;">
+                                                    <label style="font-size:0.75rem;">Reajuste anual (%):</label>
+                                                    <input type="number" id="finHibParcReajuste" placeholder="0" step="0.1">
+                                                </div>
+                                            </div>
+                                            <label style="font-size:0.75rem;">Repetir a cada:</label>
+                                            <div style="display:flex; gap:0.5rem; margin-bottom:0.5rem;">
+                                                <input type="number" id="finHibParcRecVal" placeholder="Ex: 1" style="flex:1;">
+                                                <select id="finHibParcRecUnit" style="width:100px;">
+                                                    <option value="months">Meses</option>
+                                                    <option value="years">Anos</option>
+                                                </select>
+                                            </div>
+                                            <div style="display:flex; gap:0.5rem; margin-bottom:0.5rem;">
+                                                <div style="flex:1;">
+                                                    <label style="font-size:0.75rem;">Terminar após (ocorrências):</label>
+                                                    <input type="number" id="finHibParcRecEndOcc" placeholder="Deixe vazio = sem fim">
+                                                </div>
+                                                <div style="flex:1;">
+                                                    <label style="font-size:0.75rem;">Ou até a data:</label>
+                                                    <input type="month" id="finHibParcRecEndDate">
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <!-- Campos de tabela para híbrido -->
+                                        <div id="finHibridoCamposTabela" style="display:none;">
+                                            <div style="display:flex; gap:0.5rem; margin-bottom:0.5rem;">
+                                                <div style="flex:1;">
+                                                    <label style="font-size:0.75rem;">Valor financiado (R$):</label>
+                                                    <input type="text" id="finHibTabelaValor" placeholder="0,00" oninput="formatCurrencyInput(this)">
+                                                </div>
+                                                <div style="flex:1;">
+                                                    <label style="font-size:0.75rem;">CET (% a.a.):</label>
+                                                    <input type="number" id="finHibTabelaCET" placeholder="Ex: 12" step="0.01">
+                                                </div>
+                                            </div>
+                                            <div style="display:flex; gap:0.5rem; margin-bottom:0.5rem;">
+                                                <div style="flex:1;">
+                                                    <label style="font-size:0.75rem;">Prazo (meses):</label>
+                                                    <input type="number" id="finHibTabelaPrazo" placeholder="Ex: 120">
+                                                </div>
+                                                <div style="flex:1;">
+                                                    <label style="font-size:0.75rem;">Reajuste anual (%):</label>
+                                                    <input type="number" id="finHibTabelaReajuste" placeholder="0" step="0.01">
+                                                </div>
+                                            </div>
+                                            <div style="display:flex; gap:0.5rem; margin-bottom:0.5rem;">
+                                                <div style="flex:1;">
+                                                    <label style="font-size:0.75rem;">FGTS (R$):</label>
+                                                    <input type="text" id="finHibTabelaFGTS" placeholder="0,00" oninput="formatCurrencyInput(this)">
+                                                </div>
+                                                <div style="flex:1;">
+                                                    <label style="font-size:0.75rem;">Início das parcelas:</label>
+                                                    <input type="month" id="finHibTabelaInicio">
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <button onclick="addFinHibridoComponente()" class="btn-secondary" style="width:100%; font-size:0.85rem; padding:0.25rem; margin-top:0.5rem;">+ Adicionar Componente</button>
+                                    </div>
+                                </div>
+
+                            </div><!-- fim totalBemGroup -->
+                        </div><!-- fim financiamentoGroup -->
+
                         <div class="input-group">
                             <label>Recorrência</label>
                             <select id="goalRecurrenceType" onchange="toggleRecurrenceInput()">
@@ -769,6 +1002,520 @@
         let contributionLadder = []; // Array to store { date: 'YYYY-MM', value: 1000.00 }
         let specialContributions = []; // Array to store { name, value, date, recurrence: {value, unit} }
         let chartInstance = null;
+
+        // ── VARIÁVEIS GLOBAIS DE FINANCIAMENTO ────────────────────────────────
+        // Armazenam temporariamente as listas do formulário de objetivo em edição
+        let _finParcelasPersonalizadas = [];  // [{nome, valor, data, reajuste, recurrence}]
+        let _finAmortizacoesAdicionais = [];  // [{valor, data, recurrence}]
+        let _finHibridoComponentes     = [];  // [{tipo, ...params}]
+
+        // ── TOGGLES DE VISIBILIDADE DO FORMULÁRIO DE OBJETIVOS ───────────────
+
+        function toggleFinanciamentoFields() {
+            const tipo = document.getElementById('goalValueType').value;
+            document.getElementById('totalBemGroup').style.display = tipo === 'entrada' ? 'block' : 'none';
+            if (tipo === 'total') {
+                // Limpa modalidade ao voltar para "valor total"
+                document.getElementById('goalFinanciamentoTipo').value = 'sem_custo';
+                toggleFinanciamentoModalidade();
+            }
+        }
+
+        function toggleFinanciamentoModalidade() {
+            const tipo = document.getElementById('goalFinanciamentoTipo').value;
+            document.getElementById('finModalidadePersonalizado').style.display = tipo === 'personalizado' ? 'block' : 'none';
+            document.getElementById('finModalidadeTabela').style.display        = ['price','sac','up'].includes(tipo) ? 'block' : 'none';
+            document.getElementById('finModalidadeHibrido').style.display       = tipo === 'hibrido' ? 'block' : 'none';
+        }
+
+        function toggleFinHibridoCampos() {
+            const tipo = document.getElementById('finHibridoTipo').value;
+            document.getElementById('finHibridoCamposPersonalizado').style.display = tipo === 'personalizado' ? 'block' : 'none';
+            document.getElementById('finHibridoCamposTabela').style.display        = tipo !== 'personalizado' ? 'block' : 'none';
+        }
+
+        function toggleFinParcRecEnd(val) {
+            document.getElementById('finParcRecEndContainer').style.display = parseInt(val) > 0 ? 'block' : 'none';
+        }
+        function toggleFinParcRecEndInputs() {
+            const t = document.getElementById('finParcRecEndType').value;
+            document.getElementById('finParcRecEndOcc').style.display  = t === 'after_occurrences' ? 'block' : 'none';
+            document.getElementById('finParcRecEndDate').style.display = t === 'at_date' ? 'block' : 'none';
+        }
+        function toggleFinAmortRecEnd(val) {
+            document.getElementById('finAmortRecEndContainer').style.display = parseInt(val) > 0 ? 'block' : 'none';
+        }
+        function toggleFinAmortRecEndInputs() {
+            const t = document.getElementById('finAmortRecEndType').value;
+            document.getElementById('finAmortRecEndOcc').style.display  = t === 'after_occurrences' ? 'block' : 'none';
+            document.getElementById('finAmortRecEndDate').style.display = t === 'at_date' ? 'block' : 'none';
+        }
+
+        // ── CRUD: PARCELAS PERSONALIZADAS ────────────────────────────────────
+
+        function addFinParcPersonalizada() {
+            const nome    = document.getElementById('finParcNome').value.trim();
+            const valor   = parseCurrency(document.getElementById('finParcValor').value);
+            const data    = document.getElementById('finParcData').value;
+            const reajuste = parseFloat(document.getElementById('finParcReajuste').value || 0);
+            const recVal  = parseInt(document.getElementById('finParcRecVal').value);
+            const recUnit = document.getElementById('finParcRecUnit').value;
+            const editIdx = document.getElementById('finParcEditIndex').value;
+
+            if (!nome || !valor || !data) { alert('Preencha descrição, valor e data da parcela.'); return; }
+
+            let recurrence = null;
+            if (recVal > 0) {
+                recurrence = { value: recVal, unit: recUnit };
+                const endType = document.getElementById('finParcRecEndType').value;
+                if (endType !== 'never') {
+                    let endCondition = { type: endType };
+                    if (endType === 'after_occurrences') endCondition.value = parseInt(document.getElementById('finParcRecEndOcc').value) || 0;
+                    else if (endType === 'at_date')       endCondition.value = document.getElementById('finParcRecEndDate').value;
+                    recurrence.endCondition = endCondition;
+                }
+            }
+
+            const item = { nome, valor, data, reajuste, recurrence };
+            if (editIdx !== '') {
+                _finParcelasPersonalizadas[parseInt(editIdx)] = item;
+                document.getElementById('finParcEditIndex').value = '';
+            } else {
+                _finParcelasPersonalizadas.push(item);
+            }
+            renderFinParcelasPersonalizadas();
+            _clearFinParcForm();
+        }
+
+        function _clearFinParcForm() {
+            document.getElementById('finParcNome').value    = '';
+            document.getElementById('finParcValor').value   = '';
+            document.getElementById('finParcData').value    = '';
+            document.getElementById('finParcReajuste').value = '';
+            document.getElementById('finParcRecVal').value  = '';
+            document.getElementById('finParcRecEndContainer').style.display = 'none';
+            document.getElementById('finParcRecEndType').value = 'never';
+            document.getElementById('finParcRecEndOcc').value  = '';
+            document.getElementById('finParcRecEndDate').value = '';
+            document.getElementById('finParcEditIndex').value  = '';
+        }
+
+        function editFinParcPersonalizada(idx) {
+            const p = _finParcelasPersonalizadas[idx];
+            document.getElementById('finParcNome').value     = p.nome;
+            document.getElementById('finParcValor').value    = p.valor.toFixed(2).replace('.',',');
+            document.getElementById('finParcData').value     = p.data;
+            document.getElementById('finParcReajuste').value = p.reajuste || 0;
+            if (p.recurrence) {
+                document.getElementById('finParcRecVal').value  = p.recurrence.value;
+                document.getElementById('finParcRecUnit').value = p.recurrence.unit;
+                document.getElementById('finParcRecEndContainer').style.display = 'block';
+                if (p.recurrence.endCondition) {
+                    document.getElementById('finParcRecEndType').value = p.recurrence.endCondition.type;
+                    toggleFinParcRecEndInputs();
+                    if (p.recurrence.endCondition.type === 'after_occurrences') document.getElementById('finParcRecEndOcc').value  = p.recurrence.endCondition.value;
+                    else if (p.recurrence.endCondition.type === 'at_date')      document.getElementById('finParcRecEndDate').value = p.recurrence.endCondition.value;
+                }
+            }
+            document.getElementById('finParcEditIndex').value = idx;
+        }
+
+        function removeFinParcPersonalizada(idx) {
+            _finParcelasPersonalizadas.splice(idx, 1);
+            renderFinParcelasPersonalizadas();
+        }
+
+        function renderFinParcelasPersonalizadas() {
+            const list = document.getElementById('finParcelasPersonalizadasList');
+            list.innerHTML = _finParcelasPersonalizadas.map((p, i) => {
+                const [y,m] = p.data.split('-');
+                let recText = p.recurrence ? ` (a cada ${p.recurrence.value} ${p.recurrence.unit === 'years' ? 'anos' : 'meses'})` : '';
+                let reajText = p.reajuste ? ` +${p.reajuste}%/ano` : '';
+                return `<div style="display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.05); padding:0.4rem 0.6rem; margin-bottom:0.25rem; border-radius:4px; font-size:0.82rem;">
+                    <span><strong>${p.nome}</strong>: ${formatBRL(p.valor)} em ${m}/${y}${recText}${reajText}</span>
+                    <div style="display:flex; gap:0.3rem;">
+                        <button onclick="editFinParcPersonalizada(${i})" style="background:none; border:none; color:#fbbf24; cursor:pointer;">&#9998;</button>
+                        <button onclick="removeFinParcPersonalizada(${i})" style="background:none; border:none; color:#ef4444; cursor:pointer;">&#10006;</button>
+                    </div>
+                </div>`;
+            }).join('');
+        }
+
+        // ── CRUD: AMORTIZAÇÕES ADICIONAIS ───────────────────────────────────
+
+        function addFinAmortizacao() {
+            const valor   = parseCurrency(document.getElementById('finAmortValor').value);
+            const data    = document.getElementById('finAmortData').value;
+            const recVal  = parseInt(document.getElementById('finAmortRecVal').value);
+            const recUnit = document.getElementById('finAmortRecUnit').value;
+            const editIdx = document.getElementById('finAmortEditIndex').value;
+
+            if (!valor || !data) { alert('Preencha valor e data da amortização.'); return; }
+
+            let recurrence = null;
+            if (recVal > 0) {
+                recurrence = { value: recVal, unit: recUnit };
+                const endType = document.getElementById('finAmortRecEndType').value;
+                if (endType !== 'never') {
+                    let endCondition = { type: endType };
+                    if (endType === 'after_occurrences') endCondition.value = parseInt(document.getElementById('finAmortRecEndOcc').value) || 0;
+                    else if (endType === 'at_date')       endCondition.value = document.getElementById('finAmortRecEndDate').value;
+                    recurrence.endCondition = endCondition;
+                }
+            }
+
+            const item = { valor, data, recurrence };
+            if (editIdx !== '') {
+                _finAmortizacoesAdicionais[parseInt(editIdx)] = item;
+                document.getElementById('finAmortEditIndex').value = '';
+            } else {
+                _finAmortizacoesAdicionais.push(item);
+            }
+            renderFinAmortizacoes();
+            _clearFinAmortForm();
+        }
+
+        function _clearFinAmortForm() {
+            document.getElementById('finAmortValor').value  = '';
+            document.getElementById('finAmortData').value   = '';
+            document.getElementById('finAmortRecVal').value = '';
+            document.getElementById('finAmortRecEndContainer').style.display = 'none';
+            document.getElementById('finAmortRecEndType').value = 'never';
+            document.getElementById('finAmortRecEndOcc').value  = '';
+            document.getElementById('finAmortRecEndDate').value = '';
+            document.getElementById('finAmortEditIndex').value  = '';
+        }
+
+        function editFinAmortizacao(idx) {
+            const a = _finAmortizacoesAdicionais[idx];
+            document.getElementById('finAmortValor').value = a.valor.toFixed(2).replace('.',',');
+            document.getElementById('finAmortData').value  = a.data;
+            if (a.recurrence) {
+                document.getElementById('finAmortRecVal').value  = a.recurrence.value;
+                document.getElementById('finAmortRecUnit').value = a.recurrence.unit;
+                document.getElementById('finAmortRecEndContainer').style.display = 'block';
+                if (a.recurrence.endCondition) {
+                    document.getElementById('finAmortRecEndType').value = a.recurrence.endCondition.type;
+                    toggleFinAmortRecEndInputs();
+                    if (a.recurrence.endCondition.type === 'after_occurrences') document.getElementById('finAmortRecEndOcc').value  = a.recurrence.endCondition.value;
+                    else if (a.recurrence.endCondition.type === 'at_date')      document.getElementById('finAmortRecEndDate').value = a.recurrence.endCondition.value;
+                }
+            }
+            document.getElementById('finAmortEditIndex').value = idx;
+        }
+
+        function removeFinAmortizacao(idx) {
+            _finAmortizacoesAdicionais.splice(idx, 1);
+            renderFinAmortizacoes();
+        }
+
+        function renderFinAmortizacoes() {
+            const list = document.getElementById('finAmortizacoesAdicionaisList');
+            list.innerHTML = _finAmortizacoesAdicionais.map((a, i) => {
+                const [y,m] = a.data.split('-');
+                let recText = a.recurrence ? ` (a cada ${a.recurrence.value} ${a.recurrence.unit === 'years' ? 'anos' : 'meses'})` : '';
+                return `<div style="display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.05); padding:0.4rem 0.6rem; margin-bottom:0.25rem; border-radius:4px; font-size:0.82rem;">
+                    <span>${formatBRL(a.valor)} em ${m}/${y}${recText}</span>
+                    <div style="display:flex; gap:0.3rem;">
+                        <button onclick="editFinAmortizacao(${i})" style="background:none; border:none; color:#fbbf24; cursor:pointer;">&#9998;</button>
+                        <button onclick="removeFinAmortizacao(${i})" style="background:none; border:none; color:#ef4444; cursor:pointer;">&#10006;</button>
+                    </div>
+                </div>`;
+            }).join('');
+        }
+
+        // ── CRUD: COMPONENTES HÍBRIDOS ─────────────────────────────────────────
+
+        function addFinHibridoComponente() {
+            const tipo = document.getElementById('finHibridoTipo').value;
+            let comp;
+            if (tipo === 'personalizado') {
+                const nome    = document.getElementById('finHibParcNome').value.trim();
+                const valor   = parseCurrency(document.getElementById('finHibParcValor').value);
+                const data    = document.getElementById('finHibParcData').value;
+                const reajuste = parseFloat(document.getElementById('finHibParcReajuste').value || 0);
+                const recVal  = parseInt(document.getElementById('finHibParcRecVal').value);
+                const recUnit = document.getElementById('finHibParcRecUnit').value;
+                const endOcc  = parseInt(document.getElementById('finHibParcRecEndOcc').value);
+                const endDate = document.getElementById('finHibParcRecEndDate').value;
+                if (!nome || !valor || !data) { alert('Preencha descrição, valor e data.'); return; }
+                let recurrence = null;
+                if (recVal > 0) {
+                    recurrence = { value: recVal, unit: recUnit };
+                    if (endOcc > 0)  recurrence.endCondition = { type: 'after_occurrences', value: endOcc };
+                    else if (endDate) recurrence.endCondition = { type: 'at_date', value: endDate };
+                }
+                comp = { tipo, nome, valor, data, reajuste, recurrence };
+            } else {
+                const valorFin  = parseCurrency(document.getElementById('finHibTabelaValor').value);
+                const cet       = parseFloat(document.getElementById('finHibTabelaCET').value);
+                const prazo     = parseInt(document.getElementById('finHibTabelaPrazo').value);
+                const reajuste  = parseFloat(document.getElementById('finHibTabelaReajuste').value || 0);
+                const fgts      = parseCurrency(document.getElementById('finHibTabelaFGTS').value);
+                const inicio    = document.getElementById('finHibTabelaInicio').value;
+                if (!valorFin || !cet || !prazo || !inicio) { alert('Preencha valor, CET, prazo e data de início.'); return; }
+                comp = { tipo, valorFinanciado: valorFin, cet, prazo, reajuste, fgts, inicio };
+            }
+            _finHibridoComponentes.push(comp);
+            renderFinHibridoComponentes();
+            // Limpar campos
+            document.getElementById('finHibParcNome').value = '';
+            document.getElementById('finHibParcValor').value = '';
+            document.getElementById('finHibParcData').value = '';
+            document.getElementById('finHibParcReajuste').value = '';
+            document.getElementById('finHibParcRecVal').value = '';
+            document.getElementById('finHibTabelaValor').value = '';
+            document.getElementById('finHibTabelaCET').value = '';
+            document.getElementById('finHibTabelaPrazo').value = '';
+            document.getElementById('finHibTabelaReajuste').value = '';
+            document.getElementById('finHibTabelaFGTS').value = '';
+            document.getElementById('finHibTabelaInicio').value = '';
+        }
+
+        function removeFinHibridoComponente(idx) {
+            _finHibridoComponentes.splice(idx, 1);
+            renderFinHibridoComponentes();
+        }
+
+        function renderFinHibridoComponentes() {
+            const list = document.getElementById('finHibridoComponentesList');
+            list.innerHTML = _finHibridoComponentes.map((c, i) => {
+                let desc;
+                if (c.tipo === 'personalizado') {
+                    const [y,m] = c.data.split('-');
+                    desc = `${c.tipo.toUpperCase()} — ${c.nome}: ${formatBRL(c.valor)} em ${m}/${y}`;
+                } else {
+                    desc = `${c.tipo.toUpperCase()} — ${formatBRL(c.valorFinanciado)} | CET ${c.cet}% | ${c.prazo}m`;
+                }
+                return `<div style="display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.05); padding:0.4rem 0.6rem; margin-bottom:0.25rem; border-radius:4px; font-size:0.82rem;">
+                    <span>${desc}</span>
+                    <button onclick="removeFinHibridoComponente(${i})" style="background:none; border:none; color:#ef4444; cursor:pointer;">&#10006;</button>
+                </div>`;
+            }).join('');
+        }
+
+        // ── CÁLCULO DAS TABELAS DE AMORTIZAÇÃO ──────────────────────────────────
+        // Retorna array de {mes (1-based), parcela, amortizacao, juros, saldoDevedor}
+        // startMonthStr: 'YYYY-MM' do mês de início das parcelas
+        // simStartStr: 'YYYY-MM' do início da simulação (para calcular offset)
+
+        function calcSchedulePrice(pv, cetAA, prazoMeses, reajusteAA, startMonthStr, simStartStr) {
+            const i = Math.pow(1 + cetAA / 100, 1 / 12) - 1;
+            const r = reajusteAA / 100;
+            let schedule = [];
+            let saldo = pv;
+            let parcelaBase = pv * i * Math.pow(1 + i, prazoMeses) / (Math.pow(1 + i, prazoMeses) - 1);
+            // Calcular offset em meses entre simStartStr e startMonthStr
+            const [sy, sm] = simStartStr.split('-').map(Number);
+            const [py, pm] = startMonthStr.split('-').map(Number);
+            const offsetMes = (py - sy) * 12 + (pm - sm) + 1; // mês 1-based na simulação
+
+            for (let k = 0; k < prazoMeses; k++) {
+                // Reajuste anual: a cada 12 parcelas, reajusta saldo e recalcula parcela
+                if (k > 0 && k % 12 === 0 && r > 0) {
+                    saldo = saldo * (1 + r);
+                    parcelaBase = saldo * i * Math.pow(1 + i, prazoMeses - k) / (Math.pow(1 + i, prazoMeses - k) - 1);
+                }
+                const juros = saldo * i;
+                const amort = parcelaBase - juros;
+                saldo = Math.max(0, saldo - amort);
+                schedule.push({ mes: offsetMes + k, parcela: parcelaBase, amortizacao: amort, juros, saldoDevedor: saldo });
+            }
+            return schedule;
+        }
+
+        function calcScheduleSAC(pv, cetAA, prazoMeses, reajusteAA, startMonthStr, simStartStr) {
+            const i = Math.pow(1 + cetAA / 100, 1 / 12) - 1;
+            const r = reajusteAA / 100;
+            let schedule = [];
+            let saldo = pv;
+            const amortBase = pv / prazoMeses;
+            const [sy, sm] = simStartStr.split('-').map(Number);
+            const [py, pm] = startMonthStr.split('-').map(Number);
+            const offsetMes = (py - sy) * 12 + (pm - sm) + 1;
+
+            for (let k = 0; k < prazoMeses; k++) {
+                // Reajuste anual do saldo devedor
+                if (k > 0 && k % 12 === 0 && r > 0) {
+                    saldo = saldo * (1 + r);
+                }
+                const juros = saldo * i;
+                const amort = Math.min(amortBase, saldo);
+                const parcela = amort + juros;
+                saldo = Math.max(0, saldo - amort);
+                schedule.push({ mes: offsetMes + k, parcela, amortizacao: amort, juros, saldoDevedor: saldo });
+            }
+            return schedule;
+        }
+
+        function calcScheduleUP(pv, prazoMeses, reajusteAA, startMonthStr, simStartStr) {
+            // UP: parcela inicial = PV/n; saldo e parcela reajustados anualmente
+            const r = reajusteAA / 100;
+            let schedule = [];
+            let saldo = pv;
+            let parcelaBase = pv / prazoMeses;
+            const [sy, sm] = simStartStr.split('-').map(Number);
+            const [py, pm] = startMonthStr.split('-').map(Number);
+            const offsetMes = (py - sy) * 12 + (pm - sm) + 1;
+
+            for (let k = 0; k < prazoMeses; k++) {
+                if (k > 0 && k % 12 === 0 && r > 0) {
+                    saldo = saldo * (1 + r);
+                    parcelaBase = parcelaBase * (1 + r);
+                }
+                const amort = Math.min(parcelaBase, saldo);
+                saldo = Math.max(0, saldo - amort);
+                schedule.push({ mes: offsetMes + k, parcela: parcelaBase, amortizacao: amort, juros: 0, saldoDevedor: saldo });
+            }
+            return schedule;
+        }
+
+        // Gera o schedule de parcelas personalizadas (retorna array de {mes, valor})
+        function calcSchedulePersonalizado(parcelas, simStartStr, totalMeses) {
+            const [sy, sm] = simStartStr.split('-').map(Number);
+            let events = [];
+            parcelas.forEach(p => {
+                const [py, pm] = p.data.split('-').map(Number);
+                const startMes = (py - sy) * 12 + (pm - sm) + 1;
+                let reajusteAcum = 1;
+                let ocorrencias = 0;
+                let mes = startMes;
+                while (mes <= totalMeses) {
+                    // Reajuste anual
+                    const anosPassados = Math.floor((mes - startMes) / 12);
+                    reajusteAcum = Math.pow(1 + (p.reajuste || 0) / 100, anosPassados);
+                    events.push({ mes, valor: p.valor * reajusteAcum });
+                    if (!p.recurrence) break;
+                    const interval = p.recurrence.unit === 'years' ? p.recurrence.value * 12 : p.recurrence.value;
+                    ocorrencias++;
+                    // Verificar condição de fim
+                    if (p.recurrence.endCondition) {
+                        const end = p.recurrence.endCondition;
+                        if (end.type === 'after_occurrences' && ocorrencias >= end.value) break;
+                        if (end.type === 'at_date') {
+                            const [ey, em] = end.value.split('-').map(Number);
+                            const endMes = (ey - sy) * 12 + (em - sm) + 1;
+                            if (mes + interval > endMes) break;
+                        }
+                    }
+                    mes += interval;
+                }
+            });
+            return events;
+        }
+
+        // Gera schedule de amortizações adicionais (retorna array de {mes, valor})
+        function calcScheduleAmortizacoesAdicionais(amorts, simStartStr, totalMeses) {
+            const [sy, sm] = simStartStr.split('-').map(Number);
+            let events = [];
+            amorts.forEach(a => {
+                const [ay, am2] = a.data.split('-').map(Number);
+                const startMes = (ay - sy) * 12 + (am2 - sm) + 1;
+                let mes = startMes;
+                let ocorrencias = 0;
+                while (mes <= totalMeses && mes >= 1) {
+                    events.push({ mes, valor: a.valor });
+                    if (!a.recurrence) break;
+                    const interval = a.recurrence.unit === 'years' ? a.recurrence.value * 12 : a.recurrence.value;
+                    ocorrencias++;
+                    if (a.recurrence.endCondition) {
+                        const end = a.recurrence.endCondition;
+                        if (end.type === 'after_occurrences' && ocorrencias >= end.value) break;
+                        if (end.type === 'at_date') {
+                            const [ey, em] = end.value.split('-').map(Number);
+                            const endMes = (ey - sy) * 12 + (em - sm) + 1;
+                            if (mes + interval > endMes) break;
+                        }
+                    }
+                    mes += interval;
+                }
+            });
+            return events;
+        }
+
+        // Monta o objeto de financiamento completo a partir dos campos do formulário
+        // Retorna null se não houver financiamento ativo
+        function capturarFinanciamento() {
+            const tipo = document.getElementById('goalType').value;
+            if (tipo !== 'spend') return null;
+
+            const valueType = document.getElementById('goalValueType').value;
+            const afetaAportes = document.getElementById('goalFinanciamentoAfetaAportes').checked;
+
+            if (valueType === 'total') {
+                // Sem diferença a financiar, mas registramos o tipo
+                return { valueType: 'total', afetaAportes: false, modalidade: 'sem_custo' };
+            }
+
+            const totalValue = parseCurrency(document.getElementById('goalTotalValue').value) || 0;
+            const modalidade = document.getElementById('goalFinanciamentoTipo').value;
+
+            let dados = { valueType: 'entrada', totalValue, modalidade, afetaAportes };
+
+            if (modalidade === 'personalizado') {
+                dados.parcelas = JSON.parse(JSON.stringify(_finParcelasPersonalizadas));
+            } else if (['price','sac','up'].includes(modalidade)) {
+                dados.fgts     = parseCurrency(document.getElementById('finFGTS').value) || 0;
+                dados.cet      = parseFloat(document.getElementById('finCET').value) || 0;
+                dados.prazo    = parseInt(document.getElementById('finPrazo').value) || 0;
+                dados.reajuste = parseFloat(document.getElementById('finReajuste').value) || 0;
+                dados.amortizacoesAdicionais = JSON.parse(JSON.stringify(_finAmortizacoesAdicionais));
+            } else if (modalidade === 'hibrido') {
+                dados.componentes = JSON.parse(JSON.stringify(_finHibridoComponentes));
+            }
+
+            return dados;
+        }
+
+        // Restaura os campos de financiamento a partir de um objeto salvo
+        function restaurarFinanciamento(fin) {
+            if (!fin || fin.valueType === 'total') {
+                document.getElementById('goalValueType').value = 'total';
+                toggleFinanciamentoFields();
+                return;
+            }
+            document.getElementById('goalValueType').value = 'entrada';
+            document.getElementById('goalTotalValue').value = fin.totalValue ? fin.totalValue.toFixed(2).replace('.',',') : '';
+            document.getElementById('goalFinanciamentoTipo').value = fin.modalidade || 'sem_custo';
+            document.getElementById('goalFinanciamentoAfetaAportes').checked = fin.afetaAportes || false;
+            toggleFinanciamentoFields();
+            toggleFinanciamentoModalidade();
+
+            _finParcelasPersonalizadas = fin.parcelas ? JSON.parse(JSON.stringify(fin.parcelas)) : [];
+            _finAmortizacoesAdicionais = fin.amortizacoesAdicionais ? JSON.parse(JSON.stringify(fin.amortizacoesAdicionais)) : [];
+            _finHibridoComponentes     = fin.componentes ? JSON.parse(JSON.stringify(fin.componentes)) : [];
+
+            if (document.getElementById('finParcelasPersonalizadasList')) renderFinParcelasPersonalizadas();
+            if (document.getElementById('finAmortizacoesAdicionaisList')) renderFinAmortizacoes();
+            if (document.getElementById('finHibridoComponentesList'))     renderFinHibridoComponentes();
+
+            if (['price','sac','up'].includes(fin.modalidade)) {
+                document.getElementById('finFGTS').value     = fin.fgts ? fin.fgts.toFixed(2).replace('.',',') : '';
+                document.getElementById('finCET').value      = fin.cet || '';
+                document.getElementById('finPrazo').value    = fin.prazo || '';
+                document.getElementById('finReajuste').value = fin.reajuste || '';
+            }
+        }
+
+        // Limpa todos os campos de financiamento
+        function limparFinanciamento() {
+            document.getElementById('goalValueType').value = 'total';
+            document.getElementById('goalTotalValue').value = '';
+            document.getElementById('goalFinanciamentoTipo').value = 'sem_custo';
+            document.getElementById('goalFinanciamentoAfetaAportes').checked = false;
+            document.getElementById('finFGTS').value = '';
+            document.getElementById('finCET').value = '';
+            document.getElementById('finPrazo').value = '';
+            document.getElementById('finReajuste').value = '';
+            _finParcelasPersonalizadas = [];
+            _finAmortizacoesAdicionais = [];
+            _finHibridoComponentes = [];
+            renderFinParcelasPersonalizadas();
+            renderFinAmortizacoes();
+            renderFinHibridoComponentes();
+            toggleFinanciamentoFields();
+            toggleFinanciamentoModalidade();
+        }
 
         // ── SISTEMA DE SIMULAÇÕES ─────────────────────────────────────────────
         let simulacoes = [];       // Lista de simulações salvas
@@ -970,12 +1717,16 @@
         function togglePhysicalAssetInput() {
             const type = document.getElementById('goalType').value;
             const group = document.getElementById('physicalAssetGroup');
+            const finGroup = document.getElementById('financiamentoGroup');
             if (type === 'spend') {
                 group.style.display = 'block';
+                finGroup.style.display = 'block';
             } else {
                 group.style.display = 'none';
+                finGroup.style.display = 'none';
                 document.getElementById('isPhysicalAsset').checked = false;
                 toggleAssetRateInput();
+                limparFinanciamento();
             }
         }
 
@@ -1230,6 +1981,9 @@
                 }
             }
 
+            // Financiamento (só para objetivos do tipo 'spend')
+            const financiamento = capturarFinanciamento();
+
             const goalData = {
                 name,
                 value,
@@ -1239,7 +1993,8 @@
                 recurrence,
                 inflationAdjust,
                 isPhysical,
-                appreciationRate
+                appreciationRate,
+                financiamento
             };
 
             if (editingId) {
@@ -1274,6 +2029,7 @@
                 document.getElementById('isPhysicalAsset').checked = false;
                 document.getElementById('assetAppreciationRate').value = '';
                 toggleAssetRateInput();
+                limparFinanciamento();
             }
         }
 
@@ -1329,6 +2085,13 @@
                 document.getElementById('recurrenceDetails').style.display = 'none';
             }
 
+            // Restaurar financiamento
+            if (goal.type === 'spend') {
+                restaurarFinanciamento(goal.financiamento || null);
+            } else {
+                limparFinanciamento();
+            }
+
             // Change button state
             const btn = document.getElementById('btnAddGoal');
             btn.innerHTML = '<span>💾</span> Salvar Alterações';
@@ -1352,6 +2115,7 @@
             document.getElementById('isPhysicalAsset').checked = false;
             document.getElementById('assetAppreciationRate').value = '';
             toggleAssetRateInput();
+            limparFinanciamento();
 
             const btn = document.getElementById('btnAddGoal');
             btn.innerHTML = '<span>+</span> Adicionar Objetivo';
@@ -1427,13 +2191,25 @@
                 let recurrenceText = g.recurrence ? ` (Repete a cada ${g.recurrence.value} ${g.recurrence.unit === 'years' ? 'anos' : 'meses'})` : '';
                 let typeIcon = g.type === 'spend' ? (g.isPhysical ? '🏠' : '💸') : '🎯';
                 let physicalText = g.isPhysical ? ` <span style="color:#4ade80; font-size:0.75rem;">(Patrimônio Físico: ${g.appreciationRate}% a.a.)</span>` : '';
+
+                // Resumo de financiamento
+                let finText = '';
+                if (g.type === 'spend' && g.financiamento && g.financiamento.valueType === 'entrada') {
+                    const fin = g.financiamento;
+                    const totalBem = fin.totalValue || g.value;
+                    const diferenca = Math.max(0, totalBem - g.value);
+                    const modalLabels = { sem_custo: 'Sem custo', personalizado: 'Personalizado', price: 'Price', sac: 'SAC', up: 'UP', hibrido: 'Híbrido' };
+                    const modalLabel = modalLabels[fin.modalidade] || fin.modalidade;
+                    const afetaLabel = fin.afetaAportes ? ' ⚠️ Afeta aportes' : '';
+                    finText = `<br><span style="font-size:0.72rem; color:#f87171;">🏦 Entrada: ${formatBRL(g.value)} | Total: ${formatBRL(totalBem)} | Financiado: ${formatBRL(diferenca)} (${modalLabel})${afetaLabel}</span>`;
+                }
                 
                 div.innerHTML = `
                     <div style="display:flex; align-items:center;">
                         <input type="number" class="priority-input" value="${g.priority}" min="1" onchange="updateGoalPriority(${g.id}, this.value)">
                         <div>
                             ${typeIcon} <strong>${g.name}</strong>${physicalText}<br>
-                            <span style="font-size:0.75rem; color:#9ca3af;">${formatBRL(g.value)} em ${g.time} ${g.timeUnit === 'years' ? 'anos' : 'meses'}${recurrenceText}</span>
+                            <span style="font-size:0.75rem; color:#9ca3af;">${formatBRL(g.value)} em ${g.time} ${g.timeUnit === 'years' ? 'anos' : 'meses'}${recurrenceText}</span>${finText}
                         </div>
                     </div>
                     <div class="goal-actions">
@@ -1542,6 +2318,101 @@
 
             // Physical Assets Tracking List
             let acquiredAssets = [];
+
+            // ── PRÉ-PROCESSAMENTO DE FINANCIAMENTOS ─────────────────────────────────
+            // Para cada objetivo do tipo 'spend' com financiamento, gera o cronograma
+            // completo de parcelas e amortizações e armazena em debtSchedules[]
+            // debtSchedules[]: [{goalId, goalName, afetaAportes, saldoDevedor, schedule: [{mes, parcela, amortizacao, saldoDevedor}], amortExtras: [{mes, valor}]}]
+            let debtSchedules = [];
+            let hasDebts = false;
+
+            goals.filter(g => g.type === 'spend' && g.financiamento && g.financiamento.valueType === 'entrada').forEach(g => {
+                const fin = g.financiamento;
+                const entrada = g.value; // valor do objetivo = entrada
+                const totalBem = fin.totalValue || entrada;
+                const diferenca = Math.max(0, totalBem - entrada);
+
+                // Mês de aquisição do bem (mês em que o objetivo será executado)
+                // Usamos o monthDue da primeira ocorrência do objetivo
+                const firstOcc = expandedGoals.find(eg => eg.id === g.id || eg.originalId === g.id);
+                const aquisicaoMes = firstOcc ? firstOcc.monthDue : (g.timeUnit === 'years' ? g.time * 12 : g.time);
+
+                // Calcular startMonthStr do financiamento = startMonthStr + aquisicaoMes - 1 meses
+                const [sy, sm] = startMonthStr.split('-').map(Number);
+                const finStartDate = new Date(sy, sm - 1 + aquisicaoMes - 1, 1);
+                const finStartStr = `${finStartDate.getFullYear()}-${String(finStartDate.getMonth() + 1).padStart(2, '0')}`;
+
+                let schedule = [];
+                let amortExtras = [];
+
+                if (fin.modalidade === 'sem_custo') {
+                    // Sem dívida, apenas registra o bem pelo valor total
+                    return;
+                } else if (fin.modalidade === 'personalizado') {
+                    // Gera schedule de parcelas personalizadas
+                    const events = calcSchedulePersonalizado(fin.parcelas || [], startMonthStr, months);
+                    // Converte para formato de schedule (sem saldo devedor — passivo não rastreado individualmente)
+                    events.forEach(e => schedule.push({ mes: e.mes, parcela: e.valor, amortizacao: e.valor, juros: 0, saldoDevedor: 0 }));
+                } else if (fin.modalidade === 'price') {
+                    const fgts = fin.fgts || 0;
+                    const pv = Math.max(0, diferenca - fgts);
+                    if (pv > 0 && fin.cet > 0 && fin.prazo > 0) {
+                        schedule = calcSchedulePrice(pv, fin.cet, fin.prazo, fin.reajuste || 0, finStartStr, startMonthStr);
+                    }
+                    amortExtras = calcScheduleAmortizacoesAdicionais(fin.amortizacoesAdicionais || [], startMonthStr, months);
+                } else if (fin.modalidade === 'sac') {
+                    const fgts = fin.fgts || 0;
+                    const pv = Math.max(0, diferenca - fgts);
+                    if (pv > 0 && fin.cet > 0 && fin.prazo > 0) {
+                        schedule = calcScheduleSAC(pv, fin.cet, fin.prazo, fin.reajuste || 0, finStartStr, startMonthStr);
+                    }
+                    amortExtras = calcScheduleAmortizacoesAdicionais(fin.amortizacoesAdicionais || [], startMonthStr, months);
+                } else if (fin.modalidade === 'up') {
+                    const fgts = fin.fgts || 0;
+                    const pv = Math.max(0, diferenca - fgts);
+                    if (pv > 0 && fin.prazo > 0) {
+                        schedule = calcScheduleUP(pv, fin.prazo, fin.reajuste || 0, finStartStr, startMonthStr);
+                    }
+                    amortExtras = calcScheduleAmortizacoesAdicionais(fin.amortizacoesAdicionais || [], startMonthStr, months);
+                } else if (fin.modalidade === 'hibrido') {
+                    // Processa cada componente
+                    (fin.componentes || []).forEach(comp => {
+                        if (comp.tipo === 'personalizado') {
+                            const events = calcSchedulePersonalizado([comp], startMonthStr, months);
+                            events.forEach(e => schedule.push({ mes: e.mes, parcela: e.valor, amortizacao: e.valor, juros: 0, saldoDevedor: 0 }));
+                        } else {
+                            const fgts = comp.fgts || 0;
+                            const pv = Math.max(0, (comp.valorFinanciado || 0) - fgts);
+                            const compStart = comp.inicio || finStartStr;
+                            let compSchedule = [];
+                            if (comp.tipo === 'price') compSchedule = calcSchedulePrice(pv, comp.cet, comp.prazo, comp.reajuste || 0, compStart, startMonthStr);
+                            else if (comp.tipo === 'sac') compSchedule = calcScheduleSAC(pv, comp.cet, comp.prazo, comp.reajuste || 0, compStart, startMonthStr);
+                            else if (comp.tipo === 'up')  compSchedule = calcScheduleUP(pv, comp.prazo, comp.reajuste || 0, compStart, startMonthStr);
+                            compSchedule.forEach(s => schedule.push(s));
+                        }
+                    });
+                }
+
+                if (schedule.length > 0 || amortExtras.length > 0) {
+                    // Saldo devedor inicial = PV (primeira entrada do schedule com saldoDevedor máximo)
+                    const saldoInicial = schedule.length > 0 ? (schedule[0].saldoDevedor + schedule[0].amortizacao) : 0;
+                    debtSchedules.push({
+                        goalId:       g.id,
+                        goalName:     g.name,
+                        afetaAportes: fin.afetaAportes || false,
+                        saldoDevedor: saldoInicial,
+                        schedule,
+                        amortExtras,
+                        // Para modalidade personalizada, não rastreamos saldo devedor
+                        trackSaldo:   ['price','sac','up','hibrido'].includes(fin.modalidade)
+                    });
+                    hasDebts = true;
+                }
+            });
+
+            // Arrays para o gráfico de passivo
+            let dataPassivo = [];
+            let dataConsolidadoLiquido = [];
 
             // Goal Statistics
             let goalStats = {
@@ -1844,6 +2715,50 @@
                     }
                 }
 
+                // ── PROCESSAMENTO DE PASSIVOS (FINANCIAMENTOS) ───────────────────────
+                let totalPassivoMes = 0;  // Saldo devedor total neste mês
+                let parcelasMes = 0;       // Total de parcelas devidas neste mês
+
+                debtSchedules.forEach(debt => {
+                    // Parcelas do cronograma principal
+                    const scheduleEntry = debt.schedule.find(s => s.mes === m);
+                    if (scheduleEntry) {
+                        parcelasMes += scheduleEntry.parcela;
+                        // Atualizar saldo devedor do debt
+                        if (debt.trackSaldo) {
+                            debt.saldoDevedor = scheduleEntry.saldoDevedor;
+                        }
+                    }
+
+                    // Amortizações adicionais
+                    const amortExtrasDoMes = debt.amortExtras.filter(a => a.mes === m);
+                    amortExtrasDoMes.forEach(a => {
+                        parcelasMes += a.valor;
+                        // Reduzir saldo devedor pela amortização extra
+                        if (debt.trackSaldo) {
+                            debt.saldoDevedor = Math.max(0, debt.saldoDevedor - a.valor);
+                            // Recalcular schedule a partir daqui seria ideal, mas por simplicidade apenas reduzimos o saldo
+                        }
+                    });
+
+                    // Acumular saldo devedor total
+                    totalPassivoMes += debt.saldoDevedor;
+                });
+
+                // Se afeta aportes: subtrair parcelas do aporte mensal (entra como aporte negativo)
+                debtSchedules.forEach(debt => {
+                    if (debt.afetaAportes) {
+                        const scheduleEntry = debt.schedule.find(s => s.mes === m);
+                        const parcelaDoDeb = scheduleEntry ? scheduleEntry.parcela : 0;
+                        const amortExtrasDoDeb = debt.amortExtras.filter(a => a.mes === m).reduce((s, a) => s + a.valor, 0);
+                        const totalDeb = parcelaDoDeb + amortExtrasDoDeb;
+                        if (totalDeb > 0) {
+                            balanceAfterEarnings -= totalDeb;
+                            totalInvested -= totalDeb; // Reduz principal (saída de caixa)
+                        }
+                    }
+                });
+
                 balance = balanceAfterEarnings;
 
                 // Final Tax Calc for Display
@@ -1858,6 +2773,8 @@
                 dataPhysical.push(physicalWealth);
                 dataTotalConsolidated.push(finalNetBalance + physicalWealth);
                 dataGrossTotal.push(balance + physicalWealth); // Gross Financial + Physical
+                dataPassivo.push(totalPassivoMes);
+                dataConsolidadoLiquido.push(Math.max(0, finalNetBalance + physicalWealth - totalPassivoMes));
 
                 let goalsDisplay = goalsOutput.join('<br>');
                 if (goalsOutput.length > 1 && monthlyRealizedTotal > 0) {
@@ -1876,7 +2793,9 @@
                     netBalance: finalNetBalance,
                     physical: physicalWealth,
                     totalConsolidated: finalNetBalance + physicalWealth,
-                    grossEarnings: earnings // Store gross earnings for table display
+                    grossEarnings: earnings, // Store gross earnings for table display
+                    passivo: totalPassivoMes,
+                    consolidadoLiquido: Math.max(0, finalNetBalance + physicalWealth - totalPassivoMes)
                 });
 
                 // Increment Date
@@ -1895,10 +2814,10 @@
             // document.getElementById('realWealth').innerText = ...
 
             // Render Chart
-            renderChart(labels, dataWealth, dataInvested, dataPhysical, dataTotalConsolidated, dataGrossTotal, hasPhysicalAssets);
+            renderChart(labels, dataWealth, dataInvested, dataPhysical, dataTotalConsolidated, dataGrossTotal, hasPhysicalAssets, dataPassivo, dataConsolidadoLiquido, hasDebts);
 
             // Render Table
-            renderTable(tableRows, hasPhysicalAssets, taxRate);
+            renderTable(tableRows, hasPhysicalAssets, taxRate, hasDebts);
 
             // Final Stats
             goalStats.failed = goalQueue.length;
@@ -1947,7 +2866,7 @@
             renderSimulacoes();
         }
 
-        function renderChart(labels, dataWealth, dataInvested, dataPhysical, dataTotalConsolidated, dataGrossTotal, hasPhysicalAssets) {
+        function renderChart(labels, dataWealth, dataInvested, dataPhysical, dataTotalConsolidated, dataGrossTotal, hasPhysicalAssets, dataPassivo, dataConsolidadoLiquido, hasDebts) {
             const ctx = document.getElementById('wealthChart').getContext('2d');
             
             if (chartInstance) chartInstance.destroy();
@@ -2009,6 +2928,30 @@
                 });
             }
 
+            // Passivo e Patrimônio Líquido Consolidado (quando há financiamentos)
+            if (hasDebts && dataPassivo && dataPassivo.some(v => v > 0)) {
+                datasets.push({
+                    label: 'Passivo (Saldo Devedor)',
+                    data: dataPassivo,
+                    borderColor: '#f87171', // Red
+                    backgroundColor: 'rgba(248, 113, 113, 0.08)',
+                    borderWidth: 2,
+                    borderDash: [4, 3],
+                    pointRadius: 0,
+                    fill: true,
+                    tension: 0.4
+                });
+                datasets.push({
+                    label: 'Patrimônio Líquido Consolidado (- Dívidas)',
+                    data: dataConsolidadoLiquido,
+                    borderColor: '#a78bfa', // Purple
+                    borderWidth: 3,
+                    pointRadius: 0,
+                    fill: false,
+                    tension: 0.4
+                });
+            }
+
             chartInstance = new Chart(ctx, {
                 type: 'line',
                 data: {
@@ -2045,7 +2988,7 @@
             });
         }
 
-        function renderTable(rows, hasPhysicalAssets, taxRate) {
+        function renderTable(rows, hasPhysicalAssets, taxRate, hasDebts) {
             const tbody = document.getElementById('projectionBody');
             const thead = document.querySelector('.projection-table thead tr');
             
@@ -2068,6 +3011,14 @@
                     <th style="color: white;">Total Consolidado</th>
                 `;
             }
+
+            if (hasDebts) {
+                headerHTML += `
+                    <th style="color: #f87171;">Passivo (Dívidas)</th>
+                    <th style="color: #a78bfa;">Patrimônio Líquido Consol.</th>
+                `;
+            }
+
             thead.innerHTML = headerHTML;
 
             tbody.innerHTML = rows.map(r => {
@@ -2093,6 +3044,15 @@
                     rowHTML += `
                         <td style="color: #4ade80;">${formatBRL(r.physical)}</td>
                         <td style="font-weight:bold; color: white;">${formatBRL(r.totalConsolidated)}</td>
+                    `;
+                }
+
+                if (hasDebts) {
+                    const passivo = r.passivo || 0;
+                    const consLiq = r.consolidadoLiquido || 0;
+                    rowHTML += `
+                        <td style="color: #f87171; font-weight: bold;">${passivo > 0 ? '-' : ''}${formatBRL(passivo)}</td>
+                        <td style="color: #a78bfa; font-weight: bold;">${formatBRL(consLiq)}</td>
                     `;
                 }
                 
