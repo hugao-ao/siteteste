@@ -2336,17 +2336,22 @@
 
             goals.filter(g => g.type === 'spend' && g.financiamento && g.financiamento.valueType === 'entrada').forEach(g => {
                 const fin = g.financiamento;
-                // Os valores informados pelo usuário (g.value = entrada, fin.totalValue = valor total do bem)
-                // já são os valores estimados no momento da compra — NÃO reajustar pela inflação aqui.
-                // O reajuste da entrada para saída de caixa já é feito pelo loop principal via g.currentValue.
-                const entrada = g.value; // entrada nominal informada pelo usuário (valor no momento da compra)
-                const totalBem = fin.totalValue || entrada; // valor total do bem informado pelo usuário
-                const diferenca = Math.max(0, totalBem - entrada);
+                // O usuário informa os valores NOMINAIS DE HOJE (g.value = entrada, fin.totalValue = total do bem).
+                // O código reajusta ambos pela inflação até o momento da compra, usando o mesmo fator
+                // que o loop principal aplica ao g.currentValue.
 
                 // Mês de aquisição do bem (mês em que o objetivo será executado)
                 // Usamos o monthDue da primeira ocorrência do objetivo
                 const firstOcc = expandedGoals.find(eg => eg.id === g.id || eg.originalId === g.id);
                 const aquisicaoMes = firstOcc ? firstOcc.monthDue : (g.timeUnit === 'years' ? g.time * 12 : g.time);
+
+                // Fator de inflação até o mês da aquisição (igual ao loop principal: yearsPassed = (m-1)/12)
+                const yearsPassed_acq = (aquisicaoMes - 1) / 12;
+                const inflFactor_acq = g.inflationAdjust ? Math.pow(1 + inflationRateAnnual, yearsPassed_acq) : 1;
+
+                const entrada = g.value * inflFactor_acq; // entrada reajustada até o momento da compra
+                const totalBem = (fin.totalValue || g.value) * inflFactor_acq; // total do bem reajustado
+                const diferenca = Math.max(0, totalBem - entrada);
 
                 // Calcular startMonthStr do financiamento = startMonthStr + aquisicaoMes - 1 meses
                 const [sy, sm] = startMonthStr.split('-').map(Number);
