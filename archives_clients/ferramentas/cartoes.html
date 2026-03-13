@@ -604,6 +604,20 @@
           <div class="section-block-body">
             <div class="tip"><b>Retorno financeiro calculado automaticamente</b> com base no contexto global. Informe os valores de cada cartão.</div>
             <div id="obj-sections"></div>
+            <div style="display:flex;align-items:center;gap:10px;margin-top:14px;padding:10px 12px;background:var(--bg3);border-radius:8px;border:1px solid var(--border)">
+              <span style="font-size:.82rem;font-weight:700;color:var(--gold)">💳 Anuidade Mensal (custo)</span>
+              <span style="font-size:.7rem;color:var(--muted-foreground);text-transform:uppercase;letter-spacing:.04em">Importância:</span>
+              <select id="anuid-imp-select" style="font-size:.75rem;padding:3px 8px;border-radius:6px;background:var(--bg2);border:1px solid var(--border);color:var(--foreground)"
+                onchange="tmpAnuidImp=this.value">
+                <option value="top">O mais importante de todos</option>
+                <option value="muito">Muito importante</option>
+                <option value="medio">Médio</option>
+                <option value="pouco">Pouco importante</option>
+                <option value="irrelevante">Irrelevante</option>
+                <option value="negativo">Penalizar (negativo)</option>
+              </select>
+              <span style="font-size:.7rem;color:var(--muted-foreground)">Quem paga menos recebe maior pontuação</span>
+            </div>
           </div>
         </div>
 
@@ -699,7 +713,8 @@ const OBJ_GROUPS = [
     { id:'cb-bonif',    label:'Cashback bonificado',unit:'%', tipo:'bonif'    },
   ]},
   { id:'pontos', label:'Pontos / Milhas', icon:'✈️', groupImp:'imp', params:[
-    { id:'pts-gasto',    label:'Pontos por gasto',              unit:'pts/gasto', tipo:'pts-gasto'  },
+    { id:'pts-gasto',    label:'Pontos por gasto (nac+bon)',    unit:'pts/gasto', tipo:'pts-gasto'  },
+    { id:'pts-exterior', label:'Pontos por Dólar (exterior)',   unit:'pts/US$',   tipo:'pts-exterior'},
     { id:'pts-bonif',    label:'Pontos por R$1 (bonificado)',   unit:'pts/R$',    tipo:'pts-bonif'  },
     { id:'milheiro',     label:'Valor do milheiro (R$/mil)',    unit:'R$/mil',    tipo:'milheiro'   },
   ]},
@@ -759,6 +774,7 @@ let tmpObjVals = {};
 let tmpObjImps = {};
 let tmpSubjVals = {};
 let tmpPtsGastoMoeda = {}; // { [cardId]: 'R$' | 'US$' }
+let tmpAnuidImp = 'muito'; // importância editável da anuidade
 
 let cidCounter = 1;
 
@@ -840,6 +856,7 @@ function openModal(id = null) {
     tmpObjImps = JSON.parse(JSON.stringify(c.objImps));
     tmpSubjVals= JSON.parse(JSON.stringify(c.subjVals));
     tmpPtsGastoMoeda = JSON.parse(JSON.stringify(c.ptsGastoMoeda || {}));
+    tmpAnuidImp = c.anuidImp || 'muito';
     // Garantir que desc-gasto e desc-pct estejam presentes
     if (!tmpObjVals['desc-gasto']) tmpObjVals['desc-gasto'] = {};
     if (!tmpObjVals['desc-pct'])   tmpObjVals['desc-pct']   = {};
@@ -851,7 +868,7 @@ function openModal(id = null) {
     document.getElementById('modal-title').textContent = 'Editar Comparação';
   } else {
     tmpName = ''; tmpCards = []; tmpObjVals = {}; tmpObjImps = {}; tmpSubjVals = {};
-    tmpPtsGastoMoeda = {}; cidCounter = 1;
+    tmpPtsGastoMoeda = {}; tmpAnuidImp = 'muito'; cidCounter = 1;
     OBJ_GROUPS.forEach(g => { tmpObjImps[g.id] = g.groupImp; });
     subjItems.forEach(s => { tmpSubjVals[s.id] = { importance: s.importance, hasParam: {}, rankings: {} }; });
     document.getElementById('modal-title').textContent = 'Nova Comparação de Cartões';
@@ -868,7 +885,14 @@ function toggleSection(id) { document.getElementById(id).classList.toggle('open'
 /* ═══════════════════════════════════════════════════════
    RENDER ALL
 ═══════════════════════════════════════════════════════ */
-function renderAll() { renderCards(); renderObjSections(); renderSubjSections(); }
+function renderAll() {
+  renderCards();
+  renderObjSections();
+  renderSubjSections();
+  // Sincronizar seletor de importância da anuidade
+  const sel = document.getElementById('anuid-imp-select');
+  if (sel) sel.value = tmpAnuidImp || 'muito';
+}
 
 /* ═══════════════════════════════════════════════════════
    CARTÕES
@@ -1066,16 +1090,18 @@ function renderObjSections() {
     group.params.forEach(param => {
       if (!tmpObjVals[param.id]) tmpObjVals[param.id] = {};
       const isPtsGasto = param.tipo === 'pts-gasto';
+      const isPtsExterior = param.tipo === 'pts-exterior';
       const isDescCombo = param.tipo === 'desc-combo';
       const isIsentFatura = param.tipo === 'isent-fatura';
       const isIsentInvest = param.tipo === 'isent-invest';
       // Label extra para sub-parâmetros especiais
       let extraLabel = '';
-      if (isIsentFatura) extraLabel = '<br><span class="text-dim" style="font-size:.68rem">Se atingido, anuidade = R$ 0</span>';
-      if (isIsentInvest) extraLabel = '<br><span class="text-dim" style="font-size:.68rem">Valor investido na instituição que isenta</span>';
-      if (isDescCombo)   extraLabel = '<br><span class="text-dim" style="font-size:.68rem">Gasto mín. (R$) + desconto (%)</span>';
+      if (isIsentFatura)  extraLabel = '<br><span class="text-dim" style="font-size:.68rem">Se atingido, anuidade = R$ 0</span>';
+      if (isIsentInvest)  extraLabel = '<br><span class="text-dim" style="font-size:.68rem">Valor investido na instituição que isenta</span>';
+      if (isDescCombo)    extraLabel = '<br><span class="text-dim" style="font-size:.68rem">Gasto mín. (R$) + desconto (%)</span>';
+      if (isPtsExterior)  extraLabel = '<br><span class="text-dim" style="font-size:.68rem">Pontos ganhos por US$1 gasto no exterior</span>';
       html += `<tr>
-        <td class="td-label">${param.label} <span class="text-dim">${isPtsGasto?'(pts/R$ ou pts/US$)':isDescCombo?'':('('+param.unit+')')}</span>${extraLabel}</td>
+        <td class="td-label">${param.label} <span class="text-dim">${isPtsGasto?'(pts/R$ ou pts/US$)':isPtsExterior?'(pts/US$)':isDescCombo?'':('('+param.unit+')')}</span>${extraLabel}</td>
         ${tmpCards.map(c=>{
           if (!tmpObjVals['desc-gasto']) tmpObjVals['desc-gasto'] = {};
           if (!tmpObjVals['desc-pct'])   tmpObjVals['desc-pct']   = {};
@@ -1324,6 +1350,7 @@ function saveComparison() {
     objVals: objValsToSave,
     objImps: JSON.parse(JSON.stringify(tmpObjImps)),
     ptsGastoMoeda: JSON.parse(JSON.stringify(tmpPtsGastoMoeda)),
+    anuidImp: tmpAnuidImp,
     subjVals: JSON.parse(JSON.stringify(tmpSubjVals)),
     subjSnapshot: JSON.parse(JSON.stringify(subjItems)),
     ctx, result,
@@ -1376,10 +1403,17 @@ function calcResult(ctx) {
           if (pTipo === 'nacional')     ret = ctx.nacional * (v/100);
           else if (pTipo === 'exterior') ret = ctx.exterior * ctx.dolar * (v/100);
           else if (pTipo === 'bonif')    ret = ctx.bonif * (v/100);
+          else if (pTipo === 'pts-exterior') {
+            const mil = (tmpObjVals['milheiro']||{})[c.id] || 0;
+            ret = ctx.exterior * v * (mil/1000);
+          }
           else if (pTipo === 'pts-gasto') {
             const mil = (tmpObjVals['milheiro']||{})[c.id] || 0;
             const moeda = tmpPtsGastoMoeda[c.id] || 'R$';
-            const base = moeda === 'US$' ? ctx.exterior * ctx.dolar : ctx.nacional;
+            // Base: gasto nacional + bonificado (em R$ ou convertido para US$)
+            const base = moeda === 'US$'
+              ? (ctx.nacional + ctx.bonif) / (ctx.dolar || 1)
+              : (ctx.nacional + ctx.bonif);
             ret = base * v * (mil/1000);
           }
           else if (pTipo === 'pts-bonif') {
@@ -1437,6 +1471,9 @@ function calcResult(ctx) {
               const moeda2 = tmpPtsGastoMoeda[c.id] || 'R$';
               detail = `Pts gasto (${fmtN(rawV)}/${moeda2}): ${fmtBRL(ret)}/mês`;
             }
+            else if (pTipo === 'pts-exterior') {
+              detail = `Pts exterior (${fmtN(rawV)} pts/US$): ${fmtBRL(ret)}/mês`;
+            }
             else detail = `R$${fmtN(ret)}/mês`;
           } else {
             if (rawV > 0) {
@@ -1485,19 +1522,50 @@ function calcResult(ctx) {
   });
 
   // ── ANUIDADE ──
-  const anuidades = {};
-  tmpCards.forEach(c => { anuidades[c.id] = c.anuidade_mensal; });
-  const maxAnuid = Math.max(...Object.values(anuidades));
-  if (maxAnuid > 0) {
+  // Calcula a anuidade efetiva de cada cartão (após desconto/isenção)
+  const anuidadesEfetivas = {};
+  tmpCards.forEach(c => {
+    const anuidBruta = c.anuidade_mensal;
+    const isentFaturaV = (tmpObjVals['isent-fatura']||{})[c.id] || 0;
+    const descGastoV   = (tmpObjVals['desc-gasto']||{})[c.id]   || 0;
+    const descPctV     = (tmpObjVals['desc-pct']||{})[c.id]     || 0;
+    let anuidEfetiva = anuidBruta;
+    // Isenção total por fatura tem prioridade
+    if (isentFaturaV > 0 && ctx.nacional >= isentFaturaV) {
+      anuidEfetiva = 0;
+    } else if (descPctV > 0 && (descGastoV === 0 || ctx.nacional >= descGastoV)) {
+      anuidEfetiva = anuidBruta * (1 - descPctV/100);
+    }
+    anuidadesEfetivas[c.id] = anuidEfetiva;
+  });
+  const maxAnuid = Math.max(...Object.values(anuidadesEfetivas));
+  const anuidW = impWeight(tmpAnuidImp);
+  if (maxAnuid > 0 || Object.values(anuidadesEfetivas).some(v=>v===0)) {
     const perProduct = {};
     tmpCards.forEach(c => {
-      const a = anuidades[c.id];
-      const norm = (maxAnuid - a) / maxAnuid;
-      const score = norm * 5 * 10;
+      const a = anuidadesEfetivas[c.id];
+      const aBruta = c.anuidade_mensal;
+      // Quem paga menos (menor anuidade efetiva) recebe maior pontuação
+      const norm = maxAnuid > 0 ? (maxAnuid - a) / maxAnuid : 1;
+      const score = norm * Math.abs(anuidW) * 10;
       scores[c.id] += score;
-      perProduct[c.id] = { score, detail:`R$${fmtN(a)}/mês`, formula:`((${fmtN(maxAnuid)}-${fmtN(a)})/${fmtN(maxAnuid)}) × 5 × 10 = ${score.toFixed(2)}`, ret:-a };
+      const detalheEfetiva = a !== aBruta ? ` (efetiva: ${fmtBRL(a)}/mês)` : '';
+      perProduct[c.id] = {
+        score,
+        detail: `Bruta: ${fmtBRL(aBruta)}/mês${detalheEfetiva}`,
+        formula: `((${fmtN(maxAnuid)}-${fmtN(a)})/${fmtN(maxAnuid)}) × ${Math.abs(anuidW)} × 10 = ${score.toFixed(2)}`,
+        ret: -a
+      };
     });
-    breakdown.push({ paramName:'Anuidade Mensal (custo)', type:'Objetivo', unit:'R$/mês', importance:'muito', weight:5, perProduct, note:'Quem paga menos recebe maior pontuação (peso 5 fixo)' });
+    breakdown.push({
+      paramName: 'Anuidade Mensal (custo)',
+      type: 'Objetivo',
+      unit: 'R$/mês',
+      importance: tmpAnuidImp,
+      weight: Math.abs(anuidW),
+      perProduct,
+      note: 'Baseado na anuidade efetiva (após desconto/isenção). Quem paga menos recebe maior pontuação.'
+    });
   }
 
   // ── SUBJETIVOS ──
@@ -1540,11 +1608,17 @@ function calcResult(ctx) {
     const cb_ext  = ctx.exterior * ctx.dolar * ((tmpObjVals['cb-exterior']||{})[c.id]||0) / 100;
     const cb_bon  = ctx.bonif    * ((tmpObjVals['cb-bonif']||{})[c.id]||0) / 100;
     const mil     = (tmpObjVals['milheiro']||{})[c.id] || 0;
-    // Pontos por gasto (unificado R$ ou US$)
+    // Pontos por gasto (nac+bon): base = nacional + bonificado
     const ptsGastoV = (tmpObjVals['pts-gasto']||{})[c.id] || 0;
     const ptsGastoMoeda = tmpPtsGastoMoeda[c.id] || 'R$';
-    const ptsGastoBase = ptsGastoMoeda === 'US$' ? ctx.exterior * ctx.dolar : ctx.nacional;
+    const ptsGastoBase = ptsGastoMoeda === 'US$'
+      ? (ctx.nacional + ctx.bonif) / (ctx.dolar || 1)
+      : (ctx.nacional + ctx.bonif);
     const pts_gasto = ptsGastoBase * ptsGastoV * (mil/1000);
+    // Pontos por Dólar (exterior): base = gasto exterior em US$
+    const ptsExtV = (tmpObjVals['pts-exterior']||{})[c.id] || 0;
+    const pts_ext = ctx.exterior * ptsExtV * (mil/1000);
+    // Pontos por R$1 (bonificado): adicional específico para compras bonificadas
     const pts_bon = ctx.bonif * ((tmpObjVals['pts-bonif']||{})[c.id]||0) * (mil/1000);
     const descGasto = (tmpObjVals['desc-gasto']||{})[c.id] || 0;
     const descPct   = (tmpObjVals['desc-pct']||{})[c.id]   || 0;
@@ -1558,12 +1632,12 @@ function calcResult(ctx) {
     } else if (descPct > 0 && (descGasto === 0 || ctx.nacional >= descGasto)) {
       desconto = c.anuidade_mensal * (descPct/100);
     }
-    const entradas = cb_nac + cb_ext + cb_bon + pts_gasto + pts_bon + desconto;
+    const entradas = cb_nac + cb_ext + cb_bon + pts_gasto + pts_ext + pts_bon + desconto;
     const saidas   = c.anuidade_mensal;
     balanco[c.id] = {
       cb_nac, cb_ext, cb_bon,
-      pts_gasto, pts_bon,
-      ptsGastoMoeda, ptsGastoV,
+      pts_gasto, pts_ext, pts_bon,
+      ptsGastoMoeda, ptsGastoV, ptsExtV,
       desconto, isentTotal,
       entradas, saidas,
       liquido: entradas - saidas
@@ -1717,7 +1791,7 @@ function renderResult(comp) {
       const liqCls = b.liquido >= 0 ? 'positivo' : 'negativo';
       const liqSinal = b.liquido >= 0 ? '+' : '';
       const hasCb   = (b.cb_nac + b.cb_ext + b.cb_bon) > 0;
-      const hasPts  = ((b.pts_gasto||0) + (b.pts_bon||0)) > 0;
+      const hasPts = (b.pts_gasto||0) > 0 || (b.pts_ext||0) > 0 || (b.pts_bon||0) > 0;
       const hasDesc = b.desconto > 0;
       const totalEntradas = b.entradas;
       // Busca dados do cartão para exibir sub-parâmetros
@@ -1728,6 +1802,7 @@ function renderResult(comp) {
       const cbExtPct  = (objV['cb-exterior']||{})[c.id] || 0;
       const cbBonPct  = (objV['cb-bonif']||{})[c.id] || 0;
       const ptsGastoV = (objV['pts-gasto']||{})[c.id] || 0;
+      const ptsExtV   = (objV['pts-exterior']||{})[c.id] || 0;
       const ptsBon    = (objV['pts-bonif']||{})[c.id] || 0;
       const ptsGastoMoedaComp = (comp.ptsGastoMoeda||{})[c.id] || 'R$';
       const descGasto = (objV['desc-gasto']||{})[c.id] || 0;
@@ -1742,7 +1817,8 @@ function renderResult(comp) {
           ${b.cb_bon > 0 ? `<div class="bc-row positivo"><span>Bonificado (${fmtN(cbBonPct)}%)</span><span>+${fmtBRL(b.cb_bon)}</span></div>` : ''}` : ''}
         ${hasPts ? `
           <div class="bc-subtitulo">✈️ Pontos / Milhas</div>
-          ${(b.pts_gasto||0) > 0 ? `<div class="bc-row positivo"><span>Por gasto (${fmtN(ptsGastoV)} pts/${ptsGastoMoedaComp})</span><span>+${fmtBRL(b.pts_gasto)}</span></div>` : ''}
+          ${(b.pts_gasto||0) > 0 ? `<div class="bc-row positivo"><span>Nac+Bon (${fmtN(ptsGastoV)} pts/${ptsGastoMoedaComp})</span><span>+${fmtBRL(b.pts_gasto)}</span></div>` : ''}
+          ${(b.pts_ext||0) > 0 ? `<div class="bc-row positivo"><span>Exterior (${fmtN(ptsExtV)} pts/US$)</span><span>+${fmtBRL(b.pts_ext)}</span></div>` : ''}
           ${(b.pts_bon||0) > 0 ? `<div class="bc-row positivo"><span>Bonificado (${fmtN(ptsBon)} pts/R$)</span><span>+${fmtBRL(b.pts_bon)}</span></div>` : ''}
           ${mil > 0 ? `<div class="bc-row" style="color:var(--muted-foreground)"><span>Valor do milheiro</span><span>${fmtBRL(mil)}/mil</span></div>` : ''}` : ''}
         ${hasDesc ? `
