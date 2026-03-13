@@ -1311,7 +1311,9 @@
             const offsetMes = (py - sy) * 12 + (pm - sm) + 1; // mês 1-based na simulação
 
             for (let k = 0; k < prazoMeses; k++) {
-                // Reajuste anual: a cada 12 parcelas, reajusta saldo e recalcula parcela
+                // Bug 4 fix: Reajuste anual no aniversário do contrato
+                // O reajuste ocorre após cada 12 meses COMPLETOS (k=12, 24, 36...)
+                // k=0 é a 1ª parcela; k=12 é a 13ª parcela (início do 2º ano) → correto
                 if (k > 0 && k % 12 === 0 && r > 0) {
                     saldo = saldo * (1 + r);
                     parcelaBase = saldo * i * Math.pow(1 + i, prazoMeses - k) / (Math.pow(1 + i, prazoMeses - k) - 1);
@@ -1329,15 +1331,19 @@
             const r = reajusteAA / 100;
             let schedule = [];
             let saldo = pv;
-            const amortBase = pv / prazoMeses;
+            // Bug 4 fix: amortBase recalculada a cada ano após reajuste do saldo
+            let amortBase = pv / prazoMeses;
             const [sy, sm] = simStartStr.split('-').map(Number);
             const [py, pm] = startMonthStr.split('-').map(Number);
             const offsetMes = (py - sy) * 12 + (pm - sm) + 1;
 
             for (let k = 0; k < prazoMeses; k++) {
-                // Reajuste anual do saldo devedor
+                // Reajuste anual do saldo devedor no aniversário (k=12, 24, 36...)
                 if (k > 0 && k % 12 === 0 && r > 0) {
                     saldo = saldo * (1 + r);
+                    // Recalcular amortBase para o saldo reajustado e parcelas restantes
+                    const parcRestantes = prazoMeses - k;
+                    amortBase = parcRestantes > 0 ? saldo / parcRestantes : saldo;
                 }
                 const juros = saldo * i;
                 const amort = Math.min(amortBase, saldo);
@@ -1349,7 +1355,7 @@
         }
 
         function calcScheduleUP(pv, prazoMeses, reajusteAA, startMonthStr, simStartStr) {
-            // UP: parcela inicial = PV/n; saldo e parcela reajustados anualmente
+            // UP: parcela inicial = PV/n; saldo e parcela reajustados anualmente no aniversário
             const r = reajusteAA / 100;
             let schedule = [];
             let saldo = pv;
@@ -1359,6 +1365,7 @@
             const offsetMes = (py - sy) * 12 + (pm - sm) + 1;
 
             for (let k = 0; k < prazoMeses; k++) {
+                // Bug 4 fix: Reajuste no aniversário (k=12, 24, 36...)
                 if (k > 0 && k % 12 === 0 && r > 0) {
                     saldo = saldo * (1 + r);
                     parcelaBase = parcelaBase * (1 + r);
@@ -2397,14 +2404,15 @@
                     // Saldo devedor inicial = PV (primeira entrada do schedule com saldoDevedor máximo)
                     const saldoInicial = schedule.length > 0 ? (schedule[0].saldoDevedor + schedule[0].amortizacao) : 0;
                     debtSchedules.push({
-                        goalId:       g.id,
-                        goalName:     g.name,
-                        afetaAportes: fin.afetaAportes || false,
-                        saldoDevedor: saldoInicial,
+                        goalId:        g.id,
+                        goalName:      g.name,
+                        afetaAportes:  fin.afetaAportes || false,
+                        saldoDevedor:  0,            // Começa em 0; ativa no mês da aquisição
+                        saldoInicial:  saldoInicial,  // PV para ativar no mês da aquisição
+                        aquisicaoMes:  aquisicaoMes,  // Mês em que a dívida começa
                         schedule,
                         amortExtras,
-                        // Para modalidade personalizada, não rastreamos saldo devedor
-                        trackSaldo:   ['price','sac','up','hibrido'].includes(fin.modalidade)
+                        trackSaldo:    ['price','sac','up','hibrido'].includes(fin.modalidade)
                     });
                     hasDebts = true;
                 }
@@ -2715,11 +2723,26 @@
                     }
                 }
 
+                // Bug 3 fix: Recalcular physicalWealth APÓS processar goals para incluir bem adquirido neste mês
+                physicalWealth = acquiredAssets.reduce((sum, a) => sum + a.currentValue, 0);
+                if (physicalWealth > 0) hasPhysicalAssets = true;
+
                 // ── PROCESSAMENTO DE PASSIVOS (FINANCIAMENTOS) ───────────────────────
                 let totalPassivoMes = 0;  // Saldo devedor total neste mês
                 let parcelasMes = 0;       // Total de parcelas devidas neste mês
 
                 debtSchedules.forEach(debt => {
+                    // Bug 2 fix: Ativar saldo devedor apenas a partir do mês da aquisição
+                    if (m === debt.aquisicaoMes && debt.saldoDevedor === 0 && debt.saldoInicial > 0) {
+                        debt.saldoDevedor = debt.saldoInicial;
+                    }
+
+                    // Só processar parcelas a partir do mês de aquisição
+                    if (m < debt.aquisicaoMes) {
+                        // Antes da aquisição: sem parcelas, sem passivo
+                        return;
+                    }
+
                     // Parcelas do cronograma principal
                     const scheduleEntry = debt.schedule.find(s => s.mes === m);
                     if (scheduleEntry) {
@@ -2734,10 +2757,8 @@
                     const amortExtrasDoMes = debt.amortExtras.filter(a => a.mes === m);
                     amortExtrasDoMes.forEach(a => {
                         parcelasMes += a.valor;
-                        // Reduzir saldo devedor pela amortização extra
                         if (debt.trackSaldo) {
                             debt.saldoDevedor = Math.max(0, debt.saldoDevedor - a.valor);
-                            // Recalcular schedule a partir daqui seria ideal, mas por simplicidade apenas reduzimos o saldo
                         }
                     });
 
@@ -2774,7 +2795,7 @@
                 dataTotalConsolidated.push(finalNetBalance + physicalWealth);
                 dataGrossTotal.push(balance + physicalWealth); // Gross Financial + Physical
                 dataPassivo.push(totalPassivoMes);
-                dataConsolidadoLiquido.push(Math.max(0, finalNetBalance + physicalWealth - totalPassivoMes));
+                dataConsolidadoLiquido.push(finalNetBalance + physicalWealth - totalPassivoMes);
 
                 let goalsDisplay = goalsOutput.join('<br>');
                 if (goalsOutput.length > 1 && monthlyRealizedTotal > 0) {
@@ -2787,15 +2808,16 @@
                     start: startBalance,
                     earnings: earnings,
                     contribution: contribution,
+                    parcelas: parcelasMes,   // Bug 1 fix: parcelas do financiamento para exibir na tabela
                     goals: goalsDisplay,
                     tax: finalTaxDue,
                     minReserve: currentMinReserve,
                     netBalance: finalNetBalance,
                     physical: physicalWealth,
                     totalConsolidated: finalNetBalance + physicalWealth,
-                    grossEarnings: earnings, // Store gross earnings for table display
+                    grossEarnings: earnings,
                     passivo: totalPassivoMes,
-                    consolidadoLiquido: Math.max(0, finalNetBalance + physicalWealth - totalPassivoMes)
+                    consolidadoLiquido: finalNetBalance + physicalWealth - totalPassivoMes
                 });
 
                 // Increment Date
@@ -3014,7 +3036,8 @@
 
             if (hasDebts) {
                 headerHTML += `
-                    <th style="color: #f87171;">Passivo (Dívidas)</th>
+                    <th style="color: #fb923c;">Parcelas Financ.</th>
+                    <th style="color: #f87171;">Passivo (Saldo Dev.)</th>
                     <th style="color: #a78bfa;">Patrimônio Líquido Consol.</th>
                 `;
             }
@@ -3048,11 +3071,15 @@
                 }
 
                 if (hasDebts) {
+                    const parcelas = r.parcelas || 0;
                     const passivo = r.passivo || 0;
                     const consLiq = r.consolidadoLiquido || 0;
+                    const consLiqColor = consLiq < 0 ? '#f87171' : '#a78bfa';
+                    const consLiqStr = consLiq < 0 ? `-${formatBRL(Math.abs(consLiq))}` : formatBRL(consLiq);
                     rowHTML += `
+                        <td style="color: #fb923c; font-weight: bold;">${parcelas > 0 ? '-' : ''}${formatBRL(parcelas)}</td>
                         <td style="color: #f87171; font-weight: bold;">${passivo > 0 ? '-' : ''}${formatBRL(passivo)}</td>
-                        <td style="color: #a78bfa; font-weight: bold;">${formatBRL(consLiq)}</td>
+                        <td style="color: ${consLiqColor}; font-weight: bold;">${consLiqStr}</td>
                     `;
                 }
                 
