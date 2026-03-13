@@ -714,7 +714,7 @@
         <!-- Benefícios subjetivos -->
         <div class="field-group">
           <label class="field-label" style="margin-bottom:6px">Benefícios subjetivos incluídos por padrão</label>
-          <div id="be-subj-list" style="display:grid;grid-template-columns:1fr 1fr;gap:2px 16px;padding:8px;background:var(--bg3);border-radius:6px;border:1px solid var(--border)"></div>
+          <div id="be-subj-list" style="display:flex;flex-direction:column;gap:0;background:var(--bg3);border-radius:8px;border:1px solid var(--border);overflow:hidden"></div>
         </div>
         <!-- Parâmetros objetivos visuais -->
         <div class="field-group" style="margin-bottom:0">
@@ -2293,10 +2293,14 @@ function openBandeiraEdit(id) {
   // Preencher checkboxes de subjetivos
   const dbSubjLabels = new Set(db && db.subjLabels ? db.subjLabels : (db && db.subj ? Object.keys(db.subj).filter(k => db.subj[k] === true) : []));
   const subjContainer = document.getElementById('be-subj-list');
-  subjContainer.innerHTML = subjItems.map(s => {
+  subjContainer.innerHTML = subjItems.map((s, i) => {
     const checked = dbSubjLabels.has(s.name);
-    return `<label style="display:flex;align-items:center;gap:6px;font-size:.8rem;padding:3px 0;cursor:pointer">
-      <input type="checkbox" id="be-subj-${s.id}" ${checked?'checked':''}/> ${escHtml(s.name)}
+    const borderTop = i > 0 ? 'border-top:1px solid rgba(255,255,255,.06);' : '';
+    const bg = checked ? 'background:rgba(212,175,55,.07);' : '';
+    return `<label style="display:flex;align-items:center;gap:10px;padding:9px 12px;cursor:pointer;transition:background .15s;${borderTop}${bg}" onmouseover="this.style.background='rgba(212,175,55,.1)'" onmouseout="this.style.background='${checked?'rgba(212,175,55,.07)':'transparent'}'">
+      <input type="checkbox" id="be-subj-${s.id}" ${checked?'checked':''} style="width:15px;height:15px;flex-shrink:0;accent-color:var(--gold);cursor:pointer"/>
+      <span style="font-size:.85rem;color:var(--foreground);flex:1">${escHtml(s.name)}</span>
+      ${checked ? '<span style="font-size:.65rem;color:var(--gold);font-weight:700;letter-spacing:.04em;flex-shrink:0">INCLUSO</span>' : ''}
     </label>`;
   }).join('');
   // Preencher parâmetros objetivos nos campos visuais
