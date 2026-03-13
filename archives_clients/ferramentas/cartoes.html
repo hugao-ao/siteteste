@@ -1321,14 +1321,14 @@ function calcResult(ctx) {
     const gImp = tmpObjImps[group.id] || group.groupImp;
     const gW   = impWeight(gImp);
 
-    // Acumula pontuação e detalhes por cartão para o grupo inteiro
-    const groupScores    = {}; // score acumulado do grupo por cartão
-    const groupDetails   = {}; // linhas de detalhe por cartão
-    const groupFormulas  = {}; // linhas de fórmula por cartão
-    tmpCards.forEach(c => { groupScores[c.id]=0; groupDetails[c.id]=[]; groupFormulas[c.id]=[]; });
+    // Acumula normas por sub-parâmetro (0..1 cada) — aplica peso × 10 UMA VEZ no final
+    const groupNorms    = {}; // soma de normas por cartão
+    const groupDetails  = {}; // linhas de detalhe por cartão
+    const groupFormulas = {}; // linhas de fórmula por cartão
+    let   subCount      = 0;  // número de sub-parâmetros com maxRet > 0
+    tmpCards.forEach(c => { groupNorms[c.id]=0; groupDetails[c.id]=[]; groupFormulas[c.id]=[]; });
 
     group.params.forEach(param => {
-      const w   = gW;
       // desc-combo é apenas visual — usa desc-gasto e desc-pct internamente
       const paramIds = param.tipo === 'desc-combo' ? ['desc-gasto','desc-pct'] : [param.id];
 
@@ -1379,23 +1379,20 @@ function calcResult(ctx) {
         });
 
         const maxRet = Math.max(...Object.values(returns));
+        // Só conta sub-parâmetros que têm algum valor informado
+        if (maxRet > 0) subCount++;
+
         tmpCards.forEach(c => {
-          const ret   = returns[c.id];
-          const rawV  = vals[c.id] || 0;
-          let score   = 0;
-          let detail  = '';
+          const ret  = returns[c.id];
+          const rawV = vals[c.id] || 0;
+          let norm   = 0;
+          let detail = '';
           let formula = '';
           if (maxRet > 0) {
-            const norm = ret / maxRet;
-            if (w >= 0) {
-              score = norm * w * 10;
-              if (pTipo === 'desc-gasto') formula = `Gasto mín (menor é melhor): ${score.toFixed(2)}`;
-              else formula = `(${fmtN(ret)}/${fmtN(maxRet)}) × ${w} × 10 = ${score.toFixed(2)}`;
-            } else {
-              score = (1-norm)*Math.abs(w)*10;
-              formula = `(1-${fmtN(norm)}) × |${w}| × 10 = ${score.toFixed(2)}`;
-            }
-            if (pTipo === 'milheiro')      detail = `Milheiro: R$${fmtN(rawV)}/mil pts`;
+            norm = gW >= 0 ? (ret / maxRet) : (1 - ret / maxRet);
+            if (pTipo === 'desc-gasto') formula = `Gasto mín (menor é melhor): norm=${fmtN(norm)}`;
+            else formula = `(${fmtN(ret)}/${fmtN(maxRet)}) → norm=${fmtN(norm)}`;
+            if (pTipo === 'milheiro')        detail = `Milheiro: R$${fmtN(rawV)}/mil pts`;
             else if (pTipo === 'desc-gasto') detail = `Gasto mín: ${fmtBRL(rawV)}`;
             else if (pTipo === 'desc-pct')   detail = `Desc: ${fmtN(rawV)}% → ${fmtBRL(ret)}/mês`;
             else if (pTipo === 'isent-fatura') {
@@ -1410,30 +1407,36 @@ function calcResult(ctx) {
             else detail = `R$${fmtN(ret)}/mês`;
           } else {
             if (rawV > 0) {
-              if (pTipo === 'milheiro')       detail = `Milheiro: R$${fmtN(rawV)}/mil pts`;
+              if (pTipo === 'milheiro')        detail = `Milheiro: R$${fmtN(rawV)}/mil pts`;
               else if (pTipo === 'desc-gasto') detail = `Gasto mín: ${fmtBRL(rawV)}`;
-              else                            detail = `R$${fmtN(rawV)}/mês`;
+              else                             detail = `R$${fmtN(rawV)}/mês`;
             }
           }
-          groupScores[c.id]  += score;
-          scores[c.id]       += score;
+          groupNorms[c.id] += norm;
           if (detail)  groupDetails[c.id].push(detail);
           if (formula) groupFormulas[c.id].push(formula);
         });
       });
     });
 
-    // Gera UMA linha de breakdown por grupo
+    // Aplica peso × 10 UMA VEZ: média das normas × |w| × 10
+    // Máximo possível = 1 (média máx) × |w| × 10 = w × 10
+    const n = subCount > 0 ? subCount : 1;
     const perProduct = {};
     tmpCards.forEach(c => {
-      const totalScore = groupScores[c.id];
-      const details    = groupDetails[c.id].filter(Boolean);
-      const formulas   = groupFormulas[c.id].filter(Boolean);
+      const avgNorm = groupNorms[c.id] / n;  // média das normas (0..1)
+      const score   = Math.abs(gW) * avgNorm * 10;
+      scores[c.id] += score;
+      const details   = groupDetails[c.id].filter(Boolean);
+      const formulas  = groupFormulas[c.id].filter(Boolean);
+      const formulaFinal = formulas.length > 0
+        ? formulas.join('<br>') + `<br>→ média norm=${fmtN(avgNorm)} × ${Math.abs(gW)} × 10 = ${score.toFixed(2)}`
+        : '—';
       perProduct[c.id] = {
-        score:   totalScore,
-        detail:  details.length  > 0 ? details.join(' | ')  : 'Todos zerados',
-        formula: formulas.length > 0 ? formulas.join('<br>') : '—',
-        ret:     totalScore,
+        score,
+        detail:  details.length > 0 ? details.join(' | ') : 'Todos zerados',
+        formula: formulaFinal,
+        ret:     score,
         rawV:    0
       };
     });
