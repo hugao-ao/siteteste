@@ -686,23 +686,110 @@
         <h2 id="be-title">Editar Bandeira</h2>
         <button class="btn-close" onclick="closeBandeiraEdit()">✕</button>
       </div>
-      <div class="modal-body" style="max-height:70vh;overflow-y:auto">
-        <div class="field-group">
-          <label class="field-label">ID da bandeira <span style="font-size:.7rem;color:var(--muted-foreground)">(ex: mc-black, visa-infinite)</span></label>
-          <input class="field-input" id="be-id" placeholder="Ex: mc-black"/>
+      <div class="modal-body" style="max-height:75vh;overflow-y:auto">
+        <!-- ID oculto (UUID do Supabase ao editar, vazio ao criar) -->
+        <input type="hidden" id="be-id"/>
+        <!-- Bandeira + Nível -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
+          <div class="field-group" style="margin-bottom:0">
+            <label class="field-label">Bandeira</label>
+            <select class="field-input" id="be-bandeira" onchange="beSyncLabel()">
+              <option value="Visa">Visa</option>
+              <option value="Mastercard">Mastercard</option>
+              <option value="American Express">American Express</option>
+              <option value="Elo">Elo</option>
+              <option value="Hipercard">Hipercard</option>
+              <option value="Outra">Outra</option>
+            </select>
+          </div>
+          <div class="field-group" style="margin-bottom:0">
+            <label class="field-label">Nível</label>
+            <input class="field-input" id="be-nivel" placeholder="Ex: Black, Infinite, Platinum" oninput="beSyncLabel()"/>
+          </div>
         </div>
         <div class="field-group">
-          <label class="field-label">Nome exibido</label>
+          <label class="field-label">Nome exibido <span style="font-size:.7rem;color:var(--muted-foreground)">(gerado automaticamente)</span></label>
           <input class="field-input" id="be-label" placeholder="Ex: Mastercard Black"/>
         </div>
+        <!-- Benefícios subjetivos -->
         <div class="field-group">
           <label class="field-label" style="margin-bottom:6px">Benefícios subjetivos incluídos por padrão</label>
           <div id="be-subj-list" style="display:grid;grid-template-columns:1fr 1fr;gap:2px 16px;padding:8px;background:var(--bg3);border-radius:6px;border:1px solid var(--border)"></div>
         </div>
-        <div class="field-group">
-          <label class="field-label">Parâmetros objetivos padrão <span style="font-size:.7rem;color:var(--muted-foreground)">(JSON — opcional)</span></label>
-          <textarea class="field-input" id="be-obj-json" rows="5" style="font-family:monospace;font-size:.75rem;resize:vertical" placeholder='{}'></textarea>
-          <span style="font-size:.68rem;color:var(--muted-foreground)">Exemplo: {"cb-nacional":1.5, "pts-gasto":3, "milheiro":25}</span>
+        <!-- Parâmetros objetivos visuais -->
+        <div class="field-group" style="margin-bottom:0">
+          <label class="field-label" style="margin-bottom:8px">Parâmetros objetivos padrão</label>
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <!-- Cashback -->
+            <div style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:12px">
+              <div style="font-size:.75rem;font-weight:700;color:var(--gold);margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em">💰 Cashback</div>
+              <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
+                <div>
+                  <label style="font-size:.68rem;color:var(--muted-foreground);display:block;margin-bottom:3px">Nacional (%)</label>
+                  <input class="field-input" id="be-obj-cb-nacional" type="number" min="0" max="100" step="0.1" placeholder="0" style="padding:6px 10px;font-size:.85rem"/>
+                </div>
+                <div>
+                  <label style="font-size:.68rem;color:var(--muted-foreground);display:block;margin-bottom:3px">Exterior (%)</label>
+                  <input class="field-input" id="be-obj-cb-exterior" type="number" min="0" max="100" step="0.1" placeholder="0" style="padding:6px 10px;font-size:.85rem"/>
+                </div>
+                <div>
+                  <label style="font-size:.68rem;color:var(--muted-foreground);display:block;margin-bottom:3px">Bonificado (%)</label>
+                  <input class="field-input" id="be-obj-cb-bonif" type="number" min="0" max="100" step="0.1" placeholder="0" style="padding:6px 10px;font-size:.85rem"/>
+                </div>
+              </div>
+            </div>
+            <!-- Pontos / Milhas -->
+            <div style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:12px">
+              <div style="font-size:.75rem;font-weight:700;color:var(--gold);margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em">✈️ Pontos / Milhas</div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+                <div>
+                  <label style="font-size:.68rem;color:var(--muted-foreground);display:block;margin-bottom:3px">Pts por gasto nac+bon (pts/R$)</label>
+                  <input class="field-input" id="be-obj-pts-gasto" type="number" min="0" step="0.1" placeholder="0" style="padding:6px 10px;font-size:.85rem"/>
+                </div>
+                <div>
+                  <label style="font-size:.68rem;color:var(--muted-foreground);display:block;margin-bottom:3px">Pts por Dólar exterior (pts/US$)</label>
+                  <input class="field-input" id="be-obj-pts-exterior" type="number" min="0" step="0.1" placeholder="0" style="padding:6px 10px;font-size:.85rem"/>
+                </div>
+                <div>
+                  <label style="font-size:.68rem;color:var(--muted-foreground);display:block;margin-bottom:3px">Pts bonificado (pts/R$)</label>
+                  <input class="field-input" id="be-obj-pts-bonif" type="number" min="0" step="0.1" placeholder="0" style="padding:6px 10px;font-size:.85rem"/>
+                </div>
+                <div>
+                  <label style="font-size:.68rem;color:var(--muted-foreground);display:block;margin-bottom:3px">Valor do milheiro (R$/mil pts)</label>
+                  <input class="field-input" id="be-obj-milheiro" type="number" min="0" step="0.5" placeholder="0" style="padding:6px 10px;font-size:.85rem"/>
+                </div>
+                <div style="grid-column:span 2">
+                  <label style="font-size:.68rem;color:var(--muted-foreground);display:block;margin-bottom:3px">Moeda do gasto principal</label>
+                  <select class="field-input" id="be-obj-pts-gasto-moeda" style="padding:6px 10px;font-size:.85rem">
+                    <option value="R$">R$ (Real)</option>
+                    <option value="US$">US$ (Dólar)</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+            <!-- Desconto / Isenção -->
+            <div style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:12px">
+              <div style="font-size:.75rem;font-weight:700;color:var(--gold);margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em">🏷️ Desconto / Isenção de Anuidade</div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+                <div>
+                  <label style="font-size:.68rem;color:var(--muted-foreground);display:block;margin-bottom:3px">Gasto mensal p/ desconto (R$)</label>
+                  <input class="field-input" id="be-obj-desc-gasto" type="number" min="0" step="100" placeholder="0" style="padding:6px 10px;font-size:.85rem"/>
+                </div>
+                <div>
+                  <label style="font-size:.68rem;color:var(--muted-foreground);display:block;margin-bottom:3px">Percentual de desconto (%)</label>
+                  <input class="field-input" id="be-obj-desc-pct" type="number" min="0" max="100" step="1" placeholder="0" style="padding:6px 10px;font-size:.85rem"/>
+                </div>
+                <div>
+                  <label style="font-size:.68rem;color:var(--muted-foreground);display:block;margin-bottom:3px">Gasto mín. p/ isenção total (R$)</label>
+                  <input class="field-input" id="be-obj-isent-fatura" type="number" min="0" step="100" placeholder="0" style="padding:6px 10px;font-size:.85rem"/>
+                </div>
+                <div>
+                  <label style="font-size:.68rem;color:var(--muted-foreground);display:block;margin-bottom:3px">Investimento mín. p/ isenção (R$)</label>
+                  <input class="field-input" id="be-obj-isent-invest" type="number" min="0" step="1000" placeholder="0" style="padding:6px 10px;font-size:.85rem"/>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
       <div class="modal-footer" style="justify-content:space-between">
@@ -767,7 +854,7 @@ async function sbLoadBandeiras() {
   });
   return db;
 }
-async function sbSaveBandeira(id, label, obj, subj) {
+async function sbSaveBandeira(id, label, bandeira, nivel, obj, subj) {
   // subj pode ser {label: bool} ou array de labels; normalizar para array de labels
   let subjArr;
   if (Array.isArray(subj)) {
@@ -775,12 +862,15 @@ async function sbSaveBandeira(id, label, obj, subj) {
   } else {
     subjArr = Object.entries(subj).filter(([,v])=>v===true).map(([k])=>k);
   }
-  const { data: existing } = await sb.from('cartoes_bandeiras').select('id').eq('id', id).maybeSingle();
-  if (existing) {
-    await sb.from('cartoes_bandeiras').update({ label, obj_defaults: obj, subj_defaults: subjArr }).eq('id', id);
+  if (id) {
+    // Editar bandeira existente (tem UUID)
+    await sb.from('cartoes_bandeiras').update({ label, bandeira, nivel, obj_defaults: obj, subj_defaults: subjArr }).eq('id', id);
   } else {
-    await sb.from('cartoes_bandeiras').insert({ label, obj_defaults: obj, subj_defaults: subjArr });
+    // Nova bandeira — inserir e obter UUID gerado
+    const { data, error } = await sb.from('cartoes_bandeiras').insert({ label, bandeira, nivel, obj_defaults: obj, subj_defaults: subjArr }).select('id').single();
+    if (!error && data) return data.id; // retorna o novo UUID
   }
+  return id;
 }
 async function sbDeleteBandeira(id) {
   await sb.from('cartoes_bandeiras').delete().eq('id', id);
@@ -2188,12 +2278,19 @@ function openBandeiraEdit(id) {
   const db = BANDEIRAS_DB[id] || null;
   const modal = document.getElementById('modal-bandeira-edit');
   document.getElementById('be-title').textContent = id ? `Editar: ${db ? db.label : id}` : 'Nova Bandeira';
-  document.getElementById('be-id').value    = id || '';
+  document.getElementById('be-id').value = id || '';
+  document.getElementById('be-btn-delete').style.display = id ? '' : 'none';
+  // Preencher Bandeira e Nível
+  const bandSel = document.getElementById('be-bandeira');
+  const nivelInp = document.getElementById('be-nivel');
+  const bandVal = db ? (db.bandeira || '') : '';
+  const nivelVal = db ? (db.nivel || '') : '';
+  // Selecionar a opção correta no select de bandeira
+  const bandOptions = ['Visa','Mastercard','American Express','Elo','Hipercard'];
+  bandSel.value = bandOptions.includes(bandVal) ? bandVal : (bandVal ? 'Outra' : 'Visa');
+  nivelInp.value = nivelVal;
   document.getElementById('be-label').value = db ? db.label : '';
-  document.getElementById('be-id').disabled = !!id; // não permite mudar o ID ao editar
-  document.getElementById('be-btn-delete').style.display = id ? '' : 'none'; // só mostra excluir ao editar
   // Preencher checkboxes de subjetivos
-  // Match por nome (label) já que o Supabase armazena labels no array subj_defaults
   const dbSubjLabels = new Set(db && db.subjLabels ? db.subjLabels : (db && db.subj ? Object.keys(db.subj).filter(k => db.subj[k] === true) : []));
   const subjContainer = document.getElementById('be-subj-list');
   subjContainer.innerHTML = subjItems.map(s => {
@@ -2202,29 +2299,68 @@ function openBandeiraEdit(id) {
       <input type="checkbox" id="be-subj-${s.id}" ${checked?'checked':''}/> ${escHtml(s.name)}
     </label>`;
   }).join('');
-  // Preencher parâmetros objetivos (obj_params) como JSON editável
-  const objVal = db && db.obj ? JSON.stringify(db.obj, null, 2) : '{}';
-  document.getElementById('be-obj-json').value = objVal;
+  // Preencher parâmetros objetivos nos campos visuais
+  const obj = (db && db.obj) ? db.obj : {};
+  const setV = (elId, key, def) => { const el = document.getElementById(elId); if (el) el.value = (obj[key] !== undefined && obj[key] !== null && obj[key] !== 0) ? obj[key] : (def !== undefined ? def : ''); };
+  setV('be-obj-cb-nacional',   'cb-nacional',   '');
+  setV('be-obj-cb-exterior',   'cb-exterior',   '');
+  setV('be-obj-cb-bonif',      'cb-bonif',      '');
+  setV('be-obj-pts-gasto',     'pts-gasto',     '');
+  setV('be-obj-pts-exterior',  'pts-exterior',  '');
+  setV('be-obj-pts-bonif',     'pts-bonif',     '');
+  setV('be-obj-milheiro',      'milheiro',      '');
+  setV('be-obj-desc-gasto',    'desc-gasto',    '');
+  setV('be-obj-desc-pct',      'desc-pct',      '');
+  setV('be-obj-isent-fatura',  'isent-fatura',  '');
+  setV('be-obj-isent-invest',  'isent-invest',  '');
+  const moedaSel = document.getElementById('be-obj-pts-gasto-moeda');
+  if (moedaSel) moedaSel.value = obj['pts-gasto-moeda'] || 'R$';
   modal.classList.add('open');
+}
+
+// Sincroniza o campo "Nome exibido" com Bandeira + Nível
+function beSyncLabel() {
+  const bandeira = document.getElementById('be-bandeira')?.value || '';
+  const nivel    = document.getElementById('be-nivel')?.value.trim() || '';
+  const label    = document.getElementById('be-label');
+  if (label) label.value = nivel ? `${bandeira} ${nivel}` : bandeira;
 }
 
 function closeBandeiraEdit() { document.getElementById('modal-bandeira-edit').classList.remove('open'); }
 
 async function saveBandeira() {
-  const id    = document.getElementById('be-id').value.trim();
-  const label = document.getElementById('be-label').value.trim();
-  if (!id || !label) { alert('Informe o ID e o nome da bandeira.'); return; }
+  const id       = document.getElementById('be-id').value.trim();
+  const bandeira = document.getElementById('be-bandeira')?.value.trim() || '';
+  const nivel    = document.getElementById('be-nivel')?.value.trim() || '';
+  const label    = document.getElementById('be-label').value.trim() || (nivel ? `${bandeira} ${nivel}` : bandeira);
+  if (!label) { alert('Informe o nome da bandeira.'); return; }
   // Montar subj como array de labels (nomes) para compatibilidade com Supabase
   const subjLabels = [];
   subjItems.forEach(s => { if (document.getElementById('be-subj-'+s.id)?.checked) subjLabels.push(s.name); });
   const subjByLabel = {};
   subjLabels.forEach(lbl => { subjByLabel[lbl] = true; });
-  // Montar obj
-  let obj = {};
-  try { obj = JSON.parse(document.getElementById('be-obj-json').value || '{}'); } catch(e) { alert('JSON de parâmetros objetivos inválido.'); return; }
-  // Atualizar BANDEIRAS_DB local
-  const existingEntry = BANDEIRAS_DB[id] || {};
-  BANDEIRAS_DB[id] = { label, bandeira: existingEntry.bandeira || '', nivel: existingEntry.nivel || '', obj, subjLabels, subj: subjByLabel };
+  // Montar obj a partir dos campos visuais
+  const getN = elId => { const el = document.getElementById(elId); const v = parseFloat(el?.value); return isNaN(v) ? 0 : v; };
+  const obj = {
+    'cb-nacional':  getN('be-obj-cb-nacional'),
+    'cb-exterior':  getN('be-obj-cb-exterior'),
+    'cb-bonif':     getN('be-obj-cb-bonif'),
+    'pts-gasto':    getN('be-obj-pts-gasto'),
+    'pts-exterior': getN('be-obj-pts-exterior'),
+    'pts-bonif':    getN('be-obj-pts-bonif'),
+    'milheiro':     getN('be-obj-milheiro'),
+    'desc-gasto':   getN('be-obj-desc-gasto'),
+    'desc-pct':     getN('be-obj-desc-pct'),
+    'isent-fatura': getN('be-obj-isent-fatura'),
+    'isent-invest': getN('be-obj-isent-invest'),
+    'pts-gasto-moeda': document.getElementById('be-obj-pts-gasto-moeda')?.value || 'R$',
+  };
+  // Salvar no Supabase e obter UUID (novo ou existente)
+  let finalId = id;
+  try { finalId = await sbSaveBandeira(id, label, bandeira, nivel, obj, subjLabels) || id; } catch(e) { console.warn('Supabase bandeira save:', e); }
+  // Atualizar BANDEIRAS_DB local (usar finalId que pode ser UUID novo)
+  if (id && id !== finalId) delete BANDEIRAS_DB[id]; // remover entrada antiga se ID mudou
+  BANDEIRAS_DB[finalId] = { label, bandeira, nivel, obj, subjLabels, subj: subjByLabel };
   closeBandeiraEdit();
   // Re-renderizar selects de bandeira nos cards (se modal de comparação estiver aberto)
   tmpCards.forEach(c => {
@@ -2234,8 +2370,6 @@ async function saveBandeira() {
       sel.innerHTML = '<option value="">— selecionar —</option>' + buildBandeiraOptions(prev);
     }
   });
-  // Sincronizar com Supabase
-  try { await sbSaveBandeira(id, label, obj, subjLabels); } catch(e) { console.warn('Supabase bandeira save:', e); }
 }
 
 async function deleteBandeira(id) {
