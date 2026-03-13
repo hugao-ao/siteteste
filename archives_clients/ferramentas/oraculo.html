@@ -2794,16 +2794,27 @@
                     totalPassivoMes += debt.saldoDevedor;
                 });
 
-                // Se afeta aportes: subtrair parcelas do aporte mensal (entra como aporte negativo)
+                // Parcelas de financiamento: dedução com lógica de retirada proporcional
+                // (mesma lógica dos objetivos de gasto: reduz principal proporcionalmente,
+                //  recalculando o imposto sobre ganho de capital corretamente)
                 debtSchedules.forEach(debt => {
                     if (debt.afetaAportes) {
                         const scheduleEntry = debt.schedule.find(s => s.mes === m);
                         const parcelaDoDeb = scheduleEntry ? scheduleEntry.parcela : 0;
                         const amortExtrasDoDeb = debt.amortExtras.filter(a => a.mes === m).reduce((s, a) => s + a.valor, 0);
                         const totalDeb = parcelaDoDeb + amortExtrasDoDeb;
-                        if (totalDeb > 0) {
+                        if (totalDeb > 0 && balanceAfterEarnings > 0) {
+                            // Retirada proporcional: calcula quanto do saldo é principal vs. rendimento
+                            // Ratio = parcela / saldo_total_antes_da_retirada
+                            const withdrawalRatio = totalDeb / (balanceAfterEarnings + totalDeb);
+                            // Reduz o principal (totalInvested) proporcionalmente
+                            const investedReduction = totalInvested * withdrawalRatio;
+                            totalInvested = Math.max(0, totalInvested - investedReduction);
+                            // Deduz a parcela do saldo bruto
                             balanceAfterEarnings -= totalDeb;
-                            totalInvested -= totalDeb; // Reduz principal (saída de caixa)
+                            // Recalcula netBalanceAvailable para refletir o novo imposto estimado
+                            const estimatedTax = Math.max(0, (balanceAfterEarnings - totalInvested) * taxRate);
+                            netBalanceAvailable = balanceAfterEarnings - estimatedTax;
                         }
                     }
                 });
