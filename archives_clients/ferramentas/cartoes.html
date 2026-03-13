@@ -996,12 +996,16 @@ function renderCards() {
 
 function fmtObjInput(el, paramId, cid) {
   const tipo = el.dataset.tipo || 'num';
-  // Remove R$, %, pontos de milhar e troca vírgula decimal por ponto
-  const raw = el.value
-    .replace(/R\$\s*/g,'')
-    .replace(/%/g,'')
-    .replace(/\./g,'')
-    .replace(',','.');
+  // Remove R$, % e converte para número
+  // Para moeda/pct: remove pontos de milhar (ponto seguido de 3 dígitos) e troca vírgula por ponto
+  // Para num (pontos/milhas): apenas troca vírgula por ponto (preserva casas decimais)
+  let raw = el.value.replace(/R\$\s*/g,'').replace(/%/g,'').trim();
+  if (tipo === 'moeda' || tipo === 'pct') {
+    raw = raw.replace(/\.(\d{3})/g,'$1').replace(',','.');
+  } else {
+    // tipo 'num': só troca vírgula por ponto decimal
+    raw = raw.replace(',','.');
+  }
   const n = parseFloat(raw) || 0;
   if (!tmpObjVals[paramId]) tmpObjVals[paramId] = {};
   tmpObjVals[paramId][cid] = n;
@@ -1262,7 +1266,7 @@ function syncAllInputs() {
     tmpCards.forEach(c => {
       if (p.tipo === 'pts-gasto') {
         const el = document.getElementById('oval-pts-gasto-'+c.id);
-        if (el) { const raw = el.value.replace(/R\$\s*/g,'').replace(/\./g,'').replace(',','.'); tmpObjVals['pts-gasto'][c.id] = parseFloat(raw) || 0; }
+        if (el) { const raw = el.value.replace(/R\$\s*/g,'').replace(',','.'); tmpObjVals['pts-gasto'][c.id] = parseFloat(raw) || 0; }
         const sel = document.getElementById('pts-gasto-moeda-'+c.id);
         if (sel) tmpPtsGastoMoeda[c.id] = sel.value;
       } else if (p.tipo === 'desc-combo') {
@@ -1276,12 +1280,14 @@ function syncAllInputs() {
       } else {
         const el = document.getElementById('oval-'+p.id+'-'+c.id);
         if (el) {
-          // Remove prefixo R$, símbolo %, pontos de milhar; troca vírgula decimal por ponto
-          const raw = el.value
-            .replace(/R\$\s*/g,'')
-            .replace(/%/g,'')
-            .replace(/\./g,'')   // remove pontos de milhar
-            .replace(',','.');   // vírgula decimal → ponto
+          let raw = el.value.replace(/R\$\s*/g,'').replace(/%/g,'').trim();
+          if (p.tipo === 'num') {
+            // Campos de pontos: só troca vírgula por ponto (preserva decimal)
+            raw = raw.replace(',','.');
+          } else {
+            // Campos de moeda ou percentual: remove pontos de milhar antes
+            raw = raw.replace(/\.(\d{3})/g,'$1').replace(',','.');
+          }
           tmpObjVals[p.id][c.id] = parseFloat(raw) || 0;
         }
       }
