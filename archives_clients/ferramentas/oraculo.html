@@ -2063,7 +2063,8 @@
                 document.getElementById('isPhysicalAsset').checked = goal.isPhysical || false;
                 toggleAssetRateInput();
                 if (goal.isPhysical) {
-                    document.getElementById('assetAppreciationRate').value = goal.appreciationRate;
+                    // appreciationRate é salvo como decimal (0.05 = 5%), restaurar como % (5)
+                    document.getElementById('assetAppreciationRate').value = (goal.appreciationRate * 100);
                 }
             }
 
@@ -2197,7 +2198,7 @@
                 
                 let recurrenceText = g.recurrence ? ` (Repete a cada ${g.recurrence.value} ${g.recurrence.unit === 'years' ? 'anos' : 'meses'})` : '';
                 let typeIcon = g.type === 'spend' ? (g.isPhysical ? '🏠' : '💸') : '🎯';
-                let physicalText = g.isPhysical ? ` <span style="color:#4ade80; font-size:0.75rem;">(Patrimônio Físico: ${g.appreciationRate}% a.a.)</span>` : '';
+                let physicalText = g.isPhysical ? ` <span style="color:#4ade80; font-size:0.75rem;">(Patrimônio Físico: ${(g.appreciationRate * 100).toFixed(2)}% a.a.)</span>` : '';
 
                 // Resumo de financiamento
                 let finText = '';
@@ -2651,12 +2652,18 @@
                             
                             // If Physical Asset, add to Physical Wealth
                             if (g.isPhysical) {
+                                // Se há financiamento com valor total do bem, usar totalValue como base do patrimônio físico
+                                // O g.currentValue é apenas a entrada (saída de caixa), não o valor total do bem
+                                const fin = g.financiamento;
+                                const physicalBaseValue = (fin && fin.valueType === 'entrada' && fin.totalValue > 0)
+                                    ? fin.totalValue  // Valor total do bem (ex: R$ 750.000)
+                                    : g.currentValue; // Sem financiamento: o valor do objetivo é o valor do bem
                                 acquiredAssets.push({
                                     name: g.name,
-                                    currentValue: g.currentValue,
+                                    currentValue: physicalBaseValue,
                                     appreciationRate: g.appreciationRate
                                 });
-                                goalsOutput.push(`<span class="val-positive">🏠 ${g.name} (Adquirido) - ${formatBRL(g.currentValue)}</span>`);
+                                goalsOutput.push(`<span class="val-positive">🏠 ${g.name} (Adquirido) - ${formatBRL(physicalBaseValue)}</span>`);
                             } else {
                                 goalsOutput.push(`<span class="val-negative">💸 ${g.name} (Realizado) - ${formatBRL(g.currentValue)}</span>`);
                             }
