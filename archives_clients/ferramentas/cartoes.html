@@ -7,6 +7,7 @@
 <link rel="stylesheet" href="../assets/style.css">
 <script src="../assets/layout.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   :root {
     --bg3:      #0a2e14;
@@ -519,6 +520,7 @@
           <p>Compare cartões com critérios objetivos (cashback, pontos, desconto) e subjetivos (salas VIP, concierge, seguros) ponderados</p>
         </div>
         <button id="mobile-toggle" class="mobile-toggle">☰</button>
+        <button class="btn-new" style="background:var(--bg3);border-color:var(--border);color:var(--muted-foreground);font-size:.78rem" onclick="openBandeiraEdit(null)">🏷️ Bandeiras</button>
         <button class="btn-new" onclick="openModal()">+ Nova Comparação</button>
       </header>
 
@@ -675,7 +677,116 @@
     </div>
   </div>
 
+  <!-- ═══════════════════════════════════════════════
+       MODAL EDIÇÃO BANDEIRA
+  ═══════════════════════════════════════════════ -->
+  <div class="modal-overlay" id="modal-bandeira-edit">
+    <div class="modal-sm" style="max-width:560px">
+      <div class="modal-header">
+        <h2 id="be-title">Editar Bandeira</h2>
+        <button class="btn-close" onclick="closeBandeiraEdit()">✕</button>
+      </div>
+      <div class="modal-body" style="max-height:70vh;overflow-y:auto">
+        <div class="field-group">
+          <label class="field-label">ID da bandeira <span style="font-size:.7rem;color:var(--muted-foreground)">(ex: mc-black, visa-infinite)</span></label>
+          <input class="field-input" id="be-id" placeholder="Ex: mc-black"/>
+        </div>
+        <div class="field-group">
+          <label class="field-label">Nome exibido</label>
+          <input class="field-input" id="be-label" placeholder="Ex: Mastercard Black"/>
+        </div>
+        <div class="field-group">
+          <label class="field-label" style="margin-bottom:6px">Benefícios subjetivos incluídos por padrão</label>
+          <div id="be-subj-list" style="display:grid;grid-template-columns:1fr 1fr;gap:2px 16px;padding:8px;background:var(--bg3);border-radius:6px;border:1px solid var(--border)"></div>
+        </div>
+        <div class="field-group">
+          <label class="field-label">Parâmetros objetivos padrão <span style="font-size:.7rem;color:var(--muted-foreground)">(JSON — opcional)</span></label>
+          <textarea class="field-input" id="be-obj-json" rows="5" style="font-family:monospace;font-size:.75rem;resize:vertical" placeholder='{}'></textarea>
+          <span style="font-size:.68rem;color:var(--muted-foreground)">Exemplo: {"cb-nacional":1.5, "pts-gasto":3, "milheiro":25}</span>
+        </div>
+      </div>
+      <div class="modal-footer" style="justify-content:space-between">
+        <button class="btn-cancel" style="color:var(--red-lt);border-color:var(--red-lt)" onclick="deleteBandeira(editingBandeiraId)" id="be-btn-delete">🗑️ Excluir</button>
+        <div style="display:flex;gap:8px">
+          <button class="btn-cancel" onclick="closeBandeiraEdit()">Cancelar</button>
+          <button class="btn-save" onclick="saveBandeira()">Salvar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
 <script>
+/* ═══════════════════════════════════════════════════════
+   SUPABASE
+═══════════════════════════════════════════════════════ */
+const SUPABASE_URL  = 'https://vbikskbfkhundhropykf.supabase.co';
+const SUPABASE_KEY  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZiaWtza2Jma2h1bmRocm9weWtmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDU1MTk5NjEsImV4cCI6MjA2MTA5NTk2MX0.-n-Tj_5JnF1NL2ZImWlMeTcobWDl_VD6Vqp0lxRQFFU';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// ── Subjetivos ──
+async function sbLoadSubjItems() {
+  const { data, error } = await sb.from('cartoes_subj_items').select('*').order('ordem', { ascending: true });
+  if (error || !data || data.length === 0) return null;
+  return data.map(r => ({ id: r.id, name: r.name, desc: r.desc, importance: r.importance }));
+}
+async function sbSaveSubjItem(item, isNew) {
+  if (isNew) {
+    const maxOrdem = subjItems.length;
+    await sb.from('cartoes_subj_items').insert({ id: item.id, name: item.name, desc: item.desc || '', importance: item.importance, ordem: maxOrdem });
+  } else {
+    await sb.from('cartoes_subj_items').update({ name: item.name, desc: item.desc || '', importance: item.importance }).eq('id', item.id);
+  }
+}
+async function sbDeleteSubjItem(id) {
+  await sb.from('cartoes_subj_items').delete().eq('id', id);
+}
+async function sbReorderSubjItems() {
+  for (let i = 0; i < subjItems.length; i++) {
+    await sb.from('cartoes_subj_items').update({ ordem: i }).eq('id', subjItems[i].id);
+  }
+}
+
+// ── Bandeiras ──
+async function sbLoadBandeiras() {
+  const { data, error } = await sb.from('cartoes_bandeiras').select('*');
+  if (error || !data || data.length === 0) return null;
+  const db = {};
+  data.forEach(r => {
+    db[r.id] = { label: r.label, obj: r.obj_params || {}, subj: r.subj_params || {} };
+  });
+  return db;
+}
+async function sbSaveBandeira(id, label, obj, subj) {
+  const { data: existing } = await sb.from('cartoes_bandeiras').select('id').eq('id', id).maybeSingle();
+  if (existing) {
+    await sb.from('cartoes_bandeiras').update({ label, obj_params: obj, subj_params: subj }).eq('id', id);
+  } else {
+    await sb.from('cartoes_bandeiras').insert({ id, label, obj_params: obj, subj_params: subj });
+  }
+}
+async function sbDeleteBandeira(id) {
+  await sb.from('cartoes_bandeiras').delete().eq('id', id);
+}
+
+// ── Seed inicial das bandeiras (só se tabela estiver vazia) ──
+async function sbSeedBandeiras(localDb) {
+  const { data } = await sb.from('cartoes_bandeiras').select('id').limit(1);
+  if (data && data.length > 0) return; // já tem dados
+  for (const [id, val] of Object.entries(localDb)) {
+    await sb.from('cartoes_bandeiras').insert({ id, label: val.label, obj_params: val.obj || {}, subj_params: val.subj || {} });
+  }
+}
+
+// ── Seed inicial dos subjetivos (só se tabela estiver vazia) ──
+async function sbSeedSubjItems(defaults) {
+  const { data } = await sb.from('cartoes_subj_items').select('id').limit(1);
+  if (data && data.length > 0) return; // já tem dados
+  for (let i = 0; i < defaults.length; i++) {
+    const s = defaults[i];
+    await sb.from('cartoes_subj_items').insert({ id: s.id, name: s.name, desc: s.desc || '', importance: s.importance, ordem: i });
+  }
+}
+
 /* ═══════════════════════════════════════════════════════
    BANCO DE DADOS BANDEIRAS
 ═══════════════════════════════════════════════════════ */
@@ -945,11 +1056,43 @@ function prefillCard(cid) {
   if (!db) return;
   const c = tmpCards.find(x=>x.id===cid);
   if (c) c.bandeira = sel.value;
+  // Pré-preencher subjetivos
   subjItems.forEach(s => {
     if (!tmpSubjVals[s.id]) tmpSubjVals[s.id] = { importance:s.importance, hasParam:{}, rankings:{} };
-    tmpSubjVals[s.id].hasParam[cid] = db.subj[s.id] === true;
+    tmpSubjVals[s.id].hasParam[cid] = db.subj && db.subj[s.id] === true;
   });
   renderSubjSections();
+  // Pré-preencher objetivos (se db.obj estiver definido)
+  if (db.obj && Object.keys(db.obj).length > 0) {
+    OBJ_GROUPS.forEach(g => {
+      g.params.forEach(p => {
+        const val = db.obj[p.id];
+        if (val === undefined || val === null) return;
+        if (p.tipo === 'desc-combo') {
+          // desc-combo tem dois campos: desc-gasto e desc-pct
+          const gasto = db.obj['desc-gasto'];
+          const pct   = db.obj['desc-pct'];
+          const elG = document.getElementById(`oval-desc-gasto-${cid}`);
+          const elP = document.getElementById(`oval-desc-pct-${cid}`);
+          if (elG && gasto !== undefined) { elG.value = fmtBRL(gasto); }
+          if (elP && pct !== undefined)   { elP.value = pct+'%'; }
+        } else if (p.tipo === 'pts-gasto') {
+          const elV = document.getElementById(`oval-pts-gasto-${cid}`);
+          const elM = document.getElementById(`oval-pts-gasto-moeda-${cid}`);
+          if (elV) elV.value = val;
+          if (elM && db.obj['pts-gasto-moeda']) elM.value = db.obj['pts-gasto-moeda'];
+        } else {
+          const el = document.getElementById(`oval-${p.id}-${cid}`);
+          if (el) {
+            if (p.unit === '%') el.value = val+'%';
+            else if (p.unit === 'R$/mil' || p.unit === 'R$') el.value = fmtBRL(val);
+            else el.value = val;
+          }
+        }
+      });
+    });
+    syncAllInputs();
+  }
   const btn = document.getElementById('pf-btn-'+cid);
   if (btn) { btn.textContent = '✓ Aplicado!'; setTimeout(()=>{ btn.textContent = '▶ Aplicar'; }, 1500); }
 }
@@ -985,31 +1128,10 @@ function renderCards() {
         <span class="pf-label">🏷️ Bandeira</span>
         <select id="pf-bandeira-${c.id}">
           <option value="">— selecionar —</option>
-          <optgroup label="Visa">
-            <option value="visa-infinite"${c.bandeira==='visa-infinite'?' selected':''}>Visa Infinite</option>
-            <option value="visa-signature"${c.bandeira==='visa-signature'?' selected':''}>Visa Signature</option>
-            <option value="visa-platinum"${c.bandeira==='visa-platinum'?' selected':''}>Visa Platinum</option>
-            <option value="visa-gold"${c.bandeira==='visa-gold'?' selected':''}>Visa Gold</option>
-            <option value="visa-classic"${c.bandeira==='visa-classic'?' selected':''}>Visa Classic</option>
-          </optgroup>
-          <optgroup label="Mastercard">
-            <option value="mc-black"${c.bandeira==='mc-black'?' selected':''}>Mastercard Black</option>
-            <option value="mc-platinum"${c.bandeira==='mc-platinum'?' selected':''}>Mastercard Platinum</option>
-            <option value="mc-gold"${c.bandeira==='mc-gold'?' selected':''}>Mastercard Gold</option>
-            <option value="mc-standard"${c.bandeira==='mc-standard'?' selected':''}>Mastercard Standard</option>
-          </optgroup>
-          <optgroup label="American Express">
-            <option value="amex-platinum"${c.bandeira==='amex-platinum'?' selected':''}>Amex The Platinum</option>
-            <option value="amex-gold"${c.bandeira==='amex-gold'?' selected':''}>Amex Gold</option>
-            <option value="amex-green"${c.bandeira==='amex-green'?' selected':''}>Amex Green</option>
-          </optgroup>
-          <optgroup label="Elo">
-            <option value="elo-nanquim"${c.bandeira==='elo-nanquim'?' selected':''}>Elo Nanquim</option>
-            <option value="elo-grafite"${c.bandeira==='elo-grafite'?' selected':''}>Elo Grafite</option>
-            <option value="elo-classic"${c.bandeira==='elo-classic'?' selected':''}>Elo Classic</option>
-          </optgroup>
+          ${buildBandeiraOptions(c.bandeira)}
         </select>
         <button class="btn-prefill" id="pf-btn-${c.id}" onclick="prefillCard(${c.id})">▶ Aplicar</button>
+        <button title="Editar bandeira selecionada" onclick="editSelectedBandeira(${c.id})" style="background:none;border:none;color:var(--muted-foreground);cursor:pointer;padding:3px 6px;font-size:.85rem;border-radius:4px" onmouseover="this.style.color='var(--gold)'" onmouseout="this.style.color='var(--muted-foreground)'">✏️</button>
       </div>
     </div>
   `).join('');
@@ -1233,32 +1355,41 @@ function openSubjEdit(id) {
 }
 function closeSubjEdit() { document.getElementById('modal-subj-edit').classList.remove('open'); }
 
-function saveSubjItem() {
+async function saveSubjItem() {
   const name = document.getElementById('subj-edit-name').value.trim();
   const desc = document.getElementById('subj-edit-desc').value.trim();
   const imp  = document.getElementById('subj-edit-imp').value;
   if (!name) { alert('Informe o nome do benefício.'); return; }
+  let isNew = false;
   if (editingSubjId) {
     const s = subjItems.find(x=>x.id===editingSubjId);
     if (s) { s.name=name; s.desc=desc; s.importance=imp; }
     if (tmpSubjVals[editingSubjId]) tmpSubjVals[editingSubjId].importance = imp;
   } else {
+    isNew = true;
     const newId = 'custom-'+Date.now();
-    subjItems.push({ id:newId, name, desc, importance:imp });
+    const newItem = { id:newId, name, desc, importance:imp };
+    subjItems.push(newItem);
     tmpSubjVals[newId] = { importance:imp, hasParam:{}, rankings:{} };
     tmpCards.forEach(c => { tmpSubjVals[newId].hasParam[c.id]=false; tmpSubjVals[newId].rankings[c.id]=1; });
+    editingSubjId = newId;
   }
+  const item = subjItems.find(x=>x.id===editingSubjId);
   saveSubjItems();
   closeSubjEdit();
   renderSubjSections();
+  // Sincronizar com Supabase
+  try { await sbSaveSubjItem(item, isNew); } catch(e) { console.warn('Supabase subj save:', e); }
 }
 
-function deleteSubjItem(id) {
+async function deleteSubjItem(id) {
   if (!confirm('Excluir este benefício permanentemente?')) return;
   subjItems = subjItems.filter(x=>x.id!==id);
   delete tmpSubjVals[id];
   saveSubjItems();
   renderSubjSections();
+  // Sincronizar com Supabase
+  try { await sbDeleteSubjItem(id); } catch(e) { console.warn('Supabase subj delete:', e); }
 }
 
 /* ═══════════════════════════════════════════════════════
@@ -1978,6 +2109,98 @@ function escHtml(s) {
 }
 
 /* ═══════════════════════════════════════════════════════
+   GESTÃO DE BANDEIRAS
+═══════════════════════════════════════════════════════ */
+let editingBandeiraId = null;
+
+// Gera as <option> do select de bandeiras dinamicamente a partir do BANDEIRAS_DB
+function buildBandeiraOptions(selected) {
+  // Agrupar por prefixo (visa-, mc-, amex-, elo-, outros)
+  const groups = {};
+  const groupLabels = { 'visa':'Visa', 'mc':'Mastercard', 'amex':'American Express', 'elo':'Elo', 'outros':'Outros' };
+  Object.entries(BANDEIRAS_DB).forEach(([id, val]) => {
+    const prefix = id.split('-')[0];
+    const grp = ['visa','mc','amex','elo'].includes(prefix) ? prefix : 'outros';
+    if (!groups[grp]) groups[grp] = [];
+    groups[grp].push({ id, label: val.label });
+  });
+  let html = '';
+  ['visa','mc','amex','elo','outros'].forEach(grp => {
+    if (!groups[grp] || groups[grp].length === 0) return;
+    html += `<optgroup label="${groupLabels[grp]}">`;
+    groups[grp].forEach(b => {
+      html += `<option value="${b.id}"${selected===b.id?' selected':''}>${escHtml(b.label)}</option>`;
+    });
+    html += `</optgroup>`;
+  });
+  return html;
+}
+
+// Abre o modal de edição da bandeira selecionada no select do card
+function editSelectedBandeira(cardId) {
+  const sel = document.getElementById('pf-bandeira-'+cardId);
+  const id = sel ? sel.value : '';
+  openBandeiraEdit(id || null);
+}
+
+function openBandeiraEdit(id) {
+  editingBandeiraId = id || null;
+  const db = BANDEIRAS_DB[id] || null;
+  const modal = document.getElementById('modal-bandeira-edit');
+  document.getElementById('be-title').textContent = id ? `Editar: ${db ? db.label : id}` : 'Nova Bandeira';
+  document.getElementById('be-id').value    = id || '';
+  document.getElementById('be-label').value = db ? db.label : '';
+  document.getElementById('be-id').disabled = !!id; // não permite mudar o ID ao editar
+  document.getElementById('be-btn-delete').style.display = id ? '' : 'none'; // só mostra excluir ao editar
+  // Preencher checkboxes de subjetivos
+  const subjContainer = document.getElementById('be-subj-list');
+  subjContainer.innerHTML = subjItems.map(s => {
+    const checked = db && db.subj && db.subj[s.id] === true;
+    return `<label style="display:flex;align-items:center;gap:6px;font-size:.8rem;padding:3px 0;cursor:pointer">
+      <input type="checkbox" id="be-subj-${s.id}" ${checked?'checked':''}/> ${escHtml(s.name)}
+    </label>`;
+  }).join('');
+  // Preencher parâmetros objetivos (obj_params) como JSON editável
+  const objVal = db && db.obj ? JSON.stringify(db.obj, null, 2) : '{}';
+  document.getElementById('be-obj-json').value = objVal;
+  modal.classList.add('open');
+}
+
+function closeBandeiraEdit() { document.getElementById('modal-bandeira-edit').classList.remove('open'); }
+
+async function saveBandeira() {
+  const id    = document.getElementById('be-id').value.trim();
+  const label = document.getElementById('be-label').value.trim();
+  if (!id || !label) { alert('Informe o ID e o nome da bandeira.'); return; }
+  // Montar subj
+  const subj = {};
+  subjItems.forEach(s => { subj[s.id] = document.getElementById('be-subj-'+s.id)?.checked || false; });
+  // Montar obj
+  let obj = {};
+  try { obj = JSON.parse(document.getElementById('be-obj-json').value || '{}'); } catch(e) { alert('JSON de parâmetros objetivos inválido.'); return; }
+  // Atualizar BANDEIRAS_DB local
+  BANDEIRAS_DB[id] = { label, obj, subj };
+  closeBandeiraEdit();
+  // Re-renderizar selects de bandeira nos cards (se modal de comparação estiver aberto)
+  tmpCards.forEach(c => {
+    const sel = document.getElementById('pf-bandeira-'+c.id);
+    if (sel) {
+      const prev = sel.value;
+      sel.innerHTML = '<option value="">— selecionar —</option>' + buildBandeiraOptions(prev);
+    }
+  });
+  // Sincronizar com Supabase
+  try { await sbSaveBandeira(id, label, obj, subj); } catch(e) { console.warn('Supabase bandeira save:', e); }
+}
+
+async function deleteBandeira(id) {
+  if (!confirm(`Excluir a bandeira "${BANDEIRAS_DB[id]?.label || id}" permanentemente?`)) return;
+  delete BANDEIRAS_DB[id];
+  closeBandeiraEdit();
+  try { await sbDeleteBandeira(id); } catch(e) { console.warn('Supabase bandeira delete:', e); }
+}
+
+/* ═══════════════════════════════════════════════════════
    INIT
 ═══════════════════════════════════════════════════════ */
 OBJ_GROUPS.forEach(g => { tmpObjImps[g.id] = g.groupImp; });
@@ -1989,7 +2212,29 @@ document.getElementById('ctx-exterior').value = 'US$ 500,00';
 document.getElementById('ctx-bonif').value    = 'R$ 500,00';
 document.getElementById('ctx-dolar').value    = 'R$ 5,90';
 
-renderList();
+// Carregar dados do Supabase (subjetivos + bandeiras) e depois renderizar
+(async () => {
+  try {
+    // Seed inicial (só executa se as tabelas estiverem vazias)
+    await sbSeedBandeiras(BANDEIRAS_DB);
+    await sbSeedSubjItems(SUBJ_DEFAULT);
+    // Carregar subjetivos
+    const sbSubj = await sbLoadSubjItems();
+    if (sbSubj && sbSubj.length > 0) {
+      subjItems = sbSubj;
+      localStorage.setItem('hvsf_cartoes_subj_v2', JSON.stringify(subjItems));
+    }
+    // Carregar bandeiras
+    const sbBand = await sbLoadBandeiras();
+    if (sbBand) {
+      Object.assign(BANDEIRAS_DB, sbBand);
+    }
+  } catch(e) { console.warn('Supabase init:', e); }
+  // Reinicializar tmpSubjVals com os itens carregados
+  subjItems.forEach(s => { tmpSubjVals[s.id] = { importance:s.importance, hasParam:{}, rankings:{} }; });
+  renderList();
+})();
+
 fetchDolar().catch(()=>{
   document.getElementById('ctx-dolar-badge').innerHTML = `<span style="font-size:.78rem;color:var(--muted-foreground)">Cotação manual</span>`;
 });
