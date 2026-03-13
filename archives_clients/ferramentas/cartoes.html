@@ -350,42 +350,68 @@
     letter-spacing: .06em; color: var(--gold); margin-bottom: 12px;
   }
   .balanco-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    display: flex;
+    flex-wrap: wrap;
     gap: 12px;
   }
   .balanco-card {
     background: var(--card); border: 1px solid var(--border);
     border-radius: 8px; padding: 14px 16px;
-    min-width: 0; /* impede overflow */
+    flex: 1 1 0;
+    min-width: 0;
+    overflow: hidden;
+    box-sizing: border-box;
   }
   .balanco-card.winner { border-color: var(--gold); background: rgba(212,175,55,.07); }
   .balanco-card .bc-name {
-    font-weight: 700; font-size: .88rem; margin-bottom: 10px;
-    color: var(--foreground); word-break: break-word;
+    font-weight: 700; font-size: clamp(.72rem, 1.5vw, .88rem); margin-bottom: 10px;
+    color: var(--foreground); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
     border-bottom: 1px solid var(--border); padding-bottom: 6px;
   }
   .balanco-card .bc-row {
     display: flex; justify-content: space-between; align-items: baseline;
-    font-size: .78rem; margin-bottom: 4px; color: var(--muted-foreground);
-    gap: 8px;
+    font-size: clamp(.62rem, 1.2vw, .78rem); margin-bottom: 4px; color: var(--muted-foreground);
+    gap: 4px; overflow: hidden;
   }
-  .balanco-card .bc-row span:first-child { flex: 1; white-space: nowrap; }
-  .balanco-card .bc-row span:last-child  { font-weight: 600; white-space: nowrap; text-align: right; }
+  .balanco-card .bc-row span:first-child {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .balanco-card .bc-row span:last-child  {
+    font-weight: 600;
+    white-space: nowrap;
+    text-align: right;
+    flex-shrink: 0;
+  }
   .balanco-card .bc-row.positivo { color: var(--green-lt); }
   .balanco-card .bc-row.negativo { color: var(--red-lt); }
   .balanco-card .bc-divider { border: none; border-top: 1px solid var(--border); margin: 7px 0; }
   .balanco-card .bc-liquido {
     display: flex; justify-content: space-between; align-items: center;
-    font-size: .92rem; font-weight: 800; margin-top: 6px; gap: 8px;
+    font-size: clamp(.72rem, 1.4vw, .92rem); font-weight: 800; margin-top: 6px; gap: 4px;
+    overflow: hidden;
   }
-  .balanco-card .bc-liquido span:first-child { white-space: nowrap; }
-  .balanco-card .bc-liquido span:last-child  { white-space: nowrap; text-align: right; }
+  .balanco-card .bc-liquido span:first-child {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+  .balanco-card .bc-liquido span:last-child  {
+    white-space: nowrap;
+    text-align: right;
+    flex-shrink: 0;
+  }
   .balanco-card .bc-liquido.positivo { color: var(--green-lt); }
   .balanco-card .bc-liquido.negativo { color: var(--red-lt); }
   .balanco-card .bc-subtitulo {
-    font-size: .65rem; font-weight: 700; text-transform: uppercase;
+    font-size: clamp(.58rem, 1vw, .65rem); font-weight: 700; text-transform: uppercase;
     letter-spacing: .04em; color: var(--muted-foreground); margin: 8px 0 4px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
 
   /* ── MEMÓRIA ── */
