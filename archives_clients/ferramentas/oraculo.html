@@ -2336,8 +2336,16 @@
 
             goals.filter(g => g.type === 'spend' && g.financiamento && g.financiamento.valueType === 'entrada').forEach(g => {
                 const fin = g.financiamento;
-                const entrada = g.value; // valor do objetivo = entrada
-                const totalBem = fin.totalValue || entrada;
+                const entradaOriginal = g.value; // valor do objetivo = entrada (valor nominal)
+                // Se inflationAdjust está marcado, o preço do bem sobe com a inflação até a aquisição
+                // O fator de inflação é calculado com base no prazo até a aquisição
+                const firstOccForInflation = expandedGoals.find(eg => eg.id === g.id || eg.originalId === g.id);
+                const aquisicaoMesForInflation = firstOccForInflation ? firstOccForInflation.monthDue : (g.timeUnit === 'years' ? g.time * 12 : g.time);
+                const yearsToAcquisition = (aquisicaoMesForInflation - 1) / 12;
+                const inflFactorAtAcq = g.inflationAdjust ? Math.pow(1 + inflationRateAnnual, yearsToAcquisition) : 1;
+                const entrada = entradaOriginal * inflFactorAtAcq; // entrada reajustada pela inflação
+                const totalBemOriginal = fin.totalValue || entradaOriginal;
+                const totalBem = totalBemOriginal * inflFactorAtAcq; // valor total reajustado pela inflação
                 const diferenca = Math.max(0, totalBem - entrada);
 
                 // Mês de aquisição do bem (mês em que o objetivo será executado)
@@ -2560,10 +2568,13 @@
                 netBalanceAvailable = balanceAfterEarnings - currentTaxDue;
 
                 // 7. Physical Assets Appreciation/Depreciation
-                // Apply annual rate monthly
+                // Aplica valorização ANUAL apenas no mês de aniversário da aquisição (1x por ano)
                 acquiredAssets.forEach(asset => {
-                    let monthlyAppreciation = Math.pow(1 + asset.appreciationRate, 1/12) - 1;
-                    asset.currentValue *= (1 + monthlyAppreciation);
+                    const monthsSinceAcq = m - asset.acquisitionMonth;
+                    // Reajustar apenas no aniversário: 12, 24, 36... meses após a aquisição
+                    if (monthsSinceAcq > 0 && monthsSinceAcq % 12 === 0 && asset.appreciationRate !== 0) {
+                        asset.currentValue *= (1 + asset.appreciationRate);
+                    }
                 });
                 physicalWealth = acquiredAssets.reduce((sum, a) => sum + a.currentValue, 0);
                 if (physicalWealth > 0) hasPhysicalAssets = true;
@@ -2655,13 +2666,21 @@
                                 // Se há financiamento com valor total do bem, usar totalValue como base do patrimônio físico
                                 // O g.currentValue é apenas a entrada (saída de caixa), não o valor total do bem
                                 const fin = g.financiamento;
-                                const physicalBaseValue = (fin && fin.valueType === 'entrada' && fin.totalValue > 0)
-                                    ? fin.totalValue  // Valor total do bem (ex: R$ 750.000)
-                                    : g.currentValue; // Sem financiamento: o valor do objetivo é o valor do bem
+                                // Aplicar reajuste de inflação ao totalValue se inflationAdjust estiver marcado
+                                // A proporção é a mesma: totalValue / originalValue = g.currentValue / g.value
+                                // Portanto: totalValueAjustado = totalValue * (g.currentValue / g.value)
+                                let physicalBaseValue;
+                                if (fin && fin.valueType === 'entrada' && fin.totalValue > 0) {
+                                    const inflationFactor = g.inflationAdjust && g.value > 0 ? g.currentValue / g.value : 1;
+                                    physicalBaseValue = fin.totalValue * inflationFactor; // Valor total reajustado pela inflação
+                                } else {
+                                    physicalBaseValue = g.currentValue; // Sem financiamento: o valor do objetivo é o valor do bem
+                                }
                                 acquiredAssets.push({
                                     name: g.name,
                                     currentValue: physicalBaseValue,
-                                    appreciationRate: g.appreciationRate
+                                    appreciationRate: g.appreciationRate,
+                                    acquisitionMonth: m  // Mês de aquisição para controle do aniversário
                                 });
                                 goalsOutput.push(`<span class="val-positive">🏠 ${g.name} (Adquirido) - ${formatBRL(physicalBaseValue)}</span>`);
                             } else {
