@@ -1330,7 +1330,7 @@ function renderObjSections() {
       // Label extra para sub-parâmetros especiais
       let extraLabel = '';
       if (isIsentFatura)  extraLabel = '<br><span class="text-dim" style="font-size:.68rem">Se atingido, anuidade = R$ 0</span>';
-      if (isIsentInvest)  extraLabel = '<br><span class="text-dim" style="font-size:.68rem">Valor investido na instituição que isenta</span>';
+      if (isIsentInvest)  extraLabel = '<br><span class="text-dim" style="font-size:.68rem">Valor investido na instituição que isenta. Marque ✓ se o cliente já possui.</span>';
       if (isDescCombo)    extraLabel = '<br><span class="text-dim" style="font-size:.68rem">Gasto mín. (R$) + desconto (%)</span>';
       if (isPtsExterior)  extraLabel = '<br><span class="text-dim" style="font-size:.68rem">Pontos ganhos por US$1 gasto no exterior</span>';
       html += `<tr>
@@ -1378,6 +1378,23 @@ function renderObjSections() {
                   onblur="fmtObjInput(this,'desc-pct',${c.id})"
                   style="width:60px;min-width:0"/>
               </div>
+            </td>`;
+          }
+          if (isIsentInvest) {
+            const possuiChecked = c.isentInvestPossui ? 'checked' : '';
+            const possuiStyle = c.isentInvestPossui ? 'color:var(--gold);font-weight:700' : 'color:var(--muted-foreground)';
+            return `<td class="td-val">
+              <input type="text" value="${dispVal}" placeholder="${ph}"
+                id="oval-${param.id}-${c.id}"
+                data-tipo="moeda"
+                onblur="fmtObjInput(this,'${param.id}',${c.id})"
+                oninput=""/>
+              <label style="display:flex;align-items:center;gap:5px;margin-top:5px;cursor:pointer;font-size:.72rem;${possuiStyle}">
+                <input type="checkbox" id="isent-invest-possui-${c.id}" ${possuiChecked}
+                  style="accent-color:var(--gold);cursor:pointer"
+                  onchange="tmpCards.find(x=>x.id===${c.id}).isentInvestPossui=this.checked;this.closest('label').style.color=this.checked?'var(--gold)':'var(--muted-foreground)';this.closest('label').style.fontWeight=this.checked?'700':'400'"/>
+                Cliente possui
+              </label>
             </td>`;
           }
           return `<td class="td-val"><input type="text" value="${dispVal}" placeholder="${ph}"
@@ -1523,6 +1540,9 @@ function syncAllInputs() {
     }
     const pfSel = document.getElementById('pf-bandeira-'+c.id);
     if (pfSel) c.bandeira = pfSel.value;
+    // Salvar estado do checkbox de investimento mínimo
+    const isentInvestEl = document.getElementById('isent-invest-possui-'+c.id);
+    if (isentInvestEl) c.isentInvestPossui = isentInvestEl.checked;
   });
   OBJ_GROUPS.forEach(g => {
     // Lê a importância do grupo (select do grupo)
@@ -1766,19 +1786,30 @@ function calcResult(ctx) {
   // ── ANUIDADE ──
   // Calcula a anuidade efetiva de cada cartão (após desconto/isenção)
   const anuidadesEfetivas = {};
+  const anuidMotivo = {}; // motivo da isenção para exibir no detalhe
   tmpCards.forEach(c => {
     const anuidBruta = c.anuidade_mensal;
-    const isentFaturaV = (tmpObjVals['isent-fatura']||{})[c.id] || 0;
-    const descGastoV   = (tmpObjVals['desc-gasto']||{})[c.id]   || 0;
-    const descPctV     = (tmpObjVals['desc-pct']||{})[c.id]     || 0;
+    const isentFaturaV  = (tmpObjVals['isent-fatura']||{})[c.id] || 0;
+    const isentInvestV  = (tmpObjVals['isent-invest']||{})[c.id] || 0;
+    const descGastoV    = (tmpObjVals['desc-gasto']||{})[c.id]   || 0;
+    const descPctV      = (tmpObjVals['desc-pct']||{})[c.id]     || 0;
+    const possuiInvest  = !!c.isentInvestPossui;
     let anuidEfetiva = anuidBruta;
-    // Isenção total por fatura tem prioridade
-    if (isentFaturaV > 0 && ctx.nacional >= isentFaturaV) {
+    let motivo = '';
+    // Isenção por investimento mínimo (cliente marcou que possui)
+    if (isentInvestV > 0 && possuiInvest) {
       anuidEfetiva = 0;
+      motivo = `✅ Isento invest. (${fmtBRL(isentInvestV)})`;
+    }
+    // Isenção total por fatura tem prioridade sobre desconto
+    else if (isentFaturaV > 0 && ctx.nacional >= isentFaturaV) {
+      anuidEfetiva = 0;
+      motivo = `✅ Isento fatura (${fmtBRL(isentFaturaV)})`;
     } else if (descPctV > 0 && (descGastoV === 0 || ctx.nacional >= descGastoV)) {
       anuidEfetiva = anuidBruta * (1 - descPctV/100);
     }
     anuidadesEfetivas[c.id] = anuidEfetiva;
+    anuidMotivo[c.id] = motivo;
   });
   const maxAnuid = Math.max(...Object.values(anuidadesEfetivas));
   const anuidW = impWeight(tmpAnuidImp);
@@ -1791,10 +1822,11 @@ function calcResult(ctx) {
       const norm = maxAnuid > 0 ? (maxAnuid - a) / maxAnuid : 1;
       const score = norm * Math.abs(anuidW) * 10;
       scores[c.id] += score;
+      const motivoStr = anuidMotivo[c.id] ? ` | ${anuidMotivo[c.id]}` : '';
       const detalheEfetiva = a !== aBruta ? ` (efetiva: ${fmtBRL(a)}/mês)` : '';
       perProduct[c.id] = {
         score,
-        detail: `Bruta: ${fmtBRL(aBruta)}/mês${detalheEfetiva}`,
+        detail: `Bruta: ${fmtBRL(aBruta)}/mês${detalheEfetiva}${motivoStr}`,
         formula: `((${fmtN(maxAnuid)}-${fmtN(a)})/${fmtN(maxAnuid)}) × ${Math.abs(anuidW)} × 10 = ${score.toFixed(2)}`,
         ret: -a
       };
