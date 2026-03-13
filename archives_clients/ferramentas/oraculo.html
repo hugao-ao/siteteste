@@ -2336,16 +2336,11 @@
 
             goals.filter(g => g.type === 'spend' && g.financiamento && g.financiamento.valueType === 'entrada').forEach(g => {
                 const fin = g.financiamento;
-                const entradaOriginal = g.value; // valor do objetivo = entrada (valor nominal)
-                // Se inflationAdjust está marcado, o preço do bem sobe com a inflação até a aquisição
-                // O fator de inflação é calculado com base no prazo até a aquisição
-                const firstOccForInflation = expandedGoals.find(eg => eg.id === g.id || eg.originalId === g.id);
-                const aquisicaoMesForInflation = firstOccForInflation ? firstOccForInflation.monthDue : (g.timeUnit === 'years' ? g.time * 12 : g.time);
-                const yearsToAcquisition = (aquisicaoMesForInflation - 1) / 12;
-                const inflFactorAtAcq = g.inflationAdjust ? Math.pow(1 + inflationRateAnnual, yearsToAcquisition) : 1;
-                const entrada = entradaOriginal * inflFactorAtAcq; // entrada reajustada pela inflação
-                const totalBemOriginal = fin.totalValue || entradaOriginal;
-                const totalBem = totalBemOriginal * inflFactorAtAcq; // valor total reajustado pela inflação
+                // Os valores informados pelo usuário (g.value = entrada, fin.totalValue = valor total do bem)
+                // já são os valores estimados no momento da compra — NÃO reajustar pela inflação aqui.
+                // O reajuste da entrada para saída de caixa já é feito pelo loop principal via g.currentValue.
+                const entrada = g.value; // entrada nominal informada pelo usuário (valor no momento da compra)
+                const totalBem = fin.totalValue || entrada; // valor total do bem informado pelo usuário
                 const diferenca = Math.max(0, totalBem - entrada);
 
                 // Mês de aquisição do bem (mês em que o objetivo será executado)
