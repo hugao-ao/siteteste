@@ -727,14 +727,14 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 async function sbLoadSubjItems() {
   const { data, error } = await sb.from('cartoes_subj_items').select('*').order('ordem', { ascending: true });
   if (error || !data || data.length === 0) return null;
-  return data.map(r => ({ id: r.id, name: r.name, desc: r.desc, importance: r.importance }));
+  return data.map(r => ({ id: r.id, name: r.label, desc: r.desc || '', importance: r.importance || 'imp' }));
 }
 async function sbSaveSubjItem(item, isNew) {
   if (isNew) {
     const maxOrdem = subjItems.length;
-    await sb.from('cartoes_subj_items').insert({ id: item.id, name: item.name, desc: item.desc || '', importance: item.importance, ordem: maxOrdem });
+    await sb.from('cartoes_subj_items').insert({ label: item.name, ordem: maxOrdem });
   } else {
-    await sb.from('cartoes_subj_items').update({ name: item.name, desc: item.desc || '', importance: item.importance }).eq('id', item.id);
+    await sb.from('cartoes_subj_items').update({ label: item.name }).eq('id', item.id);
   }
 }
 async function sbDeleteSubjItem(id) {
@@ -748,20 +748,38 @@ async function sbReorderSubjItems() {
 
 // ── Bandeiras ──
 async function sbLoadBandeiras() {
-  const { data, error } = await sb.from('cartoes_bandeiras').select('*');
+  const { data, error } = await sb.from('cartoes_bandeiras').select('*').order('ordem', { ascending: true });
   if (error || !data || data.length === 0) return null;
   const db = {};
   data.forEach(r => {
-    db[r.id] = { label: r.label, obj: r.obj_params || {}, subj: r.subj_params || {} };
+    // subj_defaults é array de labels; converter para {label: true}
+    const subjArr = Array.isArray(r.subj_defaults) ? r.subj_defaults : [];
+    const subjByLabel = {};
+    subjArr.forEach(lbl => { subjByLabel[lbl] = true; });
+    db[r.id] = {
+      label: r.label,
+      bandeira: r.bandeira || '',
+      nivel: r.nivel || '',
+      obj: r.obj_defaults || {},
+      subjLabels: subjArr,   // array de labels para match por nome
+      subj: subjByLabel      // {label: true} para compatibilidade
+    };
   });
   return db;
 }
 async function sbSaveBandeira(id, label, obj, subj) {
+  // subj pode ser {label: bool} ou array de labels; normalizar para array de labels
+  let subjArr;
+  if (Array.isArray(subj)) {
+    subjArr = subj;
+  } else {
+    subjArr = Object.entries(subj).filter(([,v])=>v===true).map(([k])=>k);
+  }
   const { data: existing } = await sb.from('cartoes_bandeiras').select('id').eq('id', id).maybeSingle();
   if (existing) {
-    await sb.from('cartoes_bandeiras').update({ label, obj_params: obj, subj_params: subj }).eq('id', id);
+    await sb.from('cartoes_bandeiras').update({ label, obj_defaults: obj, subj_defaults: subjArr }).eq('id', id);
   } else {
-    await sb.from('cartoes_bandeiras').insert({ id, label, obj_params: obj, subj_params: subj });
+    await sb.from('cartoes_bandeiras').insert({ label, obj_defaults: obj, subj_defaults: subjArr });
   }
 }
 async function sbDeleteBandeira(id) {
@@ -773,7 +791,8 @@ async function sbSeedBandeiras(localDb) {
   const { data } = await sb.from('cartoes_bandeiras').select('id').limit(1);
   if (data && data.length > 0) return; // já tem dados
   for (const [id, val] of Object.entries(localDb)) {
-    await sb.from('cartoes_bandeiras').insert({ id, label: val.label, obj_params: val.obj || {}, subj_params: val.subj || {} });
+    const subjArr = val.subj ? Object.entries(val.subj).filter(([,v])=>v===true).map(([k])=>k) : [];
+    await sb.from('cartoes_bandeiras').insert({ label: val.label, obj_defaults: val.obj || {}, subj_defaults: subjArr });
   }
 }
 
@@ -783,7 +802,7 @@ async function sbSeedSubjItems(defaults) {
   if (data && data.length > 0) return; // já tem dados
   for (let i = 0; i < defaults.length; i++) {
     const s = defaults[i];
-    await sb.from('cartoes_subj_items').insert({ id: s.id, name: s.name, desc: s.desc || '', importance: s.importance, ordem: i });
+    await sb.from('cartoes_subj_items').insert({ label: s.name, ordem: i });
   }
 }
 
@@ -1057,9 +1076,13 @@ function prefillCard(cid) {
   const c = tmpCards.find(x=>x.id===cid);
   if (c) c.bandeira = sel.value;
   // Pré-preencher subjetivos
+  // db.subjLabels é array de labels (nomes) dos benefícios incluídos
+  // db.subj é {label: true} para compatibilidade
+  const subjLabelSet = new Set(db.subjLabels || Object.keys(db.subj || {}).filter(k => db.subj[k] === true));
   subjItems.forEach(s => {
     if (!tmpSubjVals[s.id]) tmpSubjVals[s.id] = { importance:s.importance, hasParam:{}, rankings:{} };
-    tmpSubjVals[s.id].hasParam[cid] = db.subj && db.subj[s.id] === true;
+    // Match por nome (s.name) já que o Supabase armazena labels
+    tmpSubjVals[s.id].hasParam[cid] = subjLabelSet.has(s.name);
   });
   renderSubjSections();
   // Pré-preencher objetivos (se db.obj estiver definido)
@@ -2115,19 +2138,36 @@ let editingBandeiraId = null;
 
 // Gera as <option> do select de bandeiras dinamicamente a partir do BANDEIRAS_DB
 function buildBandeiraOptions(selected) {
-  // Agrupar por prefixo (visa-, mc-, amex-, elo-, outros)
+  // Agrupar pelo campo bandeira (Visa, Mastercard, American Express, Elo, etc.)
   const groups = {};
-  const groupLabels = { 'visa':'Visa', 'mc':'Mastercard', 'amex':'American Express', 'elo':'Elo', 'outros':'Outros' };
+  const groupOrder = [];
   Object.entries(BANDEIRAS_DB).forEach(([id, val]) => {
-    const prefix = id.split('-')[0];
-    const grp = ['visa','mc','amex','elo'].includes(prefix) ? prefix : 'outros';
-    if (!groups[grp]) groups[grp] = [];
+    // Usar campo bandeira se disponível, senão tentar inferir pelo label
+    let grp = val.bandeira || '';
+    if (!grp) {
+      const lbl = (val.label || '').toLowerCase();
+      if (lbl.startsWith('visa')) grp = 'Visa';
+      else if (lbl.startsWith('mastercard') || lbl.startsWith('mc')) grp = 'Mastercard';
+      else if (lbl.startsWith('amex') || lbl.startsWith('american')) grp = 'American Express';
+      else if (lbl.startsWith('elo')) grp = 'Elo';
+      else grp = 'Outros';
+    }
+    if (!groups[grp]) { groups[grp] = []; groupOrder.push(grp); }
     groups[grp].push({ id, label: val.label });
   });
+  // Ordenar grupos: Visa, Mastercard, American Express, Elo, depois outros
+  const preferred = ['Visa','Mastercard','American Express','Elo'];
+  const sortedGroups = [
+    ...preferred.filter(g => groups[g]),
+    ...groupOrder.filter(g => !preferred.includes(g) && groups[g])
+  ];
+  // Remover duplicatas mantendo a ordem
+  const seen = new Set();
+  const uniqueGroups = sortedGroups.filter(g => { if (seen.has(g)) return false; seen.add(g); return true; });
   let html = '';
-  ['visa','mc','amex','elo','outros'].forEach(grp => {
+  uniqueGroups.forEach(grp => {
     if (!groups[grp] || groups[grp].length === 0) return;
-    html += `<optgroup label="${groupLabels[grp]}">`;
+    html += `<optgroup label="${escHtml(grp)}">`;
     groups[grp].forEach(b => {
       html += `<option value="${b.id}"${selected===b.id?' selected':''}>${escHtml(b.label)}</option>`;
     });
@@ -2153,9 +2193,11 @@ function openBandeiraEdit(id) {
   document.getElementById('be-id').disabled = !!id; // não permite mudar o ID ao editar
   document.getElementById('be-btn-delete').style.display = id ? '' : 'none'; // só mostra excluir ao editar
   // Preencher checkboxes de subjetivos
+  // Match por nome (label) já que o Supabase armazena labels no array subj_defaults
+  const dbSubjLabels = new Set(db && db.subjLabels ? db.subjLabels : (db && db.subj ? Object.keys(db.subj).filter(k => db.subj[k] === true) : []));
   const subjContainer = document.getElementById('be-subj-list');
   subjContainer.innerHTML = subjItems.map(s => {
-    const checked = db && db.subj && db.subj[s.id] === true;
+    const checked = dbSubjLabels.has(s.name);
     return `<label style="display:flex;align-items:center;gap:6px;font-size:.8rem;padding:3px 0;cursor:pointer">
       <input type="checkbox" id="be-subj-${s.id}" ${checked?'checked':''}/> ${escHtml(s.name)}
     </label>`;
@@ -2172,14 +2214,17 @@ async function saveBandeira() {
   const id    = document.getElementById('be-id').value.trim();
   const label = document.getElementById('be-label').value.trim();
   if (!id || !label) { alert('Informe o ID e o nome da bandeira.'); return; }
-  // Montar subj
-  const subj = {};
-  subjItems.forEach(s => { subj[s.id] = document.getElementById('be-subj-'+s.id)?.checked || false; });
+  // Montar subj como array de labels (nomes) para compatibilidade com Supabase
+  const subjLabels = [];
+  subjItems.forEach(s => { if (document.getElementById('be-subj-'+s.id)?.checked) subjLabels.push(s.name); });
+  const subjByLabel = {};
+  subjLabels.forEach(lbl => { subjByLabel[lbl] = true; });
   // Montar obj
   let obj = {};
   try { obj = JSON.parse(document.getElementById('be-obj-json').value || '{}'); } catch(e) { alert('JSON de parâmetros objetivos inválido.'); return; }
   // Atualizar BANDEIRAS_DB local
-  BANDEIRAS_DB[id] = { label, obj, subj };
+  const existingEntry = BANDEIRAS_DB[id] || {};
+  BANDEIRAS_DB[id] = { label, bandeira: existingEntry.bandeira || '', nivel: existingEntry.nivel || '', obj, subjLabels, subj: subjByLabel };
   closeBandeiraEdit();
   // Re-renderizar selects de bandeira nos cards (se modal de comparação estiver aberto)
   tmpCards.forEach(c => {
@@ -2190,7 +2235,7 @@ async function saveBandeira() {
     }
   });
   // Sincronizar com Supabase
-  try { await sbSaveBandeira(id, label, obj, subj); } catch(e) { console.warn('Supabase bandeira save:', e); }
+  try { await sbSaveBandeira(id, label, obj, subjLabels); } catch(e) { console.warn('Supabase bandeira save:', e); }
 }
 
 async function deleteBandeira(id) {
@@ -2224,9 +2269,11 @@ document.getElementById('ctx-dolar').value    = 'R$ 5,90';
       subjItems = sbSubj;
       localStorage.setItem('hvsf_cartoes_subj_v2', JSON.stringify(subjItems));
     }
-    // Carregar bandeiras
+    // Carregar bandeiras do Supabase (substitui o BANDEIRAS_DB local completamente)
     const sbBand = await sbLoadBandeiras();
-    if (sbBand) {
+    if (sbBand && Object.keys(sbBand).length > 0) {
+      // Limpar o DB local e substituir pelos dados do Supabase
+      Object.keys(BANDEIRAS_DB).forEach(k => delete BANDEIRAS_DB[k]);
       Object.assign(BANDEIRAS_DB, sbBand);
     }
   } catch(e) { console.warn('Supabase init:', e); }
