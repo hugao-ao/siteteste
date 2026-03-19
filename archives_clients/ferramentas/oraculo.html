@@ -3435,16 +3435,16 @@
   right: 24px;
   z-index: 9998;
   width: 340px;
-  max-height: calc(100vh - 100px);
   display: flex;
   flex-direction: column;
   background: #0a1f10;
   border: 1px solid rgba(212,175,55,0.3);
   border-radius: 18px;
   box-shadow: 0 20px 60px rgba(0,0,0,0.6);
-  overflow: hidden;
+  overflow: visible;
   font-family: var(--font-sans);
   animation: wr-in 0.2s ease;
+  transition: width 0.2s, bottom 0.2s;
 }
 @keyframes wr-in { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:translateY(0); } }
 #wr-panel .wr-hdr {
@@ -3458,7 +3458,7 @@
   font-weight: 700;
   font-size: 13px;
 }
-#wr-panel .wr-body { padding: 16px; display: flex; flex-direction: column; gap: 12px; overflow-y: auto; flex: 1; }
+#wr-panel .wr-body { padding: 16px; display: flex; flex-direction: column; gap: 12px; }
 #wr-panel label { display: block; font-size: 11px; color: #A0B8A6; margin-bottom: 4px; font-weight: 500; }
 #wr-panel input[type="text"],
 #wr-panel input[type="number"] {
@@ -3570,7 +3570,45 @@
     var open = p.style.display === 'none' || p.style.display === '';
     p.style.display = open ? 'block' : 'none';
     l.textContent = open ? 'Fechar' : 'Quanto rende?';
+    if(open){ setTimeout(wrAjustar, 10); }
   };
+  function wrAjustar(){
+    var p = document.getElementById('wr-panel');
+    var btn = document.getElementById('wr-toggle-btn');
+    var vh = window.innerHeight;
+    var vw = window.innerWidth;
+    var btnH = btn.offsetHeight;
+    var btnBottom = 24;
+    var gap = 8;
+    var availH = vh - btnH - btnBottom - gap - 16;
+    p.style.width = '';
+    p.style.bottom = '';
+    p.style.right = '';
+    var panelH = p.scrollHeight;
+    if(panelH <= availH){
+      p.style.bottom = (btnH + btnBottom + gap) + 'px';
+      return;
+    }
+    // Precisa expandir: calcular largura necessaria para caber em availH
+    // Estrategia: aumentar largura gradualmente ate o conteudo caber
+    var maxW = Math.min(vw - 48, 700);
+    var step = 20;
+    var w = 340;
+    p.style.bottom = (btnH + btnBottom + gap) + 'px';
+    while(p.scrollHeight > availH && w < maxW){
+      w += step;
+      p.style.width = w + 'px';
+    }
+    // Se ainda nao cabe mesmo na largura maxima, centralizar verticalmente
+    if(p.scrollHeight > availH){
+      p.style.bottom = Math.max(8, Math.floor((vh - p.scrollHeight)/2)) + 'px';
+      p.style.right = Math.max(8, Math.floor((vw - w)/2)) + 'px';
+    }
+  }
+  window.addEventListener('resize', function(){
+    var p = document.getElementById('wr-panel');
+    if(p && p.style.display !== 'none'){ wrAjustar(); }
+  });
   window.wrTipo = function(t){
     tipo = t;
     document.getElementById('wr-baa').className = t==='aa' ? 'on' : '';
@@ -3621,6 +3659,7 @@
       var el = document.getElementById(ids[i]);
       if(real<0){ el.className='wr-v red'; } else { el.className='wr-v blue'; }
     }
+    setTimeout(wrAjustar, 10);
   };
 })();
 </script>
