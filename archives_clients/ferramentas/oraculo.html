@@ -92,7 +92,6 @@
             border-bottom: 1px solid #374151;
             padding-bottom: 2px;
             display: block;
-        }r-bottom: 1px solid rgba(255, 255, 255, 0.1);
         }
 
         .text-yellow { color: var(--primary-color); }
@@ -3497,8 +3496,7 @@
 .wr-rrow .wr-v.red   { color: #f87171; }
 .wr-stitle { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #A0B8A6; margin: 8px 0 4px; }
 #wr-empty { background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; padding: 12px; text-align: center; font-size: 11px; color: #A0B8A6; }
-.wr-foot { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; padding-top: 2px; }
-.wr-foot p { font-size: 10px; color: rgba(160,184,166,0.5); line-height: 1.4; }
+.wr-foot p { font-size: 10px; color: rgba(160,184,166,0.5); line-height: 1.4; padding-top: 2px; }
 </style>
 
 <button id="wr-toggle-btn" onclick="wrToggle()">
@@ -3555,7 +3553,7 @@
     </div>
     <div id="wr-empty">Preencha o valor e a taxa para ver os resultados em tempo real.</div>
     <div class="wr-foot">
-      <p>Imposto e inflacao sao opcionais.<br>Sem eles, apenas a rentabilidade bruta e exibida.</p>
+      <p>Imposto e inflacao sao opcionais. Sem eles, apenas a rentabilidade bruta e exibida.</p>
     </div>
   </div>
 </div>
@@ -3577,14 +3575,14 @@
     wrCalc();
   };
   window.wrFmt = function(el){
-    var raw = el.value.replace(/\D/g,'');
+    var raw = el.value.replace(/[^0-9]/g,'');
     if(!raw){ el.value=''; return; }
     var n = parseInt(raw,10)/100;
     el.value = n.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
   };
   function parseBR(s){
     if(!s) return 0;
-    return parseFloat(s.replace(/\./g,'').replace(',','.'))||0;
+    return parseFloat(s.replace(/[.]/g,'').replace(',','.'))||0;
   }
   function brl(v){
     return 'R$ '+v.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
