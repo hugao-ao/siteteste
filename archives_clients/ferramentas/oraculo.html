@@ -3430,14 +3430,15 @@
 }
 #wr-toggle-btn:hover { background: #e8c84a; transform: scale(1.05); }
 
+/* O painel usa font-size base em em — tudo escala junto */
 #wr-panel {
   position: fixed;
   bottom: 80px;
   right: 24px;
   z-index: 9998;
   width: 340px;
-  min-width: 260px;
-  min-height: 80px;
+  min-width: 200px;
+  min-height: 60px;
   background: #0a1f10;
   border: 1px solid rgba(212,175,55,0.3);
   border-radius: 18px;
@@ -3447,22 +3448,20 @@
   animation: wr-in 0.2s ease;
   display: flex;
   flex-direction: column;
+  /* font-size base: JS vai ajustar isso para escalar tudo */
+  font-size: 13px;
 }
 @keyframes wr-in { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:translateY(0); } }
 
-/* Alca de resize no canto superior esquerdo */
+/* Alca resize canto superior esquerdo */
 #wr-resize-handle {
   position: absolute;
-  top: 0;
-  left: 0;
-  width: 22px;
-  height: 22px;
+  top: 0; left: 0;
+  width: 1.8em; height: 1.8em;
   cursor: nw-resize;
   z-index: 10;
   border-radius: 18px 0 8px 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  display: flex; align-items: center; justify-content: center;
 }
 #wr-resize-handle svg { opacity: 0.35; transition: opacity 0.2s; transform: rotate(180deg); }
 #wr-resize-handle:hover svg { opacity: 0.9; }
@@ -3471,53 +3470,57 @@
 #wr-panel .wr-hdr {
   background: rgba(212,175,55,0.08);
   border-bottom: 1px solid rgba(212,175,55,0.15);
-  padding: 12px 16px 12px 28px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
+  padding: 0.9em 1.2em 0.9em 2.2em;
+  display: flex; align-items: center; gap: 0.6em;
   color: #D4AF37;
   font-weight: 700;
-  font-size: 13px;
+  font-size: 1em;
   flex-shrink: 0;
   border-radius: 18px 18px 0 0;
   position: relative;
 }
 
-/* Body com scroll */
+/* Body */
 #wr-panel .wr-body {
-  padding: 12px 14px;
+  padding: 0.9em 1em;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 0.7em;
   flex: 1;
   overflow-y: auto;
   box-sizing: border-box;
 }
 
-/* Inputs */
-#wr-panel label { display: block; font-size: 11px; color: #A0B8A6; margin-bottom: 3px; font-weight: 500; }
+/* Labels e inputs */
+#wr-panel label {
+  display: block;
+  font-size: 0.82em;
+  color: #A0B8A6;
+  margin-bottom: 0.25em;
+  font-weight: 500;
+}
 #wr-panel input[type="text"],
 #wr-panel input[type="number"] {
   width: 100%;
   background: rgba(255,255,255,0.04);
   border: 1px solid rgba(255,255,255,0.1);
-  border-radius: 8px;
-  padding: 6px 10px;
+  border-radius: 0.6em;
+  padding: 0.45em 0.75em;
   color: #F2E8C9;
-  font-size: 13px;
+  font-size: 0.95em;
   outline: none;
   font-family: var(--font-sans);
   box-sizing: border-box;
 }
 #wr-panel input:focus { border-color: rgba(212,175,55,0.5); }
 
-/* Linha com toggle */
-.wr-row { display: flex; gap: 8px; align-items: flex-end; }
+/* Toggle a.a / a.m */
+.wr-row { display: flex; gap: 0.6em; align-items: flex-end; }
 .wr-row > div:first-child { flex: 1; min-width: 0; }
-.wr-tg { display: flex; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; overflow: hidden; flex-shrink: 0; }
+.wr-tg { display: flex; border: 1px solid rgba(255,255,255,0.1); border-radius: 0.6em; overflow: hidden; flex-shrink: 0; }
 .wr-tg button {
-  padding: 6px 10px;
-  font-size: 11px;
+  padding: 0.45em 0.75em;
+  font-size: 0.82em;
   font-weight: 600;
   border: none;
   cursor: pointer;
@@ -3527,51 +3530,47 @@
 }
 .wr-tg button.on { background: #D4AF37; color: #021C0E; }
 
-/* Grid de resultados - 3 subcaixas lado a lado quando houver espaco */
+/* Resultados */
 #wr-result { display: none; }
-#wr-result.vis { display: flex; flex-direction: column; gap: 8px; }
+#wr-result.vis { display: flex; flex-direction: column; gap: 0.6em; }
 
-/* Subcaixas de rentabilidade */
-.wr-subbox {
-  border-radius: 10px;
-  padding: 10px 12px;
-  flex: 1;
-}
-.wr-subbox-bruta  { background: rgba(212,175,55,0.06);  border: 1px solid rgba(212,175,55,0.25); }
-.wr-subbox-liq    { background: rgba(74,222,128,0.05);  border: 1px solid rgba(74,222,128,0.2); }
-.wr-subbox-real   { background: rgba(96,165,250,0.05);  border: 1px solid rgba(96,165,250,0.2); }
+/* Subcaixas */
+.wr-subbox { border-radius: 0.75em; padding: 0.75em 0.9em; }
+.wr-subbox-bruta { background: rgba(212,175,55,0.06);  border: 1px solid rgba(212,175,55,0.25); }
+.wr-subbox-liq   { background: rgba(74,222,128,0.05);  border: 1px solid rgba(74,222,128,0.2); }
+.wr-subbox-real  { background: rgba(96,165,250,0.05);  border: 1px solid rgba(96,165,250,0.2); }
 .wr-subbox-real.negativo { background: rgba(248,113,113,0.05); border: 1px solid rgba(248,113,113,0.2); }
 
 .wr-stitle {
-  font-size: 10px;
+  font-size: 0.72em;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  margin-bottom: 6px;
+  margin-bottom: 0.5em;
 }
 .wr-stitle-bruta { color: #D4AF37; }
 .wr-stitle-liq   { color: #4ade80; }
 .wr-stitle-real  { color: #60a5fa; }
 .wr-stitle-real.negativo { color: #f87171; }
 
-.wr-rrow { display: flex; justify-content: space-between; align-items: center; padding: 2px 0; gap: 8px; }
-.wr-rrow .wr-lbl { font-size: 11px; color: #A0B8A6; white-space: nowrap; }
-.wr-rrow .wr-v   { font-size: 12px; font-weight: 600; color: #F2E8C9; text-align: right; }
-.wr-rrow .wr-v.gold  { color: #D4AF37; font-size: 14px; }
-.wr-rrow .wr-v.green { color: #4ade80; font-size: 14px; }
-.wr-rrow .wr-v.blue  { color: #60a5fa; font-size: 14px; }
-.wr-rrow .wr-v.red   { color: #f87171; font-size: 14px; }
+.wr-rrow { display: flex; justify-content: space-between; align-items: center; padding: 0.15em 0; gap: 0.5em; }
+.wr-rrow .wr-lbl { font-size: 0.82em; color: #A0B8A6; white-space: nowrap; }
+.wr-rrow .wr-v   { font-size: 0.88em; font-weight: 600; color: #F2E8C9; text-align: right; }
+.wr-rrow .wr-v.gold  { color: #D4AF37; font-size: 1.05em; }
+.wr-rrow .wr-v.green { color: #4ade80; font-size: 1.05em; }
+.wr-rrow .wr-v.blue  { color: #60a5fa; font-size: 1.05em; }
+.wr-rrow .wr-v.red   { color: #f87171; font-size: 1.05em; }
 
 #wr-empty {
   background: rgba(255,255,255,0.02);
   border: 1px solid rgba(255,255,255,0.05);
-  border-radius: 12px;
-  padding: 12px;
+  border-radius: 0.9em;
+  padding: 0.9em;
   text-align: center;
-  font-size: 11px;
+  font-size: 0.82em;
   color: #A0B8A6;
 }
-.wr-foot p { font-size: 10px; color: rgba(160,184,166,0.4); line-height: 1.4; }
+.wr-foot p { font-size: 0.72em; color: rgba(160,184,166,0.4); line-height: 1.4; }
 </style>
 
 <button id="wr-toggle-btn" onclick="wrToggle()">
@@ -3588,8 +3587,6 @@
     Calculadora de Rendimento
   </div>
   <div class="wr-body">
-
-    <!-- Campos de entrada -->
     <div>
       <label>Valor investido (R$)</label>
       <input type="text" id="wr-valor" placeholder="Ex: 100.000,00" oninput="wrFmt(this);wrCalc()">
@@ -3612,14 +3609,8 @@
       <label>Inflacao anual estimada (%) &mdash; IPCA etc. (opcional)</label>
       <input type="number" id="wr-inf" placeholder="Ex: 4.5" step="0.01" oninput="wrCalc()">
     </div>
-
-    <!-- Placeholder vazio -->
     <div id="wr-empty">Preencha o valor e a taxa para ver os resultados em tempo real.</div>
-
-    <!-- Resultados em subcaixas -->
     <div id="wr-result">
-
-      <!-- Bruta -->
       <div class="wr-subbox wr-subbox-bruta">
         <div class="wr-stitle wr-stitle-bruta">Rentabilidade Bruta</div>
         <div class="wr-rrow"><span class="wr-lbl">Rendimento mensal</span><span class="wr-v gold" id="wr-b-mes"></span></div>
@@ -3627,8 +3618,6 @@
         <div class="wr-rrow"><span class="wr-lbl">Taxa mensal equiv.</span><span class="wr-v" id="wr-b-tm"></span></div>
         <div class="wr-rrow"><span class="wr-lbl">Taxa anual equiv.</span><span class="wr-v" id="wr-b-ta"></span></div>
       </div>
-
-      <!-- Liquida -->
       <div class="wr-subbox wr-subbox-liq" id="wr-box-liq" style="display:none;">
         <div class="wr-stitle wr-stitle-liq">Rentabilidade L&iacute;quida (bruta &minus; impostos)</div>
         <div class="wr-rrow"><span class="wr-lbl">Rendimento mensal</span><span class="wr-v green" id="wr-l-mes"></span></div>
@@ -3636,8 +3625,6 @@
         <div class="wr-rrow"><span class="wr-lbl">Taxa mensal equiv.</span><span class="wr-v" id="wr-l-tm"></span></div>
         <div class="wr-rrow"><span class="wr-lbl">Taxa anual equiv.</span><span class="wr-v" id="wr-l-ta"></span></div>
       </div>
-
-      <!-- Real -->
       <div class="wr-subbox wr-subbox-real" id="wr-box-real" style="display:none;">
         <div class="wr-stitle wr-stitle-real" id="wr-title-real">Rentabilidade Real/&Uacute;til (l&iacute;quida &minus; infla&ccedil;&atilde;o)</div>
         <div class="wr-rrow"><span class="wr-lbl">Rendimento mensal</span><span class="wr-v blue" id="wr-r-mes"></span></div>
@@ -3645,9 +3632,7 @@
         <div class="wr-rrow"><span class="wr-lbl">Taxa mensal equiv.</span><span class="wr-v" id="wr-r-tm"></span></div>
         <div class="wr-rrow"><span class="wr-lbl">Taxa anual equiv.</span><span class="wr-v" id="wr-r-ta"></span></div>
       </div>
-
     </div>
-
     <div class="wr-foot">
       <p>Imposto e infla&ccedil;&atilde;o s&atilde;o opcionais. Sem eles, apenas a rentabilidade bruta &eacute; exibida.</p>
     </div>
@@ -3657,13 +3642,37 @@
 <script>
 (function(){
   var tipo = 'aa';
+  var panel = document.getElementById('wr-panel');
+
+  /* ── Escala automatica: ajusta font-size base do painel ── */
+  var BASE_W = 340;  /* largura de referencia */
+  var BASE_H = 480;  /* altura de referencia (com 3 subcaixas) */
+  var BASE_FS = 13;  /* font-size base de referencia em px */
+
+  function wrEscala(){
+    var w = panel.offsetWidth;
+    var h = panel.offsetHeight || panel.scrollHeight;
+    /* escala pela dimensao mais restritiva */
+    var scaleW = w / BASE_W;
+    var scaleH = h / BASE_H;
+    var scale  = Math.min(scaleW, scaleH);
+    /* limites: nao deixar menor que 8px nem maior que 18px */
+    var fs = Math.min(18, Math.max(8, BASE_FS * scale));
+    panel.style.fontSize = fs + 'px';
+  }
+
+  /* Observa mudancas de tamanho do painel */
+  if(window.ResizeObserver){
+    var ro = new ResizeObserver(function(){ wrEscala(); });
+    ro.observe(panel);
+  }
 
   window.wrToggle = function(){
-    var p = document.getElementById('wr-panel');
     var l = document.getElementById('wr-lbl');
-    var open = p.style.display === 'none' || p.style.display === '';
-    p.style.display = open ? 'flex' : 'none';
+    var open = panel.style.display === 'none' || panel.style.display === '';
+    panel.style.display = open ? 'flex' : 'none';
     l.textContent = open ? 'Fechar' : 'Quanto rende?';
+    if(open){ setTimeout(wrEscala, 10); }
   };
 
   window.wrTipo = function(t){
@@ -3712,7 +3721,7 @@
     if(!valor||!taxaRaw){
       res.className=''; emp.style.display='block';
       boxL.style.display='none'; boxR.style.display='none';
-      return;
+      setTimeout(wrEscala,10); return;
     }
     res.className='vis'; emp.style.display='none';
 
@@ -3722,39 +3731,30 @@
 
     fill('wr-b', valor, bruta);
 
-    // Liquida: so mostrar se imposto foi preenchido
-    if(imp > 0){
-      boxL.style.display='block';
-      fill('wr-l', valor, liq);
-    } else {
-      boxL.style.display='none';
-    }
+    if(imp > 0){ boxL.style.display='block'; fill('wr-l', valor, liq); }
+    else { boxL.style.display='none'; }
 
-    // Real: so mostrar se inflacao foi preenchida
     if(inf > 0){
-      boxR.style.display='block';
-      fill('wr-r', valor, real);
-      // Cor vermelha se negativa
+      boxR.style.display='block'; fill('wr-r', valor, real);
       var boxREl    = document.getElementById('wr-box-real');
       var titleReal = document.getElementById('wr-title-real');
       var vIds = ['wr-r-mes','wr-r-ano','wr-r-tm','wr-r-ta'];
       if(real < 0){
         boxREl.className    = 'wr-subbox wr-subbox-real negativo';
         titleReal.className = 'wr-stitle wr-stitle-real negativo';
-        for(var i=0;i<vIds.length;i++) document.getElementById(vIds[i]).className = 'wr-v red';
+        for(var i=0;i<vIds.length;i++) document.getElementById(vIds[i]).className='wr-v red';
       } else {
         boxREl.className    = 'wr-subbox wr-subbox-real';
         titleReal.className = 'wr-stitle wr-stitle-real';
-        for(var i=0;i<vIds.length;i++) document.getElementById(vIds[i]).className = (i<2) ? 'wr-v blue' : 'wr-v';
+        for(var i=0;i<vIds.length;i++) document.getElementById(vIds[i]).className=(i<2)?'wr-v blue':'wr-v';
       }
-    } else {
-      boxR.style.display='none';
-    }
+    } else { boxR.style.display='none'; }
+
+    setTimeout(wrEscala, 10);
   };
 
-  // ── Resize pelo canto superior esquerdo ──────────────────────────────
+  /* ── Resize pelo canto superior esquerdo ── */
   var handle = document.getElementById('wr-resize-handle');
-  var panel  = document.getElementById('wr-panel');
   var startX, startY, startW, startH, startRight, startBottom;
   var dragging = false;
 
@@ -3773,8 +3773,8 @@
 
   function onMove(cx, cy){
     if(!dragging) return;
-    var newW = Math.max(260, startW + (startX - cx));
-    var newH = Math.max(80,  startH + (startY - cy));
+    var newW = Math.max(200, startW + (startX - cx));
+    var newH = Math.max(60,  startH + (startY - cy));
     panel.style.width  = newW + 'px';
     panel.style.height = newH + 'px';
     panel.style.right  = startRight  + 'px';
