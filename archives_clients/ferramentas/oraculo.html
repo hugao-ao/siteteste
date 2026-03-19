@@ -3441,18 +3441,36 @@
   border: 1px solid rgba(212,175,55,0.3);
   border-radius: 18px;
   box-shadow: 0 20px 60px rgba(0,0,0,0.6);
-  overflow: auto;
-  resize: both;
+  overflow: hidden;
   font-family: var(--font-sans);
   animation: wr-in 0.2s ease;
   display: flex;
   flex-direction: column;
 }
 @keyframes wr-in { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:translateY(0); } }
+#wr-resize-handle {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 22px;
+  height: 22px;
+  cursor: nw-resize;
+  z-index: 10;
+  border-radius: 18px 0 8px 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+#wr-resize-handle svg {
+  opacity: 0.35;
+  transition: opacity 0.2s;
+  transform: rotate(180deg);
+}
+#wr-resize-handle:hover svg { opacity: 0.9; }
 #wr-panel .wr-hdr {
   background: rgba(212,175,55,0.08);
   border-bottom: 1px solid rgba(212,175,55,0.15);
-  padding: 12px 16px;
+  padding: 12px 16px 12px 28px;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -3461,6 +3479,7 @@
   font-size: 13px;
   flex-shrink: 0;
   border-radius: 18px 18px 0 0;
+  position: relative;
 }
 #wr-panel .wr-body { padding: 16px; display: flex; flex-direction: column; gap: 12px; flex: 1; overflow-y: auto; }
 #wr-panel label { display: block; font-size: 11px; color: #A0B8A6; margin-bottom: 4px; font-weight: 500; }
@@ -3514,6 +3533,9 @@
 
 <div id="wr-panel" style="display:none;">
   <div class="wr-hdr">
+    <div id="wr-resize-handle" title="Arraste para redimensionar">
+      <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#D4AF37" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
+    </div>
     <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
     Calculadora de Rendimento
   </div>
@@ -3569,6 +3591,7 @@
 <script>
 (function(){
   var tipo = 'aa';
+
   window.wrToggle = function(){
     var p = document.getElementById('wr-panel');
     var l = document.getElementById('wr-lbl');
@@ -3576,18 +3599,21 @@
     p.style.display = open ? 'flex' : 'none';
     l.textContent = open ? 'Fechar' : 'Quanto rende?';
   };
+
   window.wrTipo = function(t){
     tipo = t;
     document.getElementById('wr-baa').className = t==='aa' ? 'on' : '';
     document.getElementById('wr-bam').className = t==='am' ? 'on' : '';
     wrCalc();
   };
+
   window.wrFmt = function(el){
     var raw = el.value.replace(/[^0-9]/g,'');
     if(!raw){ el.value=''; return; }
     var n = parseInt(raw,10)/100;
     el.value = n.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
   };
+
   function parseBR(s){
     if(!s) return 0;
     return parseFloat(s.replace(/[.]/g,'').replace(',','.'))||0;
@@ -3606,6 +3632,7 @@
     document.getElementById(pre+'-tm').textContent  = pct(tm*100,4)+' a.m.';
     document.getElementById(pre+'-ta').textContent  = pct(taxaAnual*100,2)+' a.a.';
   }
+
   window.wrCalc = function(){
     var valor   = parseBR(document.getElementById('wr-valor').value);
     var taxaRaw = parseFloat((document.getElementById('wr-taxa').value||'0').replace(',','.'))||0;
@@ -3627,6 +3654,57 @@
       if(real<0){ el.className='wr-v red'; } else { el.className='wr-v blue'; }
     }
   };
+
+  // Resize pelo canto superior esquerdo
+  var handle = document.getElementById('wr-resize-handle');
+  var panel  = document.getElementById('wr-panel');
+  var startX, startY, startW, startH, startRight, startBottom;
+  var dragging = false;
+
+  function startDrag(cx, cy){
+    dragging = true;
+    startX = cx;
+    startY = cy;
+    startW = panel.offsetWidth;
+    startH = panel.offsetHeight;
+    var rect = panel.getBoundingClientRect();
+    startRight  = window.innerWidth  - rect.right;
+    startBottom = window.innerHeight - rect.bottom;
+    document.body.style.userSelect = 'none';
+  }
+
+  handle.addEventListener('mousedown', function(e){
+    e.preventDefault();
+    startDrag(e.clientX, e.clientY);
+  });
+
+  handle.addEventListener('touchstart', function(e){
+    e.preventDefault();
+    startDrag(e.touches[0].clientX, e.touches[0].clientY);
+  }, {passive: false});
+
+  function onMove(cx, cy){
+    if(!dragging) return;
+    var dx = startX - cx;
+    var dy = startY - cy;
+    var newW = Math.max(260, startW + dx);
+    var newH = Math.max(80,  startH + dy);
+    panel.style.width  = newW + 'px';
+    panel.style.height = newH + 'px';
+    panel.style.right  = startRight  + 'px';
+    panel.style.bottom = startBottom + 'px';
+  }
+
+  document.addEventListener('mousemove', function(e){ onMove(e.clientX, e.clientY); });
+  document.addEventListener('touchmove', function(e){ onMove(e.touches[0].clientX, e.touches[0].clientY); }, {passive: true});
+
+  function stopDrag(){
+    dragging = false;
+    document.body.style.userSelect = '';
+  }
+  document.addEventListener('mouseup', stopDrag);
+  document.addEventListener('touchend', stopDrag);
+
 })();
 </script>
 
