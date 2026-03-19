@@ -3405,6 +3405,452 @@
             html += `<div style="font-size: 0.8rem; color: #9ca3af; margin-top: 4px;">*Renda Financeira: Juros compostos (caixa). Ganho Físico: Valorização patrimonial (não é caixa imediato).</div>`;
 
             content.innerHTML = html;
+
+<!-- ============================================================
+     WIDGET "QUANTO RENDE?" — SITETESTE / oraculo.html
+     
+     INSTRUÇÕES DE INSTALAÇÃO:
+     Copie TODO o conteúdo abaixo e cole imediatamente antes de </body>
+     no arquivo archives_clients/ferramentas/oraculo.html
+     ============================================================ -->
+
+<!-- ── ESTILOS DO WIDGET ─────────────────────────────────────── -->
+<style>
+  /* Botão flutuante */
+  #wr-toggle-btn {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 20px;
+    border-radius: 999px;
+    background: #D4AF37;
+    color: #021C0E;
+    font-weight: 700;
+    font-size: 13px;
+    border: none;
+    cursor: pointer;
+    box-shadow: 0 8px 32px rgba(212,175,55,0.35);
+    transition: background 0.2s, transform 0.2s, box-shadow 0.2s;
+    font-family: var(--font-sans);
+  }
+  #wr-toggle-btn:hover {
+    background: #e8c84a;
+    transform: scale(1.05);
+    box-shadow: 0 12px 40px rgba(212,175,55,0.45);
+  }
+  #wr-toggle-btn svg { flex-shrink: 0; }
+
+  /* Painel */
+  #wr-panel {
+    position: fixed;
+    bottom: 80px;
+    right: 24px;
+    z-index: 9998;
+    width: 340px;
+    background: #0a1f10;
+    border: 1px solid rgba(212,175,55,0.3);
+    border-radius: 18px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.6), 0 0 0 1px rgba(212,175,55,0.08);
+    overflow: hidden;
+    font-family: var(--font-sans);
+    animation: wr-slide-in 0.2s ease;
+  }
+  @keyframes wr-slide-in {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* Header do painel */
+  #wr-panel .wr-header {
+    background: rgba(212,175,55,0.08);
+    border-bottom: 1px solid rgba(212,175,55,0.15);
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  #wr-panel .wr-header svg { color: #D4AF37; flex-shrink: 0; }
+  #wr-panel .wr-header span {
+    color: #D4AF37;
+    font-weight: 700;
+    font-size: 13px;
+  }
+
+  /* Corpo */
+  #wr-panel .wr-body { padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+
+  /* Labels */
+  #wr-panel label {
+    display: block;
+    font-size: 11px;
+    color: #A0B8A6;
+    margin-bottom: 4px;
+    font-weight: 500;
+  }
+
+  /* Inputs */
+  #wr-panel input[type="text"],
+  #wr-panel input[type="number"] {
+    width: 100%;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 8px;
+    padding: 7px 10px;
+    color: #F2E8C9;
+    font-size: 13px;
+    outline: none;
+    transition: border-color 0.2s;
+    font-family: var(--font-sans);
+  }
+  #wr-panel input:focus { border-color: rgba(212,175,55,0.5); }
+
+  /* Toggle a.a / a.m */
+  .wr-toggle-group {
+    display: flex;
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 8px;
+    overflow: hidden;
+    flex-shrink: 0;
+  }
+  .wr-toggle-group button {
+    padding: 7px 10px;
+    font-size: 11px;
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+    background: rgba(255,255,255,0.04);
+    color: #A0B8A6;
+    transition: background 0.15s, color 0.15s;
+    font-family: var(--font-sans);
+  }
+  .wr-toggle-group button.active {
+    background: #D4AF37;
+    color: #021C0E;
+  }
+
+  /* Linha com input + toggle */
+  .wr-input-row { display: flex; gap: 8px; align-items: flex-end; }
+  .wr-input-row > div:first-child { flex: 1; }
+
+  /* Separador */
+  .wr-sep { height: 1px; background: rgba(255,255,255,0.05); }
+
+  /* Caixa de resultado */
+  #wr-result {
+    background: rgba(212,175,55,0.04);
+    border: 1px solid rgba(212,175,55,0.18);
+    border-radius: 12px;
+    padding: 12px;
+    display: none;
+  }
+  #wr-result.visible { display: block; }
+
+  /* Linha de resultado */
+  .wr-result-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 4px 0;
+  }
+  .wr-result-row .wr-label { font-size: 11px; color: #A0B8A6; }
+  .wr-result-row .wr-val   { font-size: 13px; font-weight: 600; color: #F2E8C9; }
+  .wr-result-row .wr-val.gold { color: #D4AF37; font-size: 15px; }
+  .wr-result-row .wr-val.green { color: #4ade80; }
+  .wr-result-row .wr-val.blue  { color: #60a5fa; }
+  .wr-result-row .wr-val.red   { color: #f87171; }
+
+  /* Título de seção dentro do resultado */
+  .wr-section-title {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #A0B8A6;
+    margin: 8px 0 4px;
+  }
+
+  /* Placeholder vazio */
+  #wr-empty {
+    background: rgba(255,255,255,0.02);
+    border: 1px solid rgba(255,255,255,0.05);
+    border-radius: 12px;
+    padding: 12px;
+    text-align: center;
+    font-size: 11px;
+    color: #A0B8A6;
+  }
+
+  /* Rodapé do painel */
+  .wr-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 8px;
+    padding-top: 4px;
+  }
+  .wr-footer p { font-size: 10px; color: rgba(160,184,166,0.55); line-height: 1.4; }
+</style>
+
+<!-- ── BOTÃO FLUTUANTE ────────────────────────────────────────── -->
+<button id="wr-toggle-btn" onclick="wrToggle()">
+  <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24"
+       fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="6" x2="16" y2="6"/>
+    <line x1="8" y1="10" x2="16" y2="10"/><line x1="8" y1="14" x2="12" y2="14"/>
+  </svg>
+  <span id="wr-btn-label">Quanto rende?</span>
+</button>
+
+<!-- ── PAINEL ─────────────────────────────────────────────────── -->
+<div id="wr-panel" style="display:none;">
+
+  <!-- Header -->
+  <div class="wr-header">
+    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
+         fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/>
+    </svg>
+    <span>Calculadora de Rendimento</span>
+  </div>
+
+  <div class="wr-body">
+
+    <!-- Valor -->
+    <div>
+      <label>Valor investido (R$)</label>
+      <input type="text" id="wr-valor" placeholder="Ex: 100.000,00" oninput="wrFormat(this); wrCalc()" />
+    </div>
+
+    <!-- Taxa bruta -->
+    <div>
+      <label>Taxa de juros bruta (%)</label>
+      <div class="wr-input-row">
+        <div>
+          <input type="number" id="wr-taxa" placeholder="Ex: 12" step="0.01" oninput="wrCalc()" />
+        </div>
+        <div class="wr-toggle-group">
+          <button id="wr-btn-aa" class="active" onclick="wrSetTipo('aa')">a.a.</button>
+          <button id="wr-btn-am" onclick="wrSetTipo('am')">a.m.</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Imposto -->
+    <div>
+      <label>Alíquota de imposto (%) <span style="color:#A0B8A6;font-weight:400;">— IR, IOF etc.</span></label>
+      <input type="number" id="wr-imposto" placeholder="Ex: 15  (IR tabela regressiva)" step="0.01" oninput="wrCalc()" />
+    </div>
+
+    <!-- Inflação -->
+    <div>
+      <label>Inflação anual estimada (%) <span style="color:#A0B8A6;font-weight:400;">— IPCA, INPC etc.</span></label>
+      <input type="number" id="wr-inflacao" placeholder="Ex: 4,5" step="0.01" oninput="wrCalc()" />
+    </div>
+
+    <!-- Resultado -->
+    <div id="wr-result">
+
+      <!-- BRUTA -->
+      <div class="wr-section-title">Rentabilidade Bruta</div>
+      <div class="wr-result-row">
+        <span class="wr-label">Rendimento mensal</span>
+        <span class="wr-val gold" id="wr-bruta-mes">—</span>
+      </div>
+      <div class="wr-result-row">
+        <span class="wr-label">Rendimento anual</span>
+        <span class="wr-val gold" id="wr-bruta-ano">—</span>
+      </div>
+      <div class="wr-result-row">
+        <span class="wr-label">Taxa mensal equiv.</span>
+        <span class="wr-val" id="wr-bruta-taxa-mes">—</span>
+      </div>
+      <div class="wr-result-row">
+        <span class="wr-label">Taxa anual equiv.</span>
+        <span class="wr-val" id="wr-bruta-taxa-ano">—</span>
+      </div>
+
+      <div class="wr-sep" style="margin:8px 0;"></div>
+
+      <!-- LÍQUIDA -->
+      <div class="wr-section-title">Rentabilidade Líquida <span style="font-weight:400;text-transform:none;letter-spacing:0;">(bruta − impostos)</span></div>
+      <div class="wr-result-row">
+        <span class="wr-label">Rendimento mensal</span>
+        <span class="wr-val green" id="wr-liq-mes">—</span>
+      </div>
+      <div class="wr-result-row">
+        <span class="wr-label">Rendimento anual</span>
+        <span class="wr-val green" id="wr-liq-ano">—</span>
+      </div>
+      <div class="wr-result-row">
+        <span class="wr-label">Taxa mensal equiv.</span>
+        <span class="wr-val" id="wr-liq-taxa-mes">—</span>
+      </div>
+      <div class="wr-result-row">
+        <span class="wr-label">Taxa anual equiv.</span>
+        <span class="wr-val" id="wr-liq-taxa-ano">—</span>
+      </div>
+
+      <div class="wr-sep" style="margin:8px 0;"></div>
+
+      <!-- REAL -->
+      <div class="wr-section-title">Rentabilidade Real/Útil <span style="font-weight:400;text-transform:none;letter-spacing:0;">(líquida − inflação)</span></div>
+      <div class="wr-result-row">
+        <span class="wr-label">Rendimento mensal</span>
+        <span class="wr-val blue" id="wr-real-mes">—</span>
+      </div>
+      <div class="wr-result-row">
+        <span class="wr-label">Rendimento anual</span>
+        <span class="wr-val blue" id="wr-real-ano">—</span>
+      </div>
+      <div class="wr-result-row">
+        <span class="wr-label">Taxa mensal equiv.</span>
+        <span class="wr-val" id="wr-real-taxa-mes">—</span>
+      </div>
+      <div class="wr-result-row">
+        <span class="wr-label">Taxa anual equiv.</span>
+        <span class="wr-val" id="wr-real-taxa-ano">—</span>
+      </div>
+
+    </div><!-- /#wr-result -->
+
+    <!-- Placeholder quando vazio -->
+    <div id="wr-empty">
+      Preencha o valor e a taxa para ver os resultados em tempo real.
+    </div>
+
+    <!-- Rodapé -->
+    <div class="wr-footer">
+      <p>Imposto e inflação são opcionais.<br>Sem eles, apenas a rentabilidade bruta é exibida.</p>
+    </div>
+
+  </div><!-- /.wr-body -->
+</div><!-- /#wr-panel -->
+
+<!-- ── SCRIPT DO WIDGET ───────────────────────────────────────── -->
+<script>
+  (function () {
+    var tipoTaxa = 'aa'; // 'aa' ou 'am'
+
+    // Abre/fecha o painel
+    window.wrToggle = function () {
+      var panel = document.getElementById('wr-panel');
+      var label = document.getElementById('wr-btn-label');
+      var open  = panel.style.display === 'none' || panel.style.display === '';
+      panel.style.display = open ? 'block' : 'none';
+      label.textContent   = open ? 'Fechar' : 'Quanto rende?';
+    };
+
+    // Alterna a.a / a.m
+    window.wrSetTipo = function (tipo) {
+      tipoTaxa = tipo;
+      document.getElementById('wr-btn-aa').classList.toggle('active', tipo === 'aa');
+      document.getElementById('wr-btn-am').classList.toggle('active', tipo === 'am');
+      wrCalc();
+    };
+
+    // Formata input de valor como moeda pt-BR
+    window.wrFormat = function (el) {
+      var raw = el.value.replace(/\D/g, '');
+      if (!raw) { el.value = ''; return; }
+      var num = parseInt(raw, 10) / 100;
+      el.value = num.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    };
+
+    // Parseia valor formatado
+    function parseBR(str) {
+      if (!str) return 0;
+      return parseFloat(str.replace(/\./g, '').replace(',', '.')) || 0;
+    }
+
+    // Formata moeda
+    function fmtBRL(v) {
+      return 'R$ ' + v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    // Formata percentual
+    function fmtPct(v, dec) {
+      return v.toLocaleString('pt-BR', {
+        minimumFractionDigits: dec !== undefined ? dec : 4,
+        maximumFractionDigits: dec !== undefined ? dec : 4
+      }) + '%';
+    }
+
+    // Preenche um bloco de resultado (bruta / líquida / real)
+    function fillBlock(prefix, valor, taxaAnual) {
+      var taxaMensal = Math.pow(1 + taxaAnual, 1 / 12) - 1;
+      var rendMes    = valor * taxaMensal;
+      var rendAno    = valor * taxaAnual;
+
+      document.getElementById(prefix + '-mes').textContent      = fmtBRL(rendMes);
+      document.getElementById(prefix + '-ano').textContent      = fmtBRL(rendAno);
+      document.getElementById(prefix + '-taxa-mes').textContent = fmtPct(taxaMensal * 100, 4) + ' a.m.';
+      document.getElementById(prefix + '-taxa-ano').textContent = fmtPct(taxaAnual  * 100, 2) + ' a.a.';
+    }
+
+    // Calcula e atualiza
+    window.wrCalc = function () {
+      var valor    = parseBR(document.getElementById('wr-valor').value);
+      var taxaRaw  = parseFloat((document.getElementById('wr-taxa').value || '0').replace(',', '.')) || 0;
+      var imposto  = parseFloat((document.getElementById('wr-imposto').value  || '0').replace(',', '.')) || 0;
+      var inflacao = parseFloat((document.getElementById('wr-inflacao').value || '0').replace(',', '.')) || 0;
+
+      var result = document.getElementById('wr-result');
+      var empty  = document.getElementById('wr-empty');
+
+      if (!valor || !taxaRaw) {
+        result.classList.remove('visible');
+        empty.style.display = 'block';
+        return;
+      }
+
+      result.classList.add('visible');
+      empty.style.display = 'none';
+
+      // Taxa bruta anual (decimal)
+      var taxaBrutaAnual;
+      if (tipoTaxa === 'aa') {
+        taxaBrutaAnual = taxaRaw / 100;
+      } else {
+        // Converter mensal → anual equivalente
+        taxaBrutaAnual = Math.pow(1 + taxaRaw / 100, 12) - 1;
+      }
+
+      // Taxa líquida: aplica imposto sobre o rendimento bruto
+      // Rendimento bruto anual = valor * taxaBrutaAnual
+      // Imposto = rendimento * alíquota
+      // Rendimento líquido = rendimento bruto * (1 - alíquota)
+      // Taxa líquida anual = taxaBrutaAnual * (1 - alíquota)
+      var taxaLiquidaAnual = taxaBrutaAnual * (1 - imposto / 100);
+
+      // Taxa real: Fisher equation — (1 + r_liq) / (1 + inflação) - 1
+      var taxaRealAnual = (1 + taxaLiquidaAnual) / (1 + inflacao / 100) - 1;
+
+      // Preenche os três blocos
+      fillBlock('wr-bruta', valor, taxaBrutaAnual);
+      fillBlock('wr-liq',   valor, taxaLiquidaAnual);
+      fillBlock('wr-real',  valor, taxaRealAnual);
+
+      // Cor do bloco real: vermelho se negativo
+      var realEls = ['wr-real-mes','wr-real-ano','wr-real-taxa-mes','wr-real-taxa-ano'];
+      realEls.forEach(function(id) {
+        var el = document.getElementById(id);
+        if (taxaRealAnual < 0) {
+          el.classList.remove('blue');
+          el.classList.add('red');
+        } else {
+          el.classList.remove('red');
+          el.classList.add('blue');
+        }
+      });
+    };
+  })();
+</script>
+
+            
         }
     </script>
 </body>
