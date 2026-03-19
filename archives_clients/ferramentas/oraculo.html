@@ -3429,6 +3429,7 @@
   font-family: var(--font-sans);
 }
 #wr-toggle-btn:hover { background: #e8c84a; transform: scale(1.05); }
+
 #wr-panel {
   position: fixed;
   bottom: 80px;
@@ -3448,6 +3449,8 @@
   flex-direction: column;
 }
 @keyframes wr-in { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:translateY(0); } }
+
+/* Alca de resize no canto superior esquerdo */
 #wr-resize-handle {
   position: absolute;
   top: 0;
@@ -3461,12 +3464,10 @@
   align-items: center;
   justify-content: center;
 }
-#wr-resize-handle svg {
-  opacity: 0.35;
-  transition: opacity 0.2s;
-  transform: rotate(180deg);
-}
+#wr-resize-handle svg { opacity: 0.35; transition: opacity 0.2s; transform: rotate(180deg); }
 #wr-resize-handle:hover svg { opacity: 0.9; }
+
+/* Header */
 #wr-panel .wr-hdr {
   background: rgba(212,175,55,0.08);
   border-bottom: 1px solid rgba(212,175,55,0.15);
@@ -3481,15 +3482,27 @@
   border-radius: 18px 18px 0 0;
   position: relative;
 }
-#wr-panel .wr-body { padding: 16px; display: flex; flex-direction: column; gap: 12px; flex: 1; overflow-y: auto; }
-#wr-panel label { display: block; font-size: 11px; color: #A0B8A6; margin-bottom: 4px; font-weight: 500; }
+
+/* Body com scroll */
+#wr-panel .wr-body {
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  flex: 1;
+  overflow-y: auto;
+  box-sizing: border-box;
+}
+
+/* Inputs */
+#wr-panel label { display: block; font-size: 11px; color: #A0B8A6; margin-bottom: 3px; font-weight: 500; }
 #wr-panel input[type="text"],
 #wr-panel input[type="number"] {
   width: 100%;
   background: rgba(255,255,255,0.04);
   border: 1px solid rgba(255,255,255,0.1);
   border-radius: 8px;
-  padding: 7px 10px;
+  padding: 6px 10px;
   color: #F2E8C9;
   font-size: 13px;
   outline: none;
@@ -3497,11 +3510,13 @@
   box-sizing: border-box;
 }
 #wr-panel input:focus { border-color: rgba(212,175,55,0.5); }
+
+/* Linha com toggle */
 .wr-row { display: flex; gap: 8px; align-items: flex-end; }
 .wr-row > div:first-child { flex: 1; min-width: 0; }
 .wr-tg { display: flex; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; overflow: hidden; flex-shrink: 0; }
 .wr-tg button {
-  padding: 7px 10px;
+  padding: 6px 10px;
   font-size: 11px;
   font-weight: 600;
   border: none;
@@ -3511,19 +3526,52 @@
   font-family: var(--font-sans);
 }
 .wr-tg button.on { background: #D4AF37; color: #021C0E; }
-.wr-sep { height: 1px; background: rgba(255,255,255,0.05); margin: 8px 0; flex-shrink: 0; }
-#wr-result { background: rgba(212,175,55,0.04); border: 1px solid rgba(212,175,55,0.18); border-radius: 12px; padding: 12px; display: none; }
-#wr-result.vis { display: block; }
-.wr-rrow { display: flex; justify-content: space-between; align-items: center; padding: 3px 0; }
-.wr-rrow .wr-lbl { font-size: 11px; color: #A0B8A6; }
-.wr-rrow .wr-v { font-size: 13px; font-weight: 600; color: #F2E8C9; }
-.wr-rrow .wr-v.gold { color: #D4AF37; font-size: 15px; }
-.wr-rrow .wr-v.green { color: #4ade80; }
-.wr-rrow .wr-v.blue  { color: #60a5fa; }
-.wr-rrow .wr-v.red   { color: #f87171; }
-.wr-stitle { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #A0B8A6; margin: 8px 0 4px; }
-#wr-empty { background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; padding: 12px; text-align: center; font-size: 11px; color: #A0B8A6; }
-.wr-foot p { font-size: 10px; color: rgba(160,184,166,0.5); line-height: 1.4; padding-top: 2px; }
+
+/* Grid de resultados - 3 subcaixas lado a lado quando houver espaco */
+#wr-result { display: none; }
+#wr-result.vis { display: flex; flex-direction: column; gap: 8px; }
+
+/* Subcaixas de rentabilidade */
+.wr-subbox {
+  border-radius: 10px;
+  padding: 10px 12px;
+  flex: 1;
+}
+.wr-subbox-bruta  { background: rgba(212,175,55,0.06);  border: 1px solid rgba(212,175,55,0.25); }
+.wr-subbox-liq    { background: rgba(74,222,128,0.05);  border: 1px solid rgba(74,222,128,0.2); }
+.wr-subbox-real   { background: rgba(96,165,250,0.05);  border: 1px solid rgba(96,165,250,0.2); }
+.wr-subbox-real.negativo { background: rgba(248,113,113,0.05); border: 1px solid rgba(248,113,113,0.2); }
+
+.wr-stitle {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 6px;
+}
+.wr-stitle-bruta { color: #D4AF37; }
+.wr-stitle-liq   { color: #4ade80; }
+.wr-stitle-real  { color: #60a5fa; }
+.wr-stitle-real.negativo { color: #f87171; }
+
+.wr-rrow { display: flex; justify-content: space-between; align-items: center; padding: 2px 0; gap: 8px; }
+.wr-rrow .wr-lbl { font-size: 11px; color: #A0B8A6; white-space: nowrap; }
+.wr-rrow .wr-v   { font-size: 12px; font-weight: 600; color: #F2E8C9; text-align: right; }
+.wr-rrow .wr-v.gold  { color: #D4AF37; font-size: 14px; }
+.wr-rrow .wr-v.green { color: #4ade80; font-size: 14px; }
+.wr-rrow .wr-v.blue  { color: #60a5fa; font-size: 14px; }
+.wr-rrow .wr-v.red   { color: #f87171; font-size: 14px; }
+
+#wr-empty {
+  background: rgba(255,255,255,0.02);
+  border: 1px solid rgba(255,255,255,0.05);
+  border-radius: 12px;
+  padding: 12px;
+  text-align: center;
+  font-size: 11px;
+  color: #A0B8A6;
+}
+.wr-foot p { font-size: 10px; color: rgba(160,184,166,0.4); line-height: 1.4; }
 </style>
 
 <button id="wr-toggle-btn" onclick="wrToggle()">
@@ -3540,6 +3588,8 @@
     Calculadora de Rendimento
   </div>
   <div class="wr-body">
+
+    <!-- Campos de entrada -->
     <div>
       <label>Valor investido (R$)</label>
       <input type="text" id="wr-valor" placeholder="Ex: 100.000,00" oninput="wrFmt(this);wrCalc()">
@@ -3562,28 +3612,44 @@
       <label>Inflacao anual estimada (%) &mdash; IPCA etc. (opcional)</label>
       <input type="number" id="wr-inf" placeholder="Ex: 4.5" step="0.01" oninput="wrCalc()">
     </div>
-    <div id="wr-result">
-      <div class="wr-stitle">Rentabilidade Bruta</div>
-      <div class="wr-rrow"><span class="wr-lbl">Rendimento mensal</span><span class="wr-v gold" id="wr-b-mes"></span></div>
-      <div class="wr-rrow"><span class="wr-lbl">Rendimento anual</span><span class="wr-v gold" id="wr-b-ano"></span></div>
-      <div class="wr-rrow"><span class="wr-lbl">Taxa mensal equiv.</span><span class="wr-v" id="wr-b-tm"></span></div>
-      <div class="wr-rrow"><span class="wr-lbl">Taxa anual equiv.</span><span class="wr-v" id="wr-b-ta"></span></div>
-      <div class="wr-sep"></div>
-      <div class="wr-stitle">Rentabilidade Liquida (bruta &minus; impostos)</div>
-      <div class="wr-rrow"><span class="wr-lbl">Rendimento mensal</span><span class="wr-v green" id="wr-l-mes"></span></div>
-      <div class="wr-rrow"><span class="wr-lbl">Rendimento anual</span><span class="wr-v green" id="wr-l-ano"></span></div>
-      <div class="wr-rrow"><span class="wr-lbl">Taxa mensal equiv.</span><span class="wr-v" id="wr-l-tm"></span></div>
-      <div class="wr-rrow"><span class="wr-lbl">Taxa anual equiv.</span><span class="wr-v" id="wr-l-ta"></span></div>
-      <div class="wr-sep"></div>
-      <div class="wr-stitle">Rentabilidade Real/Util (liquida &minus; inflacao)</div>
-      <div class="wr-rrow"><span class="wr-lbl">Rendimento mensal</span><span class="wr-v blue" id="wr-r-mes"></span></div>
-      <div class="wr-rrow"><span class="wr-lbl">Rendimento anual</span><span class="wr-v blue" id="wr-r-ano"></span></div>
-      <div class="wr-rrow"><span class="wr-lbl">Taxa mensal equiv.</span><span class="wr-v" id="wr-r-tm"></span></div>
-      <div class="wr-rrow"><span class="wr-lbl">Taxa anual equiv.</span><span class="wr-v" id="wr-r-ta"></span></div>
-    </div>
+
+    <!-- Placeholder vazio -->
     <div id="wr-empty">Preencha o valor e a taxa para ver os resultados em tempo real.</div>
+
+    <!-- Resultados em subcaixas -->
+    <div id="wr-result">
+
+      <!-- Bruta -->
+      <div class="wr-subbox wr-subbox-bruta">
+        <div class="wr-stitle wr-stitle-bruta">Rentabilidade Bruta</div>
+        <div class="wr-rrow"><span class="wr-lbl">Rendimento mensal</span><span class="wr-v gold" id="wr-b-mes"></span></div>
+        <div class="wr-rrow"><span class="wr-lbl">Rendimento anual</span><span class="wr-v gold" id="wr-b-ano"></span></div>
+        <div class="wr-rrow"><span class="wr-lbl">Taxa mensal equiv.</span><span class="wr-v" id="wr-b-tm"></span></div>
+        <div class="wr-rrow"><span class="wr-lbl">Taxa anual equiv.</span><span class="wr-v" id="wr-b-ta"></span></div>
+      </div>
+
+      <!-- Liquida -->
+      <div class="wr-subbox wr-subbox-liq" id="wr-box-liq" style="display:none;">
+        <div class="wr-stitle wr-stitle-liq">Rentabilidade L&iacute;quida (bruta &minus; impostos)</div>
+        <div class="wr-rrow"><span class="wr-lbl">Rendimento mensal</span><span class="wr-v green" id="wr-l-mes"></span></div>
+        <div class="wr-rrow"><span class="wr-lbl">Rendimento anual</span><span class="wr-v green" id="wr-l-ano"></span></div>
+        <div class="wr-rrow"><span class="wr-lbl">Taxa mensal equiv.</span><span class="wr-v" id="wr-l-tm"></span></div>
+        <div class="wr-rrow"><span class="wr-lbl">Taxa anual equiv.</span><span class="wr-v" id="wr-l-ta"></span></div>
+      </div>
+
+      <!-- Real -->
+      <div class="wr-subbox wr-subbox-real" id="wr-box-real" style="display:none;">
+        <div class="wr-stitle wr-stitle-real" id="wr-title-real">Rentabilidade Real/&Uacute;til (l&iacute;quida &minus; infla&ccedil;&atilde;o)</div>
+        <div class="wr-rrow"><span class="wr-lbl">Rendimento mensal</span><span class="wr-v blue" id="wr-r-mes"></span></div>
+        <div class="wr-rrow"><span class="wr-lbl">Rendimento anual</span><span class="wr-v blue" id="wr-r-ano"></span></div>
+        <div class="wr-rrow"><span class="wr-lbl">Taxa mensal equiv.</span><span class="wr-v" id="wr-r-tm"></span></div>
+        <div class="wr-rrow"><span class="wr-lbl">Taxa anual equiv.</span><span class="wr-v" id="wr-r-ta"></span></div>
+      </div>
+
+    </div>
+
     <div class="wr-foot">
-      <p>Imposto e inflacao sao opcionais. Sem eles, apenas a rentabilidade bruta e exibida.</p>
+      <p>Imposto e infla&ccedil;&atilde;o s&atilde;o opcionais. Sem eles, apenas a rentabilidade bruta &eacute; exibida.</p>
     </div>
   </div>
 </div>
@@ -3638,24 +3704,55 @@
     var taxaRaw = parseFloat((document.getElementById('wr-taxa').value||'0').replace(',','.'))||0;
     var imp     = parseFloat((document.getElementById('wr-imp').value||'0').replace(',','.'))||0;
     var inf     = parseFloat((document.getElementById('wr-inf').value||'0').replace(',','.'))||0;
-    var res = document.getElementById('wr-result');
-    var emp = document.getElementById('wr-empty');
-    if(!valor||!taxaRaw){ res.className=''; emp.style.display='block'; return; }
+    var res  = document.getElementById('wr-result');
+    var emp  = document.getElementById('wr-empty');
+    var boxL = document.getElementById('wr-box-liq');
+    var boxR = document.getElementById('wr-box-real');
+
+    if(!valor||!taxaRaw){
+      res.className=''; emp.style.display='block';
+      boxL.style.display='none'; boxR.style.display='none';
+      return;
+    }
     res.className='vis'; emp.style.display='none';
+
     var bruta = tipo==='aa' ? taxaRaw/100 : Math.pow(1+taxaRaw/100,12)-1;
     var liq   = bruta*(1-imp/100);
     var real  = (1+liq)/(1+inf/100)-1;
+
     fill('wr-b', valor, bruta);
-    fill('wr-l', valor, liq);
-    fill('wr-r', valor, real);
-    var ids = ['wr-r-mes','wr-r-ano','wr-r-tm','wr-r-ta'];
-    for(var i=0;i<ids.length;i++){
-      var el = document.getElementById(ids[i]);
-      if(real<0){ el.className='wr-v red'; } else { el.className='wr-v blue'; }
+
+    // Liquida: so mostrar se imposto foi preenchido
+    if(imp > 0){
+      boxL.style.display='block';
+      fill('wr-l', valor, liq);
+    } else {
+      boxL.style.display='none';
+    }
+
+    // Real: so mostrar se inflacao foi preenchida
+    if(inf > 0){
+      boxR.style.display='block';
+      fill('wr-r', valor, real);
+      // Cor vermelha se negativa
+      var boxREl    = document.getElementById('wr-box-real');
+      var titleReal = document.getElementById('wr-title-real');
+      var vIds = ['wr-r-mes','wr-r-ano','wr-r-tm','wr-r-ta'];
+      if(real < 0){
+        boxREl.className    = 'wr-subbox wr-subbox-real negativo';
+        titleReal.className = 'wr-stitle wr-stitle-real negativo';
+        for(var i=0;i<vIds.length;i++) document.getElementById(vIds[i]).className = 'wr-v red';
+      } else {
+        boxREl.className    = 'wr-subbox wr-subbox-real';
+        titleReal.className = 'wr-stitle wr-stitle-real';
+        for(var i=0;i<vIds.length;i++) document.getElementById(vIds[i]).className = (i<2) ? 'wr-v blue' : 'wr-v';
+      }
+    } else {
+      boxR.style.display='none';
     }
   };
 
-  // Resize pelo canto superior esquerdo
+  // ── Resize pelo canto superior esquerdo ──────────────────────────────
   var handle = document.getElementById('wr-resize-handle');
   var panel  = document.getElementById('wr-panel');
   var startX, startY, startW, startH, startRight, startBottom;
@@ -3663,8 +3760,7 @@
 
   function startDrag(cx, cy){
     dragging = true;
-    startX = cx;
-    startY = cy;
+    startX = cx; startY = cy;
     startW = panel.offsetWidth;
     startH = panel.offsetHeight;
     var rect = panel.getBoundingClientRect();
@@ -3672,36 +3768,22 @@
     startBottom = window.innerHeight - rect.bottom;
     document.body.style.userSelect = 'none';
   }
-
-  handle.addEventListener('mousedown', function(e){
-    e.preventDefault();
-    startDrag(e.clientX, e.clientY);
-  });
-
-  handle.addEventListener('touchstart', function(e){
-    e.preventDefault();
-    startDrag(e.touches[0].clientX, e.touches[0].clientY);
-  }, {passive: false});
+  handle.addEventListener('mousedown', function(e){ e.preventDefault(); startDrag(e.clientX, e.clientY); });
+  handle.addEventListener('touchstart', function(e){ e.preventDefault(); startDrag(e.touches[0].clientX, e.touches[0].clientY); }, {passive:false});
 
   function onMove(cx, cy){
     if(!dragging) return;
-    var dx = startX - cx;
-    var dy = startY - cy;
-    var newW = Math.max(260, startW + dx);
-    var newH = Math.max(80,  startH + dy);
+    var newW = Math.max(260, startW + (startX - cx));
+    var newH = Math.max(80,  startH + (startY - cy));
     panel.style.width  = newW + 'px';
     panel.style.height = newH + 'px';
     panel.style.right  = startRight  + 'px';
     panel.style.bottom = startBottom + 'px';
   }
-
   document.addEventListener('mousemove', function(e){ onMove(e.clientX, e.clientY); });
-  document.addEventListener('touchmove', function(e){ onMove(e.touches[0].clientX, e.touches[0].clientY); }, {passive: true});
+  document.addEventListener('touchmove', function(e){ onMove(e.touches[0].clientX, e.touches[0].clientY); }, {passive:true});
 
-  function stopDrag(){
-    dragging = false;
-    document.body.style.userSelect = '';
-  }
+  function stopDrag(){ dragging=false; document.body.style.userSelect=''; }
   document.addEventListener('mouseup', stopDrag);
   document.addEventListener('touchend', stopDrag);
 
