@@ -1,638 +1,1274 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Raio-X do Orçamento - MithraSF</title>
-    <link rel="stylesheet" href="../assets/style.css">
-    <script src="../assets/layout.js" defer></script>
-    <style>
-        /* Specific styles for Fluxo de Caixa */
-        .step-card {
-            background-color: rgba(255, 255, 255, 0.02);
-            border: 1px solid rgba(255, 255, 255, 0.05);
-            border-radius: 12px;
-            padding: 2rem;
-            margin-bottom: 2rem;
-            animation: fadeIn 0.5s ease-in-out;
-        }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fluxo de Caixa Avançado</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #021C0E;
+    --card: #052614;
+    --card2: #0A3520;
+    --fg: #F2E8C9;
+    --muted: #A0B8A6;
+    --primary: #D4AF37;
+    --primary-dim: rgba(212,175,55,0.15);
+    --border: rgba(212,175,55,0.2);
+    --green: #22c55e;
+    --red: #ef4444;
+    --blue: #60a5fa;
+    --purple: #a78bfa;
+    --orange: #fb923c;
+    --radius: 10px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--fg); font-family: 'Inter', system-ui, sans-serif; font-size: 14px; min-height: 100vh; }
+  h1 { font-size: 1.6rem; font-weight: 700; color: #fff; }
+  h2 { font-size: 1.1rem; font-weight: 600; color: var(--primary); margin-bottom: 1rem; }
+  h3 { font-size: 0.95rem; font-weight: 600; color: #fff; }
 
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
+  .page { max-width: 1200px; margin: 0 auto; padding: 2rem 1rem 4rem; }
+  .page-header { margin-bottom: 2rem; }
+  .page-header p { color: var(--muted); margin-top: 0.3rem; font-size: 0.9rem; }
 
-        .progress-bar-container {
-            height: 0.5rem;
-            width: 100%;
-            background-color: rgba(255, 255, 255, 0.1);
-            border-radius: 9999px;
-            overflow: hidden;
-            margin-bottom: 1.5rem;
-        }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.5rem; margin-bottom: 1.5rem; }
+  .card-grid { display: grid; gap: 1.5rem; }
+  .card-grid.cols2 { grid-template-columns: 1fr 1fr; }
+  .card-grid.cols3 { grid-template-columns: 1fr 1fr 1fr; }
 
-        .progress-bar {
-            height: 100%;
-            transition: width 0.5s ease-in-out, background-color 0.5s ease-in-out;
-        }
+  .field { display: flex; flex-direction: column; gap: 0.4rem; }
+  .field label { font-size: 0.8rem; color: var(--muted); font-weight: 500; }
+  .field input, .field select { background: var(--card2); border: 1px solid var(--border); border-radius: 6px; color: var(--fg); padding: 0.5rem 0.75rem; font-size: 0.9rem; outline: none; width: 100%; transition: border-color 0.2s; }
+  .field input:focus, .field select:focus { border-color: var(--primary); }
+  .field select option { background: var(--card); }
+  .row { display: flex; gap: 1rem; align-items: flex-end; }
+  .row .field { flex: 1; }
 
-        .step-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-end;
-            margin-bottom: 2rem;
-        }
+  .btn { display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.5rem 1rem; border-radius: 6px; font-size: 0.85rem; font-weight: 600; cursor: pointer; border: none; transition: all 0.15s; }
+  .btn-primary { background: var(--primary); color: #021C0E; }
+  .btn-primary:hover { background: #c9a227; }
+  .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--fg); }
+  .btn-outline:hover { border-color: var(--primary); color: var(--primary); }
+  .btn-ghost { background: transparent; color: var(--muted); padding: 0.3rem 0.5rem; }
+  .btn-ghost:hover { color: var(--fg); }
+  .btn-danger { background: transparent; border: 1px solid rgba(239,68,68,0.3); color: var(--red); }
+  .btn-danger:hover { background: rgba(239,68,68,0.1); }
+  .btn-sm { padding: 0.3rem 0.7rem; font-size: 0.8rem; }
+  .btn-icon { padding: 0.3rem; border-radius: 4px; }
 
-        .step-title {
-            font-size: 1.5rem;
-            font-weight: bold;
-            color: white;
-            margin-bottom: 0.5rem;
-        }
+  .toggle-group { display: flex; gap: 0.3rem; background: var(--card2); border-radius: 6px; padding: 0.25rem; }
+  .toggle-btn { padding: 0.35rem 0.8rem; border-radius: 4px; font-size: 0.8rem; font-weight: 600; cursor: pointer; border: none; background: transparent; color: var(--muted); transition: all 0.15s; }
+  .toggle-btn.active { background: var(--primary); color: #021C0E; }
 
-        .step-desc {
-            color: #9ca3af;
-            font-size: 0.9rem;
-        }
+  .badge { display: inline-block; padding: 0.15rem 0.5rem; border-radius: 20px; font-size: 0.72rem; font-weight: 600; }
+  .badge-green { background: rgba(34,197,94,0.15); color: var(--green); }
+  .badge-red { background: rgba(239,68,68,0.15); color: var(--red); }
+  .badge-blue { background: rgba(96,165,250,0.15); color: var(--blue); }
+  .badge-purple { background: rgba(167,139,250,0.15); color: var(--purple); }
+  .badge-orange { background: rgba(251,146,60,0.15); color: var(--orange); }
+  .badge-gold { background: rgba(212,175,55,0.15); color: var(--primary); }
+  .badge-muted { background: rgba(160,184,166,0.1); color: var(--muted); }
+  .badge-teal { background: rgba(20,184,166,0.15); color: #14b8a6; }
 
-        .step-total-label {
-            font-size: 0.85rem;
-            color: #9ca3af;
-            text-align: right;
-        }
+  .table-wrap { overflow-x: auto; border-radius: var(--radius); border: 1px solid var(--border); }
+  table { width: 100%; border-collapse: collapse; }
+  thead th { background: var(--card2); color: var(--primary); font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; padding: 0.65rem 0.75rem; text-align: left; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  tbody tr { border-bottom: 1px solid rgba(212,175,55,0.08); transition: background 0.1s; }
+  tbody tr:last-child { border-bottom: none; }
+  tbody tr:hover { background: rgba(212,175,55,0.04); }
+  tbody td { padding: 0.6rem 0.75rem; font-size: 0.85rem; vertical-align: middle; }
+  .td-name { font-weight: 600; color: #fff; max-width: 180px; }
+  .td-val-pos { color: var(--green); font-weight: 600; }
+  .td-val-neg { color: var(--red); font-weight: 600; }
+  .td-actions { display: flex; gap: 0.3rem; }
+  .group-header td { background: rgba(212,175,55,0.06); color: var(--primary); font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; padding: 0.4rem 0.75rem; }
 
-        .step-total-value {
-            font-size: 1.5rem;
-            font-weight: bold;
-            text-align: right;
-        }
+  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 1000; display: flex; align-items: center; justify-content: center; padding: 1rem; opacity: 0; pointer-events: none; transition: opacity 0.2s; }
+  .modal-overlay.open { opacity: 1; pointer-events: all; }
+  .modal { background: var(--card); border: 1px solid var(--border); border-radius: 14px; width: 100%; max-width: 700px; max-height: 90vh; overflow-y: auto; padding: 2rem; }
+  .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
+  .modal-header h2 { margin: 0; }
+  .modal-section { margin-bottom: 1.5rem; padding-bottom: 1.5rem; border-bottom: 1px solid var(--border); }
+  .modal-section:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+  .modal-section-title { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin-bottom: 0.75rem; }
 
-        .input-row {
-            display: grid;
-            grid-template-columns: 1fr 1fr auto;
-            gap: 1rem;
-            align-items: end;
-            margin-bottom: 1.5rem;
-        }
+  .sub-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+  .sub-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.75rem; }
+  .radio-group { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+  .radio-btn { padding: 0.3rem 0.7rem; border-radius: 20px; font-size: 0.78rem; font-weight: 600; cursor: pointer; border: 1px solid var(--border); background: transparent; color: var(--muted); transition: all 0.15s; }
+  .radio-btn.active { border-color: var(--primary); background: var(--primary-dim); color: var(--primary); }
+  .radio-btn.active-green { border-color: var(--green); background: rgba(34,197,94,0.1); color: var(--green); }
+  .radio-btn.active-red { border-color: var(--red); background: rgba(239,68,68,0.1); color: var(--red); }
 
-        .input-group label {
-            display: block;
-            font-size: 0.85rem;
-            color: #9ca3af;
-            margin-bottom: 0.5rem;
-            font-weight: 600;
-        }
+  .chart-wrap { position: relative; height: 320px; }
 
-        .input-group input {
-            width: 100%;
-            background-color: rgba(0, 0, 0, 0.3);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 6px;
-            padding: 0.75rem;
-            color: white;
-            font-size: 1rem;
-        }
+  .summary-bar { display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.5rem; }
+  .summary-item { flex: 1; min-width: 140px; background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem; }
+  .summary-item .label { font-size: 0.75rem; color: var(--muted); margin-bottom: 0.3rem; }
+  .summary-item .value { font-size: 1.2rem; font-weight: 700; }
 
-        .input-group input:focus {
-            outline: none;
-            border-color: var(--primary-color);
-        }
+  .divider { border: none; border-top: 1px solid var(--border); margin: 1rem 0; }
 
-        .add-btn {
-            background-color: rgba(255, 255, 255, 0.1);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            color: white;
-            width: 42px;
-            height: 42px;
-            border-radius: 6px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: background-color 0.2s;
-        }
+  .empty { text-align: center; padding: 3rem 1rem; color: var(--muted); }
+  .empty svg { opacity: 0.3; margin-bottom: 0.75rem; }
 
-        .add-btn:hover {
-            background-color: rgba(255, 255, 255, 0.2);
-        }
+  /* Análise */
+  .analise-section { margin-top: 2rem; }
+  .analise-title { font-size: 1rem; font-weight: 700; color: var(--primary); margin-bottom: 1rem; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; }
+  .analise-block { background: var(--card2); border-radius: var(--radius); padding: 1rem 1.25rem; margin-bottom: 1rem; border-left: 3px solid var(--border); }
+  .analise-block.alert-high { border-left-color: var(--red); }
+  .analise-block.alert-med { border-left-color: var(--orange); }
+  .analise-block.alert-low { border-left-color: var(--primary); }
+  .analise-block.alert-ok { border-left-color: var(--green); }
+  .analise-block-title { font-size: 0.78rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin-bottom: 0.6rem; }
+  .analise-row { display: flex; justify-content: space-between; align-items: center; padding: 0.35rem 0; border-bottom: 1px solid rgba(212,175,55,0.06); font-size: 0.85rem; }
+  .analise-row:last-child { border-bottom: none; }
+  .analise-row .item-name { color: var(--fg); flex: 1; }
+  .analise-row .item-pct { font-weight: 700; min-width: 60px; text-align: right; }
+  .analise-row .item-flags { display: flex; gap: 0.3rem; flex-wrap: wrap; justify-content: flex-end; min-width: 180px; }
+  .flag-ajustavel { background: rgba(34,197,94,0.12); color: var(--green); border-radius: 4px; padding: 0.1rem 0.4rem; font-size: 0.7rem; font-weight: 600; }
+  .flag-disposto { background: rgba(96,165,250,0.12); color: var(--blue); border-radius: 4px; padding: 0.1rem 0.4rem; font-size: 0.7rem; font-weight: 600; }
+  .flag-conforto { background: rgba(251,146,60,0.12); color: var(--orange); border-radius: 4px; padding: 0.1rem 0.4rem; font-size: 0.7rem; font-weight: 600; }
+  .flag-alerta { background: rgba(239,68,68,0.12); color: var(--red); border-radius: 4px; padding: 0.1rem 0.4rem; font-size: 0.7rem; font-weight: 600; }
+  .analise-memo { font-size: 0.78rem; color: var(--muted); margin-top: 0.5rem; line-height: 1.5; }
+  .score-bar { display: flex; align-items: center; gap: 0.75rem; margin-top: 0.5rem; }
+  .score-bar-track { flex: 1; height: 8px; background: rgba(255,255,255,0.08); border-radius: 4px; overflow: hidden; }
+  .score-bar-fill { height: 100%; border-radius: 4px; transition: width 0.4s; }
+  .score-label { font-size: 0.8rem; font-weight: 700; min-width: 40px; text-align: right; }
 
-        .item-list {
-            max-height: 300px;
-            overflow-y: auto;
-            margin-bottom: 2rem;
-        }
+  @media (max-width: 700px) {
+    .card-grid.cols2, .card-grid.cols3 { grid-template-columns: 1fr; }
+    .sub-grid, .sub-grid-3 { grid-template-columns: 1fr; }
+    .row { flex-direction: column; }
+    .analise-row .item-flags { min-width: unset; }
+  }
 
-        .list-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            background-color: rgba(255, 255, 255, 0.05);
-            padding: 0.75rem 1rem;
-            border-radius: 8px;
-            margin-bottom: 0.5rem;
-            animation: slideIn 0.3s ease-out;
-        }
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
 
-        @keyframes slideIn {
-            from { opacity: 0; transform: translateX(-10px); }
-            to { opacity: 1; transform: translateX(0); }
-        }
+  .imp-1 { color: #f59e0b; }
+  .imp-2 { color: #fbbf24; }
+  .imp-3 { color: var(--fg); }
+  .imp-4 { color: var(--muted); }
+  .imp-5 { color: #6b7280; }
+  .imp-6 { color: var(--orange); }
+  .imp-7 { color: var(--red); }
 
-        .delete-btn {
-            background: none;
-            border: none;
-            color: #9ca3af;
-            cursor: pointer;
-            margin-left: 1rem;
-            transition: color 0.2s;
-        }
-
-        .delete-btn:hover {
-            color: #ef4444;
-        }
-
-        .nav-buttons {
-            display: flex;
-            gap: 1rem;
-        }
-
-        .btn-back {
-            width: 33%;
-            background-color: transparent;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            color: white;
-            padding: 1rem;
-            border-radius: 8px;
-            font-weight: bold;
-            cursor: pointer;
-            transition: background-color 0.2s;
-        }
-
-        .btn-back:hover {
-            background-color: rgba(255, 255, 255, 0.05);
-        }
-
-        .btn-next {
-            flex: 1;
-            background-color: #eab308; /* Yellow-500 */
-            color: black;
-            padding: 1rem;
-            border-radius: 8px;
-            font-weight: bold;
-            border: none;
-            cursor: pointer;
-            transition: background-color 0.2s;
-        }
-
-        .btn-next:hover {
-            background-color: #ca8a04; /* Yellow-600 */
-        }
-
-        /* Result Styles */
-        .result-card {
-            border: 2px solid;
-            border-radius: 12px;
-            padding: 2rem;
-            text-align: center;
-            margin-bottom: 2rem;
-        }
-
-        .result-card.positive {
-            border-color: #22c55e; /* Green-500 */
-            background-color: rgba(34, 197, 94, 0.1);
-        }
-
-        .result-card.negative {
-            border-color: #ef4444; /* Red-500 */
-            background-color: rgba(239, 68, 68, 0.1);
-        }
-
-        .result-title {
-            font-size: 2rem;
-            font-weight: bold;
-            color: white;
-            margin-bottom: 2rem;
-        }
-
-        .result-grid {
-            display: grid;
-            md:grid-template-columns: 1fr 1fr;
-            gap: 2rem;
-            text-align: left;
-        }
-
-        .summary-row {
-            display: flex;
-            justify-content: space-between;
-            font-size: 0.9rem;
-            margin-bottom: 0.5rem;
-        }
-
-        .summary-label { color: #9ca3af; }
-        .summary-val-green { color: #4ade80; font-weight: bold; }
-        .summary-val-blue { color: #60a5fa; font-weight: bold; }
-        .summary-val-yellow { color: #facc15; font-weight: bold; }
-        .summary-val-red { color: #f87171; font-weight: bold; }
-
-        .final-balance-row {
-            display: flex;
-            justify-content: space-between;
-            font-size: 1.2rem;
-            font-weight: bold;
-            margin-top: 1rem;
-            padding-top: 1rem;
-            border-top: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        /* Enhanced Projection Box Styles */
-        .projection-box {
-            border-radius: 12px;
-            padding: 2rem;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            text-align: center;
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
-            border: 2px solid transparent;
-            transition: transform 0.3s ease;
-        }
-
-        .projection-box:hover {
-            transform: scale(1.02);
-        }
-
-        /* Status-specific styles for Projection Box */
-        .projection-box.status-red {
-            background: linear-gradient(145deg, rgba(239, 68, 68, 0.2), rgba(153, 27, 27, 0.4));
-            border-color: #ef4444;
-        }
-
-        .projection-box.status-yellow {
-            background: linear-gradient(145deg, rgba(234, 179, 8, 0.2), rgba(161, 98, 7, 0.4));
-            border-color: #eab308;
-        }
-
-        .projection-box.status-green {
-            background: linear-gradient(145deg, rgba(34, 197, 94, 0.2), rgba(21, 128, 61, 0.4));
-            border-color: #22c55e;
-        }
-
-        .projection-title { 
-            font-size: 1.2rem; 
-            font-weight: 600; 
-            color: white; 
-            margin-bottom: 1rem;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-        }
-
-        .projection-value { 
-            font-size: 3rem; 
-            font-weight: 800; 
-            margin-bottom: 1rem;
-            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
-        }
-
-        .projection-desc { 
-            font-size: 1rem; 
-            color: rgba(255, 255, 255, 0.9); 
-            line-height: 1.5;
-            font-weight: 500;
-        }
-
-        .status-badge {
-            display: inline-block;
-            padding: 0.25rem 0.75rem;
-            border-radius: 9999px;
-            font-size: 0.75rem;
-            font-weight: bold;
-            text-transform: uppercase;
-            margin-bottom: 1rem;
-            background-color: rgba(0,0,0,0.3);
-            color: white;
-        }
-
-        .alert-box {
-            background-color: rgba(255, 255, 255, 0.02);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 12px;
-            padding: 1.5rem;
-            text-align: center;
-            margin-top: 2rem;
-        }
-
-        .alert-icon {
-            width: 48px;
-            height: 48px;
-            border-radius: 50%;
-            background-color: rgba(255, 255, 255, 0.1);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin: 0 auto 1rem;
-            font-size: 1.5rem;
-        }
-
-        .alert-title { font-size: 1.2rem; font-weight: bold; color: white; margin-bottom: 0.5rem; }
-        .alert-text { color: #9ca3af; font-size: 0.9rem; margin-bottom: 1.5rem; }
-
-        .restart-btn {
-            width: 100%;
-            background: none;
-            border: none;
-            color: #9ca3af;
-            padding: 1rem;
-            cursor: pointer;
-            transition: color 0.2s;
-        }
-        .restart-btn:hover { color: white; }
-
-    </style>
+  /* Nível de conforto cores */
+  .conforto-1 { color: #ef4444; }
+  .conforto-2 { color: #fb923c; }
+  .conforto-3 { color: var(--muted); }
+  .conforto-4 { color: #60a5fa; }
+  .conforto-5 { color: #a78bfa; }
+</style>
 </head>
 <body>
-    <!-- Sidebar Container (Injected by layout.js) -->
-    <div id="sidebar-container" class="sidebar"></div>
+<div class="page">
 
-    <!-- Main Content -->
-    <main class="main-content">
-        <div class="container">
-            <header class="flex items-center gap-4 mb-8">
-                <a href="../ferramentas.html" class="text-gray-400 hover:text-white text-xl">←</a>
-                <div>
-                    <div class="flex items-center gap-2">
-                        <span class="text-blue-400 text-2xl">💰</span>
-                        <h1 class="text-2xl font-bold m-0">Raio-X do Orçamento</h1>
-                    </div>
-                    <p class="text-gray-400 text-sm">Diagnóstico financeiro detalhado e projeção de fluxo de caixa.</p>
-                </div>
-                <button id="mobile-toggle" class="mobile-toggle ml-auto md:hidden">☰</button>
-            </header>
+  <div class="page-header">
+    <h1>📊 Fluxo de Caixa Avançado</h1>
+    <p>Projete seu saldo, poupança e despesas ao longo do tempo com recorrências personalizadas.</p>
+  </div>
 
-            <!-- Step Content -->
-            <div id="step-container">
-                <!-- Content injected by JS -->
-            </div>
+  <!-- Seção 1: Período -->
+  <div class="card">
+    <h2>1. Período Analisado</h2>
+    <div class="row" style="margin-bottom:1rem;">
+      <div class="toggle-group" id="period-mode-toggle">
+        <button class="toggle-btn active" onclick="setPeriodMode('relative')">A partir de hoje</button>
+        <button class="toggle-btn" onclick="setPeriodMode('custom')">Datas específicas</button>
+      </div>
+    </div>
+    <div id="period-relative" class="row">
+      <div class="field" style="max-width:120px;">
+        <label>Quantidade</label>
+        <input type="number" id="period-qty" value="3" min="1" max="365" oninput="updateRelativePeriod()">
+      </div>
+      <div class="field" style="max-width:180px;">
+        <label>Unidade</label>
+        <select id="period-unit" onchange="updateRelativePeriod()">
+          <option value="days">Dias</option>
+          <option value="weeks">Semanas</option>
+          <option value="fortnights">Quinzenas</option>
+          <option value="months" selected>Meses</option>
+          <option value="bimesters">Bimestres</option>
+          <option value="quarters">Trimestres</option>
+          <option value="quadrimesters">Quadrimestres</option>
+          <option value="semesters">Semestres</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Período resultante</label>
+        <div style="padding:0.5rem 0.75rem; background:var(--card2); border-radius:6px; color:var(--primary); font-weight:600;" id="period-preview">—</div>
+      </div>
+    </div>
+    <div id="period-custom" style="display:none;" class="row">
+      <div class="field">
+        <label>Data de início</label>
+        <input type="date" id="period-start">
+      </div>
+      <div class="field">
+        <label>Data de fim</label>
+        <input type="date" id="period-end">
+      </div>
+      <div class="field">
+        <label>Duração</label>
+        <div style="padding:0.5rem 0.75rem; background:var(--card2); border-radius:6px; color:var(--primary); font-weight:600;" id="period-duration">—</div>
+      </div>
+    </div>
+  </div>
 
+  <!-- Seção 2: Saldo Inicial -->
+  <div class="card">
+    <h2>2. Saldo Inicial</h2>
+    <div class="row">
+      <div class="field" style="max-width:260px;">
+        <label>Saldo disponível (R$)</label>
+        <input type="text" id="saldo-inicial" placeholder="0,00" oninput="formatCurrencyInput(this)" value="0,00">
+      </div>
+      <div class="field" style="max-width:260px;">
+        <label>Poupança acumulada (R$)</label>
+        <input type="text" id="poupanca-inicial" placeholder="0,00" oninput="formatCurrencyInput(this)" value="0,00">
+      </div>
+    </div>
+  </div>
+
+  <!-- Seção 3: Itens -->
+  <div class="card">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+      <h2 style="margin:0;">3. Itens do Fluxo</h2>
+      <button class="btn btn-primary" onclick="openModal()">+ Adicionar Item</button>
+    </div>
+    <div id="items-table-wrap">
+      <div class="empty" id="items-empty">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
+        <p>Nenhum item adicionado ainda.</p>
+        <p style="font-size:0.8rem; margin-top:0.3rem;">Clique em "Adicionar Item" para começar.</p>
+      </div>
+      <div class="table-wrap" id="items-table" style="display:none;">
+        <table>
+          <thead>
+            <tr>
+              <th>Nome</th>
+              <th>Tipo</th>
+              <th>Categoria</th>
+              <th>Valor</th>
+              <th>Recorrência</th>
+              <th>Início</th>
+              <th>Fim</th>
+              <th>Alterável</th>
+              <th>Disposto</th>
+              <th>Importância</th>
+              <th>Conforto</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="items-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Seção 4: Resultado -->
+  <div class="card" id="result-section" style="display:none;">
+    <h2>4. Resultado da Projeção</h2>
+    <div class="summary-bar" id="summary-bar"></div>
+    <div style="display:flex; gap:0.5rem; margin-bottom:1rem; flex-wrap:wrap;">
+      <button class="btn btn-outline btn-sm" onclick="setChartView('both')" id="cv-both">Saldo + Poupança</button>
+      <button class="btn btn-outline btn-sm" onclick="setChartView('balance')" id="cv-balance">Só Saldo</button>
+      <button class="btn btn-outline btn-sm" onclick="setChartView('savings')" id="cv-savings">Só Poupança</button>
+    </div>
+    <div class="chart-wrap">
+      <canvas id="main-chart"></canvas>
+    </div>
+
+    <!-- Análise com memória de cálculo -->
+    <div class="analise-section" id="analise-section"></div>
+  </div>
+
+  <!-- Botão calcular -->
+  <div style="text-align:center; margin-top:1rem;">
+    <button class="btn btn-primary" style="padding:0.75rem 2.5rem; font-size:1rem;" onclick="calcular()">Calcular Projeção</button>
+  </div>
+
+</div>
+
+<!-- Modal de Item -->
+<div class="modal-overlay" id="item-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="modal-title">Novo Item</h2>
+      <button class="btn btn-ghost btn-icon" onclick="closeModal()">✕</button>
+    </div>
+
+    <!-- Nome e Valor -->
+    <div class="modal-section">
+      <div class="modal-section-title">Identificação</div>
+      <div class="row">
+        <div class="field">
+          <label>Nome do item</label>
+          <input type="text" id="item-nome" placeholder="Ex: Salário, Aluguel...">
         </div>
-    </main>
+        <div class="field" style="max-width:160px;">
+          <label>Valor (R$)</label>
+          <input type="text" id="item-valor" placeholder="0,00" oninput="formatCurrencyInput(this)">
+        </div>
+      </div>
+    </div>
 
-    <script>
-        // State
-        let currentStep = 1;
-        const data = {
-            incomes: [],
-            investments: [],
-            fixedExpenses: [],
-            variableExpenses: []
-        };
+    <!-- Classificação -->
+    <div class="modal-section">
+      <div class="modal-section-title">Classificação</div>
+      <div class="row" style="margin-bottom:0.75rem;">
+        <div class="field">
+          <label>Tipo</label>
+          <div class="radio-group" id="rg-tipo">
+            <button class="radio-btn active-green" data-val="entrada" onclick="setRadio('tipo','entrada',this)">ENTRADA</button>
+            <button class="radio-btn" data-val="saida" onclick="setRadio('tipo','saida',this)">SAÍDA</button>
+          </div>
+        </div>
+      </div>
 
-        // Configuration for each step
-        const stepsConfig = {
-            1: {
-                title: "Fontes de Renda",
-                desc: "Registre todas as entradas mensais (salários, pró-labore, aluguéis, dividendos).",
-                placeholder: "Ex: Salário Mensal",
-                color: "bg-green-500",
-                textColor: "text-green-500",
-                listKey: "incomes"
-            },
-            2: {
-                title: "Aportes e Investimentos",
-                desc: "Valores destinados à construção de patrimônio (não inclua reserva de emergência se for uso corrente).",
-                placeholder: "Ex: Aporte Tesouro Direto",
-                color: "bg-blue-500",
-                textColor: "text-blue-500",
-                listKey: "investments"
-            },
-            3: {
-                title: "Despesas Fixas",
-                desc: "Compromissos financeiros recorrentes e obrigatórios (Moradia, Educação, Seguros).",
-                placeholder: "Ex: Aluguel / Condomínio",
-                color: "bg-yellow-500",
-                textColor: "text-yellow-500",
-                listKey: "fixedExpenses"
-            },
-            4: {
-                title: "Despesas Variáveis",
-                desc: "Gastos discricionários e oscilantes (Lazer, Alimentação fora, Transporte por app).",
-                placeholder: "Ex: Restaurantes / Ifood",
-                color: "bg-red-500",
-                textColor: "text-red-500",
-                listKey: "variableExpenses"
-            }
-        };
+      <div id="saida-sub" style="display:none;">
+        <div class="row" style="margin-bottom:0.75rem;">
+          <div class="field">
+            <label>Subtipo de saída</label>
+            <div class="radio-group" id="rg-subtipo">
+              <button class="radio-btn" data-val="poupanca" onclick="setRadio('subtipo','poupanca',this)">POUPANÇA</button>
+              <button class="radio-btn" data-val="despesa" onclick="setRadio('subtipo','despesa',this)">DESPESA</button>
+            </div>
+          </div>
+        </div>
 
-        // Helper Functions
-        function formatCurrency(value) {
-            return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
+        <div id="despesa-sub" style="display:none;">
+          <div style="margin-bottom:0.75rem;">
+            <div class="modal-section-title" style="margin-bottom:0.5rem;">Categoria da Despesa</div>
+            <div class="radio-group" id="rg-categoria">
+              <button class="radio-btn" data-val="sobrevivencia" onclick="setRadio('categoria','sobrevivencia',this)">Sobrevivência</button>
+              <button class="radio-btn" data-val="necessidades" onclick="setRadio('categoria','necessidades',this)">Necessidades/Prioridades</button>
+              <button class="radio-btn" data-val="aperfeicoamento" onclick="setRadio('categoria','aperfeicoamento',this)">Aperfeiçoamento</button>
+              <button class="radio-btn" data-val="dividas" onclick="setRadio('categoria','dividas',this)">Dívidas</button>
+              <button class="radio-btn" data-val="conforto" onclick="setRadio('categoria','conforto',this)">Conforto/Supérfluo</button>
+            </div>
+          </div>
+
+          <div class="sub-grid" style="margin-bottom:0.75rem;">
+            <div>
+              <div class="modal-section-title" style="margin-bottom:0.5rem;">É alterável?</div>
+              <div class="radio-group" id="rg-alteravel">
+                <button class="radio-btn" data-val="sim" onclick="setRadio('alteravel','sim',this)">Sim</button>
+                <button class="radio-btn" data-val="nao" onclick="setRadio('alteravel','nao',this)">Não</button>
+              </div>
+            </div>
+            <div>
+              <div class="modal-section-title" style="margin-bottom:0.5rem;">Disposto a alterar?</div>
+              <div class="radio-group" id="rg-disposto">
+                <button class="radio-btn" data-val="sim" onclick="setRadio('disposto','sim',this)">Sim</button>
+                <button class="radio-btn" data-val="nao" onclick="setRadio('disposto','nao',this)">Não</button>
+              </div>
+            </div>
+          </div>
+
+          <div style="margin-bottom:0.75rem;">
+            <div class="modal-section-title" style="margin-bottom:0.5rem;">Importância</div>
+            <div class="radio-group" id="rg-importancia">
+              <button class="radio-btn imp-1" data-val="1" onclick="setRadio('importancia','1',this)">★ Mais importante de todos</button>
+              <button class="radio-btn imp-2" data-val="2" onclick="setRadio('importancia','2',this)">Muito importante</button>
+              <button class="radio-btn imp-3" data-val="3" onclick="setRadio('importancia','3',this)">Importante</button>
+              <button class="radio-btn imp-4" data-val="4" onclick="setRadio('importancia','4',this)">Preferível ter</button>
+              <button class="radio-btn imp-5" data-val="5" onclick="setRadio('importancia','5',this)">Indiferente</button>
+              <button class="radio-btn imp-6" data-val="6" onclick="setRadio('importancia','6',this)">Preferível não ter</button>
+              <button class="radio-btn imp-7" data-val="7" onclick="setRadio('importancia','7',this)">Inaceitável</button>
+            </div>
+          </div>
+
+          <!-- NOVO: Nível de Conforto -->
+          <div>
+            <div class="modal-section-title" style="margin-bottom:0.5rem;">Nível de Conforto desta despesa</div>
+            <div class="radio-group" id="rg-conforto">
+              <button class="radio-btn conforto-1" data-val="1" onclick="setRadio('conforto','1',this)">Muito abaixo do básico</button>
+              <button class="radio-btn conforto-2" data-val="2" onclick="setRadio('conforto','2',this)">Menos que básico</button>
+              <button class="radio-btn conforto-3" data-val="3" onclick="setRadio('conforto','3',this)">Apenas básico</button>
+              <button class="radio-btn conforto-4" data-val="4" onclick="setRadio('conforto','4',this)">Mais que básico</button>
+              <button class="radio-btn conforto-5" data-val="5" onclick="setRadio('conforto','5',this)">Muito acima do básico</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Recorrência -->
+    <div class="modal-section">
+      <div class="modal-section-title">Recorrência</div>
+      <div class="row" style="margin-bottom:0.75rem;">
+        <div class="field">
+          <label>Tipo de repetição</label>
+          <select id="rec-tipo" onchange="updateRecFields()">
+            <option value="nao">Não repete</option>
+            <option value="dias">A cada X dias</option>
+            <option value="uteis">A cada X dias úteis</option>
+            <option value="semanas">A cada X semanas</option>
+            <option value="quinzenas">A cada X quinzenas</option>
+            <option value="meses">A cada X meses</option>
+          </select>
+        </div>
+        <div class="field" id="rec-qty-wrap" style="max-width:100px; display:none;">
+          <label>Intervalo</label>
+          <input type="number" id="rec-qty" value="1" min="1">
+        </div>
+      </div>
+      <div class="row" id="rec-dates-wrap">
+        <div class="field">
+          <label>Data de início (referência)</label>
+          <input type="date" id="rec-inicio">
+        </div>
+        <div class="field">
+          <label>Término</label>
+          <select id="rec-fim-tipo" onchange="updateRecFimFields()">
+            <option value="nunca">Nunca termina</option>
+            <option value="ocorrencias">Após X ocorrências</option>
+            <option value="data">Em data específica</option>
+          </select>
+        </div>
+        <div class="field" id="rec-fim-qty-wrap" style="display:none; max-width:120px;">
+          <label>Ocorrências</label>
+          <input type="number" id="rec-fim-qty" value="12" min="1">
+        </div>
+        <div class="field" id="rec-fim-data-wrap" style="display:none;">
+          <label>Data de término</label>
+          <input type="date" id="rec-fim-data">
+        </div>
+      </div>
+    </div>
+
+    <div style="display:flex; justify-content:flex-end; gap:0.75rem; margin-top:1.5rem;">
+      <button class="btn btn-outline" onclick="closeModal()">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveItem()">Salvar Item</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// STATE
+// ============================================================
+var items = [];
+var editingIndex = -1;
+var periodMode = 'relative';
+var chartInstance = null;
+var chartView = 'both';
+var radioState = { tipo: 'entrada', subtipo: '', categoria: '', alteravel: '', disposto: '', importancia: '', conforto: '' };
+var importanciaUsada = false;
+
+// ============================================================
+// PERIOD
+// ============================================================
+function setPeriodMode(mode) {
+  periodMode = mode;
+  document.getElementById('period-relative').style.display = mode === 'relative' ? 'flex' : 'none';
+  document.getElementById('period-custom').style.display = mode === 'custom' ? 'flex' : 'none';
+  document.querySelectorAll('#period-mode-toggle .toggle-btn').forEach(function(b,i) {
+    b.classList.toggle('active', (i===0 && mode==='relative') || (i===1 && mode==='custom'));
+  });
+  if (mode === 'relative') updateRelativePeriod();
+  else updateCustomPeriod();
+}
+
+function addDays(date, n) { var d = new Date(date); d.setDate(d.getDate()+n); return d; }
+function fmtDate(d) { return d.toLocaleDateString('pt-BR'); }
+function isoDate(d) { return d.toISOString().split('T')[0]; }
+
+function updateRelativePeriod() {
+  var qty = parseInt(document.getElementById('period-qty').value)||1;
+  var unit = document.getElementById('period-unit').value;
+  var multipliers = { days:1, weeks:7, fortnights:15, months:30, bimesters:60, quarters:90, quadrimesters:120, semesters:180 };
+  var days = qty * multipliers[unit];
+  if (days > 365) {
+    document.getElementById('period-preview').textContent = '⚠ Máximo 365 dias';
+    document.getElementById('period-preview').style.color = '#ef4444';
+    return;
+  }
+  var start = new Date(); start.setHours(0,0,0,0);
+  var end = addDays(start, days-1);
+  document.getElementById('period-preview').style.color = 'var(--primary)';
+  document.getElementById('period-preview').textContent = fmtDate(start) + ' → ' + fmtDate(end) + ' (' + days + ' dias)';
+}
+
+function updateCustomPeriod() {
+  var s = document.getElementById('period-start').value;
+  var e = document.getElementById('period-end').value;
+  if (!s || !e) { document.getElementById('period-duration').textContent = '—'; return; }
+  var ds = new Date(s), de = new Date(e);
+  var diff = Math.round((de-ds)/(1000*60*60*24))+1;
+  if (diff > 365) {
+    document.getElementById('period-duration').textContent = '⚠ Máximo 365 dias';
+    document.getElementById('period-duration').style.color = '#ef4444';
+  } else if (diff < 1) {
+    document.getElementById('period-duration').textContent = '⚠ Data inválida';
+    document.getElementById('period-duration').style.color = '#ef4444';
+  } else {
+    document.getElementById('period-duration').style.color = 'var(--primary)';
+    document.getElementById('period-duration').textContent = diff + ' dias';
+  }
+}
+
+document.getElementById('period-start').addEventListener('change', updateCustomPeriod);
+document.getElementById('period-end').addEventListener('change', updateCustomPeriod);
+
+// ============================================================
+// CURRENCY
+// ============================================================
+function formatCurrencyInput(el) {
+  var v = el.value.replace(/\D/g,'');
+  if (!v) { el.value = ''; return; }
+  v = (parseInt(v)/100).toFixed(2);
+  el.value = parseFloat(v).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+}
+
+function parseCurrency(s) {
+  if (!s) return 0;
+  return parseFloat(s.replace(/\./g,'').replace(',','.')) || 0;
+}
+
+function fmtCurrency(n) {
+  return 'R$ ' + n.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+}
+
+function fmtPct(n) {
+  return n.toFixed(1) + '%';
+}
+
+// ============================================================
+// MODAL
+// ============================================================
+function openModal(index) {
+  if (index === undefined) index = -1;
+  editingIndex = index;
+  document.getElementById('modal-title').textContent = index === -1 ? 'Novo Item' : 'Editar Item';
+
+  radioState = { tipo: 'entrada', subtipo: '', categoria: '', alteravel: '', disposto: '', importancia: '', conforto: '' };
+  document.getElementById('item-nome').value = '';
+  document.getElementById('item-valor').value = '';
+  document.getElementById('rec-tipo').value = 'nao';
+  document.getElementById('rec-qty').value = '1';
+  document.getElementById('rec-inicio').value = isoDate(new Date());
+  document.getElementById('rec-fim-tipo').value = 'nunca';
+  document.getElementById('rec-fim-qty').value = '12';
+  document.getElementById('rec-fim-data').value = '';
+
+  document.querySelectorAll('.radio-btn').forEach(function(b) { b.classList.remove('active','active-green','active-red'); });
+  document.getElementById('saida-sub').style.display = 'none';
+  document.getElementById('despesa-sub').style.display = 'none';
+  updateRecFields();
+  updateRecFimFields();
+
+  var tipoBtn = document.querySelector('#rg-tipo [data-val="entrada"]');
+  if (tipoBtn) tipoBtn.classList.add('active-green');
+
+  if (index >= 0) {
+    var it = items[index];
+    document.getElementById('item-nome').value = it.nome;
+    document.getElementById('item-valor').value = it.valor.toLocaleString('pt-BR',{minimumFractionDigits:2});
+    document.getElementById('rec-tipo').value = it.recTipo;
+    document.getElementById('rec-qty').value = it.recQty || 1;
+    document.getElementById('rec-inicio').value = it.recInicio;
+    document.getElementById('rec-fim-tipo').value = it.recFimTipo;
+    document.getElementById('rec-fim-qty').value = it.recFimQty || 12;
+    document.getElementById('rec-fim-data').value = it.recFimData || '';
+    setRadioByVal('tipo', it.tipo);
+    if (it.subtipo) setRadioByVal('subtipo', it.subtipo);
+    if (it.categoria) setRadioByVal('categoria', it.categoria);
+    if (it.alteravel) setRadioByVal('alteravel', it.alteravel);
+    if (it.disposto) setRadioByVal('disposto', it.disposto);
+    if (it.importancia) setRadioByVal('importancia', it.importancia);
+    if (it.conforto) setRadioByVal('conforto', it.conforto);
+    updateRecFields();
+    updateRecFimFields();
+  }
+
+  document.getElementById('item-modal').classList.add('open');
+}
+
+function closeModal() {
+  document.getElementById('item-modal').classList.remove('open');
+}
+
+function setRadio(group, val, btn) {
+  radioState[group] = val;
+  var rg = document.getElementById('rg-' + group);
+  rg.querySelectorAll('.radio-btn').forEach(function(b) { b.classList.remove('active','active-green','active-red'); });
+
+  if (group === 'tipo') {
+    btn.classList.add(val === 'entrada' ? 'active-green' : 'active-red');
+    document.getElementById('saida-sub').style.display = val === 'saida' ? 'block' : 'none';
+    if (val === 'entrada') { radioState.subtipo = ''; radioState.categoria = ''; }
+  } else if (group === 'subtipo') {
+    btn.classList.add('active');
+    document.getElementById('despesa-sub').style.display = val === 'despesa' ? 'block' : 'none';
+    if (val === 'poupanca') radioState.categoria = '';
+  } else if (group === 'importancia') {
+    if (val === '1') {
+      var alreadyUsed = items.some(function(it, i) { return it.importancia === '1' && i !== editingIndex; });
+      if (alreadyUsed) {
+        alert('Já existe um item classificado como "Mais importante de todos". Remova essa classificação do outro item primeiro.');
+        return;
+      }
+    }
+    btn.classList.add('active');
+  } else {
+    btn.classList.add('active');
+  }
+}
+
+function setRadioByVal(group, val) {
+  var btn = document.querySelector('#rg-' + group + ' [data-val="' + val + '"]');
+  if (btn) setRadio(group, val, btn);
+}
+
+function updateRecFields() {
+  var tipo = document.getElementById('rec-tipo').value;
+  document.getElementById('rec-qty-wrap').style.display = tipo !== 'nao' ? 'flex' : 'none';
+}
+
+function updateRecFimFields() {
+  var tipo = document.getElementById('rec-fim-tipo').value;
+  document.getElementById('rec-fim-qty-wrap').style.display = tipo === 'ocorrencias' ? 'flex' : 'none';
+  document.getElementById('rec-fim-data-wrap').style.display = tipo === 'data' ? 'flex' : 'none';
+}
+
+function saveItem() {
+  var nome = document.getElementById('item-nome').value.trim();
+  var valor = parseCurrency(document.getElementById('item-valor').value);
+  if (!nome) { alert('Informe o nome do item.'); return; }
+  if (!valor) { alert('Informe o valor do item.'); return; }
+  if (!radioState.tipo) { alert('Selecione o tipo (Entrada ou Saída).'); return; }
+  if (radioState.tipo === 'saida' && !radioState.subtipo) { alert('Selecione o subtipo da saída.'); return; }
+  if (radioState.subtipo === 'despesa' && !radioState.categoria) { alert('Selecione a categoria da despesa.'); return; }
+
+  var item = {
+    nome: nome, valor: valor,
+    tipo: radioState.tipo,
+    subtipo: radioState.subtipo,
+    categoria: radioState.categoria,
+    alteravel: radioState.alteravel,
+    disposto: radioState.disposto,
+    importancia: radioState.importancia,
+    conforto: radioState.conforto,
+    recTipo: document.getElementById('rec-tipo').value,
+    recQty: parseInt(document.getElementById('rec-qty').value)||1,
+    recInicio: document.getElementById('rec-inicio').value,
+    recFimTipo: document.getElementById('rec-fim-tipo').value,
+    recFimQty: parseInt(document.getElementById('rec-fim-qty').value)||12,
+    recFimData: document.getElementById('rec-fim-data').value,
+  };
+
+  if (editingIndex >= 0) {
+    items[editingIndex] = item;
+  } else {
+    items.push(item);
+  }
+
+  closeModal();
+  renderItemsTable();
+}
+
+function deleteItem(index) {
+  if (!confirm('Excluir este item?')) return;
+  items.splice(index, 1);
+  renderItemsTable();
+}
+
+// ============================================================
+// LABELS
+// ============================================================
+var CATEGORIA_LABELS = { sobrevivencia:'Sobrevivência', necessidades:'Necessidades/Prior.', aperfeicoamento:'Aperfeiçoamento', dividas:'Dívidas', conforto:'Conforto/Supérfluo' };
+var IMPORTANCIA_LABELS = { '1':'★ Mais importante', '2':'Muito importante', '3':'Importante', '4':'Preferível ter', '5':'Indiferente', '6':'Preferível não ter', '7':'Inaceitável' };
+var IMPORTANCIA_CLASSES = { '1':'imp-1', '2':'imp-2', '3':'imp-3', '4':'imp-4', '5':'imp-5', '6':'imp-6', '7':'imp-7' };
+var CONFORTO_LABELS = { '1':'Muito abaixo do básico', '2':'Menos que básico', '3':'Apenas básico', '4':'Mais que básico', '5':'Muito acima do básico' };
+var CONFORTO_CLASSES = { '1':'conforto-1', '2':'conforto-2', '3':'conforto-3', '4':'conforto-4', '5':'conforto-5' };
+var REC_LABELS = { nao:'Não repete', dias:'dias', uteis:'dias úteis', semanas:'semanas', quinzenas:'quinzenas', meses:'meses' };
+
+function recLabel(it) {
+  if (it.recTipo === 'nao') return '<span class="badge badge-muted">Único</span>';
+  return '<span class="badge badge-gold">A cada ' + it.recQty + ' ' + REC_LABELS[it.recTipo] + '</span>';
+}
+
+function fimLabel(it) {
+  if (it.recTipo === 'nao') return '—';
+  if (it.recFimTipo === 'nunca') return '<span class="badge badge-muted">Sem fim</span>';
+  if (it.recFimTipo === 'ocorrencias') return '<span class="badge badge-blue">' + it.recFimQty + 'x</span>';
+  if (it.recFimTipo === 'data') return it.recFimData ? new Date(it.recFimData+'T00:00').toLocaleDateString('pt-BR') : '—';
+  return '—';
+}
+
+// ============================================================
+// RENDER TABLE
+// ============================================================
+function renderItemsTable() {
+  var tbody = document.getElementById('items-tbody');
+  var empty = document.getElementById('items-empty');
+  var table = document.getElementById('items-table');
+
+  if (items.length === 0) {
+    empty.style.display = 'block';
+    table.style.display = 'none';
+    return;
+  }
+  empty.style.display = 'none';
+  table.style.display = 'block';
+
+  var entradas = items.filter(function(i) { return i.tipo === 'entrada'; });
+  var poupancas = items.filter(function(i) { return i.subtipo === 'poupanca'; });
+  var despesas = items.filter(function(i) { return i.subtipo === 'despesa'; });
+
+  var html = '';
+
+  function groupRow(label, color) {
+    return '<tr class="group-header"><td colspan="12" style="color:' + color + '">' + label + '</td></tr>';
+  }
+
+  function itemRow(it, index) {
+    var tipoB = it.tipo === 'entrada'
+      ? '<span class="badge badge-green">ENTRADA</span>'
+      : it.subtipo === 'poupanca'
+      ? '<span class="badge badge-blue">POUPANÇA</span>'
+      : '<span class="badge badge-red">DESPESA</span>';
+
+    var catB = it.categoria ? '<span class="badge badge-muted">' + CATEGORIA_LABELS[it.categoria] + '</span>' : '—';
+    var valClass = it.tipo === 'entrada' ? 'td-val-pos' : 'td-val-neg';
+    var valSign = it.tipo === 'entrada' ? '+' : '-';
+    var altB = it.alteravel ? '<span class="badge ' + (it.alteravel==='sim'?'badge-green':'badge-muted') + '">' + (it.alteravel==='sim'?'Sim':'Não') + '</span>' : '—';
+    var dispB = it.disposto ? '<span class="badge ' + (it.disposto==='sim'?'badge-green':'badge-orange') + '">' + (it.disposto==='sim'?'Sim':'Não') + '</span>' : '—';
+    var impB = it.importancia ? '<span class="' + IMPORTANCIA_CLASSES[it.importancia] + '" style="font-size:0.78rem;font-weight:600;">' + IMPORTANCIA_LABELS[it.importancia] + '</span>' : '—';
+    var confB = it.conforto ? '<span class="' + CONFORTO_CLASSES[it.conforto] + '" style="font-size:0.78rem;font-weight:600;">' + CONFORTO_LABELS[it.conforto] + '</span>' : '—';
+    var inicioFmt = it.recInicio ? new Date(it.recInicio+'T00:00').toLocaleDateString('pt-BR') : '—';
+
+    return '<tr>' +
+      '<td class="td-name">' + it.nome + '</td>' +
+      '<td>' + tipoB + '</td>' +
+      '<td>' + catB + '</td>' +
+      '<td class="' + valClass + '">' + valSign + fmtCurrency(it.valor) + '</td>' +
+      '<td>' + recLabel(it) + '</td>' +
+      '<td>' + inicioFmt + '</td>' +
+      '<td>' + fimLabel(it) + '</td>' +
+      '<td>' + altB + '</td>' +
+      '<td>' + dispB + '</td>' +
+      '<td>' + impB + '</td>' +
+      '<td>' + confB + '</td>' +
+      '<td class="td-actions">' +
+        '<button class="btn btn-ghost btn-icon btn-sm" onclick="openModal(' + index + ')" title="Editar">✏️</button>' +
+        '<button class="btn btn-ghost btn-icon btn-sm" onclick="deleteItem(' + index + ')" title="Excluir" style="color:var(--red)">🗑</button>' +
+      '</td>' +
+    '</tr>';
+  }
+
+  if (entradas.length) {
+    html += groupRow('↑ Entradas', 'var(--green)');
+    entradas.forEach(function(it) { html += itemRow(it, items.indexOf(it)); });
+  }
+  if (poupancas.length) {
+    html += groupRow('⬡ Poupança', 'var(--blue)');
+    poupancas.forEach(function(it) { html += itemRow(it, items.indexOf(it)); });
+  }
+  if (despesas.length) {
+    var cats = ['sobrevivencia','necessidades','aperfeicoamento','dividas','conforto'];
+    cats.forEach(function(cat) {
+      var sub = despesas.filter(function(i) { return i.categoria === cat; });
+      if (sub.length) {
+        html += groupRow('↓ Despesa — ' + CATEGORIA_LABELS[cat], 'var(--red)');
+        sub.forEach(function(it) { html += itemRow(it, items.indexOf(it)); });
+      }
+    });
+    var semCat = despesas.filter(function(i) { return !i.categoria; });
+    if (semCat.length) {
+      html += groupRow('↓ Despesa — Sem categoria', 'var(--red)');
+      semCat.forEach(function(it) { html += itemRow(it, items.indexOf(it)); });
+    }
+  }
+
+  tbody.innerHTML = html;
+}
+
+// ============================================================
+// PROJECTION ENGINE
+// ============================================================
+function getPeriodDates() {
+  var start, end;
+  if (periodMode === 'relative') {
+    var qty = parseInt(document.getElementById('period-qty').value)||1;
+    var unit = document.getElementById('period-unit').value;
+    var multipliers = { days:1, weeks:7, fortnights:15, months:30, bimesters:60, quarters:90, quadrimesters:120, semesters:180 };
+    var days = Math.min(365, qty * multipliers[unit]);
+    start = new Date(); start.setHours(0,0,0,0);
+    end = addDays(start, days-1);
+  } else {
+    var s = document.getElementById('period-start').value;
+    var e = document.getElementById('period-end').value;
+    if (!s || !e) return null;
+    start = new Date(s+'T00:00');
+    end = new Date(e+'T00:00');
+    if (end < start) return null;
+  }
+  return { start: start, end: end };
+}
+
+function isBusinessDay(d) {
+  var dow = d.getDay();
+  return dow !== 0 && dow !== 6;
+}
+
+function getOccurrences(item, start, end) {
+  var dates = [];
+  if (!item.recInicio) return dates;
+  var refDate = new Date(item.recInicio + 'T00:00');
+
+  if (item.recTipo === 'nao') {
+    if (refDate >= start && refDate <= end) dates.push(refDate);
+    return dates;
+  }
+
+  var count = 0;
+  var maxOcc = Infinity;
+  var endDate = new Date(end);
+
+  if (item.recFimTipo === 'ocorrencias') maxOcc = item.recFimQty;
+  if (item.recFimTipo === 'data' && item.recFimData) {
+    var fimD = new Date(item.recFimData+'T00:00');
+    if (fimD < endDate) endDate = fimD;
+  }
+
+  var cur = new Date(refDate);
+
+  while (cur < start) {
+    cur = nextOccurrence(cur, item);
+    count++;
+    if (count >= maxOcc) return dates;
+  }
+
+  while (cur <= endDate && count < maxOcc) {
+    if (cur >= start) dates.push(new Date(cur));
+    cur = nextOccurrence(cur, item);
+    count++;
+  }
+
+  return dates;
+}
+
+function nextOccurrence(cur, item) {
+  var next = new Date(cur);
+  if (item.recTipo === 'dias') {
+    next.setDate(next.getDate() + item.recQty);
+  } else if (item.recTipo === 'uteis') {
+    var added = 0;
+    while (added < item.recQty) {
+      next.setDate(next.getDate() + 1);
+      if (isBusinessDay(next)) added++;
+    }
+  } else if (item.recTipo === 'semanas') {
+    next.setDate(next.getDate() + item.recQty * 7);
+  } else if (item.recTipo === 'quinzenas') {
+    next.setDate(next.getDate() + item.recQty * 15);
+  } else if (item.recTipo === 'meses') {
+    next.setMonth(next.getMonth() + item.recQty);
+  }
+  return next;
+}
+
+// ============================================================
+// CALCULAR
+// ============================================================
+function calcular() {
+  var period = getPeriodDates();
+  if (!period) { alert('Configure o período corretamente.'); return; }
+  if (items.length === 0) { alert('Adicione pelo menos um item.'); return; }
+
+  var start = period.start, end = period.end;
+
+  var saldo = parseCurrency(document.getElementById('saldo-inicial').value);
+  var poupanca = parseCurrency(document.getElementById('poupanca-inicial').value);
+
+  // Mapa de ocorrências por dia
+  var events = {};
+  items.forEach(function(item) {
+    var occs = getOccurrences(item, start, end);
+    occs.forEach(function(d) {
+      var key = isoDate(d);
+      if (!events[key]) events[key] = [];
+      events[key].push(item);
+    });
+  });
+
+  // Simular dia a dia
+  var labels = [];
+  var saldoData = [];
+  var poupancaData = [];
+
+  // Calcular totais por item para análise
+  var totaisPorItem = {};
+  items.forEach(function(item, idx) {
+    var occs = getOccurrences(item, start, end);
+    totaisPorItem[idx] = { item: item, ocorrencias: occs.length, total: occs.length * item.valor };
+  });
+
+  var cur = new Date(start);
+  while (cur <= end) {
+    var key = isoDate(cur);
+    var dayItems = events[key] || [];
+
+    dayItems.forEach(function(it) {
+      if (it.tipo === 'entrada') {
+        saldo += it.valor;
+      } else if (it.subtipo === 'poupanca') {
+        if (saldo >= it.valor) {
+          saldo -= it.valor;
+          poupanca += it.valor;
+        } else {
+          poupanca += saldo;
+          saldo = 0;
         }
-
-        function getTotal(list) {
-            return list.reduce((acc, item) => acc + item.value, 0);
+      } else {
+        saldo -= it.valor;
+        if (saldo < 0) {
+          if (poupanca >= Math.abs(saldo)) {
+            poupanca += saldo;
+            saldo = 0;
+          } else {
+            saldo += poupanca;
+            poupanca = 0;
+          }
         }
+      }
+    });
 
-        function addItem(name, value) {
-            if (!name || !value) return;
-            const key = stepsConfig[currentStep].listKey;
-            data[key].push({ name, value: parseFloat(value) });
-            renderStep();
+    labels.push(cur.toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit' }));
+    saldoData.push(parseFloat(saldo.toFixed(2)));
+    poupancaData.push(parseFloat(poupanca.toFixed(2)));
+
+    cur = addDays(cur, 1);
+  }
+
+  // Totais globais
+  var totalEntradas = 0, totalPoupancaFluxo = 0, totalDespesas = 0;
+  items.forEach(function(item, idx) {
+    var t = totaisPorItem[idx].total;
+    if (item.tipo === 'entrada') totalEntradas += t;
+    else if (item.subtipo === 'poupanca') totalPoupancaFluxo += t;
+    else totalDespesas += t;
+  });
+
+  renderSummary(totalEntradas, totalPoupancaFluxo, totalDespesas, saldo, poupanca);
+  renderChart(labels, saldoData, poupancaData);
+  renderAnalise(totaisPorItem, totalEntradas, totalPoupancaFluxo, totalDespesas);
+  document.getElementById('result-section').style.display = 'block';
+  document.getElementById('result-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// ============================================================
+// SUMMARY
+// ============================================================
+function renderSummary(entradas, poupFluxo, despesas, saldoFinal, poupFinal) {
+  var bar = document.getElementById('summary-bar');
+  var saldoColor = saldoFinal >= 0 ? 'var(--green)' : 'var(--red)';
+  var poupColor = poupFinal >= 0 ? 'var(--blue)' : 'var(--red)';
+
+  bar.innerHTML = [
+    { label: 'Total de Entradas', value: fmtCurrency(entradas), color: 'var(--green)' },
+    { label: 'Total de Poupança (fluxo)', value: fmtCurrency(poupFluxo), color: 'var(--blue)' },
+    { label: 'Total de Despesas', value: fmtCurrency(despesas), color: 'var(--red)' },
+    { label: 'Saldo Final', value: fmtCurrency(saldoFinal), color: saldoColor },
+    { label: 'Poupança Acumulada Final', value: fmtCurrency(poupFinal), color: poupColor },
+  ].map(function(s) {
+    return '<div class="summary-item"><div class="label">' + s.label + '</div><div class="value" style="color:' + s.color + '">' + s.value + '</div></div>';
+  }).join('');
+}
+
+// ============================================================
+// CHART — tension: 0 = linhas retas nos vértices
+// ============================================================
+function setChartView(view) {
+  chartView = view;
+  ['both','balance','savings'].forEach(function(v) {
+    document.getElementById('cv-'+v).classList.toggle('btn-primary', v===view);
+    document.getElementById('cv-'+v).classList.toggle('btn-outline', v!==view);
+  });
+  if (chartInstance) {
+    chartInstance.data.datasets[0].hidden = view === 'savings';
+    chartInstance.data.datasets[1].hidden = view === 'balance';
+    chartInstance.update();
+  }
+}
+
+function renderChart(labels, saldoData, poupancaData) {
+  if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
+
+  var lbls = labels, sData = saldoData, pData = poupancaData;
+  if (labels.length > 60) {
+    var step = Math.ceil(labels.length / 60);
+    lbls = []; sData = []; pData = [];
+    for (var i = 0; i < labels.length; i += step) {
+      lbls.push(labels[i]);
+      sData.push(saldoData[i]);
+      pData.push(poupancaData[i]);
+    }
+  }
+
+  var ctx = document.getElementById('main-chart').getContext('2d');
+  chartInstance = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: lbls,
+      datasets: [
+        {
+          label: 'Saldo',
+          data: sData,
+          borderColor: '#22c55e',
+          backgroundColor: 'rgba(34,197,94,0.08)',
+          fill: true,
+          tension: 0,
+          pointRadius: lbls.length > 30 ? 0 : 3,
+          pointHoverRadius: 4,
+          borderWidth: 2,
+          hidden: chartView === 'savings',
+        },
+        {
+          label: 'Poupança Acumulada',
+          data: pData,
+          borderColor: '#60a5fa',
+          backgroundColor: 'rgba(96,165,250,0.08)',
+          fill: true,
+          tension: 0,
+          pointRadius: lbls.length > 30 ? 0 : 3,
+          pointHoverRadius: 4,
+          borderWidth: 2,
+          hidden: chartView === 'balance',
         }
-
-        function removeItem(index) {
-            const key = stepsConfig[currentStep].listKey;
-            data[key].splice(index, 1);
-            renderStep();
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { labels: { color: '#F2E8C9', font: { size: 12 } } },
+        tooltip: {
+          backgroundColor: '#052614',
+          borderColor: 'rgba(212,175,55,0.3)',
+          borderWidth: 1,
+          titleColor: '#D4AF37',
+          bodyColor: '#F2E8C9',
+          callbacks: {
+            label: function(ctx) { return ctx.dataset.label + ': ' + fmtCurrency(ctx.parsed.y); }
+          }
         }
-
-        function nextStep() {
-            if (currentStep < 4) {
-                currentStep++;
-                renderStep();
-            } else {
-                renderResult();
-            }
+      },
+      scales: {
+        x: {
+          ticks: { color: '#A0B8A6', font: { size: 11 }, maxRotation: 45 },
+          grid: { color: 'rgba(212,175,55,0.06)' }
+        },
+        y: {
+          ticks: {
+            color: '#A0B8A6',
+            font: { size: 11 },
+            callback: function(v) { return 'R$ ' + v.toLocaleString('pt-BR', { minimumFractionDigits: 0 }); }
+          },
+          grid: { color: 'rgba(212,175,55,0.06)' }
         }
+      }
+    }
+  });
 
-        function prevStep() {
-            if (currentStep > 1) {
-                currentStep--;
-                renderStep();
-            }
-        }
+  setChartView(chartView);
+}
 
-        function restart() {
-            currentStep = 1;
-            data.incomes = [];
-            data.investments = [];
-            data.fixedExpenses = [];
-            data.variableExpenses = [];
-            renderStep();
-        }
+// ============================================================
+// ANÁLISE COM MEMÓRIA DE CÁLCULO
+// Pesos por categoria (quanto maior = mais ajustável/supérfluo)
+// Pesos por importância (1=mais importante → menos ajustável)
+// Pesos por nível de conforto (5=muito acima do básico → mais ajustável)
+// Pesos por alterável/disposto
+// ============================================================
+var PESO_CATEGORIA = {
+  sobrevivencia: 0,      // intocável
+  necessidades: 1,       // difícil mexer
+  aperfeicoamento: 2,    // pode avaliar
+  dividas: 1,            // compromisso, difícil
+  conforto: 4            // mais ajustável
+};
 
-        // Render Functions
-        function renderStep() {
-            const config = stepsConfig[currentStep];
-            const list = data[config.listKey];
-            const total = getTotal(list);
-            const progress = (currentStep / 4) * 100;
+var PESO_IMPORTANCIA = {
+  '1': 0,   // mais importante de todos → não mexer
+  '2': 0.5,
+  '3': 1,
+  '4': 2,
+  '5': 2.5,
+  '6': 3,
+  '7': 4    // inaceitável → candidato a corte
+};
 
-            const container = document.getElementById('step-container');
-            
-            container.innerHTML = `
-                <div class="step-card">
-                    <div class="progress-bar-container">
-                        <div class="progress-bar ${config.color}" style="width: ${progress}%"></div>
-                    </div>
+var PESO_CONFORTO = {
+  '1': 0,   // muito abaixo do básico → não cortar
+  '2': 0.5,
+  '3': 1,   // básico
+  '4': 2,
+  '5': 4    // muito acima do básico → candidato a redução
+};
 
-                    <div class="step-header">
-                        <div>
-                            <h2 class="step-title">${config.title}</h2>
-                            <p class="step-desc">${config.desc}</p>
-                        </div>
-                        <div>
-                            <div class="step-total-label">Total desta etapa</div>
-                            <div class="step-total-value ${config.textColor}">${formatCurrency(total)}</div>
-                        </div>
-                    </div>
+function calcPotencialAjuste(it) {
+  // Score de 0 a 10: quanto maior, mais candidato a ajuste/redução
+  if (!it.categoria) return 0;
+  var score = 0;
+  score += PESO_CATEGORIA[it.categoria] || 0;
+  if (it.importancia) score += PESO_IMPORTANCIA[it.importancia] || 0;
+  if (it.conforto) score += PESO_CONFORTO[it.conforto] || 0;
+  if (it.alteravel === 'sim') score += 1.5;
+  if (it.disposto === 'sim') score += 2;
+  // Normalizar para 0-10
+  var maxPossivel = 4 + 4 + 4 + 1.5 + 2; // 15.5
+  return Math.min(10, (score / maxPossivel) * 10);
+}
 
-                    <div class="input-row">
-                        <div class="input-group">
-                            <label>Descrição</label>
-                            <input type="text" id="item-name" placeholder="${config.placeholder}">
-                        </div>
-                        <div class="input-group">
-                            <label>Valor (R$)</label>
-                            <input type="number" id="item-value" placeholder="0,00">
-                        </div>
-                        <button onclick="addItem(document.getElementById('item-name').value, document.getElementById('item-value').value)" class="add-btn">
-                            <span class="text-xl">+</span>
-                        </button>
-                    </div>
+function scoreColor(score) {
+  if (score >= 7) return 'var(--red)';
+  if (score >= 4.5) return 'var(--orange)';
+  if (score >= 2.5) return 'var(--primary)';
+  return 'var(--muted)';
+}
 
-                    <div class="item-list">
-                        ${list.map((item, index) => `
-                            <div class="list-item">
-                                <span>${item.name}</span>
-                                <div class="flex items-center">
-                                    <span class="font-bold">${formatCurrency(item.value)}</span>
-                                    <button onclick="removeItem(${index})" class="delete-btn">🗑️</button>
-                                </div>
-                            </div>
-                        `).join('')}
-                        ${list.length === 0 ? '<div class="text-center text-gray-600 py-4">Nenhum item adicionado ainda.</div>' : ''}
-                    </div>
+function alertClass(score) {
+  if (score >= 7) return 'alert-high';
+  if (score >= 4.5) return 'alert-med';
+  if (score >= 2.5) return 'alert-low';
+  return 'alert-ok';
+}
 
-                    <div class="nav-buttons">
-                        <button onclick="prevStep()" class="btn-back" ${currentStep === 1 ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : ''}>Voltar</button>
-                        <button onclick="nextStep()" class="btn-next ${config.color}">
-                            ${currentStep === 4 ? 'Gerar Diagnóstico' : 'Próxima Etapa'}
-                        </button>
-                    </div>
-                </div>
-            `;
-        }
+function renderAnalise(totaisPorItem, totalEntradas, totalPoupancaFluxo, totalDespesas) {
+  var sec = document.getElementById('analise-section');
+  if (totalEntradas === 0) { sec.innerHTML = ''; return; }
 
-        function renderResult() {
-            const totalIncome = getTotal(data.incomes);
-            const totalInvest = getTotal(data.investments);
-            const totalFixed = getTotal(data.fixedExpenses);
-            const totalVariable = getTotal(data.variableExpenses);
-            
-            const totalExpenses = totalFixed + totalVariable + totalInvest;
-            const balance = totalIncome - totalExpenses;
-            const yearlyProjection = balance * 12;
-            const isPositive = balance >= 0;
+  var html = '<div class="analise-title">Análise do Fluxo</div>';
 
-            // Calculate surplus percentage relative to total income
-            // Avoid division by zero
-            const surplusPercentage = totalIncome > 0 ? (balance / totalIncome) * 100 : 0;
-            
-            // Logic for 2.5% Rule
-            // 1. Deficit (Negative Balance) -> RED
-            // 2. Surplus > 2.5% -> YELLOW (Inefficiency Warning)
-            // 3. Surplus between 0% and 2.5% -> GREEN (Optimized)
-            
-            let statusColor, statusTitle, statusDesc, boxClass, badgeText;
+  // ---- Bloco 1: Visão geral das saídas em relação às entradas ----
+  var totalSaidas = totalPoupancaFluxo + totalDespesas;
+  var pctPoupanca = totalEntradas > 0 ? (totalPoupancaFluxo / totalEntradas) * 100 : 0;
+  var pctDespesas = totalEntradas > 0 ? (totalDespesas / totalEntradas) * 100 : 0;
+  var pctSaldo = 100 - pctPoupanca - pctDespesas;
 
-            if (!isPositive) {
-                // CASE 1: DEFICIT (RED)
-                statusColor = "text-red-500";
-                boxClass = "status-red";
-                statusTitle = "DÉFICIT PROJETADO (ANUAL)";
-                badgeText = "RISCO DE INSOLVÊNCIA";
-                statusDesc = `Diagnóstico Crítico: Seu fluxo de caixa apresenta um déficit estrutural. A projeção indica um acúmulo de dívida de <strong>${formatCurrency(Math.abs(yearlyProjection))}</strong> em 12 meses. Recomendação imediata: revisão de custos fixos e variáveis.`;
-            } else if (surplusPercentage > 2.5) {
-                // CASE 2: SURPLUS > 2.5% (YELLOW - INEFFICIENCY)
-                statusColor = "text-yellow-400";
-                boxClass = "status-yellow";
-                statusTitle = "CAPITAL OCIOSO (ANUAL)";
-                badgeText = "INEFICIÊNCIA DE ALOCAÇÃO";
-                statusDesc = `Diagnóstico de Eficiência: Identificamos <strong>${surplusPercentage.toFixed(1)}%</strong> de capital não alocado. Isso representa um custo de oportunidade sobre <strong>${formatCurrency(yearlyProjection)}</strong> anuais. Recomendação: Aumentar aportes em investimentos produtivos.`;
-            } else {
-                // CASE 3: OPTIMIZED (GREEN)
-                statusColor = "text-green-400";
-                boxClass = "status-green";
-                statusTitle = "POTENCIAL DE ACUMULAÇÃO";
-                badgeText = "ALOCAÇÃO OTIMIZADA";
-                statusDesc = `Diagnóstico Positivo: Sua estrutura de capital está eficiente, com margem de erro de apenas <strong>${surplusPercentage.toFixed(1)}%</strong>. O fluxo de caixa está devidamente direcionado para despesas e investimentos, maximizando o potencial de juros compostos.`;
-            }
+  var saldoClass = pctSaldo >= 0 ? 'alert-ok' : 'alert-high';
+  var poupancaClass = pctPoupanca >= 20 ? 'alert-ok' : pctPoupanca >= 10 ? 'alert-low' : pctPoupanca > 0 ? 'alert-med' : 'alert-high';
 
-            const container = document.getElementById('step-container');
+  html += '<div class="analise-block ' + poupancaClass + '">';
+  html += '<div class="analise-block-title">Distribuição das Entradas</div>';
+  html += '<div class="analise-memo">Base de cálculo: ' + fmtCurrency(totalEntradas) + ' em entradas no período.</div>';
 
-            container.innerHTML = `
-                <div class="result-card ${isPositive ? 'positive' : 'negative'}">
-                    <h2 class="result-title">Diagnóstico Financeiro</h2>
-                    
-                    <div class="grid md:grid-cols-2 gap-8">
-                        <!-- Left Column: Summary -->
-                        <div class="space-y-2">
-                            <div class="summary-row">
-                                <span class="summary-label">Receita Total</span>
-                                <span class="summary-val-green">${formatCurrency(totalIncome)}</span>
-                            </div>
-                            <div class="summary-row">
-                                <span class="summary-label">Aportes (Investimentos)</span>
-                                <span class="summary-val-blue">-${formatCurrency(totalInvest)}</span>
-                            </div>
-                            <div class="summary-row">
-                                <span class="summary-label">Despesas Fixas</span>
-                                <span class="summary-val-yellow">-${formatCurrency(totalFixed)}</span>
-                            </div>
-                            <div class="summary-row">
-                                <span class="summary-label">Despesas Variáveis</span>
-                                <span class="summary-val-red">-${formatCurrency(totalVariable)}</span>
-                            </div>
-                            
-                            <div class="final-balance-row">
-                                <span>Resultado Líquido Mensal</span>
-                                <span class="${isPositive ? 'text-green-400' : 'text-red-400'}">${formatCurrency(balance)}</span>
-                            </div>
-                        </div>
+  html += '<div style="margin-top:0.75rem;">';
 
-                        <!-- Right Column: Projection Box (Focal Point) -->
-                        <div class="projection-box ${boxClass}">
-                            <span class="status-badge">${badgeText}</span>
-                            <div class="projection-title">${statusTitle}</div>
-                            <div class="projection-value text-white">
-                                ${formatCurrency(Math.abs(yearlyProjection))}
-                            </div>
-                            <div class="projection-desc">
-                                ${statusDesc}
-                            </div>
-                        </div>
-                    </div>
-                </div>
+  // Poupança
+  var poupancaBarColor = pctPoupanca >= 20 ? 'var(--green)' : pctPoupanca >= 10 ? 'var(--primary)' : 'var(--orange)';
+  html += '<div style="margin-bottom:0.5rem;"><div style="display:flex;justify-content:space-between;font-size:0.82rem;margin-bottom:0.25rem;"><span style="color:var(--blue)">Poupança</span><span style="color:var(--blue);font-weight:700;">' + fmtPct(pctPoupanca) + ' — ' + fmtCurrency(totalPoupancaFluxo) + '</span></div>';
+  html += '<div class="score-bar-track"><div class="score-bar-fill" style="width:' + Math.min(100,pctPoupanca) + '%;background:' + poupancaBarColor + ';"></div></div>';
+  html += '<div style="font-size:0.72rem;color:var(--muted);margin-top:0.2rem;">' + (pctPoupanca >= 20 ? '✓ Excelente taxa de poupança.' : pctPoupanca >= 10 ? 'Poupança razoável. Ideal: acima de 20%.' : pctPoupanca > 0 ? 'Poupança abaixo do recomendado. Ideal: acima de 20%.' : 'Nenhuma poupança no período.') + '</div></div>';
 
-                <div class="flex justify-center gap-4 mt-8">
-                    <button onclick="restart()" class="restart-btn">Nova Análise</button>
-                </div>
-            `;
-        }
+  // Despesas
+  var despBarColor = pctDespesas <= 60 ? 'var(--green)' : pctDespesas <= 80 ? 'var(--primary)' : 'var(--red)';
+  html += '<div style="margin-bottom:0.5rem;"><div style="display:flex;justify-content:space-between;font-size:0.82rem;margin-bottom:0.25rem;"><span style="color:var(--red)">Despesas</span><span style="color:var(--red);font-weight:700;">' + fmtPct(pctDespesas) + ' — ' + fmtCurrency(totalDespesas) + '</span></div>';
+  html += '<div class="score-bar-track"><div class="score-bar-fill" style="width:' + Math.min(100,pctDespesas) + '%;background:' + despBarColor + ';"></div></div>';
+  html += '<div style="font-size:0.72rem;color:var(--muted);margin-top:0.2rem;">' + (pctDespesas <= 60 ? '✓ Despesas dentro de um limite saudável.' : pctDespesas <= 80 ? 'Despesas elevadas. Pouco espaço para poupança.' : 'Despesas comprometendo a maior parte da renda.') + '</div></div>';
 
-        // Initialize
-        renderStep();
+  // Saldo residual
+  var saldoResColor = pctSaldo >= 0 ? 'var(--green)' : 'var(--red)';
+  html += '<div><div style="display:flex;justify-content:space-between;font-size:0.82rem;margin-bottom:0.25rem;"><span style="color:' + saldoResColor + '">Saldo residual não alocado</span><span style="color:' + saldoResColor + ';font-weight:700;">' + fmtPct(Math.abs(pctSaldo)) + (pctSaldo < 0 ? ' (déficit)' : '') + '</span></div>';
+  html += '<div style="font-size:0.72rem;color:var(--muted);">' + (pctSaldo >= 5 ? 'Sobra não alocada — considere direcionar para poupança.' : pctSaldo >= 0 ? 'Fluxo praticamente equilibrado.' : 'As saídas superam as entradas no período.') + '</div></div>';
 
-    </script>
+  html += '</div></div>';
+
+  // ---- Bloco 2: Despesas por categoria ----
+  var despesasItens = [];
+  Object.keys(totaisPorItem).forEach(function(idx) {
+    var t = totaisPorItem[idx];
+    if (t.item.subtipo === 'despesa') despesasItens.push({ idx: parseInt(idx), item: t.item, total: t.total, ocorrencias: t.ocorrencias });
+  });
+
+  if (despesasItens.length > 0) {
+    html += '<div class="analise-block">';
+    html += '<div class="analise-block-title">Despesas — Participação sobre as Entradas e sobre o Total de Despesas</div>';
+    html += '<div class="analise-memo" style="margin-bottom:0.75rem;">Cada item mostra: % das entradas | % das despesas | score de ajustabilidade (0–10, quanto maior = mais candidato a redução)</div>';
+
+    // Ordenar por score de ajuste decrescente
+    despesasItens.sort(function(a,b) { return calcPotencialAjuste(b.item) - calcPotencialAjuste(a.item); });
+
+    despesasItens.forEach(function(d) {
+      var pctEnt = totalEntradas > 0 ? (d.total / totalEntradas) * 100 : 0;
+      var pctDesp = totalDespesas > 0 ? (d.total / totalDespesas) * 100 : 0;
+      var score = calcPotencialAjuste(d.item);
+      var sc = scoreColor(score);
+      var ac = alertClass(score);
+
+      html += '<div class="analise-row">';
+      html += '<div class="item-name"><strong>' + d.item.nome + '</strong>';
+      if (d.item.categoria) html += ' <span style="font-size:0.72rem;color:var(--muted);">(' + CATEGORIA_LABELS[d.item.categoria] + ')</span>';
+      html += '<div style="font-size:0.72rem;color:var(--muted);margin-top:0.15rem;">' + fmtCurrency(d.item.valor) + '/ocorrência × ' + d.ocorrencias + ' = ' + fmtCurrency(d.total) + '</div>';
+      html += '</div>';
+
+      html += '<div style="text-align:right;min-width:200px;">';
+      html += '<div style="font-size:0.82rem;font-weight:700;color:var(--fg);">' + fmtPct(pctEnt) + ' das entradas &nbsp;|&nbsp; ' + fmtPct(pctDesp) + ' das despesas</div>';
+
+      // Score bar
+      html += '<div style="display:flex;align-items:center;gap:0.5rem;margin-top:0.3rem;">';
+      html += '<div style="font-size:0.7rem;color:var(--muted);white-space:nowrap;">Potencial de ajuste:</div>';
+      html += '<div class="score-bar-track" style="flex:1;"><div class="score-bar-fill" style="width:' + (score*10) + '%;background:' + sc + ';"></div></div>';
+      html += '<div class="score-label" style="color:' + sc + ';">' + score.toFixed(1) + '</div>';
+      html += '</div>';
+
+      // Flags
+      html += '<div class="item-flags" style="margin-top:0.3rem;justify-content:flex-end;">';
+      if (d.item.alteravel === 'sim') html += '<span class="flag-ajustavel">Alterável</span>';
+      if (d.item.disposto === 'sim') html += '<span class="flag-disposto">Disposto</span>';
+      if (d.item.conforto && parseInt(d.item.conforto) >= 4) html += '<span class="flag-conforto">Conforto ' + CONFORTO_LABELS[d.item.conforto] + '</span>';
+      if (d.item.importancia && parseInt(d.item.importancia) >= 6) html += '<span class="flag-alerta">' + IMPORTANCIA_LABELS[d.item.importancia] + '</span>';
+      html += '</div>';
+
+      html += '</div>';
+      html += '</div>';
+    });
+
+    html += '</div>';
+
+    // ---- Bloco 3: Candidatos a redução ----
+    var candidatos = despesasItens.filter(function(d) { return calcPotencialAjuste(d.item) >= 4.5; });
+    if (candidatos.length > 0) {
+      html += '<div class="analise-block alert-med">';
+      html += '<div class="analise-block-title">⚠ Candidatos a Redução ou Revisão</div>';
+      html += '<div class="analise-memo" style="margin-bottom:0.75rem;">Itens com score de ajustabilidade ≥ 4,5 — combinação de categoria, importância, nível de conforto, alterabilidade e disposição.</div>';
+
+      var totalCandidatos = candidatos.reduce(function(acc,d) { return acc + d.total; }, 0);
+      var pctCandidatos = totalEntradas > 0 ? (totalCandidatos / totalEntradas) * 100 : 0;
+
+      html += '<div style="font-size:0.9rem;font-weight:700;color:var(--orange);margin-bottom:0.5rem;">Se reduzidos em 30%: economia de ' + fmtCurrency(totalCandidatos * 0.3) + ' (' + fmtPct(pctCandidatos * 0.3) + ' das entradas)</div>';
+
+      candidatos.forEach(function(d) {
+        var score = calcPotencialAjuste(d.item);
+        var sc = scoreColor(score);
+        html += '<div style="display:flex;justify-content:space-between;align-items:center;padding:0.3rem 0;border-bottom:1px solid rgba(212,175,55,0.06);font-size:0.85rem;">';
+        html += '<span style="color:var(--fg);">' + d.item.nome + '</span>';
+        html += '<span style="color:' + sc + ';font-weight:700;">' + fmtCurrency(d.total) + ' &nbsp;·&nbsp; score ' + score.toFixed(1) + '</span>';
+        html += '</div>';
+      });
+
+      html += '</div>';
+    }
+  }
+
+  sec.innerHTML = html;
+}
+
+// ============================================================
+// INIT
+// ============================================================
+updateRelativePeriod();
+document.getElementById('rec-inicio').value = isoDate(new Date());
+</script>
 </body>
 </html>
