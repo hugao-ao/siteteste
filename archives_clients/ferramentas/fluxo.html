@@ -3,7 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Fluxo de Caixa Avançado</title>
+<title>Fluxo de Caixa Avançado - MithraSF</title>
+<link rel="stylesheet" href="../assets/style.css">
+<script src="../assets/layout.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
   :root {
@@ -165,12 +167,23 @@
 </style>
 </head>
 <body>
+  <!-- Sidebar Container (Injected by layout.js) -->
+  <div id="sidebar-container" class="sidebar"></div>
+  <!-- Main Content -->
+  <main class="main-content">
 <div class="page">
 
-  <div class="page-header">
-    <h1>📊 Fluxo de Caixa Avançado</h1>
-    <p>Projete seu saldo, poupança e despesas ao longo do tempo com recorrências personalizadas.</p>
-  </div>
+  <header class="flex items-center gap-4 mb-8">
+    <a href="../ferramentas.html" class="text-gray-400 hover:text-white text-xl">←</a>
+    <div>
+      <div class="flex items-center gap-2">
+        <span class="text-yellow-500 text-2xl">📊</span>
+        <h1 class="text-2xl font-bold m-0">Fluxo de Caixa Avançado</h1>
+      </div>
+      <p class="text-gray-400 text-sm">Projete seu saldo, poupança e despesas ao longo do tempo com recorrências personalizadas.</p>
+    </div>
+    <button id="mobile-toggle" class="mobile-toggle ml-auto md:hidden">☰</button>
+  </header>
 
   <!-- Seção 1: Período -->
   <div class="card">
@@ -1324,10 +1337,101 @@ function renderAnalise(totaisPorItem, totalEntradas, totalPoupancaFluxo, totalDe
       });
 
       html += '</div>';
+
+      // ====================================================
+      // SEÇÃO EXPANSÍVEL: MEMÓRIA DE CÁLCULO DETALHADA
+      // ====================================================
+      var memId = 'mem-calc-' + Date.now();
+      html += '<div style="margin-top:1rem;border:1px solid rgba(212,175,55,0.15);border-radius:8px;overflow:hidden;">';
+      html += '<div onclick="toggleMemCalc(\'' + memId + '\')" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center;padding:0.75rem 1rem;background:rgba(212,175,55,0.06);">';
+      html += '<span style="font-size:0.82rem;font-weight:700;color:var(--primary);">&#128203; Memória de Cálculo — Como o score foi calculado</span>';
+      html += '<span id="' + memId + '-icon" style="color:var(--muted);font-size:0.9rem;">&#9660;</span>';
+      html += '</div>';
+      html += '<div id="' + memId + '" style="display:none;padding:1rem;">';
+
+      candidatos.forEach(function(d) {
+        var it = d.item;
+        var pCat = PESO_CATEGORIA[it.categoria] || 0;
+        var pImp = it.importancia ? (PESO_IMPORTANCIA[it.importancia] || 0) : 0;
+        var pConf = it.conforto ? (PESO_CONFORTO[it.conforto] || 0) : 0;
+        var pAlt = it.alteravel === 'sim' ? 1.5 : 0;
+        var pDisp = it.disposto === 'sim' ? 2 : 0;
+        var totalScore = pCat + pImp + pConf + pAlt + pDisp;
+        var maxPossivel = 15.5;
+        var scoreFinal = Math.min(10, (totalScore / maxPossivel) * 10);
+        var sc = scoreColor(scoreFinal);
+
+        var catLabels = { sobrevivencia:'Sobrevivência', necessidades:'Necessidades/Prioridades', aperfeicoamento:'Aperfeiçoamento', dividas:'Dívidas', conforto:'Conforto/Supérfluo' };
+        var impLabels = { '1':'Mais importante de todos','2':'Muito importante','3':'Importante','4':'Preferível ter','5':'Indiferente','6':'Preferível não ter','7':'Inaceitável' };
+        var confLabels = { '1':'Muito abaixo do básico','2':'Menos que básico','3':'Apenas básico','4':'Mais que básico','5':'Muito acima do básico' };
+
+        html += '<div style="margin-bottom:1.25rem;padding:0.75rem;background:rgba(255,255,255,0.02);border-radius:8px;border-left:3px solid ' + sc + ';">';
+        html += '<div style="font-weight:700;color:#fff;margin-bottom:0.6rem;font-size:0.9rem;">' + it.nome + ' <span style="color:' + sc + ';font-size:0.8rem;">score final: ' + scoreFinal.toFixed(1) + ' / 10</span></div>';
+
+        // Tabela de componentes
+        html += '<table style="width:100%;border-collapse:collapse;font-size:0.78rem;">';
+        html += '<thead><tr style="color:var(--muted);border-bottom:1px solid rgba(212,175,55,0.1);">';
+        html += '<th style="text-align:left;padding:0.3rem 0.5rem;">Critério</th>';
+        html += '<th style="text-align:left;padding:0.3rem 0.5rem;">Valor informado</th>';
+        html += '<th style="text-align:center;padding:0.3rem 0.5rem;">Peso bruto</th>';
+        html += '<th style="text-align:center;padding:0.3rem 0.5rem;">Máx. possível</th>';
+        html += '<th style="text-align:center;padding:0.3rem 0.5rem;">Contribuição</th>';
+        html += '</tr></thead><tbody>';
+
+        var rows = [
+          { criterio: 'Categoria', valor: catLabels[it.categoria] || it.categoria, peso: pCat, max: 4 },
+          { criterio: 'Importância', valor: impLabels[it.importancia] || '—', peso: pImp, max: 4 },
+          { criterio: 'Nível de conforto', valor: confLabels[it.conforto] || '—', peso: pConf, max: 4 },
+          { criterio: 'Alterável?', valor: it.alteravel === 'sim' ? 'Sim' : 'Não', peso: pAlt, max: 1.5 },
+          { criterio: 'Disposto a alterar?', valor: it.disposto === 'sim' ? 'Sim' : 'Não', peso: pDisp, max: 2 }
+        ];
+
+        rows.forEach(function(r) {
+          var pct = r.max > 0 ? Math.round((r.peso / r.max) * 100) : 0;
+          var barColor = pct >= 75 ? 'var(--red)' : pct >= 40 ? 'var(--orange)' : 'var(--green)';
+          html += '<tr style="border-bottom:1px solid rgba(255,255,255,0.04);">';
+          html += '<td style="padding:0.35rem 0.5rem;color:var(--muted);">' + r.criterio + '</td>';
+          html += '<td style="padding:0.35rem 0.5rem;color:var(--fg);">' + r.valor + '</td>';
+          html += '<td style="padding:0.35rem 0.5rem;text-align:center;color:' + barColor + ';font-weight:700;">' + r.peso.toFixed(1) + '</td>';
+          html += '<td style="padding:0.35rem 0.5rem;text-align:center;color:var(--muted);">' + r.max.toFixed(1) + '</td>';
+          html += '<td style="padding:0.35rem 0.5rem;text-align:center;">';
+          html += '<div style="background:rgba(255,255,255,0.06);border-radius:4px;height:8px;width:100%;min-width:60px;">';
+          html += '<div style="background:' + barColor + ';border-radius:4px;height:8px;width:' + pct + '%;transition:width 0.3s;"></div>';
+          html += '</div>';
+          html += '<div style="font-size:0.65rem;color:var(--muted);text-align:center;margin-top:2px;">' + pct + '%</div>';
+          html += '</td>';
+          html += '</tr>';
+        });
+
+        html += '</tbody></table>';
+
+        // Fórmula final
+        html += '<div style="margin-top:0.6rem;padding:0.5rem;background:rgba(212,175,55,0.05);border-radius:6px;font-size:0.75rem;color:var(--muted);">';
+        html += '<strong style="color:var(--fg);">Fórmula:</strong> (';
+        html += pCat.toFixed(1) + ' + ' + pImp.toFixed(1) + ' + ' + pConf.toFixed(1) + ' + ' + pAlt.toFixed(1) + ' + ' + pDisp.toFixed(1);
+        html += ') &divide; ' + maxPossivel.toFixed(1) + ' &times; 10 = ';
+        html += '<strong style="color:' + sc + ';">' + scoreFinal.toFixed(2) + '</strong>';
+        html += '</div>';
+
+        html += '</div>'; // item memória
+      });
+
+      html += '</div>'; // mem-calc body
+      html += '</div>'; // mem-calc wrapper
     }
   }
 
   sec.innerHTML = html;
+
+  // Garantir que toggleMemCalc está disponível
+  window.toggleMemCalc = function(id) {
+    var el = document.getElementById(id);
+    var icon = document.getElementById(id + '-icon');
+    if (!el) return;
+    var isOpen = el.style.display !== 'none';
+    el.style.display = isOpen ? 'none' : 'block';
+    icon.innerHTML = isOpen ? '&#9660;' : '&#9650;';
+  };
 }
 
 // ============================================================
@@ -1336,5 +1440,6 @@ function renderAnalise(totaisPorItem, totalEntradas, totalPoupancaFluxo, totalDe
 updateRelativePeriod();
 document.getElementById('rec-inicio').value = isoDate(new Date());
 </script>
+</main>
 </body>
 </html>
