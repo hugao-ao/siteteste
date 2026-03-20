@@ -293,6 +293,10 @@
   <div class="card" id="result-section" style="display:none;">
     <h2>4. Resultado da Projeção</h2>
     <div class="summary-bar" id="summary-bar"></div>
+
+    <!-- Orçamento Mensal Equivalente -->
+    <div id="orcamento-mensal" style="display:none;"></div>
+
     <div style="display:flex; gap:0.5rem; margin-bottom:1rem; flex-wrap:wrap;">
       <button class="btn btn-outline btn-sm" onclick="setChartView('both')" id="cv-both">Saldo + Poupança</button>
       <button class="btn btn-outline btn-sm" onclick="setChartView('balance')" id="cv-balance">Só Saldo</button>
@@ -971,11 +975,190 @@ function calcular() {
     else totalDespesas += t;
   });
 
+  var numDias = Math.round((end - start) / (1000*60*60*24)) + 1;
   renderSummary(totalEntradas, totalPoupancaFluxo, totalDespesas, saldo, poupanca);
+  renderOrcamentoMensal(totaisPorItem, totalEntradas, totalPoupancaFluxo, totalDespesas, numDias);
   renderChart(labels, saldoData, poupancaData);
   renderAnalise(totaisPorItem, totalEntradas, totalPoupancaFluxo, totalDespesas);
   document.getElementById('result-section').style.display = 'block';
   document.getElementById('result-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// ============================================================
+// ORÇAMENTO MENSAL EQUIVALENTE
+// ============================================================
+var orcamentoChartInstance = null;
+
+function renderOrcamentoMensal(totaisPorItem, totalEntradas, totalPoupancaFluxo, totalDespesas, numDias) {
+  var sec = document.getElementById('orcamento-mensal');
+  if (totalEntradas === 0 || numDias === 0) { sec.style.display = 'none'; return; }
+
+  var fator = 30 / numDias; // conversor para mensal
+
+  // Totais mensais
+  var entMensal = totalEntradas * fator;
+  var poupMensal = totalPoupancaFluxo * fator;
+  var despMensal = totalDespesas * fator;
+  var saldoLivreMensal = entMensal - poupMensal - despMensal;
+
+  // Agrupar despesas por categoria (mensal)
+  var catTotais = {};
+  Object.keys(totaisPorItem).forEach(function(idx) {
+    var t = totaisPorItem[idx];
+    if (t.item.subtipo !== 'despesa') return;
+    var cat = t.item.categoria || 'sem_categoria';
+    if (!catTotais[cat]) catTotais[cat] = { total: 0, itens: [] };
+    catTotais[cat].total += t.total * fator;
+    catTotais[cat].itens.push({ nome: t.item.nome, valor: t.total * fator, ocorrencias: t.ocorrencias });
+  });
+
+  // Cores e labels por categoria
+  var catConfig = {
+    sobrevivencia:  { label: 'Sobrevivência',         color: '#ef4444' },
+    necessidades:   { label: 'Necessidades',           color: '#f97316' },
+    aperfeicoamento:{ label: 'Aperfeiçoamento',       color: '#a78bfa' },
+    dividas:        { label: 'Dívidas',               color: '#f59e0b' },
+    conforto:       { label: 'Conforto/Supérfluo',    color: '#60a5fa' },
+    sem_categoria:  { label: 'Sem categoria',          color: '#6b7280' }
+  };
+
+  // Dados para o gráfico de rosca
+  var chartLabels = [];
+  var chartData = [];
+  var chartColors = [];
+
+  // Poupança
+  if (poupMensal > 0) {
+    chartLabels.push('Poupança');
+    chartData.push(parseFloat(poupMensal.toFixed(2)));
+    chartColors.push('#60a5fa');
+  }
+  // Despesas por categoria
+  var catOrder = ['sobrevivencia','necessidades','aperfeicoamento','dividas','conforto','sem_categoria'];
+  catOrder.forEach(function(cat) {
+    if (catTotais[cat] && catTotais[cat].total > 0) {
+      chartLabels.push(catConfig[cat].label);
+      chartData.push(parseFloat(catTotais[cat].total.toFixed(2)));
+      chartColors.push(catConfig[cat].color);
+    }
+  });
+  // Saldo livre (se positivo)
+  if (saldoLivreMensal > 0) {
+    chartLabels.push('Saldo livre');
+    chartData.push(parseFloat(saldoLivreMensal.toFixed(2)));
+    chartColors.push('#10b981');
+  }
+
+  // Montar HTML
+  var html = '';
+  html += '<div style="background:var(--card2);border-radius:var(--radius);padding:1.25rem;margin-bottom:1.5rem;border:1px solid var(--border);">';
+  html += '<div style="font-size:1rem;font-weight:700;color:var(--primary);margin-bottom:0.25rem;">Orçamento Mensal Equivalente</div>';
+  html += '<div style="font-size:0.75rem;color:var(--muted);margin-bottom:1rem;">Todos os valores do período convertidos para base mensal (30 dias). Período analisado: ' + numDias + ' dias.</div>';
+
+  // Layout: rosca à esquerda, tabela à direita
+  html += '<div style="display:flex;gap:1.5rem;flex-wrap:wrap;align-items:flex-start;">';
+
+  // Rosca
+  html += '<div style="flex:0 0 200px;display:flex;flex-direction:column;align-items:center;">';
+  html += '<canvas id="orcamento-chart" width="200" height="200"></canvas>';
+  html += '<div style="margin-top:0.5rem;font-size:0.72rem;color:var(--muted);text-align:center;">Base: ' + fmtCurrency(entMensal) + '/mês</div>';
+  html += '</div>';
+
+  // Tabela detalhada
+  html += '<div style="flex:1;min-width:260px;">';
+
+  // Linha de entradas
+  html += '<div style="display:flex;justify-content:space-between;align-items:center;padding:0.4rem 0;border-bottom:1px solid rgba(212,175,55,0.08);">';
+  html += '<div style="display:flex;align-items:center;gap:0.5rem;"><div style="width:10px;height:10px;border-radius:50%;background:#10b981;"></div><span style="font-size:0.82rem;color:var(--fg);font-weight:600;">Entradas</span></div>';
+  html += '<span style="font-size:0.88rem;font-weight:700;color:#10b981;">' + fmtCurrency(entMensal) + '</span>';
+  html += '</div>';
+
+  // Poupança
+  if (poupMensal > 0) {
+    var poupPct = (poupMensal / entMensal * 100);
+    html += '<div style="display:flex;justify-content:space-between;align-items:center;padding:0.35rem 0 0.35rem 1rem;border-bottom:1px solid rgba(255,255,255,0.03);">';
+    html += '<div style="display:flex;align-items:center;gap:0.5rem;"><div style="width:8px;height:8px;border-radius:50%;background:#60a5fa;"></div><span style="font-size:0.8rem;color:var(--muted);">Poupança</span></div>';
+    html += '<div style="text-align:right;"><span style="font-size:0.82rem;font-weight:600;color:#60a5fa;">' + fmtCurrency(poupMensal) + '</span> <span style="font-size:0.7rem;color:var(--muted);">(' + fmtPct(poupPct) + ')</span></div>';
+    html += '</div>';
+  }
+
+  // Despesas por categoria
+  catOrder.forEach(function(cat) {
+    if (!catTotais[cat] || catTotais[cat].total <= 0) return;
+    var cfg = catConfig[cat];
+    var catVal = catTotais[cat].total;
+    var catPct = catVal / entMensal * 100;
+    html += '<div style="border-bottom:1px solid rgba(255,255,255,0.03);">';
+    // Linha da categoria
+    html += '<div style="display:flex;justify-content:space-between;align-items:center;padding:0.35rem 0 0.35rem 1rem;cursor:pointer;" onclick="toggleCatDetalhe(\'cat-' + cat + '\')">';
+    html += '<div style="display:flex;align-items:center;gap:0.5rem;"><div style="width:8px;height:8px;border-radius:50%;background:' + cfg.color + ';"></div><span style="font-size:0.8rem;color:var(--muted);">' + cfg.label + '</span>';
+    html += '<span style="font-size:0.65rem;color:var(--muted);opacity:0.6;">&#9660;</span></div>';
+    html += '<div style="text-align:right;"><span style="font-size:0.82rem;font-weight:600;color:' + cfg.color + ';">' + fmtCurrency(catVal) + '</span> <span style="font-size:0.7rem;color:var(--muted);">(' + fmtPct(catPct) + ')</span></div>';
+    html += '</div>';
+    // Sub-itens expansíveis
+    html += '<div id="cat-' + cat + '" style="display:none;padding-left:1.5rem;padding-bottom:0.3rem;">';
+    catTotais[cat].itens.forEach(function(it) {
+      var itPct = it.valor / entMensal * 100;
+      html += '<div style="display:flex;justify-content:space-between;font-size:0.75rem;color:var(--muted);padding:0.2rem 0;">';
+      html += '<span>' + it.nome + '</span>';
+      html += '<span style="color:var(--fg);">' + fmtCurrency(it.valor) + ' <span style="color:var(--muted);font-size:0.68rem;">(' + fmtPct(itPct) + ')</span></span>';
+      html += '</div>';
+    });
+    html += '</div>';
+    html += '</div>';
+  });
+
+  // Saldo livre
+  var saldoColor = saldoLivreMensal >= 0 ? '#10b981' : '#ef4444';
+  var saldoLabel = saldoLivreMensal >= 0 ? 'Saldo livre não alocado' : 'Déficit mensal';
+  html += '<div style="display:flex;justify-content:space-between;align-items:center;padding:0.5rem 0;margin-top:0.25rem;border-top:1px solid rgba(212,175,55,0.15);">';
+  html += '<span style="font-size:0.82rem;font-weight:700;color:' + saldoColor + ';">' + saldoLabel + '</span>';
+  html += '<span style="font-size:0.88rem;font-weight:700;color:' + saldoColor + ';">' + fmtCurrency(Math.abs(saldoLivreMensal)) + '</span>';
+  html += '</div>';
+
+  html += '</div>'; // tabela
+  html += '</div>'; // flex
+  html += '</div>'; // card
+
+  sec.innerHTML = html;
+  sec.style.display = 'block';
+
+  // Renderizar gráfico de rosca
+  if (orcamentoChartInstance) { orcamentoChartInstance.destroy(); orcamentoChartInstance = null; }
+  var ctx2 = document.getElementById('orcamento-chart').getContext('2d');
+  orcamentoChartInstance = new Chart(ctx2, {
+    type: 'doughnut',
+    data: {
+      labels: chartLabels,
+      datasets: [{ data: chartData, backgroundColor: chartColors, borderColor: '#0a1f12', borderWidth: 2 }]
+    },
+    options: {
+      responsive: false,
+      cutout: '62%',
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#052614',
+          borderColor: 'rgba(212,175,55,0.3)',
+          borderWidth: 1,
+          titleColor: '#D4AF37',
+          bodyColor: '#F2E8C9',
+          callbacks: {
+            label: function(ctx) {
+              var pct = (ctx.parsed / entMensal * 100).toFixed(1);
+              return ctx.label + ': ' + fmtCurrency(ctx.parsed) + ' (' + pct + '%)';
+            }
+          }
+        }
+      }
+    }
+  });
+
+  // Função de toggle das categorias
+  window.toggleCatDetalhe = function(id) {
+    var el = document.getElementById(id);
+    if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none';
+  };
 }
 
 // ============================================================
