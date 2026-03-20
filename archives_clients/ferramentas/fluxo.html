@@ -1127,8 +1127,9 @@ var PESO_CONFORTO = {
   '5': 4    // muito acima do básico → candidato a redução
 };
 
-function calcPotencialAjuste(it) {
+function calcPotencialAjuste(it, totalItem, totalEntradas, totalDespesas) {
   // Score de 0 a 10: quanto maior, mais candidato a ajuste/redução
+  // Aceita chamada sem os totais (retrocompatibilidade) — nesse caso participação = 0
   if (!it.categoria) return 0;
   var score = 0;
   score += PESO_CATEGORIA[it.categoria] || 0;
@@ -1136,9 +1137,27 @@ function calcPotencialAjuste(it) {
   if (it.conforto) score += PESO_CONFORTO[it.conforto] || 0;
   if (it.alteravel === 'sim') score += 1.5;
   if (it.disposto === 'sim') score += 2;
-  // Normalizar para 0-10
-  var maxPossivel = 4 + 4 + 4 + 1.5 + 2; // 15.5
+  // Participação sobre as entradas (peso máx 2): quanto maior a fatia das entradas, mais impacto tem a redução
+  var pctEnt = (totalEntradas && totalItem) ? (totalItem / totalEntradas) : 0;
+  var pesoParticipacaoEnt = Math.min(2, pctEnt * 20); // 10% das entradas já dá peso máximo 2
+  score += pesoParticipacaoEnt;
+  // Participação sobre as despesas (peso máx 1): concentração dentro das despesas
+  var pctDesp = (totalDespesas && totalItem) ? (totalItem / totalDespesas) : 0;
+  var pesoParticipacaoDesp = Math.min(1, pctDesp * 5); // 20% das despesas já dá peso máximo 1
+  score += pesoParticipacaoDesp;
+  // Máximo possível: 4 + 4 + 4 + 1.5 + 2 + 2 + 1 = 18.5
+  var maxPossivel = 18.5;
   return Math.min(10, (score / maxPossivel) * 10);
+}
+
+function calcPercentualReducao(score) {
+  // Percentual de redução sugerido proporcional ao score (0–10 → 0–100%)
+  // Score < 4.5 → não é candidato (não chamado normalmente)
+  // Score 4.5 → ~20%  |  Score 7 → ~50%  |  Score 10 → 100%
+  // Fórmula: pct = (score / 10) ^ 1.5 * 100, arredondado para múltiplo de 5
+  var raw = Math.pow(score / 10, 1.5) * 100;
+  var rounded = Math.min(100, Math.round(raw / 5) * 5);
+  return Math.max(5, rounded); // mínimo 5% para não mostrar 0%
 }
 
 function scoreColor(score) {
@@ -1208,12 +1227,12 @@ function renderAnalise(totaisPorItem, totalEntradas, totalPoupancaFluxo, totalDe
     html += '<div class="analise-memo" style="margin-bottom:0.75rem;">Cada item mostra: % das entradas | % das despesas | score de ajustabilidade (0–10, quanto maior = mais candidato a redução)</div>';
 
     // Ordenar por score de ajuste decrescente
-    despesasItens.sort(function(a,b) { return calcPotencialAjuste(b.item) - calcPotencialAjuste(a.item); });
+    despesasItens.sort(function(a,b) { return calcPotencialAjuste(b.item, b.total, totalEntradas, totalDespesas) - calcPotencialAjuste(a.item, a.total, totalEntradas, totalDespesas); });
 
     despesasItens.forEach(function(d) {
       var pctEnt = totalEntradas > 0 ? (d.total / totalEntradas) * 100 : 0;
       var pctDesp = totalDespesas > 0 ? (d.total / totalDespesas) * 100 : 0;
-      var score = calcPotencialAjuste(d.item);
+      var score = calcPotencialAjuste(d.item, d.total, totalEntradas, totalDespesas);
       var sc = scoreColor(score);
       var ac = alertClass(score);
 
@@ -1248,34 +1267,47 @@ function renderAnalise(totaisPorItem, totalEntradas, totalPoupancaFluxo, totalDe
     html += '</div>';
 
     // ---- Bloco 3: Candidatos a redução ----
-    var candidatos = despesasItens.filter(function(d) { return calcPotencialAjuste(d.item) >= 4.5; });
+    var candidatos = despesasItens.filter(function(d) { return calcPotencialAjuste(d.item, d.total, totalEntradas, totalDespesas) >= 4.5; });
     if (candidatos.length > 0) {
       html += '<div class="analise-block alert-med">';
       html += '<div class="analise-block-title">⚠ Candidatos a Redução ou Revisão</div>';
       html += '<div class="analise-memo" style="margin-bottom:0.75rem;">Itens com score de ajustabilidade ≥ 4,5 — combinação de categoria, importância, nível de conforto, alterabilidade e disposição.</div>';
 
-      var totalCandidatos = candidatos.reduce(function(acc,d) { return acc + d.total; }, 0);
-      var pctCandidatos = totalEntradas > 0 ? (totalCandidatos / totalEntradas) * 100 : 0;
+      // Pré-calcular score e percentual de redução de cada candidato
+      candidatos.forEach(function(d) {
+        d._score = calcPotencialAjuste(d.item, d.total, totalEntradas, totalDespesas);
+        d._pctReducao = calcPercentualReducao(d._score); // 5–100
+        d._fatorReducao = d._pctReducao / 100;
+      });
 
-      html += '<div style="font-size:0.9rem;font-weight:700;color:var(--orange);margin-bottom:0.5rem;">Se reduzidos em 30%: economia de ' + fmtCurrency(totalCandidatos * 0.3) + ' (' + fmtPct(pctCandidatos * 0.3) + ' das entradas)</div>';
+      // Resumo: economia total considerando os percentuais individuais
+      var totalEconomia = candidatos.reduce(function(acc,d) { return acc + d.total * d._fatorReducao; }, 0);
+      var pctEconomiaEntradas = totalEntradas > 0 ? (totalEconomia / totalEntradas) * 100 : 0;
+
+      html += '<div style="font-size:0.9rem;font-weight:700;color:var(--orange);margin-bottom:0.75rem;">';
+      html += 'Com as reduções sugeridas (percentuais individuais): economia de ' + fmtCurrency(totalEconomia) + ' (' + fmtPct(pctEconomiaEntradas) + ' das entradas)';
+      html += '</div>';
+      html += '<div style="font-size:0.75rem;color:var(--muted);margin-bottom:0.75rem;">O percentual sugerido por item é proporcional ao score de ajustabilidade (máx. 100%). Itens com mesmo score recebem o mesmo percentual.</div>';
 
       candidatos.forEach(function(d) {
-        var score = calcPotencialAjuste(d.item);
+        var score = d._score;
+        var pctReducao = d._pctReducao;
+        var fatorReducao = d._fatorReducao;
         var sc = scoreColor(score);
         var valorAtual = d.item.valor;
-        var valorReduzido = valorAtual * 0.7;
-        var economia = valorAtual - valorReduzido;
+        var valorReduzido = valorAtual * (1 - fatorReducao);
+        var economia = valorAtual * fatorReducao;
 
         // Calcular equivalente mensal da recorrência
         var recTipo = d.item.recTipo;
         var recQty = d.item.recQty || 1;
         var occsPerMonth = 0;
         if (recTipo === 'nao') {
-          occsPerMonth = 0; // único, não tem mensal
+          occsPerMonth = 0;
         } else if (recTipo === 'dias') {
           occsPerMonth = 30 / recQty;
         } else if (recTipo === 'uteis') {
-          occsPerMonth = 22 / recQty; // ~22 dias úteis/mês
+          occsPerMonth = 22 / recQty;
         } else if (recTipo === 'semanas') {
           occsPerMonth = 4.33 / recQty;
         } else if (recTipo === 'quinzenas') {
@@ -1291,11 +1323,15 @@ function renderAnalise(totaisPorItem, totalEntradas, totalPoupancaFluxo, totalDe
         var recLabel = recTipo === 'nao' ? 'único' :
           'a cada ' + recQty + ' ' + REC_LABELS[recTipo];
 
+        var pctTag = pctReducao === 100
+          ? '<span style="background:var(--red);color:#fff;font-size:0.7rem;font-weight:700;padding:0.1rem 0.4rem;border-radius:4px;margin-left:0.4rem;">−100% (eliminar)</span>'
+          : '<span style="background:rgba(245,158,11,0.2);color:var(--orange);font-size:0.7rem;font-weight:700;padding:0.1rem 0.4rem;border-radius:4px;margin-left:0.4rem;">−' + pctReducao + '% sugerido</span>';
+
         html += '<div style="padding:0.5rem 0;border-bottom:1px solid rgba(212,175,55,0.06);">';
 
-        // Linha 1: nome + score
+        // Linha 1: nome + score + percentual
         html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.35rem;">';
-        html += '<span style="color:#fff;font-weight:600;font-size:0.88rem;">' + d.item.nome + '</span>';
+        html += '<span style="color:#fff;font-weight:600;font-size:0.88rem;">' + d.item.nome + pctTag + '</span>';
         html += '<span style="color:' + sc + ';font-weight:700;font-size:0.82rem;">score ' + score.toFixed(1) + ' &nbsp;·&nbsp; total no período: ' + fmtCurrency(d.total) + '</span>';
         html += '</div>';
 
@@ -1306,7 +1342,11 @@ function renderAnalise(totaisPorItem, totalEntradas, totalPoupancaFluxo, totalDe
         html += '<div style="background:rgba(255,255,255,0.04);border-radius:6px;padding:0.4rem 0.6rem;">';
         html += '<div style="color:var(--muted);font-size:0.7rem;margin-bottom:0.2rem;">Por ocorrência (' + recLabel + ')</div>';
         html += '<div style="color:var(--fg);font-weight:700;">' + fmtCurrency(valorAtual) + '</div>';
-        html += '<div style="color:var(--green);font-size:0.75rem;">→ ' + fmtCurrency(valorReduzido) + ' (−30%)</div>';
+        if (pctReducao === 100) {
+          html += '<div style="color:var(--red);font-size:0.75rem;">→ R$ 0,00 (eliminar)</div>';
+        } else {
+          html += '<div style="color:var(--green);font-size:0.75rem;">→ ' + fmtCurrency(valorReduzido) + ' (−' + pctReducao + '%)</div>';
+        }
         html += '<div style="color:var(--muted);font-size:0.7rem;">economia: ' + fmtCurrency(economia) + '/ocorrência</div>';
         html += '</div>';
 
@@ -1315,7 +1355,11 @@ function renderAnalise(totaisPorItem, totalEntradas, totalPoupancaFluxo, totalDe
           html += '<div style="background:rgba(255,255,255,0.04);border-radius:6px;padding:0.4rem 0.6rem;">';
           html += '<div style="color:var(--muted);font-size:0.7rem;margin-bottom:0.2rem;">Equivalente mensal</div>';
           html += '<div style="color:var(--fg);font-weight:700;">' + fmtCurrency(mensalAtual) + '</div>';
-          html += '<div style="color:var(--green);font-size:0.75rem;">→ ' + fmtCurrency(mensalReduzido) + ' (−30%)</div>';
+          if (pctReducao === 100) {
+            html += '<div style="color:var(--red);font-size:0.75rem;">→ R$ 0,00 (eliminar)</div>';
+          } else {
+            html += '<div style="color:var(--green);font-size:0.75rem;">→ ' + fmtCurrency(mensalReduzido) + ' (−' + pctReducao + '%)</div>';
+          }
           html += '<div style="color:var(--muted);font-size:0.7rem;">economia: ' + fmtCurrency(mensalEconomia) + '/mês</div>';
           html += '</div>';
 
@@ -1323,7 +1367,11 @@ function renderAnalise(totaisPorItem, totalEntradas, totalPoupancaFluxo, totalDe
           html += '<div style="background:rgba(255,255,255,0.04);border-radius:6px;padding:0.4rem 0.6rem;">';
           html += '<div style="color:var(--muted);font-size:0.7rem;margin-bottom:0.2rem;">Equivalente anual</div>';
           html += '<div style="color:var(--fg);font-weight:700;">' + fmtCurrency(mensalAtual * 12) + '</div>';
-          html += '<div style="color:var(--green);font-size:0.75rem;">→ ' + fmtCurrency(mensalReduzido * 12) + ' (−30%)</div>';
+          if (pctReducao === 100) {
+            html += '<div style="color:var(--red);font-size:0.75rem;">→ R$ 0,00 (eliminar)</div>';
+          } else {
+            html += '<div style="color:var(--green);font-size:0.75rem;">→ ' + fmtCurrency(mensalReduzido * 12) + ' (−' + pctReducao + '%)</div>';
+          }
           html += '<div style="color:var(--muted);font-size:0.7rem;">economia: ' + fmtCurrency(mensalEconomia * 12) + '/ano</div>';
           html += '</div>';
         } else {
@@ -1351,22 +1399,33 @@ function renderAnalise(totaisPorItem, totalEntradas, totalPoupancaFluxo, totalDe
 
       candidatos.forEach(function(d) {
         var it = d.item;
+        var scoreFinal = d._score;
+        var pctReducao = d._pctReducao;
+        var sc = scoreColor(scoreFinal);
+
         var pCat = PESO_CATEGORIA[it.categoria] || 0;
         var pImp = it.importancia ? (PESO_IMPORTANCIA[it.importancia] || 0) : 0;
         var pConf = it.conforto ? (PESO_CONFORTO[it.conforto] || 0) : 0;
         var pAlt = it.alteravel === 'sim' ? 1.5 : 0;
         var pDisp = it.disposto === 'sim' ? 2 : 0;
-        var totalScore = pCat + pImp + pConf + pAlt + pDisp;
-        var maxPossivel = 15.5;
-        var scoreFinal = Math.min(10, (totalScore / maxPossivel) * 10);
-        var sc = scoreColor(scoreFinal);
+
+        // Participação sobre entradas e despesas
+        var pctEntItem = totalEntradas > 0 ? (d.total / totalEntradas) : 0;
+        var pctDespItem = totalDespesas > 0 ? (d.total / totalDespesas) : 0;
+        var pParticEnt = Math.min(2, pctEntItem * 20);
+        var pParticDesp = Math.min(1, pctDespItem * 5);
+
+        var maxPossivel = 18.5;
 
         var catLabels = { sobrevivencia:'Sobrevivência', necessidades:'Necessidades/Prioridades', aperfeicoamento:'Aperfeiçoamento', dividas:'Dívidas', conforto:'Conforto/Supérfluo' };
         var impLabels = { '1':'Mais importante de todos','2':'Muito importante','3':'Importante','4':'Preferível ter','5':'Indiferente','6':'Preferível não ter','7':'Inaceitável' };
         var confLabels = { '1':'Muito abaixo do básico','2':'Menos que básico','3':'Apenas básico','4':'Mais que básico','5':'Muito acima do básico' };
 
         html += '<div style="margin-bottom:1.25rem;padding:0.75rem;background:rgba(255,255,255,0.02);border-radius:8px;border-left:3px solid ' + sc + ';">';
-        html += '<div style="font-weight:700;color:#fff;margin-bottom:0.6rem;font-size:0.9rem;">' + it.nome + ' <span style="color:' + sc + ';font-size:0.8rem;">score final: ' + scoreFinal.toFixed(1) + ' / 10</span></div>';
+        html += '<div style="font-weight:700;color:#fff;margin-bottom:0.6rem;font-size:0.9rem;">' + it.nome;
+        html += ' <span style="color:' + sc + ';font-size:0.8rem;">score: ' + scoreFinal.toFixed(1) + ' / 10</span>';
+        html += ' <span style="font-size:0.78rem;color:var(--orange);font-weight:600;">→ redução sugerida: ' + pctReducao + '%</span>';
+        html += '</div>';
 
         // Tabela de componentes
         html += '<table style="width:100%;border-collapse:collapse;font-size:0.78rem;">';
@@ -1383,7 +1442,9 @@ function renderAnalise(totaisPorItem, totalEntradas, totalPoupancaFluxo, totalDe
           { criterio: 'Importância', valor: impLabels[it.importancia] || '—', peso: pImp, max: 4 },
           { criterio: 'Nível de conforto', valor: confLabels[it.conforto] || '—', peso: pConf, max: 4 },
           { criterio: 'Alterável?', valor: it.alteravel === 'sim' ? 'Sim' : 'Não', peso: pAlt, max: 1.5 },
-          { criterio: 'Disposto a alterar?', valor: it.disposto === 'sim' ? 'Sim' : 'Não', peso: pDisp, max: 2 }
+          { criterio: 'Disposto a alterar?', valor: it.disposto === 'sim' ? 'Sim' : 'Não', peso: pDisp, max: 2 },
+          { criterio: 'Participação sobre entradas', valor: fmtPct(pctEntItem * 100) + ' das entradas (' + fmtCurrency(d.total) + ')', peso: pParticEnt, max: 2 },
+          { criterio: 'Participação sobre despesas', valor: fmtPct(pctDespItem * 100) + ' das despesas', peso: pParticDesp, max: 1 }
         ];
 
         rows.forEach(function(r) {
@@ -1392,7 +1453,7 @@ function renderAnalise(totaisPorItem, totalEntradas, totalPoupancaFluxo, totalDe
           html += '<tr style="border-bottom:1px solid rgba(255,255,255,0.04);">';
           html += '<td style="padding:0.35rem 0.5rem;color:var(--muted);">' + r.criterio + '</td>';
           html += '<td style="padding:0.35rem 0.5rem;color:var(--fg);">' + r.valor + '</td>';
-          html += '<td style="padding:0.35rem 0.5rem;text-align:center;color:' + barColor + ';font-weight:700;">' + r.peso.toFixed(1) + '</td>';
+          html += '<td style="padding:0.35rem 0.5rem;text-align:center;color:' + barColor + ';font-weight:700;">' + r.peso.toFixed(2) + '</td>';
           html += '<td style="padding:0.35rem 0.5rem;text-align:center;color:var(--muted);">' + r.max.toFixed(1) + '</td>';
           html += '<td style="padding:0.35rem 0.5rem;text-align:center;">';
           html += '<div style="background:rgba(255,255,255,0.06);border-radius:4px;height:8px;width:100%;min-width:60px;">';
@@ -1406,11 +1467,14 @@ function renderAnalise(totaisPorItem, totalEntradas, totalPoupancaFluxo, totalDe
         html += '</tbody></table>';
 
         // Fórmula final
+        var somaScore = pCat + pImp + pConf + pAlt + pDisp + pParticEnt + pParticDesp;
         html += '<div style="margin-top:0.6rem;padding:0.5rem;background:rgba(212,175,55,0.05);border-radius:6px;font-size:0.75rem;color:var(--muted);">';
-        html += '<strong style="color:var(--fg);">Fórmula:</strong> (';
-        html += pCat.toFixed(1) + ' + ' + pImp.toFixed(1) + ' + ' + pConf.toFixed(1) + ' + ' + pAlt.toFixed(1) + ' + ' + pDisp.toFixed(1);
+        html += '<strong style="color:var(--fg);">Fórmula score:</strong> (';
+        html += pCat.toFixed(1) + ' + ' + pImp.toFixed(1) + ' + ' + pConf.toFixed(1) + ' + ' + pAlt.toFixed(1) + ' + ' + pDisp.toFixed(1) + ' + ' + pParticEnt.toFixed(2) + ' + ' + pParticDesp.toFixed(2);
         html += ') &divide; ' + maxPossivel.toFixed(1) + ' &times; 10 = ';
-        html += '<strong style="color:' + sc + ';">' + scoreFinal.toFixed(2) + '</strong>';
+        html += '<strong style="color:' + sc + ';">' + scoreFinal.toFixed(2) + '</strong><br>';
+        html += '<strong style="color:var(--fg);">Fórmula redução:</strong> (score / 10) ^ 1,5 &times; 100 = ';
+        html += '<strong style="color:var(--orange);">' + pctReducao + '%</strong> (arredondado para múltiplo de 5, máx. 100%)';
         html += '</div>';
 
         html += '</div>'; // item memória
