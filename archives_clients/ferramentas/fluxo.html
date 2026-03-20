@@ -271,6 +271,11 @@
     </div>
   </div>
 
+  <!-- Botão calcular -->
+  <div style="text-align:center; margin: 1.5rem 0;">
+    <button class="btn btn-primary" style="padding:0.75rem 2.5rem; font-size:1rem;" onclick="calcular()">Calcular Projeção</button>
+  </div>
+
   <!-- Seção 4: Resultado -->
   <div class="card" id="result-section" style="display:none;">
     <h2>4. Resultado da Projeção</h2>
@@ -288,12 +293,7 @@
     <div class="analise-section" id="analise-section"></div>
   </div>
 
-  <!-- Botão calcular -->
-  <div style="text-align:center; margin-top:1rem;">
-    <button class="btn btn-primary" style="padding:0.75rem 2.5rem; font-size:1rem;" onclick="calcular()">Calcular Projeção</button>
-  </div>
-
-</div>
+ </div>
 
 <!-- Modal de Item -->
 <div class="modal-overlay" id="item-modal">
@@ -1004,15 +1004,6 @@ function renderChart(labels, saldoData, poupancaData) {
   if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
 
   var lbls = labels, sData = saldoData, pData = poupancaData;
-  if (labels.length > 60) {
-    var step = Math.ceil(labels.length / 60);
-    lbls = []; sData = []; pData = [];
-    for (var i = 0; i < labels.length; i += step) {
-      lbls.push(labels[i]);
-      sData.push(saldoData[i]);
-      pData.push(poupancaData[i]);
-    }
-  }
 
   var ctx = document.getElementById('main-chart').getContext('2d');
   chartInstance = new Chart(ctx, {
@@ -1027,7 +1018,7 @@ function renderChart(labels, saldoData, poupancaData) {
           backgroundColor: 'rgba(34,197,94,0.08)',
           fill: true,
           tension: 0,
-          pointRadius: lbls.length > 30 ? 0 : 3,
+          pointRadius: 0,
           pointHoverRadius: 4,
           borderWidth: 2,
           hidden: chartView === 'savings',
@@ -1039,7 +1030,7 @@ function renderChart(labels, saldoData, poupancaData) {
           backgroundColor: 'rgba(96,165,250,0.08)',
           fill: true,
           tension: 0,
-          pointRadius: lbls.length > 30 ? 0 : 3,
+          pointRadius: 0,
           pointHoverRadius: 4,
           borderWidth: 2,
           hidden: chartView === 'balance',
@@ -1065,7 +1056,14 @@ function renderChart(labels, saldoData, poupancaData) {
       },
       scales: {
         x: {
-          ticks: { color: '#A0B8A6', font: { size: 11 }, maxRotation: 45 },
+          ticks: {
+            color: '#A0B8A6',
+            font: { size: 10 },
+            maxRotation: 60,
+            minRotation: 45,
+            autoSkip: true,
+            maxTicksLimit: 40
+          },
           grid: { color: 'rgba(212,175,55,0.06)' }
         },
         y: {
@@ -1251,10 +1249,78 @@ function renderAnalise(totaisPorItem, totalEntradas, totalPoupancaFluxo, totalDe
       candidatos.forEach(function(d) {
         var score = calcPotencialAjuste(d.item);
         var sc = scoreColor(score);
-        html += '<div style="display:flex;justify-content:space-between;align-items:center;padding:0.3rem 0;border-bottom:1px solid rgba(212,175,55,0.06);font-size:0.85rem;">';
-        html += '<span style="color:var(--fg);">' + d.item.nome + '</span>';
-        html += '<span style="color:' + sc + ';font-weight:700;">' + fmtCurrency(d.total) + ' &nbsp;·&nbsp; score ' + score.toFixed(1) + '</span>';
+        var valorAtual = d.item.valor;
+        var valorReduzido = valorAtual * 0.7;
+        var economia = valorAtual - valorReduzido;
+
+        // Calcular equivalente mensal da recorrência
+        var recTipo = d.item.recTipo;
+        var recQty = d.item.recQty || 1;
+        var occsPerMonth = 0;
+        if (recTipo === 'nao') {
+          occsPerMonth = 0; // único, não tem mensal
+        } else if (recTipo === 'dias') {
+          occsPerMonth = 30 / recQty;
+        } else if (recTipo === 'uteis') {
+          occsPerMonth = 22 / recQty; // ~22 dias úteis/mês
+        } else if (recTipo === 'semanas') {
+          occsPerMonth = 4.33 / recQty;
+        } else if (recTipo === 'quinzenas') {
+          occsPerMonth = 2 / recQty;
+        } else if (recTipo === 'meses') {
+          occsPerMonth = 1 / recQty;
+        }
+
+        var mensalAtual = valorAtual * occsPerMonth;
+        var mensalReduzido = valorReduzido * occsPerMonth;
+        var mensalEconomia = economia * occsPerMonth;
+
+        var recLabel = recTipo === 'nao' ? 'único' :
+          'a cada ' + recQty + ' ' + REC_LABELS[recTipo];
+
+        html += '<div style="padding:0.5rem 0;border-bottom:1px solid rgba(212,175,55,0.06);">';
+
+        // Linha 1: nome + score
+        html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.35rem;">';
+        html += '<span style="color:#fff;font-weight:600;font-size:0.88rem;">' + d.item.nome + '</span>';
+        html += '<span style="color:' + sc + ';font-weight:700;font-size:0.82rem;">score ' + score.toFixed(1) + ' &nbsp;·&nbsp; total no período: ' + fmtCurrency(d.total) + '</span>';
         html += '</div>';
+
+        // Linha 2: tabela comparativa
+        html += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0.5rem;font-size:0.8rem;">';
+
+        // Coluna: Por ocorrência
+        html += '<div style="background:rgba(255,255,255,0.04);border-radius:6px;padding:0.4rem 0.6rem;">';
+        html += '<div style="color:var(--muted);font-size:0.7rem;margin-bottom:0.2rem;">Por ocorrência (' + recLabel + ')</div>';
+        html += '<div style="color:var(--fg);font-weight:700;">' + fmtCurrency(valorAtual) + '</div>';
+        html += '<div style="color:var(--green);font-size:0.75rem;">→ ' + fmtCurrency(valorReduzido) + ' (−30%)</div>';
+        html += '<div style="color:var(--muted);font-size:0.7rem;">economia: ' + fmtCurrency(economia) + '/ocorrência</div>';
+        html += '</div>';
+
+        // Coluna: Mensal equivalente
+        if (occsPerMonth > 0) {
+          html += '<div style="background:rgba(255,255,255,0.04);border-radius:6px;padding:0.4rem 0.6rem;">';
+          html += '<div style="color:var(--muted);font-size:0.7rem;margin-bottom:0.2rem;">Equivalente mensal</div>';
+          html += '<div style="color:var(--fg);font-weight:700;">' + fmtCurrency(mensalAtual) + '</div>';
+          html += '<div style="color:var(--green);font-size:0.75rem;">→ ' + fmtCurrency(mensalReduzido) + ' (−30%)</div>';
+          html += '<div style="color:var(--muted);font-size:0.7rem;">economia: ' + fmtCurrency(mensalEconomia) + '/mês</div>';
+          html += '</div>';
+
+          // Coluna: Anual equivalente
+          html += '<div style="background:rgba(255,255,255,0.04);border-radius:6px;padding:0.4rem 0.6rem;">';
+          html += '<div style="color:var(--muted);font-size:0.7rem;margin-bottom:0.2rem;">Equivalente anual</div>';
+          html += '<div style="color:var(--fg);font-weight:700;">' + fmtCurrency(mensalAtual * 12) + '</div>';
+          html += '<div style="color:var(--green);font-size:0.75rem;">→ ' + fmtCurrency(mensalReduzido * 12) + ' (−30%)</div>';
+          html += '<div style="color:var(--muted);font-size:0.7rem;">economia: ' + fmtCurrency(mensalEconomia * 12) + '/ano</div>';
+          html += '</div>';
+        } else {
+          html += '<div style="background:rgba(255,255,255,0.04);border-radius:6px;padding:0.4rem 0.6rem;grid-column:span 2;">';
+          html += '<div style="color:var(--muted);font-size:0.7rem;">Item único — sem equivalente mensal/anual calculável.</div>';
+          html += '</div>';
+        }
+
+        html += '</div>'; // grid
+        html += '</div>'; // item
       });
 
       html += '</div>';
