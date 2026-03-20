@@ -989,27 +989,45 @@ function calcular() {
 // ============================================================
 var orcamentoChartInstance = null;
 
+function calcMensalItem(item) {
+  // Retorna o valor mensal equivalente de um item com base na sua recorrência
+  var v = item.valor;
+  var q = item.recQty || 1;
+  if (item.recTipo === 'nao')       return v / 1;          // único: não faz sentido mensal, mas inclui como único
+  if (item.recTipo === 'dias')      return v * (30 / q);   // a cada N dias
+  if (item.recTipo === 'uteis')     return v * (22 / q);   // a cada N dias úteis (~22/mês)
+  if (item.recTipo === 'semanas')   return v * (30 / (q * 7));  // a cada N semanas
+  if (item.recTipo === 'quinzenas') return v * (30 / (q * 15)); // a cada N quinzenas
+  if (item.recTipo === 'meses')     return v / q;          // a cada N meses
+  return v;
+}
+
 function renderOrcamentoMensal(totaisPorItem, totalEntradas, totalPoupancaFluxo, totalDespesas, numDias) {
   var sec = document.getElementById('orcamento-mensal');
   if (totalEntradas === 0 || numDias === 0) { sec.style.display = 'none'; return; }
 
-  var fator = 30 / numDias; // conversor para mensal
+  // Calcular mensais corretos por recorrência de cada item
+  var entMensal = 0, poupMensal = 0;
+  Object.keys(totaisPorItem).forEach(function(idx) {
+    var t = totaisPorItem[idx];
+    var m = calcMensalItem(t.item);
+    if (t.item.tipo === 'entrada')          entMensal  += m;
+    else if (t.item.subtipo === 'poupanca') poupMensal += m;
+  });
 
-  // Totais mensais
-  var entMensal = totalEntradas * fator;
-  var poupMensal = totalPoupancaFluxo * fator;
-  var despMensal = totalDespesas * fator;
-  var saldoLivreMensal = entMensal - poupMensal - despMensal;
+  var saldoLivreMensal = entMensal - poupMensal;
 
-  // Agrupar despesas por categoria (mensal)
+  // Agrupar despesas por categoria (mensal por recorrência)
   var catTotais = {};
   Object.keys(totaisPorItem).forEach(function(idx) {
     var t = totaisPorItem[idx];
     if (t.item.subtipo !== 'despesa') return;
     var cat = t.item.categoria || 'sem_categoria';
+    var m = calcMensalItem(t.item);
     if (!catTotais[cat]) catTotais[cat] = { total: 0, itens: [] };
-    catTotais[cat].total += t.total * fator;
-    catTotais[cat].itens.push({ nome: t.item.nome, valor: t.total * fator, ocorrencias: t.ocorrencias });
+    catTotais[cat].total += m;
+    catTotais[cat].itens.push({ nome: t.item.nome, valor: m });
+    saldoLivreMensal -= m;
   });
 
   // Cores e labels por categoria
