@@ -1303,6 +1303,32 @@
             box-shadow: 0 0 0 2px rgba(66, 133, 244, 0.2);
         }
 
+        /* ✅ NOVO: Botão Calcular Saldo */
+        .btn-calcular-saldo {
+            background: rgba(76, 175, 80, 0.85);
+            border: none;
+            color: white;
+            padding: 6px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            white-space: nowrap;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .btn-calcular-saldo:hover {
+            background: rgba(76, 175, 80, 1);
+            transform: scale(1.02);
+        }
+
+        .btn-calcular-saldo:active {
+            transform: scale(0.98);
+        }
+
         .calendar-title {
             color: #ffffff;
             font-size: 1.5rem;
@@ -5198,24 +5224,28 @@
                 
                 // Para o saldo, usar lógica diferente baseada na data
                 if (isPastDate) {
-                    // Data anterior: apenas RC e PG
+                    // Dias ANTERIORES a HOJE: apenas RC (confirmados) e PG (confirmados)
                     eventCalc.receivingItems.forEach(item => {
-                        if (item.status.toLowerCase() === 'rc') {
+                        if (item.status === 'RC') {
                             balanceReceivingTotal += item.value;
                         }
                     });
                     eventCalc.paymentItems.forEach(item => {
-                        if (item.status.toLowerCase() === 'pg') {
+                        if (item.status === 'PG') {
                             balancePaymentTotal += item.value;
                         }
                     });
                 } else {
-                    // Outras datas: todos os itens independente do status
+                    // De HOJE em diante: todos EXCETO ADIADO (recebimentos) e RECALCULADO (pagamentos)
                     eventCalc.receivingItems.forEach(item => {
-                        balanceReceivingTotal += item.value;
+                        if (item.status !== 'ADIADO') {
+                            balanceReceivingTotal += item.value;
+                        }
                     });
                     eventCalc.paymentItems.forEach(item => {
-                        balancePaymentTotal += item.value;
+                        if (item.status !== 'RECALCULADO') {
+                            balancePaymentTotal += item.value;
+                        }
                     });
                 }
             });
@@ -7081,10 +7111,17 @@
             });
         }
 
-        // ✅ NOVO: Calcular saldo do dia para uma data específica (não depende de variáveis globais)
+        // ✅ ATUALIZADO: Calcular saldo do dia para uma data específica com lógica de status por data
         function calculateDayBalanceForDate(date) {
             const events = getEventsForDay(date);
             let dayBalance = 0;
+
+            // Determinar se a data é anterior a HOJE
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const compareDate = new Date(date);
+            compareDate.setHours(0, 0, 0, 0);
+            const isPastDate = compareDate < today;
 
             events.forEach(event => {
                 const eventCalc = calculateEventTotal(event);
@@ -7092,14 +7129,30 @@
 
                 if (eventType === 'recebimento') {
                     eventCalc.receivingItems.forEach(item => {
-                        if (item.status === 'RC') {
-                            dayBalance += item.value;
+                        if (isPastDate) {
+                            // Dias ANTERIORES a HOJE: apenas RC (confirmados)
+                            if (item.status === 'RC') {
+                                dayBalance += item.value;
+                            }
+                        } else {
+                            // De HOJE em diante: todos EXCETO ADIADO
+                            if (item.status !== 'ADIADO') {
+                                dayBalance += item.value;
+                            }
                         }
                     });
                 } else {
                     eventCalc.paymentItems.forEach(item => {
-                        if (item.status === 'PG') {
-                            dayBalance -= item.value;
+                        if (isPastDate) {
+                            // Dias ANTERIORES a HOJE: apenas PG (confirmados)
+                            if (item.status === 'PG') {
+                                dayBalance -= item.value;
+                            }
+                        } else {
+                            // De HOJE em diante: todos EXCETO RECALCULADO
+                            if (item.status !== 'RECALCULADO') {
+                                dayBalance -= item.value;
+                            }
                         }
                     });
                 }
@@ -11538,7 +11591,10 @@ window.openManageCategoriasPayment = function() {
                     <div class="account-balance-input">
                         <label for="accountBalance">Saldo Conta:</label>
                         <input type="text" id="accountBalance" placeholder="R$ 0,00" 
-                               onchange="updateAccountBalance()" onkeyup="formatCurrencyInput(this)">
+                               onkeyup="formatCurrencyInput(this)">
+                        <button class="btn-calcular-saldo" onclick="calcularSaldo()" title="Calcular saldo acumulado">
+                            <i class="fas fa-calculator"></i> Calcular
+                        </button>
                     </div>
                 </div>
                 <h3 id="calendarTitle" class="calendar-title">Carregando...</h3>
@@ -13505,9 +13561,21 @@ window.openManageCategoriasPayment = function() {
             }
             
             accountBalance = parsedValue;
+            // ✅ ALTERADO: Não chama mais updateDailyBalances automaticamente
+            // O cálculo só é feito ao clicar no botão "Calcular"
+        }
+
+        // ✅ NOVO: Função chamada pelo botão "Calcular"
+        function calcularSaldo() {
+            // Primeiro, atualizar o valor do saldo da conta
+            updateAccountBalance();
             
-            // Atualizar saldos acumulados no calendário
-            updateDailyBalances();
+            // Depois, calcular e exibir os saldos acumulados
+            if (periodMode && periodStartDate && periodEndDate) {
+                updateDailyBalancesPeriod();
+            } else {
+                updateDailyBalances();
+            }
         }
 
         function updateDailyBalances() {
@@ -13553,22 +13621,43 @@ window.openManageCategoriasPayment = function() {
             const events = getEventsForDay(dayDate);
             let dayBalance = 0;
 
+            // ✅ ATUALIZADO: Determinar se a data é anterior a HOJE
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const compareDate = new Date(dayDate);
+            compareDate.setHours(0, 0, 0, 0);
+            const isPastDate = compareDate < today;
+
             events.forEach(event => {
                 const eventCalc = calculateEventTotal(event);
                 const eventType = getEventType(event);
 
                 if (eventType === 'recebimento') {
-                    // Somar apenas recebimentos RC
                     eventCalc.receivingItems.forEach(item => {
-                        if (item.status === 'RC') {
-                            dayBalance += item.value;
+                        if (isPastDate) {
+                            // Dias ANTERIORES a HOJE: apenas RC (confirmados)
+                            if (item.status === 'RC') {
+                                dayBalance += item.value;
+                            }
+                        } else {
+                            // De HOJE em diante: todos EXCETO ADIADO
+                            if (item.status !== 'ADIADO') {
+                                dayBalance += item.value;
+                            }
                         }
                     });
                 } else {
-                    // Subtrair apenas pagamentos PG
                     eventCalc.paymentItems.forEach(item => {
-                        if (item.status === 'PG') {
-                            dayBalance -= item.value;
+                        if (isPastDate) {
+                            // Dias ANTERIORES a HOJE: apenas PG (confirmados)
+                            if (item.status === 'PG') {
+                                dayBalance -= item.value;
+                            }
+                        } else {
+                            // De HOJE em diante: todos EXCETO RECALCULADO
+                            if (item.status !== 'RECALCULADO') {
+                                dayBalance -= item.value;
+                            }
                         }
                     });
                 }
