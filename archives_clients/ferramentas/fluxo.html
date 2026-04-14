@@ -7,6 +7,7 @@
 <link rel="stylesheet" href="../assets/style.css">
 <script src="../assets/layout.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   :root {
     --bg: #021C0E;
@@ -1700,55 +1701,122 @@ function renderAnalise(totaisPorItem, totalEntradas, totalPoupancaFluxo, totalDe
 }
 
 // ============================================================
-// LOCALSTORAGE — PERSISTÊNCIA
+// PERSISTÊNCIA — SUPABASE + LOCALSTORAGE (FALLBACK)
 // ============================================================
 var LS_KEY = 'fluxo_avancado_v1';
+var SUPABASE_URL = 'https://vbikskbfkhundhropykf.supabase.co';
+var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZiaWtza2Jma2h1bmRocm9weWtmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDU1MTk5NjEsImV4cCI6MjA2MTA5NTk2MX0.-n-Tj_5JnF1NL2ZImWlMeTcobWDl_VD6Vqp0lxRQFFU';
+var _sbClient = null;
+var _saveTimer = null;
 
+function getSupabaseClient() {
+  if (_sbClient) return _sbClient;
+  try {
+    if (window.supabase && window.supabase.createClient) {
+      _sbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    }
+  } catch(e) { _sbClient = null; }
+  return _sbClient;
+}
+
+function getClienteId() {
+  return sessionStorage.getItem('cliente_id') || null;
+}
+
+function buildPayload() {
+  var pQty = document.getElementById('period-qty').value;
+  var pUnit = document.getElementById('period-unit').value;
+  var pStart = document.getElementById('period-start').value;
+  var pEnd = document.getElementById('period-end').value;
+  var saldo = document.getElementById('saldo-inicial').value;
+  var poupanca = document.getElementById('poupanca-inicial').value;
+  function parseBR(v) { if (!v) return 0; return parseFloat(v.replace(/\./g,'').replace(',','.')) || 0; }
+  return {
+    period_mode: periodMode,
+    period_qty: parseInt(pQty) || 1,
+    period_unit: pUnit || 'months',
+    period_start: pStart || null,
+    period_end: pEnd || null,
+    saldo_inicial: parseBR(saldo),
+    poupanca_inicial: parseBR(poupanca),
+    itens: items
+  };
+}
+
+function applyPayload(data) {
+  if (!data) return false;
+  function fmtBR(v) { return v ? parseFloat(v).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}) : '0,00'; }
+  if (data.period_mode) setPeriodMode(data.period_mode);
+  if (data.period_qty) document.getElementById('period-qty').value = data.period_qty;
+  if (data.period_unit) document.getElementById('period-unit').value = data.period_unit;
+  if (data.period_start) document.getElementById('period-start').value = data.period_start;
+  if (data.period_end) document.getElementById('period-end').value = data.period_end;
+  document.getElementById('saldo-inicial').value = fmtBR(data.saldo_inicial || data.saldoInicial);
+  document.getElementById('poupanca-inicial').value = fmtBR(data.poupanca_inicial || data.poupancaInicial);
+  var itensData = data.itens || data.items;
+  if (Array.isArray(itensData) && itensData.length > 0) {
+    items = itensData;
+    renderItemsTable();
+  }
+  if (data.period_mode === 'relative' || data.periodMode === 'relative') updateRelativePeriod();
+  else updateCustomPeriod();
+  return true;
+}
+
+// --- SAVE ---
 function saveToStorage() {
-  var data = {
-    periodMode: periodMode,
-    periodQty: document.getElementById('period-qty').value,
-    periodUnit: document.getElementById('period-unit').value,
-    periodStart: document.getElementById('period-start').value,
-    periodEnd: document.getElementById('period-end').value,
+  // 1. Sempre salva no localStorage (fallback)
+  var payload = buildPayload();
+  try { localStorage.setItem(LS_KEY, JSON.stringify({
+    periodMode: payload.period_mode,
+    periodQty: payload.period_qty,
+    periodUnit: payload.period_unit,
+    periodStart: payload.period_start,
+    periodEnd: payload.period_end,
     saldoInicial: document.getElementById('saldo-inicial').value,
     poupancaInicial: document.getElementById('poupanca-inicial').value,
     items: items
-  };
-  try { localStorage.setItem(LS_KEY, JSON.stringify(data)); } catch(e) {}
+  })); } catch(e) {}
+
+  // 2. Salva no Supabase se há cliente logado (debounce 1.5s)
+  var clienteId = getClienteId();
+  if (!clienteId) return;
+  if (_saveTimer) clearTimeout(_saveTimer);
+  _saveTimer = setTimeout(function() {
+    saveToSupabase(clienteId, payload);
+  }, 1500);
 }
 
-function loadFromStorage() {
+async function saveToSupabase(clienteId, payload) {
+  var sb = getSupabaseClient();
+  if (!sb) return;
+  try {
+    payload.cliente_id = clienteId;
+    var result = await sb.from('fluxo_caixa_avancado')
+      .upsert(payload, { onConflict: 'cliente_id' });
+    if (result.error) console.warn('Fluxo: erro ao salvar no Supabase', result.error.message);
+  } catch(e) { console.warn('Fluxo: exceção ao salvar', e); }
+}
+
+// --- LOAD ---
+async function loadFromSupabase(clienteId) {
+  var sb = getSupabaseClient();
+  if (!sb || !clienteId) return null;
+  try {
+    var result = await sb.from('fluxo_caixa_avancado')
+      .select('*')
+      .eq('cliente_id', clienteId)
+      .maybeSingle();
+    if (result.error) { console.warn('Fluxo: erro ao carregar do Supabase', result.error.message); return null; }
+    return result.data || null;
+  } catch(e) { console.warn('Fluxo: exceção ao carregar', e); return null; }
+}
+
+function loadFromLocalStorage() {
   var raw;
-  try { raw = localStorage.getItem(LS_KEY); } catch(e) { return false; }
-  if (!raw) return false;
-  var data;
-  try { data = JSON.parse(raw); } catch(e) { return false; }
-
-  // Período
-  if (data.periodMode) {
-    setPeriodMode(data.periodMode);
-  }
-  if (data.periodQty) document.getElementById('period-qty').value = data.periodQty;
-  if (data.periodUnit) document.getElementById('period-unit').value = data.periodUnit;
-  if (data.periodStart) document.getElementById('period-start').value = data.periodStart;
-  if (data.periodEnd) document.getElementById('period-end').value = data.periodEnd;
-
-  // Saldos
-  if (data.saldoInicial) document.getElementById('saldo-inicial').value = data.saldoInicial;
-  if (data.poupancaInicial) document.getElementById('poupanca-inicial').value = data.poupancaInicial;
-
-  // Itens
-  if (Array.isArray(data.items) && data.items.length > 0) {
-    items = data.items;
-    renderItemsTable();
-  }
-
-  // Atualizar preview do período
-  if (data.periodMode === 'relative') updateRelativePeriod();
-  else updateCustomPeriod();
-
-  return true;
+  try { raw = localStorage.getItem(LS_KEY); } catch(e) { return null; }
+  if (!raw) return null;
+  try { return JSON.parse(raw); } catch(e) { return null; }
 }
 
 // Salvar sempre que itens mudam
@@ -1782,15 +1850,29 @@ setPeriodMode = function(mode) {
 };
 
 // ============================================================
-// INIT
+// INIT — tenta Supabase primeiro, cai no localStorage
 // ============================================================
-var restored = loadFromStorage();
-if (!restored) {
-  updateRelativePeriod();
+(async function initFluxo() {
   document.getElementById('rec-inicio').value = isoDate(new Date());
-} else {
-  document.getElementById('rec-inicio').value = isoDate(new Date());
-}
+  var clienteId = getClienteId();
+  var restored = false;
+
+  if (clienteId) {
+    var remoteData = await loadFromSupabase(clienteId);
+    if (remoteData) {
+      restored = applyPayload(remoteData);
+    }
+  }
+
+  if (!restored) {
+    var localData = loadFromLocalStorage();
+    if (localData) restored = applyPayload(localData);
+  }
+
+  if (!restored) {
+    updateRelativePeriod();
+  }
+})();
 </script>
 </main>
 </body>
