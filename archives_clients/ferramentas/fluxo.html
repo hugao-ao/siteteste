@@ -982,6 +982,8 @@ function calcular() {
   renderAnalise(totaisPorItem, totalEntradas, totalPoupancaFluxo, totalDespesas);
   document.getElementById('result-section').style.display = 'block';
   document.getElementById('result-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  // Salva no Supabase (e localStorage) ao calcular
+  saveToStorage();
 }
 
 // ============================================================
@@ -1710,7 +1712,7 @@ var _saveTimer = null;
 
 function getSupabaseClient() {
   if (_sbClient) return _sbClient;
-  // Reutiliza o cliente já criado pelo layout.js para evitar instâncias duplicadas
+  // Reutiliza o cliente já criado pelo layout.js
   if (window.mithraSupabaseClient) {
     _sbClient = window.mithraSupabaseClient;
     return _sbClient;
@@ -1722,6 +1724,25 @@ function getSupabaseClient() {
     }
   } catch(e) { _sbClient = null; }
   return _sbClient;
+}
+
+// Aguarda o layout.js (defer) inicializar o mithraSupabaseClient
+function waitForSupabase(timeout) {
+  return new Promise(function(resolve) {
+    if (window.mithraSupabaseClient) { resolve(window.mithraSupabaseClient); return; }
+    var elapsed = 0;
+    var interval = setInterval(function() {
+      elapsed += 50;
+      if (window.mithraSupabaseClient) {
+        clearInterval(interval);
+        _sbClient = window.mithraSupabaseClient;
+        resolve(window.mithraSupabaseClient);
+      } else if (elapsed >= (timeout || 3000)) {
+        clearInterval(interval);
+        resolve(null); // timeout — usa localStorage
+      }
+    }, 50);
+  });
 }
 
 function getClienteId() {
@@ -1750,20 +1771,42 @@ function buildPayload() {
 
 function applyPayload(data) {
   if (!data) return false;
-  function fmtBR(v) { return v ? parseFloat(v).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}) : '0,00'; }
-  if (data.period_mode) setPeriodMode(data.period_mode);
-  if (data.period_qty) document.getElementById('period-qty').value = data.period_qty;
-  if (data.period_unit) document.getElementById('period-unit').value = data.period_unit;
-  if (data.period_start) document.getElementById('period-start').value = data.period_start;
-  if (data.period_end) document.getElementById('period-end').value = data.period_end;
-  document.getElementById('saldo-inicial').value = fmtBR(data.saldo_inicial || data.saldoInicial);
-  document.getElementById('poupanca-inicial').value = fmtBR(data.poupanca_inicial || data.poupancaInicial);
+  // fmtBR: recebe número (ex: 9000.00) e formata para '9.000,00'
+  function fmtBR(v) {
+    var n = parseFloat(v);
+    if (isNaN(n)) return '0,00';
+    return n.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});
+  }
+  var mode = data.period_mode || data.periodMode;
+  if (mode) setPeriodMode(mode);
+  var qty = data.period_qty || data.periodQty;
+  if (qty) document.getElementById('period-qty').value = qty;
+  var unit = data.period_unit || data.periodUnit;
+  if (unit) document.getElementById('period-unit').value = unit;
+  var start = data.period_start || data.periodStart;
+  if (start) document.getElementById('period-start').value = start;
+  var end = data.period_end || data.periodEnd;
+  if (end) document.getElementById('period-end').value = end;
+  // Saldo: pode vir como número do Supabase (9000.00) ou string BR do localStorage ('9.000,00')
+  var saldoRaw = data.saldo_inicial !== undefined ? data.saldo_inicial : data.saldoInicial;
+  var poupancaRaw = data.poupanca_inicial !== undefined ? data.poupanca_inicial : data.poupancaInicial;
+  // Se vier como string BR (do localStorage), converte para número primeiro
+  function parseBRorNum(v) {
+    if (v === null || v === undefined) return 0;
+    if (typeof v === 'number') return v;
+    var s = String(v);
+    // formato BR: '9.000,00' -> remove pontos, troca vírgula por ponto
+    if (s.indexOf(',') !== -1) return parseFloat(s.replace(/\./g,'').replace(',','.')) || 0;
+    return parseFloat(s) || 0;
+  }
+  document.getElementById('saldo-inicial').value = fmtBR(parseBRorNum(saldoRaw));
+  document.getElementById('poupanca-inicial').value = fmtBR(parseBRorNum(poupancaRaw));
   var itensData = data.itens || data.items;
   if (Array.isArray(itensData) && itensData.length > 0) {
     items = itensData;
     renderItemsTable();
   }
-  if (data.period_mode === 'relative' || data.periodMode === 'relative') updateRelativePeriod();
+  if (mode === 'relative') updateRelativePeriod();
   else updateCustomPeriod();
   return true;
 }
@@ -1855,7 +1898,7 @@ setPeriodMode = function(mode) {
 };
 
 // ============================================================
-// INIT — tenta Supabase primeiro, cai no localStorage
+// INIT — aguarda layout.js, tenta Supabase primeiro, cai no localStorage
 // ============================================================
 (async function initFluxo() {
   document.getElementById('rec-inicio').value = isoDate(new Date());
@@ -1863,8 +1906,12 @@ setPeriodMode = function(mode) {
   var restored = false;
 
   if (clienteId) {
+    // Aguarda até 3s pelo mithraSupabaseClient do layout.js (defer)
+    await waitForSupabase(3000);
     var remoteData = await loadFromSupabase(clienteId);
-    if (remoteData) {
+    if (remoteData && (remoteData.itens && remoteData.itens.length > 0 ||
+        parseFloat(remoteData.saldo_inicial) > 0 ||
+        parseFloat(remoteData.poupanca_inicial) > 0)) {
       restored = applyPayload(remoteData);
     }
   }
