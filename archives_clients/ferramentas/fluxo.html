@@ -1870,34 +1870,13 @@ function loadFromLocalStorage() {
   try { return JSON.parse(raw); } catch(e) { return null; }
 }
 
-// Salvar sempre que itens mudam
-var _origSaveItem = saveItem;
-saveItem = function() {
-  _origSaveItem();
-  saveToStorage();
-};
-
+// Salvamento apenas ao clicar em Calcular (ver função calcular)
+// deleteItem mantido sem save automático
 var _origDeleteItem = deleteItem;
 deleteItem = function(index) {
   if (!confirm('Excluir este item?')) return;
   items.splice(index, 1);
   renderItemsTable();
-  saveToStorage();
-};
-
-// Salvar campos de período e saldo ao mudar
-['period-qty','period-start','period-end','saldo-inicial','poupanca-inicial'].forEach(function(id) {
-  var el = document.getElementById(id);
-  if (el) el.addEventListener('input', saveToStorage);
-  if (el) el.addEventListener('change', saveToStorage);
-});
-document.getElementById('period-unit').addEventListener('change', saveToStorage);
-
-// Interceptar setPeriodMode para salvar
-var _origSetPeriodMode = setPeriodMode;
-setPeriodMode = function(mode) {
-  _origSetPeriodMode(mode);
-  saveToStorage();
 };
 
 // ============================================================
