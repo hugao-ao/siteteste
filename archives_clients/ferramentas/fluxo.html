@@ -1716,51 +1716,39 @@ function getSupabaseClient() {
   if (_sbClient) return _sbClient;
   // Reutiliza o cliente já criado pelo layout.js
   if (window.mithraSupabaseClient) {
-    console.log('[FLUXO-DEBUG] Usando mithraSupabaseClient do layout.js');
     _sbClient = window.mithraSupabaseClient;
     return _sbClient;
   }
   // Fallback: cria novo cliente apenas se o layout.js não inicializou
   try {
     if (window.supabase && window.supabase.createClient) {
-      console.log('[FLUXO-DEBUG] Criando cliente Supabase próprio (fallback)');
       _sbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-    } else {
-      console.warn('[FLUXO-DEBUG] window.supabase NÃO disponível!');
     }
-  } catch(e) { console.warn('[FLUXO-DEBUG] Erro ao criar cliente:', e); _sbClient = null; }
+  } catch(e) { _sbClient = null; }
   return _sbClient;
 }
 
 // Aguarda o layout.js (defer) inicializar o mithraSupabaseClient
 function waitForSupabase(timeout) {
   return new Promise(function(resolve) {
-    if (window.mithraSupabaseClient) {
-      console.log('[FLUXO-DEBUG] mithraSupabaseClient já disponível imediatamente');
-      resolve(window.mithraSupabaseClient); return;
-    }
-    console.log('[FLUXO-DEBUG] Aguardando mithraSupabaseClient...');
+    if (window.mithraSupabaseClient) { resolve(window.mithraSupabaseClient); return; }
     var elapsed = 0;
     var interval = setInterval(function() {
       elapsed += 50;
       if (window.mithraSupabaseClient) {
         clearInterval(interval);
-        console.log('[FLUXO-DEBUG] mithraSupabaseClient disponível após ' + elapsed + 'ms');
         _sbClient = window.mithraSupabaseClient;
         resolve(window.mithraSupabaseClient);
       } else if (elapsed >= (timeout || 3000)) {
         clearInterval(interval);
-        console.warn('[FLUXO-DEBUG] TIMEOUT: mithraSupabaseClient não disponível após ' + elapsed + 'ms. window.supabase=' + (typeof window.supabase));
-        resolve(null); // timeout — usa localStorage
+        resolve(null);
       }
     }, 50);
   });
 }
 
 function getClienteId() {
-  var id = sessionStorage.getItem('cliente_id') || null;
-  console.log('[FLUXO-DEBUG] getClienteId() =', id, '| sessionStorage keys:', Object.keys(sessionStorage).join(','));
-  return id;
+  return sessionStorage.getItem('cliente_id') || null;
 }
 
 function buildPayload() {
@@ -1851,21 +1839,14 @@ function saveToStorage() {
 }
 
 async function saveToSupabase(clienteId, payload) {
-  console.log('[FLUXO-DEBUG] saveToSupabase iniciado. clienteId=', clienteId);
   var sb = getSupabaseClient();
-  console.log('[FLUXO-DEBUG] sb=', sb ? 'OK' : 'NULL');
-  if (!sb) { console.warn('[FLUXO-DEBUG] Sem cliente Supabase — abortando save'); return; }
+  if (!sb) return;
   try {
     payload.cliente_id = clienteId;
-    console.log('[FLUXO-DEBUG] Enviando upsert:', JSON.stringify(payload).substring(0,200));
     var result = await sb.from('fluxo_caixa_avancado')
       .upsert(payload, { onConflict: 'cliente_id' });
-    if (result.error) {
-      console.warn('[FLUXO-DEBUG] ERRO no upsert:', result.error.message, result.error);
-    } else {
-      console.log('[FLUXO-DEBUG] Upsert OK!');
-    }
-  } catch(e) { console.warn('[FLUXO-DEBUG] Exceção ao salvar:', e); }
+    if (result.error) console.warn('Fluxo: erro ao salvar no Supabase', result.error.message);
+  } catch(e) { console.warn('Fluxo: exceção ao salvar', e); }
 }
 
 // --- LOAD ---
@@ -1926,14 +1907,10 @@ setPeriodMode = function(mode) {
   document.getElementById('rec-inicio').value = isoDate(new Date());
   var clienteId = getClienteId();
   var restored = false;
-  console.log('[FLUXO-DEBUG] initFluxo. clienteId=', clienteId);
-
   if (clienteId) {
     // Aguarda até 3s pelo mithraSupabaseClient do layout.js (defer)
-    var sbReady = await waitForSupabase(3000);
-    console.log('[FLUXO-DEBUG] waitForSupabase retornou:', sbReady ? 'cliente OK' : 'NULL');
+    await waitForSupabase(3000);
     var remoteData = await loadFromSupabase(clienteId);
-    console.log('[FLUXO-DEBUG] remoteData:', remoteData ? JSON.stringify(remoteData).substring(0,200) : 'NULL');
     if (remoteData && (remoteData.itens && remoteData.itens.length > 0 ||
         parseFloat(remoteData.saldo_inicial) > 0 ||
         parseFloat(remoteData.poupanca_inicial) > 0)) {
