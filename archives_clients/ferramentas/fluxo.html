@@ -1705,7 +1705,7 @@ function renderAnalise(totaisPorItem, totalEntradas, totalPoupancaFluxo, totalDe
 // ============================================================
 // PERSISTÊNCIA — SUPABASE + LOCALSTORAGE (FALLBACK)
 // ============================================================
-var LS_KEY = 'fluxo_avancado_v1';
+var LS_KEY = 'fluxo_avancado_v1'; // será sobrescrito com chave por cliente após login
 var SUPABASE_URL = 'https://vbikskbfkhundhropykf.supabase.co';
 var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZiaWtza2Jma2h1bmRocm9weWtmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDU1MTk5NjEsImV4cCI6MjA2MTA5NTk2MX0.-n-Tj_5JnF1NL2ZImWlMeTcobWDl_VD6Vqp0lxRQFFU';
 var _sbClient = null;
@@ -1886,7 +1886,11 @@ deleteItem = function(index) {
   document.getElementById('rec-inicio').value = isoDate(new Date());
   var clienteId = getClienteId();
   var restored = false;
+
   if (clienteId) {
+    // Chave do localStorage isolada por cliente
+    LS_KEY = 'fluxo_avancado_v1_' + clienteId;
+
     // Aguarda até 3s pelo mithraSupabaseClient do layout.js (defer)
     await waitForSupabase(3000);
     var remoteData = await loadFromSupabase(clienteId);
