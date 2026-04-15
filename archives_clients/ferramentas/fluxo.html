@@ -7,7 +7,6 @@
 <link rel="stylesheet" href="../assets/style.css">
 <script src="../assets/layout.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   :root {
     --bg: #021C0E;
@@ -1711,6 +1710,12 @@ var _saveTimer = null;
 
 function getSupabaseClient() {
   if (_sbClient) return _sbClient;
+  // Reutiliza o cliente já criado pelo layout.js para evitar instâncias duplicadas
+  if (window.mithraSupabaseClient) {
+    _sbClient = window.mithraSupabaseClient;
+    return _sbClient;
+  }
+  // Fallback: cria novo cliente apenas se o layout.js não inicializou
   try {
     if (window.supabase && window.supabase.createClient) {
       _sbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
