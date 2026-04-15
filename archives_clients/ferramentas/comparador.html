@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Comparador Inteligente - MithraSF</title>
 <link rel="stylesheet" href="../assets/style.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="../assets/layout.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <style>
@@ -716,8 +717,97 @@
 /* ═══════════════════════════════════════════════════════════
    ESTADO
 ═══════════════════════════════════════════════════════════ */
-let comparisons = JSON.parse(localStorage.getItem('hvsf_comparacoes') || '[]');
+let comparisons = [];
 let editingId = null;
+
+/* ═══════════════════════════════════════════════════════════
+   SUPABASE — CONFIGURAÇÃO
+═══════════════════════════════════════════════════════════ */
+const COMP_SUPABASE_URL      = 'https://vbikskbfkhundhropykf.supabase.co';
+const COMP_SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZiaWtza2Jma2h1bmRocm9weWtmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDU1MTk5NjEsImV4cCI6MjA2MTA5NTk2MX0.-n-Tj_5JnF1NL2ZImWlMeTcobWDl_VD6Vqp0lxRQFFU';
+const COMP_LS_KEY            = 'hvsf_comparacoes';
+
+function getCompClienteId() {
+  return sessionStorage.getItem('cliente_id') || null;
+}
+
+async function getCompSbClient() {
+  // Reutiliza o cliente do layout.js se disponível
+  if (window.mithraSupabaseClient) return window.mithraSupabaseClient;
+  if (window.supabase && window.supabase.createClient) {
+    return window.supabase.createClient(COMP_SUPABASE_URL, COMP_SUPABASE_ANON_KEY);
+  }
+  return null;
+}
+
+async function loadComparisons() {
+  const clienteId = getCompClienteId();
+  if (clienteId) {
+    try {
+      const sb = await getCompSbClient();
+      if (sb) {
+        const { data, error } = await sb
+          .from('comparador_simulacoes')
+          .select('*')
+          .eq('cliente_id', clienteId)
+          .order('updated_at', { ascending: false });
+        if (!error && data && data.length > 0) {
+          comparisons = data.map(row => ({
+            id:         row.id,
+            name:       row.nome,
+            products:   row.products,
+            objParams:  row.obj_params,
+            subjParams: row.subj_params,
+            result:     row.result,
+            updatedAt:  row.updated_at,
+          }));
+          // Sincroniza localStorage por cliente
+          localStorage.setItem(COMP_LS_KEY + '_' + clienteId, JSON.stringify(comparisons));
+          return;
+        }
+      }
+    } catch(e) { /* fallback */ }
+    // Fallback: localStorage por cliente
+    const local = localStorage.getItem(COMP_LS_KEY + '_' + clienteId);
+    if (local) comparisons = JSON.parse(local);
+  } else {
+    // Sem login: localStorage genérico
+    const local = localStorage.getItem(COMP_LS_KEY);
+    if (local) comparisons = JSON.parse(local);
+  }
+}
+
+async function saveCompToSupabase(comp) {
+  const clienteId = getCompClienteId();
+  if (!clienteId) return;
+  try {
+    const sb = await getCompSbClient();
+    if (!sb) return;
+    await sb.from('comparador_simulacoes').upsert({
+      id:          comp.id,
+      cliente_id:  clienteId,
+      nome:        comp.name,
+      products:    comp.products,
+      obj_params:  comp.objParams,
+      subj_params: comp.subjParams,
+      result:      comp.result,
+      updated_at:  comp.updatedAt,
+    }, { onConflict: 'id' });
+    // Sincroniza localStorage por cliente
+    localStorage.setItem(COMP_LS_KEY + '_' + clienteId, JSON.stringify(comparisons));
+  } catch(e) { /* silencioso */ }
+}
+
+async function deleteCompFromSupabase(id) {
+  const clienteId = getCompClienteId();
+  if (!clienteId) return;
+  try {
+    const sb = await getCompSbClient();
+    if (!sb) return;
+    await sb.from('comparador_simulacoes').delete().eq('id', id).eq('cliente_id', clienteId);
+    localStorage.setItem(COMP_LS_KEY + '_' + clienteId, JSON.stringify(comparisons));
+  } catch(e) { /* silencioso */ }
+}
 
 let tmpName = '';
 let tmpProducts = [];   // { id, name, price }
@@ -1160,7 +1250,8 @@ function saveComparison() {
     comparisons.push(comp);
   }
 
-  localStorage.setItem('hvsf_comparacoes', JSON.stringify(comparisons));
+  // Salva no Supabase (e localStorage como fallback)
+  saveCompToSupabase(comp);
   closeModal();
   renderList();
 }
@@ -1364,7 +1455,7 @@ function toggleCard(id) {
 function deleteComp(id) {
   if (!confirm('Excluir esta comparação?')) return;
   comparisons = comparisons.filter(c=>c.id!==id);
-  localStorage.setItem('hvsf_comparacoes', JSON.stringify(comparisons));
+  deleteCompFromSupabase(id);
   renderList();
 }
 
@@ -1550,7 +1641,10 @@ function escHtml(s) {
 /* ═══════════════════════════════════════════════════════════
    INIT
 ═══════════════════════════════════════════════════════════ */
-renderList();
+(async function initComparador() {
+  await loadComparisons();
+  renderList();
+})();
 </script>
 </body>
 </html>
