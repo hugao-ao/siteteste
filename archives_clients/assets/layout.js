@@ -104,11 +104,13 @@
                         const { error } = await localSupabaseClient.auth.signOut();
                         if (error) throw error;
                     }
-                    window.location.href = basePath + 'login-cliente.html';
+                    sessionStorage.clear();
+                    window.location.href = 'https://hvsaudefinanceira.com.br';
                 } catch (error) {
                     console.error('Error logging out:', error);
                     // Fallback redirect even on error
-                    window.location.href = basePath + 'login-cliente.html';
+                    sessionStorage.clear();
+                    window.location.href = 'https://hvsaudefinanceira.com.br';
                 }
             });
         }
