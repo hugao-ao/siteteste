@@ -196,7 +196,7 @@
   .param-table .td-del button:hover { color: var(--red-lt); }
   .param-table .td-name { min-width: 120px; max-width: 180px; }
   .param-table .td-unit { width: 64px; }
-  .param-table .td-imp { width: 130px; }
+  .param-table .td-imp { width: 160px; }
   .param-table .td-has { width: 36px; text-align: center; padding: 4px 3px; }
   .param-table .td-rank { width: 72px; }
   /* Inputs e selects compactos */
@@ -898,21 +898,60 @@ let paramCounter = 1;
 /* ═══════════════════════════════════════════════════════════
    IMPORTÂNCIA
 ═══════════════════════════════════════════════════════════ */
-const IMP_OPTIONS = [
-  { value: 'top',   label: 'O mais importante de todos', weight: 10, cls: 'imp-top' },
-  { value: 'muito', label: 'Muito Importante',           weight: 5,  cls: 'imp-muito' },
-  { value: 'imp',   label: 'Importante',                 weight: 3,  cls: 'imp-imp' },
-  { value: 'ind',   label: 'Indiferente',                weight: 0,  cls: 'imp-ind' },
-  { value: 'nao',   label: 'Gostaria que não tivesse',   weight: -2, cls: 'imp-nao' },
-  { value: 'inac',  label: 'Inaceitável',                weight: -10, cls: 'imp-inac' },
-];
-function impWeight(v) { return (IMP_OPTIONS.find(x=>x.value===v)||{weight:0}).weight; }
-function impLabel(v)  { return (IMP_OPTIONS.find(x=>x.value===v)||{label:v}).label; }
-function impCls(v)    { return (IMP_OPTIONS.find(x=>x.value===v)||{cls:''}).cls; }
-
+/* ═══════════════════════════════════════════════════════════
+   SISTEMA DE PESO (-10 a +10) → IMPORTÂNCIA AUTOMÁTICA
+   O usuário escolhe o PESO; a importância é derivada automaticamente.
+   Unicidade: apenas 1 parâmetro pode ter peso 10 e 1 pode ter peso -10.
+═══════════════════════════════════════════════════════════ */
+const WEIGHT_TO_IMP = {
+  10:  { label: 'O mais importante de todos', cls: 'imp-top' },
+   9:  { label: 'Muito Importante',           cls: 'imp-muito' },
+   8:  { label: 'Muito Importante',           cls: 'imp-muito' },
+   7:  { label: 'Importante',                 cls: 'imp-imp' },
+   6:  { label: 'Importante',                 cls: 'imp-imp' },
+   5:  { label: 'Pouco Importante',           cls: 'imp-imp' },
+   4:  { label: 'Pouco Importante',           cls: 'imp-imp' },
+   3:  { label: 'Interessante',               cls: 'imp-ind' },
+   2:  { label: 'Interessante',               cls: 'imp-ind' },
+   1:  { label: 'Indiferente',                cls: 'imp-ind' },
+   0:  { label: 'Indiferente',                cls: 'imp-ind' },
+  '-1': { label: 'Indiferente',               cls: 'imp-ind' },
+  '-2': { label: 'Desinteressante',           cls: 'imp-nao' },
+  '-3': { label: 'Desinteressante',           cls: 'imp-nao' },
+  '-4': { label: 'Pouco Negativo',            cls: 'imp-nao' },
+  '-5': { label: 'Pouco Negativo',            cls: 'imp-nao' },
+  '-6': { label: 'Negativo',                  cls: 'imp-nao' },
+  '-7': { label: 'Negativo',                  cls: 'imp-nao' },
+  '-8': { label: 'Muito Negativo',            cls: 'imp-inac' },
+  '-9': { label: 'Muito Negativo',            cls: 'imp-inac' },
+  '-10':{ label: 'O mais negativo de todos',  cls: 'imp-inac' },
+};
+// Migração de valores legados (string) para peso numérico
+function legacyToWeight(v) {
+  if (typeof v === 'number') return v;
+  const map = { top: 10, muito: 8, imp: 6, ind: 0, nao: -3, inac: -10 };
+  return map[v] !== undefined ? map[v] : 0;
+}
+function impWeight(v) { return legacyToWeight(v); }
+function impLabel(v)  {
+  const w = legacyToWeight(v);
+  return (WEIGHT_TO_IMP[String(w)] || WEIGHT_TO_IMP[w] || { label: String(w) }).label;
+}
+function impCls(v)    {
+  const w = legacyToWeight(v);
+  return (WEIGHT_TO_IMP[String(w)] || WEIGHT_TO_IMP[w] || { cls: '' }).cls;
+}
+// Gera o seletor de PESO com a importância exibida ao lado
 function impSelectHTML(id, val, onchange) {
+  const cur = legacyToWeight(val);
+  const opts = [];
+  for (let w = 10; w >= -10; w--) {
+    const info = WEIGHT_TO_IMP[String(w)] || WEIGHT_TO_IMP[w] || { label: '' };
+    const sel = w === cur ? ' selected' : '';
+    opts.push(`<option value="${w}"${sel}>${w > 0 ? '+' : ''}${w} — ${info.label}</option>`);
+  }
   return `<select class="field-input" id="${id}" onchange="${onchange}" style="font-size:.82rem">
-    ${IMP_OPTIONS.map(o=>`<option value="${o.value}"${o.value===val?' selected':''}>${o.label}</option>`).join('')}
+    ${opts.join('')}
   </select>`;
 }
 
@@ -1059,7 +1098,7 @@ function addObjParam() {
   const id = paramCounter++;
   const hasParam = {}, values = {};
   tmpProducts.forEach(p => { hasParam[p.id] = true; values[p.id] = 0; });
-  tmpObjParams.push({ id, name: '', unit: '', importance: 'imp', values, hasParam });
+  tmpObjParams.push({ id, name: '', unit: '', importance: 5, values, hasParam });
   renderObjTable();
   document.getElementById('sb-obj').classList.add('open');
 }
@@ -1112,7 +1151,7 @@ function renderObjTable() {
   let thead = `<tr>
     <th class="td-name">Parâmetro</th>
     <th class="td-unit">Unidade</th>
-    <th class="td-imp">Importância</th>`;
+    <th class="td-imp">Peso / Importância</th>`;
   tmpProducts.forEach(p => {
     thead += `<th class="td-has" title="${escHtml(p.name)||'Produto'}">✓/≈/✗</th>
               <th class="td-rank"><span class="th-prod">${escHtml(p.name)||'Produto'}</span></th>`;
@@ -1133,8 +1172,8 @@ function renderObjTable() {
           oninput="updateObjParam(${param.id},'unit',this.value)" />
       </td>
       <td class="td-imp">
-        <select onchange="updateObjParam(${param.id},'importance',this.value)">
-          ${IMP_OPTIONS.map(o=>`<option value="${o.value}"${o.value===param.importance?' selected':''}>${o.label}</option>`).join('')}
+        <select onchange="updateObjParam(${param.id},'importance',parseFloat(this.value))">
+          ${impSelectHTML(`imp-obj-${param.id}`, param.importance, `updateObjParam(${param.id},'importance',parseFloat(this.value))`)}
         </select>
       </td>`;
     tmpProducts.forEach(p => {
@@ -1168,7 +1207,7 @@ function addSubjParam() {
   const id = paramCounter++;
   const hasParam = {}, rankings = {};
   tmpProducts.forEach(p => { hasParam[p.id] = true; rankings[p.id] = 1; });
-  tmpSubjParams.push({ id, name: '', importance: 'imp', rankings, hasParam });
+  tmpSubjParams.push({ id, name: '', importance: 5, rankings, hasParam });
   renderSubjTable();
   document.getElementById('sb-subj').classList.add('open');
 }
@@ -1211,7 +1250,7 @@ function renderSubjTable() {
 
   let thead = `<tr>
     <th class="td-name">Parâmetro</th>
-    <th class="td-imp">Importância</th>`;
+    <th class="td-imp">Peso / Importância</th>`;
   tmpProducts.forEach(p => {
     thead += `<th class="td-has" title="Tem?">✓/≈/✗</th>
               <th class="td-rank" title="${escHtml(p.name)||'Produto'}"><span class="th-prod">${escHtml(p.name)||'Produto'}</span></th>`;
@@ -1228,8 +1267,8 @@ function renderSubjTable() {
           oninput="updateSubjParam(${param.id},'name',this.value)" />
       </td>
       <td class="td-imp">
-        <select onchange="updateSubjParam(${param.id},'importance',this.value)">
-          ${IMP_OPTIONS.map(o=>`<option value="${o.value}"${o.value===param.importance?' selected':''}>${o.label}</option>`).join('')}
+        <select onchange="updateSubjParam(${param.id},'importance',parseFloat(this.value))">
+          ${impSelectHTML(`imp-subj-${param.id}`, param.importance, `updateSubjParam(${param.id},'importance',parseFloat(this.value))`)}
         </select>
       </td>`;
     tmpProducts.forEach(p => {
@@ -1338,8 +1377,10 @@ function saveComparison() {
   });
 
   const allParams = [...tmpObjParams, ...tmpSubjParams];
-  const topCount = allParams.filter(p=>p.importance==='top').length;
-  if (topCount > 1) errors.push(`Apenas UM parâmetro pode ser "O mais importante de todos". Você marcou ${topCount}.`);
+  const top10Count = allParams.filter(p => legacyToWeight(p.importance) === 10).length;
+  const bot10Count = allParams.filter(p => legacyToWeight(p.importance) === -10).length;
+  if (top10Count > 1) errors.push(`Apenas UM parâmetro pode ter peso +10 ("O mais importante de todos"). Você marcou ${top10Count}.`);
+  if (bot10Count > 1) errors.push(`Apenas UM parâmetro pode ter peso -10 ("O mais negativo de todos"). Você marcou ${bot10Count}.`);
 
   tmpSubjParams.forEach(param => {
     // Para validação de ranking, considerar apenas os que TÊM o parâmetro (true)
@@ -1441,11 +1482,15 @@ function calcResult() {
         } else {
           const norm = minCost / cpu;
           if (w >= 0) {
+            // Peso positivo: melhor custo-benefício → maior pontuação positiva
             score = norm * w * 10;
             formula = `(${fmtN(minCost)}/${fmtN(cpu)}) × ${w} × 10 = ${score.toFixed(2)}`;
           } else {
-            score = norm * Math.abs(w) * 10 * -1 + Math.abs(w) * 10;
-            formula = `bônus_inv(${fmtN(cpu)}/${fmtN(minCost)}) × |${w}| × 10 = ${score.toFixed(2)}`;
+            // Peso negativo: melhor custo-benefício → maior pontuação NEGATIVA
+            // norm = minCost/cpu (0 a 1, onde 1 = melhor cpu)
+            // score = norm * w * 10  (ex: w=-1, norm=1 → -10; norm=0.5 → -5)
+            score = norm * w * 10;
+            formula = `(${fmtN(minCost)}/${fmtN(cpu)}) × (${w}) × 10 = ${score.toFixed(2)}`;
           }
           detail = `R$${fmtN(cpu)}/${param.unit||'un'}`;
         }
@@ -1498,12 +1543,15 @@ function calcResult() {
         } else {
           const norm = (nPresent - rank + 1) / nPresent;
           if (w >= 0) {
+            // Peso positivo: 1º lugar → maior pontuação positiva
             score = norm * w * 10;
             formula = `((${nPresent}-${rank}+1)/${nPresent}) × ${w} × 10 = ${score.toFixed(2)}`;
           } else {
-            const invNorm = rank / nPresent;
-            score = invNorm * Math.abs(w) * 10;
-            formula = `(${rank}/${nPresent}) × |${w}| × 10 = ${score.toFixed(2)}`;
+            // Peso negativo: 1º lugar (melhor) → maior pontuação NEGATIVA
+            // norm = (n-rank+1)/n (1º = 1.0, último = 1/n)
+            // score = norm * w * 10  (ex: w=-1, 1º: norm=1 → -10; último: norm=1/n → menor negativo)
+            score = norm * w * 10;
+            formula = `((${nPresent}-${rank}+1)/${nPresent}) × (${w}) × 10 = ${score.toFixed(2)}`;
           }
           detail = `${rank}º lugar`;
         }
@@ -1681,7 +1729,7 @@ function renderResult(comp) {
 
   const inacAlerts = [];
   [...comp.objParams, ...comp.subjParams].forEach(param => {
-    if (param.importance === 'inac') {
+    if (legacyToWeight(param.importance) === -10) {
       comp.products.forEach(p => {
         if (hasStateNorm(param.hasParam[p.id]) !== false) {
           inacAlerts.push(`⚠️ <b>${escHtml(p.name)}</b> tem o parâmetro "<b>${escHtml(param.name)}</b>" marcado como <b>Inaceitável</b>.`);
@@ -1736,12 +1784,16 @@ function renderResult(comp) {
 
   let formula = `<div class="mem-section-title">Como o cálculo funciona</div>
     <div class="tip" style="margin-bottom:8px">
-      <b>Parâmetros Objetivos:</b> normaliza pelo custo/unidade — quem entrega mais por real pago recebe pontuação maior.<br>
-      Fórmula: <code>(menor_custo_por_unidade ÷ custo_do_produto) × peso × 10</code><br><br>
-      <b>Parâmetros Subjetivos:</b> normaliza pelo ranking — 1º lugar recebe pontuação máxima, último recebe mínima.<br>
+      <b>Parâmetros Objetivos (peso positivo):</b> quem entrega mais por real pago recebe pontuação maior.<br>
+      Fórmula: <code>(menor_cpu ÷ cpu_produto) × peso × 10</code><br><br>
+      <b>Parâmetros Objetivos (peso negativo):</b> quem tem MELHOR custo-benefício pontua MAIS negativamente.<br>
+      Fórmula: <code>(menor_cpu ÷ cpu_produto) × peso × 10</code> (resultado negativo)<br><br>
+      <b>Parâmetros Subjetivos (peso positivo):</b> 1º lugar recebe pontuação máxima.<br>
       Fórmula: <code>((n − rank + 1) ÷ n) × peso × 10</code><br><br>
-      <b>Ausência de parâmetro (✗):</b> grau positivo → penalidade máxima (0 pts) · grau negativo → bônus máximo.<br>
-      <b>Indiferente (≈):</b> produto tem o parâmetro mas não é avaliado — recebe 0 pts sem penalidade.
+      <b>Parâmetros Subjetivos (peso negativo):</b> 1º lugar recebe pontuação MAIS negativa.<br>
+      Fórmula: <code>((n − rank + 1) ÷ n) × peso × 10</code> (resultado negativo)<br><br>
+      <b>Ausência (✗) com peso positivo:</b> penalidade máxima (0 pts).<br>
+      <b>Ausência (✗) com peso negativo:</b> bônus máximo (|peso| × 10 pts positivos).
     </div>`;
 
   const chartData = {
@@ -2002,7 +2054,7 @@ function gerarPdfComp(id) {
   // Alertas inaceitável
   const inacAlerts = [];
   [...comp.objParams, ...comp.subjParams].forEach(param => {
-    if (param.importance === 'inac') {
+    if (legacyToWeight(param.importance) === -10) {
       comp.products.forEach(p => {
         if (hasStateNorm(param.hasParam[p.id]) !== false) {
           inacAlerts.push(`ATENCAO: ${p.name} tem o parametro "${param.name}" marcado como Inaceitavel.`);
@@ -2045,10 +2097,11 @@ function gerarPdfComp(id) {
 
   // Blocos explicativos
   const explicacoes = [
-    { titulo: 'Parâmetros Objetivos (ex: quantidade, peso, cobertura)', corpo: 'O sistema calcula o custo por unidade de cada produto e normaliza: quem entrega mais por real pago recebe maior pontuação. A pontuação é proporcional à eficiência em relação ao produto mais eficiente.' },
-    { titulo: 'Parâmetros Subjetivos (ex: sabor, embalagem, atendimento)', corpo: 'O produto classificado em 1º lugar recebe a pontuação máxima; o último recebe a mínima. A pontuação é distribuída proporcionalmente entre as posições.' },
-    { titulo: 'Importância Indiferente (peso 0)', corpo: 'Quando um parâmetro é marcado como "Indiferente", seu peso no cálculo é 0. Todos os produtos que têm o parâmetro recebem um pequeno bônus de presença igual entre si; os que não têm recebem 0 pts sem penalidade.' },
-    { titulo: 'Ausência do parâmetro (✗)', corpo: 'Produto sem o parâmetro: se o critério é positivo, recebe penalidade máxima (0 pts). Se o critério é negativo (ex: "Gostaria que não tivesse"), recebe bônus máximo por não ter o atributo indesejado.' },
+    { titulo: 'Parâmetros Objetivos — Peso Positivo', corpo: 'Quem entrega mais por real pago recebe pontuação maior. Fórmula: (menor_cpu ÷ cpu_produto) × peso × 10. O produto mais eficiente recebe a pontuação máxima.' },
+    { titulo: 'Parâmetros Objetivos — Peso Negativo', corpo: 'Quem tem MELHOR custo-benefício pontua MAIS negativamente. Fórmula: (menor_cpu ÷ cpu_produto) × peso × 10 (resultado negativo). O produto mais eficiente recebe a pontuação mais negativa.' },
+    { titulo: 'Parâmetros Subjetivos — Peso Positivo', corpo: 'O produto em 1º lugar recebe pontuação máxima; o último recebe a mínima. Fórmula: ((n − rank + 1) ÷ n) × peso × 10.' },
+    { titulo: 'Parâmetros Subjetivos — Peso Negativo', corpo: 'O produto em 1º lugar recebe a pontuação MAIS negativa. Fórmula: ((n − rank + 1) ÷ n) × peso × 10 (resultado negativo).' },
+    { titulo: 'Ausência do parâmetro (✗)', corpo: 'Peso positivo: produto sem o parâmetro recebe penalidade máxima (0 pts). Peso negativo: produto sem o parâmetro recebe bônus máximo (|peso| × 10 pts positivos), pois não tem o atributo indesejado.' },
   ];
   explicacoes.forEach(e => {
     const innerW = CW - 10; // margem interna de 5px em cada lado
@@ -2103,12 +2156,12 @@ function gerarPdfComp(id) {
     const objTableBody = objRows.map(r => [
       r.paramName,
       r.unit || '—',
+      `${r.weight > 0 ? '+' : ''}${r.weight}`,
       impLabel(r.importance),
-      (() => { const w = r.weight; if (w > 0) return `+${w} (positivo)`; if (w < 0) return `${w} (negativo)`; return '0 (indiferente)'; })(),
     ]);
     doc.autoTable({
       startY: y,
-      head: [['Parâmetro', 'Unidade', 'Importância', 'Peso no Cálculo']],
+      head: [['Parâmetro', 'Unidade', 'Peso', 'Importância']],
       body: objTableBody,
       margin: { left: ML, right: MR },
       styles: { fillColor: COR_VERDE, textColor: COR_CINZA_CLR, fontSize: 8, cellPadding: 3, overflow: 'linebreak' },
@@ -2129,12 +2182,12 @@ function gerarPdfComp(id) {
     y += 5;
     const subjTableBody = subjRows.map(r => [
       r.paramName,
+      `${r.weight > 0 ? '+' : ''}${r.weight}`,
       impLabel(r.importance),
-      (() => { const w = r.weight; if (w > 0) return `+${w} (positivo)`; if (w < 0) return `${w} (negativo)`; return '0 (indiferente)'; })(),
     ]);
     doc.autoTable({
       startY: y,
-      head: [['Parâmetro', 'Importância', 'Peso no Cálculo']],
+      head: [['Parâmetro', 'Peso', 'Importância']],
       body: subjTableBody,
       margin: { left: ML, right: MR },
       styles: { fillColor: COR_VERDE, textColor: COR_CINZA_CLR, fontSize: 8, cellPadding: 3, overflow: 'linebreak' },
