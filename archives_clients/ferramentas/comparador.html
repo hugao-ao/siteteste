@@ -196,7 +196,7 @@
   .param-table .td-del button:hover { color: var(--red-lt); }
   .param-table .td-name { min-width: 120px; max-width: 180px; }
   .param-table .td-unit { width: 64px; }
-  .param-table .td-imp { width: 160px; }
+  .param-table .td-imp { width: 72px; }
   .param-table .td-has { width: 36px; text-align: center; padding: 4px 3px; }
   .param-table .td-rank { width: 72px; }
   /* Inputs e selects compactos */
@@ -948,7 +948,7 @@ function impSelectHTML(id, val, onchange) {
   for (let w = 10; w >= -10; w--) {
     const info = WEIGHT_TO_IMP[String(w)] || WEIGHT_TO_IMP[w] || { label: '' };
     const sel = w === cur ? ' selected' : '';
-    opts.push(`<option value="${w}"${sel}>${w > 0 ? '+' : ''}${w} — ${info.label}</option>`);
+    opts.push(`<option value="${w}"${sel}>${w > 0 ? '+' : ''}${w}</option>`);
   }
   return `<select class="field-input" id="${id}" onchange="${onchange}" style="font-size:.82rem">
     ${opts.join('')}
@@ -1151,7 +1151,7 @@ function renderObjTable() {
   let thead = `<tr>
     <th class="td-name">Parâmetro</th>
     <th class="td-unit">Unidade</th>
-    <th class="td-imp">Peso / Importância</th>`;
+    <th class="td-imp">Peso</th>`;
   tmpProducts.forEach(p => {
     thead += `<th class="td-has" title="${escHtml(p.name)||'Produto'}">✓/≈/✗</th>
               <th class="td-rank"><span class="th-prod">${escHtml(p.name)||'Produto'}</span></th>`;
@@ -1172,9 +1172,7 @@ function renderObjTable() {
           oninput="updateObjParam(${param.id},'unit',this.value)" />
       </td>
       <td class="td-imp">
-        <select onchange="updateObjParam(${param.id},'importance',parseFloat(this.value))">
           ${impSelectHTML(`imp-obj-${param.id}`, param.importance, `updateObjParam(${param.id},'importance',parseFloat(this.value))`)}
-        </select>
       </td>`;
     tmpProducts.forEach(p => {
       const stateRaw = param.hasParam[p.id];
@@ -1250,7 +1248,7 @@ function renderSubjTable() {
 
   let thead = `<tr>
     <th class="td-name">Parâmetro</th>
-    <th class="td-imp">Peso / Importância</th>`;
+    <th class="td-imp">Peso</th>`;
   tmpProducts.forEach(p => {
     thead += `<th class="td-has" title="Tem?">✓/≈/✗</th>
               <th class="td-rank" title="${escHtml(p.name)||'Produto'}"><span class="th-prod">${escHtml(p.name)||'Produto'}</span></th>`;
@@ -1267,9 +1265,7 @@ function renderSubjTable() {
           oninput="updateSubjParam(${param.id},'name',this.value)" />
       </td>
       <td class="td-imp">
-        <select onchange="updateSubjParam(${param.id},'importance',parseFloat(this.value))">
           ${impSelectHTML(`imp-subj-${param.id}`, param.importance, `updateSubjParam(${param.id},'importance',parseFloat(this.value))`)}
-        </select>
       </td>`;
     tmpProducts.forEach(p => {
       const stateRaw = param.hasParam[p.id];
