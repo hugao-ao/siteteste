@@ -1465,7 +1465,7 @@ function calcResult() {
           formula = '0';
         }
         scores[pid] += score;
-        perProduct[pid] = { score, detail, formula, costPerUnit: null };
+        perProduct[pid] = { score, detail, formula, costPerUnit: null, rawValue: null };
       } else {
         const cpu = costPerUnit[pid];
         let score = 0, detail = '—', formula = '—';
@@ -1491,7 +1491,7 @@ function calcResult() {
           detail = `R$${fmtN(cpu)}/${param.unit||'un'}`;
         }
         scores[pid] += score;
-        perProduct[pid] = { score, detail, formula, costPerUnit: cpu };
+        perProduct[pid] = { score, detail, formula, costPerUnit: cpu, rawValue: param.values[pid] || 0 };
       }
     });
 
@@ -1530,7 +1530,7 @@ function calcResult() {
           formula = '0';
         }
         scores[pid] += score;
-        perProduct[pid] = { score, detail, formula };
+        perProduct[pid] = { score, detail, formula, rawRank: null };
       } else {
         const rank = param.rankings[pid] || 1;
         let score = 0, detail = '—', formula = '—';
@@ -1552,7 +1552,7 @@ function calcResult() {
           detail = `${rank}º lugar`;
         }
         scores[pid] += score;
-        perProduct[pid] = { score, detail, formula };
+        perProduct[pid] = { score, detail, formula, rawRank: rank };
       }
     });
 
@@ -1901,14 +1901,17 @@ function gerarPdfComp(id) {
   const MR = 5;   // margem direita
   const MT = 18;  // margem topo (após cabeçalho)
   const MB = 12;  // margem rodapé
+
   const PW_P = 210;
   const PH_P = 297;
   const PW_L = 297;
   const PH_L = 210;
   let isLandscape = false;
+
   function PW() { return isLandscape ? PW_L : PW_P; }
   function PH() { return isLandscape ? PH_L : PH_P; }
   function CW() { return PW() - ML - MR; }
+
   let y = 0;
 
   // ── Funções auxiliares ──
@@ -1942,7 +1945,9 @@ function gerarPdfComp(id) {
     y = MT + 2;
   }
   function checkY(needed) {
-    if (y + needed > PH() - MB - 4) addPage(isLandscape);
+    if (y + needed > PH() - MB - 4) {
+      addPage(isLandscape);
+    }
   }
   function txt(text, x, yy, opts = {}) {
     const { size = 10, color = COR_CINZA_CLR, bold = false, align = 'left' } = opts;
@@ -1962,7 +1967,9 @@ function gerarPdfComp(id) {
     return yy + 7;
   }
 
-  // ── PÁGINA 1: CAPA ──
+  // ══════════════════════════════════════════════════════════
+  // PÁGINA 1: CAPA
+  // ══════════════════════════════════════════════════════════
   fillPage(COR_FUNDO);
   // Barra superior dourada
   doc.setFillColor(...COR_DOURADO);
@@ -2056,7 +2063,7 @@ function gerarPdfComp(id) {
     if (legacyToWeight(param.importance) === -10) {
       comp.products.forEach(p => {
         if (hasStateNorm(param.hasParam[p.id]) !== false) {
-          inacAlerts.push(`ATENCAO: ${p.name} tem o parametro "${param.name}" marcado como Inaceitavel.`);
+          inacAlerts.push(`ATENÇÃO: ${p.name} tem o parâmetro "${param.name}" marcado como Inaceitável.`);
         }
       });
     }
@@ -2077,13 +2084,14 @@ function gerarPdfComp(id) {
   // Rodapé capa
   pageFooter();
 
-  // ── PÁGINA 2+: COMO SÃO CALCULADOS + TABELAS DE PARÂMETROS ──
+  // ══════════════════════════════════════════════════════════
+  // PÁGINA 2+: EXPLICAÇÕES + TABELAS DE PARÂMETROS
+  // ══════════════════════════════════════════════════════════
   addPage(false);
 
-  // Título da seção
   y = sectionTitle('COMO OS PARÂMETROS SÃO CALCULADOS', y);
 
-  // Caixas explicativas — 2 colunas
+  // Caixas explicativas — desenhadas uma a uma em 2 colunas
   const explicacoes = [
     {
       titulo: 'Parâmetros Objetivos — Peso Positivo',
@@ -2108,49 +2116,55 @@ function gerarPdfComp(id) {
   ];
 
   const colExpW = (CW() - 4) / 2;
-  let colExpIdx = 0;
-  let rowExpStartY = y;
-  let rowExpMaxH = 0;
 
-  explicacoes.forEach((e, ei) => {
+  // Pré-calcular alturas de cada caixa
+  const expHeights = explicacoes.map(e => {
     const innerW = colExpW - 8;
     const tituloLines = doc.splitTextToSize(e.titulo, innerW);
     const corpoLines  = doc.splitTextToSize(e.corpo, innerW);
     const tituloH = tituloLines.length * 4.5;
     const corpoH  = corpoLines.length * 4;
-    const expBoxH = 6 + tituloH + 3 + corpoH + 5;
-
-    if (colExpIdx === 0) {
-      rowExpStartY = y;
-      rowExpMaxH = 0;
-      // Verificar se cabe na página
-      checkY(expBoxH + 4);
-      rowExpStartY = y;
-    }
-    if (expBoxH > rowExpMaxH) rowExpMaxH = expBoxH;
-
-    const px = ML + colExpIdx * (colExpW + 4);
-    doc.setFillColor(...COR_VERDE);
-    doc.roundedRect(px, rowExpStartY, colExpW, Math.max(expBoxH, rowExpMaxH), 2, 2, 'F');
-    let ty = rowExpStartY + 6;
-    tituloLines.forEach((ln, li) => {
-      txt(ln, px + 4, ty + li * 4.5, { size: 7.5, color: COR_DOURADO, bold: true });
-    });
-    ty += tituloH + 3;
-    corpoLines.forEach((ln, li) => {
-      txt(ln, px + 4, ty + li * 4, { size: 7, color: COR_CINZA_CLR });
-    });
-
-    colExpIdx++;
-    if (colExpIdx >= 2) {
-      y = rowExpStartY + rowExpMaxH + 4;
-      colExpIdx = 0;
-    }
+    return { tituloLines, corpoLines, tituloH, corpoH, boxH: 6 + tituloH + 3 + corpoH + 5 };
   });
-  // Se terminou com coluna ímpar
-  if (colExpIdx > 0) {
-    y = rowExpStartY + rowExpMaxH + 4;
-    colExpIdx = 0;
+
+  // Desenhar em pares (2 colunas)
+  for (let i = 0; i < explicacoes.length; i += 2) {
+    const left = expHeights[i];
+    const right = (i + 1 < explicacoes.length) ? expHeights[i + 1] : null;
+    const rowH = Math.max(left.boxH, right ? right.boxH : 0);
+
+    // Verificar se cabe na página
+    checkY(rowH + 6);
+
+    // Desenhar caixa esquerda
+    const pxL = ML;
+    doc.setFillColor(...COR_VERDE);
+    doc.roundedRect(pxL, y, colExpW, rowH, 2, 2, 'F');
+    let ty = y + 6;
+    left.tituloLines.forEach((ln, li) => {
+      txt(ln, pxL + 4, ty + li * 4.5, { size: 7.5, color: COR_DOURADO, bold: true });
+    });
+    ty += left.tituloH + 3;
+    left.corpoLines.forEach((ln, li) => {
+      txt(ln, pxL + 4, ty + li * 4, { size: 7, color: COR_CINZA_CLR });
+    });
+
+    // Desenhar caixa direita (se existir)
+    if (right) {
+      const pxR = ML + colExpW + 4;
+      doc.setFillColor(...COR_VERDE);
+      doc.roundedRect(pxR, y, colExpW, rowH, 2, 2, 'F');
+      let ty2 = y + 6;
+      expHeights[i + 1].tituloLines.forEach((ln, li) => {
+        txt(ln, pxR + 4, ty2 + li * 4.5, { size: 7.5, color: COR_DOURADO, bold: true });
+      });
+      ty2 += right.tituloH + 3;
+      expHeights[i + 1].corpoLines.forEach((ln, li) => {
+        txt(ln, pxR + 4, ty2 + li * 4, { size: 7, color: COR_CINZA_CLR });
+      });
+    }
+
+    y += rowH + 4;
   }
 
   y += 4;
@@ -2223,18 +2237,19 @@ function gerarPdfComp(id) {
     y = doc.lastAutoTable.finalY + 8;
   }
 
-  // ── TABELA GERAL: Parâmetros × Produtos (landscape) ──
+  // ══════════════════════════════════════════════════════════
+  // ÚLTIMA(S) PÁGINA(S): TABELA GERAL (landscape)
+  // ══════════════════════════════════════════════════════════
   addPage(true);
   y = sectionTitle('PONTUAÇÃO POR PARÂMETRO E PRODUTO', y);
 
   const nProds = ranking.length;
-  // CW landscape = 297 - 5 - 5 = 287mm
-  // Fixas: Parâmetro=50, Tipo=16 → resto dividido entre produtos
   const fixedCols = 50 + 16;
   const dynW = Math.max(16, (CW() - fixedCols) / nProds);
 
   // Construir corpo da tabela
-  // Cada célula de produto: "valor\n(pts)" — separado por \n para didDrawCell tratar
+  // Cada célula de produto: linha 1 = valor em destaque, linha 2 = (pts)
+  // Formato: "VALOR\nPTS" separado por \n para didDrawCell tratar
   const tableBody = breakdown.map(row => {
     const cells = [
       row.paramName + (row.unit ? ` (${row.unit})` : ''),
@@ -2242,15 +2257,33 @@ function gerarPdfComp(id) {
     ];
     ranking.forEach(p => {
       const pp = row.perProduct[p.id];
-      if (!pp) { cells.push('—'); return; }
+      if (!pp) { cells.push('\u2717'); return; }  // ✗
+
       const pts = pp.score.toFixed(1);
-      const detail = pp.detail || '';
-      // Limpar detail: remover emojis e marcadores
-      const cleanDetail = detail.replace(/^[⚠️✅✗✓≈\s]+/, '').trim();
-      if (!cleanDetail || cleanDetail === '—' || cleanDetail === 'Indiferente') {
-        cells.push(`(${pts} pts)`);
+
+      // Verificar se o produto é AUSENTE (não tem o parâmetro)
+      // Ausente: detail contém "Não tem" ou "penalidade" ou "bônus" ou rawValue===null/rawRank===null
+      const isAbsent = (pp.rawValue === null && row.type === 'Objetivo') ||
+                       (pp.rawRank === null && row.type === 'Subjetivo') ||
+                       (pp.detail && (pp.detail.includes('Não tem') || pp.detail.includes('Indiferente')));
+
+      if (isAbsent) {
+        cells.push('\u2717');  // ✗
+        return;
+      }
+
+      if (row.type === 'Objetivo') {
+        // Mostrar valor numérico + unidade em destaque
+        const rawVal = pp.rawValue;
+        const valStr = (rawVal !== undefined && rawVal !== null) ? String(rawVal) : '0';
+        const unitStr = row.unit || '';
+        const displayVal = unitStr ? `${valStr} ${unitStr}` : valStr;
+        cells.push(`${displayVal}\n(${pts} pts)`);
       } else {
-        cells.push(`${cleanDetail}\n(${pts} pts)`);
+        // Subjetivo: mostrar colocação em destaque
+        const rawRank = pp.rawRank;
+        const rankStr = (rawRank !== undefined && rawRank !== null) ? `${rawRank}º lugar` : '—';
+        cells.push(`${rankStr}\n(${pts} pts)`);
       }
     });
     return cells;
@@ -2318,16 +2351,26 @@ function gerarPdfComp(id) {
       // Células de produto (col >= 2)
       if (colIdx >= 2) {
         const raw = String(data.cell.raw || '');
-        const parts = raw.split('\n');
-        const mainVal = parts[0] || '';
-        const ptsVal  = parts[1] || '';
         const cx = data.cell.x + data.cell.width / 2;
         const cy = data.cell.y + data.cell.height / 2;
 
-        // Redesenhar fundo para garantir que autoTable não sobrescreva
+        // Redesenhar fundo
         const bgColor = (rowIdx % 2 === 0) ? COR_VERDE : [12, 40, 20];
         doc.setFillColor(...bgColor);
         doc.rect(data.cell.x, data.cell.y, data.cell.width, data.cell.height, 'F');
+
+        // Verificar se é ✗ (ausente)
+        if (raw === '\u2717' || raw.trim() === '\u2717') {
+          doc.setFontSize(9);
+          doc.setTextColor(...COR_VERMELHO);
+          doc.setFont('helvetica', 'bold');
+          doc.text('\u2717', cx, cy + 1.5, { align: 'center' });
+          return;
+        }
+
+        const parts = raw.split('\n');
+        const mainVal = parts[0] || '';
+        const ptsVal  = parts[1] || '';
 
         if (ptsVal) {
           // Valor em destaque
@@ -2352,14 +2395,10 @@ function gerarPdfComp(id) {
     didDrawPage:  () => { pageHeader(); pageFooter(); },
   });
 
-  // Rodapé última página
-  pageFooter();
-
   // ── SALVAR ──
   const nomeArquivo = `HV_Comparador_${comp.name.replace(/[^a-zA-Z0-9à-ü ]/g, '_')}_${new Date().toISOString().slice(0,10)}.pdf`;
   doc.save(nomeArquivo);
 }
-
 /* ═══════════════════════════════════════════════════════════
    INIT
 ═══════════════════════════════════════════════════════════ */
