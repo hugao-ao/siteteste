@@ -127,6 +127,65 @@
   .btn-icon.danger:hover { border-color: var(--red-lt); color: var(--red-lt); }
 .btn-icon.pdf { color: #D4AF37; border-color: #D4AF37; }
 .btn-icon.pdf:hover { background: rgba(212,175,55,.15); }
+.btn-icon.dup { color: #64b5f6; border-color: #64b5f6; }
+.btn-icon.dup:hover { background: rgba(100,181,246,.15); }
+
+  /* ── TABELA DE PARÂMETROS COM COLUNA/LINHA CONGELADAS E RESIZE ── */
+  .param-table-wrap {
+    overflow: auto;
+    max-height: 420px;
+    margin-bottom: 12px;
+    -webkit-overflow-scrolling: touch;
+    position: relative;
+  }
+  .param-table {
+    border-collapse: separate;
+    border-spacing: 0;
+    width: max-content;
+    min-width: 100%;
+    table-layout: fixed;
+  }
+  .param-table th, .param-table td {
+    position: relative;
+  }
+  /* Congelar primeira coluna */
+  .param-table th:first-child,
+  .param-table td:first-child {
+    position: sticky;
+    left: 0;
+    z-index: 3;
+    background: var(--bg3);
+  }
+  .param-table th:first-child {
+    z-index: 4;
+  }
+  /* Congelar cabeçalho */
+  .param-table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: var(--bg3);
+  }
+  .param-table thead th:first-child {
+    z-index: 5;
+  }
+  /* Handle de resize */
+  .col-resize-handle {
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: 5px;
+    cursor: col-resize;
+    background: transparent;
+    z-index: 10;
+    user-select: none;
+  }
+  .col-resize-handle:hover,
+  .col-resize-handle.resizing {
+    background: var(--gold-dim);
+    opacity: 0.6;
+  }
 
   .comp-card-body { display: none; padding: 0 20px 20px; }
   .comp-card.open .comp-card-body { display: block; }
@@ -270,7 +329,9 @@
   .product-card .field-label { font-size: .72rem; margin-bottom: 4px; }
 
   /* ── PARÂMETROS GRADE ── */
-  .param-table-wrap { overflow-x: auto; margin-bottom: 12px; -webkit-overflow-scrolling: touch; }
+  .param-table-old-placeholder {
+    /* substituído pelo bloco acima */
+  }
   .param-table {
     width: 100%;
     border-collapse: collapse;
@@ -1097,6 +1158,7 @@ function renderObjTable() {
     tbody += `<td class="td-del"><button onclick="removeObjParam(${param.id})">✕</button></td></tr>`;
   });
   document.getElementById('obj-tbody').innerHTML = tbody;
+  initColResize('obj-table');
 }
 
 /* ═══════════════════════════════════════════════════════════
@@ -1194,6 +1256,7 @@ function renderSubjTable() {
     tbody += `<td class="td-del"><button onclick="removeSubjParam(${param.id})">✕</button></td></tr>`;
   });
   document.getElementById('subj-tbody').innerHTML = tbody;
+  initColResize('subj-table');
 }
 
 /* ═══════════════════════════════════════════════════════════
@@ -1514,6 +1577,7 @@ function renderList() {
         <div class="comp-card-actions" onclick="event.stopPropagation()">
           <button class="btn-icon" onclick="openModal(${comp.id})">✏️ Editar</button>
           <button class="btn-icon pdf" onclick="gerarPdfComp(${comp.id})">📄 PDF</button>
+          <button class="btn-icon dup" onclick="duplicateComp(${comp.id})">📋 Duplicar</button>
           <button class="btn-icon danger" onclick="deleteComp(${comp.id})">🗑️ Excluir</button>
         </div>
       </div>
@@ -1534,6 +1598,65 @@ function deleteComp(id) {
   comparisons = comparisons.filter(c=>c.id!==id);
   deleteCompFromSupabase(id);
   renderList();
+}
+function duplicateComp(id) {
+  const orig = comparisons.find(c => c.id === id);
+  if (!orig) return;
+  const copy = JSON.parse(JSON.stringify(orig));
+  copy.id = Date.now();
+  copy.name = orig.name + ' (cópia)';
+  copy.updatedAt = new Date().toISOString();
+  comparisons.push(copy);
+  saveCompToSupabase(copy);
+  renderList();
+}
+
+/* ═══════════════════════════════════════════════════════════
+   RESIZE DE COLUNAS NAS TABELAS DE PARÂMETROS
+═══════════════════════════════════════════════════════════ */
+function initColResize(tableId) {
+  const table = document.getElementById(tableId);
+  if (!table) return;
+  const ths = table.querySelectorAll('thead th');
+  ths.forEach((th, colIdx) => {
+    // Adicionar handle se não existir
+    if (th.querySelector('.col-resize-handle')) return;
+    const handle = document.createElement('div');
+    handle.className = 'col-resize-handle';
+    th.style.position = 'relative';
+    th.appendChild(handle);
+
+    let startX, startW;
+    handle.addEventListener('mousedown', (e) => {
+      e.preventDefault();
+      startX = e.clientX;
+      startW = th.offsetWidth;
+      handle.classList.add('resizing');
+
+      const onMove = (ev) => {
+        const diff = ev.clientX - startX;
+        const newW = Math.max(50, startW + diff);
+        th.style.width = newW + 'px';
+        th.style.minWidth = newW + 'px';
+        // Aplicar mesma largura às células da coluna no tbody
+        const rows = table.querySelectorAll('tbody tr');
+        rows.forEach(row => {
+          const cell = row.cells[colIdx];
+          if (cell) {
+            cell.style.width = newW + 'px';
+            cell.style.minWidth = newW + 'px';
+          }
+        });
+      };
+      const onUp = () => {
+        handle.classList.remove('resizing');
+        document.removeEventListener('mousemove', onMove);
+        document.removeEventListener('mouseup', onUp);
+      };
+      document.addEventListener('mousemove', onMove);
+      document.addEventListener('mouseup', onUp);
+    });
+  });
 }
 
 /* ═══════════════════════════════════════════════════════════
@@ -1817,36 +1940,55 @@ function gerarPdfComp(id) {
   txt(`${comp.products.length} produto(s) comparado(s)  •  ${comp.objParams.length} parâmetro(s) objetivo(s)  •  ${comp.subjParams.length} parâmetro(s) subjetivo(s)`, PW / 2, y, { size: 8.5, color: COR_CINZA_MED, align: 'center' });
   y += 12;
 
-  // Pódio
+  // Ranking em grade adaptativa (nomes completos, múltiplas linhas)
   const { ranking, breakdown } = comp.result;
-  const medals = ['🥇', '🥈', '🥉'];
-  const podW = Math.min(50, CW / ranking.length);
-  const podStartX = ML + (CW - podW * ranking.length) / 2;
-
   txt('RANKING FINAL', PW / 2, y, { size: 11, color: COR_DOURADO, bold: true, align: 'center' });
   y += 7;
+  {
+    const nProdsRank = ranking.length;
+    // Calcular quantos cabem por linha (mínimo 40px por card)
+    const minCardW = 40;
+    const maxPerRow = Math.min(nProdsRank, Math.floor(CW / minCardW));
+    const perRow = maxPerRow > 0 ? maxPerRow : 1;
+    const cardW = CW / perRow;
+    const rows = Math.ceil(nProdsRank / perRow);
 
-  ranking.forEach((p, i) => {
-    const px = podStartX + i * podW;
-    const isFirst = i === 0;
-    const bgC = isFirst ? COR_DOURADO : COR_VERDE_MED;
-    const h = isFirst ? 36 : 30;
-    doc.setFillColor(...bgC);
-    doc.roundedRect(px, y, podW - 2, h, 2, 2, 'F');
-    const textC = isFirst ? COR_FUNDO : COR_CINZA_CLR;
-    txt(`${i + 1}º`, px + podW / 2 - 1, y + 7, { size: 9, color: textC, bold: true, align: 'center' });
-    // Nome (quebra se longo)
-    const nomeLines = doc.splitTextToSize(p.name, podW - 4);
-    doc.setFontSize(isFirst ? 9 : 8);
-    doc.setTextColor(...textC);
-    doc.setFont('helvetica', 'bold');
-    nomeLines.slice(0, 2).forEach((ln, li) => {
-      doc.text(ln, px + podW / 2 - 1, y + 14 + li * 4.5, { align: 'center' });
-    });
-    txt(`${p.score.toFixed(1)} pts`, px + podW / 2 - 1, y + (isFirst ? 29 : 24), { size: 8, color: textC, align: 'center' });
-    txt(fmtBRL(p.price), px + podW / 2 - 1, y + (isFirst ? 34 : 29), { size: 7.5, color: textC, align: 'center' });
-  });
-  y += ranking.length > 0 ? (ranking[0] ? 44 : 36) : 36;
+    for (let row = 0; row < rows; row++) {
+      const rowItems = ranking.slice(row * perRow, (row + 1) * perRow);
+      // Calcular altura necessária para esta linha (baseado no nome mais longo)
+      let maxLines = 1;
+      rowItems.forEach(p => {
+        const nl = doc.splitTextToSize(p.name, cardW - 6);
+        if (nl.length > maxLines) maxLines = nl.length;
+      });
+      const cardH = 14 + maxLines * 4.5 + 10;
+      checkY(cardH + 4);
+
+      rowItems.forEach((p, colIdx) => {
+        const globalIdx = row * perRow + colIdx;
+        const px = ML + colIdx * cardW;
+        const isFirst = globalIdx === 0;
+        const bgC = isFirst ? COR_DOURADO : (globalIdx === 1 ? [180, 180, 180] : COR_VERDE_MED);
+        doc.setFillColor(...bgC);
+        doc.roundedRect(px, y, cardW - 2, cardH, 2, 2, 'F');
+        const textC = isFirst ? COR_FUNDO : COR_CINZA_CLR;
+        // Posição
+        txt(`${globalIdx + 1}º`, px + cardW / 2 - 1, y + 6, { size: 8, color: textC, bold: true, align: 'center' });
+        // Nome completo (sem truncar)
+        const nomeLines = doc.splitTextToSize(p.name, cardW - 6);
+        doc.setFontSize(isFirst ? 8.5 : 7.5);
+        doc.setTextColor(...textC);
+        doc.setFont('helvetica', 'bold');
+        nomeLines.forEach((ln, li) => {
+          doc.text(ln, px + cardW / 2 - 1, y + 12 + li * 4.5, { align: 'center' });
+        });
+        const afterName = y + 12 + nomeLines.length * 4.5;
+        txt(`${p.score.toFixed(1)} pts`, px + cardW / 2 - 1, afterName + 2, { size: 7.5, color: textC, align: 'center' });
+        txt(fmtBRL(p.price), px + cardW / 2 - 1, afterName + 7, { size: 7, color: textC, align: 'center' });
+      });
+      y += cardH + 3;
+    }
+  }
 
   // Parecer
   hrLine(y);
@@ -1898,9 +2040,8 @@ function gerarPdfComp(id) {
   doc.rect(0, PH - 3, PW, 3, 'F');
   txt('HV Saúde Financeira • Relatório gerado automaticamente', PW / 2, PH - 6, { size: 7, color: COR_CINZA_MED, align: 'center' });
 
-  // ── PÁGINA 2+: MEMÓRIA DE CÁLCULO ──
+  // ── PÁGINA 2: COMO É CALCULADO + TABELA DE PONTUAÇÕES ──
   addPage();
-
   // Cabeçalho da página
   doc.setFillColor(...COR_VERDE);
   doc.rect(0, 0, PW, 12, 'F');
@@ -1909,141 +2050,104 @@ function gerarPdfComp(id) {
   txt('HV SAÚDE FINANCEIRA', ML, 8, { size: 9, color: COR_DOURADO, bold: true });
   txt(comp.name, PW - MR, 8, { size: 9, color: COR_CINZA_CLR, align: 'right' });
   y = 20;
-
-  txt('MEMÓRIA DE CÁLCULO', ML, y, { size: 13, color: COR_DOURADO, bold: true });
+  txt('COMO OS PARÂMETROS SÃO CALCULADOS', ML, y, { size: 12, color: COR_DOURADO, bold: true });
   y += 5;
   hrLine(y);
   y += 8;
 
-  // Tabela de produtos e preços
-  txt('PRODUTOS ANALISADOS', ML, y, { size: 10, color: COR_DOURADO, bold: true });
-  y += 6;
-
-  const prodHead = [['Produto', 'Preço']];
-  const prodBody = comp.products.map(p => [p.name, fmtBRL(p.price)]);
-  doc.autoTable({
-    startY: y,
-    head: prodHead,
-    body: prodBody,
-    margin: { left: ML, right: MR },
-    styles: { fillColor: COR_VERDE, textColor: COR_CINZA_CLR, fontSize: 9, cellPadding: 3 },
-    headStyles: { fillColor: COR_DOURADO_ESC, textColor: COR_FUNDO, fontStyle: 'bold', fontSize: 9 },
-    alternateRowStyles: { fillColor: [12, 40, 20] },
-    columnStyles: { 1: { halign: 'right' } },
-    tableLineColor: COR_VERDE_MED,
-    tableLineWidth: 0.2,
-  });
-  y = doc.lastAutoTable.finalY + 10;
-
-  // Explicação das fórmulas
-  checkY(40);
-  txt('COMO O CÁLCULO FUNCIONA', ML, y, { size: 10, color: COR_DOURADO, bold: true });
-  y += 6;
-  doc.setFillColor(...COR_VERDE);
-  doc.roundedRect(ML, y - 2, CW, 34, 2, 2, 'F');
-  const formulas = [
-    'Parâmetros Objetivos: normaliza pelo custo/unidade — quem entrega mais por real pago recebe maior pontuação.',
-    'Fórmula: (menor_custo_por_unidade / custo_do_produto) x peso x 10',
-    '',
-    'Parâmetros Subjetivos: normaliza pelo ranking — 1º lugar recebe pontuação máxima, último recebe mínima.',
-    'Fórmula: ((n - rank + 1) / n) x peso x 10',
-    '',
-    'Ausência de parâmetro (✗): grau positivo = penalidade máxima (0 pts) | grau negativo = bônus máximo.',
-    'Indiferente (≈): produto tem o parâmetro mas não é avaliado — recebe 0 pts sem penalidade.',
+  // Blocos explicativos
+  const explicacoes = [
+    { titulo: 'Parâmetros Objetivos (ex: quantidade, peso, cobertura)', corpo: 'O sistema calcula o custo por unidade de cada produto e normaliza: quem entrega mais por real pago recebe maior pontuação. A pontuação é proporcional à eficiência em relação ao produto mais eficiente.' },
+    { titulo: 'Parâmetros Subjetivos (ex: sabor, embalagem, atendimento)', corpo: 'O produto classificado em 1º lugar recebe a pontuação máxima; o último recebe a mínima. A pontuação é distribuída proporcionalmente entre as posições.' },
+    { titulo: 'Ausência (✗) e Indiferença (≈)', corpo: 'Produto sem o parâmetro (✗): se o critério é positivo, recebe penalidade máxima (0 pts); se negativo, recebe bônus máximo. Produto marcado como indiferente (≈): recebe 0 pts sem penalidade — não entra no cálculo.' },
   ];
-  formulas.forEach(f => {
-    if (f === '') { y += 2; return; }
-    const isFormula = f.startsWith('Fórmula:');
-    txt(f, ML + 3, y + 2, { size: 8, color: isFormula ? COR_DOURADO : COR_CINZA_CLR, bold: isFormula });
-    y += 4.5;
+  explicacoes.forEach(e => {
+    const corpoLines = doc.splitTextToSize(e.corpo, CW - 6);
+    const expBoxH = 8 + corpoLines.length * 4.5 + 4;
+    checkY(expBoxH + 4);
+    doc.setFillColor(...COR_VERDE);
+    doc.roundedRect(ML, y - 2, CW, expBoxH, 2, 2, 'F');
+    txt(e.titulo, ML + 3, y + 3, { size: 8.5, color: COR_DOURADO, bold: true });
+    corpoLines.forEach((ln, li) => {
+      txt(ln, ML + 3, y + 9 + li * 4.5, { size: 8, color: COR_CINZA_CLR });
+    });
+    y += expBoxH + 4;
   });
+
+  y += 4;
+  hrLine(y);
   y += 8;
 
-  // Tabela de importâncias
-  checkY(30);
-  txt('TABELA DE IMPORTÂNCIAS (PESOS)', ML, y, { size: 10, color: COR_DOURADO, bold: true });
-  y += 6;
-  doc.autoTable({
-    startY: y,
-    head: [['Nível de Importância', 'Peso']]  ,
-    body: IMP_OPTIONS.map(o => [o.label, o.weight > 0 ? `+${o.weight}` : String(o.weight)]),
-    margin: { left: ML, right: MR },
-    styles: { fillColor: COR_VERDE, textColor: COR_CINZA_CLR, fontSize: 9, cellPadding: 3 },
-    headStyles: { fillColor: COR_DOURADO_ESC, textColor: COR_FUNDO, fontStyle: 'bold' },
-    alternateRowStyles: { fillColor: [12, 40, 20] },
-    columnStyles: { 1: { halign: 'center', fontStyle: 'bold' } },
-    tableLineColor: COR_VERDE_MED,
-    tableLineWidth: 0.2,
-  });
-  y = doc.lastAutoTable.finalY + 10;
-
-  // ── DETALHAMENTO POR PARÂMETRO ──
-  addPage();
-  // Cabeçalho
-  doc.setFillColor(...COR_VERDE);
-  doc.rect(0, 0, PW, 12, 'F');
-  doc.setFillColor(...COR_DOURADO);
-  doc.rect(0, 0, PW, 1.5, 'F');
-  txt('HV SAÚDE FINANCEIRA', ML, 8, { size: 9, color: COR_DOURADO, bold: true });
-  txt(comp.name, PW - MR, 8, { size: 9, color: COR_CINZA_CLR, align: 'right' });
-  y = 20;
-
-  txt('DETALHAMENTO POR PARÂMETRO', ML, y, { size: 13, color: COR_DOURADO, bold: true });
+  // ── TABELA DE PONTUAÇÕES POR PARÂMETRO ──
+  txt('PONTUAÇÕES POR PARÂMETRO', ML, y, { size: 12, color: COR_DOURADO, bold: true });
   y += 5;
   hrLine(y);
   y += 8;
 
-  // Colunas dinâmicas: Parâmetro | Tipo | Importância | Peso | [produto1] | [produto2] ...
-  const colNames = ['Parâmetro', 'Tipo', 'Importância', 'Peso', ...ranking.map(p => p.name)];
   const nProds = ranking.length;
-  const colWidths = {};
-  // Distribui largura: fixas + dinâmicas
-  const fixedW = 38 + 18 + 28 + 12; // param + tipo + imp + peso
-  const dynW = (CW - fixedW) / nProds;
-  colWidths[0] = 38; colWidths[1] = 18; colWidths[2] = 28; colWidths[3] = 12;
-  for (let i = 0; i < nProds; i++) colWidths[4 + i] = dynW;
+  const fixedW2 = 50 + 28;
+  const dynW2 = (CW - fixedW2) / nProds;
+  const colNames2 = ['Parâmetro', 'Importância', ...ranking.map(p => p.name)];
 
-  const tableHead = [colNames];
-  const tableBody = breakdown.map(row => {
+  const tableBody2 = breakdown.map(row => {
     const impLbl = impLabel(row.importance);
-    const wLabel = row.weight > 0 ? `+${row.weight}` : String(row.weight);
-    const cells = [row.paramName + (row.unit ? ` (${row.unit})` : ''), row.type, impLbl, wLabel];
+    const cells2 = [row.paramName + (row.unit ? `\n(${row.unit})` : ''), impLbl];
     ranking.forEach(p => {
       const pp = row.perProduct[p.id];
-      if (!pp) { cells.push('—'); return; }
-      const scoreStr = pp.score.toFixed(2);
-      const detailStr = pp.detail || '';
-      const formulaStr = pp.formula || '';
-      cells.push(`${scoreStr} pts\n${detailStr}\n${formulaStr}`);
+      if (!pp) { cells2.push('—'); return; }
+      const pts = pp.score.toFixed(1);
+      const detail = pp.detail || '';
+      if (detail === '≈ Indiferente — neutro') {
+        cells2.push('≈ indiferente\n(0,0 pts)');
+      } else if (detail.startsWith('⚠️') || detail.startsWith('✅')) {
+        cells2.push(detail.replace('⚠️ ', '').replace('✅ ', '') + `\n(${pts} pts)`);
+      } else if (detail && detail !== '—') {
+        cells2.push(`${detail}\n(${pts} pts)`);
+      } else {
+        cells2.push(`(${pts} pts)`);
+      }
     });
-    return cells;
+    return cells2;
   });
 
-  // Linha de total
-  const totalRow = ['PONTUAÇÃO TOTAL', '', '', ''];
-  ranking.forEach(p => totalRow.push(`${p.score.toFixed(2)} pts`));
-  tableBody.push(totalRow);
+  const totalRow2 = ['PONTUAÇÃO TOTAL', ''];
+  ranking.forEach(p => totalRow2.push(`${p.score.toFixed(1)} pts`));
+  tableBody2.push(totalRow2);
 
-  // Estilos condicionais por célula
-  const didDrawCell = (data) => {
+  const didDrawCell2 = (data) => {
     if (data.section === 'body') {
-      const isTotal = data.row.index === tableBody.length - 1;
-      if (isTotal) {
+      const isTotal2 = data.row.index === tableBody2.length - 1;
+      if (isTotal2) {
         doc.setFillColor(...COR_DOURADO_ESC);
         doc.rect(data.cell.x, data.cell.y, data.cell.width, data.cell.height, 'F');
         doc.setTextColor(...COR_FUNDO);
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(9);
-        doc.text(data.cell.text, data.cell.x + 2, data.cell.y + data.cell.height / 2 + 1);
+        doc.text(data.cell.text, data.cell.x + data.cell.width / 2, data.cell.y + data.cell.height / 2 + 1, { align: 'center' });
+        return;
       }
-      // Coluna peso: verde se positivo, vermelho se negativo
-      if (data.column.index === 3 && !isTotal) {
-        const val = parseFloat(data.cell.raw);
-        if (!isNaN(val)) {
-          doc.setTextColor(...(val > 0 ? COR_VERDE_LT : val < 0 ? COR_VERMELHO : COR_CINZA_MED));
+      // Colunas de produto: valor em destaque + pts em menor destaque
+      if (data.column.index >= 2 && !isTotal2) {
+        const raw = String(data.cell.raw || '');
+        const parts = raw.split('\n');
+        const mainVal = parts[0] || '';
+        const ptsVal = parts[1] || '';
+        const cx = data.cell.x + data.cell.width / 2;
+        const cy = data.cell.y + data.cell.height / 2;
+        if (ptsVal) {
+          doc.setFontSize(8);
+          doc.setTextColor(...COR_CINZA_CLR);
           doc.setFont('helvetica', 'bold');
-          doc.setFontSize(9);
-          doc.text(data.cell.text, data.cell.x + data.cell.width / 2, data.cell.y + data.cell.height / 2 + 1, { align: 'center' });
+          doc.text(mainVal, cx, cy - 1.5, { align: 'center' });
+          doc.setFontSize(7);
+          doc.setTextColor(...COR_CINZA_MED);
+          doc.setFont('helvetica', 'normal');
+          doc.text(ptsVal, cx, cy + 3.5, { align: 'center' });
+        } else {
+          doc.setFontSize(8);
+          doc.setTextColor(...COR_CINZA_CLR);
+          doc.setFont('helvetica', 'normal');
+          doc.text(mainVal, cx, cy + 1, { align: 'center' });
         }
       }
     }
@@ -2051,31 +2155,27 @@ function gerarPdfComp(id) {
 
   doc.autoTable({
     startY: y,
-    head: tableHead,
-    body: tableBody,
+    head: [colNames2],
+    body: tableBody2,
     margin: { left: ML, right: MR },
-    styles: { fillColor: COR_VERDE, textColor: COR_CINZA_CLR, fontSize: 7.5, cellPadding: 2.5, overflow: 'linebreak', minCellHeight: 10 },
-    headStyles: { fillColor: COR_DOURADO_ESC, textColor: COR_FUNDO, fontStyle: 'bold', fontSize: 8 },
+    styles: { fillColor: COR_VERDE, textColor: COR_CINZA_CLR, fontSize: 8, cellPadding: 3, overflow: 'linebreak', minCellHeight: 12 },
+    headStyles: { fillColor: COR_DOURADO_ESC, textColor: COR_FUNDO, fontStyle: 'bold', fontSize: 8, halign: 'center' },
     alternateRowStyles: { fillColor: [12, 40, 20] },
     columnStyles: {
-      0: { cellWidth: colWidths[0] },
-      1: { cellWidth: colWidths[1], halign: 'center' },
-      2: { cellWidth: colWidths[2] },
-      3: { cellWidth: colWidths[3], halign: 'center' },
-      ...Object.fromEntries(Array.from({ length: nProds }, (_, i) => [4 + i, { cellWidth: colWidths[4 + i], halign: 'center' }]))
+      0: { cellWidth: 50, fontStyle: 'bold' },
+      1: { cellWidth: 28, halign: 'center' },
+      ...Object.fromEntries(Array.from({ length: nProds }, (_, i) => [2 + i, { cellWidth: dynW2, halign: 'center' }]))
     },
     tableLineColor: COR_VERDE_MED,
     tableLineWidth: 0.2,
-    didDrawCell,
+    didDrawCell: didDrawCell2,
     didDrawPage: (data) => {
-      // Cabeçalho em cada nova página da tabela
       doc.setFillColor(...COR_VERDE);
       doc.rect(0, 0, PW, 12, 'F');
       doc.setFillColor(...COR_DOURADO);
       doc.rect(0, 0, PW, 1.5, 'F');
       txt('HV SAÚDE FINANCEIRA', ML, 8, { size: 9, color: COR_DOURADO, bold: true });
       txt(comp.name, PW - MR, 8, { size: 9, color: COR_CINZA_CLR, align: 'right' });
-      // Rodapé
       doc.setFillColor(...COR_DOURADO);
       doc.rect(0, PH - 3, PW, 3, 'F');
       txt('HV Saúde Financeira • Relatório gerado automaticamente', PW / 2, PH - 6, { size: 7, color: COR_CINZA_MED, align: 'center' });
