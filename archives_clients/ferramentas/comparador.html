@@ -2126,8 +2126,10 @@ function gerarPdfComp(id) {
   y += 4;
   hrLine(y);
   y += 6;
-  const didDrawPageDefault = (data) => {
+  const willDrawPageDefault = (data) => {
     fillPage(COR_FUNDO);
+  };
+  const didDrawPageDefault = (data) => {
     pageHeader();
     pageFooter();
   };
@@ -2160,6 +2162,7 @@ function gerarPdfComp(id) {
         3: { cellWidth: 45, halign: 'center' },
       },
       tableLineColor: COR_VERDE_MED, tableLineWidth: 0.2,
+      willDrawPage: willDrawPageDefault,
       didDrawPage: didDrawPageDefault,
     });
     y = doc.lastAutoTable.finalY + 6;
@@ -2190,6 +2193,7 @@ function gerarPdfComp(id) {
         2: { cellWidth: 45, halign: 'center' },
       },
       tableLineColor: COR_VERDE_MED, tableLineWidth: 0.2,
+      willDrawPage: willDrawPageDefault,
       didDrawPage: didDrawPageDefault,
     });
     y = doc.lastAutoTable.finalY + 8;
@@ -2257,8 +2261,10 @@ function gerarPdfComp(id) {
       }
     }
   };
-  const didDrawPageLandscape = (data) => {
+  const willDrawPageLandscape = (data) => {
     fillPage(COR_FUNDO);
+  };
+  const didDrawPageLandscape = (data) => {
     pageHeader();
     pageFooter();
   };
@@ -2277,6 +2283,7 @@ function gerarPdfComp(id) {
     },
     tableLineColor: COR_VERDE_MED, tableLineWidth: 0.2,
     didDrawCell: didDrawCell2,
+    willDrawPage: willDrawPageLandscape,
     didDrawPage: didDrawPageLandscape,
   });
   // Rodapé última página
