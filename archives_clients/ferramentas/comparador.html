@@ -401,7 +401,6 @@
     background: var(--card);
   }
   .has-toggle[data-state="true"]  { background: rgba(76,175,80,.15); border-color: #2e7d32; color: var(--green-lt); }
-  .has-toggle[data-state="ind"]   { background: rgba(212,175,55,.12); border-color: var(--gold-dim); color: var(--gold); }
   .has-toggle[data-state="false"] { background: rgba(198,40,40,.1); border-color: var(--red); color: var(--red-lt); }
   .rank-select { cursor: pointer; }
 
@@ -918,26 +917,25 @@ function impSelectHTML(id, val, onchange) {
 }
 
 /* ═══════════════════════════════════════════════════════════
-   HELPER: ESTADO DE PRESENÇA (3 estados)
+   HELPER: ESTADO DE PRESENÇA (2 estados — binário)
    true  = tem o parâmetro (✓)
-   'ind' = tem mas é indiferente (≈)
    false = não tem (✗)
+   Nota: "Indiferente" é tratado como importância zero do parâmetro,
+   não como estado do produto. Todos que têm recebem bônus de presença igual.
 ═══════════════════════════════════════════════════════════ */
 function hasStateLabel(state) {
-  if (state === true  || state === 'true')  return '✓';
-  if (state === 'ind')                       return '≈';
+  if (state === true || state === 'true') return '✓';
   return '✗';
 }
 function hasStateNext(state) {
-  // Cicla: true → 'ind' → false → true
-  if (state === true  || state === 'true')  return 'ind';
-  if (state === 'ind')                       return false;
+  // Alterna: true → false → true
+  if (state === true || state === 'true') return false;
   return true;
 }
 function hasStateNorm(state) {
-  // Normaliza valores vindos do JSON (pode vir como string 'true'/'false')
-  if (state === true  || state === 'true')  return true;
-  if (state === 'ind')                       return 'ind';
+  // Normaliza valores vindos do JSON — converte 'ind' legado para true
+  if (state === true || state === 'true') return true;
+  if (state === 'ind') return true; // migração: ind legado → tem o parâmetro
   return false;
 }
 
@@ -1148,7 +1146,7 @@ function renderObjTable() {
       <td class="td-has">
         <button type="button" class="has-toggle" data-state="${String(state)}"
           onclick="toggleObjHas(${param.id},${p.id},this)"
-          title="Clique para alternar: ✓ tem · ≈ indiferente · ✗ não tem">${hasStateLabel(state)}</button>
+          title="Clique para alternar: ✓ tem · ✗ não tem">${hasStateLabel(state)}</button>
       </td>
       <td class="td-rank">
         <input type="number" min="0" step="any" value="${val||''}" placeholder="0"
@@ -1246,7 +1244,7 @@ function renderSubjTable() {
       <td class="td-has">
         <button type="button" class="has-toggle" data-state="${String(state)}"
           onclick="toggleSubjHas(${param.id},${p.id},this)"
-          title="Clique para alternar: ✓ tem · ≈ indiferente · ✗ não tem">${hasStateLabel(state)}</button>
+          title="Clique para alternar: ✓ tem · ✗ não tem">${hasStateLabel(state)}</button>
       </td>
       <td class="td-rank">
         <select class="rank-select" ${disabled?'disabled style="opacity:.3"':''}
@@ -1344,7 +1342,7 @@ function saveComparison() {
   if (topCount > 1) errors.push(`Apenas UM parâmetro pode ser "O mais importante de todos". Você marcou ${topCount}.`);
 
   tmpSubjParams.forEach(param => {
-    // Para validação de ranking, considerar apenas os que realmente TÊM (true) — excluir 'ind' e false
+    // Para validação de ranking, considerar apenas os que TÊM o parâmetro (true)
     const presentPids = tmpProducts.filter(p => hasStateNorm(param.hasParam[p.id]) === true).map(p=>p.id);
     if (presentPids.length === 0) return;
     const ranks = presentPids.map(pid => param.rankings[pid] || 1);
@@ -1399,7 +1397,6 @@ function calcResult() {
   tmpObjParams.forEach(param => {
     const w = impWeight(param.importance);
     const presentPids = tmpProducts.filter(p => hasStateNorm(param.hasParam[p.id]) === true).map(p=>p.id);
-    const indPids     = tmpProducts.filter(p => hasStateNorm(param.hasParam[p.id]) === 'ind').map(p=>p.id);
     const absentPids  = tmpProducts.filter(p => hasStateNorm(param.hasParam[p.id]) === false).map(p=>p.id);
 
     const costPerUnit = {};
@@ -1432,11 +1429,6 @@ function calcResult() {
         }
         scores[pid] += score;
         perProduct[pid] = { score, detail, formula, costPerUnit: null };
-      } else if (indPids.includes(pid)) {
-        // Produto tem mas é INDIFERENTE (≈) — não pontua, não penaliza
-        const score = 0;
-        scores[pid] += score;
-        perProduct[pid] = { score, detail: '≈ Indiferente — neutro', formula: '0', costPerUnit: null };
       } else {
         const cpu = costPerUnit[pid];
         let score = 0, detail = '—', formula = '—';
@@ -1476,7 +1468,6 @@ function calcResult() {
   tmpSubjParams.forEach(param => {
     const w = impWeight(param.importance);
     const presentPids = tmpProducts.filter(p => hasStateNorm(param.hasParam[p.id]) === true).map(p=>p.id);
-    const indPids     = tmpProducts.filter(p => hasStateNorm(param.hasParam[p.id]) === 'ind').map(p=>p.id);
     const absentPids  = tmpProducts.filter(p => hasStateNorm(param.hasParam[p.id]) === false).map(p=>p.id);
     const nPresent = presentPids.length;
 
@@ -1499,11 +1490,6 @@ function calcResult() {
         }
         scores[pid] += score;
         perProduct[pid] = { score, detail, formula };
-      } else if (indPids.includes(pid)) {
-        // Produto tem mas é INDIFERENTE (≈) — não pontua, não penaliza
-        const score = 0;
-        scores[pid] += score;
-        perProduct[pid] = { score, detail: '≈ Indiferente — neutro', formula: '0' };
       } else {
         const rank = param.rankings[pid] || 1;
         let score = 0, detail = '—', formula = '—';
@@ -2061,49 +2047,128 @@ function gerarPdfComp(id) {
   const explicacoes = [
     { titulo: 'Parâmetros Objetivos (ex: quantidade, peso, cobertura)', corpo: 'O sistema calcula o custo por unidade de cada produto e normaliza: quem entrega mais por real pago recebe maior pontuação. A pontuação é proporcional à eficiência em relação ao produto mais eficiente.' },
     { titulo: 'Parâmetros Subjetivos (ex: sabor, embalagem, atendimento)', corpo: 'O produto classificado em 1º lugar recebe a pontuação máxima; o último recebe a mínima. A pontuação é distribuída proporcionalmente entre as posições.' },
-    { titulo: 'Ausência (✗) e Indiferença (≈)', corpo: 'Produto sem o parâmetro (✗): se o critério é positivo, recebe penalidade máxima (0 pts); se negativo, recebe bônus máximo. Produto marcado como indiferente (≈): recebe 0 pts sem penalidade — não entra no cálculo.' },
+    { titulo: 'Importância Indiferente (peso 0)', corpo: 'Quando um parâmetro é marcado como "Indiferente", seu peso no cálculo é 0. Todos os produtos que têm o parâmetro recebem um pequeno bônus de presença igual entre si; os que não têm recebem 0 pts sem penalidade.' },
+    { titulo: 'Ausência do parâmetro (✗)', corpo: 'Produto sem o parâmetro: se o critério é positivo, recebe penalidade máxima (0 pts). Se o critério é negativo (ex: "Gostaria que não tivesse"), recebe bônus máximo por não ter o atributo indesejado.' },
   ];
   explicacoes.forEach(e => {
-    const corpoLines = doc.splitTextToSize(e.corpo, CW - 6);
-    const expBoxH = 8 + corpoLines.length * 4.5 + 4;
+    const innerW = CW - 10; // margem interna de 5px em cada lado
+    const tituloLines = doc.splitTextToSize(e.titulo, innerW);
+    const corpoLines  = doc.splitTextToSize(e.corpo, innerW);
+    const tituloH = tituloLines.length * 5;
+    const corpoH  = corpoLines.length * 4.5;
+    const expBoxH = 6 + tituloH + 3 + corpoH + 5; // top + titulo + gap + corpo + bottom
     checkY(expBoxH + 4);
     doc.setFillColor(...COR_VERDE);
-    doc.roundedRect(ML, y - 2, CW, expBoxH, 2, 2, 'F');
-    txt(e.titulo, ML + 3, y + 3, { size: 8.5, color: COR_DOURADO, bold: true });
+    doc.roundedRect(ML, y, CW, expBoxH, 2, 2, 'F');
+    let ty = y + 6;
+    tituloLines.forEach((ln, li) => {
+      txt(ln, ML + 5, ty + li * 5, { size: 8.5, color: COR_DOURADO, bold: true });
+    });
+    ty += tituloH + 3;
     corpoLines.forEach((ln, li) => {
-      txt(ln, ML + 3, y + 9 + li * 4.5, { size: 8, color: COR_CINZA_CLR });
+      txt(ln, ML + 5, ty + li * 4.5, { size: 8, color: COR_CINZA_CLR });
     });
     y += expBoxH + 4;
   });
 
   y += 4;
+  y += 4;
   hrLine(y);
   y += 8;
 
-  // ── TABELA DE PONTUAÇÕES POR PARÂMETRO ──
-  txt('PONTUAÇÕES POR PARÂMETRO', ML, y, { size: 12, color: COR_DOURADO, bold: true });
+  // ── SEÇÃO: PARÂMETROS ──
+  txt('PARÂMETROS', ML, y, { size: 12, color: COR_DOURADO, bold: true });
   y += 5;
   hrLine(y);
   y += 8;
 
+  const didDrawPageDefault = (data) => {
+    doc.setFillColor(...COR_VERDE);
+    doc.rect(0, 0, PW, 12, 'F');
+    doc.setFillColor(...COR_DOURADO);
+    doc.rect(0, 0, PW, 1.5, 'F');
+    txt('HV SAÚDE FINANCEIRA', ML, 8, { size: 9, color: COR_DOURADO, bold: true });
+    txt(comp.name, PW - MR, 8, { size: 9, color: COR_CINZA_CLR, align: 'right' });
+    doc.setFillColor(...COR_DOURADO);
+    doc.rect(0, PH - 3, PW, 3, 'F');
+    txt('HV Saúde Financeira • Relatório gerado automaticamente', PW / 2, PH - 6, { size: 7, color: COR_CINZA_MED, align: 'center' });
+  };
+
+  // ── Sub-tabela: Parâmetros Objetivos (sem produtos) ──
+  const objRows = breakdown.filter(r => r.type === 'Objetivo');
+  if (objRows.length > 0) {
+    checkY(20);
+    txt('Parâmetros Objetivos', ML, y, { size: 9.5, color: COR_DOURADO, bold: true });
+    y += 5;
+    const objTableBody = objRows.map(r => [
+      r.paramName,
+      r.unit || '—',
+      impLabel(r.importance),
+      (() => { const w = r.weight; if (w > 0) return `+${w} (positivo)`; if (w < 0) return `${w} (negativo)`; return '0 (indiferente)'; })(),
+    ]);
+    doc.autoTable({
+      startY: y,
+      head: [['Parâmetro', 'Unidade', 'Importância', 'Peso no Cálculo']],
+      body: objTableBody,
+      margin: { left: ML, right: MR },
+      styles: { fillColor: COR_VERDE, textColor: COR_CINZA_CLR, fontSize: 8, cellPadding: 3, overflow: 'linebreak' },
+      headStyles: { fillColor: COR_DOURADO_ESC, textColor: COR_FUNDO, fontStyle: 'bold', fontSize: 8 },
+      alternateRowStyles: { fillColor: [12, 40, 20] },
+      columnStyles: { 0: { cellWidth: 70, fontStyle: 'bold' }, 1: { cellWidth: 30, halign: 'center' }, 2: { cellWidth: 55, halign: 'center' }, 3: { cellWidth: 'auto', halign: 'center' } },
+      tableLineColor: COR_VERDE_MED, tableLineWidth: 0.2,
+      didDrawPage: didDrawPageDefault,
+    });
+    y = doc.lastAutoTable.finalY + 8;
+  }
+
+  // ── Sub-tabela: Parâmetros Subjetivos (sem produtos) ──
+  const subjRows = breakdown.filter(r => r.type === 'Subjetivo');
+  if (subjRows.length > 0) {
+    checkY(20);
+    txt('Parâmetros Subjetivos', ML, y, { size: 9.5, color: COR_DOURADO, bold: true });
+    y += 5;
+    const subjTableBody = subjRows.map(r => [
+      r.paramName,
+      impLabel(r.importance),
+      (() => { const w = r.weight; if (w > 0) return `+${w} (positivo)`; if (w < 0) return `${w} (negativo)`; return '0 (indiferente)'; })(),
+    ]);
+    doc.autoTable({
+      startY: y,
+      head: [['Parâmetro', 'Importância', 'Peso no Cálculo']],
+      body: subjTableBody,
+      margin: { left: ML, right: MR },
+      styles: { fillColor: COR_VERDE, textColor: COR_CINZA_CLR, fontSize: 8, cellPadding: 3, overflow: 'linebreak' },
+      headStyles: { fillColor: COR_DOURADO_ESC, textColor: COR_FUNDO, fontStyle: 'bold', fontSize: 8 },
+      alternateRowStyles: { fillColor: [12, 40, 20] },
+      columnStyles: { 0: { cellWidth: 90, fontStyle: 'bold' }, 1: { cellWidth: 60, halign: 'center' }, 2: { cellWidth: 'auto', halign: 'center' } },
+      tableLineColor: COR_VERDE_MED, tableLineWidth: 0.2,
+      didDrawPage: didDrawPageDefault,
+    });
+    y = doc.lastAutoTable.finalY + 10;
+  }
+
+  // ── Tabela de Pontuações por Parâmetro e Produto ──
+  checkY(20);
+  hrLine(y);
+  y += 8;
+  txt('Pontuação por Parâmetro e Produto', ML, y, { size: 9.5, color: COR_DOURADO, bold: true });
+  y += 5;
+
   const nProds = ranking.length;
   const fixedW2 = 50 + 28;
-  const dynW2 = (CW - fixedW2) / nProds;
-  const colNames2 = ['Parâmetro', 'Importância', ...ranking.map(p => p.name)];
+  const dynW2 = Math.max(18, (CW - fixedW2) / nProds);
+  const colNames2 = ['Parâmetro', 'Tipo', ...ranking.map(p => p.name)];
 
   const tableBody2 = breakdown.map(row => {
-    const impLbl = impLabel(row.importance);
-    const cells2 = [row.paramName + (row.unit ? `\n(${row.unit})` : ''), impLbl];
+    const cells2 = [row.paramName + (row.unit ? ` (${row.unit})` : ''), row.type];
     ranking.forEach(p => {
       const pp = row.perProduct[p.id];
       if (!pp) { cells2.push('—'); return; }
       const pts = pp.score.toFixed(1);
       const detail = pp.detail || '';
-      if (detail === '≈ Indiferente — neutro') {
-        cells2.push('≈ indiferente\n(0,0 pts)');
-      } else if (detail.startsWith('⚠️') || detail.startsWith('✅')) {
-        cells2.push(detail.replace('⚠️ ', '').replace('✅ ', '') + `\n(${pts} pts)`);
-      } else if (detail && detail !== '—') {
+      if (detail.startsWith('⚠️') || detail.startsWith('✅')) {
+        cells2.push(`(${pts} pts)`);
+      } else if (detail && detail !== '—' && detail !== '— Indiferente') {
         cells2.push(`${detail}\n(${pts} pts)`);
       } else {
         cells2.push(`(${pts} pts)`);
@@ -2112,7 +2177,7 @@ function gerarPdfComp(id) {
     return cells2;
   });
 
-  const totalRow2 = ['PONTUAÇÃO TOTAL', ''];
+  const totalRow2 = ['TOTAL', ''];
   ranking.forEach(p => totalRow2.push(`${p.score.toFixed(1)} pts`));
   tableBody2.push(totalRow2);
 
@@ -2125,30 +2190,23 @@ function gerarPdfComp(id) {
         doc.setTextColor(...COR_FUNDO);
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(9);
-        doc.text(data.cell.text, data.cell.x + data.cell.width / 2, data.cell.y + data.cell.height / 2 + 1, { align: 'center' });
+        doc.text(String(data.cell.raw || ''), data.cell.x + data.cell.width / 2, data.cell.y + data.cell.height / 2 + 1, { align: 'center' });
         return;
       }
-      // Colunas de produto: valor em destaque + pts em menor destaque
       if (data.column.index >= 2 && !isTotal2) {
         const raw = String(data.cell.raw || '');
         const parts = raw.split('\n');
         const mainVal = parts[0] || '';
-        const ptsVal = parts[1] || '';
+        const ptsVal  = parts[1] || '';
         const cx = data.cell.x + data.cell.width / 2;
         const cy = data.cell.y + data.cell.height / 2;
         if (ptsVal) {
-          doc.setFontSize(8);
-          doc.setTextColor(...COR_CINZA_CLR);
-          doc.setFont('helvetica', 'bold');
+          doc.setFontSize(8); doc.setTextColor(...COR_CINZA_CLR); doc.setFont('helvetica', 'bold');
           doc.text(mainVal, cx, cy - 1.5, { align: 'center' });
-          doc.setFontSize(7);
-          doc.setTextColor(...COR_CINZA_MED);
-          doc.setFont('helvetica', 'normal');
+          doc.setFontSize(7); doc.setTextColor(...COR_CINZA_MED); doc.setFont('helvetica', 'normal');
           doc.text(ptsVal, cx, cy + 3.5, { align: 'center' });
         } else {
-          doc.setFontSize(8);
-          doc.setTextColor(...COR_CINZA_CLR);
-          doc.setFont('helvetica', 'normal');
+          doc.setFontSize(8); doc.setTextColor(...COR_CINZA_CLR); doc.setFont('helvetica', 'normal');
           doc.text(mainVal, cx, cy + 1, { align: 'center' });
         }
       }
@@ -2160,30 +2218,18 @@ function gerarPdfComp(id) {
     head: [colNames2],
     body: tableBody2,
     margin: { left: ML, right: MR },
-    styles: { fillColor: COR_VERDE, textColor: COR_CINZA_CLR, fontSize: 8, cellPadding: 3, overflow: 'linebreak', minCellHeight: 12 },
-    headStyles: { fillColor: COR_DOURADO_ESC, textColor: COR_FUNDO, fontStyle: 'bold', fontSize: 8, halign: 'center' },
+    styles: { fillColor: COR_VERDE, textColor: COR_CINZA_CLR, fontSize: 7.5, cellPadding: 3, overflow: 'linebreak', minCellHeight: 14 },
+    headStyles: { fillColor: COR_DOURADO_ESC, textColor: COR_FUNDO, fontStyle: 'bold', fontSize: 7.5, halign: 'center', overflow: 'linebreak' },
     alternateRowStyles: { fillColor: [12, 40, 20] },
     columnStyles: {
       0: { cellWidth: 50, fontStyle: 'bold' },
       1: { cellWidth: 28, halign: 'center' },
       ...Object.fromEntries(Array.from({ length: nProds }, (_, i) => [2 + i, { cellWidth: dynW2, halign: 'center' }]))
     },
-    tableLineColor: COR_VERDE_MED,
-    tableLineWidth: 0.2,
+    tableLineColor: COR_VERDE_MED, tableLineWidth: 0.2,
     didDrawCell: didDrawCell2,
-    didDrawPage: (data) => {
-      doc.setFillColor(...COR_VERDE);
-      doc.rect(0, 0, PW, 12, 'F');
-      doc.setFillColor(...COR_DOURADO);
-      doc.rect(0, 0, PW, 1.5, 'F');
-      txt('HV SAÚDE FINANCEIRA', ML, 8, { size: 9, color: COR_DOURADO, bold: true });
-      txt(comp.name, PW - MR, 8, { size: 9, color: COR_CINZA_CLR, align: 'right' });
-      doc.setFillColor(...COR_DOURADO);
-      doc.rect(0, PH - 3, PW, 3, 'F');
-      txt('HV Saúde Financeira • Relatório gerado automaticamente', PW / 2, PH - 6, { size: 7, color: COR_CINZA_MED, align: 'center' });
-    },
+    didDrawPage: didDrawPageDefault,
   });
-
   // Rodapé última página
   doc.setFillColor(...COR_DOURADO);
   doc.rect(0, PH - 3, PW, 3, 'F');
