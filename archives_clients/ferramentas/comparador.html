@@ -681,6 +681,138 @@
   @media (min-width: 1200px) {
     .container { max-width: 1100px; }
   }
+
+  /* ── TOGGLE ANÁLISE POR PERÍODO ── */
+  .period-toggle-row {
+    display: flex; align-items: center; gap: 12px;
+    margin-bottom: 14px; padding: 12px 16px;
+    background: var(--bg3); border: 1px solid var(--border);
+    border-radius: var(--radius);
+  }
+  .period-toggle-row label { font-size: .88rem; font-weight: 600; color: var(--foreground); flex: 1; }
+  .toggle-switch {
+    position: relative; width: 44px; height: 24px;
+    background: var(--border); border-radius: 12px;
+    cursor: pointer; transition: background .2s; flex-shrink: 0;
+  }
+  .toggle-switch.on { background: var(--gold); }
+  .toggle-switch .toggle-knob {
+    position: absolute; top: 2px; left: 2px;
+    width: 20px; height: 20px; background: #fff;
+    border-radius: 50%; transition: left .2s;
+  }
+  .toggle-switch.on .toggle-knob { left: 22px; }
+
+  /* ── CAMPOS GLOBAIS DO PERÍODO ── */
+  .period-config {
+    display: none; padding: 14px 16px;
+    background: var(--bg3); border: 1px solid var(--border);
+    border-radius: var(--radius); margin-bottom: 14px;
+  }
+  .period-config.show { display: block; }
+  .period-config .period-row {
+    display: flex; align-items: center; gap: 8px;
+    margin-bottom: 10px; flex-wrap: wrap;
+  }
+  .period-config .period-row label {
+    font-size: .78rem; font-weight: 600; color: var(--muted-foreground);
+    text-transform: uppercase; letter-spacing: .04em; min-width: 100px;
+  }
+  .period-config .period-row input,
+  .period-config .period-row select {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 6px; color: var(--foreground);
+    padding: 6px 10px; font-size: .85rem;
+  }
+  .period-config .period-row input:focus,
+  .period-config .period-row select:focus { border-color: var(--gold); outline: none; }
+  .period-config .period-row input[type="number"] { width: 70px; }
+  .period-config .period-row input[type="date"] { width: 160px; }
+  .period-config .period-row select { cursor: pointer; }
+  .period-config .period-summary {
+    font-size: .82rem; color: var(--gold); margin-top: 4px;
+    padding: 6px 10px; background: rgba(212,175,55,.07);
+    border-radius: 6px;
+  }
+
+  /* ── REAJUSTES POR PRODUTO ── */
+  .adj-section {
+    margin-top: 10px; padding-top: 8px;
+    border-top: 1px dashed var(--border);
+  }
+  .adj-section .adj-title {
+    font-size: .68rem; font-weight: 700; color: var(--gold);
+    text-transform: uppercase; letter-spacing: .04em; margin-bottom: 6px;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .adj-section .adj-title .info-icon {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 14px; height: 14px; border-radius: 50%;
+    background: rgba(212,175,55,.15); color: var(--gold);
+    font-size: .6rem; font-weight: 700; cursor: help;
+  }
+  .adj-item {
+    display: flex; align-items: center; gap: 4px;
+    margin-bottom: 5px; flex-wrap: wrap; font-size: .75rem;
+  }
+  .adj-item select, .adj-item input {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 4px; color: var(--foreground);
+    padding: 3px 5px; font-size: .72rem;
+  }
+  .adj-item input { width: 65px; }
+  .adj-item input[type="number"] { width: 50px; }
+  .adj-item select { cursor: pointer; }
+  .adj-item .adj-del {
+    background: none; border: none; color: var(--red-lt);
+    cursor: pointer; font-size: .75rem; padding: 2px 4px;
+  }
+  .adj-item .adj-del:hover { color: var(--red); }
+  .btn-add-adj {
+    background: none; border: 1px dashed var(--border);
+    color: var(--muted-foreground); border-radius: 4px;
+    padding: 3px 8px; font-size: .7rem; cursor: pointer;
+    transition: all .2s; margin-top: 4px;
+  }
+  .btn-add-adj:hover { border-color: var(--gold); color: var(--gold); }
+
+  /* ── ESTORNO ── */
+  .refund-section {
+    margin-top: 8px; padding-top: 8px;
+    border-top: 1px dashed var(--border);
+  }
+  .refund-section .refund-title {
+    font-size: .68rem; font-weight: 700; color: #64b5f6;
+    text-transform: uppercase; letter-spacing: .04em; margin-bottom: 6px;
+  }
+  .refund-row {
+    display: flex; align-items: center; gap: 4px;
+    flex-wrap: wrap; font-size: .75rem;
+  }
+  .refund-row select, .refund-row input {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 4px; color: var(--foreground);
+    padding: 3px 5px; font-size: .72rem;
+  }
+  .refund-row input { width: 80px; }
+  .refund-row label { font-size: .7rem; color: var(--muted-foreground); }
+
+  /* ── CUSTO CALCULADO (readonly) ── */
+  .calc-cost-display {
+    margin-top: 8px; padding: 6px 10px;
+    background: rgba(212,175,55,.07); border: 1px solid rgba(212,175,55,.2);
+    border-radius: 6px; font-size: .82rem; color: var(--gold);
+    font-weight: 600;
+  }
+
+  /* ── GRÁFICOS DE PERÍODO ── */
+  .period-charts {
+    display: none; margin-top: 16px;
+  }
+  .period-charts.show { display: block; }
+  .period-charts .chart-wrap { margin-bottom: 12px; }
+  .period-charts .chart-wrap canvas { max-height: 300px; }
+
 </style>
 </head>
 <body>
@@ -727,6 +859,46 @@
         <div class="field-group">
           <label class="field-label">Nome da comparação</label>
           <input class="field-input" id="comp-name" placeholder="Ex: Whey Protein — Melhor custo-benefício" />
+        </div>
+
+
+        <!-- TOGGLE ANÁLISE POR PERÍODO -->
+        <div class="period-toggle-row">
+          <label>Análise de custo por período</label>
+          <div class="toggle-switch" id="period-toggle" onclick="togglePeriodMode()">
+            <div class="toggle-knob"></div>
+          </div>
+        </div>
+
+        <!-- CONFIGURAÇÃO DO PERÍODO (oculto por padrão) -->
+        <div class="period-config" id="period-config">
+          <div class="period-row">
+            <label>Data de início</label>
+            <input type="date" id="period-start" onchange="updatePeriodConfig()" />
+          </div>
+          <div class="period-row">
+            <label>Período total</label>
+            <input type="number" id="period-qty" min="1" value="1" onchange="updatePeriodConfig()" />
+            <select id="period-unit" onchange="updatePeriodConfig()">
+              <option value="dia">dia(s)</option>
+              <option value="semana">semana(s)</option>
+              <option value="quinzena">quinzena(s)</option>
+              <option value="mes" selected>mês(es)</option>
+              <option value="ano">ano(s)</option>
+            </select>
+          </div>
+          <div class="period-row">
+            <label>Pagamento a cada</label>
+            <input type="number" id="pay-freq-qty" min="1" value="1" onchange="updatePeriodConfig()" />
+            <select id="pay-freq-unit" onchange="updatePeriodConfig()">
+              <option value="dia">dia(s)</option>
+              <option value="semana">semana(s)</option>
+              <option value="quinzena">quinzena(s)</option>
+              <option value="mes" selected>mês(es)</option>
+              <option value="ano">ano(s)</option>
+            </select>
+          </div>
+          <div class="period-summary" id="period-summary"></div>
         </div>
 
         <!-- PRODUTOS -->
@@ -783,6 +955,26 @@
             <button class="btn-add" onclick="addSubjParam()">＋ Adicionar parâmetro subjetivo</button>
           </div>
         </div>
+
+        <!-- GRÁFICOS DE PERÍODO -->
+        <div class="period-charts" id="period-charts">
+          <div class="section-block open" id="sb-period-charts">
+            <div class="section-block-header" onclick="toggleSection('sb-period-charts')">
+              <div class="sb-icon gold">📈</div>
+              <h3>Evolução de Custos</h3>
+              <span class="sb-chevron">▼</span>
+            </div>
+            <div class="section-block-body">
+              <div class="chart-wrap">
+                <canvas id="chart-parcela"></canvas>
+              </div>
+              <div class="chart-wrap">
+                <canvas id="chart-acumulado"></canvas>
+              </div>
+            </div>
+          </div>
+        </div>
+
       </div>
       <div class="modal-footer">
         <button class="btn-cancel" onclick="closeModal()">Cancelar</button>
@@ -895,6 +1087,326 @@ let tmpSubjParams = []; // { id, name, importance, rankings:{pid:num}, hasParam:
 let pidCounter = 1;
 let paramCounter = 1;
 
+let tmpPeriodEnabled = false;
+let tmpPeriodConfig = {
+  startDate: '',
+  periodQty: 1,
+  periodUnit: 'mes',
+  payFreqQty: 1,
+  payFreqUnit: 'mes',
+};
+let adjCounter = 1;
+
+
+
+/* ═══════════════════════════════════════════════════════════
+   ANÁLISE DE CUSTO POR PERÍODO
+═══════════════════════════════════════════════════════════ */
+
+function togglePeriodMode() {
+  tmpPeriodEnabled = !tmpPeriodEnabled;
+  const toggle = document.getElementById('period-toggle');
+  const config = document.getElementById('period-config');
+  const charts = document.getElementById('period-charts');
+  toggle.classList.toggle('on', tmpPeriodEnabled);
+  config.classList.toggle('show', tmpPeriodEnabled);
+  charts.classList.toggle('show', tmpPeriodEnabled);
+  renderProducts();
+  if (tmpPeriodEnabled) updatePeriodConfig();
+}
+
+function unitToDays(qty, unit) {
+  switch(unit) {
+    case 'dia': return qty;
+    case 'semana': return qty * 7;
+    case 'quinzena': return qty * 15;
+    case 'mes': return qty * 30;
+    case 'ano': return qty * 365;
+    default: return qty;
+  }
+}
+
+function unitLabel(unit, qty) {
+  const labels = {
+    dia: qty === 1 ? 'dia' : 'dias',
+    semana: qty === 1 ? 'semana' : 'semanas',
+    quinzena: qty === 1 ? 'quinzena' : 'quinzenas',
+    mes: qty === 1 ? 'mês' : 'meses',
+    ano: qty === 1 ? 'ano' : 'anos',
+  };
+  return labels[unit] || unit;
+}
+
+function updatePeriodConfig() {
+  const startEl = document.getElementById('period-start');
+  const qtyEl = document.getElementById('period-qty');
+  const unitEl = document.getElementById('period-unit');
+  const freqQtyEl = document.getElementById('pay-freq-qty');
+  const freqUnitEl = document.getElementById('pay-freq-unit');
+  const summaryEl = document.getElementById('period-summary');
+
+  tmpPeriodConfig.startDate = startEl.value;
+  tmpPeriodConfig.periodQty = parseInt(qtyEl.value) || 1;
+  tmpPeriodConfig.periodUnit = unitEl.value;
+  tmpPeriodConfig.payFreqQty = parseInt(freqQtyEl.value) || 1;
+  tmpPeriodConfig.payFreqUnit = freqUnitEl.value;
+
+  const totalDays = unitToDays(tmpPeriodConfig.periodQty, tmpPeriodConfig.periodUnit);
+  const freqDays = unitToDays(tmpPeriodConfig.payFreqQty, tmpPeriodConfig.payFreqUnit);
+  const numPayments = Math.max(1, Math.floor(totalDays / freqDays));
+
+  let endDateStr = '';
+  if (tmpPeriodConfig.startDate) {
+    const start = new Date(tmpPeriodConfig.startDate + 'T00:00:00');
+    const end = new Date(start.getTime() + totalDays * 86400000);
+    endDateStr = ` | Término: ${end.toLocaleDateString('pt-BR')}`;
+  }
+
+  summaryEl.innerHTML = `Período: <b>${tmpPeriodConfig.periodQty} ${unitLabel(tmpPeriodConfig.periodUnit, tmpPeriodConfig.periodQty)}</b> (${totalDays} dias) | Pagamentos: <b>${numPayments}</b> parcelas${endDateStr}`;
+
+  recalcAllPeriodCosts();
+}
+
+function getNumPayments() {
+  const totalDays = unitToDays(tmpPeriodConfig.periodQty, tmpPeriodConfig.periodUnit);
+  const freqDays = unitToDays(tmpPeriodConfig.payFreqQty, tmpPeriodConfig.payFreqUnit);
+  return Math.max(1, Math.floor(totalDays / freqDays));
+}
+
+/* ── REAJUSTES ── */
+function addAdjustment(pid) {
+  const p = tmpProducts.find(x => x.id === pid);
+  if (!p) return;
+  if (!p.adjustments) p.adjustments = [];
+  p.adjustments.push({
+    id: adjCounter++,
+    type: 'recurrent',
+    mode: 'pct',
+    value: 0,
+    everyN: 12,
+    atPayment: 1,
+  });
+  renderProducts();
+}
+
+function removeAdjustment(pid, adjId) {
+  const p = tmpProducts.find(x => x.id === pid);
+  if (!p || !p.adjustments) return;
+  p.adjustments = p.adjustments.filter(a => a.id !== adjId);
+  renderProducts();
+}
+
+function updateAdjustment(pid, adjId, field, val) {
+  const p = tmpProducts.find(x => x.id === pid);
+  if (!p || !p.adjustments) return;
+  const adj = p.adjustments.find(a => a.id === adjId);
+  if (!adj) return;
+  if (field === 'value' || field === 'everyN' || field === 'atPayment') {
+    adj[field] = parseFloat(val) || 0;
+  } else {
+    adj[field] = val;
+  }
+  recalcAllPeriodCosts();
+}
+
+/* ── ESTORNO ── */
+function toggleRefund(pid) {
+  const p = tmpProducts.find(x => x.id === pid);
+  if (!p) return;
+  if (!p.refund) p.refund = { enabled: false, mode: 'pct', value: 0, applyAdjustments: false };
+  p.refund.enabled = !p.refund.enabled;
+  renderProducts();
+}
+
+function updateRefund(pid, field, val) {
+  const p = tmpProducts.find(x => x.id === pid);
+  if (!p || !p.refund) return;
+  if (field === 'value') {
+    p.refund.value = parseFloat(val) || 0;
+  } else if (field === 'applyAdjustments') {
+    p.refund.applyAdjustments = val;
+  } else {
+    p.refund[field] = val;
+  }
+  recalcAllPeriodCosts();
+}
+
+/* ── MOTOR DE CÁLCULO DE PERÍODO ── */
+function calcPeriodCost(product) {
+  const numPay = getNumPayments();
+  const basePrice = product.price || 0;
+  const adjs = product.adjustments || [];
+  const payments = [];
+
+  let currentPrice = basePrice;
+
+  for (let i = 1; i <= numPay; i++) {
+    // Aplicar reajustes recorrentes (compostos)
+    adjs.forEach(adj => {
+      if (adj.type === 'recurrent' && adj.everyN > 0 && i > 1 && ((i - 1) % adj.everyN === 0)) {
+        if (adj.mode === 'pct') {
+          currentPrice *= (1 + adj.value / 100);
+        } else {
+          currentPrice += adj.value;
+        }
+      }
+    });
+
+    // Aplicar reajustes únicos
+    adjs.forEach(adj => {
+      if (adj.type === 'unique' && adj.atPayment === i) {
+        if (adj.mode === 'pct') {
+          currentPrice *= (1 + adj.value / 100);
+        } else {
+          currentPrice += adj.value;
+        }
+      }
+    });
+
+    payments.push(currentPrice);
+  }
+
+  let totalPaid = payments.reduce((s, v) => s + v, 0);
+
+  // Estorno
+  const refund = product.refund;
+  if (refund && refund.enabled && refund.value > 0) {
+    let refundAmount = 0;
+    if (refund.mode === 'pct') {
+      refundAmount = totalPaid * (refund.value / 100);
+    } else {
+      refundAmount = refund.value;
+      if (refund.applyAdjustments && basePrice > 0) {
+        // Aplicar o mesmo fator de reajuste acumulado
+        const accFactor = currentPrice / basePrice;
+        refundAmount *= accFactor;
+      }
+    }
+    totalPaid -= refundAmount;
+  }
+
+  return { payments, totalPaid };
+}
+
+function recalcAllPeriodCosts() {
+  if (!tmpPeriodEnabled) return;
+  tmpProducts.forEach(p => {
+    const result = calcPeriodCost(p);
+    p.periodTotalCost = result.totalPaid;
+    p.periodPayments = result.payments;
+    const el = document.getElementById('calc-cost-'+p.id);
+    if (el) el.textContent = `Custo total no período: ${fmtBRL(result.totalPaid)}`;
+  });
+  renderPeriodCharts();
+}
+
+/* ── GRÁFICOS DE PERÍODO ── */
+let chartParcela = null;
+let chartAcumulado = null;
+
+function bestXUnit(totalDays) {
+  if (totalDays <= 60) return { unit: 'dia', divisor: 1, label: 'Dias' };
+  if (totalDays <= 180) return { unit: 'semana', divisor: 7, label: 'Semanas' };
+  if (totalDays <= 730) return { unit: 'mes', divisor: 30, label: 'Meses' };
+  return { unit: 'ano', divisor: 365, label: 'Anos' };
+}
+
+function renderPeriodCharts() {
+  if (!tmpPeriodEnabled || tmpProducts.length === 0) return;
+
+  const totalDays = unitToDays(tmpPeriodConfig.periodQty, tmpPeriodConfig.periodUnit);
+  const freqDays = unitToDays(tmpPeriodConfig.payFreqQty, tmpPeriodConfig.payFreqUnit);
+  const numPay = getNumPayments();
+  const xInfo = bestXUnit(totalDays);
+
+  // Labels do eixo X: cada pagamento em unidades adaptativas
+  const labels = [];
+  for (let i = 1; i <= numPay; i++) {
+    const dayOfPayment = i * freqDays;
+    const xVal = (dayOfPayment / xInfo.divisor).toFixed(xInfo.divisor === 1 ? 0 : 1);
+    labels.push(xVal);
+  }
+
+  const colors = [
+    'rgba(212,175,55,0.85)', 'rgba(46,125,50,0.7)', 'rgba(30,136,229,0.7)',
+    'rgba(239,83,80,0.7)', 'rgba(171,71,188,0.7)', 'rgba(255,179,0,0.7)',
+    'rgba(0,172,193,0.7)', 'rgba(255,112,67,0.7)', 'rgba(141,110,99,0.7)',
+    'rgba(96,125,139,0.7)'
+  ];
+
+  // Dataset parcela
+  const datasetsParcela = tmpProducts.map((p, idx) => {
+    const payments = p.periodPayments || [];
+    return {
+      label: p.name || `Produto ${idx+1}`,
+      data: payments,
+      borderColor: colors[idx % colors.length],
+      backgroundColor: colors[idx % colors.length].replace('0.85','0.15').replace('0.7','0.1'),
+      borderWidth: 2,
+      fill: false,
+      tension: 0.3,
+      pointRadius: numPay > 50 ? 0 : 3,
+    };
+  });
+
+  // Dataset acumulado
+  const datasetsAcum = tmpProducts.map((p, idx) => {
+    const payments = p.periodPayments || [];
+    let acc = 0;
+    const acumData = payments.map(v => { acc += v; return acc; });
+    return {
+      label: p.name || `Produto ${idx+1}`,
+      data: acumData,
+      borderColor: colors[idx % colors.length],
+      backgroundColor: colors[idx % colors.length].replace('0.85','0.15').replace('0.7','0.1'),
+      borderWidth: 2,
+      fill: false,
+      tension: 0.3,
+      pointRadius: numPay > 50 ? 0 : 3,
+    };
+  });
+
+  const chartOpts = (titleText, xLabel) => ({
+    responsive: true,
+    maintainAspectRatio: true,
+    plugins: {
+      legend: { labels: { color: '#A0B8A6', font: { size: 11 } } },
+      title: { display: true, text: titleText, color: '#D4AF37', font: { size: 13, weight: 'bold' } },
+      tooltip: {
+        callbacks: {
+          label: ctx => `${ctx.dataset.label}: ${fmtBRL(ctx.raw)}`
+        }
+      }
+    },
+    scales: {
+      x: { title: { display: true, text: xLabel, color: '#A0B8A6' }, ticks: { color: '#A0B8A6', maxTicksLimit: 20 }, grid: { color: 'rgba(212,175,55,0.1)' } },
+      y: { title: { display: true, text: 'R$', color: '#A0B8A6' }, ticks: { color: '#A0B8A6', callback: v => fmtBRL(v) }, grid: { color: 'rgba(212,175,55,0.1)' } }
+    }
+  });
+
+  // Parcela
+  const ctxP = document.getElementById('chart-parcela');
+  if (ctxP) {
+    if (chartParcela) chartParcela.destroy();
+    chartParcela = new Chart(ctxP, {
+      type: 'line',
+      data: { labels, datasets: datasetsParcela },
+      options: chartOpts('Valor da Parcela ao Longo do Tempo', xInfo.label),
+    });
+  }
+
+  // Acumulado
+  const ctxA = document.getElementById('chart-acumulado');
+  if (ctxA) {
+    if (chartAcumulado) chartAcumulado.destroy();
+    chartAcumulado = new Chart(ctxA, {
+      type: 'line',
+      data: { labels, datasets: datasetsAcum },
+      options: chartOpts('Custo Acumulado ao Longo do Tempo', xInfo.label),
+    });
+  }
+}
+
 /* ═══════════════════════════════════════════════════════════
    IMPORTÂNCIA
 ═══════════════════════════════════════════════════════════ */
@@ -989,17 +1501,42 @@ function openModal(id = null) {
     tmpProducts   = JSON.parse(JSON.stringify(c.products));
     tmpObjParams  = JSON.parse(JSON.stringify(c.objParams));
     tmpSubjParams = JSON.parse(JSON.stringify(c.subjParams));
+    tmpPeriodEnabled = c.periodEnabled || false;
+    tmpPeriodConfig = c.periodConfig ? JSON.parse(JSON.stringify(c.periodConfig)) : { startDate: '', periodQty: 1, periodUnit: 'mes', payFreqQty: 1, payFreqUnit: 'mes' };
+    // Garantir que produtos tenham adjustments e refund
+    tmpProducts.forEach(p => {
+      if (!p.adjustments) p.adjustments = [];
+      if (!p.refund) p.refund = { enabled: false, mode: 'pct', value: 0, applyAdjustments: false };
+    });
+    adjCounter = Math.max(...tmpProducts.flatMap(p => (p.adjustments||[]).map(a=>a.id)), 0) + 1;
     pidCounter    = Math.max(...tmpProducts.map(p=>p.id), 0) + 1;
     paramCounter  = Math.max(...[...tmpObjParams,...tmpSubjParams].map(p=>p.id), 0) + 1;
     document.getElementById('modal-title').textContent = 'Editar Comparação';
   } else {
     tmpName = ''; tmpProducts = []; tmpObjParams = []; tmpSubjParams = [];
-    pidCounter = 1; paramCounter = 1;
+    pidCounter = 1; paramCounter = 1; adjCounter = 1;
+    tmpPeriodEnabled = false;
+    tmpPeriodConfig = { startDate: '', periodQty: 1, periodUnit: 'mes', payFreqQty: 1, payFreqUnit: 'mes' };
     document.getElementById('modal-title').textContent = 'Nova Comparação';
   }
   document.getElementById('comp-name').value = tmpName;
+  // Sincronizar toggle de período
+  const periodToggle = document.getElementById('period-toggle');
+  const periodConfig = document.getElementById('period-config');
+  const periodCharts = document.getElementById('period-charts');
+  periodToggle.classList.toggle('on', tmpPeriodEnabled);
+  periodConfig.classList.toggle('show', tmpPeriodEnabled);
+  periodCharts.classList.toggle('show', tmpPeriodEnabled);
+  if (tmpPeriodEnabled) {
+    document.getElementById('period-start').value = tmpPeriodConfig.startDate || '';
+    document.getElementById('period-qty').value = tmpPeriodConfig.periodQty || 1;
+    document.getElementById('period-unit').value = tmpPeriodConfig.periodUnit || 'mes';
+    document.getElementById('pay-freq-qty').value = tmpPeriodConfig.payFreqQty || 1;
+    document.getElementById('pay-freq-unit').value = tmpPeriodConfig.payFreqUnit || 'mes';
+  }
   hideError();
   renderAll();
+  if (tmpPeriodEnabled) updatePeriodConfig();
   document.getElementById('modal-overlay').classList.add('open');
 }
 
@@ -1028,7 +1565,7 @@ function renderAll() {
 ═══════════════════════════════════════════════════════════ */
 function addProduct() {
   const id = pidCounter++;
-  tmpProducts.push({ id, name: '', price: 0 });
+  tmpProducts.push({ id, name: '', price: 0, adjustments: [], refund: { enabled: false, mode: 'pct', value: 0, applyAdjustments: false } });
   tmpObjParams.forEach(p => { p.hasParam[id] = true; p.values[id] = 0; });
   tmpSubjParams.forEach(p => { p.hasParam[id] = true; p.rankings[id] = 1; });
   renderAll();
@@ -1054,6 +1591,7 @@ function updateProductPrice(pid, val) {
     p.price = raw ? parseInt(raw) / 100 : 0;
     const el = document.getElementById('price-'+pid);
     if (el) el.value = fmtBRL(p.price);
+    if (tmpPeriodEnabled) recalcAllPeriodCosts();
   }
 }
 
@@ -1063,7 +1601,76 @@ function fmtBRL(n) {
 
 function renderProducts() {
   const grid = document.getElementById('products-grid');
-  grid.innerHTML = tmpProducts.map((p,i) => `
+  grid.innerHTML = tmpProducts.map((p,i) => {
+    const adjs = p.adjustments || [];
+    const refund = p.refund || { enabled: false, mode: 'pct', value: 0, applyAdjustments: false };
+
+    let adjHtml = '';
+    if (tmpPeriodEnabled) {
+      const adjItems = adjs.map(adj => `
+        <div class="adj-item">
+          <select onchange="updateAdjustment(${p.id},${adj.id},'type',this.value)">
+            <option value="recurrent" ${adj.type==='recurrent'?'selected':''}>Recorrente</option>
+            <option value="unique" ${adj.type==='unique'?'selected':''}>Único</option>
+          </select>
+          <select onchange="updateAdjustment(${p.id},${adj.id},'mode',this.value)">
+            <option value="pct" ${adj.mode==='pct'?'selected':''}>%</option>
+            <option value="val" ${adj.mode==='val'?'selected':''}>R$</option>
+          </select>
+          <input type="number" step="any" value="${adj.value}" placeholder="Valor"
+            onchange="updateAdjustment(${p.id},${adj.id},'value',this.value)" />
+          ${adj.type === 'recurrent'
+            ? `<span style="font-size:.7rem;color:var(--muted-foreground)">a cada</span>
+               <input type="number" min="1" value="${adj.everyN}" style="width:40px"
+                 onchange="updateAdjustment(${p.id},${adj.id},'everyN',this.value)" />
+               <span style="font-size:.7rem;color:var(--muted-foreground)">pgtos</span>`
+            : `<span style="font-size:.7rem;color:var(--muted-foreground)">no pgto nº</span>
+               <input type="number" min="1" value="${adj.atPayment}" style="width:40px"
+                 onchange="updateAdjustment(${p.id},${adj.id},'atPayment',this.value)" />`
+          }
+          <button class="adj-del" onclick="removeAdjustment(${p.id},${adj.id})" title="Remover">✕</button>
+        </div>
+      `).join('');
+
+      adjHtml = `
+        <div class="adj-section">
+          <div class="adj-title">
+            Reajustes
+            <span class="info-icon" title="Reajustes em % são compostos (aplicam sobre o valor já reajustado). Para reajuste fixo (não composto), use R$.">i</span>
+          </div>
+          ${adjItems}
+          <button class="btn-add-adj" onclick="addAdjustment(${p.id})">+ Reajuste</button>
+        </div>
+        <div class="refund-section">
+          <div class="refund-title">Estorno ao final do período</div>
+          <div class="refund-row" style="margin-bottom:4px">
+            <label style="display:flex;align-items:center;gap:4px;cursor:pointer">
+              <input type="checkbox" ${refund.enabled?'checked':''}
+                onchange="toggleRefund(${p.id})" /> Ativar
+            </label>
+          </div>
+          ${refund.enabled ? `
+          <div class="refund-row">
+            <select onchange="updateRefund(${p.id},'mode',this.value)">
+              <option value="pct" ${refund.mode==='pct'?'selected':''}>% do total</option>
+              <option value="val" ${refund.mode==='val'?'selected':''}>Valor fixo R$</option>
+            </select>
+            <input type="number" step="any" value="${refund.value}" placeholder="Valor"
+              onchange="updateRefund(${p.id},'value',this.value)" />
+            ${refund.mode === 'val' ? `
+            <label style="display:flex;align-items:center;gap:3px;cursor:pointer;font-size:.7rem;color:var(--muted-foreground)">
+              <input type="checkbox" ${refund.applyAdjustments?'checked':''}
+                onchange="updateRefund(${p.id},'applyAdjustments',this.checked)" /> Sofre reajuste
+            </label>` : ''}
+          </div>` : ''}
+        </div>
+        <div class="calc-cost-display" id="calc-cost-${p.id}">Custo total no período: ${fmtBRL(p.periodTotalCost || 0)}</div>
+      `;
+    }
+
+    const priceLabel = tmpPeriodEnabled ? 'Valor da parcela (R$)' : 'Preço total (R$)';
+
+    return `
     <div class="product-card">
       <div class="pc-num">Produto ${i+1}</div>
       <button class="pc-del" onclick="removeProduct(${p.id})" title="Remover">✕</button>
@@ -1074,15 +1681,17 @@ function renderProducts() {
           oninput="updateProductName(${p.id}, this.value)" />
       </div>
       <div class="field-group" style="margin-bottom:0">
-        <label class="field-label">Preço total (R$)</label>
+        <label class="field-label">${priceLabel}</label>
         <input class="field-input" id="price-${p.id}" value="${p.price > 0 ? fmtBRL(p.price) : ''}"
           placeholder="R$ 0,00"
           oninput="updateProductPrice(${p.id}, this.value)"
           onblur="syncPriceDisplay(${p.id})" />
       </div>
-    </div>
-  `).join('');
+      ${adjHtml}
+    </div>`;
+  }).join('');
   document.getElementById('count-produtos').textContent = `${tmpProducts.length} adicionado${tmpProducts.length!==1?'s':''}`;
+  if (tmpPeriodEnabled) recalcAllPeriodCosts();
 }
 
 function syncPriceDisplay(pid) {
@@ -1393,6 +2002,11 @@ function saveComparison() {
   const errors = [];
 
   if (!tmpName) errors.push('Informe o nome da comparação.');
+  if (tmpPeriodEnabled) {
+    if (!tmpPeriodConfig.startDate) errors.push('Informe a data de início do período.');
+    // Recalcular custos antes de salvar
+    recalcAllPeriodCosts();
+  }
   if (tmpProducts.length < 2) errors.push('Adicione pelo menos 2 produtos para comparar.');
   tmpProducts.forEach(p => {
     if (!p.name) errors.push(`Um produto está sem nome.`);
@@ -1429,6 +2043,8 @@ function saveComparison() {
     products: JSON.parse(JSON.stringify(tmpProducts)),
     objParams: JSON.parse(JSON.stringify(tmpObjParams)),
     subjParams: JSON.parse(JSON.stringify(tmpSubjParams)),
+    periodEnabled: tmpPeriodEnabled,
+    periodConfig: JSON.parse(JSON.stringify(tmpPeriodConfig)),
     result,
     updatedAt: new Date().toISOString(),
   };
@@ -1466,7 +2082,8 @@ function calcResult() {
     presentPids.forEach(pid => {
       const prod = tmpProducts.find(p=>p.id===pid);
       const qty  = param.values[pid] || 0;
-      costPerUnit[pid] = qty > 0 && prod.price > 0 ? prod.price / qty : null;
+      const effectivePrice = tmpPeriodEnabled && prod.periodTotalCost != null ? prod.periodTotalCost : prod.price;
+      costPerUnit[pid] = qty > 0 && effectivePrice > 0 ? effectivePrice / qty : null;
     });
 
     const validCosts = presentPids.filter(pid => costPerUnit[pid] !== null).map(pid => costPerUnit[pid]);
@@ -1726,6 +2343,9 @@ function renderResult(comp) {
   const n = ranking.length;
   if (n === 0) return '<p class="text-dim">Sem produtos.</p>';
 
+  const usePeriod = comp.periodEnabled;
+  const getPrice = p => usePeriod && p.periodTotalCost != null ? p.periodTotalCost : p.price;
+
   const medals = ['🥇','🥈','🥉','4️⃣','5️⃣','6️⃣','7️⃣','8️⃣','9️⃣','🔟'];
   const rankLabels = ['1ª opção','2ª opção','3ª opção','4ª opção','5ª opção'];
 
@@ -1736,7 +2356,7 @@ function renderResult(comp) {
         <div class="pod-rank">${medals[i]||`${i+1}º`}</div>
         <div class="pod-name">${escHtml(p.name)}</div>
         <div class="pod-score">${p.score.toFixed(1)}</div>
-        <div class="pod-price">${fmtBRL(p.price)}</div>
+        <div class="pod-price">${fmtBRL(getPrice(p))}</div>
         <div class="text-dim" style="font-size:.72rem;margin-top:2px">${rankLabels[i]||''}</div>
       </div>`;
   });
@@ -1751,15 +2371,15 @@ function renderResult(comp) {
   else parecer = `<b>${escHtml(best.name)}</b> é a melhor opção com <b>vantagem expressiva</b> (${diff.toFixed(1)}% à frente de ${escHtml(second?.name||'')}). A análise aponta claramente para esta escolha.`;
 
   // Menção financeira
-  const prodsComPreco = ranking.filter(p => p.price > 0);
+  const prodsComPreco = ranking.filter(p => getPrice(p) > 0);
   if (prodsComPreco.length > 0) {
-    const cheapest = prodsComPreco.reduce((a, b) => a.price < b.price ? a : b);
+    const cheapest = prodsComPreco.reduce((a, b) => getPrice(a) < getPrice(b) ? a : b);
     if (cheapest.id === best.id) {
-      parecer += `<br><br>Além disso, <b>${escHtml(best.name)}</b> também é o produto com <b>menor custo</b> (${fmtBRL(best.price)}), reforçando a <b>convergência entre melhor desempenho e melhor preço</b> de acordo com os critérios mais importantes para o cliente.`;
+      parecer += `<br><br>Além disso, <b>${escHtml(best.name)}</b> também é o produto com <b>menor custo</b> (${fmtBRL(getPrice(best))}), reforçando a <b>convergência entre melhor desempenho e melhor preço</b> de acordo com os critérios mais importantes para o cliente.`;
     } else {
-      const priceDiffPct = ((best.price - cheapest.price) / cheapest.price * 100).toFixed(1);
+      const priceDiffPct = ((getPrice(best) - getPrice(cheapest)) / getPrice(cheapest) * 100).toFixed(1);
       const scoreDiffPct = ((best.score - cheapest.score) / (Math.abs(cheapest.score) || 1) * 100).toFixed(1);
-      parecer += `<br><br>Do ponto de vista financeiro, o produto mais barato é <b>${escHtml(cheapest.name)}</b> (${fmtBRL(cheapest.price)}), enquanto o melhor pontuado (<b>${escHtml(best.name)}</b>) custa ${fmtBRL(best.price)} — <b>${priceDiffPct}% mais caro</b>, porém com <b>${scoreDiffPct}% mais pontuação</b>. Essa análise reflete os parâmetros e pesos escolhidos pelo cliente, que representam os critérios mais importantes para a sua decisão.`;
+      parecer += `<br><br>Do ponto de vista financeiro, o produto mais barato é <b>${escHtml(cheapest.name)}</b> (${fmtBRL(getPrice(cheapest))}), enquanto o melhor pontuado (<b>${escHtml(best.name)}</b>) custa ${fmtBRL(getPrice(best))} — <b>${priceDiffPct}% mais caro</b>, porém com <b>${scoreDiffPct}% mais pontuação</b>. Essa análise reflete os parâmetros e pesos escolhidos pelo cliente, que representam os critérios mais importantes para a sua decisão.`;
     }
   }
 
@@ -2035,6 +2655,8 @@ function gerarPdfComp(id) {
 
   // Ranking em grade adaptativa
   const { ranking, breakdown } = comp.result;
+  const usePeriodPdf = comp.periodEnabled;
+  const getPricePdf = p => usePeriodPdf && p.periodTotalCost != null ? p.periodTotalCost : p.price;
   txt('RANKING FINAL', PW() / 2, y, { size: 11, color: COR_DOURADO, bold: true, align: 'center' });
   y += 7;
   {
@@ -2069,7 +2691,7 @@ function gerarPdfComp(id) {
         });
         const afterName = y + 10 + nomeLines.length * 4;
         txt(`${p.score.toFixed(1)} pts`, px + cardW / 2 - 0.75, afterName + 1.5, { size: 6.5, color: textC, align: 'center' });
-        txt(fmtBRL(p.price), px + cardW / 2 - 0.75, afterName + 5.5, { size: 6, color: textC, align: 'center' });
+        txt(fmtBRL(getPricePdf(p)), px + cardW / 2 - 0.75, afterName + 5.5, { size: 6, color: textC, align: 'center' });
       });
       y += cardH + 2;
     }
@@ -2089,15 +2711,15 @@ function gerarPdfComp(id) {
   else parecerTxt = `${best.name} é a melhor opção com vantagem expressiva (${diff.toFixed(1)}% à frente de ${second?.name || ''}). A análise aponta claramente para esta escolha.`;
 
   // Menção financeira no PDF
-  const prodsComPrecoPdf = ranking.filter(p => p.price > 0);
+  const prodsComPrecoPdf = ranking.filter(p => getPricePdf(p) > 0);
   if (prodsComPrecoPdf.length > 0) {
-    const cheapestPdf = prodsComPrecoPdf.reduce((a, b) => a.price < b.price ? a : b);
+    const cheapestPdf = prodsComPrecoPdf.reduce((a, b) => getPricePdf(a) < getPricePdf(b) ? a : b);
     if (cheapestPdf.id === best.id) {
-      parecerTxt += `\n\nAlém disso, ${best.name} também é o produto com menor custo (${fmtBRL(best.price)}), reforçando a convergência entre melhor desempenho e melhor preço de acordo com os critérios mais importantes para o cliente.`;
+      parecerTxt += `\n\nAlém disso, ${best.name} também é o produto com menor custo (${fmtBRL(getPricePdf(best))}), reforçando a convergência entre melhor desempenho e melhor preço de acordo com os critérios mais importantes para o cliente.`;
     } else {
-      const priceDiffPctPdf = ((best.price - cheapestPdf.price) / cheapestPdf.price * 100).toFixed(1);
+      const priceDiffPctPdf = ((getPricePdf(best) - getPricePdf(cheapestPdf)) / getPricePdf(cheapestPdf) * 100).toFixed(1);
       const scoreDiffPctPdf = ((best.score - cheapestPdf.score) / (Math.abs(cheapestPdf.score) || 1) * 100).toFixed(1);
-      parecerTxt += `\n\nDo ponto de vista financeiro, o produto mais barato é ${cheapestPdf.name} (${fmtBRL(cheapestPdf.price)}), enquanto o melhor pontuado (${best.name}) custa ${fmtBRL(best.price)} — ${priceDiffPctPdf}% mais caro, porém com ${scoreDiffPctPdf}% mais pontuação. Essa análise reflete os parâmetros e pesos escolhidos pelo cliente, que representam os critérios mais importantes para a sua decisão.`;
+      parecerTxt += `\n\nDo ponto de vista financeiro, o produto mais barato é ${cheapestPdf.name} (${fmtBRL(getPricePdf(cheapestPdf))}), enquanto o melhor pontuado (${best.name}) custa ${fmtBRL(getPricePdf(best))} — ${priceDiffPctPdf}% mais caro, porém com ${scoreDiffPctPdf}% mais pontuação. Essa análise reflete os parâmetros e pesos escolhidos pelo cliente, que representam os critérios mais importantes para a sua decisão.`;
     }
   }
 
