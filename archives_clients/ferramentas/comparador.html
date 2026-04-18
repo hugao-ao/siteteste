@@ -1750,6 +1750,17 @@ function renderResult(comp) {
   else if (diff < 20) parecer = `<b>${escHtml(best.name)}</b> é a melhor opção com <b>vantagem moderada</b> (${diff.toFixed(1)}% à frente de ${escHtml(second?.name||'')} nos critérios ponderados).`;
   else parecer = `<b>${escHtml(best.name)}</b> é a melhor opção com <b>vantagem expressiva</b> (${diff.toFixed(1)}% à frente de ${escHtml(second?.name||'')}). A análise aponta claramente para esta escolha.`;
 
+  // Menção financeira
+  const prodsComPreco = ranking.filter(p => p.price > 0);
+  if (prodsComPreco.length > 0) {
+    const cheapest = prodsComPreco.reduce((a, b) => a.price < b.price ? a : b);
+    if (cheapest.id === best.id) {
+      parecer += `<br><br>Além disso, <b>${escHtml(best.name)}</b> também é o produto com <b>menor custo</b> (${fmtBRL(best.price)}), reforçando a convergência entre melhor desempenho e melhor preço.`;
+    } else {
+      parecer += `<br><br>Do ponto de vista financeiro, o produto mais barato é <b>${escHtml(cheapest.name)}</b> (${fmtBRL(cheapest.price)}), enquanto o melhor pontuado (<b>${escHtml(best.name)}</b>) custa ${fmtBRL(best.price)}.`;
+    }
+  }
+
   const inacAlerts = [];
   [...comp.objParams, ...comp.subjParams].forEach(param => {
     if (legacyToWeight(param.importance) === -10) {
@@ -2074,6 +2085,18 @@ function gerarPdfComp(id) {
   if (diff < 5) parecerTxt = `${best.name} é a melhor opção, mas com vantagem pequena (${diff.toFixed(1)}% à frente de ${second?.name || ''}). A escolha pode depender de fatores não mapeados.`;
   else if (diff < 20) parecerTxt = `${best.name} é a melhor opção com vantagem moderada (${diff.toFixed(1)}% à frente de ${second?.name || ''} nos critérios ponderados).`;
   else parecerTxt = `${best.name} é a melhor opção com vantagem expressiva (${diff.toFixed(1)}% à frente de ${second?.name || ''}). A análise aponta claramente para esta escolha.`;
+
+  // Menção financeira no PDF
+  const prodsComPrecoPdf = ranking.filter(p => p.price > 0);
+  if (prodsComPrecoPdf.length > 0) {
+    const cheapestPdf = prodsComPrecoPdf.reduce((a, b) => a.price < b.price ? a : b);
+    if (cheapestPdf.id === best.id) {
+      parecerTxt += `\n\nAlém disso, ${best.name} também é o produto com menor custo (${fmtBRL(best.price)}), reforçando a convergência entre melhor desempenho e melhor preço.`;
+    } else {
+      parecerTxt += `\n\nDo ponto de vista financeiro, o produto mais barato é ${cheapestPdf.name} (${fmtBRL(cheapestPdf.price)}), enquanto o melhor pontuado (${best.name}) custa ${fmtBRL(best.price)}.`;
+    }
+  }
+
   const parecerLines = doc.splitTextToSize(parecerTxt, CW() - 6);
   const parecerH = Math.max(14, parecerLines.length * 5 + 6);
   checkY(parecerH + 4);
