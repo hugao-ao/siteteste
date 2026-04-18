@@ -1031,13 +1031,15 @@ async function loadComparisons() {
           .order('updated_at', { ascending: false });
         if (!error && data && data.length > 0) {
           comparisons = data.map(row => ({
-            id:         row.id,
-            name:       row.nome,
-            products:   row.products,
-            objParams:  row.obj_params,
-            subjParams: row.subj_params,
-            result:     row.result,
-            updatedAt:  row.updated_at,
+            id:            row.id,
+            name:          row.nome,
+            products:      row.products,
+            objParams:     row.obj_params,
+            subjParams:    row.subj_params,
+            periodEnabled: row.period_enabled || false,
+            periodConfig:  row.period_config || {},
+            result:        row.result,
+            updatedAt:     row.updated_at,
           }));
           // Sincroniza localStorage por cliente
           localStorage.setItem(COMP_LS_KEY + '_' + clienteId, JSON.stringify(comparisons));
@@ -1062,14 +1064,16 @@ async function saveCompToSupabase(comp) {
     const sb = await getCompSbClient();
     if (!sb) return;
     await sb.from('comparador_simulacoes').upsert({
-      id:          comp.id,
-      cliente_id:  clienteId,
-      nome:        comp.name,
-      products:    comp.products,
-      obj_params:  comp.objParams,
-      subj_params: comp.subjParams,
-      result:      comp.result,
-      updated_at:  comp.updatedAt,
+      id:              comp.id,
+      cliente_id:      clienteId,
+      nome:            comp.name,
+      products:        comp.products,
+      obj_params:      comp.objParams,
+      subj_params:     comp.subjParams,
+      period_enabled:  comp.periodEnabled || false,
+      period_config:   comp.periodConfig || {},
+      result:          comp.result,
+      updated_at:      comp.updatedAt,
     }, { onConflict: 'id' });
     // Sincroniza localStorage por cliente
     localStorage.setItem(COMP_LS_KEY + '_' + clienteId, JSON.stringify(comparisons));
