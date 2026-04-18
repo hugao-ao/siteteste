@@ -805,14 +805,34 @@
     font-weight: 600;
   }
 
-  /* ── GRÁFICOS DE PERÍODO ── */
-  .period-charts {
-    display: none; margin-top: 16px;
-  }
-  .period-charts.show { display: block; }
-  .period-charts .chart-wrap { margin-bottom: 12px; }
-  .period-charts .chart-wrap canvas { max-height: 300px; }
 
+
+  .info-icon {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 20px; height: 20px; border-radius: 50%;
+    background: var(--gold-dim); color: #fff; font-size: .75rem;
+    cursor: help; font-style: normal; flex-shrink: 0;
+  }
+  .invest-analysis {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+    margin-top: 16px;
+  }
+  .invest-analysis h4 {
+    color: var(--gold);
+    font-size: 1rem;
+    margin: 0 0 8px;
+  }
+  .invest-summary {
+    font-size: .88rem;
+    color: var(--foreground);
+    line-height: 1.6;
+  }
+  .invest-summary b { color: var(--gold); }
+  .invest-positive { color: var(--green-lt); font-weight: 700; }
+  .invest-negative { color: var(--red-lt); font-weight: 700; }
 </style>
 </head>
 <body>
@@ -898,6 +918,11 @@
               <option value="ano">ano(s)</option>
             </select>
           </div>
+          <div class="period-row">
+            <label>Taxa de juros anual (%)</label>
+            <input type="number" id="period-interest" min="0" step="0.1" value="0" onchange="updatePeriodConfig()" />
+            <span class="info-icon" title="Taxa de juros anual usada para calcular o rendimento da diferença investida entre o produto mais barato e o melhor pontuado (quando forem diferentes).">ℹ</span>
+          </div>
           <div class="period-summary" id="period-summary"></div>
         </div>
 
@@ -956,24 +981,7 @@
           </div>
         </div>
 
-        <!-- GRÁFICOS DE PERÍODO -->
-        <div class="period-charts" id="period-charts">
-          <div class="section-block open" id="sb-period-charts">
-            <div class="section-block-header" onclick="toggleSection('sb-period-charts')">
-              <div class="sb-icon gold">📈</div>
-              <h3>Evolução de Custos</h3>
-              <span class="sb-chevron">▼</span>
-            </div>
-            <div class="section-block-body">
-              <div class="chart-wrap">
-                <canvas id="chart-parcela"></canvas>
-              </div>
-              <div class="chart-wrap">
-                <canvas id="chart-acumulado"></canvas>
-              </div>
-            </div>
-          </div>
-        </div>
+
 
       </div>
       <div class="modal-footer">
@@ -1094,6 +1102,7 @@ let tmpPeriodConfig = {
   periodUnit: 'mes',
   payFreqQty: 1,
   payFreqUnit: 'mes',
+  interestRate: 0,
 };
 let adjCounter = 1;
 
@@ -1107,10 +1116,8 @@ function togglePeriodMode() {
   tmpPeriodEnabled = !tmpPeriodEnabled;
   const toggle = document.getElementById('period-toggle');
   const config = document.getElementById('period-config');
-  const charts = document.getElementById('period-charts');
   toggle.classList.toggle('on', tmpPeriodEnabled);
   config.classList.toggle('show', tmpPeriodEnabled);
-  charts.classList.toggle('show', tmpPeriodEnabled);
   renderProducts();
   if (tmpPeriodEnabled) updatePeriodConfig();
 }
@@ -1125,6 +1132,7 @@ function unitToDays(qty, unit) {
     default: return qty;
   }
 }
+const unitToDaysStatic = unitToDays; // alias para uso no renderResult
 
 function unitLabel(unit, qty) {
   const labels = {
@@ -1150,6 +1158,8 @@ function updatePeriodConfig() {
   tmpPeriodConfig.periodUnit = unitEl.value;
   tmpPeriodConfig.payFreqQty = parseInt(freqQtyEl.value) || 1;
   tmpPeriodConfig.payFreqUnit = freqUnitEl.value;
+  const interestEl = document.getElementById('period-interest');
+  tmpPeriodConfig.interestRate = parseFloat(interestEl?.value) || 0;
 
   const totalDays = unitToDays(tmpPeriodConfig.periodQty, tmpPeriodConfig.periodUnit);
   const freqDays = unitToDays(tmpPeriodConfig.payFreqQty, tmpPeriodConfig.payFreqUnit);
@@ -1297,8 +1307,8 @@ function recalcAllPeriodCosts() {
     const el = document.getElementById('calc-cost-'+p.id);
     if (el) el.textContent = `Custo total no período: ${fmtBRL(result.totalPaid)}`;
   });
-  renderPeriodCharts();
 }
+
 
 /* ── GRÁFICOS DE PERÍODO ── */
 let chartParcela = null;
@@ -1502,7 +1512,8 @@ function openModal(id = null) {
     tmpObjParams  = JSON.parse(JSON.stringify(c.objParams));
     tmpSubjParams = JSON.parse(JSON.stringify(c.subjParams));
     tmpPeriodEnabled = c.periodEnabled || false;
-    tmpPeriodConfig = c.periodConfig ? JSON.parse(JSON.stringify(c.periodConfig)) : { startDate: '', periodQty: 1, periodUnit: 'mes', payFreqQty: 1, payFreqUnit: 'mes' };
+    tmpPeriodConfig = c.periodConfig ? JSON.parse(JSON.stringify(c.periodConfig)) : { startDate: '', periodQty: 1, periodUnit: 'mes', payFreqQty: 1, payFreqUnit: 'mes', interestRate: 0 };
+    if (tmpPeriodConfig.interestRate === undefined) tmpPeriodConfig.interestRate = 0;
     // Garantir que produtos tenham adjustments e refund
     tmpProducts.forEach(p => {
       if (!p.adjustments) p.adjustments = [];
@@ -1516,23 +1527,23 @@ function openModal(id = null) {
     tmpName = ''; tmpProducts = []; tmpObjParams = []; tmpSubjParams = [];
     pidCounter = 1; paramCounter = 1; adjCounter = 1;
     tmpPeriodEnabled = false;
-    tmpPeriodConfig = { startDate: '', periodQty: 1, periodUnit: 'mes', payFreqQty: 1, payFreqUnit: 'mes' };
+    tmpPeriodConfig = { startDate: '', periodQty: 1, periodUnit: 'mes', payFreqQty: 1, payFreqUnit: 'mes', interestRate: 0 };
     document.getElementById('modal-title').textContent = 'Nova Comparação';
   }
   document.getElementById('comp-name').value = tmpName;
   // Sincronizar toggle de período
   const periodToggle = document.getElementById('period-toggle');
   const periodConfig = document.getElementById('period-config');
-  const periodCharts = document.getElementById('period-charts');
   periodToggle.classList.toggle('on', tmpPeriodEnabled);
   periodConfig.classList.toggle('show', tmpPeriodEnabled);
-  periodCharts.classList.toggle('show', tmpPeriodEnabled);
   if (tmpPeriodEnabled) {
     document.getElementById('period-start').value = tmpPeriodConfig.startDate || '';
     document.getElementById('period-qty').value = tmpPeriodConfig.periodQty || 1;
     document.getElementById('period-unit').value = tmpPeriodConfig.periodUnit || 'mes';
     document.getElementById('pay-freq-qty').value = tmpPeriodConfig.payFreqQty || 1;
     document.getElementById('pay-freq-unit').value = tmpPeriodConfig.payFreqUnit || 'mes';
+    const interestInput = document.getElementById('period-interest');
+    if (interestInput) interestInput.value = tmpPeriodConfig.interestRate || 0;
   }
   hideError();
   renderAll();
@@ -2458,6 +2469,75 @@ function renderResult(comp) {
     colors: ranking.map((_,i)=>i===0?'rgba(212,175,55,0.85)':'rgba(46,125,50,0.6)'),
   };
 
+  // ── Gráficos de período (movidos do modal para cá) ──
+  let periodChartsHtml = '';
+  const periodChartIds = {};
+  if (comp.periodEnabled && ranking.length > 0 && ranking[0].periodPayments) {
+    const pcId = 'pchart-parcela-'+comp.id;
+    const acId = 'pchart-acum-'+comp.id;
+    periodChartIds.parcela = pcId;
+    periodChartIds.acumulado = acId;
+    periodChartsHtml = `
+      <div class="mem-section-title">Evolução de Custos no Período</div>
+      <div class="chart-wrap"><canvas id="${pcId}"></canvas></div>
+      <div class="chart-wrap"><canvas id="${acId}"></canvas></div>`;
+  }
+
+  // ── Análise de investimento da diferença ──
+  let investHtml = '';
+  const investChartId = 'invest-chart-'+comp.id;
+  let investData = null;
+  if (comp.periodEnabled && ranking.length >= 2) {
+    const best = ranking[0];
+    const cheapest = ranking.reduce((a,b) => (getPrice(a) < getPrice(b) ? a : b));
+    if (cheapest.id !== best.id && best.periodPayments && cheapest.periodPayments) {
+      const annualRate = (comp.periodConfig?.interestRate || 0) / 100;
+      const totalDays = comp.periodConfig ? unitToDaysStatic(comp.periodConfig.periodQty, comp.periodConfig.periodUnit) : 365;
+      const freqDays = comp.periodConfig ? unitToDaysStatic(comp.periodConfig.payFreqQty, comp.periodConfig.payFreqUnit) : 30;
+      const numPay = Math.max(1, Math.floor(totalDays / freqDays));
+      const monthlyRate = annualRate > 0 ? Math.pow(1 + annualRate, freqDays/365) - 1 : 0;
+
+      const diffs = [];
+      const balances = [];
+      let balance = 0;
+      for (let i = 0; i < numPay; i++) {
+        const bestPay = best.periodPayments[i] || 0;
+        const cheapPay = cheapest.periodPayments[i] || 0;
+        const diff = bestPay - cheapPay;
+        diffs.push(diff);
+        balance = balance * (1 + monthlyRate) + diff;
+        balances.push(balance);
+      }
+
+      // Estornos: best pode ter estorno, cheapest pode ter estorno
+      const bestRefund = best.refund?.enabled ? (best.refund.mode === 'pct' ? (best.refund.value/100) * best.periodPayments.reduce((a,b)=>a+b,0) : best.refund.value) : 0;
+      const cheapRefund = cheapest.refund?.enabled ? (cheapest.refund.mode === 'pct' ? (cheapest.refund.value/100) * cheapest.periodPayments.reduce((a,b)=>a+b,0) : cheapest.refund.value) : 0;
+      const refundDiff = bestRefund - cheapRefund;
+
+      const finalBalance = balances[balances.length - 1] - refundDiff;
+      const totalDiffPaid = diffs.reduce((a,b) => a+b, 0);
+      const totalInterest = finalBalance - totalDiffPaid + refundDiff;
+
+      investData = { diffs, balances, finalBalance, totalDiffPaid, totalInterest, refundDiff, best, cheapest, monthlyRate, numPay, freqDays, totalDays };
+
+      const balClass = finalBalance >= 0 ? 'invest-positive' : 'invest-negative';
+      investHtml = `
+        <div class="mem-section-title">Análise de Investimento da Diferença</div>
+        <div class="invest-analysis">
+          <h4>Contratar o mais barato e investir a diferença</h4>
+          <div class="invest-summary">
+            Se você contratar <b>${escHtml(cheapest.name)}</b> (mais barato, ${fmtBRL(getPrice(cheapest))}) em vez de <b>${escHtml(best.name)}</b> (melhor pontuado, ${fmtBRL(getPrice(best))}), a diferença paga a cada parcela pode ser investida a <b>${(annualRate*100).toFixed(1)}% a.a.</b><br><br>
+            Total da diferença aportada: <b>${fmtBRL(totalDiffPaid)}</b><br>
+            Juros acumulados: <b>${fmtBRL(totalInterest)}</b><br>
+            ${refundDiff !== 0 ? `Diferença de estornos: <b>${fmtBRL(-refundDiff)}</b><br>` : ''}
+            <b>Saldo final acumulado: <span class="${balClass}">${fmtBRL(finalBalance)}</span></b>
+            ${finalBalance < 0 ? '<br><span class="invest-negative">O saldo ficou negativo, indicando que a diferença investida não compensou.</span>' : ''}
+          </div>
+          <div class="chart-wrap" style="margin-top:12px"><canvas id="${investChartId}"></canvas></div>
+        </div>`;
+    }
+  }
+
   const mem = `
     <button class="mem-toggle" onclick="toggleMem('${memId}',this)">▶ Ver memória de cálculo</button>
     <div class="mem-body" id="${memId}">
@@ -2467,9 +2547,12 @@ function renderResult(comp) {
       </div>
       ${memTable}
       ${formula}
+      ${periodChartsHtml}
+      ${investHtml}
     </div>`;
 
   setTimeout(() => {
+    // Gráfico de barras de pontuação
     const ctx = document.getElementById(chartId);
     if (ctx && !ctx._chartInitialized) {
       ctx._chartInitialized = true;
@@ -2503,7 +2586,140 @@ function renderResult(comp) {
         }
       });
     }
-  }, 100);
+
+    // Gráficos de período
+    if (periodChartIds.parcela) {
+      const pColors = [
+        'rgba(212,175,55,0.85)', 'rgba(46,125,50,0.7)', 'rgba(30,136,229,0.7)',
+        'rgba(239,83,80,0.7)', 'rgba(171,71,188,0.7)', 'rgba(255,179,0,0.7)',
+        'rgba(0,172,193,0.7)', 'rgba(255,112,67,0.7)', 'rgba(141,110,99,0.7)',
+        'rgba(96,125,139,0.7)'
+      ];
+      const totalDaysP = comp.periodConfig ? unitToDaysStatic(comp.periodConfig.periodQty, comp.periodConfig.periodUnit) : 365;
+      const freqDaysP = comp.periodConfig ? unitToDaysStatic(comp.periodConfig.payFreqQty, comp.periodConfig.payFreqUnit) : 30;
+      const numPayP = Math.max(1, Math.floor(totalDaysP / freqDaysP));
+      const xInfoP = bestXUnit(totalDaysP);
+      const labelsP = [];
+      for (let i = 1; i <= numPayP; i++) {
+        const dayOfPay = i * freqDaysP;
+        labelsP.push((dayOfPay / xInfoP.divisor).toFixed(xInfoP.divisor === 1 ? 0 : 1));
+      }
+      const chartOptsP = (titleText, xLabel) => ({
+        responsive: true,
+        maintainAspectRatio: true,
+        plugins: {
+          legend: { labels: { color: '#A0B8A6', font: { size: 11 } } },
+          title: { display: true, text: titleText, color: '#D4AF37', font: { size: 13, weight: 'bold' } },
+          tooltip: { callbacks: { label: c => `${c.dataset.label}: ${fmtBRL(c.raw)}` } }
+        },
+        scales: {
+          x: { title: { display: true, text: xLabel, color: '#A0B8A6' }, ticks: { color: '#A0B8A6', maxTicksLimit: 20 }, grid: { color: 'rgba(212,175,55,0.1)' } },
+          y: { title: { display: true, text: 'R$', color: '#A0B8A6' }, ticks: { color: '#A0B8A6', callback: v => fmtBRL(v) }, grid: { color: 'rgba(212,175,55,0.1)' } }
+        }
+      });
+
+      // Parcela
+      const ctxParcela = document.getElementById(periodChartIds.parcela);
+      if (ctxParcela && !ctxParcela._chartInitialized) {
+        ctxParcela._chartInitialized = true;
+        new Chart(ctxParcela, {
+          type: 'line',
+          data: {
+            labels: labelsP,
+            datasets: ranking.filter(p=>p.periodPayments).map((p, idx) => ({
+              label: p.name,
+              data: p.periodPayments,
+              borderColor: pColors[idx % pColors.length],
+              backgroundColor: pColors[idx % pColors.length].replace('0.85','0.15').replace('0.7','0.1'),
+              borderWidth: 2, fill: false, tension: 0.3,
+              pointRadius: numPayP > 50 ? 0 : 3,
+            }))
+          },
+          options: chartOptsP('Valor da Parcela ao Longo do Tempo', xInfoP.label),
+        });
+      }
+
+      // Acumulado
+      const ctxAcum = document.getElementById(periodChartIds.acumulado);
+      if (ctxAcum && !ctxAcum._chartInitialized) {
+        ctxAcum._chartInitialized = true;
+        new Chart(ctxAcum, {
+          type: 'line',
+          data: {
+            labels: labelsP,
+            datasets: ranking.filter(p=>p.periodPayments).map((p, idx) => {
+              let acc = 0;
+              const acumData = p.periodPayments.map(v => { acc += v; return acc; });
+              return {
+                label: p.name,
+                data: acumData,
+                borderColor: pColors[idx % pColors.length],
+                backgroundColor: pColors[idx % pColors.length].replace('0.85','0.15').replace('0.7','0.1'),
+                borderWidth: 2, fill: false, tension: 0.3,
+                pointRadius: numPayP > 50 ? 0 : 3,
+              };
+            })
+          },
+          options: chartOptsP('Custo Acumulado ao Longo do Tempo', xInfoP.label),
+        });
+      }
+    }
+
+    // Gráfico de investimento
+    if (investData) {
+      const ctxInvest = document.getElementById(investChartId);
+      if (ctxInvest && !ctxInvest._chartInitialized) {
+        ctxInvest._chartInitialized = true;
+        const totalDaysI = investData.totalDays;
+        const freqDaysI = investData.freqDays;
+        const xInfoI = bestXUnit(totalDaysI);
+        const labelsI = [];
+        for (let i = 1; i <= investData.numPay; i++) {
+          labelsI.push((i * freqDaysI / xInfoI.divisor).toFixed(xInfoI.divisor === 1 ? 0 : 1));
+        }
+        new Chart(ctxInvest, {
+          type: 'line',
+          data: {
+            labels: labelsI,
+            datasets: [
+              {
+                label: 'Diferença por parcela',
+                data: investData.diffs,
+                borderColor: 'rgba(255,179,0,0.85)',
+                backgroundColor: 'rgba(255,179,0,0.1)',
+                borderWidth: 2, fill: false, tension: 0.3,
+                pointRadius: investData.numPay > 50 ? 0 : 3,
+                yAxisID: 'y1',
+              },
+              {
+                label: 'Saldo acumulado investido',
+                data: investData.balances,
+                borderColor: investData.finalBalance >= 0 ? 'rgba(46,125,50,0.85)' : 'rgba(239,83,80,0.85)',
+                backgroundColor: investData.finalBalance >= 0 ? 'rgba(46,125,50,0.1)' : 'rgba(239,83,80,0.1)',
+                borderWidth: 2, fill: true, tension: 0.3,
+                pointRadius: investData.numPay > 50 ? 0 : 3,
+                yAxisID: 'y',
+              }
+            ]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+              legend: { labels: { color: '#A0B8A6', font: { size: 11 } } },
+              title: { display: true, text: 'Evolução do Investimento da Diferença', color: '#D4AF37', font: { size: 13, weight: 'bold' } },
+              tooltip: { callbacks: { label: c => `${c.dataset.label}: ${fmtBRL(c.raw)}` } }
+            },
+            scales: {
+              x: { title: { display: true, text: xInfoI.label, color: '#A0B8A6' }, ticks: { color: '#A0B8A6', maxTicksLimit: 20 }, grid: { color: 'rgba(212,175,55,0.1)' } },
+              y: { position: 'left', title: { display: true, text: 'Saldo (R$)', color: '#A0B8A6' }, ticks: { color: '#A0B8A6', callback: v => fmtBRL(v) }, grid: { color: 'rgba(212,175,55,0.1)' } },
+              y1: { position: 'right', title: { display: true, text: 'Diferença/parcela (R$)', color: '#A0B8A6' }, ticks: { color: '#A0B8A6', callback: v => fmtBRL(v) }, grid: { drawOnChartArea: false } },
+            }
+          }
+        });
+      }
+    }
+  }, 200);
 
   return `<div class="result-section">${podium}${parecerBox}${mem}</div>`;
 }
