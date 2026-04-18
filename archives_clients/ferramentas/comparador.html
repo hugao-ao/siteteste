@@ -1755,9 +1755,10 @@ function renderResult(comp) {
   if (prodsComPreco.length > 0) {
     const cheapest = prodsComPreco.reduce((a, b) => a.price < b.price ? a : b);
     if (cheapest.id === best.id) {
-      parecer += `<br><br>Além disso, <b>${escHtml(best.name)}</b> também é o produto com <b>menor custo</b> (${fmtBRL(best.price)}), reforçando a convergência entre melhor desempenho e melhor preço.`;
+      parecer += `<br><br>Além disso, <b>${escHtml(best.name)}</b> também é o produto com <b>menor custo</b> (${fmtBRL(best.price)}), reforçando a <b>convergência entre melhor desempenho e melhor preço</b> de acordo com os critérios mais importantes para o cliente.`;
     } else {
-      parecer += `<br><br>Do ponto de vista financeiro, o produto mais barato é <b>${escHtml(cheapest.name)}</b> (${fmtBRL(cheapest.price)}), enquanto o melhor pontuado (<b>${escHtml(best.name)}</b>) custa ${fmtBRL(best.price)}.`;
+      const priceDiffPct = ((best.price - cheapest.price) / cheapest.price * 100).toFixed(1);
+      parecer += `<br><br>Do ponto de vista financeiro, o produto mais barato é <b>${escHtml(cheapest.name)}</b> (${fmtBRL(cheapest.price)}), enquanto o melhor pontuado (<b>${escHtml(best.name)}</b>) custa ${fmtBRL(best.price)} — <b>${priceDiffPct}% mais caro</b>. Essa análise reflete os parâmetros e pesos escolhidos pelo cliente, que representam os critérios mais importantes para a sua decisão.`;
     }
   }
 
@@ -2091,9 +2092,10 @@ function gerarPdfComp(id) {
   if (prodsComPrecoPdf.length > 0) {
     const cheapestPdf = prodsComPrecoPdf.reduce((a, b) => a.price < b.price ? a : b);
     if (cheapestPdf.id === best.id) {
-      parecerTxt += `\n\nAlém disso, ${best.name} também é o produto com menor custo (${fmtBRL(best.price)}), reforçando a convergência entre melhor desempenho e melhor preço.`;
+      parecerTxt += `\n\nAlém disso, ${best.name} também é o produto com menor custo (${fmtBRL(best.price)}), reforçando a convergência entre melhor desempenho e melhor preço de acordo com os critérios mais importantes para o cliente.`;
     } else {
-      parecerTxt += `\n\nDo ponto de vista financeiro, o produto mais barato é ${cheapestPdf.name} (${fmtBRL(cheapestPdf.price)}), enquanto o melhor pontuado (${best.name}) custa ${fmtBRL(best.price)}.`;
+      const priceDiffPctPdf = ((best.price - cheapestPdf.price) / cheapestPdf.price * 100).toFixed(1);
+      parecerTxt += `\n\nDo ponto de vista financeiro, o produto mais barato é ${cheapestPdf.name} (${fmtBRL(cheapestPdf.price)}), enquanto o melhor pontuado (${best.name}) custa ${fmtBRL(best.price)} — ${priceDiffPctPdf}% mais caro. Essa análise reflete os parâmetros e pesos escolhidos pelo cliente, que representam os critérios mais importantes para a sua decisão.`;
     }
   }
 
