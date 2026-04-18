@@ -1113,6 +1113,10 @@ function updateObjParam(id, field, val) {
   if (p) p[field] = val;
 }
 
+function fmtValObj(n) {
+  if (n === null || n === undefined || n === 0) return '';
+  return n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
 function updateObjValue(paramId, pid, val) {
   const p = tmpObjParams.find(x=>x.id===paramId);
   if (p) {
@@ -1186,10 +1190,11 @@ function renderObjTable() {
           title="Clique para alternar: ✓ tem · ✗ não tem">${hasStateLabel(state)}</button>
       </td>
       <td class="td-rank">
-        <input type="number" min="0" step="any" value="${val||''}" placeholder="0"
+        <input type="text" inputmode="decimal" value="${fmtValObj(val)}" placeholder="0"
           id="oval-${param.id}-${p.id}"
           ${disabled?'disabled style="opacity:.3"':''}
-          oninput="updateObjValue(${param.id},${p.id},this.value)" />
+          oninput="updateObjValue(${param.id},${p.id},this.value)"
+          onblur="this.value=fmtValObj(tmpObjParams.find(x=>x.id===${param.id})?.values[${p.id}]||0)" />
       </td>`;
     });
     tbody += `<td class="td-del"><button onclick="removeObjParam(${param.id})">✕</button></td></tr>`;
@@ -1445,6 +1450,7 @@ function calcResult() {
 
     const validCosts = presentPids.filter(pid => costPerUnit[pid] !== null).map(pid => costPerUnit[pid]);
     const minCost = validCosts.length > 0 ? Math.min(...validCosts) : null;
+    const maxCost = validCosts.length > 0 ? Math.max(...validCosts) : null;
 
     const perProduct = {};
     tmpProducts.forEach(p => {
@@ -1476,17 +1482,17 @@ function calcResult() {
           detail = '—';
           formula = '0';
         } else {
-          const norm = minCost / cpu;
           if (w >= 0) {
-            // Peso positivo: melhor custo-benefício → maior pontuação positiva
+            // Peso positivo: melhor custo-benefício (menor cpu) → maior pontuação
+            const norm = minCost / cpu;
             score = norm * w * 10;
             formula = `(${fmtN(minCost)}/${fmtN(cpu)}) × ${w} × 10 = ${score.toFixed(2)}`;
           } else {
-            // Peso negativo: melhor custo-benefício → maior pontuação NEGATIVA
-            // norm = minCost/cpu (0 a 1, onde 1 = melhor cpu)
-            // score = norm * w * 10  (ex: w=-1, norm=1 → -10; norm=0.5 → -5)
-            score = norm * w * 10;
-            formula = `(${fmtN(minCost)}/${fmtN(cpu)}) × (${w}) × 10 = ${score.toFixed(2)}`;
+            // Peso negativo: PIOR custo-benefício (maior cpu) → perde MAIS pontos
+            // invNorm = cpu/maxCost (0 a 1, onde 1 = pior cpu)
+            const invNorm = maxCost > 0 ? cpu / maxCost : 0;
+            score = invNorm * w * 10;
+            formula = `(${fmtN(cpu)}/${fmtN(maxCost)}) × (${w}) × 10 = ${score.toFixed(2)}`;
           }
           detail = `R$${fmtN(cpu)}/${param.unit||'un'}`;
         }
@@ -1543,11 +1549,11 @@ function calcResult() {
             score = norm * w * 10;
             formula = `((${nPresent}-${rank}+1)/${nPresent}) × ${w} × 10 = ${score.toFixed(2)}`;
           } else {
-            // Peso negativo: 1º lugar (melhor) → maior pontuação NEGATIVA
-            // norm = (n-rank+1)/n (1º = 1.0, último = 1/n)
-            // score = norm * w * 10  (ex: w=-1, 1º: norm=1 → -10; último: norm=1/n → menor negativo)
-            score = norm * w * 10;
-            formula = `((${nPresent}-${rank}+1)/${nPresent}) × (${w}) × 10 = ${score.toFixed(2)}`;
+            // Peso negativo: PIOR colocação (último) → perde MAIS pontos
+            // invNorm = rank/nPresent (1º = 1/n = baixo, último = n/n = 1.0)
+            const invNorm = rank / nPresent;
+            score = invNorm * w * 10;
+            formula = `(${rank}/${nPresent}) × (${w}) × 10 = ${score.toFixed(2)}`;
           }
           detail = `${rank}º lugar`;
         }
@@ -2099,7 +2105,7 @@ function gerarPdfComp(id) {
     },
     {
       titulo: 'Parâmetros Objetivos — Peso Negativo',
-      corpo: 'Quem tem MELHOR custo-benefício pontua MAIS negativamente. Fórmula: (menor_cpu ÷ cpu_produto) × peso × 10. O produto mais eficiente recebe a pontuação mais negativa.'
+      corpo: 'Quem tem PIOR custo-benefício (maior cpu) perde MAIS pontos. Fórmula: (cpu_produto ÷ maior_cpu) × peso × 10. O produto menos eficiente recebe a penalidade máxima.'
     },
     {
       titulo: 'Parâmetros Subjetivos — Peso Positivo',
@@ -2107,7 +2113,7 @@ function gerarPdfComp(id) {
     },
     {
       titulo: 'Parâmetros Subjetivos — Peso Negativo',
-      corpo: '1º lugar recebe a pontuação MAIS negativa. Fórmula: ((n − rank + 1) ÷ n) × peso × 10 (resultado negativo).'
+      corpo: 'Pior colocação perde MAIS pontos. Fórmula: (rank ÷ n) × peso × 10. O último lugar recebe a penalidade máxima.'
     },
     {
       titulo: 'Ausência do parâmetro (✗)',
@@ -2167,7 +2173,10 @@ function gerarPdfComp(id) {
     y += rowH + 4;
   }
 
-  y += 4;
+  // ══════════════════════════════════════════════════════════
+  // PÁGINA 3+: TABELAS DE PARÂMETROS (nova página para evitar sobreposição)
+  // ══════════════════════════════════════════════════════════
+  addPage(false);
 
   // Callbacks para autoTable manter fundo escuro
   const willDrawPageCB = () => { fillPage(COR_FUNDO); };
@@ -2176,7 +2185,6 @@ function gerarPdfComp(id) {
   // ── TABELA: Parâmetros Objetivos ──
   const objRows = breakdown.filter(r => r.type === 'Objetivo');
   if (objRows.length > 0) {
-    checkY(24);
     y = sectionTitle('PARÂMETROS OBJETIVOS', y);
     const objTableBody = objRows.map(r => [
       r.paramName,
