@@ -1114,14 +1114,35 @@ function updateObjParam(id, field, val) {
 }
 
 function fmtValObj(n) {
-  if (n === null || n === undefined || n === 0) return '';
+  if (n === null || n === undefined) return '';
+  if (n === 0) return '0,00';
   return n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+function maskObjInput(el) {
+  // Remove tudo que não é dígito ou vírgula
+  let v = el.value.replace(/[^\d,]/g, '');
+  // Garante no máximo uma vírgula
+  const parts = v.split(',');
+  if (parts.length > 2) v = parts[0] + ',' + parts.slice(1).join('');
+  // Limita 2 casas decimais
+  if (parts.length === 2 && parts[1].length > 2) v = parts[0] + ',' + parts[1].substring(0, 2);
+  // Formata separador de milhares na parte inteira
+  let intPart = (parts[0] || '').replace(/^0+(?=\d)/, '');
+  if (intPart.length > 3) {
+    intPart = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  }
+  v = parts.length >= 2 ? intPart + ',' + (parts[1] || '').substring(0, 2) : intPart;
+  el.value = v;
+}
+function parseObjVal(str) {
+  // Remove pontos de milhar, troca vírgula por ponto
+  const clean = str.replace(/\./g, '').replace(',', '.');
+  return parseFloat(clean) || 0;
 }
 function updateObjValue(paramId, pid, val) {
   const p = tmpObjParams.find(x=>x.id===paramId);
   if (p) {
-    const raw = val.replace(/[^\d,\.]/g,'').replace(',','.');
-    p.values[pid] = parseFloat(raw) || 0;
+    p.values[pid] = parseObjVal(val);
   }
 }
 
@@ -1193,7 +1214,7 @@ function renderObjTable() {
         <input type="text" inputmode="decimal" value="${fmtValObj(val)}" placeholder="0"
           id="oval-${param.id}-${p.id}"
           ${disabled?'disabled style="opacity:.3"':''}
-          oninput="updateObjValue(${param.id},${p.id},this.value)"
+          oninput="maskObjInput(this);updateObjValue(${param.id},${p.id},this.value)"
           onblur="this.value=fmtValObj(tmpObjParams.find(x=>x.id===${param.id})?.values[${p.id}]||0)" />
       </td>`;
     });
@@ -2178,9 +2199,13 @@ function gerarPdfComp(id) {
   // ══════════════════════════════════════════════════════════
   addPage(false);
 
-  // Callbacks para autoTable manter fundo escuro
-  const willDrawPageCB = () => { fillPage(COR_FUNDO); };
-  const didDrawPageCB  = () => { pageHeader(); pageFooter(); };
+  // Callbacks para autoTable — só preenche fundo em páginas NOVAS (overflow)
+  let _atFirstPage = true;
+  const atWillDraw = (data) => {
+    if (!_atFirstPage) { fillPage(COR_FUNDO); }
+    _atFirstPage = false;
+  };
+  const atDidDraw = () => { pageHeader(); pageFooter(); };
 
   // ── TABELA: Parâmetros Objetivos ──
   const objRows = breakdown.filter(r => r.type === 'Objetivo');
@@ -2193,6 +2218,7 @@ function gerarPdfComp(id) {
       impLabel(r.importance),
     ]);
     const objParamW = CW() - 22 - 18 - 42;
+    _atFirstPage = true;
     doc.autoTable({
       startY: y,
       head: [['Parâmetro', 'Unidade', 'Peso', 'Importância']],
@@ -2208,8 +2234,8 @@ function gerarPdfComp(id) {
         3: { cellWidth: 42, halign: 'center' },
       },
       tableLineColor: COR_VERDE_MED, tableLineWidth: 0.2,
-      willDrawPage: willDrawPageCB,
-      didDrawPage: didDrawPageCB,
+      willDrawPage: atWillDraw,
+      didDrawPage: atDidDraw,
     });
     y = doc.lastAutoTable.finalY + 8;
   }
@@ -2225,6 +2251,7 @@ function gerarPdfComp(id) {
       impLabel(r.importance),
     ]);
     const subjParamW = CW() - 18 - 42;
+    _atFirstPage = true;
     doc.autoTable({
       startY: y,
       head: [['Parâmetro', 'Peso', 'Importância']],
@@ -2239,8 +2266,8 @@ function gerarPdfComp(id) {
         2: { cellWidth: 42, halign: 'center' },
       },
       tableLineColor: COR_VERDE_MED, tableLineWidth: 0.2,
-      willDrawPage: willDrawPageCB,
-      didDrawPage: didDrawPageCB,
+      willDrawPage: atWillDraw,
+      didDrawPage: atDidDraw,
     });
     y = doc.lastAutoTable.finalY + 8;
   }
@@ -2265,7 +2292,7 @@ function gerarPdfComp(id) {
     ];
     ranking.forEach(p => {
       const pp = row.perProduct[p.id];
-      if (!pp) { cells.push('\u2717'); return; }  // ✗
+      if (!pp) { cells.push('N/A'); return; }
 
       const pts = pp.score.toFixed(1);
 
@@ -2276,14 +2303,16 @@ function gerarPdfComp(id) {
                        (pp.detail && (pp.detail.includes('Não tem') || pp.detail.includes('Indiferente')));
 
       if (isAbsent) {
-        cells.push('\u2717');  // ✗
+        cells.push('N/A');  // Ausência visível
         return;
       }
 
       if (row.type === 'Objetivo') {
-        // Mostrar valor numérico + unidade em destaque
+        // Mostrar valor numérico formatado + unidade em destaque
         const rawVal = pp.rawValue;
-        const valStr = (rawVal !== undefined && rawVal !== null) ? String(rawVal) : '0';
+        const valStr = (rawVal !== undefined && rawVal !== null && rawVal !== 0)
+          ? rawVal.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+          : '0,00';
         const unitStr = row.unit || '';
         const displayVal = unitStr ? `${valStr} ${unitStr}` : valStr;
         cells.push(`${displayVal}\n(${pts} pts)`);
@@ -2367,12 +2396,12 @@ function gerarPdfComp(id) {
         doc.setFillColor(...bgColor);
         doc.rect(data.cell.x, data.cell.y, data.cell.width, data.cell.height, 'F');
 
-        // Verificar se é ✗ (ausente)
-        if (raw === '\u2717' || raw.trim() === '\u2717') {
-          doc.setFontSize(9);
+        // Verificar se é ausente (N/A)
+        if (raw === 'N/A' || raw.trim() === 'N/A') {
+          doc.setFontSize(8);
           doc.setTextColor(...COR_VERMELHO);
           doc.setFont('helvetica', 'bold');
-          doc.text('\u2717', cx, cy + 1.5, { align: 'center' });
+          doc.text('N/A', cx, cy + 1.5, { align: 'center' });
           return;
         }
 
