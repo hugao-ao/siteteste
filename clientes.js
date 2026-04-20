@@ -423,9 +423,11 @@ async function addClient(event) {
         const clientId = clientData.id;
 
         // 2. Inserir na tabela dados_cadastrais
+        // Gera um CPF placeholder único (campo obrigatório NOT NULL na tabela)
+        const cpfPlaceholder = 'PEND-' + Date.now() + '-' + Math.floor(Math.random() * 9000 + 1000);
         const { error: dadosError } = await supabase
             .from("dados_cadastrais")
-            .insert([{ cliente_id: clientId, whatsapp }]);
+            .insert([{ cliente_id: clientId, whatsapp, cpf: cpfPlaceholder, nome_completo: nome }]);
 
         if (dadosError) {
             // Rollback (opcional, mas recomendado): excluir o cliente criado se falhar dados cadastrais
