@@ -833,6 +833,34 @@
   .invest-summary b { color: var(--gold); }
   .invest-positive { color: var(--green-lt); font-weight: 700; }
   .invest-negative { color: var(--red-lt); font-weight: 700; }
+
+  /* Seção de análise de período */
+  .period-analysis-section {
+    margin-top: 24px;
+    border-top: 2px solid var(--gold-dim);
+    padding-top: 20px;
+  }
+  .period-analysis-section .section-header {
+    display: flex; align-items: center; gap: 10px;
+    margin-bottom: 16px;
+  }
+  .period-analysis-section .section-header h3 {
+    color: var(--gold); font-size: 1.1rem; margin: 0;
+  }
+  .period-analysis-section .section-header .period-badge {
+    background: var(--gold-dim); color: var(--gold);
+    font-size: .75rem; padding: 2px 8px; border-radius: 10px;
+  }
+  .period-parecer-box {
+    background: var(--bg3);
+    border: 1px solid var(--gold-dim);
+    border-radius: var(--radius);
+    padding: 16px;
+    margin-top: 12px;
+  }
+  .period-parecer-box .parecer-title {
+    color: var(--gold); font-weight: 700; margin-bottom: 8px;
+  }
 </style>
 </head>
 <body>
@@ -2081,25 +2109,23 @@ function saveComparison() {
 /* ═══════════════════════════════════════════════════════════
    MOTOR DE CÁLCULO
 ═══════════════════════════════════════════════════════════ */
-function calcResult() {
-  const n = tmpProducts.length;
+function _calcScores(products, objParams, subjParams, priceGetter) {
   const scores = {};
-  tmpProducts.forEach(p => { scores[p.id] = 0; });
-
+  products.forEach(p => { scores[p.id] = 0; });
   const breakdown = [];
 
   // ── PARÂMETROS OBJETIVOS ──
-  tmpObjParams.forEach(param => {
+  objParams.forEach(param => {
     const w = impWeight(param.importance);
-    const presentPids = tmpProducts.filter(p => hasStateNorm(param.hasParam[p.id]) === true).map(p=>p.id);
-    const absentPids  = tmpProducts.filter(p => hasStateNorm(param.hasParam[p.id]) === false).map(p=>p.id);
+    const presentPids = products.filter(p => hasStateNorm(param.hasParam[p.id]) === true).map(p=>p.id);
+    const absentPids  = products.filter(p => hasStateNorm(param.hasParam[p.id]) === false).map(p=>p.id);
 
     const costPerUnit = {};
     presentPids.forEach(pid => {
-      const prod = tmpProducts.find(p=>p.id===pid);
+      const prod = products.find(p=>p.id===pid);
       const qty  = param.values[pid] || 0;
-      const effectivePrice = tmpPeriodEnabled && prod.periodTotalCost != null ? prod.periodTotalCost : prod.price;
-      costPerUnit[pid] = qty > 0 && effectivePrice > 0 ? effectivePrice / qty : null;
+      const price = priceGetter(prod);
+      costPerUnit[pid] = qty > 0 && price > 0 ? price / qty : null;
     });
 
     const validCosts = presentPids.filter(pid => costPerUnit[pid] !== null).map(pid => costPerUnit[pid]);
@@ -2107,7 +2133,7 @@ function calcResult() {
     const maxCost = validCosts.length > 0 ? Math.max(...validCosts) : null;
 
     const perProduct = {};
-    tmpProducts.forEach(p => {
+    products.forEach(p => {
       const pid = p.id;
       if (absentPids.includes(pid)) {
         let score = 0, detail = '—', formula = '—';
@@ -2137,13 +2163,10 @@ function calcResult() {
           formula = '0';
         } else {
           if (w >= 0) {
-            // Peso positivo: melhor custo-benefício (menor cpu) → maior pontuação
             const norm = minCost / cpu;
             score = norm * w * 10;
             formula = `(${fmtN(minCost)}/${fmtN(cpu)}) × ${w} × 10 = ${score.toFixed(2)}`;
           } else {
-            // Peso negativo: PIOR custo-benefício (maior cpu) → perde MAIS pontos
-            // invNorm = cpu/maxCost (0 a 1, onde 1 = pior cpu)
             const invNorm = maxCost > 0 ? cpu / maxCost : 0;
             score = invNorm * w * 10;
             formula = `(${fmtN(cpu)}/${fmtN(maxCost)}) × (${w}) × 10 = ${score.toFixed(2)}`;
@@ -2166,14 +2189,14 @@ function calcResult() {
   });
 
   // ── PARÂMETROS SUBJETIVOS ──
-  tmpSubjParams.forEach(param => {
+  subjParams.forEach(param => {
     const w = impWeight(param.importance);
-    const presentPids = tmpProducts.filter(p => hasStateNorm(param.hasParam[p.id]) === true).map(p=>p.id);
-    const absentPids  = tmpProducts.filter(p => hasStateNorm(param.hasParam[p.id]) === false).map(p=>p.id);
+    const presentPids = products.filter(p => hasStateNorm(param.hasParam[p.id]) === true).map(p=>p.id);
+    const absentPids  = products.filter(p => hasStateNorm(param.hasParam[p.id]) === false).map(p=>p.id);
     const nPresent = presentPids.length;
 
     const perProduct = {};
-    tmpProducts.forEach(p => {
+    products.forEach(p => {
       const pid = p.id;
       if (absentPids.includes(pid)) {
         let score = 0, detail = '—', formula = '—';
@@ -2199,12 +2222,9 @@ function calcResult() {
         } else {
           const norm = (nPresent - rank + 1) / nPresent;
           if (w >= 0) {
-            // Peso positivo: 1º lugar → maior pontuação positiva
             score = norm * w * 10;
             formula = `((${nPresent}-${rank}+1)/${nPresent}) × ${w} × 10 = ${score.toFixed(2)}`;
           } else {
-            // Peso negativo: PIOR colocação (último) → perde MAIS pontos
-            // invNorm = rank/nPresent (1º = 1/n = baixo, último = n/n = 1.0)
             const invNorm = rank / nPresent;
             score = invNorm * w * 10;
             formula = `(${rank}/${nPresent}) × (${w}) × 10 = ${score.toFixed(2)}`;
@@ -2225,11 +2245,24 @@ function calcResult() {
     });
   });
 
-  const ranking = tmpProducts
+  const ranking = products
     .map(p => ({ ...p, score: scores[p.id] }))
     .sort((a,b) => b.score - a.score);
 
   return { scores, ranking, breakdown };
+}
+
+function calcResult() {
+  // Análise normal: SEMPRE usa preço fixo (price)
+  const normal = _calcScores(tmpProducts, tmpObjParams, tmpSubjParams, p => p.price);
+
+  // Análise de período: só se ativada
+  let periodResult = null;
+  if (tmpPeriodEnabled) {
+    periodResult = _calcScores(tmpProducts, tmpObjParams, tmpSubjParams, p => p.periodTotalCost || p.price);
+  }
+
+  return { scores: normal.scores, ranking: normal.ranking, breakdown: normal.breakdown, periodResult };
 }
 
 function fmtN(n) {
@@ -2354,51 +2387,46 @@ function initColResize(tableId) {
 /* ═══════════════════════════════════════════════════════════
    RENDER RESULT
 ═══════════════════════════════════════════════════════════ */
-function renderResult(comp) {
-  const { ranking, breakdown } = comp.result;
-  const n = ranking.length;
-  if (n === 0) return '<p class="text-dim">Sem produtos.</p>';
 
-  const usePeriod = comp.periodEnabled;
-  const getPrice = p => usePeriod && p.periodTotalCost != null ? p.periodTotalCost : p.price;
-
-  const medals = ['🥇','🥈','🥉','4️⃣','5️⃣','6️⃣','7️⃣','8️⃣','9️⃣','🔟'];
-  const rankLabels = ['1ª opção','2ª opção','3ª opção','4ª opção','5ª opção'];
-
-  let podium = '<div class="podium-grid">';
+function _buildPodium(ranking, priceGetter, medals, rankLabels) {
+  let html = '<div class="podium-grid">';
   ranking.forEach((p,i) => {
-    podium += `
+    html += `
       <div class="podium-card ${i===0?'first':''}">
         <div class="pod-rank">${medals[i]||`${i+1}º`}</div>
         <div class="pod-name">${escHtml(p.name)}</div>
         <div class="pod-score">${p.score.toFixed(1)}</div>
-        <div class="pod-price">${fmtBRL(getPrice(p))}</div>
+        <div class="pod-price">${fmtBRL(priceGetter(p))}</div>
         <div class="text-dim" style="font-size:.72rem;margin-top:2px">${rankLabels[i]||''}</div>
       </div>`;
   });
-  podium += '</div>';
+  html += '</div>';
+  return html;
+}
 
+function _buildParecer(ranking, priceGetter, comp, label) {
   const best = ranking[0];
   const second = ranking[1];
-  const diff = second ? ((best.score - second.score) / second.score * 100) : 0;
+  const diff = second ? ((best.score - second.score) / (Math.abs(second.score) || 1) * 100) : 0;
   let parecer = '';
   if (diff < 5) parecer = `<b>${escHtml(best.name)}</b> é a melhor opção, mas com <b>vantagem pequena</b> (${diff.toFixed(1)}% à frente de ${escHtml(second?.name||'')}). A escolha pode depender de fatores não mapeados.`;
   else if (diff < 20) parecer = `<b>${escHtml(best.name)}</b> é a melhor opção com <b>vantagem moderada</b> (${diff.toFixed(1)}% à frente de ${escHtml(second?.name||'')} nos critérios ponderados).`;
   else parecer = `<b>${escHtml(best.name)}</b> é a melhor opção com <b>vantagem expressiva</b> (${diff.toFixed(1)}% à frente de ${escHtml(second?.name||'')}). A análise aponta claramente para esta escolha.`;
 
   // Menção financeira
-  const prodsComPreco = ranking.filter(p => getPrice(p) > 0);
+  const prodsComPreco = ranking.filter(p => priceGetter(p) > 0);
   if (prodsComPreco.length > 0) {
-    const cheapest = prodsComPreco.reduce((a, b) => getPrice(a) < getPrice(b) ? a : b);
+    const cheapest = prodsComPreco.reduce((a, b) => priceGetter(a) < priceGetter(b) ? a : b);
     if (cheapest.id === best.id) {
-      parecer += `<br><br>Além disso, <b>${escHtml(best.name)}</b> também é o produto com <b>menor custo</b> (${fmtBRL(getPrice(best))}), reforçando a <b>convergência entre melhor desempenho e melhor preço</b> de acordo com os critérios mais importantes para o cliente.`;
+      parecer += `<br><br>Além disso, <b>${escHtml(best.name)}</b> também é o produto com <b>menor custo</b> (${fmtBRL(priceGetter(best))}), reforçando a <b>convergência entre melhor desempenho e melhor preço</b> de acordo com os critérios mais importantes para o cliente.`;
     } else {
-      const priceDiffPct = ((getPrice(best) - getPrice(cheapest)) / getPrice(cheapest) * 100).toFixed(1);
+      const priceDiffPct = ((priceGetter(best) - priceGetter(cheapest)) / (priceGetter(cheapest) || 1) * 100).toFixed(1);
       const scoreDiffPct = ((best.score - cheapest.score) / (Math.abs(cheapest.score) || 1) * 100).toFixed(1);
-      parecer += `<br><br>Do ponto de vista financeiro, o produto mais barato é <b>${escHtml(cheapest.name)}</b> (${fmtBRL(getPrice(cheapest))}), enquanto o melhor pontuado (<b>${escHtml(best.name)}</b>) custa ${fmtBRL(getPrice(best))} — <b>${priceDiffPct}% mais caro</b>, porém com <b>${scoreDiffPct}% mais pontuação</b>. Essa análise reflete os parâmetros e pesos escolhidos pelo cliente, que representam os critérios mais importantes para a sua decisão.`;
+      parecer += `<br><br>Do ponto de vista financeiro, o produto mais barato é <b>${escHtml(cheapest.name)}</b> (${fmtBRL(priceGetter(cheapest))}), enquanto o melhor pontuado (<b>${escHtml(best.name)}</b>) custa ${fmtBRL(priceGetter(best))} — <b>${priceDiffPct}% mais caro</b>, porém com <b>${scoreDiffPct}% mais pontuação</b>. Essa análise reflete os parâmetros e pesos escolhidos pelo cliente, que representam os critérios mais importantes para a sua decisão.`;
     }
   }
 
+  // Alertas de inaceitável
   const inacAlerts = [];
   [...comp.objParams, ...comp.subjParams].forEach(param => {
     if (legacyToWeight(param.importance) === -10) {
@@ -2410,15 +2438,14 @@ function renderResult(comp) {
     }
   });
 
-  let parecerBox = `<div class="parecer-box">
-    <div class="parecer-title">Parecer</div>
+  return `<div class="${label === 'period' ? 'period-parecer-box' : 'parecer-box'}">
+    <div class="parecer-title">${label === 'period' ? 'Parecer da Análise de Período' : 'Parecer'}</div>
     <p>${parecer}</p>
     ${inacAlerts.map(a=>`<p style="margin-top:8px;color:var(--red-lt)">${a}</p>`).join('')}
   </div>`;
+}
 
-  const memId = 'mem-'+comp.id;
-  const chartId = 'chart-'+comp.id;
-
+function _buildMemTable(ranking, breakdown) {
   let memTable = `<div class="mem-section-title">Detalhamento por parâmetro</div>
     <div style="overflow-x:auto">
     <table class="mem-table">
@@ -2454,16 +2481,37 @@ function renderResult(comp) {
     ${ranking.map(p=>`<td class="score-cell" style="font-size:1rem">${p.score.toFixed(2)}</td>`).join('')}
   </tr></tbody></table></div>`;
 
-  let formula = `<div class="mem-section-title">Como o cálculo funciona</div>
+  return memTable;
+}
+
+function renderResult(comp) {
+  const { ranking, breakdown, periodResult } = comp.result;
+  const n = ranking.length;
+  if (n === 0) return '<p class="text-dim">Sem produtos.</p>';
+
+  const medals = ['🥇','🥈','🥉','4️⃣','5️⃣','6️⃣','7️⃣','8️⃣','9️⃣','🔟'];
+  const rankLabels = ['1ª opção','2ª opção','3ª opção','4ª opção','5ª opção'];
+
+  // ═══ ANÁLISE NORMAL (sempre com preço fixo) ═══
+  const getNormalPrice = p => p.price;
+  const podium = _buildPodium(ranking, getNormalPrice, medals, rankLabels);
+  const parecerBox = _buildParecer(ranking, getNormalPrice, comp, 'normal');
+
+  const memId = 'mem-'+comp.id;
+  const chartId = 'chart-'+comp.id;
+
+  const memTable = _buildMemTable(ranking, breakdown);
+
+  const formula = `<div class="mem-section-title">Como o cálculo funciona</div>
     <div class="tip" style="margin-bottom:8px">
       <b>Parâmetros Objetivos (peso positivo):</b> quem entrega mais por real pago recebe pontuação maior.<br>
       Fórmula: <code>(menor_cpu ÷ cpu_produto) × peso × 10</code><br><br>
-      <b>Parâmetros Objetivos (peso negativo):</b> quem tem MELHOR custo-benefício pontua MAIS negativamente.<br>
-      Fórmula: <code>(menor_cpu ÷ cpu_produto) × peso × 10</code> (resultado negativo)<br><br>
+      <b>Parâmetros Objetivos (peso negativo):</b> quem tem PIOR custo-benefício perde MAIS pontos.<br>
+      Fórmula: <code>(cpu_produto ÷ maior_cpu) × peso × 10</code> (resultado negativo)<br><br>
       <b>Parâmetros Subjetivos (peso positivo):</b> 1º lugar recebe pontuação máxima.<br>
       Fórmula: <code>((n − rank + 1) ÷ n) × peso × 10</code><br><br>
-      <b>Parâmetros Subjetivos (peso negativo):</b> 1º lugar recebe pontuação MAIS negativa.<br>
-      Fórmula: <code>((n − rank + 1) ÷ n) × peso × 10</code> (resultado negativo)<br><br>
+      <b>Parâmetros Subjetivos (peso negativo):</b> pior colocação perde mais pontos.<br>
+      Fórmula: <code>(rank ÷ n) × peso × 10</code> (resultado negativo)<br><br>
       <b>Ausência (✗) com peso positivo:</b> penalidade máxima (0 pts).<br>
       <b>Ausência (✗) com peso negativo:</b> bônus máximo (|peso| × 10 pts positivos).
     </div>`;
@@ -2474,75 +2522,6 @@ function renderResult(comp) {
     colors: ranking.map((_,i)=>i===0?'rgba(212,175,55,0.85)':'rgba(46,125,50,0.6)'),
   };
 
-  // ── Gráficos de período (movidos do modal para cá) ──
-  let periodChartsHtml = '';
-  const periodChartIds = {};
-  if (comp.periodEnabled && ranking.length > 0 && ranking[0].periodPayments) {
-    const pcId = 'pchart-parcela-'+comp.id;
-    const acId = 'pchart-acum-'+comp.id;
-    periodChartIds.parcela = pcId;
-    periodChartIds.acumulado = acId;
-    periodChartsHtml = `
-      <div class="mem-section-title">Evolução de Custos no Período</div>
-      <div class="chart-wrap"><canvas id="${pcId}"></canvas></div>
-      <div class="chart-wrap"><canvas id="${acId}"></canvas></div>`;
-  }
-
-  // ── Análise de investimento da diferença ──
-  let investHtml = '';
-  const investChartId = 'invest-chart-'+comp.id;
-  let investData = null;
-  if (comp.periodEnabled && ranking.length >= 2) {
-    const best = ranking[0];
-    const cheapest = ranking.reduce((a,b) => (getPrice(a) < getPrice(b) ? a : b));
-    if (cheapest.id !== best.id && best.periodPayments && cheapest.periodPayments) {
-      const annualRate = (comp.periodConfig?.interestRate || 0) / 100;
-      const totalDays = comp.periodConfig ? unitToDaysStatic(comp.periodConfig.periodQty, comp.periodConfig.periodUnit) : 365;
-      const freqDays = comp.periodConfig ? unitToDaysStatic(comp.periodConfig.payFreqQty, comp.periodConfig.payFreqUnit) : 30;
-      const numPay = Math.max(1, Math.floor(totalDays / freqDays));
-      const monthlyRate = annualRate > 0 ? Math.pow(1 + annualRate, freqDays/365) - 1 : 0;
-
-      const diffs = [];
-      const balances = [];
-      let balance = 0;
-      for (let i = 0; i < numPay; i++) {
-        const bestPay = best.periodPayments[i] || 0;
-        const cheapPay = cheapest.periodPayments[i] || 0;
-        const diff = bestPay - cheapPay;
-        diffs.push(diff);
-        balance = balance * (1 + monthlyRate) + diff;
-        balances.push(balance);
-      }
-
-      // Estornos: best pode ter estorno, cheapest pode ter estorno
-      const bestRefund = best.refund?.enabled ? (best.refund.mode === 'pct' ? (best.refund.value/100) * best.periodPayments.reduce((a,b)=>a+b,0) : best.refund.value) : 0;
-      const cheapRefund = cheapest.refund?.enabled ? (cheapest.refund.mode === 'pct' ? (cheapest.refund.value/100) * cheapest.periodPayments.reduce((a,b)=>a+b,0) : cheapest.refund.value) : 0;
-      const refundDiff = bestRefund - cheapRefund;
-
-      const finalBalance = balances[balances.length - 1] - refundDiff;
-      const totalDiffPaid = diffs.reduce((a,b) => a+b, 0);
-      const totalInterest = finalBalance - totalDiffPaid + refundDiff;
-
-      investData = { diffs, balances, finalBalance, totalDiffPaid, totalInterest, refundDiff, best, cheapest, monthlyRate, numPay, freqDays, totalDays };
-
-      const balClass = finalBalance >= 0 ? 'invest-positive' : 'invest-negative';
-      investHtml = `
-        <div class="mem-section-title">Análise de Investimento da Diferença</div>
-        <div class="invest-analysis">
-          <h4>Contratar o mais barato e investir a diferença</h4>
-          <div class="invest-summary">
-            Se você contratar <b>${escHtml(cheapest.name)}</b> (mais barato, ${fmtBRL(getPrice(cheapest))}) em vez de <b>${escHtml(best.name)}</b> (melhor pontuado, ${fmtBRL(getPrice(best))}), a diferença paga a cada parcela pode ser investida a <b>${(annualRate*100).toFixed(1)}% a.a.</b><br><br>
-            Total da diferença aportada: <b>${fmtBRL(totalDiffPaid)}</b><br>
-            Juros acumulados: <b>${fmtBRL(totalInterest)}</b><br>
-            ${refundDiff !== 0 ? `Diferença de estornos: <b>${fmtBRL(-refundDiff)}</b><br>` : ''}
-            <b>Saldo final acumulado: <span class="${balClass}">${fmtBRL(finalBalance)}</span></b>
-            ${finalBalance < 0 ? '<br><span class="invest-negative">O saldo ficou negativo, indicando que a diferença investida não compensou.</span>' : ''}
-          </div>
-          <div class="chart-wrap" style="margin-top:12px"><canvas id="${investChartId}"></canvas></div>
-        </div>`;
-    }
-  }
-
   const mem = `
     <button class="mem-toggle" onclick="toggleMem('${memId}',this)">▶ Ver memória de cálculo</button>
     <div class="mem-body" id="${memId}">
@@ -2552,12 +2531,132 @@ function renderResult(comp) {
       </div>
       ${memTable}
       ${formula}
-      ${periodChartsHtml}
-      ${investHtml}
     </div>`;
 
+  // ═══ ANÁLISE DE PERÍODO (extra, quando ativada) ═══
+  let periodSection = '';
+  const periodChartIds = {};
+  let investChartId = '';
+  let investData = null;
+
+  if (comp.periodEnabled && periodResult) {
+    const pRanking = periodResult.ranking;
+    const pBreakdown = periodResult.breakdown;
+    const getPeriodPrice = p => p.periodTotalCost || p.price;
+
+    const periodPodium = _buildPodium(pRanking, getPeriodPrice, medals, rankLabels);
+    const periodParecer = _buildParecer(pRanking, getPeriodPrice, comp, 'period');
+
+    const periodMemId = 'pmem-'+comp.id;
+    const periodChartBarId = 'pchart-bar-'+comp.id;
+    const pcParcelaId = 'pchart-parcela-'+comp.id;
+    const pcAcumId = 'pchart-acum-'+comp.id;
+    periodChartIds.parcela = pcParcelaId;
+    periodChartIds.acumulado = pcAcumId;
+    periodChartIds.bar = periodChartBarId;
+    investChartId = 'invest-chart-'+comp.id;
+
+    const periodMemTable = _buildMemTable(pRanking, pBreakdown);
+
+    // Gráficos de evolução
+    let periodChartsHtml = '';
+    if (pRanking.length > 0 && pRanking[0].periodPayments) {
+      periodChartsHtml = `
+        <div class="mem-section-title">Evolução de Custos no Período</div>
+        <div class="chart-wrap"><canvas id="${pcParcelaId}"></canvas></div>
+        <div class="chart-wrap"><canvas id="${pcAcumId}"></canvas></div>`;
+    }
+
+    // Análise de investimento
+    let investHtml = '';
+    if (pRanking.length >= 2) {
+      const pBest = pRanking[0];
+      const pCheapest = pRanking.reduce((a,b) => (getPeriodPrice(a) < getPeriodPrice(b) ? a : b));
+      if (pCheapest.id !== pBest.id && pBest.periodPayments && pCheapest.periodPayments) {
+        const annualRate = (comp.periodConfig?.interestRate || 0) / 100;
+        const totalDays = comp.periodConfig ? unitToDaysStatic(comp.periodConfig.periodQty, comp.periodConfig.periodUnit) : 365;
+        const freqDays = comp.periodConfig ? unitToDaysStatic(comp.periodConfig.payFreqQty, comp.periodConfig.payFreqUnit) : 30;
+        const numPay = Math.max(1, Math.floor(totalDays / freqDays));
+        const monthlyRate = annualRate > 0 ? Math.pow(1 + annualRate, freqDays/365) - 1 : 0;
+
+        const diffs = [];
+        const balances = [];
+        let balance = 0;
+        for (let i = 0; i < numPay; i++) {
+          const bestPay = pBest.periodPayments[i] || 0;
+          const cheapPay = pCheapest.periodPayments[i] || 0;
+          const diff = bestPay - cheapPay;
+          diffs.push(diff);
+          balance = balance * (1 + monthlyRate) + diff;
+          balances.push(balance);
+        }
+
+        const bestRefund = pBest.refund?.enabled ? (pBest.refund.mode === 'pct' ? (pBest.refund.value/100) * pBest.periodPayments.reduce((a,b)=>a+b,0) : pBest.refund.value) : 0;
+        const cheapRefund = pCheapest.refund?.enabled ? (pCheapest.refund.mode === 'pct' ? (pCheapest.refund.value/100) * pCheapest.periodPayments.reduce((a,b)=>a+b,0) : pCheapest.refund.value) : 0;
+        const refundDiff = bestRefund - cheapRefund;
+
+        const finalBalance = balances[balances.length - 1] - refundDiff;
+        const totalDiffPaid = diffs.reduce((a,b) => a+b, 0);
+        const totalInterest = finalBalance - totalDiffPaid + refundDiff;
+
+        investData = { diffs, balances, finalBalance, totalDiffPaid, totalInterest, refundDiff, best: pBest, cheapest: pCheapest, monthlyRate, numPay, freqDays, totalDays };
+
+        const balClass = finalBalance >= 0 ? 'invest-positive' : 'invest-negative';
+        investHtml = `
+          <div class="mem-section-title">Análise de Investimento da Diferença</div>
+          <div class="invest-analysis">
+            <h4>Contratar o mais barato e investir a diferença</h4>
+            <div class="invest-summary">
+              Se você contratar <b>${escHtml(pCheapest.name)}</b> (mais barato no período, ${fmtBRL(getPeriodPrice(pCheapest))}) em vez de <b>${escHtml(pBest.name)}</b> (melhor pontuado no período, ${fmtBRL(getPeriodPrice(pBest))}), a diferença paga a cada parcela pode ser investida a <b>${(annualRate*100).toFixed(1)}% a.a.</b><br><br>
+              Total da diferença aportada: <b>${fmtBRL(totalDiffPaid)}</b><br>
+              Juros acumulados: <b>${fmtBRL(totalInterest)}</b><br>
+              ${refundDiff !== 0 ? `Diferença de estornos: <b>${fmtBRL(-refundDiff)}</b><br>` : ''}
+              <b>Saldo final acumulado: <span class="${balClass}">${fmtBRL(finalBalance)}</span></b>
+              ${finalBalance < 0 ? '<br><span class="invest-negative">O saldo ficou negativo, indicando que a diferença investida não compensou.</span>' : ''}
+            </div>
+            <div class="chart-wrap" style="margin-top:12px"><canvas id="${investChartId}"></canvas></div>
+          </div>`;
+      }
+    }
+
+    const periodChartData = {
+      labels: pRanking.map(p=>p.name),
+      scores: pRanking.map(p=>p.score),
+      colors: pRanking.map((_,i)=>i===0?'rgba(212,175,55,0.85)':'rgba(46,125,50,0.6)'),
+    };
+
+    const periodMem = `
+      <button class="mem-toggle" onclick="toggleMem('${periodMemId}',this)">▶ Ver detalhes da análise de período</button>
+      <div class="mem-body" id="${periodMemId}">
+        <div class="mem-section-title">Gráfico comparativo (Período)</div>
+        <div class="chart-wrap">
+          <canvas id="${periodChartBarId}"></canvas>
+        </div>
+        ${periodMemTable}
+        ${periodChartsHtml}
+        ${investHtml}
+      </div>`;
+
+    // Descrição do período
+    const pc = comp.periodConfig || {};
+    const unitLabels = { dia: 'dia(s)', semana: 'semana(s)', quinzena: 'quinzena(s)', mes: 'mês(es)', ano: 'ano(s)' };
+    const periodDesc = `${pc.periodQty || '?'} ${unitLabels[pc.periodUnit] || pc.periodUnit || '?'}, pagamento a cada ${pc.payFreqQty || '?'} ${unitLabels[pc.payFreqUnit] || pc.payFreqUnit || '?'}`;
+
+    periodSection = `
+      <div class="period-analysis-section">
+        <div class="section-header">
+          <h3>📊 Análise de Período</h3>
+          <span class="period-badge">${periodDesc}</span>
+        </div>
+        ${periodPodium}
+        ${periodParecer}
+        ${periodMem}
+      </div>`;
+  }
+
+  // ═══ GRÁFICOS (setTimeout para renderizar após DOM) ═══
   setTimeout(() => {
-    // Gráfico de barras de pontuação
+    // Gráfico de barras normal
     const ctx = document.getElementById(chartId);
     if (ctx && !ctx._chartInitialized) {
       ctx._chartInitialized = true;
@@ -2592,7 +2691,46 @@ function renderResult(comp) {
       });
     }
 
-    // Gráficos de período
+    // ── Gráficos de período ──
+    if (periodChartIds.bar) {
+      const ctxPBar = document.getElementById(periodChartIds.bar);
+      if (ctxPBar && !ctxPBar._chartInitialized) {
+        const pRanking = comp.result.periodResult.ranking;
+        const getPP = p => p.periodTotalCost || p.price;
+        const pChartData = {
+          labels: pRanking.map(p=>p.name),
+          scores: pRanking.map(p=>p.score),
+          colors: pRanking.map((_,i)=>i===0?'rgba(212,175,55,0.85)':'rgba(46,125,50,0.6)'),
+        };
+        ctxPBar._chartInitialized = true;
+        new Chart(ctxPBar, {
+          type: 'bar',
+          data: {
+            labels: pChartData.labels,
+            datasets: [{
+              label: 'Pontuação total (Período)',
+              data: pChartData.scores,
+              backgroundColor: pChartData.colors,
+              borderColor: pChartData.colors.map(c=>c.replace('0.85','1').replace('0.6','1')),
+              borderWidth: 1,
+              borderRadius: 6,
+            }]
+          },
+          options: {
+            responsive: true,
+            plugins: {
+              legend: { display: false },
+              tooltip: { callbacks: { label: ctx => `Pontuação: ${ctx.raw.toFixed(2)}` } }
+            },
+            scales: {
+              x: { ticks: { color: '#A0B8A6' }, grid: { color: 'rgba(212,175,55,0.1)' } },
+              y: { ticks: { color: '#A0B8A6' }, grid: { color: 'rgba(212,175,55,0.1)' }, beginAtZero: true }
+            }
+          }
+        });
+      }
+    }
+
     if (periodChartIds.parcela) {
       const pColors = [
         'rgba(212,175,55,0.85)', 'rgba(46,125,50,0.7)', 'rgba(30,136,229,0.7)',
@@ -2600,6 +2738,7 @@ function renderResult(comp) {
         'rgba(0,172,193,0.7)', 'rgba(255,112,67,0.7)', 'rgba(141,110,99,0.7)',
         'rgba(96,125,139,0.7)'
       ];
+      const pRanking = comp.result.periodResult.ranking;
       const totalDaysP = comp.periodConfig ? unitToDaysStatic(comp.periodConfig.periodQty, comp.periodConfig.periodUnit) : 365;
       const freqDaysP = comp.periodConfig ? unitToDaysStatic(comp.periodConfig.payFreqQty, comp.periodConfig.payFreqUnit) : 30;
       const numPayP = Math.max(1, Math.floor(totalDaysP / freqDaysP));
@@ -2623,7 +2762,6 @@ function renderResult(comp) {
         }
       });
 
-      // Parcela
       const ctxParcela = document.getElementById(periodChartIds.parcela);
       if (ctxParcela && !ctxParcela._chartInitialized) {
         ctxParcela._chartInitialized = true;
@@ -2631,7 +2769,7 @@ function renderResult(comp) {
           type: 'line',
           data: {
             labels: labelsP,
-            datasets: ranking.filter(p=>p.periodPayments).map((p, idx) => ({
+            datasets: pRanking.filter(p=>p.periodPayments).map((p, idx) => ({
               label: p.name,
               data: p.periodPayments,
               borderColor: pColors[idx % pColors.length],
@@ -2644,7 +2782,6 @@ function renderResult(comp) {
         });
       }
 
-      // Acumulado
       const ctxAcum = document.getElementById(periodChartIds.acumulado);
       if (ctxAcum && !ctxAcum._chartInitialized) {
         ctxAcum._chartInitialized = true;
@@ -2652,7 +2789,7 @@ function renderResult(comp) {
           type: 'line',
           data: {
             labels: labelsP,
-            datasets: ranking.filter(p=>p.periodPayments).map((p, idx) => {
+            datasets: pRanking.filter(p=>p.periodPayments).map((p, idx) => {
               let acc = 0;
               const acumData = p.periodPayments.map(v => { acc += v; return acc; });
               return {
@@ -2726,7 +2863,7 @@ function renderResult(comp) {
     }
   }, 200);
 
-  return `<div class="result-section">${podium}${parecerBox}${mem}</div>`;
+  return `<div class="result-section">${podium}${parecerBox}${mem}${periodSection}</div>`;
 }
 
 function toggleMem(id, btn) {
