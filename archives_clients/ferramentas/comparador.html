@@ -2638,6 +2638,8 @@ function renderResult(comp) {
     periodChartIds.acumulado = pcAcumId;
     periodChartIds.bar = periodChartBarId;
     investChartId = 'invest-chart-'+comp.id;
+    const investChartSaldoId = 'invest-saldo-'+comp.id;
+    const investChartDiffId = 'invest-diff-'+comp.id;
 
     const periodMemTable = _buildMemTable(pRanking, pBreakdown);
 
@@ -2703,7 +2705,8 @@ function renderResult(comp) {
                 : `Ambas as opções resultam no mesmo custo líquido de <b>${fmtBRL(refNetCost)}</b>.`
               }
             </div>
-            <div class="chart-wrap" style="margin-top:12px"><canvas id="${investChartId}"></canvas></div>
+            <div class="chart-wrap" style="margin-top:12px"><canvas id="${investChartSaldoId}"></canvas></div>
+            <div class="chart-wrap" style="margin-top:12px"><canvas id="${investChartDiffId}"></canvas></div>
           </div>`;
       }
     }
@@ -2754,8 +2757,6 @@ function renderResult(comp) {
         </div>
         ${periodMemTable}
         ${periodChartsHtml}
-        ${investHtml}
-        ${scenarioHtml}
       </div>`;
 
     // Descrição do período
@@ -2772,6 +2773,8 @@ function renderResult(comp) {
         ${periodPodium}
         ${periodParecer}
         ${periodMem}
+        ${investHtml}
+        ${scenarioHtml}
       </div>`;
   }
 
@@ -2928,55 +2931,75 @@ function renderResult(comp) {
       }
     }
 
-    // Gráfico de investimento
+    // Gráficos de investimento (separados)
     if (investData) {
-      const ctxInvest = document.getElementById(investChartId);
-      if (ctxInvest && !ctxInvest._chartInitialized) {
-        ctxInvest._chartInitialized = true;
-        const totalDaysI = investData.totalDays;
-        const freqDaysI = investData.freqDays;
-        const xInfoI = bestXUnit(totalDaysI);
-        const labelsI = [];
-        for (let i = 1; i <= investData.numPay; i++) {
-          labelsI.push((i * freqDaysI / xInfoI.divisor).toFixed(xInfoI.divisor === 1 ? 0 : 1));
-        }
-        new Chart(ctxInvest, {
+      const totalDaysI = investData.totalDays;
+      const freqDaysI = investData.freqDays;
+      const xInfoI = bestXUnit(totalDaysI);
+      const labelsI = [];
+      for (let i = 1; i <= investData.numPay; i++) {
+        labelsI.push((i * freqDaysI / xInfoI.divisor).toFixed(xInfoI.divisor === 1 ? 0 : 1));
+      }
+      // Gráfico 1: Saldo Acumulado Investido
+      const ctxSaldo = document.getElementById(investChartSaldoId);
+      if (ctxSaldo && !ctxSaldo._chartInitialized) {
+        ctxSaldo._chartInitialized = true;
+        const saldoColor = (investData.investBalance||0) >= 0 ? 'rgba(46,125,50,0.85)' : 'rgba(239,83,80,0.85)';
+        const saldoBg = (investData.investBalance||0) >= 0 ? 'rgba(46,125,50,0.1)' : 'rgba(239,83,80,0.1)';
+        new Chart(ctxSaldo, {
           type: 'line',
           data: {
             labels: labelsI,
-            datasets: [
-              {
-                label: 'Diferença por parcela',
-                data: investData.diffs,
-                borderColor: 'rgba(255,179,0,0.85)',
-                backgroundColor: 'rgba(255,179,0,0.1)',
-                borderWidth: 2, fill: false, tension: 0.3,
-                pointRadius: investData.numPay > 50 ? 0 : 3,
-                yAxisID: 'y1',
-              },
-              {
-                label: 'Saldo acumulado investido',
-                data: investData.balances,
-                borderColor: (investData.investBalance||investData.finalBalance||0) >= 0 ? 'rgba(46,125,50,0.85)' : 'rgba(239,83,80,0.85)',
-                backgroundColor: (investData.investBalance||investData.finalBalance||0) >= 0 ? 'rgba(46,125,50,0.1)' : 'rgba(239,83,80,0.1)',
-                borderWidth: 2, fill: true, tension: 0.3,
-                pointRadius: investData.numPay > 50 ? 0 : 3,
-                yAxisID: 'y',
-              }
-            ]
+            datasets: [{
+              label: 'Saldo acumulado investido',
+              data: investData.balances,
+              borderColor: saldoColor,
+              backgroundColor: saldoBg,
+              borderWidth: 2, fill: true, tension: 0.3,
+              pointRadius: investData.numPay > 50 ? 0 : 3,
+            }]
           },
           options: {
-            responsive: true,
-            maintainAspectRatio: true,
+            responsive: true, maintainAspectRatio: true,
             plugins: {
               legend: { labels: { color: '#A0B8A6', font: { size: 11 } } },
-              title: { display: true, text: 'Evolução do Investimento da Diferença', color: '#D4AF37', font: { size: 13, weight: 'bold' } },
+              title: { display: true, text: 'Saldo Acumulado do Investimento da Diferença', color: '#D4AF37', font: { size: 13, weight: 'bold' } },
               tooltip: { callbacks: { label: c => `${c.dataset.label}: ${fmtBRL(c.raw)}` } }
             },
             scales: {
               x: { title: { display: true, text: xInfoI.label, color: '#A0B8A6' }, ticks: { color: '#A0B8A6', maxTicksLimit: 20 }, grid: { color: 'rgba(212,175,55,0.1)' } },
-              y: { position: 'left', title: { display: true, text: 'Saldo (R$)', color: '#A0B8A6' }, ticks: { color: '#A0B8A6', callback: v => fmtBRL(v) }, grid: { color: 'rgba(212,175,55,0.1)' } },
-              y1: { position: 'right', title: { display: true, text: 'Diferença/parcela (R$)', color: '#A0B8A6' }, ticks: { color: '#A0B8A6', callback: v => fmtBRL(v) }, grid: { drawOnChartArea: false } },
+              y: { title: { display: true, text: 'Saldo (R$)', color: '#A0B8A6' }, ticks: { color: '#A0B8A6', callback: v => fmtBRL(v) }, grid: { color: 'rgba(212,175,55,0.1)' } },
+            }
+          }
+        });
+      }
+      // Gráfico 2: Diferença por Parcela
+      const ctxDiff = document.getElementById(investChartDiffId);
+      if (ctxDiff && !ctxDiff._chartInitialized) {
+        ctxDiff._chartInitialized = true;
+        new Chart(ctxDiff, {
+          type: 'line',
+          data: {
+            labels: labelsI,
+            datasets: [{
+              label: 'Diferença por parcela',
+              data: investData.diffs,
+              borderColor: 'rgba(255,179,0,0.85)',
+              backgroundColor: 'rgba(255,179,0,0.15)',
+              borderWidth: 2, fill: true, tension: 0.3,
+              pointRadius: investData.numPay > 50 ? 0 : 3,
+            }]
+          },
+          options: {
+            responsive: true, maintainAspectRatio: true,
+            plugins: {
+              legend: { labels: { color: '#A0B8A6', font: { size: 11 } } },
+              title: { display: true, text: 'Diferença de Parcelas ao Longo do Período', color: '#D4AF37', font: { size: 13, weight: 'bold' } },
+              tooltip: { callbacks: { label: c => `${c.dataset.label}: ${fmtBRL(c.raw)}` } }
+            },
+            scales: {
+              x: { title: { display: true, text: xInfoI.label, color: '#A0B8A6' }, ticks: { color: '#A0B8A6', maxTicksLimit: 20 }, grid: { color: 'rgba(212,175,55,0.1)' } },
+              y: { title: { display: true, text: 'Diferença (R$)', color: '#A0B8A6' }, ticks: { color: '#A0B8A6', callback: v => fmtBRL(v) }, grid: { color: 'rgba(212,175,55,0.1)' } },
             }
           }
         });
@@ -3130,58 +3153,79 @@ function runScenario(compId) {
         : `Ambas as opções resultam no mesmo custo líquido de <b>${fmtBRL(refNetCost)}</b>.`
       }
     </div>
-    <div class="chart-wrap" style="margin-top:12px"><canvas id="${chartId}"></canvas></div>
+    <div class="chart-wrap" style="margin-top:12px"><canvas id="${chartId}-saldo"></canvas></div>
+    <div class="chart-wrap" style="margin-top:12px"><canvas id="${chartId}-diff"></canvas></div>
   `;
 
-  // Renderizar gráfico do cenário
+  // Renderizar gráficos do cenário (separados)
   setTimeout(() => {
-    const ctx = document.getElementById(chartId);
-    if (!ctx) return;
     const xInfo = bestXUnit(totalDays);
     const labels = [];
     for (let i = 1; i <= numPay; i++) {
       labels.push((i * freqDays / xInfo.divisor).toFixed(xInfo.divisor === 1 ? 0 : 1));
     }
-    new Chart(ctx, {
-      type: 'line',
-      data: {
-        labels,
-        datasets: [
-          {
+    // Gráfico 1: Saldo Acumulado
+    const ctxSaldo = document.getElementById(chartId + '-saldo');
+    if (ctxSaldo) {
+      const saldoColor = result.investBalance >= 0 ? 'rgba(46,125,50,0.85)' : 'rgba(239,83,80,0.85)';
+      const saldoBg = result.investBalance >= 0 ? 'rgba(46,125,50,0.1)' : 'rgba(239,83,80,0.1)';
+      new Chart(ctxSaldo, {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [{
+            label: 'Saldo acumulado investido',
+            data: result.balances,
+            borderColor: saldoColor,
+            backgroundColor: saldoBg,
+            borderWidth: 2, fill: true, tension: 0.3,
+            pointRadius: numPay > 50 ? 0 : 3,
+          }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: true,
+          plugins: {
+            legend: { labels: { color: '#A0B8A6', font: { size: 11 } } },
+            title: { display: true, text: `Saldo Acumulado: ${refProduct.name} vs ${altProduct.name}`, color: '#D4AF37', font: { size: 13, weight: 'bold' } },
+            tooltip: { callbacks: { label: c => `${c.dataset.label}: ${fmtBRL(c.raw)}` } }
+          },
+          scales: {
+            x: { title: { display: true, text: xInfo.label, color: '#A0B8A6' }, ticks: { color: '#A0B8A6', maxTicksLimit: 20 }, grid: { color: 'rgba(212,175,55,0.1)' } },
+            y: { title: { display: true, text: 'Saldo (R$)', color: '#A0B8A6' }, ticks: { color: '#A0B8A6', callback: v => fmtBRL(v) }, grid: { color: 'rgba(212,175,55,0.1)' } },
+          }
+        }
+      });
+    }
+    // Gráfico 2: Diferença por Parcela
+    const ctxDiff = document.getElementById(chartId + '-diff');
+    if (ctxDiff) {
+      new Chart(ctxDiff, {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [{
             label: 'Diferença por parcela',
             data: result.diffs,
             borderColor: 'rgba(255,179,0,0.85)',
-            backgroundColor: 'rgba(255,179,0,0.1)',
-            borderWidth: 2, fill: false, tension: 0.3,
-            pointRadius: numPay > 50 ? 0 : 3,
-            yAxisID: 'y1',
-          },
-          {
-            label: 'Saldo acumulado investido',
-            data: result.balances,
-            borderColor: result.investBalance >= 0 ? 'rgba(46,125,50,0.85)' : 'rgba(239,83,80,0.85)',
-            backgroundColor: result.investBalance >= 0 ? 'rgba(46,125,50,0.1)' : 'rgba(239,83,80,0.1)',
+            backgroundColor: 'rgba(255,179,0,0.15)',
             borderWidth: 2, fill: true, tension: 0.3,
             pointRadius: numPay > 50 ? 0 : 3,
-            yAxisID: 'y',
-          }
-        ]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: true,
-        plugins: {
-          legend: { labels: { color: '#A0B8A6', font: { size: 11 } } },
-          title: { display: true, text: `Investimento da Diferença: ${refProduct.name} vs ${altProduct.name}`, color: '#D4AF37', font: { size: 13, weight: 'bold' } },
-          tooltip: { callbacks: { label: c => `${c.dataset.label}: ${fmtBRL(c.raw)}` } }
+          }]
         },
-        scales: {
-          x: { title: { display: true, text: xInfo.label, color: '#A0B8A6' }, ticks: { color: '#A0B8A6', maxTicksLimit: 20 }, grid: { color: 'rgba(212,175,55,0.1)' } },
-          y: { position: 'left', title: { display: true, text: 'Saldo (R$)', color: '#A0B8A6' }, ticks: { color: '#A0B8A6', callback: v => fmtBRL(v) }, grid: { color: 'rgba(212,175,55,0.1)' } },
-          y1: { position: 'right', title: { display: true, text: 'Diferença/parcela (R$)', color: '#A0B8A6' }, ticks: { color: '#A0B8A6', callback: v => fmtBRL(v) }, grid: { drawOnChartArea: false } },
+        options: {
+          responsive: true, maintainAspectRatio: true,
+          plugins: {
+            legend: { labels: { color: '#A0B8A6', font: { size: 11 } } },
+            title: { display: true, text: `Diferença de Parcelas: ${refProduct.name} vs ${altProduct.name}`, color: '#D4AF37', font: { size: 13, weight: 'bold' } },
+            tooltip: { callbacks: { label: c => `${c.dataset.label}: ${fmtBRL(c.raw)}` } }
+          },
+          scales: {
+            x: { title: { display: true, text: xInfo.label, color: '#A0B8A6' }, ticks: { color: '#A0B8A6', maxTicksLimit: 20 }, grid: { color: 'rgba(212,175,55,0.1)' } },
+            y: { title: { display: true, text: 'Diferença (R$)', color: '#A0B8A6' }, ticks: { color: '#A0B8A6', callback: v => fmtBRL(v) }, grid: { color: 'rgba(212,175,55,0.1)' } },
+          }
         }
-      }
-    });
+      });
+    }
   }, 100);
 }
 
