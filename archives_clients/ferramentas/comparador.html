@@ -1743,20 +1743,23 @@ function fmtValObj(n) {
   return n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 function maskObjInput(el) {
-  // Remove tudo que não é dígito ou vírgula
-  let v = el.value.replace(/[^\d,]/g, '');
-  // Garante no máximo uma vírgula
-  const parts = v.split(',');
-  if (parts.length > 2) v = parts[0] + ',' + parts.slice(1).join('');
-  // Limita 2 casas decimais
-  if (parts.length === 2 && parts[1].length > 2) v = parts[0] + ',' + parts[1].substring(0, 2);
-  // Formata separador de milhares na parte inteira
-  let intPart = (parts[0] || '').replace(/^0+(?=\d)/, '');
-  if (intPart.length > 3) {
-    intPart = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  // Abordagem "centavos": extrai só dígitos, interpreta como centavos
+  let digits = el.value.replace(/\D/g, '');
+  // Remove zeros à esquerda (mas mantém pelo menos 1 dígito)
+  digits = digits.replace(/^0+/, '') || '0';
+  // Converte para centavos: últimos 2 dígitos são decimais
+  const len = digits.length;
+  let intPart, decPart;
+  if (len <= 2) {
+    intPart = '0';
+    decPart = digits.padStart(2, '0');
+  } else {
+    intPart = digits.substring(0, len - 2);
+    decPart = digits.substring(len - 2);
   }
-  v = parts.length >= 2 ? intPart + ',' + (parts[1] || '').substring(0, 2) : intPart;
-  el.value = v;
+  // Formata separador de milhares
+  intPart = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  el.value = intPart + ',' + decPart;
 }
 function parseObjVal(str) {
   // Remove pontos de milhar, troca vírgula por ponto
@@ -1838,8 +1841,7 @@ function renderObjTable() {
         <input type="text" inputmode="decimal" value="${fmtValObj(val)}" placeholder="0"
           id="oval-${param.id}-${p.id}"
           ${disabled?'disabled style="opacity:.3"':''}
-          oninput="maskObjInput(this);updateObjValue(${param.id},${p.id},this.value)"
-          onblur="this.value=fmtValObj(tmpObjParams.find(x=>x.id===${param.id})?.values[${p.id}]||0)" />
+          oninput="maskObjInput(this);updateObjValue(${param.id},${p.id},this.value)" />
       </td>`;
     });
     tbody += `<td class="td-del"><button onclick="removeObjParam(${param.id})">✕</button></td></tr>`;
@@ -1996,8 +1998,7 @@ function syncAllInputs() {
     tmpProducts.forEach(p => {
       const valEl = document.getElementById('oval-'+param.id+'-'+p.id);
       if (valEl) {
-        const raw = valEl.value.replace(/[^\d,\.]/g,'').replace(',','.');
-        param.values[p.id] = parseFloat(raw) || 0;
+        param.values[p.id] = parseObjVal(valEl.value);
       }
     });
   });
