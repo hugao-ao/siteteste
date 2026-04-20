@@ -917,6 +917,35 @@
   }
   .scenario-verdict b { color: var(--gold); }
 
+  .saved-scenarios-wrap {
+    margin-top: 20px;
+  }
+  .saved-scenario-item {
+    border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 16px; margin-bottom: 16px;
+    background: rgba(0,0,0,0.15);
+    position: relative;
+  }
+  .saved-scenario-item .saved-sc-header {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 12px; flex-wrap: wrap; gap: 8px;
+  }
+  .saved-scenario-item .saved-sc-title {
+    font-size: .88rem; color: var(--gold); font-weight: 600;
+  }
+  .saved-scenario-item .saved-sc-date {
+    font-size: .72rem; color: var(--muted-foreground);
+  }
+  .saved-sc-delete {
+    background: rgba(239,83,80,0.15); color: #ef5350; border: 1px solid rgba(239,83,80,0.3);
+    border-radius: var(--radius); padding: 4px 10px; font-size: .75rem;
+    cursor: pointer; font-weight: 600;
+  }
+  .saved-sc-delete:hover { background: rgba(239,83,80,0.3); }
+  .saved-sc-divider {
+    border: none; border-top: 1px dashed var(--border); margin: 16px 0;
+  }
+
   /* Seção de análise de período */
   .period-analysis-section {
     margin-top: 24px;
@@ -2621,6 +2650,8 @@ function renderResult(comp) {
   const periodChartIds = {};
   let investChartId = '';
   let investData = null;
+  let investChartSaldoId = '';
+  let investChartDiffId = '';
 
   if (comp.periodEnabled && periodResult) {
     const pRanking = periodResult.ranking;
@@ -2638,8 +2669,8 @@ function renderResult(comp) {
     periodChartIds.acumulado = pcAcumId;
     periodChartIds.bar = periodChartBarId;
     investChartId = 'invest-chart-'+comp.id;
-    const investChartSaldoId = 'invest-saldo-'+comp.id;
-    const investChartDiffId = 'invest-diff-'+comp.id;
+    investChartSaldoId = 'invest-saldo-'+comp.id;
+    investChartDiffId = 'invest-diff-'+comp.id;
 
     const periodMemTable = _buildMemTable(pRanking, pBreakdown);
 
@@ -2775,6 +2806,7 @@ function renderResult(comp) {
         ${periodMem}
         ${investHtml}
         ${scenarioHtml}
+        <div class="saved-scenarios-wrap" id="saved-sc-${comp.id}"></div>
       </div>`;
   }
 
@@ -3005,9 +3037,90 @@ function renderResult(comp) {
         });
       }
     }
+    // Renderizar cenários salvos
+    if (comp.periodEnabled && comp.result.scenarios && comp.result.scenarios.length > 0) {
+      _renderSavedScenarios(comp);
+    }
   }, 200);
 
   return `<div class="result-section">${podium}${parecerBox}${mem}${periodSection}</div>`;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   CENÁRIOS SALVOS — RENDERIZAÇÃO E EXCLUSÃO
+═══════════════════════════════════════════════════════════ */
+function _renderSavedScenarios(comp) {
+  const container = document.getElementById('saved-sc-' + comp.id);
+  if (!container) return;
+  const scenarios = comp.result.scenarios || [];
+  if (scenarios.length === 0) { container.innerHTML = ''; return; }
+
+  const pRanking = comp.result.periodResult?.ranking || [];
+  const pc = comp.periodConfig || {};
+  const annualRate = (pc.interestRate || 0) / 100;
+  const totalDays = pc.periodQty ? unitToDaysStatic(pc.periodQty, pc.periodUnit) : 365;
+  const freqDays = pc.payFreqQty ? unitToDaysStatic(pc.payFreqQty, pc.payFreqUnit) : 30;
+  const numPay = Math.max(1, Math.floor(totalDays / freqDays));
+  const periodRate = annualRate > 0 ? Math.pow(1 + annualRate, freqDays / 365) - 1 : 0;
+
+  let html = '<div class="mem-section-title" style="margin-top:20px">Cenários Personalizados Salvos</div>';
+  scenarios.forEach((sc, idx) => {
+    const refProd = pRanking.find(p => p.id === sc.refId);
+    const altProd = pRanking.find(p => p.id === sc.altId);
+    if (!refProd || !altProd) return;
+    const result = _calcInvestScenario(refProd, altProd, numPay, periodRate);
+    const refNetCost = result.refGrossTotal - result.refRefundAmt;
+    const altNetCost = result.altGrossTotal - result.altRefundAmt - result.investBalance;
+    const balClass = result.investBalance >= 0 ? 'invest-positive' : 'invest-negative';
+    const savedDate = sc.savedAt ? new Date(sc.savedAt).toLocaleDateString('pt-BR', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' }) : '';
+
+    html += `
+      <div class="saved-scenario-item">
+        <div class="saved-sc-header">
+          <div>
+            <span class="saved-sc-title">${escHtml(refProd.name)} vs. ${escHtml(altProd.name)}</span>
+            <span class="saved-sc-date">${savedDate}</span>
+          </div>
+          <button class="saved-sc-delete" onclick="deleteScenario(${comp.id}, ${idx})">Excluir</button>
+        </div>
+        <div class="scenario-result-cards">
+          <div class="scenario-card${refNetCost <= altNetCost ? ' winner' : ''}">
+            ${refNetCost <= altNetCost ? '<div class="sc-badge">MAIS VANTAJOSO</div>' : ''}
+            <h4>${escHtml(refProd.name)} <span style="font-size:.75rem;color:var(--muted-foreground)">(referência)</span></h4>
+            <div class="sc-row"><span class="sc-label">Custo total bruto</span><span class="sc-value">${fmtBRL(result.refGrossTotal)}</span></div>
+            <div class="sc-row"><span class="sc-label">Estorno ao final</span><span class="sc-value invest-positive">${result.refRefundAmt > 0 ? '- ' + fmtBRL(result.refRefundAmt) : '—'}</span></div>
+            <div class="sc-row sc-total"><span class="sc-label">Custo líquido final</span><span class="sc-value ${refNetCost <= altNetCost ? 'invest-positive' : 'invest-negative'}">${fmtBRL(refNetCost)}</span></div>
+          </div>
+          <div class="scenario-card${altNetCost < refNetCost ? ' winner' : ''}">
+            ${altNetCost < refNetCost ? '<div class="sc-badge">MAIS VANTAJOSO</div>' : ''}
+            <h4>${escHtml(altProd.name)} <span style="font-size:.75rem;color:var(--muted-foreground)">(alternativa)</span></h4>
+            <div class="sc-row"><span class="sc-label">Custo total bruto</span><span class="sc-value">${fmtBRL(result.altGrossTotal)}</span></div>
+            <div class="sc-row"><span class="sc-label">Estorno ao final</span><span class="sc-value invest-positive">${result.altRefundAmt > 0 ? '- ' + fmtBRL(result.altRefundAmt) : '—'}</span></div>
+            <div class="sc-row"><span class="sc-label">Saldo investido (diferença)</span><span class="sc-value ${balClass}">- ${fmtBRL(result.investBalance)}</span></div>
+            <div class="sc-row"><span class="sc-label" style="font-size:.72rem">Diferença aportada: ${fmtBRL(result.totalDiffPaid)} · Juros: ${fmtBRL(result.totalInterest)}</span></div>
+            <div class="sc-row sc-total"><span class="sc-label">Custo líquido final</span><span class="sc-value ${altNetCost <= refNetCost ? 'invest-positive' : 'invest-negative'}">${fmtBRL(altNetCost)}</span></div>
+          </div>
+        </div>
+        <div class="scenario-verdict">
+          ${refNetCost < altNetCost
+            ? `Contratar <b>${escHtml(refProd.name)}</b> resulta em custo líquido de <b>${fmtBRL(refNetCost)}</b>, que é <b>${fmtBRL(altNetCost - refNetCost)} mais barato</b> que contratar ${escHtml(altProd.name)} (${fmtBRL(altNetCost)}).`
+            : refNetCost > altNetCost
+            ? `Contratar <b>${escHtml(altProd.name)}</b> e investir a diferença resulta em custo líquido de <b>${fmtBRL(altNetCost)}</b>, economizando <b>${fmtBRL(refNetCost - altNetCost)}</b> em relação a ${escHtml(refProd.name)} (${fmtBRL(refNetCost)}).`
+            : `Ambas as opções resultam no mesmo custo líquido de <b>${fmtBRL(refNetCost)}</b>.`
+          }
+        </div>
+      </div>`;
+  });
+  container.innerHTML = html;
+}
+
+function deleteScenario(compId, idx) {
+  const comp = comparisons.find(c => c.id === compId);
+  if (!comp || !comp.result.scenarios) return;
+  comp.result.scenarios.splice(idx, 1);
+  comp.updatedAt = new Date().toISOString();
+  saveCompToSupabase(comp);
+  _renderSavedScenarios(comp);
 }
 
 /* ═══════════════════════════════════════════════════════════
@@ -3118,6 +3231,21 @@ function runScenario(compId) {
   const periodRate = annualRate > 0 ? Math.pow(1 + annualRate, freqDays / 365) - 1 : 0;
 
   const result = _calcInvestScenario(refProduct, altProduct, numPay, periodRate);
+
+  // Salvar cenário no comp.result.scenarios para persistência
+  if (!comp.result.scenarios) comp.result.scenarios = [];
+  // Evitar duplicatas (mesmo refId + altId)
+  const existingIdx = comp.result.scenarios.findIndex(s => s.refId === refId && s.altId === altId);
+  const scenarioEntry = { refId, altId, savedAt: new Date().toISOString() };
+  if (existingIdx >= 0) {
+    comp.result.scenarios[existingIdx] = scenarioEntry;
+  } else {
+    comp.result.scenarios.push(scenarioEntry);
+  }
+  comp.updatedAt = new Date().toISOString();
+  saveCompToSupabase(comp);
+  // Atualizar lista de cenários salvos na UI
+  _renderSavedScenarios(comp);
 
   const refNetCost = result.refGrossTotal - result.refRefundAmt;
   const altNetCost = result.altGrossTotal - result.altRefundAmt - result.investBalance;
@@ -3374,19 +3502,16 @@ function gerarPdfComp(id) {
   txt(`${comp.products.length} produto(s) comparado(s)  •  ${comp.objParams.length} parâmetro(s) objetivo(s)  •  ${comp.subjParams.length} parâmetro(s) subjetivo(s)`, PW() / 2, y, { size: 8.5, color: COR_CINZA_MED, align: 'center' });
   y += 12;
 
-  // Ranking em grade adaptativa
-  const { ranking, breakdown } = comp.result;
-  const usePeriodPdf = comp.periodEnabled;
-  const getPricePdf = p => usePeriodPdf && p.periodTotalCost != null ? p.periodTotalCost : p.price;
-  txt('RANKING FINAL', PW() / 2, y, { size: 11, color: COR_DOURADO, bold: true, align: 'center' });
-  y += 7;
-  {
-    const nProdsRank = ranking.length;
+  // ── Funções reutilizáveis para ranking e parecer no PDF ──
+  function drawRankingCards(rankArr, priceGetter, title) {
+    txt(title, PW() / 2, y, { size: 11, color: COR_DOURADO, bold: true, align: 'center' });
+    y += 7;
+    const nProdsRank = rankArr.length;
     const perRow = Math.min(nProdsRank, 5);
     const cardW = CW() / perRow;
     const rows = Math.ceil(nProdsRank / perRow);
     for (let row = 0; row < rows; row++) {
-      const rowItems = ranking.slice(row * perRow, (row + 1) * perRow);
+      const rowItems = rankArr.slice(row * perRow, (row + 1) * perRow);
       let maxLines = 1;
       rowItems.forEach(p => {
         const nl = doc.splitTextToSize(p.name, cardW - 4);
@@ -3412,47 +3537,204 @@ function gerarPdfComp(id) {
         });
         const afterName = y + 10 + nomeLines.length * 4;
         txt(`${p.score.toFixed(1)} pts`, px + cardW / 2 - 0.75, afterName + 1.5, { size: 6.5, color: textC, align: 'center' });
-        txt(fmtBRL(getPricePdf(p)), px + cardW / 2 - 0.75, afterName + 5.5, { size: 6, color: textC, align: 'center' });
+        txt(fmtBRL(priceGetter(p)), px + cardW / 2 - 0.75, afterName + 5.5, { size: 6, color: textC, align: 'center' });
       });
       y += cardH + 2;
     }
   }
 
-  // Parecer
-  hrLine(y);
-  y += 6;
-  txt('PARECER', ML, y, { size: 10, color: COR_DOURADO, bold: true });
-  y += 5;
-  const best = ranking[0];
-  const second = ranking[1];
-  const diff = second ? ((best.score - second.score) / (Math.abs(second.score) || 1) * 100) : 0;
-  let parecerTxt;
-  if (diff < 5) parecerTxt = `${best.name} é a melhor opção, mas com vantagem pequena (${diff.toFixed(1)}% à frente de ${second?.name || ''}). A escolha pode depender de fatores não mapeados.`;
-  else if (diff < 20) parecerTxt = `${best.name} é a melhor opção com vantagem moderada (${diff.toFixed(1)}% à frente de ${second?.name || ''} nos critérios ponderados).`;
-  else parecerTxt = `${best.name} é a melhor opção com vantagem expressiva (${diff.toFixed(1)}% à frente de ${second?.name || ''}). A análise aponta claramente para esta escolha.`;
-
-  // Menção financeira no PDF
-  const prodsComPrecoPdf = ranking.filter(p => getPricePdf(p) > 0);
-  if (prodsComPrecoPdf.length > 0) {
-    const cheapestPdf = prodsComPrecoPdf.reduce((a, b) => getPricePdf(a) < getPricePdf(b) ? a : b);
-    if (cheapestPdf.id === best.id) {
-      parecerTxt += `\n\nAlém disso, ${best.name} também é o produto com menor custo (${fmtBRL(getPricePdf(best))}), reforçando a convergência entre melhor desempenho e melhor preço de acordo com os critérios mais importantes para o cliente.`;
-    } else {
-      const priceDiffPctPdf = ((getPricePdf(best) - getPricePdf(cheapestPdf)) / getPricePdf(cheapestPdf) * 100).toFixed(1);
-      const scoreDiffPctPdf = ((best.score - cheapestPdf.score) / (Math.abs(cheapestPdf.score) || 1) * 100).toFixed(1);
-      parecerTxt += `\n\nDo ponto de vista financeiro, o produto mais barato é ${cheapestPdf.name} (${fmtBRL(getPricePdf(cheapestPdf))}), enquanto o melhor pontuado (${best.name}) custa ${fmtBRL(getPricePdf(best))} — ${priceDiffPctPdf}% mais caro, porém com ${scoreDiffPctPdf}% mais pontuação. Essa análise reflete os parâmetros e pesos escolhidos pelo cliente, que representam os critérios mais importantes para a sua decisão.`;
+  function drawParecer(rankArr, priceGetter, label) {
+    hrLine(y);
+    y += 6;
+    txt(label, ML, y, { size: 10, color: COR_DOURADO, bold: true });
+    y += 5;
+    const best = rankArr[0];
+    const second = rankArr[1];
+    const diff = second ? ((best.score - second.score) / (Math.abs(second.score) || 1) * 100) : 0;
+    let parecerTxt;
+    if (diff < 5) parecerTxt = `${best.name} é a melhor opção, mas com vantagem pequena (${diff.toFixed(1)}% à frente de ${second?.name || ''}). A escolha pode depender de fatores não mapeados.`;
+    else if (diff < 20) parecerTxt = `${best.name} é a melhor opção com vantagem moderada (${diff.toFixed(1)}% à frente de ${second?.name || ''} nos critérios ponderados).`;
+    else parecerTxt = `${best.name} é a melhor opção com vantagem expressiva (${diff.toFixed(1)}% à frente de ${second?.name || ''}). A análise aponta claramente para esta escolha.`;
+    const prodsComPreco = rankArr.filter(p => priceGetter(p) > 0);
+    if (prodsComPreco.length > 0) {
+      const cheapest = prodsComPreco.reduce((a, b) => priceGetter(a) < priceGetter(b) ? a : b);
+      if (cheapest.id === best.id) {
+        parecerTxt += `\n\nAlém disso, ${best.name} também é o produto com menor custo (${fmtBRL(priceGetter(best))}), reforçando a convergência entre melhor desempenho e melhor preço de acordo com os critérios mais importantes para o cliente.`;
+      } else {
+        const priceDiffPct = ((priceGetter(best) - priceGetter(cheapest)) / priceGetter(cheapest) * 100).toFixed(1);
+        const scoreDiffPct = ((best.score - cheapest.score) / (Math.abs(cheapest.score) || 1) * 100).toFixed(1);
+        parecerTxt += `\n\nDo ponto de vista financeiro, o produto mais barato é ${cheapest.name} (${fmtBRL(priceGetter(cheapest))}), enquanto o melhor pontuado (${best.name}) custa ${fmtBRL(priceGetter(best))} — ${priceDiffPct}% mais caro, porém com ${scoreDiffPct}% mais pontuação. Essa análise reflete os parâmetros e pesos escolhidos pelo cliente, que representam os critérios mais importantes para a sua decisão.`;
+      }
     }
+    const parecerLines = doc.splitTextToSize(parecerTxt, CW() - 6);
+    const parecerH = Math.max(14, parecerLines.length * 5 + 6);
+    checkY(parecerH + 4);
+    doc.setFillColor(...COR_VERDE);
+    doc.roundedRect(ML, y - 3, CW(), parecerH, 2, 2, 'F');
+    parecerLines.forEach((ln, i) => {
+      txt(ln, ML + 3, y + 2 + i * 5, { size: 8.5, color: COR_CINZA_CLR });
+    });
+    y += parecerH + 4;
   }
 
-  const parecerLines = doc.splitTextToSize(parecerTxt, CW() - 6);
-  const parecerH = Math.max(14, parecerLines.length * 5 + 6);
-  checkY(parecerH + 4);
-  doc.setFillColor(...COR_VERDE);
-  doc.roundedRect(ML, y - 3, CW(), parecerH, 2, 2, 'F');
-  parecerLines.forEach((ln, i) => {
-    txt(ln, ML + 3, y + 2 + i * 5, { size: 8.5, color: COR_CINZA_CLR });
-  });
-  y += parecerH + 4;
+  function drawGeneralTable(rankArr, brkdown, tableTitle) {
+    addPage(true);
+    y = sectionTitle(tableTitle, y);
+    const nProds = rankArr.length;
+    const fixedCols = 50 + 16;
+    const dynW = Math.max(16, (CW() - fixedCols) / nProds);
+    const tableBody = brkdown.map(row => {
+      const cells = [row.paramName + (row.unit ? ` (${row.unit})` : ''), row.type];
+      rankArr.forEach(p => {
+        const pp = row.perProduct[p.id];
+        if (!pp) { cells.push('N/A'); return; }
+        const pts = pp.score.toFixed(1);
+        const isAbsent = (pp.rawValue === null && row.type === 'Objetivo') ||
+                         (pp.rawRank === null && row.type === 'Subjetivo') ||
+                         (pp.detail && (pp.detail.includes('Não tem') || pp.detail.includes('Indiferente')));
+        if (isAbsent) { cells.push('N/A'); return; }
+        if (row.type === 'Objetivo') {
+          const rawVal = pp.rawValue;
+          const valStr = (rawVal !== undefined && rawVal !== null && rawVal !== 0)
+            ? rawVal.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0,00';
+          const unitStr = row.unit || '';
+          const displayVal = unitStr ? `${valStr} ${unitStr}` : valStr;
+          cells.push(`${displayVal}\n(${pts} pts)`);
+        } else {
+          const rawRank = pp.rawRank;
+          const rankStr = (rawRank !== undefined && rawRank !== null) ? `${rawRank}º lugar` : '—';
+          cells.push(`${rankStr}\n(${pts} pts)`);
+        }
+      });
+      return cells;
+    });
+    const totalRow = ['TOTAL', ''];
+    rankArr.forEach(p => totalRow.push(`${p.score.toFixed(1)} pts`));
+    tableBody.push(totalRow);
+    const nRows = tableBody.length;
+    const isLastRow = (idx) => idx === nRows - 1;
+    doc.autoTable({
+      startY: y,
+      head: [['Parâmetro', 'Tipo', ...rankArr.map(p => p.name)]],
+      body: tableBody,
+      margin: { left: ML, right: MR, top: MT, bottom: MB },
+      styles: { fillColor: COR_VERDE, textColor: COR_CINZA_CLR, fontSize: 6, cellPadding: 1.5, overflow: 'linebreak', minCellHeight: 10, valign: 'middle' },
+      headStyles: { fillColor: COR_DOURADO_ESC, textColor: COR_FUNDO, fontStyle: 'bold', fontSize: 6, halign: 'center', overflow: 'linebreak', minCellHeight: 8 },
+      alternateRowStyles: { fillColor: [12, 40, 20] },
+      columnStyles: {
+        0: { cellWidth: 50, fontStyle: 'bold', halign: 'left' },
+        1: { cellWidth: 16, halign: 'center' },
+        ...Object.fromEntries(Array.from({ length: nProds }, (_, i) => [2 + i, { cellWidth: dynW, halign: 'center' }]))
+      },
+      tableLineColor: COR_VERDE_MED, tableLineWidth: 0.2,
+      didDrawCell: (data) => {
+        if (data.section !== 'body') return;
+        const rowIdx = data.row.index;
+        const colIdx = data.column.index;
+        if (isLastRow(rowIdx)) {
+          doc.setFillColor(...COR_DOURADO_ESC);
+          doc.rect(data.cell.x, data.cell.y, data.cell.width, data.cell.height, 'F');
+          doc.setTextColor(...COR_FUNDO);
+          doc.setFont('helvetica', 'bold');
+          doc.setFontSize(7.5);
+          doc.text(String(data.cell.raw || ''), data.cell.x + data.cell.width / 2, data.cell.y + data.cell.height / 2 + 1.5, { align: 'center' });
+          return;
+        }
+        if (colIdx >= 2) {
+          const raw = String(data.cell.raw || '');
+          const cx = data.cell.x + data.cell.width / 2;
+          const cy = data.cell.y + data.cell.height / 2;
+          const bgColor = (rowIdx % 2 === 0) ? COR_VERDE : [12, 40, 20];
+          doc.setFillColor(...bgColor);
+          doc.rect(data.cell.x, data.cell.y, data.cell.width, data.cell.height, 'F');
+          if (raw === 'N/A' || raw.trim() === 'N/A') {
+            doc.setFontSize(8); doc.setTextColor(...COR_VERMELHO); doc.setFont('helvetica', 'bold');
+            doc.text('N/A', cx, cy + 1.5, { align: 'center' }); return;
+          }
+          const parts = raw.split('\n');
+          if (parts[1]) {
+            doc.setFontSize(6.5); doc.setTextColor(...COR_CINZA_CLR); doc.setFont('helvetica', 'bold');
+            doc.text(parts[0], cx, cy - 0.5, { align: 'center' });
+            doc.setFontSize(5.5); doc.setTextColor(...COR_CINZA_MED); doc.setFont('helvetica', 'normal');
+            doc.text(parts[1], cx, cy + 3.5, { align: 'center' });
+          } else {
+            doc.setFontSize(6); doc.setTextColor(...COR_CINZA_MED); doc.setFont('helvetica', 'normal');
+            doc.text(parts[0], cx, cy + 1, { align: 'center' });
+          }
+        }
+      },
+      willDrawPage: () => { fillPage(COR_FUNDO); },
+      didDrawPage:  () => { pageHeader(); pageFooter(); },
+    });
+    y = doc.lastAutoTable.finalY + 8;
+  }
+
+  function drawInvestAnalysis(refProd, altProd, scenario, title) {
+    checkY(70);
+    y = sectionTitle(title, y);
+    const refNetCost = scenario.refGrossTotal - scenario.refRefundAmt;
+    const altNetCost = scenario.altGrossTotal - scenario.altRefundAmt - scenario.investBalance;
+    const winner = refNetCost <= altNetCost ? 'ref' : 'alt';
+    // Card Referência
+    const cardW = (CW() - 6) / 2;
+    const cardH = 42;
+    const px1 = ML;
+    const px2 = ML + cardW + 6;
+    // Card 1
+    doc.setFillColor(...(winner === 'ref' ? COR_DOURADO_ESC : COR_VERDE));
+    doc.roundedRect(px1, y, cardW, cardH, 2, 2, 'F');
+    const tc1 = winner === 'ref' ? COR_FUNDO : COR_CINZA_CLR;
+    txt(refProd.name, px1 + 4, y + 6, { size: 8, color: winner === 'ref' ? COR_FUNDO : COR_DOURADO, bold: true });
+    if (winner === 'ref') txt('MAIS VANTAJOSO', px1 + cardW - 4, y + 6, { size: 6, color: COR_FUNDO, bold: true, align: 'right' });
+    txt('Custo total bruto:', px1 + 4, y + 14, { size: 7, color: tc1 });
+    txt(fmtBRL(scenario.refGrossTotal), px1 + cardW - 4, y + 14, { size: 7, color: tc1, bold: true, align: 'right' });
+    txt('Estorno ao final:', px1 + 4, y + 20, { size: 7, color: tc1 });
+    txt(scenario.refRefundAmt > 0 ? '- ' + fmtBRL(scenario.refRefundAmt) : '—', px1 + cardW - 4, y + 20, { size: 7, color: COR_VERDE_LT, bold: true, align: 'right' });
+    hrLine(y + 26, winner === 'ref' ? COR_FUNDO : COR_DOURADO);
+    txt('Custo líquido final:', px1 + 4, y + 32, { size: 8, color: tc1, bold: true });
+    txt(fmtBRL(refNetCost), px1 + cardW - 4, y + 32, { size: 8, color: winner === 'ref' ? COR_FUNDO : COR_VERDE_LT, bold: true, align: 'right' });
+    // Card 2
+    doc.setFillColor(...(winner === 'alt' ? COR_DOURADO_ESC : COR_VERDE));
+    doc.roundedRect(px2, y, cardW, cardH, 2, 2, 'F');
+    const tc2 = winner === 'alt' ? COR_FUNDO : COR_CINZA_CLR;
+    txt(altProd.name, px2 + 4, y + 6, { size: 8, color: winner === 'alt' ? COR_FUNDO : COR_DOURADO, bold: true });
+    if (winner === 'alt') txt('MAIS VANTAJOSO', px2 + cardW - 4, y + 6, { size: 6, color: COR_FUNDO, bold: true, align: 'right' });
+    txt('Custo total bruto:', px2 + 4, y + 14, { size: 7, color: tc2 });
+    txt(fmtBRL(scenario.altGrossTotal), px2 + cardW - 4, y + 14, { size: 7, color: tc2, bold: true, align: 'right' });
+    txt('Estorno ao final:', px2 + 4, y + 20, { size: 7, color: tc2 });
+    txt(scenario.altRefundAmt > 0 ? '- ' + fmtBRL(scenario.altRefundAmt) : '—', px2 + cardW - 4, y + 20, { size: 7, color: COR_VERDE_LT, bold: true, align: 'right' });
+    txt('Saldo investido:', px2 + 4, y + 26, { size: 7, color: tc2 });
+    txt('- ' + fmtBRL(scenario.investBalance), px2 + cardW - 4, y + 26, { size: 7, color: COR_VERDE_LT, bold: true, align: 'right' });
+    hrLine(y + 32, winner === 'alt' ? COR_FUNDO : COR_DOURADO);
+    txt('Custo líquido final:', px2 + 4, y + 38, { size: 8, color: tc2, bold: true });
+    txt(fmtBRL(altNetCost), px2 + cardW - 4, y + 38, { size: 8, color: winner === 'alt' ? COR_FUNDO : COR_VERDE_LT, bold: true, align: 'right' });
+    y += cardH + 4;
+    // Veredito
+    let veredito;
+    if (refNetCost < altNetCost) {
+      veredito = `Contratar ${refProd.name} resulta em custo líquido de ${fmtBRL(refNetCost)}, que é ${fmtBRL(altNetCost - refNetCost)} mais barato que contratar ${altProd.name} (${fmtBRL(altNetCost)}), mesmo sendo mais caro no valor bruto. O estorno faz a diferença.`;
+    } else if (refNetCost > altNetCost) {
+      veredito = `Contratar ${altProd.name} e investir a diferença resulta em custo líquido de ${fmtBRL(altNetCost)}, economizando ${fmtBRL(refNetCost - altNetCost)} em relação a ${refProd.name} (${fmtBRL(refNetCost)}).`;
+    } else {
+      veredito = `Ambas as opções resultam no mesmo custo líquido de ${fmtBRL(refNetCost)}.`;
+    }
+    const vLines = doc.splitTextToSize(veredito, CW() - 6);
+    const vH = Math.max(10, vLines.length * 4.5 + 6);
+    checkY(vH + 4);
+    doc.setFillColor(...COR_VERDE);
+    doc.roundedRect(ML, y - 2, CW(), vH, 2, 2, 'F');
+    vLines.forEach((ln, i) => {
+      txt(ln, ML + 3, y + 2 + i * 4.5, { size: 8, color: COR_CINZA_CLR });
+    });
+    y += vH + 6;
+  }
+
+  // ══════════════════════════════════════════════════════════
+  // CAPA: ANÁLISE NORMAL (preço fixo)
+  // ══════════════════════════════════════════════════════════
+  const { ranking, breakdown } = comp.result;
+  drawRankingCards(ranking, p => p.price, 'RANKING — ANÁLISE NORMAL (Preço Fixo)');
+  drawParecer(ranking, p => p.price, 'PARECER');
 
   // Alertas inaceitável
   const inacAlerts = [];
@@ -3643,164 +3925,81 @@ function gerarPdfComp(id) {
   }
 
   // ══════════════════════════════════════════════════════════
-  // ÚLTIMA(S) PÁGINA(S): TABELA GERAL (landscape)
+  // TABELA GERAL — ANÁLISE NORMAL (landscape)
   // ══════════════════════════════════════════════════════════
-  addPage(true);
-  y = sectionTitle('PONTUAÇÃO POR PARÂMETRO E PRODUTO', y);
+  drawGeneralTable(ranking, breakdown, 'PONTUAÇÃO POR PARÂMETRO E PRODUTO (Análise Normal)');
 
-  const nProds = ranking.length;
-  const fixedCols = 50 + 16;
-  const dynW = Math.max(16, (CW() - fixedCols) / nProds);
+  // ══════════════════════════════════════════════════════════
+  // ANÁLISE DE PERÍODO (se habilitada)
+  // ══════════════════════════════════════════════════════════
+  const periodResult = comp.result.periodResult;
+  if (comp.periodEnabled && periodResult) {
+    const pRanking = periodResult.ranking;
+    const pBreakdown = periodResult.breakdown;
+    const getPeriodPrice = p => p.periodTotalCost || p.price;
 
-  // Construir corpo da tabela
-  // Cada célula de produto: linha 1 = valor em destaque, linha 2 = (pts)
-  // Formato: "VALOR\nPTS" separado por \n para didDrawCell tratar
-  const tableBody = breakdown.map(row => {
-    const cells = [
-      row.paramName + (row.unit ? ` (${row.unit})` : ''),
-      row.type
-    ];
-    ranking.forEach(p => {
-      const pp = row.perProduct[p.id];
-      if (!pp) { cells.push('N/A'); return; }
+    // Descrição do período
+    const pc = comp.periodConfig || {};
+    const unitLabels = { dia: 'dia(s)', semana: 'semana(s)', quinzena: 'quinzena(s)', mes: 'mês(es)', ano: 'ano(s)' };
+    const periodDesc = `${pc.periodQty || '?'} ${unitLabels[pc.periodUnit] || pc.periodUnit || '?'}, pagamento a cada ${pc.payFreqQty || '?'} ${unitLabels[pc.payFreqUnit] || pc.payFreqUnit || '?'}`;
 
-      const pts = pp.score.toFixed(1);
-
-      // Verificar se o produto é AUSENTE (não tem o parâmetro)
-      // Ausente: detail contém "Não tem" ou "penalidade" ou "bônus" ou rawValue===null/rawRank===null
-      const isAbsent = (pp.rawValue === null && row.type === 'Objetivo') ||
-                       (pp.rawRank === null && row.type === 'Subjetivo') ||
-                       (pp.detail && (pp.detail.includes('Não tem') || pp.detail.includes('Indiferente')));
-
-      if (isAbsent) {
-        cells.push('N/A');  // Ausência visível
-        return;
-      }
-
-      if (row.type === 'Objetivo') {
-        // Mostrar valor numérico formatado + unidade em destaque
-        const rawVal = pp.rawValue;
-        const valStr = (rawVal !== undefined && rawVal !== null && rawVal !== 0)
-          ? rawVal.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-          : '0,00';
-        const unitStr = row.unit || '';
-        const displayVal = unitStr ? `${valStr} ${unitStr}` : valStr;
-        cells.push(`${displayVal}\n(${pts} pts)`);
-      } else {
-        // Subjetivo: mostrar colocação em destaque
-        const rawRank = pp.rawRank;
-        const rankStr = (rawRank !== undefined && rawRank !== null) ? `${rawRank}º lugar` : '—';
-        cells.push(`${rankStr}\n(${pts} pts)`);
-      }
+    // Página: Ranking de Período + Parecer
+    addPage(false);
+    txt('ANÁLISE DE PERÍODO', PW() / 2, y, { size: 12, color: COR_DOURADO, bold: true, align: 'center' });
+    y += 6;
+    // Badge do período
+    const descLines = doc.splitTextToSize(`Período: ${periodDesc}`, CW() - 10);
+    descLines.forEach((ln, i) => {
+      txt(ln, PW() / 2, y + i * 4, { size: 8, color: COR_CINZA_MED, align: 'center' });
     });
-    return cells;
-  });
+    y += descLines.length * 4 + 6;
 
-  // Linha de totais
-  const totalRow = ['TOTAL', ''];
-  ranking.forEach(p => totalRow.push(`${p.score.toFixed(1)} pts`));
-  tableBody.push(totalRow);
+    drawRankingCards(pRanking, getPeriodPrice, 'RANKING — ANÁLISE DE PERÍODO (Custo Total)');
+    drawParecer(pRanking, getPeriodPrice, 'PARECER DE PERÍODO');
 
-  const nRows = tableBody.length;
-  const isLastRow = (idx) => idx === nRows - 1;
+    // Tabela geral do período
+    drawGeneralTable(pRanking, pBreakdown, 'PONTUAÇÃO POR PARÂMETRO E PRODUTO (Análise de Período)');
 
-  doc.autoTable({
-    startY: y,
-    head: [['Parâmetro', 'Tipo', ...ranking.map(p => p.name)]],
-    body: tableBody,
-    margin: { left: ML, right: MR, top: MT, bottom: MB },
-    styles: {
-      fillColor: COR_VERDE,
-      textColor: COR_CINZA_CLR,
-      fontSize: 6,
-      cellPadding: 1.5,
-      overflow: 'linebreak',
-      minCellHeight: 10,
-      valign: 'middle',
-    },
-    headStyles: {
-      fillColor: COR_DOURADO_ESC,
-      textColor: COR_FUNDO,
-      fontStyle: 'bold',
-      fontSize: 6,
-      halign: 'center',
-      overflow: 'linebreak',
-      minCellHeight: 8,
-    },
-    alternateRowStyles: { fillColor: [12, 40, 20] },
-    columnStyles: {
-      0: { cellWidth: 50, fontStyle: 'bold', halign: 'left' },
-      1: { cellWidth: 16, halign: 'center' },
-      ...Object.fromEntries(
-        Array.from({ length: nProds }, (_, i) => [2 + i, { cellWidth: dynW, halign: 'center' }])
-      )
-    },
-    tableLineColor: COR_VERDE_MED,
-    tableLineWidth: 0.2,
-    // Renderização customizada das células de produto
-    didDrawCell: (data) => {
-      if (data.section !== 'body') return;
-      const rowIdx = data.row.index;
-      const colIdx = data.column.index;
-
-      // Linha TOTAL
-      if (isLastRow(rowIdx)) {
-        doc.setFillColor(...COR_DOURADO_ESC);
-        doc.rect(data.cell.x, data.cell.y, data.cell.width, data.cell.height, 'F');
-        doc.setTextColor(...COR_FUNDO);
-        doc.setFont('helvetica', 'bold');
-        doc.setFontSize(7.5);
-        const raw = String(data.cell.raw || '');
-        doc.text(raw, data.cell.x + data.cell.width / 2, data.cell.y + data.cell.height / 2 + 1.5, { align: 'center' });
-        return;
+    // ══════════════════════════════════════════════════════════
+    // ANÁLISE DE INVESTIMENTO DA DIFERENÇA (automática)
+    // ══════════════════════════════════════════════════════════
+    if (pRanking.length >= 2) {
+      const pBest = pRanking[0];
+      const pCheapest = pRanking.reduce((a,b) => (getPeriodPrice(a) < getPeriodPrice(b) ? a : b));
+      if (pCheapest.id !== pBest.id && pBest.periodPayments && pCheapest.periodPayments) {
+        const annualRate = (pc.interestRate || 0) / 100;
+        const totalDays = unitToDaysStatic(pc.periodQty, pc.periodUnit);
+        const freqDays = unitToDaysStatic(pc.payFreqQty, pc.payFreqUnit);
+        const numPay = Math.max(1, Math.floor(totalDays / freqDays));
+        const monthlyRate = annualRate > 0 ? Math.pow(1 + annualRate, freqDays/365) - 1 : 0;
+        const autoResult = _calcInvestScenario(pBest, pCheapest, numPay, monthlyRate);
+        addPage(false);
+        drawInvestAnalysis(pBest, pCheapest, autoResult, 'ANÁLISE DE INVESTIMENTO — Melhor Pontuado vs. Mais Barato');
       }
+    }
 
-      // Células de produto (col >= 2)
-      if (colIdx >= 2) {
-        const raw = String(data.cell.raw || '');
-        const cx = data.cell.x + data.cell.width / 2;
-        const cy = data.cell.y + data.cell.height / 2;
+    // ══════════════════════════════════════════════════════════
+    // CENÁRIOS PERSONALIZADOS SALVOS
+    // ══════════════════════════════════════════════════════════
+    const savedScenarios = comp.result.scenarios || [];
+    if (savedScenarios.length > 0) {
+      const annualRate = (pc.interestRate || 0) / 100;
+      const totalDays = unitToDaysStatic(pc.periodQty, pc.periodUnit);
+      const freqDays = unitToDaysStatic(pc.payFreqQty, pc.payFreqUnit);
+      const numPay = Math.max(1, Math.floor(totalDays / freqDays));
+      const monthlyRate = annualRate > 0 ? Math.pow(1 + annualRate, freqDays/365) - 1 : 0;
 
-        // Redesenhar fundo
-        const bgColor = (rowIdx % 2 === 0) ? COR_VERDE : [12, 40, 20];
-        doc.setFillColor(...bgColor);
-        doc.rect(data.cell.x, data.cell.y, data.cell.width, data.cell.height, 'F');
-
-        // Verificar se é ausente (N/A)
-        if (raw === 'N/A' || raw.trim() === 'N/A') {
-          doc.setFontSize(8);
-          doc.setTextColor(...COR_VERMELHO);
-          doc.setFont('helvetica', 'bold');
-          doc.text('N/A', cx, cy + 1.5, { align: 'center' });
-          return;
+      savedScenarios.forEach((sc, idx) => {
+        const refProd = pRanking.find(p => p.id === sc.refId);
+        const altProd = pRanking.find(p => p.id === sc.altId);
+        if (refProd && altProd && refProd.periodPayments && altProd.periodPayments) {
+          const scResult = _calcInvestScenario(refProd, altProd, numPay, monthlyRate);
+          addPage(false);
+          drawInvestAnalysis(refProd, altProd, scResult, `CENÁRIO PERSONALIZADO ${idx + 1}: ${refProd.name} vs. ${altProd.name}`);
         }
-
-        const parts = raw.split('\n');
-        const mainVal = parts[0] || '';
-        const ptsVal  = parts[1] || '';
-
-        if (ptsVal) {
-          // Valor em destaque
-          doc.setFontSize(6.5);
-          doc.setTextColor(...COR_CINZA_CLR);
-          doc.setFont('helvetica', 'bold');
-          doc.text(mainVal, cx, cy - 0.5, { align: 'center' });
-          // Pontuação em menor destaque
-          doc.setFontSize(5.5);
-          doc.setTextColor(...COR_CINZA_MED);
-          doc.setFont('helvetica', 'normal');
-          doc.text(ptsVal, cx, cy + 3.5, { align: 'center' });
-        } else {
-          doc.setFontSize(6);
-          doc.setTextColor(...COR_CINZA_MED);
-          doc.setFont('helvetica', 'normal');
-          doc.text(mainVal, cx, cy + 1, { align: 'center' });
-        }
-      }
-    },
-    willDrawPage: () => { fillPage(COR_FUNDO); },
-    didDrawPage:  () => { pageHeader(); pageFooter(); },
-  });
+      });
+    }
+  }
 
   // ── SALVAR ──
   const nomeArquivo = `HV_Comparador_${comp.name.replace(/[^a-zA-Z0-9à-ü ]/g, '_')}_${new Date().toISOString().slice(0,10)}.pdf`;
