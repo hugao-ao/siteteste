@@ -409,6 +409,7 @@ async function addClient(event) {
             .from("clientes")
             .insert([{ 
                 nome, 
+                whatsapp,
                 projeto, 
                 criado_por_id: currentUserId,
                 visibility: visibility,
