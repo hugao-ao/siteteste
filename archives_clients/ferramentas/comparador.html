@@ -834,6 +834,89 @@
   .invest-positive { color: var(--green-lt); font-weight: 700; }
   .invest-negative { color: var(--red-lt); font-weight: 700; }
 
+  /* ── Simulador de Cenários ── */
+  .invest-scenario-section {
+    margin-top: 24px;
+    border-top: 2px dashed var(--gold-dim);
+    padding-top: 20px;
+  }
+  .invest-scenario-section .scenario-header {
+    display: flex; align-items: center; gap: 10px;
+    margin-bottom: 16px; flex-wrap: wrap;
+  }
+  .invest-scenario-section .scenario-header h3 {
+    color: var(--gold); font-size: 1.05rem; margin: 0;
+  }
+  .scenario-selectors {
+    display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end;
+    margin-bottom: 16px;
+  }
+  .scenario-selectors .sel-group {
+    display: flex; flex-direction: column; gap: 4px;
+  }
+  .scenario-selectors .sel-group label {
+    font-size: .75rem; color: var(--muted-foreground); font-weight: 600;
+  }
+  .scenario-selectors .sel-group select {
+    background: var(--bg3); color: var(--foreground); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 6px 10px; font-size: .85rem;
+    min-width: 160px;
+  }
+  .scenario-selectors .sel-group select:focus {
+    border-color: var(--gold); outline: none;
+  }
+  .scenario-btn {
+    background: var(--gold-dim); color: #fff; border: none;
+    border-radius: var(--radius); padding: 6px 16px; font-size: .85rem;
+    cursor: pointer; font-weight: 600; white-space: nowrap;
+  }
+  .scenario-btn:hover { background: var(--gold); }
+
+  .scenario-result-cards {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 16px;
+    margin-top: 16px;
+  }
+  @media (max-width: 700px) {
+    .scenario-result-cards { grid-template-columns: 1fr; }
+  }
+  .scenario-card {
+    background: var(--bg3); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 16px;
+    position: relative;
+  }
+  .scenario-card.winner {
+    border-color: var(--gold);
+    box-shadow: 0 0 12px rgba(212,175,55,0.25);
+  }
+  .scenario-card .sc-badge {
+    position: absolute; top: -10px; right: 12px;
+    background: var(--gold); color: #000; font-size: .7rem;
+    padding: 2px 10px; border-radius: 10px; font-weight: 700;
+  }
+  .scenario-card h4 {
+    color: var(--gold); font-size: .95rem; margin: 0 0 12px;
+  }
+  .scenario-card .sc-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 4px 0; font-size: .85rem; border-bottom: 1px solid rgba(255,255,255,0.05);
+  }
+  .scenario-card .sc-row:last-child { border-bottom: none; }
+  .scenario-card .sc-row .sc-label { color: var(--muted-foreground); }
+  .scenario-card .sc-row .sc-value { font-weight: 600; color: var(--foreground); }
+  .scenario-card .sc-row.sc-total {
+    margin-top: 8px; padding-top: 8px;
+    border-top: 2px solid var(--gold-dim); border-bottom: none;
+    font-size: .95rem;
+  }
+  .scenario-card .sc-row.sc-total .sc-label { color: var(--gold); font-weight: 700; }
+  .scenario-card .sc-row.sc-total .sc-value { font-size: 1.05rem; }
+  .scenario-verdict {
+    background: var(--bg3); border: 1px solid var(--gold-dim);
+    border-radius: var(--radius); padding: 14px 16px;
+    margin-top: 16px; font-size: .88rem; line-height: 1.6;
+  }
+  .scenario-verdict b { color: var(--gold); }
+
   /* Seção de análise de período */
   .period-analysis-section {
     margin-top: 24px;
@@ -2567,7 +2650,7 @@ function renderResult(comp) {
         <div class="chart-wrap"><canvas id="${pcAcumId}"></canvas></div>`;
     }
 
-    // Análise de investimento
+    // Análise de investimento automática (melhor pontuado vs mais barato)
     let investHtml = '';
     if (pRanking.length >= 2) {
       const pBest = pRanking[0];
@@ -2579,44 +2662,81 @@ function renderResult(comp) {
         const numPay = Math.max(1, Math.floor(totalDays / freqDays));
         const monthlyRate = annualRate > 0 ? Math.pow(1 + annualRate, freqDays/365) - 1 : 0;
 
-        const diffs = [];
-        const balances = [];
-        let balance = 0;
-        for (let i = 0; i < numPay; i++) {
-          const bestPay = pBest.periodPayments[i] || 0;
-          const cheapPay = pCheapest.periodPayments[i] || 0;
-          const diff = bestPay - cheapPay;
-          diffs.push(diff);
-          balance = balance * (1 + monthlyRate) + diff;
-          balances.push(balance);
-        }
+        const autoResult = _calcInvestScenario(pBest, pCheapest, numPay, monthlyRate);
+        investData = { ...autoResult, monthlyRate, numPay, freqDays, totalDays };
 
-        const bestRefund = pBest.refund?.enabled ? (pBest.refund.mode === 'pct' ? (pBest.refund.value/100) * pBest.periodPayments.reduce((a,b)=>a+b,0) : pBest.refund.value) : 0;
-        const cheapRefund = pCheapest.refund?.enabled ? (pCheapest.refund.mode === 'pct' ? (pCheapest.refund.value/100) * pCheapest.periodPayments.reduce((a,b)=>a+b,0) : pCheapest.refund.value) : 0;
-        const refundDiff = bestRefund - cheapRefund;
+        const balClass = autoResult.investBalance >= 0 ? 'invest-positive' : 'invest-negative';
 
-        const finalBalance = balances[balances.length - 1] - refundDiff;
-        const totalDiffPaid = diffs.reduce((a,b) => a+b, 0);
-        const totalInterest = finalBalance - totalDiffPaid + refundDiff;
+        // Determinar vencedor pela lógica de custo líquido
+        const refNetCost = autoResult.refGrossTotal - autoResult.refRefundAmt;
+        const altNetCost = autoResult.altGrossTotal - autoResult.altRefundAmt - autoResult.investBalance;
+        const autoWinner = refNetCost <= altNetCost ? pBest : pCheapest;
+        const autoLoser = autoWinner.id === pBest.id ? pCheapest : pBest;
 
-        investData = { diffs, balances, finalBalance, totalDiffPaid, totalInterest, refundDiff, best: pBest, cheapest: pCheapest, monthlyRate, numPay, freqDays, totalDays };
-
-        const balClass = finalBalance >= 0 ? 'invest-positive' : 'invest-negative';
         investHtml = `
           <div class="mem-section-title">Análise de Investimento da Diferença</div>
           <div class="invest-analysis">
-            <h4>Contratar o mais barato e investir a diferença</h4>
-            <div class="invest-summary">
-              Se você contratar <b>${escHtml(pCheapest.name)}</b> (mais barato no período, ${fmtBRL(getPeriodPrice(pCheapest))}) em vez de <b>${escHtml(pBest.name)}</b> (melhor pontuado no período, ${fmtBRL(getPeriodPrice(pBest))}), a diferença paga a cada parcela pode ser investida a <b>${(annualRate*100).toFixed(1)}% a.a.</b><br><br>
-              Total da diferença aportada: <b>${fmtBRL(totalDiffPaid)}</b><br>
-              Juros acumulados: <b>${fmtBRL(totalInterest)}</b><br>
-              ${refundDiff !== 0 ? `Diferença de estornos: <b>${fmtBRL(-refundDiff)}</b><br>` : ''}
-              <b>Saldo final acumulado: <span class="${balClass}">${fmtBRL(finalBalance)}</span></b>
-              ${finalBalance < 0 ? '<br><span class="invest-negative">O saldo ficou negativo, indicando que a diferença investida não compensou.</span>' : ''}
+            <h4>Melhor pontuado vs. Mais barato — Investir a diferença</h4>
+            <div class="scenario-result-cards">
+              <div class="scenario-card${autoWinner.id===pBest.id?' winner':''}">
+                ${autoWinner.id===pBest.id?'<div class="sc-badge">MAIS VANTAJOSO</div>':''}
+                <h4>${escHtml(pBest.name)} <span style="font-size:.75rem;color:var(--muted-foreground)">(melhor pontuado)</span></h4>
+                <div class="sc-row"><span class="sc-label">Custo total bruto</span><span class="sc-value">${fmtBRL(autoResult.refGrossTotal)}</span></div>
+                <div class="sc-row"><span class="sc-label">Estorno ao final</span><span class="sc-value invest-positive">${autoResult.refRefundAmt > 0 ? '- '+fmtBRL(autoResult.refRefundAmt) : '—'}</span></div>
+                <div class="sc-row sc-total"><span class="sc-label">Custo líquido final</span><span class="sc-value ${refNetCost <= altNetCost ? 'invest-positive' : 'invest-negative'}">${fmtBRL(refNetCost)}</span></div>
+              </div>
+              <div class="scenario-card${autoWinner.id===pCheapest.id?' winner':''}">
+                ${autoWinner.id===pCheapest.id?'<div class="sc-badge">MAIS VANTAJOSO</div>':''}
+                <h4>${escHtml(pCheapest.name)} <span style="font-size:.75rem;color:var(--muted-foreground)">(mais barato)</span></h4>
+                <div class="sc-row"><span class="sc-label">Custo total bruto</span><span class="sc-value">${fmtBRL(autoResult.altGrossTotal)}</span></div>
+                <div class="sc-row"><span class="sc-label">Estorno ao final</span><span class="sc-value invest-positive">${autoResult.altRefundAmt > 0 ? '- '+fmtBRL(autoResult.altRefundAmt) : '—'}</span></div>
+                <div class="sc-row"><span class="sc-label">Saldo investido (diferença)</span><span class="sc-value ${balClass}">- ${fmtBRL(autoResult.investBalance)}</span></div>
+                <div class="sc-row"><span class="sc-label" style="font-size:.72rem">Diferença aportada: ${fmtBRL(autoResult.totalDiffPaid)} · Juros: ${fmtBRL(autoResult.totalInterest)}</span></div>
+                <div class="sc-row sc-total"><span class="sc-label">Custo líquido final</span><span class="sc-value ${altNetCost <= refNetCost ? 'invest-positive' : 'invest-negative'}">${fmtBRL(altNetCost)}</span></div>
+              </div>
+            </div>
+            <div class="scenario-verdict">
+              ${refNetCost < altNetCost
+                ? `Contratar <b>${escHtml(pBest.name)}</b> resulta em custo líquido de <b>${fmtBRL(refNetCost)}</b>, que é <b>${fmtBRL(altNetCost - refNetCost)} mais barato</b> que contratar ${escHtml(pCheapest.name)} (${fmtBRL(altNetCost)}), mesmo sendo mais caro no valor bruto. O estorno faz a diferença.`
+                : refNetCost > altNetCost
+                ? `Contratar <b>${escHtml(pCheapest.name)}</b> e investir a diferença resulta em custo líquido de <b>${fmtBRL(altNetCost)}</b>, economizando <b>${fmtBRL(refNetCost - altNetCost)}</b> em relação a ${escHtml(pBest.name)} (${fmtBRL(refNetCost)}).`
+                : `Ambas as opções resultam no mesmo custo líquido de <b>${fmtBRL(refNetCost)}</b>.`
+              }
             </div>
             <div class="chart-wrap" style="margin-top:12px"><canvas id="${investChartId}"></canvas></div>
           </div>`;
       }
+    }
+
+    // ═══ SIMULADOR DE CENÁRIOS PERSONALIZADO ═══
+    const scenarioContainerId = 'scenario-'+comp.id;
+    let scenarioHtml = '';
+    if (pRanking.length >= 2) {
+      const refOptions = pRanking.map(p => `<option value="${p.id}">${escHtml(p.name)} (${fmtBRL(getPeriodPrice(p))})</option>`).join('');
+      scenarioHtml = `
+        <div class="invest-scenario-section">
+          <div class="scenario-header">
+            <h3>🔬 Simulador de Cenários</h3>
+          </div>
+          <p style="font-size:.82rem;color:var(--muted-foreground);margin:0 0 12px">Escolha um produto como referência e compare com alternativas mais baratas. A análise considera custo total, estornos e rendimento da diferença investida.</p>
+          <div class="scenario-selectors">
+            <div class="sel-group">
+              <label>Produto referência (contratado)</label>
+              <select id="sc-ref-${comp.id}" onchange="updateScenarioAltOptions(${comp.id})">
+                <option value="">Selecione...</option>
+                ${refOptions}
+              </select>
+            </div>
+            <div class="sel-group">
+              <label>Comparar com (custo menor)</label>
+              <select id="sc-alt-${comp.id}">
+                <option value="">Selecione o referência primeiro</option>
+              </select>
+            </div>
+            <button class="scenario-btn" onclick="runScenario(${comp.id})">Comparar</button>
+          </div>
+          <div id="${scenarioContainerId}"></div>
+        </div>`;
     }
 
     const periodChartData = {
@@ -2635,6 +2755,7 @@ function renderResult(comp) {
         ${periodMemTable}
         ${periodChartsHtml}
         ${investHtml}
+        ${scenarioHtml}
       </div>`;
 
     // Descrição do período
@@ -2836,8 +2957,8 @@ function renderResult(comp) {
               {
                 label: 'Saldo acumulado investido',
                 data: investData.balances,
-                borderColor: investData.finalBalance >= 0 ? 'rgba(46,125,50,0.85)' : 'rgba(239,83,80,0.85)',
-                backgroundColor: investData.finalBalance >= 0 ? 'rgba(46,125,50,0.1)' : 'rgba(239,83,80,0.1)',
+                borderColor: (investData.investBalance||investData.finalBalance||0) >= 0 ? 'rgba(46,125,50,0.85)' : 'rgba(239,83,80,0.85)',
+                backgroundColor: (investData.investBalance||investData.finalBalance||0) >= 0 ? 'rgba(46,125,50,0.1)' : 'rgba(239,83,80,0.1)',
                 borderWidth: 2, fill: true, tension: 0.3,
                 pointRadius: investData.numPay > 50 ? 0 : 3,
                 yAxisID: 'y',
@@ -2864,6 +2985,204 @@ function renderResult(comp) {
   }, 200);
 
   return `<div class="result-section">${podium}${parecerBox}${mem}${periodSection}</div>`;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   MOTOR DE ANÁLISE DE INVESTIMENTO
+═══════════════════════════════════════════════════════════ */
+
+// Calcula o valor bruto do estorno de um produto (SEM subtrair do total)
+function _calcRefundAmount(product) {
+  const refund = product.refund;
+  if (!refund || !refund.enabled || !refund.value || refund.value <= 0) return 0;
+  const payments = product.periodPayments || [];
+  const grossTotal = payments.reduce((s, v) => s + v, 0);
+  if (refund.mode === 'pct') {
+    return grossTotal * (refund.value / 100);
+  } else {
+    let refundAmount = refund.value;
+    if (refund.applyAdjustments && product.price > 0 && payments.length > 0) {
+      const accFactor = payments[payments.length - 1] / product.price;
+      refundAmount *= accFactor;
+    }
+    return refundAmount;
+  }
+}
+
+// Calcula o cenário de investimento entre dois produtos
+// refProduct = produto referência (mais caro, o "contratado")
+// altProduct = produto alternativo (mais barato)
+function _calcInvestScenario(refProduct, altProduct, numPay, periodRate) {
+  const refPayments = refProduct.periodPayments || [];
+  const altPayments = altProduct.periodPayments || [];
+
+  const refGrossTotal = refPayments.reduce((s, v) => s + v, 0);
+  const altGrossTotal = altPayments.reduce((s, v) => s + v, 0);
+
+  const refRefundAmt = _calcRefundAmount(refProduct);
+  const altRefundAmt = _calcRefundAmount(altProduct);
+
+  // Investimento da diferença mensal
+  const diffs = [];
+  const balances = [];
+  let balance = 0;
+  for (let i = 0; i < numPay; i++) {
+    const refPay = refPayments[i] || 0;
+    const altPay = altPayments[i] || 0;
+    const diff = refPay - altPay;
+    diffs.push(diff);
+    balance = balance * (1 + periodRate) + diff;
+    balances.push(balance);
+  }
+
+  const investBalance = balances.length > 0 ? balances[balances.length - 1] : 0;
+  const totalDiffPaid = diffs.reduce((a, b) => a + b, 0);
+  const totalInterest = investBalance - totalDiffPaid;
+
+  return {
+    refGrossTotal, altGrossTotal,
+    refRefundAmt, altRefundAmt,
+    diffs, balances,
+    investBalance, totalDiffPaid, totalInterest,
+    best: refProduct, cheapest: altProduct
+  };
+}
+
+// Atualiza as opções do dropdown de produto alternativo
+function updateScenarioAltOptions(compId) {
+  const comp = comparisons.find(c => c.id === compId);
+  if (!comp || !comp.result?.periodResult) return;
+  const pRanking = comp.result.periodResult.ranking;
+  const refSelect = document.getElementById('sc-ref-' + compId);
+  const altSelect = document.getElementById('sc-alt-' + compId);
+  const refId = parseInt(refSelect.value);
+  if (!refId) {
+    altSelect.innerHTML = '<option value="">Selecione o referência primeiro</option>';
+    return;
+  }
+  const refProduct = pRanking.find(p => p.id === refId);
+  if (!refProduct) return;
+  const refPrice = refProduct.price || 0;
+
+  // Filtrar produtos com preço mensal (price) menor que o referência
+  const cheaper = pRanking.filter(p => p.id !== refId && (p.price || 0) < refPrice);
+  if (cheaper.length === 0) {
+    altSelect.innerHTML = '<option value="">Nenhum produto com custo menor</option>';
+    return;
+  }
+  const getPP = p => p.periodTotalCost || p.price;
+  altSelect.innerHTML = '<option value="">Selecione...</option>' +
+    cheaper.map(p => `<option value="${p.id}">${escHtml(p.name)} (${fmtBRL(getPP(p))})</option>`).join('');
+}
+
+// Executa o cenário personalizado
+function runScenario(compId) {
+  const comp = comparisons.find(c => c.id === compId);
+  if (!comp || !comp.result?.periodResult) return;
+  const pRanking = comp.result.periodResult.ranking;
+  const refId = parseInt(document.getElementById('sc-ref-' + compId).value);
+  const altId = parseInt(document.getElementById('sc-alt-' + compId).value);
+  if (!refId || !altId) return;
+
+  const refProduct = pRanking.find(p => p.id === refId);
+  const altProduct = pRanking.find(p => p.id === altId);
+  if (!refProduct || !altProduct) return;
+
+  const annualRate = (comp.periodConfig?.interestRate || 0) / 100;
+  const totalDays = comp.periodConfig ? unitToDaysStatic(comp.periodConfig.periodQty, comp.periodConfig.periodUnit) : 365;
+  const freqDays = comp.periodConfig ? unitToDaysStatic(comp.periodConfig.payFreqQty, comp.periodConfig.payFreqUnit) : 30;
+  const numPay = Math.max(1, Math.floor(totalDays / freqDays));
+  const periodRate = annualRate > 0 ? Math.pow(1 + annualRate, freqDays / 365) - 1 : 0;
+
+  const result = _calcInvestScenario(refProduct, altProduct, numPay, periodRate);
+
+  const refNetCost = result.refGrossTotal - result.refRefundAmt;
+  const altNetCost = result.altGrossTotal - result.altRefundAmt - result.investBalance;
+  const balClass = result.investBalance >= 0 ? 'invest-positive' : 'invest-negative';
+
+  const container = document.getElementById('scenario-' + compId);
+  const chartId = 'sc-chart-' + compId + '-' + Date.now();
+
+  container.innerHTML = `
+    <div class="scenario-result-cards">
+      <div class="scenario-card${refNetCost <= altNetCost ? ' winner' : ''}">
+        ${refNetCost <= altNetCost ? '<div class="sc-badge">MAIS VANTAJOSO</div>' : ''}
+        <h4>${escHtml(refProduct.name)} <span style="font-size:.75rem;color:var(--muted-foreground)">(referência)</span></h4>
+        <div class="sc-row"><span class="sc-label">Custo total bruto</span><span class="sc-value">${fmtBRL(result.refGrossTotal)}</span></div>
+        <div class="sc-row"><span class="sc-label">Estorno ao final</span><span class="sc-value invest-positive">${result.refRefundAmt > 0 ? '- ' + fmtBRL(result.refRefundAmt) : '—'}</span></div>
+        <div class="sc-row sc-total"><span class="sc-label">Custo líquido final</span><span class="sc-value ${refNetCost <= altNetCost ? 'invest-positive' : 'invest-negative'}">${fmtBRL(refNetCost)}</span></div>
+      </div>
+      <div class="scenario-card${altNetCost < refNetCost ? ' winner' : ''}">
+        ${altNetCost < refNetCost ? '<div class="sc-badge">MAIS VANTAJOSO</div>' : ''}
+        <h4>${escHtml(altProduct.name)} <span style="font-size:.75rem;color:var(--muted-foreground)">(alternativa)</span></h4>
+        <div class="sc-row"><span class="sc-label">Custo total bruto</span><span class="sc-value">${fmtBRL(result.altGrossTotal)}</span></div>
+        <div class="sc-row"><span class="sc-label">Estorno ao final</span><span class="sc-value invest-positive">${result.altRefundAmt > 0 ? '- ' + fmtBRL(result.altRefundAmt) : '—'}</span></div>
+        <div class="sc-row"><span class="sc-label">Saldo investido (diferença)</span><span class="sc-value ${balClass}">- ${fmtBRL(result.investBalance)}</span></div>
+        <div class="sc-row"><span class="sc-label" style="font-size:.72rem">Diferença aportada: ${fmtBRL(result.totalDiffPaid)} · Juros: ${fmtBRL(result.totalInterest)}</span></div>
+        <div class="sc-row sc-total"><span class="sc-label">Custo líquido final</span><span class="sc-value ${altNetCost <= refNetCost ? 'invest-positive' : 'invest-negative'}">${fmtBRL(altNetCost)}</span></div>
+      </div>
+    </div>
+    <div class="scenario-verdict">
+      ${refNetCost < altNetCost
+        ? `Contratar <b>${escHtml(refProduct.name)}</b> resulta em custo líquido de <b>${fmtBRL(refNetCost)}</b>, que é <b>${fmtBRL(altNetCost - refNetCost)} mais barato</b> que contratar ${escHtml(altProduct.name)} (${fmtBRL(altNetCost)}), mesmo sendo mais caro no valor bruto. O estorno faz a diferença.`
+        : refNetCost > altNetCost
+        ? `Contratar <b>${escHtml(altProduct.name)}</b> e investir a diferença resulta em custo líquido de <b>${fmtBRL(altNetCost)}</b>, economizando <b>${fmtBRL(refNetCost - altNetCost)}</b> em relação a ${escHtml(refProduct.name)} (${fmtBRL(refNetCost)}).`
+        : `Ambas as opções resultam no mesmo custo líquido de <b>${fmtBRL(refNetCost)}</b>.`
+      }
+    </div>
+    <div class="chart-wrap" style="margin-top:12px"><canvas id="${chartId}"></canvas></div>
+  `;
+
+  // Renderizar gráfico do cenário
+  setTimeout(() => {
+    const ctx = document.getElementById(chartId);
+    if (!ctx) return;
+    const xInfo = bestXUnit(totalDays);
+    const labels = [];
+    for (let i = 1; i <= numPay; i++) {
+      labels.push((i * freqDays / xInfo.divisor).toFixed(xInfo.divisor === 1 ? 0 : 1));
+    }
+    new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [
+          {
+            label: 'Diferença por parcela',
+            data: result.diffs,
+            borderColor: 'rgba(255,179,0,0.85)',
+            backgroundColor: 'rgba(255,179,0,0.1)',
+            borderWidth: 2, fill: false, tension: 0.3,
+            pointRadius: numPay > 50 ? 0 : 3,
+            yAxisID: 'y1',
+          },
+          {
+            label: 'Saldo acumulado investido',
+            data: result.balances,
+            borderColor: result.investBalance >= 0 ? 'rgba(46,125,50,0.85)' : 'rgba(239,83,80,0.85)',
+            backgroundColor: result.investBalance >= 0 ? 'rgba(46,125,50,0.1)' : 'rgba(239,83,80,0.1)',
+            borderWidth: 2, fill: true, tension: 0.3,
+            pointRadius: numPay > 50 ? 0 : 3,
+            yAxisID: 'y',
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        plugins: {
+          legend: { labels: { color: '#A0B8A6', font: { size: 11 } } },
+          title: { display: true, text: `Investimento da Diferença: ${refProduct.name} vs ${altProduct.name}`, color: '#D4AF37', font: { size: 13, weight: 'bold' } },
+          tooltip: { callbacks: { label: c => `${c.dataset.label}: ${fmtBRL(c.raw)}` } }
+        },
+        scales: {
+          x: { title: { display: true, text: xInfo.label, color: '#A0B8A6' }, ticks: { color: '#A0B8A6', maxTicksLimit: 20 }, grid: { color: 'rgba(212,175,55,0.1)' } },
+          y: { position: 'left', title: { display: true, text: 'Saldo (R$)', color: '#A0B8A6' }, ticks: { color: '#A0B8A6', callback: v => fmtBRL(v) }, grid: { color: 'rgba(212,175,55,0.1)' } },
+          y1: { position: 'right', title: { display: true, text: 'Diferença/parcela (R$)', color: '#A0B8A6' }, ticks: { color: '#A0B8A6', callback: v => fmtBRL(v) }, grid: { drawOnChartArea: false } },
+        }
+      }
+    });
+  }, 100);
 }
 
 function toggleMem(id, btn) {
