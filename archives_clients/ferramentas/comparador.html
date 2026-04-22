@@ -2720,10 +2720,12 @@ function renderResult(comp) {
         const autoWinner = refNetCost <= altNetCost ? pBest : pCheapest;
         const autoLoser = autoWinner.id === pBest.id ? pCheapest : pBest;
 
+        const taxaLabel = annualRate > 0 ? `Taxa de rendimento considerada: ${(annualRate*100).toFixed(2)}% a.a.` : 'Sem taxa de rendimento aplicada (0% a.a.)';
         investHtml = `
           <div class="mem-section-title">Análise de Investimento da Diferença</div>
           <div class="invest-analysis">
             <h4>Melhor pontuado vs. Mais barato — Investir a diferença</h4>
+            <div style="background:rgba(212,175,55,.1);border:1px solid var(--gold);border-radius:var(--radius);padding:6px 12px;margin-bottom:10px;font-size:.82rem;color:var(--gold);text-align:center">${taxaLabel}</div>
             <div class="scenario-result-cards">
               <div class="scenario-card${autoWinner.id===pBest.id?' winner':''}">
                 ${autoWinner.id===pBest.id?'<div class="sc-badge">MAIS VANTAJOSO</div>':''}
@@ -2749,6 +2751,7 @@ function renderResult(comp) {
                 ? `Contratar <b>${escHtml(pCheapest.name)}</b> e investir a diferença resulta em custo líquido de <b>${fmtBRL(altNetCost)}</b>, economizando <b>${fmtBRL(refNetCost - altNetCost)}</b> em relação a ${escHtml(pBest.name)} (${fmtBRL(refNetCost)}).`
                 : `Ambas as opções resultam no mesmo custo líquido de <b>${fmtBRL(refNetCost)}</b>.`
               }
+              <br><small style="color:var(--muted-foreground)">Cálculo baseado em taxa de rendimento de <b>${(annualRate*100).toFixed(2)}% a.a.</b></small>
             </div>
             <div class="chart-wrap" style="margin-top:12px"><canvas id="${investChartSaldoId}"></canvas></div>
             <div class="chart-wrap" style="margin-top:12px"><canvas id="${investChartDiffId}"></canvas></div>
@@ -3088,6 +3091,7 @@ function _renderSavedScenarios(comp) {
     const balClass = result.investBalance >= 0 ? 'invest-positive' : 'invest-negative';
     const savedDate = sc.savedAt ? new Date(sc.savedAt).toLocaleDateString('pt-BR', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' }) : '';
 
+    const scTaxaLabel = annualRate > 0 ? `Taxa de rendimento considerada: ${(annualRate*100).toFixed(2)}% a.a.` : 'Sem taxa de rendimento aplicada (0% a.a.)';
     html += `
       <div class="saved-scenario-item">
         <div class="saved-sc-header">
@@ -3097,6 +3101,7 @@ function _renderSavedScenarios(comp) {
           </div>
           <button class="saved-sc-delete" onclick="deleteScenario(${comp.id}, ${idx})">Excluir</button>
         </div>
+        <div style="background:rgba(212,175,55,.1);border:1px solid var(--gold);border-radius:var(--radius);padding:5px 10px;margin-bottom:8px;font-size:.78rem;color:var(--gold);text-align:center">${scTaxaLabel}</div>
         <div class="scenario-result-cards">
           <div class="scenario-card${refNetCost <= altNetCost ? ' winner' : ''}">
             ${refNetCost <= altNetCost ? '<div class="sc-badge">MAIS VANTAJOSO</div>' : ''}
@@ -3122,6 +3127,7 @@ function _renderSavedScenarios(comp) {
             ? `Contratar <b>${escHtml(altProd.name)}</b> e investir a diferença resulta em custo líquido de <b>${fmtBRL(altNetCost)}</b>, economizando <b>${fmtBRL(refNetCost - altNetCost)}</b> em relação a ${escHtml(refProd.name)} (${fmtBRL(refNetCost)}).`
             : `Ambas as opções resultam no mesmo custo líquido de <b>${fmtBRL(refNetCost)}</b>.`
           }
+          <br><small style="color:var(--muted-foreground)">Cálculo baseado em taxa de rendimento de <b>${(annualRate*100).toFixed(2)}% a.a.</b></small>
         </div>
       </div>`;
   });
@@ -3268,7 +3274,9 @@ function runScenario(compId) {
   const container = document.getElementById('scenario-' + compId);
   const chartId = 'sc-chart-' + compId + '-' + Date.now();
 
+  const liveTaxaLabel = annualRate > 0 ? `Taxa de rendimento considerada: ${(annualRate*100).toFixed(2)}% a.a.` : 'Sem taxa de rendimento aplicada (0% a.a.)';
   container.innerHTML = `
+    <div style="background:rgba(212,175,55,.1);border:1px solid var(--gold);border-radius:var(--radius);padding:5px 10px;margin-bottom:8px;font-size:.78rem;color:var(--gold);text-align:center">${liveTaxaLabel}</div>
     <div class="scenario-result-cards">
       <div class="scenario-card${refNetCost <= altNetCost ? ' winner' : ''}">
         ${refNetCost <= altNetCost ? '<div class="sc-badge">MAIS VANTAJOSO</div>' : ''}
@@ -3294,6 +3302,7 @@ function runScenario(compId) {
         ? `Contratar <b>${escHtml(altProduct.name)}</b> e investir a diferença resulta em custo líquido de <b>${fmtBRL(altNetCost)}</b>, economizando <b>${fmtBRL(refNetCost - altNetCost)}</b> em relação a ${escHtml(refProduct.name)} (${fmtBRL(refNetCost)}).`
         : `Ambas as opções resultam no mesmo custo líquido de <b>${fmtBRL(refNetCost)}</b>.`
       }
+      <br><small style="color:var(--muted-foreground)">Cálculo baseado em taxa de rendimento de <b>${(annualRate*100).toFixed(2)}% a.a.</b></small>
     </div>
     <div class="chart-wrap" style="margin-top:12px"><canvas id="${chartId}-saldo"></canvas></div>
     <div class="chart-wrap" style="margin-top:12px"><canvas id="${chartId}-diff"></canvas></div>
@@ -3751,7 +3760,7 @@ async function gerarPdfComp(id) {
   }
 
   function drawGeneralTable(rankArr, brkdown, tableTitle) {
-    addPage(true);
+    addPage(true);  // landscape para tabelas
     y = sectionTitle(tableTitle, y);
     const nProds = rankArr.length;
     const fixedCols = 50 + 16;
@@ -3836,15 +3845,26 @@ async function gerarPdfComp(id) {
           }
         }
       },
-      willDrawPage: () => { fillPage(COR_FUNDO); },
+      willDrawPage: () => { isLandscape = true; fillPage(COR_FUNDO); },
       didDrawPage:  () => { pageHeader(); pageFooter(); },
     });
     y = doc.lastAutoTable.finalY + 8;
+    // Restaurar para retrato após a tabela
+    isLandscape = false;
   }
 
-  function drawInvestAnalysis(refProd, altProd, scenario, title) {
-    checkY(70);
+  function drawInvestAnalysis(refProd, altProd, scenario, title, taxaAnual) {
+    checkY(80);
     y = sectionTitle(title, y);
+    // Badge da taxa de rendimento
+    const taxaTxt = (taxaAnual && taxaAnual > 0) ? `Taxa de rendimento considerada: ${taxaAnual.toFixed(2)}% a.a.` : 'Sem taxa de rendimento aplicada (0% a.a.)';
+    doc.setFillColor(20, 50, 30);
+    doc.roundedRect(ML, y - 2, CW(), 8, 1.5, 1.5, 'F');
+    doc.setDrawColor(...COR_DOURADO);
+    doc.setLineWidth(0.3);
+    doc.roundedRect(ML, y - 2, CW(), 8, 1.5, 1.5, 'S');
+    txt(taxaTxt, PW() / 2, y + 3, { size: 7.5, color: COR_DOURADO, bold: true, align: 'center' });
+    y += 10;
     const refNetCost = scenario.refGrossTotal - scenario.refRefundAmt;
     const altNetCost = scenario.altGrossTotal - scenario.altRefundAmt - scenario.investBalance;
     const winner = refNetCost <= altNetCost ? 'ref' : 'alt';
@@ -3883,13 +3903,14 @@ async function gerarPdfComp(id) {
     txt(fmtBRL(altNetCost), px2 + cardW - 4, y + 38, { size: 8, color: winner === 'alt' ? COR_FUNDO : COR_VERDE_LT, bold: true, align: 'right' });
     y += cardH + 4;
     // Veredito
+    const taxaVeredito = (taxaAnual && taxaAnual > 0) ? ` (considerando rendimento de ${taxaAnual.toFixed(2)}% a.a.)` : '';
     let veredito;
     if (refNetCost < altNetCost) {
-      veredito = `Contratar ${refProd.name} resulta em custo líquido de ${fmtBRL(refNetCost)}, que é ${fmtBRL(altNetCost - refNetCost)} mais barato que contratar ${altProd.name} (${fmtBRL(altNetCost)}), mesmo sendo mais caro no valor bruto. O estorno faz a diferença.`;
+      veredito = `Contratar ${refProd.name} resulta em custo líquido de ${fmtBRL(refNetCost)}, que é ${fmtBRL(altNetCost - refNetCost)} mais barato que contratar ${altProd.name} (${fmtBRL(altNetCost)}), mesmo sendo mais caro no valor bruto. O estorno faz a diferença${taxaVeredito}.`;
     } else if (refNetCost > altNetCost) {
-      veredito = `Contratar ${altProd.name} e investir a diferença resulta em custo líquido de ${fmtBRL(altNetCost)}, economizando ${fmtBRL(refNetCost - altNetCost)} em relação a ${refProd.name} (${fmtBRL(refNetCost)}).`;
+      veredito = `Contratar ${altProd.name} e investir a diferença resulta em custo líquido de ${fmtBRL(altNetCost)}, economizando ${fmtBRL(refNetCost - altNetCost)} em relação a ${refProd.name} (${fmtBRL(refNetCost)})${taxaVeredito}.`;
     } else {
-      veredito = `Ambas as opções resultam no mesmo custo líquido de ${fmtBRL(refNetCost)}.`;
+      veredito = `Ambas as opções resultam no mesmo custo líquido de ${fmtBRL(refNetCost)}${taxaVeredito}.`;
     }
     const vLines = doc.splitTextToSize(veredito, CW() - 6);
     const vH = Math.max(10, vLines.length * 4.5 + 6);
@@ -4303,7 +4324,7 @@ async function gerarPdfComp(id) {
 
         // ══ PÁGINA 15: RESULTADO + PARECER ══
         addPage(false);
-        drawInvestAnalysis(pBest, pCheapest, autoResult, 'RESULTADO — Melhor Pontuado vs. Mais Barato');
+        drawInvestAnalysis(pBest, pCheapest, autoResult, 'RESULTADO — Melhor Pontuado vs. Mais Barato', pc.interestRate || 0);
       }
     }
 
@@ -4350,7 +4371,7 @@ async function gerarPdfComp(id) {
 
           // ══ RESULTADO + PARECER ══
           addPage(false);
-          drawInvestAnalysis(refProd, altProd, scResult, `RESULTADO — ${refProd.name} vs. ${altProd.name}`);
+          drawInvestAnalysis(refProd, altProd, scResult, `RESULTADO — ${refProd.name} vs. ${altProd.name}`, pc.interestRate || 0);
         }
       });
     }
