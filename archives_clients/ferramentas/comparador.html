@@ -491,8 +491,10 @@
   .podium-card .pod-rank { font-size: 1.5rem; margin-bottom: 4px; }
   .podium-card .pod-name { font-weight: 700; font-size: .9rem; margin-bottom: 4px; color: var(--foreground); }
   .podium-card .pod-score { font-size: 1.6rem; font-weight: 800; color: var(--gold); }
-  .podium-card.second .pod-score { color: #8fbc8f; }
-  .podium-card.third .pod-score { color: #6b8e6b; }
+  .podium-card.second .pod-score { color: #66bb6a; }
+  .podium-card.third .pod-score { color: #43a047; }
+  .podium-card.rest .pod-score { color: var(--muted-foreground); font-size: 1.3rem; }
+  .podium-card.rest { opacity: .75; border-color: var(--border); background: rgba(10,46,20,.2); }
   .podium-card .pod-price { font-size: .75rem; color: var(--muted-foreground); margin-top: 4px; }
 
   .parecer-box {
@@ -2512,17 +2514,16 @@ function initColResize(tableId) {
 ═══════════════════════════════════════════════════════════ */
 
 function _buildPodium(ranking, priceGetter, medals, rankLabels) {
-  const top3 = ranking.slice(0, 3);
   let html = '<div class="podium-grid">';
-  top3.forEach((p,i) => {
-    const cls = i===0 ? 'first' : (i===1 ? 'second' : 'third');
+  ranking.forEach((p,i) => {
+    const cls = i===0 ? 'first' : (i===1 ? 'second' : (i===2 ? 'third' : 'rest'));
     html += `
       <div class="podium-card ${cls}">
         <div class="pod-rank">${medals[i]||`${i+1}º`}</div>
         <div class="pod-name">${escHtml(p.name)}</div>
         <div class="pod-score">${p.score.toFixed(1)}</div>
         <div class="pod-price">${fmtBRL(priceGetter(p))}</div>
-        <div class="text-dim" style="font-size:.72rem;margin-top:2px">${rankLabels[i]||''}</div>
+        <div class="text-dim" style="font-size:.72rem;margin-top:2px">${rankLabels[i]||`${i+1}ª opção`}</div>
       </div>`;
   });
   html += '</div>';
@@ -3570,7 +3571,35 @@ async function gerarPdfComp(id) {
   }
 
   // ══════════════════════════════════════════════════════════
-  // PÁGINA 1: CAPA
+  // FUNÇÃO AUXILIAR: SUBCAPA (página inteira estilo capa de seção)
+  // ══════════════════════════════════════════════════════════
+  function drawSubcapa(titulo, subtitulo, detalhes) {
+    fillPage(COR_FUNDO);
+    doc.setFillColor(...COR_DOURADO);
+    doc.rect(0, 0, PW(), 3, 'F');
+    doc.setFillColor(...COR_VERDE);
+    doc.roundedRect(ML, PH() * 0.32, CW(), 50, 3, 3, 'F');
+    txt(titulo, PW() / 2, PH() * 0.32 + 18, { size: 14, color: COR_DOURADO, bold: true, align: 'center' });
+    if (subtitulo) {
+      const subLines = doc.splitTextToSize(subtitulo, CW() - 20);
+      subLines.forEach((ln, i) => {
+        txt(ln, PW() / 2, PH() * 0.32 + 28 + i * 5, { size: 9, color: COR_CINZA_CLR, align: 'center' });
+      });
+    }
+    if (detalhes && detalhes.length > 0) {
+      let dy = PH() * 0.32 + 56;
+      detalhes.forEach(d => {
+        txt(d, PW() / 2, dy, { size: 8, color: COR_CINZA_MED, align: 'center' });
+        dy += 5;
+      });
+    }
+    doc.setFillColor(...COR_DOURADO);
+    doc.rect(0, PH() - 3, PW(), 3, 'F');
+    txt('HV Saúde Financeira • Relatório gerado automaticamente', PW() / 2, PH() - 6, { size: 7, color: COR_CINZA_MED, align: 'center' });
+  }
+
+  // ══════════════════════════════════════════════════════════
+  // PÁGINA 1: CAPA (sem spoiler de resultado)
   // ══════════════════════════════════════════════════════════
   fillPage(COR_FUNDO);
   // Barra superior dourada
@@ -3593,15 +3622,39 @@ async function gerarPdfComp(id) {
   txt(`Data da análise: ${dataComp}`, PW() / 2, y, { size: 9, color: COR_CINZA_MED, align: 'center' });
   y += 6;
   txt(`${comp.products.length} produto(s) comparado(s)  •  ${comp.objParams.length} parâmetro(s) objetivo(s)  •  ${comp.subjParams.length} parâmetro(s) subjetivo(s)`, PW() / 2, y, { size: 8.5, color: COR_CINZA_MED, align: 'center' });
+  y += 8;
+  // Produtos analisados
+  const prodNames = comp.products.map(p => p.name).join('  •  ');
+  const prodLines = doc.splitTextToSize(`Produtos: ${prodNames}`, CW() - 20);
+  prodLines.forEach((ln, i) => {
+    txt(ln, PW() / 2, y + i * 5, { size: 8, color: COR_CINZA_MED, align: 'center' });
+  });
+  y += prodLines.length * 5 + 6;
+  if (comp.periodEnabled) {
+    const pc = comp.periodConfig || {};
+    const unitLabels = { dia: 'dia(s)', semana: 'semana(s)', quinzena: 'quinzena(s)', mes: 'mês(es)', ano: 'ano(s)' };
+    txt(`Análise de período: ${pc.periodQty || '?'} ${unitLabels[pc.periodUnit] || '?'}`, PW() / 2, y, { size: 8, color: COR_CINZA_MED, align: 'center' });
+    y += 5;
+    if (pc.interestRate) txt(`Taxa de rendimento: ${pc.interestRate}% a.a.`, PW() / 2, y, { size: 8, color: COR_CINZA_MED, align: 'center' });
+    y += 5;
+  }
+  // Aviso profissional
+  y = Math.max(y + 10, PH() * 0.55);
+  doc.setFillColor(...COR_VERDE);
+  doc.roundedRect(ML + 20, y, CW() - 40, 22, 2, 2, 'F');
+  txt('Este relatório apresenta uma análise comparativa detalhada', PW() / 2, y + 8, { size: 8, color: COR_CINZA_CLR, align: 'center' });
+  txt('baseada nos critérios e pesos definidos pelo cliente.', PW() / 2, y + 14, { size: 8, color: COR_CINZA_CLR, align: 'center' });
   y += 12;
 
   // ── Funções reutilizáveis para ranking e parecer no PDF ──
   function drawRankingCards(rankArr, priceGetter, title) {
     txt(title, PW() / 2, y, { size: 11, color: COR_DOURADO, bold: true, align: 'center' });
     y += 7;
-    const top3 = rankArr.slice(0, 3);
-    const nProdsRank = top3.length;
-    const cardW = CW() / nProdsRank;
+    const nAll = rankArr.length;
+    // Top 3 em destaque (cards grandes)
+    const top3 = rankArr.slice(0, Math.min(3, nAll));
+    const nTop = top3.length;
+    const cardW = CW() / nTop;
     let maxLines = 1;
     top3.forEach(p => {
       const nl = doc.splitTextToSize(p.name, cardW - 4);
@@ -3609,8 +3662,8 @@ async function gerarPdfComp(id) {
     });
     const cardH = 10 + maxLines * 4 + 8;
     checkY(cardH + 3);
-    const COR_2ND = [20, 83, 45];  // verde médio
-    const COR_3RD = [10, 46, 20];  // verde escuro
+    const COR_2ND = [20, 83, 45];
+    const COR_3RD = [10, 46, 20];
     top3.forEach((p, i) => {
       const px = ML + i * cardW;
       const bgC = i === 0 ? COR_DOURADO : (i === 1 ? COR_2ND : COR_3RD);
@@ -3622,7 +3675,7 @@ async function gerarPdfComp(id) {
         doc.roundedRect(px, y, cardW - 1.5, cardH, 2, 2, 'S');
       }
       const textC = i === 0 ? COR_FUNDO : COR_CINZA_CLR;
-      const scoreC = i === 0 ? COR_FUNDO : (i === 1 ? [143, 188, 143] : [107, 142, 107]);
+      const scoreC = i === 0 ? COR_FUNDO : (i === 1 ? [102, 187, 106] : [67, 160, 71]);
       txt(`${i + 1}º`, px + cardW / 2 - 0.75, y + 5, { size: 7.5, color: textC, bold: true, align: 'center' });
       const nomeLines = doc.splitTextToSize(p.name, cardW - 4);
       doc.setFontSize(i === 0 ? 8 : 7);
@@ -3636,6 +3689,31 @@ async function gerarPdfComp(id) {
       txt(fmtBRL(priceGetter(p)), px + cardW / 2 - 0.75, afterName + 5.5, { size: 6, color: textC, align: 'center' });
     });
     y += cardH + 2;
+    // Demais posições (4º em diante) — cards menores
+    const rest = rankArr.slice(3);
+    if (rest.length > 0) {
+      const restCols = Math.min(rest.length, 4);
+      const restCardW = CW() / restCols;
+      const restCardH = 18;
+      checkY(restCardH + 3);
+      const COR_REST = [8, 34, 16];
+      rest.forEach((p, ri) => {
+        const col = ri % restCols;
+        if (ri > 0 && col === 0) { y += restCardH + 2; checkY(restCardH + 3); }
+        const px = ML + col * restCardW;
+        doc.setFillColor(...COR_REST);
+        doc.roundedRect(px, y, restCardW - 1.5, restCardH, 2, 2, 'F');
+        doc.setDrawColor(...COR_VERDE_MED);
+        doc.setLineWidth(0.2);
+        doc.roundedRect(px, y, restCardW - 1.5, restCardH, 2, 2, 'S');
+        const idx = 3 + ri;
+        txt(`${idx + 1}º`, px + 4, y + 6, { size: 6.5, color: COR_CINZA_MED, bold: true });
+        txt(p.name, px + 12, y + 6, { size: 6.5, color: COR_CINZA_CLR, bold: true });
+        txt(`${p.score.toFixed(1)} pts`, px + restCardW - 6, y + 6, { size: 6.5, color: COR_CINZA_MED, bold: true, align: 'right' });
+        txt(fmtBRL(priceGetter(p)), px + restCardW - 6, y + 12, { size: 5.5, color: COR_CINZA_MED, align: 'right' });
+      });
+      y += restCardH + 2;
+    }
   }
 
   function drawParecer(rankArr, priceGetter, label) {
@@ -3824,37 +3902,6 @@ async function gerarPdfComp(id) {
     y += vH + 6;
   }
 
-  // ══════════════════════════════════════════════════════════
-  // CAPA: ANÁLISE NORMAL (preço fixo)
-  // ══════════════════════════════════════════════════════════
-  const { ranking, breakdown } = comp.result;
-  drawRankingCards(ranking, p => p.price, 'RANKING — ANÁLISE NORMAL (Preço Fixo)');
-  drawParecer(ranking, p => p.price, 'PARECER');
-
-  // Alertas inaceitável
-  const inacAlerts = [];
-  [...comp.objParams, ...comp.subjParams].forEach(param => {
-    if (legacyToWeight(param.importance) === -10) {
-      comp.products.forEach(p => {
-        if (hasStateNorm(param.hasParam[p.id]) !== false) {
-          inacAlerts.push(`ATENÇÃO: ${p.name} tem o parâmetro "${param.name}" marcado como Inaceitável.`);
-        }
-      });
-    }
-  });
-  if (inacAlerts.length > 0) {
-    checkY(inacAlerts.length * 5 + 14);
-    doc.setFillColor(80, 20, 20);
-    doc.roundedRect(ML, y - 3, CW(), inacAlerts.length * 5 + 12, 2, 2, 'F');
-    txt('ALERTAS DE INACEITABILIDADE', ML + 3, y + 3, { size: 9, color: COR_AMARELO, bold: true });
-    y += 8;
-    inacAlerts.forEach(a => {
-      txt(a, ML + 3, y, { size: 8, color: [255, 180, 180] });
-      y += 5;
-    });
-    y += 4;
-  }
-
   // Rodapé capa
   pageFooter();
 
@@ -3880,39 +3927,10 @@ async function gerarPdfComp(id) {
     }
   });
 
-  // ══════════════════════════════════════════════════════════
-  // PÁGINA: GRÁFICO DE BARRAS — ANÁLISE NORMAL
-  // ══════════════════════════════════════════════════════════
-  {
-    const chartNormalImg = captureChart('chart-'+comp.id) || createOffscreenChart({
-      type: 'bar',
-      data: {
-        labels: ranking.map(p => p.name),
-        datasets: [{
-          label: 'Pontuação total',
-          data: ranking.map(p => p.score),
-          backgroundColor: ranking.map((_,i) => i===0 ? 'rgba(212,175,55,0.85)' : 'rgba(46,125,50,0.6)'),
-          borderColor: ranking.map((_,i) => i===0 ? 'rgba(212,175,55,1)' : 'rgba(46,125,50,1)'),
-          borderWidth: 1, borderRadius: 6,
-        }]
-      },
-      options: { responsive: false, animation: false,
-        plugins: { legend: { display: false }, title: { display: true, text: 'Pontuação Total por Produto', color: '#D4AF37', font: { size: 13, weight: 'bold' } } },
-        scales: {
-          x: { ticks: { color: '#A0B8A6' }, grid: { color: 'rgba(212,175,55,0.1)' } },
-          y: { ticks: { color: '#A0B8A6' }, grid: { color: 'rgba(212,175,55,0.1)' }, beginAtZero: true }
-        }
-      }
-    }, 800, 400);
-    if (chartNormalImg) {
-      addPage(false);
-      y = sectionTitle('GRÁFICO COMPARATIVO — ANÁLISE NORMAL', y);
-      addChartImage(chartNormalImg, CW(), 100);
-    }
-  }
+  const { ranking, breakdown } = comp.result;
 
   // ══════════════════════════════════════════════════════════
-  // PÁGINA 2+: EXPLICAÇÕES + TABELAS DE PARÂMETROS
+  // PÁGINA 2: EXPLICAÇÃO DA METODOLOGIA
   // ══════════════════════════════════════════════════════════
   addPage(false);
 
@@ -3995,11 +4013,9 @@ async function gerarPdfComp(id) {
   }
 
   // ══════════════════════════════════════════════════════════
-  // PÁGINA 3+: TABELAS DE PARÂMETROS (nova página para evitar sobreposição)
+  // PÁGINA 3: PARÂMETROS OBJETIVOS
   // ══════════════════════════════════════════════════════════
-  addPage(false);
-
-  // Callbacks para autoTable — só preenche fundo em páginas NOVAS (overflow)
+  // Callbacks para autoTable
   let _atFirstPage = true;
   const atWillDraw = (data) => {
     if (!_atFirstPage) { fillPage(COR_FUNDO); }
@@ -4007,9 +4023,9 @@ async function gerarPdfComp(id) {
   };
   const atDidDraw = () => { pageHeader(); pageFooter(); };
 
-  // ── TABELA: Parâmetros Objetivos ──
   const objRows = breakdown.filter(r => r.type === 'Objetivo');
   if (objRows.length > 0) {
+    addPage(false);
     y = sectionTitle('PARÂMETROS OBJETIVOS', y);
     const objTableBody = objRows.map(r => [
       r.paramName,
@@ -4040,10 +4056,12 @@ async function gerarPdfComp(id) {
     y = doc.lastAutoTable.finalY + 8;
   }
 
-  // ── TABELA: Parâmetros Subjetivos ──
+  // ══════════════════════════════════════════════════════════
+  // PÁGINA 4: PARÂMETROS SUBJETIVOS
+  // ══════════════════════════════════════════════════════════
   const subjRows = breakdown.filter(r => r.type === 'Subjetivo');
   if (subjRows.length > 0) {
-    checkY(24);
+    addPage(false);
     y = sectionTitle('PARÂMETROS SUBJETIVOS', y);
     const subjTableBody = subjRows.map(r => [
       r.paramName,
@@ -4073,9 +4091,40 @@ async function gerarPdfComp(id) {
   }
 
   // ══════════════════════════════════════════════════════════
-  // TABELA GERAL — ANÁLISE NORMAL (landscape)
+  // PÁGINA 5: TABELA DE VALORES E PONTOS (landscape)
   // ══════════════════════════════════════════════════════════
   drawGeneralTable(ranking, breakdown, 'PONTUAÇÃO POR PARÂMETRO E PRODUTO (Análise Normal)');
+
+  // ══════════════════════════════════════════════════════════
+  // PÁGINA 6: PÓDIO ANÁLISE NORMAL + PARECER
+  // ══════════════════════════════════════════════════════════
+  addPage(false);
+  drawRankingCards(ranking, p => p.price, 'RANKING — ANÁLISE NORMAL (Preço Fixo)');
+  drawParecer(ranking, p => p.price, 'PARECER');
+
+  // Alertas inaceitável
+  const inacAlerts = [];
+  [...comp.objParams, ...comp.subjParams].forEach(param => {
+    if (legacyToWeight(param.importance) === -10) {
+      comp.products.forEach(p => {
+        if (hasStateNorm(param.hasParam[p.id]) !== false) {
+          inacAlerts.push(`ATENÇÃO: ${p.name} tem o parâmetro "${param.name}" marcado como Inaceitável.`);
+        }
+      });
+    }
+  });
+  if (inacAlerts.length > 0) {
+    checkY(inacAlerts.length * 5 + 14);
+    doc.setFillColor(80, 20, 20);
+    doc.roundedRect(ML, y - 3, CW(), inacAlerts.length * 5 + 12, 2, 2, 'F');
+    txt('ALERTAS DE INACEITABILIDADE', ML + 3, y + 3, { size: 9, color: COR_AMARELO, bold: true });
+    y += 8;
+    inacAlerts.forEach(a => {
+      txt(a, ML + 3, y, { size: 8, color: [255, 180, 180] });
+      y += 5;
+    });
+    y += 4;
+  }
 
   // ══════════════════════════════════════════════════════════
   // ANÁLISE DE PERÍODO (se habilitada)
@@ -4086,24 +4135,21 @@ async function gerarPdfComp(id) {
     const pBreakdown = periodResult.breakdown;
     const getPeriodPrice = p => p.periodTotalCost || p.price;
 
-    // Descrição do período
     const pc = comp.periodConfig || {};
     const unitLabels = { dia: 'dia(s)', semana: 'semana(s)', quinzena: 'quinzena(s)', mes: 'mês(es)', ano: 'ano(s)' };
     const periodDesc = `${pc.periodQty || '?'} ${unitLabels[pc.periodUnit] || pc.periodUnit || '?'}, pagamento a cada ${pc.payFreqQty || '?'} ${unitLabels[pc.payFreqUnit] || pc.payFreqUnit || '?'}`;
 
-    // Página: Ranking de Período + Parecer
+    // ══ PÁGINA 7: SUBCAPA ANÁLISE DE PERÍODO ══
     addPage(false);
-    txt('ANÁLISE DE PERÍODO', PW() / 2, y, { size: 12, color: COR_DOURADO, bold: true, align: 'center' });
-    y += 6;
-    // Badge do período
-    const descLines = doc.splitTextToSize(`Período: ${periodDesc}`, CW() - 10);
-    descLines.forEach((ln, i) => {
-      txt(ln, PW() / 2, y + i * 4, { size: 8, color: COR_CINZA_MED, align: 'center' });
-    });
-    y += descLines.length * 4 + 6;
-
-    drawRankingCards(pRanking, getPeriodPrice, 'RANKING — ANÁLISE DE PERÍODO (Custo Total)');
-    drawParecer(pRanking, getPeriodPrice, 'PARECER DE PERÍODO');
+    drawSubcapa(
+      'ANÁLISE DE PERÍODO',
+      `Comparação de custos ao longo de ${periodDesc}`,
+      [
+        `${pRanking.length} produto(s) analisado(s)`,
+        `Período total: ${pc.periodQty || '?'} ${unitLabels[pc.periodUnit] || '?'}`,
+        pc.interestRate ? `Taxa de rendimento: ${pc.interestRate}% a.a.` : ''
+      ].filter(Boolean)
+    );
 
     // ── GRÁFICOS DE PERÍODO (offscreen) ──
     const totalDaysP = unitToDaysStatic(pc.periodQty, pc.periodUnit);
@@ -4115,30 +4161,9 @@ async function gerarPdfComp(id) {
       labelsP.push((i * freqDaysP / xInfoP.divisor).toFixed(xInfoP.divisor === 1 ? 0 : 1));
     }
 
-    // Gráfico de barras do período (pontuação)
-    const chartPeriodBarImg = captureChart('pchart-bar-'+comp.id) || createOffscreenChart({
-      type: 'bar',
-      data: {
-        labels: pRanking.map(p => p.name),
-        datasets: [{
-          label: 'Pontuação total (Período)',
-          data: pRanking.map(p => p.score),
-          backgroundColor: pRanking.map((_,i) => i===0 ? 'rgba(212,175,55,0.85)' : 'rgba(46,125,50,0.6)'),
-          borderColor: pRanking.map((_,i) => i===0 ? 'rgba(212,175,55,1)' : 'rgba(46,125,50,1)'),
-          borderWidth: 1, borderRadius: 6,
-        }]
-      },
-      options: { responsive: false, animation: false,
-        plugins: { legend: { display: false }, title: { display: true, text: 'Pontuação Total por Produto (Período)', color: '#D4AF37', font: { size: 13, weight: 'bold' } } },
-        scales: {
-          x: { ticks: { color: '#A0B8A6' }, grid: { color: 'rgba(212,175,55,0.1)' } },
-          y: { ticks: { color: '#A0B8A6' }, grid: { color: 'rgba(212,175,55,0.1)' }, beginAtZero: true }
-        }
-      }
-    }, 800, 400);
+    const prodsComPay = pRanking.filter(p => p.periodPayments && p.periodPayments.length > 0);
 
     // Gráfico de parcelas ao longo do tempo
-    const prodsComPay = pRanking.filter(p => p.periodPayments && p.periodPayments.length > 0);
     const chartParcelaImg = prodsComPay.length > 0 ? (captureChart('pchart-parcela-'+comp.id) || createOffscreenChart({
       type: 'line',
       data: {
@@ -4216,27 +4241,27 @@ async function gerarPdfComp(id) {
       return { saldoImg, diffImg };
     }
 
-    // Página: Gráfico de barras do período
-    if (chartPeriodBarImg) {
-      addPage(false);
-      y = sectionTitle('GRÁFICO COMPARATIVO — ANÁLISE DE PERÍODO', y);
-      addChartImage(chartPeriodBarImg, CW(), 100);
-    }
+    // ══ PÁGINA 8: TABELA DE VALORES E PONTOS (landscape) ══
+    drawGeneralTable(pRanking, pBreakdown, 'PONTUAÇÃO POR PARÂMETRO E PRODUTO (Análise de Período)');
 
-    // Página: Gráficos de evolução (parcela + acumulado)
-    if (chartParcelaImg || chartAcumImg) {
+    // ══ PÁGINA 9: GRÁFICO EVOLUÇÃO DE CUSTOS ══
+    if (chartParcelaImg) {
       addPage(false);
       y = sectionTitle('EVOLUÇÃO DE CUSTOS NO PERÍODO', y);
-      if (chartParcelaImg) {
-        addChartImage(chartParcelaImg, CW(), 120);
-      }
-      if (chartAcumImg) {
-        addChartImage(chartAcumImg, CW(), 120);
-      }
+      addChartImage(chartParcelaImg, CW(), 200);
     }
 
-    // Tabela geral do período
-    drawGeneralTable(pRanking, pBreakdown, 'PONTUAÇÃO POR PARÂMETRO E PRODUTO (Análise de Período)');
+    // ══ PÁGINA 10: GRÁFICO CUSTO ACUMULADO ══
+    if (chartAcumImg) {
+      addPage(false);
+      y = sectionTitle('CUSTO ACUMULADO AO LONGO DO TEMPO', y);
+      addChartImage(chartAcumImg, CW(), 200);
+    }
+
+    // ══ PÁGINA 11: PÓDIO ANÁLISE PERÍODO + PARECER ══
+    addPage(false);
+    drawRankingCards(pRanking, getPeriodPrice, 'RANKING — ANÁLISE DE PERÍODO (Custo Total)');
+    drawParecer(pRanking, getPeriodPrice, 'PARECER DE PERÍODO');
 
     // ══════════════════════════════════════════════════════════
     // ANÁLISE DE INVESTIMENTO DA DIFERENÇA (automática)
@@ -4248,12 +4273,37 @@ async function gerarPdfComp(id) {
         const annualRate = (pc.interestRate || 0) / 100;
         const monthlyRate = annualRate > 0 ? Math.pow(1 + annualRate, freqDaysP/365) - 1 : 0;
         const autoResult = _calcInvestScenario(pBest, pCheapest, numPayP, monthlyRate);
+        const autoInvestCharts = makeInvestCharts(autoResult);
+
+        // ══ PÁGINA 12: SUBCAPA ANÁLISE DE INVESTIMENTO ══
         addPage(false);
-        drawInvestAnalysis(pBest, pCheapest, autoResult, 'ANÁLISE DE INVESTIMENTO — Melhor Pontuado vs. Mais Barato');
-        // Gráficos de investimento (offscreen)
-        const investCharts = makeInvestCharts(autoResult);
-        if (investCharts.saldoImg) addChartImage(investCharts.saldoImg, CW() * 0.85, 80);
-        if (investCharts.diffImg) addChartImage(investCharts.diffImg, CW() * 0.85, 80);
+        drawSubcapa(
+          'ANÁLISE DE INVESTIMENTO',
+          `Melhor Pontuado vs. Mais Barato — Investir a Diferença`,
+          [
+            `Referência: ${pBest.name} (melhor pontuado)`,
+            `Alternativa: ${pCheapest.name} (mais barato)`,
+            pc.interestRate ? `Taxa de rendimento: ${pc.interestRate}% a.a.` : ''
+          ].filter(Boolean)
+        );
+
+        // ══ PÁGINA 13: GRÁFICO DIFERENÇA DE PARCELAS ══
+        if (autoInvestCharts.diffImg) {
+          addPage(false);
+          y = sectionTitle('DIFERENÇA DE PARCELAS AO LONGO DO PERÍODO', y);
+          addChartImage(autoInvestCharts.diffImg, CW(), 200);
+        }
+
+        // ══ PÁGINA 14: GRÁFICO SALDO ACUMULADO ══
+        if (autoInvestCharts.saldoImg) {
+          addPage(false);
+          y = sectionTitle('SALDO ACUMULADO DO INVESTIMENTO DA DIFERENÇA', y);
+          addChartImage(autoInvestCharts.saldoImg, CW(), 200);
+        }
+
+        // ══ PÁGINA 15: RESULTADO + PARECER ══
+        addPage(false);
+        drawInvestAnalysis(pBest, pCheapest, autoResult, 'RESULTADO — Melhor Pontuado vs. Mais Barato');
       }
     }
 
@@ -4270,12 +4320,37 @@ async function gerarPdfComp(id) {
         const altProd = pRanking.find(p => String(p.id) === String(sc.altId));
         if (refProd && altProd && refProd.periodPayments && altProd.periodPayments) {
           const scResult = _calcInvestScenario(refProd, altProd, numPayP, monthlyRate);
-          addPage(false);
-          drawInvestAnalysis(refProd, altProd, scResult, `CENÁRIO PERSONALIZADO ${idx + 1}: ${refProd.name} vs. ${altProd.name}`);
-          // Gráficos do cenário (offscreen)
           const scCharts = makeInvestCharts(scResult);
-          if (scCharts.saldoImg) addChartImage(scCharts.saldoImg, CW() * 0.85, 80);
-          if (scCharts.diffImg) addChartImage(scCharts.diffImg, CW() * 0.85, 80);
+
+          // ══ SUBCAPA CENÁRIO PERSONALIZADO ══
+          addPage(false);
+          drawSubcapa(
+            `COMPARAÇÃO PERSONALIZADA ${idx + 1}`,
+            `${refProd.name} vs. ${altProd.name}`,
+            [
+              `Referência: ${refProd.name} (${fmtBRL(getPeriodPrice(refProd))})`,
+              `Alternativa: ${altProd.name} (${fmtBRL(getPeriodPrice(altProd))})`,
+              pc.interestRate ? `Taxa de rendimento: ${pc.interestRate}% a.a.` : ''
+            ].filter(Boolean)
+          );
+
+          // ══ GRÁFICO DIFERENÇA DE PARCELAS ══
+          if (scCharts.diffImg) {
+            addPage(false);
+            y = sectionTitle(`CENÁRIO ${idx + 1} — DIFERENÇA DE PARCELAS`, y);
+            addChartImage(scCharts.diffImg, CW(), 200);
+          }
+
+          // ══ GRÁFICO SALDO ACUMULADO ══
+          if (scCharts.saldoImg) {
+            addPage(false);
+            y = sectionTitle(`CENÁRIO ${idx + 1} — SALDO ACUMULADO DO INVESTIMENTO`, y);
+            addChartImage(scCharts.saldoImg, CW(), 200);
+          }
+
+          // ══ RESULTADO + PARECER ══
+          addPage(false);
+          drawInvestAnalysis(refProd, altProd, scResult, `RESULTADO — ${refProd.name} vs. ${altProd.name}`);
         }
       });
     }
