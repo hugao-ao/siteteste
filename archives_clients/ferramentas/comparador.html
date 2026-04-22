@@ -477,11 +477,22 @@
   }
   .podium-card.first {
     border-color: var(--gold);
-    background: rgba(212,175,55,.07);
+    background: rgba(212,175,55,.12);
+    box-shadow: 0 0 16px rgba(212,175,55,.15);
+  }
+  .podium-card.second {
+    border-color: rgba(212,175,55,.35);
+    background: rgba(20,83,45,.25);
+  }
+  .podium-card.third {
+    border-color: var(--border);
+    background: rgba(10,46,20,.4);
   }
   .podium-card .pod-rank { font-size: 1.5rem; margin-bottom: 4px; }
   .podium-card .pod-name { font-weight: 700; font-size: .9rem; margin-bottom: 4px; color: var(--foreground); }
   .podium-card .pod-score { font-size: 1.6rem; font-weight: 800; color: var(--gold); }
+  .podium-card.second .pod-score { color: #8fbc8f; }
+  .podium-card.third .pod-score { color: #6b8e6b; }
   .podium-card .pod-price { font-size: .75rem; color: var(--muted-foreground); margin-top: 4px; }
 
   .parecer-box {
@@ -2501,10 +2512,12 @@ function initColResize(tableId) {
 ═══════════════════════════════════════════════════════════ */
 
 function _buildPodium(ranking, priceGetter, medals, rankLabels) {
+  const top3 = ranking.slice(0, 3);
   let html = '<div class="podium-grid">';
-  ranking.forEach((p,i) => {
+  top3.forEach((p,i) => {
+    const cls = i===0 ? 'first' : (i===1 ? 'second' : 'third');
     html += `
-      <div class="podium-card ${i===0?'first':''}">
+      <div class="podium-card ${cls}">
         <div class="pod-rank">${medals[i]||`${i+1}º`}</div>
         <div class="pod-name">${escHtml(p.name)}</div>
         <div class="pod-score">${p.score.toFixed(1)}</div>
@@ -3065,8 +3078,8 @@ function _renderSavedScenarios(comp) {
 
   let html = '<div class="mem-section-title" style="margin-top:20px">Cenários Personalizados Salvos</div>';
   scenarios.forEach((sc, idx) => {
-    const refProd = pRanking.find(p => p.id === sc.refId);
-    const altProd = pRanking.find(p => p.id === sc.altId);
+    const refProd = pRanking.find(p => String(p.id) === String(sc.refId));
+    const altProd = pRanking.find(p => String(p.id) === String(sc.altId));
     if (!refProd || !altProd) return;
     const result = _calcInvestScenario(refProd, altProd, numPay, periodRate);
     const refNetCost = result.refGrossTotal - result.refRefundAmt;
@@ -3191,17 +3204,17 @@ function updateScenarioAltOptions(compId) {
   const pRanking = comp.result.periodResult.ranking;
   const refSelect = document.getElementById('sc-ref-' + compId);
   const altSelect = document.getElementById('sc-alt-' + compId);
-  const refId = parseInt(refSelect.value);
+  const refId = refSelect.value;
   if (!refId) {
     altSelect.innerHTML = '<option value="">Selecione o referência primeiro</option>';
     return;
   }
-  const refProduct = pRanking.find(p => p.id === refId);
+  const refProduct = pRanking.find(p => String(p.id) === String(refId));
   if (!refProduct) return;
   const refPrice = refProduct.price || 0;
 
   // Filtrar produtos com preço mensal (price) menor que o referência
-  const cheaper = pRanking.filter(p => p.id !== refId && (p.price || 0) < refPrice);
+  const cheaper = pRanking.filter(p => String(p.id) !== String(refId) && (p.price || 0) < refPrice);
   if (cheaper.length === 0) {
     altSelect.innerHTML = '<option value="">Nenhum produto com custo menor</option>';
     return;
@@ -3216,12 +3229,12 @@ function runScenario(compId) {
   const comp = comparisons.find(c => c.id === compId);
   if (!comp || !comp.result?.periodResult) return;
   const pRanking = comp.result.periodResult.ranking;
-  const refId = parseInt(document.getElementById('sc-ref-' + compId).value);
-  const altId = parseInt(document.getElementById('sc-alt-' + compId).value);
+  const refId = document.getElementById('sc-ref-' + compId).value;
+  const altId = document.getElementById('sc-alt-' + compId).value;
   if (!refId || !altId) return;
 
-  const refProduct = pRanking.find(p => p.id === refId);
-  const altProduct = pRanking.find(p => p.id === altId);
+  const refProduct = pRanking.find(p => String(p.id) === String(refId));
+  const altProduct = pRanking.find(p => String(p.id) === String(altId));
   if (!refProduct || !altProduct) return;
 
   const annualRate = (comp.periodConfig?.interestRate || 0) / 100;
@@ -3387,10 +3400,90 @@ function escHtml(s) {
 /* ═══════════════════════════════════════════════════════════
    GERADOR DE PDF
 ═══════════════════════════════════════════════════════════ */
-function gerarPdfComp(id) {
+async function gerarPdfComp(id) {
   const comp = comparisons.find(c => c.id === id);
   if (!comp || !comp.result) return;
   const { jsPDF } = window.jspdf;
+
+  // Warm-up Chart.js para garantir renderização offscreen
+  {
+    const _wc = document.createElement('canvas');
+    _wc.width = 10; _wc.height = 10;
+    const _wx = _wc.getContext('2d');
+    const _wch = new Chart(_wx, { type: 'bar', data: { labels: ['x'], datasets: [{ data: [1] }] }, options: { responsive: false, animation: false } });
+    _wch.update(); _wch.destroy();
+  }
+
+  // Função auxiliar para capturar canvas existente OU criar offscreen
+  function captureChart(canvasId) {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas || canvas.width === 0 || canvas.height === 0) return null;
+    try {
+      const dataUrl = canvas.toDataURL('image/png');
+      if (!dataUrl || dataUrl.length < 100 || !dataUrl.startsWith('data:image/png')) return null;
+      return { data: dataUrl, w: canvas.width, h: canvas.height };
+    } catch(e) { return null; }
+  }
+  // Cria um gráfico offscreen e retorna dataURL
+  function createOffscreenChart(config, width, height) {
+    try {
+      const offCanvas = document.createElement('canvas');
+      offCanvas.width = width || 800;
+      offCanvas.height = height || 400;
+      offCanvas.style.position = 'fixed';
+      offCanvas.style.left = '-9999px';
+      offCanvas.style.top = '-9999px';
+      document.body.appendChild(offCanvas);
+      const ctx = offCanvas.getContext('2d');
+      // Forçar responsive:false e animation:false para renderização offscreen
+      if (!config.options) config.options = {};
+      config.options.responsive = false;
+      config.options.animation = false;
+      const chart = new Chart(ctx, config);
+      chart.update();
+      const dataUrl = offCanvas.toDataURL('image/png');
+      chart.destroy();
+      document.body.removeChild(offCanvas);
+      if (!dataUrl || dataUrl.length <= 100) {
+        console.warn('[PDF] createOffscreenChart falhou: dataUrl inválido, len=' + (dataUrl?.length || 0));
+        return null;
+      }
+      return dataUrl;
+    } catch(e) {
+      console.error('[PDF] createOffscreenChart erro:', e.message);
+      return null;
+    }
+  }
+  function addChartImage(imgInput, maxW, maxH) {
+    if (!imgInput) return;
+    try {
+      // imgInput pode ser string (dataURL) ou {data, w, h} de captureChart
+      let imgData, srcW, srcH;
+      if (typeof imgInput === 'object' && imgInput.data) {
+        imgData = imgInput.data;
+        srcW = imgInput.w;
+        srcH = imgInput.h;
+      } else {
+        imgData = imgInput;
+        srcW = 800;
+        srcH = 400;
+      }
+      const canvasRatio = srcH / srcW;
+      let w = Math.min(maxW, CW());
+      let h = w * canvasRatio;
+      // Se a altura excede o máximo, reduzir a largura proporcionalmente (não esmagar)
+      if (maxH && h > maxH) {
+        h = maxH;
+        w = h / canvasRatio;
+      }
+      checkY(h + 4);
+      const imgX = ML + (CW() - w) / 2; // centralizar horizontalmente
+      doc.addImage(imgData, 'PNG', imgX, y, w, h);
+      y += h + 4;
+    } catch(e) {
+      console.warn('Gráfico não pôde ser adicionado ao PDF:', e.message);
+    }
+  }
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
 
   // — PALETA HV SAÚDE FINANCEIRA —
@@ -3506,41 +3599,43 @@ function gerarPdfComp(id) {
   function drawRankingCards(rankArr, priceGetter, title) {
     txt(title, PW() / 2, y, { size: 11, color: COR_DOURADO, bold: true, align: 'center' });
     y += 7;
-    const nProdsRank = rankArr.length;
-    const perRow = Math.min(nProdsRank, 5);
-    const cardW = CW() / perRow;
-    const rows = Math.ceil(nProdsRank / perRow);
-    for (let row = 0; row < rows; row++) {
-      const rowItems = rankArr.slice(row * perRow, (row + 1) * perRow);
-      let maxLines = 1;
-      rowItems.forEach(p => {
-        const nl = doc.splitTextToSize(p.name, cardW - 4);
-        if (nl.length > maxLines) maxLines = nl.length;
+    const top3 = rankArr.slice(0, 3);
+    const nProdsRank = top3.length;
+    const cardW = CW() / nProdsRank;
+    let maxLines = 1;
+    top3.forEach(p => {
+      const nl = doc.splitTextToSize(p.name, cardW - 4);
+      if (nl.length > maxLines) maxLines = nl.length;
+    });
+    const cardH = 10 + maxLines * 4 + 8;
+    checkY(cardH + 3);
+    const COR_2ND = [20, 83, 45];  // verde médio
+    const COR_3RD = [10, 46, 20];  // verde escuro
+    top3.forEach((p, i) => {
+      const px = ML + i * cardW;
+      const bgC = i === 0 ? COR_DOURADO : (i === 1 ? COR_2ND : COR_3RD);
+      doc.setFillColor(...bgC);
+      doc.roundedRect(px, y, cardW - 1.5, cardH, 2, 2, 'F');
+      if (i === 1) {
+        doc.setDrawColor(...COR_DOURADO_ESC);
+        doc.setLineWidth(0.4);
+        doc.roundedRect(px, y, cardW - 1.5, cardH, 2, 2, 'S');
+      }
+      const textC = i === 0 ? COR_FUNDO : COR_CINZA_CLR;
+      const scoreC = i === 0 ? COR_FUNDO : (i === 1 ? [143, 188, 143] : [107, 142, 107]);
+      txt(`${i + 1}º`, px + cardW / 2 - 0.75, y + 5, { size: 7.5, color: textC, bold: true, align: 'center' });
+      const nomeLines = doc.splitTextToSize(p.name, cardW - 4);
+      doc.setFontSize(i === 0 ? 8 : 7);
+      doc.setTextColor(...textC);
+      doc.setFont('helvetica', 'bold');
+      nomeLines.forEach((ln, li) => {
+        doc.text(ln, px + cardW / 2 - 0.75, y + 10 + li * 4, { align: 'center' });
       });
-      const cardH = 10 + maxLines * 4 + 8;
-      checkY(cardH + 3);
-      rowItems.forEach((p, colIdx) => {
-        const globalIdx = row * perRow + colIdx;
-        const px = ML + colIdx * cardW;
-        const isFirst = globalIdx === 0;
-        const bgC = isFirst ? COR_DOURADO : (globalIdx === 1 ? [180, 180, 180] : COR_VERDE_MED);
-        doc.setFillColor(...bgC);
-        doc.roundedRect(px, y, cardW - 1.5, cardH, 2, 2, 'F');
-        const textC = isFirst ? COR_FUNDO : COR_CINZA_CLR;
-        txt(`${globalIdx + 1}º`, px + cardW / 2 - 0.75, y + 5, { size: 7.5, color: textC, bold: true, align: 'center' });
-        const nomeLines = doc.splitTextToSize(p.name, cardW - 4);
-        doc.setFontSize(isFirst ? 8 : 7);
-        doc.setTextColor(...textC);
-        doc.setFont('helvetica', 'bold');
-        nomeLines.forEach((ln, li) => {
-          doc.text(ln, px + cardW / 2 - 0.75, y + 10 + li * 4, { align: 'center' });
-        });
-        const afterName = y + 10 + nomeLines.length * 4;
-        txt(`${p.score.toFixed(1)} pts`, px + cardW / 2 - 0.75, afterName + 1.5, { size: 6.5, color: textC, align: 'center' });
-        txt(fmtBRL(priceGetter(p)), px + cardW / 2 - 0.75, afterName + 5.5, { size: 6, color: textC, align: 'center' });
-      });
-      y += cardH + 2;
-    }
+      const afterName = y + 10 + nomeLines.length * 4;
+      txt(`${p.score.toFixed(1)} pts`, px + cardW / 2 - 0.75, afterName + 1.5, { size: 6.5, color: scoreC, bold: true, align: 'center' });
+      txt(fmtBRL(priceGetter(p)), px + cardW / 2 - 0.75, afterName + 5.5, { size: 6, color: textC, align: 'center' });
+    });
+    y += cardH + 2;
   }
 
   function drawParecer(rankArr, priceGetter, label) {
@@ -3764,6 +3859,59 @@ function gerarPdfComp(id) {
   pageFooter();
 
   // ══════════════════════════════════════════════════════════
+  // FUNÇÕES AUXILIARES PARA GRÁFICOS OFFSCREEN NO PDF
+  // ══════════════════════════════════════════════════════════
+  const pdfChartColors = [
+    'rgba(212,175,55,0.85)', 'rgba(46,125,50,0.7)', 'rgba(30,136,229,0.7)',
+    'rgba(239,83,80,0.7)', 'rgba(171,71,188,0.7)', 'rgba(255,179,0,0.7)',
+    'rgba(0,172,193,0.7)', 'rgba(255,112,67,0.7)', 'rgba(141,110,99,0.7)',
+    'rgba(96,125,139,0.7)'
+  ];
+  const pdfChartBg = '#071c0e';
+  const pdfChartOpts = (titleText, xLabel, yLabel) => ({
+    responsive: false, animation: false,
+    plugins: {
+      legend: { labels: { color: '#A0B8A6', font: { size: 11 } } },
+      title: { display: true, text: titleText, color: '#D4AF37', font: { size: 13, weight: 'bold' } },
+    },
+    scales: {
+      x: { title: { display: !!xLabel, text: xLabel||'', color: '#A0B8A6' }, ticks: { color: '#A0B8A6', maxTicksLimit: 20 }, grid: { color: 'rgba(212,175,55,0.1)' } },
+      y: { title: { display: !!yLabel, text: yLabel||'', color: '#A0B8A6' }, ticks: { color: '#A0B8A6', callback: v => fmtBRL(v) }, grid: { color: 'rgba(212,175,55,0.1)' }, beginAtZero: true }
+    }
+  });
+
+  // ══════════════════════════════════════════════════════════
+  // PÁGINA: GRÁFICO DE BARRAS — ANÁLISE NORMAL
+  // ══════════════════════════════════════════════════════════
+  {
+    const chartNormalImg = captureChart('chart-'+comp.id) || createOffscreenChart({
+      type: 'bar',
+      data: {
+        labels: ranking.map(p => p.name),
+        datasets: [{
+          label: 'Pontuação total',
+          data: ranking.map(p => p.score),
+          backgroundColor: ranking.map((_,i) => i===0 ? 'rgba(212,175,55,0.85)' : 'rgba(46,125,50,0.6)'),
+          borderColor: ranking.map((_,i) => i===0 ? 'rgba(212,175,55,1)' : 'rgba(46,125,50,1)'),
+          borderWidth: 1, borderRadius: 6,
+        }]
+      },
+      options: { responsive: false, animation: false,
+        plugins: { legend: { display: false }, title: { display: true, text: 'Pontuação Total por Produto', color: '#D4AF37', font: { size: 13, weight: 'bold' } } },
+        scales: {
+          x: { ticks: { color: '#A0B8A6' }, grid: { color: 'rgba(212,175,55,0.1)' } },
+          y: { ticks: { color: '#A0B8A6' }, grid: { color: 'rgba(212,175,55,0.1)' }, beginAtZero: true }
+        }
+      }
+    }, 800, 400);
+    if (chartNormalImg) {
+      addPage(false);
+      y = sectionTitle('GRÁFICO COMPARATIVO — ANÁLISE NORMAL', y);
+      addChartImage(chartNormalImg, CW(), 100);
+    }
+  }
+
+  // ══════════════════════════════════════════════════════════
   // PÁGINA 2+: EXPLICAÇÕES + TABELAS DE PARÂMETROS
   // ══════════════════════════════════════════════════════════
   addPage(false);
@@ -3957,6 +4105,136 @@ function gerarPdfComp(id) {
     drawRankingCards(pRanking, getPeriodPrice, 'RANKING — ANÁLISE DE PERÍODO (Custo Total)');
     drawParecer(pRanking, getPeriodPrice, 'PARECER DE PERÍODO');
 
+    // ── GRÁFICOS DE PERÍODO (offscreen) ──
+    const totalDaysP = unitToDaysStatic(pc.periodQty, pc.periodUnit);
+    const freqDaysP = unitToDaysStatic(pc.payFreqQty, pc.payFreqUnit);
+    const numPayP = Math.max(1, Math.floor(totalDaysP / freqDaysP));
+    const xInfoP = bestXUnit(totalDaysP);
+    const labelsP = [];
+    for (let i = 1; i <= numPayP; i++) {
+      labelsP.push((i * freqDaysP / xInfoP.divisor).toFixed(xInfoP.divisor === 1 ? 0 : 1));
+    }
+
+    // Gráfico de barras do período (pontuação)
+    const chartPeriodBarImg = captureChart('pchart-bar-'+comp.id) || createOffscreenChart({
+      type: 'bar',
+      data: {
+        labels: pRanking.map(p => p.name),
+        datasets: [{
+          label: 'Pontuação total (Período)',
+          data: pRanking.map(p => p.score),
+          backgroundColor: pRanking.map((_,i) => i===0 ? 'rgba(212,175,55,0.85)' : 'rgba(46,125,50,0.6)'),
+          borderColor: pRanking.map((_,i) => i===0 ? 'rgba(212,175,55,1)' : 'rgba(46,125,50,1)'),
+          borderWidth: 1, borderRadius: 6,
+        }]
+      },
+      options: { responsive: false, animation: false,
+        plugins: { legend: { display: false }, title: { display: true, text: 'Pontuação Total por Produto (Período)', color: '#D4AF37', font: { size: 13, weight: 'bold' } } },
+        scales: {
+          x: { ticks: { color: '#A0B8A6' }, grid: { color: 'rgba(212,175,55,0.1)' } },
+          y: { ticks: { color: '#A0B8A6' }, grid: { color: 'rgba(212,175,55,0.1)' }, beginAtZero: true }
+        }
+      }
+    }, 800, 400);
+
+    // Gráfico de parcelas ao longo do tempo
+    const prodsComPay = pRanking.filter(p => p.periodPayments && p.periodPayments.length > 0);
+    const chartParcelaImg = prodsComPay.length > 0 ? (captureChart('pchart-parcela-'+comp.id) || createOffscreenChart({
+      type: 'line',
+      data: {
+        labels: labelsP,
+        datasets: prodsComPay.map((p, idx) => ({
+          label: p.name,
+          data: p.periodPayments,
+          borderColor: pdfChartColors[idx % pdfChartColors.length],
+          backgroundColor: 'transparent',
+          borderWidth: 2, fill: false, tension: 0.3,
+          pointRadius: numPayP > 50 ? 0 : 3,
+        }))
+      },
+      options: pdfChartOpts('Valor da Parcela ao Longo do Tempo', xInfoP.label, 'R$'),
+    }, 800, 400)) : null;
+
+    // Gráfico de custo acumulado
+    const chartAcumImg = prodsComPay.length > 0 ? (captureChart('pchart-acum-'+comp.id) || createOffscreenChart({
+      type: 'line',
+      data: {
+        labels: labelsP,
+        datasets: prodsComPay.map((p, idx) => {
+          let acc = 0;
+          const acumData = p.periodPayments.map(v => { acc += v; return acc; });
+          return {
+            label: p.name,
+            data: acumData,
+            borderColor: pdfChartColors[idx % pdfChartColors.length],
+            backgroundColor: 'transparent',
+            borderWidth: 2, fill: false, tension: 0.3,
+            pointRadius: numPayP > 50 ? 0 : 3,
+          };
+        })
+      },
+      options: pdfChartOpts('Custo Acumulado ao Longo do Tempo', xInfoP.label, 'R$'),
+    }, 800, 400)) : null;
+
+    // Função para gerar gráficos de investimento offscreen
+    function makeInvestCharts(scenario) {
+      const xInfoI = bestXUnit(totalDaysP);
+      const labelsI = [];
+      for (let i = 1; i <= numPayP; i++) {
+        labelsI.push((i * freqDaysP / xInfoI.divisor).toFixed(xInfoI.divisor === 1 ? 0 : 1));
+      }
+      const saldoImg = createOffscreenChart({
+        type: 'line',
+        data: {
+          labels: labelsI,
+          datasets: [{
+            label: 'Saldo acumulado investido',
+            data: scenario.balances,
+            borderColor: 'rgba(46,125,50,0.85)',
+            backgroundColor: 'rgba(46,125,50,0.1)',
+            borderWidth: 2, fill: true, tension: 0.3,
+            pointRadius: numPayP > 50 ? 0 : 3,
+          }]
+        },
+        options: pdfChartOpts('Saldo Acumulado do Investimento da Diferença', xInfoI.label, 'Saldo (R$)'),
+      }, 800, 400);
+      const diffImg = createOffscreenChart({
+        type: 'line',
+        data: {
+          labels: labelsI,
+          datasets: [{
+            label: 'Diferença por parcela',
+            data: scenario.diffs,
+            borderColor: 'rgba(255,179,0,0.85)',
+            backgroundColor: 'rgba(255,179,0,0.15)',
+            borderWidth: 2, fill: true, tension: 0.3,
+            pointRadius: numPayP > 50 ? 0 : 3,
+          }]
+        },
+        options: pdfChartOpts('Diferença de Parcelas ao Longo do Período', xInfoI.label, 'Diferença (R$)'),
+      }, 800, 400);
+      return { saldoImg, diffImg };
+    }
+
+    // Página: Gráfico de barras do período
+    if (chartPeriodBarImg) {
+      addPage(false);
+      y = sectionTitle('GRÁFICO COMPARATIVO — ANÁLISE DE PERÍODO', y);
+      addChartImage(chartPeriodBarImg, CW(), 100);
+    }
+
+    // Página: Gráficos de evolução (parcela + acumulado)
+    if (chartParcelaImg || chartAcumImg) {
+      addPage(false);
+      y = sectionTitle('EVOLUÇÃO DE CUSTOS NO PERÍODO', y);
+      if (chartParcelaImg) {
+        addChartImage(chartParcelaImg, CW(), 120);
+      }
+      if (chartAcumImg) {
+        addChartImage(chartAcumImg, CW(), 120);
+      }
+    }
+
     // Tabela geral do período
     drawGeneralTable(pRanking, pBreakdown, 'PONTUAÇÃO POR PARÂMETRO E PRODUTO (Análise de Período)');
 
@@ -3968,13 +4246,14 @@ function gerarPdfComp(id) {
       const pCheapest = pRanking.reduce((a,b) => (getPeriodPrice(a) < getPeriodPrice(b) ? a : b));
       if (pCheapest.id !== pBest.id && pBest.periodPayments && pCheapest.periodPayments) {
         const annualRate = (pc.interestRate || 0) / 100;
-        const totalDays = unitToDaysStatic(pc.periodQty, pc.periodUnit);
-        const freqDays = unitToDaysStatic(pc.payFreqQty, pc.payFreqUnit);
-        const numPay = Math.max(1, Math.floor(totalDays / freqDays));
-        const monthlyRate = annualRate > 0 ? Math.pow(1 + annualRate, freqDays/365) - 1 : 0;
-        const autoResult = _calcInvestScenario(pBest, pCheapest, numPay, monthlyRate);
+        const monthlyRate = annualRate > 0 ? Math.pow(1 + annualRate, freqDaysP/365) - 1 : 0;
+        const autoResult = _calcInvestScenario(pBest, pCheapest, numPayP, monthlyRate);
         addPage(false);
         drawInvestAnalysis(pBest, pCheapest, autoResult, 'ANÁLISE DE INVESTIMENTO — Melhor Pontuado vs. Mais Barato');
+        // Gráficos de investimento (offscreen)
+        const investCharts = makeInvestCharts(autoResult);
+        if (investCharts.saldoImg) addChartImage(investCharts.saldoImg, CW() * 0.85, 80);
+        if (investCharts.diffImg) addChartImage(investCharts.diffImg, CW() * 0.85, 80);
       }
     }
 
@@ -3984,18 +4263,19 @@ function gerarPdfComp(id) {
     const savedScenarios = comp.result.scenarios || [];
     if (savedScenarios.length > 0) {
       const annualRate = (pc.interestRate || 0) / 100;
-      const totalDays = unitToDaysStatic(pc.periodQty, pc.periodUnit);
-      const freqDays = unitToDaysStatic(pc.payFreqQty, pc.payFreqUnit);
-      const numPay = Math.max(1, Math.floor(totalDays / freqDays));
-      const monthlyRate = annualRate > 0 ? Math.pow(1 + annualRate, freqDays/365) - 1 : 0;
+      const monthlyRate = annualRate > 0 ? Math.pow(1 + annualRate, freqDaysP/365) - 1 : 0;
 
       savedScenarios.forEach((sc, idx) => {
-        const refProd = pRanking.find(p => p.id === sc.refId);
-        const altProd = pRanking.find(p => p.id === sc.altId);
+        const refProd = pRanking.find(p => String(p.id) === String(sc.refId));
+        const altProd = pRanking.find(p => String(p.id) === String(sc.altId));
         if (refProd && altProd && refProd.periodPayments && altProd.periodPayments) {
-          const scResult = _calcInvestScenario(refProd, altProd, numPay, monthlyRate);
+          const scResult = _calcInvestScenario(refProd, altProd, numPayP, monthlyRate);
           addPage(false);
           drawInvestAnalysis(refProd, altProd, scResult, `CENÁRIO PERSONALIZADO ${idx + 1}: ${refProd.name} vs. ${altProd.name}`);
+          // Gráficos do cenário (offscreen)
+          const scCharts = makeInvestCharts(scResult);
+          if (scCharts.saldoImg) addChartImage(scCharts.saldoImg, CW() * 0.85, 80);
+          if (scCharts.diffImg) addChartImage(scCharts.diffImg, CW() * 0.85, 80);
         }
       });
     }
