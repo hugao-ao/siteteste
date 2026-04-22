@@ -3549,7 +3549,7 @@ async function gerarPdfComp(id) {
     if (landscape) {
       doc.addPage('a4', 'landscape');
     } else {
-      doc.addPage();
+      doc.addPage('a4', 'portrait');
     }
     fillPage(COR_FUNDO);
     pageHeader();
