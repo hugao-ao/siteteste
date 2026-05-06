@@ -1197,6 +1197,8 @@ window.editCadeia = async function(id) {
     }));
 
     renderTempServicos();
+    populateCadeiaIntegranteSelect();
+    renderCadeiaEquipeGlobal();
     openModal('cadeia');
 };
 
@@ -1225,6 +1227,12 @@ function resetFormCadeia() {
 window.openServicoEdit = function(id) {
     const servico = servicos.find(s => s.id === id);
     if (!servico) return;
+
+    // Destacar visualmente o serviço selecionado
+    document.querySelectorAll('.servico-chain-item').forEach(el => el.classList.remove('servico-selected'));
+    document.querySelectorAll('.timeline-item').forEach(el => el.classList.remove('servico-selected'));
+    const clickedEl = event && event.currentTarget;
+    if (clickedEl) clickedEl.classList.add('servico-selected');
 
     document.getElementById('servico-id').value = servico.id;
     document.getElementById('servico-cadeia-id').value = servico.cadeia_id;
@@ -1690,6 +1698,190 @@ function showToast(message, type = 'success') {
     document.body.appendChild(toast);
     setTimeout(() => toast.remove(), 4000);
 }
+
+// ===== EQUIPE GLOBAL DA CADEIA =====
+function populateCadeiaIntegranteSelect() {
+    const select = document.getElementById('cadeia-add-integrante-global');
+    select.innerHTML = '<option value="">Selecionar funcionário...</option>';
+    integrantes.forEach(i => {
+        select.innerHTML += `<option value="${i.id}">${i.nome}</option>`;
+    });
+}
+
+function renderCadeiaEquipeGlobal() {
+    const container = document.getElementById('cadeia-equipe-global-list');
+    const cadeiaId = document.getElementById('cadeia-id').value;
+    if (!cadeiaId) {
+        container.innerHTML = '<span style="font-size:0.75rem;color:rgba(255,255,255,0.4);">Salve a cadeia primeiro para gerenciar equipe global.</span>';
+        return;
+    }
+
+    // Buscar todos os integrantes que estão em pelo menos um serviço da cadeia
+    const cadeiaServicos = servicos.filter(s => s.cadeia_id === cadeiaId);
+    const integrantesNaCadeia = new Map();
+    cadeiaServicos.forEach(s => {
+        const sAlocs = alocacoes.filter(a => a.servico_id === s.id);
+        sAlocs.forEach(a => {
+            if (!integrantesNaCadeia.has(a.integrante_id)) {
+                integrantesNaCadeia.set(a.integrante_id, 0);
+            }
+            integrantesNaCadeia.set(a.integrante_id, integrantesNaCadeia.get(a.integrante_id) + 1);
+        });
+    });
+
+    if (integrantesNaCadeia.size === 0) {
+        container.innerHTML = '<span style="font-size:0.75rem;color:rgba(255,255,255,0.4);">Nenhum funcionário alocado na cadeia.</span>';
+        return;
+    }
+
+    container.innerHTML = Array.from(integrantesNaCadeia.entries()).map(([intId, count]) => {
+        const integrante = integrantes.find(i => i.id === intId);
+        return `
+            <span class="equipe-badge alocado">
+                <i class="fas fa-user"></i> ${integrante ? integrante.nome.split(' ')[0] : '?'}
+                <small style="opacity:0.6;">(${count}/${cadeiaServicos.length})</small>
+            </span>
+        `;
+    }).join('');
+}
+
+window.addIntegranteGlobalCadeia = async function() {
+    const integranteId = document.getElementById('cadeia-add-integrante-global').value;
+    const cadeiaId = document.getElementById('cadeia-id').value;
+    if (!integranteId) {
+        showToast('Selecione um funcionário.', 'warning');
+        return;
+    }
+    if (!cadeiaId) {
+        showToast('Salve a cadeia primeiro.', 'warning');
+        return;
+    }
+
+    const cadeiaServicos = servicos.filter(s => s.cadeia_id === cadeiaId).sort((a, b) => a.ordem - b.ordem);
+    let adicionados = 0;
+    let conflitos = 0;
+
+    for (const servico of cadeiaServicos) {
+        // Verificar se já está alocado
+        const jaAlocado = alocacoes.find(a => a.servico_id === servico.id && a.integrante_id === integranteId);
+        if (jaAlocado) continue;
+
+        // Verificar conflito
+        const conflito = checkConflito(integranteId, servico.data_inicio, servico.data_fim_real || servico.data_fim_prevista, servico.id);
+        if (conflito) {
+            conflitos++;
+            continue;
+        }
+
+        try {
+            await supabase.from('logistica_alocacoes').insert({
+                servico_id: servico.id,
+                integrante_id: integranteId,
+                data_inicio: servico.data_inicio,
+                data_fim: servico.data_fim_real || servico.data_fim_prevista
+            });
+            adicionados++;
+        } catch (e) { /* ignore duplicates */ }
+    }
+
+    await loadAlocacoes();
+    renderCadeiaEquipeGlobal();
+    document.getElementById('cadeia-add-integrante-global').value = '';
+
+    if (conflitos > 0) {
+        showToast(`Adicionado em ${adicionados} serviço(s). ${conflitos} serviço(s) com conflito de horário.`, 'warning');
+    } else {
+        showToast(`Funcionário adicionado em ${adicionados} serviço(s)!`, 'success');
+    }
+};
+
+window.removeIntegranteGlobalCadeia = async function() {
+    const integranteId = document.getElementById('cadeia-add-integrante-global').value;
+    const cadeiaId = document.getElementById('cadeia-id').value;
+    if (!integranteId) {
+        showToast('Selecione um funcionário para remover.', 'warning');
+        return;
+    }
+    if (!cadeiaId) {
+        showToast('Salve a cadeia primeiro.', 'warning');
+        return;
+    }
+
+    if (!confirm('Remover este funcionário de TODOS os serviços desta cadeia?')) return;
+
+    const cadeiaServicos = servicos.filter(s => s.cadeia_id === cadeiaId);
+    const alocsParaRemover = alocacoes.filter(a => 
+        a.integrante_id === integranteId && cadeiaServicos.some(s => s.id === a.servico_id)
+    );
+
+    for (const aloc of alocsParaRemover) {
+        await supabase.from('logistica_alocacoes').delete().eq('id', aloc.id);
+    }
+
+    await loadAlocacoes();
+    renderCadeiaEquipeGlobal();
+    document.getElementById('cadeia-add-integrante-global').value = '';
+    showToast(`Funcionário removido de ${alocsParaRemover.length} serviço(s).`, 'success');
+};
+
+// ===== COPIAR EQUIPE DO SERVIÇO ANTERIOR =====
+window.copiarEquipeServicoAnterior = async function() {
+    const servicoId = document.getElementById('servico-id').value;
+    const servico = servicos.find(s => s.id === servicoId);
+    if (!servico) return;
+
+    // Encontrar o serviço anterior na cadeia
+    const cadeiaServicos = servicos.filter(s => s.cadeia_id === servico.cadeia_id).sort((a, b) => a.ordem - b.ordem);
+    const indexAtual = cadeiaServicos.findIndex(s => s.id === servicoId);
+
+    if (indexAtual <= 0) {
+        showToast('Este é o primeiro serviço da cadeia, não há serviço anterior.', 'warning');
+        return;
+    }
+
+    const servicoAnterior = cadeiaServicos[indexAtual - 1];
+    const alocsAnterior = alocacoes.filter(a => a.servico_id === servicoAnterior.id);
+
+    if (alocsAnterior.length === 0) {
+        showToast('O serviço anterior não tem equipe alocada.', 'warning');
+        return;
+    }
+
+    let adicionados = 0;
+    let conflitos = 0;
+
+    for (const aloc of alocsAnterior) {
+        // Verificar se já está alocado neste serviço
+        const jaAlocado = alocacoes.find(a => a.servico_id === servicoId && a.integrante_id === aloc.integrante_id);
+        if (jaAlocado) continue;
+
+        // Verificar conflito
+        const conflito = checkConflito(aloc.integrante_id, servico.data_inicio, servico.data_fim_real || servico.data_fim_prevista, servicoId);
+        if (conflito) {
+            conflitos++;
+            continue;
+        }
+
+        try {
+            await supabase.from('logistica_alocacoes').insert({
+                servico_id: servicoId,
+                integrante_id: aloc.integrante_id,
+                data_inicio: servico.data_inicio,
+                data_fim: servico.data_fim_real || servico.data_fim_prevista
+            });
+            adicionados++;
+        } catch (e) { /* ignore */ }
+    }
+
+    await loadAlocacoes();
+    renderServicoEquipe(servicoId);
+
+    if (conflitos > 0) {
+        showToast(`Copiados ${adicionados} integrante(s). ${conflitos} com conflito de horário.`, 'warning');
+    } else {
+        showToast(`Equipe do serviço anterior copiada! (${adicionados} integrante(s))`, 'success');
+    }
+};
 
 // ===== INICIALIZAÇÃO =====
 document.addEventListener('DOMContentLoaded', function() {
