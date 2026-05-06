@@ -857,20 +857,27 @@ function getRotasDoDia(date) {
 }
 
 // ===== MODAIS =====
-let editingCadeia = false;
-
 window.openModal = function(type) {
     document.getElementById(`modal-${type}`).classList.add('active');
-    if (type === 'cadeia' && !editingCadeia) {
-        populateCadeiaLocalSelect();
-        tempServicos = [];
-        renderTempServicos();
-    }
-    editingCadeia = false;
 };
 
 window.closeModal = function(type) {
     document.getElementById(`modal-${type}`).classList.remove('active');
+    // Resetar formulários ao fechar para evitar confusão entre novo e edição
+    if (type === 'local') resetFormLocal();
+    if (type === 'cadeia') resetFormCadeia();
+};
+
+// Funções dedicadas para NOVO (sempre limpam o formulário)
+window.openNewLocal = function() {
+    resetFormLocal();
+    openModal('local');
+};
+
+window.openNewCadeia = function() {
+    resetFormCadeia();
+    populateCadeiaLocalSelect();
+    openModal('cadeia');
 };
 
 // ===== CRUD LOCAIS =====
@@ -929,6 +936,9 @@ window.saveLocal = async function(event) {
 
     try {
         if (id) {
+            // Confirmar edição para evitar alterações acidentais
+            const localOriginal = locais.find(l => l.id === id);
+            if (!confirm(`Confirma a EDIÇÃO do local "${localOriginal ? localOriginal.nome : ''}"?`)) return;
             const { error } = await supabase.from('logistica_locais').update(data).eq('id', id);
             if (error) throw error;
             showToast('Local atualizado com sucesso!', 'success');
@@ -963,7 +973,8 @@ window.editLocal = function(id) {
     document.getElementById('local-observacoes').value = local.observacoes || '';
     document.getElementById('local-lat').value = local.latitude || '';
     document.getElementById('local-lng').value = local.longitude || '';
-    document.getElementById('modal-local-title').innerHTML = '<i class="fas fa-edit"></i> Editar Local';
+    document.getElementById('modal-local-title').innerHTML = '<i class="fas fa-edit"></i> Editando: ' + local.nome;
+    document.getElementById('btn-salvar-local').innerHTML = '<i class="fas fa-save"></i> Salvar Edição';
     openModal('local');
 };
 
@@ -983,6 +994,8 @@ function resetFormLocal() {
     document.getElementById('form-local').reset();
     document.getElementById('local-id').value = '';
     document.getElementById('modal-local-title').innerHTML = '<i class="fas fa-map-pin"></i> Nova Obra/Visita';
+    const btnLocal = document.getElementById('btn-salvar-local');
+    if (btnLocal) btnLocal.innerHTML = '<i class="fas fa-plus"></i> Criar Novo';
 }
 
 // ===== DETALHES DO LOCAL =====
@@ -1154,6 +1167,9 @@ window.saveCadeia = async function(event) {
     try {
         let savedCadeiaId;
         if (cadeiaId) {
+            // Confirmar edição para evitar alterações acidentais
+            const cadeiaOriginal = cadeias.find(c => c.id === cadeiaId);
+            if (!confirm(`Confirma a EDIÇÃO da cadeia "${cadeiaOriginal ? cadeiaOriginal.nome : ''}"? Os serviços serão recriados.`)) return;
             const { error } = await supabase.from('logistica_cadeias').update({
                 nome, descricao, local_id: localId, updated_at: new Date().toISOString()
             }).eq('id', cadeiaId);
@@ -1206,7 +1222,8 @@ window.editCadeia = async function(id) {
     document.getElementById('cadeia-id').value = cadeia.id;
     document.getElementById('cadeia-nome').value = cadeia.nome;
     document.getElementById('cadeia-descricao').value = cadeia.descricao || '';
-    document.getElementById('modal-cadeia-title').innerHTML = '<i class="fas fa-edit"></i> Editar Cadeia';
+    document.getElementById('modal-cadeia-title').innerHTML = '<i class="fas fa-edit"></i> Editando: ' + cadeia.nome;
+    document.getElementById('btn-salvar-cadeia').innerHTML = '<i class="fas fa-save"></i> Salvar Edição';
     
     // Setar o local DEPOIS de popular o select
     document.getElementById('cadeia-local').value = cadeia.local_id;
@@ -1224,9 +1241,6 @@ window.editCadeia = async function(id) {
     renderTempServicos();
     populateCadeiaIntegranteSelect();
     renderCadeiaEquipeGlobal();
-    
-    // Marcar que estamos editando para não resetar no openModal
-    editingCadeia = true;
     openModal('cadeia');
 };
 
@@ -1247,6 +1261,8 @@ function resetFormCadeia() {
     document.getElementById('form-cadeia').reset();
     document.getElementById('cadeia-id').value = '';
     document.getElementById('modal-cadeia-title').innerHTML = '<i class="fas fa-link"></i> Nova Cadeia de Serviços';
+    const btnCadeia = document.getElementById('btn-salvar-cadeia');
+    if (btnCadeia) btnCadeia.innerHTML = '<i class="fas fa-plus"></i> Criar Nova Cadeia';
     tempServicos = [];
     renderTempServicos();
 }
