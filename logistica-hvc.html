@@ -130,6 +130,109 @@
       overflow: hidden;
       position: relative;
       min-height: 500px;
+      transition: all 0.4s ease;
+    }
+
+    .map-container.collapsed {
+      min-height: 0;
+      height: 0;
+      border: none;
+      margin: 0;
+    }
+
+    .map-container.collapsed #map {
+      display: none;
+    }
+
+    .map-container.collapsed .map-controls {
+      display: none;
+    }
+
+    .map-toggle-btn {
+      position: absolute;
+      bottom: 10px;
+      right: 10px;
+      z-index: 10;
+      padding: 8px 14px;
+      border-radius: 20px;
+      border: 1px solid rgba(255,255,255,0.3);
+      background: rgba(0,0,0,0.8);
+      color: white;
+      font-size: 0.75rem;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+    .map-toggle-btn:hover { background: rgba(33,150,243,0.8); }
+
+    .map-expand-btn {
+      display: none;
+      margin-bottom: 10px;
+      padding: 8px 14px;
+      border-radius: 8px;
+      border: 1px solid rgba(255,255,255,0.3);
+      background: rgba(33,150,243,0.3);
+      color: white;
+      font-size: 0.8rem;
+      cursor: pointer;
+      width: 100%;
+      text-align: center;
+      transition: all 0.3s;
+    }
+    .map-expand-btn:hover { background: rgba(33,150,243,0.6); }
+    .map-expand-btn.visible { display: block; }
+
+    /* Quando mapa está retraído, painel ocupa tudo */
+    .main-layout.map-hidden {
+      grid-template-columns: 1fr;
+    }
+    .main-layout.map-hidden .side-panel {
+      max-height: calc(100vh - 140px);
+    }
+
+    /* Sinalização visual no Gantt - funcionário selecionado */
+    .gantt-func-chip.highlighted {
+      background: rgba(76, 175, 80, 0.9) !important;
+      border-color: #4caf50 !important;
+      box-shadow: 0 0 10px rgba(76, 175, 80, 0.6);
+      transform: scale(1.1);
+    }
+
+    /* Estilo do item de serviço no modal de funcionário */
+    .func-servico-item {
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 8px;
+      padding: 10px;
+      margin-bottom: 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+    }
+    .func-servico-item:hover {
+      background: rgba(255,255,255,0.1);
+    }
+    .func-servico-info {
+      flex: 1;
+    }
+    .func-servico-info .nome {
+      font-weight: 600;
+      font-size: 0.85rem;
+      color: #add8e6;
+    }
+    .func-servico-info .datas {
+      font-size: 0.7rem;
+      color: rgba(255,255,255,0.6);
+      margin-top: 3px;
+    }
+    .func-servico-info .obra {
+      font-size: 0.7rem;
+      color: rgba(255,193,7,0.8);
+      margin-top: 2px;
+    }
+    .func-servico-actions {
+      display: flex;
+      gap: 5px;
     }
 
     #map {
@@ -1154,9 +1257,9 @@
     </div>
 
     <!-- Layout principal -->
-    <div class="main-layout">
+    <div class="main-layout" id="main-layout">
       <!-- Mapa -->
-      <div class="map-container">
+      <div class="map-container" id="map-container">
         <div class="map-controls">
           <button class="map-filter-btn active" data-filter="all" onclick="filterMap('all')">Todos</button>
           <button class="map-filter-btn" data-filter="obras" onclick="filterMap('obras')">Obras</button>
@@ -1165,7 +1268,15 @@
           <button class="map-filter-btn" data-filter="rotas" onclick="filterMap('rotas')">Rotas</button>
         </div>
         <div id="map"></div>
+        <button class="map-toggle-btn" onclick="toggleMap()">
+          <i class="fas fa-compress-arrows-alt"></i> Retrair Mapa
+        </button>
       </div>
+
+      <!-- Botão para expandir mapa quando retraído -->
+      <button class="map-expand-btn" id="map-expand-btn" onclick="toggleMap()">
+        <i class="fas fa-expand-arrows-alt"></i> Expandir Mapa
+      </button>
 
       <!-- Painel lateral -->
       <div class="side-panel">
@@ -1321,7 +1432,7 @@
         </button>
         <div class="form-actions">
           <button type="button" class="btn btn-danger" onclick="closeModal('local')">Cancelar</button>
-          <button type="submit" class="btn btn-primary">Salvar</button>
+          <button type="submit" class="btn btn-primary" id="btn-salvar-local"><i class="fas fa-plus"></i> Criar Novo</button>
         </div>
       </form>
     </div>
@@ -1386,7 +1497,7 @@
 
         <div class="form-actions">
           <button type="button" class="btn btn-danger" onclick="closeModal('cadeia')">Cancelar</button>
-          <button type="submit" class="btn btn-primary">Salvar Cadeia</button>
+          <button type="submit" class="btn btn-primary" id="btn-salvar-cadeia"><i class="fas fa-plus"></i> Criar Nova Cadeia</button>
         </div>
       </form>
     </div>
@@ -1518,6 +1629,39 @@
         <button class="modal-close" onclick="closeModal('local-detalhes')">&times;</button>
       </div>
       <div id="detalhes-local-content"></div>
+    </div>
+  </div>
+
+  <!-- Modal: Detalhes do Funcionário -->
+  <div class="modal-overlay" id="modal-funcionario">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="modal-func-title"><i class="fas fa-user-hard-hat"></i> Funcionário</h3>
+        <button class="modal-close" onclick="closeModal('funcionario')">&times;</button>
+      </div>
+      <div id="modal-func-content">
+        <!-- Resumo do funcionário -->
+        <div id="func-resumo" style="margin-bottom:15px;"></div>
+        
+        <!-- Serviços alocados -->
+        <h4 style="color:#add8e6;margin-bottom:10px;"><i class="fas fa-tasks"></i> Serviços Alocados</h4>
+        <div id="func-servicos-list" style="max-height:300px;overflow-y:auto;"></div>
+        
+        <!-- Ações rápidas -->
+        <h4 style="color:#add8e6;margin:15px 0 10px;"><i class="fas fa-bolt"></i> Ações Rápidas</h4>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;">
+          <button class="btn btn-danger btn-sm" onclick="removeAllAlocacoesFuncionario()">
+            <i class="fas fa-user-minus"></i> Remover de Todos os Serviços
+          </button>
+          <button class="btn btn-warning btn-sm" onclick="removeAlocacoesFuturasFuncionario()">
+            <i class="fas fa-forward"></i> Remover de Serviços Futuros
+          </button>
+        </div>
+
+        <!-- Disponibilidade -->
+        <h4 style="color:#add8e6;margin:15px 0 10px;"><i class="fas fa-calendar-check"></i> Disponibilidade</h4>
+        <div id="func-disponibilidade"></div>
+      </div>
     </div>
   </div>
 
