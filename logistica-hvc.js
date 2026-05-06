@@ -25,7 +25,7 @@ let selectedFuncionarioFilter = null;
 let tempServicos = []; // Serviços temporários no modal de cadeia
 
 // ===== INICIALIZAÇÃO DO MAPA =====
-window.initMap = function() {
+function initMapInternal() {
     const mapOptions = {
         center: { lat: -22.9068, lng: -43.1729 }, // Rio de Janeiro default
         zoom: 12,
@@ -59,7 +59,10 @@ window.initMap = function() {
 
     // Carregar dados
     loadAllData();
-};
+}
+
+// Expor para uso global
+window.initMap = initMapInternal;
 
 // ===== CARREGAMENTO DE DADOS =====
 async function loadAllData() {
@@ -1661,4 +1664,12 @@ function showToast(message, type = 'success') {
 document.addEventListener('DOMContentLoaded', function() {
     // Definir data de hoje no simulador
     document.getElementById('simulatedDate').value = formatDateInput(new Date());
+    
+    // Inicializar o mapa (Google Maps já carregado sincronamente)
+    if (typeof google !== 'undefined' && google.maps) {
+        initMapInternal();
+    } else {
+        console.error('Google Maps não carregou. Verifique a chave de API.');
+        showToast('Erro ao carregar Google Maps. Verifique a conexão.', 'error');
+    }
 });
