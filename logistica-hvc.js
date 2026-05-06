@@ -375,6 +375,22 @@ window.switchTab = function(tab) {
 
     if (tab === 'cronograma') updateCronograma();
     if (tab === 'equipe') renderEquipeList();
+    if (tab === 'alocacao') {
+        populateGanttFilter();
+        // Setar período padrão: semana atual
+        const ganttInicioEl = document.getElementById('gantt-inicio');
+        const ganttFimEl = document.getElementById('gantt-fim');
+        if (!ganttInicioEl.value) {
+            const hoje = new Date();
+            const inicioSemana = new Date(hoje);
+            inicioSemana.setDate(hoje.getDate() - hoje.getDay() + 1); // Segunda
+            const fimSemana = new Date(inicioSemana);
+            fimSemana.setDate(inicioSemana.getDate() + 13); // 2 semanas
+            ganttInicioEl.value = formatDateInput(inicioSemana);
+            ganttFimEl.value = formatDateInput(fimSemana);
+        }
+        renderGantt();
+    }
 };
 
 // ===== LISTA DE LOCAIS =====
@@ -841,13 +857,16 @@ function getRotasDoDia(date) {
 }
 
 // ===== MODAIS =====
+let editingCadeia = false;
+
 window.openModal = function(type) {
     document.getElementById(`modal-${type}`).classList.add('active');
-    if (type === 'cadeia') {
+    if (type === 'cadeia' && !editingCadeia) {
         populateCadeiaLocalSelect();
         tempServicos = [];
         renderTempServicos();
     }
+    editingCadeia = false;
 };
 
 window.closeModal = function(type) {
@@ -1180,25 +1199,34 @@ window.editCadeia = async function(id) {
     if (!cadeia) return;
 
     closeModal('local-detalhes');
+    
+    // Popular o select de locais ANTES de setar o valor
+    populateCadeiaLocalSelect();
+    
     document.getElementById('cadeia-id').value = cadeia.id;
     document.getElementById('cadeia-nome').value = cadeia.nome;
-    document.getElementById('cadeia-local').value = cadeia.local_id;
     document.getElementById('cadeia-descricao').value = cadeia.descricao || '';
     document.getElementById('modal-cadeia-title').innerHTML = '<i class="fas fa-edit"></i> Editar Cadeia';
+    
+    // Setar o local DEPOIS de popular o select
+    document.getElementById('cadeia-local').value = cadeia.local_id;
 
-    // Carregar serviços existentes
+    // Carregar serviços existentes com datas convertidas para local timezone
     tempServicos = servicos.filter(s => s.cadeia_id === id).sort((a, b) => a.ordem - b.ordem).map(s => ({
         tempId: s.id,
         nome: s.nome,
         descricao: s.descricao || '',
         ordem: s.ordem,
-        data_inicio: s.data_inicio.slice(0, 16),
-        data_fim_prevista: s.data_fim_prevista.slice(0, 16)
+        data_inicio: toLocalDatetimeInput(s.data_inicio),
+        data_fim_prevista: toLocalDatetimeInput(s.data_fim_prevista)
     }));
 
     renderTempServicos();
     populateCadeiaIntegranteSelect();
     renderCadeiaEquipeGlobal();
+    
+    // Marcar que estamos editando para não resetar no openModal
+    editingCadeia = true;
     openModal('cadeia');
 };
 
@@ -1238,9 +1266,9 @@ window.openServicoEdit = function(id) {
     document.getElementById('servico-cadeia-id').value = servico.cadeia_id;
     document.getElementById('servico-nome').value = servico.nome;
     document.getElementById('servico-descricao').value = servico.descricao || '';
-    document.getElementById('servico-inicio').value = servico.data_inicio ? servico.data_inicio.slice(0, 16) : '';
-    document.getElementById('servico-fim-previsto').value = servico.data_fim_prevista ? servico.data_fim_prevista.slice(0, 16) : '';
-    document.getElementById('servico-fim-real').value = servico.data_fim_real ? servico.data_fim_real.slice(0, 16) : '';
+    document.getElementById('servico-inicio').value = toLocalDatetimeInput(servico.data_inicio);
+    document.getElementById('servico-fim-previsto').value = toLocalDatetimeInput(servico.data_fim_prevista);
+    document.getElementById('servico-fim-real').value = toLocalDatetimeInput(servico.data_fim_real);
     document.getElementById('servico-status').value = servico.status;
 
     // Carregar equipe alocada
@@ -1265,9 +1293,9 @@ window.openServicoEditFromCadeia = function(id) {
     document.getElementById('servico-cadeia-id').value = servico.cadeia_id;
     document.getElementById('servico-nome').value = servico.nome;
     document.getElementById('servico-descricao').value = servico.descricao || '';
-    document.getElementById('servico-inicio').value = servico.data_inicio ? servico.data_inicio.slice(0, 16) : '';
-    document.getElementById('servico-fim-previsto').value = servico.data_fim_prevista ? servico.data_fim_prevista.slice(0, 16) : '';
-    document.getElementById('servico-fim-real').value = servico.data_fim_real ? servico.data_fim_real.slice(0, 16) : '';
+    document.getElementById('servico-inicio').value = toLocalDatetimeInput(servico.data_inicio);
+    document.getElementById('servico-fim-previsto').value = toLocalDatetimeInput(servico.data_fim_prevista);
+    document.getElementById('servico-fim-real').value = toLocalDatetimeInput(servico.data_fim_real);
     document.getElementById('servico-status').value = servico.status;
 
     renderServicoEquipe(id);
@@ -1677,6 +1705,17 @@ function formatDateInput(date) {
     return date.toISOString().split('T')[0];
 }
 
+function toLocalDatetimeInput(isoStr) {
+    if (!isoStr) return '';
+    const d = new Date(isoStr);
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    const hours = String(d.getHours()).padStart(2, '0');
+    const minutes = String(d.getMinutes()).padStart(2, '0');
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
+}
+
 function getServicoStatusLabel(status) {
     const labels = {
         'pendente': 'Pendente',
@@ -1881,6 +1920,176 @@ window.copiarEquipeServicoAnterior = async function() {
     } else {
         showToast(`Equipe do serviço anterior copiada! (${adicionados} integrante(s))`, 'success');
     }
+};
+
+// ===== GANTT / ALOCAÇÃO VISUAL =====
+let ganttSelectedFuncionarios = [];
+
+function populateGanttFilter() {
+    const container = document.getElementById('gantt-funcionarios-filter');
+    if (!container) return;
+    container.innerHTML = integrantes.map(i => {
+        const isActive = ganttSelectedFuncionarios.includes(i.id);
+        const initials = i.nome.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
+        return `<span class="gantt-chip ${isActive ? 'active' : ''}" onclick="toggleGanttFuncionario('${i.id}')" title="${i.nome}">${initials} ${i.nome.split(' ')[0]}</span>`;
+    }).join('');
+}
+
+window.toggleGanttFuncionario = function(id) {
+    const idx = ganttSelectedFuncionarios.indexOf(id);
+    if (idx >= 0) {
+        ganttSelectedFuncionarios.splice(idx, 1);
+    } else {
+        ganttSelectedFuncionarios.push(id);
+    }
+    populateGanttFilter();
+    renderGantt();
+};
+
+window.renderGantt = function() {
+    const container = document.getElementById('gantt-container');
+    const inicioStr = document.getElementById('gantt-inicio').value;
+    const fimStr = document.getElementById('gantt-fim').value;
+
+    if (!inicioStr || !fimStr) {
+        container.innerHTML = '<div class="empty-state"><i class="fas fa-th"></i><p>Selecione um período para visualizar a alocação</p></div>';
+        return;
+    }
+
+    const inicio = new Date(inicioStr + 'T00:00:00');
+    const fim = new Date(fimStr + 'T23:59:59');
+    if (fim <= inicio) {
+        container.innerHTML = '<div class="empty-state"><i class="fas fa-exclamation-triangle"></i><p>A data final deve ser posterior à inicial</p></div>';
+        return;
+    }
+
+    // Gerar array de dias
+    const dias = [];
+    const current = new Date(inicio);
+    while (current <= fim) {
+        dias.push(new Date(current));
+        current.setDate(current.getDate() + 1);
+    }
+
+    if (dias.length > 60) {
+        container.innerHTML = '<div class="empty-state"><i class="fas fa-exclamation-triangle"></i><p>Período muito longo (máx. 60 dias)</p></div>';
+        return;
+    }
+
+    // Filtrar obras que têm serviços no período
+    const obrasComServicos = locais.filter(l => l.tipo === 'obra').filter(obra => {
+        return servicos.some(s => {
+            const cadeia = cadeias.find(c => c.id === s.cadeia_id);
+            if (!cadeia || cadeia.local_id !== obra.id) return false;
+            const sInicio = new Date(s.data_inicio);
+            const sFim = new Date(s.data_fim_real || s.data_fim_prevista);
+            return sInicio <= fim && sFim >= inicio;
+        });
+    });
+
+    if (obrasComServicos.length === 0) {
+        container.innerHTML = '<div class="empty-state"><i class="fas fa-hard-hat"></i><p>Nenhuma obra com serviços neste período</p></div>';
+        return;
+    }
+
+    // Funcionários filtrados
+    const funcsFiltrados = ganttSelectedFuncionarios.length > 0
+        ? integrantes.filter(i => ganttSelectedFuncionarios.includes(i.id))
+        : integrantes;
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    // Construir grid
+    const numCols = dias.length + 1; // +1 para coluna de obras
+    let html = `<div class="gantt-grid" style="grid-template-columns: 150px repeat(${dias.length}, minmax(55px, 1fr));">`;
+
+    // Header: canto + dias
+    html += `<div class="gantt-corner">Obra / Dia</div>`;
+    dias.forEach(dia => {
+        const isWeekend = dia.getDay() === 0 || dia.getDay() === 6;
+        const isToday = dia.toDateString() === today.toDateString();
+        const dayNames = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+        html += `<div class="gantt-header-cell ${isWeekend ? 'weekend' : ''} ${isToday ? 'today' : ''}">
+            ${dayNames[dia.getDay()]}<br>${dia.getDate()}/${dia.getMonth() + 1}
+        </div>`;
+    });
+
+    // Linhas: uma por obra
+    obrasComServicos.forEach(obra => {
+        html += `<div class="gantt-obra-label" title="${obra.nome}"><i class="fas fa-hard-hat" style="margin-right:5px;font-size:0.6rem;"></i>${obra.nome}</div>`;
+
+        dias.forEach(dia => {
+            const isWeekend = dia.getDay() === 0 || dia.getDay() === 6;
+            const isToday = dia.toDateString() === today.toDateString();
+            const diaInicio = new Date(dia);
+            diaInicio.setHours(0, 0, 0, 0);
+            const diaFim = new Date(dia);
+            diaFim.setHours(23, 59, 59, 999);
+
+            // Encontrar serviços desta obra neste dia
+            const servicosNesteObraDia = servicos.filter(s => {
+                const cadeia = cadeias.find(c => c.id === s.cadeia_id);
+                if (!cadeia || cadeia.local_id !== obra.id) return false;
+                const sInicio = new Date(s.data_inicio);
+                const sFim = new Date(s.data_fim_real || s.data_fim_prevista);
+                return sInicio <= diaFim && sFim >= diaInicio && s.status !== 'suspenso';
+            });
+
+            // Encontrar funcionários alocados nesses serviços
+            const funcsNestaCelula = [];
+            servicosNesteObraDia.forEach(s => {
+                const sAlocs = alocacoes.filter(a => a.servico_id === s.id);
+                sAlocs.forEach(a => {
+                    if (funcsFiltrados.some(f => f.id === a.integrante_id)) {
+                        if (!funcsNestaCelula.find(f => f.id === a.integrante_id)) {
+                            funcsNestaCelula.push({
+                                id: a.integrante_id,
+                                servico: s
+                            });
+                        }
+                    }
+                });
+            });
+
+            html += `<div class="gantt-cell ${isWeekend ? 'weekend' : ''} ${isToday ? 'today' : ''}">` ;
+
+            funcsNestaCelula.forEach(fc => {
+                const integrante = integrantes.find(i => i.id === fc.id);
+                const initials = integrante ? integrante.nome.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() : '?';
+
+                // Verificar se este funcionário tem transição neste dia (termina aqui e começa em outra obra)
+                let isTransitioning = false;
+                const outrasAlocsDia = alocacoes.filter(a => {
+                    if (a.integrante_id !== fc.id) return false;
+                    const aServico = servicos.find(s => s.id === a.servico_id);
+                    if (!aServico) return false;
+                    const aCadeia = cadeias.find(c => c.id === aServico.cadeia_id);
+                    if (!aCadeia || aCadeia.local_id === obra.id) return false;
+                    const aInicio = new Date(aServico.data_inicio);
+                    const aFim = new Date(aServico.data_fim_real || aServico.data_fim_prevista);
+                    return aInicio <= diaFim && aFim >= diaInicio;
+                });
+                if (outrasAlocsDia.length > 0) isTransitioning = true;
+
+                const badgeClass = isTransitioning ? 'transitioning' : 'working';
+                html += `<span class="gantt-badge ${badgeClass}" title="${integrante ? integrante.nome : '?'}${isTransitioning ? ' (transição)' : ''}">${initials}</span>`;
+            });
+
+            html += `</div>`;
+        });
+    });
+
+    html += `</div>`;
+
+    // Legenda
+    html += `<div class="gantt-legend">
+        <div class="gantt-legend-item"><span class="gantt-legend-dot working"></span> Trabalhando</div>
+        <div class="gantt-legend-item"><span class="gantt-legend-dot transitioning"></span> Transição (rota)</div>
+        <div class="gantt-legend-item"><span class="gantt-legend-dot idle"></span> Sem alocação</div>
+    </div>`;
+
+    container.innerHTML = html;
 };
 
 // ===== INICIALIZAÇÃO =====
