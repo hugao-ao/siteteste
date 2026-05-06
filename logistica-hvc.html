@@ -267,6 +267,52 @@
     }
     .map-filter-btn:hover { transform: scale(1.05); }
 
+    .map-controls-row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .map-sub-filters {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 6px;
+      background: rgba(0,0,0,0.7);
+      padding: 5px 10px;
+      border-radius: 12px;
+    }
+
+    .map-checkbox {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      color: white;
+      font-size: 0.65rem;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .map-checkbox input[type="checkbox"] {
+      width: 14px;
+      height: 14px;
+      accent-color: #4caf50;
+      cursor: pointer;
+    }
+
+    .status-dot {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+    }
+
+    .sub-filter-separator {
+      color: rgba(255,255,255,0.3);
+      font-size: 0.7rem;
+    }
+
     /* Painel lateral */
     .side-panel {
       background: rgba(25, 25, 112, 0.3);
@@ -1261,11 +1307,23 @@
       <!-- Mapa -->
       <div class="map-container" id="map-container">
         <div class="map-controls">
-          <button class="map-filter-btn active" data-filter="all" onclick="filterMap('all')">Todos</button>
-          <button class="map-filter-btn" data-filter="obras" onclick="filterMap('obras')">Obras</button>
-          <button class="map-filter-btn" data-filter="visitas" onclick="filterMap('visitas')">Visitas</button>
-          <button class="map-filter-btn" data-filter="equipe" onclick="filterMap('equipe')">Equipe</button>
-          <button class="map-filter-btn" data-filter="rotas" onclick="filterMap('rotas')">Rotas</button>
+          <div class="map-controls-row">
+            <button class="map-filter-btn active" data-filter="all" onclick="filterMap('all')">Todos</button>
+            <button class="map-filter-btn" data-filter="obras" onclick="filterMap('obras')">Obras</button>
+            <button class="map-filter-btn" data-filter="visitas" onclick="filterMap('visitas')">Visitas</button>
+            <button class="map-filter-btn" data-filter="equipe" onclick="filterMap('equipe')">Equipe</button>
+            <button class="map-filter-btn" data-filter="rotas" onclick="filterMap('rotas')">Rotas</button>
+          </div>
+          <div class="map-sub-filters" id="map-sub-filters">
+            <label class="map-checkbox"><input type="checkbox" id="chk-poi" checked onchange="togglePOI()"> <span>POIs</span></label>
+            <span class="sub-filter-separator">|</span>
+            <label class="map-checkbox"><input type="checkbox" id="chk-a-iniciar" checked onchange="updateMapMarkers()"> <span class="status-dot" style="background:#ffc107;"></span> À iniciar</label>
+            <label class="map-checkbox"><input type="checkbox" id="chk-em-andamento" checked onchange="updateMapMarkers()"> <span class="status-dot" style="background:#2196f3;"></span> Em andamento</label>
+            <label class="map-checkbox"><input type="checkbox" id="chk-finalizada" checked onchange="updateMapMarkers()"> <span class="status-dot" style="background:#4caf50;"></span> Finalizada</label>
+            <span class="sub-filter-separator">|</span>
+            <label class="map-checkbox"><input type="checkbox" id="chk-pendente" checked onchange="updateMapMarkers()"> <span class="status-dot" style="background:#ff9800;"></span> Pendente</label>
+            <label class="map-checkbox"><input type="checkbox" id="chk-concluida" checked onchange="updateMapMarkers()"> <span class="status-dot" style="background:#4caf50;"></span> Concluída</label>
+          </div>
         </div>
         <div id="map"></div>
         <button class="map-toggle-btn" onclick="toggleMap()">
