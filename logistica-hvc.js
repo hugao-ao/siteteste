@@ -223,7 +223,7 @@ function getMarkerIcon(local) {
 
 function createInfoWindowContent(local) {
     const statusLabel = getStatusLabel(local);
-    const cadeiasList = cadeias.filter(c => c.local_id === local.id);
+    const cadeiasList = cadeias.filter(c => String(c.local_id) === String(local.id));
     let servicosInfo = '';
     if (cadeiasList.length > 0) {
         servicosInfo = `<br><small><b>Cadeias:</b> ${cadeiasList.length}</small>`;
@@ -286,7 +286,7 @@ function showEquipeOnMap() {
             if (!integranteServicos[a.integrante_id]) {
                 integranteServicos[a.integrante_id] = [];
             }
-            const servico = servicos.find(s => s.id === a.servico_id);
+            const servico = servicos.find(s => String(s.id) === String(a.servico_id));
             if (servico && servico.status !== 'cancelado') {
                 integranteServicos[a.integrante_id].push({
                     ...servico,
@@ -313,8 +313,8 @@ function showEquipeOnMap() {
             if (fimAtual.toDateString() === inicioProximo.toDateString() ||
                 (fimAtual <= inicioProximo && (inicioProximo - fimAtual) < 24 * 60 * 60 * 1000)) {
 
-                const localAtual = locais.find(l => l.id === atual.local_id);
-                const localProximo = locais.find(l => l.id === proximo.local_id);
+                const localAtual = locais.find(l => String(l.id) === String(atual.local_id));
+                const localProximo = locais.find(l => String(l.id) === String(proximo.local_id));
 
                 if (localAtual && localProximo && localAtual.latitude && localProximo.latitude) {
                     if (mapFilter === 'rotas' || mapFilter === 'all' || mapFilter === 'equipe') {
@@ -430,7 +430,7 @@ function renderLocaisList() {
 
 function renderLocalCard(local) {
     const statusLabel = getStatusLabel(local);
-    const cadeiaCount = cadeias.filter(c => c.local_id === local.id).length;
+    const cadeiaCount = cadeias.filter(c => String(c.local_id) === String(local.id)).length;
     return `
         <div class="item-card ${selectedLocalId === local.id ? 'selected' : ''}" onclick="selectLocal('${local.id}')">
             <div class="item-card-header">
@@ -459,7 +459,7 @@ function renderLocalCard(local) {
 
 window.selectLocal = function(id) {
     selectedLocalId = id;
-    const local = locais.find(l => l.id === id);
+    const local = locais.find(l => String(l.id) === String(id));
     if (local && local.latitude && local.longitude) {
         map.setCenter({ lat: local.latitude, lng: local.longitude });
         map.setZoom(16);
@@ -490,19 +490,28 @@ function renderEquipeList() {
             : `<span style="background:rgba(255,255,255,0.1);color:rgba(255,255,255,0.5);padding:2px 6px;border-radius:10px;font-size:0.65rem;">Livre</span>`;
 
         html += `
-            <div class="item-card" onclick="filterByFuncionario('${integrante.id}')">
-                <div class="item-card-header">
+            <div class="item-card" style="cursor:pointer;">
+                <div class="item-card-header" onclick="openFuncionarioModal('${integrante.id}')">
                     <span class="item-card-title"><i class="fas fa-user"></i> ${integrante.nome}</span>
                     ${statusBadge}
                 </div>
                 ${servicosHoje.length > 0 ? `
-                    <div class="item-card-info">
+                    <div class="item-card-info" onclick="openFuncionarioModal('${integrante.id}')">
                         ${servicosHoje.map(s => {
-                            const local = locais.find(l => l.id === s.local_id);
+                            const cadeia = cadeias.find(c => String(c.id) === String(s.cadeia_id));
+                            const local = cadeia ? locais.find(l => String(l.id) === String(cadeia.local_id)) : null;
                             return `<div style="margin-top:3px;"><i class="fas fa-wrench"></i> ${s.nome} ${local ? '@ ' + local.nome : ''}</div>`;
                         }).join('')}
                     </div>
-                ` : '<div class="item-card-info">Sem serviços para a data selecionada</div>'}
+                ` : '<div class="item-card-info" onclick="openFuncionarioModal(\''+integrante.id+'\')"}>Sem serviços para a data selecionada</div>'}
+                <div style="display:flex;gap:5px;margin-top:5px;">
+                    <button class="btn btn-sm" style="background:rgba(33,150,243,0.3);color:white;font-size:0.65rem;" onclick="filterByFuncionario('${integrante.id}')">
+                        <i class="fas fa-filter"></i> Filtrar no Mapa
+                    </button>
+                    <button class="btn btn-sm" style="background:rgba(76,175,80,0.3);color:white;font-size:0.65rem;" onclick="openFuncionarioModal('${integrante.id}')">
+                        <i class="fas fa-edit"></i> Gerenciar
+                    </button>
+                </div>
             </div>
         `;
     });
@@ -517,14 +526,14 @@ function getServicosIntegrante(integranteId, date) {
     dayEnd.setHours(23, 59, 59, 999);
 
     const alocacoesIntegrante = alocacoes.filter(a => {
-        if (a.integrante_id !== integranteId) return false;
+        if (String(a.integrante_id) !== String(integranteId)) return false;
         const aInicio = new Date(a.data_inicio);
         const aFim = new Date(a.data_fim);
         return aInicio <= dayEnd && aFim >= dayStart;
     });
 
     return alocacoesIntegrante.map(a => {
-        return servicos.find(s => s.id === a.servico_id);
+        return servicos.find(s => String(s.id) === String(a.servico_id));
     }).filter(s => s && s.status !== 'cancelado');
 }
 
@@ -631,7 +640,7 @@ function renderCronogramaDia(container, date) {
     // Filtrar por funcionário se selecionado
     if (selectedFuncionarioFilter) {
         const servicoIds = alocacoes
-            .filter(a => a.integrante_id === selectedFuncionarioFilter)
+            .filter(a => String(a.integrante_id) === String(selectedFuncionarioFilter))
             .map(a => a.servico_id);
         servicosDoDia = servicosDoDia.filter(s => servicoIds.includes(s.id));
     }
@@ -651,9 +660,9 @@ function renderCronogramaDia(container, date) {
 
     let html = '';
     servicosDoDia.forEach(servico => {
-        const local = locais.find(l => l.id === servico.local_id);
-        const cadeia = cadeias.find(c => c.id === servico.cadeia_id);
-        const servicoAlocacoes = alocacoes.filter(a => a.servico_id === servico.id);
+        const local = locais.find(l => String(l.id) === String(servico.local_id));
+        const cadeia = cadeias.find(c => String(c.id) === String(servico.cadeia_id));
+        const servicoAlocacoes = alocacoes.filter(a => String(a.servico_id) === String(servico.id));
         const equipeNomes = servicoAlocacoes.map(a => {
             const i = integrantes.find(int => int.id === a.integrante_id);
             return i ? i.nome.split(' ')[0] : '?';
@@ -724,7 +733,7 @@ function renderCronogramaSemana(container, startOfWeek) {
         });
 
         if (selectedFuncionarioFilter) {
-            const servicoIds = alocacoes.filter(a => a.integrante_id === selectedFuncionarioFilter).map(a => a.servico_id);
+            const servicoIds = alocacoes.filter(a => String(a.integrante_id) === String(selectedFuncionarioFilter)).map(a => a.servico_id);
             servicosDoDia = servicosDoDia.filter(s => servicoIds.includes(s.id));
         }
 
@@ -737,7 +746,7 @@ function renderCronogramaSemana(container, startOfWeek) {
                     <span style="float:right;color:rgba(255,255,255,0.4);">${servicosDoDia.length} serviço(s)</span>
                 </div>
                 ${servicosDoDia.slice(0, 3).map(s => {
-                    const local = locais.find(l => l.id === s.local_id);
+                    const local = locais.find(l => String(l.id) === String(s.local_id));
                     return `<div style="font-size:0.7rem;color:rgba(255,255,255,0.6);padding:2px 0;"><i class="fas fa-wrench"></i> ${s.nome} ${local ? '@ ' + local.nome : ''}</div>`;
                 }).join('')}
                 ${servicosDoDia.length > 3 ? `<div style="font-size:0.65rem;color:rgba(255,255,255,0.4);">+${servicosDoDia.length - 3} mais...</div>` : ''}
@@ -777,7 +786,7 @@ function renderCronogramaMes(container, date) {
         }).length;
 
         if (selectedFuncionarioFilter) {
-            const servicoIds = alocacoes.filter(a => a.integrante_id === selectedFuncionarioFilter).map(a => a.servico_id);
+            const servicoIds = alocacoes.filter(a => String(a.integrante_id) === String(selectedFuncionarioFilter)).map(a => a.servico_id);
             count = servicos.filter(s => {
                 const inicio = new Date(s.data_inicio);
                 const fim = new Date(s.data_fim_real || s.data_fim_prevista);
@@ -821,7 +830,7 @@ function getRotasDoDia(date) {
         const aFim = new Date(a.data_fim);
         if (aInicio <= dayEnd && aFim >= dayStart) {
             if (!integranteServicos[a.integrante_id]) integranteServicos[a.integrante_id] = [];
-            const servico = servicos.find(s => s.id === a.servico_id);
+            const servico = servicos.find(s => String(s.id) === String(a.servico_id));
             if (servico && servico.status !== 'cancelado') {
                 integranteServicos[a.integrante_id].push({ ...servico, aloc_inicio: a.data_inicio, aloc_fim: a.data_fim });
             }
@@ -837,8 +846,8 @@ function getRotasDoDia(date) {
             const inicioProximo = new Date(proximo.data_inicio);
 
             if (fimAtual.toDateString() === dayStart.toDateString() || inicioProximo.toDateString() === dayStart.toDateString()) {
-                const localAtual = locais.find(l => l.id === atual.local_id);
-                const localProximo = locais.find(l => l.id === proximo.local_id);
+                const localAtual = locais.find(l => String(l.id) === String(atual.local_id));
+                const localProximo = locais.find(l => String(l.id) === String(proximo.local_id));
                 const integrante = integrantes.find(i => i.id === integranteId);
 
                 if (localAtual && localProximo && integrante) {
@@ -937,7 +946,7 @@ window.saveLocal = async function(event) {
     try {
         if (id) {
             // Confirmar edição para evitar alterações acidentais
-            const localOriginal = locais.find(l => l.id === id);
+            const localOriginal = locais.find(l => String(l.id) === String(id));
             if (!confirm(`Confirma a EDIÇÃO do local "${localOriginal ? localOriginal.nome : ''}"?`)) return;
             const { error } = await supabase.from('logistica_locais').update(data).eq('id', id);
             if (error) throw error;
@@ -960,7 +969,7 @@ window.saveLocal = async function(event) {
 };
 
 window.editLocal = function(id) {
-    const local = locais.find(l => l.id === id);
+    const local = locais.find(l => String(l.id) === String(id));
     if (!local) return;
 
     document.getElementById('local-id').value = local.id;
@@ -1000,10 +1009,10 @@ function resetFormLocal() {
 
 // ===== DETALHES DO LOCAL =====
 window.openLocalDetalhes = function(id) {
-    const local = locais.find(l => l.id === id);
+    const local = locais.find(l => String(l.id) === String(id));
     if (!local) return;
 
-    const localCadeias = cadeias.filter(c => c.local_id === id);
+    const localCadeias = cadeias.filter(c => String(c.local_id) === String(id));
     let html = `
         <div style="margin-bottom:15px;">
             <p><b>Tipo:</b> ${local.tipo === 'obra' ? 'Obra' : 'Visita'} | <b>Status:</b> ${getStatusLabel(local)}</p>
@@ -1016,7 +1025,7 @@ window.openLocalDetalhes = function(id) {
     if (localCadeias.length > 0) {
         html += `<h4 style="color:#ffc107;margin-bottom:10px;"><i class="fas fa-link"></i> Cadeias de Serviços</h4>`;
         localCadeias.forEach(cadeia => {
-            const cadeiaServicos = servicos.filter(s => s.cadeia_id === cadeia.id).sort((a, b) => a.ordem - b.ordem);
+            const cadeiaServicos = servicos.filter(s => String(s.cadeia_id) === String(cadeia.id)).sort((a, b) => a.ordem - b.ordem);
             html += `
                 <div style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:12px;margin-bottom:10px;">
                     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
@@ -1028,7 +1037,7 @@ window.openLocalDetalhes = function(id) {
                     </div>
                     ${cadeiaServicos.map(s => {
                         const pausaAtiva = pausas.find(p => p.servico_id === s.id && p.status === 'ativa');
-                        const servicoAlocs = alocacoes.filter(a => a.servico_id === s.id);
+                        const servicoAlocs = alocacoes.filter(a => String(a.servico_id) === String(s.id));
                         const equipe = servicoAlocs.map(a => {
                             const i = integrantes.find(int => int.id === a.integrante_id);
                             return i ? i.nome.split(' ')[0] : '';
@@ -1168,7 +1177,7 @@ window.saveCadeia = async function(event) {
         let savedCadeiaId;
         if (cadeiaId) {
             // Confirmar edição para evitar alterações acidentais
-            const cadeiaOriginal = cadeias.find(c => c.id === cadeiaId);
+            const cadeiaOriginal = cadeias.find(c => String(c.id) === String(cadeiaId));
             if (!confirm(`Confirma a EDIÇÃO da cadeia "${cadeiaOriginal ? cadeiaOriginal.nome : ''}"? Os serviços serão recriados.`)) return;
             const { error } = await supabase.from('logistica_cadeias').update({
                 nome, descricao, local_id: localId, updated_at: new Date().toISOString()
@@ -1211,7 +1220,7 @@ window.saveCadeia = async function(event) {
 };
 
 window.editCadeia = async function(id) {
-    const cadeia = cadeias.find(c => c.id === id);
+    const cadeia = cadeias.find(c => String(c.id) === String(id));
     if (!cadeia) return;
 
     closeModal('local-detalhes');
@@ -1229,7 +1238,7 @@ window.editCadeia = async function(id) {
     document.getElementById('cadeia-local').value = cadeia.local_id;
 
     // Carregar serviços existentes com datas convertidas para local timezone
-    tempServicos = servicos.filter(s => s.cadeia_id === id).sort((a, b) => a.ordem - b.ordem).map(s => ({
+    tempServicos = servicos.filter(s => String(s.cadeia_id) === String(id)).sort((a, b) => a.ordem - b.ordem).map(s => ({
         tempId: s.id,
         nome: s.nome,
         descricao: s.descricao || '',
@@ -1325,7 +1334,7 @@ window.openServicoEditFromCadeia = function(id) {
 
 function renderServicoEquipe(servicoId) {
     const container = document.getElementById('servico-equipe-list');
-    const servicoAlocs = alocacoes.filter(a => a.servico_id === servicoId);
+    const servicoAlocs = alocacoes.filter(a => String(a.servico_id) === String(servicoId));
 
     if (servicoAlocs.length === 0) {
         container.innerHTML = '<span style="font-size:0.75rem;color:rgba(255,255,255,0.4);">Nenhum funcionário alocado</span>';
@@ -1426,7 +1435,7 @@ function checkConflito(integranteId, inicio, fim, excludeServicoId) {
     const novoFim = new Date(fim);
 
     const alocacoesIntegrante = alocacoes.filter(a =>
-        a.integrante_id === integranteId && a.servico_id !== excludeServicoId
+        String(a.integrante_id) === String(integranteId) && String(a.servico_id) !== String(excludeServicoId)
     );
 
     for (const aloc of alocacoesIntegrante) {
@@ -1474,7 +1483,7 @@ window.saveServico = async function(event) {
         if (error) throw error;
 
         // Atualizar alocações com novas datas
-        const servicoAlocs = alocacoes.filter(a => a.servico_id === id);
+        const servicoAlocs = alocacoes.filter(a => String(a.servico_id) === String(id));
         for (const aloc of servicoAlocs) {
             await supabase.from('logistica_alocacoes').update({
                 data_inicio: data.data_inicio,
@@ -1519,7 +1528,7 @@ window.confirmarFimServico = async function() {
         // Reajustar serviços subsequentes na cadeia
         if (diferenca !== 0) {
             const cadeiaServicos = servicos
-                .filter(s => s.cadeia_id === servico.cadeia_id && s.ordem > servico.ordem)
+                .filter(s => String(s.cadeia_id) === String(servico.cadeia_id) && s.ordem > servico.ordem)
                 .sort((a, b) => a.ordem - b.ordem);
 
             for (const s of cadeiaServicos) {
@@ -1535,7 +1544,7 @@ window.confirmarFimServico = async function() {
                 }).eq('id', s.id);
 
                 // Atualizar alocações correspondentes
-                const sAlocs = alocacoes.filter(a => a.servico_id === s.id);
+                const sAlocs = alocacoes.filter(a => String(a.servico_id) === String(s.id));
                 for (const aloc of sAlocs) {
                     await supabase.from('logistica_alocacoes').update({
                         data_inicio: novoInicio.toISOString(),
@@ -1624,7 +1633,7 @@ window.savePausa = async function(event) {
 
             // Adiar serviços subsequentes
             const subsequentes = servicos
-                .filter(s => s.cadeia_id === servico.cadeia_id && s.ordem > servico.ordem && !s.confirmado)
+                .filter(s => String(s.cadeia_id) === String(servico.cadeia_id) && s.ordem > servico.ordem && !s.confirmado)
                 .sort((a, b) => a.ordem - b.ordem);
 
             for (const s of subsequentes) {
@@ -1677,7 +1686,7 @@ window.retomarPausa = async function(pausaId) {
                 const servico = servicos.find(s => s.id === pausa.servico_id);
                 if (servico) {
                     const subsequentes = servicos
-                        .filter(s => s.cadeia_id === servico.cadeia_id && s.ordem > servico.ordem && !s.confirmado);
+                        .filter(s => String(s.cadeia_id) === String(servico.cadeia_id) && s.ordem > servico.ordem && !s.confirmado);
 
                     for (const s of subsequentes) {
                         const novoInicio = new Date(new Date(s.data_inicio).getTime() + diferenca);
@@ -1772,15 +1781,15 @@ function renderCadeiaEquipeGlobal() {
     }
 
     // Buscar todos os integrantes que estão em pelo menos um serviço da cadeia
-    const cadeiaServicos = servicos.filter(s => s.cadeia_id === cadeiaId);
+    const cadeiaServicos = servicos.filter(s => String(s.cadeia_id) === String(cadeiaId));
     const integrantesNaCadeia = new Map();
     cadeiaServicos.forEach(s => {
-        const sAlocs = alocacoes.filter(a => a.servico_id === s.id);
+        const sAlocs = alocacoes.filter(a => String(a.servico_id) === String(s.id));
         sAlocs.forEach(a => {
-            if (!integrantesNaCadeia.has(a.integrante_id)) {
-                integrantesNaCadeia.set(a.integrante_id, 0);
+            if (!integrantesNaCadeia.has(String(a.integrante_id))) {
+                integrantesNaCadeia.set(String(a.integrante_id), 0);
             }
-            integrantesNaCadeia.set(a.integrante_id, integrantesNaCadeia.get(a.integrante_id) + 1);
+            integrantesNaCadeia.set(String(a.integrante_id), integrantesNaCadeia.get(String(a.integrante_id)) + 1);
         });
     });
 
@@ -1790,7 +1799,7 @@ function renderCadeiaEquipeGlobal() {
     }
 
     container.innerHTML = Array.from(integrantesNaCadeia.entries()).map(([intId, count]) => {
-        const integrante = integrantes.find(i => i.id === intId);
+        const integrante = integrantes.find(i => String(i.id) === String(intId));
         return `
             <span class="equipe-badge alocado">
                 <i class="fas fa-user"></i> ${integrante ? integrante.nome.split(' ')[0] : '?'}
@@ -1812,13 +1821,13 @@ window.addIntegranteGlobalCadeia = async function() {
         return;
     }
 
-    const cadeiaServicos = servicos.filter(s => s.cadeia_id === cadeiaId).sort((a, b) => a.ordem - b.ordem);
+    const cadeiaServicos = servicos.filter(s => String(s.cadeia_id) === String(cadeiaId)).sort((a, b) => a.ordem - b.ordem);
     let adicionados = 0;
     let conflitos = 0;
 
     for (const servico of cadeiaServicos) {
         // Verificar se já está alocado
-        const jaAlocado = alocacoes.find(a => a.servico_id === servico.id && a.integrante_id === integranteId);
+        const jaAlocado = alocacoes.find(a => String(a.servico_id) === String(servico.id) && String(a.integrante_id) === String(integranteId));
         if (jaAlocado) continue;
 
         // Verificar conflito
@@ -1864,9 +1873,9 @@ window.removeIntegranteGlobalCadeia = async function() {
 
     if (!confirm('Remover este funcionário de TODOS os serviços desta cadeia?')) return;
 
-    const cadeiaServicos = servicos.filter(s => s.cadeia_id === cadeiaId);
+    const cadeiaServicos = servicos.filter(s => String(s.cadeia_id) === String(cadeiaId));
     const alocsParaRemover = alocacoes.filter(a => 
-        a.integrante_id === integranteId && cadeiaServicos.some(s => s.id === a.servico_id)
+        String(a.integrante_id) === String(integranteId) && cadeiaServicos.some(s => String(s.id) === String(a.servico_id))
     );
 
     for (const aloc of alocsParaRemover) {
@@ -1886,7 +1895,7 @@ window.copiarEquipeServicoAnterior = async function() {
     if (!servico) return;
 
     // Encontrar o serviço anterior na cadeia
-    const cadeiaServicos = servicos.filter(s => s.cadeia_id === servico.cadeia_id).sort((a, b) => a.ordem - b.ordem);
+    const cadeiaServicos = servicos.filter(s => String(s.cadeia_id) === String(servico.cadeia_id)).sort((a, b) => a.ordem - b.ordem);
     const indexAtual = cadeiaServicos.findIndex(s => s.id === servicoId);
 
     if (indexAtual <= 0) {
@@ -1895,7 +1904,7 @@ window.copiarEquipeServicoAnterior = async function() {
     }
 
     const servicoAnterior = cadeiaServicos[indexAtual - 1];
-    const alocsAnterior = alocacoes.filter(a => a.servico_id === servicoAnterior.id);
+    const alocsAnterior = alocacoes.filter(a => String(a.servico_id) === String(servicoAnterior.id));
 
     if (alocsAnterior.length === 0) {
         showToast('O serviço anterior não tem equipe alocada.', 'warning');
@@ -1907,7 +1916,7 @@ window.copiarEquipeServicoAnterior = async function() {
 
     for (const aloc of alocsAnterior) {
         // Verificar se já está alocado neste serviço
-        const jaAlocado = alocacoes.find(a => a.servico_id === servicoId && a.integrante_id === aloc.integrante_id);
+        const jaAlocado = alocacoes.find(a => String(a.servico_id) === String(servicoId) && String(a.integrante_id) === String(aloc.integrante_id));
         if (jaAlocado) continue;
 
         // Verificar conflito
@@ -1947,7 +1956,7 @@ function populateGanttFilter() {
     container.innerHTML = integrantes.map(i => {
         const isActive = ganttSelectedFuncionarios.includes(i.id);
         const initials = i.nome.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
-        return `<span class="gantt-chip ${isActive ? 'active' : ''}" onclick="toggleGanttFuncionario('${i.id}')" title="${i.nome}">${initials} ${i.nome.split(' ')[0]}</span>`;
+        return `<span class="gantt-chip gantt-func-chip ${isActive ? 'active' : ''}" data-name="${i.nome}" onclick="toggleGanttFuncionario('${i.id}')" title="${i.nome}">${initials} ${i.nome.split(' ')[0]}</span>`;
     }).join('');
 }
 
@@ -1995,7 +2004,7 @@ window.renderGantt = function() {
     // Filtrar obras que têm serviços no período
     const obrasComServicos = locais.filter(l => l.tipo === 'obra').filter(obra => {
         return servicos.some(s => {
-            const cadeia = cadeias.find(c => c.id === s.cadeia_id);
+            const cadeia = cadeias.find(c => String(c.id) === String(s.cadeia_id));
             if (!cadeia || cadeia.local_id !== obra.id) return false;
             const sInicio = new Date(s.data_inicio);
             const sFim = new Date(s.data_fim_real || s.data_fim_prevista);
@@ -2045,7 +2054,7 @@ window.renderGantt = function() {
 
             // Encontrar serviços desta obra neste dia
             const servicosNesteObraDia = servicos.filter(s => {
-                const cadeia = cadeias.find(c => c.id === s.cadeia_id);
+                const cadeia = cadeias.find(c => String(c.id) === String(s.cadeia_id));
                 if (!cadeia || cadeia.local_id !== obra.id) return false;
                 const sInicio = new Date(s.data_inicio);
                 const sFim = new Date(s.data_fim_real || s.data_fim_prevista);
@@ -2055,10 +2064,10 @@ window.renderGantt = function() {
             // Encontrar funcionários alocados nesses serviços
             const funcsNestaCelula = [];
             servicosNesteObraDia.forEach(s => {
-                const sAlocs = alocacoes.filter(a => a.servico_id === s.id);
+                const sAlocs = alocacoes.filter(a => String(a.servico_id) === String(s.id));
                 sAlocs.forEach(a => {
-                    if (funcsFiltrados.some(f => f.id === a.integrante_id)) {
-                        if (!funcsNestaCelula.find(f => f.id === a.integrante_id)) {
+                    if (funcsFiltrados.some(f => String(f.id) === String(a.integrante_id))) {
+                        if (!funcsNestaCelula.find(f => String(f.id) === String(a.integrante_id))) {
                             funcsNestaCelula.push({
                                 id: a.integrante_id,
                                 servico: s
@@ -2071,17 +2080,17 @@ window.renderGantt = function() {
             html += `<div class="gantt-cell ${isWeekend ? 'weekend' : ''} ${isToday ? 'today' : ''}">` ;
 
             funcsNestaCelula.forEach(fc => {
-                const integrante = integrantes.find(i => i.id === fc.id);
+                const integrante = integrantes.find(i => String(i.id) === String(fc.id));
                 const initials = integrante ? integrante.nome.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() : '?';
 
                 // Verificar se este funcionário tem transição neste dia (termina aqui e começa em outra obra)
                 let isTransitioning = false;
                 const outrasAlocsDia = alocacoes.filter(a => {
-                    if (a.integrante_id !== fc.id) return false;
-                    const aServico = servicos.find(s => s.id === a.servico_id);
+                    if (String(a.integrante_id) !== String(fc.id)) return false;
+                    const aServico = servicos.find(s => String(s.id) === String(a.servico_id));
                     if (!aServico) return false;
-                    const aCadeia = cadeias.find(c => c.id === aServico.cadeia_id);
-                    if (!aCadeia || aCadeia.local_id === obra.id) return false;
+                    const aCadeia = cadeias.find(c => String(c.id) === String(aServico.cadeia_id));
+                    if (!aCadeia || String(aCadeia.local_id) === String(obra.id)) return false;
                     const aInicio = new Date(aServico.data_inicio);
                     const aFim = new Date(aServico.data_fim_real || aServico.data_fim_prevista);
                     return aInicio <= diaFim && aFim >= diaInicio;
@@ -2089,7 +2098,7 @@ window.renderGantt = function() {
                 if (outrasAlocsDia.length > 0) isTransitioning = true;
 
                 const badgeClass = isTransitioning ? 'transitioning' : 'working';
-                html += `<span class="gantt-badge ${badgeClass}" title="${integrante ? integrante.nome : '?'}${isTransitioning ? ' (transição)' : ''}">${initials}</span>`;
+                html += `<span class="gantt-badge ${badgeClass}" title="${integrante ? integrante.nome : '?'}${isTransitioning ? ' (transição)' : ''}" onclick="highlightGanttFuncionarios(this)" style="cursor:pointer;">${initials}</span>`;
             });
 
             html += `</div>`;
@@ -2106,6 +2115,207 @@ window.renderGantt = function() {
     </div>`;
 
     container.innerHTML = html;
+};
+
+// ===== MAPA RETRÁTIL =====
+window.toggleMap = function() {
+    const mapContainer = document.getElementById('map-container');
+    const mainLayout = document.getElementById('main-layout');
+    const expandBtn = document.getElementById('map-expand-btn');
+    
+    if (mapContainer.classList.contains('collapsed')) {
+        // Expandir
+        mapContainer.classList.remove('collapsed');
+        mainLayout.classList.remove('map-hidden');
+        expandBtn.classList.remove('visible');
+        // Redimensionar mapa
+        setTimeout(() => {
+            if (map) google.maps.event.trigger(map, 'resize');
+        }, 500);
+    } else {
+        // Retrair
+        mapContainer.classList.add('collapsed');
+        mainLayout.classList.add('map-hidden');
+        expandBtn.classList.add('visible');
+    }
+};
+
+// ===== MODAL DE FUNCIONÁRIO =====
+let currentFuncionarioId = null;
+
+window.openFuncionarioModal = function(integranteId) {
+    currentFuncionarioId = integranteId;
+    const integrante = integrantes.find(i => String(i.id) === String(integranteId));
+    if (!integrante) return;
+
+    document.getElementById('modal-func-title').innerHTML = `<i class="fas fa-user-hard-hat"></i> ${integrante.nome}`;
+
+    // Resumo
+    const funcAlocacoes = alocacoes.filter(a => String(a.integrante_id) === String(integranteId));
+    const funcServicos = funcAlocacoes.map(a => servicos.find(s => String(s.id) === String(a.servico_id))).filter(Boolean);
+    const obrasUnicas = [...new Set(funcServicos.map(s => {
+        const cadeia = cadeias.find(c => String(c.id) === String(s.cadeia_id));
+        return cadeia ? cadeia.local_id : null;
+    }).filter(Boolean))];
+    
+    const agora = new Date();
+    const servicosAtivos = funcServicos.filter(s => new Date(s.data_fim_real || s.data_fim_prevista) >= agora);
+    const servicosConcluidos = funcServicos.filter(s => new Date(s.data_fim_real || s.data_fim_prevista) < agora);
+
+    document.getElementById('func-resumo').innerHTML = `
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;text-align:center;">
+            <div style="background:rgba(76,175,80,0.2);padding:10px;border-radius:8px;">
+                <div style="font-size:1.5rem;font-weight:bold;color:#4caf50;">${servicosAtivos.length}</div>
+                <div style="font-size:0.7rem;color:rgba(255,255,255,0.6);">Serviços Ativos</div>
+            </div>
+            <div style="background:rgba(33,150,243,0.2);padding:10px;border-radius:8px;">
+                <div style="font-size:1.5rem;font-weight:bold;color:#2196f3;">${servicosConcluidos.length}</div>
+                <div style="font-size:0.7rem;color:rgba(255,255,255,0.6);">Concluídos</div>
+            </div>
+            <div style="background:rgba(255,193,7,0.2);padding:10px;border-radius:8px;">
+                <div style="font-size:1.5rem;font-weight:bold;color:#ffc107;">${obrasUnicas.length}</div>
+                <div style="font-size:0.7rem;color:rgba(255,255,255,0.6);">Obras</div>
+            </div>
+        </div>
+    `;
+
+    // Lista de serviços
+    const listContainer = document.getElementById('func-servicos-list');
+    if (funcServicos.length === 0) {
+        listContainer.innerHTML = '<p style="color:rgba(255,255,255,0.4);font-size:0.8rem;">Nenhum serviço alocado.</p>';
+    } else {
+        // Ordenar por data de início
+        funcServicos.sort((a, b) => new Date(a.data_inicio) - new Date(b.data_inicio));
+        listContainer.innerHTML = funcServicos.map(s => {
+            const cadeia = cadeias.find(c => String(c.id) === String(s.cadeia_id));
+            const local = cadeia ? locais.find(l => String(l.id) === String(cadeia.local_id)) : null;
+            const aloc = funcAlocacoes.find(a => String(a.servico_id) === String(s.id));
+            const inicio = new Date(s.data_inicio);
+            const fim = new Date(s.data_fim_real || s.data_fim_prevista);
+            const isPast = fim < agora;
+            return `
+                <div class="func-servico-item" style="${isPast ? 'opacity:0.5;' : ''}">
+                    <div class="func-servico-info">
+                        <div class="nome">${s.nome}</div>
+                        <div class="datas">
+                            <i class="fas fa-clock"></i> ${inicio.toLocaleDateString('pt-BR')} ${inicio.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})} → 
+                            ${fim.toLocaleDateString('pt-BR')} ${fim.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}
+                            ${isPast ? ' <span style="color:#4caf50;">✓</span>' : ''}
+                        </div>
+                        <div class="obra"><i class="fas fa-building"></i> ${local ? local.nome : 'N/A'} ${cadeia ? '(' + cadeia.nome + ')' : ''}</div>
+                    </div>
+                    <div class="func-servico-actions">
+                        <button class="btn btn-danger btn-sm" onclick="removeAlocacaoFromFuncModal('${aloc ? aloc.id : ''}')" title="Remover deste serviço">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    // Disponibilidade - próximos 7 dias
+    const dispContainer = document.getElementById('func-disponibilidade');
+    let dispHtml = '<div style="display:flex;flex-wrap:wrap;gap:5px;">';
+    for (let i = 0; i < 14; i++) {
+        const dia = new Date();
+        dia.setDate(dia.getDate() + i);
+        const diaStr = dia.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit' });
+        
+        // Verificar se tem serviço nesse dia
+        const temServico = funcServicos.some(s => {
+            const sInicio = new Date(s.data_inicio);
+            const sFim = new Date(s.data_fim_real || s.data_fim_prevista);
+            return dia >= new Date(sInicio.toDateString()) && dia <= new Date(sFim.toDateString());
+        });
+        
+        const bgColor = temServico ? 'rgba(244,67,54,0.3)' : 'rgba(76,175,80,0.3)';
+        const borderColor = temServico ? 'rgba(244,67,54,0.6)' : 'rgba(76,175,80,0.6)';
+        const icon = temServico ? '✖' : '✔';
+        dispHtml += `<div style="background:${bgColor};border:1px solid ${borderColor};border-radius:6px;padding:4px 8px;font-size:0.65rem;text-align:center;">
+            <div>${diaStr}</div>
+            <div>${icon}</div>
+        </div>`;
+    }
+    dispHtml += '</div>';
+    dispHtml += '<p style="font-size:0.65rem;color:rgba(255,255,255,0.4);margin-top:5px;"><span style="color:#4caf50;">✔</span> Disponível &nbsp; <span style="color:#f44336;">✖</span> Ocupado</p>';
+    dispContainer.innerHTML = dispHtml;
+
+    openModal('funcionario');
+};
+
+window.removeAlocacaoFromFuncModal = async function(alocacaoId) {
+    if (!alocacaoId) return;
+    if (!confirm('Remover este funcionário deste serviço?')) return;
+    try {
+        const { error } = await supabase.from('logistica_alocacoes').delete().eq('id', alocacaoId);
+        if (error) throw error;
+        await loadAlocacoes();
+        showToast('Removido do serviço!', 'success');
+        // Reabrir modal atualizado
+        if (currentFuncionarioId) openFuncionarioModal(currentFuncionarioId);
+    } catch (e) {
+        showToast('Erro: ' + e.message, 'error');
+    }
+};
+
+window.removeAllAlocacoesFuncionario = async function() {
+    if (!currentFuncionarioId) return;
+    const integrante = integrantes.find(i => String(i.id) === String(currentFuncionarioId));
+    if (!confirm(`Remover ${integrante ? integrante.nome : 'este funcionário'} de TODOS os serviços?`)) return;
+    
+    const funcAlocs = alocacoes.filter(a => String(a.integrante_id) === String(currentFuncionarioId));
+    for (const aloc of funcAlocs) {
+        await supabase.from('logistica_alocacoes').delete().eq('id', aloc.id);
+    }
+    await loadAlocacoes();
+    showToast(`Removido de ${funcAlocs.length} serviço(s)!`, 'success');
+    openFuncionarioModal(currentFuncionarioId);
+};
+
+window.removeAlocacoesFuturasFuncionario = async function() {
+    if (!currentFuncionarioId) return;
+    const integrante = integrantes.find(i => String(i.id) === String(currentFuncionarioId));
+    if (!confirm(`Remover ${integrante ? integrante.nome : 'este funcionário'} de todos os serviços FUTUROS?`)) return;
+    
+    const agora = new Date();
+    const funcAlocs = alocacoes.filter(a => {
+        if (String(a.integrante_id) !== String(currentFuncionarioId)) return false;
+        const servico = servicos.find(s => String(s.id) === String(a.servico_id));
+        if (!servico) return false;
+        return new Date(servico.data_inicio) > agora;
+    });
+    
+    for (const aloc of funcAlocs) {
+        await supabase.from('logistica_alocacoes').delete().eq('id', aloc.id);
+    }
+    await loadAlocacoes();
+    showToast(`Removido de ${funcAlocs.length} serviço(s) futuro(s)!`, 'success');
+    openFuncionarioModal(currentFuncionarioId);
+};
+
+// ===== SINALIZAÇÃO NO GANTT =====
+window.highlightGanttFuncionarios = function(badgeEl) {
+    // Pegar os funcionários que estão naquela célula
+    const cell = badgeEl.closest('.gantt-cell');
+    if (!cell) return;
+    
+    const badges = cell.querySelectorAll('.gantt-badge');
+    const funcNames = [];
+    badges.forEach(b => {
+        const title = b.getAttribute('title');
+        if (title) funcNames.push(title.replace(' (transição)', ''));
+    });
+
+    // Destacar nos chips de filtro
+    const chips = document.querySelectorAll('.gantt-func-chip');
+    chips.forEach(chip => {
+        chip.classList.remove('highlighted');
+        const chipName = chip.getAttribute('data-name');
+        if (funcNames.includes(chipName)) {
+            chip.classList.add('highlighted');
+        }
+    });
 };
 
 // ===== INICIALIZAÇÃO =====
