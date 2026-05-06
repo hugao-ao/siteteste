@@ -1,0 +1,1238 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <script src="page-guard.js"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Logística HVC - Planejamento de Obras e Rotas</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" integrity="sha512-9usAa10IRO0HhonpyAIVpjrylPvoDwiPUiKdWk5t3PyolY1cOd4DSE0Ga+ri4AuTroPR5aQvXU9xC6qOPnzFeg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <style>
+    body {
+      display: flex;
+      margin: 0;
+      min-height: 100vh;
+      background: linear-gradient(135deg, #000080, #191970);
+      color: #e0e0e0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    #main-content-logistica-hvc {
+      flex-grow: 1;
+      padding: 1.5rem;
+      margin-left: 250px;
+      transition: margin-left 0.3s ease;
+      background: linear-gradient(135deg, #000080, #191970);
+      color: #e0e0e0;
+      min-height: 100vh;
+    }
+
+    #main-content-logistica-hvc.sidebar-collapsed {
+      margin-left: 60px;
+    }
+
+    @media (max-width: 768px) {
+      #main-content-logistica-hvc {
+        margin-left: 0;
+        padding: 1rem;
+      }
+      #main-content-logistica-hvc.sidebar-collapsed {
+        margin-left: 0;
+      }
+    }
+
+    .page-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.5rem;
+      padding-bottom: 1rem;
+      border-bottom: 2px solid rgba(173, 216, 230, 0.3);
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .page-title {
+      font-size: 2rem;
+      font-weight: bold;
+      color: #add8e6;
+      text-shadow: 0 0 10px rgba(173, 216, 230, 0.5);
+    }
+
+    .header-actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      padding: 8px 16px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      font-weight: 600;
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .btn-primary {
+      background: rgba(76, 175, 80, 0.85);
+      color: white;
+    }
+    .btn-primary:hover { background: rgba(76, 175, 80, 1); transform: scale(1.02); }
+
+    .btn-secondary {
+      background: rgba(33, 150, 243, 0.85);
+      color: white;
+    }
+    .btn-secondary:hover { background: rgba(33, 150, 243, 1); transform: scale(1.02); }
+
+    .btn-warning {
+      background: rgba(255, 193, 7, 0.85);
+      color: #333;
+    }
+    .btn-warning:hover { background: rgba(255, 193, 7, 1); transform: scale(1.02); }
+
+    .btn-danger {
+      background: rgba(244, 67, 54, 0.85);
+      color: white;
+    }
+    .btn-danger:hover { background: rgba(244, 67, 54, 1); transform: scale(1.02); }
+
+    .btn-sm {
+      padding: 5px 10px;
+      font-size: 0.75rem;
+    }
+
+    /* Layout principal: mapa + painel lateral */
+    .main-layout {
+      display: grid;
+      grid-template-columns: 1fr 400px;
+      gap: 1.5rem;
+      height: calc(100vh - 140px);
+    }
+
+    @media (max-width: 1200px) {
+      .main-layout {
+        grid-template-columns: 1fr;
+        height: auto;
+      }
+    }
+
+    /* Mapa */
+    .map-container {
+      background: rgba(25, 25, 112, 0.3);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 12px;
+      overflow: hidden;
+      position: relative;
+      min-height: 500px;
+    }
+
+    #map {
+      width: 100%;
+      height: 100%;
+      min-height: 500px;
+    }
+
+    .map-controls {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      z-index: 5;
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .map-filter-btn {
+      padding: 6px 12px;
+      border-radius: 20px;
+      border: 1px solid rgba(255,255,255,0.3);
+      background: rgba(0,0,0,0.7);
+      color: white;
+      font-size: 0.75rem;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+    .map-filter-btn.active {
+      background: rgba(76, 175, 80, 0.9);
+      border-color: #4caf50;
+    }
+    .map-filter-btn:hover { transform: scale(1.05); }
+
+    /* Painel lateral */
+    .side-panel {
+      background: rgba(25, 25, 112, 0.3);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 12px;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .panel-tabs {
+      display: flex;
+      border-bottom: 1px solid rgba(255,255,255,0.2);
+      background: rgba(0,0,0,0.2);
+    }
+
+    .panel-tab {
+      flex: 1;
+      padding: 12px 8px;
+      text-align: center;
+      cursor: pointer;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: rgba(255,255,255,0.6);
+      transition: all 0.3s;
+      border-bottom: 3px solid transparent;
+    }
+    .panel-tab.active {
+      color: #4caf50;
+      border-bottom-color: #4caf50;
+      background: rgba(76,175,80,0.1);
+    }
+    .panel-tab:hover { color: white; }
+
+    .panel-content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 15px;
+    }
+
+    .panel-section {
+      display: none;
+    }
+    .panel-section.active {
+      display: block;
+    }
+
+    /* Cards de itens */
+    .item-card {
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 8px;
+      padding: 12px;
+      margin-bottom: 10px;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+    .item-card:hover {
+      background: rgba(255,255,255,0.1);
+      border-color: rgba(76,175,80,0.5);
+    }
+    .item-card.selected {
+      border-color: #4caf50;
+      background: rgba(76,175,80,0.15);
+    }
+
+    .item-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 6px;
+    }
+
+    .item-card-title {
+      font-weight: 600;
+      font-size: 0.9rem;
+      color: #add8e6;
+    }
+
+    .item-card-status {
+      font-size: 0.7rem;
+      padding: 3px 8px;
+      border-radius: 12px;
+      font-weight: 600;
+    }
+
+    .status-a_iniciar { background: rgba(255,193,7,0.3); color: #ffc107; }
+    .status-em_andamento { background: rgba(33,150,243,0.3); color: #2196f3; }
+    .status-finalizada { background: rgba(76,175,80,0.3); color: #4caf50; }
+    .status-pendente { background: rgba(255,152,0,0.3); color: #ff9800; }
+    .status-concluida { background: rgba(76,175,80,0.3); color: #4caf50; }
+
+    .item-card-info {
+      font-size: 0.75rem;
+      color: rgba(255,255,255,0.6);
+      margin-top: 4px;
+    }
+
+    /* Cronograma */
+    .cronograma-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 15px;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .cronograma-nav {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .cronograma-nav button {
+      background: rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.2);
+      color: white;
+      padding: 5px 10px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.8rem;
+    }
+    .cronograma-nav button:hover { background: rgba(255,255,255,0.2); }
+
+    .view-toggle {
+      display: flex;
+      gap: 4px;
+    }
+    .view-toggle button {
+      padding: 5px 10px;
+      border-radius: 6px;
+      border: 1px solid rgba(255,255,255,0.2);
+      background: rgba(255,255,255,0.05);
+      color: rgba(255,255,255,0.6);
+      cursor: pointer;
+      font-size: 0.75rem;
+    }
+    .view-toggle button.active {
+      background: rgba(33,150,243,0.3);
+      color: #2196f3;
+      border-color: #2196f3;
+    }
+
+    .date-simulator {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 15px;
+      padding: 10px;
+      background: rgba(255,193,7,0.1);
+      border: 1px solid rgba(255,193,7,0.3);
+      border-radius: 8px;
+    }
+
+    .date-simulator label {
+      font-size: 0.8rem;
+      color: #ffc107;
+      font-weight: 600;
+    }
+
+    .date-simulator input {
+      background: rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.3);
+      color: white;
+      padding: 5px 10px;
+      border-radius: 6px;
+      font-size: 0.8rem;
+    }
+
+    .date-simulator button {
+      padding: 5px 10px;
+      border-radius: 6px;
+      border: none;
+      background: #ffc107;
+      color: #333;
+      cursor: pointer;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+
+    /* Timeline do cronograma */
+    .timeline-item {
+      display: flex;
+      align-items: flex-start;
+      padding: 10px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+      gap: 10px;
+    }
+
+    .timeline-time {
+      min-width: 50px;
+      font-size: 0.75rem;
+      color: #ffc107;
+      font-weight: 600;
+    }
+
+    .timeline-content {
+      flex: 1;
+    }
+
+    .timeline-title {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: #add8e6;
+    }
+
+    .timeline-subtitle {
+      font-size: 0.7rem;
+      color: rgba(255,255,255,0.5);
+      margin-top: 2px;
+    }
+
+    .timeline-badge {
+      font-size: 0.65rem;
+      padding: 2px 6px;
+      border-radius: 10px;
+      margin-left: 6px;
+    }
+
+    /* Rota badge */
+    .route-badge {
+      background: rgba(156, 39, 176, 0.3);
+      color: #ce93d8;
+      font-size: 0.7rem;
+      padding: 3px 8px;
+      border-radius: 12px;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    /* Modal */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.8);
+      z-index: 10000;
+      justify-content: center;
+      align-items: flex-start;
+      padding: 30px;
+      overflow-y: auto;
+    }
+    .modal-overlay.active {
+      display: flex;
+    }
+
+    .modal-content {
+      background: linear-gradient(135deg, #1a1a4d, #2d1b4e);
+      border: 2px solid rgba(255,255,255,0.2);
+      border-radius: 15px;
+      padding: 30px;
+      max-width: 700px;
+      width: 100%;
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      padding-bottom: 15px;
+      border-bottom: 2px solid rgba(255,255,255,0.2);
+    }
+
+    .modal-header h3 {
+      color: #ffc107;
+      margin: 0;
+      font-size: 1.3rem;
+    }
+
+    .modal-close {
+      background: none;
+      border: none;
+      color: white;
+      font-size: 24px;
+      cursor: pointer;
+    }
+    .modal-close:hover { color: #f44336; }
+
+    .form-group {
+      margin-bottom: 15px;
+    }
+
+    .form-group label {
+      display: block;
+      font-size: 0.85rem;
+      color: rgba(255,255,255,0.8);
+      margin-bottom: 5px;
+      font-weight: 600;
+    }
+
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid rgba(255,255,255,0.3);
+      border-radius: 8px;
+      background: rgba(255,255,255,0.1);
+      color: white;
+      font-size: 0.85rem;
+      box-sizing: border-box;
+    }
+
+    .form-group textarea {
+      min-height: 80px;
+      resize: vertical;
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 15px;
+    }
+
+    .form-actions {
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+      margin-top: 20px;
+      padding-top: 15px;
+      border-top: 1px solid rgba(255,255,255,0.1);
+    }
+
+    /* Cadeia de serviços visual */
+    .cadeia-visual {
+      margin-top: 15px;
+    }
+
+    .servico-chain-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 8px;
+      margin-bottom: 5px;
+      position: relative;
+    }
+
+    .servico-chain-item::after {
+      content: '';
+      position: absolute;
+      bottom: -5px;
+      left: 20px;
+      width: 2px;
+      height: 5px;
+      background: rgba(76,175,80,0.5);
+    }
+    .servico-chain-item:last-child::after { display: none; }
+
+    .servico-chain-order {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: rgba(33,150,243,0.3);
+      color: #2196f3;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.7rem;
+      font-weight: bold;
+      flex-shrink: 0;
+    }
+
+    .servico-chain-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .servico-chain-name {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: #add8e6;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .servico-chain-dates {
+      font-size: 0.7rem;
+      color: rgba(255,255,255,0.5);
+    }
+
+    .servico-chain-actions {
+      display: flex;
+      gap: 4px;
+    }
+
+    /* Alocação de equipe */
+    .equipe-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 8px;
+    }
+
+    .equipe-badge {
+      padding: 4px 10px;
+      border-radius: 15px;
+      font-size: 0.7rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .equipe-badge.alocado {
+      background: rgba(76,175,80,0.2);
+      color: #4caf50;
+      border: 1px solid rgba(76,175,80,0.4);
+    }
+
+    .equipe-badge.conflito {
+      background: rgba(244,67,54,0.2);
+      color: #f44336;
+      border: 1px solid rgba(244,67,54,0.4);
+    }
+
+    .equipe-badge .remove-equipe {
+      cursor: pointer;
+      margin-left: 4px;
+      opacity: 0.7;
+    }
+    .equipe-badge .remove-equipe:hover { opacity: 1; }
+
+    /* Pausa indicator */
+    .pausa-indicator {
+      background: rgba(244,67,54,0.2);
+      border: 1px solid rgba(244,67,54,0.4);
+      border-radius: 6px;
+      padding: 8px;
+      margin-top: 8px;
+      font-size: 0.75rem;
+    }
+
+    .pausa-indicator i {
+      color: #f44336;
+      margin-right: 5px;
+    }
+
+    /* Lista de funcionários no cronograma */
+    .funcionario-filter {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin-bottom: 10px;
+    }
+
+    .funcionario-chip {
+      padding: 4px 10px;
+      border-radius: 15px;
+      font-size: 0.7rem;
+      cursor: pointer;
+      border: 1px solid rgba(255,255,255,0.2);
+      background: rgba(255,255,255,0.05);
+      color: rgba(255,255,255,0.7);
+      transition: all 0.3s;
+    }
+    .funcionario-chip.active {
+      background: rgba(33,150,243,0.3);
+      color: #2196f3;
+      border-color: #2196f3;
+    }
+
+    /* Empty state */
+    .empty-state {
+      text-align: center;
+      padding: 40px 20px;
+      color: rgba(255,255,255,0.4);
+    }
+    .empty-state i {
+      font-size: 3rem;
+      margin-bottom: 15px;
+      opacity: 0.5;
+    }
+    .empty-state p {
+      font-size: 0.9rem;
+    }
+
+    /* Scrollbar personalizada */
+    .panel-content::-webkit-scrollbar {
+      width: 6px;
+    }
+    .panel-content::-webkit-scrollbar-track {
+      background: rgba(0,0,0,0.2);
+    }
+    .panel-content::-webkit-scrollbar-thumb {
+      background: rgba(255,255,255,0.2);
+      border-radius: 3px;
+    }
+
+    /* Toast notifications */
+    .toast {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      padding: 12px 20px;
+      border-radius: 8px;
+      color: white;
+      font-size: 0.85rem;
+      z-index: 99999;
+      animation: slideIn 0.3s ease;
+      max-width: 350px;
+    }
+    .toast.success { background: rgba(76,175,80,0.95); }
+    .toast.error { background: rgba(244,67,54,0.95); }
+    .toast.warning { background: rgba(255,193,7,0.95); color: #333; }
+
+    @keyframes slideIn {
+      from { transform: translateX(100%); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+
+    /* ===== RESPONSIVIDADE COMPLETA ===== */
+
+    /* Tablet (768px - 1200px) */
+    @media (max-width: 1200px) {
+      .main-layout {
+        grid-template-columns: 1fr;
+        height: auto;
+        gap: 1rem;
+      }
+      .map-container {
+        min-height: 350px;
+      }
+      #map {
+        min-height: 350px;
+      }
+      .side-panel {
+        max-height: 500px;
+      }
+    }
+
+    /* Mobile (até 768px) */
+    @media (max-width: 768px) {
+      #main-content-logistica-hvc {
+        margin-left: 0 !important;
+        padding: 0.75rem;
+      }
+      #main-content-logistica-hvc.sidebar-collapsed {
+        margin-left: 0 !important;
+      }
+      .page-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+        margin-bottom: 1rem;
+        padding-bottom: 0.75rem;
+      }
+      .page-title {
+        font-size: 1.4rem;
+      }
+      .header-actions {
+        width: 100%;
+        justify-content: stretch;
+      }
+      .header-actions .btn {
+        flex: 1;
+        justify-content: center;
+        padding: 10px 8px;
+        font-size: 0.75rem;
+      }
+      .main-layout {
+        grid-template-columns: 1fr;
+        height: auto;
+        gap: 0.75rem;
+      }
+      .map-container {
+        min-height: 280px;
+        border-radius: 8px;
+      }
+      #map {
+        min-height: 280px;
+      }
+      .map-controls {
+        top: 5px;
+        left: 5px;
+        gap: 4px;
+      }
+      .map-filter-btn {
+        padding: 4px 8px;
+        font-size: 0.65rem;
+      }
+      .side-panel {
+        border-radius: 8px;
+        max-height: 60vh;
+      }
+      .panel-tab {
+        padding: 10px 4px;
+        font-size: 0.7rem;
+      }
+      .panel-content {
+        padding: 10px;
+      }
+      .item-card {
+        padding: 10px;
+      }
+      .item-card-title {
+        font-size: 0.8rem;
+      }
+      .item-card-info {
+        font-size: 0.7rem;
+      }
+      .modal-overlay {
+        padding: 10px;
+        align-items: flex-start;
+      }
+      .modal-content {
+        padding: 15px;
+        border-radius: 10px;
+        max-height: 95vh;
+      }
+      .modal-header h3 {
+        font-size: 1.1rem;
+      }
+      .form-row {
+        grid-template-columns: 1fr;
+        gap: 10px;
+      }
+      .form-group input,
+      .form-group select,
+      .form-group textarea {
+        padding: 8px;
+        font-size: 0.8rem;
+      }
+      .form-actions {
+        flex-wrap: wrap;
+      }
+      .form-actions .btn {
+        flex: 1;
+        min-width: 100px;
+        justify-content: center;
+      }
+      .cronograma-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+      }
+      .date-simulator {
+        flex-wrap: wrap;
+      }
+      .date-simulator input {
+        flex: 1;
+        min-width: 130px;
+      }
+      .timeline-item {
+        flex-direction: column;
+        gap: 4px;
+      }
+      .timeline-time {
+        min-width: auto;
+      }
+      .toast {
+        left: 10px;
+        right: 10px;
+        bottom: 10px;
+        max-width: none;
+      }
+      .servico-chain-item {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+      .equipe-list {
+        gap: 4px;
+      }
+      .equipe-badge {
+        font-size: 0.65rem;
+        padding: 3px 8px;
+      }
+      .funcionario-filter {
+        gap: 4px;
+      }
+      .funcionario-chip {
+        font-size: 0.65rem;
+        padding: 3px 8px;
+      }
+    }
+
+    /* Mobile pequeno (até 480px) */
+    @media (max-width: 480px) {
+      .page-title {
+        font-size: 1.2rem;
+      }
+      .header-actions {
+        flex-direction: column;
+      }
+      .header-actions .btn {
+        width: 100%;
+      }
+      .map-container {
+        min-height: 220px;
+      }
+      #map {
+        min-height: 220px;
+      }
+      .panel-tab {
+        font-size: 0.65rem;
+        padding: 8px 2px;
+      }
+      .panel-tab i {
+        display: block;
+        margin-bottom: 2px;
+      }
+      .view-toggle button {
+        padding: 4px 6px;
+        font-size: 0.65rem;
+      }
+      .cronograma-nav button {
+        padding: 4px 8px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div id="main-content-logistica-hvc">
+    <!-- Header -->
+    <div class="page-header">
+      <h1 class="page-title"><i class="fas fa-map-marked-alt"></i> Logística HVC</h1>
+      <div class="header-actions">
+        <button class="btn btn-primary" onclick="openModal('local')">
+          <i class="fas fa-plus"></i> Nova Obra/Visita
+        </button>
+        <button class="btn btn-secondary" onclick="openModal('cadeia')">
+          <i class="fas fa-link"></i> Nova Cadeia
+        </button>
+      </div>
+    </div>
+
+    <!-- Layout principal -->
+    <div class="main-layout">
+      <!-- Mapa -->
+      <div class="map-container">
+        <div class="map-controls">
+          <button class="map-filter-btn active" data-filter="all" onclick="filterMap('all')">Todos</button>
+          <button class="map-filter-btn" data-filter="obras" onclick="filterMap('obras')">Obras</button>
+          <button class="map-filter-btn" data-filter="visitas" onclick="filterMap('visitas')">Visitas</button>
+          <button class="map-filter-btn" data-filter="equipe" onclick="filterMap('equipe')">Equipe</button>
+          <button class="map-filter-btn" data-filter="rotas" onclick="filterMap('rotas')">Rotas</button>
+        </div>
+        <div id="map"></div>
+      </div>
+
+      <!-- Painel lateral -->
+      <div class="side-panel">
+        <div class="panel-tabs">
+          <div class="panel-tab active" data-tab="locais" onclick="switchTab('locais')">
+            <i class="fas fa-map-pin"></i> Locais
+          </div>
+          <div class="panel-tab" data-tab="cronograma" onclick="switchTab('cronograma')">
+            <i class="fas fa-calendar-alt"></i> Cronograma
+          </div>
+          <div class="panel-tab" data-tab="equipe" onclick="switchTab('equipe')">
+            <i class="fas fa-users"></i> Equipe
+          </div>
+        </div>
+
+        <div class="panel-content">
+          <!-- Seção Locais -->
+          <div class="panel-section active" id="section-locais">
+            <div id="locais-list">
+              <div class="empty-state">
+                <i class="fas fa-map-marked-alt"></i>
+                <p>Carregando locais...</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Seção Cronograma -->
+          <div class="panel-section" id="section-cronograma">
+            <div class="date-simulator">
+              <label><i class="fas fa-clock"></i> Simular data:</label>
+              <input type="date" id="simulatedDate" onchange="updateCronograma()">
+              <button onclick="resetSimulatedDate()">Hoje</button>
+            </div>
+            <div class="cronograma-header">
+              <div class="cronograma-nav">
+                <button onclick="navCronograma(-1)"><i class="fas fa-chevron-left"></i></button>
+                <span id="cronograma-title" style="font-size:0.85rem;font-weight:600;">Hoje</span>
+                <button onclick="navCronograma(1)"><i class="fas fa-chevron-right"></i></button>
+              </div>
+              <div class="view-toggle">
+                <button class="active" data-view="dia" onclick="switchView('dia')">Dia</button>
+                <button data-view="semana" onclick="switchView('semana')">Semana</button>
+                <button data-view="mes" onclick="switchView('mes')">Mês</button>
+              </div>
+            </div>
+            <div class="funcionario-filter" id="funcionario-filter"></div>
+            <div id="cronograma-content">
+              <div class="empty-state">
+                <i class="fas fa-calendar-alt"></i>
+                <p>Selecione uma data para ver o cronograma</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Seção Equipe -->
+          <div class="panel-section" id="section-equipe">
+            <div id="equipe-list">
+              <div class="empty-state">
+                <i class="fas fa-users"></i>
+                <p>Carregando equipe...</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Novo Local (Obra/Visita) -->
+  <div class="modal-overlay" id="modal-local">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="modal-local-title"><i class="fas fa-map-pin"></i> Nova Obra/Visita</h3>
+        <button class="modal-close" onclick="closeModal('local')">&times;</button>
+      </div>
+      <form id="form-local" onsubmit="saveLocal(event)">
+        <input type="hidden" id="local-id">
+        <div class="form-row">
+          <div class="form-group">
+            <label>Nome *</label>
+            <input type="text" id="local-nome" required placeholder="Ex: Obra Residência Silva">
+          </div>
+          <div class="form-group">
+            <label>Tipo *</label>
+            <select id="local-tipo" required onchange="updateStatusOptions()">
+              <option value="obra">Obra</option>
+              <option value="visita">Visita</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Endereço *</label>
+          <input type="text" id="local-endereco" required placeholder="Rua, número, bairro, cidade">
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Status</label>
+            <select id="local-status">
+              <option value="a_iniciar">À Iniciar</option>
+              <option value="em_andamento">Em Andamento</option>
+              <option value="finalizada">Finalizada</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Cliente</label>
+            <input type="text" id="local-cliente" placeholder="Nome do cliente">
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Observações</label>
+          <textarea id="local-observacoes" placeholder="Informações adicionais..."></textarea>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Latitude</label>
+            <input type="number" step="any" id="local-lat" placeholder="Clique no mapa ou geocode">
+          </div>
+          <div class="form-group">
+            <label>Longitude</label>
+            <input type="number" step="any" id="local-lng" placeholder="Clique no mapa ou geocode">
+          </div>
+        </div>
+        <p style="font-size:0.75rem;color:rgba(255,255,255,0.5);margin-top:-10px;">
+          <i class="fas fa-info-circle"></i> Clique em "Buscar no Mapa" para geocodificar o endereço automaticamente.
+        </p>
+        <button type="button" class="btn btn-warning btn-sm" onclick="geocodeAddress()" style="margin-bottom:15px;">
+          <i class="fas fa-search-location"></i> Buscar no Mapa
+        </button>
+        <div class="form-actions">
+          <button type="button" class="btn btn-danger" onclick="closeModal('local')">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Salvar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Nova Cadeia de Serviços -->
+  <div class="modal-overlay" id="modal-cadeia">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="modal-cadeia-title"><i class="fas fa-link"></i> Nova Cadeia de Serviços</h3>
+        <button class="modal-close" onclick="closeModal('cadeia')">&times;</button>
+      </div>
+      <form id="form-cadeia" onsubmit="saveCadeia(event)">
+        <input type="hidden" id="cadeia-id">
+        <div class="form-row">
+          <div class="form-group">
+            <label>Nome da Cadeia *</label>
+            <input type="text" id="cadeia-nome" required placeholder="Ex: Fundação e Estrutura">
+          </div>
+          <div class="form-group">
+            <label>Local (Obra) *</label>
+            <select id="cadeia-local" required>
+              <option value="">Selecione...</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Descrição</label>
+          <textarea id="cadeia-descricao" placeholder="Descrição da cadeia de serviços..."></textarea>
+        </div>
+
+        <!-- Serviços da cadeia -->
+        <div style="margin-top:20px;padding-top:15px;border-top:1px solid rgba(255,255,255,0.1);">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+            <label style="font-size:0.9rem;font-weight:700;color:#ffc107;">Serviços da Cadeia</label>
+            <button type="button" class="btn btn-primary btn-sm" onclick="addServicoCadeia()">
+              <i class="fas fa-plus"></i> Adicionar Serviço
+            </button>
+          </div>
+          <div id="cadeia-servicos-list" class="cadeia-visual"></div>
+        </div>
+
+        <div class="form-actions">
+          <button type="button" class="btn btn-danger" onclick="closeModal('cadeia')">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Salvar Cadeia</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Editar Serviço -->
+  <div class="modal-overlay" id="modal-servico">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3><i class="fas fa-cog"></i> Editar Serviço</h3>
+        <button class="modal-close" onclick="closeModal('servico')">&times;</button>
+      </div>
+      <form id="form-servico" onsubmit="saveServico(event)">
+        <input type="hidden" id="servico-id">
+        <input type="hidden" id="servico-cadeia-id">
+        <div class="form-group">
+          <label>Nome do Serviço *</label>
+          <input type="text" id="servico-nome" required>
+        </div>
+        <div class="form-group">
+          <label>Descrição</label>
+          <textarea id="servico-descricao"></textarea>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Início *</label>
+            <input type="datetime-local" id="servico-inicio" required>
+          </div>
+          <div class="form-group">
+            <label>Fim Previsto *</label>
+            <input type="datetime-local" id="servico-fim-previsto" required>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Status</label>
+            <select id="servico-status">
+              <option value="pendente">Pendente</option>
+              <option value="em_andamento">Em Andamento</option>
+              <option value="concluido">Concluído</option>
+              <option value="suspenso">Suspenso</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Fim Real (se concluído)</label>
+            <input type="datetime-local" id="servico-fim-real">
+          </div>
+        </div>
+
+        <!-- Alocação de equipe -->
+        <div style="margin-top:20px;padding-top:15px;border-top:1px solid rgba(255,255,255,0.1);">
+          <label style="font-size:0.9rem;font-weight:700;color:#ffc107;">Equipe Alocada</label>
+          <div class="equipe-list" id="servico-equipe-list"></div>
+          <div style="margin-top:10px;display:flex;gap:8px;">
+            <select id="servico-add-integrante" style="flex:1;padding:8px;border-radius:6px;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.3);color:white;font-size:0.8rem;">
+              <option value="">Selecionar funcionário...</option>
+            </select>
+            <button type="button" class="btn btn-primary btn-sm" onclick="addIntegranteServico()">
+              <i class="fas fa-user-plus"></i>
+            </button>
+          </div>
+          <div id="conflito-aviso" style="display:none;margin-top:8px;padding:8px;background:rgba(244,67,54,0.2);border:1px solid rgba(244,67,54,0.4);border-radius:6px;font-size:0.75rem;color:#f44336;"></div>
+        </div>
+
+        <!-- Pausas -->
+        <div style="margin-top:20px;padding-top:15px;border-top:1px solid rgba(255,255,255,0.1);">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <label style="font-size:0.9rem;font-weight:700;color:#f44336;">Pausas/Interrupções</label>
+            <button type="button" class="btn btn-danger btn-sm" onclick="addPausa()">
+              <i class="fas fa-pause"></i> Nova Pausa
+            </button>
+          </div>
+          <div id="servico-pausas-list" style="margin-top:10px;"></div>
+        </div>
+
+        <div class="form-actions">
+          <button type="button" class="btn btn-danger" onclick="deleteServico()">
+            <i class="fas fa-trash"></i> Excluir
+          </button>
+          <button type="button" class="btn btn-warning" onclick="confirmarFimServico()">
+            <i class="fas fa-check-double"></i> Confirmar Fim
+          </button>
+          <button type="submit" class="btn btn-primary">Salvar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Pausa -->
+  <div class="modal-overlay" id="modal-pausa">
+    <div class="modal-content" style="max-width:500px;">
+      <div class="modal-header">
+        <h3><i class="fas fa-pause-circle"></i> Registrar Pausa</h3>
+        <button class="modal-close" onclick="closeModal('pausa')">&times;</button>
+      </div>
+      <form id="form-pausa" onsubmit="savePausa(event)">
+        <input type="hidden" id="pausa-servico-id">
+        <input type="hidden" id="pausa-id">
+        <div class="form-group">
+          <label>Motivo da Pausa *</label>
+          <textarea id="pausa-motivo" required placeholder="Descreva o motivo da interrupção..."></textarea>
+        </div>
+        <div class="form-group">
+          <label>
+            <input type="checkbox" id="pausa-sem-previsao" onchange="togglePrevisaoRetomada()">
+            Sem previsão de retomada
+          </label>
+        </div>
+        <div class="form-group" id="previsao-retomada-group">
+          <label>Previsão de Retomada</label>
+          <input type="datetime-local" id="pausa-previsao">
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn btn-danger" onclick="closeModal('pausa')">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Registrar Pausa</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Detalhes do Local -->
+  <div class="modal-overlay" id="modal-local-detalhes">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="detalhes-local-title"><i class="fas fa-building"></i> Detalhes</h3>
+        <button class="modal-close" onclick="closeModal('local-detalhes')">&times;</button>
+      </div>
+      <div id="detalhes-local-content"></div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="sidebar.js"></script>
+  <script type="module" src="logistica-hvc.js"></script>
+  <script>
+    // Injetar sidebar
+    document.addEventListener('DOMContentLoaded', function() {
+      if (typeof injectSidebar === 'function') {
+        injectSidebar('main-content-logistica-hvc', 'Hvc');
+      }
+    });
+  </script>
+  <!-- Google Maps -->
+  <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAexfeUSBJReq3_fIGfsom2gTBe0o77jHs&libraries=places,directions&callback=initMap"></script>
+</body>
+</html>
