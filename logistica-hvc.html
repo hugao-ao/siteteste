@@ -711,6 +711,233 @@
       to { transform: translateX(0); opacity: 1; }
     }
 
+    /* ===== GANTT / ALOCAÇÃO VISUAL ===== */
+    .gantt-controls {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-bottom: 15px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+    }
+
+    .gantt-period {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .gantt-period label {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: #ffc107;
+    }
+
+    .gantt-period input {
+      padding: 6px 8px;
+      border-radius: 6px;
+      border: 1px solid rgba(255,255,255,0.3);
+      background: rgba(25,25,112,0.9);
+      color: white;
+      font-size: 0.8rem;
+    }
+
+    .gantt-period span {
+      font-size: 0.75rem;
+      color: rgba(255,255,255,0.5);
+    }
+
+    .gantt-filter label {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: #4caf50;
+      display: block;
+      margin-bottom: 6px;
+    }
+
+    .gantt-func-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+    }
+
+    .gantt-chip {
+      padding: 4px 10px;
+      border-radius: 12px;
+      font-size: 0.7rem;
+      cursor: pointer;
+      border: 1px solid rgba(255,255,255,0.3);
+      background: rgba(255,255,255,0.05);
+      color: rgba(255,255,255,0.6);
+      transition: all 0.2s;
+    }
+
+    .gantt-chip.active {
+      background: rgba(33,150,243,0.3);
+      border-color: #2196f3;
+      color: #90caf9;
+    }
+
+    .gantt-chip:hover {
+      background: rgba(33,150,243,0.2);
+    }
+
+    .gantt-grid-container {
+      overflow-x: auto;
+      overflow-y: auto;
+      max-height: 500px;
+      border-radius: 8px;
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+
+    .gantt-grid {
+      display: grid;
+      min-width: max-content;
+    }
+
+    .gantt-header-cell {
+      padding: 8px 4px;
+      text-align: center;
+      font-size: 0.65rem;
+      font-weight: 600;
+      color: #add8e6;
+      background: rgba(0,0,80,0.8);
+      border-bottom: 2px solid rgba(173,216,230,0.3);
+      border-right: 1px solid rgba(255,255,255,0.05);
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      min-width: 55px;
+    }
+
+    .gantt-header-cell.weekend {
+      background: rgba(100,0,0,0.3);
+    }
+
+    .gantt-header-cell.today {
+      background: rgba(33,150,243,0.3);
+      color: #fff;
+      border-bottom-color: #2196f3;
+    }
+
+    .gantt-obra-label {
+      padding: 8px 10px;
+      font-size: 0.7rem;
+      font-weight: 600;
+      color: #ffc107;
+      background: rgba(0,0,60,0.9);
+      border-right: 2px solid rgba(255,193,7,0.3);
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+      position: sticky;
+      left: 0;
+      z-index: 3;
+      min-width: 120px;
+      max-width: 150px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      display: flex;
+      align-items: center;
+    }
+
+    .gantt-cell {
+      padding: 4px 2px;
+      border-right: 1px solid rgba(255,255,255,0.03);
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+      min-height: 40px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 2px;
+      align-items: center;
+      justify-content: center;
+      min-width: 55px;
+    }
+
+    .gantt-cell.weekend {
+      background: rgba(100,0,0,0.1);
+    }
+
+    .gantt-cell.today {
+      background: rgba(33,150,243,0.08);
+    }
+
+    .gantt-badge {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.55rem;
+      font-weight: 700;
+      color: white;
+      cursor: pointer;
+      position: relative;
+    }
+
+    .gantt-badge.working {
+      background: rgba(76,175,80,0.8);
+      border: 1px solid #4caf50;
+    }
+
+    .gantt-badge.transitioning {
+      background: rgba(255,152,0,0.8);
+      border: 1px solid #ff9800;
+      animation: pulse 1.5s infinite;
+    }
+
+    .gantt-badge.idle {
+      background: rgba(158,158,158,0.4);
+      border: 1px solid rgba(158,158,158,0.6);
+    }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.15); }
+    }
+
+    .gantt-corner {
+      background: rgba(0,0,60,0.95);
+      position: sticky;
+      left: 0;
+      top: 0;
+      z-index: 4;
+      border-right: 2px solid rgba(255,193,7,0.3);
+      border-bottom: 2px solid rgba(173,216,230,0.3);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.65rem;
+      color: rgba(255,255,255,0.5);
+      padding: 8px;
+    }
+
+    .gantt-legend {
+      display: flex;
+      gap: 12px;
+      margin-top: 10px;
+      flex-wrap: wrap;
+    }
+
+    .gantt-legend-item {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 0.7rem;
+      color: rgba(255,255,255,0.6);
+    }
+
+    .gantt-legend-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+    }
+
+    .gantt-legend-dot.working { background: rgba(76,175,80,0.8); }
+    .gantt-legend-dot.transitioning { background: rgba(255,152,0,0.8); }
+    .gantt-legend-dot.idle { background: rgba(158,158,158,0.4); }
+
     /* ===== RESPONSIVIDADE COMPLETA ===== */
 
     /* Tablet (768px - 1200px) */
@@ -952,6 +1179,9 @@
           <div class="panel-tab" data-tab="equipe" onclick="switchTab('equipe')">
             <i class="fas fa-users"></i> Equipe
           </div>
+          <div class="panel-tab" data-tab="alocacao" onclick="switchTab('alocacao')">
+            <i class="fas fa-th"></i> Alocação
+          </div>
         </div>
 
         <div class="panel-content">
@@ -999,6 +1229,28 @@
               <div class="empty-state">
                 <i class="fas fa-users"></i>
                 <p>Carregando equipe...</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Seção Alocação (Gantt) -->
+          <div class="panel-section" id="section-alocacao">
+            <div class="gantt-controls">
+              <div class="gantt-period">
+                <label><i class="fas fa-calendar"></i> Período:</label>
+                <input type="date" id="gantt-inicio" onchange="renderGantt()">
+                <span>até</span>
+                <input type="date" id="gantt-fim" onchange="renderGantt()">
+              </div>
+              <div class="gantt-filter">
+                <label><i class="fas fa-user-hard-hat"></i> Funcionários:</label>
+                <div id="gantt-funcionarios-filter" class="gantt-func-chips"></div>
+              </div>
+            </div>
+            <div id="gantt-container" class="gantt-grid-container">
+              <div class="empty-state">
+                <i class="fas fa-th"></i>
+                <p>Selecione um período para visualizar a alocação</p>
               </div>
             </div>
           </div>
