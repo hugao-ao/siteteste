@@ -469,10 +469,21 @@
       padding: 10px;
       border: 1px solid rgba(255,255,255,0.3);
       border-radius: 8px;
-      background: rgba(255,255,255,0.1);
+      background: rgba(25,25,112,0.9);
       color: white;
       font-size: 0.85rem;
       box-sizing: border-box;
+    }
+
+    .form-group select option {
+      background: #191970;
+      color: white;
+    }
+
+    .form-group select:hover,
+    .form-group select:focus {
+      background: rgba(33,50,130,0.95);
+      border-color: rgba(173,216,230,0.6);
     }
 
     .form-group textarea {
@@ -510,6 +521,20 @@
       border-radius: 8px;
       margin-bottom: 5px;
       position: relative;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .servico-chain-item:hover {
+      background: rgba(33,150,243,0.1);
+      border-color: rgba(33,150,243,0.3);
+    }
+
+    .servico-chain-item.servico-selected,
+    .timeline-item.servico-selected {
+      background: rgba(33,150,243,0.2);
+      border: 2px solid #2196f3;
+      box-shadow: 0 0 10px rgba(33,150,243,0.3);
     }
 
     .servico-chain-item::after {
@@ -1087,6 +1112,26 @@
           <div id="cadeia-servicos-list" class="cadeia-visual"></div>
         </div>
 
+        <!-- Equipe Global da Cadeia -->
+        <div style="margin-top:20px;padding-top:15px;border-top:1px solid rgba(255,255,255,0.1);">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+            <label style="font-size:0.9rem;font-weight:700;color:#4caf50;"><i class="fas fa-users"></i> Equipe Global da Cadeia</label>
+          </div>
+          <p style="font-size:0.7rem;color:rgba(255,255,255,0.5);margin-bottom:8px;">Adicione/remova integrantes de TODOS os serviços desta cadeia de uma vez.</p>
+          <div class="equipe-list" id="cadeia-equipe-global-list"></div>
+          <div style="margin-top:10px;display:flex;gap:8px;">
+            <select id="cadeia-add-integrante-global" style="flex:1;padding:8px;border-radius:6px;background:rgba(25,25,112,0.9);border:1px solid rgba(255,255,255,0.3);color:white;font-size:0.8rem;">
+              <option value="">Selecionar funcionário...</option>
+            </select>
+            <button type="button" class="btn btn-primary btn-sm" onclick="addIntegranteGlobalCadeia()" title="Adicionar a TODOS os serviços">
+              <i class="fas fa-user-plus"></i> Todos
+            </button>
+            <button type="button" class="btn btn-danger btn-sm" onclick="removeIntegranteGlobalCadeia()" title="Remover de TODOS os serviços">
+              <i class="fas fa-user-minus"></i> Todos
+            </button>
+          </div>
+        </div>
+
         <div class="form-actions">
           <button type="button" class="btn btn-danger" onclick="closeModal('cadeia')">Cancelar</button>
           <button type="submit" class="btn btn-primary">Salvar Cadeia</button>
@@ -1143,12 +1188,15 @@
         <div style="margin-top:20px;padding-top:15px;border-top:1px solid rgba(255,255,255,0.1);">
           <label style="font-size:0.9rem;font-weight:700;color:#ffc107;">Equipe Alocada</label>
           <div class="equipe-list" id="servico-equipe-list"></div>
-          <div style="margin-top:10px;display:flex;gap:8px;">
-            <select id="servico-add-integrante" style="flex:1;padding:8px;border-radius:6px;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.3);color:white;font-size:0.8rem;">
+          <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;">
+            <select id="servico-add-integrante" style="flex:1;min-width:150px;padding:8px;border-radius:6px;background:rgba(25,25,112,0.9);border:1px solid rgba(255,255,255,0.3);color:white;font-size:0.8rem;">
               <option value="">Selecionar funcionário...</option>
             </select>
             <button type="button" class="btn btn-primary btn-sm" onclick="addIntegranteServico()">
               <i class="fas fa-user-plus"></i>
+            </button>
+            <button type="button" class="btn btn-secondary btn-sm" onclick="copiarEquipeServicoAnterior()" title="Copiar equipe do serviço anterior da cadeia" style="background:rgba(76,175,80,0.3);border-color:#4caf50;color:#4caf50;">
+              <i class="fas fa-copy"></i> Copiar do Anterior
             </button>
           </div>
           <div id="conflito-aviso" style="display:none;margin-top:8px;padding:8px;background:rgba(244,67,54,0.2);border:1px solid rgba(244,67,54,0.4);border-radius:6px;font-size:0.75rem;color:#f44336;"></div>
