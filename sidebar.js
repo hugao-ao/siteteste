@@ -39,6 +39,7 @@ function createAdminSidebarHTML(projectContext = null) {
             <li class="sub-menu"><a href="fluxo-caixa-hvc.html" id="nav-fluxo-caixa-hvc"><i class="fas fa-money-bill-wave"></i> <span>Fluxo de Caixa HVC</span></a></li>
             <li class="sub-menu"><a href="#" id="nav-google-agenda-hvc" onclick="if(typeof openGoogleCalendarModal === 'function') { openGoogleCalendarModal(); } else { console.error('openGoogleCalendarModal não está definida'); alert('Módulo do Google Calendar ainda não foi carregado. Recarregue a página.'); } return false;"><i class="fab fa-google"></i> <span>Google Agenda</span></a></li>
             <li class="sub-menu"><a href="onedrive-browser.html" id="nav-onedrive-hvc"><i class="fab fa-microsoft"></i> <span>OneDrive</span></a></li>
+            <li class="sub-menu"><a href="logistica-hvc.html" id="nav-logistica-hvc"><i class="fas fa-map-marked-alt"></i> <span>Logística</span></a></li>
         `;
     } else if (projectContext === 'Argos') {
         projectSpecificLinks = `
