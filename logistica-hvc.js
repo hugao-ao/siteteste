@@ -23,21 +23,38 @@ let selectedLocalId = null;
 let mapFilter = 'all';
 let selectedFuncionarioFilter = null;
 let tempServicos = []; // Serviços temporários no modal de cadeia
+let poiHidden = false; // Estado dos POIs do Google Maps
+
+// Estilos do mapa sem POIs
+const mapStylesBase = [
+    { elementType: 'geometry', stylers: [{ color: '#1d2c4d' }] },
+    { elementType: 'labels.text.stroke', stylers: [{ color: '#1a3646' }] },
+    { elementType: 'labels.text.fill', stylers: [{ color: '#8ec3b9' }] },
+    { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#304a7d' }] },
+    { featureType: 'road', elementType: 'geometry.stroke', stylers: [{ color: '#255763' }] },
+    { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#0e1626' }] },
+    { featureType: 'poi', elementType: 'geometry', stylers: [{ color: '#283d6a' }] }
+];
+
+const mapStylesNoPOI = [
+    ...mapStylesBase,
+    { featureType: 'poi', stylers: [{ visibility: 'off' }] },
+    { featureType: 'poi.business', stylers: [{ visibility: 'off' }] },
+    { featureType: 'poi.medical', stylers: [{ visibility: 'off' }] },
+    { featureType: 'poi.school', stylers: [{ visibility: 'off' }] },
+    { featureType: 'poi.sports_complex', stylers: [{ visibility: 'off' }] },
+    { featureType: 'poi.place_of_worship', stylers: [{ visibility: 'off' }] },
+    { featureType: 'poi.government', stylers: [{ visibility: 'off' }] },
+    { featureType: 'poi.attraction', stylers: [{ visibility: 'off' }] },
+    { featureType: 'transit', stylers: [{ visibility: 'off' }] }
+];
 
 // ===== INICIALIZAÇÃO DO MAPA =====
 function initMapInternal() {
     const mapOptions = {
         center: { lat: -22.9068, lng: -43.1729 }, // Rio de Janeiro default
         zoom: 12,
-        styles: [
-            { elementType: 'geometry', stylers: [{ color: '#1d2c4d' }] },
-            { elementType: 'labels.text.stroke', stylers: [{ color: '#1a3646' }] },
-            { elementType: 'labels.text.fill', stylers: [{ color: '#8ec3b9' }] },
-            { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#304a7d' }] },
-            { featureType: 'road', elementType: 'geometry.stroke', stylers: [{ color: '#255763' }] },
-            { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#0e1626' }] },
-            { featureType: 'poi', elementType: 'geometry', stylers: [{ color: '#283d6a' }] }
-        ],
+        styles: mapStylesBase,
         mapTypeControl: false,
         streetViewControl: false,
         fullscreenControl: true
@@ -149,10 +166,28 @@ function updateMapMarkers() {
     directionsRenderers.forEach(r => r.setMap(null));
     directionsRenderers = [];
 
+    // Ler filtros de status das checkboxes
+    const chkAIniciar = document.getElementById('chk-a-iniciar')?.checked ?? true;
+    const chkEmAndamento = document.getElementById('chk-em-andamento')?.checked ?? true;
+    const chkFinalizada = document.getElementById('chk-finalizada')?.checked ?? true;
+    const chkPendente = document.getElementById('chk-pendente')?.checked ?? true;
+    const chkConcluida = document.getElementById('chk-concluida')?.checked ?? true;
+
     const filteredLocais = locais.filter(l => {
-        if (mapFilter === 'all') return true;
-        if (mapFilter === 'obras') return l.tipo === 'obra';
-        if (mapFilter === 'visitas') return l.tipo === 'visita';
+        // Filtro principal (tipo)
+        if (mapFilter === 'obras' && l.tipo !== 'obra') return false;
+        if (mapFilter === 'visitas' && l.tipo !== 'visita') return false;
+        if (mapFilter === 'equipe' || mapFilter === 'rotas') return false;
+
+        // Filtro por status (checkboxes)
+        if (l.tipo === 'obra') {
+            if (l.status === 'a_iniciar' && !chkAIniciar) return false;
+            if (l.status === 'em_andamento' && !chkEmAndamento) return false;
+            if (l.status === 'finalizada' && !chkFinalizada) return false;
+        } else if (l.tipo === 'visita') {
+            if (l.status === 'pendente' && !chkPendente) return false;
+            if (l.status === 'concluida' && !chkConcluida) return false;
+        }
         return true;
     });
 
@@ -2137,6 +2172,15 @@ window.toggleMap = function() {
         mapContainer.classList.add('collapsed');
         mainLayout.classList.add('map-hidden');
         expandBtn.classList.add('visible');
+    }
+};
+
+// ===== TOGGLE POIs DO GOOGLE MAPS =====
+window.togglePOI = function() {
+    const chk = document.getElementById('chk-poi');
+    poiHidden = !chk.checked;
+    if (map) {
+        map.setOptions({ styles: poiHidden ? mapStylesNoPOI : mapStylesBase });
     }
 };
 
