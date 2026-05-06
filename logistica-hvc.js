@@ -1068,6 +1068,7 @@ function renderTempServicos() {
 
     let html = '';
     tempServicos.forEach((s, index) => {
+        const isExistingServico = s.tempId && servicos.find(sv => sv.id === s.tempId);
         html += `
             <div class="servico-chain-item" style="flex-direction:column;align-items:stretch;">
                 <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
@@ -1075,6 +1076,10 @@ function renderTempServicos() {
                     <input type="text" value="${s.nome}" placeholder="Nome do serviço *" 
                         onchange="updateTempServico(${index}, 'nome', this.value)"
                         style="flex:1;padding:6px;border-radius:4px;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);color:white;font-size:0.8rem;">
+                    ${isExistingServico ? `
+                    <button type="button" class="btn btn-primary btn-sm" onclick="openServicoEditFromCadeia('${s.tempId}')" title="Editar equipe, pausas e detalhes">
+                        <i class="fas fa-users-cog"></i>
+                    </button>` : ''}
                     <button type="button" class="btn btn-danger btn-sm" onclick="removeTempServico(${index})">
                         <i class="fas fa-times"></i>
                     </button>
@@ -1237,6 +1242,32 @@ window.openServicoEdit = function(id) {
     // Popular select de integrantes
     populateIntegranteSelect();
 
+    openModal('servico');
+};
+
+// Abrir edição de serviço a partir do modal de cadeia (mantém contexto)
+window.openServicoEditFromCadeia = function(id) {
+    const servico = servicos.find(s => s.id === id);
+    if (!servico) {
+        showToast('Serviço não encontrado. Salve a cadeia primeiro.', 'warning');
+        return;
+    }
+
+    document.getElementById('servico-id').value = servico.id;
+    document.getElementById('servico-cadeia-id').value = servico.cadeia_id;
+    document.getElementById('servico-nome').value = servico.nome;
+    document.getElementById('servico-descricao').value = servico.descricao || '';
+    document.getElementById('servico-inicio').value = servico.data_inicio ? servico.data_inicio.slice(0, 16) : '';
+    document.getElementById('servico-fim-previsto').value = servico.data_fim_prevista ? servico.data_fim_prevista.slice(0, 16) : '';
+    document.getElementById('servico-fim-real').value = servico.data_fim_real ? servico.data_fim_real.slice(0, 16) : '';
+    document.getElementById('servico-status').value = servico.status;
+
+    renderServicoEquipe(id);
+    renderServicoPausas(id);
+    populateIntegranteSelect();
+
+    // Fechar modal cadeia e abrir modal serviço
+    closeModal('cadeia');
     openModal('servico');
 };
 
