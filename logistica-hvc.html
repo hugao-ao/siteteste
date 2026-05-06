@@ -1223,7 +1223,6 @@
 
   <!-- Scripts -->
   <script src="sidebar.js"></script>
-  <script type="module" src="logistica-hvc.js"></script>
   <script>
     // Injetar sidebar
     document.addEventListener('DOMContentLoaded', function() {
@@ -1232,7 +1231,8 @@
       }
     });
   </script>
-  <!-- Google Maps -->
-  <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAexfeUSBJReq3_fIGfsom2gTBe0o77jHs&libraries=places,directions&callback=initMap"></script>
+  <!-- Google Maps - carregado ANTES do módulo para garantir que google.maps esteja disponível -->
+  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAexfeUSBJReq3_fIGfsom2gTBe0o77jHs&libraries=places,geometry"></script>
+  <script type="module" src="logistica-hvc.js"></script>
 </body>
 </html>
