@@ -226,6 +226,7 @@ function updateMapMarkers() {
         if (markers.length === 1) map.setZoom(15);
     }
 }
+window.updateMapMarkers = updateMapMarkers;
 
 function getMarkerIcon(local) {
     let color;
