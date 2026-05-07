@@ -1411,6 +1411,12 @@
                 <span>até</span>
                 <input type="date" id="gantt-fim" onchange="renderGantt()">
               </div>
+              <div class="gantt-filter" style="margin-bottom:10px;">
+                <label><i class="fas fa-map-pin"></i> Local:</label>
+                <select id="gantt-local-filter" onchange="renderGantt()" style="padding:6px;border-radius:6px;background:rgba(25,25,112,0.9);border:1px solid rgba(255,255,255,0.3);color:white;font-size:0.8rem;margin-top:5px;width:100%;">
+                  <option value="">Todos os Locais</option>
+                </select>
+              </div>
               <div class="gantt-filter">
                 <label><i class="fas fa-user-hard-hat"></i> Funcionários:</label>
                 <div id="gantt-funcionarios-filter" class="gantt-func-chips"></div>
@@ -1468,6 +1474,14 @@
             <input type="text" id="local-cliente" placeholder="Nome do cliente">
           </div>
         </div>
+        <!-- NOVO: Vincular a uma Obra existente -->
+        <div class="form-group">
+          <label><i class="fas fa-building" style="color:#ffc107;"></i> Vincular a Obra (opcional)</label>
+          <select id="local-obra">
+            <option value="">Nenhuma (não vincular)</option>
+          </select>
+          <p style="font-size:0.65rem;color:rgba(255,255,255,0.4);margin-top:4px;"><i class="fas fa-info-circle"></i> Vincular permite puxar serviços contratados e gerar produções diárias.</p>
+        </div>
         <div class="form-group">
           <label>Observações</label>
           <textarea id="local-observacoes" placeholder="Informações adicionais..."></textarea>
@@ -1512,7 +1526,7 @@
           </div>
           <div class="form-group">
             <label>Local (Obra) *</label>
-            <select id="cadeia-local" required>
+            <select id="cadeia-local" required onchange="onCadeiaLocalChange()">
               <option value="">Selecione...</option>
             </select>
           </div>
@@ -1522,14 +1536,18 @@
           <textarea id="cadeia-descricao" placeholder="Descrição da cadeia de serviços..."></textarea>
         </div>
 
+        <!-- NOVO: Serviços disponíveis da obra vinculada -->
+        <div id="servicos-obra-disponiveis" style="display:none;margin-top:15px;padding:12px;background:rgba(76,175,80,0.05);border:1px solid rgba(76,175,80,0.2);border-radius:8px;"></div>
+
         <!-- Serviços da cadeia -->
         <div style="margin-top:20px;padding-top:15px;border-top:1px solid rgba(255,255,255,0.1);">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
             <label style="font-size:0.9rem;font-weight:700;color:#ffc107;">Serviços da Cadeia</label>
             <button type="button" class="btn btn-primary btn-sm" onclick="addServicoCadeia()">
-              <i class="fas fa-plus"></i> Adicionar Serviço
+              <i class="fas fa-plus"></i> Adicionar Serviço Manual
             </button>
           </div>
+          <p style="font-size:0.65rem;color:rgba(255,255,255,0.4);margin-bottom:8px;"><i class="fas fa-info-circle"></i> Serviços com mesma <b>Etapa</b> serão executados simultaneamente.</p>
           <div id="cadeia-servicos-list" class="cadeia-visual"></div>
         </div>
 
@@ -1540,8 +1558,8 @@
           </div>
           <p style="font-size:0.7rem;color:rgba(255,255,255,0.5);margin-bottom:8px;">Adicione/remova integrantes de TODOS os serviços desta cadeia de uma vez.</p>
           <div class="equipe-list" id="cadeia-equipe-global-list"></div>
-          <div style="margin-top:10px;display:flex;gap:8px;">
-            <select id="cadeia-add-integrante-global" style="flex:1;padding:8px;border-radius:6px;background:rgba(25,25,112,0.9);border:1px solid rgba(255,255,255,0.3);color:white;font-size:0.8rem;">
+          <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;">
+            <select id="cadeia-add-integrante-global" style="flex:1;min-width:140px;padding:8px;border-radius:6px;background:rgba(25,25,112,0.9);border:1px solid rgba(255,255,255,0.3);color:white;font-size:0.8rem;">
               <option value="">Selecionar funcionário...</option>
             </select>
             <button type="button" class="btn btn-primary btn-sm" onclick="addIntegranteGlobalCadeia()" title="Adicionar a TODOS os serviços">
@@ -1549,6 +1567,15 @@
             </button>
             <button type="button" class="btn btn-danger btn-sm" onclick="removeIntegranteGlobalCadeia()" title="Remover de TODOS os serviços">
               <i class="fas fa-user-minus"></i> Todos
+            </button>
+          </div>
+          <!-- NOVO: Alocar equipe inteira -->
+          <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;">
+            <select id="cadeia-add-equipe-global" style="flex:1;min-width:140px;padding:8px;border-radius:6px;background:rgba(25,25,112,0.9);border:1px solid rgba(255,255,255,0.3);color:white;font-size:0.8rem;">
+              <option value="">Selecionar equipe...</option>
+            </select>
+            <button type="button" class="btn btn-secondary btn-sm" onclick="addEquipeGlobalCadeia()" title="Alocar equipe inteira na cadeia">
+              <i class="fas fa-users"></i> Alocar Equipe
             </button>
           </div>
         </div>
@@ -1604,6 +1631,18 @@
             <input type="datetime-local" id="servico-fim-real">
           </div>
         </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label><i class="fas fa-layer-group" style="color:#ce93d8;"></i> Etapa (serviços com mesma etapa são simultâneos)</label>
+            <input type="number" id="servico-etapa" min="1" value="1" placeholder="1">
+          </div>
+          <div class="form-group">
+            <label><i class="fas fa-link" style="color:#ffc107;"></i> Serviço da Obra (vinculado)</label>
+            <select id="servico-andamento-vinculo">
+              <option value="">Nenhum (manual)</option>
+            </select>
+          </div>
+        </div>
 
         <!-- Alocação de equipe -->
         <div style="margin-top:20px;padding-top:15px;border-top:1px solid rgba(255,255,255,0.1);">
@@ -1621,6 +1660,13 @@
             </button>
           </div>
           <div id="conflito-aviso" style="display:none;margin-top:8px;padding:8px;background:rgba(244,67,54,0.2);border:1px solid rgba(244,67,54,0.4);border-radius:6px;font-size:0.75rem;color:#f44336;"></div>
+        </div>
+
+        <!-- NOVO: Presença / Ausências -->
+        <div style="margin-top:20px;padding-top:15px;border-top:1px solid rgba(255,255,255,0.1);">
+          <label style="font-size:0.9rem;font-weight:700;color:#ce93d8;"><i class="fas fa-calendar-check"></i> Presença por Dia</label>
+          <p style="font-size:0.65rem;color:rgba(255,255,255,0.4);margin:5px 0 10px;">Marque ausências de integrantes em dias específicos. Isso alimenta automaticamente as produções diárias.</p>
+          <div id="servico-presenca-container"></div>
         </div>
 
         <!-- Pausas -->
@@ -1720,6 +1766,19 @@
         <h4 style="color:#add8e6;margin:15px 0 10px;"><i class="fas fa-calendar-check"></i> Disponibilidade</h4>
         <div id="func-disponibilidade"></div>
       </div>
+    </div>
+  </div>
+
+  <!-- Modal: Geração de Produção Diária -->
+  <div class="modal-overlay" id="modal-producao">
+    <div class="modal-content" style="max-width:800px;">
+      <div class="modal-header">
+        <h3><i class="fas fa-clipboard-check" style="color:#4caf50;"></i> Gerar Produção Diária</h3>
+        <button class="modal-close" onclick="closeModal('producao')">&times;</button>
+      </div>
+      <input type="hidden" id="producao-local-id">
+      <input type="hidden" id="producao-obra-id">
+      <div id="producao-content"></div>
     </div>
   </div>
 
