@@ -1,6 +1,6 @@
-// =====================================================
 // LOGÍSTICA HVC - Módulo de Planejamento de Obras e Rotas
 // =====================================================
+// VERSÃO INTEGRADA: Vinculação com Obras, Serviços Contratados, Equipes e Produções Diárias
 
 import { supabase } from './supabase.js';
 
@@ -16,6 +16,13 @@ let servicos = [];
 let alocacoes = [];
 let pausas = [];
 let integrantes = [];
+let presencas = []; // NOVO: controle de presença diária
+let obras = []; // NOVO: obras do sistema
+let equipes = []; // NOVO: equipes cadastradas
+let equipesIntegrantes = []; // NOVO: relação equipe-integrantes
+let servicosAndamento = []; // NOVO: serviços em andamento nas obras
+let itensPropostas = []; // NOVO: itens de propostas (nome/qtd dos serviços)
+let servicosHvc = []; // NOVO: catálogo de serviços (nome/unidade)
 let currentView = 'dia';
 let currentDate = new Date();
 let simulatedDate = null;
@@ -90,7 +97,14 @@ async function loadAllData() {
             loadCadeias(),
             loadServicos(),
             loadAlocacoes(),
-            loadPausas()
+            loadPausas(),
+            loadPresencas(),
+            loadObras(),
+            loadEquipes(),
+            loadEquipesIntegrantes(),
+            loadServicosAndamento(),
+            loadItensPropostas(),
+            loadServicosHvc()
         ]);
         renderLocaisList();
         renderEquipeList();
@@ -155,6 +169,73 @@ async function loadPausas() {
         .order('data_pausa', { ascending: false });
     if (error) throw error;
     pausas = data || [];
+}
+
+// NOVO: Carregar presença diária
+async function loadPresencas() {
+    const { data, error } = await supabase
+        .from('logistica_presenca')
+        .select('*');
+    if (error) { console.warn('Tabela logistica_presenca não encontrada:', error.message); presencas = []; return; }
+    presencas = data || [];
+}
+
+// NOVO: Carregar obras existentes
+async function loadObras() {
+    const { data, error } = await supabase
+        .from('obras_hvc')
+        .select('*')
+        .order('nome_obra');
+    if (error) throw error;
+    obras = data || [];
+}
+
+// NOVO: Carregar equipes
+async function loadEquipes() {
+    const { data, error } = await supabase
+        .from('equipes_hvc')
+        .select('*')
+        .eq('ativa', true)
+        .order('numero');
+    if (error) throw error;
+    equipes = data || [];
+}
+
+// NOVO: Carregar relação equipe-integrantes
+async function loadEquipesIntegrantes() {
+    const { data, error } = await supabase
+        .from('equipes_integrantes')
+        .select('*')
+        .eq('ativo', true);
+    if (error) throw error;
+    equipesIntegrantes = data || [];
+}
+
+// NOVO: Carregar serviços em andamento (vinculados às obras)
+async function loadServicosAndamento() {
+    const { data, error } = await supabase
+        .from('servicos_andamento')
+        .select('*');
+    if (error) throw error;
+    servicosAndamento = data || [];
+}
+
+// NOVO: Carregar itens de propostas (nome/quantidade dos serviços contratados)
+async function loadItensPropostas() {
+    const { data, error } = await supabase
+        .from('itens_proposta_hvc')
+        .select('*');
+    if (error) throw error;
+    itensPropostas = data || [];
+}
+
+// NOVO: Carregar catálogo de serviços (nome/unidade)
+async function loadServicosHvc() {
+    const { data, error } = await supabase
+        .from('servicos_hvc')
+        .select('*');
+    if (error) throw error;
+    servicosHvc = data || [];
 }
 
 // ===== MAPA - MARCADORES =====
@@ -260,6 +341,8 @@ function getMarkerIcon(local) {
 function createInfoWindowContent(local) {
     const statusLabel = getStatusLabel(local);
     const cadeiasList = cadeias.filter(c => String(c.local_id) === String(local.id));
+    // NOVO: Mostrar obra vinculada
+    const obraVinculada = local.obra_id ? obras.find(o => String(o.id) === String(local.obra_id)) : null;
     let servicosInfo = '';
     if (cadeiasList.length > 0) {
         servicosInfo = `<br><small><b>Cadeias:</b> ${cadeiasList.length}</small>`;
@@ -270,6 +353,7 @@ function createInfoWindowContent(local) {
             <small>${local.endereco || 'Sem endereço'}</small><br>
             <span style="background:${getStatusColor(local)};color:white;padding:2px 6px;border-radius:10px;font-size:11px;">${statusLabel}</span>
             ${local.cliente_nome ? `<br><small><b>Cliente:</b> ${local.cliente_nome}</small>` : ''}
+            ${obraVinculada ? `<br><small><b>Obra:</b> ${obraVinculada.nome_obra || obraVinculada.numero_obra}</small>` : ''}
             ${servicosInfo}
             <br><a href="#" onclick="openLocalDetalhes('${local.id}');return false;" style="font-size:11px;">Ver detalhes</a>
         </div>
@@ -444,12 +528,12 @@ function renderLocaisList() {
 
     let html = '';
     // Separar obras e visitas
-    const obras = locais.filter(l => l.tipo === 'obra');
+    const obrasLocais = locais.filter(l => l.tipo === 'obra');
     const visitas = locais.filter(l => l.tipo === 'visita');
 
-    if (obras.length > 0) {
-        html += `<h4 style="color:#ffc107;font-size:0.85rem;margin-bottom:8px;"><i class="fas fa-hard-hat"></i> Obras (${obras.length})</h4>`;
-        obras.forEach(local => {
+    if (obrasLocais.length > 0) {
+        html += `<h4 style="color:#ffc107;font-size:0.85rem;margin-bottom:8px;"><i class="fas fa-hard-hat"></i> Obras (${obrasLocais.length})</h4>`;
+        obrasLocais.forEach(local => {
             html += renderLocalCard(local);
         });
     }
@@ -467,6 +551,8 @@ function renderLocaisList() {
 function renderLocalCard(local) {
     const statusLabel = getStatusLabel(local);
     const cadeiaCount = cadeias.filter(c => String(c.local_id) === String(local.id)).length;
+    // NOVO: Mostrar obra vinculada
+    const obraVinculada = local.obra_id ? obras.find(o => String(o.id) === String(local.obra_id)) : null;
     return `
         <div class="item-card ${selectedLocalId === local.id ? 'selected' : ''}" onclick="selectLocal('${local.id}')">
             <div class="item-card-header">
@@ -477,6 +563,7 @@ function renderLocalCard(local) {
                 <i class="fas fa-map-marker-alt"></i> ${local.endereco || 'Sem endereço'}
                 ${local.cliente_nome ? ` | <i class="fas fa-user"></i> ${local.cliente_nome}` : ''}
                 ${cadeiaCount > 0 ? ` | <i class="fas fa-link"></i> ${cadeiaCount} cadeia(s)` : ''}
+                ${obraVinculada ? `<br><i class="fas fa-building" style="color:#ffc107;"></i> <span style="color:#ffc107;">${obraVinculada.nome_obra || obraVinculada.numero_obra}</span>` : ''}
             </div>
             <div style="margin-top:6px;display:flex;gap:4px;">
                 <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation();editLocal('${local.id}')">
@@ -708,6 +795,9 @@ function renderCronogramaDia(container, date) {
         const fim = new Date(servico.data_fim_real || servico.data_fim_prevista);
         const pausaAtiva = pausas.find(p => p.servico_id === servico.id && p.status === 'ativa');
 
+        // NOVO: Mostrar etapa se existir
+        const etapaLabel = servico.etapa ? `<span style="background:rgba(156,39,176,0.3);color:#ce93d8;padding:1px 5px;border-radius:8px;font-size:0.6rem;">Etapa ${servico.etapa}</span>` : '';
+
         html += `
             <div class="timeline-item" onclick="openServicoEdit('${servico.id}')">
                 <div class="timeline-time">
@@ -722,6 +812,7 @@ function renderCronogramaDia(container, date) {
                         ${servico.nome}
                         <span class="timeline-badge status-${servico.status}">${getServicoStatusLabel(servico.status)}</span>
                         ${pausaAtiva ? '<span class="timeline-badge" style="background:rgba(244,67,54,0.3);color:#f44336;"><i class="fas fa-pause"></i> Pausado</span>' : ''}
+                        ${etapaLabel}
                     </div>
                     <div class="timeline-subtitle">
                         ${local ? `<i class="fas fa-map-pin"></i> ${local.nome}` : ''}
@@ -916,6 +1007,7 @@ window.closeModal = function(type) {
 // Funções dedicadas para NOVO (sempre limpam o formulário)
 window.openNewLocal = function() {
     resetFormLocal();
+    populateObraSelect();
     openModal('local');
 };
 
@@ -964,6 +1056,17 @@ window.updateStatusOptions = function() {
     }
 };
 
+// NOVO: Popular select de obras para vincular ao local
+function populateObraSelect() {
+    const select = document.getElementById('local-obra');
+    if (!select) return;
+    select.innerHTML = '<option value="">Nenhuma (não vincular)</option>';
+    obras.forEach(o => {
+        const nome = o.nome_obra || o.numero_obra || 'Sem nome';
+        select.innerHTML += `<option value="${o.id}">${nome}</option>`;
+    });
+}
+
 window.saveLocal = async function(event) {
     event.preventDefault();
     const id = document.getElementById('local-id').value;
@@ -976,6 +1079,7 @@ window.saveLocal = async function(event) {
         observacoes: document.getElementById('local-observacoes').value || null,
         latitude: parseFloat(document.getElementById('local-lat').value) || null,
         longitude: parseFloat(document.getElementById('local-lng').value) || null,
+        obra_id: document.getElementById('local-obra')?.value || null, // NOVO: vinculação com obra
         updated_at: new Date().toISOString()
     };
 
@@ -1008,6 +1112,7 @@ window.editLocal = function(id) {
     const local = locais.find(l => String(l.id) === String(id));
     if (!local) return;
 
+    populateObraSelect();
     document.getElementById('local-id').value = local.id;
     document.getElementById('local-nome').value = local.nome;
     document.getElementById('local-tipo').value = local.tipo;
@@ -1018,6 +1123,9 @@ window.editLocal = function(id) {
     document.getElementById('local-observacoes').value = local.observacoes || '';
     document.getElementById('local-lat').value = local.latitude || '';
     document.getElementById('local-lng').value = local.longitude || '';
+    if (document.getElementById('local-obra')) {
+        document.getElementById('local-obra').value = local.obra_id || '';
+    }
     document.getElementById('modal-local-title').innerHTML = '<i class="fas fa-edit"></i> Editando: ' + local.nome;
     document.getElementById('btn-salvar-local').innerHTML = '<i class="fas fa-save"></i> Salvar Edição';
     openModal('local');
@@ -1049,19 +1157,35 @@ window.openLocalDetalhes = function(id) {
     if (!local) return;
 
     const localCadeias = cadeias.filter(c => String(c.local_id) === String(id));
+    // NOVO: Mostrar obra vinculada
+    const obraVinculada = local.obra_id ? obras.find(o => String(o.id) === String(local.obra_id)) : null;
+
     let html = `
         <div style="margin-bottom:15px;">
             <p><b>Tipo:</b> ${local.tipo === 'obra' ? 'Obra' : 'Visita'} | <b>Status:</b> ${getStatusLabel(local)}</p>
             <p><b>Endereço:</b> ${local.endereco || 'Não informado'}</p>
             ${local.cliente_nome ? `<p><b>Cliente:</b> ${local.cliente_nome}</p>` : ''}
+            ${obraVinculada ? `<p><b><i class="fas fa-building" style="color:#ffc107;"></i> Obra Vinculada:</b> <span style="color:#ffc107;">${obraVinculada.nome_obra || obraVinculada.numero_obra}</span></p>` : ''}
             ${local.observacoes ? `<p><b>Obs:</b> ${local.observacoes}</p>` : ''}
         </div>
     `;
 
+    // NOVO: Botão para gerar produção
+    if (obraVinculada) {
+        html += `
+            <div style="margin-bottom:15px;padding:10px;background:rgba(76,175,80,0.1);border:1px solid rgba(76,175,80,0.3);border-radius:8px;">
+                <button class="btn btn-primary" onclick="openGerarProducao('${local.id}')">
+                    <i class="fas fa-clipboard-check"></i> Gerar Produção Diária
+                </button>
+                <p style="font-size:0.7rem;color:rgba(255,255,255,0.5);margin-top:5px;">Gerar registros de produção a partir dos serviços logísticos</p>
+            </div>
+        `;
+    }
+
     if (localCadeias.length > 0) {
         html += `<h4 style="color:#ffc107;margin-bottom:10px;"><i class="fas fa-link"></i> Cadeias de Serviços</h4>`;
         localCadeias.forEach(cadeia => {
-            const cadeiaServicos = servicos.filter(s => String(s.cadeia_id) === String(cadeia.id)).sort((a, b) => a.ordem - b.ordem);
+            const cadeiaServicos = servicos.filter(s => String(s.cadeia_id) === String(cadeia.id)).sort((a, b) => (a.etapa || a.ordem) - (b.etapa || b.ordem) || a.ordem - b.ordem);
             html += `
                 <div style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:12px;margin-bottom:10px;">
                     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
@@ -1071,31 +1195,55 @@ window.openLocalDetalhes = function(id) {
                             <button class="btn btn-danger btn-sm" onclick="deleteCadeia('${cadeia.id}')"><i class="fas fa-trash"></i></button>
                         </div>
                     </div>
-                    ${cadeiaServicos.map(s => {
-                        const pausaAtiva = pausas.find(p => p.servico_id === s.id && p.status === 'ativa');
-                        const servicoAlocs = alocacoes.filter(a => String(a.servico_id) === String(s.id));
-                        const equipe = servicoAlocs.map(a => {
-                            const i = integrantes.find(int => int.id === a.integrante_id);
-                            return i ? i.nome.split(' ')[0] : '';
-                        }).filter(Boolean).join(', ');
-
-                        return `
-                            <div class="servico-chain-item" onclick="openServicoEdit('${s.id}')">
-                                <div class="servico-chain-order">${s.ordem}</div>
-                                <div class="servico-chain-info">
-                                    <div class="servico-chain-name">${s.nome} <span class="item-card-status status-${s.status}" style="font-size:0.6rem;">${getServicoStatusLabel(s.status)}</span></div>
-                                    <div class="servico-chain-dates">
-                                        ${formatDateTimeBR(s.data_inicio)} → ${formatDateTimeBR(s.data_fim_real || s.data_fim_prevista)}
-                                        ${equipe ? ` | <i class="fas fa-users"></i> ${equipe}` : ''}
-                                        ${pausaAtiva ? ' | <i class="fas fa-pause" style="color:#f44336;"></i> PAUSADO' : ''}
-                                    </div>
-                                </div>
-                            </div>
-                        `;
-                    }).join('')}
-                    ${cadeiaServicos.length === 0 ? '<div style="font-size:0.75rem;color:rgba(255,255,255,0.4);">Nenhum serviço nesta cadeia</div>' : ''}
-                </div>
+                    ${cadeia.descricao ? `<p style="font-size:0.75rem;color:rgba(255,255,255,0.5);margin-bottom:8px;">${cadeia.descricao}</p>` : ''}
+                    <div class="cadeia-visual">
             `;
+
+            // Agrupar por etapa
+            const etapas = {};
+            cadeiaServicos.forEach(s => {
+                const etapa = s.etapa || s.ordem;
+                if (!etapas[etapa]) etapas[etapa] = [];
+                etapas[etapa].push(s);
+            });
+
+            Object.keys(etapas).sort((a, b) => a - b).forEach(etapaNum => {
+                const servicosEtapa = etapas[etapaNum];
+                const isSimultaneo = servicosEtapa.length > 1;
+                
+                if (isSimultaneo) {
+                    html += `<div style="border:1px dashed rgba(156,39,176,0.4);border-radius:6px;padding:6px;margin-bottom:4px;background:rgba(156,39,176,0.05);">
+                        <small style="color:#ce93d8;font-size:0.6rem;">Etapa ${etapaNum} (simultâneos)</small>`;
+                }
+
+                servicosEtapa.forEach(s => {
+                    const servicoAlocs = alocacoes.filter(a => String(a.servico_id) === String(s.id));
+                    const equipeNomes = servicoAlocs.map(a => {
+                        const i = integrantes.find(int => int.id === a.integrante_id);
+                        return i ? i.nome.split(' ')[0] : '?';
+                    }).join(', ');
+
+                    html += `
+                        <div class="servico-chain-item" onclick="openServicoEdit('${s.id}')" style="cursor:pointer;">
+                            <div class="servico-chain-order">${s.ordem}</div>
+                            <div style="flex:1;">
+                                <div style="font-weight:600;font-size:0.8rem;">${s.nome}</div>
+                                <div style="font-size:0.65rem;color:rgba(255,255,255,0.5);">
+                                    ${formatDateTimeBR(s.data_inicio)} → ${formatDateTimeBR(s.data_fim_real || s.data_fim_prevista)}
+                                </div>
+                                ${equipeNomes ? `<div style="font-size:0.65rem;color:rgba(255,255,255,0.4);"><i class="fas fa-users"></i> ${equipeNomes}</div>` : ''}
+                            </div>
+                            <span class="timeline-badge status-${s.status}" style="font-size:0.6rem;">${getServicoStatusLabel(s.status)}</span>
+                        </div>
+                    `;
+                });
+
+                if (isSimultaneo) {
+                    html += `</div>`;
+                }
+            });
+
+            html += `</div></div>`;
         });
     } else {
         html += `<div style="text-align:center;color:rgba(255,255,255,0.4);padding:20px;"><i class="fas fa-link"></i><p>Nenhuma cadeia de serviços.<br>Crie uma nova cadeia para este local.</p></div>`;
@@ -1112,9 +1260,95 @@ function populateCadeiaLocalSelect() {
     const obrasAtivas = locais.filter(l => l.tipo === 'obra' && l.status !== 'finalizada');
     select.innerHTML = '<option value="">Selecione um local...</option>';
     obrasAtivas.forEach(l => {
-        select.innerHTML += `<option value="${l.id}">${l.nome}</option>`;
+        const obraVinculada = l.obra_id ? obras.find(o => String(o.id) === String(l.obra_id)) : null;
+        const suffix = obraVinculada ? ` (${obraVinculada.nome_obra || obraVinculada.numero_obra})` : '';
+        select.innerHTML += `<option value="${l.id}">${l.nome}${suffix}</option>`;
     });
 }
+
+// NOVO: Quando seleciona um local na cadeia, carregar serviços contratados da obra vinculada
+window.onCadeiaLocalChange = function() {
+    const localId = document.getElementById('cadeia-local').value;
+    const local = locais.find(l => String(l.id) === String(localId));
+    const container = document.getElementById('servicos-obra-disponiveis');
+    
+    if (!local || !local.obra_id) {
+        if (container) container.style.display = 'none';
+        return;
+    }
+
+    // Buscar serviços contratados desta obra
+    const obraServicos = getServicosContratadosObra(local.obra_id);
+    
+    if (obraServicos.length > 0 && container) {
+        container.style.display = 'block';
+        container.innerHTML = `
+            <label style="font-size:0.8rem;font-weight:700;color:#4caf50;margin-bottom:8px;display:block;">
+                <i class="fas fa-clipboard-list"></i> Serviços Contratados na Obra (clique para adicionar à cadeia)
+            </label>
+            <div style="display:flex;flex-wrap:wrap;gap:5px;">
+                ${obraServicos.map(s => `
+                    <button type="button" class="btn btn-sm" style="background:rgba(76,175,80,0.2);border:1px solid rgba(76,175,80,0.4);color:#4caf50;font-size:0.7rem;" 
+                        onclick="addServicoObraCadeia('${s.servico_andamento_id}','${s.item_proposta_id}','${escapeHtml(s.nome)}','${s.unidade}',${s.quantidade})">
+                        <i class="fas fa-plus"></i> ${s.nome} (${s.quantidade} ${s.unidade})
+                    </button>
+                `).join('')}
+            </div>
+        `;
+    }
+};
+
+// NOVO: Obter serviços contratados de uma obra
+function getServicosContratadosObra(obraId) {
+    const result = [];
+    const obraServAndamento = servicosAndamento.filter(sa => String(sa.obra_id) === String(obraId));
+    
+    obraServAndamento.forEach(sa => {
+        const itemProposta = itensPropostas.find(ip => String(ip.id) === String(sa.item_proposta_id));
+        if (itemProposta) {
+            const servicoCatalogo = servicosHvc.find(sh => String(sh.id) === String(itemProposta.servico_id));
+            if (servicoCatalogo) {
+                result.push({
+                    servico_andamento_id: sa.id,
+                    item_proposta_id: itemProposta.id,
+                    nome: servicoCatalogo.descricao,
+                    unidade: servicoCatalogo.unidade || 'un',
+                    quantidade: itemProposta.quantidade || 0,
+                    servico_hvc_id: servicoCatalogo.id
+                });
+            }
+        }
+    });
+    
+    return result;
+}
+
+// NOVO: Adicionar serviço da obra à cadeia (com dados pré-preenchidos)
+window.addServicoObraCadeia = function(servicoAndamentoId, itemPropostaId, nome, unidade, quantidade) {
+    const ordem = tempServicos.length + 1;
+    const now = new Date();
+    const defaultInicio = tempServicos.length > 0
+        ? tempServicos[tempServicos.length - 1].data_fim_prevista
+        : now.toISOString().slice(0, 16);
+
+    const defaultFim = new Date(new Date(defaultInicio).getTime() + 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 16);
+
+    tempServicos.push({
+        tempId: Date.now() + Math.random(),
+        nome: nome,
+        descricao: `${quantidade} ${unidade}`,
+        ordem: ordem,
+        etapa: ordem, // Por padrão cada serviço é uma etapa separada
+        data_inicio: defaultInicio,
+        data_fim_prevista: defaultFim,
+        servico_andamento_id: servicoAndamentoId,
+        item_proposta_id: itemPropostaId,
+        quantidade: quantidade,
+        unidade: unidade
+    });
+    renderTempServicos();
+    showToast(`"${nome}" adicionado à cadeia!`, 'success');
+};
 
 window.addServicoCadeia = function() {
     const ordem = tempServicos.length + 1;
@@ -1130,6 +1364,7 @@ window.addServicoCadeia = function() {
         nome: '',
         descricao: '',
         ordem: ordem,
+        etapa: ordem,
         data_inicio: defaultInicio,
         data_fim_prevista: defaultFim
     });
@@ -1153,6 +1388,9 @@ function renderTempServicos() {
                     <input type="text" value="${s.nome}" placeholder="Nome do serviço *" 
                         onchange="updateTempServico(${index}, 'nome', this.value)"
                         style="flex:1;padding:6px;border-radius:4px;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);color:white;font-size:0.8rem;">
+                    <input type="number" value="${s.etapa || index + 1}" placeholder="Etapa" title="Etapa (mesma etapa = simultâneos)"
+                        onchange="updateTempServico(${index}, 'etapa', parseInt(this.value))"
+                        style="width:55px;padding:6px;border-radius:4px;background:rgba(156,39,176,0.2);border:1px solid rgba(156,39,176,0.4);color:#ce93d8;font-size:0.8rem;text-align:center;">
                     ${isExistingServico ? `
                     <button type="button" class="btn btn-primary btn-sm" onclick="openServicoEditFromCadeia('${s.tempId}')" title="Editar equipe, pausas e detalhes">
                         <i class="fas fa-users-cog"></i>
@@ -1175,6 +1413,7 @@ function renderTempServicos() {
                             style="width:100%;padding:4px;border-radius:4px;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);color:white;font-size:0.75rem;">
                     </div>
                 </div>
+                ${s.servico_andamento_id ? `<div style="font-size:0.6rem;color:#4caf50;margin-top:4px;"><i class="fas fa-link"></i> Vinculado ao serviço da obra (${s.quantidade || 0} ${s.unidade || 'un'})</div>` : ''}
             </div>
         `;
     });
@@ -1230,16 +1469,19 @@ window.saveCadeia = async function(event) {
             savedCadeiaId = data.id;
         }
 
-        // Inserir serviços
+        // Inserir serviços com etapa e vinculações
         const servicosData = tempServicos.map((s, i) => ({
             cadeia_id: savedCadeiaId,
             local_id: localId,
             nome: s.nome,
             descricao: s.descricao || null,
             ordem: i + 1,
+            etapa: s.etapa || (i + 1),
             data_inicio: new Date(s.data_inicio).toISOString(),
             data_fim_prevista: new Date(s.data_fim_prevista).toISOString(),
-            status: 'pendente'
+            status: 'pendente',
+            servico_andamento_id: s.servico_andamento_id || null,
+            item_proposta_id: s.item_proposta_id || null
         }));
 
         const { error: sError } = await supabase.from('logistica_servicos').insert(servicosData);
@@ -1273,18 +1515,25 @@ window.editCadeia = async function(id) {
     // Setar o local DEPOIS de popular o select
     document.getElementById('cadeia-local').value = cadeia.local_id;
 
+    // Disparar carregamento de serviços da obra
+    onCadeiaLocalChange();
+
     // Carregar serviços existentes com datas convertidas para local timezone
     tempServicos = servicos.filter(s => String(s.cadeia_id) === String(id)).sort((a, b) => a.ordem - b.ordem).map(s => ({
         tempId: s.id,
         nome: s.nome,
         descricao: s.descricao || '',
         ordem: s.ordem,
+        etapa: s.etapa || s.ordem,
         data_inicio: toLocalDatetimeInput(s.data_inicio),
-        data_fim_prevista: toLocalDatetimeInput(s.data_fim_prevista)
+        data_fim_prevista: toLocalDatetimeInput(s.data_fim_prevista),
+        servico_andamento_id: s.servico_andamento_id || null,
+        item_proposta_id: s.item_proposta_id || null
     }));
 
     renderTempServicos();
     populateCadeiaIntegranteSelect();
+    populateCadeiaEquipeSelect();
     renderCadeiaEquipeGlobal();
     openModal('cadeia');
 };
@@ -1310,6 +1559,8 @@ function resetFormCadeia() {
     if (btnCadeia) btnCadeia.innerHTML = '<i class="fas fa-plus"></i> Criar Nova Cadeia';
     tempServicos = [];
     renderTempServicos();
+    const container = document.getElementById('servicos-obra-disponiveis');
+    if (container) container.style.display = 'none';
 }
 
 // ===== EDIÇÃO DE SERVIÇO =====
@@ -1336,6 +1587,8 @@ window.openServicoEdit = function(id) {
     renderServicoEquipe(id);
     // Carregar pausas
     renderServicoPausas(id);
+    // Carregar presença
+    renderServicoPresenca(id);
     // Popular select de integrantes
     populateIntegranteSelect();
 
@@ -1361,6 +1614,7 @@ window.openServicoEditFromCadeia = function(id) {
 
     renderServicoEquipe(id);
     renderServicoPausas(id);
+    renderServicoPresenca(id);
     populateIntegranteSelect();
 
     // Fechar modal cadeia e abrir modal serviço
@@ -1387,6 +1641,113 @@ function renderServicoEquipe(servicoId) {
         `;
     }).join('');
 }
+
+// NOVO: Renderizar controle de presença por dia
+function renderServicoPresenca(servicoId) {
+    const container = document.getElementById('servico-presenca-section');
+    if (!container) return;
+
+    const servico = servicos.find(s => s.id === servicoId);
+    if (!servico) return;
+
+    const servicoAlocs = alocacoes.filter(a => String(a.servico_id) === String(servicoId));
+    if (servicoAlocs.length === 0) {
+        container.innerHTML = '<p style="font-size:0.75rem;color:rgba(255,255,255,0.4);">Aloque funcionários primeiro para gerenciar presença.</p>';
+        return;
+    }
+
+    const inicio = new Date(servico.data_inicio);
+    const fim = new Date(servico.data_fim_real || servico.data_fim_prevista);
+    const dias = [];
+    const current = new Date(inicio);
+    current.setHours(0, 0, 0, 0);
+    const fimDate = new Date(fim);
+    fimDate.setHours(23, 59, 59, 999);
+    
+    while (current <= fimDate && dias.length <= 30) {
+        dias.push(new Date(current));
+        current.setDate(current.getDate() + 1);
+    }
+
+    if (dias.length === 0) {
+        container.innerHTML = '<p style="font-size:0.75rem;color:rgba(255,255,255,0.4);">Período inválido.</p>';
+        return;
+    }
+
+    let html = `<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:0.7rem;">
+        <thead><tr>
+            <th style="text-align:left;padding:4px;border-bottom:1px solid rgba(255,255,255,0.2);color:#add8e6;">Integrante</th>`;
+    
+    dias.forEach(d => {
+        html += `<th style="text-align:center;padding:4px;border-bottom:1px solid rgba(255,255,255,0.2);color:rgba(255,255,255,0.6);min-width:40px;">${d.getDate()}/${d.getMonth()+1}</th>`;
+    });
+    html += `</tr></thead><tbody>`;
+
+    servicoAlocs.forEach(aloc => {
+        const integrante = integrantes.find(i => i.id === aloc.integrante_id);
+        html += `<tr><td style="padding:4px;border-bottom:1px solid rgba(255,255,255,0.05);color:white;">${integrante ? integrante.nome.split(' ')[0] : '?'}</td>`;
+        
+        dias.forEach(d => {
+            const dateStr = d.toISOString().split('T')[0];
+            const presenca = presencas.find(p => 
+                String(p.alocacao_id) === String(aloc.id) && 
+                String(p.integrante_id) === String(aloc.integrante_id) && 
+                p.data === dateStr
+            );
+            const isAusente = presenca && !presenca.presente;
+            const bgColor = isAusente ? 'rgba(244,67,54,0.3)' : 'rgba(76,175,80,0.2)';
+            const icon = isAusente ? '✖' : '✔';
+            
+            html += `<td style="text-align:center;padding:4px;border-bottom:1px solid rgba(255,255,255,0.05);background:${bgColor};cursor:pointer;" 
+                onclick="togglePresenca('${aloc.id}','${aloc.integrante_id}','${dateStr}',${!isAusente})">${icon}</td>`;
+        });
+        html += `</tr>`;
+    });
+
+    html += `</tbody></table></div>
+        <p style="font-size:0.6rem;color:rgba(255,255,255,0.4);margin-top:5px;">
+            <span style="color:#4caf50;">✔</span> Presente | <span style="color:#f44336;">✖</span> Ausente — Clique para alternar
+        </p>`;
+    
+    container.innerHTML = html;
+}
+
+// NOVO: Alternar presença de um integrante em um dia
+window.togglePresenca = async function(alocacaoId, integranteId, dateStr, marcarAusente) {
+    try {
+        // Verificar se já existe registro
+        const existente = presencas.find(p => 
+            String(p.alocacao_id) === String(alocacaoId) && 
+            String(p.integrante_id) === String(integranteId) && 
+            p.data === dateStr
+        );
+
+        if (existente) {
+            if (marcarAusente) {
+                // Marcar como ausente
+                await supabase.from('logistica_presenca').update({ presente: false, updated_at: new Date().toISOString() }).eq('id', existente.id);
+            } else {
+                // Marcar como presente (deletar o registro de ausência)
+                await supabase.from('logistica_presenca').update({ presente: true, updated_at: new Date().toISOString() }).eq('id', existente.id);
+            }
+        } else {
+            // Criar registro
+            await supabase.from('logistica_presenca').insert({
+                alocacao_id: alocacaoId,
+                integrante_id: integranteId,
+                data: dateStr,
+                presente: !marcarAusente
+            });
+        }
+
+        await loadPresencas();
+        const servicoId = document.getElementById('servico-id').value;
+        renderServicoPresenca(servicoId);
+        showToast(marcarAusente ? 'Marcado como ausente' : 'Marcado como presente', 'success');
+    } catch (error) {
+        showToast('Erro: ' + error.message, 'error');
+    }
+};
 
 function renderServicoPausas(servicoId) {
     const container = document.getElementById('servico-pausas-list');
@@ -1455,6 +1816,7 @@ window.addIntegranteServico = async function() {
 
         await loadAlocacoes();
         renderServicoEquipe(servicoId);
+        renderServicoPresenca(servicoId);
         document.getElementById('servico-add-integrante').value = '';
         showToast('Funcionário alocado com sucesso!', 'success');
     } catch (error) {
@@ -1463,6 +1825,63 @@ window.addIntegranteServico = async function() {
         } else {
             showToast('Erro: ' + error.message, 'error');
         }
+    }
+};
+
+// NOVO: Alocar equipe inteira de uma vez
+window.addEquipeInteira = async function() {
+    const equipeId = document.getElementById('servico-add-equipe')?.value;
+    const servicoId = document.getElementById('servico-id').value;
+    if (!equipeId) {
+        showToast('Selecione uma equipe.', 'warning');
+        return;
+    }
+
+    const servico = servicos.find(s => s.id === servicoId);
+    if (!servico) return;
+
+    // Buscar integrantes da equipe
+    const membros = equipesIntegrantes.filter(ei => String(ei.equipe_id) === String(equipeId) && ei.ativo);
+    if (membros.length === 0) {
+        showToast('Esta equipe não tem integrantes ativos.', 'warning');
+        return;
+    }
+
+    let adicionados = 0;
+    let conflitos = 0;
+
+    for (const membro of membros) {
+        // Verificar se já está alocado
+        const jaAlocado = alocacoes.find(a => String(a.servico_id) === String(servicoId) && String(a.integrante_id) === String(membro.integrante_id));
+        if (jaAlocado) continue;
+
+        // Verificar conflito
+        const conflito = checkConflito(membro.integrante_id, servico.data_inicio, servico.data_fim_real || servico.data_fim_prevista, servicoId);
+        if (conflito) {
+            conflitos++;
+            continue;
+        }
+
+        try {
+            await supabase.from('logistica_alocacoes').insert({
+                servico_id: servicoId,
+                integrante_id: membro.integrante_id,
+                equipe_id: equipeId,
+                data_inicio: servico.data_inicio,
+                data_fim: servico.data_fim_real || servico.data_fim_prevista
+            });
+            adicionados++;
+        } catch (e) { /* ignore duplicates */ }
+    }
+
+    await loadAlocacoes();
+    renderServicoEquipe(servicoId);
+    renderServicoPresenca(servicoId);
+
+    if (conflitos > 0) {
+        showToast(`${adicionados} integrante(s) alocado(s). ${conflitos} com conflito.`, 'warning');
+    } else {
+        showToast(`Equipe inteira alocada! (${adicionados} integrante(s))`, 'success');
     }
 };
 
@@ -1494,6 +1913,7 @@ window.removeIntegranteServico = async function(alocacaoId) {
         await loadAlocacoes();
         const servicoId = document.getElementById('servico-id').value;
         renderServicoEquipe(servicoId);
+        renderServicoPresenca(servicoId);
         showToast('Funcionário removido.', 'success');
     } catch (error) {
         showToast('Erro: ' + error.message, 'error');
@@ -1535,7 +1955,7 @@ window.saveServico = async function(event) {
     }
 };
 
-// ===== CONFIRMAR FIM DO SERVIÇO (com reajuste automático da cadeia) =====
+// ===== CONFIRMAR FIM DO SERVIÇO (com reajuste automático da cadeia por ETAPA) =====
 window.confirmarFimServico = async function() {
     const servicoId = document.getElementById('servico-id').value;
     const fimReal = document.getElementById('servico-fim-real').value;
@@ -1561,15 +1981,18 @@ window.confirmarFimServico = async function() {
             updated_at: new Date().toISOString()
         }).eq('id', servicoId);
 
-        // Reajustar serviços subsequentes na cadeia
-        if (diferenca !== 0) {
-            const cadeiaServicos = servicos
-                .filter(s => String(s.cadeia_id) === String(servico.cadeia_id) && s.ordem > servico.ordem)
-                .sort((a, b) => a.ordem - b.ordem);
+        // NOVO: Verificar se todos os serviços da mesma etapa estão concluídos
+        const cadeiaServicos = servicos.filter(s => String(s.cadeia_id) === String(servico.cadeia_id));
+        const servicosMesmaEtapa = cadeiaServicos.filter(s => s.etapa === servico.etapa && s.id !== servicoId);
+        const todosEtapaConcluidos = servicosMesmaEtapa.every(s => s.status === 'concluido' || s.confirmado);
 
-            for (const s of cadeiaServicos) {
-                if (s.confirmado) continue; // Não reajustar serviços já confirmados
+        // Só reajustar serviços subsequentes se TODOS da etapa atual estão concluídos
+        if (todosEtapaConcluidos && diferenca !== 0) {
+            const servicosPosteriores = cadeiaServicos
+                .filter(s => (s.etapa || s.ordem) > (servico.etapa || servico.ordem) && !s.confirmado)
+                .sort((a, b) => (a.etapa || a.ordem) - (b.etapa || b.ordem));
 
+            for (const s of servicosPosteriores) {
                 const novoInicio = new Date(new Date(s.data_inicio).getTime() + diferenca);
                 const novoFim = new Date(new Date(s.data_fim_prevista).getTime() + diferenca);
 
@@ -1591,10 +2014,12 @@ window.confirmarFimServico = async function() {
 
             const dias = Math.round(diferenca / (24 * 60 * 60 * 1000));
             if (dias > 0) {
-                showToast(`Serviço concluído! ${cadeiaServicos.length} serviço(s) subsequente(s) adiado(s) em ${dias} dia(s).`, 'warning');
+                showToast(`Serviço concluído! ${servicosPosteriores.length} serviço(s) subsequente(s) adiado(s) em ${dias} dia(s).`, 'warning');
             } else if (dias < 0) {
-                showToast(`Serviço concluído antecipadamente! ${cadeiaServicos.length} serviço(s) subsequente(s) antecipado(s) em ${Math.abs(dias)} dia(s).`, 'success');
+                showToast(`Serviço concluído antecipadamente! ${servicosPosteriores.length} serviço(s) subsequente(s) antecipado(s) em ${Math.abs(dias)} dia(s).`, 'success');
             }
+        } else if (!todosEtapaConcluidos) {
+            showToast('Serviço concluído! Aguardando conclusão dos outros serviços da mesma etapa para reajustar a cadeia.', 'success');
         } else {
             showToast('Serviço concluído conforme previsto!', 'success');
         }
@@ -1643,7 +2068,6 @@ window.savePausa = async function(event) {
     const previsao = document.getElementById('pausa-previsao').value;
 
     try {
-        // Registrar a pausa
         const { error } = await supabase.from('logistica_pausas').insert({
             servico_id: servicoId,
             motivo: motivo,
@@ -1654,36 +2078,10 @@ window.savePausa = async function(event) {
         });
         if (error) throw error;
 
-        // Atualizar status do serviço
-        await supabase.from('logistica_servicos').update({
-            status: 'suspenso',
-            updated_at: new Date().toISOString()
-        }).eq('id', servicoId);
+        // Atualizar status do serviço para suspenso
+        await supabase.from('logistica_servicos').update({ status: 'suspenso', updated_at: new Date().toISOString() }).eq('id', servicoId);
 
-        // Suspender cadeia e reajustar se tem previsão
-        const servico = servicos.find(s => s.id === servicoId);
-        if (servico && previsao) {
-            const fimPrevisto = new Date(servico.data_fim_prevista);
-            const retomada = new Date(previsao);
-            const pausaDuration = retomada.getTime() - new Date().getTime();
-
-            // Adiar serviços subsequentes
-            const subsequentes = servicos
-                .filter(s => String(s.cadeia_id) === String(servico.cadeia_id) && s.ordem > servico.ordem && !s.confirmado)
-                .sort((a, b) => a.ordem - b.ordem);
-
-            for (const s of subsequentes) {
-                const novoInicio = new Date(new Date(s.data_inicio).getTime() + pausaDuration);
-                const novoFim = new Date(new Date(s.data_fim_prevista).getTime() + pausaDuration);
-                await supabase.from('logistica_servicos').update({
-                    data_inicio: novoInicio.toISOString(),
-                    data_fim_prevista: novoFim.toISOString(),
-                    updated_at: new Date().toISOString()
-                }).eq('id', s.id);
-            }
-        }
-
-        showToast('Pausa registrada! Serviço suspenso.', 'success');
+        showToast('Pausa registrada!', 'success');
         closeModal('pausa');
         await loadAllData();
         renderServicoPausas(servicoId);
@@ -1703,264 +2101,193 @@ window.retomarPausa = async function(pausaId) {
             updated_at: new Date().toISOString()
         }).eq('id', pausaId);
 
-        // Verificar se há outras pausas ativas no serviço
-        const outrasPausas = pausas.filter(p => p.servico_id === pausa.servico_id && p.id !== pausaId && p.status === 'ativa');
-        if (outrasPausas.length === 0) {
-            await supabase.from('logistica_servicos').update({
-                status: 'em_andamento',
-                updated_at: new Date().toISOString()
-            }).eq('id', pausa.servico_id);
-        }
-
-        // Reajustar cadeia baseado na diferença real vs previsão
-        if (pausa.previsao_retomada) {
-            const previsao = new Date(pausa.previsao_retomada);
-            const real = new Date();
-            const diferenca = real.getTime() - previsao.getTime();
-
-            if (Math.abs(diferenca) > 60000) { // Mais de 1 minuto de diferença
-                const servico = servicos.find(s => s.id === pausa.servico_id);
-                if (servico) {
-                    const subsequentes = servicos
-                        .filter(s => String(s.cadeia_id) === String(servico.cadeia_id) && s.ordem > servico.ordem && !s.confirmado);
-
-                    for (const s of subsequentes) {
-                        const novoInicio = new Date(new Date(s.data_inicio).getTime() + diferenca);
-                        const novoFim = new Date(new Date(s.data_fim_prevista).getTime() + diferenca);
-                        await supabase.from('logistica_servicos').update({
-                            data_inicio: novoInicio.toISOString(),
-                            data_fim_prevista: novoFim.toISOString(),
-                            updated_at: new Date().toISOString()
-                        }).eq('id', s.id);
-                    }
-                }
-            }
-        }
+        // Voltar status do serviço para em_andamento
+        await supabase.from('logistica_servicos').update({ status: 'em_andamento', updated_at: new Date().toISOString() }).eq('id', pausa.servico_id);
 
         showToast('Serviço retomado!', 'success');
         await loadAllData();
-        const servicoId = document.getElementById('servico-id').value;
-        if (servicoId) renderServicoPausas(servicoId);
+        renderServicoPausas(pausa.servico_id);
     } catch (error) {
         showToast('Erro: ' + error.message, 'error');
     }
 };
 
-// ===== UTILIDADES =====
-function formatDateBR(date) {
-    return date.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' });
-}
-
-function formatDateShort(date) {
-    return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
-}
-
-function formatDateTimeBR(dateStr) {
-    if (!dateStr) return '';
-    const d = new Date(dateStr);
-    return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' }) + ' ' +
-           d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-}
-
-function formatDateInput(date) {
-    return date.toISOString().split('T')[0];
-}
-
-function toLocalDatetimeInput(isoStr) {
-    if (!isoStr) return '';
-    const d = new Date(isoStr);
-    const year = d.getFullYear();
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    const hours = String(d.getHours()).padStart(2, '0');
-    const minutes = String(d.getMinutes()).padStart(2, '0');
-    return `${year}-${month}-${day}T${hours}:${minutes}`;
-}
-
-function getServicoStatusLabel(status) {
-    const labels = {
-        'pendente': 'Pendente',
-        'em_andamento': 'Em Andamento',
-        'concluido': 'Concluído',
-        'suspenso': 'Suspenso',
-        'cancelado': 'Cancelado'
-    };
-    return labels[status] || status;
-}
-
-function showToast(message, type = 'success') {
-    const existing = document.querySelector('.toast');
-    if (existing) existing.remove();
-
-    const toast = document.createElement('div');
-    toast.className = `toast ${type}`;
-    toast.textContent = message;
-    document.body.appendChild(toast);
-    setTimeout(() => toast.remove(), 4000);
-}
-
 // ===== EQUIPE GLOBAL DA CADEIA =====
 function populateCadeiaIntegranteSelect() {
     const select = document.getElementById('cadeia-add-integrante-global');
+    if (!select) return;
     select.innerHTML = '<option value="">Selecionar funcionário...</option>';
     integrantes.forEach(i => {
         select.innerHTML += `<option value="${i.id}">${i.nome}</option>`;
     });
 }
 
+// NOVO: Popular select de equipes para alocação rápida
+function populateCadeiaEquipeSelect() {
+    const select = document.getElementById('cadeia-add-equipe-global');
+    if (!select) return;
+    select.innerHTML = '<option value="">Selecionar equipe...</option>';
+    equipes.forEach(e => {
+        const membros = equipesIntegrantes.filter(ei => String(ei.equipe_id) === String(e.id) && ei.ativo);
+        select.innerHTML += `<option value="${e.id}">Equipe ${e.numero} - ${e.nome || ''} (${membros.length} membros)</option>`;
+    });
+}
+
 function renderCadeiaEquipeGlobal() {
     const container = document.getElementById('cadeia-equipe-global-list');
+    if (!container) return;
+
     const cadeiaId = document.getElementById('cadeia-id').value;
     if (!cadeiaId) {
         container.innerHTML = '<span style="font-size:0.75rem;color:rgba(255,255,255,0.4);">Salve a cadeia primeiro para gerenciar equipe global.</span>';
         return;
     }
 
-    // Buscar todos os integrantes que estão em pelo menos um serviço da cadeia
+    // Pegar integrantes de todos os serviços da cadeia
     const cadeiaServicos = servicos.filter(s => String(s.cadeia_id) === String(cadeiaId));
-    const integrantesNaCadeia = new Map();
+    const integrantesIds = new Set();
     cadeiaServicos.forEach(s => {
-        const sAlocs = alocacoes.filter(a => String(a.servico_id) === String(s.id));
-        sAlocs.forEach(a => {
-            if (!integrantesNaCadeia.has(String(a.integrante_id))) {
-                integrantesNaCadeia.set(String(a.integrante_id), 0);
-            }
-            integrantesNaCadeia.set(String(a.integrante_id), integrantesNaCadeia.get(String(a.integrante_id)) + 1);
+        alocacoes.filter(a => String(a.servico_id) === String(s.id)).forEach(a => {
+            integrantesIds.add(a.integrante_id);
         });
     });
 
-    if (integrantesNaCadeia.size === 0) {
-        container.innerHTML = '<span style="font-size:0.75rem;color:rgba(255,255,255,0.4);">Nenhum funcionário alocado na cadeia.</span>';
+    if (integrantesIds.size === 0) {
+        container.innerHTML = '<span style="font-size:0.75rem;color:rgba(255,255,255,0.4);">Nenhum funcionário alocado nos serviços desta cadeia.</span>';
         return;
     }
 
-    container.innerHTML = Array.from(integrantesNaCadeia.entries()).map(([intId, count]) => {
-        const integrante = integrantes.find(i => String(i.id) === String(intId));
-        return `
-            <span class="equipe-badge alocado">
-                <i class="fas fa-user"></i> ${integrante ? integrante.nome.split(' ')[0] : '?'}
-                <small style="opacity:0.6;">(${count}/${cadeiaServicos.length})</small>
-            </span>
-        `;
+    container.innerHTML = Array.from(integrantesIds).map(id => {
+        const integrante = integrantes.find(i => i.id === id);
+        return `<span class="equipe-badge alocado"><i class="fas fa-user"></i> ${integrante ? integrante.nome.split(' ')[0] : '?'}</span>`;
     }).join('');
 }
 
 window.addIntegranteGlobalCadeia = async function() {
     const integranteId = document.getElementById('cadeia-add-integrante-global').value;
     const cadeiaId = document.getElementById('cadeia-id').value;
-    if (!integranteId) {
-        showToast('Selecione um funcionário.', 'warning');
-        return;
-    }
-    if (!cadeiaId) {
-        showToast('Salve a cadeia primeiro.', 'warning');
+    if (!integranteId || !cadeiaId) {
+        showToast('Selecione um funcionário e salve a cadeia primeiro.', 'warning');
         return;
     }
 
-    const cadeiaServicos = servicos.filter(s => String(s.cadeia_id) === String(cadeiaId)).sort((a, b) => a.ordem - b.ordem);
+    const cadeiaServicos = servicos.filter(s => String(s.cadeia_id) === String(cadeiaId));
     let adicionados = 0;
-    let conflitos = 0;
 
-    for (const servico of cadeiaServicos) {
-        // Verificar se já está alocado
-        const jaAlocado = alocacoes.find(a => String(a.servico_id) === String(servico.id) && String(a.integrante_id) === String(integranteId));
+    for (const s of cadeiaServicos) {
+        const jaAlocado = alocacoes.find(a => String(a.servico_id) === String(s.id) && String(a.integrante_id) === String(integranteId));
         if (jaAlocado) continue;
 
-        // Verificar conflito
-        const conflito = checkConflito(integranteId, servico.data_inicio, servico.data_fim_real || servico.data_fim_prevista, servico.id);
-        if (conflito) {
-            conflitos++;
-            continue;
-        }
+        const conflito = checkConflito(integranteId, s.data_inicio, s.data_fim_real || s.data_fim_prevista, s.id);
+        if (conflito) continue;
 
         try {
             await supabase.from('logistica_alocacoes').insert({
-                servico_id: servico.id,
+                servico_id: s.id,
                 integrante_id: integranteId,
-                data_inicio: servico.data_inicio,
-                data_fim: servico.data_fim_real || servico.data_fim_prevista
+                data_inicio: s.data_inicio,
+                data_fim: s.data_fim_real || s.data_fim_prevista
             });
             adicionados++;
-        } catch (e) { /* ignore duplicates */ }
+        } catch (e) { /* ignore */ }
     }
 
     await loadAlocacoes();
     renderCadeiaEquipeGlobal();
-    document.getElementById('cadeia-add-integrante-global').value = '';
-
-    if (conflitos > 0) {
-        showToast(`Adicionado em ${adicionados} serviço(s). ${conflitos} serviço(s) com conflito de horário.`, 'warning');
-    } else {
-        showToast(`Funcionário adicionado em ${adicionados} serviço(s)!`, 'success');
-    }
+    showToast(`Funcionário adicionado a ${adicionados} serviço(s)!`, 'success');
 };
 
 window.removeIntegranteGlobalCadeia = async function() {
     const integranteId = document.getElementById('cadeia-add-integrante-global').value;
     const cadeiaId = document.getElementById('cadeia-id').value;
-    if (!integranteId) {
-        showToast('Selecione um funcionário para remover.', 'warning');
-        return;
-    }
-    if (!cadeiaId) {
-        showToast('Salve a cadeia primeiro.', 'warning');
+    if (!integranteId || !cadeiaId) {
+        showToast('Selecione um funcionário.', 'warning');
         return;
     }
 
     if (!confirm('Remover este funcionário de TODOS os serviços desta cadeia?')) return;
 
     const cadeiaServicos = servicos.filter(s => String(s.cadeia_id) === String(cadeiaId));
-    const alocsParaRemover = alocacoes.filter(a => 
-        String(a.integrante_id) === String(integranteId) && cadeiaServicos.some(s => String(s.id) === String(a.servico_id))
-    );
-
-    for (const aloc of alocsParaRemover) {
-        await supabase.from('logistica_alocacoes').delete().eq('id', aloc.id);
+    for (const s of cadeiaServicos) {
+        await supabase.from('logistica_alocacoes').delete()
+            .eq('servico_id', s.id)
+            .eq('integrante_id', integranteId);
     }
 
     await loadAlocacoes();
     renderCadeiaEquipeGlobal();
-    document.getElementById('cadeia-add-integrante-global').value = '';
-    showToast(`Funcionário removido de ${alocsParaRemover.length} serviço(s).`, 'success');
+    showToast('Funcionário removido de todos os serviços!', 'success');
 };
 
-// ===== COPIAR EQUIPE DO SERVIÇO ANTERIOR =====
+// NOVO: Alocar equipe inteira na cadeia global
+window.addEquipeGlobalCadeia = async function() {
+    const equipeId = document.getElementById('cadeia-add-equipe-global').value;
+    const cadeiaId = document.getElementById('cadeia-id').value;
+    if (!equipeId || !cadeiaId) {
+        showToast('Selecione uma equipe e salve a cadeia primeiro.', 'warning');
+        return;
+    }
+
+    const membros = equipesIntegrantes.filter(ei => String(ei.equipe_id) === String(equipeId) && ei.ativo);
+    if (membros.length === 0) {
+        showToast('Esta equipe não tem integrantes ativos.', 'warning');
+        return;
+    }
+
+    const cadeiaServicos = servicos.filter(s => String(s.cadeia_id) === String(cadeiaId));
+    let totalAdicionados = 0;
+
+    for (const membro of membros) {
+        for (const s of cadeiaServicos) {
+            const jaAlocado = alocacoes.find(a => String(a.servico_id) === String(s.id) && String(a.integrante_id) === String(membro.integrante_id));
+            if (jaAlocado) continue;
+
+            const conflito = checkConflito(membro.integrante_id, s.data_inicio, s.data_fim_real || s.data_fim_prevista, s.id);
+            if (conflito) continue;
+
+            try {
+                await supabase.from('logistica_alocacoes').insert({
+                    servico_id: s.id,
+                    integrante_id: membro.integrante_id,
+                    equipe_id: equipeId,
+                    data_inicio: s.data_inicio,
+                    data_fim: s.data_fim_real || s.data_fim_prevista
+                });
+                totalAdicionados++;
+            } catch (e) { /* ignore */ }
+        }
+    }
+
+    await loadAlocacoes();
+    renderCadeiaEquipeGlobal();
+    showToast(`Equipe alocada! ${totalAdicionados} alocação(ões) criada(s).`, 'success');
+};
+
 window.copiarEquipeServicoAnterior = async function() {
     const servicoId = document.getElementById('servico-id').value;
     const servico = servicos.find(s => s.id === servicoId);
-    if (!servico) return;
+    if (!servico || !servico.cadeia_id) {
+        showToast('Este serviço não pertence a uma cadeia.', 'warning');
+        return;
+    }
 
-    // Encontrar o serviço anterior na cadeia
     const cadeiaServicos = servicos.filter(s => String(s.cadeia_id) === String(servico.cadeia_id)).sort((a, b) => a.ordem - b.ordem);
     const indexAtual = cadeiaServicos.findIndex(s => s.id === servicoId);
-
     if (indexAtual <= 0) {
-        showToast('Este é o primeiro serviço da cadeia, não há serviço anterior.', 'warning');
+        showToast('Não há serviço anterior nesta cadeia.', 'warning');
         return;
     }
 
-    const servicoAnterior = cadeiaServicos[indexAtual - 1];
-    const alocsAnterior = alocacoes.filter(a => String(a.servico_id) === String(servicoAnterior.id));
-
-    if (alocsAnterior.length === 0) {
-        showToast('O serviço anterior não tem equipe alocada.', 'warning');
-        return;
-    }
+    const anterior = cadeiaServicos[indexAtual - 1];
+    const alocsAnterior = alocacoes.filter(a => String(a.servico_id) === String(anterior.id));
 
     let adicionados = 0;
-    let conflitos = 0;
-
     for (const aloc of alocsAnterior) {
-        // Verificar se já está alocado neste serviço
         const jaAlocado = alocacoes.find(a => String(a.servico_id) === String(servicoId) && String(a.integrante_id) === String(aloc.integrante_id));
         if (jaAlocado) continue;
 
-        // Verificar conflito
         const conflito = checkConflito(aloc.integrante_id, servico.data_inicio, servico.data_fim_real || servico.data_fim_prevista, servicoId);
-        if (conflito) {
-            conflitos++;
-            continue;
-        }
+        if (conflito) continue;
 
         try {
             await supabase.from('logistica_alocacoes').insert({
@@ -1975,404 +2302,856 @@ window.copiarEquipeServicoAnterior = async function() {
 
     await loadAlocacoes();
     renderServicoEquipe(servicoId);
+    renderServicoPresenca(servicoId);
+    showToast(`${adicionados} integrante(s) copiado(s) do serviço anterior!`, 'success');
+};
 
-    if (conflitos > 0) {
-        showToast(`Copiados ${adicionados} integrante(s). ${conflitos} com conflito de horário.`, 'warning');
+// ===== GERAÇÃO DE PRODUÇÃO DIÁRIA =====
+// Integração com producoes_diarias_hvc a partir dos dados logísticos
+
+window.openGerarProducao = function(localId) {
+    const local = locais.find(l => String(l.id) === String(localId));
+    if (!local || !local.obra_id) {
+        showToast('Este local não está vinculado a uma obra.', 'warning');
+        return;
+    }
+
+    closeModal('local-detalhes');
+
+    const obraVinculada = obras.find(o => String(o.id) === String(local.obra_id));
+    const localCadeias = cadeias.filter(c => String(c.local_id) === String(localId));
+    const localServicos = servicos.filter(s => localCadeias.some(c => String(c.id) === String(s.cadeia_id)));
+
+    // Montar modal de geração de produção
+    const modal = document.getElementById('modal-producao');
+    const content = document.getElementById('producao-content');
+
+    let html = `
+        <div style="margin-bottom:15px;">
+            <p style="color:#ffc107;font-weight:700;"><i class="fas fa-building"></i> ${obraVinculada ? obraVinculada.nome_obra || obraVinculada.numero_obra : 'Obra'}</p>
+            <p style="font-size:0.8rem;color:rgba(255,255,255,0.6);">${local.nome}</p>
+        </div>
+
+        <div style="margin-bottom:15px;">
+            <label style="font-size:0.85rem;font-weight:700;color:#add8e6;">Modo de Geração</label>
+            <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;">
+                <button type="button" class="btn btn-primary btn-sm producao-mode-btn active" data-mode="dia" onclick="setProducaoMode('dia','${localId}')">
+                    <i class="fas fa-calendar-day"></i> Por Dia
+                </button>
+                <button type="button" class="btn btn-secondary btn-sm producao-mode-btn" data-mode="servico" onclick="setProducaoMode('servico','${localId}')">
+                    <i class="fas fa-wrench"></i> Por Serviço
+                </button>
+                <button type="button" class="btn btn-secondary btn-sm producao-mode-btn" data-mode="cadeia" onclick="setProducaoMode('cadeia','${localId}')">
+                    <i class="fas fa-link"></i> Por Cadeia
+                </button>
+            </div>
+        </div>
+
+        <div id="producao-mode-content"></div>
+    `;
+
+    content.innerHTML = html;
+    document.getElementById('producao-local-id').value = localId;
+    document.getElementById('producao-obra-id').value = local.obra_id;
+    openModal('producao');
+
+    // Iniciar no modo "dia"
+    setProducaoMode('dia', localId);
+};
+
+window.setProducaoMode = function(mode, localId) {
+    document.querySelectorAll('.producao-mode-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.mode === mode);
+        btn.classList.toggle('btn-primary', btn.dataset.mode === mode);
+        btn.classList.toggle('btn-secondary', btn.dataset.mode !== mode);
+    });
+
+    const container = document.getElementById('producao-mode-content');
+    const local = locais.find(l => String(l.id) === String(localId));
+    const obraId = local.obra_id;
+    const localCadeias = cadeias.filter(c => String(c.local_id) === String(localId));
+    const localServicos = servicos.filter(s => localCadeias.some(c => String(c.id) === String(s.cadeia_id)));
+
+    if (mode === 'dia') {
+        renderProducaoDia(container, localServicos, obraId);
+    } else if (mode === 'servico') {
+        renderProducaoServico(container, localServicos, obraId);
     } else {
-        showToast(`Equipe do serviço anterior copiada! (${adicionados} integrante(s))`, 'success');
+        renderProducaoCadeia(container, localCadeias, localServicos, obraId);
     }
 };
 
-// ===== GANTT / ALOCAÇÃO VISUAL =====
-let ganttSelectedFuncionarios = [];
+function renderProducaoDia(container, localServicos, obraId) {
+    const hoje = getEffectiveDate();
+    const hojeStr = formatDateInput(hoje);
 
-function populateGanttFilter() {
-    const container = document.getElementById('gantt-funcionarios-filter');
-    if (!container) return;
-    container.innerHTML = integrantes.map(i => {
-        const isActive = ganttSelectedFuncionarios.includes(i.id);
-        const initials = i.nome.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
-        return `<span class="gantt-chip gantt-func-chip ${isActive ? 'active' : ''}" data-name="${i.nome}" onclick="toggleGanttFuncionario('${i.id}')" title="${i.nome}">${initials} ${i.nome.split(' ')[0]}</span>`;
-    }).join('');
+    // Serviços ativos hoje
+    const dayStart = new Date(hoje); dayStart.setHours(0, 0, 0, 0);
+    const dayEnd = new Date(hoje); dayEnd.setHours(23, 59, 59, 999);
+
+    const servicosHoje = localServicos.filter(s => {
+        const inicio = new Date(s.data_inicio);
+        const fim = new Date(s.data_fim_real || s.data_fim_prevista);
+        return inicio <= dayEnd && fim >= dayStart && s.status !== 'cancelado';
+    });
+
+    if (servicosHoje.length === 0) {
+        container.innerHTML = `<div style="text-align:center;color:rgba(255,255,255,0.4);padding:20px;"><i class="fas fa-calendar-times"></i><p>Nenhum serviço ativo para ${formatDateBR(hoje)}</p></div>`;
+        return;
+    }
+
+    let html = `
+        <div class="form-group">
+            <label>Data da Produção</label>
+            <input type="date" id="producao-data" value="${hojeStr}" onchange="refreshProducaoDia('${obraId}')">
+        </div>
+        <table style="width:100%;border-collapse:collapse;font-size:0.8rem;margin-top:10px;">
+            <thead>
+                <tr style="border-bottom:1px solid rgba(255,255,255,0.2);">
+                    <th style="text-align:left;padding:6px;color:#add8e6;">Serviço</th>
+                    <th style="text-align:center;padding:6px;color:#add8e6;">Unidade</th>
+                    <th style="text-align:center;padding:6px;color:#add8e6;">Qtd Contratada</th>
+                    <th style="text-align:center;padding:6px;color:#add8e6;">Qtd Hoje</th>
+                </tr>
+            </thead>
+            <tbody>
+    `;
+
+    servicosHoje.forEach(s => {
+        const servicoInfo = getServicoInfoFromObra(s);
+        const equipeHoje = getEquipePresente(s.id, hoje);
+
+        html += `
+            <tr style="border-bottom:1px solid rgba(255,255,255,0.05);">
+                <td style="padding:6px;">
+                    ${s.nome}
+                    <br><small style="color:rgba(255,255,255,0.4);">Equipe: ${equipeHoje.map(e => e.nome.split(' ')[0]).join(', ') || 'Nenhuma'}</small>
+                </td>
+                <td style="text-align:center;padding:6px;color:rgba(255,255,255,0.6);">${servicoInfo.unidade}</td>
+                <td style="text-align:center;padding:6px;color:rgba(255,255,255,0.6);">${servicoInfo.quantidade}</td>
+                <td style="text-align:center;padding:6px;">
+                    <input type="number" step="0.01" min="0" class="producao-qtd-input" data-servico-id="${s.id}" data-servico-andamento-id="${s.servico_andamento_id || ''}" data-servico-nome="${escapeHtml(s.nome)}"
+                        style="width:80px;padding:4px;border-radius:4px;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.3);color:white;text-align:center;">
+                </td>
+            </tr>
+        `;
+    });
+
+    html += `</tbody></table>
+        <div class="form-group" style="margin-top:15px;">
+            <label>Observações</label>
+            <textarea id="producao-obs" placeholder="Observações sobre a produção do dia..."></textarea>
+        </div>
+        <div class="form-actions">
+            <button type="button" class="btn btn-danger" onclick="closeModal('producao')">Cancelar</button>
+            <button type="button" class="btn btn-primary" onclick="salvarProducaoDia('${obraId}')">
+                <i class="fas fa-save"></i> Salvar Produção do Dia
+            </button>
+        </div>
+    `;
+    container.innerHTML = html;
 }
 
-window.toggleGanttFuncionario = function(id) {
-    const idx = ganttSelectedFuncionarios.indexOf(id);
-    if (idx >= 0) {
-        ganttSelectedFuncionarios.splice(idx, 1);
-    } else {
-        ganttSelectedFuncionarios.push(id);
+function renderProducaoServico(container, localServicos, obraId) {
+    // Mostrar lista de serviços para selecionar e gerar produção distribuída
+    const servicosConcluidos = localServicos.filter(s => s.status === 'concluido' || s.status === 'em_andamento');
+
+    if (servicosConcluidos.length === 0) {
+        container.innerHTML = `<div style="text-align:center;color:rgba(255,255,255,0.4);padding:20px;"><p>Nenhum serviço em andamento ou concluído.</p></div>`;
+        return;
     }
-    populateGanttFilter();
-    renderGantt();
+
+    let html = `
+        <div class="form-group">
+            <label>Selecione o Serviço</label>
+            <select id="producao-servico-select" onchange="preencherProducaoServico('${obraId}')">
+                <option value="">Selecione...</option>
+                ${servicosConcluidos.map(s => `<option value="${s.id}">${s.nome} (${getServicoStatusLabel(s.status)})</option>`).join('')}
+            </select>
+        </div>
+        <div id="producao-servico-detalhe"></div>
+    `;
+    container.innerHTML = html;
+}
+
+window.preencherProducaoServico = function(obraId) {
+    const servicoId = document.getElementById('producao-servico-select').value;
+    const container = document.getElementById('producao-servico-detalhe');
+    if (!servicoId) { container.innerHTML = ''; return; }
+
+    const servico = servicos.find(s => s.id === servicoId);
+    if (!servico) return;
+
+    const servicoInfo = getServicoInfoFromObra(servico);
+    const inicio = new Date(servico.data_inicio);
+    const fim = new Date(servico.data_fim_real || servico.data_fim_prevista);
+    
+    // Calcular dias trabalhados
+    const dias = [];
+    const current = new Date(inicio);
+    current.setHours(0, 0, 0, 0);
+    const fimDate = new Date(fim);
+    fimDate.setHours(23, 59, 59, 999);
+    while (current <= fimDate && dias.length <= 60) {
+        dias.push(new Date(current));
+        current.setDate(current.getDate() + 1);
+    }
+
+    // Distribuição igualitária pré-preenchida
+    const qtdPorDia = servicoInfo.quantidade > 0 ? (servicoInfo.quantidade / dias.length).toFixed(2) : 0;
+
+    let html = `
+        <div style="margin:10px 0;padding:10px;background:rgba(76,175,80,0.1);border:1px solid rgba(76,175,80,0.3);border-radius:6px;">
+            <p style="font-size:0.8rem;color:#4caf50;"><i class="fas fa-info-circle"></i> Distribuição igualitária: ${servicoInfo.quantidade} ${servicoInfo.unidade} ÷ ${dias.length} dias = <b>${qtdPorDia} ${servicoInfo.unidade}/dia</b></p>
+            <p style="font-size:0.7rem;color:rgba(255,255,255,0.5);margin-top:5px;">Você pode personalizar os valores abaixo antes de salvar.</p>
+        </div>
+        <div style="max-height:300px;overflow-y:auto;">
+        <table style="width:100%;border-collapse:collapse;font-size:0.75rem;">
+            <thead><tr style="border-bottom:1px solid rgba(255,255,255,0.2);">
+                <th style="text-align:left;padding:4px;color:#add8e6;">Data</th>
+                <th style="text-align:center;padding:4px;color:#add8e6;">Equipe Presente</th>
+                <th style="text-align:center;padding:4px;color:#add8e6;">Qtd (${servicoInfo.unidade})</th>
+            </tr></thead><tbody>
+    `;
+
+    dias.forEach(d => {
+        const equipePresente = getEquipePresente(servicoId, d);
+        const dateStr = formatDateInput(d);
+        html += `
+            <tr style="border-bottom:1px solid rgba(255,255,255,0.05);">
+                <td style="padding:4px;">${formatDateBR(d)}</td>
+                <td style="text-align:center;padding:4px;color:rgba(255,255,255,0.6);font-size:0.65rem;">${equipePresente.map(e => e.nome.split(' ')[0]).join(', ') || '-'}</td>
+                <td style="text-align:center;padding:4px;">
+                    <input type="number" step="0.01" min="0" value="${qtdPorDia}" class="producao-servico-qtd" data-date="${dateStr}"
+                        style="width:70px;padding:3px;border-radius:4px;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.3);color:white;text-align:center;font-size:0.75rem;">
+                </td>
+            </tr>
+        `;
+    });
+
+    html += `</tbody></table></div>
+        <div class="form-group" style="margin-top:10px;">
+            <label>Observações</label>
+            <textarea id="producao-servico-obs" placeholder="Observações..."></textarea>
+        </div>
+        <div class="form-actions">
+            <button type="button" class="btn btn-danger" onclick="closeModal('producao')">Cancelar</button>
+            <button type="button" class="btn btn-primary" onclick="salvarProducaoServico('${obraId}','${servicoId}')">
+                <i class="fas fa-save"></i> Salvar Produção do Serviço
+            </button>
+        </div>
+    `;
+    container.innerHTML = html;
 };
+
+function renderProducaoCadeia(container, localCadeias, localServicos, obraId) {
+    if (localCadeias.length === 0) {
+        container.innerHTML = `<div style="text-align:center;color:rgba(255,255,255,0.4);padding:20px;"><p>Nenhuma cadeia encontrada.</p></div>`;
+        return;
+    }
+
+    let html = `
+        <div class="form-group">
+            <label>Selecione a Cadeia</label>
+            <select id="producao-cadeia-select" onchange="preencherProducaoCadeia('${obraId}')">
+                <option value="">Selecione...</option>
+                ${localCadeias.map(c => `<option value="${c.id}">${c.nome}</option>`).join('')}
+            </select>
+        </div>
+        <div id="producao-cadeia-detalhe"></div>
+    `;
+    container.innerHTML = html;
+}
+
+window.preencherProducaoCadeia = function(obraId) {
+    const cadeiaId = document.getElementById('producao-cadeia-select').value;
+    const container = document.getElementById('producao-cadeia-detalhe');
+    if (!cadeiaId) { container.innerHTML = ''; return; }
+
+    const cadeiaServicos = servicos.filter(s => String(s.cadeia_id) === String(cadeiaId)).sort((a, b) => a.ordem - b.ordem);
+    
+    if (cadeiaServicos.length === 0) {
+        container.innerHTML = '<p style="color:rgba(255,255,255,0.4);">Nenhum serviço nesta cadeia.</p>';
+        return;
+    }
+
+    let html = `
+        <div style="margin:10px 0;padding:10px;background:rgba(156,39,176,0.1);border:1px solid rgba(156,39,176,0.3);border-radius:6px;">
+            <p style="font-size:0.8rem;color:#ce93d8;"><i class="fas fa-info-circle"></i> Geração em lote: produção distribuída igualmente para cada serviço da cadeia.</p>
+        </div>
+        <div style="max-height:400px;overflow-y:auto;">
+    `;
+
+    cadeiaServicos.forEach(s => {
+        const servicoInfo = getServicoInfoFromObra(s);
+        const inicio = new Date(s.data_inicio);
+        const fim = new Date(s.data_fim_real || s.data_fim_prevista);
+        const diffMs = fim - inicio;
+        const numDias = Math.max(1, Math.ceil(diffMs / (24 * 60 * 60 * 1000)));
+        const qtdPorDia = servicoInfo.quantidade > 0 ? (servicoInfo.quantidade / numDias).toFixed(2) : 0;
+
+        html += `
+            <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.1);border-radius:6px;padding:10px;margin-bottom:8px;">
+                <div style="display:flex;justify-content:space-between;align-items:center;">
+                    <span style="font-weight:600;color:white;">${s.nome}</span>
+                    <span style="font-size:0.7rem;color:rgba(255,255,255,0.5);">${numDias} dias | ${servicoInfo.quantidade} ${servicoInfo.unidade}</span>
+                </div>
+                <div style="font-size:0.7rem;color:rgba(255,255,255,0.5);margin-top:4px;">
+                    Distribuição: <b>${qtdPorDia} ${servicoInfo.unidade}/dia</b>
+                    <input type="number" step="0.01" min="0" value="${qtdPorDia}" class="producao-cadeia-qtd" data-servico-id="${s.id}" data-num-dias="${numDias}"
+                        style="width:70px;padding:3px;margin-left:10px;border-radius:4px;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.3);color:white;text-align:center;font-size:0.75rem;">
+                    <small style="color:rgba(255,255,255,0.3);">(qtd/dia - personalize se quiser)</small>
+                </div>
+            </div>
+        `;
+    });
+
+    html += `</div>
+        <div class="form-group" style="margin-top:10px;">
+            <label>Observações</label>
+            <textarea id="producao-cadeia-obs" placeholder="Observações..."></textarea>
+        </div>
+        <div class="form-actions">
+            <button type="button" class="btn btn-danger" onclick="closeModal('producao')">Cancelar</button>
+            <button type="button" class="btn btn-primary" onclick="salvarProducaoCadeia('${obraId}','${cadeiaId}')">
+                <i class="fas fa-save"></i> Salvar Produção da Cadeia
+            </button>
+        </div>
+    `;
+    container.innerHTML = html;
+};
+
+// ===== SALVAR PRODUÇÕES =====
+window.salvarProducaoDia = async function(obraId) {
+    const data = document.getElementById('producao-data').value;
+    const obs = document.getElementById('producao-obs').value;
+    const inputs = document.querySelectorAll('.producao-qtd-input');
+
+    const quantidades = {};
+    inputs.forEach(input => {
+        const qtd = parseFloat(input.value);
+        if (qtd > 0) {
+            const servicoAndamentoId = input.dataset.servicoAndamentoId;
+            const servicoNome = input.dataset.servicoNome;
+            quantidades[servicoAndamentoId || servicoNome] = qtd;
+        }
+    });
+
+    if (Object.keys(quantidades).length === 0) {
+        showToast('Informe pelo menos uma quantidade.', 'warning');
+        return;
+    }
+
+    // Determinar equipe/responsável (primeiro serviço com alocação)
+    const primeiroInput = inputs[0];
+    const servicoId = primeiroInput?.dataset.servicoId;
+    const equipeInfo = getResponsavelProducao(servicoId, data);
+
+    try {
+        const { error } = await supabase.from('producoes_diarias_hvc').insert({
+            obra_id: obraId,
+            data_producao: data,
+            tipo_responsavel: equipeInfo.tipo,
+            responsavel_id: equipeInfo.id,
+            quantidades_servicos: quantidades,
+            observacoes: obs || null,
+            integrantes_ausentes: getAusentesNoDia(servicoId, data)
+        });
+        if (error) throw error;
+
+        showToast('Produção do dia registrada com sucesso!', 'success');
+        closeModal('producao');
+    } catch (error) {
+        showToast('Erro ao salvar produção: ' + error.message, 'error');
+    }
+};
+
+window.salvarProducaoServico = async function(obraId, servicoId) {
+    const obs = document.getElementById('producao-servico-obs').value;
+    const inputs = document.querySelectorAll('.producao-servico-qtd');
+    const servico = servicos.find(s => s.id === servicoId);
+
+    let registros = 0;
+    for (const input of inputs) {
+        const qtd = parseFloat(input.value);
+        const dateStr = input.dataset.date;
+        if (qtd > 0) {
+            const equipeInfo = getResponsavelProducao(servicoId, dateStr);
+            const quantidades = {};
+            quantidades[servico.servico_andamento_id || servico.nome] = qtd;
+
+            try {
+                await supabase.from('producoes_diarias_hvc').insert({
+                    obra_id: obraId,
+                    data_producao: dateStr,
+                    tipo_responsavel: equipeInfo.tipo,
+                    responsavel_id: equipeInfo.id,
+                    quantidades_servicos: quantidades,
+                    observacoes: obs || null,
+                    integrantes_ausentes: getAusentesNoDia(servicoId, dateStr)
+                });
+                registros++;
+            } catch (e) { console.error(e); }
+        }
+    }
+
+    showToast(`${registros} registro(s) de produção criado(s)!`, 'success');
+    closeModal('producao');
+};
+
+window.salvarProducaoCadeia = async function(obraId, cadeiaId) {
+    const obs = document.getElementById('producao-cadeia-obs').value;
+    const inputs = document.querySelectorAll('.producao-cadeia-qtd');
+
+    let registros = 0;
+    for (const input of inputs) {
+        const servicoId = input.dataset.servicoId;
+        const numDias = parseInt(input.dataset.numDias);
+        const qtdPorDia = parseFloat(input.value);
+        if (qtdPorDia <= 0) continue;
+
+        const servico = servicos.find(s => s.id === servicoId);
+        if (!servico) continue;
+
+        const inicio = new Date(servico.data_inicio);
+        for (let d = 0; d < numDias; d++) {
+            const dia = new Date(inicio);
+            dia.setDate(inicio.getDate() + d);
+            const dateStr = formatDateInput(dia);
+
+            const equipeInfo = getResponsavelProducao(servicoId, dateStr);
+            const quantidades = {};
+            quantidades[servico.servico_andamento_id || servico.nome] = qtdPorDia;
+
+            try {
+                await supabase.from('producoes_diarias_hvc').insert({
+                    obra_id: obraId,
+                    data_producao: dateStr,
+                    tipo_responsavel: equipeInfo.tipo,
+                    responsavel_id: equipeInfo.id,
+                    quantidades_servicos: quantidades,
+                    observacoes: obs || null,
+                    integrantes_ausentes: getAusentesNoDia(servicoId, dateStr)
+                });
+                registros++;
+            } catch (e) { console.error(e); }
+        }
+    }
+
+    showToast(`${registros} registro(s) de produção criado(s) para a cadeia!`, 'success');
+    closeModal('producao');
+};
+
+// ===== HELPERS DE PRODUÇÃO =====
+function getServicoInfoFromObra(servico) {
+    // Tentar buscar informações do serviço contratado
+    if (servico.servico_andamento_id) {
+        const sa = servicosAndamento.find(s => String(s.id) === String(servico.servico_andamento_id));
+        if (sa) {
+            const ip = itensPropostas.find(i => String(i.id) === String(sa.item_proposta_id));
+            if (ip) {
+                const sh = servicosHvc.find(s => String(s.id) === String(ip.servico_id));
+                return {
+                    nome: sh ? sh.descricao : servico.nome,
+                    unidade: sh ? sh.unidade : 'un',
+                    quantidade: ip.quantidade || 0
+                };
+            }
+        }
+    }
+    // Fallback: tentar pelo item_proposta_id direto
+    if (servico.item_proposta_id) {
+        const ip = itensPropostas.find(i => String(i.id) === String(servico.item_proposta_id));
+        if (ip) {
+            const sh = servicosHvc.find(s => String(s.id) === String(ip.servico_id));
+            return {
+                nome: sh ? sh.descricao : servico.nome,
+                unidade: sh ? sh.unidade : 'un',
+                quantidade: ip.quantidade || 0
+            };
+        }
+    }
+    return { nome: servico.nome, unidade: 'un', quantidade: 0 };
+}
+
+function getEquipePresente(servicoId, date) {
+    const dateStr = typeof date === 'string' ? date : formatDateInput(date);
+    const servicoAlocs = alocacoes.filter(a => String(a.servico_id) === String(servicoId));
+    
+    return servicoAlocs.map(a => {
+        const integrante = integrantes.find(i => i.id === a.integrante_id);
+        if (!integrante) return null;
+
+        // Verificar presença
+        const presenca = presencas.find(p => 
+            String(p.alocacao_id) === String(a.id) && 
+            String(p.integrante_id) === String(a.integrante_id) && 
+            p.data === dateStr && 
+            !p.presente
+        );
+        if (presenca) return null; // Ausente
+
+        return integrante;
+    }).filter(Boolean);
+}
+
+function getAusentesNoDia(servicoId, dateStr) {
+    const servicoAlocs = alocacoes.filter(a => String(a.servico_id) === String(servicoId));
+    const ausentes = [];
+
+    servicoAlocs.forEach(a => {
+        const presenca = presencas.find(p => 
+            String(p.alocacao_id) === String(a.id) && 
+            String(p.integrante_id) === String(a.integrante_id) && 
+            p.data === dateStr && 
+            !p.presente
+        );
+        if (presenca) {
+            ausentes.push(a.integrante_id);
+        }
+    });
+
+    return ausentes.length > 0 ? ausentes : null;
+}
+
+function getResponsavelProducao(servicoId, dateStr) {
+    // Determinar quem é o responsável: equipe ou integrante individual
+    const servicoAlocs = alocacoes.filter(a => String(a.servico_id) === String(servicoId));
+    
+    if (servicoAlocs.length > 0) {
+        // Se tem equipe_id, usar equipe como responsável
+        const comEquipe = servicoAlocs.find(a => a.equipe_id);
+        if (comEquipe) {
+            return { tipo: 'equipe', id: comEquipe.equipe_id };
+        }
+        // Senão, usar o primeiro integrante
+        return { tipo: 'integrante', id: servicoAlocs[0].integrante_id };
+    }
+    return { tipo: 'integrante', id: null };
+}
+
+// ===== GANTT (ABA ALOCAÇÃO) =====
+function populateGanttFilter() {
+    const select = document.getElementById('gantt-local-filter');
+    if (!select) return;
+    select.innerHTML = '<option value="">Todos os Locais</option>';
+    locais.forEach(l => {
+        select.innerHTML += `<option value="${l.id}">${l.nome}</option>`;
+    });
+}
 
 window.renderGantt = function() {
     const container = document.getElementById('gantt-container');
-    const inicioStr = document.getElementById('gantt-inicio').value;
-    const fimStr = document.getElementById('gantt-fim').value;
+    const inicioStr = document.getElementById('gantt-inicio')?.value;
+    const fimStr = document.getElementById('gantt-fim')?.value;
+    const localFilter = document.getElementById('gantt-local-filter')?.value;
 
     if (!inicioStr || !fimStr) {
-        container.innerHTML = '<div class="empty-state"><i class="fas fa-th"></i><p>Selecione um período para visualizar a alocação</p></div>';
+        container.innerHTML = '<p style="color:rgba(255,255,255,0.4);text-align:center;">Selecione o período para visualizar o Gantt.</p>';
         return;
     }
 
     const inicio = new Date(inicioStr + 'T00:00:00');
     const fim = new Date(fimStr + 'T23:59:59');
-    if (fim <= inicio) {
-        container.innerHTML = '<div class="empty-state"><i class="fas fa-exclamation-triangle"></i><p>A data final deve ser posterior à inicial</p></div>';
+    const totalDays = Math.ceil((fim - inicio) / (24 * 60 * 60 * 1000)) + 1;
+
+    if (totalDays > 60) {
+        container.innerHTML = '<p style="color:#f44336;text-align:center;">Período muito longo. Máximo 60 dias.</p>';
         return;
     }
 
-    // Gerar array de dias
-    const dias = [];
-    const current = new Date(inicio);
-    while (current <= fim) {
-        dias.push(new Date(current));
-        current.setDate(current.getDate() + 1);
+    // Filtrar serviços
+    let ganttServicos = servicos.filter(s => {
+        const sInicio = new Date(s.data_inicio);
+        const sFim = new Date(s.data_fim_real || s.data_fim_prevista);
+        return sInicio <= fim && sFim >= inicio && s.status !== 'cancelado';
+    });
+
+    if (localFilter) {
+        ganttServicos = ganttServicos.filter(s => String(s.local_id) === String(localFilter));
     }
 
-    if (dias.length > 60) {
-        container.innerHTML = '<div class="empty-state"><i class="fas fa-exclamation-triangle"></i><p>Período muito longo (máx. 60 dias)</p></div>';
+    if (ganttServicos.length === 0) {
+        container.innerHTML = '<p style="color:rgba(255,255,255,0.4);text-align:center;">Nenhum serviço no período selecionado.</p>';
         return;
     }
 
-    // Filtrar obras que têm serviços no período
-    const obrasComServicos = locais.filter(l => l.tipo === 'obra').filter(obra => {
-        return servicos.some(s => {
-            const cadeia = cadeias.find(c => String(c.id) === String(s.cadeia_id));
-            if (!cadeia || cadeia.local_id !== obra.id) return false;
+    // Gerar dias
+    const days = [];
+    for (let i = 0; i < totalDays; i++) {
+        const d = new Date(inicio);
+        d.setDate(inicio.getDate() + i);
+        days.push(d);
+    }
+
+    let html = `<div style="overflow-x:auto;"><table class="gantt-table" style="width:100%;border-collapse:collapse;font-size:0.7rem;min-width:${totalDays * 30 + 200}px;">
+        <thead><tr>
+            <th style="min-width:180px;position:sticky;left:0;background:#1a1a2e;z-index:2;padding:4px;border-bottom:1px solid rgba(255,255,255,0.2);color:#add8e6;">Serviço</th>
+    `;
+
+    days.forEach(d => {
+        const isWeekend = d.getDay() === 0 || d.getDay() === 6;
+        const isToday = d.toDateString() === new Date().toDateString();
+        html += `<th style="min-width:28px;padding:2px;text-align:center;border-bottom:1px solid rgba(255,255,255,0.2);color:${isToday ? '#4caf50' : isWeekend ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.6)'};font-size:0.6rem;background:${isToday ? 'rgba(76,175,80,0.1)' : 'transparent'};">${d.getDate()}<br>${['D','S','T','Q','Q','S','S'][d.getDay()]}</th>`;
+    });
+    html += '</tr></thead><tbody>';
+
+    ganttServicos.sort((a, b) => new Date(a.data_inicio) - new Date(b.data_inicio)).forEach(s => {
+        const local = locais.find(l => String(l.id) === String(s.local_id));
+        const statusColor = {
+            'pendente': '#ffc107',
+            'em_andamento': '#2196f3',
+            'concluido': '#4caf50',
+            'suspenso': '#f44336'
+        }[s.status] || '#9e9e9e';
+
+        html += `<tr>
+            <td style="position:sticky;left:0;background:#1a1a2e;z-index:1;padding:4px;border-bottom:1px solid rgba(255,255,255,0.05);white-space:nowrap;">
+                <span style="color:${statusColor};">●</span> ${s.nome}
+                <br><small style="color:rgba(255,255,255,0.4);">${local ? local.nome : ''}</small>
+            </td>`;
+
+        days.forEach(d => {
+            const dayStart = new Date(d); dayStart.setHours(0, 0, 0, 0);
+            const dayEnd = new Date(d); dayEnd.setHours(23, 59, 59, 999);
             const sInicio = new Date(s.data_inicio);
             const sFim = new Date(s.data_fim_real || s.data_fim_prevista);
-            return sInicio <= fim && sFim >= inicio;
+
+            let cellBg = 'transparent';
+            let cellContent = '';
+
+            if (sInicio <= dayEnd && sFim >= dayStart) {
+                cellBg = statusColor + '40'; // 25% opacity
+                // Verificar quem está alocado neste dia
+                const alocsDia = alocacoes.filter(a => String(a.servico_id) === String(s.id));
+                if (alocsDia.length > 0) {
+                    cellContent = `<span style="font-size:0.55rem;color:${statusColor};">${alocsDia.length}</span>`;
+                }
+            }
+
+            const isToday = d.toDateString() === new Date().toDateString();
+            html += `<td style="text-align:center;padding:2px;border-bottom:1px solid rgba(255,255,255,0.05);background:${cellBg};${isToday ? 'border-left:1px solid rgba(76,175,80,0.5);border-right:1px solid rgba(76,175,80,0.5);' : ''}">${cellContent}</td>`;
         });
+
+        html += '</tr>';
     });
 
-    if (obrasComServicos.length === 0) {
-        container.innerHTML = '<div class="empty-state"><i class="fas fa-hard-hat"></i><p>Nenhuma obra com serviços neste período</p></div>';
-        return;
-    }
-
-    // Funcionários filtrados
-    const funcsFiltrados = ganttSelectedFuncionarios.length > 0
-        ? integrantes.filter(i => ganttSelectedFuncionarios.includes(i.id))
-        : integrantes;
-
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    // Construir grid
-    const numCols = dias.length + 1; // +1 para coluna de obras
-    let html = `<div class="gantt-grid" style="grid-template-columns: 150px repeat(${dias.length}, minmax(55px, 1fr));">`;
-
-    // Header: canto + dias
-    html += `<div class="gantt-corner">Obra / Dia</div>`;
-    dias.forEach(dia => {
-        const isWeekend = dia.getDay() === 0 || dia.getDay() === 6;
-        const isToday = dia.toDateString() === today.toDateString();
-        const dayNames = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
-        html += `<div class="gantt-header-cell ${isWeekend ? 'weekend' : ''} ${isToday ? 'today' : ''}">
-            ${dayNames[dia.getDay()]}<br>${dia.getDate()}/${dia.getMonth() + 1}
-        </div>`;
-    });
-
-    // Linhas: uma por obra
-    obrasComServicos.forEach(obra => {
-        html += `<div class="gantt-obra-label" title="${obra.nome}"><i class="fas fa-hard-hat" style="margin-right:5px;font-size:0.6rem;"></i>${obra.nome}</div>`;
-
-        dias.forEach(dia => {
-            const isWeekend = dia.getDay() === 0 || dia.getDay() === 6;
-            const isToday = dia.toDateString() === today.toDateString();
-            const diaInicio = new Date(dia);
-            diaInicio.setHours(0, 0, 0, 0);
-            const diaFim = new Date(dia);
-            diaFim.setHours(23, 59, 59, 999);
-
-            // Encontrar serviços desta obra neste dia
-            const servicosNesteObraDia = servicos.filter(s => {
-                const cadeia = cadeias.find(c => String(c.id) === String(s.cadeia_id));
-                if (!cadeia || cadeia.local_id !== obra.id) return false;
-                const sInicio = new Date(s.data_inicio);
-                const sFim = new Date(s.data_fim_real || s.data_fim_prevista);
-                return sInicio <= diaFim && sFim >= diaInicio && s.status !== 'suspenso';
-            });
-
-            // Encontrar funcionários alocados nesses serviços
-            const funcsNestaCelula = [];
-            servicosNesteObraDia.forEach(s => {
-                const sAlocs = alocacoes.filter(a => String(a.servico_id) === String(s.id));
-                sAlocs.forEach(a => {
-                    if (funcsFiltrados.some(f => String(f.id) === String(a.integrante_id))) {
-                        if (!funcsNestaCelula.find(f => String(f.id) === String(a.integrante_id))) {
-                            funcsNestaCelula.push({
-                                id: a.integrante_id,
-                                servico: s
-                            });
-                        }
-                    }
-                });
-            });
-
-            html += `<div class="gantt-cell ${isWeekend ? 'weekend' : ''} ${isToday ? 'today' : ''}">` ;
-
-            funcsNestaCelula.forEach(fc => {
-                const integrante = integrantes.find(i => String(i.id) === String(fc.id));
-                const initials = integrante ? integrante.nome.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() : '?';
-
-                // Verificar se este funcionário tem transição neste dia (termina aqui e começa em outra obra)
-                let isTransitioning = false;
-                const outrasAlocsDia = alocacoes.filter(a => {
-                    if (String(a.integrante_id) !== String(fc.id)) return false;
-                    const aServico = servicos.find(s => String(s.id) === String(a.servico_id));
-                    if (!aServico) return false;
-                    const aCadeia = cadeias.find(c => String(c.id) === String(aServico.cadeia_id));
-                    if (!aCadeia || String(aCadeia.local_id) === String(obra.id)) return false;
-                    const aInicio = new Date(aServico.data_inicio);
-                    const aFim = new Date(aServico.data_fim_real || aServico.data_fim_prevista);
-                    return aInicio <= diaFim && aFim >= diaInicio;
-                });
-                if (outrasAlocsDia.length > 0) isTransitioning = true;
-
-                const badgeClass = isTransitioning ? 'transitioning' : 'working';
-                html += `<span class="gantt-badge ${badgeClass}" title="${integrante ? integrante.nome : '?'}${isTransitioning ? ' (transição)' : ''}" onclick="highlightGanttFuncionarios(this)" style="cursor:pointer;">${initials}</span>`;
-            });
-
-            html += `</div>`;
-        });
-    });
-
-    html += `</div>`;
-
-    // Legenda
-    html += `<div class="gantt-legend">
-        <div class="gantt-legend-item"><span class="gantt-legend-dot working"></span> Trabalhando</div>
-        <div class="gantt-legend-item"><span class="gantt-legend-dot transitioning"></span> Transição (rota)</div>
-        <div class="gantt-legend-item"><span class="gantt-legend-dot idle"></span> Sem alocação</div>
-    </div>`;
-
+    html += '</tbody></table></div>';
     container.innerHTML = html;
 };
 
-// ===== MAPA RETRÁTIL =====
-window.toggleMap = function() {
-    const mapContainer = document.getElementById('map-container');
-    const mainLayout = document.getElementById('main-layout');
-    const expandBtn = document.getElementById('map-expand-btn');
-    
-    if (mapContainer.classList.contains('collapsed')) {
-        // Expandir
-        mapContainer.classList.remove('collapsed');
-        mainLayout.classList.remove('map-hidden');
-        expandBtn.classList.remove('visible');
-        // Redimensionar mapa
-        setTimeout(() => {
-            if (map) google.maps.event.trigger(map, 'resize');
-        }, 500);
-    } else {
-        // Retrair
-        mapContainer.classList.add('collapsed');
-        mainLayout.classList.add('map-hidden');
-        expandBtn.classList.add('visible');
-    }
-};
-
-// ===== TOGGLE POIs DO GOOGLE MAPS =====
-window.togglePOI = function() {
-    const chk = document.getElementById('chk-poi');
-    poiHidden = !chk.checked;
-    if (map) {
-        map.setOptions({ styles: poiHidden ? mapStylesNoPOI : mapStylesBase });
-    }
-};
-
-// ===== MODAL DE FUNCIONÁRIO =====
-let currentFuncionarioId = null;
-
-window.openFuncionarioModal = function(integranteId) {
-    currentFuncionarioId = integranteId;
-    const integrante = integrantes.find(i => String(i.id) === String(integranteId));
+// ===== MODAL FUNCIONÁRIO =====
+window.openFuncionarioModal = function(id) {
+    const integrante = integrantes.find(i => i.id === id);
     if (!integrante) return;
 
     document.getElementById('modal-func-title').innerHTML = `<i class="fas fa-user-hard-hat"></i> ${integrante.nome}`;
 
-    // Resumo
-    const funcAlocacoes = alocacoes.filter(a => String(a.integrante_id) === String(integranteId));
-    const funcServicos = funcAlocacoes.map(a => servicos.find(s => String(s.id) === String(a.servico_id))).filter(Boolean);
-    const obrasUnicas = [...new Set(funcServicos.map(s => {
-        const cadeia = cadeias.find(c => String(c.id) === String(s.cadeia_id));
-        return cadeia ? cadeia.local_id : null;
-    }).filter(Boolean))];
-    
-    const agora = new Date();
-    const servicosAtivos = funcServicos.filter(s => new Date(s.data_fim_real || s.data_fim_prevista) >= agora);
-    const servicosConcluidos = funcServicos.filter(s => new Date(s.data_fim_real || s.data_fim_prevista) < agora);
+    const resumo = document.getElementById('func-resumo');
+    const servicosList = document.getElementById('func-servicos-list');
+    const disponibilidade = document.getElementById('func-disponibilidade');
 
-    document.getElementById('func-resumo').innerHTML = `
-        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;text-align:center;">
-            <div style="background:rgba(76,175,80,0.2);padding:10px;border-radius:8px;">
-                <div style="font-size:1.5rem;font-weight:bold;color:#4caf50;">${servicosAtivos.length}</div>
-                <div style="font-size:0.7rem;color:rgba(255,255,255,0.6);">Serviços Ativos</div>
-            </div>
-            <div style="background:rgba(33,150,243,0.2);padding:10px;border-radius:8px;">
-                <div style="font-size:1.5rem;font-weight:bold;color:#2196f3;">${servicosConcluidos.length}</div>
-                <div style="font-size:0.7rem;color:rgba(255,255,255,0.6);">Concluídos</div>
-            </div>
-            <div style="background:rgba(255,193,7,0.2);padding:10px;border-radius:8px;">
-                <div style="font-size:1.5rem;font-weight:bold;color:#ffc107;">${obrasUnicas.length}</div>
-                <div style="font-size:0.7rem;color:rgba(255,255,255,0.6);">Obras</div>
-            </div>
-        </div>
+    // Resumo
+    resumo.innerHTML = `
+        <p style="font-size:0.85rem;"><b>Nome:</b> ${integrante.nome}</p>
+        ${integrante.whatsapp ? `<p style="font-size:0.85rem;"><b>WhatsApp:</b> ${integrante.whatsapp}</p>` : ''}
     `;
 
-    // Lista de serviços
-    const listContainer = document.getElementById('func-servicos-list');
-    if (funcServicos.length === 0) {
-        listContainer.innerHTML = '<p style="color:rgba(255,255,255,0.4);font-size:0.8rem;">Nenhum serviço alocado.</p>';
+    // Serviços alocados
+    const integranteAlocs = alocacoes.filter(a => String(a.integrante_id) === String(id));
+    if (integranteAlocs.length === 0) {
+        servicosList.innerHTML = '<p style="color:rgba(255,255,255,0.4);">Nenhum serviço alocado.</p>';
     } else {
-        // Ordenar por data de início
-        funcServicos.sort((a, b) => new Date(a.data_inicio) - new Date(b.data_inicio));
-        listContainer.innerHTML = funcServicos.map(s => {
-            const cadeia = cadeias.find(c => String(c.id) === String(s.cadeia_id));
-            const local = cadeia ? locais.find(l => String(l.id) === String(cadeia.local_id)) : null;
-            const aloc = funcAlocacoes.find(a => String(a.servico_id) === String(s.id));
-            const inicio = new Date(s.data_inicio);
-            const fim = new Date(s.data_fim_real || s.data_fim_prevista);
-            const isPast = fim < agora;
+        servicosList.innerHTML = integranteAlocs.map(a => {
+            const servico = servicos.find(s => s.id === a.servico_id);
+            if (!servico) return '';
+            const local = locais.find(l => String(l.id) === String(servico.local_id));
             return `
-                <div class="func-servico-item" style="${isPast ? 'opacity:0.5;' : ''}">
-                    <div class="func-servico-info">
-                        <div class="nome">${s.nome}</div>
-                        <div class="datas">
-                            <i class="fas fa-clock"></i> ${inicio.toLocaleDateString('pt-BR')} ${inicio.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})} → 
-                            ${fim.toLocaleDateString('pt-BR')} ${fim.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}
-                            ${isPast ? ' <span style="color:#4caf50;">✓</span>' : ''}
-                        </div>
-                        <div class="obra"><i class="fas fa-building"></i> ${local ? local.nome : 'N/A'} ${cadeia ? '(' + cadeia.nome + ')' : ''}</div>
+                <div style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:6px;padding:8px;margin-bottom:6px;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;">
+                        <span style="font-weight:600;font-size:0.8rem;">${servico.nome}</span>
+                        <span class="timeline-badge status-${servico.status}" style="font-size:0.6rem;">${getServicoStatusLabel(servico.status)}</span>
                     </div>
-                    <div class="func-servico-actions">
-                        <button class="btn btn-danger btn-sm" onclick="removeAlocacaoFromFuncModal('${aloc ? aloc.id : ''}')" title="Remover deste serviço">
-                            <i class="fas fa-times"></i>
-                        </button>
+                    <div style="font-size:0.7rem;color:rgba(255,255,255,0.5);">
+                        ${local ? `<i class="fas fa-map-pin"></i> ${local.nome} | ` : ''}
+                        ${formatDateTimeBR(a.data_inicio)} → ${formatDateTimeBR(a.data_fim)}
                     </div>
                 </div>
             `;
         }).join('');
     }
 
-    // Disponibilidade - próximos 7 dias
-    const dispContainer = document.getElementById('func-disponibilidade');
-    let dispHtml = '<div style="display:flex;flex-wrap:wrap;gap:5px;">';
+    // Disponibilidade (próximos 14 dias)
+    const hoje = new Date();
+    let dispHtml = '<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px;">';
     for (let i = 0; i < 14; i++) {
-        const dia = new Date();
-        dia.setDate(dia.getDate() + i);
-        const diaStr = dia.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit' });
-        
-        // Verificar se tem serviço nesse dia
-        const temServico = funcServicos.some(s => {
-            const sInicio = new Date(s.data_inicio);
-            const sFim = new Date(s.data_fim_real || s.data_fim_prevista);
-            return dia >= new Date(sInicio.toDateString()) && dia <= new Date(sFim.toDateString());
+        const d = new Date(hoje);
+        d.setDate(hoje.getDate() + i);
+        const dayStart = new Date(d); dayStart.setHours(0, 0, 0, 0);
+        const dayEnd = new Date(d); dayEnd.setHours(23, 59, 59, 999);
+
+        const ocupado = integranteAlocs.some(a => {
+            const aInicio = new Date(a.data_inicio);
+            const aFim = new Date(a.data_fim);
+            return aInicio <= dayEnd && aFim >= dayStart;
         });
-        
-        const bgColor = temServico ? 'rgba(244,67,54,0.3)' : 'rgba(76,175,80,0.3)';
-        const borderColor = temServico ? 'rgba(244,67,54,0.6)' : 'rgba(76,175,80,0.6)';
-        const icon = temServico ? '✖' : '✔';
-        dispHtml += `<div style="background:${bgColor};border:1px solid ${borderColor};border-radius:6px;padding:4px 8px;font-size:0.65rem;text-align:center;">
-            <div>${diaStr}</div>
-            <div>${icon}</div>
+
+        const bgColor = ocupado ? 'rgba(244,67,54,0.3)' : 'rgba(76,175,80,0.2)';
+        const label = ocupado ? '🔴' : '🟢';
+        dispHtml += `<div style="text-align:center;padding:4px;border-radius:4px;background:${bgColor};font-size:0.65rem;">
+            ${d.getDate()}/${d.getMonth()+1}<br>${label}
         </div>`;
     }
     dispHtml += '</div>';
-    dispHtml += '<p style="font-size:0.65rem;color:rgba(255,255,255,0.4);margin-top:5px;"><span style="color:#4caf50;">✔</span> Disponível &nbsp; <span style="color:#f44336;">✖</span> Ocupado</p>';
-    dispContainer.innerHTML = dispHtml;
+    disponibilidade.innerHTML = dispHtml;
 
+    // Guardar ID para ações
+    document.getElementById('modal-funcionario').dataset.integranteId = id;
     openModal('funcionario');
 };
 
-window.removeAlocacaoFromFuncModal = async function(alocacaoId) {
-    if (!alocacaoId) return;
-    if (!confirm('Remover este funcionário deste serviço?')) return;
-    try {
-        const { error } = await supabase.from('logistica_alocacoes').delete().eq('id', alocacaoId);
-        if (error) throw error;
-        await loadAlocacoes();
-        showToast('Removido do serviço!', 'success');
-        // Reabrir modal atualizado
-        if (currentFuncionarioId) openFuncionarioModal(currentFuncionarioId);
-    } catch (e) {
-        showToast('Erro: ' + e.message, 'error');
-    }
-};
-
 window.removeAllAlocacoesFuncionario = async function() {
-    if (!currentFuncionarioId) return;
-    const integrante = integrantes.find(i => String(i.id) === String(currentFuncionarioId));
-    if (!confirm(`Remover ${integrante ? integrante.nome : 'este funcionário'} de TODOS os serviços?`)) return;
-    
-    const funcAlocs = alocacoes.filter(a => String(a.integrante_id) === String(currentFuncionarioId));
-    for (const aloc of funcAlocs) {
-        await supabase.from('logistica_alocacoes').delete().eq('id', aloc.id);
+    const id = document.getElementById('modal-funcionario').dataset.integranteId;
+    if (!confirm('Remover este funcionário de TODOS os serviços?')) return;
+
+    try {
+        const { error } = await supabase.from('logistica_alocacoes').delete().eq('integrante_id', id);
+        if (error) throw error;
+        showToast('Funcionário removido de todos os serviços!', 'success');
+        closeModal('funcionario');
+        await loadAllData();
+    } catch (error) {
+        showToast('Erro: ' + error.message, 'error');
     }
-    await loadAlocacoes();
-    showToast(`Removido de ${funcAlocs.length} serviço(s)!`, 'success');
-    openFuncionarioModal(currentFuncionarioId);
 };
 
 window.removeAlocacoesFuturasFuncionario = async function() {
-    if (!currentFuncionarioId) return;
-    const integrante = integrantes.find(i => String(i.id) === String(currentFuncionarioId));
-    if (!confirm(`Remover ${integrante ? integrante.nome : 'este funcionário'} de todos os serviços FUTUROS?`)) return;
-    
-    const agora = new Date();
-    const funcAlocs = alocacoes.filter(a => {
-        if (String(a.integrante_id) !== String(currentFuncionarioId)) return false;
-        const servico = servicos.find(s => String(s.id) === String(a.servico_id));
-        if (!servico) return false;
-        return new Date(servico.data_inicio) > agora;
-    });
-    
-    for (const aloc of funcAlocs) {
-        await supabase.from('logistica_alocacoes').delete().eq('id', aloc.id);
-    }
-    await loadAlocacoes();
-    showToast(`Removido de ${funcAlocs.length} serviço(s) futuro(s)!`, 'success');
-    openFuncionarioModal(currentFuncionarioId);
-};
+    const id = document.getElementById('modal-funcionario').dataset.integranteId;
+    if (!confirm('Remover este funcionário de todos os serviços FUTUROS?')) return;
 
-// ===== SINALIZAÇÃO NO GANTT =====
-window.highlightGanttFuncionarios = function(badgeEl) {
-    // Pegar os funcionários que estão naquela célula
-    const cell = badgeEl.closest('.gantt-cell');
-    if (!cell) return;
-    
-    const badges = cell.querySelectorAll('.gantt-badge');
-    const funcNames = [];
-    badges.forEach(b => {
-        const title = b.getAttribute('title');
-        if (title) funcNames.push(title.replace(' (transição)', ''));
-    });
+    const agora = new Date().toISOString();
+    const futuras = alocacoes.filter(a => String(a.integrante_id) === String(id) && new Date(a.data_inicio) > new Date());
 
-    // Destacar nos chips de filtro
-    const chips = document.querySelectorAll('.gantt-func-chip');
-    chips.forEach(chip => {
-        chip.classList.remove('highlighted');
-        const chipName = chip.getAttribute('data-name');
-        if (funcNames.includes(chipName)) {
-            chip.classList.add('highlighted');
+    try {
+        for (const aloc of futuras) {
+            await supabase.from('logistica_alocacoes').delete().eq('id', aloc.id);
         }
-    });
+        showToast(`${futuras.length} alocação(ões) futura(s) removida(s)!`, 'success');
+        closeModal('funcionario');
+        await loadAllData();
+    } catch (error) {
+        showToast('Erro: ' + error.message, 'error');
+    }
 };
+
+// ===== TOGGLE MAPA =====
+window.toggleMap = function() {
+    const mapContainer = document.getElementById('map-container');
+    const mainLayout = document.getElementById('main-layout');
+    const expandBtn = document.getElementById('map-expand-btn');
+    
+    if (mapContainer.classList.contains('collapsed')) {
+        mapContainer.classList.remove('collapsed');
+        mainLayout.classList.remove('map-hidden');
+        expandBtn.classList.remove('visible');
+        setTimeout(() => {
+            if (map) google.maps.event.trigger(map, 'resize');
+        }, 500);
+    } else {
+        mapContainer.classList.add('collapsed');
+        mainLayout.classList.add('map-hidden');
+        expandBtn.classList.add('visible');
+    }
+};
+
+// ===== TOGGLE POI =====
+window.togglePOI = function() {
+    poiHidden = !poiHidden;
+    map.setOptions({ styles: poiHidden ? mapStylesNoPOI : mapStylesBase });
+    const btn = document.querySelector('[onclick="togglePOI()"]');
+    if (btn) {
+        btn.classList.toggle('active', poiHidden);
+        btn.title = poiHidden ? 'Mostrar POIs' : 'Ocultar POIs';
+    }
+};
+
+// ===== TOGGLE FILTROS DE STATUS =====
+window.toggleStatusFilter = function() {
+    updateMapMarkers();
+};
+
+// ===== UTILITÁRIOS =====
+function formatDateBR(date) {
+    return date.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' });
+}
+
+function formatDateShort(date) {
+    return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+}
+
+function formatDateTimeBR(dateStr) {
+    if (!dateStr) return '-';
+    const d = new Date(dateStr);
+    return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) + ' ' + d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+}
+
+function formatDateInput(date) {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+}
+
+function toLocalDatetimeInput(isoStr) {
+    if (!isoStr) return '';
+    const d = new Date(isoStr);
+    const offset = d.getTimezoneOffset();
+    const local = new Date(d.getTime() - offset * 60000);
+    return local.toISOString().slice(0, 16);
+}
+
+function getServicoStatusLabel(status) {
+    const labels = {
+        'pendente': 'Pendente',
+        'em_andamento': 'Em Andamento',
+        'concluido': 'Concluído',
+        'suspenso': 'Suspenso',
+        'cancelado': 'Cancelado'
+    };
+    return labels[status] || status;
+}
+
+function escapeHtml(str) {
+    if (!str) return '';
+    return str.replace(/'/g, "\\'").replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+function showToast(message, type = 'info') {
+    const container = document.getElementById('toast-container') || createToastContainer();
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${type}`;
+    toast.innerHTML = `<i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'times-circle' : type === 'warning' ? 'exclamation-triangle' : 'info-circle'}"></i> ${message}`;
+    container.appendChild(toast);
+    setTimeout(() => toast.classList.add('show'), 10);
+    setTimeout(() => {
+        toast.classList.remove('show');
+        setTimeout(() => toast.remove(), 300);
+    }, 4000);
+}
+
+function createToastContainer() {
+    const container = document.createElement('div');
+    container.id = 'toast-container';
+    container.style.cssText = 'position:fixed;top:20px;right:20px;z-index:99999;display:flex;flex-direction:column;gap:8px;';
+    document.body.appendChild(container);
+    return container;
+}
 
 // ===== INICIALIZAÇÃO =====
 document.addEventListener('DOMContentLoaded', function() {
-    // Definir data de hoje no simulador
-    document.getElementById('simulatedDate').value = formatDateInput(new Date());
-    
-    // Inicializar o mapa (Google Maps já carregado sincronamente)
+    // Se Google Maps já carregou, inicializar
     if (typeof google !== 'undefined' && google.maps) {
         initMapInternal();
-    } else {
-        console.error('Google Maps não carregou. Verifique a chave de API.');
-        showToast('Erro ao carregar Google Maps. Verifique a conexão.', 'error');
     }
+    // Caso contrário, o callback do script do Google Maps chamará window.initMap
 });
