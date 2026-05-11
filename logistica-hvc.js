@@ -1489,9 +1489,18 @@ window.saveCadeia = async function(event) {
         if (sError) throw sError;
 
         showToast('Cadeia de serviços salva com sucesso!', 'success');
-        closeModal('cadeia');
-        resetFormCadeia();
         await loadAllData();
+
+        // Se era criação nova, reabrir em modo edição para permitir alocação de equipe
+        if (!cadeiaId) {
+            closeModal('cadeia');
+            // Reabrir em modo edição
+            setTimeout(() => { window.editCadeia(savedCadeiaId); }, 300);
+            showToast('Cadeia criada! Agora você pode alocar funcionários e equipes.', 'info');
+        } else {
+            closeModal('cadeia');
+            resetFormCadeia();
+        }
     } catch (error) {
         console.error('Erro ao salvar cadeia:', error);
         showToast('Erro ao salvar: ' + error.message, 'error');
