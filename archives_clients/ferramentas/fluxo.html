@@ -666,6 +666,7 @@ function saveAccount() {
   closeAccountModal();
   renderAccountsGrid();
   updateFormaPagamentoSelect();
+  saveToStorage();
 }
 
 function deleteAccount(index) {
@@ -676,6 +677,7 @@ function deleteAccount(index) {
   items.forEach(function(it) { if (it.formaPagamento === removedId) it.formaPagamento = ''; });
   renderAccountsGrid();
   updateFormaPagamentoSelect();
+  saveToStorage();
   renderItemsTable();
 }
 
