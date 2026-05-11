@@ -2849,15 +2849,28 @@ function getResponsavelProducao(servicoId, dateStr) {
     return { tipo: 'integrante', id: null };
 }
 
-// ===== GANTT (ABA ALOCAÇÃO) =====
+// ===== GANTT (ABA ALOCAÇÃO) - 4 MODOS DE VISUALIZAÇÃO =====
+let ganttViewMode = 'obra'; // obra, servico, funcionario, equipe
+
 function populateGanttFilter() {
     const select = document.getElementById('gantt-local-filter');
     if (!select) return;
     select.innerHTML = '<option value="">Todos os Locais</option>';
     locais.forEach(l => {
-        select.innerHTML += `<option value="${l.id}">${l.nome}</option>`;
+        const obraVinculada = l.obra_id ? obras.find(o => String(o.id) === String(l.obra_id)) : null;
+        const label = obraVinculada ? `${l.nome} (${obraVinculada.nome_obra || obraVinculada.numero_obra})` : l.nome;
+        select.innerHTML += `<option value="${l.id}">${label}</option>`;
     });
 }
+
+window.setGanttView = function(mode) {
+    ganttViewMode = mode;
+    // Atualizar botões ativos
+    document.querySelectorAll('.gantt-view-btn').forEach(btn => btn.classList.remove('active'));
+    const activeBtn = document.querySelector(`.gantt-view-btn[data-view="${mode}"]`);
+    if (activeBtn) activeBtn.classList.add('active');
+    renderGantt();
+};
 
 window.renderGantt = function() {
     const container = document.getElementById('gantt-container');
@@ -2866,7 +2879,7 @@ window.renderGantt = function() {
     const localFilter = document.getElementById('gantt-local-filter')?.value;
 
     if (!inicioStr || !fimStr) {
-        container.innerHTML = '<p style="color:rgba(255,255,255,0.4);text-align:center;">Selecione o período para visualizar o Gantt.</p>';
+        container.innerHTML = '<p style="color:rgba(255,255,255,0.4);text-align:center;">Selecione o período para visualizar.</p>';
         return;
     }
 
@@ -2879,7 +2892,129 @@ window.renderGantt = function() {
         return;
     }
 
-    // Filtrar serviços
+    const days = [];
+    for (let i = 0; i < totalDays; i++) {
+        const d = new Date(inicio);
+        d.setDate(inicio.getDate() + i);
+        days.push(d);
+    }
+
+    switch (ganttViewMode) {
+        case 'obra': renderGanttObra(container, days, localFilter, inicio, fim); break;
+        case 'servico': renderGanttServico(container, days, localFilter, inicio, fim); break;
+        case 'funcionario': renderGanttFuncionario(container, days, localFilter, inicio, fim); break;
+        case 'equipe': renderGanttEquipe(container, days, localFilter, inicio, fim); break;
+        default: renderGanttObra(container, days, localFilter, inicio, fim);
+    }
+};
+
+// MODO OBRA: Agrupa por obra/local, mostra serviços e quem está em cada dia
+function renderGanttObra(container, days, localFilter, inicio, fim) {
+    let filteredLocais = locais.filter(l => {
+        if (localFilter && String(l.id) !== String(localFilter)) return false;
+        return true;
+    });
+
+    // Filtrar locais que têm serviços no período
+    filteredLocais = filteredLocais.filter(l => {
+        return servicos.some(s => {
+            if (String(s.local_id) !== String(l.id)) return false;
+            const sInicio = new Date(s.data_inicio);
+            const sFim = new Date(s.data_fim_real || s.data_fim_prevista);
+            return sInicio <= fim && sFim >= inicio && s.status !== 'cancelado';
+        });
+    });
+
+    if (filteredLocais.length === 0) {
+        container.innerHTML = '<p style="color:rgba(255,255,255,0.4);text-align:center;">Nenhuma obra/local com serviços no período.</p>';
+        return;
+    }
+
+    let html = buildTableHeader(days, 'OBRA / SERVIÇO');
+
+    filteredLocais.forEach(local => {
+        const obraVinculada = local.obra_id ? obras.find(o => String(o.id) === String(local.obra_id)) : null;
+        const obraLabel = obraVinculada ? (obraVinculada.nome_obra || obraVinculada.numero_obra) : local.nome;
+
+        // Linha da obra (header)
+        html += `<tr style="background:rgba(255,193,7,0.08);">
+            <td style="position:sticky;left:0;background:rgba(25,25,46,0.98);z-index:1;padding:6px 8px;border-bottom:1px solid rgba(255,193,7,0.2);font-weight:700;color:#ffc107;font-size:0.75rem;">
+                <i class="fas fa-building"></i> ${obraLabel}
+                <br><small style="color:rgba(255,255,255,0.4);font-weight:400;">${local.nome}</small>
+            </td>`;
+
+        // Células da obra: mostrar total de funcionários por dia
+        days.forEach(d => {
+            const dateStr = formatDateInput(d);
+            const localServicos = servicos.filter(s => String(s.local_id) === String(local.id) && s.status !== 'cancelado');
+            let totalPresentes = 0;
+            const nomesPresentes = new Set();
+
+            localServicos.forEach(s => {
+                const sInicio = new Date(s.data_inicio); sInicio.setHours(0,0,0,0);
+                const sFim = new Date(s.data_fim_real || s.data_fim_prevista); sFim.setHours(23,59,59,999);
+                const dayStart = new Date(d); dayStart.setHours(0,0,0,0);
+                if (sInicio <= dayStart && sFim >= dayStart) {
+                    const presentes = getEquipePresente(s.id, dateStr);
+                    presentes.forEach(p => {
+                        nomesPresentes.add(p.nome.split(' ')[0]);
+                        totalPresentes++;
+                    });
+                }
+            });
+
+            const isToday = d.toDateString() === new Date().toDateString();
+            const isWeekend = d.getDay() === 0 || d.getDay() === 6;
+            const tooltip = nomesPresentes.size > 0 ? Array.from(nomesPresentes).join(', ') : '';
+            const cellBg = totalPresentes > 0 ? 'rgba(255,193,7,0.15)' : 'transparent';
+            html += `<td style="text-align:center;padding:2px;border-bottom:1px solid rgba(255,193,7,0.1);background:${cellBg};${isToday ? 'border-left:2px solid rgba(76,175,80,0.5);border-right:2px solid rgba(76,175,80,0.5);' : ''}${isWeekend ? 'background:rgba(100,0,0,0.1);' : ''}" title="${tooltip}">
+                ${totalPresentes > 0 ? `<span style="font-size:0.65rem;font-weight:700;color:#ffc107;">${nomesPresentes.size}</span>` : ''}
+            </td>`;
+        });
+        html += '</tr>';
+
+        // Linhas dos serviços desta obra
+        const localServicos = servicos.filter(s => String(s.local_id) === String(local.id) && s.status !== 'cancelado');
+        localServicos.sort((a, b) => new Date(a.data_inicio) - new Date(b.data_inicio)).forEach(s => {
+            const statusColor = getStatusColor(s.status);
+            html += `<tr>
+                <td style="position:sticky;left:0;background:#1a1a2e;z-index:1;padding:4px 8px 4px 20px;border-bottom:1px solid rgba(255,255,255,0.03);white-space:nowrap;font-size:0.7rem;">
+                    <span style="color:${statusColor};">●</span> ${s.nome}
+                </td>`;
+
+            days.forEach(d => {
+                const dateStr = formatDateInput(d);
+                const dayStart = new Date(d); dayStart.setHours(0,0,0,0);
+                const dayEnd = new Date(d); dayEnd.setHours(23,59,59,999);
+                const sInicio = new Date(s.data_inicio);
+                const sFim = new Date(s.data_fim_real || s.data_fim_prevista);
+
+                let cellBg = 'transparent';
+                let cellContent = '';
+
+                if (sInicio <= dayEnd && sFim >= dayStart) {
+                    const presentes = getEquipePresente(s.id, dateStr);
+                    cellBg = statusColor + '25';
+                    if (presentes.length > 0) {
+                        const nomes = presentes.map(p => p.nome.split(' ')[0]).join(', ');
+                        cellContent = `<span style="font-size:0.5rem;color:${statusColor};cursor:pointer;" title="${nomes}">${presentes.length}</span>`;
+                    }
+                }
+
+                const isToday = d.toDateString() === new Date().toDateString();
+                const isWeekend = d.getDay() === 0 || d.getDay() === 6;
+                html += `<td style="text-align:center;padding:2px;border-bottom:1px solid rgba(255,255,255,0.03);background:${cellBg};${isToday ? 'border-left:2px solid rgba(76,175,80,0.3);border-right:2px solid rgba(76,175,80,0.3);' : ''}${isWeekend && cellBg === 'transparent' ? 'background:rgba(100,0,0,0.05);' : ''}">${cellContent}</td>`;
+            });
+            html += '</tr>';
+        });
+    });
+
+    html += '</tbody></table></div>';
+    container.innerHTML = html;
+}
+
+// MODO SERVIÇO: Lista todos os serviços com quem está em cada dia
+function renderGanttServico(container, days, localFilter, inicio, fim) {
     let ganttServicos = servicos.filter(s => {
         const sInicio = new Date(s.data_inicio);
         const sFim = new Date(s.data_fim_real || s.data_fim_prevista);
@@ -2891,48 +3026,26 @@ window.renderGantt = function() {
     }
 
     if (ganttServicos.length === 0) {
-        container.innerHTML = '<p style="color:rgba(255,255,255,0.4);text-align:center;">Nenhum serviço no período selecionado.</p>';
+        container.innerHTML = '<p style="color:rgba(255,255,255,0.4);text-align:center;">Nenhum serviço no período.</p>';
         return;
     }
 
-    // Gerar dias
-    const days = [];
-    for (let i = 0; i < totalDays; i++) {
-        const d = new Date(inicio);
-        d.setDate(inicio.getDate() + i);
-        days.push(d);
-    }
-
-    let html = `<div style="overflow-x:auto;"><table class="gantt-table" style="width:100%;border-collapse:collapse;font-size:0.7rem;min-width:${totalDays * 30 + 200}px;">
-        <thead><tr>
-            <th style="min-width:180px;position:sticky;left:0;background:#1a1a2e;z-index:2;padding:4px;border-bottom:1px solid rgba(255,255,255,0.2);color:#add8e6;">Serviço</th>
-    `;
-
-    days.forEach(d => {
-        const isWeekend = d.getDay() === 0 || d.getDay() === 6;
-        const isToday = d.toDateString() === new Date().toDateString();
-        html += `<th style="min-width:28px;padding:2px;text-align:center;border-bottom:1px solid rgba(255,255,255,0.2);color:${isToday ? '#4caf50' : isWeekend ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.6)'};font-size:0.6rem;background:${isToday ? 'rgba(76,175,80,0.1)' : 'transparent'};">${d.getDate()}<br>${['D','S','T','Q','Q','S','S'][d.getDay()]}</th>`;
-    });
-    html += '</tr></thead><tbody>';
+    let html = buildTableHeader(days, 'SERVIÇO');
 
     ganttServicos.sort((a, b) => new Date(a.data_inicio) - new Date(b.data_inicio)).forEach(s => {
         const local = locais.find(l => String(l.id) === String(s.local_id));
-        const statusColor = {
-            'pendente': '#ffc107',
-            'em_andamento': '#2196f3',
-            'concluido': '#4caf50',
-            'suspenso': '#f44336'
-        }[s.status] || '#9e9e9e';
+        const statusColor = getStatusColor(s.status);
 
         html += `<tr>
-            <td style="position:sticky;left:0;background:#1a1a2e;z-index:1;padding:4px;border-bottom:1px solid rgba(255,255,255,0.05);white-space:nowrap;">
+            <td style="position:sticky;left:0;background:#1a1a2e;z-index:1;padding:5px 8px;border-bottom:1px solid rgba(255,255,255,0.05);white-space:nowrap;font-size:0.7rem;">
                 <span style="color:${statusColor};">●</span> ${s.nome}
                 <br><small style="color:rgba(255,255,255,0.4);">${local ? local.nome : ''}</small>
             </td>`;
 
         days.forEach(d => {
-            const dayStart = new Date(d); dayStart.setHours(0, 0, 0, 0);
-            const dayEnd = new Date(d); dayEnd.setHours(23, 59, 59, 999);
+            const dateStr = formatDateInput(d);
+            const dayStart = new Date(d); dayStart.setHours(0,0,0,0);
+            const dayEnd = new Date(d); dayEnd.setHours(23,59,59,999);
             const sInicio = new Date(s.data_inicio);
             const sFim = new Date(s.data_fim_real || s.data_fim_prevista);
 
@@ -2940,24 +3053,224 @@ window.renderGantt = function() {
             let cellContent = '';
 
             if (sInicio <= dayEnd && sFim >= dayStart) {
-                cellBg = statusColor + '40'; // 25% opacity
-                // Verificar quem está alocado neste dia
-                const alocsDia = alocacoes.filter(a => String(a.servico_id) === String(s.id));
-                if (alocsDia.length > 0) {
-                    cellContent = `<span style="font-size:0.55rem;color:${statusColor};">${alocsDia.length}</span>`;
+                const presentes = getEquipePresente(s.id, dateStr);
+                cellBg = statusColor + '25';
+                if (presentes.length > 0) {
+                    const nomes = presentes.map(p => p.nome.split(' ')[0]).join('\n');
+                    cellContent = `<span style="font-size:0.5rem;color:white;background:${statusColor}80;border-radius:3px;padding:1px 3px;cursor:pointer;" title="${nomes}">${presentes.length}</span>`;
                 }
             }
 
             const isToday = d.toDateString() === new Date().toDateString();
-            html += `<td style="text-align:center;padding:2px;border-bottom:1px solid rgba(255,255,255,0.05);background:${cellBg};${isToday ? 'border-left:1px solid rgba(76,175,80,0.5);border-right:1px solid rgba(76,175,80,0.5);' : ''}">${cellContent}</td>`;
+            const isWeekend = d.getDay() === 0 || d.getDay() === 6;
+            html += `<td style="text-align:center;padding:2px;border-bottom:1px solid rgba(255,255,255,0.05);background:${cellBg};${isToday ? 'border-left:2px solid rgba(76,175,80,0.5);border-right:2px solid rgba(76,175,80,0.5);' : ''}${isWeekend && cellBg === 'transparent' ? 'background:rgba(100,0,0,0.05);' : ''}">${cellContent}</td>`;
         });
-
         html += '</tr>';
     });
 
     html += '</tbody></table></div>';
     container.innerHTML = html;
-};
+}
+
+// MODO FUNCIONÁRIO: Cada linha é um funcionário, mostra em qual serviço está cada dia
+function renderGanttFuncionario(container, days, localFilter, inicio, fim) {
+    // Pegar integrantes que têm alocações no período
+    let relevantIntegrantes = integrantes.filter(integ => {
+        return alocacoes.some(a => {
+            if (String(a.integrante_id) !== String(integ.id)) return false;
+            const servico = servicos.find(s => s.id === a.servico_id);
+            if (!servico || servico.status === 'cancelado') return false;
+            if (localFilter && String(servico.local_id) !== String(localFilter)) return false;
+            const sInicio = new Date(servico.data_inicio);
+            const sFim = new Date(servico.data_fim_real || servico.data_fim_prevista);
+            return sInicio <= fim && sFim >= inicio;
+        });
+    });
+
+    if (relevantIntegrantes.length === 0) {
+        container.innerHTML = '<p style="color:rgba(255,255,255,0.4);text-align:center;">Nenhum funcionário alocado no período/local selecionado.</p>';
+        return;
+    }
+
+    let html = buildTableHeader(days, 'FUNCIONÁRIO');
+
+    relevantIntegrantes.sort((a, b) => a.nome.localeCompare(b.nome)).forEach(integ => {
+        html += `<tr>
+            <td style="position:sticky;left:0;background:#1a1a2e;z-index:1;padding:5px 8px;border-bottom:1px solid rgba(255,255,255,0.05);white-space:nowrap;font-size:0.7rem;cursor:pointer;" onclick="openFuncionarioModal('${integ.id}')">
+                <i class="fas fa-user" style="color:#90caf9;font-size:0.6rem;"></i> ${integ.nome.split(' ').slice(0,2).join(' ')}
+            </td>`;
+
+        days.forEach(d => {
+            const dateStr = formatDateInput(d);
+            const dayStart = new Date(d); dayStart.setHours(0,0,0,0);
+            const dayEnd = new Date(d); dayEnd.setHours(23,59,59,999);
+
+            // Encontrar serviços deste integrante neste dia
+            const integAlocs = alocacoes.filter(a => String(a.integrante_id) === String(integ.id));
+            let servicosNoDia = [];
+
+            integAlocs.forEach(a => {
+                const servico = servicos.find(s => s.id === a.servico_id);
+                if (!servico || servico.status === 'cancelado') return;
+                if (localFilter && String(servico.local_id) !== String(localFilter)) return;
+                const sInicio = new Date(servico.data_inicio);
+                const sFim = new Date(servico.data_fim_real || servico.data_fim_prevista);
+                if (sInicio <= dayEnd && sFim >= dayStart) {
+                    // Verificar presença
+                    const ausente = presencas.find(p => 
+                        String(p.alocacao_id) === String(a.id) && 
+                        String(p.integrante_id) === String(integ.id) && 
+                        p.data === dateStr && !p.presente
+                    );
+                    if (!ausente) {
+                        servicosNoDia.push(servico);
+                    }
+                }
+            });
+
+            let cellBg = 'transparent';
+            let cellContent = '';
+            const isToday = d.toDateString() === new Date().toDateString();
+            const isWeekend = d.getDay() === 0 || d.getDay() === 6;
+
+            if (servicosNoDia.length > 0) {
+                const statusColor = getStatusColor(servicosNoDia[0].status);
+                cellBg = statusColor + '30';
+                const nomes = servicosNoDia.map(s => s.nome).join('\n');
+                const local = locais.find(l => String(l.id) === String(servicosNoDia[0].local_id));
+                const localNome = local ? local.nome : '';
+                cellContent = `<span style="font-size:0.5rem;color:white;background:${statusColor}90;border-radius:3px;padding:1px 3px;cursor:pointer;" title="${nomes}\n${localNome}">${servicosNoDia.length > 1 ? servicosNoDia.length : servicosNoDia[0].nome.substring(0,4)}</span>`;
+            }
+
+            html += `<td style="text-align:center;padding:2px;border-bottom:1px solid rgba(255,255,255,0.05);background:${cellBg};${isToday ? 'border-left:2px solid rgba(76,175,80,0.5);border-right:2px solid rgba(76,175,80,0.5);' : ''}${isWeekend && cellBg === 'transparent' ? 'background:rgba(100,0,0,0.05);' : ''}">${cellContent}</td>`;
+        });
+        html += '</tr>';
+    });
+
+    html += '</tbody></table></div>';
+    container.innerHTML = html;
+}
+
+// MODO EQUIPE: Cada linha é uma equipe, mostra onde a equipe está cada dia
+function renderGanttEquipe(container, days, localFilter, inicio, fim) {
+    if (equipes.length === 0) {
+        container.innerHTML = '<p style="color:rgba(255,255,255,0.4);text-align:center;">Nenhuma equipe cadastrada.</p>';
+        return;
+    }
+
+    // Filtrar equipes que têm membros alocados no período
+    let relevantEquipes = equipes.filter(eq => {
+        const membrosIds = equipesIntegrantes.filter(ei => String(ei.equipe_id) === String(eq.id)).map(ei => ei.integrante_id);
+        return alocacoes.some(a => {
+            if (!membrosIds.includes(a.integrante_id)) return false;
+            const servico = servicos.find(s => s.id === a.servico_id);
+            if (!servico || servico.status === 'cancelado') return false;
+            if (localFilter && String(servico.local_id) !== String(localFilter)) return false;
+            const sInicio = new Date(servico.data_inicio);
+            const sFim = new Date(servico.data_fim_real || servico.data_fim_prevista);
+            return sInicio <= fim && sFim >= inicio;
+        });
+    });
+
+    if (relevantEquipes.length === 0) {
+        container.innerHTML = '<p style="color:rgba(255,255,255,0.4);text-align:center;">Nenhuma equipe com alocações no período/local.</p>';
+        return;
+    }
+
+    let html = buildTableHeader(days, 'EQUIPE');
+
+    relevantEquipes.forEach(eq => {
+        const membrosIds = equipesIntegrantes.filter(ei => String(ei.equipe_id) === String(eq.id)).map(ei => ei.integrante_id);
+        const membrosNomes = membrosIds.map(id => {
+            const i = integrantes.find(ig => ig.id === id);
+            return i ? i.nome.split(' ')[0] : '?';
+        });
+
+        html += `<tr>
+            <td style="position:sticky;left:0;background:#1a1a2e;z-index:1;padding:5px 8px;border-bottom:1px solid rgba(255,255,255,0.05);white-space:nowrap;font-size:0.7rem;">
+                <i class="fas fa-users" style="color:#ffc107;font-size:0.6rem;"></i> Equipe ${eq.numero}
+                <br><small style="color:rgba(255,255,255,0.4);">${membrosNomes.slice(0,3).join(', ')}${membrosNomes.length > 3 ? '...' : ''}</small>
+            </td>`;
+
+        days.forEach(d => {
+            const dateStr = formatDateInput(d);
+            const dayStart = new Date(d); dayStart.setHours(0,0,0,0);
+            const dayEnd = new Date(d); dayEnd.setHours(23,59,59,999);
+
+            // Encontrar onde os membros da equipe estão neste dia
+            let servicosNoDia = new Set();
+            let locaisNoDia = new Set();
+            let presentesCount = 0;
+
+            membrosIds.forEach(memId => {
+                const memAlocs = alocacoes.filter(a => String(a.integrante_id) === String(memId));
+                memAlocs.forEach(a => {
+                    const servico = servicos.find(s => s.id === a.servico_id);
+                    if (!servico || servico.status === 'cancelado') return;
+                    if (localFilter && String(servico.local_id) !== String(localFilter)) return;
+                    const sInicio = new Date(servico.data_inicio);
+                    const sFim = new Date(servico.data_fim_real || servico.data_fim_prevista);
+                    if (sInicio <= dayEnd && sFim >= dayStart) {
+                        const ausente = presencas.find(p => 
+                            String(p.alocacao_id) === String(a.id) && 
+                            String(p.integrante_id) === String(memId) && 
+                            p.data === dateStr && !p.presente
+                        );
+                        if (!ausente) {
+                            servicosNoDia.add(servico.nome);
+                            const local = locais.find(l => String(l.id) === String(servico.local_id));
+                            if (local) locaisNoDia.add(local.nome);
+                            presentesCount++;
+                        }
+                    }
+                });
+            });
+
+            let cellBg = 'transparent';
+            let cellContent = '';
+            const isToday = d.toDateString() === new Date().toDateString();
+            const isWeekend = d.getDay() === 0 || d.getDay() === 6;
+
+            if (presentesCount > 0) {
+                cellBg = 'rgba(76,175,80,0.2)';
+                const tooltip = `${presentesCount}/${membrosIds.length} presentes\nLocal: ${Array.from(locaisNoDia).join(', ')}\nServiços: ${Array.from(servicosNoDia).join(', ')}`;
+                cellContent = `<span style="font-size:0.55rem;font-weight:700;color:#4caf50;cursor:pointer;" title="${tooltip}">${presentesCount}/${membrosIds.length}</span>`;
+            }
+
+            html += `<td style="text-align:center;padding:2px;border-bottom:1px solid rgba(255,255,255,0.05);background:${cellBg};${isToday ? 'border-left:2px solid rgba(76,175,80,0.5);border-right:2px solid rgba(76,175,80,0.5);' : ''}${isWeekend && cellBg === 'transparent' ? 'background:rgba(100,0,0,0.05);' : ''}">${cellContent}</td>`;
+        });
+        html += '</tr>';
+    });
+
+    html += '</tbody></table></div>';
+    container.innerHTML = html;
+}
+
+// Helper: Gerar cabeçalho da tabela Gantt
+function buildTableHeader(days, label) {
+    const totalDays = days.length;
+    let html = `<div style="overflow-x:auto;"><table class="gantt-table" style="width:100%;border-collapse:collapse;font-size:0.7rem;min-width:${totalDays * 35 + 200}px;">
+        <thead><tr>
+            <th style="min-width:180px;position:sticky;left:0;background:#1a1a2e;z-index:2;padding:6px;border-bottom:2px solid rgba(255,255,255,0.2);color:#add8e6;font-size:0.7rem;">${label}</th>
+    `;
+
+    days.forEach(d => {
+        const isWeekend = d.getDay() === 0 || d.getDay() === 6;
+        const isToday = d.toDateString() === new Date().toDateString();
+        html += `<th style="min-width:32px;padding:4px 2px;text-align:center;border-bottom:2px solid rgba(255,255,255,0.2);color:${isToday ? '#4caf50' : isWeekend ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.6)'};font-size:0.6rem;background:${isToday ? 'rgba(76,175,80,0.1)' : isWeekend ? 'rgba(100,0,0,0.1)' : 'transparent'};">${d.getDate()}<br>${['D','S','T','Q','Q','S','S'][d.getDay()]}</th>`;
+    });
+    html += '</tr></thead><tbody>';
+    return html;
+}
+
+function getStatusColor(status) {
+    return {
+        'pendente': '#ffc107',
+        'em_andamento': '#2196f3',
+        'concluido': '#4caf50',
+        'suspenso': '#f44336'
+    }[status] || '#9e9e9e';
+}
 
 // ===== MODAL FUNCIONÁRIO =====
 window.openFuncionarioModal = function(id) {
