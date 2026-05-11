@@ -2976,7 +2976,7 @@ function renderGanttObra(container, days, localFilter, inicio, fim) {
         // Linhas dos serviços desta obra
         const localServicos = servicos.filter(s => String(s.local_id) === String(local.id) && s.status !== 'cancelado');
         localServicos.sort((a, b) => new Date(a.data_inicio) - new Date(b.data_inicio)).forEach(s => {
-            const statusColor = getStatusColor(s.status);
+            const statusColor = getServicoStatusColor(s.status);
             html += `<tr>
                 <td style="position:sticky;left:0;background:#1a1a2e;z-index:1;padding:4px 8px 4px 20px;border-bottom:1px solid rgba(255,255,255,0.03);white-space:nowrap;font-size:0.7rem;">
                     <span style="color:${statusColor};">●</span> ${s.nome}
@@ -3034,7 +3034,7 @@ function renderGanttServico(container, days, localFilter, inicio, fim) {
 
     ganttServicos.sort((a, b) => new Date(a.data_inicio) - new Date(b.data_inicio)).forEach(s => {
         const local = locais.find(l => String(l.id) === String(s.local_id));
-        const statusColor = getStatusColor(s.status);
+        const statusColor = getServicoStatusColor(s.status);
 
         html += `<tr>
             <td style="position:sticky;left:0;background:#1a1a2e;z-index:1;padding:5px 8px;border-bottom:1px solid rgba(255,255,255,0.05);white-space:nowrap;font-size:0.7rem;">
@@ -3134,7 +3134,7 @@ function renderGanttFuncionario(container, days, localFilter, inicio, fim) {
             const isWeekend = d.getDay() === 0 || d.getDay() === 6;
 
             if (servicosNoDia.length > 0) {
-                const statusColor = getStatusColor(servicosNoDia[0].status);
+                const statusColor = getServicoStatusColor(servicosNoDia[0].status);
                 cellBg = statusColor + '30';
                 const nomes = servicosNoDia.map(s => s.nome).join('\n');
                 const local = locais.find(l => String(l.id) === String(servicosNoDia[0].local_id));
@@ -3263,7 +3263,7 @@ function buildTableHeader(days, label) {
     return html;
 }
 
-function getStatusColor(status) {
+function getServicoStatusColor(status) {
     return {
         'pendente': '#ffc107',
         'em_andamento': '#2196f3',
