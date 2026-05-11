@@ -195,7 +195,6 @@ async function loadEquipes() {
     const { data, error } = await supabase
         .from('equipes_hvc')
         .select('*')
-        .eq('ativa', true)
         .order('numero');
     if (error) throw error;
     equipes = data || [];
@@ -204,10 +203,9 @@ async function loadEquipes() {
 // NOVO: Carregar relação equipe-integrantes
 async function loadEquipesIntegrantes() {
     const { data, error } = await supabase
-        .from('equipes_integrantes')
-        .select('*')
-        .eq('ativo', true);
-    if (error) throw error;
+        .from('equipe_integrantes')
+        .select('*');
+    if (error) { console.warn('Tabela equipe_integrantes:', error.message); equipesIntegrantes = []; return; }
     equipesIntegrantes = data || [];
 }
 
@@ -1014,6 +1012,9 @@ window.openNewLocal = function() {
 window.openNewCadeia = function() {
     resetFormCadeia();
     populateCadeiaLocalSelect();
+    populateCadeiaIntegranteSelect();
+    populateCadeiaEquipeSelect();
+    renderCadeiaEquipeGlobal();
     openModal('cadeia');
 };
 
@@ -1841,7 +1842,7 @@ window.addEquipeInteira = async function() {
     if (!servico) return;
 
     // Buscar integrantes da equipe
-    const membros = equipesIntegrantes.filter(ei => String(ei.equipe_id) === String(equipeId) && ei.ativo);
+    const membros = equipesIntegrantes.filter(ei => String(ei.equipe_id) === String(equipeId));
     if (membros.length === 0) {
         showToast('Esta equipe não tem integrantes ativos.', 'warning');
         return;
@@ -2128,8 +2129,9 @@ function populateCadeiaEquipeSelect() {
     if (!select) return;
     select.innerHTML = '<option value="">Selecionar equipe...</option>';
     equipes.forEach(e => {
-        const membros = equipesIntegrantes.filter(ei => String(ei.equipe_id) === String(e.id) && ei.ativo);
-        select.innerHTML += `<option value="${e.id}">Equipe ${e.numero} - ${e.nome || ''} (${membros.length} membros)</option>`;
+        const membros = equipesIntegrantes.filter(ei => String(ei.equipe_id) === String(e.id));
+        const label = `Equipe ${e.numero || '?'}${e.observacoes ? ' - ' + e.observacoes : ''} (${membros.length} membros)`;
+        select.innerHTML += `<option value="${e.id}">${label}</option>`;
     });
 }
 
@@ -2228,7 +2230,7 @@ window.addEquipeGlobalCadeia = async function() {
         return;
     }
 
-    const membros = equipesIntegrantes.filter(ei => String(ei.equipe_id) === String(equipeId) && ei.ativo);
+    const membros = equipesIntegrantes.filter(ei => String(ei.equipe_id) === String(equipeId));
     if (membros.length === 0) {
         showToast('Esta equipe não tem integrantes ativos.', 'warning');
         return;
