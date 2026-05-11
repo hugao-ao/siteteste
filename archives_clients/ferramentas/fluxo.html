@@ -249,10 +249,27 @@
     </div>
   </div>
 
-  <!-- Seção 3: Itens -->
+  <!-- Seção 2.5: Contas e Cartões -->
   <div class="card">
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
-      <h2 style="margin:0;">3. Itens do Fluxo</h2>
+      <h2 style="margin:0;">3. Contas e Cartões</h2>
+      <div style="display:flex; gap:0.5rem;">
+        <button class="btn btn-outline btn-sm" onclick="openAccountModal('conta')">+ Conta</button>
+        <button class="btn btn-primary btn-sm" onclick="openAccountModal('cartao')">+ Cartão de Crédito</button>
+      </div>
+    </div>
+    <div id="accounts-list">
+      <div class="empty" id="accounts-empty" style="padding:1.5rem; text-align:center; color:var(--muted); font-size:0.85rem;">
+        Nenhuma conta ou cartão cadastrado. Adicione para vincular despesas à forma de pagamento.
+      </div>
+      <div id="accounts-grid" style="display:none; display:grid; grid-template-columns:repeat(auto-fill, minmax(280px, 1fr)); gap:1rem;"></div>
+    </div>
+  </div>
+
+  <!-- Seção 4: Itens -->
+  <div class="card">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+      <h2 style="margin:0;">4. Itens do Fluxo</h2>
       <button class="btn btn-primary" onclick="openModal()">+ Adicionar Item</button>
     </div>
     <div id="items-table-wrap">
@@ -290,9 +307,9 @@
     <button class="btn btn-primary" style="padding:0.75rem 2.5rem; font-size:1rem;" onclick="calcular()">Calcular Projeção</button>
   </div>
 
-  <!-- Seção 4: Resultado -->
+  <!-- Seção 5: Resultado -->
   <div class="card" id="result-section" style="display:none;">
-    <h2>4. Resultado da Projeção</h2>
+    <h2>5. Resultado da Projeção</h2>
     <div class="summary-bar" id="summary-bar"></div>
 
     <!-- Orçamento Mensal Equivalente -->
@@ -413,6 +430,15 @@
               <button class="radio-btn conforto-5" data-val="5" onclick="setRadio('conforto','5',this)">Muito acima do básico</button>
             </div>
           </div>
+
+          <!-- Forma de Pagamento -->
+          <div style="margin-top:0.75rem;">
+            <div class="modal-section-title" style="margin-bottom:0.5rem;">Forma de Pagamento</div>
+            <select id="item-forma-pagamento" style="background:var(--card2); border:1px solid var(--border); border-radius:6px; color:var(--fg); padding:0.5rem 0.75rem; font-size:0.9rem; width:100%; outline:none;">
+              <option value="">Direto (sem conta/cartão)</option>
+            </select>
+            <p style="font-size:0.72rem; color:var(--muted); margin-top:0.3rem;">Se pago com cartão, a despesa entrará na fatura correspondente.</p>
+          </div>
         </div>
       </div>
     </div>
@@ -468,11 +494,62 @@
   </div>
 </div>
 
+<!-- Modal de Conta/Cartão -->
+<div class="modal-overlay" id="account-modal">
+  <div class="modal" style="max-width:460px;">
+    <div class="modal-header">
+      <h2 id="account-modal-title">Nova Conta</h2>
+      <button class="btn btn-ghost btn-icon" onclick="closeAccountModal()">✕</button>
+    </div>
+    <div class="modal-section">
+      <div class="row" style="margin-bottom:0.75rem;">
+        <div class="field">
+          <label>Nome</label>
+          <input type="text" id="acc-nome" placeholder="Ex: Nubank, Itaú...">
+        </div>
+      </div>
+      <div id="acc-cartao-fields" style="display:none;">
+        <div class="row" style="margin-bottom:0.75rem;">
+          <div class="field" style="max-width:180px;">
+            <label>Dia de fechamento</label>
+            <input type="number" id="acc-fechamento" min="1" max="31" value="25" placeholder="1-31">
+            <p style="font-size:0.7rem; color:var(--muted); margin-top:0.2rem;">Dia que a fatura "vira"</p>
+          </div>
+          <div class="field" style="max-width:180px;">
+            <label>Dia de vencimento</label>
+            <input type="number" id="acc-vencimento" min="1" max="31" value="5" placeholder="1-31">
+            <p style="font-size:0.7rem; color:var(--muted); margin-top:0.2rem;">Dia de pagar a fatura</p>
+          </div>
+        </div>
+        <div class="field" style="margin-bottom:0.75rem;">
+          <label>Bandeira (opcional)</label>
+          <select id="acc-bandeira">
+            <option value="">Não informar</option>
+            <option value="visa">Visa</option>
+            <option value="mastercard">Mastercard</option>
+            <option value="elo">Elo</option>
+            <option value="amex">American Express</option>
+            <option value="hipercard">Hipercard</option>
+            <option value="outra">Outra</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div style="display:flex; justify-content:flex-end; gap:0.75rem; margin-top:1rem;">
+      <button class="btn btn-outline" onclick="closeAccountModal()">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveAccount()">Salvar</button>
+    </div>
+  </div>
+</div>
+
 <script>
 // ============================================================
 // STATE
 // ============================================================
 var items = [];
+var accounts = []; // {id, nome, tipo:'conta'|'cartao', fechamento, vencimento, bandeira}
+var editingAccountIndex = -1;
+var editingAccountType = 'conta';
 var editingIndex = -1;
 var periodMode = 'relative';
 var chartInstance = null;
@@ -534,6 +611,130 @@ function updateCustomPeriod() {
 
 document.getElementById('period-start').addEventListener('change', updateCustomPeriod);
 document.getElementById('period-end').addEventListener('change', updateCustomPeriod);
+
+// ============================================================
+// CONTAS E CARTÕES
+// ============================================================
+function generateId() { return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+
+function openAccountModal(tipo, index) {
+  editingAccountType = tipo;
+  editingAccountIndex = (index !== undefined) ? index : -1;
+  document.getElementById('account-modal-title').textContent = editingAccountIndex >= 0
+    ? (tipo === 'cartao' ? 'Editar Cartão' : 'Editar Conta')
+    : (tipo === 'cartao' ? 'Novo Cartão de Crédito' : 'Nova Conta');
+  document.getElementById('acc-nome').value = '';
+  document.getElementById('acc-fechamento').value = '25';
+  document.getElementById('acc-vencimento').value = '5';
+  document.getElementById('acc-bandeira').value = '';
+  document.getElementById('acc-cartao-fields').style.display = tipo === 'cartao' ? 'block' : 'none';
+  if (editingAccountIndex >= 0) {
+    var acc = accounts[editingAccountIndex];
+    document.getElementById('acc-nome').value = acc.nome;
+    if (tipo === 'cartao') {
+      document.getElementById('acc-fechamento').value = acc.fechamento || 25;
+      document.getElementById('acc-vencimento').value = acc.vencimento || 5;
+      document.getElementById('acc-bandeira').value = acc.bandeira || '';
+    }
+  }
+  document.getElementById('account-modal').classList.add('open');
+}
+
+function closeAccountModal() {
+  document.getElementById('account-modal').classList.remove('open');
+}
+
+function saveAccount() {
+  var nome = document.getElementById('acc-nome').value.trim();
+  if (!nome) { alert('Informe o nome.'); return; }
+  var acc = {
+    id: editingAccountIndex >= 0 ? accounts[editingAccountIndex].id : generateId(),
+    nome: nome,
+    tipo: editingAccountType
+  };
+  if (editingAccountType === 'cartao') {
+    acc.fechamento = Math.min(31, Math.max(1, parseInt(document.getElementById('acc-fechamento').value) || 25));
+    acc.vencimento = Math.min(31, Math.max(1, parseInt(document.getElementById('acc-vencimento').value) || 5));
+    acc.bandeira = document.getElementById('acc-bandeira').value;
+  }
+  if (editingAccountIndex >= 0) {
+    accounts[editingAccountIndex] = acc;
+  } else {
+    accounts.push(acc);
+  }
+  closeAccountModal();
+  renderAccountsGrid();
+  updateFormaPagamentoSelect();
+}
+
+function deleteAccount(index) {
+  if (!confirm('Excluir "' + accounts[index].nome + '"? Itens vinculados ficarão sem forma de pagamento.')) return;
+  var removedId = accounts[index].id;
+  accounts.splice(index, 1);
+  // Limpa referências nos itens
+  items.forEach(function(it) { if (it.formaPagamento === removedId) it.formaPagamento = ''; });
+  renderAccountsGrid();
+  updateFormaPagamentoSelect();
+  renderItemsTable();
+}
+
+function renderAccountsGrid() {
+  var grid = document.getElementById('accounts-grid');
+  var empty = document.getElementById('accounts-empty');
+  if (accounts.length === 0) {
+    empty.style.display = 'block';
+    grid.style.display = 'none';
+    return;
+  }
+  empty.style.display = 'none';
+  grid.style.display = 'grid';
+  var html = '';
+  accounts.forEach(function(acc, idx) {
+    var icon = acc.tipo === 'cartao' ? '💳' : '🏦';
+    var details = '';
+    if (acc.tipo === 'cartao') {
+      details = '<div style="font-size:0.75rem; color:var(--muted); margin-top:0.4rem;">' +
+        'Fecha dia <strong style="color:var(--primary)">' + acc.fechamento + '</strong> | ' +
+        'Vence dia <strong style="color:var(--primary)">' + acc.vencimento + '</strong>' +
+        (acc.bandeira ? ' | ' + acc.bandeira.charAt(0).toUpperCase() + acc.bandeira.slice(1) : '') +
+        '</div>';
+    }
+    html += '<div style="background:var(--card2); border:1px solid var(--border); border-radius:8px; padding:0.8rem 1rem; display:flex; align-items:center; gap:0.8rem;">' +
+      '<span style="font-size:1.4rem;">' + icon + '</span>' +
+      '<div style="flex:1;">' +
+        '<div style="font-weight:600; color:var(--fg); font-size:0.9rem;">' + acc.nome + '</div>' +
+        '<span class="badge ' + (acc.tipo==='cartao'?'badge-purple':'badge-blue') + '">' + (acc.tipo==='cartao'?'Cartão':'Conta') + '</span>' +
+        details +
+      '</div>' +
+      '<div style="display:flex; gap:0.3rem;">' +
+        '<button class="btn btn-ghost btn-icon btn-sm" onclick="openAccountModal(\'' + acc.tipo + '\',' + idx + ')" title="Editar">✏️</button>' +
+        '<button class="btn btn-ghost btn-icon btn-sm" onclick="deleteAccount(' + idx + ')" title="Excluir" style="color:var(--red)">🗑</button>' +
+      '</div>' +
+    '</div>';
+  });
+  grid.innerHTML = html;
+}
+
+function updateFormaPagamentoSelect() {
+  var sel = document.getElementById('item-forma-pagamento');
+  if (!sel) return;
+  var curVal = sel.value;
+  var html = '<option value="">Direto (sem conta/cartão)</option>';
+  var contas = accounts.filter(function(a) { return a.tipo === 'conta'; });
+  var cartoes = accounts.filter(function(a) { return a.tipo === 'cartao'; });
+  if (contas.length) {
+    html += '<optgroup label="Contas">';
+    contas.forEach(function(a) { html += '<option value="' + a.id + '">🏦 ' + a.nome + '</option>'; });
+    html += '</optgroup>';
+  }
+  if (cartoes.length) {
+    html += '<optgroup label="Cartões de Crédito">';
+    cartoes.forEach(function(a) { html += '<option value="' + a.id + '">💳 ' + a.nome + ' (fecha ' + a.fechamento + ', vence ' + a.vencimento + ')</option>'; });
+    html += '</optgroup>';
+  }
+  sel.innerHTML = html;
+  sel.value = curVal; // restaura seleção se ainda existir
+}
 
 // ============================================================
 // CURRENCY
@@ -602,8 +803,12 @@ function openModal(index) {
     if (it.disposto) setRadioByVal('disposto', it.disposto);
     if (it.importancia) setRadioByVal('importancia', it.importancia);
     if (it.conforto) setRadioByVal('conforto', it.conforto);
+    updateFormaPagamentoSelect();
+    if (it.formaPagamento) document.getElementById('item-forma-pagamento').value = it.formaPagamento;
     updateRecFields();
     updateRecFimFields();
+  } else {
+    updateFormaPagamentoSelect();
   }
 
   document.getElementById('item-modal').classList.add('open');
@@ -665,6 +870,11 @@ function saveItem() {
   if (radioState.tipo === 'saida' && !radioState.subtipo) { alert('Selecione o subtipo da saída.'); return; }
   if (radioState.subtipo === 'despesa' && !radioState.categoria) { alert('Selecione a categoria da despesa.'); return; }
 
+  var formaPag = '';
+  if (radioState.subtipo === 'despesa') {
+    formaPag = document.getElementById('item-forma-pagamento').value || '';
+  }
+
   var item = {
     nome: nome, valor: valor,
     tipo: radioState.tipo,
@@ -674,6 +884,7 @@ function saveItem() {
     disposto: radioState.disposto,
     importancia: radioState.importancia,
     conforto: radioState.conforto,
+    formaPagamento: formaPag,
     recTipo: document.getElementById('rec-tipo').value,
     recQty: parseInt(document.getElementById('rec-qty').value)||1,
     recInicio: document.getElementById('rec-inicio').value,
