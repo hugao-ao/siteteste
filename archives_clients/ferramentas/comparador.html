@@ -986,6 +986,73 @@
   .period-parecer-box .parecer-title {
     color: var(--gold); font-weight: 700; margin-bottom: 8px;
   }
+
+  /* ── Memória de Cálculo Expandível ── */
+  .calc-memory {
+    margin-top: 16px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+  .calc-memory-toggle {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 14px; cursor: pointer;
+    background: var(--bg3); border: none; width: 100%;
+    color: var(--muted-foreground); font-size: .82rem; font-weight: 600;
+    transition: background .15s;
+  }
+  .calc-memory-toggle:hover { background: rgba(212,175,55,.08); color: var(--gold); }
+  .calc-memory-toggle .cm-arrow { transition: transform .2s; font-size: .7rem; }
+  .calc-memory-toggle.open .cm-arrow { transform: rotate(180deg); }
+  .calc-memory-body {
+    display: none; padding: 14px;
+    background: rgba(0,0,0,.15); font-size: .8rem; line-height: 1.6;
+  }
+  .calc-memory-body.open { display: block; }
+  .cm-premissas {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 8px; margin-bottom: 14px;
+  }
+  .cm-premissa-item {
+    background: var(--bg3); border: 1px solid var(--border);
+    border-radius: 6px; padding: 8px 10px;
+  }
+  .cm-premissa-item .cm-label { font-size: .7rem; color: var(--muted-foreground); display: block; }
+  .cm-premissa-item .cm-val { font-size: .85rem; color: var(--foreground); font-weight: 600; }
+  .cm-subtitle {
+    font-size: .82rem; color: var(--gold); font-weight: 600;
+    margin: 12px 0 6px; padding-bottom: 4px;
+    border-bottom: 1px solid var(--border);
+  }
+  .cm-table {
+    width: 100%; border-collapse: collapse; font-size: .75rem; margin-bottom: 12px;
+  }
+  .cm-table th {
+    background: var(--bg3); color: var(--gold); font-weight: 600;
+    padding: 5px 8px; text-align: left; border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
+  .cm-table td {
+    padding: 4px 8px; border-bottom: 1px solid rgba(255,255,255,.04);
+    color: var(--foreground);
+  }
+  .cm-table tr:nth-child(even) td { background: rgba(0,0,0,.1); }
+  .cm-formula {
+    background: var(--bg3); border: 1px solid var(--border);
+    border-radius: 6px; padding: 10px 12px; margin: 8px 0;
+    font-family: 'Courier New', monospace; font-size: .75rem;
+    color: var(--foreground); line-height: 1.7;
+  }
+  .cm-formula b { color: var(--gold); }
+  .cm-result-box {
+    background: rgba(212,175,55,.06); border: 1px solid var(--gold-dim);
+    border-radius: 6px; padding: 10px 12px; margin-top: 10px;
+  }
+  .cm-result-box .cm-res-row {
+    display: flex; justify-content: space-between; padding: 3px 0;
+  }
+  .cm-result-box .cm-res-label { color: var(--muted-foreground); }
+  .cm-result-box .cm-res-val { font-weight: 600; color: var(--foreground); }
 </style>
 </head>
 <body>
@@ -2755,6 +2822,7 @@ function renderResult(comp) {
             </div>
             <div class="chart-wrap" style="margin-top:12px"><canvas id="${investChartSaldoId}"></canvas></div>
             <div class="chart-wrap" style="margin-top:12px"><canvas id="${investChartDiffId}"></canvas></div>
+            ${_buildCalcMemory(pBest, pCheapest, autoResult, comp.periodConfig || {}, 'cm-auto-'+comp.id)}
           </div>`;
       }
     }
@@ -3129,6 +3197,7 @@ function _renderSavedScenarios(comp) {
           }
           <br><small style="color:var(--muted-foreground)">Cálculo baseado em taxa de rendimento de <b>${(annualRate*100).toFixed(2)}% a.a.</b></small>
         </div>
+        ${_buildCalcMemory(refProd, altProd, result, pc, 'cm-saved-'+comp.id+'-'+idx)}
       </div>`;
   });
   container.innerHTML = html;
@@ -3202,6 +3271,147 @@ function _calcInvestScenario(refProduct, altProduct, numPay, periodRate) {
     investBalance, totalDiffPaid, totalInterest,
     best: refProduct, cheapest: altProduct
   };
+}
+
+// ═══════════════════════════════════════════════════════════
+// MEMÓRIA DE CÁLCULO DETALHADA
+// ═══════════════════════════════════════════════════════════
+function _buildCalcMemory(refProd, altProd, result, pc, toggleId) {
+  const annualRate = (pc.interestRate || 0) / 100;
+  const totalDays = pc.periodQty ? unitToDaysStatic(pc.periodQty, pc.periodUnit) : 365;
+  const freqDays = pc.payFreqQty ? unitToDaysStatic(pc.payFreqQty, pc.payFreqUnit) : 30;
+  const numPay = Math.max(1, Math.floor(totalDays / freqDays));
+  const periodRate = annualRate > 0 ? Math.pow(1 + annualRate, freqDays / 365) - 1 : 0;
+  const freqLabel = `${pc.payFreqQty || 1} ${unitLabel(pc.payFreqUnit || 'mes', pc.payFreqQty || 1)}`;
+  const periodLabel = `${pc.periodQty || 1} ${unitLabel(pc.periodUnit || 'mes', pc.periodQty || 1)}`;
+
+  // Premissas
+  let premissas = `<div class="cm-premissas">
+    <div class="cm-premissa-item"><span class="cm-label">Período total</span><span class="cm-val">${periodLabel} (${totalDays} dias)</span></div>
+    <div class="cm-premissa-item"><span class="cm-label">Frequência de pagamento</span><span class="cm-val">A cada ${freqLabel}</span></div>
+    <div class="cm-premissa-item"><span class="cm-label">Nº de parcelas</span><span class="cm-val">${numPay}</span></div>
+    <div class="cm-premissa-item"><span class="cm-label">Taxa anual de rendimento</span><span class="cm-val">${annualRate > 0 ? (annualRate*100).toFixed(2)+'% a.a.' : '0% (sem rendimento)'}</span></div>
+    <div class="cm-premissa-item"><span class="cm-label">Taxa por período (${freqLabel})</span><span class="cm-val">${periodRate > 0 ? (periodRate*100).toFixed(4)+'%' : '0%'}</span></div>
+    <div class="cm-premissa-item"><span class="cm-label">Conversão da taxa</span><span class="cm-val">${annualRate > 0 ? '(1 + '+((annualRate*100).toFixed(2))+'%)^('+freqDays+'/365) - 1' : '—'}</span></div>
+  </div>`;
+
+  // Função para detalhar produto
+  function detalheProduto(prod, label) {
+    const payments = prod.periodPayments || [];
+    const adjs = prod.adjustments || [];
+    const refund = prod.refund || {};
+    const grossTotal = payments.reduce((s,v) => s+v, 0);
+    const refundAmt = _calcRefundAmount(prod);
+
+    // Reajustes
+    let adjDesc = '<em>Nenhum reajuste configurado</em>';
+    if (adjs.length > 0) {
+      adjDesc = adjs.map(a => {
+        if (a.type === 'recurrent') {
+          return `Recorrente: ${a.mode === 'pct' ? a.value+'%' : fmtBRL(a.value)} a cada ${a.everyN} pgto(s)`;
+        } else {
+          return `Único: ${a.mode === 'pct' ? a.value+'%' : fmtBRL(a.value)} no pgto nº ${a.atPayment}`;
+        }
+      }).join('<br>');
+    }
+
+    // Estorno
+    let refundDesc = '<em>Sem estorno</em>';
+    if (refund.enabled && refund.value > 0) {
+      if (refund.mode === 'pct') {
+        refundDesc = `${refund.value}% do custo bruto = ${fmtBRL(refundAmt)}`;
+      } else {
+        refundDesc = `Valor fixo: ${fmtBRL(refund.value)}${refund.applyAdjustments ? ' (com reajuste acumulado → '+fmtBRL(refundAmt)+')' : ' = '+fmtBRL(refundAmt)}`;
+      }
+    }
+
+    // Tabela de parcelas (resumida se > 12)
+    let parcelasTable = '';
+    if (payments.length > 0) {
+      const showAll = payments.length <= 12;
+      const rows = showAll ? payments : [...payments.slice(0,5), null, ...payments.slice(-3)];
+      parcelasTable = `<table class="cm-table"><thead><tr><th>Parcela</th><th>Valor</th><th>Acumulado</th></tr></thead><tbody>`;
+      let acum = 0;
+      rows.forEach((v, idx) => {
+        if (v === null) {
+          parcelasTable += `<tr><td colspan="3" style="text-align:center;color:var(--muted-foreground)">... ${payments.length - 8} parcelas omitidas ...</td></tr>`;
+          acum = payments.slice(0, payments.length - 3).reduce((s,x) => s+x, 0);
+        } else {
+          const realIdx = v === null ? 0 : (showAll ? idx + 1 : (idx < 5 ? idx + 1 : payments.length - (rows.length - 1 - idx)));
+          acum += v;
+          parcelasTable += `<tr><td>${realIdx}ª</td><td>${fmtBRL(v)}</td><td>${fmtBRL(acum)}</td></tr>`;
+        }
+      });
+      parcelasTable += `</tbody></table>`;
+    }
+
+    return `<div class="cm-subtitle">${escHtml(prod.name)} (${label})</div>
+      <div style="margin-bottom:6px"><span style="color:var(--muted-foreground)">Parcela inicial:</span> <b>${fmtBRL(prod.price)}</b></div>
+      <div style="margin-bottom:6px"><span style="color:var(--muted-foreground)">Reajustes:</span> ${adjDesc}</div>
+      <div style="margin-bottom:6px"><span style="color:var(--muted-foreground)">Estorno:</span> ${refundDesc}</div>
+      <div style="margin-bottom:6px"><span style="color:var(--muted-foreground)">Custo bruto total:</span> <b>${fmtBRL(grossTotal)}</b> (${numPay} parcelas)</div>
+      ${parcelasTable}`;
+  }
+
+  // Detalhamento do investimento da diferença
+  const refPayments = refProd.periodPayments || [];
+  const altPayments = altProd.periodPayments || [];
+  let investTable = '';
+  if (result.diffs && result.diffs.length > 0) {
+    const showAll = result.diffs.length <= 12;
+    investTable = `<div class="cm-subtitle">Investimento da Diferença — Passo a Passo</div>
+      <div class="cm-formula">
+        <b>Fórmula por período:</b><br>
+        Saldo[n] = Saldo[n-1] × (1 + taxa_período) + Diferença[n]<br>
+        Diferença[n] = Parcela_Referência[n] − Parcela_Alternativa[n]
+      </div>
+      <table class="cm-table"><thead><tr><th>Período</th><th>Parc. Ref.</th><th>Parc. Alt.</th><th>Diferença</th><th>Juros</th><th>Saldo</th></tr></thead><tbody>`;
+    const rows = showAll ? result.diffs.map((d,i) => i) : [...Array(5).keys(), -1, result.diffs.length-3, result.diffs.length-2, result.diffs.length-1];
+    rows.forEach(i => {
+      if (i === -1) {
+        investTable += `<tr><td colspan="6" style="text-align:center;color:var(--muted-foreground)">... ${result.diffs.length - 8} períodos omitidos ...</td></tr>`;
+      } else {
+        const prevBal = i > 0 ? result.balances[i-1] : 0;
+        const juros = prevBal * periodRate;
+        investTable += `<tr><td>${i+1}º</td><td>${fmtBRL(refPayments[i]||0)}</td><td>${fmtBRL(altPayments[i]||0)}</td><td>${fmtBRL(result.diffs[i])}</td><td>${fmtBRL(juros)}</td><td>${fmtBRL(result.balances[i])}</td></tr>`;
+      }
+    });
+    investTable += `</tbody></table>`;
+  }
+
+  // Resultado final
+  const refNetCost = result.refGrossTotal - result.refRefundAmt;
+  const altNetCost = result.altGrossTotal - result.altRefundAmt - result.investBalance;
+  let resultBox = `<div class="cm-subtitle">Resultado Final Comparativo</div>
+    <div class="cm-result-box">
+      <div class="cm-res-row"><span class="cm-res-label">${escHtml(refProd.name)} — Custo bruto</span><span class="cm-res-val">${fmtBRL(result.refGrossTotal)}</span></div>
+      <div class="cm-res-row"><span class="cm-res-label">${escHtml(refProd.name)} — Estorno</span><span class="cm-res-val" style="color:var(--green-lt)">- ${fmtBRL(result.refRefundAmt)}</span></div>
+      <div class="cm-res-row" style="border-top:1px solid var(--border);padding-top:4px;margin-top:4px"><span class="cm-res-label"><b>${escHtml(refProd.name)} — Custo líquido</b></span><span class="cm-res-val"><b>${fmtBRL(refNetCost)}</b></span></div>
+    </div>
+    <div class="cm-result-box" style="margin-top:8px">
+      <div class="cm-res-row"><span class="cm-res-label">${escHtml(altProd.name)} — Custo bruto</span><span class="cm-res-val">${fmtBRL(result.altGrossTotal)}</span></div>
+      <div class="cm-res-row"><span class="cm-res-label">${escHtml(altProd.name)} — Estorno</span><span class="cm-res-val" style="color:var(--green-lt)">- ${fmtBRL(result.altRefundAmt)}</span></div>
+      <div class="cm-res-row"><span class="cm-res-label">${escHtml(altProd.name)} — Saldo investido</span><span class="cm-res-val" style="color:var(--green-lt)">- ${fmtBRL(result.investBalance)}</span></div>
+      <div class="cm-res-row"><span class="cm-res-label" style="font-size:.72rem;color:var(--muted-foreground)">   ↳ Aportes: ${fmtBRL(result.totalDiffPaid)} + Juros: ${fmtBRL(result.totalInterest)}</span><span class="cm-res-val"></span></div>
+      <div class="cm-res-row" style="border-top:1px solid var(--border);padding-top:4px;margin-top:4px"><span class="cm-res-label"><b>${escHtml(altProd.name)} — Custo líquido</b></span><span class="cm-res-val"><b>${fmtBRL(altNetCost)}</b></span></div>
+    </div>
+    <div class="cm-result-box" style="margin-top:8px;border-color:var(--gold)">
+      <div class="cm-res-row"><span class="cm-res-label"><b>Diferença final</b></span><span class="cm-res-val" style="color:${refNetCost <= altNetCost ? 'var(--green-lt)' : 'var(--red-lt)'}"><b>${fmtBRL(Math.abs(refNetCost - altNetCost))} a favor de ${refNetCost <= altNetCost ? escHtml(refProd.name) : escHtml(altProd.name)}</b></span></div>
+    </div>`;
+
+  const uid = toggleId || ('cm-' + Date.now() + '-' + Math.random().toString(36).slice(2,6));
+  return `<div class="calc-memory">
+    <button class="calc-memory-toggle" onclick="this.classList.toggle('open');document.getElementById('${uid}').classList.toggle('open')">
+      <span>📋 Memória de Cálculo Detalhada</span><span class="cm-arrow">▼</span>
+    </button>
+    <div class="calc-memory-body" id="${uid}">
+      ${premissas}
+      ${detalheProduto(refProd, 'referência')}
+      ${detalheProduto(altProd, 'alternativa')}
+      ${investTable}
+      ${resultBox}
+    </div>
+  </div>`;
 }
 
 // Atualiza as opções do dropdown de produto alternativo
@@ -3306,6 +3516,7 @@ function runScenario(compId) {
     </div>
     <div class="chart-wrap" style="margin-top:12px"><canvas id="${chartId}-saldo"></canvas></div>
     <div class="chart-wrap" style="margin-top:12px"><canvas id="${chartId}-diff"></canvas></div>
+    ${_buildCalcMemory(refProduct, altProduct, result, comp.periodConfig || {})}
   `;
 
   // Renderizar gráficos do cenário (separados)
@@ -3923,6 +4134,145 @@ async function gerarPdfComp(id) {
     y += vH + 6;
   }
 
+  // Memória de Cálculo no PDF (tabela detalhada)
+  function drawCalcMemoryPDF(refProd, altProd, scenario, pc) {
+    addPage(false);
+    y = sectionTitle('Memória de Cálculo Detalhada', y);
+    const annualRate = (pc.interestRate || 0) / 100;
+    const totalDays = pc.periodQty ? unitToDaysStatic(pc.periodQty, pc.periodUnit) : 365;
+    const freqDays = pc.payFreqQty ? unitToDaysStatic(pc.payFreqQty, pc.payFreqUnit) : 30;
+    const numPay = Math.max(1, Math.floor(totalDays / freqDays));
+    const periodRate = annualRate > 0 ? Math.pow(1 + annualRate, freqDays / 365) - 1 : 0;
+    const freqLbl = `${pc.payFreqQty||1} ${unitLabel(pc.payFreqUnit||'mes', pc.payFreqQty||1)}`;
+    const periodLbl = `${pc.periodQty||1} ${unitLabel(pc.periodUnit||'mes', pc.periodQty||1)}`;
+
+    // Premissas
+    txt('PREMISSAS', ML, y, { size: 8.5, color: COR_DOURADO, bold: true });
+    y += 5;
+    const premissas = [
+      ['Período total', `${periodLbl} (${totalDays} dias)`],
+      ['Frequência de pagamento', `A cada ${freqLbl}`],
+      ['Nº de parcelas', `${numPay}`],
+      ['Taxa anual de rendimento', annualRate > 0 ? `${(annualRate*100).toFixed(2)}% a.a.` : '0% (sem rendimento)'],
+      ['Taxa por período', periodRate > 0 ? `${(periodRate*100).toFixed(4)}%` : '0%'],
+      ['Conversão', annualRate > 0 ? `(1 + ${(annualRate*100).toFixed(2)}%)^(${freqDays}/365) - 1` : '—'],
+    ];
+    premissas.forEach(([lbl, val]) => {
+      txt(lbl + ':', ML + 2, y, { size: 7, color: COR_CINZA_MED });
+      txt(val, ML + 55, y, { size: 7, color: COR_CINZA_CLR, bold: true });
+      y += 4.5;
+    });
+    y += 3;
+
+    // Detalhe de cada produto
+    [refProd, altProd].forEach((prod, pidx) => {
+      checkY(30);
+      const label = pidx === 0 ? 'referência' : 'alternativa';
+      txt(`${prod.name} (${label})`, ML, y, { size: 8.5, color: COR_DOURADO, bold: true });
+      y += 5;
+      txt(`Parcela inicial: ${fmtBRL(prod.price)}`, ML + 2, y, { size: 7, color: COR_CINZA_CLR });
+      y += 4;
+      const adjs = prod.adjustments || [];
+      if (adjs.length > 0) {
+        txt('Reajustes:', ML + 2, y, { size: 7, color: COR_CINZA_MED });
+        y += 4;
+        adjs.forEach(a => {
+          const desc = a.type === 'recurrent'
+            ? `Recorrente: ${a.mode==='pct'?a.value+'%':fmtBRL(a.value)} a cada ${a.everyN} pgto(s)`
+            : `Único: ${a.mode==='pct'?a.value+'%':fmtBRL(a.value)} no pgto nº ${a.atPayment}`;
+          txt('  • ' + desc, ML + 4, y, { size: 6.5, color: COR_CINZA_CLR });
+          y += 3.5;
+        });
+      } else {
+        txt('Reajustes: Nenhum', ML + 2, y, { size: 7, color: COR_CINZA_MED });
+        y += 4;
+      }
+      const refund = prod.refund || {};
+      const refundAmt = _calcRefundAmount(prod);
+      if (refund.enabled && refund.value > 0) {
+        const refDesc = refund.mode === 'pct' ? `${refund.value}% do bruto = ${fmtBRL(refundAmt)}` : `Fixo: ${fmtBRL(refund.value)}${refund.applyAdjustments?' (c/ reajuste: '+fmtBRL(refundAmt)+')':''}`;
+        txt(`Estorno: ${refDesc}`, ML + 2, y, { size: 7, color: COR_VERDE_LT });
+      } else {
+        txt('Estorno: Sem estorno', ML + 2, y, { size: 7, color: COR_CINZA_MED });
+      }
+      y += 4;
+      const payments = prod.periodPayments || [];
+      const grossTotal = payments.reduce((s,v)=>s+v, 0);
+      txt(`Custo bruto total: ${fmtBRL(grossTotal)} (${numPay} parcelas)`, ML + 2, y, { size: 7, color: COR_CINZA_CLR, bold: true });
+      y += 6;
+    });
+
+    // Tabela de investimento resumida
+    checkY(40);
+    txt('INVESTIMENTO DA DIFERENÇA', ML, y, { size: 8.5, color: COR_DOURADO, bold: true });
+    y += 5;
+    txt('Saldo[n] = Saldo[n-1] × (1 + taxa_período) + Diferença[n]', ML + 2, y, { size: 6.5, color: COR_CINZA_MED });
+    y += 4;
+    txt('Diferença[n] = Parcela_Referência[n] − Parcela_Alternativa[n]', ML + 2, y, { size: 6.5, color: COR_CINZA_MED });
+    y += 6;
+
+    // Tabela resumida (primeiros 5 + últimos 3)
+    const diffs = scenario.diffs || [];
+    const bals = scenario.balances || [];
+    const refPay = refProd.periodPayments || [];
+    const altPay = altProd.periodPayments || [];
+    const showAll = diffs.length <= 10;
+    const indices = showAll ? diffs.map((_,i)=>i) : [...Array(4).keys(), -1, diffs.length-3, diffs.length-2, diffs.length-1];
+
+    const tblBody = indices.map(i => {
+      if (i === -1) return ['...', '...', '...', '...', '...', '...'];
+      const prevBal = i > 0 ? bals[i-1] : 0;
+      const juros = prevBal * periodRate;
+      return [`${i+1}º`, fmtBRL(refPay[i]||0), fmtBRL(altPay[i]||0), fmtBRL(diffs[i]||0), fmtBRL(juros), fmtBRL(bals[i]||0)];
+    });
+
+    doc.autoTable({
+      startY: y,
+      margin: { left: ML, right: ML },
+      head: [['Período', 'Parc. Ref.', 'Parc. Alt.', 'Diferença', 'Juros', 'Saldo']],
+      body: tblBody,
+      styles: { fontSize: 6, cellPadding: 1.5, textColor: COR_CINZA_CLR, fillColor: COR_VERDE, lineColor: [20,60,30], lineWidth: 0.1 },
+      headStyles: { fillColor: [20,60,30], textColor: COR_DOURADO, fontStyle: 'bold', fontSize: 6.5 },
+      alternateRowStyles: { fillColor: [10,35,18] },
+      theme: 'grid',
+      tableWidth: CW(),
+      willDrawPage: () => { fillPage(COR_FUNDO); },
+      didDrawPage: () => { pageHeader(); pageFooter(); },
+    });
+    y = doc.lastAutoTable.finalY + 6;
+
+    // Resultado final
+    checkY(35);
+    txt('RESULTADO FINAL', ML, y, { size: 8.5, color: COR_DOURADO, bold: true });
+    y += 5;
+    const refNetCost = scenario.refGrossTotal - scenario.refRefundAmt;
+    const altNetCost = scenario.altGrossTotal - scenario.altRefundAmt - scenario.investBalance;
+    const rows = [
+      [`${refProd.name} — Custo bruto`, fmtBRL(scenario.refGrossTotal)],
+      [`${refProd.name} — Estorno`, '- ' + fmtBRL(scenario.refRefundAmt)],
+      [`${refProd.name} — Custo líquido`, fmtBRL(refNetCost)],
+      ['', ''],
+      [`${altProd.name} — Custo bruto`, fmtBRL(scenario.altGrossTotal)],
+      [`${altProd.name} — Estorno`, '- ' + fmtBRL(scenario.altRefundAmt)],
+      [`${altProd.name} — Saldo investido`, '- ' + fmtBRL(scenario.investBalance)],
+      [`   ↳ Aportes: ${fmtBRL(scenario.totalDiffPaid)} + Juros: ${fmtBRL(scenario.totalInterest)}`, ''],
+      [`${altProd.name} — Custo líquido`, fmtBRL(altNetCost)],
+    ];
+    rows.forEach(([lbl, val]) => {
+      if (!lbl && !val) { y += 2; return; }
+      txt(lbl, ML + 2, y, { size: 7, color: COR_CINZA_MED });
+      if (val) txt(val, ML + CW() - 4, y, { size: 7, color: COR_CINZA_CLR, bold: true, align: 'right' });
+      y += 4.5;
+    });
+    y += 3;
+    const diffFinal = Math.abs(refNetCost - altNetCost);
+    const vencedor = refNetCost <= altNetCost ? refProd.name : altProd.name;
+    doc.setFillColor(...COR_DOURADO_ESC);
+    doc.roundedRect(ML, y - 2, CW(), 10, 2, 2, 'F');
+    txt(`Diferença final: ${fmtBRL(diffFinal)} a favor de ${vencedor}`, PW()/2, y + 3, { size: 8.5, color: COR_FUNDO, bold: true, align: 'center' });
+    y += 14;
+  }
+
   // Rodapé capa
   pageFooter();
 
@@ -4325,6 +4675,8 @@ async function gerarPdfComp(id) {
         // ══ PÁGINA 15: RESULTADO + PARECER ══
         addPage(false);
         drawInvestAnalysis(pBest, pCheapest, autoResult, 'RESULTADO — Melhor Pontuado vs. Mais Barato', pc.interestRate || 0);
+        // ══ PÁGINA 16: MEMÓRIA DE CÁLCULO ══
+        drawCalcMemoryPDF(pBest, pCheapest, autoResult, pc);
       }
     }
 
@@ -4372,6 +4724,8 @@ async function gerarPdfComp(id) {
           // ══ RESULTADO + PARECER ══
           addPage(false);
           drawInvestAnalysis(refProd, altProd, scResult, `RESULTADO — ${refProd.name} vs. ${altProd.name}`, pc.interestRate || 0);
+          // ══ MEMÓRIA DE CÁLCULO ══
+          drawCalcMemoryPDF(refProd, altProd, scResult, pc);
         }
       });
     }
