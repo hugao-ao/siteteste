@@ -2168,8 +2168,12 @@ function renderCadeiaEquipeGlobal() {
 window.addIntegranteGlobalCadeia = async function() {
     const integranteId = document.getElementById('cadeia-add-integrante-global').value;
     const cadeiaId = document.getElementById('cadeia-id').value;
-    if (!integranteId || !cadeiaId) {
-        showToast('Selecione um funcionário e salve a cadeia primeiro.', 'warning');
+    if (!integranteId) {
+        showToast('Selecione um funcionário.', 'warning');
+        return;
+    }
+    if (!cadeiaId) {
+        showToast('Salve a cadeia primeiro (clique em "Criar Nova Cadeia") para depois alocar funcionários.', 'warning');
         return;
     }
 
@@ -2225,8 +2229,12 @@ window.removeIntegranteGlobalCadeia = async function() {
 window.addEquipeGlobalCadeia = async function() {
     const equipeId = document.getElementById('cadeia-add-equipe-global').value;
     const cadeiaId = document.getElementById('cadeia-id').value;
-    if (!equipeId || !cadeiaId) {
-        showToast('Selecione uma equipe e salve a cadeia primeiro.', 'warning');
+    if (!equipeId) {
+        showToast('Selecione uma equipe.', 'warning');
+        return;
+    }
+    if (!cadeiaId) {
+        showToast('Salve a cadeia primeiro (clique em "Criar Nova Cadeia") para depois alocar a equipe.', 'warning');
         return;
     }
 
