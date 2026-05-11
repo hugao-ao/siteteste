@@ -1087,6 +1087,20 @@
     .gantt-legend-dot.transitioning { background: rgba(255,152,0,0.8); }
     .gantt-legend-dot.idle { background: rgba(158,158,158,0.4); }
 
+    .gantt-view-btn.active {
+      background: rgba(255,255,255,0.12) !important;
+      box-shadow: 0 0 8px rgba(255,255,255,0.1);
+      transform: scale(1.02);
+    }
+    .gantt-view-btn:hover {
+      background: rgba(255,255,255,0.08) !important;
+      transform: scale(1.02);
+    }
+    .gantt-view-btn[data-view="obra"].active { background: rgba(255,193,7,0.2) !important; border-color: #ffc107; }
+    .gantt-view-btn[data-view="servico"].active { background: rgba(33,150,243,0.2) !important; border-color: #2196f3; }
+    .gantt-view-btn[data-view="funcionario"].active { background: rgba(76,175,80,0.2) !important; border-color: #4caf50; }
+    .gantt-view-btn[data-view="equipe"].active { background: rgba(156,39,176,0.2) !important; border-color: #9c27b0; }
+
     /* ===== RESPONSIVIDADE COMPLETA ===== */
 
     /* Tablet (768px - 1200px) */
@@ -1405,6 +1419,13 @@
           <!-- Seção Alocação (Gantt) -->
           <div class="panel-section" id="section-alocacao">
             <div class="gantt-controls">
+              <!-- Botões de Modo de Visualização -->
+              <div style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap;">
+                <button class="gantt-view-btn active" data-view="obra" onclick="setGanttView('obra')" style="padding:6px 12px;border-radius:6px;border:1px solid rgba(255,193,7,0.5);background:rgba(255,193,7,0.15);color:#ffc107;font-size:0.75rem;font-weight:600;cursor:pointer;transition:all 0.2s;"><i class="fas fa-building"></i> Obra</button>
+                <button class="gantt-view-btn" data-view="servico" onclick="setGanttView('servico')" style="padding:6px 12px;border-radius:6px;border:1px solid rgba(33,150,243,0.5);background:transparent;color:#90caf9;font-size:0.75rem;font-weight:600;cursor:pointer;transition:all 0.2s;"><i class="fas fa-cogs"></i> Serviço</button>
+                <button class="gantt-view-btn" data-view="funcionario" onclick="setGanttView('funcionario')" style="padding:6px 12px;border-radius:6px;border:1px solid rgba(76,175,80,0.5);background:transparent;color:#81c784;font-size:0.75rem;font-weight:600;cursor:pointer;transition:all 0.2s;"><i class="fas fa-user"></i> Funcionário</button>
+                <button class="gantt-view-btn" data-view="equipe" onclick="setGanttView('equipe')" style="padding:6px 12px;border-radius:6px;border:1px solid rgba(156,39,176,0.5);background:transparent;color:#ce93d8;font-size:0.75rem;font-weight:600;cursor:pointer;transition:all 0.2s;"><i class="fas fa-users"></i> Equipe</button>
+              </div>
               <div class="gantt-period">
                 <label><i class="fas fa-calendar"></i> Período:</label>
                 <input type="date" id="gantt-inicio" onchange="renderGantt()">
@@ -1416,10 +1437,6 @@
                 <select id="gantt-local-filter" onchange="renderGantt()" style="padding:6px;border-radius:6px;background:rgba(25,25,112,0.9);border:1px solid rgba(255,255,255,0.3);color:white;font-size:0.8rem;margin-top:5px;width:100%;">
                   <option value="">Todos os Locais</option>
                 </select>
-              </div>
-              <div class="gantt-filter">
-                <label><i class="fas fa-user-hard-hat"></i> Funcionários:</label>
-                <div id="gantt-funcionarios-filter" class="gantt-func-chips"></div>
               </div>
             </div>
             <div id="gantt-container" class="gantt-grid-container">
