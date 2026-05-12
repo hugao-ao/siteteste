@@ -1895,23 +1895,18 @@ window.addEquipeInteira = async function() {
     }
 };
 
-function checkConflito(integranteId, inicio, fim, excludeServicoId, excludeCadeiaId) {
+function checkConflito(integranteId, inicio, fim, excludeServicoId) {
     const novoInicio = new Date(inicio);
     const novoFim = new Date(fim);
 
-    // Se temos uma cadeia para excluir, excluir TODOS os serviços dessa cadeia
-    let excludeServicoIds = [String(excludeServicoId)];
-    if (excludeCadeiaId) {
-        const cadeiaServIds = servicos.filter(s => String(s.cadeia_id) === String(excludeCadeiaId)).map(s => String(s.id));
-        excludeServicoIds = [...new Set([...excludeServicoIds, ...cadeiaServIds])];
-    }
-
     const alocacoesIntegrante = alocacoes.filter(a =>
-        String(a.integrante_id) === String(integranteId) && !excludeServicoIds.includes(String(a.servico_id))
+        String(a.integrante_id) === String(integranteId) && String(a.servico_id) !== String(excludeServicoId)
     );
+
     for (const aloc of alocacoesIntegrante) {
         const alocInicio = new Date(aloc.data_inicio);
         const alocFim = new Date(aloc.data_fim);
+
         // Verificar intersecção
         if (novoInicio < alocFim && novoFim > alocInicio) {
             return aloc;
@@ -2192,49 +2187,29 @@ window.addIntegranteGlobalCadeia = async function() {
     }
 
     const cadeiaServicos = servicos.filter(s => String(s.cadeia_id) === String(cadeiaId));
-    if (cadeiaServicos.length === 0) {
-        showToast('Nenhum serviço encontrado nesta cadeia. Verifique se a cadeia foi salva com serviços.', 'warning');
-        return;
-    }
-
     let adicionados = 0;
-    let erros = 0;
 
     for (const s of cadeiaServicos) {
         const jaAlocado = alocacoes.find(a => String(a.servico_id) === String(s.id) && String(a.integrante_id) === String(integranteId));
-        if (jaAlocado) {
-            adicionados++; // já está alocado, conta como sucesso
-            continue;
-        }
+        if (jaAlocado) continue;
 
-        const conflito = checkConflito(integranteId, s.data_inicio, s.data_fim_real || s.data_fim_prevista, s.id, cadeiaId);
-        if (conflito) {
-            console.warn(`Conflito ao alocar em serviço ${s.nome}: já alocado em outro serviço no mesmo período`);
-            continue;
-        }
+        const conflito = checkConflito(integranteId, s.data_inicio, s.data_fim_real || s.data_fim_prevista, s.id);
+        if (conflito) continue;
 
-        const { data, error } = await supabase.from('logistica_alocacoes').insert({
-            servico_id: s.id,
-            integrante_id: integranteId,
-            data_inicio: s.data_inicio,
-            data_fim: s.data_fim_real || s.data_fim_prevista
-        }).select();
-
-        if (error) {
-            console.error(`Erro ao alocar em serviço ${s.nome}:`, error);
-            erros++;
-        } else {
+        try {
+            await supabase.from('logistica_alocacoes').insert({
+                servico_id: s.id,
+                integrante_id: integranteId,
+                data_inicio: s.data_inicio,
+                data_fim: s.data_fim_real || s.data_fim_prevista
+            });
             adicionados++;
-        }
+        } catch (e) { /* ignore */ }
     }
 
     await loadAlocacoes();
     renderCadeiaEquipeGlobal();
-    if (erros > 0) {
-        showToast(`Funcionário adicionado a ${adicionados} serviço(s), mas ${erros} falharam. Verifique o console.`, 'warning');
-    } else {
-        showToast(`Funcionário adicionado a ${adicionados} serviço(s)!`, 'success');
-    }
+    showToast(`Funcionário adicionado a ${adicionados} serviço(s)!`, 'success');
 };
 
 window.removeIntegranteGlobalCadeia = async function() {
@@ -2286,22 +2261,19 @@ window.addEquipeGlobalCadeia = async function() {
             const jaAlocado = alocacoes.find(a => String(a.servico_id) === String(s.id) && String(a.integrante_id) === String(membro.integrante_id));
             if (jaAlocado) continue;
 
-            const conflito = checkConflito(membro.integrante_id, s.data_inicio, s.data_fim_real || s.data_fim_prevista, s.id, cadeiaId);
+            const conflito = checkConflito(membro.integrante_id, s.data_inicio, s.data_fim_real || s.data_fim_prevista, s.id);
             if (conflito) continue;
 
-            const { data, error } = await supabase.from('logistica_alocacoes').insert({
-                servico_id: s.id,
-                integrante_id: membro.integrante_id,
-                equipe_id: equipeId,
-                data_inicio: s.data_inicio,
-                data_fim: s.data_fim_real || s.data_fim_prevista
-            }).select();
-
-            if (error) {
-                console.error(`Erro ao alocar membro em serviço ${s.nome}:`, error);
-            } else {
+            try {
+                await supabase.from('logistica_alocacoes').insert({
+                    servico_id: s.id,
+                    integrante_id: membro.integrante_id,
+                    equipe_id: equipeId,
+                    data_inicio: s.data_inicio,
+                    data_fim: s.data_fim_real || s.data_fim_prevista
+                });
                 totalAdicionados++;
-            }
+            } catch (e) { /* ignore */ }
         }
     }
 
