@@ -3705,12 +3705,22 @@ window.showGanttPopup = function(event, servicoId, dateStr) {
     const dateParts = dateStr.split('-');
     const dateLabel = `${dateParts[2]}/${dateParts[1]}/${dateParts[0]}`;
     selectedPopupIntegrantes.clear();
+    window._popupServicoId = servicoId;
+    window._popupDateStr = dateStr;
 
     // Listar integrantes não alocados neste serviço para poder adicionar
     const alocadosIds = alocacoes.filter(a => String(a.servico_id) === String(servicoId)).map(a => String(a.integrante_id));
     const naoAlocados = integrantes.filter(i => !alocadosIds.includes(String(i.id)));
 
+    // Datas do serviço para referência
+    const sInicio = servico.data_inicio ? servico.data_inicio.substring(0, 16) : '';
+    const sFim = (servico.data_fim_real || servico.data_fim_prevista || '').substring(0, 16);
+
     let html = `
+        <div class="gantt-popup-drag-bar" id="gantt-popup-drag-bar">
+            <span class="drag-dots"><i class="fas fa-grip-horizontal"></i></span>
+            <span style="font-size:0.65rem;color:rgba(255,255,255,0.4);">Arraste para mover | Redimensione pelas bordas</span>
+        </div>
         <div class="gantt-popup-header">
             <div>
                 <strong style="color:#add8e6;font-size:0.85rem;">${servico.nome}</strong>
@@ -3724,19 +3734,21 @@ window.showGanttPopup = function(event, servicoId, dateStr) {
     if (presentes.length > 0) {
         html += '<div class="gantt-popup-integrantes">';
         presentes.forEach(p => {
+            const aloc = alocacoes.find(a => String(a.servico_id) === String(servicoId) && String(a.integrante_id) === String(p.id));
+            const alocInfo = aloc ? `${formatDateTimeBR(aloc.data_inicio)} → ${formatDateTimeBR(aloc.data_fim)}` : '';
             html += `<div class="gantt-popup-integrante" data-id="${p.id}" onclick="togglePopupIntegrante('${p.id}', this)">
                 <span class="gantt-popup-checkbox"><i class="far fa-square"></i></span>
                 <span>${p.nome}</span>
-                <button class="gantt-popup-remove-btn" onclick="event.stopPropagation(); removeIntegranteFromServico('${servicoId}', '${p.id}')" title="Remover deste serviço">
+                <button class="gantt-popup-remove-btn" onclick="event.stopPropagation(); showRemovePeriodoModal('${servicoId}', '${p.id}', '${dateStr}')" title="Remover (com opção de período)">
                     <i class="fas fa-times"></i>
                 </button>
             </div>`;
         });
         html += '</div>';
 
-        // Botão para mover selecionados
+        // Seção de mover/copiar com seletor de período
         html += `<div class="gantt-popup-actions" id="gantt-popup-move-section" style="display:none;">
-            <div style="font-size:0.7rem;color:#90caf9;margin:6px 0 4px;"><i class="fas fa-arrows-alt"></i> Mover selecionados para:</div>
+            <div style="font-size:0.7rem;color:#90caf9;margin:6px 0 4px;"><i class="fas fa-arrows-alt"></i> Mover/Copiar selecionados para:</div>
             <select id="gantt-popup-target-servico" style="width:100%;padding:5px;border-radius:4px;background:#2a2a4a;color:white;border:1px solid rgba(255,255,255,0.2);font-size:0.7rem;">
                 <option value="">Selecionar serviço destino...</option>`;
         servicos.filter(s => s.id !== servicoId && s.status !== 'cancelado').forEach(s => {
@@ -3744,6 +3756,19 @@ window.showGanttPopup = function(event, servicoId, dateStr) {
             html += `<option value="${s.id}">${s.nome}${sLocal ? ' (' + sLocal.nome + ')' : ''}</option>`;
         });
         html += `</select>
+            <div class="periodo-selector">
+                <label><i class="fas fa-clock"></i> Período da alocação no destino:</label>
+                <div class="periodo-tipo-btns">
+                    <button class="periodo-tipo-btn active" data-tipo="servico_inteiro" onclick="selectPeriodoTipo(this, 'move')">Serviço Inteiro</button>
+                    <button class="periodo-tipo-btn" data-tipo="dia" onclick="selectPeriodoTipo(this, 'move')">Só Este Dia</button>
+                    <button class="periodo-tipo-btn" data-tipo="periodo" onclick="selectPeriodoTipo(this, 'move')">Período Personalizado</button>
+                    <button class="periodo-tipo-btn" data-tipo="horario" onclick="selectPeriodoTipo(this, 'move')">Horário Específico</button>
+                </div>
+                <div class="periodo-inputs" id="periodo-inputs-move">
+                    <input type="datetime-local" id="periodo-move-inicio" style="flex:1;">
+                    <input type="datetime-local" id="periodo-move-fim" style="flex:1;">
+                </div>
+            </div>
             <button onclick="moveSelectedToServico('${servicoId}')" class="gantt-popup-move-btn"><i class="fas fa-share"></i> Mover</button>
             <button onclick="copySelectedToServico('${servicoId}')" class="gantt-popup-copy-btn"><i class="fas fa-copy"></i> Copiar</button>
         </div>`;
@@ -3751,19 +3776,31 @@ window.showGanttPopup = function(event, servicoId, dateStr) {
         html += '<p style="color:rgba(255,255,255,0.3);font-size:0.7rem;">Nenhum integrante neste dia.</p>';
     }
 
-    // Seção para adicionar novos integrantes
-    if (naoAlocados.length > 0) {
-        html += `<div style="margin-top:8px;border-top:1px solid rgba(255,255,255,0.1);padding-top:8px;">
-            <div style="font-size:0.7rem;color:#4caf50;margin-bottom:4px;"><i class="fas fa-plus"></i> Adicionar ao serviço</div>
-            <select id="gantt-popup-add-integrante" style="width:100%;padding:5px;border-radius:4px;background:#2a2a4a;color:white;border:1px solid rgba(255,255,255,0.2);font-size:0.7rem;">
-                <option value="">Selecionar funcionário...</option>`;
-        naoAlocados.sort((a, b) => a.nome.localeCompare(b.nome)).forEach(i => {
-            html += `<option value="${i.id}">${i.nome}</option>`;
-        });
-        html += `</select>
-            <button onclick="addIntegranteFromPopup('${servicoId}')" style="margin-top:4px;width:100%;padding:4px;border-radius:4px;background:#4caf50;color:white;border:none;font-size:0.7rem;cursor:pointer;"><i class="fas fa-plus"></i> Adicionar</button>
-        </div>`;
-    }
+    // Seção para adicionar novos integrantes com seletor de período
+    html += `<div style="margin-top:8px;border-top:1px solid rgba(255,255,255,0.1);padding-top:8px;">
+        <div style="font-size:0.7rem;color:#4caf50;margin-bottom:4px;"><i class="fas fa-plus"></i> Adicionar ao serviço</div>
+        <select id="gantt-popup-add-integrante" style="width:100%;padding:5px;border-radius:4px;background:#2a2a4a;color:white;border:1px solid rgba(255,255,255,0.2);font-size:0.7rem;">
+            <option value="">Selecionar funcionário...</option>`;
+    naoAlocados.sort((a, b) => a.nome.localeCompare(b.nome)).forEach(i => {
+        html += `<option value="${i.id}">${i.nome}</option>`;
+    });
+    // Adicionar equipes também
+    html += `</select>
+        <div class="periodo-selector">
+            <label><i class="fas fa-clock"></i> Período:</label>
+            <div class="periodo-tipo-btns">
+                <button class="periodo-tipo-btn active" data-tipo="servico_inteiro" onclick="selectPeriodoTipo(this, 'add')">Serviço Inteiro</button>
+                <button class="periodo-tipo-btn" data-tipo="dia" onclick="selectPeriodoTipo(this, 'add')">Só Este Dia</button>
+                <button class="periodo-tipo-btn" data-tipo="periodo" onclick="selectPeriodoTipo(this, 'add')">Período Personalizado</button>
+                <button class="periodo-tipo-btn" data-tipo="horario" onclick="selectPeriodoTipo(this, 'add')">Horário Específico</button>
+            </div>
+            <div class="periodo-inputs" id="periodo-inputs-add">
+                <input type="datetime-local" id="periodo-add-inicio" style="flex:1;">
+                <input type="datetime-local" id="periodo-add-fim" style="flex:1;">
+            </div>
+        </div>
+        <button onclick="addIntegranteFromPopup('${servicoId}')" style="margin-top:4px;width:100%;padding:4px;border-radius:4px;background:#4caf50;color:white;border:none;font-size:0.7rem;cursor:pointer;"><i class="fas fa-plus"></i> Adicionar</button>
+    </div>`;
 
     html += '</div>';
     ganttPopupEl.innerHTML = html;
@@ -3773,12 +3810,14 @@ window.showGanttPopup = function(event, servicoId, dateStr) {
     ganttPopupEl.style.display = 'block';
     let left = rect.right + 10;
     let top = rect.top - 50;
-    // Ajustar se sair da tela
-    if (left + 320 > window.innerWidth) left = rect.left - 330;
-    if (top + 400 > window.innerHeight) top = window.innerHeight - 410;
+    if (left + 340 > window.innerWidth) left = rect.left - 350;
+    if (top + 450 > window.innerHeight) top = window.innerHeight - 460;
     if (top < 10) top = 10;
     ganttPopupEl.style.left = left + 'px';
     ganttPopupEl.style.top = top + 'px';
+
+    // Ativar drag na barra
+    initPopupDrag();
 };
 
 window.hideGanttPopup = function() {
@@ -3809,13 +3848,229 @@ window.togglePopupIntegrante = function(id, el) {
     if (moveSection) moveSection.style.display = selectedPopupIntegrantes.size > 0 ? 'block' : 'none';
 };
 
+// ===== SELETOR DE PERÍODO =====
+window.selectPeriodoTipo = function(btn, contexto) {
+    // Remove active de todos os botões do mesmo grupo
+    const container = btn.closest('.periodo-tipo-btns');
+    container.querySelectorAll('.periodo-tipo-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+
+    // Mostrar/ocultar inputs de data
+    const inputsDiv = document.getElementById(`periodo-inputs-${contexto}`);
+    if (inputsDiv) {
+        const tipo = btn.getAttribute('data-tipo');
+        if (tipo === 'periodo' || tipo === 'horario') {
+            inputsDiv.classList.add('visible');
+            // Pré-preencher com data do dia clicado
+            const dateStr = window._popupDateStr || '';
+            const inicioInput = document.getElementById(`periodo-${contexto}-inicio`);
+            const fimInput = document.getElementById(`periodo-${contexto}-fim`);
+            if (inicioInput && dateStr) {
+                if (tipo === 'horario') {
+                    inicioInput.value = dateStr + 'T07:00';
+                    if (fimInput) fimInput.value = dateStr + 'T17:00';
+                } else {
+                    inicioInput.value = dateStr + 'T00:00';
+                    if (fimInput) fimInput.value = dateStr + 'T23:59';
+                }
+            }
+        } else {
+            inputsDiv.classList.remove('visible');
+        }
+    }
+};
+
+function getPeriodoDates(contexto, servicoId, dateStr) {
+    const servico = servicos.find(s => s.id === servicoId);
+    if (!servico) return null;
+
+    // Encontrar o tipo ativo
+    let tipoAtivo = 'servico_inteiro';
+    const popup = document.getElementById('gantt-popup');
+    if (popup) {
+        // Buscar dentro do contexto correto
+        const allSelectors = popup.querySelectorAll('.periodo-selector');
+        let selectorDiv = null;
+        if (contexto === 'add') {
+            // É o último periodo-selector no popup
+            selectorDiv = allSelectors[allSelectors.length - 1];
+        } else if (contexto === 'move') {
+            // É o primeiro periodo-selector (dentro do move-section)
+            selectorDiv = allSelectors[0];
+        } else if (contexto === 'remove') {
+            // Dentro do remove-modal
+            selectorDiv = document.getElementById('remove-periodo-selector');
+        }
+        if (selectorDiv) {
+            const activeBtn = selectorDiv.querySelector('.periodo-tipo-btn.active');
+            if (activeBtn) tipoAtivo = activeBtn.getAttribute('data-tipo');
+        }
+    }
+
+    switch (tipoAtivo) {
+        case 'servico_inteiro':
+            return {
+                inicio: servico.data_inicio,
+                fim: servico.data_fim_real || servico.data_fim_prevista
+            };
+        case 'dia':
+            return {
+                inicio: dateStr + 'T00:00:00',
+                fim: dateStr + 'T23:59:59'
+            };
+        case 'periodo':
+        case 'horario': {
+            const inicioInput = document.getElementById(`periodo-${contexto}-inicio`);
+            const fimInput = document.getElementById(`periodo-${contexto}-fim`);
+            const inicio = inicioInput ? inicioInput.value : (dateStr + 'T00:00:00');
+            const fim = fimInput ? fimInput.value : (dateStr + 'T23:59:59');
+            if (!inicio || !fim) {
+                showToast('Preencha as datas de início e fim.', 'warning');
+                return null;
+            }
+            return { inicio, fim };
+        }
+        default:
+            return {
+                inicio: servico.data_inicio,
+                fim: servico.data_fim_real || servico.data_fim_prevista
+            };
+    }
+}
+
+// ===== POPUP DRAG =====
+function initPopupDrag() {
+    const dragBar = document.getElementById('gantt-popup-drag-bar');
+    const popup = document.getElementById('gantt-popup');
+    if (!dragBar || !popup) return;
+
+    let isDragging = false;
+    let offsetX = 0, offsetY = 0;
+
+    dragBar.addEventListener('mousedown', function(e) {
+        isDragging = true;
+        offsetX = e.clientX - popup.offsetLeft;
+        offsetY = e.clientY - popup.offsetTop;
+        e.preventDefault();
+    });
+
+    document.addEventListener('mousemove', function(e) {
+        if (!isDragging) return;
+        let newLeft = e.clientX - offsetX;
+        let newTop = e.clientY - offsetY;
+        // Limitar dentro da viewport
+        newLeft = Math.max(0, Math.min(newLeft, window.innerWidth - 100));
+        newTop = Math.max(0, Math.min(newTop, window.innerHeight - 50));
+        popup.style.left = newLeft + 'px';
+        popup.style.top = newTop + 'px';
+    });
+
+    document.addEventListener('mouseup', function() {
+        isDragging = false;
+    });
+}
+
+// ===== REMOVER COM PERÍODO =====
+window.showRemovePeriodoModal = function(servicoId, integranteId, dateStr) {
+    const popup = document.getElementById('gantt-popup');
+    if (!popup) return;
+
+    const integrante = integrantes.find(i => String(i.id) === String(integranteId));
+    const nome = integrante ? integrante.nome : 'Funcionário';
+
+    // Injetar painel de remoção dentro do popup body
+    let existingModal = document.getElementById('remove-periodo-modal');
+    if (existingModal) existingModal.remove();
+
+    const modalHtml = `
+        <div id="remove-periodo-modal" style="position:absolute;bottom:0;left:0;right:0;background:#2a1a3e;border-top:2px solid #f44336;padding:12px;border-radius:0 0 10px 10px;z-index:10;">
+            <div style="font-size:0.75rem;color:#f44336;font-weight:600;margin-bottom:6px;"><i class="fas fa-user-minus"></i> Remover ${nome}</div>
+            <div id="remove-periodo-selector" class="periodo-selector" style="margin-top:0;">
+                <label><i class="fas fa-clock"></i> Período de remoção:</label>
+                <div class="periodo-tipo-btns">
+                    <button class="periodo-tipo-btn active" data-tipo="servico_inteiro" onclick="selectPeriodoTipo(this, 'remove')">Serviço Inteiro</button>
+                    <button class="periodo-tipo-btn" data-tipo="dia" onclick="selectPeriodoTipo(this, 'remove')">Só Este Dia</button>
+                    <button class="periodo-tipo-btn" data-tipo="periodo" onclick="selectPeriodoTipo(this, 'remove')">Período Personalizado</button>
+                    <button class="periodo-tipo-btn" data-tipo="horario" onclick="selectPeriodoTipo(this, 'remove')">Horário Específico</button>
+                </div>
+                <div class="periodo-inputs" id="periodo-inputs-remove">
+                    <input type="datetime-local" id="periodo-remove-inicio" style="flex:1;">
+                    <input type="datetime-local" id="periodo-remove-fim" style="flex:1;">
+                </div>
+            </div>
+            <div style="display:flex;gap:6px;margin-top:8px;">
+                <button onclick="removeIntegranteComPeriodo('${servicoId}', '${integranteId}', '${dateStr}')" style="flex:1;padding:5px;border-radius:4px;background:#f44336;color:white;border:none;font-size:0.7rem;cursor:pointer;"><i class="fas fa-check"></i> Confirmar Remoção</button>
+                <button onclick="document.getElementById('remove-periodo-modal').remove()" style="flex:1;padding:5px;border-radius:4px;background:rgba(255,255,255,0.1);color:white;border:1px solid rgba(255,255,255,0.2);font-size:0.7rem;cursor:pointer;"><i class="fas fa-times"></i> Cancelar</button>
+            </div>
+        </div>
+    `;
+
+    popup.style.position = 'fixed'; // Garantir que position é fixed para o modal absoluto funcionar
+    popup.insertAdjacentHTML('beforeend', modalHtml);
+};
+
+window.removeIntegranteComPeriodo = async function(servicoId, integranteId, dateStr) {
+    const periodo = getPeriodoDates('remove', servicoId, dateStr);
+    if (!periodo) return;
+
+    const aloc = alocacoes.find(a => String(a.servico_id) === String(servicoId) && String(a.integrante_id) === String(integranteId));
+    if (!aloc) { showToast('Alocação não encontrada.', 'error'); return; }
+
+    const alocInicio = new Date(aloc.data_inicio);
+    const alocFim = new Date(aloc.data_fim);
+    const remInicio = new Date(periodo.inicio);
+    const remFim = new Date(periodo.fim);
+
+    // Determinar tipo de remoção
+    if (remInicio <= alocInicio && remFim >= alocFim) {
+        // Remoção total - deletar alocação
+        const { error } = await supabase.from('logistica_alocacoes').delete().eq('id', aloc.id);
+        if (error) { showToast('Erro: ' + error.message, 'error'); return; }
+        showToast('Funcionário removido do serviço inteiro!', 'success');
+    } else if (remInicio <= alocInicio && remFim < alocFim) {
+        // Remoção do início - ajustar data_inicio
+        const novoInicio = new Date(remFim.getTime() + 1000).toISOString();
+        const { error } = await supabase.from('logistica_alocacoes').update({ data_inicio: novoInicio }).eq('id', aloc.id);
+        if (error) { showToast('Erro: ' + error.message, 'error'); return; }
+        showToast('Período inicial removido!', 'success');
+    } else if (remInicio > alocInicio && remFim >= alocFim) {
+        // Remoção do final - ajustar data_fim
+        const novoFim = new Date(remInicio.getTime() - 1000).toISOString();
+        const { error } = await supabase.from('logistica_alocacoes').update({ data_fim: novoFim }).eq('id', aloc.id);
+        if (error) { showToast('Erro: ' + error.message, 'error'); return; }
+        showToast('Período final removido!', 'success');
+    } else {
+        // Remoção do meio - split em duas alocações
+        const fimPrimeira = new Date(remInicio.getTime() - 1000).toISOString();
+        const inicioSegunda = new Date(remFim.getTime() + 1000).toISOString();
+
+        // Atualizar a alocação existente para a primeira parte
+        const { error: err1 } = await supabase.from('logistica_alocacoes').update({ data_fim: fimPrimeira }).eq('id', aloc.id);
+        if (err1) { showToast('Erro: ' + err1.message, 'error'); return; }
+
+        // Criar nova alocação para a segunda parte
+        const { error: err2 } = await supabase.from('logistica_alocacoes').insert({
+            servico_id: servicoId,
+            integrante_id: integranteId,
+            data_inicio: inicioSegunda,
+            data_fim: aloc.data_fim
+        });
+        if (err2) { showToast('Erro ao criar segunda parte: ' + err2.message, 'error'); return; }
+        showToast('Período intermediário removido (alocação dividida)!', 'success');
+    }
+
+    hideGanttPopup();
+    await loadAllData();
+};
+
+// ===== MOVER/COPIAR/ADICIONAR COM PERÍODO =====
 window.moveSelectedToServico = async function(fromServicoId) {
     const targetId = document.getElementById('gantt-popup-target-servico')?.value;
     if (!targetId) { showToast('Selecione o serviço destino.', 'warning'); return; }
     if (selectedPopupIntegrantes.size === 0) { showToast('Selecione funcionários.', 'warning'); return; }
 
-    const targetServico = servicos.find(s => s.id === targetId);
-    if (!targetServico) return;
+    const periodo = getPeriodoDates('move', targetId, window._popupDateStr);
+    if (!periodo) return;
 
     let moved = 0;
     for (const integId of selectedPopupIntegrantes) {
@@ -3830,8 +4085,8 @@ window.moveSelectedToServico = async function(fromServicoId) {
             await supabase.from('logistica_alocacoes').insert({
                 servico_id: targetId,
                 integrante_id: integId,
-                data_inicio: targetServico.data_inicio,
-                data_fim: targetServico.data_fim_real || targetServico.data_fim_prevista
+                data_inicio: periodo.inicio,
+                data_fim: periodo.fim
             });
         }
         moved++;
@@ -3847,8 +4102,8 @@ window.copySelectedToServico = async function(fromServicoId) {
     if (!targetId) { showToast('Selecione o serviço destino.', 'warning'); return; }
     if (selectedPopupIntegrantes.size === 0) { showToast('Selecione funcionários.', 'warning'); return; }
 
-    const targetServico = servicos.find(s => s.id === targetId);
-    if (!targetServico) return;
+    const periodo = getPeriodoDates('move', targetId, window._popupDateStr);
+    if (!periodo) return;
 
     let copied = 0;
     for (const integId of selectedPopupIntegrantes) {
@@ -3857,8 +4112,8 @@ window.copySelectedToServico = async function(fromServicoId) {
             await supabase.from('logistica_alocacoes').insert({
                 servico_id: targetId,
                 integrante_id: integId,
-                data_inicio: targetServico.data_inicio,
-                data_fim: targetServico.data_fim_real || targetServico.data_fim_prevista
+                data_inicio: periodo.inicio,
+                data_fim: periodo.fim
             });
             copied++;
         }
@@ -3870,29 +4125,22 @@ window.copySelectedToServico = async function(fromServicoId) {
 };
 
 window.removeIntegranteFromServico = async function(servicoId, integranteId) {
-    if (!confirm('Remover este funcionário deste serviço?')) return;
-    const aloc = alocacoes.find(a => String(a.servico_id) === String(servicoId) && String(a.integrante_id) === String(integranteId));
-    if (aloc) {
-        const { error } = await supabase.from('logistica_alocacoes').delete().eq('id', aloc.id);
-        if (error) { showToast('Erro: ' + error.message, 'error'); return; }
-        showToast('Funcionário removido!', 'success');
-        hideGanttPopup();
-        await loadAllData();
-    }
+    // Mantida para compatibilidade, mas agora redireciona para o modal de período
+    showRemovePeriodoModal(servicoId, integranteId, window._popupDateStr || '');
 };
 
 window.addIntegranteFromPopup = async function(servicoId) {
     const sel = document.getElementById('gantt-popup-add-integrante');
     if (!sel || !sel.value) { showToast('Selecione um funcionário.', 'warning'); return; }
 
-    const servico = servicos.find(s => s.id === servicoId);
-    if (!servico) return;
+    const periodo = getPeriodoDates('add', servicoId, window._popupDateStr);
+    if (!periodo) return;
 
     const { error } = await supabase.from('logistica_alocacoes').insert({
         servico_id: servicoId,
         integrante_id: sel.value,
-        data_inicio: servico.data_inicio,
-        data_fim: servico.data_fim_real || servico.data_fim_prevista
+        data_inicio: periodo.inicio,
+        data_fim: periodo.fim
     });
 
     if (error) { showToast('Erro: ' + error.message, 'error'); return; }
