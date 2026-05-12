@@ -1452,41 +1452,107 @@ window.saveCadeia = async function(event) {
     try {
         let savedCadeiaId;
         if (cadeiaId) {
-            // Confirmar edição para evitar alterações acidentais
+            // MODO EDIÇÃO: atualizar cadeia e serviços SEM perder alocações
             const cadeiaOriginal = cadeias.find(c => String(c.id) === String(cadeiaId));
-            if (!confirm(`Confirma a EDIÇÃO da cadeia "${cadeiaOriginal ? cadeiaOriginal.nome : ''}"? Os serviços serão recriados.`)) return;
+            if (!confirm(`Confirma a EDIÇÃO da cadeia "${cadeiaOriginal ? cadeiaOriginal.nome : ''}"?`)) return;
             const { error } = await supabase.from('logistica_cadeias').update({
                 nome, descricao, local_id: localId, updated_at: new Date().toISOString()
             }).eq('id', cadeiaId);
             if (error) throw error;
             savedCadeiaId = cadeiaId;
-            // Deletar serviços antigos da cadeia
-            await supabase.from('logistica_servicos').delete().eq('cadeia_id', cadeiaId);
+
+            // Pegar IDs dos serviços existentes no banco para esta cadeia
+            const servicosExistentes = servicos.filter(s => String(s.cadeia_id) === String(cadeiaId));
+            const idsExistentes = servicosExistentes.map(s => String(s.id));
+
+            // Separar serviços em: atualizar (têm tempId que é um ID real do banco) vs criar (novos)
+            const paraAtualizar = [];
+            const paraCriar = [];
+            const idsUsados = [];
+
+            tempServicos.forEach((s, i) => {
+                if (s.tempId && idsExistentes.includes(String(s.tempId))) {
+                    // Serviço existente: fazer UPDATE (preserva ID e alocações)
+                    paraAtualizar.push({ ...s, ordem: i + 1 });
+                    idsUsados.push(String(s.tempId));
+                } else {
+                    // Serviço novo: fazer INSERT
+                    paraCriar.push({ ...s, ordem: i + 1 });
+                }
+            });
+
+            // Deletar APENAS serviços que foram removidos pelo usuário no modal
+            const idsParaDeletar = idsExistentes.filter(id => !idsUsados.includes(id));
+            for (const delId of idsParaDeletar) {
+                await supabase.from('logistica_alocacoes').delete().eq('servico_id', delId);
+                await supabase.from('logistica_servicos').delete().eq('id', delId);
+            }
+
+            // Atualizar serviços existentes (preserva o ID e TODAS as alocações)
+            for (const s of paraAtualizar) {
+                await supabase.from('logistica_servicos').update({
+                    nome: s.nome,
+                    descricao: s.descricao || null,
+                    ordem: s.ordem,
+                    etapa: s.etapa || s.ordem,
+                    data_inicio: new Date(s.data_inicio).toISOString(),
+                    data_fim_prevista: new Date(s.data_fim_prevista).toISOString(),
+                    local_id: localId,
+                    servico_andamento_id: s.servico_andamento_id || null,
+                    item_proposta_id: s.item_proposta_id || null
+                }).eq('id', s.tempId);
+
+                // Atualizar datas das alocações para acompanhar mudanças de data do serviço
+                await supabase.from('logistica_alocacoes').update({
+                    data_inicio: new Date(s.data_inicio).toISOString(),
+                    data_fim: new Date(s.data_fim_prevista).toISOString()
+                }).eq('servico_id', s.tempId);
+            }
+
+            // Inserir serviços novos (adicionados pelo usuário no modal)
+            if (paraCriar.length > 0) {
+                const novosData = paraCriar.map(s => ({
+                    cadeia_id: savedCadeiaId,
+                    local_id: localId,
+                    nome: s.nome,
+                    descricao: s.descricao || null,
+                    ordem: s.ordem,
+                    etapa: s.etapa || s.ordem,
+                    data_inicio: new Date(s.data_inicio).toISOString(),
+                    data_fim_prevista: new Date(s.data_fim_prevista).toISOString(),
+                    status: 'pendente',
+                    servico_andamento_id: s.servico_andamento_id || null,
+                    item_proposta_id: s.item_proposta_id || null
+                }));
+                const { error: insError } = await supabase.from('logistica_servicos').insert(novosData);
+                if (insError) throw insError;
+            }
+
         } else {
+            // MODO CRIAÇÃO: inserir cadeia e serviços novos
             const { data, error } = await supabase.from('logistica_cadeias').insert({
                 nome, descricao, local_id: localId, status: 'ativa'
             }).select().single();
             if (error) throw error;
             savedCadeiaId = data.id;
+
+            const servicosData = tempServicos.map((s, i) => ({
+                cadeia_id: savedCadeiaId,
+                local_id: localId,
+                nome: s.nome,
+                descricao: s.descricao || null,
+                ordem: i + 1,
+                etapa: s.etapa || (i + 1),
+                data_inicio: new Date(s.data_inicio).toISOString(),
+                data_fim_prevista: new Date(s.data_fim_prevista).toISOString(),
+                status: 'pendente',
+                servico_andamento_id: s.servico_andamento_id || null,
+                item_proposta_id: s.item_proposta_id || null
+            }));
+
+            const { error: sError } = await supabase.from('logistica_servicos').insert(servicosData);
+            if (sError) throw sError;
         }
-
-        // Inserir serviços com etapa e vinculações
-        const servicosData = tempServicos.map((s, i) => ({
-            cadeia_id: savedCadeiaId,
-            local_id: localId,
-            nome: s.nome,
-            descricao: s.descricao || null,
-            ordem: i + 1,
-            etapa: s.etapa || (i + 1),
-            data_inicio: new Date(s.data_inicio).toISOString(),
-            data_fim_prevista: new Date(s.data_fim_prevista).toISOString(),
-            status: 'pendente',
-            servico_andamento_id: s.servico_andamento_id || null,
-            item_proposta_id: s.item_proposta_id || null
-        }));
-
-        const { error: sError } = await supabase.from('logistica_servicos').insert(servicosData);
-        if (sError) throw sError;
 
         showToast('Cadeia de serviços salva com sucesso!', 'success');
         await loadAllData();
@@ -1494,7 +1560,6 @@ window.saveCadeia = async function(event) {
         // Se era criação nova, reabrir em modo edição para permitir alocação de equipe
         if (!cadeiaId) {
             closeModal('cadeia');
-            // Reabrir em modo edição
             setTimeout(() => { window.editCadeia(savedCadeiaId); }, 300);
             showToast('Cadeia criada! Agora você pode alocar funcionários e equipes.', 'info');
         } else {
