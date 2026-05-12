@@ -1093,8 +1093,10 @@
     .multi-select-option input[type="checkbox"] { accent-color:#4caf50; }
     .multi-select-option.checked { background:rgba(76,175,80,0.1); }
     /* Popup alocação interativo */
-    .gantt-popup { position:fixed; z-index:9999; background:#1a1a3e; border:1px solid rgba(255,255,255,0.3); border-radius:10px; padding:0; min-width:280px; max-width:340px; max-height:450px; overflow-y:auto; box-shadow:0 8px 32px rgba(0,0,0,0.6); }
-    .gantt-popup-header { display:flex; justify-content:space-between; align-items:flex-start; padding:10px 12px; border-bottom:1px solid rgba(255,255,255,0.1); background:rgba(255,255,255,0.03); border-radius:10px 10px 0 0; }
+    .gantt-popup { position:fixed; z-index:9999; background:#1a1a3e; border:1px solid rgba(255,255,255,0.3); border-radius:10px; padding:0; min-width:280px; max-height:80vh; overflow-y:auto; box-shadow:0 8px 32px rgba(0,0,0,0.6); resize:both; overflow:auto; }
+    .gantt-popup-drag-bar { cursor:move; padding:6px 12px; background:rgba(255,255,255,0.05); border-bottom:1px solid rgba(255,255,255,0.08); display:flex; align-items:center; gap:6px; border-radius:10px 10px 0 0; user-select:none; }
+    .gantt-popup-drag-bar .drag-dots { color:rgba(255,255,255,0.3); font-size:0.7rem; }
+    .gantt-popup-header { display:flex; justify-content:space-between; align-items:flex-start; padding:10px 12px; border-bottom:1px solid rgba(255,255,255,0.1); background:rgba(255,255,255,0.03); }
     .gantt-popup-body { padding:10px 12px; }
     .gantt-popup-integrantes { display:flex; flex-direction:column; gap:3px; }
     .gantt-popup-integrante { display:flex; align-items:center; gap:6px; padding:5px 8px; font-size:0.72rem; border-radius:5px; cursor:pointer; transition:all 0.15s; color:rgba(255,255,255,0.85); border:1px solid transparent; }
@@ -1110,6 +1112,16 @@
     .gantt-popup-move-btn:hover { background:#f57c00; }
     .gantt-popup-copy-btn { background:#2196f3; color:white; margin-left:4px; }
     .gantt-popup-copy-btn:hover { background:#1976d2; }
+    /* Seletor de período */
+    .periodo-selector { margin-top:8px; padding:8px; background:rgba(255,255,255,0.03); border-radius:6px; border:1px solid rgba(255,255,255,0.1); }
+    .periodo-selector label { font-size:0.68rem; color:rgba(255,255,255,0.7); display:block; margin-bottom:3px; }
+    .periodo-tipo-btns { display:flex; gap:3px; margin-bottom:6px; flex-wrap:wrap; }
+    .periodo-tipo-btn { padding:3px 7px; font-size:0.62rem; border-radius:3px; border:1px solid rgba(255,255,255,0.2); background:transparent; color:rgba(255,255,255,0.7); cursor:pointer; transition:all 0.15s; }
+    .periodo-tipo-btn.active { background:rgba(33,150,243,0.3); border-color:#2196f3; color:white; }
+    .periodo-tipo-btn:hover { background:rgba(255,255,255,0.08); }
+    .periodo-inputs { display:none; gap:6px; flex-wrap:wrap; }
+    .periodo-inputs.visible { display:flex; }
+    .periodo-inputs input { padding:4px 6px; font-size:0.68rem; border-radius:4px; background:#2a2a4a; color:white; border:1px solid rgba(255,255,255,0.2); }
     /* Drag handles no Gantt */
     .gantt-cell-active { cursor:pointer; position:relative; }
     .gantt-cell-active:hover { filter:brightness(1.3); }
