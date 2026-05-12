@@ -2188,26 +2188,121 @@ window.retomarPausa = async function(pausaId) {
 };
 
 // ===== EQUIPE GLOBAL DA CADEIA =====
+// ===== MULTI-SELEÇÃO DE FUNCIONÁRIOS E EQUIPES =====
+let selectedIntegrantes = new Set();
+let selectedEquipes = new Set();
+
 function populateCadeiaIntegranteSelect() {
-    const select = document.getElementById('cadeia-add-integrante-global');
-    if (!select) return;
-    select.innerHTML = '<option value="">Selecionar funcionário...</option>';
-    integrantes.forEach(i => {
-        select.innerHTML += `<option value="${i.id}">${i.nome}</option>`;
-    });
+    const container = document.getElementById('multi-integ-options');
+    if (!container) return;
+    selectedIntegrantes.clear();
+    container.innerHTML = integrantes.map(i => `
+        <label class="multi-select-option" data-nome="${i.nome.toLowerCase()}" data-id="${i.id}">
+            <input type="checkbox" value="${i.id}" onchange="toggleIntegranteSelection(this)">
+            <span>${i.nome}</span>
+        </label>
+    `).join('');
+    updateMultiIntegLabel();
 }
 
-// NOVO: Popular select de equipes para alocação rápida
 function populateCadeiaEquipeSelect() {
-    const select = document.getElementById('cadeia-add-equipe-global');
-    if (!select) return;
-    select.innerHTML = '<option value="">Selecionar equipe...</option>';
-    equipes.forEach(e => {
+    const container = document.getElementById('multi-equipe-options');
+    if (!container) return;
+    selectedEquipes.clear();
+    container.innerHTML = equipes.map(e => {
         const membros = equipesIntegrantes.filter(ei => String(ei.equipe_id) === String(e.id));
         const label = `Equipe ${e.numero || '?'}${e.observacoes ? ' - ' + e.observacoes : ''} (${membros.length} membros)`;
-        select.innerHTML += `<option value="${e.id}">${label}</option>`;
-    });
+        return `
+            <label class="multi-select-option" data-id="${e.id}">
+                <input type="checkbox" value="${e.id}" onchange="toggleEquipeSelection(this)">
+                <span>${label}</span>
+            </label>
+        `;
+    }).join('');
+    updateMultiEquipeLabel();
 }
+
+window.toggleMultiSelect = function(type) {
+    const dropdown = document.getElementById(type === 'integrantes' ? 'multi-integ-dropdown' : 'multi-equipe-dropdown');
+    const isVisible = dropdown.style.display !== 'none';
+    // Fechar todos os dropdowns abertos
+    document.querySelectorAll('.multi-select-dropdown').forEach(d => d.style.display = 'none');
+    if (!isVisible) {
+        dropdown.style.display = 'block';
+        if (type === 'integrantes') {
+            const search = document.getElementById('multi-integ-search');
+            if (search) setTimeout(() => search.focus(), 50);
+        }
+    }
+};
+
+window.filterMultiSelect = function(type) {
+    const search = document.getElementById('multi-integ-search').value.toLowerCase();
+    document.querySelectorAll('#multi-integ-options .multi-select-option').forEach(opt => {
+        const nome = opt.dataset.nome || '';
+        opt.style.display = nome.includes(search) ? '' : 'none';
+    });
+};
+
+window.toggleIntegranteSelection = function(checkbox) {
+    const id = checkbox.value;
+    if (checkbox.checked) {
+        selectedIntegrantes.add(id);
+        checkbox.closest('.multi-select-option').classList.add('checked');
+    } else {
+        selectedIntegrantes.delete(id);
+        checkbox.closest('.multi-select-option').classList.remove('checked');
+    }
+    updateMultiIntegLabel();
+};
+
+window.toggleEquipeSelection = function(checkbox) {
+    const id = checkbox.value;
+    if (checkbox.checked) {
+        selectedEquipes.add(id);
+        checkbox.closest('.multi-select-option').classList.add('checked');
+    } else {
+        selectedEquipes.delete(id);
+        checkbox.closest('.multi-select-option').classList.remove('checked');
+    }
+    updateMultiEquipeLabel();
+};
+
+function updateMultiIntegLabel() {
+    const label = document.getElementById('multi-integ-label');
+    if (!label) return;
+    if (selectedIntegrantes.size === 0) {
+        label.textContent = 'Selecionar funcionários...';
+    } else {
+        const nomes = Array.from(selectedIntegrantes).map(id => {
+            const i = integrantes.find(ig => String(ig.id) === String(id));
+            return i ? i.nome.split(' ')[0] : '?';
+        });
+        label.textContent = nomes.length <= 3 ? nomes.join(', ') : `${nomes.slice(0,3).join(', ')} +${nomes.length - 3}`;
+    }
+}
+
+function updateMultiEquipeLabel() {
+    const label = document.getElementById('multi-equipe-label');
+    if (!label) return;
+    if (selectedEquipes.size === 0) {
+        label.textContent = 'Selecionar equipes...';
+    } else {
+        label.textContent = `${selectedEquipes.size} equipe(s) selecionada(s)`;
+    }
+}
+
+// Fechar dropdowns ao clicar fora
+document.addEventListener('click', function(e) {
+    if (!e.target.closest('.multi-select-container')) {
+        document.querySelectorAll('.multi-select-dropdown').forEach(d => d.style.display = 'none');
+    }
+    // Fechar popup do Gantt ao clicar fora
+    if (!e.target.closest('.gantt-popup') && !e.target.closest('.gantt-cell-clickable')) {
+        const popup = document.getElementById('gantt-popup');
+        if (popup) popup.style.display = 'none';
+    }
+});
 
 function renderCadeiaEquipeGlobal() {
     const container = document.getElementById('cadeia-equipe-global-list');
@@ -2239,112 +2334,120 @@ function renderCadeiaEquipeGlobal() {
     }).join('');
 }
 
-window.addIntegranteGlobalCadeia = async function() {
-    const integranteId = document.getElementById('cadeia-add-integrante-global').value;
+// MULTI-SELEÇÃO: Adicionar vários funcionários de uma vez
+window.addIntegrantesGlobalCadeia = async function() {
     const cadeiaId = document.getElementById('cadeia-id').value;
-    if (!integranteId) {
-        showToast('Selecione um funcionário.', 'warning');
+    if (selectedIntegrantes.size === 0) {
+        showToast('Selecione pelo menos um funcionário.', 'warning');
         return;
     }
     if (!cadeiaId) {
-        showToast('Salve a cadeia primeiro (clique em "Criar Nova Cadeia") para depois alocar funcionários.', 'warning');
-        return;
-    }
-
-    const cadeiaServicos = servicos.filter(s => String(s.cadeia_id) === String(cadeiaId));
-    let adicionados = 0;
-
-    for (const s of cadeiaServicos) {
-        const jaAlocado = alocacoes.find(a => String(a.servico_id) === String(s.id) && String(a.integrante_id) === String(integranteId));
-        if (jaAlocado) continue;
-
-        const conflito = checkConflito(integranteId, s.data_inicio, s.data_fim_real || s.data_fim_prevista, s.id);
-        if (conflito) continue;
-
-        try {
-            await supabase.from('logistica_alocacoes').insert({
-                servico_id: s.id,
-                integrante_id: integranteId,
-                data_inicio: s.data_inicio,
-                data_fim: s.data_fim_real || s.data_fim_prevista
-            });
-            adicionados++;
-        } catch (e) { /* ignore */ }
-    }
-
-    await loadAlocacoes();
-    renderCadeiaEquipeGlobal();
-    showToast(`Funcionário adicionado a ${adicionados} serviço(s)!`, 'success');
-};
-
-window.removeIntegranteGlobalCadeia = async function() {
-    const integranteId = document.getElementById('cadeia-add-integrante-global').value;
-    const cadeiaId = document.getElementById('cadeia-id').value;
-    if (!integranteId || !cadeiaId) {
-        showToast('Selecione um funcionário.', 'warning');
-        return;
-    }
-
-    if (!confirm('Remover este funcionário de TODOS os serviços desta cadeia?')) return;
-
-    const cadeiaServicos = servicos.filter(s => String(s.cadeia_id) === String(cadeiaId));
-    for (const s of cadeiaServicos) {
-        await supabase.from('logistica_alocacoes').delete()
-            .eq('servico_id', s.id)
-            .eq('integrante_id', integranteId);
-    }
-
-    await loadAlocacoes();
-    renderCadeiaEquipeGlobal();
-    showToast('Funcionário removido de todos os serviços!', 'success');
-};
-
-// NOVO: Alocar equipe inteira na cadeia global
-window.addEquipeGlobalCadeia = async function() {
-    const equipeId = document.getElementById('cadeia-add-equipe-global').value;
-    const cadeiaId = document.getElementById('cadeia-id').value;
-    if (!equipeId) {
-        showToast('Selecione uma equipe.', 'warning');
-        return;
-    }
-    if (!cadeiaId) {
-        showToast('Salve a cadeia primeiro (clique em "Criar Nova Cadeia") para depois alocar a equipe.', 'warning');
-        return;
-    }
-
-    const membros = equipesIntegrantes.filter(ei => String(ei.equipe_id) === String(equipeId));
-    if (membros.length === 0) {
-        showToast('Esta equipe não tem integrantes ativos.', 'warning');
+        showToast('Salve a cadeia primeiro para depois alocar funcionários.', 'warning');
         return;
     }
 
     const cadeiaServicos = servicos.filter(s => String(s.cadeia_id) === String(cadeiaId));
     let totalAdicionados = 0;
 
-    for (const membro of membros) {
+    for (const integranteId of selectedIntegrantes) {
         for (const s of cadeiaServicos) {
-            const jaAlocado = alocacoes.find(a => String(a.servico_id) === String(s.id) && String(a.integrante_id) === String(membro.integrante_id));
+            const jaAlocado = alocacoes.find(a => String(a.servico_id) === String(s.id) && String(a.integrante_id) === String(integranteId));
             if (jaAlocado) continue;
 
-            const conflito = checkConflito(membro.integrante_id, s.data_inicio, s.data_fim_real || s.data_fim_prevista, s.id);
+            const conflito = checkConflito(integranteId, s.data_inicio, s.data_fim_real || s.data_fim_prevista, s.id, cadeiaId);
             if (conflito) continue;
 
             try {
-                await supabase.from('logistica_alocacoes').insert({
+                const { error } = await supabase.from('logistica_alocacoes').insert({
                     servico_id: s.id,
-                    integrante_id: membro.integrante_id,
-                    equipe_id: equipeId,
+                    integrante_id: integranteId,
                     data_inicio: s.data_inicio,
                     data_fim: s.data_fim_real || s.data_fim_prevista
                 });
-                totalAdicionados++;
-            } catch (e) { /* ignore */ }
+                if (!error) totalAdicionados++;
+                else console.error('Erro insert alocação:', error);
+            } catch (e) { console.error('Erro insert:', e); }
         }
     }
 
     await loadAlocacoes();
     renderCadeiaEquipeGlobal();
-    showToast(`Equipe alocada! ${totalAdicionados} alocação(ões) criada(s).`, 'success');
+    selectedIntegrantes.clear();
+    populateCadeiaIntegranteSelect();
+    showToast(`${totalAdicionados} alocação(ões) criada(s)!`, 'success');
+};
+
+// MULTI-SELEÇÃO: Remover vários funcionários de uma vez
+window.removeIntegrantesGlobalCadeia = async function() {
+    const cadeiaId = document.getElementById('cadeia-id').value;
+    if (selectedIntegrantes.size === 0 || !cadeiaId) {
+        showToast('Selecione pelo menos um funcionário.', 'warning');
+        return;
+    }
+
+    if (!confirm(`Remover ${selectedIntegrantes.size} funcionário(s) de TODOS os serviços desta cadeia?`)) return;
+
+    const cadeiaServicos = servicos.filter(s => String(s.cadeia_id) === String(cadeiaId));
+    for (const integranteId of selectedIntegrantes) {
+        for (const s of cadeiaServicos) {
+            await supabase.from('logistica_alocacoes').delete()
+                .eq('servico_id', s.id)
+                .eq('integrante_id', integranteId);
+        }
+    }
+
+    await loadAlocacoes();
+    renderCadeiaEquipeGlobal();
+    selectedIntegrantes.clear();
+    populateCadeiaIntegranteSelect();
+    showToast('Funcionários removidos de todos os serviços!', 'success');
+};
+
+// MULTI-SELEÇÃO: Alocar várias equipes de uma vez
+window.addEquipesGlobalCadeia = async function() {
+    const cadeiaId = document.getElementById('cadeia-id').value;
+    if (selectedEquipes.size === 0) {
+        showToast('Selecione pelo menos uma equipe.', 'warning');
+        return;
+    }
+    if (!cadeiaId) {
+        showToast('Salve a cadeia primeiro para depois alocar equipes.', 'warning');
+        return;
+    }
+
+    const cadeiaServicos = servicos.filter(s => String(s.cadeia_id) === String(cadeiaId));
+    let totalAdicionados = 0;
+
+    for (const equipeId of selectedEquipes) {
+        const membros = equipesIntegrantes.filter(ei => String(ei.equipe_id) === String(equipeId));
+        for (const membro of membros) {
+            for (const s of cadeiaServicos) {
+                const jaAlocado = alocacoes.find(a => String(a.servico_id) === String(s.id) && String(a.integrante_id) === String(membro.integrante_id));
+                if (jaAlocado) continue;
+
+                const conflito = checkConflito(membro.integrante_id, s.data_inicio, s.data_fim_real || s.data_fim_prevista, s.id, cadeiaId);
+                if (conflito) continue;
+
+                try {
+                    const { error } = await supabase.from('logistica_alocacoes').insert({
+                        servico_id: s.id,
+                        integrante_id: membro.integrante_id,
+                        equipe_id: equipeId,
+                        data_inicio: s.data_inicio,
+                        data_fim: s.data_fim_real || s.data_fim_prevista
+                    });
+                    if (!error) totalAdicionados++;
+                    else console.error('Erro insert equipe:', error);
+                } catch (e) { console.error('Erro insert equipe:', e); }
+            }
+        }
+    }
+
+    await loadAlocacoes();
+    renderCadeiaEquipeGlobal();
+    selectedEquipes.clear();
+    populateCadeiaEquipeSelect();
+    showToast(`${totalAdicionados} alocação(ões) criada(s) via equipes!`, 'success');
 };
 
 window.copiarEquipeServicoAnterior = async function() {
@@ -3042,33 +3145,51 @@ function renderGanttObra(container, days, localFilter, inicio, fim) {
         const localServicos = servicos.filter(s => String(s.local_id) === String(local.id) && s.status !== 'cancelado');
         localServicos.sort((a, b) => new Date(a.data_inicio) - new Date(b.data_inicio)).forEach(s => {
             const statusColor = getServicoStatusColor(s.status);
-            html += `<tr>
+            const sInicio = new Date(s.data_inicio);
+            const sFim = new Date(s.data_fim_real || s.data_fim_prevista);
+
+            html += `<tr data-servico-id="${s.id}">
                 <td style="position:sticky;left:0;background:#1a1a2e;z-index:1;padding:4px 8px 4px 20px;border-bottom:1px solid rgba(255,255,255,0.03);white-space:nowrap;font-size:0.7rem;">
                     <span style="color:${statusColor};">●</span> ${s.nome}
                 </td>`;
 
-            days.forEach(d => {
+            days.forEach((d, dayIndex) => {
                 const dateStr = formatDateInput(d);
                 const dayStart = new Date(d); dayStart.setHours(0,0,0,0);
                 const dayEnd = new Date(d); dayEnd.setHours(23,59,59,999);
-                const sInicio = new Date(s.data_inicio);
-                const sFim = new Date(s.data_fim_real || s.data_fim_prevista);
 
                 let cellBg = 'transparent';
                 let cellContent = '';
+                let cellClass = '';
 
                 if (sInicio <= dayEnd && sFim >= dayStart) {
                     const presentes = getEquipePresente(s.id, dateStr);
                     cellBg = statusColor + '25';
+                    cellClass = 'gantt-cell-active';
+
+                    // Drag handles
+                    const sInicioDay = new Date(sInicio); sInicioDay.setHours(0,0,0,0);
+                    const sFimDay = new Date(sFim); sFimDay.setHours(0,0,0,0);
+                    const isFirstDay = dayStart.getTime() === sInicioDay.getTime();
+                    const isLastDay = dayStart.getTime() === sFimDay.getTime();
+
                     if (presentes.length > 0) {
-                        const nomes = presentes.map(p => p.nome.split(' ')[0]).join(', ');
-                        cellContent = `<span style="font-size:0.5rem;color:${statusColor};cursor:pointer;" title="${nomes}">${presentes.length}</span>`;
+                        cellContent = `<span class="gantt-cell-clickable" style="font-size:0.5rem;color:white;background:${statusColor}80;border-radius:3px;padding:1px 3px;cursor:pointer;position:relative;z-index:3;" onclick="showGanttPopup(event, '${s.id}', '${dateStr}')">${presentes.length}</span>`;
+                    } else {
+                        cellContent = `<span class="gantt-cell-clickable" style="font-size:0.4rem;color:${statusColor}80;cursor:pointer;position:relative;z-index:3;" onclick="showGanttPopup(event, '${s.id}', '${dateStr}')">●</span>`;
+                    }
+
+                    if (isFirstDay) {
+                        cellContent = `<div class="gantt-drag-handle-left" onmousedown="startDragEdge(event, '${s.id}', 'start')"></div>` + cellContent;
+                    }
+                    if (isLastDay) {
+                        cellContent += `<div class="gantt-drag-handle-right" onmousedown="startDragEdge(event, '${s.id}', 'end')"></div>`;
                     }
                 }
 
                 const isToday = d.toDateString() === new Date().toDateString();
                 const isWeekend = d.getDay() === 0 || d.getDay() === 6;
-                html += `<td style="text-align:center;padding:2px;border-bottom:1px solid rgba(255,255,255,0.03);background:${cellBg};${isToday ? 'border-left:2px solid rgba(76,175,80,0.3);border-right:2px solid rgba(76,175,80,0.3);' : ''}${isWeekend && cellBg === 'transparent' ? 'background:rgba(100,0,0,0.05);' : ''}">${cellContent}</td>`;
+                html += `<td class="${cellClass}" data-day-index="${dayIndex}" data-date="${dateStr}" style="text-align:center;padding:2px;border-bottom:1px solid rgba(255,255,255,0.03);background:${cellBg};position:relative;${isToday ? 'border-left:2px solid rgba(76,175,80,0.3);border-right:2px solid rgba(76,175,80,0.3);' : ''}${isWeekend && cellBg === 'transparent' ? 'background:rgba(100,0,0,0.05);' : ''}">${cellContent}</td>`;
             });
             html += '</tr>';
         });
@@ -3078,7 +3199,7 @@ function renderGanttObra(container, days, localFilter, inicio, fim) {
     container.innerHTML = html;
 }
 
-// MODO SERVIÇO: Lista todos os serviços com quem está em cada dia
+// MODO SERVIÇO: Lista todos os serviços com quem está em cada dia (com popup e drag)
 function renderGanttServico(container, days, localFilter, inicio, fim) {
     let ganttServicos = servicos.filter(s => {
         const sInicio = new Date(s.data_inicio);
@@ -3101,34 +3222,55 @@ function renderGanttServico(container, days, localFilter, inicio, fim) {
         const local = locais.find(l => String(l.id) === String(s.local_id));
         const statusColor = getServicoStatusColor(s.status);
 
-        html += `<tr>
+        html += `<tr data-servico-id="${s.id}">
             <td style="position:sticky;left:0;background:#1a1a2e;z-index:1;padding:5px 8px;border-bottom:1px solid rgba(255,255,255,0.05);white-space:nowrap;font-size:0.7rem;">
-                <span style="color:${statusColor};">●</span> ${s.nome}
+                <span style="color:${statusColor};">\u25cf</span> ${s.nome}
                 <br><small style="color:rgba(255,255,255,0.4);">${local ? local.nome : ''}</small>
             </td>`;
 
-        days.forEach(d => {
+        const sInicio = new Date(s.data_inicio);
+        const sFim = new Date(s.data_fim_real || s.data_fim_prevista);
+
+        days.forEach((d, dayIndex) => {
             const dateStr = formatDateInput(d);
             const dayStart = new Date(d); dayStart.setHours(0,0,0,0);
             const dayEnd = new Date(d); dayEnd.setHours(23,59,59,999);
-            const sInicio = new Date(s.data_inicio);
-            const sFim = new Date(s.data_fim_real || s.data_fim_prevista);
 
             let cellBg = 'transparent';
             let cellContent = '';
+            let cellClass = '';
+            let isFirstDay = false;
+            let isLastDay = false;
 
             if (sInicio <= dayEnd && sFim >= dayStart) {
                 const presentes = getEquipePresente(s.id, dateStr);
                 cellBg = statusColor + '25';
+                cellClass = 'gantt-cell-active';
+
+                // Detectar primeiro e último dia para drag handles
+                const sInicioDay = new Date(sInicio); sInicioDay.setHours(0,0,0,0);
+                const sFimDay = new Date(sFim); sFimDay.setHours(0,0,0,0);
+                isFirstDay = dayStart.getTime() === sInicioDay.getTime();
+                isLastDay = dayStart.getTime() === sFimDay.getTime();
+
                 if (presentes.length > 0) {
-                    const nomes = presentes.map(p => p.nome.split(' ')[0]).join('\n');
-                    cellContent = `<span style="font-size:0.5rem;color:white;background:${statusColor}80;border-radius:3px;padding:1px 3px;cursor:pointer;" title="${nomes}">${presentes.length}</span>`;
+                    cellContent = `<span class="gantt-cell-clickable" style="font-size:0.5rem;color:white;background:${statusColor}80;border-radius:3px;padding:1px 3px;cursor:pointer;position:relative;z-index:3;" data-servico-id="${s.id}" data-date="${dateStr}" onclick="showGanttPopup(event, '${s.id}', '${dateStr}')">${presentes.length}</span>`;
+                } else {
+                    cellContent = `<span class="gantt-cell-clickable" style="font-size:0.4rem;color:${statusColor}80;cursor:pointer;position:relative;z-index:3;" data-servico-id="${s.id}" data-date="${dateStr}" onclick="showGanttPopup(event, '${s.id}', '${dateStr}')">\u25cf</span>`;
+                }
+
+                // Drag handles para redimensionar
+                if (isFirstDay) {
+                    cellContent = `<div class="gantt-drag-handle-left" data-servico-id="${s.id}" data-edge="start" onmousedown="startDragEdge(event, '${s.id}', 'start')"></div>` + cellContent;
+                }
+                if (isLastDay) {
+                    cellContent += `<div class="gantt-drag-handle-right" data-servico-id="${s.id}" data-edge="end" onmousedown="startDragEdge(event, '${s.id}', 'end')"></div>`;
                 }
             }
 
             const isToday = d.toDateString() === new Date().toDateString();
             const isWeekend = d.getDay() === 0 || d.getDay() === 6;
-            html += `<td style="text-align:center;padding:2px;border-bottom:1px solid rgba(255,255,255,0.05);background:${cellBg};${isToday ? 'border-left:2px solid rgba(76,175,80,0.5);border-right:2px solid rgba(76,175,80,0.5);' : ''}${isWeekend && cellBg === 'transparent' ? 'background:rgba(100,0,0,0.05);' : ''}">${cellContent}</td>`;
+            html += `<td class="${cellClass}" data-day-index="${dayIndex}" data-date="${dateStr}" style="text-align:center;padding:2px;border-bottom:1px solid rgba(255,255,255,0.05);background:${cellBg};position:relative;${isToday ? 'border-left:2px solid rgba(76,175,80,0.5);border-right:2px solid rgba(76,175,80,0.5);' : ''}${isWeekend && cellBg === 'transparent' ? 'background:rgba(100,0,0,0.05);' : ''}">${cellContent}</td>`;
         });
         html += '</tr>';
     });
@@ -3543,6 +3685,321 @@ function createToastContainer() {
     document.body.appendChild(container);
     return container;
 }
+
+// ===== POPUP INTERATIVO DO GANTT =====
+let ganttPopupEl = null;
+let selectedPopupIntegrantes = new Set();
+
+window.showGanttPopup = function(event, servicoId, dateStr) {
+    event.stopPropagation();
+    if (!ganttPopupEl) {
+        ganttPopupEl = document.getElementById('gantt-popup');
+    }
+    if (!ganttPopupEl) return;
+
+    const servico = servicos.find(s => s.id === servicoId);
+    if (!servico) return;
+
+    const local = locais.find(l => String(l.id) === String(servico.local_id));
+    const presentes = getEquipePresente(servicoId, dateStr);
+    const dateParts = dateStr.split('-');
+    const dateLabel = `${dateParts[2]}/${dateParts[1]}/${dateParts[0]}`;
+    selectedPopupIntegrantes.clear();
+
+    // Listar integrantes não alocados neste serviço para poder adicionar
+    const alocadosIds = alocacoes.filter(a => String(a.servico_id) === String(servicoId)).map(a => String(a.integrante_id));
+    const naoAlocados = integrantes.filter(i => !alocadosIds.includes(String(i.id)));
+
+    let html = `
+        <div class="gantt-popup-header">
+            <div>
+                <strong style="color:#add8e6;font-size:0.85rem;">${servico.nome}</strong>
+                <br><small style="color:rgba(255,255,255,0.5);">${local ? local.nome + ' | ' : ''}${dateLabel}</small>
+            </div>
+            <button onclick="hideGanttPopup()" style="background:none;border:none;color:white;font-size:1.1rem;cursor:pointer;">&times;</button>
+        </div>
+        <div class="gantt-popup-body">
+            <div style="margin-bottom:8px;font-size:0.75rem;color:#ffc107;font-weight:600;"><i class="fas fa-users"></i> Presentes (${presentes.length})</div>`;
+
+    if (presentes.length > 0) {
+        html += '<div class="gantt-popup-integrantes">';
+        presentes.forEach(p => {
+            html += `<div class="gantt-popup-integrante" data-id="${p.id}" onclick="togglePopupIntegrante('${p.id}', this)">
+                <span class="gantt-popup-checkbox"><i class="far fa-square"></i></span>
+                <span>${p.nome}</span>
+                <button class="gantt-popup-remove-btn" onclick="event.stopPropagation(); removeIntegranteFromServico('${servicoId}', '${p.id}')" title="Remover deste serviço">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>`;
+        });
+        html += '</div>';
+
+        // Botão para mover selecionados
+        html += `<div class="gantt-popup-actions" id="gantt-popup-move-section" style="display:none;">
+            <div style="font-size:0.7rem;color:#90caf9;margin:6px 0 4px;"><i class="fas fa-arrows-alt"></i> Mover selecionados para:</div>
+            <select id="gantt-popup-target-servico" style="width:100%;padding:5px;border-radius:4px;background:#2a2a4a;color:white;border:1px solid rgba(255,255,255,0.2);font-size:0.7rem;">
+                <option value="">Selecionar serviço destino...</option>`;
+        servicos.filter(s => s.id !== servicoId && s.status !== 'cancelado').forEach(s => {
+            const sLocal = locais.find(l => String(l.id) === String(s.local_id));
+            html += `<option value="${s.id}">${s.nome}${sLocal ? ' (' + sLocal.nome + ')' : ''}</option>`;
+        });
+        html += `</select>
+            <button onclick="moveSelectedToServico('${servicoId}')" class="gantt-popup-move-btn"><i class="fas fa-share"></i> Mover</button>
+            <button onclick="copySelectedToServico('${servicoId}')" class="gantt-popup-copy-btn"><i class="fas fa-copy"></i> Copiar</button>
+        </div>`;
+    } else {
+        html += '<p style="color:rgba(255,255,255,0.3);font-size:0.7rem;">Nenhum integrante neste dia.</p>';
+    }
+
+    // Seção para adicionar novos integrantes
+    if (naoAlocados.length > 0) {
+        html += `<div style="margin-top:8px;border-top:1px solid rgba(255,255,255,0.1);padding-top:8px;">
+            <div style="font-size:0.7rem;color:#4caf50;margin-bottom:4px;"><i class="fas fa-plus"></i> Adicionar ao serviço</div>
+            <select id="gantt-popup-add-integrante" style="width:100%;padding:5px;border-radius:4px;background:#2a2a4a;color:white;border:1px solid rgba(255,255,255,0.2);font-size:0.7rem;">
+                <option value="">Selecionar funcionário...</option>`;
+        naoAlocados.sort((a, b) => a.nome.localeCompare(b.nome)).forEach(i => {
+            html += `<option value="${i.id}">${i.nome}</option>`;
+        });
+        html += `</select>
+            <button onclick="addIntegranteFromPopup('${servicoId}')" style="margin-top:4px;width:100%;padding:4px;border-radius:4px;background:#4caf50;color:white;border:none;font-size:0.7rem;cursor:pointer;"><i class="fas fa-plus"></i> Adicionar</button>
+        </div>`;
+    }
+
+    html += '</div>';
+    ganttPopupEl.innerHTML = html;
+
+    // Posicionar popup perto do clique
+    const rect = event.target.getBoundingClientRect();
+    ganttPopupEl.style.display = 'block';
+    let left = rect.right + 10;
+    let top = rect.top - 50;
+    // Ajustar se sair da tela
+    if (left + 320 > window.innerWidth) left = rect.left - 330;
+    if (top + 400 > window.innerHeight) top = window.innerHeight - 410;
+    if (top < 10) top = 10;
+    ganttPopupEl.style.left = left + 'px';
+    ganttPopupEl.style.top = top + 'px';
+};
+
+window.hideGanttPopup = function() {
+    if (ganttPopupEl) ganttPopupEl.style.display = 'none';
+};
+
+// Fechar popup ao clicar fora
+document.addEventListener('click', function(e) {
+    if (ganttPopupEl && ganttPopupEl.style.display === 'block') {
+        if (!ganttPopupEl.contains(e.target) && !e.target.classList.contains('gantt-cell-clickable')) {
+            hideGanttPopup();
+        }
+    }
+});
+
+window.togglePopupIntegrante = function(id, el) {
+    if (selectedPopupIntegrantes.has(id)) {
+        selectedPopupIntegrantes.delete(id);
+        el.classList.remove('selected');
+        el.querySelector('.gantt-popup-checkbox i').className = 'far fa-square';
+    } else {
+        selectedPopupIntegrantes.add(id);
+        el.classList.add('selected');
+        el.querySelector('.gantt-popup-checkbox i').className = 'fas fa-check-square';
+    }
+    // Mostrar/ocultar seção de mover
+    const moveSection = document.getElementById('gantt-popup-move-section');
+    if (moveSection) moveSection.style.display = selectedPopupIntegrantes.size > 0 ? 'block' : 'none';
+};
+
+window.moveSelectedToServico = async function(fromServicoId) {
+    const targetId = document.getElementById('gantt-popup-target-servico')?.value;
+    if (!targetId) { showToast('Selecione o serviço destino.', 'warning'); return; }
+    if (selectedPopupIntegrantes.size === 0) { showToast('Selecione funcionários.', 'warning'); return; }
+
+    const targetServico = servicos.find(s => s.id === targetId);
+    if (!targetServico) return;
+
+    let moved = 0;
+    for (const integId of selectedPopupIntegrantes) {
+        // Remover do serviço atual
+        const aloc = alocacoes.find(a => String(a.servico_id) === String(fromServicoId) && String(a.integrante_id) === String(integId));
+        if (aloc) {
+            await supabase.from('logistica_alocacoes').delete().eq('id', aloc.id);
+        }
+        // Verificar se já está no destino
+        const jaExiste = alocacoes.find(a => String(a.servico_id) === String(targetId) && String(a.integrante_id) === String(integId));
+        if (!jaExiste) {
+            await supabase.from('logistica_alocacoes').insert({
+                servico_id: targetId,
+                integrante_id: integId,
+                data_inicio: targetServico.data_inicio,
+                data_fim: targetServico.data_fim_real || targetServico.data_fim_prevista
+            });
+        }
+        moved++;
+    }
+
+    showToast(`${moved} funcionário(s) movido(s)!`, 'success');
+    hideGanttPopup();
+    await loadAllData();
+};
+
+window.copySelectedToServico = async function(fromServicoId) {
+    const targetId = document.getElementById('gantt-popup-target-servico')?.value;
+    if (!targetId) { showToast('Selecione o serviço destino.', 'warning'); return; }
+    if (selectedPopupIntegrantes.size === 0) { showToast('Selecione funcionários.', 'warning'); return; }
+
+    const targetServico = servicos.find(s => s.id === targetId);
+    if (!targetServico) return;
+
+    let copied = 0;
+    for (const integId of selectedPopupIntegrantes) {
+        const jaExiste = alocacoes.find(a => String(a.servico_id) === String(targetId) && String(a.integrante_id) === String(integId));
+        if (!jaExiste) {
+            await supabase.from('logistica_alocacoes').insert({
+                servico_id: targetId,
+                integrante_id: integId,
+                data_inicio: targetServico.data_inicio,
+                data_fim: targetServico.data_fim_real || targetServico.data_fim_prevista
+            });
+            copied++;
+        }
+    }
+
+    showToast(`${copied} funcionário(s) copiado(s)!`, 'success');
+    hideGanttPopup();
+    await loadAllData();
+};
+
+window.removeIntegranteFromServico = async function(servicoId, integranteId) {
+    if (!confirm('Remover este funcionário deste serviço?')) return;
+    const aloc = alocacoes.find(a => String(a.servico_id) === String(servicoId) && String(a.integrante_id) === String(integranteId));
+    if (aloc) {
+        const { error } = await supabase.from('logistica_alocacoes').delete().eq('id', aloc.id);
+        if (error) { showToast('Erro: ' + error.message, 'error'); return; }
+        showToast('Funcionário removido!', 'success');
+        hideGanttPopup();
+        await loadAllData();
+    }
+};
+
+window.addIntegranteFromPopup = async function(servicoId) {
+    const sel = document.getElementById('gantt-popup-add-integrante');
+    if (!sel || !sel.value) { showToast('Selecione um funcionário.', 'warning'); return; }
+
+    const servico = servicos.find(s => s.id === servicoId);
+    if (!servico) return;
+
+    const { error } = await supabase.from('logistica_alocacoes').insert({
+        servico_id: servicoId,
+        integrante_id: sel.value,
+        data_inicio: servico.data_inicio,
+        data_fim: servico.data_fim_real || servico.data_fim_prevista
+    });
+
+    if (error) { showToast('Erro: ' + error.message, 'error'); return; }
+    showToast('Funcionário adicionado!', 'success');
+    hideGanttPopup();
+    await loadAllData();
+};
+
+// ===== DRAG EDGE - AJUSTAR DATAS ARRASTANDO BORDAS =====
+let dragState = null;
+
+window.startDragEdge = function(event, servicoId, edge) {
+    event.preventDefault();
+    event.stopPropagation();
+
+    const cell = event.target.closest('td');
+    const row = cell.closest('tr');
+    const table = row.closest('table');
+    const allCells = Array.from(row.querySelectorAll('td'));
+
+    dragState = {
+        servicoId,
+        edge,
+        startX: event.clientX,
+        row,
+        table,
+        allCells
+    };
+
+    document.addEventListener('mousemove', onDragEdgeMove);
+    document.addEventListener('mouseup', onDragEdgeUp);
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+};
+
+function onDragEdgeMove(event) {
+    if (!dragState) return;
+    // Highlight da coluna sob o mouse
+    const cells = dragState.allCells;
+    cells.forEach(c => c.style.outline = '');
+    const el = document.elementFromPoint(event.clientX, event.clientY);
+    if (el) {
+        const td = el.closest('td');
+        if (td && dragState.row.contains(td)) {
+            td.style.outline = '2px solid #ffc107';
+        }
+    }
+}
+
+async function onDragEdgeUp(event) {
+    if (!dragState) return;
+    document.removeEventListener('mousemove', onDragEdgeMove);
+    document.removeEventListener('mouseup', onDragEdgeUp);
+    document.body.style.cursor = '';
+    document.body.style.userSelect = '';
+
+    // Encontrar a célula onde soltou
+    const el = document.elementFromPoint(event.clientX, event.clientY);
+    if (!el) { dragState = null; return; }
+    const td = el.closest('td');
+    if (!td) { dragState = null; return; }
+
+    const dateStr = td.dataset.date;
+    if (!dateStr) { dragState = null; return; }
+
+    const servico = servicos.find(s => s.id === dragState.servicoId);
+    if (!servico) { dragState = null; return; }
+
+    const newDate = new Date(dateStr + 'T12:00:00');
+    const oldInicio = new Date(servico.data_inicio);
+    const oldFim = new Date(servico.data_fim_real || servico.data_fim_prevista);
+
+    let updateData = {};
+    if (dragState.edge === 'start') {
+        if (newDate >= oldFim) {
+            showToast('Início não pode ser após o fim.', 'warning');
+            dragState = null; return;
+        }
+        newDate.setHours(oldInicio.getHours(), oldInicio.getMinutes(), 0, 0);
+        updateData.data_inicio = newDate.toISOString();
+    } else {
+        if (newDate <= oldInicio) {
+            showToast('Fim não pode ser antes do início.', 'warning');
+            dragState = null; return;
+        }
+        newDate.setHours(oldFim.getHours(), oldFim.getMinutes(), 0, 0);
+        updateData.data_fim_prevista = newDate.toISOString();
+    }
+
+    const { error } = await supabase.from('logistica_servicos').update(updateData).eq('id', dragState.servicoId);
+    if (error) {
+        showToast('Erro ao ajustar data: ' + error.message, 'error');
+    } else {
+        const edgeLabel = dragState.edge === 'start' ? 'Início' : 'Fim';
+        showToast(`${edgeLabel} ajustado para ${dateStr.split('-').reverse().join('/')}`, 'success');
+        // Atualizar alocações deste serviço para refletir novas datas
+        const servicoAlocs = alocacoes.filter(a => String(a.servico_id) === String(dragState.servicoId));
+        for (const aloc of servicoAlocs) {
+            const alocUpdate = {};
+            if (dragState.edge === 'start') alocUpdate.data_inicio = updateData.data_inicio;
+            if (dragState.edge === 'end') alocUpdate.data_fim = updateData.data_fim_prevista;
+            await supabase.from('logistica_alocacoes').update(alocUpdate).eq('id', aloc.id);
+        }
+        await loadAllData();
+    }
+    dragState = null;
+};
 
 // ===== INICIALIZAÇÃO =====
 document.addEventListener('DOMContentLoaded', function() {
