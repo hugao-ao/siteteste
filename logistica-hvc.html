@@ -1087,6 +1087,36 @@
     .gantt-legend-dot.transitioning { background: rgba(255,152,0,0.8); }
     .gantt-legend-dot.idle { background: rgba(158,158,158,0.4); }
 
+    /* Multi-select dropdown */
+    .multi-select-option { padding:6px 10px; cursor:pointer; display:flex; align-items:center; gap:8px; font-size:0.8rem; transition:background 0.15s; }
+    .multi-select-option:hover { background:rgba(255,255,255,0.1); }
+    .multi-select-option input[type="checkbox"] { accent-color:#4caf50; }
+    .multi-select-option.checked { background:rgba(76,175,80,0.1); }
+    /* Popup alocação interativo */
+    .gantt-popup { position:fixed; z-index:9999; background:#1a1a3e; border:1px solid rgba(255,255,255,0.3); border-radius:10px; padding:0; min-width:280px; max-width:340px; max-height:450px; overflow-y:auto; box-shadow:0 8px 32px rgba(0,0,0,0.6); }
+    .gantt-popup-header { display:flex; justify-content:space-between; align-items:flex-start; padding:10px 12px; border-bottom:1px solid rgba(255,255,255,0.1); background:rgba(255,255,255,0.03); border-radius:10px 10px 0 0; }
+    .gantt-popup-body { padding:10px 12px; }
+    .gantt-popup-integrantes { display:flex; flex-direction:column; gap:3px; }
+    .gantt-popup-integrante { display:flex; align-items:center; gap:6px; padding:5px 8px; font-size:0.72rem; border-radius:5px; cursor:pointer; transition:all 0.15s; color:rgba(255,255,255,0.85); border:1px solid transparent; }
+    .gantt-popup-integrante:hover { background:rgba(255,255,255,0.08); }
+    .gantt-popup-integrante.selected { background:rgba(33,150,243,0.2); border-color:rgba(33,150,243,0.4); }
+    .gantt-popup-checkbox { color:rgba(255,255,255,0.4); font-size:0.8rem; min-width:18px; }
+    .gantt-popup-integrante.selected .gantt-popup-checkbox { color:#2196f3; }
+    .gantt-popup-remove-btn { margin-left:auto; background:none; border:none; color:rgba(244,67,54,0.6); cursor:pointer; font-size:0.7rem; padding:2px 4px; border-radius:3px; }
+    .gantt-popup-remove-btn:hover { color:#f44336; background:rgba(244,67,54,0.15); }
+    .gantt-popup-actions { margin-top:6px; }
+    .gantt-popup-move-btn, .gantt-popup-copy-btn { margin-top:4px; padding:5px 10px; font-size:0.68rem; border-radius:4px; border:none; cursor:pointer; font-weight:600; display:inline-block; }
+    .gantt-popup-move-btn { background:#ff9800; color:white; }
+    .gantt-popup-move-btn:hover { background:#f57c00; }
+    .gantt-popup-copy-btn { background:#2196f3; color:white; margin-left:4px; }
+    .gantt-popup-copy-btn:hover { background:#1976d2; }
+    /* Drag handles no Gantt */
+    .gantt-cell-active { cursor:pointer; position:relative; }
+    .gantt-cell-active:hover { filter:brightness(1.3); }
+    .gantt-drag-handle-left, .gantt-drag-handle-right { position:absolute; top:0; bottom:0; width:6px; cursor:col-resize; z-index:5; }
+    .gantt-drag-handle-left { left:0; border-left:2px solid rgba(255,255,255,0.5); }
+    .gantt-drag-handle-right { right:0; border-right:2px solid rgba(255,255,255,0.5); }
+    .gantt-drag-handle-left:hover, .gantt-drag-handle-right:hover { background:rgba(255,255,255,0.15); }
     .gantt-view-btn.active {
       background: rgba(255,255,255,0.12) !important;
       box-shadow: 0 0 8px rgba(255,255,255,0.1);
@@ -1575,25 +1605,45 @@
           </div>
           <p style="font-size:0.7rem;color:rgba(255,255,255,0.5);margin-bottom:8px;">Adicione/remova integrantes de TODOS os serviços desta cadeia de uma vez.</p>
           <div class="equipe-list" id="cadeia-equipe-global-list"></div>
-          <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;">
-            <select id="cadeia-add-integrante-global" style="flex:1;min-width:140px;padding:8px;border-radius:6px;background:rgba(25,25,112,0.9);border:1px solid rgba(255,255,255,0.3);color:white;font-size:0.8rem;">
-              <option value="">Selecionar funcionário...</option>
-            </select>
-            <button type="button" class="btn btn-primary btn-sm" onclick="addIntegranteGlobalCadeia()" title="Adicionar a TODOS os serviços">
-              <i class="fas fa-user-plus"></i> Todos
-            </button>
-            <button type="button" class="btn btn-danger btn-sm" onclick="removeIntegranteGlobalCadeia()" title="Remover de TODOS os serviços">
-              <i class="fas fa-user-minus"></i> Todos
-            </button>
+          <!-- Multi-seleção de funcionários -->
+          <div style="margin-top:10px;">
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+              <div id="multi-select-integrantes" class="multi-select-container" style="flex:1;min-width:200px;position:relative;">
+                <div class="multi-select-trigger" onclick="toggleMultiSelect('integrantes')" style="padding:8px 12px;border-radius:6px;background:rgba(25,25,112,0.9);border:1px solid rgba(255,255,255,0.3);color:white;font-size:0.8rem;cursor:pointer;display:flex;justify-content:space-between;align-items:center;">
+                  <span id="multi-integ-label">Selecionar funcionários...</span>
+                  <i class="fas fa-chevron-down" style="font-size:0.6rem;"></i>
+                </div>
+                <div id="multi-integ-dropdown" class="multi-select-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;max-height:250px;overflow-y:auto;background:#1a1a3e;border:1px solid rgba(255,255,255,0.3);border-radius:0 0 6px 6px;z-index:100;">
+                  <div style="padding:6px;border-bottom:1px solid rgba(255,255,255,0.1);">
+                    <input type="text" id="multi-integ-search" placeholder="Buscar..." oninput="filterMultiSelect('integrantes')" style="width:100%;padding:5px 8px;border-radius:4px;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);color:white;font-size:0.75rem;">
+                  </div>
+                  <div id="multi-integ-options"></div>
+                </div>
+              </div>
+              <button type="button" class="btn btn-primary btn-sm" onclick="addIntegrantesGlobalCadeia()" title="Adicionar selecionados a TODOS os serviços">
+                <i class="fas fa-user-plus"></i> + Todos
+              </button>
+              <button type="button" class="btn btn-danger btn-sm" onclick="removeIntegrantesGlobalCadeia()" title="Remover selecionados de TODOS os serviços">
+                <i class="fas fa-user-minus"></i> - Todos
+              </button>
+            </div>
           </div>
-          <!-- NOVO: Alocar equipe inteira -->
-          <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;">
-            <select id="cadeia-add-equipe-global" style="flex:1;min-width:140px;padding:8px;border-radius:6px;background:rgba(25,25,112,0.9);border:1px solid rgba(255,255,255,0.3);color:white;font-size:0.8rem;">
-              <option value="">Selecionar equipe...</option>
-            </select>
-            <button type="button" class="btn btn-secondary btn-sm" onclick="addEquipeGlobalCadeia()" title="Alocar equipe inteira na cadeia">
-              <i class="fas fa-users"></i> Alocar Equipe
-            </button>
+          <!-- Multi-seleção de equipes -->
+          <div style="margin-top:10px;">
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+              <div id="multi-select-equipes" class="multi-select-container" style="flex:1;min-width:200px;position:relative;">
+                <div class="multi-select-trigger" onclick="toggleMultiSelect('equipes')" style="padding:8px 12px;border-radius:6px;background:rgba(25,25,112,0.9);border:1px solid rgba(255,255,255,0.3);color:white;font-size:0.8rem;cursor:pointer;display:flex;justify-content:space-between;align-items:center;">
+                  <span id="multi-equipe-label">Selecionar equipes...</span>
+                  <i class="fas fa-chevron-down" style="font-size:0.6rem;"></i>
+                </div>
+                <div id="multi-equipe-dropdown" class="multi-select-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;max-height:250px;overflow-y:auto;background:#1a1a3e;border:1px solid rgba(255,255,255,0.3);border-radius:0 0 6px 6px;z-index:100;">
+                  <div id="multi-equipe-options"></div>
+                </div>
+              </div>
+              <button type="button" class="btn btn-secondary btn-sm" onclick="addEquipesGlobalCadeia()" title="Alocar equipes selecionadas na cadeia">
+                <i class="fas fa-users"></i> Alocar Equipes
+              </button>
+            </div>
           </div>
         </div>
 
@@ -1798,6 +1848,9 @@
       <div id="producao-content"></div>
     </div>
   </div>
+
+  <!-- Popup de Alocação no Gantt -->
+  <div id="gantt-popup" class="gantt-popup" style="display:none;"></div>
 
   <!-- Scripts -->
   <script src="sidebar.js"></script>
