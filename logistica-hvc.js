@@ -1507,6 +1507,17 @@ window.saveCadeia = async function(event) {
                     data_inicio: new Date(s.data_inicio).toISOString(),
                     data_fim: new Date(s.data_fim_prevista).toISOString()
                 }).eq('servico_id', s.tempId);
+
+                // Sincronizar datas com serviços da mesma etapa (simultâneos)
+                // Encontrar outros serviços no tempServicos com mesma etapa
+                const mesmosEtapa = paraAtualizar.filter(x => x.etapa === s.etapa && String(x.tempId) !== String(s.tempId));
+                for (const irmao of mesmosEtapa) {
+                    // Garantir que datas são iguais entre simultâneos
+                    if (irmao.data_inicio !== s.data_inicio || irmao.data_fim_prevista !== s.data_fim_prevista) {
+                        irmao.data_inicio = s.data_inicio;
+                        irmao.data_fim_prevista = s.data_fim_prevista;
+                    }
+                }
             }
 
             // Inserir serviços novos (adicionados pelo usuário no modal)
@@ -1865,8 +1876,8 @@ window.addIntegranteServico = async function() {
     const servico = servicos.find(s => s.id === servicoId);
     if (!servico) return;
 
-    // Verificar conflito de horário
-    const conflito = checkConflito(integranteId, servico.data_inicio, servico.data_fim_real || servico.data_fim_prevista, servicoId);
+    // Verificar conflito de horário (ignorar conflitos intra-cadeia para serviços simultâneos)
+    const conflito = checkConflito(integranteId, servico.data_inicio, servico.data_fim_real || servico.data_fim_prevista, servicoId, servico.cadeia_id);
     if (conflito) {
         const conflitoServico = servicos.find(s => s.id === conflito.servico_id);
         document.getElementById('conflito-aviso').style.display = 'block';
@@ -1889,11 +1900,14 @@ window.addIntegranteServico = async function() {
         });
         if (error) throw error;
 
+        // Sincronizar com serviços simultâneos (mesma etapa)
+        await syncInsertAlocacao(servicoId, integranteId, servico.data_inicio, servico.data_fim_real || servico.data_fim_prevista);
+
         await loadAlocacoes();
         renderServicoEquipe(servicoId);
         renderServicoPresenca(servicoId);
         document.getElementById('servico-add-integrante').value = '';
-        showToast('Funcionário alocado com sucesso!', 'success');
+        showToast('Funcionário alocado (e nos serviços simultâneos)!', 'success');
     } catch (error) {
         if (error.message.includes('duplicate') || error.message.includes('unique')) {
             showToast('Este funcionário já está alocado neste serviço.', 'warning');
@@ -1930,8 +1944,8 @@ window.addEquipeInteira = async function() {
         const jaAlocado = alocacoes.find(a => String(a.servico_id) === String(servicoId) && String(a.integrante_id) === String(membro.integrante_id));
         if (jaAlocado) continue;
 
-        // Verificar conflito
-        const conflito = checkConflito(membro.integrante_id, servico.data_inicio, servico.data_fim_real || servico.data_fim_prevista, servicoId);
+        // Verificar conflito (ignorar conflitos intra-cadeia para simultâneos)
+        const conflito = checkConflito(membro.integrante_id, servico.data_inicio, servico.data_fim_real || servico.data_fim_prevista, servicoId, servico.cadeia_id);
         if (conflito) {
             conflitos++;
             continue;
@@ -1945,6 +1959,8 @@ window.addEquipeInteira = async function() {
                 data_inicio: servico.data_inicio,
                 data_fim: servico.data_fim_real || servico.data_fim_prevista
             });
+            // Sincronizar com serviços simultâneos
+            await syncInsertAlocacao(servicoId, membro.integrante_id, servico.data_inicio, servico.data_fim_real || servico.data_fim_prevista);
             adicionados++;
         } catch (e) { /* ignore duplicates */ }
     }
@@ -1954,13 +1970,13 @@ window.addEquipeInteira = async function() {
     renderServicoPresenca(servicoId);
 
     if (conflitos > 0) {
-        showToast(`${adicionados} integrante(s) alocado(s). ${conflitos} com conflito.`, 'warning');
+        showToast(`${adicionados} integrante(s) alocado(s) (+ simultâneos). ${conflitos} com conflito.`, 'warning');
     } else {
-        showToast(`Equipe inteira alocada! (${adicionados} integrante(s))`, 'success');
+        showToast(`Equipe inteira alocada (+ simultâneos)! (${adicionados} integrante(s))`, 'success');
     }
 };
 
-function checkConflito(integranteId, inicio, fim, excludeServicoId) {
+function checkConflito(integranteId, inicio, fim, excludeServicoId, excludeCadeiaId) {
     const novoInicio = new Date(inicio);
     const novoFim = new Date(fim);
 
@@ -1969,6 +1985,12 @@ function checkConflito(integranteId, inicio, fim, excludeServicoId) {
     );
 
     for (const aloc of alocacoesIntegrante) {
+        // Se excludeCadeiaId fornecido, ignorar conflitos com serviços da mesma cadeia
+        if (excludeCadeiaId) {
+            const alocServico = servicos.find(s => String(s.id) === String(aloc.servico_id));
+            if (alocServico && String(alocServico.cadeia_id) === String(excludeCadeiaId)) continue;
+        }
+
         const alocInicio = new Date(aloc.data_inicio);
         const alocFim = new Date(aloc.data_fim);
 
@@ -1980,16 +2002,85 @@ function checkConflito(integranteId, inicio, fim, excludeServicoId) {
     return null;
 }
 
+// ===== SINCRONIZAÇÃO DE SERVIÇOS SIMULTÂNEOS (MESMA ETAPA) =====
+// Retorna os serviços irmãos (mesma cadeia + mesma etapa) excluindo o próprio
+function getServicosSimultaneos(servicoId) {
+    const servico = servicos.find(s => String(s.id) === String(servicoId));
+    if (!servico || !servico.cadeia_id || !servico.etapa) return [];
+    return servicos.filter(s =>
+        String(s.cadeia_id) === String(servico.cadeia_id) &&
+        s.etapa === servico.etapa &&
+        String(s.id) !== String(servicoId)
+    );
+}
+
+// Replica uma alocação (insert) nos serviços simultâneos
+async function syncInsertAlocacao(servicoId, integranteId, dataInicio, dataFim) {
+    const simultaneos = getServicosSimultaneos(servicoId);
+    for (const s of simultaneos) {
+        // Verificar se já está alocado neste serviço irmão
+        const jaExiste = alocacoes.find(a => String(a.servico_id) === String(s.id) && String(a.integrante_id) === String(integranteId));
+        if (jaExiste) continue;
+        try {
+            await supabase.from('logistica_alocacoes').insert({
+                servico_id: s.id,
+                integrante_id: integranteId,
+                data_inicio: dataInicio,
+                data_fim: dataFim
+            });
+        } catch (e) { console.error('Sync insert simultâneo:', e); }
+    }
+}
+
+// Replica uma remoção de alocação nos serviços simultâneos
+async function syncDeleteAlocacao(servicoId, integranteId) {
+    const simultaneos = getServicosSimultaneos(servicoId);
+    for (const s of simultaneos) {
+        const aloc = alocacoes.find(a => String(a.servico_id) === String(s.id) && String(a.integrante_id) === String(integranteId));
+        if (aloc) {
+            try {
+                await supabase.from('logistica_alocacoes').delete().eq('id', aloc.id);
+            } catch (e) { console.error('Sync delete simultâneo:', e); }
+        }
+    }
+}
+
+// Replica atualização de datas do serviço nos serviços simultâneos
+async function syncDatasServico(servicoId, updateData) {
+    const simultaneos = getServicosSimultaneos(servicoId);
+    for (const s of simultaneos) {
+        try {
+            await supabase.from('logistica_servicos').update(updateData).eq('id', s.id);
+            // Também atualizar alocações do serviço irmão
+            const sAlocs = alocacoes.filter(a => String(a.servico_id) === String(s.id));
+            const alocUpdate = {};
+            if (updateData.data_inicio) alocUpdate.data_inicio = updateData.data_inicio;
+            if (updateData.data_fim_prevista) alocUpdate.data_fim = updateData.data_fim_prevista;
+            if (Object.keys(alocUpdate).length > 0) {
+                for (const aloc of sAlocs) {
+                    await supabase.from('logistica_alocacoes').update(alocUpdate).eq('id', aloc.id);
+                }
+            }
+        } catch (e) { console.error('Sync datas simultâneo:', e); }
+    }
+}
+
 window.removeIntegranteServico = async function(alocacaoId) {
     if (!confirm('Remover este funcionário do serviço?')) return;
     try {
+        // Encontrar a alocação para saber serviço e integrante
+        const aloc = alocacoes.find(a => String(a.id) === String(alocacaoId));
         const { error } = await supabase.from('logistica_alocacoes').delete().eq('id', alocacaoId);
         if (error) throw error;
+        // Sincronizar remoção nos serviços simultâneos
+        if (aloc) {
+            await syncDeleteAlocacao(aloc.servico_id, aloc.integrante_id);
+        }
         await loadAlocacoes();
         const servicoId = document.getElementById('servico-id').value;
         renderServicoEquipe(servicoId);
         renderServicoPresenca(servicoId);
-        showToast('Funcionário removido.', 'success');
+        showToast('Funcionário removido (e dos serviços simultâneos).', 'success');
     } catch (error) {
         showToast('Erro: ' + error.message, 'error');
     }
@@ -2022,7 +2113,14 @@ window.saveServico = async function(event) {
             }).eq('id', aloc.id);
         }
 
-        showToast('Serviço atualizado!', 'success');
+        // Sincronizar datas nos serviços simultâneos (mesma etapa)
+        await syncDatasServico(id, {
+            data_inicio: data.data_inicio,
+            data_fim_prevista: data.data_fim_prevista,
+            updated_at: data.updated_at
+        });
+
+        showToast('Serviço atualizado (e simultâneos sincronizados)!', 'success');
         closeModal('servico');
         await loadAllData();
     } catch (error) {
@@ -2473,7 +2571,7 @@ window.copiarEquipeServicoAnterior = async function() {
         const jaAlocado = alocacoes.find(a => String(a.servico_id) === String(servicoId) && String(a.integrante_id) === String(aloc.integrante_id));
         if (jaAlocado) continue;
 
-        const conflito = checkConflito(aloc.integrante_id, servico.data_inicio, servico.data_fim_real || servico.data_fim_prevista, servicoId);
+        const conflito = checkConflito(aloc.integrante_id, servico.data_inicio, servico.data_fim_real || servico.data_fim_prevista, servicoId, servico.cadeia_id);
         if (conflito) continue;
 
         try {
@@ -2483,6 +2581,8 @@ window.copiarEquipeServicoAnterior = async function() {
                 data_inicio: servico.data_inicio,
                 data_fim: servico.data_fim_real || servico.data_fim_prevista
             });
+            // Sincronizar com simultâneos
+            await syncInsertAlocacao(servicoId, aloc.integrante_id, servico.data_inicio, servico.data_fim_real || servico.data_fim_prevista);
             adicionados++;
         } catch (e) { /* ignore */ }
     }
@@ -2490,7 +2590,7 @@ window.copiarEquipeServicoAnterior = async function() {
     await loadAlocacoes();
     renderServicoEquipe(servicoId);
     renderServicoPresenca(servicoId);
-    showToast(`${adicionados} integrante(s) copiado(s) do serviço anterior!`, 'success');
+    showToast(`${adicionados} integrante(s) copiado(s) do serviço anterior (+ simultâneos)!`, 'success');
 };
 
 // ===== GERAÇÃO DE PRODUÇÃO DIÁRIA =====
@@ -4026,19 +4126,33 @@ window.removeIntegranteComPeriodo = async function(servicoId, integranteId, date
         // Remoção total - deletar alocação
         const { error } = await supabase.from('logistica_alocacoes').delete().eq('id', aloc.id);
         if (error) { showToast('Erro: ' + error.message, 'error'); return; }
-        showToast('Funcionário removido do serviço inteiro!', 'success');
+        // Sincronizar remoção nos simultâneos
+        await syncDeleteAlocacao(servicoId, integranteId);
+        showToast('Funcionário removido do serviço inteiro (+ simultâneos)!', 'success');
     } else if (remInicio <= alocInicio && remFim < alocFim) {
         // Remoção do início - ajustar data_inicio
         const novoInicio = new Date(remFim.getTime() + 1000).toISOString();
         const { error } = await supabase.from('logistica_alocacoes').update({ data_inicio: novoInicio }).eq('id', aloc.id);
         if (error) { showToast('Erro: ' + error.message, 'error'); return; }
-        showToast('Período inicial removido!', 'success');
+        // Sincronizar nos simultâneos
+        const simultaneos = getServicosSimultaneos(servicoId);
+        for (const s of simultaneos) {
+            const sAloc = alocacoes.find(a => String(a.servico_id) === String(s.id) && String(a.integrante_id) === String(integranteId));
+            if (sAloc) await supabase.from('logistica_alocacoes').update({ data_inicio: novoInicio }).eq('id', sAloc.id);
+        }
+        showToast('Período inicial removido (+ simultâneos)!', 'success');
     } else if (remInicio > alocInicio && remFim >= alocFim) {
         // Remoção do final - ajustar data_fim
         const novoFim = new Date(remInicio.getTime() - 1000).toISOString();
         const { error } = await supabase.from('logistica_alocacoes').update({ data_fim: novoFim }).eq('id', aloc.id);
         if (error) { showToast('Erro: ' + error.message, 'error'); return; }
-        showToast('Período final removido!', 'success');
+        // Sincronizar nos simultâneos
+        const simultaneos = getServicosSimultaneos(servicoId);
+        for (const s of simultaneos) {
+            const sAloc = alocacoes.find(a => String(a.servico_id) === String(s.id) && String(a.integrante_id) === String(integranteId));
+            if (sAloc) await supabase.from('logistica_alocacoes').update({ data_fim: novoFim }).eq('id', sAloc.id);
+        }
+        showToast('Período final removido (+ simultâneos)!', 'success');
     } else {
         // Remoção do meio - split em duas alocações
         const fimPrimeira = new Date(remInicio.getTime() - 1000).toISOString();
@@ -4056,7 +4170,22 @@ window.removeIntegranteComPeriodo = async function(servicoId, integranteId, date
             data_fim: aloc.data_fim
         });
         if (err2) { showToast('Erro ao criar segunda parte: ' + err2.message, 'error'); return; }
-        showToast('Período intermediário removido (alocação dividida)!', 'success');
+
+        // Sincronizar split nos simultâneos
+        const simultaneos = getServicosSimultaneos(servicoId);
+        for (const s of simultaneos) {
+            const sAloc = alocacoes.find(a => String(a.servico_id) === String(s.id) && String(a.integrante_id) === String(integranteId));
+            if (sAloc) {
+                await supabase.from('logistica_alocacoes').update({ data_fim: fimPrimeira }).eq('id', sAloc.id);
+                await supabase.from('logistica_alocacoes').insert({
+                    servico_id: s.id,
+                    integrante_id: integranteId,
+                    data_inicio: inicioSegunda,
+                    data_fim: sAloc.data_fim
+                });
+            }
+        }
+        showToast('Período intermediário removido (+ simultâneos)!', 'success');
     }
 
     hideGanttPopup();
@@ -4074,12 +4203,13 @@ window.moveSelectedToServico = async function(fromServicoId) {
 
     let moved = 0;
     for (const integId of selectedPopupIntegrantes) {
-        // Remover do serviço atual
+        // Remover do serviço atual + simultâneos
         const aloc = alocacoes.find(a => String(a.servico_id) === String(fromServicoId) && String(a.integrante_id) === String(integId));
         if (aloc) {
             await supabase.from('logistica_alocacoes').delete().eq('id', aloc.id);
+            await syncDeleteAlocacao(fromServicoId, integId);
         }
-        // Verificar se já está no destino
+        // Inserir no destino + simultâneos do destino
         const jaExiste = alocacoes.find(a => String(a.servico_id) === String(targetId) && String(a.integrante_id) === String(integId));
         if (!jaExiste) {
             await supabase.from('logistica_alocacoes').insert({
@@ -4088,11 +4218,12 @@ window.moveSelectedToServico = async function(fromServicoId) {
                 data_inicio: periodo.inicio,
                 data_fim: periodo.fim
             });
+            await syncInsertAlocacao(targetId, integId, periodo.inicio, periodo.fim);
         }
         moved++;
     }
 
-    showToast(`${moved} funcionário(s) movido(s)!`, 'success');
+    showToast(`${moved} funcionário(s) movido(s) (+ simultâneos)!`, 'success');
     hideGanttPopup();
     await loadAllData();
 };
@@ -4115,11 +4246,13 @@ window.copySelectedToServico = async function(fromServicoId) {
                 data_inicio: periodo.inicio,
                 data_fim: periodo.fim
             });
+            // Sincronizar com simultâneos do destino
+            await syncInsertAlocacao(targetId, integId, periodo.inicio, periodo.fim);
             copied++;
         }
     }
 
-    showToast(`${copied} funcionário(s) copiado(s)!`, 'success');
+    showToast(`${copied} funcionário(s) copiado(s) (+ simultâneos)!`, 'success');
     hideGanttPopup();
     await loadAllData();
 };
@@ -4144,7 +4277,11 @@ window.addIntegranteFromPopup = async function(servicoId) {
     });
 
     if (error) { showToast('Erro: ' + error.message, 'error'); return; }
-    showToast('Funcionário adicionado!', 'success');
+
+    // Sincronizar com serviços simultâneos
+    await syncInsertAlocacao(servicoId, sel.value, periodo.inicio, periodo.fim);
+
+    showToast('Funcionário adicionado (+ simultâneos)!', 'success');
     hideGanttPopup();
     await loadAllData();
 };
@@ -4235,7 +4372,7 @@ async function onDragEdgeUp(event) {
         showToast('Erro ao ajustar data: ' + error.message, 'error');
     } else {
         const edgeLabel = dragState.edge === 'start' ? 'Início' : 'Fim';
-        showToast(`${edgeLabel} ajustado para ${dateStr.split('-').reverse().join('/')}`, 'success');
+        showToast(`${edgeLabel} ajustado para ${dateStr.split('-').reverse().join('/')} (+ simultâneos)`, 'success');
         // Atualizar alocações deste serviço para refletir novas datas
         const servicoAlocs = alocacoes.filter(a => String(a.servico_id) === String(dragState.servicoId));
         for (const aloc of servicoAlocs) {
@@ -4244,6 +4381,8 @@ async function onDragEdgeUp(event) {
             if (dragState.edge === 'end') alocUpdate.data_fim = updateData.data_fim_prevista;
             await supabase.from('logistica_alocacoes').update(alocUpdate).eq('id', aloc.id);
         }
+        // Sincronizar datas nos serviços simultâneos
+        await syncDatasServico(dragState.servicoId, updateData);
         await loadAllData();
     }
     dragState = null;
