@@ -1,0 +1,1233 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Acompanhamento Financeiro - MithraSF</title>
+<link rel="stylesheet" href="../assets/style.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="../assets/layout.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #021C0E;
+    --card: #052614;
+    --card2: #0A3520;
+    --fg: #F2E8C9;
+    --muted: #A0B8A6;
+    --primary: #D4AF37;
+    --primary-dim: rgba(212,175,55,0.15);
+    --border: rgba(212,175,55,0.2);
+    --green: #22c55e;
+    --red: #ef4444;
+    --blue: #60a5fa;
+    --purple: #a78bfa;
+    --orange: #fb923c;
+    --teal: #14b8a6;
+    --radius: 10px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--fg); font-family: 'Inter', system-ui, sans-serif; font-size: 14px; min-height: 100vh; }
+  h1 { font-size: 1.6rem; font-weight: 700; color: #fff; }
+  h2 { font-size: 1.1rem; font-weight: 600; color: var(--primary); margin-bottom: 1rem; }
+  h3 { font-size: 0.95rem; font-weight: 600; color: #fff; }
+
+  .page { max-width: 1200px; margin: 0 auto; padding: 2rem 1rem 4rem; }
+  .page-header { margin-bottom: 2rem; }
+  .page-header p { color: var(--muted); margin-top: 0.3rem; font-size: 0.9rem; }
+
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.5rem; margin-bottom: 1.5rem; }
+
+  .field { display: flex; flex-direction: column; gap: 0.4rem; }
+  .field label { font-size: 0.8rem; color: var(--muted); font-weight: 500; }
+  .field input, .field select, .field textarea { background: var(--card2); border: 1px solid var(--border); border-radius: 6px; color: var(--fg); padding: 0.5rem 0.75rem; font-size: 0.9rem; outline: none; width: 100%; transition: border-color 0.2s; font-family: inherit; }
+  .field input:focus, .field select:focus, .field textarea:focus { border-color: var(--primary); }
+  .field select option { background: var(--card); }
+  .field textarea { resize: vertical; min-height: 80px; }
+
+  .btn { display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.5rem 1rem; border-radius: 6px; font-size: 0.85rem; font-weight: 600; cursor: pointer; border: none; transition: all 0.15s; }
+  .btn-primary { background: var(--primary); color: #021C0E; }
+  .btn-primary:hover { background: #c9a227; }
+  .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--fg); }
+  .btn-outline:hover { border-color: var(--primary); color: var(--primary); }
+  .btn-danger { background: transparent; border: 1px solid rgba(239,68,68,0.3); color: var(--red); }
+  .btn-danger:hover { background: rgba(239,68,68,0.1); }
+  .btn-sm { padding: 0.3rem 0.7rem; font-size: 0.8rem; }
+  .btn-icon { padding: 0.3rem; border-radius: 4px; background: transparent; border: none; cursor: pointer; }
+  .btn-icon:hover { background: rgba(255,255,255,0.08); }
+
+  .badge { display: inline-block; padding: 0.15rem 0.5rem; border-radius: 20px; font-size: 0.72rem; font-weight: 600; }
+  .badge-green { background: rgba(34,197,94,0.15); color: var(--green); }
+  .badge-red { background: rgba(239,68,68,0.15); color: var(--red); }
+  .badge-blue { background: rgba(96,165,250,0.15); color: var(--blue); }
+  .badge-purple { background: rgba(167,139,250,0.15); color: var(--purple); }
+  .badge-orange { background: rgba(251,146,60,0.15); color: var(--orange); }
+  .badge-gold { background: rgba(212,175,55,0.15); color: var(--primary); }
+  .badge-muted { background: rgba(160,184,166,0.1); color: var(--muted); }
+  .badge-teal { background: rgba(20,184,166,0.15); color: var(--teal); }
+
+  /* Tabs */
+  .tabs { display: flex; gap: 0.3rem; background: var(--card2); border-radius: 6px; padding: 0.25rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
+  .tab-btn { padding: 0.45rem 1rem; border-radius: 4px; font-size: 0.82rem; font-weight: 600; cursor: pointer; border: none; background: transparent; color: var(--muted); transition: all 0.15s; }
+  .tab-btn.active { background: var(--primary); color: #021C0E; }
+
+  /* Toolbar */
+  .toolbar { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem; }
+  .toolbar .label { font-size: 0.75rem; font-weight: 700; letter-spacing: 0.10em; text-transform: uppercase; color: var(--primary); }
+  .toolbar .spacer { flex: 1; }
+  .toolbar .count { font-size: 0.72rem; color: var(--muted); }
+
+  /* Modal */
+  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 1000; display: flex; align-items: center; justify-content: center; padding: 1rem; opacity: 0; pointer-events: none; transition: opacity 0.2s; }
+  .modal-overlay.open { opacity: 1; pointer-events: all; }
+  .modal { background: var(--card); border: 1px solid var(--border); border-radius: 14px; width: 100%; max-width: 700px; max-height: 90vh; overflow-y: auto; padding: 2rem; }
+  .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
+  .modal-header h2 { margin: 0; }
+  .modal-section { margin-bottom: 1.5rem; padding-bottom: 1.5rem; border-bottom: 1px solid var(--border); }
+  .modal-section:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+  .modal-section-title { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin-bottom: 0.75rem; }
+  .sub-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+  .sub-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.75rem; }
+
+  .empty { text-align: center; padding: 3rem 1rem; color: var(--muted); }
+  .empty .ico { font-size: 2.5rem; opacity: 0.3; display: block; margin-bottom: 0.75rem; }
+
+  /* Dashboard resumo */
+  .dash-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
+  .dash-item { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem; text-align: center; }
+  .dash-item .dlabel { font-size: 0.72rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600; margin-bottom: 0.3rem; }
+  .dash-item .dvalue { font-size: 1.4rem; font-weight: 700; }
+
+  /* Timeline */
+  .timeline { position: relative; padding-left: 28px; }
+  .timeline::before { content: ''; position: absolute; left: 10px; top: 0; bottom: 0; width: 2px; background: var(--border); }
+  .tl-item { position: relative; margin-bottom: 1.5rem; }
+  .tl-dot { position: absolute; left: -24px; top: 4px; width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--primary); background: var(--bg); }
+  .tl-item.active .tl-dot { background: var(--primary); }
+  .tl-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem 1.2rem; }
+  .tl-date { font-size: 0.72rem; color: var(--primary); font-weight: 700; margin-bottom: 0.3rem; }
+  .tl-tipo { font-size: 0.70rem; color: var(--muted); margin-bottom: 0.5rem; }
+  .tl-resumo { font-size: 0.85rem; color: var(--fg); line-height: 1.5; }
+  .tl-indicators { display: flex; gap: 0.75rem; flex-wrap: wrap; margin-top: 0.6rem; }
+  .tl-ind { font-size: 0.72rem; color: var(--muted); }
+  .tl-ind strong { color: var(--fg); }
+  .tl-humor { display: flex; gap: 2px; margin-top: 0.4rem; }
+  .tl-humor .star { font-size: 0.9rem; }
+  .tl-humor .star.on { color: var(--primary); }
+  .tl-humor .star.off { color: rgba(255,255,255,0.1); }
+  .tl-actions { display: flex; gap: 0.3rem; margin-top: 0.5rem; }
+
+  /* Objetivos */
+  .obj-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 1rem; }
+  .obj-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.2rem; position: relative; }
+  .obj-card .obj-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.6rem; }
+  .obj-card .obj-name { font-weight: 700; color: #fff; font-size: 0.95rem; }
+  .obj-card .obj-cat { font-size: 0.70rem; color: var(--muted); margin-bottom: 0.5rem; }
+  .obj-progress-bar { height: 10px; background: rgba(255,255,255,0.08); border-radius: 5px; overflow: hidden; margin-bottom: 0.4rem; }
+  .obj-progress-fill { height: 100%; border-radius: 5px; transition: width 0.4s; }
+  .obj-details { display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--muted); }
+  .obj-meta { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.5rem; }
+  .obj-actions { display: flex; gap: 0.3rem; }
+
+  /* Micro passos */
+  .micro-list { display: flex; flex-direction: column; gap: 0.5rem; }
+  .micro-item { display: flex; align-items: flex-start; gap: 0.75rem; background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 0.8rem 1rem; }
+  .micro-check { width: 20px; height: 20px; border-radius: 4px; border: 2px solid var(--border); cursor: pointer; flex-shrink: 0; display: flex; align-items: center; justify-content: center; margin-top: 2px; transition: all 0.15s; }
+  .micro-check.done { background: var(--green); border-color: var(--green); }
+  .micro-check.done::after { content: '✓'; color: #fff; font-size: 0.7rem; font-weight: 700; }
+  .micro-check.progress { background: var(--orange); border-color: var(--orange); }
+  .micro-check.progress::after { content: '⟳'; color: #fff; font-size: 0.7rem; }
+  .micro-body { flex: 1; }
+  .micro-body .micro-desc { font-size: 0.85rem; color: var(--fg); }
+  .micro-body .micro-desc.done-text { text-decoration: line-through; color: var(--muted); }
+  .micro-body .micro-meta { font-size: 0.70rem; color: var(--muted); margin-top: 0.2rem; display: flex; gap: 0.75rem; flex-wrap: wrap; }
+  .micro-actions { display: flex; gap: 0.3rem; flex-shrink: 0; }
+
+  /* Macro passos / Roadmap */
+  .roadmap { display: flex; flex-direction: column; gap: 1rem; }
+  .macro-item { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.2rem; border-left: 4px solid var(--border); }
+  .macro-item.status-concluido { border-left-color: var(--green); }
+  .macro-item.status-em_andamento { border-left-color: var(--primary); }
+  .macro-item.status-pendente { border-left-color: var(--muted); }
+  .macro-item.status-bloqueado { border-left-color: var(--red); }
+  .macro-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem; }
+  .macro-fase { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--primary); }
+  .macro-desc { font-size: 0.88rem; color: var(--fg); line-height: 1.5; margin-bottom: 0.4rem; }
+  .macro-meta { display: flex; gap: 0.75rem; flex-wrap: wrap; font-size: 0.72rem; color: var(--muted); }
+
+  /* Gráfico evolução */
+  .chart-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.5rem; margin-bottom: 1.5rem; }
+  .chart-card h3 { margin-bottom: 1rem; color: var(--primary); font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.06em; }
+  .chart-wrap { position: relative; height: 280px; }
+
+  /* Próxima reunião */
+  .next-meeting { background: linear-gradient(135deg, rgba(212,175,55,0.08), rgba(212,175,55,0.02)); border: 1px solid var(--primary); border-radius: var(--radius); padding: 1.5rem; margin-bottom: 1.5rem; }
+  .next-meeting h3 { color: var(--primary); margin-bottom: 0.8rem; font-size: 0.95rem; }
+  .next-meeting .nm-items { display: flex; flex-direction: column; gap: 0.4rem; }
+  .next-meeting .nm-item { font-size: 0.85rem; color: var(--fg); padding-left: 1rem; position: relative; }
+  .next-meeting .nm-item::before { content: '▸'; position: absolute; left: 0; color: var(--primary); }
+
+  /* Table */
+  .table-wrap { overflow-x: auto; border-radius: var(--radius); border: 1px solid var(--border); }
+  table { width: 100%; border-collapse: collapse; }
+  thead th { background: var(--card2); color: var(--primary); font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; padding: 0.65rem 0.75rem; text-align: left; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  tbody tr { border-bottom: 1px solid rgba(212,175,55,0.08); }
+  tbody tr:hover { background: rgba(212,175,55,0.04); }
+  tbody td { padding: 0.6rem 0.75rem; font-size: 0.85rem; }
+
+  @media (max-width: 700px) {
+    .sub-grid, .sub-grid-3 { grid-template-columns: 1fr; }
+    .obj-grid { grid-template-columns: 1fr; }
+    .dash-row { grid-template-columns: 1fr 1fr; }
+  }
+
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+</style>
+</head>
+<body>
+  <div id="sidebar-container" class="sidebar"></div>
+  <main class="main-content">
+<div class="page">
+
+  <header class="page-header">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:0.3rem;">
+      <a href="../ferramentas.html" style="color:var(--muted);text-decoration:none;font-size:1.2rem;">←</a>
+      <span style="font-size:1.6rem;">📈</span>
+      <h1>Acompanhamento Financeiro</h1>
+    </div>
+    <p>Monitoramento de reuniões, evolução patrimonial, objetivos e plano de ação do cliente.</p>
+  </header>
+
+  <!-- DASHBOARD RESUMO -->
+  <div class="dash-row" id="dash-row">
+    <div class="dash-item">
+      <div class="dlabel">Reuniões</div>
+      <div class="dvalue" id="d-reunioes" style="color:var(--primary);">0</div>
+    </div>
+    <div class="dash-item">
+      <div class="dlabel">Objetivos Ativos</div>
+      <div class="dvalue" id="d-objetivos" style="color:var(--blue);">0</div>
+    </div>
+    <div class="dash-item">
+      <div class="dlabel">Micro Passos Pendentes</div>
+      <div class="dvalue" id="d-micros" style="color:var(--orange);">0</div>
+    </div>
+    <div class="dash-item">
+      <div class="dlabel">Progresso Geral</div>
+      <div class="dvalue" id="d-progresso" style="color:var(--green);">0%</div>
+    </div>
+    <div class="dash-item">
+      <div class="dlabel">Humor Médio</div>
+      <div class="dvalue" id="d-humor" style="color:var(--primary);">—</div>
+    </div>
+  </div>
+
+  <!-- PRÓXIMA REUNIÃO -->
+  <div class="next-meeting" id="next-meeting-section" style="display:none;">
+    <h3>Agenda Sugerida para Próxima Reunião</h3>
+    <div class="nm-items" id="next-meeting-items"></div>
+  </div>
+
+  <!-- GRÁFICO EVOLUÇÃO -->
+  <div class="chart-card" id="chart-section" style="display:none;">
+    <h3>Evolução ao Longo das Reuniões</h3>
+    <div class="chart-wrap"><canvas id="chart-evolucao"></canvas></div>
+  </div>
+
+  <!-- TABS -->
+  <div class="tabs" id="main-tabs">
+    <button class="tab-btn active" onclick="switchTab('reunioes')">Reuniões</button>
+    <button class="tab-btn" onclick="switchTab('objetivos')">Objetivos</button>
+    <button class="tab-btn" onclick="switchTab('micro')">Micro Passos</button>
+    <button class="tab-btn" onclick="switchTab('macro')">Estratégia Macro</button>
+  </div>
+
+  <!-- TAB: REUNIÕES -->
+  <div id="tab-reunioes" class="tab-content">
+    <div class="toolbar">
+      <span class="label">Histórico de Reuniões</span>
+      <span class="spacer"></span>
+      <span class="count" id="reunioes-count">0 reuniões</span>
+      <button class="btn btn-primary btn-sm" onclick="openModal('reuniao')">+ Nova Reunião</button>
+    </div>
+    <div id="reunioes-wrap"></div>
+  </div>
+
+  <!-- TAB: OBJETIVOS -->
+  <div id="tab-objetivos" class="tab-content" style="display:none;">
+    <div class="toolbar">
+      <span class="label">Objetivos do Cliente</span>
+      <span class="spacer"></span>
+      <span class="count" id="objetivos-count">0 objetivos</span>
+      <button class="btn btn-primary btn-sm" onclick="openModal('objetivo')">+ Novo Objetivo</button>
+    </div>
+    <div id="objetivos-wrap"></div>
+  </div>
+
+  <!-- TAB: MICRO PASSOS -->
+  <div id="tab-micro" class="tab-content" style="display:none;">
+    <div class="toolbar">
+      <span class="label">Micro Passos (Ações de Curto Prazo)</span>
+      <span class="spacer"></span>
+      <span class="count" id="micro-count">0 ações</span>
+      <button class="btn btn-primary btn-sm" onclick="openModal('micro')">+ Novo Micro Passo</button>
+    </div>
+    <div id="micro-wrap"></div>
+  </div>
+
+  <!-- TAB: MACRO -->
+  <div id="tab-macro" class="tab-content" style="display:none;">
+    <div class="toolbar">
+      <span class="label">Estratégia Macro (Roadmap)</span>
+      <span class="spacer"></span>
+      <span class="count" id="macro-count">0 fases</span>
+      <button class="btn btn-primary btn-sm" onclick="openModal('macro')">+ Nova Fase</button>
+    </div>
+    <div id="macro-wrap"></div>
+  </div>
+
+</div><!-- .page -->
+
+<!-- MODAL REUNIÃO -->
+<div class="modal-overlay" id="modal-reuniao" onclick="if(event.target===this)closeModal('reuniao')">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="modal-reuniao-title">Nova Reunião</h2>
+      <button class="btn-icon" onclick="closeModal('reuniao')" style="font-size:1.2rem;color:var(--muted);">✕</button>
+    </div>
+    <div class="modal-section">
+      <div class="modal-section-title">Informações da Reunião</div>
+      <div class="sub-grid" style="margin-bottom:0.75rem;">
+        <div class="field">
+          <label>Data *</label>
+          <input type="date" id="rn_data">
+        </div>
+        <div class="field">
+          <label>Tipo</label>
+          <select id="rn_tipo">
+            <option value="primeira">Primeira Consulta</option>
+            <option value="acompanhamento">Acompanhamento</option>
+            <option value="revisao">Revisão de Estratégia</option>
+            <option value="emergencial">Emergencial</option>
+            <option value="fechamento">Fechamento de Ciclo</option>
+          </select>
+        </div>
+      </div>
+      <div class="field" style="margin-bottom:0.75rem;">
+        <label>Humor Financeiro do Cliente (1-5)</label>
+        <div style="display:flex;gap:0.5rem;margin-top:0.3rem;" id="rn_humor_stars">
+          <span class="star-btn" onclick="setHumor(1)" style="cursor:pointer;font-size:1.5rem;color:rgba(255,255,255,0.15);">★</span>
+          <span class="star-btn" onclick="setHumor(2)" style="cursor:pointer;font-size:1.5rem;color:rgba(255,255,255,0.15);">★</span>
+          <span class="star-btn" onclick="setHumor(3)" style="cursor:pointer;font-size:1.5rem;color:rgba(255,255,255,0.15);">★</span>
+          <span class="star-btn" onclick="setHumor(4)" style="cursor:pointer;font-size:1.5rem;color:rgba(255,255,255,0.15);">★</span>
+          <span class="star-btn" onclick="setHumor(5)" style="cursor:pointer;font-size:1.5rem;color:rgba(255,255,255,0.15);">★</span>
+        </div>
+        <input type="hidden" id="rn_humor" value="3">
+      </div>
+    </div>
+    <div class="modal-section">
+      <div class="modal-section-title">Indicadores na Data</div>
+      <div class="sub-grid-3" style="margin-bottom:0.75rem;">
+        <div class="field">
+          <label>Patrimônio Líquido</label>
+          <input type="text" id="rn_patrimonio" placeholder="Ex: 150.000,00" oninput="maskBRL(this)">
+        </div>
+        <div class="field">
+          <label>Renda Mensal</label>
+          <input type="text" id="rn_renda" placeholder="Ex: 8.000,00" oninput="maskBRL(this)">
+        </div>
+        <div class="field">
+          <label>Despesas Mensais</label>
+          <input type="text" id="rn_despesas" placeholder="Ex: 5.500,00" oninput="maskBRL(this)">
+        </div>
+      </div>
+      <div class="sub-grid">
+        <div class="field">
+          <label>Investimentos Totais</label>
+          <input type="text" id="rn_investimentos" placeholder="Ex: 80.000,00" oninput="maskBRL(this)">
+        </div>
+        <div class="field">
+          <label>Dívidas Totais</label>
+          <input type="text" id="rn_dividas" placeholder="Ex: 20.000,00" oninput="maskBRL(this)">
+        </div>
+      </div>
+    </div>
+    <div class="modal-section">
+      <div class="modal-section-title">Resumo / Notas</div>
+      <div class="field">
+        <textarea id="rn_resumo" placeholder="Principais pontos discutidos, decisões tomadas, observações..." rows="5"></textarea>
+      </div>
+    </div>
+    <div style="display:flex;gap:0.75rem;justify-content:flex-end;">
+      <button class="btn btn-outline" onclick="closeModal('reuniao')">Cancelar</button>
+      <button class="btn btn-primary" onclick="salvarReuniao()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL OBJETIVO -->
+<div class="modal-overlay" id="modal-objetivo" onclick="if(event.target===this)closeModal('objetivo')">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="modal-objetivo-title">Novo Objetivo</h2>
+      <button class="btn-icon" onclick="closeModal('objetivo')" style="font-size:1.2rem;color:var(--muted);">✕</button>
+    </div>
+    <div class="modal-section">
+      <div class="sub-grid" style="margin-bottom:0.75rem;">
+        <div class="field">
+          <label>Nome do Objetivo *</label>
+          <input type="text" id="ob_nome" placeholder="Ex: Comprar apartamento">
+        </div>
+        <div class="field">
+          <label>Categoria</label>
+          <select id="ob_categoria">
+            <option value="imovel">Imóvel</option>
+            <option value="aposentadoria">Aposentadoria</option>
+            <option value="reserva">Reserva de Emergência</option>
+            <option value="educacao">Educação</option>
+            <option value="viagem">Viagem</option>
+            <option value="veiculo">Veículo</option>
+            <option value="investimento">Meta de Investimento</option>
+            <option value="divida">Quitar Dívida</option>
+            <option value="negocio">Negócio Próprio</option>
+            <option value="outro">Outro</option>
+          </select>
+        </div>
+      </div>
+      <div class="sub-grid-3" style="margin-bottom:0.75rem;">
+        <div class="field">
+          <label>Valor Alvo</label>
+          <input type="text" id="ob_valor" placeholder="Ex: 300.000,00" oninput="maskBRL(this)">
+        </div>
+        <div class="field">
+          <label>Valor Atual Acumulado</label>
+          <input type="text" id="ob_atual" placeholder="Ex: 50.000,00" oninput="maskBRL(this)">
+        </div>
+        <div class="field">
+          <label>Prazo Estimado</label>
+          <input type="date" id="ob_prazo">
+        </div>
+      </div>
+      <div class="sub-grid">
+        <div class="field">
+          <label>Prioridade</label>
+          <select id="ob_prioridade">
+            <option value="alta">Alta</option>
+            <option value="media">Média</option>
+            <option value="baixa">Baixa</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Status</label>
+          <select id="ob_status">
+            <option value="em_andamento">Em Andamento</option>
+            <option value="concluido">Concluído</option>
+            <option value="pausado">Pausado</option>
+            <option value="cancelado">Cancelado</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div class="modal-section">
+      <div class="field">
+        <label>Observações</label>
+        <textarea id="ob_obs" placeholder="Estratégia, notas sobre este objetivo..."></textarea>
+      </div>
+    </div>
+    <div style="display:flex;gap:0.75rem;justify-content:flex-end;">
+      <button class="btn btn-outline" onclick="closeModal('objetivo')">Cancelar</button>
+      <button class="btn btn-primary" onclick="salvarObjetivo()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL MICRO PASSO -->
+<div class="modal-overlay" id="modal-micro" onclick="if(event.target===this)closeModal('micro')">
+  <div class="modal" style="max-width:550px;">
+    <div class="modal-header">
+      <h2 id="modal-micro-title">Novo Micro Passo</h2>
+      <button class="btn-icon" onclick="closeModal('micro')" style="font-size:1.2rem;color:var(--muted);">✕</button>
+    </div>
+    <div class="modal-section">
+      <div class="field" style="margin-bottom:0.75rem;">
+        <label>Descrição da Ação *</label>
+        <input type="text" id="mc_desc" placeholder="Ex: Abrir conta na corretora XP">
+      </div>
+      <div class="sub-grid" style="margin-bottom:0.75rem;">
+        <div class="field">
+          <label>Prazo</label>
+          <input type="date" id="mc_prazo">
+        </div>
+        <div class="field">
+          <label>Status</label>
+          <select id="mc_status">
+            <option value="pendente">Pendente</option>
+            <option value="em_andamento">Em Andamento</option>
+            <option value="concluido">Concluído</option>
+          </select>
+        </div>
+      </div>
+      <div class="sub-grid">
+        <div class="field">
+          <label>Vinculado ao Objetivo</label>
+          <select id="mc_objetivo">
+            <option value="">Nenhum (geral)</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Definido na Reunião</label>
+          <select id="mc_reuniao">
+            <option value="">Nenhuma</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div style="display:flex;gap:0.75rem;justify-content:flex-end;">
+      <button class="btn btn-outline" onclick="closeModal('micro')">Cancelar</button>
+      <button class="btn btn-primary" onclick="salvarMicro()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL MACRO PASSO -->
+<div class="modal-overlay" id="modal-macro" onclick="if(event.target===this)closeModal('macro')">
+  <div class="modal" style="max-width:550px;">
+    <div class="modal-header">
+      <h2 id="modal-macro-title">Nova Fase Estratégica</h2>
+      <button class="btn-icon" onclick="closeModal('macro')" style="font-size:1.2rem;color:var(--muted);">✕</button>
+    </div>
+    <div class="modal-section">
+      <div class="sub-grid" style="margin-bottom:0.75rem;">
+        <div class="field">
+          <label>Nome da Fase *</label>
+          <input type="text" id="mk_fase" placeholder="Ex: Fase 1 - Estabilização">
+        </div>
+        <div class="field">
+          <label>Ordem</label>
+          <input type="number" id="mk_ordem" value="1" min="1">
+        </div>
+      </div>
+      <div class="field" style="margin-bottom:0.75rem;">
+        <label>Descrição / Objetivos da Fase *</label>
+        <textarea id="mk_desc" placeholder="Descreva o que deve ser alcançado nesta fase..."></textarea>
+      </div>
+      <div class="sub-grid" style="margin-bottom:0.75rem;">
+        <div class="field">
+          <label>Período Estimado</label>
+          <input type="text" id="mk_periodo" placeholder="Ex: 6 meses, Jan-Jun 2026">
+        </div>
+        <div class="field">
+          <label>Status</label>
+          <select id="mk_status">
+            <option value="pendente">Pendente</option>
+            <option value="em_andamento">Em Andamento</option>
+            <option value="concluido">Concluído</option>
+            <option value="bloqueado">Bloqueado</option>
+          </select>
+        </div>
+      </div>
+      <div class="field">
+        <label>Dependências / Pré-requisitos</label>
+        <input type="text" id="mk_deps" placeholder="Ex: Conclusão da Fase 1">
+      </div>
+    </div>
+    <div style="display:flex;gap:0.75rem;justify-content:flex-end;">
+      <button class="btn btn-outline" onclick="closeModal('macro')">Cancelar</button>
+      <button class="btn btn-primary" onclick="salvarMacro()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL CONFIRMAR EXCLUSÃO -->
+<div class="modal-overlay" id="modal-del" onclick="if(event.target===this)closeDelModal()">
+  <div class="modal" style="max-width:400px;text-align:center;">
+    <p style="margin-bottom:1.5rem;font-size:0.95rem;" id="del-msg">Deseja excluir este item?</p>
+    <div style="display:flex;gap:0.75rem;justify-content:center;">
+      <button class="btn btn-outline" onclick="closeDelModal()">Cancelar</button>
+      <button class="btn btn-danger" onclick="confirmarExclusao()">Excluir</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════════════
+//  DADOS
+// ═══════════════════════════════════════════════════════════════════════════
+var reunioes = [];
+var objetivos = [];
+var microPassos = [];
+var macroPassos = [];
+var nextId = 1;
+var currentTab = 'reunioes';
+var _humorVal = 3;
+var chartEvolucao = null;
+
+// Labels
+var TIPO_REUNIAO = {primeira:'Primeira Consulta',acompanhamento:'Acompanhamento',revisao:'Revisão de Estratégia',emergencial:'Emergencial',fechamento:'Fechamento de Ciclo'};
+var CAT_OBJ = {imovel:'Imóvel',aposentadoria:'Aposentadoria',reserva:'Reserva Emergência',educacao:'Educação',viagem:'Viagem',veiculo:'Veículo',investimento:'Investimento',divida:'Quitar Dívida',negocio:'Negócio',outro:'Outro'};
+var STATUS_OBJ = {em_andamento:'Em Andamento',concluido:'Concluído',pausado:'Pausado',cancelado:'Cancelado'};
+var STATUS_BADGE = {em_andamento:'badge-blue',concluido:'badge-green',pausado:'badge-orange',cancelado:'badge-red',pendente:'badge-muted',bloqueado:'badge-red'};
+var PRIO_BADGE = {alta:'badge-red',media:'badge-orange',baixa:'badge-muted'};
+var STATUS_MICRO = {pendente:'Pendente',em_andamento:'Em Andamento',concluido:'Concluído'};
+var STATUS_MACRO = {pendente:'Pendente',em_andamento:'Em Andamento',concluido:'Concluído',bloqueado:'Bloqueado'};
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  UTILITÁRIOS
+// ═══════════════════════════════════════════════════════════════════════════
+function fmtBRL(v) {
+  var n = parseFloat(v);
+  if (isNaN(n)) return 'R$ 0,00';
+  return 'R$ ' + n.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});
+}
+function parseBR(v) {
+  if (!v) return 0;
+  if (typeof v === 'number') return v;
+  return parseFloat(String(v).replace(/\./g,'').replace(',','.')) || 0;
+}
+function maskBRL(el) {
+  var v = el.value.replace(/\D/g,'');
+  if (!v) { el.value = ''; return; }
+  v = (parseInt(v)/100).toFixed(2);
+  el.value = parseFloat(v).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});
+}
+function escHtml(s) { var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+function fmtData(d) {
+  if (!d) return '—';
+  var parts = d.split('-');
+  if (parts.length !== 3) return d;
+  return parts[2] + '/' + parts[1] + '/' + parts[0];
+}
+function setHumor(val) {
+  _humorVal = val;
+  document.getElementById('rn_humor').value = val;
+  var stars = document.querySelectorAll('#rn_humor_stars .star-btn');
+  stars.forEach(function(s, i) {
+    s.style.color = i < val ? 'var(--primary)' : 'rgba(255,255,255,0.15)';
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  TABS
+// ═══════════════════════════════════════════════════════════════════════════
+function switchTab(tab) {
+  currentTab = tab;
+  ['reunioes','objetivos','micro','macro'].forEach(function(t) {
+    document.getElementById('tab-' + t).style.display = t === tab ? '' : 'none';
+  });
+  document.querySelectorAll('#main-tabs .tab-btn').forEach(function(btn, i) {
+    var tabs = ['reunioes','objetivos','micro','macro'];
+    btn.classList.toggle('active', tabs[i] === tab);
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  MODAIS
+// ═══════════════════════════════════════════════════════════════════════════
+var _editMode = null;
+function openModal(tipo, index) {
+  _editMode = (index !== undefined) ? {tipo: tipo, index: index} : null;
+  var titleEl = document.getElementById('modal-' + tipo + '-title');
+  if (tipo === 'micro') updateMicroSelects();
+  if (_editMode) {
+    titleEl.textContent = 'Editar';
+    fillModalFromData(tipo, index);
+  } else {
+    titleEl.textContent = tipo === 'reuniao' ? 'Nova Reunião' : tipo === 'objetivo' ? 'Novo Objetivo' : tipo === 'micro' ? 'Novo Micro Passo' : 'Nova Fase Estratégica';
+    clearModalFields(tipo);
+    if (tipo === 'reuniao') {
+      document.getElementById('rn_data').value = new Date().toISOString().split('T')[0];
+      setHumor(3);
+    }
+  }
+  document.getElementById('modal-' + tipo).classList.add('open');
+}
+function closeModal(tipo) {
+  document.getElementById('modal-' + tipo).classList.remove('open');
+  _editMode = null;
+}
+
+function clearModalFields(tipo) {
+  var prefixes = {reuniao:'rn_', objetivo:'ob_', micro:'mc_', macro:'mk_'};
+  var prefix = prefixes[tipo];
+  document.querySelectorAll('#modal-' + tipo + ' input, #modal-' + tipo + ' select, #modal-' + tipo + ' textarea').forEach(function(el) {
+    if (el.id && el.id.startsWith(prefix)) {
+      if (el.tagName === 'SELECT') el.selectedIndex = 0;
+      else if (el.type === 'hidden') { /* skip */ }
+      else el.value = '';
+    }
+  });
+}
+
+function fillModalFromData(tipo, index) {
+  var item;
+  if (tipo === 'reuniao') {
+    item = reunioes[index];
+    document.getElementById('rn_data').value = item.data || '';
+    document.getElementById('rn_tipo').value = item.tipo || 'acompanhamento';
+    setHumor(item.humor || 3);
+    document.getElementById('rn_patrimonio').value = item.patrimonio ? parseBR(item.patrimonio).toLocaleString('pt-BR',{minimumFractionDigits:2}) : '';
+    document.getElementById('rn_renda').value = item.renda ? parseBR(item.renda).toLocaleString('pt-BR',{minimumFractionDigits:2}) : '';
+    document.getElementById('rn_despesas').value = item.despesas ? parseBR(item.despesas).toLocaleString('pt-BR',{minimumFractionDigits:2}) : '';
+    document.getElementById('rn_investimentos').value = item.investimentos ? parseBR(item.investimentos).toLocaleString('pt-BR',{minimumFractionDigits:2}) : '';
+    document.getElementById('rn_dividas').value = item.dividas ? parseBR(item.dividas).toLocaleString('pt-BR',{minimumFractionDigits:2}) : '';
+    document.getElementById('rn_resumo').value = item.resumo || '';
+  } else if (tipo === 'objetivo') {
+    item = objetivos[index];
+    document.getElementById('ob_nome').value = item.nome || '';
+    document.getElementById('ob_categoria').value = item.categoria || 'outro';
+    document.getElementById('ob_valor').value = item.valor ? parseBR(item.valor).toLocaleString('pt-BR',{minimumFractionDigits:2}) : '';
+    document.getElementById('ob_atual').value = item.atual ? parseBR(item.atual).toLocaleString('pt-BR',{minimumFractionDigits:2}) : '';
+    document.getElementById('ob_prazo').value = item.prazo || '';
+    document.getElementById('ob_prioridade').value = item.prioridade || 'media';
+    document.getElementById('ob_status').value = item.status || 'em_andamento';
+    document.getElementById('ob_obs').value = item.obs || '';
+  } else if (tipo === 'micro') {
+    item = microPassos[index];
+    document.getElementById('mc_desc').value = item.desc || '';
+    document.getElementById('mc_prazo').value = item.prazo || '';
+    document.getElementById('mc_status').value = item.status || 'pendente';
+    document.getElementById('mc_objetivo').value = item.objetivo_id || '';
+    document.getElementById('mc_reuniao').value = item.reuniao_id || '';
+  } else {
+    item = macroPassos[index];
+    document.getElementById('mk_fase').value = item.fase || '';
+    document.getElementById('mk_ordem').value = item.ordem || 1;
+    document.getElementById('mk_desc').value = item.desc || '';
+    document.getElementById('mk_periodo').value = item.periodo || '';
+    document.getElementById('mk_status').value = item.status || 'pendente';
+    document.getElementById('mk_deps').value = item.deps || '';
+  }
+}
+
+function updateMicroSelects() {
+  var selObj = document.getElementById('mc_objetivo');
+  var selReu = document.getElementById('mc_reuniao');
+  selObj.innerHTML = '<option value="">Nenhum (geral)</option>';
+  objetivos.forEach(function(o) {
+    selObj.innerHTML += '<option value="' + o.id + '">' + escHtml(o.nome) + '</option>';
+  });
+  selReu.innerHTML = '<option value="">Nenhuma</option>';
+  reunioes.forEach(function(r) {
+    selReu.innerHTML += '<option value="' + r.id + '">' + fmtData(r.data) + ' - ' + (TIPO_REUNIAO[r.tipo]||r.tipo) + '</option>';
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  SALVAR
+// ═══════════════════════════════════════════════════════════════════════════
+function salvarReuniao() {
+  var data = document.getElementById('rn_data').value;
+  if (!data) { alert('Informe a data da reunião.'); return; }
+  var item = {
+    id: (_editMode && _editMode.tipo === 'reuniao') ? reunioes[_editMode.index].id : nextId++,
+    data: data,
+    tipo: document.getElementById('rn_tipo').value,
+    humor: parseInt(document.getElementById('rn_humor').value) || 3,
+    patrimonio: parseBR(document.getElementById('rn_patrimonio').value),
+    renda: parseBR(document.getElementById('rn_renda').value),
+    despesas: parseBR(document.getElementById('rn_despesas').value),
+    investimentos: parseBR(document.getElementById('rn_investimentos').value),
+    dividas: parseBR(document.getElementById('rn_dividas').value),
+    resumo: document.getElementById('rn_resumo').value.trim()
+  };
+  if (_editMode && _editMode.tipo === 'reuniao') reunioes[_editMode.index] = item;
+  else reunioes.push(item);
+  reunioes.sort(function(a,b){ return b.data.localeCompare(a.data); });
+  closeModal('reuniao');
+  renderAll();
+  saveData();
+}
+
+function salvarObjetivo() {
+  var nome = document.getElementById('ob_nome').value.trim();
+  if (!nome) { alert('Informe o nome do objetivo.'); return; }
+  var item = {
+    id: (_editMode && _editMode.tipo === 'objetivo') ? objetivos[_editMode.index].id : nextId++,
+    nome: nome,
+    categoria: document.getElementById('ob_categoria').value,
+    valor: parseBR(document.getElementById('ob_valor').value),
+    atual: parseBR(document.getElementById('ob_atual').value),
+    prazo: document.getElementById('ob_prazo').value,
+    prioridade: document.getElementById('ob_prioridade').value,
+    status: document.getElementById('ob_status').value,
+    obs: document.getElementById('ob_obs').value.trim()
+  };
+  if (_editMode && _editMode.tipo === 'objetivo') objetivos[_editMode.index] = item;
+  else objetivos.push(item);
+  closeModal('objetivo');
+  renderAll();
+  saveData();
+}
+
+function salvarMicro() {
+  var desc = document.getElementById('mc_desc').value.trim();
+  if (!desc) { alert('Informe a descrição da ação.'); return; }
+  var item = {
+    id: (_editMode && _editMode.tipo === 'micro') ? microPassos[_editMode.index].id : nextId++,
+    desc: desc,
+    prazo: document.getElementById('mc_prazo').value,
+    status: document.getElementById('mc_status').value,
+    objetivo_id: document.getElementById('mc_objetivo').value || null,
+    reuniao_id: document.getElementById('mc_reuniao').value || null
+  };
+  if (_editMode && _editMode.tipo === 'micro') microPassos[_editMode.index] = item;
+  else microPassos.push(item);
+  closeModal('micro');
+  renderAll();
+  saveData();
+}
+
+function salvarMacro() {
+  var fase = document.getElementById('mk_fase').value.trim();
+  var desc = document.getElementById('mk_desc').value.trim();
+  if (!fase || !desc) { alert('Informe o nome e descrição da fase.'); return; }
+  var item = {
+    id: (_editMode && _editMode.tipo === 'macro') ? macroPassos[_editMode.index].id : nextId++,
+    fase: fase,
+    ordem: parseInt(document.getElementById('mk_ordem').value) || 1,
+    desc: desc,
+    periodo: document.getElementById('mk_periodo').value.trim(),
+    status: document.getElementById('mk_status').value,
+    deps: document.getElementById('mk_deps').value.trim()
+  };
+  if (_editMode && _editMode.tipo === 'macro') macroPassos[_editMode.index] = item;
+  else macroPassos.push(item);
+  macroPassos.sort(function(a,b){ return a.ordem - b.ordem; });
+  closeModal('macro');
+  renderAll();
+  saveData();
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  TOGGLE STATUS MICRO PASSO (CLICK)
+// ═══════════════════════════════════════════════════════════════════════════
+function toggleMicroStatus(index) {
+  var item = microPassos[index];
+  if (item.status === 'pendente') item.status = 'em_andamento';
+  else if (item.status === 'em_andamento') item.status = 'concluido';
+  else item.status = 'pendente';
+  renderAll();
+  saveData();
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  EXCLUSÃO
+// ═══════════════════════════════════════════════════════════════════════════
+var _delTarget = null;
+function openDelModal(tipo, index) {
+  var lists = {reuniao: reunioes, objetivo: objetivos, micro: microPassos, macro: macroPassos};
+  var item = lists[tipo][index];
+  var nome = item.nome || item.desc || item.fase || fmtData(item.data);
+  _delTarget = {tipo: tipo, index: index};
+  document.getElementById('del-msg').innerHTML = 'Deseja excluir <strong>"' + escHtml(nome) + '"</strong>?';
+  document.getElementById('modal-del').classList.add('open');
+}
+function closeDelModal() {
+  document.getElementById('modal-del').classList.remove('open');
+  _delTarget = null;
+}
+function confirmarExclusao() {
+  if (!_delTarget) return;
+  var lists = {reuniao: reunioes, objetivo: objetivos, micro: microPassos, macro: macroPassos};
+  lists[_delTarget.tipo].splice(_delTarget.index, 1);
+  closeDelModal();
+  renderAll();
+  saveData();
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  RENDERIZAÇÃO
+// ═══════════════════════════════════════════════════════════════════════════
+function renderReunioesTimeline() {
+  var wrap = document.getElementById('reunioes-wrap');
+  document.getElementById('reunioes-count').textContent = reunioes.length + ' reuniõ' + (reunioes.length === 1 ? '' : 'es');
+  if (reunioes.length === 0) {
+    wrap.innerHTML = '<div class="empty"><span class="ico">📅</span><p>Nenhuma reunião registrada.<br>Clique em "+ Nova Reunião" para começar.</p></div>';
+    return;
+  }
+  var html = '<div class="timeline">';
+  reunioes.forEach(function(r, i) {
+    var isFirst = i === 0;
+    html += '<div class="tl-item' + (isFirst ? ' active' : '') + '">';
+    html += '<div class="tl-dot"></div>';
+    html += '<div class="tl-card">';
+    html += '<div class="tl-date">' + fmtData(r.data) + '</div>';
+    html += '<div class="tl-tipo"><span class="badge ' + (isFirst ? 'badge-gold' : 'badge-muted') + '">' + (TIPO_REUNIAO[r.tipo]||r.tipo) + '</span></div>';
+    if (r.resumo) html += '<div class="tl-resumo">' + escHtml(r.resumo).replace(/\n/g,'<br>') + '</div>';
+    // Humor
+    html += '<div class="tl-humor">';
+    for (var s = 1; s <= 5; s++) {
+      html += '<span class="star ' + (s <= r.humor ? 'on' : 'off') + '">★</span>';
+    }
+    html += '</div>';
+    // Indicadores
+    var inds = [];
+    if (r.patrimonio) inds.push('Patrimônio: <strong>' + fmtBRL(r.patrimonio) + '</strong>');
+    if (r.renda) inds.push('Renda: <strong>' + fmtBRL(r.renda) + '</strong>');
+    if (r.investimentos) inds.push('Investimentos: <strong>' + fmtBRL(r.investimentos) + '</strong>');
+    if (r.dividas) inds.push('Dívidas: <strong>' + fmtBRL(r.dividas) + '</strong>');
+    if (inds.length > 0) {
+      html += '<div class="tl-indicators">';
+      inds.forEach(function(ind) { html += '<span class="tl-ind">' + ind + '</span>'; });
+      html += '</div>';
+    }
+    html += '<div class="tl-actions">';
+    html += '<button class="btn-icon" onclick="openModal(\'reuniao\',' + i + ')" title="Editar" style="color:var(--blue);font-size:0.8rem;">✏️</button>';
+    html += '<button class="btn-icon" onclick="openDelModal(\'reuniao\',' + i + ')" title="Excluir" style="color:var(--red);font-size:0.8rem;">🗑️</button>';
+    html += '</div>';
+    html += '</div></div>';
+  });
+  html += '</div>';
+  wrap.innerHTML = html;
+}
+
+function renderObjetivos() {
+  var wrap = document.getElementById('objetivos-wrap');
+  var ativos = objetivos.filter(function(o){ return o.status === 'em_andamento'; });
+  document.getElementById('objetivos-count').textContent = objetivos.length + ' objetivo' + (objetivos.length === 1 ? '' : 's');
+  if (objetivos.length === 0) {
+    wrap.innerHTML = '<div class="empty"><span class="ico">🎯</span><p>Nenhum objetivo cadastrado.<br>Clique em "+ Novo Objetivo" para começar.</p></div>';
+    return;
+  }
+  var html = '<div class="obj-grid">';
+  objetivos.forEach(function(o, i) {
+    var progresso = (o.valor && o.valor > 0) ? Math.min((parseBR(o.atual) / parseBR(o.valor)) * 100, 100) : 0;
+    var barColor = o.status === 'concluido' ? 'var(--green)' : o.status === 'pausado' ? 'var(--orange)' : 'var(--primary)';
+    html += '<div class="obj-card">';
+    html += '<div class="obj-header">';
+    html += '<div class="obj-name">' + escHtml(o.nome) + '</div>';
+    html += '<div class="obj-actions">';
+    html += '<button class="btn-icon" onclick="openModal(\'objetivo\',' + i + ')" style="color:var(--blue);font-size:0.8rem;">✏️</button>';
+    html += '<button class="btn-icon" onclick="openDelModal(\'objetivo\',' + i + ')" style="color:var(--red);font-size:0.8rem;">🗑️</button>';
+    html += '</div></div>';
+    html += '<div class="obj-cat" style="margin-bottom:0.5rem;">';
+    html += '<span class="badge ' + (STATUS_BADGE[o.status]||'') + '">' + (STATUS_OBJ[o.status]||o.status) + '</span> ';
+    html += '<span class="badge ' + (PRIO_BADGE[o.prioridade]||'') + '">Prioridade ' + (o.prioridade||'—') + '</span> ';
+    html += '<span class="badge badge-gold">' + (CAT_OBJ[o.categoria]||o.categoria) + '</span>';
+    html += '</div>';
+    if (o.valor > 0) {
+      html += '<div class="obj-progress-bar"><div class="obj-progress-fill" style="width:' + progresso.toFixed(1) + '%;background:' + barColor + ';"></div></div>';
+      html += '<div class="obj-details"><span>' + fmtBRL(o.atual) + ' de ' + fmtBRL(o.valor) + '</span><span>' + progresso.toFixed(0) + '%</span></div>';
+    }
+    if (o.prazo) html += '<div style="font-size:0.72rem;color:var(--muted);margin-top:0.4rem;">Prazo: ' + fmtData(o.prazo) + '</div>';
+    if (o.obs) html += '<div style="font-size:0.78rem;color:var(--muted);margin-top:0.4rem;line-height:1.4;">' + escHtml(o.obs) + '</div>';
+    // Micro passos vinculados
+    var micros = microPassos.filter(function(m){ return String(m.objetivo_id) === String(o.id); });
+    if (micros.length > 0) {
+      html += '<div style="margin-top:0.6rem;padding-top:0.5rem;border-top:1px solid var(--border);">';
+      html += '<div style="font-size:0.70rem;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.3rem;">Micro Passos (' + micros.length + ')</div>';
+      micros.forEach(function(m) {
+        var icon = m.status === 'concluido' ? '✅' : m.status === 'em_andamento' ? '🔄' : '⬜';
+        html += '<div style="font-size:0.78rem;color:' + (m.status === 'concluido' ? 'var(--muted)' : 'var(--fg)') + ';padding:0.15rem 0;">' + icon + ' ' + escHtml(m.desc) + '</div>';
+      });
+      html += '</div>';
+    }
+    html += '</div>';
+  });
+  html += '</div>';
+  wrap.innerHTML = html;
+}
+
+function renderMicroPassos() {
+  var wrap = document.getElementById('micro-wrap');
+  document.getElementById('micro-count').textContent = microPassos.length + ' açõ' + (microPassos.length === 1 ? '' : 'es');
+  if (microPassos.length === 0) {
+    wrap.innerHTML = '<div class="empty"><span class="ico">✅</span><p>Nenhum micro passo cadastrado.<br>Clique em "+ Novo Micro Passo" para começar.</p></div>';
+    return;
+  }
+  // Ordenar: pendentes primeiro, depois em andamento, depois concluídos
+  var sorted = microPassos.map(function(m, i){ return {item: m, idx: i}; });
+  sorted.sort(function(a,b) {
+    var order = {pendente:0, em_andamento:1, concluido:2};
+    return (order[a.item.status]||0) - (order[b.item.status]||0);
+  });
+  var html = '<div class="micro-list">';
+  sorted.forEach(function(g) {
+    var m = g.item;
+    var i = g.idx;
+    var checkClass = m.status === 'concluido' ? 'done' : m.status === 'em_andamento' ? 'progress' : '';
+    var descClass = m.status === 'concluido' ? 'done-text' : '';
+    var objNome = '';
+    if (m.objetivo_id) {
+      var obj = objetivos.find(function(o){ return String(o.id) === String(m.objetivo_id); });
+      if (obj) objNome = obj.nome;
+    }
+    html += '<div class="micro-item">';
+    html += '<div class="micro-check ' + checkClass + '" onclick="toggleMicroStatus(' + i + ')" title="Clique para mudar status"></div>';
+    html += '<div class="micro-body">';
+    html += '<div class="micro-desc ' + descClass + '">' + escHtml(m.desc) + '</div>';
+    html += '<div class="micro-meta">';
+    html += '<span class="badge ' + (STATUS_BADGE[m.status]||'') + '">' + (STATUS_MICRO[m.status]||m.status) + '</span>';
+    if (m.prazo) html += '<span>Prazo: ' + fmtData(m.prazo) + '</span>';
+    if (objNome) html += '<span>Objetivo: ' + escHtml(objNome) + '</span>';
+    html += '</div></div>';
+    html += '<div class="micro-actions">';
+    html += '<button class="btn-icon" onclick="openModal(\'micro\',' + i + ')" style="color:var(--blue);font-size:0.8rem;">✏️</button>';
+    html += '<button class="btn-icon" onclick="openDelModal(\'micro\',' + i + ')" style="color:var(--red);font-size:0.8rem;">🗑️</button>';
+    html += '</div></div>';
+  });
+  html += '</div>';
+  wrap.innerHTML = html;
+}
+
+function renderMacroPassos() {
+  var wrap = document.getElementById('macro-wrap');
+  document.getElementById('macro-count').textContent = macroPassos.length + ' fase' + (macroPassos.length === 1 ? '' : 's');
+  if (macroPassos.length === 0) {
+    wrap.innerHTML = '<div class="empty"><span class="ico">🗺️</span><p>Nenhuma fase estratégica cadastrada.<br>Clique em "+ Nova Fase" para começar.</p></div>';
+    return;
+  }
+  var html = '<div class="roadmap">';
+  macroPassos.forEach(function(m, i) {
+    html += '<div class="macro-item status-' + m.status + '">';
+    html += '<div class="macro-header">';
+    html += '<div class="macro-fase">' + escHtml(m.fase) + '</div>';
+    html += '<div style="display:flex;gap:0.3rem;">';
+    html += '<button class="btn-icon" onclick="openModal(\'macro\',' + i + ')" style="color:var(--blue);font-size:0.8rem;">✏️</button>';
+    html += '<button class="btn-icon" onclick="openDelModal(\'macro\',' + i + ')" style="color:var(--red);font-size:0.8rem;">🗑️</button>';
+    html += '</div></div>';
+    html += '<div class="macro-desc">' + escHtml(m.desc).replace(/\n/g,'<br>') + '</div>';
+    html += '<div class="macro-meta">';
+    html += '<span class="badge ' + (STATUS_BADGE[m.status]||'') + '">' + (STATUS_MACRO[m.status]||m.status) + '</span>';
+    if (m.periodo) html += '<span>Período: ' + escHtml(m.periodo) + '</span>';
+    if (m.deps) html += '<span>Depende de: ' + escHtml(m.deps) + '</span>';
+    html += '</div></div>';
+  });
+  html += '</div>';
+  wrap.innerHTML = html;
+}
+
+function renderDashboard() {
+  document.getElementById('d-reunioes').textContent = reunioes.length;
+  var objAtivos = objetivos.filter(function(o){ return o.status === 'em_andamento'; }).length;
+  document.getElementById('d-objetivos').textContent = objAtivos;
+  var microPend = microPassos.filter(function(m){ return m.status !== 'concluido'; }).length;
+  document.getElementById('d-micros').textContent = microPend;
+
+  // Progresso geral dos objetivos
+  var totalProg = 0;
+  var countProg = 0;
+  objetivos.forEach(function(o) {
+    if (o.valor > 0 && o.status === 'em_andamento') {
+      totalProg += Math.min((parseBR(o.atual) / parseBR(o.valor)) * 100, 100);
+      countProg++;
+    }
+  });
+  var avgProg = countProg > 0 ? (totalProg / countProg) : 0;
+  document.getElementById('d-progresso').textContent = avgProg.toFixed(0) + '%';
+
+  // Humor médio
+  if (reunioes.length > 0) {
+    var totalHumor = reunioes.reduce(function(s,r){ return s + (r.humor || 3); }, 0);
+    var avgHumor = totalHumor / reunioes.length;
+    var stars = '';
+    for (var i = 1; i <= 5; i++) stars += (i <= Math.round(avgHumor) ? '★' : '☆');
+    document.getElementById('d-humor').textContent = stars + ' (' + avgHumor.toFixed(1) + ')';
+  } else {
+    document.getElementById('d-humor').textContent = '—';
+  }
+}
+
+function renderChart() {
+  var reunioesComDados = reunioes.filter(function(r){ return r.patrimonio || r.investimentos || r.dividas; });
+  document.getElementById('chart-section').style.display = reunioesComDados.length >= 2 ? '' : 'none';
+  if (reunioesComDados.length < 2) return;
+
+  var sorted = reunioesComDados.slice().sort(function(a,b){ return a.data.localeCompare(b.data); });
+  var labels = sorted.map(function(r){ return fmtData(r.data); });
+  var datasets = [];
+
+  var hasPatrimonio = sorted.some(function(r){ return r.patrimonio > 0; });
+  var hasInvest = sorted.some(function(r){ return r.investimentos > 0; });
+  var hasDividas = sorted.some(function(r){ return r.dividas > 0; });
+  var hasRenda = sorted.some(function(r){ return r.renda > 0; });
+
+  if (hasPatrimonio) datasets.push({ label: 'Patrimônio Líquido', data: sorted.map(function(r){ return parseBR(r.patrimonio); }), borderColor: '#22c55e', backgroundColor: 'rgba(34,197,94,0.1)', fill: true, tension: 0.3 });
+  if (hasInvest) datasets.push({ label: 'Investimentos', data: sorted.map(function(r){ return parseBR(r.investimentos); }), borderColor: '#60a5fa', backgroundColor: 'rgba(96,165,250,0.1)', fill: false, tension: 0.3 });
+  if (hasDividas) datasets.push({ label: 'Dívidas', data: sorted.map(function(r){ return parseBR(r.dividas); }), borderColor: '#ef4444', backgroundColor: 'rgba(239,68,68,0.1)', fill: false, tension: 0.3 });
+  if (hasRenda) datasets.push({ label: 'Renda Mensal', data: sorted.map(function(r){ return parseBR(r.renda); }), borderColor: '#14b8a6', backgroundColor: 'rgba(20,184,166,0.1)', fill: false, tension: 0.3 });
+
+  if (chartEvolucao) chartEvolucao.destroy();
+  chartEvolucao = new Chart(document.getElementById('chart-evolucao'), {
+    type: 'line',
+    data: { labels: labels, datasets: datasets },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      scales: {
+        x: { ticks: { color: '#A0B8A6', font: { size: 10 } }, grid: { color: 'rgba(212,175,55,0.08)' } },
+        y: { ticks: { color: '#A0B8A6', font: { size: 10 }, callback: function(v){ return 'R$ ' + (v/1000).toFixed(0) + 'k'; } }, grid: { color: 'rgba(212,175,55,0.08)' } }
+      },
+      plugins: { legend: { labels: { color: '#A0B8A6', font: { size: 11 } } } }
+    }
+  });
+}
+
+function renderNextMeeting() {
+  var section = document.getElementById('next-meeting-section');
+  var items = [];
+
+  // Micro passos pendentes
+  var pendentes = microPassos.filter(function(m){ return m.status !== 'concluido'; });
+  if (pendentes.length > 0) {
+    items.push('Revisar ' + pendentes.length + ' micro passo(s) pendente(s)');
+  }
+
+  // Objetivos em andamento
+  var objAtivos = objetivos.filter(function(o){ return o.status === 'em_andamento'; });
+  objAtivos.forEach(function(o) {
+    var prog = o.valor > 0 ? Math.min((parseBR(o.atual) / parseBR(o.valor)) * 100, 100) : 0;
+    items.push('Atualizar progresso: ' + o.nome + ' (' + prog.toFixed(0) + '% atual)');
+  });
+
+  // Macro passos em andamento
+  var macroAtivos = macroPassos.filter(function(m){ return m.status === 'em_andamento'; });
+  if (macroAtivos.length > 0) {
+    items.push('Avaliar andamento da fase: ' + macroAtivos[0].fase);
+  }
+
+  // Última reunião
+  if (reunioes.length > 0) {
+    var ultima = reunioes[0];
+    if (ultima.humor <= 2) items.push('Atenção: humor financeiro baixo na última reunião — investigar causas');
+    items.push('Comparar indicadores com a reunião anterior (' + fmtData(ultima.data) + ')');
+  }
+
+  if (items.length === 0) items.push('Registre reuniões, objetivos e micro passos para gerar sugestões automáticas');
+
+  section.style.display = '';
+  var wrap = document.getElementById('next-meeting-items');
+  wrap.innerHTML = items.map(function(it){ return '<div class="nm-item">' + escHtml(it) + '</div>'; }).join('');
+}
+
+function renderAll() {
+  renderReunioesTimeline();
+  renderObjetivos();
+  renderMicroPassos();
+  renderMacroPassos();
+  renderDashboard();
+  renderChart();
+  renderNextMeeting();
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  PERSISTÊNCIA (localStorage + Supabase)
+// ═══════════════════════════════════════════════════════════════════════════
+var SUPABASE_URL = 'https://vbikskbfkhundhropykf.supabase.co';
+var SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZiaWtza2Jma2h1bmRocm9weWtmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDU1MTk5NjEsImV4cCI6MjA2MTA5NTk2MX0.-n-Tj_5JnF1NL2ZImWlMeTcobWDl_VD6Vqp0lxRQFFU';
+var LS_KEY = 'hv_acompanhamento_local';
+var FERRAMENTA = 'acompanhamento';
+var _sbClient = null;
+var _initDone = false;
+var _saveTimer = null;
+
+function getClienteId() { return sessionStorage.getItem('cliente_id') || null; }
+
+function getSupabaseClient() {
+  if (_sbClient) return _sbClient;
+  if (window.mithraSupabaseClient) { _sbClient = window.mithraSupabaseClient; return _sbClient; }
+  try {
+    if (window.supabase && window.supabase.createClient) {
+      _sbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    }
+  } catch(e) { _sbClient = null; }
+  return _sbClient;
+}
+
+function waitForSupabase(timeout) {
+  return new Promise(function(resolve) {
+    if (window.mithraSupabaseClient) { _sbClient = window.mithraSupabaseClient; resolve(window.mithraSupabaseClient); return; }
+    var elapsed = 0;
+    var interval = setInterval(function() {
+      elapsed += 50;
+      if (window.mithraSupabaseClient) { clearInterval(interval); _sbClient = window.mithraSupabaseClient; resolve(window.mithraSupabaseClient); }
+      else if (elapsed >= (timeout || 3000)) { clearInterval(interval); resolve(null); }
+    }, 50);
+  });
+}
+
+function buildPayload() {
+  return {
+    reunioes: reunioes,
+    objetivos: objetivos,
+    microPassos: microPassos,
+    macroPassos: macroPassos,
+    nextId: nextId
+  };
+}
+
+function saveData() {
+  if (!_initDone) return;
+  var data = buildPayload();
+  try { localStorage.setItem(LS_KEY, JSON.stringify(data)); } catch(e) {}
+  var clienteId = getClienteId();
+  if (!clienteId) return;
+  if (_saveTimer) clearTimeout(_saveTimer);
+  _saveTimer = setTimeout(function() { saveToSupabase(clienteId, data); }, 2000);
+}
+
+async function saveToSupabase(clienteId, data) {
+  var sb = getSupabaseClient();
+  if (!sb) return;
+  try {
+    var payload = { cliente_id: clienteId, ferramenta: FERRAMENTA, dados: data };
+    var result = await sb.from('ferramentas_dados').upsert(payload, { onConflict: 'cliente_id,ferramenta' });
+    if (result.error) console.warn('Acompanhamento: erro ao salvar no Supabase', result.error.message);
+  } catch(e) { console.warn('Acompanhamento: exceção ao salvar', e); }
+}
+
+async function loadFromSupabase(clienteId) {
+  var sb = getSupabaseClient();
+  if (!sb || !clienteId) return null;
+  try {
+    var result = await sb.from('ferramentas_dados').select('dados').eq('cliente_id', clienteId).eq('ferramenta', FERRAMENTA).maybeSingle();
+    if (result.error) { console.warn('Acompanhamento: erro ao carregar do Supabase', result.error.message); return null; }
+    return (result.data && result.data.dados) ? result.data.dados : null;
+  } catch(e) { console.warn('Acompanhamento: exceção ao carregar', e); return null; }
+}
+
+function loadFromLocalStorage() {
+  var raw;
+  try { raw = localStorage.getItem(LS_KEY); } catch(e) { return null; }
+  if (!raw) return null;
+  try { return JSON.parse(raw); } catch(e) { return null; }
+}
+
+function applyData(d) {
+  if (!d) return false;
+  var hasData = false;
+  if (Array.isArray(d.reunioes) && d.reunioes.length > 0) { reunioes = d.reunioes; hasData = true; }
+  if (Array.isArray(d.objetivos) && d.objetivos.length > 0) { objetivos = d.objetivos; hasData = true; }
+  if (Array.isArray(d.microPassos) && d.microPassos.length > 0) { microPassos = d.microPassos; hasData = true; }
+  if (Array.isArray(d.macroPassos) && d.macroPassos.length > 0) { macroPassos = d.macroPassos; hasData = true; }
+  if (typeof d.nextId === 'number') nextId = d.nextId;
+  return hasData;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════════════════════════════════
+(async function init() {
+  var clienteId = getClienteId();
+  var restored = false;
+
+  if (clienteId) {
+    LS_KEY = 'hv_acompanhamento_' + clienteId;
+    await waitForSupabase(3000);
+    var remoteData = await loadFromSupabase(clienteId);
+    if (remoteData) restored = applyData(remoteData);
+  }
+
+  if (!restored) {
+    var localData = loadFromLocalStorage();
+    if (localData) restored = applyData(localData);
+  }
+
+  renderAll();
+  _initDone = true;
+})();
+</script>
+</main>
+</body>
+</html>
