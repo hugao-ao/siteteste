@@ -140,6 +140,35 @@
   ::-webkit-scrollbar { width: 6px; height: 6px; }
   ::-webkit-scrollbar-track { background: var(--bg); }
   ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  /* Botão flutuante Salvar */
+  .btn-save-global {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    z-index: 9999;
+    background: linear-gradient(135deg, #d4af37, #b8962e);
+    color: #000;
+    border: none;
+    border-radius: 12px;
+    padding: 12px 24px;
+    font-size: 0.95rem;
+    font-weight: 700;
+    cursor: pointer;
+    box-shadow: 0 4px 20px rgba(212,175,55,0.4);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.3s ease;
+  }
+  .btn-save-global:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 28px rgba(212,175,55,0.6);
+  }
+  .btn-save-global.saved {
+    background: linear-gradient(135deg, #10b981, #059669);
+    color: #fff;
+  }
 </style>
 </head>
 <body>
@@ -1211,7 +1240,31 @@ function applyData(d) {
   renderAll();
   _initDone = true;
 })();
+
+function _globalSaveFeedback() {{
+  var btn = document.getElementById('btnSaveGlobal');
+  var icon = document.getElementById('saveIcon');
+  var label = document.getElementById('saveLabel');
+  if (!btn) return;
+  btn.classList.add('saved');
+  icon.textContent = '✅';
+  label.textContent = 'Salvo!';
+  setTimeout(function() {{
+    btn.classList.remove('saved');
+    icon.textContent = '💾';
+    label.textContent = 'Salvar Alterações';
+  }}, 2500);
+}}
+
+function _forceSavePatrimonio() {
+  _initDone = true;
+  saveData();
+  _globalSaveFeedback();
+}
 </script>
+<button class="btn-save-global" id="btnSaveGlobal" onclick="_forceSavePatrimonio()" title="Salvar todas as alterações">
+  <span id="saveIcon">💾</span> <span id="saveLabel">Salvar Alterações</span>
+</button>
 </main>
 </body>
 </html>
