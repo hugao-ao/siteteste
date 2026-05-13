@@ -215,7 +215,7 @@
     <div class="row">
       <div class="field">
         <label>Valor Contratado (R$)</label>
-        <input type="text" id="m-valor" placeholder="R$ 0,00" oninput="fmtCurrInput(this)">
+        <input type="text" id="m-valor" placeholder="R$ 0,00" oninput="fmtCurrInput(this); calcParcelaPreview();">
       </div>
     </div>
     <div class="toggle-row">
@@ -231,20 +231,26 @@
     <div class="row hidden" id="row-cet">
       <div class="field">
         <label>CET (%)</label>
-        <input type="number" id="m-cet" placeholder="Ex: 2.5" step="0.01">
+        <input type="number" id="m-cet" placeholder="Ex: 2.5" step="0.01" oninput="calcParcelaPreview()">
       </div>
       <div class="field">
         <label>Período da Taxa</label>
-        <select id="m-cet-tipo">
+        <select id="m-cet-tipo" onchange="calcParcelaPreview()">
           <option value="mensal">Mensal</option>
           <option value="anual">Anual</option>
         </select>
       </div>
     </div>
+    <div class="row hidden" id="row-parcela-preview">
+      <div class="field">
+        <label style="color:var(--green);">Parcela Calculada</label>
+        <div id="parcela-preview-value" style="background:var(--card2); border:1px solid var(--green); border-radius:6px; padding:0.5rem 0.75rem; font-size:1.1rem; font-weight:700; color:var(--green);">R$ 0,00</div>
+      </div>
+    </div>
     <div class="row">
       <div class="field">
         <label>Total de Parcelas</label>
-        <input type="number" id="m-total-parcelas" placeholder="Ex: 48">
+        <input type="number" id="m-total-parcelas" placeholder="Ex: 48" oninput="calcParcelaPreview()">
       </div>
     </div>
     <div class="row" id="row-pagas">
@@ -343,6 +349,38 @@ function toggleCET() {
   document.getElementById('toggle-cet').classList.toggle('active', useCET);
   document.getElementById('row-cet').classList.toggle('hidden', !useCET);
   document.getElementById('row-parcela').classList.toggle('hidden', useCET);
+  document.getElementById('row-parcela-preview').classList.toggle('hidden', !useCET);
+  if (useCET) calcParcelaPreview();
+}
+
+function calcParcelaPreview() {
+  const previewEl = document.getElementById('parcela-preview-value');
+  if (!useCET) return;
+  const valorContratado = parseCurr(document.getElementById('m-valor').value);
+  const totalParcelas = parseInt(document.getElementById('m-total-parcelas').value);
+  const cetVal = parseFloat(document.getElementById('m-cet').value);
+  const cetTipo = document.getElementById('m-cet-tipo').value;
+
+  if (!valorContratado || !totalParcelas || !cetVal) {
+    previewEl.textContent = 'R$ 0,00';
+    return;
+  }
+
+  let taxaMensal;
+  if (cetTipo === 'anual') {
+    taxaMensal = Math.pow(1 + cetVal / 100, 1/12) - 1;
+  } else {
+    taxaMensal = cetVal / 100;
+  }
+
+  let parcela;
+  if (taxaMensal === 0) {
+    parcela = valorContratado / totalParcelas;
+  } else {
+    parcela = valorContratado * taxaMensal / (1 - Math.pow(1 + taxaMensal, -totalParcelas));
+  }
+
+  previewEl.textContent = fmtBRL(parcela);
 }
 
 function saveDebt() {
@@ -605,6 +643,25 @@ function runComparison() {
   const economiaTotal = totalAtual - totalProposta;
   const saldoFinal = saldoInvest[saldoInvest.length - 1];
 
+  // Cálculo de juros restantes: Atual vs Proposta
+  let jurosRestantesAtual = 0;
+  dividasAtuais.forEach(d => {
+    const restantes = d.totalParcelas - d.parcelasPagas;
+    const totalRestante = d.parcela * restantes;
+    const saldoDev = d.saldoDevedor || (d.parcela * restantes);
+    jurosRestantesAtual += totalRestante - saldoDev;
+  });
+  // Se juros negativos (saldo devedor estimado > parcelas restantes), usar 0
+  if (jurosRestantesAtual < 0) jurosRestantesAtual = 0;
+
+  let jurosProposta = 0;
+  dividasProposta.forEach(d => {
+    const totalGeral = d.parcela * d.totalParcelas;
+    jurosProposta += totalGeral - d.valorContratado;
+  });
+
+  const economiaJuros = jurosRestantesAtual - jurosProposta;
+
   // Show results
   document.getElementById('comp-result').classList.remove('hidden');
 
@@ -613,6 +670,9 @@ function runComparison() {
     <div class="summary-item"><div class="label">Total Atual</div><div class="value red">${fmtBRL(totalAtual)}</div></div>
     <div class="summary-item"><div class="label">Total Proposta</div><div class="value blue">${fmtBRL(totalProposta)}</div></div>
     <div class="summary-item"><div class="label">Economia Bruta</div><div class="value ${economiaTotal >= 0 ? 'green' : 'red'}">${fmtBRL(economiaTotal)}</div></div>
+    <div class="summary-item"><div class="label">Juros Restantes (Atual)</div><div class="value red">${fmtBRL(jurosRestantesAtual)}</div></div>
+    <div class="summary-item"><div class="label">Juros Totais (Proposta)</div><div class="value blue">${fmtBRL(jurosProposta)}</div></div>
+    <div class="summary-item"><div class="label">Economia em Juros</div><div class="value ${economiaJuros >= 0 ? 'green' : 'red'}">${fmtBRL(economiaJuros)}</div></div>
     <div class="summary-item"><div class="label">Saldo Investido (${taxaAnual}% a.a.)</div><div class="value ${saldoFinal >= 0 ? 'green' : 'red'}">${fmtBRL(saldoFinal)}</div></div>
     <div class="summary-item"><div class="label">Prazo Total</div><div class="value white">${maxMeses} meses</div></div>
   `;
@@ -671,6 +731,7 @@ function runComparison() {
       <div class="big-value">${fmtBRL(saldoFinal)}</div>
       <div class="desc">Se migrar para a proposta e investir a diferença mensal a <strong>${taxaAnual}% a.a.</strong>, ao final de ${maxMeses} meses você terá acumulado esse valor.</div>
       <div class="desc" style="margin-top:0.5rem;">Economia bruta (sem investimento): <strong>${fmtBRL(economiaTotal)}</strong></div>
+      <div class="desc" style="margin-top:0.3rem;">Economia em juros: <strong style="color:${economiaJuros >= 0 ? 'var(--green)' : 'var(--red)'};">${fmtBRL(economiaJuros)}</strong> (Juros atuais restantes: ${fmtBRL(jurosRestantesAtual)} vs. Juros proposta: ${fmtBRL(jurosProposta)})</div>
     `;
   } else {
     verdictEl.innerHTML = `
@@ -678,6 +739,7 @@ function runComparison() {
       <div class="big-value" style="color:var(--red);">${fmtBRL(saldoFinal)}</div>
       <div class="desc">A proposta resulta em custo maior. Mesmo investindo a diferença a <strong>${taxaAnual}% a.a.</strong>, o saldo final seria negativo em ${maxMeses} meses.</div>
       <div class="desc" style="margin-top:0.5rem;">Diferença bruta: <strong style="color:var(--red);">${fmtBRL(economiaTotal)}</strong></div>
+      <div class="desc" style="margin-top:0.3rem;">Comparação de juros: <strong style="color:${economiaJuros >= 0 ? 'var(--green)' : 'var(--red)'};">${fmtBRL(economiaJuros)}</strong> (Juros atuais restantes: ${fmtBRL(jurosRestantesAtual)} vs. Juros proposta: ${fmtBRL(jurosProposta)})</div>
     `;
   }
 }
