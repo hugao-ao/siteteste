@@ -1,383 +1,737 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Calculadora de Juros Reais - MithraSF</title>
-    <link rel="stylesheet" href="../assets/style.css">
-    <script src="../assets/layout.js" defer></script>
-    <style>
-        /* Specific styles for Juros to match Images 03/04 */
-        .mode-switch {
-            display: flex;
-            justify-content: center;
-            gap: 1rem;
-            margin-bottom: 2rem;
-        }
-        
-        .mode-btn {
-            background-color: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            color: #9ca3af;
-            padding: 0.75rem 1.5rem;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: all 0.3s;
-            font-weight: 600;
-        }
-        
-        .mode-btn.active {
-            background-color: #eab308; /* Yellow-500 */
-            color: black;
-            border-color: #eab308;
-        }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Análise de Dívidas - MithraSF</title>
+<link rel="stylesheet" href="../assets/style.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="../assets/layout.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #021C0E;
+    --card: #052614;
+    --card2: #0A3520;
+    --fg: #F2E8C9;
+    --muted: #A0B8A6;
+    --primary: #D4AF37;
+    --primary-dim: rgba(212,175,55,0.15);
+    --border: rgba(212,175,55,0.2);
+    --green: #22c55e;
+    --red: #ef4444;
+    --blue: #60a5fa;
+    --purple: #a78bfa;
+    --orange: #fb923c;
+    --radius: 10px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--fg); font-family: 'Inter', system-ui, sans-serif; font-size: 14px; min-height: 100vh; }
+  h1 { font-size: 1.6rem; font-weight: 700; color: #fff; }
+  h2 { font-size: 1.1rem; font-weight: 600; color: var(--primary); margin-bottom: 1rem; }
+  h3 { font-size: 0.95rem; font-weight: 600; color: #fff; }
 
-        .input-card {
-            background-color: rgba(255, 255, 255, 0.02);
-            border: 1px solid rgba(255, 255, 255, 0.05);
-            border-radius: 12px;
-            padding: 2rem;
-        }
+  .page { max-width: 1200px; margin: 0 auto; padding: 2rem 1rem 4rem; }
+  .page-header { margin-bottom: 2rem; }
+  .page-header p { color: var(--muted); margin-top: 0.3rem; font-size: 0.9rem; }
 
-        .input-group { margin-bottom: 1.5rem; }
-        .input-group label { display: block; font-size: 0.9rem; color: #9ca3af; margin-bottom: 0.5rem; font-weight: 600; }
-        .input-group input, .input-group select {
-            width: 100%;
-            background-color: rgba(0, 0, 0, 0.3);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 6px;
-            padding: 1rem;
-            color: white;
-            font-size: 1rem;
-        }
-        .input-group input:focus, .input-group select:focus { outline: none; border-color: var(--primary-color); }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.5rem; margin-bottom: 1.5rem; }
 
-        .action-btn {
-            width: 100%;
-            background-color: #10b981; /* Green-500 */
-            color: white;
-            font-weight: bold;
-            padding: 1rem;
-            border-radius: 8px;
-            border: none;
-            cursor: pointer;
-            transition: background-color 0.2s;
-            font-size: 1rem;
-            margin-top: 1rem;
-        }
-        .action-btn:hover { background-color: #059669; }
+  .field { display: flex; flex-direction: column; gap: 0.4rem; }
+  .field label { font-size: 0.8rem; color: var(--muted); font-weight: 500; }
+  .field input, .field select { background: var(--card2); border: 1px solid var(--border); border-radius: 6px; color: var(--fg); padding: 0.5rem 0.75rem; font-size: 0.9rem; outline: none; width: 100%; transition: border-color 0.2s; }
+  .field input:focus, .field select:focus { border-color: var(--primary); }
+  .field select option { background: var(--card); }
+  .row { display: flex; gap: 1rem; align-items: flex-end; flex-wrap: wrap; }
+  .row .field { flex: 1; min-width: 120px; }
 
-        .result-card {
-            background-color: rgba(255, 255, 255, 0.02);
-            border: 1px solid rgba(255, 255, 255, 0.05);
-            border-radius: 12px;
-            padding: 2rem;
-            text-align: center;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            height: 100%;
-        }
+  .btn { padding: 0.6rem 1.2rem; border-radius: 6px; font-weight: 600; cursor: pointer; border: none; font-size: 0.85rem; transition: all 0.2s; }
+  .btn-primary { background: var(--green); color: #fff; }
+  .btn-primary:hover { background: #16a34a; }
+  .btn-secondary { background: var(--primary); color: #000; }
+  .btn-secondary:hover { background: #c9a030; }
+  .btn-danger { background: var(--red); color: #fff; font-size: 0.75rem; padding: 0.3rem 0.6rem; }
+  .btn-danger:hover { background: #dc2626; }
+  .btn-edit { background: var(--orange); color: #fff; font-size: 0.75rem; padding: 0.3rem 0.6rem; }
+  .btn-edit:hover { background: #ea580c; }
+  .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--fg); }
+  .btn-outline:hover { border-color: var(--primary); color: var(--primary); }
 
-        .result-main-label { font-size: 0.9rem; color: #9ca3af; margin-bottom: 0.5rem; }
-        .result-main-value { font-size: 3rem; font-weight: bold; color: white; margin-bottom: 2rem; }
-        
-        .result-details-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 1rem;
-            margin-bottom: 2rem;
-            text-align: left;
-        }
-        
-        .detail-label { font-size: 0.8rem; color: #9ca3af; }
-        .detail-value { font-size: 1.2rem; font-weight: bold; color: #ef4444; } /* Red for costs */
+  .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem; }
 
-        .recommendation-box {
-            background-color: rgba(16, 185, 129, 0.1);
-            border: 1px solid rgba(16, 185, 129, 0.3);
-            border-radius: 8px;
-            padding: 1rem;
-            text-align: left;
-        }
-        
-        .rec-title { color: #10b981; font-weight: bold; display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; }
-        .rec-text { font-size: 0.9rem; color: #d1d5db; line-height: 1.4; }
-        
-        .hidden { display: none; }
-    </style>
+  /* Tables */
+  .debt-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; margin-top: 0.5rem; }
+  .debt-table th { text-align: left; padding: 0.5rem; color: var(--muted); font-weight: 600; border-bottom: 1px solid var(--border); font-size: 0.75rem; text-transform: uppercase; }
+  .debt-table td { padding: 0.5rem; border-bottom: 1px solid rgba(255,255,255,0.03); vertical-align: middle; }
+  .debt-table tr:hover td { background: rgba(255,255,255,0.02); }
+
+  /* Summary cards */
+  .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; margin-top: 1rem; }
+  .summary-item { background: var(--card2); border: 1px solid var(--border); border-radius: 8px; padding: 1rem; text-align: center; }
+  .summary-item .label { font-size: 0.7rem; color: var(--muted); text-transform: uppercase; font-weight: 600; margin-bottom: 0.3rem; }
+  .summary-item .value { font-size: 1.3rem; font-weight: 700; }
+  .summary-item .value.green { color: var(--green); }
+  .summary-item .value.red { color: var(--red); }
+  .summary-item .value.blue { color: var(--blue); }
+  .summary-item .value.white { color: #fff; }
+
+  /* Modal */
+  .modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); z-index: 1000; justify-content: center; align-items: center; padding: 1rem; }
+  .modal-overlay.active { display: flex; }
+  .modal { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 2rem; width: 100%; max-width: 550px; max-height: 90vh; overflow-y: auto; }
+  .modal h3 { margin-bottom: 1.5rem; color: var(--primary); }
+  .modal .row { margin-bottom: 1rem; }
+  .modal-actions { display: flex; gap: 1rem; justify-content: flex-end; margin-top: 1.5rem; }
+
+  /* Toggle */
+  .toggle-row { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1rem; }
+  .toggle-row label { font-size: 0.8rem; color: var(--muted); }
+  .toggle-switch { position: relative; width: 40px; height: 22px; background: var(--card2); border-radius: 11px; border: 1px solid var(--border); cursor: pointer; transition: background 0.2s; }
+  .toggle-switch.active { background: var(--green); border-color: var(--green); }
+  .toggle-switch::after { content: ''; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; background: #fff; border-radius: 50%; transition: transform 0.2s; }
+  .toggle-switch.active::after { transform: translateX(18px); }
+
+  /* Charts */
+  .chart-container { position: relative; width: 100%; height: 300px; margin-top: 1rem; }
+
+  /* Comparison result */
+  .verdict-card { background: var(--card2); border-radius: var(--radius); padding: 1.5rem; text-align: center; margin-top: 1.5rem; }
+  .verdict-card .badge { display: inline-block; padding: 0.4rem 1rem; border-radius: 20px; font-weight: 700; font-size: 0.85rem; margin-bottom: 0.5rem; }
+  .verdict-card .badge.green { background: rgba(34,197,94,0.15); color: var(--green); }
+  .verdict-card .badge.red { background: rgba(239,68,68,0.15); color: var(--red); }
+  .verdict-card .big-value { font-size: 2rem; font-weight: 700; color: #fff; margin: 0.5rem 0; }
+  .verdict-card .desc { font-size: 0.85rem; color: var(--muted); }
+
+  .hidden { display: none; }
+
+  /* Tabs */
+  .tabs { display: flex; gap: 0.5rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
+  .tab-btn { padding: 0.5rem 1rem; border-radius: 6px; font-weight: 600; cursor: pointer; border: 1px solid var(--border); background: transparent; color: var(--muted); font-size: 0.8rem; transition: all 0.2s; }
+  .tab-btn.active { background: var(--primary); color: #000; border-color: var(--primary); }
+
+  .note { font-size: 0.75rem; color: var(--muted); margin-top: 0.3rem; font-style: italic; }
+
+  @media(max-width:768px) {
+    .row { flex-direction: column; }
+    .summary-grid { grid-template-columns: 1fr 1fr; }
+  }
+</style>
 </head>
 <body>
-    <!-- Sidebar Container (Injected by layout.js) -->
-    <div id="sidebar-container" class="sidebar"></div>
+<div id="sidebar-container" class="sidebar"></div>
+<main class="main-content">
+<div class="page">
+  <div class="page-header">
+    <h1>📊 Análise de Dívidas</h1>
+    <p>Compare o cenário atual das suas dívidas com uma proposta de migração e veja se compensa.</p>
+  </div>
 
-    <!-- Main Content -->
-    <main class="main-content">
-        <div class="container">
-            <header class="flex items-center gap-4 mb-8">
-                <a href="../ferramentas.html" class="text-gray-400 hover:text-white text-xl">←</a>
-                <div>
-                    <div class="flex items-center gap-2">
-                        <span class="text-green-500 text-2xl">🧮</span>
-                        <h1 class="text-2xl font-bold m-0">Calculadora de Juros Reais</h1>
-                    </div>
-                    <p class="text-gray-400 text-sm">Auditoria de taxas e simulação de custo efetivo total.</p>
-                </div>
-                <button id="mobile-toggle" class="mobile-toggle ml-auto md:hidden">☰</button>
-            </header>
+  <!-- TABS -->
+  <div class="tabs">
+    <button class="tab-btn active" onclick="switchTab('atual')">1. Cenário Atual</button>
+    <button class="tab-btn" onclick="switchTab('proposta')">2. Proposta Nova</button>
+    <button class="tab-btn" onclick="switchTab('comparativo')">3. Comparativo</button>
+  </div>
 
-            <!-- Mode Switcher -->
-            <div class="mode-switch">
-                <button id="btn-mode-rate" class="mode-btn active" onclick="setMode('rate')">Auditar Taxa de Juros</button>
-                <button id="btn-mode-installment" class="mode-btn" onclick="setMode('installment')">Simular Parcela</button>
-            </div>
+  <!-- ===== TAB 1: CENÁRIO ATUAL ===== -->
+  <div id="tab-atual">
+    <div class="card">
+      <div class="section-header">
+        <h2>Dívidas Atuais</h2>
+        <button class="btn btn-primary" onclick="openDebtModal('atual')">+ Adicionar Dívida</button>
+      </div>
+      <div id="atual-table-container">
+        <p style="color:var(--muted); font-size:0.85rem;">Nenhuma dívida cadastrada. Clique em "+ Adicionar Dívida" para começar.</p>
+      </div>
+    </div>
+    <div class="card" id="atual-summary" style="display:none;">
+      <h2>Resumo do Cenário Atual</h2>
+      <div class="summary-grid" id="atual-summary-grid"></div>
+      <div class="chart-container">
+        <canvas id="chart-atual"></canvas>
+      </div>
+    </div>
+  </div>
 
-            <div class="grid md:grid-cols-2 gap-8">
-                <!-- Input Section -->
-                <div class="input-card">
-                    <h3 class="text-green-500 font-bold mb-6" id="input-title">Dados da Operação</h3>
-                    
-                    <div class="input-group">
-                        <label>Valor à Vista (R$)</label>
-                        <input type="text" id="cashPrice" placeholder="R$ 0,00" oninput="formatCurrency(this)">
-                    </div>
+  <!-- ===== TAB 2: PROPOSTA NOVA ===== -->
+  <div id="tab-proposta" class="hidden">
+    <div class="card">
+      <div class="section-header">
+        <h2>Novas Dívidas (Proposta de Migração)</h2>
+        <button class="btn btn-primary" onclick="openDebtModal('proposta')">+ Adicionar Dívida</button>
+      </div>
+      <div id="proposta-table-container">
+        <p style="color:var(--muted); font-size:0.85rem;">Nenhuma dívida cadastrada na proposta. Clique em "+ Adicionar Dívida" para começar.</p>
+      </div>
+    </div>
+    <div class="card" id="proposta-summary" style="display:none;">
+      <h2>Resumo da Proposta</h2>
+      <div class="summary-grid" id="proposta-summary-grid"></div>
+      <div class="chart-container">
+        <canvas id="chart-proposta"></canvas>
+      </div>
+    </div>
+  </div>
 
-                    <div class="input-group">
-                        <label>Número de Parcelas</label>
-                        <input type="number" id="installments" placeholder="12">
-                    </div>
-
-                    <!-- Dynamic Input: Either Installment Value OR Interest Rate -->
-                    <div class="input-group" id="group-installment-value">
-                        <label>Valor da Parcela (R$)</label>
-                        <input type="text" id="installmentValue" placeholder="R$ 0,00" oninput="formatCurrency(this)">
-                    </div>
-
-                    <div class="input-group hidden" id="group-interest-rate">
-                        <label>Taxa de Juros (%)</label>
-                        <div style="display: flex; gap: 0.5rem;">
-                            <input type="number" id="interestRate" placeholder="Ex: 2" step="0.01" style="flex: 2;">
-                            <select id="rateType" style="flex: 1;">
-                                <option value="monthly">Mensal</option>
-                                <option value="annual">Anual</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <button onclick="calculate()" class="action-btn" id="action-btn">Calcular Custo Efetivo</button>
-                </div>
-
-                <!-- Result Section -->
-                <div class="result-card" id="result-card" style="opacity: 0.5;">
-                    <p class="result-main-label" id="result-main-label">Custo Efetivo Mensal (CET)</p>
-                    <p class="result-main-value" id="result-main-value">0.00% a.m.</p>
-
-                    <div class="result-details-grid">
-                        <div>
-                            <p class="detail-label">Montante Total</p>
-                            <p class="detail-value" id="total-paid">R$ 0,00</p>
-                        </div>
-                        <div>
-                            <p class="detail-label">Custo de Juros</p>
-                            <p class="detail-value" id="total-interest">R$ 0,00</p>
-                        </div>
-                    </div>
-
-                    <div class="recommendation-box hidden" id="rec-box">
-                        <div class="rec-title">
-                            <span>✅</span> <span id="rec-title">Análise de Viabilidade</span>
-                        </div>
-                        <p class="rec-text" id="rec-text">
-                            <!-- Text injected by JS -->
-                        </p>
-                    </div>
-                </div>
-            </div>
+  <!-- ===== TAB 3: COMPARATIVO ===== -->
+  <div id="tab-comparativo" class="hidden">
+    <div class="card">
+      <div class="section-header">
+        <h2>Comparativo: Atual vs. Proposta</h2>
+        <div class="row" style="gap:0.5rem;">
+          <div class="field" style="max-width:180px;">
+            <label>Taxa de Investimento (% a.a.)</label>
+            <input type="number" id="taxa-invest-comp" value="12" step="0.1" onchange="runComparison()">
+          </div>
+          <button class="btn btn-secondary" onclick="runComparison()" style="align-self:flex-end;">Comparar</button>
         </div>
-    </main>
+      </div>
+      <div id="comp-result" class="hidden">
+        <div class="summary-grid" id="comp-summary-grid"></div>
+        <div class="chart-container" style="height:350px;">
+          <canvas id="chart-parcelas"></canvas>
+        </div>
+        <div class="chart-container" style="height:350px;">
+          <canvas id="chart-acumulado"></canvas>
+        </div>
+        <div class="verdict-card" id="comp-verdict"></div>
+      </div>
+    </div>
+  </div>
 
-    <script>
-        let currentMode = 'rate'; // 'rate' or 'installment'
+</div>
+</main>
 
-        function setMode(mode) {
-            currentMode = mode;
-            
-            // Update Buttons
-            document.getElementById('btn-mode-rate').className = mode === 'rate' ? 'mode-btn active' : 'mode-btn';
-            document.getElementById('btn-mode-installment').className = mode === 'installment' ? 'mode-btn active' : 'mode-btn';
+<!-- MODAL -->
+<div class="modal-overlay" id="debt-modal">
+  <div class="modal">
+    <h3 id="modal-title">Adicionar Dívida</h3>
+    <div class="row">
+      <div class="field">
+        <label>Nome / Descrição</label>
+        <input type="text" id="m-nome" placeholder="Ex: Empréstimo Banco X">
+      </div>
+    </div>
+    <div class="row">
+      <div class="field">
+        <label>Valor Contratado (R$)</label>
+        <input type="text" id="m-valor" placeholder="R$ 0,00" oninput="fmtCurrInput(this)">
+      </div>
+    </div>
+    <div class="toggle-row">
+      <div class="toggle-switch" id="toggle-cet" onclick="toggleCET()"></div>
+      <label>Informar CET e calcular parcela automaticamente</label>
+    </div>
+    <div class="row" id="row-parcela">
+      <div class="field">
+        <label>Valor da Parcela (R$)</label>
+        <input type="text" id="m-parcela" placeholder="R$ 0,00" oninput="fmtCurrInput(this)">
+      </div>
+    </div>
+    <div class="row hidden" id="row-cet">
+      <div class="field">
+        <label>CET (%)</label>
+        <input type="number" id="m-cet" placeholder="Ex: 2.5" step="0.01">
+      </div>
+      <div class="field">
+        <label>Período da Taxa</label>
+        <select id="m-cet-tipo">
+          <option value="mensal">Mensal</option>
+          <option value="anual">Anual</option>
+        </select>
+      </div>
+    </div>
+    <div class="row">
+      <div class="field">
+        <label>Total de Parcelas</label>
+        <input type="number" id="m-total-parcelas" placeholder="Ex: 48">
+      </div>
+    </div>
+    <div class="row" id="row-pagas">
+      <div class="field">
+        <label>Parcelas Já Pagas</label>
+        <input type="number" id="m-pagas" placeholder="Ex: 12" value="0">
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeDebtModal()">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveDebt()">Salvar</button>
+    </div>
+  </div>
+</div>
 
-            // Update Inputs
-            const groupInstallment = document.getElementById('group-installment-value');
-            const groupRate = document.getElementById('group-interest-rate');
-            const actionBtn = document.getElementById('action-btn');
-            const inputTitle = document.getElementById('input-title');
-            const resultMainLabel = document.getElementById('result-main-label');
+<script>
+// ===== STATE =====
+let dividasAtuais = [];
+let dividasProposta = [];
+let editingIndex = -1;
+let editingType = '';
+let useCET = false;
+let currentModalType = 'atual';
+let chartAtual = null;
+let chartProposta = null;
+let chartParcelas = null;
+let chartAcumulado = null;
 
-            if (mode === 'rate') {
-                groupInstallment.classList.remove('hidden');
-                groupRate.classList.add('hidden');
-                actionBtn.textContent = 'Calcular Custo Efetivo';
-                inputTitle.textContent = 'Dados da Operação';
-                resultMainLabel.textContent = 'Custo Efetivo Mensal (CET)';
-            } else {
-                groupInstallment.classList.add('hidden');
-                groupRate.classList.remove('hidden');
-                actionBtn.textContent = 'Simular Fluxo de Pagamento';
-                inputTitle.textContent = 'Parâmetros do Financiamento';
-                resultMainLabel.textContent = 'Parcela Mensal Projetada';
-            }
+// ===== TABS =====
+function switchTab(tab) {
+  document.querySelectorAll('.tab-btn').forEach((b,i) => {
+    b.classList.toggle('active', ['atual','proposta','comparativo'][i] === tab);
+  });
+  document.getElementById('tab-atual').classList.toggle('hidden', tab !== 'atual');
+  document.getElementById('tab-proposta').classList.toggle('hidden', tab !== 'proposta');
+  document.getElementById('tab-comparativo').classList.toggle('hidden', tab !== 'comparativo');
+  if (tab === 'comparativo' && dividasAtuais.length && dividasProposta.length) runComparison();
+}
 
-            // Reset Results
-            document.getElementById('result-card').style.opacity = '0.5';
-            document.getElementById('rec-box').classList.add('hidden');
-            document.getElementById('result-main-value').textContent = mode === 'rate' ? '0.00% a.m.' : 'R$ 0,00';
-            document.getElementById('total-paid').textContent = 'R$ 0,00';
-            document.getElementById('total-interest').textContent = 'R$ 0,00';
-        }
+// ===== MODAL =====
+function openDebtModal(type, index = -1) {
+  currentModalType = type;
+  editingIndex = index;
+  editingType = type;
+  useCET = false;
+  document.getElementById('toggle-cet').classList.remove('active');
+  document.getElementById('row-cet').classList.add('hidden');
+  document.getElementById('row-parcela').classList.remove('hidden');
 
-        function formatCurrency(input) {
-            let value = input.value.replace(/\D/g, '');
-            value = (parseFloat(value) / 100).toFixed(2) + '';
-            value = value.replace('.', ',');
-            value = value.replace(/(\d)(?=(\d{3})+(?!\d))/g, '$1.');
-            if (value === 'NaN') value = '';
-            input.value = value;
-        }
+  if (type === 'proposta') {
+    document.getElementById('row-pagas').classList.add('hidden');
+  } else {
+    document.getElementById('row-pagas').classList.remove('hidden');
+  }
 
-        function parseCurrency(value) {
-            if (!value) return 0;
-            return parseFloat(value.replace(/\./g, '').replace(',', '.'));
-        }
+  if (index >= 0) {
+    const list = type === 'atual' ? dividasAtuais : dividasProposta;
+    const d = list[index];
+    document.getElementById('modal-title').textContent = 'Editar Dívida';
+    document.getElementById('m-nome').value = d.nome;
+    document.getElementById('m-valor').value = fmtBRL(d.valorContratado);
+    document.getElementById('m-parcela').value = fmtBRL(d.parcela);
+    document.getElementById('m-total-parcelas').value = d.totalParcelas;
+    if (type === 'atual') document.getElementById('m-pagas').value = d.parcelasPagas;
+  } else {
+    document.getElementById('modal-title').textContent = 'Adicionar Dívida';
+    document.getElementById('m-nome').value = '';
+    document.getElementById('m-valor').value = '';
+    document.getElementById('m-parcela').value = '';
+    document.getElementById('m-total-parcelas').value = '';
+    document.getElementById('m-pagas').value = '0';
+    document.getElementById('m-cet').value = '';
+  }
+  document.getElementById('debt-modal').classList.add('active');
+}
 
-        function formatBRL(value) {
-            return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-        }
+function closeDebtModal() {
+  document.getElementById('debt-modal').classList.remove('active');
+}
 
-        function calculate() {
-            const cashPrice = parseCurrency(document.getElementById('cashPrice').value);
-            const n = parseInt(document.getElementById('installments').value);
+function toggleCET() {
+  useCET = !useCET;
+  document.getElementById('toggle-cet').classList.toggle('active', useCET);
+  document.getElementById('row-cet').classList.toggle('hidden', !useCET);
+  document.getElementById('row-parcela').classList.toggle('hidden', useCET);
+}
 
-            if (!cashPrice || !n) {
-                alert("Preencha o valor à vista e o número de parcelas.");
-                return;
-            }
+function saveDebt() {
+  const nome = document.getElementById('m-nome').value.trim();
+  const valorContratado = parseCurr(document.getElementById('m-valor').value);
+  const totalParcelas = parseInt(document.getElementById('m-total-parcelas').value);
 
-            document.getElementById('result-card').style.opacity = '1';
+  if (!nome || !valorContratado || !totalParcelas) {
+    alert('Preencha nome, valor contratado e total de parcelas.');
+    return;
+  }
 
-            if (currentMode === 'rate') {
-                // Mode 1: Find Interest Rate
-                const pmt = parseCurrency(document.getElementById('installmentValue').value);
-                if (!pmt) { alert("Preencha o valor da parcela."); return; }
+  let parcela;
+  if (useCET) {
+    const cetVal = parseFloat(document.getElementById('m-cet').value);
+    const cetTipo = document.getElementById('m-cet-tipo').value;
+    if (!cetVal) { alert('Preencha o CET.'); return; }
+    let taxaMensal;
+    if (cetTipo === 'anual') {
+      taxaMensal = Math.pow(1 + cetVal / 100, 1/12) - 1;
+    } else {
+      taxaMensal = cetVal / 100;
+    }
+    if (taxaMensal === 0) {
+      parcela = valorContratado / totalParcelas;
+    } else {
+      parcela = valorContratado * taxaMensal / (1 - Math.pow(1 + taxaMensal, -totalParcelas));
+    }
+  } else {
+    parcela = parseCurr(document.getElementById('m-parcela').value);
+    if (!parcela) { alert('Preencha o valor da parcela.'); return; }
+  }
 
-                // Newton-Raphson method to find rate
-                // f(r) = pmt * (1 - (1+r)^-n) / r - cashPrice = 0
-                
-                let rate = 0.01; // Initial guess
-                let totalPaid = pmt * n;
-                let totalInterest = totalPaid - cashPrice;
+  let parcelasPagas = 0;
+  if (currentModalType === 'atual') {
+    parcelasPagas = parseInt(document.getElementById('m-pagas').value) || 0;
+  }
 
-                // Simple check if interest is 0 or negative
-                if (totalPaid <= cashPrice) {
-                    rate = 0;
-                } else {
-                    for(let i=0; i<100; i++) {
-                        let f = pmt * (1 - Math.pow(1 + rate, -n)) / rate - cashPrice;
-                        let df = pmt * (Math.pow(1 + rate, -n-1) * n * rate - (1 - Math.pow(1 + rate, -n))) / (rate * rate);
-                        let newRate = rate - f / df;
-                        if (Math.abs(newRate - rate) < 0.000001) { rate = newRate; break; }
-                        rate = newRate;
-                    }
-                }
+  const debt = { nome, valorContratado, parcela, totalParcelas, parcelasPagas };
 
-                document.getElementById('result-main-value').textContent = (rate * 100).toFixed(2) + '% a.m.';
-                document.getElementById('total-paid').textContent = formatBRL(totalPaid);
-                document.getElementById('total-interest').textContent = formatBRL(totalInterest);
+  const list = currentModalType === 'atual' ? dividasAtuais : dividasProposta;
+  if (editingIndex >= 0) {
+    list[editingIndex] = debt;
+  } else {
+    list.push(debt);
+  }
 
-                // Recommendation Logic
-                const recBox = document.getElementById('rec-box');
-                const recTitle = document.getElementById('rec-title');
-                const recText = document.getElementById('rec-text');
-                
-                recBox.classList.remove('hidden');
-                if (rate > 0.01) { // If rate > 1% per month
-                    recTitle.textContent = "Custo Elevado de Capital";
-                    recTitle.parentElement.querySelector('span').textContent = "⚠️";
-                    recBox.style.backgroundColor = "rgba(239, 68, 68, 0.1)";
-                    recBox.style.borderColor = "rgba(239, 68, 68, 0.3)";
-                    recBox.querySelector('.rec-title').style.color = "#ef4444";
-                    recText.innerHTML = `<strong>Diagnóstico:</strong> O Custo Efetivo Total (CET) desta operação é de <strong>${(rate*100).toFixed(2)}% ao mês</strong>. <br>Isso supera a rentabilidade média de investimentos conservadores (aprox. 0,8% a.m.). Financeiramente, a compra à vista é mandatória para evitar destruição de valor.`;
-                } else {
-                    recTitle.textContent = "Custo de Oportunidade Favorável";
-                    recTitle.parentElement.querySelector('span').textContent = "✅";
-                    recBox.style.backgroundColor = "rgba(16, 185, 129, 0.1)";
-                    recBox.style.borderColor = "rgba(16, 185, 129, 0.3)";
-                    recBox.querySelector('.rec-title').style.color = "#10b981";
-                    recText.innerHTML = `<strong>Diagnóstico:</strong> A taxa implícita de <strong>${(rate*100).toFixed(2)}% ao mês</strong> está competitiva. <br>Se o seu capital estiver investido a uma taxa superior a esta, o parcelamento é matematicamente vantajoso (alavancagem positiva).`;
-                }
+  closeDebtModal();
+  renderAll();
+}
 
-            } else {
-                // Mode 2: Calculate Installment
-                let rateInput = parseFloat(document.getElementById('interestRate').value);
-                const rateType = document.getElementById('rateType').value;
+function deleteDebt(type, index) {
+  if (!confirm('Excluir esta dívida?')) return;
+  if (type === 'atual') dividasAtuais.splice(index, 1);
+  else dividasProposta.splice(index, 1);
+  renderAll();
+}
 
-                if (isNaN(rateInput)) { alert("Preencha a taxa de juros."); return; }
+// ===== RENDER =====
+function renderAll() {
+  renderTable('atual');
+  renderTable('proposta');
+  renderSummary('atual');
+  renderSummary('proposta');
+}
 
-                let monthlyRate;
-                if (rateType === 'annual') {
-                    // Convert Annual to Monthly: (1 + annual)^(1/12) - 1
-                    monthlyRate = Math.pow(1 + (rateInput / 100), 1/12) - 1;
-                } else {
-                    monthlyRate = rateInput / 100;
-                }
+function renderTable(type) {
+  const list = type === 'atual' ? dividasAtuais : dividasProposta;
+  const container = document.getElementById(type + '-table-container');
 
-                // PMT Formula: PV * i / (1 - (1+i)^-n)
-                let pmt;
-                if (monthlyRate === 0) {
-                    pmt = cashPrice / n;
-                } else {
-                    pmt = cashPrice * monthlyRate / (1 - Math.pow(1 + monthlyRate, -n));
-                }
+  if (!list.length) {
+    container.innerHTML = '<p style="color:var(--muted); font-size:0.85rem;">Nenhuma dívida cadastrada.</p>';
+    return;
+  }
 
-                let totalPaid = pmt * n;
-                let totalInterest = totalPaid - cashPrice;
+  const isAtual = type === 'atual';
+  let html = `<table class="debt-table"><thead><tr>
+    <th>Nome</th><th>Valor Contratado</th><th>Parcela</th><th>Parcelas</th>
+    ${isAtual ? '<th>Pagas</th><th>Restantes</th>' : ''}
+    <th>Total a Pagar</th><th>Juros</th><th>Ações</th>
+  </tr></thead><tbody>`;
 
-                document.getElementById('result-main-value').textContent = formatBRL(pmt);
-                document.getElementById('total-paid').textContent = formatBRL(totalPaid);
-                document.getElementById('total-interest').textContent = formatBRL(totalInterest);
-                
-                // Financial Impact Assessment Logic
-                const recBox = document.getElementById('rec-box');
-                const recTitle = document.getElementById('rec-title');
-                const recText = document.getElementById('rec-text');
-                
-                recBox.classList.remove('hidden');
-                
-                const overpricePercent = (totalInterest / cashPrice) * 100;
-                
-                if (overpricePercent < 10) {
-                    recTitle.textContent = "Baixo Impacto Financeiro";
-                    recTitle.parentElement.querySelector('span').textContent = "✅";
-                    recBox.style.backgroundColor = "rgba(16, 185, 129, 0.1)";
-                    recBox.style.borderColor = "rgba(16, 185, 129, 0.3)";
-                    recBox.querySelector('.rec-title').style.color = "#10b981";
-                    recText.innerHTML = `<strong>Diagnóstico:</strong> Você pagará apenas <strong>${overpricePercent.toFixed(2)}%</strong> a mais pelo bem. <br>O custo do crédito está controlado e eficiente.`;
-                } else if (overpricePercent < 30) {
-                    recTitle.textContent = "Médio Impacto Financeiro";
-                    recTitle.parentElement.querySelector('span').textContent = "⚠️";
-                    recBox.style.backgroundColor = "rgba(234, 179, 8, 0.1)";
-                    recBox.style.borderColor = "rgba(234, 179, 8, 0.3)";
-                    recBox.querySelector('.rec-title').style.color = "#eab308";
-                    recText.innerHTML = `<strong>Atenção:</strong> Você pagará <strong>${overpricePercent.toFixed(2)}%</strong> a mais pelo bem. <br>O custo dos juros já representa uma fatia considerável do valor original. Avalie se a compra é urgente.`;
-                } else {
-                    recTitle.textContent = "Alto Impacto Financeiro";
-                    recTitle.parentElement.querySelector('span').textContent = "🚨";
-                    recBox.style.backgroundColor = "rgba(239, 68, 68, 0.1)";
-                    recBox.style.borderColor = "rgba(239, 68, 68, 0.3)";
-                    recBox.querySelector('.rec-title').style.color = "#ef4444";
-                    recText.innerHTML = `<strong>Alerta de Custo Elevado:</strong> Você pagará <strong>${overpricePercent.toFixed(2)}%</strong> a mais pelo bem. <br>Isso significa que quase 1/3 ou mais do valor pago será apenas juros. Considere juntar o dinheiro para comprar à vista.`;
-                }
-            }
-        }
-    </script>
+  list.forEach((d, i) => {
+    const restantes = isAtual ? d.totalParcelas - d.parcelasPagas : d.totalParcelas;
+    const totalPagar = d.parcela * restantes;
+    const totalGeral = d.parcela * d.totalParcelas;
+    const juros = totalGeral - d.valorContratado;
+    html += `<tr>
+      <td style="color:#fff;font-weight:600;">${d.nome}</td>
+      <td>${fmtBRL(d.valorContratado)}</td>
+      <td style="color:var(--red);">${fmtBRL(d.parcela)}</td>
+      <td>${d.totalParcelas}</td>
+      ${isAtual ? `<td>${d.parcelasPagas}</td><td style="color:var(--orange);">${restantes}</td>` : ''}
+      <td style="color:var(--red);">${fmtBRL(totalPagar)}</td>
+      <td style="color:var(--red);">${fmtBRL(juros)}</td>
+      <td>
+        <button class="btn btn-edit" onclick="openDebtModal('${type}',${i})">✏️</button>
+        <button class="btn btn-danger" onclick="deleteDebt('${type}',${i})">🗑️</button>
+      </td>
+    </tr>`;
+  });
+
+  html += '</tbody></table>';
+  container.innerHTML = html;
+}
+
+function renderSummary(type) {
+  const list = type === 'atual' ? dividasAtuais : dividasProposta;
+  const summaryEl = document.getElementById(type + '-summary');
+  const gridEl = document.getElementById(type + '-summary-grid');
+
+  if (!list.length) { summaryEl.style.display = 'none'; return; }
+  summaryEl.style.display = '';
+
+  const isAtual = type === 'atual';
+  let totalJaPago = 0, totalAPagar = 0, totalJuros = 0;
+  let maxMesesRestantes = 0;
+
+  list.forEach(d => {
+    const pagas = isAtual ? d.parcelasPagas : 0;
+    const restantes = d.totalParcelas - pagas;
+    totalJaPago += d.parcela * pagas;
+    totalAPagar += d.parcela * restantes;
+    totalJuros += (d.parcela * d.totalParcelas) - d.valorContratado;
+    if (restantes > maxMesesRestantes) maxMesesRestantes = restantes;
+  });
+
+  // Custo mensal por mês (considerando que dívidas terminam em momentos diferentes)
+  const custoMensal = calcCustoMensalAtual(list, isAtual);
+
+  gridEl.innerHTML = `
+    ${isAtual ? `<div class="summary-item"><div class="label">Já Pago</div><div class="value blue">${fmtBRL(totalJaPago)}</div></div>` : ''}
+    <div class="summary-item"><div class="label">Total a Pagar</div><div class="value red">${fmtBRL(totalAPagar)}</div></div>
+    <div class="summary-item"><div class="label">Juros Totais</div><div class="value red">${fmtBRL(totalJuros)}</div></div>
+    <div class="summary-item"><div class="label">Custo Mensal (mês 1)</div><div class="value white">${fmtBRL(custoMensal[0] || 0)}</div></div>
+    <div class="summary-item"><div class="label">Prazo Máximo</div><div class="value white">${maxMesesRestantes} meses</div></div>
+  `;
+
+  // Chart: custo mensal ao longo do tempo
+  renderCustoChart(type, custoMensal);
+}
+
+function calcCustoMensalAtual(list, isAtual) {
+  let maxMeses = 0;
+  list.forEach(d => {
+    const restantes = d.totalParcelas - (isAtual ? d.parcelasPagas : 0);
+    if (restantes > maxMeses) maxMeses = restantes;
+  });
+  const custos = [];
+  for (let m = 0; m < maxMeses; m++) {
+    let total = 0;
+    list.forEach(d => {
+      const restantes = d.totalParcelas - (isAtual ? d.parcelasPagas : 0);
+      if (m < restantes) total += d.parcela;
+    });
+    custos.push(total);
+  }
+  return custos;
+}
+
+function renderCustoChart(type, custoMensal) {
+  const canvasId = 'chart-' + type;
+  const ctx = document.getElementById(canvasId).getContext('2d');
+
+  if (type === 'atual' && chartAtual) chartAtual.destroy();
+  if (type === 'proposta' && chartProposta) chartProposta.destroy();
+
+  const labels = custoMensal.map((_, i) => 'Mês ' + (i + 1));
+  const chart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Custo Mensal (R$)',
+        data: custoMensal,
+        backgroundColor: type === 'atual' ? 'rgba(239,68,68,0.6)' : 'rgba(96,165,250,0.6)',
+        borderColor: type === 'atual' ? 'rgba(239,68,68,1)' : 'rgba(96,165,250,1)',
+        borderWidth: 1
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { labels: { color: '#A0B8A6' } } },
+      scales: {
+        x: { ticks: { color: '#A0B8A6', maxTicksLimit: 12 }, grid: { color: 'rgba(255,255,255,0.03)' } },
+        y: { ticks: { color: '#A0B8A6', callback: v => 'R$ ' + v.toLocaleString('pt-BR') }, grid: { color: 'rgba(255,255,255,0.05)' } }
+      }
+    }
+  });
+
+  if (type === 'atual') chartAtual = chart;
+  else chartProposta = chart;
+}
+
+// ===== COMPARISON =====
+function runComparison() {
+  if (!dividasAtuais.length || !dividasProposta.length) {
+    alert('Cadastre dívidas no cenário atual E na proposta para comparar.');
+    return;
+  }
+
+  const taxaAnual = parseFloat(document.getElementById('taxa-invest-comp').value) || 12;
+  const taxaMensal = Math.pow(1 + taxaAnual / 100, 1/12) - 1;
+
+  const custosAtual = calcCustoMensalAtual(dividasAtuais, true);
+  const custosProposta = calcCustoMensalAtual(dividasProposta, false);
+
+  const maxMeses = Math.max(custosAtual.length, custosProposta.length);
+
+  // Pad arrays
+  while (custosAtual.length < maxMeses) custosAtual.push(0);
+  while (custosProposta.length < maxMeses) custosProposta.push(0);
+
+  // Diferença mensal (positivo = economia na proposta)
+  const diferencas = [];
+  for (let i = 0; i < maxMeses; i++) {
+    diferencas.push(custosAtual[i] - custosProposta[i]);
+  }
+
+  // Investimento acumulado da diferença
+  const saldoInvest = [];
+  let saldo = 0;
+  for (let i = 0; i < maxMeses; i++) {
+    saldo = saldo * (1 + taxaMensal) + diferencas[i];
+    saldoInvest.push(saldo);
+  }
+
+  const totalAtual = custosAtual.reduce((a, b) => a + b, 0);
+  const totalProposta = custosProposta.reduce((a, b) => a + b, 0);
+  const economiaTotal = totalAtual - totalProposta;
+  const saldoFinal = saldoInvest[saldoInvest.length - 1];
+
+  // Show results
+  document.getElementById('comp-result').classList.remove('hidden');
+
+  // Summary grid
+  document.getElementById('comp-summary-grid').innerHTML = `
+    <div class="summary-item"><div class="label">Total Atual</div><div class="value red">${fmtBRL(totalAtual)}</div></div>
+    <div class="summary-item"><div class="label">Total Proposta</div><div class="value blue">${fmtBRL(totalProposta)}</div></div>
+    <div class="summary-item"><div class="label">Economia Bruta</div><div class="value ${economiaTotal >= 0 ? 'green' : 'red'}">${fmtBRL(economiaTotal)}</div></div>
+    <div class="summary-item"><div class="label">Saldo Investido (${taxaAnual}% a.a.)</div><div class="value ${saldoFinal >= 0 ? 'green' : 'red'}">${fmtBRL(saldoFinal)}</div></div>
+    <div class="summary-item"><div class="label">Prazo Total</div><div class="value white">${maxMeses} meses</div></div>
+  `;
+
+  // Chart: Parcelas mensais comparadas
+  const labels = Array.from({length: maxMeses}, (_, i) => 'Mês ' + (i+1));
+
+  if (chartParcelas) chartParcelas.destroy();
+  const ctxP = document.getElementById('chart-parcelas').getContext('2d');
+  chartParcelas = new Chart(ctxP, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        { label: 'Atual (R$/mês)', data: custosAtual, borderColor: '#ef4444', backgroundColor: 'rgba(239,68,68,0.1)', fill: true, tension: 0.1 },
+        { label: 'Proposta (R$/mês)', data: custosProposta, borderColor: '#60a5fa', backgroundColor: 'rgba(96,165,250,0.1)', fill: true, tension: 0.1 }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { title: { display: true, text: 'Parcelas Mensais: Atual vs. Proposta', color: '#fff' }, legend: { labels: { color: '#A0B8A6' } } },
+      scales: {
+        x: { ticks: { color: '#A0B8A6', maxTicksLimit: 12 }, grid: { color: 'rgba(255,255,255,0.03)' } },
+        y: { ticks: { color: '#A0B8A6', callback: v => 'R$ ' + v.toLocaleString('pt-BR') }, grid: { color: 'rgba(255,255,255,0.05)' } }
+      }
+    }
+  });
+
+  // Chart: Saldo acumulado do investimento da diferença
+  if (chartAcumulado) chartAcumulado.destroy();
+  const ctxA = document.getElementById('chart-acumulado').getContext('2d');
+  chartAcumulado = new Chart(ctxA, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        { label: 'Diferença Mensal (R$)', data: diferencas, borderColor: '#D4AF37', backgroundColor: 'rgba(212,175,55,0.1)', fill: false, tension: 0.1, borderDash: [5,3] },
+        { label: `Saldo Investido a ${taxaAnual}% a.a.`, data: saldoInvest, borderColor: '#22c55e', backgroundColor: 'rgba(34,197,94,0.1)', fill: true, tension: 0.1 }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { title: { display: true, text: 'Diferença Investida: Acumulado ao Longo do Tempo', color: '#fff' }, legend: { labels: { color: '#A0B8A6' } } },
+      scales: {
+        x: { ticks: { color: '#A0B8A6', maxTicksLimit: 12 }, grid: { color: 'rgba(255,255,255,0.03)' } },
+        y: { ticks: { color: '#A0B8A6', callback: v => 'R$ ' + v.toLocaleString('pt-BR') }, grid: { color: 'rgba(255,255,255,0.05)' } }
+      }
+    }
+  });
+
+  // Verdict
+  const verdictEl = document.getElementById('comp-verdict');
+  if (saldoFinal >= 0) {
+    verdictEl.innerHTML = `
+      <div class="badge green">✅ PROPOSTA VANTAJOSA</div>
+      <div class="big-value">${fmtBRL(saldoFinal)}</div>
+      <div class="desc">Se migrar para a proposta e investir a diferença mensal a <strong>${taxaAnual}% a.a.</strong>, ao final de ${maxMeses} meses você terá acumulado esse valor.</div>
+      <div class="desc" style="margin-top:0.5rem;">Economia bruta (sem investimento): <strong>${fmtBRL(economiaTotal)}</strong></div>
+    `;
+  } else {
+    verdictEl.innerHTML = `
+      <div class="badge red">⚠️ PROPOSTA DESVANTAJOSA</div>
+      <div class="big-value" style="color:var(--red);">${fmtBRL(saldoFinal)}</div>
+      <div class="desc">A proposta resulta em custo maior. Mesmo investindo a diferença a <strong>${taxaAnual}% a.a.</strong>, o saldo final seria negativo em ${maxMeses} meses.</div>
+      <div class="desc" style="margin-top:0.5rem;">Diferença bruta: <strong style="color:var(--red);">${fmtBRL(economiaTotal)}</strong></div>
+    `;
+  }
+}
+
+// ===== UTILITIES =====
+function fmtBRL(v) {
+  return (v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+}
+
+function parseCurr(s) {
+  if (!s) return 0;
+  return parseFloat(String(s).replace(/[^\d,.-]/g, '').replace(/\./g, '').replace(',', '.')) || 0;
+}
+
+function fmtCurrInput(el) {
+  let v = el.value.replace(/\D/g, '');
+  v = (parseFloat(v) / 100).toFixed(2);
+  v = v.replace('.', ',').replace(/(\d)(?=(\d{3})+(?!\d))/g, '$1.');
+  if (v === 'NaN') v = '';
+  el.value = v;
+}
+
+// ===== PERSISTENCE (localStorage + Supabase) =====
+function getClienteId() {
+  const params = new URLSearchParams(window.location.search);
+  return params.get('clienteId') || params.get('clienteid') || null;
+}
+
+function saveData() {
+  const data = { dividasAtuais, dividasProposta };
+  const clienteId = getClienteId();
+  if (clienteId) {
+    localStorage.setItem('hv_dividas_' + clienteId, JSON.stringify(data));
+    saveToSupabase(clienteId, data);
+  } else {
+    localStorage.setItem('hv_dividas_local', JSON.stringify(data));
+  }
+}
+
+function loadData() {
+  const clienteId = getClienteId();
+  let raw;
+  if (clienteId) {
+    raw = localStorage.getItem('hv_dividas_' + clienteId);
+    loadFromSupabase(clienteId);
+  } else {
+    raw = localStorage.getItem('hv_dividas_local');
+  }
+  if (raw) {
+    try {
+      const d = JSON.parse(raw);
+      dividasAtuais = d.dividasAtuais || [];
+      dividasProposta = d.dividasProposta || [];
+    } catch(e) {}
+  }
+  renderAll();
+}
+
+async function saveToSupabase(clienteId, data) {
+  try {
+    if (typeof supabase === 'undefined') return;
+    const sb = supabase.createClient(
+      'https://ymdpbgpmnxrpwsiiqfgb.supabase.co',
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InltZHBiZ3BtbnhycHdzaWlxZmdiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzY3NzMxMTYsImV4cCI6MjA1MjM0OTExNn0.BjPBm5n4c3rPGQVOmON7x9SbHY2yPMBTCMYSOjl3ZN4'
+    );
+    const payload = { cliente_id: clienteId, ferramenta: 'dividas', dados: data };
+    const { error } = await sb.from('ferramentas_dados').upsert(payload, { onConflict: 'cliente_id,ferramenta' });
+    if (error) console.warn('Supabase save error:', error);
+  } catch(e) { console.warn('Supabase save failed:', e); }
+}
+
+async function loadFromSupabase(clienteId) {
+  try {
+    if (typeof supabase === 'undefined') return;
+    const sb = supabase.createClient(
+      'https://ymdpbgpmnxrpwsiiqfgb.supabase.co',
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InltZHBiZ3BtbnhycHdzaWlxZmdiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzY3NzMxMTYsImV4cCI6MjA1MjM0OTExNn0.BjPBm5n4c3rPGQVOmON7x9SbHY2yPMBTCMYSOjl3ZN4'
+    );
+    const { data, error } = await sb.from('ferramentas_dados').select('dados').eq('cliente_id', clienteId).eq('ferramenta', 'dividas').single();
+    if (data && data.dados) {
+      dividasAtuais = data.dados.dividasAtuais || [];
+      dividasProposta = data.dados.dividasProposta || [];
+      renderAll();
+    }
+  } catch(e) { console.warn('Supabase load failed:', e); }
+}
+
+// Override renderAll to also save
+const _origRenderAll = renderAll;
+renderAll = function() {
+  _origRenderAll();
+  saveData();
+};
+
+// ===== INIT =====
+window.addEventListener('DOMContentLoaded', loadData);
+</script>
 </body>
 </html>
