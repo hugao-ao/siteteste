@@ -976,8 +976,61 @@ const impCls    = v => (IMP_OPTIONS.find(x=>x.value===v)||{cls:''}).cls;
 /* ═══════════════════════════════════════════════════════
    ESTADO
 ═══════════════════════════════════════════════════════ */
-let comparisons = JSON.parse(localStorage.getItem('hvsf_cartoes_v2') || '[]');
-let subjItems   = JSON.parse(localStorage.getItem('hvsf_cartoes_subj_v2') || 'null') || JSON.parse(JSON.stringify(SUBJ_DEFAULT));
+let comparisons = [];
+let subjItems   = JSON.parse(JSON.stringify(SUBJ_DEFAULT));
+
+// ── Persistência por cliente (comparações) ──
+var _CARTOES_LS_KEY = 'hvsf_cartoes_v2';
+var _cartoesInitDone = false;
+var _cartoesSaveTimer = null;
+
+function _getCartoesClienteId() { return sessionStorage.getItem('cliente_id') || null; }
+
+function _getCartoesSbClient() {
+  if (window.mithraSupabaseClient) return window.mithraSupabaseClient;
+  return sb; // já criado acima
+}
+
+function _waitForSupabaseCartoes(timeout) {
+  return new Promise(function(resolve) {
+    if (window.mithraSupabaseClient) { resolve(window.mithraSupabaseClient); return; }
+    var elapsed = 0;
+    var interval = setInterval(function() {
+      elapsed += 50;
+      if (window.mithraSupabaseClient) { clearInterval(interval); resolve(window.mithraSupabaseClient); }
+      else if (elapsed >= (timeout || 3000)) { clearInterval(interval); resolve(null); }
+    }, 50);
+  });
+}
+
+function saveComparisons() {
+  if (!_cartoesInitDone) return;
+  try { localStorage.setItem(_CARTOES_LS_KEY, JSON.stringify(comparisons)); } catch(e) {}
+  var clienteId = _getCartoesClienteId();
+  if (!clienteId) return;
+  if (_cartoesSaveTimer) clearTimeout(_cartoesSaveTimer);
+  _cartoesSaveTimer = setTimeout(function() { _saveCompsToSupabase(clienteId); }, 1500);
+}
+
+async function _saveCompsToSupabase(clienteId) {
+  var client = _getCartoesSbClient();
+  if (!client) return;
+  try {
+    var payload = { cliente_id: clienteId, ferramenta: 'cartoes', dados: { comparisons: comparisons } };
+    var result = await client.from('ferramentas_dados').upsert(payload, { onConflict: 'cliente_id,ferramenta' });
+    if (result.error) console.warn('Cartoes: erro ao salvar no Supabase', result.error.message);
+  } catch(e) { console.warn('Cartoes: exceção ao salvar', e); }
+}
+
+async function _loadCompsFromSupabase(clienteId) {
+  var client = _getCartoesSbClient();
+  if (!client || !clienteId) return null;
+  try {
+    var result = await client.from('ferramentas_dados').select('dados').eq('cliente_id', clienteId).eq('ferramenta', 'cartoes').maybeSingle();
+    if (result.error) { console.warn('Cartoes: erro ao carregar do Supabase', result.error.message); return null; }
+    return (result.data && result.data.dados) ? result.data.dados : null;
+  } catch(e) { console.warn('Cartoes: exceção ao carregar', e); return null; }
+}
 
 let editingId = null;
 let editingSubjId = null;
@@ -1625,7 +1678,8 @@ function saveComparison() {
   } else {
     comparisons.push(comp);
   }
-  localStorage.setItem('hvsf_cartoes_v2', JSON.stringify(comparisons));
+  localStorage.setItem(_CARTOES_LS_KEY, JSON.stringify(comparisons));
+  saveComparisons();
   closeModal();
   renderList();
 }
@@ -1968,7 +2022,8 @@ function toggleCard(id) { document.getElementById('card-'+id).classList.toggle('
 function deleteComp(id) {
   if (!confirm('Excluir esta comparação?')) return;
   comparisons = comparisons.filter(c=>c.id!==id);
-  localStorage.setItem('hvsf_cartoes_v2', JSON.stringify(comparisons));
+  localStorage.setItem(_CARTOES_LS_KEY, JSON.stringify(comparisons));
+  saveComparisons();
   renderList();
 }
 
@@ -2427,8 +2482,11 @@ document.getElementById('ctx-exterior').value = 'US$ 500,00';
 document.getElementById('ctx-bonif').value    = 'R$ 500,00';
 document.getElementById('ctx-dolar').value    = 'R$ 5,90';
 
-// Carregar dados do Supabase (subjetivos + bandeiras) e depois renderizar
+// Carregar dados do Supabase (subjetivos + bandeiras + comparações por cliente) e depois renderizar
 (async () => {
+  var clienteId = _getCartoesClienteId();
+  if (clienteId) _CARTOES_LS_KEY = 'hvsf_cartoes_v2_' + clienteId;
+  await _waitForSupabaseCartoes(3000);
   try {
     // Seed inicial (só executa se as tabelas estiverem vazias)
     await sbSeedBandeiras(BANDEIRAS_DB);
@@ -2446,9 +2504,26 @@ document.getElementById('ctx-dolar').value    = 'R$ 5,90';
       Object.keys(BANDEIRAS_DB).forEach(k => delete BANDEIRAS_DB[k]);
       Object.assign(BANDEIRAS_DB, sbBand);
     }
+    // Carregar comparações por cliente do Supabase
+    if (clienteId) {
+      var remoteData = await _loadCompsFromSupabase(clienteId);
+      if (remoteData && Array.isArray(remoteData.comparisons) && remoteData.comparisons.length > 0) {
+        comparisons = remoteData.comparisons;
+        localStorage.setItem(_CARTOES_LS_KEY, JSON.stringify(comparisons));
+      } else {
+        // Fallback: localStorage por cliente
+        var raw = localStorage.getItem(_CARTOES_LS_KEY);
+        if (raw) { try { comparisons = JSON.parse(raw); } catch(e) {} }
+      }
+    } else {
+      // Sem login: localStorage genérico
+      var raw = localStorage.getItem('hvsf_cartoes_v2');
+      if (raw) { try { comparisons = JSON.parse(raw); } catch(e) {} }
+    }
   } catch(e) { console.warn('Supabase init:', e); }
   // Reinicializar tmpSubjVals com os itens carregados
   subjItems.forEach(s => { tmpSubjVals[s.id] = { importance:s.importance, hasParam:{}, rankings:{} }; });
+  _cartoesInitDone = true;
   renderList();
 })();
 
