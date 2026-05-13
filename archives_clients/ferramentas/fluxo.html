@@ -2553,192 +2553,227 @@ function _globalSaveFeedback() {
 function gerarPDF() {
   var resultSection = document.getElementById('result-section');
   if (!resultSection || resultSection.style.display === 'none') {
-    alert('Primeiro clique em "Calcular Proje\u00e7\u00e3o" para gerar os resultados.');
+    alert('Primeiro clique em "Calcular Projeção" para gerar os resultados.');
     return;
   }
 
   var btn = document.getElementById('btn-pdf');
   var originalText = btn.innerHTML;
-  btn.innerHTML = '\u23f3 Gerando PDF...';
+  btn.innerHTML = '⏳ Gerando PDF...';
   btn.disabled = true;
 
-  // Cria container tempor\u00e1rio FORA da viewport (position:absolute, left:-9999px)
-  // Isso evita p\u00e1ginas em branco causadas por renderiza\u00e7\u00e3o no body vis\u00edvel
-  var pdfContainer = document.createElement('div');
-  pdfContainer.style.cssText = 'position:absolute; left:-9999px; top:0; width:800px; background:#021C0E; color:#F2E8C9; padding:20px; font-family:Inter,system-ui,sans-serif; font-size:12px;';
-  document.body.appendChild(pdfContainer);
+  // Abordagem: criar um iframe oculto com fundo BRANCO e conteúdo formatado para impressão
+  var iframe = document.createElement('iframe');
+  iframe.style.cssText = 'position:fixed; left:-9999px; top:0; width:900px; height:600px; border:none;';
+  document.body.appendChild(iframe);
 
-  var html = '';
+  var doc = iframe.contentDocument || iframe.contentWindow.document;
+  doc.open();
 
-  // T\u00edtulo
-  html += '<div style="text-align:center; margin-bottom:16px; border-bottom:2px solid #D4AF37; padding-bottom:10px;">';
-  html += '<h1 style="color:#D4AF37; font-size:18px; margin:0;">Fluxo de Caixa Avan\u00e7ado</h1>';
-  html += '<p style="color:#A0B8A6; font-size:11px; margin-top:4px;">Relat\u00f3rio gerado em ' + new Date().toLocaleDateString('pt-BR') + ' \u00e0s ' + new Date().toLocaleTimeString('pt-BR') + '</p>';
-  html += '</div>';
+  var pdfHtml = '<!DOCTYPE html><html><head><meta charset="UTF-8">';
+  pdfHtml += '<style>';
+  pdfHtml += 'body{margin:0;padding:20px 30px;font-family:Arial,Helvetica,sans-serif;font-size:11px;color:#1a1a1a;background:#fff;line-height:1.4;}';
+  pdfHtml += 'h1{color:#1a5e2e;font-size:18px;margin:0 0 4px;}';
+  pdfHtml += 'h2{color:#1a5e2e;font-size:13px;margin:0 0 8px;padding-bottom:4px;border-bottom:2px solid #d4af37;}';
+  pdfHtml += '.section{margin-bottom:16px;padding:12px;border:1px solid #e0e0e0;border-radius:6px;background:#fafafa;page-break-inside:avoid;}';
+  pdfHtml += 'table{width:100%;border-collapse:collapse;font-size:10px;}';
+  pdfHtml += 'th{background:#1a5e2e;color:#fff;padding:5px 8px;text-align:left;font-size:9px;text-transform:uppercase;}';
+  pdfHtml += 'td{padding:4px 8px;border-bottom:1px solid #e8e8e8;}';
+  pdfHtml += 'tr:nth-child(even){background:#f5f5f5;}';
+  pdfHtml += '.val-pos{color:#0a7c3e;font-weight:700;}';
+  pdfHtml += '.val-neg{color:#c0392b;font-weight:700;}';
+  pdfHtml += '.val-blue{color:#2563eb;font-weight:700;}';
+  pdfHtml += '.summary-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;}';
+  pdfHtml += '.summary-box{background:#f0f7f2;border:1px solid #c8e6c9;border-radius:6px;padding:8px;text-align:center;}';
+  pdfHtml += '.summary-box .lbl{font-size:8px;color:#666;text-transform:uppercase;letter-spacing:0.5px;}';
+  pdfHtml += '.summary-box .val{font-size:14px;font-weight:700;margin-top:2px;}';
+  pdfHtml += '.header{text-align:center;margin-bottom:16px;padding-bottom:12px;border-bottom:3px solid #d4af37;}';
+  pdfHtml += '.header .sub{color:#666;font-size:10px;margin-top:4px;}';
+  pdfHtml += '.chart-img{width:100%;max-width:100%;border-radius:4px;margin:8px 0;}';
+  pdfHtml += '.footer{text-align:center;color:#999;font-size:9px;margin-top:20px;padding-top:10px;border-top:1px solid #ddd;}';
+  pdfHtml += '.badge{display:inline-block;padding:2px 6px;border-radius:3px;font-size:9px;font-weight:600;}';
+  pdfHtml += '.badge-green{background:#d4edda;color:#155724;}';
+  pdfHtml += '.badge-red{background:#f8d7da;color:#721c24;}';
+  pdfHtml += '.badge-blue{background:#cce5ff;color:#004085;}';
+  pdfHtml += '.mem-calc{background:#fff8e1;border:1px solid #ffe082;border-radius:4px;padding:8px;margin-top:6px;font-size:9px;}';
+  pdfHtml += '.mem-calc-title{font-weight:700;color:#e65100;margin-bottom:4px;}';
+  pdfHtml += '</style></head><body>';
 
-  // Se\u00e7\u00e3o 1: Per\u00edodo
+  // Título
+  pdfHtml += '<div class="header">';
+  pdfHtml += '<h1>Fluxo de Caixa Avançado</h1>';
+  pdfHtml += '<div class="sub">Relatório gerado em ' + new Date().toLocaleDateString('pt-BR') + ' às ' + new Date().toLocaleTimeString('pt-BR') + '</div>';
+  pdfHtml += '</div>';
+
+  // Seção 1: Período
   var periodEl = document.getElementById('period-preview') || document.getElementById('period-duration');
   var periodInfo = periodEl ? periodEl.textContent : '';
-  html += '<div style="background:#052614; border:1px solid rgba(212,175,55,0.2); border-radius:8px; padding:10px 14px; margin-bottom:10px;">';
-  html += '<h2 style="color:#D4AF37; font-size:13px; margin:0 0 6px;">1. Per\u00edodo Analisado</h2>';
-  html += '<p style="color:#F2E8C9; margin:0; font-size:12px;">' + periodInfo + '</p>';
-  html += '</div>';
+  pdfHtml += '<div class="section"><h2>1. Período Analisado</h2>';
+  pdfHtml += '<p style="margin:0;">' + periodInfo + '</p></div>';
 
-  // Se\u00e7\u00e3o 2: Saldo Inicial
-  var saldoVal = document.getElementById('saldo-inicial').value;
-  var poupVal = document.getElementById('poupanca-inicial').value;
-  var intocavelVal = document.getElementById('poupanca-intocavel').value;
-  html += '<div style="background:#052614; border:1px solid rgba(212,175,55,0.2); border-radius:8px; padding:10px 14px; margin-bottom:10px;">';
-  html += '<h2 style="color:#D4AF37; font-size:13px; margin:0 0 6px;">2. Saldo Inicial</h2>';
-  html += '<table style="width:100%; font-size:11px;"><tr>';
-  html += '<td style="padding:4px;"><span style="color:#A0B8A6;">Saldo Dispon\u00edvel:</span> <strong style="color:#F2E8C9;">R$ ' + saldoVal + '</strong></td>';
-  html += '<td style="padding:4px;"><span style="color:#A0B8A6;">Poupan\u00e7a Acumulada:</span> <strong style="color:#F2E8C9;">R$ ' + poupVal + '</strong></td>';
-  html += '<td style="padding:4px;"><span style="color:#A0B8A6;">Poupan\u00e7a Intoc\u00e1vel:</span> <strong style="color:#F2E8C9;">R$ ' + intocavelVal + '</strong></td>';
-  html += '</tr></table></div>';
+  // Seção 2: Saldo Inicial
+  var saldoVal = document.getElementById('saldo-inicial') ? document.getElementById('saldo-inicial').value : '0';
+  var poupVal = document.getElementById('poupanca-inicial') ? document.getElementById('poupanca-inicial').value : '0';
+  var intocavelEl = document.getElementById('poupanca-intocavel');
+  var intocavelVal = intocavelEl ? intocavelEl.value : '0';
+  pdfHtml += '<div class="section"><h2>2. Saldo Inicial</h2>';
+  pdfHtml += '<table><tr><td><strong>Saldo Disponível:</strong> R$ ' + saldoVal + '</td>';
+  pdfHtml += '<td><strong>Poupança Acumulada:</strong> R$ ' + poupVal + '</td>';
+  pdfHtml += '<td><strong>Poupança Intocável:</strong> R$ ' + intocavelVal + '</td></tr></table></div>';
 
-  // Se\u00e7\u00e3o 3: Itens do Fluxo (tabela compacta)
+  // Seção 3: Itens do Fluxo
   if (items.length > 0) {
-    html += '<div style="background:#052614; border:1px solid rgba(212,175,55,0.2); border-radius:8px; padding:10px 14px; margin-bottom:10px;">';
-    html += '<h2 style="color:#D4AF37; font-size:13px; margin:0 0 6px;">3. Itens do Fluxo (' + items.length + ' itens)</h2>';
-    html += '<table style="width:100%; border-collapse:collapse; font-size:10px;">';
-    html += '<thead><tr style="background:#0A3520;">';
-    html += '<th style="padding:4px 6px; text-align:left; color:#D4AF37; border-bottom:1px solid rgba(212,175,55,0.3);">Nome</th>';
-    html += '<th style="padding:4px 6px; text-align:left; color:#D4AF37; border-bottom:1px solid rgba(212,175,55,0.3);">Tipo</th>';
-    html += '<th style="padding:4px 6px; text-align:right; color:#D4AF37; border-bottom:1px solid rgba(212,175,55,0.3);">Valor</th>';
-    html += '<th style="padding:4px 6px; text-align:left; color:#D4AF37; border-bottom:1px solid rgba(212,175,55,0.3);">Recorr\u00eancia</th>';
-    html += '</tr></thead><tbody>';
+    pdfHtml += '<div class="section"><h2>3. Itens do Fluxo (' + items.length + ' itens)</h2>';
+    pdfHtml += '<table><thead><tr><th>Nome</th><th>Tipo</th><th style="text-align:right;">Valor</th><th>Recorrência</th><th>Complemento</th></tr></thead><tbody>';
     items.forEach(function(it) {
-      var tipo = it.tipo === 'entrada' ? 'Entrada' : (it.subtipo === 'poupanca' ? 'Poupan\u00e7a' : 'Despesa');
-      var tipoColor = it.tipo === 'entrada' ? '#22c55e' : (it.subtipo === 'poupanca' ? '#60a5fa' : '#ef4444');
+      var tipo = it.tipo === 'entrada' ? 'Entrada' : (it.subtipo === 'poupanca' ? 'Poupança' : 'Despesa');
+      var cls = it.tipo === 'entrada' ? 'val-pos' : (it.subtipo === 'poupanca' ? 'val-blue' : 'val-neg');
       var sign = it.tipo === 'entrada' ? '+' : '-';
-      var rec = it.recTipo === 'nao' ? '\u00danico' : ('A cada ' + it.recQty + ' ' + (REC_LABELS[it.recTipo] || it.recTipo));
-      html += '<tr style="border-bottom:1px solid rgba(212,175,55,0.06);">';
-      html += '<td style="padding:3px 6px; color:#fff;">' + it.nome + '</td>';
-      html += '<td style="padding:3px 6px; color:' + tipoColor + ';">' + tipo + '</td>';
-      html += '<td style="padding:3px 6px; text-align:right; color:' + tipoColor + '; font-weight:600;">' + sign + fmtCurrency(it.valor) + '</td>';
-      html += '<td style="padding:3px 6px; color:#A0B8A6;">' + rec + '</td>';
-      html += '</tr>';
+      var rec = it.recTipo === 'nao' ? 'Único' : ('A cada ' + it.recQty + ' ' + (REC_LABELS[it.recTipo] || it.recTipo));
+      var compl = (it.subtipo === 'poupanca') ? (it.usarComoComplemento ? 'Sim' : 'Não') : '--';
+      pdfHtml += '<tr><td>' + it.nome + '</td><td><span class="badge badge-' + (it.tipo === 'entrada' ? 'green' : (it.subtipo === 'poupanca' ? 'blue' : 'red')) + '">' + tipo + '</span></td>';
+      pdfHtml += '<td style="text-align:right;" class="' + cls + '">' + sign + 'R$ ' + fmtCurrency(it.valor) + '</td>';
+      pdfHtml += '<td>' + rec + '</td><td>' + compl + '</td></tr>';
     });
-    html += '</tbody></table></div>';
+    pdfHtml += '</tbody></table></div>';
   }
 
-  // Se\u00e7\u00e3o 4: Resumo
+  // Seção 4: Resumo
   var summaryBar = document.getElementById('summary-bar');
   if (summaryBar && summaryBar.innerHTML.trim()) {
-    html += '<div style="background:#052614; border:1px solid rgba(212,175,55,0.2); border-radius:8px; padding:10px 14px; margin-bottom:10px;">';
-    html += '<h2 style="color:#D4AF37; font-size:13px; margin:0 0 6px;">4. Resumo da Proje\u00e7\u00e3o</h2>';
-    html += '<table style="width:100%; font-size:11px;"><tr>';
+    pdfHtml += '<div class="section"><h2>4. Resumo da Projeção</h2><div class="summary-grid">';
     summaryBar.querySelectorAll('.summary-item').forEach(function(item) {
       var lbl = item.querySelector('.label') ? item.querySelector('.label').textContent : '';
       var val = item.querySelector('.value') ? item.querySelector('.value').textContent : '';
-      var color = item.querySelector('.value') ? (item.querySelector('.value').style.color || '#F2E8C9') : '#F2E8C9';
-      html += '<td style="padding:6px; background:#0A3520; border:1px solid rgba(212,175,55,0.1); border-radius:6px; text-align:center;">';
-      html += '<div style="font-size:9px; color:#A0B8A6;">' + lbl + '</div>';
-      html += '<div style="font-size:13px; font-weight:700; color:' + color + ';">' + val + '</div>';
-      html += '</td>';
+      var origColor = item.querySelector('.value') ? item.querySelector('.value').style.color : '';
+      var valClass = '';
+      if (origColor.indexOf('22c55e') >= 0 || origColor.indexOf('green') >= 0) valClass = 'val-pos';
+      else if (origColor.indexOf('ef4444') >= 0 || origColor.indexOf('red') >= 0) valClass = 'val-neg';
+      else if (origColor.indexOf('60a5fa') >= 0 || origColor.indexOf('blue') >= 0) valClass = 'val-blue';
+      pdfHtml += '<div class="summary-box"><div class="lbl">' + lbl + '</div><div class="val ' + valClass + '">' + val + '</div></div>';
     });
-    html += '</tr></table></div>';
+    pdfHtml += '</div></div>';
   }
 
-  // Se\u00e7\u00e3o 5: Gr\u00e1fico
+  // Seção 5: Gráfico
   var chartCanvas = document.getElementById('main-chart');
   if (chartCanvas) {
     try {
       var chartImg = chartCanvas.toDataURL('image/png');
-      html += '<div style="background:#052614; border:1px solid rgba(212,175,55,0.2); border-radius:8px; padding:10px 14px; margin-bottom:10px;">';
-      html += '<h2 style="color:#D4AF37; font-size:13px; margin:0 0 6px;">5. Gr\u00e1fico de Proje\u00e7\u00e3o</h2>';
-      html += '<img src="' + chartImg + '" style="width:100%; border-radius:6px;">';
-      html += '</div>';
-    } catch(e) {}
+      pdfHtml += '<div class="section"><h2>5. Gráfico de Projeção</h2>';
+      pdfHtml += '<img class="chart-img" src="' + chartImg + '"></div>';
+    } catch(e) { console.log('Erro ao capturar gráfico:', e); }
   }
 
-  // Se\u00e7\u00e3o 6: Or\u00e7amento Mensal
+  // Seção 6: Orçamento Mensal
   var orcamentoSection = document.getElementById('orcamento-mensal');
   if (orcamentoSection && orcamentoSection.style.display !== 'none' && orcamentoSection.innerHTML.trim()) {
-    html += '<div style="background:#052614; border:1px solid rgba(212,175,55,0.2); border-radius:8px; padding:10px 14px; margin-bottom:10px;">';
-    html += '<h2 style="color:#D4AF37; font-size:13px; margin:0 0 6px;">6. Or\u00e7amento Mensal Equivalente</h2>';
-    // Captura o gr\u00e1fico de rosca do or\u00e7amento se existir
+    pdfHtml += '<div class="section"><h2>6. Orçamento Mensal Equivalente</h2>';
     var orcChart = document.getElementById('orcamento-chart');
     if (orcChart) {
       try {
         var orcImg = orcChart.toDataURL('image/png');
-        html += '<img src="' + orcImg + '" style="width:50%; max-width:300px; display:block; margin:8px auto;">';
+        pdfHtml += '<img src="' + orcImg + '" style="width:40%;max-width:250px;display:block;margin:8px auto;">';
       } catch(e) {}
     }
-    // Pega o conte\u00fado textual (tabelas etc)
-    var orcClone = orcamentoSection.cloneNode(true);
-    var canvasInOrc = orcClone.querySelectorAll('canvas');
-    canvasInOrc.forEach(function(c) { c.remove(); });
-    html += orcClone.innerHTML;
-    html += '</div>';
+    // Extrair texto do orçamento
+    var orcTexts = orcamentoSection.querySelectorAll('table, p, div');
+    var orcContent = '';
+    orcamentoSection.querySelectorAll('table').forEach(function(tbl) {
+      orcContent += '<table>' + tbl.innerHTML.replace(/background[^;]*;?/g, '').replace(/color[^;]*;?/g, 'color:#1a1a1a;') + '</table>';
+    });
+    if (orcContent) pdfHtml += orcContent;
+    pdfHtml += '</div>';
   }
 
-  // Se\u00e7\u00e3o 7: An\u00e1lise do Fluxo (COMPLETA - inclui candidatos e mem\u00f3ria)
+  // Seção 7: Análise do Fluxo (COMPLETA - inclui candidatos e memória de cálculo)
   var analiseSection = document.getElementById('analise-section');
   if (analiseSection && analiseSection.innerHTML.trim()) {
-    html += '<div style="background:#052614; border:1px solid rgba(212,175,55,0.2); border-radius:8px; padding:10px 14px; margin-bottom:10px;">';
-    html += '<h2 style="color:#D4AF37; font-size:13px; margin:0 0 6px;">7. An\u00e1lise do Fluxo</h2>';
-    // Clona a se\u00e7\u00e3o e expande tudo que est\u00e1 escondido (mem\u00f3ria de c\u00e1lculo)
+    pdfHtml += '<div class="section"><h2>7. Análise do Fluxo</h2>';
+    // Clona a seção e expande tudo que está escondido
     var analiseClone = analiseSection.cloneNode(true);
-    // Expande todos os elementos com display:none (mem\u00f3ria de c\u00e1lculo)
+    // Expande todos os elementos com display:none (memória de cálculo)
     analiseClone.querySelectorAll('[style*="display:none"], [style*="display: none"]').forEach(function(el) {
       el.style.display = 'block';
     });
-    // Remove bot\u00f5es de toggle (setas)
-    analiseClone.querySelectorAll('[onclick*="toggleMemCalc"]').forEach(function(el) {
-      var title = el.querySelector('span');
-      if (title) {
-        var p = document.createElement('div');
-        p.style.cssText = 'padding:8px 10px; background:rgba(212,175,55,0.06); font-weight:700; font-size:11px; color:#D4AF37; border-bottom:1px solid rgba(212,175,55,0.15);';
-        p.innerHTML = title.innerHTML;
-        el.parentNode.replaceChild(p, el);
-      }
+    // Também expande elementos com classe hidden
+    analiseClone.querySelectorAll('.hidden').forEach(function(el) {
+      el.style.display = 'block';
+      el.classList.remove('hidden');
     });
-    html += analiseClone.innerHTML;
-    html += '</div>';
+    // Limpa estilos de cores escuras e aplica cores para fundo branco
+    var analiseHTML = analiseClone.innerHTML;
+    analiseHTML = analiseHTML.replace(/color:\s*#F2E8C9/gi, 'color:#1a1a1a');
+    analiseHTML = analiseHTML.replace(/color:\s*#fff/gi, 'color:#1a1a1a');
+    analiseHTML = analiseHTML.replace(/color:\s*white/gi, 'color:#1a1a1a');
+    analiseHTML = analiseHTML.replace(/color:\s*#A0B8A6/gi, 'color:#555');
+    analiseHTML = analiseHTML.replace(/background:\s*#021C0E/gi, 'background:#fff');
+    analiseHTML = analiseHTML.replace(/background:\s*#052614/gi, 'background:#f9f9f9');
+    analiseHTML = analiseHTML.replace(/background:\s*#0A3520/gi, 'background:#f0f0f0');
+    analiseHTML = analiseHTML.replace(/background:\s*var\(--card\)/gi, 'background:#f9f9f9');
+    analiseHTML = analiseHTML.replace(/background:\s*var\(--card2\)/gi, 'background:#f0f0f0');
+    analiseHTML = analiseHTML.replace(/background:\s*var\(--bg\)/gi, 'background:#fff');
+    analiseHTML = analiseHTML.replace(/color:\s*var\(--fg\)/gi, 'color:#1a1a1a');
+    analiseHTML = analiseHTML.replace(/color:\s*var\(--muted\)/gi, 'color:#555');
+    analiseHTML = analiseHTML.replace(/color:\s*var\(--primary\)/gi, 'color:#1a5e2e');
+    analiseHTML = analiseHTML.replace(/border[^;]*rgba\(212,175,55[^;]*/gi, 'border:1px solid #e0e0e0');
+    pdfHtml += analiseHTML;
+    pdfHtml += '</div>';
   }
 
-  // Se\u00e7\u00e3o 8: Previs\u00e3o das Faturas dos Cart\u00f5es
+  // Seção 8: Previsão das Faturas dos Cartões
   var faturasSection = document.getElementById('faturas-section');
   if (faturasSection && faturasSection.innerHTML.trim()) {
-    html += '<div style="background:#052614; border:1px solid rgba(212,175,55,0.2); border-radius:8px; padding:10px 14px; margin-bottom:10px;">';
-    html += '<h2 style="color:#D4AF37; font-size:13px; margin:0 0 6px;">8. Previs\u00e3o das Faturas dos Cart\u00f5es</h2>';
-    html += faturasSection.innerHTML;
-    html += '</div>';
+    pdfHtml += '<div class="section"><h2>8. Previsão das Faturas dos Cartões</h2>';
+    var faturasHTML = faturasSection.innerHTML;
+    faturasHTML = faturasHTML.replace(/color:\s*#F2E8C9/gi, 'color:#1a1a1a');
+    faturasHTML = faturasHTML.replace(/color:\s*#fff/gi, 'color:#1a1a1a');
+    faturasHTML = faturasHTML.replace(/color:\s*#A0B8A6/gi, 'color:#555');
+    faturasHTML = faturasHTML.replace(/background:\s*#021C0E/gi, 'background:#fff');
+    faturasHTML = faturasHTML.replace(/background:\s*#052614/gi, 'background:#f9f9f9');
+    faturasHTML = faturasHTML.replace(/background:\s*#0A3520/gi, 'background:#f0f0f0');
+    faturasHTML = faturasHTML.replace(/color:\s*var\(--fg\)/gi, 'color:#1a1a1a');
+    faturasHTML = faturasHTML.replace(/color:\s*var\(--muted\)/gi, 'color:#555');
+    faturasHTML = faturasHTML.replace(/color:\s*var\(--primary\)/gi, 'color:#1a5e2e');
+    pdfHtml += faturasHTML;
+    pdfHtml += '</div>';
   }
 
-  // Rodap\u00e9
-  html += '<div style="text-align:center; margin-top:16px; padding-top:10px; border-top:1px solid rgba(212,175,55,0.2); color:#A0B8A6; font-size:10px;">HV Sa\u00fade Financeira \u2014 Relat\u00f3rio de Fluxo de Caixa Avan\u00e7ado</div>';
+  // Rodapé
+  pdfHtml += '<div class="footer">HV Saúde Financeira — Relatório de Fluxo de Caixa Avançado</div>';
+  pdfHtml += '</body></html>';
 
-  pdfContainer.innerHTML = html;
+  doc.write(pdfHtml);
+  doc.close();
 
-  // Gera o PDF com configura\u00e7\u00f5es otimizadas para evitar p\u00e1ginas em branco
-  var opt = {
-    margin: [8, 8, 8, 8],
-    filename: 'fluxo-de-caixa-' + new Date().toISOString().split('T')[0] + '.pdf',
-    image: { type: 'jpeg', quality: 0.92 },
-    html2canvas: {
-      scale: 1.5,
-      useCORS: true,
-      backgroundColor: '#021C0E',
-      width: 800,
-      windowWidth: 800
-    },
-    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-    pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
-  };
+  // Aguardar o iframe renderizar e então gerar o PDF
+  setTimeout(function() {
+    var opt = {
+      margin: [6, 6, 6, 6],
+      filename: 'fluxo-de-caixa-' + new Date().toISOString().split('T')[0] + '.pdf',
+      image: { type: 'jpeg', quality: 0.95 },
+      html2canvas: {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: '#ffffff',
+        logging: false
+      },
+      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+      pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
+    };
 
-  html2pdf().set(opt).from(pdfContainer).save().then(function() {
-    document.body.removeChild(pdfContainer);
-    btn.innerHTML = originalText;
-    btn.disabled = false;
-  }).catch(function(err) {
-    console.error('Erro ao gerar PDF:', err);
-    document.body.removeChild(pdfContainer);
-    btn.innerHTML = originalText;
-    btn.disabled = false;
-    alert('Erro ao gerar PDF. Tente novamente.');
-  });
+    html2pdf().set(opt).from(doc.body).save().then(function() {
+      document.body.removeChild(iframe);
+      btn.innerHTML = originalText;
+      btn.disabled = false;
+    }).catch(function(err) {
+      console.error('Erro ao gerar PDF:', err);
+      document.body.removeChild(iframe);
+      btn.innerHTML = originalText;
+      btn.disabled = false;
+      alert('Erro ao gerar PDF. Tente novamente.');
+    });
+  }, 500);
 }
 
 function _forceSaveFluxo() {
