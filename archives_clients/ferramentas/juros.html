@@ -878,68 +878,88 @@ function fmtCurrInput(el) {
 }
 
 // ===== PERSISTENCE (localStorage + Supabase) =====
+var _JUROS_SUPABASE_URL = 'https://vbikskbfkhundhropykf.supabase.co';
+var _JUROS_SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZiaWtza2Jma2h1bmRocm9weWtmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDU1MTk5NjEsImV4cCI6MjA2MTA5NTk2MX0.-n-Tj_5JnF1NL2ZImWlMeTcobWDl_VD6Vqp0lxRQFFU';
+var _JUROS_LS_KEY = 'hv_dividas_local';
+var _jurosSbClient = null;
+var _jurosInitDone = false;
+var _jurosSaveTimer = null;
+
 function getClienteId() {
-  const params = new URLSearchParams(window.location.search);
-  return params.get('clienteId') || params.get('clienteid') || null;
+  return sessionStorage.getItem('cliente_id') || null;
+}
+
+function _getJurosSbClient() {
+  if (_jurosSbClient) return _jurosSbClient;
+  if (window.mithraSupabaseClient) { _jurosSbClient = window.mithraSupabaseClient; return _jurosSbClient; }
+  try {
+    if (window.supabase && window.supabase.createClient) {
+      _jurosSbClient = window.supabase.createClient(_JUROS_SUPABASE_URL, _JUROS_SUPABASE_KEY);
+    }
+  } catch(e) { _jurosSbClient = null; }
+  return _jurosSbClient;
+}
+
+function _waitForSupabase(timeout) {
+  return new Promise(function(resolve) {
+    if (window.mithraSupabaseClient) { _jurosSbClient = window.mithraSupabaseClient; resolve(window.mithraSupabaseClient); return; }
+    var elapsed = 0;
+    var interval = setInterval(function() {
+      elapsed += 50;
+      if (window.mithraSupabaseClient) {
+        clearInterval(interval);
+        _jurosSbClient = window.mithraSupabaseClient;
+        resolve(window.mithraSupabaseClient);
+      } else if (elapsed >= (timeout || 3000)) {
+        clearInterval(interval);
+        resolve(null);
+      }
+    }, 50);
+  });
 }
 
 function saveData() {
-  const data = { dividasAtuais, dividasProposta };
-  const clienteId = getClienteId();
-  if (clienteId) {
-    localStorage.setItem('hv_dividas_' + clienteId, JSON.stringify(data));
-    saveToSupabase(clienteId, data);
-  } else {
-    localStorage.setItem('hv_dividas_local', JSON.stringify(data));
-  }
+  if (!_jurosInitDone) return;
+  var data = { dividasAtuais: dividasAtuais, dividasProposta: dividasProposta };
+  var clienteId = getClienteId();
+  try { localStorage.setItem(_JUROS_LS_KEY, JSON.stringify(data)); } catch(e) {}
+  if (!clienteId) return;
+  if (_jurosSaveTimer) clearTimeout(_jurosSaveTimer);
+  _jurosSaveTimer = setTimeout(function() { _saveToSupabase(clienteId, data); }, 1500);
 }
 
-function loadData() {
-  const clienteId = getClienteId();
-  let raw;
-  if (clienteId) {
-    raw = localStorage.getItem('hv_dividas_' + clienteId);
-    loadFromSupabase(clienteId);
-  } else {
-    raw = localStorage.getItem('hv_dividas_local');
-  }
-  if (raw) {
-    try {
-      const d = JSON.parse(raw);
-      dividasAtuais = d.dividasAtuais || [];
-      dividasProposta = d.dividasProposta || [];
-    } catch(e) {}
-  }
-  renderAll();
-}
-
-async function saveToSupabase(clienteId, data) {
+async function _saveToSupabase(clienteId, data) {
+  var sb = _getJurosSbClient();
+  if (!sb) return;
   try {
-    if (typeof supabase === 'undefined') return;
-    const sb = supabase.createClient(
-      'https://ymdpbgpmnxrpwsiiqfgb.supabase.co',
-      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InltZHBiZ3BtbnhycHdzaWlxZmdiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzY3NzMxMTYsImV4cCI6MjA1MjM0OTExNn0.BjPBm5n4c3rPGQVOmON7x9SbHY2yPMBTCMYSOjl3ZN4'
-    );
-    const payload = { cliente_id: clienteId, ferramenta: 'dividas', dados: data };
-    const { error } = await sb.from('ferramentas_dados').upsert(payload, { onConflict: 'cliente_id,ferramenta' });
-    if (error) console.warn('Supabase save error:', error);
-  } catch(e) { console.warn('Supabase save failed:', e); }
+    var payload = { cliente_id: clienteId, ferramenta: 'dividas', dados: data };
+    var result = await sb.from('ferramentas_dados').upsert(payload, { onConflict: 'cliente_id,ferramenta' });
+    if (result.error) console.warn('Juros: erro ao salvar no Supabase', result.error.message);
+  } catch(e) { console.warn('Juros: exceção ao salvar', e); }
 }
 
-async function loadFromSupabase(clienteId) {
+async function _loadFromSupabase(clienteId) {
+  var sb = _getJurosSbClient();
+  if (!sb || !clienteId) return null;
   try {
-    if (typeof supabase === 'undefined') return;
-    const sb = supabase.createClient(
-      'https://ymdpbgpmnxrpwsiiqfgb.supabase.co',
-      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InltZHBiZ3BtbnhycHdzaWlxZmdiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzY3NzMxMTYsImV4cCI6MjA1MjM0OTExNn0.BjPBm5n4c3rPGQVOmON7x9SbHY2yPMBTCMYSOjl3ZN4'
-    );
-    const { data, error } = await sb.from('ferramentas_dados').select('dados').eq('cliente_id', clienteId).eq('ferramenta', 'dividas').single();
-    if (data && data.dados) {
-      dividasAtuais = data.dados.dividasAtuais || [];
-      dividasProposta = data.dados.dividasProposta || [];
-      renderAll();
-    }
-  } catch(e) { console.warn('Supabase load failed:', e); }
+    var result = await sb.from('ferramentas_dados').select('dados').eq('cliente_id', clienteId).eq('ferramenta', 'dividas').maybeSingle();
+    if (result.error) { console.warn('Juros: erro ao carregar do Supabase', result.error.message); return null; }
+    return (result.data && result.data.dados) ? result.data.dados : null;
+  } catch(e) { console.warn('Juros: exceção ao carregar', e); return null; }
+}
+
+function _loadFromLocalStorage() {
+  var raw;
+  try { raw = localStorage.getItem(_JUROS_LS_KEY); } catch(e) { return null; }
+  if (!raw) return null;
+  try { return JSON.parse(raw); } catch(e) { return null; }
+}
+
+function _applyData(d) {
+  if (!d) return false;
+  if (Array.isArray(d.dividasAtuais)) dividasAtuais = d.dividasAtuais;
+  if (Array.isArray(d.dividasProposta)) dividasProposta = d.dividasProposta;
+  return (dividasAtuais.length > 0 || dividasProposta.length > 0);
 }
 
 // Override renderAll to also save
@@ -950,7 +970,24 @@ renderAll = function() {
 };
 
 // ===== INIT =====
-window.addEventListener('DOMContentLoaded', loadData);
+(async function initJuros() {
+  var clienteId = getClienteId();
+  var restored = false;
+  if (clienteId) {
+    _JUROS_LS_KEY = 'hv_dividas_' + clienteId;
+    await _waitForSupabase(3000);
+    var remoteData = await _loadFromSupabase(clienteId);
+    if (remoteData) {
+      restored = _applyData(remoteData);
+    }
+  }
+  if (!restored) {
+    var localData = _loadFromLocalStorage();
+    if (localData) restored = _applyData(localData);
+  }
+  if (restored) renderAll();
+  _jurosInitDone = true;
+})();
 </script>
 </body>
 </html>
