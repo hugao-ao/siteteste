@@ -167,6 +167,37 @@
   .conforto-4 { color: #60a5fa; }
   .conforto-5 { color: #a78bfa; }
 
+  /* Lista de simulações */
+  .sim-list-view { }
+  .sim-editor-view { display: none; }
+  .sim-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem; }
+  .sim-header h2 { margin:0; color:var(--primary); }
+  .btn-new { background: linear-gradient(135deg, var(--primary), #b8962e); color:#000; border:none; border-radius:8px; padding:0.6rem 1.2rem; font-size:0.85rem; font-weight:700; cursor:pointer; transition:all 0.2s; }
+  .btn-new:hover { transform:translateY(-1px); box-shadow:0 4px 16px rgba(212,175,55,0.4); }
+  .sim-card { background:var(--card); border:1px solid var(--border); border-radius:var(--radius); margin-bottom:0.75rem; overflow:hidden; transition:border-color 0.2s; }
+  .sim-card:hover { border-color:var(--primary); }
+  .sim-card-header { display:flex; align-items:center; gap:1rem; padding:1rem 1.25rem; cursor:pointer; }
+  .sim-card-header .chevron { color:var(--muted); font-size:0.7rem; transition:transform 0.2s; }
+  .sim-card.open .sim-card-header .chevron { transform:rotate(180deg); }
+  .sim-card-title { font-weight:700; color:#fff; font-size:0.95rem; flex:1; }
+  .sim-card-meta { font-size:0.75rem; color:var(--muted); }
+  .sim-card-actions { display:flex; gap:0.4rem; }
+  .sim-card-actions button { background:transparent; border:1px solid var(--border); color:var(--muted); border-radius:6px; padding:0.3rem 0.6rem; font-size:0.75rem; cursor:pointer; transition:all 0.15s; }
+  .sim-card-actions button:hover { border-color:var(--primary); color:var(--primary); }
+  .sim-card-actions button.danger { border-color:rgba(239,68,68,0.3); color:var(--red); }
+  .sim-card-actions button.danger:hover { background:rgba(239,68,68,0.1); }
+  .sim-card-body { display:none; padding:0 1.25rem 1rem; border-top:1px solid var(--border); }
+  .sim-card.open .sim-card-body { display:block; padding-top:1rem; }
+  .sim-card-summary { display:flex; gap:1rem; flex-wrap:wrap; font-size:0.82rem; }
+  .sim-card-summary .stat { background:var(--card2); border-radius:6px; padding:0.5rem 0.8rem; }
+  .sim-card-summary .stat-label { font-size:0.7rem; color:var(--muted); }
+  .sim-card-summary .stat-value { font-weight:700; margin-top:0.15rem; }
+  .empty-state { text-align:center; padding:4rem 2rem; color:var(--muted); }
+  .empty-state .icon { font-size:3rem; margin-bottom:0.75rem; opacity:0.5; }
+  .empty-state p { font-size:0.9rem; line-height:1.5; }
+  .btn-back { background:transparent; border:1px solid var(--border); color:var(--muted); border-radius:6px; padding:0.4rem 0.8rem; font-size:0.82rem; cursor:pointer; transition:all 0.15s; margin-right:1rem; }
+  .btn-back:hover { border-color:var(--primary); color:var(--primary); }
+
   /* Botão flutuante Salvar */
   .btn-save-global {
     position: fixed;
@@ -215,6 +246,34 @@
     </div>
     <button id="mobile-toggle" class="mobile-toggle ml-auto md:hidden">☰</button>
   </header>
+
+  <!-- ===== LISTA DE SIMULAÇÕES ===== -->
+  <div id="sim-list-view" class="sim-list-view">
+    <div class="sim-header">
+      <h2>Simulações Salvas</h2>
+      <button class="btn-new" onclick="novaSimulacao()">+ Nova Simulação</button>
+    </div>
+    <div id="sim-list-container">
+      <div class="empty-state" id="sim-empty-state">
+        <div class="icon">📊</div>
+        <p>Nenhuma simulação salva ainda.<br>Clique em <b>+ Nova Simulação</b> para começar.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== EDITOR (formulário existente) ===== -->
+  <div id="sim-editor-view" class="sim-editor-view">
+    <div style="margin-bottom:1rem;">
+      <button class="btn-back" onclick="voltarParaLista()">← Voltar para lista</button>
+      <span style="font-size:0.8rem; color:var(--muted);" id="sim-editing-label"></span>
+    </div>
+    <!-- Nome da simulação -->
+    <div class="card" style="margin-bottom:1rem;">
+      <div class="field" style="max-width:400px;">
+        <label>Nome da simulação</label>
+        <input type="text" id="sim-nome" placeholder="Ex: Fluxo Janeiro 2026" value="">
+      </div>
+    </div>
 
   <!-- Seção 1: Período -->
   <div class="card">
@@ -362,11 +421,10 @@
     </div>
 
     <!-- Análise com memória de cálculo -->
-    <div class="analise-section" id="analise-section"></div>
+      <div class="analise-section" id="analise-section"></div>
   </div>
-
+  </div><!-- /sim-editor-view -->
  </div>
-
 <!-- Modal de Item -->
 <div class="modal-overlay" id="item-modal">
   <div class="modal">
@@ -2158,23 +2216,19 @@ function renderAnalise(totaisPorItem, totalEntradas, totalPoupancaFluxo, totalDe
 }
 
 // ============================================================
-// PERSISTÊNCIA — SUPABASE + LOCALSTORAGE (FALLBACK)
+// PERSISTÊNCIA — MULTI-SIMULAÇÃO COM SUPABASE + LOCALSTORAGE
 // ============================================================
-var LS_KEY = 'fluxo_avancado_v1'; // será sobrescrito com chave por cliente após login
 var SUPABASE_URL = 'https://vbikskbfkhundhropykf.supabase.co';
 var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZiaWtza2Jma2h1bmRocm9weWtmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDU1MTk5NjEsImV4cCI6MjA2MTA5NTk2MX0.-n-Tj_5JnF1NL2ZImWlMeTcobWDl_VD6Vqp0lxRQFFU';
+var LS_KEY = 'fluxo_simulacoes_v2';
 var _sbClient = null;
-var _saveTimer = null;
-var _initDone = false; // bloqueia save durante inicialização
+var _initDone = false;
+var simulacoes = []; // array de simulações salvas
+var editingSimId = null; // id da simulação sendo editada
 
 function getSupabaseClient() {
   if (_sbClient) return _sbClient;
-  // Reutiliza o cliente já criado pelo layout.js
-  if (window.mithraSupabaseClient) {
-    _sbClient = window.mithraSupabaseClient;
-    return _sbClient;
-  }
-  // Fallback: cria novo cliente apenas se o layout.js não inicializou
+  if (window.mithraSupabaseClient) { _sbClient = window.mithraSupabaseClient; return _sbClient; }
   try {
     if (window.supabase && window.supabase.createClient) {
       _sbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -2183,28 +2237,19 @@ function getSupabaseClient() {
   return _sbClient;
 }
 
-// Aguarda o layout.js (defer) inicializar o mithraSupabaseClient
 function waitForSupabase(timeout) {
   return new Promise(function(resolve) {
     if (window.mithraSupabaseClient) { resolve(window.mithraSupabaseClient); return; }
     var elapsed = 0;
     var interval = setInterval(function() {
       elapsed += 50;
-      if (window.mithraSupabaseClient) {
-        clearInterval(interval);
-        _sbClient = window.mithraSupabaseClient;
-        resolve(window.mithraSupabaseClient);
-      } else if (elapsed >= (timeout || 3000)) {
-        clearInterval(interval);
-        resolve(null);
-      }
+      if (window.mithraSupabaseClient) { clearInterval(interval); _sbClient = window.mithraSupabaseClient; resolve(_sbClient); }
+      else if (elapsed >= (timeout || 3000)) { clearInterval(interval); resolve(null); }
     }, 50);
   });
 }
 
-function getClienteId() {
-  return sessionStorage.getItem('cliente_id') || null;
-}
+function getClienteId() { return sessionStorage.getItem('cliente_id') || null; }
 
 function buildPayload() {
   var pQty = document.getElementById('period-qty').value;
@@ -2230,12 +2275,8 @@ function buildPayload() {
 
 function applyPayload(data) {
   if (!data) return false;
-  // fmtBR: recebe número (ex: 9000.00) e formata para '9.000,00'
-  function fmtBR(v) {
-    var n = parseFloat(v);
-    if (isNaN(n)) return '0,00';
-    return n.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});
-  }
+  function fmtBR(v) { var n = parseFloat(v); if (isNaN(n)) return '0,00'; return n.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2}); }
+  function parseBRorNum(v) { if (v === null || v === undefined) return 0; if (typeof v === 'number') return v; var s = String(v); if (s.indexOf(',') !== -1) return parseFloat(s.replace(/\./g,'').replace(',','.')) || 0; return parseFloat(s) || 0; }
   var mode = data.period_mode || data.periodMode;
   if (mode) setPeriodMode(mode);
   var qty = data.period_qty || data.periodQty;
@@ -2246,99 +2287,207 @@ function applyPayload(data) {
   if (start) document.getElementById('period-start').value = start;
   var end = data.period_end || data.periodEnd;
   if (end) document.getElementById('period-end').value = end;
-  // Saldo: pode vir como número do Supabase (9000.00) ou string BR do localStorage ('9.000,00')
   var saldoRaw = data.saldo_inicial !== undefined ? data.saldo_inicial : data.saldoInicial;
   var poupancaRaw = data.poupanca_inicial !== undefined ? data.poupanca_inicial : data.poupancaInicial;
-  // Se vier como string BR (do localStorage), converte para número primeiro
-  function parseBRorNum(v) {
-    if (v === null || v === undefined) return 0;
-    if (typeof v === 'number') return v;
-    var s = String(v);
-    // formato BR: '9.000,00' -> remove pontos, troca vírgula por ponto
-    if (s.indexOf(',') !== -1) return parseFloat(s.replace(/\./g,'').replace(',','.')) || 0;
-    return parseFloat(s) || 0;
-  }
   document.getElementById('saldo-inicial').value = fmtBR(parseBRorNum(saldoRaw));
   document.getElementById('poupanca-inicial').value = fmtBR(parseBRorNum(poupancaRaw));
   var intocavelRaw = data.poupanca_intocavel !== undefined ? data.poupanca_intocavel : data.poupancaIntocavel;
   document.getElementById('poupanca-intocavel').value = fmtBR(parseBRorNum(intocavelRaw));
   var itensData = data.itens || data.items;
-  if (Array.isArray(itensData) && itensData.length > 0) {
-    items = itensData;
-    renderItemsTable();
-  }
+  if (Array.isArray(itensData) && itensData.length > 0) { items = itensData; renderItemsTable(); }
   var contasData = data.contas || data.accounts;
-  if (Array.isArray(contasData) && contasData.length > 0) {
-    accounts = contasData;
-    renderAccountsGrid();
-    updateFormaPagamentoSelect();
-  }
+  if (Array.isArray(contasData) && contasData.length > 0) { accounts = contasData; renderAccountsGrid(); updateFormaPagamentoSelect(); }
   if (mode === 'relative') updateRelativePeriod();
   else updateCustomPeriod();
   return true;
 }
 
-// --- SAVE ---
-function saveToStorage() {
-  if (!_initDone) return; // aguarda inicialização completa antes de salvar
-  // 1. Sempre salva no localStorage (fallback)
-  var payload = buildPayload();
-  try { localStorage.setItem(LS_KEY, JSON.stringify({
-    periodMode: payload.period_mode,
-    periodQty: payload.period_qty,
-    periodUnit: payload.period_unit,
-    periodStart: payload.period_start,
-    periodEnd: payload.period_end,
-    saldoInicial: document.getElementById('saldo-inicial').value,
-    poupancaInicial: document.getElementById('poupanca-inicial').value,
-    poupancaIntocavel: document.getElementById('poupanca-intocavel').value,
-    items: items,
-    accounts: accounts
-  })); } catch(e) {}
-
-  // 2. Salva no Supabase se há cliente logado (debounce 1.5s)
+// --- MULTI-SIMULAÇÃO: SAVE/LOAD/DELETE ---
+async function loadSimulacoes() {
   var clienteId = getClienteId();
-  if (!clienteId) return;
-  if (_saveTimer) clearTimeout(_saveTimer);
-  _saveTimer = setTimeout(function() {
-    saveToSupabase(clienteId, payload);
-  }, 1500);
+  if (clienteId) {
+    try {
+      var sb = getSupabaseClient();
+      if (sb) {
+        var res = await sb.from('ferramentas_dados').select('*').eq('cliente_id', clienteId).eq('ferramenta', 'fluxo');
+        if (!res.error && res.data && res.data.length > 0) {
+          var row = res.data[0];
+          if (row.dados && Array.isArray(row.dados)) { simulacoes = row.dados; }
+          else { simulacoes = []; }
+          localStorage.setItem(LS_KEY + '_' + clienteId, JSON.stringify(simulacoes));
+          return;
+        }
+      }
+    } catch(e) {}
+    var local = localStorage.getItem(LS_KEY + '_' + clienteId);
+    if (local) { try { simulacoes = JSON.parse(local); } catch(e) { simulacoes = []; } }
+  } else {
+    var local = localStorage.getItem(LS_KEY);
+    if (local) { try { simulacoes = JSON.parse(local); } catch(e) { simulacoes = []; } }
+  }
 }
 
-async function saveToSupabase(clienteId, payload) {
-  var sb = getSupabaseClient();
-  if (!sb) return;
-  try {
-    payload.cliente_id = clienteId;
-    var result = await sb.from('fluxo_caixa_avancado')
-      .upsert(payload, { onConflict: 'cliente_id' });
-    if (result.error) console.warn('Fluxo: erro ao salvar no Supabase', result.error.message);
-  } catch(e) { console.warn('Fluxo: exceção ao salvar', e); }
+async function saveSimulacoes() {
+  var clienteId = getClienteId();
+  if (clienteId) {
+    localStorage.setItem(LS_KEY + '_' + clienteId, JSON.stringify(simulacoes));
+    try {
+      var sb = getSupabaseClient();
+      if (sb) {
+        await sb.from('ferramentas_dados').upsert({
+          cliente_id: clienteId,
+          ferramenta: 'fluxo',
+          dados: simulacoes,
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'cliente_id,ferramenta' });
+      }
+    } catch(e) {}
+  } else {
+    localStorage.setItem(LS_KEY, JSON.stringify(simulacoes));
+  }
 }
 
-// --- LOAD ---
-async function loadFromSupabase(clienteId) {
-  var sb = getSupabaseClient();
-  if (!sb || !clienteId) return null;
-  try {
-    var result = await sb.from('fluxo_caixa_avancado')
-      .select('*')
-      .eq('cliente_id', clienteId)
-      .maybeSingle();
-    if (result.error) { console.warn('Fluxo: erro ao carregar do Supabase', result.error.message); return null; }
-    return result.data || null;
-  } catch(e) { console.warn('Fluxo: exceção ao carregar', e); return null; }
+async function deleteSimulacao(id) {
+  if (!confirm('Excluir esta simula\u00e7\u00e3o?')) return;
+  simulacoes = simulacoes.filter(function(s) { return s.id !== id; });
+  await saveSimulacoes();
+  renderSimList();
 }
 
-function loadFromLocalStorage() {
-  var raw;
-  try { raw = localStorage.getItem(LS_KEY); } catch(e) { return null; }
-  if (!raw) return null;
-  try { return JSON.parse(raw); } catch(e) { return null; }
+async function duplicarSimulacao(id) {
+  var orig = simulacoes.find(function(s) { return s.id === id; });
+  if (!orig) return;
+  var copy = JSON.parse(JSON.stringify(orig));
+  copy.id = Date.now();
+  copy.nome = orig.nome + ' (c\u00f3pia)';
+  copy.updatedAt = new Date().toISOString();
+  simulacoes.push(copy);
+  await saveSimulacoes();
+  renderSimList();
 }
 
-// Salvamento apenas ao clicar em Calcular (ver função calcular)
-// deleteItem mantido sem save automático
+// --- VIEW TOGGLE ---
+function showListView() {
+  document.getElementById('sim-list-view').style.display = 'block';
+  document.getElementById('sim-editor-view').style.display = 'none';
+  document.getElementById('result-section').style.display = 'none';
+}
+
+function showEditorView() {
+  document.getElementById('sim-list-view').style.display = 'none';
+  document.getElementById('sim-editor-view').style.display = 'block';
+}
+
+function novaSimulacao() {
+  editingSimId = null;
+  items = [];
+  accounts = [];
+  renderItemsTable();
+  renderAccountsGrid();
+  document.getElementById('sim-nome').value = '';
+  document.getElementById('saldo-inicial').value = '0,00';
+  document.getElementById('poupanca-inicial').value = '0,00';
+  document.getElementById('poupanca-intocavel').value = '0,00';
+  document.getElementById('result-section').style.display = 'none';
+  setPeriodMode('relative');
+  document.getElementById('period-qty').value = '3';
+  document.getElementById('period-unit').value = 'months';
+  updateRelativePeriod();
+  document.getElementById('sim-editing-label').textContent = 'Nova simula\u00e7\u00e3o';
+  showEditorView();
+}
+
+function editarSimulacao(id) {
+  var sim = simulacoes.find(function(s) { return s.id === id; });
+  if (!sim) return;
+  editingSimId = id;
+  items = [];
+  accounts = [];
+  renderItemsTable();
+  document.getElementById('sim-nome').value = sim.nome || '';
+  document.getElementById('result-section').style.display = 'none';
+  applyPayload(sim.payload);
+  document.getElementById('sim-editing-label').textContent = 'Editando: ' + (sim.nome || 'Sem nome');
+  showEditorView();
+}
+
+function voltarParaLista() {
+  showListView();
+  renderSimList();
+}
+
+function salvarSimulacaoAtual() {
+  var nome = document.getElementById('sim-nome').value.trim() || 'Simula\u00e7\u00e3o ' + new Date().toLocaleDateString('pt-BR');
+  var payload = buildPayload();
+  if (editingSimId) {
+    var idx = simulacoes.findIndex(function(s) { return s.id === editingSimId; });
+    if (idx >= 0) {
+      simulacoes[idx].nome = nome;
+      simulacoes[idx].payload = payload;
+      simulacoes[idx].updatedAt = new Date().toISOString();
+    }
+  } else {
+    var sim = { id: Date.now(), nome: nome, payload: payload, updatedAt: new Date().toISOString() };
+    simulacoes.push(sim);
+    editingSimId = sim.id;
+  }
+  saveSimulacoes();
+  _globalSaveFeedback();
+}
+
+// --- RENDER LIST ---
+function renderSimList() {
+  var container = document.getElementById('sim-list-container');
+  var empty = document.getElementById('sim-empty-state');
+  // Remove cards antigos
+  container.querySelectorAll('.sim-card').forEach(function(el) { el.remove(); });
+  if (simulacoes.length === 0) { empty.style.display = 'block'; return; }
+  empty.style.display = 'none';
+  simulacoes.slice().sort(function(a,b) { return new Date(b.updatedAt) - new Date(a.updatedAt); }).forEach(function(sim) {
+    var card = document.createElement('div');
+    card.className = 'sim-card';
+    card.id = 'sim-card-' + sim.id;
+    var date = new Date(sim.updatedAt).toLocaleDateString('pt-BR');
+    var nItens = (sim.payload && sim.payload.itens) ? sim.payload.itens.length : 0;
+    var saldo = (sim.payload && sim.payload.saldo_inicial !== undefined) ? 'R$ ' + parseFloat(sim.payload.saldo_inicial || 0).toLocaleString('pt-BR', {minimumFractionDigits:2}) : '';
+    card.innerHTML = '<div class="sim-card-header" onclick="toggleSimCard(' + sim.id + ')">' +
+      '<div class="chevron">\u25bc</div>' +
+      '<div class="sim-card-title">' + escapeHtml(sim.nome || 'Sem nome') + '</div>' +
+      '<div class="sim-card-meta">' + nItens + ' itens \u00b7 ' + date + '</div>' +
+      '<div class="sim-card-actions" onclick="event.stopPropagation()">' +
+        '<button onclick="editarSimulacao(' + sim.id + ')">\u270f\ufe0f Editar</button>' +
+        '<button onclick="duplicarSimulacao(' + sim.id + ')">\ud83d\udccb Duplicar</button>' +
+        '<button class="danger" onclick="deleteSimulacao(' + sim.id + ')">\ud83d\uddd1\ufe0f Excluir</button>' +
+      '</div>' +
+    '</div>' +
+    '<div class="sim-card-body">' +
+      '<div class="sim-card-summary">' +
+        '<div class="stat"><div class="stat-label">Saldo Inicial</div><div class="stat-value">' + saldo + '</div></div>' +
+        '<div class="stat"><div class="stat-label">Itens</div><div class="stat-value">' + nItens + '</div></div>' +
+      '</div>' +
+    '</div>';
+    container.appendChild(card);
+  });
+}
+
+function toggleSimCard(id) {
+  var card = document.getElementById('sim-card-' + id);
+  if (card) card.classList.toggle('open');
+}
+
+function escapeHtml(str) {
+  var div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+// saveToStorage agora salva a simulação atual
+function saveToStorage() {
+  if (!_initDone) return;
+  salvarSimulacaoAtual();
+}
+
+// deleteItem
 var _origDeleteItem = deleteItem;
 deleteItem = function(index) {
   if (!confirm('Excluir este item?')) return;
@@ -2347,36 +2496,43 @@ deleteItem = function(index) {
 };
 
 // ============================================================
-// INIT — aguarda layout.js, tenta Supabase primeiro, cai no localStorage
+// INIT — carrega simulações e mostra lista
 // ============================================================
 (async function initFluxo() {
   document.getElementById('rec-inicio').value = isoDate(new Date());
-  var clienteId = getClienteId();
-  var restored = false;
+  await waitForSupabase(3000);
+  await loadSimulacoes();
 
-  if (clienteId) {
-    // Chave do localStorage isolada por cliente
-    LS_KEY = 'fluxo_avancado_v1_' + clienteId;
-
-    // Aguarda até 3s pelo mithraSupabaseClient do layout.js (defer)
-    await waitForSupabase(3000);
-    var remoteData = await loadFromSupabase(clienteId);
-    if (remoteData && (remoteData.itens && remoteData.itens.length > 0 ||
-        parseFloat(remoteData.saldo_inicial) > 0 ||
-        parseFloat(remoteData.poupanca_inicial) > 0)) {
-      restored = applyPayload(remoteData);
+  // Migração: se há dados antigos na tabela fluxo_caixa_avancado, importa como primeira simulação
+  if (simulacoes.length === 0) {
+    var clienteId = getClienteId();
+    if (clienteId) {
+      try {
+        var sb = getSupabaseClient();
+        if (sb) {
+          var res = await sb.from('fluxo_caixa_avancado').select('*').eq('cliente_id', clienteId).maybeSingle();
+          if (res.data && res.data.itens && res.data.itens.length > 0) {
+            simulacoes.push({ id: Date.now(), nome: 'Simula\u00e7\u00e3o importada', payload: res.data, updatedAt: new Date().toISOString() });
+            await saveSimulacoes();
+          }
+        }
+      } catch(e) {}
+    }
+    // Também tenta localStorage antigo
+    if (simulacoes.length === 0) {
+      var oldKey = clienteId ? 'fluxo_avancado_v1_' + clienteId : 'fluxo_avancado_v1';
+      var oldData = null;
+      try { var raw = localStorage.getItem(oldKey); if (raw) oldData = JSON.parse(raw); } catch(e) {}
+      if (oldData && oldData.items && oldData.items.length > 0) {
+        simulacoes.push({ id: Date.now(), nome: 'Simula\u00e7\u00e3o importada', payload: oldData, updatedAt: new Date().toISOString() });
+        await saveSimulacoes();
+      }
     }
   }
 
-  if (!restored) {
-    var localData = loadFromLocalStorage();
-    if (localData) restored = applyPayload(localData);
-  }
-
-  if (!restored) {
-    updateRelativePeriod();
-  }
-  _initDone = true; // libera o saveToStorage
+  renderSimList();
+  showListView();
+  _initDone = true;
 })();
 
 function _globalSaveFeedback() {
@@ -2397,143 +2553,179 @@ function _globalSaveFeedback() {
 function gerarPDF() {
   var resultSection = document.getElementById('result-section');
   if (!resultSection || resultSection.style.display === 'none') {
-    alert('Primeiro clique em "Calcular Projeção" para gerar os resultados.');
+    alert('Primeiro clique em "Calcular Proje\u00e7\u00e3o" para gerar os resultados.');
     return;
   }
 
   var btn = document.getElementById('btn-pdf');
   var originalText = btn.innerHTML;
-  btn.innerHTML = '⏳ Gerando PDF...';
+  btn.innerHTML = '\u23f3 Gerando PDF...';
   btn.disabled = true;
 
-  // Cria um container temporário com todo o conteúdo para o PDF
+  // Cria container tempor\u00e1rio FORA da viewport (position:absolute, left:-9999px)
+  // Isso evita p\u00e1ginas em branco causadas por renderiza\u00e7\u00e3o no body vis\u00edvel
   var pdfContainer = document.createElement('div');
-  pdfContainer.style.cssText = 'background:#021C0E; color:#F2E8C9; padding:2rem; font-family:Inter,system-ui,sans-serif; font-size:13px; max-width:1100px;';
+  pdfContainer.style.cssText = 'position:absolute; left:-9999px; top:0; width:800px; background:#021C0E; color:#F2E8C9; padding:20px; font-family:Inter,system-ui,sans-serif; font-size:12px;';
+  document.body.appendChild(pdfContainer);
 
-  // Título
-  var header = '<div style="text-align:center; margin-bottom:2rem; border-bottom:2px solid #D4AF37; padding-bottom:1rem;">';
-  header += '<h1 style="color:#D4AF37; font-size:1.6rem; margin:0;">Fluxo de Caixa Avançado</h1>';
-  header += '<p style="color:#A0B8A6; font-size:0.85rem; margin-top:0.3rem;">Relatório gerado em ' + new Date().toLocaleDateString('pt-BR') + ' às ' + new Date().toLocaleTimeString('pt-BR') + '</p>';
-  header += '</div>';
-  pdfContainer.innerHTML = header;
+  var html = '';
 
-  // Seção 1: Período
-  var periodInfo = document.getElementById('period-preview').textContent || document.getElementById('period-duration').textContent;
-  var s1 = '<div style="background:#052614; border:1px solid rgba(212,175,55,0.2); border-radius:10px; padding:1rem 1.25rem; margin-bottom:1rem;">';
-  s1 += '<h2 style="color:#D4AF37; font-size:1rem; margin:0 0 0.5rem;">1. Período Analisado</h2>';
-  s1 += '<p style="color:#F2E8C9;">' + periodInfo + '</p>';
-  s1 += '</div>';
-  pdfContainer.innerHTML += s1;
+  // T\u00edtulo
+  html += '<div style="text-align:center; margin-bottom:16px; border-bottom:2px solid #D4AF37; padding-bottom:10px;">';
+  html += '<h1 style="color:#D4AF37; font-size:18px; margin:0;">Fluxo de Caixa Avan\u00e7ado</h1>';
+  html += '<p style="color:#A0B8A6; font-size:11px; margin-top:4px;">Relat\u00f3rio gerado em ' + new Date().toLocaleDateString('pt-BR') + ' \u00e0s ' + new Date().toLocaleTimeString('pt-BR') + '</p>';
+  html += '</div>';
 
-  // Seção 2: Saldo Inicial
+  // Se\u00e7\u00e3o 1: Per\u00edodo
+  var periodEl = document.getElementById('period-preview') || document.getElementById('period-duration');
+  var periodInfo = periodEl ? periodEl.textContent : '';
+  html += '<div style="background:#052614; border:1px solid rgba(212,175,55,0.2); border-radius:8px; padding:10px 14px; margin-bottom:10px;">';
+  html += '<h2 style="color:#D4AF37; font-size:13px; margin:0 0 6px;">1. Per\u00edodo Analisado</h2>';
+  html += '<p style="color:#F2E8C9; margin:0; font-size:12px;">' + periodInfo + '</p>';
+  html += '</div>';
+
+  // Se\u00e7\u00e3o 2: Saldo Inicial
   var saldoVal = document.getElementById('saldo-inicial').value;
   var poupVal = document.getElementById('poupanca-inicial').value;
   var intocavelVal = document.getElementById('poupanca-intocavel').value;
-  var s2 = '<div style="background:#052614; border:1px solid rgba(212,175,55,0.2); border-radius:10px; padding:1rem 1.25rem; margin-bottom:1rem;">';
-  s2 += '<h2 style="color:#D4AF37; font-size:1rem; margin:0 0 0.5rem;">2. Saldo Inicial</h2>';
-  s2 += '<div style="display:flex; gap:2rem;">';
-  s2 += '<div><span style="color:#A0B8A6; font-size:0.8rem;">Saldo Disponível:</span> <strong>R$ ' + saldoVal + '</strong></div>';
-  s2 += '<div><span style="color:#A0B8A6; font-size:0.8rem;">Poupança Acumulada:</span> <strong>R$ ' + poupVal + '</strong></div>';
-  s2 += '<div><span style="color:#A0B8A6; font-size:0.8rem;">Poupança Intocável:</span> <strong>R$ ' + intocavelVal + '</strong></div>';
-  s2 += '</div></div>';
-  pdfContainer.innerHTML += s2;
+  html += '<div style="background:#052614; border:1px solid rgba(212,175,55,0.2); border-radius:8px; padding:10px 14px; margin-bottom:10px;">';
+  html += '<h2 style="color:#D4AF37; font-size:13px; margin:0 0 6px;">2. Saldo Inicial</h2>';
+  html += '<table style="width:100%; font-size:11px;"><tr>';
+  html += '<td style="padding:4px;"><span style="color:#A0B8A6;">Saldo Dispon\u00edvel:</span> <strong style="color:#F2E8C9;">R$ ' + saldoVal + '</strong></td>';
+  html += '<td style="padding:4px;"><span style="color:#A0B8A6;">Poupan\u00e7a Acumulada:</span> <strong style="color:#F2E8C9;">R$ ' + poupVal + '</strong></td>';
+  html += '<td style="padding:4px;"><span style="color:#A0B8A6;">Poupan\u00e7a Intoc\u00e1vel:</span> <strong style="color:#F2E8C9;">R$ ' + intocavelVal + '</strong></td>';
+  html += '</tr></table></div>';
 
-  // Seção 3: Itens do Fluxo (tabela)
+  // Se\u00e7\u00e3o 3: Itens do Fluxo (tabela compacta)
   if (items.length > 0) {
-    var s3 = '<div style="background:#052614; border:1px solid rgba(212,175,55,0.2); border-radius:10px; padding:1rem 1.25rem; margin-bottom:1rem;">';
-    s3 += '<h2 style="color:#D4AF37; font-size:1rem; margin:0 0 0.5rem;">3. Itens do Fluxo (' + items.length + ' itens)</h2>';
-    s3 += '<table style="width:100%; border-collapse:collapse; font-size:0.8rem;">';
-    s3 += '<thead><tr style="background:#0A3520;">';
-    s3 += '<th style="padding:0.5rem; text-align:left; color:#D4AF37; border-bottom:1px solid rgba(212,175,55,0.2);">Nome</th>';
-    s3 += '<th style="padding:0.5rem; text-align:left; color:#D4AF37; border-bottom:1px solid rgba(212,175,55,0.2);">Tipo</th>';
-    s3 += '<th style="padding:0.5rem; text-align:right; color:#D4AF37; border-bottom:1px solid rgba(212,175,55,0.2);">Valor</th>';
-    s3 += '<th style="padding:0.5rem; text-align:left; color:#D4AF37; border-bottom:1px solid rgba(212,175,55,0.2);">Recorrência</th>';
-    s3 += '</tr></thead><tbody>';
+    html += '<div style="background:#052614; border:1px solid rgba(212,175,55,0.2); border-radius:8px; padding:10px 14px; margin-bottom:10px;">';
+    html += '<h2 style="color:#D4AF37; font-size:13px; margin:0 0 6px;">3. Itens do Fluxo (' + items.length + ' itens)</h2>';
+    html += '<table style="width:100%; border-collapse:collapse; font-size:10px;">';
+    html += '<thead><tr style="background:#0A3520;">';
+    html += '<th style="padding:4px 6px; text-align:left; color:#D4AF37; border-bottom:1px solid rgba(212,175,55,0.3);">Nome</th>';
+    html += '<th style="padding:4px 6px; text-align:left; color:#D4AF37; border-bottom:1px solid rgba(212,175,55,0.3);">Tipo</th>';
+    html += '<th style="padding:4px 6px; text-align:right; color:#D4AF37; border-bottom:1px solid rgba(212,175,55,0.3);">Valor</th>';
+    html += '<th style="padding:4px 6px; text-align:left; color:#D4AF37; border-bottom:1px solid rgba(212,175,55,0.3);">Recorr\u00eancia</th>';
+    html += '</tr></thead><tbody>';
     items.forEach(function(it) {
-      var tipo = it.tipo === 'entrada' ? 'Entrada' : (it.subtipo === 'poupanca' ? 'Poupança' : 'Despesa');
+      var tipo = it.tipo === 'entrada' ? 'Entrada' : (it.subtipo === 'poupanca' ? 'Poupan\u00e7a' : 'Despesa');
       var tipoColor = it.tipo === 'entrada' ? '#22c55e' : (it.subtipo === 'poupanca' ? '#60a5fa' : '#ef4444');
       var sign = it.tipo === 'entrada' ? '+' : '-';
-      var rec = it.recTipo === 'nao' ? 'Único' : ('A cada ' + it.recQty + ' ' + (REC_LABELS[it.recTipo] || it.recTipo));
-      s3 += '<tr style="border-bottom:1px solid rgba(212,175,55,0.06);">';
-      s3 += '<td style="padding:0.4rem 0.5rem; color:#fff; font-weight:600;">' + it.nome + '</td>';
-      s3 += '<td style="padding:0.4rem 0.5rem; color:' + tipoColor + ';">' + tipo + '</td>';
-      s3 += '<td style="padding:0.4rem 0.5rem; text-align:right; color:' + tipoColor + '; font-weight:600;">' + sign + fmtCurrency(it.valor) + '</td>';
-      s3 += '<td style="padding:0.4rem 0.5rem; color:#A0B8A6;">' + rec + '</td>';
-      s3 += '</tr>';
+      var rec = it.recTipo === 'nao' ? '\u00danico' : ('A cada ' + it.recQty + ' ' + (REC_LABELS[it.recTipo] || it.recTipo));
+      html += '<tr style="border-bottom:1px solid rgba(212,175,55,0.06);">';
+      html += '<td style="padding:3px 6px; color:#fff;">' + it.nome + '</td>';
+      html += '<td style="padding:3px 6px; color:' + tipoColor + ';">' + tipo + '</td>';
+      html += '<td style="padding:3px 6px; text-align:right; color:' + tipoColor + '; font-weight:600;">' + sign + fmtCurrency(it.valor) + '</td>';
+      html += '<td style="padding:3px 6px; color:#A0B8A6;">' + rec + '</td>';
+      html += '</tr>';
     });
-    s3 += '</tbody></table></div>';
-    pdfContainer.innerHTML += s3;
+    html += '</tbody></table></div>';
   }
 
-  // Seção 4: Resumo (summary-bar)
+  // Se\u00e7\u00e3o 4: Resumo
   var summaryBar = document.getElementById('summary-bar');
-  if (summaryBar) {
-    var s4 = '<div style="background:#052614; border:1px solid rgba(212,175,55,0.2); border-radius:10px; padding:1rem 1.25rem; margin-bottom:1rem;">';
-    s4 += '<h2 style="color:#D4AF37; font-size:1rem; margin:0 0 0.5rem;">4. Resumo da Projeção</h2>';
-    s4 += '<div style="display:flex; gap:1rem; flex-wrap:wrap;">';
+  if (summaryBar && summaryBar.innerHTML.trim()) {
+    html += '<div style="background:#052614; border:1px solid rgba(212,175,55,0.2); border-radius:8px; padding:10px 14px; margin-bottom:10px;">';
+    html += '<h2 style="color:#D4AF37; font-size:13px; margin:0 0 6px;">4. Resumo da Proje\u00e7\u00e3o</h2>';
+    html += '<table style="width:100%; font-size:11px;"><tr>';
     summaryBar.querySelectorAll('.summary-item').forEach(function(item) {
       var lbl = item.querySelector('.label') ? item.querySelector('.label').textContent : '';
       var val = item.querySelector('.value') ? item.querySelector('.value').textContent : '';
-      var color = item.querySelector('.value') ? item.querySelector('.value').style.color : '#F2E8C9';
-      s4 += '<div style="flex:1; min-width:140px; background:#0A3520; border:1px solid rgba(212,175,55,0.15); border-radius:8px; padding:0.8rem;">';
-      s4 += '<div style="font-size:0.72rem; color:#A0B8A6; margin-bottom:0.2rem;">' + lbl + '</div>';
-      s4 += '<div style="font-size:1.1rem; font-weight:700; color:' + color + ';">' + val + '</div>';
-      s4 += '</div>';
+      var color = item.querySelector('.value') ? (item.querySelector('.value').style.color || '#F2E8C9') : '#F2E8C9';
+      html += '<td style="padding:6px; background:#0A3520; border:1px solid rgba(212,175,55,0.1); border-radius:6px; text-align:center;">';
+      html += '<div style="font-size:9px; color:#A0B8A6;">' + lbl + '</div>';
+      html += '<div style="font-size:13px; font-weight:700; color:' + color + ';">' + val + '</div>';
+      html += '</td>';
     });
-    s4 += '</div></div>';
-    pdfContainer.innerHTML += s4;
+    html += '</tr></table></div>';
   }
 
-  // Seção 5: Gráfico (captura o canvas como imagem)
+  // Se\u00e7\u00e3o 5: Gr\u00e1fico
   var chartCanvas = document.getElementById('main-chart');
   if (chartCanvas) {
-    var chartImg = chartCanvas.toDataURL('image/png');
-    var s5 = '<div style="background:#052614; border:1px solid rgba(212,175,55,0.2); border-radius:10px; padding:1rem 1.25rem; margin-bottom:1rem;">';
-    s5 += '<h2 style="color:#D4AF37; font-size:1rem; margin:0 0 0.5rem;">5. Gráfico de Projeção</h2>';
-    s5 += '<img src="' + chartImg + '" style="width:100%; border-radius:8px;">';
-    s5 += '</div>';
-    pdfContainer.innerHTML += s5;
+    try {
+      var chartImg = chartCanvas.toDataURL('image/png');
+      html += '<div style="background:#052614; border:1px solid rgba(212,175,55,0.2); border-radius:8px; padding:10px 14px; margin-bottom:10px;">';
+      html += '<h2 style="color:#D4AF37; font-size:13px; margin:0 0 6px;">5. Gr\u00e1fico de Proje\u00e7\u00e3o</h2>';
+      html += '<img src="' + chartImg + '" style="width:100%; border-radius:6px;">';
+      html += '</div>';
+    } catch(e) {}
   }
 
-  // Seção 6: Análise detalhada
-  var analiseSection = document.getElementById('analise-section');
-  if (analiseSection && analiseSection.innerHTML.trim()) {
-    var s6 = '<div style="background:#052614; border:1px solid rgba(212,175,55,0.2); border-radius:10px; padding:1rem 1.25rem; margin-bottom:1rem;">';
-    s6 += '<h2 style="color:#D4AF37; font-size:1rem; margin:0 0 0.5rem;">6. Análise Detalhada</h2>';
-    s6 += analiseSection.innerHTML;
-    s6 += '</div>';
-    pdfContainer.innerHTML += s6;
-  }
-
-  // Seção 7: Faturas (se houver)
-  var faturasSection = document.getElementById('faturas-section');
-  if (faturasSection) {
-    var s7 = '<div style="background:#052614; border:1px solid rgba(212,175,55,0.2); border-radius:10px; padding:1rem 1.25rem; margin-bottom:1rem;">';
-    s7 += faturasSection.innerHTML;
-    s7 += '</div>';
-    pdfContainer.innerHTML += s7;
-  }
-
-  // Seção 8: Orçamento Mensal
+  // Se\u00e7\u00e3o 6: Or\u00e7amento Mensal
   var orcamentoSection = document.getElementById('orcamento-mensal');
   if (orcamentoSection && orcamentoSection.style.display !== 'none' && orcamentoSection.innerHTML.trim()) {
-    var s8 = '<div style="background:#052614; border:1px solid rgba(212,175,55,0.2); border-radius:10px; padding:1rem 1.25rem; margin-bottom:1rem;">';
-    s8 += orcamentoSection.innerHTML;
-    s8 += '</div>';
-    pdfContainer.innerHTML += s8;
+    html += '<div style="background:#052614; border:1px solid rgba(212,175,55,0.2); border-radius:8px; padding:10px 14px; margin-bottom:10px;">';
+    html += '<h2 style="color:#D4AF37; font-size:13px; margin:0 0 6px;">6. Or\u00e7amento Mensal Equivalente</h2>';
+    // Captura o gr\u00e1fico de rosca do or\u00e7amento se existir
+    var orcChart = document.getElementById('orcamento-chart');
+    if (orcChart) {
+      try {
+        var orcImg = orcChart.toDataURL('image/png');
+        html += '<img src="' + orcImg + '" style="width:50%; max-width:300px; display:block; margin:8px auto;">';
+      } catch(e) {}
+    }
+    // Pega o conte\u00fado textual (tabelas etc)
+    var orcClone = orcamentoSection.cloneNode(true);
+    var canvasInOrc = orcClone.querySelectorAll('canvas');
+    canvasInOrc.forEach(function(c) { c.remove(); });
+    html += orcClone.innerHTML;
+    html += '</div>';
   }
 
-  // Rodapé
-  pdfContainer.innerHTML += '<div style="text-align:center; margin-top:2rem; padding-top:1rem; border-top:1px solid rgba(212,175,55,0.2); color:#A0B8A6; font-size:0.75rem;">HV Saúde Financeira — Relatório de Fluxo de Caixa Avançado</div>';
+  // Se\u00e7\u00e3o 7: An\u00e1lise do Fluxo (COMPLETA - inclui candidatos e mem\u00f3ria)
+  var analiseSection = document.getElementById('analise-section');
+  if (analiseSection && analiseSection.innerHTML.trim()) {
+    html += '<div style="background:#052614; border:1px solid rgba(212,175,55,0.2); border-radius:8px; padding:10px 14px; margin-bottom:10px;">';
+    html += '<h2 style="color:#D4AF37; font-size:13px; margin:0 0 6px;">7. An\u00e1lise do Fluxo</h2>';
+    // Clona a se\u00e7\u00e3o e expande tudo que est\u00e1 escondido (mem\u00f3ria de c\u00e1lculo)
+    var analiseClone = analiseSection.cloneNode(true);
+    // Expande todos os elementos com display:none (mem\u00f3ria de c\u00e1lculo)
+    analiseClone.querySelectorAll('[style*="display:none"], [style*="display: none"]').forEach(function(el) {
+      el.style.display = 'block';
+    });
+    // Remove bot\u00f5es de toggle (setas)
+    analiseClone.querySelectorAll('[onclick*="toggleMemCalc"]').forEach(function(el) {
+      var title = el.querySelector('span');
+      if (title) {
+        var p = document.createElement('div');
+        p.style.cssText = 'padding:8px 10px; background:rgba(212,175,55,0.06); font-weight:700; font-size:11px; color:#D4AF37; border-bottom:1px solid rgba(212,175,55,0.15);';
+        p.innerHTML = title.innerHTML;
+        el.parentNode.replaceChild(p, el);
+      }
+    });
+    html += analiseClone.innerHTML;
+    html += '</div>';
+  }
 
-  // Gera o PDF
-  document.body.appendChild(pdfContainer);
+  // Se\u00e7\u00e3o 8: Previs\u00e3o das Faturas dos Cart\u00f5es
+  var faturasSection = document.getElementById('faturas-section');
+  if (faturasSection && faturasSection.innerHTML.trim()) {
+    html += '<div style="background:#052614; border:1px solid rgba(212,175,55,0.2); border-radius:8px; padding:10px 14px; margin-bottom:10px;">';
+    html += '<h2 style="color:#D4AF37; font-size:13px; margin:0 0 6px;">8. Previs\u00e3o das Faturas dos Cart\u00f5es</h2>';
+    html += faturasSection.innerHTML;
+    html += '</div>';
+  }
+
+  // Rodap\u00e9
+  html += '<div style="text-align:center; margin-top:16px; padding-top:10px; border-top:1px solid rgba(212,175,55,0.2); color:#A0B8A6; font-size:10px;">HV Sa\u00fade Financeira \u2014 Relat\u00f3rio de Fluxo de Caixa Avan\u00e7ado</div>';
+
+  pdfContainer.innerHTML = html;
+
+  // Gera o PDF com configura\u00e7\u00f5es otimizadas para evitar p\u00e1ginas em branco
   var opt = {
-    margin: [10, 10, 10, 10],
+    margin: [8, 8, 8, 8],
     filename: 'fluxo-de-caixa-' + new Date().toISOString().split('T')[0] + '.pdf',
-    image: { type: 'jpeg', quality: 0.95 },
-    html2canvas: { scale: 2, useCORS: true, backgroundColor: '#021C0E' },
-    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+    image: { type: 'jpeg', quality: 0.92 },
+    html2canvas: {
+      scale: 1.5,
+      useCORS: true,
+      backgroundColor: '#021C0E',
+      width: 800,
+      windowWidth: 800
+    },
+    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+    pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
   };
 
   html2pdf().set(opt).from(pdfContainer).save().then(function() {
