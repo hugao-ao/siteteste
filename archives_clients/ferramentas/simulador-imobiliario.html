@@ -7,6 +7,7 @@
 <link rel="stylesheet" href="../assets/style.css">
 <script src="../assets/layout.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <style>
 /* ── RESET & BASE ─────────────────────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -2520,17 +2521,185 @@ function confirmDelModal() {
     if (el) el.addEventListener('click', e => {
         if (e.target === e.currentTarget) el.classList.remove('open');
     });
-});
+}
 
-// ── Inicializar ────────────────────────────────────────────────────────────
-(function init() {
+// ===== PERSISTÊNCIA (localStorage + Supabase) =====
+var _SIM_SUPABASE_URL = 'https://vbikskbfkhundhropykf.supabase.co';
+var _SIM_SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZiaWtza2Jma2h1bmRocm9weWtmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDU1MTk5NjEsImV4cCI6MjA2MTA5NTk2MX0.-n-Tj_5JnF1NL2ZImWlMeTcobWDl_VD6Vqp0lxRQFFU';
+var _SIM_LS_KEY = 'hv_simulador_imob_local';
+var _SIM_FERRAMENTA = 'simulador_imobiliario';
+var _simSbClient = null;
+var _simInitDone = false;
+var _simSaveTimer = null;
+
+function _getSimClienteId() { return sessionStorage.getItem('cliente_id') || null; }
+
+function _getSimSbClient() {
+  if (_simSbClient) return _simSbClient;
+  if (window.mithraSupabaseClient) { _simSbClient = window.mithraSupabaseClient; return _simSbClient; }
+  try {
+    if (window.supabase && window.supabase.createClient) {
+      _simSbClient = window.supabase.createClient(_SIM_SUPABASE_URL, _SIM_SUPABASE_KEY);
+    }
+  } catch(e) { _simSbClient = null; }
+  return _simSbClient;
+}
+
+function _waitForSupabaseSim(timeout) {
+  return new Promise(function(resolve) {
+    if (window.mithraSupabaseClient) { _simSbClient = window.mithraSupabaseClient; resolve(window.mithraSupabaseClient); return; }
+    var elapsed = 0;
+    var interval = setInterval(function() {
+      elapsed += 50;
+      if (window.mithraSupabaseClient) { clearInterval(interval); _simSbClient = window.mithraSupabaseClient; resolve(window.mithraSupabaseClient); }
+      else if (elapsed >= (timeout || 3000)) { clearInterval(interval); resolve(null); }
+    }, 50);
+  });
+}
+
+function _simBuildPayload() {
+  return {
+    scenarios: scenarios,
+    nextId: nextId,
+    aportes: aportes,
+    descaps: descaps,
+    nextFlowId: nextFlowId,
+    params: {
+      saldo: document.getElementById('p_saldo').value,
+      inflacao: document.getElementById('p_inflacao').value,
+      juros: document.getElementById('p_juros').value,
+      ir: document.getElementById('p_ir').value,
+      prazo: document.getElementById('p_prazo').value,
+      prazoUnit: document.getElementById('p_prazo_unit').value,
+      dataInicio: document.getElementById('p_data_inicio').value,
+      bemValor: document.getElementById('p_bem_valor').value,
+      bemReajusteInflacao: document.getElementById('p_bem_reajuste_inflacao').checked,
+      bemReajustePre: document.getElementById('p_bem_reajuste_pre').value,
+      bemReajustePos: document.getElementById('p_bem_reajuste_pos').value,
+      objetivoPrazo: document.getElementById('p_objetivo_prazo').value,
+      objetivoPrazoUnit: document.getElementById('p_objetivo_prazo_unit').value
+    }
+  };
+}
+
+function _simSaveData() {
+  if (!_simInitDone) return;
+  var data = _simBuildPayload();
+  try { localStorage.setItem(_SIM_LS_KEY, JSON.stringify(data)); } catch(e) {}
+  var clienteId = _getSimClienteId();
+  if (!clienteId) return;
+  if (_simSaveTimer) clearTimeout(_simSaveTimer);
+  _simSaveTimer = setTimeout(function() { _simSaveToSupabase(clienteId, data); }, 2000);
+}
+
+async function _simSaveToSupabase(clienteId, data) {
+  var sb = _getSimSbClient();
+  if (!sb) return;
+  try {
+    var payload = { cliente_id: clienteId, ferramenta: _SIM_FERRAMENTA, dados: data };
+    var result = await sb.from('ferramentas_dados').upsert(payload, { onConflict: 'cliente_id,ferramenta' });
+    if (result.error) console.warn('Simulador: erro ao salvar no Supabase', result.error.message);
+  } catch(e) { console.warn('Simulador: exceção ao salvar', e); }
+}
+
+async function _simLoadFromSupabase(clienteId) {
+  var sb = _getSimSbClient();
+  if (!sb || !clienteId) return null;
+  try {
+    var result = await sb.from('ferramentas_dados').select('dados').eq('cliente_id', clienteId).eq('ferramenta', _SIM_FERRAMENTA).maybeSingle();
+    if (result.error) { console.warn('Simulador: erro ao carregar do Supabase', result.error.message); return null; }
+    return (result.data && result.data.dados) ? result.data.dados : null;
+  } catch(e) { console.warn('Simulador: exceção ao carregar', e); return null; }
+}
+
+function _simLoadFromLocalStorage() {
+  var raw;
+  try { raw = localStorage.getItem(_SIM_LS_KEY); } catch(e) { return null; }
+  if (!raw) return null;
+  try { return JSON.parse(raw); } catch(e) { return null; }
+}
+
+function _simApplyData(d) {
+  if (!d) return false;
+  var hasData = false;
+  if (Array.isArray(d.scenarios) && d.scenarios.length > 0) { scenarios = d.scenarios; hasData = true; }
+  if (typeof d.nextId === 'number') nextId = d.nextId;
+  if (Array.isArray(d.aportes)) { aportes = d.aportes; hasData = true; }
+  if (Array.isArray(d.descaps)) { descaps = d.descaps; hasData = true; }
+  if (typeof d.nextFlowId === 'number') nextFlowId = d.nextFlowId;
+  if (d.params) {
+    var p = d.params;
+    if (p.saldo) document.getElementById('p_saldo').value = p.saldo;
+    if (p.inflacao) document.getElementById('p_inflacao').value = p.inflacao;
+    if (p.juros) document.getElementById('p_juros').value = p.juros;
+    if (p.ir) document.getElementById('p_ir').value = p.ir;
+    if (p.prazo) document.getElementById('p_prazo').value = p.prazo;
+    if (p.prazoUnit) document.getElementById('p_prazo_unit').value = p.prazoUnit;
+    if (p.dataInicio) document.getElementById('p_data_inicio').value = p.dataInicio;
+    if (p.bemValor) document.getElementById('p_bem_valor').value = p.bemValor;
+    if (typeof p.bemReajusteInflacao === 'boolean') document.getElementById('p_bem_reajuste_inflacao').checked = p.bemReajusteInflacao;
+    if (p.bemReajustePre) document.getElementById('p_bem_reajuste_pre').value = p.bemReajustePre;
+    if (p.bemReajustePos) document.getElementById('p_bem_reajuste_pos').value = p.bemReajustePos;
+    if (p.objetivoPrazo) document.getElementById('p_objetivo_prazo').value = p.objetivoPrazo;
+    if (p.objetivoPrazoUnit) document.getElementById('p_objetivo_prazo_unit').value = p.objetivoPrazoUnit;
+  }
+  return hasData;
+}
+
+// Hook: salvar após modificações
+var _origOnParamChange = onParamChange;
+onParamChange = function() {
+  _origOnParamChange();
+  _simSaveData();
+};
+var _origConfirmModal = confirmModal;
+confirmModal = function() {
+  _origConfirmModal();
+  _simSaveData();
+};
+var _origConfirmDelModal = confirmDelModal;
+confirmDelModal = function() {
+  _origConfirmDelModal();
+  _simSaveData();
+};
+var _origConfirmFlowModal = confirmFlowModal;
+confirmFlowModal = function() {
+  _origConfirmFlowModal();
+  _simSaveData();
+};
+var _origConfirmFlowDelModal = confirmFlowDelModal;
+confirmFlowDelModal = function() {
+  _origConfirmFlowDelModal();
+  _simSaveData();
+};
+
+// ── Inicializar ────────────────────────────────────────────────────────────────────────
+(async function init() {
     const today = new Date();
     const iso   = today.toISOString().split('T')[0];
     document.getElementById('p_data_inicio').value = iso;
     toggleBemReajuste();
+
+    // Persistência: carregar dados salvos
+    var clienteId = _getSimClienteId();
+    var restored = false;
+    if (clienteId) {
+      _SIM_LS_KEY = 'hv_simulador_imob_' + clienteId;
+      await _waitForSupabaseSim(3000);
+      var remoteData = await _simLoadFromSupabase(clienteId);
+      if (remoteData) restored = _simApplyData(remoteData);
+    }
+    if (!restored) {
+      var localData = _simLoadFromLocalStorage();
+      if (localData) restored = _simApplyData(localData);
+    }
+
     renderTable();
     renderChart();
     renderScenarioCards();
+    if (aportes.length > 0) renderFlowList('aporte');
+    if (descaps.length > 0) renderFlowList('descap');
+    _simInitDone = true;
 })();
 </script>
 </main>
