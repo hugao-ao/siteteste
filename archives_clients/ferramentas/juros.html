@@ -626,6 +626,10 @@ function runComparison() {
   const custosAtual = calcCustoMensalAtual(dividasAtuais, true);
   const custosProposta = calcCustoMensalAtual(dividasProposta, false);
 
+  // Guardar os prazos reais ANTES do padding
+  const mesesAtualReal = custosAtual.length;
+  const mesesPropostaReal = custosProposta.length;
+
   const maxMeses = Math.max(custosAtual.length, custosProposta.length);
 
   // Pad arrays
@@ -754,8 +758,8 @@ function runComparison() {
   // ===== CENÁRIO ALTERNATIVO =====
   // Lógica: cliente mantém dívidas atuais, e após cada dívida atual terminar,
   // investe o valor equivalente às parcelas das propostas novas até o final do prazo da proposta mais longa.
-  const mesesAtualMax = custosAtual.length; // prazo da dívida atual mais longa (parcelas restantes)
-  const mesesPropostaMax = custosProposta.length; // prazo da proposta mais longa
+  const mesesAtualMax = mesesAtualReal; // prazo REAL da dívida atual mais longa (antes do padding)
+  const mesesPropostaMax = mesesPropostaReal; // prazo REAL da proposta mais longa (antes do padding)
   const prazoTotal = Math.max(mesesAtualMax, mesesPropostaMax);
 
   // Custo mensal das propostas (o que o cliente estaria pagando se migrasse)
