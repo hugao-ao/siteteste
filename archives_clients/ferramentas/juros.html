@@ -253,6 +253,13 @@
         <input type="number" id="m-pagas" placeholder="Ex: 12" value="0">
       </div>
     </div>
+    <div class="row" id="row-saldo-devedor">
+      <div class="field">
+        <label>Saldo Devedor Atualizado (R$)</label>
+        <input type="text" id="m-saldo-devedor" placeholder="R$ 0,00 (se souber)" oninput="fmtCurrInput(this)">
+        <span class="note">Se não souber, deixe em branco — será estimado com base no CET informado acima.</span>
+      </div>
+    </div>
     <div class="modal-actions">
       <button class="btn btn-outline" onclick="closeDebtModal()">Cancelar</button>
       <button class="btn btn-primary" onclick="saveDebt()">Salvar</button>
@@ -296,8 +303,10 @@ function openDebtModal(type, index = -1) {
 
   if (type === 'proposta') {
     document.getElementById('row-pagas').classList.add('hidden');
+    document.getElementById('row-saldo-devedor').classList.add('hidden');
   } else {
     document.getElementById('row-pagas').classList.remove('hidden');
+    document.getElementById('row-saldo-devedor').classList.remove('hidden');
   }
 
   if (index >= 0) {
@@ -308,7 +317,10 @@ function openDebtModal(type, index = -1) {
     document.getElementById('m-valor').value = fmtBRL(d.valorContratado);
     document.getElementById('m-parcela').value = fmtBRL(d.parcela);
     document.getElementById('m-total-parcelas').value = d.totalParcelas;
-    if (type === 'atual') document.getElementById('m-pagas').value = d.parcelasPagas;
+    if (type === 'atual') {
+      document.getElementById('m-pagas').value = d.parcelasPagas;
+      document.getElementById('m-saldo-devedor').value = d.saldoDevedor ? fmtBRL(d.saldoDevedor) : '';
+    }
   } else {
     document.getElementById('modal-title').textContent = 'Adicionar Dívida';
     document.getElementById('m-nome').value = '';
@@ -316,6 +328,7 @@ function openDebtModal(type, index = -1) {
     document.getElementById('m-parcela').value = '';
     document.getElementById('m-total-parcelas').value = '';
     document.getElementById('m-pagas').value = '0';
+    document.getElementById('m-saldo-devedor').value = '';
     document.getElementById('m-cet').value = '';
   }
   document.getElementById('debt-modal').classList.add('active');
@@ -364,11 +377,38 @@ function saveDebt() {
   }
 
   let parcelasPagas = 0;
+  let saldoDevedor = 0;
   if (currentModalType === 'atual') {
     parcelasPagas = parseInt(document.getElementById('m-pagas').value) || 0;
+    const saldoInput = parseCurr(document.getElementById('m-saldo-devedor').value);
+    if (saldoInput > 0) {
+      saldoDevedor = saldoInput;
+    } else {
+      // Estimar saldo devedor com base no CET (se informado) ou pelo método de parcelas restantes
+      const cetVal = parseFloat(document.getElementById('m-cet').value);
+      const cetTipo = document.getElementById('m-cet-tipo').value;
+      if (cetVal && cetVal > 0) {
+        let taxaMensal;
+        if (cetTipo === 'anual') {
+          taxaMensal = Math.pow(1 + cetVal / 100, 1/12) - 1;
+        } else {
+          taxaMensal = cetVal / 100;
+        }
+        // Saldo devedor = VP das parcelas restantes
+        const restantes = totalParcelas - parcelasPagas;
+        if (taxaMensal > 0 && restantes > 0) {
+          saldoDevedor = parcela * (1 - Math.pow(1 + taxaMensal, -restantes)) / taxaMensal;
+        } else {
+          saldoDevedor = parcela * restantes;
+        }
+      } else {
+        // Sem CET: estimativa simples = parcela * restantes (sem desconto)
+        saldoDevedor = parcela * (totalParcelas - parcelasPagas);
+      }
+    }
   }
 
-  const debt = { nome, valorContratado, parcela, totalParcelas, parcelasPagas };
+  const debt = { nome, valorContratado, parcela, totalParcelas, parcelasPagas, saldoDevedor };
 
   const list = currentModalType === 'atual' ? dividasAtuais : dividasProposta;
   if (editingIndex >= 0) {
@@ -408,7 +448,7 @@ function renderTable(type) {
   const isAtual = type === 'atual';
   let html = `<table class="debt-table"><thead><tr>
     <th>Nome</th><th>Valor Contratado</th><th>Parcela</th><th>Parcelas</th>
-    ${isAtual ? '<th>Pagas</th><th>Restantes</th>' : ''}
+    ${isAtual ? '<th>Pagas</th><th>Restantes</th><th>Saldo Devedor</th>' : ''}
     <th>Total a Pagar</th><th>Juros</th><th>Ações</th>
   </tr></thead><tbody>`;
 
@@ -422,7 +462,7 @@ function renderTable(type) {
       <td>${fmtBRL(d.valorContratado)}</td>
       <td style="color:var(--red);">${fmtBRL(d.parcela)}</td>
       <td>${d.totalParcelas}</td>
-      ${isAtual ? `<td>${d.parcelasPagas}</td><td style="color:var(--orange);">${restantes}</td>` : ''}
+      ${isAtual ? `<td>${d.parcelasPagas}</td><td style="color:var(--orange);">${restantes}</td><td style="color:var(--blue);">${fmtBRL(d.saldoDevedor || 0)}</td>` : ''}
       <td style="color:var(--red);">${fmtBRL(totalPagar)}</td>
       <td style="color:var(--red);">${fmtBRL(juros)}</td>
       <td>
@@ -445,7 +485,7 @@ function renderSummary(type) {
   summaryEl.style.display = '';
 
   const isAtual = type === 'atual';
-  let totalJaPago = 0, totalAPagar = 0, totalJuros = 0;
+  let totalJaPago = 0, totalAPagar = 0, totalJuros = 0, totalSaldoDevedor = 0;
   let maxMesesRestantes = 0;
 
   list.forEach(d => {
@@ -454,6 +494,7 @@ function renderSummary(type) {
     totalJaPago += d.parcela * pagas;
     totalAPagar += d.parcela * restantes;
     totalJuros += (d.parcela * d.totalParcelas) - d.valorContratado;
+    if (isAtual && d.saldoDevedor) totalSaldoDevedor += d.saldoDevedor;
     if (restantes > maxMesesRestantes) maxMesesRestantes = restantes;
   });
 
@@ -462,7 +503,8 @@ function renderSummary(type) {
 
   gridEl.innerHTML = `
     ${isAtual ? `<div class="summary-item"><div class="label">Já Pago</div><div class="value blue">${fmtBRL(totalJaPago)}</div></div>` : ''}
-    <div class="summary-item"><div class="label">Total a Pagar</div><div class="value red">${fmtBRL(totalAPagar)}</div></div>
+    ${isAtual ? `<div class="summary-item"><div class="label">Saldo Devedor Total</div><div class="value blue">${fmtBRL(totalSaldoDevedor)}</div></div>` : ''}
+    <div class="summary-item"><div class="label">Total a Pagar (parcelas)</div><div class="value red">${fmtBRL(totalAPagar)}</div></div>
     <div class="summary-item"><div class="label">Juros Totais</div><div class="value red">${fmtBRL(totalJuros)}</div></div>
     <div class="summary-item"><div class="label">Custo Mensal (mês 1)</div><div class="value white">${fmtBRL(custoMensal[0] || 0)}</div></div>
     <div class="summary-item"><div class="label">Prazo Máximo</div><div class="value white">${maxMesesRestantes} meses</div></div>
