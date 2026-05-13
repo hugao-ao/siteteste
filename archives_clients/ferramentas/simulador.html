@@ -720,6 +720,38 @@ table.sc-table tr.row-aquisicao td { background: rgba(212,175,55,0.08); border-t
     .scenario-summary { grid-template-columns: 1fr 1fr; }
 }
 
+
+  /* Lista de simulações */
+  .sim-list-view { }
+  .sim-editor-view { display: none; }
+  .sim-header-bar { display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem; padding:0 16px; }
+  .sim-header-bar h2 { margin:0; color:var(--primary); font-size:1.2rem; }
+  .btn-new-sim { background: linear-gradient(135deg, var(--primary), #b8962e); color:#000; border:none; border-radius:8px; padding:0.6rem 1.2rem; font-size:0.85rem; font-weight:700; cursor:pointer; transition:all 0.2s; }
+  .btn-new-sim:hover { transform:translateY(-1px); box-shadow:0 4px 16px rgba(212,175,55,0.4); }
+  .sim-card-item { background:var(--card-bg); border:1px solid var(--border); border-radius:10px; margin:0 16px 0.75rem; overflow:hidden; transition:border-color 0.2s; }
+  .sim-card-item:hover { border-color:var(--primary); }
+  .sim-card-item-header { display:flex; align-items:center; gap:1rem; padding:1rem 1.25rem; cursor:pointer; }
+  .sim-card-item-header .chevron { color:var(--muted); font-size:0.7rem; transition:transform 0.2s; }
+  .sim-card-item.open .sim-card-item-header .chevron { transform:rotate(180deg); }
+  .sim-card-item-title { font-weight:700; color:#fff; font-size:0.95rem; flex:1; }
+  .sim-card-item-meta { font-size:0.75rem; color:var(--muted); }
+  .sim-card-item-actions { display:flex; gap:0.4rem; }
+  .sim-card-item-actions button { background:transparent; border:1px solid var(--border); color:var(--muted); border-radius:6px; padding:0.3rem 0.6rem; font-size:0.75rem; cursor:pointer; transition:all 0.15s; }
+  .sim-card-item-actions button:hover { border-color:var(--primary); color:var(--primary); }
+  .sim-card-item-actions button.danger { border-color:rgba(239,68,68,0.3); color:var(--red); }
+  .sim-card-item-actions button.danger:hover { background:rgba(239,68,68,0.1); }
+  .sim-card-item-body { display:none; padding:0 1.25rem 1rem; border-top:1px solid var(--border); }
+  .sim-card-item.open .sim-card-item-body { display:block; padding-top:1rem; }
+  .sim-card-item-summary { display:flex; gap:1rem; flex-wrap:wrap; font-size:0.82rem; }
+  .sim-card-item-summary .stat { background:rgba(255,255,255,0.03); border-radius:6px; padding:0.5rem 0.8rem; }
+  .sim-card-item-summary .stat-label { font-size:0.7rem; color:var(--muted); }
+  .sim-card-item-summary .stat-value { font-weight:700; margin-top:0.15rem; }
+  .sim-empty-state { text-align:center; padding:4rem 2rem; color:var(--muted); }
+  .sim-empty-state .icon { font-size:3rem; margin-bottom:0.75rem; opacity:0.5; }
+  .sim-empty-state p { font-size:0.9rem; line-height:1.5; }
+  .btn-back-sim { background:transparent; border:1px solid var(--border); color:var(--muted); border-radius:6px; padding:0.4rem 0.8rem; font-size:0.82rem; cursor:pointer; transition:all 0.15s; margin:0 16px 1rem; }
+  .btn-back-sim:hover { border-color:var(--primary); color:var(--primary); }
+
   /* Botão flutuante Salvar */
   .btn-save-global {
     position: fixed;
@@ -2611,43 +2643,6 @@ function _simBuildPayload() {
   };
 }
 
-function _simSaveData() {
-  if (!_simInitDone) return;
-  var data = _simBuildPayload();
-  try { localStorage.setItem(_SIM_LS_KEY, JSON.stringify(data)); } catch(e) {}
-  var clienteId = _getSimClienteId();
-  if (!clienteId) return;
-  if (_simSaveTimer) clearTimeout(_simSaveTimer);
-  _simSaveTimer = setTimeout(function() { _simSaveToSupabase(clienteId, data); }, 2000);
-}
-
-async function _simSaveToSupabase(clienteId, data) {
-  var sb = _getSimSbClient();
-  if (!sb) return;
-  try {
-    var payload = { cliente_id: clienteId, ferramenta: _SIM_FERRAMENTA, dados: data };
-    var result = await sb.from('ferramentas_dados').upsert(payload, { onConflict: 'cliente_id,ferramenta' });
-    if (result.error) console.warn('Simulador: erro ao salvar no Supabase', result.error.message);
-  } catch(e) { console.warn('Simulador: exceção ao salvar', e); }
-}
-
-async function _simLoadFromSupabase(clienteId) {
-  var sb = _getSimSbClient();
-  if (!sb || !clienteId) return null;
-  try {
-    var result = await sb.from('ferramentas_dados').select('dados').eq('cliente_id', clienteId).eq('ferramenta', _SIM_FERRAMENTA).maybeSingle();
-    if (result.error) { console.warn('Simulador: erro ao carregar do Supabase', result.error.message); return null; }
-    return (result.data && result.data.dados) ? result.data.dados : null;
-  } catch(e) { console.warn('Simulador: exceção ao carregar', e); return null; }
-}
-
-function _simLoadFromLocalStorage() {
-  var raw;
-  try { raw = localStorage.getItem(_SIM_LS_KEY); } catch(e) { return null; }
-  if (!raw) return null;
-  try { return JSON.parse(raw); } catch(e) { return null; }
-}
-
 function _simApplyData(d) {
   if (!d) return false;
   var hasData = false;
@@ -2673,6 +2668,190 @@ function _simApplyData(d) {
     if (p.objetivoPrazoUnit) document.getElementById('p_objetivo_prazo_unit').value = p.objetivoPrazoUnit;
   }
   return hasData;
+}
+
+// --- MULTI-SIMULAÇÃO ---
+var _simSimulacoes = [];
+var _simEditingId = null;
+var _SIM_SIMS_LS_KEY = 'hv_simulador_sims_v2';
+
+async function _loadSimSimulacoes() {
+  var clienteId = _getSimClienteId();
+  if (clienteId) {
+    try {
+      var sb = _getSimSbClient();
+      if (sb) {
+        var res = await sb.from('ferramentas_dados').select('dados').eq('cliente_id', clienteId).eq('ferramenta', _SIM_FERRAMENTA).maybeSingle();
+        if (!res.error && res.data && res.data.dados) {
+          var d = res.data.dados;
+          if (Array.isArray(d.simulacoes_list)) { _simSimulacoes = d.simulacoes_list; }
+          else if (d.scenarios || d.aportes) {
+            _simSimulacoes = [{ id: Date.now(), nome: 'Simulação importada', payload: d, updatedAt: new Date().toISOString() }];
+          }
+          localStorage.setItem(_SIM_SIMS_LS_KEY + '_' + clienteId, JSON.stringify(_simSimulacoes));
+          return;
+        }
+      }
+    } catch(e) {}
+    var local = localStorage.getItem(_SIM_SIMS_LS_KEY + '_' + clienteId);
+    if (local) { try { _simSimulacoes = JSON.parse(local); } catch(e) { _simSimulacoes = []; } }
+  } else {
+    var local = localStorage.getItem(_SIM_SIMS_LS_KEY);
+    if (local) { try { _simSimulacoes = JSON.parse(local); } catch(e) { _simSimulacoes = []; } }
+  }
+}
+
+async function _saveSimSimulacoes() {
+  var clienteId = _getSimClienteId();
+  if (clienteId) {
+    localStorage.setItem(_SIM_SIMS_LS_KEY + '_' + clienteId, JSON.stringify(_simSimulacoes));
+    try {
+      var sb = _getSimSbClient();
+      if (sb) {
+        await sb.from('ferramentas_dados').upsert({
+          cliente_id: clienteId, ferramenta: _SIM_FERRAMENTA,
+          dados: { simulacoes_list: _simSimulacoes },
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'cliente_id,ferramenta' });
+      }
+    } catch(e) {}
+  } else {
+    localStorage.setItem(_SIM_SIMS_LS_KEY, JSON.stringify(_simSimulacoes));
+  }
+}
+
+function novaSimulacaoSim() {
+  _simEditingId = null;
+  scenarios = []; nextId = 1;
+  aportes = []; descaps = []; nextFlowId = 1;
+  document.getElementById('p_saldo').value = '';
+  document.getElementById('p_inflacao').value = '4.5';
+  document.getElementById('p_juros').value = '12';
+  document.getElementById('p_ir').value = '15';
+  document.getElementById('p_prazo').value = '10';
+  document.getElementById('p_prazo_unit').value = 'anos';
+  document.getElementById('p_data_inicio').value = new Date().toISOString().split('T')[0];
+  document.getElementById('p_bem_valor').value = '';
+  document.getElementById('p_bem_reajuste_pre').value = '0';
+  document.getElementById('p_bem_reajuste_pos').value = '0';
+  document.getElementById('p_objetivo_prazo').value = '';
+  document.getElementById('sim-nome').value = '';
+  document.getElementById('sim-editing-label').textContent = 'Nova simulação';
+  renderTable(); renderChart(); renderScenarioCards();
+  _showSimEditor();
+}
+
+function editarSimulacaoSim(id) {
+  var sim = _simSimulacoes.find(function(s) { return s.id === id; });
+  if (!sim) return;
+  _simEditingId = id;
+  scenarios = []; aportes = []; descaps = [];
+  _simApplyData(sim.payload);
+  document.getElementById('sim-nome').value = sim.nome || '';
+  document.getElementById('sim-editing-label').textContent = 'Editando: ' + (sim.nome || 'Sem nome');
+  renderTable(); renderChart(); renderScenarioCards();
+  if (aportes.length > 0) renderFlowList('aporte');
+  if (descaps.length > 0) renderFlowList('descap');
+  _showSimEditor();
+}
+
+function duplicarSimulacaoSim(id) {
+  var orig = _simSimulacoes.find(function(s) { return s.id === id; });
+  if (!orig) return;
+  var copy = JSON.parse(JSON.stringify(orig));
+  copy.id = Date.now();
+  copy.nome = orig.nome + ' (cópia)';
+  copy.updatedAt = new Date().toISOString();
+  _simSimulacoes.push(copy);
+  _saveSimSimulacoes();
+  _renderSimList();
+}
+
+function deleteSimulacaoSim(id) {
+  if (!confirm('Excluir esta simulação?')) return;
+  _simSimulacoes = _simSimulacoes.filter(function(s) { return s.id !== id; });
+  _saveSimSimulacoes();
+  _renderSimList();
+}
+
+function voltarParaListaSim() {
+  _showSimList();
+  _renderSimList();
+}
+
+function _salvarSimAtual() {
+  var nome = document.getElementById('sim-nome').value.trim() || 'Simulação ' + new Date().toLocaleDateString('pt-BR');
+  var payload = _simBuildPayload();
+  if (_simEditingId) {
+    var idx = _simSimulacoes.findIndex(function(s) { return s.id === _simEditingId; });
+    if (idx >= 0) {
+      _simSimulacoes[idx].nome = nome;
+      _simSimulacoes[idx].payload = payload;
+      _simSimulacoes[idx].updatedAt = new Date().toISOString();
+    }
+  } else {
+    var sim = { id: Date.now(), nome: nome, payload: payload, updatedAt: new Date().toISOString() };
+    _simSimulacoes.push(sim);
+    _simEditingId = sim.id;
+  }
+  _saveSimSimulacoes();
+  _globalSaveFeedback();
+}
+
+function _showSimList() {
+  document.getElementById('sim-list-view').style.display = 'block';
+  document.getElementById('sim-editor-view').style.display = 'none';
+}
+
+function _showSimEditor() {
+  document.getElementById('sim-list-view').style.display = 'none';
+  document.getElementById('sim-editor-view').style.display = 'block';
+}
+
+function _renderSimList() {
+  var container = document.getElementById('sim-list-container');
+  var empty = document.getElementById('sim-empty-state');
+  container.querySelectorAll('.sim-card-item').forEach(function(el) { el.remove(); });
+  if (_simSimulacoes.length === 0) { empty.style.display = 'block'; return; }
+  empty.style.display = 'none';
+  _simSimulacoes.slice().sort(function(a,b) { return new Date(b.updatedAt) - new Date(a.updatedAt); }).forEach(function(sim) {
+    var card = document.createElement('div');
+    card.className = 'sim-card-item';
+    card.id = 'sim-card-' + sim.id;
+    var date = new Date(sim.updatedAt).toLocaleDateString('pt-BR');
+    var nCenarios = (sim.payload && sim.payload.scenarios) ? sim.payload.scenarios.length : 0;
+    var saldo = (sim.payload && sim.payload.params && sim.payload.params.saldo) ? sim.payload.params.saldo : '—';
+    card.innerHTML = '<div class="sim-card-item-header" onclick="toggleSimCardSim(' + sim.id + ')">' +
+      '<div class="chevron">&#9660;</div>' +
+      '<div class="sim-card-item-title">' + _escHtmlSim(sim.nome || 'Sem nome') + '</div>' +
+      '<div class="sim-card-item-meta">' + nCenarios + ' cenários · ' + date + '</div>' +
+      '<div class="sim-card-item-actions" onclick="event.stopPropagation()">' +
+        '<button onclick="editarSimulacaoSim(' + sim.id + ')">✏️ Editar</button>' +
+        '<button onclick="duplicarSimulacaoSim(' + sim.id + ')">📋 Duplicar</button>' +
+        '<button class="danger" onclick="deleteSimulacaoSim(' + sim.id + ')">🗑️ Excluir</button>' +
+      '</div>' +
+    '</div>' +
+    '<div class="sim-card-item-body">' +
+      '<div class="sim-card-item-summary">' +
+        '<div class="stat"><div class="stat-label">Saldo Inicial</div><div class="stat-value">' + saldo + '</div></div>' +
+        '<div class="stat"><div class="stat-label">Cenários</div><div class="stat-value">' + nCenarios + '</div></div>' +
+      '</div>' +
+    '</div>';
+    container.appendChild(card);
+  });
+}
+
+function toggleSimCardSim(id) {
+  var card = document.getElementById('sim-card-' + id);
+  if (card) card.classList.toggle('open');
+}
+
+function _escHtmlSim(str) { var div = document.createElement('div'); div.textContent = str; return div.innerHTML; }
+
+// Hook: _simSaveData now saves the current simulation
+function _simSaveData() {
+  if (!_simInitDone) return;
+  _salvarSimAtual();
 }
 
 // Hook: salvar após modificações
@@ -2702,36 +2881,25 @@ confirmFlowDelModal = function() {
   _simSaveData();
 };
 
-// ── Inicializar ────────────────────────────────────────────────────────────────────────
+// ── Inicializar ──
 (async function init() {
     const today = new Date();
     const iso   = today.toISOString().split('T')[0];
     document.getElementById('p_data_inicio').value = iso;
     toggleBemReajuste();
 
-    // Persistência: carregar dados salvos
+    await _waitForSupabaseSim(3000);
     var clienteId = _getSimClienteId();
-    var restored = false;
-    if (clienteId) {
-      _SIM_LS_KEY = 'hv_simulador_' + clienteId;
-      await _waitForSupabaseSim(3000);
-      var remoteData = await _simLoadFromSupabase(clienteId);
-      if (remoteData) restored = _simApplyData(remoteData);
-    }
-    if (!restored) {
-      var localData = _simLoadFromLocalStorage();
-      if (localData) restored = _simApplyData(localData);
-    }
-
+    if (clienteId) { _SIM_SIMS_LS_KEY = 'hv_simulador_sims_v2_' + clienteId; }
+    await _loadSimSimulacoes();
+    _renderSimList();
+    _showSimList();
     renderTable();
     renderChart();
-    renderScenarioCards();
-    if (aportes.length > 0) renderFlowList('aporte');
-    if (descaps.length > 0) renderFlowList('descap');
     _simInitDone = true;
 })();
 
-function _globalSaveFeedback() {{
+function _globalSaveFeedback() {
   var btn = document.getElementById('btnSaveGlobal');
   var icon = document.getElementById('saveIcon');
   var label = document.getElementById('saveLabel');
@@ -2739,12 +2907,12 @@ function _globalSaveFeedback() {{
   btn.classList.add('saved');
   icon.textContent = '✅';
   label.textContent = 'Salvo!';
-  setTimeout(function() {{
+  setTimeout(function() {
     btn.classList.remove('saved');
     icon.textContent = '💾';
     label.textContent = 'Salvar Alterações';
-  }}, 2500);
-}}
+  }, 2500);
+}
 
 function _forceSaveSimulador() {
   _simInitDone = true;
