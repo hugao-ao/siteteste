@@ -3,1268 +3,874 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Patrimônio do Cliente - MithraSF</title>
+<title>Patrimônio do Cliente - HV Saúde Financeira</title>
 <link rel="stylesheet" href="../assets/style.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="../assets/layout.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
-  :root {
-    --bg: #021C0E;
-    --card: #052614;
-    --card2: #0A3520;
-    --fg: #F2E8C9;
-    --muted: #A0B8A6;
-    --primary: #D4AF37;
-    --primary-dim: rgba(212,175,55,0.15);
-    --border: rgba(212,175,55,0.2);
-    --green: #22c55e;
-    --red: #ef4444;
-    --blue: #60a5fa;
-    --purple: #a78bfa;
-    --orange: #fb923c;
-    --teal: #14b8a6;
-    --radius: 10px;
-  }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { background: var(--bg); color: var(--fg); font-family: 'Inter', system-ui, sans-serif; font-size: 14px; min-height: 100vh; }
-  h1 { font-size: 1.6rem; font-weight: 700; color: #fff; }
-  h2 { font-size: 1.1rem; font-weight: 600; color: var(--primary); margin-bottom: 1rem; }
-  h3 { font-size: 0.95rem; font-weight: 600; color: #fff; }
-
-  .page { max-width: 1200px; margin: 0 auto; padding: 2rem 1rem 4rem; }
-  .page-header { margin-bottom: 2rem; }
-  .page-header p { color: var(--muted); margin-top: 0.3rem; font-size: 0.9rem; }
-
-  .card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.5rem; margin-bottom: 1.5rem; }
-
-  .field { display: flex; flex-direction: column; gap: 0.4rem; }
-  .field label { font-size: 0.8rem; color: var(--muted); font-weight: 500; }
-  .field input, .field select, .field textarea { background: var(--card2); border: 1px solid var(--border); border-radius: 6px; color: var(--fg); padding: 0.5rem 0.75rem; font-size: 0.9rem; outline: none; width: 100%; transition: border-color 0.2s; font-family: inherit; }
-  .field input:focus, .field select:focus, .field textarea:focus { border-color: var(--primary); }
-  .field select option { background: var(--card); }
-  .field textarea { resize: vertical; min-height: 60px; }
-
-  .btn { display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.5rem 1rem; border-radius: 6px; font-size: 0.85rem; font-weight: 600; cursor: pointer; border: none; transition: all 0.15s; }
-  .btn-primary { background: var(--primary); color: #021C0E; }
-  .btn-primary:hover { background: #c9a227; }
-  .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--fg); }
-  .btn-outline:hover { border-color: var(--primary); color: var(--primary); }
-  .btn-danger { background: transparent; border: 1px solid rgba(239,68,68,0.3); color: var(--red); }
-  .btn-danger:hover { background: rgba(239,68,68,0.1); }
-  .btn-sm { padding: 0.3rem 0.7rem; font-size: 0.8rem; }
-  .btn-icon { padding: 0.3rem; border-radius: 4px; background: transparent; border: none; cursor: pointer; }
-  .btn-icon:hover { background: rgba(255,255,255,0.08); }
-
-  .badge { display: inline-block; padding: 0.15rem 0.5rem; border-radius: 20px; font-size: 0.72rem; font-weight: 600; }
-  .badge-green { background: rgba(34,197,94,0.15); color: var(--green); }
-  .badge-red { background: rgba(239,68,68,0.15); color: var(--red); }
-  .badge-blue { background: rgba(96,165,250,0.15); color: var(--blue); }
-  .badge-purple { background: rgba(167,139,250,0.15); color: var(--purple); }
-  .badge-orange { background: rgba(251,146,60,0.15); color: var(--orange); }
-  .badge-gold { background: rgba(212,175,55,0.15); color: var(--primary); }
-  .badge-muted { background: rgba(160,184,166,0.1); color: var(--muted); }
-  .badge-teal { background: rgba(20,184,166,0.15); color: var(--teal); }
-
-  /* Dashboard */
-  .dashboard { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
-  .dash-item { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.2rem; text-align: center; }
-  .dash-item .label { font-size: 0.75rem; color: var(--muted); margin-bottom: 0.4rem; text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600; }
-  .dash-item .value { font-size: 1.5rem; font-weight: 700; }
-  .dash-item .sub { font-size: 0.72rem; color: var(--muted); margin-top: 0.3rem; }
-
-  /* Charts */
-  .charts-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem; }
-  .chart-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.5rem; }
-  .chart-card h3 { margin-bottom: 1rem; color: var(--primary); font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.06em; }
-  .chart-wrap { position: relative; height: 260px; }
-
-  /* Table */
-  .table-wrap { overflow-x: auto; border-radius: var(--radius); border: 1px solid var(--border); }
-  table { width: 100%; border-collapse: collapse; }
-  thead th { background: var(--card2); color: var(--primary); font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; padding: 0.65rem 0.75rem; text-align: left; border-bottom: 1px solid var(--border); white-space: nowrap; }
-  tbody tr { border-bottom: 1px solid rgba(212,175,55,0.08); transition: background 0.1s; }
-  tbody tr:last-child { border-bottom: none; }
-  tbody tr:hover { background: rgba(212,175,55,0.04); }
-  tbody td { padding: 0.6rem 0.75rem; font-size: 0.85rem; vertical-align: middle; }
-  .td-name { font-weight: 600; color: #fff; max-width: 200px; }
-  .td-val-pos { color: var(--green); font-weight: 600; }
-  .td-val-neg { color: var(--red); font-weight: 600; }
-  .td-actions { display: flex; gap: 0.3rem; }
-  .group-header td { background: rgba(212,175,55,0.06); color: var(--primary); font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; padding: 0.4rem 0.75rem; }
-
-  /* Tabs */
-  .tabs { display: flex; gap: 0.3rem; background: var(--card2); border-radius: 6px; padding: 0.25rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
-  .tab-btn { padding: 0.45rem 1rem; border-radius: 4px; font-size: 0.82rem; font-weight: 600; cursor: pointer; border: none; background: transparent; color: var(--muted); transition: all 0.15s; }
-  .tab-btn.active { background: var(--primary); color: #021C0E; }
-
-  /* Toolbar */
-  .toolbar { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem; }
-  .toolbar .label { font-size: 0.75rem; font-weight: 700; letter-spacing: 0.10em; text-transform: uppercase; color: var(--primary); }
-  .toolbar .spacer { flex: 1; }
-  .toolbar .count { font-size: 0.72rem; color: var(--muted); }
-
-  /* Modal */
-  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 1000; display: flex; align-items: center; justify-content: center; padding: 1rem; opacity: 0; pointer-events: none; transition: opacity 0.2s; }
-  .modal-overlay.open { opacity: 1; pointer-events: all; }
-  .modal { background: var(--card); border: 1px solid var(--border); border-radius: 14px; width: 100%; max-width: 650px; max-height: 90vh; overflow-y: auto; padding: 2rem; }
-  .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
-  .modal-header h2 { margin: 0; }
-  .modal-section { margin-bottom: 1.5rem; padding-bottom: 1.5rem; border-bottom: 1px solid var(--border); }
-  .modal-section:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
-  .modal-section-title { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin-bottom: 0.75rem; }
-  .sub-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
-  .sub-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.75rem; }
-
-  /* Indicadores */
-  .indicadores { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
-  .indicador { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem; }
-  .indicador .ind-label { font-size: 0.72rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600; margin-bottom: 0.5rem; }
-  .indicador .ind-bar { height: 8px; background: rgba(255,255,255,0.08); border-radius: 4px; overflow: hidden; margin-bottom: 0.4rem; }
-  .indicador .ind-fill { height: 100%; border-radius: 4px; transition: width 0.4s; }
-  .indicador .ind-value { font-size: 0.85rem; font-weight: 700; }
-  .indicador .ind-desc { font-size: 0.70rem; color: var(--muted); margin-top: 0.2rem; }
-
-  .empty { text-align: center; padding: 3rem 1rem; color: var(--muted); }
-  .empty .ico { font-size: 2.5rem; opacity: 0.3; display: block; margin-bottom: 0.75rem; }
-
-  @media (max-width: 700px) {
-    .charts-row { grid-template-columns: 1fr; }
-    .sub-grid, .sub-grid-3 { grid-template-columns: 1fr; }
-    .dashboard { grid-template-columns: 1fr 1fr; }
-  }
-  @media (max-width: 480px) {
-    .dashboard { grid-template-columns: 1fr; }
-  }
-
-  ::-webkit-scrollbar { width: 6px; height: 6px; }
-  ::-webkit-scrollbar-track { background: var(--bg); }
-  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
-
-  /* Botão flutuante Salvar */
-  .btn-save-global {
-    position: fixed;
-    bottom: 24px;
-    right: 24px;
-    z-index: 9999;
-    background: linear-gradient(135deg, #d4af37, #b8962e);
-    color: #000;
-    border: none;
-    border-radius: 12px;
-    padding: 12px 24px;
-    font-size: 0.95rem;
-    font-weight: 700;
-    cursor: pointer;
-    box-shadow: 0 4px 20px rgba(212,175,55,0.4);
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    transition: all 0.3s ease;
-  }
-  .btn-save-global:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 28px rgba(212,175,55,0.6);
-  }
-  .btn-save-global.saved {
-    background: linear-gradient(135deg, #10b981, #059669);
-    color: #fff;
-  }
+:root{--bg:#021C0E;--card:#052614;--card2:#0A3520;--fg:#F2E8C9;--muted:#A0B8A6;--primary:#D4AF37;--primary-dim:rgba(212,175,55,0.15);--border:rgba(212,175,55,0.2);--green:#22c55e;--red:#ef4444;--blue:#60a5fa;--purple:#a78bfa;--orange:#fb923c;--teal:#14b8a6;--radius:10px;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--fg);font-family:'Inter',system-ui,sans-serif;font-size:14px;min-height:100vh;}
+h1{font-size:1.6rem;font-weight:700;color:#fff;}
+h2{font-size:1.1rem;font-weight:600;color:var(--primary);margin-bottom:1rem;}
+h3{font-size:0.95rem;font-weight:600;color:#fff;}
+.page{max-width:1200px;margin:0 auto;padding:2rem 1rem 4rem;}
+.page-header{margin-bottom:2rem;}
+.page-header p{color:var(--muted);margin-top:0.3rem;font-size:0.9rem;}
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:1.5rem;margin-bottom:1.5rem;}
+.field{display:flex;flex-direction:column;gap:0.4rem;}
+.field label{font-size:0.8rem;color:var(--muted);font-weight:500;}
+.field input,.field select,.field textarea{background:var(--card2);border:1px solid var(--border);border-radius:6px;color:var(--fg);padding:0.5rem 0.75rem;font-size:0.9rem;outline:none;width:100%;transition:border-color 0.2s;font-family:inherit;}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--primary);}
+.field select option{background:var(--card);}
+.field textarea{resize:vertical;min-height:60px;}
+.btn{display:inline-flex;align-items:center;gap:0.4rem;padding:0.5rem 1rem;border-radius:6px;font-size:0.85rem;font-weight:600;cursor:pointer;border:none;transition:all 0.15s;}
+.btn-primary{background:var(--primary);color:#021C0E;}
+.btn-primary:hover{background:#c9a227;}
+.btn-outline{background:transparent;border:1px solid var(--border);color:var(--fg);}
+.btn-outline:hover{border-color:var(--primary);color:var(--primary);}
+.btn-danger{background:transparent;border:1px solid rgba(239,68,68,0.3);color:var(--red);}
+.btn-danger:hover{background:rgba(239,68,68,0.1);}
+.btn-sm{padding:0.3rem 0.7rem;font-size:0.8rem;}
+.btn-icon{padding:0.3rem;border-radius:4px;background:transparent;border:none;cursor:pointer;color:var(--muted);}
+.btn-icon:hover{background:rgba(255,255,255,0.08);color:var(--primary);}
+.badge{display:inline-block;padding:0.15rem 0.5rem;border-radius:20px;font-size:0.72rem;font-weight:600;}
+.badge-green{background:rgba(34,197,94,0.15);color:var(--green);}
+.badge-red{background:rgba(239,68,68,0.15);color:var(--red);}
+.badge-blue{background:rgba(96,165,250,0.15);color:var(--blue);}
+.badge-purple{background:rgba(167,139,250,0.15);color:var(--purple);}
+.badge-orange{background:rgba(251,146,60,0.15);color:var(--orange);}
+.badge-gold{background:rgba(212,175,55,0.15);color:var(--primary);}
+.badge-muted{background:rgba(160,184,166,0.1);color:var(--muted);}
+.badge-teal{background:rgba(20,184,166,0.15);color:var(--teal);}
+.dashboard{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1rem;margin-bottom:1.5rem;}
+.dash-item{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:1.2rem;text-align:center;}
+.dash-item .label{font-size:0.75rem;color:var(--muted);margin-bottom:0.4rem;text-transform:uppercase;letter-spacing:0.06em;font-weight:600;}
+.dash-item .value{font-size:1.5rem;font-weight:700;}
+.dash-item .sub{font-size:0.72rem;color:var(--muted);margin-top:0.3rem;}
+.charts-row{display:grid;grid-template-columns:1fr;gap:1.5rem;margin-bottom:1.5rem;}
+.chart-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:1.5rem;}
+.chart-card h3{margin-bottom:1rem;color:var(--primary);font-size:0.85rem;text-transform:uppercase;letter-spacing:0.06em;}
+.chart-wrap{position:relative;height:300px;}
+.chart-checks{display:flex;flex-wrap:wrap;gap:0.8rem;margin-bottom:0.8rem;}
+.chart-checks label{display:flex;align-items:center;gap:0.3rem;font-size:0.78rem;color:var(--muted);cursor:pointer;}
+.chart-checks input[type="checkbox"]{accent-color:var(--primary);width:14px;height:14px;}
+.table-wrap{overflow-x:auto;border-radius:var(--radius);border:1px solid var(--border);}
+table{width:100%;border-collapse:collapse;}
+thead th{background:var(--card2);color:var(--primary);font-size:0.75rem;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;padding:0.65rem 0.75rem;text-align:left;border-bottom:1px solid var(--border);white-space:nowrap;}
+tbody tr{border-bottom:1px solid rgba(212,175,55,0.08);transition:background 0.1s;}
+tbody tr:last-child{border-bottom:none;}
+tbody tr:hover{background:rgba(212,175,55,0.04);}
+tbody td{padding:0.6rem 0.75rem;font-size:0.85rem;vertical-align:middle;}
+.td-name{font-weight:600;color:#fff;max-width:200px;}
+.td-val-pos{color:var(--green);font-weight:600;}
+.td-val-neg{color:var(--red);font-weight:600;}
+.td-actions{display:flex;gap:0.3rem;}
+.tabs{display:flex;gap:0.3rem;background:var(--card2);border-radius:6px;padding:0.25rem;margin-bottom:1.5rem;flex-wrap:wrap;}
+.tab-btn{padding:0.45rem 1rem;border-radius:4px;font-size:0.82rem;font-weight:600;cursor:pointer;border:none;background:transparent;color:var(--muted);transition:all 0.15s;}
+.tab-btn.active{background:var(--primary);color:#021C0E;}
+.toolbar{display:flex;align-items:center;gap:1rem;flex-wrap:wrap;margin-bottom:1rem;}
+.toolbar .spacer{flex:1;}
+.date-nav{display:flex;gap:0.4rem;flex-wrap:wrap;align-items:center;}
+.date-chip{padding:0.4rem 0.9rem;border:1px solid var(--border);border-radius:20px;font-size:0.78rem;cursor:pointer;color:var(--muted);transition:all 0.2s;background:transparent;}
+.date-chip.active{background:var(--primary);color:#021C0E;border-color:var(--primary);font-weight:600;}
+.date-chip:hover{border-color:var(--primary);}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:1000;display:flex;align-items:center;justify-content:center;padding:1rem;opacity:0;pointer-events:none;transition:opacity 0.2s;}
+.modal-overlay.open{opacity:1;pointer-events:all;}
+.modal{background:var(--card);border:1px solid var(--border);border-radius:14px;width:100%;max-width:650px;max-height:90vh;overflow-y:auto;padding:2rem;}
+.modal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;}
+.modal-header h2{margin:0;}
+.modal-section{margin-bottom:1.5rem;padding-bottom:1.5rem;border-bottom:1px solid var(--border);}
+.modal-section:last-child{border-bottom:none;margin-bottom:0;padding-bottom:0;}
+.modal-section-title{font-size:0.75rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--muted);margin-bottom:0.75rem;}
+.sub-grid{display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;}
+.sub-grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:0.75rem;}
+.modal-footer{display:flex;gap:0.5rem;justify-content:flex-end;margin-top:1.5rem;padding-top:1rem;border-top:1px solid var(--border);}
+.empty{text-align:center;padding:3rem 1rem;color:var(--muted);}
+.empty .ico{font-size:2.5rem;opacity:0.3;display:block;margin-bottom:0.75rem;}
+.help-box{background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:1rem;margin-top:0.5rem;font-size:0.75rem;color:var(--muted);line-height:1.5;}
+.help-box strong{color:var(--primary);}
+.rentab{font-size:0.75rem;font-weight:600;margin-left:0.3rem;}
+.rentab.pos{color:var(--green);}
+.rentab.neg{color:var(--red);}
+@media(max-width:700px){.charts-row{grid-template-columns:1fr;}.sub-grid,.sub-grid-3{grid-template-columns:1fr;}.dashboard{grid-template-columns:1fr 1fr;}}
+@media(max-width:480px){.dashboard{grid-template-columns:1fr;}}
+::-webkit-scrollbar{width:6px;height:6px;}
+::-webkit-scrollbar-track{background:var(--bg);}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px;}
+.btn-save-global{position:fixed;bottom:24px;right:24px;z-index:9999;background:linear-gradient(135deg,#d4af37,#b8962e);color:#000;border:none;border-radius:12px;padding:12px 24px;font-size:0.95rem;font-weight:700;cursor:pointer;box-shadow:0 4px 20px rgba(212,175,55,0.4);display:flex;align-items:center;gap:8px;transition:all 0.3s ease;}
+.btn-save-global:hover{transform:translateY(-2px);box-shadow:0 6px 28px rgba(212,175,55,0.6);}
+.btn-save-global.saved{background:linear-gradient(135deg,#10b981,#059669);color:#fff;}
+.hidden{display:none!important;}
 </style>
 </head>
 <body>
-  <div id="sidebar-container" class="sidebar"></div>
-  <main class="main-content">
+<div id="sidebar-container" class="sidebar"></div>
+<main class="main-content">
 <div class="page">
 
   <header class="page-header">
     <div style="display:flex;align-items:center;gap:12px;margin-bottom:0.3rem;">
-      <a href="../ferramentas.html" style="color:var(--muted);text-decoration:none;font-size:1.2rem;">←</a>
-      <span style="font-size:1.6rem;">🏛️</span>
+      <a href="../ferramentas.html" style="color:var(--muted);text-decoration:none;font-size:1.2rem;">&#8592;</a>
+      <span style="font-size:1.6rem;">&#127963;</span>
       <h1>Patrimônio do Cliente</h1>
     </div>
-    <p>Mapeamento completo de ativos, passivos, rendas e despesas do cliente.</p>
+    <p>Evolução patrimonial com histórico por data, classificação de risco e rentabilidade.</p>
   </header>
 
+  <!-- TOOLBAR: DATAS + INSTITUIÇÕES -->
+  <div class="card">
+    <div class="toolbar">
+      <span class="label" style="font-size:0.75rem;font-weight:700;letter-spacing:0.10em;text-transform:uppercase;color:var(--primary);">Datas de Registro</span>
+      <div class="spacer"></div>
+      <button class="btn btn-outline btn-sm" onclick="gerenciarInstituicoes()">&#9881; Instituições</button>
+      <button class="btn btn-primary btn-sm" onclick="novaData()">+ Nova Data</button>
+    </div>
+    <div class="date-nav" id="dates-nav">
+      <p style="color:var(--muted);font-size:0.8rem;font-style:italic;">Nenhuma data registrada. Clique em "+ Nova Data" para começar.</p>
+    </div>
+  </div>
+
   <!-- DASHBOARD -->
-  <div class="dashboard" id="dashboard">
-    <div class="dash-item">
-      <div class="label">Patrimônio Líquido</div>
-      <div class="value" id="d-patrimonio" style="color:var(--green);">R$ 0,00</div>
-      <div class="sub" id="d-patrimonio-sub"></div>
-    </div>
-    <div class="dash-item">
-      <div class="label">Total Ativos</div>
-      <div class="value" id="d-ativos" style="color:var(--blue);">R$ 0,00</div>
-      <div class="sub" id="d-ativos-count">0 itens</div>
-    </div>
-    <div class="dash-item">
-      <div class="label">Total Passivos</div>
-      <div class="value" id="d-passivos" style="color:var(--red);">R$ 0,00</div>
-      <div class="sub" id="d-passivos-count">0 itens</div>
-    </div>
-    <div class="dash-item">
-      <div class="label">Renda Mensal</div>
-      <div class="value" id="d-renda" style="color:var(--teal);">R$ 0,00</div>
-      <div class="sub" id="d-renda-count">0 fontes</div>
-    </div>
-    <div class="dash-item">
-      <div class="label">Despesas Fixas</div>
-      <div class="value" id="d-despesas" style="color:var(--orange);">R$ 0,00</div>
-      <div class="sub" id="d-despesas-count">0 itens</div>
-    </div>
-  </div>
+  <div id="section-dashboard" class="hidden">
+    <div class="dashboard" id="dashboard"></div>
 
-  <!-- GRÁFICOS -->
-  <div class="charts-row" id="charts-section" style="display:none;">
-    <div class="chart-card">
-      <h3>Composição dos Ativos</h3>
-      <div class="chart-wrap"><canvas id="chart-ativos"></canvas></div>
-    </div>
-    <div class="chart-card">
-      <h3>Composição dos Passivos</h3>
-      <div class="chart-wrap"><canvas id="chart-passivos"></canvas></div>
-    </div>
-  </div>
-
-  <!-- INDICADORES -->
-  <div class="indicadores" id="indicadores-section" style="display:none;">
-    <div class="indicador">
-      <div class="ind-label">Liquidez Imediata</div>
-      <div class="ind-bar"><div class="ind-fill" id="ind-liquidez-fill" style="width:0%;background:var(--blue);"></div></div>
-      <div class="ind-value" id="ind-liquidez-val">0%</div>
-      <div class="ind-desc">% dos ativos com liquidez alta</div>
-    </div>
-    <div class="indicador">
-      <div class="ind-label">Endividamento</div>
-      <div class="ind-bar"><div class="ind-fill" id="ind-endiv-fill" style="width:0%;background:var(--red);"></div></div>
-      <div class="ind-value" id="ind-endiv-val">0%</div>
-      <div class="ind-desc">Passivos / Ativos</div>
-    </div>
-    <div class="indicador">
-      <div class="ind-label">Comprometimento de Renda</div>
-      <div class="ind-bar"><div class="ind-fill" id="ind-comprom-fill" style="width:0%;background:var(--orange);"></div></div>
-      <div class="ind-value" id="ind-comprom-val">0%</div>
-      <div class="ind-desc">Parcelas / Renda Mensal</div>
-    </div>
-    <div class="indicador">
-      <div class="ind-label">Diversificação</div>
-      <div class="ind-bar"><div class="ind-fill" id="ind-divers-fill" style="width:0%;background:var(--purple);"></div></div>
-      <div class="ind-value" id="ind-divers-val">—</div>
-      <div class="ind-desc">Categorias distintas de ativos</div>
-    </div>
-  </div>
-
-  <!-- TABS -->
-  <div class="tabs" id="main-tabs">
-    <button class="tab-btn active" onclick="switchTab('ativos')">Ativos</button>
-    <button class="tab-btn" onclick="switchTab('passivos')">Passivos</button>
-    <button class="tab-btn" onclick="switchTab('rendas')">Rendas</button>
-    <button class="tab-btn" onclick="switchTab('despesas')">Despesas Fixas</button>
-  </div>
-
-  <!-- TAB: ATIVOS -->
-  <div id="tab-ativos" class="tab-content">
-    <div class="toolbar">
-      <span class="label">Ativos</span>
-      <span class="spacer"></span>
-      <span class="count" id="ativos-count">0 itens</span>
-      <button class="btn btn-primary btn-sm" onclick="openModal('ativo')">+ Adicionar Ativo</button>
-    </div>
-    <div class="card" style="padding:0;">
-      <div id="ativos-table-wrap"></div>
-    </div>
-  </div>
-
-  <!-- TAB: PASSIVOS -->
-  <div id="tab-passivos" class="tab-content" style="display:none;">
-    <div class="toolbar">
-      <span class="label">Passivos</span>
-      <span class="spacer"></span>
-      <span class="count" id="passivos-count">0 itens</span>
-      <button class="btn btn-primary btn-sm" onclick="openModal('passivo')">+ Adicionar Passivo</button>
-    </div>
-    <div class="card" style="padding:0;">
-      <div id="passivos-table-wrap"></div>
-    </div>
-  </div>
-
-  <!-- TAB: RENDAS -->
-  <div id="tab-rendas" class="tab-content" style="display:none;">
-    <div class="toolbar">
-      <span class="label">Fontes de Renda</span>
-      <span class="spacer"></span>
-      <span class="count" id="rendas-count">0 fontes</span>
-      <button class="btn btn-primary btn-sm" onclick="openModal('renda')">+ Adicionar Renda</button>
-    </div>
-    <div class="card" style="padding:0;">
-      <div id="rendas-table-wrap"></div>
-    </div>
-  </div>
-
-  <!-- TAB: DESPESAS -->
-  <div id="tab-despesas" class="tab-content" style="display:none;">
-    <div class="toolbar">
-      <span class="label">Despesas Fixas Mensais</span>
-      <span class="spacer"></span>
-      <span class="count" id="despesas-count">0 itens</span>
-      <button class="btn btn-primary btn-sm" onclick="openModal('despesa')">+ Adicionar Despesa</button>
-    </div>
-    <div class="card" style="padding:0;">
-      <div id="despesas-table-wrap"></div>
-    </div>
-  </div>
-
-</div><!-- .page -->
-
-<!-- MODAL ATIVO -->
-<div class="modal-overlay" id="modal-ativo" onclick="if(event.target===this)closeModal('ativo')">
-  <div class="modal">
-    <div class="modal-header">
-      <h2 id="modal-ativo-title">Adicionar Ativo</h2>
-      <button class="btn-icon" onclick="closeModal('ativo')" style="font-size:1.2rem;color:var(--muted);">✕</button>
-    </div>
-    <div class="modal-section">
-      <div class="modal-section-title">Informações Básicas</div>
-      <div class="sub-grid" style="margin-bottom:0.75rem;">
-        <div class="field">
-          <label>Nome / Descrição *</label>
-          <input type="text" id="at_nome" placeholder="Ex: Tesouro Selic 2029">
+    <!-- GRÁFICO EVOLUÇÃO -->
+    <div class="charts-row">
+      <div class="chart-card">
+        <h3>Evolução Patrimonial</h3>
+        <div class="chart-checks" id="chart-checks">
+          <label><input type="checkbox" id="chk-total" checked onchange="renderChart()"> Patrimônio Total</label>
+          <label><input type="checkbox" id="chk-liquido" checked onchange="renderChart()"> Ativos Líquidos</label>
+          <label><input type="checkbox" id="chk-fisico" checked onchange="renderChart()"> Ativos Físicos</label>
+          <label><input type="checkbox" id="chk-intangivel" checked onchange="renderChart()"> Ativos Intangíveis</label>
+          <label><input type="checkbox" id="chk-dividas" checked onchange="renderChart()"> Dívidas</label>
         </div>
-        <div class="field">
-          <label>Categoria *</label>
-          <select id="at_categoria" onchange="updateSubcategorias('ativo')">
+        <div class="chart-wrap"><canvas id="chart-evolucao"></canvas></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- EDITOR DE DATA SELECIONADA -->
+  <div id="section-editor" class="hidden">
+    <div class="card">
+      <div class="toolbar">
+        <h3 id="editor-title" style="color:var(--primary);">Data: --</h3>
+        <div class="spacer"></div>
+        <button class="btn btn-outline btn-sm" onclick="editarDataAtual()">&#9998; Editar Data</button>
+        <button class="btn btn-danger btn-sm" onclick="excluirDataAtual()">&#128465; Excluir</button>
+      </div>
+
+      <!-- TABS -->
+      <div class="tabs">
+        <button class="tab-btn active" data-tab="liquidos" onclick="switchTab('liquidos')">Ativos Líquidos</button>
+        <button class="tab-btn" data-tab="fisicos" onclick="switchTab('fisicos')">Ativos Físicos</button>
+        <button class="tab-btn" data-tab="intangiveis" onclick="switchTab('intangiveis')">Ativos Intangíveis</button>
+        <button class="tab-btn" data-tab="dividas" onclick="switchTab('dividas')">Dívidas</button>
+      </div>
+
+      <!-- TAB: LÍQUIDOS -->
+      <div id="tab-liquidos">
+        <div class="toolbar">
+          <span style="font-size:0.8rem;color:var(--muted);">Investimentos e aplicações financeiras</span>
+          <div class="spacer"></div>
+          <button class="btn btn-primary btn-sm" onclick="openAtivoModal('liquido')">+ Adicionar</button>
+        </div>
+        <div id="tbl-liquidos"></div>
+      </div>
+
+      <!-- TAB: FÍSICOS -->
+      <div id="tab-fisicos" class="hidden">
+        <div class="toolbar">
+          <span style="font-size:0.8rem;color:var(--muted);">Imóveis, veículos, bens móveis</span>
+          <div class="spacer"></div>
+          <button class="btn btn-primary btn-sm" onclick="openAtivoModal('fisico')">+ Adicionar</button>
+        </div>
+        <div id="tbl-fisicos"></div>
+      </div>
+
+      <!-- TAB: INTANGÍVEIS -->
+      <div id="tab-intangiveis" class="hidden">
+        <div class="toolbar">
+          <span style="font-size:0.8rem;color:var(--muted);">Marcas, empresas, patentes, negócios</span>
+          <div class="spacer"></div>
+          <button class="btn btn-primary btn-sm" onclick="openAtivoModal('intangivel')">+ Adicionar</button>
+        </div>
+        <div id="tbl-intangiveis"></div>
+      </div>
+
+      <!-- TAB: DÍVIDAS -->
+      <div id="tab-dividas" class="hidden">
+        <div class="toolbar">
+          <span style="font-size:0.8rem;color:var(--muted);">Saldo devedor atualizado de cada dívida</span>
+          <div class="spacer"></div>
+          <button class="btn btn-primary btn-sm" onclick="openDividaModal()">+ Adicionar</button>
+        </div>
+        <div id="tbl-dividas"></div>
+      </div>
+
+      <!-- RESUMO DA DATA -->
+      <div style="margin-top:1.5rem;padding-top:1.5rem;border-top:1px solid var(--border);">
+        <h3 style="color:var(--primary);margin-bottom:1rem;">Resumo desta Data</h3>
+        <div class="dashboard" id="date-summary"></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+</main>
+
+<!-- MODAL: ATIVO -->
+<div class="modal-overlay" id="modal-ativo">
+  <div class="modal" id="modal-ativo-content"></div>
+</div>
+
+<!-- MODAL: DÍVIDA -->
+<div class="modal-overlay" id="modal-divida">
+  <div class="modal" id="modal-divida-content"></div>
+</div>
+
+<!-- MODAL: DATA -->
+<div class="modal-overlay" id="modal-data">
+  <div class="modal">
+    <div class="modal-header"><h2 id="modal-data-title">Nova Data</h2><button class="btn-icon" onclick="closeModal('modal-data')">&#10005;</button></div>
+    <div class="field"><label>Data do Registro *</label><input type="date" id="input-data"></div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('modal-data')">Cancelar</button>
+      <button class="btn btn-primary" id="btn-save-data" onclick="salvarData()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: INSTITUIÇÕES -->
+<div class="modal-overlay" id="modal-inst">
+  <div class="modal">
+    <div class="modal-header"><h2>Instituições Financeiras</h2><button class="btn-icon" onclick="closeModal('modal-inst')">&#10005;</button></div>
+    <div id="inst-list" style="margin-bottom:1rem;"></div>
+    <div class="modal-section">
+      <div class="modal-section-title">Adicionar Nova</div>
+      <div class="sub-grid">
+        <div class="field"><label>Nome *</label><input id="inst-nome" placeholder="Ex: XP Investimentos"></div>
+        <div class="field"><label>Tipo *</label>
+          <select id="inst-tipo">
             <option value="">Selecione...</option>
-            <option value="investimento">Investimento Financeiro</option>
-            <option value="imovel">Imóvel</option>
-            <option value="veiculo">Veículo</option>
-            <option value="bem_movel">Bem Móvel</option>
-            <option value="participacao">Participação Societária</option>
-            <option value="recebivel">Recebível / Crédito</option>
-            <option value="outro_ativo">Outro Ativo</option>
+            <option value="Banco">Banco</option>
+            <option value="Banco Digital">Banco Digital</option>
+            <option value="Banco Cooperativo">Banco Cooperativo</option>
+            <option value="Corretora">Corretora</option>
+            <option value="Gestora">Gestora</option>
+            <option value="Previdência">Previdência</option>
+            <option value="Governo">Governo</option>
+            <option value="Bolsa">Bolsa</option>
+            <option value="Outro">Outro</option>
           </select>
         </div>
       </div>
-      <div class="sub-grid" style="margin-bottom:0.75rem;">
-        <div class="field">
-          <label>Subcategoria</label>
-          <select id="at_subcategoria">
-            <option value="">Selecione a categoria primeiro</option>
-          </select>
-        </div>
-        <div class="field">
-          <label>Liquidez</label>
-          <select id="at_liquidez">
-            <option value="alta">Alta (D+0 a D+5)</option>
-            <option value="media">Média (D+6 a D+90)</option>
-            <option value="baixa">Baixa (acima de D+90)</option>
-            <option value="iliquido">Ilíquido</option>
-          </select>
-        </div>
-      </div>
+      <button class="btn btn-primary btn-sm" style="margin-top:0.8rem;" onclick="addInstituicao()">+ Adicionar</button>
     </div>
-    <div class="modal-section">
-      <div class="modal-section-title">Valores</div>
-      <div class="sub-grid" style="margin-bottom:0.75rem;">
-        <div class="field">
-          <label>Valor Atual Estimado *</label>
-          <input type="text" id="at_valor_atual" placeholder="Ex: 50.000,00" oninput="maskBRL(this)">
-        </div>
-        <div class="field">
-          <label>Valor de Aquisição</label>
-          <input type="text" id="at_valor_aquisicao" placeholder="Ex: 40.000,00" oninput="maskBRL(this)">
-        </div>
-      </div>
-      <div class="sub-grid">
-        <div class="field">
-          <label>Data de Aquisição</label>
-          <input type="date" id="at_data_aquisicao">
-        </div>
-        <div class="field">
-          <label>Rentabilidade Anual (%)</label>
-          <input type="number" id="at_rentabilidade" step="0.01" placeholder="Ex: 12.5">
-        </div>
-      </div>
-    </div>
-    <div class="modal-section">
-      <div class="modal-section-title">Detalhes Adicionais</div>
-      <div class="sub-grid" style="margin-bottom:0.75rem;">
-        <div class="field">
-          <label>Instituição / Localização</label>
-          <input type="text" id="at_instituicao" placeholder="Ex: XP, Nubank, Bairro X">
-        </div>
-        <div class="field">
-          <label>Vencimento / Prazo</label>
-          <input type="date" id="at_vencimento">
-        </div>
-      </div>
-      <div class="field">
-        <label>Observações</label>
-        <textarea id="at_obs" placeholder="Notas adicionais sobre este ativo..."></textarea>
-      </div>
-    </div>
-    <div style="display:flex;gap:0.75rem;justify-content:flex-end;">
-      <button class="btn btn-outline" onclick="closeModal('ativo')">Cancelar</button>
-      <button class="btn btn-primary" onclick="salvarAtivo()">Salvar</button>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('modal-inst')">Fechar</button>
     </div>
   </div>
 </div>
 
-<!-- MODAL PASSIVO -->
-<div class="modal-overlay" id="modal-passivo" onclick="if(event.target===this)closeModal('passivo')">
-  <div class="modal">
-    <div class="modal-header">
-      <h2 id="modal-passivo-title">Adicionar Passivo</h2>
-      <button class="btn-icon" onclick="closeModal('passivo')" style="font-size:1.2rem;color:var(--muted);">✕</button>
-    </div>
-    <div class="modal-section">
-      <div class="modal-section-title">Informações Básicas</div>
-      <div class="sub-grid" style="margin-bottom:0.75rem;">
-        <div class="field">
-          <label>Nome / Descrição *</label>
-          <input type="text" id="ps_nome" placeholder="Ex: Financiamento Imobiliário Caixa">
-        </div>
-        <div class="field">
-          <label>Categoria *</label>
-          <select id="ps_categoria">
-            <option value="">Selecione...</option>
-            <option value="financiamento_imob">Financiamento Imobiliário</option>
-            <option value="financiamento_veic">Financiamento de Veículo</option>
-            <option value="emprestimo_pessoal">Empréstimo Pessoal</option>
-            <option value="emprestimo_consig">Empréstimo Consignado</option>
-            <option value="cartao_credito">Cartão de Crédito (Saldo Devedor)</option>
-            <option value="cheque_especial">Cheque Especial</option>
-            <option value="credito_estudantil">Crédito Estudantil</option>
-            <option value="divida_tributaria">Dívida Tributária</option>
-            <option value="outro_passivo">Outro Passivo</option>
-          </select>
-        </div>
-      </div>
-    </div>
-    <div class="modal-section">
-      <div class="modal-section-title">Valores e Condições</div>
-      <div class="sub-grid" style="margin-bottom:0.75rem;">
-        <div class="field">
-          <label>Saldo Devedor Atual *</label>
-          <input type="text" id="ps_saldo" placeholder="Ex: 200.000,00" oninput="maskBRL(this)">
-        </div>
-        <div class="field">
-          <label>Valor Original do Contrato</label>
-          <input type="text" id="ps_valor_original" placeholder="Ex: 250.000,00" oninput="maskBRL(this)">
-        </div>
-      </div>
-      <div class="sub-grid-3" style="margin-bottom:0.75rem;">
-        <div class="field">
-          <label>Parcela Mensal</label>
-          <input type="text" id="ps_parcela" placeholder="Ex: 1.800,00" oninput="maskBRL(this)">
-        </div>
-        <div class="field">
-          <label>Taxa de Juros (% a.a.)</label>
-          <input type="number" id="ps_taxa" step="0.01" placeholder="Ex: 9.5">
-        </div>
-        <div class="field">
-          <label>Parcelas Restantes</label>
-          <input type="number" id="ps_parcelas_rest" placeholder="Ex: 240">
-        </div>
-      </div>
-      <div class="sub-grid">
-        <div class="field">
-          <label>Data de Início</label>
-          <input type="date" id="ps_data_inicio">
-        </div>
-        <div class="field">
-          <label>Instituição Credora</label>
-          <input type="text" id="ps_instituicao" placeholder="Ex: Caixa, Itaú">
-        </div>
-      </div>
-    </div>
-    <div class="modal-section">
-      <div class="field">
-        <label>Observações</label>
-        <textarea id="ps_obs" placeholder="Notas adicionais sobre este passivo..."></textarea>
-      </div>
-    </div>
-    <div style="display:flex;gap:0.75rem;justify-content:flex-end;">
-      <button class="btn btn-outline" onclick="closeModal('passivo')">Cancelar</button>
-      <button class="btn btn-primary" onclick="salvarPassivo()">Salvar</button>
-    </div>
-  </div>
-</div>
-
-<!-- MODAL RENDA -->
-<div class="modal-overlay" id="modal-renda" onclick="if(event.target===this)closeModal('renda')">
-  <div class="modal">
-    <div class="modal-header">
-      <h2 id="modal-renda-title">Adicionar Fonte de Renda</h2>
-      <button class="btn-icon" onclick="closeModal('renda')" style="font-size:1.2rem;color:var(--muted);">✕</button>
-    </div>
-    <div class="modal-section">
-      <div class="sub-grid" style="margin-bottom:0.75rem;">
-        <div class="field">
-          <label>Descrição *</label>
-          <input type="text" id="rd_nome" placeholder="Ex: Salário CLT, Aluguel, Freelance">
-        </div>
-        <div class="field">
-          <label>Tipo *</label>
-          <select id="rd_tipo">
-            <option value="salario_clt">Salário CLT</option>
-            <option value="pro_labore">Pró-labore</option>
-            <option value="autonomo">Autônomo / Freelance</option>
-            <option value="aluguel">Aluguel</option>
-            <option value="dividendos">Dividendos / Proventos</option>
-            <option value="pensao">Pensão / Aposentadoria</option>
-            <option value="rendimento">Rendimento de Investimentos</option>
-            <option value="outro_renda">Outro</option>
-          </select>
-        </div>
-      </div>
-      <div class="sub-grid" style="margin-bottom:0.75rem;">
-        <div class="field">
-          <label>Valor Mensal Bruto *</label>
-          <input type="text" id="rd_bruto" placeholder="Ex: 8.000,00" oninput="maskBRL(this)">
-        </div>
-        <div class="field">
-          <label>Valor Mensal Líquido</label>
-          <input type="text" id="rd_liquido" placeholder="Ex: 6.500,00" oninput="maskBRL(this)">
-        </div>
-      </div>
-      <div class="sub-grid">
-        <div class="field">
-          <label>Estabilidade</label>
-          <select id="rd_estabilidade">
-            <option value="estavel">Estável</option>
-            <option value="variavel">Variável</option>
-            <option value="temporaria">Temporária</option>
-          </select>
-        </div>
-        <div class="field">
-          <label>Observações</label>
-          <input type="text" id="rd_obs" placeholder="Notas...">
-        </div>
-      </div>
-    </div>
-    <div style="display:flex;gap:0.75rem;justify-content:flex-end;">
-      <button class="btn btn-outline" onclick="closeModal('renda')">Cancelar</button>
-      <button class="btn btn-primary" onclick="salvarRenda()">Salvar</button>
-    </div>
-  </div>
-</div>
-
-<!-- MODAL DESPESA -->
-<div class="modal-overlay" id="modal-despesa" onclick="if(event.target===this)closeModal('despesa')">
-  <div class="modal">
-    <div class="modal-header">
-      <h2 id="modal-despesa-title">Adicionar Despesa Fixa</h2>
-      <button class="btn-icon" onclick="closeModal('despesa')" style="font-size:1.2rem;color:var(--muted);">✕</button>
-    </div>
-    <div class="modal-section">
-      <div class="sub-grid" style="margin-bottom:0.75rem;">
-        <div class="field">
-          <label>Descrição *</label>
-          <input type="text" id="dp_nome" placeholder="Ex: Aluguel, Plano de Saúde">
-        </div>
-        <div class="field">
-          <label>Categoria *</label>
-          <select id="dp_categoria">
-            <option value="moradia">Moradia</option>
-            <option value="transporte">Transporte</option>
-            <option value="alimentacao">Alimentação</option>
-            <option value="saude">Saúde</option>
-            <option value="educacao">Educação</option>
-            <option value="lazer">Lazer</option>
-            <option value="seguros">Seguros</option>
-            <option value="assinaturas">Assinaturas / Serviços</option>
-            <option value="dependentes">Dependentes</option>
-            <option value="outro_despesa">Outro</option>
-          </select>
-        </div>
-      </div>
-      <div class="sub-grid" style="margin-bottom:0.75rem;">
-        <div class="field">
-          <label>Valor Mensal *</label>
-          <input type="text" id="dp_valor" placeholder="Ex: 2.500,00" oninput="maskBRL(this)">
-        </div>
-        <div class="field">
-          <label>Essencialidade</label>
-          <select id="dp_essencial">
-            <option value="essencial">Essencial</option>
-            <option value="importante">Importante</option>
-            <option value="desejavel">Desejável</option>
-            <option value="supérfluo">Supérfluo</option>
-          </select>
-        </div>
-      </div>
-      <div class="field">
-        <label>Observações</label>
-        <input type="text" id="dp_obs" placeholder="Notas...">
-      </div>
-    </div>
-    <div style="display:flex;gap:0.75rem;justify-content:flex-end;">
-      <button class="btn btn-outline" onclick="closeModal('despesa')">Cancelar</button>
-      <button class="btn btn-primary" onclick="salvarDespesa()">Salvar</button>
-    </div>
-  </div>
-</div>
-
-<!-- MODAL CONFIRMAR EXCLUSÃO -->
-<div class="modal-overlay" id="modal-del" onclick="if(event.target===this)closeDelModal()">
-  <div class="modal" style="max-width:400px;text-align:center;">
-    <p style="margin-bottom:1.5rem;font-size:0.95rem;" id="del-msg">Deseja excluir este item?</p>
-    <div style="display:flex;gap:0.75rem;justify-content:center;">
-      <button class="btn btn-outline" onclick="closeDelModal()">Cancelar</button>
-      <button class="btn btn-danger" onclick="confirmarExclusao()">Excluir</button>
-    </div>
-  </div>
-</div>
+<!-- BOTÃO SALVAR -->
+<button class="btn-save-global" id="btnSaveGlobal" onclick="_forceSave()">
+  <span>&#128190;</span>
+  <span id="saveLabel">Salvar Alterações</span>
+</button>
 
 <script>
-// ═══════════════════════════════════════════════════════════════════════════
-//  DADOS
-// ═══════════════════════════════════════════════════════════════════════════
-var ativos = [];
-var passivos = [];
-var rendas = [];
-var despesas = [];
-var nextId = 1;
-var currentTab = 'ativos';
+// ============================================================
+// PATRIMÔNIO DO CLIENTE - COMPLETO
+// ============================================================
 
-// Subcategorias
-var SUBCATS = {
-  investimento: ['Renda Fixa','Renda Variável','Fundos de Investimento','Previdência Privada','Criptomoedas','Poupança','COE','Câmbio/Ouro'],
-  imovel: ['Residencial','Comercial','Terreno','Rural','Sala/Loja'],
-  veiculo: ['Carro','Moto','Caminhão','Embarcação','Outro Veículo'],
-  bem_movel: ['Jóias/Relógios','Arte/Colecionáveis','Equipamentos','Móveis de Valor','Outro Bem'],
-  participacao: ['Empresa (Sócio)','Startup','Cotas de Fundo','Consórcio','Outra Participação'],
-  recebivel: ['Empréstimo a Terceiro','Nota Promissória','Precatório','Outro Recebível'],
-  outro_ativo: ['Outro']
+const SUPABASE_URL = 'https://nfrwfugnmrlbyciusyqx.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5mcndmdWdubXJsYnljaXVzeXF4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQ4MjIxNjMsImV4cCI6MjA2MDM5ODE2M30.kV1VVSZMBOl5GtGFzMGXMO4VSNclSEVFKJnOlY4xWMY';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// ---- CLASSIFICAÇÃO DE RISCO (10 níveis HV) ----
+const CLASSIFICACAO_RISCO = {
+  'RISCO_MUITO_BAIXO_GARANTIA_SOBERANA': { label: 'Risco Muito Baixo (Garantia Soberana)', cor: '#006400', ordem: 1 },
+  'RISCO_MUITO_BAIXO_GARANTIA_FGC': { label: 'Risco Muito Baixo (Garantia FGC)', cor: '#228B22', ordem: 2 },
+  'RISCO_BAIXO_GARANTIA_FGC': { label: 'Risco Baixo (Garantia FGC)', cor: '#32CD32', ordem: 3 },
+  'RISCO_BAIXO_SEM_GARANTIA': { label: 'Risco Baixo', cor: '#90EE90', ordem: 4 },
+  'RISCO_MEDIO_SEM_GARANTIA': { label: 'Risco Médio', cor: '#FFD700', ordem: 5 },
+  'RISCO_ALTO_PROTECAO_MRP': { label: 'Risco Alto (Proteção MRP)', cor: '#FFA500', ordem: 6 },
+  'RISCO_ALTO_SEM_GARANTIA': { label: 'Risco Alto', cor: '#FF8C00', ordem: 7 },
+  'RISCO_MUITO_ALTO_PROTECAO_MRP': { label: 'Risco Muito Alto (Proteção MRP)', cor: '#FF6347', ordem: 8 },
+  'RISCO_MUITO_ALTO_SEM_GARANTIA': { label: 'Risco Muito Alto', cor: '#DC143C', ordem: 9 },
+  'RISCO_ABSOLUTO_SEM_GARANTIA': { label: 'Risco Absoluto', cor: '#8B0000', ordem: 10 }
 };
 
-var PALETTE = ['#D4AF37','#22c55e','#60a5fa','#a78bfa','#fb923c','#14b8a6','#f43f5e','#84cc16','#e879f9','#fbbf24'];
+const RISCO_HELP = {
+  'RISCO_MUITO_BAIXO_GARANTIA_SOBERANA': 'Tesouro Direto (Selic, IPCA+, Prefixado). Garantia do Governo Federal.',
+  'RISCO_MUITO_BAIXO_GARANTIA_FGC': 'CDB, LCI, LCA, LC de bancos grandes com cobertura FGC (até R$250k por CPF/instituição).',
+  'RISCO_BAIXO_GARANTIA_FGC': 'CDB, LCI, LCA de bancos médios/pequenos com cobertura FGC. Maior rentabilidade, mesmo FGC.',
+  'RISCO_BAIXO_SEM_GARANTIA': 'Debêntures incentivadas (infraestrutura), CRI, CRA de empresas sólidas. Sem FGC.',
+  'RISCO_MEDIO_SEM_GARANTIA': 'Fundos multimercado conservadores, fundos imobiliários (FIIs) de tijolo diversificados.',
+  'RISCO_ALTO_PROTECAO_MRP': 'Ações de empresas sólidas (blue chips), ETFs de índice. Proteção via MRP (Margem de Risco Prudente).',
+  'RISCO_ALTO_SEM_GARANTIA': 'Ações mid/small caps, fundos de ações concentrados, BDRs.',
+  'RISCO_MUITO_ALTO_PROTECAO_MRP': 'Opções com estratégias de proteção, operações estruturadas com hedge.',
+  'RISCO_MUITO_ALTO_SEM_GARANTIA': 'Day trade, swing trade agressivo, criptomoedas consolidadas (BTC, ETH).',
+  'RISCO_ABSOLUTO_SEM_GARANTIA': 'Criptomoedas altcoins, NFTs, startups (equity crowdfunding), empréstimos P2P.'
+};
 
-var chartAtivos = null;
-var chartPassivos = null;
+// ---- STATE ----
+let state = {
+  instituicoes: [],
+  datas: [], // [{id, data, ativos_liquidos:[], ativos_fisicos:[], ativos_intangiveis:[], dividas:[]}]
+  selectedDateId: null
+};
+let editingAtivoId = null;
+let editingAtivoType = null;
+let editingDividaId = null;
+let editingDataId = null;
+let chartInstance = null;
+let _initDone = false;
 
-// ═══════════════════════════════════════════════════════════════════════════
-//  UTILITÁRIOS
-// ═══════════════════════════════════════════════════════════════════════════
-function fmtBRL(v) {
-  var n = parseFloat(v);
-  if (isNaN(n)) return 'R$ 0,00';
-  return 'R$ ' + n.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});
+// ---- UTILS ----
+function fmtMoeda(v) {
+  if (v == null || isNaN(v)) return 'R$ 0,00';
+  return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 }
-function parseBR(v) {
-  if (!v) return 0;
-  if (typeof v === 'number') return v;
-  return parseFloat(String(v).replace(/\./g,'').replace(',','.')) || 0;
+function parseMoeda(s) {
+  if (!s) return 0;
+  return parseFloat(s.toString().replace(/[^\d,.-]/g, '').replace(/\./g, '').replace(',', '.')) || 0;
 }
-function maskBRL(el) {
-  var v = el.value.replace(/\D/g,'');
+function fmtCurrInput(el) {
+  let v = el.value.replace(/[^\d]/g, '');
   if (!v) { el.value = ''; return; }
-  v = (parseInt(v)/100).toFixed(2);
-  el.value = parseFloat(v).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});
+  let n = parseInt(v) / 100;
+  el.value = n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
-function escHtml(s) { var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
-function fmtData(d) {
-  if (!d) return '—';
-  var parts = d.split('-');
-  return parts[2] + '/' + parts[1] + '/' + parts[0];
+function fmtDate(d) {
+  if (!d) return '--';
+  const [y, m, dd] = d.split('-');
+  return `${dd}/${m}/${y}`;
 }
+function genId() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
 
-// ═══════════════════════════════════════════════════════════════════════════
-//  TABS
-// ═══════════════════════════════════════════════════════════════════════════
+// ---- MODAL HELPERS ----
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+// ---- TABS ----
 function switchTab(tab) {
-  currentTab = tab;
-  ['ativos','passivos','rendas','despesas'].forEach(function(t) {
-    document.getElementById('tab-' + t).style.display = t === tab ? '' : 'none';
-  });
-  document.querySelectorAll('#main-tabs .tab-btn').forEach(function(btn, i) {
-    var tabs = ['ativos','passivos','rendas','despesas'];
-    btn.classList.toggle('active', tabs[i] === tab);
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+  ['liquidos', 'fisicos', 'intangiveis', 'dividas'].forEach(t => {
+    const el = document.getElementById('tab-' + t);
+    if (el) el.classList.toggle('hidden', t !== tab);
   });
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-//  SUBCATEGORIAS DINÂMICAS
-// ═══════════════════════════════════════════════════════════════════════════
-function updateSubcategorias(tipo) {
-  var sel = document.getElementById('at_subcategoria');
-  var cat = document.getElementById('at_categoria').value;
-  sel.innerHTML = '<option value="">Nenhuma</option>';
-  if (SUBCATS[cat]) {
-    SUBCATS[cat].forEach(function(s) {
-      sel.innerHTML += '<option value="' + s + '">' + s + '</option>';
-    });
-  }
+// ---- DATAS ----
+function novaData() {
+  editingDataId = null;
+  document.getElementById('modal-data-title').textContent = 'Nova Data de Registro';
+  document.getElementById('input-data').value = new Date().toISOString().split('T')[0];
+  openModal('modal-data');
 }
-
-// ═══════════════════════════════════════════════════════════════════════════
-//  MODAIS
-// ═══════════════════════════════════════════════════════════════════════════
-var _editMode = null; // null = add, {tipo, index}
-function openModal(tipo, index) {
-  _editMode = (index !== undefined) ? {tipo: tipo, index: index} : null;
-  var titleEl = document.getElementById('modal-' + tipo + '-title');
-  if (_editMode) {
-    titleEl.textContent = 'Editar ' + tipo.charAt(0).toUpperCase() + tipo.slice(1);
-    fillModalFromData(tipo, index);
+function editarDataAtual() {
+  const d = state.datas.find(x => x.id === state.selectedDateId);
+  if (!d) return;
+  editingDataId = d.id;
+  document.getElementById('modal-data-title').textContent = 'Editar Data';
+  document.getElementById('input-data').value = d.data;
+  openModal('modal-data');
+}
+function salvarData() {
+  const val = document.getElementById('input-data').value;
+  if (!val) { alert('Informe a data.'); return; }
+  if (editingDataId) {
+    const d = state.datas.find(x => x.id === editingDataId);
+    if (d) d.data = val;
   } else {
-    titleEl.textContent = 'Adicionar ' + tipo.charAt(0).toUpperCase() + tipo.slice(1);
-    clearModalFields(tipo);
+    // Copiar ativos da data anterior se existir
+    const prev = state.datas.length > 0 ? state.datas[state.datas.length - 1] : null;
+    const newDate = {
+      id: genId(),
+      data: val,
+      ativos_liquidos: prev ? JSON.parse(JSON.stringify(prev.ativos_liquidos)) : [],
+      ativos_fisicos: prev ? JSON.parse(JSON.stringify(prev.ativos_fisicos)) : [],
+      ativos_intangiveis: prev ? JSON.parse(JSON.stringify(prev.ativos_intangiveis)) : [],
+      dividas: prev ? JSON.parse(JSON.stringify(prev.dividas)) : []
+    };
+    // Zerar aportes/retiradas da cópia
+    newDate.ativos_liquidos.forEach(a => { a.aporte = 0; a.retirada = 0; });
+    newDate.ativos_fisicos.forEach(a => { a.aporte = 0; a.retirada = 0; });
+    newDate.ativos_intangiveis.forEach(a => { a.aporte = 0; a.retirada = 0; });
+    state.datas.push(newDate);
+    state.selectedDateId = newDate.id;
   }
-  document.getElementById('modal-' + tipo).classList.add('open');
+  state.datas.sort((a, b) => a.data.localeCompare(b.data));
+  closeModal('modal-data');
+  renderAll();
+  saveToSupabase();
 }
-function closeModal(tipo) {
-  document.getElementById('modal-' + tipo).classList.remove('open');
-  _editMode = null;
+function excluirDataAtual() {
+  if (!confirm('Excluir esta data e todos os dados associados?')) return;
+  state.datas = state.datas.filter(x => x.id !== state.selectedDateId);
+  state.selectedDateId = state.datas.length > 0 ? state.datas[state.datas.length - 1].id : null;
+  renderAll();
+  saveToSupabase();
+}
+function selectDate(id) {
+  state.selectedDateId = id;
+  renderAll();
 }
 
-function clearModalFields(tipo) {
-  var prefix = {ativo:'at_', passivo:'ps_', renda:'rd_', despesa:'dp_'}[tipo];
-  document.querySelectorAll('#modal-' + tipo + ' input, #modal-' + tipo + ' select, #modal-' + tipo + ' textarea').forEach(function(el) {
-    if (el.id && el.id.startsWith(prefix)) {
-      if (el.tagName === 'SELECT') el.selectedIndex = 0;
-      else el.value = '';
+// ---- INSTITUIÇÕES ----
+function gerenciarInstituicoes() {
+  renderInstList();
+  openModal('modal-inst');
+}
+function renderInstList() {
+  const el = document.getElementById('inst-list');
+  if (state.instituicoes.length === 0) {
+    el.innerHTML = '<p style="color:var(--muted);font-size:0.8rem;">Nenhuma instituição cadastrada.</p>';
+    return;
+  }
+  el.innerHTML = '<div style="display:flex;flex-wrap:wrap;gap:0.4rem;">' +
+    state.instituicoes.map(i => `<span style="display:inline-flex;align-items:center;gap:0.4rem;background:var(--card2);border:1px solid var(--border);border-radius:20px;padding:0.3rem 0.8rem;font-size:0.78rem;color:var(--fg);">${i.nome} <small style="color:var(--muted);">(${i.tipo})</small> <span style="cursor:pointer;color:var(--red);font-weight:700;" onclick="delInstituicao('${i.id}')">&times;</span></span>`).join('') +
+    '</div>';
+}
+function addInstituicao() {
+  const nome = document.getElementById('inst-nome').value.trim();
+  const tipo = document.getElementById('inst-tipo').value;
+  if (!nome || !tipo) { alert('Preencha nome e tipo.'); return; }
+  state.instituicoes.push({ id: genId(), nome, tipo });
+  document.getElementById('inst-nome').value = '';
+  document.getElementById('inst-tipo').value = '';
+  renderInstList();
+  saveToSupabase();
+}
+function delInstituicao(id) {
+  if (!confirm('Excluir esta instituição?')) return;
+  state.instituicoes = state.instituicoes.filter(i => i.id !== id);
+  renderInstList();
+  saveToSupabase();
+}
+
+// ---- ATIVO MODAL ----
+function openAtivoModal(tipo, id) {
+  editingAtivoType = tipo;
+  editingAtivoId = id || null;
+  const dateObj = state.datas.find(x => x.id === state.selectedDateId);
+  if (!dateObj) return;
+
+  let ativo = null;
+  if (id) {
+    const list = tipo === 'liquido' ? dateObj.ativos_liquidos : tipo === 'fisico' ? dateObj.ativos_fisicos : dateObj.ativos_intangiveis;
+    ativo = list.find(a => a.id === id);
+  }
+
+  let html = `<div class="modal-header"><h2>${id ? 'Editar' : 'Adicionar'} Ativo ${tipo === 'liquido' ? 'Líquido' : tipo === 'fisico' ? 'Físico' : 'Intangível'}</h2><button class="btn-icon" onclick="closeModal('modal-ativo')">&#10005;</button></div>`;
+
+  html += `<div class="modal-section"><div class="modal-section-title">Identificação</div>`;
+  html += `<div class="sub-grid">`;
+  html += `<div class="field"><label>Nome do Ativo *</label><input id="at-nome" value="${ativo ? ativo.nome : ''}" placeholder="Ex: ${tipo === 'liquido' ? 'CDB Banco X' : tipo === 'fisico' ? 'Apartamento Centro' : 'Marca XYZ'}"></div>`;
+  html += `<div class="field"><label>Valor Atual (R$) *</label><input id="at-valor" value="${ativo ? ativo.valor.toLocaleString('pt-BR', {minimumFractionDigits:2}) : ''}" oninput="fmtCurrInput(this)" placeholder="0,00"></div>`;
+  html += `</div>`;
+
+  if (tipo === 'liquido') {
+    html += `<div class="sub-grid" style="margin-top:0.75rem;">`;
+    html += `<div class="field"><label>Instituição</label><select id="at-inst"><option value="">Selecione...</option>${state.instituicoes.map(i => `<option value="${i.id}" ${ativo && ativo.instituicao_id === i.id ? 'selected' : ''}>${i.nome} (${i.tipo})</option>`).join('')}</select></div>`;
+    html += `<div class="field"><label>Categoria</label><select id="at-cat"><option value="">Selecione...</option><option value="Renda Fixa" ${ativo && ativo.categoria === 'Renda Fixa' ? 'selected' : ''}>Renda Fixa</option><option value="Renda Variável" ${ativo && ativo.categoria === 'Renda Variável' ? 'selected' : ''}>Renda Variável</option><option value="Fundos" ${ativo && ativo.categoria === 'Fundos' ? 'selected' : ''}>Fundos</option><option value="Previdência" ${ativo && ativo.categoria === 'Previdência' ? 'selected' : ''}>Previdência</option><option value="Alternativos" ${ativo && ativo.categoria === 'Alternativos' ? 'selected' : ''}>Alternativos</option></select></div>`;
+    html += `</div>`;
+    html += `<div class="sub-grid" style="margin-top:0.75rem;">`;
+    html += `<div class="field"><label>Classificação de Risco *</label><select id="at-risco"><option value="">Selecione...</option>${Object.keys(CLASSIFICACAO_RISCO).map(k => `<option value="${k}" ${ativo && ativo.risco === k ? 'selected' : ''}>${CLASSIFICACAO_RISCO[k].label}</option>`).join('')}</select></div>`;
+    html += `<div class="field"><label>Objetivo Vinculado</label><select id="at-objetivo"><option value="">Nenhum</option></select></div>`;
+    html += `</div>`;
+    html += `<div class="help-box" style="margin-top:0.8rem;"><strong>Guia de Classificação de Risco:</strong><br>`;
+    html += Object.keys(CLASSIFICACAO_RISCO).map(k => `<span style="color:${CLASSIFICACAO_RISCO[k].cor};">&#9679;</span> <strong>${CLASSIFICACAO_RISCO[k].label}:</strong> ${RISCO_HELP[k]}`).join('<br>');
+    html += `</div>`;
+  } else {
+    html += `<div class="field" style="margin-top:0.75rem;"><label>Descrição / Observações</label><textarea id="at-desc" rows="2" placeholder="Detalhes adicionais...">${ativo ? (ativo.descricao || '') : ''}</textarea></div>`;
+  }
+  html += `</div>`;
+
+  // Aportes e Retiradas
+  html += `<div class="modal-section"><div class="modal-section-title">Movimentação nesta Data</div>`;
+  html += `<div class="sub-grid">`;
+  html += `<div class="field"><label>Aporte (R$)</label><input id="at-aporte" value="${ativo ? (ativo.aporte || 0).toLocaleString('pt-BR', {minimumFractionDigits:2}) : ''}" oninput="fmtCurrInput(this)" placeholder="0,00"></div>`;
+  html += `<div class="field"><label>Retirada (R$)</label><input id="at-retirada" value="${ativo ? (ativo.retirada || 0).toLocaleString('pt-BR', {minimumFractionDigits:2}) : ''}" oninput="fmtCurrInput(this)" placeholder="0,00"></div>`;
+  html += `</div>`;
+  html += `<p style="font-size:0.72rem;color:var(--muted);margin-top:0.5rem;">Informe aportes ou retiradas feitos entre a data anterior e esta. Isso permite calcular a rentabilidade real.</p>`;
+  html += `</div>`;
+
+  html += `<div class="modal-footer"><button class="btn btn-outline" onclick="closeModal('modal-ativo')">Cancelar</button><button class="btn btn-primary" onclick="salvarAtivo()">Salvar</button></div>`;
+
+  document.getElementById('modal-ativo-content').innerHTML = html;
+  openModal('modal-ativo');
+
+  // Carregar objetivos do acompanhamento
+  if (tipo === 'liquido') loadObjetivos(ativo);
+}
+
+async function loadObjetivos(ativo) {
+  const sel = document.getElementById('at-objetivo');
+  if (!sel) return;
+  try {
+    const clienteId = sessionStorage.getItem('cliente_id');
+    if (!clienteId) return;
+    const { data } = await sb.from('ferramentas_dados').select('dados').eq('cliente_id', clienteId).eq('ferramenta', 'acompanhamento').maybeSingle();
+    if (data && data.dados && data.dados.objetivos) {
+      data.dados.objetivos.forEach(obj => {
+        const opt = document.createElement('option');
+        opt.value = obj.id;
+        opt.textContent = obj.nome;
+        if (ativo && ativo.objetivo_id === obj.id) opt.selected = true;
+        sel.appendChild(opt);
+      });
     }
-  });
-  if (tipo === 'ativo') updateSubcategorias('ativo');
+  } catch (e) { console.log('Objetivos não carregados:', e); }
 }
 
-function fillModalFromData(tipo, index) {
-  var item;
-  if (tipo === 'ativo') item = ativos[index];
-  else if (tipo === 'passivo') item = passivos[index];
-  else if (tipo === 'renda') item = rendas[index];
-  else item = despesas[index];
-  if (!item) return;
-
-  if (tipo === 'ativo') {
-    document.getElementById('at_nome').value = item.nome || '';
-    document.getElementById('at_categoria').value = item.categoria || '';
-    updateSubcategorias('ativo');
-    document.getElementById('at_subcategoria').value = item.subcategoria || '';
-    document.getElementById('at_liquidez').value = item.liquidez || 'alta';
-    document.getElementById('at_valor_atual').value = item.valor_atual ? parseBR(item.valor_atual).toLocaleString('pt-BR',{minimumFractionDigits:2}) : '';
-    document.getElementById('at_valor_aquisicao').value = item.valor_aquisicao ? parseBR(item.valor_aquisicao).toLocaleString('pt-BR',{minimumFractionDigits:2}) : '';
-    document.getElementById('at_data_aquisicao').value = item.data_aquisicao || '';
-    document.getElementById('at_rentabilidade').value = item.rentabilidade || '';
-    document.getElementById('at_instituicao').value = item.instituicao || '';
-    document.getElementById('at_vencimento').value = item.vencimento || '';
-    document.getElementById('at_obs').value = item.obs || '';
-  } else if (tipo === 'passivo') {
-    document.getElementById('ps_nome').value = item.nome || '';
-    document.getElementById('ps_categoria').value = item.categoria || '';
-    document.getElementById('ps_saldo').value = item.saldo ? parseBR(item.saldo).toLocaleString('pt-BR',{minimumFractionDigits:2}) : '';
-    document.getElementById('ps_valor_original').value = item.valor_original ? parseBR(item.valor_original).toLocaleString('pt-BR',{minimumFractionDigits:2}) : '';
-    document.getElementById('ps_parcela').value = item.parcela ? parseBR(item.parcela).toLocaleString('pt-BR',{minimumFractionDigits:2}) : '';
-    document.getElementById('ps_taxa').value = item.taxa || '';
-    document.getElementById('ps_parcelas_rest').value = item.parcelas_rest || '';
-    document.getElementById('ps_data_inicio').value = item.data_inicio || '';
-    document.getElementById('ps_instituicao').value = item.instituicao || '';
-    document.getElementById('ps_obs').value = item.obs || '';
-  } else if (tipo === 'renda') {
-    document.getElementById('rd_nome').value = item.nome || '';
-    document.getElementById('rd_tipo').value = item.tipo || '';
-    document.getElementById('rd_bruto').value = item.bruto ? parseBR(item.bruto).toLocaleString('pt-BR',{minimumFractionDigits:2}) : '';
-    document.getElementById('rd_liquido').value = item.liquido ? parseBR(item.liquido).toLocaleString('pt-BR',{minimumFractionDigits:2}) : '';
-    document.getElementById('rd_estabilidade').value = item.estabilidade || 'estavel';
-    document.getElementById('rd_obs').value = item.obs || '';
-  } else {
-    document.getElementById('dp_nome').value = item.nome || '';
-    document.getElementById('dp_categoria').value = item.categoria || '';
-    document.getElementById('dp_valor').value = item.valor ? parseBR(item.valor).toLocaleString('pt-BR',{minimumFractionDigits:2}) : '';
-    document.getElementById('dp_essencial').value = item.essencial || 'essencial';
-    document.getElementById('dp_obs').value = item.obs || '';
-  }
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
-//  SALVAR ITENS
-// ═══════════════════════════════════════════════════════════════════════════
 function salvarAtivo() {
-  var nome = document.getElementById('at_nome').value.trim();
-  var cat = document.getElementById('at_categoria').value;
-  var valor = parseBR(document.getElementById('at_valor_atual').value);
-  if (!nome || !cat || !valor) { alert('Preencha Nome, Categoria e Valor Atual.'); return; }
-  var item = {
-    id: (_editMode && _editMode.tipo === 'ativo') ? ativos[_editMode.index].id : nextId++,
-    nome: nome,
-    categoria: cat,
-    subcategoria: document.getElementById('at_subcategoria').value,
-    liquidez: document.getElementById('at_liquidez').value,
-    valor_atual: valor,
-    valor_aquisicao: parseBR(document.getElementById('at_valor_aquisicao').value),
-    data_aquisicao: document.getElementById('at_data_aquisicao').value,
-    rentabilidade: parseFloat(document.getElementById('at_rentabilidade').value) || 0,
-    instituicao: document.getElementById('at_instituicao').value.trim(),
-    vencimento: document.getElementById('at_vencimento').value,
-    obs: document.getElementById('at_obs').value.trim()
-  };
-  if (_editMode && _editMode.tipo === 'ativo') ativos[_editMode.index] = item;
-  else ativos.push(item);
-  closeModal('ativo');
+  const nome = document.getElementById('at-nome').value.trim();
+  const valor = parseMoeda(document.getElementById('at-valor').value);
+  if (!nome) { alert('Informe o nome do ativo.'); return; }
+
+  const dateObj = state.datas.find(x => x.id === state.selectedDateId);
+  if (!dateObj) return;
+
+  const tipo = editingAtivoType;
+  const listKey = tipo === 'liquido' ? 'ativos_liquidos' : tipo === 'fisico' ? 'ativos_fisicos' : 'ativos_intangiveis';
+
+  const aporte = parseMoeda(document.getElementById('at-aporte')?.value);
+  const retirada = parseMoeda(document.getElementById('at-retirada')?.value);
+
+  let obj = { id: editingAtivoId || genId(), nome, valor, aporte, retirada };
+
+  if (tipo === 'liquido') {
+    obj.instituicao_id = document.getElementById('at-inst')?.value || '';
+    obj.instituicao_nome = state.instituicoes.find(i => i.id === obj.instituicao_id)?.nome || '';
+    obj.categoria = document.getElementById('at-cat')?.value || '';
+    obj.risco = document.getElementById('at-risco')?.value || '';
+    obj.objetivo_id = document.getElementById('at-objetivo')?.value || '';
+  } else {
+    obj.descricao = document.getElementById('at-desc')?.value || '';
+  }
+
+  if (editingAtivoId) {
+    const idx = dateObj[listKey].findIndex(a => a.id === editingAtivoId);
+    if (idx >= 0) dateObj[listKey][idx] = obj;
+  } else {
+    dateObj[listKey].push(obj);
+  }
+
+  closeModal('modal-ativo');
   renderAll();
-  saveData();
+  saveToSupabase();
 }
 
-function salvarPassivo() {
-  var nome = document.getElementById('ps_nome').value.trim();
-  var cat = document.getElementById('ps_categoria').value;
-  var saldo = parseBR(document.getElementById('ps_saldo').value);
-  if (!nome || !cat || !saldo) { alert('Preencha Nome, Categoria e Saldo Devedor.'); return; }
-  var item = {
-    id: (_editMode && _editMode.tipo === 'passivo') ? passivos[_editMode.index].id : nextId++,
-    nome: nome,
-    categoria: cat,
-    saldo: saldo,
-    valor_original: parseBR(document.getElementById('ps_valor_original').value),
-    parcela: parseBR(document.getElementById('ps_parcela').value),
-    taxa: parseFloat(document.getElementById('ps_taxa').value) || 0,
-    parcelas_rest: parseInt(document.getElementById('ps_parcelas_rest').value) || 0,
-    data_inicio: document.getElementById('ps_data_inicio').value,
-    instituicao: document.getElementById('ps_instituicao').value.trim(),
-    obs: document.getElementById('ps_obs').value.trim()
-  };
-  if (_editMode && _editMode.tipo === 'passivo') passivos[_editMode.index] = item;
-  else passivos.push(item);
-  closeModal('passivo');
+function delAtivo(tipo, id) {
+  if (!confirm('Excluir este ativo?')) return;
+  const dateObj = state.datas.find(x => x.id === state.selectedDateId);
+  if (!dateObj) return;
+  const listKey = tipo === 'liquido' ? 'ativos_liquidos' : tipo === 'fisico' ? 'ativos_fisicos' : 'ativos_intangiveis';
+  dateObj[listKey] = dateObj[listKey].filter(a => a.id !== id);
   renderAll();
-  saveData();
+  saveToSupabase();
 }
 
-function salvarRenda() {
-  var nome = document.getElementById('rd_nome').value.trim();
-  var bruto = parseBR(document.getElementById('rd_bruto').value);
-  if (!nome || !bruto) { alert('Preencha Descrição e Valor Bruto.'); return; }
-  var item = {
-    id: (_editMode && _editMode.tipo === 'renda') ? rendas[_editMode.index].id : nextId++,
-    nome: nome,
-    tipo: document.getElementById('rd_tipo').value,
-    bruto: bruto,
-    liquido: parseBR(document.getElementById('rd_liquido').value) || bruto,
-    estabilidade: document.getElementById('rd_estabilidade').value,
-    obs: document.getElementById('rd_obs').value.trim()
-  };
-  if (_editMode && _editMode.tipo === 'renda') rendas[_editMode.index] = item;
-  else rendas.push(item);
-  closeModal('renda');
+// ---- DÍVIDA MODAL ----
+function openDividaModal(id) {
+  editingDividaId = id || null;
+  const dateObj = state.datas.find(x => x.id === state.selectedDateId);
+  if (!dateObj) return;
+  const div = id ? dateObj.dividas.find(d => d.id === id) : null;
+
+  let html = `<div class="modal-header"><h2>${id ? 'Editar' : 'Adicionar'} Dívida</h2><button class="btn-icon" onclick="closeModal('modal-divida')">&#10005;</button></div>`;
+  html += `<div class="sub-grid">`;
+  html += `<div class="field"><label>Nome da Dívida *</label><input id="dv-nome" value="${div ? div.nome : ''}" placeholder="Ex: Financiamento Imobiliário"></div>`;
+  html += `<div class="field"><label>Saldo Devedor Atualizado (R$) *</label><input id="dv-saldo" value="${div ? div.saldo.toLocaleString('pt-BR', {minimumFractionDigits:2}) : ''}" oninput="fmtCurrInput(this)" placeholder="0,00"></div>`;
+  html += `</div>`;
+  html += `<div class="field" style="margin-top:0.75rem;"><label>Observações</label><textarea id="dv-obs" rows="2" placeholder="Opcional">${div ? (div.obs || '') : ''}</textarea></div>`;
+  html += `<div class="modal-footer"><button class="btn btn-outline" onclick="closeModal('modal-divida')">Cancelar</button><button class="btn btn-primary" onclick="salvarDivida()">Salvar</button></div>`;
+
+  document.getElementById('modal-divida-content').innerHTML = html;
+  openModal('modal-divida');
+}
+
+function salvarDivida() {
+  const nome = document.getElementById('dv-nome').value.trim();
+  const saldo = parseMoeda(document.getElementById('dv-saldo').value);
+  if (!nome) { alert('Informe o nome da dívida.'); return; }
+
+  const dateObj = state.datas.find(x => x.id === state.selectedDateId);
+  if (!dateObj) return;
+
+  const obj = { id: editingDividaId || genId(), nome, saldo, obs: document.getElementById('dv-obs').value.trim() };
+
+  if (editingDividaId) {
+    const idx = dateObj.dividas.findIndex(d => d.id === editingDividaId);
+    if (idx >= 0) dateObj.dividas[idx] = obj;
+  } else {
+    dateObj.dividas.push(obj);
+  }
+
+  closeModal('modal-divida');
   renderAll();
-  saveData();
+  saveToSupabase();
 }
 
-function salvarDespesa() {
-  var nome = document.getElementById('dp_nome').value.trim();
-  var valor = parseBR(document.getElementById('dp_valor').value);
-  if (!nome || !valor) { alert('Preencha Descrição e Valor.'); return; }
-  var item = {
-    id: (_editMode && _editMode.tipo === 'despesa') ? despesas[_editMode.index].id : nextId++,
-    nome: nome,
-    categoria: document.getElementById('dp_categoria').value,
-    valor: valor,
-    essencial: document.getElementById('dp_essencial').value,
-    obs: document.getElementById('dp_obs').value.trim()
-  };
-  if (_editMode && _editMode.tipo === 'despesa') despesas[_editMode.index] = item;
-  else despesas.push(item);
-  closeModal('despesa');
+function delDivida(id) {
+  if (!confirm('Excluir esta dívida?')) return;
+  const dateObj = state.datas.find(x => x.id === state.selectedDateId);
+  if (!dateObj) return;
+  dateObj.dividas = dateObj.dividas.filter(d => d.id !== id);
   renderAll();
-  saveData();
+  saveToSupabase();
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-//  EXCLUSÃO
-// ═══════════════════════════════════════════════════════════════════════════
-var _delTarget = null;
-function openDelModal(tipo, index) {
-  var lists = {ativo: ativos, passivo: passivos, renda: rendas, despesa: despesas};
-  var item = lists[tipo][index];
-  _delTarget = {tipo: tipo, index: index};
-  document.getElementById('del-msg').innerHTML = 'Deseja excluir <strong>"' + escHtml(item.nome) + '"</strong>?';
-  document.getElementById('modal-del').classList.add('open');
-}
-function closeDelModal() {
-  document.getElementById('modal-del').classList.remove('open');
-  _delTarget = null;
-}
-function confirmarExclusao() {
-  if (!_delTarget) return;
-  var lists = {ativo: ativos, passivo: passivos, renda: rendas, despesa: despesas};
-  lists[_delTarget.tipo].splice(_delTarget.index, 1);
-  closeDelModal();
-  renderAll();
-  saveData();
+// ---- RENDER ----
+function renderAll() {
+  renderDatesNav();
+  renderDashboard();
+  renderChart();
+  renderEditor();
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-//  RENDERIZAÇÃO
-// ═══════════════════════════════════════════════════════════════════════════
-var CAT_LABELS = {
-  investimento:'Investimento',imovel:'Imóvel',veiculo:'Veículo',bem_movel:'Bem Móvel',participacao:'Participação',recebivel:'Recebível',outro_ativo:'Outro',
-  financiamento_imob:'Financ. Imobiliário',financiamento_veic:'Financ. Veículo',emprestimo_pessoal:'Empréstimo Pessoal',emprestimo_consig:'Consignado',cartao_credito:'Cartão de Crédito',cheque_especial:'Cheque Especial',credito_estudantil:'Crédito Estudantil',divida_tributaria:'Dívida Tributária',outro_passivo:'Outro',
-  moradia:'Moradia',transporte:'Transporte',alimentacao:'Alimentação',saude:'Saúde',educacao:'Educação',lazer:'Lazer',seguros:'Seguros',assinaturas:'Assinaturas',dependentes:'Dependentes',outro_despesa:'Outro',
-  salario_clt:'Salário CLT',pro_labore:'Pró-labore',autonomo:'Autônomo',aluguel:'Aluguel',dividendos:'Dividendos',pensao:'Pensão/Aposent.',rendimento:'Rendimentos',outro_renda:'Outro'
-};
-var LIQ_LABELS = {alta:'Alta',media:'Média',baixa:'Baixa',iliquido:'Ilíquido'};
-var LIQ_BADGES = {alta:'badge-green',media:'badge-blue',baixa:'badge-orange',iliquido:'badge-red'};
-var ESS_LABELS = {essencial:'Essencial',importante:'Importante',desejavel:'Desejável','supérfluo':'Supérfluo'};
-var ESS_BADGES = {essencial:'badge-red',importante:'badge-orange',desejavel:'badge-blue','supérfluo':'badge-muted'};
-var EST_LABELS = {estavel:'Estável',variavel:'Variável',temporaria:'Temporária'};
-var EST_BADGES = {estavel:'badge-green',variavel:'badge-orange',temporaria:'badge-red'};
-
-function renderAtivos() {
-  var wrap = document.getElementById('ativos-table-wrap');
-  document.getElementById('ativos-count').textContent = ativos.length + ' ite' + (ativos.length === 1 ? 'm' : 'ns');
-  if (ativos.length === 0) {
-    wrap.innerHTML = '<div class="empty"><span class="ico">🏛️</span><p>Nenhum ativo cadastrado.<br>Clique em "+ Adicionar Ativo" para começar.</p></div>';
+function renderDatesNav() {
+  const nav = document.getElementById('dates-nav');
+  if (state.datas.length === 0) {
+    nav.innerHTML = '<p style="color:var(--muted);font-size:0.8rem;font-style:italic;">Nenhuma data registrada. Clique em "+ Nova Data" para começar.</p>';
     return;
   }
-  // Agrupar por categoria
-  var groups = {};
-  ativos.forEach(function(a, i) {
-    if (!groups[a.categoria]) groups[a.categoria] = [];
-    groups[a.categoria].push({item: a, idx: i});
-  });
-  var html = '<div class="table-wrap"><table><thead><tr><th>Nome</th><th>Subcategoria</th><th>Valor Atual</th><th>Liquidez</th><th>Rentab.</th><th>Instituição</th><th></th></tr></thead><tbody>';
-  Object.keys(groups).forEach(function(cat) {
-    html += '<tr class="group-header"><td colspan="7">' + (CAT_LABELS[cat] || cat) + ' (' + groups[cat].length + ')</td></tr>';
-    groups[cat].forEach(function(g) {
-      var a = g.item;
-      html += '<tr>';
-      html += '<td class="td-name">' + escHtml(a.nome) + '</td>';
-      html += '<td>' + (a.subcategoria || '—') + '</td>';
-      html += '<td class="td-val-pos">' + fmtBRL(a.valor_atual) + '</td>';
-      html += '<td><span class="badge ' + (LIQ_BADGES[a.liquidez]||'') + '">' + (LIQ_LABELS[a.liquidez]||'—') + '</span></td>';
-      html += '<td>' + (a.rentabilidade ? a.rentabilidade.toFixed(1) + '%' : '—') + '</td>';
-      html += '<td style="font-size:0.78rem;color:var(--muted);">' + (a.instituicao || '—') + '</td>';
-      html += '<td class="td-actions">';
-      html += '<button class="btn-icon" onclick="openModal(\'ativo\',' + g.idx + ')" title="Editar" style="color:var(--blue);">✏️</button>';
-      html += '<button class="btn-icon" onclick="openDelModal(\'ativo\',' + g.idx + ')" title="Excluir" style="color:var(--red);">🗑️</button>';
-      html += '</td></tr>';
-    });
-  });
-  html += '</tbody></table></div>';
-  wrap.innerHTML = html;
-}
-
-function renderPassivos() {
-  var wrap = document.getElementById('passivos-table-wrap');
-  document.getElementById('passivos-count').textContent = passivos.length + ' ite' + (passivos.length === 1 ? 'm' : 'ns');
-  if (passivos.length === 0) {
-    wrap.innerHTML = '<div class="empty"><span class="ico">💳</span><p>Nenhum passivo cadastrado.<br>Clique em "+ Adicionar Passivo" para começar.</p></div>';
-    return;
-  }
-  var html = '<div class="table-wrap"><table><thead><tr><th>Nome</th><th>Categoria</th><th>Saldo Devedor</th><th>Parcela</th><th>Taxa a.a.</th><th>Restantes</th><th>Instituição</th><th></th></tr></thead><tbody>';
-  passivos.forEach(function(p, i) {
-    html += '<tr>';
-    html += '<td class="td-name">' + escHtml(p.nome) + '</td>';
-    html += '<td><span class="badge badge-red">' + (CAT_LABELS[p.categoria]||p.categoria) + '</span></td>';
-    html += '<td class="td-val-neg">' + fmtBRL(p.saldo) + '</td>';
-    html += '<td>' + (p.parcela ? fmtBRL(p.parcela) : '—') + '</td>';
-    html += '<td>' + (p.taxa ? p.taxa.toFixed(1) + '%' : '—') + '</td>';
-    html += '<td>' + (p.parcelas_rest || '—') + '</td>';
-    html += '<td style="font-size:0.78rem;color:var(--muted);">' + (p.instituicao || '—') + '</td>';
-    html += '<td class="td-actions">';
-    html += '<button class="btn-icon" onclick="openModal(\'passivo\',' + i + ')" title="Editar" style="color:var(--blue);">✏️</button>';
-    html += '<button class="btn-icon" onclick="openDelModal(\'passivo\',' + i + ')" title="Excluir" style="color:var(--red);">🗑️</button>';
-    html += '</td></tr>';
-  });
-  html += '</tbody></table></div>';
-  wrap.innerHTML = html;
-}
-
-function renderRendas() {
-  var wrap = document.getElementById('rendas-table-wrap');
-  document.getElementById('rendas-count').textContent = rendas.length + ' fonte' + (rendas.length === 1 ? '' : 's');
-  if (rendas.length === 0) {
-    wrap.innerHTML = '<div class="empty"><span class="ico">💰</span><p>Nenhuma fonte de renda cadastrada.<br>Clique em "+ Adicionar Renda" para começar.</p></div>';
-    return;
-  }
-  var html = '<div class="table-wrap"><table><thead><tr><th>Descrição</th><th>Tipo</th><th>Bruto</th><th>Líquido</th><th>Estabilidade</th><th></th></tr></thead><tbody>';
-  rendas.forEach(function(r, i) {
-    html += '<tr>';
-    html += '<td class="td-name">' + escHtml(r.nome) + '</td>';
-    html += '<td><span class="badge badge-teal">' + (CAT_LABELS[r.tipo]||r.tipo) + '</span></td>';
-    html += '<td class="td-val-pos">' + fmtBRL(r.bruto) + '</td>';
-    html += '<td>' + fmtBRL(r.liquido) + '</td>';
-    html += '<td><span class="badge ' + (EST_BADGES[r.estabilidade]||'') + '">' + (EST_LABELS[r.estabilidade]||'—') + '</span></td>';
-    html += '<td class="td-actions">';
-    html += '<button class="btn-icon" onclick="openModal(\'renda\',' + i + ')" title="Editar" style="color:var(--blue);">✏️</button>';
-    html += '<button class="btn-icon" onclick="openDelModal(\'renda\',' + i + ')" title="Excluir" style="color:var(--red);">🗑️</button>';
-    html += '</td></tr>';
-  });
-  html += '</tbody></table></div>';
-  wrap.innerHTML = html;
-}
-
-function renderDespesas() {
-  var wrap = document.getElementById('despesas-table-wrap');
-  document.getElementById('despesas-count').textContent = despesas.length + ' ite' + (despesas.length === 1 ? 'm' : 'ns');
-  if (despesas.length === 0) {
-    wrap.innerHTML = '<div class="empty"><span class="ico">📋</span><p>Nenhuma despesa fixa cadastrada.<br>Clique em "+ Adicionar Despesa" para começar.</p></div>';
-    return;
-  }
-  var html = '<div class="table-wrap"><table><thead><tr><th>Descrição</th><th>Categoria</th><th>Valor Mensal</th><th>Essencialidade</th><th></th></tr></thead><tbody>';
-  despesas.forEach(function(d, i) {
-    html += '<tr>';
-    html += '<td class="td-name">' + escHtml(d.nome) + '</td>';
-    html += '<td><span class="badge badge-orange">' + (CAT_LABELS[d.categoria]||d.categoria) + '</span></td>';
-    html += '<td class="td-val-neg">' + fmtBRL(d.valor) + '</td>';
-    html += '<td><span class="badge ' + (ESS_BADGES[d.essencial]||'') + '">' + (ESS_LABELS[d.essencial]||'—') + '</span></td>';
-    html += '<td class="td-actions">';
-    html += '<button class="btn-icon" onclick="openModal(\'despesa\',' + i + ')" title="Editar" style="color:var(--blue);">✏️</button>';
-    html += '<button class="btn-icon" onclick="openDelModal(\'despesa\',' + i + ')" title="Excluir" style="color:var(--red);">🗑️</button>';
-    html += '</td></tr>';
-  });
-  html += '</tbody></table></div>';
-  wrap.innerHTML = html;
+  nav.innerHTML = state.datas.map(d => `<span class="date-chip ${d.id === state.selectedDateId ? 'active' : ''}" onclick="selectDate('${d.id}')">${fmtDate(d.data)}</span>`).join('');
 }
 
 function renderDashboard() {
-  var totalAtivos = ativos.reduce(function(s,a){ return s + parseBR(a.valor_atual); }, 0);
-  var totalPassivos = passivos.reduce(function(s,p){ return s + parseBR(p.saldo); }, 0);
-  var totalRenda = rendas.reduce(function(s,r){ return s + parseBR(r.liquido); }, 0);
-  var totalDespesas = despesas.reduce(function(s,d){ return s + parseBR(d.valor); }, 0);
-  var totalParcelas = passivos.reduce(function(s,p){ return s + parseBR(p.parcela); }, 0);
-  var patrimonio = totalAtivos - totalPassivos;
+  const section = document.getElementById('section-dashboard');
+  const dashEl = document.getElementById('dashboard');
+  if (state.datas.length < 1) { section.classList.add('hidden'); return; }
+  section.classList.remove('hidden');
 
-  document.getElementById('d-patrimonio').textContent = fmtBRL(patrimonio);
-  document.getElementById('d-patrimonio').style.color = patrimonio >= 0 ? 'var(--green)' : 'var(--red)';
-  document.getElementById('d-patrimonio-sub').textContent = patrimonio >= 0 ? 'Positivo' : 'Negativo';
-  document.getElementById('d-ativos').textContent = fmtBRL(totalAtivos);
-  document.getElementById('d-ativos-count').textContent = ativos.length + ' ite' + (ativos.length === 1 ? 'm' : 'ns');
-  document.getElementById('d-passivos').textContent = fmtBRL(totalPassivos);
-  document.getElementById('d-passivos-count').textContent = passivos.length + ' ite' + (passivos.length === 1 ? 'm' : 'ns');
-  document.getElementById('d-renda').textContent = fmtBRL(totalRenda);
-  document.getElementById('d-renda-count').textContent = rendas.length + ' fonte' + (rendas.length === 1 ? '' : 's');
-  document.getElementById('d-despesas').textContent = fmtBRL(totalDespesas + totalParcelas);
-  document.getElementById('d-despesas-count').textContent = despesas.length + ' fixas + ' + passivos.length + ' parcelas';
+  const last = state.datas[state.datas.length - 1];
+  const totalLiq = last.ativos_liquidos.reduce((s, a) => s + a.valor, 0);
+  const totalFis = last.ativos_fisicos.reduce((s, a) => s + a.valor, 0);
+  const totalInt = last.ativos_intangiveis.reduce((s, a) => s + a.valor, 0);
+  const totalDiv = last.dividas.reduce((s, d) => s + d.saldo, 0);
+  const patrimonio = totalLiq + totalFis + totalInt - totalDiv;
 
-  // Indicadores
-  var hasData = ativos.length > 0 || passivos.length > 0;
-  document.getElementById('indicadores-section').style.display = hasData ? '' : 'none';
-
-  if (hasData) {
-    // Liquidez
-    var liqAlta = ativos.filter(function(a){ return a.liquidez === 'alta'; }).reduce(function(s,a){ return s + parseBR(a.valor_atual); }, 0);
-    var pctLiq = totalAtivos > 0 ? (liqAlta / totalAtivos * 100) : 0;
-    document.getElementById('ind-liquidez-fill').style.width = Math.min(pctLiq, 100) + '%';
-    document.getElementById('ind-liquidez-val').textContent = pctLiq.toFixed(1) + '%';
-
-    // Endividamento
-    var pctEndiv = totalAtivos > 0 ? (totalPassivos / totalAtivos * 100) : 0;
-    document.getElementById('ind-endiv-fill').style.width = Math.min(pctEndiv, 100) + '%';
-    document.getElementById('ind-endiv-fill').style.background = pctEndiv > 50 ? 'var(--red)' : pctEndiv > 30 ? 'var(--orange)' : 'var(--green)';
-    document.getElementById('ind-endiv-val').textContent = pctEndiv.toFixed(1) + '%';
-
-    // Comprometimento
-    var totalMensal = totalDespesas + totalParcelas;
-    var pctComprom = totalRenda > 0 ? (totalMensal / totalRenda * 100) : 0;
-    document.getElementById('ind-comprom-fill').style.width = Math.min(pctComprom, 100) + '%';
-    document.getElementById('ind-comprom-fill').style.background = pctComprom > 70 ? 'var(--red)' : pctComprom > 50 ? 'var(--orange)' : 'var(--green)';
-    document.getElementById('ind-comprom-val').textContent = pctComprom.toFixed(1) + '%';
-
-    // Diversificação
-    var cats = {};
-    ativos.forEach(function(a){ cats[a.categoria] = true; });
-    var numCats = Object.keys(cats).length;
-    var maxCats = 7;
-    var pctDiv = (numCats / maxCats * 100);
-    document.getElementById('ind-divers-fill').style.width = Math.min(pctDiv, 100) + '%';
-    document.getElementById('ind-divers-val').textContent = numCats + ' de ' + maxCats + ' categorias';
-  }
-}
-
-function renderCharts() {
-  var hasAtivos = ativos.length > 0;
-  var hasPassivos = passivos.length > 0;
-  document.getElementById('charts-section').style.display = (hasAtivos || hasPassivos) ? '' : 'none';
-
-  // Ativos chart
-  if (hasAtivos) {
-    var catTotals = {};
-    ativos.forEach(function(a) {
-      var cat = CAT_LABELS[a.categoria] || a.categoria;
-      catTotals[cat] = (catTotals[cat] || 0) + parseBR(a.valor_atual);
+  // Rentabilidade global
+  let rentGlobal = '';
+  if (state.datas.length >= 2) {
+    const first = state.datas[0];
+    const firstTotal = first.ativos_liquidos.reduce((s, a) => s + a.valor, 0) + first.ativos_fisicos.reduce((s, a) => s + a.valor, 0) + first.ativos_intangiveis.reduce((s, a) => s + a.valor, 0) - first.dividas.reduce((s, d) => s + d.saldo, 0);
+    // Somar todos os aportes líquidos ao longo do tempo
+    let totalAportes = 0;
+    state.datas.forEach(dt => {
+      dt.ativos_liquidos.forEach(a => { totalAportes += (a.aporte || 0) - (a.retirada || 0); });
+      dt.ativos_fisicos.forEach(a => { totalAportes += (a.aporte || 0) - (a.retirada || 0); });
+      dt.ativos_intangiveis.forEach(a => { totalAportes += (a.aporte || 0) - (a.retirada || 0); });
     });
-    var labels = Object.keys(catTotals);
-    var values = labels.map(function(l){ return catTotals[l]; });
-    var colors = labels.map(function(l, i){ return PALETTE[i % PALETTE.length]; });
-    if (chartAtivos) chartAtivos.destroy();
-    chartAtivos = new Chart(document.getElementById('chart-ativos'), {
-      type: 'doughnut',
-      data: { labels: labels, datasets: [{ data: values, backgroundColor: colors, borderWidth: 0 }] },
-      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { color: '#A0B8A6', font: { size: 11 } } } } }
-    });
-  }
-
-  // Passivos chart
-  if (hasPassivos) {
-    var pCatTotals = {};
-    passivos.forEach(function(p) {
-      var cat = CAT_LABELS[p.categoria] || p.categoria;
-      pCatTotals[cat] = (pCatTotals[cat] || 0) + parseBR(p.saldo);
-    });
-    var pLabels = Object.keys(pCatTotals);
-    var pValues = pLabels.map(function(l){ return pCatTotals[l]; });
-    var pColors = pLabels.map(function(l, i){ return PALETTE[(i + 3) % PALETTE.length]; });
-    if (chartPassivos) chartPassivos.destroy();
-    chartPassivos = new Chart(document.getElementById('chart-passivos'), {
-      type: 'doughnut',
-      data: { labels: pLabels, datasets: [{ data: pValues, backgroundColor: pColors, borderWidth: 0 }] },
-      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { color: '#A0B8A6', font: { size: 11 } } } } }
-    });
-  }
-}
-
-function renderAll() {
-  renderAtivos();
-  renderPassivos();
-  renderRendas();
-  renderDespesas();
-  renderDashboard();
-  renderCharts();
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
-//  PERSISTÊNCIA (localStorage + Supabase)
-// ═══════════════════════════════════════════════════════════════════════════
-var SUPABASE_URL = 'https://vbikskbfkhundhropykf.supabase.co';
-var SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZiaWtza2Jma2h1bmRocm9weWtmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDU1MTk5NjEsImV4cCI6MjA2MTA5NTk2MX0.-n-Tj_5JnF1NL2ZImWlMeTcobWDl_VD6Vqp0lxRQFFU';
-var LS_KEY = 'hv_patrimonio_local';
-var FERRAMENTA = 'patrimonio';
-var _sbClient = null;
-var _initDone = false;
-var _saveTimer = null;
-
-function getClienteId() { return sessionStorage.getItem('cliente_id') || null; }
-
-function getSupabaseClient() {
-  if (_sbClient) return _sbClient;
-  if (window.mithraSupabaseClient) { _sbClient = window.mithraSupabaseClient; return _sbClient; }
-  try {
-    if (window.supabase && window.supabase.createClient) {
-      _sbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    const base = firstTotal + totalAportes;
+    if (base > 0) {
+      const pct = ((patrimonio - base) / base * 100).toFixed(2);
+      rentGlobal = `<span class="rentab ${pct >= 0 ? 'pos' : 'neg'}">${pct >= 0 ? '+' : ''}${pct}%</span>`;
     }
-  } catch(e) { _sbClient = null; }
-  return _sbClient;
+  }
+
+  dashEl.innerHTML = `
+    <div class="dash-item"><div class="label">Patrimônio Líquido</div><div class="value" style="color:${patrimonio >= 0 ? 'var(--green)' : 'var(--red)'};">${fmtMoeda(patrimonio)}</div><div class="sub">Rentabilidade Global: ${rentGlobal || 'N/A'}</div></div>
+    <div class="dash-item"><div class="label">Ativos Líquidos</div><div class="value" style="color:var(--blue);">${fmtMoeda(totalLiq)}</div></div>
+    <div class="dash-item"><div class="label">Ativos Físicos</div><div class="value" style="color:var(--orange);">${fmtMoeda(totalFis)}</div></div>
+    <div class="dash-item"><div class="label">Ativos Intangíveis</div><div class="value" style="color:var(--purple);">${fmtMoeda(totalInt)}</div></div>
+    <div class="dash-item"><div class="label">Dívidas</div><div class="value" style="color:var(--red);">${fmtMoeda(totalDiv)}</div></div>
+  `;
 }
 
-function waitForSupabase(timeout) {
-  return new Promise(function(resolve) {
-    if (window.mithraSupabaseClient) { _sbClient = window.mithraSupabaseClient; resolve(window.mithraSupabaseClient); return; }
-    var elapsed = 0;
-    var interval = setInterval(function() {
-      elapsed += 50;
-      if (window.mithraSupabaseClient) { clearInterval(interval); _sbClient = window.mithraSupabaseClient; resolve(window.mithraSupabaseClient); }
-      else if (elapsed >= (timeout || 3000)) { clearInterval(interval); resolve(null); }
-    }, 50);
+function renderChart() {
+  if (state.datas.length < 2) {
+    if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
+    return;
+  }
+
+  const labels = state.datas.map(d => fmtDate(d.data));
+  const datasets = [];
+
+  const chkTotal = document.getElementById('chk-total')?.checked;
+  const chkLiq = document.getElementById('chk-liquido')?.checked;
+  const chkFis = document.getElementById('chk-fisico')?.checked;
+  const chkInt = document.getElementById('chk-intangivel')?.checked;
+  const chkDiv = document.getElementById('chk-dividas')?.checked;
+
+  if (chkTotal) datasets.push({ label: 'Patrimônio Total', data: state.datas.map(d => d.ativos_liquidos.reduce((s,a)=>s+a.valor,0) + d.ativos_fisicos.reduce((s,a)=>s+a.valor,0) + d.ativos_intangiveis.reduce((s,a)=>s+a.valor,0) - d.dividas.reduce((s,dd)=>s+dd.saldo,0)), borderColor: '#22c55e', backgroundColor: 'rgba(34,197,94,0.1)', fill: true, tension: 0.3 });
+  if (chkLiq) datasets.push({ label: 'Ativos Líquidos', data: state.datas.map(d => d.ativos_liquidos.reduce((s,a)=>s+a.valor,0)), borderColor: '#60a5fa', backgroundColor: 'rgba(96,165,250,0.1)', fill: false, tension: 0.3 });
+  if (chkFis) datasets.push({ label: 'Ativos Físicos', data: state.datas.map(d => d.ativos_fisicos.reduce((s,a)=>s+a.valor,0)), borderColor: '#fb923c', backgroundColor: 'rgba(251,146,60,0.1)', fill: false, tension: 0.3 });
+  if (chkInt) datasets.push({ label: 'Ativos Intangíveis', data: state.datas.map(d => d.ativos_intangiveis.reduce((s,a)=>s+a.valor,0)), borderColor: '#a78bfa', backgroundColor: 'rgba(167,139,250,0.1)', fill: false, tension: 0.3 });
+  if (chkDiv) datasets.push({ label: 'Dívidas', data: state.datas.map(d => d.dividas.reduce((s,dd)=>s+dd.saldo,0)), borderColor: '#ef4444', backgroundColor: 'rgba(239,68,68,0.1)', fill: false, tension: 0.3, borderDash: [5,5] });
+
+  const ctx = document.getElementById('chart-evolucao');
+  if (chartInstance) chartInstance.destroy();
+  chartInstance = new Chart(ctx, {
+    type: 'line',
+    data: { labels, datasets },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { labels: { color: '#A0B8A6', font: { size: 11 } } } },
+      scales: {
+        x: { ticks: { color: '#A0B8A6', font: { size: 10 } }, grid: { color: 'rgba(212,175,55,0.08)' } },
+        y: { ticks: { color: '#A0B8A6', font: { size: 10 }, callback: v => fmtMoeda(v) }, grid: { color: 'rgba(212,175,55,0.08)' } }
+      }
+    }
   });
 }
 
-function buildPayload() {
-  return {
-    ativos: ativos,
-    passivos: passivos,
-    rendas: rendas,
-    despesas: despesas,
-    nextId: nextId
-  };
+function renderEditor() {
+  const section = document.getElementById('section-editor');
+  if (!state.selectedDateId) { section.classList.add('hidden'); return; }
+  section.classList.remove('hidden');
+
+  const dateObj = state.datas.find(x => x.id === state.selectedDateId);
+  if (!dateObj) { section.classList.add('hidden'); return; }
+
+  document.getElementById('editor-title').textContent = `Data: ${fmtDate(dateObj.data)}`;
+
+  // Render tables
+  renderAtivoTable('liquidos', dateObj.ativos_liquidos, 'liquido');
+  renderAtivoTable('fisicos', dateObj.ativos_fisicos, 'fisico');
+  renderAtivoTable('intangiveis', dateObj.ativos_intangiveis, 'intangivel');
+  renderDividasTable(dateObj.dividas);
+  renderDateSummary(dateObj);
 }
 
-function saveData() {
+function calcRentabilidade(dateObj, ativo) {
+  // Encontrar o valor do mesmo ativo na data anterior
+  const idx = state.datas.findIndex(d => d.id === dateObj.id);
+  if (idx <= 0) return null;
+  const prev = state.datas[idx - 1];
+  const tipo = dateObj.ativos_liquidos.includes(ativo) ? 'ativos_liquidos' : dateObj.ativos_fisicos.includes(ativo) ? 'ativos_fisicos' : 'ativos_intangiveis';
+  const prevAtivo = prev[tipo].find(a => a.id === ativo.id);
+  if (!prevAtivo) return null;
+  const base = prevAtivo.valor + (ativo.aporte || 0) - (ativo.retirada || 0);
+  if (base <= 0) return null;
+  return ((ativo.valor - base) / base * 100).toFixed(2);
+}
+
+function renderAtivoTable(tabId, list, tipo) {
+  const el = document.getElementById('tbl-' + tabId);
+  if (list.length === 0) {
+    el.innerHTML = `<div class="empty"><span class="ico">${tipo === 'liquido' ? '&#128176;' : tipo === 'fisico' ? '&#127968;' : '&#128161;'}</span><p>Nenhum ativo ${tipo === 'liquido' ? 'líquido' : tipo === 'fisico' ? 'físico' : 'intangível'} cadastrado nesta data.</p></div>`;
+    return;
+  }
+
+  const dateObj = state.datas.find(x => x.id === state.selectedDateId);
+  let cols = '<th>Nome</th><th>Valor</th>';
+  if (tipo === 'liquido') cols += '<th>Instituição</th><th>Categoria</th><th>Risco</th>';
+  cols += '<th>Rentab.</th><th>Ações</th>';
+
+  let rows = list.map(a => {
+    const rent = calcRentabilidade(dateObj, a);
+    const rentHtml = rent !== null ? `<span class="rentab ${rent >= 0 ? 'pos' : 'neg'}">${rent >= 0 ? '+' : ''}${rent}%</span>` : '<span style="color:var(--muted);font-size:0.75rem;">--</span>';
+    let row = `<td class="td-name">${a.nome}</td><td style="color:var(--green);font-weight:600;">${fmtMoeda(a.valor)}</td>`;
+    if (tipo === 'liquido') {
+      const riscoInfo = CLASSIFICACAO_RISCO[a.risco];
+      row += `<td>${a.instituicao_nome || '--'}</td>`;
+      row += `<td>${a.categoria || '--'}</td>`;
+      row += `<td>${riscoInfo ? `<span class="badge" style="background:${riscoInfo.cor}20;color:${riscoInfo.cor};">${riscoInfo.label}</span>` : '--'}</td>`;
+    }
+    row += `<td>${rentHtml}</td>`;
+    row += `<td class="td-actions"><button class="btn-icon" onclick="openAtivoModal('${tipo}','${a.id}')" title="Editar">&#9998;</button><button class="btn-icon" onclick="delAtivo('${tipo}','${a.id}')" title="Excluir" style="color:var(--red);">&#128465;</button></td>`;
+    return `<tr>${row}</tr>`;
+  }).join('');
+
+  const total = list.reduce((s, a) => s + a.valor, 0);
+  rows += `<tr style="border-top:2px solid var(--border);"><td class="td-name" style="color:var(--primary);">TOTAL</td><td style="color:var(--green);font-weight:700;">${fmtMoeda(total)}</td>${tipo === 'liquido' ? '<td></td><td></td><td></td>' : ''}<td></td><td></td></tr>`;
+
+  el.innerHTML = `<div class="table-wrap"><table><thead><tr>${cols}</tr></thead><tbody>${rows}</tbody></table></div>`;
+}
+
+function renderDividasTable(list) {
+  const el = document.getElementById('tbl-dividas');
+  if (list.length === 0) {
+    el.innerHTML = `<div class="empty"><span class="ico">&#128179;</span><p>Nenhuma dívida cadastrada nesta data.</p></div>`;
+    return;
+  }
+  let rows = list.map(d => `<tr><td class="td-name">${d.nome}</td><td style="color:var(--red);font-weight:600;">${fmtMoeda(d.saldo)}</td><td style="font-size:0.78rem;color:var(--muted);">${d.obs || '--'}</td><td class="td-actions"><button class="btn-icon" onclick="openDividaModal('${d.id}')" title="Editar">&#9998;</button><button class="btn-icon" onclick="delDivida('${d.id}')" title="Excluir" style="color:var(--red);">&#128465;</button></td></tr>`).join('');
+  const total = list.reduce((s, d) => s + d.saldo, 0);
+  rows += `<tr style="border-top:2px solid var(--border);"><td class="td-name" style="color:var(--primary);">TOTAL</td><td style="color:var(--red);font-weight:700;">${fmtMoeda(total)}</td><td></td><td></td></tr>`;
+  el.innerHTML = `<div class="table-wrap"><table><thead><tr><th>Dívida</th><th>Saldo Devedor</th><th>Obs</th><th>Ações</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+}
+
+function renderDateSummary(dateObj) {
+  const el = document.getElementById('date-summary');
+  const totalLiq = dateObj.ativos_liquidos.reduce((s, a) => s + a.valor, 0);
+  const totalFis = dateObj.ativos_fisicos.reduce((s, a) => s + a.valor, 0);
+  const totalInt = dateObj.ativos_intangiveis.reduce((s, a) => s + a.valor, 0);
+  const totalDiv = dateObj.dividas.reduce((s, d) => s + d.saldo, 0);
+  const pat = totalLiq + totalFis + totalInt - totalDiv;
+
+  el.innerHTML = `
+    <div class="dash-item"><div class="label">Ativos Líquidos</div><div class="value" style="color:var(--blue);">${fmtMoeda(totalLiq)}</div><div class="sub">${dateObj.ativos_liquidos.length} itens</div></div>
+    <div class="dash-item"><div class="label">Ativos Físicos</div><div class="value" style="color:var(--orange);">${fmtMoeda(totalFis)}</div><div class="sub">${dateObj.ativos_fisicos.length} itens</div></div>
+    <div class="dash-item"><div class="label">Ativos Intangíveis</div><div class="value" style="color:var(--purple);">${fmtMoeda(totalInt)}</div><div class="sub">${dateObj.ativos_intangiveis.length} itens</div></div>
+    <div class="dash-item"><div class="label">Dívidas</div><div class="value" style="color:var(--red);">${fmtMoeda(totalDiv)}</div><div class="sub">${dateObj.dividas.length} itens</div></div>
+    <div class="dash-item"><div class="label">Patrimônio Líquido</div><div class="value" style="color:${pat >= 0 ? 'var(--green)' : 'var(--red)'};">${fmtMoeda(pat)}</div></div>
+  `;
+}
+
+// ---- PERSISTÊNCIA ----
+async function saveToSupabase() {
   if (!_initDone) return;
-  var data = buildPayload();
-  try { localStorage.setItem(LS_KEY, JSON.stringify(data)); } catch(e) {}
-  var clienteId = getClienteId();
-  if (!clienteId) return;
-  if (_saveTimer) clearTimeout(_saveTimer);
-  _saveTimer = setTimeout(function() { saveToSupabase(clienteId, data); }, 2000);
-}
-
-async function saveToSupabase(clienteId, data) {
-  var sb = getSupabaseClient();
-  if (!sb) return;
+  const clienteId = sessionStorage.getItem('cliente_id');
+  if (!clienteId) { localStorage.setItem('patrimonio_data', JSON.stringify(state)); return; }
   try {
-    var payload = { cliente_id: clienteId, ferramenta: FERRAMENTA, dados: data };
-    var result = await sb.from('ferramentas_dados').upsert(payload, { onConflict: 'cliente_id,ferramenta' });
-    if (result.error) console.warn('Patrimonio: erro ao salvar no Supabase', result.error.message);
-  } catch(e) { console.warn('Patrimonio: exceção ao salvar', e); }
+    await sb.from('ferramentas_dados').upsert({
+      cliente_id: clienteId,
+      ferramenta: 'patrimonio',
+      dados: state,
+      updated_at: new Date().toISOString()
+    }, { onConflict: 'cliente_id,ferramenta' });
+  } catch (e) { console.error('Erro ao salvar:', e); }
 }
 
-async function loadFromSupabase(clienteId) {
-  var sb = getSupabaseClient();
-  if (!sb || !clienteId) return null;
+async function loadFromSupabase() {
+  const clienteId = sessionStorage.getItem('cliente_id');
+  if (!clienteId) {
+    const local = localStorage.getItem('patrimonio_data');
+    if (local) state = JSON.parse(local);
+    return;
+  }
   try {
-    var result = await sb.from('ferramentas_dados').select('dados').eq('cliente_id', clienteId).eq('ferramenta', FERRAMENTA).maybeSingle();
-    if (result.error) { console.warn('Patrimonio: erro ao carregar do Supabase', result.error.message); return null; }
-    return (result.data && result.data.dados) ? result.data.dados : null;
-  } catch(e) { console.warn('Patrimonio: exceção ao carregar', e); return null; }
+    const { data } = await sb.from('ferramentas_dados').select('dados').eq('cliente_id', clienteId).eq('ferramenta', 'patrimonio').maybeSingle();
+    if (data && data.dados) {
+      state = data.dados;
+      if (!state.instituicoes) state.instituicoes = [];
+      if (!state.datas) state.datas = [];
+      if (state.datas.length > 0 && !state.selectedDateId) {
+        state.selectedDateId = state.datas[state.datas.length - 1].id;
+      }
+    }
+  } catch (e) { console.error('Erro ao carregar:', e); }
 }
 
-function loadFromLocalStorage() {
-  var raw;
-  try { raw = localStorage.getItem(LS_KEY); } catch(e) { return null; }
-  if (!raw) return null;
-  try { return JSON.parse(raw); } catch(e) { return null; }
-}
-
-function applyData(d) {
-  if (!d) return false;
-  var hasData = false;
-  if (Array.isArray(d.ativos) && d.ativos.length > 0) { ativos = d.ativos; hasData = true; }
-  if (Array.isArray(d.passivos) && d.passivos.length > 0) { passivos = d.passivos; hasData = true; }
-  if (Array.isArray(d.rendas) && d.rendas.length > 0) { rendas = d.rendas; hasData = true; }
-  if (Array.isArray(d.despesas) && d.despesas.length > 0) { despesas = d.despesas; hasData = true; }
-  if (typeof d.nextId === 'number') nextId = d.nextId;
-  return hasData;
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
-//  INIT
-// ═══════════════════════════════════════════════════════════════════════════
-(async function init() {
-  var clienteId = getClienteId();
-  var restored = false;
-
-  if (clienteId) {
-    LS_KEY = 'hv_patrimonio_' + clienteId;
-    await waitForSupabase(3000);
-    var remoteData = await loadFromSupabase(clienteId);
-    if (remoteData) restored = applyData(remoteData);
-  }
-
-  if (!restored) {
-    var localData = loadFromLocalStorage();
-    if (localData) restored = applyData(localData);
-  }
-
-  renderAll();
-  _initDone = true;
-})();
-
-function _globalSaveFeedback() {{
-  var btn = document.getElementById('btnSaveGlobal');
-  var icon = document.getElementById('saveIcon');
-  var label = document.getElementById('saveLabel');
-  if (!btn) return;
+function _forceSave() {
+  saveToSupabase();
+  const btn = document.getElementById('btnSaveGlobal');
+  const lbl = document.getElementById('saveLabel');
   btn.classList.add('saved');
-  icon.textContent = '✅';
-  label.textContent = 'Salvo!';
-  setTimeout(function() {{
-    btn.classList.remove('saved');
-    icon.textContent = '💾';
-    label.textContent = 'Salvar Alterações';
-  }}, 2500);
-}}
-
-function _forceSavePatrimonio() {
-  _initDone = true;
-  saveData();
-  _globalSaveFeedback();
+  lbl.textContent = 'Salvo!';
+  setTimeout(() => { btn.classList.remove('saved'); lbl.textContent = 'Salvar Alterações'; }, 2000);
 }
+
+// ---- INIT ----
+async function init() {
+  await loadFromSupabase();
+  _initDone = true;
+  if (state.datas.length > 0 && !state.selectedDateId) {
+    state.selectedDateId = state.datas[state.datas.length - 1].id;
+  }
+  renderAll();
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  setTimeout(init, 300);
+});
 </script>
-<button class="btn-save-global" id="btnSaveGlobal" onclick="_forceSavePatrimonio()" title="Salvar todas as alterações">
-  <span id="saveIcon">💾</span> <span id="saveLabel">Salvar Alterações</span>
-</button>
-</main>
 </body>
 </html>
