@@ -8,6 +8,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="../assets/layout.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 <style>
   :root {
     --bg: #021C0E;
@@ -165,6 +166,35 @@
   .conforto-3 { color: var(--muted); }
   .conforto-4 { color: #60a5fa; }
   .conforto-5 { color: #a78bfa; }
+
+  /* Botão flutuante Salvar */
+  .btn-save-global {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    z-index: 9999;
+    background: linear-gradient(135deg, #d4af37, #b8962e);
+    color: #000;
+    border: none;
+    border-radius: 12px;
+    padding: 12px 24px;
+    font-size: 0.95rem;
+    font-weight: 700;
+    cursor: pointer;
+    box-shadow: 0 4px 20px rgba(212,175,55,0.4);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.3s ease;
+  }
+  .btn-save-global:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 28px rgba(212,175,55,0.6);
+  }
+  .btn-save-global.saved {
+    background: linear-gradient(135deg, #10b981, #059669);
+    color: #fff;
+  }
 </style>
 </head>
 <body>
@@ -240,11 +270,16 @@
     <div class="row">
       <div class="field" style="max-width:260px;">
         <label>Saldo disponível (R$)</label>
-        <input type="text" id="saldo-inicial" placeholder="0,00" oninput="formatCurrencyInput(this)" value="0,00">
+        <input type="text" id="saldo-inicial" placeholder="0,00" oninput="formatCurrencyInput(this, true)" value="0,00">
       </div>
       <div class="field" style="max-width:260px;">
         <label>Poupança acumulada (R$)</label>
         <input type="text" id="poupanca-inicial" placeholder="0,00" oninput="formatCurrencyInput(this)" value="0,00">
+      </div>
+      <div class="field" style="max-width:260px;">
+        <label>Poupança intocável (R$)</label>
+        <input type="text" id="poupanca-intocavel" placeholder="0,00" oninput="formatCurrencyInput(this)" value="0,00">
+        <p style="font-size:0.7rem; color:var(--muted); margin-top:0.2rem;">Valor da poupança que NÃO deve ser usado para cobrir déficit.</p>
       </div>
     </div>
   </div>
@@ -303,9 +338,10 @@
     </div>
   </div>
 
-  <!-- Botão calcular -->
-  <div style="text-align:center; margin: 1.5rem 0;">
+  <!-- Botões calcular e PDF -->
+  <div style="text-align:center; margin: 1.5rem 0; display:flex; justify-content:center; gap:1rem; flex-wrap:wrap;">
     <button class="btn btn-primary" style="padding:0.75rem 2.5rem; font-size:1rem;" onclick="calcular()">Calcular Projeção</button>
+    <button class="btn btn-outline" style="padding:0.75rem 2rem; font-size:1rem;" onclick="gerarPDF()" id="btn-pdf" title="Gerar relatório em PDF">📄 Exportar PDF</button>
   </div>
 
   <!-- Seção 5: Resultado -->
@@ -375,6 +411,16 @@
               <button class="radio-btn" data-val="poupanca" onclick="setRadio('subtipo','poupanca',this)">POUPANÇA</button>
               <button class="radio-btn" data-val="despesa" onclick="setRadio('subtipo','despesa',this)">DESPESA</button>
             </div>
+          </div>
+        </div>
+
+        <div id="poupanca-sub" style="display:none;">
+          <div style="margin-bottom:0.75rem; padding:0.75rem; background:var(--card2); border-radius:8px; border:1px solid var(--border);">
+            <label style="display:flex; align-items:center; gap:0.6rem; cursor:pointer; font-size:0.85rem; color:var(--fg);">
+              <input type="checkbox" id="item-poup-complemento" style="width:18px; height:18px; accent-color:var(--primary); cursor:pointer;">
+              Usar como complemento de renda (cobrir déficit)
+            </label>
+            <p style="font-size:0.7rem; color:var(--muted); margin-top:0.3rem; margin-left:2.1rem;">Se marcado, este valor poderá ser usado automaticamente para cobrir saldo negativo. Se desmarcado, este valor fica protegido e não será tocado.</p>
           </div>
         </div>
 
@@ -742,16 +788,21 @@ function updateFormaPagamentoSelect() {
 // ============================================================
 // CURRENCY
 // ============================================================
-function formatCurrencyInput(el) {
-  var v = el.value.replace(/\D/g,'');
-  if (!v) { el.value = ''; return; }
+function formatCurrencyInput(el, allowNeg) {
+  var raw = el.value;
+  var isNeg = raw.indexOf('-') !== -1;
+  var v = raw.replace(/[^\d]/g,'');
+  if (!v) { el.value = isNeg ? '-' : ''; return; }
   v = (parseInt(v)/100).toFixed(2);
-  el.value = parseFloat(v).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+  var formatted = parseFloat(v).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+  el.value = (isNeg && allowNeg) ? '-' + formatted : formatted;
 }
 
 function parseCurrency(s) {
   if (!s) return 0;
-  return parseFloat(s.replace(/\./g,'').replace(',','.')) || 0;
+  var isNeg = String(s).indexOf('-') !== -1;
+  var num = parseFloat(String(s).replace(/[^\d,]/g,'').replace(',','.')) || 0;
+  return isNeg ? -num : num;
 }
 
 function fmtCurrency(n) {
@@ -783,6 +834,8 @@ function openModal(index) {
   document.querySelectorAll('.radio-btn').forEach(function(b) { b.classList.remove('active','active-green','active-red'); });
   document.getElementById('saida-sub').style.display = 'none';
   document.getElementById('despesa-sub').style.display = 'none';
+  document.getElementById('poupanca-sub').style.display = 'none';
+  document.getElementById('item-poup-complemento').checked = false;
   updateRecFields();
   updateRecFimFields();
 
@@ -808,6 +861,9 @@ function openModal(index) {
     if (it.conforto) setRadioByVal('conforto', it.conforto);
     updateFormaPagamentoSelect();
     if (it.formaPagamento) document.getElementById('item-forma-pagamento').value = it.formaPagamento;
+    if (it.subtipo === 'poupanca') {
+      document.getElementById('item-poup-complemento').checked = !!it.usarComoComplemento;
+    }
     updateRecFields();
     updateRecFimFields();
   } else {
@@ -833,6 +889,7 @@ function setRadio(group, val, btn) {
   } else if (group === 'subtipo') {
     btn.classList.add('active');
     document.getElementById('despesa-sub').style.display = val === 'despesa' ? 'block' : 'none';
+    document.getElementById('poupanca-sub').style.display = val === 'poupanca' ? 'block' : 'none';
     if (val === 'poupanca') radioState.categoria = '';
   } else if (group === 'importancia') {
     if (val === '1') {
@@ -878,6 +935,11 @@ function saveItem() {
     formaPag = document.getElementById('item-forma-pagamento').value || '';
   }
 
+  var usarComplemento = false;
+  if (radioState.subtipo === 'poupanca') {
+    usarComplemento = document.getElementById('item-poup-complemento').checked;
+  }
+
   var item = {
     nome: nome, valor: valor,
     tipo: radioState.tipo,
@@ -888,6 +950,7 @@ function saveItem() {
     importancia: radioState.importancia,
     conforto: radioState.conforto,
     formaPagamento: formaPag,
+    usarComoComplemento: usarComplemento,
     recTipo: document.getElementById('rec-tipo').value,
     recQty: parseInt(document.getElementById('rec-qty').value)||1,
     recInicio: document.getElementById('rec-inicio').value,
@@ -1158,6 +1221,9 @@ function calcular() {
 
   var saldo = parseCurrency(document.getElementById('saldo-inicial').value);
   var poupanca = parseCurrency(document.getElementById('poupanca-inicial').value);
+  var poupancaIntocavel = parseCurrency(document.getElementById('poupanca-intocavel').value);
+  // Garante que intocável não exceda o total
+  if (poupancaIntocavel > poupanca) poupancaIntocavel = poupanca;
 
   // Identifica cartões cadastrados
   var cartoesMap = {};
@@ -1234,23 +1300,34 @@ function calcular() {
       if (it.tipo === 'entrada') {
         saldo += it.valor;
       } else if (it.subtipo === 'poupanca') {
+        // Poupança: deduz do saldo e acumula
         if (saldo >= it.valor) {
           saldo -= it.valor;
           poupanca += it.valor;
         } else {
-          poupanca += saldo;
-          saldo = 0;
+          poupanca += Math.max(0, saldo);
+          saldo = Math.min(0, saldo - it.valor);
+        }
+        // Se NÃO marcado como complemento, o valor vai para intocável
+        if (!it.usarComoComplemento) {
+          poupancaIntocavel += it.valor;
+          if (poupancaIntocavel > poupanca) poupancaIntocavel = poupanca;
         }
       } else {
+        // Despesa: deduz do saldo
         saldo -= it.valor;
         if (saldo < 0) {
-          if (poupanca >= Math.abs(saldo)) {
-            poupanca += saldo;
+          // Calcula quanto da poupança está disponível para cobrir déficit
+          var poupDisponivel = Math.max(0, poupanca - poupancaIntocavel);
+          var deficit = Math.abs(saldo);
+          if (poupDisponivel >= deficit) {
+            poupanca -= deficit;
             saldo = 0;
-          } else {
-            saldo += poupanca;
-            poupanca = 0;
+          } else if (poupDisponivel > 0) {
+            saldo += poupDisponivel;
+            poupanca -= poupDisponivel;
           }
+          // Se ainda negativo, fica negativo (poupança intocável não é usada)
         }
       }
     });
@@ -2145,6 +2222,7 @@ function buildPayload() {
     period_end: pEnd || null,
     saldo_inicial: parseBR(saldo),
     poupanca_inicial: parseBR(poupanca),
+    poupanca_intocavel: parseBR(document.getElementById('poupanca-intocavel').value),
     itens: items,
     contas: accounts
   };
@@ -2182,6 +2260,8 @@ function applyPayload(data) {
   }
   document.getElementById('saldo-inicial').value = fmtBR(parseBRorNum(saldoRaw));
   document.getElementById('poupanca-inicial').value = fmtBR(parseBRorNum(poupancaRaw));
+  var intocavelRaw = data.poupanca_intocavel !== undefined ? data.poupanca_intocavel : data.poupancaIntocavel;
+  document.getElementById('poupanca-intocavel').value = fmtBR(parseBRorNum(intocavelRaw));
   var itensData = data.itens || data.items;
   if (Array.isArray(itensData) && itensData.length > 0) {
     items = itensData;
@@ -2211,6 +2291,7 @@ function saveToStorage() {
     periodEnd: payload.period_end,
     saldoInicial: document.getElementById('saldo-inicial').value,
     poupancaInicial: document.getElementById('poupanca-inicial').value,
+    poupancaIntocavel: document.getElementById('poupanca-intocavel').value,
     items: items,
     accounts: accounts
   })); } catch(e) {}
@@ -2297,7 +2378,186 @@ deleteItem = function(index) {
   }
   _initDone = true; // libera o saveToStorage
 })();
+
+function _globalSaveFeedback() {
+  var btn = document.getElementById('btnSaveGlobal');
+  var icon = document.getElementById('saveIcon');
+  var label = document.getElementById('saveLabel');
+  if (!btn) return;
+  btn.classList.add('saved');
+  icon.textContent = '✅';
+  label.textContent = 'Salvo!';
+  setTimeout(function() {
+    btn.classList.remove('saved');
+    icon.textContent = '💾';
+    label.textContent = 'Salvar Alterações';
+  }, 2500);
+}
+
+function gerarPDF() {
+  var resultSection = document.getElementById('result-section');
+  if (!resultSection || resultSection.style.display === 'none') {
+    alert('Primeiro clique em "Calcular Projeção" para gerar os resultados.');
+    return;
+  }
+
+  var btn = document.getElementById('btn-pdf');
+  var originalText = btn.innerHTML;
+  btn.innerHTML = '⏳ Gerando PDF...';
+  btn.disabled = true;
+
+  // Cria um container temporário com todo o conteúdo para o PDF
+  var pdfContainer = document.createElement('div');
+  pdfContainer.style.cssText = 'background:#021C0E; color:#F2E8C9; padding:2rem; font-family:Inter,system-ui,sans-serif; font-size:13px; max-width:1100px;';
+
+  // Título
+  var header = '<div style="text-align:center; margin-bottom:2rem; border-bottom:2px solid #D4AF37; padding-bottom:1rem;">';
+  header += '<h1 style="color:#D4AF37; font-size:1.6rem; margin:0;">Fluxo de Caixa Avançado</h1>';
+  header += '<p style="color:#A0B8A6; font-size:0.85rem; margin-top:0.3rem;">Relatório gerado em ' + new Date().toLocaleDateString('pt-BR') + ' às ' + new Date().toLocaleTimeString('pt-BR') + '</p>';
+  header += '</div>';
+  pdfContainer.innerHTML = header;
+
+  // Seção 1: Período
+  var periodInfo = document.getElementById('period-preview').textContent || document.getElementById('period-duration').textContent;
+  var s1 = '<div style="background:#052614; border:1px solid rgba(212,175,55,0.2); border-radius:10px; padding:1rem 1.25rem; margin-bottom:1rem;">';
+  s1 += '<h2 style="color:#D4AF37; font-size:1rem; margin:0 0 0.5rem;">1. Período Analisado</h2>';
+  s1 += '<p style="color:#F2E8C9;">' + periodInfo + '</p>';
+  s1 += '</div>';
+  pdfContainer.innerHTML += s1;
+
+  // Seção 2: Saldo Inicial
+  var saldoVal = document.getElementById('saldo-inicial').value;
+  var poupVal = document.getElementById('poupanca-inicial').value;
+  var intocavelVal = document.getElementById('poupanca-intocavel').value;
+  var s2 = '<div style="background:#052614; border:1px solid rgba(212,175,55,0.2); border-radius:10px; padding:1rem 1.25rem; margin-bottom:1rem;">';
+  s2 += '<h2 style="color:#D4AF37; font-size:1rem; margin:0 0 0.5rem;">2. Saldo Inicial</h2>';
+  s2 += '<div style="display:flex; gap:2rem;">';
+  s2 += '<div><span style="color:#A0B8A6; font-size:0.8rem;">Saldo Disponível:</span> <strong>R$ ' + saldoVal + '</strong></div>';
+  s2 += '<div><span style="color:#A0B8A6; font-size:0.8rem;">Poupança Acumulada:</span> <strong>R$ ' + poupVal + '</strong></div>';
+  s2 += '<div><span style="color:#A0B8A6; font-size:0.8rem;">Poupança Intocável:</span> <strong>R$ ' + intocavelVal + '</strong></div>';
+  s2 += '</div></div>';
+  pdfContainer.innerHTML += s2;
+
+  // Seção 3: Itens do Fluxo (tabela)
+  if (items.length > 0) {
+    var s3 = '<div style="background:#052614; border:1px solid rgba(212,175,55,0.2); border-radius:10px; padding:1rem 1.25rem; margin-bottom:1rem;">';
+    s3 += '<h2 style="color:#D4AF37; font-size:1rem; margin:0 0 0.5rem;">3. Itens do Fluxo (' + items.length + ' itens)</h2>';
+    s3 += '<table style="width:100%; border-collapse:collapse; font-size:0.8rem;">';
+    s3 += '<thead><tr style="background:#0A3520;">';
+    s3 += '<th style="padding:0.5rem; text-align:left; color:#D4AF37; border-bottom:1px solid rgba(212,175,55,0.2);">Nome</th>';
+    s3 += '<th style="padding:0.5rem; text-align:left; color:#D4AF37; border-bottom:1px solid rgba(212,175,55,0.2);">Tipo</th>';
+    s3 += '<th style="padding:0.5rem; text-align:right; color:#D4AF37; border-bottom:1px solid rgba(212,175,55,0.2);">Valor</th>';
+    s3 += '<th style="padding:0.5rem; text-align:left; color:#D4AF37; border-bottom:1px solid rgba(212,175,55,0.2);">Recorrência</th>';
+    s3 += '</tr></thead><tbody>';
+    items.forEach(function(it) {
+      var tipo = it.tipo === 'entrada' ? 'Entrada' : (it.subtipo === 'poupanca' ? 'Poupança' : 'Despesa');
+      var tipoColor = it.tipo === 'entrada' ? '#22c55e' : (it.subtipo === 'poupanca' ? '#60a5fa' : '#ef4444');
+      var sign = it.tipo === 'entrada' ? '+' : '-';
+      var rec = it.recTipo === 'nao' ? 'Único' : ('A cada ' + it.recQty + ' ' + (REC_LABELS[it.recTipo] || it.recTipo));
+      s3 += '<tr style="border-bottom:1px solid rgba(212,175,55,0.06);">';
+      s3 += '<td style="padding:0.4rem 0.5rem; color:#fff; font-weight:600;">' + it.nome + '</td>';
+      s3 += '<td style="padding:0.4rem 0.5rem; color:' + tipoColor + ';">' + tipo + '</td>';
+      s3 += '<td style="padding:0.4rem 0.5rem; text-align:right; color:' + tipoColor + '; font-weight:600;">' + sign + fmtCurrency(it.valor) + '</td>';
+      s3 += '<td style="padding:0.4rem 0.5rem; color:#A0B8A6;">' + rec + '</td>';
+      s3 += '</tr>';
+    });
+    s3 += '</tbody></table></div>';
+    pdfContainer.innerHTML += s3;
+  }
+
+  // Seção 4: Resumo (summary-bar)
+  var summaryBar = document.getElementById('summary-bar');
+  if (summaryBar) {
+    var s4 = '<div style="background:#052614; border:1px solid rgba(212,175,55,0.2); border-radius:10px; padding:1rem 1.25rem; margin-bottom:1rem;">';
+    s4 += '<h2 style="color:#D4AF37; font-size:1rem; margin:0 0 0.5rem;">4. Resumo da Projeção</h2>';
+    s4 += '<div style="display:flex; gap:1rem; flex-wrap:wrap;">';
+    summaryBar.querySelectorAll('.summary-item').forEach(function(item) {
+      var lbl = item.querySelector('.label') ? item.querySelector('.label').textContent : '';
+      var val = item.querySelector('.value') ? item.querySelector('.value').textContent : '';
+      var color = item.querySelector('.value') ? item.querySelector('.value').style.color : '#F2E8C9';
+      s4 += '<div style="flex:1; min-width:140px; background:#0A3520; border:1px solid rgba(212,175,55,0.15); border-radius:8px; padding:0.8rem;">';
+      s4 += '<div style="font-size:0.72rem; color:#A0B8A6; margin-bottom:0.2rem;">' + lbl + '</div>';
+      s4 += '<div style="font-size:1.1rem; font-weight:700; color:' + color + ';">' + val + '</div>';
+      s4 += '</div>';
+    });
+    s4 += '</div></div>';
+    pdfContainer.innerHTML += s4;
+  }
+
+  // Seção 5: Gráfico (captura o canvas como imagem)
+  var chartCanvas = document.getElementById('main-chart');
+  if (chartCanvas) {
+    var chartImg = chartCanvas.toDataURL('image/png');
+    var s5 = '<div style="background:#052614; border:1px solid rgba(212,175,55,0.2); border-radius:10px; padding:1rem 1.25rem; margin-bottom:1rem;">';
+    s5 += '<h2 style="color:#D4AF37; font-size:1rem; margin:0 0 0.5rem;">5. Gráfico de Projeção</h2>';
+    s5 += '<img src="' + chartImg + '" style="width:100%; border-radius:8px;">';
+    s5 += '</div>';
+    pdfContainer.innerHTML += s5;
+  }
+
+  // Seção 6: Análise detalhada
+  var analiseSection = document.getElementById('analise-section');
+  if (analiseSection && analiseSection.innerHTML.trim()) {
+    var s6 = '<div style="background:#052614; border:1px solid rgba(212,175,55,0.2); border-radius:10px; padding:1rem 1.25rem; margin-bottom:1rem;">';
+    s6 += '<h2 style="color:#D4AF37; font-size:1rem; margin:0 0 0.5rem;">6. Análise Detalhada</h2>';
+    s6 += analiseSection.innerHTML;
+    s6 += '</div>';
+    pdfContainer.innerHTML += s6;
+  }
+
+  // Seção 7: Faturas (se houver)
+  var faturasSection = document.getElementById('faturas-section');
+  if (faturasSection) {
+    var s7 = '<div style="background:#052614; border:1px solid rgba(212,175,55,0.2); border-radius:10px; padding:1rem 1.25rem; margin-bottom:1rem;">';
+    s7 += faturasSection.innerHTML;
+    s7 += '</div>';
+    pdfContainer.innerHTML += s7;
+  }
+
+  // Seção 8: Orçamento Mensal
+  var orcamentoSection = document.getElementById('orcamento-mensal');
+  if (orcamentoSection && orcamentoSection.style.display !== 'none' && orcamentoSection.innerHTML.trim()) {
+    var s8 = '<div style="background:#052614; border:1px solid rgba(212,175,55,0.2); border-radius:10px; padding:1rem 1.25rem; margin-bottom:1rem;">';
+    s8 += orcamentoSection.innerHTML;
+    s8 += '</div>';
+    pdfContainer.innerHTML += s8;
+  }
+
+  // Rodapé
+  pdfContainer.innerHTML += '<div style="text-align:center; margin-top:2rem; padding-top:1rem; border-top:1px solid rgba(212,175,55,0.2); color:#A0B8A6; font-size:0.75rem;">HV Saúde Financeira — Relatório de Fluxo de Caixa Avançado</div>';
+
+  // Gera o PDF
+  document.body.appendChild(pdfContainer);
+  var opt = {
+    margin: [10, 10, 10, 10],
+    filename: 'fluxo-de-caixa-' + new Date().toISOString().split('T')[0] + '.pdf',
+    image: { type: 'jpeg', quality: 0.95 },
+    html2canvas: { scale: 2, useCORS: true, backgroundColor: '#021C0E' },
+    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+  };
+
+  html2pdf().set(opt).from(pdfContainer).save().then(function() {
+    document.body.removeChild(pdfContainer);
+    btn.innerHTML = originalText;
+    btn.disabled = false;
+  }).catch(function(err) {
+    console.error('Erro ao gerar PDF:', err);
+    document.body.removeChild(pdfContainer);
+    btn.innerHTML = originalText;
+    btn.disabled = false;
+    alert('Erro ao gerar PDF. Tente novamente.');
+  });
+}
+
+function _forceSaveFluxo() {
+  _initDone = true;
+  saveToStorage();
+  _globalSaveFeedback();
+}
 </script>
 </main>
+<button class="btn-save-global" id="btnSaveGlobal" onclick="_forceSaveFluxo()" title="Salvar todas as alterações">
+  <span id="saveIcon">💾</span> <span id="saveLabel">Salvar Alterações</span>
+</button>
 </body>
 </html>
