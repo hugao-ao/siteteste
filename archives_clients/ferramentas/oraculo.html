@@ -3214,8 +3214,171 @@
             if (inflaTooltip) inflaTooltip.innerHTML = inflaHTML;
         }
 
-        document.addEventListener('DOMContentLoaded', () => {
+        // ===== PERSISTÊNCIA (localStorage + Supabase) =====
+        var _ORAC_SUPABASE_URL = 'https://vbikskbfkhundhropykf.supabase.co';
+        var _ORAC_SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZiaWtza2Jma2h1bmRocm9weWtmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDU1MTk5NjEsImV4cCI6MjA2MTA5NTk2MX0.-n-Tj_5JnF1NL2ZImWlMeTcobWDl_VD6Vqp0lxRQFFU';
+        var _ORAC_LS_KEY = 'hv_oraculo_local';
+        var _oracSbClient = null;
+        var _oracInitDone = false;
+        var _oracSaveTimer = null;
+
+        function _getOracClienteId() { return sessionStorage.getItem('cliente_id') || null; }
+
+        function _getOracSbClient() {
+          if (_oracSbClient) return _oracSbClient;
+          if (window.mithraSupabaseClient) { _oracSbClient = window.mithraSupabaseClient; return _oracSbClient; }
+          try {
+            if (window.supabase && window.supabase.createClient) {
+              _oracSbClient = window.supabase.createClient(_ORAC_SUPABASE_URL, _ORAC_SUPABASE_KEY);
+            }
+          } catch(e) { _oracSbClient = null; }
+          return _oracSbClient;
+        }
+
+        function _waitForSupabaseOrac(timeout) {
+          return new Promise(function(resolve) {
+            if (window.mithraSupabaseClient) { _oracSbClient = window.mithraSupabaseClient; resolve(window.mithraSupabaseClient); return; }
+            var elapsed = 0;
+            var interval = setInterval(function() {
+              elapsed += 50;
+              if (window.mithraSupabaseClient) { clearInterval(interval); _oracSbClient = window.mithraSupabaseClient; resolve(window.mithraSupabaseClient); }
+              else if (elapsed >= (timeout || 3000)) { clearInterval(interval); resolve(null); }
+            }, 50);
+          });
+        }
+
+        function _oracBuildPayload() {
+          return {
+            simulacoes: simulacoes,
+            simContador: simContador,
+            goals: goals,
+            contributionLadder: contributionLadder,
+            specialContributions: specialContributions,
+            params: {
+              currentWealth: document.getElementById('currentWealth').value,
+              monthlyContribution: document.getElementById('monthlyContribution').value,
+              minReserve: document.getElementById('minReserve').value,
+              interestRate: document.getElementById('interestRateAnnual').value,
+              inflationRate: document.getElementById('inflationRateAnnual').value,
+              taxRate: document.getElementById('taxRate').value,
+              projectionValue: document.getElementById('projectionValue').value,
+              projectionUnit: document.getElementById('projectionUnit').value,
+              startDate: document.getElementById('startDate').value,
+              adjustContribution: document.getElementById('adjustContributionInflation').checked
+            }
+          };
+        }
+
+        function _oracSaveData() {
+          if (!_oracInitDone) return;
+          var data = _oracBuildPayload();
+          try { localStorage.setItem(_ORAC_LS_KEY, JSON.stringify(data)); } catch(e) {}
+          var clienteId = _getOracClienteId();
+          if (!clienteId) return;
+          if (_oracSaveTimer) clearTimeout(_oracSaveTimer);
+          _oracSaveTimer = setTimeout(function() { _oracSaveToSupabase(clienteId, data); }, 2000);
+        }
+
+        async function _oracSaveToSupabase(clienteId, data) {
+          var sb = _getOracSbClient();
+          if (!sb) return;
+          try {
+            var payload = { cliente_id: clienteId, ferramenta: 'oraculo', dados: data };
+            var result = await sb.from('ferramentas_dados').upsert(payload, { onConflict: 'cliente_id,ferramenta' });
+            if (result.error) console.warn('Oraculo: erro ao salvar no Supabase', result.error.message);
+          } catch(e) { console.warn('Oraculo: exceção ao salvar', e); }
+        }
+
+        async function _oracLoadFromSupabase(clienteId) {
+          var sb = _getOracSbClient();
+          if (!sb || !clienteId) return null;
+          try {
+            var result = await sb.from('ferramentas_dados').select('dados').eq('cliente_id', clienteId).eq('ferramenta', 'oraculo').maybeSingle();
+            if (result.error) { console.warn('Oraculo: erro ao carregar do Supabase', result.error.message); return null; }
+            return (result.data && result.data.dados) ? result.data.dados : null;
+          } catch(e) { console.warn('Oraculo: exceção ao carregar', e); return null; }
+        }
+
+        function _oracLoadFromLocalStorage() {
+          var raw;
+          try { raw = localStorage.getItem(_ORAC_LS_KEY); } catch(e) { return null; }
+          if (!raw) return null;
+          try { return JSON.parse(raw); } catch(e) { return null; }
+        }
+
+        function _oracApplyData(d) {
+          if (!d) return false;
+          var hasData = false;
+          if (Array.isArray(d.simulacoes) && d.simulacoes.length > 0) { simulacoes = d.simulacoes; hasData = true; }
+          if (typeof d.simContador === 'number') simContador = d.simContador;
+          if (Array.isArray(d.goals)) { goals = d.goals; hasData = true; }
+          if (Array.isArray(d.contributionLadder)) contributionLadder = d.contributionLadder;
+          if (Array.isArray(d.specialContributions)) specialContributions = d.specialContributions;
+          if (d.params) {
+            var p = d.params;
+            if (p.currentWealth) document.getElementById('currentWealth').value = p.currentWealth;
+            if (p.monthlyContribution) document.getElementById('monthlyContribution').value = p.monthlyContribution;
+            if (p.minReserve) document.getElementById('minReserve').value = p.minReserve;
+            if (p.interestRate) document.getElementById('interestRateAnnual').value = p.interestRate;
+            if (p.inflationRate) document.getElementById('inflationRateAnnual').value = p.inflationRate;
+            if (p.taxRate) document.getElementById('taxRate').value = p.taxRate;
+            if (p.projectionValue) document.getElementById('projectionValue').value = p.projectionValue;
+            if (p.projectionUnit) document.getElementById('projectionUnit').value = p.projectionUnit;
+            if (p.startDate) document.getElementById('startDate').value = p.startDate;
+            if (typeof p.adjustContribution === 'boolean') document.getElementById('adjustContributionInflation').checked = p.adjustContribution;
+          }
+          if (hasData) {
+            renderGoals();
+            renderContributionLadder();
+            renderSpecialContributions();
+            renderSimulacoes();
+          }
+          return hasData;
+        }
+
+        // Hook: salvar após cada simulação
+        var _origSalvarSimulacao = salvarSimulacao;
+        salvarSimulacao = function(resultado) {
+          _origSalvarSimulacao(resultado);
+          _oracSaveData();
+        };
+        var _origExcluirSimulacao = excluirSimulacao;
+        excluirSimulacao = function(id) {
+          _origExcluirSimulacao(id);
+          _oracSaveData();
+        };
+        var _origRenomearSimulacao = renomearSimulacao;
+        renomearSimulacao = function(id, novoNome) {
+          _origRenomearSimulacao(id, novoNome);
+          _oracSaveData();
+        };
+        var _origAddOrUpdateGoal = addOrUpdateGoal;
+        addOrUpdateGoal = function() {
+          _origAddOrUpdateGoal();
+          _oracSaveData();
+        };
+        var _origRemoveGoal = removeGoal;
+        removeGoal = function(id) {
+          _origRemoveGoal(id);
+          _oracSaveData();
+        };
+
+        document.addEventListener('DOMContentLoaded', async () => {
             setTimeout(fetchMarketVariables, 300);
+            // Persistência: carregar dados salvos
+            var clienteId = _getOracClienteId();
+            var restored = false;
+            if (clienteId) {
+              _ORAC_LS_KEY = 'hv_oraculo_' + clienteId;
+              await _waitForSupabaseOrac(3000);
+              var remoteData = await _oracLoadFromSupabase(clienteId);
+              if (remoteData) restored = _oracApplyData(remoteData);
+            }
+            if (!restored) {
+              var localData = _oracLoadFromLocalStorage();
+              if (localData) restored = _oracApplyData(localData);
+            }
+            _oracInitDone = true;
         });
 
         function renderVerdict(finalWealth, totalInvested, inflationRate, interestRate, goalStats, finalNetBalance, physicalWealth, acquiredAssets, balance, taxRate) {
