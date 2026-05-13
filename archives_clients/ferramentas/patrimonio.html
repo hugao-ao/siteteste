@@ -1,0 +1,1217 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Patrimônio do Cliente - MithraSF</title>
+<link rel="stylesheet" href="../assets/style.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="../assets/layout.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #021C0E;
+    --card: #052614;
+    --card2: #0A3520;
+    --fg: #F2E8C9;
+    --muted: #A0B8A6;
+    --primary: #D4AF37;
+    --primary-dim: rgba(212,175,55,0.15);
+    --border: rgba(212,175,55,0.2);
+    --green: #22c55e;
+    --red: #ef4444;
+    --blue: #60a5fa;
+    --purple: #a78bfa;
+    --orange: #fb923c;
+    --teal: #14b8a6;
+    --radius: 10px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--fg); font-family: 'Inter', system-ui, sans-serif; font-size: 14px; min-height: 100vh; }
+  h1 { font-size: 1.6rem; font-weight: 700; color: #fff; }
+  h2 { font-size: 1.1rem; font-weight: 600; color: var(--primary); margin-bottom: 1rem; }
+  h3 { font-size: 0.95rem; font-weight: 600; color: #fff; }
+
+  .page { max-width: 1200px; margin: 0 auto; padding: 2rem 1rem 4rem; }
+  .page-header { margin-bottom: 2rem; }
+  .page-header p { color: var(--muted); margin-top: 0.3rem; font-size: 0.9rem; }
+
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.5rem; margin-bottom: 1.5rem; }
+
+  .field { display: flex; flex-direction: column; gap: 0.4rem; }
+  .field label { font-size: 0.8rem; color: var(--muted); font-weight: 500; }
+  .field input, .field select, .field textarea { background: var(--card2); border: 1px solid var(--border); border-radius: 6px; color: var(--fg); padding: 0.5rem 0.75rem; font-size: 0.9rem; outline: none; width: 100%; transition: border-color 0.2s; font-family: inherit; }
+  .field input:focus, .field select:focus, .field textarea:focus { border-color: var(--primary); }
+  .field select option { background: var(--card); }
+  .field textarea { resize: vertical; min-height: 60px; }
+
+  .btn { display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.5rem 1rem; border-radius: 6px; font-size: 0.85rem; font-weight: 600; cursor: pointer; border: none; transition: all 0.15s; }
+  .btn-primary { background: var(--primary); color: #021C0E; }
+  .btn-primary:hover { background: #c9a227; }
+  .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--fg); }
+  .btn-outline:hover { border-color: var(--primary); color: var(--primary); }
+  .btn-danger { background: transparent; border: 1px solid rgba(239,68,68,0.3); color: var(--red); }
+  .btn-danger:hover { background: rgba(239,68,68,0.1); }
+  .btn-sm { padding: 0.3rem 0.7rem; font-size: 0.8rem; }
+  .btn-icon { padding: 0.3rem; border-radius: 4px; background: transparent; border: none; cursor: pointer; }
+  .btn-icon:hover { background: rgba(255,255,255,0.08); }
+
+  .badge { display: inline-block; padding: 0.15rem 0.5rem; border-radius: 20px; font-size: 0.72rem; font-weight: 600; }
+  .badge-green { background: rgba(34,197,94,0.15); color: var(--green); }
+  .badge-red { background: rgba(239,68,68,0.15); color: var(--red); }
+  .badge-blue { background: rgba(96,165,250,0.15); color: var(--blue); }
+  .badge-purple { background: rgba(167,139,250,0.15); color: var(--purple); }
+  .badge-orange { background: rgba(251,146,60,0.15); color: var(--orange); }
+  .badge-gold { background: rgba(212,175,55,0.15); color: var(--primary); }
+  .badge-muted { background: rgba(160,184,166,0.1); color: var(--muted); }
+  .badge-teal { background: rgba(20,184,166,0.15); color: var(--teal); }
+
+  /* Dashboard */
+  .dashboard { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
+  .dash-item { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.2rem; text-align: center; }
+  .dash-item .label { font-size: 0.75rem; color: var(--muted); margin-bottom: 0.4rem; text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600; }
+  .dash-item .value { font-size: 1.5rem; font-weight: 700; }
+  .dash-item .sub { font-size: 0.72rem; color: var(--muted); margin-top: 0.3rem; }
+
+  /* Charts */
+  .charts-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem; }
+  .chart-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.5rem; }
+  .chart-card h3 { margin-bottom: 1rem; color: var(--primary); font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.06em; }
+  .chart-wrap { position: relative; height: 260px; }
+
+  /* Table */
+  .table-wrap { overflow-x: auto; border-radius: var(--radius); border: 1px solid var(--border); }
+  table { width: 100%; border-collapse: collapse; }
+  thead th { background: var(--card2); color: var(--primary); font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; padding: 0.65rem 0.75rem; text-align: left; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  tbody tr { border-bottom: 1px solid rgba(212,175,55,0.08); transition: background 0.1s; }
+  tbody tr:last-child { border-bottom: none; }
+  tbody tr:hover { background: rgba(212,175,55,0.04); }
+  tbody td { padding: 0.6rem 0.75rem; font-size: 0.85rem; vertical-align: middle; }
+  .td-name { font-weight: 600; color: #fff; max-width: 200px; }
+  .td-val-pos { color: var(--green); font-weight: 600; }
+  .td-val-neg { color: var(--red); font-weight: 600; }
+  .td-actions { display: flex; gap: 0.3rem; }
+  .group-header td { background: rgba(212,175,55,0.06); color: var(--primary); font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; padding: 0.4rem 0.75rem; }
+
+  /* Tabs */
+  .tabs { display: flex; gap: 0.3rem; background: var(--card2); border-radius: 6px; padding: 0.25rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
+  .tab-btn { padding: 0.45rem 1rem; border-radius: 4px; font-size: 0.82rem; font-weight: 600; cursor: pointer; border: none; background: transparent; color: var(--muted); transition: all 0.15s; }
+  .tab-btn.active { background: var(--primary); color: #021C0E; }
+
+  /* Toolbar */
+  .toolbar { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem; }
+  .toolbar .label { font-size: 0.75rem; font-weight: 700; letter-spacing: 0.10em; text-transform: uppercase; color: var(--primary); }
+  .toolbar .spacer { flex: 1; }
+  .toolbar .count { font-size: 0.72rem; color: var(--muted); }
+
+  /* Modal */
+  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 1000; display: flex; align-items: center; justify-content: center; padding: 1rem; opacity: 0; pointer-events: none; transition: opacity 0.2s; }
+  .modal-overlay.open { opacity: 1; pointer-events: all; }
+  .modal { background: var(--card); border: 1px solid var(--border); border-radius: 14px; width: 100%; max-width: 650px; max-height: 90vh; overflow-y: auto; padding: 2rem; }
+  .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
+  .modal-header h2 { margin: 0; }
+  .modal-section { margin-bottom: 1.5rem; padding-bottom: 1.5rem; border-bottom: 1px solid var(--border); }
+  .modal-section:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+  .modal-section-title { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin-bottom: 0.75rem; }
+  .sub-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+  .sub-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.75rem; }
+
+  /* Indicadores */
+  .indicadores { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
+  .indicador { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem; }
+  .indicador .ind-label { font-size: 0.72rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600; margin-bottom: 0.5rem; }
+  .indicador .ind-bar { height: 8px; background: rgba(255,255,255,0.08); border-radius: 4px; overflow: hidden; margin-bottom: 0.4rem; }
+  .indicador .ind-fill { height: 100%; border-radius: 4px; transition: width 0.4s; }
+  .indicador .ind-value { font-size: 0.85rem; font-weight: 700; }
+  .indicador .ind-desc { font-size: 0.70rem; color: var(--muted); margin-top: 0.2rem; }
+
+  .empty { text-align: center; padding: 3rem 1rem; color: var(--muted); }
+  .empty .ico { font-size: 2.5rem; opacity: 0.3; display: block; margin-bottom: 0.75rem; }
+
+  @media (max-width: 700px) {
+    .charts-row { grid-template-columns: 1fr; }
+    .sub-grid, .sub-grid-3 { grid-template-columns: 1fr; }
+    .dashboard { grid-template-columns: 1fr 1fr; }
+  }
+  @media (max-width: 480px) {
+    .dashboard { grid-template-columns: 1fr; }
+  }
+
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+</style>
+</head>
+<body>
+  <div id="sidebar-container" class="sidebar"></div>
+  <main class="main-content">
+<div class="page">
+
+  <header class="page-header">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:0.3rem;">
+      <a href="../ferramentas.html" style="color:var(--muted);text-decoration:none;font-size:1.2rem;">←</a>
+      <span style="font-size:1.6rem;">🏛️</span>
+      <h1>Patrimônio do Cliente</h1>
+    </div>
+    <p>Mapeamento completo de ativos, passivos, rendas e despesas do cliente.</p>
+  </header>
+
+  <!-- DASHBOARD -->
+  <div class="dashboard" id="dashboard">
+    <div class="dash-item">
+      <div class="label">Patrimônio Líquido</div>
+      <div class="value" id="d-patrimonio" style="color:var(--green);">R$ 0,00</div>
+      <div class="sub" id="d-patrimonio-sub"></div>
+    </div>
+    <div class="dash-item">
+      <div class="label">Total Ativos</div>
+      <div class="value" id="d-ativos" style="color:var(--blue);">R$ 0,00</div>
+      <div class="sub" id="d-ativos-count">0 itens</div>
+    </div>
+    <div class="dash-item">
+      <div class="label">Total Passivos</div>
+      <div class="value" id="d-passivos" style="color:var(--red);">R$ 0,00</div>
+      <div class="sub" id="d-passivos-count">0 itens</div>
+    </div>
+    <div class="dash-item">
+      <div class="label">Renda Mensal</div>
+      <div class="value" id="d-renda" style="color:var(--teal);">R$ 0,00</div>
+      <div class="sub" id="d-renda-count">0 fontes</div>
+    </div>
+    <div class="dash-item">
+      <div class="label">Despesas Fixas</div>
+      <div class="value" id="d-despesas" style="color:var(--orange);">R$ 0,00</div>
+      <div class="sub" id="d-despesas-count">0 itens</div>
+    </div>
+  </div>
+
+  <!-- GRÁFICOS -->
+  <div class="charts-row" id="charts-section" style="display:none;">
+    <div class="chart-card">
+      <h3>Composição dos Ativos</h3>
+      <div class="chart-wrap"><canvas id="chart-ativos"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <h3>Composição dos Passivos</h3>
+      <div class="chart-wrap"><canvas id="chart-passivos"></canvas></div>
+    </div>
+  </div>
+
+  <!-- INDICADORES -->
+  <div class="indicadores" id="indicadores-section" style="display:none;">
+    <div class="indicador">
+      <div class="ind-label">Liquidez Imediata</div>
+      <div class="ind-bar"><div class="ind-fill" id="ind-liquidez-fill" style="width:0%;background:var(--blue);"></div></div>
+      <div class="ind-value" id="ind-liquidez-val">0%</div>
+      <div class="ind-desc">% dos ativos com liquidez alta</div>
+    </div>
+    <div class="indicador">
+      <div class="ind-label">Endividamento</div>
+      <div class="ind-bar"><div class="ind-fill" id="ind-endiv-fill" style="width:0%;background:var(--red);"></div></div>
+      <div class="ind-value" id="ind-endiv-val">0%</div>
+      <div class="ind-desc">Passivos / Ativos</div>
+    </div>
+    <div class="indicador">
+      <div class="ind-label">Comprometimento de Renda</div>
+      <div class="ind-bar"><div class="ind-fill" id="ind-comprom-fill" style="width:0%;background:var(--orange);"></div></div>
+      <div class="ind-value" id="ind-comprom-val">0%</div>
+      <div class="ind-desc">Parcelas / Renda Mensal</div>
+    </div>
+    <div class="indicador">
+      <div class="ind-label">Diversificação</div>
+      <div class="ind-bar"><div class="ind-fill" id="ind-divers-fill" style="width:0%;background:var(--purple);"></div></div>
+      <div class="ind-value" id="ind-divers-val">—</div>
+      <div class="ind-desc">Categorias distintas de ativos</div>
+    </div>
+  </div>
+
+  <!-- TABS -->
+  <div class="tabs" id="main-tabs">
+    <button class="tab-btn active" onclick="switchTab('ativos')">Ativos</button>
+    <button class="tab-btn" onclick="switchTab('passivos')">Passivos</button>
+    <button class="tab-btn" onclick="switchTab('rendas')">Rendas</button>
+    <button class="tab-btn" onclick="switchTab('despesas')">Despesas Fixas</button>
+  </div>
+
+  <!-- TAB: ATIVOS -->
+  <div id="tab-ativos" class="tab-content">
+    <div class="toolbar">
+      <span class="label">Ativos</span>
+      <span class="spacer"></span>
+      <span class="count" id="ativos-count">0 itens</span>
+      <button class="btn btn-primary btn-sm" onclick="openModal('ativo')">+ Adicionar Ativo</button>
+    </div>
+    <div class="card" style="padding:0;">
+      <div id="ativos-table-wrap"></div>
+    </div>
+  </div>
+
+  <!-- TAB: PASSIVOS -->
+  <div id="tab-passivos" class="tab-content" style="display:none;">
+    <div class="toolbar">
+      <span class="label">Passivos</span>
+      <span class="spacer"></span>
+      <span class="count" id="passivos-count">0 itens</span>
+      <button class="btn btn-primary btn-sm" onclick="openModal('passivo')">+ Adicionar Passivo</button>
+    </div>
+    <div class="card" style="padding:0;">
+      <div id="passivos-table-wrap"></div>
+    </div>
+  </div>
+
+  <!-- TAB: RENDAS -->
+  <div id="tab-rendas" class="tab-content" style="display:none;">
+    <div class="toolbar">
+      <span class="label">Fontes de Renda</span>
+      <span class="spacer"></span>
+      <span class="count" id="rendas-count">0 fontes</span>
+      <button class="btn btn-primary btn-sm" onclick="openModal('renda')">+ Adicionar Renda</button>
+    </div>
+    <div class="card" style="padding:0;">
+      <div id="rendas-table-wrap"></div>
+    </div>
+  </div>
+
+  <!-- TAB: DESPESAS -->
+  <div id="tab-despesas" class="tab-content" style="display:none;">
+    <div class="toolbar">
+      <span class="label">Despesas Fixas Mensais</span>
+      <span class="spacer"></span>
+      <span class="count" id="despesas-count">0 itens</span>
+      <button class="btn btn-primary btn-sm" onclick="openModal('despesa')">+ Adicionar Despesa</button>
+    </div>
+    <div class="card" style="padding:0;">
+      <div id="despesas-table-wrap"></div>
+    </div>
+  </div>
+
+</div><!-- .page -->
+
+<!-- MODAL ATIVO -->
+<div class="modal-overlay" id="modal-ativo" onclick="if(event.target===this)closeModal('ativo')">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="modal-ativo-title">Adicionar Ativo</h2>
+      <button class="btn-icon" onclick="closeModal('ativo')" style="font-size:1.2rem;color:var(--muted);">✕</button>
+    </div>
+    <div class="modal-section">
+      <div class="modal-section-title">Informações Básicas</div>
+      <div class="sub-grid" style="margin-bottom:0.75rem;">
+        <div class="field">
+          <label>Nome / Descrição *</label>
+          <input type="text" id="at_nome" placeholder="Ex: Tesouro Selic 2029">
+        </div>
+        <div class="field">
+          <label>Categoria *</label>
+          <select id="at_categoria" onchange="updateSubcategorias('ativo')">
+            <option value="">Selecione...</option>
+            <option value="investimento">Investimento Financeiro</option>
+            <option value="imovel">Imóvel</option>
+            <option value="veiculo">Veículo</option>
+            <option value="bem_movel">Bem Móvel</option>
+            <option value="participacao">Participação Societária</option>
+            <option value="recebivel">Recebível / Crédito</option>
+            <option value="outro_ativo">Outro Ativo</option>
+          </select>
+        </div>
+      </div>
+      <div class="sub-grid" style="margin-bottom:0.75rem;">
+        <div class="field">
+          <label>Subcategoria</label>
+          <select id="at_subcategoria">
+            <option value="">Selecione a categoria primeiro</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Liquidez</label>
+          <select id="at_liquidez">
+            <option value="alta">Alta (D+0 a D+5)</option>
+            <option value="media">Média (D+6 a D+90)</option>
+            <option value="baixa">Baixa (acima de D+90)</option>
+            <option value="iliquido">Ilíquido</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div class="modal-section">
+      <div class="modal-section-title">Valores</div>
+      <div class="sub-grid" style="margin-bottom:0.75rem;">
+        <div class="field">
+          <label>Valor Atual Estimado *</label>
+          <input type="text" id="at_valor_atual" placeholder="Ex: 50.000,00" oninput="maskBRL(this)">
+        </div>
+        <div class="field">
+          <label>Valor de Aquisição</label>
+          <input type="text" id="at_valor_aquisicao" placeholder="Ex: 40.000,00" oninput="maskBRL(this)">
+        </div>
+      </div>
+      <div class="sub-grid">
+        <div class="field">
+          <label>Data de Aquisição</label>
+          <input type="date" id="at_data_aquisicao">
+        </div>
+        <div class="field">
+          <label>Rentabilidade Anual (%)</label>
+          <input type="number" id="at_rentabilidade" step="0.01" placeholder="Ex: 12.5">
+        </div>
+      </div>
+    </div>
+    <div class="modal-section">
+      <div class="modal-section-title">Detalhes Adicionais</div>
+      <div class="sub-grid" style="margin-bottom:0.75rem;">
+        <div class="field">
+          <label>Instituição / Localização</label>
+          <input type="text" id="at_instituicao" placeholder="Ex: XP, Nubank, Bairro X">
+        </div>
+        <div class="field">
+          <label>Vencimento / Prazo</label>
+          <input type="date" id="at_vencimento">
+        </div>
+      </div>
+      <div class="field">
+        <label>Observações</label>
+        <textarea id="at_obs" placeholder="Notas adicionais sobre este ativo..."></textarea>
+      </div>
+    </div>
+    <div style="display:flex;gap:0.75rem;justify-content:flex-end;">
+      <button class="btn btn-outline" onclick="closeModal('ativo')">Cancelar</button>
+      <button class="btn btn-primary" onclick="salvarAtivo()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL PASSIVO -->
+<div class="modal-overlay" id="modal-passivo" onclick="if(event.target===this)closeModal('passivo')">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="modal-passivo-title">Adicionar Passivo</h2>
+      <button class="btn-icon" onclick="closeModal('passivo')" style="font-size:1.2rem;color:var(--muted);">✕</button>
+    </div>
+    <div class="modal-section">
+      <div class="modal-section-title">Informações Básicas</div>
+      <div class="sub-grid" style="margin-bottom:0.75rem;">
+        <div class="field">
+          <label>Nome / Descrição *</label>
+          <input type="text" id="ps_nome" placeholder="Ex: Financiamento Imobiliário Caixa">
+        </div>
+        <div class="field">
+          <label>Categoria *</label>
+          <select id="ps_categoria">
+            <option value="">Selecione...</option>
+            <option value="financiamento_imob">Financiamento Imobiliário</option>
+            <option value="financiamento_veic">Financiamento de Veículo</option>
+            <option value="emprestimo_pessoal">Empréstimo Pessoal</option>
+            <option value="emprestimo_consig">Empréstimo Consignado</option>
+            <option value="cartao_credito">Cartão de Crédito (Saldo Devedor)</option>
+            <option value="cheque_especial">Cheque Especial</option>
+            <option value="credito_estudantil">Crédito Estudantil</option>
+            <option value="divida_tributaria">Dívida Tributária</option>
+            <option value="outro_passivo">Outro Passivo</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div class="modal-section">
+      <div class="modal-section-title">Valores e Condições</div>
+      <div class="sub-grid" style="margin-bottom:0.75rem;">
+        <div class="field">
+          <label>Saldo Devedor Atual *</label>
+          <input type="text" id="ps_saldo" placeholder="Ex: 200.000,00" oninput="maskBRL(this)">
+        </div>
+        <div class="field">
+          <label>Valor Original do Contrato</label>
+          <input type="text" id="ps_valor_original" placeholder="Ex: 250.000,00" oninput="maskBRL(this)">
+        </div>
+      </div>
+      <div class="sub-grid-3" style="margin-bottom:0.75rem;">
+        <div class="field">
+          <label>Parcela Mensal</label>
+          <input type="text" id="ps_parcela" placeholder="Ex: 1.800,00" oninput="maskBRL(this)">
+        </div>
+        <div class="field">
+          <label>Taxa de Juros (% a.a.)</label>
+          <input type="number" id="ps_taxa" step="0.01" placeholder="Ex: 9.5">
+        </div>
+        <div class="field">
+          <label>Parcelas Restantes</label>
+          <input type="number" id="ps_parcelas_rest" placeholder="Ex: 240">
+        </div>
+      </div>
+      <div class="sub-grid">
+        <div class="field">
+          <label>Data de Início</label>
+          <input type="date" id="ps_data_inicio">
+        </div>
+        <div class="field">
+          <label>Instituição Credora</label>
+          <input type="text" id="ps_instituicao" placeholder="Ex: Caixa, Itaú">
+        </div>
+      </div>
+    </div>
+    <div class="modal-section">
+      <div class="field">
+        <label>Observações</label>
+        <textarea id="ps_obs" placeholder="Notas adicionais sobre este passivo..."></textarea>
+      </div>
+    </div>
+    <div style="display:flex;gap:0.75rem;justify-content:flex-end;">
+      <button class="btn btn-outline" onclick="closeModal('passivo')">Cancelar</button>
+      <button class="btn btn-primary" onclick="salvarPassivo()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL RENDA -->
+<div class="modal-overlay" id="modal-renda" onclick="if(event.target===this)closeModal('renda')">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="modal-renda-title">Adicionar Fonte de Renda</h2>
+      <button class="btn-icon" onclick="closeModal('renda')" style="font-size:1.2rem;color:var(--muted);">✕</button>
+    </div>
+    <div class="modal-section">
+      <div class="sub-grid" style="margin-bottom:0.75rem;">
+        <div class="field">
+          <label>Descrição *</label>
+          <input type="text" id="rd_nome" placeholder="Ex: Salário CLT, Aluguel, Freelance">
+        </div>
+        <div class="field">
+          <label>Tipo *</label>
+          <select id="rd_tipo">
+            <option value="salario_clt">Salário CLT</option>
+            <option value="pro_labore">Pró-labore</option>
+            <option value="autonomo">Autônomo / Freelance</option>
+            <option value="aluguel">Aluguel</option>
+            <option value="dividendos">Dividendos / Proventos</option>
+            <option value="pensao">Pensão / Aposentadoria</option>
+            <option value="rendimento">Rendimento de Investimentos</option>
+            <option value="outro_renda">Outro</option>
+          </select>
+        </div>
+      </div>
+      <div class="sub-grid" style="margin-bottom:0.75rem;">
+        <div class="field">
+          <label>Valor Mensal Bruto *</label>
+          <input type="text" id="rd_bruto" placeholder="Ex: 8.000,00" oninput="maskBRL(this)">
+        </div>
+        <div class="field">
+          <label>Valor Mensal Líquido</label>
+          <input type="text" id="rd_liquido" placeholder="Ex: 6.500,00" oninput="maskBRL(this)">
+        </div>
+      </div>
+      <div class="sub-grid">
+        <div class="field">
+          <label>Estabilidade</label>
+          <select id="rd_estabilidade">
+            <option value="estavel">Estável</option>
+            <option value="variavel">Variável</option>
+            <option value="temporaria">Temporária</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Observações</label>
+          <input type="text" id="rd_obs" placeholder="Notas...">
+        </div>
+      </div>
+    </div>
+    <div style="display:flex;gap:0.75rem;justify-content:flex-end;">
+      <button class="btn btn-outline" onclick="closeModal('renda')">Cancelar</button>
+      <button class="btn btn-primary" onclick="salvarRenda()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL DESPESA -->
+<div class="modal-overlay" id="modal-despesa" onclick="if(event.target===this)closeModal('despesa')">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="modal-despesa-title">Adicionar Despesa Fixa</h2>
+      <button class="btn-icon" onclick="closeModal('despesa')" style="font-size:1.2rem;color:var(--muted);">✕</button>
+    </div>
+    <div class="modal-section">
+      <div class="sub-grid" style="margin-bottom:0.75rem;">
+        <div class="field">
+          <label>Descrição *</label>
+          <input type="text" id="dp_nome" placeholder="Ex: Aluguel, Plano de Saúde">
+        </div>
+        <div class="field">
+          <label>Categoria *</label>
+          <select id="dp_categoria">
+            <option value="moradia">Moradia</option>
+            <option value="transporte">Transporte</option>
+            <option value="alimentacao">Alimentação</option>
+            <option value="saude">Saúde</option>
+            <option value="educacao">Educação</option>
+            <option value="lazer">Lazer</option>
+            <option value="seguros">Seguros</option>
+            <option value="assinaturas">Assinaturas / Serviços</option>
+            <option value="dependentes">Dependentes</option>
+            <option value="outro_despesa">Outro</option>
+          </select>
+        </div>
+      </div>
+      <div class="sub-grid" style="margin-bottom:0.75rem;">
+        <div class="field">
+          <label>Valor Mensal *</label>
+          <input type="text" id="dp_valor" placeholder="Ex: 2.500,00" oninput="maskBRL(this)">
+        </div>
+        <div class="field">
+          <label>Essencialidade</label>
+          <select id="dp_essencial">
+            <option value="essencial">Essencial</option>
+            <option value="importante">Importante</option>
+            <option value="desejavel">Desejável</option>
+            <option value="supérfluo">Supérfluo</option>
+          </select>
+        </div>
+      </div>
+      <div class="field">
+        <label>Observações</label>
+        <input type="text" id="dp_obs" placeholder="Notas...">
+      </div>
+    </div>
+    <div style="display:flex;gap:0.75rem;justify-content:flex-end;">
+      <button class="btn btn-outline" onclick="closeModal('despesa')">Cancelar</button>
+      <button class="btn btn-primary" onclick="salvarDespesa()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL CONFIRMAR EXCLUSÃO -->
+<div class="modal-overlay" id="modal-del" onclick="if(event.target===this)closeDelModal()">
+  <div class="modal" style="max-width:400px;text-align:center;">
+    <p style="margin-bottom:1.5rem;font-size:0.95rem;" id="del-msg">Deseja excluir este item?</p>
+    <div style="display:flex;gap:0.75rem;justify-content:center;">
+      <button class="btn btn-outline" onclick="closeDelModal()">Cancelar</button>
+      <button class="btn btn-danger" onclick="confirmarExclusao()">Excluir</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════════════
+//  DADOS
+// ═══════════════════════════════════════════════════════════════════════════
+var ativos = [];
+var passivos = [];
+var rendas = [];
+var despesas = [];
+var nextId = 1;
+var currentTab = 'ativos';
+
+// Subcategorias
+var SUBCATS = {
+  investimento: ['Renda Fixa','Renda Variável','Fundos de Investimento','Previdência Privada','Criptomoedas','Poupança','COE','Câmbio/Ouro'],
+  imovel: ['Residencial','Comercial','Terreno','Rural','Sala/Loja'],
+  veiculo: ['Carro','Moto','Caminhão','Embarcação','Outro Veículo'],
+  bem_movel: ['Jóias/Relógios','Arte/Colecionáveis','Equipamentos','Móveis de Valor','Outro Bem'],
+  participacao: ['Empresa (Sócio)','Startup','Cotas de Fundo','Consórcio','Outra Participação'],
+  recebivel: ['Empréstimo a Terceiro','Nota Promissória','Precatório','Outro Recebível'],
+  outro_ativo: ['Outro']
+};
+
+var PALETTE = ['#D4AF37','#22c55e','#60a5fa','#a78bfa','#fb923c','#14b8a6','#f43f5e','#84cc16','#e879f9','#fbbf24'];
+
+var chartAtivos = null;
+var chartPassivos = null;
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  UTILITÁRIOS
+// ═══════════════════════════════════════════════════════════════════════════
+function fmtBRL(v) {
+  var n = parseFloat(v);
+  if (isNaN(n)) return 'R$ 0,00';
+  return 'R$ ' + n.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});
+}
+function parseBR(v) {
+  if (!v) return 0;
+  if (typeof v === 'number') return v;
+  return parseFloat(String(v).replace(/\./g,'').replace(',','.')) || 0;
+}
+function maskBRL(el) {
+  var v = el.value.replace(/\D/g,'');
+  if (!v) { el.value = ''; return; }
+  v = (parseInt(v)/100).toFixed(2);
+  el.value = parseFloat(v).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});
+}
+function escHtml(s) { var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+function fmtData(d) {
+  if (!d) return '—';
+  var parts = d.split('-');
+  return parts[2] + '/' + parts[1] + '/' + parts[0];
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  TABS
+// ═══════════════════════════════════════════════════════════════════════════
+function switchTab(tab) {
+  currentTab = tab;
+  ['ativos','passivos','rendas','despesas'].forEach(function(t) {
+    document.getElementById('tab-' + t).style.display = t === tab ? '' : 'none';
+  });
+  document.querySelectorAll('#main-tabs .tab-btn').forEach(function(btn, i) {
+    var tabs = ['ativos','passivos','rendas','despesas'];
+    btn.classList.toggle('active', tabs[i] === tab);
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  SUBCATEGORIAS DINÂMICAS
+// ═══════════════════════════════════════════════════════════════════════════
+function updateSubcategorias(tipo) {
+  var sel = document.getElementById('at_subcategoria');
+  var cat = document.getElementById('at_categoria').value;
+  sel.innerHTML = '<option value="">Nenhuma</option>';
+  if (SUBCATS[cat]) {
+    SUBCATS[cat].forEach(function(s) {
+      sel.innerHTML += '<option value="' + s + '">' + s + '</option>';
+    });
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  MODAIS
+// ═══════════════════════════════════════════════════════════════════════════
+var _editMode = null; // null = add, {tipo, index}
+function openModal(tipo, index) {
+  _editMode = (index !== undefined) ? {tipo: tipo, index: index} : null;
+  var titleEl = document.getElementById('modal-' + tipo + '-title');
+  if (_editMode) {
+    titleEl.textContent = 'Editar ' + tipo.charAt(0).toUpperCase() + tipo.slice(1);
+    fillModalFromData(tipo, index);
+  } else {
+    titleEl.textContent = 'Adicionar ' + tipo.charAt(0).toUpperCase() + tipo.slice(1);
+    clearModalFields(tipo);
+  }
+  document.getElementById('modal-' + tipo).classList.add('open');
+}
+function closeModal(tipo) {
+  document.getElementById('modal-' + tipo).classList.remove('open');
+  _editMode = null;
+}
+
+function clearModalFields(tipo) {
+  var prefix = {ativo:'at_', passivo:'ps_', renda:'rd_', despesa:'dp_'}[tipo];
+  document.querySelectorAll('#modal-' + tipo + ' input, #modal-' + tipo + ' select, #modal-' + tipo + ' textarea').forEach(function(el) {
+    if (el.id && el.id.startsWith(prefix)) {
+      if (el.tagName === 'SELECT') el.selectedIndex = 0;
+      else el.value = '';
+    }
+  });
+  if (tipo === 'ativo') updateSubcategorias('ativo');
+}
+
+function fillModalFromData(tipo, index) {
+  var item;
+  if (tipo === 'ativo') item = ativos[index];
+  else if (tipo === 'passivo') item = passivos[index];
+  else if (tipo === 'renda') item = rendas[index];
+  else item = despesas[index];
+  if (!item) return;
+
+  if (tipo === 'ativo') {
+    document.getElementById('at_nome').value = item.nome || '';
+    document.getElementById('at_categoria').value = item.categoria || '';
+    updateSubcategorias('ativo');
+    document.getElementById('at_subcategoria').value = item.subcategoria || '';
+    document.getElementById('at_liquidez').value = item.liquidez || 'alta';
+    document.getElementById('at_valor_atual').value = item.valor_atual ? parseBR(item.valor_atual).toLocaleString('pt-BR',{minimumFractionDigits:2}) : '';
+    document.getElementById('at_valor_aquisicao').value = item.valor_aquisicao ? parseBR(item.valor_aquisicao).toLocaleString('pt-BR',{minimumFractionDigits:2}) : '';
+    document.getElementById('at_data_aquisicao').value = item.data_aquisicao || '';
+    document.getElementById('at_rentabilidade').value = item.rentabilidade || '';
+    document.getElementById('at_instituicao').value = item.instituicao || '';
+    document.getElementById('at_vencimento').value = item.vencimento || '';
+    document.getElementById('at_obs').value = item.obs || '';
+  } else if (tipo === 'passivo') {
+    document.getElementById('ps_nome').value = item.nome || '';
+    document.getElementById('ps_categoria').value = item.categoria || '';
+    document.getElementById('ps_saldo').value = item.saldo ? parseBR(item.saldo).toLocaleString('pt-BR',{minimumFractionDigits:2}) : '';
+    document.getElementById('ps_valor_original').value = item.valor_original ? parseBR(item.valor_original).toLocaleString('pt-BR',{minimumFractionDigits:2}) : '';
+    document.getElementById('ps_parcela').value = item.parcela ? parseBR(item.parcela).toLocaleString('pt-BR',{minimumFractionDigits:2}) : '';
+    document.getElementById('ps_taxa').value = item.taxa || '';
+    document.getElementById('ps_parcelas_rest').value = item.parcelas_rest || '';
+    document.getElementById('ps_data_inicio').value = item.data_inicio || '';
+    document.getElementById('ps_instituicao').value = item.instituicao || '';
+    document.getElementById('ps_obs').value = item.obs || '';
+  } else if (tipo === 'renda') {
+    document.getElementById('rd_nome').value = item.nome || '';
+    document.getElementById('rd_tipo').value = item.tipo || '';
+    document.getElementById('rd_bruto').value = item.bruto ? parseBR(item.bruto).toLocaleString('pt-BR',{minimumFractionDigits:2}) : '';
+    document.getElementById('rd_liquido').value = item.liquido ? parseBR(item.liquido).toLocaleString('pt-BR',{minimumFractionDigits:2}) : '';
+    document.getElementById('rd_estabilidade').value = item.estabilidade || 'estavel';
+    document.getElementById('rd_obs').value = item.obs || '';
+  } else {
+    document.getElementById('dp_nome').value = item.nome || '';
+    document.getElementById('dp_categoria').value = item.categoria || '';
+    document.getElementById('dp_valor').value = item.valor ? parseBR(item.valor).toLocaleString('pt-BR',{minimumFractionDigits:2}) : '';
+    document.getElementById('dp_essencial').value = item.essencial || 'essencial';
+    document.getElementById('dp_obs').value = item.obs || '';
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  SALVAR ITENS
+// ═══════════════════════════════════════════════════════════════════════════
+function salvarAtivo() {
+  var nome = document.getElementById('at_nome').value.trim();
+  var cat = document.getElementById('at_categoria').value;
+  var valor = parseBR(document.getElementById('at_valor_atual').value);
+  if (!nome || !cat || !valor) { alert('Preencha Nome, Categoria e Valor Atual.'); return; }
+  var item = {
+    id: (_editMode && _editMode.tipo === 'ativo') ? ativos[_editMode.index].id : nextId++,
+    nome: nome,
+    categoria: cat,
+    subcategoria: document.getElementById('at_subcategoria').value,
+    liquidez: document.getElementById('at_liquidez').value,
+    valor_atual: valor,
+    valor_aquisicao: parseBR(document.getElementById('at_valor_aquisicao').value),
+    data_aquisicao: document.getElementById('at_data_aquisicao').value,
+    rentabilidade: parseFloat(document.getElementById('at_rentabilidade').value) || 0,
+    instituicao: document.getElementById('at_instituicao').value.trim(),
+    vencimento: document.getElementById('at_vencimento').value,
+    obs: document.getElementById('at_obs').value.trim()
+  };
+  if (_editMode && _editMode.tipo === 'ativo') ativos[_editMode.index] = item;
+  else ativos.push(item);
+  closeModal('ativo');
+  renderAll();
+  saveData();
+}
+
+function salvarPassivo() {
+  var nome = document.getElementById('ps_nome').value.trim();
+  var cat = document.getElementById('ps_categoria').value;
+  var saldo = parseBR(document.getElementById('ps_saldo').value);
+  if (!nome || !cat || !saldo) { alert('Preencha Nome, Categoria e Saldo Devedor.'); return; }
+  var item = {
+    id: (_editMode && _editMode.tipo === 'passivo') ? passivos[_editMode.index].id : nextId++,
+    nome: nome,
+    categoria: cat,
+    saldo: saldo,
+    valor_original: parseBR(document.getElementById('ps_valor_original').value),
+    parcela: parseBR(document.getElementById('ps_parcela').value),
+    taxa: parseFloat(document.getElementById('ps_taxa').value) || 0,
+    parcelas_rest: parseInt(document.getElementById('ps_parcelas_rest').value) || 0,
+    data_inicio: document.getElementById('ps_data_inicio').value,
+    instituicao: document.getElementById('ps_instituicao').value.trim(),
+    obs: document.getElementById('ps_obs').value.trim()
+  };
+  if (_editMode && _editMode.tipo === 'passivo') passivos[_editMode.index] = item;
+  else passivos.push(item);
+  closeModal('passivo');
+  renderAll();
+  saveData();
+}
+
+function salvarRenda() {
+  var nome = document.getElementById('rd_nome').value.trim();
+  var bruto = parseBR(document.getElementById('rd_bruto').value);
+  if (!nome || !bruto) { alert('Preencha Descrição e Valor Bruto.'); return; }
+  var item = {
+    id: (_editMode && _editMode.tipo === 'renda') ? rendas[_editMode.index].id : nextId++,
+    nome: nome,
+    tipo: document.getElementById('rd_tipo').value,
+    bruto: bruto,
+    liquido: parseBR(document.getElementById('rd_liquido').value) || bruto,
+    estabilidade: document.getElementById('rd_estabilidade').value,
+    obs: document.getElementById('rd_obs').value.trim()
+  };
+  if (_editMode && _editMode.tipo === 'renda') rendas[_editMode.index] = item;
+  else rendas.push(item);
+  closeModal('renda');
+  renderAll();
+  saveData();
+}
+
+function salvarDespesa() {
+  var nome = document.getElementById('dp_nome').value.trim();
+  var valor = parseBR(document.getElementById('dp_valor').value);
+  if (!nome || !valor) { alert('Preencha Descrição e Valor.'); return; }
+  var item = {
+    id: (_editMode && _editMode.tipo === 'despesa') ? despesas[_editMode.index].id : nextId++,
+    nome: nome,
+    categoria: document.getElementById('dp_categoria').value,
+    valor: valor,
+    essencial: document.getElementById('dp_essencial').value,
+    obs: document.getElementById('dp_obs').value.trim()
+  };
+  if (_editMode && _editMode.tipo === 'despesa') despesas[_editMode.index] = item;
+  else despesas.push(item);
+  closeModal('despesa');
+  renderAll();
+  saveData();
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  EXCLUSÃO
+// ═══════════════════════════════════════════════════════════════════════════
+var _delTarget = null;
+function openDelModal(tipo, index) {
+  var lists = {ativo: ativos, passivo: passivos, renda: rendas, despesa: despesas};
+  var item = lists[tipo][index];
+  _delTarget = {tipo: tipo, index: index};
+  document.getElementById('del-msg').innerHTML = 'Deseja excluir <strong>"' + escHtml(item.nome) + '"</strong>?';
+  document.getElementById('modal-del').classList.add('open');
+}
+function closeDelModal() {
+  document.getElementById('modal-del').classList.remove('open');
+  _delTarget = null;
+}
+function confirmarExclusao() {
+  if (!_delTarget) return;
+  var lists = {ativo: ativos, passivo: passivos, renda: rendas, despesa: despesas};
+  lists[_delTarget.tipo].splice(_delTarget.index, 1);
+  closeDelModal();
+  renderAll();
+  saveData();
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  RENDERIZAÇÃO
+// ═══════════════════════════════════════════════════════════════════════════
+var CAT_LABELS = {
+  investimento:'Investimento',imovel:'Imóvel',veiculo:'Veículo',bem_movel:'Bem Móvel',participacao:'Participação',recebivel:'Recebível',outro_ativo:'Outro',
+  financiamento_imob:'Financ. Imobiliário',financiamento_veic:'Financ. Veículo',emprestimo_pessoal:'Empréstimo Pessoal',emprestimo_consig:'Consignado',cartao_credito:'Cartão de Crédito',cheque_especial:'Cheque Especial',credito_estudantil:'Crédito Estudantil',divida_tributaria:'Dívida Tributária',outro_passivo:'Outro',
+  moradia:'Moradia',transporte:'Transporte',alimentacao:'Alimentação',saude:'Saúde',educacao:'Educação',lazer:'Lazer',seguros:'Seguros',assinaturas:'Assinaturas',dependentes:'Dependentes',outro_despesa:'Outro',
+  salario_clt:'Salário CLT',pro_labore:'Pró-labore',autonomo:'Autônomo',aluguel:'Aluguel',dividendos:'Dividendos',pensao:'Pensão/Aposent.',rendimento:'Rendimentos',outro_renda:'Outro'
+};
+var LIQ_LABELS = {alta:'Alta',media:'Média',baixa:'Baixa',iliquido:'Ilíquido'};
+var LIQ_BADGES = {alta:'badge-green',media:'badge-blue',baixa:'badge-orange',iliquido:'badge-red'};
+var ESS_LABELS = {essencial:'Essencial',importante:'Importante',desejavel:'Desejável','supérfluo':'Supérfluo'};
+var ESS_BADGES = {essencial:'badge-red',importante:'badge-orange',desejavel:'badge-blue','supérfluo':'badge-muted'};
+var EST_LABELS = {estavel:'Estável',variavel:'Variável',temporaria:'Temporária'};
+var EST_BADGES = {estavel:'badge-green',variavel:'badge-orange',temporaria:'badge-red'};
+
+function renderAtivos() {
+  var wrap = document.getElementById('ativos-table-wrap');
+  document.getElementById('ativos-count').textContent = ativos.length + ' ite' + (ativos.length === 1 ? 'm' : 'ns');
+  if (ativos.length === 0) {
+    wrap.innerHTML = '<div class="empty"><span class="ico">🏛️</span><p>Nenhum ativo cadastrado.<br>Clique em "+ Adicionar Ativo" para começar.</p></div>';
+    return;
+  }
+  // Agrupar por categoria
+  var groups = {};
+  ativos.forEach(function(a, i) {
+    if (!groups[a.categoria]) groups[a.categoria] = [];
+    groups[a.categoria].push({item: a, idx: i});
+  });
+  var html = '<div class="table-wrap"><table><thead><tr><th>Nome</th><th>Subcategoria</th><th>Valor Atual</th><th>Liquidez</th><th>Rentab.</th><th>Instituição</th><th></th></tr></thead><tbody>';
+  Object.keys(groups).forEach(function(cat) {
+    html += '<tr class="group-header"><td colspan="7">' + (CAT_LABELS[cat] || cat) + ' (' + groups[cat].length + ')</td></tr>';
+    groups[cat].forEach(function(g) {
+      var a = g.item;
+      html += '<tr>';
+      html += '<td class="td-name">' + escHtml(a.nome) + '</td>';
+      html += '<td>' + (a.subcategoria || '—') + '</td>';
+      html += '<td class="td-val-pos">' + fmtBRL(a.valor_atual) + '</td>';
+      html += '<td><span class="badge ' + (LIQ_BADGES[a.liquidez]||'') + '">' + (LIQ_LABELS[a.liquidez]||'—') + '</span></td>';
+      html += '<td>' + (a.rentabilidade ? a.rentabilidade.toFixed(1) + '%' : '—') + '</td>';
+      html += '<td style="font-size:0.78rem;color:var(--muted);">' + (a.instituicao || '—') + '</td>';
+      html += '<td class="td-actions">';
+      html += '<button class="btn-icon" onclick="openModal(\'ativo\',' + g.idx + ')" title="Editar" style="color:var(--blue);">✏️</button>';
+      html += '<button class="btn-icon" onclick="openDelModal(\'ativo\',' + g.idx + ')" title="Excluir" style="color:var(--red);">🗑️</button>';
+      html += '</td></tr>';
+    });
+  });
+  html += '</tbody></table></div>';
+  wrap.innerHTML = html;
+}
+
+function renderPassivos() {
+  var wrap = document.getElementById('passivos-table-wrap');
+  document.getElementById('passivos-count').textContent = passivos.length + ' ite' + (passivos.length === 1 ? 'm' : 'ns');
+  if (passivos.length === 0) {
+    wrap.innerHTML = '<div class="empty"><span class="ico">💳</span><p>Nenhum passivo cadastrado.<br>Clique em "+ Adicionar Passivo" para começar.</p></div>';
+    return;
+  }
+  var html = '<div class="table-wrap"><table><thead><tr><th>Nome</th><th>Categoria</th><th>Saldo Devedor</th><th>Parcela</th><th>Taxa a.a.</th><th>Restantes</th><th>Instituição</th><th></th></tr></thead><tbody>';
+  passivos.forEach(function(p, i) {
+    html += '<tr>';
+    html += '<td class="td-name">' + escHtml(p.nome) + '</td>';
+    html += '<td><span class="badge badge-red">' + (CAT_LABELS[p.categoria]||p.categoria) + '</span></td>';
+    html += '<td class="td-val-neg">' + fmtBRL(p.saldo) + '</td>';
+    html += '<td>' + (p.parcela ? fmtBRL(p.parcela) : '—') + '</td>';
+    html += '<td>' + (p.taxa ? p.taxa.toFixed(1) + '%' : '—') + '</td>';
+    html += '<td>' + (p.parcelas_rest || '—') + '</td>';
+    html += '<td style="font-size:0.78rem;color:var(--muted);">' + (p.instituicao || '—') + '</td>';
+    html += '<td class="td-actions">';
+    html += '<button class="btn-icon" onclick="openModal(\'passivo\',' + i + ')" title="Editar" style="color:var(--blue);">✏️</button>';
+    html += '<button class="btn-icon" onclick="openDelModal(\'passivo\',' + i + ')" title="Excluir" style="color:var(--red);">🗑️</button>';
+    html += '</td></tr>';
+  });
+  html += '</tbody></table></div>';
+  wrap.innerHTML = html;
+}
+
+function renderRendas() {
+  var wrap = document.getElementById('rendas-table-wrap');
+  document.getElementById('rendas-count').textContent = rendas.length + ' fonte' + (rendas.length === 1 ? '' : 's');
+  if (rendas.length === 0) {
+    wrap.innerHTML = '<div class="empty"><span class="ico">💰</span><p>Nenhuma fonte de renda cadastrada.<br>Clique em "+ Adicionar Renda" para começar.</p></div>';
+    return;
+  }
+  var html = '<div class="table-wrap"><table><thead><tr><th>Descrição</th><th>Tipo</th><th>Bruto</th><th>Líquido</th><th>Estabilidade</th><th></th></tr></thead><tbody>';
+  rendas.forEach(function(r, i) {
+    html += '<tr>';
+    html += '<td class="td-name">' + escHtml(r.nome) + '</td>';
+    html += '<td><span class="badge badge-teal">' + (CAT_LABELS[r.tipo]||r.tipo) + '</span></td>';
+    html += '<td class="td-val-pos">' + fmtBRL(r.bruto) + '</td>';
+    html += '<td>' + fmtBRL(r.liquido) + '</td>';
+    html += '<td><span class="badge ' + (EST_BADGES[r.estabilidade]||'') + '">' + (EST_LABELS[r.estabilidade]||'—') + '</span></td>';
+    html += '<td class="td-actions">';
+    html += '<button class="btn-icon" onclick="openModal(\'renda\',' + i + ')" title="Editar" style="color:var(--blue);">✏️</button>';
+    html += '<button class="btn-icon" onclick="openDelModal(\'renda\',' + i + ')" title="Excluir" style="color:var(--red);">🗑️</button>';
+    html += '</td></tr>';
+  });
+  html += '</tbody></table></div>';
+  wrap.innerHTML = html;
+}
+
+function renderDespesas() {
+  var wrap = document.getElementById('despesas-table-wrap');
+  document.getElementById('despesas-count').textContent = despesas.length + ' ite' + (despesas.length === 1 ? 'm' : 'ns');
+  if (despesas.length === 0) {
+    wrap.innerHTML = '<div class="empty"><span class="ico">📋</span><p>Nenhuma despesa fixa cadastrada.<br>Clique em "+ Adicionar Despesa" para começar.</p></div>';
+    return;
+  }
+  var html = '<div class="table-wrap"><table><thead><tr><th>Descrição</th><th>Categoria</th><th>Valor Mensal</th><th>Essencialidade</th><th></th></tr></thead><tbody>';
+  despesas.forEach(function(d, i) {
+    html += '<tr>';
+    html += '<td class="td-name">' + escHtml(d.nome) + '</td>';
+    html += '<td><span class="badge badge-orange">' + (CAT_LABELS[d.categoria]||d.categoria) + '</span></td>';
+    html += '<td class="td-val-neg">' + fmtBRL(d.valor) + '</td>';
+    html += '<td><span class="badge ' + (ESS_BADGES[d.essencial]||'') + '">' + (ESS_LABELS[d.essencial]||'—') + '</span></td>';
+    html += '<td class="td-actions">';
+    html += '<button class="btn-icon" onclick="openModal(\'despesa\',' + i + ')" title="Editar" style="color:var(--blue);">✏️</button>';
+    html += '<button class="btn-icon" onclick="openDelModal(\'despesa\',' + i + ')" title="Excluir" style="color:var(--red);">🗑️</button>';
+    html += '</td></tr>';
+  });
+  html += '</tbody></table></div>';
+  wrap.innerHTML = html;
+}
+
+function renderDashboard() {
+  var totalAtivos = ativos.reduce(function(s,a){ return s + parseBR(a.valor_atual); }, 0);
+  var totalPassivos = passivos.reduce(function(s,p){ return s + parseBR(p.saldo); }, 0);
+  var totalRenda = rendas.reduce(function(s,r){ return s + parseBR(r.liquido); }, 0);
+  var totalDespesas = despesas.reduce(function(s,d){ return s + parseBR(d.valor); }, 0);
+  var totalParcelas = passivos.reduce(function(s,p){ return s + parseBR(p.parcela); }, 0);
+  var patrimonio = totalAtivos - totalPassivos;
+
+  document.getElementById('d-patrimonio').textContent = fmtBRL(patrimonio);
+  document.getElementById('d-patrimonio').style.color = patrimonio >= 0 ? 'var(--green)' : 'var(--red)';
+  document.getElementById('d-patrimonio-sub').textContent = patrimonio >= 0 ? 'Positivo' : 'Negativo';
+  document.getElementById('d-ativos').textContent = fmtBRL(totalAtivos);
+  document.getElementById('d-ativos-count').textContent = ativos.length + ' ite' + (ativos.length === 1 ? 'm' : 'ns');
+  document.getElementById('d-passivos').textContent = fmtBRL(totalPassivos);
+  document.getElementById('d-passivos-count').textContent = passivos.length + ' ite' + (passivos.length === 1 ? 'm' : 'ns');
+  document.getElementById('d-renda').textContent = fmtBRL(totalRenda);
+  document.getElementById('d-renda-count').textContent = rendas.length + ' fonte' + (rendas.length === 1 ? '' : 's');
+  document.getElementById('d-despesas').textContent = fmtBRL(totalDespesas + totalParcelas);
+  document.getElementById('d-despesas-count').textContent = despesas.length + ' fixas + ' + passivos.length + ' parcelas';
+
+  // Indicadores
+  var hasData = ativos.length > 0 || passivos.length > 0;
+  document.getElementById('indicadores-section').style.display = hasData ? '' : 'none';
+
+  if (hasData) {
+    // Liquidez
+    var liqAlta = ativos.filter(function(a){ return a.liquidez === 'alta'; }).reduce(function(s,a){ return s + parseBR(a.valor_atual); }, 0);
+    var pctLiq = totalAtivos > 0 ? (liqAlta / totalAtivos * 100) : 0;
+    document.getElementById('ind-liquidez-fill').style.width = Math.min(pctLiq, 100) + '%';
+    document.getElementById('ind-liquidez-val').textContent = pctLiq.toFixed(1) + '%';
+
+    // Endividamento
+    var pctEndiv = totalAtivos > 0 ? (totalPassivos / totalAtivos * 100) : 0;
+    document.getElementById('ind-endiv-fill').style.width = Math.min(pctEndiv, 100) + '%';
+    document.getElementById('ind-endiv-fill').style.background = pctEndiv > 50 ? 'var(--red)' : pctEndiv > 30 ? 'var(--orange)' : 'var(--green)';
+    document.getElementById('ind-endiv-val').textContent = pctEndiv.toFixed(1) + '%';
+
+    // Comprometimento
+    var totalMensal = totalDespesas + totalParcelas;
+    var pctComprom = totalRenda > 0 ? (totalMensal / totalRenda * 100) : 0;
+    document.getElementById('ind-comprom-fill').style.width = Math.min(pctComprom, 100) + '%';
+    document.getElementById('ind-comprom-fill').style.background = pctComprom > 70 ? 'var(--red)' : pctComprom > 50 ? 'var(--orange)' : 'var(--green)';
+    document.getElementById('ind-comprom-val').textContent = pctComprom.toFixed(1) + '%';
+
+    // Diversificação
+    var cats = {};
+    ativos.forEach(function(a){ cats[a.categoria] = true; });
+    var numCats = Object.keys(cats).length;
+    var maxCats = 7;
+    var pctDiv = (numCats / maxCats * 100);
+    document.getElementById('ind-divers-fill').style.width = Math.min(pctDiv, 100) + '%';
+    document.getElementById('ind-divers-val').textContent = numCats + ' de ' + maxCats + ' categorias';
+  }
+}
+
+function renderCharts() {
+  var hasAtivos = ativos.length > 0;
+  var hasPassivos = passivos.length > 0;
+  document.getElementById('charts-section').style.display = (hasAtivos || hasPassivos) ? '' : 'none';
+
+  // Ativos chart
+  if (hasAtivos) {
+    var catTotals = {};
+    ativos.forEach(function(a) {
+      var cat = CAT_LABELS[a.categoria] || a.categoria;
+      catTotals[cat] = (catTotals[cat] || 0) + parseBR(a.valor_atual);
+    });
+    var labels = Object.keys(catTotals);
+    var values = labels.map(function(l){ return catTotals[l]; });
+    var colors = labels.map(function(l, i){ return PALETTE[i % PALETTE.length]; });
+    if (chartAtivos) chartAtivos.destroy();
+    chartAtivos = new Chart(document.getElementById('chart-ativos'), {
+      type: 'doughnut',
+      data: { labels: labels, datasets: [{ data: values, backgroundColor: colors, borderWidth: 0 }] },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { color: '#A0B8A6', font: { size: 11 } } } } }
+    });
+  }
+
+  // Passivos chart
+  if (hasPassivos) {
+    var pCatTotals = {};
+    passivos.forEach(function(p) {
+      var cat = CAT_LABELS[p.categoria] || p.categoria;
+      pCatTotals[cat] = (pCatTotals[cat] || 0) + parseBR(p.saldo);
+    });
+    var pLabels = Object.keys(pCatTotals);
+    var pValues = pLabels.map(function(l){ return pCatTotals[l]; });
+    var pColors = pLabels.map(function(l, i){ return PALETTE[(i + 3) % PALETTE.length]; });
+    if (chartPassivos) chartPassivos.destroy();
+    chartPassivos = new Chart(document.getElementById('chart-passivos'), {
+      type: 'doughnut',
+      data: { labels: pLabels, datasets: [{ data: pValues, backgroundColor: pColors, borderWidth: 0 }] },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { color: '#A0B8A6', font: { size: 11 } } } } }
+    });
+  }
+}
+
+function renderAll() {
+  renderAtivos();
+  renderPassivos();
+  renderRendas();
+  renderDespesas();
+  renderDashboard();
+  renderCharts();
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  PERSISTÊNCIA (localStorage + Supabase)
+// ═══════════════════════════════════════════════════════════════════════════
+var SUPABASE_URL = 'https://vbikskbfkhundhropykf.supabase.co';
+var SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZiaWtza2Jma2h1bmRocm9weWtmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDU1MTk5NjEsImV4cCI6MjA2MTA5NTk2MX0.-n-Tj_5JnF1NL2ZImWlMeTcobWDl_VD6Vqp0lxRQFFU';
+var LS_KEY = 'hv_patrimonio_local';
+var FERRAMENTA = 'patrimonio';
+var _sbClient = null;
+var _initDone = false;
+var _saveTimer = null;
+
+function getClienteId() { return sessionStorage.getItem('cliente_id') || null; }
+
+function getSupabaseClient() {
+  if (_sbClient) return _sbClient;
+  if (window.mithraSupabaseClient) { _sbClient = window.mithraSupabaseClient; return _sbClient; }
+  try {
+    if (window.supabase && window.supabase.createClient) {
+      _sbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    }
+  } catch(e) { _sbClient = null; }
+  return _sbClient;
+}
+
+function waitForSupabase(timeout) {
+  return new Promise(function(resolve) {
+    if (window.mithraSupabaseClient) { _sbClient = window.mithraSupabaseClient; resolve(window.mithraSupabaseClient); return; }
+    var elapsed = 0;
+    var interval = setInterval(function() {
+      elapsed += 50;
+      if (window.mithraSupabaseClient) { clearInterval(interval); _sbClient = window.mithraSupabaseClient; resolve(window.mithraSupabaseClient); }
+      else if (elapsed >= (timeout || 3000)) { clearInterval(interval); resolve(null); }
+    }, 50);
+  });
+}
+
+function buildPayload() {
+  return {
+    ativos: ativos,
+    passivos: passivos,
+    rendas: rendas,
+    despesas: despesas,
+    nextId: nextId
+  };
+}
+
+function saveData() {
+  if (!_initDone) return;
+  var data = buildPayload();
+  try { localStorage.setItem(LS_KEY, JSON.stringify(data)); } catch(e) {}
+  var clienteId = getClienteId();
+  if (!clienteId) return;
+  if (_saveTimer) clearTimeout(_saveTimer);
+  _saveTimer = setTimeout(function() { saveToSupabase(clienteId, data); }, 2000);
+}
+
+async function saveToSupabase(clienteId, data) {
+  var sb = getSupabaseClient();
+  if (!sb) return;
+  try {
+    var payload = { cliente_id: clienteId, ferramenta: FERRAMENTA, dados: data };
+    var result = await sb.from('ferramentas_dados').upsert(payload, { onConflict: 'cliente_id,ferramenta' });
+    if (result.error) console.warn('Patrimonio: erro ao salvar no Supabase', result.error.message);
+  } catch(e) { console.warn('Patrimonio: exceção ao salvar', e); }
+}
+
+async function loadFromSupabase(clienteId) {
+  var sb = getSupabaseClient();
+  if (!sb || !clienteId) return null;
+  try {
+    var result = await sb.from('ferramentas_dados').select('dados').eq('cliente_id', clienteId).eq('ferramenta', FERRAMENTA).maybeSingle();
+    if (result.error) { console.warn('Patrimonio: erro ao carregar do Supabase', result.error.message); return null; }
+    return (result.data && result.data.dados) ? result.data.dados : null;
+  } catch(e) { console.warn('Patrimonio: exceção ao carregar', e); return null; }
+}
+
+function loadFromLocalStorage() {
+  var raw;
+  try { raw = localStorage.getItem(LS_KEY); } catch(e) { return null; }
+  if (!raw) return null;
+  try { return JSON.parse(raw); } catch(e) { return null; }
+}
+
+function applyData(d) {
+  if (!d) return false;
+  var hasData = false;
+  if (Array.isArray(d.ativos) && d.ativos.length > 0) { ativos = d.ativos; hasData = true; }
+  if (Array.isArray(d.passivos) && d.passivos.length > 0) { passivos = d.passivos; hasData = true; }
+  if (Array.isArray(d.rendas) && d.rendas.length > 0) { rendas = d.rendas; hasData = true; }
+  if (Array.isArray(d.despesas) && d.despesas.length > 0) { despesas = d.despesas; hasData = true; }
+  if (typeof d.nextId === 'number') nextId = d.nextId;
+  return hasData;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════════════════════════════════
+(async function init() {
+  var clienteId = getClienteId();
+  var restored = false;
+
+  if (clienteId) {
+    LS_KEY = 'hv_patrimonio_' + clienteId;
+    await waitForSupabase(3000);
+    var remoteData = await loadFromSupabase(clienteId);
+    if (remoteData) restored = applyData(remoteData);
+  }
+
+  if (!restored) {
+    var localData = loadFromLocalStorage();
+    if (localData) restored = applyData(localData);
+  }
+
+  renderAll();
+  _initDone = true;
+})();
+</script>
+</main>
+</body>
+</html>
