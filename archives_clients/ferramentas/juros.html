@@ -195,6 +195,13 @@
           <canvas id="chart-acumulado"></canvas>
         </div>
         <div class="verdict-card" id="comp-verdict"></div>
+        <hr style="border-color:rgba(255,255,255,0.1); margin:2rem 0;">
+        <h3 style="color:var(--gold); margin-bottom:0.5rem;">Cenário Alternativo: Manter Dívidas Atuais e Investir Depois</h3>
+        <p style="color:var(--muted); font-size:0.85rem; margin-bottom:1rem;">E se o cliente não migrar, continuar pagando as dívidas atuais até o fim, e depois investir o valor equivalente às parcelas das propostas novas?</p>
+        <div class="chart-container" style="height:350px;">
+          <canvas id="chart-alternativo"></canvas>
+        </div>
+        <div class="verdict-card" id="comp-verdict-alt"></div>
       </div>
     </div>
   </div>
@@ -285,6 +292,7 @@ let chartAtual = null;
 let chartProposta = null;
 let chartParcelas = null;
 let chartAcumulado = null;
+let chartAlternativo = null;
 
 // ===== TABS =====
 function switchTab(tab) {
@@ -740,6 +748,109 @@ function runComparison() {
       <div class="desc">A proposta resulta em custo maior. Mesmo investindo a diferença a <strong>${taxaAnual}% a.a.</strong>, o saldo final seria negativo em ${maxMeses} meses.</div>
       <div class="desc" style="margin-top:0.5rem;">Diferença bruta: <strong style="color:var(--red);">${fmtBRL(economiaTotal)}</strong></div>
       <div class="desc" style="margin-top:0.3rem;">Comparação de juros: <strong style="color:${economiaJuros >= 0 ? 'var(--green)' : 'var(--red)'};">${fmtBRL(economiaJuros)}</strong> (Juros atuais restantes: ${fmtBRL(jurosRestantesAtual)} vs. Juros proposta: ${fmtBRL(jurosProposta)})</div>
+    `;
+  }
+
+  // ===== CENÁRIO ALTERNATIVO =====
+  // Lógica: cliente mantém dívidas atuais, e após cada dívida atual terminar,
+  // investe o valor equivalente às parcelas das propostas novas até o final do prazo da proposta mais longa.
+  const mesesAtualMax = custosAtual.length; // prazo da dívida atual mais longa (parcelas restantes)
+  const mesesPropostaMax = custosProposta.length; // prazo da proposta mais longa
+  const prazoTotal = Math.max(mesesAtualMax, mesesPropostaMax);
+
+  // Custo mensal das propostas (o que o cliente estaria pagando se migrasse)
+  const custoPropostaFull = [];
+  for (let m = 0; m < prazoTotal; m++) {
+    custoPropostaFull.push(m < custosProposta.length ? custosProposta[m] : 0);
+  }
+
+  // No cenário alternativo:
+  // - Enquanto dívidas atuais estão ativas: cliente paga as dívidas atuais, não investe nada
+  // - Quando uma dívida atual termina: o valor liberado + o valor equivalente da proposta pode ser investido
+  // - Após TODAS as dívidas atuais terminarem: investe o valor total das parcelas da proposta
+  const custoAtualFull = [];
+  for (let m = 0; m < prazoTotal; m++) {
+    custoAtualFull.push(m < custosAtual.length ? custosAtual[m] : 0);
+  }
+
+  // Aporte mensal no cenário alternativo:
+  // Após as dívidas atuais terminarem, o cliente investe o valor que seria a parcela da proposta
+  const aporteAlt = [];
+  for (let m = 0; m < prazoTotal; m++) {
+    if (m >= mesesAtualMax) {
+      // Dívidas atuais já acabaram: investe o valor da parcela da proposta naquele mês
+      aporteAlt.push(custoPropostaFull[m]);
+    } else {
+      // Dívidas atuais ainda ativas: não investe (está pagando as dívidas)
+      aporteAlt.push(0);
+    }
+  }
+
+  // Saldo acumulado do cenário alternativo
+  const saldoAlt = [];
+  let saldoAltAcum = 0;
+  for (let m = 0; m < prazoTotal; m++) {
+    saldoAltAcum = saldoAltAcum * (1 + taxaMensal) + aporteAlt[m];
+    saldoAlt.push(saldoAltAcum);
+  }
+  const saldoAltFinal = saldoAlt[saldoAlt.length - 1];
+
+  // Também calcular o saldo do cenário "migrar" estendido até o prazoTotal
+  const saldoMigrar = [];
+  let saldoMigrarAcum = 0;
+  for (let m = 0; m < prazoTotal; m++) {
+    const custoAtM = custoAtualFull[m];
+    const custoProM = custoPropostaFull[m];
+    const difM = custoAtM - custoProM;
+    saldoMigrarAcum = saldoMigrarAcum * (1 + taxaMensal) + difM;
+    saldoMigrar.push(saldoMigrarAcum);
+  }
+  const saldoMigrarFinal = saldoMigrar[saldoMigrar.length - 1];
+
+  // Chart alternativo
+  if (chartAlternativo) chartAlternativo.destroy();
+  const ctxAlt = document.getElementById('chart-alternativo').getContext('2d');
+  const labelsAlt = Array.from({length: prazoTotal}, (_, i) => 'Mês ' + (i+1));
+  chartAlternativo = new Chart(ctxAlt, {
+    type: 'line',
+    data: {
+      labels: labelsAlt,
+      datasets: [
+        { label: 'Migrar Agora (investir diferença)', data: saldoMigrar, borderColor: '#22c55e', backgroundColor: 'rgba(34,197,94,0.1)', fill: true, tension: 0.1 },
+        { label: 'Manter Atuais (investir após quitar)', data: saldoAlt, borderColor: '#D4AF37', backgroundColor: 'rgba(212,175,55,0.1)', fill: true, tension: 0.1 }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        title: { display: true, text: 'Acumulado: Migrar Agora vs. Manter e Investir Depois', color: '#fff' },
+        legend: { labels: { color: '#A0B8A6' } }
+      },
+      scales: {
+        x: { ticks: { color: '#A0B8A6', maxTicksLimit: 12 }, grid: { color: 'rgba(255,255,255,0.03)' } },
+        y: { ticks: { color: '#A0B8A6', callback: v => 'R$ ' + v.toLocaleString('pt-BR') }, grid: { color: 'rgba(255,255,255,0.05)' } }
+      }
+    }
+  });
+
+  // Verdict alternativo
+  const verdictAltEl = document.getElementById('comp-verdict-alt');
+  const diferencaFinal = saldoMigrarFinal - saldoAltFinal;
+  if (diferencaFinal >= 0) {
+    verdictAltEl.innerHTML = `
+      <div class="badge green">✅ MIGRAR AGORA É MELHOR</div>
+      <div class="big-value">${fmtBRL(saldoMigrarFinal)}</div>
+      <div class="desc">Migrando agora e investindo a diferença a <strong>${taxaAnual}% a.a.</strong>, ao final de ${prazoTotal} meses o cliente acumula <strong>${fmtBRL(saldoMigrarFinal)}</strong>.</div>
+      <div class="desc" style="margin-top:0.3rem;">Se mantiver as dívidas atuais e investir depois, acumularia apenas <strong style="color:var(--gold);">${fmtBRL(saldoAltFinal)}</strong>.</div>
+      <div class="desc" style="margin-top:0.3rem;">Vantagem de migrar agora: <strong style="color:var(--green);">${fmtBRL(diferencaFinal)}</strong></div>
+    `;
+  } else {
+    verdictAltEl.innerHTML = `
+      <div class="badge" style="background:var(--gold); color:#000;">⚠️ MANTER ATUAIS PODE SER MELHOR</div>
+      <div class="big-value" style="color:var(--gold);">${fmtBRL(saldoAltFinal)}</div>
+      <div class="desc">Mantendo as dívidas atuais e investindo após quitá-las a <strong>${taxaAnual}% a.a.</strong>, ao final de ${prazoTotal} meses o cliente acumularia <strong style="color:var(--gold);">${fmtBRL(saldoAltFinal)}</strong>.</div>
+      <div class="desc" style="margin-top:0.3rem;">Se migrar agora, acumularia <strong style="color:var(--green);">${fmtBRL(saldoMigrarFinal)}</strong>.</div>
+      <div class="desc" style="margin-top:0.3rem;">Vantagem de manter: <strong style="color:var(--gold);">${fmtBRL(Math.abs(diferencaFinal))}</strong></div>
     `;
   }
 }
