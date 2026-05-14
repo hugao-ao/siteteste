@@ -276,13 +276,30 @@
     <div class="card">
       <div class="section-header">
         <h2>Comparativo: Atual vs. Proposta</h2>
-        <div class="row" style="gap:0.5rem;">
-          <div class="field" style="max-width:180px;">
-            <label>Taxa de Investimento (% a.a.)</label>
-            <input type="number" id="taxa-invest-comp" value="12" step="0.1" onchange="runComparison()">
-          </div>
-          <button class="btn btn-secondary" onclick="runComparison()" style="align-self:flex-end;">Comparar</button>
+      </div>
+      <p style="color:var(--muted); font-size:0.85rem; margin-bottom:1rem;">Selecione quais dívidas atuais e quais propostas entrarão na comparação:</p>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:1.5rem; margin-bottom:1.5rem;">
+        <div>
+          <h4 style="color:var(--green); margin-bottom:0.5rem;">Dívidas Atuais</h4>
+          <label style="display:flex; align-items:center; gap:0.4rem; color:var(--gold); font-size:0.85rem; margin-bottom:0.5rem; cursor:pointer;">
+            <input type="checkbox" id="comp-sel-todas-atual" onchange="toggleAllCompCheckboxes('atual')" checked> Selecionar Todas
+          </label>
+          <div id="comp-checkboxes-atual" style="max-height:160px; overflow-y:auto;"></div>
         </div>
+        <div>
+          <h4 style="color:var(--blue); margin-bottom:0.5rem;">Dívidas Propostas</h4>
+          <label style="display:flex; align-items:center; gap:0.4rem; color:var(--gold); font-size:0.85rem; margin-bottom:0.5rem; cursor:pointer;">
+            <input type="checkbox" id="comp-sel-todas-proposta" onchange="toggleAllCompCheckboxes('proposta')" checked> Selecionar Todas
+          </label>
+          <div id="comp-checkboxes-proposta" style="max-height:160px; overflow-y:auto;"></div>
+        </div>
+      </div>
+      <div class="row" style="gap:0.5rem; margin-bottom:1rem;">
+        <div class="field" style="max-width:180px;">
+          <label>Taxa de Investimento (% a.a.)</label>
+          <input type="number" id="taxa-invest-comp" value="12" step="0.1">
+        </div>
+        <button class="btn btn-secondary" onclick="runComparison()" style="align-self:flex-end;">Comparar</button>
       </div>
       <div id="comp-result" class="hidden">
         <div class="summary-grid" id="comp-summary-grid"></div>
@@ -529,18 +546,12 @@
         <select id="m-tipo-amort" onchange="toggleTipoAmortFields()">
           <option value="price">PRICE (parcelas fixas)</option>
           <option value="sac">SAC (amortização constante)</option>
-          <option value="simples">SIMPLES (amortização + taxa fixa)</option>
+          <option value="simples">SIMPLES (amortização + taxa sobre valor contratado)</option>
         </select>
-        <span class="note">PRICE: parcela fixa. SAC: parcela decrescente (amortização constante + juros sobre saldo). SIMPLES: amortização fixa + taxa fixa por parcela.</span>
+        <span class="note">PRICE: parcela fixa. SAC: parcela decrescente (amortização constante + juros sobre saldo). SIMPLES: parcela fixa = amortização + taxa calculada sobre o valor contratado.</span>
       </div>
     </div>
-    <div class="row hidden" id="row-taxa-fixa-simples">
-      <div class="field">
-        <label>Taxa Fixa por Parcela (R$)</label>
-        <input type="text" id="m-taxa-fixa" placeholder="R$ 0,00" oninput="fmtCurrInput(this)">
-        <span class="note">Valor fixo cobrado em cada parcela além da amortização (ex: taxa administrativa).</span>
-      </div>
-    </div>
+
     <div class="row">
       <div class="field">
         <label>Reajuste Anual (%)</label>
@@ -672,8 +683,7 @@ function switchSubTab(sub) {
 
 // ===== DEBT MODAL =====
 function toggleTipoAmortFields() {
-  var tipo = document.getElementById('m-tipo-amort').value;
-  document.getElementById('row-taxa-fixa-simples').classList.toggle('hidden', tipo !== 'simples');
+  // No additional fields to toggle now - SIMPLES calculates taxaFixa automatically
 }
 
 function openDebtModal(type, index) {
@@ -705,7 +715,6 @@ function openDebtModal(type, index) {
     document.getElementById('m-total-parcelas').value = d.totalParcelas;
     document.getElementById('m-tipo-amort').value = d.tipoAmort || 'price';
     document.getElementById('m-reajuste').value = d.reajusteAnual || 0;
-    document.getElementById('m-taxa-fixa').value = d.taxaFixa ? fmtBRL(d.taxaFixa) : '';
     toggleTipoAmortFields();
     if (type === 'atual') {
       document.getElementById('m-pagas').value = d.parcelasPagas;
@@ -722,7 +731,6 @@ function openDebtModal(type, index) {
     document.getElementById('m-cet').value = '';
     document.getElementById('m-tipo-amort').value = 'price';
     document.getElementById('m-reajuste').value = '0';
-    document.getElementById('m-taxa-fixa').value = '';
     toggleTipoAmortFields();
   }
   document.getElementById('debt-modal').classList.add('active');
@@ -767,9 +775,10 @@ function calcParcelaPreview() {
     previewEl.textContent = fmtBRL(parcela) + ' (1a parcela)';
     return;
   } else if (tipoAmort === 'simples') {
+    // SIMPLES com CET: parcela = amortizacao + (valor_contratado * taxa_mensal)
     var amortSimp = valorContratado / totalParcelas;
-    var taxaFixa = parseCurr(document.getElementById('m-taxa-fixa').value) || 0;
-    parcela = amortSimp + taxaFixa;
+    var taxaFixaCalc = valorContratado * taxaMensal;
+    parcela = amortSimp + taxaFixaCalc;
     previewEl.textContent = fmtBRL(parcela);
     return;
   }
@@ -844,7 +853,7 @@ function saveDebt() {
 
   var tipoAmort = document.getElementById('m-tipo-amort').value || 'price';
   var reajusteAnual = parseFloat(document.getElementById('m-reajuste').value) || 0;
-  var taxaFixa = (tipoAmort === 'simples') ? parseCurr(document.getElementById('m-taxa-fixa').value) : 0;
+  var taxaFixa = 0;
 
   // Para SAC, recalcular parcela inicial se CET informado
   if (tipoAmort === 'sac' && useCET) {
@@ -855,10 +864,22 @@ function saveDebt() {
     parcela = amortConst + valorContratado * taxaMensalSac; // primeira parcela SAC
   }
 
-  // Para SIMPLES, parcela = amortização + taxa fixa
+  // Para SIMPLES:
+  // Se CET informado: parcela = (valor_contratado * taxa_mensal) + (valor_contratado / prazo)
+  // Se parcela informada: taxaFixa = parcela - (valor_contratado / prazo)
   if (tipoAmort === 'simples') {
     var amortSimples = valorContratado / totalParcelas;
-    parcela = amortSimples + taxaFixa;
+    if (useCET) {
+      var cetValSimp = parseFloat(document.getElementById('m-cet').value);
+      var cetTipoSimp = document.getElementById('m-cet-tipo').value;
+      var taxaMensalSimp = cetTipoSimp === 'anual' ? Math.pow(1 + cetValSimp / 100, 1/12) - 1 : cetValSimp / 100;
+      taxaFixa = valorContratado * taxaMensalSimp;
+      parcela = amortSimples + taxaFixa;
+    } else {
+      // Parcela informada diretamente - calcular taxa fixa implícita
+      taxaFixa = parcela - amortSimples;
+      if (taxaFixa < 0) taxaFixa = 0;
+    }
   }
 
   var debt = { nome: nome, valorContratado: valorContratado, parcela: parcela, totalParcelas: totalParcelas, parcelasPagas: parcelasPagas, saldoDevedor: saldoDevedor, tipoAmort: tipoAmort, reajusteAnual: reajusteAnual, taxaFixa: taxaFixa };
@@ -887,6 +908,8 @@ function renderAll() {
   renderTable('proposta');
   renderSummary('atual');
   renderSummary('proposta');
+  renderCompCheckboxes();
+  populateAmortDividaSelect();
 }
 
 function renderTable(type) {
@@ -1127,18 +1150,53 @@ function renderCustoChart(type, custoMensal) {
   else chartProposta = chart;
 }
 
+// ===== COMPARISON CHECKBOXES =====
+function renderCompCheckboxes() {
+  var containerAtual = document.getElementById('comp-checkboxes-atual');
+  var containerProposta = document.getElementById('comp-checkboxes-proposta');
+  containerAtual.innerHTML = '';
+  containerProposta.innerHTML = '';
+  dividasAtuais.forEach(function(d, i) {
+    containerAtual.innerHTML += '<label style="display:flex; align-items:center; gap:0.4rem; color:#ccc; font-size:0.82rem; margin-bottom:0.3rem; cursor:pointer;">' +
+      '<input type="checkbox" class="comp-cb-atual" data-idx="' + i + '" checked> ' + d.nome + ' (' + fmtBRL(d.saldoDevedor || d.valorContratado) + ')' +
+    '</label>';
+  });
+  dividasProposta.forEach(function(d, i) {
+    containerProposta.innerHTML += '<label style="display:flex; align-items:center; gap:0.4rem; color:#ccc; font-size:0.82rem; margin-bottom:0.3rem; cursor:pointer;">' +
+      '<input type="checkbox" class="comp-cb-proposta" data-idx="' + i + '" checked> ' + d.nome + ' (' + fmtBRL(d.valorContratado) + ')' +
+    '</label>';
+  });
+}
+function toggleAllCompCheckboxes(type) {
+  var checked = document.getElementById('comp-sel-todas-' + type).checked;
+  var cbs = document.querySelectorAll('.comp-cb-' + type);
+  cbs.forEach(function(cb) { cb.checked = checked; });
+}
+function getSelectedDebts(type) {
+  var cbs = document.querySelectorAll('.comp-cb-' + type + ':checked');
+  var list = type === 'atual' ? dividasAtuais : dividasProposta;
+  var selected = [];
+  cbs.forEach(function(cb) {
+    var idx = parseInt(cb.getAttribute('data-idx'));
+    if (list[idx]) selected.push(list[idx]);
+  });
+  return selected;
+}
+
 // ===== COMPARISON =====
 function runComparison() {
-  if (!dividasAtuais.length || !dividasProposta.length) {
-    alert('Cadastre dividas no cenario atual E na proposta para comparar.');
+  var selectedAtual = getSelectedDebts('atual');
+  var selectedProposta = getSelectedDebts('proposta');
+  if (!selectedAtual.length || !selectedProposta.length) {
+    alert('Selecione pelo menos uma divida atual E uma proposta para comparar.');
     return;
   }
 
   var taxaAnual = parseFloat(document.getElementById('taxa-invest-comp').value) || 12;
   var taxaMensal = Math.pow(1 + taxaAnual / 100, 1/12) - 1;
 
-  var custosAtual = calcCustoMensalAtual(dividasAtuais, true);
-  var custosProposta = calcCustoMensalAtual(dividasProposta, false);
+  var custosAtual = calcCustoMensalAtual(selectedAtual, true);
+  var custosProposta = calcCustoMensalAtual(selectedProposta, false);
 
   var mesesAtualReal = custosAtual.length;
   var mesesPropostaReal = custosProposta.length;
@@ -1165,7 +1223,7 @@ function runComparison() {
   var saldoFinal = saldoInvest[saldoInvest.length - 1];
 
   var jurosRestantesAtual = 0;
-  dividasAtuais.forEach(function(d) {
+  selectedAtual.forEach(function(d) {
     var restantes = d.totalParcelas - (d.parcelasPagas || 0);
     var totalRestante = calcTotalPagarDivida(d, restantes);
     var saldoDev = d.saldoDevedor || d.valorContratado;
@@ -1173,7 +1231,7 @@ function runComparison() {
   });
   if (jurosRestantesAtual < 0) jurosRestantesAtual = 0;
   var jurosProposta = 0;
-  dividasProposta.forEach(function(d) {
+  selectedProposta.forEach(function(d) {
     var totalGeral = calcTotalPagarDivida(d, d.totalParcelas);
     jurosProposta += totalGeral - d.valorContratado;
   });
