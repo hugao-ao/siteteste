@@ -185,6 +185,81 @@
     background: linear-gradient(135deg, #10b981, #059669);
     color: #fff;
   }
+/* Comparativo Selection Panel */
+.comp-selection-panel {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+  background: rgba(0,0,0,0.2);
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.06);
+}
+.comp-sel-col { flex: 1; }
+.comp-sel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.6rem;
+}
+.comp-sel-title { font-size: 0.85rem; font-weight: 600; }
+.comp-sel-all-btn {
+  background: rgba(212,175,55,0.15);
+  color: var(--gold);
+  border: 1px solid rgba(212,175,55,0.3);
+  border-radius: 4px;
+  padding: 2px 8px;
+  font-size: 0.72rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.comp-sel-all-btn:hover { background: rgba(212,175,55,0.3); }
+.comp-sel-all-btn.active { background: var(--gold); color: #000; }
+.comp-sel-divider {
+  width: 1px;
+  background: rgba(255,255,255,0.1);
+  margin: 0 0.5rem;
+}
+.comp-chips-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+.comp-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 4px 10px;
+  border-radius: 16px;
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: 1px solid rgba(255,255,255,0.15);
+  background: rgba(255,255,255,0.04);
+  color: #aaa;
+  user-select: none;
+}
+.comp-chip.selected {
+  border-color: var(--green);
+  background: rgba(34,197,94,0.12);
+  color: #fff;
+}
+.comp-chip.selected.proposta {
+  border-color: var(--blue);
+  background: rgba(96,165,250,0.12);
+}
+.comp-chip .chip-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: #555;
+  transition: background 0.2s;
+}
+.comp-chip.selected .chip-dot { background: var(--green); }
+.comp-chip.selected.proposta .chip-dot { background: var(--blue); }
+@media (max-width: 600px) {
+  .comp-selection-panel { flex-direction: column; }
+  .comp-sel-divider { width: 100%; height: 1px; margin: 0.5rem 0; }
+}
 </style>
 </head>
 <body>
@@ -277,21 +352,21 @@
       <div class="section-header">
         <h2>Comparativo: Atual vs. Proposta</h2>
       </div>
-      <p style="color:var(--muted); font-size:0.85rem; margin-bottom:1rem;">Selecione quais dívidas atuais e quais propostas entrarão na comparação:</p>
-      <div style="display:grid; grid-template-columns:1fr 1fr; gap:1.5rem; margin-bottom:1.5rem;">
-        <div>
-          <h4 style="color:var(--green); margin-bottom:0.5rem;">Dívidas Atuais</h4>
-          <label style="display:flex; align-items:center; gap:0.4rem; color:var(--gold); font-size:0.85rem; margin-bottom:0.5rem; cursor:pointer;">
-            <input type="checkbox" id="comp-sel-todas-atual" onchange="toggleAllCompCheckboxes('atual')" checked> Selecionar Todas
-          </label>
-          <div id="comp-checkboxes-atual" style="max-height:160px; overflow-y:auto;"></div>
+      <div class="comp-selection-panel">
+        <div class="comp-sel-col">
+          <div class="comp-sel-header">
+            <span class="comp-sel-title" style="color:var(--green);">Dívidas Atuais</span>
+            <button type="button" class="comp-sel-all-btn" id="comp-sel-todas-atual" onclick="toggleAllCompCheckboxes('atual')">Todas</button>
+          </div>
+          <div class="comp-chips-container" id="comp-checkboxes-atual"></div>
         </div>
-        <div>
-          <h4 style="color:var(--blue); margin-bottom:0.5rem;">Dívidas Propostas</h4>
-          <label style="display:flex; align-items:center; gap:0.4rem; color:var(--gold); font-size:0.85rem; margin-bottom:0.5rem; cursor:pointer;">
-            <input type="checkbox" id="comp-sel-todas-proposta" onchange="toggleAllCompCheckboxes('proposta')" checked> Selecionar Todas
-          </label>
-          <div id="comp-checkboxes-proposta" style="max-height:160px; overflow-y:auto;"></div>
+        <div class="comp-sel-divider"></div>
+        <div class="comp-sel-col">
+          <div class="comp-sel-header">
+            <span class="comp-sel-title" style="color:var(--blue);">Dívidas Propostas</span>
+            <button type="button" class="comp-sel-all-btn" id="comp-sel-todas-proposta" onclick="toggleAllCompCheckboxes('proposta')">Todas</button>
+          </div>
+          <div class="comp-chips-container" id="comp-checkboxes-proposta"></div>
         </div>
       </div>
       <div class="row" style="gap:0.5rem; margin-bottom:1rem;">
@@ -1157,27 +1232,59 @@ function renderCompCheckboxes() {
   containerAtual.innerHTML = '';
   containerProposta.innerHTML = '';
   dividasAtuais.forEach(function(d, i) {
-    containerAtual.innerHTML += '<label style="display:flex; align-items:center; gap:0.4rem; color:#ccc; font-size:0.82rem; margin-bottom:0.3rem; cursor:pointer;">' +
-      '<input type="checkbox" class="comp-cb-atual" data-idx="' + i + '" checked> ' + d.nome + ' (' + fmtBRL(d.saldoDevedor || d.valorContratado) + ')' +
-    '</label>';
+    var chip = document.createElement('div');
+    chip.className = 'comp-chip selected';
+    chip.setAttribute('data-idx', i);
+    chip.setAttribute('data-type', 'atual');
+    chip.innerHTML = '<span class="chip-dot"></span>' + d.nome + ' <small style="opacity:0.7;">' + fmtBRL(d.saldoDevedor || d.valorContratado) + '</small>';
+    chip.onclick = function() { this.classList.toggle('selected'); updateSelAllBtn('atual'); };
+    containerAtual.appendChild(chip);
   });
   dividasProposta.forEach(function(d, i) {
-    containerProposta.innerHTML += '<label style="display:flex; align-items:center; gap:0.4rem; color:#ccc; font-size:0.82rem; margin-bottom:0.3rem; cursor:pointer;">' +
-      '<input type="checkbox" class="comp-cb-proposta" data-idx="' + i + '" checked> ' + d.nome + ' (' + fmtBRL(d.valorContratado) + ')' +
-    '</label>';
+    var chip = document.createElement('div');
+    chip.className = 'comp-chip selected proposta';
+    chip.setAttribute('data-idx', i);
+    chip.setAttribute('data-type', 'proposta');
+    chip.innerHTML = '<span class="chip-dot"></span>' + d.nome + ' <small style="opacity:0.7;">' + fmtBRL(d.valorContratado) + '</small>';
+    chip.onclick = function() { this.classList.toggle('selected'); this.classList.toggle('proposta', this.classList.contains('selected')); updateSelAllBtn('proposta'); };
+    containerProposta.appendChild(chip);
   });
+  updateSelAllBtn('atual');
+  updateSelAllBtn('proposta');
+}
+function updateSelAllBtn(type) {
+  var chips = document.querySelectorAll('#comp-checkboxes-' + type + ' .comp-chip');
+  var selected = document.querySelectorAll('#comp-checkboxes-' + type + ' .comp-chip.selected');
+  var btn = document.getElementById('comp-sel-todas-' + type);
+  if (selected.length === chips.length && chips.length > 0) {
+    btn.classList.add('active');
+    btn.textContent = 'Todas \u2713';
+  } else {
+    btn.classList.remove('active');
+    btn.textContent = selected.length + '/' + chips.length;
+  }
 }
 function toggleAllCompCheckboxes(type) {
-  var checked = document.getElementById('comp-sel-todas-' + type).checked;
-  var cbs = document.querySelectorAll('.comp-cb-' + type);
-  cbs.forEach(function(cb) { cb.checked = checked; });
+  var chips = document.querySelectorAll('#comp-checkboxes-' + type + ' .comp-chip');
+  var selected = document.querySelectorAll('#comp-checkboxes-' + type + ' .comp-chip.selected');
+  var selectAll = selected.length < chips.length;
+  chips.forEach(function(chip) {
+    if (selectAll) {
+      chip.classList.add('selected');
+      if (type === 'proposta') chip.classList.add('proposta');
+    } else {
+      chip.classList.remove('selected');
+      if (type === 'proposta') chip.classList.remove('proposta');
+    }
+  });
+  updateSelAllBtn(type);
 }
 function getSelectedDebts(type) {
-  var cbs = document.querySelectorAll('.comp-cb-' + type + ':checked');
+  var chips = document.querySelectorAll('#comp-checkboxes-' + type + ' .comp-chip.selected');
   var list = type === 'atual' ? dividasAtuais : dividasProposta;
   var selected = [];
-  cbs.forEach(function(cb) {
-    var idx = parseInt(cb.getAttribute('data-idx'));
+  chips.forEach(function(chip) {
+    var idx = parseInt(chip.getAttribute('data-idx'));
     if (list[idx]) selected.push(list[idx]);
   });
   return selected;
