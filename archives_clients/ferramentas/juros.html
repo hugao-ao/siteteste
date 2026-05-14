@@ -1944,7 +1944,7 @@ function _applyStratConfig(config) {
   document.getElementById('strat-toggle-autoquit').classList.toggle('active', stratState.autoQuit);
   stratState.sporadics = Array.isArray(config.sporadics) ? JSON.parse(JSON.stringify(config.sporadics)) : [];
   stratState.alocPorDividaMes = config.alocPorDividaMes ? JSON.parse(JSON.stringify(config.alocPorDividaMes)) : {};
-  stratSwitchSource(stratState.source);
+  stratSwitchSource(stratState.source, true);
   stratRenderUpdates();
   stratRenderSporadics();
   stratRenderAlocPorDivida();
@@ -2083,10 +2083,12 @@ function stratRenderSporadics() {
 }
 
 // ===== STRATEGY: SOURCE TOGGLE =====
-function stratSwitchSource(src) {
+function stratSwitchSource(src, keepSelection) {
   stratState.source = src;
-  stratState.selectedDividas = [];
-  stratState.alocPorDivida = {};
+  if (!keepSelection) {
+    stratState.selectedDividas = [];
+    stratState.alocPorDivida = {};
+  }
   document.getElementById('strat-src-atual').classList.toggle('active', src === 'atual');
   document.getElementById('strat-src-proposta').classList.toggle('active', src === 'proposta');
   stratRenderDividaChips();
@@ -2880,6 +2882,319 @@ function analisePopulate() {
   }
 }
 
+// Helper: Run a comparison simulation and return detailed results
+function _analiseRunComp(comp) {
+  var cfg = comp.config;
+  if (!cfg) return null;
+  var taxaInvest = (cfg.taxaInvest || 12) / 100;
+  var taxaMensal = Math.pow(1 + taxaInvest, 1/12) - 1;
+
+  // Gather selected debts
+  var dividasAtualSel = [];
+  (cfg.selectedAtualIdx || []).forEach(function(idx) {
+    if (dividasAtuais[idx]) dividasAtualSel.push(dividasAtuais[idx]);
+  });
+  var dividasPropSel = [];
+  (cfg.selectedPropostaIdx || []).forEach(function(idx) {
+    if (dividasProposta[idx]) dividasPropSel.push(dividasProposta[idx]);
+  });
+
+  // Calculate totals for atual
+  var totalPagoAtual = 0, totalSaldoAtual = 0, maxPrazoAtual = 0, totalParcelaAtual = 0;
+  dividasAtualSel.forEach(function(d) {
+    var restantes = d.totalParcelas - (d.parcelasPagas || 0);
+    var saldo = d.saldoDevedor || d.valorContratado;
+    totalSaldoAtual += saldo;
+    totalParcelaAtual += d.parcela;
+    if (restantes > maxPrazoAtual) maxPrazoAtual = restantes;
+    totalPagoAtual += calcTotalPagarDivida(d, restantes);
+  });
+  var jurosAtual = totalPagoAtual - totalSaldoAtual;
+
+  // Calculate totals for proposta
+  var totalPagoProp = 0, totalSaldoProp = 0, maxPrazoProp = 0, totalParcelaProp = 0;
+  dividasPropSel.forEach(function(d) {
+    var restantes = d.totalParcelas;
+    var saldo = d.valorContratado;
+    totalSaldoProp += saldo;
+    totalParcelaProp += d.parcela;
+    if (restantes > maxPrazoProp) maxPrazoProp = restantes;
+    totalPagoProp += calcTotalPagarDivida(d, restantes);
+  });
+  var jurosProp = totalPagoProp - totalSaldoProp;
+
+  // Simulate investment of the difference
+  var maxPeriodo = Math.max(maxPrazoAtual, maxPrazoProp);
+  var custoAtualMensal = calcCustoMensalAtual(dividasAtualSel, true);
+  var custoPropMensal = calcCustoMensalAtual(dividasPropSel, false);
+
+  var investAcumulado = 0;
+  var investData = [];
+  for (var m = 0; m < maxPeriodo; m++) {
+    var custoA = m < custoAtualMensal.length ? custoAtualMensal[m] : 0;
+    var custoP = m < custoPropMensal.length ? custoPropMensal[m] : 0;
+    var diff = custoA - custoP;
+    if (diff > 0) {
+      investAcumulado = investAcumulado * (1 + taxaMensal) + diff;
+    } else {
+      investAcumulado = investAcumulado * (1 + taxaMensal);
+    }
+    investData.push(investAcumulado);
+  }
+
+  return {
+    nome: comp.nome,
+    // Atual
+    totalSaldoAtual: totalSaldoAtual,
+    totalPagoAtual: totalPagoAtual,
+    jurosAtual: jurosAtual,
+    parcelaAtual: totalParcelaAtual,
+    prazoAtual: maxPrazoAtual,
+    nDividasAtual: dividasAtualSel.length,
+    // Proposta
+    totalSaldoProp: totalSaldoProp,
+    totalPagoProp: totalPagoProp,
+    jurosProp: jurosProp,
+    parcelaProp: totalParcelaProp,
+    prazoProp: maxPrazoProp,
+    nDividasProp: dividasPropSel.length,
+    // Investimento
+    investFinal: investAcumulado,
+    investData: investData,
+    taxaInvest: cfg.taxaInvest || 12,
+    // Economia
+    economiaJuros: jurosAtual - jurosProp,
+    economiaParcela: totalParcelaAtual - totalParcelaProp,
+    maxPeriodo: maxPeriodo
+  };
+}
+
+// Helper: Run a strategy simulation and return detailed results
+function _analiseRunStrat(strat) {
+  var cfg = strat.config;
+  if (!cfg) return null;
+
+  var list = cfg.source === 'atual' ? dividasAtuais : dividasProposta;
+  var isAtual = cfg.source === 'atual';
+  var selectedDividas = cfg.selectedDividas || [];
+  var alocPorDivida = cfg.alocPorDivida || {};
+  var pctReserva = cfg.pctReserva !== undefined ? cfg.pctReserva : 100;
+  var autoQuit = !!cfg.autoQuit;
+  var updates = cfg.updates || [];
+  var sporadics = cfg.sporadics || [];
+  var overrides = cfg.overrides || {};
+  var alocPorDividaMes = cfg.alocPorDividaMes || {};
+  var aporteMensal = cfg.aporteMensal || 0;
+  var saldoInicial = cfg.saldoInicial || 0;
+  var rentabAnual = cfg.rentabAnual || 12;
+  var irPct = cfg.irPct || 15;
+
+  var dividasSel = [];
+  var maxRestantes = 0;
+  selectedDividas.forEach(function(idx) {
+    var d = list[idx];
+    if (!d) return;
+    var restantes = d.totalParcelas - (isAtual ? (d.parcelasPagas || 0) : 0);
+    var saldoDev = isAtual ? (d.saldoDevedor || d.valorContratado) : d.valorContratado;
+    dividasSel.push({
+      nome: d.nome,
+      saldoDevedor: saldoDev,
+      parcela: d.parcela,
+      totalParcelas: d.totalParcelas,
+      restantes: restantes,
+      tipoAmort: d.tipoAmort || 'price',
+      reajusteAnual: d.reajusteAnual || 0,
+      taxaFixa: d.taxaFixa || 0,
+      valorContratado: d.valorContratado,
+      parcelasPagas: isAtual ? (d.parcelasPagas || 0) : 0,
+      origIdx: idx,
+      alocPct: alocPorDivida[idx] || (100 / selectedDividas.length)
+    });
+    if (restantes > maxRestantes) maxRestantes = restantes;
+  });
+
+  if (!dividasSel.length) return null;
+
+  var periodoMax = Math.min(maxRestantes * 2, 360);
+  if (periodoMax < 12) periodoMax = 12;
+
+  var taxaReservaMensal = Math.pow(1 + rentabAnual / 100, 1/12) - 1;
+  var dataInicio = new Date();
+  dataInicio.setDate(1);
+
+  var reservaBruta = saldoInicial;
+  var totalAportado = saldoInicial;
+  var saldosDevedor = dividasSel.map(function(d) { return d.saldoDevedor; });
+  var saldoDevedorTotal = saldosDevedor.reduce(function(a,b) { return a+b; }, 0);
+  var saldoInicialTotal = saldoDevedorTotal;
+  var quitouEm = -1;
+  var totalJurosPagos = 0;
+  var totalAmortExtra = 0;
+
+  var taxasDividas = dividasSel.map(function(d) {
+    if (d.tipoAmort === 'price') {
+      return calcTaxaImplicita(d.saldoDevedor, d.parcela, d.restantes);
+    } else if (d.tipoAmort === 'sac') {
+      var amortConst = d.saldoDevedor / d.restantes;
+      return d.parcela > amortConst ? (d.parcela - amortConst) / d.saldoDevedor : 0;
+    }
+    return 0;
+  });
+
+  var dividaAtiva = dividasSel.map(function() { return true; });
+  var alocEfetiva = dividasSel.map(function(d) { return d.alocPct; });
+
+  var mesesData = [];
+  var reservaData = [];
+  var saldoData = [];
+
+  // Helper to get aporte for a month
+  function getAporteMes(mesDate) {
+    var base = aporteMensal;
+    for (var i = 0; i < updates.length; i++) {
+      var updDate = new Date(updates[i].data + 'T00:00:00');
+      if (mesDate >= updDate) base = updates[i].novoValor;
+    }
+    return base;
+  }
+  function getSporadicMes(mesDate) {
+    var total = 0;
+    var mesY = mesDate.getFullYear();
+    var mesM = mesDate.getMonth();
+    for (var i = 0; i < sporadics.length; i++) {
+      var spDate = new Date(sporadics[i].data + 'T00:00:00');
+      if (spDate.getFullYear() === mesY && spDate.getMonth() === mesM) total += sporadics[i].valor;
+    }
+    return total;
+  }
+
+  for (var m = 0; m < periodoMax; m++) {
+    var mesDate = new Date(dataInicio);
+    mesDate.setMonth(mesDate.getMonth() + m);
+
+    var aporteMes = getAporteMes(mesDate);
+    var sporadicMes = getSporadicMes(mesDate);
+    var aporteTotal = aporteMes + sporadicMes;
+
+    var pctRes = overrides[m] !== undefined ? overrides[m] : pctReserva;
+    var pctAmort = 100 - pctRes;
+
+    // Check active debts
+    var algumaAtiva = false;
+    for (var di = 0; di < dividasSel.length; di++) {
+      dividaAtiva[di] = saldosDevedor[di] > 0.01;
+      if (dividaAtiva[di]) algumaAtiva = true;
+    }
+    if (!algumaAtiva) { pctRes = 100; pctAmort = 0; }
+
+    // Redistribute
+    if (algumaAtiva && dividasSel.length > 1) {
+      var mesAlocOverride = alocPorDividaMes[m];
+      if (mesAlocOverride) {
+        for (var di = 0; di < dividasSel.length; di++) {
+          var key = dividasSel[di].origIdx;
+          alocEfetiva[di] = mesAlocOverride[key] !== undefined ? mesAlocOverride[key] : dividasSel[di].alocPct;
+        }
+      } else {
+        var totalAlocAtivas = 0;
+        for (var di = 0; di < dividasSel.length; di++) {
+          if (dividaAtiva[di]) totalAlocAtivas += dividasSel[di].alocPct;
+        }
+        for (var di = 0; di < dividasSel.length; di++) {
+          alocEfetiva[di] = (dividaAtiva[di] && totalAlocAtivas > 0) ? (dividasSel[di].alocPct / totalAlocAtivas) * 100 : 0;
+        }
+      }
+    } else if (dividasSel.length === 1) {
+      alocEfetiva[0] = dividaAtiva[0] ? 100 : 0;
+    }
+
+    var valorReserva = aporteTotal * (pctRes / 100);
+    var valorAmort = aporteTotal * (pctAmort / 100);
+
+    reservaBruta = reservaBruta * (1 + taxaReservaMensal) + valorReserva;
+    totalAportado += valorReserva;
+
+    // Evolução dívidas
+    for (var di = 0; di < dividasSel.length; di++) {
+      if (saldosDevedor[di] <= 0.01) { saldosDevedor[di] = 0; continue; }
+      var dd = dividasSel[di];
+      var reaj = (dd.reajusteAnual || 0) / 100;
+      if (reaj > 0 && m > 0 && m % 12 === 0) saldosDevedor[di] *= (1 + reaj);
+
+      var fatorReaj = reaj > 0 ? Math.pow(1 + reaj, Math.floor(m / 12)) : 1;
+      var jurosMes = saldosDevedor[di] * taxasDividas[di];
+      totalJurosPagos += jurosMes;
+
+      var amortNormal;
+      if (dd.tipoAmort === 'price') {
+        amortNormal = dd.parcela * fatorReaj - jurosMes;
+      } else if (dd.tipoAmort === 'sac') {
+        amortNormal = (dd.saldoDevedor / dd.restantes) * fatorReaj;
+      } else {
+        amortNormal = (dd.saldoDevedor / dd.restantes) * fatorReaj;
+      }
+      if (amortNormal < 0) amortNormal = 0;
+      if (amortNormal > saldosDevedor[di]) amortNormal = saldosDevedor[di];
+      saldosDevedor[di] -= amortNormal;
+      if (saldosDevedor[di] < 0.01) saldosDevedor[di] = 0;
+
+      // Amortização extra
+      if (valorAmort > 0 && saldosDevedor[di] > 0) {
+        var amortExtra = valorAmort * (alocEfetiva[di] / 100);
+        if (amortExtra > saldosDevedor[di]) amortExtra = saldosDevedor[di];
+        saldosDevedor[di] -= amortExtra;
+        totalAmortExtra += amortExtra;
+        if (saldosDevedor[di] < 0.01) saldosDevedor[di] = 0;
+      }
+    }
+
+    saldoDevedorTotal = saldosDevedor.reduce(function(a,b) { return a+b; }, 0);
+
+    var lucro = reservaBruta - totalAportado;
+    var irValor = lucro > 0 ? lucro * (irPct / 100) : 0;
+    var reservaLiquida = reservaBruta - irValor;
+
+    if (autoQuit && saldoDevedorTotal > 0 && reservaLiquida >= saldoDevedorTotal && quitouEm < 0) {
+      quitouEm = m;
+      reservaBruta -= saldoDevedorTotal;
+      totalAportado -= saldoDevedorTotal;
+      saldoDevedorTotal = 0;
+      for (var di2 = 0; di2 < saldosDevedor.length; di2++) saldosDevedor[di2] = 0;
+    }
+
+    if (saldoDevedorTotal <= 0.01 && quitouEm < 0) quitouEm = m;
+
+    saldoData.push(saldoDevedorTotal);
+    reservaData.push(Math.max(0, reservaBruta - (lucro > 0 ? lucro * irPct / 100 : 0)));
+
+    if (saldoDevedorTotal <= 0 && m > quitouEm + 6) break;
+  }
+
+  var reservaFinal = reservaData.length > 0 ? reservaData[reservaData.length - 1] : 0;
+
+  return {
+    nome: strat.nome,
+    source: cfg.source,
+    nDividas: dividasSel.length,
+    dividasNomes: dividasSel.map(function(d) { return d.nome; }),
+    saldoInicialTotal: saldoInicialTotal,
+    prazoOriginal: maxRestantes,
+    quitouEm: quitouEm,
+    economiaMeses: quitouEm >= 0 ? maxRestantes - quitouEm - 1 : 0,
+    totalJurosPagos: totalJurosPagos,
+    totalAmortExtra: totalAmortExtra,
+    reservaFinal: reservaFinal,
+    aporteMensal: aporteMensal,
+    pctReserva: pctReserva,
+    autoQuit: autoQuit,
+    saldoData: saldoData,
+    reservaData: reservaData,
+    periodoSimulado: saldoData.length
+  };
+}
+
+var _analiseCharts = [];
+
 function analiseGerar() {
   var selectedComps = [];
   document.querySelectorAll('#analise-comp-list .analise-check-item.checked').forEach(function(el) {
@@ -2900,57 +3215,169 @@ function analiseGerar() {
     return;
   }
 
+  // Destroy old charts
+  _analiseCharts.forEach(function(ch) { if (ch) ch.destroy(); });
+  _analiseCharts = [];
+
   var resultado = document.getElementById('analise-resultado');
   resultado.classList.remove('hidden');
 
-  // Render comparisons
+  // ===== COMPARAÇÕES =====
   var compsHtml = '';
-  selectedComps.forEach(function(c) {
-    var nAtual = (c.config.selectedAtualIdx || []).length;
-    var nProp = (c.config.selectedPropostaIdx || []).length;
-    compsHtml += '<div class="analise-result-card">' +
-      '<h3>⚖️ ' + _escHtml(c.nome) + '</h3>' +
-      '<div class="arc-grid">' +
-        '<div class="arc-item"><div class="arc-label">Dívidas Atuais</div><div class="arc-value" style="color:var(--green);">' + nAtual + '</div></div>' +
-        '<div class="arc-item"><div class="arc-label">Dívidas Propostas</div><div class="arc-value" style="color:var(--blue);">' + nProp + '</div></div>' +
-        '<div class="arc-item"><div class="arc-label">Taxa Investimento</div><div class="arc-value" style="color:#fff;">' + (c.config.taxaInvest || 12) + '% a.a.</div></div>' +
-      '</div>' +
-      '<p class="note" style="margin-top:0.8rem;">Para ver os gráficos e detalhes completos, abra esta comparação na aba 3.</p>' +
-    '</div>';
+  selectedComps.forEach(function(comp, ci) {
+    var r = _analiseRunComp(comp);
+    if (!r) return;
+
+    var chartId = 'analise-comp-chart-' + ci;
+    compsHtml += '<div class="analise-result-card">';
+    compsHtml += '<h3 style="display:flex; align-items:center; gap:0.5rem;">⚖️ ' + _escHtml(r.nome) + '</h3>';
+
+    // Summary grid
+    compsHtml += '<div class="arc-grid">';
+    compsHtml += '<div class="arc-item"><div class="arc-label">Saldo Atual</div><div class="arc-value" style="color:var(--red);">' + fmtBRL(r.totalSaldoAtual) + '</div></div>';
+    compsHtml += '<div class="arc-item"><div class="arc-label">Juros Atual</div><div class="arc-value" style="color:var(--red);">' + fmtBRL(r.jurosAtual) + '</div></div>';
+    compsHtml += '<div class="arc-item"><div class="arc-label">Parcela Atual</div><div class="arc-value" style="color:#fff;">' + fmtBRL(r.parcelaAtual) + '/mês</div></div>';
+    compsHtml += '<div class="arc-item"><div class="arc-label">Prazo Atual</div><div class="arc-value" style="color:#fff;">' + r.prazoAtual + ' meses</div></div>';
+    compsHtml += '<div class="arc-item"><div class="arc-label">Saldo Proposta</div><div class="arc-value" style="color:var(--blue);">' + fmtBRL(r.totalSaldoProp) + '</div></div>';
+    compsHtml += '<div class="arc-item"><div class="arc-label">Juros Proposta</div><div class="arc-value" style="color:var(--blue);">' + fmtBRL(r.jurosProp) + '</div></div>';
+    compsHtml += '<div class="arc-item"><div class="arc-label">Parcela Proposta</div><div class="arc-value" style="color:#fff;">' + fmtBRL(r.parcelaProp) + '/mês</div></div>';
+    compsHtml += '<div class="arc-item"><div class="arc-label">Prazo Proposta</div><div class="arc-value" style="color:#fff;">' + r.prazoProp + ' meses</div></div>';
+    compsHtml += '<div class="arc-item"><div class="arc-label">Economia em Juros</div><div class="arc-value" style="color:' + (r.economiaJuros > 0 ? 'var(--green)' : 'var(--red)') + ';">' + fmtBRL(r.economiaJuros) + '</div></div>';
+    compsHtml += '<div class="arc-item"><div class="arc-label">Economia na Parcela</div><div class="arc-value" style="color:' + (r.economiaParcela > 0 ? 'var(--green)' : 'var(--red)') + ';">' + fmtBRL(r.economiaParcela) + '/mês</div></div>';
+    compsHtml += '<div class="arc-item"><div class="arc-label">Investimento Acumulado</div><div class="arc-value" style="color:var(--green);">' + fmtBRL(r.investFinal) + '</div></div>';
+    compsHtml += '<div class="arc-item"><div class="arc-label">Taxa Investimento</div><div class="arc-value" style="color:#fff;">' + r.taxaInvest + '% a.a.</div></div>';
+    compsHtml += '</div>';
+
+    // Chart placeholder
+    compsHtml += '<div style="height:220px; margin-top:1rem;"><canvas id="' + chartId + '"></canvas></div>';
+    compsHtml += '</div>';
   });
   document.getElementById('analise-comps-resultado').innerHTML = compsHtml;
 
-  // Render strategies
+  // Render comparison charts
+  selectedComps.forEach(function(comp, ci) {
+    var r = _analiseRunComp(comp);
+    if (!r || !r.investData.length) return;
+    var chartId = 'analise-comp-chart-' + ci;
+    var canvas = document.getElementById(chartId);
+    if (!canvas) return;
+    var ctx = canvas.getContext('2d');
+    var labels = r.investData.map(function(_, i) { return 'Mês ' + (i + 1); });
+    var chart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: labels,
+        datasets: [{
+          label: 'Investimento Acumulado (diferença investida)',
+          data: r.investData,
+          borderColor: '#22c55e',
+          backgroundColor: 'rgba(34,197,94,0.1)',
+          fill: true,
+          tension: 0.2,
+          borderWidth: 2
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { title: { display: true, text: 'Evolução do Investimento da Diferença', color: '#fff' }, legend: { labels: { color: '#A0B8A6' } } },
+        scales: {
+          x: { ticks: { color: '#A0B8A6', maxTicksLimit: 12 }, grid: { color: 'rgba(255,255,255,0.03)' } },
+          y: { ticks: { color: '#A0B8A6', callback: function(v) { return 'R$ ' + v.toLocaleString('pt-BR'); } }, grid: { color: 'rgba(255,255,255,0.05)' } }
+        }
+      }
+    });
+    _analiseCharts.push(chart);
+  });
+
+  // ===== ESTRATÉGIAS =====
   var stratsHtml = '';
-  selectedStrats.forEach(function(s) {
-    var cfg = s.config || {};
-    var nDividas = (cfg.selectedDividas || []).length;
-    stratsHtml += '<div class="analise-result-card">' +
-      '<h3>📋 ' + _escHtml(s.nome) + '</h3>' +
-      '<div class="arc-grid">' +
-        '<div class="arc-item"><div class="arc-label">Aporte Mensal</div><div class="arc-value" style="color:var(--green);">' + fmtBRL(cfg.aporteMensal || 0) + '</div></div>' +
-        '<div class="arc-item"><div class="arc-label">Saldo Inicial</div><div class="arc-value" style="color:var(--blue);">' + fmtBRL(cfg.saldoInicial || 0) + '</div></div>' +
-        '<div class="arc-item"><div class="arc-label">Dívidas</div><div class="arc-value" style="color:#fff;">' + nDividas + '</div></div>' +
-        '<div class="arc-item"><div class="arc-label">Fonte</div><div class="arc-value" style="color:#fff;">' + (cfg.source === 'proposta' ? 'Proposta' : 'Atual') + '</div></div>' +
-        '<div class="arc-item"><div class="arc-label">% Reserva</div><div class="arc-value" style="color:var(--green);">' + (cfg.pctReserva || 100) + '%</div></div>' +
-        '<div class="arc-item"><div class="arc-label">Auto-Quitar</div><div class="arc-value" style="color:#fff;">' + (cfg.autoQuit ? 'Sim' : 'Não') + '</div></div>' +
-      '</div>' +
-      '<p class="note" style="margin-top:0.8rem;">Para ver o calendário completo e gráficos, abra esta estratégia na aba 4.</p>' +
-    '</div>';
+  selectedStrats.forEach(function(strat, si) {
+    var r = _analiseRunStrat(strat);
+    if (!r) return;
+
+    var chartId = 'analise-strat-chart-' + si;
+    stratsHtml += '<div class="analise-result-card">';
+    stratsHtml += '<h3 style="display:flex; align-items:center; gap:0.5rem;">📋 ' + _escHtml(r.nome) + '</h3>';
+
+    // Summary grid
+    stratsHtml += '<div class="arc-grid">';
+    stratsHtml += '<div class="arc-item"><div class="arc-label">Saldo Devedor Inicial</div><div class="arc-value" style="color:var(--red);">' + fmtBRL(r.saldoInicialTotal) + '</div></div>';
+    stratsHtml += '<div class="arc-item"><div class="arc-label">Prazo Original</div><div class="arc-value" style="color:#fff;">' + r.prazoOriginal + ' meses</div></div>';
+    stratsHtml += '<div class="arc-item"><div class="arc-label">Quitação em</div><div class="arc-value" style="color:' + (r.quitouEm >= 0 ? 'var(--green)' : 'var(--red)') + ';">' + (r.quitouEm >= 0 ? (r.quitouEm + 1) + ' meses' : 'Não quitou') + '</div></div>';
+    stratsHtml += '<div class="arc-item"><div class="arc-label">Economia</div><div class="arc-value" style="color:var(--green);">' + (r.economiaMeses > 0 ? r.economiaMeses + ' meses' : '—') + '</div></div>';
+    stratsHtml += '<div class="arc-item"><div class="arc-label">Juros Pagos (até quitação)</div><div class="arc-value" style="color:var(--red);">' + fmtBRL(r.totalJurosPagos) + '</div></div>';
+    stratsHtml += '<div class="arc-item"><div class="arc-label">Amortização Extra Total</div><div class="arc-value" style="color:var(--blue);">' + fmtBRL(r.totalAmortExtra) + '</div></div>';
+    stratsHtml += '<div class="arc-item"><div class="arc-label">Reserva Final (Líq.)</div><div class="arc-value" style="color:var(--green);">' + fmtBRL(r.reservaFinal) + '</div></div>';
+    stratsHtml += '<div class="arc-item"><div class="arc-label">Aporte Mensal</div><div class="arc-value" style="color:#fff;">' + fmtBRL(r.aporteMensal) + '</div></div>';
+    stratsHtml += '<div class="arc-item"><div class="arc-label">Dívidas</div><div class="arc-value" style="color:#fff;">' + r.dividasNomes.join(', ') + '</div></div>';
+    stratsHtml += '<div class="arc-item"><div class="arc-label">Fonte</div><div class="arc-value" style="color:#fff;">' + (r.source === 'proposta' ? 'Proposta' : 'Atual') + '</div></div>';
+    stratsHtml += '<div class="arc-item"><div class="arc-label">% Reserva</div><div class="arc-value" style="color:#fff;">' + r.pctReserva + '%</div></div>';
+    stratsHtml += '<div class="arc-item"><div class="arc-label">Auto-Quitar</div><div class="arc-value" style="color:#fff;">' + (r.autoQuit ? 'Sim' : 'Não') + '</div></div>';
+    stratsHtml += '</div>';
+
+    // Chart placeholder
+    stratsHtml += '<div style="height:220px; margin-top:1rem;"><canvas id="' + chartId + '"></canvas></div>';
+    stratsHtml += '</div>';
   });
   document.getElementById('analise-strats-resultado').innerHTML = stratsHtml;
 
-  // Consolidated view
-  if (selectedComps.length > 0 || selectedStrats.length > 0) {
-    var consolidado = document.getElementById('analise-consolidado');
-    consolidado.style.display = 'block';
-    var consHtml = '<div class="arc-grid">';
-    consHtml += '<div class="arc-item"><div class="arc-label">Comparações Selecionadas</div><div class="arc-value" style="color:var(--primary);">' + selectedComps.length + '</div></div>';
-    consHtml += '<div class="arc-item"><div class="arc-label">Estratégias Selecionadas</div><div class="arc-value" style="color:var(--purple);">' + selectedStrats.length + '</div></div>';
-    consHtml += '</div>';
-    consHtml += '<p style="color:var(--muted); font-size:0.85rem; margin-top:1rem;">Acima estão os resumos de cada item selecionado. Para análise detalhada com gráficos, acesse cada item individualmente nas abas 3 e 4.</p>';
-    document.getElementById('analise-consolidado-content').innerHTML = consHtml;
+  // Render strategy charts
+  selectedStrats.forEach(function(strat, si) {
+    var r = _analiseRunStrat(strat);
+    if (!r || !r.saldoData.length) return;
+    var chartId = 'analise-strat-chart-' + si;
+    var canvas = document.getElementById(chartId);
+    if (!canvas) return;
+    var ctx = canvas.getContext('2d');
+    var labels = r.saldoData.map(function(_, i) { return 'Mês ' + (i + 1); });
+    var chart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: labels,
+        datasets: [
+          { label: 'Saldo Devedor', data: r.saldoData, borderColor: '#ef4444', backgroundColor: 'rgba(239,68,68,0.1)', fill: true, tension: 0.2, borderWidth: 2 },
+          { label: 'Reserva Líquida', data: r.reservaData, borderColor: '#22c55e', backgroundColor: 'rgba(34,197,94,0.1)', fill: true, tension: 0.2, borderWidth: 2 }
+        ]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { title: { display: true, text: 'Saldo Devedor vs. Reserva Líquida', color: '#fff' }, legend: { labels: { color: '#A0B8A6' } } },
+        scales: {
+          x: { ticks: { color: '#A0B8A6', maxTicksLimit: 12 }, grid: { color: 'rgba(255,255,255,0.03)' } },
+          y: { ticks: { color: '#A0B8A6', callback: function(v) { return 'R$ ' + v.toLocaleString('pt-BR'); } }, grid: { color: 'rgba(255,255,255,0.05)' } }
+        }
+      }
+    });
+    _analiseCharts.push(chart);
+  });
+
+  // ===== VISÃO CONSOLIDADA =====
+  var consolidado = document.getElementById('analise-consolidado');
+  consolidado.style.display = 'block';
+  var consHtml = '<div class="arc-grid">';
+  consHtml += '<div class="arc-item"><div class="arc-label">Comparações Analisadas</div><div class="arc-value" style="color:var(--primary);">' + selectedComps.length + '</div></div>';
+  consHtml += '<div class="arc-item"><div class="arc-label">Estratégias Analisadas</div><div class="arc-value" style="color:var(--purple);">' + selectedStrats.length + '</div></div>';
+
+  // Total savings across all
+  var totalEconomiaJuros = 0;
+  selectedComps.forEach(function(comp) {
+    var r = _analiseRunComp(comp);
+    if (r) totalEconomiaJuros += r.economiaJuros;
+  });
+  var totalEconomiaMeses = 0;
+  selectedStrats.forEach(function(strat) {
+    var r = _analiseRunStrat(strat);
+    if (r && r.economiaMeses > 0) totalEconomiaMeses += r.economiaMeses;
+  });
+
+  if (selectedComps.length > 0) {
+    consHtml += '<div class="arc-item"><div class="arc-label">Economia Total em Juros (Comparações)</div><div class="arc-value" style="color:' + (totalEconomiaJuros > 0 ? 'var(--green)' : 'var(--red)') + ';">' + fmtBRL(totalEconomiaJuros) + '</div></div>';
   }
+  if (selectedStrats.length > 0) {
+    consHtml += '<div class="arc-item"><div class="arc-label">Economia Total em Meses (Estratégias)</div><div class="arc-value" style="color:var(--green);">' + totalEconomiaMeses + ' meses</div></div>';
+  }
+  consHtml += '</div>';
+  document.getElementById('analise-consolidado-content').innerHTML = consHtml;
 }
 
 
