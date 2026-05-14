@@ -680,6 +680,16 @@
         <div id="strat-updates-list">
           <p class="note" id="strat-updates-empty">Nenhuma atualização — o aporte será constante.</p>
         </div>
+
+        <!-- Aportes Esporádicos -->
+        <div class="section-header" style="margin-top:1.2rem;">
+          <h3 style="font-size:0.9rem;">Aportes Esporádicos (Extras Pontuais)</h3>
+          <button class="btn btn-primary" onclick="stratAddSporadic()" style="font-size:0.75rem; padding:0.3rem 0.8rem;">+ Aporte Extra</button>
+        </div>
+        <p class="note" style="margin-bottom:0.8rem;">Aportes únicos em meses específicos (13º salário, bônus, venda de bem, etc.).</p>
+        <div id="strat-sporadic-list">
+          <p class="note" id="strat-sporadic-empty">Nenhum aporte esporádico cadastrado.</p>
+        </div>
       </div>
 
       <!-- STEP 2: Seleção de Dívidas -->
@@ -923,6 +933,37 @@
     <div class="modal-actions">
       <button class="btn btn-outline" onclick="stratCloseUpdModal()">Cancelar</button>
       <button class="btn btn-primary" onclick="stratSaveUpdate()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL DE APORTE ESPORÁDICO -->
+<div class="modal-overlay" id="strat-spor-modal">
+  <div class="modal" style="max-width:450px;">
+    <h3 id="strat-spor-modal-title">Adicionar Aporte Esporádico</h3>
+    <div class="strat-update-modal-fields">
+      <div class="row">
+        <div class="field">
+          <label>Em qual mês?</label>
+          <input type="date" id="strat-spor-data">
+        </div>
+      </div>
+      <div class="row">
+        <div class="field">
+          <label>Valor do Aporte Extra (R$)</label>
+          <input type="text" id="strat-spor-valor" placeholder="R$ 0,00" oninput="fmtCurrInput(this)">
+        </div>
+      </div>
+      <div class="row">
+        <div class="field">
+          <label>Descrição (opcional)</label>
+          <input type="text" id="strat-spor-desc" placeholder="Ex: 13º salário">
+        </div>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="stratCloseSporModal()">Cancelar</button>
+      <button class="btn btn-primary" onclick="stratSaveSporadic()">Salvar</button>
     </div>
   </div>
 </div>
@@ -1733,6 +1774,8 @@ var stratState = {
   autoQuit: false,
   overrides: {},
   alocPorDivida: {}, // {dividaIdx: percentual} - distribuição da amortização
+  sporadics: [], // [{id, data, valor, descricao}] - aportes esporádicos
+  alocPorDividaMes: {}, // {mesIdx: {dividaIdx: pct}} - alocação por dívida por mês
   calendario: null
 };
 var chartStratEvolucao = null, chartStratAlocacao = null;
@@ -1848,6 +1891,8 @@ function _resetStratState() {
   stratState.autoQuit = false;
   stratState.overrides = {};
   stratState.alocPorDivida = {};
+  stratState.sporadics = [];
+  stratState.alocPorDividaMes = {};
   stratState.calendario = null;
   document.getElementById('strat-aporte-mensal').value = '';
   document.getElementById('strat-saldo-inicial').value = '';
@@ -1870,7 +1915,9 @@ function _buildStratConfig() {
     pctReserva: stratState.pctReserva,
     autoQuit: stratState.autoQuit,
     overrides: JSON.parse(JSON.stringify(stratState.overrides)),
-    alocPorDivida: JSON.parse(JSON.stringify(stratState.alocPorDivida))
+    alocPorDivida: JSON.parse(JSON.stringify(stratState.alocPorDivida)),
+    sporadics: JSON.parse(JSON.stringify(stratState.sporadics)),
+    alocPorDividaMes: JSON.parse(JSON.stringify(stratState.alocPorDividaMes))
   };
 }
 
@@ -1895,8 +1942,11 @@ function _applyStratConfig(config) {
   document.getElementById('strat-pct-reserva').value = stratState.pctReserva;
   document.getElementById('strat-pct-amort').value = (100 - stratState.pctReserva).toFixed(0);
   document.getElementById('strat-toggle-autoquit').classList.toggle('active', stratState.autoQuit);
+  stratState.sporadics = Array.isArray(config.sporadics) ? JSON.parse(JSON.stringify(config.sporadics)) : [];
+  stratState.alocPorDividaMes = config.alocPorDividaMes ? JSON.parse(JSON.stringify(config.alocPorDividaMes)) : {};
   stratSwitchSource(stratState.source);
   stratRenderUpdates();
+  stratRenderSporadics();
   stratRenderAlocPorDivida();
 }
 
@@ -1958,6 +2008,75 @@ function stratRenderUpdates() {
       '<div class="actions">' +
         '<button class="btn btn-edit" onclick="stratEditUpdate(' + i + ')" style="font-size:0.7rem; padding:0.2rem 0.5rem;">&#9998;</button> ' +
         '<button class="btn btn-danger" onclick="stratDeleteUpdate(' + i + ')" style="font-size:0.7rem; padding:0.2rem 0.5rem;">&#128465;</button>' +
+      '</div></div>';
+  });
+  container.innerHTML = html;
+}
+
+// ===== STRATEGY: SPORADIC CONTRIBUTIONS =====
+var _stratSporadicEditIdx = -1;
+
+function stratAddSporadic() {
+  _stratSporadicEditIdx = -1;
+  document.getElementById('strat-spor-data').value = '';
+  document.getElementById('strat-spor-valor').value = '';
+  document.getElementById('strat-spor-desc').value = '';
+  document.getElementById('strat-spor-modal-title').textContent = 'Adicionar Aporte Esporádico';
+  document.getElementById('strat-spor-modal').classList.add('active');
+}
+
+function stratEditSporadic(idx) {
+  _stratSporadicEditIdx = idx;
+  var sp = stratState.sporadics[idx];
+  document.getElementById('strat-spor-data').value = sp.data || '';
+  document.getElementById('strat-spor-valor').value = fmtBRL(sp.valor);
+  document.getElementById('strat-spor-desc').value = sp.descricao || '';
+  document.getElementById('strat-spor-modal-title').textContent = 'Editar Aporte Esporádico';
+  document.getElementById('strat-spor-modal').classList.add('active');
+}
+
+function stratCloseSporModal() {
+  document.getElementById('strat-spor-modal').classList.remove('active');
+}
+
+function stratSaveSporadic() {
+  var data = document.getElementById('strat-spor-data').value;
+  var valor = parseCurr(document.getElementById('strat-spor-valor').value);
+  var desc = document.getElementById('strat-spor-desc').value.trim();
+  if (!data || !valor) { alert('Informe a data e o valor do aporte.'); return; }
+  var sp = { id: Date.now(), data: data, valor: valor, descricao: desc };
+  if (_stratSporadicEditIdx >= 0) {
+    sp.id = stratState.sporadics[_stratSporadicEditIdx].id;
+    stratState.sporadics[_stratSporadicEditIdx] = sp;
+  } else {
+    stratState.sporadics.push(sp);
+  }
+  stratState.sporadics.sort(function(a,b) { return a.data.localeCompare(b.data); });
+  stratRenderSporadics();
+  stratCloseSporModal();
+}
+
+function stratDeleteSporadic(idx) {
+  if (!confirm('Excluir este aporte esporádico?')) return;
+  stratState.sporadics.splice(idx, 1);
+  stratRenderSporadics();
+}
+
+function stratRenderSporadics() {
+  var container = document.getElementById('strat-sporadic-list');
+  if (!stratState.sporadics.length) {
+    container.innerHTML = '<p class="note" id="strat-sporadic-empty">Nenhum aporte esporádico cadastrado.</p>';
+    return;
+  }
+  var html = '';
+  stratState.sporadics.forEach(function(sp, i) {
+    var dataFmt = sp.data ? new Date(sp.data + 'T00:00:00').toLocaleDateString('pt-BR') : '—';
+    var descLabel = sp.descricao ? ' — <em>' + sp.descricao + '</em>' : '';
+    html += '<div class="strat-update-item">' +
+      '<div class="info">Em <strong>' + dataFmt + '</strong>: aporte extra de <strong style="color:var(--green);">' + fmtBRL(sp.valor) + '</strong>' + descLabel + '</div>' +
+      '<div class="actions">' +
+        '<button class="btn btn-edit" onclick="stratEditSporadic(' + i + ')" style="font-size:0.7rem; padding:0.2rem 0.5rem;">&#9998;</button> ' +
+        '<button class="btn btn-danger" onclick="stratDeleteSporadic(' + i + ')" style="font-size:0.7rem; padding:0.2rem 0.5rem;">&#128465;</button>' +
       '</div></div>';
   });
   container.innerHTML = html;
@@ -2094,6 +2213,7 @@ function stratToggleAutoQuit() {
 function populateStratTab() {
   stratRenderDividaChips();
   stratRenderUpdates();
+  stratRenderSporadics();
   stratRenderAlocPorDivida();
 }
 
@@ -2107,6 +2227,19 @@ function stratGetAporteMes(mesDate) {
     }
   }
   return base;
+}
+
+function stratGetSporadicMes(mesDate) {
+  var total = 0;
+  var mesY = mesDate.getFullYear();
+  var mesM = mesDate.getMonth();
+  for (var i = 0; i < stratState.sporadics.length; i++) {
+    var spDate = new Date(stratState.sporadics[i].data + 'T00:00:00');
+    if (spDate.getFullYear() === mesY && spDate.getMonth() === mesM) {
+      total += stratState.sporadics[i].valor;
+    }
+  }
+  return total;
 }
 
 // ===== STRATEGY: GERAR CALENDÁRIO =====
@@ -2158,6 +2291,7 @@ function stratGerarCalendario() {
       taxaFixa: d.taxaFixa || 0,
       valorContratado: d.valorContratado,
       parcelasPagas: isAtual ? (d.parcelasPagas || 0) : 0,
+      origIdx: idx,
       alocPct: stratState.alocPorDivida[idx] || (100 / stratState.selectedDividas.length)
     });
     if (restantes > maxRestantes) maxRestantes = restantes;
@@ -2187,24 +2321,76 @@ function stratGerarCalendario() {
     return 0;
   });
 
+  // Track which debts are still active (for redistribution - CHANGE 3)
+  var dividaAtiva = dividasSel.map(function() { return true; });
+  // Track current effective per-debt allocation % (for redistribution)
+  var alocEfetiva = dividasSel.map(function(d) { return d.alocPct; });
+
   for (var m = 0; m < periodoMax; m++) {
     var mesDate = new Date(dataInicio);
     mesDate.setMonth(mesDate.getMonth() + m);
     var mesLabel = mesDate.toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' });
 
     var aporteMes = stratGetAporteMes(mesDate);
+    var sporadicMes = stratGetSporadicMes(mesDate);
+    var aporteTotal = aporteMes + sporadicMes;
+
     var pctRes = stratState.overrides[m] !== undefined ? stratState.overrides[m] : stratState.pctReserva;
     var pctAmort = 100 - pctRes;
 
-    var valorReserva = aporteMes * (pctRes / 100);
-    var valorAmort = aporteMes * (pctAmort / 100);
+    // CHANGE 3: Check which debts are still active and redistribute
+    var algumaAtiva = false;
+    for (var di = 0; di < dividasSel.length; di++) {
+      var wasActive = dividaAtiva[di];
+      dividaAtiva[di] = saldosDevedor[di] > 0.01;
+      if (dividaAtiva[di]) algumaAtiva = true;
+    }
+
+    // If no debts are active, 100% goes to reserve (CHANGE 3)
+    if (!algumaAtiva) {
+      pctRes = 100;
+      pctAmort = 0;
+    }
+
+    // CHANGE 3: Redistribute amortization among active debts proportionally
+    if (algumaAtiva && dividasSel.length > 1) {
+      // Check if we have per-month override for per-debt allocation (CHANGE 2)
+      var mesAlocOverride = stratState.alocPorDividaMes[m];
+      if (mesAlocOverride) {
+        // Use per-month override
+        for (var di = 0; di < dividasSel.length; di++) {
+          var key = dividasSel[di].origIdx;
+          alocEfetiva[di] = mesAlocOverride[key] !== undefined ? mesAlocOverride[key] : dividasSel[di].alocPct;
+        }
+      } else {
+        // Auto-redistribute: take original allocation and redistribute proportionally among active debts
+        var totalAlocAtivas = 0;
+        for (var di = 0; di < dividasSel.length; di++) {
+          if (dividaAtiva[di]) totalAlocAtivas += dividasSel[di].alocPct;
+        }
+        for (var di = 0; di < dividasSel.length; di++) {
+          if (dividaAtiva[di] && totalAlocAtivas > 0) {
+            alocEfetiva[di] = (dividasSel[di].alocPct / totalAlocAtivas) * 100;
+          } else {
+            alocEfetiva[di] = 0;
+          }
+        }
+      }
+    } else if (dividasSel.length === 1) {
+      alocEfetiva[0] = dividaAtiva[0] ? 100 : 0;
+    }
+
+    var valorReserva = aporteTotal * (pctRes / 100);
+    var valorAmort = aporteTotal * (pctAmort / 100);
 
     reservaBruta = reservaBruta * (1 + taxaReservaMensal) + valorReserva;
     totalAportado += valorReserva;
 
     // Evolução normal das dívidas + amortização extra por dívida
     var parcelaTotalMes = 0;
+    var amortExtraPorDivida = [];
     for (var di = 0; di < dividasSel.length; di++) {
+      amortExtraPorDivida.push(0);
       if (saldosDevedor[di] <= 0.01) { saldosDevedor[di] = 0; continue; }
       var dd = dividasSel[di];
       var reaj = (dd.reajusteAnual || 0) / 100;
@@ -2241,11 +2427,12 @@ function stratGerarCalendario() {
       if (saldosDevedor[di] < 0.01) saldosDevedor[di] = 0;
       parcelaTotalMes += parcelaMes;
 
-      // Amortização extra (por dívida, usando alocPct)
+      // Amortização extra (por dívida, usando alocEfetiva - CHANGE 2/3)
       if (valorAmort > 0 && saldosDevedor[di] > 0) {
-        var amortExtra = valorAmort * (dd.alocPct / 100);
+        var amortExtra = valorAmort * (alocEfetiva[di] / 100);
         if (amortExtra > saldosDevedor[di]) amortExtra = saldosDevedor[di];
         saldosDevedor[di] -= amortExtra;
+        amortExtraPorDivida[di] = amortExtra;
         if (saldosDevedor[di] < 0.01) saldosDevedor[di] = 0;
       }
     }
@@ -2272,10 +2459,24 @@ function stratGerarCalendario() {
       quitouEm = m;
     }
 
+    // Detect individual debt payoff events
+    var eventos = [];
+    if (quitouNesteMes) {
+      eventos.push('QUITOU');
+    } else {
+      for (var di = 0; di < dividasSel.length; di++) {
+        if (saldosDevedor[di] <= 0.01 && (m === 0 || meses.length === 0 || (meses[meses.length-1].saldosIndividuais[di] > 0.01))) {
+          eventos.push(dividasSel[di].nome + ' quitada');
+        }
+      }
+    }
+
     meses.push({
       idx: m,
       label: mesLabel,
       aporte: aporteMes,
+      sporadicExtra: sporadicMes,
+      aporteTotal: aporteTotal,
       pctReserva: pctRes,
       valorReserva: valorReserva,
       valorAmort: valorAmort,
@@ -2283,8 +2484,10 @@ function stratGerarCalendario() {
       reservaLiquida: Math.max(0, reservaBruta - (reservaBruta - totalAportado > 0 ? (reservaBruta - totalAportado) * stratState.irPct / 100 : 0)),
       saldoDevedor: saldoDevedorTotal,
       saldosIndividuais: saldosDevedor.slice(),
+      alocEfetiva: alocEfetiva.slice(),
       parcelaMes: parcelaTotalMes,
-      quitou: quitouNesteMes
+      quitou: quitouNesteMes,
+      eventos: eventos
     });
 
     if (saldoDevedorTotal <= 0 && m > quitouEm + 6) break;
@@ -2310,11 +2513,11 @@ function stratRenderCalendario() {
   var meses = cal.meses;
   var dividasSel = cal.dividasSel;
   var quitouEm = cal.quitouEm;
+  var maxRestantes = dividasSel.reduce(function(a,d) { return Math.max(a, d.restantes); }, 0);
 
   var saldoInicialTotal = dividasSel.reduce(function(a,d) { return a + d.saldoDevedor; }, 0);
   var ultimoMes = meses[meses.length - 1];
   var reservaFinal = ultimoMes ? ultimoMes.reservaLiquida : 0;
-  var maxRestantes = dividasSel.reduce(function(a,d) { return Math.max(a, d.restantes); }, 0);
 
   var grid = document.getElementById('strat-resumo-grid');
   grid.innerHTML =
@@ -2329,7 +2532,15 @@ function stratRenderCalendario() {
     '<div class="summary-item"><div class="label">Reserva Final (Líq.)</div><div class="value blue">' + fmtBRL(reservaFinal) + '</div></div>';
 
   var thead = document.getElementById('strat-cal-thead');
-  var thHtml = '<tr><th>Mês</th><th>Aporte</th><th>% Reserva</th><th>→ Reserva</th><th>→ Amort.</th>';
+  var thHtml = '<tr><th>Mês</th><th>Aporte</th>';
+  thHtml += '<th title="Altere o % e os meses seguintes serão atualizados automaticamente">% Reserva &#x21E9;</th>';
+  thHtml += '<th>→ Reserva</th><th>→ Amort.</th>';
+  // Per-debt allocation columns (CHANGE 2) - only if >1 debt
+  if (dividasSel.length > 1) {
+    dividasSel.forEach(function(d) {
+      thHtml += '<th title="% da amortização para ' + d.nome + '. Altere e os meses seguintes serão atualizados.">% ' + d.nome + ' &#x21E9;</th>';
+    });
+  }
   dividasSel.forEach(function(d) { thHtml += '<th>Saldo: ' + d.nome + '</th>'; });
   thHtml += '<th>Saldo Total</th><th>Reserva Bruta</th><th>Reserva Líq.</th><th>Evento</th></tr>';
   thead.innerHTML = thHtml;
@@ -2339,15 +2550,33 @@ function stratRenderCalendario() {
   meses.forEach(function(mes, i) {
     var rowClass = mes.quitou ? ' class="cal-row-quit"' : '';
     var evento = '';
-    if (mes.quitou) evento = '<span style="color:var(--green); font-weight:700;">QUITOU</span>';
-    else if (mes.saldoDevedor <= 0 && i > 0 && meses[i-1].saldoDevedor > 0) evento = '<span style="color:var(--green);">Dívidas zeradas</span>';
+    if (mes.eventos && mes.eventos.length > 0) {
+      evento = mes.eventos.map(function(e) {
+        if (e === 'QUITOU') return '<span style="color:var(--green); font-weight:700;">QUITOU</span>';
+        return '<span style="color:var(--green); font-size:0.75rem;">' + e + '</span>';
+      }).join('<br>');
+    }
+    // Show sporadic extra if any
+    var aporteLabel = fmtBRL(mes.aporte);
+    if (mes.sporadicExtra > 0) {
+      aporteLabel += '<br><small style="color:var(--green);">+' + fmtBRL(mes.sporadicExtra) + '</small>';
+    }
 
     html += '<tr' + rowClass + '>';
     html += '<td style="color:#fff; font-weight:600;">' + mes.label + '</td>';
-    html += '<td>' + fmtBRL(mes.aporte) + '</td>';
-    html += '<td><input type="number" class="cal-pct-input" value="' + mes.pctReserva + '" min="0" max="100" step="5" data-mes="' + i + '" onchange="stratOverridePct(this)">%</td>';
+    html += '<td>' + aporteLabel + '</td>';
+    html += '<td><input type="number" class="cal-pct-input" value="' + mes.pctReserva + '" min="0" max="100" step="5" data-mes="' + i + '" data-type="reserva" onchange="stratOverridePctPropagar(this)">%</td>';
     html += '<td style="color:var(--green);">' + fmtBRL(mes.valorReserva) + '</td>';
     html += '<td style="color:var(--blue);">' + fmtBRL(mes.valorAmort) + '</td>';
+
+    // Per-debt allocation editable columns (CHANGE 2)
+    if (dividasSel.length > 1) {
+      dividasSel.forEach(function(d, di) {
+        var pctVal = Math.round(mes.alocEfetiva[di] * 100) / 100;
+        html += '<td><input type="number" class="cal-pct-input" value="' + pctVal.toFixed(0) + '" min="0" max="100" step="5" data-mes="' + i + '" data-divida-di="' + di + '" data-divida-idx="' + d.origIdx + '" data-type="divida" onchange="stratOverrideDividaPctPropagar(this)">%</td>';
+      });
+    }
+
     mes.saldosIndividuais.forEach(function(s) {
       html += '<td style="color:' + (s > 0 ? 'var(--red)' : 'var(--green)') + ';">' + fmtBRL(s) + '</td>';
     });
@@ -2432,13 +2661,45 @@ function stratRenderCalendario() {
   }
 }
 
-function stratOverridePct(el) {
+// CHANGE 4: Propagate % reserve change to all subsequent months
+function stratOverridePctPropagar(el) {
   var mes = parseInt(el.getAttribute('data-mes'));
   var val = parseFloat(el.value);
   if (isNaN(val) || val < 0) val = 0;
   if (val > 100) val = 100;
   el.value = val;
-  stratState.overrides[mes] = val;
+  // Apply to this month and all subsequent months
+  var totalMeses = stratState.calendario ? stratState.calendario.meses.length : 360;
+  for (var i = mes; i < totalMeses; i++) {
+    stratState.overrides[i] = val;
+  }
+  stratGerarCalendario();
+}
+
+// CHANGE 2+4: Propagate per-debt allocation change to all subsequent months
+function stratOverrideDividaPctPropagar(el) {
+  var mes = parseInt(el.getAttribute('data-mes'));
+  var dividaIdx = parseInt(el.getAttribute('data-divida-idx'));
+  var val = parseFloat(el.value);
+  if (isNaN(val) || val < 0) val = 0;
+  if (val > 100) val = 100;
+  el.value = val;
+
+  var cal = stratState.calendario;
+  if (!cal) return;
+  var totalMeses = cal.meses.length;
+
+  // Apply to this month and all subsequent months
+  for (var i = mes; i < totalMeses; i++) {
+    if (!stratState.alocPorDividaMes[i]) {
+      // Initialize from default allocation
+      stratState.alocPorDividaMes[i] = {};
+      cal.dividasSel.forEach(function(d) {
+        stratState.alocPorDividaMes[i][d.origIdx] = stratState.alocPorDivida[d.origIdx] || d.alocPct;
+      });
+    }
+    stratState.alocPorDividaMes[i][dividaIdx] = val;
+  }
   stratGerarCalendario();
 }
 
