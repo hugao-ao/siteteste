@@ -523,6 +523,31 @@
         <span class="note">Se não souber, deixe em branco — será estimado com base no CET informado acima.</span>
       </div>
     </div>
+    <div class="row">
+      <div class="field">
+        <label>Tipo de Amortização</label>
+        <select id="m-tipo-amort" onchange="toggleTipoAmortFields()">
+          <option value="price">PRICE (parcelas fixas)</option>
+          <option value="sac">SAC (amortização constante)</option>
+          <option value="simples">SIMPLES (amortização + taxa fixa)</option>
+        </select>
+        <span class="note">PRICE: parcela fixa. SAC: parcela decrescente (amortização constante + juros sobre saldo). SIMPLES: amortização fixa + taxa fixa por parcela.</span>
+      </div>
+    </div>
+    <div class="row hidden" id="row-taxa-fixa-simples">
+      <div class="field">
+        <label>Taxa Fixa por Parcela (R$)</label>
+        <input type="text" id="m-taxa-fixa" placeholder="R$ 0,00" oninput="fmtCurrInput(this)">
+        <span class="note">Valor fixo cobrado em cada parcela além da amortização (ex: taxa administrativa).</span>
+      </div>
+    </div>
+    <div class="row">
+      <div class="field">
+        <label>Reajuste Anual (%)</label>
+        <input type="number" id="m-reajuste" placeholder="0" step="0.01" value="0">
+        <span class="note">Se a dívida tem correção anual (ex: IPCA, IGP-M), informe aqui. Parcela e saldo serão reajustados a cada 12 meses.</span>
+      </div>
+    </div>
     <div class="modal-actions">
       <button class="btn btn-outline" onclick="closeDebtModal()">Cancelar</button>
       <button class="btn btn-primary" onclick="saveDebt()">Salvar</button>
@@ -646,6 +671,11 @@ function switchSubTab(sub) {
 }
 
 // ===== DEBT MODAL =====
+function toggleTipoAmortFields() {
+  var tipo = document.getElementById('m-tipo-amort').value;
+  document.getElementById('row-taxa-fixa-simples').classList.toggle('hidden', tipo !== 'simples');
+}
+
 function openDebtModal(type, index) {
   if (index === undefined) index = -1;
   currentModalType = type;
@@ -673,6 +703,10 @@ function openDebtModal(type, index) {
     document.getElementById('m-valor').value = fmtBRL(d.valorContratado);
     document.getElementById('m-parcela').value = fmtBRL(d.parcela);
     document.getElementById('m-total-parcelas').value = d.totalParcelas;
+    document.getElementById('m-tipo-amort').value = d.tipoAmort || 'price';
+    document.getElementById('m-reajuste').value = d.reajusteAnual || 0;
+    document.getElementById('m-taxa-fixa').value = d.taxaFixa ? fmtBRL(d.taxaFixa) : '';
+    toggleTipoAmortFields();
     if (type === 'atual') {
       document.getElementById('m-pagas').value = d.parcelasPagas;
       document.getElementById('m-saldo-devedor').value = d.saldoDevedor ? fmtBRL(d.saldoDevedor) : '';
@@ -686,6 +720,10 @@ function openDebtModal(type, index) {
     document.getElementById('m-pagas').value = '0';
     document.getElementById('m-saldo-devedor').value = '';
     document.getElementById('m-cet').value = '';
+    document.getElementById('m-tipo-amort').value = 'price';
+    document.getElementById('m-reajuste').value = '0';
+    document.getElementById('m-taxa-fixa').value = '';
+    toggleTipoAmortFields();
   }
   document.getElementById('debt-modal').classList.add('active');
 }
@@ -710,20 +748,32 @@ function calcParcelaPreview() {
   var totalParcelas = parseInt(document.getElementById('m-total-parcelas').value);
   var cetVal = parseFloat(document.getElementById('m-cet').value);
   var cetTipo = document.getElementById('m-cet-tipo').value;
-
+  var tipoAmort = document.getElementById('m-tipo-amort').value;
   if (!valorContratado || !totalParcelas || !cetVal) {
     previewEl.textContent = 'R$ 0,00';
     return;
   }
-
   var taxaMensal;
   if (cetTipo === 'anual') {
     taxaMensal = Math.pow(1 + cetVal / 100, 1/12) - 1;
   } else {
     taxaMensal = cetVal / 100;
   }
-
   var parcela;
+  if (tipoAmort === 'sac') {
+    // SAC: primeira parcela (maior) = amortizacao + juros sobre saldo total
+    var amortConst = valorContratado / totalParcelas;
+    parcela = amortConst + (valorContratado * taxaMensal);
+    previewEl.textContent = fmtBRL(parcela) + ' (1a parcela)';
+    return;
+  } else if (tipoAmort === 'simples') {
+    var amortSimp = valorContratado / totalParcelas;
+    var taxaFixa = parseCurr(document.getElementById('m-taxa-fixa').value) || 0;
+    parcela = amortSimp + taxaFixa;
+    previewEl.textContent = fmtBRL(parcela);
+    return;
+  }
+  // PRICE
   if (taxaMensal === 0) {
     parcela = valorContratado / totalParcelas;
   } else {
@@ -792,7 +842,26 @@ function saveDebt() {
     }
   }
 
-  var debt = { nome: nome, valorContratado: valorContratado, parcela: parcela, totalParcelas: totalParcelas, parcelasPagas: parcelasPagas, saldoDevedor: saldoDevedor };
+  var tipoAmort = document.getElementById('m-tipo-amort').value || 'price';
+  var reajusteAnual = parseFloat(document.getElementById('m-reajuste').value) || 0;
+  var taxaFixa = (tipoAmort === 'simples') ? parseCurr(document.getElementById('m-taxa-fixa').value) : 0;
+
+  // Para SAC, recalcular parcela inicial se CET informado
+  if (tipoAmort === 'sac' && useCET) {
+    var cetValSac = parseFloat(document.getElementById('m-cet').value);
+    var cetTipoSac = document.getElementById('m-cet-tipo').value;
+    var taxaMensalSac = cetTipoSac === 'anual' ? Math.pow(1 + cetValSac / 100, 1/12) - 1 : cetValSac / 100;
+    var amortConst = valorContratado / totalParcelas;
+    parcela = amortConst + valorContratado * taxaMensalSac; // primeira parcela SAC
+  }
+
+  // Para SIMPLES, parcela = amortização + taxa fixa
+  if (tipoAmort === 'simples') {
+    var amortSimples = valorContratado / totalParcelas;
+    parcela = amortSimples + taxaFixa;
+  }
+
+  var debt = { nome: nome, valorContratado: valorContratado, parcela: parcela, totalParcelas: totalParcelas, parcelasPagas: parcelasPagas, saldoDevedor: saldoDevedor, tipoAmort: tipoAmort, reajusteAnual: reajusteAnual, taxaFixa: taxaFixa };
 
   var list = currentModalType === 'atual' ? dividasAtuais : dividasProposta;
   if (editingIndex >= 0) {
@@ -830,23 +899,27 @@ function renderTable(type) {
   }
 
   var isAtual = type === 'atual';
+  var tipoLabels = { price: 'PRICE', sac: 'SAC', simples: 'SIMPLES' };
   var html = '<table class="debt-table"><thead><tr>' +
-    '<th>Nome</th><th>Valor Contratado</th><th>Parcela</th><th>Parcelas</th>' +
+    '<th>Nome</th><th>Tipo</th><th>Valor Contratado</th><th>Parcela Inicial</th><th>Parcelas</th>' +
     (isAtual ? '<th>Pagas</th><th>Restantes</th><th>Saldo Devedor</th>' : '') +
-    '<th>Total a Pagar</th><th>Juros</th><th>Acoes</th>' +
+    '<th>Reajuste a.a.</th><th>Total a Pagar</th><th>Juros</th><th>Acoes</th>' +
     '</tr></thead><tbody>';
 
   list.forEach(function(d, i) {
     var restantes = isAtual ? d.totalParcelas - d.parcelasPagas : d.totalParcelas;
-    var totalPagar = d.parcela * restantes;
-    var totalGeral = d.parcela * d.totalParcelas;
-    var juros = totalGeral - d.valorContratado;
+    var totalPagar = calcTotalPagarDivida(d, restantes);
+    var juros = totalPagar - (isAtual ? (d.saldoDevedor || d.valorContratado) : d.valorContratado);
+    var tipoLabel = tipoLabels[d.tipoAmort || 'price'] || 'PRICE';
+    var reajStr = (d.reajusteAnual && d.reajusteAnual > 0) ? d.reajusteAnual.toFixed(1) + '%' : '-';
     html += '<tr>' +
       '<td style="color:#fff;font-weight:600;">' + d.nome + '</td>' +
+      '<td><span style="background:var(--card2);padding:2px 6px;border-radius:4px;font-size:0.75rem;color:var(--green);">' + tipoLabel + '</span></td>' +
       '<td>' + fmtBRL(d.valorContratado) + '</td>' +
       '<td style="color:var(--red);">' + fmtBRL(d.parcela) + '</td>' +
       '<td>' + d.totalParcelas + '</td>' +
       (isAtual ? '<td>' + d.parcelasPagas + '</td><td style="color:var(--orange);">' + restantes + '</td><td style="color:var(--blue);">' + fmtBRL(d.saldoDevedor || 0) + '</td>' : '') +
+      '<td>' + reajStr + '</td>' +
       '<td style="color:var(--red);">' + fmtBRL(totalPagar) + '</td>' +
       '<td style="color:var(--red);">' + fmtBRL(juros) + '</td>' +
       '<td>' +
@@ -871,13 +944,13 @@ function renderSummary(type) {
   var isAtual = type === 'atual';
   var totalJaPago = 0, totalAPagar = 0, totalJuros = 0, totalSaldoDevedor = 0;
   var maxMesesRestantes = 0;
-
   list.forEach(function(d) {
-    var pagas = isAtual ? d.parcelasPagas : 0;
+    var pagas = isAtual ? (d.parcelasPagas || 0) : 0;
     var restantes = d.totalParcelas - pagas;
     totalJaPago += d.parcela * pagas;
-    totalAPagar += d.parcela * restantes;
-    totalJuros += (d.parcela * d.totalParcelas) - d.valorContratado;
+    totalAPagar += calcTotalPagarDivida(d, restantes);
+    var totalGeralDivida = calcTotalPagarDivida(d, d.totalParcelas);
+    totalJuros += totalGeralDivida - d.valorContratado;
     if (isAtual && d.saldoDevedor) totalSaldoDevedor += d.saldoDevedor;
     if (restantes > maxMesesRestantes) maxMesesRestantes = restantes;
   });
@@ -895,18 +968,124 @@ function renderSummary(type) {
   renderCustoChart(type, custoMensal);
 }
 
+// Calcula a parcela do mes 'm' (0-indexed) para uma divida conforme seu tipo
+function calcParcelaMes(d, m, saldoInicial) {
+  var tipo = d.tipoAmort || 'price';
+  var restantesTotal = d.totalParcelas - (d.parcelasPagas || 0);
+  var reajuste = (d.reajusteAnual || 0) / 100;
+  var fatorReaj = 1;
+  if (reajuste > 0) {
+    var anosPassados = Math.floor(m / 12);
+    fatorReaj = Math.pow(1 + reajuste, anosPassados);
+  }
+
+  if (tipo === 'price') {
+    return d.parcela * fatorReaj;
+  } else if (tipo === 'sac') {
+    var amortConst = saldoInicial / restantesTotal;
+    // Calcular saldo devedor no mes m para SAC
+    var saldoMes = saldoInicial - amortConst * m;
+    if (saldoMes < 0) saldoMes = 0;
+    // Precisamos da taxa mensal - estimar a partir da primeira parcela
+    var taxaMensalEst = (d.parcela - amortConst) / saldoInicial;
+    if (taxaMensalEst < 0) taxaMensalEst = 0;
+    var jurosMes = saldoMes * taxaMensalEst;
+    return (amortConst + jurosMes) * fatorReaj;
+  } else if (tipo === 'simples') {
+    var amortSimples = saldoInicial / restantesTotal;
+    var taxaFixa = d.taxaFixa || 0;
+    return (amortSimples + taxaFixa) * fatorReaj;
+  }
+  return d.parcela * fatorReaj;
+}
+
+// Calcula total a pagar considerando tipo e reajuste
+function calcTotalPagarDivida(d, restantes) {
+  var saldoBase = d.saldoDevedor || d.valorContratado;
+  var total = 0;
+  for (var m = 0; m < restantes; m++) {
+    total += calcParcelaMes(d, m, saldoBase);
+  }
+  return total;
+}
+
+// Gera array de saldo devedor mes a mes para uma divida
+function gerarProjecaoSaldo(d, isAtual) {
+  var tipo = d.tipoAmort || 'price';
+  var restantes = d.totalParcelas - (isAtual ? (d.parcelasPagas || 0) : 0);
+  var saldoBase = isAtual ? (d.saldoDevedor || d.valorContratado) : d.valorContratado;
+  var saldo = saldoBase;
+  var reajuste = (d.reajusteAnual || 0) / 100;
+  var saldos = [saldo];
+  var parcelas = [];
+
+  // Estimar taxa mensal
+  var taxaMensal = 0;
+  if (tipo === 'price') {
+    // Derivar taxa da formula PRICE: P = S * i / (1 - (1+i)^-n)
+    // Aproximacao iterativa
+    if (d.parcela > 0 && saldo > 0 && restantes > 0) {
+      var low = 0, high = 0.2;
+      for (var iter = 0; iter < 50; iter++) {
+        var mid = (low + high) / 2;
+        var pCalc = mid === 0 ? saldo / restantes : saldo * mid / (1 - Math.pow(1 + mid, -restantes));
+        if (pCalc > d.parcela) high = mid; else low = mid;
+      }
+      taxaMensal = (low + high) / 2;
+    }
+  } else if (tipo === 'sac') {
+    var amortConst = saldo / restantes;
+    taxaMensal = d.parcela > amortConst ? (d.parcela - amortConst) / saldo : 0;
+  }
+
+  for (var m = 0; m < restantes; m++) {
+    var fatorReaj = 1;
+    if (reajuste > 0) fatorReaj = Math.pow(1 + reajuste, Math.floor(m / 12));
+
+    var parcelaMes, jurosMes, amortMes;
+    if (tipo === 'price') {
+      jurosMes = saldo * taxaMensal;
+      parcelaMes = d.parcela * fatorReaj;
+      amortMes = parcelaMes - jurosMes;
+      if (amortMes < 0) amortMes = 0;
+    } else if (tipo === 'sac') {
+      var amortConstSac = saldoBase / restantes;
+      amortMes = amortConstSac * fatorReaj;
+      jurosMes = saldo * taxaMensal;
+      parcelaMes = (amortMes + jurosMes) * fatorReaj;
+    } else { // simples
+      amortMes = (saldoBase / restantes) * fatorReaj;
+      parcelaMes = (amortMes + (d.taxaFixa || 0)) * fatorReaj;
+    }
+
+    // Aplicar reajuste ao saldo a cada 12 meses
+    if (reajuste > 0 && m > 0 && m % 12 === 0) {
+      saldo = saldo * (1 + reajuste);
+    }
+
+    saldo -= amortMes;
+    if (saldo < 0) saldo = 0;
+    saldos.push(saldo);
+    parcelas.push(parcelaMes);
+  }
+  return { saldos: saldos, parcelas: parcelas };
+}
+
 function calcCustoMensalAtual(list, isAtual) {
   var maxMeses = 0;
   list.forEach(function(d) {
-    var restantes = d.totalParcelas - (isAtual ? d.parcelasPagas : 0);
+    var restantes = d.totalParcelas - (isAtual ? (d.parcelasPagas || 0) : 0);
     if (restantes > maxMeses) maxMeses = restantes;
   });
   var custos = [];
   for (var m = 0; m < maxMeses; m++) {
     var total = 0;
     list.forEach(function(d) {
-      var restantes = d.totalParcelas - (isAtual ? d.parcelasPagas : 0);
-      if (m < restantes) total += d.parcela;
+      var restantes = d.totalParcelas - (isAtual ? (d.parcelasPagas || 0) : 0);
+      if (m < restantes) {
+        var saldoBase = isAtual ? (d.saldoDevedor || d.valorContratado) : d.valorContratado;
+        total += calcParcelaMes(d, m, saldoBase);
+      }
     });
     custos.push(total);
   }
@@ -987,16 +1166,15 @@ function runComparison() {
 
   var jurosRestantesAtual = 0;
   dividasAtuais.forEach(function(d) {
-    var restantes = d.totalParcelas - d.parcelasPagas;
-    var totalRestante = d.parcela * restantes;
-    var saldoDev = d.saldoDevedor || (d.parcela * restantes);
+    var restantes = d.totalParcelas - (d.parcelasPagas || 0);
+    var totalRestante = calcTotalPagarDivida(d, restantes);
+    var saldoDev = d.saldoDevedor || d.valorContratado;
     jurosRestantesAtual += totalRestante - saldoDev;
   });
   if (jurosRestantesAtual < 0) jurosRestantesAtual = 0;
-
   var jurosProposta = 0;
   dividasProposta.forEach(function(d) {
-    var totalGeral = d.parcela * d.totalParcelas;
+    var totalGeral = calcTotalPagarDivida(d, d.totalParcelas);
     jurosProposta += totalGeral - d.valorContratado;
   });
 
@@ -1324,33 +1502,47 @@ function simularAmortizacao() {
   var restantes = divida.totalParcelas - divida.parcelasPagas;
   var saldoDevedor = divida.saldoDevedor || (divida.parcela * restantes);
   var parcela = divida.parcela;
+  var tipoAmortDivida = divida.tipoAmort || 'price';
+  var reajusteAnual = divida.reajusteAnual || 0;
+  var taxaFixaDivida = divida.taxaFixa || 0;
 
-  // Calcular taxa mensal implícita da dívida
-  var taxaDivida = calcTaxaImplicita(saldoDevedor, parcela, restantes);
+  // Calcular taxa mensal implícita da dívida conforme tipo
+  var taxaDivida = 0;
+  if (tipoAmortDivida === 'price') {
+    taxaDivida = calcTaxaImplicita(saldoDevedor, parcela, restantes);
+  } else if (tipoAmortDivida === 'sac') {
+    var amortConstCalc = saldoDevedor / restantes;
+    taxaDivida = parcela > amortConstCalc ? (parcela - amortConstCalc) / saldoDevedor : 0;
+  } else { // simples - nao tem juros compostos, taxa fixa por parcela
+    taxaDivida = 0; // juros ja estao embutidos na taxa fixa
+  }
 
   // Período máximo de análise: o dobro do prazo restante ou 360 meses (o que for menor)
   var periodoMax = Math.min(restantes * 2, 360);
 
+  // Objeto com info da divida para as simulações
+  var dividaInfo = { saldoDevedor: saldoDevedor, parcela: parcela, taxaDivida: taxaDivida, restantes: restantes, tipoAmort: tipoAmortDivida, reajusteAnual: reajusteAnual, taxaFixa: taxaFixaDivida };
+
   // Simular cenário BASE (sem amortização extra)
-  var cenarioBase = simularCenario(saldoDevedor, parcela, taxaDivida, restantes, periodoMax, [], [], 0, 0, 'nenhum', 'saldo');
+  var cenarioBase = simularCenarioV2(dividaInfo, periodoMax, [], [], 'nenhum', 'saldo');
 
   // Simular RESERVA PARALELA
   var resRentab = parseFloat(document.getElementById('res-rentab').value) || 12;
   var resIR = parseFloat(document.getElementById('res-ir').value) || 15;
-  var cenarioReserva = simularCenarioReserva(saldoDevedor, parcela, taxaDivida, restantes, periodoMax,
+  var cenarioReserva = simularCenarioReservaV2(dividaInfo, periodoMax,
     amortStrategies.reserva.periodicos, amortStrategies.reserva.unicos, resRentab, resIR);
 
   // Simular AMORTIZACAO DIRETA
   var dirTipo = document.getElementById('dir-tipo-amort').value;
-  var cenarioDireta = simularCenario(saldoDevedor, parcela, taxaDivida, restantes, periodoMax,
-    amortStrategies.direta.periodicos, amortStrategies.direta.unicos, 0, 0, 'direta', dirTipo);
+  var cenarioDireta = simularCenarioV2(dividaInfo, periodoMax,
+    amortStrategies.direta.periodicos, amortStrategies.direta.unicos, 'direta', dirTipo);
 
   // Simular HIBRIDA
   var hibPctReserva = parseFloat(document.getElementById('hib-pct-reserva').value) || 50;
   var hibRentab = parseFloat(document.getElementById('hib-rentab').value) || 12;
   var hibIR = parseFloat(document.getElementById('hib-ir').value) || 15;
   var hibTipo = document.getElementById('hib-tipo-amort').value;
-  var cenarioHibrido = simularCenarioHibrido(saldoDevedor, parcela, taxaDivida, restantes, periodoMax,
+  var cenarioHibrido = simularCenarioHibridoV2(dividaInfo, periodoMax,
     amortStrategies.hibrida.periodicos, amortStrategies.hibrida.unicos, hibPctReserva, hibRentab, hibIR, hibTipo);
 
   // Renderizar resultados
@@ -1413,6 +1605,216 @@ function getAporteMensal(periodicos, unicos, mes, dataInicio) {
   return total;
 }
 
+// ===== V2 SIMULATION FUNCTIONS (SAC/PRICE/SIMPLES + REAJUSTE) =====
+function calcParcelaDividaMes(info, m, saldoAtual) {
+  var tipo = info.tipoAmort || 'price';
+  var reajuste = (info.reajusteAnual || 0) / 100;
+  var fatorReaj = reajuste > 0 ? Math.pow(1 + reajuste, Math.floor(m / 12)) : 1;
+
+  if (tipo === 'price') {
+    return info.parcela * fatorReaj;
+  } else if (tipo === 'sac') {
+    var amortConst = info.saldoDevedor / info.restantes;
+    var jurosMes = saldoAtual * info.taxaDivida;
+    return (amortConst + jurosMes) * fatorReaj;
+  } else { // simples
+    var amortSimp = info.saldoDevedor / info.restantes;
+    return (amortSimp + (info.taxaFixa || 0)) * fatorReaj;
+  }
+}
+
+function calcAmortDividaMes(info, m, saldoAtual, parcelaMes) {
+  var tipo = info.tipoAmort || 'price';
+  if (tipo === 'price') {
+    var jurosMes = saldoAtual * info.taxaDivida;
+    return parcelaMes - jurosMes;
+  } else if (tipo === 'sac') {
+    var reajuste = (info.reajusteAnual || 0) / 100;
+    var fatorReaj = reajuste > 0 ? Math.pow(1 + reajuste, Math.floor(m / 12)) : 1;
+    return (info.saldoDevedor / info.restantes) * fatorReaj;
+  } else { // simples
+    var reajuste2 = (info.reajusteAnual || 0) / 100;
+    var fatorReaj2 = reajuste2 > 0 ? Math.pow(1 + reajuste2, Math.floor(m / 12)) : 1;
+    return (info.saldoDevedor / info.restantes) * fatorReaj2;
+  }
+}
+
+function simularCenarioV2(info, periodoMax, periodicos, unicos, modo, tipoAmortExtra) {
+  var dataInicio = new Date();
+  var saldo = info.saldoDevedor;
+  var historico = [];
+  var mesQuitacao = -1;
+  var totalAmortExtra = 0;
+  var reajuste = (info.reajusteAnual || 0) / 100;
+
+  for (var m = 0; m < periodoMax; m++) {
+    if (saldo <= 0.01) {
+      saldo = 0;
+      historico.push({ mes: m + 1, saldoDevedor: 0, amortMes: 0 });
+      if (mesQuitacao < 0) mesQuitacao = m;
+      continue;
+    }
+
+    // Reajuste anual do saldo (se aplicavel)
+    if (reajuste > 0 && m > 0 && m % 12 === 0) {
+      saldo = saldo * (1 + reajuste);
+    }
+
+    var parcelaMes = calcParcelaDividaMes(info, m, saldo);
+    var amortMes = calcAmortDividaMes(info, m, saldo, parcelaMes);
+    if (amortMes > saldo) amortMes = saldo;
+    saldo -= amortMes;
+    if (saldo < 0.01) saldo = 0;
+
+    // Amortizacao extra (se modo direta)
+    var amortExtra = 0;
+    if (modo === 'direta' && saldo > 0) {
+      amortExtra = getAporteMensal(periodicos, unicos, m, dataInicio);
+      saldo = Math.max(0, saldo - amortExtra);
+      totalAmortExtra += amortExtra;
+    }
+
+    if (saldo <= 0.01 && mesQuitacao < 0) {
+      saldo = 0;
+      mesQuitacao = m + 1;
+    }
+
+    historico.push({ mes: m + 1, saldoDevedor: saldo, amortMes: amortExtra });
+  }
+
+  if (mesQuitacao < 0) mesQuitacao = info.restantes;
+
+  return { tipo: modo, historico: historico, mesQuitacao: mesQuitacao, totalAmortExtra: totalAmortExtra };
+}
+
+function simularCenarioReservaV2(info, periodoMax, periodicos, unicos, rentabAnual, irPct) {
+  var taxaReserva = Math.pow(1 + rentabAnual / 100, 1/12) - 1;
+  var dataInicio = new Date();
+  var saldo = info.saldoDevedor;
+  var reservaBruta = 0;
+  var totalAportado = 0;
+  var historico = [];
+  var mesQuitacao = -1;
+  var reajuste = (info.reajusteAnual || 0) / 100;
+
+  for (var m = 0; m < periodoMax; m++) {
+    if (saldo <= 0.01 && mesQuitacao >= 0) {
+      saldo = 0;
+      reservaBruta = reservaBruta * (1 + taxaReserva);
+      historico.push({ mes: m + 1, saldoDevedor: 0, reservaBruta: reservaBruta, reservaLiquida: reservaBruta, aporteMes: 0 });
+      continue;
+    }
+
+    // Reajuste anual
+    if (reajuste > 0 && m > 0 && m % 12 === 0) {
+      saldo = saldo * (1 + reajuste);
+    }
+
+    var parcelaMes = calcParcelaDividaMes(info, m, saldo);
+    var amortMes = calcAmortDividaMes(info, m, saldo, parcelaMes);
+    if (amortMes > saldo) amortMes = saldo;
+    saldo -= amortMes;
+    if (saldo < 0.01) saldo = 0;
+
+    // Aporte na reserva
+    var aporte = getAporteMensal(periodicos, unicos, m, dataInicio);
+    totalAportado += aporte;
+    reservaBruta = reservaBruta * (1 + taxaReserva) + aporte;
+
+    // Saldo liquido da reserva
+    var lucro = reservaBruta - totalAportado;
+    var irValor = lucro > 0 ? lucro * (irPct / 100) : 0;
+    var reservaLiquida = reservaBruta - irValor;
+
+    // Verificar se pode quitar
+    if (saldo > 0 && reservaLiquida >= saldo && mesQuitacao < 0) {
+      mesQuitacao = m + 1;
+      reservaBruta -= saldo;
+      saldo = 0;
+    }
+
+    if (saldo <= 0 && mesQuitacao < 0) mesQuitacao = m + 1;
+
+    historico.push({ mes: m + 1, saldoDevedor: saldo, reservaBruta: reservaBruta, reservaLiquida: reservaLiquida, aporteMes: aporte });
+  }
+
+  if (mesQuitacao < 0) mesQuitacao = info.restantes;
+
+  var totalPagoBase = info.parcela * info.restantes;
+  var totalPagoReal = 0;
+  for (var mm = 0; mm < Math.min(mesQuitacao, periodoMax); mm++) {
+    totalPagoReal += calcParcelaDividaMes(info, mm, info.saldoDevedor);
+  }
+
+  return { tipo: 'reserva', historico: historico, mesQuitacao: mesQuitacao, totalAportado: totalAportado, reservaFinal: reservaBruta, economiaJuros: totalPagoBase - totalPagoReal - totalAportado };
+}
+
+function simularCenarioHibridoV2(info, periodoMax, periodicos, unicos, pctReserva, rentabAnual, irPct, tipoAmortExtra) {
+  var taxaReserva = Math.pow(1 + rentabAnual / 100, 1/12) - 1;
+  var dataInicio = new Date();
+  var saldo = info.saldoDevedor;
+  var reservaBruta = 0;
+  var totalAportadoReserva = 0;
+  var totalAmortDireta = 0;
+  var historico = [];
+  var mesQuitacao = -1;
+  var reajuste = (info.reajusteAnual || 0) / 100;
+
+  for (var m = 0; m < periodoMax; m++) {
+    if (saldo <= 0.01 && mesQuitacao >= 0) {
+      saldo = 0;
+      reservaBruta = reservaBruta * (1 + taxaReserva);
+      historico.push({ mes: m + 1, saldoDevedor: 0, reservaBruta: reservaBruta, amortMes: 0 });
+      continue;
+    }
+
+    // Reajuste anual
+    if (reajuste > 0 && m > 0 && m % 12 === 0) {
+      saldo = saldo * (1 + reajuste);
+    }
+
+    var parcelaMes = calcParcelaDividaMes(info, m, saldo);
+    var amortMes = calcAmortDividaMes(info, m, saldo, parcelaMes);
+    if (amortMes > saldo) amortMes = saldo;
+    saldo -= amortMes;
+    if (saldo < 0.01) saldo = 0;
+
+    // Aporte total do mes
+    var aporteTotal = getAporteMensal(periodicos, unicos, m, dataInicio);
+    var aporteReserva = aporteTotal * (pctReserva / 100);
+    var aporteDireta = aporteTotal - aporteReserva;
+
+    // Reserva
+    totalAportadoReserva += aporteReserva;
+    reservaBruta = reservaBruta * (1 + taxaReserva) + aporteReserva;
+
+    // Amortizacao direta
+    if (saldo > 0 && aporteDireta > 0) {
+      saldo = Math.max(0, saldo - aporteDireta);
+      totalAmortDireta += aporteDireta;
+    }
+
+    // Verificar se reserva liquida >= saldo
+    var lucro = reservaBruta - totalAportadoReserva;
+    var irValor = lucro > 0 ? lucro * (irPct / 100) : 0;
+    var reservaLiquida = reservaBruta - irValor;
+
+    if (saldo > 0 && reservaLiquida >= saldo && mesQuitacao < 0) {
+      mesQuitacao = m + 1;
+      saldo = 0;
+    }
+
+    if (saldo <= 0 && mesQuitacao < 0) mesQuitacao = m + 1;
+
+    historico.push({ mes: m + 1, saldoDevedor: saldo, reservaBruta: reservaBruta, amortMes: aporteDireta });
+  }
+
+  if (mesQuitacao < 0) mesQuitacao = info.restantes;
+
+  return { tipo: 'hibrida', historico: historico, mesQuitacao: mesQuitacao, totalAmortDireta: totalAmortDireta, totalAportadoReserva: totalAportadoReserva, reservaFinal: reservaBruta };
+}
+
+// ===== LEGACY SIMULATION FUNCTIONS (kept for compatibility) =====
 function simularCenarioReserva(saldoDevedor, parcela, taxaDivida, restantes, periodoMax, periodicos, unicos, rentabAnual, irPct) {
   var taxaReserva = Math.pow(1 + rentabAnual / 100, 1/12) - 1;
   var dataInicio = new Date();
