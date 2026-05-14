@@ -152,6 +152,14 @@
   /* PGBL highlight */
   .pgbl-highlight { background: rgba(167,139,250,0.1); border: 1px solid rgba(167,139,250,0.3); border-radius: 8px; padding: 1rem; margin-top: 1rem; }
   .pgbl-highlight h3 { color: var(--purple); margin-bottom: 0.5rem; }
+
+  /* Reference section */
+  .ref-section { margin-bottom: 1.5rem; }
+  .ref-section:last-child { margin-bottom: 0; }
+  .ref-title { color: var(--primary); font-size: 0.95rem; margin-bottom: 0.5rem; }
+  .ref-section ul { list-style: disc; }
+  .ref-section ul li { margin-bottom: 0.3rem; }
+  .ref-section ul li a:hover { text-decoration: none; }
 </style>
 </head>
 <body>
@@ -200,6 +208,7 @@
       <button class="tab-btn active" onclick="switchTab('dados')">1. Dados do Contribuinte</button>
       <button class="tab-btn" onclick="switchTab('deducoes')">2. Deducoes</button>
       <button class="tab-btn" onclick="switchTab('resultado')">3. Resultado</button>
+      <button class="tab-btn" onclick="switchTab('referencia')">4. Referencia Oficial</button>
     </div>
 
     <!-- ===== TAB 1: DADOS DO CONTRIBUINTE ===== -->
@@ -348,6 +357,24 @@
       </div>
     </div>
 
+    <!-- ===== TAB 4: REFERENCIA OFICIAL ===== -->
+    <div id="tab-referencia" class="tab-content">
+      <div class="card">
+        <h2>Referencia Oficial - Receita Federal</h2>
+        <p style="color:var(--muted);font-size:0.85rem;margin-bottom:1.5rem;">
+          Dados extraidos da <a href="https://www.gov.br/receitafederal/pt-br/assuntos/meu-imposto-de-renda/tabelas/2026" target="_blank" style="color:var(--blue);text-decoration:underline;">pagina oficial da Receita Federal</a> (atualizado em 27/04/2026).
+        </p>
+
+        <!-- Toggle ano-base -->
+        <div class="toggle-group" style="margin-bottom:1.5rem;">
+          <button class="toggle-btn ref-toggle active" onclick="setRefAno(2025)">Declaracao 2026 (Ano-base 2025)</button>
+          <button class="toggle-btn ref-toggle" onclick="setRefAno(2026)">Declaracao 2027 (Ano-base 2026)</button>
+        </div>
+
+        <div id="ref-content"></div>
+      </div>
+    </div>
+
     <!-- Save button -->
     <div class="save-float">
       <button class="btn btn-secondary" id="btnSaveGlobal" onclick="salvarSimulacao()"><span id="saveIcon">&#128190;</span> <span id="saveLabel">Salvar Simulacao</span></button>
@@ -403,7 +430,7 @@ const DEDUCAO_DEPENDENTE_MENSAL_2026 = 189.59;
 const LIMITE_EDUCACAO_2025 = 3561.50;
 const LIMITE_EDUCACAO_2026 = 3561.50;
 const DESCONTO_SIMPLIFICADO_TETO_2025 = 16754.34;
-const DESCONTO_SIMPLIFICADO_TETO_2026 = 16754.34;
+const DESCONTO_SIMPLIFICADO_TETO_2026 = 17640.00;
 const DESCONTO_SIMPLIFICADO_PCT = 0.20;
 const PGBL_LIMITE_PCT = 0.12;
 
@@ -558,6 +585,168 @@ function renderPGBLInfo() {
   }
   html += '</div>';
   document.getElementById('pgbl-info').innerHTML = html;
+}
+
+// ===== REFERENCIA OFICIAL =====
+let refAno = 2025;
+function setRefAno(ano) {
+  refAno = ano;
+  document.querySelectorAll('.ref-toggle').forEach((b, i) => {
+    b.classList.toggle('active', (i === 0 && ano === 2025) || (i === 1 && ano === 2026));
+  });
+  renderReferencia();
+}
+
+function renderReferencia() {
+  const el = document.getElementById('ref-content');
+  if (!el) return;
+  let h = '';
+
+  if (refAno === 2025) {
+    h += '<div class="ref-section">';
+    h += '<h3 class="ref-title">Tabela Progressiva Anual (Declaracao 2026 / Ano-base 2025)</h3>';
+    h += '<table class="faixa-table">';
+    h += '<tr><th>Base de Calculo</th><th>Aliquota</th><th>Parcela a Deduzir</th></tr>';
+    h += '<tr><td>Ate R$ 28.467,20</td><td>Isento</td><td>-</td></tr>';
+    h += '<tr><td>De R$ 28.467,21 ate R$ 33.919,80</td><td>7,5%</td><td>R$ 2.135,04</td></tr>';
+    h += '<tr><td>De R$ 33.919,81 ate R$ 45.012,60</td><td>15%</td><td>R$ 4.680,48</td></tr>';
+    h += '<tr><td>De R$ 45.012,61 ate R$ 55.976,16</td><td>22,5%</td><td>R$ 8.055,36</td></tr>';
+    h += '<tr><td>Acima de R$ 55.976,16</td><td>27,5%</td><td>R$ 10.854,43</td></tr>';
+    h += '</table></div>';
+
+    h += '<div class="ref-section">';
+    h += '<h3 class="ref-title">Tabela Progressiva Mensal (mai-dez 2025)</h3>';
+    h += '<table class="faixa-table">';
+    h += '<tr><th>Base de Calculo</th><th>Aliquota</th><th>Parcela a Deduzir</th></tr>';
+    h += '<tr><td>Ate R$ 2.428,80</td><td>Isento</td><td>-</td></tr>';
+    h += '<tr><td>De R$ 2.428,81 ate R$ 2.826,65</td><td>7,5%</td><td>R$ 182,16</td></tr>';
+    h += '<tr><td>De R$ 2.826,66 ate R$ 3.751,05</td><td>15%</td><td>R$ 394,16</td></tr>';
+    h += '<tr><td>De R$ 3.751,06 ate R$ 4.664,68</td><td>22,5%</td><td>R$ 675,49</td></tr>';
+    h += '<tr><td>Acima de R$ 4.664,68</td><td>27,5%</td><td>R$ 908,73</td></tr>';
+    h += '</table></div>';
+
+    h += '<div class="ref-section">';
+    h += '<h3 class="ref-title">Limites de Deducao (Declaracao 2026)</h3>';
+    h += '<table class="faixa-table">';
+    h += '<tr><th>Tipo de Deducao</th><th>Limite</th><th>Observacao</th></tr>';
+    h += '<tr><td>Desconto Simplificado</td><td><strong>R$ 16.754,34</strong></td><td>20% da renda tributavel</td></tr>';
+    h += '<tr><td>Dependente</td><td><strong>R$ 2.275,08</strong> /ano</td><td>Valor fixo por dependente</td></tr>';
+    h += '<tr><td>Dependente (mensal)</td><td><strong>R$ 189,59</strong> /mes</td><td>Para calculo da retencao na fonte</td></tr>';
+    h += '<tr><td>Educacao</td><td><strong>R$ 3.561,50</strong> /pessoa/ano</td><td>Titular + cada dependente</td></tr>';
+    h += '<tr><td>Saude</td><td><strong>Sem limite</strong></td><td>Desde que comprovada (medicos, dentistas, plano, exames)</td></tr>';
+    h += '<tr><td>PGBL</td><td><strong>12%</strong> da renda bruta tributavel</td><td>Somente na declaracao completa</td></tr>';
+    h += '<tr><td>Pensao Alimenticia</td><td><strong>Sem limite</strong></td><td>Apenas judicial ou por escritura publica</td></tr>';
+    h += '<tr><td>INSS</td><td><strong>Valor integral</strong></td><td>Total descontado no ano</td></tr>';
+    h += '</table></div>';
+
+    h += '<div class="ref-section">';
+    h += '<h3 class="ref-title">Obrigatoriedade de Declarar (2026)</h3>';
+    h += '<table class="faixa-table">';
+    h += '<tr><th>Criterio</th><th>Valor</th></tr>';
+    h += '<tr><td>Rendimentos tributaveis acima de</td><td><strong>R$ 35.584,00</strong></td></tr>';
+    h += '<tr><td>Rendimentos isentos/nao tributaveis acima de</td><td><strong>R$ 200.000,00</strong></td></tr>';
+    h += '<tr><td>Receita bruta de atividade rural acima de</td><td><strong>R$ 169.440,00</strong></td></tr>';
+    h += '<tr><td>Bens/direitos acima de (em 31/12)</td><td><strong>R$ 800.000,00</strong></td></tr>';
+    h += '</table></div>';
+
+    h += '<div class="ref-section">';
+    h += '<h3 class="ref-title">Tributacao de Rendimentos de Capital</h3>';
+    h += '<table class="faixa-table">';
+    h += '<tr><th>Prazo</th><th>Aliquota (Renda Fixa / Fundos LP)</th></tr>';
+    h += '<tr><td>Ate 180 dias</td><td>22,5%</td></tr>';
+    h += '<tr><td>181 a 360 dias</td><td>20%</td></tr>';
+    h += '<tr><td>361 a 720 dias</td><td>17,5%</td></tr>';
+    h += '<tr><td>Acima de 720 dias</td><td>15%</td></tr>';
+    h += '</table></div>';
+
+  } else {
+    // Ano-base 2026
+    h += '<div class="ref-section">';
+    h += '<h3 class="ref-title">Tabela Progressiva Anual (Exercicio 2027 / Ano-base 2026)</h3>';
+    h += '<table class="faixa-table">';
+    h += '<tr><th>Base de Calculo</th><th>Aliquota</th><th>Parcela a Deduzir</th></tr>';
+    h += '<tr><td>Ate R$ 29.145,60</td><td>Isento</td><td>-</td></tr>';
+    h += '<tr><td>De R$ 29.145,61 ate R$ 33.919,80</td><td>7,5%</td><td>R$ 2.185,92</td></tr>';
+    h += '<tr><td>De R$ 33.919,81 ate R$ 45.012,60</td><td>15%</td><td>R$ 4.729,91</td></tr>';
+    h += '<tr><td>De R$ 45.012,61 ate R$ 55.976,16</td><td>22,5%</td><td>R$ 8.105,85</td></tr>';
+    h += '<tr><td>Acima de R$ 55.976,16</td><td>27,5%</td><td>R$ 10.904,66</td></tr>';
+    h += '</table></div>';
+
+    h += '<div class="ref-section">';
+    h += '<h3 class="ref-title">Tabela Progressiva Mensal (a partir de jan/2026)</h3>';
+    h += '<table class="faixa-table">';
+    h += '<tr><th>Base de Calculo</th><th>Aliquota</th><th>Parcela a Deduzir</th></tr>';
+    h += '<tr><td>Ate R$ 2.428,80</td><td>Isento</td><td>-</td></tr>';
+    h += '<tr><td>De R$ 2.428,81 ate R$ 2.826,65</td><td>7,5%</td><td>R$ 182,16</td></tr>';
+    h += '<tr><td>De R$ 2.826,66 ate R$ 3.751,05</td><td>15%</td><td>R$ 394,16</td></tr>';
+    h += '<tr><td>De R$ 3.751,06 ate R$ 4.664,68</td><td>22,5%</td><td>R$ 675,49</td></tr>';
+    h += '<tr><td>Acima de R$ 4.664,68</td><td>27,5%</td><td>R$ 908,73</td></tr>';
+    h += '</table></div>';
+
+    h += '<div class="ref-section">';
+    h += '<h3 class="ref-title" style="color:var(--blue);">Redutor de Isencao - NOVIDADE 2026 (Lei 15.270/2025)</h3>';
+    h += '<p style="color:var(--muted);font-size:0.85rem;margin-bottom:0.5rem;">Quem ganha ate R$ 5.000/mes fica isento. Entre R$ 5.000 e R$ 7.350, ha reducao parcial decrescente.</p>';
+    h += '<table class="faixa-table">';
+    h += '<tr><th>Rendimento Tributavel Mensal</th><th>Reducao do Imposto</th></tr>';
+    h += '<tr><td>Ate R$ 5.000,00</td><td>Ate R$ 312,89 (imposto fica <strong>zero</strong>)</td></tr>';
+    h += '<tr><td>De R$ 5.000,01 ate R$ 7.350,00</td><td>R$ 978,62 - (0,133145 x renda tributavel)</td></tr>';
+    h += '<tr><td>Acima de R$ 7.350,00</td><td>Sem reducao</td></tr>';
+    h += '</table>';
+    h += '<h4 style="margin-top:0.8rem;font-size:0.85rem;color:var(--blue);">Redutor Anual (Ajuste)</h4>';
+    h += '<table class="faixa-table">';
+    h += '<tr><th>Rendimento Tributavel Anual</th><th>Reducao do Imposto</th></tr>';
+    h += '<tr><td>Ate R$ 60.000,00</td><td>Ate R$ 2.694,15 (imposto fica <strong>zero</strong>)</td></tr>';
+    h += '<tr><td>De R$ 60.000,01 ate R$ 88.200,00</td><td>R$ 8.429,73 - (0,095575 x renda tributavel)</td></tr>';
+    h += '<tr><td>Acima de R$ 88.200,00</td><td>Sem reducao</td></tr>';
+    h += '</table></div>';
+
+    h += '<div class="ref-section">';
+    h += '<h3 class="ref-title">Limites de Deducao (Declaracao 2027 / Ano-base 2026)</h3>';
+    h += '<table class="faixa-table">';
+    h += '<tr><th>Tipo de Deducao</th><th>Limite</th><th>Observacao</th></tr>';
+    h += '<tr><td>Desconto Simplificado</td><td><strong>R$ 17.640,00</strong></td><td>20% da renda tributavel</td></tr>';
+    h += '<tr><td>Dependente</td><td><strong>R$ 2.275,08</strong> /ano</td><td>Valor fixo por dependente</td></tr>';
+    h += '<tr><td>Dependente (mensal)</td><td><strong>R$ 189,59</strong> /mes</td><td>Para calculo da retencao na fonte</td></tr>';
+    h += '<tr><td>Educacao</td><td><strong>R$ 3.561,50</strong> /pessoa/ano</td><td>Titular + cada dependente</td></tr>';
+    h += '<tr><td>Saude</td><td><strong>Sem limite</strong></td><td>Desde que comprovada (medicos, dentistas, plano, exames)</td></tr>';
+    h += '<tr><td>PGBL</td><td><strong>12%</strong> da renda bruta tributavel</td><td>Somente na declaracao completa</td></tr>';
+    h += '<tr><td>Pensao Alimenticia</td><td><strong>Sem limite</strong></td><td>Apenas judicial ou por escritura publica</td></tr>';
+    h += '<tr><td>INSS</td><td><strong>Valor integral</strong></td><td>Total descontado no ano</td></tr>';
+    h += '<tr><td>Desconto simplificado mensal</td><td><strong>R$ 607,20</strong></td><td>Para calculo da retencao na fonte</td></tr>';
+    h += '<tr><td>Rend. previdenciarios isentos (65+)</td><td><strong>R$ 1.903,98</strong> /mes</td><td>Aposentadoria/pensao</td></tr>';
+    h += '</table></div>';
+
+    h += '<div class="ref-section">';
+    h += '<h3 class="ref-title">Obrigatoriedade de Declarar</h3>';
+    h += '<p style="color:var(--muted);font-size:0.85rem;margin-bottom:0.5rem;">Criterios ainda nao publicados oficialmente para o ano-base 2026. Abaixo, os criterios do ano-base 2025 como referencia.</p>';
+    h += '<table class="faixa-table">';
+    h += '<tr><th>Criterio</th><th>Valor</th></tr>';
+    h += '<tr><td>Rendimentos tributaveis acima de</td><td><strong>R$ 35.584,00</strong></td></tr>';
+    h += '<tr><td>Rendimentos isentos/nao tributaveis acima de</td><td><strong>R$ 200.000,00</strong></td></tr>';
+    h += '<tr><td>Receita bruta de atividade rural acima de</td><td><strong>R$ 169.440,00</strong></td></tr>';
+    h += '<tr><td>Bens/direitos acima de (em 31/12)</td><td><strong>R$ 800.000,00</strong></td></tr>';
+    h += '</table></div>';
+
+    h += '<div class="ref-section">';
+    h += '<h3 class="ref-title">Tributacao de Rendimentos de Capital</h3>';
+    h += '<table class="faixa-table">';
+    h += '<tr><th>Prazo</th><th>Aliquota (Renda Fixa / Fundos LP)</th></tr>';
+    h += '<tr><td>Ate 180 dias</td><td>22,5%</td></tr>';
+    h += '<tr><td>181 a 360 dias</td><td>20%</td></tr>';
+    h += '<tr><td>361 a 720 dias</td><td>17,5%</td></tr>';
+    h += '<tr><td>Acima de 720 dias</td><td>15%</td></tr>';
+    h += '</table></div>';
+  }
+
+  h += '<div class="ref-section" style="margin-top:1.5rem;padding-top:1rem;border-top:1px solid var(--border);">';
+  h += '<p style="color:var(--muted);font-size:0.8rem;"><strong>Fontes:</strong></p>';
+  h += '<ul style="color:var(--muted);font-size:0.8rem;margin-top:0.3rem;padding-left:1.2rem;">';
+  h += '<li><a href="https://www.gov.br/receitafederal/pt-br/assuntos/meu-imposto-de-renda/tabelas/2026" target="_blank" style="color:var(--blue);">Receita Federal - Tributacao de 2026</a></li>';
+  h += '<li><a href="https://www.gov.br/fazenda/pt-br/assuntos/noticias/2026/marco/receita-federal-anuncia-regras-para-declaracao-do-imposto-de-renda-da-pessoa-fisica-2026" target="_blank" style="color:var(--blue);">Ministerio da Fazenda - Regras IRPF 2026</a></li>';
+  h += '<li><a href="https://www.gov.br/secom/pt-br/acompanhe-a-secom/noticias/2026/01/nova-tabela-do-ir-veja-faixas-e-aliquotas-e-saiba-mais-sobre-medida-que-isenta-o-pagamento-para-quem-ganha-ate-r-5-mil" target="_blank" style="color:var(--blue);">SECOM - Nova Tabela IR 2026 (isencao R$ 5.000)</a></li>';
+  h += '</ul></div>';
+
+  el.innerHTML = h;
 }
 
 // ===== CALCULO PRINCIPAL =====
@@ -796,13 +985,14 @@ function switchTab(tab) {
   document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
   document.getElementById('tab-' + tab).classList.add('active');
-  const tabs = ['dados', 'deducoes', 'resultado'];
+  const tabs = ['dados', 'deducoes', 'resultado', 'referencia'];
   const idx = tabs.indexOf(tab);
   document.querySelectorAll('.tab-btn')[idx].classList.add('active');
 
   if (tab === 'dados') renderTabelaFaixas();
   if (tab === 'deducoes') renderPGBLInfo();
   if (tab === 'resultado') calcular();
+  if (tab === 'referencia') renderReferencia();
 }
 
 // ===== SIMULACOES (CRUD) =====
