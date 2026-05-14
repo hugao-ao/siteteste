@@ -1,0 +1,967 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Simulador de Imposto de Renda - MithraSF</title>
+<link rel="stylesheet" href="../assets/style.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="../assets/layout.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #021C0E;
+    --card: #052614;
+    --card2: #0A3520;
+    --fg: #F2E8C9;
+    --muted: #A0B8A6;
+    --primary: #D4AF37;
+    --primary-dim: rgba(212,175,55,0.15);
+    --border: rgba(212,175,55,0.2);
+    --green: #22c55e;
+    --red: #ef4444;
+    --blue: #60a5fa;
+    --purple: #a78bfa;
+    --orange: #fb923c;
+    --radius: 10px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--fg); font-family: 'Inter', system-ui, sans-serif; font-size: 14px; min-height: 100vh; }
+  h1 { font-size: 1.6rem; font-weight: 700; color: #fff; }
+  h2 { font-size: 1.1rem; font-weight: 600; color: var(--primary); margin-bottom: 1rem; }
+  h3 { font-size: 0.95rem; font-weight: 600; color: #fff; }
+  .page { max-width: 1200px; margin: 0 auto; padding: 2rem 1rem 4rem; }
+  .page-header { margin-bottom: 2rem; }
+  .page-header p { color: var(--muted); margin-top: 0.3rem; font-size: 0.9rem; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.5rem; margin-bottom: 1.5rem; }
+  .field { display: flex; flex-direction: column; gap: 0.4rem; }
+  .field label { font-size: 0.8rem; color: var(--muted); font-weight: 500; }
+  .field input, .field select { background: var(--card2); border: 1px solid var(--border); border-radius: 6px; color: var(--fg); padding: 0.5rem 0.75rem; font-size: 0.9rem; outline: none; width: 100%; transition: border-color 0.2s; }
+  .field input:focus, .field select:focus { border-color: var(--primary); }
+  .field select option { background: var(--card); }
+  .field .hint { font-size: 0.7rem; color: var(--muted); font-style: italic; }
+  .row { display: flex; gap: 1rem; align-items: flex-end; flex-wrap: wrap; }
+  .row .field { flex: 1; min-width: 140px; }
+  .btn { padding: 0.6rem 1.2rem; border-radius: 6px; font-weight: 600; cursor: pointer; border: none; font-size: 0.85rem; transition: all 0.2s; }
+  .btn-primary { background: var(--green); color: #fff; }
+  .btn-primary:hover { background: #16a34a; }
+  .btn-secondary { background: var(--primary); color: #000; }
+  .btn-secondary:hover { background: #c9a030; }
+  .btn-danger { background: var(--red); color: #fff; font-size: 0.75rem; padding: 0.3rem 0.6rem; }
+  .btn-danger:hover { background: #dc2626; }
+  .btn-edit { background: var(--orange); color: #fff; font-size: 0.75rem; padding: 0.3rem 0.6rem; }
+  .btn-edit:hover { background: #ea580c; }
+  .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--fg); }
+  .btn-outline:hover { border-color: var(--primary); color: var(--primary); }
+  .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem; }
+  .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 1rem; margin-top: 1rem; }
+  .summary-item { background: var(--card2); border: 1px solid var(--border); border-radius: 8px; padding: 1rem; text-align: center; }
+  .summary-item .label { font-size: 0.7rem; color: var(--muted); text-transform: uppercase; font-weight: 600; margin-bottom: 0.3rem; }
+  .summary-item .value { font-size: 1.2rem; font-weight: 700; }
+  .summary-item .value.green { color: var(--green); }
+  .summary-item .value.red { color: var(--red); }
+  .summary-item .value.blue { color: var(--blue); }
+  .summary-item .value.white { color: #fff; }
+  .summary-item .value.purple { color: var(--purple); }
+  .summary-item .value.orange { color: var(--orange); }
+
+  /* Tabs */
+  .tab-bar { display: flex; gap: 0.5rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
+  .tab-btn { padding: 0.5rem 1rem; border-radius: 6px; border: 1px solid var(--border); background: transparent; color: var(--fg); cursor: pointer; font-size: 0.8rem; font-weight: 500; transition: all 0.2s; }
+  .tab-btn.active { background: var(--primary); color: #000; border-color: var(--primary); font-weight: 700; }
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+
+  /* Sim list */
+  .sim-card { background: var(--card2); border: 1px solid var(--border); border-radius: 8px; padding: 1rem 1.2rem; margin-bottom: 0.75rem; display: flex; justify-content: space-between; align-items: center; cursor: pointer; transition: border-color 0.2s; }
+  .sim-card:hover { border-color: var(--primary); }
+  .sim-card .sim-info { flex: 1; }
+  .sim-card .sim-info .sim-name { font-weight: 600; color: #fff; }
+  .sim-card .sim-info .sim-meta { font-size: 0.75rem; color: var(--muted); margin-top: 0.2rem; }
+  .sim-card .sim-actions { display: flex; gap: 0.4rem; }
+
+  /* Comparison table */
+  .comp-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; margin-top: 1rem; }
+  .comp-table th { text-align: left; padding: 0.6rem 0.8rem; color: var(--muted); font-weight: 600; border-bottom: 1px solid var(--border); font-size: 0.72rem; text-transform: uppercase; }
+  .comp-table td { padding: 0.6rem 0.8rem; border-bottom: 1px solid rgba(255,255,255,0.03); }
+  .comp-table tr.best td { background: rgba(34,197,94,0.08); }
+  .comp-table .winner { color: var(--green); font-weight: 700; }
+  .comp-table .loser { color: var(--red); }
+
+  /* Verdict */
+  .verdict-box { background: var(--card2); border: 2px solid var(--green); border-radius: var(--radius); padding: 1.5rem; margin-top: 1.5rem; text-align: center; }
+  .verdict-box h3 { color: var(--green); margin-bottom: 0.5rem; font-size: 1.1rem; }
+  .verdict-box p { color: var(--muted); font-size: 0.9rem; }
+  .verdict-box .big-number { font-size: 2rem; font-weight: 800; color: var(--green); margin: 0.5rem 0; }
+
+  /* Faixa table */
+  .faixa-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; margin-top: 0.5rem; }
+  .faixa-table th { text-align: left; padding: 0.4rem 0.6rem; color: var(--primary); font-weight: 600; border-bottom: 1px solid var(--border); font-size: 0.72rem; text-transform: uppercase; }
+  .faixa-table td { padding: 0.4rem 0.6rem; border-bottom: 1px solid rgba(255,255,255,0.03); }
+  .faixa-table tr.active-faixa td { background: rgba(212,175,55,0.1); color: var(--primary); font-weight: 600; }
+
+  /* Toggle for ano-base */
+  .toggle-group { display: flex; gap: 0; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; margin-bottom: 1rem; }
+  .toggle-btn { padding: 0.5rem 1.2rem; background: transparent; color: var(--fg); border: none; cursor: pointer; font-size: 0.82rem; font-weight: 500; transition: all 0.2s; }
+  .toggle-btn.active { background: var(--primary); color: #000; font-weight: 700; }
+
+  /* Deduction list */
+  .ded-list { margin-top: 0.5rem; }
+  .ded-item { display: flex; justify-content: space-between; align-items: center; padding: 0.4rem 0; border-bottom: 1px solid rgba(255,255,255,0.03); font-size: 0.85rem; }
+  .ded-item .ded-label { color: var(--muted); }
+  .ded-item .ded-value { font-weight: 600; }
+
+  /* Chart container */
+  .chart-container { position: relative; width: 100%; max-width: 600px; margin: 1.5rem auto; }
+
+  /* Responsive */
+  @media (max-width: 600px) {
+    .row { flex-direction: column; }
+    .row .field { min-width: 100%; }
+    .summary-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+
+  /* Save button fixed */
+  .save-float { position: fixed; bottom: 1rem; right: 1rem; z-index: 100; }
+
+  /* Info box */
+  .info-box { background: rgba(96,165,250,0.08); border: 1px solid rgba(96,165,250,0.3); border-radius: 8px; padding: 1rem; margin-bottom: 1rem; font-size: 0.82rem; color: var(--blue); }
+  .info-box strong { color: #fff; }
+
+  /* PGBL highlight */
+  .pgbl-highlight { background: rgba(167,139,250,0.1); border: 1px solid rgba(167,139,250,0.3); border-radius: 8px; padding: 1rem; margin-top: 1rem; }
+  .pgbl-highlight h3 { color: var(--purple); margin-bottom: 0.5rem; }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="page-header">
+    <h1>Simulador de Imposto de Renda</h1>
+    <p>Compare declaração Simplificada, Completa sem PGBL e Completa com PGBL para encontrar a melhor opção.</p>
+  </div>
+
+  <!-- ===== LISTA DE SIMULAÇÕES ===== -->
+  <div id="sim-list-view">
+    <div class="section-header">
+      <h2>Simulações Salvas</h2>
+      <button class="btn btn-primary" onclick="novaSimulacao()">+ Nova Simulação</button>
+    </div>
+    <div id="sim-list"></div>
+  </div>
+
+  <!-- ===== EDITOR DE SIMULAÇÃO ===== -->
+  <div id="sim-editor-view" style="display:none;">
+    <div style="display:flex;gap:1rem;align-items:center;margin-bottom:1rem;">
+      <button class="btn btn-outline" onclick="voltarLista()">← Voltar para lista</button>
+      <span id="sim-editor-title" style="color:var(--muted);font-size:0.85rem;"></span>
+    </div>
+
+    <div class="card" style="margin-bottom:1rem;">
+      <div class="field" style="max-width:500px;">
+        <label>Nome da simulação</label>
+        <input type="text" id="sim-nome" placeholder="Ex: IR João 2026">
+      </div>
+    </div>
+
+    <!-- Tab bar -->
+    <div class="tab-bar">
+      <button class="tab-btn active" onclick="switchTab('dados')">1. Dados do Contribuinte</button>
+      <button class="tab-btn" onclick="switchTab('deducoes')">2. Deduções</button>
+      <button class="tab-btn" onclick="switchTab('resultado')">3. Resultado</button>
+    </div>
+
+    <!-- ===== TAB 1: DADOS DO CONTRIBUINTE ===== -->
+    <div id="tab-dados" class="tab-content active">
+      <div class="card">
+        <h2>Dados do Contribuinte</h2>
+
+        <div class="info-box">
+          <strong>Ano-base:</strong> Selecione o ano-base dos rendimentos. A ferramenta usa as faixas e regras vigentes para cada período.
+        </div>
+
+        <div class="toggle-group" style="margin-bottom:1.5rem;">
+          <button class="toggle-btn active" onclick="setAnoBase(2025)">Ano-base 2025 (Declaração 2026)</button>
+          <button class="toggle-btn" onclick="setAnoBase(2026)">Ano-base 2026 (Declaração 2027)</button>
+        </div>
+
+        <div class="row" style="margin-bottom:1rem;">
+          <div class="field">
+            <label>Renda Bruta Mensal (R$)</label>
+            <input type="text" id="renda-mensal" placeholder="R$ 0,00" oninput="formatCurrency(this)">
+            <span class="hint">Salário bruto + outras rendas tributáveis mensais</span>
+          </div>
+          <div class="field">
+            <label>13º Salário Bruto (R$)</label>
+            <input type="text" id="decimo-terceiro" placeholder="R$ 0,00" oninput="formatCurrency(this)">
+            <span class="hint">Tributado exclusivamente na fonte (separado)</span>
+          </div>
+        </div>
+
+        <div class="row" style="margin-bottom:1rem;">
+          <div class="field">
+            <label>Outras Rendas Tributáveis Anuais (R$)</label>
+            <input type="text" id="outras-rendas" placeholder="R$ 0,00" oninput="formatCurrency(this)">
+            <span class="hint">Aluguéis, freelances, pro-labore, etc. (valor anual total)</span>
+          </div>
+          <div class="field">
+            <label>Rendimentos Isentos Anuais (R$)</label>
+            <input type="text" id="rendimentos-isentos" placeholder="R$ 0,00" oninput="formatCurrency(this)">
+            <span class="hint">Poupança, LCI/LCA, dividendos, etc. (não tributados)</span>
+          </div>
+        </div>
+
+        <div class="row" style="margin-bottom:1rem;">
+          <div class="field">
+            <label>INSS Retido Mensal (R$)</label>
+            <input type="text" id="inss-mensal" placeholder="R$ 0,00" oninput="formatCurrency(this)">
+            <span class="hint">Desconto de INSS no contracheque</span>
+          </div>
+          <div class="field">
+            <label>IR Retido na Fonte Mensal (R$)</label>
+            <input type="text" id="irrf-mensal" placeholder="R$ 0,00" oninput="formatCurrency(this)">
+            <span class="hint">IR já descontado no contracheque</span>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="field">
+            <label>Número de Dependentes</label>
+            <input type="number" id="num-dependentes" value="0" min="0" max="20">
+          </div>
+          <div class="field">
+            <label>Tipo de Declaração Atual</label>
+            <select id="tipo-declaracao-atual">
+              <option value="nenhuma">Não declara / Isento</option>
+              <option value="simplificada">Simplificada</option>
+              <option value="completa">Completa (sem PGBL)</option>
+              <option value="completa-pgbl">Completa (com PGBL)</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tabela de faixas vigente -->
+      <div class="card">
+        <h2>Tabela Progressiva Vigente</h2>
+        <div id="tabela-faixas"></div>
+        <div id="tabela-redutor" style="margin-top:1rem;display:none;"></div>
+      </div>
+    </div>
+
+    <!-- ===== TAB 2: DEDUÇÕES ===== -->
+    <div id="tab-deducoes" class="tab-content">
+      <div class="card">
+        <h2>Deduções para Declaração Completa</h2>
+        <p style="color:var(--muted);font-size:0.85rem;margin-bottom:1rem;">
+          Informe os gastos dedutíveis do ano. Esses valores são usados apenas no cálculo da declaração Completa.
+        </p>
+
+        <div class="row" style="margin-bottom:1rem;">
+          <div class="field">
+            <label>Despesas com Saúde (R$ anual)</label>
+            <input type="text" id="ded-saude" placeholder="R$ 0,00" oninput="formatCurrency(this)">
+            <span class="hint">Sem limite de dedução (médicos, dentistas, exames, plano de saúde)</span>
+          </div>
+          <div class="field">
+            <label>Despesas com Educação (R$ anual)</label>
+            <input type="text" id="ded-educacao" placeholder="R$ 0,00" oninput="formatCurrency(this)">
+            <span class="hint">Limite: R$ 3.561,50/pessoa (titular + dependentes)</span>
+          </div>
+        </div>
+
+        <div class="row" style="margin-bottom:1rem;">
+          <div class="field">
+            <label>Pensão Alimentícia Judicial (R$ anual)</label>
+            <input type="text" id="ded-pensao" placeholder="R$ 0,00" oninput="formatCurrency(this)">
+            <span class="hint">Apenas pensão judicial ou por escritura pública</span>
+          </div>
+          <div class="field">
+            <label>Previdência Oficial (INSS) — Anual (R$)</label>
+            <input type="text" id="ded-inss-anual" placeholder="R$ 0,00" oninput="formatCurrency(this)">
+            <span class="hint">Se não informar, será calculado: INSS mensal × 12</span>
+          </div>
+        </div>
+
+        <div class="row" style="margin-bottom:1rem;">
+          <div class="field">
+            <label>Outras Deduções Legais (R$ anual)</label>
+            <input type="text" id="ded-outras" placeholder="R$ 0,00" oninput="formatCurrency(this)">
+            <span class="hint">Livro-caixa, previdência de empregado doméstico, etc.</span>
+          </div>
+          <div class="field">
+            <label>PGBL Já Contribuído no Ano (R$ anual)</label>
+            <input type="text" id="ded-pgbl-atual" placeholder="R$ 0,00" oninput="formatCurrency(this)">
+            <span class="hint">Valor já aportado em PGBL no ano-base</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="card pgbl-highlight">
+        <h3>Simulação de PGBL Ideal</h3>
+        <p style="color:var(--muted);font-size:0.85rem;margin-bottom:0.5rem;">
+          O PGBL permite deduzir até <strong style="color:var(--purple);">12% da renda bruta tributável anual</strong> na declaração completa. Abaixo, calculamos o valor máximo e o impacto.
+        </p>
+        <div id="pgbl-info" style="margin-top:0.5rem;"></div>
+      </div>
+    </div>
+
+    <!-- ===== TAB 3: RESULTADO ===== -->
+    <div id="tab-resultado" class="tab-content">
+      <div class="card">
+        <div class="section-header">
+          <h2>Comparativo: Simplificada vs. Completa vs. Completa + PGBL</h2>
+          <button class="btn btn-secondary" onclick="calcular()">Calcular</button>
+        </div>
+        <div id="resultado-area"></div>
+      </div>
+    </div>
+
+    <!-- Save button -->
+    <div class="save-float">
+      <button class="btn btn-secondary" onclick="salvarSimulacao()" title="Salvar simulação">💾 Salvar Simulação</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ===== CONSTANTES E TABELAS =====
+
+// Tabela ANUAL - Declaração 2026 (ano-base 2025)
+const TABELA_2025_ANUAL = [
+  { ate: 28467.20, aliq: 0,    deduz: 0 },
+  { ate: 33919.80, aliq: 0.075, deduz: 2135.04 },
+  { ate: 45012.60, aliq: 0.15,  deduz: 4679.03 },
+  { ate: 55976.16, aliq: 0.225, deduz: 8054.97 },
+  { ate: Infinity, aliq: 0.275, deduz: 10853.78 }
+];
+
+// Tabela MENSAL - Retenção 2025
+const TABELA_2025_MENSAL = [
+  { ate: 2372.27, aliq: 0,    deduz: 0 },
+  { ate: 2826.65, aliq: 0.075, deduz: 177.92 },
+  { ate: 3751.05, aliq: 0.15,  deduz: 389.92 },
+  { ate: 4664.68, aliq: 0.225, deduz: 671.25 },
+  { ate: Infinity, aliq: 0.275, deduz: 904.48 }
+];
+
+// Tabela MENSAL - Nova tabela 2026 (Lei 15.270/2025)
+const TABELA_2026_MENSAL = [
+  { ate: 2428.80, aliq: 0,    deduz: 0 },
+  { ate: 2826.65, aliq: 0.075, deduz: 182.16 },
+  { ate: 3751.05, aliq: 0.15,  deduz: 394.16 },
+  { ate: 4664.68, aliq: 0.225, deduz: 675.49 },
+  { ate: Infinity, aliq: 0.275, deduz: 908.73 }
+];
+
+// Tabela ANUAL 2026 (projeção: mensal × 12)
+const TABELA_2026_ANUAL = [
+  { ate: 29145.60, aliq: 0,    deduz: 0 },
+  { ate: 33919.80, aliq: 0.075, deduz: 2185.92 },
+  { ate: 45012.60, aliq: 0.15,  deduz: 4729.92 },
+  { ate: 55976.16, aliq: 0.225, deduz: 8105.88 },
+  { ate: Infinity, aliq: 0.275, deduz: 10904.76 }
+];
+
+// Redutor de isenção 2026 (Lei 15.270/2025)
+// Aplicado MENSALMENTE sobre o rendimento tributável (antes de INSS/dependentes)
+// Até R$ 5.000: redução zera o imposto
+// De R$ 5.000,01 a R$ 7.350: redutor = 978,62 - (0,133145 × rendimento tributável)
+// Acima de R$ 7.350: sem redução
+
+// Deduções fixas
+const DEDUCAO_DEPENDENTE_2025 = 2275.08; // anual
+const DEDUCAO_DEPENDENTE_2026 = 2275.08; // mantido
+const DEDUCAO_DEPENDENTE_MENSAL_2025 = 189.59;
+const DEDUCAO_DEPENDENTE_MENSAL_2026 = 189.59;
+const LIMITE_EDUCACAO_2025 = 3561.50; // por pessoa
+const LIMITE_EDUCACAO_2026 = 3561.50;
+const DESCONTO_SIMPLIFICADO_TETO_2025 = 16754.34;
+const DESCONTO_SIMPLIFICADO_TETO_2026 = 16754.34; // projeção mantida
+const DESCONTO_SIMPLIFICADO_PCT = 0.20;
+const PGBL_LIMITE_PCT = 0.12; // 12% da renda bruta tributável
+
+// ===== ESTADO =====
+let simulacoes = [];
+let simAtualIdx = -1;
+let anoBase = 2025;
+
+// ===== FORMATAÇÃO =====
+function formatCurrency(el) {
+  let v = el.value.replace(/\D/g, '');
+  if (!v) { el.value = ''; return; }
+  v = (parseInt(v) / 100).toFixed(2);
+  el.value = 'R$ ' + v.replace('.', ',').replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+}
+function parseCurrency(el) {
+  if (!el || !el.value) return 0;
+  return parseFloat(el.value.replace(/[^\d,]/g, '').replace(',', '.')) || 0;
+}
+function fmtBRL(v) {
+  return 'R$ ' + v.toFixed(2).replace('.', ',').replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+}
+function fmtPct(v) { return (v * 100).toFixed(1).replace('.', ',') + '%'; }
+
+// ===== ANO-BASE =====
+function setAnoBase(ano) {
+  anoBase = ano;
+  document.querySelectorAll('.toggle-btn').forEach((b, i) => {
+    b.classList.toggle('active', (i === 0 && ano === 2025) || (i === 1 && ano === 2026));
+  });
+  renderTabelaFaixas();
+}
+
+function getTabelaAnual() { return anoBase === 2025 ? TABELA_2025_ANUAL : TABELA_2026_ANUAL; }
+function getTabelaMensal() { return anoBase === 2025 ? TABELA_2025_MENSAL : TABELA_2026_MENSAL; }
+function getDeducaoDependenteAnual() { return anoBase === 2025 ? DEDUCAO_DEPENDENTE_2025 : DEDUCAO_DEPENDENTE_2026; }
+function getLimiteEducacao() { return anoBase === 2025 ? LIMITE_EDUCACAO_2025 : LIMITE_EDUCACAO_2026; }
+function getDescontoSimplificadoTeto() { return anoBase === 2025 ? DESCONTO_SIMPLIFICADO_TETO_2025 : DESCONTO_SIMPLIFICADO_TETO_2026; }
+
+// ===== CÁLCULO DO IR =====
+function calcIRAnual(baseCalculo) {
+  const tabela = getTabelaAnual();
+  if (baseCalculo <= 0) return 0;
+  for (const f of tabela) {
+    if (baseCalculo <= f.ate) {
+      return Math.max(0, baseCalculo * f.aliq - f.deduz);
+    }
+  }
+  const last = tabela[tabela.length - 1];
+  return Math.max(0, baseCalculo * last.aliq - last.deduz);
+}
+
+function calcRedutorMensal2026(rendTributavel) {
+  if (anoBase !== 2026) return 0;
+  if (rendTributavel <= 5000) {
+    // Redução zera o imposto (limitada ao IR calculado)
+    return Infinity; // sinalizador: zerar
+  } else if (rendTributavel <= 7350) {
+    return Math.max(0, 978.62 - (0.133145 * rendTributavel));
+  }
+  return 0;
+}
+
+function calcRedutorAnual2026(rendTributavelMensal) {
+  if (anoBase !== 2026) return 0;
+  const redMensal = calcRedutorMensal2026(rendTributavelMensal);
+  if (redMensal === Infinity) return Infinity;
+  return redMensal * 12;
+}
+
+function getFaixaAtiva(baseCalculo, tabela) {
+  for (let i = 0; i < tabela.length; i++) {
+    if (baseCalculo <= tabela[i].ate) return i;
+  }
+  return tabela.length - 1;
+}
+
+// ===== RENDER TABELA DE FAIXAS =====
+function renderTabelaFaixas() {
+  const tabAnual = getTabelaAnual();
+  const tabMensal = getTabelaMensal();
+  const rendaMensal = parseCurrency(document.getElementById('renda-mensal'));
+  const inssMensal = parseCurrency(document.getElementById('inss-mensal'));
+  const nDep = parseInt(document.getElementById('num-dependentes').value) || 0;
+  const baseMensal = rendaMensal - inssMensal - (nDep * (anoBase === 2025 ? DEDUCAO_DEPENDENTE_MENSAL_2025 : DEDUCAO_DEPENDENTE_MENSAL_2026));
+  const baseAnual = baseMensal * 12;
+  const faixaAnual = getFaixaAtiva(baseAnual, tabAnual);
+  const faixaMensal = getFaixaAtiva(baseMensal, tabMensal);
+
+  let html = '<h3 style="margin-bottom:0.5rem;">Tabela Anual</h3>';
+  html += '<table class="faixa-table"><tr><th>Base de Cálculo (R$)</th><th>Alíquota</th><th>Parcela a Deduzir</th></tr>';
+  tabAnual.forEach((f, i) => {
+    const cls = i === faixaAnual ? ' class="active-faixa"' : '';
+    const faixa = i === 0 ? `Até ${fmtBRL(f.ate)}` : (f.ate === Infinity ? `Acima de ${fmtBRL(tabAnual[i-1].ate)}` : `De ${fmtBRL(tabAnual[i-1].ate + 0.01)} até ${fmtBRL(f.ate)}`);
+    html += `<tr${cls}><td>${faixa}</td><td>${f.aliq === 0 ? 'Isento' : fmtPct(f.aliq)}</td><td>${f.deduz === 0 ? '-' : fmtBRL(f.deduz)}</td></tr>`;
+  });
+  html += '</table>';
+
+  html += '<h3 style="margin:1rem 0 0.5rem;">Tabela Mensal (Retenção na Fonte)</h3>';
+  html += '<table class="faixa-table"><tr><th>Base de Cálculo (R$)</th><th>Alíquota</th><th>Parcela a Deduzir</th></tr>';
+  tabMensal.forEach((f, i) => {
+    const cls = i === faixaMensal ? ' class="active-faixa"' : '';
+    const faixa = i === 0 ? `Até ${fmtBRL(f.ate)}` : (f.ate === Infinity ? `Acima de ${fmtBRL(tabMensal[i-1].ate)}` : `De ${fmtBRL(tabMensal[i-1].ate + 0.01)} até ${fmtBRL(f.ate)}`);
+    html += `<tr${cls}><td>${faixa}</td><td>${f.aliq === 0 ? 'Isento' : fmtPct(f.aliq)}</td><td>${f.deduz === 0 ? '-' : fmtBRL(f.deduz)}</td></tr>`;
+  });
+  html += '</table>';
+
+  document.getElementById('tabela-faixas').innerHTML = html;
+
+  // Redutor 2026
+  const redDiv = document.getElementById('tabela-redutor');
+  if (anoBase === 2026) {
+    redDiv.style.display = 'block';
+    redDiv.innerHTML = `
+      <h3 style="margin-bottom:0.5rem;color:var(--blue);">Redutor de Isenção (Lei 15.270/2025)</h3>
+      <table class="faixa-table">
+        <tr><th>Rendimento Tributável Mensal</th><th>Redução no IR</th></tr>
+        <tr${rendaMensal <= 5000 ? ' class="active-faixa"' : ''}><td>Até R$ 5.000,00</td><td>Redução de até R$ 312,89 (zera o imposto)</td></tr>
+        <tr${rendaMensal > 5000 && rendaMensal <= 7350 ? ' class="active-faixa"' : ''}><td>De R$ 5.000,01 até R$ 7.350,00</td><td>R$ 978,62 - (0,133145 × renda)</td></tr>
+        <tr${rendaMensal > 7350 ? ' class="active-faixa"' : ''}><td>Acima de R$ 7.350,00</td><td>Sem redução</td></tr>
+      </table>`;
+  } else {
+    redDiv.style.display = 'none';
+  }
+
+  // PGBL info
+  renderPGBLInfo();
+}
+
+// ===== PGBL INFO =====
+function renderPGBLInfo() {
+  const rendaMensal = parseCurrency(document.getElementById('renda-mensal'));
+  const outrasRendas = parseCurrency(document.getElementById('outras-rendas'));
+  const rendaBrutaAnual = rendaMensal * 12 + outrasRendas;
+  const maxPGBL = rendaBrutaAnual * PGBL_LIMITE_PCT;
+  const pgblAtual = parseCurrency(document.getElementById('ded-pgbl-atual'));
+  const faltaPGBL = Math.max(0, maxPGBL - pgblAtual);
+  const pgblMensalMax = maxPGBL / 12;
+  const pgblMensalFalta = faltaPGBL / (12 - new Date().getMonth()); // meses restantes
+
+  let html = `<div class="ded-list">`;
+  html += `<div class="ded-item"><span class="ded-label">Renda Bruta Tributável Anual</span><span class="ded-value" style="color:var(--fg)">${fmtBRL(rendaBrutaAnual)}</span></div>`;
+  html += `<div class="ded-item"><span class="ded-label">Limite PGBL (12%)</span><span class="ded-value" style="color:var(--purple)">${fmtBRL(maxPGBL)}</span></div>`;
+  html += `<div class="ded-item"><span class="ded-label">PGBL Máximo Mensal</span><span class="ded-value" style="color:var(--purple)">${fmtBRL(pgblMensalMax)}</span></div>`;
+  html += `<div class="ded-item"><span class="ded-label">PGBL Já Aportado</span><span class="ded-value" style="color:var(--fg)">${fmtBRL(pgblAtual)}</span></div>`;
+  html += `<div class="ded-item"><span class="ded-label">Falta Aportar para Atingir o Máximo</span><span class="ded-value" style="color:${faltaPGBL > 0 ? 'var(--orange)' : 'var(--green)'}">${fmtBRL(faltaPGBL)}</span></div>`;
+  if (faltaPGBL > 0) {
+    html += `<div class="ded-item"><span class="ded-label">Aporte Mensal Necessário (meses restantes)</span><span class="ded-value" style="color:var(--orange)">${fmtBRL(pgblMensalFalta)}/mês</span></div>`;
+  }
+  html += `</div>`;
+  document.getElementById('pgbl-info').innerHTML = html;
+}
+
+// ===== CÁLCULO PRINCIPAL =====
+function calcular() {
+  const rendaMensal = parseCurrency(document.getElementById('renda-mensal'));
+  const decimoTerceiro = parseCurrency(document.getElementById('decimo-terceiro'));
+  const outrasRendas = parseCurrency(document.getElementById('outras-rendas'));
+  const rendIsentos = parseCurrency(document.getElementById('rendimentos-isentos'));
+  const inssMensal = parseCurrency(document.getElementById('inss-mensal'));
+  const irrfMensal = parseCurrency(document.getElementById('irrf-mensal'));
+  const nDep = parseInt(document.getElementById('num-dependentes').value) || 0;
+
+  const dedSaude = parseCurrency(document.getElementById('ded-saude'));
+  const dedEducacao = parseCurrency(document.getElementById('ded-educacao'));
+  const dedPensao = parseCurrency(document.getElementById('ded-pensao'));
+  let dedINSSAnual = parseCurrency(document.getElementById('ded-inss-anual'));
+  if (dedINSSAnual === 0) dedINSSAnual = inssMensal * 12;
+  const dedOutras = parseCurrency(document.getElementById('ded-outras'));
+  const pgblAtual = parseCurrency(document.getElementById('ded-pgbl-atual'));
+
+  // Renda bruta tributável anual
+  const rendaBrutaAnual = rendaMensal * 12 + outrasRendas;
+  const maxPGBL = rendaBrutaAnual * PGBL_LIMITE_PCT;
+  const pgblIdeal = maxPGBL; // máximo permitido
+
+  // Limite educação por pessoa (titular + dependentes)
+  const numPessoas = 1 + nDep;
+  const limiteEdTotal = getLimiteEducacao() * numPessoas;
+  const dedEducacaoEfetiva = Math.min(dedEducacao, limiteEdTotal);
+
+  // Dedução por dependente
+  const dedDependentes = nDep * getDeducaoDependenteAnual();
+
+  // ===== 1. SIMPLIFICADA =====
+  const descontoSimplificado = Math.min(rendaBrutaAnual * DESCONTO_SIMPLIFICADO_PCT, getDescontoSimplificadoTeto());
+  const baseSimplificada = Math.max(0, rendaBrutaAnual - descontoSimplificado);
+  let irSimplificada = calcIRAnual(baseSimplificada);
+
+  // Aplicar redutor 2026 se aplicável
+  if (anoBase === 2026) {
+    const redAnual = calcRedutorAnual2026(rendaMensal);
+    if (redAnual === Infinity) {
+      irSimplificada = 0;
+    } else {
+      irSimplificada = Math.max(0, irSimplificada - redAnual);
+    }
+  }
+
+  // ===== 2. COMPLETA SEM PGBL =====
+  const deducoesCompleta = dedINSSAnual + dedDependentes + dedSaude + dedEducacaoEfetiva + dedPensao + dedOutras;
+  const baseCompleta = Math.max(0, rendaBrutaAnual - deducoesCompleta);
+  let irCompleta = calcIRAnual(baseCompleta);
+
+  if (anoBase === 2026) {
+    const redAnual = calcRedutorAnual2026(rendaMensal);
+    if (redAnual === Infinity) {
+      irCompleta = 0;
+    } else {
+      irCompleta = Math.max(0, irCompleta - redAnual);
+    }
+  }
+
+  // ===== 3. COMPLETA COM PGBL (máximo) =====
+  const deducoesCompletaPGBL = deducoesCompleta + pgblIdeal;
+  const baseCompletaPGBL = Math.max(0, rendaBrutaAnual - deducoesCompletaPGBL);
+  let irCompletaPGBL = calcIRAnual(baseCompletaPGBL);
+
+  if (anoBase === 2026) {
+    const redAnual = calcRedutorAnual2026(rendaMensal);
+    if (redAnual === Infinity) {
+      irCompletaPGBL = 0;
+    } else {
+      irCompletaPGBL = Math.max(0, irCompletaPGBL - redAnual);
+    }
+  }
+
+  // ===== 4. COMPLETA COM PGBL ATUAL =====
+  const deducoesCompletaPGBLAtual = deducoesCompleta + pgblAtual;
+  const baseCompletaPGBLAtual = Math.max(0, rendaBrutaAnual - deducoesCompletaPGBLAtual);
+  let irCompletaPGBLAtual = calcIRAnual(baseCompletaPGBLAtual);
+
+  if (anoBase === 2026) {
+    const redAnual = calcRedutorAnual2026(rendaMensal);
+    if (redAnual === Infinity) {
+      irCompletaPGBLAtual = 0;
+    } else {
+      irCompletaPGBLAtual = Math.max(0, irCompletaPGBLAtual - redAnual);
+    }
+  }
+
+  // IR retido no ano
+  const irRetidoAnual = irrfMensal * 12;
+
+  // IR 13º (tributação exclusiva)
+  const ir13 = calcIR13(decimoTerceiro, nDep);
+
+  // Restituição / a pagar
+  const restSimp = irRetidoAnual - irSimplificada;
+  const restComp = irRetidoAnual - irCompleta;
+  const restCompPGBL = irRetidoAnual - irCompletaPGBL;
+  const restCompPGBLAtual = irRetidoAnual - irCompletaPGBLAtual;
+
+  // Economia PGBL
+  const economiaPGBLMax = irCompleta - irCompletaPGBL;
+  const economiaPGBLAtual = irCompleta - irCompletaPGBLAtual;
+
+  // Melhor opção
+  const opcoes = [
+    { nome: 'Simplificada', ir: irSimplificada, rest: restSimp },
+    { nome: 'Completa (sem PGBL)', ir: irCompleta, rest: restComp },
+    { nome: 'Completa + PGBL Máximo', ir: irCompletaPGBL, rest: restCompPGBL }
+  ];
+  opcoes.sort((a, b) => a.ir - b.ir);
+  const melhor = opcoes[0];
+
+  // Render
+  let html = '';
+
+  // Summary grid
+  html += '<div class="summary-grid">';
+  html += `<div class="summary-item"><div class="label">Renda Bruta Anual</div><div class="value white">${fmtBRL(rendaBrutaAnual)}</div></div>`;
+  html += `<div class="summary-item"><div class="label">IR Retido no Ano</div><div class="value blue">${fmtBRL(irRetidoAnual)}</div></div>`;
+  html += `<div class="summary-item"><div class="label">IR 13º (exclusivo)</div><div class="value white">${fmtBRL(ir13)}</div></div>`;
+  html += `<div class="summary-item"><div class="label">Melhor Opção</div><div class="value green">${melhor.nome}</div></div>`;
+  html += '</div>';
+
+  // Comparison table
+  html += '<table class="comp-table" style="margin-top:1.5rem;">';
+  html += '<tr><th></th><th>Simplificada</th><th>Completa (sem PGBL)</th><th>Completa + PGBL Máx.</th></tr>';
+
+  const rows = [
+    ['Base de Cálculo', fmtBRL(baseSimplificada), fmtBRL(baseCompleta), fmtBRL(baseCompletaPGBL)],
+    ['Deduções Utilizadas', fmtBRL(descontoSimplificado), fmtBRL(deducoesCompleta), fmtBRL(deducoesCompletaPGBL)],
+    ['IR Devido', fmtBRL(irSimplificada), fmtBRL(irCompleta), fmtBRL(irCompletaPGBL)],
+    ['IR Retido na Fonte', fmtBRL(irRetidoAnual), fmtBRL(irRetidoAnual), fmtBRL(irRetidoAnual)],
+  ];
+
+  rows.forEach(r => {
+    html += `<tr><td style="font-weight:600;color:var(--muted)">${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td><td>${r[3]}</td></tr>`;
+  });
+
+  // Resultado (restituição ou a pagar)
+  const fmtResult = (v) => v >= 0 ? `<span class="winner">Restituição: ${fmtBRL(v)}</span>` : `<span class="loser">A pagar: ${fmtBRL(Math.abs(v))}</span>`;
+  html += `<tr style="font-weight:700;font-size:0.9rem;"><td style="color:var(--primary)">Resultado</td><td>${fmtResult(restSimp)}</td><td>${fmtResult(restComp)}</td><td>${fmtResult(restCompPGBL)}</td></tr>`;
+  html += '</table>';
+
+  // Deduções detalhadas (completa)
+  html += '<div style="margin-top:1.5rem;"><h3 style="margin-bottom:0.5rem;">Detalhamento das Deduções (Completa)</h3>';
+  html += '<div class="ded-list">';
+  html += `<div class="ded-item"><span class="ded-label">INSS</span><span class="ded-value">${fmtBRL(dedINSSAnual)}</span></div>`;
+  html += `<div class="ded-item"><span class="ded-label">Dependentes (${nDep})</span><span class="ded-value">${fmtBRL(dedDependentes)}</span></div>`;
+  html += `<div class="ded-item"><span class="ded-label">Saúde</span><span class="ded-value">${fmtBRL(dedSaude)}</span></div>`;
+  html += `<div class="ded-item"><span class="ded-label">Educação (limite: ${fmtBRL(limiteEdTotal)})</span><span class="ded-value">${fmtBRL(dedEducacaoEfetiva)}</span></div>`;
+  html += `<div class="ded-item"><span class="ded-label">Pensão Alimentícia</span><span class="ded-value">${fmtBRL(dedPensao)}</span></div>`;
+  html += `<div class="ded-item"><span class="ded-label">Outras</span><span class="ded-value">${fmtBRL(dedOutras)}</span></div>`;
+  html += `<div class="ded-item" style="border-top:1px solid var(--border);padding-top:0.5rem;"><span class="ded-label" style="font-weight:700;color:#fff">Total Deduções (sem PGBL)</span><span class="ded-value" style="color:var(--primary)">${fmtBRL(deducoesCompleta)}</span></div>`;
+  html += `<div class="ded-item"><span class="ded-label">Desconto Simplificado (20%)</span><span class="ded-value">${fmtBRL(descontoSimplificado)}</span></div>`;
+  html += '</div></div>';
+
+  // PGBL section
+  html += '<div class="pgbl-highlight" style="margin-top:1.5rem;">';
+  html += '<h3>Impacto do PGBL</h3>';
+  html += '<div class="ded-list">';
+  html += `<div class="ded-item"><span class="ded-label">PGBL Máximo Permitido (12%)</span><span class="ded-value" style="color:var(--purple)">${fmtBRL(pgblIdeal)}</span></div>`;
+  html += `<div class="ded-item"><span class="ded-label">PGBL Máximo Mensal</span><span class="ded-value" style="color:var(--purple)">${fmtBRL(pgblIdeal / 12)}</span></div>`;
+  html += `<div class="ded-item"><span class="ded-label">PGBL Já Aportado</span><span class="ded-value">${fmtBRL(pgblAtual)}</span></div>`;
+  html += `<div class="ded-item"><span class="ded-label">Economia com PGBL Máximo vs. Completa</span><span class="ded-value" style="color:var(--green)">${fmtBRL(economiaPGBLMax)}</span></div>`;
+  if (pgblAtual > 0 && pgblAtual < pgblIdeal) {
+    html += `<div class="ded-item"><span class="ded-label">Economia com PGBL Atual (${fmtBRL(pgblAtual)})</span><span class="ded-value" style="color:var(--orange)">${fmtBRL(economiaPGBLAtual)}</span></div>`;
+    html += `<div class="ded-item"><span class="ded-label">Economia Adicional se Completar o Máximo</span><span class="ded-value" style="color:var(--green)">${fmtBRL(economiaPGBLMax - economiaPGBLAtual)}</span></div>`;
+  }
+  html += '</div></div>';
+
+  // Verdict
+  const economia = opcoes[opcoes.length - 1].ir - melhor.ir;
+  html += `<div class="verdict-box" style="margin-top:1.5rem;">`;
+  html += `<h3>Melhor Opção: ${melhor.nome}</h3>`;
+  html += `<div class="big-number">${fmtBRL(economia)}</div>`;
+  html += `<p>de economia em relação à pior opção</p>`;
+  if (melhor.rest >= 0) {
+    html += `<p style="margin-top:0.5rem;color:var(--green);font-weight:600;">Restituição estimada: ${fmtBRL(melhor.rest)}</p>`;
+  } else {
+    html += `<p style="margin-top:0.5rem;color:var(--red);font-weight:600;">Imposto a pagar: ${fmtBRL(Math.abs(melhor.rest))}</p>`;
+  }
+  html += '</div>';
+
+  // Chart
+  html += '<div class="chart-container" style="margin-top:2rem;"><canvas id="ir-chart"></canvas></div>';
+
+  document.getElementById('resultado-area').innerHTML = html;
+
+  // Render chart
+  renderChart(irSimplificada, irCompleta, irCompletaPGBL, restSimp, restComp, restCompPGBL);
+}
+
+function calcIR13(valor13, nDep) {
+  if (valor13 <= 0) return 0;
+  const dedDep = nDep * (anoBase === 2025 ? DEDUCAO_DEPENDENTE_MENSAL_2025 : DEDUCAO_DEPENDENTE_MENSAL_2026);
+  const base = Math.max(0, valor13 - dedDep);
+  const tabela = getTabelaMensal();
+  for (const f of tabela) {
+    if (base <= f.ate) return Math.max(0, base * f.aliq - f.deduz);
+  }
+  const last = tabela[tabela.length - 1];
+  return Math.max(0, base * last.aliq - last.deduz);
+}
+
+function renderChart(irSimp, irComp, irCompPGBL, restSimp, restComp, restCompPGBL) {
+  const ctx = document.getElementById('ir-chart');
+  if (!ctx) return;
+  if (window._irChart) window._irChart.destroy();
+
+  window._irChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: ['Simplificada', 'Completa\n(sem PGBL)', 'Completa\n+ PGBL Máx.'],
+      datasets: [
+        {
+          label: 'IR Devido',
+          data: [irSimp, irComp, irCompPGBL],
+          backgroundColor: ['rgba(239,68,68,0.7)', 'rgba(239,68,68,0.7)', 'rgba(239,68,68,0.7)'],
+          borderColor: ['#ef4444', '#ef4444', '#ef4444'],
+          borderWidth: 1
+        },
+        {
+          label: 'Restituição / A Pagar',
+          data: [restSimp, restComp, restCompPGBL],
+          backgroundColor: [
+            restSimp >= 0 ? 'rgba(34,197,94,0.7)' : 'rgba(251,146,60,0.7)',
+            restComp >= 0 ? 'rgba(34,197,94,0.7)' : 'rgba(251,146,60,0.7)',
+            restCompPGBL >= 0 ? 'rgba(34,197,94,0.7)' : 'rgba(251,146,60,0.7)'
+          ],
+          borderColor: [
+            restSimp >= 0 ? '#22c55e' : '#fb923c',
+            restComp >= 0 ? '#22c55e' : '#fb923c',
+            restCompPGBL >= 0 ? '#22c55e' : '#fb923c'
+          ],
+          borderWidth: 1
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { labels: { color: '#A0B8A6' } },
+        tooltip: {
+          callbacks: {
+            label: function(ctx) {
+              return ctx.dataset.label + ': ' + fmtBRL(Math.abs(ctx.raw)) + (ctx.raw < 0 ? ' (a pagar)' : '');
+            }
+          }
+        }
+      },
+      scales: {
+        x: { ticks: { color: '#A0B8A6' }, grid: { color: 'rgba(255,255,255,0.05)' } },
+        y: {
+          ticks: { color: '#A0B8A6', callback: v => fmtBRL(v) },
+          grid: { color: 'rgba(255,255,255,0.05)' }
+        }
+      }
+    }
+  });
+}
+
+// ===== TABS =====
+function switchTab(tab) {
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + tab).classList.add('active');
+  const tabs = ['dados', 'deducoes', 'resultado'];
+  const idx = tabs.indexOf(tab);
+  document.querySelectorAll('.tab-btn')[idx].classList.add('active');
+
+  if (tab === 'dados') renderTabelaFaixas();
+  if (tab === 'deducoes') renderPGBLInfo();
+  if (tab === 'resultado') calcular();
+}
+
+// ===== SIMULAÇÕES (CRUD + PERSISTÊNCIA) =====
+function novaSimulacao() {
+  simAtualIdx = -1;
+  document.getElementById('sim-list-view').style.display = 'none';
+  document.getElementById('sim-editor-view').style.display = 'block';
+  document.getElementById('sim-editor-title').textContent = 'Nova simulação';
+  limparFormulario();
+  renderTabelaFaixas();
+}
+
+function limparFormulario() {
+  document.getElementById('sim-nome').value = '';
+  ['renda-mensal', 'decimo-terceiro', 'outras-rendas', 'rendimentos-isentos', 'inss-mensal', 'irrf-mensal', 'ded-saude', 'ded-educacao', 'ded-pensao', 'ded-inss-anual', 'ded-outras', 'ded-pgbl-atual'].forEach(id => {
+    document.getElementById(id).value = '';
+  });
+  document.getElementById('num-dependentes').value = '0';
+  document.getElementById('tipo-declaracao-atual').value = 'nenhuma';
+  anoBase = 2025;
+  setAnoBase(2025);
+  document.getElementById('resultado-area').innerHTML = '';
+  switchTab('dados');
+}
+
+function voltarLista() {
+  document.getElementById('sim-list-view').style.display = 'block';
+  document.getElementById('sim-editor-view').style.display = 'none';
+  renderSimList();
+}
+
+function buildPayload() {
+  return {
+    nome: document.getElementById('sim-nome').value || 'Sem nome',
+    anoBase: anoBase,
+    rendaMensal: parseCurrency(document.getElementById('renda-mensal')),
+    decimoTerceiro: parseCurrency(document.getElementById('decimo-terceiro')),
+    outrasRendas: parseCurrency(document.getElementById('outras-rendas')),
+    rendIsentos: parseCurrency(document.getElementById('rendimentos-isentos')),
+    inssMensal: parseCurrency(document.getElementById('inss-mensal')),
+    irrfMensal: parseCurrency(document.getElementById('irrf-mensal')),
+    nDep: parseInt(document.getElementById('num-dependentes').value) || 0,
+    tipoDecAtual: document.getElementById('tipo-declaracao-atual').value,
+    dedSaude: parseCurrency(document.getElementById('ded-saude')),
+    dedEducacao: parseCurrency(document.getElementById('ded-educacao')),
+    dedPensao: parseCurrency(document.getElementById('ded-pensao')),
+    dedINSSAnual: parseCurrency(document.getElementById('ded-inss-anual')),
+    dedOutras: parseCurrency(document.getElementById('ded-outras')),
+    pgblAtual: parseCurrency(document.getElementById('ded-pgbl-atual')),
+    dataSalvo: new Date().toISOString()
+  };
+}
+
+function applyPayload(p) {
+  document.getElementById('sim-nome').value = p.nome || '';
+  anoBase = p.anoBase || 2025;
+  setAnoBase(anoBase);
+  const setCur = (id, v) => { document.getElementById(id).value = v > 0 ? fmtBRL(v).replace('R$ ', 'R$ ') : ''; };
+  setCur('renda-mensal', p.rendaMensal || 0);
+  setCur('decimo-terceiro', p.decimoTerceiro || 0);
+  setCur('outras-rendas', p.outrasRendas || 0);
+  setCur('rendimentos-isentos', p.rendIsentos || 0);
+  setCur('inss-mensal', p.inssMensal || 0);
+  setCur('irrf-mensal', p.irrfMensal || 0);
+  document.getElementById('num-dependentes').value = p.nDep || 0;
+  document.getElementById('tipo-declaracao-atual').value = p.tipoDecAtual || 'nenhuma';
+  setCur('ded-saude', p.dedSaude || 0);
+  setCur('ded-educacao', p.dedEducacao || 0);
+  setCur('ded-pensao', p.dedPensao || 0);
+  setCur('ded-inss-anual', p.dedINSSAnual || 0);
+  setCur('ded-outras', p.dedOutras || 0);
+  setCur('ded-pgbl-atual', p.pgblAtual || 0);
+  renderTabelaFaixas();
+}
+
+function salvarSimulacao() {
+  const p = buildPayload();
+  if (simAtualIdx >= 0) {
+    simulacoes[simAtualIdx] = p;
+  } else {
+    simulacoes.push(p);
+    simAtualIdx = simulacoes.length - 1;
+  }
+  persistir();
+  document.getElementById('sim-editor-title').textContent = p.nome;
+  alert('Simulação salva!');
+}
+
+function editarSimulacao(idx) {
+  simAtualIdx = idx;
+  document.getElementById('sim-list-view').style.display = 'none';
+  document.getElementById('sim-editor-view').style.display = 'block';
+  document.getElementById('sim-editor-title').textContent = simulacoes[idx].nome;
+  applyPayload(simulacoes[idx]);
+  switchTab('dados');
+}
+
+function excluirSimulacao(idx) {
+  if (!confirm('Excluir esta simulação?')) return;
+  simulacoes.splice(idx, 1);
+  persistir();
+  renderSimList();
+}
+
+function duplicarSimulacao(idx) {
+  const copia = JSON.parse(JSON.stringify(simulacoes[idx]));
+  copia.nome += ' (cópia)';
+  copia.dataSalvo = new Date().toISOString();
+  simulacoes.push(copia);
+  persistir();
+  renderSimList();
+}
+
+function renderSimList() {
+  const el = document.getElementById('sim-list');
+  if (simulacoes.length === 0) {
+    el.innerHTML = '<p style="color:var(--muted);text-align:center;padding:2rem;">Nenhuma simulação salva. Clique em "+ Nova Simulação" para começar.</p>';
+    return;
+  }
+  let html = '';
+  simulacoes.forEach((s, i) => {
+    const data = s.dataSalvo ? new Date(s.dataSalvo).toLocaleDateString('pt-BR') : '';
+    html += `<div class="sim-card">
+      <div class="sim-info" onclick="editarSimulacao(${i})">
+        <div class="sim-name">${s.nome}</div>
+        <div class="sim-meta">Ano-base: ${s.anoBase} | Renda: ${fmtBRL(s.rendaMensal || 0)}/mês | ${data}</div>
+      </div>
+      <div class="sim-actions">
+        <button class="btn btn-edit" onclick="editarSimulacao(${i})">✎</button>
+        <button class="btn btn-outline" onclick="duplicarSimulacao(${i})" style="font-size:0.75rem;padding:0.3rem 0.6rem;">📋</button>
+        <button class="btn btn-danger" onclick="excluirSimulacao(${i})">🗑</button>
+      </div>
+    </div>`;
+  });
+  el.innerHTML = html;
+}
+
+// ===== PERSISTÊNCIA (localStorage) =====
+const STORAGE_KEY = 'mithrasf_ir_simulacoes';
+
+function persistir() {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(simulacoes)); } catch(e) {}
+}
+
+function carregar() {
+  try {
+    const data = localStorage.getItem(STORAGE_KEY);
+    if (data) simulacoes = JSON.parse(data);
+  } catch(e) { simulacoes = []; }
+}
+
+// ===== INIT =====
+function init() {
+  carregar();
+  renderSimList();
+}
+
+document.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>
