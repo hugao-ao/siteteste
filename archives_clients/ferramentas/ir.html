@@ -904,6 +904,103 @@ function calcular() {
   }
   html += '</div>';
 
+  // ===== COMPARACAO: DECLARACAO ATUAL vs MELHOR OPCAO =====
+  const tipoAtual = document.getElementById('tipo-declaracao-atual').value;
+  if (tipoAtual !== 'nenhuma') {
+    let nomeAtual = '';
+    let irAtual = 0;
+    let restAtual = 0;
+    let baseAtual = 0;
+    let dedAtual = 0;
+
+    if (tipoAtual === 'simplificada') {
+      nomeAtual = 'Simplificada';
+      irAtual = irSimplificada;
+      restAtual = restSimp;
+      baseAtual = baseSimplificada;
+      dedAtual = descontoSimplificado;
+    } else if (tipoAtual === 'completa') {
+      nomeAtual = 'Completa (sem PGBL)';
+      irAtual = irCompleta;
+      restAtual = restComp;
+      baseAtual = baseCompleta;
+      dedAtual = deducoesCompleta;
+    } else if (tipoAtual === 'completa-pgbl') {
+      nomeAtual = 'Completa (com PGBL atual: ' + fmtBRL(pgblAtual) + ')';
+      irAtual = irCompletaPGBLAtual;
+      restAtual = restCompPGBLAtual;
+      baseAtual = baseCompletaPGBLAtual;
+      dedAtual = deducoesCompletaPGBLAtual;
+    }
+
+    const diferencaIR = irAtual - melhor.ir;
+    const diferencaRest = melhor.rest - restAtual;
+
+    html += '<div class="card" style="margin-top:1.5rem;border-color:var(--orange);">';
+    html += '<h2 style="color:var(--orange);">Declaracao Atual vs. Melhor Opcao</h2>';
+    html += '<p style="color:var(--muted);font-size:0.85rem;margin-bottom:1rem;">Comparando o que o cliente faz hoje com a opcao mais vantajosa identificada na simulacao.</p>';
+
+    html += '<table class="comp-table">';
+    html += '<tr><th></th><th style="color:var(--orange)">Atual: ' + nomeAtual + '</th><th style="color:var(--green)">Melhor: ' + melhor.nome + '</th><th>Diferenca</th></tr>';
+
+    const fmtDiff = (v) => {
+      if (v > 0) return '<span class="winner">+ ' + fmtBRL(v) + '</span>';
+      if (v < 0) return '<span class="loser">- ' + fmtBRL(Math.abs(v)) + '</span>';
+      return '<span>-</span>';
+    };
+
+    html += '<tr><td style="font-weight:600;color:var(--muted)">Base de Calculo</td><td>' + fmtBRL(baseAtual) + '</td><td>' + fmtBRL(melhor.nome === 'Simplificada' ? baseSimplificada : (melhor.nome.includes('PGBL') ? baseCompletaPGBL : baseCompleta)) + '</td><td>-</td></tr>';
+
+    html += '<tr><td style="font-weight:600;color:var(--muted)">IR Devido</td><td>' + fmtBRL(irAtual) + '</td><td>' + fmtBRL(melhor.ir) + '</td><td>' + fmtDiff(diferencaIR) + '</td></tr>';
+
+    const fmtResultComp = (v) => v >= 0 ? '<span class="winner">Restituicao: ' + fmtBRL(v) + '</span>' : '<span class="loser">A pagar: ' + fmtBRL(Math.abs(v)) + '</span>';
+    html += '<tr style="font-weight:700;"><td style="color:var(--primary)">Resultado</td><td>' + fmtResultComp(restAtual) + '</td><td>' + fmtResultComp(melhor.rest) + '</td><td>' + fmtDiff(diferencaRest) + '</td></tr>';
+    html += '</table>';
+
+    // Verdict da comparacao
+    if (diferencaIR > 0) {
+      html += '<div style="margin-top:1rem;padding:1rem;background:rgba(34,197,94,0.08);border:1px solid rgba(34,197,94,0.3);border-radius:8px;text-align:center;">';
+      html += '<p style="color:var(--green);font-weight:700;font-size:1.1rem;">Ao mudar de ' + nomeAtual + ' para ' + melhor.nome + ':</p>';
+      html += '<p style="color:var(--green);font-size:1.8rem;font-weight:800;margin:0.5rem 0;">' + fmtBRL(diferencaIR) + '</p>';
+      html += '<p style="color:var(--muted);font-size:0.85rem;">de economia no IR por ano</p>';
+      if (diferencaRest > 0) {
+        html += '<p style="color:var(--green);font-size:0.9rem;margin-top:0.5rem;">Restituicao aumenta em ' + fmtBRL(diferencaRest) + '</p>';
+      }
+      html += '</div>';
+    } else if (diferencaIR === 0) {
+      html += '<div style="margin-top:1rem;padding:1rem;background:rgba(96,165,250,0.08);border:1px solid rgba(96,165,250,0.3);border-radius:8px;text-align:center;">';
+      html += '<p style="color:var(--blue);font-weight:600;">O cliente ja esta usando a melhor opcao!</p>';
+      html += '</div>';
+    } else {
+      html += '<div style="margin-top:1rem;padding:1rem;background:rgba(96,165,250,0.08);border:1px solid rgba(96,165,250,0.3);border-radius:8px;text-align:center;">';
+      html += '<p style="color:var(--blue);font-weight:600;">O cliente ja esta na melhor opcao. Nenhuma mudanca necessaria.</p>';
+      html += '</div>';
+    }
+
+    // Se a melhor opcao envolve PGBL e o cliente nao usa, dar orientacao
+    if (melhor.nome.includes('PGBL') && tipoAtual !== 'completa-pgbl') {
+      html += '<div style="margin-top:1rem;padding:1rem;background:rgba(167,139,250,0.08);border:1px solid rgba(167,139,250,0.3);border-radius:8px;">';
+      html += '<p style="color:var(--purple);font-weight:600;margin-bottom:0.5rem;">Recomendacao: Iniciar PGBL</p>';
+      html += '<p style="color:var(--muted);font-size:0.85rem;">Para obter o maximo beneficio, o cliente deve aportar ate <strong style="color:#fff">' + fmtBRL(pgblIdeal) + '/ano</strong> (' + fmtBRL(pgblIdeal/12) + '/mes) em PGBL.</p>';
+      html += '<p style="color:var(--muted);font-size:0.85rem;margin-top:0.3rem;">Isso reduz a base de calculo e gera economia de <strong style="color:var(--green)">' + fmtBRL(economiaPGBLMax) + '/ano</strong> no IR.</p>';
+      html += '</div>';
+    }
+
+    // Se o cliente ja usa PGBL mas nao no maximo
+    if (tipoAtual === 'completa-pgbl' && pgblAtual < pgblIdeal && pgblAtual > 0) {
+      const faltaPGBL = pgblIdeal - pgblAtual;
+      const economiaAdicional = economiaPGBLMax - economiaPGBLAtual;
+      html += '<div style="margin-top:1rem;padding:1rem;background:rgba(167,139,250,0.08);border:1px solid rgba(167,139,250,0.3);border-radius:8px;">';
+      html += '<p style="color:var(--purple);font-weight:600;margin-bottom:0.5rem;">Recomendacao: Aumentar PGBL</p>';
+      html += '<p style="color:var(--muted);font-size:0.85rem;">O cliente aporta ' + fmtBRL(pgblAtual) + '/ano mas pode aportar ate ' + fmtBRL(pgblIdeal) + '/ano.</p>';
+      html += '<p style="color:var(--muted);font-size:0.85rem;margin-top:0.3rem;">Faltam <strong style="color:#fff">' + fmtBRL(faltaPGBL) + '</strong> (' + fmtBRL(faltaPGBL/12) + '/mes) para atingir o maximo.</p>';
+      html += '<p style="color:var(--muted);font-size:0.85rem;margin-top:0.3rem;">Economia adicional: <strong style="color:var(--green)">' + fmtBRL(economiaAdicional) + '/ano</strong></p>';
+      html += '</div>';
+    }
+
+    html += '</div>';
+  }
+
   // Chart
   html += '<div class="chart-container" style="margin-top:2rem;"><canvas id="ir-chart"></canvas></div>';
 
