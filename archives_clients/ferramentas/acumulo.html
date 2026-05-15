@@ -10,20 +10,9 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
   :root {
-    --bg: #021C0E;
-    --card: #052614;
-    --card2: #0A3520;
-    --fg: #F2E8C9;
-    --muted: #A0B8A6;
-    --primary: #D4AF37;
-    --primary-dim: rgba(212,175,55,0.15);
-    --border: rgba(212,175,55,0.2);
-    --green: #22c55e;
-    --red: #ef4444;
-    --blue: #60a5fa;
-    --purple: #a78bfa;
-    --orange: #fb923c;
-    --gold: #D4AF37;
+    --bg: #021C0E; --card: #052614; --card2: #0A3520; --fg: #F2E8C9; --muted: #A0B8A6;
+    --primary: #D4AF37; --primary-dim: rgba(212,175,55,0.15); --border: rgba(212,175,55,0.2);
+    --green: #22c55e; --red: #ef4444; --blue: #60a5fa; --purple: #a78bfa; --orange: #fb923c; --gold: #D4AF37;
     --radius: 10px;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -111,7 +100,7 @@
   .update-item .upd-info { flex: 1; }
   .modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); z-index: 9999; align-items: center; justify-content: center; }
   .modal-overlay.show { display: flex; }
-  .modal-box { background: var(--card); border: 1px solid var(--primary); border-radius: var(--radius); padding: 2rem; max-width: 500px; width: 90%; max-height: 80vh; overflow-y: auto; }
+  .modal-box { background: var(--card); border: 1px solid var(--primary); border-radius: var(--radius); padding: 2rem; max-width: 600px; width: 90%; max-height: 85vh; overflow-y: auto; }
   .modal-box h3 { margin-bottom: 1rem; }
   .ded-list { display: flex; flex-direction: column; gap: 6px; }
   .ded-item { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; }
@@ -122,103 +111,82 @@
   .scenario-col h3 { padding: 0.8rem; border-radius: 6px 6px 0 0; text-align: center; margin-bottom: 0; }
   .regime-section { margin-top: 0.8rem; padding: 0.8rem; background: var(--card2); border-radius: 6px; }
   .regime-section h4 { font-size: 0.85rem; margin-bottom: 0.5rem; font-weight: 600; }
-  /* ===== RESPONSIVIDADE ===== */
+  /* Veiculo items */
+  .veiculo-item { background: var(--card2); border: 1px solid var(--border); border-radius: 8px; padding: 12px 16px; margin-bottom: 8px; }
+  .veiculo-item .vi-header { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .veiculo-item .vi-tipo { font-size: 0.7rem; font-weight: 700; padding: 2px 8px; border-radius: 4px; text-transform: uppercase; }
+  .veiculo-item .vi-tipo.pgbl { background: rgba(167,139,250,0.2); color: var(--purple); }
+  .veiculo-item .vi-tipo.vgbl { background: rgba(96,165,250,0.2); color: var(--blue); }
+  .veiculo-item .vi-tipo.carteira { background: rgba(34,197,94,0.2); color: var(--green); }
+  .veiculo-item .vi-nome { flex: 1; font-weight: 600; font-size: 0.9rem; color: #fff; min-width: 100px; }
+  .veiculo-item .vi-detail { font-size: 0.75rem; color: var(--muted); margin-top: 4px; }
+  .veiculo-item .vi-actions { display: flex; gap: 6px; }
+  /* Investimento items dentro do modal de carteira */
+  .inv-item { background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 8px 12px; margin-bottom: 6px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .inv-item .inv-info { flex: 1; font-size: 0.82rem; color: var(--fg); min-width: 120px; }
+  .inv-item .inv-info .inv-sub { font-size: 0.7rem; color: var(--muted); }
+  .inv-tipo-badge { font-size: 0.65rem; font-weight: 700; padding: 1px 6px; border-radius: 3px; }
+  .inv-tipo-badge.com-ir { background: rgba(239,68,68,0.15); color: var(--red); }
+  .inv-tipo-badge.sem-ir { background: rgba(34,197,94,0.15); color: var(--green); }
+  .inv-tipo-badge.comecotas { background: rgba(251,146,60,0.15); color: var(--orange); }
+  /* Responsividade */
   @media(max-width:1024px) {
     .page { padding: 1.5rem 0.75rem 3rem; }
-    h1 { font-size: 1.4rem; }
-    h2 { font-size: 1rem; }
+    h1 { font-size: 1.4rem; } h2 { font-size: 1rem; }
     .summary-item .value { font-size: 1rem; }
     .comp-table { font-size: 0.72rem; }
     .comp-table th, .comp-table td { padding: 6px 6px; }
     .chart-container { height: 260px; }
   }
-
   @media(max-width:768px) {
     .page { padding: 1rem 0.5rem 3rem; }
-    h1 { font-size: 1.2rem; }
-    h2 { font-size: 0.95rem; }
-    h3 { font-size: 0.85rem; }
-    .page-header { gap: 10px; }
-    .page-header-info p { font-size: 0.75rem; }
+    h1 { font-size: 1.2rem; } h2 { font-size: 0.95rem; } h3 { font-size: 0.85rem; }
+    .page-header { gap: 10px; } .page-header-info p { font-size: 0.75rem; }
     .btn-new { padding: 8px 14px; font-size: 0.8rem; }
-    .row { flex-direction: column; }
-    .row .field { min-width: 100%; }
+    .row { flex-direction: column; } .row .field { min-width: 100%; }
     .card { padding: 1rem; margin-bottom: 1rem; }
     .summary-grid { grid-template-columns: 1fr 1fr; gap: 0.6rem; }
-    .summary-item { padding: 0.7rem; }
-    .summary-item .label { font-size: 0.65rem; }
-    .summary-item .value { font-size: 0.9rem; }
-    .tab-bar { gap: 0.3rem; }
-    .tab-btn { padding: 0.4rem 0.7rem; font-size: 0.72rem; }
-    .comp-table { font-size: 0.65rem; }
+    .summary-item { padding: 0.7rem; } .summary-item .label { font-size: 0.65rem; } .summary-item .value { font-size: 0.9rem; }
+    .tab-bar { gap: 0.3rem; } .tab-btn { padding: 0.4rem 0.7rem; font-size: 0.72rem; }
+    .comp-table { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; font-size: 0.65rem; }
     .comp-table th, .comp-table td { padding: 5px 4px; white-space: nowrap; }
     .ded-item { flex-direction: column; align-items: flex-start; gap: 2px; }
-    .ded-label { font-size: 0.75rem; }
-    .ded-value { font-size: 0.78rem; }
-    .verdict-box .big-number { font-size: 1.5rem; }
-    .verdict-box h3 { font-size: 0.9rem; }
-    .verdict-box p { font-size: 0.78rem; }
+    .ded-label { font-size: 0.75rem; } .ded-value { font-size: 0.78rem; }
+    .verdict-box h3 { font-size: 0.9rem; } .verdict-box p { font-size: 0.78rem; }
     .chart-container { height: 220px; min-width: 100% !important; }
-    .aporte-item { padding: 6px 8px; }
-    .aporte-item .aporte-info { font-size: 0.78rem; min-width: 100px; }
+    .aporte-item { padding: 6px 8px; } .aporte-item .aporte-info { font-size: 0.78rem; min-width: 100px; }
     .modal-box { padding: 1.2rem; width: 95%; }
-    .sim-card-header { padding: 12px 14px; }
-    .sim-card-header .sim-title { font-size: 0.9rem; }
-    .sim-card-header .sim-meta { font-size: 0.7rem; }
-    .regime-section { padding: 0.6rem; }
-    .regime-section h4 { font-size: 0.78rem; }
+    .sim-card-header { padding: 12px 14px; } .sim-card-header .sim-title { font-size: 0.9rem; } .sim-card-header .sim-meta { font-size: 0.7rem; }
+    .regime-section { padding: 0.6rem; } .regime-section h4 { font-size: 0.78rem; }
     .pgbl-highlight { padding: 0.8rem; }
-    .field label { font-size: 0.75rem; }
-    .field input, .field select { font-size: 0.82rem; padding: 0.45rem 0.6rem; }
+    .field label { font-size: 0.75rem; } .field input, .field select { font-size: 0.82rem; padding: 0.45rem 0.6rem; }
     .field .hint { font-size: 0.65rem; }
     .btn { font-size: 0.78rem; padding: 0.5rem 0.9rem; }
     #btnSaveGlobal { font-size: 0.78rem !important; padding: 8px 14px !important; bottom: 12px !important; right: 12px !important; }
   }
-
   @media(max-width:480px) {
     .page { padding: 0.75rem 0.4rem 3rem; }
-    h1 { font-size: 1rem; }
-    h2 { font-size: 0.85rem; }
-    h3 { font-size: 0.78rem; }
+    h1 { font-size: 1rem; } h2 { font-size: 0.85rem; } h3 { font-size: 0.78rem; }
     .page-header-info p { font-size: 0.7rem; }
     .btn-new { padding: 6px 10px; font-size: 0.72rem; }
     .card { padding: 0.75rem; margin-bottom: 0.75rem; }
     .summary-grid { grid-template-columns: 1fr 1fr; gap: 0.4rem; }
-    .summary-item { padding: 0.5rem; }
-    .summary-item .label { font-size: 0.6rem; }
-    .summary-item .value { font-size: 0.78rem; }
+    .summary-item { padding: 0.5rem; } .summary-item .label { font-size: 0.6rem; } .summary-item .value { font-size: 0.78rem; }
     .tab-btn { padding: 0.35rem 0.5rem; font-size: 0.68rem; }
-    .comp-table { font-size: 0.58rem; }
-    .comp-table th, .comp-table td { padding: 4px 3px; }
-    .ded-label { font-size: 0.68rem; }
-    .ded-value { font-size: 0.72rem; }
-    .verdict-box { padding: 1rem; }
-    .verdict-box .big-number { font-size: 1.2rem; }
-    .verdict-box h3 { font-size: 0.8rem; }
+    .comp-table { font-size: 0.58rem; } .comp-table th, .comp-table td { padding: 4px 3px; }
+    .ded-label { font-size: 0.68rem; } .ded-value { font-size: 0.72rem; }
+    .verdict-box { padding: 1rem; } .verdict-box .big-number { font-size: 1.2rem; } .verdict-box h3 { font-size: 0.8rem; }
     .chart-container { height: 180px; }
-    .field label { font-size: 0.7rem; }
-    .field input, .field select { font-size: 0.78rem; padding: 0.4rem 0.5rem; }
+    .field label { font-size: 0.7rem; } .field input, .field select { font-size: 0.78rem; padding: 0.4rem 0.5rem; }
     .field .hint { font-size: 0.6rem; }
     .btn { font-size: 0.72rem; padding: 0.4rem 0.7rem; }
-    .sim-card-header { padding: 10px 10px; gap: 8px; }
-    .sim-card-header .sim-title { font-size: 0.82rem; }
-    .sim-card-header .sim-meta { font-size: 0.65rem; }
+    .sim-card-header { padding: 10px 10px; gap: 8px; } .sim-card-header .sim-title { font-size: 0.82rem; } .sim-card-header .sim-meta { font-size: 0.65rem; }
     .sim-card-actions button { padding: 3px 7px; font-size: 0.68rem; }
     .modal-box { padding: 1rem; }
     .aporte-item .aporte-info .sub { font-size: 0.62rem; }
     .update-item { font-size: 0.7rem; }
     .regime-section h4 { font-size: 0.72rem; }
     #btnSaveGlobal { font-size: 0.72rem !important; padding: 6px 10px !important; }
-  }
-
-  /* Tabelas com scroll horizontal em telas pequenas */
-  @media(max-width:768px) {
-    .comp-table { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; }
-  }
-
-  /* Charts flex wrap em mobile */
-  @media(max-width:640px) {
-    [style*="display:flex"][style*="chart-container"] { flex-direction: column; }
   }
 </style>
 </head>
@@ -229,16 +197,14 @@
   <div class="page-header">
     <div class="page-header-info">
       <h1><a href="../ferramentas.html" style="color:var(--green);text-decoration:none;font-size:1rem;">&#8592;</a> Simulador de Acumulo</h1>
-      <p>Compare Carteira de Investimento vs VGBL vs PGBL para encontrar o melhor acumulo de longo prazo.</p>
+      <p>Compare multiplas Carteiras, VGBLs e PGBLs para encontrar o melhor acumulo de longo prazo.</p>
     </div>
     <button id="mobile-toggle" onclick="document.querySelector('.sidebar')?.classList.toggle('open')" style="display:none;background:var(--card2);border:1px solid var(--border);color:var(--fg);border-radius:6px;padding:6px 10px;cursor:pointer;">&#9776;</button>
     <button class="btn-new" onclick="novaSim()">+ Nova Simulacao</button>
   </div>
 
   <!-- LIST VIEW -->
-  <div id="list-view">
-    <div id="sim-list"></div>
-  </div>
+  <div id="list-view"><div id="sim-list"></div></div>
 
   <!-- EDITOR VIEW -->
   <div id="editor-view" style="display:none;">
@@ -271,54 +237,23 @@
             <span class="hint">Ex: 120 = 10 anos</span>
           </div>
           <div class="field">
-            <label>Rentabilidade Anual Esperada (% a.a.)</label>
-            <input type="text" id="rentabilidade-aa" placeholder="10,00">
-            <span class="hint">Taxa bruta de rendimento do investimento</span>
-          </div>
-          <div class="field">
-            <label>Saldo Inicial (R$)</label>
-            <input type="text" id="saldo-inicial" placeholder="R$ 0,00">
-            <span class="hint">Valor ja investido anteriormente</span>
-          </div>
-        </div>
-      </div>
-
-      <div class="card">
-        <h2>Configuracoes VGBL / PGBL</h2>
-        <p style="color:var(--muted);font-size:0.82rem;margin-bottom:1rem;">Informe as taxas do plano de previdencia para calculo correto. Ambos os regimes (Regressivo e Progressivo) serao calculados automaticamente.</p>
-        <div class="row">
-          <div class="field">
-            <label>Taxa de Carregamento Entrada (%)</label>
-            <input type="text" id="taxa-carreg-entrada" placeholder="0,00">
-          </div>
-          <div class="field">
-            <label>Taxa de Carregamento Saida (%)</label>
-            <input type="text" id="taxa-carreg-saida" placeholder="0,00">
-          </div>
-        </div>
-        <div class="row" style="margin-top:1rem;">
-          <div class="field">
-            <label>Taxa de Administracao Anual (%)</label>
-            <input type="text" id="taxa-admin" placeholder="1,00">
-            <span class="hint">Cobrada sobre o saldo total anualmente</span>
-          </div>
-          <div class="field">
-            <label>Economia Anual no IR com PGBL (R$)</label>
-            <input type="text" id="economia-pgbl" placeholder="R$ 0,00">
-            <span class="hint">Valor que o cliente economiza no IR por declarar PGBL (sera reinvestido na carteira)</span>
-          </div>
-        </div>
-      </div>
-
-      <div class="card">
-        <h2>Reajuste Anual Global</h2>
-        <p style="color:var(--muted);font-size:0.82rem;margin-bottom:1rem;">Se informado, TODOS os aportes serao reajustados anualmente por esta taxa (a menos que o aporte tenha taxa propria).</p>
-        <div class="row">
-          <div class="field">
             <label>Reajuste Anual Global (%)</label>
             <input type="text" id="reajuste-global" placeholder="0,00">
-            <span class="hint">Ex: 5 = todos os aportes aumentam 5% ao ano</span>
+            <span class="hint">Todos os aportes aumentam por esta taxa anualmente (a menos que tenham taxa propria)</span>
           </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="section-header">
+          <h2 style="margin-bottom:0;">Veiculos de Investimento</h2>
+          <button class="btn btn-primary" onclick="abrirModalVeiculo()">+ Adicionar Veiculo</button>
+        </div>
+        <p style="color:var(--muted);font-size:0.82rem;margin-bottom:1rem;">Adicione PGBLs, VGBLs e Carteiras de Investimento. Cada um tera suas proprias taxas e configuracoes.</p>
+        <div id="veiculos-list"></div>
+        <div id="veiculos-empty" class="empty-state" style="padding:30px;">
+          <div class="icon">&#128188;</div>
+          <p>Nenhum veiculo configurado.<br>Clique em <strong>+ Adicionar Veiculo</strong> para comecar.</p>
         </div>
       </div>
     </div>
@@ -330,7 +265,7 @@
           <h2 style="margin-bottom:0;">Aportes Configurados</h2>
           <button class="btn btn-primary" onclick="abrirModalAporte()">+ Novo Aporte</button>
         </div>
-        <p style="color:var(--muted);font-size:0.82rem;margin-bottom:1rem;">Adicione aportes mensais, trimestrais, semestrais, anuais ou unicos. Cada aporte pode ter reajuste proprio e atualizacoes de valor.</p>
+        <p style="color:var(--muted);font-size:0.82rem;margin-bottom:1rem;">Adicione aportes mensais, trimestrais, semestrais, anuais ou unicos. O mesmo aporte sera aplicado em TODOS os veiculos (para comparacao justa). Cada aporte pode ter reajuste proprio e atualizacoes de valor.</p>
         <div id="aportes-list"></div>
         <div id="aportes-empty" class="empty-state" style="padding:30px;">
           <div class="icon">&#128176;</div>
@@ -349,7 +284,7 @@
         <div id="resultado-area">
           <div class="empty-state" style="padding:30px;">
             <div class="icon">&#128202;</div>
-            <p>Configure os parametros e aportes, depois clique em <strong>Calcular</strong>.</p>
+            <p>Configure os parametros, veiculos e aportes, depois clique em <strong>Calcular</strong>.</p>
           </div>
         </div>
       </div>
@@ -424,6 +359,145 @@
   </div>
 </div>
 
+<!-- MODAL: NOVO/EDITAR VEICULO -->
+<div class="modal-overlay" id="modal-veiculo">
+  <div class="modal-box" style="max-width:650px;">
+    <h3 id="modal-veiculo-title">Novo Veiculo de Investimento</h3>
+    <div class="row" style="margin-bottom:1rem;">
+      <div class="field">
+        <label>Tipo</label>
+        <select id="vc-tipo" onchange="toggleVeiculoFields()">
+          <option value="PGBL">PGBL</option>
+          <option value="VGBL">VGBL</option>
+          <option value="CARTEIRA">Carteira de Investimento</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Nome</label>
+        <input type="text" id="vc-nome" placeholder="Ex: PGBL Bradesco Multi">
+      </div>
+    </div>
+
+    <!-- Campos PGBL/VGBL -->
+    <div id="vc-prev-fields">
+      <div class="row" style="margin-bottom:1rem;">
+        <div class="field">
+          <label>Rentabilidade Anual (% a.a.)</label>
+          <input type="text" id="vc-rent" placeholder="10,00">
+        </div>
+        <div class="field">
+          <label>Saldo Inicial (R$)</label>
+          <input type="text" id="vc-saldo" placeholder="R$ 0,00">
+        </div>
+      </div>
+      <div class="row" style="margin-bottom:1rem;">
+        <div class="field">
+          <label>Taxa Carreg. Entrada (%)</label>
+          <input type="text" id="vc-carreg-entrada" placeholder="0,00">
+        </div>
+        <div class="field">
+          <label>Taxa Carreg. Saida (%)</label>
+          <input type="text" id="vc-carreg-saida" placeholder="0,00">
+        </div>
+      </div>
+      <div class="row" style="margin-bottom:1rem;">
+        <div class="field">
+          <label>Taxa Admin. Anual (%)</label>
+          <input type="text" id="vc-admin" placeholder="1,00">
+          <span class="hint">Cobrada sobre o saldo total anualmente</span>
+        </div>
+        <div class="field">
+          <label>Taxa Performance (%)</label>
+          <input type="text" id="vc-perf" placeholder="0,00">
+          <span class="hint">% sobre o excedente acima do benchmark</span>
+        </div>
+      </div>
+      <div class="row" style="margin-bottom:1rem;">
+        <div class="field">
+          <label>Benchmark Performance (% a.a.)</label>
+          <input type="text" id="vc-benchmark" placeholder="10,00">
+          <span class="hint">Ex: CDI esperado. Se fundo render acima, cobra performance sobre o excedente</span>
+        </div>
+        <div class="field" id="vc-economia-field">
+          <label>Economia Anual no IR com PGBL (R$)</label>
+          <input type="text" id="vc-economia" placeholder="R$ 0,00">
+          <span class="hint">Valor economizado no IR que sera reinvestido na carteira</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Campos CARTEIRA -->
+    <div id="vc-cart-fields" style="display:none;">
+      <div class="row" style="margin-bottom:1rem;">
+        <div class="field">
+          <label>Saldo Inicial (R$)</label>
+          <input type="text" id="vc-cart-saldo" placeholder="R$ 0,00">
+        </div>
+      </div>
+      <div class="section-header" style="margin-top:0.5rem;">
+        <h3 style="font-size:0.9rem;">Investimentos da Carteira</h3>
+        <button class="btn btn-primary" style="font-size:0.75rem;padding:4px 10px;" onclick="abrirModalInvestimento()">+ Investimento</button>
+      </div>
+      <p style="color:var(--muted);font-size:0.78rem;margin-bottom:0.8rem;">Cada investimento define que % do aporte vai para ele, sua rentabilidade e tipo de tributacao. A soma dos % deve ser 100%.</p>
+      <div id="inv-list-container"></div>
+      <div id="inv-empty" style="text-align:center;padding:15px;color:var(--muted);font-size:0.8rem;">Nenhum investimento adicionado.</div>
+      <div id="inv-pct-warning" style="display:none;color:var(--red);font-size:0.78rem;margin-top:6px;font-weight:600;"></div>
+    </div>
+
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:1.5rem;">
+      <button class="btn btn-outline" onclick="fecharModalVeiculo()">Cancelar</button>
+      <button class="btn btn-primary" onclick="salvarVeiculo()">Salvar Veiculo</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: NOVO/EDITAR INVESTIMENTO (dentro de carteira) -->
+<div class="modal-overlay" id="modal-investimento" style="z-index:10001;">
+  <div class="modal-box" style="max-width:450px;">
+    <h3 id="modal-inv-title">Novo Investimento</h3>
+    <div class="field" style="margin-bottom:1rem;">
+      <label>Nome</label>
+      <input type="text" id="inv-nome" placeholder="Ex: Tesouro IPCA+, LCI Banco X">
+    </div>
+    <div class="row" style="margin-bottom:1rem;">
+      <div class="field">
+        <label>Tipo de Tributacao</label>
+        <select id="inv-tipo" onchange="toggleInvPrazo()">
+          <option value="COM_IR">COM IR (tabela regressiva)</option>
+          <option value="SEM_IR">SEM IR (isento)</option>
+          <option value="COM_IR_COMECOTAS">COM IR + Come-Cotas</option>
+        </select>
+      </div>
+    </div>
+    <div class="row" style="margin-bottom:1rem;">
+      <div class="field">
+        <label>% do Aporte para este investimento</label>
+        <input type="text" id="inv-pct" placeholder="50">
+        <span class="hint">Ex: 50 = metade do aporte vai para este investimento</span>
+      </div>
+      <div class="field">
+        <label>Rentabilidade Anual (% a.a.)</label>
+        <input type="text" id="inv-rent" placeholder="10,00">
+      </div>
+    </div>
+    <div class="row" style="margin-bottom:1rem;" id="inv-prazo-field" style="display:none;">
+      <div class="field">
+        <label>Prazo do Fundo (para come-cotas)</label>
+        <select id="inv-prazo-fundo">
+          <option value="longo">Longo Prazo (aliquota 15%)</option>
+          <option value="curto">Curto Prazo (aliquota 20%)</option>
+        </select>
+        <span class="hint">Define a aliquota do come-cotas semestral</span>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:1.5rem;">
+      <button class="btn btn-outline" onclick="fecharModalInvestimento()">Cancelar</button>
+      <button class="btn btn-primary" onclick="salvarInvestimento()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+
 <script>
 // ===== FORMATACAO =====
 function fmtBRL(v) { return 'R$ ' + (v||0).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2}); }
@@ -437,19 +511,24 @@ function parsePct(el) {
   var v = (typeof el === 'string') ? el : el.value;
   return parseFloat(v.replace(/[^\d,.-]/g,'').replace(',','.')) || 0;
 }
+function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
 
 // ===== STATE =====
 var simulations = [];
 var currentSimIdx = -1;
 var aportes = [];
+var veiculos = [];
+var tempInvestimentos = []; // investimentos temporarios durante edicao de veiculo carteira
 var editingAporteIdx = -1;
 var editingUpdateAporteIdx = -1;
 var editingUpdateIdx = -1;
+var editingVeiculoIdx = -1;
+var editingInvIdx = -1;
 
 // ===== TABS =====
 function switchTab(t) {
-  document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
-  document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(function(el) { el.classList.remove('active'); });
+  document.querySelectorAll('.tab-btn').forEach(function(el) { el.classList.remove('active'); });
   var tabEl = document.getElementById('tab-' + t);
   if (tabEl) tabEl.classList.add('active');
   var btns = document.querySelectorAll('.tab-btn');
@@ -462,11 +541,7 @@ function switchTab(t) {
 function renderAportes() {
   var container = document.getElementById('aportes-list');
   var empty = document.getElementById('aportes-empty');
-  if (aportes.length === 0) {
-    container.innerHTML = '';
-    empty.style.display = 'block';
-    return;
-  }
+  if (aportes.length === 0) { container.innerHTML = ''; empty.style.display = 'block'; return; }
   empty.style.display = 'none';
   var html = '';
   aportes.forEach(function(ap, i) {
@@ -526,9 +601,7 @@ function salvarAporte() {
   if (editingAporteIdx >= 0) {
     obj.updates = aportes[editingAporteIdx].updates || [];
     aportes[editingAporteIdx] = obj;
-  } else {
-    aportes.push(obj);
-  }
+  } else { aportes.push(obj); }
   fecharModalAporte();
   renderAportes();
 }
@@ -537,8 +610,7 @@ function excluirAporte(i) { if(confirm('Excluir este aporte?')) { aportes.splice
 
 // Updates de aporte
 function abrirModalUpdateAporte(apIdx) {
-  editingUpdateAporteIdx = apIdx;
-  editingUpdateIdx = -1;
+  editingUpdateAporteIdx = apIdx; editingUpdateIdx = -1;
   document.getElementById('upd-mes').value = '13';
   document.getElementById('upd-valor').value = '';
   document.getElementById('modal-update').classList.add('show');
@@ -550,29 +622,209 @@ function salvarUpdate() {
   if (valor <= 0) { alert('Informe um valor valido.'); return; }
   var ap = aportes[editingUpdateAporteIdx];
   if (!ap.updates) ap.updates = [];
-  if (editingUpdateIdx >= 0) {
-    ap.updates[editingUpdateIdx] = {mes: mes, valor: valor};
-  } else {
-    ap.updates.push({mes: mes, valor: valor});
-  }
+  if (editingUpdateIdx >= 0) { ap.updates[editingUpdateIdx] = {mes:mes, valor:valor}; }
+  else { ap.updates.push({mes:mes, valor:valor}); }
   ap.updates.sort(function(a,b) { return a.mes - b.mes; });
-  fecharModalUpdate();
-  renderAportes();
+  fecharModalUpdate(); renderAportes();
 }
 function editarUpdate(apIdx, uIdx) {
-  editingUpdateAporteIdx = apIdx;
-  editingUpdateIdx = uIdx;
+  editingUpdateAporteIdx = apIdx; editingUpdateIdx = uIdx;
   var u = aportes[apIdx].updates[uIdx];
   document.getElementById('upd-mes').value = u.mes;
   document.getElementById('upd-valor').value = fmtBRL(u.valor);
   document.getElementById('modal-update').classList.add('show');
 }
-function excluirUpdate(apIdx, uIdx) {
-  aportes[apIdx].updates.splice(uIdx, 1);
-  renderAportes();
+function excluirUpdate(apIdx, uIdx) { aportes[apIdx].updates.splice(uIdx, 1); renderAportes(); }
+
+// ===== VEICULOS CRUD =====
+function renderVeiculos() {
+  var container = document.getElementById('veiculos-list');
+  var empty = document.getElementById('veiculos-empty');
+  if (veiculos.length === 0) { container.innerHTML = ''; empty.style.display = 'block'; return; }
+  empty.style.display = 'none';
+  var html = '';
+  veiculos.forEach(function(vc, i) {
+    var tipoClass = vc.tipo.toLowerCase();
+    var detail = '';
+    if (vc.tipo === 'CARTEIRA') {
+      var nInv = vc.investimentos ? vc.investimentos.length : 0;
+      detail = nInv + ' investimento(s) | Saldo: ' + fmtBRL(vc.saldoInicial || 0);
+    } else {
+      detail = 'Rent: ' + (vc.rentabilidadeAA||0) + '% a.a. | Admin: ' + (vc.taxaAdminAnual||0) + '% | Saldo: ' + fmtBRL(vc.saldoInicial || 0);
+    }
+    html += '<div class="veiculo-item">';
+    html += '<div class="vi-header">';
+    html += '<span class="vi-tipo ' + tipoClass + '">' + vc.tipo + '</span>';
+    html += '<span class="vi-nome">' + (vc.nome || vc.tipo + ' ' + (i+1)) + '</span>';
+    html += '<div class="vi-actions">';
+    html += '<button class="btn-edit" onclick="editarVeiculo('+i+')">&#9998;</button>';
+    html += '<button class="btn-danger" onclick="excluirVeiculo('+i+')">&#10005;</button>';
+    html += '</div></div>';
+    html += '<div class="vi-detail">' + detail + '</div>';
+    html += '</div>';
+  });
+  container.innerHTML = html;
 }
 
-// ===== CALCULO PRINCIPAL =====
+function toggleVeiculoFields() {
+  var tipo = document.getElementById('vc-tipo').value;
+  document.getElementById('vc-prev-fields').style.display = (tipo === 'CARTEIRA') ? 'none' : 'block';
+  document.getElementById('vc-cart-fields').style.display = (tipo === 'CARTEIRA') ? 'block' : 'none';
+  document.getElementById('vc-economia-field').style.display = (tipo === 'PGBL') ? 'block' : 'none';
+}
+
+function abrirModalVeiculo(idx) {
+  editingVeiculoIdx = (idx !== undefined) ? idx : -1;
+  document.getElementById('modal-veiculo-title').textContent = editingVeiculoIdx >= 0 ? 'Editar Veiculo' : 'Novo Veiculo de Investimento';
+  if (editingVeiculoIdx >= 0) {
+    var vc = veiculos[editingVeiculoIdx];
+    document.getElementById('vc-tipo').value = vc.tipo;
+    document.getElementById('vc-nome').value = vc.nome || '';
+    if (vc.tipo === 'CARTEIRA') {
+      document.getElementById('vc-cart-saldo').value = vc.saldoInicial ? fmtBRL(vc.saldoInicial) : '';
+      tempInvestimentos = JSON.parse(JSON.stringify(vc.investimentos || []));
+    } else {
+      document.getElementById('vc-rent').value = vc.rentabilidadeAA || '';
+      document.getElementById('vc-saldo').value = vc.saldoInicial ? fmtBRL(vc.saldoInicial) : '';
+      document.getElementById('vc-carreg-entrada').value = vc.taxaCarregEntrada || '';
+      document.getElementById('vc-carreg-saida').value = vc.taxaCarregSaida || '';
+      document.getElementById('vc-admin').value = vc.taxaAdminAnual || '';
+      document.getElementById('vc-perf').value = vc.taxaPerformance || '';
+      document.getElementById('vc-benchmark').value = vc.benchmarkPerformance || '';
+      document.getElementById('vc-economia').value = vc.economiaPGBL ? fmtBRL(vc.economiaPGBL) : '';
+      tempInvestimentos = [];
+    }
+  } else {
+    document.getElementById('vc-tipo').value = 'PGBL';
+    document.getElementById('vc-nome').value = '';
+    document.getElementById('vc-rent').value = '';
+    document.getElementById('vc-saldo').value = '';
+    document.getElementById('vc-carreg-entrada').value = '';
+    document.getElementById('vc-carreg-saida').value = '';
+    document.getElementById('vc-admin').value = '';
+    document.getElementById('vc-perf').value = '';
+    document.getElementById('vc-benchmark').value = '';
+    document.getElementById('vc-economia').value = '';
+    document.getElementById('vc-cart-saldo').value = '';
+    tempInvestimentos = [];
+  }
+  toggleVeiculoFields();
+  renderTempInvestimentos();
+  document.getElementById('modal-veiculo').classList.add('show');
+}
+function fecharModalVeiculo() { document.getElementById('modal-veiculo').classList.remove('show'); }
+
+function salvarVeiculo() {
+  var tipo = document.getElementById('vc-tipo').value;
+  var nome = document.getElementById('vc-nome').value.trim();
+  var obj = { id: uid(), tipo: tipo, nome: nome };
+
+  if (tipo === 'CARTEIRA') {
+    obj.saldoInicial = parseCurrency(document.getElementById('vc-cart-saldo'));
+    obj.investimentos = JSON.parse(JSON.stringify(tempInvestimentos));
+    var totalPct = obj.investimentos.reduce(function(s,inv) { return s + (inv.pctAporte||0); }, 0);
+    if (obj.investimentos.length > 0 && Math.abs(totalPct - 100) > 0.01) {
+      alert('A soma dos % dos investimentos deve ser 100%. Atualmente: ' + totalPct.toFixed(2) + '%');
+      return;
+    }
+  } else {
+    obj.rentabilidadeAA = parsePct(document.getElementById('vc-rent'));
+    obj.saldoInicial = parseCurrency(document.getElementById('vc-saldo'));
+    obj.taxaCarregEntrada = parsePct(document.getElementById('vc-carreg-entrada'));
+    obj.taxaCarregSaida = parsePct(document.getElementById('vc-carreg-saida'));
+    obj.taxaAdminAnual = parsePct(document.getElementById('vc-admin'));
+    obj.taxaPerformance = parsePct(document.getElementById('vc-perf'));
+    obj.benchmarkPerformance = parsePct(document.getElementById('vc-benchmark'));
+    if (tipo === 'PGBL') { obj.economiaPGBL = parseCurrency(document.getElementById('vc-economia')); }
+  }
+
+  if (editingVeiculoIdx >= 0) {
+    obj.id = veiculos[editingVeiculoIdx].id;
+    veiculos[editingVeiculoIdx] = obj;
+  } else { veiculos.push(obj); }
+  fecharModalVeiculo();
+  renderVeiculos();
+}
+function editarVeiculo(i) { abrirModalVeiculo(i); }
+function excluirVeiculo(i) { if(confirm('Excluir este veiculo?')) { veiculos.splice(i,1); renderVeiculos(); } }
+
+// ===== INVESTIMENTOS CRUD (temp, dentro do modal de veiculo carteira) =====
+function renderTempInvestimentos() {
+  var container = document.getElementById('inv-list-container');
+  var empty = document.getElementById('inv-empty');
+  var warning = document.getElementById('inv-pct-warning');
+  if (tempInvestimentos.length === 0) { container.innerHTML = ''; empty.style.display = 'block'; warning.style.display = 'none'; return; }
+  empty.style.display = 'none';
+  var totalPct = tempInvestimentos.reduce(function(s,inv) { return s + (inv.pctAporte||0); }, 0);
+  if (Math.abs(totalPct - 100) > 0.01) {
+    warning.style.display = 'block';
+    warning.textContent = 'Soma dos %: ' + totalPct.toFixed(2) + '% (deve ser 100%)';
+  } else { warning.style.display = 'none'; }
+
+  var html = '';
+  tempInvestimentos.forEach(function(inv, i) {
+    var tipoLabel = {'COM_IR':'COM IR','SEM_IR':'SEM IR','COM_IR_COMECOTAS':'COME-COTAS'}[inv.tipo] || inv.tipo;
+    var badgeClass = {'COM_IR':'com-ir','SEM_IR':'sem-ir','COM_IR_COMECOTAS':'comecotas'}[inv.tipo] || '';
+    html += '<div class="inv-item">';
+    html += '<span class="inv-tipo-badge ' + badgeClass + '">' + tipoLabel + '</span>';
+    html += '<div class="inv-info">';
+    html += '<strong>' + (inv.nome || 'Investimento ' + (i+1)) + '</strong>';
+    html += '<div class="inv-sub">' + (inv.pctAporte||0) + '% do aporte | Rent: ' + (inv.rentabilidadeAA||0) + '% a.a.';
+    if (inv.tipo === 'COM_IR_COMECOTAS') html += ' | Fundo: ' + (inv.prazoFundo === 'curto' ? 'Curto' : 'Longo');
+    html += '</div></div>';
+    html += '<button class="btn-edit" onclick="editarInvestimento('+i+')">&#9998;</button>';
+    html += '<button class="btn-danger" onclick="excluirInvestimento('+i+')">&#10005;</button>';
+    html += '</div>';
+  });
+  container.innerHTML = html;
+}
+
+function toggleInvPrazo() {
+  var tipo = document.getElementById('inv-tipo').value;
+  document.getElementById('inv-prazo-field').style.display = (tipo === 'COM_IR_COMECOTAS') ? 'flex' : 'none';
+}
+
+function abrirModalInvestimento(idx) {
+  editingInvIdx = (idx !== undefined) ? idx : -1;
+  document.getElementById('modal-inv-title').textContent = editingInvIdx >= 0 ? 'Editar Investimento' : 'Novo Investimento';
+  if (editingInvIdx >= 0) {
+    var inv = tempInvestimentos[editingInvIdx];
+    document.getElementById('inv-nome').value = inv.nome || '';
+    document.getElementById('inv-tipo').value = inv.tipo || 'COM_IR';
+    document.getElementById('inv-pct').value = inv.pctAporte || '';
+    document.getElementById('inv-rent').value = inv.rentabilidadeAA || '';
+    document.getElementById('inv-prazo-fundo').value = inv.prazoFundo || 'longo';
+  } else {
+    document.getElementById('inv-nome').value = '';
+    document.getElementById('inv-tipo').value = 'COM_IR';
+    document.getElementById('inv-pct').value = '';
+    document.getElementById('inv-rent').value = '';
+    document.getElementById('inv-prazo-fundo').value = 'longo';
+  }
+  toggleInvPrazo();
+  document.getElementById('modal-investimento').classList.add('show');
+}
+function fecharModalInvestimento() { document.getElementById('modal-investimento').classList.remove('show'); }
+function salvarInvestimento() {
+  var obj = {
+    id: uid(),
+    nome: document.getElementById('inv-nome').value.trim(),
+    tipo: document.getElementById('inv-tipo').value,
+    pctAporte: parsePct(document.getElementById('inv-pct')),
+    rentabilidadeAA: parsePct(document.getElementById('inv-rent')),
+    prazoFundo: document.getElementById('inv-prazo-fundo').value
+  };
+  if (obj.pctAporte <= 0) { alert('Informe o % do aporte.'); return; }
+  if (editingInvIdx >= 0) { obj.id = tempInvestimentos[editingInvIdx].id; tempInvestimentos[editingInvIdx] = obj; }
+  else { tempInvestimentos.push(obj); }
+  fecharModalInvestimento();
+  renderTempInvestimentos();
+}
+function editarInvestimento(i) { abrirModalInvestimento(i); }
+function excluirInvestimento(i) { tempInvestimentos.splice(i,1); renderTempInvestimentos(); }
+
+
+// ===== HELPERS DE APORTE =====
 function getAporteValorNoMes(ap, mes, reajusteGlobal) {
   var valorBase = ap.valor;
   if (ap.updates && ap.updates.length > 0) {
@@ -594,111 +846,27 @@ function aporteAtivoNoMes(ap, mes) {
   return (mes - ap.inicio) % ap.periodicidade === 0;
 }
 
-function calcular() {
-  var prazo = parseInt(document.getElementById('prazo-meses').value) || 120;
-  var rentAA = parsePct(document.getElementById('rentabilidade-aa'));
-  var saldoInicial = parseCurrency(document.getElementById('saldo-inicial'));
-  var taxaCarregEntrada = parsePct(document.getElementById('taxa-carreg-entrada')) / 100;
-  var taxaCarregSaida = parsePct(document.getElementById('taxa-carreg-saida')) / 100;
-  var taxaAdmin = parsePct(document.getElementById('taxa-admin')) / 100;
-  var economiaPGBL = parseCurrency(document.getElementById('economia-pgbl'));
-  var reajusteGlobal = parsePct(document.getElementById('reajuste-global'));
-
+// ===== SIMULACAO: PREVIDENCIA (PGBL/VGBL) =====
+// Cada aporte vira um lote separado para calculo individual de IR
+function simPrevidencia(vc, prazo, reajusteGlobal, regimeTrib) {
+  var rentAA = vc.rentabilidadeAA || 0;
   var rentMensal = Math.pow(1 + rentAA/100, 1/12) - 1;
+  var taxaCarregEntrada = (vc.taxaCarregEntrada || 0) / 100;
+  var taxaCarregSaida = (vc.taxaCarregSaida || 0) / 100;
+  var taxaAdmin = (vc.taxaAdminAnual || 0) / 100;
+  var taxaPerf = (vc.taxaPerformance || 0) / 100;
+  var benchAA = (vc.benchmarkPerformance || 0);
+  var benchMensal = benchAA > 0 ? (Math.pow(1 + benchAA/100, 1/12) - 1) : 0;
+  var tipo = vc.tipo; // PGBL ou VGBL
 
-  if (aportes.length === 0 && saldoInicial <= 0) {
-    document.getElementById('resultado-area').innerHTML = '<div class="empty-state" style="padding:30px;"><div class="icon">&#128202;</div><p>Configure os parametros e aportes primeiro.</p></div>';
-    return;
-  }
-
-  // ===== CENARIO 1: CARTEIRA DE INVESTIMENTO =====
-  var carteira = simCarteira(prazo, rentMensal, saldoInicial, reajusteGlobal, 0, 0);
-
-  // ===== CENARIO 2: VGBL (ambos regimes) =====
-  var vgblReg = simPrevidencia(prazo, rentMensal, saldoInicial, reajusteGlobal, 'regressiva', taxaCarregEntrada, taxaCarregSaida, taxaAdmin, 'vgbl');
-  var vgblProg = simPrevidencia(prazo, rentMensal, saldoInicial, reajusteGlobal, 'progressiva', taxaCarregEntrada, taxaCarregSaida, taxaAdmin, 'vgbl');
-
-  // ===== CENARIO 3: PGBL (ambos regimes) =====
-  var pgblReg = simPrevidencia(prazo, rentMensal, saldoInicial, reajusteGlobal, 'regressiva', taxaCarregEntrada, taxaCarregSaida, taxaAdmin, 'pgbl');
-  var pgblProg = simPrevidencia(prazo, rentMensal, saldoInicial, reajusteGlobal, 'progressiva', taxaCarregEntrada, taxaCarregSaida, taxaAdmin, 'pgbl');
-
-  // PGBL bonus: economia anual reinvestida na carteira
-  var pgblBonus = simCarteiraPGBLBonus(prazo, rentMensal, economiaPGBL, reajusteGlobal);
-
-  renderResultado(carteira, vgblReg, vgblProg, pgblReg, pgblProg, pgblBonus, prazo, rentAA, economiaPGBL);
-}
-
-function simCarteira(prazo, rentMensal, saldoInicial, reajusteGlobal, taxaCarregEntrada, taxaAdmin) {
   var lotes = [];
   var historico = [];
   var totalAportado = 0;
 
-  if (saldoInicial > 0) {
-    lotes.push({mesEntrada: 0, valorAportado: saldoInicial, saldo: saldoInicial});
-    totalAportado += saldoInicial;
-  }
-
-  for (var mes = 1; mes <= prazo; mes++) {
-    var aporteDoMes = 0;
-    aportes.forEach(function(ap) {
-      if (aporteAtivoNoMes(ap, mes)) {
-        var val = getAporteValorNoMes(ap, mes, reajusteGlobal);
-        var valLiquido = val * (1 - taxaCarregEntrada);
-        lotes.push({mesEntrada: mes, valorAportado: valLiquido, saldo: valLiquido});
-        aporteDoMes += val;
-        totalAportado += val;
-      }
-    });
-
-    lotes.forEach(function(l) {
-      l.saldo *= (1 + rentMensal);
-    });
-
-    if (taxaAdmin > 0) {
-      lotes.forEach(function(l) { l.saldo *= (1 - taxaAdmin/12); });
-    }
-
-    var saldoTotal = lotes.reduce(function(s, l) { return s + l.saldo; }, 0);
-    historico.push({mes: mes, saldo: saldoTotal, aporte: aporteDoMes, totalAportado: totalAportado});
-  }
-
-  var totalBruto = lotes.reduce(function(s, l) { return s + l.saldo; }, 0);
-  var totalIR = 0;
-  lotes.forEach(function(l) {
-    var rendimento = l.saldo - l.valorAportado;
-    if (rendimento > 0) {
-      var diasAcum = (prazo - l.mesEntrada) * 30;
-      var aliquota;
-      if (diasAcum <= 180) aliquota = 0.225;
-      else if (diasAcum <= 360) aliquota = 0.20;
-      else if (diasAcum <= 720) aliquota = 0.175;
-      else aliquota = 0.15;
-      totalIR += rendimento * aliquota;
-    }
-  });
-
-  var totalLiquido = totalBruto - totalIR;
-
-  return {
-    nome: 'Carteira de Investimento',
-    totalBruto: totalBruto,
-    totalAportado: totalAportado,
-    totalIR: totalIR,
-    totalLiquido: totalLiquido,
-    historico: historico,
-    lotes: lotes
-  };
-}
-
-function simPrevidencia(prazo, rentMensal, saldoInicial, reajusteGlobal, regimeTrib, taxaCarregEntrada, taxaCarregSaida, taxaAdmin, tipo) {
-  var lotes = [];
-  var historico = [];
-  var totalAportado = 0;
-
-  if (saldoInicial > 0) {
-    var valLiq = saldoInicial * (1 - taxaCarregEntrada);
+  if (vc.saldoInicial > 0) {
+    var valLiq = vc.saldoInicial * (1 - taxaCarregEntrada);
     lotes.push({mesEntrada: 0, valorAportado: valLiq, saldo: valLiq});
-    totalAportado += saldoInicial;
+    totalAportado += vc.saldoInicial;
   }
 
   for (var mes = 1; mes <= prazo; mes++) {
@@ -713,10 +881,24 @@ function simPrevidencia(prazo, rentMensal, saldoInicial, reajusteGlobal, regimeT
       }
     });
 
+    // Rendimento
     lotes.forEach(function(l) { l.saldo *= (1 + rentMensal); });
 
+    // Taxa de administracao (mensal = anual/12)
     if (taxaAdmin > 0) {
       lotes.forEach(function(l) { l.saldo *= (1 - taxaAdmin/12); });
+    }
+
+    // Taxa de performance: cobra sobre excedente do benchmark mensal
+    if (taxaPerf > 0 && benchMensal > 0) {
+      lotes.forEach(function(l) {
+        var rendReal = l.saldo / (l.saldo / (1 + rentMensal)) - 1; // rentMensal efetiva apos admin
+        // Simplificacao: se rentMensal > benchMensal, cobra performance sobre o excedente
+        if (rentMensal > benchMensal) {
+          var excedente = l.saldo * (rentMensal - benchMensal) / (1 + rentMensal);
+          l.saldo -= excedente * taxaPerf;
+        }
+      });
     }
 
     var saldoTotal = lotes.reduce(function(s, l) { return s + l.saldo; }, 0);
@@ -725,10 +907,9 @@ function simPrevidencia(prazo, rentMensal, saldoInicial, reajusteGlobal, regimeT
 
   var totalBruto = lotes.reduce(function(s, l) { return s + l.saldo; }, 0);
   var valorAposSaida = totalBruto * (1 - taxaCarregSaida);
-
-  var totalIR = 0;
   var totalAportadoLotes = lotes.reduce(function(s, l) { return s + l.valorAportado; }, 0);
 
+  var totalIR = 0;
   if (regimeTrib === 'regressiva') {
     lotes.forEach(function(l) {
       var anosAcum = (prazo - l.mesEntrada) / 12;
@@ -739,41 +920,187 @@ function simPrevidencia(prazo, rentMensal, saldoInicial, reajusteGlobal, regimeT
       else if (anosAcum <= 8) aliquota = 0.20;
       else if (anosAcum <= 10) aliquota = 0.15;
       else aliquota = 0.10;
-
       var base;
-      if (tipo === 'pgbl') {
-        base = l.saldo;
-      } else {
-        base = l.saldo - l.valorAportado;
-        if (base < 0) base = 0;
-      }
+      if (tipo === 'PGBL') { base = l.saldo; }
+      else { base = Math.max(0, l.saldo - l.valorAportado); }
       totalIR += base * aliquota;
     });
   } else {
     var base;
-    if (tipo === 'pgbl') {
-      base = valorAposSaida;
-    } else {
-      base = valorAposSaida - totalAportadoLotes;
-      if (base < 0) base = 0;
-    }
+    if (tipo === 'PGBL') { base = valorAposSaida; }
+    else { base = Math.max(0, valorAposSaida - totalAportadoLotes); }
     totalIR = calcIRProgressivo(base);
   }
 
-  var totalLiquido = valorAposSaida - totalIR;
-
   return {
-    nome: tipo === 'pgbl' ? 'PGBL' : 'VGBL',
+    nome: vc.nome || vc.tipo,
+    tipo: tipo,
+    regimeTrib: regimeTrib,
     totalBruto: totalBruto,
     totalAportado: totalAportado,
     totalIR: totalIR,
-    totalLiquido: totalLiquido,
-    taxaCarregSaida: totalBruto * taxaCarregSaida,
+    totalLiquido: valorAposSaida - totalIR,
+    taxaCarregSaidaValor: totalBruto * taxaCarregSaida,
     historico: historico,
     lotes: lotes
   };
 }
 
+// ===== SIMULACAO: CARTEIRA DE INVESTIMENTO =====
+// Cada investimento dentro da carteira tem sua propria rentabilidade e tipo de tributacao
+// Cada aporte e dividido entre os investimentos pelo pctAporte
+function simCarteira(vc, prazo, reajusteGlobal) {
+  var investimentos = vc.investimentos || [];
+  if (investimentos.length === 0) return {nome: vc.nome, tipo:'CARTEIRA', totalBruto:0, totalAportado:0, totalIR:0, totalLiquido:0, historico:[], investimentosResult:[]};
+
+  // Para cada investimento, manter lotes separados
+  var invResults = investimentos.map(function(inv) {
+    var rentMensal = Math.pow(1 + (inv.rentabilidadeAA||0)/100, 1/12) - 1;
+    return {
+      inv: inv,
+      rentMensal: rentMensal,
+      lotes: [],
+      totalAportado: 0,
+      comeCotasPago: 0 // total de come-cotas ja pago
+    };
+  });
+
+  var historico = [];
+  var totalAportadoGeral = 0;
+
+  // Saldo inicial distribuido
+  if (vc.saldoInicial > 0) {
+    investimentos.forEach(function(inv, idx) {
+      var pct = (inv.pctAporte || 0) / 100;
+      var val = vc.saldoInicial * pct;
+      if (val > 0) {
+        invResults[idx].lotes.push({mesEntrada: 0, valorAportado: val, saldo: val, comeCotasPago: 0});
+        invResults[idx].totalAportado += val;
+      }
+    });
+    totalAportadoGeral += vc.saldoInicial;
+  }
+
+  for (var mes = 1; mes <= prazo; mes++) {
+    var aporteDoMes = 0;
+
+    // Aportes do mes
+    aportes.forEach(function(ap) {
+      if (aporteAtivoNoMes(ap, mes)) {
+        var val = getAporteValorNoMes(ap, mes, reajusteGlobal);
+        aporteDoMes += val;
+        totalAportadoGeral += val;
+        // Distribuir entre investimentos
+        investimentos.forEach(function(inv, idx) {
+          var pct = (inv.pctAporte || 0) / 100;
+          var valInv = val * pct;
+          if (valInv > 0) {
+            invResults[idx].lotes.push({mesEntrada: mes, valorAportado: valInv, saldo: valInv, comeCotasPago: 0});
+            invResults[idx].totalAportado += valInv;
+          }
+        });
+      }
+    });
+
+    // Rendimento de cada investimento
+    invResults.forEach(function(ir) {
+      ir.lotes.forEach(function(l) { l.saldo *= (1 + ir.rentMensal); });
+    });
+
+    // Come-cotas: a cada 6 meses (maio e novembro = meses 5,11,17,23... ou simplificando: a cada 6 meses)
+    if (mes % 6 === 0) {
+      invResults.forEach(function(ir) {
+        if (ir.inv.tipo === 'COM_IR_COMECOTAS') {
+          var aliqCC = (ir.inv.prazoFundo === 'curto') ? 0.20 : 0.15;
+          ir.lotes.forEach(function(l) {
+            var rendimento = l.saldo - l.valorAportado;
+            if (rendimento > 0) {
+              // Come-cotas incide sobre o rendimento acumulado desde o ultimo come-cotas
+              // Simplificacao: incide sobre rendimento total menos come-cotas ja pago
+              var rendTributavel = rendimento - l.comeCotasPago;
+              if (rendTributavel > 0) {
+                var cc = rendTributavel * aliqCC;
+                l.saldo -= cc;
+                l.comeCotasPago += cc;
+                ir.comeCotasPago += cc;
+              }
+            }
+          });
+        }
+      });
+    }
+
+    var saldoTotal = invResults.reduce(function(s, ir) {
+      return s + ir.lotes.reduce(function(s2, l) { return s2 + l.saldo; }, 0);
+    }, 0);
+    historico.push({mes: mes, saldo: saldoTotal, aporte: aporteDoMes, totalAportado: totalAportadoGeral});
+  }
+
+  // Calculo do IR no resgate
+  var totalBruto = 0;
+  var totalIR = 0;
+  var investimentosResult = [];
+
+  invResults.forEach(function(ir) {
+    var brutoInv = ir.lotes.reduce(function(s, l) { return s + l.saldo; }, 0);
+    var irInv = 0;
+
+    if (ir.inv.tipo === 'SEM_IR') {
+      // Isento
+      irInv = 0;
+    } else if (ir.inv.tipo === 'COM_IR') {
+      // Tabela regressiva sobre rendimento de cada lote
+      ir.lotes.forEach(function(l) {
+        var rendimento = Math.max(0, l.saldo - l.valorAportado);
+        if (rendimento > 0) {
+          var diasAcum = (prazo - l.mesEntrada) * 30;
+          var aliquota = diasAcum <= 180 ? 0.225 : diasAcum <= 360 ? 0.20 : diasAcum <= 720 ? 0.175 : 0.15;
+          irInv += rendimento * aliquota;
+        }
+      });
+    } else if (ir.inv.tipo === 'COM_IR_COMECOTAS') {
+      // Tabela regressiva sobre rendimento, deduzindo come-cotas ja pago
+      ir.lotes.forEach(function(l) {
+        var rendimento = Math.max(0, l.saldo - l.valorAportado);
+        if (rendimento > 0) {
+          var diasAcum = (prazo - l.mesEntrada) * 30;
+          var aliquota = diasAcum <= 180 ? 0.225 : diasAcum <= 360 ? 0.20 : diasAcum <= 720 ? 0.175 : 0.15;
+          var irTotal = rendimento * aliquota;
+          var irRestante = Math.max(0, irTotal - l.comeCotasPago);
+          irInv += irRestante;
+        }
+      });
+      irInv += ir.comeCotasPago; // Total IR = come-cotas pago + complemento no resgate
+    }
+
+    totalBruto += brutoInv;
+    totalIR += irInv;
+    investimentosResult.push({
+      nome: ir.inv.nome,
+      tipo: ir.inv.tipo,
+      bruto: brutoInv,
+      aportado: ir.totalAportado,
+      ir: irInv,
+      liquido: brutoInv - irInv,
+      comeCotasPago: ir.comeCotasPago,
+      lotes: ir.lotes
+    });
+  });
+
+  return {
+    nome: vc.nome || 'Carteira',
+    tipo: 'CARTEIRA',
+    totalBruto: totalBruto,
+    totalAportado: totalAportadoGeral,
+    totalIR: totalIR,
+    totalLiquido: totalBruto - totalIR,
+    historico: historico,
+    investimentosResult: investimentosResult,
+    lotes: [] // nao usado diretamente
+  };
+}
+
+// ===== SIMULACAO: BONUS PGBL (economia anual reinvestida) =====
 function simCarteiraPGBLBonus(prazo, rentMensal, economiaPGBLAnual, reajusteGlobal) {
   if (economiaPGBLAnual <= 0) return {totalBruto:0, totalAportado:0, totalIR:0, totalLiquido:0, historico:[], lotes:[]};
 
@@ -782,10 +1109,10 @@ function simCarteiraPGBLBonus(prazo, rentMensal, economiaPGBLAnual, reajusteGlob
   var totalAportado = 0;
 
   for (var mes = 1; mes <= prazo; mes++) {
-    // Rendimento aplicado ANTES do aporte do mes (aporte nao rende no mes de entrada)
+    // Rendimento ANTES do aporte (aporte nao rende no mes de entrada)
     lotes.forEach(function(l) { l.saldo *= (1 + rentMensal); });
 
-    // Bonus entra a cada 12 meses, mas NAO no ultimo mes do prazo (nao teria tempo de render)
+    // Bonus entra a cada 12 meses, mas NAO no ultimo mes do prazo
     if (mes % 12 === 0 && mes < prazo) {
       var anosDecorridos = Math.floor(mes / 12) - 1;
       var valorBonus = economiaPGBLAnual * Math.pow(1 + (reajusteGlobal||0)/100, anosDecorridos);
@@ -800,7 +1127,7 @@ function simCarteiraPGBLBonus(prazo, rentMensal, economiaPGBLAnual, reajusteGlob
   var totalBruto = lotes.reduce(function(s, l) { return s + l.saldo; }, 0);
   var totalIR = 0;
   lotes.forEach(function(l) {
-    var rendimento = l.saldo - l.valorAportado;
+    var rendimento = Math.max(0, l.saldo - l.valorAportado);
     if (rendimento > 0) {
       var diasAcum = (prazo - l.mesEntrada) * 30;
       var aliquota = diasAcum <= 180 ? 0.225 : diasAcum <= 360 ? 0.20 : diasAcum <= 720 ? 0.175 : 0.15;
@@ -809,7 +1136,7 @@ function simCarteiraPGBLBonus(prazo, rentMensal, economiaPGBLAnual, reajusteGlob
   });
 
   return {
-    nome: 'Bonus PGBL (reinvestido)',
+    nome: 'Bonus PGBL',
     totalBruto: totalBruto,
     totalAportado: totalAportado,
     totalIR: totalIR,
@@ -828,417 +1155,512 @@ function calcIRProgressivo(base) {
     {ate: Infinity, aliq: 0.275, ded: 11344.43}
   ];
   for (var i = 0; i < faixas.length; i++) {
-    if (base <= faixas[i].ate) {
-      return Math.max(0, base * faixas[i].aliq - faixas[i].ded);
-    }
+    if (base <= faixas[i].ate) return Math.max(0, base * faixas[i].aliq - faixas[i].ded);
   }
-  return base * 0.275 - 11344.43;
+  return Math.max(0, base * 0.275 - 11344.43);
 }
 
-function renderResultado(carteira, vgblReg, vgblProg, pgblReg, pgblProg, pgblBonus, prazo, rentAA, economiaPGBL) {
-  // Totais PGBL + Bonus para cada regime
-  var pgblRegTotal = {
-    totalBruto: pgblReg.totalBruto + pgblBonus.totalBruto,
-    totalAportado: pgblReg.totalAportado + pgblBonus.totalAportado,
-    totalIR: pgblReg.totalIR + pgblBonus.totalIR,
-    totalLiquido: pgblReg.totalLiquido + pgblBonus.totalLiquido,
-    taxaCarregSaida: pgblReg.taxaCarregSaida || 0
-  };
-  var pgblProgTotal = {
-    totalBruto: pgblProg.totalBruto + pgblBonus.totalBruto,
-    totalAportado: pgblProg.totalAportado + pgblBonus.totalAportado,
-    totalIR: pgblProg.totalIR + pgblBonus.totalIR,
-    totalLiquido: pgblProg.totalLiquido + pgblBonus.totalLiquido,
-    taxaCarregSaida: pgblProg.taxaCarregSaida || 0
-  };
 
-  // Determinar melhor cenario
-  var cenarios = [
-    {nome: 'Carteira', cor: 'green', totalLiquido: carteira.totalLiquido},
-    {nome: 'VGBL Regressiva', cor: 'blue', totalLiquido: vgblReg.totalLiquido},
-    {nome: 'VGBL Progressiva', cor: 'blue', totalLiquido: vgblProg.totalLiquido},
-    {nome: 'PGBL+Bonus Reg.', cor: 'purple', totalLiquido: pgblRegTotal.totalLiquido},
-    {nome: 'PGBL+Bonus Prog.', cor: 'purple', totalLiquido: pgblProgTotal.totalLiquido}
-  ];
-  cenarios.sort(function(a,b) { return b.totalLiquido - a.totalLiquido; });
-  var melhor = cenarios[0];
+// ===== CALCULAR =====
+function calcular() {
+  var prazo = parseInt(document.getElementById('prazo-meses').value) || 120;
+  var reajusteGlobal = parsePct(document.getElementById('reajuste-global'));
 
+  if (veiculos.length === 0) {
+    document.getElementById('resultado-area').innerHTML = '<div class="empty-state" style="padding:30px;"><div class="icon">&#128202;</div><p>Adicione pelo menos um veiculo de investimento na aba Configuracao.</p></div>';
+    return;
+  }
+  if (aportes.length === 0) {
+    var temSaldo = veiculos.some(function(vc) { return (vc.saldoInicial || 0) > 0; });
+    if (!temSaldo) {
+      document.getElementById('resultado-area').innerHTML = '<div class="empty-state" style="padding:30px;"><div class="icon">&#128202;</div><p>Adicione pelo menos um aporte na aba Aportes ou um saldo inicial em algum veiculo.</p></div>';
+      return;
+    }
+  }
+
+  // Simular cada veiculo
+  var resultados = []; // array de {coluna, resultado, bonus?}
+
+  veiculos.forEach(function(vc) {
+    if (vc.tipo === 'PGBL' || vc.tipo === 'VGBL') {
+      // Regressiva
+      var resReg = simPrevidencia(vc, prazo, reajusteGlobal, 'regressiva');
+      // Progressiva
+      var resProg = simPrevidencia(vc, prazo, reajusteGlobal, 'progressiva');
+
+      // Se PGBL, calcular bonus
+      var bonus = null;
+      if (vc.tipo === 'PGBL' && (vc.economiaPGBL || 0) > 0) {
+        var rentMensal = Math.pow(1 + (vc.rentabilidadeAA||0)/100, 1/12) - 1;
+        bonus = simCarteiraPGBLBonus(prazo, rentMensal, vc.economiaPGBL, reajusteGlobal);
+      }
+
+      resultados.push({
+        veiculo: vc,
+        regReg: resReg,
+        regProg: resProg,
+        bonus: bonus
+      });
+    } else if (vc.tipo === 'CARTEIRA') {
+      var res = simCarteira(vc, prazo, reajusteGlobal);
+      resultados.push({
+        veiculo: vc,
+        carteira: res
+      });
+    }
+  });
+
+  renderResultado(resultados, prazo, reajusteGlobal);
+}
+
+// ===== RENDER RESULTADO =====
+function renderResultado(resultados, prazo, reajusteGlobal) {
   var html = '';
 
+  // Build columns for comparison table
+  var colunas = []; // {nome, cor, totalAportado, totalBruto, rendimento, totalIR, carregSaida, totalLiquido, historico}
+
+  resultados.forEach(function(r) {
+    if (r.carteira) {
+      colunas.push({
+        nome: r.veiculo.nome || 'Carteira',
+        cor: 'var(--green)',
+        totalAportado: r.carteira.totalAportado,
+        totalBruto: r.carteira.totalBruto,
+        rendimento: r.carteira.totalBruto - r.carteira.totalAportado,
+        totalIR: r.carteira.totalIR,
+        carregSaida: 0,
+        totalLiquido: r.carteira.totalLiquido,
+        historico: r.carteira.historico,
+        baseIR: 'Rendimento'
+      });
+    } else {
+      var nomeBase = r.veiculo.nome || r.veiculo.tipo;
+      var bonusBruto = r.bonus ? r.bonus.totalBruto : 0;
+      var bonusAportado = r.bonus ? r.bonus.totalAportado : 0;
+      var bonusIR = r.bonus ? r.bonus.totalIR : 0;
+      var bonusLiquido = r.bonus ? r.bonus.totalLiquido : 0;
+
+      // Regressiva
+      colunas.push({
+        nome: nomeBase + ' (Reg.)',
+        cor: r.veiculo.tipo === 'PGBL' ? 'var(--purple)' : 'var(--blue)',
+        totalAportado: r.regReg.totalAportado + bonusAportado,
+        totalBruto: r.regReg.totalBruto + bonusBruto,
+        rendimento: (r.regReg.totalBruto - r.regReg.totalAportado) + (bonusBruto - bonusAportado),
+        totalIR: r.regReg.totalIR + bonusIR,
+        carregSaida: r.regReg.taxaCarregSaidaValor || 0,
+        totalLiquido: r.regReg.totalLiquido + bonusLiquido,
+        historico: r.regReg.historico,
+        bonusHistorico: r.bonus ? r.bonus.historico : null,
+        baseIR: r.veiculo.tipo === 'PGBL' ? 'Valor Total' : 'Rendimento'
+      });
+      // Progressiva
+      colunas.push({
+        nome: nomeBase + ' (Prog.)',
+        cor: r.veiculo.tipo === 'PGBL' ? 'var(--purple)' : 'var(--blue)',
+        totalAportado: r.regProg.totalAportado + bonusAportado,
+        totalBruto: r.regProg.totalBruto + bonusBruto,
+        rendimento: (r.regProg.totalBruto - r.regProg.totalAportado) + (bonusBruto - bonusAportado),
+        totalIR: r.regProg.totalIR + bonusIR,
+        carregSaida: r.regProg.taxaCarregSaidaValor || 0,
+        totalLiquido: r.regProg.totalLiquido + bonusLiquido,
+        historico: r.regProg.historico,
+        bonusHistorico: r.bonus ? r.bonus.historico : null,
+        baseIR: r.veiculo.tipo === 'PGBL' ? 'Valor Total' : 'Rendimento'
+      });
+    }
+  });
+
+  // Melhor cenario
+  var melhor = colunas.reduce(function(best, c) { return c.totalLiquido > best.totalLiquido ? c : best; }, colunas[0]);
+
   // Summary grid
+  var totalAportadoRef = colunas.length > 0 ? colunas[0].totalAportado : 0;
   html += '<div class="summary-grid">';
   html += '<div class="summary-item"><div class="label">Prazo</div><div class="value white">' + prazo + ' meses (' + (prazo/12).toFixed(1) + ' anos)</div></div>';
-  html += '<div class="summary-item"><div class="label">Rentabilidade</div><div class="value white">' + rentAA + '% a.a.</div></div>';
-  html += '<div class="summary-item"><div class="label">Total Aportado</div><div class="value orange">' + fmtBRL(carteira.totalAportado) + '</div></div>';
+  html += '<div class="summary-item"><div class="label">Veiculos</div><div class="value white">' + veiculos.length + '</div></div>';
+  html += '<div class="summary-item"><div class="label">Total Aportado (ref)</div><div class="value orange">' + fmtBRL(totalAportadoRef) + '</div></div>';
   html += '<div class="summary-item"><div class="label">Melhor Cenario</div><div class="value green">' + melhor.nome + '</div></div>';
   html += '</div>';
 
   // ===== TABELA COMPARATIVA =====
-  html += '<table class="comp-table" style="margin-top:1.5rem;">';
-  html += '<tr><th></th><th style="color:var(--green)">Carteira</th><th style="color:var(--blue)">VGBL Reg.</th><th style="color:var(--blue)">VGBL Prog.</th><th style="color:var(--purple)">PGBL+Bonus Reg.</th><th style="color:var(--purple)">PGBL+Bonus Prog.</th></tr>';
-
-  var rendCarteira = carteira.totalBruto - carteira.totalAportado;
-  var rendVGBLReg = vgblReg.totalBruto - vgblReg.totalAportado;
-  var rendVGBLProg = vgblProg.totalBruto - vgblProg.totalAportado;
-  var rendPGBLReg = pgblRegTotal.totalBruto - pgblRegTotal.totalAportado;
-  var rendPGBLProg = pgblProgTotal.totalBruto - pgblProgTotal.totalAportado;
-
-  // Aliquota efetiva
-  var aliqEfCart = rendCarteira > 0 ? (carteira.totalIR / rendCarteira * 100).toFixed(2) : '0.00';
-  var aliqEfVGBLReg = rendVGBLReg > 0 ? (vgblReg.totalIR / rendVGBLReg * 100).toFixed(2) : '0.00';
-  var aliqEfVGBLProg = rendVGBLProg > 0 ? (vgblProg.totalIR / rendVGBLProg * 100).toFixed(2) : '0.00';
-  var aliqEfPGBLReg = pgblRegTotal.totalBruto > 0 ? (pgblRegTotal.totalIR / pgblRegTotal.totalBruto * 100).toFixed(2) : '0.00';
-  var aliqEfPGBLProg = pgblProgTotal.totalBruto > 0 ? (pgblProgTotal.totalIR / pgblProgTotal.totalBruto * 100).toFixed(2) : '0.00';
-
-  var rows = [
-    ['Total Aportado', fmtBRL(carteira.totalAportado), fmtBRL(vgblReg.totalAportado), fmtBRL(vgblProg.totalAportado), fmtBRL(pgblRegTotal.totalAportado), fmtBRL(pgblProgTotal.totalAportado)],
-    ['Valor Bruto Acumulado', fmtBRL(carteira.totalBruto), fmtBRL(vgblReg.totalBruto), fmtBRL(vgblProg.totalBruto), fmtBRL(pgblRegTotal.totalBruto), fmtBRL(pgblProgTotal.totalBruto)],
-    ['Rendimento (Lucro)', '<span style="color:var(--green)">' + fmtBRL(rendCarteira) + '</span>', '<span style="color:var(--blue)">' + fmtBRL(rendVGBLReg) + '</span>', '<span style="color:var(--blue)">' + fmtBRL(rendVGBLProg) + '</span>', '<span style="color:var(--purple)">' + fmtBRL(rendPGBLReg) + '</span>', '<span style="color:var(--purple)">' + fmtBRL(rendPGBLProg) + '</span>'],
-    ['Base de Calculo do IR', '<span class="loser">Rendimento</span>', '<span class="loser">Rendimento</span>', '<span class="loser">Rendimento</span>', '<span class="loser">Valor Total</span>', '<span class="loser">Valor Total</span>'],
-    ['Imposto de Renda', '<span class="loser">' + fmtBRL(carteira.totalIR) + '</span>', '<span class="loser">' + fmtBRL(vgblReg.totalIR) + '</span>', '<span class="loser">' + fmtBRL(vgblProg.totalIR) + '</span>', '<span class="loser">' + fmtBRL(pgblRegTotal.totalIR) + '</span>', '<span class="loser">' + fmtBRL(pgblProgTotal.totalIR) + '</span>'],
-    ['Aliquota Efetiva (IR/Base)', '<span class="loser">' + aliqEfCart + '%</span>', '<span class="loser">' + aliqEfVGBLReg + '%</span>', '<span class="loser">' + aliqEfVGBLProg + '%</span>', '<span class="loser">' + aliqEfPGBLReg + '%</span>', '<span class="loser">' + aliqEfPGBLProg + '%</span>'],
-    ['Carreg. Saida', '-', '<span class="loser">' + fmtBRL(vgblReg.taxaCarregSaida||0) + '</span>', '<span class="loser">' + fmtBRL(vgblProg.taxaCarregSaida||0) + '</span>', '<span class="loser">' + fmtBRL(pgblRegTotal.taxaCarregSaida||0) + '</span>', '<span class="loser">' + fmtBRL(pgblProgTotal.taxaCarregSaida||0) + '</span>'],
-    ['Valor Liquido Resgate', '<span class="winner">' + fmtBRL(carteira.totalLiquido) + '</span>', '<span class="winner">' + fmtBRL(vgblReg.totalLiquido) + '</span>', '<span class="winner">' + fmtBRL(vgblProg.totalLiquido) + '</span>', '<span class="winner">' + fmtBRL(pgblRegTotal.totalLiquido) + '</span>', '<span class="winner">' + fmtBRL(pgblProgTotal.totalLiquido) + '</span>']
-  ];
-  rows.forEach(function(r) {
-    html += '<tr><td style="font-weight:600;color:var(--muted)">' + r[0] + '</td><td>' + r[1] + '</td><td>' + r[2] + '</td><td>' + r[3] + '</td><td>' + r[4] + '</td><td>' + r[5] + '</td></tr>';
-  });
-  html += '</table>';
-
-  // ===== MEMORIA DE CALCULO DO IR - CARTEIRA =====
-  html += '<div class="card" style="margin-top:1.5rem;border-color:var(--green);">';
-  html += '<h3 style="color:var(--green);margin-bottom:0.8rem;">Memoria de Calculo do IR — Carteira de Investimento</h3>';
-  html += '<p style="color:var(--muted);font-size:0.8rem;margin-bottom:0.5rem;">IR incide sobre o <strong>rendimento</strong> de cada aporte individual, com aliquota definida pelo prazo de permanencia.</p>';
-  html += '<div class="ded-list">';
-  var faixasCart = [{label:'Ate 6 meses (22,5%)', aliq:0.225, ir:0, rend:0, saldo:0}, {label:'6-12 meses (20%)', aliq:0.20, ir:0, rend:0, saldo:0}, {label:'12-24 meses (17,5%)', aliq:0.175, ir:0, rend:0, saldo:0}, {label:'Acima 24 meses (15%)', aliq:0.15, ir:0, rend:0, saldo:0}];
-  carteira.lotes.forEach(function(l) {
-    var diasAcum = (prazo - l.mesEntrada) * 30;
-    var rend = Math.max(0, l.saldo - l.valorAportado);
-    var idx = diasAcum <= 180 ? 0 : diasAcum <= 360 ? 1 : diasAcum <= 720 ? 2 : 3;
-    faixasCart[idx].rend += rend;
-    faixasCart[idx].saldo += l.saldo;
-    faixasCart[idx].ir += rend * faixasCart[idx].aliq;
-  });
-  faixasCart.forEach(function(f) {
-    if (f.saldo > 0) {
-      html += '<div class="ded-item"><span class="ded-label">' + f.label + '</span><span class="ded-value">Rend: ' + fmtBRL(f.rend) + ' &rarr; IR: <span style="color:var(--red)">' + fmtBRL(f.ir) + '</span></span></div>';
-    }
-  });
-  html += '<div class="ded-item" style="border-top:1px solid var(--border);padding-top:0.5rem;"><span class="ded-label" style="font-weight:700">Total IR Carteira</span><span class="ded-value" style="color:var(--red);font-weight:700">' + fmtBRL(carteira.totalIR) + '</span></div>';
-  html += '</div></div>';
-
-  // ===== MEMORIA DE CALCULO DO IR - VGBL (ambos regimes) =====
-  html += '<div class="card" style="margin-top:1rem;border-color:var(--blue);">';
-  html += '<h3 style="color:var(--blue);margin-bottom:0.8rem;">Memoria de Calculo do IR — VGBL</h3>';
-  html += '<p style="color:var(--muted);font-size:0.8rem;margin-bottom:0.5rem;">IR incide sobre o <strong>rendimento total</strong> (bruto - aportado), com aliquota definida pelo prazo de cada aporte.</p>';
-
-  // VGBL Regressiva
-  html += '<div class="regime-section">';
-  html += '<h4 style="color:var(--blue);">Tabela Regressiva</h4>';
-  html += '<div class="ded-list">';
-  var faixasVGBLReg = [{label:'Ate 2 anos (35%)', aliq:0.35, ir:0, rend:0}, {label:'2-4 anos (30%)', aliq:0.30, ir:0, rend:0}, {label:'4-6 anos (25%)', aliq:0.25, ir:0, rend:0}, {label:'6-8 anos (20%)', aliq:0.20, ir:0, rend:0}, {label:'8-10 anos (15%)', aliq:0.15, ir:0, rend:0}, {label:'Acima 10 anos (10%)', aliq:0.10, ir:0, rend:0}];
-  vgblReg.lotes.forEach(function(l) {
-    var anosAcum = (prazo - l.mesEntrada) / 12;
-    var rend = Math.max(0, l.saldo - l.valorAportado);
-    var idx = anosAcum <= 2 ? 0 : anosAcum <= 4 ? 1 : anosAcum <= 6 ? 2 : anosAcum <= 8 ? 3 : anosAcum <= 10 ? 4 : 5;
-    faixasVGBLReg[idx].rend += rend;
-    faixasVGBLReg[idx].ir += rend * faixasVGBLReg[idx].aliq;
-  });
-  faixasVGBLReg.forEach(function(f) {
-    if (f.rend > 0) {
-      html += '<div class="ded-item"><span class="ded-label">' + f.label + '</span><span class="ded-value">Rend: ' + fmtBRL(f.rend) + ' &rarr; IR: <span style="color:var(--red)">' + fmtBRL(f.ir) + '</span></span></div>';
-    }
-  });
-  html += '<div class="ded-item" style="border-top:1px solid var(--border);padding-top:0.5rem;"><span class="ded-label" style="font-weight:700">Total IR VGBL Regressiva</span><span class="ded-value" style="color:var(--red);font-weight:700">' + fmtBRL(vgblReg.totalIR) + '</span></div>';
-  html += '</div></div>';
-
-  // VGBL Progressiva
-  html += '<div class="regime-section" style="margin-top:0.5rem;">';
-  html += '<h4 style="color:var(--blue);">Tabela Progressiva</h4>';
-  html += '<div class="ded-list">';
-  var baseVGBLProg = vgblProg.totalBruto - vgblProg.lotes.reduce(function(s,l){return s+l.valorAportado;},0);
-  html += '<div class="ded-item"><span class="ded-label">Rendimento total (base progressiva)</span><span class="ded-value">' + fmtBRL(Math.max(0,baseVGBLProg)) + '</span></div>';
-  html += '<div class="ded-item"><span class="ded-label">IR calculado pela tabela progressiva</span><span class="ded-value" style="color:var(--red)">' + fmtBRL(vgblProg.totalIR) + '</span></div>';
-  html += '<div class="ded-item" style="border-top:1px solid var(--border);padding-top:0.5rem;"><span class="ded-label" style="font-weight:700">Total IR VGBL Progressiva</span><span class="ded-value" style="color:var(--red);font-weight:700">' + fmtBRL(vgblProg.totalIR) + '</span></div>';
-  html += '</div></div>';
-
-  html += '</div>';
-
-  // ===== MEMORIA DE CALCULO DO IR - PGBL (ambos regimes + bonus unificado) =====
-  html += '<div class="card" style="margin-top:1rem;border-color:var(--purple);">';
-  html += '<h3 style="color:var(--purple);margin-bottom:0.8rem;">Memoria de Calculo do IR — PGBL + Bonus</h3>';
-  html += '<p style="color:var(--muted);font-size:0.8rem;margin-bottom:0.5rem;">IR do PGBL incide sobre o <strong>valor total resgatado</strong> (nao apenas rendimento). O bonus reinvestido segue as regras da Carteira (IR sobre rendimento).</p>';
-
-  // PGBL Regressiva
-  html += '<div class="regime-section">';
-  html += '<h4 style="color:var(--purple);">Tabela Regressiva</h4>';
-  html += '<div class="ded-list">';
-  var faixasPGBLReg = [{label:'Ate 2 anos (35%)', aliq:0.35, ir:0, base:0}, {label:'2-4 anos (30%)', aliq:0.30, ir:0, base:0}, {label:'4-6 anos (25%)', aliq:0.25, ir:0, base:0}, {label:'6-8 anos (20%)', aliq:0.20, ir:0, base:0}, {label:'8-10 anos (15%)', aliq:0.15, ir:0, base:0}, {label:'Acima 10 anos (10%)', aliq:0.10, ir:0, base:0}];
-  pgblReg.lotes.forEach(function(l) {
-    var anosAcum = (prazo - l.mesEntrada) / 12;
-    var base = l.saldo;
-    var idx = anosAcum <= 2 ? 0 : anosAcum <= 4 ? 1 : anosAcum <= 6 ? 2 : anosAcum <= 8 ? 3 : anosAcum <= 10 ? 4 : 5;
-    faixasPGBLReg[idx].base += base;
-    faixasPGBLReg[idx].ir += base * faixasPGBLReg[idx].aliq;
-  });
-  faixasPGBLReg.forEach(function(f) {
-    if (f.base > 0) {
-      html += '<div class="ded-item"><span class="ded-label">' + f.label + '</span><span class="ded-value">Base: ' + fmtBRL(f.base) + ' &rarr; IR: <span style="color:var(--red)">' + fmtBRL(f.ir) + '</span></span></div>';
-    }
-  });
-  html += '<div class="ded-item" style="border-top:1px solid var(--border);padding-top:0.5rem;"><span class="ded-label" style="font-weight:700">Total IR PGBL Regressiva (previdencia)</span><span class="ded-value" style="color:var(--red);font-weight:700">' + fmtBRL(pgblReg.totalIR) + '</span></div>';
-  html += '</div>';
-
-  // Bonus reinvestido dentro da regressiva
-  html += '<div style="margin-top:0.8rem;padding-top:0.8rem;border-top:1px dashed var(--border);">';
-  html += '<p style="color:var(--gold);font-size:0.8rem;font-weight:600;margin-bottom:0.5rem;">Bonus reinvestido (Carteira de Investimento — fora da previdencia)</p>';
-  html += '<div class="ded-list">';
-  var faixasBonusReg = [{label:'Ate 6 meses (22,5%)', aliq:0.225, ir:0, rend:0, saldo:0}, {label:'6-12 meses (20%)', aliq:0.20, ir:0, rend:0, saldo:0}, {label:'12-24 meses (17,5%)', aliq:0.175, ir:0, rend:0, saldo:0}, {label:'Acima 24 meses (15%)', aliq:0.15, ir:0, rend:0, saldo:0}];
-  if (pgblBonus.lotes) {
-    pgblBonus.lotes.forEach(function(l) {
-      var diasAcum = (prazo - l.mesEntrada) * 30;
-      var rend = Math.max(0, l.saldo - l.valorAportado);
-      var idx = diasAcum <= 180 ? 0 : diasAcum <= 360 ? 1 : diasAcum <= 720 ? 2 : 3;
-      faixasBonusReg[idx].rend += rend;
-      faixasBonusReg[idx].saldo += l.saldo;
-      faixasBonusReg[idx].ir += rend * faixasBonusReg[idx].aliq;
-    });
-  }
-  faixasBonusReg.forEach(function(f) {
-    if (f.saldo > 0) {
-      html += '<div class="ded-item"><span class="ded-label" style="color:var(--gold)">' + f.label + '</span><span class="ded-value">Rend: ' + fmtBRL(f.rend) + ' &rarr; IR: <span style="color:var(--red)">' + fmtBRL(f.ir) + '</span></span></div>';
-    }
-  });
-  html += '<div class="ded-item" style="border-top:1px solid var(--border);padding-top:0.5rem;"><span class="ded-label" style="font-weight:700;color:var(--gold)">Total IR Bonus</span><span class="ded-value" style="color:var(--red);font-weight:700">' + fmtBRL(pgblBonus.totalIR) + '</span></div>';
-  html += '</div></div>';
-
-  // Total combinado regressiva
-  html += '<div class="ded-list" style="margin-top:0.8rem;padding-top:0.8rem;border-top:1px solid var(--border);">';
-  html += '<div class="ded-item"><span class="ded-label" style="font-weight:700;color:#fff">Total IR PGBL+Bonus (Regressiva)</span><span class="ded-value" style="color:var(--red);font-weight:700;font-size:1rem;">' + fmtBRL(pgblRegTotal.totalIR) + '</span></div>';
-  html += '<div class="ded-item"><span class="ded-label" style="font-weight:700;color:#fff">Liquido PGBL+Bonus (Regressiva)</span><span class="ded-value" style="color:var(--purple);font-weight:700;font-size:1rem;">' + fmtBRL(pgblRegTotal.totalLiquido) + '</span></div>';
-  html += '</div>';
-  html += '</div>';
-
-  // PGBL Progressiva
-  html += '<div class="regime-section" style="margin-top:0.5rem;">';
-  html += '<h4 style="color:var(--purple);">Tabela Progressiva</h4>';
-  html += '<div class="ded-list">';
-  html += '<div class="ded-item"><span class="ded-label">Valor total resgatado (base progressiva)</span><span class="ded-value">' + fmtBRL(pgblProg.totalBruto) + '</span></div>';
-  html += '<div class="ded-item"><span class="ded-label">IR calculado pela tabela progressiva</span><span class="ded-value" style="color:var(--red)">' + fmtBRL(pgblProg.totalIR) + '</span></div>';
-  html += '<div class="ded-item" style="border-top:1px solid var(--border);padding-top:0.5rem;"><span class="ded-label" style="font-weight:700">Total IR PGBL Progressiva (previdencia)</span><span class="ded-value" style="color:var(--red);font-weight:700">' + fmtBRL(pgblProg.totalIR) + '</span></div>';
-  html += '</div>';
-
-  // Bonus reinvestido dentro da progressiva (mesmo calculo, bonus usa regras da carteira)
-  html += '<div style="margin-top:0.8rem;padding-top:0.8rem;border-top:1px dashed var(--border);">';
-  html += '<p style="color:var(--gold);font-size:0.8rem;font-weight:600;margin-bottom:0.5rem;">Bonus reinvestido (Carteira de Investimento — fora da previdencia)</p>';
-  html += '<div class="ded-list">';
-  html += '<div class="ded-item"><span class="ded-label" style="color:var(--gold)">IR Bonus (mesmas faixas da Carteira)</span><span class="ded-value" style="color:var(--red)">' + fmtBRL(pgblBonus.totalIR) + '</span></div>';
-  html += '</div></div>';
-
-  // Total combinado progressiva
-  html += '<div class="ded-list" style="margin-top:0.8rem;padding-top:0.8rem;border-top:1px solid var(--border);">';
-  html += '<div class="ded-item"><span class="ded-label" style="font-weight:700;color:#fff">Total IR PGBL+Bonus (Progressiva)</span><span class="ded-value" style="color:var(--red);font-weight:700;font-size:1rem;">' + fmtBRL(pgblProgTotal.totalIR) + '</span></div>';
-  html += '<div class="ded-item"><span class="ded-label" style="font-weight:700;color:#fff">Liquido PGBL+Bonus (Progressiva)</span><span class="ded-value" style="color:var(--purple);font-weight:700;font-size:1rem;">' + fmtBRL(pgblProgTotal.totalLiquido) + '</span></div>';
-  html += '</div>';
-  html += '</div>';
-
-  html += '</div>';
-
-  // ===== RESGATE TOTAL NO ULTIMO MES =====
-  html += '<div class="card" style="margin-top:1.5rem;border-color:var(--orange);">';
-  html += '<h3 style="color:var(--orange);margin-bottom:0.8rem;">Imposto ao Resgatar Tudo no Ultimo Mes (Mes ' + prazo + ')</h3>';
-  html += '<p style="color:var(--muted);font-size:0.8rem;margin-bottom:0.5rem;">Quanto cada cenario pagaria de IR ao retirar 100% do valor acumulado de uma unica vez no final do periodo.</p>';
+  html += '<div style="margin-top:1.5rem;overflow-x:auto;">';
   html += '<table class="comp-table">';
-  html += '<tr><th></th><th style="color:var(--green)">Carteira</th><th style="color:var(--blue)">VGBL Reg.</th><th style="color:var(--blue)">VGBL Prog.</th><th style="color:var(--purple)">PGBL Reg.</th><th style="color:var(--purple)">PGBL Prog.</th></tr>';
-  html += '<tr><td style="color:var(--muted)">Valor Bruto</td><td>' + fmtBRL(carteira.totalBruto) + '</td><td>' + fmtBRL(vgblReg.totalBruto) + '</td><td>' + fmtBRL(vgblProg.totalBruto) + '</td><td>' + fmtBRL(pgblReg.totalBruto) + '</td><td>' + fmtBRL(pgblProg.totalBruto) + '</td></tr>';
-  html += '<tr><td style="color:var(--muted)">Base do IR</td><td>' + fmtBRL(rendCarteira) + ' <small>(rend.)</small></td><td>' + fmtBRL(rendVGBLReg) + ' <small>(rend.)</small></td><td>' + fmtBRL(Math.max(0,baseVGBLProg)) + ' <small>(rend.)</small></td><td>' + fmtBRL(pgblReg.totalBruto) + ' <small>(total)</small></td><td>' + fmtBRL(pgblProg.totalBruto) + ' <small>(total)</small></td></tr>';
-  html += '<tr><td style="color:var(--muted)">IR Pago</td><td style="color:var(--red)">' + fmtBRL(carteira.totalIR) + '</td><td style="color:var(--red)">' + fmtBRL(vgblReg.totalIR) + '</td><td style="color:var(--red)">' + fmtBRL(vgblProg.totalIR) + '</td><td style="color:var(--red)">' + fmtBRL(pgblReg.totalIR) + '</td><td style="color:var(--red)">' + fmtBRL(pgblProg.totalIR) + '</td></tr>';
-  html += '<tr><td style="color:var(--muted)">Carreg. Saida</td><td>-</td><td style="color:var(--red)">' + fmtBRL(vgblReg.taxaCarregSaida||0) + '</td><td style="color:var(--red)">' + fmtBRL(vgblProg.taxaCarregSaida||0) + '</td><td style="color:var(--red)">' + fmtBRL(pgblReg.taxaCarregSaida||0) + '</td><td style="color:var(--red)">' + fmtBRL(pgblProg.taxaCarregSaida||0) + '</td></tr>';
-  html += '<tr><td style="color:var(--muted);font-weight:700">Liquido na Mao</td><td style="color:var(--green);font-weight:700">' + fmtBRL(carteira.totalLiquido) + '</td><td style="color:var(--blue);font-weight:700">' + fmtBRL(vgblReg.totalLiquido) + '</td><td style="color:var(--blue);font-weight:700">' + fmtBRL(vgblProg.totalLiquido) + '</td><td style="color:var(--purple);font-weight:700">' + fmtBRL(pgblReg.totalLiquido) + '</td><td style="color:var(--purple);font-weight:700">' + fmtBRL(pgblProg.totalLiquido) + '</td></tr>';
+  html += '<tr><th></th>';
+  colunas.forEach(function(c) { html += '<th style="color:' + c.cor + '">' + c.nome + '</th>'; });
+  html += '</tr>';
+
+  var linhas = [
+    {label: 'Total Aportado', key: 'totalAportado', fmt: 'brl'},
+    {label: 'Valor Bruto Acumulado', key: 'totalBruto', fmt: 'brl'},
+    {label: 'Rendimento (Lucro)', key: 'rendimento', fmt: 'brl-cor'},
+    {label: 'Base de Calculo do IR', key: 'baseIR', fmt: 'text-loser'},
+    {label: 'Imposto de Renda', key: 'totalIR', fmt: 'brl-loser'},
+    {label: 'Aliquota Efetiva', key: 'aliqEfetiva', fmt: 'pct-loser'},
+    {label: 'Carreg. Saida', key: 'carregSaida', fmt: 'brl-loser'},
+    {label: 'Valor Liquido Resgate', key: 'totalLiquido', fmt: 'brl-winner'}
+  ];
+
+  linhas.forEach(function(linha) {
+    html += '<tr><td style="font-weight:600;color:var(--muted)">' + linha.label + '</td>';
+    colunas.forEach(function(c) {
+      var val;
+      if (linha.key === 'aliqEfetiva') {
+        var base = c.baseIR === 'Valor Total' ? c.totalBruto : c.rendimento;
+        val = base > 0 ? (c.totalIR / base * 100).toFixed(2) + '%' : '0.00%';
+        html += '<td><span class="loser">' + val + '</span></td>';
+      } else if (linha.fmt === 'brl') {
+        html += '<td>' + fmtBRL(c[linha.key]) + '</td>';
+      } else if (linha.fmt === 'brl-cor') {
+        html += '<td><span style="color:' + c.cor + '">' + fmtBRL(c[linha.key]) + '</span></td>';
+      } else if (linha.fmt === 'brl-loser') {
+        val = c[linha.key] || 0;
+        html += '<td>' + (val > 0 ? '<span class="loser">' + fmtBRL(val) + '</span>' : '-') + '</td>';
+      } else if (linha.fmt === 'brl-winner') {
+        html += '<td><span class="winner">' + fmtBRL(c[linha.key]) + '</span></td>';
+      } else if (linha.fmt === 'text-loser') {
+        html += '<td><span class="loser">' + (c[linha.key] || '-') + '</span></td>';
+      } else {
+        html += '<td>' + (c[linha.key] || '-') + '</td>';
+      }
+    });
+    html += '</tr>';
+  });
   html += '</table></div>';
 
-  // Destaque: Vantagem exclusiva do PGBL na declaracao de IR
-  html += '<div class="card" style="margin-top:1.5rem;border-color:var(--gold);background:rgba(218,165,32,0.05);">';
-  html += '<h3 style="color:var(--gold);margin-bottom:0.5rem;">Vantagem Exclusiva do PGBL na Declaracao de IR</h3>';
-  html += '<p style="color:var(--muted);font-size:0.85rem;margin-bottom:0.8rem;">O PGBL permite deduzir ate 12% da renda bruta tributavel na declaracao completa. A economia gerada no IR e reinvestida como bonus na carteira de investimento.</p>';
-  html += '<div class="ded-list">';
-  html += '<div class="ded-item"><span class="ded-label">Economia anual no IR (informada)</span><span class="ded-value" style="color:var(--gold)">' + fmtBRL(economiaPGBL) + '</span></div>';
-  html += '<div class="ded-item"><span class="ded-label">Economia mensal equivalente</span><span class="ded-value" style="color:var(--gold)">' + fmtBRL(economiaPGBL/12) + '</span></div>';
-  html += '<div class="ded-item"><span class="ded-label">Total reinvestido ao longo de ' + prazo + ' meses</span><span class="ded-value" style="color:var(--gold)">' + fmtBRL(pgblBonus.totalAportado) + '</span></div>';
-  html += '<div class="ded-item"><span class="ded-label">Rendimento gerado pelo bonus</span><span class="ded-value" style="color:var(--green)">' + fmtBRL(pgblBonus.totalBruto - pgblBonus.totalAportado) + '</span></div>';
-  html += '<div class="ded-item" style="border-top:1px solid var(--border);padding-top:0.5rem;"><span class="ded-label" style="font-weight:700;color:#fff">Valor liquido extra gerado APENAS pela vantagem do PGBL</span><span class="ded-value" style="color:var(--gold);font-weight:700;">' + fmtBRL(pgblBonus.totalLiquido) + '</span></div>';
+  // ===== MEMORIA DE CALCULO POR VEICULO =====
+  resultados.forEach(function(r) {
+    if (r.carteira) {
+      html += renderMemoriaCarteira(r.carteira, prazo);
+    } else {
+      html += renderMemoriaPrevidencia(r, prazo);
+    }
+  });
 
-  // Melhor PGBL para comparar com carteira
-  var melhorPGBL = pgblRegTotal.totalLiquido >= pgblProgTotal.totalLiquido ? pgblRegTotal : pgblProgTotal;
-  var melhorPGBLNome = pgblRegTotal.totalLiquido >= pgblProgTotal.totalLiquido ? 'Regressiva' : 'Progressiva';
-  html += '<div class="ded-item"><span class="ded-label" style="font-weight:700;color:#fff">Diferenca total: Melhor PGBL (' + melhorPGBLNome + ') vs Carteira pura</span><span class="ded-value" style="color:var(--green);font-weight:700;">' + fmtBRL(melhorPGBL.totalLiquido - carteira.totalLiquido) + '</span></div>';
-  html += '</div></div>';
-
-  // Diferenca bruta ao longo do tempo
-  html += '<div class="card" style="margin-top:1.5rem;border-color:var(--blue);">';
-  html += '<h3 style="color:var(--blue);margin-bottom:0.5rem;">Diferenca de Valor Bruto ao Longo do Tempo</h3>';
-  html += '<p style="color:var(--muted);font-size:0.8rem;margin-bottom:0.5rem;">Diferenca no acumulo bruto entre os cenarios (VGBL/PGBL nao tem taxa de administracao sobre o saldo).</p>';
-  var diffBrutoVGBL = vgblReg.totalBruto - carteira.totalBruto;
-  var diffBrutoPGBL = pgblReg.totalBruto - carteira.totalBruto;
-  html += '<div class="ded-list">';
-  html += '<div class="ded-item"><span class="ded-label">VGBL Bruto - Carteira Bruto</span><span class="ded-value" style="color:' + (diffBrutoVGBL >= 0 ? 'var(--green)' : 'var(--red)') + '">' + fmtBRL(diffBrutoVGBL) + '</span></div>';
-  html += '<div class="ded-item"><span class="ded-label">PGBL Bruto - Carteira Bruto</span><span class="ded-value" style="color:' + (diffBrutoPGBL >= 0 ? 'var(--green)' : 'var(--red)') + '">' + fmtBRL(diffBrutoPGBL) + '</span></div>';
-  html += '</div></div>';
-
-  // Verdict
-  var economia = melhor.totalLiquido - cenarios[cenarios.length - 1].totalLiquido;
+  // ===== VEREDITO =====
   html += '<div class="verdict-box" style="margin-top:1.5rem;">';
-  html += '<h3>Melhor Cenario: ' + melhor.nome + '</h3>';
-  html += '<div class="big-number">' + fmtBRL(melhor.totalLiquido) + '</div>';
-  html += '<p>liquido no resgate apos ' + prazo + ' meses</p>';
-  if (economia > 0) {
-    html += '<p style="margin-top:0.5rem;color:var(--green);font-size:0.9rem;">' + fmtBRL(economia) + ' a mais que o pior cenario</p>';
-  }
+  html += '<h3>Melhor Cenario</h3>';
+  html += '<div class="big-number">' + melhor.nome + '</div>';
+  html += '<p style="color:var(--green);font-size:1.2rem;font-weight:700;margin-top:0.5rem;">' + fmtBRL(melhor.totalLiquido) + '</p>';
+  var diff = melhor.totalLiquido - colunas.reduce(function(worst, c) { return c.totalLiquido < worst.totalLiquido ? c : worst; }, colunas[0]).totalLiquido;
+  if (diff > 0) html += '<p style="color:var(--muted);font-size:0.85rem;margin-top:0.3rem;">Vantagem de ' + fmtBRL(diff) + ' sobre o pior cenario</p>';
   html += '</div>';
 
-  // Charts
-  html += '<div style="display:flex;gap:1.5rem;flex-wrap:wrap;margin-top:2rem;">';
+  // ===== GRAFICOS =====
+  html += '<div style="display:flex;gap:1.5rem;margin-top:2rem;flex-wrap:wrap;">';
   html += '<div class="chart-container" style="flex:1;min-width:300px;"><canvas id="chart-evolucao"></canvas></div>';
   html += '<div class="chart-container" style="flex:1;min-width:300px;"><canvas id="chart-comparativo"></canvas></div>';
   html += '</div>';
 
-  // Tabela mes a mes
+  // ===== TABELA MES A MES =====
   html += '<div style="margin-top:2rem;overflow-x:auto;">';
   html += '<h3 style="margin-bottom:0.5rem;">Evolucao Mes a Mes</h3>';
   html += '<table class="comp-table" style="font-size:0.72rem;">';
-  html += '<tr><th>Mes</th><th>Aporte</th><th>Total Aportado</th><th>Carteira</th><th>VGBL</th><th>PGBL</th>';
-  if (pgblBonus.historico.length > 0) html += '<th>Bonus PGBL</th>';
+  html += '<tr><th>Mes</th><th>Aporte</th><th>Total Aportado</th>';
+  colunas.forEach(function(c) { html += '<th style="color:' + c.cor + '">' + c.nome + '</th>'; });
   html += '</tr>';
 
   var step = prazo <= 60 ? 1 : prazo <= 120 ? 3 : prazo <= 240 ? 6 : 12;
   for (var m = step; m <= prazo; m += step) {
     var idx = m - 1;
-    var cH = carteira.historico[idx] || {};
-    var vH = vgblReg.historico[idx] || {};
-    var pH = pgblReg.historico[idx] || {};
-    var bH = pgblBonus.historico[idx] || {};
-    html += '<tr>';
-    html += '<td>' + m + '</td>';
-    html += '<td>' + fmtBRL(cH.aporte || 0) + '</td>';
-    html += '<td>' + fmtBRL(cH.totalAportado || 0) + '</td>';
-    html += '<td style="color:var(--green)">' + fmtBRL(cH.saldo || 0) + '</td>';
-    html += '<td style="color:var(--blue)">' + fmtBRL(vH.saldo || 0) + '</td>';
-    html += '<td style="color:var(--purple)">' + fmtBRL(pH.saldo || 0) + '</td>';
-    if (pgblBonus.historico.length > 0) html += '<td style="color:var(--orange)">' + fmtBRL(bH.saldo || 0) + '</td>';
+    html += '<tr><td>' + m + '</td>';
+    // Aporte e total aportado do primeiro veiculo como referencia
+    var refH = colunas[0].historico[idx] || {};
+    html += '<td>' + fmtBRL(refH.aporte || 0) + '</td>';
+    html += '<td>' + fmtBRL(refH.totalAportado || 0) + '</td>';
+    colunas.forEach(function(c) {
+      var h = c.historico[idx] || {};
+      var saldo = h.saldo || 0;
+      if (c.bonusHistorico && c.bonusHistorico[idx]) saldo += c.bonusHistorico[idx].saldo || 0;
+      html += '<td style="color:' + c.cor + '">' + fmtBRL(saldo) + '</td>';
+    });
     html += '</tr>';
   }
-  // Sempre mostrar ultimo mes
   if (prazo % step !== 0) {
     var idx = prazo - 1;
-    var cH = carteira.historico[idx] || {};
-    var vH = vgblReg.historico[idx] || {};
-    var pH = pgblReg.historico[idx] || {};
-    var bH = pgblBonus.historico[idx] || {};
-    html += '<tr style="font-weight:700;">';
-    html += '<td>' + prazo + '</td>';
-    html += '<td>' + fmtBRL(cH.aporte || 0) + '</td>';
-    html += '<td>' + fmtBRL(cH.totalAportado || 0) + '</td>';
-    html += '<td style="color:var(--green)">' + fmtBRL(cH.saldo || 0) + '</td>';
-    html += '<td style="color:var(--blue)">' + fmtBRL(vH.saldo || 0) + '</td>';
-    html += '<td style="color:var(--purple)">' + fmtBRL(pH.saldo || 0) + '</td>';
-    if (pgblBonus.historico.length > 0) html += '<td style="color:var(--orange)">' + fmtBRL(bH.saldo || 0) + '</td>';
+    html += '<tr style="font-weight:700;"><td>' + prazo + '</td>';
+    var refH = colunas[0].historico[idx] || {};
+    html += '<td>' + fmtBRL(refH.aporte || 0) + '</td>';
+    html += '<td>' + fmtBRL(refH.totalAportado || 0) + '</td>';
+    colunas.forEach(function(c) {
+      var h = c.historico[idx] || {};
+      var saldo = h.saldo || 0;
+      if (c.bonusHistorico && c.bonusHistorico[idx]) saldo += c.bonusHistorico[idx].saldo || 0;
+      html += '<td style="color:' + c.cor + '">' + fmtBRL(saldo) + '</td>';
+    });
     html += '</tr>';
   }
   html += '</table></div>';
 
   document.getElementById('resultado-area').innerHTML = html;
-  renderCharts(carteira, vgblReg, vgblProg, pgblReg, pgblProg, pgblBonus, prazo);
+  renderCharts(colunas, prazo);
 }
 
-function renderCharts(carteira, vgblReg, vgblProg, pgblReg, pgblProg, pgblBonus, prazo) {
+
+// ===== MEMORIA DE CALCULO: CARTEIRA =====
+function renderMemoriaCarteira(res, prazo) {
+  var html = '<div class="card" style="margin-top:1.5rem;border-color:var(--green);">';
+  html += '<h3 style="color:var(--green);margin-bottom:0.8rem;">Memoria de Calculo do IR — ' + res.nome + '</h3>';
+  html += '<p style="color:var(--muted);font-size:0.8rem;margin-bottom:0.8rem;">Cada investimento da carteira tem seu proprio calculo de IR.</p>';
+
+  res.investimentosResult.forEach(function(invR) {
+    var tipoLabel = {'COM_IR':'COM IR (tabela regressiva)','SEM_IR':'SEM IR (isento)','COM_IR_COMECOTAS':'COM IR + Come-Cotas'}[invR.tipo] || invR.tipo;
+    html += '<div style="margin-bottom:1rem;padding:0.8rem;background:var(--card2);border-radius:6px;">';
+    html += '<h4 style="font-size:0.85rem;color:var(--green);margin-bottom:0.5rem;">' + (invR.nome || 'Investimento') + ' <span style="font-size:0.7rem;color:var(--muted);">(' + tipoLabel + ')</span></h4>';
+    html += '<div class="ded-list">';
+
+    if (invR.tipo === 'SEM_IR') {
+      html += '<div class="ded-item"><span class="ded-label">Isento de IR</span><span class="ded-value" style="color:var(--green);">R$ 0,00</span></div>';
+    } else if (invR.tipo === 'COM_IR') {
+      var faixas = [{label:'Ate 6 meses (22,5%)', aliq:0.225, ir:0, rend:0}, {label:'6-12 meses (20%)', aliq:0.20, ir:0, rend:0}, {label:'12-24 meses (17,5%)', aliq:0.175, ir:0, rend:0}, {label:'Acima 24 meses (15%)', aliq:0.15, ir:0, rend:0}];
+      invR.lotes.forEach(function(l) {
+        var rend = Math.max(0, l.saldo - l.valorAportado);
+        var diasAcum = (prazo - l.mesEntrada) * 30;
+        var idx = diasAcum <= 180 ? 0 : diasAcum <= 360 ? 1 : diasAcum <= 720 ? 2 : 3;
+        faixas[idx].rend += rend;
+        faixas[idx].ir += rend * faixas[idx].aliq;
+      });
+      faixas.forEach(function(f) {
+        if (f.rend > 0) {
+          html += '<div class="ded-item"><span class="ded-label">' + f.label + '</span><span class="ded-value">Rend: ' + fmtBRL(f.rend) + ' &rarr; IR: <span style="color:var(--red)">' + fmtBRL(f.ir) + '</span></span></div>';
+        }
+      });
+    } else if (invR.tipo === 'COM_IR_COMECOTAS') {
+      html += '<div class="ded-item"><span class="ded-label">Come-Cotas pago durante o periodo</span><span class="ded-value" style="color:var(--orange)">' + fmtBRL(invR.comeCotasPago) + '</span></div>';
+      var faixas = [{label:'Ate 6 meses (22,5%)', aliq:0.225, ir:0, rend:0}, {label:'6-12 meses (20%)', aliq:0.20, ir:0, rend:0}, {label:'12-24 meses (17,5%)', aliq:0.175, ir:0, rend:0}, {label:'Acima 24 meses (15%)', aliq:0.15, ir:0, rend:0}];
+      invR.lotes.forEach(function(l) {
+        var rend = Math.max(0, l.saldo - l.valorAportado);
+        var diasAcum = (prazo - l.mesEntrada) * 30;
+        var idx = diasAcum <= 180 ? 0 : diasAcum <= 360 ? 1 : diasAcum <= 720 ? 2 : 3;
+        faixas[idx].rend += rend;
+        var irTotal = rend * faixas[idx].aliq;
+        faixas[idx].ir += Math.max(0, irTotal - l.comeCotasPago);
+      });
+      faixas.forEach(function(f) {
+        if (f.rend > 0) {
+          html += '<div class="ded-item"><span class="ded-label">' + f.label + '</span><span class="ded-value">Rend: ' + fmtBRL(f.rend) + ' &rarr; IR complementar: <span style="color:var(--red)">' + fmtBRL(f.ir) + '</span></span></div>';
+        }
+      });
+    }
+
+    html += '<div class="ded-item" style="border-top:1px solid var(--border);padding-top:0.5rem;"><span class="ded-label" style="font-weight:700">Total IR ' + (invR.nome || 'Investimento') + '</span><span class="ded-value" style="color:var(--red);font-weight:700">' + fmtBRL(invR.ir) + '</span></div>';
+    html += '</div></div>';
+  });
+
+  html += '<div class="ded-list" style="margin-top:0.5rem;">';
+  html += '<div class="ded-item" style="border-top:2px solid var(--green);padding-top:0.8rem;"><span class="ded-label" style="font-weight:700;font-size:0.9rem;">Total IR ' + res.nome + '</span><span class="ded-value" style="color:var(--red);font-weight:700;font-size:0.95rem;">' + fmtBRL(res.totalIR) + '</span></div>';
+  html += '<div class="ded-item"><span class="ded-label" style="font-weight:700;font-size:0.9rem;">Liquido ' + res.nome + '</span><span class="ded-value" style="color:var(--green);font-weight:700;font-size:0.95rem;">' + fmtBRL(res.totalLiquido) + '</span></div>';
+  html += '</div>';
+  html += '</div>';
+  return html;
+}
+
+// ===== MEMORIA DE CALCULO: PREVIDENCIA (PGBL/VGBL) =====
+function renderMemoriaPrevidencia(r, prazo) {
+  var vc = r.veiculo;
+  var cor = vc.tipo === 'PGBL' ? 'var(--purple)' : 'var(--blue)';
+  var nomeBase = vc.nome || vc.tipo;
+
+  var html = '<div class="card" style="margin-top:1.5rem;border-color:' + cor + ';">';
+  html += '<h3 style="color:' + cor + ';margin-bottom:0.8rem;">Memoria de Calculo do IR — ' + nomeBase;
+  if (r.bonus) html += ' + Bonus';
+  html += '</h3>';
+
+  if (vc.tipo === 'PGBL') {
+    html += '<p style="color:var(--muted);font-size:0.8rem;margin-bottom:0.5rem;">IR do PGBL incide sobre o <strong>valor total resgatado</strong>. O bonus reinvestido segue as regras da Carteira (IR sobre rendimento).</p>';
+  } else {
+    html += '<p style="color:var(--muted);font-size:0.8rem;margin-bottom:0.5rem;">IR do VGBL incide sobre o <strong>rendimento total</strong> (bruto - aportado).</p>';
+  }
+
+  // === REGRESSIVA ===
+  html += '<div class="regime-section">';
+  html += '<h4 style="color:' + cor + ';">Tabela Regressiva</h4>';
+  html += '<div class="ded-list">';
+
+  var faixasReg = [{label:'Ate 2 anos (35%)', aliq:0.35, ir:0, base:0}, {label:'2-4 anos (30%)', aliq:0.30, ir:0, base:0}, {label:'4-6 anos (25%)', aliq:0.25, ir:0, base:0}, {label:'6-8 anos (20%)', aliq:0.20, ir:0, base:0}, {label:'8-10 anos (15%)', aliq:0.15, ir:0, base:0}, {label:'Acima 10 anos (10%)', aliq:0.10, ir:0, base:0}];
+  r.regReg.lotes.forEach(function(l) {
+    var anosAcum = (prazo - l.mesEntrada) / 12;
+    var base;
+    if (vc.tipo === 'PGBL') { base = l.saldo; }
+    else { base = Math.max(0, l.saldo - l.valorAportado); }
+    var idx = anosAcum <= 2 ? 0 : anosAcum <= 4 ? 1 : anosAcum <= 6 ? 2 : anosAcum <= 8 ? 3 : anosAcum <= 10 ? 4 : 5;
+    faixasReg[idx].base += base;
+    faixasReg[idx].ir += base * faixasReg[idx].aliq;
+  });
+  var labelBase = vc.tipo === 'PGBL' ? 'Base' : 'Rend';
+  faixasReg.forEach(function(f) {
+    if (f.base > 0) {
+      html += '<div class="ded-item"><span class="ded-label">' + f.label + '</span><span class="ded-value">' + labelBase + ': ' + fmtBRL(f.base) + ' &rarr; IR: <span style="color:var(--red)">' + fmtBRL(f.ir) + '</span></span></div>';
+    }
+  });
+  html += '<div class="ded-item" style="border-top:1px solid var(--border);padding-top:0.5rem;"><span class="ded-label" style="font-weight:700">Total IR ' + vc.tipo + ' Regressiva (previdencia)</span><span class="ded-value" style="color:var(--red);font-weight:700">' + fmtBRL(r.regReg.totalIR) + '</span></div>';
+  html += '</div>';
+
+  // Bonus dentro da regressiva
+  if (r.bonus && r.bonus.lotes.length > 0) {
+    html += '<div style="margin-top:0.8rem;padding-top:0.8rem;border-top:1px dashed var(--border);">';
+    html += '<p style="color:var(--gold);font-size:0.8rem;font-weight:600;margin-bottom:0.5rem;">Bonus reinvestido (Carteira de Investimento — fora da previdencia)</p>';
+    html += '<div class="ded-list">';
+    var faixasBonus = [{label:'Ate 6 meses (22,5%)', aliq:0.225, ir:0, rend:0, saldo:0}, {label:'6-12 meses (20%)', aliq:0.20, ir:0, rend:0, saldo:0}, {label:'12-24 meses (17,5%)', aliq:0.175, ir:0, rend:0, saldo:0}, {label:'Acima 24 meses (15%)', aliq:0.15, ir:0, rend:0, saldo:0}];
+    r.bonus.lotes.forEach(function(l) {
+      var diasAcum = (prazo - l.mesEntrada) * 30;
+      var rend = Math.max(0, l.saldo - l.valorAportado);
+      var idx = diasAcum <= 180 ? 0 : diasAcum <= 360 ? 1 : diasAcum <= 720 ? 2 : 3;
+      faixasBonus[idx].rend += rend;
+      faixasBonus[idx].saldo += l.saldo;
+      faixasBonus[idx].ir += rend * faixasBonus[idx].aliq;
+    });
+    faixasBonus.forEach(function(f) {
+      if (f.saldo > 0) {
+        html += '<div class="ded-item"><span class="ded-label">' + f.label + '</span><span class="ded-value">Rend: ' + fmtBRL(f.rend) + ' &rarr; IR: <span style="color:var(--red)">' + fmtBRL(f.ir) + '</span></span></div>';
+      }
+    });
+    html += '<div class="ded-item" style="border-top:1px solid var(--border);padding-top:0.5rem;"><span class="ded-label" style="font-weight:700">Total IR Bonus</span><span class="ded-value" style="color:var(--red);font-weight:700">' + fmtBRL(r.bonus.totalIR) + '</span></div>';
+    html += '</div></div>';
+
+    html += '<div class="ded-list" style="margin-top:0.5rem;">';
+    html += '<div class="ded-item" style="border-top:2px solid ' + cor + ';padding-top:0.5rem;"><span class="ded-label" style="font-weight:700">Total IR ' + vc.tipo + '+Bonus (Regressiva)</span><span class="ded-value" style="color:var(--red);font-weight:700">' + fmtBRL(r.regReg.totalIR + r.bonus.totalIR) + '</span></div>';
+    html += '<div class="ded-item"><span class="ded-label" style="font-weight:700">Liquido ' + vc.tipo + '+Bonus (Regressiva)</span><span class="ded-value" style="color:var(--purple);font-weight:700">' + fmtBRL(r.regReg.totalLiquido + r.bonus.totalLiquido) + '</span></div>';
+    html += '</div>';
+  }
+  html += '</div>'; // fecha regime-section regressiva
+
+  // === PROGRESSIVA ===
+  html += '<div class="regime-section" style="margin-top:0.5rem;">';
+  html += '<h4 style="color:' + cor + ';">Tabela Progressiva</h4>';
+  html += '<div class="ded-list">';
+
+  if (vc.tipo === 'PGBL') {
+    html += '<div class="ded-item"><span class="ded-label">Base: valor total resgatado</span><span class="ded-value">' + fmtBRL(r.regProg.totalBruto) + '</span></div>';
+  } else {
+    var baseVP = r.regProg.totalBruto - r.regProg.lotes.reduce(function(s,l){return s+l.valorAportado;},0);
+    html += '<div class="ded-item"><span class="ded-label">Rendimento total (base progressiva)</span><span class="ded-value">' + fmtBRL(Math.max(0,baseVP)) + '</span></div>';
+  }
+  html += '<div class="ded-item"><span class="ded-label">IR calculado pela tabela progressiva</span><span class="ded-value" style="color:var(--red)">' + fmtBRL(r.regProg.totalIR) + '</span></div>';
+  html += '<div class="ded-item" style="border-top:1px solid var(--border);padding-top:0.5rem;"><span class="ded-label" style="font-weight:700">Total IR ' + vc.tipo + ' Progressiva (previdencia)</span><span class="ded-value" style="color:var(--red);font-weight:700">' + fmtBRL(r.regProg.totalIR) + '</span></div>';
+  html += '</div>';
+
+  // Bonus dentro da progressiva (mesmo valor, pois bonus nao muda com regime)
+  if (r.bonus && r.bonus.lotes.length > 0) {
+    html += '<div style="margin-top:0.8rem;padding-top:0.8rem;border-top:1px dashed var(--border);">';
+    html += '<p style="color:var(--gold);font-size:0.8rem;font-weight:600;margin-bottom:0.5rem;">Bonus reinvestido (mesmo calculo — nao depende do regime)</p>';
+    html += '<div class="ded-list">';
+    html += '<div class="ded-item"><span class="ded-label">Total IR Bonus</span><span class="ded-value" style="color:var(--red)">' + fmtBRL(r.bonus.totalIR) + '</span></div>';
+    html += '</div></div>';
+
+    html += '<div class="ded-list" style="margin-top:0.5rem;">';
+    html += '<div class="ded-item" style="border-top:2px solid ' + cor + ';padding-top:0.5rem;"><span class="ded-label" style="font-weight:700">Total IR ' + vc.tipo + '+Bonus (Progressiva)</span><span class="ded-value" style="color:var(--red);font-weight:700">' + fmtBRL(r.regProg.totalIR + r.bonus.totalIR) + '</span></div>';
+    html += '<div class="ded-item"><span class="ded-label" style="font-weight:700">Liquido ' + vc.tipo + '+Bonus (Progressiva)</span><span class="ded-value" style="color:var(--purple);font-weight:700">' + fmtBRL(r.regProg.totalLiquido + r.bonus.totalLiquido) + '</span></div>';
+    html += '</div>';
+  }
+  html += '</div>'; // fecha regime-section progressiva
+
+  html += '</div>'; // fecha card
+  return html;
+}
+
+// ===== GRAFICOS =====
+function renderCharts(colunas, prazo) {
+  // Destroy existing charts
   Chart.helpers.each(Chart.instances, function(instance) { instance.destroy(); });
 
   var step = prazo <= 60 ? 1 : prazo <= 120 ? 3 : prazo <= 240 ? 6 : 12;
   var labels = [];
-  var dataCarteira = [];
-  var dataVGBL = [];
-  var dataPGBL = [];
-  var dataAportado = [];
+  var datasets = [];
 
+  // Aportado (referencia)
+  var dataAportado = [];
   for (var m = step; m <= prazo; m += step) {
     labels.push('M' + m);
-    dataCarteira.push(carteira.historico[m-1]?.saldo || 0);
-    dataVGBL.push(vgblReg.historico[m-1]?.saldo || 0);
-    dataPGBL.push((pgblReg.historico[m-1]?.saldo || 0) + (pgblBonus.historico[m-1]?.saldo || 0));
-    dataAportado.push(carteira.historico[m-1]?.totalAportado || 0);
+    var h = colunas[0].historico[m-1] || {};
+    dataAportado.push(h.totalAportado || 0);
   }
   if (prazo % step !== 0) {
     labels.push('M' + prazo);
-    dataCarteira.push(carteira.historico[prazo-1]?.saldo || 0);
-    dataVGBL.push(vgblReg.historico[prazo-1]?.saldo || 0);
-    dataPGBL.push((pgblReg.historico[prazo-1]?.saldo || 0) + (pgblBonus.historico[prazo-1]?.saldo || 0));
-    dataAportado.push(carteira.historico[prazo-1]?.totalAportado || 0);
+    var h = colunas[0].historico[prazo-1] || {};
+    dataAportado.push(h.totalAportado || 0);
   }
+  datasets.push({label: 'Total Aportado', data: dataAportado, borderColor: '#fb923c', backgroundColor: 'rgba(251,146,60,0.1)', fill: true, tension: 0.3, borderWidth: 2});
+
+  // Cores para colunas
+  var cores = ['#22c55e', '#60a5fa', '#818cf8', '#a78bfa', '#c084fc', '#f472b6', '#fb923c', '#facc15', '#34d399', '#38bdf8'];
+  colunas.forEach(function(c, i) {
+    var data = [];
+    for (var m = step; m <= prazo; m += step) {
+      var h = c.historico[m-1] || {};
+      var saldo = h.saldo || 0;
+      if (c.bonusHistorico && c.bonusHistorico[m-1]) saldo += c.bonusHistorico[m-1].saldo || 0;
+      data.push(saldo);
+    }
+    if (prazo % step !== 0) {
+      var h = c.historico[prazo-1] || {};
+      var saldo = h.saldo || 0;
+      if (c.bonusHistorico && c.bonusHistorico[prazo-1]) saldo += c.bonusHistorico[prazo-1].saldo || 0;
+      data.push(saldo);
+    }
+    datasets.push({label: c.nome, data: data, borderColor: cores[i % cores.length], backgroundColor: 'transparent', tension: 0.3, borderWidth: 2});
+  });
 
   var ctx1 = document.getElementById('chart-evolucao');
   if (ctx1) {
     new Chart(ctx1, {
       type: 'line',
-      data: {
-        labels: labels,
-        datasets: [
-          {label: 'Total Aportado', data: dataAportado, borderColor: '#fb923c', backgroundColor: 'rgba(251,146,60,0.1)', fill: true, tension: 0.3, borderWidth: 2},
-          {label: 'Carteira', data: dataCarteira, borderColor: '#22c55e', backgroundColor: 'transparent', tension: 0.3, borderWidth: 2},
-          {label: 'VGBL', data: dataVGBL, borderColor: '#60a5fa', backgroundColor: 'transparent', tension: 0.3, borderWidth: 2},
-          {label: 'PGBL + Bonus', data: dataPGBL, borderColor: '#a78bfa', backgroundColor: 'transparent', tension: 0.3, borderWidth: 2}
-        ]
-      },
+      data: { labels: labels, datasets: datasets },
       options: {
-        responsive: true,
-        maintainAspectRatio: false,
+        responsive: true, maintainAspectRatio: false,
         plugins: { legend: { labels: { color: '#A0B8A6', font: {size: 10} } }, title: { display: true, text: 'Evolucao do Saldo Bruto', color: '#D4AF37', font: {size: 12} } },
         scales: { x: { ticks: { color: '#A0B8A6', font: {size: 9} }, grid: { color: 'rgba(212,175,55,0.05)' } }, y: { ticks: { color: '#A0B8A6', font: {size: 9}, callback: function(v) { return 'R$ ' + (v/1000).toFixed(0) + 'k'; } }, grid: { color: 'rgba(212,175,55,0.08)' } } }
       }
     });
   }
 
+  // Bar chart: Liquido vs IR
+  var barLabels = colunas.map(function(c) { return c.nome; });
+  var barLiquido = colunas.map(function(c) { return c.totalLiquido; });
+  var barIR = colunas.map(function(c) { return c.totalIR; });
+  var barCores = colunas.map(function(c, i) { return cores[i % cores.length].replace(')', ',0.7)').replace('rgb', 'rgba'); });
+  // Fallback if replace doesn't work for hex
+  var barCoresLiquido = colunas.map(function(c, i) { return cores[i % cores.length]; });
+
   var ctx2 = document.getElementById('chart-comparativo');
   if (ctx2) {
     new Chart(ctx2, {
       type: 'bar',
       data: {
-        labels: ['Carteira', 'VGBL Reg.', 'VGBL Prog.', 'PGBL+B Reg.', 'PGBL+B Prog.'],
+        labels: barLabels,
         datasets: [
-          {label: 'Valor Liquido', data: [carteira.totalLiquido, vgblReg.totalLiquido, vgblProg.totalLiquido, pgblReg.totalLiquido + pgblBonus.totalLiquido, pgblProg.totalLiquido + pgblBonus.totalLiquido], backgroundColor: ['rgba(34,197,94,0.7)', 'rgba(96,165,250,0.7)', 'rgba(96,165,250,0.5)', 'rgba(167,139,250,0.7)', 'rgba(167,139,250,0.5)']},
-          {label: 'IR Pago', data: [carteira.totalIR, vgblReg.totalIR, vgblProg.totalIR, pgblReg.totalIR + pgblBonus.totalIR, pgblProg.totalIR + pgblBonus.totalIR], backgroundColor: ['rgba(239,68,68,0.5)', 'rgba(239,68,68,0.5)', 'rgba(239,68,68,0.5)', 'rgba(239,68,68,0.5)', 'rgba(239,68,68,0.5)']}
+          {label: 'Valor Liquido', data: barLiquido, backgroundColor: barCoresLiquido.map(function(c) { return c + '99'; })},
+          {label: 'IR Pago', data: barIR, backgroundColor: barIR.map(function() { return 'rgba(239,68,68,0.5)'; })}
         ]
       },
       options: {
-        responsive: true,
-        maintainAspectRatio: false,
+        responsive: true, maintainAspectRatio: false,
         plugins: { legend: { labels: { color: '#A0B8A6', font: {size: 10} } }, title: { display: true, text: 'Comparativo: Liquido vs IR', color: '#D4AF37', font: {size: 12} } },
-        scales: { x: { ticks: { color: '#A0B8A6' }, grid: { color: 'rgba(212,175,55,0.05)' } }, y: { ticks: { color: '#A0B8A6', font: {size: 9}, callback: function(v) { return 'R$ ' + (v/1000).toFixed(0) + 'k'; } }, grid: { color: 'rgba(212,175,55,0.08)' } } }
+        scales: { x: { ticks: { color: '#A0B8A6', font: {size: 8} }, grid: { color: 'rgba(212,175,55,0.05)' } }, y: { ticks: { color: '#A0B8A6', font: {size: 9}, callback: function(v) { return 'R$ ' + (v/1000).toFixed(0) + 'k'; } }, grid: { color: 'rgba(212,175,55,0.08)' } } }
       }
     });
   }
 }
 
+
 // ===== SIMULACOES CRUD =====
 function novaSim() {
   currentSimIdx = -1;
   aportes = [];
+  veiculos = [];
   resetForm();
   document.getElementById('list-view').style.display = 'none';
   document.getElementById('editor-view').style.display = 'block';
   renderAportes();
+  renderVeiculos();
 }
 
 function resetForm() {
   document.getElementById('sim-nome').value = '';
   document.getElementById('prazo-meses').value = '120';
-  document.getElementById('rentabilidade-aa').value = '';
-  document.getElementById('saldo-inicial').value = '';
-  document.getElementById('taxa-carreg-entrada').value = '';
-  document.getElementById('taxa-carreg-saida').value = '';
-  document.getElementById('taxa-admin').value = '';
-  document.getElementById('economia-pgbl').value = '';
   document.getElementById('reajuste-global').value = '';
-  document.getElementById('resultado-area').innerHTML = '<div class="empty-state" style="padding:30px;"><div class="icon">&#128202;</div><p>Configure os parametros e aportes, depois clique em <strong>Calcular</strong>.</p></div>';
+  document.getElementById('resultado-area').innerHTML = '<div class="empty-state" style="padding:30px;"><div class="icon">&#128202;</div><p>Configure os parametros, veiculos e aportes, depois clique em <strong>Calcular</strong>.</p></div>';
   switchTab('config');
 }
 
@@ -1252,13 +1674,8 @@ function buildPayload() {
   return {
     nome: document.getElementById('sim-nome').value.trim() || 'Simulacao ' + (simulations.length + 1),
     prazo: parseInt(document.getElementById('prazo-meses').value) || 120,
-    rentAA: parsePct(document.getElementById('rentabilidade-aa')),
-    saldoInicial: parseCurrency(document.getElementById('saldo-inicial')),
-    taxaCarregEntrada: parsePct(document.getElementById('taxa-carreg-entrada')),
-    taxaCarregSaida: parsePct(document.getElementById('taxa-carreg-saida')),
-    taxaAdmin: parsePct(document.getElementById('taxa-admin')),
-    economiaPGBL: parseCurrency(document.getElementById('economia-pgbl')),
     reajusteGlobal: parsePct(document.getElementById('reajuste-global')),
+    veiculos: JSON.parse(JSON.stringify(veiculos)),
     aportes: JSON.parse(JSON.stringify(aportes)),
     dataSalvo: new Date().toISOString()
   };
@@ -1267,15 +1684,11 @@ function buildPayload() {
 function applyPayload(p) {
   document.getElementById('sim-nome').value = p.nome || '';
   document.getElementById('prazo-meses').value = p.prazo || 120;
-  document.getElementById('rentabilidade-aa').value = p.rentAA || '';
-  document.getElementById('saldo-inicial').value = p.saldoInicial ? fmtBRL(p.saldoInicial) : '';
-  document.getElementById('taxa-carreg-entrada').value = p.taxaCarregEntrada || '';
-  document.getElementById('taxa-carreg-saida').value = p.taxaCarregSaida || '';
-  document.getElementById('taxa-admin').value = p.taxaAdmin || '';
-  document.getElementById('economia-pgbl').value = p.economiaPGBL ? fmtBRL(p.economiaPGBL) : '';
   document.getElementById('reajuste-global').value = p.reajusteGlobal || '';
+  veiculos = p.veiculos ? JSON.parse(JSON.stringify(p.veiculos)) : [];
   aportes = p.aportes ? JSON.parse(JSON.stringify(p.aportes)) : [];
   renderAportes();
+  renderVeiculos();
 }
 
 function salvarSim() {
@@ -1324,11 +1737,12 @@ function renderLista() {
   var html = '';
   simulations.forEach(function(sim, i) {
     var nAportes = sim.aportes ? sim.aportes.length : 0;
+    var nVeiculos = sim.veiculos ? sim.veiculos.length : 0;
     html += '<div class="sim-card" onclick="toggleCard(this,event)">';
     html += '<div class="sim-card-header">';
     html += '<div class="chevron">&#9660;</div>';
     html += '<div class="sim-title">' + (sim.nome || 'Simulacao ' + (i+1)) + '</div>';
-    html += '<div class="sim-meta">' + sim.prazo + ' meses | ' + nAportes + ' aporte(s)</div>';
+    html += '<div class="sim-meta">' + sim.prazo + ' meses | ' + nVeiculos + ' veiculo(s) | ' + nAportes + ' aporte(s)</div>';
     html += '<div class="sim-card-actions">';
     html += '<button onclick="editarSim('+i+');event.stopPropagation();">Editar</button>';
     html += '<button class="dup" onclick="duplicarSim('+i+');event.stopPropagation();">Duplicar</button>';
@@ -1336,7 +1750,7 @@ function renderLista() {
     html += '</div></div>';
     html += '<div class="sim-card-body"><div class="sim-card-summary">';
     html += '<div class="stat"><div class="stat-label">Prazo</div><div class="stat-value" style="color:#fff">' + sim.prazo + ' m</div></div>';
-    html += '<div class="stat"><div class="stat-label">Rent.</div><div class="stat-value" style="color:var(--green)">' + (sim.rentAA||0) + '%</div></div>';
+    html += '<div class="stat"><div class="stat-label">Veiculos</div><div class="stat-value" style="color:var(--green)">' + nVeiculos + '</div></div>';
     html += '<div class="stat"><div class="stat-label">Aportes</div><div class="stat-value" style="color:var(--orange)">' + nAportes + '</div></div>';
     html += '</div></div></div>';
   });
