@@ -1,0 +1,1190 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Simulador de Acumulo - MithraSF</title>
+<link rel="stylesheet" href="../assets/style.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="../assets/layout.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #021C0E;
+    --card: #052614;
+    --card2: #0A3520;
+    --fg: #F2E8C9;
+    --muted: #A0B8A6;
+    --primary: #D4AF37;
+    --primary-dim: rgba(212,175,55,0.15);
+    --border: rgba(212,175,55,0.2);
+    --green: #22c55e;
+    --red: #ef4444;
+    --blue: #60a5fa;
+    --purple: #a78bfa;
+    --orange: #fb923c;
+    --radius: 10px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  h1 { font-size: 1.6rem; font-weight: 700; color: #fff; }
+  h2 { font-size: 1.1rem; font-weight: 600; color: var(--primary); margin-bottom: 1rem; }
+  h3 { font-size: 0.95rem; font-weight: 600; color: #fff; }
+  .page { max-width: 1200px; margin: 0 auto; padding: 2rem 1rem 4rem; }
+  .page-header { display: flex; align-items: center; gap: 14px; margin-bottom: 2rem; flex-wrap: wrap; }
+  .page-header-info { flex: 1; min-width: 0; }
+  .page-header-info h1 { display: flex; align-items: center; gap: 8px; margin: 0 0 4px; }
+  .page-header-info p { color: var(--muted); margin: 0; font-size: 0.85rem; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.5rem; margin-bottom: 1.5rem; }
+  .field { display: flex; flex-direction: column; gap: 0.4rem; }
+  .field label { font-size: 0.8rem; color: var(--muted); font-weight: 500; }
+  .field input, .field select { background: var(--card2); border: 1px solid var(--border); border-radius: 6px; color: var(--fg); padding: 0.5rem 0.75rem; font-size: 0.9rem; outline: none; width: 100%; transition: border-color 0.2s; }
+  .field input:focus, .field select:focus { border-color: var(--primary); }
+  .field select option { background: var(--card); }
+  .field .hint { font-size: 0.7rem; color: var(--muted); font-style: italic; }
+  .row { display: flex; gap: 1rem; align-items: flex-end; flex-wrap: wrap; }
+  .row .field { flex: 1; min-width: 140px; }
+  .btn { padding: 0.6rem 1.2rem; border-radius: 6px; font-weight: 600; cursor: pointer; border: none; font-size: 0.85rem; transition: all 0.2s; }
+  .btn-primary { background: var(--green); color: #fff; }
+  .btn-primary:hover { background: #16a34a; }
+  .btn-secondary { background: var(--primary); color: #000; }
+  .btn-secondary:hover { background: #c9a030; }
+  .btn-danger { background: var(--red); color: #fff; font-size: 0.75rem; padding: 0.3rem 0.6rem; }
+  .btn-danger:hover { background: #dc2626; }
+  .btn-edit { background: var(--orange); color: #fff; font-size: 0.75rem; padding: 0.3rem 0.6rem; }
+  .btn-edit:hover { background: #ea580c; }
+  .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--fg); }
+  .btn-outline:hover { border-color: var(--primary); color: var(--primary); }
+  .btn-new { background: var(--primary); color: #000; border: none; border-radius: var(--radius); padding: 10px 20px; font-weight: 700; font-size: .9rem; cursor: pointer; transition: background .2s; white-space: nowrap; flex-shrink: 0; }
+  .btn-new:hover { background: #c9a030; }
+  .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem; }
+  .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 1rem; margin-top: 1rem; }
+  .summary-item { background: var(--card2); border: 1px solid var(--border); border-radius: 8px; padding: 1rem; text-align: center; }
+  .summary-item .label { font-size: 0.7rem; color: var(--muted); text-transform: uppercase; font-weight: 600; margin-bottom: 0.3rem; }
+  .summary-item .value { font-size: 1.2rem; font-weight: 700; }
+  .summary-item .value.green { color: var(--green); }
+  .summary-item .value.red { color: var(--red); }
+  .summary-item .value.blue { color: var(--blue); }
+  .summary-item .value.white { color: #fff; }
+  .summary-item .value.purple { color: var(--purple); }
+  .summary-item .value.orange { color: var(--orange); }
+  .tab-bar { display: flex; gap: 0.5rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
+  .tab-btn { padding: 0.5rem 1rem; border-radius: 6px; border: 1px solid var(--border); background: transparent; color: var(--fg); cursor: pointer; font-size: 0.8rem; font-weight: 500; transition: all 0.2s; }
+  .tab-btn.active { background: var(--primary); color: #000; border-color: var(--primary); font-weight: 700; }
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+  .sim-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 14px; overflow: hidden; transition: border-color .2s; }
+  .sim-card:hover { border-color: var(--primary); }
+  .sim-card-header { display: flex; align-items: center; padding: 16px 20px; cursor: pointer; gap: 12px; user-select: none; flex-wrap: wrap; }
+  .sim-card-header .chevron { width: 22px; height: 22px; border: 2px solid var(--muted); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: .7rem; transition: transform .25s, border-color .2s; flex-shrink: 0; }
+  .sim-card.open .sim-card-header .chevron { transform: rotate(180deg); border-color: var(--primary); }
+  .sim-card-header .sim-title { font-weight: 600; font-size: 1rem; flex: 1; min-width: 120px; color: #fff; }
+  .sim-card-header .sim-meta { font-size: .78rem; color: var(--muted); }
+  .sim-card-actions { display: flex; gap: 8px; }
+  .sim-card-actions button { background: var(--card2); border: 1px solid var(--border); color: var(--muted); border-radius: 6px; padding: 5px 10px; font-size: .78rem; cursor: pointer; transition: all .2s; }
+  .sim-card-actions button:hover { border-color: var(--primary); color: var(--primary); }
+  .sim-card-actions button.danger:hover { border-color: var(--red); color: var(--red); }
+  .sim-card-actions button.dup { color: var(--blue); border-color: var(--blue); }
+  .sim-card-actions button.dup:hover { background: rgba(96,165,250,.15); }
+  .sim-card-body { display: none; padding: 0 20px 20px; }
+  .sim-card.open .sim-card-body { display: block; }
+  .sim-card-summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; }
+  .sim-card-summary .stat { background: var(--card2); border-radius: 8px; padding: 10px; text-align: center; }
+  .sim-card-summary .stat-label { font-size: .7rem; color: var(--muted); text-transform: uppercase; margin-bottom: 4px; }
+  .sim-card-summary .stat-value { font-size: 1rem; font-weight: 700; }
+  .empty-state { text-align: center; padding: 60px 20px; color: var(--muted); }
+  .empty-state .icon { font-size: 3rem; margin-bottom: 12px; }
+  .comp-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+  .comp-table th { background: var(--card2); color: var(--primary); padding: 8px 10px; text-align: left; font-size: 0.7rem; text-transform: uppercase; border-bottom: 1px solid var(--border); }
+  .comp-table td { padding: 8px 10px; border-bottom: 1px solid rgba(212,175,55,0.08); color: var(--fg); }
+  .comp-table tr:hover td { background: rgba(212,175,55,0.03); }
+  .winner { color: var(--green); font-weight: 700; }
+  .loser { color: var(--red); font-weight: 700; }
+  .verdict-box { background: rgba(34,197,94,0.06); border: 1px solid rgba(34,197,94,0.25); border-radius: var(--radius); padding: 1.5rem; text-align: center; }
+  .verdict-box h3 { color: var(--green); margin-bottom: 0.5rem; }
+  .verdict-box .big-number { font-size: 2rem; font-weight: 800; color: var(--green); }
+  .chart-container { position: relative; height: 300px; }
+  .aporte-item { display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: var(--card2); border: 1px solid var(--border); border-radius: 6px; margin-bottom: 6px; flex-wrap: wrap; }
+  .aporte-item .aporte-info { flex: 1; font-size: 0.85rem; color: var(--fg); min-width: 150px; }
+  .aporte-item .aporte-info .sub { font-size: 0.7rem; color: var(--muted); }
+  .update-item { display: flex; align-items: center; gap: 6px; padding: 6px 10px; background: rgba(96,165,250,0.05); border: 1px solid rgba(96,165,250,0.2); border-radius: 5px; margin-top: 4px; font-size: 0.78rem; color: var(--blue); }
+  .update-item .upd-info { flex: 1; }
+  .modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); z-index: 9999; align-items: center; justify-content: center; }
+  .modal-overlay.show { display: flex; }
+  .modal-box { background: var(--card); border: 1px solid var(--primary); border-radius: var(--radius); padding: 2rem; max-width: 500px; width: 90%; max-height: 80vh; overflow-y: auto; }
+  .modal-box h3 { margin-bottom: 1rem; }
+  .ded-list { display: flex; flex-direction: column; gap: 6px; }
+  .ded-item { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; }
+  .ded-label { font-size: 0.82rem; color: var(--muted); }
+  .ded-value { font-size: 0.85rem; font-weight: 600; color: var(--fg); }
+  .pgbl-highlight { background: rgba(167,139,250,0.06); border: 1px solid rgba(167,139,250,0.2); border-radius: var(--radius); padding: 1.2rem; }
+  .scenario-col { flex: 1; min-width: 280px; }
+  .scenario-col h3 { padding: 0.8rem; border-radius: 6px 6px 0 0; text-align: center; margin-bottom: 0; }
+  @media(max-width:768px) {
+    .row { flex-direction: column; }
+    .row .field { min-width: 100%; }
+    .summary-grid { grid-template-columns: 1fr 1fr; }
+  }
+</style>
+</head>
+<body>
+<div id="sidebar-container"></div>
+<main id="main-content">
+<div class="page">
+  <div class="page-header">
+    <div class="page-header-info">
+      <h1><a href="../ferramentas.html" style="color:var(--green);text-decoration:none;font-size:1rem;">&#8592;</a> Simulador de Acumulo</h1>
+      <p>Compare Carteira de Investimento vs VGBL vs PGBL para encontrar o melhor acumulo de longo prazo.</p>
+    </div>
+    <button id="mobile-toggle" onclick="document.querySelector('.sidebar')?.classList.toggle('open')" style="display:none;background:var(--card2);border:1px solid var(--border);color:var(--fg);border-radius:6px;padding:6px 10px;cursor:pointer;">&#9776;</button>
+    <button class="btn-new" onclick="novaSim()">+ Nova Simulacao</button>
+  </div>
+
+  <!-- LIST VIEW -->
+  <div id="list-view">
+    <div id="sim-list"></div>
+  </div>
+
+  <!-- EDITOR VIEW -->
+  <div id="editor-view" style="display:none;">
+    <div style="display:flex;gap:10px;align-items:center;margin-bottom:1rem;flex-wrap:wrap;">
+      <button class="btn btn-outline" onclick="voltarLista()">&#8592; Voltar para lista</button>
+      <span style="color:var(--muted);font-size:0.8rem;">Nova simulacao</span>
+    </div>
+
+    <div class="card" style="padding:1rem 1.5rem;">
+      <div class="field">
+        <label>Nome da simulacao</label>
+        <input type="text" id="sim-nome" placeholder="Ex: Acumulo Joao 120 meses">
+      </div>
+    </div>
+
+    <div class="tab-bar">
+      <button class="tab-btn active" onclick="switchTab('config')">1. Configuracao</button>
+      <button class="tab-btn" onclick="switchTab('aportes')">2. Aportes</button>
+      <button class="tab-btn" onclick="switchTab('resultado')">3. Resultado</button>
+    </div>
+
+    <!-- TAB 1: CONFIGURACAO -->
+    <div id="tab-config" class="tab-content active">
+      <div class="card">
+        <h2>Parametros Gerais</h2>
+        <div class="row">
+          <div class="field">
+            <label>Prazo da Simulacao (meses)</label>
+            <input type="number" id="prazo-meses" value="120" min="1" max="600">
+            <span class="hint">Ex: 120 = 10 anos</span>
+          </div>
+          <div class="field">
+            <label>Rentabilidade Anual Esperada (% a.a.)</label>
+            <input type="text" id="rentabilidade-aa" placeholder="10,00">
+            <span class="hint">Taxa bruta de rendimento do investimento</span>
+          </div>
+          <div class="field">
+            <label>Saldo Inicial (R$)</label>
+            <input type="text" id="saldo-inicial" placeholder="R$ 0,00">
+            <span class="hint">Valor ja investido anteriormente</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Configuracoes VGBL / PGBL</h2>
+        <p style="color:var(--muted);font-size:0.82rem;margin-bottom:1rem;">Informe as taxas do plano de previdencia para calculo correto.</p>
+        <div class="row">
+          <div class="field">
+            <label>Regime Tributario</label>
+            <select id="regime-tributario">
+              <option value="regressiva">Tabela Regressiva</option>
+              <option value="progressiva">Tabela Progressiva</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Taxa de Carregamento Entrada (%)</label>
+            <input type="text" id="taxa-carreg-entrada" placeholder="0,00">
+          </div>
+          <div class="field">
+            <label>Taxa de Carregamento Saida (%)</label>
+            <input type="text" id="taxa-carreg-saida" placeholder="0,00">
+          </div>
+        </div>
+        <div class="row" style="margin-top:1rem;">
+          <div class="field">
+            <label>Taxa de Administracao Anual (%)</label>
+            <input type="text" id="taxa-admin" placeholder="1,00">
+            <span class="hint">Cobrada sobre o saldo total anualmente</span>
+          </div>
+          <div class="field">
+            <label>Economia Anual no IR com PGBL (R$)</label>
+            <input type="text" id="economia-pgbl" placeholder="R$ 0,00">
+            <span class="hint">Valor que o cliente economiza no IR por declarar PGBL (sera reinvestido na carteira)</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Reajuste Anual Global</h2>
+        <p style="color:var(--muted);font-size:0.82rem;margin-bottom:1rem;">Se informado, TODOS os aportes serao reajustados anualmente por esta taxa (a menos que o aporte tenha taxa propria).</p>
+        <div class="row">
+          <div class="field">
+            <label>Reajuste Anual Global (%)</label>
+            <input type="text" id="reajuste-global" placeholder="0,00">
+            <span class="hint">Ex: 5 = todos os aportes aumentam 5% ao ano</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 2: APORTES -->
+    <div id="tab-aportes" class="tab-content">
+      <div class="card">
+        <div class="section-header">
+          <h2 style="margin-bottom:0;">Aportes Configurados</h2>
+          <button class="btn btn-primary" onclick="abrirModalAporte()">+ Novo Aporte</button>
+        </div>
+        <p style="color:var(--muted);font-size:0.82rem;margin-bottom:1rem;">Adicione aportes mensais, trimestrais, semestrais, anuais ou unicos. Cada aporte pode ter reajuste proprio e atualizacoes de valor.</p>
+        <div id="aportes-list"></div>
+        <div id="aportes-empty" class="empty-state" style="padding:30px;">
+          <div class="icon">&#128176;</div>
+          <p>Nenhum aporte configurado.<br>Clique em <strong>+ Novo Aporte</strong> para adicionar.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 3: RESULTADO -->
+    <div id="tab-resultado" class="tab-content">
+      <div class="card">
+        <div class="section-header">
+          <h2 style="margin-bottom:0;">Resultado da Simulacao</h2>
+          <button class="btn btn-secondary" onclick="calcular()">Calcular</button>
+        </div>
+        <div id="resultado-area">
+          <div class="empty-state" style="padding:30px;">
+            <div class="icon">&#128202;</div>
+            <p>Configure os parametros e aportes, depois clique em <strong>Calcular</strong>.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <button id="btnSaveGlobal" class="btn-new" style="position:fixed;bottom:20px;right:20px;z-index:100;box-shadow:0 4px 12px rgba(0,0,0,0.4);" onclick="salvarSim()">&#128190; Salvar Simulacao</button>
+  </div>
+</div>
+</main>
+
+<!-- MODAL: NOVO/EDITAR APORTE -->
+<div class="modal-overlay" id="modal-aporte">
+  <div class="modal-box">
+    <h3 id="modal-aporte-title">Novo Aporte</h3>
+    <div class="field" style="margin-bottom:1rem;">
+      <label>Descricao (opcional)</label>
+      <input type="text" id="ap-descricao" placeholder="Ex: Salario, Bonus, etc.">
+    </div>
+    <div class="row" style="margin-bottom:1rem;">
+      <div class="field">
+        <label>Valor (R$)</label>
+        <input type="text" id="ap-valor" placeholder="R$ 0,00">
+      </div>
+      <div class="field">
+        <label>Periodicidade</label>
+        <select id="ap-periodicidade">
+          <option value="1">Mensal</option>
+          <option value="3">Trimestral</option>
+          <option value="6">Semestral</option>
+          <option value="12">Anual</option>
+          <option value="0">Unico (nao repete)</option>
+        </select>
+      </div>
+    </div>
+    <div class="row" style="margin-bottom:1rem;">
+      <div class="field">
+        <label>Mes de inicio (1 = primeiro mes)</label>
+        <input type="number" id="ap-inicio" value="1" min="1">
+      </div>
+      <div class="field">
+        <label>Reajuste Anual Proprio (%)</label>
+        <input type="text" id="ap-reajuste" placeholder="Usar global">
+        <span class="hint">Deixe vazio para usar o reajuste global</span>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:1.5rem;">
+      <button class="btn btn-outline" onclick="fecharModalAporte()">Cancelar</button>
+      <button class="btn btn-primary" onclick="salvarAporte()">Salvar Aporte</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: ATUALIZACAO DE APORTE -->
+<div class="modal-overlay" id="modal-update">
+  <div class="modal-box">
+    <h3>Atualizacao de Valor</h3>
+    <p style="color:var(--muted);font-size:0.82rem;margin-bottom:1rem;">A partir do mes informado, o aporte passara a ter o novo valor.</p>
+    <div class="row" style="margin-bottom:1rem;">
+      <div class="field">
+        <label>A partir do mes</label>
+        <input type="number" id="upd-mes" value="13" min="2">
+      </div>
+      <div class="field">
+        <label>Novo Valor (R$)</label>
+        <input type="text" id="upd-valor" placeholder="R$ 0,00">
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:1.5rem;">
+      <button class="btn btn-outline" onclick="fecharModalUpdate()">Cancelar</button>
+      <button class="btn btn-primary" onclick="salvarUpdate()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ===== FORMATACAO =====
+function fmtBRL(v) { return 'R$ ' + (v||0).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2}); }
+function parseCurrency(el) {
+  if (!el) return 0;
+  var v = (typeof el === 'string') ? el : el.value;
+  return parseFloat(v.replace(/[^\d,.-]/g,'').replace('.','').replace(',','.')) || 0;
+}
+function parsePct(el) {
+  if (!el) return 0;
+  var v = (typeof el === 'string') ? el : el.value;
+  return parseFloat(v.replace(/[^\d,.-]/g,'').replace(',','.')) || 0;
+}
+
+// ===== STATE =====
+var simulations = [];
+var currentSimIdx = -1;
+var aportes = [];
+var editingAporteIdx = -1;
+var editingUpdateAporteIdx = -1;
+var editingUpdateIdx = -1;
+
+// ===== TABS =====
+function switchTab(t) {
+  document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+  var tabEl = document.getElementById('tab-' + t);
+  if (tabEl) tabEl.classList.add('active');
+  var btns = document.querySelectorAll('.tab-btn');
+  var map = {config:0, aportes:1, resultado:2};
+  if (map[t] !== undefined && btns[map[t]]) btns[map[t]].classList.add('active');
+  if (t === 'resultado') calcular();
+}
+
+// ===== APORTES CRUD =====
+function renderAportes() {
+  var container = document.getElementById('aportes-list');
+  var empty = document.getElementById('aportes-empty');
+  if (aportes.length === 0) {
+    container.innerHTML = '';
+    empty.style.display = 'block';
+    return;
+  }
+  empty.style.display = 'none';
+  var html = '';
+  aportes.forEach(function(ap, i) {
+    var perioLabel = {0:'Unico',1:'Mensal',3:'Trimestral',6:'Semestral',12:'Anual'}[ap.periodicidade] || 'Mensal';
+    var reajLabel = ap.reajuste ? ap.reajuste + '% a.a.' : 'Global';
+    html += '<div class="aporte-item">';
+    html += '<div class="aporte-info">';
+    html += '<strong>' + (ap.descricao || 'Aporte ' + (i+1)) + '</strong> - ' + fmtBRL(ap.valor) + ' (' + perioLabel + ')';
+    html += '<div class="sub">Inicio: mes ' + ap.inicio + ' | Reajuste: ' + reajLabel + '</div>';
+    // Updates
+    if (ap.updates && ap.updates.length > 0) {
+      ap.updates.forEach(function(u, ui) {
+        html += '<div class="update-item"><span class="upd-info">A partir do mes ' + u.mes + ': ' + fmtBRL(u.valor) + '</span>';
+        html += '<button class="btn-edit" onclick="editarUpdate('+i+','+ui+')" style="padding:2px 6px;font-size:0.7rem;">&#9998;</button>';
+        html += '<button class="btn-danger" onclick="excluirUpdate('+i+','+ui+')" style="padding:2px 6px;font-size:0.7rem;">&#10005;</button>';
+        html += '</div>';
+      });
+    }
+    html += '</div>';
+    html += '<button class="btn btn-outline" onclick="abrirModalUpdateAporte('+i+')" style="padding:4px 8px;font-size:0.7rem;">+ Atualiz.</button>';
+    html += '<button class="btn-edit" onclick="editarAporte('+i+')">&#9998;</button>';
+    html += '<button class="btn-danger" onclick="excluirAporte('+i+')">&#10005;</button>';
+    html += '</div>';
+  });
+  container.innerHTML = html;
+}
+
+function abrirModalAporte(idx) {
+  editingAporteIdx = (idx !== undefined) ? idx : -1;
+  document.getElementById('modal-aporte-title').textContent = editingAporteIdx >= 0 ? 'Editar Aporte' : 'Novo Aporte';
+  if (editingAporteIdx >= 0) {
+    var ap = aportes[editingAporteIdx];
+    document.getElementById('ap-descricao').value = ap.descricao || '';
+    document.getElementById('ap-valor').value = fmtBRL(ap.valor);
+    document.getElementById('ap-periodicidade').value = ap.periodicidade;
+    document.getElementById('ap-inicio').value = ap.inicio;
+    document.getElementById('ap-reajuste').value = ap.reajuste || '';
+  } else {
+    document.getElementById('ap-descricao').value = '';
+    document.getElementById('ap-valor').value = '';
+    document.getElementById('ap-periodicidade').value = '1';
+    document.getElementById('ap-inicio').value = '1';
+    document.getElementById('ap-reajuste').value = '';
+  }
+  document.getElementById('modal-aporte').classList.add('show');
+}
+function fecharModalAporte() { document.getElementById('modal-aporte').classList.remove('show'); }
+function salvarAporte() {
+  var obj = {
+    descricao: document.getElementById('ap-descricao').value.trim(),
+    valor: parseCurrency(document.getElementById('ap-valor')),
+    periodicidade: parseInt(document.getElementById('ap-periodicidade').value),
+    inicio: parseInt(document.getElementById('ap-inicio').value) || 1,
+    reajuste: parsePct(document.getElementById('ap-reajuste')) || null,
+    updates: []
+  };
+  if (obj.valor <= 0) { alert('Informe um valor valido.'); return; }
+  if (editingAporteIdx >= 0) {
+    obj.updates = aportes[editingAporteIdx].updates || [];
+    aportes[editingAporteIdx] = obj;
+  } else {
+    aportes.push(obj);
+  }
+  fecharModalAporte();
+  renderAportes();
+}
+function editarAporte(i) { abrirModalAporte(i); }
+function excluirAporte(i) { if(confirm('Excluir este aporte?')) { aportes.splice(i,1); renderAportes(); } }
+
+// Updates de aporte
+function abrirModalUpdateAporte(apIdx) {
+  editingUpdateAporteIdx = apIdx;
+  editingUpdateIdx = -1;
+  document.getElementById('upd-mes').value = '13';
+  document.getElementById('upd-valor').value = '';
+  document.getElementById('modal-update').classList.add('show');
+}
+function fecharModalUpdate() { document.getElementById('modal-update').classList.remove('show'); }
+function salvarUpdate() {
+  var mes = parseInt(document.getElementById('upd-mes').value) || 2;
+  var valor = parseCurrency(document.getElementById('upd-valor'));
+  if (valor <= 0) { alert('Informe um valor valido.'); return; }
+  var ap = aportes[editingUpdateAporteIdx];
+  if (!ap.updates) ap.updates = [];
+  if (editingUpdateIdx >= 0) {
+    ap.updates[editingUpdateIdx] = {mes: mes, valor: valor};
+  } else {
+    ap.updates.push({mes: mes, valor: valor});
+  }
+  ap.updates.sort(function(a,b) { return a.mes - b.mes; });
+  fecharModalUpdate();
+  renderAportes();
+}
+function editarUpdate(apIdx, uIdx) {
+  editingUpdateAporteIdx = apIdx;
+  editingUpdateIdx = uIdx;
+  var u = aportes[apIdx].updates[uIdx];
+  document.getElementById('upd-mes').value = u.mes;
+  document.getElementById('upd-valor').value = fmtBRL(u.valor);
+  document.getElementById('modal-update').classList.add('show');
+}
+function excluirUpdate(apIdx, uIdx) {
+  aportes[apIdx].updates.splice(uIdx, 1);
+  renderAportes();
+}
+
+// ===== CALCULO PRINCIPAL =====
+function getAporteValorNoMes(ap, mes, reajusteGlobal) {
+  // Determina o valor base considerando updates
+  var valorBase = ap.valor;
+  if (ap.updates && ap.updates.length > 0) {
+    for (var u = ap.updates.length - 1; u >= 0; u--) {
+      if (mes >= ap.updates[u].mes) { valorBase = ap.updates[u].valor; break; }
+    }
+  }
+  // Aplica reajuste anual
+  var taxa = ap.reajuste || reajusteGlobal || 0;
+  if (taxa > 0) {
+    var anosDecorridos = Math.floor((mes - ap.inicio) / 12);
+    if (anosDecorridos > 0) valorBase *= Math.pow(1 + taxa/100, anosDecorridos);
+  }
+  return valorBase;
+}
+
+function aporteAtivoNoMes(ap, mes) {
+  if (mes < ap.inicio) return false;
+  if (ap.periodicidade === 0) return mes === ap.inicio;
+  return (mes - ap.inicio) % ap.periodicidade === 0;
+}
+
+function calcular() {
+  var prazo = parseInt(document.getElementById('prazo-meses').value) || 120;
+  var rentAA = parsePct(document.getElementById('rentabilidade-aa'));
+  var saldoInicial = parseCurrency(document.getElementById('saldo-inicial'));
+  var regimeTrib = document.getElementById('regime-tributario').value;
+  var taxaCarregEntrada = parsePct(document.getElementById('taxa-carreg-entrada')) / 100;
+  var taxaCarregSaida = parsePct(document.getElementById('taxa-carreg-saida')) / 100;
+  var taxaAdmin = parsePct(document.getElementById('taxa-admin')) / 100;
+  var economiaPGBL = parseCurrency(document.getElementById('economia-pgbl'));
+  var reajusteGlobal = parsePct(document.getElementById('reajuste-global'));
+
+  var rentMensal = Math.pow(1 + rentAA/100, 1/12) - 1;
+
+  if (aportes.length === 0 && saldoInicial <= 0) {
+    document.getElementById('resultado-area').innerHTML = '<div class="empty-state" style="padding:30px;"><div class="icon">&#128202;</div><p>Configure os parametros e aportes primeiro.</p></div>';
+    return;
+  }
+
+  // ===== CENARIO 1: CARTEIRA DE INVESTIMENTO =====
+  var carteira = simCarteira(prazo, rentMensal, saldoInicial, reajusteGlobal, 0, 0);
+
+  // ===== CENARIO 2: VGBL =====
+  var vgbl = simPrevidencia(prazo, rentMensal, saldoInicial, reajusteGlobal, regimeTrib, taxaCarregEntrada, taxaCarregSaida, taxaAdmin, 'vgbl');
+
+  // ===== CENARIO 3: PGBL =====
+  var pgbl = simPrevidencia(prazo, rentMensal, saldoInicial, reajusteGlobal, regimeTrib, taxaCarregEntrada, taxaCarregSaida, taxaAdmin, 'pgbl');
+
+  // PGBL bonus: economia anual reinvestida na carteira
+  var pgblBonus = simCarteiraPGBLBonus(prazo, rentMensal, economiaPGBL, reajusteGlobal);
+
+  renderResultado(carteira, vgbl, pgbl, pgblBonus, prazo, rentAA);
+}
+
+function simCarteira(prazo, rentMensal, saldoInicial, reajusteGlobal, taxaCarregEntrada, taxaAdmin) {
+  // Cada aporte e rastreado individualmente para calculo de IR por prazo
+  var lotes = []; // {mesEntrada, valorAportado, saldo}
+  var historico = []; // mes a mes
+  var totalAportado = 0;
+
+  if (saldoInicial > 0) {
+    lotes.push({mesEntrada: 0, valorAportado: saldoInicial, saldo: saldoInicial});
+    totalAportado += saldoInicial;
+  }
+
+  for (var mes = 1; mes <= prazo; mes++) {
+    // Aportes do mes
+    var aporteDoMes = 0;
+    aportes.forEach(function(ap) {
+      if (aporteAtivoNoMes(ap, mes)) {
+        var val = getAporteValorNoMes(ap, mes, reajusteGlobal);
+        var valLiquido = val * (1 - taxaCarregEntrada);
+        lotes.push({mesEntrada: mes, valorAportado: valLiquido, saldo: valLiquido});
+        aporteDoMes += val;
+        totalAportado += val;
+      }
+    });
+
+    // Rendimento de todos os lotes
+    lotes.forEach(function(l) {
+      l.saldo *= (1 + rentMensal);
+    });
+
+    // Come-cotas (maio=5, novembro=11) - aplica 15% sobre rendimento desde ultimo come-cotas
+    if (mes % 6 === 0) {
+      lotes.forEach(function(l) {
+        var rendimento = l.saldo - l.valorAportado;
+        if (rendimento > 0) {
+          var impComeCotas = rendimento * 0.15;
+          l.saldo -= impComeCotas;
+          // Marca que ja pagou come-cotas (ajusta valorAportado para proximo calculo)
+          // Na verdade, come-cotas reduz cotas, entao o "valorAportado" para fins de IR nao muda
+          // O que muda e que no resgate final, desconta-se o come-cotas ja pago
+        }
+      });
+    }
+
+    // Taxa admin anual (aplica mensalmente = taxaAdmin/12)
+    if (taxaAdmin > 0) {
+      lotes.forEach(function(l) { l.saldo *= (1 - taxaAdmin/12); });
+    }
+
+    var saldoTotal = lotes.reduce(function(s, l) { return s + l.saldo; }, 0);
+    historico.push({mes: mes, saldo: saldoTotal, aporte: aporteDoMes, totalAportado: totalAportado});
+  }
+
+  // Calculo IR no resgate final (por lote)
+  var totalBruto = lotes.reduce(function(s, l) { return s + l.saldo; }, 0);
+  var totalIR = 0;
+  lotes.forEach(function(l) {
+    var rendimento = l.saldo - l.valorAportado;
+    if (rendimento > 0) {
+      var diasAcum = (prazo - l.mesEntrada) * 30;
+      var aliquota;
+      if (diasAcum <= 180) aliquota = 0.225;
+      else if (diasAcum <= 360) aliquota = 0.20;
+      else if (diasAcum <= 720) aliquota = 0.175;
+      else aliquota = 0.15;
+      totalIR += rendimento * aliquota;
+    }
+  });
+
+  var totalLiquido = totalBruto - totalIR;
+
+  return {
+    nome: 'Carteira de Investimento',
+    totalBruto: totalBruto,
+    totalAportado: totalAportado,
+    totalIR: totalIR,
+    totalLiquido: totalLiquido,
+    historico: historico,
+    lotes: lotes
+  };
+}
+
+function simPrevidencia(prazo, rentMensal, saldoInicial, reajusteGlobal, regimeTrib, taxaCarregEntrada, taxaCarregSaida, taxaAdmin, tipo) {
+  var lotes = [];
+  var historico = [];
+  var totalAportado = 0;
+
+  if (saldoInicial > 0) {
+    var valLiq = saldoInicial * (1 - taxaCarregEntrada);
+    lotes.push({mesEntrada: 0, valorAportado: valLiq, saldo: valLiq});
+    totalAportado += saldoInicial;
+  }
+
+  for (var mes = 1; mes <= prazo; mes++) {
+    var aporteDoMes = 0;
+    aportes.forEach(function(ap) {
+      if (aporteAtivoNoMes(ap, mes)) {
+        var val = getAporteValorNoMes(ap, mes, reajusteGlobal);
+        var valLiquido = val * (1 - taxaCarregEntrada);
+        lotes.push({mesEntrada: mes, valorAportado: valLiquido, saldo: valLiquido});
+        aporteDoMes += val;
+        totalAportado += val;
+      }
+    });
+
+    // Rendimento
+    lotes.forEach(function(l) { l.saldo *= (1 + rentMensal); });
+
+    // Taxa admin
+    if (taxaAdmin > 0) {
+      lotes.forEach(function(l) { l.saldo *= (1 - taxaAdmin/12); });
+    }
+
+    // SEM come-cotas na previdencia
+    var saldoTotal = lotes.reduce(function(s, l) { return s + l.saldo; }, 0);
+    historico.push({mes: mes, saldo: saldoTotal, aporte: aporteDoMes, totalAportado: totalAportado});
+  }
+
+  // Calculo IR no resgate
+  var totalBruto = lotes.reduce(function(s, l) { return s + l.saldo; }, 0);
+
+  // Carregamento de saida
+  var valorAposSaida = totalBruto * (1 - taxaCarregSaida);
+
+  var totalIR = 0;
+  var totalAportadoLotes = lotes.reduce(function(s, l) { return s + l.valorAportado; }, 0);
+
+  if (regimeTrib === 'regressiva') {
+    // Tabela regressiva: por lote, conforme prazo de acumulacao
+    lotes.forEach(function(l) {
+      var anosAcum = (prazo - l.mesEntrada) / 12;
+      var aliquota;
+      if (anosAcum <= 2) aliquota = 0.35;
+      else if (anosAcum <= 4) aliquota = 0.30;
+      else if (anosAcum <= 6) aliquota = 0.25;
+      else if (anosAcum <= 8) aliquota = 0.20;
+      else if (anosAcum <= 10) aliquota = 0.15;
+      else aliquota = 0.10;
+
+      var base;
+      if (tipo === 'pgbl') {
+        base = l.saldo; // PGBL: IR sobre TUDO
+      } else {
+        base = l.saldo - l.valorAportado; // VGBL: IR so sobre rendimentos
+        if (base < 0) base = 0;
+      }
+      totalIR += base * aliquota;
+    });
+  } else {
+    // Tabela progressiva: aplica faixas do IR sobre o valor total
+    var base;
+    if (tipo === 'pgbl') {
+      base = valorAposSaida;
+    } else {
+      base = valorAposSaida - totalAportadoLotes;
+      if (base < 0) base = 0;
+    }
+    totalIR = calcIRProgressivo(base);
+  }
+
+  var totalLiquido = valorAposSaida - totalIR;
+
+  return {
+    nome: tipo === 'pgbl' ? 'PGBL' : 'VGBL',
+    totalBruto: totalBruto,
+    totalAportado: totalAportado,
+    totalIR: totalIR,
+    totalLiquido: totalLiquido,
+    taxaCarregSaida: totalBruto * taxaCarregSaida,
+    historico: historico,
+    lotes: lotes
+  };
+}
+
+function simCarteiraPGBLBonus(prazo, rentMensal, economiaPGBLAnual, reajusteGlobal) {
+  // Simula a economia do PGBL reinvestida na carteira de investimento
+  if (economiaPGBLAnual <= 0) return {totalBruto:0, totalAportado:0, totalIR:0, totalLiquido:0, historico:[]};
+
+  var lotes = [];
+  var historico = [];
+  var totalAportado = 0;
+
+  for (var mes = 1; mes <= prazo; mes++) {
+    // Aporte anual (a cada 12 meses)
+    if (mes % 12 === 0) {
+      var anosDecorridos = Math.floor(mes / 12) - 1;
+      var valorBonus = economiaPGBLAnual * Math.pow(1 + (reajusteGlobal||0)/100, anosDecorridos);
+      lotes.push({mesEntrada: mes, valorAportado: valorBonus, saldo: valorBonus});
+      totalAportado += valorBonus;
+    }
+
+    // Rendimento
+    lotes.forEach(function(l) { l.saldo *= (1 + rentMensal); });
+
+    // Come-cotas (esta na carteira normal)
+    if (mes % 6 === 0) {
+      lotes.forEach(function(l) {
+        var rendimento = l.saldo - l.valorAportado;
+        if (rendimento > 0) {
+          l.saldo -= rendimento * 0.15;
+        }
+      });
+    }
+
+    var saldoTotal = lotes.reduce(function(s, l) { return s + l.saldo; }, 0);
+    historico.push({mes: mes, saldo: saldoTotal, totalAportado: totalAportado});
+  }
+
+  var totalBruto = lotes.reduce(function(s, l) { return s + l.saldo; }, 0);
+  var totalIR = 0;
+  lotes.forEach(function(l) {
+    var rendimento = l.saldo - l.valorAportado;
+    if (rendimento > 0) {
+      var diasAcum = (prazo - l.mesEntrada) * 30;
+      var aliquota = diasAcum <= 180 ? 0.225 : diasAcum <= 360 ? 0.20 : diasAcum <= 720 ? 0.175 : 0.15;
+      totalIR += rendimento * aliquota;
+    }
+  });
+
+  return {
+    nome: 'Bonus PGBL (reinvestido)',
+    totalBruto: totalBruto,
+    totalAportado: totalAportado,
+    totalIR: totalIR,
+    totalLiquido: totalBruto - totalIR,
+    historico: historico
+  };
+}
+
+function calcIRProgressivo(base) {
+  // Faixas anuais 2025
+  var faixas = [
+    {ate: 28467.20, aliq: 0, ded: 0},
+    {ate: 35919.60, aliq: 0.075, ded: 2135.04},
+    {ate: 47412.96, aliq: 0.15, ded: 4828.53},
+    {ate: 59238.72, aliq: 0.225, ded: 8382.50},
+    {ate: Infinity, aliq: 0.275, ded: 11344.43}
+  ];
+  for (var i = 0; i < faixas.length; i++) {
+    if (base <= faixas[i].ate) {
+      return Math.max(0, base * faixas[i].aliq - faixas[i].ded);
+    }
+  }
+  return base * 0.275 - 11344.43;
+}
+
+function renderResultado(carteira, vgbl, pgbl, pgblBonus, prazo, rentAA) {
+  var pgblTotal = {
+    totalBruto: pgbl.totalBruto + pgblBonus.totalBruto,
+    totalAportado: pgbl.totalAportado + pgblBonus.totalAportado,
+    totalIR: pgbl.totalIR + pgblBonus.totalIR,
+    totalLiquido: pgbl.totalLiquido + pgblBonus.totalLiquido,
+    taxaCarregSaida: pgbl.taxaCarregSaida || 0
+  };
+
+  var cenarios = [
+    {nome: 'Carteira', cor: 'green', ...carteira},
+    {nome: 'VGBL', cor: 'blue', ...vgbl},
+    {nome: 'PGBL + Bonus', cor: 'purple', totalBruto: pgblTotal.totalBruto, totalAportado: pgblTotal.totalAportado, totalIR: pgblTotal.totalIR, totalLiquido: pgblTotal.totalLiquido}
+  ];
+  cenarios.sort(function(a,b) { return b.totalLiquido - a.totalLiquido; });
+  var melhor = cenarios[0];
+
+  var html = '';
+
+  // Summary grid
+  html += '<div class="summary-grid">';
+  html += '<div class="summary-item"><div class="label">Prazo</div><div class="value white">' + prazo + ' meses (' + (prazo/12).toFixed(1) + ' anos)</div></div>';
+  html += '<div class="summary-item"><div class="label">Rentabilidade</div><div class="value white">' + rentAA + '% a.a.</div></div>';
+  html += '<div class="summary-item"><div class="label">Total Aportado</div><div class="value orange">' + fmtBRL(carteira.totalAportado) + '</div></div>';
+  html += '<div class="summary-item"><div class="label">Melhor Cenario</div><div class="value green">' + melhor.nome + '</div></div>';
+  html += '</div>';
+
+  // Comparison table
+  html += '<table class="comp-table" style="margin-top:1.5rem;">';
+  html += '<tr><th></th><th style="color:var(--green)">Carteira</th><th style="color:var(--blue)">VGBL</th><th style="color:var(--purple)">PGBL + Bonus</th></tr>';
+
+  var rows = [
+    ['Total Aportado', fmtBRL(carteira.totalAportado), fmtBRL(vgbl.totalAportado), fmtBRL(pgblTotal.totalAportado)],
+    ['Valor Bruto Acumulado', fmtBRL(carteira.totalBruto), fmtBRL(vgbl.totalBruto), fmtBRL(pgblTotal.totalBruto)],
+    ['Imposto de Renda', '<span class="loser">' + fmtBRL(carteira.totalIR) + '</span>', '<span class="loser">' + fmtBRL(vgbl.totalIR) + '</span>', '<span class="loser">' + fmtBRL(pgblTotal.totalIR) + '</span>'],
+    ['Carreg. Saida', '-', '<span class="loser">' + fmtBRL(vgbl.taxaCarregSaida||0) + '</span>', '<span class="loser">' + fmtBRL(pgblTotal.taxaCarregSaida||0) + '</span>'],
+    ['Valor Liquido Resgate', '<span class="winner">' + fmtBRL(carteira.totalLiquido) + '</span>', '<span class="winner">' + fmtBRL(vgbl.totalLiquido) + '</span>', '<span class="winner">' + fmtBRL(pgblTotal.totalLiquido) + '</span>']
+  ];
+  rows.forEach(function(r) {
+    html += '<tr><td style="font-weight:600;color:var(--muted)">' + r[0] + '</td><td>' + r[1] + '</td><td>' + r[2] + '</td><td>' + r[3] + '</td></tr>';
+  });
+  html += '</table>';
+
+  // Memoria de calculo PGBL
+  if (pgblBonus.totalBruto > 0) {
+    html += '<div class="pgbl-highlight" style="margin-top:1.5rem;">';
+    html += '<h3 style="color:var(--purple);margin-bottom:0.5rem;">Memoria de Calculo PGBL</h3>';
+    html += '<div class="ded-list">';
+    html += '<div class="ded-item"><span class="ded-label">PGBL (previdencia)</span><span class="ded-value">' + fmtBRL(pgbl.totalLiquido) + '</span></div>';
+    html += '<div class="ded-item"><span class="ded-label">Bonus reinvestido (economia IR)</span><span class="ded-value">' + fmtBRL(pgblBonus.totalLiquido) + '</span></div>';
+    html += '<div class="ded-item"><span class="ded-label">IR do PGBL</span><span class="ded-value" style="color:var(--red)">' + fmtBRL(pgbl.totalIR) + '</span></div>';
+    html += '<div class="ded-item"><span class="ded-label">IR do Bonus (carteira)</span><span class="ded-value" style="color:var(--red)">' + fmtBRL(pgblBonus.totalIR) + '</span></div>';
+    html += '<div class="ded-item" style="border-top:1px solid var(--border);padding-top:0.5rem;"><span class="ded-label" style="font-weight:700;color:#fff">Total Liquido PGBL + Bonus</span><span class="ded-value" style="color:var(--purple)">' + fmtBRL(pgblTotal.totalLiquido) + '</span></div>';
+    html += '</div></div>';
+  }
+
+  // Diferenca bruta ao longo do tempo
+  html += '<div class="card" style="margin-top:1.5rem;border-color:var(--blue);">';
+  html += '<h3 style="color:var(--blue);margin-bottom:0.5rem;">Diferenca de Valor Bruto ao Longo do Tempo</h3>';
+  html += '<p style="color:var(--muted);font-size:0.8rem;margin-bottom:0.5rem;">VGBL e PGBL nao sofrem come-cotas, por isso acumulam mais bruto ao longo do tempo.</p>';
+  var diffBrutoVGBL = vgbl.totalBruto - carteira.totalBruto;
+  var diffBrutoPGBL = pgbl.totalBruto - carteira.totalBruto;
+  html += '<div class="ded-list">';
+  html += '<div class="ded-item"><span class="ded-label">VGBL Bruto - Carteira Bruto</span><span class="ded-value" style="color:' + (diffBrutoVGBL >= 0 ? 'var(--green)' : 'var(--red)') + '">' + fmtBRL(diffBrutoVGBL) + '</span></div>';
+  html += '<div class="ded-item"><span class="ded-label">PGBL Bruto - Carteira Bruto</span><span class="ded-value" style="color:' + (diffBrutoPGBL >= 0 ? 'var(--green)' : 'var(--red)') + '">' + fmtBRL(diffBrutoPGBL) + '</span></div>';
+  html += '</div></div>';
+
+  // Verdict
+  var economia = melhor.totalLiquido - cenarios[cenarios.length - 1].totalLiquido;
+  html += '<div class="verdict-box" style="margin-top:1.5rem;">';
+  html += '<h3>Melhor Cenario: ' + melhor.nome + '</h3>';
+  html += '<div class="big-number">' + fmtBRL(melhor.totalLiquido) + '</div>';
+  html += '<p>liquido no resgate apos ' + prazo + ' meses</p>';
+  if (economia > 0) {
+    html += '<p style="margin-top:0.5rem;color:var(--green);font-size:0.9rem;">' + fmtBRL(economia) + ' a mais que o pior cenario</p>';
+  }
+  html += '</div>';
+
+  // Charts
+  html += '<div style="display:flex;gap:1.5rem;flex-wrap:wrap;margin-top:2rem;">';
+  html += '<div class="chart-container" style="flex:1;min-width:300px;"><canvas id="chart-evolucao"></canvas></div>';
+  html += '<div class="chart-container" style="flex:1;min-width:300px;"><canvas id="chart-comparativo"></canvas></div>';
+  html += '</div>';
+
+  // Tabela mes a mes
+  html += '<div style="margin-top:2rem;overflow-x:auto;">';
+  html += '<h3 style="margin-bottom:0.5rem;">Evolucao Mes a Mes</h3>';
+  html += '<table class="comp-table" style="font-size:0.72rem;">';
+  html += '<tr><th>Mes</th><th>Aporte</th><th>Total Aportado</th><th>Carteira</th><th>VGBL</th><th>PGBL</th>';
+  if (pgblBonus.historico.length > 0) html += '<th>Bonus PGBL</th>';
+  html += '</tr>';
+
+  var step = prazo <= 60 ? 1 : prazo <= 120 ? 3 : prazo <= 240 ? 6 : 12;
+  for (var m = step; m <= prazo; m += step) {
+    var idx = m - 1;
+    var cH = carteira.historico[idx] || {};
+    var vH = vgbl.historico[idx] || {};
+    var pH = pgbl.historico[idx] || {};
+    var bH = pgblBonus.historico[idx] || {};
+    html += '<tr>';
+    html += '<td>' + m + '</td>';
+    html += '<td>' + fmtBRL(cH.aporte || 0) + '</td>';
+    html += '<td>' + fmtBRL(cH.totalAportado || 0) + '</td>';
+    html += '<td style="color:var(--green)">' + fmtBRL(cH.saldo || 0) + '</td>';
+    html += '<td style="color:var(--blue)">' + fmtBRL(vH.saldo || 0) + '</td>';
+    html += '<td style="color:var(--purple)">' + fmtBRL(pH.saldo || 0) + '</td>';
+    if (pgblBonus.historico.length > 0) html += '<td style="color:var(--orange)">' + fmtBRL(bH.saldo || 0) + '</td>';
+    html += '</tr>';
+  }
+  // Sempre mostrar ultimo mes
+  if (prazo % step !== 0) {
+    var idx = prazo - 1;
+    var cH = carteira.historico[idx] || {};
+    var vH = vgbl.historico[idx] || {};
+    var pH = pgbl.historico[idx] || {};
+    var bH = pgblBonus.historico[idx] || {};
+    html += '<tr style="font-weight:700;">';
+    html += '<td>' + prazo + '</td>';
+    html += '<td>' + fmtBRL(cH.aporte || 0) + '</td>';
+    html += '<td>' + fmtBRL(cH.totalAportado || 0) + '</td>';
+    html += '<td style="color:var(--green)">' + fmtBRL(cH.saldo || 0) + '</td>';
+    html += '<td style="color:var(--blue)">' + fmtBRL(vH.saldo || 0) + '</td>';
+    html += '<td style="color:var(--purple)">' + fmtBRL(pH.saldo || 0) + '</td>';
+    if (pgblBonus.historico.length > 0) html += '<td style="color:var(--orange)">' + fmtBRL(bH.saldo || 0) + '</td>';
+    html += '</tr>';
+  }
+  html += '</table></div>';
+
+  document.getElementById('resultado-area').innerHTML = html;
+  renderCharts(carteira, vgbl, pgbl, pgblBonus, prazo);
+}
+
+function renderCharts(carteira, vgbl, pgbl, pgblBonus, prazo) {
+  // Destroy existing charts
+  Chart.helpers.each(Chart.instances, function(instance) { instance.destroy(); });
+
+  var step = prazo <= 60 ? 1 : prazo <= 120 ? 3 : prazo <= 240 ? 6 : 12;
+  var labels = [];
+  var dataCarteira = [];
+  var dataVGBL = [];
+  var dataPGBL = [];
+  var dataAportado = [];
+
+  for (var m = step; m <= prazo; m += step) {
+    labels.push('M' + m);
+    dataCarteira.push(carteira.historico[m-1]?.saldo || 0);
+    dataVGBL.push(vgbl.historico[m-1]?.saldo || 0);
+    dataPGBL.push((pgbl.historico[m-1]?.saldo || 0) + (pgblBonus.historico[m-1]?.saldo || 0));
+    dataAportado.push(carteira.historico[m-1]?.totalAportado || 0);
+  }
+  if (prazo % step !== 0) {
+    labels.push('M' + prazo);
+    dataCarteira.push(carteira.historico[prazo-1]?.saldo || 0);
+    dataVGBL.push(vgbl.historico[prazo-1]?.saldo || 0);
+    dataPGBL.push((pgbl.historico[prazo-1]?.saldo || 0) + (pgblBonus.historico[prazo-1]?.saldo || 0));
+    dataAportado.push(carteira.historico[prazo-1]?.totalAportado || 0);
+  }
+
+  // Chart 1: Evolucao
+  var ctx1 = document.getElementById('chart-evolucao');
+  if (ctx1) {
+    new Chart(ctx1, {
+      type: 'line',
+      data: {
+        labels: labels,
+        datasets: [
+          {label: 'Total Aportado', data: dataAportado, borderColor: '#fb923c', backgroundColor: 'rgba(251,146,60,0.1)', fill: true, tension: 0.3, borderWidth: 2},
+          {label: 'Carteira', data: dataCarteira, borderColor: '#22c55e', backgroundColor: 'transparent', tension: 0.3, borderWidth: 2},
+          {label: 'VGBL', data: dataVGBL, borderColor: '#60a5fa', backgroundColor: 'transparent', tension: 0.3, borderWidth: 2},
+          {label: 'PGBL + Bonus', data: dataPGBL, borderColor: '#a78bfa', backgroundColor: 'transparent', tension: 0.3, borderWidth: 2}
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { labels: { color: '#A0B8A6', font: {size: 10} } }, title: { display: true, text: 'Evolucao do Saldo Bruto', color: '#D4AF37', font: {size: 12} } },
+        scales: { x: { ticks: { color: '#A0B8A6', font: {size: 9} }, grid: { color: 'rgba(212,175,55,0.05)' } }, y: { ticks: { color: '#A0B8A6', font: {size: 9}, callback: function(v) { return 'R$ ' + (v/1000).toFixed(0) + 'k'; } }, grid: { color: 'rgba(212,175,55,0.08)' } } }
+      }
+    });
+  }
+
+  // Chart 2: Comparativo barras
+  var ctx2 = document.getElementById('chart-comparativo');
+  if (ctx2) {
+    new Chart(ctx2, {
+      type: 'bar',
+      data: {
+        labels: ['Carteira', 'VGBL', 'PGBL + Bonus'],
+        datasets: [
+          {label: 'Valor Liquido', data: [carteira.totalLiquido, vgbl.totalLiquido, pgbl.totalLiquido + pgblBonus.totalLiquido], backgroundColor: ['rgba(34,197,94,0.7)', 'rgba(96,165,250,0.7)', 'rgba(167,139,250,0.7)']},
+          {label: 'IR Pago', data: [carteira.totalIR, vgbl.totalIR, pgbl.totalIR + pgblBonus.totalIR], backgroundColor: ['rgba(239,68,68,0.5)', 'rgba(239,68,68,0.5)', 'rgba(239,68,68,0.5)']}
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { labels: { color: '#A0B8A6', font: {size: 10} } }, title: { display: true, text: 'Comparativo: Liquido vs IR', color: '#D4AF37', font: {size: 12} } },
+        scales: { x: { ticks: { color: '#A0B8A6' }, grid: { color: 'rgba(212,175,55,0.05)' } }, y: { ticks: { color: '#A0B8A6', font: {size: 9}, callback: function(v) { return 'R$ ' + (v/1000).toFixed(0) + 'k'; } }, grid: { color: 'rgba(212,175,55,0.08)' } } }
+      }
+    });
+  }
+}
+
+// ===== SIMULACOES CRUD =====
+function novaSim() {
+  currentSimIdx = -1;
+  aportes = [];
+  resetForm();
+  document.getElementById('list-view').style.display = 'none';
+  document.getElementById('editor-view').style.display = 'block';
+  renderAportes();
+}
+
+function resetForm() {
+  document.getElementById('sim-nome').value = '';
+  document.getElementById('prazo-meses').value = '120';
+  document.getElementById('rentabilidade-aa').value = '';
+  document.getElementById('saldo-inicial').value = '';
+  document.getElementById('regime-tributario').value = 'regressiva';
+  document.getElementById('taxa-carreg-entrada').value = '';
+  document.getElementById('taxa-carreg-saida').value = '';
+  document.getElementById('taxa-admin').value = '';
+  document.getElementById('economia-pgbl').value = '';
+  document.getElementById('reajuste-global').value = '';
+  document.getElementById('resultado-area').innerHTML = '<div class="empty-state" style="padding:30px;"><div class="icon">&#128202;</div><p>Configure os parametros e aportes, depois clique em <strong>Calcular</strong>.</p></div>';
+  switchTab('config');
+}
+
+function voltarLista() {
+  document.getElementById('editor-view').style.display = 'none';
+  document.getElementById('list-view').style.display = 'block';
+  renderLista();
+}
+
+function buildPayload() {
+  return {
+    nome: document.getElementById('sim-nome').value.trim() || 'Simulacao ' + (simulations.length + 1),
+    prazo: parseInt(document.getElementById('prazo-meses').value) || 120,
+    rentAA: parsePct(document.getElementById('rentabilidade-aa')),
+    saldoInicial: parseCurrency(document.getElementById('saldo-inicial')),
+    regime: document.getElementById('regime-tributario').value,
+    taxaCarregEntrada: parsePct(document.getElementById('taxa-carreg-entrada')),
+    taxaCarregSaida: parsePct(document.getElementById('taxa-carreg-saida')),
+    taxaAdmin: parsePct(document.getElementById('taxa-admin')),
+    economiaPGBL: parseCurrency(document.getElementById('economia-pgbl')),
+    reajusteGlobal: parsePct(document.getElementById('reajuste-global')),
+    aportes: JSON.parse(JSON.stringify(aportes)),
+    dataSalvo: new Date().toISOString()
+  };
+}
+
+function applyPayload(p) {
+  document.getElementById('sim-nome').value = p.nome || '';
+  document.getElementById('prazo-meses').value = p.prazo || 120;
+  document.getElementById('rentabilidade-aa').value = p.rentAA || '';
+  document.getElementById('saldo-inicial').value = p.saldoInicial ? fmtBRL(p.saldoInicial) : '';
+  document.getElementById('regime-tributario').value = p.regime || 'regressiva';
+  document.getElementById('taxa-carreg-entrada').value = p.taxaCarregEntrada || '';
+  document.getElementById('taxa-carreg-saida').value = p.taxaCarregSaida || '';
+  document.getElementById('taxa-admin').value = p.taxaAdmin || '';
+  document.getElementById('economia-pgbl').value = p.economiaPGBL ? fmtBRL(p.economiaPGBL) : '';
+  document.getElementById('reajuste-global').value = p.reajusteGlobal || '';
+  aportes = p.aportes ? JSON.parse(JSON.stringify(p.aportes)) : [];
+  renderAportes();
+}
+
+function salvarSim() {
+  var payload = buildPayload();
+  if (currentSimIdx >= 0) {
+    simulations[currentSimIdx] = payload;
+  } else {
+    simulations.push(payload);
+    currentSimIdx = simulations.length - 1;
+  }
+  persistir();
+  alert('Simulacao salva!');
+}
+
+function editarSim(i) {
+  currentSimIdx = i;
+  applyPayload(simulations[i]);
+  document.getElementById('list-view').style.display = 'none';
+  document.getElementById('editor-view').style.display = 'block';
+  switchTab('config');
+}
+
+function duplicarSim(i) {
+  var copia = JSON.parse(JSON.stringify(simulations[i]));
+  copia.nome = copia.nome + ' (copia)';
+  copia.dataSalvo = new Date().toISOString();
+  simulations.push(copia);
+  persistir();
+  renderLista();
+}
+
+function excluirSim(i) {
+  if (confirm('Excluir esta simulacao?')) {
+    simulations.splice(i, 1);
+    persistir();
+    renderLista();
+  }
+}
+
+function renderLista() {
+  var container = document.getElementById('sim-list');
+  if (simulations.length === 0) {
+    container.innerHTML = '<div class="empty-state"><div class="icon">&#128202;</div><p>Nenhuma simulacao salva ainda.<br>Clique em <strong>+ Nova Simulacao</strong> para comecar.</p></div>';
+    return;
+  }
+  var html = '';
+  simulations.forEach(function(sim, i) {
+    var nAportes = sim.aportes ? sim.aportes.length : 0;
+    html += '<div class="sim-card" onclick="toggleCard(this,event)">';
+    html += '<div class="sim-card-header">';
+    html += '<div class="chevron">&#9660;</div>';
+    html += '<div class="sim-title">' + (sim.nome || 'Simulacao ' + (i+1)) + '</div>';
+    html += '<div class="sim-meta">' + sim.prazo + ' meses | ' + nAportes + ' aporte(s)</div>';
+    html += '<div class="sim-card-actions">';
+    html += '<button onclick="editarSim('+i+');event.stopPropagation();">Editar</button>';
+    html += '<button class="dup" onclick="duplicarSim('+i+');event.stopPropagation();">Duplicar</button>';
+    html += '<button class="danger" onclick="excluirSim('+i+');event.stopPropagation();">Excluir</button>';
+    html += '</div></div>';
+    html += '<div class="sim-card-body"><div class="sim-card-summary">';
+    html += '<div class="stat"><div class="stat-label">Prazo</div><div class="stat-value" style="color:#fff">' + sim.prazo + ' m</div></div>';
+    html += '<div class="stat"><div class="stat-label">Rent.</div><div class="stat-value" style="color:var(--green)">' + (sim.rentAA||0) + '%</div></div>';
+    html += '<div class="stat"><div class="stat-label">Regime</div><div class="stat-value" style="color:var(--blue)">' + (sim.regime === 'regressiva' ? 'Regres.' : 'Progres.') + '</div></div>';
+    html += '<div class="stat"><div class="stat-label">Aportes</div><div class="stat-value" style="color:var(--orange)">' + nAportes + '</div></div>';
+    html += '</div></div></div>';
+  });
+  container.innerHTML = html;
+}
+
+function toggleCard(card, e) {
+  if (e.target.closest('.sim-card-actions')) return;
+  card.classList.toggle('open');
+}
+
+// ===== PERSISTENCIA (Supabase + localStorage fallback) =====
+var _ACUM_SUPABASE_URL = 'https://vbikskbfkhundhropykf.supabase.co';
+var _ACUM_SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZiaWtza2Jma2h1bmRocm9weWtmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDU1MTk5NjEsImV4cCI6MjA2MTA5NTk2MX0.-n-Tj_5JnF1NL2ZImWlMeTcobWDl_VD6Vqp0lxRQFFU';
+var _acumSbClient = null;
+
+function _getAcumSb() {
+  if (!_acumSbClient && window.supabase) {
+    _acumSbClient = window.supabase.createClient(_ACUM_SUPABASE_URL, _ACUM_SUPABASE_KEY);
+  }
+  return _acumSbClient;
+}
+
+function _getClienteId() {
+  var params = new URLSearchParams(window.location.search);
+  return params.get('cliente_id') || null;
+}
+
+async function persistir() {
+  var clienteId = _getClienteId();
+  var dados = JSON.stringify(simulations);
+  localStorage.setItem('acumulo_sims', dados);
+  if (clienteId) {
+    try {
+      var sb = _getAcumSb();
+      if (sb) {
+        await sb.from('ferramentas_dados').upsert({
+          cliente_id: clienteId,
+          ferramenta: 'acumulo',
+          dados: dados
+        }, {onConflict: 'cliente_id,ferramenta'});
+      }
+    } catch(e) { console.warn('Erro ao salvar no Supabase:', e); }
+  }
+}
+
+async function carregar() {
+  var clienteId = _getClienteId();
+  if (clienteId) {
+    try {
+      var sb = _getAcumSb();
+      if (sb) {
+        var res = await sb.from('ferramentas_dados').select('dados').eq('cliente_id', clienteId).eq('ferramenta', 'acumulo').maybeSingle();
+        if (res.data && res.data.dados) {
+          simulations = JSON.parse(res.data.dados);
+          renderLista();
+          return;
+        }
+      }
+    } catch(e) { console.warn('Erro ao carregar do Supabase:', e); }
+  }
+  // Fallback localStorage
+  var local = localStorage.getItem('acumulo_sims');
+  if (local) {
+    try { simulations = JSON.parse(local); } catch(e) { simulations = []; }
+  }
+  renderLista();
+}
+
+// ===== INIT =====
+document.addEventListener('DOMContentLoaded', function() {
+  carregar();
+});
+</script>
+</body>
+</html>
