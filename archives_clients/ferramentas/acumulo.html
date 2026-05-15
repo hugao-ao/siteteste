@@ -93,6 +93,19 @@
   .verdict-box h3 { color: var(--green); margin-bottom: 0.5rem; }
   .verdict-box .big-number { font-size: 2rem; font-weight: 800; color: var(--green); }
   .chart-container { position: relative; height: 300px; }
+  /* Reference selector */
+  .ref-radio { appearance: none; -webkit-appearance: none; width: 16px; height: 16px; border: 2px solid var(--muted); border-radius: 50%; cursor: pointer; vertical-align: middle; margin-right: 4px; position: relative; transition: all 0.2s; }
+  .ref-radio:checked { border-color: var(--primary); background: var(--primary); }
+  .ref-radio:checked::after { content: ''; position: absolute; top: 3px; left: 3px; width: 6px; height: 6px; border-radius: 50%; background: #000; }
+  .ref-radio:hover { border-color: var(--primary); }
+  .ref-label { display: flex; align-items: center; justify-content: center; gap: 4px; cursor: pointer; font-size: 0.65rem; color: var(--muted); margin-top: 4px; }
+  .ref-label:hover { color: var(--primary); }
+  .verdict-comparison { display: flex; gap: 1.5rem; margin-top: 1rem; flex-wrap: wrap; justify-content: center; }
+  .verdict-vs { background: var(--card2); border: 1px solid var(--border); border-radius: 8px; padding: 1rem 1.5rem; text-align: center; min-width: 200px; flex: 1; max-width: 350px; }
+  .verdict-vs .vs-label { font-size: 0.7rem; color: var(--muted); text-transform: uppercase; font-weight: 600; margin-bottom: 0.3rem; }
+  .verdict-vs .vs-name { font-size: 0.95rem; font-weight: 700; margin-bottom: 0.2rem; }
+  .verdict-vs .vs-value { font-size: 1.1rem; font-weight: 700; }
+  .verdict-vs .vs-diff { font-size: 0.78rem; margin-top: 0.2rem; }
   .aporte-item { display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: var(--card2); border: 1px solid var(--border); border-radius: 6px; margin-bottom: 6px; flex-wrap: wrap; }
   .aporte-item .aporte-info { flex: 1; font-size: 0.85rem; color: var(--fg); min-width: 150px; }
   .aporte-item .aporte-info .sub { font-size: 0.7rem; color: var(--muted); }
@@ -1286,9 +1299,11 @@ function renderResultado(resultados, prazo, reajusteGlobal) {
 
   // ===== TABELA COMPARATIVA =====
   html += '<div style="margin-top:1.5rem;overflow-x:auto;">';
-  html += '<table class="comp-table">';
+  html += '<table class="comp-table" id="comp-table">';
   html += '<tr><th></th>';
-  colunas.forEach(function(c) { html += '<th style="color:' + c.cor + '">' + c.nome + '</th>'; });
+  colunas.forEach(function(c, i) {
+    html += '<th style="color:' + c.cor + '">' + c.nome + '<label class="ref-label"><input type="radio" name="ref-col" class="ref-radio" value="' + i + '" onchange="updateVerdict()"> Referencia</label></th>';
+  });
   html += '</tr>';
 
   var linhas = [
@@ -1339,13 +1354,11 @@ function renderResultado(resultados, prazo, reajusteGlobal) {
   });
 
   // ===== VEREDITO =====
-  html += '<div class="verdict-box" style="margin-top:1.5rem;">';
-  html += '<h3>Melhor Cenario</h3>';
-  html += '<div class="big-number">' + melhor.nome + '</div>';
-  html += '<p style="color:var(--green);font-size:1.2rem;font-weight:700;margin-top:0.5rem;">' + fmtBRL(melhor.totalLiquido) + '</p>';
-  var diff = melhor.totalLiquido - colunas.reduce(function(worst, c) { return c.totalLiquido < worst.totalLiquido ? c : worst; }, colunas[0]).totalLiquido;
-  if (diff > 0) html += '<p style="color:var(--muted);font-size:0.85rem;margin-top:0.3rem;">Vantagem de ' + fmtBRL(diff) + ' sobre o pior cenario</p>';
+  html += '<div class="verdict-box" style="margin-top:1.5rem;" id="verdict-box">';
   html += '</div>';
+
+  // Store colunas globally for verdict updates
+  window._colunasResultado = colunas;
 
   // ===== GRAFICOS =====
   html += '<div style="display:flex;gap:1.5rem;margin-top:2rem;flex-wrap:wrap;">';
@@ -1394,7 +1407,147 @@ function renderResultado(resultados, prazo, reajusteGlobal) {
   html += '</table></div>';
 
   document.getElementById('resultado-area').innerHTML = html;
+  updateVerdict();
   renderCharts(colunas, prazo);
+}
+
+// ===== VEREDITO DINAMICO =====
+function updateVerdict() {
+  var colunas = window._colunasResultado;
+  if (!colunas || colunas.length === 0) return;
+  var box = document.getElementById('verdict-box');
+  if (!box) return;
+
+  // Find selected reference
+  var refIdx = -1;
+  var radios = document.querySelectorAll('input[name="ref-col"]');
+  radios.forEach(function(r) { if (r.checked) refIdx = parseInt(r.value); });
+
+  // Sort by totalLiquido descending
+  var sorted = colunas.map(function(c, i) { return {idx: i, nome: c.nome, liq: c.totalLiquido, cor: c.cor}; });
+  sorted.sort(function(a, b) { return b.liq - a.liq; });
+
+  var melhor = sorted[0];
+  var pior = sorted[sorted.length - 1];
+  var segundo = sorted.length > 1 ? sorted[1] : sorted[0];
+
+  var html = '';
+
+  if (refIdx === -1) {
+    // Nenhuma referencia selecionada: comportamento padrao
+    html += '<h3>Melhor Cenario</h3>';
+    html += '<div class="big-number">' + melhor.nome + '</div>';
+    html += '<p style="color:var(--green);font-size:1.2rem;font-weight:700;margin-top:0.5rem;">' + fmtBRL(melhor.liq) + '</p>';
+    var diff = melhor.liq - pior.liq;
+    if (diff > 0) html += '<p style="color:var(--muted);font-size:0.85rem;margin-top:0.3rem;">Vantagem de ' + fmtBRL(diff) + ' sobre o pior cenario</p>';
+  } else {
+    // Referencia selecionada
+    var ref = {idx: refIdx, nome: colunas[refIdx].nome, liq: colunas[refIdx].totalLiquido, cor: colunas[refIdx].cor};
+
+    html += '<h3 style="margin-bottom:0.8rem;">Analise Comparativa</h3>';
+    html += '<p style="color:var(--primary);font-size:1.1rem;font-weight:700;margin-bottom:0.3rem;">Referencia: ' + ref.nome + '</p>';
+    html += '<p style="color:var(--fg);font-size:1.3rem;font-weight:800;">' + fmtBRL(ref.liq) + '</p>';
+
+    html += '<div class="verdict-comparison">';
+
+    if (refIdx === melhor.idx) {
+      // Referencia JA e o melhor: comparar com 2o melhor e pior
+      // vs 2o melhor
+      var diffSeg = ref.liq - segundo.liq;
+      html += '<div class="verdict-vs">';
+      html += '<div class="vs-label">vs 2&ordm; Melhor</div>';
+      html += '<div class="vs-name" style="color:' + segundo.cor + '">' + segundo.nome + '</div>';
+      html += '<div class="vs-value">' + fmtBRL(segundo.liq) + '</div>';
+      if (diffSeg > 0) {
+        html += '<div class="vs-diff" style="color:var(--green);">Referencia ganha ' + fmtBRL(diffSeg) + '</div>';
+      } else if (diffSeg < 0) {
+        html += '<div class="vs-diff" style="color:var(--red);">Referencia perde ' + fmtBRL(Math.abs(diffSeg)) + '</div>';
+      } else {
+        html += '<div class="vs-diff" style="color:var(--muted);">Empate</div>';
+      }
+      html += '</div>';
+
+      // vs pior
+      if (pior.idx !== segundo.idx) {
+        var diffPior = ref.liq - pior.liq;
+        html += '<div class="verdict-vs">';
+        html += '<div class="vs-label">vs Pior Cenario</div>';
+        html += '<div class="vs-name" style="color:' + pior.cor + '">' + pior.nome + '</div>';
+        html += '<div class="vs-value">' + fmtBRL(pior.liq) + '</div>';
+        if (diffPior > 0) {
+          html += '<div class="vs-diff" style="color:var(--green);">Referencia ganha ' + fmtBRL(diffPior) + '</div>';
+        } else {
+          html += '<div class="vs-diff" style="color:var(--muted);">Empate</div>';
+        }
+        html += '</div>';
+      }
+    } else if (refIdx === pior.idx) {
+      // Referencia e o PIOR: comparar com melhor e 2o pior
+      var diffMelhor = ref.liq - melhor.liq;
+      html += '<div class="verdict-vs">';
+      html += '<div class="vs-label">vs Melhor Cenario</div>';
+      html += '<div class="vs-name" style="color:' + melhor.cor + '">' + melhor.nome + '</div>';
+      html += '<div class="vs-value">' + fmtBRL(melhor.liq) + '</div>';
+      if (diffMelhor < 0) {
+        html += '<div class="vs-diff" style="color:var(--red);">Referencia perde ' + fmtBRL(Math.abs(diffMelhor)) + '</div>';
+      } else {
+        html += '<div class="vs-diff" style="color:var(--muted);">Empate</div>';
+      }
+      html += '</div>';
+
+      // vs 2o pior (penultimo do sorted)
+      var segPior = sorted.length > 1 ? sorted[sorted.length - 2] : sorted[0];
+      if (segPior.idx !== melhor.idx) {
+        var diffSegPior = ref.liq - segPior.liq;
+        html += '<div class="verdict-vs">';
+        html += '<div class="vs-label">vs 2&ordm; Pior</div>';
+        html += '<div class="vs-name" style="color:' + segPior.cor + '">' + segPior.nome + '</div>';
+        html += '<div class="vs-value">' + fmtBRL(segPior.liq) + '</div>';
+        if (diffSegPior < 0) {
+          html += '<div class="vs-diff" style="color:var(--red);">Referencia perde ' + fmtBRL(Math.abs(diffSegPior)) + '</div>';
+        } else if (diffSegPior > 0) {
+          html += '<div class="vs-diff" style="color:var(--green);">Referencia ganha ' + fmtBRL(diffSegPior) + '</div>';
+        } else {
+          html += '<div class="vs-diff" style="color:var(--muted);">Empate</div>';
+        }
+        html += '</div>';
+      }
+    } else {
+      // Referencia esta no meio: comparar com melhor e pior
+      var diffMelhor = ref.liq - melhor.liq;
+      html += '<div class="verdict-vs">';
+      html += '<div class="vs-label">vs Melhor Cenario</div>';
+      html += '<div class="vs-name" style="color:' + melhor.cor + '">' + melhor.nome + '</div>';
+      html += '<div class="vs-value">' + fmtBRL(melhor.liq) + '</div>';
+      if (diffMelhor < 0) {
+        html += '<div class="vs-diff" style="color:var(--red);">Referencia perde ' + fmtBRL(Math.abs(diffMelhor)) + '</div>';
+      } else if (diffMelhor > 0) {
+        html += '<div class="vs-diff" style="color:var(--green);">Referencia ganha ' + fmtBRL(diffMelhor) + '</div>';
+      } else {
+        html += '<div class="vs-diff" style="color:var(--muted);">Empate</div>';
+      }
+      html += '</div>';
+
+      // vs pior
+      var diffPior = ref.liq - pior.liq;
+      html += '<div class="verdict-vs">';
+      html += '<div class="vs-label">vs Pior Cenario</div>';
+      html += '<div class="vs-name" style="color:' + pior.cor + '">' + pior.nome + '</div>';
+      html += '<div class="vs-value">' + fmtBRL(pior.liq) + '</div>';
+      if (diffPior > 0) {
+        html += '<div class="vs-diff" style="color:var(--green);">Referencia ganha ' + fmtBRL(diffPior) + '</div>';
+      } else if (diffPior < 0) {
+        html += '<div class="vs-diff" style="color:var(--red);">Referencia perde ' + fmtBRL(Math.abs(diffPior)) + '</div>';
+      } else {
+        html += '<div class="vs-diff" style="color:var(--muted);">Empate</div>';
+      }
+      html += '</div>';
+    }
+
+    html += '</div>'; // fecha verdict-comparison
+  }
+
+  box.innerHTML = html;
 }
 
 
