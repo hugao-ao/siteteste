@@ -538,7 +538,7 @@ function calcular() {
   // PGBL bonus: economia anual reinvestida na carteira
   var pgblBonus = simCarteiraPGBLBonus(prazo, rentMensal, economiaPGBL, reajusteGlobal);
 
-  renderResultado(carteira, vgbl, pgbl, pgblBonus, prazo, rentAA);
+  renderResultado(carteira, vgbl, pgbl, pgblBonus, prazo, rentAA, economiaPGBL);
 }
 
 function simCarteira(prazo, rentMensal, saldoInicial, reajusteGlobal, taxaCarregEntrada, taxaAdmin) {
@@ -570,20 +570,6 @@ function simCarteira(prazo, rentMensal, saldoInicial, reajusteGlobal, taxaCarreg
       l.saldo *= (1 + rentMensal);
     });
 
-    // Come-cotas (maio=5, novembro=11) - aplica 15% sobre rendimento desde ultimo come-cotas
-    if (mes % 6 === 0) {
-      lotes.forEach(function(l) {
-        var rendimento = l.saldo - l.valorAportado;
-        if (rendimento > 0) {
-          var impComeCotas = rendimento * 0.15;
-          l.saldo -= impComeCotas;
-          // Marca que ja pagou come-cotas (ajusta valorAportado para proximo calculo)
-          // Na verdade, come-cotas reduz cotas, entao o "valorAportado" para fins de IR nao muda
-          // O que muda e que no resgate final, desconta-se o come-cotas ja pago
-        }
-      });
-    }
-
     // Taxa admin anual (aplica mensalmente = taxaAdmin/12)
     if (taxaAdmin > 0) {
       lotes.forEach(function(l) { l.saldo *= (1 - taxaAdmin/12); });
@@ -593,7 +579,7 @@ function simCarteira(prazo, rentMensal, saldoInicial, reajusteGlobal, taxaCarreg
     historico.push({mes: mes, saldo: saldoTotal, aporte: aporteDoMes, totalAportado: totalAportado});
   }
 
-  // Calculo IR no resgate final (por lote)
+  // Calculo IR no resgate final (por lote, conforme prazo de acumulacao)
   var totalBruto = lotes.reduce(function(s, l) { return s + l.saldo; }, 0);
   var totalIR = 0;
   lotes.forEach(function(l) {
@@ -653,7 +639,7 @@ function simPrevidencia(prazo, rentMensal, saldoInicial, reajusteGlobal, regimeT
       lotes.forEach(function(l) { l.saldo *= (1 - taxaAdmin/12); });
     }
 
-    // SEM come-cotas na previdencia
+    // Previdencia nao tem taxa admin sobre saldo
     var saldoTotal = lotes.reduce(function(s, l) { return s + l.saldo; }, 0);
     historico.push({mes: mes, saldo: saldoTotal, aporte: aporteDoMes, totalAportado: totalAportado});
   }
@@ -734,15 +720,6 @@ function simCarteiraPGBLBonus(prazo, rentMensal, economiaPGBLAnual, reajusteGlob
     // Rendimento
     lotes.forEach(function(l) { l.saldo *= (1 + rentMensal); });
 
-    // Come-cotas (esta na carteira normal)
-    if (mes % 6 === 0) {
-      lotes.forEach(function(l) {
-        var rendimento = l.saldo - l.valorAportado;
-        if (rendimento > 0) {
-          l.saldo -= rendimento * 0.15;
-        }
-      });
-    }
 
     var saldoTotal = lotes.reduce(function(s, l) { return s + l.saldo; }, 0);
     historico.push({mes: mes, saldo: saldoTotal, totalAportado: totalAportado});
@@ -786,7 +763,7 @@ function calcIRProgressivo(base) {
   return base * 0.275 - 11344.43;
 }
 
-function renderResultado(carteira, vgbl, pgbl, pgblBonus, prazo, rentAA) {
+function renderResultado(carteira, vgbl, pgbl, pgblBonus, prazo, rentAA, economiaPGBL) {
   var pgblTotal = {
     totalBruto: pgbl.totalBruto + pgblBonus.totalBruto,
     totalAportado: pgbl.totalAportado + pgblBonus.totalAportado,
@@ -817,10 +794,16 @@ function renderResultado(carteira, vgbl, pgbl, pgblBonus, prazo, rentAA) {
   html += '<table class="comp-table" style="margin-top:1.5rem;">';
   html += '<tr><th></th><th style="color:var(--green)">Carteira</th><th style="color:var(--blue)">VGBL</th><th style="color:var(--purple)">PGBL + Bonus</th></tr>';
 
+  // Calcula aliquota efetiva (IR / Bruto)
+  var aliqEfCart = carteira.totalBruto > 0 ? (carteira.totalIR / carteira.totalBruto * 100).toFixed(2) : '0.00';
+  var aliqEfVGBL = vgbl.totalBruto > 0 ? (vgbl.totalIR / vgbl.totalBruto * 100).toFixed(2) : '0.00';
+  var aliqEfPGBL = pgblTotal.totalBruto > 0 ? (pgblTotal.totalIR / pgblTotal.totalBruto * 100).toFixed(2) : '0.00';
+
   var rows = [
     ['Total Aportado', fmtBRL(carteira.totalAportado), fmtBRL(vgbl.totalAportado), fmtBRL(pgblTotal.totalAportado)],
     ['Valor Bruto Acumulado', fmtBRL(carteira.totalBruto), fmtBRL(vgbl.totalBruto), fmtBRL(pgblTotal.totalBruto)],
     ['Imposto de Renda', '<span class="loser">' + fmtBRL(carteira.totalIR) + '</span>', '<span class="loser">' + fmtBRL(vgbl.totalIR) + '</span>', '<span class="loser">' + fmtBRL(pgblTotal.totalIR) + '</span>'],
+    ['Aliquota Efetiva (IR/Bruto)', '<span class="loser">' + aliqEfCart + '%</span>', '<span class="loser">' + aliqEfVGBL + '%</span>', '<span class="loser">' + aliqEfPGBL + '%</span>'],
     ['Carreg. Saida', '-', '<span class="loser">' + fmtBRL(vgbl.taxaCarregSaida||0) + '</span>', '<span class="loser">' + fmtBRL(pgblTotal.taxaCarregSaida||0) + '</span>'],
     ['Valor Liquido Resgate', '<span class="winner">' + fmtBRL(carteira.totalLiquido) + '</span>', '<span class="winner">' + fmtBRL(vgbl.totalLiquido) + '</span>', '<span class="winner">' + fmtBRL(pgblTotal.totalLiquido) + '</span>']
   ];
@@ -830,22 +813,35 @@ function renderResultado(carteira, vgbl, pgbl, pgblBonus, prazo, rentAA) {
   html += '</table>';
 
   // Memoria de calculo PGBL
-  if (pgblBonus.totalBruto > 0) {
-    html += '<div class="pgbl-highlight" style="margin-top:1.5rem;">';
-    html += '<h3 style="color:var(--purple);margin-bottom:0.5rem;">Memoria de Calculo PGBL</h3>';
-    html += '<div class="ded-list">';
-    html += '<div class="ded-item"><span class="ded-label">PGBL (previdencia)</span><span class="ded-value">' + fmtBRL(pgbl.totalLiquido) + '</span></div>';
-    html += '<div class="ded-item"><span class="ded-label">Bonus reinvestido (economia IR)</span><span class="ded-value">' + fmtBRL(pgblBonus.totalLiquido) + '</span></div>';
-    html += '<div class="ded-item"><span class="ded-label">IR do PGBL</span><span class="ded-value" style="color:var(--red)">' + fmtBRL(pgbl.totalIR) + '</span></div>';
-    html += '<div class="ded-item"><span class="ded-label">IR do Bonus (carteira)</span><span class="ded-value" style="color:var(--red)">' + fmtBRL(pgblBonus.totalIR) + '</span></div>';
-    html += '<div class="ded-item" style="border-top:1px solid var(--border);padding-top:0.5rem;"><span class="ded-label" style="font-weight:700;color:#fff">Total Liquido PGBL + Bonus</span><span class="ded-value" style="color:var(--purple)">' + fmtBRL(pgblTotal.totalLiquido) + '</span></div>';
-    html += '</div></div>';
-  }
+  html += '<div class="pgbl-highlight" style="margin-top:1.5rem;">';
+  html += '<h3 style="color:var(--purple);margin-bottom:0.5rem;">Memoria de Calculo PGBL</h3>';
+  html += '<div class="ded-list">';
+  html += '<div class="ded-item"><span class="ded-label">PGBL (previdencia) - Bruto</span><span class="ded-value">' + fmtBRL(pgbl.totalBruto) + '</span></div>';
+  html += '<div class="ded-item"><span class="ded-label">PGBL (previdencia) - IR</span><span class="ded-value" style="color:var(--red)">' + fmtBRL(pgbl.totalIR) + '</span></div>';
+  html += '<div class="ded-item"><span class="ded-label">PGBL (previdencia) - Liquido</span><span class="ded-value">' + fmtBRL(pgbl.totalLiquido) + '</span></div>';
+  html += '<div class="ded-item" style="border-top:1px solid var(--border);padding-top:0.5rem;margin-top:0.5rem;"><span class="ded-label" style="font-weight:700;color:var(--gold)">Bonus reinvestido (economia IR) - Bruto</span><span class="ded-value" style="color:var(--gold)">' + fmtBRL(pgblBonus.totalBruto) + '</span></div>';
+  html += '<div class="ded-item"><span class="ded-label" style="color:var(--gold)">Bonus reinvestido - IR</span><span class="ded-value" style="color:var(--red)">' + fmtBRL(pgblBonus.totalIR) + '</span></div>';
+  html += '<div class="ded-item"><span class="ded-label" style="color:var(--gold)">Bonus reinvestido - Liquido</span><span class="ded-value" style="color:var(--gold)">' + fmtBRL(pgblBonus.totalLiquido) + '</span></div>';
+  html += '<div class="ded-item" style="border-top:1px solid var(--border);padding-top:0.5rem;margin-top:0.5rem;"><span class="ded-label" style="font-weight:700;color:#fff">Total Liquido PGBL + Bonus</span><span class="ded-value" style="color:var(--purple);font-weight:700;">' + fmtBRL(pgblTotal.totalLiquido) + '</span></div>';
+  html += '</div></div>';
+
+  // Destaque: Vantagem exclusiva do PGBL na declaracao de IR
+  html += '<div class="card" style="margin-top:1.5rem;border-color:var(--gold);background:rgba(218,165,32,0.05);">';
+  html += '<h3 style="color:var(--gold);margin-bottom:0.5rem;">Vantagem Exclusiva do PGBL na Declaracao de IR</h3>';
+  html += '<p style="color:var(--muted);font-size:0.85rem;margin-bottom:0.8rem;">O PGBL permite deduzir ate 12% da renda bruta tributavel na declaracao completa. A economia gerada no IR e reinvestida como bonus na carteira de investimento.</p>';
+  html += '<div class="ded-list">';
+  html += '<div class="ded-item"><span class="ded-label">Economia anual no IR (informada)</span><span class="ded-value" style="color:var(--gold)">' + fmtBRL(economiaPGBL) + '</span></div>';
+  html += '<div class="ded-item"><span class="ded-label">Economia mensal equivalente</span><span class="ded-value" style="color:var(--gold)">' + fmtBRL(economiaPGBL/12) + '</span></div>';
+  html += '<div class="ded-item"><span class="ded-label">Total reinvestido ao longo de ' + prazo + ' meses</span><span class="ded-value" style="color:var(--gold)">' + fmtBRL(pgblBonus.totalAportado) + '</span></div>';
+  html += '<div class="ded-item"><span class="ded-label">Rendimento gerado pelo bonus</span><span class="ded-value" style="color:var(--green)">' + fmtBRL(pgblBonus.totalBruto - pgblBonus.totalAportado) + '</span></div>';
+  html += '<div class="ded-item" style="border-top:1px solid var(--border);padding-top:0.5rem;"><span class="ded-label" style="font-weight:700;color:#fff">Valor liquido extra gerado APENAS pela vantagem do PGBL</span><span class="ded-value" style="color:var(--gold);font-weight:700;">' + fmtBRL(pgblBonus.totalLiquido) + '</span></div>';
+  html += '<div class="ded-item"><span class="ded-label" style="font-weight:700;color:#fff">Diferenca total: PGBL+Bonus vs Carteira pura</span><span class="ded-value" style="color:var(--green);font-weight:700;">' + fmtBRL(pgblTotal.totalLiquido - carteira.totalLiquido) + '</span></div>';
+  html += '</div></div>';
 
   // Diferenca bruta ao longo do tempo
   html += '<div class="card" style="margin-top:1.5rem;border-color:var(--blue);">';
   html += '<h3 style="color:var(--blue);margin-bottom:0.5rem;">Diferenca de Valor Bruto ao Longo do Tempo</h3>';
-  html += '<p style="color:var(--muted);font-size:0.8rem;margin-bottom:0.5rem;">VGBL e PGBL nao sofrem come-cotas, por isso acumulam mais bruto ao longo do tempo.</p>';
+  html += '<p style="color:var(--muted);font-size:0.8rem;margin-bottom:0.5rem;">Diferenca no acumulo bruto entre os cenarios (VGBL/PGBL nao tem taxa de administracao sobre o saldo).</p>';
   var diffBrutoVGBL = vgbl.totalBruto - carteira.totalBruto;
   var diffBrutoPGBL = pgbl.totalBruto - carteira.totalBruto;
   html += '<div class="ded-list">';
