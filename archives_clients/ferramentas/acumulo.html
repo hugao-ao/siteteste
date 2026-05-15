@@ -782,14 +782,16 @@ function simCarteiraPGBLBonus(prazo, rentMensal, economiaPGBLAnual, reajusteGlob
   var totalAportado = 0;
 
   for (var mes = 1; mes <= prazo; mes++) {
-    if (mes % 12 === 0) {
+    // Rendimento aplicado ANTES do aporte do mes (aporte nao rende no mes de entrada)
+    lotes.forEach(function(l) { l.saldo *= (1 + rentMensal); });
+
+    // Bonus entra a cada 12 meses, mas NAO no ultimo mes do prazo (nao teria tempo de render)
+    if (mes % 12 === 0 && mes < prazo) {
       var anosDecorridos = Math.floor(mes / 12) - 1;
       var valorBonus = economiaPGBLAnual * Math.pow(1 + (reajusteGlobal||0)/100, anosDecorridos);
       lotes.push({mesEntrada: mes, valorAportado: valorBonus, saldo: valorBonus});
       totalAportado += valorBonus;
     }
-
-    lotes.forEach(function(l) { l.saldo *= (1 + rentMensal); });
 
     var saldoTotal = lotes.reduce(function(s, l) { return s + l.saldo; }, 0);
     historico.push({mes: mes, saldo: saldoTotal, totalAportado: totalAportado});
