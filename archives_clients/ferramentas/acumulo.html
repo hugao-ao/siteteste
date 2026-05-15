@@ -122,10 +122,103 @@
   .scenario-col h3 { padding: 0.8rem; border-radius: 6px 6px 0 0; text-align: center; margin-bottom: 0; }
   .regime-section { margin-top: 0.8rem; padding: 0.8rem; background: var(--card2); border-radius: 6px; }
   .regime-section h4 { font-size: 0.85rem; margin-bottom: 0.5rem; font-weight: 600; }
+  /* ===== RESPONSIVIDADE ===== */
+  @media(max-width:1024px) {
+    .page { padding: 1.5rem 0.75rem 3rem; }
+    h1 { font-size: 1.4rem; }
+    h2 { font-size: 1rem; }
+    .summary-item .value { font-size: 1rem; }
+    .comp-table { font-size: 0.72rem; }
+    .comp-table th, .comp-table td { padding: 6px 6px; }
+    .chart-container { height: 260px; }
+  }
+
   @media(max-width:768px) {
+    .page { padding: 1rem 0.5rem 3rem; }
+    h1 { font-size: 1.2rem; }
+    h2 { font-size: 0.95rem; }
+    h3 { font-size: 0.85rem; }
+    .page-header { gap: 10px; }
+    .page-header-info p { font-size: 0.75rem; }
+    .btn-new { padding: 8px 14px; font-size: 0.8rem; }
     .row { flex-direction: column; }
     .row .field { min-width: 100%; }
-    .summary-grid { grid-template-columns: 1fr 1fr; }
+    .card { padding: 1rem; margin-bottom: 1rem; }
+    .summary-grid { grid-template-columns: 1fr 1fr; gap: 0.6rem; }
+    .summary-item { padding: 0.7rem; }
+    .summary-item .label { font-size: 0.65rem; }
+    .summary-item .value { font-size: 0.9rem; }
+    .tab-bar { gap: 0.3rem; }
+    .tab-btn { padding: 0.4rem 0.7rem; font-size: 0.72rem; }
+    .comp-table { font-size: 0.65rem; }
+    .comp-table th, .comp-table td { padding: 5px 4px; white-space: nowrap; }
+    .ded-item { flex-direction: column; align-items: flex-start; gap: 2px; }
+    .ded-label { font-size: 0.75rem; }
+    .ded-value { font-size: 0.78rem; }
+    .verdict-box .big-number { font-size: 1.5rem; }
+    .verdict-box h3 { font-size: 0.9rem; }
+    .verdict-box p { font-size: 0.78rem; }
+    .chart-container { height: 220px; min-width: 100% !important; }
+    .aporte-item { padding: 6px 8px; }
+    .aporte-item .aporte-info { font-size: 0.78rem; min-width: 100px; }
+    .modal-box { padding: 1.2rem; width: 95%; }
+    .sim-card-header { padding: 12px 14px; }
+    .sim-card-header .sim-title { font-size: 0.9rem; }
+    .sim-card-header .sim-meta { font-size: 0.7rem; }
+    .regime-section { padding: 0.6rem; }
+    .regime-section h4 { font-size: 0.78rem; }
+    .pgbl-highlight { padding: 0.8rem; }
+    .field label { font-size: 0.75rem; }
+    .field input, .field select { font-size: 0.82rem; padding: 0.45rem 0.6rem; }
+    .field .hint { font-size: 0.65rem; }
+    .btn { font-size: 0.78rem; padding: 0.5rem 0.9rem; }
+    #btnSaveGlobal { font-size: 0.78rem !important; padding: 8px 14px !important; bottom: 12px !important; right: 12px !important; }
+  }
+
+  @media(max-width:480px) {
+    .page { padding: 0.75rem 0.4rem 3rem; }
+    h1 { font-size: 1rem; }
+    h2 { font-size: 0.85rem; }
+    h3 { font-size: 0.78rem; }
+    .page-header-info p { font-size: 0.7rem; }
+    .btn-new { padding: 6px 10px; font-size: 0.72rem; }
+    .card { padding: 0.75rem; margin-bottom: 0.75rem; }
+    .summary-grid { grid-template-columns: 1fr 1fr; gap: 0.4rem; }
+    .summary-item { padding: 0.5rem; }
+    .summary-item .label { font-size: 0.6rem; }
+    .summary-item .value { font-size: 0.78rem; }
+    .tab-btn { padding: 0.35rem 0.5rem; font-size: 0.68rem; }
+    .comp-table { font-size: 0.58rem; }
+    .comp-table th, .comp-table td { padding: 4px 3px; }
+    .ded-label { font-size: 0.68rem; }
+    .ded-value { font-size: 0.72rem; }
+    .verdict-box { padding: 1rem; }
+    .verdict-box .big-number { font-size: 1.2rem; }
+    .verdict-box h3 { font-size: 0.8rem; }
+    .chart-container { height: 180px; }
+    .field label { font-size: 0.7rem; }
+    .field input, .field select { font-size: 0.78rem; padding: 0.4rem 0.5rem; }
+    .field .hint { font-size: 0.6rem; }
+    .btn { font-size: 0.72rem; padding: 0.4rem 0.7rem; }
+    .sim-card-header { padding: 10px 10px; gap: 8px; }
+    .sim-card-header .sim-title { font-size: 0.82rem; }
+    .sim-card-header .sim-meta { font-size: 0.65rem; }
+    .sim-card-actions button { padding: 3px 7px; font-size: 0.68rem; }
+    .modal-box { padding: 1rem; }
+    .aporte-item .aporte-info .sub { font-size: 0.62rem; }
+    .update-item { font-size: 0.7rem; }
+    .regime-section h4 { font-size: 0.72rem; }
+    #btnSaveGlobal { font-size: 0.72rem !important; padding: 6px 10px !important; }
+  }
+
+  /* Tabelas com scroll horizontal em telas pequenas */
+  @media(max-width:768px) {
+    .comp-table { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  }
+
+  /* Charts flex wrap em mobile */
+  @media(max-width:640px) {
+    [style*="display:flex"][style*="chart-container"] { flex-direction: column; }
   }
 </style>
 </head>
