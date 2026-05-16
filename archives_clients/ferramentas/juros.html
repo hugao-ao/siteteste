@@ -443,6 +443,56 @@
   .analise-result-card .arc-item .arc-label { font-size: 0.7rem; color: var(--muted); text-transform: uppercase; }
   .analise-result-card .arc-item .arc-value { font-size: 1.1rem; font-weight: 700; margin-top: 0.2rem; }
 
+  /* ===== VISÃO CONSOLIDADA ===== */
+  .cons-section { margin-bottom: 1.8rem; }
+  .cons-section-title {
+    font-size: 0.85rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;
+    padding: 0.5rem 0.8rem; border-radius: 6px; margin-bottom: 0.8rem;
+    display: flex; align-items: center; gap: 0.5rem;
+  }
+  .cons-section-title.sobrev { background: rgba(239,68,68,0.12); color: var(--red); }
+  .cons-section-title.custo { background: rgba(251,146,60,0.12); color: var(--orange); }
+  .cons-section-title.veloc { background: rgba(96,165,250,0.12); color: var(--blue); }
+  .cons-section-title.risco { background: rgba(239,68,68,0.12); color: var(--red); }
+  .cons-section-title.flex { background: rgba(34,197,94,0.12); color: var(--green); }
+  .cons-section-title.psico { background: rgba(167,139,250,0.12); color: var(--purple); }
+  .cons-section-title.score { background: rgba(212,175,55,0.15); color: var(--primary); }
+
+  .cons-table-wrap { overflow-x: auto; margin-bottom: 0.5rem; }
+  .cons-table {
+    width: 100%; border-collapse: collapse; font-size: 0.78rem;
+  }
+  .cons-table th, .cons-table td {
+    padding: 0.5rem 0.6rem; text-align: center; border-bottom: 1px solid rgba(212,175,55,0.1);
+  }
+  .cons-table th {
+    background: var(--card2); color: var(--muted); font-weight: 600; text-transform: uppercase;
+    font-size: 0.7rem; letter-spacing: 0.03em; position: sticky; top: 0;
+  }
+  .cons-table th:first-child, .cons-table td:first-child { text-align: left; }
+  .cons-table td { color: var(--fg); }
+  .cons-table tr:hover td { background: rgba(212,175,55,0.04); }
+  .cons-best { color: var(--green) !important; font-weight: 700; }
+  .cons-worst { color: var(--red) !important; font-weight: 700; }
+  .cons-neutral { color: var(--fg); }
+
+  .cons-score-bar {
+    height: 8px; border-radius: 4px; background: var(--card2);
+    overflow: hidden; margin-top: 0.3rem;
+  }
+  .cons-score-fill { height: 100%; border-radius: 4px; transition: width 0.5s ease; }
+
+  .cons-verdict-box {
+    background: var(--card2); border: 2px solid var(--primary); border-radius: var(--radius);
+    padding: 1.5rem; text-align: center; margin-top: 1.5rem;
+  }
+  .cons-verdict-box h3 { color: var(--primary); font-size: 0.9rem; margin-bottom: 0.5rem; }
+  .cons-verdict-box .winner-name { font-size: 1.4rem; font-weight: 800; color: var(--green); }
+  .cons-verdict-box .winner-score { font-size: 1rem; color: var(--fg); margin-top: 0.3rem; }
+  .cons-verdict-box .winner-detail { font-size: 0.8rem; color: var(--muted); margin-top: 0.5rem; }
+
+  .cons-note { font-size: 0.75rem; color: var(--muted); font-style: italic; margin-top: 0.5rem; }
+
 </style>
 </head>
 <body>
@@ -3256,6 +3306,7 @@ function analiseGerar() {
 
   // Render comparison charts
   selectedComps.forEach(function(comp, ci) {
+    try {
     var r = _analiseRunComp(comp);
     if (!r || !r.investData.length) return;
     var chartId = 'analise-comp-chart-' + ci;
@@ -3287,6 +3338,7 @@ function analiseGerar() {
       }
     });
     _analiseCharts.push(chart);
+    } catch(e) { console.warn("Chart comp error:", e.message); }
   });
 
   // ===== ESTRATÉGIAS =====
@@ -3323,6 +3375,7 @@ function analiseGerar() {
 
   // Render strategy charts
   selectedStrats.forEach(function(strat, si) {
+    try {
     var r = _analiseRunStrat(strat);
     if (!r || !r.saldoData.length) return;
     var chartId = 'analise-strat-chart-' + si;
@@ -3349,35 +3402,454 @@ function analiseGerar() {
       }
     });
     _analiseCharts.push(chart);
+    } catch(e) { console.warn("Chart strat error:", e.message); }
   });
 
   // ===== VISÃO CONSOLIDADA =====
+  _renderConsolidado(selectedComps, selectedStrats);
+}
+
+function _renderConsolidado(selectedComps, selectedStrats) {
   var consolidado = document.getElementById('analise-consolidado');
   consolidado.style.display = 'block';
-  var consHtml = '<div class="arc-grid">';
-  consHtml += '<div class="arc-item"><div class="arc-label">Comparações Analisadas</div><div class="arc-value" style="color:var(--primary);">' + selectedComps.length + '</div></div>';
-  consHtml += '<div class="arc-item"><div class="arc-label">Estratégias Analisadas</div><div class="arc-value" style="color:var(--purple);">' + selectedStrats.length + '</div></div>';
 
-  // Total savings across all
-  var totalEconomiaJuros = 0;
+  // Build unified scenario list
+  var cenarios = [];
+
   selectedComps.forEach(function(comp) {
     var r = _analiseRunComp(comp);
-    if (r) totalEconomiaJuros += r.economiaJuros;
-  });
-  var totalEconomiaMeses = 0;
-  selectedStrats.forEach(function(strat) {
-    var r = _analiseRunStrat(strat);
-    if (r && r.economiaMeses > 0) totalEconomiaMeses += r.economiaMeses;
+    if (!r) return;
+    // Cenário ATUAL
+    cenarios.push({
+      tipo: 'comp-atual',
+      label: r.nome + ' (Atual)',
+      parcela: r.parcelaAtual,
+      jurosTotal: r.jurosAtual,
+      totalPago: r.totalPagoAtual,
+      saldoDevedor: r.totalSaldoAtual,
+      prazo: r.prazoAtual,
+      nContratos: r.nDividasAtual,
+      investFinal: 0,
+      reservaFinal: 0,
+      economiaMeses: 0,
+      economiaJuros: 0,
+      quitouEm: r.prazoAtual,
+      aporteMensal: 0,
+      source: comp
+    });
+    // Cenário PROPOSTA
+    cenarios.push({
+      tipo: 'comp-prop',
+      label: r.nome + ' (Proposta)',
+      parcela: r.parcelaProp,
+      jurosTotal: r.jurosProp,
+      totalPago: r.totalPagoProp,
+      saldoDevedor: r.totalSaldoProp,
+      prazo: r.prazoProp,
+      nContratos: r.nDividasProp,
+      investFinal: r.investFinal,
+      reservaFinal: r.investFinal,
+      economiaMeses: 0,
+      economiaJuros: r.economiaJuros,
+      quitouEm: r.prazoProp,
+      aporteMensal: 0,
+      source: comp
+    });
   });
 
-  if (selectedComps.length > 0) {
-    consHtml += '<div class="arc-item"><div class="arc-label">Economia Total em Juros (Comparações)</div><div class="arc-value" style="color:' + (totalEconomiaJuros > 0 ? 'var(--green)' : 'var(--red)') + ';">' + fmtBRL(totalEconomiaJuros) + '</div></div>';
+  selectedStrats.forEach(function(strat) {
+    var r = _analiseRunStrat(strat);
+    if (!r) return;
+    // Calcular juros totais e total pago para a estratégia
+    var cfg = strat.config;
+    var list = cfg.source === 'atual' ? dividasAtuais : dividasProposta;
+    var isAtual = cfg.source === 'atual';
+    var totalPagoOrig = 0, totalSaldoOrig = 0, maxPrazoOrig = 0, totalParcelaOrig = 0;
+    (cfg.selectedDividas || []).forEach(function(idx) {
+      var d = list[idx];
+      if (!d) return;
+      var restantes = d.totalParcelas - (isAtual ? (d.parcelasPagas || 0) : 0);
+      var saldo = isAtual ? (d.saldoDevedor || d.valorContratado) : d.valorContratado;
+      totalSaldoOrig += saldo;
+      totalParcelaOrig += d.parcela;
+      if (restantes > maxPrazoOrig) maxPrazoOrig = restantes;
+      totalPagoOrig += calcTotalPagarDivida(d, restantes);
+    });
+
+    cenarios.push({
+      tipo: 'strat',
+      label: r.nome,
+      parcela: totalParcelaOrig,
+      jurosTotal: r.totalJurosPagos,
+      totalPago: totalSaldoOrig + r.totalJurosPagos,
+      saldoDevedor: r.saldoInicialTotal,
+      prazo: r.prazoOriginal,
+      nContratos: r.nDividas,
+      investFinal: 0,
+      reservaFinal: r.reservaFinal,
+      economiaMeses: r.economiaMeses,
+      economiaJuros: 0,
+      quitouEm: r.quitouEm >= 0 ? r.quitouEm + 1 : r.prazoOriginal,
+      aporteMensal: r.aporteMensal,
+      totalAmortExtra: r.totalAmortExtra || 0,
+      autoQuit: r.autoQuit,
+      source: strat
+    });
+  });
+
+  if (!cenarios.length) {
+    document.getElementById('analise-consolidado-content').innerHTML = '<p class="note">Nenhum cenário válido para consolidar.</p>';
+    return;
   }
-  if (selectedStrats.length > 0) {
-    consHtml += '<div class="arc-item"><div class="arc-label">Economia Total em Meses (Estratégias)</div><div class="arc-value" style="color:var(--green);">' + totalEconomiaMeses + ' meses</div></div>';
+
+  var h = '';
+
+  // Helper: find best/worst in array (lower is better by default)
+  function rankLow(arr) {
+    var min = Infinity, max = -Infinity, minI = 0, maxI = 0;
+    for (var i = 0; i < arr.length; i++) {
+      if (arr[i] < min) { min = arr[i]; minI = i; }
+      if (arr[i] > max) { max = arr[i]; maxI = i; }
+    }
+    return { bestIdx: minI, worstIdx: maxI, min: min, max: max };
   }
-  consHtml += '</div>';
-  document.getElementById('analise-consolidado-content').innerHTML = consHtml;
+  function rankHigh(arr) {
+    var min = Infinity, max = -Infinity, minI = 0, maxI = 0;
+    for (var i = 0; i < arr.length; i++) {
+      if (arr[i] < min) { min = arr[i]; minI = i; }
+      if (arr[i] > max) { max = arr[i]; maxI = i; }
+    }
+    return { bestIdx: maxI, worstIdx: minI, min: min, max: max };
+  }
+  function cls(idx, bestIdx, worstIdx) {
+    if (idx === bestIdx) return 'cons-best';
+    if (idx === worstIdx) return 'cons-worst';
+    return 'cons-neutral';
+  }
+
+  // ===== 1. SOBREVIVÊNCIA FINANCEIRA =====
+  h += '<div class="cons-section">';
+  h += '<div class="cons-section-title sobrev">1. Sobrevivência Financeira Imediata</div>';
+  var parcelas = cenarios.map(function(c) { return c.parcela; });
+  var rParcela = rankLow(parcelas);
+  h += '<div class="cons-table-wrap"><table class="cons-table"><thead><tr><th>Indicador</th>';
+  cenarios.forEach(function(c) { h += '<th>' + _escHtml(c.label) + '</th>'; });
+  h += '</tr></thead><tbody>';
+  // Parcela mensal
+  h += '<tr><td>Parcela Mensal</td>';
+  cenarios.forEach(function(c, i) {
+    h += '<td class="' + cls(i, rParcela.bestIdx, rParcela.worstIdx) + '">' + fmtBRL(c.parcela) + '/mês</td>';
+  });
+  h += '</tr>';
+  // Aporte mensal (estratégias)
+  var temAporte = cenarios.some(function(c) { return c.aporteMensal > 0; });
+  if (temAporte) {
+    var aportes = cenarios.map(function(c) { return c.aporteMensal || 0; });
+    h += '<tr><td>Aporte Mensal (Estratégia)</td>';
+    cenarios.forEach(function(c) {
+      h += '<td>' + (c.aporteMensal > 0 ? fmtBRL(c.aporteMensal) + '/mês' : '—') + '</td>';
+    });
+    h += '</tr>';
+  }
+  // Desembolso mensal total (parcela + aporte)
+  var desembolsos = cenarios.map(function(c) { return c.parcela + (c.aporteMensal || 0); });
+  var rDesemb = rankLow(desembolsos);
+  h += '<tr><td>Desembolso Mensal Total</td>';
+  cenarios.forEach(function(c, i) {
+    h += '<td class="' + cls(i, rDesemb.bestIdx, rDesemb.worstIdx) + '">' + fmtBRL(desembolsos[i]) + '/mês</td>';
+  });
+  h += '</tr>';
+  h += '</tbody></table></div>';
+  h += '<p class="cons-note">Parcela mensal máxima e desembolso total medem o risco de sufocamento financeiro. Menor = mais seguro.</p>';
+  h += '</div>';
+
+  // ===== 2. CUSTO TOTAL =====
+  h += '<div class="cons-section">';
+  h += '<div class="cons-section-title custo">2. Custo Total da Dívida</div>';
+  var jurosArr = cenarios.map(function(c) { return c.jurosTotal; });
+  var totalPagoArr = cenarios.map(function(c) { return c.totalPago; });
+  var rJuros = rankLow(jurosArr);
+  var rTotal = rankLow(totalPagoArr);
+  // Custo líquido = total pago - reserva final
+  var custoLiq = cenarios.map(function(c) { return c.totalPago - (c.reservaFinal || 0); });
+  var rCustoLiq = rankLow(custoLiq);
+  h += '<div class="cons-table-wrap"><table class="cons-table"><thead><tr><th>Indicador</th>';
+  cenarios.forEach(function(c) { h += '<th>' + _escHtml(c.label) + '</th>'; });
+  h += '</tr></thead><tbody>';
+  h += '<tr><td>Saldo Devedor</td>';
+  cenarios.forEach(function(c) { h += '<td>' + fmtBRL(c.saldoDevedor) + '</td>'; });
+  h += '</tr>';
+  h += '<tr><td>Juros Totais</td>';
+  cenarios.forEach(function(c, i) {
+    h += '<td class="' + cls(i, rJuros.bestIdx, rJuros.worstIdx) + '">' + fmtBRL(c.jurosTotal) + '</td>';
+  });
+  h += '</tr>';
+  h += '<tr><td>Total Desembolsado</td>';
+  cenarios.forEach(function(c, i) {
+    h += '<td class="' + cls(i, rTotal.bestIdx, rTotal.worstIdx) + '">' + fmtBRL(c.totalPago) + '</td>';
+  });
+  h += '</tr>';
+  h += '<tr><td>Custo Líquido (Total - Reserva)</td>';
+  cenarios.forEach(function(c, i) {
+    h += '<td class="' + cls(i, rCustoLiq.bestIdx, rCustoLiq.worstIdx) + '">' + fmtBRL(custoLiq[i]) + '</td>';
+  });
+  h += '</tr>';
+  // % juros sobre principal
+  h += '<tr><td>Juros / Principal</td>';
+  var jurosPct = cenarios.map(function(c) { return c.saldoDevedor > 0 ? (c.jurosTotal / c.saldoDevedor) * 100 : 0; });
+  var rJurosPct = rankLow(jurosPct);
+  cenarios.forEach(function(c, i) {
+    h += '<td class="' + cls(i, rJurosPct.bestIdx, rJurosPct.worstIdx) + '">' + jurosPct[i].toFixed(1) + '%</td>';
+  });
+  h += '</tr>';
+  h += '</tbody></table></div>';
+  h += '<p class="cons-note">O custo líquido desconta a reserva acumulada. Menor custo líquido = melhor resultado financeiro real.</p>';
+  h += '</div>';
+
+  // ===== 3. VELOCIDADE DE DESALAVANCAGEM =====
+  h += '<div class="cons-section">';
+  h += '<div class="cons-section-title veloc">3. Velocidade de Desalavancagem</div>';
+  var prazos = cenarios.map(function(c) { return c.prazo; });
+  var quitacao = cenarios.map(function(c) { return c.quitouEm; });
+  var rPrazo = rankLow(prazos);
+  var rQuit = rankLow(quitacao);
+  h += '<div class="cons-table-wrap"><table class="cons-table"><thead><tr><th>Indicador</th>';
+  cenarios.forEach(function(c) { h += '<th>' + _escHtml(c.label) + '</th>'; });
+  h += '</tr></thead><tbody>';
+  h += '<tr><td>Prazo Original</td>';
+  cenarios.forEach(function(c, i) {
+    h += '<td class="' + cls(i, rPrazo.bestIdx, rPrazo.worstIdx) + '">' + c.prazo + ' meses (' + (c.prazo / 12).toFixed(1) + ' anos)</td>';
+  });
+  h += '</tr>';
+  h += '<tr><td>Quitação Efetiva</td>';
+  cenarios.forEach(function(c, i) {
+    h += '<td class="' + cls(i, rQuit.bestIdx, rQuit.worstIdx) + '">' + c.quitouEm + ' meses (' + (c.quitouEm / 12).toFixed(1) + ' anos)</td>';
+  });
+  h += '</tr>';
+  // Economia em meses
+  var econMeses = cenarios.map(function(c) { return c.prazo - c.quitouEm; });
+  var rEconMeses = rankHigh(econMeses);
+  h += '<tr><td>Economia em Meses</td>';
+  cenarios.forEach(function(c, i) {
+    var em = econMeses[i];
+    h += '<td class="' + (em > 0 ? cls(i, rEconMeses.bestIdx, rEconMeses.worstIdx) : '') + '">' + (em > 0 ? em + ' meses' : '—') + '</td>';
+  });
+  h += '</tr>';
+  h += '</tbody></table></div>';
+  h += '<p class="cons-note">Quitação efetiva considera amortizações extras e auto-quitação. Menor prazo = liberdade financeira mais rápida.</p>';
+  h += '</div>';
+
+  // ===== 4. RISCO FINANCEIRO =====
+  h += '<div class="cons-section">';
+  h += '<div class="cons-section-title risco">4. Risco Financeiro</div>';
+  var contratos = cenarios.map(function(c) { return c.nContratos; });
+  var rContr = rankLow(contratos);
+  h += '<div class="cons-table-wrap"><table class="cons-table"><thead><tr><th>Indicador</th>';
+  cenarios.forEach(function(c) { h += '<th>' + _escHtml(c.label) + '</th>'; });
+  h += '</tr></thead><tbody>';
+  h += '<tr><td>Nº de Contratos</td>';
+  cenarios.forEach(function(c, i) {
+    h += '<td class="' + cls(i, rContr.bestIdx, rContr.worstIdx) + '">' + c.nContratos + '</td>';
+  });
+  h += '</tr>';
+  // Concentração (saldo / nContratos)
+  h += '<tr><td>Saldo Médio por Contrato</td>';
+  var saldoMedio = cenarios.map(function(c) { return c.nContratos > 0 ? c.saldoDevedor / c.nContratos : 0; });
+  cenarios.forEach(function(c, i) {
+    h += '<td>' + fmtBRL(saldoMedio[i]) + '</td>';
+  });
+  h += '</tr>';
+  // Sensibilidade: parcela como % do total pago (quanto maior, mais sensível)
+  h += '<tr><td>Peso da Parcela no Total</td>';
+  var pesoParcela = cenarios.map(function(c) { return c.totalPago > 0 ? (c.parcela * c.prazo / c.totalPago) * 100 : 0; });
+  cenarios.forEach(function(c, i) {
+    h += '<td>' + pesoParcela[i].toFixed(1) + '%</td>';
+  });
+  h += '</tr>';
+  h += '</tbody></table></div>';
+  h += '<p class="cons-note">Menos contratos = menor complexidade e risco operacional. Concentração alta em poucos contratos pode aumentar risco patrimonial.</p>';
+  h += '</div>';
+
+  // ===== 5. FLEXIBILIDADE FUTURA =====
+  h += '<div class="cons-section">';
+  h += '<div class="cons-section-title flex">5. Flexibilidade Futura</div>';
+  var reservas = cenarios.map(function(c) { return c.reservaFinal || 0; });
+  var rReserva = rankHigh(reservas);
+  h += '<div class="cons-table-wrap"><table class="cons-table"><thead><tr><th>Indicador</th>';
+  cenarios.forEach(function(c) { h += '<th>' + _escHtml(c.label) + '</th>'; });
+  h += '</tr></thead><tbody>';
+  h += '<tr><td>Reserva Final (Líquida)</td>';
+  cenarios.forEach(function(c, i) {
+    h += '<td class="' + cls(i, rReserva.bestIdx, rReserva.worstIdx) + '">' + fmtBRL(reservas[i]) + '</td>';
+  });
+  h += '</tr>';
+  // Investimento acumulado (comparações)
+  var investArr = cenarios.map(function(c) { return c.investFinal || 0; });
+  var temInvest = investArr.some(function(v) { return v > 0; });
+  if (temInvest) {
+    var rInvest = rankHigh(investArr);
+    h += '<tr><td>Investimento Acumulado</td>';
+    cenarios.forEach(function(c, i) {
+      h += '<td class="' + (investArr[i] > 0 ? cls(i, rInvest.bestIdx, rInvest.worstIdx) : '') + '">' + (investArr[i] > 0 ? fmtBRL(investArr[i]) : '—') + '</td>';
+    });
+    h += '</tr>';
+  }
+  // Meses de reserva (reserva / parcela)
+  h += '<tr><td>Meses de Reserva</td>';
+  var mesesReserva = cenarios.map(function(c) { return c.parcela > 0 ? (c.reservaFinal || 0) / c.parcela : 0; });
+  var rMesesRes = rankHigh(mesesReserva);
+  cenarios.forEach(function(c, i) {
+    h += '<td class="' + cls(i, rMesesRes.bestIdx, rMesesRes.worstIdx) + '">' + mesesReserva[i].toFixed(1) + ' meses</td>';
+  });
+  h += '</tr>';
+  h += '</tbody></table></div>';
+  h += '<p class="cons-note">Liquidez preservada mede capacidade de enfrentar emergências. Mais reserva = mais segurança e flexibilidade.</p>';
+  h += '</div>';
+
+  // ===== 6. IMPACTO PSICOLÓGICO =====
+  h += '<div class="cons-section">';
+  h += '<div class="cons-section-title psico">6. Impacto Psicológico e Comportamental</div>';
+  h += '<div class="cons-table-wrap"><table class="cons-table"><thead><tr><th>Indicador</th>';
+  cenarios.forEach(function(c) { h += '<th>' + _escHtml(c.label) + '</th>'; });
+  h += '</tr></thead><tbody>';
+  h += '<tr><td>Dívidas Simultâneas</td>';
+  cenarios.forEach(function(c, i) {
+    h += '<td class="' + cls(i, rContr.bestIdx, rContr.worstIdx) + '">' + c.nContratos + '</td>';
+  });
+  h += '</tr>';
+  // Complexidade (nContratos * prazo / 12)
+  var complex = cenarios.map(function(c) { return c.nContratos * c.quitouEm / 12; });
+  var rComplex = rankLow(complex);
+  h += '<tr><td>Índice de Complexidade</td>';
+  cenarios.forEach(function(c, i) {
+    h += '<td class="' + cls(i, rComplex.bestIdx, rComplex.worstIdx) + '">' + complex[i].toFixed(1) + '</td>';
+  });
+  h += '</tr>';
+  // Sensação de progresso (economia em meses / prazo original)
+  h += '<tr><td>Progresso Percebido</td>';
+  var progresso = cenarios.map(function(c) { return c.prazo > 0 ? ((c.prazo - c.quitouEm) / c.prazo * 100) : 0; });
+  var rProg = rankHigh(progresso);
+  cenarios.forEach(function(c, i) {
+    var p = progresso[i];
+    h += '<td class="' + (p > 0 ? cls(i, rProg.bestIdx, rProg.worstIdx) : '') + '">' + (p > 0 ? p.toFixed(0) + '% mais rápido' : 'Sem aceleração') + '</td>';
+  });
+  h += '</tr>';
+  h += '</tbody></table></div>';
+  h += '<p class="cons-note">Menos contratos e menor complexidade reduzem estresse. Progresso percebido aumenta motivação e disciplina.</p>';
+  h += '</div>';
+
+  // ===== SCORE MULTICRITÉRIO =====
+  h += '<div class="cons-section">';
+  h += '<div class="cons-section-title score">Score Multicritério</div>';
+
+  // Normalizar cada métrica de 0 a 100 e calcular score ponderado
+  // Pesos: Sobrevivência 25%, Custo 25%, Velocidade 20%, Risco 10%, Flexibilidade 10%, Psicológico 10%
+  var pesos = { sobrev: 25, custo: 25, veloc: 20, risco: 10, flex: 10, psico: 10 };
+
+  function normalize(arr, lowerIsBetter) {
+    var min = Math.min.apply(null, arr);
+    var max = Math.max.apply(null, arr);
+    if (max === min) return arr.map(function() { return 100; });
+    return arr.map(function(v) {
+      var norm = (v - min) / (max - min);
+      return lowerIsBetter ? (1 - norm) * 100 : norm * 100;
+    });
+  }
+
+  var nParcela = normalize(desembolsos, true);
+  var nCusto = normalize(custoLiq, true);
+  var nVeloc = normalize(quitacao, true);
+  var nRisco = normalize(contratos, true);
+  var nFlex = normalize(reservas, false);
+  var nPsico = normalize(complex, true);
+
+  var scores = cenarios.map(function(c, i) {
+    return (
+      nParcela[i] * pesos.sobrev +
+      nCusto[i] * pesos.custo +
+      nVeloc[i] * pesos.veloc +
+      nRisco[i] * pesos.risco +
+      nFlex[i] * pesos.flex +
+      nPsico[i] * pesos.psico
+    ) / 100;
+  });
+
+  var rScore = rankHigh(scores);
+
+  h += '<div class="cons-table-wrap"><table class="cons-table"><thead><tr><th>Critério (Peso)</th>';
+  cenarios.forEach(function(c) { h += '<th>' + _escHtml(c.label) + '</th>'; });
+  h += '</tr></thead><tbody>';
+
+  var criterios = [
+    { nome: 'Sobrevivência (' + pesos.sobrev + '%)', arr: nParcela },
+    { nome: 'Custo Total (' + pesos.custo + '%)', arr: nCusto },
+    { nome: 'Velocidade (' + pesos.veloc + '%)', arr: nVeloc },
+    { nome: 'Risco (' + pesos.risco + '%)', arr: nRisco },
+    { nome: 'Flexibilidade (' + pesos.flex + '%)', arr: nFlex },
+    { nome: 'Psicológico (' + pesos.psico + '%)', arr: nPsico }
+  ];
+
+  criterios.forEach(function(crit) {
+    var rC = rankHigh(crit.arr);
+    h += '<tr><td>' + crit.nome + '</td>';
+    cenarios.forEach(function(c, i) {
+      var color = crit.arr[i] >= 70 ? 'var(--green)' : crit.arr[i] >= 40 ? 'var(--orange)' : 'var(--red)';
+      h += '<td class="' + cls(i, rC.bestIdx, rC.worstIdx) + '">';
+      h += crit.arr[i].toFixed(0) + '/100';
+      h += '<div class="cons-score-bar"><div class="cons-score-fill" style="width:' + crit.arr[i].toFixed(0) + '%; background:' + color + ';"></div></div>';
+      h += '</td>';
+    });
+    h += '</tr>';
+  });
+
+  // Score final
+  h += '<tr style="border-top:2px solid var(--primary);"><td style="font-weight:700; color:var(--primary);">SCORE FINAL</td>';
+  cenarios.forEach(function(c, i) {
+    var color = scores[i] >= 70 ? 'var(--green)' : scores[i] >= 40 ? 'var(--orange)' : 'var(--red)';
+    h += '<td class="' + cls(i, rScore.bestIdx, rScore.worstIdx) + '" style="font-size:1.1rem;">';
+    h += scores[i].toFixed(1) + '/100';
+    h += '<div class="cons-score-bar"><div class="cons-score-fill" style="width:' + scores[i].toFixed(0) + '%; background:' + color + ';"></div></div>';
+    h += '</td>';
+  });
+  h += '</tr>';
+  h += '</tbody></table></div>';
+  h += '</div>';
+
+  // ===== VEREDITO FINAL =====
+  var melhor = cenarios[rScore.bestIdx];
+  var pior = cenarios[rScore.worstIdx];
+  var diffScore = scores[rScore.bestIdx] - scores[rScore.worstIdx];
+
+  h += '<div class="cons-verdict-box">';
+  h += '<h3>Veredito da Análise Consolidada</h3>';
+  h += '<div class="winner-name">' + _escHtml(melhor.label) + '</div>';
+  h += '<div class="winner-score">Score: ' + scores[rScore.bestIdx].toFixed(1) + '/100</div>';
+  h += '<div class="winner-detail">';
+  if (diffScore > 15) {
+    h += 'Vantagem significativa de ' + diffScore.toFixed(1) + ' pontos sobre o pior cenário (' + _escHtml(pior.label) + ').';
+  } else if (diffScore > 5) {
+    h += 'Vantagem moderada de ' + diffScore.toFixed(1) + ' pontos sobre ' + _escHtml(pior.label) + '. Considere outros fatores qualitativos.';
+  } else {
+    h += 'Cenários muito próximos (diferença de ' + diffScore.toFixed(1) + ' pontos). A decisão pode depender de fatores pessoais.';
+  }
+  h += '</div>';
+
+  // Resumo dos pontos fortes do vencedor
+  var pontos = [];
+  if (nParcela[rScore.bestIdx] >= 70) pontos.push('parcela confortável');
+  if (nCusto[rScore.bestIdx] >= 70) pontos.push('custo total baixo');
+  if (nVeloc[rScore.bestIdx] >= 70) pontos.push('quitação rápida');
+  if (nFlex[rScore.bestIdx] >= 70) pontos.push('boa liquidez');
+  if (nPsico[rScore.bestIdx] >= 70) pontos.push('baixa complexidade');
+  if (pontos.length > 0) {
+    h += '<div class="winner-detail" style="margin-top:0.3rem;">Pontos fortes: ' + pontos.join(', ') + '.</div>';
+  }
+  h += '</div>';
+
+  // Nota metodológica
+  h += '<p class="cons-note" style="margin-top:1rem; text-align:center;">Análise multicritério baseada em 6 dimensões ponderadas. Pesos: Sobrevivência ' + pesos.sobrev + '%, Custo ' + pesos.custo + '%, Velocidade ' + pesos.veloc + '%, Risco ' + pesos.risco + '%, Flexibilidade ' + pesos.flex + '%, Psicológico ' + pesos.psico + '%. Scores normalizados de 0 a 100.</p>';
+
+  document.getElementById('analise-consolidado-content').innerHTML = h;
 }
 
 
