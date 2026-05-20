@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Comparador Inteligente - MithraSF</title>
 <link rel="stylesheet" href="../assets/style.css">
+<script src="../assets/permissao-guard.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="../assets/layout.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -2262,6 +2263,7 @@ function syncAllInputs() {
    SALVAR
 ═══════════════════════════════════════════════════════════ */
 function saveComparison() {
+  if(window._permGuardCheck && window._permGuardCheck()) return;
   syncAllInputs();
   hideError();
   const errors = [];
@@ -2540,6 +2542,7 @@ function toggleCard(id) {
 }
 
 function deleteComp(id) {
+  if(window._permGuardCheck && window._permGuardCheck()) return;
   if (!confirm('Excluir esta comparação?')) return;
   comparisons = comparisons.filter(c=>c.id!==id);
   deleteCompFromSupabase(id);
@@ -3233,6 +3236,7 @@ function _renderSavedScenarios(comp) {
 }
 
 function deleteScenario(compId, idx) {
+  if(window._permGuardCheck && window._permGuardCheck()) return;
   const comp = comparisons.find(c => c.id === compId);
   if (!comp || !comp.result.scenarios) return;
   comp.result.scenarios.splice(idx, 1);
