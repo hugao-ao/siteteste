@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Simulador Financeiro</title>
 <link rel="stylesheet" href="../assets/style.css">
+<script src="../assets/permissao-guard.js"></script>
 <script src="../assets/layout.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
@@ -2768,6 +2769,7 @@ function duplicarSimulacaoSim(id) {
 }
 
 function deleteSimulacaoSim(id) {
+  if(window._permGuardCheck && window._permGuardCheck()) return;
   if (!confirm('Excluir esta simulação?')) return;
   _simSimulacoes = _simSimulacoes.filter(function(s) { return s.id !== id; });
   _saveSimSimulacoes();
@@ -2780,6 +2782,7 @@ function voltarParaListaSim() {
 }
 
 function _salvarSimAtual() {
+  if(window._permGuardCheck && window._permGuardCheck()) return;
   var nome = document.getElementById('sim-nome').value.trim() || 'Simulação ' + new Date().toLocaleDateString('pt-BR');
   var payload = _simBuildPayload();
   if (_simEditingId) {
@@ -2850,6 +2853,7 @@ function _escHtmlSim(str) { var div = document.createElement('div'); div.textCon
 
 // Hook: _simSaveData now saves the current simulation
 function _simSaveData() {
+  if(window._permGuardCheck && window._permGuardCheck()) return;
   if (!_simInitDone) return;
   _salvarSimAtual();
 }
@@ -2915,6 +2919,7 @@ function _globalSaveFeedback() {
 }
 
 function _forceSaveSimulador() {
+  if(window._permGuardCheck && window._permGuardCheck()) return;
   _simInitDone = true;
   _simSaveData();
   _globalSaveFeedback();
