@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Patrimônio do Cliente - HV Saúde Financeira</title>
 <link rel="stylesheet" href="../assets/style.css">
+<script src="../assets/permissao-guard.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="../assets/layout.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
@@ -381,6 +382,7 @@ function editarDataAtual() {
   openModal('modal-data');
 }
 function salvarData() {
+  if(window._permGuardCheck && window._permGuardCheck()) return;
   const val = document.getElementById('input-data').value;
   if (!val) { alert('Informe a data.'); return; }
   if (editingDataId) {
@@ -410,6 +412,7 @@ function salvarData() {
   saveToSupabase();
 }
 function excluirDataAtual() {
+  if(window._permGuardCheck && window._permGuardCheck()) return;
   if (!confirm('Excluir esta data e todos os dados associados?')) return;
   state.datas = state.datas.filter(x => x.id !== state.selectedDateId);
   state.selectedDateId = state.datas.length > 0 ? state.datas[state.datas.length - 1].id : null;
@@ -529,6 +532,7 @@ async function loadObjetivos(ativo) {
 }
 
 function salvarAtivo() {
+  if(window._permGuardCheck && window._permGuardCheck()) return;
   const nome = document.getElementById('at-nome').value.trim();
   const valor = parseMoeda(document.getElementById('at-valor').value);
   if (!nome) { alert('Informe o nome do ativo.'); return; }
@@ -596,6 +600,7 @@ function openDividaModal(id) {
 }
 
 function salvarDivida() {
+  if(window._permGuardCheck && window._permGuardCheck()) return;
   const nome = document.getElementById('dv-nome').value.trim();
   const saldo = parseMoeda(document.getElementById('dv-saldo').value);
   if (!nome) { alert('Informe o nome da dívida.'); return; }
@@ -850,6 +855,7 @@ async function loadFromSupabase() {
 }
 
 function _forceSave() {
+  if(window._permGuardCheck && window._permGuardCheck()) return;
   saveToSupabase();
   const btn = document.getElementById('btnSaveGlobal');
   const lbl = document.getElementById('saveLabel');
