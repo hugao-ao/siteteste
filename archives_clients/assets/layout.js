@@ -36,6 +36,7 @@
         // Detectar se é equipe acessando como cliente
         const isEquipeModoCliente = sessionStorage.getItem('equipe_modo_cliente') === 'true';
         const clienteIdRetorno = sessionStorage.getItem('cliente_id_retorno');
+        const clienteNome = sessionStorage.getItem('cliente_nome') || '';
 
         if (sidebarContainer) {
             // Base64 Logo to prevent 404 errors - Optimized 128x128 PNG
@@ -53,6 +54,17 @@
                 `;
             }
 
+            // HTML do nome do cliente
+            let clienteNomeHtml = '';
+            if (clienteNome) {
+                clienteNomeHtml = `
+                    <div class="sidebar-cliente-nome">
+                        <span class="cliente-nome-label">Cliente</span>
+                        <span class="cliente-nome-valor">${clienteNome}</span>
+                    </div>
+                `;
+            }
+
             sidebarContainer.innerHTML = `
                 <div class="sidebar-header">
                     <div class="logo-container">
@@ -63,6 +75,7 @@
                         <span class="logo-subtitle">Saúde Financeira</span>
                     </div>
                 </div>
+                ${clienteNomeHtml}
                 ${voltarBtnHtml}
                 <nav class="sidebar-nav">
                     <a href="${basePath}index.html" class="nav-item" id="nav-home">
@@ -85,7 +98,36 @@
                 </div>
             `;
 
-            // Injetar CSS do botão Voltar se necessário
+            // Injetar CSS do nome do cliente e botão Voltar
+            {
+                const styleNome = document.createElement('style');
+                styleNome.textContent = `
+                    .sidebar-cliente-nome {
+                        padding: 0.8rem 1rem;
+                        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+                        text-align: center;
+                    }
+                    .sidebar-cliente-nome .cliente-nome-label {
+                        display: block;
+                        font-size: 0.7rem;
+                        text-transform: uppercase;
+                        letter-spacing: 0.08em;
+                        color: rgba(255, 255, 255, 0.4);
+                        margin-bottom: 0.2rem;
+                    }
+                    .sidebar-cliente-nome .cliente-nome-valor {
+                        display: block;
+                        font-size: 0.95rem;
+                        font-weight: 600;
+                        color: #d4af37;
+                        white-space: nowrap;
+                        overflow: hidden;
+                        text-overflow: ellipsis;
+                    }
+                `;
+                document.head.appendChild(styleNome);
+            }
+
             if (isEquipeModoCliente) {
                 const style = document.createElement('style');
                 style.textContent = `
