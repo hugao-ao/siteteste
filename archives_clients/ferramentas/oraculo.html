@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>O Oráculo Financeiro - MithraSF</title>
     <link rel="stylesheet" href="../assets/style.css">
+    <script src="../assets/permissao-guard.js"></script>
+
     <script src="../assets/layout.js" defer></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -1601,6 +1603,7 @@
 
         // Salva a simulação atual (chamado dentro de calculate() após os cálculos)
         function salvarSimulacao(resultado) {
+  if(window._permGuardCheck && window._permGuardCheck()) return;
             simContador++;
             const id = Date.now();
             const sim = {
@@ -1616,6 +1619,7 @@
 
         // Exclui uma simulação pelo ID
         function excluirSimulacao(id) {
+  if(window._permGuardCheck && window._permGuardCheck()) return;
             simulacoes = simulacoes.filter(s => s.id !== id);
             if (simAtiva === id) simAtiva = simulacoes.length ? simulacoes[simulacoes.length - 1].id : null;
             renderSimulacoes();
@@ -3958,6 +3962,7 @@ function _globalSaveFeedback() {{
 }}
 
         function _forceSaveOraculo() {
+  if(window._permGuardCheck && window._permGuardCheck()) return;
           _oracInitDone = true;
           _oracSaveData();
           _globalSaveFeedback();
