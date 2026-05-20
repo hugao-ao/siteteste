@@ -88,16 +88,49 @@
             background: linear-gradient(135deg, rgba(212, 175, 55, 0.08), rgba(212, 175, 55, 0.02));
             border: 1px solid rgba(212, 175, 55, 0.3);
             border-radius: 12px;
-            padding: 1.5rem 2rem;
+            padding: 0;
             margin-bottom: 2rem;
+            overflow: hidden;
         }
-        .permissoes-panel h2 {
+        .permissoes-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 1.2rem 2rem;
+            cursor: pointer;
+            user-select: none;
+            transition: background 0.2s;
+        }
+        .permissoes-header:hover {
+            background: rgba(212, 175, 55, 0.05);
+        }
+        .permissoes-header h2 {
             color: #d4af37;
             font-size: 1.3rem;
-            margin: 0 0 0.5rem 0;
+            margin: 0;
             display: flex;
             align-items: center;
             gap: 0.5rem;
+        }
+        .permissoes-toggle-icon {
+            color: #d4af37;
+            font-size: 1.2rem;
+            transition: transform 0.3s ease;
+        }
+        .permissoes-panel.collapsed .permissoes-toggle-icon {
+            transform: rotate(-90deg);
+        }
+        .permissoes-body {
+            padding: 0 2rem 1.5rem;
+            transition: max-height 0.4s ease, opacity 0.3s ease, padding 0.3s ease;
+            max-height: 1000px;
+            opacity: 1;
+            overflow: hidden;
+        }
+        .permissoes-panel.collapsed .permissoes-body {
+            max-height: 0;
+            opacity: 0;
+            padding: 0 2rem;
         }
         .permissoes-panel .panel-subtitle {
             color: #9ca3af;
@@ -225,7 +258,11 @@
 
             <!-- PAINEL DE PERMISSÕES (visível apenas para equipe em modo cliente) -->
             <div id="permissoes-panel" class="permissoes-panel" style="display: none;">
-                <h2>🔐 Controle de Permissões</h2>
+                <div class="permissoes-header" id="permissoes-header">
+                    <h2>🔐 Controle de Permissões</h2>
+                    <span class="permissoes-toggle-icon">▼</span>
+                </div>
+                <div class="permissoes-body" id="permissoes-body">
                 <p class="panel-subtitle">Defina quais ferramentas o cliente pode apenas visualizar e quais pode editar temporariamente.</p>
                 <table class="permissoes-table">
                     <thead>
@@ -241,6 +278,7 @@
                 </table>
                 <button id="salvar-permissoes-btn" class="permissoes-salvar-btn">Salvar Permissões</button>
                 <div id="permissoes-status" class="permissoes-status"></div>
+                </div><!-- /permissoes-body -->
             </div>
 
             <div class="tools-grid">
@@ -504,6 +542,14 @@
 
         // Event listeners
         salvarBtn.addEventListener('click', salvarPermissoes);
+
+        // Toggle expandir/retrair
+        const headerEl = document.getElementById('permissoes-header');
+        if (headerEl) {
+            headerEl.addEventListener('click', function() {
+                panel.classList.toggle('collapsed');
+            });
+        }
 
         // Inicializar
         if (document.readyState === 'loading') {
