@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Análise de Dívidas - MithraSF</title>
 <link rel="stylesheet" href="../assets/style.css">
+<script src="../assets/permissao-guard.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="../assets/layout.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
@@ -1161,6 +1162,7 @@ function calcParcelaPreview() {
 }
 
 function saveDebt() {
+  if(window._permGuardCheck && window._permGuardCheck()) return;
   var nome = document.getElementById('m-nome').value.trim();
   var valorContratado = parseCurr(document.getElementById('m-valor').value);
   var totalParcelas = parseInt(document.getElementById('m-total-parcelas').value);
@@ -1265,6 +1267,7 @@ function saveDebt() {
 }
 
 function deleteDebt(type, index) {
+  if(window._permGuardCheck && window._permGuardCheck()) return;
   if (!confirm('Excluir esta divida?')) return;
   if (type === 'atual') dividasAtuais.splice(index, 1);
   else dividasProposta.splice(index, 1);
@@ -4026,6 +4029,7 @@ function duplicarAnalise(id) {
 }
 
 function deleteAnalise(id) {
+  if(window._permGuardCheck && window._permGuardCheck()) return;
   if (!confirm('Excluir esta analise?')) return;
   _jurosSimulacoes = _jurosSimulacoes.filter(function(s) { return s.id !== id; });
   _saveJurosSimulacoes();
@@ -4038,6 +4042,7 @@ function voltarParaLista() {
 }
 
 function _salvarAnaliseAtual() {
+  if(window._permGuardCheck && window._permGuardCheck()) return;
   var nome = document.getElementById('sim-nome').value.trim() || 'Analise ' + new Date().toLocaleDateString('pt-BR');
   var payload = _jurosBuildPayload();
   if (_jurosEditingSimId) {
@@ -4109,6 +4114,7 @@ function toggleSimCard(id) {
 function _escHtml(str) { var div = document.createElement('div'); div.textContent = str; return div.innerHTML; }
 
 function saveData() {
+  if(window._permGuardCheck && window._permGuardCheck()) return;
   if (!_jurosInitDone) return;
   _salvarAnaliseAtual();
 }
@@ -4140,6 +4146,7 @@ function _globalSaveFeedback() {
 }
 
 function _forceSaveJuros() {
+  if(window._permGuardCheck && window._permGuardCheck()) return;
   _jurosInitDone = true;
   saveData();
   _globalSaveFeedback();
