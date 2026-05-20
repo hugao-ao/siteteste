@@ -427,6 +427,10 @@
           <i class="fas fa-tasks"></i>
           Implementações
         </button>
+        <button id="btn-acessar-como-cliente" class="plano-button" style="border-color: #d4af37;">
+          <i class="fas fa-user-shield"></i>
+          Acessar como Cliente
+        </button>
       </div>
     </section>
     
@@ -502,6 +506,7 @@
     const btnDadosCadastrais = document.getElementById("btn-dados-cadastrais");
     const btnGestao = document.getElementById("btn-gestao");
     const btnImplementacoes = document.getElementById("btn-implementacoes");
+    const btnAcessarComoCliente = document.getElementById("btn-acessar-como-cliente");
     
     // Formulário de dados cadastrais
     const dadosCadastraisForm = document.getElementById("dados-cadastrais-form");
@@ -1483,6 +1488,19 @@
         btnImplementacoes.addEventListener("click", () => {
             alert("Funcionalidade em desenvolvimento");
         });
+        
+        // Botão Acessar como Cliente
+        if (btnAcessarComoCliente) {
+            btnAcessarComoCliente.addEventListener("click", () => {
+                // Setar flags no sessionStorage para indicar que é equipe acessando como cliente
+                sessionStorage.setItem('equipe_modo_cliente', 'true');
+                sessionStorage.setItem('cliente_id', currentClientId);
+                sessionStorage.setItem('cliente_nome', clientNameDisplay.textContent);
+                sessionStorage.setItem('cliente_id_retorno', currentClientId);
+                // Redirecionar para o portal do cliente
+                window.location.href = 'archives_clients/index.html';
+            });
+        }
         
         // Formulário de dados cadastrais
         dadosCadastraisForm.addEventListener("submit", saveDadosCadastrais);
