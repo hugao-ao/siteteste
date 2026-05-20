@@ -1,33 +1,590 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Plano de Referência - MithraSF</title>
-    <link rel="stylesheet" href="assets/style.css">
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="assets/layout.js" defer></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Protocolo Argos - MithraSF</title>
+<link rel="stylesheet" href="assets/style.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="assets/layout.js" defer></script>
+<style>
+/* ═══════════════════════════════════════════════════════════════
+   PROTOCOLO ARGOS - ESTILOS
+═══════════════════════════════════════════════════════════════ */
+.argos-header {
+  text-align: center;
+  margin-bottom: 2rem;
+  padding: 1.5rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: linear-gradient(135deg, var(--card) 0%, rgba(212,175,55,0.05) 100%);
+}
+.argos-header h1 {
+  font-size: 1.5rem;
+  color: var(--primary);
+  letter-spacing: 2px;
+  margin-bottom: 0.25rem;
+}
+.argos-header p {
+  color: var(--muted-foreground);
+  font-size: 0.85rem;
+}
+
+/* Tópicos */
+.topico-section {
+  margin-bottom: 1.5rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.topico-header {
+  background: var(--muted);
+  padding: 0.75rem 1rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  user-select: none;
+  transition: background 0.2s;
+}
+.topico-header:hover {
+  background: rgba(212,175,55,0.1);
+}
+.topico-header h2 {
+  font-size: 1rem;
+  color: var(--primary);
+  margin: 0;
+  letter-spacing: 1px;
+}
+.topico-header .chevron {
+  color: var(--primary);
+  transition: transform 0.3s;
+  font-size: 1.2rem;
+}
+.topico-header.collapsed .chevron {
+  transform: rotate(-90deg);
+}
+.topico-body {
+  padding: 0;
+  transition: max-height 0.4s ease, padding 0.3s ease;
+  max-height: 5000px;
+  overflow: hidden;
+}
+.topico-body.collapsed {
+  max-height: 0;
+  padding: 0;
+}
+
+/* Subtópicos */
+.subtopico-section {
+  border-top: 1px solid var(--border);
+  padding: 1rem 1.25rem;
+}
+.subtopico-section:first-child {
+  border-top: none;
+}
+.subtopico-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+}
+.subtopico-header h3 {
+  font-size: 0.85rem;
+  color: var(--foreground);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin: 0;
+}
+.btn-add-rec {
+  background: transparent;
+  border: 1px dashed var(--primary);
+  color: var(--primary);
+  font-size: 0.75rem;
+  padding: 4px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: none;
+}
+.btn-add-rec:hover {
+  background: rgba(212,175,55,0.1);
+}
+.equipe-mode .btn-add-rec {
+  display: inline-flex;
+}
+
+/* Recomendações */
+.rec-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.rec-item {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.75rem 1rem;
+  position: relative;
+  transition: border-color 0.2s;
+}
+.rec-item:hover {
+  border-color: rgba(212,175,55,0.4);
+}
+.rec-item p {
+  margin: 0;
+  font-size: 0.85rem;
+  line-height: 1.6;
+  color: var(--foreground);
+  white-space: pre-wrap;
+}
+.rec-actions {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  display: none;
+  gap: 4px;
+}
+.equipe-mode .rec-actions {
+  display: flex;
+}
+.rec-actions button {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-size: 0.8rem;
+  padding: 2px 6px;
+  border-radius: 3px;
+  transition: background 0.2s;
+}
+.rec-actions .btn-edit-rec {
+  color: var(--primary);
+}
+.rec-actions .btn-edit-rec:hover {
+  background: rgba(212,175,55,0.15);
+}
+.rec-actions .btn-del-rec {
+  color: #e74c3c;
+}
+.rec-actions .btn-del-rec:hover {
+  background: rgba(231,76,60,0.15);
+}
+
+.rec-empty {
+  color: var(--muted-foreground);
+  font-size: 0.8rem;
+  font-style: italic;
+  padding: 0.5rem 0;
+}
+
+/* Modal */
+.modal-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.7);
+  z-index: 1000;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+.modal-overlay.open {
+  display: flex;
+}
+.modal-box {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.5rem;
+  width: 100%;
+  max-width: 600px;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+.modal-box h3 {
+  color: var(--primary);
+  margin-bottom: 1rem;
+  font-size: 1rem;
+}
+.modal-box textarea {
+  width: 100%;
+  min-height: 150px;
+  background: var(--background);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--foreground);
+  padding: 0.75rem;
+  font-size: 0.85rem;
+  line-height: 1.6;
+  resize: vertical;
+  font-family: inherit;
+}
+.modal-box textarea:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+.modal-actions {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: flex-end;
+  margin-top: 1rem;
+}
+.modal-actions button {
+  padding: 8px 16px;
+  border-radius: var(--radius);
+  font-size: 0.85rem;
+  cursor: pointer;
+  border: none;
+  transition: all 0.2s;
+}
+.btn-modal-save {
+  background: var(--primary);
+  color: var(--primary-foreground);
+  font-weight: 600;
+}
+.btn-modal-save:hover {
+  opacity: 0.9;
+}
+.btn-modal-cancel {
+  background: transparent;
+  border: 1px solid var(--border) !important;
+  color: var(--foreground);
+}
+.btn-modal-cancel:hover {
+  background: var(--muted);
+}
+
+/* Loading */
+.loading-state {
+  text-align: center;
+  padding: 3rem;
+  color: var(--muted-foreground);
+}
+.loading-state .spinner {
+  display: inline-block;
+  width: 24px;
+  height: 24px;
+  border: 2px solid var(--border);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin-bottom: 0.75rem;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Responsivo */
+@media (max-width: 768px) {
+  .argos-header h1 { font-size: 1.1rem; }
+  .topico-header h2 { font-size: 0.9rem; }
+  .subtopico-section { padding: 0.75rem; }
+  .rec-item { padding: 0.6rem 0.75rem; }
+  .modal-box { padding: 1rem; }
+}
+</style>
 </head>
 <body>
-    <div id="sidebar-container" class="sidebar"></div>
+<div id="sidebar-container" class="sidebar"></div>
+<main class="main-content">
+<div class="container">
+  <header class="flex justify-between items-center mb-8">
+    <h1>Plano de Referência</h1>
+    <button id="mobile-toggle" class="mobile-toggle">&#9776;</button>
+  </header>
 
-    <main class="main-content">
-        <div class="container">
-            <header class="flex justify-between items-center mb-8">
-                <h1>Plano de Referência</h1>
-                <button id="mobile-toggle" class="mobile-toggle">☰</button>
-            </header>
+  <div class="argos-header">
+    <h1>PROTOCOLO ARGOS DE PLANEJAMENTO FINANCEIRO</h1>
+    <p>Orientações gerais personalizadas</p>
+  </div>
 
-            <div class="card text-center py-12">
-                <div class="text-6xl mb-4">🚧</div>
-                <h2 class="text-2xl font-bold text-white mb-2">Em Desenvolvimento</h2>
-                <p class="text-gray-400 max-w-md mx-auto">
-                    Estamos preparando um plano detalhado e personalizado para você. 
-                    Em breve, você poderá visualizar todas as etapas da sua jornada financeira aqui.
-                </p>
-                <a href="index.html" class="btn btn-outline mt-8">Voltar ao Início</a>
-            </div>
-        </div>
-    </main>
+  <div id="loading" class="loading-state">
+    <div class="spinner"></div>
+    <p>Carregando recomendações...</p>
+  </div>
+
+  <div id="argos-content" style="display:none;"></div>
+</div>
+</main>
+
+<!-- Modal de Edição/Adição -->
+<div id="modal-rec" class="modal-overlay">
+  <div class="modal-box">
+    <h3 id="modal-title">Adicionar Recomendação</h3>
+    <textarea id="modal-texto" placeholder="Digite a recomendação..."></textarea>
+    <div class="modal-actions">
+      <button class="btn-modal-cancel" onclick="fecharModal()">Cancelar</button>
+      <button class="btn-modal-save" onclick="salvarRecomendacao()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+//  CONFIGURAÇÃO
+// ═══════════════════════════════════════════════════════════════
+var SUPABASE_URL = 'https://vbikskbfkhundhropykf.supabase.co';
+var SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZiaWtza2Jma2h1bmRocm9weWtmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDU1MTk5NjEsImV4cCI6MjA2MTA5NTk2MX0.-n-Tj_5JnF1NL2ZImWlMeTcobWDl_VD6Vqp0lxRQFFU';
+var _sbClient = null;
+
+function getClienteId() { return sessionStorage.getItem('cliente_id') || null; }
+function isEquipe() { return sessionStorage.getItem('equipe_modo_cliente') === 'true'; }
+
+function getSupabaseClient() {
+  if (_sbClient) return _sbClient;
+  if (window.mithraSupabaseClient) { _sbClient = window.mithraSupabaseClient; return _sbClient; }
+  try {
+    if (window.supabase && window.supabase.createClient) {
+      _sbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    }
+  } catch(e) { _sbClient = null; }
+  return _sbClient;
+}
+
+function waitForSupabase(timeout) {
+  return new Promise(function(resolve) {
+    if (window.mithraSupabaseClient) { _sbClient = window.mithraSupabaseClient; resolve(_sbClient); return; }
+    var elapsed = 0;
+    var interval = setInterval(function() {
+      elapsed += 50;
+      if (window.mithraSupabaseClient) { clearInterval(interval); _sbClient = window.mithraSupabaseClient; resolve(_sbClient); }
+      else if (window.supabase && window.supabase.createClient) { clearInterval(interval); _sbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY); resolve(_sbClient); }
+      else if (elapsed >= (timeout || 3000)) { clearInterval(interval); resolve(null); }
+    }, 50);
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  ESTRUTURA FIXA DO PROTOCOLO ARGOS
+// ═══════════════════════════════════════════════════════════════
+var ESTRUTURA = [
+  {
+    topico: 'GESTÃO FINANCEIRA',
+    subtopicos: ['Dívidas', 'Cortes de Gastos', 'Aumento de Receita']
+  },
+  {
+    topico: 'GESTÃO DE RISCO',
+    subtopicos: ['Risco de Patrimônio', 'Risco de Orçamento', 'Risco de Saúde Básica', 'Risco de Doenças Graves e Acidentes', 'Risco da Profissão']
+  },
+  {
+    topico: 'GESTÃO DE ATIVOS',
+    subtopicos: ['Distribuição de Ativos', 'Aportes Mensais']
+  },
+  {
+    topico: 'LONGO PRAZO E PÓS APOSENTADORIA',
+    subtopicos: ['Acúmulo Mais Vantajoso', 'Análise', 'Conclusão']
+  },
+  {
+    topico: 'PLANEJAMENTO TRIBUTÁRIO',
+    subtopicos: ['Forma de Recebimento', 'Forma de Declaração', 'Sobre PGBL ou Não']
+  },
+  {
+    topico: 'PLANEJAMENTO SUCESSÓRIO',
+    subtopicos: ['Patrimônio Estimado', 'Soluções Possíveis']
+  }
+];
+
+// ═══════════════════════════════════════════════════════════════
+//  DADOS E ESTADO
+// ═══════════════════════════════════════════════════════════════
+var recomendacoes = []; // Array de objetos do Supabase
+var _modalMode = null; // { action: 'add'|'edit', topico, subtopico, id }
+
+// ═══════════════════════════════════════════════════════════════
+//  RENDERIZAÇÃO
+// ═══════════════════════════════════════════════════════════════
+function renderAll() {
+  var container = document.getElementById('argos-content');
+  var html = '';
+
+  ESTRUTURA.forEach(function(sec) {
+    html += '<div class="topico-section">';
+    html += '<div class="topico-header" onclick="toggleTopico(this)">';
+    html += '<h2>' + sec.topico + '</h2>';
+    html += '<span class="chevron">&#9660;</span>';
+    html += '</div>';
+    html += '<div class="topico-body">';
+
+    sec.subtopicos.forEach(function(sub) {
+      var recs = getRecsForSubtopico(sec.topico, sub);
+      html += '<div class="subtopico-section">';
+      html += '<div class="subtopico-header">';
+      html += '<h3>' + sub + '</h3>';
+      html += '<button class="btn-add-rec" onclick="abrirModalAdd(\'' + escAttr(sec.topico) + '\', \'' + escAttr(sub) + '\')">+ Adicionar</button>';
+      html += '</div>';
+      html += '<div class="rec-list">';
+
+      if (recs.length === 0) {
+        html += '<p class="rec-empty">Nenhuma recomendação cadastrada.</p>';
+      } else {
+        recs.forEach(function(r) {
+          html += '<div class="rec-item">';
+          html += '<div class="rec-actions">';
+          html += '<button class="btn-edit-rec" onclick="abrirModalEdit(\'' + r.id + '\')">&#9998;</button>';
+          html += '<button class="btn-del-rec" onclick="excluirRecomendacao(\'' + r.id + '\')">&#10005;</button>';
+          html += '</div>';
+          html += '<p>' + escHtml(r.recomendacao) + '</p>';
+          html += '</div>';
+        });
+      }
+
+      html += '</div>'; // rec-list
+      html += '</div>'; // subtopico-section
+    });
+
+    html += '</div>'; // topico-body
+    html += '</div>'; // topico-section
+  });
+
+  container.innerHTML = html;
+  container.style.display = '';
+  document.getElementById('loading').style.display = 'none';
+
+  // Aplicar classe equipe-mode se for equipe
+  if (isEquipe()) {
+    container.classList.add('equipe-mode');
+  }
+}
+
+function getRecsForSubtopico(topico, subtopico) {
+  return recomendacoes.filter(function(r) {
+    return r.topico === topico && r.subtopico === subtopico;
+  }).sort(function(a, b) { return (a.ordem || 0) - (b.ordem || 0); });
+}
+
+function toggleTopico(el) {
+  el.classList.toggle('collapsed');
+  var body = el.nextElementSibling;
+  body.classList.toggle('collapsed');
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  MODAL
+// ═══════════════════════════════════════════════════════════════
+function abrirModalAdd(topico, subtopico) {
+  _modalMode = { action: 'add', topico: topico, subtopico: subtopico };
+  document.getElementById('modal-title').textContent = 'Adicionar Recomendação';
+  document.getElementById('modal-texto').value = '';
+  document.getElementById('modal-rec').classList.add('open');
+  document.getElementById('modal-texto').focus();
+}
+
+function abrirModalEdit(id) {
+  var rec = recomendacoes.find(function(r) { return r.id === id; });
+  if (!rec) return;
+  _modalMode = { action: 'edit', id: id, topico: rec.topico, subtopico: rec.subtopico };
+  document.getElementById('modal-title').textContent = 'Editar Recomendação';
+  document.getElementById('modal-texto').value = rec.recomendacao;
+  document.getElementById('modal-rec').classList.add('open');
+  document.getElementById('modal-texto').focus();
+}
+
+function fecharModal() {
+  _modalMode = null;
+  document.getElementById('modal-rec').classList.remove('open');
+}
+
+async function salvarRecomendacao() {
+  var texto = document.getElementById('modal-texto').value.trim();
+  if (!texto || !_modalMode) return;
+
+  var sb = getSupabaseClient();
+  var clienteId = getClienteId();
+  if (!sb || !clienteId) { alert('Erro: cliente não identificado.'); return; }
+
+  if (_modalMode.action === 'add') {
+    var recs = getRecsForSubtopico(_modalMode.topico, _modalMode.subtopico);
+    var novaOrdem = recs.length > 0 ? (recs[recs.length - 1].ordem || 0) + 1 : 0;
+
+    var result = await sb.from('protocolo_argos').insert({
+      cliente_id: clienteId,
+      topico: _modalMode.topico,
+      subtopico: _modalMode.subtopico,
+      recomendacao: texto,
+      ordem: novaOrdem
+    }).select();
+
+    if (result.error) { alert('Erro ao salvar: ' + result.error.message); return; }
+    if (result.data && result.data[0]) recomendacoes.push(result.data[0]);
+
+  } else if (_modalMode.action === 'edit') {
+    var result2 = await sb.from('protocolo_argos').update({
+      recomendacao: texto,
+      atualizado_em: new Date().toISOString()
+    }).eq('id', _modalMode.id);
+
+    if (result2.error) { alert('Erro ao atualizar: ' + result2.error.message); return; }
+    var idx = recomendacoes.findIndex(function(r) { return r.id === _modalMode.id; });
+    if (idx !== -1) recomendacoes[idx].recomendacao = texto;
+  }
+
+  fecharModal();
+  renderAll();
+}
+
+async function excluirRecomendacao(id) {
+  if (!confirm('Excluir esta recomendação?')) return;
+
+  var sb = getSupabaseClient();
+  if (!sb) return;
+
+  var result = await sb.from('protocolo_argos').delete().eq('id', id);
+  if (result.error) { alert('Erro ao excluir: ' + result.error.message); return; }
+
+  recomendacoes = recomendacoes.filter(function(r) { return r.id !== id; });
+  renderAll();
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  UTILITÁRIOS
+// ═══════════════════════════════════════════════════════════════
+function escHtml(s) {
+  var d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+function escAttr(s) {
+  return s.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  INICIALIZAÇÃO
+// ═══════════════════════════════════════════════════════════════
+async function init() {
+  var clienteId = getClienteId();
+  if (!clienteId) {
+    document.getElementById('loading').innerHTML = '<p style="color:var(--muted-foreground);">Cliente não identificado.</p>';
+    return;
+  }
+
+  await waitForSupabase(3000);
+  var sb = getSupabaseClient();
+  if (!sb) {
+    document.getElementById('loading').innerHTML = '<p style="color:var(--muted-foreground);">Erro ao conectar.</p>';
+    return;
+  }
+
+  // Carregar recomendações do Supabase
+  var result = await sb.from('protocolo_argos')
+    .select('*')
+    .eq('cliente_id', clienteId)
+    .order('ordem', { ascending: true });
+
+  if (result.error) {
+    console.warn('Erro ao carregar protocolo argos:', result.error.message);
+    recomendacoes = [];
+  } else {
+    recomendacoes = result.data || [];
+  }
+
+  renderAll();
+}
+
+// Fechar modal ao clicar fora
+document.getElementById('modal-rec').addEventListener('click', function(e) {
+  if (e.target === this) fecharModal();
+});
+
+// Iniciar
+init();
+</script>
 </body>
 </html>
