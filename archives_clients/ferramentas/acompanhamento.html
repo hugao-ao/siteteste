@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Acompanhamento Financeiro - MithraSF</title>
 <link rel="stylesheet" href="../assets/style.css">
+<script src="../assets/permissao-guard.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="../assets/layout.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
@@ -656,6 +657,7 @@ function switchTab(tab) {
 // ═══════════════════════════════════════════════════════════════════════════
 var _editMode = null;
 function openModal(tipo, index) {
+  if(window._permGuardCheck && window._permGuardCheck()) return;
   _editMode = (index !== undefined) ? {tipo: tipo, index: index} : null;
   var titleEl = document.getElementById('modal-' + tipo + '-title');
   if (tipo === 'micro') updateMicroSelects();
@@ -747,6 +749,7 @@ function updateMicroSelects() {
 //  SALVAR
 // ═══════════════════════════════════════════════════════════════════════════
 function salvarReuniao() {
+  if(window._permGuardCheck && window._permGuardCheck()) return;
   var data = document.getElementById('rn_data').value;
   if (!data) { alert('Informe a data da reunião.'); return; }
   var item = {
@@ -770,6 +773,7 @@ function salvarReuniao() {
 }
 
 function salvarObjetivo() {
+  if(window._permGuardCheck && window._permGuardCheck()) return;
   var nome = document.getElementById('ob_nome').value.trim();
   if (!nome) { alert('Informe o nome do objetivo.'); return; }
   var item = {
@@ -791,6 +795,7 @@ function salvarObjetivo() {
 }
 
 function salvarMicro() {
+  if(window._permGuardCheck && window._permGuardCheck()) return;
   var desc = document.getElementById('mc_desc').value.trim();
   if (!desc) { alert('Informe a descrição da ação.'); return; }
   var item = {
@@ -809,6 +814,7 @@ function salvarMicro() {
 }
 
 function salvarMacro() {
+  if(window._permGuardCheck && window._permGuardCheck()) return;
   var fase = document.getElementById('mk_fase').value.trim();
   var desc = document.getElementById('mk_desc').value.trim();
   if (!fase || !desc) { alert('Informe o nome e descrição da fase.'); return; }
@@ -833,6 +839,7 @@ function salvarMacro() {
 //  TOGGLE STATUS MICRO PASSO (CLICK)
 // ═══════════════════════════════════════════════════════════════════════════
 function toggleMicroStatus(index) {
+  if(window._permGuardCheck && window._permGuardCheck()) return;
   var item = microPassos[index];
   if (item.status === 'pendente') item.status = 'em_andamento';
   else if (item.status === 'em_andamento') item.status = 'concluido';
@@ -846,6 +853,7 @@ function toggleMicroStatus(index) {
 // ═══════════════════════════════════════════════════════════════════════════
 var _delTarget = null;
 function openDelModal(tipo, index) {
+  if(window._permGuardCheck && window._permGuardCheck()) return;
   var lists = {reuniao: reunioes, objetivo: objetivos, micro: microPassos, macro: macroPassos};
   var item = lists[tipo][index];
   var nome = item.nome || item.desc || item.fase || fmtData(item.data);
@@ -858,6 +866,7 @@ function closeDelModal() {
   _delTarget = null;
 }
 function confirmarExclusao() {
+  if(window._permGuardCheck && window._permGuardCheck()) return;
   if (!_delTarget) return;
   var lists = {reuniao: reunioes, objetivo: objetivos, micro: microPassos, macro: macroPassos};
   lists[_delTarget.tipo].splice(_delTarget.index, 1);
@@ -1273,6 +1282,7 @@ function _globalSaveFeedback() {{
 }}
 
 function _forceSaveAcompanhamento() {
+  if(window._permGuardCheck && window._permGuardCheck()) return;
   _initDone = true;
   saveData();
   _globalSaveFeedback();
