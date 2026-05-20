@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Ferramentas - MithraSF</title>
     <link rel="stylesheet" href="assets/style.css">
+    <!-- Supabase CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="assets/layout.js" defer></script>
     <style>
         /* Custom styles for the tools grid to match Image 01 */
@@ -80,6 +82,130 @@
         .tool-card:hover .tool-link {
             color: var(--primary-color);
         }
+
+        /* === PAINEL DE PERMISSÕES (apenas equipe) === */
+        .permissoes-panel {
+            background: linear-gradient(135deg, rgba(212, 175, 55, 0.08), rgba(212, 175, 55, 0.02));
+            border: 1px solid rgba(212, 175, 55, 0.3);
+            border-radius: 12px;
+            padding: 1.5rem 2rem;
+            margin-bottom: 2rem;
+        }
+        .permissoes-panel h2 {
+            color: #d4af37;
+            font-size: 1.3rem;
+            margin: 0 0 0.5rem 0;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .permissoes-panel .panel-subtitle {
+            color: #9ca3af;
+            font-size: 0.85rem;
+            margin-bottom: 1.5rem;
+        }
+        .permissoes-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .permissoes-table th {
+            text-align: left;
+            padding: 0.6rem 0.8rem;
+            color: #d4af37;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+        .permissoes-table td {
+            padding: 0.6rem 0.8rem;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            vertical-align: middle;
+        }
+        .permissoes-table tr:last-child td {
+            border-bottom: none;
+        }
+        .permissoes-table .ferramenta-nome {
+            color: #fff;
+            font-weight: 500;
+            font-size: 0.9rem;
+        }
+        .permissoes-table select {
+            background-color: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.15);
+            border-radius: 6px;
+            color: #fff;
+            padding: 0.4rem 0.6rem;
+            font-size: 0.85rem;
+            cursor: pointer;
+        }
+        .permissoes-table select:focus {
+            outline: none;
+            border-color: #d4af37;
+        }
+        .permissoes-table input[type="datetime-local"] {
+            background-color: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.15);
+            border-radius: 6px;
+            color: #fff;
+            padding: 0.4rem 0.6rem;
+            font-size: 0.8rem;
+        }
+        .permissoes-table input[type="datetime-local"]:focus {
+            outline: none;
+            border-color: #d4af37;
+        }
+        .permissoes-table .expiracao-cell {
+            min-width: 180px;
+        }
+        .permissoes-table .expiracao-cell.disabled {
+            opacity: 0.3;
+            pointer-events: none;
+        }
+        .permissoes-salvar-btn {
+            margin-top: 1.2rem;
+            padding: 0.7rem 1.5rem;
+            background-color: #d4af37;
+            color: #000;
+            border: none;
+            border-radius: 8px;
+            font-weight: 700;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .permissoes-salvar-btn:hover {
+            background-color: #c5a028;
+            transform: translateY(-1px);
+        }
+        .permissoes-salvar-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .permissoes-status {
+            margin-top: 0.8rem;
+            font-size: 0.85rem;
+            min-height: 1.2rem;
+        }
+        .permissoes-status.success { color: #10b981; }
+        .permissoes-status.error { color: #ef4444; }
+        .permissoes-status.loading { color: #9ca3af; }
+
+        /* Responsividade do painel */
+        @media (max-width: 768px) {
+            .permissoes-panel {
+                padding: 1rem;
+            }
+            .permissoes-table {
+                display: block;
+                overflow-x: auto;
+            }
+            .permissoes-table th, .permissoes-table td {
+                padding: 0.5rem;
+                font-size: 0.8rem;
+            }
+        }
     </style>
 </head>
 <body>
@@ -96,6 +222,26 @@
                 </div>
                 <button id="mobile-toggle" class="mobile-toggle absolute right-4 top-4 md:hidden">☰</button>
             </header>
+
+            <!-- PAINEL DE PERMISSÕES (visível apenas para equipe em modo cliente) -->
+            <div id="permissoes-panel" class="permissoes-panel" style="display: none;">
+                <h2>🔐 Controle de Permissões</h2>
+                <p class="panel-subtitle">Defina quais ferramentas o cliente pode apenas visualizar e quais pode editar temporariamente.</p>
+                <table class="permissoes-table">
+                    <thead>
+                        <tr>
+                            <th>Ferramenta</th>
+                            <th>Permissão</th>
+                            <th>Expiração da Edição</th>
+                        </tr>
+                    </thead>
+                    <tbody id="permissoes-tbody">
+                        <!-- Preenchido via JS -->
+                    </tbody>
+                </table>
+                <button id="salvar-permissoes-btn" class="permissoes-salvar-btn">Salvar Permissões</button>
+                <div id="permissoes-status" class="permissoes-status"></div>
+            </div>
 
             <div class="tools-grid">
                 <!-- 1. Comparador de Preços -->
@@ -200,5 +346,172 @@
             </div>
         </div>
     </main>
+
+    <script>
+    // === LÓGICA DO PAINEL DE PERMISSÕES ===
+    (function() {
+        const isEquipeModoCliente = sessionStorage.getItem('equipe_modo_cliente') === 'true';
+        if (!isEquipeModoCliente) return; // Não mostrar para clientes reais
+
+        const clienteId = sessionStorage.getItem('cliente_id');
+        if (!clienteId) return;
+
+        // Configuração Supabase
+        const SUPABASE_URL = 'https://vbikskbfkhundhropykf.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZiaWtza2Jma2h1bmRocm9weWtmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDU1MTk5NjEsImV4cCI6MjA2MTA5NTk2MX0.-n-Tj_5JnF1NL2ZImWlMeTcobWDl_VD6Vqp0lxRQFFU';
+        
+        let sb;
+        if (window.mithraSupabaseClient) {
+            sb = window.mithraSupabaseClient;
+        } else if (typeof window.supabase !== 'undefined' && window.supabase.createClient) {
+            sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        } else {
+            console.error('Supabase não disponível para painel de permissões');
+            return;
+        }
+
+        // Lista de ferramentas
+        const ferramentas = [
+            { slug: 'comparador', nome: 'Comparador de Preços' },
+            { slug: 'juros', nome: 'Calculadora de Juros Reais' },
+            { slug: 'simulador', nome: 'Simulador Imobiliário' },
+            { slug: 'cartoes', nome: 'Comparador de Cartões' },
+            { slug: 'fluxo', nome: 'Teste de Fluxo de Caixa' },
+            { slug: 'oraculo', nome: 'O Oráculo Financeiro' },
+            { slug: 'patrimonio', nome: 'Patrimônio do Cliente' },
+            { slug: 'acompanhamento', nome: 'Acompanhamento Financeiro' },
+            { slug: 'ir', nome: 'Simulador de Imposto de Renda' },
+            { slug: 'acumulo', nome: 'Simulador de Acúmulo' }
+        ];
+
+        // Mostrar painel
+        const panel = document.getElementById('permissoes-panel');
+        const tbody = document.getElementById('permissoes-tbody');
+        const salvarBtn = document.getElementById('salvar-permissoes-btn');
+        const statusEl = document.getElementById('permissoes-status');
+
+        if (!panel || !tbody) return;
+
+        // Renderizar tabela
+        function renderTable(permissoesExistentes) {
+            tbody.innerHTML = '';
+            ferramentas.forEach(f => {
+                const existente = permissoesExistentes.find(p => p.ferramenta === f.slug);
+                const modoAtual = existente ? existente.modo : 'visualizacao';
+                const expAtual = existente && existente.data_expiracao 
+                    ? new Date(existente.data_expiracao).toISOString().slice(0, 16) 
+                    : '';
+
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td class="ferramenta-nome">${f.nome}</td>
+                    <td>
+                        <select data-ferramenta="${f.slug}" class="permissao-select">
+                            <option value="visualizacao" ${modoAtual === 'visualizacao' ? 'selected' : ''}>Apenas Visualização</option>
+                            <option value="edicao_temporaria" ${modoAtual === 'edicao_temporaria' ? 'selected' : ''}>Edição Temporária</option>
+                        </select>
+                    </td>
+                    <td class="expiracao-cell ${modoAtual !== 'edicao_temporaria' ? 'disabled' : ''}">
+                        <input type="datetime-local" data-ferramenta="${f.slug}" class="expiracao-input" value="${expAtual}" />
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            // Listeners para habilitar/desabilitar campo de expiração
+            document.querySelectorAll('.permissao-select').forEach(sel => {
+                sel.addEventListener('change', function() {
+                    const expiracaoCell = this.closest('tr').querySelector('.expiracao-cell');
+                    if (this.value === 'edicao_temporaria') {
+                        expiracaoCell.classList.remove('disabled');
+                    } else {
+                        expiracaoCell.classList.add('disabled');
+                    }
+                });
+            });
+        }
+
+        // Carregar permissões existentes
+        async function carregarPermissoes() {
+            try {
+                const { data, error } = await sb
+                    .from('ferramentas_permissoes')
+                    .select('*')
+                    .eq('cliente_id', clienteId);
+
+                if (error) throw error;
+                renderTable(data || []);
+                panel.style.display = 'block';
+            } catch (err) {
+                console.error('Erro ao carregar permissões:', err);
+                // Mostrar painel mesmo sem dados existentes
+                renderTable([]);
+                panel.style.display = 'block';
+            }
+        }
+
+        // Salvar permissões
+        async function salvarPermissoes() {
+            salvarBtn.disabled = true;
+            statusEl.textContent = 'Salvando...';
+            statusEl.className = 'permissoes-status loading';
+
+            try {
+                const selects = document.querySelectorAll('.permissao-select');
+                const upserts = [];
+
+                selects.forEach(sel => {
+                    const slug = sel.dataset.ferramenta;
+                    const modo = sel.value;
+                    const expiracaoInput = document.querySelector(`.expiracao-input[data-ferramenta="${slug}"]`);
+                    let dataExpiracao = null;
+
+                    if (modo === 'edicao_temporaria' && expiracaoInput && expiracaoInput.value) {
+                        dataExpiracao = new Date(expiracaoInput.value).toISOString();
+                    }
+
+                    upserts.push({
+                        cliente_id: clienteId,
+                        ferramenta: slug,
+                        modo: modo,
+                        data_expiracao: dataExpiracao
+                    });
+                });
+
+                // Upsert cada permissão
+                for (const item of upserts) {
+                    const { error } = await sb
+                        .from('ferramentas_permissoes')
+                        .upsert(item, { onConflict: 'cliente_id,ferramenta' });
+                    
+                    if (error) throw error;
+                }
+
+                statusEl.textContent = 'Permissões salvas com sucesso!';
+                statusEl.className = 'permissoes-status success';
+            } catch (err) {
+                console.error('Erro ao salvar permissões:', err);
+                statusEl.textContent = 'Erro ao salvar. Tente novamente.';
+                statusEl.className = 'permissoes-status error';
+            } finally {
+                salvarBtn.disabled = false;
+                setTimeout(() => {
+                    statusEl.textContent = '';
+                    statusEl.className = 'permissoes-status';
+                }, 4000);
+            }
+        }
+
+        // Event listeners
+        salvarBtn.addEventListener('click', salvarPermissoes);
+
+        // Inicializar
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', carregarPermissoes);
+        } else {
+            carregarPermissoes();
+        }
+    })();
+    </script>
 </body>
 </html>
