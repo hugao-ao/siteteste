@@ -6,6 +6,7 @@
 <title>Protocolo Argos - MithraSF</title>
 <link rel="stylesheet" href="assets/style.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="assets/argos-engine.js"></script>
 <script src="assets/layout.js" defer></script>
 <style>
 /* ═══════════════════════════════════════════════════════════════
@@ -254,6 +255,46 @@
   background: var(--muted);
 }
 
+/* Botão Gerar Automática */
+.btn-gerar-auto {
+  display: none;
+  align-items: center;
+  gap: 6px;
+  background: linear-gradient(135deg, rgba(16,185,129,0.15) 0%, rgba(212,175,55,0.15) 100%);
+  border: 1px solid rgba(16,185,129,0.4);
+  color: #10b981;
+  font-size: 0.8rem;
+  padding: 8px 14px;
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-bottom: 0.75rem;
+  width: 100%;
+  justify-content: center;
+  font-weight: 500;
+}
+.btn-gerar-auto:hover {
+  background: linear-gradient(135deg, rgba(16,185,129,0.25) 0%, rgba(212,175,55,0.25) 100%);
+  border-color: rgba(16,185,129,0.6);
+}
+.btn-gerar-auto.loading {
+  opacity: 0.6;
+  pointer-events: none;
+}
+.btn-gerar-auto .icon-magic {
+  font-size: 1rem;
+}
+
+/* Subtópico info no modal */
+.modal-subtopico-info {
+  font-size: 0.75rem;
+  color: var(--muted-foreground);
+  margin-bottom: 0.75rem;
+  padding: 6px 10px;
+  background: var(--muted);
+  border-radius: 4px;
+}
+
 /* Loading */
 .loading-state {
   text-align: center;
@@ -309,6 +350,10 @@
 <div id="modal-rec" class="modal-overlay">
   <div class="modal-box">
     <h3 id="modal-title">Adicionar Recomendação</h3>
+    <p id="modal-subtopico-info" class="modal-subtopico-info" style="display:none;"></p>
+    <button id="btn-gerar-auto" class="btn-gerar-auto" onclick="gerarAutomatica()">
+      <span class="icon-magic">&#10024;</span> Gerar Recomendação Automática
+    </button>
     <textarea id="modal-texto" placeholder="Digite a recomendação..."></textarea>
     <div class="modal-actions">
       <button class="btn-modal-cancel" onclick="fecharModal()">Cancelar</button>
@@ -463,6 +508,22 @@ function abrirModalAdd(topico, subtopico) {
   _modalMode = { action: 'add', topico: topico, subtopico: subtopico };
   document.getElementById('modal-title').textContent = 'Adicionar Recomendação';
   document.getElementById('modal-texto').value = '';
+
+  // Mostrar info do subtópico
+  var infoEl = document.getElementById('modal-subtopico-info');
+  infoEl.textContent = topico + ' > ' + subtopico;
+  infoEl.style.display = 'block';
+
+  // Mostrar botão de gerar automática (apenas para equipe)
+  var btnAuto = document.getElementById('btn-gerar-auto');
+  if (isEquipe() && window.ArgosEngine) {
+    btnAuto.style.display = 'flex';
+    btnAuto.classList.remove('loading');
+    btnAuto.innerHTML = '<span class="icon-magic">&#10024;</span> Gerar Recomendação Automática';
+  } else {
+    btnAuto.style.display = 'none';
+  }
+
   document.getElementById('modal-rec').classList.add('open');
   document.getElementById('modal-texto').focus();
 }
@@ -473,6 +534,22 @@ function abrirModalEdit(id) {
   _modalMode = { action: 'edit', id: id, topico: rec.topico, subtopico: rec.subtopico };
   document.getElementById('modal-title').textContent = 'Editar Recomendação';
   document.getElementById('modal-texto').value = rec.recomendacao;
+
+  // Mostrar info do subtópico
+  var infoEl = document.getElementById('modal-subtopico-info');
+  infoEl.textContent = rec.topico + ' > ' + rec.subtopico;
+  infoEl.style.display = 'block';
+
+  // Mostrar botão de gerar automática (apenas para equipe)
+  var btnAuto = document.getElementById('btn-gerar-auto');
+  if (isEquipe() && window.ArgosEngine) {
+    btnAuto.style.display = 'flex';
+    btnAuto.classList.remove('loading');
+    btnAuto.innerHTML = '<span class="icon-magic">&#10024;</span> Gerar Recomendação Automática';
+  } else {
+    btnAuto.style.display = 'none';
+  }
+
   document.getElementById('modal-rec').classList.add('open');
   document.getElementById('modal-texto').focus();
 }
@@ -480,8 +557,47 @@ function abrirModalEdit(id) {
 function fecharModal() {
   _modalMode = null;
   document.getElementById('modal-rec').classList.remove('open');
+  document.getElementById('modal-subtopico-info').style.display = 'none';
+  document.getElementById('btn-gerar-auto').style.display = 'none';
 }
 
+// ═══════════════════════════════════════════════════════════════
+//  GERAR RECOMENDAÇÃO AUTOMÁTICA
+// ═══════════════════════════════════════════════════════════════
+async function gerarAutomatica() {
+  if (!_modalMode || !window.ArgosEngine) return;
+
+  var btn = document.getElementById('btn-gerar-auto');
+  btn.classList.add('loading');
+  btn.innerHTML = '<span class="icon-magic">&#10024;</span> Gerando...';
+
+  try {
+    var texto = await window.ArgosEngine.gerar(_modalMode.topico, _modalMode.subtopico);
+    if (texto) {
+      var textarea = document.getElementById('modal-texto');
+      // Se já tem texto, perguntar se quer substituir ou adicionar
+      if (textarea.value.trim()) {
+        if (confirm('Já existe texto no campo. Deseja SUBSTITUIR pelo texto gerado?\n\n(Clique "Cancelar" para ADICIONAR ao final)')) {
+          textarea.value = texto;
+        } else {
+          textarea.value = textarea.value + '\n\n' + texto;
+        }
+      } else {
+        textarea.value = texto;
+      }
+      textarea.focus();
+    }
+  } catch(e) {
+    alert('Erro ao gerar recomendação: ' + e.message);
+  }
+
+  btn.classList.remove('loading');
+  btn.innerHTML = '<span class="icon-magic">&#10024;</span> Gerar Recomendação Automática';
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  SALVAR / EXCLUIR
+// ═══════════════════════════════════════════════════════════════
 async function salvarRecomendacao() {
   var texto = document.getElementById('modal-texto').value.trim();
   if (!texto || !_modalMode) return;
