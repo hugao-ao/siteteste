@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Simulador de Acumulo - MithraSF</title>
 <link rel="stylesheet" href="../assets/style.css">
-<script src="../assets/permissao-guard.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="../assets/importar-diagnostico.js"></script>
 <script src="../assets/layout.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
@@ -603,7 +603,6 @@ function abrirModalAporte(idx) {
 }
 function fecharModalAporte() { document.getElementById('modal-aporte').classList.remove('show'); }
 function salvarAporte() {
-  if(window._permGuardCheck && window._permGuardCheck()) return;
   var obj = {
     descricao: document.getElementById('ap-descricao').value.trim(),
     valor: parseCurrency(document.getElementById('ap-valor')),
@@ -621,9 +620,7 @@ function salvarAporte() {
   renderAportes();
 }
 function editarAporte(i) { abrirModalAporte(i); }
-function excluirAporte(i) {
-  if(window._permGuardCheck && window._permGuardCheck()) return;
- if(confirm('Excluir este aporte?')) { aportes.splice(i,1); renderAportes(); } }
+function excluirAporte(i) { if(confirm('Excluir este aporte?')) { aportes.splice(i,1); renderAportes(); } }
 
 // Updates de aporte
 function abrirModalUpdateAporte(apIdx) {
@@ -634,7 +631,6 @@ function abrirModalUpdateAporte(apIdx) {
 }
 function fecharModalUpdate() { document.getElementById('modal-update').classList.remove('show'); }
 function salvarUpdate() {
-  if(window._permGuardCheck && window._permGuardCheck()) return;
   var mes = parseInt(document.getElementById('upd-mes').value) || 2;
   var valor = parseCurrency(document.getElementById('upd-valor'));
   if (valor <= 0) { alert('Informe um valor valido.'); return; }
@@ -652,9 +648,7 @@ function editarUpdate(apIdx, uIdx) {
   document.getElementById('upd-valor').value = fmtBRL(u.valor);
   document.getElementById('modal-update').classList.add('show');
 }
-function excluirUpdate(apIdx, uIdx) {
-  if(window._permGuardCheck && window._permGuardCheck()) return;
- aportes[apIdx].updates.splice(uIdx, 1); renderAportes(); }
+function excluirUpdate(apIdx, uIdx) { aportes[apIdx].updates.splice(uIdx, 1); renderAportes(); }
 
 // ===== VEICULOS CRUD =====
 function renderVeiculos() {
@@ -735,7 +729,6 @@ function abrirModalVeiculo(idx) {
 function fecharModalVeiculo() { document.getElementById('modal-veiculo').classList.remove('show'); }
 
 function salvarVeiculo() {
-  if(window._permGuardCheck && window._permGuardCheck()) return;
   var tipo = document.getElementById('vc-tipo').value;
   var nome = document.getElementById('vc-nome').value.trim();
   var obj = { id: uid(), tipo: tipo, nome: nome };
@@ -767,9 +760,7 @@ function salvarVeiculo() {
   renderVeiculos();
 }
 function editarVeiculo(i) { abrirModalVeiculo(i); }
-function excluirVeiculo(i) {
-  if(window._permGuardCheck && window._permGuardCheck()) return;
- if(confirm('Excluir este veiculo?')) { veiculos.splice(i,1); renderVeiculos(); } }
+function excluirVeiculo(i) { if(confirm('Excluir este veiculo?')) { veiculos.splice(i,1); renderVeiculos(); } }
 
 // ===== INVESTIMENTOS CRUD (temp, dentro do modal de veiculo carteira) =====
 function renderTempInvestimentos() {
@@ -829,7 +820,6 @@ function abrirModalInvestimento(idx) {
 }
 function fecharModalInvestimento() { document.getElementById('modal-investimento').classList.remove('show'); }
 function salvarInvestimento() {
-  if(window._permGuardCheck && window._permGuardCheck()) return;
   var obj = {
     id: uid(),
     nome: document.getElementById('inv-nome').value.trim(),
@@ -845,9 +835,7 @@ function salvarInvestimento() {
   renderTempInvestimentos();
 }
 function editarInvestimento(i) { abrirModalInvestimento(i); }
-function excluirInvestimento(i) {
-  if(window._permGuardCheck && window._permGuardCheck()) return;
- tempInvestimentos.splice(i,1); renderTempInvestimentos(); }
+function excluirInvestimento(i) { tempInvestimentos.splice(i,1); renderTempInvestimentos(); }
 
 
 // ===== HELPERS DE APORTE =====
@@ -1858,7 +1846,6 @@ function applyPayload(p) {
 }
 
 function salvarSim() {
-  if(window._permGuardCheck && window._permGuardCheck()) return;
   var payload = buildPayload();
   if (currentSimIdx >= 0) {
     simulations[currentSimIdx] = payload;
@@ -1888,7 +1875,6 @@ function duplicarSim(i) {
 }
 
 function excluirSim(i) {
-  if(window._permGuardCheck && window._permGuardCheck()) return;
   if (confirm('Excluir esta simulacao?')) {
     simulations.splice(i, 1);
     persistir();
@@ -1948,7 +1934,6 @@ function _getClienteId() {
 }
 
 async function persistir() {
-  if(window._permGuardCheck && window._permGuardCheck()) return;
   var clienteId = _getClienteId();
   var dados = JSON.stringify(simulations);
   localStorage.setItem('acumulo_sims', dados);
@@ -1992,6 +1977,28 @@ async function carregar() {
 document.addEventListener('DOMContentLoaded', function() {
   carregar();
 });
+
+// === HANDLER IMPORTAR DIAGNÓSTICO ===
+document.addEventListener('importarDiagnostico', function(e) {
+  var itens = e.detail.items || [];
+  itens.forEach(function(item) {
+    veiculos.push({
+      id: Date.now() + Math.random(),
+      nome: item.nome || 'Veículo importado',
+      tipo: item.tipo || 'carteira',
+      taxa_admin: item.taxa_admin || 0,
+      taxa_performance: item.taxa_performance || 0,
+      taxa_saida: item.taxa_saida || 0,
+      come_cotas: item.come_cotas || false,
+      tabela_ir: item.tabela_ir || 'regressiva',
+      taxa_retorno_anual: item.taxa_retorno_anual || 0,
+      aporte_mensal: item.aporte_mensal || 0
+    });
+  });
+  renderVeiculos();
+  alert(itens.length + ' veículo(s) importado(s)! Salve a simulação para persistir.');
+});
+
 </script>
 </body>
 </html>
