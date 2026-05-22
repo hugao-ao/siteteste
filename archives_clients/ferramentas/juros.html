@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Análise de Dívidas - MithraSF</title>
 <link rel="stylesheet" href="../assets/style.css">
-<script src="../assets/permissao-guard.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="../assets/importar-diagnostico.js"></script>
 <script src="../assets/layout.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
@@ -1162,7 +1162,6 @@ function calcParcelaPreview() {
 }
 
 function saveDebt() {
-  if(window._permGuardCheck && window._permGuardCheck()) return;
   var nome = document.getElementById('m-nome').value.trim();
   var valorContratado = parseCurr(document.getElementById('m-valor').value);
   var totalParcelas = parseInt(document.getElementById('m-total-parcelas').value);
@@ -1267,7 +1266,6 @@ function saveDebt() {
 }
 
 function deleteDebt(type, index) {
-  if(window._permGuardCheck && window._permGuardCheck()) return;
   if (!confirm('Excluir esta divida?')) return;
   if (type === 'atual') dividasAtuais.splice(index, 1);
   else dividasProposta.splice(index, 1);
@@ -4029,7 +4027,6 @@ function duplicarAnalise(id) {
 }
 
 function deleteAnalise(id) {
-  if(window._permGuardCheck && window._permGuardCheck()) return;
   if (!confirm('Excluir esta analise?')) return;
   _jurosSimulacoes = _jurosSimulacoes.filter(function(s) { return s.id !== id; });
   _saveJurosSimulacoes();
@@ -4042,7 +4039,6 @@ function voltarParaLista() {
 }
 
 function _salvarAnaliseAtual() {
-  if(window._permGuardCheck && window._permGuardCheck()) return;
   var nome = document.getElementById('sim-nome').value.trim() || 'Analise ' + new Date().toLocaleDateString('pt-BR');
   var payload = _jurosBuildPayload();
   if (_jurosEditingSimId) {
@@ -4114,7 +4110,6 @@ function toggleSimCard(id) {
 function _escHtml(str) { var div = document.createElement('div'); div.textContent = str; return div.innerHTML; }
 
 function saveData() {
-  if(window._permGuardCheck && window._permGuardCheck()) return;
   if (!_jurosInitDone) return;
   _salvarAnaliseAtual();
 }
@@ -4146,11 +4141,32 @@ function _globalSaveFeedback() {
 }
 
 function _forceSaveJuros() {
-  if(window._permGuardCheck && window._permGuardCheck()) return;
   _jurosInitDone = true;
   saveData();
   _globalSaveFeedback();
 }
+
+
+// === HANDLER IMPORTAR DIAGNÓSTICO ===
+document.addEventListener('importarDiagnostico', function(e) {
+  var itens = e.detail.items || [];
+  itens.forEach(function(item) {
+    dividasAtuais.push({
+      nome: item.nome || 'Dívida importada',
+      valorContratado: item.valorContratado || 0,
+      parcela: item.parcela || 0,
+      totalParcelas: item.totalParcelas || 0,
+      parcelasPagas: item.parcelasPagas || 0,
+      saldoDevedor: item.saldoDevedor || 0,
+      tipoAmort: item.tipoAmort || 'price',
+      reajusteAnual: item.reajusteAnual || 0,
+      taxaFixa: item.taxaFixa || 0
+    });
+  });
+  renderAll();
+  saveData();
+  alert(itens.length + ' dívida(s) importada(s) com sucesso!');
+});
 
 </script>
 </body>
