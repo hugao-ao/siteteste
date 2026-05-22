@@ -76,6 +76,9 @@ function updateDividaField(id, field, valor) {
     updateDividaMoedaField(id, field, valor);
   } else if (field === 'prazo' || field === 'parcelas_pagas') {
     divida[field] = parseInt(valor) || 0;
+  } else if (field === 'taxa_juros' || field === 'reajuste_anual') {
+    // Novos campos numéricos (percentual)
+    divida[field] = parseFloat(valor.replace(',', '.')) || 0;
   } else if (field === 'inventariavel' || field === 'planejada') {
     divida[field] = valor === true || valor === 'true' || valor === 'sim';
     if (window.atualizarSecaoSucessao) window.atualizarSecaoSucessao();
@@ -105,6 +108,10 @@ function addDivida() {
     saldo_devedor: 0,
     motivo: '',
     credor: '',
+    taxa_juros: 0,
+    taxa_juros_tipo: 'anual',
+    tipo_amortizacao: '',
+    reajuste_anual: 0,
     planejada: false,
     responsaveis: [],
     inventariavel: true
@@ -259,6 +266,54 @@ function renderDividas() {
                    onfocus="limparCampoDivida(this)"
                    placeholder="R$ 0,00"
                    style="border-color: #dc3545;">
+          </div>
+          
+          <!-- Taxa de Juros (CET) -->
+          <div class="form-group">
+            <label for="divida_${divida.id}_taxa_juros">
+              <i class="fas fa-percentage"></i> Taxa de Juros (CET)
+            </label>
+            <div style="display: flex; gap: 0.5rem;">
+              <input type="text" 
+                     id="divida_${divida.id}_taxa_juros" 
+                     value="${divida.taxa_juros || ''}"
+                     onchange="updateDividaField(${divida.id}, 'taxa_juros', this.value)"
+                     placeholder="Ex: 1,99"
+                     style="flex: 1;">
+              <select id="divida_${divida.id}_taxa_juros_tipo"
+                      onchange="updateDividaField(${divida.id}, 'taxa_juros_tipo', this.value)"
+                      style="width: 90px;">
+                <option value="mensal" ${divida.taxa_juros_tipo === 'mensal' ? 'selected' : ''}>a.m.</option>
+                <option value="anual" ${divida.taxa_juros_tipo === 'anual' ? 'selected' : ''}>a.a.</option>
+              </select>
+            </div>
+          </div>
+          
+          <!-- Tipo de Amortização -->
+          <div class="form-group">
+            <label for="divida_${divida.id}_tipo_amortizacao">
+              <i class="fas fa-chart-line"></i> Tipo de Amortização
+            </label>
+            <select id="divida_${divida.id}_tipo_amortizacao" 
+                    onchange="updateDividaField(${divida.id}, 'tipo_amortizacao', this.value)">
+              <option value="" ${!divida.tipo_amortizacao ? 'selected' : ''}>Selecione...</option>
+              <option value="price" ${divida.tipo_amortizacao === 'price' ? 'selected' : ''}>Price (parcelas fixas)</option>
+              <option value="sac" ${divida.tipo_amortizacao === 'sac' ? 'selected' : ''}>SAC (parcelas decrescentes)</option>
+              <option value="simples" ${divida.tipo_amortizacao === 'simples' ? 'selected' : ''}>Juros Simples</option>
+              <option value="outro" ${divida.tipo_amortizacao === 'outro' ? 'selected' : ''}>Outro</option>
+            </select>
+          </div>
+          
+          <!-- Reajuste Anual -->
+          <div class="form-group">
+            <label for="divida_${divida.id}_reajuste_anual">
+              <i class="fas fa-sync-alt"></i> Reajuste Anual (%)
+            </label>
+            <input type="text" 
+                   id="divida_${divida.id}_reajuste_anual" 
+                   value="${divida.reajuste_anual || ''}"
+                   onchange="updateDividaField(${divida.id}, 'reajuste_anual', this.value)"
+                   placeholder="Ex: 5,5 (IPCA, IGPM...)">
           </div>
           
           <!-- Motivo da Dívida -->
