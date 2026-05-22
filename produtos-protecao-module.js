@@ -64,6 +64,16 @@ function desformatarMoeda(valorFormatado) {
   return parseFloat(valor) || 0;
 }
 
+function formatarMoedaInput(valor) {
+  let v = valor.replace(/\D/g, '');
+  v = (parseInt(v) / 100).toFixed(2);
+  return formatarMoeda(v);
+}
+
+function desformatarMoedaProtecao(valor) {
+  return desformatarMoeda(valor);
+}
+
 function aplicarMascaraMoeda(event) {
   const input = event.target;
   let valor = input.value.replace(/\D/g, '');
@@ -232,6 +242,66 @@ function createProdutoProtecaoCard(produto, index) {
         </div>
         
         <div class="form-group">
+          <label for="${produtoId}_cobertura_morte" style="display: block; margin-bottom: 0.3rem; color: var(--text-gold); font-weight: 600; font-size: 0.9rem;">
+            <i class="fas fa-heart-broken"></i> Cobertura Morte (R$)
+          </label>
+          <input type="text" 
+                 id="${produtoId}_cobertura_morte" 
+                 value="${formatarMoeda(produto.cobertura_morte)}"
+                 oninput="this.value = formatarMoedaInput(this.value); updateProdutoProtecaoField(${index}, 'cobertura_morte', desformatarMoedaProtecao(this.value))"
+                 placeholder="R$ 0,00"
+                 style="width: 100%; padding: 0.7rem; border: 2px solid var(--border-color); border-radius: 8px; background: var(--dark-bg); color: var(--text-light); font-size: 0.9rem;">
+        </div>
+        
+        <div class="form-group">
+          <label for="${produtoId}_cobertura_invalidez" style="display: block; margin-bottom: 0.3rem; color: var(--text-gold); font-weight: 600; font-size: 0.9rem;">
+            <i class="fas fa-wheelchair"></i> Cobertura Invalidez (R$)
+          </label>
+          <input type="text" 
+                 id="${produtoId}_cobertura_invalidez" 
+                 value="${formatarMoeda(produto.cobertura_invalidez)}"
+                 oninput="this.value = formatarMoedaInput(this.value); updateProdutoProtecaoField(${index}, 'cobertura_invalidez', desformatarMoedaProtecao(this.value))"
+                 placeholder="R$ 0,00"
+                 style="width: 100%; padding: 0.7rem; border: 2px solid var(--border-color); border-radius: 8px; background: var(--dark-bg); color: var(--text-light); font-size: 0.9rem;">
+        </div>
+        
+        <div class="form-group">
+          <label for="${produtoId}_cobertura_dit" style="display: block; margin-bottom: 0.3rem; color: var(--text-gold); font-weight: 600; font-size: 0.9rem;">
+            <i class="fas fa-bed"></i> Cobertura DIT (R$/dia)
+          </label>
+          <input type="text" 
+                 id="${produtoId}_cobertura_dit" 
+                 value="${formatarMoeda(produto.cobertura_dit)}"
+                 oninput="this.value = formatarMoedaInput(this.value); updateProdutoProtecaoField(${index}, 'cobertura_dit', desformatarMoedaProtecao(this.value))"
+                 placeholder="R$ 0,00"
+                 style="width: 100%; padding: 0.7rem; border: 2px solid var(--border-color); border-radius: 8px; background: var(--dark-bg); color: var(--text-light); font-size: 0.9rem;">
+        </div>
+        
+        <div class="form-group">
+          <label for="${produtoId}_cobertura_doencas_graves" style="display: block; margin-bottom: 0.3rem; color: var(--text-gold); font-weight: 600; font-size: 0.9rem;">
+            <i class="fas fa-virus"></i> Cobertura Doenças Graves (R$)
+          </label>
+          <input type="text" 
+                 id="${produtoId}_cobertura_doencas_graves" 
+                 value="${formatarMoeda(produto.cobertura_doencas_graves)}"
+                 oninput="this.value = formatarMoedaInput(this.value); updateProdutoProtecaoField(${index}, 'cobertura_doencas_graves', desformatarMoedaProtecao(this.value))"
+                 placeholder="R$ 0,00"
+                 style="width: 100%; padding: 0.7rem; border: 2px solid var(--border-color); border-radius: 8px; background: var(--dark-bg); color: var(--text-light); font-size: 0.9rem;">
+        </div>
+        
+        <div class="form-group">
+          <label for="${produtoId}_resgatavel" style="display: block; margin-bottom: 0.3rem; color: var(--text-gold); font-weight: 600; font-size: 0.9rem;">
+            <i class="fas fa-piggy-bank"></i> É Resgatável?
+          </label>
+          <select id="${produtoId}_resgatavel" 
+                  onchange="updateProdutoProtecaoField(${index}, 'resgatavel', this.value === 'true')"
+                  style="width: 100%; padding: 0.7rem; border: 2px solid var(--border-color); border-radius: 8px; background: var(--dark-bg); color: var(--text-light); font-size: 0.9rem; cursor: pointer;">
+            <option value="false" ${!produto.resgatavel ? 'selected' : ''}>Não</option>
+            <option value="true" ${produto.resgatavel ? 'selected' : ''}>Sim</option>
+          </select>
+        </div>
+        
+        <div class="form-group">
           <label for="${produtoId}_cotou_analisou" style="display: block; margin-bottom: 0.3rem; color: var(--text-gold); font-weight: 600; font-size: 0.9rem;">
             <i class="fas fa-search-dollar"></i> Cotou e analisou antes?
           </label>
@@ -301,6 +371,11 @@ function addProdutoProtecao(dadosPrePreenchidos = null) {
     periodicidade: dadosPrePreenchidos?.periodicidade || 'anual',
     vencimento: dadosPrePreenchidos?.vencimento || '',
     seguradora: dadosPrePreenchidos?.seguradora || '',
+    cobertura_morte: dadosPrePreenchidos?.cobertura_morte || 0,
+    cobertura_invalidez: dadosPrePreenchidos?.cobertura_invalidez || 0,
+    cobertura_dit: dadosPrePreenchidos?.cobertura_dit || 0,
+    cobertura_doencas_graves: dadosPrePreenchidos?.cobertura_doencas_graves || 0,
+    resgatavel: dadosPrePreenchidos?.resgatavel || false,
     cotou_analisou: dadosPrePreenchidos?.cotou_analisou || false,
     observacoes: dadosPrePreenchidos?.observacoes || '',
     origem_patrimonio: dadosPrePreenchidos?.origem_patrimonio || null
@@ -865,6 +940,8 @@ if (document.readyState === 'loading') {
 }
 
 // Expor funções globalmente
+window.formatarMoedaInput = formatarMoedaInput;
+window.desformatarMoedaProtecao = desformatarMoedaProtecao;
 window.addProdutoProtecao = addProdutoProtecao;
 window.deleteProdutoProtecao = deleteProdutoProtecao;
 window.updateProdutoProtecaoField = updateProdutoProtecaoField;
