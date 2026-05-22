@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Simulador de Imposto de Renda - MithraSF</title>
 <link rel="stylesheet" href="../assets/style.css">
-<script src="../assets/permissao-guard.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="../assets/importar-diagnostico.js"></script>
 <script src="../assets/layout.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
@@ -1276,7 +1276,6 @@ function applyPayload(p) {
 }
 
 function salvarSimulacao() {
-  if(window._permGuardCheck && window._permGuardCheck()) return;
   const p = buildPayload();
   if (simAtualIdx >= 0) {
     simulacoes[simAtualIdx] = p;
@@ -1299,7 +1298,6 @@ function editarSimulacao(idx) {
 }
 
 function excluirSimulacao(idx) {
-  if(window._permGuardCheck && window._permGuardCheck()) return;
   if (!confirm('Excluir esta simulacao?')) return;
   simulacoes.splice(idx, 1);
   _persistirIR();
@@ -1462,6 +1460,36 @@ function _globalSaveFeedback() {
   renderSimList();
   _irInitDone = true;
 })();
+
+
+// === HANDLER IMPORTAR DIAGNÓSTICO ===
+document.addEventListener('importarDiagnostico', function(e) {
+  var itens = e.detail.items || [];
+  itens.forEach(function(item) {
+    simulacoes.push({
+      nome: item.nome || 'Declaração importada',
+      anoBase: 2025,
+      rendaMensal: item.rendaBruta ? Math.round(item.rendaBruta / 13) : 0,
+      decimoTerceiro: item.rendaBruta ? Math.round(item.rendaBruta / 13) : 0,
+      outrasRendas: 0,
+      rendIsentos: 0,
+      inssMensal: item.previdenciaOficial ? Math.round(item.previdenciaOficial / 12) : 0,
+      irrfMensal: item.impostoRetido ? Math.round(item.impostoRetido / 12) : 0,
+      nDep: item.dependentes || 0,
+      tipoDecAtual: item.tipo_declaracao || 'completa',
+      dedSaude: item.medicas || 0,
+      dedEducacao: item.instrucao || 0,
+      dedPensao: item.pensao || 0,
+      dedINSSAnual: item.previdenciaOficial || 0,
+      dedOutras: item.outrasDeducoes || 0,
+      pgblAtual: item.previdenciaPrivada || 0,
+      dataSalvo: new Date().toISOString()
+    });
+  });
+  _persistirIR();
+  renderSimList();
+  alert(itens.length + ' simulação(ões) de IR importada(s) com sucesso!');
+});
 
 </script>
 </body>
