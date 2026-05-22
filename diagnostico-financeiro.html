@@ -263,56 +263,188 @@
     }
 
     /* Botão de Pré-Preenchimento */
-    .prefill-container {
-      text-align: center;
-      margin: 1.5rem 0;
-      padding: 1.2rem;
-      background: var(--surface-bg);
-      border-radius: 12px;
-      border: 2px dashed var(--secondary-color);
-      box-shadow: 0 4px 15px var(--shadow-color);
-    }
-
-    .prefill-btn {
-      background: linear-gradient(135deg, #6366f1, #8b5cf6);
-      color: #fff;
+    /* Botão Puxar Dados - Bolinha roxa fixa */
+    .btn-prefill {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      z-index: 9999;
+      background: linear-gradient(135deg, #7c3aed, #8b5cf6);
+      color: white;
       border: none;
-      padding: 1rem 2.5rem;
-      border-radius: 10px;
-      font-size: 1.1rem;
-      font-weight: 600;
+      border-radius: 50%;
+      width: 50px;
+      height: 50px;
       cursor: pointer;
-      transition: all 0.3s ease;
-      display: inline-flex;
+      font-size: 18px;
+      display: flex;
       align-items: center;
-      gap: 0.6rem;
-      box-shadow: 0 4px 15px rgba(99, 102, 241, 0.4);
+      justify-content: center;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 15px rgba(124, 58, 237, 0.5);
     }
 
-    .prefill-btn:hover {
-      transform: translateY(-3px);
-      box-shadow: 0 8px 25px rgba(99, 102, 241, 0.5);
-      background: linear-gradient(135deg, #8b5cf6, #6366f1);
+    .btn-prefill:hover {
+      background: linear-gradient(135deg, #6d28d9, #7c3aed);
+      transform: scale(1.1);
+      box-shadow: 0 6px 25px rgba(124, 58, 237, 0.6);
     }
 
-    .prefill-btn:disabled {
+    .btn-prefill:active {
+      transform: scale(0.95);
+    }
+
+    .btn-prefill:disabled {
       background: #555;
       cursor: not-allowed;
       transform: none;
       box-shadow: none;
     }
 
-    .prefill-description {
+    .btn-prefill .tooltip {
+      position: absolute;
+      right: 60px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: rgba(0, 0, 0, 0.9);
+      color: #fff;
+      padding: 0.5rem 0.8rem;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      font-weight: 500;
+      white-space: nowrap;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s ease;
+    }
+
+    .btn-prefill .tooltip::after {
+      content: '';
+      position: absolute;
+      left: 100%;
+      top: 50%;
+      transform: translateY(-50%);
+      border: 5px solid transparent;
+      border-left-color: rgba(0, 0, 0, 0.9);
+    }
+
+    .btn-prefill:hover .tooltip {
+      opacity: 1;
+    }
+
+    /* Modal de confirmação do prefill */
+    .prefill-confirm-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.7);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 10001;
+      animation: fadeInPrefill 0.2s ease;
+    }
+
+    @keyframes fadeInPrefill {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    .prefill-confirm-modal {
+      background: var(--surface-bg);
+      border: 2px solid #7c3aed;
+      border-radius: 12px;
+      padding: 1.5rem;
+      max-width: 450px;
+      width: 90%;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+    }
+
+    .prefill-confirm-modal h3 {
+      color: #a78bfa;
+      margin: 0 0 1rem 0;
+      font-size: 1.1rem;
+    }
+
+    .prefill-confirm-modal p {
       color: var(--text-light);
-      font-size: 0.85rem;
-      margin-top: 0.6rem;
-      opacity: 0.8;
+      font-size: 0.9rem;
+      margin-bottom: 1rem;
+      line-height: 1.5;
+    }
+
+    .prefill-confirm-modal .fields-list {
+      background: var(--dark-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 0.8rem;
+      max-height: 200px;
+      overflow-y: auto;
+      margin-bottom: 1rem;
+      font-size: 0.8rem;
+      color: var(--text-light);
+    }
+
+    .prefill-confirm-modal .fields-list .field-item {
+      padding: 0.3rem 0;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+
+    .prefill-confirm-modal .fields-list .field-item:last-child {
+      border-bottom: none;
+    }
+
+    .prefill-confirm-modal .field-item .field-name {
+      color: #a78bfa;
+      font-weight: 600;
+    }
+
+    .prefill-confirm-modal .field-item .field-change {
+      color: #fbbf24;
+      font-size: 0.75rem;
+    }
+
+    .prefill-confirm-btns {
+      display: flex;
+      gap: 0.8rem;
+      justify-content: flex-end;
+    }
+
+    .prefill-confirm-btns button {
+      padding: 0.6rem 1.2rem;
+      border: none;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .prefill-confirm-btns .btn-cancel {
+      background: var(--border-color);
+      color: var(--text-light);
+    }
+
+    .prefill-confirm-btns .btn-cancel:hover {
+      background: #555;
+    }
+
+    .prefill-confirm-btns .btn-confirm {
+      background: linear-gradient(135deg, #7c3aed, #8b5cf6);
+      color: white;
+    }
+
+    .prefill-confirm-btns .btn-confirm:hover {
+      background: linear-gradient(135deg, #6d28d9, #7c3aed);
+      transform: translateY(-1px);
     }
 
     .prefill-toast {
       position: fixed;
       top: 20px;
-      right: 20px;
+      right: 80px;
       padding: 1rem 1.5rem;
       border-radius: 10px;
       color: #fff;
@@ -661,6 +793,10 @@
       margin: 0;
     }
 
+    /* =========================================
+       RESPONSIVIDADE COMPLETA
+       ========================================= */
+
     @media (max-width: 1200px) {
       .container {
         padding: 1.5rem;
@@ -683,15 +819,21 @@
 
     @media (max-width: 768px) {
       .container {
-        padding: 1rem;
+        padding: 0.8rem;
       }
 
       .header h1 {
-        font-size: 2rem;
+        font-size: 1.6rem;
+        line-height: 1.3;
+      }
+
+      .header .subtitle {
+        font-size: 0.95rem;
       }
 
       .header, .canva-container, .form-container {
         padding: 1rem;
+        border-radius: 10px;
       }
 
       .form-grid, .form-grid-3 {
@@ -702,34 +844,427 @@
       .form-group.full-width {
         grid-column: 1;
       }
-      
+
+      /* Section headers em mobile */
+      .section-header {
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        padding: 0.5rem 0;
+      }
+
+      .section-header h3 {
+        font-size: 0.95rem !important;
+        flex-basis: calc(100% - 45px);
+        text-align: left !important;
+      }
+
+      .patrimonio-total {
+        font-size: 0.85rem;
+        min-width: unset;
+        padding: 0.5rem 0.8rem;
+        width: 100%;
+        order: 3;
+      }
+
+      .section-toggle-btn {
+        width: 28px;
+        height: 28px;
+        font-size: 0.8rem;
+      }
+
+      /* Cards em mobile */
+      .pessoa-card,
+      .dependente-card,
+      .patrimonio-card {
+        padding: 0.8rem;
+        border-radius: 8px;
+      }
+
+      .pessoa-header,
+      .dependente-header,
+      .patrimonio-header {
+        flex-wrap: wrap;
+        gap: 0.5rem;
+      }
+
+      .pessoa-title,
+      .dependente-title,
+      .patrimonio-title {
+        font-size: 0.95rem;
+        flex-basis: calc(100% - 80px);
+      }
+
+      /* Checkbox group em mobile */
+      .checkbox-group {
+        grid-template-columns: 1fr;
+      }
+
+      /* Botões em mobile */
+      .add-btn {
+        padding: 0.7rem 1.2rem;
+        font-size: 0.85rem;
+        width: 100%;
+      }
+
+      .save-btn {
+        padding: 1rem 2rem;
+        font-size: 1rem;
+        width: 100%;
+      }
+
       .save-btn-container {
-        padding: 1.2rem 1rem;
+        padding: 1rem;
         margin-top: 1.5rem;
         margin-bottom: 1rem;
+      }
+
+      /* Prefill container em mobile */
+      .prefill-container {
+        padding: 1rem;
+        margin: 1rem 0;
+      }
+
+      .prefill-btn {
+        padding: 0.8rem 1.5rem;
+        font-size: 0.95rem;
+        width: 100%;
+        justify-content: center;
+      }
+
+      /* Canva embed em mobile */
+      .canva-embed {
+        padding-top: 75%;
+        margin-top: 1rem;
+      }
+
+      /* Botão voltar em mobile */
+      .btn-voltar {
+        width: 40px;
+        height: 40px;
+        font-size: 15px;
+        top: 10px;
+        left: 10px;
+      }
+
+      /* Status badge em mobile */
+      .status-badge {
+        display: block;
+        margin-left: 0;
+        margin-top: 0.5rem;
+        font-size: 0.8rem;
+      }
+
+      /* Valor display e idade display */
+      .valor-display,
+      .idade-display {
+        font-size: 0.7rem;
+        padding: 0.2rem 0.5rem;
+        margin-left: 0.3rem;
+      }
+
+      /* Proprietarios list em mobile */
+      .proprietarios-list {
+        gap: 0.2rem;
+      }
+
+      .proprietario-tag {
+        font-size: 0.65rem;
+        padding: 0.15rem 0.4rem;
+      }
+
+      /* Toast em mobile */
+      .prefill-toast {
+        top: 10px;
+        right: 10px;
+        left: 10px;
+        max-width: none;
+        font-size: 0.85rem;
+        padding: 0.8rem 1rem;
+      }
+
+      /* Form group inputs em mobile */
+      .form-group input,
+      .form-group select {
+        padding: 0.6rem;
+        font-size: 0.85rem;
+      }
+
+      .form-group label {
+        font-size: 0.8rem;
+        margin-bottom: 0.2rem;
+      }
+
+      /* Error/Success messages em mobile */
+      .error-message,
+      .success-message {
+        padding: 0.8rem;
+        font-size: 0.85rem;
+        border-radius: 8px;
+      }
+
+      /* ===== MÓDULOS EXTERNOS - Forçar grids inline a serem responsivos ===== */
+
+      /* Patrimônio líquido cards */
+      .patrimonio-liquido-card {
+        padding: 0.8rem !important;
+        margin-bottom: 1rem !important;
+      }
+
+      .patrimonio-liquido-card .form-grid {
+        grid-template-columns: 1fr !important;
+      }
+
+      /* Dividas cards */
+      .divida-card {
+        padding: 0.8rem !important;
+      }
+
+      .divida-card .form-grid-3 {
+        grid-template-columns: 1fr !important;
+      }
+
+      /* Produtos de proteção cards */
+      .produto-protecao-card {
+        padding: 0.8rem !important;
+      }
+
+      .produto-protecao-card .form-grid {
+        grid-template-columns: 1fr !important;
+      }
+
+      .produto-protecao-card [style*="grid-template-columns"] {
+        grid-template-columns: 1fr !important;
+      }
+
+      /* Contas e cartões cards */
+      .conta-cartao-card {
+        padding: 0.8rem !important;
+      }
+
+      .conta-cartao-card .form-grid-3 {
+        grid-template-columns: 1fr !important;
+      }
+
+      /* Objetivos module - forçar grids inline */
+      #content-objetivos [style*="grid-template-columns: repeat(3"],
+      #content-objetivos [style*="grid-template-columns: repeat(4"],
+      #content-objetivos [style*="grid-template-columns: 1fr 150px"],
+      #content-objetivos [style*="grid-template-columns: 1fr 1fr 180px"],
+      #content-objetivos [style*="grid-template-columns: 1fr 1fr 1fr"] {
+        grid-template-columns: 1fr !important;
+      }
+
+      #content-objetivos [style*="grid-template-columns: 1fr 1fr"] {
+        grid-template-columns: 1fr !important;
+      }
+
+      /* Fluxo de caixa - tabelas responsivas */
+      #content-fluxo-caixa table {
+        font-size: 0.75rem !important;
+      }
+
+      #content-fluxo-caixa th,
+      #content-fluxo-caixa td {
+        padding: 0.3rem !important;
+      }
+
+      /* Sucessão module */
+      #content-sucessao [style*="grid-template-columns: 1fr 1fr"] {
+        grid-template-columns: 1fr !important;
+      }
+
+      #content-sucessao [style*="grid-template-columns: repeat(auto-fit"] {
+        grid-template-columns: 1fr !important;
+      }
+
+      /* IR module */
+      #content-ir .form-grid-3 {
+        grid-template-columns: 1fr !important;
+      }
+
+      /* Modais em mobile */
+      .modal-content {
+        width: 95% !important;
+        padding: 1rem !important;
+        max-height: 90vh !important;
+      }
+
+      .modal-title {
+        font-size: 1.1rem !important;
+      }
+
+      .modal-footer {
+        flex-direction: column !important;
+      }
+
+      .modal-footer .btn-modal {
+        width: 100% !important;
+      }
+
+      /* Item cards em modais */
+      .item-card {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        gap: 0.5rem;
+      }
+
+      .item-actions {
+        width: 100%;
+        justify-content: flex-end;
+      }
+
+      /* Select múltiplo em mobile */
+      select[multiple] {
+        min-height: 60px !important;
       }
     }
 
     @media (max-width: 480px) {
       .container {
-        padding: 0.5rem;
+        padding: 0.4rem;
       }
       
       .header, .canva-container, .form-container {
-        padding: 0.8rem;
-        margin: 1rem 0;
+        padding: 0.7rem;
+        margin: 0.6rem 0;
+        border-radius: 8px;
       }
-      
+
+      .header h1 {
+        font-size: 1.3rem;
+      }
+
+      .header .subtitle {
+        font-size: 0.85rem;
+      }
+
+      /* Section headers em telas muito pequenas */
+      .section-header h3 {
+        font-size: 0.85rem !important;
+      }
+
+      .patrimonio-total {
+        font-size: 0.8rem;
+        padding: 0.4rem 0.6rem;
+      }
+
+      /* Cards em telas muito pequenas */
+      .pessoa-card,
+      .dependente-card,
+      .patrimonio-card {
+        padding: 0.6rem;
+      }
+
+      .pessoa-title,
+      .dependente-title,
+      .patrimonio-title {
+        font-size: 0.85rem;
+      }
+
+      /* Botões em telas muito pequenas */
       .save-btn {
         padding: 0.8rem 1.5rem;
         font-size: 0.9rem;
       }
-      
+
+      .add-btn {
+        padding: 0.6rem 1rem;
+        font-size: 0.8rem;
+      }
+
+      .prefill-btn {
+        padding: 0.7rem 1rem;
+        font-size: 0.85rem;
+      }
+
+      .prefill-description {
+        font-size: 0.75rem;
+      }
+
       .save-btn-container {
-        padding: 1rem;
+        padding: 0.8rem;
         margin-top: 1rem;
         margin-bottom: 0.5rem;
       }
+
+      /* Botão voltar em telas muito pequenas */
+      .btn-voltar {
+        width: 35px;
+        height: 35px;
+        font-size: 14px;
+        top: 8px;
+        left: 8px;
+      }
+
+      /* Canva embed em telas muito pequenas */
+      .canva-embed {
+        padding-top: 90%;
+      }
+
+      /* Form inputs em telas muito pequenas */
+      .form-group input,
+      .form-group select {
+        padding: 0.55rem;
+        font-size: 0.8rem;
+      }
+
+      .form-group label {
+        font-size: 0.75rem;
+      }
+
+      /* Edit/Delete buttons em telas muito pequenas */
+      .edit-btn, .delete-btn {
+        font-size: 0.8rem;
+        padding: 0.4rem;
+      }
+
+      /* Checkbox items em telas muito pequenas */
+      .checkbox-item {
+        font-size: 0.8rem;
+        padding: 0.2rem;
+      }
+
+      /* Toast em telas muito pequenas */
+      .prefill-toast {
+        font-size: 0.8rem;
+        padding: 0.7rem 0.8rem;
+      }
+    }
+
+    /* Landscape mobile */
+    @media (max-height: 500px) and (orientation: landscape) {
+      .header h1 {
+        font-size: 1.5rem;
+        margin-bottom: 0.3rem;
+      }
+
+      .header .subtitle {
+        font-size: 0.85rem;
+        margin-bottom: 0.5rem;
+      }
+
+      .canva-embed {
+        padding-top: 40%;
+      }
+
+      .btn-voltar {
+        width: 35px;
+        height: 35px;
+        font-size: 14px;
+      }
+    }
+
+    /* Garantir que nada extrapole a tela */
+    html, body {
+      overflow-x: hidden;
+    }
+
+    img, video, iframe, table {
+      max-width: 100%;
+    }
+
+    input, select, textarea, button {
+      max-width: 100%;
     }
 
 /* Botão Voltar - Fixo no canto superior esquerdo */
@@ -800,14 +1335,11 @@
           </div>
       </div>
 
-      <!-- Botão de Pré-Preenchimento (visível apenas para equipe logada) -->
-      <div id="prefill-container" class="prefill-container" style="display: none;">
-        <button type="button" id="btn-prefill-cadastro" class="prefill-btn">
-          <i class="fas fa-magic"></i>
-          Puxar Dados do Cadastro
-        </button>
-        <p class="prefill-description">Busca dados do formulário e cadastro do cliente para pré-preencher o diagnóstico.</p>
-      </div>
+      <!-- Botão Flutuante de Pré-Preenchimento (visível apenas para equipe logada) -->
+      <button type="button" id="btn-prefill-cadastro" class="btn-prefill" style="display: none;" title="Puxar dados do formulário">
+        <i class="fas fa-file-import"></i>
+        <span class="tooltip">Importar dados do formulário</span>
+      </button>
 
       <!-- Formulário do diagnóstico -->
       <div class="form-container">
