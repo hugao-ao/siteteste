@@ -705,6 +705,8 @@ function addPatrimonioLiquido() {
     finalidade: 'SEM_FINALIDADE',
     aporte_valor: 0,
     aporte_frequencia: 'NENHUM',
+    taxa_administracao: 0,
+    rentabilidade_esperada: 0,
     donos: [],
     inventariavel: true
   };
@@ -729,6 +731,8 @@ function updatePatrimonioLiquidoField(id, field, value) {
   
   if (field === 'valor_atual' || field === 'aporte_valor') {
     patrimonioLiquido[field] = desformatarMoeda(value);
+  } else if (field === 'taxa_administracao' || field === 'rentabilidade_esperada') {
+    patrimonioLiquido[field] = parseFloat(value) || 0;
   } else if (field === 'tipo_produto') {
     const produto = tiposProdutos.find(p => p.id === value);
     if (produto) {
@@ -1021,6 +1025,26 @@ function renderPatrimoniosLiquidos() {
             <option value="MENSAL" ${pl.aporte_frequencia === 'MENSAL' ? 'selected' : ''}>Mensal</option>
             <option value="ANUAL" ${pl.aporte_frequencia === 'ANUAL' ? 'selected' : ''}>Anual</option>
           </select>
+        </div>
+        
+        <div class="form-group">
+          <label>
+            <i class="fas fa-percentage"></i> Taxa de Administração (% a.a.)
+          </label>
+          <input type="number" step="0.01" min="0" max="10"
+            value="${pl.taxa_administracao || 0}"
+            onchange="updatePatrimonioLiquidoField(${pl.id}, 'taxa_administracao', this.value)"
+            placeholder="0.00">
+        </div>
+        
+        <div class="form-group">
+          <label>
+            <i class="fas fa-chart-line"></i> Rentabilidade Esperada (% a.a.)
+          </label>
+          <input type="number" step="0.01" min="-50" max="100"
+            value="${pl.rentabilidade_esperada || 0}"
+            onchange="updatePatrimonioLiquidoField(${pl.id}, 'rentabilidade_esperada', this.value)"
+            placeholder="0.00">
         </div>
         
         <div class="form-group full-width">
