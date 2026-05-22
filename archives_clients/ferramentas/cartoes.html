@@ -5,10 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Comparador de Cartões - MithraSF</title>
 <link rel="stylesheet" href="../assets/style.css">
-<script src="../assets/permissao-guard.js"></script>
 <script src="../assets/layout.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="../assets/importar-diagnostico.js"></script>
 <style>
   :root {
     --bg3:      #0a2e14;
@@ -1572,7 +1572,6 @@ function openSubjEdit(id) {
 function closeSubjEdit() { document.getElementById('modal-subj-edit').classList.remove('open'); }
 
 async function saveSubjItem() {
-  if(window._permGuardCheck && window._permGuardCheck()) return;
   const name = document.getElementById('subj-edit-name').value.trim();
   const desc = document.getElementById('subj-edit-desc').value.trim();
   const imp  = document.getElementById('subj-edit-imp').value;
@@ -1600,7 +1599,6 @@ async function saveSubjItem() {
 }
 
 async function deleteSubjItem(id) {
-  if(window._permGuardCheck && window._permGuardCheck()) return;
   if (!confirm('Excluir este benefício permanentemente?')) return;
   subjItems = subjItems.filter(x=>x.id!==id);
   delete tmpSubjVals[id];
@@ -1675,7 +1673,6 @@ function syncAllInputs() {
    SALVAR
 ═══════════════════════════════════════════════════════ */
 function saveComparison() {
-  if(window._permGuardCheck && window._permGuardCheck()) return;
   syncAllInputs();
   hideError();
   const errors = [];
@@ -2056,7 +2053,6 @@ function renderList() {
 function toggleCard(id) { document.getElementById('card-'+id).classList.toggle('open'); }
 
 function deleteComp(id) {
-  if(window._permGuardCheck && window._permGuardCheck()) return;
   if (!confirm('Excluir esta comparação?')) return;
   comparisons = comparisons.filter(c=>c.id!==id);
   localStorage.setItem(_CARTOES_LS_KEY, JSON.stringify(comparisons));
@@ -2457,7 +2453,6 @@ function beSyncLabel() {
 function closeBandeiraEdit() { document.getElementById('modal-bandeira-edit').classList.remove('open'); }
 
 async function saveBandeira() {
-  if(window._permGuardCheck && window._permGuardCheck()) return;
   const id       = document.getElementById('be-id').value.trim();
   const bandeira = document.getElementById('be-bandeira')?.value.trim() || '';
   const nivel    = document.getElementById('be-nivel')?.value.trim() || '';
@@ -2502,7 +2497,6 @@ async function saveBandeira() {
 }
 
 async function deleteBandeira(id) {
-  if(window._permGuardCheck && window._permGuardCheck()) return;
   if (!confirm(`Excluir a bandeira "${BANDEIRAS_DB[id]?.label || id}" permanentemente?`)) return;
   delete BANDEIRAS_DB[id];
   closeBandeiraEdit();
@@ -2586,11 +2580,27 @@ function _globalSaveFeedback() {{
 }}
 
 function _forceSaveCartoes() {
-  if(window._permGuardCheck && window._permGuardCheck()) return;
   _cartoesInitDone = true;
   saveComparisons();
   _globalSaveFeedback();
 }
+
+// === HANDLER IMPORTAR DIAGNÓSTICO ===
+document.addEventListener('importarDiagnostico', function(e) {
+  var itens = e.detail.items || [];
+  itens.forEach(function(item) {
+    var id = Date.now() + Math.random();
+    tmpCards.push({
+      id: id,
+      name: item.name || 'Cartão importado',
+      anuidade_mensal: item.anuidade_mensal || 0,
+      bandeira: item.bandeira || ''
+    });
+  });
+  renderCards();
+  alert(itens.length + ' cartão(ões) importado(s)! Clique em "Salvar Comparação" para persistir.');
+});
+
 </script>
 </body>
 </html>
