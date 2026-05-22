@@ -262,7 +262,6 @@
       border: 1px solid var(--success-color);
     }
 
-    /* Botão de Pré-Preenchimento */
     /* Botão Puxar Dados - Bolinha roxa fixa */
     .btn-prefill {
       position: fixed;
@@ -918,17 +917,17 @@
         margin-bottom: 1rem;
       }
 
-      /* Prefill container em mobile */
-      .prefill-container {
-        padding: 1rem;
-        margin: 1rem 0;
+      /* Botão prefill em mobile */
+      .btn-prefill {
+        width: 42px;
+        height: 42px;
+        font-size: 15px;
+        top: 10px;
+        right: 10px;
       }
 
-      .prefill-btn {
-        padding: 0.8rem 1.5rem;
-        font-size: 0.95rem;
-        width: 100%;
-        justify-content: center;
+      .btn-prefill .tooltip {
+        display: none;
       }
 
       /* Canva embed em mobile */
@@ -1172,13 +1171,29 @@
         font-size: 0.8rem;
       }
 
-      .prefill-btn {
-        padding: 0.7rem 1rem;
-        font-size: 0.85rem;
+      .btn-prefill {
+        width: 38px;
+        height: 38px;
+        font-size: 14px;
+        top: 8px;
+        right: 8px;
       }
 
-      .prefill-description {
-        font-size: 0.75rem;
+      .prefill-confirm-modal {
+        padding: 1rem;
+        width: 95%;
+      }
+
+      .prefill-confirm-modal h3 {
+        font-size: 1rem;
+      }
+
+      .prefill-confirm-btns {
+        flex-direction: column;
+      }
+
+      .prefill-confirm-btns button {
+        width: 100%;
       }
 
       .save-btn-container {
@@ -3883,451 +3898,638 @@ function voltarParaCliente() {
 window.voltarParaCliente = voltarParaCliente;
 
 // ========================================
-// FUNÇÃO DE PRÉ-PREENCHIMENTO A PARTIR DO CADASTRO
+// FUNÇÃO DE PRÉ-PREENCHIMENTO COM CONFIRMAÇÃO
 // ========================================
+
+function showPrefillToast(message, type = 'success') {
+  const toast = document.createElement('div');
+  toast.className = `prefill-toast ${type}`;
+  toast.innerHTML = `<i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'times-circle' : 'exclamation-triangle'}"></i> ${message}`;
+  document.body.appendChild(toast);
+  setTimeout(() => toast.remove(), 5000);
+}
+
+async function fetchPrefillData() {
+  const clienteId = diagnosticoData?.cliente_id || clienteData?.id;
+  if (!clienteId) return null;
+  
+  // Buscar dados cadastrais
+  const { data: dadosCad } = await supabase
+    .from('dados_cadastrais')
+    .select('*')
+    .eq('cliente_id', clienteId)
+    .single();
+  
+  // Buscar dados do formulário
+  const { data: formularioData } = await supabase
+    .from('formularios_clientes')
+    .select('dados_formulario')
+    .eq('cliente_id', clienteId)
+    .eq('status', 'preenchido')
+    .order('data_preenchimento', { ascending: false })
+    .limit(1)
+    .single();
+  
+  return { dadosCad, form: formularioData?.dados_formulario };
+}
+
+function analyzePrefillChanges(dadosCad, form) {
+  const changes = [];
+  
+  // Campos simples do cadastro
+  if (dadosCad) {
+    if (dadosCad.nome_completo) {
+      if (nomeInput.value && nomeInput.value !== dadosCad.nome_completo) {
+        changes.push({ campo: 'Nome Completo', atual: nomeInput.value, novo: dadosCad.nome_completo, tipo: 'substituicao' });
+      } else if (!nomeInput.value) {
+        changes.push({ campo: 'Nome Completo', atual: '', novo: dadosCad.nome_completo, tipo: 'acrescimo' });
+      }
+    }
+    if (dadosCad.cpf) {
+      const cpfFormatado = formatarCPF(dadosCad.cpf);
+      if (cpfInput.value && cpfInput.value !== cpfFormatado) {
+        changes.push({ campo: 'CPF', atual: cpfInput.value, novo: cpfFormatado, tipo: 'substituicao' });
+      } else if (!cpfInput.value) {
+        changes.push({ campo: 'CPF', atual: '', novo: cpfFormatado, tipo: 'acrescimo' });
+      }
+    }
+    if (dadosCad.email) {
+      if (emailInput.value && emailInput.value !== dadosCad.email) {
+        changes.push({ campo: 'Email', atual: emailInput.value, novo: dadosCad.email, tipo: 'substituicao' });
+      } else if (!emailInput.value) {
+        changes.push({ campo: 'Email', atual: '', novo: dadosCad.email, tipo: 'acrescimo' });
+      }
+    }
+    if (dadosCad.whatsapp) {
+      const telFormatado = formatarTelefone(dadosCad.whatsapp);
+      if (telefoneInput.value && telefoneInput.value !== telFormatado) {
+        changes.push({ campo: 'Telefone', atual: telefoneInput.value, novo: telFormatado, tipo: 'substituicao' });
+      } else if (!telefoneInput.value) {
+        changes.push({ campo: 'Telefone', atual: '', novo: telFormatado, tipo: 'acrescimo' });
+      }
+    }
+    if (dadosCad.conjuge && typeof dadosCad.conjuge === 'object') {
+      if (dadosCad.conjuge.nome) {
+        if (conjugeNomeInput.value && conjugeNomeInput.value !== dadosCad.conjuge.nome) {
+          changes.push({ campo: 'Nome do Cônjuge', atual: conjugeNomeInput.value, novo: dadosCad.conjuge.nome, tipo: 'substituicao' });
+        } else if (!conjugeNomeInput.value) {
+          changes.push({ campo: 'Nome do Cônjuge', atual: '', novo: dadosCad.conjuge.nome, tipo: 'acrescimo' });
+        }
+      }
+      if (dadosCad.conjuge.whatsapp) {
+        const conjTel = formatarTelefone(dadosCad.conjuge.whatsapp);
+        if (conjugeTelefoneInput.value && conjugeTelefoneInput.value !== conjTel) {
+          changes.push({ campo: 'Telefone do Cônjuge', atual: conjugeTelefoneInput.value, novo: conjTel, tipo: 'substituicao' });
+        } else if (!conjugeTelefoneInput.value) {
+          changes.push({ campo: 'Telefone do Cônjuge', atual: '', novo: conjTel, tipo: 'acrescimo' });
+        }
+      }
+      if (dadosCad.conjuge.nome && !estadoCivilInput.value) {
+        changes.push({ campo: 'Estado Civil', atual: '', novo: 'Casado(a)', tipo: 'acrescimo' });
+      }
+    }
+  }
+  
+  // Campos do formulário
+  if (form) {
+    if (form.nome_completo && !nomeInput.value && !dadosCad?.nome_completo) {
+      changes.push({ campo: 'Nome Completo', atual: '', novo: form.nome_completo, tipo: 'acrescimo' });
+    }
+    if (form.outras_pessoas && Array.isArray(form.outras_pessoas) && form.outras_pessoas.length > 0) {
+      if (pessoasRenda.length === 0) {
+        changes.push({ campo: 'Pessoas com Renda', atual: '0 pessoas', novo: `${form.outras_pessoas.length} pessoa(s)`, tipo: 'acrescimo' });
+      }
+    }
+    if (form.tem_dependentes === 'sim' && Array.isArray(form.dependentes) && form.dependentes.length > 0) {
+      if (dependentes.length === 0) {
+        changes.push({ campo: 'Dependentes', atual: '0 dependentes', novo: `${form.dependentes.length} dependente(s)`, tipo: 'acrescimo' });
+      }
+    }
+    if (form.tem_patrimonio === 'sim' && Array.isArray(form.patrimonios) && form.patrimonios.length > 0) {
+      if (patrimonios.length === 0) {
+        changes.push({ campo: 'Patrimônios Físicos', atual: '0 patrimônios', novo: `${form.patrimonios.length} patrimônio(s)`, tipo: 'acrescimo' });
+      }
+    }
+    if (form.tem_patrimonio_liquido === 'sim' && Array.isArray(form.patrimonios_liquidos) && form.patrimonios_liquidos.length > 0) {
+      const existentes = window.getPatrimoniosLiquidosData ? window.getPatrimoniosLiquidosData() : [];
+      if (existentes.length === 0) {
+        changes.push({ campo: 'Investimentos', atual: '0 investimentos', novo: `${form.patrimonios_liquidos.length} investimento(s)`, tipo: 'acrescimo' });
+      }
+    }
+    if (form.tem_dividas === 'sim' && Array.isArray(form.dividas) && form.dividas.length > 0) {
+      const dividasExistentes = window.getDividasData ? window.getDividasData() : [];
+      if (dividasExistentes.length === 0) {
+        changes.push({ campo: 'Dívidas', atual: '0 dívidas', novo: `${form.dividas.length} dívida(s)`, tipo: 'acrescimo' });
+      }
+    }
+    const fluxoExistente = window.getFluxoCaixaData ? window.getFluxoCaixaData() : {};
+    const temFluxo = (fluxoExistente.receitas && fluxoExistente.receitas.length > 0) || 
+                     (fluxoExistente.despesas && fluxoExistente.despesas.length > 0);
+    if (!temFluxo) {
+      let totalItens = 0;
+      if (Array.isArray(form.orcamento_renda)) totalItens += form.orcamento_renda.filter(r => r.descricao && r.valor).length;
+      if (Array.isArray(form.orcamento_despesas_fixas)) totalItens += form.orcamento_despesas_fixas.filter(d => d.descricao && d.valor).length;
+      if (Array.isArray(form.orcamento_despesas_variaveis)) totalItens += form.orcamento_despesas_variaveis.filter(d => d.descricao && d.valor).length;
+      if (totalItens > 0) {
+        changes.push({ campo: 'Fluxo de Caixa', atual: 'vazio', novo: `${totalItens} item(ns)`, tipo: 'acrescimo' });
+      }
+    }
+    if (Array.isArray(form.objetivos) && form.objetivos.length > 0) {
+      const objetivosExistentes = window.getObjetivosData ? window.getObjetivosData() : [];
+      if (objetivosExistentes.length === 0) {
+        changes.push({ campo: 'Objetivos', atual: '0 objetivos', novo: `${form.objetivos.length} objetivo(s)`, tipo: 'acrescimo' });
+      }
+    }
+    const produtosExistentes = window.getProdutosProtecaoData ? window.getProdutosProtecaoData() : [];
+    if (produtosExistentes.length === 0) {
+      let totalProdutos = 0;
+      if (form.planos_saude) totalProdutos += Object.values(form.planos_saude).filter(p => p.possui === 'sim').length;
+      if (form.seguros_vida) totalProdutos += Object.values(form.seguros_vida).filter(s => s.possui === 'sim').length;
+      if (totalProdutos > 0) {
+        changes.push({ campo: 'Produtos de Proteção', atual: '0 produtos', novo: `${totalProdutos} produto(s)`, tipo: 'acrescimo' });
+      }
+    }
+    if (form.impostos_renda && typeof form.impostos_renda === 'object') {
+      const irExistentes = window.getDeclaracoesIRData ? window.getDeclaracoesIRData() : [];
+      if (irExistentes.length === 0) {
+        const totalIR = Object.keys(form.impostos_renda).length;
+        if (totalIR > 0) {
+          changes.push({ campo: 'Declarações de IR', atual: '0 declarações', novo: `${totalIR} declaração(ões)`, tipo: 'acrescimo' });
+        }
+      }
+    }
+  }
+  
+  return changes;
+}
+
+function applyPrefillData(dadosCad, form) {
+  let camposPreenchidos = 0;
+  
+  // ========== 1. DADOS CADASTRAIS ==========
+  if (dadosCad) {
+    // Nome - só preenche se o dado novo não é vazio
+    if (dadosCad.nome_completo) {
+      nomeInput.value = dadosCad.nome_completo;
+      camposPreenchidos++;
+    }
+    if (dadosCad.cpf) {
+      cpfInput.value = formatarCPF(dadosCad.cpf);
+      camposPreenchidos++;
+    }
+    if (dadosCad.email) {
+      emailInput.value = dadosCad.email;
+      camposPreenchidos++;
+    }
+    if (dadosCad.whatsapp) {
+      telefoneInput.value = formatarTelefone(dadosCad.whatsapp);
+      camposPreenchidos++;
+    }
+    if (dadosCad.conjuge && typeof dadosCad.conjuge === 'object') {
+      if (dadosCad.conjuge.nome) {
+        conjugeNomeInput.value = dadosCad.conjuge.nome;
+        camposPreenchidos++;
+      }
+      if (dadosCad.conjuge.whatsapp) {
+        conjugeTelefoneInput.value = formatarTelefone(dadosCad.conjuge.whatsapp);
+        camposPreenchidos++;
+      }
+      if (dadosCad.conjuge.nome && !estadoCivilInput.value) {
+        estadoCivilInput.value = 'Casado(a)';
+        toggleConjugeFields();
+        camposPreenchidos++;
+      }
+    }
+  }
+  
+  // ========== 2. DADOS DO FORMULÁRIO ==========
+  if (form) {
+    // Nome fallback
+    if (form.nome_completo && !nomeInput.value) {
+      nomeInput.value = form.nome_completo;
+      camposPreenchidos++;
+    }
+    
+    // Pessoas com renda - só acrescenta se não há nenhuma
+    if (form.outras_pessoas && Array.isArray(form.outras_pessoas) && form.outras_pessoas.length > 0) {
+      if (pessoasRenda.length === 0) {
+        form.outras_pessoas.forEach(pessoa => {
+          pessoasRenda.push({
+            nome: pessoa.nome || '',
+            cpf: '',
+            data_nascimento: '',
+            profissao: '',
+            telefone: '',
+            email: '',
+            estado_civil: '',
+            regime_bens: '',
+            conjuge_nome: '',
+            conjuge_cpf: '',
+            conjuge_data_nascimento: '',
+            conjuge_profissao: '',
+            conjuge_telefone: '',
+            conjuge_email: '',
+            conjuge_dependente_ir: 'nao'
+          });
+          camposPreenchidos++;
+        });
+        window.pessoasRenda = pessoasRenda;
+        renderPessoas();
+      }
+    }
+    
+    // Dependentes - só acrescenta se não há nenhum
+    if (form.tem_dependentes === 'sim' && Array.isArray(form.dependentes) && form.dependentes.length > 0) {
+      if (dependentes.length === 0) {
+        form.dependentes.forEach(dep => {
+          dependentes.push({
+            nome: dep.nome || '',
+            data_nascimento: '',
+            parentesco: dep.relacao || '',
+            responsavel: ''
+          });
+          camposPreenchidos++;
+        });
+        window.dependentes = dependentes;
+        renderDependentes();
+      }
+    }
+    
+    // Patrimônios físicos - só acrescenta se não há nenhum
+    if (form.tem_patrimonio === 'sim' && Array.isArray(form.patrimonios) && form.patrimonios.length > 0) {
+      if (patrimonios.length === 0) {
+        form.patrimonios.forEach(pat => {
+          patrimonios.push({
+            tipo: pat.qual || '',
+            detalhes: pat.qual || '',
+            valor: pat.valor || 0,
+            quitado: pat.quitado === 'sim',
+            seguro: pat.seguro === 'sim',
+            seguro_vencimento: '',
+            saldo_devedor: 0,
+            proprietarios: [],
+            observacoes: '',
+            inventariavel: true
+          });
+          camposPreenchidos++;
+        });
+        window.patrimonios = patrimonios;
+        renderPatrimonios();
+        calcularPatrimonioTotal();
+      }
+    }
+    
+    // Patrimônios líquidos - só acrescenta se não há nenhum
+    if (form.tem_patrimonio_liquido === 'sim' && Array.isArray(form.patrimonios_liquidos) && form.patrimonios_liquidos.length > 0) {
+      const existentes = window.getPatrimoniosLiquidosData ? window.getPatrimoniosLiquidosData() : [];
+      if (existentes.length === 0 && window.setPatrimoniosLiquidosData) {
+        const investimentos = form.patrimonios_liquidos.map((inv, idx) => ({
+          id: idx + 1,
+          valor_atual: inv.valor || 0,
+          tipo_produto: null,
+          tipo_produto_nome: inv.qual || '',
+          nome_produto_customizado: inv.qual || '',
+          classificacao_risco: '',
+          instituicao: null,
+          instituicao_nome: '',
+          finalidade: 'SEM_FINALIDADE',
+          aporte_valor: 0,
+          aporte_frequencia: 'NENHUM',
+          taxa_administracao: 0,
+          rentabilidade_esperada: 0,
+          donos: [],
+          inventariavel: true
+        }));
+        window.setPatrimoniosLiquidosData(investimentos);
+        camposPreenchidos += investimentos.length;
+      }
+    }
+    
+    // Dívidas - só acrescenta se não há nenhuma
+    if (form.tem_dividas === 'sim' && Array.isArray(form.dividas) && form.dividas.length > 0) {
+      const dividasExistentes = window.getDividasData ? window.getDividasData() : [];
+      if (dividasExistentes.length === 0 && window.setDividasData) {
+        const dividas = form.dividas.map((div, idx) => ({
+          id: idx + 1,
+          valor_inicial: 0,
+          prazo: 0,
+          valor_parcela: 0,
+          parcelas_pagas: 0,
+          saldo_devedor: div.saldo || 0,
+          motivo: '',
+          credor: div.credor || '',
+          taxa_juros: 0,
+          taxa_juros_tipo: 'anual',
+          tipo_amortizacao: '',
+          reajuste_anual: 0,
+          planejada: false,
+          responsaveis: [],
+          inventariavel: true
+        }));
+        window.setDividasData(dividas);
+        camposPreenchidos += dividas.length;
+      }
+    }
+    
+    // Fluxo de caixa - só acrescenta se não há nenhum
+    const fluxoExistente = window.getFluxoCaixaData ? window.getFluxoCaixaData() : {};
+    const temFluxo = (fluxoExistente.receitas && fluxoExistente.receitas.length > 0) || 
+                     (fluxoExistente.despesas && fluxoExistente.despesas.length > 0);
+    
+    if (!temFluxo && window.setFluxoCaixaData) {
+      const receitasFluxo = [];
+      const despesasFluxo = [];
+      let idCounter = 0;
+      
+      if (Array.isArray(form.orcamento_renda)) {
+        form.orcamento_renda.forEach(entrada => {
+          if (entrada.descricao && entrada.valor) {
+            receitasFluxo.push({
+              id: ++idCounter,
+              nome: entrada.descricao,
+              valor: entrada.valor,
+              tipo: 'outro',
+              qtd_recorrencia: 1,
+              und_recorrencia: 'mes',
+              titular: 'titular',
+              automatica: false
+            });
+            camposPreenchidos++;
+          }
+        });
+      }
+      
+      let despIdCounter = 0;
+      if (Array.isArray(form.orcamento_despesas_fixas)) {
+        form.orcamento_despesas_fixas.forEach(desp => {
+          if (desp.descricao && desp.valor) {
+            despesasFluxo.push({
+              id: ++despIdCounter,
+              nome: desp.descricao,
+              valor: desp.valor,
+              tipo: 'fixa',
+              qtd_recorrencia: 1,
+              und_recorrencia: 'mes',
+              forma_pagamento: '',
+              titular: '',
+              categoria_comportamental: '',
+              nivel_importancia: '',
+              automatica: false,
+              origem: null
+            });
+            camposPreenchidos++;
+          }
+        });
+      }
+      
+      if (Array.isArray(form.orcamento_despesas_variaveis)) {
+        form.orcamento_despesas_variaveis.forEach(desp => {
+          if (desp.descricao && desp.valor) {
+            despesasFluxo.push({
+              id: ++despIdCounter,
+              nome: desp.descricao,
+              valor: desp.valor,
+              tipo: 'variavel',
+              qtd_recorrencia: 1,
+              und_recorrencia: 'mes',
+              forma_pagamento: '',
+              titular: '',
+              categoria_comportamental: '',
+              nivel_importancia: '',
+              automatica: false,
+              origem: null
+            });
+            camposPreenchidos++;
+          }
+        });
+      }
+      
+      if (receitasFluxo.length > 0 || despesasFluxo.length > 0) {
+        window.setFluxoCaixaData({
+          receitas: receitasFluxo,
+          despesas: despesasFluxo,
+          fluxoFinalizado: false
+        });
+      }
+    }
+    
+    // Objetivos - só acrescenta se não há nenhum
+    if (Array.isArray(form.objetivos) && form.objetivos.length > 0) {
+      const objetivosExistentes = window.getObjetivosData ? window.getObjetivosData() : [];
+      if (objetivosExistentes.length === 0 && window.setObjetivosData) {
+        const objetivos = form.objetivos.map((obj, idx) => ({
+          id: idx + 1,
+          descricao: obj.descricao || '',
+          valor_inicial: 0,
+          valor_final: obj.valor || 0,
+          meta_acumulo: obj.valor || 0,
+          renda_anual: 0,
+          prazo_meses: obj.prazo ? parseInt(obj.prazo) || 60 : 60,
+          prazo_idade: 65,
+          prioridade: idx + 1,
+          tipo: 'normal'
+        }));
+        window.setObjetivosData(objetivos);
+        camposPreenchidos += objetivos.length;
+      }
+    }
+    
+    // Produtos de proteção - só acrescenta se não há nenhum
+    const produtosExistentes = window.getProdutosProtecaoData ? window.getProdutosProtecaoData() : [];
+    if (produtosExistentes.length === 0 && window.setProdutosProtecaoData) {
+      const produtos = [];
+      let prodId = 0;
+      
+      if (form.planos_saude && typeof form.planos_saude === 'object') {
+        Object.entries(form.planos_saude).forEach(([nome, info]) => {
+          if (info.possui === 'sim') {
+            produtos.push({
+              id: ++prodId,
+              tipo_produto: 'plano_saude',
+              objeto: nome,
+              custo: 0,
+              periodicidade: 'mensal',
+              vencimento: '',
+              seguradora: '',
+              cotou_analisou: false,
+              observacoes: `Plano de saúde de ${nome}`,
+              origem_patrimonio: null
+            });
+            camposPreenchidos++;
+          }
+        });
+      }
+      
+      if (form.seguros_vida && typeof form.seguros_vida === 'object') {
+        Object.entries(form.seguros_vida).forEach(([nome, info]) => {
+          if (info.possui === 'sim') {
+            produtos.push({
+              id: ++prodId,
+              tipo_produto: 'seguro_vida',
+              objeto: nome,
+              custo: 0,
+              periodicidade: 'anual',
+              vencimento: '',
+              seguradora: '',
+              cotou_analisou: false,
+              observacoes: `Seguro de vida de ${nome}`,
+              origem_patrimonio: null
+            });
+            camposPreenchidos++;
+          }
+        });
+      }
+      
+      if (produtos.length > 0) {
+        window.setProdutosProtecaoData(produtos);
+      }
+    }
+    
+    // Declarações de IR - só acrescenta se não há nenhuma
+    if (form.impostos_renda && typeof form.impostos_renda === 'object') {
+      const irExistentes = window.getDeclaracoesIRData ? window.getDeclaracoesIRData() : [];
+      if (irExistentes.length === 0 && window.setDeclaracoesIRData) {
+        const declaracoes = [];
+        Object.entries(form.impostos_renda).forEach(([nome, info]) => {
+          let tipoDeclaracao = 'nao_declara';
+          if (info.declara === 'sim') tipoDeclaracao = info.tipo_ir || 'completa';
+          
+          declaracoes.push({
+            pessoa_key: nome.toLowerCase().replace(/\s+/g, '_'),
+            pessoa_nome: nome,
+            pessoa_tipo: 'titular',
+            tipo_declaracao: tipoDeclaracao,
+            renda_bruta_anual: 0,
+            total_recolhido_ir: 0,
+            contribuicao_previdencia_oficial: 0,
+            total_dependentes: 0,
+            gastos_instrucao: 0,
+            gastos_medicos: 0,
+            livro_caixa: 0,
+            pensao_alimenticia: 0,
+            contribuicao_nao_oficial: 0,
+            outras_deducoes: 0,
+            resultado_tipo: info.resultado_ir || '',
+            resultado_valor: 0,
+            observacoes: ''
+          });
+          camposPreenchidos++;
+        });
+        
+        if (declaracoes.length > 0) {
+          window.setDeclaracoesIRData(declaracoes);
+        }
+      }
+    }
+  }
+  
+  return camposPreenchidos;
+}
+
+function showConfirmationModal(changes, dadosCad, form) {
+  const substituicoes = changes.filter(c => c.tipo === 'substituicao');
+  const acrescimos = changes.filter(c => c.tipo === 'acrescimo');
+  
+  let fieldsHtml = '';
+  if (substituicoes.length > 0) {
+    fieldsHtml += '<div style="margin-bottom: 0.5rem; color: #fbbf24; font-weight: 600; font-size: 0.8rem;"><i class="fas fa-exchange-alt"></i> Serão substituídos:</div>';
+    substituicoes.forEach(c => {
+      fieldsHtml += `<div class="field-item"><span class="field-name">${c.campo}:</span> <span class="field-change">"${c.atual}" → "${c.novo}"</span></div>`;
+    });
+  }
+  if (acrescimos.length > 0) {
+    fieldsHtml += '<div style="margin-top: 0.5rem; margin-bottom: 0.5rem; color: #10b981; font-weight: 600; font-size: 0.8rem;"><i class="fas fa-plus-circle"></i> Serão acrescentados:</div>';
+    acrescimos.forEach(c => {
+      fieldsHtml += `<div class="field-item"><span class="field-name">${c.campo}:</span> <span style="color: #10b981; font-size: 0.75rem;">${c.novo}</span></div>`;
+    });
+  }
+  
+  const overlay = document.createElement('div');
+  overlay.className = 'prefill-confirm-overlay';
+  overlay.innerHTML = `
+    <div class="prefill-confirm-modal">
+      <h3><i class="fas fa-file-import"></i> Importar Dados do Formulário</h3>
+      <p>${substituicoes.length > 0 
+        ? 'Alguns campos já possuem dados que serão substituídos. Nenhuma informação será apagada sem substituição.' 
+        : 'Os seguintes dados serão importados para o diagnóstico:'}</p>
+      <div class="fields-list">${fieldsHtml}</div>
+      <div class="prefill-confirm-btns">
+        <button class="btn-cancel" id="prefill-cancel">Cancelar</button>
+        <button class="btn-confirm" id="prefill-confirm"><i class="fas fa-check"></i> Confirmar Importação</button>
+      </div>
+    </div>
+  `;
+  
+  document.body.appendChild(overlay);
+  
+  document.getElementById('prefill-cancel').addEventListener('click', () => {
+    overlay.remove();
+  });
+  
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) overlay.remove();
+  });
+  
+  document.getElementById('prefill-confirm').addEventListener('click', () => {
+    overlay.remove();
+    const total = applyPrefillData(dadosCad, form);
+    if (total > 0) {
+      showPrefillToast(`Importação concluída! ${total} campo(s) preenchido(s).`, 'success');
+    } else {
+      showPrefillToast('Nenhum dado novo foi importado.', 'warning');
+    }
+  });
+}
 
 async function prefillFromCadastro() {
   const btn = document.getElementById('btn-prefill-cadastro');
   if (!btn) return;
   
   btn.disabled = true;
-  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Buscando dados...';
-  
-  function showToast(message, type = 'success') {
-    const toast = document.createElement('div');
-    toast.className = `prefill-toast ${type}`;
-    toast.innerHTML = `<i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'times-circle' : 'exclamation-triangle'}"></i> ${message}`;
-    document.body.appendChild(toast);
-    setTimeout(() => toast.remove(), 5000);
-  }
+  const originalIcon = btn.innerHTML;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i><span class="tooltip">Buscando...</span>';
   
   try {
-    // Obter o cliente_id do diagnóstico carregado
     const clienteId = diagnosticoData?.cliente_id || clienteData?.id;
     
     if (!clienteId) {
-      showToast('Não foi possível identificar o cliente deste diagnóstico.', 'error');
+      showPrefillToast('Não foi possível identificar o cliente deste diagnóstico.', 'error');
       return;
     }
     
-    let camposPreenchidos = 0;
-    
-    // ========== 1. BUSCAR DADOS CADASTRAIS ==========
-    const { data: dadosCad, error: errCad } = await supabase
-      .from('dados_cadastrais')
-      .select('*')
-      .eq('cliente_id', clienteId)
-      .single();
-    
-    if (!errCad && dadosCad) {
-      // Nome completo
-      if (dadosCad.nome_completo && !nomeInput.value) {
-        nomeInput.value = dadosCad.nome_completo;
-        camposPreenchidos++;
-      }
-      // CPF
-      if (dadosCad.cpf && !cpfInput.value) {
-        cpfInput.value = formatarCPF(dadosCad.cpf);
-        camposPreenchidos++;
-      }
-      // Email
-      if (dadosCad.email && !emailInput.value) {
-        emailInput.value = dadosCad.email;
-        camposPreenchidos++;
-      }
-      // WhatsApp -> Telefone
-      if (dadosCad.whatsapp && !telefoneInput.value) {
-        telefoneInput.value = formatarTelefone(dadosCad.whatsapp);
-        camposPreenchidos++;
-      }
-      // Cônjuge
-      if (dadosCad.conjuge && typeof dadosCad.conjuge === 'object') {
-        if (dadosCad.conjuge.nome && !conjugeNomeInput.value) {
-          conjugeNomeInput.value = dadosCad.conjuge.nome;
-          camposPreenchidos++;
-        }
-        if (dadosCad.conjuge.whatsapp && !conjugeTelefoneInput.value) {
-          conjugeTelefoneInput.value = formatarTelefone(dadosCad.conjuge.whatsapp);
-          camposPreenchidos++;
-        }
-        // Se tem cônjuge, ajustar estado civil se vazio
-        if (dadosCad.conjuge.nome && !estadoCivilInput.value) {
-          estadoCivilInput.value = 'Casado(a)';
-          toggleConjugeFields();
-          camposPreenchidos++;
-        }
-      }
+    const data = await fetchPrefillData();
+    if (!data || (!data.dadosCad && !data.form)) {
+      showPrefillToast('Nenhum dado encontrado no cadastro/formulário deste cliente.', 'warning');
+      return;
     }
     
-    // ========== 2. BUSCAR DADOS DO FORMULÁRIO ==========
-    const { data: formularioData, error: errForm } = await supabase
-      .from('formularios_clientes')
-      .select('dados_formulario')
-      .eq('cliente_id', clienteId)
-      .eq('status', 'preenchido')
-      .order('data_preenchimento', { ascending: false })
-      .limit(1)
-      .single();
+    const changes = analyzePrefillChanges(data.dadosCad, data.form);
     
-    if (!errForm && formularioData && formularioData.dados_formulario) {
-      const form = formularioData.dados_formulario;
-      
-      // Nome completo (fallback se não veio do cadastro)
-      if (form.nome_completo && !nomeInput.value) {
-        nomeInput.value = form.nome_completo;
-        camposPreenchidos++;
-      }
-      
-      // ===== OUTRAS PESSOAS COM RENDA =====
-      if (form.outras_pessoas && Array.isArray(form.outras_pessoas) && form.outras_pessoas.length > 0) {
-        // Só preencher se não há pessoas já cadastradas
-        if (pessoasRenda.length === 0) {
-          form.outras_pessoas.forEach(pessoa => {
-            pessoasRenda.push({
-              nome: pessoa.nome || '',
-              cpf: '',
-              data_nascimento: '',
-              profissao: '',
-              telefone: '',
-              email: '',
-              estado_civil: '',
-              regime_bens: '',
-              conjuge_nome: '',
-              conjuge_cpf: '',
-              conjuge_data_nascimento: '',
-              conjuge_profissao: '',
-              conjuge_telefone: '',
-              conjuge_email: '',
-              conjuge_dependente_ir: 'nao'
-            });
-            camposPreenchidos++;
-          });
-          window.pessoasRenda = pessoasRenda;
-          renderPessoas();
-        }
-      }
-      
-      // ===== DEPENDENTES =====
-      if (form.tem_dependentes === 'sim' && Array.isArray(form.dependentes) && form.dependentes.length > 0) {
-        // Só preencher se não há dependentes já cadastrados
-        if (dependentes.length === 0) {
-          form.dependentes.forEach(dep => {
-            dependentes.push({
-              nome: dep.nome || '',
-              data_nascimento: '',
-              parentesco: dep.relacao || '',
-              responsavel: ''
-            });
-            camposPreenchidos++;
-          });
-          window.dependentes = dependentes;
-          renderDependentes();
-        }
-      }
-      
-      // ===== PATRIMÔNIOS FÍSICOS =====
-      if (form.tem_patrimonio === 'sim' && Array.isArray(form.patrimonios) && form.patrimonios.length > 0) {
-        // Só preencher se não há patrimônios já cadastrados
-        if (patrimonios.length === 0) {
-          form.patrimonios.forEach(pat => {
-            patrimonios.push({
-              tipo: pat.qual || '',
-              detalhes: pat.qual || '',
-              valor: pat.valor || 0,
-              quitado: pat.quitado === 'sim',
-              seguro: pat.seguro === 'sim',
-              seguro_vencimento: '',
-              saldo_devedor: 0,
-              proprietarios: [],
-              observacoes: '',
-              inventariavel: true
-            });
-            camposPreenchidos++;
-          });
-          window.patrimonios = patrimonios;
-          renderPatrimonios();
-          calcularPatrimonioTotal();
-        }
-      }
-      
-      // ===== PATRIMÔNIOS LÍQUIDOS (Investimentos) =====
-      if (form.tem_patrimonio_liquido === 'sim' && Array.isArray(form.patrimonios_liquidos) && form.patrimonios_liquidos.length > 0) {
-        // Verificar se já existem dados carregados
-        const existentes = window.getPatrimoniosLiquidosData ? window.getPatrimoniosLiquidosData() : [];
-        if (existentes.length === 0 && window.setPatrimoniosLiquidosData) {
-          const investimentos = form.patrimonios_liquidos.map((inv, idx) => ({
-            id: idx + 1,
-            valor_atual: inv.valor || 0,
-            tipo_produto: null,
-            tipo_produto_nome: inv.qual || '',
-            nome_produto_customizado: inv.qual || '',
-            classificacao_risco: '',
-            instituicao: null,
-            instituicao_nome: '',
-            finalidade: 'SEM_FINALIDADE',
-            aporte_valor: 0,
-            aporte_frequencia: 'NENHUM',
-            taxa_administracao: 0,
-            rentabilidade_esperada: 0,
-            donos: [],
-            inventariavel: true
-          }));
-          window.setPatrimoniosLiquidosData(investimentos);
-          camposPreenchidos += investimentos.length;
-        }
-      }
-      
-      // ===== DÍVIDAS =====
-      if (form.tem_dividas === 'sim' && Array.isArray(form.dividas) && form.dividas.length > 0) {
-        const dividasExistentes = window.getDividasData ? window.getDividasData() : [];
-        if (dividasExistentes.length === 0 && window.setDividasData) {
-          const dividas = form.dividas.map((div, idx) => ({
-            id: idx + 1,
-            valor_inicial: 0,
-            prazo: 0,
-            valor_parcela: 0,
-            parcelas_pagas: 0,
-            saldo_devedor: div.saldo || 0,
-            motivo: '',
-            credor: div.credor || '',
-            taxa_juros: 0,
-            taxa_juros_tipo: 'anual',
-            tipo_amortizacao: '',
-            reajuste_anual: 0,
-            planejada: false,
-            responsaveis: [],
-            inventariavel: true
-          }));
-          window.setDividasData(dividas);
-          camposPreenchidos += dividas.length;
-        }
-      }
-      
-      // ===== FLUXO DE CAIXA (Receitas e Despesas) =====
-      const fluxoExistente = window.getFluxoCaixaData ? window.getFluxoCaixaData() : {};
-      const temFluxo = (fluxoExistente.receitas && fluxoExistente.receitas.length > 0) || 
-                       (fluxoExistente.despesas && fluxoExistente.despesas.length > 0);
-      
-      if (!temFluxo && window.setFluxoCaixaData) {
-        const receitasFluxo = [];
-        const despesasFluxo = [];
-        let idCounter = 0;
-        
-        // Converter orçamento_renda em receitas
-        if (Array.isArray(form.orcamento_renda)) {
-          form.orcamento_renda.forEach(entrada => {
-            if (entrada.descricao && entrada.valor) {
-              receitasFluxo.push({
-                id: ++idCounter,
-                nome: entrada.descricao,
-                valor: entrada.valor,
-                tipo: 'outro',
-                qtd_recorrencia: 1,
-                und_recorrencia: 'mes',
-                titular: 'titular',
-                automatica: false
-              });
-              camposPreenchidos++;
-            }
-          });
-        }
-        
-        // Converter despesas fixas
-        let despIdCounter = 0;
-        if (Array.isArray(form.orcamento_despesas_fixas)) {
-          form.orcamento_despesas_fixas.forEach(desp => {
-            if (desp.descricao && desp.valor) {
-              despesasFluxo.push({
-                id: ++despIdCounter,
-                nome: desp.descricao,
-                valor: desp.valor,
-                tipo: 'fixa',
-                qtd_recorrencia: 1,
-                und_recorrencia: 'mes',
-                forma_pagamento: '',
-                titular: '',
-                categoria_comportamental: '',
-                nivel_importancia: '',
-                automatica: false,
-                origem: null
-              });
-              camposPreenchidos++;
-            }
-          });
-        }
-        
-        // Converter despesas variáveis
-        if (Array.isArray(form.orcamento_despesas_variaveis)) {
-          form.orcamento_despesas_variaveis.forEach(desp => {
-            if (desp.descricao && desp.valor) {
-              despesasFluxo.push({
-                id: ++despIdCounter,
-                nome: desp.descricao,
-                valor: desp.valor,
-                tipo: 'variavel',
-                qtd_recorrencia: 1,
-                und_recorrencia: 'mes',
-                forma_pagamento: '',
-                titular: '',
-                categoria_comportamental: '',
-                nivel_importancia: '',
-                automatica: false,
-                origem: null
-              });
-              camposPreenchidos++;
-            }
-          });
-        }
-        
-        if (receitasFluxo.length > 0 || despesasFluxo.length > 0) {
-          window.setFluxoCaixaData({
-            receitas: receitasFluxo,
-            despesas: despesasFluxo,
-            fluxoFinalizado: false
-          });
-        }
-      }
-      
-      // ===== OBJETIVOS FINANCEIROS =====
-      if (Array.isArray(form.objetivos) && form.objetivos.length > 0) {
-        const objetivosExistentes = window.getObjetivosData ? window.getObjetivosData() : [];
-        if (objetivosExistentes.length === 0 && window.setObjetivosData) {
-          const objetivos = form.objetivos.map((obj, idx) => ({
-            id: idx + 1,
-            descricao: obj.descricao || '',
-            valor_inicial: 0,
-            valor_final: obj.valor || 0,
-            meta_acumulo: obj.valor || 0,
-            renda_anual: 0,
-            prazo_meses: obj.prazo ? parseInt(obj.prazo) || 60 : 60,
-            prazo_idade: 65,
-            prioridade: idx + 1,
-            tipo: 'normal'
-          }));
-          window.setObjetivosData(objetivos);
-          camposPreenchidos += objetivos.length;
-        }
-      }
-      
-      // ===== PRODUTOS DE PROTEÇÃO (Planos de Saúde e Seguros de Vida) =====
-      const produtosExistentes = window.getProdutosProtecaoData ? window.getProdutosProtecaoData() : [];
-      if (produtosExistentes.length === 0 && window.setProdutosProtecaoData) {
-        const produtos = [];
-        let prodId = 0;
-        
-        // Planos de saúde
-        if (form.planos_saude && typeof form.planos_saude === 'object') {
-          Object.entries(form.planos_saude).forEach(([nome, info]) => {
-            if (info.possui === 'sim') {
-              produtos.push({
-                id: ++prodId,
-                tipo_produto: 'plano_saude',
-                objeto: nome,
-                custo: 0,
-                periodicidade: 'mensal',
-                vencimento: '',
-                seguradora: '',
-                cotou_analisou: false,
-                observacoes: `Plano de saúde de ${nome}`,
-                origem_patrimonio: null
-              });
-              camposPreenchidos++;
-            }
-          });
-        }
-        
-        // Seguros de vida
-        if (form.seguros_vida && typeof form.seguros_vida === 'object') {
-          Object.entries(form.seguros_vida).forEach(([nome, info]) => {
-            if (info.possui === 'sim') {
-              produtos.push({
-                id: ++prodId,
-                tipo_produto: 'seguro_vida',
-                objeto: nome,
-                custo: 0,
-                periodicidade: 'anual',
-                vencimento: '',
-                seguradora: '',
-                cotou_analisou: false,
-                observacoes: `Seguro de vida de ${nome}`,
-                origem_patrimonio: null
-              });
-              camposPreenchidos++;
-            }
-          });
-        }
-        
-        if (produtos.length > 0) {
-          window.setProdutosProtecaoData(produtos);
-        }
-      }
-      
-      // ===== DECLARAÇÕES DE IR =====
-      if (form.impostos_renda && typeof form.impostos_renda === 'object') {
-        const irExistentes = window.getDeclaracoesIRData ? window.getDeclaracoesIRData() : [];
-        if (irExistentes.length === 0 && window.setDeclaracoesIRData) {
-          const declaracoes = [];
-          Object.entries(form.impostos_renda).forEach(([nome, info]) => {
-            let tipoDeclaracao = 'nao_declara';
-            if (info.declara === 'sim') tipoDeclaracao = info.tipo_ir || 'completa';
-            
-            declaracoes.push({
-              pessoa_key: nome.toLowerCase().replace(/\s+/g, '_'),
-              pessoa_nome: nome,
-              pessoa_tipo: 'titular',
-              tipo_declaracao: tipoDeclaracao,
-              renda_bruta_anual: 0,
-              total_recolhido_ir: 0,
-              contribuicao_previdencia_oficial: 0,
-              total_dependentes: 0,
-              gastos_instrucao: 0,
-              gastos_medicos: 0,
-              livro_caixa: 0,
-              pensao_alimenticia: 0,
-              contribuicao_nao_oficial: 0,
-              outras_deducoes: 0,
-              resultado_tipo: info.resultado_ir || '',
-              resultado_valor: 0,
-              observacoes: ''
-            });
-            camposPreenchidos++;
-          });
-          
-          if (declaracoes.length > 0) {
-            window.setDeclaracoesIRData(declaracoes);
-          }
-        }
-      }
+    if (changes.length === 0) {
+      showPrefillToast('Nenhum dado novo para importar. Todos os campos já estão preenchidos ou não há dados no formulário.', 'warning');
+      return;
     }
     
-    // ========== RESULTADO ==========
-    if (camposPreenchidos > 0) {
-      showToast(`Pré-preenchimento concluído! ${camposPreenchidos} campo(s) preenchido(s) a partir do cadastro.`, 'success');
-    } else {
-      showToast('Nenhum dado novo encontrado para pré-preencher. Os campos já estão preenchidos ou não há dados no cadastro/formulário.', 'warning');
-    }
+    // Mostrar modal de confirmação com as mudanças
+    showConfirmationModal(changes, data.dadosCad, data.form);
     
   } catch (error) {
     console.error('Erro no pré-preenchimento:', error);
-    showToast('Erro ao buscar dados: ' + error.message, 'error');
+    showPrefillToast('Erro ao buscar dados: ' + error.message, 'error');
   } finally {
     btn.disabled = false;
-    btn.innerHTML = '<i class="fas fa-magic"></i> Puxar Dados do Cadastro';
+    btn.innerHTML = originalIcon;
   }
 }
 
 // Configurar botão de pré-preenchimento (apenas para equipe logada)
 (function setupPrefillButton() {
   const usuarioLogado = window.AuthMiddleware && window.AuthMiddleware.verificarAutenticacao();
-  const prefillContainer = document.getElementById('prefill-container');
+  const btn = document.getElementById('btn-prefill-cadastro');
   
-  if (usuarioLogado && prefillContainer) {
-    prefillContainer.style.display = 'block';
-    
-    const btn = document.getElementById('btn-prefill-cadastro');
-    if (btn) {
-      btn.addEventListener('click', prefillFromCadastro);
-    }
+  if (usuarioLogado && btn) {
+    btn.style.display = 'flex';
+    btn.addEventListener('click', prefillFromCadastro);
   }
 })();
 
