@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Comparador Inteligente - MithraSF</title>
 <link rel="stylesheet" href="../assets/style.css">
-<script src="../assets/permissao-guard.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="../assets/importar-diagnostico.js"></script>
 <script src="../assets/layout.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -2263,7 +2263,6 @@ function syncAllInputs() {
    SALVAR
 ═══════════════════════════════════════════════════════════ */
 function saveComparison() {
-  if(window._permGuardCheck && window._permGuardCheck()) return;
   syncAllInputs();
   hideError();
   const errors = [];
@@ -2542,7 +2541,6 @@ function toggleCard(id) {
 }
 
 function deleteComp(id) {
-  if(window._permGuardCheck && window._permGuardCheck()) return;
   if (!confirm('Excluir esta comparação?')) return;
   comparisons = comparisons.filter(c=>c.id!==id);
   deleteCompFromSupabase(id);
@@ -3236,7 +3234,6 @@ function _renderSavedScenarios(comp) {
 }
 
 function deleteScenario(compId, idx) {
-  if(window._permGuardCheck && window._permGuardCheck()) return;
   const comp = comparisons.find(c => c.id === compId);
   if (!comp || !comp.result.scenarios) return;
   comp.result.scenarios.splice(idx, 1);
@@ -4806,6 +4803,24 @@ async function _forceSaveComparador() {
   }
   _globalSaveFeedback();
 }
+
+// === HANDLER IMPORTAR DIAGNÓSTICO ===
+document.addEventListener('importarDiagnostico', function(e) {
+  var itens = e.detail.items || [];
+  itens.forEach(function(item) {
+    var id = Date.now() + Math.random();
+    tmpProducts.push({
+      id: id,
+      name: item.name || 'Produto importado',
+      price: item.price || 0,
+      adjustments: [],
+      refund: { enabled: false, mode: 'pct', value: 0, applyAdjustments: false }
+    });
+  });
+  renderProducts();
+  alert(itens.length + ' produto(s) importado(s)! Complete os parâmetros e salve a comparação.');
+});
+
 </script>
 <button class="btn-save-global" id="btnSaveGlobal" onclick="_forceSaveComparador()" title="Salvar todas as alterações">
   <span id="saveIcon">💾</span> <span id="saveLabel">Salvar Alterações</span>
