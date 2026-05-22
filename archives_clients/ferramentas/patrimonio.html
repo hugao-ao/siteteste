@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Patrimônio do Cliente - HV Saúde Financeira</title>
 <link rel="stylesheet" href="../assets/style.css">
-<script src="../assets/permissao-guard.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="../assets/importar-diagnostico.js"></script>
 <script src="../assets/layout.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
@@ -382,7 +382,6 @@ function editarDataAtual() {
   openModal('modal-data');
 }
 function salvarData() {
-  if(window._permGuardCheck && window._permGuardCheck()) return;
   const val = document.getElementById('input-data').value;
   if (!val) { alert('Informe a data.'); return; }
   if (editingDataId) {
@@ -412,7 +411,6 @@ function salvarData() {
   saveToSupabase();
 }
 function excluirDataAtual() {
-  if(window._permGuardCheck && window._permGuardCheck()) return;
   if (!confirm('Excluir esta data e todos os dados associados?')) return;
   state.datas = state.datas.filter(x => x.id !== state.selectedDateId);
   state.selectedDateId = state.datas.length > 0 ? state.datas[state.datas.length - 1].id : null;
@@ -532,7 +530,6 @@ async function loadObjetivos(ativo) {
 }
 
 function salvarAtivo() {
-  if(window._permGuardCheck && window._permGuardCheck()) return;
   const nome = document.getElementById('at-nome').value.trim();
   const valor = parseMoeda(document.getElementById('at-valor').value);
   if (!nome) { alert('Informe o nome do ativo.'); return; }
@@ -600,7 +597,6 @@ function openDividaModal(id) {
 }
 
 function salvarDivida() {
-  if(window._permGuardCheck && window._permGuardCheck()) return;
   const nome = document.getElementById('dv-nome').value.trim();
   const saldo = parseMoeda(document.getElementById('dv-saldo').value);
   if (!nome) { alert('Informe o nome da dívida.'); return; }
@@ -855,7 +851,6 @@ async function loadFromSupabase() {
 }
 
 function _forceSave() {
-  if(window._permGuardCheck && window._permGuardCheck()) return;
   saveToSupabase();
   const btn = document.getElementById('btnSaveGlobal');
   const lbl = document.getElementById('saveLabel');
@@ -877,6 +872,42 @@ async function init() {
 document.addEventListener('DOMContentLoaded', () => {
   setTimeout(init, 300);
 });
+
+// === HANDLER IMPORTAR DIAGNÓSTICO ===
+document.addEventListener('importarDiagnostico', function(e) {
+  var itens = e.detail.items || [];
+  if (state.datas.length === 0) {
+    alert('Crie pelo menos uma data antes de importar.');
+    return;
+  }
+  var dateObj = state.datas[state.currentDateIdx];
+  itens.forEach(function(item) {
+    var tipoAtivo = (item.tipo_ativo || 'INVESTIMENTO').toUpperCase();
+    var listKey = 'ativos_liquidos';
+    if (tipoAtivo === 'IMOVEL' || tipoAtivo === 'VEICULO') listKey = 'ativos_fisicos';
+    else if (tipoAtivo === 'OUTRO') listKey = 'ativos_intangiveis';
+    var novoAtivo = {
+      id: Date.now() + Math.random(),
+      nome: item.nome || 'Ativo importado',
+      tipo_ativo: tipoAtivo,
+      instituicao_id: item.instituicao_nome || '',
+      valor: item.valor_atual || 0,
+      aporte: 0,
+      retirada: 0,
+      taxa_retorno_anual: item.taxa_retorno_anual || 0,
+      liquidez: item.liquidez || 'medio',
+      observacoes: item.observacoes || ''
+    };
+    if (listKey === 'ativos_liquidos') {
+      novoAtivo.aporte_mensal = item.aporte_mensal || 0;
+    }
+    dateObj[listKey].push(novoAtivo);
+  });
+  renderAll();
+  saveToSupabase();
+  alert(itens.length + ' ativo(s) importado(s) com sucesso!');
+});
+
 </script>
 </body>
 </html>
