@@ -5,11 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>O Oráculo Financeiro - MithraSF</title>
     <link rel="stylesheet" href="../assets/style.css">
-    <script src="../assets/permissao-guard.js"></script>
-
     <script src="../assets/layout.js" defer></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="../assets/importar-diagnostico.js"></script>
     <style>
         /* Specific styles for Oraculo */
         .input-card {
@@ -1603,7 +1602,6 @@
 
         // Salva a simulação atual (chamado dentro de calculate() após os cálculos)
         function salvarSimulacao(resultado) {
-  if(window._permGuardCheck && window._permGuardCheck()) return;
             simContador++;
             const id = Date.now();
             const sim = {
@@ -1619,7 +1617,6 @@
 
         // Exclui uma simulação pelo ID
         function excluirSimulacao(id) {
-  if(window._permGuardCheck && window._permGuardCheck()) return;
             simulacoes = simulacoes.filter(s => s.id !== id);
             if (simAtiva === id) simAtiva = simulacoes.length ? simulacoes[simulacoes.length - 1].id : null;
             renderSimulacoes();
@@ -3962,11 +3959,46 @@ function _globalSaveFeedback() {{
 }}
 
         function _forceSaveOraculo() {
-  if(window._permGuardCheck && window._permGuardCheck()) return;
           _oracInitDone = true;
           _oracSaveData();
           _globalSaveFeedback();
         }
+
+// === HANDLER IMPORTAR DIAGNÓSTICO ===
+document.addEventListener('importarDiagnostico', function(e) {
+  var itens = e.detail.items || [];
+  var dadosCruzados = e.detail.dadosCruzados || {};
+  itens.forEach(function(item) {
+    var nextPriority = goals.length + 1;
+    goals.push({
+      id: Date.now() + Math.random(),
+      priority: nextPriority,
+      name: item.name || 'Objetivo importado',
+      value: item.amount || 0,
+      time: item.deadline || 60,
+      timeUnit: 'months',
+      type: item.tipo === 'aposentadoria' ? 'accumulate' : 'spend',
+      recurrence: null,
+      inflationAdjust: true,
+      isPhysical: false,
+      appreciationRate: 0,
+      financiamento: null
+    });
+  });
+  if (dadosCruzados.saldoTotal && document.getElementById('currentWealth')) {
+    document.getElementById('currentWealth').value = dadosCruzados.saldoTotal;
+  }
+  if (dadosCruzados.aporteTotal && document.getElementById('monthlyContribution')) {
+    document.getElementById('monthlyContribution').value = dadosCruzados.aporteTotal;
+  }
+  renderGoals();
+  validatePriorities();
+  _oracSaveData();
+  alert(itens.length + ' objetivo(s) importado(s)!' + 
+    (dadosCruzados.saldoTotal ? ' Patrimônio atual: R$ ' + dadosCruzados.saldoTotal.toLocaleString('pt-BR') : '') +
+    (dadosCruzados.aporteTotal ? ' | Aporte mensal: R$ ' + dadosCruzados.aporteTotal.toLocaleString('pt-BR') : ''));
+});
+
 </script>
 
 </body>
