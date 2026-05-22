@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Fluxo de Caixa Avançado - MithraSF</title>
 <link rel="stylesheet" href="../assets/style.css">
-<script src="../assets/permissao-guard.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="../assets/importar-diagnostico.js"></script>
 <script src="../assets/layout.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
@@ -751,7 +751,6 @@ function closeAccountModal() {
 }
 
 function saveAccount() {
-  if(window._permGuardCheck && window._permGuardCheck()) return;
   var nome = document.getElementById('acc-nome').value.trim();
   if (!nome) { alert('Informe o nome.'); return; }
   var acc = {
@@ -776,7 +775,6 @@ function saveAccount() {
 }
 
 function deleteAccount(index) {
-  if(window._permGuardCheck && window._permGuardCheck()) return;
   if (!confirm('Excluir "' + accounts[index].nome + '"? Itens vinculados ficarão sem forma de pagamento.')) return;
   var removedId = accounts[index].id;
   accounts.splice(index, 1);
@@ -878,7 +876,6 @@ function fmtPct(n) {
 // MODAL
 // ============================================================
 function openModal(index) {
-  if(window._permGuardCheck && window._permGuardCheck()) return;
   if (index === undefined) index = -1;
   editingIndex = index;
   document.getElementById('modal-title').textContent = index === -1 ? 'Novo Item' : 'Editar Item';
@@ -984,7 +981,6 @@ function updateRecFimFields() {
 }
 
 function saveItem() {
-  if(window._permGuardCheck && window._permGuardCheck()) return;
   var nome = document.getElementById('item-nome').value.trim();
   var valor = parseCurrency(document.getElementById('item-valor').value);
   if (!nome) { alert('Informe o nome do item.'); return; }
@@ -1033,7 +1029,6 @@ function saveItem() {
 }
 
 function deleteItem(index) {
-  if(window._permGuardCheck && window._permGuardCheck()) return;
   if (!confirm('Excluir este item?')) return;
   items.splice(index, 1);
   renderItemsTable();
@@ -2354,7 +2349,6 @@ async function saveSimulacoes() {
 }
 
 async function deleteSimulacao(id) {
-  if(window._permGuardCheck && window._permGuardCheck()) return;
   if (!confirm('Excluir esta simula\u00e7\u00e3o?')) return;
   simulacoes = simulacoes.filter(function(s) { return s.id !== id; });
   await saveSimulacoes();
@@ -2424,7 +2418,6 @@ function voltarParaLista() {
 }
 
 function salvarSimulacaoAtual() {
-  if(window._permGuardCheck && window._permGuardCheck()) return;
   var nome = document.getElementById('sim-nome').value.trim() || 'Simula\u00e7\u00e3o ' + new Date().toLocaleDateString('pt-BR');
   var payload = buildPayload();
   if (editingSimId) {
@@ -2785,11 +2778,40 @@ function gerarPDF() {
 }
 
 function _forceSaveFluxo() {
-  if(window._permGuardCheck && window._permGuardCheck()) return;
   _initDone = true;
   saveToStorage();
   _globalSaveFeedback();
 }
+
+// === HANDLER IMPORTAR DIAGNÓSTICO ===
+document.addEventListener('importarDiagnostico', function(e) {
+  var itens = e.detail.items || [];
+  itens.forEach(function(item) {
+    items.push({
+      nome: item.nome || 'Item importado',
+      valor: item.valor || 0,
+      tipo: item.tipo || 'saida',
+      subtipo: item.subtipo || '',
+      categoria: item.categoria || '',
+      alteravel: item.alteravel || 'sim',
+      disposto: item.disposto || 'sim',
+      importancia: item.importancia || '4',
+      conforto: item.conforto || '',
+      formaPagamento: item.formaPagamento || '',
+      usarComoComplemento: item.usarComoComplemento || false,
+      recTipo: item.recTipo || 'mensal',
+      recQty: item.recQty || 1,
+      recInicio: item.recInicio || '',
+      recFimTipo: item.recFimTipo || '',
+      recFimQty: item.recFimQty || '',
+      recFimData: item.recFimData || ''
+    });
+  });
+  renderItemsTable();
+  saveToStorage();
+  alert(itens.length + ' item(ns) importado(s) com sucesso!');
+});
+
 </script>
 </main>
 <button class="btn-save-global" id="btnSaveGlobal" onclick="_forceSaveFluxo()" title="Salvar todas as alterações">
