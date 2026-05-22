@@ -408,14 +408,9 @@
       `;
     }
 
-    // Inserir antes do botão de salvar ou no final da página
-    const mainContent = document.querySelector('.main-content') || document.querySelector('main') || document.body;
-    const saveBtn = document.querySelector('[onclick*="saveDiagnostico"]');
-    if (saveBtn && saveBtn.parentElement) {
-      saveBtn.parentElement.parentElement.insertBefore(painel, saveBtn.parentElement);
-    } else {
-      mainContent.appendChild(painel);
-    }
+    // Inserir como último elemento dentro do main-content (após o botão de salvar)
+    const mainContent = document.getElementById('main-content') || document.querySelector('.main-content') || document.querySelector('main') || document.body;
+    mainContent.appendChild(painel);
   }
 
   // Agrupa faltas por item para exibição mais limpa
