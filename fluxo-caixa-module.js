@@ -9,7 +9,7 @@ let receitas = [];
 let despesas = [];
 let receitaCounter = 0;
 let despesaCounter = 0;
-let fluxoFinalizado = false;
+// fluxoFinalizado removido - análises sempre visíveis abaixo da edição
 
 // Variáveis de gestão financeira (carregadas do Supabase)
 let variaveisGestao = {
@@ -95,8 +95,7 @@ async function initFluxoCaixaModule() {
   window.setFluxoCaixaData = setFluxoCaixaData;
   window.renderFluxoCaixa = renderFluxoCaixa;
   window.sincronizarDespesasAutomaticas = sincronizarDespesasAutomaticas;
-  window.finalizarFluxo = finalizarFluxo;
-  window.voltarEdicaoFluxo = voltarEdicaoFluxo;
+
   
   // Renderizar a seção
   setTimeout(() => {
@@ -932,34 +931,14 @@ function renderTabelaInvestimentos(pessoas) {
 }
 
 // ========================================
-// FINALIZAR FLUXO
-// ========================================
-
-function finalizarFluxo() {
-  fluxoFinalizado = true;
-  renderFluxoCaixa();
-}
-
-function voltarEdicaoFluxo() {
-  fluxoFinalizado = false;
-  renderFluxoCaixa();
-}
-
-// ========================================
 // RENDERIZAÇÃO
 // ========================================
-
 function renderFluxoCaixa() {
   const container = document.getElementById('fluxo-caixa-container');
   if (!container) return;
   
   const pessoas = getPessoasParaFluxo();
   const contasCartoes = getContasCartoesParaFluxo();
-  
-  if (fluxoFinalizado) {
-    renderResultadosFluxo(container);
-    return;
-  }
   
   // Renderizar formulário de edição
   container.innerHTML = `
@@ -1201,20 +1180,22 @@ function renderFluxoCaixa() {
     <!-- INVESTIMENTOS/APORTES -->
     ${renderTabelaInvestimentos(pessoas)}
     
-    <!-- Botão Finalizar -->
-    <div style="text-align: center; margin-top: 2rem; padding-top: 1rem; border-top: 2px solid var(--border-color);">
-      <button type="button" onclick="finalizarFluxo()" 
-              style="background: var(--accent-color); color: var(--dark-bg); border: none; padding: 0.8rem 2rem; border-radius: 8px; cursor: pointer; font-size: 1rem; font-weight: 600;">
-        <i class="fas fa-check-circle"></i> FINALIZAR FLUXO
-      </button>
-    </div>
+    <!-- ANÁLISES (sempre visíveis abaixo da edição) -->
+    <div id="fluxo-analises-container"></div>
   `;
+  
+  // Renderizar análises abaixo da edição
+  setTimeout(() => renderAnalisesFluxo(), 0);
 }
 
-function renderResultadosFluxo(container) {
+function renderAnalisesFluxo() {
+  const analisesContainer = document.getElementById('fluxo-analises-container');
+  if (!analisesContainer) return;
+  
   const fluxoPorPessoa = calcularFluxoPorPessoa();
   const fluxoGeral = calcularFluxoGeral();
   const distribuicao = calcularDistribuicao(fluxoGeral);
+  const pessoas = getPessoasParaFluxo();
   
   // Função auxiliar para renderizar tabela de fluxo (apenas MÊS e ANO)
   function renderTabelaFluxo(dados, titulo, corTitulo) {
@@ -1377,15 +1358,32 @@ function renderResultadosFluxo(container) {
     `;
   }
   
-  // Renderizar resultados
-  container.innerHTML = `
-    <!-- Botão Voltar -->
-    <div style="text-align: right; margin-bottom: 1rem;">
-      <button type="button" onclick="voltarEdicaoFluxo()" 
-              style="background: var(--border-color); color: var(--text-light); border: none; padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; font-size: 0.9rem;">
-        <i class="fas fa-arrow-left"></i> Voltar para Edição
-      </button>
-    </div>
+  // Verificar se há pessoas com valores para decidir se mostra "Análise por Integrante"
+  const pessoasComValores = Object.entries(fluxoPorPessoa).filter(([pessoaId, dados]) => {
+    return dados.receitas.ano > 0 || dados.despesas_fixas.ano > 0 || 
+           dados.despesas_variaveis.ano > 0 || dados.investimentos.ano > 0;
+  });
+  
+  // Gerar HTML da análise por integrante (se 2+ pessoas)
+  let htmlIntegrantes = '';
+  if (pessoasComValores.length > 1) {
+    const intItems = pessoasComValores.map(([pessoaId, dados]) => {
+      const titulo = '<i class="fas fa-user"></i> ' + dados.nome + ' <span style="font-size: 0.8rem; opacity: 0.7;">(' + dados.tipo + ')</span>';
+      return '<div style="margin-bottom: 1.5rem; padding: 1rem; background: rgba(255,255,255,0.02); border-radius: 8px;">' + renderTabelaFluxo(dados, titulo, 'var(--text-light)') + '</div>';
+    }).join('');
+    
+    htmlIntegrantes = `
+    <div style="background: var(--dark-bg); border: 2px solid var(--border-color); border-radius: 10px; padding: 1.2rem; margin-top: 2rem;">
+      <h4 style="color: var(--accent-color); margin: 0 0 1rem 0; text-align: center;">
+        <i class="fas fa-users"></i> ANÁLISE POR INTEGRANTE
+      </h4>
+      ${intItems}
+    </div>`;
+  }
+  
+  // Renderizar análises
+  analisesContainer.innerHTML = `
+    <div style="margin-top: 2rem; padding-top: 1.5rem; border-top: 2px solid var(--border-color);">
     
     <!-- RESULTADO PRINCIPAL (GERAL) -->
     <div style="background: var(--dark-bg); border: 2px solid var(--accent-color); border-radius: 10px; padding: 1.2rem; margin-bottom: 2rem;">
@@ -1398,25 +1396,9 @@ function renderResultadosFluxo(container) {
     <!-- COMPARAÇÃO COM DISTRIBUIÇÃO IDEAL -->
     ${renderComparacaoDistribuicao()}
     
-    <!-- RESULTADOS SECUNDÁRIOS (POR PESSOA) -->
-    <div style="background: var(--dark-bg); border: 2px solid var(--border-color); border-radius: 10px; padding: 1.2rem; margin-top: 2rem;">
-      <h4 style="color: var(--accent-color); margin: 0 0 1rem 0; text-align: center;">
-        <i class="fas fa-users"></i> ANÁLISE POR INTEGRANTE
-      </h4>
-      
-      ${Object.entries(fluxoPorPessoa).map(([pessoaId, dados]) => {
-        // Verificar se a pessoa tem algum valor
-        const temValores = dados.receitas.ano > 0 || dados.despesas_fixas.ano > 0 || 
-                          dados.despesas_variaveis.ano > 0 || dados.investimentos.ano > 0;
-        
-        if (!temValores) return '';
-        
-        return `
-          <div style="margin-bottom: 1.5rem; padding: 1rem; background: rgba(255,255,255,0.02); border-radius: 8px;">
-            ${renderTabelaFluxo(dados, `<i class="fas fa-user"></i> ${dados.nome} <span style="font-size: 0.8rem; opacity: 0.7;">(${dados.tipo})</span>`, 'var(--text-light)')}
-          </div>
-        `;
-      }).join('')}
+    <!-- RESULTADOS SECUNDÁRIOS (POR PESSOA) - só aparece com 2+ pessoas com valores -->
+    ${htmlIntegrantes}
+    
     </div>
   `;
 }
@@ -1429,7 +1411,7 @@ function getFluxoCaixaData() {
   return {
     receitas: receitas,
     despesas: despesas,
-    fluxoFinalizado: fluxoFinalizado
+    fluxoFinalizado: false
   };
 }
 
@@ -1451,9 +1433,7 @@ function setFluxoCaixaData(data) {
         despesaCounter = Math.max(...despesas.map(d => d.id || 0));
       }
     }
-    if (typeof data.fluxoFinalizado === 'boolean') {
-      fluxoFinalizado = data.fluxoFinalizado;
-    }
+    // fluxoFinalizado removido - análises sempre visíveis
     
     // Sincronizar despesas automáticas após carregar dados
     // Aguardar um pouco para garantir que outros módulos estejam carregados
