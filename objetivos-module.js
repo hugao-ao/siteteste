@@ -617,6 +617,8 @@ function addObjetivoNormal() {
     // Novos campos
     acumulavel: false, // Se true, saldo bruto passa para o próximo
     vinculado_a: null, // ID do objetivo anterior (para sequência)
+    recorrencia_tipo: 'nenhuma', // 'nenhuma', 'meses', 'anos'
+    recorrencia_valor: 0, // A cada X meses ou anos
     perfil_atual: 'sem_conhecimento',
     perfil_consultoria: 'mod',
     aporte_mensal_personalizado: null // null = usar aporte automático
@@ -1090,24 +1092,36 @@ function renderCardObjetivo(obj, pessoas, todosObjetivos, saldoDisponivel) {
         </div>
       </div>
       
-      <!-- Linha 3: Acumulável -->
-      <div style="display: flex; align-items: center; gap: 0.5rem; padding: 0.25rem 0.5rem; background: rgba(212, 175, 55, 0.1); border-radius: 4px;">
-        <label style="display: flex; align-items: center; gap: 0.3rem; cursor: pointer; color: var(--text-light);">
-          <input type="checkbox" ${obj.acumulavel ? 'checked' : ''} onchange="updateObjetivoField(${obj.id}, 'acumulavel', this.checked)" style="width: 14px; height: 14px; cursor: pointer;">
-          <span style="font-size: 0.7rem;"><i class="fas fa-layer-group"></i> Acumulável</span>
-        </label>
-        <span style="font-size: 0.6rem; color: var(--text-light); opacity: 0.7;">(Saldo bruto final transferido para o próximo vinculado)</span>
+      <!-- Linha 3: Recorrência + Acumulável -->
+      <div style="display: flex; align-items: center; gap: 0.8rem; padding: 0.25rem 0.5rem; background: rgba(212, 175, 55, 0.1); border-radius: 4px; flex-wrap: wrap;">
+        <div style="display: flex; align-items: center; gap: 0.3rem;">
+          <span style="font-size: 0.65rem; color: var(--accent-color);"><i class="fas fa-redo"></i> Recorrência:</span>
+          <select onchange="updateObjetivoField(${obj.id}, 'recorrencia_tipo', this.value); renderObjetivos();" style="padding: 0.15rem 0.3rem; background: var(--dark-bg); border: 1px solid var(--border-color); border-radius: 4px; color: var(--text-light); font-size: 0.7rem;">
+            <option value="nenhuma" ${(obj.recorrencia_tipo || 'nenhuma') === 'nenhuma' ? 'selected' : ''}>Nenhuma</option>
+            <option value="meses" ${obj.recorrencia_tipo === 'meses' ? 'selected' : ''}>A cada X meses</option>
+            <option value="anos" ${obj.recorrencia_tipo === 'anos' ? 'selected' : ''}>A cada X anos</option>
+          </select>
+          ${obj.recorrencia_tipo && obj.recorrencia_tipo !== 'nenhuma' ? `
+            <input type="number" value="${obj.recorrencia_valor || (obj.recorrencia_tipo === 'anos' ? 1 : 12)}" min="1" max="${obj.recorrencia_tipo === 'anos' ? 50 : 600}" onchange="updateObjetivoField(${obj.id}, 'recorrencia_valor', parseInt(this.value))" style="width: 45px; padding: 0.15rem 0.3rem; background: var(--dark-bg); border: 1px solid var(--border-color); border-radius: 4px; color: var(--text-light); font-size: 0.7rem;">
+            <span style="font-size: 0.6rem; color: var(--text-light);">${obj.recorrencia_tipo === 'anos' ? 'anos' : 'meses'}</span>
+          ` : ''}
+        </div>
+        <div style="display: flex; align-items: center; gap: 0.3rem;">
+          <label style="display: flex; align-items: center; gap: 0.3rem; cursor: pointer; color: var(--text-light);">
+            <input type="checkbox" ${obj.acumulavel ? 'checked' : ''} onchange="updateObjetivoField(${obj.id}, 'acumulavel', this.checked)" style="width: 14px; height: 14px; cursor: pointer;">
+            <span style="font-size: 0.7rem;"><i class="fas fa-layer-group"></i> Acumulável</span>
+          </label>
+        </div>
       </div>
     </div>
   `;
 }
 
-// toggleAnalise removido - análises sempre visíveis abaixo
-
-
 // ========================================
-// ANÁLISE DE OBJETIVOS
+// ANÁLISE DE OBJETIVOS - GRÁFICO EVOLUÇÃO PATRIMONIAL
 // ========================================
+
+let chartInstance = null;
 
 function renderAnalisesObjetivosInline() {
   const container = document.getElementById('analises-objetivos-container');
@@ -1121,512 +1135,495 @@ function renderAnalisesObjetivosInline() {
   const temDados = objetivosAposentadoria.some(o => o.renda_anual > 0) || objetivosNormais.some(o => o.meta_acumulo > 0 || o.valor_final > 0);
   if (!temDados) {
     container.innerHTML = '';
+    if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
     return;
   }
   
+  // Calcular simulação completa
+  const simulacao = simularEvolucaoPatrimonial(objetivosAposentadoria, objetivosNormais);
+  
   container.innerHTML = `
     <div style="margin-top: 2rem; padding-top: 1.5rem; border-top: 2px solid rgba(212, 175, 55, 0.3);">
-      <h3 style="color: var(--accent-color); margin: 0 0 1.5rem 0;">
-        <i class="fas fa-chart-bar"></i> Análise de Objetivos e Aposentadorias
+      <h3 style="color: var(--accent-color); margin: 0 0 1rem 0; font-size: 1rem;">
+        <i class="fas fa-chart-area"></i> Análise de Evolução Patrimonial
       </h3>
       
-      <!-- Análise das Aposentadorias -->
-      ${objetivosAposentadoria.length > 0 ? `
-      <div style="margin-bottom: 2rem;">
-        <h4 style="color: #28a745; margin-bottom: 1rem;">
-          <i class="fas fa-umbrella-beach"></i> Análise das Aposentadorias
-        </h4>
-        ${objetivosAposentadoria.map(obj => renderAnaliseAposentadoria(obj)).join('')}
+      <!-- Seletor de perfil de rentabilidade -->
+      <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1rem; flex-wrap: wrap;">
+        <span style="font-size: 0.75rem; color: var(--text-light);"><i class="fas fa-percentage"></i> Perfil de Rentabilidade:</span>
+        <select id="perfil-rentabilidade-analise" onchange="renderObjetivos()" style="padding: 0.3rem 0.5rem; background: #0d3320; border: 1px solid var(--border-color); border-radius: 4px; color: #e8e8e8; font-size: 0.75rem;">
+          ${gerarOpcoesPerfilRentabilidade(getPerfilAnalise())}
+        </select>
       </div>
-      ` : ''}
       
-      <!-- Análise dos Objetivos -->
-      ${objetivosNormais.length > 0 ? `
-      <div style="margin-bottom: 2rem;">
-        <h4 style="color: var(--accent-color); margin-bottom: 1rem;">
-          <i class="fas fa-bullseye"></i> Análise dos Objetivos
-        </h4>
-        ${objetivosNormais.map(obj => renderAnaliseObjetivo(obj, objetivosNormais)).join('')}
+      <!-- Gráfico -->
+      <div style="background: var(--dark-bg); border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem; margin-bottom: 1.5rem;">
+        <canvas id="grafico-evolucao-patrimonial" height="300"></canvas>
       </div>
-      ` : ''}
       
-      <!-- Resumo Geral -->
-      ${renderResumoGeral(objetivosAposentadoria, objetivosNormais)}
+      <!-- Resumo dos Objetivos -->
+      <div style="background: var(--card-bg); border: 1px solid var(--accent-color); border-radius: 8px; padding: 1rem;">
+        <h4 style="color: var(--accent-color); margin: 0 0 0.8rem 0; font-size: 0.9rem;">
+          <i class="fas fa-clipboard-check"></i> Resultado da Análise
+        </h4>
+        ${renderResumoAnalise(simulacao, objetivosAposentadoria, objetivosNormais)}
+      </div>
     </div>
   `;
+  
+  // Renderizar gráfico após DOM estar pronto
+  setTimeout(() => renderGraficoEvolucao(simulacao, objetivosNormais, objetivosAposentadoria), 50);
 }
 
-function renderAnaliseAposentadoria(obj) {
+function getPerfilAnalise() {
+  const select = document.getElementById('perfil-rentabilidade-analise');
+  return select ? select.value : 'mod';
+}
+
+function simularEvolucaoPatrimonial(aposentadorias, objetivosNormais) {
   const pessoas = getPessoasDisponiveis();
-  const pessoa = pessoas.find(p => p.id === obj.prazo_pessoa);
-  const idadeAtual = pessoa ? pessoa.idade : 30;
-  const dataNascimento = pessoa ? pessoa.dataNascimento : null;
+  const perfilId = getPerfilAnalise();
+  const rentAnual = getRentabilidadePorPerfil(perfilId);
+  const rentMensal = Math.pow(1 + rentAnual / 100, 1/12) - 1;
+  const ipca = variaveisMercado.ipca || 4.5;
+  const ipcaMensal = Math.pow(1 + ipca / 100, 1/12) - 1;
   
-  // Calcular meses restantes baseado no prazo_tipo
-  let mesesRestantes;
+  // Determinar horizonte total (até a maior aposentadoria)
+  let maxMeses = 360; // 30 anos padrão
+  aposentadorias.forEach(obj => {
+    const meses = calcularMesesRestantesObj(obj, pessoas);
+    if (meses > maxMeses) maxMeses = meses;
+  });
+  
+  // Calcular capital necessário total para aposentadorias
+  const rentAposent = variaveisMercado.rent_anual_aposentadoria || 6.0;
+  let capitalNecessarioTotal = 0;
+  aposentadorias.forEach(obj => {
+    const rendaAnual = obj.renda_anual || 0;
+    const capital = rentAposent > 0 ? rendaAnual / (rentAposent / 100) : 0;
+    capitalNecessarioTotal += capital;
+  });
+  
+  // Patrimonio inicial = soma de todos os valores iniciais
+  let patrimonioInicial = calcularPatrimonioParaObjetivos();
+  
+  // Aportes totais
+  const aportesTotais = calcularAportesTotaisDisponiveis();
+  const aporteMensal = aportesTotais.mensal;
+  const aporteAnual = aportesTotais.anual;
+  
+  // Preparar eventos de objetivos (saques e acúmulos)
+  const eventosObjetivos = [];
+  objetivosNormais.forEach(obj => {
+    const mesesPrazo = calcularMesesRestantesObjNormal(obj);
+    const valorSaque = obj.valor_final || obj.meta_acumulo || 0;
+    const isAcumulo = obj.acumulavel;
+    const recTipo = obj.recorrencia_tipo || 'nenhuma';
+    const recValor = obj.recorrencia_valor || 0;
+    
+    if (valorSaque > 0 && mesesPrazo > 0) {
+      // Primeiro evento
+      eventosObjetivos.push({
+        mes: mesesPrazo,
+        valor: valorSaque,
+        descricao: obj.descricao || 'Objetivo',
+        isAcumulo: isAcumulo,
+        prioridade: obj.prioridade
+      });
+      
+      // Eventos recorrentes
+      if (recTipo !== 'nenhuma' && recValor > 0) {
+        const intervaloMeses = recTipo === 'anos' ? recValor * 12 : recValor;
+        let proximoMes = mesesPrazo + intervaloMeses;
+        while (proximoMes <= maxMeses) {
+          eventosObjetivos.push({
+            mes: proximoMes,
+            valor: valorSaque,
+            descricao: obj.descricao + ' (rec.)',
+            isAcumulo: isAcumulo,
+            prioridade: obj.prioridade
+          });
+          proximoMes += intervaloMeses;
+        }
+      }
+    }
+  });
+  
+  // Ordenar eventos por mês
+  eventosObjetivos.sort((a, b) => a.mes - b.mes);
+  
+  // Simular mês a mês
+  const pontos = [];
+  const eventosMarcados = [];
+  let saldo = patrimonioInicial;
+  let somaAportes = 0;
+  
+  // Ponto 0
+  pontos.push({ mes: 0, saldo: saldo, ano: new Date().getFullYear() });
+  
+  for (let mes = 1; mes <= maxMeses; mes++) {
+    // Aporte mensal
+    saldo += aporteMensal;
+    somaAportes += aporteMensal;
+    
+    // Aporte anual (a cada 12 meses)
+    if (mes % 12 === 0 && aporteAnual > 0) {
+      saldo += aporteAnual;
+      somaAportes += aporteAnual;
+    }
+    
+    // Rentabilidade
+    saldo = saldo * (1 + rentMensal);
+    
+    // Verificar eventos neste mês
+    const eventosDoMes = eventosObjetivos.filter(e => e.mes === mes);
+    eventosDoMes.forEach(evento => {
+      // Corrigir valor pela inflação
+      const valorCorrigido = evento.valor * Math.pow(1 + ipca / 100, mes / 12);
+      if (!evento.isAcumulo) {
+        // Saque
+        saldo -= valorCorrigido;
+        eventosMarcados.push({
+          mes: mes,
+          tipo: 'saque',
+          valor: valorCorrigido,
+          descricao: evento.descricao,
+          saldoApos: saldo
+        });
+      } else {
+        // Acúmulo - não saca, apenas marca que atingiu
+        eventosMarcados.push({
+          mes: mes,
+          tipo: 'acumulo',
+          valor: valorCorrigido,
+          descricao: evento.descricao,
+          saldoApos: saldo
+        });
+      }
+    });
+    
+    const dataEstimada = new Date();
+    dataEstimada.setMonth(dataEstimada.getMonth() + mes);
+    
+    pontos.push({
+      mes: mes,
+      saldo: saldo,
+      ano: dataEstimada.getFullYear()
+    });
+  }
+  
+  // Calcular meta de aposentadoria corrigida pela inflação no final
+  const capitalNecessarioCorrigido = capitalNecessarioTotal * Math.pow(1 + ipca / 100, maxMeses / 12);
+  
+  return {
+    pontos: pontos,
+    eventos: eventosMarcados,
+    capitalNecessarioTotal: capitalNecessarioTotal,
+    capitalNecessarioCorrigido: capitalNecessarioCorrigido,
+    patrimonioInicial: patrimonioInicial,
+    patrimonioFinal: saldo,
+    maxMeses: maxMeses,
+    aporteMensal: aporteMensal,
+    aporteAnual: aporteAnual,
+    rentAnual: rentAnual
+  };
+}
+
+function calcularMesesRestantesObj(obj, pessoas) {
   const prazoTipo = obj.prazo_tipo || 'idade';
   if (prazoTipo === 'data' && obj.prazo_data) {
     const dataAlvo = new Date(obj.prazo_data);
     const hoje = new Date();
-    mesesRestantes = Math.max(0, Math.round((dataAlvo - hoje) / (1000 * 60 * 60 * 24 * 30.44)));
+    return Math.max(0, Math.round((dataAlvo - hoje) / (1000 * 60 * 60 * 24 * 30.44)));
   } else if (prazoTipo === 'meses') {
-    mesesRestantes = obj.prazo_meses || 360;
+    return obj.prazo_meses || 360;
   } else if (prazoTipo === 'anos') {
-    mesesRestantes = (obj.prazo_meses || 360);
+    return obj.prazo_meses || 360;
   } else {
-    // idade (padrão)
+    // idade
+    const pessoa = pessoas.find(p => p.id === obj.prazo_pessoa);
+    const idadeAtual = pessoa ? pessoa.idade : 30;
     const idadeAposentadoria = obj.prazo_idade || 65;
-    mesesRestantes = Math.max(0, (idadeAposentadoria - idadeAtual) * 12);
+    return Math.max(0, (idadeAposentadoria - idadeAtual) * 12);
   }
-  
-  const patrimonioAtual = calcularPatrimonioAposentadoriaPorPessoa(obj.prazo_pessoa);
-  const rendaAnual = obj.renda_anual || 0;
-  const rentAnual = variaveisMercado.rent_anual_aposentadoria || 6.0;
-  const capitalNecessario = rentAnual > 0 ? rendaAnual / (rentAnual / 100) : 0;
-  
-  const perfilAtual = obj.perfil_atual || 'sem_conhecimento';
-  const perfilConsultoria = obj.perfil_consultoria || 'mod';
-  
-  const rentAtual = getRentabilidadePorPerfil(perfilAtual);
-  const rentConsultoria = getRentabilidadePorPerfil(perfilConsultoria);
-  
-  // Calcular aportes da pessoa
-  const aportes = getAportesPessoa(obj.prazo_pessoa);
-  
-  // Gerar tabelas
-  const tabelaAtual = gerarTabelaMensal(patrimonioAtual, capitalNecessario, aportes.mensal, aportes.anual, rentAtual, mesesRestantes, dataNascimento, idadeAtual);
-  const tabelaConsultoria = gerarTabelaMensal(patrimonioAtual, capitalNecessario, aportes.mensal, aportes.anual, rentConsultoria, mesesRestantes, dataNascimento, idadeAtual);
-  
-  return `
-    <div style="background: var(--card-bg); border: 1px solid #28a745; border-radius: 8px; padding: 1rem; margin-bottom: 1.5rem;">
-      <h5 style="color: #28a745; margin: 0 0 1rem 0;">
-        <i class="fas fa-user"></i> ${obj.descricao}
-      </h5>
-      
-      <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 1rem; text-align: center;">
-        <div style="padding: 0.5rem; background: rgba(40, 167, 69, 0.1); border-radius: 6px;">
-          <div style="font-size: 0.65rem; color: var(--text-light);">Patrimônio Atual</div>
-          <div style="font-size: 0.9rem; font-weight: 600; color: #28a745;">${formatarMoedaObj(patrimonioAtual)}</div>
-        </div>
-        <div style="padding: 0.5rem; background: rgba(40, 167, 69, 0.1); border-radius: 6px;">
-          <div style="font-size: 0.65rem; color: var(--text-light);">Capital Necessário</div>
-          <div style="font-size: 0.9rem; font-weight: 600; color: #28a745;">${formatarMoedaObj(capitalNecessario)}</div>
-        </div>
-        <div style="padding: 0.5rem; background: rgba(40, 167, 69, 0.1); border-radius: 6px;">
-          <div style="font-size: 0.65rem; color: var(--text-light);">Aporte Mensal</div>
-          <div style="font-size: 0.9rem; font-weight: 600; color: #28a745;">${formatarMoedaObj(aportes.mensal)}</div>
-        </div>
-        <div style="padding: 0.5rem; background: rgba(40, 167, 69, 0.1); border-radius: 6px;">
-          <div style="font-size: 0.65rem; color: var(--text-light);">Aporte Anual</div>
-          <div style="font-size: 0.9rem; font-weight: 600; color: #28a745;">${formatarMoedaObj(aportes.anual)}</div>
-        </div>
-      </div>
-      
-      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-        <!-- Cenário Atual -->
-        <div style="background: var(--dark-bg); border: 1px solid #dc3545; border-radius: 8px; padding: 1rem;">
-          <h6 style="color: #dc3545; margin: 0 0 0.8rem 0; text-align: center;">
-            <i class="fas fa-user-times"></i> Cenário Atual (Sem Consultoria)
-          </h6>
-          <div style="margin-bottom: 0.8rem;">
-            <label style="font-size: 0.7rem; color: var(--text-light);">Perfil de Rentabilidade:</label>
-            <select onchange="updateObjetivoField(${obj.id}, 'perfil_atual', this.value); renderObjetivos();"
-                    style="width: 100%; padding: 0.4rem; background: #0d3320; border: 1px solid var(--border-color); border-radius: 4px; color: #e8e8e8; font-size: 0.8rem;">
-              ${gerarOpcoesPerfilRentabilidade(perfilAtual)}
-            </select>
-          </div>
-          <div style="text-align: center; margin-bottom: 0.5rem;">
-            <span style="font-size: 0.75rem; color: var(--text-light);">Rentabilidade: ${rentAtual.toFixed(2)}% a.a.</span>
-          </div>
-          ${renderTabelaHTML(tabelaAtual, '#dc3545')}
-        </div>
-        
-        <!-- Cenário Com Consultoria -->
-        <div style="background: var(--dark-bg); border: 1px solid #28a745; border-radius: 8px; padding: 1rem;">
-          <h6 style="color: #28a745; margin: 0 0 0.8rem 0; text-align: center;">
-            <i class="fas fa-user-check"></i> Cenário Com Consultoria
-          </h6>
-          <div style="margin-bottom: 0.8rem;">
-            <label style="font-size: 0.7rem; color: var(--text-light);">Perfil de Rentabilidade:</label>
-            <select onchange="updateObjetivoField(${obj.id}, 'perfil_consultoria', this.value); renderObjetivos();"
-                    style="width: 100%; padding: 0.4rem; background: #0d3320; border: 1px solid var(--border-color); border-radius: 4px; color: #e8e8e8; font-size: 0.8rem;">
-              ${gerarOpcoesPerfilRentabilidade(perfilConsultoria)}
-            </select>
-          </div>
-          <div style="text-align: center; margin-bottom: 0.5rem;">
-            <span style="font-size: 0.75rem; color: var(--text-light);">Rentabilidade: ${rentConsultoria.toFixed(2)}% a.a.</span>
-          </div>
-          ${renderTabelaHTML(tabelaConsultoria, '#28a745')}
-        </div>
-      </div>
-      
-      <!-- Comparação -->
-      <div style="margin-top: 1rem; padding: 0.8rem; background: rgba(40, 167, 69, 0.1); border-radius: 6px; text-align: center;">
-        <span style="color: #28a745; font-weight: 600;">
-          <i class="fas fa-chart-line"></i> 
-          ${compararCenarios(tabelaAtual, tabelaConsultoria)}
-        </span>
-      </div>
-    </div>
-  `;
 }
 
-function renderAnaliseObjetivo(obj, todosObjetivos) {
-  const perfilAtual = obj.perfil_atual || 'sem_conhecimento';
-  const perfilConsultoria = obj.perfil_consultoria || 'mod';
+function calcularMesesRestantesObjNormal(obj) {
+  const prazoTipo = obj.prazo_tipo || 'meses';
+  if (prazoTipo === 'data' && obj.prazo_data) {
+    const dataAlvo = new Date(obj.prazo_data);
+    const hoje = new Date();
+    return Math.max(0, Math.round((dataAlvo - hoje) / (1000 * 60 * 60 * 24 * 30.44)));
+  } else if (prazoTipo === 'anos') {
+    return obj.prazo_meses || 60;
+  } else {
+    return obj.prazo_meses || 60;
+  }
+}
+
+function renderGraficoEvolucao(simulacao, objetivosNormais, aposentadorias) {
+  const canvas = document.getElementById('grafico-evolucao-patrimonial');
+  if (!canvas) return;
   
-  const rentAtual = getRentabilidadePorPerfil(perfilAtual);
-  const rentConsultoria = getRentabilidadePorPerfil(perfilConsultoria);
+  if (chartInstance) {
+    chartInstance.destroy();
+    chartInstance = null;
+  }
   
-  // Calcular aportes dos responsáveis
-  const aportes = getAportesResponsaveis(obj.responsaveis || []);
+  // Preparar dados - mostrar a cada intervalo para ~60 pontos
+  const labels = [];
+  const dataSaldo = [];
+  const intervalo = Math.max(1, Math.floor(simulacao.maxMeses / 60));
   
-  // Verificar se está vinculado a outro objetivo
-  let valorInicial = obj.valor_inicial || 0;
-  let dataInicio = new Date();
+  for (let i = 0; i < simulacao.pontos.length; i += intervalo) {
+    const ponto = simulacao.pontos[i];
+    const anos = Math.floor(ponto.mes / 12);
+    const meses = ponto.mes % 12;
+    labels.push(anos > 0 ? `${anos}a${meses > 0 ? meses + 'm' : ''}` : `${ponto.mes}m`);
+    dataSaldo.push(ponto.saldo);
+  }
+  // Garantir último ponto
+  const ultimoPonto = simulacao.pontos[simulacao.pontos.length - 1];
+  if (labels[labels.length - 1] !== `${Math.floor(ultimoPonto.mes / 12)}a`) {
+    const anos = Math.floor(ultimoPonto.mes / 12);
+    labels.push(`${anos}a`);
+    dataSaldo.push(ultimoPonto.saldo);
+  }
   
-  if (obj.vinculado_a) {
-    const objetivoAnterior = todosObjetivos.find(o => o.id === obj.vinculado_a);
-    if (objetivoAnterior) {
-      // Calcular resultado do objetivo anterior
-      const aportesAnterior = getAportesResponsaveis(objetivoAnterior.responsaveis || []);
-      const rentAnterior = getRentabilidadePorPerfil(objetivoAnterior.perfil_consultoria || 'mod');
-      const tabelaAnterior = gerarTabelaMensal(
-        objetivoAnterior.valor_inicial || 0,
-        objetivoAnterior.meta_acumulo || 0,
-        aportesAnterior.mensal,
-        aportesAnterior.anual,
-        rentAnterior,
-        600, // máximo de meses
-        null,
-        30
-      );
-      
-      if (tabelaAnterior.linhas.length > 0) {
-        const ultimaLinha = tabelaAnterior.linhas[tabelaAnterior.linhas.length - 1];
-        if (objetivoAnterior.acumulavel) {
-          valorInicial = ultimaLinha.saldoBruto;
-        } else {
-          valorInicial = Math.max(0, ultimaLinha.saldoLiquido - ultimaLinha.meta);
+  // Linha do capital necessário para aposentadoria
+  const metaAposentadoria = Array(labels.length).fill(simulacao.capitalNecessarioCorrigido);
+  
+  // Criar dataset de pontos de eventos (saques e acúmulos)
+  const eventosSaqueData = Array(labels.length).fill(null);
+  const eventosAcumuloData = Array(labels.length).fill(null);
+  
+  simulacao.eventos.forEach(evento => {
+    const posicaoLabel = Math.min(Math.round(evento.mes / intervalo), labels.length - 1);
+    if (evento.tipo === 'saque') {
+      eventosSaqueData[posicaoLabel] = evento.saldoApos;
+    } else {
+      eventosAcumuloData[posicaoLabel] = evento.saldoApos;
+    }
+  });
+  
+  const datasets = [
+    {
+      label: 'Patrimônio',
+      data: dataSaldo,
+      borderColor: '#28a745',
+      backgroundColor: 'rgba(40, 167, 69, 0.1)',
+      fill: true,
+      tension: 0.3,
+      pointRadius: 0,
+      borderWidth: 2
+    },
+    {
+      label: 'Meta Aposentadoria',
+      data: metaAposentadoria,
+      borderColor: '#d4af37',
+      borderDash: [8, 4],
+      borderWidth: 2,
+      pointRadius: 0,
+      fill: false
+    }
+  ];
+  
+  // Adicionar pontos de saques se existirem
+  if (eventosSaqueData.some(v => v !== null)) {
+    datasets.push({
+      label: 'Saques (Objetivos)',
+      data: eventosSaqueData,
+      borderColor: '#dc3545',
+      backgroundColor: '#dc3545',
+      pointRadius: 6,
+      pointStyle: 'triangle',
+      pointRotation: 180,
+      showLine: false,
+      borderWidth: 0
+    });
+  }
+  
+  // Adicionar pontos de acúmulos se existirem
+  if (eventosAcumuloData.some(v => v !== null)) {
+    datasets.push({
+      label: 'Acúmulos',
+      data: eventosAcumuloData,
+      borderColor: '#17a2b8',
+      backgroundColor: '#17a2b8',
+      pointRadius: 6,
+      pointStyle: 'circle',
+      showLine: false,
+      borderWidth: 0
+    });
+  }
+  
+  const ctx = canvas.getContext('2d');
+  chartInstance = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: labels,
+      datasets: datasets
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: {
+        intersect: false,
+        mode: 'index'
+      },
+      plugins: {
+        legend: {
+          labels: { color: '#e8e8e8', font: { size: 11 } }
+        },
+        tooltip: {
+          callbacks: {
+            label: function(context) {
+              if (context.parsed.y === null) return null;
+              return context.dataset.label + ': ' + formatarMoedaObj(context.parsed.y);
+            }
+          },
+          filter: function(tooltipItem) {
+            return tooltipItem.parsed.y !== null;
+          }
         }
-        dataInicio = new Date(ultimaLinha.data);
-        // Somar aportes do objetivo anterior
-        aportes.mensal += aportesAnterior.mensal;
-        aportes.anual += aportesAnterior.anual;
+      },
+      scales: {
+        x: {
+          ticks: { color: '#aaa', font: { size: 9 }, maxRotation: 45 },
+          grid: { color: 'rgba(255,255,255,0.05)' }
+        },
+        y: {
+          ticks: {
+            color: '#aaa',
+            font: { size: 10 },
+            callback: function(value) {
+              if (value >= 1000000) return 'R$ ' + (value / 1000000).toFixed(1) + 'M';
+              if (value >= 1000) return 'R$ ' + (value / 1000).toFixed(0) + 'k';
+              return 'R$ ' + value;
+            }
+          },
+          grid: { color: 'rgba(255,255,255,0.05)' }
+        }
       }
     }
-  }
-  
-  const metaAcumulo = obj.meta_acumulo || 0;
-  
-  // Gerar tabelas
-  const tabelaAtual = gerarTabelaMensal(valorInicial, metaAcumulo, aportes.mensal, aportes.anual, rentAtual, 600, null, 30, dataInicio);
-  const tabelaConsultoria = gerarTabelaMensal(valorInicial, metaAcumulo, aportes.mensal, aportes.anual, rentConsultoria, 600, null, 30, dataInicio);
-  
-  return `
-    <div style="background: var(--card-bg); border: 1px solid var(--accent-color); border-radius: 8px; padding: 1rem; margin-bottom: 1.5rem;">
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-        <h5 style="color: var(--accent-color); margin: 0;">
-          <span style="background: var(--accent-color); color: var(--dark-bg); padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.8rem; margin-right: 0.5rem;">
-            ${obj.prioridade}º
-          </span>
-          ${obj.descricao || 'Objetivo sem descrição'}
-          ${obj.acumulavel ? '<i class="fas fa-layer-group" title="Acumulável" style="margin-left: 0.5rem; color: #17a2b8;"></i>' : ''}
-          ${obj.vinculado_a ? '<i class="fas fa-link" title="Vinculado" style="margin-left: 0.5rem; color: #ffc107;"></i>' : ''}
-        </h5>
-      </div>
-      
-      <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 1rem; text-align: center;">
-        <div style="padding: 0.5rem; background: rgba(212, 175, 55, 0.1); border-radius: 6px;">
-          <div style="font-size: 0.65rem; color: var(--text-light);">Valor Inicial</div>
-          <div style="font-size: 0.9rem; font-weight: 600; color: var(--accent-color);">${formatarMoedaObj(valorInicial)}</div>
-        </div>
-        <div style="padding: 0.5rem; background: rgba(212, 175, 55, 0.1); border-radius: 6px;">
-          <div style="font-size: 0.65rem; color: var(--text-light);">Meta de Acúmulo</div>
-          <div style="font-size: 0.9rem; font-weight: 600; color: var(--accent-color);">${formatarMoedaObj(metaAcumulo)}</div>
-        </div>
-        <div style="padding: 0.5rem; background: rgba(212, 175, 55, 0.1); border-radius: 6px;">
-          <div style="font-size: 0.65rem; color: var(--text-light);">Aporte Mensal</div>
-          <div style="font-size: 0.9rem; font-weight: 600; color: var(--accent-color);">${formatarMoedaObj(aportes.mensal)}</div>
-        </div>
-        <div style="padding: 0.5rem; background: rgba(212, 175, 55, 0.1); border-radius: 6px;">
-          <div style="font-size: 0.65rem; color: var(--text-light);">Prazo Desejado</div>
-          <div style="font-size: 0.9rem; font-weight: 600; color: var(--accent-color);">${obj.prazo_meses || 60} meses</div>
-        </div>
-      </div>
-      
-      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-        <!-- Cenário Atual -->
-        <div style="background: var(--dark-bg); border: 1px solid #dc3545; border-radius: 8px; padding: 1rem;">
-          <h6 style="color: #dc3545; margin: 0 0 0.8rem 0; text-align: center;">
-            <i class="fas fa-user-times"></i> Cenário Atual
-          </h6>
-          <div style="margin-bottom: 0.8rem;">
-            <label style="font-size: 0.7rem; color: var(--text-light);">Perfil de Rentabilidade:</label>
-            <select onchange="updateObjetivoField(${obj.id}, 'perfil_atual', this.value); renderObjetivos();"
-                    style="width: 100%; padding: 0.4rem; background: #0d3320; border: 1px solid var(--border-color); border-radius: 4px; color: #e8e8e8; font-size: 0.8rem;">
-              ${gerarOpcoesPerfilRentabilidade(perfilAtual)}
-            </select>
-          </div>
-          <div style="text-align: center; margin-bottom: 0.5rem;">
-            <span style="font-size: 0.75rem; color: var(--text-light);">Rentabilidade: ${rentAtual.toFixed(2)}% a.a. | IR 15%</span>
-          </div>
-          ${renderTabelaHTML(tabelaAtual, '#dc3545')}
-        </div>
-        
-        <!-- Cenário Com Consultoria -->
-        <div style="background: var(--dark-bg); border: 1px solid #28a745; border-radius: 8px; padding: 1rem;">
-          <h6 style="color: #28a745; margin: 0 0 0.8rem 0; text-align: center;">
-            <i class="fas fa-user-check"></i> Com Consultoria
-          </h6>
-          <div style="margin-bottom: 0.8rem;">
-            <label style="font-size: 0.7rem; color: var(--text-light);">Perfil de Rentabilidade:</label>
-            <select onchange="updateObjetivoField(${obj.id}, 'perfil_consultoria', this.value); renderObjetivos();"
-                    style="width: 100%; padding: 0.4rem; background: #0d3320; border: 1px solid var(--border-color); border-radius: 4px; color: #e8e8e8; font-size: 0.8rem;">
-              ${gerarOpcoesPerfilRentabilidade(perfilConsultoria)}
-            </select>
-          </div>
-          <div style="text-align: center; margin-bottom: 0.5rem;">
-            <span style="font-size: 0.75rem; color: var(--text-light);">Rentabilidade: ${rentConsultoria.toFixed(2)}% a.a. | IR 15%</span>
-          </div>
-          ${renderTabelaHTML(tabelaConsultoria, '#28a745')}
-        </div>
-      </div>
-      
-      <!-- Comparação -->
-      <div style="margin-top: 1rem; padding: 0.8rem; background: rgba(40, 167, 69, 0.1); border-radius: 6px; text-align: center;">
-        <span style="color: #28a745; font-weight: 600;">
-          <i class="fas fa-chart-line"></i> 
-          ${compararCenarios(tabelaAtual, tabelaConsultoria, obj.prazo_meses)}
-        </span>
-      </div>
-    </div>
-  `;
+  });
 }
 
-
-// ========================================
-// GERAÇÃO DE TABELAS MENSAIS
-// ========================================
-
-function gerarTabelaMensal(valorInicial, meta, aporteMensal, aporteAnual, rentabilidadeAnual, maxMeses, dataNascimento, idadeAtual, dataInicio = null) {
-  const linhas = [];
-  const ipca = variaveisMercado.ipca || 4.5;
-  const rentMensal = Math.pow(1 + rentabilidadeAnual / 100, 1/12) - 1;
-  const hoje = dataInicio || new Date();
+function renderResumoAnalise(simulacao, aposentadorias, objetivosNormais) {
+  const pessoas = getPessoasDisponiveis();
+  let html = '';
   
-  let saldoBruto = valorInicial;
-  let somaAportes = 0;
-  let metaAtual = meta;
-  let mesAtual = 0;
-  let idadeCorrente = idadeAtual;
-  
-  // Determinar mês do aniversário
-  let mesAniversario = 1; // Janeiro por padrão
-  if (dataNascimento) {
-    const dataNasc = new Date(dataNascimento);
-    mesAniversario = dataNasc.getMonth() + 1;
+  // Resumo dos objetivos
+  if (objetivosNormais.length > 0) {
+    html += `<div style="margin-bottom: 1rem;">`;
+    html += `<h5 style="color: var(--accent-color); margin: 0 0 0.5rem 0; font-size: 0.8rem;"><i class="fas fa-bullseye"></i> Objetivos</h5>`;
+    html += `<div style="display: flex; flex-direction: column; gap: 0.3rem;">`;
+    
+    objetivosNormais.forEach(obj => {
+      const mesesPrazo = calcularMesesRestantesObjNormal(obj);
+      const valorFinal = obj.valor_final || obj.meta_acumulo || 0;
+      const recTipo = obj.recorrencia_tipo || 'nenhuma';
+      const recValor = obj.recorrencia_valor || 0;
+      
+      // Verificar se o patrimônio no momento do prazo cobre o objetivo
+      const pontoNoPrazo = simulacao.pontos.find(p => p.mes >= mesesPrazo) || simulacao.pontos[simulacao.pontos.length - 1];
+      const saldoNoPrazo = pontoNoPrazo ? pontoNoPrazo.saldo : 0;
+      const valorCorrigido = valorFinal * Math.pow(1 + (variaveisMercado.ipca || 4.5) / 100, mesesPrazo / 12);
+      const atingido = saldoNoPrazo >= valorCorrigido;
+      
+      const anos = Math.floor(mesesPrazo / 12);
+      const mesesResto = mesesPrazo % 12;
+      const prazoTexto = anos > 0 ? `${anos}a${mesesResto > 0 ? ' ' + mesesResto + 'm' : ''}` : `${mesesPrazo}m`;
+      
+      let recTexto = '';
+      if (recTipo !== 'nenhuma') {
+        recTexto = ` <span style="font-size: 0.6rem; color: #17a2b8;"><i class="fas fa-redo"></i> a cada ${recValor} ${recTipo === 'anos' ? 'ano(s)' : 'meses'}</span>`;
+      }
+      
+      html += `
+        <div style="display: flex; align-items: center; gap: 0.5rem; padding: 0.3rem 0.5rem; background: rgba(${atingido ? '40, 167, 69' : '220, 53, 69'}, 0.1); border-radius: 4px; border-left: 3px solid ${atingido ? '#28a745' : '#dc3545'};">
+          <span style="font-size: 0.7rem; color: var(--accent-color); font-weight: 600; min-width: 20px;">${obj.prioridade}º</span>
+          <span style="font-size: 0.75rem; color: var(--text-light); flex: 1;">${obj.descricao || 'Sem descrição'}${recTexto}</span>
+          <span style="font-size: 0.7rem; color: var(--text-light);">${formatarMoedaObj(valorFinal)}</span>
+          <span style="font-size: 0.7rem; color: var(--text-light);">em ${prazoTexto}</span>
+          <span style="font-size: 0.7rem; font-weight: 600; color: ${atingido ? '#28a745' : '#dc3545'};">
+            <i class="fas fa-${atingido ? 'check-circle' : 'times-circle'}"></i> ${atingido ? 'Alcançável' : 'Insuficiente'}
+          </span>
+        </div>
+      `;
+    });
+    html += `</div></div>`;
   }
   
-  while (mesAtual < maxMeses) {
-    mesAtual++;
+  // Resumo das aposentadorias
+  if (aposentadorias.length > 0) {
+    const rentAposent = variaveisMercado.rent_anual_aposentadoria || 6.0;
+    let capitalTotal = 0;
+    let detalhesAposent = [];
     
-    // Calcular data estimada
-    const dataEstimada = new Date(hoje);
-    dataEstimada.setMonth(dataEstimada.getMonth() + mesAtual);
-    
-    // Verificar se é mês de aniversário para atualizar idade
-    if (dataEstimada.getMonth() + 1 === mesAniversario && mesAtual > 1) {
-      idadeCorrente++;
-    }
-    
-    // Calcular aporte do mês (mensal + anual a cada 12 meses)
-    let aporteMes = aporteMensal;
-    if (mesAtual % 12 === 0 && aporteAnual > 0) {
-      aporteMes += aporteAnual;
-    }
-    
-    somaAportes += aporteMes;
-    
-    // Calcular rentabilidade do mês
-    const saldoAntesRent = saldoBruto + aporteMes;
-    const rendimentoMes = saldoAntesRent * rentMensal;
-    saldoBruto = saldoAntesRent + rendimentoMes;
-    
-    // Calcular IR (15% sobre o lucro)
-    const lucro = Math.max(0, saldoBruto - valorInicial - somaAportes);
-    const ir = lucro * 0.15;
-    
-    // Calcular saldo líquido
-    const saldoLiquido = saldoBruto - ir;
-    
-    // Atualizar meta pelo IPCA a cada 12 meses
-    if (mesAtual % 12 === 0) {
-      metaAtual = metaAtual * (1 + ipca / 100);
-    }
-    
-    // Calcular percentual da meta
-    const percentualMeta = metaAtual > 0 ? (saldoLiquido / metaAtual) * 100 : 0;
-    
-    linhas.push({
-      mes: mesAtual,
-      data: dataEstimada,
-      idade: idadeCorrente,
-      aporte: aporteMes,
-      saldoBruto: saldoBruto,
-      ir: ir,
-      saldoLiquido: saldoLiquido,
-      meta: metaAtual,
-      percentualMeta: percentualMeta
+    aposentadorias.forEach(obj => {
+      const rendaAnual = obj.renda_anual || 0;
+      const capital = rentAposent > 0 ? rendaAnual / (rentAposent / 100) : 0;
+      capitalTotal += capital;
+      const pessoa = pessoas.find(p => p.id === obj.prazo_pessoa);
+      detalhesAposent.push({
+        nome: pessoa ? pessoa.nome : 'N/A',
+        rendaAnual: rendaAnual,
+        capitalNecessario: capital
+      });
     });
     
-    // Parar quando atingir 100% da meta
-    if (percentualMeta >= 100) {
-      break;
-    }
-  }
-  
-  return {
-    linhas: linhas,
-    valorInicial: valorInicial,
-    metaOriginal: meta,
-    rentabilidade: rentabilidadeAnual,
-    aporteMensal: aporteMensal,
-    aporteAnual: aporteAnual
-  };
-}
-
-function renderTabelaHTML(tabela, corDestaque) {
-  if (!tabela.linhas || tabela.linhas.length === 0) {
-    return `<div style="text-align: center; color: var(--text-light); padding: 1rem;">Sem dados para exibir</div>`;
-  }
-  
-  return `
-    <div style="max-height: 200px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 4px;">
-      <table style="width: 100%; border-collapse: collapse; font-size: 0.7rem;">
-        <thead style="position: sticky; top: 0; background: var(--dark-bg);">
-          <tr style="border-bottom: 1px solid var(--border-color);">
-            <th style="padding: 0.4rem; text-align: left; color: ${corDestaque};">Mês</th>
-            <th style="padding: 0.4rem; text-align: center; color: ${corDestaque};">Idade</th>
-            <th style="padding: 0.4rem; text-align: right; color: ${corDestaque};">Aporte</th>
-            <th style="padding: 0.4rem; text-align: right; color: ${corDestaque};">Saldo Bruto</th>
-            <th style="padding: 0.4rem; text-align: right; color: ${corDestaque};">IR</th>
-            <th style="padding: 0.4rem; text-align: right; color: ${corDestaque};">Líquido</th>
-            <th style="padding: 0.4rem; text-align: right; color: ${corDestaque};">Meta</th>
-            <th style="padding: 0.4rem; text-align: right; color: ${corDestaque};">%</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${tabela.linhas.map((linha, index) => `
-            <tr style="border-bottom: 1px solid rgba(255,255,255,0.05); ${linha.percentualMeta >= 100 ? 'background: rgba(40, 167, 69, 0.2);' : ''}">
-              <td style="padding: 0.3rem; color: var(--text-light);">
-                Mês ${linha.mes}
-                <div style="font-size: 0.6rem; opacity: 0.7;">(${formatarDataCurta(linha.data)})</div>
-              </td>
-              <td style="padding: 0.3rem; text-align: center; color: var(--text-light);">${linha.idade} anos</td>
-              <td style="padding: 0.3rem; text-align: right; color: var(--text-light);">${formatarMoedaCompacta(linha.aporte)}</td>
-              <td style="padding: 0.3rem; text-align: right; color: ${corDestaque};">${formatarMoedaCompacta(linha.saldoBruto)}</td>
-              <td style="padding: 0.3rem; text-align: right; color: #dc3545;">${formatarMoedaCompacta(linha.ir)}</td>
-              <td style="padding: 0.3rem; text-align: right; color: #28a745;">${formatarMoedaCompacta(linha.saldoLiquido)}</td>
-              <td style="padding: 0.3rem; text-align: right; color: var(--text-light);">${formatarMoedaCompacta(linha.meta)}</td>
-              <td style="padding: 0.3rem; text-align: right; color: ${linha.percentualMeta >= 100 ? '#28a745' : corDestaque}; font-weight: ${linha.percentualMeta >= 100 ? '600' : 'normal'};">
-                ${linha.percentualMeta.toFixed(1)}%
-              </td>
-            </tr>
-          `).join('')}
-        </tbody>
-      </table>
-    </div>
-  `;
-}
-
-function compararCenarios(tabelaAtual, tabelaConsultoria, prazoDesejado = null) {
-  const mesesAtual = tabelaAtual.linhas.length;
-  const mesesConsultoria = tabelaConsultoria.linhas.length;
-  
-  const ultimaAtual = tabelaAtual.linhas[tabelaAtual.linhas.length - 1];
-  const ultimaConsultoria = tabelaConsultoria.linhas[tabelaConsultoria.linhas.length - 1];
-  
-  const atingiuAtual = ultimaAtual && ultimaAtual.percentualMeta >= 100;
-  const atingiuConsultoria = ultimaConsultoria && ultimaConsultoria.percentualMeta >= 100;
-  
-  let resultado = '';
-  
-  if (atingiuConsultoria && atingiuAtual) {
-    const diferencaMeses = mesesAtual - mesesConsultoria;
-    if (diferencaMeses > 0) {
-      resultado = `Com consultoria: objetivo atingido ${diferencaMeses} meses antes!`;
-    } else if (diferencaMeses < 0) {
-      resultado = `Cenário atual mais rápido em ${Math.abs(diferencaMeses)} meses`;
-    } else {
-      resultado = `Ambos cenários atingem no mesmo prazo`;
-    }
+    const patrimonioFinal = simulacao.patrimonioFinal;
+    const capitalCorrigido = simulacao.capitalNecessarioCorrigido;
+    const atingeAposentadoria = patrimonioFinal >= capitalCorrigido;
+    const percentualAtingido = capitalCorrigido > 0 ? (patrimonioFinal / capitalCorrigido * 100) : 0;
     
-    // Adicionar comparação com prazo desejado
-    if (prazoDesejado) {
-      if (mesesConsultoria <= prazoDesejado) {
-        resultado += ` | Dentro do prazo desejado (${prazoDesejado} meses)`;
-      } else {
-        resultado += ` | ${mesesConsultoria - prazoDesejado} meses além do prazo desejado`;
-      }
-    }
-  } else if (atingiuConsultoria && !atingiuAtual) {
-    resultado = `Com consultoria: objetivo atingido em ${mesesConsultoria} meses | Cenário atual: não atinge no período`;
-  } else if (!atingiuConsultoria && atingiuAtual) {
-    resultado = `Cenário atual atinge em ${mesesAtual} meses | Com consultoria: não atinge no período`;
-  } else {
-    resultado = `Nenhum cenário atinge a meta no período analisado`;
+    html += `<div style="margin-top: 0.8rem; padding-top: 0.8rem; border-top: 1px solid rgba(40, 167, 69, 0.3);">`;
+    html += `<h5 style="color: #28a745; margin: 0 0 0.5rem 0; font-size: 0.8rem;"><i class="fas fa-umbrella-beach"></i> Aposentadoria</h5>`;
+    
+    // Detalhes por pessoa
+    detalhesAposent.forEach(d => {
+      html += `
+        <div style="display: flex; align-items: center; gap: 0.5rem; padding: 0.2rem 0.5rem; font-size: 0.7rem; color: var(--text-light);">
+          <span><i class="fas fa-user"></i> ${d.nome}</span>
+          <span>Renda: ${formatarMoedaObj(d.rendaAnual)}/ano</span>
+          <span>Capital: ${formatarMoedaObj(d.capitalNecessario)}</span>
+        </div>
+      `;
+    });
+    
+    // Resultado consolidado
+    html += `
+      <div style="margin-top: 0.5rem; padding: 0.6rem; background: rgba(${atingeAposentadoria ? '40, 167, 69' : '220, 53, 69'}, 0.15); border-radius: 6px; border: 1px solid ${atingeAposentadoria ? '#28a745' : '#dc3545'};">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
+          <div>
+            <div style="font-size: 0.7rem; color: var(--text-light);">Capital Necessário Total (corrigido IPCA):</div>
+            <div style="font-size: 1rem; font-weight: 600; color: ${atingeAposentadoria ? '#28a745' : '#dc3545'};">${formatarMoedaObj(capitalCorrigido)}</div>
+          </div>
+          <div>
+            <div style="font-size: 0.7rem; color: var(--text-light);">Patrimônio Projetado Final:</div>
+            <div style="font-size: 1rem; font-weight: 600; color: ${atingeAposentadoria ? '#28a745' : '#dc3545'};">${formatarMoedaObj(patrimonioFinal)}</div>
+          </div>
+          <div style="text-align: center;">
+            <div style="font-size: 0.7rem; color: var(--text-light);">Atingimento:</div>
+            <div style="font-size: 1.1rem; font-weight: 700; color: ${atingeAposentadoria ? '#28a745' : '#dc3545'};">
+              ${percentualAtingido.toFixed(1)}%
+              <i class="fas fa-${atingeAposentadoria ? 'check-circle' : 'exclamation-triangle'}"></i>
+            </div>
+          </div>
+        </div>
+        <div style="margin-top: 0.5rem; font-size: 0.75rem; color: ${atingeAposentadoria ? '#28a745' : '#dc3545'}; text-align: center; font-weight: 600;">
+          ${atingeAposentadoria 
+            ? '<i class="fas fa-party-horn"></i> Todas as aposentadorias desejadas serão atingidas com o plano atual!' 
+            : `<i class="fas fa-exclamation-triangle"></i> Faltam ${formatarMoedaObj(capitalCorrigido - patrimonioFinal)} para atingir todas as aposentadorias. Considere aumentar aportes ou prazo.`
+          }
+        </div>
+      </div>
+    `;
+    html += `</div>`;
   }
   
-  return resultado;
-}
-
-function renderResumoGeral(aposentadorias, objetivosNormais) {
-  // Calcular totais
-  let totalAporteAtual = 0;
-  let totalAporteConsultoria = 0;
-  
-  aposentadorias.forEach(obj => {
-    const aportes = getAportesPessoa(obj.prazo_pessoa);
-    totalAporteAtual += aportes.mensal;
-    totalAporteConsultoria += aportes.mensal;
-  });
-  
-  objetivosNormais.forEach(obj => {
-    const aportes = getAportesResponsaveis(obj.responsaveis || []);
-    totalAporteAtual += aportes.mensal;
-    totalAporteConsultoria += aportes.mensal;
-  });
-  
-  return `
-    <div style="background: var(--card-bg); border: 2px solid var(--accent-color); border-radius: 8px; padding: 1.5rem; margin-top: 2rem;">
-      <h4 style="color: var(--accent-color); margin: 0 0 1rem 0; text-align: center;">
-        <i class="fas fa-chart-pie"></i> Resumo Geral
-      </h4>
-      
-      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; text-align: center;">
-        <div style="padding: 1rem; background: rgba(220, 53, 69, 0.1); border-radius: 8px; border: 1px solid #dc3545;">
-          <div style="font-size: 0.8rem; color: var(--text-light); margin-bottom: 0.5rem;">Cenário Atual</div>
-          <div style="font-size: 1.2rem; font-weight: 600; color: #dc3545;">
-            ${formatarMoedaObj(totalAporteAtual)}/mês
-          </div>
-        </div>
-        <div style="padding: 1rem; background: rgba(40, 167, 69, 0.1); border-radius: 8px; border: 1px solid #28a745;">
-          <div style="font-size: 0.8rem; color: var(--text-light); margin-bottom: 0.5rem;">Com Consultoria</div>
-          <div style="font-size: 1.2rem; font-weight: 600; color: #28a745;">
-            ${formatarMoedaObj(totalAporteConsultoria)}/mês
-          </div>
-        </div>
-      </div>
-      
-      <div style="text-align: center; margin-top: 1rem; padding: 0.8rem; background: rgba(212, 175, 55, 0.1); border-radius: 6px;">
-        <span style="color: var(--accent-color); font-size: 0.9rem;">
-          <i class="fas fa-info-circle"></i> 
-          Com a consultoria, você pode atingir seus objetivos mais rapidamente ou com menor esforço mensal.
-        </span>
-      </div>
-    </div>
-  `;
+  return html;
 }
 
 
