@@ -314,16 +314,6 @@ function createProdutoProtecaoCard(produto, index) {
         </div>
       </div>
       
-      <div class="form-group full-width" style="margin-top: 1rem;">
-        <label for="${produtoId}_observacoes" style="display: block; margin-bottom: 0.3rem; color: var(--text-gold); font-weight: 600; font-size: 0.9rem;">
-          <i class="fas fa-sticky-note"></i> Observações
-        </label>
-        <textarea id="${produtoId}_observacoes" 
-                  onchange="updateProdutoProtecaoField(${index}, 'observacoes', this.value)"
-                  rows="2"
-                  placeholder="Observações adicionais sobre o produto..."
-                  style="width: 100%; padding: 0.7rem; border: 2px solid var(--border-color); border-radius: 8px; background: var(--dark-bg); color: var(--text-light); font-size: 0.9rem; resize: vertical;">${produto.observacoes || ''}</textarea>
-      </div>
       
       ${produto.origem_patrimonio ? `
         <div style="margin-top: 0.5rem; padding: 0.5rem; background: rgba(212, 175, 55, 0.1); border-radius: 5px; font-size: 0.8rem; color: var(--text-gold);">
@@ -377,7 +367,6 @@ function addProdutoProtecao(dadosPrePreenchidos = null) {
     cobertura_doencas_graves: dadosPrePreenchidos?.cobertura_doencas_graves || 0,
     resgatavel: dadosPrePreenchidos?.resgatavel || false,
     cotou_analisou: dadosPrePreenchidos?.cotou_analisou || false,
-    observacoes: dadosPrePreenchidos?.observacoes || '',
     origem_patrimonio: dadosPrePreenchidos?.origem_patrimonio || null
   };
   
