@@ -39,23 +39,23 @@
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
       background: linear-gradient(135deg, var(--dark-bg) 0%, var(--primary-color) 100%);
       color: var(--text-light);
-      line-height: 1.6;
+      line-height: 1.5;
       min-height: 100vh;
     }
 
     .container {
       width: 100%;
       margin: 0;
-      padding: 2rem;
+      padding: 1.2rem;
       box-sizing: border-box;
     }
 
     .header {
       text-align: center;
-      margin-bottom: 1.5rem;
+      margin-bottom: 1rem;
       background: var(--surface-bg);
-      padding: 1.5rem;
-      border-radius: 15px;
+      padding: 1rem 1.2rem;
+      border-radius: 12px;
       box-shadow: 0 10px 30px var(--shadow-color);
       border: 2px solid var(--border-color);
       width: 100%;
@@ -64,23 +64,23 @@
 
     .header h1 {
       color: var(--accent-color);
-      font-size: 2.5rem;
-      margin-bottom: 0.5rem;
+      font-size: 2rem;
+      margin-bottom: 0.3rem;
       font-weight: 700;
       text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
     }
 
     .header .subtitle {
       color: var(--text-light);
-      font-size: 1.1rem;
-      margin-bottom: 1rem;
+      font-size: 1rem;
+      margin-bottom: 0.5rem;
     }
 
     .canva-container {
-      margin: 1.5rem 0;
+      margin: 1rem 0;
       background: var(--surface-bg);
-      padding: 1rem;
-      border-radius: 15px;
+      padding: 0.8rem;
+      border-radius: 12px;
       box-shadow: 0 10px 30px var(--shadow-color);
       border: 2px solid var(--border-color);
       width: 100%;
@@ -128,10 +128,10 @@
 
     .form-container {
       background: var(--surface-bg);
-      padding: 1.5rem;
-      border-radius: 15px;
+      padding: 1rem 1.2rem;
+      border-radius: 12px;
       box-shadow: 0 10px 30px var(--shadow-color);
-      margin-top: 1.5rem;
+      margin-top: 1rem;
       border: 2px solid var(--border-color);
       width: 100%;
       box-sizing: border-box;
@@ -139,17 +139,17 @@
 
     .form-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-      gap: 1rem;
-      margin-bottom: 1rem;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 0.6rem;
+      margin-bottom: 0.6rem;
       width: 100%;
     }
 
     .form-grid-3 {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: 1rem;
-      margin-bottom: 1rem;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 0.6rem;
+      margin-bottom: 0.6rem;
       width: 100%;
     }
 
@@ -169,23 +169,36 @@
 
     .form-group label {
       display: block;
-      margin-bottom: 0.3rem;
+      margin-bottom: 0.2rem;
       color: var(--text-gold);
       font-weight: 600;
-      font-size: 0.9rem;
+      font-size: 0.8rem;
     }
 
     .form-group input,
     .form-group select {
       width: 100%;
-      padding: 0.7rem;
-      border: 2px solid var(--border-color);
-      border-radius: 8px;
+      padding: 0.5rem 0.6rem;
+      border: 1.5px solid var(--border-color);
+      border-radius: 6px;
       background: var(--dark-bg);
       color: var(--text-light);
-      font-size: 0.9rem;
+      font-size: 0.85rem;
       transition: all 0.3s ease;
       box-sizing: border-box;
+    }
+
+    .form-group textarea {
+      width: 100%;
+      padding: 0.5rem 0.6rem;
+      border: 1.5px solid var(--border-color);
+      border-radius: 6px;
+      background: var(--dark-bg);
+      color: var(--text-light);
+      font-size: 0.85rem;
+      transition: all 0.3s ease;
+      box-sizing: border-box;
+      resize: vertical;
     }
 
     .form-group input:focus,
@@ -475,9 +488,9 @@
       background: linear-gradient(135deg, var(--secondary-color), var(--warning-color));
       color: var(--dark-bg);
       border: none;
-      padding: 1.2rem 3rem;
-      border-radius: 10px;
-      font-size: 1.2rem;
+      padding: 0.9rem 2.5rem;
+      border-radius: 8px;
+      font-size: 1.1rem;
       font-weight: 600;
       cursor: pointer;
       transition: all 0.3s ease;
@@ -504,9 +517,9 @@
 
     .save-btn-container {
       text-align: center;
-      margin-top: 2rem;
-      margin-bottom: 1.5rem;
-      padding: 1.5rem;
+      margin-top: 1.2rem;
+      margin-bottom: 1rem;
+      padding: 1rem;
       width: 100%;
       box-sizing: border-box;
     }
@@ -515,9 +528,9 @@
       background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
       color: var(--dark-bg);
       border: none;
-      padding: 0.8rem 1.5rem;
-      border-radius: 8px;
-      font-size: 0.9rem;
+      padding: 0.5rem 1.2rem;
+      border-radius: 6px;
+      font-size: 0.85rem;
       font-weight: 600;
       cursor: pointer;
       transition: all 0.3s ease;
@@ -531,10 +544,10 @@
 
     .pessoa-card {
       background: var(--dark-bg);
-      border: 2px solid var(--border-color);
-      border-radius: 10px;
-      padding: 1.2rem;
-      margin-bottom: 1rem;
+      border: 1.5px solid var(--border-color);
+      border-radius: 8px;
+      padding: 0.8rem;
+      margin-bottom: 0.6rem;
       position: relative;
     }
 
@@ -542,14 +555,14 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 1rem;
-      padding-bottom: 0.5rem;
+      margin-bottom: 0.5rem;
+      padding-bottom: 0.3rem;
       border-bottom: 1px solid var(--border-color);
     }
 
     .pessoa-title {
       color: var(--accent-color);
-      font-size: 1.1rem;
+      font-size: 0.95rem;
       font-weight: 600;
       margin: 0;
     }
@@ -567,7 +580,7 @@
       justify-content: space-between;
       align-items: center;
       cursor: pointer;
-      padding: 0.5rem 0;
+      padding: 0.3rem 0;
       user-select: none;
     }
 
@@ -644,10 +657,10 @@
 
     .dependente-card {
       background: var(--dark-bg);
-      border: 2px solid var(--border-color);
-      border-radius: 10px;
-      padding: 1.2rem;
-      margin-bottom: 1rem;
+      border: 1.5px solid var(--border-color);
+      border-radius: 8px;
+      padding: 0.8rem;
+      margin-bottom: 0.6rem;
       position: relative;
     }
 
@@ -655,14 +668,14 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 1rem;
-      padding-bottom: 0.5rem;
+      margin-bottom: 0.5rem;
+      padding-bottom: 0.3rem;
       border-bottom: 1px solid var(--border-color);
     }
 
     .dependente-title {
       color: var(--accent-color);
-      font-size: 1.1rem;
+      font-size: 0.95rem;
       font-weight: 600;
       margin: 0;
     }
@@ -685,10 +698,10 @@
 
     .patrimonio-card {
       background: var(--dark-bg);
-      border: 2px solid var(--border-color);
-      border-radius: 10px;
-      padding: 1.2rem;
-      margin-bottom: 1rem;
+      border: 1.5px solid var(--border-color);
+      border-radius: 8px;
+      padding: 0.8rem;
+      margin-bottom: 0.6rem;
       position: relative;
     }
 
@@ -696,14 +709,14 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 1rem;
-      padding-bottom: 0.5rem;
+      margin-bottom: 0.5rem;
+      padding-bottom: 0.3rem;
       border-bottom: 1px solid var(--border-color);
     }
 
     .patrimonio-title {
       color: var(--accent-color);
-      font-size: 1.1rem;
+      font-size: 0.95rem;
       font-weight: 600;
       margin: 0;
     }
@@ -715,13 +728,13 @@
 
     .patrimonio-total {
       background: var(--dark-bg);
-      border: 2px solid var(--accent-color);
+      border: 1.5px solid var(--accent-color);
       color: var(--accent-color);
-      padding: 0.8rem 1.2rem;
-      border-radius: 10px;
-      font-size: 1.1rem;
+      padding: 0.4rem 0.8rem;
+      border-radius: 8px;
+      font-size: 0.9rem;
       font-weight: 700;
-      min-width: 180px;
+      min-width: 140px;
       text-align: center;
       box-shadow: 0 2px 8px rgba(255, 193, 7, 0.2);
     }
@@ -773,18 +786,19 @@
 
     .checkbox-group {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: 0.5rem;
-      margin-top: 0.5rem;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 0.3rem;
+      margin-top: 0.3rem;
     }
 
     .checkbox-item {
       display: flex;
       align-items: center;
-      gap: 0.5rem;
-      padding: 0.3rem;
-      border-radius: 5px;
+      gap: 0.4rem;
+      padding: 0.2rem 0.3rem;
+      border-radius: 4px;
       background: rgba(255, 255, 255, 0.05);
+      font-size: 0.82rem;
     }
 
     .checkbox-item input[type="checkbox"] {
@@ -1957,6 +1971,16 @@
     // Expor patrimonios globalmente para o módulo de sucessão
     window.patrimonios = patrimonios;
     
+    // Função para obter patrimônios físicos (usada pelo módulo de proteção)
+    window.getPatrimoniosFisicos = function() { return patrimonios; };
+    
+    // Função para atualizar vencimento do seguro no patrimônio (chamada pelo módulo de proteção)
+    window.atualizarPatrimonioVencimento = function(index, vencimento) {
+      if (patrimonios[index]) {
+        patrimonios[index].seguro_vencimento = vencimento;
+      }
+    };
+    
     // Funções utilitárias
     function showError(message) {
       errorContainer.innerHTML = `<div class="error-message"><i class="fas fa-exclamation-triangle"></i> ${message}</div>`;
@@ -2941,12 +2965,14 @@ console.log('=== FIM DEBUG PESSOAS COM RENDA ===');
 
             <div class="form-group" id="${patrimonioId}_seguro_vencimento_group" style="display: ${patrimonio.seguro ? 'block' : 'none'};">
               <label for="${patrimonioId}_seguro_vencimento">
-                <i class="fas fa-calendar"></i> Vencimento do Seguro
+                <i class="fas fa-calendar"></i> Vencimento do Seguro <small style="color: var(--text-light); font-weight: 400;">(definido em Proteção)</small>
               </label>
               <input type="date" 
                      id="${patrimonioId}_seguro_vencimento" 
                      name="${patrimonioId}_seguro_vencimento" 
-                     value="${patrimonio.seguro_vencimento || ''}">
+                     value="${patrimonio.seguro_vencimento || ''}"
+                     readonly
+                     style="opacity: 0.7; cursor: not-allowed;">
             </div>
 
             <div class="form-group" id="${patrimonioId}_saldo_devedor_group" style="display: ${!patrimonio.quitado ? 'block' : 'none'};">
@@ -3122,18 +3148,17 @@ console.log('=== FIM DEBUG PESSOAS COM RENDA ===');
         if (temSeguro && !tinhaSeguroAntes) {
           // Marcou SIM - criar produto de proteção automaticamente
           if (window.criarProdutoProtecaoDePatrimonio) {
-            const vencimentoInput = document.getElementById(`${patrimonioId}_seguro_vencimento`);
-            const patrimonioAtualizado = {
-              ...patrimonios[index],
-              seguro_vencimento: vencimentoInput ? vencimentoInput.value : ''
-            };
-            window.criarProdutoProtecaoDePatrimonio(patrimonioAtualizado);
+            window.criarProdutoProtecaoDePatrimonio(patrimonios[index]);
           }
         } else if (!temSeguro && tinhaSeguroAntes) {
-          // Marcou NÃO - remover produto de proteção vinculado
+          // Marcou NÃO - remover produto de proteção vinculado e limpar vencimento
           if (window.removerProdutoProtecaoDePatrimonio) {
             window.removerProdutoProtecaoDePatrimonio(patrimonios[index]);
           }
+          // Limpar o campo de vencimento readonly
+          const vencimentoInput = document.getElementById(`${patrimonioId}_seguro_vencimento`);
+          if (vencimentoInput) vencimentoInput.value = '';
+          patrimonios[index].seguro_vencimento = '';
         }
       }
     }
@@ -3192,15 +3217,7 @@ console.log('=== FIM DEBUG PESSOAS COM RENDA ===');
           });
         }
         
-        // Event listener para vencimento do seguro
-        const vencimentoInput = document.getElementById(`${patrimonioId}_seguro_vencimento`);
-        if (vencimentoInput) {
-          vencimentoInput.addEventListener('change', function() {
-            if (patrimonios[index]) {
-              patrimonios[index].seguro_vencimento = this.value;
-            }
-          });
-        }
+        // O campo vencimento do seguro é readonly - sincronizado via produtos de proteção
         
         // Event listener para saldo devedor
         const saldoDevedorInput = document.getElementById(`${patrimonioId}_saldo_devedor`);
