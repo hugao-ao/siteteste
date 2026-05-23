@@ -7,7 +7,7 @@ import { supabase } from './supabase.js';
 // Dados dos objetivos
 let objetivos = [];
 let objetivoCounter = 0;
-let analiseVisivel = false;
+// analiseVisivel removido - análises sempre visíveis
 
 // Variáveis de mercado (carregadas do Supabase)
 let variaveisMercado = {
@@ -579,7 +579,10 @@ function addObjetivoAposentadoria() {
     tipo: 'aposentadoria',
     descricao: `Aposentadoria de ${primeiraPessoa.nome}`,
     prazo_pessoa: primeiraPessoa.id,
+    prazo_tipo: 'idade', // 'idade', 'meses', 'anos', 'data'
     prazo_idade: 65,
+    prazo_meses: 360,
+    prazo_data: null,
     renda_anual: calcularRendaAnualPessoa(primeiraPessoa.id),
     responsaveis: [primeiraPessoa.id],
     valor_inicial: 0,
@@ -802,10 +805,7 @@ function renderObjetivos() {
   const container = document.getElementById('objetivos-container');
   if (!container) return;
   
-  if (analiseVisivel) {
-    renderAnaliseObjetivos(container);
-    return;
-  }
+  // Análises são sempre renderizadas abaixo da edição
   
   const pessoas = getPessoasDisponiveis();
   const patrimonioObjetivos = calcularPatrimonioParaObjetivos();
@@ -920,20 +920,33 @@ function renderObjetivos() {
       ${objetivosNormais.map(obj => renderCardObjetivo(obj, pessoas, objetivosNormais, saldoRestante)).join('')}
     </div>
     
-    <!-- Botão Analisar -->
-    <div style="text-align: center; margin-top: 2rem;">
-      <button onclick="toggleAnalise()" style="background: linear-gradient(135deg, var(--accent-color), #b8860b); color: var(--dark-bg); border: none; padding: 1rem 2rem; border-radius: 8px; cursor: pointer; font-size: 1rem; font-weight: 600;">
-        <i class="fas fa-chart-bar"></i> Analisar Objetivos e Aposentadorias
-      </button>
-    </div>
+    <!-- Análises (sempre visíveis abaixo) -->
+    <div id="analises-objetivos-container"></div>
   `;
+  
+  // Renderizar análises abaixo após o DOM estar pronto
+  setTimeout(() => renderAnalisesObjetivosInline(), 0);
 }
 
 function renderCardAposentadoria(obj, pessoas, patrimonioAposentadoriaPorPessoa) {
   const pessoaSelecionada = pessoas.find(p => p.id === obj.prazo_pessoa);
   const idadeAtual = pessoaSelecionada ? pessoaSelecionada.idade : 30;
-  const idadeAposentadoria = obj.prazo_idade || 65;
-  const anosRestantes = Math.max(0, idadeAposentadoria - idadeAtual);
+  
+  // Calcular prazo baseado no prazo_tipo
+  let anosRestantes;
+  const prazoTipo = obj.prazo_tipo || 'idade';
+  if (prazoTipo === 'data' && obj.prazo_data) {
+    const dataAlvo = new Date(obj.prazo_data);
+    const hoje = new Date();
+    anosRestantes = Math.max(0, Math.round((dataAlvo - hoje) / (1000 * 60 * 60 * 24 * 365.25)));
+  } else if (prazoTipo === 'meses') {
+    anosRestantes = Math.max(0, Math.round((obj.prazo_meses || 360) / 12));
+  } else if (prazoTipo === 'anos') {
+    anosRestantes = Math.max(0, Math.round((obj.prazo_meses || 360) / 12));
+  } else {
+    const idadeAposentadoria = obj.prazo_idade || 65;
+    anosRestantes = Math.max(0, idadeAposentadoria - idadeAtual);
+  }
   const patrimonioAtual = patrimonioAposentadoriaPorPessoa[obj.prazo_pessoa] || 0;
   const rendaAnual = obj.renda_anual || 0;
   const rentAnual = variaveisMercado.rent_anual_aposentadoria || 6.0;
@@ -954,7 +967,7 @@ function renderCardAposentadoria(obj, pessoas, patrimonioAposentadoriaPorPessoa)
         </button>
       </div>
       
-      <div style="display: grid; grid-template-columns: 1fr 120px 180px 180px; gap: 0.8rem; margin-bottom: 0.6rem;">
+      <div style="display: grid; grid-template-columns: 1fr 150px 180px 180px; gap: 0.8rem; margin-bottom: 0.6rem;">
         <div>
           <label style="font-size: 0.7rem; color: #28a745; display: block; margin-bottom: 0.2rem;">
             <i class="fas fa-user-check"></i> De quem é a aposentadoria? *
@@ -967,15 +980,34 @@ function renderCardAposentadoria(obj, pessoas, patrimonioAposentadoriaPorPessoa)
           </select>
         </div>
         
-        <div>
+        <div style="overflow: hidden;">
           <label style="font-size: 0.7rem; color: #28a745; display: block; margin-bottom: 0.2rem;">
-            <i class="fas fa-calendar-alt"></i> Aposentar aos
+            <i class="fas fa-calendar-alt"></i> Prazo
           </label>
-          <div style="display: flex; align-items: center; gap: 0.3rem;">
-            <input type="number" value="${idadeAposentadoria}" min="30" max="100"
-                   onchange="updateObjetivoField(${obj.id}, 'prazo_idade', parseInt(this.value))"
-                   style="width: 60px; padding: 0.4rem; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 4px; color: var(--text-light); font-size: 0.85rem;">
-            <span style="color: var(--text-light); font-size: 0.8rem;">anos</span>
+          <div style="display: flex; flex-direction: column; gap: 0.2rem;">
+            <select onchange="updateObjetivoField(${obj.id}, 'prazo_tipo', this.value); renderObjetivos();"
+                    style="width: 100%; padding: 0.4rem; background: #0d3320; border: 1px solid var(--border-color); border-radius: 4px; color: #e8e8e8; font-size: 0.8rem;">
+              <option value="idade" ${(obj.prazo_tipo || 'idade') === 'idade' ? 'selected' : ''} style="background: #0d3320; color: #e8e8e8;">Idade</option>
+              <option value="meses" ${obj.prazo_tipo === 'meses' ? 'selected' : ''} style="background: #0d3320; color: #e8e8e8;">Meses</option>
+              <option value="anos" ${obj.prazo_tipo === 'anos' ? 'selected' : ''} style="background: #0d3320; color: #e8e8e8;">Anos</option>
+              <option value="data" ${obj.prazo_tipo === 'data' ? 'selected' : ''} style="background: #0d3320; color: #e8e8e8;">Data</option>
+            </select>
+            ${(obj.prazo_tipo || 'idade') === 'data' ? `
+              <input type="date" value="${obj.prazo_data || ''}"
+                     onchange="updateObjetivoField(${obj.id}, 'prazo_data', this.value)"
+                     style="width: 100%; padding: 0.4rem; background: #0d3320; border: 1px solid var(--border-color); border-radius: 4px; color: #e8e8e8; font-size: 0.8rem;">
+            ` : (obj.prazo_tipo || 'idade') === 'idade' ? `
+              <div style="display: flex; align-items: center; gap: 0.3rem;">
+                <input type="number" value="${obj.prazo_idade || 65}" min="30" max="100"
+                       onchange="updateObjetivoField(${obj.id}, 'prazo_idade', parseInt(this.value))"
+                       style="width: 60px; padding: 0.4rem; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 4px; color: var(--text-light); font-size: 0.85rem;">
+                <span style="color: var(--text-light); font-size: 0.8rem;">anos</span>
+              </div>
+            ` : `
+              <input type="number" value="${obj.prazo_tipo === 'anos' ? Math.round((obj.prazo_meses || 360) / 12) : (obj.prazo_meses || 360)}" min="1" max="${obj.prazo_tipo === 'anos' ? 50 : 600}"
+                     onchange="updateObjetivoField(${obj.id}, 'prazo_meses', ${obj.prazo_tipo === 'anos' ? 'parseInt(this.value) * 12' : 'parseInt(this.value)'})"
+                     style="width: 100%; padding: 0.4rem; background: #0d3320; border: 1px solid var(--border-color); border-radius: 4px; color: #e8e8e8; font-size: 0.8rem;">
+            `}
           </div>
         </div>
         
@@ -1072,13 +1104,12 @@ function renderCardObjetivo(obj, pessoas, todosObjetivos, saldoDisponivel) {
           <label style="font-size: 0.7rem; color: var(--accent-color); display: block; margin-bottom: 0.2rem;">
             <i class="fas fa-users"></i> De quem é? *
           </label>
-          <select multiple onchange="updateObjetivoField(${obj.id}, 'responsaveis', Array.from(this.selectedOptions).map(o => o.value))"
-                  style="width: 100%; padding: 0.2rem; background: #0d3320; border: 1px solid var(--border-color); border-radius: 4px; color: #e8e8e8; min-height: 50px; font-size: 0.8rem;">
+          <select onchange="updateObjetivoField(${obj.id}, 'responsaveis', [this.value])"
+                  style="width: 100%; padding: 0.4rem; background: #0d3320; border: 1px solid var(--border-color); border-radius: 4px; color: #e8e8e8; font-size: 0.8rem;">
             ${pessoas.map(p => `
               <option value="${p.id}" ${(obj.responsaveis || []).includes(p.id) ? 'selected' : ''} style="background: #0d3320; color: #e8e8e8;">${p.nome} (${p.tipo})</option>
             `).join('')}
           </select>
-          <div style="font-size: 0.6rem; color: var(--text-light); opacity: 0.7; margin-top: 0.1rem;">Ctrl/Cmd para múltiplos</div>
         </div>
         
         <div style="overflow: hidden;">
@@ -1169,49 +1200,57 @@ function renderCardObjetivo(obj, pessoas, todosObjetivos, saldoDisponivel) {
   `;
 }
 
-function toggleAnalise() {
-  analiseVisivel = !analiseVisivel;
-  renderObjetivos();
-}
+// toggleAnalise removido - análises sempre visíveis abaixo
 
 
 // ========================================
 // ANÁLISE DE OBJETIVOS
 // ========================================
 
-function renderAnaliseObjetivos(container) {
+function renderAnalisesObjetivosInline() {
+  const container = document.getElementById('analises-objetivos-container');
+  if (!container) return;
+  
   const objetivosAposentadoria = objetivos.filter(o => o.tipo === 'aposentadoria');
   const objetivosNormais = objetivos.filter(o => o.tipo !== 'aposentadoria')
     .sort((a, b) => a.prioridade - b.prioridade);
   
+  // Só mostrar análises se houver pelo menos 1 objetivo com dados
+  const temDados = objetivosAposentadoria.some(o => o.renda_anual > 0) || objetivosNormais.some(o => o.meta_acumulo > 0 || o.valor_final > 0);
+  if (!temDados) {
+    container.innerHTML = '';
+    return;
+  }
+  
   container.innerHTML = `
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-      <h3 style="color: var(--accent-color); margin: 0;">
+    <div style="margin-top: 2rem; padding-top: 1.5rem; border-top: 2px solid rgba(212, 175, 55, 0.3);">
+      <h3 style="color: var(--accent-color); margin: 0 0 1.5rem 0;">
         <i class="fas fa-chart-bar"></i> Análise de Objetivos e Aposentadorias
       </h3>
-      <button onclick="toggleAnalise()" style="background: var(--card-bg); color: var(--accent-color); border: 1px solid var(--accent-color); padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer;">
-        <i class="fas fa-arrow-left"></i> Voltar
-      </button>
+      
+      <!-- Análise das Aposentadorias -->
+      ${objetivosAposentadoria.length > 0 ? `
+      <div style="margin-bottom: 2rem;">
+        <h4 style="color: #28a745; margin-bottom: 1rem;">
+          <i class="fas fa-umbrella-beach"></i> Análise das Aposentadorias
+        </h4>
+        ${objetivosAposentadoria.map(obj => renderAnaliseAposentadoria(obj)).join('')}
+      </div>
+      ` : ''}
+      
+      <!-- Análise dos Objetivos -->
+      ${objetivosNormais.length > 0 ? `
+      <div style="margin-bottom: 2rem;">
+        <h4 style="color: var(--accent-color); margin-bottom: 1rem;">
+          <i class="fas fa-bullseye"></i> Análise dos Objetivos
+        </h4>
+        ${objetivosNormais.map(obj => renderAnaliseObjetivo(obj, objetivosNormais)).join('')}
+      </div>
+      ` : ''}
+      
+      <!-- Resumo Geral -->
+      ${renderResumoGeral(objetivosAposentadoria, objetivosNormais)}
     </div>
-    
-    <!-- Análise das Aposentadorias -->
-    <div style="margin-bottom: 2rem;">
-      <h4 style="color: #28a745; margin-bottom: 1rem;">
-        <i class="fas fa-umbrella-beach"></i> Análise das Aposentadorias
-      </h4>
-      ${objetivosAposentadoria.map(obj => renderAnaliseAposentadoria(obj)).join('')}
-    </div>
-    
-    <!-- Análise dos Objetivos -->
-    <div style="margin-bottom: 2rem;">
-      <h4 style="color: var(--accent-color); margin-bottom: 1rem;">
-        <i class="fas fa-bullseye"></i> Análise dos Objetivos
-      </h4>
-      ${objetivosNormais.map(obj => renderAnaliseObjetivo(obj, objetivosNormais)).join('')}
-    </div>
-    
-    <!-- Resumo Geral -->
-    ${renderResumoGeral(objetivosAposentadoria, objetivosNormais)}
   `;
 }
 
@@ -1219,9 +1258,24 @@ function renderAnaliseAposentadoria(obj) {
   const pessoas = getPessoasDisponiveis();
   const pessoa = pessoas.find(p => p.id === obj.prazo_pessoa);
   const idadeAtual = pessoa ? pessoa.idade : 30;
-  const idadeAposentadoria = obj.prazo_idade || 65;
-  const mesesRestantes = Math.max(0, (idadeAposentadoria - idadeAtual) * 12);
   const dataNascimento = pessoa ? pessoa.dataNascimento : null;
+  
+  // Calcular meses restantes baseado no prazo_tipo
+  let mesesRestantes;
+  const prazoTipo = obj.prazo_tipo || 'idade';
+  if (prazoTipo === 'data' && obj.prazo_data) {
+    const dataAlvo = new Date(obj.prazo_data);
+    const hoje = new Date();
+    mesesRestantes = Math.max(0, Math.round((dataAlvo - hoje) / (1000 * 60 * 60 * 24 * 30.44)));
+  } else if (prazoTipo === 'meses') {
+    mesesRestantes = obj.prazo_meses || 360;
+  } else if (prazoTipo === 'anos') {
+    mesesRestantes = (obj.prazo_meses || 360);
+  } else {
+    // idade (padrão)
+    const idadeAposentadoria = obj.prazo_idade || 65;
+    mesesRestantes = Math.max(0, (idadeAposentadoria - idadeAtual) * 12);
+  }
   
   const patrimonioAtual = calcularPatrimonioAposentadoriaPorPessoa(obj.prazo_pessoa);
   const rendaAnual = obj.renda_anual || 0;
@@ -1718,7 +1772,7 @@ window.addObjetivoNormal = addObjetivoNormal;
 window.deleteObjetivo = deleteObjetivo;
 window.updateObjetivoField = updateObjetivoField;
 window.updateObjetivoPrioridade = updateObjetivoPrioridade;
-window.toggleAnalise = toggleAnalise;
+window.renderAnalisesObjetivosInline = renderAnalisesObjetivosInline;
 window.formatarInputMoedaObj = formatarInputMoedaObj;
 window.getObjetivosData = getObjetivosData;
 window.setObjetivosData = setObjetivosData;
