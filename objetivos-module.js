@@ -254,7 +254,12 @@ function atualizarDisplaysPatrimonio() {
   if (displaySaldo) {
     displaySaldo.textContent = formatarMoedaObj(saldoRestante);
     displaySaldo.style.color = saldoRestante >= 0 ? '#28a745' : '#dc3545';
-    displaySaldo.parentElement.style.borderColor = saldoRestante >= 0 ? '#28a745' : '#dc3545';
+    // parentElement é o span container com border
+    const saldoContainer = displaySaldo.parentElement;
+    if (saldoContainer) {
+      saldoContainer.style.borderColor = saldoRestante >= 0 ? 'rgba(40, 167, 69, 0.3)' : 'rgba(220, 53, 69, 0.3)';
+      saldoContainer.style.background = saldoRestante >= 0 ? 'rgba(40, 167, 69, 0.1)' : 'rgba(220, 53, 69, 0.1)';
+    }
   }
 }
 
@@ -812,85 +817,68 @@ function renderObjetivos() {
   });
   
   container.innerHTML = `
-    <!-- Variáveis de Mercado -->
-    <div style="background: var(--dark-bg); border: 1px solid var(--accent-color); border-radius: 8px; padding: 1rem; margin-bottom: 1.5rem;">
-      <h4 style="color: var(--accent-color); margin: 0 0 0.8rem 0; font-size: 0.9rem;">
-        <i class="fas fa-chart-line"></i> Variáveis de Mercado
-        ${variaveisMercado.ultima_atualizacao ? `<span style="font-size: 0.7rem; opacity: 0.7; margin-left: 0.5rem;">Atualizado: ${formatarData(variaveisMercado.ultima_atualizacao)}</span>` : ''}
-      </h4>
-      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 0.8rem;">
-        <div style="text-align: center; padding: 0.5rem; background: rgba(212, 175, 55, 0.1); border-radius: 6px;">
-          <div style="font-size: 0.65rem; color: var(--text-light);">SELIC</div>
-          <div style="font-size: 0.9rem; font-weight: 600; color: var(--accent-color);">${formatarPercentual(variaveisMercado.selic)}</div>
-        </div>
-        <div style="text-align: center; padding: 0.5rem; background: rgba(40, 167, 69, 0.1); border-radius: 6px;">
-          <div style="font-size: 0.65rem; color: var(--text-light);">CDI</div>
-          <div style="font-size: 0.9rem; font-weight: 600; color: #28a745;">${formatarPercentual(variaveisMercado.cdi)}</div>
-        </div>
-        <div style="text-align: center; padding: 0.5rem; background: rgba(220, 53, 69, 0.1); border-radius: 6px;">
-          <div style="font-size: 0.65rem; color: var(--text-light);">IPCA</div>
-          <div style="font-size: 0.9rem; font-weight: 600; color: #dc3545;">${formatarPercentual(variaveisMercado.ipca)}</div>
-        </div>
-        <div style="text-align: center; padding: 0.5rem; background: rgba(23, 162, 184, 0.1); border-radius: 6px;">
-          <div style="font-size: 0.65rem; color: var(--text-light);">Rent. Anual Aposent.</div>
-          <div style="font-size: 0.9rem; font-weight: 600; color: #17a2b8;">${formatarPercentual(variaveisMercado.rent_anual_aposentadoria)}</div>
-        </div>
-      </div>
-    </div>
-    
-    <!-- Aportes Totais Disponíveis -->
-    <div style="background: var(--dark-bg); border: 1px solid #17a2b8; border-radius: 8px; padding: 1rem; margin-bottom: 1.5rem;">
-      <h4 style="color: #17a2b8; margin: 0 0 0.8rem 0; font-size: 0.9rem;">
-        <i class="fas fa-piggy-bank"></i> Aportes Totais Disponíveis (do Patrimônio Líquido)
-      </h4>
-      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-        <div style="text-align: center; padding: 0.8rem; background: rgba(23, 162, 184, 0.1); border-radius: 6px; border: 1px solid rgba(23, 162, 184, 0.3);">
-          <div style="font-size: 0.75rem; color: var(--text-light);">Total Mensal</div>
-          <div style="font-size: 1.2rem; font-weight: 600; color: #17a2b8;">${formatarMoedaObj(aportesTotais.mensal)}</div>
-        </div>
-        <div style="text-align: center; padding: 0.8rem; background: rgba(23, 162, 184, 0.1); border-radius: 6px; border: 1px solid rgba(23, 162, 184, 0.3);">
-          <div style="font-size: 0.75rem; color: var(--text-light);">Total Anual</div>
-          <div style="font-size: 1.2rem; font-weight: 600; color: #17a2b8;">${formatarMoedaObj(aportesTotais.anual)}</div>
+    <!-- Painel Compacto de Informações -->
+    <div style="background: var(--dark-bg); border: 1px solid var(--accent-color); border-radius: 8px; padding: 0.8rem; margin-bottom: 1.5rem;">
+      <!-- Linha 1: Variáveis de Mercado -->
+      <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.6rem; padding-bottom: 0.6rem; border-bottom: 1px solid rgba(212, 175, 55, 0.2); flex-wrap: wrap;">
+        <span style="font-size: 0.75rem; color: var(--accent-color); font-weight: 600; white-space: nowrap;">
+          <i class="fas fa-chart-line"></i> Mercado
+          ${variaveisMercado.ultima_atualizacao ? `<span style="font-size: 0.6rem; opacity: 0.6;">(${formatarData(variaveisMercado.ultima_atualizacao)})</span>` : ''}
+        </span>
+        <div style="display: flex; gap: 0.4rem; flex: 1; justify-content: flex-end; flex-wrap: wrap;">
+          <span style="padding: 0.2rem 0.5rem; background: rgba(212, 175, 55, 0.1); border-radius: 4px; font-size: 0.75rem;">
+            <span style="color: var(--text-light); font-size: 0.6rem;">SELIC</span> <span style="color: var(--accent-color); font-weight: 600;">${formatarPercentual(variaveisMercado.selic)}</span>
+          </span>
+          <span style="padding: 0.2rem 0.5rem; background: rgba(40, 167, 69, 0.1); border-radius: 4px; font-size: 0.75rem;">
+            <span style="color: var(--text-light); font-size: 0.6rem;">CDI</span> <span style="color: #28a745; font-weight: 600;">${formatarPercentual(variaveisMercado.cdi)}</span>
+          </span>
+          <span style="padding: 0.2rem 0.5rem; background: rgba(220, 53, 69, 0.1); border-radius: 4px; font-size: 0.75rem;">
+            <span style="color: var(--text-light); font-size: 0.6rem;">IPCA</span> <span style="color: #dc3545; font-weight: 600;">${formatarPercentual(variaveisMercado.ipca)}</span>
+          </span>
+          <span style="padding: 0.2rem 0.5rem; background: rgba(23, 162, 184, 0.1); border-radius: 4px; font-size: 0.75rem;">
+            <span style="color: var(--text-light); font-size: 0.6rem;">Rent.Apos.</span> <span style="color: #17a2b8; font-weight: 600;">${formatarPercentual(variaveisMercado.rent_anual_aposentadoria)}</span>
+          </span>
         </div>
       </div>
-    </div>
-    
-    <!-- Patrimônio para Objetivos -->
-    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 1.5rem;">
-      <div style="background: var(--dark-bg); border: 1px solid var(--accent-color); border-radius: 8px; padding: 1rem; text-align: center;">
-        <div style="font-size: 0.75rem; color: var(--text-light);">Patrimônio Líquido (exceto Aposentadoria)</div>
-        <div id="patrimonio-objetivos-display" style="font-size: 1.2rem; font-weight: 600; color: var(--accent-color);">${formatarMoedaObj(patrimonioObjetivos)}</div>
+      
+      <!-- Linha 2: Aportes + Patrimônio + Saldo -->
+      <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;${objetivosAposentadoria.length > 0 ? ' margin-bottom: 0.6rem; padding-bottom: 0.6rem; border-bottom: 1px solid rgba(212, 175, 55, 0.2);' : ''}">
+        <span style="padding: 0.2rem 0.5rem; background: rgba(23, 162, 184, 0.1); border: 1px solid rgba(23, 162, 184, 0.3); border-radius: 4px; font-size: 0.75rem;">
+          <span style="color: var(--text-light); font-size: 0.6rem;">Aporte/Mês</span> <span style="color: #17a2b8; font-weight: 600;">${formatarMoedaObj(aportesTotais.mensal)}</span>
+        </span>
+        <span style="padding: 0.2rem 0.5rem; background: rgba(23, 162, 184, 0.1); border: 1px solid rgba(23, 162, 184, 0.3); border-radius: 4px; font-size: 0.75rem;">
+          <span style="color: var(--text-light); font-size: 0.6rem;">Aporte/Ano</span> <span style="color: #17a2b8; font-weight: 600;">${formatarMoedaObj(aportesTotais.anual)}</span>
+        </span>
+        <span style="flex: 1;"></span>
+        <span style="padding: 0.2rem 0.5rem; background: rgba(212, 175, 55, 0.1); border: 1px solid rgba(212, 175, 55, 0.3); border-radius: 4px; font-size: 0.75rem;">
+          <span style="color: var(--text-light); font-size: 0.6rem;">PL (s/ Apos.)</span> <span id="patrimonio-objetivos-display" style="color: var(--accent-color); font-weight: 600;">${formatarMoedaObj(patrimonioObjetivos)}</span>
+        </span>
+        <span style="padding: 0.2rem 0.5rem; background: rgba(212, 175, 55, 0.1); border: 1px solid rgba(212, 175, 55, 0.3); border-radius: 4px; font-size: 0.75rem;">
+          <span style="color: var(--text-light); font-size: 0.6rem;">Alocado</span> <span id="valor-alocado-display" style="color: var(--accent-color); font-weight: 600;">${formatarMoedaObj(valorAlocado)}</span>
+        </span>
+        <span style="padding: 0.2rem 0.5rem; background: rgba(${saldoRestante >= 0 ? '40, 167, 69' : '220, 53, 69'}, 0.1); border: 1px solid ${saldoRestante >= 0 ? 'rgba(40, 167, 69, 0.3)' : 'rgba(220, 53, 69, 0.3)'}; border-radius: 4px; font-size: 0.75rem;">
+          <span style="color: var(--text-light); font-size: 0.6rem;">Saldo</span> <span id="saldo-disponivel-display" style="color: ${saldoRestante >= 0 ? '#28a745' : '#dc3545'}; font-weight: 600;">${formatarMoedaObj(saldoRestante)}</span>
+        </span>
       </div>
-      <div style="background: var(--dark-bg); border: 1px solid var(--accent-color); border-radius: 8px; padding: 1rem; text-align: center;">
-        <div style="font-size: 0.75rem; color: var(--text-light);">Já Alocado em Objetivos</div>
-        <div id="valor-alocado-display" style="font-size: 1.2rem; font-weight: 600; color: var(--accent-color);">${formatarMoedaObj(valorAlocado)}</div>
-      </div>
-      <div style="background: var(--dark-bg); border: 1px solid ${saldoRestante >= 0 ? '#28a745' : '#dc3545'}; border-radius: 8px; padding: 1rem; text-align: center;">
-        <div style="font-size: 0.75rem; color: var(--text-light);">Saldo Disponível</div>
-        <div id="saldo-disponivel-display" style="font-size: 1.2rem; font-weight: 600; color: ${saldoRestante >= 0 ? '#28a745' : '#dc3545'};">${formatarMoedaObj(saldoRestante)}</div>
-      </div>
-    </div>
-    
-    <!-- Patrimônio Destinado para Aposentadoria (só pessoas com metas cadastradas) -->
-    ${objetivosAposentadoria.length > 0 ? `
-    <div style="background: var(--dark-bg); border: 1px solid #28a745; border-radius: 8px; padding: 1rem; margin-bottom: 1.5rem;">
-      <h4 style="color: #28a745; margin: 0 0 0.8rem 0; font-size: 0.9rem;">
-        <i class="fas fa-seedling"></i> Patrimônio Destinado para Aposentadoria
-      </h4>
-      <div style="display: flex; flex-wrap: wrap; gap: 1rem; justify-content: center;">
+      
+      <!-- Linha 3: Patrimônio Aposentadoria (só se houver metas) -->
+      ${objetivosAposentadoria.length > 0 ? `
+      <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+        <span style="font-size: 0.7rem; color: #28a745; font-weight: 600; white-space: nowrap;">
+          <i class="fas fa-seedling"></i> Patrim. Aposent.
+        </span>
         ${objetivosAposentadoria.map(obj => {
           const pessoa = pessoas.find(p => p.id === obj.prazo_pessoa);
           const nomePessoa = pessoa ? pessoa.nome : 'N/A';
           const patrimonio = patrimonioAposentadoriaPorPessoa[obj.prazo_pessoa] || 0;
           return `
-          <div style="text-align: center; padding: 0.5rem 1rem; background: rgba(40, 167, 69, 0.1); border-radius: 6px; min-width: 120px;">
-            <div style="font-size: 0.7rem; color: var(--text-light);">${nomePessoa}</div>
-            <div style="font-size: 0.9rem; font-weight: 600; color: #28a745;">${formatarMoedaObj(patrimonio)}</div>
-          </div>`;
+          <span style="padding: 0.2rem 0.5rem; background: rgba(40, 167, 69, 0.1); border-radius: 4px; font-size: 0.75rem;">
+            <span style="color: var(--text-light); font-size: 0.6rem;">${nomePessoa}</span> <span style="color: #28a745; font-weight: 600;">${formatarMoedaObj(patrimonio)}</span>
+          </span>`;
         }).join('')}
       </div>
+      ` : ''}
     </div>
-    ` : ''}
     
     <!-- Metas de Aposentadoria -->
     <div style="margin-bottom: 2rem;">
