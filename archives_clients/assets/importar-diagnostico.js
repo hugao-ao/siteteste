@@ -50,7 +50,24 @@
         return null;
       }
 
-      return data[0];
+      // Parsear campos que são salvos como JSON string no banco
+      const diag = data[0];
+      const camposJson = [
+        'dividas', 'produtos_protecao', 'patrimonios_liquidos', 'patrimonios',
+        'declaracoes_ir', 'dados_sucessao', 'contas_cartoes', 'objetivos',
+        'fluxo_caixa', 'pessoas_renda', 'dependentes'
+      ];
+      camposJson.forEach(campo => {
+        if (diag[campo] && typeof diag[campo] === 'string') {
+          try {
+            diag[campo] = JSON.parse(diag[campo]);
+          } catch (e) {
+            console.warn(`[ImportarDiag] Falha ao parsear campo ${campo}:`, e);
+          }
+        }
+      });
+
+      return diag;
     } catch (err) {
       console.error('[ImportarDiag] Erro ao buscar diagnóstico:', err);
       return null;
@@ -142,7 +159,7 @@
     // PATRIMÔNIO: Importa patrimônios líquidos e físicos
     patrimonio: function(diag) {
       const patrimoniosLiquidos = diag.patrimonios_liquidos || [];
-      const patrimoniosFisicos = diag.patrimonios_fisicos || [];
+      const patrimoniosFisicos = diag.patrimonios || [];
 
       if (patrimoniosLiquidos.length === 0 && patrimoniosFisicos.length === 0) {
         return { items: [], mensagem: 'Nenhum patrimônio encontrado no diagnóstico.' };
@@ -348,7 +365,7 @@
 
     // SIMULADOR: Importa dados de patrimônios físicos e fluxo para cenários
     simulador: function(diag) {
-      const patrimoniosFisicos = diag.patrimonios_fisicos || [];
+      const patrimoniosFisicos = diag.patrimonios || [];
       const patrimoniosLiquidos = diag.patrimonios_liquidos || [];
       const fluxoData = diag.fluxo_caixa || {};
 
