@@ -1538,6 +1538,14 @@
             </div>
           </div>
 
+          <!-- Observações: Dados Pessoais -->
+          <div class="form-group full-width" style="margin-top: 1.5rem;">
+            <label for="obs_dados_pessoais">
+              <i class="fas fa-sticky-note"></i> Observações - Dados Pessoais
+            </label>
+            <textarea id="obs_dados_pessoais" name="obs_dados_pessoais" rows="3" placeholder="Observações sobre os dados pessoais..."></textarea>
+          </div>
+
           <!-- Sistema de Múltiplas Pessoas com Renda -->
           <div class="form-container" style="margin-top: 1.5rem;">
             <div class="section-header" onclick="toggleSection('pessoas-renda')">
@@ -1558,6 +1566,10 @@
                 <button type="button" id="add-pessoa-btn" class="add-btn">
                   <i class="fas fa-plus"></i> Adicionar Pessoa com Renda
                 </button>
+              </div>
+              <div class="form-group full-width" style="margin-top: 1.5rem;">
+                <label for="obs_pessoas_renda"><i class="fas fa-sticky-note"></i> Observações - Pessoas com Renda</label>
+                <textarea id="obs_pessoas_renda" name="obs_pessoas_renda" rows="3" placeholder="Observações sobre pessoas com renda..."></textarea>
               </div>
             </div>
           </div>
@@ -1582,6 +1594,10 @@
                 <button type="button" id="add-dependente-btn" class="add-btn">
                   <i class="fas fa-plus"></i> Adicionar Dependente
                 </button>
+              </div>
+              <div class="form-group full-width" style="margin-top: 1.5rem;">
+                <label for="obs_dependentes"><i class="fas fa-sticky-note"></i> Observações - Dependentes</label>
+                <textarea id="obs_dependentes" name="obs_dependentes" rows="3" placeholder="Observações sobre dependentes..."></textarea>
               </div>
             </div>
           </div>
@@ -1609,6 +1625,10 @@
                 <button type="button" id="add-patrimonio-btn" class="add-btn">
                   <i class="fas fa-plus"></i> Adicionar Patrimônio
                 </button>
+              </div>
+              <div class="form-group full-width" style="margin-top: 1.5rem;">
+                <label for="obs_patrimonio_fisico"><i class="fas fa-sticky-note"></i> Observações - Patrimônio Físico</label>
+                <textarea id="obs_patrimonio_fisico" name="obs_patrimonio_fisico" rows="3" placeholder="Observações sobre patrimônio físico..."></textarea>
               </div>
             </div>
           </div>
@@ -1659,6 +1679,10 @@
                   <!-- Tabelas de distribuição serão inseridas aqui dinamicamente -->
                 </div>
               </div>
+              <div class="form-group full-width" style="margin-top: 1.5rem;">
+                <label for="obs_patrimonio_liquido"><i class="fas fa-sticky-note"></i> Observações - Patrimônio Líquido</label>
+                <textarea id="obs_patrimonio_liquido" name="obs_patrimonio_liquido" rows="3" placeholder="Observações sobre patrimônio líquido..."></textarea>
+              </div>
             </div>
           </div>
 
@@ -1688,6 +1712,10 @@
                   <i class="fas fa-plus"></i> Adicionar Dívida
                 </button>
               </div>
+              <div class="form-group full-width" style="margin-top: 1.5rem;">
+                <label for="obs_dividas"><i class="fas fa-sticky-note"></i> Observações - Dívidas</label>
+                <textarea id="obs_dividas" name="obs_dividas" rows="3" placeholder="Observações sobre dívidas..."></textarea>
+              </div>
             </div>
           </div>
 
@@ -1707,6 +1735,10 @@
             <div class="section-content expanded" id="content-sucessao">
               <div id="sucessao-container">
                 <!-- Cálculos de sucessão serão inseridos aqui dinamicamente -->
+              </div>
+              <div class="form-group full-width" style="margin-top: 1.5rem;">
+                <label for="obs_sucessao"><i class="fas fa-sticky-note"></i> Observações - Sucessão Patrimonial</label>
+                <textarea id="obs_sucessao" name="obs_sucessao" rows="3" placeholder="Observações sobre sucessão patrimonial..."></textarea>
               </div>
             </div>
           </div>
@@ -1738,6 +1770,10 @@
                   <i class="fas fa-plus"></i> Adicionar Produto
                 </button>
               </div>
+              <div class="form-group full-width" style="margin-top: 1.5rem;">
+                <label for="obs_produtos_protecao"><i class="fas fa-sticky-note"></i> Observações - Produtos & Proteção</label>
+                <textarea id="obs_produtos_protecao" name="obs_produtos_protecao" rows="3" placeholder="Observações sobre produtos e proteção..."></textarea>
+              </div>
             </div>
           </div>
 
@@ -1758,6 +1794,10 @@
                 <p style="text-align: center; color: var(--text-light); opacity: 0.7;">
                   <i class="fas fa-info-circle"></i> As declarações de IR serão exibidas automaticamente para o cliente, cônjuge (se não for dependente), pessoas com renda e seus cônjuges (se não forem dependentes).
                 </p>
+              </div>
+              <div class="form-group full-width" style="margin-top: 1.5rem;">
+                <label for="obs_ir"><i class="fas fa-sticky-note"></i> Observações - Imposto de Renda</label>
+                <textarea id="obs_ir" name="obs_ir" rows="3" placeholder="Observações sobre imposto de renda..."></textarea>
               </div>
             </div>
           </div>
@@ -1785,6 +1825,10 @@
                   <i class="fas fa-plus"></i> Adicionar Conta/Cartão
                 </button>
               </div>
+              <div class="form-group full-width" style="margin-top: 1.5rem;">
+                <label for="obs_contas_cartoes"><i class="fas fa-sticky-note"></i> Observações - Contas & Cartões</label>
+                <textarea id="obs_contas_cartoes" name="obs_contas_cartoes" rows="3" placeholder="Observações sobre contas e cartões..."></textarea>
+              </div>
             </div>
           </div>
 
@@ -1805,6 +1849,10 @@
               <div id="fluxo-caixa-container">
                 <!-- Fluxo de caixa será renderizado aqui dinamicamente -->
               </div>
+              <div class="form-group full-width" style="margin-top: 1.5rem;">
+                <label for="obs_fluxo_caixa"><i class="fas fa-sticky-note"></i> Observações - Fluxo de Caixa</label>
+                <textarea id="obs_fluxo_caixa" name="obs_fluxo_caixa" rows="3" placeholder="Observações sobre fluxo de caixa..."></textarea>
+              </div>
             </div>
           </div>
 
@@ -1824,6 +1872,10 @@
             <div class="section-content expanded" id="content-objetivos">
               <div id="objetivos-container">
                 <!-- Objetivos serão renderizados aqui dinamicamente -->
+              </div>
+              <div class="form-group full-width" style="margin-top: 1.5rem;">
+                <label for="obs_objetivos"><i class="fas fa-sticky-note"></i> Observações - Objetivos Financeiros</label>
+                <textarea id="obs_objetivos" name="obs_objetivos" rows="3" placeholder="Observações sobre objetivos financeiros..."></textarea>
               </div>
             </div>
           </div>
@@ -2945,15 +2997,7 @@ console.log('=== FIM DEBUG PESSOAS COM RENDA ===');
             </label>
           </div>
 
-          <div class="form-group full-width" style="margin-top: 1rem;">
-            <label for="${patrimonioId}_observacoes">
-              <i class="fas fa-sticky-note"></i> Observações
-            </label>
-            <textarea id="${patrimonioId}_observacoes" 
-                      name="${patrimonioId}_observacoes" 
-                      rows="3"
-                      placeholder="Observações adicionais sobre o patrimônio...">${patrimonio.observacoes || ''}</textarea>
-          </div>
+
         </div>
       `;
     }
@@ -2968,7 +3012,6 @@ console.log('=== FIM DEBUG PESSOAS COM RENDA ===');
         seguro_vencimento: '',
         saldo_devedor: 0,
         proprietarios: [],
-        observacoes: '',
         inventariavel: true
       };
       
@@ -3145,16 +3188,6 @@ console.log('=== FIM DEBUG PESSOAS COM RENDA ===');
           detalhesInput.addEventListener('input', function() {
             if (patrimonios[index]) {
               patrimonios[index].detalhes = this.value;
-            }
-          });
-        }
-        
-        // Event listener para observações
-        const observacoesInput = document.getElementById(`${patrimonioId}_observacoes`);
-        if (observacoesInput) {
-          observacoesInput.addEventListener('input', function() {
-            if (patrimonios[index]) {
-              patrimonios[index].observacoes = this.value;
             }
           });
         }
@@ -3534,6 +3567,15 @@ console.log('=== FIM DEBUG PESSOAS COM RENDA ===');
           }
         }
         
+        // Carregar observações por seção
+        const obsFields = ['obs_dados_pessoais', 'obs_pessoas_renda', 'obs_dependentes', 'obs_patrimonio_fisico', 'obs_patrimonio_liquido', 'obs_dividas', 'obs_sucessao', 'obs_produtos_protecao', 'obs_ir', 'obs_contas_cartoes', 'obs_fluxo_caixa', 'obs_objetivos'];
+        obsFields.forEach(field => {
+          const el = document.getElementById(field);
+          if (el && diagnostico[field]) {
+            el.value = diagnostico[field];
+          }
+        });
+        
         // Mostrar campos do cônjuge se necessário
         toggleConjugeFields();
         
@@ -3676,8 +3718,7 @@ console.log('=== FIM DEBUG PESSOAS COM RENDA ===');
           seguro: document.getElementById(`${patrimonioId}_seguro`)?.value === 'true',
           seguro_vencimento: document.getElementById(`${patrimonioId}_seguro_vencimento`)?.value || '',
           saldo_devedor: parseMoeda(document.getElementById(`${patrimonioId}_saldo_devedor`)?.value || '0'),
-          proprietarios: patrimonio.proprietarios || [],
-          observacoes: document.getElementById(`${patrimonioId}_observacoes`)?.value.trim() || ''
+          proprietarios: patrimonio.proprietarios || []
         };
         
         // Validar campos obrigatórios para patrimônios
@@ -3736,7 +3777,20 @@ console.log('=== FIM DEBUG PESSOAS COM RENDA ===');
             console.log('Salvando fluxo de caixa:', fluxoData);
             return JSON.stringify(fluxoData);
           })(), // Salvar fluxo de caixa
-          objetivos: JSON.stringify(window.getObjetivosData ? window.getObjetivosData() : {}) // Salvar objetivos
+          objetivos: JSON.stringify(window.getObjetivosData ? window.getObjetivosData() : {}), // Salvar objetivos
+          // Observações por seção
+          obs_dados_pessoais: document.getElementById('obs_dados_pessoais')?.value.trim() || '',
+          obs_pessoas_renda: document.getElementById('obs_pessoas_renda')?.value.trim() || '',
+          obs_dependentes: document.getElementById('obs_dependentes')?.value.trim() || '',
+          obs_patrimonio_fisico: document.getElementById('obs_patrimonio_fisico')?.value.trim() || '',
+          obs_patrimonio_liquido: document.getElementById('obs_patrimonio_liquido')?.value.trim() || '',
+          obs_dividas: document.getElementById('obs_dividas')?.value.trim() || '',
+          obs_sucessao: document.getElementById('obs_sucessao')?.value.trim() || '',
+          obs_produtos_protecao: document.getElementById('obs_produtos_protecao')?.value.trim() || '',
+          obs_ir: document.getElementById('obs_ir')?.value.trim() || '',
+          obs_contas_cartoes: document.getElementById('obs_contas_cartoes')?.value.trim() || '',
+          obs_fluxo_caixa: document.getElementById('obs_fluxo_caixa')?.value.trim() || '',
+          obs_objetivos: document.getElementById('obs_objetivos')?.value.trim() || ''
         };
         
         const { data, error } = await supabase
@@ -4168,7 +4222,6 @@ function applyPrefillData(dadosCad, form) {
             seguro_vencimento: '',
             saldo_devedor: 0,
             proprietarios: [],
-            observacoes: '',
             inventariavel: true
           });
           camposPreenchidos++;
@@ -4352,7 +4405,6 @@ function applyPrefillData(dadosCad, form) {
               vencimento: '',
               seguradora: '',
               cotou_analisou: false,
-              observacoes: `Plano de saúde de ${nome}`,
               origem_patrimonio: null
             });
             camposPreenchidos++;
@@ -4372,7 +4424,6 @@ function applyPrefillData(dadosCad, form) {
               vencimento: '',
               seguradora: '',
               cotou_analisou: false,
-              observacoes: `Seguro de vida de ${nome}`,
               origem_patrimonio: null
             });
             camposPreenchidos++;
@@ -4410,8 +4461,7 @@ function applyPrefillData(dadosCad, form) {
             contribuicao_nao_oficial: 0,
             outras_deducoes: 0,
             resultado_tipo: info.resultado_ir || '',
-            resultado_valor: 0,
-            observacoes: ''
+            resultado_valor: 0
           });
           camposPreenchidos++;
         });
