@@ -372,11 +372,9 @@ function calcularPatrimonioParaObjetivos() {
   if (window.getPatrimoniosLiquidosData) {
     const patrimonios = window.getPatrimoniosLiquidosData() || [];
     patrimonios.forEach(p => {
-      // Soma TODOS os itens que NÃO são aposentadoria (independente do dono)
-      if (p.finalidade !== 'APOSENTADORIA') {
-        const valor = parseFloat(p.valor_atual) || 0;
-        total += valor;
-      }
+      // Soma TODOS os itens do PL (incluindo aposentadoria) como pool disponível
+      const valor = parseFloat(p.valor_atual) || 0;
+      total += valor;
     });
   }
   
@@ -408,14 +406,15 @@ function calcularPatrimonioAposentadoriaPorPessoa(pessoaId) {
 }
 
 function calcularValorInicialAlocado() {
+  // Inclui TODOS os objetivos (aposentadoria + normais) na conta do saldo
   return objetivos
-    .filter(o => o.tipo !== 'aposentadoria')
     .reduce((sum, o) => sum + (parseFloat(o.valor_inicial) || 0), 0);
 }
 
 function calcularValorInicialAlocadoExceto(objetivoId) {
+  // Inclui TODOS os objetivos (aposentadoria + normais) exceto o atual
   return objetivos
-    .filter(o => o.tipo !== 'aposentadoria' && o.id !== objetivoId)
+    .filter(o => o.id !== objetivoId)
     .reduce((sum, o) => sum + (parseFloat(o.valor_inicial) || 0), 0);
 }
 
@@ -851,7 +850,7 @@ function renderObjetivos() {
         </span>
         <span style="flex: 1;"></span>
         <span style="padding: 0.2rem 0.5rem; background: rgba(212, 175, 55, 0.1); border: 1px solid rgba(212, 175, 55, 0.3); border-radius: 4px; font-size: 0.75rem;">
-          <span style="color: var(--text-light); font-size: 0.6rem;">PL (s/ Apos.)</span> <span id="patrimonio-objetivos-display" style="color: var(--accent-color); font-weight: 600;">${formatarMoedaObj(patrimonioObjetivos)}</span>
+          <span style="color: var(--text-light); font-size: 0.6rem;">PL Total</span> <span id="patrimonio-objetivos-display" style="color: var(--accent-color); font-weight: 600;">${formatarMoedaObj(patrimonioObjetivos)}</span>
         </span>
         <span style="padding: 0.2rem 0.5rem; background: rgba(212, 175, 55, 0.1); border: 1px solid rgba(212, 175, 55, 0.3); border-radius: 4px; font-size: 0.75rem;">
           <span style="color: var(--text-light); font-size: 0.6rem;">Alocado</span> <span id="valor-alocado-display" style="color: var(--accent-color); font-weight: 600;">${formatarMoedaObj(valorAlocado)}</span>
@@ -927,24 +926,28 @@ function renderCardAposentadoria(obj, pessoas, patrimonioAposentadoriaPorPessoa)
   const rentAnual = variaveisMercado.rent_anual_aposentadoria || 6.0;
   const capitalNecessario = rentAnual > 0 ? rendaAnual / (rentAnual / 100) : 0;
   
+  const valorInicialAlocadoOutros = calcularValorInicialAlocadoExceto(obj.id);
+  const patrimonioTotal = calcularPatrimonioParaObjetivos();
+  const saldoDisponivelParaEste = Math.max(0, patrimonioTotal - valorInicialAlocadoOutros);
+  
   return `
-    <div style="background: var(--card-bg); border: 1px solid #28a745; border-radius: 8px; padding: 1rem; margin-bottom: 1rem;">
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-        <h4 style="color: #28a745; margin: 0; font-size: 0.9rem;">
+    <div style="background: var(--card-bg); border: 1px solid #28a745; border-radius: 8px; padding: 0.8rem; margin-bottom: 0.8rem;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.6rem;">
+        <h4 style="color: #28a745; margin: 0; font-size: 0.85rem;">
           <i class="fas fa-user"></i> ${obj.descricao}
         </h4>
-        <button onclick="deleteObjetivo(${obj.id})" style="background: transparent; border: none; color: #dc3545; cursor: pointer; font-size: 0.9rem;">
+        <button onclick="deleteObjetivo(${obj.id})" style="background: transparent; border: none; color: #dc3545; cursor: pointer; font-size: 0.85rem;">
           <i class="fas fa-trash"></i>
         </button>
       </div>
       
-      <div style="display: grid; grid-template-columns: 1fr 150px 200px; gap: 1rem; margin-bottom: 1rem;">
+      <div style="display: grid; grid-template-columns: 1fr 120px 180px 180px; gap: 0.8rem; margin-bottom: 0.6rem;">
         <div>
-          <label style="font-size: 0.75rem; color: #28a745; display: block; margin-bottom: 0.3rem;">
+          <label style="font-size: 0.7rem; color: #28a745; display: block; margin-bottom: 0.2rem;">
             <i class="fas fa-user-check"></i> De quem é a aposentadoria? *
           </label>
           <select onchange="updateObjetivoField(${obj.id}, 'prazo_pessoa', this.value)"
-                  style="width: 100%; padding: 0.5rem; background: #0d3320; border: 1px solid var(--border-color); border-radius: 4px; color: #e8e8e8;">
+                  style="width: 100%; padding: 0.4rem; background: #0d3320; border: 1px solid var(--border-color); border-radius: 4px; color: #e8e8e8; font-size: 0.85rem;">
             ${pessoas.map(p => `
               <option value="${p.id}" ${obj.prazo_pessoa === p.id ? 'selected' : ''} style="background: #0d3320; color: #e8e8e8;">${p.nome} (${p.tipo})</option>
             `).join('')}
@@ -952,43 +955,53 @@ function renderCardAposentadoria(obj, pessoas, patrimonioAposentadoriaPorPessoa)
         </div>
         
         <div>
-          <label style="font-size: 0.75rem; color: #28a745; display: block; margin-bottom: 0.3rem;">
+          <label style="font-size: 0.7rem; color: #28a745; display: block; margin-bottom: 0.2rem;">
             <i class="fas fa-calendar-alt"></i> Aposentar aos
           </label>
-          <div style="display: flex; align-items: center; gap: 0.5rem;">
+          <div style="display: flex; align-items: center; gap: 0.3rem;">
             <input type="number" value="${idadeAposentadoria}" min="30" max="100"
                    onchange="updateObjetivoField(${obj.id}, 'prazo_idade', parseInt(this.value))"
-                   style="width: 80px; padding: 0.5rem; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 4px; color: var(--text-light);">
-            <span style="color: var(--text-light);">anos</span>
+                   style="width: 60px; padding: 0.4rem; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 4px; color: var(--text-light); font-size: 0.85rem;">
+            <span style="color: var(--text-light); font-size: 0.8rem;">anos</span>
           </div>
         </div>
         
         <div>
-          <label style="font-size: 0.75rem; color: #28a745; display: block; margin-bottom: 0.3rem;">
+          <label style="font-size: 0.7rem; color: #28a745; display: block; margin-bottom: 0.2rem;">
             <i class="fas fa-money-bill-wave"></i> Renda Anual Desejada
           </label>
           <input type="text" value="${formatarMoedaObj(rendaAnual).replace('R$', 'R$ ')}"
                  oninput="formatarInputMoedaObj(this, ${obj.id}, 'renda_anual')"
-                 style="width: 100%; padding: 0.5rem; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 4px; color: var(--text-light);">
+                 style="width: 100%; padding: 0.4rem; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 4px; color: var(--text-light); font-size: 0.85rem;">
+        </div>
+        
+        <div>
+          <label style="font-size: 0.7rem; color: #28a745; display: block; margin-bottom: 0.2rem;">
+            <i class="fas fa-wallet"></i> Valor Inicial
+          </label>
+          <input type="text" id="valor-inicial-${obj.id}" value="${formatarMoedaObj(obj.valor_inicial || 0).replace('R$', 'R$ ')}"
+                 oninput="formatarInputMoedaObj(this, ${obj.id}, 'valor_inicial')"
+                 style="width: 100%; padding: 0.4rem; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 4px; color: var(--text-light); font-size: 0.85rem;">
+          <div style="font-size: 0.6rem; color: #28a745; margin-top: 0.15rem;">Disponível: ${formatarMoedaObj(saldoDisponivelParaEste)}</div>
         </div>
       </div>
       
-      <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; text-align: center;">
-        <div style="padding: 0.5rem; background: rgba(40, 167, 69, 0.1); border-radius: 6px;">
-          <div style="font-size: 0.65rem; color: var(--text-light);">Idade Atual</div>
-          <div style="font-size: 0.9rem; font-weight: 600; color: #28a745;">${idadeAtual} anos</div>
+      <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.6rem; text-align: center;">
+        <div style="padding: 0.3rem; background: rgba(40, 167, 69, 0.1); border-radius: 4px;">
+          <div style="font-size: 0.6rem; color: var(--text-light);">Idade Atual</div>
+          <div style="font-size: 0.8rem; font-weight: 600; color: #28a745;">${idadeAtual} anos</div>
         </div>
-        <div style="padding: 0.5rem; background: rgba(40, 167, 69, 0.1); border-radius: 6px;">
-          <div style="font-size: 0.65rem; color: var(--text-light);">Anos Restantes</div>
-          <div style="font-size: 0.9rem; font-weight: 600; color: #28a745;">${anosRestantes} anos</div>
+        <div style="padding: 0.3rem; background: rgba(40, 167, 69, 0.1); border-radius: 4px;">
+          <div style="font-size: 0.6rem; color: var(--text-light);">Anos Restantes</div>
+          <div style="font-size: 0.8rem; font-weight: 600; color: #28a745;">${anosRestantes} anos</div>
         </div>
-        <div style="padding: 0.5rem; background: rgba(40, 167, 69, 0.1); border-radius: 6px;">
-          <div style="font-size: 0.65rem; color: var(--text-light);">Patrimônio Atual</div>
-          <div style="font-size: 0.9rem; font-weight: 600; color: #28a745;">${formatarMoedaObj(patrimonioAtual)}</div>
+        <div style="padding: 0.3rem; background: rgba(40, 167, 69, 0.1); border-radius: 4px;">
+          <div style="font-size: 0.6rem; color: var(--text-light);">Patrimônio Atual</div>
+          <div style="font-size: 0.8rem; font-weight: 600; color: #28a745;">${formatarMoedaObj(patrimonioAtual)}</div>
         </div>
-        <div style="padding: 0.5rem; background: rgba(40, 167, 69, 0.1); border-radius: 6px;">
-          <div style="font-size: 0.65rem; color: var(--text-light);">Capital Necessário</div>
-          <div id="capital-necessario-${obj.id}" style="font-size: 0.9rem; font-weight: 600; color: #28a745;">${formatarMoedaObj(capitalNecessario)}</div>
+        <div style="padding: 0.3rem; background: rgba(40, 167, 69, 0.1); border-radius: 4px;">
+          <div style="font-size: 0.6rem; color: var(--text-light);">Capital Necessário</div>
+          <div id="capital-necessario-${obj.id}" style="font-size: 0.8rem; font-weight: 600; color: #28a745;">${formatarMoedaObj(capitalNecessario)}</div>
         </div>
       </div>
     </div>
@@ -1006,62 +1019,62 @@ function renderCardObjetivo(obj, pessoas, todosObjetivos, saldoDisponivel) {
   const objetivosParaVincular = todosObjetivos.filter(o => o.id !== obj.id && o.prioridade < obj.prioridade);
   
   return `
-    <div style="background: var(--card-bg); border: 1px solid var(--accent-color); border-radius: 8px; padding: 1rem; margin-bottom: 1rem;">
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+    <div style="background: var(--card-bg); border: 1px solid var(--accent-color); border-radius: 8px; padding: 0.8rem; margin-bottom: 0.8rem;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.6rem;">
         <div style="display: flex; align-items: center; gap: 0.5rem;">
           <select onchange="updateObjetivoPrioridade(${obj.id}, this.value)"
-                  style="padding: 0.3rem; background: var(--dark-bg); border: 1px solid var(--border-color); border-radius: 4px; color: var(--accent-color); font-weight: 600;">
+                  style="padding: 0.2rem 0.4rem; background: var(--dark-bg); border: 1px solid var(--border-color); border-radius: 4px; color: var(--accent-color); font-weight: 600; font-size: 0.8rem;">
             ${Array.from({length: totalPrioridades}, (_, i) => i + 1).map(p => `
               <option value="${p}" ${obj.prioridade === p ? 'selected' : ''}>${p}º</option>
             `).join('')}
           </select>
-          <span style="color: var(--accent-color); font-weight: 600;">Prioridade</span>
+          <span style="color: var(--accent-color); font-weight: 600; font-size: 0.85rem;">Prioridade</span>
         </div>
-        <button onclick="deleteObjetivo(${obj.id})" style="background: transparent; border: none; color: #dc3545; cursor: pointer; font-size: 0.9rem;">
+        <button onclick="deleteObjetivo(${obj.id})" style="background: transparent; border: none; color: #dc3545; cursor: pointer; font-size: 0.85rem;">
           <i class="fas fa-trash"></i>
         </button>
       </div>
       
       <!-- Linha 1: Descrição, Importância, Responsáveis, Prazo -->
-      <div style="display: grid; grid-template-columns: 1fr 1fr 180px 200px; gap: 1rem; margin-bottom: 1rem;">
+      <div style="display: grid; grid-template-columns: 1fr 1fr 150px 170px; gap: 0.8rem; margin-bottom: 0.6rem;">
         <div>
-          <label style="font-size: 0.75rem; color: var(--accent-color); display: block; margin-bottom: 0.3rem;">
+          <label style="font-size: 0.7rem; color: var(--accent-color); display: block; margin-bottom: 0.2rem;">
             <i class="fas fa-flag"></i> Qual é o objetivo? *
           </label>
           <input type="text" value="${obj.descricao || ''}" placeholder="Ex: Comprar uma casa"
                  onchange="updateObjetivoField(${obj.id}, 'descricao', this.value)"
-                 style="width: 100%; padding: 0.5rem; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 4px; color: var(--text-light);">
+                 style="width: 100%; padding: 0.4rem; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 4px; color: var(--text-light); font-size: 0.85rem;">
         </div>
         
         <div>
-          <label style="font-size: 0.75rem; color: var(--accent-color); display: block; margin-bottom: 0.3rem;">
+          <label style="font-size: 0.7rem; color: var(--accent-color); display: block; margin-bottom: 0.2rem;">
             <i class="fas fa-heart"></i> Por que é importante?
           </label>
           <textarea onchange="updateObjetivoField(${obj.id}, 'importancia', this.value)"
                     placeholder="Descreva a importância..."
-                    style="width: 100%; padding: 0.5rem; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 4px; color: var(--text-light); resize: vertical; min-height: 38px;">${obj.importancia || ''}</textarea>
+                    style="width: 100%; padding: 0.4rem; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 4px; color: var(--text-light); resize: vertical; min-height: 34px; font-size: 0.85rem;">${obj.importancia || ''}</textarea>
         </div>
         
         <div>
-          <label style="font-size: 0.75rem; color: var(--accent-color); display: block; margin-bottom: 0.3rem;">
+          <label style="font-size: 0.7rem; color: var(--accent-color); display: block; margin-bottom: 0.2rem;">
             <i class="fas fa-users"></i> De quem é? *
           </label>
           <select multiple onchange="updateObjetivoField(${obj.id}, 'responsaveis', Array.from(this.selectedOptions).map(o => o.value))"
-                  style="width: 100%; padding: 0.3rem; background: #0d3320; border: 1px solid var(--border-color); border-radius: 4px; color: #e8e8e8; min-height: 60px;">
+                  style="width: 100%; padding: 0.2rem; background: #0d3320; border: 1px solid var(--border-color); border-radius: 4px; color: #e8e8e8; min-height: 50px; font-size: 0.8rem;">
             ${pessoas.map(p => `
               <option value="${p.id}" ${(obj.responsaveis || []).includes(p.id) ? 'selected' : ''} style="background: #0d3320; color: #e8e8e8;">${p.nome} (${p.tipo})</option>
             `).join('')}
           </select>
-          <div style="font-size: 0.65rem; color: var(--text-light); opacity: 0.7; margin-top: 0.2rem;">Segure Ctrl/Cmd para múltiplos</div>
+          <div style="font-size: 0.6rem; color: var(--text-light); opacity: 0.7; margin-top: 0.1rem;">Ctrl/Cmd para múltiplos</div>
         </div>
         
         <div style="overflow: hidden;">
-          <label style="font-size: 0.75rem; color: var(--accent-color); display: block; margin-bottom: 0.3rem;">
+          <label style="font-size: 0.7rem; color: var(--accent-color); display: block; margin-bottom: 0.2rem;">
             <i class="fas fa-calendar"></i> Prazo
           </label>
-          <div style="display: flex; flex-direction: column; gap: 0.3rem;">
+          <div style="display: flex; flex-direction: column; gap: 0.2rem;">
             <select onchange="updateObjetivoField(${obj.id}, 'prazo_tipo', this.value); renderObjetivos();"
-                    style="width: 100%; padding: 0.5rem; background: #0d3320; border: 1px solid var(--border-color); border-radius: 4px; color: #e8e8e8; font-size: 0.8rem;">
+                    style="width: 100%; padding: 0.4rem; background: #0d3320; border: 1px solid var(--border-color); border-radius: 4px; color: #e8e8e8; font-size: 0.8rem;">
               <option value="meses" ${(obj.prazo_tipo || 'meses') === 'meses' ? 'selected' : ''} style="background: #0d3320; color: #e8e8e8;">Meses</option>
               <option value="anos" ${obj.prazo_tipo === 'anos' ? 'selected' : ''} style="background: #0d3320; color: #e8e8e8;">Anos</option>
               <option value="data" ${obj.prazo_tipo === 'data' ? 'selected' : ''} style="background: #0d3320; color: #e8e8e8;">Data</option>
@@ -1069,52 +1082,52 @@ function renderCardObjetivo(obj, pessoas, todosObjetivos, saldoDisponivel) {
             ${(obj.prazo_tipo || 'meses') === 'data' ? `
               <input type="date" value="${obj.prazo_data || ''}"
                      onchange="updateObjetivoField(${obj.id}, 'prazo_data', this.value)"
-                     style="width: 100%; padding: 0.5rem; background: #0d3320; border: 1px solid var(--border-color); border-radius: 4px; color: #e8e8e8;">
+                     style="width: 100%; padding: 0.4rem; background: #0d3320; border: 1px solid var(--border-color); border-radius: 4px; color: #e8e8e8; font-size: 0.8rem;">
             ` : `
               <input type="number" value="${obj.prazo_tipo === 'anos' ? Math.round((obj.prazo_meses || 60) / 12) : (obj.prazo_meses || 60)}" min="1" max="${obj.prazo_tipo === 'anos' ? 50 : 600}"
                      onchange="updateObjetivoField(${obj.id}, 'prazo_meses', ${obj.prazo_tipo === 'anos' ? 'parseInt(this.value) * 12' : 'parseInt(this.value)'})"
-                     style="width: 100%; padding: 0.5rem; background: #0d3320; border: 1px solid var(--border-color); border-radius: 4px; color: #e8e8e8;">
+                     style="width: 100%; padding: 0.4rem; background: #0d3320; border: 1px solid var(--border-color); border-radius: 4px; color: #e8e8e8; font-size: 0.8rem;">
             `}
           </div>
         </div>
       </div>
       
       <!-- Linha 2: Valores e Opções -->
-      <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 200px; gap: 1rem; margin-bottom: 1rem;">
+      <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 170px; gap: 0.8rem; margin-bottom: 0.6rem;">
         <div>
-          <label style="font-size: 0.75rem; color: var(--accent-color); display: block; margin-bottom: 0.3rem;">
+          <label style="font-size: 0.7rem; color: var(--accent-color); display: block; margin-bottom: 0.2rem;">
             <i class="fas fa-wallet"></i> Valor Inicial
           </label>
           <input type="text" id="valor-inicial-${obj.id}" value="${formatarMoedaObj(obj.valor_inicial || 0).replace('R$', 'R$ ')}"
                  oninput="formatarInputMoedaObj(this, ${obj.id}, 'valor_inicial')"
-                 style="width: 100%; padding: 0.5rem; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 4px; color: var(--text-light);">
-          <div style="font-size: 0.65rem; color: #28a745; margin-top: 0.2rem;">Disponível: ${formatarMoedaObj(saldoDisponivelParaEste)}</div>
+                 style="width: 100%; padding: 0.4rem; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 4px; color: var(--text-light); font-size: 0.85rem;">
+          <div style="font-size: 0.6rem; color: #28a745; margin-top: 0.15rem;">Disponível: ${formatarMoedaObj(saldoDisponivelParaEste)}</div>
         </div>
         
         <div>
-          <label style="font-size: 0.75rem; color: var(--accent-color); display: block; margin-bottom: 0.3rem;">
+          <label style="font-size: 0.7rem; color: var(--accent-color); display: block; margin-bottom: 0.2rem;">
             <i class="fas fa-bullseye"></i> Valor Final do Objetivo
           </label>
           <input type="text" value="${formatarMoedaObj(obj.valor_final || 0).replace('R$', 'R$ ')}"
                  oninput="formatarInputMoedaObj(this, ${obj.id}, 'valor_final')"
-                 style="width: 100%; padding: 0.5rem; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 4px; color: var(--text-light);">
+                 style="width: 100%; padding: 0.4rem; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 4px; color: var(--text-light); font-size: 0.85rem;">
         </div>
         
         <div>
-          <label style="font-size: 0.75rem; color: var(--accent-color); display: block; margin-bottom: 0.3rem;">
+          <label style="font-size: 0.7rem; color: var(--accent-color); display: block; margin-bottom: 0.2rem;">
             <i class="fas fa-chart-line"></i> Meta de Acúmulo
           </label>
           <input type="text" id="meta-acumulo-${obj.id}" value="${formatarMoedaObj(obj.meta_acumulo || 0).replace('R$', 'R$ ')}"
                  oninput="formatarInputMoedaObj(this, ${obj.id}, 'meta_acumulo')"
-                 style="width: 100%; padding: 0.5rem; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 4px; color: var(--text-light);">
+                 style="width: 100%; padding: 0.4rem; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 4px; color: var(--text-light); font-size: 0.85rem;">
         </div>
         
         <div>
-          <label style="font-size: 0.75rem; color: var(--accent-color); display: block; margin-bottom: 0.3rem;">
+          <label style="font-size: 0.7rem; color: var(--accent-color); display: block; margin-bottom: 0.2rem;">
             <i class="fas fa-link"></i> Vincular após
           </label>
           <select onchange="updateObjetivoField(${obj.id}, 'vinculado_a', this.value ? parseInt(this.value) : null)"
-                  style="width: 100%; padding: 0.5rem; background: #0d3320; border: 1px solid var(--border-color); border-radius: 4px; color: #e8e8e8;">
+                  style="width: 100%; padding: 0.4rem; background: #0d3320; border: 1px solid var(--border-color); border-radius: 4px; color: #e8e8e8; font-size: 0.8rem;">
             <option value="" style="background: #0d3320; color: #e8e8e8;">Nenhum (independente)</option>
             ${objetivosParaVincular.map(o => `
               <option value="${o.id}" ${obj.vinculado_a === o.id ? 'selected' : ''} style="background: #0d3320; color: #e8e8e8;">
@@ -1126,16 +1139,16 @@ function renderCardObjetivo(obj, pessoas, todosObjetivos, saldoDisponivel) {
       </div>
       
       <!-- Linha 3: Opção Acumulável -->
-      <div style="display: flex; align-items: center; gap: 1rem; padding: 0.5rem; background: rgba(212, 175, 55, 0.1); border-radius: 6px;">
-        <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; color: var(--text-light);">
+      <div style="display: flex; align-items: center; gap: 0.8rem; padding: 0.4rem 0.6rem; background: rgba(212, 175, 55, 0.1); border-radius: 4px;">
+        <label style="display: flex; align-items: center; gap: 0.4rem; cursor: pointer; color: var(--text-light);">
           <input type="checkbox" ${obj.acumulavel ? 'checked' : ''}
                  onchange="updateObjetivoField(${obj.id}, 'acumulavel', this.checked)"
-                 style="width: 18px; height: 18px; cursor: pointer;">
-          <span style="font-size: 0.85rem;">
+                 style="width: 16px; height: 16px; cursor: pointer;">
+          <span style="font-size: 0.8rem;">
             <i class="fas fa-layer-group"></i> Objetivo Acumulável
           </span>
         </label>
-        <span style="font-size: 0.7rem; color: var(--text-light); opacity: 0.7;">
+        <span style="font-size: 0.65rem; color: var(--text-light); opacity: 0.7;">
           (Se marcado, o saldo bruto final será transferido para o próximo objetivo vinculado)
         </span>
       </div>
