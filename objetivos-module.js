@@ -519,6 +519,19 @@ function calcularAportesTotaisDisponiveis() {
     });
   }
   
+  // Adicionar restituições de IR como aportes anuais
+  if (window.getDeclaracoesIRData) {
+    const declaracoes = window.getDeclaracoesIRData() || [];
+    declaracoes.forEach(declaracao => {
+      const resultadoTipo = declaracao.resultado_tipo || '';
+      const resultadoValor = parseFloat(declaracao.resultado_valor) || 0;
+      
+      if (resultadoTipo === 'restitui' && resultadoValor > 0) {
+        totalAnual += resultadoValor;
+      }
+    });
+  }
+  
   return { mensal: totalMensal, anual: totalAnual };
 }
 
