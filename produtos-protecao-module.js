@@ -237,66 +237,6 @@ function createProdutoProtecaoCard(produto, index) {
         </div>
         
         <div class="form-group">
-          <label for="${produtoId}_cobertura_morte" style="display: block; margin-bottom: 0.3rem; color: var(--text-gold); font-weight: 600; font-size: 0.9rem;">
-            <i class="fas fa-heart-broken"></i> Cobertura Morte (R$)
-          </label>
-          <input type="text" 
-                 id="${produtoId}_cobertura_morte" 
-                 value="${formatarMoeda(produto.cobertura_morte)}"
-                 oninput="this.value = formatarMoedaInput(this.value); updateProdutoProtecaoField(${index}, 'cobertura_morte', desformatarMoedaProtecao(this.value))"
-                 placeholder="R$ 0,00"
-                 style="width: 100%; padding: 0.7rem; border: 2px solid var(--border-color); border-radius: 8px; background: var(--dark-bg); color: var(--text-light); font-size: 0.9rem;">
-        </div>
-        
-        <div class="form-group">
-          <label for="${produtoId}_cobertura_invalidez" style="display: block; margin-bottom: 0.3rem; color: var(--text-gold); font-weight: 600; font-size: 0.9rem;">
-            <i class="fas fa-wheelchair"></i> Cobertura Invalidez (R$)
-          </label>
-          <input type="text" 
-                 id="${produtoId}_cobertura_invalidez" 
-                 value="${formatarMoeda(produto.cobertura_invalidez)}"
-                 oninput="this.value = formatarMoedaInput(this.value); updateProdutoProtecaoField(${index}, 'cobertura_invalidez', desformatarMoedaProtecao(this.value))"
-                 placeholder="R$ 0,00"
-                 style="width: 100%; padding: 0.7rem; border: 2px solid var(--border-color); border-radius: 8px; background: var(--dark-bg); color: var(--text-light); font-size: 0.9rem;">
-        </div>
-        
-        <div class="form-group">
-          <label for="${produtoId}_cobertura_dit" style="display: block; margin-bottom: 0.3rem; color: var(--text-gold); font-weight: 600; font-size: 0.9rem;">
-            <i class="fas fa-bed"></i> Cobertura DIT (R$/dia)
-          </label>
-          <input type="text" 
-                 id="${produtoId}_cobertura_dit" 
-                 value="${formatarMoeda(produto.cobertura_dit)}"
-                 oninput="this.value = formatarMoedaInput(this.value); updateProdutoProtecaoField(${index}, 'cobertura_dit', desformatarMoedaProtecao(this.value))"
-                 placeholder="R$ 0,00"
-                 style="width: 100%; padding: 0.7rem; border: 2px solid var(--border-color); border-radius: 8px; background: var(--dark-bg); color: var(--text-light); font-size: 0.9rem;">
-        </div>
-        
-        <div class="form-group">
-          <label for="${produtoId}_cobertura_doencas_graves" style="display: block; margin-bottom: 0.3rem; color: var(--text-gold); font-weight: 600; font-size: 0.9rem;">
-            <i class="fas fa-virus"></i> Cobertura Doenças Graves (R$)
-          </label>
-          <input type="text" 
-                 id="${produtoId}_cobertura_doencas_graves" 
-                 value="${formatarMoeda(produto.cobertura_doencas_graves)}"
-                 oninput="this.value = formatarMoedaInput(this.value); updateProdutoProtecaoField(${index}, 'cobertura_doencas_graves', desformatarMoedaProtecao(this.value))"
-                 placeholder="R$ 0,00"
-                 style="width: 100%; padding: 0.7rem; border: 2px solid var(--border-color); border-radius: 8px; background: var(--dark-bg); color: var(--text-light); font-size: 0.9rem;">
-        </div>
-        
-        <div class="form-group">
-          <label for="${produtoId}_resgatavel" style="display: block; margin-bottom: 0.3rem; color: var(--text-gold); font-weight: 600; font-size: 0.9rem;">
-            <i class="fas fa-piggy-bank"></i> É Resgatável?
-          </label>
-          <select id="${produtoId}_resgatavel" 
-                  onchange="updateProdutoProtecaoField(${index}, 'resgatavel', this.value === 'true')"
-                  style="width: 100%; padding: 0.7rem; border: 2px solid var(--border-color); border-radius: 8px; background: var(--dark-bg); color: var(--text-light); font-size: 0.9rem; cursor: pointer;">
-            <option value="false" ${!produto.resgatavel ? 'selected' : ''}>Não</option>
-            <option value="true" ${produto.resgatavel ? 'selected' : ''}>Sim</option>
-          </select>
-        </div>
-        
-        <div class="form-group">
           <label for="${produtoId}_cotou_analisou" style="display: block; margin-bottom: 0.3rem; color: var(--text-gold); font-weight: 600; font-size: 0.9rem;">
             <i class="fas fa-search-dollar"></i> Cotou e analisou antes?
           </label>
@@ -306,6 +246,39 @@ function createProdutoProtecaoCard(produto, index) {
             <option value="false" ${!produto.cotou_analisou ? 'selected' : ''}>Não</option>
             <option value="true" ${produto.cotou_analisou ? 'selected' : ''}>Sim</option>
           </select>
+        </div>
+      </div>
+      
+      <!-- Contratações -->
+      <div class="contratacoes-section" style="margin-top: 1rem; padding-top: 0.8rem; border-top: 1px solid var(--border-color);">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+          <label style="color: var(--text-gold); font-weight: 600; font-size: 0.85rem;">
+            <i class="fas fa-file-contract"></i> Contratações
+          </label>
+          <button type="button" onclick="addContratacao(${index})" style="background: none; border: 1px solid var(--border-color); color: var(--text-gold); padding: 0.2rem 0.6rem; border-radius: 5px; font-size: 0.75rem; cursor: pointer;">
+            <i class="fas fa-plus"></i> Adicionar
+          </button>
+        </div>
+        <div id="${produtoId}_contratacoes" style="display: flex; flex-direction: column; gap: 0.4rem;">
+          ${(produto.contratacoes || []).map((c, ci) => `
+            <div style="display: flex; gap: 0.5rem; align-items: center;">
+              <input type="text" 
+                     value="${c.nome || ''}" 
+                     onchange="updateContratacao(${index}, ${ci}, 'nome', this.value)"
+                     placeholder="Nome da contratação"
+                     style="flex: 2; padding: 0.5rem; border: 1px solid var(--border-color); border-radius: 6px; background: var(--dark-bg); color: var(--text-light); font-size: 0.85rem;">
+              <input type="text" 
+                     value="${c.valor ? formatarMoeda(c.valor) : ''}" 
+                     oninput="this.value = formatarMoedaInput(this.value)" 
+                     onchange="updateContratacao(${index}, ${ci}, 'valor', desformatarMoedaProtecao(this.value))"
+                     placeholder="R$ 0,00"
+                     style="flex: 1; padding: 0.5rem; border: 1px solid var(--border-color); border-radius: 6px; background: var(--dark-bg); color: var(--text-light); font-size: 0.85rem;">
+              <button type="button" onclick="removeContratacao(${index}, ${ci})" style="background: none; border: none; color: #e74c3c; cursor: pointer; padding: 0.3rem; font-size: 0.85rem;" title="Remover">
+                <i class="fas fa-times"></i>
+              </button>
+            </div>
+          `).join('')}
+          ${(!produto.contratacoes || produto.contratacoes.length === 0) ? '<p style="color: var(--text-light); opacity: 0.6; font-size: 0.8rem; margin: 0; font-style: italic;">Nenhuma contratação adicionada.</p>' : ''}
         </div>
       </div>
       
@@ -356,11 +329,7 @@ function addProdutoProtecao(dadosPrePreenchidos = null) {
     periodicidade: dadosPrePreenchidos?.periodicidade || 'anual',
     vencimento: dadosPrePreenchidos?.vencimento || '',
     seguradora: dadosPrePreenchidos?.seguradora || '',
-    cobertura_morte: dadosPrePreenchidos?.cobertura_morte || 0,
-    cobertura_invalidez: dadosPrePreenchidos?.cobertura_invalidez || 0,
-    cobertura_dit: dadosPrePreenchidos?.cobertura_dit || 0,
-    cobertura_doencas_graves: dadosPrePreenchidos?.cobertura_doencas_graves || 0,
-    resgatavel: dadosPrePreenchidos?.resgatavel || false,
+    contratacoes: dadosPrePreenchidos?.contratacoes || [],
     cotou_analisou: dadosPrePreenchidos?.cotou_analisou || false,
     origem_patrimonio: dadosPrePreenchidos?.origem_patrimonio || null
   };
@@ -930,6 +899,31 @@ function atualizarListaObjetosProtecao(index) {
 }
 
 // =========================================
+// CONTRATAÇÕES CRUD
+// =========================================
+
+function addContratacao(produtoIndex) {
+  if (!produtosProtecao[produtoIndex]) return;
+  if (!produtosProtecao[produtoIndex].contratacoes) {
+    produtosProtecao[produtoIndex].contratacoes = [];
+  }
+  produtosProtecao[produtoIndex].contratacoes.push({ nome: '', valor: 0 });
+  renderProdutosProtecao();
+}
+
+function removeContratacao(produtoIndex, contratacaoIndex) {
+  if (!produtosProtecao[produtoIndex] || !produtosProtecao[produtoIndex].contratacoes) return;
+  produtosProtecao[produtoIndex].contratacoes.splice(contratacaoIndex, 1);
+  renderProdutosProtecao();
+}
+
+function updateContratacao(produtoIndex, contratacaoIndex, campo, valor) {
+  if (!produtosProtecao[produtoIndex] || !produtosProtecao[produtoIndex].contratacoes) return;
+  if (!produtosProtecao[produtoIndex].contratacoes[contratacaoIndex]) return;
+  produtosProtecao[produtoIndex].contratacoes[contratacaoIndex][campo] = valor;
+}
+
+// =========================================
 // INICIALIZAÇÃO
 // =========================================
 
@@ -974,3 +968,6 @@ window.fecharModalEditarTipoProtecao = fecharModalEditarTipoProtecao;
 window.salvarEdicaoTipoProtecao = salvarEdicaoTipoProtecao;
 window.excluirTipoProtecao = excluirTipoProtecao;
 window.atualizarListaObjetosProtecao = atualizarListaObjetosProtecao;
+window.addContratacao = addContratacao;
+window.removeContratacao = removeContratacao;
+window.updateContratacao = updateContratacao;
