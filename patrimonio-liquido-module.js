@@ -1644,11 +1644,26 @@ function getPatrimoniosLiquidosData() {
 function setPatrimoniosLiquidosData(data) {
   if (!data || !Array.isArray(data)) return;
   
-  patrimoniosLiquidos = data;
+  // Normalizar tipos de dados ao carregar
+  patrimoniosLiquidos = data.map(pl => ({
+    ...pl,
+    valor_atual: parseFloat(pl.valor_atual) || 0,
+    aporte_valor: parseFloat(pl.aporte_valor) || 0,
+    taxa_administracao: parseFloat(pl.taxa_administracao) || 0,
+    rentabilidade_esperada: parseFloat(pl.rentabilidade_esperada) || 0,
+    donos: Array.isArray(pl.donos) ? pl.donos : (pl.donos ? [pl.donos] : []),
+    inventariavel: pl.inventariavel !== false
+  }));
   patrimonioLiquidoCounter = Math.max(...patrimoniosLiquidos.map(p => p.id), 0);
   renderPatrimoniosLiquidos();
   renderGraficos();
   renderTesteSuitability();
+  
+  // Re-renderizar após breve delay para garantir que o DOM está pronto
+  setTimeout(() => {
+    renderGraficos();
+    renderTesteSuitability();
+  }, 300);
 }
 
 // =========================================
