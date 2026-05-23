@@ -289,6 +289,7 @@ function updateReceitaField(id, field, valor) {
   } else {
     receita[field] = valor;
   }
+  renderAnalisesFluxo();
 }
 
 // ========================================
@@ -353,9 +354,11 @@ function updateDespesaField(id, field, valor) {
       despesa.titular = contaCartao.titular;
     }
     renderFluxoCaixa();
+    return; // renderFluxoCaixa já chama renderAnalisesFluxo
   } else {
     despesa[field] = valor;
   }
+  renderAnalisesFluxo();
 }
 
 // ========================================
