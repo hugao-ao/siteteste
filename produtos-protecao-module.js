@@ -178,19 +178,14 @@ function createProdutoProtecaoCard(produto, index) {
         
         <div class="form-group">
           <label for="${produtoId}_objeto" style="display: block; margin-bottom: 0.3rem; color: var(--text-gold); font-weight: 600; font-size: 0.9rem;">
-            <i class="fas fa-file-alt"></i> Objeto do Produto
+            <i class="fas fa-file-alt"></i> Objeto do Produto ${produto.origem_patrimonio ? '<small style="color: var(--text-light); font-weight: 400;">(vinculado ao patrimônio)</small>' : ''}
           </label>
           <input type="text" 
                  id="${produtoId}_objeto" 
-                 list="${produtoId}_objeto_list"
+                 ${produto.origem_patrimonio ? '' : `list="${produtoId}_objeto_list"`}
                  value="${produto.objeto || ''}"
-                 onchange="updateProdutoProtecaoField(${index}, 'objeto', this.value)"
-                 onfocus="atualizarListaObjetosProtecao(${index})"
-                 placeholder="Selecione ou digite..."
-                 style="width: 100%; padding: 0.7rem; border: 2px solid var(--border-color); border-radius: 8px; background: var(--dark-bg); color: var(--text-light); font-size: 0.9rem;">
-          <datalist id="${produtoId}_objeto_list">
-            <!-- Opções serão preenchidas dinamicamente -->
-          </datalist>
+                 ${produto.origem_patrimonio ? 'readonly style="width: 100%; padding: 0.7rem; border: 2px solid var(--border-color); border-radius: 8px; background: var(--dark-bg); color: var(--text-light); font-size: 0.9rem; opacity: 0.7; cursor: not-allowed;"' : `onchange="updateProdutoProtecaoField(${index}, 'objeto', this.value)" onfocus="atualizarListaObjetosProtecao(${index})" placeholder="Selecione ou digite..." style="width: 100%; padding: 0.7rem; border: 2px solid var(--border-color); border-radius: 8px; background: var(--dark-bg); color: var(--text-light); font-size: 0.9rem;"`}>
+          ${produto.origem_patrimonio ? '' : `<datalist id="${produtoId}_objeto_list"><!-- Opções serão preenchidas dinamicamente --></datalist>`}
         </div>
         
         <div class="form-group">
@@ -415,6 +410,11 @@ function updateProdutoProtecaoField(index, campo, valor) {
       }
       calcularTotalProtecao();
     }
+    
+    // Sincronizar vencimento de volta ao patrimônio físico vinculado
+    if (campo === 'vencimento' && produtosProtecao[index].origem_patrimonio) {
+      sincronizarVencimentoComPatrimonio(index);
+    }
   }
 }
 
@@ -445,22 +445,46 @@ function criarProdutoProtecaoDePatrimonio(patrimonio) {
   );
   
   if (produtoExistente) {
-    // Atualizar o produto existente
-    produtoExistente.vencimento = patrimonio.seguro_vencimento || '';
+    // Produto já existe, apenas atualizar o objeto (caso detalhes tenha mudado)
+    produtoExistente.objeto = patrimonio.detalhes || '';
     renderProdutosProtecao();
     return produtoExistente;
   }
   
-  // Criar novo produto
+  // Criar novo produto - objeto é travado com o conteúdo de Detalhes do patrimônio
   const dadosPrePreenchidos = {
     tipo_produto: `Seguro ${patrimonio.tipo || 'Patrimônio'}`,
     objeto: patrimonio.detalhes || '',
-    vencimento: patrimonio.seguro_vencimento || '',
+    vencimento: '',
     periodicidade: 'anual',
     origem_patrimonio: `${patrimonio.tipo} - ${patrimonio.detalhes}`
   };
   
   return addProdutoProtecao(dadosPrePreenchidos);
+}
+
+// Sincroniza o vencimento do produto de proteção de volta ao campo readonly do patrimônio físico
+function sincronizarVencimentoComPatrimonio(produtoIndex) {
+  const produto = produtosProtecao[produtoIndex];
+  if (!produto || !produto.origem_patrimonio) return;
+  
+  // Encontrar o patrimônio correspondente pelos detalhes
+  const patrimonios = window.getPatrimoniosFisicos ? window.getPatrimoniosFisicos() : [];
+  for (let i = 0; i < patrimonios.length; i++) {
+    const origemEsperada = `${patrimonios[i].tipo} - ${patrimonios[i].detalhes}`;
+    if (origemEsperada === produto.origem_patrimonio) {
+      // Atualizar o campo readonly no patrimônio
+      const vencimentoInput = document.getElementById(`patrimonio_${i}_seguro_vencimento`);
+      if (vencimentoInput) {
+        vencimentoInput.value = produto.vencimento || '';
+      }
+      // Atualizar o objeto patrimonios no escopo principal
+      if (window.atualizarPatrimonioVencimento) {
+        window.atualizarPatrimonioVencimento(i, produto.vencimento || '');
+      }
+      break;
+    }
+  }
 }
 
 function removerProdutoProtecaoDePatrimonio(patrimonio) {
@@ -939,6 +963,7 @@ window.getProdutosProtecaoData = getProdutosProtecaoData;
 window.setProdutosProtecaoData = setProdutosProtecaoData;
 window.criarProdutoProtecaoDePatrimonio = criarProdutoProtecaoDePatrimonio;
 window.removerProdutoProtecaoDePatrimonio = removerProdutoProtecaoDePatrimonio;
+window.sincronizarVencimentoComPatrimonio = sincronizarVencimentoComPatrimonio;
 window.abrirModalGerenciarTiposProtecao = abrirModalGerenciarTiposProtecao;
 window.fecharModalTiposProtecao = fecharModalTiposProtecao;
 window.abrirModalNovoTipoProtecao = abrirModalNovoTipoProtecao;
