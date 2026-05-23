@@ -224,8 +224,7 @@ function sincronizarDeclaracoes(pessoasIR) {
         contribuicao_nao_oficial: 0,
         outras_deducoes: 0,
         resultado_tipo: '',
-        resultado_valor: 0,
-        observacoes: ''
+        resultado_valor: 0
       });
     } else {
       // Atualizar nome e tipo caso tenham mudado
@@ -457,17 +456,7 @@ function renderIRCard(pessoa) {
                    style="${declaracao.resultado_tipo === 'paga' ? 'border-color: #dc3545;' : declaracao.resultado_tipo === 'restitui' ? 'border-color: #28a745;' : ''}">
           </div>
           
-          <!-- Observações -->
-          <div class="form-group full-width">
-            <label for="ir_${pessoaKey}_observacoes">
-              <i class="fas fa-sticky-note"></i> Observações
-            </label>
-            <textarea id="ir_${pessoaKey}_observacoes" 
-                      rows="2"
-                      onchange="updateIRField('${pessoaKey}', 'observacoes', this.value)"
-                      placeholder="Observações sobre a declaração de IR..."
-                      style="width: 100%; padding: 0.7rem; border: 2px solid var(--border-color); border-radius: 8px; background: var(--dark-bg); color: var(--text-light); font-size: 0.9rem; resize: vertical;">${declaracao.observacoes || ''}</textarea>
-          </div>
+
         </div>
       </div>
     </div>
