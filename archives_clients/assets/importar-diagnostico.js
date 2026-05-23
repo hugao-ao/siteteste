@@ -8,8 +8,8 @@
 (function() {
   'use strict';
 
-  const SUPABASE_URL = 'https://yepbhfnftmfkjqhdsblp.supabase.co';
-  const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InllcGJoZm5mdG1ma2pxaGRzYmxwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQ3MzYzMjIsImV4cCI6MjA2MDMxMjMyMn0.Ys8fJOjfsMPR-gHBqCnDRF9cMBfL6KHXfbJ_0J_GnM8';
+  const SUPABASE_URL = 'https://vbikskbfkhundhropykf.supabase.co';
+  const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZiaWtza2Jma2h1bmRocm9weWtmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDU1MTk5NjEsImV4cCI6MjA2MTA5NTk2MX0.-n-Tj_5JnF1NL2ZImWlMeTcobWDl_VD6Vqp0lxRQFFU';
 
   // Detecta o slug da ferramenta atual pela URL ou variável global
   function detectarFerramenta() {
