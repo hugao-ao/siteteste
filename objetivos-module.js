@@ -1477,25 +1477,19 @@ function renderGraficoEvolucao(simulacao, objetivosNormais, aposentadorias) {
     chartInstance = null;
   }
   
-  // Preparar dados - mostrar a cada intervalo para ~60 pontos
+  // Cada ponto = 1 mês (sem intervalo)
   const labels = [];
   const dataSaldo = [];
-  const intervalo = Math.max(1, Math.floor(simulacao.maxMeses / 60));
+  const hoje = new Date();
   
-  for (let i = 0; i < simulacao.pontos.length; i += intervalo) {
-    const ponto = simulacao.pontos[i];
-    const anos = Math.floor(ponto.mes / 12);
-    const meses = ponto.mes % 12;
-    labels.push(anos > 0 ? `${anos}a${meses > 0 ? meses + 'm' : ''}` : `${ponto.mes}m`);
+  simulacao.pontos.forEach(ponto => {
+    const dataRef = new Date(hoje);
+    dataRef.setMonth(dataRef.getMonth() + ponto.mes);
+    const mesStr = String(dataRef.getMonth() + 1).padStart(2, '0');
+    const anoStr = String(dataRef.getFullYear()).slice(-2);
+    labels.push(`${mesStr}/${anoStr}`);
     dataSaldo.push(ponto.saldo);
-  }
-  // Garantir último ponto
-  const ultimoPonto = simulacao.pontos[simulacao.pontos.length - 1];
-  if (labels[labels.length - 1] !== `${Math.floor(ultimoPonto.mes / 12)}a`) {
-    const anos = Math.floor(ultimoPonto.mes / 12);
-    labels.push(`${anos}a`);
-    dataSaldo.push(ultimoPonto.saldo);
-  }
+  });
   
   // Linha do capital necessário para aposentadoria
   const metaAposentadoria = Array(labels.length).fill(simulacao.capitalNecessarioCorrigido);
@@ -1505,7 +1499,7 @@ function renderGraficoEvolucao(simulacao, objetivosNormais, aposentadorias) {
   const eventosAcumuloData = Array(labels.length).fill(null);
   
   simulacao.eventos.forEach(evento => {
-    const posicaoLabel = Math.min(Math.round(evento.mes / intervalo), labels.length - 1);
+    const posicaoLabel = Math.min(evento.mes, labels.length - 1);
     if (evento.tipo === 'saque') {
       eventosSaqueData[posicaoLabel] = evento.saldoApos;
     } else {
@@ -1596,7 +1590,13 @@ function renderGraficoEvolucao(simulacao, objetivosNormais, aposentadorias) {
       },
       scales: {
         x: {
-          ticks: { color: '#aaa', font: { size: 9 }, maxRotation: 45 },
+          ticks: {
+            color: '#aaa',
+            font: { size: 8 },
+            maxRotation: 45,
+            autoSkip: true,
+            maxTicksLimit: 40
+          },
           grid: { color: 'rgba(255,255,255,0.05)' }
         },
         y: {
@@ -1628,32 +1628,64 @@ function renderResumoAnalise(simulacao, aposentadorias, objetivosNormais) {
     
     objetivosNormais.forEach(obj => {
       const mesesPrazo = calcularMesesRestantesObjNormal(obj);
-      const valorFinal = obj.meta_acumulo || 0;
+      const valorMeta = obj.meta_acumulo || 0;
       const recTipo = obj.recorrencia_tipo || 'nenhuma';
       const recValor = obj.recorrencia_valor || 0;
       
-      // Verificar se o patrimônio no momento do prazo cobre o objetivo
-      const pontoNoPrazo = simulacao.pontos.find(p => p.mes >= mesesPrazo) || simulacao.pontos[simulacao.pontos.length - 1];
-      const saldoNoPrazo = pontoNoPrazo ? pontoNoPrazo.saldo : 0;
-      const atingido = saldoNoPrazo >= valorFinal;
+      // Encontrar o mês em que o patrimônio acumulado atinge a meta (data provável)
+      let mesRealizacao = -1; // -1 = nunca
+      for (let i = 0; i < simulacao.pontos.length; i++) {
+        if (simulacao.pontos[i].saldo >= valorMeta) {
+          mesRealizacao = simulacao.pontos[i].mes;
+          break;
+        }
+      }
       
-      const anos = Math.floor(mesesPrazo / 12);
-      const mesesResto = mesesPrazo % 12;
-      const prazoTexto = anos > 0 ? `${anos}a${mesesResto > 0 ? ' ' + mesesResto + 'm' : ''}` : `${mesesPrazo}m`;
+      const atingido = mesRealizacao >= 0;
+      const dentroDoPrazo = atingido && mesRealizacao <= mesesPrazo;
+      
+      // Data provável de realização
+      let dataProvavelTexto = '';
+      if (atingido) {
+        const dataProvavel = new Date();
+        dataProvavel.setMonth(dataProvavel.getMonth() + mesRealizacao);
+        const mesNome = String(dataProvavel.getMonth() + 1).padStart(2, '0');
+        dataProvavelTexto = `${mesNome}/${dataProvavel.getFullYear()}`;
+      }
+      
+      // Prazo desejado
+      const prazoDesejado = new Date();
+      prazoDesejado.setMonth(prazoDesejado.getMonth() + mesesPrazo);
+      const prazoMesNome = String(prazoDesejado.getMonth() + 1).padStart(2, '0');
+      const prazoDesejadoTexto = `${prazoMesNome}/${prazoDesejado.getFullYear()}`;
       
       let recTexto = '';
       if (recTipo !== 'nenhuma') {
         recTexto = ` <span style="font-size: 0.6rem; color: #17a2b8;"><i class="fas fa-redo"></i> a cada ${recValor} ${recTipo === 'anos' ? 'ano(s)' : 'meses'}</span>`;
       }
       
+      // Status e cor
+      let statusTexto, statusCor;
+      if (!atingido) {
+        statusTexto = 'Nunca atingível';
+        statusCor = '#dc3545';
+      } else if (dentroDoPrazo) {
+        statusTexto = 'No prazo';
+        statusCor = '#28a745';
+      } else {
+        statusTexto = 'Fora do prazo';
+        statusCor = '#ffc107';
+      }
+      
       html += `
-        <div style="display: flex; align-items: center; gap: 0.5rem; padding: 0.3rem 0.5rem; background: rgba(${atingido ? '40, 167, 69' : '220, 53, 69'}, 0.1); border-radius: 4px; border-left: 3px solid ${atingido ? '#28a745' : '#dc3545'};">
+        <div style="display: flex; align-items: center; gap: 0.5rem; padding: 0.3rem 0.5rem; background: rgba(${!atingido ? '220, 53, 69' : dentroDoPrazo ? '40, 167, 69' : '255, 193, 7'}, 0.1); border-radius: 4px; border-left: 3px solid ${statusCor};">
           <span style="font-size: 0.7rem; color: var(--accent-color); font-weight: 600; min-width: 20px;">${obj.prioridade}º</span>
           <span style="font-size: 0.75rem; color: var(--text-light); flex: 1;">${obj.descricao || 'Sem descrição'}${recTexto}</span>
-          <span style="font-size: 0.7rem; color: var(--text-light);">${formatarMoedaObj(valorFinal)}</span>
-          <span style="font-size: 0.7rem; color: var(--text-light);">em ${prazoTexto}</span>
-          <span style="font-size: 0.7rem; font-weight: 600; color: ${atingido ? '#28a745' : '#dc3545'};">
-            <i class="fas fa-${atingido ? 'check-circle' : 'times-circle'}"></i> ${atingido ? 'Alcançável' : 'Insuficiente'}
+          <span style="font-size: 0.7rem; color: var(--text-light);">${formatarMoedaObj(valorMeta)}</span>
+          <span style="font-size: 0.65rem; color: var(--text-light);">Prazo: ${prazoDesejadoTexto}</span>
+          <span style="font-size: 0.65rem; color: ${statusCor};">${atingido ? `Realiz.: ${dataProvavelTexto}` : ''}</span>
+          <span style="font-size: 0.7rem; font-weight: 600; color: ${statusCor};">
+            <i class="fas fa-${!atingido ? 'times-circle' : dentroDoPrazo ? 'check-circle' : 'exclamation-circle'}"></i> ${statusTexto}
           </span>
         </div>
       `;
