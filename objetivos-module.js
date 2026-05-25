@@ -17,8 +17,9 @@ let perfilFinanceiroData = {
 };
 
 let investimentoAssistenciaData = {
-  valor_parcela_12x: 0,
-  desconto_especial_pct: 40,
+  mostrar_especial: false,
+  qtd_recomendacoes: 0,
+  proposta_final: '', // 'ordinaria' ou 'especial'
   plano_acompanhamento: '',
   observacoes: ''
 };
@@ -2506,142 +2507,242 @@ function renderPerfilFinanceiro() {
 // SEÇÃO: INVESTIMENTO NA ASSISTÊNCIA FINANCEIRA
 // ========================================
 
-function calcularParcelamento(valorBase12x, isEspecial, descontoPct) {
-  if (!valorBase12x || valorBase12x <= 0) return [];
-  
-  let total12x = valorBase12x * 12;
-  if (isEspecial) {
-    total12x = total12x * (1 - descontoPct / 100);
+// Coeficientes de parcelamento fornecidos
+const COEFICIENTES_PARCELAMENTO = {
+  2: 1.052601114,
+  3: 1.070604399,
+  4: 1.088705319,
+  5: 1.107099145,
+  6: 1.125597581,
+  7: 1.144409846,
+  8: 1.163312772,
+  9: 1.182505117,
+  10: 1.201788124,
+  11: 1.221318707,
+  12: 1.241086404
+};
+
+// Calcula renda total do fluxo de caixa (todas as pessoas)
+function calcularRendaTotal() {
+  let rendaMensal = 0;
+  let rendaAnual = 0;
+  if (window.getFluxoCaixaData) {
+    const fluxoData = window.getFluxoCaixaData();
+    const receitas = fluxoData.receitas || [];
+    receitas.forEach(r => {
+      const valor = parseFloat(r.valor) || 0;
+      if (r.und_recorrencia === 'ano') {
+        rendaAnual += valor;
+      } else if (r.und_recorrencia === 'mes') {
+        rendaMensal += valor;
+      }
+    });
   }
+  return { mensal: rendaMensal, anual: rendaMensal * 12 + rendaAnual };
+}
+
+// Calcula tabela de parcelamento com coeficientes corretos
+// valorAvista = valor base (à vista pix e cartão)
+// O desconto é: (valorAvista * coef12x) - soma das parcelas da opção
+function calcularTabelaParcelamento(valorAvista) {
+  if (!valorAvista || valorAvista <= 0) return [];
   
-  const descontoMaxPct = 0.1943; // 19.43% desconto máximo à vista
-  const descontoMax = total12x * descontoMaxPct;
-  const valorAvista = total12x - descontoMax;
-  
+  const valorRef12x = valorAvista * COEFICIENTES_PARCELAMENTO[12]; // valor máximo (sem desconto)
   const parcelas = [];
-  for (let n = 1; n <= 12; n++) {
-    const totalN = valorAvista + (total12x - valorAvista) * (n - 1) / 11;
+  
+  // À vista Pix (= valorAvista)
+  parcelas.push({
+    label: 'À Vista no Pix',
+    n: 1,
+    valor_parcela: valorAvista,
+    total: valorAvista,
+    desconto: valorRef12x - valorAvista
+  });
+  
+  // À vista Cartão (= valorAvista, mesmo valor)
+  parcelas.push({
+    label: 'À Vista no Cartão',
+    n: 1,
+    valor_parcela: valorAvista,
+    total: valorAvista,
+    desconto: valorRef12x - valorAvista
+  });
+  
+  // 2x a 12x
+  for (let n = 2; n <= 12; n++) {
+    const totalN = valorAvista * COEFICIENTES_PARCELAMENTO[n];
     const parcelaN = totalN / n;
-    const descontoN = total12x - totalN;
+    const descontoN = valorRef12x - totalN;
     parcelas.push({
+      label: `${n}x`,
       n: n,
       valor_parcela: parcelaN,
       total: totalN,
-      desconto: descontoN,
-      desconto_sobre_ordinaria: isEspecial ? (valorBase12x * 12) - totalN : descontoN
+      desconto: descontoN
     });
   }
+  
   return parcelas;
 }
 
 function renderInvestimentoAssistencia() {
-  const valor12x = investimentoAssistenciaData.valor_parcela_12x || 0;
-  const descEspecialPct = investimentoAssistenciaData.desconto_especial_pct || 40;
-  
-  const parcelasOrdinaria = calcularParcelamento(valor12x, false, 0);
-  const parcelasEspecial = calcularParcelamento(valor12x, true, descEspecialPct);
-  
+  const renda = calcularRendaTotal();
+  const mostrarEspecial = investimentoAssistenciaData.mostrar_especial || false;
+  const qtdRecs = investimentoAssistenciaData.qtd_recomendacoes || 0;
+  const propostaFinal = investimentoAssistenciaData.proposta_final || '';
   const planoSelecionado = investimentoAssistenciaData.plano_acompanhamento || '';
+  
+  // Oferta Ordinária: 2,2% da renda anual
+  const valorAvistaOrdinaria = renda.anual * 0.022;
+  const parcelasOrdinaria = calcularTabelaParcelamento(valorAvistaOrdinaria);
+  
+  // Oferta Especial: 23% da renda mensal, com desconto adicional = qtdRecs%
+  const valorBaseEspecial = renda.mensal * 0.23;
+  const valorAvistaEspecial = valorBaseEspecial * (1 - qtdRecs / 100);
+  const parcelasEspecial = calcularTabelaParcelamento(valorAvistaEspecial);
   
   return `
     <div style="margin-top: 2rem; padding-top: 1.5rem; border-top: 2px solid rgba(212, 175, 55, 0.3);">
-      <h3 style="color: var(--accent-color); margin: 0 0 1rem 0; font-size: 1rem;">
-        <i class="fas fa-hand-holding-usd"></i> Investimento na Assistência Financeira
+      <h3 style="color: var(--accent-color); margin: 0 0 0.3rem 0; font-size: 1rem;">
+        <i class="fas fa-file-signature"></i> Adesão Opcional ao Plano
       </h3>
+      <p style="color: var(--text-light); font-size: 0.7rem; margin: 0 0 1rem 0; font-style: italic; opacity: 0.8;">
+        Adesão opcional a um planejamento financeiro inicial de referência para a vida financeira. Este plano pode ser ajustado conforme o tempo passa e as necessidades e condições se modificam.
+      </p>
       
-      <!-- ADEÇÃO: Plano Financeiro -->
+      <!-- PROPOSTAS -->
       <div style="background: var(--dark-bg); border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem; margin-bottom: 1rem;">
-        <h4 style="color: #28a745; margin: 0 0 0.8rem 0; font-size: 0.9rem;">
-          <i class="fas fa-file-signature"></i> Adesão - Montagem do Plano Financeiro
-        </h4>
         
-        <div style="display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem;">
-          <div style="flex: 1; min-width: 200px;">
-            <label style="font-size: 0.7rem; color: var(--text-light); display: block; margin-bottom: 0.2rem;">Valor da Parcela (12x sem desconto):</label>
-            <input type="text" value="${valor12x > 0 ? formatarMoedaObj(valor12x) : ''}" 
-              onchange="window.updateInvestimentoField('valor_parcela_12x', parseMoedaObj(this.value))" 
-              placeholder="R$ 0,00"
-              style="width: 100%; padding: 0.4rem; background: #0d3320; border: 1px solid var(--border-color); border-radius: 4px; color: #e8e8e8; font-size: 0.85rem;">
-          </div>
-          <div style="flex: 1; min-width: 200px;">
-            <label style="font-size: 0.7rem; color: var(--text-light); display: block; margin-bottom: 0.2rem;">Desconto Especial (%):</label>
-            <input type="number" value="${descEspecialPct}" min="0" max="100" step="5"
-              onchange="window.updateInvestimentoField('desconto_especial_pct', parseFloat(this.value)||0)" 
-              style="width: 100%; padding: 0.4rem; background: #0d3320; border: 1px solid var(--border-color); border-radius: 4px; color: #e8e8e8; font-size: 0.85rem;">
+        <!-- Info da renda base -->
+        <div style="display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem; padding: 0.5rem; background: rgba(40,167,69,0.05); border-radius: 4px;">
+          <div style="font-size: 0.7rem; color: var(--text-light);">
+            <i class="fas fa-info-circle" style="color: #17a2b8;"></i>
+            Renda Mensal: <b style="color: #28a745;">${formatarMoedaObj(renda.mensal)}</b> | 
+            Renda Anual: <b style="color: #28a745;">${formatarMoedaObj(renda.anual)}</b>
           </div>
         </div>
         
-        ${valor12x > 0 ? `
-        <!-- Tabelas de Parcelamento lado a lado -->
-        <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
-          <!-- ORDINÁRIA -->
-          <div style="flex: 1; min-width: 280px; border: 1px solid rgba(40, 167, 69, 0.4); border-radius: 8px; padding: 0.8rem;">
-            <h5 style="color: #28a745; margin: 0 0 0.5rem 0; font-size: 0.8rem; text-align: center;">
-              <i class="fas fa-file-alt"></i> PROPOSTA ORDINÁRIA
+        <div style="display: flex; gap: 1rem; flex-wrap: wrap; align-items: flex-start;">
+          
+          <!-- PROPOSTA ORDINÁRIA -->
+          <div style="flex: 1; min-width: 280px; border: 2px solid ${propostaFinal === 'ordinaria' ? '#28a745' : 'rgba(40, 167, 69, 0.3)'}; border-radius: 8px; padding: 0.8rem; position: relative;">
+            ${propostaFinal === 'ordinaria' ? '<span style="position: absolute; top: -8px; right: 8px; background: #28a745; color: white; font-size: 0.55rem; padding: 0.1rem 0.4rem; border-radius: 3px;">SELECIONADA</span>' : ''}
+            <h5 style="color: #28a745; margin: 0 0 0.3rem 0; font-size: 0.85rem; text-align: center;">
+              <i class="fas fa-file-alt"></i> OFERTA ORDINÁRIA
             </h5>
+            <p style="text-align: center; font-size: 0.6rem; color: var(--text-light); margin: 0 0 0.5rem 0;">(2,2% da renda anual = valor à vista)</p>
+            
+            ${valorAvistaOrdinaria > 0 ? `
             <div style="text-align: center; margin-bottom: 0.5rem;">
-              <span style="font-size: 0.65rem; color: var(--text-light);">Valor total (12x):</span>
-              <span style="color: #28a745; font-weight: 600; font-size: 0.85rem;"> ${formatarMoedaObj(valor12x * 12)}</span>
+              <span style="font-size: 0.65rem; color: var(--text-light);">Valor à vista:</span>
+              <span style="color: #28a745; font-weight: 700; font-size: 1rem;"> ${formatarMoedaObj(valorAvistaOrdinaria)}</span>
             </div>
-            <div style="max-height: 250px; overflow-y: auto;">
+            <div style="max-height: 320px; overflow-y: auto;">
               <table style="width: 100%; border-collapse: collapse; font-size: 0.7rem;">
                 <thead>
                   <tr style="border-bottom: 1px solid var(--border-color);">
-                    <th style="padding: 0.3rem; text-align: left; color: var(--text-light);">Parcelas</th>
+                    <th style="padding: 0.3rem; text-align: left; color: var(--text-light);">Forma</th>
                     <th style="padding: 0.3rem; text-align: right; color: var(--text-light);">Valor</th>
                     <th style="padding: 0.3rem; text-align: right; color: var(--text-light);">Desconto</th>
                   </tr>
                 </thead>
                 <tbody>
                   ${parcelasOrdinaria.map((p, i) => `
-                  <tr style="border-bottom: 1px solid rgba(255,255,255,0.05); ${i === 0 ? 'background: rgba(40,167,69,0.1);' : ''}">
-                    <td style="padding: 0.25rem 0.3rem; color: #e8e8e8;">${i === 0 ? 'À vista' : i === 1 ? 'À vista Cartão' : p.n + 'x'}</td>
-                    <td style="padding: 0.25rem 0.3rem; text-align: right; color: #28a745; font-weight: 600;">${formatarMoedaObj(p.valor_parcela)}</td>
-                    <td style="padding: 0.25rem 0.3rem; text-align: right; color: ${p.desconto > 0 ? '#ffc107' : 'var(--text-light)'}; font-size: 0.6rem;">${p.desconto > 0 ? '-' + formatarMoedaObj(p.desconto) : '-'}</td>
+                  <tr style="border-bottom: 1px solid rgba(255,255,255,0.05); ${i <= 1 ? 'background: rgba(40,167,69,0.08);' : ''}">
+                    <td style="padding: 0.25rem 0.3rem; color: #e8e8e8; font-size: 0.65rem;">${p.label}</td>
+                    <td style="padding: 0.25rem 0.3rem; text-align: right; color: #28a745; font-weight: 600;">R$ ${p.valor_parcela.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                    <td style="padding: 0.25rem 0.3rem; text-align: right;">
+                      ${p.desconto > 0.01 ? `<span style="background: rgba(255,193,7,0.15); color: #ffc107; padding: 0.1rem 0.3rem; border-radius: 3px; font-size: 0.6rem; font-weight: 600;">-R$ ${p.desconto.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>` : '<span style="color: var(--text-light); font-size: 0.6rem;">-</span>'}
+                    </td>
                   </tr>
                   `).join('')}
                 </tbody>
               </table>
             </div>
+            <div style="text-align: center; margin-top: 0.6rem;">
+              <button onclick="window.selecionarPropostaFinal('ordinaria')" style="padding: 0.3rem 1rem; background: ${propostaFinal === 'ordinaria' ? '#28a745' : 'transparent'}; border: 1px solid #28a745; border-radius: 4px; color: ${propostaFinal === 'ordinaria' ? 'white' : '#28a745'}; font-size: 0.7rem; cursor: pointer;">
+                ${propostaFinal === 'ordinaria' ? '<i class="fas fa-check"></i> Selecionada' : 'Selecionar esta'}
+              </button>
+            </div>
+            ` : `
+            <div style="text-align: center; padding: 1rem; opacity: 0.5;">
+              <p style="color: var(--text-light); font-size: 0.7rem;">Preencha as receitas no Fluxo de Caixa</p>
+            </div>
+            `}
           </div>
           
-          <!-- ESPECIAL -->
-          <div style="flex: 1; min-width: 280px; border: 1px solid rgba(212, 175, 55, 0.4); border-radius: 8px; padding: 0.8rem;">
-            <h5 style="color: var(--accent-color); margin: 0 0 0.5rem 0; font-size: 0.8rem; text-align: center;">
-              <i class="fas fa-star"></i> PROPOSTA ESPECIAL (${descEspecialPct}% desc.)
-            </h5>
-            <div style="text-align: center; margin-bottom: 0.5rem;">
-              <span style="font-size: 0.65rem; color: var(--text-light);">Valor total (12x):</span>
-              <span style="color: var(--accent-color); font-weight: 600; font-size: 0.85rem;"> ${formatarMoedaObj(valor12x * 12 * (1 - descEspecialPct/100))}</span>
+          <!-- PROPOSTA ESPECIAL (visível apenas se botão clicado) -->
+          ${mostrarEspecial ? `
+          <div style="flex: 1; min-width: 280px; border: 2px solid ${propostaFinal === 'especial' ? 'var(--accent-color)' : 'rgba(212, 175, 55, 0.3)'}; border-radius: 8px; padding: 0.8rem; position: relative;">
+            ${propostaFinal === 'especial' ? '<span style="position: absolute; top: -8px; right: 8px; background: var(--accent-color); color: #1a1a2e; font-size: 0.55rem; padding: 0.1rem 0.4rem; border-radius: 3px; font-weight: 600;">SELECIONADA</span>' : ''}
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <h5 style="color: var(--accent-color); margin: 0 0 0.3rem 0; font-size: 0.85rem;">
+                <i class="fas fa-star"></i> OFERTA ESPECIAL
+              </h5>
+              <button onclick="window.toggleEspecial()" style="background: none; border: none; color: #dc3545; cursor: pointer; font-size: 0.7rem;" title="Fechar proposta especial">
+                <i class="fas fa-times"></i>
+              </button>
             </div>
-            <div style="max-height: 250px; overflow-y: auto;">
+            <p style="text-align: center; font-size: 0.6rem; color: var(--text-light); margin: 0 0 0.5rem 0;">(23% da renda mensal - desconto por recomendações)</p>
+            
+            <!-- Campo de recomendações -->
+            <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.6rem; padding: 0.4rem; background: rgba(212,175,55,0.05); border-radius: 4px;">
+              <label style="font-size: 0.65rem; color: var(--text-light); white-space: nowrap;">Qtd. Recomendações:</label>
+              <input type="number" value="${qtdRecs}" min="0" max="100" step="1"
+                onchange="window.updateInvestimentoField('qtd_recomendacoes', parseInt(this.value)||0)"
+                style="width: 60px; padding: 0.25rem; background: #0d3320; border: 1px solid var(--border-color); border-radius: 4px; color: var(--accent-color); font-size: 0.8rem; text-align: center; font-weight: 600;">
+              <span style="font-size: 0.6rem; color: var(--accent-color); font-weight: 600;">= ${qtdRecs}% desc. adicional</span>
+            </div>
+            
+            ${valorAvistaEspecial > 0 ? `
+            <div style="text-align: center; margin-bottom: 0.5rem;">
+              <span style="font-size: 0.65rem; color: var(--text-light);">Valor à vista:</span>
+              <span style="color: var(--accent-color); font-weight: 700; font-size: 1rem;"> ${formatarMoedaObj(valorAvistaEspecial)}</span>
+            </div>
+            <div style="max-height: 320px; overflow-y: auto;">
               <table style="width: 100%; border-collapse: collapse; font-size: 0.7rem;">
                 <thead>
                   <tr style="border-bottom: 1px solid var(--border-color);">
-                    <th style="padding: 0.3rem; text-align: left; color: var(--text-light);">Parcelas</th>
+                    <th style="padding: 0.3rem; text-align: left; color: var(--text-light);">Forma</th>
                     <th style="padding: 0.3rem; text-align: right; color: var(--text-light);">Valor</th>
-                    <th style="padding: 0.3rem; text-align: right; color: var(--text-light);">Economia</th>
+                    <th style="padding: 0.3rem; text-align: right; color: var(--text-light);">Desconto</th>
                   </tr>
                 </thead>
                 <tbody>
                   ${parcelasEspecial.map((p, i) => `
-                  <tr style="border-bottom: 1px solid rgba(255,255,255,0.05); ${i === 0 ? 'background: rgba(212,175,55,0.1);' : ''}">
-                    <td style="padding: 0.25rem 0.3rem; color: #e8e8e8;">${i === 0 ? 'À vista' : i === 1 ? 'À vista Cartão' : p.n + 'x'}</td>
-                    <td style="padding: 0.25rem 0.3rem; text-align: right; color: var(--accent-color); font-weight: 600;">${formatarMoedaObj(p.valor_parcela)}</td>
-                    <td style="padding: 0.25rem 0.3rem; text-align: right; color: #28a745; font-size: 0.6rem;">${p.desconto_sobre_ordinaria > 0 ? '-' + formatarMoedaObj(p.desconto_sobre_ordinaria) : '-'}</td>
+                  <tr style="border-bottom: 1px solid rgba(255,255,255,0.05); ${i <= 1 ? 'background: rgba(212,175,55,0.08);' : ''}">
+                    <td style="padding: 0.25rem 0.3rem; color: #e8e8e8; font-size: 0.65rem;">${p.label}</td>
+                    <td style="padding: 0.25rem 0.3rem; text-align: right; color: var(--accent-color); font-weight: 600;">R$ ${p.valor_parcela.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                    <td style="padding: 0.25rem 0.3rem; text-align: right;">
+                      ${p.desconto > 0.01 ? `<span style="background: rgba(255,193,7,0.15); color: #ffc107; padding: 0.1rem 0.3rem; border-radius: 3px; font-size: 0.6rem; font-weight: 600;">-R$ ${p.desconto.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>` : '<span style="color: var(--text-light); font-size: 0.6rem;">-</span>'}
+                    </td>
                   </tr>
                   `).join('')}
                 </tbody>
               </table>
             </div>
+            <div style="text-align: center; margin-top: 0.6rem;">
+              <button onclick="window.selecionarPropostaFinal('especial')" style="padding: 0.3rem 1rem; background: ${propostaFinal === 'especial' ? 'var(--accent-color)' : 'transparent'}; border: 1px solid var(--accent-color); border-radius: 4px; color: ${propostaFinal === 'especial' ? '#1a1a2e' : 'var(--accent-color)'}; font-size: 0.7rem; cursor: pointer; font-weight: ${propostaFinal === 'especial' ? '600' : '400'};">
+                ${propostaFinal === 'especial' ? '<i class="fas fa-check"></i> Selecionada' : 'Selecionar esta'}
+              </button>
+            </div>
+            ` : `
+            <div style="text-align: center; padding: 1rem; opacity: 0.5;">
+              <p style="color: var(--text-light); font-size: 0.7rem;">Preencha as receitas no Fluxo de Caixa</p>
+            </div>
+            `}
           </div>
+          ` : ''}
         </div>
-        ` : `
-        <div style="text-align: center; padding: 1.5rem; opacity: 0.5;">
-          <i class="fas fa-calculator" style="font-size: 2rem; color: var(--text-light);"></i>
-          <p style="color: var(--text-light); font-size: 0.75rem; margin: 0.5rem 0 0 0;">Informe o valor da parcela (12x) para calcular as propostas</p>
+        
+        <!-- Botão discreto para abrir proposta especial -->
+        ${!mostrarEspecial ? `
+        <div style="text-align: right; margin-top: 0.6rem;">
+          <button onclick="window.toggleEspecial()" style="background: none; border: 1px dashed rgba(212,175,55,0.4); border-radius: 4px; padding: 0.3rem 0.8rem; color: var(--accent-color); font-size: 0.65rem; cursor: pointer; opacity: 0.7;" title="Abrir proposta especial baseada em recomendações">
+            <i class="fas fa-plus-circle"></i> Proposta Especial
+          </button>
         </div>
-        `}
+        ` : ''}
       </div>
       
       <!-- ACOMPANHAMENTO: Planos lado a lado -->
@@ -2681,12 +2782,12 @@ function renderInvestimentoAssistencia() {
         </div>
       </div>
       
-      <!-- Observações do Investimento -->
+      <!-- Observações -->
       <div style="margin-top: 1rem;">
         <h4 style="color: var(--accent-color); margin: 0 0 0.5rem 0; font-size: 0.85rem;">
-          <i class="fas fa-sticky-note"></i> Observações - Investimento na Assistência
+          <i class="fas fa-sticky-note"></i> Observações - Adesão ao Plano
         </h4>
-        <textarea onchange="window.updateInvestimentoObs(this.value)" placeholder="Observações sobre o investimento e plano escolhido..." style="width: 100%; min-height: 80px; padding: 0.6rem; background: var(--dark-bg); border: 1px solid var(--border-color); border-radius: 4px; color: var(--text-light); font-size: 0.8rem; resize: vertical;">${investimentoAssistenciaData.observacoes || ''}</textarea>
+        <textarea onchange="window.updateInvestimentoObs(this.value)" placeholder="Observações sobre a adesão e plano escolhido..." style="width: 100%; min-height: 80px; padding: 0.6rem; background: var(--dark-bg); border: 1px solid var(--border-color); border-radius: 4px; color: var(--text-light); font-size: 0.8rem; resize: vertical;">${investimentoAssistenciaData.observacoes || ''}</textarea>
       </div>
     </div>
   `;
@@ -2814,7 +2915,7 @@ window.updatePerfilFinanceiroObs = function(valor) {
   perfilFinanceiroData.observacoes = valor;
 };
 
-// Funções do Investimento na Assistência
+// Funções do Investimento na Assistência / Adesão ao Plano
 window.updateInvestimentoField = function(campo, valor) {
   investimentoAssistenciaData[campo] = valor;
   renderObjetivos();
@@ -2825,6 +2926,15 @@ window.updateInvestimentoObs = function(valor) {
 window.selecionarPlanoAcompanhamento = function(planoId) {
   investimentoAssistenciaData.plano_acompanhamento = 
     investimentoAssistenciaData.plano_acompanhamento === planoId ? '' : planoId;
+  renderObjetivos();
+};
+window.toggleEspecial = function() {
+  investimentoAssistenciaData.mostrar_especial = !investimentoAssistenciaData.mostrar_especial;
+  renderObjetivos();
+};
+window.selecionarPropostaFinal = function(tipo) {
+  investimentoAssistenciaData.proposta_final = 
+    investimentoAssistenciaData.proposta_final === tipo ? '' : tipo;
   renderObjetivos();
 };
 
