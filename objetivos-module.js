@@ -2638,15 +2638,6 @@ function renderInvestimentoAssistencia() {
       <!-- PROPOSTAS -->
       <div style="background: var(--dark-bg); border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem; margin-bottom: 1rem;">
         
-        <!-- Info da renda base -->
-        <div style="display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem; padding: 0.5rem; background: rgba(40,167,69,0.05); border-radius: 4px;">
-          <div style="font-size: 0.7rem; color: var(--text-light);">
-            <i class="fas fa-info-circle" style="color: #17a2b8;"></i>
-            Renda Mensal: <b style="color: #28a745;">${formatarMoedaObj(renda.mensal)}</b> | 
-            Renda Anual: <b style="color: #28a745;">${formatarMoedaObj(renda.anual)}</b>${renda.restituicoesIR > 0 ? ` | Restituições IR: <b style="color: #ffc107;">${formatarMoedaObj(renda.restituicoesIR)}</b> | Base Ordinária: <b style="color: #28a745;">${formatarMoedaObj(baseOrdinaria)}</b>` : ''}
-          </div>
-        </div>
-        
         <div style="display: flex; gap: 1rem; flex-wrap: wrap; align-items: flex-start;">
           
           <!-- PROPOSTA ORDINÁRIA -->
@@ -2655,7 +2646,7 @@ function renderInvestimentoAssistencia() {
             <h5 style="color: #28a745; margin: 0 0 0.3rem 0; font-size: 0.85rem; text-align: center;">
               <i class="fas fa-file-alt"></i> OFERTA ORDINÁRIA
             </h5>
-            <p style="text-align: center; font-size: 0.6rem; color: var(--text-light); margin: 0 0 0.5rem 0;">(2,2% da renda anual${renda.restituicoesIR > 0 ? ' − restituições IR' : ''} = valor à vista)</p>
+
             
             ${valorAvistaOrdinaria > 0 ? `
             <div style="text-align: center; margin-bottom: 0.5rem;">
@@ -2708,7 +2699,7 @@ function renderInvestimentoAssistencia() {
                 <i class="fas fa-times"></i>
               </button>
             </div>
-            <p style="text-align: center; font-size: 0.6rem; color: var(--text-light); margin: 0 0 0.5rem 0;">(23% da renda mensal - desconto por recomendações)</p>
+
             
             <!-- Campo de recomendações -->
             <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.6rem; padding: 0.4rem; background: rgba(212,175,55,0.05); border-radius: 4px;">
