@@ -755,6 +755,17 @@ function updateObjetivoField(id, field, value) {
     renderAnalisesObjetivosInline();
   }
   
+  // Quando muda o tipo de recorrência, definir valor padrão automaticamente
+  if (field === 'recorrencia_tipo') {
+    if (value === 'anos' && (!objetivo.recorrencia_valor || objetivo.recorrencia_valor === 0)) {
+      objetivo.recorrencia_valor = 1;
+    } else if (value === 'meses' && (!objetivo.recorrencia_valor || objetivo.recorrencia_valor === 0)) {
+      objetivo.recorrencia_valor = 12;
+    } else if (value === 'nenhuma') {
+      objetivo.recorrencia_valor = 0;
+    }
+  }
+  
   // MELHORIA 3: Atualizar análises ao mudar campos de prazo ou recorrência
   if (['prazo_meses', 'prazo_idade', 'prazo_data', 'prazo_tipo', 'recorrencia_tipo', 'recorrencia_valor', 'acumulavel'].includes(field)) {
     renderAnalisesObjetivosInline();
@@ -1573,7 +1584,10 @@ function simularEvolucaoPatrimonial(aposentadorias, objetivosNormais, perfilIdOv
     const valorSaque = obj.meta_acumulo || 0;
     const isAcumulo = obj.acumulavel;
     const recTipo = obj.recorrencia_tipo || 'nenhuma';
-    const recValor = obj.recorrencia_valor || 0;
+    // Usar valor padrão se recorrencia_valor for 0 mas tipo está definido
+    let recValor = obj.recorrencia_valor || 0;
+    if (recTipo === 'anos' && recValor === 0) recValor = 1;
+    if (recTipo === 'meses' && recValor === 0) recValor = 12;
     
     if (valorSaque > 0 && mesesPrazo > 0) {
       // Primeiro evento (na data de realização)
@@ -1722,9 +1736,19 @@ function calcularMesesRestantesObj(obj, pessoas) {
 function calcularMesesRestantesObjNormal(obj) {
   const prazoTipo = obj.prazo_tipo || 'meses';
   if (prazoTipo === 'data' && obj.prazo_data) {
-    const dataAlvo = new Date(obj.prazo_data);
+    let dataAlvo = new Date(obj.prazo_data);
+    // Se a data é inválida, tentar parsear formato BR (DD/MM/YYYY)
+    if (isNaN(dataAlvo)) {
+      const partes = String(obj.prazo_data).split('/');
+      if (partes.length === 3) {
+        // DD/MM/YYYY -> YYYY-MM-DD
+        dataAlvo = new Date(`${partes[2]}-${partes[1].padStart(2,'0')}-${partes[0].padStart(2,'0')}`);
+      }
+    }
+    if (isNaN(dataAlvo)) return 60; // Fallback se ainda inválido
     const hoje = new Date();
-    return Math.max(0, Math.round((dataAlvo - hoje) / (1000 * 60 * 60 * 24 * 30.44)));
+    const meses = Math.round((dataAlvo - hoje) / (1000 * 60 * 60 * 24 * 30.44));
+    return Math.max(1, meses); // Mínimo 1 mês para garantir que eventos sejam criados
   } else if (prazoTipo === 'anos') {
     return obj.prazo_meses || 60;
   } else {
@@ -1985,7 +2009,10 @@ function renderResumoAnalise(simulacao, aposentadorias, objetivosNormais, simula
       const mesesPrazo = calcularMesesRestantesObjNormal(obj);
       const valorMeta = obj.meta_acumulo || 0;
       const recTipo = obj.recorrencia_tipo || 'nenhuma';
-      const recValor = obj.recorrencia_valor || 0;
+      // Usar valor padrão se recorrencia_valor for 0 mas tipo está definido
+      let recValor = obj.recorrencia_valor || 0;
+      if (recTipo === 'anos' && recValor === 0) recValor = 1;
+      if (recTipo === 'meses' && recValor === 0) recValor = 12;
       
       // Encontrar o mês em que o patrimônio acumulado atinge a meta (data provável)
       let mesRealizacao = -1; // -1 = nunca
