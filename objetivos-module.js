@@ -1341,25 +1341,12 @@ function renderObjetivos() {
     <div id="analises-objetivos-container"></div>
   `;
   
-  // Renderizar seções separadas (Perfil Financeiro e Adesão)
-  let perfilContainer = document.getElementById('perfil-financeiro-section');
-  if (!perfilContainer) {
-    perfilContainer = document.createElement('div');
-    perfilContainer.id = 'perfil-financeiro-section';
-    container.parentNode.insertBefore(perfilContainer, container.nextSibling);
-  }
-  perfilContainer.innerHTML = renderPerfilFinanceiro();
-  
-  let adesaoContainer = document.getElementById('adesao-plano-section');
-  if (!adesaoContainer) {
-    adesaoContainer = document.createElement('div');
-    adesaoContainer.id = 'adesao-plano-section';
-    perfilContainer.parentNode.insertBefore(adesaoContainer, perfilContainer.nextSibling);
-  }
-  adesaoContainer.innerHTML = renderInvestimentoAssistencia();
-  
   // Renderizar análises abaixo após o DOM estar pronto
   setTimeout(() => renderAnalisesObjetivosInline(), 0);
+  
+  // Renderizar seções separadas (Perfil Financeiro e Adesão) nos containers do HTML
+  renderPerfilFinanceiroSection();
+  renderAdesaoSection();
 }
 
 function renderCardAposentadoria(obj, pessoas, patrimonioAposentadoriaPorPessoa) {
@@ -2467,51 +2454,50 @@ function renderPerfilFinanceiro() {
   const perfilAtual = PERFIS_FINANCEIROS.find(p => p.id === perfilFinanceiroData.perfil_selecionado);
   
   return `
-    <div style="margin-top: 2rem; background: var(--card-bg); border: 1px solid var(--accent-color); border-radius: 12px; padding: 1.5rem;">
-      <h3 style="color: var(--accent-color); margin: 0 0 1rem 0; font-size: 1rem;">
-        <i class="fas fa-user-tag"></i> Perfil Financeiro
-      </h3>
+    <div style="background: var(--dark-bg); border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem;">
+      <div style="margin-bottom: 1rem;">
+        <label style="font-size: 0.75rem; color: var(--text-light); display: block; margin-bottom: 0.3rem;">Selecione o perfil financeiro do cliente:</label>
+        <select onchange="window.setPerfilFinanceiro(this.value)" style="width: 100%; padding: 0.5rem; background: #0d3320; border: 1px solid var(--border-color); border-radius: 4px; color: #e8e8e8; font-size: 0.85rem;">
+          <option value="">-- Selecione --</option>
+          ${PERFIS_FINANCEIROS.map(p => `
+            <option value="${p.id}" ${perfilFinanceiroData.perfil_selecionado === p.id ? 'selected' : ''}>${p.emoji} ${p.nome}</option>
+          `).join('')}
+        </select>
+      </div>
       
-      <div style="background: var(--dark-bg); border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem; margin-bottom: 1rem;">
-        <div style="margin-bottom: 1rem;">
-          <label style="font-size: 0.75rem; color: var(--text-light); display: block; margin-bottom: 0.3rem;">Selecione o perfil financeiro do cliente:</label>
-          <select onchange="window.setPerfilFinanceiro(this.value)" style="width: 100%; padding: 0.5rem; background: #0d3320; border: 1px solid var(--border-color); border-radius: 4px; color: #e8e8e8; font-size: 0.85rem;">
-            <option value="">-- Selecione --</option>
-            ${PERFIS_FINANCEIROS.map(p => `
-              <option value="${p.id}" ${perfilFinanceiroData.perfil_selecionado === p.id ? 'selected' : ''}>${p.emoji} ${p.nome}</option>
-            `).join('')}
-          </select>
-        </div>
-        
-        ${perfilAtual ? `
-        <div style="background: rgba(${hexToRgb(perfilAtual.cor)}, 0.08); border: 1px solid ${perfilAtual.cor}; border-radius: 8px; padding: 1rem; animation: fadeIn 0.3s ease;">
-          <div style="display: flex; align-items: center; gap: 0.8rem; margin-bottom: 0.8rem;">
-            <span style="font-size: 2.5rem;">${perfilAtual.emoji}</span>
-            <div>
-              <h4 style="color: ${perfilAtual.cor}; margin: 0; font-size: 1rem;">${perfilAtual.nome}</h4>
-            </div>
+      ${perfilAtual ? `
+      <div style="background: rgba(${hexToRgb(perfilAtual.cor)}, 0.08); border: 1px solid ${perfilAtual.cor}; border-radius: 8px; padding: 1rem; animation: fadeIn 0.3s ease;">
+        <div style="display: flex; align-items: center; gap: 0.8rem; margin-bottom: 0.8rem;">
+          <span style="font-size: 2.5rem;">${perfilAtual.emoji}</span>
+          <div>
+            <h4 style="color: ${perfilAtual.cor}; margin: 0; font-size: 1rem;">${perfilAtual.nome}</h4>
           </div>
-          <p style="color: var(--text-light); font-size: 0.8rem; line-height: 1.5; margin: 0; font-style: italic;">
-            "${perfilAtual.descricao}"
-          </p>
         </div>
-        ` : `
-        <div style="text-align: center; padding: 1.5rem; opacity: 0.5;">
-          <i class="fas fa-user-circle" style="font-size: 2rem; color: var(--text-light);"></i>
-          <p style="color: var(--text-light); font-size: 0.75rem; margin: 0.5rem 0 0 0;">Selecione um perfil acima para ver a descrição</p>
-        </div>
-        `}
+        <p style="color: var(--text-light); font-size: 0.8rem; line-height: 1.5; margin: 0; font-style: italic;">
+          "${perfilAtual.descricao}"
+        </p>
       </div>
-      
-      <!-- Observações do Perfil Financeiro -->
-      <div style="margin-top: 1rem;">
-        <h4 style="color: var(--accent-color); margin: 0 0 0.5rem 0; font-size: 0.85rem;">
-          <i class="fas fa-sticky-note"></i> Observações - Perfil Financeiro
-        </h4>
-        <textarea onchange="window.updatePerfilFinanceiroObs(this.value)" placeholder="Observações sobre o perfil financeiro do cliente..." style="width: 100%; min-height: 80px; padding: 0.6rem; background: var(--dark-bg); border: 1px solid var(--border-color); border-radius: 4px; color: var(--text-light); font-size: 0.8rem; resize: vertical;">${perfilFinanceiroData.observacoes || ''}</textarea>
+      ` : `
+      <div style="text-align: center; padding: 1.5rem; opacity: 0.5;">
+        <i class="fas fa-user-circle" style="font-size: 2rem; color: var(--text-light);"></i>
+        <p style="color: var(--text-light); font-size: 0.75rem; margin: 0.5rem 0 0 0;">Selecione um perfil acima para ver a descrição</p>
       </div>
+      `}
     </div>
   `;
+}
+
+// Função wrapper que renderiza no container do HTML
+function renderPerfilFinanceiroSection() {
+  const container = document.getElementById('perfil-financeiro-container');
+  if (!container) return;
+  container.innerHTML = renderPerfilFinanceiro();
+  
+  // Restaurar observações no textarea do HTML
+  const obsTextarea = document.getElementById('obs_perfil_financeiro');
+  if (obsTextarea && perfilFinanceiroData.observacoes) {
+    obsTextarea.value = perfilFinanceiroData.observacoes;
+  }
 }
 
 // ========================================
@@ -2613,10 +2599,7 @@ function renderInvestimentoAssistencia() {
   const parcelasEspecial = calcularTabelaParcelamento(valorAvistaEspecial);
   
   return `
-    <div style="margin-top: 2rem; background: var(--card-bg); border: 1px solid var(--accent-color); border-radius: 12px; padding: 1.5rem;">
-      <h3 style="color: var(--accent-color); margin: 0 0 0.3rem 0; font-size: 1rem;">
-        <i class="fas fa-file-signature"></i> Adesão Opcional ao Plano
-      </h3>
+    <div>
       <p style="color: var(--text-light); font-size: 0.7rem; margin: 0 0 1rem 0; font-style: italic; opacity: 0.8;">
         Adesão opcional a um planejamento financeiro inicial de referência para a vida financeira. Este plano pode ser ajustado conforme o tempo passa e as necessidades e condições se modificam.
       </p>
@@ -2793,15 +2776,21 @@ function renderInvestimentoAssistencia() {
         </div>
       </div>
       
-      <!-- Observações -->
-      <div style="margin-top: 1rem;">
-        <h4 style="color: var(--accent-color); margin: 0 0 0.5rem 0; font-size: 0.85rem;">
-          <i class="fas fa-sticky-note"></i> Observações - Adesão ao Plano
-        </h4>
-        <textarea onchange="window.updateInvestimentoObs(this.value)" placeholder="Observações sobre a adesão e plano escolhido..." style="width: 100%; min-height: 80px; padding: 0.6rem; background: var(--dark-bg); border: 1px solid var(--border-color); border-radius: 4px; color: var(--text-light); font-size: 0.8rem; resize: vertical;">${investimentoAssistenciaData.observacoes || ''}</textarea>
-      </div>
     </div>
   `;
+}
+
+// Função wrapper que renderiza no container do HTML
+function renderAdesaoSection() {
+  const container = document.getElementById('adesao-plano-container');
+  if (!container) return;
+  container.innerHTML = renderInvestimentoAssistencia();
+  
+  // Restaurar observações no textarea do HTML
+  const obsTextarea = document.getElementById('obs_adesao_plano');
+  if (obsTextarea && investimentoAssistenciaData.observacoes) {
+    obsTextarea.value = investimentoAssistenciaData.observacoes;
+  }
 }
 
 // Helper: converter hex para rgb
@@ -2811,6 +2800,12 @@ function hexToRgb(hex) {
 }
 
 function getObjetivosData() {
+  // Sincronizar observações dos textareas do HTML antes de salvar
+  const obsPerfil = document.getElementById('obs_perfil_financeiro');
+  if (obsPerfil) perfilFinanceiroData.observacoes = obsPerfil.value || '';
+  const obsAdesao = document.getElementById('obs_adesao_plano');
+  if (obsAdesao) investimentoAssistenciaData.observacoes = obsAdesao.value || '';
+  
   // MELHORIA 1: Salvar perfil de rentabilidade e perfis comparativos junto com os dados
   return {
     objetivos: objetivos,
@@ -2920,7 +2915,7 @@ window.setPerfilAnalise = function(valor) {
 // Funções do Perfil Financeiro
 window.setPerfilFinanceiro = function(valor) {
   perfilFinanceiroData.perfil_selecionado = valor;
-  renderObjetivos();
+  renderPerfilFinanceiroSection();
 };
 window.updatePerfilFinanceiroObs = function(valor) {
   perfilFinanceiroData.observacoes = valor;
@@ -2929,7 +2924,7 @@ window.updatePerfilFinanceiroObs = function(valor) {
 // Funções do Investimento na Assistência / Adesão ao Plano
 window.updateInvestimentoField = function(campo, valor) {
   investimentoAssistenciaData[campo] = valor;
-  renderObjetivos();
+  renderAdesaoSection();
 };
 window.updateInvestimentoObs = function(valor) {
   investimentoAssistenciaData.observacoes = valor;
@@ -2937,16 +2932,16 @@ window.updateInvestimentoObs = function(valor) {
 window.selecionarPlanoAcompanhamento = function(planoId) {
   investimentoAssistenciaData.plano_acompanhamento = 
     investimentoAssistenciaData.plano_acompanhamento === planoId ? '' : planoId;
-  renderObjetivos();
+  renderAdesaoSection();
 };
 window.toggleEspecial = function() {
   investimentoAssistenciaData.mostrar_especial = !investimentoAssistenciaData.mostrar_especial;
-  renderObjetivos();
+  renderAdesaoSection();
 };
 window.selecionarPropostaFinal = function(tipo) {
   investimentoAssistenciaData.proposta_final = 
     investimentoAssistenciaData.proposta_final === tipo ? '' : tipo;
-  renderObjetivos();
+  renderAdesaoSection();
 };
 
 // Inicialização
