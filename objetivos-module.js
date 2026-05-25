@@ -7,7 +7,7 @@ import { supabase } from './supabase.js';
 // Dados dos objetivos
 let objetivos = [];
 let objetivoCounter = 0;
-// analiseVisivel removido - análises sempre visíveis
+let perfilAnaliseSelecionado = 'mod'; // Perfil selecionado persistente
 
 // Variáveis de mercado (carregadas do Supabase)
 let variaveisMercado = {
@@ -802,6 +802,104 @@ function getRentabilidadePorPerfil(perfilId) {
 
 
 // ========================================
+// FUNÇÕES DE VARIÁVEIS DE MERCADO
+// ========================================
+
+function updateVariavelMercado(campo, valor) {
+  variaveisMercado[campo] = valor;
+  // Recalcular rentabilidades se CDI mudou
+  if (campo === 'cdi') {
+    const cdi = valor;
+    PERFIS_RENTABILIDADE.forEach(perfil => {
+      const mult = variaveisMercado[`mult_${perfil.id}`] || perfil.percentCDI;
+      variaveisMercado[`rent_${perfil.id}`] = cdi * mult / 100;
+    });
+  }
+  // Atualizar análises sem re-renderizar todo o painel (evita perder foco dos inputs)
+  renderAnalisesObjetivosInline();
+}
+
+async function atualizarDadosMercado() {
+  try {
+    const { data, error } = await supabase
+      .from('variaveis_mercado')
+      .select('*')
+      .order('data_ultima_atualizacao', { ascending: false })
+      .limit(1)
+      .single();
+    
+    if (data && !error) {
+      // Preservar data_reuniao e dolar (são específicos do diagnóstico)
+      const dataReuniao = variaveisMercado.data_reuniao;
+      const dolar = variaveisMercado.dolar;
+      
+      const cdi = parseFloat(data.cdi) || 14.65;
+      const cdi10 = parseFloat(data.cdi_aa_medio_10_anos) || 9.2666;
+      
+      const multSemConhecimento = parseFloat(data.mult_sem_conhecimento) || 80;
+      const multIniciante = parseFloat(data.mult_iniciante) || 95;
+      const multUltraCons = parseFloat(data.mult_ultra_cons) || 100;
+      const multCons = parseFloat(data.mult_cons) || 103;
+      const multConsMod = parseFloat(data.mult_cons_mod) || 106;
+      const multMod = parseFloat(data.mult_mod) || 110;
+      const multModArro = parseFloat(data.mult_mod_arro) || 115;
+      const multArro = parseFloat(data.mult_arro) || 120;
+      const multUltraArro = parseFloat(data.mult_ultra_arro) || 130;
+      
+      variaveisMercado = {
+        selic: parseFloat(data.selic) || 14.75,
+        cdi_120_meses: parseFloat(data.cdi_120_meses) || 142.59,
+        ipca: parseFloat(data.ipca) || 5.44,
+        ipca_120_meses: parseFloat(data.ipca_120_meses) || 70.88,
+        cdi: cdi,
+        cdi_aa_medio_10_anos: cdi10,
+        ipca_aa_medio_10_anos: parseFloat(data.ipca_aa_medio_10_anos) || 5.504,
+        rent_anual_aposentadoria: parseFloat(data.rent_anual_aposentadoria) || 6.0,
+        rent_mensal_aposentadoria: parseFloat(data.rent_mensal_aposentadoria) || 0.4868,
+        dolar: dolar,
+        data_reuniao: dataReuniao,
+        rent_sem_conhecimento: cdi * multSemConhecimento / 100,
+        rent_iniciante: cdi * multIniciante / 100,
+        rent_ultra_cons: cdi * multUltraCons / 100,
+        rent_cons: cdi * multCons / 100,
+        rent_cons_mod: cdi * multConsMod / 100,
+        rent_mod: cdi * multMod / 100,
+        rent_mod_arro: cdi * multModArro / 100,
+        rent_arro: cdi * multArro / 100,
+        rent_ultra_arro: cdi * multUltraArro / 100,
+        rent_sem_conhecimento_10_anos: cdi10 * multSemConhecimento / 100,
+        rent_iniciante_10_anos: cdi10 * multIniciante / 100,
+        rent_ultra_cons_10_anos: cdi10 * multUltraCons / 100,
+        rent_cons_10_anos: cdi10 * multCons / 100,
+        rent_cons_mod_10_anos: cdi10 * multConsMod / 100,
+        rent_mod_10_anos: cdi10 * multMod / 100,
+        rent_mod_arro_10_anos: cdi10 * multModArro / 100,
+        rent_arro_10_anos: cdi10 * multArro / 100,
+        rent_ultra_arro_10_anos: cdi10 * multUltraArro / 100,
+        mult_sem_conhecimento: multSemConhecimento,
+        mult_iniciante: multIniciante,
+        mult_ultra_cons: multUltraCons,
+        mult_cons: multCons,
+        mult_cons_mod: multConsMod,
+        mult_mod: multMod,
+        mult_mod_arro: multModArro,
+        mult_arro: multArro,
+        mult_ultra_arro: multUltraArro,
+        ultima_atualizacao: data.data_ultima_atualizacao
+      };
+      
+      renderObjetivos();
+      alert('Dados de mercado atualizados com sucesso!');
+    } else {
+      alert('Não foi possível buscar dados atualizados.');
+    }
+  } catch (err) {
+    console.error('Erro ao atualizar dados de mercado:', err);
+    alert('Erro ao atualizar dados de mercado.');
+  }
+}
+
+// ========================================
 // RENDERIZAÇÃO PRINCIPAL
 // ========================================
 
@@ -1164,8 +1262,8 @@ function renderAnalisesObjetivosInline() {
       <!-- Seletor de perfil de rentabilidade -->
       <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1rem; flex-wrap: wrap;">
         <span style="font-size: 0.75rem; color: var(--text-light);"><i class="fas fa-percentage"></i> Perfil de Rentabilidade:</span>
-        <select id="perfil-rentabilidade-analise" onchange="renderObjetivos()" style="padding: 0.3rem 0.5rem; background: #0d3320; border: 1px solid var(--border-color); border-radius: 4px; color: #e8e8e8; font-size: 0.75rem;">
-          ${gerarOpcoesPerfilRentabilidade(getPerfilAnalise())}
+        <select id="perfil-rentabilidade-analise" onchange="window.setPerfilAnalise(this.value)" style="padding: 0.3rem 0.5rem; background: #0d3320; border: 1px solid var(--border-color); border-radius: 4px; color: #e8e8e8; font-size: 0.75rem;">
+          ${gerarOpcoesPerfilRentabilidade(perfilAnaliseSelecionado)}
         </select>
       </div>
       
@@ -1189,8 +1287,7 @@ function renderAnalisesObjetivosInline() {
 }
 
 function getPerfilAnalise() {
-  const select = document.getElementById('perfil-rentabilidade-analise');
-  return select ? select.value : 'mod';
+  return perfilAnaliseSelecionado || 'mod';
 }
 
 function simularEvolucaoPatrimonial(aposentadorias, objetivosNormais) {
@@ -1641,14 +1738,30 @@ function renderResumoAnalise(simulacao, aposentadorias, objetivosNormais) {
 // ========================================
 
 function getObjetivosData() {
+  return {
+    objetivos: objetivos,
+    variaveis_mercado: variaveisMercado
+  };
+}
+
+function getObjetivosArray() {
   return objetivos;
 }
 
 function setObjetivosData(data) {
   console.log('setObjetivosData - dados recebidos:', JSON.stringify(data));
-  if (Array.isArray(data)) {
+  // Suporte ao novo formato {objetivos, variaveis_mercado} e ao formato antigo (array)
+  let objArray = data;
+  if (data && !Array.isArray(data) && data.objetivos) {
+    objArray = data.objetivos;
+    if (data.variaveis_mercado) {
+      // Restaurar variáveis de mercado salvas (dados fixos da reunião)
+      variaveisMercado = { ...variaveisMercado, ...data.variaveis_mercado };
+    }
+  }
+  if (Array.isArray(objArray)) {
     // Garantir que os valores numéricos sejam parseados corretamente
-    objetivos = data.map(obj => {
+    objetivos = objArray.map(obj => {
       const parsed = {
         ...obj,
         valor_inicial: parseFloat(obj.valor_inicial) || 0,
@@ -1683,7 +1796,14 @@ window.updateObjetivoPrioridade = updateObjetivoPrioridade;
 window.renderAnalisesObjetivosInline = renderAnalisesObjetivosInline;
 window.formatarInputMoedaObj = formatarInputMoedaObj;
 window.getObjetivosData = getObjetivosData;
+window.getObjetivosArray = getObjetivosArray;
 window.setObjetivosData = setObjetivosData;
+window.updateVariavelMercado = updateVariavelMercado;
+window.atualizarDadosMercado = atualizarDadosMercado;
+window.setPerfilAnalise = function(valor) {
+  perfilAnaliseSelecionado = valor;
+  renderAnalisesObjetivosInline();
+};
 
 // Inicialização
 document.addEventListener('DOMContentLoaded', () => {
