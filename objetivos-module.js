@@ -20,6 +20,8 @@ let variaveisMercado = {
   ipca_aa_medio_10_anos: 5.504,
   rent_anual_aposentadoria: 6.0,
   rent_mensal_aposentadoria: 0.4868,
+  dolar: 5.65,
+  data_reuniao: new Date().toISOString().split('T')[0],
   // Rentabilidades atuais dos 9 perfis
   rent_sem_conhecimento: 0,
   rent_iniciante: 0,
@@ -833,24 +835,35 @@ function renderObjetivos() {
   container.innerHTML = `
     <!-- Painel Compacto de Informações -->
     <div style="background: var(--dark-bg); border: 1px solid var(--accent-color); border-radius: 8px; padding: 0.8rem; margin-bottom: 1.5rem;">
-      <!-- Linha 1: Variáveis de Mercado -->
+      <!-- Linha 1: Variáveis de Mercado (editáveis) -->
       <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.6rem; padding-bottom: 0.6rem; border-bottom: 1px solid rgba(212, 175, 55, 0.2); flex-wrap: wrap;">
         <span style="font-size: 0.75rem; color: var(--accent-color); font-weight: 600; white-space: nowrap;">
           <i class="fas fa-chart-line"></i> Mercado
-          ${variaveisMercado.ultima_atualizacao ? `<span style="font-size: 0.6rem; opacity: 0.6;">(${formatarData(variaveisMercado.ultima_atualizacao)})</span>` : ''}
         </span>
-        <div style="display: flex; gap: 0.4rem; flex: 1; justify-content: flex-end; flex-wrap: wrap;">
-          <span style="padding: 0.2rem 0.5rem; background: rgba(212, 175, 55, 0.1); border-radius: 4px; font-size: 0.75rem;">
-            <span style="color: var(--text-light); font-size: 0.6rem;">SELIC</span> <span style="color: var(--accent-color); font-weight: 600;">${formatarPercentual(variaveisMercado.selic)}</span>
+        <input type="date" value="${variaveisMercado.data_reuniao || new Date().toISOString().split('T')[0]}" onchange="updateVariavelMercado('data_reuniao', this.value)" style="padding: 0.15rem 0.3rem; background: #0d3320; border: 1px solid var(--border-color); border-radius: 4px; color: #e8e8e8; font-size: 0.65rem; width: 110px;" title="Data da reunião">
+        <button onclick="atualizarDadosMercado()" title="Atualizar dados de mercado" style="background: none; border: 1px solid rgba(212, 175, 55, 0.4); border-radius: 4px; color: var(--accent-color); cursor: pointer; padding: 0.15rem 0.4rem; font-size: 0.6rem; opacity: 0.7; transition: opacity 0.2s;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.7'">
+          <i class="fas fa-sync-alt"></i>
+        </button>
+        <div style="display: flex; gap: 0.4rem; flex: 1; justify-content: flex-end; flex-wrap: wrap; align-items: center;">
+          <span style="padding: 0.2rem 0.3rem; background: rgba(212, 175, 55, 0.1); border-radius: 4px; font-size: 0.7rem; display: flex; align-items: center; gap: 0.2rem;">
+            <span style="color: var(--text-light); font-size: 0.6rem;">SELIC</span>
+            <input type="text" value="${variaveisMercado.selic}" onchange="updateVariavelMercado('selic', parseFloat(this.value)||0)" style="width: 42px; padding: 0.1rem 0.2rem; background: transparent; border: 1px solid rgba(212,175,55,0.3); border-radius: 3px; color: var(--accent-color); font-size: 0.7rem; font-weight: 600; text-align: center;">%
           </span>
-          <span style="padding: 0.2rem 0.5rem; background: rgba(40, 167, 69, 0.1); border-radius: 4px; font-size: 0.75rem;">
-            <span style="color: var(--text-light); font-size: 0.6rem;">CDI</span> <span style="color: #28a745; font-weight: 600;">${formatarPercentual(variaveisMercado.cdi)}</span>
+          <span style="padding: 0.2rem 0.3rem; background: rgba(40, 167, 69, 0.1); border-radius: 4px; font-size: 0.7rem; display: flex; align-items: center; gap: 0.2rem;">
+            <span style="color: var(--text-light); font-size: 0.6rem;">CDI</span>
+            <input type="text" value="${variaveisMercado.cdi}" onchange="updateVariavelMercado('cdi', parseFloat(this.value)||0)" style="width: 42px; padding: 0.1rem 0.2rem; background: transparent; border: 1px solid rgba(40,167,69,0.3); border-radius: 3px; color: #28a745; font-size: 0.7rem; font-weight: 600; text-align: center;">%
           </span>
-          <span style="padding: 0.2rem 0.5rem; background: rgba(220, 53, 69, 0.1); border-radius: 4px; font-size: 0.75rem;">
-            <span style="color: var(--text-light); font-size: 0.6rem;">IPCA</span> <span style="color: #dc3545; font-weight: 600;">${formatarPercentual(variaveisMercado.ipca)}</span>
+          <span style="padding: 0.2rem 0.3rem; background: rgba(220, 53, 69, 0.1); border-radius: 4px; font-size: 0.7rem; display: flex; align-items: center; gap: 0.2rem;">
+            <span style="color: var(--text-light); font-size: 0.6rem;">IPCA</span>
+            <input type="text" value="${variaveisMercado.ipca}" onchange="updateVariavelMercado('ipca', parseFloat(this.value)||0)" style="width: 42px; padding: 0.1rem 0.2rem; background: transparent; border: 1px solid rgba(220,53,69,0.3); border-radius: 3px; color: #dc3545; font-size: 0.7rem; font-weight: 600; text-align: center;">%
           </span>
-          <span style="padding: 0.2rem 0.5rem; background: rgba(23, 162, 184, 0.1); border-radius: 4px; font-size: 0.75rem;">
-            <span style="color: var(--text-light); font-size: 0.6rem;">Rent.Apos.</span> <span style="color: #17a2b8; font-weight: 600;">${formatarPercentual(variaveisMercado.rent_anual_aposentadoria)}</span>
+          <span style="padding: 0.2rem 0.3rem; background: rgba(23, 162, 184, 0.1); border-radius: 4px; font-size: 0.7rem; display: flex; align-items: center; gap: 0.2rem;">
+            <span style="color: var(--text-light); font-size: 0.6rem;">Rent.Apos.</span>
+            <input type="text" value="${variaveisMercado.rent_anual_aposentadoria}" onchange="updateVariavelMercado('rent_anual_aposentadoria', parseFloat(this.value)||0)" style="width: 42px; padding: 0.1rem 0.2rem; background: transparent; border: 1px solid rgba(23,162,184,0.3); border-radius: 3px; color: #17a2b8; font-size: 0.7rem; font-weight: 600; text-align: center;">%
+          </span>
+          <span style="padding: 0.2rem 0.3rem; background: rgba(76, 175, 80, 0.1); border-radius: 4px; font-size: 0.7rem; display: flex; align-items: center; gap: 0.2rem;">
+            <span style="color: var(--text-light); font-size: 0.6rem;">Dólar</span>
+            <input type="text" value="${variaveisMercado.dolar || ''}" onchange="updateVariavelMercado('dolar', parseFloat(this.value)||0)" style="width: 42px; padding: 0.1rem 0.2rem; background: transparent; border: 1px solid rgba(76,175,80,0.3); border-radius: 3px; color: #4CAF50; font-size: 0.7rem; font-weight: 600; text-align: center;">
           </span>
         </div>
       </div>
@@ -1185,8 +1198,7 @@ function simularEvolucaoPatrimonial(aposentadorias, objetivosNormais) {
   const perfilId = getPerfilAnalise();
   const rentAnual = getRentabilidadePorPerfil(perfilId);
   const rentMensal = Math.pow(1 + rentAnual / 100, 1/12) - 1;
-  const ipca = variaveisMercado.ipca || 4.5;
-  const ipcaMensal = Math.pow(1 + ipca / 100, 1/12) - 1;
+
   
   // Determinar horizonte total (até a maior aposentadoria)
   let maxMeses = 360; // 30 anos padrão
@@ -1216,7 +1228,7 @@ function simularEvolucaoPatrimonial(aposentadorias, objetivosNormais) {
   const eventosObjetivos = [];
   objetivosNormais.forEach(obj => {
     const mesesPrazo = calcularMesesRestantesObjNormal(obj);
-    const valorSaque = obj.valor_final || obj.meta_acumulo || 0;
+    const valorSaque = obj.meta_acumulo || 0;
     const isAcumulo = obj.acumulavel;
     const recTipo = obj.recorrencia_tipo || 'nenhuma';
     const recValor = obj.recorrencia_valor || 0;
@@ -1278,15 +1290,13 @@ function simularEvolucaoPatrimonial(aposentadorias, objetivosNormais) {
     // Verificar eventos neste mês
     const eventosDoMes = eventosObjetivos.filter(e => e.mes === mes);
     eventosDoMes.forEach(evento => {
-      // Corrigir valor pela inflação
-      const valorCorrigido = evento.valor * Math.pow(1 + ipca / 100, mes / 12);
       if (!evento.isAcumulo) {
-        // Saque
-        saldo -= valorCorrigido;
+        // Saque (sem correção por inflação)
+        saldo -= evento.valor;
         eventosMarcados.push({
           mes: mes,
           tipo: 'saque',
-          valor: valorCorrigido,
+          valor: evento.valor,
           descricao: evento.descricao,
           saldoApos: saldo
         });
@@ -1295,7 +1305,7 @@ function simularEvolucaoPatrimonial(aposentadorias, objetivosNormais) {
         eventosMarcados.push({
           mes: mes,
           tipo: 'acumulo',
-          valor: valorCorrigido,
+          valor: evento.valor,
           descricao: evento.descricao,
           saldoApos: saldo
         });
@@ -1312,8 +1322,8 @@ function simularEvolucaoPatrimonial(aposentadorias, objetivosNormais) {
     });
   }
   
-  // Calcular meta de aposentadoria corrigida pela inflação no final
-  const capitalNecessarioCorrigido = capitalNecessarioTotal * Math.pow(1 + ipca / 100, maxMeses / 12);
+  // Capital necessário (sem correção por inflação)
+  const capitalNecessarioCorrigido = capitalNecessarioTotal;
   
   return {
     pontos: pontos,
@@ -1521,15 +1531,14 @@ function renderResumoAnalise(simulacao, aposentadorias, objetivosNormais) {
     
     objetivosNormais.forEach(obj => {
       const mesesPrazo = calcularMesesRestantesObjNormal(obj);
-      const valorFinal = obj.valor_final || obj.meta_acumulo || 0;
+      const valorFinal = obj.meta_acumulo || 0;
       const recTipo = obj.recorrencia_tipo || 'nenhuma';
       const recValor = obj.recorrencia_valor || 0;
       
       // Verificar se o patrimônio no momento do prazo cobre o objetivo
       const pontoNoPrazo = simulacao.pontos.find(p => p.mes >= mesesPrazo) || simulacao.pontos[simulacao.pontos.length - 1];
       const saldoNoPrazo = pontoNoPrazo ? pontoNoPrazo.saldo : 0;
-      const valorCorrigido = valorFinal * Math.pow(1 + (variaveisMercado.ipca || 4.5) / 100, mesesPrazo / 12);
-      const atingido = saldoNoPrazo >= valorCorrigido;
+      const atingido = saldoNoPrazo >= valorFinal;
       
       const anos = Math.floor(mesesPrazo / 12);
       const mesesResto = mesesPrazo % 12;
@@ -1597,7 +1606,7 @@ function renderResumoAnalise(simulacao, aposentadorias, objetivosNormais) {
       <div style="margin-top: 0.5rem; padding: 0.6rem; background: rgba(${atingeAposentadoria ? '40, 167, 69' : '220, 53, 69'}, 0.15); border-radius: 6px; border: 1px solid ${atingeAposentadoria ? '#28a745' : '#dc3545'};">
         <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
           <div>
-            <div style="font-size: 0.7rem; color: var(--text-light);">Capital Necessário Total (corrigido IPCA):</div>
+            <div style="font-size: 0.7rem; color: var(--text-light);">Capital Necessário Total:</div>
             <div style="font-size: 1rem; font-weight: 600; color: ${atingeAposentadoria ? '#28a745' : '#dc3545'};">${formatarMoedaObj(capitalCorrigido)}</div>
           </div>
           <div>
