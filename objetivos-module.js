@@ -1629,22 +1629,22 @@ function simularEvolucaoPatrimonial(aposentadorias, objetivosNormais, perfilIdOv
       if (!evento.isAcumulo) {
         // MELHORIA 2: Saque - verificar se há saldo suficiente
         const saldoAntes = saldo;
-        saldo -= evento.valor;
-        const sucesso = saldo >= 0;
+        const sucesso = saldo >= evento.valor;
+        if (sucesso) {
+          saldo -= evento.valor;
+        }
         
         eventosMarcados.push({
           mes: mes,
           tipo: 'saque',
           valor: evento.valor,
           descricao: evento.descricao,
+          saldoAntes: saldoAntes,
           saldoApos: saldo,
           sucesso: sucesso,
           isRecorrente: evento.isRecorrente,
           objetivoId: evento.objetivoId
         });
-        
-        // Se saldo ficou negativo, zerar (não pode ficar negativo)
-        if (saldo < 0) saldo = 0;
       } else {
         // Acúmulo - não saca, apenas marca que atingiu
         const atingido = saldo >= evento.valor;
@@ -1653,6 +1653,7 @@ function simularEvolucaoPatrimonial(aposentadorias, objetivosNormais, perfilIdOv
           tipo: 'acumulo',
           valor: evento.valor,
           descricao: evento.descricao,
+          saldoAntes: saldo,
           saldoApos: saldo,
           sucesso: atingido,
           isRecorrente: evento.isRecorrente,
@@ -1748,16 +1749,31 @@ function renderGraficoEvolucao(simulacao, objetivosNormais, aposentadorias, simu
   // Linha do capital necessário para aposentadoria
   const metaAposentadoria = Array(labels.length).fill(simulacao.capitalNecessarioCorrigido);
   
-  // Criar dataset de pontos de eventos (saques e acúmulos)
-  const eventosSaqueData = Array(labels.length).fill(null);
+  // Criar datasets de pontos de eventos (saques sucesso, saques falha, acúmulos)
+  const eventosSaqueSucessoData = Array(labels.length).fill(null);
+  const eventosSaqueFalhaData = Array(labels.length).fill(null);
+  const eventosRecSucessoData = Array(labels.length).fill(null);
+  const eventosRecFalhaData = Array(labels.length).fill(null);
   const eventosAcumuloData = Array(labels.length).fill(null);
   
   simulacao.eventos.forEach(evento => {
     const posicaoLabel = Math.min(evento.mes, labels.length - 1);
     if (evento.tipo === 'saque') {
-      eventosSaqueData[posicaoLabel] = evento.saldoApos;
+      if (evento.isRecorrente) {
+        if (evento.sucesso) {
+          eventosRecSucessoData[posicaoLabel] = evento.saldoAntes;
+        } else {
+          eventosRecFalhaData[posicaoLabel] = evento.saldoAntes;
+        }
+      } else {
+        if (evento.sucesso) {
+          eventosSaqueSucessoData[posicaoLabel] = evento.saldoAntes;
+        } else {
+          eventosSaqueFalhaData[posicaoLabel] = evento.saldoAntes;
+        }
+      }
     } else {
-      eventosAcumuloData[posicaoLabel] = evento.saldoApos;
+      eventosAcumuloData[posicaoLabel] = evento.saldoAntes;
     }
   });
   
@@ -1802,14 +1818,14 @@ function renderGraficoEvolucao(simulacao, objetivosNormais, aposentadorias, simu
     });
   }
   
-  // Adicionar pontos de saques se existirem
-  if (eventosSaqueData.some(v => v !== null)) {
+  // Saques iniciais com sucesso (triângulo vermelho apontando para baixo)
+  if (eventosSaqueSucessoData.some(v => v !== null)) {
     datasets.push({
-      label: 'Saques (Objetivos)',
-      data: eventosSaqueData,
+      label: 'Saque (Sucesso)',
+      data: eventosSaqueSucessoData,
       borderColor: '#dc3545',
       backgroundColor: '#dc3545',
-      pointRadius: 6,
+      pointRadius: 7,
       pointStyle: 'triangle',
       pointRotation: 180,
       showLine: false,
@@ -1817,7 +1833,49 @@ function renderGraficoEvolucao(simulacao, objetivosNormais, aposentadorias, simu
     });
   }
   
-  // Adicionar pontos de acúmulos se existirem
+  // Saques iniciais com falha (X vermelho)
+  if (eventosSaqueFalhaData.some(v => v !== null)) {
+    datasets.push({
+      label: 'Saque (Saldo Insuficiente)',
+      data: eventosSaqueFalhaData,
+      borderColor: '#dc3545',
+      backgroundColor: 'rgba(220,53,69,0.3)',
+      pointRadius: 7,
+      pointStyle: 'crossRot',
+      showLine: false,
+      borderWidth: 2
+    });
+  }
+  
+  // Recorrências com sucesso (losango laranja)
+  if (eventosRecSucessoData.some(v => v !== null)) {
+    datasets.push({
+      label: 'Recorrência (Sucesso)',
+      data: eventosRecSucessoData,
+      borderColor: '#ff8c00',
+      backgroundColor: '#ff8c00',
+      pointRadius: 6,
+      pointStyle: 'rectRot',
+      showLine: false,
+      borderWidth: 0
+    });
+  }
+  
+  // Recorrências com falha (X laranja)
+  if (eventosRecFalhaData.some(v => v !== null)) {
+    datasets.push({
+      label: 'Recorrência (Saldo Insuficiente)',
+      data: eventosRecFalhaData,
+      borderColor: '#ff8c00',
+      backgroundColor: 'rgba(255,140,0,0.3)',
+      pointRadius: 6,
+      pointStyle: 'crossRot',
+      showLine: false,
+      borderWidth: 2
+    });
+  }
+  
+  // Pontos de acúmulos
   if (eventosAcumuloData.some(v => v !== null)) {
     datasets.push({
       label: 'Acúmulos',
@@ -1853,7 +1911,17 @@ function renderGraficoEvolucao(simulacao, objetivosNormais, aposentadorias, simu
           callbacks: {
             label: function(context) {
               if (context.parsed.y === null) return null;
-              return context.dataset.label + ': ' + formatarMoedaObj(context.parsed.y);
+              const label = context.dataset.label || '';
+              const valor = formatarMoedaObj(context.parsed.y);
+              // Para eventos de saque/recorrência, mostrar o valor do saque
+              if (label.includes('Saque') || label.includes('Recorrência')) {
+                const mesIndex = context.dataIndex;
+                const evento = simulacao.eventos.find(e => e.mes === mesIndex);
+                if (evento) {
+                  return `${label}: ${formatarMoedaObj(evento.valor)} (Saldo: ${valor})`;
+                }
+              }
+              return label + ': ' + valor;
             }
           },
           filter: function(tooltipItem) {
@@ -1945,14 +2013,43 @@ function renderResumoAnalise(simulacao, aposentadorias, objetivosNormais, simula
         const eventosFalha = eventosDoObj.filter(e => !e.sucesso);
         
         if (eventosDoObj.length > 0) {
-          recDetalhe = `<div style="font-size: 0.6rem; color: #17a2b8; margin-top: 0.1rem; padding-left: 1.5rem;">
-            <i class="fas fa-info-circle"></i> Executado ${eventosSucesso.length}x com sucesso de ${eventosDoObj.length} tentativas`;
-          if (eventosFalha.length > 0) {
-            const primeiraFalha = eventosFalha[0];
-            const dataFalha = new Date();
-            dataFalha.setMonth(dataFalha.getMonth() + primeiraFalha.mes);
-            recDetalhe += ` (falha a partir de ${String(dataFalha.getMonth()+1).padStart(2,'0')}/${dataFalha.getFullYear()})`;
+          recDetalhe = `<div style="font-size: 0.65rem; color: #ff8c00; margin-top: 0.2rem; padding: 0.2rem 0.5rem; background: rgba(255,140,0,0.08); border-radius: 4px;">
+            <i class="fas fa-redo"></i> <strong>Recorrência:</strong> ${eventosSucesso.length}x com sucesso de ${eventosDoObj.length} tentativas`;
+          
+          // Detalhar períodos de falha e recuperação
+          let emFalha = false;
+          let inicioFalha = null;
+          let periodos = [];
+          eventosDoObj.forEach((ev, idx) => {
+            if (!ev.sucesso && !emFalha) {
+              emFalha = true;
+              inicioFalha = ev.mes;
+            } else if (ev.sucesso && emFalha) {
+              emFalha = false;
+              periodos.push({ tipo: 'falha', inicio: inicioFalha, fim: eventosDoObj[idx-1].mes });
+              periodos.push({ tipo: 'recupera', mes: ev.mes });
+            }
+          });
+          if (emFalha) {
+            periodos.push({ tipo: 'falha_permanente', inicio: inicioFalha });
           }
+          
+          periodos.forEach(p => {
+            const dataRef = new Date();
+            if (p.tipo === 'falha') {
+              dataRef.setMonth(dataRef.getMonth() + p.inicio);
+              const dataFim = new Date();
+              dataFim.setMonth(dataFim.getMonth() + p.fim);
+              recDetalhe += `<br>&nbsp;&nbsp;<span style="color: #dc3545;"><i class="fas fa-times-circle"></i> Falha de ${String(dataRef.getMonth()+1).padStart(2,'0')}/${dataRef.getFullYear()} a ${String(dataFim.getMonth()+1).padStart(2,'0')}/${dataFim.getFullYear()}</span>`;
+            } else if (p.tipo === 'recupera') {
+              dataRef.setMonth(dataRef.getMonth() + p.mes);
+              recDetalhe += `<br>&nbsp;&nbsp;<span style="color: #28a745;"><i class="fas fa-check-circle"></i> Recupera em ${String(dataRef.getMonth()+1).padStart(2,'0')}/${dataRef.getFullYear()}</span>`;
+            } else if (p.tipo === 'falha_permanente') {
+              dataRef.setMonth(dataRef.getMonth() + p.inicio);
+              recDetalhe += `<br>&nbsp;&nbsp;<span style="color: #dc3545;"><i class="fas fa-exclamation-triangle"></i> Falha permanente a partir de ${String(dataRef.getMonth()+1).padStart(2,'0')}/${dataRef.getFullYear()}</span>`;
+            }
+          });
+          
           recDetalhe += `</div>`;
         }
       }
