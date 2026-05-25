@@ -1,5 +1,5 @@
 // ========================================
-// MÓDULO DE OBJETIVOS - VERSÃO 5.0
+// MÓDULO DE OBJETIVOS - VERSÃO 6.0
 // ========================================
 
 import { supabase } from './supabase.js';
@@ -8,6 +8,7 @@ import { supabase } from './supabase.js';
 let objetivos = [];
 let objetivoCounter = 0;
 let perfilAnaliseSelecionado = 'mod'; // Perfil selecionado persistente
+let perfisComparativos = []; // Array de IDs de perfis extras para comparação
 
 // Variáveis de mercado (carregadas do Supabase)
 let variaveisMercado = {
@@ -66,6 +67,19 @@ const PERFIS_RENTABILIDADE = [
   { id: 'mod_arro', nome: 'Moderado-Arrojado', percentCDI: 115 },
   { id: 'arro', nome: 'Arrojado', percentCDI: 120 },
   { id: 'ultra_arro', nome: 'Ultra-Arrojado', percentCDI: 130 }
+];
+
+// Cores para perfis comparativos no gráfico
+const CORES_PERFIS = [
+  '#28a745', // verde (principal)
+  '#ff6384', // rosa
+  '#36a2eb', // azul
+  '#ffce56', // amarelo
+  '#9966ff', // roxo
+  '#ff9f40', // laranja
+  '#4bc0c0', // teal
+  '#c9cbcf', // cinza
+  '#e7e9ed'  // cinza claro
 ];
 
 // CSS para estilizar dropdowns
@@ -205,8 +219,6 @@ function formatarInputMoedaObj(input, objetivoId, field) {
   // Remover tudo que não é dígito
   let valorStr = input.value.replace(/\D/g, '');
   
-  console.log('formatarInputMoedaObj - input.value:', input.value, '- valorStr:', valorStr);
-  
   // Se vazio, definir como 0
   if (!valorStr || valorStr === '') {
     valorStr = '0';
@@ -214,8 +226,6 @@ function formatarInputMoedaObj(input, objetivoId, field) {
   
   // Converter para número (centavos) e depois para reais
   let valorNumerico = parseInt(valorStr, 10) / 100;
-  
-  console.log('formatarInputMoedaObj - valorNumerico:', valorNumerico, '- field:', field);
   
   // Validação para valor inicial - não pode exceder saldo disponível
   if (field === 'valor_inicial') {
@@ -410,13 +420,14 @@ function calcularPatrimonioAposentadoriaPorPessoa(pessoaId) {
 function calcularValorInicialAlocado() {
   // Inclui TODOS os objetivos (aposentadoria + normais) na conta do saldo
   return objetivos
+    .filter(o => o.tipo !== 'intangivel')
     .reduce((sum, o) => sum + (parseFloat(o.valor_inicial) || 0), 0);
 }
 
 function calcularValorInicialAlocadoExceto(objetivoId) {
   // Inclui TODOS os objetivos (aposentadoria + normais) exceto o atual
   return objetivos
-    .filter(o => o.id !== objetivoId)
+    .filter(o => o.id !== objetivoId && o.tipo !== 'intangivel')
     .reduce((sum, o) => sum + (parseFloat(o.valor_inicial) || 0), 0);
 }
 
@@ -599,7 +610,7 @@ function addObjetivoAposentadoria() {
 }
 
 function addObjetivoNormal() {
-  const objetivosNormais = objetivos.filter(o => o.tipo !== 'aposentadoria');
+  const objetivosNormais = objetivos.filter(o => o.tipo !== 'aposentadoria' && o.tipo !== 'intangivel');
   const novaPrioridade = objetivosNormais.length + 1;
   objetivoCounter++;
   
@@ -630,6 +641,58 @@ function addObjetivoNormal() {
   renderObjetivos();
 }
 
+// MELHORIA 4: Adicionar objetivo intangível
+function addObjetivoIntangivel() {
+  const objetivosNormais = objetivos.filter(o => o.tipo !== 'aposentadoria' && o.tipo !== 'intangivel');
+  const novaPrioridade = objetivosNormais.length + 1;
+  objetivoCounter++;
+  
+  const novoObjetivo = {
+    id: objetivoCounter,
+    tipo: 'intangivel',
+    descricao: '',
+    importancia: '',
+    responsaveis: [],
+    prazo_meses: 12,
+    prazo_tipo: 'meses',
+    prazo_data: null,
+    prioridade: novaPrioridade,
+    marcos: [] // Array de {id, texto, concluido}
+  };
+  
+  objetivos.push(novoObjetivo);
+  renderObjetivos();
+}
+
+function addMarcoIntangivel(objetivoId) {
+  const objetivo = objetivos.find(o => o.id === objetivoId);
+  if (!objetivo) return;
+  if (!objetivo.marcos) objetivo.marcos = [];
+  
+  objetivo.marcos.push({
+    id: Date.now(),
+    texto: '',
+    concluido: false
+  });
+  renderObjetivos();
+}
+
+function updateMarcoIntangivel(objetivoId, marcoId, field, value) {
+  const objetivo = objetivos.find(o => o.id === objetivoId);
+  if (!objetivo || !objetivo.marcos) return;
+  const marco = objetivo.marcos.find(m => m.id === marcoId);
+  if (marco) {
+    marco[field] = value;
+  }
+}
+
+function deleteMarcoIntangivel(objetivoId, marcoId) {
+  const objetivo = objetivos.find(o => o.id === objetivoId);
+  if (!objetivo || !objetivo.marcos) return;
+  objetivo.marcos = objetivo.marcos.filter(m => m.id !== marcoId);
+  renderObjetivos();
+}
+
 function deleteObjetivo(id) {
   const objetivo = objetivos.find(o => o.id === id);
   if (!objetivo) return;
@@ -650,7 +713,7 @@ function deleteObjetivo(id) {
   objetivos = objetivos.filter(o => o.id !== id);
   
   // Reordenar prioridades
-  const objetivosNormais = objetivos.filter(o => o.tipo !== 'aposentadoria')
+  const objetivosNormais = objetivos.filter(o => o.tipo !== 'aposentadoria' && o.tipo !== 'intangivel')
     .sort((a, b) => a.prioridade - b.prioridade);
   objetivosNormais.forEach((obj, index) => {
     obj.prioridade = index + 1;
@@ -688,12 +751,19 @@ function updateObjetivoField(id, field, value) {
   
   if (['valor_inicial', 'valor_final', 'meta_acumulo', 'renda_anual'].includes(field)) {
     atualizarPatrimonioObjetivos();
+    // MELHORIA 3: Atualizar análises automaticamente ao editar campos financeiros
+    renderAnalisesObjetivosInline();
+  }
+  
+  // MELHORIA 3: Atualizar análises ao mudar campos de prazo ou recorrência
+  if (['prazo_meses', 'prazo_idade', 'prazo_data', 'prazo_tipo', 'recorrencia_tipo', 'recorrencia_valor', 'acumulavel'].includes(field)) {
+    renderAnalisesObjetivosInline();
   }
 }
 
 function updateObjetivoPrioridade(id, novaPrioridade) {
   const objetivo = objetivos.find(o => o.id === id);
-  if (!objetivo || objetivo.tipo === 'aposentadoria') return;
+  if (!objetivo || objetivo.tipo === 'aposentadoria' || objetivo.tipo === 'intangivel') return;
   
   const prioridadeAtual = objetivo.prioridade;
   novaPrioridade = parseInt(novaPrioridade);
@@ -701,7 +771,7 @@ function updateObjetivoPrioridade(id, novaPrioridade) {
   if (prioridadeAtual === novaPrioridade) return;
   
   objetivos.forEach(obj => {
-    if (obj.id === id || obj.tipo === 'aposentadoria') return;
+    if (obj.id === id || obj.tipo === 'aposentadoria' || obj.tipo === 'intangivel') return;
     
     if (novaPrioridade < prioridadeAtual) {
       if (obj.prioridade >= novaPrioridade && obj.prioridade < prioridadeAtual) {
@@ -798,6 +868,14 @@ function getRentabilidadePorPerfil(perfilId) {
   const cdiBase = is10Anos ? cdi10 : cdi;
   
   return cdiBase * mult / 100;
+}
+
+function getNomePerfilRentabilidade(perfilId) {
+  const is10Anos = perfilId.endsWith('_10a');
+  const perfilBase = is10Anos ? perfilId.replace('_10a', '') : perfilId;
+  const perfil = PERFIS_RENTABILIDADE.find(p => p.id === perfilBase);
+  if (!perfil) return perfilId;
+  return is10Anos ? `${perfil.nome} 10a` : perfil.nome;
 }
 
 
@@ -900,6 +978,40 @@ async function atualizarDadosMercado() {
 }
 
 // ========================================
+// MELHORIA 5: PERFIS COMPARATIVOS
+// ========================================
+
+function adicionarPerfilComparativo() {
+  // Encontrar perfis que ainda não estão selecionados
+  const todosIds = [];
+  PERFIS_RENTABILIDADE.forEach(p => {
+    todosIds.push(p.id);
+    todosIds.push(p.id + '_10a');
+  });
+  
+  const jaUsados = [perfilAnaliseSelecionado, ...perfisComparativos];
+  const disponiveis = todosIds.filter(id => !jaUsados.includes(id));
+  
+  if (disponiveis.length === 0) {
+    alert('Todos os perfis já estão sendo comparados.');
+    return;
+  }
+  
+  perfisComparativos.push(disponiveis[0]);
+  renderAnalisesObjetivosInline();
+}
+
+function removerPerfilComparativo(index) {
+  perfisComparativos.splice(index, 1);
+  renderAnalisesObjetivosInline();
+}
+
+function editarPerfilComparativo(index, novoPerfilId) {
+  perfisComparativos[index] = novoPerfilId;
+  renderAnalisesObjetivosInline();
+}
+
+// ========================================
 // RENDERIZAÇÃO PRINCIPAL
 // ========================================
 
@@ -916,8 +1028,9 @@ function renderObjetivos() {
   const aportesTotais = calcularAportesTotaisDisponiveis();
   
   const objetivosAposentadoria = objetivos.filter(o => o.tipo === 'aposentadoria');
-  const objetivosNormais = objetivos.filter(o => o.tipo !== 'aposentadoria')
+  const objetivosNormais = objetivos.filter(o => o.tipo !== 'aposentadoria' && o.tipo !== 'intangivel')
     .sort((a, b) => a.prioridade - b.prioridade);
+  const objetivosIntangiveis = objetivos.filter(o => o.tipo === 'intangivel');
   
   if (objetivosAposentadoria.length === 0) {
     addObjetivoAposentadoria();
@@ -1025,12 +1138,26 @@ function renderObjetivos() {
         <h3 style="color: var(--accent-color); margin: 0; font-size: 1rem;">
           <i class="fas fa-bullseye"></i> Outros Objetivos
         </h3>
-        <button onclick="addObjetivoNormal()" style="background: var(--accent-color); color: var(--dark-bg); border: none; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer; font-size: 0.8rem;">
-          + Adicionar Objetivo
-        </button>
+        <div style="display: flex; gap: 0.5rem;">
+          <button onclick="addObjetivoNormal()" style="background: var(--accent-color); color: var(--dark-bg); border: none; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer; font-size: 0.8rem;">
+            + Objetivo Financeiro
+          </button>
+          <button onclick="addObjetivoIntangivel()" style="background: #9966ff; color: white; border: none; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer; font-size: 0.8rem;">
+            + Objetivo Intangível
+          </button>
+        </div>
       </div>
       
       ${objetivosNormais.map(obj => renderCardObjetivo(obj, pessoas, objetivosNormais, saldoRestante)).join('')}
+      
+      ${objetivosIntangiveis.length > 0 ? `
+        <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px dashed rgba(153, 102, 255, 0.4);">
+          <h4 style="color: #9966ff; margin: 0 0 0.8rem 0; font-size: 0.9rem;">
+            <i class="fas fa-star"></i> Objetivos Intangíveis
+          </h4>
+          ${objetivosIntangiveis.map(obj => renderCardObjetivoIntangivel(obj)).join('')}
+        </div>
+      ` : ''}
     </div>
     
     <!-- Análises (sempre visíveis abaixo) -->
@@ -1228,6 +1355,77 @@ function renderCardObjetivo(obj, pessoas, todosObjetivos, saldoDisponivel) {
   `;
 }
 
+// MELHORIA 4: Card de objetivo intangível
+function renderCardObjetivoIntangivel(obj) {
+  const marcos = obj.marcos || [];
+  const marcosConcluidos = marcos.filter(m => m.concluido).length;
+  const totalMarcos = marcos.length;
+  const progressoMarcos = totalMarcos > 0 ? Math.round((marcosConcluidos / totalMarcos) * 100) : 0;
+  
+  // Calcular status de prazo
+  const mesesRestantes = calcularMesesRestantesObjNormal(obj);
+  const prazoVencido = mesesRestantes <= 0;
+  const prazoProximo = mesesRestantes > 0 && mesesRestantes <= 3;
+  
+  return `
+    <div style="background: var(--card-bg); border: 1px solid #9966ff; border-radius: 8px; padding: 0.5rem 0.8rem; margin-bottom: 0.5rem;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.3rem;">
+        <div style="display: flex; align-items: center; gap: 0.4rem;">
+          <span style="color: #9966ff; font-weight: 600; font-size: 0.8rem;"><i class="fas fa-star"></i> Intangível</span>
+          ${prazoVencido ? '<span style="font-size: 0.6rem; color: #dc3545; background: rgba(220,53,69,0.1); padding: 0.1rem 0.3rem; border-radius: 3px;"><i class="fas fa-clock"></i> Prazo vencido</span>' : ''}
+          ${prazoProximo ? '<span style="font-size: 0.6rem; color: #ffc107; background: rgba(255,193,7,0.1); padding: 0.1rem 0.3rem; border-radius: 3px;"><i class="fas fa-clock"></i> Prazo próximo</span>' : ''}
+        </div>
+        <button onclick="deleteObjetivo(${obj.id})" style="background: transparent; border: none; color: #dc3545; cursor: pointer; font-size: 0.8rem;"><i class="fas fa-trash"></i></button>
+      </div>
+      
+      <!-- Linha 1: Descrição, Importância, Prazo -->
+      <div style="display: grid; grid-template-columns: 1fr 1fr 140px; gap: 0.5rem; margin-bottom: 0.4rem; align-items: end;">
+        <div>
+          <label style="font-size: 0.6rem; color: #9966ff; display: block; margin-bottom: 0.1rem;"><i class="fas fa-flag"></i> Objetivo *</label>
+          <input type="text" value="${obj.descricao || ''}" placeholder="Ex: Aprender inglês" onchange="updateObjetivoField(${obj.id}, 'descricao', this.value)" style="width: 100%; padding: 0.3rem; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 4px; color: var(--text-light); font-size: 0.8rem;">
+        </div>
+        <div>
+          <label style="font-size: 0.6rem; color: #9966ff; display: block; margin-bottom: 0.1rem;"><i class="fas fa-heart"></i> Importância</label>
+          <input type="text" value="${obj.importancia || ''}" placeholder="Por que é importante?" onchange="updateObjetivoField(${obj.id}, 'importancia', this.value)" style="width: 100%; padding: 0.3rem; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 4px; color: var(--text-light); font-size: 0.8rem;">
+        </div>
+        <div>
+          <label style="font-size: 0.6rem; color: #9966ff; display: block; margin-bottom: 0.1rem;"><i class="fas fa-calendar"></i> Prazo</label>
+          <select onchange="updateObjetivoField(${obj.id}, 'prazo_tipo', this.value); renderObjetivos();" style="width: 100%; padding: 0.3rem; background: #0d3320; border: 1px solid var(--border-color); border-radius: 4px; color: #e8e8e8; font-size: 0.75rem;">
+            <option value="meses" ${(obj.prazo_tipo || 'meses') === 'meses' ? 'selected' : ''}>Meses</option>
+            <option value="anos" ${obj.prazo_tipo === 'anos' ? 'selected' : ''}>Anos</option>
+            <option value="data" ${obj.prazo_tipo === 'data' ? 'selected' : ''}>Data</option>
+          </select>
+          ${(obj.prazo_tipo || 'meses') === 'data' ? `
+            <input type="date" value="${obj.prazo_data || ''}" onchange="updateObjetivoField(${obj.id}, 'prazo_data', this.value)" style="width: 100%; padding: 0.3rem; background: #0d3320; border: 1px solid var(--border-color); border-radius: 4px; color: #e8e8e8; font-size: 0.75rem; margin-top: 0.2rem;">
+          ` : `
+            <input type="number" value="${obj.prazo_tipo === 'anos' ? Math.round((obj.prazo_meses || 12) / 12) : (obj.prazo_meses || 12)}" min="1" max="${obj.prazo_tipo === 'anos' ? 50 : 600}" onchange="updateObjetivoField(${obj.id}, 'prazo_meses', ${obj.prazo_tipo === 'anos' ? 'parseInt(this.value) * 12' : 'parseInt(this.value)'})" style="width: 100%; padding: 0.3rem; background: #0d3320; border: 1px solid var(--border-color); border-radius: 4px; color: #e8e8e8; font-size: 0.75rem; margin-top: 0.2rem;">
+          `}
+        </div>
+      </div>
+      
+      <!-- Marcos de realização -->
+      <div style="background: rgba(153, 102, 255, 0.05); border: 1px solid rgba(153, 102, 255, 0.2); border-radius: 6px; padding: 0.4rem 0.6rem; margin-top: 0.3rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.3rem;">
+          <span style="font-size: 0.7rem; color: #9966ff; font-weight: 600;"><i class="fas fa-tasks"></i> Marcos (${marcosConcluidos}/${totalMarcos}) ${totalMarcos > 0 ? `- ${progressoMarcos}%` : ''}</span>
+          <button onclick="addMarcoIntangivel(${obj.id})" style="background: #9966ff; color: white; border: none; padding: 0.15rem 0.4rem; border-radius: 3px; cursor: pointer; font-size: 0.6rem;">+ Marco</button>
+        </div>
+        ${totalMarcos > 0 ? `
+          <div style="width: 100%; height: 4px; background: rgba(153,102,255,0.2); border-radius: 2px; margin-bottom: 0.3rem;">
+            <div style="width: ${progressoMarcos}%; height: 100%; background: #9966ff; border-radius: 2px; transition: width 0.3s;"></div>
+          </div>
+        ` : ''}
+        ${marcos.map(marco => `
+          <div style="display: flex; align-items: center; gap: 0.3rem; margin-bottom: 0.2rem;">
+            <input type="checkbox" ${marco.concluido ? 'checked' : ''} onchange="updateMarcoIntangivel(${obj.id}, ${marco.id}, 'concluido', this.checked)" style="width: 14px; height: 14px; cursor: pointer; accent-color: #9966ff;">
+            <input type="text" value="${marco.texto || ''}" placeholder="Descreva o marco..." onchange="updateMarcoIntangivel(${obj.id}, ${marco.id}, 'texto', this.value)" style="flex: 1; padding: 0.2rem 0.3rem; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 3px; color: var(--text-light); font-size: 0.7rem; ${marco.concluido ? 'text-decoration: line-through; opacity: 0.7;' : ''}">
+            <button onclick="deleteMarcoIntangivel(${obj.id}, ${marco.id})" style="background: transparent; border: none; color: #dc3545; cursor: pointer; font-size: 0.65rem; padding: 0.1rem;"><i class="fas fa-times"></i></button>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  `;
+}
+
 // ========================================
 // ANÁLISE DE OBJETIVOS - GRÁFICO EVOLUÇÃO PATRIMONIAL
 // ========================================
@@ -1239,8 +1437,9 @@ function renderAnalisesObjetivosInline() {
   if (!container) return;
   
   const objetivosAposentadoria = objetivos.filter(o => o.tipo === 'aposentadoria');
-  const objetivosNormais = objetivos.filter(o => o.tipo !== 'aposentadoria')
+  const objetivosNormais = objetivos.filter(o => o.tipo !== 'aposentadoria' && o.tipo !== 'intangivel')
     .sort((a, b) => a.prioridade - b.prioridade);
+  const objetivosIntangiveis = objetivos.filter(o => o.tipo === 'intangivel');
   
   // Só mostrar análises se houver pelo menos 1 objetivo com dados
   const temDados = objetivosAposentadoria.some(o => o.renda_anual > 0) || objetivosNormais.some(o => o.meta_acumulo > 0 || o.valor_final > 0);
@@ -1250,8 +1449,35 @@ function renderAnalisesObjetivosInline() {
     return;
   }
   
-  // Calcular simulação completa
-  const simulacao = simularEvolucaoPatrimonial(objetivosAposentadoria, objetivosNormais);
+  // Calcular simulação completa (perfil principal)
+  const simulacao = simularEvolucaoPatrimonial(objetivosAposentadoria, objetivosNormais, perfilAnaliseSelecionado);
+  
+  // MELHORIA 5: Calcular simulações comparativas
+  const simulacoesComparativas = perfisComparativos.map(perfilId => ({
+    perfilId: perfilId,
+    simulacao: simularEvolucaoPatrimonial(objetivosAposentadoria, objetivosNormais, perfilId)
+  }));
+  
+  // Gerar HTML dos perfis comparativos
+  let perfisComparativosHTML = '';
+  perfisComparativos.forEach((perfilId, index) => {
+    const todosIds = [];
+    PERFIS_RENTABILIDADE.forEach(p => { todosIds.push(p.id); todosIds.push(p.id + '_10a'); });
+    const jaUsados = [perfilAnaliseSelecionado, ...perfisComparativos.filter((_, i) => i !== index)];
+    const disponiveis = todosIds.filter(id => !jaUsados.includes(id) || id === perfilId);
+    
+    perfisComparativosHTML += `
+      <div style="display: flex; align-items: center; gap: 0.3rem; margin-top: 0.3rem;">
+        <span style="width: 12px; height: 12px; border-radius: 50%; background: ${CORES_PERFIS[(index + 1) % CORES_PERFIS.length]}; display: inline-block;"></span>
+        <select onchange="window.editarPerfilComparativo(${index}, this.value)" style="padding: 0.2rem 0.4rem; background: #0d3320; border: 1px solid var(--border-color); border-radius: 4px; color: #e8e8e8; font-size: 0.7rem; flex: 1;">
+          ${gerarOpcoesPerfilRentabilidade(perfilId)}
+        </select>
+        <button onclick="window.removerPerfilComparativo(${index})" style="background: transparent; border: 1px solid rgba(220,53,69,0.4); border-radius: 4px; color: #dc3545; cursor: pointer; padding: 0.15rem 0.3rem; font-size: 0.6rem;" title="Remover perfil">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+    `;
+  });
   
   container.innerHTML = `
     <div style="margin-top: 2rem; padding-top: 1.5rem; border-top: 2px solid rgba(212, 175, 55, 0.3);">
@@ -1259,12 +1485,19 @@ function renderAnalisesObjetivosInline() {
         <i class="fas fa-chart-area"></i> Análise de Evolução Patrimonial
       </h3>
       
-      <!-- Seletor de perfil de rentabilidade -->
-      <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1rem; flex-wrap: wrap;">
-        <span style="font-size: 0.75rem; color: var(--text-light);"><i class="fas fa-percentage"></i> Perfil de Rentabilidade:</span>
-        <select id="perfil-rentabilidade-analise" onchange="window.setPerfilAnalise(this.value)" style="padding: 0.3rem 0.5rem; background: #0d3320; border: 1px solid var(--border-color); border-radius: 4px; color: #e8e8e8; font-size: 0.75rem;">
-          ${gerarOpcoesPerfilRentabilidade(perfilAnaliseSelecionado)}
-        </select>
+      <!-- Seletor de perfil de rentabilidade + comparativos -->
+      <div style="margin-bottom: 1rem;">
+        <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+          <span style="font-size: 0.75rem; color: var(--text-light);"><i class="fas fa-percentage"></i> Perfil Principal:</span>
+          <span style="width: 12px; height: 12px; border-radius: 50%; background: ${CORES_PERFIS[0]}; display: inline-block;"></span>
+          <select id="perfil-rentabilidade-analise" onchange="window.setPerfilAnalise(this.value)" style="padding: 0.3rem 0.5rem; background: #0d3320; border: 1px solid var(--border-color); border-radius: 4px; color: #e8e8e8; font-size: 0.75rem;">
+            ${gerarOpcoesPerfilRentabilidade(perfilAnaliseSelecionado)}
+          </select>
+          <button onclick="window.adicionarPerfilComparativo()" style="background: rgba(212,175,55,0.2); border: 1px solid var(--accent-color); border-radius: 4px; color: var(--accent-color); cursor: pointer; padding: 0.2rem 0.5rem; font-size: 0.7rem;" title="Adicionar perfil para comparação">
+            <i class="fas fa-plus"></i> Comparar
+          </button>
+        </div>
+        ${perfisComparativosHTML}
       </div>
       
       <!-- Gráfico -->
@@ -1277,22 +1510,24 @@ function renderAnalisesObjetivosInline() {
         <h4 style="color: var(--accent-color); margin: 0 0 0.8rem 0; font-size: 0.9rem;">
           <i class="fas fa-clipboard-check"></i> Resultado da Análise
         </h4>
-        ${renderResumoAnalise(simulacao, objetivosAposentadoria, objetivosNormais)}
+        ${renderResumoAnalise(simulacao, objetivosAposentadoria, objetivosNormais, simulacoesComparativas)}
+        ${objetivosIntangiveis.length > 0 ? renderResumoIntangiveis(objetivosIntangiveis) : ''}
       </div>
     </div>
   `;
   
   // Renderizar gráfico após DOM estar pronto
-  setTimeout(() => renderGraficoEvolucao(simulacao, objetivosNormais, objetivosAposentadoria), 50);
+  setTimeout(() => renderGraficoEvolucao(simulacao, objetivosNormais, objetivosAposentadoria, simulacoesComparativas), 50);
 }
 
 function getPerfilAnalise() {
   return perfilAnaliseSelecionado || 'mod';
 }
 
-function simularEvolucaoPatrimonial(aposentadorias, objetivosNormais) {
+// MELHORIA 2: Simulação com recorrência correta
+function simularEvolucaoPatrimonial(aposentadorias, objetivosNormais, perfilIdOverride) {
   const pessoas = getPessoasDisponiveis();
-  const perfilId = getPerfilAnalise();
+  const perfilId = perfilIdOverride || getPerfilAnalise();
   const rentAnual = getRentabilidadePorPerfil(perfilId);
   const rentMensal = Math.pow(1 + rentAnual / 100, 1/12) - 1;
 
@@ -1331,16 +1566,18 @@ function simularEvolucaoPatrimonial(aposentadorias, objetivosNormais) {
     const recValor = obj.recorrencia_valor || 0;
     
     if (valorSaque > 0 && mesesPrazo > 0) {
-      // Primeiro evento
+      // Primeiro evento (na data de realização)
       eventosObjetivos.push({
         mes: mesesPrazo,
         valor: valorSaque,
         descricao: obj.descricao || 'Objetivo',
         isAcumulo: isAcumulo,
-        prioridade: obj.prioridade
+        prioridade: obj.prioridade,
+        objetivoId: obj.id,
+        isRecorrente: false
       });
       
-      // Eventos recorrentes
+      // MELHORIA 2: Eventos recorrentes a partir da data de realização
       if (recTipo !== 'nenhuma' && recValor > 0) {
         const intervaloMeses = recTipo === 'anos' ? recValor * 12 : recValor;
         let proximoMes = mesesPrazo + intervaloMeses;
@@ -1350,7 +1587,9 @@ function simularEvolucaoPatrimonial(aposentadorias, objetivosNormais) {
             valor: valorSaque,
             descricao: obj.descricao + ' (rec.)',
             isAcumulo: isAcumulo,
-            prioridade: obj.prioridade
+            prioridade: obj.prioridade,
+            objetivoId: obj.id,
+            isRecorrente: true
           });
           proximoMes += intervaloMeses;
         }
@@ -1388,23 +1627,36 @@ function simularEvolucaoPatrimonial(aposentadorias, objetivosNormais) {
     const eventosDoMes = eventosObjetivos.filter(e => e.mes === mes);
     eventosDoMes.forEach(evento => {
       if (!evento.isAcumulo) {
-        // Saque (sem correção por inflação)
+        // MELHORIA 2: Saque - verificar se há saldo suficiente
+        const saldoAntes = saldo;
         saldo -= evento.valor;
+        const sucesso = saldo >= 0;
+        
         eventosMarcados.push({
           mes: mes,
           tipo: 'saque',
           valor: evento.valor,
           descricao: evento.descricao,
-          saldoApos: saldo
+          saldoApos: saldo,
+          sucesso: sucesso,
+          isRecorrente: evento.isRecorrente,
+          objetivoId: evento.objetivoId
         });
+        
+        // Se saldo ficou negativo, zerar (não pode ficar negativo)
+        if (saldo < 0) saldo = 0;
       } else {
         // Acúmulo - não saca, apenas marca que atingiu
+        const atingido = saldo >= evento.valor;
         eventosMarcados.push({
           mes: mes,
           tipo: 'acumulo',
           valor: evento.valor,
           descricao: evento.descricao,
-          saldoApos: saldo
+          saldoApos: saldo,
+          sucesso: atingido,
+          isRecorrente: evento.isRecorrente,
+          objetivoId: evento.objetivoId
         });
       }
     });
@@ -1432,7 +1684,8 @@ function simularEvolucaoPatrimonial(aposentadorias, objetivosNormais) {
     maxMeses: maxMeses,
     aporteMensal: aporteMensal,
     aporteAnual: aporteAnual,
-    rentAnual: rentAnual
+    rentAnual: rentAnual,
+    perfilId: perfilId
   };
 }
 
@@ -1468,7 +1721,8 @@ function calcularMesesRestantesObjNormal(obj) {
   }
 }
 
-function renderGraficoEvolucao(simulacao, objetivosNormais, aposentadorias) {
+// MELHORIA 5: Gráfico com múltiplos perfis
+function renderGraficoEvolucao(simulacao, objetivosNormais, aposentadorias, simulacoesComparativas) {
   const canvas = document.getElementById('grafico-evolucao-patrimonial');
   if (!canvas) return;
   
@@ -1509,9 +1763,9 @@ function renderGraficoEvolucao(simulacao, objetivosNormais, aposentadorias) {
   
   const datasets = [
     {
-      label: 'Patrimônio',
+      label: `Patrimônio (${getNomePerfilRentabilidade(perfilAnaliseSelecionado)})`,
       data: dataSaldo,
-      borderColor: '#28a745',
+      borderColor: CORES_PERFIS[0],
       backgroundColor: 'rgba(40, 167, 69, 0.1)',
       fill: true,
       tension: 0.3,
@@ -1528,6 +1782,25 @@ function renderGraficoEvolucao(simulacao, objetivosNormais, aposentadorias) {
       fill: false
     }
   ];
+  
+  // MELHORIA 5: Adicionar linhas dos perfis comparativos
+  if (simulacoesComparativas && simulacoesComparativas.length > 0) {
+    simulacoesComparativas.forEach((comp, index) => {
+      const corIndex = (index + 1) % CORES_PERFIS.length;
+      const dataComp = comp.simulacao.pontos.map(p => p.saldo);
+      datasets.push({
+        label: `Patrimônio (${getNomePerfilRentabilidade(comp.perfilId)})`,
+        data: dataComp,
+        borderColor: CORES_PERFIS[corIndex],
+        backgroundColor: 'transparent',
+        fill: false,
+        tension: 0.3,
+        pointRadius: 0,
+        borderWidth: 1.5,
+        borderDash: [4, 2]
+      });
+    });
+  }
   
   // Adicionar pontos de saques se existirem
   if (eventosSaqueData.some(v => v !== null)) {
@@ -1616,7 +1889,8 @@ function renderGraficoEvolucao(simulacao, objetivosNormais, aposentadorias) {
   });
 }
 
-function renderResumoAnalise(simulacao, aposentadorias, objetivosNormais) {
+// MELHORIA 2: Resumo com informação de recorrência
+function renderResumoAnalise(simulacao, aposentadorias, objetivosNormais, simulacoesComparativas) {
   const pessoas = getPessoasDisponiveis();
   let html = '';
   
@@ -1659,9 +1933,28 @@ function renderResumoAnalise(simulacao, aposentadorias, objetivosNormais) {
       const prazoMesNome = String(prazoDesejado.getMonth() + 1).padStart(2, '0');
       const prazoDesejadoTexto = `${prazoMesNome}/${prazoDesejado.getFullYear()}`;
       
+      // MELHORIA 2: Informação de recorrência
       let recTexto = '';
-      if (recTipo !== 'nenhuma') {
+      let recDetalhe = '';
+      if (recTipo !== 'nenhuma' && recValor > 0) {
         recTexto = ` <span style="font-size: 0.6rem; color: #17a2b8;"><i class="fas fa-redo"></i> a cada ${recValor} ${recTipo === 'anos' ? 'ano(s)' : 'meses'}</span>`;
+        
+        // Contar quantas vezes o objetivo recorrente foi executado com sucesso
+        const eventosDoObj = simulacao.eventos.filter(e => e.objetivoId === obj.id);
+        const eventosSucesso = eventosDoObj.filter(e => e.sucesso);
+        const eventosFalha = eventosDoObj.filter(e => !e.sucesso);
+        
+        if (eventosDoObj.length > 0) {
+          recDetalhe = `<div style="font-size: 0.6rem; color: #17a2b8; margin-top: 0.1rem; padding-left: 1.5rem;">
+            <i class="fas fa-info-circle"></i> Executado ${eventosSucesso.length}x com sucesso de ${eventosDoObj.length} tentativas`;
+          if (eventosFalha.length > 0) {
+            const primeiraFalha = eventosFalha[0];
+            const dataFalha = new Date();
+            dataFalha.setMonth(dataFalha.getMonth() + primeiraFalha.mes);
+            recDetalhe += ` (falha a partir de ${String(dataFalha.getMonth()+1).padStart(2,'0')}/${dataFalha.getFullYear()})`;
+          }
+          recDetalhe += `</div>`;
+        }
       }
       
       // Status e cor
@@ -1678,18 +1971,52 @@ function renderResumoAnalise(simulacao, aposentadorias, objetivosNormais) {
       }
       
       html += `
-        <div style="display: flex; align-items: center; gap: 0.5rem; padding: 0.3rem 0.5rem; background: rgba(${!atingido ? '220, 53, 69' : dentroDoPrazo ? '40, 167, 69' : '255, 193, 7'}, 0.1); border-radius: 4px; border-left: 3px solid ${statusCor};">
-          <span style="font-size: 0.7rem; color: var(--accent-color); font-weight: 600; min-width: 20px;">${obj.prioridade}º</span>
-          <span style="font-size: 0.75rem; color: var(--text-light); flex: 1;">${obj.descricao || 'Sem descrição'}${recTexto}</span>
-          <span style="font-size: 0.7rem; color: var(--text-light);">${formatarMoedaObj(valorMeta)}</span>
-          <span style="font-size: 0.65rem; color: var(--text-light);">Prazo: ${prazoDesejadoTexto}</span>
-          <span style="font-size: 0.65rem; color: ${statusCor};">${atingido ? `Realiz.: ${dataProvavelTexto}` : ''}</span>
-          <span style="font-size: 0.7rem; font-weight: 600; color: ${statusCor};">
-            <i class="fas fa-${!atingido ? 'times-circle' : dentroDoPrazo ? 'check-circle' : 'exclamation-circle'}"></i> ${statusTexto}
-          </span>
+        <div style="padding: 0.3rem 0.5rem; background: rgba(${!atingido ? '220, 53, 69' : dentroDoPrazo ? '40, 167, 69' : '255, 193, 7'}, 0.1); border-radius: 4px; border-left: 3px solid ${statusCor};">
+          <div style="display: flex; align-items: center; gap: 0.5rem;">
+            <span style="font-size: 0.7rem; color: var(--accent-color); font-weight: 600; min-width: 20px;">${obj.prioridade}º</span>
+            <span style="font-size: 0.75rem; color: var(--text-light); flex: 1;">${obj.descricao || 'Sem descrição'}${recTexto}</span>
+            <span style="font-size: 0.7rem; color: var(--text-light);">${formatarMoedaObj(valorMeta)}</span>
+            <span style="font-size: 0.65rem; color: var(--text-light);">Prazo: ${prazoDesejadoTexto}</span>
+            <span style="font-size: 0.65rem; color: ${statusCor};">${atingido ? `Realiz.: ${dataProvavelTexto}` : ''}</span>
+            <span style="font-size: 0.7rem; font-weight: 600; color: ${statusCor};">
+              <i class="fas fa-${!atingido ? 'times-circle' : dentroDoPrazo ? 'check-circle' : 'exclamation-circle'}"></i> ${statusTexto}
+            </span>
+          </div>
+          ${recDetalhe}
         </div>
       `;
     });
+    html += `</div></div>`;
+  }
+  
+  // MELHORIA 5: Comparativo lado a lado dos perfis
+  if (simulacoesComparativas && simulacoesComparativas.length > 0) {
+    html += `<div style="margin-bottom: 1rem; padding: 0.5rem; background: rgba(212,175,55,0.05); border: 1px solid rgba(212,175,55,0.2); border-radius: 6px;">`;
+    html += `<h5 style="color: var(--accent-color); margin: 0 0 0.5rem 0; font-size: 0.8rem;"><i class="fas fa-balance-scale"></i> Comparativo de Perfis</h5>`;
+    html += `<div style="display: grid; grid-template-columns: repeat(${1 + simulacoesComparativas.length}, 1fr); gap: 0.5rem; font-size: 0.7rem;">`;
+    
+    // Cabeçalhos
+    html += `<div style="font-weight: 600; color: ${CORES_PERFIS[0]}; text-align: center; padding: 0.2rem;">${getNomePerfilRentabilidade(perfilAnaliseSelecionado)}<br><span style="font-size: 0.6rem;">(${simulacao.rentAnual.toFixed(2)}% a.a.)</span></div>`;
+    simulacoesComparativas.forEach((comp, idx) => {
+      html += `<div style="font-weight: 600; color: ${CORES_PERFIS[(idx+1) % CORES_PERFIS.length]}; text-align: center; padding: 0.2rem;">${getNomePerfilRentabilidade(comp.perfilId)}<br><span style="font-size: 0.6rem;">(${comp.simulacao.rentAnual.toFixed(2)}% a.a.)</span></div>`;
+    });
+    
+    // Patrimônio Final
+    html += `<div style="text-align: center; padding: 0.2rem; border-top: 1px solid rgba(212,175,55,0.2);"><span style="color: var(--text-light);">PF:</span> <span style="color: ${CORES_PERFIS[0]}; font-weight: 600;">${formatarMoedaCompacta(simulacao.patrimonioFinal)}</span></div>`;
+    simulacoesComparativas.forEach((comp, idx) => {
+      html += `<div style="text-align: center; padding: 0.2rem; border-top: 1px solid rgba(212,175,55,0.2);"><span style="color: var(--text-light);">PF:</span> <span style="color: ${CORES_PERFIS[(idx+1) % CORES_PERFIS.length]}; font-weight: 600;">${formatarMoedaCompacta(comp.simulacao.patrimonioFinal)}</span></div>`;
+    });
+    
+    // Atingimento aposentadoria
+    if (simulacao.capitalNecessarioCorrigido > 0) {
+      const pctPrincipal = (simulacao.patrimonioFinal / simulacao.capitalNecessarioCorrigido * 100).toFixed(1);
+      html += `<div style="text-align: center; padding: 0.2rem;"><span style="color: var(--text-light);">Ating.:</span> <span style="color: ${parseFloat(pctPrincipal) >= 100 ? '#28a745' : '#dc3545'}; font-weight: 600;">${pctPrincipal}%</span></div>`;
+      simulacoesComparativas.forEach((comp, idx) => {
+        const pct = (comp.simulacao.patrimonioFinal / comp.simulacao.capitalNecessarioCorrigido * 100).toFixed(1);
+        html += `<div style="text-align: center; padding: 0.2rem;"><span style="color: var(--text-light);">Ating.:</span> <span style="color: ${parseFloat(pct) >= 100 ? '#28a745' : '#dc3545'}; font-weight: 600;">${pct}%</span></div>`;
+      });
+    }
+    
     html += `</div></div>`;
   }
   
@@ -1764,15 +2091,60 @@ function renderResumoAnalise(simulacao, aposentadorias, objetivosNormais) {
   return html;
 }
 
+// MELHORIA 4: Resumo dos objetivos intangíveis na análise
+function renderResumoIntangiveis(objetivosIntangiveis) {
+  let html = `<div style="margin-top: 0.8rem; padding-top: 0.8rem; border-top: 1px solid rgba(153, 102, 255, 0.3);">`;
+  html += `<h5 style="color: #9966ff; margin: 0 0 0.5rem 0; font-size: 0.8rem;"><i class="fas fa-star"></i> Objetivos Intangíveis</h5>`;
+  html += `<div style="display: flex; flex-direction: column; gap: 0.3rem;">`;
+  
+  objetivosIntangiveis.forEach(obj => {
+    const mesesRestantes = calcularMesesRestantesObjNormal(obj);
+    const prazoVencido = mesesRestantes <= 0;
+    const marcos = obj.marcos || [];
+    const marcosConcluidos = marcos.filter(m => m.concluido).length;
+    const totalMarcos = marcos.length;
+    const progressoMarcos = totalMarcos > 0 ? Math.round((marcosConcluidos / totalMarcos) * 100) : 0;
+    
+    let statusCor = '#9966ff';
+    let statusTexto = 'Em andamento';
+    if (prazoVencido) { statusCor = '#dc3545'; statusTexto = 'Prazo vencido'; }
+    else if (totalMarcos > 0 && marcosConcluidos === totalMarcos) { statusCor = '#28a745'; statusTexto = 'Concluído'; }
+    
+    // Prazo
+    const prazoDesejado = new Date();
+    prazoDesejado.setMonth(prazoDesejado.getMonth() + mesesRestantes);
+    const prazoTexto = `${String(prazoDesejado.getMonth()+1).padStart(2,'0')}/${prazoDesejado.getFullYear()}`;
+    
+    html += `
+      <div style="display: flex; align-items: center; gap: 0.5rem; padding: 0.3rem 0.5rem; background: rgba(153, 102, 255, 0.1); border-radius: 4px; border-left: 3px solid ${statusCor};">
+        <span style="font-size: 0.75rem; color: var(--text-light); flex: 1;">${obj.descricao || 'Sem descrição'}</span>
+        ${totalMarcos > 0 ? `<span style="font-size: 0.65rem; color: #9966ff;">${marcosConcluidos}/${totalMarcos} marcos (${progressoMarcos}%)</span>` : ''}
+        <span style="font-size: 0.65rem; color: var(--text-light);">Prazo: ${prazoTexto}</span>
+        <span style="font-size: 0.7rem; font-weight: 600; color: ${statusCor};">
+          <i class="fas fa-${prazoVencido ? 'times-circle' : (totalMarcos > 0 && marcosConcluidos === totalMarcos) ? 'check-circle' : 'hourglass-half'}"></i> ${statusTexto}
+        </span>
+      </div>
+    `;
+  });
+  
+  html += `</div></div>`;
+  return html;
+}
+
 
 // ========================================
 // FUNÇÕES DE DADOS (EXPORTADAS)
 // ========================================
 
 function getObjetivosData() {
+  // MELHORIA 1: Salvar perfil de rentabilidade e perfis comparativos junto com os dados
   return {
     objetivos: objetivos,
-    variaveis_mercado: variaveisMercado
+    variaveis_mercado: {
+      ...variaveisMercado,
+      perfil_analise: perfilAnaliseSelecionado,
+      perfis_comparativos: perfisComparativos
+    }
   };
 }
 
@@ -1787,8 +2159,16 @@ function setObjetivosData(data) {
   if (data && !Array.isArray(data) && data.objetivos) {
     objArray = data.objetivos;
     if (data.variaveis_mercado) {
+      // MELHORIA 1: Restaurar perfil de rentabilidade salvo
+      if (data.variaveis_mercado.perfil_analise) {
+        perfilAnaliseSelecionado = data.variaveis_mercado.perfil_analise;
+      }
+      if (data.variaveis_mercado.perfis_comparativos) {
+        perfisComparativos = data.variaveis_mercado.perfis_comparativos;
+      }
       // Restaurar variáveis de mercado salvas (dados fixos da reunião)
-      variaveisMercado = { ...variaveisMercado, ...data.variaveis_mercado };
+      const { perfil_analise, perfis_comparativos, ...restVars } = data.variaveis_mercado;
+      variaveisMercado = { ...variaveisMercado, ...restVars };
     }
   }
   if (Array.isArray(objArray)) {
@@ -1805,6 +2185,10 @@ function setObjetivosData(data) {
         prioridade: parseInt(obj.prioridade) || 1,
         id: parseInt(obj.id) || 0
       };
+      // Garantir que marcos de intangíveis sejam preservados
+      if (obj.tipo === 'intangivel' && obj.marcos) {
+        parsed.marcos = obj.marcos;
+      }
       console.log('Objetivo parseado:', obj.descricao, '- valor_inicial original:', obj.valor_inicial, '- parseado:', parsed.valor_inicial);
       return parsed;
     });
@@ -1822,6 +2206,10 @@ function setObjetivosData(data) {
 window.renderObjetivos = renderObjetivos;
 window.addObjetivoAposentadoria = addObjetivoAposentadoria;
 window.addObjetivoNormal = addObjetivoNormal;
+window.addObjetivoIntangivel = addObjetivoIntangivel;
+window.addMarcoIntangivel = addMarcoIntangivel;
+window.updateMarcoIntangivel = updateMarcoIntangivel;
+window.deleteMarcoIntangivel = deleteMarcoIntangivel;
 window.deleteObjetivo = deleteObjetivo;
 window.updateObjetivoField = updateObjetivoField;
 window.updateObjetivoPrioridade = updateObjetivoPrioridade;
@@ -1832,6 +2220,9 @@ window.getObjetivosArray = getObjetivosArray;
 window.setObjetivosData = setObjetivosData;
 window.updateVariavelMercado = updateVariavelMercado;
 window.atualizarDadosMercado = atualizarDadosMercado;
+window.adicionarPerfilComparativo = adicionarPerfilComparativo;
+window.removerPerfilComparativo = removerPerfilComparativo;
+window.editarPerfilComparativo = editarPerfilComparativo;
 window.setPerfilAnalise = function(valor) {
   perfilAnaliseSelecionado = valor;
   renderAnalisesObjetivosInline();
@@ -1839,6 +2230,6 @@ window.setPerfilAnalise = function(valor) {
 
 // Inicialização
 document.addEventListener('DOMContentLoaded', () => {
-  console.log('Módulo de Objetivos v5.0 carregado');
+  console.log('Módulo de Objetivos v6.0 carregado');
   carregarVariaveisMercado();
 });
