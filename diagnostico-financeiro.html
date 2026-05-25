@@ -1326,6 +1326,263 @@
     transform: scale(0.95);
 }
 
+    /* =============================================
+       ESTILOS DAS QUESTÕES PERTINENTES
+       ============================================= */
+    .questoes-container {
+      margin-top: 1.5rem;
+    }
+    .questoes-pertinentes-box {
+      border: 2px solid var(--accent-color);
+      border-radius: 12px;
+      padding: 1.2rem;
+      background: rgba(0, 100, 0, 0.05);
+    }
+    .questoes-titulo {
+      color: var(--accent-color);
+      margin: 0 0 1rem 0;
+      font-size: 0.95rem;
+      text-align: center;
+    }
+    .questao-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.6rem 0.8rem;
+      margin-bottom: 0.5rem;
+      border-radius: 8px;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.1);
+      gap: 1rem;
+    }
+    .questao-item:last-child {
+      margin-bottom: 0;
+    }
+    .questao-texto {
+      flex: 1;
+      font-size: 0.85rem;
+      color: var(--text-light);
+    }
+    .questao-botoes {
+      display: flex;
+      gap: 0.4rem;
+      flex-shrink: 0;
+    }
+    .btn-questao {
+      padding: 0.3rem 0.7rem;
+      border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 6px;
+      background: transparent;
+      color: var(--text-light);
+      font-size: 0.75rem;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-weight: 500;
+    }
+    .btn-questao:hover {
+      opacity: 0.8;
+    }
+    .btn-sim.ativo {
+      background: #2e7d32;
+      border-color: #4caf50;
+      color: #fff;
+    }
+    .btn-nao.ativo {
+      background: #c62828;
+      border-color: #ef5350;
+      color: #fff;
+    }
+    .btn-inaplicavel.ativo {
+      background: #555;
+      border-color: #888;
+      color: #fff;
+    }
+    .questao-resposta-auto {
+      font-size: 0.8rem;
+      font-weight: 600;
+      padding: 0.25rem 0.6rem;
+      border-radius: 6px;
+      flex-shrink: 0;
+    }
+    .resposta-sim {
+      background: rgba(46, 125, 50, 0.3);
+      color: #66bb6a;
+      border: 1px solid #4caf50;
+    }
+    .resposta-nao {
+      background: rgba(198, 40, 40, 0.3);
+      color: #ef5350;
+      border: 1px solid #ef5350;
+    }
+    .resposta-inaplicavel {
+      background: rgba(100, 100, 100, 0.3);
+      color: #aaa;
+      border: 1px solid #888;
+    }
+
+    /* GABARITO FINAL */
+    .gabarito-resumo {
+      margin-bottom: 2rem;
+    }
+    .gabarito-resumo h4 {
+      color: var(--accent-color);
+      margin: 0 0 1rem 0;
+      text-align: center;
+    }
+    .resumo-stats {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 0.8rem;
+      margin-bottom: 1.5rem;
+    }
+    .stat-box {
+      text-align: center;
+      padding: 1rem 0.5rem;
+      border-radius: 10px;
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+    .stat-total { background: rgba(255,255,255,0.05); }
+    .stat-sim { background: rgba(46, 125, 50, 0.15); border-color: #4caf50; }
+    .stat-nao { background: rgba(198, 40, 40, 0.15); border-color: #ef5350; }
+    .stat-pendente { background: rgba(255, 193, 7, 0.15); border-color: #ffc107; }
+    .stat-numero {
+      display: block;
+      font-size: 1.8rem;
+      font-weight: 700;
+      color: var(--text-light);
+    }
+    .stat-label {
+      font-size: 0.75rem;
+      color: var(--text-light);
+      opacity: 0.7;
+    }
+    .resumo-barras {
+      display: flex;
+      flex-direction: column;
+      gap: 0.8rem;
+    }
+    .barra-container {
+      display: flex;
+      align-items: center;
+      gap: 0.8rem;
+    }
+    .barra-label {
+      font-size: 0.8rem;
+      color: var(--text-light);
+      min-width: 100px;
+    }
+    .barra-fundo {
+      flex: 1;
+      height: 12px;
+      background: rgba(255,255,255,0.1);
+      border-radius: 6px;
+      overflow: hidden;
+    }
+    .barra-preenchida {
+      height: 100%;
+      border-radius: 6px;
+      transition: width 0.5s ease;
+    }
+    .barra-sim { background: #4caf50; }
+    .barra-nao { background: #ef5350; }
+    .barra-valor {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--text-light);
+      min-width: 50px;
+      text-align: right;
+    }
+    .gabarito-texto-resumo {
+      background: rgba(0, 100, 0, 0.08);
+      border: 1px solid var(--accent-color);
+      border-radius: 10px;
+      padding: 1.2rem;
+      margin-bottom: 2rem;
+    }
+    .gabarito-texto-resumo p {
+      margin: 0.5rem 0;
+      font-size: 0.9rem;
+      line-height: 1.6;
+      color: var(--text-light);
+    }
+    .gabarito-plano {
+      margin-bottom: 2rem;
+    }
+    .gabarito-plano h4 {
+      color: var(--accent-color);
+      margin: 0 0 1rem 0;
+    }
+    .plano-topico {
+      margin-bottom: 1rem;
+      padding: 0.8rem;
+      border-left: 3px solid var(--accent-color);
+      background: rgba(255,255,255,0.03);
+      border-radius: 0 8px 8px 0;
+    }
+    .plano-topico h5 {
+      color: var(--gold-color, #d4a017);
+      margin: 0 0 0.5rem 0;
+      font-size: 0.85rem;
+    }
+    .plano-topico ul {
+      margin: 0;
+      padding-left: 1.2rem;
+    }
+    .plano-topico li {
+      font-size: 0.8rem;
+      color: var(--text-light);
+      margin-bottom: 0.3rem;
+    }
+    .gabarito-detalhado h4 {
+      color: var(--accent-color);
+      margin: 0 0 1rem 0;
+    }
+    .gabarito-secao {
+      margin-bottom: 1.5rem;
+    }
+    .gabarito-secao h5 {
+      color: var(--gold-color, #d4a017);
+      margin: 0 0 0.5rem 0;
+      font-size: 0.85rem;
+    }
+    .gabarito-tabela {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.8rem;
+    }
+    .gabarito-tabela th {
+      background: rgba(255,255,255,0.05);
+      padding: 0.5rem;
+      text-align: left;
+      color: var(--text-light);
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+    }
+    .gabarito-tabela td {
+      padding: 0.5rem;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+      color: var(--text-light);
+    }
+    .resp-sim { color: #66bb6a; font-weight: 600; }
+    .resp-nao { color: #ef5350; font-weight: 600; }
+    .resp-na { color: #aaa; }
+    .resp-pendente { color: #ffc107; font-style: italic; }
+    .origem-manual { color: var(--text-light); opacity: 0.7; }
+    .origem-automatico { color: #66bb6a; opacity: 0.8; }
+    .origem-pendente { color: #ffc107; }
+
+    @media (max-width: 768px) {
+      .resumo-stats {
+        grid-template-columns: repeat(2, 1fr);
+      }
+      .questao-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
+      }
+      .questao-botoes {
+        align-self: flex-end;
+      }
+    }
     
   </style>
 </head>
@@ -1640,6 +1897,7 @@
                   <i class="fas fa-plus"></i> Adicionar Patrimônio
                 </button>
               </div>
+              <div id="questoes-patrimonio-fisico" class="questoes-container"></div>
               <div class="form-group full-width" style="margin-top: 1.5rem;">
                 <label for="obs_patrimonio_fisico"><i class="fas fa-sticky-note"></i> Observações - Patrimônio Físico</label>
                 <textarea id="obs_patrimonio_fisico" name="obs_patrimonio_fisico" rows="3" placeholder="Observações sobre patrimônio físico..."></textarea>
@@ -1693,6 +1951,7 @@
                   <!-- Tabelas de distribuição serão inseridas aqui dinamicamente -->
                 </div>
               </div>
+              <div id="questoes-patrimonio-liquido" class="questoes-container"></div>
               <div class="form-group full-width" style="margin-top: 1.5rem;">
                 <label for="obs_patrimonio_liquido"><i class="fas fa-sticky-note"></i> Observações - Patrimônio Líquido</label>
                 <textarea id="obs_patrimonio_liquido" name="obs_patrimonio_liquido" rows="3" placeholder="Observações sobre patrimônio líquido..."></textarea>
@@ -1726,6 +1985,7 @@
                   <i class="fas fa-plus"></i> Adicionar Dívida
                 </button>
               </div>
+              <div id="questoes-dividas" class="questoes-container"></div>
               <div class="form-group full-width" style="margin-top: 1.5rem;">
                 <label for="obs_dividas"><i class="fas fa-sticky-note"></i> Observações - Dívidas</label>
                 <textarea id="obs_dividas" name="obs_dividas" rows="3" placeholder="Observações sobre dívidas..."></textarea>
@@ -1750,6 +2010,7 @@
               <div id="sucessao-container">
                 <!-- Cálculos de sucessão serão inseridos aqui dinamicamente -->
               </div>
+              <div id="questoes-sucessao" class="questoes-container"></div>
               <div class="form-group full-width" style="margin-top: 1.5rem;">
                 <label for="obs_sucessao"><i class="fas fa-sticky-note"></i> Observações - Sucessão Patrimonial</label>
                 <textarea id="obs_sucessao" name="obs_sucessao" rows="3" placeholder="Observações sobre sucessão patrimonial..."></textarea>
@@ -1784,6 +2045,7 @@
                   <i class="fas fa-plus"></i> Adicionar Produto
                 </button>
               </div>
+              <div id="questoes-produtos-protecao" class="questoes-container"></div>
               <div class="form-group full-width" style="margin-top: 1.5rem;">
                 <label for="obs_produtos_protecao"><i class="fas fa-sticky-note"></i> Observações - Produtos & Proteção</label>
                 <textarea id="obs_produtos_protecao" name="obs_produtos_protecao" rows="3" placeholder="Observações sobre produtos e proteção..."></textarea>
@@ -1809,6 +2071,7 @@
                   <i class="fas fa-info-circle"></i> As declarações de IR serão exibidas automaticamente para o cliente, cônjuge (se não for dependente), pessoas com renda e seus cônjuges (se não forem dependentes).
                 </p>
               </div>
+              <div id="questoes-ir" class="questoes-container"></div>
               <div class="form-group full-width" style="margin-top: 1.5rem;">
                 <label for="obs_ir"><i class="fas fa-sticky-note"></i> Observações - Imposto de Renda</label>
                 <textarea id="obs_ir" name="obs_ir" rows="3" placeholder="Observações sobre imposto de renda..."></textarea>
@@ -1839,6 +2102,7 @@
                   <i class="fas fa-plus"></i> Adicionar Conta/Cartão
                 </button>
               </div>
+              <div id="questoes-contas-cartoes" class="questoes-container"></div>
               <div class="form-group full-width" style="margin-top: 1.5rem;">
                 <label for="obs_contas_cartoes"><i class="fas fa-sticky-note"></i> Observações - Contas & Cartões</label>
                 <textarea id="obs_contas_cartoes" name="obs_contas_cartoes" rows="3" placeholder="Observações sobre contas e cartões..."></textarea>
@@ -1863,6 +2127,7 @@
               <div id="fluxo-caixa-container">
                 <!-- Fluxo de caixa será renderizado aqui dinamicamente -->
               </div>
+              <div id="questoes-fluxo-caixa" class="questoes-container"></div>
               <div class="form-group full-width" style="margin-top: 1.5rem;">
                 <label for="obs_fluxo_caixa"><i class="fas fa-sticky-note"></i> Observações - Fluxo de Caixa</label>
                 <textarea id="obs_fluxo_caixa" name="obs_fluxo_caixa" rows="3" placeholder="Observações sobre fluxo de caixa..."></textarea>
@@ -1887,6 +2152,7 @@
               <div id="objetivos-container">
                 <!-- Objetivos serão renderizados aqui dinamicamente -->
               </div>
+              <div id="questoes-objetivos" class="questoes-container"></div>
               <div class="form-group full-width" style="margin-top: 1.5rem;">
                 <label for="obs_objetivos"><i class="fas fa-sticky-note"></i> Observações - Objetivos Financeiros</label>
                 <textarea id="obs_objetivos" name="obs_objetivos" rows="3" placeholder="Observações sobre objetivos financeiros..."></textarea>
@@ -1938,6 +2204,26 @@
               <div class="form-group full-width" style="margin-top: 1.5rem;">
                 <label for="obs_adesao_plano"><i class="fas fa-sticky-note"></i> Observações - Adesão</label>
                 <textarea id="obs_adesao_plano" name="obs_adesao_plano" rows="3" placeholder="Observações sobre adesão ao plano..."></textarea>
+              </div>
+            </div>
+          </div>
+
+          <!-- ========================================= -->
+          <!-- SEÇÃO: INFORMAÇÕES FALTANTES PARA FERRAMENTAS -->
+          <!-- ========================================= -->
+          <div class="form-container" id="secao-info-faltantes" style="margin-top: 1.5rem;">
+            <div class="section-header" onclick="toggleSection('info-faltantes')">
+              <h3 style="color: var(--accent-color); margin: 0; flex-grow: 1;">
+                <i class="fas fa-clipboard-list"></i> Informações Faltantes para Ferramentas
+              </h3>
+              <button type="button" class="section-toggle-btn" id="toggle-info-faltantes">
+                <i class="fas fa-chevron-down"></i>
+              </button>
+            </div>
+            
+            <div class="section-content expanded" id="content-info-faltantes">
+              <div id="gabarito-final-container">
+                <!-- Gabarito será renderizado aqui dinamicamente -->
               </div>
             </div>
           </div>
@@ -3632,6 +3918,20 @@ console.log('=== FIM DEBUG PESSOAS COM RENDA ===');
           }
         }
         
+        // Carregar questões pertinentes
+        if (diagnostico.questoes_pertinentes) {
+          try {
+            const questoesData = typeof diagnostico.questoes_pertinentes === 'string'
+              ? JSON.parse(diagnostico.questoes_pertinentes)
+              : diagnostico.questoes_pertinentes;
+            if (window.setQuestoesData) {
+              window.setQuestoesData(questoesData);
+            }
+          } catch (e) {
+            console.log('Erro ao carregar questões:', e);
+          }
+        }
+
         // Carregar observações por seção
         const obsFields = ['obs_dados_pessoais', 'obs_pessoas_renda', 'obs_dependentes', 'obs_patrimonio_fisico', 'obs_patrimonio_liquido', 'obs_dividas', 'obs_sucessao', 'obs_produtos_protecao', 'obs_ir', 'obs_contas_cartoes', 'obs_fluxo_caixa', 'obs_objetivos', 'obs_perfil_financeiro', 'obs_adesao_plano'];
         obsFields.forEach(field => {
@@ -3843,6 +4143,7 @@ console.log('=== FIM DEBUG PESSOAS COM RENDA ===');
             return JSON.stringify(fluxoData);
           })(), // Salvar fluxo de caixa
           objetivos: JSON.stringify(window.getObjetivosData ? window.getObjetivosData() : {}), // Salvar objetivos
+          questoes_pertinentes: JSON.stringify(window.getQuestoesData ? window.getQuestoesData() : {}), // Salvar questões pertinentes
           // Observações por seção
           obs_dados_pessoais: document.getElementById('obs_dados_pessoais')?.value.trim() || '',
           obs_pessoas_renda: document.getElementById('obs_pessoas_renda')?.value.trim() || '',
@@ -4660,6 +4961,7 @@ async function prefillFromCadastro() {
   <script type="module" src="ir-module.js"></script>
   <script type="module" src="fluxo-caixa-module.js"></script>
   <script type="module" src="objetivos-module.js"></script>
+  <script src="questoes-module.js"></script>
   <script src="diagnostico-validador.js"></script>
 </body>
 </html>
