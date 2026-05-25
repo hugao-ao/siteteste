@@ -10,6 +10,160 @@ let objetivoCounter = 0;
 let perfilAnaliseSelecionado = 'mod'; // Perfil selecionado persistente
 let perfisComparativos = []; // Array de IDs de perfis extras para comparação
 
+// Dados do Perfil Financeiro e Investimento na Assistência
+let perfilFinanceiroData = {
+  perfil_selecionado: '',
+  observacoes: ''
+};
+
+let investimentoAssistenciaData = {
+  valor_parcela_12x: 0,
+  desconto_especial_pct: 40,
+  plano_acompanhamento: '',
+  observacoes: ''
+};
+
+// Definições dos perfis financeiros
+const PERFIS_FINANCEIROS = [
+  {
+    id: 'dividas_impagaveis',
+    nome: 'DÍVIDAS IMPAGÁVEIS',
+    emoji: '🚨',
+    cor: '#dc3545',
+    descricao: 'Este perfil se caracteriza por dívidas tão elevadas que tornam impossível ou praticamente impossível sua quitação no curto, médio e no longo prazo, exigindo medidas extremas para reorganização financeira.'
+  },
+  {
+    id: 'dividas_pagaveis',
+    nome: 'DÍVIDAS PAGÁVEIS',
+    emoji: '⚠️',
+    cor: '#fd7e14',
+    descricao: 'Este perfil se caracteriza por dívidas que podem ser altas, médias ou baixas, mas há margem para negociação e pagamento dentro de um período razoável, com estratégias de pagamento adequadas, permitindo adequação ou readequação ao fluxo de caixa.'
+  },
+  {
+    id: 'zero_a_zero_obrigatorio',
+    nome: 'ZERO A ZERO OBRIGATÓRIO',
+    emoji: '🔒',
+    cor: '#6c757d',
+    descricao: 'Este perfil se caracteriza por uma renda mensal totalmente comprometida com despesas fixas + variáveis básicas + lazer mínimo ou sem custo e não havendo sobra ou margem para imprevistos.'
+  },
+  {
+    id: 'zero_a_zero_opcional',
+    nome: 'ZERO A ZERO OPCIONAL',
+    emoji: '🎭',
+    cor: '#ffc107',
+    descricao: 'Este perfil se caracteriza por uma renda mensal suficiente para cobrir todas as despesas mensais fixas + variáveis básicos. Porém o lazer vai variar de forma a consumir toda a diferença restante entre as entradas e saídas, sendo rara a sobra de qualquer valor significativo no mês para poupança ou investimento e, ainda que haja, esta micro reserva acumulada é rapidamente consumida com novos gastos de lazer ou imprevistos.'
+  },
+  {
+    id: 'fluxo_positivo',
+    nome: 'FLUXO POSITIVO',
+    emoji: '💧',
+    cor: '#17a2b8',
+    descricao: 'Este perfil se caracteriza por uma renda mensal onde há uma sobra após o pagamento de todas as despesas fixas + despesas variáveis básicas + lazer, sendo essa sobra totalmente irregular e não planejada, mas ocorrendo em praticamente todos os meses do ano, o que permite indiretamente que alguma reserva seja acumulada.'
+  },
+  {
+    id: 'poupador',
+    nome: 'POUPADOR',
+    emoji: '🐷',
+    cor: '#28a745',
+    descricao: 'Neste perfil, poupar um valor mínimo é uma das metas mensais, pois o objetivo é formar alguma reserva financeira para eventuais necessidades ou projetos futuros.'
+  },
+  {
+    id: 'investidor_amador',
+    nome: 'INVESTIDOR-AMADOR',
+    emoji: '📈',
+    cor: '#6f42c1',
+    descricao: 'Este perfil vai além do Poupador, pois não apenas busca formar reserva, mas também procura investir onde acredita que haja maior retorno, de acordo com seu apetite ao risco. Investir costuma ser o principal foco e finalidade em si. Costuma priorizar nas escolhas que faz os ativos que acha que renderão mais.'
+  },
+  {
+    id: 'investidor_planejador',
+    nome: 'INVESTIDOR-PLANEJADOR',
+    emoji: '🎯',
+    cor: '#d4af37',
+    descricao: 'Além de ser um Poupador, este perfil entende que a realização dos objetivos de forma saudável, estável e adequada é mais importante do que o ativo em que será feito o investimento. Busca fazer aportes de forma estratégica e consciente, alinhando seus investimentos com seus objetivos financeiros de curto, médio e longo prazo.'
+  }
+];
+
+// Planos de acompanhamento
+const PLANOS_ACOMPANHAMENTO = [
+  {
+    id: 'nivel_1',
+    nome: 'HV Nível I',
+    valor: 29.90,
+    subtitulo: 'Autonomia com direção',
+    cor: '#6c757d',
+    destaque: false,
+    itens: [
+      'Planejamento e metas definidos',
+      'WhatsApp Ilimitado (Dúvidas)',
+      'Resolução de demandas em reunião',
+      'Você executa, nós orientamos'
+    ],
+    reunioes: 'Ilimitadas (mediante agendamento)',
+    prioridade: 'Baixa',
+    sla_agenda: '6 meses',
+    sla_whatsapp: '30 dias',
+    nao_incluso: 'Cotações, pesquisas de mercado, contato com terceiros, execução operacional, relatórios fora de reunião'
+  },
+  {
+    id: 'nivel_2',
+    nome: 'HV Nível II',
+    valor: 59.90,
+    subtitulo: 'Agilidade + pesquisas',
+    cor: '#17a2b8',
+    destaque: false,
+    itens: [
+      'Tudo do Nível I',
+      'Cotações de itens da reunião',
+      'Prioridade maior na agenda',
+      'Pesquisas de preços e opções'
+    ],
+    reunioes: 'Ilimitadas (mediante agendamento)',
+    prioridade: 'Normal',
+    sla_agenda: '4 meses',
+    sla_whatsapp: '15 dias',
+    nao_incluso: 'Contato com terceiros, intermediação, execução operacional, relatórios mensais'
+  },
+  {
+    id: 'nivel_3',
+    nome: 'HV Nível III',
+    valor: 119.90,
+    subtitulo: 'Acompanhamento próximo',
+    cor: '#28a745',
+    destaque: true,
+    itens: [
+      'Tudo do Nível II',
+      'Supervisão Ativa de contratações',
+      'Relatórios mensais de progresso',
+      'Prioridade Alta na agenda'
+    ],
+    reunioes: 'Ilimitadas (mediante agendamento)',
+    prioridade: 'Alta',
+    sla_agenda: '2 meses',
+    sla_whatsapp: '7 dias',
+    nao_incluso: 'Execução operacional de tarefas em nome do cliente'
+  },
+  {
+    id: 'nivel_4',
+    nome: 'HV Nível IV',
+    valor: 299.90,
+    subtitulo: 'Nós resolvemos tudo',
+    cor: '#d4af37',
+    destaque: false,
+    itens: [
+      'Tudo do Nível III',
+      'Resolução total (o que for possível)',
+      'Relatórios semanais de evolução',
+      'Prioridade MÁXIMA (horário fixo)',
+      'Nós executamos por você'
+    ],
+    reunioes: 'Ilimitadas + Horário Fixo Mensal',
+    prioridade: 'Máxima',
+    sla_agenda: '1 mês',
+    sla_whatsapp: '72 horas',
+    nao_incluso: 'Atos que exijam presença física, assinatura biométrica ou senha pessoal intransferível'
+  }
+];
+
 // Variáveis de mercado (carregadas do Supabase)
 let variaveisMercado = {
   selic: 14.75,
@@ -1184,6 +1338,12 @@ function renderObjetivos() {
     
     <!-- Análises (sempre visíveis abaixo) -->
     <div id="analises-objetivos-container"></div>
+    
+    <!-- Perfil Financeiro -->
+    ${renderPerfilFinanceiro()}
+    
+    <!-- Investimento na Assistência Financeira -->
+    ${renderInvestimentoAssistencia()}
   `;
   
   // Renderizar análises abaixo após o DOM estar pronto
@@ -2287,6 +2447,257 @@ function renderResumoIntangiveis(objetivosIntangiveis) {
 // FUNÇÕES DE DADOS (EXPORTADAS)
 // ========================================
 
+// ========================================
+// SEÇÃO: PERFIL FINANCEIRO
+// ========================================
+
+function renderPerfilFinanceiro() {
+  const perfilAtual = PERFIS_FINANCEIROS.find(p => p.id === perfilFinanceiroData.perfil_selecionado);
+  
+  return `
+    <div style="margin-top: 2rem; padding-top: 1.5rem; border-top: 2px solid rgba(212, 175, 55, 0.3);">
+      <h3 style="color: var(--accent-color); margin: 0 0 1rem 0; font-size: 1rem;">
+        <i class="fas fa-user-tag"></i> Perfil Financeiro
+      </h3>
+      
+      <div style="background: var(--dark-bg); border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem; margin-bottom: 1rem;">
+        <div style="margin-bottom: 1rem;">
+          <label style="font-size: 0.75rem; color: var(--text-light); display: block; margin-bottom: 0.3rem;">Selecione o perfil financeiro do cliente:</label>
+          <select onchange="window.setPerfilFinanceiro(this.value)" style="width: 100%; padding: 0.5rem; background: #0d3320; border: 1px solid var(--border-color); border-radius: 4px; color: #e8e8e8; font-size: 0.85rem;">
+            <option value="">-- Selecione --</option>
+            ${PERFIS_FINANCEIROS.map(p => `
+              <option value="${p.id}" ${perfilFinanceiroData.perfil_selecionado === p.id ? 'selected' : ''}>${p.emoji} ${p.nome}</option>
+            `).join('')}
+          </select>
+        </div>
+        
+        ${perfilAtual ? `
+        <div style="background: rgba(${hexToRgb(perfilAtual.cor)}, 0.08); border: 1px solid ${perfilAtual.cor}; border-radius: 8px; padding: 1rem; animation: fadeIn 0.3s ease;">
+          <div style="display: flex; align-items: center; gap: 0.8rem; margin-bottom: 0.8rem;">
+            <span style="font-size: 2.5rem;">${perfilAtual.emoji}</span>
+            <div>
+              <h4 style="color: ${perfilAtual.cor}; margin: 0; font-size: 1rem;">${perfilAtual.nome}</h4>
+            </div>
+          </div>
+          <p style="color: var(--text-light); font-size: 0.8rem; line-height: 1.5; margin: 0; font-style: italic;">
+            "${perfilAtual.descricao}"
+          </p>
+        </div>
+        ` : `
+        <div style="text-align: center; padding: 1.5rem; opacity: 0.5;">
+          <i class="fas fa-user-circle" style="font-size: 2rem; color: var(--text-light);"></i>
+          <p style="color: var(--text-light); font-size: 0.75rem; margin: 0.5rem 0 0 0;">Selecione um perfil acima para ver a descrição</p>
+        </div>
+        `}
+      </div>
+      
+      <!-- Observações do Perfil Financeiro -->
+      <div style="margin-top: 1rem;">
+        <h4 style="color: var(--accent-color); margin: 0 0 0.5rem 0; font-size: 0.85rem;">
+          <i class="fas fa-sticky-note"></i> Observações - Perfil Financeiro
+        </h4>
+        <textarea onchange="window.updatePerfilFinanceiroObs(this.value)" placeholder="Observações sobre o perfil financeiro do cliente..." style="width: 100%; min-height: 80px; padding: 0.6rem; background: var(--dark-bg); border: 1px solid var(--border-color); border-radius: 4px; color: var(--text-light); font-size: 0.8rem; resize: vertical;">${perfilFinanceiroData.observacoes || ''}</textarea>
+      </div>
+    </div>
+  `;
+}
+
+// ========================================
+// SEÇÃO: INVESTIMENTO NA ASSISTÊNCIA FINANCEIRA
+// ========================================
+
+function calcularParcelamento(valorBase12x, isEspecial, descontoPct) {
+  if (!valorBase12x || valorBase12x <= 0) return [];
+  
+  let total12x = valorBase12x * 12;
+  if (isEspecial) {
+    total12x = total12x * (1 - descontoPct / 100);
+  }
+  
+  const descontoMaxPct = 0.1943; // 19.43% desconto máximo à vista
+  const descontoMax = total12x * descontoMaxPct;
+  const valorAvista = total12x - descontoMax;
+  
+  const parcelas = [];
+  for (let n = 1; n <= 12; n++) {
+    const totalN = valorAvista + (total12x - valorAvista) * (n - 1) / 11;
+    const parcelaN = totalN / n;
+    const descontoN = total12x - totalN;
+    parcelas.push({
+      n: n,
+      valor_parcela: parcelaN,
+      total: totalN,
+      desconto: descontoN,
+      desconto_sobre_ordinaria: isEspecial ? (valorBase12x * 12) - totalN : descontoN
+    });
+  }
+  return parcelas;
+}
+
+function renderInvestimentoAssistencia() {
+  const valor12x = investimentoAssistenciaData.valor_parcela_12x || 0;
+  const descEspecialPct = investimentoAssistenciaData.desconto_especial_pct || 40;
+  
+  const parcelasOrdinaria = calcularParcelamento(valor12x, false, 0);
+  const parcelasEspecial = calcularParcelamento(valor12x, true, descEspecialPct);
+  
+  const planoSelecionado = investimentoAssistenciaData.plano_acompanhamento || '';
+  
+  return `
+    <div style="margin-top: 2rem; padding-top: 1.5rem; border-top: 2px solid rgba(212, 175, 55, 0.3);">
+      <h3 style="color: var(--accent-color); margin: 0 0 1rem 0; font-size: 1rem;">
+        <i class="fas fa-hand-holding-usd"></i> Investimento na Assistência Financeira
+      </h3>
+      
+      <!-- ADEÇÃO: Plano Financeiro -->
+      <div style="background: var(--dark-bg); border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem; margin-bottom: 1rem;">
+        <h4 style="color: #28a745; margin: 0 0 0.8rem 0; font-size: 0.9rem;">
+          <i class="fas fa-file-signature"></i> Adesão - Montagem do Plano Financeiro
+        </h4>
+        
+        <div style="display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem;">
+          <div style="flex: 1; min-width: 200px;">
+            <label style="font-size: 0.7rem; color: var(--text-light); display: block; margin-bottom: 0.2rem;">Valor da Parcela (12x sem desconto):</label>
+            <input type="text" value="${valor12x > 0 ? formatarMoedaObj(valor12x) : ''}" 
+              onchange="window.updateInvestimentoField('valor_parcela_12x', parseMoedaObj(this.value))" 
+              placeholder="R$ 0,00"
+              style="width: 100%; padding: 0.4rem; background: #0d3320; border: 1px solid var(--border-color); border-radius: 4px; color: #e8e8e8; font-size: 0.85rem;">
+          </div>
+          <div style="flex: 1; min-width: 200px;">
+            <label style="font-size: 0.7rem; color: var(--text-light); display: block; margin-bottom: 0.2rem;">Desconto Especial (%):</label>
+            <input type="number" value="${descEspecialPct}" min="0" max="100" step="5"
+              onchange="window.updateInvestimentoField('desconto_especial_pct', parseFloat(this.value)||0)" 
+              style="width: 100%; padding: 0.4rem; background: #0d3320; border: 1px solid var(--border-color); border-radius: 4px; color: #e8e8e8; font-size: 0.85rem;">
+          </div>
+        </div>
+        
+        ${valor12x > 0 ? `
+        <!-- Tabelas de Parcelamento lado a lado -->
+        <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+          <!-- ORDINÁRIA -->
+          <div style="flex: 1; min-width: 280px; border: 1px solid rgba(40, 167, 69, 0.4); border-radius: 8px; padding: 0.8rem;">
+            <h5 style="color: #28a745; margin: 0 0 0.5rem 0; font-size: 0.8rem; text-align: center;">
+              <i class="fas fa-file-alt"></i> PROPOSTA ORDINÁRIA
+            </h5>
+            <div style="text-align: center; margin-bottom: 0.5rem;">
+              <span style="font-size: 0.65rem; color: var(--text-light);">Valor total (12x):</span>
+              <span style="color: #28a745; font-weight: 600; font-size: 0.85rem;"> ${formatarMoedaObj(valor12x * 12)}</span>
+            </div>
+            <div style="max-height: 250px; overflow-y: auto;">
+              <table style="width: 100%; border-collapse: collapse; font-size: 0.7rem;">
+                <thead>
+                  <tr style="border-bottom: 1px solid var(--border-color);">
+                    <th style="padding: 0.3rem; text-align: left; color: var(--text-light);">Parcelas</th>
+                    <th style="padding: 0.3rem; text-align: right; color: var(--text-light);">Valor</th>
+                    <th style="padding: 0.3rem; text-align: right; color: var(--text-light);">Desconto</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${parcelasOrdinaria.map((p, i) => `
+                  <tr style="border-bottom: 1px solid rgba(255,255,255,0.05); ${i === 0 ? 'background: rgba(40,167,69,0.1);' : ''}">
+                    <td style="padding: 0.25rem 0.3rem; color: #e8e8e8;">${i === 0 ? 'À vista' : i === 1 ? 'À vista Cartão' : p.n + 'x'}</td>
+                    <td style="padding: 0.25rem 0.3rem; text-align: right; color: #28a745; font-weight: 600;">${formatarMoedaObj(p.valor_parcela)}</td>
+                    <td style="padding: 0.25rem 0.3rem; text-align: right; color: ${p.desconto > 0 ? '#ffc107' : 'var(--text-light)'}; font-size: 0.6rem;">${p.desconto > 0 ? '-' + formatarMoedaObj(p.desconto) : '-'}</td>
+                  </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            </div>
+          </div>
+          
+          <!-- ESPECIAL -->
+          <div style="flex: 1; min-width: 280px; border: 1px solid rgba(212, 175, 55, 0.4); border-radius: 8px; padding: 0.8rem;">
+            <h5 style="color: var(--accent-color); margin: 0 0 0.5rem 0; font-size: 0.8rem; text-align: center;">
+              <i class="fas fa-star"></i> PROPOSTA ESPECIAL (${descEspecialPct}% desc.)
+            </h5>
+            <div style="text-align: center; margin-bottom: 0.5rem;">
+              <span style="font-size: 0.65rem; color: var(--text-light);">Valor total (12x):</span>
+              <span style="color: var(--accent-color); font-weight: 600; font-size: 0.85rem;"> ${formatarMoedaObj(valor12x * 12 * (1 - descEspecialPct/100))}</span>
+            </div>
+            <div style="max-height: 250px; overflow-y: auto;">
+              <table style="width: 100%; border-collapse: collapse; font-size: 0.7rem;">
+                <thead>
+                  <tr style="border-bottom: 1px solid var(--border-color);">
+                    <th style="padding: 0.3rem; text-align: left; color: var(--text-light);">Parcelas</th>
+                    <th style="padding: 0.3rem; text-align: right; color: var(--text-light);">Valor</th>
+                    <th style="padding: 0.3rem; text-align: right; color: var(--text-light);">Economia</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${parcelasEspecial.map((p, i) => `
+                  <tr style="border-bottom: 1px solid rgba(255,255,255,0.05); ${i === 0 ? 'background: rgba(212,175,55,0.1);' : ''}">
+                    <td style="padding: 0.25rem 0.3rem; color: #e8e8e8;">${i === 0 ? 'À vista' : i === 1 ? 'À vista Cartão' : p.n + 'x'}</td>
+                    <td style="padding: 0.25rem 0.3rem; text-align: right; color: var(--accent-color); font-weight: 600;">${formatarMoedaObj(p.valor_parcela)}</td>
+                    <td style="padding: 0.25rem 0.3rem; text-align: right; color: #28a745; font-size: 0.6rem;">${p.desconto_sobre_ordinaria > 0 ? '-' + formatarMoedaObj(p.desconto_sobre_ordinaria) : '-'}</td>
+                  </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+        ` : `
+        <div style="text-align: center; padding: 1.5rem; opacity: 0.5;">
+          <i class="fas fa-calculator" style="font-size: 2rem; color: var(--text-light);"></i>
+          <p style="color: var(--text-light); font-size: 0.75rem; margin: 0.5rem 0 0 0;">Informe o valor da parcela (12x) para calcular as propostas</p>
+        </div>
+        `}
+      </div>
+      
+      <!-- ACOMPANHAMENTO: Planos lado a lado -->
+      <div style="background: var(--dark-bg); border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem; margin-bottom: 1rem;">
+        <h4 style="color: #17a2b8; margin: 0 0 0.8rem 0; font-size: 0.9rem;">
+          <i class="fas fa-hands-helping"></i> Planos de Acompanhamento Financeiro
+        </h4>
+        
+        <div style="display: flex; gap: 0.6rem; flex-wrap: wrap;">
+          ${PLANOS_ACOMPANHAMENTO.map(plano => `
+          <div onclick="window.selecionarPlanoAcompanhamento('${plano.id}')" 
+               style="flex: 1; min-width: 180px; border: 2px solid ${planoSelecionado === plano.id ? plano.cor : 'var(--border-color)'}; border-radius: 8px; padding: 0.8rem; cursor: pointer; transition: all 0.2s; position: relative; ${plano.destaque ? 'box-shadow: 0 0 12px rgba(40,167,69,0.3);' : ''} ${planoSelecionado === plano.id ? 'background: rgba(' + hexToRgb(plano.cor) + ', 0.08);' : ''}">
+            ${plano.destaque ? '<span style="position: absolute; top: -8px; right: 8px; background: #28a745; color: white; font-size: 0.55rem; padding: 0.1rem 0.4rem; border-radius: 3px;">POPULAR</span>' : ''}
+            ${planoSelecionado === plano.id ? '<span style="position: absolute; top: 5px; right: 8px; color: ' + plano.cor + '; font-size: 0.8rem;"><i class="fas fa-check-circle"></i></span>' : ''}
+            <div style="text-align: center; margin-bottom: 0.5rem;">
+              <span style="font-size: 0.7rem; color: ${plano.cor}; font-weight: 600;">${plano.nome}</span>
+              <div style="font-size: 1.1rem; color: #e8e8e8; font-weight: 700; margin: 0.2rem 0;">
+                ${formatarMoedaObj(plano.valor)}<span style="font-size: 0.6rem; color: var(--text-light);">/mês</span>
+              </div>
+              <span style="font-size: 0.6rem; color: var(--text-light); font-style: italic;">${plano.subtitulo}</span>
+            </div>
+            <ul style="list-style: none; padding: 0; margin: 0.5rem 0 0 0;">
+              ${plano.itens.map(item => `
+              <li style="font-size: 0.6rem; color: var(--text-light); padding: 0.15rem 0; display: flex; align-items: flex-start; gap: 0.3rem;">
+                <i class="fas fa-check" style="color: ${plano.cor}; font-size: 0.5rem; margin-top: 0.15rem;"></i>
+                <span>${item}</span>
+              </li>
+              `).join('')}
+            </ul>
+            <div style="margin-top: 0.5rem; padding-top: 0.4rem; border-top: 1px solid rgba(255,255,255,0.1); font-size: 0.55rem; color: var(--text-light);">
+              <div><b>Prioridade:</b> ${plano.prioridade}</div>
+              <div><b>SLA Agenda:</b> ${plano.sla_agenda}</div>
+              <div><b>SLA WhatsApp:</b> ${plano.sla_whatsapp}</div>
+            </div>
+          </div>
+          `).join('')}
+        </div>
+      </div>
+      
+      <!-- Observações do Investimento -->
+      <div style="margin-top: 1rem;">
+        <h4 style="color: var(--accent-color); margin: 0 0 0.5rem 0; font-size: 0.85rem;">
+          <i class="fas fa-sticky-note"></i> Observações - Investimento na Assistência
+        </h4>
+        <textarea onchange="window.updateInvestimentoObs(this.value)" placeholder="Observações sobre o investimento e plano escolhido..." style="width: 100%; min-height: 80px; padding: 0.6rem; background: var(--dark-bg); border: 1px solid var(--border-color); border-radius: 4px; color: var(--text-light); font-size: 0.8rem; resize: vertical;">${investimentoAssistenciaData.observacoes || ''}</textarea>
+      </div>
+    </div>
+  `;
+}
+
+// Helper: converter hex para rgb
+function hexToRgb(hex) {
+  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+  return result ? `${parseInt(result[1], 16)}, ${parseInt(result[2], 16)}, ${parseInt(result[3], 16)}` : '128, 128, 128';
+}
+
 function getObjetivosData() {
   // MELHORIA 1: Salvar perfil de rentabilidade e perfis comparativos junto com os dados
   return {
@@ -2295,7 +2706,9 @@ function getObjetivosData() {
       ...variaveisMercado,
       perfil_analise: perfilAnaliseSelecionado,
       perfis_comparativos: perfisComparativos
-    }
+    },
+    perfil_financeiro: perfilFinanceiroData,
+    investimento_assistencia: investimentoAssistenciaData
   };
 }
 
@@ -2320,6 +2733,14 @@ function setObjetivosData(data) {
       // Restaurar variáveis de mercado salvas (dados fixos da reunião)
       const { perfil_analise, perfis_comparativos, ...restVars } = data.variaveis_mercado;
       variaveisMercado = { ...variaveisMercado, ...restVars };
+    }
+    // Restaurar perfil financeiro
+    if (data.perfil_financeiro) {
+      perfilFinanceiroData = { ...perfilFinanceiroData, ...data.perfil_financeiro };
+    }
+    // Restaurar investimento assistência
+    if (data.investimento_assistencia) {
+      investimentoAssistenciaData = { ...investimentoAssistenciaData, ...data.investimento_assistencia };
     }
   }
   if (Array.isArray(objArray)) {
@@ -2384,8 +2805,31 @@ window.setPerfilAnalise = function(valor) {
   renderAnalisesObjetivosInline();
 };
 
+// Funções do Perfil Financeiro
+window.setPerfilFinanceiro = function(valor) {
+  perfilFinanceiroData.perfil_selecionado = valor;
+  renderObjetivos();
+};
+window.updatePerfilFinanceiroObs = function(valor) {
+  perfilFinanceiroData.observacoes = valor;
+};
+
+// Funções do Investimento na Assistência
+window.updateInvestimentoField = function(campo, valor) {
+  investimentoAssistenciaData[campo] = valor;
+  renderObjetivos();
+};
+window.updateInvestimentoObs = function(valor) {
+  investimentoAssistenciaData.observacoes = valor;
+};
+window.selecionarPlanoAcompanhamento = function(planoId) {
+  investimentoAssistenciaData.plano_acompanhamento = 
+    investimentoAssistenciaData.plano_acompanhamento === planoId ? '' : planoId;
+  renderObjetivos();
+};
+
 // Inicialização
 document.addEventListener('DOMContentLoaded', () => {
-  console.log('Módulo de Objetivos v6.0 carregado');
+  console.log('Módulo de Objetivos v7.0 carregado');
   carregarVariaveisMercado();
 });
