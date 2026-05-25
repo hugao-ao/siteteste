@@ -1339,13 +1339,24 @@ function renderObjetivos() {
     
     <!-- Análises (sempre visíveis abaixo) -->
     <div id="analises-objetivos-container"></div>
-    
-    <!-- Perfil Financeiro -->
-    ${renderPerfilFinanceiro()}
-    
-    <!-- Investimento na Assistência Financeira -->
-    ${renderInvestimentoAssistencia()}
   `;
+  
+  // Renderizar seções separadas (Perfil Financeiro e Adesão)
+  let perfilContainer = document.getElementById('perfil-financeiro-section');
+  if (!perfilContainer) {
+    perfilContainer = document.createElement('div');
+    perfilContainer.id = 'perfil-financeiro-section';
+    container.parentNode.insertBefore(perfilContainer, container.nextSibling);
+  }
+  perfilContainer.innerHTML = renderPerfilFinanceiro();
+  
+  let adesaoContainer = document.getElementById('adesao-plano-section');
+  if (!adesaoContainer) {
+    adesaoContainer = document.createElement('div');
+    adesaoContainer.id = 'adesao-plano-section';
+    perfilContainer.parentNode.insertBefore(adesaoContainer, perfilContainer.nextSibling);
+  }
+  adesaoContainer.innerHTML = renderInvestimentoAssistencia();
   
   // Renderizar análises abaixo após o DOM estar pronto
   setTimeout(() => renderAnalisesObjetivosInline(), 0);
@@ -2456,7 +2467,7 @@ function renderPerfilFinanceiro() {
   const perfilAtual = PERFIS_FINANCEIROS.find(p => p.id === perfilFinanceiroData.perfil_selecionado);
   
   return `
-    <div style="margin-top: 2rem; padding-top: 1.5rem; border-top: 2px solid rgba(212, 175, 55, 0.3);">
+    <div style="margin-top: 2rem; background: var(--card-bg); border: 1px solid var(--accent-color); border-radius: 12px; padding: 1.5rem;">
       <h3 style="color: var(--accent-color); margin: 0 0 1rem 0; font-size: 1rem;">
         <i class="fas fa-user-tag"></i> Perfil Financeiro
       </h3>
@@ -2602,7 +2613,7 @@ function renderInvestimentoAssistencia() {
   const parcelasEspecial = calcularTabelaParcelamento(valorAvistaEspecial);
   
   return `
-    <div style="margin-top: 2rem; padding-top: 1.5rem; border-top: 2px solid rgba(212, 175, 55, 0.3);">
+    <div style="margin-top: 2rem; background: var(--card-bg); border: 1px solid var(--accent-color); border-radius: 12px; padding: 1.5rem;">
       <h3 style="color: var(--accent-color); margin: 0 0 0.3rem 0; font-size: 1rem;">
         <i class="fas fa-file-signature"></i> Adesão Opcional ao Plano
       </h3>
