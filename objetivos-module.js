@@ -832,13 +832,15 @@ function atualizarPatrimonioObjetivos() {
 // GERAÇÃO DE OPÇÕES DE PERFIL
 // ========================================
 
-function gerarOpcoesPerfilRentabilidade(perfilSelecionado) {
+function gerarOpcoesPerfilRentabilidade(perfilSelecionado, idsDisponiveis) {
   const cdi = variaveisMercado.cdi || 14.65;
   const cdi10 = variaveisMercado.cdi_aa_medio_10_anos || 9.2666;
   
   let html = `<optgroup label="Rentabilidades Atuais" style="background: #0d3320; color: #e8e8e8;">`;
   
   PERFIS_RENTABILIDADE.forEach(perfil => {
+    // Se idsDisponiveis foi passado, só mostrar os disponíveis + o selecionado
+    if (idsDisponiveis && !idsDisponiveis.includes(perfil.id) && perfilSelecionado !== perfil.id) return;
     const mult = variaveisMercado[`mult_${perfil.id}`] || perfil.percentCDI;
     const rent = cdi * mult / 100;
     const selected = perfilSelecionado === perfil.id ? 'selected' : '';
@@ -851,10 +853,12 @@ function gerarOpcoesPerfilRentabilidade(perfilSelecionado) {
   html += `<optgroup label="Rentabilidades Médias 10 Anos" style="background: #0d3320; color: #e8e8e8;">`;
   
   PERFIS_RENTABILIDADE.forEach(perfil => {
+    const id10a = `${perfil.id}_10a`;
+    if (idsDisponiveis && !idsDisponiveis.includes(id10a) && perfilSelecionado !== id10a) return;
     const mult = variaveisMercado[`mult_${perfil.id}`] || perfil.percentCDI;
     const rent = cdi10 * mult / 100;
-    const selected = perfilSelecionado === `${perfil.id}_10a` ? 'selected' : '';
-    html += `<option value="${perfil.id}_10a" ${selected} style="background: #0d3320; color: #e8e8e8;">
+    const selected = perfilSelecionado === id10a ? 'selected' : '';
+    html += `<option value="${id10a}" ${selected} style="background: #0d3320; color: #e8e8e8;">
       ${perfil.nome} 10a (${mult}% CDI = ${rent.toFixed(2)}%)
     </option>`;
   });
@@ -1018,6 +1022,13 @@ function removerPerfilComparativo(index) {
 }
 
 function editarPerfilComparativo(index, novoPerfilId) {
+  // Impedir perfis duplicados
+  const jaUsados = [perfilAnaliseSelecionado, ...perfisComparativos.filter((_, i) => i !== index)];
+  if (jaUsados.includes(novoPerfilId)) {
+    alert('Este perfil já está selecionado. Escolha um perfil diferente.');
+    renderAnalisesObjetivosInline(); // Re-render para restaurar o select
+    return;
+  }
   perfisComparativos[index] = novoPerfilId;
   renderAnalisesObjetivosInline();
 }
@@ -1481,7 +1492,7 @@ function renderAnalisesObjetivosInline() {
       <div style="display: flex; align-items: center; gap: 0.3rem; margin-top: 0.3rem;">
         <span style="width: 12px; height: 12px; border-radius: 50%; background: ${CORES_PERFIS[(index + 1) % CORES_PERFIS.length]}; display: inline-block;"></span>
         <select onchange="window.editarPerfilComparativo(${index}, this.value)" style="padding: 0.2rem 0.4rem; background: #0d3320; border: 1px solid var(--border-color); border-radius: 4px; color: #e8e8e8; font-size: 0.7rem; flex: 1;">
-          ${gerarOpcoesPerfilRentabilidade(perfilId)}
+          ${gerarOpcoesPerfilRentabilidade(perfilId, disponiveis)}
         </select>
         <button onclick="window.removerPerfilComparativo(${index})" style="background: transparent; border: 1px solid rgba(220,53,69,0.4); border-radius: 4px; color: #dc3545; cursor: pointer; padding: 0.15rem 0.3rem; font-size: 0.6rem;" title="Remover perfil">
           <i class="fas fa-times"></i>
@@ -1783,36 +1794,7 @@ function renderGraficoEvolucao(simulacao, objetivosNormais, aposentadorias, simu
   // Linha do capital necessário para aposentadoria
   const metaAposentadoria = Array(labels.length).fill(simulacao.capitalNecessarioCorrigido);
   
-  // Criar datasets de pontos de eventos (saques sucesso, saques falha, acúmulos)
-  // Posicionar os pontos NA LINHA do patrimônio (usando dataSaldo) para ficarem visíveis
-  const eventosSaqueSucessoData = Array(labels.length).fill(null);
-  const eventosSaqueFalhaData = Array(labels.length).fill(null);
-  const eventosRecSucessoData = Array(labels.length).fill(null);
-  const eventosRecFalhaData = Array(labels.length).fill(null);
-  const eventosAcumuloData = Array(labels.length).fill(null);
-  
-  simulacao.eventos.forEach(evento => {
-    const posicaoLabel = Math.min(evento.mes, labels.length - 1);
-    // Usar o saldo do ponto no gráfico para posicionar o marcador NA LINHA
-    const saldoNaLinha = dataSaldo[posicaoLabel] !== undefined ? dataSaldo[posicaoLabel] : evento.saldoAntes;
-    if (evento.tipo === 'saque') {
-      if (evento.isRecorrente) {
-        if (evento.sucesso) {
-          eventosRecSucessoData[posicaoLabel] = saldoNaLinha;
-        } else {
-          eventosRecFalhaData[posicaoLabel] = saldoNaLinha;
-        }
-      } else {
-        if (evento.sucesso) {
-          eventosSaqueSucessoData[posicaoLabel] = saldoNaLinha;
-        } else {
-          eventosSaqueFalhaData[posicaoLabel] = saldoNaLinha;
-        }
-      }
-    } else {
-      eventosAcumuloData[posicaoLabel] = saldoNaLinha;
-    }
-  });
+
   
   const datasets = [
     {
@@ -1855,76 +1837,88 @@ function renderGraficoEvolucao(simulacao, objetivosNormais, aposentadorias, simu
     });
   }
   
-  // Saques iniciais com sucesso (triângulo vermelho apontando para baixo)
-  if (eventosSaqueSucessoData.some(v => v !== null)) {
+  // Coletar índices de eventos para traços verticais (sem figuras geométricas)
+  const linhasVerticaisSaque = []; // cor vermelha - saques iniciais
+  const linhasVerticaisRecorrencia = []; // cor laranja - recorrências
+  const linhasVerticaisFalha = []; // cor vermelha tracejada - falhas
+  
+  simulacao.eventos.forEach(evento => {
+    const posicao = Math.min(evento.mes, labels.length - 1);
+    if (evento.tipo === 'saque' || evento.tipo === 'acumulo') {
+      if (evento.isRecorrente) {
+        linhasVerticaisRecorrencia.push({ pos: posicao, sucesso: evento.sucesso });
+      } else {
+        linhasVerticaisSaque.push({ pos: posicao, sucesso: evento.sucesso });
+      }
+    }
+  });
+  
+  // Datasets fictícios apenas para legenda
+  if (linhasVerticaisSaque.length > 0) {
     datasets.push({
-      label: 'Saque (Sucesso)',
-      data: eventosSaqueSucessoData,
+      label: 'Realização de Objetivo',
+      data: Array(labels.length).fill(null),
       borderColor: '#dc3545',
       backgroundColor: '#dc3545',
-      pointRadius: 7,
-      pointStyle: 'triangle',
-      pointRotation: 180,
-      showLine: false,
-      borderWidth: 0
-    });
-  }
-  
-  // Saques iniciais com falha (X vermelho)
-  if (eventosSaqueFalhaData.some(v => v !== null)) {
-    datasets.push({
-      label: 'Saque (Saldo Insuficiente)',
-      data: eventosSaqueFalhaData,
-      borderColor: '#dc3545',
-      backgroundColor: 'rgba(220,53,69,0.3)',
-      pointRadius: 7,
-      pointStyle: 'crossRot',
+      pointRadius: 0,
       showLine: false,
       borderWidth: 2
     });
   }
-  
-  // Recorrências com sucesso (losango laranja)
-  if (eventosRecSucessoData.some(v => v !== null)) {
+  if (linhasVerticaisRecorrencia.length > 0) {
     datasets.push({
-      label: 'Recorrência (Sucesso)',
-      data: eventosRecSucessoData,
+      label: 'Recorrência',
+      data: Array(labels.length).fill(null),
       borderColor: '#ff8c00',
       backgroundColor: '#ff8c00',
-      pointRadius: 8,
-      pointStyle: 'rectRot',
-      showLine: false,
-      borderWidth: 0
-    });
-  }
-  
-  // Recorrências com falha (X laranja)
-  if (eventosRecFalhaData.some(v => v !== null)) {
-    datasets.push({
-      label: 'Recorrência (Saldo Insuficiente)',
-      data: eventosRecFalhaData,
-      borderColor: '#ff8c00',
-      backgroundColor: 'rgba(255,140,0,0.3)',
-      pointRadius: 8,
-      pointStyle: 'crossRot',
+      pointRadius: 0,
       showLine: false,
       borderWidth: 2
     });
   }
   
-  // Pontos de acúmulos
-  if (eventosAcumuloData.some(v => v !== null)) {
-    datasets.push({
-      label: 'Acúmulos',
-      data: eventosAcumuloData,
-      borderColor: '#17a2b8',
-      backgroundColor: '#17a2b8',
-      pointRadius: 6,
-      pointStyle: 'circle',
-      showLine: false,
-      borderWidth: 0
-    });
-  }
+  // Plugin customizado para desenhar traços verticais discretos
+  const verticalLinesPlugin = {
+    id: 'verticalLines',
+    afterDraw: function(chart) {
+      const ctx = chart.ctx;
+      const xAxis = chart.scales.x;
+      const yAxis = chart.scales.y;
+      const chartArea = chart.chartArea;
+      
+      // Desenhar traços verticais para saques iniciais (vermelho)
+      linhasVerticaisSaque.forEach(linha => {
+        const x = xAxis.getPixelForValue(linha.pos);
+        if (x >= chartArea.left && x <= chartArea.right) {
+          ctx.save();
+          ctx.beginPath();
+          ctx.strokeStyle = linha.sucesso ? 'rgba(220, 53, 69, 0.7)' : 'rgba(220, 53, 69, 0.35)';
+          ctx.lineWidth = linha.sucesso ? 1.5 : 1;
+          if (!linha.sucesso) ctx.setLineDash([3, 3]);
+          ctx.moveTo(x, chartArea.top);
+          ctx.lineTo(x, chartArea.bottom);
+          ctx.stroke();
+          ctx.restore();
+        }
+      });
+      
+      // Desenhar traços verticais para recorrências (laranja)
+      linhasVerticaisRecorrencia.forEach(linha => {
+        const x = xAxis.getPixelForValue(linha.pos);
+        if (x >= chartArea.left && x <= chartArea.right) {
+          ctx.save();
+          ctx.beginPath();
+          ctx.strokeStyle = linha.sucesso ? 'rgba(255, 140, 0, 0.6)' : 'rgba(255, 140, 0, 0.3)';
+          ctx.lineWidth = linha.sucesso ? 1 : 0.8;
+          if (!linha.sucesso) ctx.setLineDash([2, 4]);
+          ctx.moveTo(x, chartArea.top);
+          ctx.lineTo(x, chartArea.bottom);
+          ctx.stroke();
+          ctx.restore();
+        }
+      });
+    }
+  };
   
   const ctx = canvas.getContext('2d');
   chartInstance = new Chart(ctx, {
@@ -1933,6 +1927,7 @@ function renderGraficoEvolucao(simulacao, objetivosNormais, aposentadorias, simu
       labels: labels,
       datasets: datasets
     },
+    plugins: [verticalLinesPlugin],
     options: {
       responsive: true,
       maintainAspectRatio: false,
@@ -1942,7 +1937,28 @@ function renderGraficoEvolucao(simulacao, objetivosNormais, aposentadorias, simu
       },
       plugins: {
         legend: {
-          labels: { color: '#e8e8e8', font: { size: 11 } }
+          labels: {
+            color: '#e8e8e8',
+            font: { size: 11 },
+            usePointStyle: true,
+            generateLabels: function(chart) {
+              const defaultLabels = Chart.defaults.plugins.legend.labels.generateLabels(chart);
+              return defaultLabels.map(label => {
+                if (label.text === 'Realização de Objetivo') {
+                  label.pointStyle = 'line';
+                  label.strokeStyle = '#dc3545';
+                  label.fillStyle = '#dc3545';
+                  label.lineWidth = 2;
+                } else if (label.text === 'Recorrência') {
+                  label.pointStyle = 'line';
+                  label.strokeStyle = '#ff8c00';
+                  label.fillStyle = '#ff8c00';
+                  label.lineWidth = 2;
+                }
+                return label;
+              });
+            }
+          }
         },
         tooltip: {
           callbacks: {
@@ -1950,15 +1966,25 @@ function renderGraficoEvolucao(simulacao, objetivosNormais, aposentadorias, simu
               if (context.parsed.y === null) return null;
               const label = context.dataset.label || '';
               const valor = formatarMoedaObj(context.parsed.y);
-              // Para eventos de saque/recorrência, mostrar o valor do saque
-              if (label.includes('Saque') || label.includes('Recorrência')) {
-                const mesIndex = context.dataIndex;
-                const evento = simulacao.eventos.find(e => e.mes === mesIndex);
-                if (evento) {
-                  return `${label}: ${formatarMoedaObj(evento.valor)} (Saldo: ${valor})`;
-                }
+              // Para tooltip no mês de um evento, mostrar info do evento
+              const mesIndex = context.dataIndex;
+              const eventoNoMes = simulacao.eventos.find(e => e.mes === mesIndex);
+              if (eventoNoMes && (label.includes('Patrimônio') || label.includes('Meta'))) {
+                // Já será mostrado pelo dataset principal
               }
+              if (label === 'Realização de Objetivo' || label === 'Recorrência') return null;
               return label + ': ' + valor;
+            },
+            afterBody: function(tooltipItems) {
+              if (!tooltipItems.length) return '';
+              const mesIndex = tooltipItems[0].dataIndex;
+              const eventosNoMes = simulacao.eventos.filter(e => e.mes === mesIndex);
+              if (eventosNoMes.length === 0) return '';
+              return eventosNoMes.map(ev => {
+                const tipo = ev.isRecorrente ? 'Recorr.' : 'Saque';
+                const status = ev.sucesso ? '✔' : '✘';
+                return `${status} ${tipo}: ${formatarMoedaObj(ev.valor)} - ${ev.descricao}`;
+              });
             }
           },
           filter: function(tooltipItem) {
@@ -2349,6 +2375,11 @@ window.adicionarPerfilComparativo = adicionarPerfilComparativo;
 window.removerPerfilComparativo = removerPerfilComparativo;
 window.editarPerfilComparativo = editarPerfilComparativo;
 window.setPerfilAnalise = function(valor) {
+  // Se o novo perfil principal já está nos comparativos, removê-lo de lá
+  const idxDuplicado = perfisComparativos.indexOf(valor);
+  if (idxDuplicado !== -1) {
+    perfisComparativos.splice(idxDuplicado, 1);
+  }
   perfilAnaliseSelecionado = valor;
   renderAnalisesObjetivosInline();
 };
