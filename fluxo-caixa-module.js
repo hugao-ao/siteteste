@@ -290,6 +290,8 @@ function updateReceitaField(id, field, valor) {
     receita[field] = valor;
   }
   renderAnalisesFluxo();
+  // Atualizar análises de objetivos (dependem do fluxo de caixa)
+  if (window.renderAnalisesObjetivosInline) window.renderAnalisesObjetivosInline();
 }
 
 // ========================================
@@ -359,6 +361,8 @@ function updateDespesaField(id, field, valor) {
     despesa[field] = valor;
   }
   renderAnalisesFluxo();
+  // Atualizar análises de objetivos (dependem do fluxo de caixa)
+  if (window.renderAnalisesObjetivosInline) window.renderAnalisesObjetivosInline();
 }
 
 // ========================================
