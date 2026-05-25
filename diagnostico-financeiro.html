@@ -1894,6 +1894,54 @@
             </div>
           </div>
 
+          <!-- ========================================= -->
+          <!-- SEÇÃO: PERFIL FINANCEIRO -->
+          <!-- ========================================= -->
+          <div class="form-container" id="secao-perfil-financeiro" style="margin-top: 1.5rem;">
+            <div class="section-header" onclick="toggleSection('perfil-financeiro')">
+              <h3 style="color: var(--accent-color); margin: 0; flex-grow: 1;">
+                <i class="fas fa-user-circle"></i> Perfil Financeiro
+              </h3>
+              <button type="button" class="section-toggle-btn" id="toggle-perfil-financeiro">
+                <i class="fas fa-chevron-down"></i>
+              </button>
+            </div>
+            
+            <div class="section-content expanded" id="content-perfil-financeiro">
+              <div id="perfil-financeiro-container">
+                <!-- Perfil financeiro será renderizado aqui dinamicamente -->
+              </div>
+              <div class="form-group full-width" style="margin-top: 1.5rem;">
+                <label for="obs_perfil_financeiro"><i class="fas fa-sticky-note"></i> Observações - Perfil Financeiro</label>
+                <textarea id="obs_perfil_financeiro" name="obs_perfil_financeiro" rows="3" placeholder="Observações sobre perfil financeiro..."></textarea>
+              </div>
+            </div>
+          </div>
+
+          <!-- ========================================= -->
+          <!-- SEÇÃO: ADESÃO -->
+          <!-- ========================================= -->
+          <div class="form-container" id="secao-adesao-plano" style="margin-top: 1.5rem;">
+            <div class="section-header" onclick="toggleSection('adesao-plano')">
+              <h3 style="color: var(--accent-color); margin: 0; flex-grow: 1;">
+                <i class="fas fa-handshake"></i> Adesão
+              </h3>
+              <button type="button" class="section-toggle-btn" id="toggle-adesao-plano">
+                <i class="fas fa-chevron-down"></i>
+              </button>
+            </div>
+            
+            <div class="section-content expanded" id="content-adesao-plano">
+              <div id="adesao-plano-container">
+                <!-- Adesão será renderizada aqui dinamicamente -->
+              </div>
+              <div class="form-group full-width" style="margin-top: 1.5rem;">
+                <label for="obs_adesao_plano"><i class="fas fa-sticky-note"></i> Observações - Adesão</label>
+                <textarea id="obs_adesao_plano" name="obs_adesao_plano" rows="3" placeholder="Observações sobre adesão ao plano..."></textarea>
+              </div>
+            </div>
+          </div>
+
         </form>
       </div>
 
@@ -3585,7 +3633,7 @@ console.log('=== FIM DEBUG PESSOAS COM RENDA ===');
         }
         
         // Carregar observações por seção
-        const obsFields = ['obs_dados_pessoais', 'obs_pessoas_renda', 'obs_dependentes', 'obs_patrimonio_fisico', 'obs_patrimonio_liquido', 'obs_dividas', 'obs_sucessao', 'obs_produtos_protecao', 'obs_ir', 'obs_contas_cartoes', 'obs_fluxo_caixa', 'obs_objetivos'];
+        const obsFields = ['obs_dados_pessoais', 'obs_pessoas_renda', 'obs_dependentes', 'obs_patrimonio_fisico', 'obs_patrimonio_liquido', 'obs_dividas', 'obs_sucessao', 'obs_produtos_protecao', 'obs_ir', 'obs_contas_cartoes', 'obs_fluxo_caixa', 'obs_objetivos', 'obs_perfil_financeiro', 'obs_adesao_plano'];
         obsFields.forEach(field => {
           const el = document.getElementById(field);
           if (el && diagnostico[field]) {
@@ -3807,7 +3855,9 @@ console.log('=== FIM DEBUG PESSOAS COM RENDA ===');
           obs_ir: document.getElementById('obs_ir')?.value.trim() || '',
           obs_contas_cartoes: document.getElementById('obs_contas_cartoes')?.value.trim() || '',
           obs_fluxo_caixa: document.getElementById('obs_fluxo_caixa')?.value.trim() || '',
-          obs_objetivos: document.getElementById('obs_objetivos')?.value.trim() || ''
+          obs_objetivos: document.getElementById('obs_objetivos')?.value.trim() || '',
+          obs_perfil_financeiro: document.getElementById('obs_perfil_financeiro')?.value.trim() || '',
+          obs_adesao_plano: document.getElementById('obs_adesao_plano')?.value.trim() || ''
         };
         
         const { data, error } = await supabase
