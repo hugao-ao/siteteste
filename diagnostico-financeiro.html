@@ -1330,54 +1330,58 @@
        ESTILOS DAS QUESTÕES PERTINENTES
        ============================================= */
     .questoes-container {
-      margin-top: 1.5rem;
+      margin-top: 1rem;
     }
     .questoes-pertinentes-box {
       border: 2px solid var(--accent-color);
-      border-radius: 12px;
-      padding: 1.2rem;
+      border-radius: 8px;
+      padding: 0.6rem 0.8rem;
       background: rgba(0, 100, 0, 0.05);
     }
     .questoes-titulo {
       color: var(--accent-color);
-      margin: 0 0 1rem 0;
-      font-size: 0.95rem;
+      margin: 0 0 0.4rem 0;
+      font-size: 0.85rem;
       text-align: center;
     }
     .questao-item {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 0.6rem 0.8rem;
-      margin-bottom: 0.5rem;
-      border-radius: 8px;
-      background: rgba(255,255,255,0.05);
-      border: 1px solid rgba(255,255,255,0.1);
-      gap: 1rem;
+      padding: 0.25rem 0.5rem;
+      margin-bottom: 1px;
+      border-radius: 3px;
+      background: rgba(255,255,255,0.03);
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+      gap: 0.5rem;
+      min-height: 28px;
     }
     .questao-item:last-child {
       margin-bottom: 0;
+      border-bottom: none;
     }
     .questao-texto {
       flex: 1;
-      font-size: 0.85rem;
+      font-size: 0.78rem;
       color: var(--text-light);
+      line-height: 1.2;
     }
     .questao-botoes {
       display: flex;
-      gap: 0.4rem;
+      gap: 0.25rem;
       flex-shrink: 0;
     }
     .btn-questao {
-      padding: 0.3rem 0.7rem;
+      padding: 0.15rem 0.5rem;
       border: 1px solid rgba(255,255,255,0.2);
-      border-radius: 6px;
+      border-radius: 4px;
       background: transparent;
       color: var(--text-light);
-      font-size: 0.75rem;
+      font-size: 0.7rem;
       cursor: pointer;
       transition: all 0.2s;
       font-weight: 500;
+      line-height: 1.3;
     }
     .btn-questao:hover {
       opacity: 0.8;
@@ -1397,28 +1401,7 @@
       border-color: #888;
       color: #fff;
     }
-    .questao-resposta-auto {
-      font-size: 0.8rem;
-      font-weight: 600;
-      padding: 0.25rem 0.6rem;
-      border-radius: 6px;
-      flex-shrink: 0;
-    }
-    .resposta-sim {
-      background: rgba(46, 125, 50, 0.3);
-      color: #66bb6a;
-      border: 1px solid #4caf50;
-    }
-    .resposta-nao {
-      background: rgba(198, 40, 40, 0.3);
-      color: #ef5350;
-      border: 1px solid #ef5350;
-    }
-    .resposta-inaplicavel {
-      background: rgba(100, 100, 100, 0.3);
-      color: #aaa;
-      border: 1px solid #888;
-    }
+
 
     /* GABARITO FINAL */
     .gabarito-resumo {
@@ -1575,12 +1558,16 @@
         grid-template-columns: repeat(2, 1fr);
       }
       .questao-item {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 0.5rem;
+        flex-direction: row;
+        flex-wrap: wrap;
+        gap: 0.3rem;
+        padding: 0.3rem 0.5rem;
+      }
+      .questao-texto {
+        flex-basis: 100%;
       }
       .questao-botoes {
-        align-self: flex-end;
+        margin-left: auto;
       }
     }
     
@@ -2208,25 +2195,6 @@
             </div>
           </div>
 
-          <!-- ========================================= -->
-          <!-- SEÇÃO: INFORMAÇÕES FALTANTES PARA FERRAMENTAS -->
-          <!-- ========================================= -->
-          <div class="form-container" id="secao-info-faltantes" style="margin-top: 1.5rem;">
-            <div class="section-header" onclick="toggleSection('info-faltantes')">
-              <h3 style="color: var(--accent-color); margin: 0; flex-grow: 1;">
-                <i class="fas fa-clipboard-list"></i> Informações Faltantes para Ferramentas
-              </h3>
-              <button type="button" class="section-toggle-btn" id="toggle-info-faltantes">
-                <i class="fas fa-chevron-down"></i>
-              </button>
-            </div>
-            
-            <div class="section-content expanded" id="content-info-faltantes">
-              <div id="gabarito-final-container">
-                <!-- Gabarito será renderizado aqui dinamicamente -->
-              </div>
-            </div>
-          </div>
 
         </form>
       </div>
