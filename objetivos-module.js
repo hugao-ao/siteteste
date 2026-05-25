@@ -1505,13 +1505,23 @@ function renderAnalisesObjetivosInline() {
         <canvas id="grafico-evolucao-patrimonial" height="300"></canvas>
       </div>
       
-      <!-- Resumo dos Objetivos -->
-      <div style="background: var(--card-bg); border: 1px solid var(--accent-color); border-radius: 8px; padding: 1rem;">
-        <h4 style="color: var(--accent-color); margin: 0 0 0.8rem 0; font-size: 0.9rem;">
-          <i class="fas fa-clipboard-check"></i> Resultado da Análise
-        </h4>
-        ${renderResumoAnalise(simulacao, objetivosAposentadoria, objetivosNormais, simulacoesComparativas)}
-        ${objetivosIntangiveis.length > 0 ? renderResumoIntangiveis(objetivosIntangiveis) : ''}
+      <!-- Resumo dos Objetivos - Layout lado a lado quando há perfis comparativos -->
+      <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+        <div style="background: var(--card-bg); border: 1px solid var(--accent-color); border-radius: 8px; padding: 1rem; flex: 1; min-width: 300px;">
+          <h4 style="color: var(--accent-color); margin: 0 0 0.8rem 0; font-size: 0.85rem;">
+            <i class="fas fa-clipboard-check"></i> Resultado da Análise - ${getNomePerfilRentabilidade(perfilAnaliseSelecionado)}
+          </h4>
+          ${renderResumoAnalise(simulacao, objetivosAposentadoria, objetivosNormais, null)}
+          ${objetivosIntangiveis.length > 0 ? renderResumoIntangiveis(objetivosIntangiveis) : ''}
+        </div>
+        ${simulacoesComparativas.map((comp, idx) => `
+        <div style="background: var(--card-bg); border: 1px solid ${CORES_PERFIS[(idx+1) % CORES_PERFIS.length]}; border-radius: 8px; padding: 1rem; flex: 1; min-width: 300px;">
+          <h4 style="color: ${CORES_PERFIS[(idx+1) % CORES_PERFIS.length]}; margin: 0 0 0.8rem 0; font-size: 0.85rem;">
+            <i class="fas fa-clipboard-check"></i> Resultado da Análise - ${getNomePerfilRentabilidade(comp.perfilId)}
+          </h4>
+          ${renderResumoAnalise(comp.simulacao, objetivosAposentadoria, objetivosNormais, null)}
+        </div>
+        `).join('')}
       </div>
     </div>
   `;
@@ -1750,6 +1760,7 @@ function renderGraficoEvolucao(simulacao, objetivosNormais, aposentadorias, simu
   const metaAposentadoria = Array(labels.length).fill(simulacao.capitalNecessarioCorrigido);
   
   // Criar datasets de pontos de eventos (saques sucesso, saques falha, acúmulos)
+  // Posicionar os pontos NA LINHA do patrimônio (usando dataSaldo) para ficarem visíveis
   const eventosSaqueSucessoData = Array(labels.length).fill(null);
   const eventosSaqueFalhaData = Array(labels.length).fill(null);
   const eventosRecSucessoData = Array(labels.length).fill(null);
@@ -1758,22 +1769,24 @@ function renderGraficoEvolucao(simulacao, objetivosNormais, aposentadorias, simu
   
   simulacao.eventos.forEach(evento => {
     const posicaoLabel = Math.min(evento.mes, labels.length - 1);
+    // Usar o saldo do ponto no gráfico para posicionar o marcador NA LINHA
+    const saldoNaLinha = dataSaldo[posicaoLabel] !== undefined ? dataSaldo[posicaoLabel] : evento.saldoAntes;
     if (evento.tipo === 'saque') {
       if (evento.isRecorrente) {
         if (evento.sucesso) {
-          eventosRecSucessoData[posicaoLabel] = evento.saldoAntes;
+          eventosRecSucessoData[posicaoLabel] = saldoNaLinha;
         } else {
-          eventosRecFalhaData[posicaoLabel] = evento.saldoAntes;
+          eventosRecFalhaData[posicaoLabel] = saldoNaLinha;
         }
       } else {
         if (evento.sucesso) {
-          eventosSaqueSucessoData[posicaoLabel] = evento.saldoAntes;
+          eventosSaqueSucessoData[posicaoLabel] = saldoNaLinha;
         } else {
-          eventosSaqueFalhaData[posicaoLabel] = evento.saldoAntes;
+          eventosSaqueFalhaData[posicaoLabel] = saldoNaLinha;
         }
       }
     } else {
-      eventosAcumuloData[posicaoLabel] = evento.saldoAntes;
+      eventosAcumuloData[posicaoLabel] = saldoNaLinha;
     }
   });
   
@@ -1854,7 +1867,7 @@ function renderGraficoEvolucao(simulacao, objetivosNormais, aposentadorias, simu
       data: eventosRecSucessoData,
       borderColor: '#ff8c00',
       backgroundColor: '#ff8c00',
-      pointRadius: 6,
+      pointRadius: 8,
       pointStyle: 'rectRot',
       showLine: false,
       borderWidth: 0
@@ -1868,7 +1881,7 @@ function renderGraficoEvolucao(simulacao, objetivosNormais, aposentadorias, simu
       data: eventosRecFalhaData,
       borderColor: '#ff8c00',
       backgroundColor: 'rgba(255,140,0,0.3)',
-      pointRadius: 6,
+      pointRadius: 8,
       pointStyle: 'crossRot',
       showLine: false,
       borderWidth: 2
@@ -2005,7 +2018,7 @@ function renderResumoAnalise(simulacao, aposentadorias, objetivosNormais, simula
       let recTexto = '';
       let recDetalhe = '';
       if (recTipo !== 'nenhuma' && recValor > 0) {
-        recTexto = ` <span style="font-size: 0.6rem; color: #17a2b8;"><i class="fas fa-redo"></i> a cada ${recValor} ${recTipo === 'anos' ? 'ano(s)' : 'meses'}</span>`;
+        recTexto = ` <span style="font-size: 0.6rem; color: #ff8c00; font-weight: 600;"><i class="fas fa-redo"></i> a cada ${recValor} ${recTipo === 'anos' ? 'ano(s)' : 'meses'}</span>`;
         
         // Contar quantas vezes o objetivo recorrente foi executado com sucesso
         const eventosDoObj = simulacao.eventos.filter(e => e.objetivoId === obj.id);
@@ -2013,10 +2026,23 @@ function renderResumoAnalise(simulacao, aposentadorias, objetivosNormais, simula
         const eventosFalha = eventosDoObj.filter(e => !e.sucesso);
         
         if (eventosDoObj.length > 0) {
-          recDetalhe = `<div style="font-size: 0.65rem; color: #ff8c00; margin-top: 0.2rem; padding: 0.2rem 0.5rem; background: rgba(255,140,0,0.08); border-radius: 4px;">
-            <i class="fas fa-redo"></i> <strong>Recorrência:</strong> ${eventosSucesso.length}x com sucesso de ${eventosDoObj.length} tentativas`;
+          recDetalhe = `<div style="font-size: 0.65rem; color: #ff8c00; margin-top: 0.3rem; padding: 0.4rem 0.5rem; background: rgba(255,140,0,0.08); border-radius: 4px; border: 1px solid rgba(255,140,0,0.2);">`;
+          recDetalhe += `<div style="margin-bottom: 0.3rem;"><i class="fas fa-redo"></i> <strong>Recorrência (${recValor} ${recTipo === 'anos' ? 'ano(s)' : 'meses'}):</strong> ${eventosSucesso.length} execuções com sucesso de ${eventosDoObj.length} tentativas no período</div>`;
           
-          // Detalhar períodos de falha e recuperação
+          // Listar TODAS as datas de execução com status
+          recDetalhe += `<div style="display: flex; flex-wrap: wrap; gap: 0.2rem 0.5rem; margin-top: 0.2rem;">`;
+          eventosDoObj.forEach(ev => {
+            const dataEv = new Date();
+            dataEv.setMonth(dataEv.getMonth() + ev.mes);
+            const dataTexto = `${String(dataEv.getMonth()+1).padStart(2,'0')}/${dataEv.getFullYear()}`;
+            const cor = ev.sucesso ? '#28a745' : '#dc3545';
+            const icone = ev.sucesso ? 'check-circle' : 'times-circle';
+            const tipoLabel = ev.isRecorrente ? '' : ' (1ª)';
+            recDetalhe += `<span style="color: ${cor}; font-size: 0.6rem;"><i class="fas fa-${icone}"></i> ${dataTexto}${tipoLabel}</span>`;
+          });
+          recDetalhe += `</div>`;
+          
+          // Detalhar períodos de falha e recuperação (resumo)
           let emFalha = false;
           let inicioFalha = null;
           let periodos = [];
@@ -2034,21 +2060,25 @@ function renderResumoAnalise(simulacao, aposentadorias, objetivosNormais, simula
             periodos.push({ tipo: 'falha_permanente', inicio: inicioFalha });
           }
           
-          periodos.forEach(p => {
-            const dataRef = new Date();
-            if (p.tipo === 'falha') {
-              dataRef.setMonth(dataRef.getMonth() + p.inicio);
-              const dataFim = new Date();
-              dataFim.setMonth(dataFim.getMonth() + p.fim);
-              recDetalhe += `<br>&nbsp;&nbsp;<span style="color: #dc3545;"><i class="fas fa-times-circle"></i> Falha de ${String(dataRef.getMonth()+1).padStart(2,'0')}/${dataRef.getFullYear()} a ${String(dataFim.getMonth()+1).padStart(2,'0')}/${dataFim.getFullYear()}</span>`;
-            } else if (p.tipo === 'recupera') {
-              dataRef.setMonth(dataRef.getMonth() + p.mes);
-              recDetalhe += `<br>&nbsp;&nbsp;<span style="color: #28a745;"><i class="fas fa-check-circle"></i> Recupera em ${String(dataRef.getMonth()+1).padStart(2,'0')}/${dataRef.getFullYear()}</span>`;
-            } else if (p.tipo === 'falha_permanente') {
-              dataRef.setMonth(dataRef.getMonth() + p.inicio);
-              recDetalhe += `<br>&nbsp;&nbsp;<span style="color: #dc3545;"><i class="fas fa-exclamation-triangle"></i> Falha permanente a partir de ${String(dataRef.getMonth()+1).padStart(2,'0')}/${dataRef.getFullYear()}</span>`;
-            }
-          });
+          if (periodos.length > 0) {
+            recDetalhe += `<div style="margin-top: 0.3rem; padding-top: 0.2rem; border-top: 1px solid rgba(255,140,0,0.2);">`;
+            periodos.forEach(p => {
+              const dataRef = new Date();
+              if (p.tipo === 'falha') {
+                dataRef.setMonth(dataRef.getMonth() + p.inicio);
+                const dataFim = new Date();
+                dataFim.setMonth(dataFim.getMonth() + p.fim);
+                recDetalhe += `<div style="color: #dc3545; font-size: 0.6rem;"><i class="fas fa-exclamation-triangle"></i> Período de falha: ${String(dataRef.getMonth()+1).padStart(2,'0')}/${dataRef.getFullYear()} a ${String(dataFim.getMonth()+1).padStart(2,'0')}/${dataFim.getFullYear()}</div>`;
+              } else if (p.tipo === 'recupera') {
+                dataRef.setMonth(dataRef.getMonth() + p.mes);
+                recDetalhe += `<div style="color: #28a745; font-size: 0.6rem;"><i class="fas fa-check-circle"></i> Recupera em: ${String(dataRef.getMonth()+1).padStart(2,'0')}/${dataRef.getFullYear()}</div>`;
+              } else if (p.tipo === 'falha_permanente') {
+                dataRef.setMonth(dataRef.getMonth() + p.inicio);
+                recDetalhe += `<div style="color: #dc3545; font-size: 0.6rem;"><i class="fas fa-ban"></i> Falha permanente a partir de: ${String(dataRef.getMonth()+1).padStart(2,'0')}/${dataRef.getFullYear()}</div>`;
+              }
+            });
+            recDetalhe += `</div>`;
+          }
           
           recDetalhe += `</div>`;
         }
@@ -2086,36 +2116,7 @@ function renderResumoAnalise(simulacao, aposentadorias, objetivosNormais, simula
     html += `</div></div>`;
   }
   
-  // MELHORIA 5: Comparativo lado a lado dos perfis
-  if (simulacoesComparativas && simulacoesComparativas.length > 0) {
-    html += `<div style="margin-bottom: 1rem; padding: 0.5rem; background: rgba(212,175,55,0.05); border: 1px solid rgba(212,175,55,0.2); border-radius: 6px;">`;
-    html += `<h5 style="color: var(--accent-color); margin: 0 0 0.5rem 0; font-size: 0.8rem;"><i class="fas fa-balance-scale"></i> Comparativo de Perfis</h5>`;
-    html += `<div style="display: grid; grid-template-columns: repeat(${1 + simulacoesComparativas.length}, 1fr); gap: 0.5rem; font-size: 0.7rem;">`;
-    
-    // Cabeçalhos
-    html += `<div style="font-weight: 600; color: ${CORES_PERFIS[0]}; text-align: center; padding: 0.2rem;">${getNomePerfilRentabilidade(perfilAnaliseSelecionado)}<br><span style="font-size: 0.6rem;">(${simulacao.rentAnual.toFixed(2)}% a.a.)</span></div>`;
-    simulacoesComparativas.forEach((comp, idx) => {
-      html += `<div style="font-weight: 600; color: ${CORES_PERFIS[(idx+1) % CORES_PERFIS.length]}; text-align: center; padding: 0.2rem;">${getNomePerfilRentabilidade(comp.perfilId)}<br><span style="font-size: 0.6rem;">(${comp.simulacao.rentAnual.toFixed(2)}% a.a.)</span></div>`;
-    });
-    
-    // Patrimônio Final
-    html += `<div style="text-align: center; padding: 0.2rem; border-top: 1px solid rgba(212,175,55,0.2);"><span style="color: var(--text-light);">PF:</span> <span style="color: ${CORES_PERFIS[0]}; font-weight: 600;">${formatarMoedaCompacta(simulacao.patrimonioFinal)}</span></div>`;
-    simulacoesComparativas.forEach((comp, idx) => {
-      html += `<div style="text-align: center; padding: 0.2rem; border-top: 1px solid rgba(212,175,55,0.2);"><span style="color: var(--text-light);">PF:</span> <span style="color: ${CORES_PERFIS[(idx+1) % CORES_PERFIS.length]}; font-weight: 600;">${formatarMoedaCompacta(comp.simulacao.patrimonioFinal)}</span></div>`;
-    });
-    
-    // Atingimento aposentadoria
-    if (simulacao.capitalNecessarioCorrigido > 0) {
-      const pctPrincipal = (simulacao.patrimonioFinal / simulacao.capitalNecessarioCorrigido * 100).toFixed(1);
-      html += `<div style="text-align: center; padding: 0.2rem;"><span style="color: var(--text-light);">Ating.:</span> <span style="color: ${parseFloat(pctPrincipal) >= 100 ? '#28a745' : '#dc3545'}; font-weight: 600;">${pctPrincipal}%</span></div>`;
-      simulacoesComparativas.forEach((comp, idx) => {
-        const pct = (comp.simulacao.patrimonioFinal / comp.simulacao.capitalNecessarioCorrigido * 100).toFixed(1);
-        html += `<div style="text-align: center; padding: 0.2rem;"><span style="color: var(--text-light);">Ating.:</span> <span style="color: ${parseFloat(pct) >= 100 ? '#28a745' : '#dc3545'}; font-weight: 600;">${pct}%</span></div>`;
-      });
-    }
-    
-    html += `</div></div>`;
-  }
+  // (Comparativo agora é feito via layout lado a lado no container pai)
   
   // Resumo das aposentadorias
   if (aposentadorias.length > 0) {
