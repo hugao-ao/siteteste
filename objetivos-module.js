@@ -237,6 +237,22 @@ const CORES_PERFIS = [
   '#e7e9ed'  // cinza claro
 ];
 
+// Cores dinâmicas baseadas em performance relativa ao perfil principal
+// Perfis com acumulo MAIOR que o principal: tons verdes/azuis
+// Perfis com acumulo MENOR que o principal: tons avermelhados
+const CORES_MELHOR = ['#17a2b8', '#20c997', '#36a2eb', '#6f42c1', '#4bc0c0']; // azul, teal, azul claro, roxo, ciano
+const CORES_PIOR = ['#dc3545', '#e83e8c', '#fd7e14', '#c0392b', '#d63384']; // vermelho, rosa escuro, laranja avermelhado, vermelho escuro, magenta
+
+function getCorPerfilComparativo(saldoFinalComparativo, saldoFinalPrincipal, indexComparativo) {
+  if (saldoFinalComparativo >= saldoFinalPrincipal) {
+    // Melhor ou igual ao principal -> tons verdes/azuis
+    return CORES_MELHOR[indexComparativo % CORES_MELHOR.length];
+  } else {
+    // Pior que o principal -> tons avermelhados
+    return CORES_PIOR[indexComparativo % CORES_PIOR.length];
+  }
+}
+
 // CSS para estilizar dropdowns
 const DROPDOWN_STYLE = `
   background: #0d3320 !important;
@@ -1639,6 +1655,15 @@ function renderAnalisesObjetivosInline() {
     simulacao: simularEvolucaoPatrimonial(objetivosAposentadoria, objetivosNormais, perfilId)
   }));
   
+  // Obter saldo final do perfil principal para comparação de cores
+  const saldoFinalPrincipal = simulacao.pontos.length > 0 ? simulacao.pontos[simulacao.pontos.length - 1].saldo : 0;
+  
+  // Calcular cores dinâmicas para cada perfil comparativo
+  const coresComparativas = simulacoesComparativas.map((comp, idx) => {
+    const saldoFinalComp = comp.simulacao.pontos.length > 0 ? comp.simulacao.pontos[comp.simulacao.pontos.length - 1].saldo : 0;
+    return getCorPerfilComparativo(saldoFinalComp, saldoFinalPrincipal, idx);
+  });
+  
   // Gerar HTML dos perfis comparativos
   let perfisComparativosHTML = '';
   perfisComparativos.forEach((perfilId, index) => {
@@ -1646,10 +1671,11 @@ function renderAnalisesObjetivosInline() {
     PERFIS_RENTABILIDADE.forEach(p => { todosIds.push(p.id); todosIds.push(p.id + '_10a'); });
     const jaUsados = [perfilAnaliseSelecionado, ...perfisComparativos.filter((_, i) => i !== index)];
     const disponiveis = todosIds.filter(id => !jaUsados.includes(id) || id === perfilId);
+    const corPerfil = coresComparativas[index] || CORES_PERFIS[(index + 1) % CORES_PERFIS.length];
     
     perfisComparativosHTML += `
       <div style="display: flex; align-items: center; gap: 0.3rem; margin-top: 0.3rem;">
-        <span style="width: 12px; height: 12px; border-radius: 50%; background: ${CORES_PERFIS[(index + 1) % CORES_PERFIS.length]}; display: inline-block;"></span>
+        <span style="width: 12px; height: 12px; border-radius: 50%; background: ${corPerfil}; display: inline-block;"></span>
         <select onchange="window.editarPerfilComparativo(${index}, this.value)" style="padding: 0.2rem 0.4rem; background: #0d3320; border: 1px solid var(--border-color); border-radius: 4px; color: #e8e8e8; font-size: 0.7rem; flex: 1;">
           ${gerarOpcoesPerfilRentabilidade(perfilId, disponiveis)}
         </select>
@@ -1696,8 +1722,8 @@ function renderAnalisesObjetivosInline() {
           ${objetivosIntangiveis.length > 0 ? renderResumoIntangiveis(objetivosIntangiveis) : ''}
         </div>
         ${simulacoesComparativas.map((comp, idx) => `
-        <div style="background: var(--card-bg); border: 1px solid ${CORES_PERFIS[(idx+1) % CORES_PERFIS.length]}; border-radius: 8px; padding: 1rem; flex: 1; min-width: 300px;">
-          <h4 style="color: ${CORES_PERFIS[(idx+1) % CORES_PERFIS.length]}; margin: 0 0 0.8rem 0; font-size: 0.85rem;">
+        <div style="background: var(--card-bg); border: 1px solid ${coresComparativas[idx] || CORES_PERFIS[(idx+1) % CORES_PERFIS.length]}; border-radius: 8px; padding: 1rem; flex: 1; min-width: 300px;">
+          <h4 style="color: ${coresComparativas[idx] || CORES_PERFIS[(idx+1) % CORES_PERFIS.length]}; margin: 0 0 0.8rem 0; font-size: 0.85rem;">
             <i class="fas fa-clipboard-check"></i> Resultado da Análise - ${getNomePerfilRentabilidade(comp.perfilId)}
           </h4>
           ${renderResumoAnalise(comp.simulacao, objetivosAposentadoria, objetivosNormais, null)}
@@ -1708,7 +1734,7 @@ function renderAnalisesObjetivosInline() {
   `;
   
   // Renderizar gráfico após DOM estar pronto
-  setTimeout(() => renderGraficoEvolucao(simulacao, objetivosNormais, objetivosAposentadoria, simulacoesComparativas), 50);
+  setTimeout(() => renderGraficoEvolucao(simulacao, objetivosNormais, objetivosAposentadoria, simulacoesComparativas, coresComparativas), 50);
 }
 
 function getPerfilAnalise() {
@@ -1927,7 +1953,7 @@ function calcularMesesRestantesObjNormal(obj) {
 }
 
 // MELHORIA 5: Gráfico com múltiplos perfis
-function renderGraficoEvolucao(simulacao, objetivosNormais, aposentadorias, simulacoesComparativas) {
+function renderGraficoEvolucao(simulacao, objetivosNormais, aposentadorias, simulacoesComparativas, coresComparativas) {
   const canvas = document.getElementById('grafico-evolucao-patrimonial');
   if (!canvas) return;
   
@@ -1977,15 +2003,15 @@ function renderGraficoEvolucao(simulacao, objetivosNormais, aposentadorias, simu
     }
   ];
   
-  // MELHORIA 5: Adicionar linhas dos perfis comparativos
+  // MELHORIA 5: Adicionar linhas dos perfis comparativos com cores dinâmicas
   if (simulacoesComparativas && simulacoesComparativas.length > 0) {
     simulacoesComparativas.forEach((comp, index) => {
-      const corIndex = (index + 1) % CORES_PERFIS.length;
+      const corDinamica = (coresComparativas && coresComparativas[index]) || CORES_PERFIS[(index + 1) % CORES_PERFIS.length];
       const dataComp = comp.simulacao.pontos.map(p => p.saldo);
       datasets.push({
         label: `Patrimônio (${getNomePerfilRentabilidade(comp.perfilId)})`,
         data: dataComp,
-        borderColor: CORES_PERFIS[corIndex],
+        borderColor: corDinamica,
         backgroundColor: 'transparent',
         fill: false,
         tension: 0.3,
@@ -2523,19 +2549,23 @@ const COEFICIENTES_PARCELAMENTO = {
 function calcularRendaTotal() {
   let rendaMensal = 0;
   let rendaAnual = 0;
+  let restituicoesIR = 0;
   if (window.getFluxoCaixaData) {
     const fluxoData = window.getFluxoCaixaData();
     const receitas = fluxoData.receitas || [];
     receitas.forEach(r => {
       const valor = parseFloat(r.valor) || 0;
-      if (r.und_recorrencia === 'ano') {
+      // Somar restituições de IR separadamente
+      if (r.origem === 'ir_restituicao') {
+        restituicoesIR += valor; // sempre anual
+      } else if (r.und_recorrencia === 'ano') {
         rendaAnual += valor;
       } else if (r.und_recorrencia === 'mes') {
         rendaMensal += valor;
       }
     });
   }
-  return { mensal: rendaMensal, anual: rendaMensal * 12 + rendaAnual };
+  return { mensal: rendaMensal, anual: rendaMensal * 12 + rendaAnual + restituicoesIR, restituicoesIR: restituicoesIR };
 }
 
 // Calcula tabela de parcelamento com coeficientes corretos
@@ -2589,8 +2619,9 @@ function renderInvestimentoAssistencia() {
   const propostaFinal = investimentoAssistenciaData.proposta_final || '';
   const planoSelecionado = investimentoAssistenciaData.plano_acompanhamento || '';
   
-  // Oferta Ordinária: 2,2% da renda anual
-  const valorAvistaOrdinaria = renda.anual * 0.022;
+  // Oferta Ordinária: 2,2% da (renda anual - restituições de IR)
+  const baseOrdinaria = renda.anual - (renda.restituicoesIR || 0);
+  const valorAvistaOrdinaria = baseOrdinaria * 0.022;
   const parcelasOrdinaria = calcularTabelaParcelamento(valorAvistaOrdinaria);
   
   // Oferta Especial: 23% da renda mensal, com desconto adicional = qtdRecs%
@@ -2612,7 +2643,7 @@ function renderInvestimentoAssistencia() {
           <div style="font-size: 0.7rem; color: var(--text-light);">
             <i class="fas fa-info-circle" style="color: #17a2b8;"></i>
             Renda Mensal: <b style="color: #28a745;">${formatarMoedaObj(renda.mensal)}</b> | 
-            Renda Anual: <b style="color: #28a745;">${formatarMoedaObj(renda.anual)}</b>
+            Renda Anual: <b style="color: #28a745;">${formatarMoedaObj(renda.anual)}</b>${renda.restituicoesIR > 0 ? ` | Restituições IR: <b style="color: #ffc107;">${formatarMoedaObj(renda.restituicoesIR)}</b> | Base Ordinária: <b style="color: #28a745;">${formatarMoedaObj(baseOrdinaria)}</b>` : ''}
           </div>
         </div>
         
@@ -2624,7 +2655,7 @@ function renderInvestimentoAssistencia() {
             <h5 style="color: #28a745; margin: 0 0 0.3rem 0; font-size: 0.85rem; text-align: center;">
               <i class="fas fa-file-alt"></i> OFERTA ORDINÁRIA
             </h5>
-            <p style="text-align: center; font-size: 0.6rem; color: var(--text-light); margin: 0 0 0.5rem 0;">(2,2% da renda anual = valor à vista)</p>
+            <p style="text-align: center; font-size: 0.6rem; color: var(--text-light); margin: 0 0 0.5rem 0;">(2,2% da renda anual${renda.restituicoesIR > 0 ? ' − restituições IR' : ''} = valor à vista)</p>
             
             ${valorAvistaOrdinaria > 0 ? `
             <div style="text-align: center; margin-bottom: 0.5rem;">
