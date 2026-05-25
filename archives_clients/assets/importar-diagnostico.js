@@ -735,7 +735,7 @@
     btn.innerHTML = '<i class="fas fa-file-import"></i> Importar do Diagnóstico';
     btn.style.cssText = `
       position: fixed;
-      bottom: 1.5rem;
+      bottom: 5rem;
       right: 1.5rem;
       padding: 0.8rem 1.2rem;
       background: linear-gradient(135deg, #d4af37, #b8960c);
