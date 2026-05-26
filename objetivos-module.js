@@ -2763,11 +2763,11 @@ function renderInvestimentoAssistencia() {
       
       <!-- ACOMPANHAMENTO: Planos lado a lado -->
       <div style="background: var(--dark-bg); border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem; margin-bottom: 1rem;">
-        <h4 style="color: #17a2b8; margin: 0 0 0.8rem 0; font-size: 0.9rem;">
-          <i class="fas fa-hands-helping"></i> Planos de Acompanhamento Financeiro
+        <h4 onclick="this.nextElementSibling.style.display = this.nextElementSibling.style.display === 'none' ? 'flex' : 'none'; this.querySelector('.fa-chevron-down, .fa-chevron-up').classList.toggle('fa-chevron-down'); this.querySelector('.fa-chevron-down, .fa-chevron-up').classList.toggle('fa-chevron-up');" style="color: #17a2b8; margin: 0; font-size: 0.9rem; cursor: pointer; display: flex; align-items: center; justify-content: space-between;">
+          <span><i class="fas fa-hands-helping"></i> Planos de Acompanhamento Financeiro</span>
+          <i class="fas fa-chevron-down" style="font-size: 0.7rem;"></i>
         </h4>
-        
-        <div style="display: flex; gap: 0.6rem; flex-wrap: wrap;">
+        <div style="display: none; gap: 0.6rem; flex-wrap: wrap; margin-top: 0.8rem;">
           ${PLANOS_ACOMPANHAMENTO.map(plano => `
           <div onclick="window.selecionarPlanoAcompanhamento('${plano.id}')" 
                style="flex: 1; min-width: 180px; border: 2px solid ${planoSelecionado === plano.id ? plano.cor : 'var(--border-color)'}; border-radius: 8px; padding: 0.8rem; cursor: pointer; transition: all 0.2s; position: relative; ${plano.destaque ? 'box-shadow: 0 0 12px rgba(40,167,69,0.3);' : ''} ${planoSelecionado === plano.id ? 'background: rgba(' + hexToRgb(plano.cor) + ', 0.08);' : ''}">
@@ -2795,6 +2795,7 @@ function renderInvestimentoAssistencia() {
             </div>
           </div>
           `).join('')}
+        </div>
         </div>
       </div>
       
