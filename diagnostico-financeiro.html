@@ -5035,14 +5035,17 @@ async function gerarPdfDiagnostico() {
     }
 
     // Carregar jsPDF dinamicamente se não estiver carregado
-    if (typeof jspdf === 'undefined' && typeof jsPDF === 'undefined') {
+    if (!window.jspdf) {
       await new Promise((resolve, reject) => {
         const script = document.createElement('script');
         script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
-        script.onload = resolve;
+        script.onload = () => setTimeout(resolve, 500);
         script.onerror = reject;
         document.head.appendChild(script);
       });
+    }
+    if (!window.jspdf || !window.jspdf.jsPDF) {
+      throw new Error('Biblioteca jsPDF não carregou corretamente. Tente novamente.');
     }
 
     const mainContent = document.getElementById('main-content');
@@ -5088,7 +5091,7 @@ async function gerarPdfDiagnostico() {
     if (saveContainer) saveContainer.style.display = saveDisplay;
 
     // Criar PDF com jsPDF
-    const { jsPDF } = window.jspdf;
+    const jsPDFClass = window.jspdf.jsPDF;
     const imgWidth = 210; // A4 width in mm
     const pageHeight = 297; // A4 height in mm
     const margin = 5;
@@ -5096,7 +5099,7 @@ async function gerarPdfDiagnostico() {
     const imgHeight = (canvas.height * usableWidth) / canvas.width;
     const usablePageHeight = pageHeight - (margin * 2);
 
-    const pdf = new jsPDF('p', 'mm', 'a4');
+    const pdf = new jsPDFClass('p', 'mm', 'a4');
     const imgData = canvas.toDataURL('image/jpeg', 0.92);
 
     let heightLeft = imgHeight;
