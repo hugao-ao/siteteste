@@ -7,21 +7,11 @@
   'use strict';
 
   // =============================================
-  // DEFINIÇÃO DAS 38 PERGUNTAS (REDISTRIBUÍDAS)
+  // DEFINIÇÃO DAS 36 PERGUNTAS (REDISTRIBUÍDAS)
   // Todas manuais, sem auto-detecção
   // =============================================
   const QUESTOES = [
-    // SEÇÃO: PATRIMÔNIO FÍSICO (2)
-    {
-      id: 'q_patrimonio_1',
-      secao: 'patrimonio-fisico',
-      texto: 'Já tem proteção contra prejuízos de todos os patrimônios?'
-    },
-    {
-      id: 'q_patrimonio_2',
-      secao: 'patrimonio-fisico',
-      texto: 'Melhor custo benefício da proteção dos patrimônios?'
-    },
+    // SEÇÃO: PATRIMÔNIO FÍSICO (0 - perguntas movidas para Produtos & Proteção)
 
     // SEÇÃO: PATRIMÔNIO LÍQUIDO / INVESTIMENTOS (4)
     {
@@ -74,16 +64,16 @@
       texto: 'Tem estratégia em andamento para desonerar os Herdeiros?'
     },
 
-    // SEÇÃO: PRODUTOS & PROTEÇÃO (7)
+    // SEÇÃO: PRODUTOS & PROTEÇÃO (7 - inclui proteção de patrimônios)
     {
-      id: 'q_protecao_1',
+      id: 'q_patrimonio_1',
       secao: 'produtos-protecao',
-      texto: '100% da renda é independente do trabalho?'
+      texto: 'Já tem proteção contra prejuízos de todos os patrimônios?'
     },
     {
-      id: 'q_protecao_3',
+      id: 'q_patrimonio_2',
       secao: 'produtos-protecao',
-      texto: 'Consegue aumentar a renda no curto/médio prazo conforme a necessidade?'
+      texto: 'Melhor custo benefício da proteção dos patrimônios?'
     },
     {
       id: 'q_protecao_5',
@@ -155,11 +145,21 @@
       texto: 'É livre de taxas de conta / anuidades de cartão / outras desnecessárias?'
     },
 
-    // SEÇÃO: FLUXO DE CAIXA (7) — inclui perguntas sobre renda que antes estavam em Proteção
+    // SEÇÃO: FLUXO DE CAIXA (9) — inclui perguntas sobre renda
+    {
+      id: 'q_protecao_1',
+      secao: 'fluxo-caixa',
+      texto: '100% da renda é independente do trabalho?'
+    },
     {
       id: 'q_protecao_2',
       secao: 'fluxo-caixa',
       texto: '80% ou mais da renda é estável?'
+    },
+    {
+      id: 'q_protecao_3',
+      secao: 'fluxo-caixa',
+      texto: 'Consegue aumentar a renda no curto/médio prazo conforme a necessidade?'
     },
     {
       id: 'q_protecao_4',
@@ -192,7 +192,7 @@
       texto: 'Poupa o mínimo Ideal?'
     },
 
-    // SEÇÃO: OBJETIVOS (5)
+    // SEÇÃO: OBJETIVOS (3)
     {
       id: 'q_objetivos_1',
       secao: 'objetivos',
@@ -202,16 +202,6 @@
       id: 'q_objetivos_2',
       secao: 'objetivos',
       texto: 'Já tinha definido as metas de acúmulo para a aposentadoria?'
-    },
-    {
-      id: 'q_objetivos_3',
-      secao: 'objetivos',
-      texto: 'Já fez estudo para saber se com a estratégia atual conseguirá atingir os objetivos no prazo desejado?'
-    },
-    {
-      id: 'q_objetivos_4',
-      secao: 'objetivos',
-      texto: 'Poupa o suficiente para realizar cada objetivo no prazo desejado?'
     },
     {
       id: 'q_objetivos_5',
@@ -317,7 +307,6 @@
     let totalPerguntas = QUESTOES.length;
 
     const secoes = {
-      'patrimonio-fisico': { nome: 'Patrimônio Físico', questoes: [] },
       'patrimonio-liquido': { nome: 'Investimentos', questoes: [] },
       'dividas': { nome: 'Dívidas', questoes: [] },
       'sucessao': { nome: 'Sucessão', questoes: [] },
@@ -556,22 +545,15 @@
 
     if (naosPorSecao['produtos-protecao']) {
       topicos.push({
-        titulo: 'Com relação ao risco de perder a capacidade de gerar renda e saúde:',
+        titulo: 'Com relação à proteção patrimonial, renda e saúde:',
         itens: [
+          'Analisar e apresentar soluções de seguros para proteção dos bens patrimoniais;',
           'Analisar e apresentar soluções de proteção da renda (seguros de vida/invalidez);',
           'Pesquisar e apresentar opções de planos de saúde adequados ao perfil e necessidades.'
         ]
       });
     }
 
-    if (naosPorSecao['patrimonio-fisico']) {
-      topicos.push({
-        titulo: 'Com relação à proteção do patrimônio:',
-        itens: [
-          'Analisar e apresentar soluções de seguros para proteção dos bens patrimoniais.'
-        ]
-      });
-    }
 
     if (naosPorSecao['dividas']) {
       topicos.push({
@@ -600,7 +582,7 @@
   // RENDERIZAR TODAS AS SEÇÕES
   // =============================================
   function renderTodasQuestoes() {
-    const secoes = ['patrimonio-fisico', 'patrimonio-liquido', 'dividas', 
+    const secoes = ['patrimonio-liquido', 'dividas', 
                     'sucessao', 'produtos-protecao', 'ir', 
                     'contas-cartoes', 'fluxo-caixa', 'objetivos'];
     secoes.forEach(secao => renderQuestoesPorSecao(secao));
