@@ -195,6 +195,102 @@
         color: var(--theme-text-muted);
     }
 
+    /* --- Consolidado do Diagnóstico --- */
+    .diag-consolidado {
+        text-align: left;
+        margin-top: 1.5rem;
+        border-top: 1px solid var(--theme-border-color);
+        padding-top: 1rem;
+    }
+    .diag-consolidado h3 {
+        color: var(--theme-secondary);
+        margin: 1.5rem 0 0.5rem 0;
+        padding-bottom: 0.3rem;
+        border-bottom: 1px dashed var(--theme-border-color);
+        font-size: 1rem;
+    }
+    .diag-consolidado h3:first-child {
+        margin-top: 0;
+    }
+    .diag-consolidado p {
+        text-align: left;
+        margin-bottom: 0.4rem;
+        line-height: 1.5;
+        color: var(--theme-text-light) !important;
+        font-size: 0.92rem;
+    }
+    .diag-consolidado ul {
+        list-style: none;
+        padding-left: 1rem;
+        margin: 0.3rem 0 0.6rem 0;
+        border-left: 2px solid var(--theme-border-color);
+    }
+    .diag-consolidado li {
+        margin-bottom: 0.35rem;
+        font-size: 0.9rem;
+        color: var(--theme-text-light);
+    }
+    .diag-consolidado .obs-text {
+        color: var(--theme-text-muted);
+        font-style: italic;
+        font-size: 0.85rem;
+        margin-top: 0.2rem;
+    }
+    #diagnostico-section .form-link-container {
+        background-color: var(--theme-bg-surface);
+        padding: 1rem;
+        border-radius: 4px;
+        margin-bottom: 1rem;
+        word-wrap: break-word;
+    }
+    #diagnostico-section .form-link-container a {
+        color: var(--theme-secondary-lighter);
+        text-decoration: none;
+        font-weight: bold;
+    }
+    #diagnostico-section .form-link-container a:hover {
+        text-decoration: underline;
+    }
+    #diagnostico-section .form-data-display {
+        margin-bottom: 1rem;
+    }
+    #diagnostico-section .form-data-display strong {
+        color: var(--theme-secondary-lighter);
+    }
+    #diagnostico-section .form-data-display ul {
+        list-style: none;
+        padding-left: 1rem;
+        margin-top: 0.5rem;
+        border-left: 2px solid var(--theme-border-color);
+    }
+    #diagnostico-section .form-data-display li {
+        margin-bottom: 0.5rem;
+    }
+    #diagnostico-section .delete-form-btn {
+        background-color: #c62828;
+        color: white;
+        border: none;
+        padding: 0.5rem 1rem;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 0.9rem;
+        transition: background-color 0.3s ease;
+        margin-top: 0.5rem;
+    }
+    #diagnostico-section .delete-form-btn:hover {
+        background-color: #a12020;
+    }
+    #diagnostico-section .generate-link-btn {
+        background-color: var(--theme-primary);
+        color: var(--theme-secondary-lighter);
+        border: none;
+        padding: 0.5rem 1rem;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 0.9rem;
+        transition: background-color 0.3s ease;
+    }
+
     /* --- Seção de Plano Financeiro --- */
     #plano-section {
         background-color: var(--theme-bg-dark);
@@ -1197,7 +1293,7 @@
             const diagnosticoContent = document.getElementById('diagnostico-info-content');
             const diagnosticoUrl = `${window.location.origin}/diagnostico-financeiro.html?link=${diagnostico.link_unico}`;
             
-            diagnosticoContent.innerHTML = `
+            let html = `
                 <p>Este cliente possui um diagnóstico financeiro.</p>
                 <p><strong>Compartilhe o link abaixo com o cliente:</strong></p>
                 <div class="form-link-container">
@@ -1216,6 +1312,296 @@
                     </button>
                 </div>
             `;
+            
+            // Adicionar consolidado dos dados do diagnóstico
+            html += renderConsolidadoDiagnostico(diagnostico);
+            
+            diagnosticoContent.innerHTML = html;
+        }
+
+        // Função auxiliar para formatar moeda
+        function fmtCurrency(val) {
+            if (val === null || val === undefined) return 'N/A';
+            const n = parseFloat(val);
+            if (isNaN(n)) return 'N/A';
+            return n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        }
+
+        // Função auxiliar para adicionar observação
+        function addObs(diagnostico, campo) {
+            const val = diagnostico[campo];
+            if (val && val.trim()) return `<p class="obs-text">Obs: ${sanitizeInput(val)}</p>`;
+            return '';
+        }
+
+        // Função para renderizar o consolidado completo do diagnóstico
+        function renderConsolidadoDiagnostico(d) {
+            let h = '<div class="diag-consolidado">';
+
+            // === DADOS PESSOAIS ===
+            h += '<h3>Dados Pessoais</h3>';
+            if (d.nome_diagnostico) h += `<p><strong style="color:var(--theme-secondary-lighter)">Nome:</strong> ${sanitizeInput(d.nome_diagnostico)}</p>`;
+            if (d.cpf) { const c = d.cpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4'); h += `<p><strong style="color:var(--theme-secondary-lighter)">CPF:</strong> ${c}</p>`; }
+            if (d.data_nascimento) h += `<p><strong style="color:var(--theme-secondary-lighter)">Data de Nascimento:</strong> ${new Date(d.data_nascimento + 'T12:00:00').toLocaleDateString('pt-BR')}</p>`;
+            if (d.profissao) h += `<p><strong style="color:var(--theme-secondary-lighter)">Profissão:</strong> ${sanitizeInput(d.profissao)}</p>`;
+            if (d.estado_civil) h += `<p><strong style="color:var(--theme-secondary-lighter)">Estado Civil:</strong> ${sanitizeInput(d.estado_civil)}</p>`;
+            if (d.regime_bens) h += `<p><strong style="color:var(--theme-secondary-lighter)">Regime de Bens:</strong> ${sanitizeInput(d.regime_bens)}</p>`;
+            if (d.telefone) h += `<p><strong style="color:var(--theme-secondary-lighter)">Telefone:</strong> ${sanitizeInput(d.telefone)}</p>`;
+            if (d.email) h += `<p><strong style="color:var(--theme-secondary-lighter)">E-mail:</strong> ${sanitizeInput(d.email)}</p>`;
+            // Cônjuge
+            if (d.conjuge_nome) {
+                h += `<p style="margin-top:0.5rem"><strong style="color:var(--theme-secondary-lighter)">Cônjuge:</strong> ${sanitizeInput(d.conjuge_nome)}</p>`;
+                if (d.conjuge_cpf) h += `<p><strong style="color:var(--theme-secondary-lighter)">CPF Cônjuge:</strong> ${d.conjuge_cpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4')}</p>`;
+                if (d.conjuge_profissao) h += `<p><strong style="color:var(--theme-secondary-lighter)">Profissão Cônjuge:</strong> ${sanitizeInput(d.conjuge_profissao)}</p>`;
+            }
+            h += addObs(d, 'obs_dados_pessoais');
+
+            // === PESSOAS COM RENDA ===
+            try {
+                const pessoas = typeof d.pessoas_renda === 'string' ? JSON.parse(d.pessoas_renda) : d.pessoas_renda;
+                if (pessoas && pessoas.length > 0) {
+                    h += '<h3>Pessoas com Renda</h3><ul>';
+                    pessoas.forEach(p => {
+                        h += `<li>${sanitizeInput(p.nome || 'N/A')} — ${sanitizeInput(p.parentesco || '')} ${p.idade ? '(Idade: ' + p.idade + ')' : ''}</li>`;
+                    });
+                    h += '</ul>';
+                    h += addObs(d, 'obs_pessoas_renda');
+                }
+            } catch(e) {}
+
+            // === DEPENDENTES ===
+            try {
+                const deps = typeof d.dependentes === 'string' ? JSON.parse(d.dependentes) : d.dependentes;
+                if (deps && deps.length > 0) {
+                    h += '<h3>Dependentes</h3><ul>';
+                    deps.forEach(dep => {
+                        h += `<li>${sanitizeInput(dep.nome || 'N/A')} — Idade: ${dep.idade || 'N/A'}, Relação: ${sanitizeInput(dep.relacao || dep.parentesco || 'N/A')}${dep.responsavel ? ', Responsável: ' + sanitizeInput(dep.responsavel) : ''}</li>`;
+                    });
+                    h += '</ul>';
+                    h += addObs(d, 'obs_dependentes');
+                }
+            } catch(e) {}
+
+            // === PATRIMÔNIO FÍSICO ===
+            try {
+                const pats = typeof d.patrimonios === 'string' ? JSON.parse(d.patrimonios) : d.patrimonios;
+                if (pats && pats.length > 0) {
+                    h += '<h3>Patrimônio Físico</h3><ul>';
+                    pats.forEach(p => {
+                        const tipo = sanitizeInput(p.tipo || p.descricao || 'N/A');
+                        const valor = fmtCurrency(p.valor || p.valor_estimado);
+                        const status = p.status || (p.quitado === 'sim' ? 'Quitado' : p.quitado === 'nao' ? 'Financiado' : '');
+                        let txt = `${tipo} (Valor: ${valor}`;
+                        if (status) txt += `, Status: ${sanitizeInput(status)}`;
+                        if (p.saldo_devedor) txt += `, Saldo Devedor: ${fmtCurrency(p.saldo_devedor)}`;
+                        txt += ')';
+                        h += `<li>${txt}</li>`;
+                    });
+                    h += '</ul>';
+                    h += addObs(d, 'obs_patrimonio_fisico');
+                }
+            } catch(e) {}
+
+            // === PATRIMÔNIO LÍQUIDO (INVESTIMENTOS) ===
+            try {
+                const invs = typeof d.patrimonios_liquidos === 'string' ? JSON.parse(d.patrimonios_liquidos) : d.patrimonios_liquidos;
+                if (invs && invs.length > 0) {
+                    h += '<h3>Patrimônio Líquido / Investimentos</h3><ul>';
+                    invs.forEach(inv => {
+                        const nome = sanitizeInput(inv.nome || inv.produto || inv.descricao || 'N/A');
+                        const valor = fmtCurrency(inv.valor || inv.saldo);
+                        const risco = inv.classificacao_risco || inv.risco || '';
+                        let txt = `${nome} (Valor: ${valor}`;
+                        if (risco) txt += `, Risco: ${sanitizeInput(risco)}`;
+                        if (inv.instituicao) txt += `, Instituição: ${sanitizeInput(inv.instituicao)}`;
+                        txt += ')';
+                        h += `<li>${txt}</li>`;
+                    });
+                    h += '</ul>';
+                    h += addObs(d, 'obs_patrimonio_liquido');
+                }
+            } catch(e) {}
+
+            // === TESTE DE PERFIL (SUITABILITY) ===
+            try {
+                const suit = typeof d.respostas_suitability === 'string' ? JSON.parse(d.respostas_suitability) : d.respostas_suitability;
+                if (suit && suit.perfil_resultado) {
+                    h += '<h3>Teste de Perfil de Investidor</h3>';
+                    h += `<p><strong style="color:var(--theme-secondary-lighter)">Perfil Resultado:</strong> ${sanitizeInput(suit.perfil_resultado)}</p>`;
+                    if (suit.pontuacao !== undefined) h += `<p><strong style="color:var(--theme-secondary-lighter)">Pontuação:</strong> ${suit.pontuacao}</p>`;
+                }
+            } catch(e) {}
+
+            // === DÍVIDAS ===
+            try {
+                const divs = typeof d.dividas === 'string' ? JSON.parse(d.dividas) : d.dividas;
+                if (divs && divs.length > 0) {
+                    h += '<h3>Dívidas</h3><ul>';
+                    divs.forEach(div => {
+                        const credor = sanitizeInput(div.credor || div.descricao || 'N/A');
+                        const saldo = fmtCurrency(div.saldo_devedor || div.saldo || div.valor);
+                        const parcela = div.parcela ? fmtCurrency(div.parcela) : null;
+                        let txt = `${credor} (Saldo: ${saldo}`;
+                        if (parcela) txt += `, Parcela: ${parcela}`;
+                        if (div.taxa) txt += `, Taxa: ${div.taxa}%`;
+                        txt += ')';
+                        h += `<li>${txt}</li>`;
+                    });
+                    h += '</ul>';
+                    h += addObs(d, 'obs_dividas');
+                }
+            } catch(e) {}
+
+            // === SUCESSÃO ===
+            try {
+                const suc = typeof d.dados_sucessao === 'string' ? JSON.parse(d.dados_sucessao) : d.dados_sucessao;
+                if (suc && Object.keys(suc).length > 0) {
+                    h += '<h3>Sucessão</h3>';
+                    if (suc.tem_testamento !== undefined) h += `<p><strong style="color:var(--theme-secondary-lighter)">Tem Testamento:</strong> ${suc.tem_testamento === 'sim' ? 'Sim' : 'Não'}</p>`;
+                    if (suc.tem_holding !== undefined) h += `<p><strong style="color:var(--theme-secondary-lighter)">Tem Holding:</strong> ${suc.tem_holding === 'sim' ? 'Sim' : 'Não'}</p>`;
+                    if (suc.observacoes) h += `<p><strong style="color:var(--theme-secondary-lighter)">Detalhes:</strong> ${sanitizeInput(suc.observacoes)}</p>`;
+                    h += addObs(d, 'obs_sucessao');
+                }
+            } catch(e) {}
+
+            // === PRODUTOS & PROTEÇÃO ===
+            try {
+                const prods = typeof d.produtos_protecao === 'string' ? JSON.parse(d.produtos_protecao) : d.produtos_protecao;
+                if (prods && prods.length > 0) {
+                    h += '<h3>Produtos &amp; Proteção</h3><ul>';
+                    prods.forEach(p => {
+                        const nome = sanitizeInput(p.nome || p.produto || p.tipo || 'N/A');
+                        let txt = nome;
+                        if (p.seguradora) txt += ` (${sanitizeInput(p.seguradora)})`;
+                        if (p.valor_mensal) txt += ` — Mensal: ${fmtCurrency(p.valor_mensal)}`;
+                        if (p.capital_segurado) txt += `, Capital: ${fmtCurrency(p.capital_segurado)}`;
+                        h += `<li>${txt}</li>`;
+                    });
+                    h += '</ul>';
+                    h += addObs(d, 'obs_produtos_protecao');
+                }
+            } catch(e) {}
+
+            // === DECLARAÇÕES IR ===
+            try {
+                const irs = typeof d.declaracoes_ir === 'string' ? JSON.parse(d.declaracoes_ir) : d.declaracoes_ir;
+                if (irs && irs.length > 0) {
+                    h += '<h3>Imposto de Renda</h3><ul>';
+                    irs.forEach(ir => {
+                        const nome = sanitizeInput(ir.nome || ir.titular || 'N/A');
+                        const declara = ir.declara === 'sim' ? 'Sim' : (ir.declara === 'nao' ? 'Não' : 'N/A');
+                        let txt = `${nome}: Declara: ${declara}`;
+                        if (ir.tipo) txt += `, Tipo: ${sanitizeInput(ir.tipo)}`;
+                        if (ir.resultado) txt += `, Resultado: ${sanitizeInput(ir.resultado)}`;
+                        if (ir.valor_restituicao) txt += `, Restituição: ${fmtCurrency(ir.valor_restituicao)}`;
+                        if (ir.valor_imposto) txt += `, Imposto: ${fmtCurrency(ir.valor_imposto)}`;
+                        h += `<li>${txt}</li>`;
+                    });
+                    h += '</ul>';
+                    h += addObs(d, 'obs_ir');
+                }
+            } catch(e) {}
+
+            // === CONTAS & CARTÕES ===
+            try {
+                const contas = typeof d.contas_cartoes === 'string' ? JSON.parse(d.contas_cartoes) : d.contas_cartoes;
+                if (contas && contas.length > 0) {
+                    h += '<h3>Contas &amp; Cartões</h3><ul>';
+                    contas.forEach(c => {
+                        const inst = sanitizeInput(c.instituicao || c.banco || 'N/A');
+                        const tipo = sanitizeInput(c.tipo || '');
+                        let txt = `${inst}`;
+                        if (tipo) txt += ` (${tipo})`;
+                        if (c.bandeira) txt += ` — Bandeira: ${sanitizeInput(c.bandeira)}`;
+                        if (c.limite) txt += `, Limite: ${fmtCurrency(c.limite)}`;
+                        h += `<li>${txt}</li>`;
+                    });
+                    h += '</ul>';
+                    h += addObs(d, 'obs_contas_cartoes');
+                }
+            } catch(e) {}
+
+            // === FLUXO DE CAIXA ===
+            try {
+                const fluxo = typeof d.fluxo_caixa === 'string' ? JSON.parse(d.fluxo_caixa) : d.fluxo_caixa;
+                if (fluxo && (fluxo.receitas || fluxo.despesas)) {
+                    h += '<h3>Fluxo de Caixa</h3>';
+                    if (fluxo.receitas && fluxo.receitas.length > 0) {
+                        h += `<p><strong style="color:var(--theme-secondary-lighter)">Receitas:</strong></p><ul>`;
+                        fluxo.receitas.forEach(r => {
+                            const desc = sanitizeInput(r.descricao || r.nome || 'N/A');
+                            const val = fmtCurrency(r.valor);
+                            const freq = r.frequencia ? ` (${sanitizeInput(r.frequencia)})` : '';
+                            h += `<li>${desc}: ${val}${freq}</li>`;
+                        });
+                        h += '</ul>';
+                    }
+                    if (fluxo.despesas && fluxo.despesas.length > 0) {
+                        h += `<p><strong style="color:var(--theme-secondary-lighter)">Despesas:</strong></p><ul>`;
+                        fluxo.despesas.forEach(desp => {
+                            const desc = sanitizeInput(desp.descricao || desp.nome || 'N/A');
+                            const val = fmtCurrency(desp.valor);
+                            const freq = desp.frequencia ? ` (${sanitizeInput(desp.frequencia)})` : '';
+                            const cat = desp.categoria_comportamental ? ` [${sanitizeInput(desp.categoria_comportamental)}]` : '';
+                            h += `<li>${desc}: ${val}${freq}${cat}</li>`;
+                        });
+                        h += '</ul>';
+                    }
+                    h += addObs(d, 'obs_fluxo_caixa');
+                }
+            } catch(e) {}
+
+            // === OBJETIVOS ===
+            try {
+                const obj = typeof d.objetivos === 'string' ? JSON.parse(d.objetivos) : d.objetivos;
+                if (obj) {
+                    h += '<h3>Objetivos Financeiros</h3>';
+                    if (obj.objetivos && obj.objetivos.length > 0) {
+                        h += '<ul>';
+                        obj.objetivos.forEach(o => {
+                            const desc = sanitizeInput(o.descricao || o.nome || 'N/A');
+                            const val = fmtCurrency(o.valor);
+                            const prazo = o.prazo || o.anos || '';
+                            let txt = `${desc} (Valor: ${val}`;
+                            if (prazo) txt += `, Prazo: ${prazo} anos`;
+                            txt += ')';
+                            h += `<li>${txt}</li>`;
+                        });
+                        h += '</ul>';
+                    }
+                    if (obj.perfil_selecionado) h += `<p><strong style="color:var(--theme-secondary-lighter)">Perfil Selecionado:</strong> ${sanitizeInput(obj.perfil_selecionado)}</p>`;
+                    h += addObs(d, 'obs_objetivos');
+                }
+            } catch(e) {}
+
+            // === PERFIL FINANCEIRO ===
+            h += addObs(d, 'obs_perfil_financeiro');
+
+            // === ADESÃO ===
+            h += addObs(d, 'obs_adesao_plano');
+
+            // === QUESTÕES PERTINENTES ===
+            try {
+                const q = typeof d.questoes_pertinentes === 'string' ? JSON.parse(d.questoes_pertinentes) : d.questoes_pertinentes;
+                if (q && q.respostas && Object.keys(q.respostas).length > 0) {
+                    h += '<h3>Questões Pertinentes</h3>';
+                    let simCount = 0, naoCount = 0, naCount = 0;
+                    Object.values(q.respostas).forEach(r => {
+                        if (r === 'sim') simCount++;
+                        else if (r === 'nao') naoCount++;
+                        else if (r === 'na') naCount++;
+                    });
+                    const total = simCount + naoCount + naCount;
+                    h += `<p><strong style="color:var(--theme-secondary-lighter)">Resumo:</strong> ${total} respondidas — ${simCount} SIM, ${naoCount} NÃO, ${naCount} N/A</p>`;
+                    if (total > 0) {
+                        const pct = Math.round((simCount / (simCount + naoCount)) * 100) || 0;
+                        h += `<p><strong style="color:var(--theme-secondary-lighter)">Aproveitamento:</strong> ${pct}% (SIM / (SIM+NÃO))</p>`;
+                    }
+                }
+            } catch(e) {}
+
+            h += '</div>';
+            return h;
         }
 
             // Função para gerar novo link de diagnóstico
