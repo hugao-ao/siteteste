@@ -14,18 +14,15 @@ let instituicoes = [];
 // Dados do teste de suitability
 let respostasSuitability = {}; // { 'Nome da Pessoa': { A1: 3, A2: 4, ... } }
 
-// Mapeamento de classificação de risco (10 níveis conforme documento)
+// Mapeamento de classificação de risco (7 níveis)
 const CLASSIFICACAO_RISCO = {
   'RISCO_MUITO_BAIXO_GARANTIA_SOBERANA': { label: 'Risco Muito Baixo (Garantia Soberana)', cor: '#006400', ordem: 1 },
   'RISCO_MUITO_BAIXO_GARANTIA_FGC': { label: 'Risco Muito Baixo (Garantia FGC)', cor: '#228B22', ordem: 2 },
   'RISCO_BAIXO_GARANTIA_FGC': { label: 'Risco Baixo (Garantia FGC)', cor: '#32CD32', ordem: 3 },
-  'RISCO_BAIXO_SEM_GARANTIA': { label: 'Risco Baixo', cor: '#90EE90', ordem: 4 },
-  'RISCO_MEDIO_SEM_GARANTIA': { label: 'Risco Médio', cor: '#FFD700', ordem: 5 },
-  'RISCO_ALTO_PROTECAO_MRP': { label: 'Risco Alto (Proteção MRP)', cor: '#FFA500', ordem: 6 },
-  'RISCO_ALTO_SEM_GARANTIA': { label: 'Risco Alto', cor: '#FF8C00', ordem: 7 },
-  'RISCO_MUITO_ALTO_PROTECAO_MRP': { label: 'Risco Muito Alto (Proteção MRP)', cor: '#FF6347', ordem: 8 },
-  'RISCO_MUITO_ALTO_SEM_GARANTIA': { label: 'Risco Muito Alto', cor: '#DC143C', ordem: 9 },
-  'RISCO_ABSOLUTO_SEM_GARANTIA': { label: 'Risco Absoluto', cor: '#8B0000', ordem: 10 }
+  'RISCO_MEDIO_SEM_GARANTIA': { label: 'Risco Médio', cor: '#FFD700', ordem: 4 },
+  'RISCO_ALTO_SEM_GARANTIA': { label: 'Risco Alto', cor: '#FF8C00', ordem: 5 },
+  'RISCO_MUITO_ALTO_SEM_GARANTIA': { label: 'Risco Muito Alto', cor: '#DC143C', ordem: 6 },
+  'RISCO_ABSOLUTO_SEM_GARANTIA': { label: 'Risco Absoluto', cor: '#8B0000', ordem: 7 }
 };
 
 // Alocação ideal por perfil de investidor (baseado no documento 7 Perfis)
@@ -36,11 +33,8 @@ const ALOCACAO_IDEAL_POR_PERFIL = {
       'RISCO_MUITO_BAIXO_GARANTIA_SOBERANA': 100,
       'RISCO_MUITO_BAIXO_GARANTIA_FGC': 0,
       'RISCO_BAIXO_GARANTIA_FGC': 0,
-      'RISCO_BAIXO_SEM_GARANTIA': 0,
       'RISCO_MEDIO_SEM_GARANTIA': 0,
-      'RISCO_ALTO_PROTECAO_MRP': 0,
       'RISCO_ALTO_SEM_GARANTIA': 0,
-      'RISCO_MUITO_ALTO_PROTECAO_MRP': 0,
       'RISCO_MUITO_ALTO_SEM_GARANTIA': 0,
       'RISCO_ABSOLUTO_SEM_GARANTIA': 0
     }
@@ -51,11 +45,8 @@ const ALOCACAO_IDEAL_POR_PERFIL = {
       'RISCO_MUITO_BAIXO_GARANTIA_SOBERANA': 50,
       'RISCO_MUITO_BAIXO_GARANTIA_FGC': 40,
       'RISCO_BAIXO_GARANTIA_FGC': 10,
-      'RISCO_BAIXO_SEM_GARANTIA': 0,
       'RISCO_MEDIO_SEM_GARANTIA': 0,
-      'RISCO_ALTO_PROTECAO_MRP': 0,
       'RISCO_ALTO_SEM_GARANTIA': 0,
-      'RISCO_MUITO_ALTO_PROTECAO_MRP': 0,
       'RISCO_MUITO_ALTO_SEM_GARANTIA': 0,
       'RISCO_ABSOLUTO_SEM_GARANTIA': 0
     }
@@ -66,11 +57,8 @@ const ALOCACAO_IDEAL_POR_PERFIL = {
       'RISCO_MUITO_BAIXO_GARANTIA_SOBERANA': 35,
       'RISCO_MUITO_BAIXO_GARANTIA_FGC': 25,
       'RISCO_BAIXO_GARANTIA_FGC': 10,
-      'RISCO_BAIXO_SEM_GARANTIA': 10,
-      'RISCO_MEDIO_SEM_GARANTIA': 10,
-      'RISCO_ALTO_PROTECAO_MRP': 10,
-      'RISCO_ALTO_SEM_GARANTIA': 0,
-      'RISCO_MUITO_ALTO_PROTECAO_MRP': 0,
+      'RISCO_MEDIO_SEM_GARANTIA': 20,
+      'RISCO_ALTO_SEM_GARANTIA': 10,
       'RISCO_MUITO_ALTO_SEM_GARANTIA': 0,
       'RISCO_ABSOLUTO_SEM_GARANTIA': 0
     }
@@ -81,11 +69,8 @@ const ALOCACAO_IDEAL_POR_PERFIL = {
       'RISCO_MUITO_BAIXO_GARANTIA_SOBERANA': 15,
       'RISCO_MUITO_BAIXO_GARANTIA_FGC': 15,
       'RISCO_BAIXO_GARANTIA_FGC': 10,
-      'RISCO_BAIXO_SEM_GARANTIA': 15,
-      'RISCO_MEDIO_SEM_GARANTIA': 15,
-      'RISCO_ALTO_PROTECAO_MRP': 20,
-      'RISCO_ALTO_SEM_GARANTIA': 10,
-      'RISCO_MUITO_ALTO_PROTECAO_MRP': 0,
+      'RISCO_MEDIO_SEM_GARANTIA': 30,
+      'RISCO_ALTO_SEM_GARANTIA': 30,
       'RISCO_MUITO_ALTO_SEM_GARANTIA': 0,
       'RISCO_ABSOLUTO_SEM_GARANTIA': 0
     }
@@ -96,12 +81,9 @@ const ALOCACAO_IDEAL_POR_PERFIL = {
       'RISCO_MUITO_BAIXO_GARANTIA_SOBERANA': 10,
       'RISCO_MUITO_BAIXO_GARANTIA_FGC': 5,
       'RISCO_BAIXO_GARANTIA_FGC': 0,
-      'RISCO_BAIXO_SEM_GARANTIA': 10,
-      'RISCO_MEDIO_SEM_GARANTIA': 15,
-      'RISCO_ALTO_PROTECAO_MRP': 30,
-      'RISCO_ALTO_SEM_GARANTIA': 20,
-      'RISCO_MUITO_ALTO_PROTECAO_MRP': 10,
-      'RISCO_MUITO_ALTO_SEM_GARANTIA': 0,
+      'RISCO_MEDIO_SEM_GARANTIA': 25,
+      'RISCO_ALTO_SEM_GARANTIA': 50,
+      'RISCO_MUITO_ALTO_SEM_GARANTIA': 10,
       'RISCO_ABSOLUTO_SEM_GARANTIA': 0
     }
   },
@@ -111,12 +93,9 @@ const ALOCACAO_IDEAL_POR_PERFIL = {
       'RISCO_MUITO_BAIXO_GARANTIA_SOBERANA': 5,
       'RISCO_MUITO_BAIXO_GARANTIA_FGC': 0,
       'RISCO_BAIXO_GARANTIA_FGC': 0,
-      'RISCO_BAIXO_SEM_GARANTIA': 5,
-      'RISCO_MEDIO_SEM_GARANTIA': 10,
-      'RISCO_ALTO_PROTECAO_MRP': 35,
-      'RISCO_ALTO_SEM_GARANTIA': 25,
-      'RISCO_MUITO_ALTO_PROTECAO_MRP': 15,
-      'RISCO_MUITO_ALTO_SEM_GARANTIA': 5,
+      'RISCO_MEDIO_SEM_GARANTIA': 15,
+      'RISCO_ALTO_SEM_GARANTIA': 60,
+      'RISCO_MUITO_ALTO_SEM_GARANTIA': 20,
       'RISCO_ABSOLUTO_SEM_GARANTIA': 0
     }
   },
@@ -126,12 +105,9 @@ const ALOCACAO_IDEAL_POR_PERFIL = {
       'RISCO_MUITO_BAIXO_GARANTIA_SOBERANA': 5,
       'RISCO_MUITO_BAIXO_GARANTIA_FGC': 0,
       'RISCO_BAIXO_GARANTIA_FGC': 0,
-      'RISCO_BAIXO_SEM_GARANTIA': 0,
       'RISCO_MEDIO_SEM_GARANTIA': 5,
-      'RISCO_ALTO_PROTECAO_MRP': 25,
-      'RISCO_ALTO_SEM_GARANTIA': 20,
-      'RISCO_MUITO_ALTO_PROTECAO_MRP': 25,
-      'RISCO_MUITO_ALTO_SEM_GARANTIA': 15,
+      'RISCO_ALTO_SEM_GARANTIA': 45,
+      'RISCO_MUITO_ALTO_SEM_GARANTIA': 40,
       'RISCO_ABSOLUTO_SEM_GARANTIA': 5
     }
   }
@@ -1104,7 +1080,7 @@ const QUESTOES_SUITABILITY = [
   {
     id: 'A1',
     secao: 'A',
-    texto: 'Qual é a sua idade atual e em quanto tempo você pretende parar de trabalhar?',
+    texto: 'Em quanto tempo você pretende parar de trabalhar?',
     alternativas: [
       { valor: 1, texto: 'Faltam 10 anos ou menos' },
       { valor: 2, texto: 'Faltam entre 10 e 15 anos' },
