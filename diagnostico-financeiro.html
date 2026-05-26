@@ -344,6 +344,69 @@
       opacity: 1;
     }
 
+    /* Botão Gerar PDF */
+    .btn-gerar-pdf {
+      position: fixed;
+      top: 80px;
+      right: 20px;
+      z-index: 9999;
+      background: linear-gradient(135deg, #c62828, #e53935);
+      color: white;
+      border: none;
+      border-radius: 50%;
+      width: 50px;
+      height: 50px;
+      cursor: pointer;
+      font-size: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 15px rgba(198, 40, 40, 0.5);
+    }
+    .btn-gerar-pdf:hover {
+      background: linear-gradient(135deg, #b71c1c, #c62828);
+      transform: scale(1.1);
+      box-shadow: 0 6px 25px rgba(198, 40, 40, 0.6);
+    }
+    .btn-gerar-pdf:active {
+      transform: scale(0.95);
+    }
+    .btn-gerar-pdf:disabled {
+      background: #555;
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+    }
+    .btn-gerar-pdf .tooltip {
+      position: absolute;
+      right: 60px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: rgba(0, 0, 0, 0.9);
+      color: #fff;
+      padding: 0.5rem 0.8rem;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      font-weight: 500;
+      white-space: nowrap;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s ease;
+    }
+    .btn-gerar-pdf .tooltip::after {
+      content: '';
+      position: absolute;
+      left: 100%;
+      top: 50%;
+      transform: translateY(-50%);
+      border: 5px solid transparent;
+      border-left-color: rgba(0, 0, 0, 0.9);
+    }
+    .btn-gerar-pdf:hover .tooltip {
+      opacity: 1;
+    }
+
     /* Modal de confirmação do prefill */
     .prefill-confirm-overlay {
       position: fixed;
@@ -944,6 +1007,18 @@
         display: none;
       }
 
+      /* Botão PDF em mobile */
+      .btn-gerar-pdf {
+        width: 42px;
+        height: 42px;
+        font-size: 15px;
+        top: 60px;
+        right: 10px;
+      }
+      .btn-gerar-pdf .tooltip {
+        display: none;
+      }
+
       /* Canva embed em mobile */
       .canva-embed {
         padding-top: 75%;
@@ -1190,6 +1265,13 @@
         height: 38px;
         font-size: 14px;
         top: 8px;
+        right: 8px;
+      }
+      .btn-gerar-pdf {
+        width: 38px;
+        height: 38px;
+        font-size: 14px;
+        top: 54px;
         right: 8px;
       }
 
@@ -1612,6 +1694,12 @@
       <button type="button" id="btn-prefill-cadastro" class="btn-prefill" style="display: none;" title="Puxar dados do formulário">
         <i class="fas fa-file-import"></i>
         <span class="tooltip">Importar dados do formulário</span>
+      </button>
+
+      <!-- Botão Flutuante de Gerar PDF (visível apenas para equipe logada) -->
+      <button type="button" id="btn-gerar-pdf" class="btn-gerar-pdf" style="display: none;" title="Gerar PDF do diagnóstico">
+        <i class="fas fa-file-pdf"></i>
+        <span class="tooltip">Gerar PDF do diagnóstico</span>
       </button>
 
       <!-- Formulário do diagnóstico -->
@@ -4916,7 +5004,132 @@ async function prefillFromCadastro() {
     btn.style.display = 'flex';
     btn.addEventListener('click', prefillFromCadastro);
   }
+
+  // Configurar botão de Gerar PDF (apenas para equipe logada)
+  const btnPdf = document.getElementById('btn-gerar-pdf');
+  if (usuarioLogado && btnPdf) {
+    btnPdf.style.display = 'flex';
+    btnPdf.addEventListener('click', gerarPdfDiagnostico);
+  }
 })();
+
+// Função para gerar PDF do diagnóstico
+async function gerarPdfDiagnostico() {
+  const btnPdf = document.getElementById('btn-gerar-pdf');
+  if (!btnPdf) return;
+
+  btnPdf.disabled = true;
+  const originalIcon = btnPdf.innerHTML;
+  btnPdf.innerHTML = '<i class="fas fa-spinner fa-spin"></i><span class="tooltip">Gerando PDF...</span>';
+
+  try {
+    // Carregar html2canvas dinamicamente se não estiver carregado
+    if (typeof html2canvas === 'undefined') {
+      await new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+        script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
+        script.onload = resolve;
+        script.onerror = reject;
+        document.head.appendChild(script);
+      });
+    }
+
+    // Carregar jsPDF dinamicamente se não estiver carregado
+    if (typeof jspdf === 'undefined' && typeof jsPDF === 'undefined') {
+      await new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+        script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+        script.onload = resolve;
+        script.onerror = reject;
+        document.head.appendChild(script);
+      });
+    }
+
+    const mainContent = document.getElementById('main-content');
+    if (!mainContent) throw new Error('Conteúdo principal não encontrado');
+
+    // Expandir todas as seções colapsáveis antes de capturar
+    const collapsedSections = mainContent.querySelectorAll('.section-content');
+    const previousStates = [];
+    collapsedSections.forEach(section => {
+      previousStates.push(section.style.display);
+      section.style.display = 'block';
+    });
+
+    // Esconder botões flutuantes e botão salvar durante captura
+    const btnPrefill = document.getElementById('btn-prefill-cadastro');
+    const saveContainer = document.querySelector('.save-btn-container');
+    const prefillDisplay = btnPrefill ? btnPrefill.style.display : 'none';
+    const pdfDisplay = btnPdf.style.display;
+    const saveDisplay = saveContainer ? saveContainer.style.display : '';
+    if (btnPrefill) btnPrefill.style.display = 'none';
+    btnPdf.style.display = 'none';
+    if (saveContainer) saveContainer.style.display = 'none';
+
+    // Capturar o conteúdo completo como canvas
+    const canvas = await html2canvas(mainContent, {
+      scale: 2,
+      useCORS: true,
+      allowTaint: true,
+      backgroundColor: '#0a1628',
+      logging: false,
+      windowWidth: mainContent.scrollWidth,
+      windowHeight: mainContent.scrollHeight,
+      scrollX: 0,
+      scrollY: 0
+    });
+
+    // Restaurar estados
+    collapsedSections.forEach((section, i) => {
+      section.style.display = previousStates[i];
+    });
+    if (btnPrefill) btnPrefill.style.display = prefillDisplay;
+    btnPdf.style.display = pdfDisplay;
+    if (saveContainer) saveContainer.style.display = saveDisplay;
+
+    // Criar PDF com jsPDF
+    const { jsPDF } = window.jspdf;
+    const imgWidth = 210; // A4 width in mm
+    const pageHeight = 297; // A4 height in mm
+    const margin = 5;
+    const usableWidth = imgWidth - (margin * 2);
+    const imgHeight = (canvas.height * usableWidth) / canvas.width;
+    const usablePageHeight = pageHeight - (margin * 2);
+
+    const pdf = new jsPDF('p', 'mm', 'a4');
+    const imgData = canvas.toDataURL('image/jpeg', 0.92);
+
+    let heightLeft = imgHeight;
+    let position = margin;
+    let page = 0;
+
+    // Primeira página
+    pdf.addImage(imgData, 'JPEG', margin, position, usableWidth, imgHeight);
+    heightLeft -= usablePageHeight;
+
+    // Páginas adicionais se necessário
+    while (heightLeft > 0) {
+      position = margin - (usablePageHeight * (page + 1));
+      pdf.addPage();
+      pdf.addImage(imgData, 'JPEG', margin, position, usableWidth, imgHeight);
+      heightLeft -= usablePageHeight;
+      page++;
+    }
+
+    // Nome do arquivo
+    const nomeCliente = document.getElementById('nome_diagnostico')?.value || 'diagnostico';
+    const nomeArquivo = `Diagnostico_${nomeCliente.replace(/\s+/g, '_')}_${new Date().toLocaleDateString('pt-BR').replace(/\//g, '-')}.pdf`;
+
+    pdf.save(nomeArquivo);
+
+  } catch (error) {
+    console.error('Erro ao gerar PDF:', error);
+    alert('Erro ao gerar PDF: ' + error.message);
+  } finally {
+    btnPdf.disabled = false;
+    btnPdf.innerHTML = originalIcon;
+  }
+}
 
   </script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
