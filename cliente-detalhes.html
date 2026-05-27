@@ -1420,7 +1420,16 @@
                 if (deps && deps.length > 0) {
                     h += '<h3>Dependentes</h3><ul>';
                     deps.forEach(dep => {
-                        h += `<li><strong>${S(dep.nome || 'N/A')}</strong> — Idade: ${dep.idade || 'N/A'}, Relação: ${S(dep.relacao || dep.parentesco || 'N/A')}`;
+                        let idadeDep = dep.idade || 'N/A';
+                        if (dep.data_nascimento && idadeDep === 'N/A') {
+                            const nascDep = new Date(dep.data_nascimento + 'T00:00:00');
+                            const hojeDep = new Date();
+                            let calcIdade = hojeDep.getFullYear() - nascDep.getFullYear();
+                            const mDiff = hojeDep.getMonth() - nascDep.getMonth();
+                            if (mDiff < 0 || (mDiff === 0 && hojeDep.getDate() < nascDep.getDate())) calcIdade--;
+                            if (calcIdade >= 0) idadeDep = calcIdade + ' anos';
+                        }
+                        h += `<li><strong>${S(dep.nome || 'N/A')}</strong> — Idade: ${idadeDep}, Relação: ${S(dep.relacao || dep.parentesco || 'N/A')}`;
                         if (dep.responsavel) h += `, Responsável: ${S(dep.responsavel)}`;
                         if (dep.dependente_ir) h += `, Dependente IR: ${dep.dependente_ir === 'sim' ? 'Sim' : 'Não'}`;
                         h += '</li>';
