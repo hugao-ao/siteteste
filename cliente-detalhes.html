@@ -1467,18 +1467,20 @@
                     let totalPL = 0;
                     h += '<ul>';
                     invs.forEach(inv => {
-                        const val = parseFloat(inv.valor) || 0;
+                        const val = parseFloat(inv.valor_atual) || 0;
                         totalPL += val;
                         const riscoLabel = RISCO_LABELS[inv.classificacao_risco] || inv.classificacao_risco || inv.risco || '';
-                        h += `<li><strong>${S(inv.nome || 'N/A')}</strong>`;
-                        if (inv.tipo) h += ` (${S(inv.tipo)})`;
+                        const nomeExibicao = inv.nome_produto_customizado || inv.tipo_produto_nome || 'N/A';
+                        h += `<li><strong>${S(nomeExibicao)}</strong>`;
+                        if (inv.tipo_produto_nome) h += ` (${S(inv.tipo_produto_nome)})`;
                         h += ` | Valor: ${C(val)}`;
                         if (riscoLabel) h += ` | Risco: ${S(riscoLabel)}`;
-                        if (inv.instituicao) h += ` | Instituição: ${S(inv.instituicao)}`;
+                        if (inv.instituicao_nome) h += ` | Instituição: ${S(inv.instituicao_nome)}`;
                         if (inv.liquidez) h += ` | Liquidez: ${S(inv.liquidez)}`;
-                        if (inv.rentabilidade) h += ` | Rent.: ${pct(inv.rentabilidade)}`;
+                        if (inv.rentabilidade_esperada) h += ` | Rent.: ${pct(inv.rentabilidade_esperada)}`;
                         if (inv.indexador) h += ` | Indexador: ${S(inv.indexador)}`;
                         if (inv.vencimento) h += ` | Vencimento: ${S(inv.vencimento)}`;
+                        if (inv.aporte_valor && parseFloat(inv.aporte_valor) > 0) h += ` | Aporte: ${C(inv.aporte_valor)} (${S(inv.aporte_frequencia || '')})`;
                         h += ` | Inventariável: ${inv.inventariavel === false ? 'Não' : 'Sim'}`;
                         if (inv.donos && inv.donos.length > 0) h += ` | Donos: ${inv.donos.map(d2 => S(d2)).join(', ')}`;
                         h += '</li>';
@@ -1728,14 +1730,21 @@
                         h += `<p><strong>Receitas:</strong></p><ul>`;
                         fluxo.receitas.forEach(r => {
                             const val = parseFloat(r.valor) || 0;
+                            const qtdRec = parseInt(r.qtd_recorrencia) || 1;
+                            const undRec = r.und_recorrencia || 'mes';
                             let valMensal = val;
-                            if (r.frequencia === 'anual') valMensal = val / 12;
-                            else if (r.frequencia === 'semestral') valMensal = val / 6;
-                            else if (r.frequencia === 'trimestral') valMensal = val / 3;
+                            if (undRec === 'ano') valMensal = val / 12;
+                            else if (undRec === 'semana') valMensal = val * 4;
+                            else if (undRec === 'dia') valMensal = val * 30;
+                            if (qtdRec > 1) {
+                                if (undRec === 'mes') valMensal = val / qtdRec;
+                                else if (undRec === 'ano') valMensal = val / (qtdRec * 12);
+                            }
                             totalReceitaMensal += valMensal;
-                            h += `<li><strong>${S(r.descricao || 'N/A')}</strong>: ${C(val)}`;
-                            if (r.frequencia) h += ` (${S(r.frequencia)})`;
-                            if (r.responsavel) h += ` | Resp.: ${S(r.responsavel)}`;
+                            const nomeReceita = r.nome || r.descricao || 'N/A';
+                            h += `<li><strong>${S(nomeReceita)}</strong>: ${C(val)}`;
+                            h += ` (a cada ${qtdRec} ${undRec})`;
+                            if (r.titular) h += ` | Titular: ${S(r.titular)}`;
                             if (r.tipo) h += ` | Tipo: ${S(r.tipo)}`;
                             if (r.origem) h += ` | Origem: ${S(r.origem)}`;
                             h += '</li>';
@@ -1746,17 +1755,25 @@
                         h += `<p><strong>Despesas:</strong></p><ul>`;
                         fluxo.despesas.forEach(desp => {
                             const val = parseFloat(desp.valor) || 0;
+                            const qtdRec = parseInt(desp.qtd_recorrencia) || 1;
+                            const undRec = desp.und_recorrencia || 'mes';
                             let valMensal = val;
-                            if (desp.frequencia === 'anual') valMensal = val / 12;
-                            else if (desp.frequencia === 'semestral') valMensal = val / 6;
-                            else if (desp.frequencia === 'trimestral') valMensal = val / 3;
+                            if (undRec === 'ano') valMensal = val / 12;
+                            else if (undRec === 'semana') valMensal = val * 4;
+                            else if (undRec === 'dia') valMensal = val * 30;
+                            if (qtdRec > 1) {
+                                if (undRec === 'mes') valMensal = val / qtdRec;
+                                else if (undRec === 'ano') valMensal = val / (qtdRec * 12);
+                            }
                             totalDespesaMensal += valMensal;
-                            h += `<li><strong>${S(desp.descricao || 'N/A')}</strong>: ${C(val)}`;
-                            if (desp.frequencia) h += ` (${S(desp.frequencia)})`;
-                            if (desp.responsavel) h += ` | Resp.: ${S(desp.responsavel)}`;
-                            if (desp.categoria) h += ` | Cat.: ${S(desp.categoria)}`;
-                            if (desp.importancia) h += ` | Import.: ${desp.importancia}`;
+                            const nomeDespesa = desp.nome || desp.descricao || 'N/A';
+                            h += `<li><strong>${S(nomeDespesa)}</strong>: ${C(val)}`;
+                            h += ` (a cada ${qtdRec} ${undRec})`;
+                            if (desp.titular) h += ` | Titular: ${S(desp.titular)}`;
+                            if (desp.categoria_comportamental) h += ` | Cat.: ${S(desp.categoria_comportamental)}`;
+                            if (desp.nivel_importancia) h += ` | Import.: ${S(desp.nivel_importancia)}`;
                             if (desp.tipo) h += ` | Tipo: ${S(desp.tipo)}`;
+                            if (desp.forma_pagamento) h += ` | Pagamento: ${S(desp.forma_pagamento)}`;
                             h += '</li>';
                         });
                         h += '</ul>';
@@ -1848,10 +1865,10 @@
                     let simCount = 0, naoCount = 0, naCount = 0, pendCount = 0;
                     const secoes = {};
                     Object.entries(q).forEach(([id, data]) => {
-                        const resp = data.resposta || '';
-                        if (resp === 'sim') simCount++;
-                        else if (resp === 'nao') naoCount++;
-                        else if (resp === 'na') naCount++;
+                        const resp = (data.resposta || '').toUpperCase();
+                        if (resp === 'SIM') simCount++;
+                        else if (resp === 'NÃO' || resp === 'NAO') naoCount++;
+                        else if (resp === 'INAPLICÁVEL' || resp === 'INAPLICAVEL' || resp === 'N/A' || resp === 'NA') naCount++;
                         else pendCount++;
                         const secao = data.secao || 'outros';
                         if (!secoes[secao]) secoes[secao] = [];
@@ -1876,8 +1893,12 @@
                         const nomeSecao = SECAO_NOMES[secao] || secao;
                         h += `<p style="margin-top:0.4rem"><strong>${nomeSecao}:</strong></p><ul>`;
                         perguntas.forEach(p => {
-                            const respLabel = p.resposta === 'sim' ? '✓ SIM' : p.resposta === 'nao' ? '✗ NÃO' : p.resposta === 'na' ? '— N/A' : '⏳ Pendente';
-                            const cor = p.resposta === 'sim' ? '#4CAF50' : p.resposta === 'nao' ? '#f44336' : p.resposta === 'na' ? '#9E9E9E' : '#FF9800';
+                            const r = p.resposta;
+                            const isSim = r === 'SIM';
+                            const isNao = r === 'NÃO' || r === 'NAO';
+                            const isNA = r === 'INAPLICÁVEL' || r === 'INAPLICAVEL' || r === 'N/A' || r === 'NA';
+                            const respLabel = isSim ? '✓ SIM' : isNao ? '✗ NÃO' : isNA ? '— N/A' : '⏳ Pendente';
+                            const cor = isSim ? '#4CAF50' : isNao ? '#f44336' : isNA ? '#9E9E9E' : '#FF9800';
                             h += `<li>${S(p.texto)} → <strong style="color:${cor}">${respLabel}</strong></li>`;
                         });
                         h += '</ul>';
