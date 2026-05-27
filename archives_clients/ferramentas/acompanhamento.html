@@ -214,6 +214,22 @@
     background: linear-gradient(135deg, #10b981, #059669);
     color: #fff;
   }
+
+  /* Questões Pertinentes - Tabela Compacta */
+  .qp-table { width: 100%; border-collapse: collapse; font-size: 0.78rem; }
+  .qp-table th { background: var(--card2); color: var(--primary); font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; padding: 0.4rem 0.5rem; text-align: left; border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 1; }
+  .qp-table td { padding: 0.3rem 0.5rem; border-bottom: 1px solid rgba(212,175,55,0.06); vertical-align: middle; }
+  .qp-table tr:hover { background: rgba(212,175,55,0.04); }
+  .qp-table .qp-secao-row td { background: rgba(212,175,55,0.08); font-weight: 700; color: var(--primary); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em; padding: 0.5rem; }
+  .qp-btns { display: flex; gap: 2px; }
+  .qp-btn { width: 32px; height: 22px; border: 1px solid var(--border); border-radius: 3px; background: transparent; color: var(--muted); font-size: 0.65rem; font-weight: 700; cursor: pointer; transition: all 0.12s; display: flex; align-items: center; justify-content: center; }
+  .qp-btn:hover { border-color: var(--primary); }
+  .qp-btn.qp-sim { }
+  .qp-btn.qp-nao { }
+  .qp-btn.qp-na { }
+  .qp-btn.qp-sim.active { background: #22c55e; border-color: #22c55e; color: #fff; }
+  .qp-btn.qp-nao.active { background: #ef4444; border-color: #ef4444; color: #fff; }
+  .qp-btn.qp-na.active { background: #6b7280; border-color: #6b7280; color: #fff; }
 </style>
 </head>
 <body>
@@ -389,6 +405,10 @@
       <div class="field">
         <textarea id="rn_resumo" placeholder="Principais pontos discutidos, decisões tomadas, observações..." rows="5"></textarea>
       </div>
+    </div>
+    <div class="modal-section">
+      <div class="modal-section-title">Questões Pertinentes</div>
+      <div id="rn_questoes_container" style="max-height:350px;overflow-y:auto;"></div>
     </div>
     <div style="display:flex;gap:0.75rem;justify-content:flex-end;">
       <button class="btn btn-outline" onclick="closeModal('reuniao')">Cancelar</button>
@@ -593,6 +613,48 @@ var nextId = 1;
 var currentTab = 'reunioes';
 var _humorVal = 3;
 var chartEvolucao = null;
+var _questoesReuniao = {}; // estado temporário das questões no modal
+
+// Questões Pertinentes (36 questões)
+var QUESTOES_PERTINENTES = [
+  {id:'q_investimentos_1', secao:'patrimonio-liquido', texto:'Possui reserva de longo prazo adequada?'},
+  {id:'q_investimentos_2', secao:'patrimonio-liquido', texto:'Possui reserva de emergência adequada?'},
+  {id:'q_investimentos_3', secao:'patrimonio-liquido', texto:'Possui reservas específicas para cada objetivo?'},
+  {id:'q_investimentos_4', secao:'patrimonio-liquido', texto:'A distribuição dos recursos está adequada ao perfil de investidor?'},
+  {id:'q_dividas_1', secao:'dividas', texto:'É livre de dívidas?'},
+  {id:'q_dividas_2', secao:'dividas', texto:'Sensação que as parcelas estão adequadas (não atrapalham) o fluxo de caixa?'},
+  {id:'q_sucessao_1', secao:'sucessao', texto:'Definiu como será a distribuição do patrimônio para os (futuros) herdeiros?'},
+  {id:'q_sucessao_2', secao:'sucessao', texto:'Patrimônio está blindado de forma a garantir exatamente a sucessão desejada?'},
+  {id:'q_sucessao_3', secao:'sucessao', texto:'Tem estratégia em andamento para desonerar os Herdeiros?'},
+  {id:'q_patrimonio_1', secao:'produtos-protecao', texto:'Já tem proteção contra prejuízos de todos os patrimônios?'},
+  {id:'q_patrimonio_2', secao:'produtos-protecao', texto:'Melhor custo benefício da proteção dos patrimônios?'},
+  {id:'q_protecao_5', secao:'produtos-protecao', texto:'Possui garantia da força de trabalho?'},
+  {id:'q_protecao_6', secao:'produtos-protecao', texto:'Melhor custo benefício da garantia do trabalho?'},
+  {id:'q_protecao_7', secao:'produtos-protecao', texto:'Proteção adequada para saúde das PESSOAS?'},
+  {id:'q_protecao_8', secao:'produtos-protecao', texto:'Melhor custo benefício da proteção saúde?'},
+  {id:'q_protecao_9', secao:'produtos-protecao', texto:'Proteção adequada para saúde dos PETs?'},
+  {id:'q_ir_1', secao:'ir', texto:'Recebe os recursos da forma mais vantajosa possível?'},
+  {id:'q_ir_2', secao:'ir', texto:'Faz declaração da forma mais adequada para o perfil?'},
+  {id:'q_ir_3', secao:'ir', texto:'Investe visando reduzir o pagamento ou aumentar a restituição?'},
+  {id:'q_cartoes_1', secao:'contas-cartoes', texto:'Possui o cartão mais adequado aos objetivos?'},
+  {id:'q_cartoes_2', secao:'contas-cartoes', texto:'Paga tudo que consegue no cartão de crédito?'},
+  {id:'q_cartoes_3', secao:'contas-cartoes', texto:'Concentra os gastos em apenas um cartão de crédito?'},
+  {id:'q_cartoes_4', secao:'contas-cartoes', texto:'Faz uso estratégico de compras bonificadas?'},
+  {id:'q_cartoes_5', secao:'contas-cartoes', texto:'É livre de taxas de conta / anuidades de cartão / outras desnecessárias?'},
+  {id:'q_protecao_1', secao:'fluxo-caixa', texto:'100% da renda é independente do trabalho?'},
+  {id:'q_protecao_2', secao:'fluxo-caixa', texto:'80% ou mais da renda é estável?'},
+  {id:'q_protecao_3', secao:'fluxo-caixa', texto:'Consegue aumentar a renda no curto/médio prazo conforme a necessidade?'},
+  {id:'q_protecao_4', secao:'fluxo-caixa', texto:'Há mais de uma fonte de renda?'},
+  {id:'q_fluxo_1', secao:'fluxo-caixa', texto:'Planeja os gastos anuais antecipadamente?'},
+  {id:'q_fluxo_2', secao:'fluxo-caixa', texto:'Confere o desempenho do fluxo todo mês?'},
+  {id:'q_fluxo_3', secao:'fluxo-caixa', texto:'Acompanha o fluxo diariamente/semanalmente?'},
+  {id:'q_fluxo_4', secao:'fluxo-caixa', texto:'Poupa todo mês?'},
+  {id:'q_fluxo_5', secao:'fluxo-caixa', texto:'Poupa o mínimo Ideal?'},
+  {id:'q_objetivos_1', secao:'objetivos', texto:'Possui Plano de ação e metas bem definidos para cada objetivo?'},
+  {id:'q_objetivos_2', secao:'objetivos', texto:'Já tinha definido as metas de acúmulo para a aposentadoria?'},
+  {id:'q_objetivos_5', secao:'objetivos', texto:'Conseguirá atingir os objetivos no prazo desejado?'}
+];
+var SECAO_NOMES_QP = {'patrimonio-liquido':'Patrimônio Líquido','dividas':'Dívidas','sucessao':'Sucessão','produtos-protecao':'Produtos & Proteção','ir':'Imposto de Renda','contas-cartoes':'Contas & Cartões','fluxo-caixa':'Fluxo de Caixa','objetivos':'Objetivos'};
 
 // Labels
 var TIPO_REUNIAO = {primeira:'Primeira Consulta',acompanhamento:'Acompanhamento',revisao:'Revisão de Estratégia',emergencial:'Emergencial',fechamento:'Fechamento de Ciclo'};
@@ -669,6 +731,8 @@ function openModal(tipo, index) {
     if (tipo === 'reuniao') {
       document.getElementById('rn_data').value = new Date().toISOString().split('T')[0];
       setHumor(3);
+      _questoesReuniao = getLastQuestoesState();
+      renderQuestoesTable();
     }
   }
   document.getElementById('modal-' + tipo).classList.add('open');
@@ -703,6 +767,8 @@ function fillModalFromData(tipo, index) {
     document.getElementById('rn_investimentos').value = item.investimentos ? parseBR(item.investimentos).toLocaleString('pt-BR',{minimumFractionDigits:2}) : '';
     document.getElementById('rn_dividas').value = item.dividas ? parseBR(item.dividas).toLocaleString('pt-BR',{minimumFractionDigits:2}) : '';
     document.getElementById('rn_resumo').value = item.resumo || '';
+    _questoesReuniao = item.questoes ? JSON.parse(JSON.stringify(item.questoes)) : getLastQuestoesState(index);
+    renderQuestoesTable();
   } else if (tipo === 'objetivo') {
     item = objetivos[index];
     document.getElementById('ob_nome').value = item.nome || '';
@@ -760,7 +826,8 @@ function salvarReuniao() {
     despesas: parseBR(document.getElementById('rn_despesas').value),
     investimentos: parseBR(document.getElementById('rn_investimentos').value),
     dividas: parseBR(document.getElementById('rn_dividas').value),
-    resumo: document.getElementById('rn_resumo').value.trim()
+    resumo: document.getElementById('rn_resumo').value.trim(),
+    questoes: JSON.parse(JSON.stringify(_questoesReuniao))
   };
   if (_editMode && _editMode.tipo === 'reuniao') reunioes[_editMode.index] = item;
   else reunioes.push(item);
@@ -901,6 +968,23 @@ function renderReunioesTimeline() {
     if (inds.length > 0) {
       html += '<div class="tl-indicators">';
       inds.forEach(function(ind) { html += '<span class="tl-ind">' + ind + '</span>'; });
+      html += '</div>';
+    }
+    // Questões pertinentes resumo
+    if (r.questoes && Object.keys(r.questoes).length > 0) {
+      var qSim = 0, qNao = 0, qNA = 0, qPend = 0;
+      Object.values(r.questoes).forEach(function(v) {
+        if (v === 'SIM') qSim++;
+        else if (v === 'NÃO') qNao++;
+        else if (v === 'N/A') qNA++;
+        else qPend++;
+      });
+      var qTotal = qSim + qNao;
+      var qPct = qTotal > 0 ? Math.round((qSim / qTotal) * 100) : 0;
+      html += '<div class="tl-indicators" style="margin-top:0.3rem;">';
+      html += '<span class="tl-ind">Questões: <strong style="color:var(--green)">' + qSim + ' S</strong> / <strong style="color:var(--red)">' + qNao + ' N</strong> / <strong style="color:var(--muted)">' + qNA + ' N/A</strong>';
+      if (qPend > 0) html += ' / <strong style="color:var(--orange)">' + qPend + ' ?</strong>';
+      html += ' (' + qPct + '%)</span>';
       html += '</div>';
     }
     html += '<div class="tl-actions">';
@@ -1277,6 +1361,64 @@ function _forceSaveAcompanhamento() {
   _initDone = true;
   saveData();
   _globalSaveFeedback();
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  QUESTÕES PERTINENTES - FUNÇÕES
+// ═══════════════════════════════════════════════════════════════════════════
+function getLastQuestoesState(beforeIndex) {
+  // Pega o estado das questões da reunião mais recente (para pré-preencher)
+  var sorted = reunioes.slice().sort(function(a,b){ return b.data.localeCompare(a.data); });
+  for (var i = 0; i < sorted.length; i++) {
+    if (beforeIndex !== undefined && sorted[i] === reunioes[beforeIndex]) continue;
+    if (sorted[i].questoes && Object.keys(sorted[i].questoes).length > 0) {
+      return JSON.parse(JSON.stringify(sorted[i].questoes));
+    }
+  }
+  // Se não há reunião anterior, retorna vazio
+  var empty = {};
+  QUESTOES_PERTINENTES.forEach(function(q) { empty[q.id] = ''; });
+  return empty;
+}
+
+function renderQuestoesTable() {
+  var container = document.getElementById('rn_questoes_container');
+  if (!container) return;
+  // Agrupar por seção
+  var secoes = {};
+  QUESTOES_PERTINENTES.forEach(function(q) {
+    if (!secoes[q.secao]) secoes[q.secao] = [];
+    secoes[q.secao].push(q);
+  });
+  var html = '<table class="qp-table"><thead><tr><th style="width:60%">Questão</th><th style="width:40%;text-align:center;">Resposta</th></tr></thead><tbody>';
+  var secaoOrder = ['patrimonio-liquido','dividas','sucessao','produtos-protecao','ir','contas-cartoes','fluxo-caixa','objetivos'];
+  secaoOrder.forEach(function(secaoId) {
+    if (!secoes[secaoId]) return;
+    html += '<tr class="qp-secao-row"><td colspan="2">' + (SECAO_NOMES_QP[secaoId] || secaoId) + '</td></tr>';
+    secoes[secaoId].forEach(function(q) {
+      var resp = _questoesReuniao[q.id] || '';
+      html += '<tr>';
+      html += '<td style="line-height:1.3;">' + escHtml(q.texto) + '</td>';
+      html += '<td style="text-align:center;"><div class="qp-btns" style="justify-content:center;">';
+      html += '<button type="button" class="qp-btn qp-sim ' + (resp === 'SIM' ? 'active' : '') + '" onclick="setQP(\'' + q.id + '\',\'SIM\')">S</button>';
+      html += '<button type="button" class="qp-btn qp-nao ' + (resp === 'NÃO' ? 'active' : '') + '" onclick="setQP(\'' + q.id + '\',\'NÃO\')">N</button>';
+      html += '<button type="button" class="qp-btn qp-na ' + (resp === 'N/A' ? 'active' : '') + '" onclick="setQP(\'' + q.id + '\',\'N/A\')">—</button>';
+      html += '</div></td>';
+      html += '</tr>';
+    });
+  });
+  html += '</tbody></table>';
+  container.innerHTML = html;
+}
+
+function setQP(qId, valor) {
+  // Toggle: se já está com esse valor, desmarca
+  if (_questoesReuniao[qId] === valor) {
+    _questoesReuniao[qId] = '';
+  } else {
+    _questoesReuniao[qId] = valor;
+  }
+  renderQuestoesTable();
 }
 
 // === HANDLER IMPORTAR DIAGNÓSTICO ===
