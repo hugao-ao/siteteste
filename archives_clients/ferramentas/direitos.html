@@ -734,14 +734,16 @@ document.addEventListener('importarDiagnostico', function(e) {
       // Verificar se já existe
       var existe = produtos.find(function(p) { return p.nome.toLowerCase() === nome.toLowerCase(); });
       if (existe) return;
+      var custoVal = item.custo_mensal || item.premio_mensal || '';
+      if (custoVal && typeof custoVal === 'number') custoVal = custoVal.toLocaleString('pt-BR', {minimumFractionDigits:2});
       produtos.push({
         id: genId(),
         nome: nome,
         tipo: item.tipo || item.tipo_produto_nome || item.categoria || '',
         instituicao: item.instituicao || item.instituicao_nome || item.seguradora || '',
-        custo: item.custo_mensal || item.premio_mensal || '',
+        custo: custoVal,
         vigencia: item.vigencia || item.vencimento || '',
-        obs: 'Importado do diagnóstico',
+        obs: item.obs || 'Importado do diagnóstico',
         direitos: []
       });
       importados++;
