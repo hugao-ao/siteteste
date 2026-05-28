@@ -403,7 +403,6 @@
       const objetivos = objetivosData.objetivos || [];
       const patrimoniosLiquidos = diag.patrimonios_liquidos || [];
       const dividas = diag.dividas || [];
-
       const items = [{
         nome_cliente: diag.nome || '',
         profissao: diag.profissao || '',
@@ -413,11 +412,66 @@
         total_objetivos: objetivos.length,
         objetivos_resumo: objetivos.map(o => o.descricao || o.tipo).join(', ')
       }];
-
       return {
         items,
         mensagem: `Dados do cliente carregados. ${objetivos.length} objetivo(s), ${patrimoniosLiquidos.length} investimento(s), ${dividas.length} dívida(s).`
       };
+    },
+
+    // DIREITOS: Importa produtos de proteção, investimentos, cartões e contas como produtos
+    direitos: function(diag) {
+      const items = [];
+
+      // Produtos de proteção (seguros)
+      const produtosProtecao = diag.produtos_protecao || [];
+      produtosProtecao.forEach(p => {
+        items.push({
+          nome: `${p.tipo_produto || 'Seguro'} - ${p.seguradora || 'N/I'}`,
+          tipo: p.tipo_produto || 'Seguro',
+          instituicao: p.seguradora || '',
+          custo_mensal: p.periodicidade === 'mensal' ? (p.custo || 0) : p.periodicidade === 'anual' ? Math.round((p.custo || 0) / 12) : (p.custo || 0),
+          vigencia: p.vigencia || '',
+          obs: `Objeto: ${p.objeto || 'N/I'}`,
+          _fonte: 'protecao'
+        });
+      });
+
+      // Patrimônios líquidos (investimentos, previdência)
+      const patrimoniosLiquidos = diag.patrimonios_liquidos || [];
+      patrimoniosLiquidos.forEach(pl => {
+        items.push({
+          nome: pl.nome_produto_customizado || pl.tipo_produto_nome || 'Investimento',
+          tipo: pl.tipo_produto_nome || 'Investimento',
+          instituicao: pl.instituicao_nome || '',
+          custo_mensal: '',
+          vigencia: '',
+          obs: `Valor atual: R$ ${(pl.valor_atual || 0).toLocaleString('pt-BR')}. Classificação: ${pl.classificacao_risco || 'N/I'}`,
+          _fonte: 'investimento'
+        });
+      });
+
+      // Contas e cartões
+      const contasCartoes = diag.contas_cartoes || [];
+      contasCartoes.forEach(c => {
+        const nome = c.tipo === 'cartao' 
+          ? `Cartão ${c.bandeira || ''} ${c.instituicao || ''}`.trim()
+          : `Conta ${c.tipo_conta || ''} ${c.instituicao || ''}`.trim();
+        items.push({
+          nome: nome,
+          tipo: c.tipo === 'cartao' ? 'Cartão de Crédito' : 'Conta Bancária',
+          instituicao: c.instituicao || '',
+          custo_mensal: c.tarifa_anuidade ? Math.round(c.tarifa_anuidade / 12) : (c.tarifa_mensal || 0),
+          vigencia: '',
+          obs: c.tipo === 'cartao' ? `Bandeira: ${c.bandeira || 'N/I'}. Pontos/dólar: ${c.pontos_por_dolar || 0}` : '',
+          _fonte: c.tipo === 'cartao' ? 'cartao' : 'conta'
+        });
+      });
+
+      if (items.length === 0) {
+        return { items: [], mensagem: 'Nenhum produto encontrado no diagnóstico.' };
+      }
+
+      return { items, mensagem: `${items.length} produto(s) encontrado(s): ${produtosProtecao.length} seguro(s), ${patrimoniosLiquidos.length} investimento(s), ${contasCartoes.length} conta(s)/cartão(ões).` };
     }
   };
 
@@ -676,6 +730,8 @@
         return `${item.tipo} | Valor: R$ ${(item.valorBem || 0).toLocaleString('pt-BR')} | Saldo Devedor: R$ ${(item.saldoDevedor || 0).toLocaleString('pt-BR')}`;
       case 'acompanhamento':
         return `Investido: R$ ${(item.total_investido || 0).toLocaleString('pt-BR')} | Dívidas: R$ ${(item.total_dividas || 0).toLocaleString('pt-BR')} | ${item.total_objetivos} objetivo(s)`;
+      case 'direitos':
+        return `${item.tipo || 'Produto'} | ${item.instituicao || 'N/I'} | Custo: ${item.custo_mensal ? 'R$ ' + item.custo_mensal + '/mês' : 'N/I'}`;
       default:
         return JSON.stringify(item).substring(0, 100);
     }
