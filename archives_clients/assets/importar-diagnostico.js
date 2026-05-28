@@ -423,7 +423,8 @@
       const items = [];
 
       // Produtos de proteção (seguros)
-      const produtosProtecao = diag.produtos_protecao || [];
+      let produtosProtecao = diag.produtos_protecao || [];
+      if (!Array.isArray(produtosProtecao)) produtosProtecao = Object.values(produtosProtecao);
       produtosProtecao.forEach(p => {
         items.push({
           nome: `${p.tipo_produto || 'Seguro'} - ${p.seguradora || 'N/I'}`,
@@ -437,7 +438,8 @@
       });
 
       // Patrimônios líquidos (investimentos, previdência)
-      const patrimoniosLiquidos = diag.patrimonios_liquidos || [];
+      let patrimoniosLiquidos = diag.patrimonios_liquidos || [];
+      if (!Array.isArray(patrimoniosLiquidos)) patrimoniosLiquidos = Object.values(patrimoniosLiquidos);
       patrimoniosLiquidos.forEach(pl => {
         items.push({
           nome: pl.nome_produto_customizado || pl.tipo_produto_nome || 'Investimento',
@@ -451,7 +453,8 @@
       });
 
       // Contas e cartões
-      const contasCartoes = diag.contas_cartoes || [];
+      let contasCartoes = diag.contas_cartoes || [];
+      if (!Array.isArray(contasCartoes)) contasCartoes = Object.values(contasCartoes);
       contasCartoes.forEach(c => {
         const nome = c.tipo === 'cartao' 
           ? `Cartão ${c.bandeira || ''} ${c.instituicao || ''}`.trim()
