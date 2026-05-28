@@ -731,9 +731,6 @@ document.addEventListener('importarDiagnostico', function(e) {
       // Tentar mapear itens do diagnóstico como produtos
       var nome = item.nome || item.nome_produto_customizado || item.tipo_produto_nome || item.descricao || '';
       if (!nome) return;
-      // Verificar se já existe
-      var existe = produtos.find(function(p) { return p.nome.toLowerCase() === nome.toLowerCase(); });
-      if (existe) return;
       var custoVal = item.custo_mensal || item.premio_mensal || '';
       if (custoVal && typeof custoVal === 'number') custoVal = custoVal.toLocaleString('pt-BR', {minimumFractionDigits:2});
       produtos.push({
