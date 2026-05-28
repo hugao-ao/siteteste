@@ -786,16 +786,35 @@ table.sc-table tr.row-aquisicao td { background: rgba(212,175,55,0.08); border-t
 <body>
 <div id="sidebar-container" class="sidebar"></div>
 <main class="main-content">
-
-<!-- ── HEADER ──────────────────────────────────────────────────────────── -->
+<!-- ── HEADER ──────────────────────────────────────────────────────────────── -->
 <header class="header">
     <h1>Simulador Financeiro</h1>
     <span>Comparativo de Cenários · Patrimônio &amp; Descapitalização</span>
 </header>
 
-<div class="main-wrap">
+<!-- ── MULTI-SIMULAÇÃO: LISTA DE SIMULAÇÕES ────────────────────────────── -->
+<div class="sim-list-view" id="sim-list-view">
+    <div class="sim-header-bar">
+        <h2>Minhas Simulações</h2>
+        <button class="btn-new-sim" onclick="novaSimulacaoSim()">+ Nova Simulação</button>
+    </div>
+    <div id="sim-list-container">
+        <div class="sim-empty-state" id="sim-empty-state">
+            <div class="icon">📊</div>
+            <p>Nenhuma simulação criada ainda.<br>Clique em <strong>+ Nova Simulação</strong> para começar.</p>
+        </div>
+    </div>
+</div>
 
-    <!-- ── PARÂMETROS GERAIS ─────────────────────────────────────────── -->
+<!-- ── MULTI-SIMULAÇÃO: EDITOR (contém os parâmetros e cenários) ──────── -->
+<div class="sim-editor-view" id="sim-editor-view">
+    <button class="btn-back-sim" onclick="_salvarSimAtual(); _showSimList();">← Voltar para lista</button>
+    <div style="display:flex;align-items:center;gap:1rem;margin:0 16px 1rem;">
+        <input type="text" id="sim-nome" placeholder="Nome da simulação" style="flex:1;background:var(--surface2,#1a1a2e);border:1px solid var(--border,#333);border-radius:8px;color:#fff;font-size:0.95rem;padding:0.6rem 1rem;outline:none;" oninput="_simSaveData()">
+        <span id="sim-editing-label" style="font-size:0.75rem;color:var(--muted,#888);">Nova simulação</span>
+    </div>
+
+<div class="main-wrap">   <!-- ── PARÂMETROS GERAIS ─────────────────────────────────────────── -->
     <section class="card" id="sec-params">
         <div class="card-title">Parâmetros Gerais</div>
         <div class="params-sections">
@@ -963,10 +982,10 @@ table.sc-table tr.row-aquisicao td { background: rgba(212,175,55,0.08); border-t
 
     <!-- Cards de cenários detalhados removidos a pedido do usuário -->
     <div id="scenario-cards-container" style="display:none;"></div>
-
 </div><!-- /main-wrap -->
+</div><!-- /sim-editor-view -->
 
-<!-- ── MODAL: ADICIONAR / EDITAR CENÁRIO ──────────────────────────────── -->
+<!-- ── MODAL: ADICIONAR / EDITAR CENÁRIO ───────────────────────────── -->
 <div class="modal-overlay" id="modal-edit">
     <div class="modal modal-wide">
         <h2 id="modal-edit-title">Adicionar Cenário</h2>
