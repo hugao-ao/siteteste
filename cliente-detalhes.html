@@ -771,7 +771,15 @@
                 dataHtml += `<ul>`;
                 data.dependentes.forEach((dependente) => {
                     const nomeDep = dependente.nome ? sanitizeInput(dependente.nome) : "Nome não informado";
-                    const idadeDep = dependente.idade !== undefined && dependente.idade !== null ? sanitizeInput(String(dependente.idade)) : "N/A";
+                    let idadeDep = dependente.idade !== undefined && dependente.idade !== null ? sanitizeInput(String(dependente.idade)) : "N/A";
+                    if (dependente.data_nascimento && (idadeDep === 'N/A' || idadeDep === '')) {
+                        const nascDep = new Date(dependente.data_nascimento + 'T00:00:00');
+                        const hojeDep = new Date();
+                        let calcIdade = hojeDep.getFullYear() - nascDep.getFullYear();
+                        const mDiff = hojeDep.getMonth() - nascDep.getMonth();
+                        if (mDiff < 0 || (mDiff === 0 && hojeDep.getDate() < nascDep.getDate())) calcIdade--;
+                        if (calcIdade >= 0) idadeDep = calcIdade + ' anos';
+                    }
                     const relacaoDep = dependente.relacao ? sanitizeInput(dependente.relacao) : "N/A";
                     dataHtml += `<li>${nomeDep} (Idade: ${idadeDep}, Relação: ${relacaoDep})</li>`;
                 });
