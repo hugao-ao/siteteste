@@ -230,6 +230,18 @@
   .qp-btn.qp-sim.active { background: #22c55e; border-color: #22c55e; color: #fff; }
   .qp-btn.qp-nao.active { background: #ef4444; border-color: #ef4444; color: #fff; }
   .qp-btn.qp-na.active { background: #6b7280; border-color: #6b7280; color: #fff; }
+
+  /* Simulação Imobiliária - Painel no Objetivo */
+  .sim-panel { margin-top: 0.6rem; padding: 0.7rem; background: rgba(212,175,55,0.05); border: 1px solid rgba(212,175,55,0.15); border-radius: 8px; }
+  .sim-panel-title { font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--primary); margin-bottom: 0.4rem; display: flex; align-items: center; gap: 0.4rem; }
+  .sim-panel-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 0.4rem; }
+  .sim-panel-item { text-align: center; }
+  .sim-panel-item .sp-label { font-size: 0.62rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+  .sim-panel-item .sp-value { font-size: 0.82rem; font-weight: 700; color: var(--fg); }
+  .sim-panel-scenarios { margin-top: 0.4rem; display: flex; flex-wrap: wrap; gap: 0.3rem; }
+  .sim-panel-sc { font-size: 0.68rem; padding: 0.15rem 0.5rem; border-radius: 12px; background: rgba(255,255,255,0.06); border: 1px solid var(--border); color: var(--muted); }
+  .sim-panel-link { display: inline-flex; align-items: center; gap: 0.3rem; font-size: 0.7rem; color: var(--primary); text-decoration: none; margin-top: 0.4rem; font-weight: 600; }
+  .sim-panel-link:hover { text-decoration: underline; }
 </style>
 </head>
 <body>
@@ -432,7 +444,7 @@
         </div>
         <div class="field">
           <label>Categoria</label>
-          <select id="ob_categoria">
+          <select id="ob_categoria" onchange="toggleSimSection()">
             <option value="imovel">Imóvel</option>
             <option value="aposentadoria">Aposentadoria</option>
             <option value="reserva">Reserva de Emergência</option>
@@ -478,6 +490,16 @@
             <option value="cancelado">Cancelado</option>
           </select>
         </div>
+      </div>
+    </div>
+    <div class="modal-section" id="ob_sim_section" style="display:none;">
+      <div class="modal-section-title">Vincular Simulação Imobiliária</div>
+      <div class="field">
+        <label>Simulação do Simulador</label>
+        <select id="ob_simulacao">
+          <option value="">Nenhuma (não vincular)</option>
+        </select>
+        <span style="font-size:0.7rem;color:var(--muted);margin-top:0.3rem;">Vincule uma simulação criada no Simulador Imobiliário para acompanhar o progresso aqui.</span>
       </div>
     </div>
     <div class="modal-section">
@@ -614,6 +636,7 @@ var currentTab = 'reunioes';
 var _humorVal = 3;
 var chartEvolucao = null;
 var _questoesReuniao = {}; // estado temporário das questões no modal
+var _simulacoesImob = []; // simulações carregadas do Simulador Imobiliário
 
 // Questões Pertinentes (36 questões)
 var QUESTOES_PERTINENTES = [
@@ -734,6 +757,9 @@ function openModal(tipo, index) {
       _questoesReuniao = getLastQuestoesState();
       renderQuestoesTable();
     }
+    if (tipo === 'objetivo') {
+      toggleSimSection();
+    }
   }
   document.getElementById('modal-' + tipo).classList.add('open');
 }
@@ -779,6 +805,8 @@ function fillModalFromData(tipo, index) {
     document.getElementById('ob_prioridade').value = item.prioridade || 'media';
     document.getElementById('ob_status').value = item.status || 'em_andamento';
     document.getElementById('ob_obs').value = item.obs || '';
+    document.getElementById('ob_simulacao').value = item.simulacao_id || '';
+    toggleSimSection();
   } else if (tipo === 'micro') {
     item = microPassos[index];
     document.getElementById('mc_desc').value = item.desc || '';
@@ -849,7 +877,8 @@ function salvarObjetivo() {
     prazo: document.getElementById('ob_prazo').value,
     prioridade: document.getElementById('ob_prioridade').value,
     status: document.getElementById('ob_status').value,
-    obs: document.getElementById('ob_obs').value.trim()
+    obs: document.getElementById('ob_obs').value.trim(),
+    simulacao_id: document.getElementById('ob_simulacao').value || null
   };
   if (_editMode && _editMode.tipo === 'objetivo') objetivos[_editMode.index] = item;
   else objetivos.push(item);
@@ -1027,6 +1056,10 @@ function renderObjetivos() {
     }
     if (o.prazo) html += '<div style="font-size:0.72rem;color:var(--muted);margin-top:0.4rem;">Prazo: ' + fmtData(o.prazo) + '</div>';
     if (o.obs) html += '<div style="font-size:0.78rem;color:var(--muted);margin-top:0.4rem;line-height:1.4;">' + escHtml(o.obs) + '</div>';
+    // Simulação Imobiliária vinculada
+    if (o.simulacao_id && o.categoria === 'imovel') {
+      html += renderSimPanel(o.simulacao_id);
+    }
     // Micro passos vinculados
     var micros = microPassos.filter(function(m){ return String(m.objetivo_id) === String(o.id); });
     if (micros.length > 0) {
@@ -1338,6 +1371,9 @@ function applyData(d) {
     if (localData) restored = applyData(localData);
   }
 
+  // Carregar simulações do Simulador Imobiliário
+  await loadSimulacoes();
+
   renderAll();
   _initDone = true;
 })();
@@ -1419,6 +1455,113 @@ function setQP(qId, valor) {
     _questoesReuniao[qId] = valor;
   }
   renderQuestoesTable();
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  INTEGRAÇÃO SIMULADOR IMOBILIÁRIO
+// ═══════════════════════════════════════════════════════════════════════════
+async function loadSimulacoes() {
+  var clienteId = getClienteId();
+  if (!clienteId) return;
+  var sb = getSupabaseClient();
+  if (!sb) return;
+  try {
+    var result = await sb.from('ferramentas_dados').select('dados').eq('cliente_id', clienteId).eq('ferramenta', 'simulador').maybeSingle();
+    if (!result.error && result.data && result.data.dados) {
+      var d = result.data.dados;
+      if (Array.isArray(d.simulacoes_list)) {
+        _simulacoesImob = d.simulacoes_list;
+      } else if (d.scenarios || d.aportes) {
+        // Formato antigo (simulação única)
+        _simulacoesImob = [{ id: 'legacy', nome: 'Simulação Principal', payload: d, updatedAt: '' }];
+      }
+    }
+  } catch(e) { console.warn('Acompanhamento: erro ao carregar simulações', e); }
+}
+
+function toggleSimSection() {
+  var cat = document.getElementById('ob_categoria').value;
+  var section = document.getElementById('ob_sim_section');
+  if (cat === 'imovel') {
+    section.style.display = '';
+    populateSimSelect();
+  } else {
+    section.style.display = 'none';
+  }
+}
+
+function populateSimSelect() {
+  var sel = document.getElementById('ob_simulacao');
+  var currentVal = sel.value;
+  sel.innerHTML = '<option value="">Nenhuma (não vincular)</option>';
+  _simulacoesImob.forEach(function(sim) {
+    var nome = sim.nome || 'Simulação sem nome';
+    var data = sim.updatedAt ? ' (' + new Date(sim.updatedAt).toLocaleDateString('pt-BR') + ')' : '';
+    sel.innerHTML += '<option value="' + sim.id + '">' + escHtml(nome) + data + '</option>';
+  });
+  if (currentVal) sel.value = currentVal;
+}
+
+function renderSimPanel(simId) {
+  var sim = _simulacoesImob.find(function(s) { return String(s.id) === String(simId); });
+  if (!sim || !sim.payload) {
+    return '<div class="sim-panel"><div class="sim-panel-title">Simulação Vinculada</div><div style="font-size:0.75rem;color:var(--muted);">Simulação não encontrada ou removida.</div></div>';
+  }
+  var p = sim.payload;
+  var params = p.params || {};
+  var bemValor = params.bemValor ? parseBRSimVal(params.bemValor) : 0;
+  var saldo = params.saldo ? parseBRSimVal(params.saldo) : 0;
+  var prazo = params.prazo || '—';
+  var prazoUnit = params.prazoUnit === 'meses' ? 'meses' : 'anos';
+  var juros = params.juros || '—';
+  var inflacao = params.inflacao || '—';
+  var cenarios = p.scenarios || [];
+  var aportes = p.aportes || [];
+
+  var html = '<div class="sim-panel">';
+  html += '<div class="sim-panel-title">Simulação Vinculada: ' + escHtml(sim.nome || 'Simulação') + '</div>';
+  html += '<div class="sim-panel-grid">';
+  html += '<div class="sim-panel-item"><div class="sp-label">Valor do Bem</div><div class="sp-value">' + fmtBRL(bemValor) + '</div></div>';
+  html += '<div class="sim-panel-item"><div class="sp-label">Saldo Inicial</div><div class="sp-value">' + fmtBRL(saldo) + '</div></div>';
+  html += '<div class="sim-panel-item"><div class="sp-label">Prazo</div><div class="sp-value">' + prazo + ' ' + prazoUnit + '</div></div>';
+  html += '<div class="sim-panel-item"><div class="sp-label">Juros a.a.</div><div class="sp-value">' + juros + '%</div></div>';
+  html += '<div class="sim-panel-item"><div class="sp-label">Inflação a.a.</div><div class="sp-value">' + inflacao + '%</div></div>';
+  // Aporte mensal (pegar o primeiro aporte recorrente)
+  var aporteMensal = 0;
+  aportes.forEach(function(ap) {
+    if (ap.unit !== 'unica' && ap.valor) aporteMensal += ap.valor;
+  });
+  if (aporteMensal > 0) {
+    html += '<div class="sim-panel-item"><div class="sp-label">Aporte Recorrente</div><div class="sp-value">' + fmtBRL(aporteMensal) + '</div></div>';
+  }
+  html += '</div>';
+
+  // Cenários
+  if (cenarios.length > 0) {
+    html += '<div class="sim-panel-scenarios">';
+    cenarios.forEach(function(sc) {
+      var tipo = sc.tipo === 'avista' ? 'À Vista' : sc.tipo;
+      html += '<span class="sim-panel-sc" style="border-color:' + (sc.color || 'var(--border)') + ';color:' + (sc.color || 'var(--muted)') + ';">' + escHtml(sc.name || tipo) + '</span>';
+    });
+    html += '</div>';
+  }
+
+  // Progresso estimado (saldo / bemValor)
+  if (bemValor > 0 && saldo > 0) {
+    var pctSim = Math.min((saldo / bemValor) * 100, 100);
+    html += '<div style="margin-top:0.5rem;"><div style="font-size:0.65rem;color:var(--muted);margin-bottom:0.2rem;">Progresso Inicial: ' + pctSim.toFixed(0) + '%</div>';
+    html += '<div style="height:6px;background:rgba(255,255,255,0.08);border-radius:3px;overflow:hidden;"><div style="height:100%;width:' + pctSim.toFixed(1) + '%;background:var(--primary);border-radius:3px;"></div></div></div>';
+  }
+
+  html += '<a class="sim-panel-link" href="simulador.html" target="_blank">→ Abrir Simulador Completo</a>';
+  html += '</div>';
+  return html;
+}
+
+function parseBRSimVal(v) {
+  if (!v) return 0;
+  if (typeof v === 'number') return v;
+  return parseFloat(String(v).replace(/\./g,'').replace(',','.')) || 0;
 }
 
 // === HANDLER IMPORTAR DIAGNÓSTICO ===
