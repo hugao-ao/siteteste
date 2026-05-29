@@ -75,6 +75,10 @@
   .badge-gold { background: rgba(212,175,55,0.15); color: var(--primary); }
   .badge-muted { background: rgba(160,184,166,0.1); color: var(--muted); }
   .badge-teal { background: rgba(20,184,166,0.15); color: #14b8a6; }
+  .badge-new { display: inline-block; background: #ef4444; color: #fff; font-size: 0.6rem; font-weight: 700; padding: 0.1rem 0.4rem; border-radius: 8px; margin-left: 0.4rem; animation: pulse-new 1.5s infinite; vertical-align: middle; }
+  @keyframes pulse-new { 0%,100%{ opacity:1; } 50%{ opacity:0.6; } }
+  .btn-clear-badges { background: transparent; border: 1px solid var(--border); color: var(--muted); font-size: 0.75rem; padding: 0.3rem 0.7rem; border-radius: 6px; cursor: pointer; transition: all 0.2s; }
+  .btn-clear-badges:hover { border-color: var(--primary); color: var(--primary); }
 
   .table-wrap { overflow-x: auto; border-radius: var(--radius); border: 1px solid var(--border); }
   table { width: 100%; border-collapse: collapse; }
@@ -365,7 +369,10 @@
   <div class="card">
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
       <h2 style="margin:0;">4. Itens do Fluxo</h2>
-      <button class="btn btn-primary" onclick="openModal()">+ Adicionar Item</button>
+      <div style="display:flex; gap:0.5rem; align-items:center;">
+        <button class="btn-clear-badges" id="btn-clear-all-badges" onclick="clearAllNewBadges()" style="display:none;">Limpar Badges</button>
+        <button class="btn btn-primary" onclick="openModal()">+ Adicionar Item</button>
+      </div>
     </div>
     <div id="items-table-wrap">
       <div class="empty" id="items-empty">
@@ -807,10 +814,11 @@ function renderAccountsGrid() {
         (acc.bandeira ? ' | ' + acc.bandeira.charAt(0).toUpperCase() + acc.bandeira.slice(1) : '') +
         '</div>';
     }
+    var accNewBadge = acc._isNew ? '<span class="badge-new">NOVO</span>' : '';
     html += '<div style="background:var(--card2); border:1px solid var(--border); border-radius:8px; padding:0.8rem 1rem; display:flex; align-items:center; gap:0.8rem;">' +
       '<span style="font-size:1.4rem;">' + icon + '</span>' +
       '<div style="flex:1;">' +
-        '<div style="font-weight:600; color:var(--fg); font-size:0.9rem;">' + acc.nome + '</div>' +
+        '<div style="font-weight:600; color:var(--fg); font-size:0.9rem;">' + acc.nome + accNewBadge + '</div>' +
         '<span class="badge ' + (acc.tipo==='cartao'?'badge-purple':'badge-blue') + '">' + (acc.tipo==='cartao'?'Cartão':'Conta') + '</span>' +
         details +
       '</div>' +
@@ -821,8 +829,8 @@ function renderAccountsGrid() {
     '</div>';
   });
   grid.innerHTML = html;
+  updateBadgeButtonVisibility();
 }
-
 function updateFormaPagamentoSelect() {
   var sel = document.getElementById('item-forma-pagamento');
   if (!sel) return;
@@ -1019,11 +1027,10 @@ function saveItem() {
   };
 
   if (editingIndex >= 0) {
-    items[editingIndex] = item;
+    items[editingIndex] = item; // _isNew é removido pois não está no novo objeto
   } else {
     items.push(item);
   }
-
   closeModal();
   renderItemsTable();
 }
@@ -1107,8 +1114,9 @@ function renderItemsTable() {
       }
     }
 
+    var newBadge = it._isNew ? '<span class="badge-new">NOVO</span>' : '';
     return '<tr>' +
-      '<td class="td-name">' + it.nome + '</td>' +
+      '<td class="td-name">' + it.nome + newBadge + '</td>' +
       '<td>' + tipoB + '</td>' +
       '<td>' + catB + '</td>' +
       '<td class="' + valClass + '">' + valSign + fmtCurrency(it.valor) + '</td>' +
@@ -1152,8 +1160,20 @@ function renderItemsTable() {
   }
 
   tbody.innerHTML = html;
+  updateBadgeButtonVisibility();
 }
-
+function clearAllNewBadges() {
+  items.forEach(function(it) { delete it._isNew; });
+  accounts.forEach(function(a) { delete a._isNew; });
+  renderItemsTable();
+  renderAccountsGrid();
+  saveToStorage();
+}
+function updateBadgeButtonVisibility() {
+  var hasNew = items.some(function(it) { return it._isNew; }) || accounts.some(function(a) { return a._isNew; });
+  var btn = document.getElementById('btn-clear-all-badges');
+  if (btn) btn.style.display = hasNew ? 'inline-block' : 'none';
+}
 // ============================================================
 // PROJECTION ENGINE
 // ============================================================
@@ -2787,11 +2807,10 @@ function _forceSaveFluxo() {
 document.addEventListener('importarDiagnostico', function(e) {
   var itens = e.detail.items || [];
   var contasImport = e.detail.accounts || [];
-
-  // Importar contas/cartões (sem duplicar por nome)
+  // Importar contas/cartões (permite homônimos - usa ID para diferenciar)
   var contasAdicionadas = 0;
   contasImport.forEach(function(acc) {
-    var jaExiste = accounts.some(function(a) { return a.nome === acc.nome; });
+    var jaExiste = accounts.some(function(a) { return a.id === acc.id; });
     if (!jaExiste) {
       accounts.push({
         id: acc.id || generateId(),
@@ -2799,7 +2818,8 @@ document.addEventListener('importarDiagnostico', function(e) {
         tipo: acc.tipo || 'conta',
         fechamento: acc.fechamento || 10,
         vencimento: acc.vencimento || 20,
-        bandeira: acc.bandeira || ''
+        bandeira: acc.bandeira || '',
+        _isNew: true
       });
       contasAdicionadas++;
     }
@@ -2836,7 +2856,8 @@ document.addEventListener('importarDiagnostico', function(e) {
       recInicio: item.recInicio || '',
       recFimTipo: item.recFimTipo || 'nunca',
       recFimQty: item.recFimQty || '',
-      recFimData: item.recFimData || ''
+      recFimData: item.recFimData || '',
+      _isNew: true
     });
   });
   renderItemsTable();
@@ -2845,8 +2866,9 @@ document.addEventListener('importarDiagnostico', function(e) {
     document.getElementById('sim-nome').value = 'Importação Diagnóstico ' + new Date().toLocaleDateString('pt-BR');
     document.getElementById('sim-editing-label').textContent = 'Nova simulação (importada)';
   }
-  saveToStorage();
-  renderSimList();
+  _initDone = true; // Garantir que o save funcione
+  salvarSimulacaoAtual(); // Salva diretamente (cria ou atualiza a simulação)
+  renderSimList(); // Atualiza a lista com a nova simulação
   showEditorView();
   var msg = itens.length + ' item(ns)';
   if (contasAdicionadas > 0) msg += ' e ' + contasAdicionadas + ' conta(s)/cartão(ões)';
