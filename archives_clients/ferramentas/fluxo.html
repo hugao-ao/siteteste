@@ -2897,15 +2897,12 @@ document.addEventListener('importarDiagnostico', function(e) {
   }
 
   // Importar itens (receitas, poupanças, despesas)
+  console.log('[FLUXO IMPORT] contasImport recebidas:', contasImport.length, contasImport.map(function(a){return a.id;}));
+  console.log('[FLUXO IMPORT] accounts no array global:', accounts.length, accounts.map(function(a){return a.id;}));
   itens.forEach(function(item) {
-    // Tentar vincular forma de pagamento ao account importado
+    // formaPagamento já vem mapeado como 'diag_X' pelo mapeador
     var formaPag = item.formaPagamento || '';
-    if (formaPag && contasImport.length > 0) {
-      // formaPagamento já vem mapeado como 'diag_X' do mapeador, ou como ID raw do diagnóstico
-      var fp = String(formaPag);
-      var accMatch = contasImport.find(function(a) { return a.id === fp || a.id === 'diag_' + fp; });
-      if (accMatch) formaPag = accMatch.id;
-    }
+    console.log('[FLUXO IMPORT] item:', item.nome, 'formaPagamento:', formaPag);
     items.push({
       nome: item.nome || 'Item importado',
       valor: item.valor || 0,
