@@ -2814,8 +2814,9 @@ document.addEventListener('importarDiagnostico', function(e) {
     // Tentar vincular forma de pagamento ao account importado
     var formaPag = item.formaPagamento || '';
     if (formaPag && contasImport.length > 0) {
-      // formaPagamento vem como ID do diagnóstico, tentar encontrar o account correspondente
-      var accMatch = contasImport.find(function(a) { return a.id === formaPag || a.id === 'diag_' + formaPag; });
+      // formaPagamento já vem mapeado como 'diag_X' do mapeador, ou como ID raw do diagnóstico
+      var fp = String(formaPag);
+      var accMatch = contasImport.find(function(a) { return a.id === fp || a.id === 'diag_' + fp; });
       if (accMatch) formaPag = accMatch.id;
     }
     items.push({
@@ -2839,7 +2840,14 @@ document.addEventListener('importarDiagnostico', function(e) {
     });
   });
   renderItemsTable();
+  // Se não está editando nenhuma simulação, definir nome padrão
+  if (!editingSimId) {
+    document.getElementById('sim-nome').value = 'Importação Diagnóstico ' + new Date().toLocaleDateString('pt-BR');
+    document.getElementById('sim-editing-label').textContent = 'Nova simulação (importada)';
+  }
   saveToStorage();
+  renderSimList();
+  showEditorView();
   var msg = itens.length + ' item(ns)';
   if (contasAdicionadas > 0) msg += ' e ' + contasAdicionadas + ' conta(s)/cartão(ões)';
   alert(msg + ' importado(s) com sucesso!');
