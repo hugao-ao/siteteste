@@ -2471,9 +2471,14 @@ function renderSimList() {
     var date = new Date(sim.updatedAt).toLocaleDateString('pt-BR');
     var nItens = (sim.payload && sim.payload.itens) ? sim.payload.itens.length : 0;
     var saldo = (sim.payload && sim.payload.saldo_inicial !== undefined) ? 'R$ ' + parseFloat(sim.payload.saldo_inicial || 0).toLocaleString('pt-BR', {minimumFractionDigits:2}) : '';
+    // Contar itens e contas com badge _isNew
+    var newItemsCount = 0;
+    if (sim.payload && sim.payload.itens) { newItemsCount += sim.payload.itens.filter(function(it) { return it._isNew; }).length; }
+    if (sim.payload && sim.payload.contas) { newItemsCount += sim.payload.contas.filter(function(a) { return a._isNew; }).length; }
+    var badgeCountHtml = newItemsCount > 0 ? '<span class="badge-new" style="margin-left:0.5rem;">' + newItemsCount + ' novo' + (newItemsCount > 1 ? 's' : '') + '</span>' : '';
     card.innerHTML = '<div class="sim-card-header" onclick="toggleSimCard(' + sim.id + ')">' +
       '<div class="chevron">\u25bc</div>' +
-      '<div class="sim-card-title">' + escapeHtml(sim.nome || 'Sem nome') + '</div>' +
+      '<div class="sim-card-title">' + escapeHtml(sim.nome || 'Sem nome') + badgeCountHtml + '</div>' +
       '<div class="sim-card-meta">' + nItens + ' itens \u00b7 ' + date + '</div>' +
       '<div class="sim-card-actions" onclick="event.stopPropagation()">' +
         '<button onclick="editarSimulacao(' + sim.id + ')">\u270f\ufe0f Editar</button>' +
