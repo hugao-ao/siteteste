@@ -80,6 +80,61 @@
   .btn-clear-badges { background: transparent; border: 1px solid var(--border); color: var(--muted); font-size: 0.75rem; padding: 0.3rem 0.7rem; border-radius: 6px; cursor: pointer; transition: all 0.2s; }
   .btn-clear-badges:hover { border-color: var(--primary); color: var(--primary); }
 
+  /* === CENÁRIO OTIMIZADO === */
+  .scenario-toggle-bar { display:flex; align-items:center; gap:1rem; flex-wrap:wrap; margin:1.5rem 0 1rem; padding:1rem; background:var(--card2); border:1px solid var(--border); border-radius:var(--radius); }
+  .scenario-toggle-bar label { font-size:0.85rem; color:var(--fg); font-weight:600; cursor:pointer; display:flex; align-items:center; gap:0.5rem; }
+  .scenario-toggle-bar input[type="checkbox"] { accent-color:var(--primary); width:18px; height:18px; }
+  .scenario-legend { display:flex; gap:1rem; flex-wrap:wrap; font-size:0.75rem; color:var(--muted); }
+  .scenario-legend span { display:flex; align-items:center; gap:0.3rem; }
+  .scenario-legend .dot { width:10px; height:10px; border-radius:50%; }
+
+  .ajuste-card { background:var(--card2); border:1px solid var(--border); border-radius:8px; padding:0.75rem 1rem; margin-bottom:0.5rem; }
+  .ajuste-card-header { display:flex; justify-content:space-between; align-items:center; }
+  .ajuste-card-header label { font-size:0.82rem; color:var(--fg); font-weight:600; cursor:pointer; display:flex; align-items:center; gap:0.5rem; }
+  .ajuste-card-header label input[type="checkbox"] { accent-color:var(--primary); }
+  .ajuste-config { margin-top:0.5rem; padding-top:0.5rem; border-top:1px solid rgba(212,175,55,0.1); display:flex; gap:0.75rem; flex-wrap:wrap; align-items:flex-end; }
+  .ajuste-config .field { flex:1; min-width:120px; }
+  .ajuste-config .field label { font-size:0.7rem; color:var(--muted); margin-bottom:0.2rem; display:block; }
+  .ajuste-config .field input, .ajuste-config .field select { background:var(--card); border:1px solid var(--border); border-radius:4px; color:var(--fg); padding:0.3rem 0.5rem; font-size:0.8rem; width:100%; }
+  .ajuste-manual-grid { margin-top:0.5rem; max-height:200px; overflow-y:auto; }
+  .ajuste-manual-grid table { font-size:0.75rem; }
+  .ajuste-manual-grid td { padding:0.25rem 0.4rem; }
+  .ajuste-manual-grid input { width:80px; background:var(--card); border:1px solid var(--border); border-radius:3px; color:var(--fg); padding:0.2rem 0.4rem; font-size:0.75rem; text-align:right; }
+
+  /* === ACOMPANHAMENTO MENSAL === */
+  .tracking-section { margin-top:2rem; border-top:2px solid var(--border); padding-top:1.5rem; }
+  .tracking-header { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem; margin-bottom:1rem; }
+  .tracking-tabs { display:flex; gap:0.3rem; background:var(--card2); border-radius:6px; padding:0.25rem; }
+  .tracking-tab { padding:0.4rem 0.8rem; border-radius:4px; font-size:0.8rem; font-weight:600; cursor:pointer; border:none; background:transparent; color:var(--muted); transition:all 0.15s; }
+  .tracking-tab.active { background:var(--primary); color:#021C0E; }
+  .tracking-month-nav { display:flex; align-items:center; gap:0.5rem; }
+  .tracking-month-nav button { background:var(--card2); border:1px solid var(--border); color:var(--fg); border-radius:4px; padding:0.3rem 0.6rem; cursor:pointer; font-size:0.85rem; }
+  .tracking-month-nav button:hover { border-color:var(--primary); }
+  .tracking-month-nav span { font-size:0.9rem; font-weight:600; color:var(--fg); min-width:120px; text-align:center; }
+  .tracking-bar-chart { display:flex; align-items:flex-end; gap:0.5rem; height:180px; padding:0.5rem 0; }
+  .tracking-bar-group { flex:1; display:flex; flex-direction:column; align-items:center; gap:0.2rem; }
+  .tracking-bar-pair { display:flex; gap:2px; align-items:flex-end; height:150px; }
+  .tracking-bar { width:18px; border-radius:3px 3px 0 0; transition:height 0.3s; position:relative; }
+  .tracking-bar:hover::after { content:attr(data-tooltip); position:absolute; bottom:100%; left:50%; transform:translateX(-50%); background:#052614; border:1px solid var(--border); border-radius:4px; padding:2px 6px; font-size:0.65rem; color:var(--fg); white-space:nowrap; }
+  .tracking-bar-label { font-size:0.65rem; color:var(--muted); text-align:center; max-width:60px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .tracking-table { width:100%; border-collapse:collapse; font-size:0.8rem; margin-top:1rem; }
+  .tracking-table th { background:var(--card2); color:var(--primary); padding:0.5rem; text-align:left; font-size:0.72rem; text-transform:uppercase; }
+  .tracking-table td { padding:0.4rem 0.5rem; border-bottom:1px solid rgba(212,175,55,0.08); }
+  .tracking-indicator { display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:0.4rem; }
+  .tracking-indicator.ok { background:var(--green); }
+  .tracking-indicator.warn { background:var(--orange); }
+  .tracking-indicator.over { background:var(--red); }
+
+  .sheets-help-icon { display:inline-flex; align-items:center; justify-content:center; width:16px; height:16px; background:rgba(255,255,255,0.2); color:#fff; border-radius:50%; font-size:10px; font-weight:bold; cursor:help; margin-left:6px; position:relative; }
+  .sheets-help-icon:hover { background:var(--primary); }
+  .sheets-help-icon .sheets-tooltip { position:absolute; bottom:calc(100% + 8px); left:50%; transform:translateX(-50%); width:380px; background:#052614; border:1px solid var(--border); border-radius:6px; padding:12px; box-shadow:0 10px 15px -3px rgba(0,0,0,0.5); z-index:100; display:none; font-size:0.72rem; color:var(--muted); text-align:left; }
+  .sheets-help-icon:hover .sheets-tooltip { display:block; }
+  .sheets-tooltip-title { font-weight:bold; color:var(--primary); margin-bottom:4px; border-bottom:1px solid var(--border); padding-bottom:3px; }
+  .sheets-tooltip table { width:100%; border-collapse:collapse; margin:6px 0; }
+  .sheets-tooltip th, .sheets-tooltip td { border:1px solid var(--border); padding:3px 5px; text-align:left; font-size:0.68rem; }
+  .sheets-tooltip th { background:rgba(212,175,55,0.1); color:var(--primary); }
+
+
   .table-wrap { overflow-x: auto; border-radius: var(--radius); border: 1px solid var(--border); }
   table { width: 100%; border-collapse: collapse; }
   thead th { background: var(--card2); color: var(--primary); font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; padding: 0.65rem 0.75rem; text-align: left; border-bottom: 1px solid var(--border); white-space: nowrap; }
@@ -430,7 +485,56 @@
 
     <!-- Análise com memória de cálculo -->
       <div class="analise-section" id="analise-section"></div>
-  </div>
+
+    <!-- === CENÁRIO OTIMIZADO: TOGGLE + AJUSTES === -->
+    <div id="scenario-section" style="display:none;">
+      <div class="scenario-toggle-bar">
+        <label><input type="checkbox" id="scenario-enabled" onchange="toggleScenario()"> Simular cenário otimizado</label>
+        <div class="scenario-legend" id="scenario-legend" style="display:none;">
+          <span><span class="dot" style="background:#22c55e;"></span> Saldo atual</span>
+          <span><span class="dot" style="background:rgba(34,197,94,0.5);border:2px dashed #22c55e;"></span> Saldo otimizado</span>
+          <span><span class="dot" style="background:#60a5fa;"></span> Poupança atual</span>
+          <span><span class="dot" style="background:rgba(96,165,250,0.5);border:2px dashed #60a5fa;"></span> Poupança otimizada</span>
+        </div>
+      </div>
+      <div id="scenario-adjustments" style="display:none;"></div>
+    </div>
+
+    <!-- === ACOMPANHAMENTO MENSAL === -->
+    <div class="tracking-section" id="tracking-section" style="display:none;">
+      <div class="tracking-header">
+        <h2 style="margin:0;">Acompanhamento Mensal</h2>
+        <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+          <button class="btn btn-outline btn-sm" onclick="gerarMetas('atual')">Gerar Metas (Cenário Atual)</button>
+          <button class="btn btn-outline btn-sm" onclick="gerarMetas('otimizado')" id="btn-metas-otimizado" style="display:none;">Gerar Metas (Cenário Otimizado)</button>
+          <button class="btn btn-primary btn-sm" onclick="openLancamentoModal()">+ Lançamento Manual</button>
+          <button class="btn btn-outline btn-sm" onclick="openSheetsImport()">Importar Google Sheets
+            <span class="sheets-help-icon">?<span class="sheets-tooltip">
+              <span class="sheets-tooltip-title">Formato da Planilha Google Sheets</span>
+              <p style="margin:4px 0;">A planilha deve estar <strong>compartilhada como "Qualquer pessoa com o link pode ver"</strong>.</p>
+              <p style="margin:4px 0;"><strong>Nome da aba:</strong> <code>Lancamentos</code> (exatamente assim, sem acento)</p>
+              <table>
+                <tr><th>Coluna</th><th>Formato</th><th>Exemplo</th></tr>
+                <tr><td>A - Data</td><td>DD/MM/AAAA</td><td>01/06/2026</td></tr>
+                <tr><td>B - Descrição</td><td>Texto livre</td><td>Supermercado</td></tr>
+                <tr><td>C - Valor</td><td>Número (sem R$)</td><td>450,00</td></tr>
+                <tr><td>D - Categoria</td><td>Texto (ver abaixo)</td><td>Sobrevivência</td></tr>
+                <tr><td>E - Pagamento</td><td>Nome da conta/cartão</td><td>Nubank</td></tr>
+              </table>
+              <p style="margin:4px 0;"><strong>Categorias válidas:</strong> Sobrevivência, Necessidades, Aperfeiçoamento, Dívidas, Conforto/Supérfluo</p>
+              <p style="margin:4px 0;color:var(--orange);"><strong>Importante:</strong> A primeira linha deve ser o cabeçalho (será ignorada).</p>
+            </span></span>
+          </button>
+        </div>
+      </div>
+      <div class="tracking-tabs" id="tracking-tabs" style="display:none;">
+        <button class="tracking-tab active" onclick="setTrackingView('chart')">Gráfico</button>
+        <button class="tracking-tab" onclick="setTrackingView('table')">Tabela</button>
+        <button class="tracking-tab" onclick="setTrackingView('evolution')">Evolução</button>
+      </div>
+      <div id="tracking-content"></div>
+    </div>
+  </div><!-- /result-section -->
   </div><!-- /sim-editor-view -->
  </div>
 <!-- Modal de Item -->
@@ -2938,6 +3042,782 @@ document.addEventListener('importarDiagnostico', function(e) {
   if (contasAdicionadas > 0) msg += ' e ' + contasAdicionadas + ' conta(s)/cartão(ões)';
   alert(msg + ' importado(s) com sucesso!');
 });
+
+
+// ============================================================
+// FEATURE 1: CENÁRIO OTIMIZADO
+// ============================================================
+var scenarioEnabled = false;
+var scenarioAdjustments = []; // [{itemIdx, enabled, strategy, startDate, pctPerMonth, nominalPerMonth, manualValues, targetPct}]
+
+function toggleScenario() {
+  scenarioEnabled = document.getElementById('scenario-enabled').checked;
+  document.getElementById('scenario-legend').style.display = scenarioEnabled ? 'flex' : 'none';
+  document.getElementById('scenario-adjustments').style.display = scenarioEnabled ? 'block' : 'none';
+  document.getElementById('btn-metas-otimizado').style.display = scenarioEnabled ? 'inline-flex' : 'none';
+  if (scenarioEnabled) renderScenarioAdjustments();
+  recalcScenario();
+}
+
+function buildScenarioItems() {
+  // Build list of ALL items that can have adjustments (saida-despesa, saida-poupanca, entrada)
+  var adjustable = [];
+  items.forEach(function(it, idx) {
+    adjustable.push({ idx: idx, item: it });
+  });
+  return adjustable;
+}
+
+function renderScenarioAdjustments() {
+  var container = document.getElementById('scenario-adjustments');
+  var adjustable = buildScenarioItems();
+
+  // Sync scenarioAdjustments with current items
+  adjustable.forEach(function(a) {
+    var existing = scenarioAdjustments.find(function(sa) { return sa.itemIdx === a.idx; });
+    if (!existing) {
+      scenarioAdjustments.push({
+        itemIdx: a.idx,
+        enabled: false,
+        strategy: 'imediato', // imediato, data, gradativo
+        startDate: '',
+        gradType: 'pct', // pct, nominal, manual
+        pctPerMonth: 10,
+        nominalPerMonth: 0,
+        targetPct: 0, // final target reduction % (for display)
+        manualValues: [] // [{date, valor}]
+      });
+    }
+  });
+
+  var html = '<div style="margin-bottom:0.75rem;font-size:0.82rem;color:var(--muted);">Selecione os itens e defina a estratégia de ajuste (redução, aumento ou cancelamento):</div>';
+
+  adjustable.forEach(function(a) {
+    var adj = scenarioAdjustments.find(function(sa) { return sa.itemIdx === a.idx; });
+    var it = a.item;
+    var tipoLabel = it.tipo === 'entrada' ? '↑ Entrada' : (it.subtipo === 'poupanca' ? '↕ Poupança' : '↓ Despesa');
+    var tipoColor = it.tipo === 'entrada' ? 'var(--green)' : (it.subtipo === 'poupanca' ? 'var(--blue)' : 'var(--red)');
+
+    html += '<div class="ajuste-card" id="ajuste-card-' + a.idx + '">';
+    html += '<div class="ajuste-card-header">';
+    html += '<label><input type="checkbox" ' + (adj.enabled ? 'checked' : '') + ' onchange="toggleAjuste(' + a.idx + ', this.checked)"> ';
+    html += '<span style="color:' + tipoColor + ';font-size:0.72rem;font-weight:700;">' + tipoLabel + '</span> ';
+    html += it.nome + ' <span style="color:var(--muted);font-size:0.75rem;">(' + fmtCurrency(it.valor) + ')</span></label>';
+    html += '</div>';
+
+    if (adj.enabled) {
+      html += '<div class="ajuste-config">';
+      // Strategy select
+      html += '<div class="field" style="max-width:140px;"><label>Estratégia</label>';
+      html += '<select onchange="setAjusteStrategy(' + a.idx + ', this.value)">';
+      html += '<option value="imediato"' + (adj.strategy === 'imediato' ? ' selected' : '') + '>Imediato</option>';
+      html += '<option value="data"' + (adj.strategy === 'data' ? ' selected' : '') + '>Data específica</option>';
+      html += '<option value="gradativo"' + (adj.strategy === 'gradativo' ? ' selected' : '') + '>Redução gradativa</option>';
+      html += '</select></div>';
+
+      if (adj.strategy === 'data') {
+        html += '<div class="field" style="max-width:150px;"><label>A partir de</label>';
+        html += '<input type="date" value="' + (adj.startDate || '') + '" onchange="setAjusteDate(' + a.idx + ', this.value)"></div>';
+      }
+
+      if (adj.strategy === 'gradativo') {
+        html += '<div class="field" style="max-width:130px;"><label>Tipo de redução</label>';
+        html += '<select onchange="setAjusteGradType(' + a.idx + ', this.value)">';
+        html += '<option value="pct"' + (adj.gradType === 'pct' ? ' selected' : '') + '>% fixo/mês</option>';
+        html += '<option value="nominal"' + (adj.gradType === 'nominal' ? ' selected' : '') + '>Valor fixo/mês</option>';
+        html += '<option value="manual"' + (adj.gradType === 'manual' ? ' selected' : '') + '>Manual por recorrência</option>';
+        html += '</select></div>';
+
+        if (adj.gradType === 'pct') {
+          html += '<div class="field" style="max-width:100px;"><label>% por mês</label>';
+          html += '<input type="number" min="1" max="100" value="' + (adj.pctPerMonth || 10) + '" onchange="setAjustePct(' + a.idx + ', this.value)"></div>';
+        } else if (adj.gradType === 'nominal') {
+          html += '<div class="field" style="max-width:120px;"><label>Valor R$/mês</label>';
+          html += '<input type="text" value="' + fmtCurrency(adj.nominalPerMonth || 0) + '" oninput="formatCurrencyInput(this)" onchange="setAjusteNominal(' + a.idx + ', this.value)"></div>';
+        } else if (adj.gradType === 'manual') {
+          html += '</div>'; // close ajuste-config
+          html += renderManualGrid(a.idx, adj, it);
+          html += '<div class="ajuste-config" style="display:none;">'; // dummy to close
+        }
+      }
+
+      // Target: final value or cancel
+      if (adj.strategy !== 'gradativo' || adj.gradType !== 'manual') {
+        html += '<div class="field" style="max-width:120px;"><label>Valor final (R$)</label>';
+        var targetVal = it.valor * (1 - (adj.targetPct || 0) / 100);
+        html += '<input type="text" value="' + fmtCurrency(Math.max(0, targetVal)) + '" oninput="formatCurrencyInput(this)" onchange="setAjusteTarget(' + a.idx + ', this.value)"></div>';
+      }
+
+      html += '</div>'; // ajuste-config
+    }
+
+    html += '</div>'; // ajuste-card
+  });
+
+  container.innerHTML = html;
+}
+
+function renderManualGrid(idx, adj, item) {
+  var period = getPeriodDates();
+  if (!period) return '<div style="font-size:0.75rem;color:var(--muted);padding:0.5rem;">Configure o período primeiro.</div>';
+  var occs = getOccurrences(item, period.start, period.end);
+  if (occs.length === 0) return '<div style="font-size:0.75rem;color:var(--muted);padding:0.5rem;">Nenhuma ocorrência no período.</div>';
+
+  // Ensure manualValues has entries for all occurrences
+  while (adj.manualValues.length < occs.length) {
+    adj.manualValues.push({ valor: item.valor });
+  }
+
+  var html = '<div class="ajuste-manual-grid"><table><thead><tr><th>Data</th><th>Valor (R$)</th></tr></thead><tbody>';
+  occs.forEach(function(d, i) {
+    var dateStr = d.toLocaleDateString('pt-BR');
+    var val = adj.manualValues[i] ? adj.manualValues[i].valor : item.valor;
+    html += '<tr><td>' + dateStr + '</td><td><input type="text" value="' + fmtCurrency(val) + '" oninput="formatCurrencyInput(this)" onchange="setManualValue(' + idx + ',' + i + ',this.value)"></td></tr>';
+  });
+  html += '</tbody></table></div>';
+  return html;
+}
+
+function toggleAjuste(idx, checked) {
+  var adj = scenarioAdjustments.find(function(sa) { return sa.itemIdx === idx; });
+  if (adj) adj.enabled = checked;
+  renderScenarioAdjustments();
+  recalcScenario();
+}
+
+function setAjusteStrategy(idx, val) {
+  var adj = scenarioAdjustments.find(function(sa) { return sa.itemIdx === idx; });
+  if (adj) adj.strategy = val;
+  renderScenarioAdjustments();
+  recalcScenario();
+}
+
+function setAjusteDate(idx, val) {
+  var adj = scenarioAdjustments.find(function(sa) { return sa.itemIdx === idx; });
+  if (adj) adj.startDate = val;
+  recalcScenario();
+}
+
+function setAjusteGradType(idx, val) {
+  var adj = scenarioAdjustments.find(function(sa) { return sa.itemIdx === idx; });
+  if (adj) adj.gradType = val;
+  renderScenarioAdjustments();
+  recalcScenario();
+}
+
+function setAjustePct(idx, val) {
+  var adj = scenarioAdjustments.find(function(sa) { return sa.itemIdx === idx; });
+  if (adj) adj.pctPerMonth = parseInt(val) || 10;
+  recalcScenario();
+}
+
+function setAjusteNominal(idx, val) {
+  var adj = scenarioAdjustments.find(function(sa) { return sa.itemIdx === idx; });
+  if (adj) adj.nominalPerMonth = parseCurrency(val);
+  recalcScenario();
+}
+
+function setAjusteTarget(idx, val) {
+  var adj = scenarioAdjustments.find(function(sa) { return sa.itemIdx === idx; });
+  if (!adj) return;
+  var targetVal = parseCurrency(val);
+  var origVal = items[idx].valor;
+  adj.targetPct = origVal > 0 ? Math.max(0, Math.min(100, ((origVal - targetVal) / origVal) * 100)) : 0;
+  recalcScenario();
+}
+
+function setManualValue(idx, occIdx, val) {
+  var adj = scenarioAdjustments.find(function(sa) { return sa.itemIdx === idx; });
+  if (!adj) return;
+  var newVal = parseCurrency(val);
+  adj.manualValues[occIdx] = { valor: newVal };
+  // Propagate to subsequent occurrences
+  for (var i = occIdx + 1; i < adj.manualValues.length; i++) {
+    adj.manualValues[i] = { valor: newVal };
+  }
+  renderScenarioAdjustments();
+  recalcScenario();
+}
+
+function getAdjustedValue(itemIdx, occDate, occNumber) {
+  var adj = scenarioAdjustments.find(function(sa) { return sa.itemIdx === itemIdx && sa.enabled; });
+  if (!adj) return items[itemIdx].valor;
+
+  var origVal = items[itemIdx].valor;
+
+  if (adj.strategy === 'imediato') {
+    return origVal * (1 - (adj.targetPct || 0) / 100);
+  }
+
+  if (adj.strategy === 'data') {
+    if (!adj.startDate) return origVal;
+    var startD = new Date(adj.startDate + 'T00:00');
+    if (occDate < startD) return origVal;
+    return origVal * (1 - (adj.targetPct || 0) / 100);
+  }
+
+  if (adj.strategy === 'gradativo') {
+    if (adj.gradType === 'manual') {
+      if (adj.manualValues[occNumber] !== undefined) return adj.manualValues[occNumber].valor;
+      return origVal;
+    }
+
+    // Calculate months elapsed from first occurrence
+    var monthsElapsed = occNumber; // approximate: each occurrence = 1 step
+    if (adj.gradType === 'pct') {
+      var totalReduction = Math.min(adj.targetPct || 100, (adj.pctPerMonth || 10) * monthsElapsed);
+      return origVal * (1 - totalReduction / 100);
+    }
+    if (adj.gradType === 'nominal') {
+      var totalNominal = (adj.nominalPerMonth || 0) * monthsElapsed;
+      return Math.max(0, origVal - totalNominal);
+    }
+  }
+
+  return origVal;
+}
+
+function recalcScenario() {
+  if (!scenarioEnabled || !chartInstance) return;
+  var period = getPeriodDates();
+  if (!period) return;
+
+  var start = period.start, end = period.end;
+  var saldo = parseCurrency(document.getElementById('saldo-inicial').value);
+  var poupanca = parseCurrency(document.getElementById('poupanca-inicial').value);
+  var poupancaIntocavel = parseCurrency(document.getElementById('poupanca-intocavel').value);
+  if (poupancaIntocavel > poupanca) poupancaIntocavel = poupanca;
+
+  var cartoesMap = {};
+  accounts.forEach(function(acc) { if (acc.tipo === 'cartao') cartoesMap[acc.id] = acc; });
+
+  // Track occurrence number per item
+  var occCount = {};
+  items.forEach(function(it, idx) { occCount[idx] = 0; });
+
+  var events = {};
+  items.forEach(function(item, idx) {
+    var occs = getOccurrences(item, start, end);
+    var isCartao = item.formaPagamento && cartoesMap[item.formaPagamento];
+    occs.forEach(function(d) {
+      var adjustedVal = getAdjustedValue(idx, d, occCount[idx]);
+      occCount[idx]++;
+      var adjustedItem = { tipo: item.tipo, subtipo: item.subtipo, valor: adjustedVal, usarComoComplemento: item.usarComoComplemento, nome: item.nome, formaPagamento: item.formaPagamento };
+      if (isCartao) {
+        var cartao = cartoesMap[item.formaPagamento];
+        var fat = getFaturaKey(d, cartao);
+        var key = isoDate(fat.vencDate);
+        if (fat.vencDate >= start && fat.vencDate <= end) {
+          if (!events[key]) events[key] = [];
+          events[key].push({ tipo: 'saida', subtipo: 'despesa', valor: adjustedVal, _isFatura: true });
+        }
+      } else {
+        var key = isoDate(d);
+        if (!events[key]) events[key] = [];
+        events[key].push(adjustedItem);
+      }
+    });
+  });
+
+  var saldoOpt = [], poupOpt = [];
+  var cur = new Date(start);
+  while (cur <= end) {
+    var key = isoDate(cur);
+    var dayItems = events[key] || [];
+    dayItems.forEach(function(it) {
+      if (it.tipo === 'entrada') { saldo += it.valor; }
+      else if (it.subtipo === 'poupanca') {
+        if (saldo >= it.valor) { saldo -= it.valor; poupanca += it.valor; }
+        else { poupanca += Math.max(0, saldo); saldo = Math.min(0, saldo - it.valor); }
+        if (!it.usarComoComplemento) { poupancaIntocavel += it.valor; if (poupancaIntocavel > poupanca) poupancaIntocavel = poupanca; }
+      } else {
+        saldo -= it.valor;
+        if (saldo < 0) {
+          var poupDisp = Math.max(0, poupanca - poupancaIntocavel);
+          var deficit = Math.abs(saldo);
+          if (poupDisp >= deficit) { poupanca -= deficit; saldo = 0; }
+          else if (poupDisp > 0) { saldo += poupDisp; poupanca -= poupDisp; }
+        }
+      }
+    });
+    saldoOpt.push(parseFloat(saldo.toFixed(2)));
+    poupOpt.push(parseFloat(poupanca.toFixed(2)));
+    cur = addDays(cur, 1);
+  }
+
+  // Update chart with optimized lines
+  var datasets = chartInstance.data.datasets;
+  // Remove old optimized datasets if they exist
+  while (datasets.length > 2) datasets.pop();
+
+  datasets.push({
+    label: 'Saldo Otimizado',
+    data: saldoOpt,
+    borderColor: 'rgba(34,197,94,0.6)',
+    backgroundColor: 'transparent',
+    borderDash: [6, 3],
+    fill: false,
+    tension: 0,
+    pointRadius: 0,
+    pointHoverRadius: 3,
+    borderWidth: 2,
+    hidden: chartView === 'savings'
+  });
+  datasets.push({
+    label: 'Poupança Otimizada',
+    data: poupOpt,
+    borderColor: 'rgba(96,165,250,0.6)',
+    backgroundColor: 'transparent',
+    borderDash: [6, 3],
+    fill: false,
+    tension: 0,
+    pointRadius: 0,
+    pointHoverRadius: 3,
+    borderWidth: 2,
+    hidden: chartView === 'balance'
+  });
+
+  chartInstance.update();
+}
+
+// ============================================================
+// FEATURE 2: ACOMPANHAMENTO MENSAL
+// ============================================================
+var trackingData = {
+  metas: {}, // { 'YYYY-MM': { categoria: valor, ... } }
+  lancamentos: [], // [{ id, data, descricao, valor, categoria, pagamento }]
+  sheetsUrl: ''
+};
+var trackingView = 'chart';
+var trackingMonth = null; // current month being viewed
+
+function setTrackingView(view) {
+  trackingView = view;
+  document.querySelectorAll('.tracking-tab').forEach(function(t) { t.classList.remove('active'); });
+  event.target.classList.add('active');
+  renderTracking();
+}
+
+function gerarMetas(cenario) {
+  var period = getPeriodDates();
+  if (!period) { alert('Configure o período primeiro.'); return; }
+
+  var start = period.start, end = period.end;
+  var metas = {};
+
+  // Generate monthly budgets per category
+  var curMonth = new Date(start.getFullYear(), start.getMonth(), 1);
+  var endMonth = new Date(end.getFullYear(), end.getMonth(), 1);
+
+  while (curMonth <= endMonth) {
+    var monthKey = curMonth.getFullYear() + '-' + String(curMonth.getMonth() + 1).padStart(2, '0');
+    var monthStart = new Date(curMonth);
+    var monthEnd = new Date(curMonth.getFullYear(), curMonth.getMonth() + 1, 0);
+    if (monthStart < start) monthStart = start;
+    if (monthEnd > end) monthEnd = end;
+
+    var catTotals = {};
+    items.forEach(function(item, idx) {
+      if (item.subtipo !== 'despesa') return;
+      var occs = getOccurrences(item, monthStart, monthEnd);
+      var cat = item.categoria || 'sem_categoria';
+      if (!catTotals[cat]) catTotals[cat] = 0;
+
+      if (cenario === 'otimizado' && scenarioEnabled) {
+        var adj = scenarioAdjustments.find(function(sa) { return sa.itemIdx === idx && sa.enabled; });
+        if (adj) {
+          // Use adjusted values
+          occs.forEach(function(d, i) {
+            catTotals[cat] += getAdjustedValue(idx, d, i);
+          });
+        } else {
+          catTotals[cat] += occs.length * item.valor;
+        }
+      } else {
+        catTotals[cat] += occs.length * item.valor;
+      }
+    });
+
+    metas[monthKey] = catTotals;
+    curMonth.setMonth(curMonth.getMonth() + 1);
+  }
+
+  trackingData.metas = metas;
+
+  // Set first month as current
+  var monthKeys = Object.keys(metas).sort();
+  if (monthKeys.length > 0) trackingMonth = monthKeys[0];
+
+  document.getElementById('tracking-section').style.display = 'block';
+  document.getElementById('tracking-tabs').style.display = 'flex';
+  renderTracking();
+  saveToStorage();
+  alert('Metas geradas com sucesso para ' + monthKeys.length + ' mês(es) com base no cenário ' + (cenario === 'otimizado' ? 'otimizado' : 'atual') + '.');
+}
+
+function renderTracking() {
+  var container = document.getElementById('tracking-content');
+  if (!trackingMonth || !trackingData.metas[trackingMonth]) {
+    container.innerHTML = '<div style="text-align:center;color:var(--muted);padding:2rem;">Clique em "Gerar Metas" para começar o acompanhamento.</div>';
+    return;
+  }
+
+  var monthKeys = Object.keys(trackingData.metas).sort();
+  var metas = trackingData.metas[trackingMonth];
+
+  // Filter lancamentos for current month
+  var lancMes = trackingData.lancamentos.filter(function(l) {
+    return l.data && l.data.substring(0, 7) === trackingMonth;
+  });
+
+  // Sum real by category
+  var realPorCat = {};
+  lancMes.forEach(function(l) {
+    var cat = l.categoria || 'sem_categoria';
+    if (!realPorCat[cat]) realPorCat[cat] = 0;
+    realPorCat[cat] += l.valor;
+  });
+
+  var catConfig = {
+    sobrevivencia: { label: 'Sobrevivência', color: '#ef4444' },
+    necessidades: { label: 'Necessidades', color: '#f97316' },
+    aperfeicoamento: { label: 'Aperfeiçoamento', color: '#a78bfa' },
+    dividas: { label: 'Dívidas', color: '#f59e0b' },
+    conforto: { label: 'Conforto/Supérfluo', color: '#60a5fa' },
+    sem_categoria: { label: 'Sem categoria', color: '#6b7280' }
+  };
+
+  var html = '';
+
+  // Month navigation
+  var curIdx = monthKeys.indexOf(trackingMonth);
+  var monthLabel = new Date(trackingMonth + '-15').toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+  html += '<div class="tracking-month-nav" style="margin:1rem 0;">';
+  html += '<button onclick="navTrackingMonth(-1)"' + (curIdx <= 0 ? ' disabled' : '') + '>&laquo;</button>';
+  html += '<span>' + monthLabel.charAt(0).toUpperCase() + monthLabel.slice(1) + '</span>';
+  html += '<button onclick="navTrackingMonth(1)"' + (curIdx >= monthKeys.length - 1 ? ' disabled' : '') + '>&raquo;</button>';
+  html += '</div>';
+
+  if (trackingView === 'chart') {
+    // Bar chart: planejado vs real per category
+    var maxVal = 1;
+    Object.keys(metas).forEach(function(cat) { if (metas[cat] > maxVal) maxVal = metas[cat]; });
+    Object.keys(realPorCat).forEach(function(cat) { if (realPorCat[cat] > maxVal) maxVal = realPorCat[cat]; });
+
+    html += '<div class="tracking-bar-chart">';
+    var catOrder = ['sobrevivencia','necessidades','aperfeicoamento','dividas','conforto','sem_categoria'];
+    catOrder.forEach(function(cat) {
+      if (!metas[cat] && !realPorCat[cat]) return;
+      var cfg = catConfig[cat] || { label: cat, color: '#888' };
+      var metaVal = metas[cat] || 0;
+      var realVal = realPorCat[cat] || 0;
+      var metaH = maxVal > 0 ? Math.max(2, (metaVal / maxVal) * 140) : 2;
+      var realH = maxVal > 0 ? Math.max(2, (realVal / maxVal) * 140) : 2;
+      var realColor = realVal > metaVal * 1.1 ? 'var(--red)' : realVal > metaVal * 0.9 ? 'var(--orange)' : 'var(--green)';
+
+      html += '<div class="tracking-bar-group">';
+      html += '<div class="tracking-bar-pair">';
+      html += '<div class="tracking-bar" style="height:' + metaH + 'px;background:' + cfg.color + ';opacity:0.4;" data-tooltip="Meta: ' + fmtCurrency(metaVal) + '"></div>';
+      html += '<div class="tracking-bar" style="height:' + realH + 'px;background:' + realColor + ';" data-tooltip="Real: ' + fmtCurrency(realVal) + '"></div>';
+      html += '</div>';
+      html += '<div class="tracking-bar-label">' + cfg.label + '</div>';
+      html += '</div>';
+    });
+    html += '</div>';
+    html += '<div style="display:flex;gap:1rem;font-size:0.72rem;color:var(--muted);margin-top:0.5rem;"><span>■ Claro = Meta</span><span>■ Escuro = Real</span></div>';
+
+  } else if (trackingView === 'table') {
+    html += '<table class="tracking-table"><thead><tr><th></th><th>Categoria</th><th>Meta</th><th>Real</th><th>Diferença</th><th>%</th></tr></thead><tbody>';
+    var catOrder = ['sobrevivencia','necessidades','aperfeicoamento','dividas','conforto','sem_categoria'];
+    var totalMeta = 0, totalReal = 0;
+    catOrder.forEach(function(cat) {
+      if (!metas[cat] && !realPorCat[cat]) return;
+      var cfg = catConfig[cat] || { label: cat, color: '#888' };
+      var metaVal = metas[cat] || 0;
+      var realVal = realPorCat[cat] || 0;
+      var diff = realVal - metaVal;
+      var pct = metaVal > 0 ? (realVal / metaVal * 100) : (realVal > 0 ? 999 : 0);
+      var indicator = pct <= 90 ? 'ok' : pct <= 110 ? 'warn' : 'over';
+      totalMeta += metaVal; totalReal += realVal;
+      html += '<tr><td><span class="tracking-indicator ' + indicator + '"></span></td>';
+      html += '<td style="color:' + cfg.color + ';font-weight:600;">' + cfg.label + '</td>';
+      html += '<td>' + fmtCurrency(metaVal) + '</td>';
+      html += '<td>' + fmtCurrency(realVal) + '</td>';
+      html += '<td style="color:' + (diff > 0 ? 'var(--red)' : 'var(--green)') + ';">' + (diff > 0 ? '+' : '') + fmtCurrency(diff) + '</td>';
+      html += '<td>' + pct.toFixed(0) + '%</td></tr>';
+    });
+    html += '<tr style="font-weight:700;border-top:2px solid var(--border);"><td></td><td>TOTAL</td><td>' + fmtCurrency(totalMeta) + '</td><td>' + fmtCurrency(totalReal) + '</td>';
+    var totalDiff = totalReal - totalMeta;
+    html += '<td style="color:' + (totalDiff > 0 ? 'var(--red)' : 'var(--green)') + ';">' + (totalDiff > 0 ? '+' : '') + fmtCurrency(totalDiff) + '</td>';
+    html += '<td>' + (totalMeta > 0 ? (totalReal / totalMeta * 100).toFixed(0) : '0') + '%</td></tr>';
+    html += '</tbody></table>';
+
+  } else if (trackingView === 'evolution') {
+    // Show evolution across months
+    var catOrder = ['sobrevivencia','necessidades','aperfeicoamento','dividas','conforto','sem_categoria'];
+    html += '<div style="overflow-x:auto;"><table class="tracking-table"><thead><tr><th>Mês</th>';
+    catOrder.forEach(function(cat) {
+      if (!catConfig[cat]) return;
+      html += '<th style="color:' + catConfig[cat].color + ';">' + catConfig[cat].label + '</th>';
+    });
+    html += '<th>Total</th></tr></thead><tbody>';
+    monthKeys.forEach(function(mk) {
+      var m = trackingData.metas[mk];
+      var lancM = trackingData.lancamentos.filter(function(l) { return l.data && l.data.substring(0, 7) === mk; });
+      var realM = {};
+      lancM.forEach(function(l) { var c = l.categoria || 'sem_categoria'; realM[c] = (realM[c] || 0) + l.valor; });
+      var mLabel = new Date(mk + '-15').toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' });
+      html += '<tr><td style="font-weight:600;">' + mLabel + '</td>';
+      var totalR = 0;
+      catOrder.forEach(function(cat) {
+        var meta = m[cat] || 0;
+        var real = realM[cat] || 0;
+        totalR += real;
+        var indicator = meta === 0 && real === 0 ? '' : (real <= meta * 0.9 ? 'ok' : real <= meta * 1.1 ? 'warn' : 'over');
+        html += '<td><span class="tracking-indicator ' + indicator + '"></span>' + fmtCurrency(real) + ' <span style="font-size:0.65rem;color:var(--muted);">/ ' + fmtCurrency(meta) + '</span></td>';
+      });
+      html += '<td style="font-weight:700;">' + fmtCurrency(totalR) + '</td></tr>';
+    });
+    html += '</tbody></table></div>';
+  }
+
+  // Lancamentos list
+  html += '<div style="margin-top:1.5rem;"><h3 style="font-size:0.9rem;margin-bottom:0.5rem;">Lançamentos do mês (' + lancMes.length + ')</h3>';
+  if (lancMes.length > 0) {
+    html += '<table class="tracking-table"><thead><tr><th>Data</th><th>Descrição</th><th>Valor</th><th>Categoria</th><th>Pagamento</th><th></th></tr></thead><tbody>';
+    lancMes.sort(function(a,b) { return a.data.localeCompare(b.data); }).forEach(function(l) {
+      var cfg = catConfig[l.categoria] || { label: l.categoria || '—', color: '#888' };
+      html += '<tr><td>' + (l.data ? new Date(l.data + 'T00:00').toLocaleDateString('pt-BR') : '—') + '</td>';
+      html += '<td>' + (l.descricao || '—') + '</td>';
+      html += '<td style="color:var(--red);font-weight:600;">-' + fmtCurrency(l.valor) + '</td>';
+      html += '<td style="color:' + cfg.color + ';">' + cfg.label + '</td>';
+      html += '<td>' + (l.pagamento || '—') + '</td>';
+      html += '<td><button class="btn btn-ghost btn-sm" onclick="editLancamento(\'' + l.id + '\')">✎</button><button class="btn btn-ghost btn-sm" style="color:var(--red);" onclick="deleteLancamento(\'' + l.id + '\')">✕</button></td></tr>';
+    });
+    html += '</tbody></table>';
+  } else {
+    html += '<div style="font-size:0.82rem;color:var(--muted);">Nenhum lançamento neste mês.</div>';
+  }
+  html += '</div>';
+
+  container.innerHTML = html;
+}
+
+function navTrackingMonth(dir) {
+  var monthKeys = Object.keys(trackingData.metas).sort();
+  var curIdx = monthKeys.indexOf(trackingMonth);
+  var newIdx = curIdx + dir;
+  if (newIdx >= 0 && newIdx < monthKeys.length) {
+    trackingMonth = monthKeys[newIdx];
+    renderTracking();
+  }
+}
+
+function openLancamentoModal(editId) {
+  var lanc = editId ? trackingData.lancamentos.find(function(l) { return l.id === editId; }) : null;
+  var catOptions = '<option value="sobrevivencia">Sobrevivência</option><option value="necessidades">Necessidades</option><option value="aperfeicoamento">Aperfeiçoamento</option><option value="dividas">Dívidas</option><option value="conforto">Conforto/Supérfluo</option>';
+  var pagOptions = accounts.map(function(a) { return '<option value="' + a.nome + '">' + a.nome + '</option>'; }).join('');
+
+  var html = '<div class="modal-overlay open" id="lancamento-modal" onclick="if(event.target===this)this.classList.remove(\'open\')">';
+  html += '<div class="modal" style="max-width:500px;">';
+  html += '<div class="modal-header"><h2>' + (lanc ? 'Editar' : 'Novo') + ' Lançamento</h2><button class="btn btn-ghost btn-icon" onclick="document.getElementById(\'lancamento-modal\').remove()">✕</button></div>';
+  html += '<div class="row"><div class="field"><label>Data</label><input type="date" id="lanc-data" value="' + (lanc ? lanc.data : isoDate(new Date())) + '"></div>';
+  html += '<div class="field"><label>Valor (R$)</label><input type="text" id="lanc-valor" value="' + (lanc ? fmtCurrency(lanc.valor) : '') + '" oninput="formatCurrencyInput(this)" placeholder="0,00"></div></div>';
+  html += '<div class="field" style="margin-top:0.75rem;"><label>Descrição</label><input type="text" id="lanc-desc" value="' + (lanc ? lanc.descricao : '') + '" placeholder="Ex: Supermercado"></div>';
+  html += '<div class="row" style="margin-top:0.75rem;"><div class="field"><label>Categoria</label><select id="lanc-cat">' + catOptions + '</select></div>';
+  html += '<div class="field"><label>Forma de Pagamento</label><select id="lanc-pag"><option value="">—</option>' + pagOptions + '</select></div></div>';
+  html += '<div style="margin-top:1.5rem;text-align:right;"><button class="btn btn-primary" onclick="salvarLancamento(\'' + (editId || '') + '\')">Salvar</button></div>';
+  html += '</div></div>';
+
+  document.body.insertAdjacentHTML('beforeend', html);
+  if (lanc) {
+    document.getElementById('lanc-cat').value = lanc.categoria || 'sobrevivencia';
+    document.getElementById('lanc-pag').value = lanc.pagamento || '';
+  }
+}
+
+function editLancamento(id) { openLancamentoModal(id); }
+
+function salvarLancamento(editId) {
+  var data = document.getElementById('lanc-data').value;
+  var valor = parseCurrency(document.getElementById('lanc-valor').value);
+  var desc = document.getElementById('lanc-desc').value.trim();
+  var cat = document.getElementById('lanc-cat').value;
+  var pag = document.getElementById('lanc-pag').value;
+
+  if (!data || !valor) { alert('Preencha data e valor.'); return; }
+
+  if (editId) {
+    var lanc = trackingData.lancamentos.find(function(l) { return l.id === editId; });
+    if (lanc) { lanc.data = data; lanc.valor = valor; lanc.descricao = desc; lanc.categoria = cat; lanc.pagamento = pag; }
+  } else {
+    trackingData.lancamentos.push({ id: 'lanc_' + Date.now(), data: data, valor: valor, descricao: desc, categoria: cat, pagamento: pag });
+  }
+
+  document.getElementById('lancamento-modal').remove();
+  renderTracking();
+  saveToStorage();
+}
+
+function deleteLancamento(id) {
+  if (!confirm('Excluir este lançamento?')) return;
+  trackingData.lancamentos = trackingData.lancamentos.filter(function(l) { return l.id !== id; });
+  renderTracking();
+  saveToStorage();
+}
+
+function openSheetsImport() {
+  var html = '<div class="modal-overlay open" id="sheets-modal" onclick="if(event.target===this)this.classList.remove(\'open\')">';
+  html += '<div class="modal" style="max-width:550px;">';
+  html += '<div class="modal-header"><h2>Importar do Google Sheets</h2><button class="btn btn-ghost btn-icon" onclick="document.getElementById(\'sheets-modal\').remove()">✕</button></div>';
+  html += '<div class="field"><label>URL da Planilha (deve estar pública)</label>';
+  html += '<input type="text" id="sheets-url" value="' + (trackingData.sheetsUrl || '') + '" placeholder="https://docs.google.com/spreadsheets/d/..."></div>';
+  html += '<div style="margin-top:0.75rem;font-size:0.78rem;color:var(--muted);background:rgba(212,175,55,0.05);padding:0.75rem;border-radius:6px;">';
+  html += '<strong style="color:var(--primary);">Requisitos:</strong><br>';
+  html += '• Planilha compartilhada como "Qualquer pessoa com o link pode ver"<br>';
+  html += '• Aba chamada exatamente <code>Lancamentos</code> (sem acento)<br>';
+  html += '• Colunas: A=Data (DD/MM/AAAA), B=Descrição, C=Valor (número), D=Categoria, E=Pagamento<br>';
+  html += '• Primeira linha = cabeçalho (será ignorada)</div>';
+  html += '<div style="margin-top:1.5rem;text-align:right;"><button class="btn btn-primary" onclick="importFromSheets()">Sincronizar</button></div>';
+  html += '</div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+async function importFromSheets() {
+  var url = document.getElementById('sheets-url').value.trim();
+  if (!url) { alert('Cole a URL da planilha.'); return; }
+
+  // Extract spreadsheet ID
+  var match = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
+  if (!match) { alert('URL inválida. Cole o link completo da planilha.'); return; }
+  var sheetId = match[1];
+  trackingData.sheetsUrl = url;
+
+  // Fetch CSV via public export
+  var csvUrl = 'https://docs.google.com/spreadsheets/d/' + sheetId + '/gviz/tq?tqx=out:csv&sheet=Lancamentos';
+
+  try {
+    var resp = await fetch(csvUrl);
+    if (!resp.ok) throw new Error('Erro ao acessar planilha. Verifique se está pública.');
+    var text = await resp.text();
+    var lines = text.split('\n').filter(function(l) { return l.trim(); });
+    if (lines.length <= 1) { alert('Planilha vazia ou sem dados.'); return; }
+
+    var imported = 0;
+    var catMap = {
+      'sobrevivencia': 'sobrevivencia', 'sobrevivência': 'sobrevivencia',
+      'necessidades': 'necessidades', 'necessidade': 'necessidades',
+      'aperfeicoamento': 'aperfeicoamento', 'aperfeiçoamento': 'aperfeicoamento',
+      'dividas': 'dividas', 'dívidas': 'dividas', 'dívida': 'dividas',
+      'conforto': 'conforto', 'conforto/supérfluo': 'conforto', 'supérfluo': 'conforto', 'superfluo': 'conforto'
+    };
+
+    for (var i = 1; i < lines.length; i++) {
+      var cols = parseCSVLine(lines[i]);
+      if (cols.length < 3) continue;
+
+      var dataRaw = cols[0].replace(/"/g, '').trim();
+      var desc = cols[1].replace(/"/g, '').trim();
+      var valorRaw = cols[2].replace(/"/g, '').trim();
+      var catRaw = cols.length > 3 ? cols[3].replace(/"/g, '').trim().toLowerCase() : '';
+      var pagRaw = cols.length > 4 ? cols[4].replace(/"/g, '').trim() : '';
+
+      // Parse date DD/MM/YYYY to YYYY-MM-DD
+      var dateParts = dataRaw.split('/');
+      var dataISO = '';
+      if (dateParts.length === 3) {
+        dataISO = dateParts[2] + '-' + dateParts[1].padStart(2, '0') + '-' + dateParts[0].padStart(2, '0');
+      }
+
+      var valor = parseFloat(valorRaw.replace(/\./g, '').replace(',', '.')) || 0;
+      if (!dataISO || !valor) continue;
+
+      var cat = catMap[catRaw] || 'sem_categoria';
+
+      // Check if already imported (same date + desc + valor)
+      var exists = trackingData.lancamentos.some(function(l) {
+        return l.data === dataISO && l.descricao === desc && Math.abs(l.valor - valor) < 0.01;
+      });
+      if (exists) continue;
+
+      trackingData.lancamentos.push({
+        id: 'lanc_' + Date.now() + '_' + i,
+        data: dataISO,
+        descricao: desc,
+        valor: valor,
+        categoria: cat,
+        pagamento: pagRaw
+      });
+      imported++;
+    }
+
+    document.getElementById('sheets-modal').remove();
+    renderTracking();
+    saveToStorage();
+    alert(imported + ' lançamento(s) importado(s) com sucesso!' + (imported === 0 ? ' (todos já existiam)' : ''));
+  } catch(e) {
+    alert('Erro: ' + e.message);
+  }
+}
+
+function parseCSVLine(line) {
+  var result = [];
+  var current = '';
+  var inQuotes = false;
+  for (var i = 0; i < line.length; i++) {
+    var c = line[i];
+    if (c === '"') { inQuotes = !inQuotes; }
+    else if (c === ',' && !inQuotes) { result.push(current); current = ''; }
+    else { current += c; }
+  }
+  result.push(current);
+  return result;
+}
+
+// Show scenario + tracking sections when results are visible
+var _origCalcFunc = calcular;
+calcular = function() {
+  _origCalcFunc();
+  document.getElementById('scenario-section').style.display = 'block';
+  document.getElementById('tracking-section').style.display = 'block';
+  if (scenarioEnabled) recalcScenario();
+  if (trackingData.metas && Object.keys(trackingData.metas).length > 0) renderTracking();
+};
+
+// Persist tracking data in buildPayload/applyPayload
+var _origBuildPayload = buildPayload;
+buildPayload = function() {
+  var p = _origBuildPayload();
+  p.scenarioAdjustments = scenarioAdjustments;
+  p.scenarioEnabled = scenarioEnabled;
+  p.trackingData = trackingData;
+  return p;
+};
+
+var _origApplyPayload = applyPayload;
+applyPayload = function(data) {
+  var result = _origApplyPayload(data);
+  if (data && data.scenarioAdjustments) {
+    scenarioAdjustments = data.scenarioAdjustments;
+    scenarioEnabled = data.scenarioEnabled || false;
+    document.getElementById('scenario-enabled').checked = scenarioEnabled;
+    if (scenarioEnabled) {
+      document.getElementById('scenario-legend').style.display = 'flex';
+      document.getElementById('scenario-adjustments').style.display = 'block';
+      document.getElementById('btn-metas-otimizado').style.display = 'inline-flex';
+    }
+  }
+  if (data && data.trackingData) {
+    trackingData = data.trackingData;
+    if (trackingData.metas && Object.keys(trackingData.metas).length > 0) {
+      var monthKeys = Object.keys(trackingData.metas).sort();
+      trackingMonth = monthKeys[0];
+      document.getElementById('tracking-section').style.display = 'block';
+      document.getElementById('tracking-tabs').style.display = 'flex';
+    }
+  }
+  return result;
+};
 
 </script>
 </main>
