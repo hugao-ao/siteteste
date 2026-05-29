@@ -9,6 +9,7 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="../assets/importar-diagnostico.js"></script>
+<script src="../assets/dados-compartilhados.js"></script>
     <style>
         /* Specific styles for Oraculo */
         .input-card {
@@ -3412,6 +3413,7 @@
               if (localData) restored = _oracApplyData(localData);
             }
             _oracInitDone = true;
+            if (window.DadosCompartilhados) DadosCompartilhados.init('oraculo');
         });
 
         function renderVerdict(finalWealth, totalInvested, inflationRate, interestRate, goalStats, finalNetBalance, physicalWealth, acquiredAssets, balance, taxRate) {
