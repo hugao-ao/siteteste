@@ -840,8 +840,8 @@
       return;
     }
 
-    // Chamar o callback com os itens selecionados e dados cruzados
-    callbackImportacao(selecionados, dadosParaImportar.dadosCruzados || null);
+    // Chamar o callback com os itens selecionados, dados cruzados e accounts
+    callbackImportacao(selecionados, dadosParaImportar.dadosCruzados || null, dadosParaImportar.accounts || []);
     fecharModalImportacao();
   }
 
@@ -895,10 +895,10 @@
     btn.onmouseout = () => { btn.style.transform = 'scale(1)'; btn.style.boxShadow = '0 4px 15px rgba(212, 175, 55, 0.4)'; };
     
     btn.onclick = function() {
-      abrirModalImportacao(function(itensSelecionados, dadosCruzados) {
+      abrirModalImportacao(function(itensSelecionados, dadosCruzados, accounts) {
         // Disparar evento customizado para a ferramenta processar
         const evento = new CustomEvent('importarDiagnostico', {
-          detail: { items: itensSelecionados, dadosCruzados: dadosCruzados }
+          detail: { items: itensSelecionados, dadosCruzados: dadosCruzados, accounts: accounts || [] }
         });
         document.dispatchEvent(evento);
       });
