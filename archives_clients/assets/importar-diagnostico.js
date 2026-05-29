@@ -225,6 +225,18 @@
         bandeira: cc.tipo_cartao || ''
       }));
 
+      // Mapear formaPagamento das despesas para o ID do account importado (diag_X)
+      itemsDespesa.forEach(item => {
+        if (item.formaPagamento) {
+          const accMatch = accountsImport.find(a => a.id === 'diag_' + item.formaPagamento);
+          if (accMatch) {
+            item.formaPagamento = accMatch.id;
+          } else {
+            item.formaPagamento = ''; // conta não encontrada, limpar
+          }
+        }
+      });
+
       const items = [...itemsReceita, ...itemsPoupanca, ...itemsDespesa];
       const totalReceitas = itemsReceita.length;
       const totalPoupancas = itemsPoupanca.length;
