@@ -890,17 +890,17 @@
     btn.style.cssText = `
       position: fixed;
       bottom: 24px;
-      left: 24px;
-      padding: 0.8rem 1.2rem;
-      background: linear-gradient(135deg, #d4af37, #b8960c);
-      color: #1a1a2e;
-      border: none;
-      border-radius: 10px;
+      right: 220px;
+      padding: 12px 20px;
+      background: linear-gradient(135deg, #0A3520, #052614);
+      color: var(--primary, #d4af37);
+      border: 1px solid rgba(212,175,55,0.4);
+      border-radius: 12px;
       font-weight: 700;
       font-size: 0.9rem;
       cursor: pointer;
       z-index: 9999;
-      box-shadow: 0 4px 15px rgba(212, 175, 55, 0.4);
+      box-shadow: 0 4px 15px rgba(0,0,0,0.3);
       transition: all 0.3s ease;
     `;
     btn.onmouseover = () => { btn.style.transform = 'scale(1.05)'; btn.style.boxShadow = '0 6px 20px rgba(212, 175, 55, 0.6)'; };
