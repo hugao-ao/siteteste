@@ -520,8 +520,10 @@
                 <tr><td>C - Valor</td><td>Número (sem R$)</td><td>450,00</td></tr>
                 <tr><td>D - Categoria</td><td>Texto (ver abaixo)</td><td>Sobrevivência</td></tr>
                 <tr><td>E - Pagamento</td><td>Nome da conta/cartão</td><td>Nubank</td></tr>
+                <tr><td>F - Tipo</td><td>Despesa, Entrada ou Poupança</td><td>Despesa</td></tr>
               </table>
               <p style="margin:4px 0;"><strong>Categorias válidas:</strong> Sobrevivência, Necessidades, Aperfeiçoamento, Dívidas, Conforto/Supérfluo</p>
+              <p style="margin:4px 0;"><strong>Coluna F (Tipo):</strong> Opcional. Se omitida, assume "Despesa".</p>
               <p style="margin:4px 0;color:var(--orange);"><strong>Importante:</strong> A primeira linha deve ser o cabeçalho (será ignorada).</p>
             </span></span>
           </button>
@@ -3417,28 +3419,33 @@ function gerarMetas(cenario) {
     if (monthEnd > end) monthEnd = end;
 
     var catTotals = {};
+    var metaEntradas = 0;
+    var metaPoupanca = 0;
     items.forEach(function(item, idx) {
-      if (item.subtipo !== 'despesa') return;
       var occs = getOccurrences(item, monthStart, monthEnd);
-      var cat = item.categoria || 'sem_categoria';
-      if (!catTotals[cat]) catTotals[cat] = 0;
+      var itemVal = item.valor;
 
       if (cenario === 'otimizado' && scenarioEnabled) {
         var adj = scenarioAdjustments.find(function(sa) { return sa.itemIdx === idx && sa.enabled; });
         if (adj) {
-          // Use adjusted values
-          occs.forEach(function(d, i) {
-            catTotals[cat] += getAdjustedValue(idx, d, i);
-          });
-        } else {
-          catTotals[cat] += occs.length * item.valor;
+          var totalAdj = 0;
+          occs.forEach(function(d, i) { totalAdj += getAdjustedValue(idx, d, i); });
+          itemVal = occs.length > 0 ? totalAdj / occs.length : item.valor;
         }
-      } else {
-        catTotals[cat] += occs.length * item.valor;
+      }
+
+      if (item.tipo === 'entrada') {
+        metaEntradas += occs.length * itemVal;
+      } else if (item.subtipo === 'poupanca') {
+        metaPoupanca += occs.length * itemVal;
+      } else if (item.subtipo === 'despesa') {
+        var cat = item.categoria || 'sem_categoria';
+        if (!catTotals[cat]) catTotals[cat] = 0;
+        catTotals[cat] += occs.length * itemVal;
       }
     });
 
-    metas[monthKey] = catTotals;
+    metas[monthKey] = { categorias: catTotals, entradas: metaEntradas, poupanca: metaPoupanca };
     curMonth.setMonth(curMonth.getMonth() + 1);
   }
 
@@ -3463,19 +3470,31 @@ function renderTracking() {
   }
 
   var monthKeys = Object.keys(trackingData.metas).sort();
-  var metas = trackingData.metas[trackingMonth];
+  var metaObj = trackingData.metas[trackingMonth];
+  // Support both old format (plain object) and new format ({categorias, entradas, poupanca})
+  var metas = metaObj && metaObj.categorias ? metaObj.categorias : (metaObj || {});
+  var metaEntradas = metaObj && metaObj.entradas ? metaObj.entradas : 0;
+  var metaPoupanca = metaObj && metaObj.poupanca ? metaObj.poupanca : 0;
 
   // Filter lancamentos for current month
   var lancMes = trackingData.lancamentos.filter(function(l) {
     return l.data && l.data.substring(0, 7) === trackingMonth;
   });
 
-  // Sum real by category
+  // Sum real by category and tipo
   var realPorCat = {};
+  var realEntradas = 0;
+  var realPoupanca = 0;
   lancMes.forEach(function(l) {
-    var cat = l.categoria || 'sem_categoria';
-    if (!realPorCat[cat]) realPorCat[cat] = 0;
-    realPorCat[cat] += l.valor;
+    if (l.tipo === 'entrada') {
+      realEntradas += l.valor;
+    } else if (l.tipo === 'poupanca') {
+      realPoupanca += l.valor;
+    } else {
+      var cat = l.categoria || 'sem_categoria';
+      if (!realPorCat[cat]) realPorCat[cat] = 0;
+      realPorCat[cat] += l.valor;
+    }
   });
 
   var catConfig = {
@@ -3499,10 +3518,14 @@ function renderTracking() {
   html += '</div>';
 
   if (trackingView === 'chart') {
-    // Bar chart: planejado vs real per category
+    // Bar chart: planejado vs real per category + entradas + poupança
     var maxVal = 1;
     Object.keys(metas).forEach(function(cat) { if (metas[cat] > maxVal) maxVal = metas[cat]; });
     Object.keys(realPorCat).forEach(function(cat) { if (realPorCat[cat] > maxVal) maxVal = realPorCat[cat]; });
+    if (metaEntradas > maxVal) maxVal = metaEntradas;
+    if (realEntradas > maxVal) maxVal = realEntradas;
+    if (metaPoupanca > maxVal) maxVal = metaPoupanca;
+    if (realPoupanca > maxVal) maxVal = realPoupanca;
 
     html += '<div class="tracking-bar-chart">';
     var catOrder = ['sobrevivencia','necessidades','aperfeicoamento','dividas','conforto','sem_categoria'];
@@ -3523,6 +3546,35 @@ function renderTracking() {
       html += '<div class="tracking-bar-label">' + cfg.label + '</div>';
       html += '</div>';
     });
+
+    // Entradas bar
+    if (metaEntradas > 0 || realEntradas > 0) {
+      var entMetaH = maxVal > 0 ? Math.max(2, (metaEntradas / maxVal) * 140) : 2;
+      var entRealH = maxVal > 0 ? Math.max(2, (realEntradas / maxVal) * 140) : 2;
+      var entColor = realEntradas >= metaEntradas * 0.9 ? 'var(--green)' : realEntradas >= metaEntradas * 0.7 ? 'var(--orange)' : 'var(--red)';
+      html += '<div class="tracking-bar-group">';
+      html += '<div class="tracking-bar-pair">';
+      html += '<div class="tracking-bar" style="height:' + entMetaH + 'px;background:#22c55e;opacity:0.4;" data-tooltip="Meta: ' + fmtCurrency(metaEntradas) + '"></div>';
+      html += '<div class="tracking-bar" style="height:' + entRealH + 'px;background:' + entColor + ';" data-tooltip="Real: ' + fmtCurrency(realEntradas) + '"></div>';
+      html += '</div>';
+      html += '<div class="tracking-bar-label">Entradas</div>';
+      html += '</div>';
+    }
+
+    // Poupança bar
+    if (metaPoupanca > 0 || realPoupanca > 0) {
+      var poupMetaH = maxVal > 0 ? Math.max(2, (metaPoupanca / maxVal) * 140) : 2;
+      var poupRealH = maxVal > 0 ? Math.max(2, (realPoupanca / maxVal) * 140) : 2;
+      var poupColor = realPoupanca >= metaPoupanca * 0.9 ? 'var(--green)' : realPoupanca >= metaPoupanca * 0.7 ? 'var(--orange)' : 'var(--red)';
+      html += '<div class="tracking-bar-group">';
+      html += '<div class="tracking-bar-pair">';
+      html += '<div class="tracking-bar" style="height:' + poupMetaH + 'px;background:#60a5fa;opacity:0.4;" data-tooltip="Meta: ' + fmtCurrency(metaPoupanca) + '"></div>';
+      html += '<div class="tracking-bar" style="height:' + poupRealH + 'px;background:' + poupColor + ';" data-tooltip="Real: ' + fmtCurrency(realPoupanca) + '"></div>';
+      html += '</div>';
+      html += '<div class="tracking-bar-label">Poupança</div>';
+      html += '</div>';
+    }
+
     html += '</div>';
     html += '<div style="display:flex;gap:1rem;font-size:0.72rem;color:var(--muted);margin-top:0.5rem;"><span>■ Claro = Meta</span><span>■ Escuro = Real</span></div>';
 
@@ -3546,10 +3598,42 @@ function renderTracking() {
       html += '<td style="color:' + (diff > 0 ? 'var(--red)' : 'var(--green)') + ';">' + (diff > 0 ? '+' : '') + fmtCurrency(diff) + '</td>';
       html += '<td>' + pct.toFixed(0) + '%</td></tr>';
     });
-    html += '<tr style="font-weight:700;border-top:2px solid var(--border);"><td></td><td>TOTAL</td><td>' + fmtCurrency(totalMeta) + '</td><td>' + fmtCurrency(totalReal) + '</td>';
-    var totalDiff = totalReal - totalMeta;
-    html += '<td style="color:' + (totalDiff > 0 ? 'var(--red)' : 'var(--green)') + ';">' + (totalDiff > 0 ? '+' : '') + fmtCurrency(totalDiff) + '</td>';
+    // Subtotal despesas
+    html += '<tr style="font-weight:600;border-top:1px solid var(--border);"><td></td><td>Subtotal Despesas</td><td>' + fmtCurrency(totalMeta) + '</td><td>' + fmtCurrency(totalReal) + '</td>';
+    var subDiff = totalReal - totalMeta;
+    html += '<td style="color:' + (subDiff > 0 ? 'var(--red)' : 'var(--green)') + ';">' + (subDiff > 0 ? '+' : '') + fmtCurrency(subDiff) + '</td>';
     html += '<td>' + (totalMeta > 0 ? (totalReal / totalMeta * 100).toFixed(0) : '0') + '%</td></tr>';
+
+    // Entradas row
+    var entDiff = realEntradas - metaEntradas;
+    var entPct = metaEntradas > 0 ? (realEntradas / metaEntradas * 100) : (realEntradas > 0 ? 999 : 0);
+    var entInd = entPct >= 90 ? 'ok' : entPct >= 70 ? 'warn' : 'over';
+    html += '<tr><td><span class="tracking-indicator ' + entInd + '"></span></td>';
+    html += '<td style="color:#22c55e;font-weight:600;">Entradas</td>';
+    html += '<td>' + fmtCurrency(metaEntradas) + '</td>';
+    html += '<td>' + fmtCurrency(realEntradas) + '</td>';
+    html += '<td style="color:' + (entDiff >= 0 ? 'var(--green)' : 'var(--red)') + ';">' + (entDiff > 0 ? '+' : '') + fmtCurrency(entDiff) + '</td>';
+    html += '<td>' + entPct.toFixed(0) + '%</td></tr>';
+
+    // Poupança row
+    var poupDiff = realPoupanca - metaPoupanca;
+    var poupPct = metaPoupanca > 0 ? (realPoupanca / metaPoupanca * 100) : (realPoupanca > 0 ? 999 : 0);
+    var poupInd = poupPct >= 90 ? 'ok' : poupPct >= 70 ? 'warn' : 'over';
+    html += '<tr><td><span class="tracking-indicator ' + poupInd + '"></span></td>';
+    html += '<td style="color:#60a5fa;font-weight:600;">Poupança</td>';
+    html += '<td>' + fmtCurrency(metaPoupanca) + '</td>';
+    html += '<td>' + fmtCurrency(realPoupanca) + '</td>';
+    html += '<td style="color:' + (poupDiff >= 0 ? 'var(--green)' : 'var(--red)') + ';">' + (poupDiff > 0 ? '+' : '') + fmtCurrency(poupDiff) + '</td>';
+    html += '<td>' + poupPct.toFixed(0) + '%</td></tr>';
+
+    // TOTAL row (despesas + poupança vs entradas)
+    html += '<tr style="font-weight:700;border-top:2px solid var(--border);"><td></td><td>SALDO MENSAL</td>';
+    var saldoMeta = metaEntradas - totalMeta - metaPoupanca;
+    var saldoReal = realEntradas - totalReal - realPoupanca;
+    html += '<td>' + fmtCurrency(saldoMeta) + '</td><td>' + fmtCurrency(saldoReal) + '</td>';
+    var saldoDiff = saldoReal - saldoMeta;
+    html += '<td style="color:' + (saldoDiff >= 0 ? 'var(--green)' : 'var(--red)') + ';">' + (saldoDiff > 0 ? '+' : '') + fmtCurrency(saldoDiff) + '</td>';
+    html += '<td>—</td></tr>';
     html += '</tbody></table>';
 
   } else if (trackingView === 'evolution') {
@@ -3560,12 +3644,19 @@ function renderTracking() {
       if (!catConfig[cat]) return;
       html += '<th style="color:' + catConfig[cat].color + ';">' + catConfig[cat].label + '</th>';
     });
-    html += '<th>Total</th></tr></thead><tbody>';
+    html += '<th style="color:#22c55e;">Entradas</th><th style="color:#60a5fa;">Poupança</th><th>Saldo</th></tr></thead><tbody>';
     monthKeys.forEach(function(mk) {
-      var m = trackingData.metas[mk];
+      var mObj = trackingData.metas[mk];
+      var m = mObj && mObj.categorias ? mObj.categorias : (mObj || {});
+      var mEnt = mObj && mObj.entradas ? mObj.entradas : 0;
+      var mPoup = mObj && mObj.poupanca ? mObj.poupanca : 0;
       var lancM = trackingData.lancamentos.filter(function(l) { return l.data && l.data.substring(0, 7) === mk; });
-      var realM = {};
-      lancM.forEach(function(l) { var c = l.categoria || 'sem_categoria'; realM[c] = (realM[c] || 0) + l.valor; });
+      var realM = {}; var realEnt = 0; var realPoup = 0;
+      lancM.forEach(function(l) {
+        if (l.tipo === 'entrada') { realEnt += l.valor; }
+        else if (l.tipo === 'poupanca') { realPoup += l.valor; }
+        else { var c = l.categoria || 'sem_categoria'; realM[c] = (realM[c] || 0) + l.valor; }
+      });
       var mLabel = new Date(mk + '-15').toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' });
       html += '<tr><td style="font-weight:600;">' + mLabel + '</td>';
       var totalR = 0;
@@ -3576,7 +3667,15 @@ function renderTracking() {
         var indicator = meta === 0 && real === 0 ? '' : (real <= meta * 0.9 ? 'ok' : real <= meta * 1.1 ? 'warn' : 'over');
         html += '<td><span class="tracking-indicator ' + indicator + '"></span>' + fmtCurrency(real) + ' <span style="font-size:0.65rem;color:var(--muted);">/ ' + fmtCurrency(meta) + '</span></td>';
       });
-      html += '<td style="font-weight:700;">' + fmtCurrency(totalR) + '</td></tr>';
+      // Entradas column
+      var entInd2 = mEnt === 0 && realEnt === 0 ? '' : (realEnt >= mEnt * 0.9 ? 'ok' : realEnt >= mEnt * 0.7 ? 'warn' : 'over');
+      html += '<td><span class="tracking-indicator ' + entInd2 + '"></span>' + fmtCurrency(realEnt) + ' <span style="font-size:0.65rem;color:var(--muted);">/ ' + fmtCurrency(mEnt) + '</span></td>';
+      // Poupança column
+      var poupInd2 = mPoup === 0 && realPoup === 0 ? '' : (realPoup >= mPoup * 0.9 ? 'ok' : realPoup >= mPoup * 0.7 ? 'warn' : 'over');
+      html += '<td><span class="tracking-indicator ' + poupInd2 + '"></span>' + fmtCurrency(realPoup) + ' <span style="font-size:0.65rem;color:var(--muted);">/ ' + fmtCurrency(mPoup) + '</span></td>';
+      // Saldo column
+      var saldo = realEnt - totalR - realPoup;
+      html += '<td style="font-weight:700;color:' + (saldo >= 0 ? 'var(--green)' : 'var(--red)') + ';">' + fmtCurrency(saldo) + '</td></tr>';
     });
     html += '</tbody></table></div>';
   }
@@ -3584,15 +3683,19 @@ function renderTracking() {
   // Lancamentos list
   html += '<div style="margin-top:1.5rem;"><h3 style="font-size:0.9rem;margin-bottom:0.5rem;">Lançamentos do mês (' + lancMes.length + ')</h3>';
   if (lancMes.length > 0) {
-    html += '<table class="tracking-table"><thead><tr><th>Data</th><th>Descrição</th><th>Valor</th><th>Categoria</th><th>Pagamento</th><th></th></tr></thead><tbody>';
+    html += '<table class="tracking-table"><thead><tr><th>Tipo</th><th>Data</th><th>Descri\u00e7\u00e3o</th><th>Valor</th><th>Categoria</th><th>Pagamento</th><th></th></tr></thead><tbody>';
     lancMes.sort(function(a,b) { return a.data.localeCompare(b.data); }).forEach(function(l) {
-      var cfg = catConfig[l.categoria] || { label: l.categoria || '—', color: '#888' };
-      html += '<tr><td>' + (l.data ? new Date(l.data + 'T00:00').toLocaleDateString('pt-BR') : '—') + '</td>';
-      html += '<td>' + (l.descricao || '—') + '</td>';
-      html += '<td style="color:var(--red);font-weight:600;">-' + fmtCurrency(l.valor) + '</td>';
-      html += '<td style="color:' + cfg.color + ';">' + cfg.label + '</td>';
-      html += '<td>' + (l.pagamento || '—') + '</td>';
-      html += '<td><button class="btn btn-ghost btn-sm" onclick="editLancamento(\'' + l.id + '\')">✎</button><button class="btn btn-ghost btn-sm" style="color:var(--red);" onclick="deleteLancamento(\'' + l.id + '\')">✕</button></td></tr>';
+      var cfg = catConfig[l.categoria] || { label: l.categoria || '\u2014', color: '#888' };
+      var tipoLabel = l.tipo === 'entrada' ? '<span style="color:var(--green);">Entrada</span>' : l.tipo === 'poupanca' ? '<span style="color:#60a5fa;">Poupan\u00e7a</span>' : '<span style="color:var(--red);">Despesa</span>';
+      var valorColor = l.tipo === 'entrada' ? 'var(--green)' : 'var(--red)';
+      var valorPrefix = l.tipo === 'entrada' ? '+' : '-';
+      html += '<tr><td>' + tipoLabel + '</td>';
+      html += '<td>' + (l.data ? new Date(l.data + 'T00:00').toLocaleDateString('pt-BR') : '\u2014') + '</td>';
+      html += '<td>' + (l.descricao || '\u2014') + '</td>';
+      html += '<td style="color:' + valorColor + ';font-weight:600;">' + valorPrefix + fmtCurrency(l.valor) + '</td>';
+      html += '<td style="color:' + cfg.color + ';">' + (l.tipo === 'despesa' ? cfg.label : '\u2014') + '</td>';
+      html += '<td>' + (l.pagamento || '\u2014') + '</td>';
+      html += '<td><button class="btn btn-ghost btn-sm" onclick="editLancamento(\'' + l.id + '\')">\u270e</button><button class="btn btn-ghost btn-sm" style="color:var(--red);" onclick="deleteLancamento(\'' + l.id + '\')">\u2715</button></td></tr>';
     });
     html += '</tbody></table>';
   } else {
@@ -3618,40 +3721,52 @@ function openLancamentoModal(editId) {
   var catOptions = '<option value="sobrevivencia">Sobrevivência</option><option value="necessidades">Necessidades</option><option value="aperfeicoamento">Aperfeiçoamento</option><option value="dividas">Dívidas</option><option value="conforto">Conforto/Supérfluo</option>';
   var pagOptions = accounts.map(function(a) { return '<option value="' + a.nome + '">' + a.nome + '</option>'; }).join('');
 
+  var tipoOptions = '<option value="despesa">Despesa</option><option value="entrada">Entrada</option><option value="poupanca">Poupan\u00e7a</option>';
+
   var html = '<div class="modal-overlay open" id="lancamento-modal" onclick="if(event.target===this)this.classList.remove(\'open\')">';
   html += '<div class="modal" style="max-width:500px;">';
-  html += '<div class="modal-header"><h2>' + (lanc ? 'Editar' : 'Novo') + ' Lançamento</h2><button class="btn btn-ghost btn-icon" onclick="document.getElementById(\'lancamento-modal\').remove()">✕</button></div>';
-  html += '<div class="row"><div class="field"><label>Data</label><input type="date" id="lanc-data" value="' + (lanc ? lanc.data : isoDate(new Date())) + '"></div>';
+  html += '<div class="modal-header"><h2>' + (lanc ? 'Editar' : 'Novo') + ' Lan\u00e7amento</h2><button class="btn btn-ghost btn-icon" onclick="document.getElementById(\'lancamento-modal\').remove()">\u2715</button></div>';
+  html += '<div class="row"><div class="field"><label>Tipo</label><select id="lanc-tipo" onchange="toggleLancCat()">' + tipoOptions + '</select></div>';
+  html += '<div class="field"><label>Data</label><input type="date" id="lanc-data" value="' + (lanc ? lanc.data : isoDate(new Date())) + '"></div>';
   html += '<div class="field"><label>Valor (R$)</label><input type="text" id="lanc-valor" value="' + (lanc ? fmtCurrency(lanc.valor) : '') + '" oninput="formatCurrencyInput(this)" placeholder="0,00"></div></div>';
-  html += '<div class="field" style="margin-top:0.75rem;"><label>Descrição</label><input type="text" id="lanc-desc" value="' + (lanc ? lanc.descricao : '') + '" placeholder="Ex: Supermercado"></div>';
-  html += '<div class="row" style="margin-top:0.75rem;"><div class="field"><label>Categoria</label><select id="lanc-cat">' + catOptions + '</select></div>';
-  html += '<div class="field"><label>Forma de Pagamento</label><select id="lanc-pag"><option value="">—</option>' + pagOptions + '</select></div></div>';
+  html += '<div class="field" style="margin-top:0.75rem;"><label>Descri\u00e7\u00e3o</label><input type="text" id="lanc-desc" value="' + (lanc ? lanc.descricao : '') + '" placeholder="Ex: Supermercado"></div>';
+  html += '<div class="row" style="margin-top:0.75rem;"><div class="field" id="lanc-cat-wrap"><label>Categoria</label><select id="lanc-cat">' + catOptions + '</select></div>';
+  html += '<div class="field"><label>Forma de Pagamento</label><select id="lanc-pag"><option value="">\u2014</option>' + pagOptions + '</select></div></div>';
   html += '<div style="margin-top:1.5rem;text-align:right;"><button class="btn btn-primary" onclick="salvarLancamento(\'' + (editId || '') + '\')">Salvar</button></div>';
   html += '</div></div>';
 
   document.body.insertAdjacentHTML('beforeend', html);
   if (lanc) {
+    document.getElementById('lanc-tipo').value = lanc.tipo || 'despesa';
     document.getElementById('lanc-cat').value = lanc.categoria || 'sobrevivencia';
     document.getElementById('lanc-pag').value = lanc.pagamento || '';
   }
+  toggleLancCat();
 }
 
 function editLancamento(id) { openLancamentoModal(id); }
 
+function toggleLancCat() {
+  var tipo = document.getElementById('lanc-tipo').value;
+  var catWrap = document.getElementById('lanc-cat-wrap');
+  if (catWrap) catWrap.style.display = tipo === 'despesa' ? '' : 'none';
+}
+
 function salvarLancamento(editId) {
+  var tipo = document.getElementById('lanc-tipo').value;
   var data = document.getElementById('lanc-data').value;
   var valor = parseCurrency(document.getElementById('lanc-valor').value);
   var desc = document.getElementById('lanc-desc').value.trim();
-  var cat = document.getElementById('lanc-cat').value;
+  var cat = tipo === 'despesa' ? document.getElementById('lanc-cat').value : '';
   var pag = document.getElementById('lanc-pag').value;
 
   if (!data || !valor) { alert('Preencha data e valor.'); return; }
 
   if (editId) {
     var lanc = trackingData.lancamentos.find(function(l) { return l.id === editId; });
-    if (lanc) { lanc.data = data; lanc.valor = valor; lanc.descricao = desc; lanc.categoria = cat; lanc.pagamento = pag; }
+    if (lanc) { lanc.tipo = tipo; lanc.data = data; lanc.valor = valor; lanc.descricao = desc; lanc.categoria = cat; lanc.pagamento = pag; }
   } else {
-    trackingData.lancamentos.push({ id: 'lanc_' + Date.now(), data: data, valor: valor, descricao: desc, categoria: cat, pagamento: pag });
+    trackingData.lancamentos.push({ id: 'lanc_' + Date.now(), tipo: tipo, data: data, valor: valor, descricao: desc, categoria: cat, pagamento: pag });
   }
 
   document.getElementById('lancamento-modal').remove();
@@ -3721,6 +3836,8 @@ async function importFromSheets() {
       var valorRaw = cols[2].replace(/"/g, '').trim();
       var catRaw = cols.length > 3 ? cols[3].replace(/"/g, '').trim().toLowerCase() : '';
       var pagRaw = cols.length > 4 ? cols[4].replace(/"/g, '').trim() : '';
+      var tipoRaw = cols.length > 5 ? cols[5].replace(/"/g, '').trim().toLowerCase() : 'despesa';
+      var tipo = tipoRaw === 'entrada' ? 'entrada' : tipoRaw === 'poupanca' || tipoRaw === 'poupan\u00e7a' ? 'poupanca' : 'despesa';
 
       // Parse date DD/MM/YYYY to YYYY-MM-DD
       var dateParts = dataRaw.split('/');
@@ -3742,10 +3859,11 @@ async function importFromSheets() {
 
       trackingData.lancamentos.push({
         id: 'lanc_' + Date.now() + '_' + i,
+        tipo: tipo,
         data: dataISO,
         descricao: desc,
         valor: valor,
-        categoria: cat,
+        categoria: tipo === 'despesa' ? cat : '',
         pagamento: pagRaw
       });
       imported++;
