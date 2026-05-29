@@ -2786,30 +2786,63 @@ function _forceSaveFluxo() {
 // === HANDLER IMPORTAR DIAGNÓSTICO ===
 document.addEventListener('importarDiagnostico', function(e) {
   var itens = e.detail.items || [];
+  var contasImport = e.detail.accounts || [];
+
+  // Importar contas/cartões (sem duplicar por nome)
+  var contasAdicionadas = 0;
+  contasImport.forEach(function(acc) {
+    var jaExiste = accounts.some(function(a) { return a.nome === acc.nome; });
+    if (!jaExiste) {
+      accounts.push({
+        id: acc.id || generateId(),
+        nome: acc.nome,
+        tipo: acc.tipo || 'conta',
+        fechamento: acc.fechamento || 10,
+        vencimento: acc.vencimento || 20,
+        bandeira: acc.bandeira || ''
+      });
+      contasAdicionadas++;
+    }
+  });
+  if (contasAdicionadas > 0) {
+    renderAccountsGrid();
+    updateFormaPagamentoSelect();
+  }
+
+  // Importar itens (receitas, poupanças, despesas)
   itens.forEach(function(item) {
+    // Tentar vincular forma de pagamento ao account importado
+    var formaPag = item.formaPagamento || '';
+    if (formaPag && contasImport.length > 0) {
+      // formaPagamento vem como ID do diagnóstico, tentar encontrar o account correspondente
+      var accMatch = contasImport.find(function(a) { return a.id === formaPag || a.id === 'diag_' + formaPag; });
+      if (accMatch) formaPag = accMatch.id;
+    }
     items.push({
       nome: item.nome || 'Item importado',
       valor: item.valor || 0,
       tipo: item.tipo || 'saida',
       subtipo: item.subtipo || '',
       categoria: item.categoria || '',
-      alteravel: item.alteravel || 'sim',
-      disposto: item.disposto || 'sim',
-      importancia: item.importancia || '4',
-      conforto: item.conforto || '',
-      formaPagamento: item.formaPagamento || '',
+      alteravel: item.alteravel || 'nao',
+      disposto: item.disposto || 'nao',
+      importancia: item.importancia || '5',
+      conforto: item.conforto || '3',
+      formaPagamento: formaPag,
       usarComoComplemento: item.usarComoComplemento || false,
-      recTipo: item.recTipo || 'mensal',
+      recTipo: item.recTipo || 'meses',
       recQty: item.recQty || 1,
       recInicio: item.recInicio || '',
-      recFimTipo: item.recFimTipo || '',
+      recFimTipo: item.recFimTipo || 'nunca',
       recFimQty: item.recFimQty || '',
       recFimData: item.recFimData || ''
     });
   });
   renderItemsTable();
   saveToStorage();
-  alert(itens.length + ' item(ns) importado(s) com sucesso!');
+  var msg = itens.length + ' item(ns)';
+  if (contasAdicionadas > 0) msg += ' e ' + contasAdicionadas + ' conta(s)/cartão(ões)';
+  alert(msg + ' importado(s) com sucesso!');
 });
 
 </script>
