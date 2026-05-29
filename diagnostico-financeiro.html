@@ -1652,6 +1652,23 @@
         margin-left: auto;
       }
     }
+
+    /* Tabelas do Fluxo de Caixa - largura ajustável */
+    #content-fluxo-caixa table {
+      table-layout: fixed;
+      width: 100%;
+    }
+    #content-fluxo-caixa th,
+    #content-fluxo-caixa td {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      position: relative;
+    }
+    #content-fluxo-caixa th {
+      resize: horizontal;
+      overflow: auto;
+      min-width: 60px;
+    }
     
   </style>
 </head>
@@ -1898,12 +1915,12 @@
               <h3 style="color: var(--accent-color); margin: 0; text-align: center; flex-grow: 1;">
                 <i class="fas fa-users"></i> Outras Pessoas com Renda no Planejamento
               </h3>
-              <button type="button" class="section-toggle-btn" id="toggle-pessoas-renda">
+              <button type="button" class="section-toggle-btn collapsed" id="toggle-pessoas-renda">
                 <i class="fas fa-chevron-down"></i>
               </button>
             </div>
             
-            <div class="section-content expanded" id="content-pessoas-renda">
+            <div class="section-content collapsed" id="content-pessoas-renda">
               <div id="pessoas-renda-container">
                 <!-- Pessoas adicionais serão inseridas aqui dinamicamente -->
               </div>
@@ -1926,12 +1943,12 @@
               <h3 style="color: var(--accent-color); margin: 0; text-align: center; flex-grow: 1;">
                 <i class="fas fa-baby"></i> Dependentes
               </h3>
-              <button type="button" class="section-toggle-btn" id="toggle-dependentes">
+              <button type="button" class="section-toggle-btn collapsed" id="toggle-dependentes">
                 <i class="fas fa-chevron-down"></i>
               </button>
             </div>
             
-            <div class="section-content expanded" id="content-dependentes">
+            <div class="section-content collapsed" id="content-dependentes">
               <div id="dependentes-container">
                 <!-- Dependentes serão inseridos aqui dinamicamente -->
               </div>
@@ -1957,12 +1974,12 @@
               <div id="patrimonio-total" class="patrimonio-total" style="margin-right: 1rem;">
                 Total: R$ 0,00
               </div>
-              <button type="button" class="section-toggle-btn" id="toggle-patrimonio-fisico">
+              <button type="button" class="section-toggle-btn collapsed" id="toggle-patrimonio-fisico">
                 <i class="fas fa-chevron-down"></i>
               </button>
             </div>
             
-            <div class="section-content expanded" id="content-patrimonio-fisico">
+            <div class="section-content collapsed" id="content-patrimonio-fisico">
               <div id="patrimonios-container">
                 <!-- Patrimônios serão inseridos aqui dinamicamente -->
               </div>
@@ -1990,12 +2007,12 @@
               <div id="patrimonio-liquido-total" class="patrimonio-total" style="margin-right: 1rem;">
                 Total: R$ 0,00
               </div>
-              <button type="button" class="section-toggle-btn" id="toggle-patrimonio-liquido">
+              <button type="button" class="section-toggle-btn collapsed" id="toggle-patrimonio-liquido">
                 <i class="fas fa-chevron-down"></i>
               </button>
             </div>
             
-            <div class="section-content expanded" id="content-patrimonio-liquido">
+            <div class="section-content collapsed" id="content-patrimonio-liquido">
               <div id="patrimonios-liquidos-container">
                 <!-- Patrimônios líquidos serão inseridos aqui dinamicamente -->
               </div>
@@ -2044,12 +2061,12 @@
               <div id="dividas-total" class="patrimonio-total" style="color: #dc3545; margin-right: 1rem;">
                 Total: R$ 0,00
               </div>
-              <button type="button" class="section-toggle-btn" id="toggle-dividas">
+              <button type="button" class="section-toggle-btn collapsed" id="toggle-dividas">
                 <i class="fas fa-chevron-down"></i>
               </button>
             </div>
             
-            <div class="section-content expanded" id="content-dividas">
+            <div class="section-content collapsed" id="content-dividas">
               <div id="dividas-container">
                 <!-- Dívidas serão inseridas aqui dinamicamente -->
               </div>
@@ -2075,12 +2092,12 @@
               <h3 style="color: var(--accent-color); margin: 0; flex-grow: 1;">
                 <i class="fas fa-gavel"></i> Sucessão Patrimonial
               </h3>
-              <button type="button" class="section-toggle-btn" id="toggle-sucessao">
+              <button type="button" class="section-toggle-btn collapsed" id="toggle-sucessao">
                 <i class="fas fa-chevron-down"></i>
               </button>
             </div>
             
-            <div class="section-content expanded" id="content-sucessao">
+            <div class="section-content collapsed" id="content-sucessao">
               <div id="sucessao-container">
                 <!-- Cálculos de sucessão serão inseridos aqui dinamicamente -->
               </div>
@@ -2104,12 +2121,12 @@
                 <div style="font-size: 0.8rem; color: var(--text-light);">Mensal: R$ 0,00</div>
                 <div style="font-size: 1rem; color: var(--accent-color); font-weight: bold;">Anual: R$ 0,00</div>
               </div>
-              <button type="button" class="section-toggle-btn" id="toggle-produtos-protecao">
+              <button type="button" class="section-toggle-btn collapsed" id="toggle-produtos-protecao">
                 <i class="fas fa-chevron-down"></i>
               </button>
             </div>
             
-            <div class="section-content expanded" id="content-produtos-protecao">
+            <div class="section-content collapsed" id="content-produtos-protecao">
               <div id="produtos-protecao-container">
                 <!-- Produtos de proteção serão inseridos aqui dinamicamente -->
               </div>
@@ -2133,12 +2150,12 @@
               <h3 style="color: var(--accent-color); margin: 0; flex-grow: 1;">
                 <i class="fas fa-file-invoice-dollar"></i> Imposto de Renda
               </h3>
-              <button type="button" class="section-toggle-btn" id="toggle-ir">
+              <button type="button" class="section-toggle-btn collapsed" id="toggle-ir">
                 <i class="fas fa-chevron-down"></i>
               </button>
             </div>
             
-            <div class="section-content expanded" id="content-ir">
+            <div class="section-content collapsed" id="content-ir">
               <div id="ir-container">
                 <!-- Os cards de IR serão renderizados aqui dinamicamente -->
                 <p style="text-align: center; color: var(--text-light); opacity: 0.7;">
@@ -2161,12 +2178,12 @@
               <h3 style="color: var(--accent-color); margin: 0; flex-grow: 1;">
                 <i class="fas fa-credit-card"></i> Contas & Cartões de Crédito
               </h3>
-              <button type="button" class="section-toggle-btn" id="toggle-contas-cartoes">
+              <button type="button" class="section-toggle-btn collapsed" id="toggle-contas-cartoes">
                 <i class="fas fa-chevron-down"></i>
               </button>
             </div>
             
-            <div class="section-content expanded" id="content-contas-cartoes">
+            <div class="section-content collapsed" id="content-contas-cartoes">
               <div id="contas-cartoes-container">
                 <!-- Contas e cartões serão inseridos aqui dinamicamente -->
               </div>
@@ -2192,12 +2209,12 @@
               <h3 style="color: var(--accent-color); margin: 0; flex-grow: 1;">
                 <i class="fas fa-chart-line"></i> Fluxo de Caixa
               </h3>
-              <button type="button" class="section-toggle-btn" id="toggle-fluxo-caixa">
+              <button type="button" class="section-toggle-btn collapsed" id="toggle-fluxo-caixa">
                 <i class="fas fa-chevron-down"></i>
               </button>
             </div>
             
-            <div class="section-content expanded" id="content-fluxo-caixa">
+            <div class="section-content collapsed" id="content-fluxo-caixa">
               <div id="fluxo-caixa-container">
                 <!-- Fluxo de caixa será renderizado aqui dinamicamente -->
               </div>
@@ -2217,12 +2234,12 @@
               <h3 style="color: var(--accent-color); margin: 0; flex-grow: 1;">
                 <i class="fas fa-bullseye"></i> Objetivos Financeiros
               </h3>
-              <button type="button" class="section-toggle-btn" id="toggle-objetivos">
+              <button type="button" class="section-toggle-btn collapsed" id="toggle-objetivos">
                 <i class="fas fa-chevron-down"></i>
               </button>
             </div>
             
-            <div class="section-content expanded" id="content-objetivos">
+            <div class="section-content collapsed" id="content-objetivos">
               <div id="objetivos-container">
                 <!-- Objetivos serão renderizados aqui dinamicamente -->
               </div>
@@ -2242,12 +2259,12 @@
               <h3 style="color: var(--accent-color); margin: 0; flex-grow: 1;">
                 <i class="fas fa-user-circle"></i> Perfil Financeiro
               </h3>
-              <button type="button" class="section-toggle-btn" id="toggle-perfil-financeiro">
+              <button type="button" class="section-toggle-btn collapsed" id="toggle-perfil-financeiro">
                 <i class="fas fa-chevron-down"></i>
               </button>
             </div>
             
-            <div class="section-content expanded" id="content-perfil-financeiro">
+            <div class="section-content collapsed" id="content-perfil-financeiro">
               <div id="perfil-financeiro-container">
                 <!-- Perfil financeiro será renderizado aqui dinamicamente -->
               </div>
@@ -2266,12 +2283,12 @@
               <h3 style="color: var(--accent-color); margin: 0; flex-grow: 1;">
                 <i class="fas fa-handshake"></i> Adesão
               </h3>
-              <button type="button" class="section-toggle-btn" id="toggle-adesao-plano">
+              <button type="button" class="section-toggle-btn collapsed" id="toggle-adesao-plano">
                 <i class="fas fa-chevron-down"></i>
               </button>
             </div>
             
-            <div class="section-content expanded" id="content-adesao-plano">
+            <div class="section-content collapsed" id="content-adesao-plano">
               <div id="adesao-plano-container">
                 <!-- Adesão será renderizada aqui dinamicamente -->
               </div>
