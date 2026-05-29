@@ -393,7 +393,7 @@
               <th>Início</th>
               <th>Fim</th>
               <th>Alterável</th>
-              <th>Disposto</th>
+              <th>Disposição</th>
               <th>Importância</th>
               <th>Conforto</th>
               <th></th>
@@ -511,10 +511,11 @@
               </div>
             </div>
             <div>
-              <div class="modal-section-title" style="margin-bottom:0.5rem;">Disposto a alterar?</div>
+              <div class="modal-section-title" style="margin-bottom:0.5rem;">Disposição</div>
               <div class="radio-group" id="rg-disposto">
-                <button class="radio-btn" data-val="sim" onclick="setRadio('disposto','sim',this)">Sim</button>
-                <button class="radio-btn" data-val="nao" onclick="setRadio('disposto','nao',this)">Não</button>
+                <button class="radio-btn" id="btn-disp-alteraria" data-val="alteraria" onclick="setRadio('disposto','alteraria',this)">Alteraria</button>
+                <button class="radio-btn" data-val="cancelaria" onclick="setRadio('disposto','cancelaria',this)">Cancelaria</button>
+                <button class="radio-btn" data-val="nao" onclick="setRadio('disposto','nao',this)">Não quer/pode mexer</button>
               </div>
             </div>
           </div>
@@ -924,6 +925,7 @@ function openModal(index) {
     if (it.categoria) setRadioByVal('categoria', it.categoria);
     if (it.alteravel) setRadioByVal('alteravel', it.alteravel);
     if (it.disposto) setRadioByVal('disposto', it.disposto);
+    updateDisposicaoOptions();
     if (it.importancia) setRadioByVal('importancia', it.importancia);
     if (it.conforto) setRadioByVal('conforto', it.conforto);
     updateFormaPagamentoSelect();
@@ -970,8 +972,27 @@ function setRadio(group, val, btn) {
   } else {
     btn.classList.add('active');
   }
+  if (group === 'alteravel') {
+    updateDisposicaoOptions();
+  }
 }
-
+function updateDisposicaoOptions() {
+  var btnAlteraria = document.getElementById('btn-disp-alteraria');
+  if (!btnAlteraria) return;
+  if (radioState.alteravel === 'nao') {
+    btnAlteraria.disabled = true;
+    btnAlteraria.style.opacity = '0.3';
+    btnAlteraria.style.cursor = 'not-allowed';
+    if (radioState.disposto === 'alteraria') {
+      radioState.disposto = '';
+      btnAlteraria.classList.remove('active');
+    }
+  } else {
+    btnAlteraria.disabled = false;
+    btnAlteraria.style.opacity = '1';
+    btnAlteraria.style.cursor = 'pointer';
+  }
+}
 function setRadioByVal(group, val) {
   var btn = document.querySelector('#rg-' + group + ' [data-val="' + val + '"]');
   if (btn) setRadio(group, val, btn);
@@ -1101,7 +1122,9 @@ function renderItemsTable() {
     var valClass = it.tipo === 'entrada' ? 'td-val-pos' : 'td-val-neg';
     var valSign = it.tipo === 'entrada' ? '+' : '-';
     var altB = it.alteravel ? '<span class="badge ' + (it.alteravel==='sim'?'badge-green':'badge-muted') + '">' + (it.alteravel==='sim'?'Sim':'Não') + '</span>' : '—';
-    var dispB = it.disposto ? '<span class="badge ' + (it.disposto==='sim'?'badge-green':'badge-orange') + '">' + (it.disposto==='sim'?'Sim':'Não') + '</span>' : '—';
+    var dispLabels = { alteraria: 'Alteraria', cancelaria: 'Cancelaria', nao: 'Não mexe', sim: 'Alteraria' };
+    var dispColors = { alteraria: 'badge-green', cancelaria: 'badge-red', nao: 'badge-orange', sim: 'badge-green' };
+    var dispB = it.disposto ? '<span class="badge ' + (dispColors[it.disposto] || 'badge-muted') + '">' + (dispLabels[it.disposto] || it.disposto) + '</span>' : '—';
     var impB = it.importancia ? '<span class="' + IMPORTANCIA_CLASSES[it.importancia] + '" style="font-size:0.78rem;font-weight:600;">' + IMPORTANCIA_LABELS[it.importancia] + '</span>' : '—';
     var confB = it.conforto ? '<span class="' + CONFORTO_CLASSES[it.conforto] + '" style="font-size:0.78rem;font-weight:600;">' + CONFORTO_LABELS[it.conforto] + '</span>' : '—';
     var inicioFmt = it.recInicio ? new Date(it.recInicio+'T00:00').toLocaleDateString('pt-BR') : '—';
@@ -1874,7 +1897,8 @@ function calcPotencialAjuste(it, totalItem, totalEntradas, totalDespesas) {
   if (it.importancia) score += PESO_IMPORTANCIA[it.importancia] || 0;
   if (it.conforto) score += PESO_CONFORTO[it.conforto] || 0;
   if (it.alteravel === 'sim') score += 1.5;
-  if (it.disposto === 'sim') score += 2;
+  var pesoDisp = { alteraria: 2, cancelaria: 3, sim: 2, nao: 0 };
+  score += pesoDisp[it.disposto] || 0;
   // Participação sobre as entradas (peso máx 2): quanto maior a fatia das entradas, mais impacto tem a redução
   var pctEnt = (totalEntradas && totalItem) ? (totalItem / totalEntradas) : 0;
   var pesoParticipacaoEnt = Math.min(2, pctEnt * 20); // 10% das entradas já dá peso máximo 2
@@ -1883,8 +1907,8 @@ function calcPotencialAjuste(it, totalItem, totalEntradas, totalDespesas) {
   var pctDesp = (totalDespesas && totalItem) ? (totalItem / totalDespesas) : 0;
   var pesoParticipacaoDesp = Math.min(1, pctDesp * 5); // 20% das despesas já dá peso máximo 1
   score += pesoParticipacaoDesp;
-  // Máximo possível: 4 + 4 + 4 + 1.5 + 2 + 2 + 1 = 18.5
-  var maxPossivel = 18.5;
+  // Máximo possível: 4 + 4 + 4 + 1.5 + 3 + 2 + 1 = 19.5
+  var maxPossivel = 19.5;
   return Math.min(10, (score / maxPossivel) * 10);
 }
 
@@ -1993,7 +2017,8 @@ function renderAnalise(totaisPorItem, totalEntradas, totalPoupancaFluxo, totalDe
       // Flags
       html += '<div class="item-flags" style="margin-top:0.3rem;justify-content:flex-end;">';
       if (d.item.alteravel === 'sim') html += '<span class="flag-ajustavel">Alterável</span>';
-      if (d.item.disposto === 'sim') html += '<span class="flag-disposto">Disposto</span>';
+      if (d.item.disposto === 'alteraria' || d.item.disposto === 'sim') html += '<span class="flag-disposto">Alteraria</span>';
+      if (d.item.disposto === 'cancelaria') html += '<span class="flag-disposto" style="background:rgba(239,68,68,0.12);color:var(--red);">Cancelaria</span>';
       if (d.item.conforto && parseInt(d.item.conforto) >= 4) html += '<span class="flag-conforto">Conforto ' + CONFORTO_LABELS[d.item.conforto] + '</span>';
       if (d.item.importancia && parseInt(d.item.importancia) >= 6) html += '<span class="flag-alerta">' + IMPORTANCIA_LABELS[d.item.importancia] + '</span>';
       html += '</div>';
@@ -2016,6 +2041,27 @@ function renderAnalise(totaisPorItem, totalEntradas, totalPoupancaFluxo, totalDe
         d._score = calcPotencialAjuste(d.item, d.total, totalEntradas, totalDespesas);
         d._pctReducao = calcPercentualReducao(d._score); // 5–100
         d._fatorReducao = d._pctReducao / 100;
+        // Definir recomendação com base na disposição e alterabilidade
+        var it = d.item;
+        if (it.alteravel === 'nao' && it.disposto === 'nao') {
+          d._recomendacao = 'nenhuma';
+          d._pctReducao = 0;
+          d._fatorReducao = 0;
+        } else if (it.disposto === 'nao' && it.alteravel === 'sim') {
+          d._recomendacao = 'nenhuma';
+          d._pctReducao = 0;
+          d._fatorReducao = 0;
+        } else if (it.disposto === 'cancelaria' && it.importancia && parseInt(it.importancia) >= 5) {
+          d._recomendacao = 'cancelar';
+          d._pctReducao = 100;
+          d._fatorReducao = 1;
+        } else if (it.disposto === 'cancelaria') {
+          d._recomendacao = 'cancelar';
+          d._pctReducao = Math.max(50, d._pctReducao);
+          d._fatorReducao = d._pctReducao / 100;
+        } else {
+          d._recomendacao = 'reduzir';
+        }
       });
 
       // Resumo: economia total considerando os percentuais individuais
@@ -2061,9 +2107,16 @@ function renderAnalise(totaisPorItem, totalEntradas, totalPoupancaFluxo, totalDe
         var recLabel = recTipo === 'nao' ? 'único' :
           'a cada ' + recQty + ' ' + REC_LABELS[recTipo];
 
-        var pctTag = pctReducao === 100
-          ? '<span style="background:var(--red);color:#fff;font-size:0.7rem;font-weight:700;padding:0.1rem 0.4rem;border-radius:4px;margin-left:0.4rem;">−100% (eliminar)</span>'
-          : '<span style="background:rgba(245,158,11,0.2);color:var(--orange);font-size:0.7rem;font-weight:700;padding:0.1rem 0.4rem;border-radius:4px;margin-left:0.4rem;">−' + pctReducao + '% sugerido</span>';
+        var pctTag = '';
+        if (d._recomendacao === 'nenhuma') {
+          pctTag = '<span style="background:rgba(255,255,255,0.08);color:var(--muted);font-size:0.7rem;font-weight:600;padding:0.1rem 0.4rem;border-radius:4px;margin-left:0.4rem;">sem recomendação</span>';
+        } else if (d._recomendacao === 'cancelar') {
+          pctTag = '<span style="background:var(--red);color:#fff;font-size:0.7rem;font-weight:700;padding:0.1rem 0.4rem;border-radius:4px;margin-left:0.4rem;">CANCELAR</span>';
+        } else if (pctReducao === 100) {
+          pctTag = '<span style="background:var(--red);color:#fff;font-size:0.7rem;font-weight:700;padding:0.1rem 0.4rem;border-radius:4px;margin-left:0.4rem;">−100% (eliminar)</span>';
+        } else {
+          pctTag = '<span style="background:rgba(245,158,11,0.2);color:var(--orange);font-size:0.7rem;font-weight:700;padding:0.1rem 0.4rem;border-radius:4px;margin-left:0.4rem;">−' + pctReducao + '% sugerido</span>';
+        }
 
         html += '<div style="padding:0.5rem 0;border-bottom:1px solid rgba(212,175,55,0.06);">';
 
@@ -2073,7 +2126,8 @@ function renderAnalise(totaisPorItem, totalEntradas, totalPoupancaFluxo, totalDe
         html += '<span style="color:' + sc + ';font-weight:700;font-size:0.82rem;">score ' + score.toFixed(1) + ' &nbsp;·&nbsp; total no período: ' + fmtCurrency(d.total) + '</span>';
         html += '</div>';
 
-        // Linha 2: tabela comparativa
+        // Linha 2: tabela comparativa (só mostra se houver recomendação)
+        if (d._recomendacao !== 'nenhuma') {
         html += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0.5rem;font-size:0.8rem;">';
 
         // Coluna: Por ocorrência
@@ -2119,6 +2173,7 @@ function renderAnalise(totaisPorItem, totalEntradas, totalPoupancaFluxo, totalDe
         }
 
         html += '</div>'; // grid
+        } // fim if recomendacao !== nenhuma
         html += '</div>'; // item
       });
 
@@ -2145,7 +2200,8 @@ function renderAnalise(totaisPorItem, totalEntradas, totalPoupancaFluxo, totalDe
         var pImp = it.importancia ? (PESO_IMPORTANCIA[it.importancia] || 0) : 0;
         var pConf = it.conforto ? (PESO_CONFORTO[it.conforto] || 0) : 0;
         var pAlt = it.alteravel === 'sim' ? 1.5 : 0;
-        var pDisp = it.disposto === 'sim' ? 2 : 0;
+        var pesoDispMap = { alteraria: 2, cancelaria: 3, sim: 2, nao: 0 };
+        var pDisp = pesoDispMap[it.disposto] || 0;
 
         // Participação sobre entradas e despesas
         var pctEntItem = totalEntradas > 0 ? (d.total / totalEntradas) : 0;
@@ -2153,7 +2209,7 @@ function renderAnalise(totaisPorItem, totalEntradas, totalPoupancaFluxo, totalDe
         var pParticEnt = Math.min(2, pctEntItem * 20);
         var pParticDesp = Math.min(1, pctDespItem * 5);
 
-        var maxPossivel = 18.5;
+        var maxPossivel = 19.5;
 
         var catLabels = { sobrevivencia:'Sobrevivência', necessidades:'Necessidades/Prioridades', aperfeicoamento:'Aperfeiçoamento', dividas:'Dívidas', conforto:'Conforto/Supérfluo' };
         var impLabels = { '1':'Mais importante de todos','2':'Muito importante','3':'Importante','4':'Preferível ter','5':'Indiferente','6':'Preferível não ter','7':'Inaceitável' };
@@ -2162,7 +2218,13 @@ function renderAnalise(totaisPorItem, totalEntradas, totalPoupancaFluxo, totalDe
         html += '<div style="margin-bottom:1.25rem;padding:0.75rem;background:rgba(255,255,255,0.02);border-radius:8px;border-left:3px solid ' + sc + ';">';
         html += '<div style="font-weight:700;color:#fff;margin-bottom:0.6rem;font-size:0.9rem;">' + it.nome;
         html += ' <span style="color:' + sc + ';font-size:0.8rem;">score: ' + scoreFinal.toFixed(1) + ' / 10</span>';
-        html += ' <span style="font-size:0.78rem;color:var(--orange);font-weight:600;">→ redução sugerida: ' + pctReducao + '%</span>';
+        if (d._recomendacao === 'cancelar') {
+          html += ' <span style="font-size:0.78rem;color:var(--red);font-weight:700;">→ SUGESTÃO: CANCELAR</span>';
+        } else if (d._recomendacao === 'nenhuma') {
+          html += ' <span style="font-size:0.78rem;color:var(--muted);font-weight:600;">→ sem recomendação de alteração</span>';
+        } else {
+          html += ' <span style="font-size:0.78rem;color:var(--orange);font-weight:600;">→ redução sugerida: ' + pctReducao + '%</span>';
+        }
         html += '</div>';
 
         // Tabela de componentes
@@ -2180,7 +2242,7 @@ function renderAnalise(totaisPorItem, totalEntradas, totalPoupancaFluxo, totalDe
           { criterio: 'Importância', valor: impLabels[it.importancia] || '—', peso: pImp, max: 4 },
           { criterio: 'Nível de conforto', valor: confLabels[it.conforto] || '—', peso: pConf, max: 4 },
           { criterio: 'Alterável?', valor: it.alteravel === 'sim' ? 'Sim' : 'Não', peso: pAlt, max: 1.5 },
-          { criterio: 'Disposto a alterar?', valor: it.disposto === 'sim' ? 'Sim' : 'Não', peso: pDisp, max: 2 },
+          { criterio: 'Disposição', valor: ({alteraria:'Alteraria',cancelaria:'Cancelaria',nao:'Não quer/pode mexer',sim:'Alteraria'})[it.disposto] || '—', peso: pDisp, max: 3 },
           { criterio: 'Participação sobre entradas', valor: fmtPct(pctEntItem * 100) + ' das entradas (' + fmtCurrency(d.total) + ')', peso: pParticEnt, max: 2 },
           { criterio: 'Participação sobre despesas', valor: fmtPct(pctDespItem * 100) + ' das despesas', peso: pParticDesp, max: 1 }
         ];
