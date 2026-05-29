@@ -88,14 +88,18 @@
   .scenario-legend span { display:flex; align-items:center; gap:0.3rem; }
   .scenario-legend .dot { width:10px; height:10px; border-radius:50%; }
 
-  .ajuste-card { background:var(--card2); border:1px solid var(--border); border-radius:8px; padding:0.75rem 1rem; margin-bottom:0.5rem; }
-  .ajuste-card-header { display:flex; justify-content:space-between; align-items:center; }
-  .ajuste-card-header label { font-size:0.82rem; color:var(--fg); font-weight:600; cursor:pointer; display:flex; align-items:center; gap:0.5rem; }
-  .ajuste-card-header label input[type="checkbox"] { accent-color:var(--primary); }
-  .ajuste-config { margin-top:0.5rem; padding-top:0.5rem; border-top:1px solid rgba(212,175,55,0.1); display:flex; gap:0.75rem; flex-wrap:wrap; align-items:flex-end; }
-  .ajuste-config .field { flex:1; min-width:120px; }
-  .ajuste-config .field label { font-size:0.7rem; color:var(--muted); margin-bottom:0.2rem; display:block; }
-  .ajuste-config .field input, .ajuste-config .field select { background:var(--card); border:1px solid var(--border); border-radius:4px; color:var(--fg); padding:0.3rem 0.5rem; font-size:0.8rem; width:100%; }
+  .ajuste-table { width:100%; border-collapse:collapse; font-size:0.78rem; }
+  .ajuste-table th { text-align:left; font-size:0.68rem; text-transform:uppercase; color:var(--muted); padding:0.3rem 0.5rem; border-bottom:1px solid var(--border); }
+  .ajuste-table td { padding:0.35rem 0.5rem; border-bottom:1px solid rgba(212,175,55,0.08); vertical-align:middle; }
+  .ajuste-table tr:hover { background:rgba(212,175,55,0.03); }
+  .ajuste-table input[type="checkbox"] { accent-color:var(--primary); }
+  .ajuste-table select, .ajuste-table input[type="text"], .ajuste-table input[type="number"], .ajuste-table input[type="date"] { background:var(--card); border:1px solid var(--border); border-radius:4px; color:var(--fg); padding:0.2rem 0.4rem; font-size:0.75rem; }
+  .ajuste-table select { max-width:130px; }
+  .ajuste-table .tipo-badge { font-size:0.65rem; font-weight:700; padding:0.1rem 0.3rem; border-radius:3px; }
+  .ajuste-expand { margin-top:0.3rem; padding:0.4rem 0.75rem; background:var(--card2); border-radius:6px; border:1px solid var(--border); }
+  .ajuste-expand .field { display:inline-block; margin-right:0.75rem; }
+  .ajuste-expand .field label { font-size:0.68rem; color:var(--muted); margin-bottom:0.15rem; display:block; }
+  .ajuste-expand .field input, .ajuste-expand .field select { background:var(--card); border:1px solid var(--border); border-radius:4px; color:var(--fg); padding:0.2rem 0.4rem; font-size:0.75rem; }
   .ajuste-manual-grid { margin-top:0.5rem; max-height:200px; overflow-y:auto; }
   .ajuste-manual-grid table { font-size:0.75rem; }
   .ajuste-manual-grid td { padding:0.25rem 0.4rem; }
@@ -3092,70 +3096,65 @@ function renderScenarioAdjustments() {
     }
   });
 
-  var html = '<div style="margin-bottom:0.75rem;font-size:0.82rem;color:var(--muted);">Selecione os itens e defina a estratégia de ajuste (redução, aumento ou cancelamento):</div>';
+  var html = '<table class="ajuste-table"><thead><tr><th></th><th>Tipo</th><th>Item</th><th>Valor atual</th><th>Estratégia</th><th>Detalhes</th><th>Valor final</th></tr></thead><tbody>';
 
   adjustable.forEach(function(a) {
     var adj = scenarioAdjustments.find(function(sa) { return sa.itemIdx === a.idx; });
     var it = a.item;
-    var tipoLabel = it.tipo === 'entrada' ? '↑ Entrada' : (it.subtipo === 'poupanca' ? '↕ Poupança' : '↓ Despesa');
-    var tipoColor = it.tipo === 'entrada' ? 'var(--green)' : (it.subtipo === 'poupanca' ? 'var(--blue)' : 'var(--red)');
+    var tipoLabel = it.tipo === 'entrada' ? 'Entrada' : (it.subtipo === 'poupanca' ? 'Poupança' : 'Despesa');
+    var tipoColor = it.tipo === 'entrada' ? 'var(--green)' : (it.subtipo === 'poupanca' ? '#60a5fa' : 'var(--red)');
 
-    html += '<div class="ajuste-card" id="ajuste-card-' + a.idx + '">';
-    html += '<div class="ajuste-card-header">';
-    html += '<label><input type="checkbox" ' + (adj.enabled ? 'checked' : '') + ' onchange="toggleAjuste(' + a.idx + ', this.checked)"> ';
-    html += '<span style="color:' + tipoColor + ';font-size:0.72rem;font-weight:700;">' + tipoLabel + '</span> ';
-    html += it.nome + ' <span style="color:var(--muted);font-size:0.75rem;">(' + fmtCurrency(it.valor) + ')</span></label>';
-    html += '</div>';
+    html += '<tr id="ajuste-row-' + a.idx + '">';
+    html += '<td><input type="checkbox" ' + (adj.enabled ? 'checked' : '') + ' onchange="toggleAjuste(' + a.idx + ', this.checked)"></td>';
+    html += '<td><span class="tipo-badge" style="color:' + tipoColor + ';">' + tipoLabel + '</span></td>';
+    html += '<td style="font-weight:600;">' + it.nome + '</td>';
+    html += '<td>' + fmtCurrency(it.valor) + '</td>';
 
     if (adj.enabled) {
-      html += '<div class="ajuste-config">';
-      // Strategy select
-      html += '<div class="field" style="max-width:140px;"><label>Estratégia</label>';
-      html += '<select onchange="setAjusteStrategy(' + a.idx + ', this.value)">';
+      // Strategy
+      html += '<td><select onchange="setAjusteStrategy(' + a.idx + ', this.value)" style="width:120px;">';
       html += '<option value="imediato"' + (adj.strategy === 'imediato' ? ' selected' : '') + '>Imediato</option>';
       html += '<option value="data"' + (adj.strategy === 'data' ? ' selected' : '') + '>Data específica</option>';
-      html += '<option value="gradativo"' + (adj.strategy === 'gradativo' ? ' selected' : '') + '>Redução gradativa</option>';
-      html += '</select></div>';
+      html += '<option value="gradativo"' + (adj.strategy === 'gradativo' ? ' selected' : '') + '>Gradativo</option>';
+      html += '</select></td>';
 
+      // Details column
+      html += '<td style="font-size:0.72rem;">';
       if (adj.strategy === 'data') {
-        html += '<div class="field" style="max-width:150px;"><label>A partir de</label>';
-        html += '<input type="date" value="' + (adj.startDate || '') + '" onchange="setAjusteDate(' + a.idx + ', this.value)"></div>';
-      }
-
-      if (adj.strategy === 'gradativo') {
-        html += '<div class="field" style="max-width:130px;"><label>Tipo de redução</label>';
-        html += '<select onchange="setAjusteGradType(' + a.idx + ', this.value)">';
-        html += '<option value="pct"' + (adj.gradType === 'pct' ? ' selected' : '') + '>% fixo/mês</option>';
-        html += '<option value="nominal"' + (adj.gradType === 'nominal' ? ' selected' : '') + '>Valor fixo/mês</option>';
-        html += '<option value="manual"' + (adj.gradType === 'manual' ? ' selected' : '') + '>Manual por recorrência</option>';
-        html += '</select></div>';
-
+        html += '<input type="date" value="' + (adj.startDate || '') + '" onchange="setAjusteDate(' + a.idx + ', this.value)" style="width:130px;">';
+      } else if (adj.strategy === 'gradativo') {
+        html += '<select onchange="setAjusteGradType(' + a.idx + ', this.value)" style="width:100px;margin-right:4px;">';
+        html += '<option value="pct"' + (adj.gradType === 'pct' ? ' selected' : '') + '>%/mês</option>';
+        html += '<option value="nominal"' + (adj.gradType === 'nominal' ? ' selected' : '') + '>R$/mês</option>';
+        html += '<option value="manual"' + (adj.gradType === 'manual' ? ' selected' : '') + '>Manual</option>';
+        html += '</select>';
         if (adj.gradType === 'pct') {
-          html += '<div class="field" style="max-width:100px;"><label>% por mês</label>';
-          html += '<input type="number" min="1" max="100" value="' + (adj.pctPerMonth || 10) + '" onchange="setAjustePct(' + a.idx + ', this.value)"></div>';
+          html += '<input type="number" min="1" max="100" value="' + (adj.pctPerMonth || 10) + '" onchange="setAjustePct(' + a.idx + ', this.value)" style="width:50px;">%';
         } else if (adj.gradType === 'nominal') {
-          html += '<div class="field" style="max-width:120px;"><label>Valor R$/mês</label>';
-          html += '<input type="text" value="' + fmtCurrency(adj.nominalPerMonth || 0) + '" oninput="formatCurrencyInput(this)" onchange="setAjusteNominal(' + a.idx + ', this.value)"></div>';
-        } else if (adj.gradType === 'manual') {
-          html += '</div>'; // close ajuste-config
-          html += renderManualGrid(a.idx, adj, it);
-          html += '<div class="ajuste-config" style="display:none;">'; // dummy to close
+          html += '<input type="text" value="' + fmtCurrency(adj.nominalPerMonth || 0) + '" oninput="formatCurrencyInput(this)" onchange="setAjusteNominal(' + a.idx + ', this.value)" style="width:80px;">';
+        } else {
+          html += '<button class="btn btn-ghost btn-sm" onclick="openManualGrid(' + a.idx + ')">Editar</button>';
         }
+      } else {
+        html += '<span style="color:var(--muted);">—</span>';
       }
+      html += '</td>';
 
-      // Target: final value or cancel
+      // Target value
       if (adj.strategy !== 'gradativo' || adj.gradType !== 'manual') {
-        html += '<div class="field" style="max-width:120px;"><label>Valor final (R$)</label>';
         var targetVal = it.valor * (1 - (adj.targetPct || 0) / 100);
-        html += '<input type="text" value="' + fmtCurrency(Math.max(0, targetVal)) + '" oninput="formatCurrencyInput(this)" onchange="setAjusteTarget(' + a.idx + ', this.value)"></div>';
+        html += '<td><input type="text" value="' + fmtCurrency(Math.max(0, targetVal)) + '" oninput="formatCurrencyInput(this)" onchange="setAjusteTarget(' + a.idx + ', this.value)" style="width:90px;"></td>';
+      } else {
+        html += '<td style="color:var(--muted);font-size:0.72rem;">via grid</td>';
       }
-
-      html += '</div>'; // ajuste-config
+    } else {
+      html += '<td colspan="3" style="color:var(--muted);font-size:0.72rem;">—</td>';
     }
 
-    html += '</div>'; // ajuste-card
+    html += '</tr>';
   });
 
+  html += '</tbody></table>';
   container.innerHTML = html;
 }
 
@@ -3178,6 +3177,21 @@ function renderManualGrid(idx, adj, item) {
   });
   html += '</tbody></table></div>';
   return html;
+}
+
+function openManualGrid(idx) {
+  var adj = scenarioAdjustments.find(function(sa) { return sa.itemIdx === idx; });
+  if (!adj) return;
+  var it = items[idx];
+  var gridHtml = renderManualGrid(idx, adj, it);
+  var html = '<div class="modal-overlay open" id="manual-grid-modal" onclick="if(event.target===this)this.classList.remove(\'open\')">';
+  html += '<div class="modal" style="max-width:400px;">';
+  html += '<div class="modal-header"><h2>Valores por recorrência — ' + it.nome + '</h2><button class="btn btn-ghost btn-icon" onclick="document.getElementById(\'manual-grid-modal\').remove()">✕</button></div>';
+  html += '<div style="font-size:0.75rem;color:var(--muted);margin-bottom:0.5rem;">Edite um valor e os seguintes serão atualizados automaticamente.</div>';
+  html += gridHtml;
+  html += '<div style="margin-top:1rem;text-align:right;"><button class="btn btn-primary" onclick="document.getElementById(\'manual-grid-modal\').remove(); recalcScenario();">Fechar</button></div>';
+  html += '</div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
 }
 
 function toggleAjuste(idx, checked) {
