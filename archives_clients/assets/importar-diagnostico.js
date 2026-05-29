@@ -102,58 +102,140 @@
 
     // FLUXO: Importa receitas e despesas do diagnóstico
     fluxo: function(diag) {
+      const anoVigente = new Date().getFullYear();
       const fluxoData = diag.fluxo_caixa || {};
-      const receitas = fluxoData.receitas || [];
-      const despesas = fluxoData.despesas || [];
+      let receitas = fluxoData.receitas || [];
+      let despesas = fluxoData.despesas || [];
+      if (!Array.isArray(receitas)) receitas = Object.values(receitas);
+      if (!Array.isArray(despesas)) despesas = Object.values(despesas);
 
-      if (receitas.length === 0 && despesas.length === 0) {
-        return { items: [], mensagem: 'Nenhum dado de fluxo de caixa encontrado no diagnóstico.' };
+      // Mapear und_recorrencia do diagnóstico para recTipo da ferramenta
+      function mapRecTipo(und) {
+        const map = { dia: 'dias', semana: 'semanas', mes: 'meses', ano: 'meses' };
+        return map[und] || 'meses';
       }
+      // Mapear qtd_recorrencia considerando que 'ano' no diagnóstico = 12 meses na ferramenta
+      function mapRecQty(qtd, und) {
+        if (und === 'ano') return 12; // anual = a cada 12 meses
+        return qtd || 1;
+      }
+      // Determinar se é anual
+      function isAnual(und) { return und === 'ano'; }
 
-      const itemsReceita = receitas.map(r => ({
-        nome: r.nome || 'Receita importada',
-        valor: r.valor || 0,
-        tipo: 'entrada',
-        subtipo: '',
-        categoria: '',
-        alteravel: 'nao',
-        disposto: 'nao',
-        importancia: '7',
-        conforto: '',
-        formaPagamento: '',
-        usarComoComplemento: false,
-        recTipo: r.tipo || 'mensal',
-        recQty: r.qtd_recorrencia || 1,
-        recInicio: '',
-        recFimTipo: '',
-        recFimQty: '',
-        recFimData: '',
-        titular: r.titular || ''
+      // === RECEITAS (entradas) ===
+      const itemsReceita = receitas.filter(r => !r.automatica).map(r => {
+        const anual = isAnual(r.und_recorrencia);
+        const dataInicio = anual ? `${anoVigente}-12-01` : `${anoVigente}-01-01`;
+        return {
+          nome: r.nome || 'Receita importada',
+          valor: r.valor || 0,
+          tipo: 'entrada',
+          subtipo: '',
+          categoria: '',
+          alteravel: 'nao',
+          disposto: 'nao',
+          importancia: '5',
+          conforto: '3',
+          formaPagamento: '',
+          usarComoComplemento: false,
+          recTipo: mapRecTipo(r.und_recorrencia),
+          recQty: mapRecQty(r.qtd_recorrencia, r.und_recorrencia),
+          recInicio: dataInicio,
+          recFimTipo: 'nunca',
+          recFimQty: '',
+          recFimData: '',
+          titular: r.titular || ''
+        };
+      });
+
+      // === DESPESAS (saídas - poupança) ===
+      // Identificar aportes/investimentos como poupança
+      const patrimoniosLiquidos = diag.patrimonios_liquidos || [];
+      const itemsPoupanca = [];
+      const plArray = Array.isArray(patrimoniosLiquidos) ? patrimoniosLiquidos : Object.values(patrimoniosLiquidos);
+      plArray.forEach(pl => {
+        const aporteValor = parseFloat(pl.aporte_valor) || 0;
+        const aporteFreq = pl.aporte_frequencia || 'NENHUM';
+        if (aporteValor > 0 && aporteFreq !== 'NENHUM') {
+          const anual = aporteFreq === 'ANUAL';
+          const dataInicio = anual ? `${anoVigente}-12-20` : `${anoVigente}-01-20`;
+          const nomeProd = pl.nome_produto_customizado || pl.tipo_produto_nome || 'Investimento';
+          const inst = pl.instituicao_nome || '';
+          itemsPoupanca.push({
+            nome: `Aporte - ${nomeProd}${inst ? ' (' + inst + ')' : ''}`,
+            valor: aporteValor,
+            tipo: 'saida',
+            subtipo: 'poupanca',
+            categoria: '',
+            alteravel: 'nao',
+            disposto: 'nao',
+            importancia: '5',
+            conforto: '3',
+            formaPagamento: '',
+            usarComoComplemento: false,
+            recTipo: anual ? 'meses' : 'meses',
+            recQty: anual ? 12 : 1,
+            recInicio: dataInicio,
+            recFimTipo: 'nunca',
+            recFimQty: '',
+            recFimData: '',
+            titular: ''
+          });
+        }
+      });
+
+      // === DESPESAS (saídas - despesas) ===
+      const itemsDespesa = despesas.filter(d => !d.automatica).map(d => {
+        const anual = isAnual(d.und_recorrencia);
+        const dataInicio = anual ? `${anoVigente}-12-20` : `${anoVigente}-01-20`;
+        return {
+          nome: d.nome || 'Despesa importada',
+          valor: d.valor || 0,
+          tipo: 'saida',
+          subtipo: 'despesa',
+          categoria: 'sobrevivencia',
+          alteravel: 'nao',
+          disposto: 'nao',
+          importancia: '5',
+          conforto: '3',
+          formaPagamento: d.forma_pagamento || '',
+          usarComoComplemento: false,
+          recTipo: mapRecTipo(d.und_recorrencia),
+          recQty: mapRecQty(d.qtd_recorrencia, d.und_recorrencia),
+          recInicio: dataInicio,
+          recFimTipo: 'nunca',
+          recFimQty: '',
+          recFimData: '',
+          titular: d.titular || ''
+        };
+      });
+
+      // === CONTAS E CARTÕES ===
+      let contasCartoes = diag.contas_cartoes || [];
+      if (!Array.isArray(contasCartoes)) {
+        if (contasCartoes.contasCartoes) contasCartoes = contasCartoes.contasCartoes;
+        else contasCartoes = Object.values(contasCartoes);
+      }
+      const accountsImport = contasCartoes.map(cc => ({
+        id: 'diag_' + (cc.id || Math.random().toString(36).slice(2,8)),
+        nome: (cc.tipo === 'cartao' ? 'Cartão ' : 'Conta ') + (cc.instituicao || '#' + cc.id),
+        tipo: cc.tipo || 'conta',
+        fechamento: 10,
+        vencimento: 20,
+        bandeira: cc.tipo_cartao || ''
       }));
 
-      const itemsDespesa = despesas.map(d => ({
-        nome: d.nome || 'Despesa importada',
-        valor: d.valor || 0,
-        tipo: 'saida',
-        subtipo: '',
-        categoria: d.categoria_comportamental || '',
-        alteravel: 'sim',
-        disposto: 'sim',
-        importancia: d.nivel_importancia ? String(d.nivel_importancia) : '4',
-        conforto: '',
-        formaPagamento: d.forma_pagamento || '',
-        usarComoComplemento: false,
-        recTipo: d.tipo || 'mensal',
-        recQty: d.qtd_recorrencia || 1,
-        recInicio: '',
-        recFimTipo: '',
-        recFimQty: '',
-        recFimData: '',
-        titular: d.titular || ''
-      }));
+      const items = [...itemsReceita, ...itemsPoupanca, ...itemsDespesa];
+      const totalReceitas = itemsReceita.length;
+      const totalPoupancas = itemsPoupanca.length;
+      const totalDespesas = itemsDespesa.length;
+      const totalContas = accountsImport.length;
 
-      const items = [...itemsReceita, ...itemsDespesa];
-      return { items, mensagem: `${receitas.length} receita(s) e ${despesas.length} despesa(s) encontrada(s).` };
+      return {
+        items,
+        accounts: accountsImport,
+        mensagem: `${totalReceitas} receita(s), ${totalPoupancas} poupança(s), ${totalDespesas} despesa(s) e ${totalContas} conta(s)/cartão(ões) encontrado(s).`
+      };
     },
 
     // PATRIMÔNIO: Importa patrimônios líquidos e físicos
@@ -716,7 +798,8 @@
       case 'juros':
         return `Saldo: R$ ${(item.saldoDevedor || 0).toLocaleString('pt-BR')} | Parcela: R$ ${(item.parcela || 0).toLocaleString('pt-BR')} | Taxa: ${item.taxaFixa || 0}% ${item.taxaTipo || 'a.a.'}`;
       case 'fluxo':
-        return `${item.tipo === 'entrada' ? '📈 Receita' : '📉 Despesa'} | R$ ${(item.valor || 0).toLocaleString('pt-BR')} | ${item.categoria || 'Sem categoria'}`;
+        var tipoLabel = item.tipo === 'entrada' ? '📈 Receita' : (item.subtipo === 'poupanca' ? '💰 Poupança' : '📉 Despesa');
+        return `${tipoLabel} | R$ ${(item.valor || 0).toLocaleString('pt-BR')} | ${item.recTipo || ''} | ${item.categoria || item.subtipo || ''}`;
       case 'patrimonio':
         return `${item.tipo_ativo} | R$ ${(item.valor_atual || 0).toLocaleString('pt-BR')} | Aporte: R$ ${(item.aporte_mensal || 0).toLocaleString('pt-BR')}/mês`;
       case 'cartoes':
