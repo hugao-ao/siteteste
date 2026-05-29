@@ -9,6 +9,7 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="../assets/importar-diagnostico.js"></script>
+<script src="../assets/dados-compartilhados.js"></script>
 <style>
 /* ── RESET & BASE ─────────────────────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -2917,6 +2918,7 @@ confirmFlowDelModal = function() {
     renderTable();
     renderChart();
     _simInitDone = true;
+    if (window.DadosCompartilhados) DadosCompartilhados.init('simulador');
 })();
 
 function _globalSaveFeedback() {
