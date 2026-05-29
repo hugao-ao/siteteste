@@ -311,7 +311,6 @@ function addDespesa() {
     forma_pagamento: '',
     titular: '',
     categoria_comportamental: '',
-    nivel_importancia: '',
     automatica: false,
     origem: null
   };
@@ -1074,7 +1073,6 @@ function renderFluxoCaixa() {
               <th style="padding: 0.6rem; text-align: left; border: 1px solid var(--border-color);">Recorrência</th>
               <th style="padding: 0.6rem; text-align: left; border: 1px solid var(--border-color);">Forma Pgto</th>
               <th style="padding: 0.6rem; text-align: left; border: 1px solid var(--border-color);">Categoria</th>
-              <th style="padding: 0.6rem; text-align: left; border: 1px solid var(--border-color);">Import.</th>
               <th style="padding: 0.6rem; text-align: left; border: 1px solid var(--border-color);">Dono</th>
               <th style="padding: 0.6rem; text-align: center; border: 1px solid var(--border-color); width: 60px;">Ações</th>
             </tr>
@@ -1082,7 +1080,7 @@ function renderFluxoCaixa() {
           <tbody>
             ${despesas.length === 0 ? `
               <tr>
-                <td colspan="9" style="padding: 1rem; text-align: center; color: var(--text-light); opacity: 0.7; border: 1px solid var(--border-color);">
+                <td colspan="8" style="padding: 1rem; text-align: center; color: var(--text-light); opacity: 0.7; border: 1px solid var(--border-color);">
                   Nenhuma despesa cadastrada. Clique em "Adicionar Despesa" ou "Sincronizar Despesas Automáticas".
                 </td>
               </tr>
@@ -1149,20 +1147,7 @@ function renderFluxoCaixa() {
                       <option value="conforto" ${despesa.categoria_comportamental === 'conforto' ? 'selected' : ''}>Conforto/Supérfluo</option>
                     </select>
                   </td>
-                  <td style="padding: 0.4rem; border: 1px solid var(--border-color); width: 80px;">
-                    <select onchange="updateDespesaField(${despesa.id}, 'nivel_importancia', this.value)"
-                            style="width: 100%; padding: 0.4rem; border: 1px solid var(--border-color); border-radius: 4px; background: var(--dark-bg); color: var(--text-light); font-size: 0.8rem;"
-                            ${despesa.automatica ? 'disabled' : ''}>
-                      <option value="" ${!despesa.nivel_importancia ? 'selected' : ''}>-</option>
-                      <option value="1" ${despesa.nivel_importancia == '1' ? 'selected' : ''}>1</option>
-                      <option value="2" ${despesa.nivel_importancia == '2' ? 'selected' : ''}>2</option>
-                      <option value="3" ${despesa.nivel_importancia == '3' ? 'selected' : ''}>3</option>
-                      <option value="4" ${despesa.nivel_importancia == '4' ? 'selected' : ''}>4</option>
-                      <option value="5" ${despesa.nivel_importancia == '5' ? 'selected' : ''}>5</option>
-                      <option value="6" ${despesa.nivel_importancia == '6' ? 'selected' : ''}>6</option>
-                      <option value="7" ${despesa.nivel_importancia == '7' ? 'selected' : ''}>7</option>
-                    </select>
-                  </td>
+
                   <td style="padding: 0.4rem; border: 1px solid var(--border-color); width: 100px; font-size: 0.85rem;">
                     ${titularNome}
                   </td>
