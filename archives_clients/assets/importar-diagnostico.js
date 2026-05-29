@@ -193,7 +193,7 @@
           valor: d.valor || 0,
           tipo: 'saida',
           subtipo: 'despesa',
-          categoria: 'sobrevivencia',
+          categoria: d.categoria_comportamental || 'sobrevivencia',
           alteravel: 'nao',
           disposto: 'nao',
           importancia: '5',
