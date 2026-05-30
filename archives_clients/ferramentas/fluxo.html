@@ -298,6 +298,28 @@
   .section-collapse-icon.collapsed { transform:rotate(-90deg); }
   .section-body-collapsible { overflow:hidden; transition:max-height 0.4s ease, opacity 0.3s ease; max-height:9999px; opacity:1; }
   .section-body-collapsible.collapsed { max-height:0 !important; opacity:0; padding-top:0 !important; padding-bottom:0 !important; margin-top:0 !important; }
+
+  /* === EVOLUTION REDESIGN === */
+  .evo-container { display:flex; flex-direction:column; gap:0.75rem; }
+  .evo-month-card { background:var(--card2); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; }
+  .evo-month-card[open] { border-color:var(--primary); }
+  .evo-month-header { display:flex; justify-content:space-between; align-items:center; padding:0.75rem 1rem; cursor:pointer; list-style:none; }
+  .evo-month-header::-webkit-details-marker { display:none; }
+  .evo-month-header::marker { display:none; content:''; }
+  .evo-month-title { font-weight:700; font-size:0.88rem; color:var(--fg); }
+  .evo-month-badges { display:flex; gap:0.4rem; flex-wrap:wrap; }
+  .evo-month-body { padding:0.75rem 1rem 1rem; border-top:1px solid var(--border); }
+  .evo-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(180px, 1fr)); gap:0.6rem; }
+  .evo-cell { background:var(--bg); border:1px solid rgba(212,175,55,0.1); border-radius:6px; padding:0.5rem 0.6rem; }
+  .evo-cell-header { display:flex; align-items:center; gap:0.3rem; margin-bottom:0.3rem; font-size:0.75rem; }
+  .evo-cell-values { display:flex; justify-content:space-between; align-items:baseline; }
+  .evo-real { font-size:0.85rem; font-weight:700; color:var(--fg); }
+  .evo-meta { font-size:0.68rem; color:var(--muted); }
+  .evo-bar-wrap { height:4px; background:rgba(255,255,255,0.08); border-radius:2px; margin-top:0.3rem; overflow:hidden; }
+  .evo-bar-fill { height:100%; border-radius:2px; transition:width 0.3s; }
+  .evo-pct { font-size:0.65rem; color:var(--muted); text-align:right; margin-top:0.15rem; }
+  .evo-saldo-row { display:flex; justify-content:space-between; align-items:center; margin-top:0.75rem; padding-top:0.6rem; border-top:1px solid var(--border); font-size:0.85rem; color:var(--muted); }
+  @media (max-width:600px) { .evo-grid { grid-template-columns:1fr 1fr; } .evo-month-badges { font-size:0.65rem; } }
 </style>
 </head>
 <body>
@@ -2629,6 +2651,10 @@ function editarSimulacao(id) {
   applyPayload(sim.payload);
   document.getElementById('sim-editing-label').textContent = 'Editando: ' + (sim.nome || 'Sem nome');
   showEditorView();
+  // Auto-calcular se há itens (mostra resultado imediatamente)
+  if (items.length > 0) {
+    setTimeout(function() { calcular(); }, 100);
+  }
 }
 
 function voltarParaLista() {
@@ -3693,14 +3719,11 @@ function renderTracking() {
     html += '</tbody></table>';
 
   } else if (trackingView === 'evolution') {
-    // Show evolution across months
+    // Redesigned evolution view - compact card layout per month
     var catOrder = ['sobrevivencia','necessidades','aperfeicoamento','dividas','conforto','sem_categoria'];
-    html += '<div style="overflow-x:auto;"><table class="tracking-table"><thead><tr><th>Mês</th>';
-    catOrder.forEach(function(cat) {
-      if (!catConfig[cat]) return;
-      html += '<th style="color:' + catConfig[cat].color + ';">' + catConfig[cat].label + '</th>';
-    });
-    html += '<th style="color:#22c55e;">Entradas</th><th style="color:#60a5fa;">Poupança</th><th>Saldo</th></tr></thead><tbody>';
+
+    html += '<div class="evo-container">';
+
     monthKeys.forEach(function(mk) {
       var mObj = trackingData.metas[mk];
       var m = mObj && mObj.categorias ? mObj.categorias : (mObj || {});
@@ -3713,27 +3736,77 @@ function renderTracking() {
         else if (l.tipo === 'poupanca') { realPoup += l.valor; }
         else { var c = l.categoria || 'sem_categoria'; realM[c] = (realM[c] || 0) + l.valor; }
       });
-      var mLabel = new Date(mk + '-15').toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' });
-      html += '<tr><td style="font-weight:600;">' + mLabel + '</td>';
       var totalR = 0;
+      catOrder.forEach(function(cat) { totalR += (realM[cat] || 0); });
+      var saldo = realEnt - totalR - realPoup;
+
+      var mLabel = new Date(mk + '-15').toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+      mLabel = mLabel.charAt(0).toUpperCase() + mLabel.slice(1);
+
+      html += '<details class="evo-month-card"' + (mk === trackingMonth ? ' open' : '') + '>';
+      html += '<summary class="evo-month-header">';
+      html += '<span class="evo-month-title">' + mLabel + '</span>';
+      html += '<div class="evo-month-badges">';
+      html += '<span class="badge badge-green">Ent: ' + fmtCurrency(realEnt) + '</span>';
+      html += '<span class="badge badge-red">Desp: ' + fmtCurrency(totalR) + '</span>';
+      html += '<span class="badge ' + (saldo >= 0 ? 'badge-green' : 'badge-red') + '">Saldo: ' + fmtCurrency(saldo) + '</span>';
+      html += '</div>';
+      html += '</summary>';
+
+      html += '<div class="evo-month-body">';
+
+      // Grid of categories
+      html += '<div class="evo-grid">';
+
+      // Entradas
+      var entInd = mEnt === 0 && realEnt === 0 ? '' : (realEnt >= mEnt * 0.9 ? 'ok' : realEnt >= mEnt * 0.7 ? 'warn' : 'over');
+      var entPct = mEnt > 0 ? Math.round((realEnt / mEnt) * 100) : 0;
+      html += '<div class="evo-cell">';
+      html += '<div class="evo-cell-header"><span class="tracking-indicator ' + entInd + '"></span><span style="color:#22c55e; font-weight:600;">Entradas</span></div>';
+      html += '<div class="evo-cell-values"><span class="evo-real">' + fmtCurrency(realEnt) + '</span><span class="evo-meta">meta: ' + fmtCurrency(mEnt) + '</span></div>';
+      if (mEnt > 0) html += '<div class="evo-bar-wrap"><div class="evo-bar-fill" style="width:' + Math.min(entPct, 100) + '%; background:#22c55e;"></div></div>';
+      html += '</div>';
+
+      // Poupança
+      var poupInd = mPoup === 0 && realPoup === 0 ? '' : (realPoup >= mPoup * 0.9 ? 'ok' : realPoup >= mPoup * 0.7 ? 'warn' : 'over');
+      var poupPct = mPoup > 0 ? Math.round((realPoup / mPoup) * 100) : 0;
+      html += '<div class="evo-cell">';
+      html += '<div class="evo-cell-header"><span class="tracking-indicator ' + poupInd + '"></span><span style="color:#60a5fa; font-weight:600;">Poupança</span></div>';
+      html += '<div class="evo-cell-values"><span class="evo-real">' + fmtCurrency(realPoup) + '</span><span class="evo-meta">meta: ' + fmtCurrency(mPoup) + '</span></div>';
+      if (mPoup > 0) html += '<div class="evo-bar-wrap"><div class="evo-bar-fill" style="width:' + Math.min(poupPct, 100) + '%; background:#60a5fa;"></div></div>';
+      html += '</div>';
+
+      // Categories
       catOrder.forEach(function(cat) {
+        if (!catConfig[cat]) return;
         var meta = m[cat] || 0;
         var real = realM[cat] || 0;
-        totalR += real;
-        var indicator = meta === 0 && real === 0 ? '' : (real <= meta * 0.9 ? 'ok' : real <= meta * 1.1 ? 'warn' : 'over');
-        html += '<td><span class="tracking-indicator ' + indicator + '"></span>' + fmtCurrency(real) + ' <span style="font-size:0.65rem;color:var(--muted);">/ ' + fmtCurrency(meta) + '</span></td>';
+        if (meta === 0 && real === 0) return; // Skip empty categories
+        var indicator = real <= meta * 0.9 ? 'ok' : real <= meta * 1.1 ? 'warn' : 'over';
+        var pct = meta > 0 ? Math.round((real / meta) * 100) : (real > 0 ? 100 : 0);
+        var barColor = indicator === 'ok' ? 'var(--green)' : indicator === 'warn' ? 'var(--orange)' : 'var(--red)';
+
+        html += '<div class="evo-cell">';
+        html += '<div class="evo-cell-header"><span class="tracking-indicator ' + indicator + '"></span><span style="color:' + catConfig[cat].color + '; font-weight:600;">' + catConfig[cat].label + '</span></div>';
+        html += '<div class="evo-cell-values"><span class="evo-real">' + fmtCurrency(real) + '</span><span class="evo-meta">meta: ' + fmtCurrency(meta) + '</span></div>';
+        if (meta > 0) html += '<div class="evo-bar-wrap"><div class="evo-bar-fill" style="width:' + Math.min(pct, 100) + '%; background:' + barColor + ';"></div></div>';
+        if (pct > 0) html += '<div class="evo-pct" style="color:' + barColor + ';">' + pct + '%</div>';
+        html += '</div>';
       });
-      // Entradas column
-      var entInd2 = mEnt === 0 && realEnt === 0 ? '' : (realEnt >= mEnt * 0.9 ? 'ok' : realEnt >= mEnt * 0.7 ? 'warn' : 'over');
-      html += '<td><span class="tracking-indicator ' + entInd2 + '"></span>' + fmtCurrency(realEnt) + ' <span style="font-size:0.65rem;color:var(--muted);">/ ' + fmtCurrency(mEnt) + '</span></td>';
-      // Poupança column
-      var poupInd2 = mPoup === 0 && realPoup === 0 ? '' : (realPoup >= mPoup * 0.9 ? 'ok' : realPoup >= mPoup * 0.7 ? 'warn' : 'over');
-      html += '<td><span class="tracking-indicator ' + poupInd2 + '"></span>' + fmtCurrency(realPoup) + ' <span style="font-size:0.65rem;color:var(--muted);">/ ' + fmtCurrency(mPoup) + '</span></td>';
-      // Saldo column
-      var saldo = realEnt - totalR - realPoup;
-      html += '<td style="font-weight:700;color:' + (saldo >= 0 ? 'var(--green)' : 'var(--red)') + ';">' + fmtCurrency(saldo) + '</td></tr>';
+
+      html += '</div>'; // evo-grid
+
+      // Saldo row
+      html += '<div class="evo-saldo-row">';
+      html += '<span>Saldo do mês:</span>';
+      html += '<span style="font-weight:700; font-size:1rem; color:' + (saldo >= 0 ? 'var(--green)' : 'var(--red)') + ';">' + fmtCurrency(saldo) + '</span>';
+      html += '</div>';
+
+      html += '</div>'; // evo-month-body
+      html += '</details>';
     });
-    html += '</tbody></table></div>';
+
+    html += '</div>'; // evo-container
   }
 
   // Lancamentos list
@@ -3997,9 +4070,10 @@ applyPayload = function(data) {
 
 
 // ============================================================
-// COLLAPSIBLE SECTIONS
+// COLLAPSIBLE SECTIONS (default: all collapsed)
 // ============================================================
-var collapsedSections = JSON.parse(localStorage.getItem('fluxo_collapsed_sections') || '{}');
+var expandedSections = JSON.parse(localStorage.getItem('fluxo_expanded_sections') || '{}');
+var allSectionIds = ['accounts', 'items', 'result', 'tracking'];
 
 function toggleSection(sectionId) {
   var body = document.getElementById('section-body-' + sectionId);
@@ -4009,21 +4083,28 @@ function toggleSection(sectionId) {
   if (isCollapsed) {
     body.classList.remove('collapsed');
     if (icon) icon.classList.remove('collapsed');
-    delete collapsedSections[sectionId];
+    expandedSections[sectionId] = true;
   } else {
     body.classList.add('collapsed');
     if (icon) icon.classList.add('collapsed');
-    collapsedSections[sectionId] = true;
+    delete expandedSections[sectionId];
   }
-  localStorage.setItem('fluxo_collapsed_sections', JSON.stringify(collapsedSections));
+  localStorage.setItem('fluxo_expanded_sections', JSON.stringify(expandedSections));
 }
 
 function restoreCollapsedSections() {
-  Object.keys(collapsedSections).forEach(function(sectionId) {
+  // Default: collapse ALL sections, then expand only those saved as expanded
+  allSectionIds.forEach(function(sectionId) {
     var body = document.getElementById('section-body-' + sectionId);
     var icon = document.getElementById('collapse-icon-' + sectionId);
-    if (body) body.classList.add('collapsed');
-    if (icon) icon.classList.add('collapsed');
+    if (!body) return;
+    if (expandedSections[sectionId]) {
+      body.classList.remove('collapsed');
+      if (icon) icon.classList.remove('collapsed');
+    } else {
+      body.classList.add('collapsed');
+      if (icon) icon.classList.add('collapsed');
+    }
   });
 }
 
