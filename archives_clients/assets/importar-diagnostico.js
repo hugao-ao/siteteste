@@ -226,18 +226,14 @@
       }));
 
       // Mapear formaPagamento das despesas para o ID do account importado (diag_X)
-      console.log('[MAPEADOR] accountsImport IDs:', accountsImport.map(a => a.id));
       itemsDespesa.forEach(item => {
         if (item.formaPagamento) {
           const targetId = 'diag_' + String(item.formaPagamento);
-          console.log('[MAPEADOR] item:', item.nome, 'raw formaPag:', item.formaPagamento, '-> buscando:', targetId);
           const accMatch = accountsImport.find(a => String(a.id) === targetId);
           if (accMatch) {
             item.formaPagamento = accMatch.id;
-            console.log('[MAPEADOR] -> MATCH encontrado:', accMatch.id);
           } else {
             item.formaPagamento = '';
-            console.log('[MAPEADOR] -> SEM MATCH, limpando');
           }
         }
       });
