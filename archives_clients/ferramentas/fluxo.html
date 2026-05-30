@@ -2834,196 +2834,377 @@ function gerarPDF() {
   btn.innerHTML = '⏳ Gerando PDF...';
   btn.disabled = true;
 
-  // Abordagem: criar um iframe oculto com fundo BRANCO e conteúdo formatado para impressão
+  // Collect chart images before building HTML
+  var chartImgData = null;
+  var orcChartImgData = null;
+  try {
+    var mainCanvas = document.getElementById('main-chart');
+    if (mainCanvas) chartImgData = mainCanvas.toDataURL('image/png');
+  } catch(e) {}
+  try {
+    var orcCanvas = document.getElementById('orcamento-chart');
+    if (orcCanvas && document.getElementById('orcamento-mensal').style.display !== 'none') {
+      orcChartImgData = orcCanvas.toDataURL('image/png');
+    }
+  } catch(e) {}
+
+  // Build PDF HTML with safe elements only
   var iframe = document.createElement('iframe');
   iframe.style.cssText = 'position:fixed; left:-9999px; top:0; width:900px; height:600px; border:none;';
   document.body.appendChild(iframe);
-
   var doc = iframe.contentDocument || iframe.contentWindow.document;
   doc.open();
 
-  var pdfHtml = '<!DOCTYPE html><html><head><meta charset="UTF-8">';
-  pdfHtml += '<style>';
-  pdfHtml += 'body{margin:0;padding:20px 30px;font-family:Arial,Helvetica,sans-serif;font-size:11px;color:#1a1a1a;background:#fff;line-height:1.4;}';
-  pdfHtml += 'h1{color:#1a5e2e;font-size:18px;margin:0 0 4px;}';
-  pdfHtml += 'h2{color:#1a5e2e;font-size:13px;margin:0 0 8px;padding-bottom:4px;border-bottom:2px solid #d4af37;}';
-  pdfHtml += '.section{margin-bottom:16px;padding:12px;border:1px solid #e0e0e0;border-radius:6px;background:#fafafa;page-break-inside:avoid;}';
-  pdfHtml += 'table{width:100%;border-collapse:collapse;font-size:10px;}';
-  pdfHtml += 'th{background:#1a5e2e;color:#fff;padding:5px 8px;text-align:left;font-size:9px;text-transform:uppercase;}';
-  pdfHtml += 'td{padding:4px 8px;border-bottom:1px solid #e8e8e8;}';
-  pdfHtml += 'tr:nth-child(even){background:#f5f5f5;}';
-  pdfHtml += '.val-pos{color:#0a7c3e;font-weight:700;}';
-  pdfHtml += '.val-neg{color:#c0392b;font-weight:700;}';
-  pdfHtml += '.val-blue{color:#2563eb;font-weight:700;}';
-  pdfHtml += '.summary-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;}';
-  pdfHtml += '.summary-box{background:#f0f7f2;border:1px solid #c8e6c9;border-radius:6px;padding:8px;text-align:center;}';
-  pdfHtml += '.summary-box .lbl{font-size:8px;color:#666;text-transform:uppercase;letter-spacing:0.5px;}';
-  pdfHtml += '.summary-box .val{font-size:14px;font-weight:700;margin-top:2px;}';
-  pdfHtml += '.header{text-align:center;margin-bottom:16px;padding-bottom:12px;border-bottom:3px solid #d4af37;}';
-  pdfHtml += '.header .sub{color:#666;font-size:10px;margin-top:4px;}';
-  pdfHtml += '.chart-img{width:100%;max-width:100%;border-radius:4px;margin:8px 0;}';
-  pdfHtml += '.footer{text-align:center;color:#999;font-size:9px;margin-top:20px;padding-top:10px;border-top:1px solid #ddd;}';
-  pdfHtml += '.badge{display:inline-block;padding:2px 6px;border-radius:3px;font-size:9px;font-weight:600;}';
-  pdfHtml += '.badge-green{background:#d4edda;color:#155724;}';
-  pdfHtml += '.badge-red{background:#f8d7da;color:#721c24;}';
-  pdfHtml += '.badge-blue{background:#cce5ff;color:#004085;}';
-  pdfHtml += '.mem-calc{background:#fff8e1;border:1px solid #ffe082;border-radius:4px;padding:8px;margin-top:6px;font-size:9px;}';
-  pdfHtml += '.mem-calc-title{font-weight:700;color:#e65100;margin-bottom:4px;}';
-  pdfHtml += '</style></head><body>';
+  var h = '<!DOCTYPE html><html><head><meta charset="UTF-8"><style>';
+  h += 'body{margin:0;padding:24px 28px;font-family:Arial,Helvetica,sans-serif;font-size:10.5px;color:#1a1a1a;background:#fff;line-height:1.5;}';
+  h += '*{box-sizing:border-box;}';
+  h += 'h1{color:#1a5e2e;font-size:17px;margin:0 0 2px;}';
+  h += 'h2{color:#1a5e2e;font-size:12px;margin:18px 0 8px;padding:4px 0;border-bottom:2px solid #d4af37;}';
+  h += 'h3{color:#333;font-size:11px;margin:10px 0 5px;}';
+  h += 'table{width:100%;border-collapse:collapse;font-size:9.5px;margin-bottom:8px;}';
+  h += 'th{background:#1a5e2e;color:#fff;padding:4px 6px;text-align:left;font-size:8.5px;text-transform:uppercase;letter-spacing:0.3px;}';
+  h += 'td{padding:3px 6px;border-bottom:1px solid #e5e5e5;vertical-align:top;}';
+  h += 'tr:nth-child(even){background:#f8f8f8;}';
+  h += '.pos{color:#0a7c3e;font-weight:700;} .neg{color:#c0392b;font-weight:700;} .blue{color:#2563eb;font-weight:700;}';
+  h += '.header{text-align:center;margin-bottom:14px;padding-bottom:10px;border-bottom:3px solid #d4af37;}';
+  h += '.header .sub{color:#666;font-size:9px;margin-top:3px;}';
+  h += '.kpi-row{display:table;width:100%;margin-bottom:10px;}';
+  h += '.kpi-cell{display:table-cell;text-align:center;padding:6px 4px;border:1px solid #e0e0e0;background:#f0f7f2;}';
+  h += '.kpi-cell .lbl{font-size:7.5px;color:#666;text-transform:uppercase;letter-spacing:0.4px;}';
+  h += '.kpi-cell .val{font-size:13px;font-weight:700;margin-top:1px;}';
+  h += '.chart-img{width:100%;max-width:100%;margin:6px 0;}';
+  h += '.badge{display:inline-block;padding:1px 5px;border-radius:3px;font-size:8px;font-weight:600;}';
+  h += '.badge-g{background:#d4edda;color:#155724;} .badge-r{background:#f8d7da;color:#721c24;} .badge-b{background:#cce5ff;color:#004085;}';
+  h += '.bar-track{height:6px;background:#e9ecef;border-radius:3px;margin:2px 0;} .bar-fill{height:6px;border-radius:3px;}';
+  h += '.section{page-break-inside:avoid;margin-bottom:4px;}';
+  h += '.footer{text-align:center;color:#999;font-size:8px;margin-top:16px;padding-top:8px;border-top:1px solid #ddd;}';
+  h += '.two-col{display:table;width:100%;} .two-col .col{display:table-cell;width:50%;vertical-align:top;padding-right:8px;}';
+  h += '.two-col .col:last-child{padding-right:0;padding-left:8px;}';
+  h += '.scenario-row{background:#fffbe6;border:1px solid #ffe082;border-radius:4px;padding:4px 6px;margin-bottom:3px;font-size:9px;}';
+  h += '.note{font-size:8.5px;color:#555;font-style:italic;margin:4px 0;}';
+  h += '</style></head><body>';
 
-  // Título
-  pdfHtml += '<div class="header">';
-  pdfHtml += '<h1>Fluxo de Caixa Avançado</h1>';
-  pdfHtml += '<div class="sub">Relatório gerado em ' + new Date().toLocaleDateString('pt-BR') + ' às ' + new Date().toLocaleTimeString('pt-BR') + '</div>';
-  pdfHtml += '</div>';
+  // ===== HEADER =====
+  var simNome = document.getElementById('sim-nome') ? document.getElementById('sim-nome').value : '';
+  h += '<div class="header">';
+  h += '<h1>Relatório de Fluxo de Caixa</h1>';
+  if (simNome) h += '<div style="font-size:11px;font-weight:700;color:#333;margin-top:2px;">' + simNome + '</div>';
+  h += '<div class="sub">Gerado em ' + new Date().toLocaleDateString('pt-BR') + ' às ' + new Date().toLocaleTimeString('pt-BR') + '</div>';
+  h += '</div>';
 
-  // Seção 1: Período
+  // ===== SEÇÃO 1: CONFIGURAÇÃO =====
+  var saldoVal = document.getElementById('saldo-inicial') ? document.getElementById('saldo-inicial').value : '0,00';
+  var poupVal = document.getElementById('poupanca-inicial') ? document.getElementById('poupanca-inicial').value : '0,00';
+  var intocavelVal = document.getElementById('poupanca-intocavel') ? document.getElementById('poupanca-intocavel').value : '0,00';
   var periodEl = document.getElementById('period-preview') || document.getElementById('period-duration');
-  var periodInfo = periodEl ? periodEl.textContent : '';
-  pdfHtml += '<div class="section"><h2>1. Período Analisado</h2>';
-  pdfHtml += '<p style="margin:0;">' + periodInfo + '</p></div>';
+  var periodInfo = periodEl ? periodEl.textContent.trim() : '';
 
-  // Seção 2: Saldo Inicial
-  var saldoVal = document.getElementById('saldo-inicial') ? document.getElementById('saldo-inicial').value : '0';
-  var poupVal = document.getElementById('poupanca-inicial') ? document.getElementById('poupanca-inicial').value : '0';
-  var intocavelEl = document.getElementById('poupanca-intocavel');
-  var intocavelVal = intocavelEl ? intocavelEl.value : '0';
-  pdfHtml += '<div class="section"><h2>2. Saldo Inicial</h2>';
-  pdfHtml += '<table><tr><td><strong>Saldo Disponível:</strong> R$ ' + saldoVal + '</td>';
-  pdfHtml += '<td><strong>Poupança Acumulada:</strong> R$ ' + poupVal + '</td>';
-  pdfHtml += '<td><strong>Poupança Intocável:</strong> R$ ' + intocavelVal + '</td></tr></table></div>';
+  h += '<div class="section"><h2>1. Configuração</h2>';
+  h += '<table><tr><th>Período</th><th>Saldo Inicial</th><th>Poupança Acumulada</th><th>Poupança Intocável</th></tr>';
+  h += '<tr><td>' + periodInfo + '</td><td class="pos">R$ ' + saldoVal + '</td><td class="blue">R$ ' + poupVal + '</td><td>R$ ' + intocavelVal + '</td></tr></table>';
+  // Contas e cartões
+  if (accounts.length > 0) {
+    h += '<h3>Contas e Cartões (' + accounts.length + ')</h3><table><tr><th>Nome</th><th>Tipo</th><th>Detalhes</th></tr>';
+    accounts.forEach(function(acc) {
+      var tipo = acc.tipo === 'cartao' ? 'Cartão de Crédito' : 'Conta';
+      var det = acc.tipo === 'cartao' ? ('Fecha dia ' + acc.fechamento + ' | Vence dia ' + acc.vencimento + (acc.bandeira ? ' | ' + acc.bandeira : '')) : (acc.banco || '—');
+      h += '<tr><td>' + acc.nome + '</td><td>' + tipo + '</td><td>' + det + '</td></tr>';
+    });
+    h += '</table>';
+  }
+  h += '</div>';
 
-  // Seção 3: Itens do Fluxo
+  // ===== SEÇÃO 2: ITENS DO FLUXO =====
   if (items.length > 0) {
-    pdfHtml += '<div class="section"><h2>3. Itens do Fluxo (' + items.length + ' itens)</h2>';
-    pdfHtml += '<table><thead><tr><th>Nome</th><th>Tipo</th><th style="text-align:right;">Valor</th><th>Recorrência</th><th>Complemento</th></tr></thead><tbody>';
+    h += '<div class="section"><h2>2. Itens do Fluxo (' + items.length + ')</h2>';
+    h += '<table><thead><tr><th>Item</th><th>Tipo</th><th style="text-align:right;">Valor</th><th>Recorrência</th><th>Categoria</th><th>Pagamento</th></tr></thead><tbody>';
     items.forEach(function(it) {
       var tipo = it.tipo === 'entrada' ? 'Entrada' : (it.subtipo === 'poupanca' ? 'Poupança' : 'Despesa');
-      var cls = it.tipo === 'entrada' ? 'val-pos' : (it.subtipo === 'poupanca' ? 'val-blue' : 'val-neg');
+      var cls = it.tipo === 'entrada' ? 'pos' : (it.subtipo === 'poupanca' ? 'blue' : 'neg');
+      var badgeCls = it.tipo === 'entrada' ? 'badge-g' : (it.subtipo === 'poupanca' ? 'badge-b' : 'badge-r');
       var sign = it.tipo === 'entrada' ? '+' : '-';
       var rec = it.recTipo === 'nao' ? 'Único' : ('A cada ' + it.recQty + ' ' + (REC_LABELS[it.recTipo] || it.recTipo));
-      var compl = (it.subtipo === 'poupanca') ? (it.usarComoComplemento ? 'Sim' : 'Não') : '--';
-      pdfHtml += '<tr><td>' + it.nome + '</td><td><span class="badge badge-' + (it.tipo === 'entrada' ? 'green' : (it.subtipo === 'poupanca' ? 'blue' : 'red')) + '">' + tipo + '</span></td>';
-      pdfHtml += '<td style="text-align:right;" class="' + cls + '">' + sign + 'R$ ' + fmtCurrency(it.valor) + '</td>';
-      pdfHtml += '<td>' + rec + '</td><td>' + compl + '</td></tr>';
+      var catLabel = it.categoria ? (CATEGORIA_LABELS[it.categoria] || it.categoria) : '—';
+      var pagLabel = '—';
+      if (it.formaPagamento) {
+        var acc = accounts.find(function(a) { return a.id === it.formaPagamento; });
+        if (acc) pagLabel = acc.nome;
+      }
+      h += '<tr><td style="font-weight:600;">' + it.nome + '</td>';
+      h += '<td><span class="badge ' + badgeCls + '">' + tipo + '</span></td>';
+      h += '<td style="text-align:right;" class="' + cls + '">' + sign + ' R$ ' + fmtCurrency(it.valor) + '</td>';
+      h += '<td>' + rec + '</td><td>' + catLabel + '</td><td>' + pagLabel + '</td></tr>';
     });
-    pdfHtml += '</tbody></table></div>';
+    h += '</tbody></table></div>';
   }
 
-  // Seção 4: Resumo
-  var summaryBar = document.getElementById('summary-bar');
-  if (summaryBar && summaryBar.innerHTML.trim()) {
-    pdfHtml += '<div class="section"><h2>4. Resumo da Projeção</h2><div class="summary-grid">';
-    summaryBar.querySelectorAll('.summary-item').forEach(function(item) {
-      var lbl = item.querySelector('.label') ? item.querySelector('.label').textContent : '';
-      var val = item.querySelector('.value') ? item.querySelector('.value').textContent : '';
-      var origColor = item.querySelector('.value') ? item.querySelector('.value').style.color : '';
-      var valClass = '';
-      if (origColor.indexOf('22c55e') >= 0 || origColor.indexOf('green') >= 0) valClass = 'val-pos';
-      else if (origColor.indexOf('ef4444') >= 0 || origColor.indexOf('red') >= 0) valClass = 'val-neg';
-      else if (origColor.indexOf('60a5fa') >= 0 || origColor.indexOf('blue') >= 0) valClass = 'val-blue';
-      pdfHtml += '<div class="summary-box"><div class="lbl">' + lbl + '</div><div class="val ' + valClass + '">' + val + '</div></div>';
-    });
-    pdfHtml += '</div></div>';
+  // ===== SEÇÃO 3: RESUMO DA PROJEÇÃO (KPIs) =====
+  if (lastCalcSummary) {
+    h += '<div class="section"><h2>3. Resumo da Projeção</h2>';
+    h += '<div class="kpi-row">';
+    h += '<div class="kpi-cell"><div class="lbl">Total Entradas</div><div class="val pos">R$ ' + fmtCurrency(lastCalcSummary.totalEntradas) + '</div></div>';
+    h += '<div class="kpi-cell"><div class="lbl">Total Despesas</div><div class="val neg">R$ ' + fmtCurrency(lastCalcSummary.totalDespesas) + '</div></div>';
+    h += '<div class="kpi-cell"><div class="lbl">Total Poupança</div><div class="val blue">R$ ' + fmtCurrency(lastCalcSummary.totalPoupanca) + '</div></div>';
+    h += '<div class="kpi-cell"><div class="lbl">Saldo Final</div><div class="val ' + (lastCalcSummary.saldoFinal >= 0 ? 'pos' : 'neg') + '">R$ ' + fmtCurrency(lastCalcSummary.saldoFinal) + '</div></div>';
+    h += '<div class="kpi-cell"><div class="lbl">Poupança Final</div><div class="val blue">R$ ' + fmtCurrency(lastCalcSummary.poupFinal) + '</div></div>';
+    h += '</div></div>';
   }
 
-  // Seção 5: Gráfico
-  var chartCanvas = document.getElementById('main-chart');
-  if (chartCanvas) {
-    try {
-      var chartImg = chartCanvas.toDataURL('image/png');
-      pdfHtml += '<div class="section"><h2>5. Gráfico de Projeção</h2>';
-      pdfHtml += '<img class="chart-img" src="' + chartImg + '"></div>';
-    } catch(e) { console.log('Erro ao capturar gráfico:', e); }
+  // ===== SEÇÃO 4: GRÁFICO DE PROJEÇÃO =====
+  if (chartImgData) {
+    h += '<div class="section"><h2>4. Gráfico de Projeção' + (scenarioEnabled ? ' (com cenário otimizado)' : '') + '</h2>';
+    h += '<img class="chart-img" src="' + chartImgData + '">';
+    h += '</div>';
   }
 
-  // Seção 6: Orçamento Mensal
-  var orcamentoSection = document.getElementById('orcamento-mensal');
-  if (orcamentoSection && orcamentoSection.style.display !== 'none' && orcamentoSection.innerHTML.trim()) {
-    pdfHtml += '<div class="section"><h2>6. Orçamento Mensal Equivalente</h2>';
-    var orcChart = document.getElementById('orcamento-chart');
-    if (orcChart) {
-      try {
-        var orcImg = orcChart.toDataURL('image/png');
-        pdfHtml += '<img src="' + orcImg + '" style="width:40%;max-width:250px;display:block;margin:8px auto;">';
-      } catch(e) {}
+  // ===== SEÇÃO 5: ORÇAMENTO MENSAL =====
+  var orcSec = document.getElementById('orcamento-mensal');
+  if (orcSec && orcSec.style.display !== 'none' && orcSec.innerHTML.trim()) {
+    h += '<div class="section"><h2>5. Orçamento Mensal Equivalente</h2>';
+    if (orcChartImgData) {
+      h += '<div style="text-align:center;"><img src="' + orcChartImgData + '" style="width:200px;margin:4px auto;"></div>';
     }
-    // Extrair texto do orçamento
-    var orcTexts = orcamentoSection.querySelectorAll('table, p, div');
-    var orcContent = '';
-    orcamentoSection.querySelectorAll('table').forEach(function(tbl) {
-      orcContent += '<table>' + tbl.innerHTML.replace(/background[^;]*;?/g, '').replace(/color[^;]*;?/g, 'color:#1a1a1a;') + '</table>';
+    // Extract table from orcamento section
+    var orcTables = orcSec.querySelectorAll('table');
+    orcTables.forEach(function(tbl) {
+      h += '<table>' + tbl.innerHTML.replace(/background[^;"]*;?/g, '').replace(/color:\s*var\([^)]+\)/g, 'color:#1a1a1a').replace(/color:\s*#[A-Fa-f0-9]{6}/g, 'color:#1a1a1a') + '</table>';
     });
-    if (orcContent) pdfHtml += orcContent;
-    pdfHtml += '</div>';
+    h += '</div>';
   }
 
-  // Seção 7: Análise do Fluxo (COMPLETA - inclui candidatos e memória de cálculo)
+  // ===== SEÇÃO 6: ANÁLISE DO FLUXO =====
   var analiseSection = document.getElementById('analise-section');
   if (analiseSection && analiseSection.innerHTML.trim()) {
-    pdfHtml += '<div class="section"><h2>7. Análise do Fluxo</h2>';
-    // Clona a seção e expande tudo que está escondido
-    var analiseClone = analiseSection.cloneNode(true);
-    // Expande todos os elementos com display:none (memória de cálculo)
-    analiseClone.querySelectorAll('[style*="display:none"], [style*="display: none"]').forEach(function(el) {
-      el.style.display = 'block';
+    h += '<div class="section"><h2>6. Análise do Fluxo</h2>';
+
+    // Instead of cloning complex DOM, extract key data programmatically
+    // Distribution percentages
+    var totalEnt = lastCalcSummary ? lastCalcSummary.totalEntradas : 0;
+    var totalDesp = lastCalcSummary ? lastCalcSummary.totalDespesas : 0;
+    var totalPoup = lastCalcSummary ? lastCalcSummary.totalPoupanca : 0;
+    if (totalEnt > 0) {
+      var pctDesp = (totalDesp / totalEnt) * 100;
+      var pctPoup = (totalPoup / totalEnt) * 100;
+      var pctSaldo = 100 - pctDesp - pctPoup;
+
+      h += '<h3>Distribuição das Entradas</h3>';
+      h += '<table><tr><th>Categoria</th><th style="text-align:right;">Valor</th><th style="text-align:right;">% das Entradas</th><th>Status</th></tr>';
+      h += '<tr><td>Poupança</td><td style="text-align:right;" class="blue">R$ ' + fmtCurrency(totalPoup) + '</td><td style="text-align:right;">' + pctPoup.toFixed(1) + '%</td>';
+      h += '<td>' + (pctPoup >= 20 ? '<span class="badge badge-g">Excelente</span>' : pctPoup >= 10 ? '<span class="badge badge-b">Razoável</span>' : '<span class="badge badge-r">Abaixo do ideal</span>') + '</td></tr>';
+      h += '<tr><td>Despesas</td><td style="text-align:right;" class="neg">R$ ' + fmtCurrency(totalDesp) + '</td><td style="text-align:right;">' + pctDesp.toFixed(1) + '%</td>';
+      h += '<td>' + (pctDesp <= 60 ? '<span class="badge badge-g">Saudável</span>' : pctDesp <= 80 ? '<span class="badge badge-b">Elevado</span>' : '<span class="badge badge-r">Crítico</span>') + '</td></tr>';
+      h += '<tr><td>Saldo residual</td><td style="text-align:right;" class="' + (pctSaldo >= 0 ? 'pos' : 'neg') + '">R$ ' + fmtCurrency(totalEnt - totalDesp - totalPoup) + '</td><td style="text-align:right;">' + pctSaldo.toFixed(1) + '%</td>';
+      h += '<td>' + (pctSaldo >= 5 ? '<span class="badge badge-g">Sobra</span>' : pctSaldo >= 0 ? '<span class="badge badge-b">Equilibrado</span>' : '<span class="badge badge-r">Déficit</span>') + '</td></tr>';
+      h += '</table>';
+    }
+
+    // Top despesas by score
+    var despesasParaPDF = [];
+    items.forEach(function(it, idx) {
+      if (it.subtipo !== 'despesa') return;
+      var score = calcPotencialAjuste(it, calcMensalItem(it) * 1, totalEnt, totalDesp);
+      despesasParaPDF.push({ item: it, idx: idx, score: score });
     });
-    // Também expande elementos com classe hidden
-    analiseClone.querySelectorAll('.hidden').forEach(function(el) {
-      el.style.display = 'block';
-      el.classList.remove('hidden');
-    });
-    // Limpa estilos de cores escuras e aplica cores para fundo branco
-    var analiseHTML = analiseClone.innerHTML;
-    analiseHTML = analiseHTML.replace(/color:\s*#F2E8C9/gi, 'color:#1a1a1a');
-    analiseHTML = analiseHTML.replace(/color:\s*#fff/gi, 'color:#1a1a1a');
-    analiseHTML = analiseHTML.replace(/color:\s*white/gi, 'color:#1a1a1a');
-    analiseHTML = analiseHTML.replace(/color:\s*#A0B8A6/gi, 'color:#555');
-    analiseHTML = analiseHTML.replace(/background:\s*#021C0E/gi, 'background:#fff');
-    analiseHTML = analiseHTML.replace(/background:\s*#052614/gi, 'background:#f9f9f9');
-    analiseHTML = analiseHTML.replace(/background:\s*#0A3520/gi, 'background:#f0f0f0');
-    analiseHTML = analiseHTML.replace(/background:\s*var\(--card\)/gi, 'background:#f9f9f9');
-    analiseHTML = analiseHTML.replace(/background:\s*var\(--card2\)/gi, 'background:#f0f0f0');
-    analiseHTML = analiseHTML.replace(/background:\s*var\(--bg\)/gi, 'background:#fff');
-    analiseHTML = analiseHTML.replace(/color:\s*var\(--fg\)/gi, 'color:#1a1a1a');
-    analiseHTML = analiseHTML.replace(/color:\s*var\(--muted\)/gi, 'color:#555');
-    analiseHTML = analiseHTML.replace(/color:\s*var\(--primary\)/gi, 'color:#1a5e2e');
-    analiseHTML = analiseHTML.replace(/border[^;]*rgba\(212,175,55[^;]*/gi, 'border:1px solid #e0e0e0');
-    pdfHtml += analiseHTML;
-    pdfHtml += '</div>';
+    despesasParaPDF.sort(function(a,b) { return b.score - a.score; });
+
+    if (despesasParaPDF.length > 0) {
+      h += '<h3>Despesas — Ranking por Potencial de Ajuste</h3>';
+      h += '<table><thead><tr><th>Item</th><th>Categoria</th><th style="text-align:right;">Valor</th><th style="text-align:center;">Score</th><th>Alterável</th><th>Disposição</th></tr></thead><tbody>';
+      despesasParaPDF.forEach(function(d) {
+        var it = d.item;
+        var catLabel = it.categoria ? (CATEGORIA_LABELS[it.categoria] || it.categoria) : '—';
+        var altLabel = it.alteravel === 'sim' ? 'Sim' : 'Não';
+        var dispLabel = ({alteraria:'Alteraria',cancelaria:'Cancelaria',nao:'Não',sim:'Sim'})[it.disposto] || '—';
+        var scoreColor = d.score >= 7 ? '#c0392b' : d.score >= 4.5 ? '#e67e22' : '#27ae60';
+        h += '<tr><td style="font-weight:600;">' + it.nome + '</td><td>' + catLabel + '</td>';
+        h += '<td style="text-align:right;" class="neg">R$ ' + fmtCurrency(it.valor) + '</td>';
+        h += '<td style="text-align:center;font-weight:700;color:' + scoreColor + ';">' + d.score.toFixed(1) + '</td>';
+        h += '<td>' + altLabel + '</td><td>' + dispLabel + '</td></tr>';
+      });
+      h += '</tbody></table>';
+
+      // Candidatos a redução
+      var candidatosPDF = despesasParaPDF.filter(function(d) { return d.score >= 4.5; });
+      if (candidatosPDF.length > 0) {
+        h += '<h3>Candidatos a Redução (score ≥ 4,5)</h3>';
+        h += '<table><thead><tr><th>Item</th><th style="text-align:right;">Valor Atual</th><th style="text-align:center;">Redução Sugerida</th><th style="text-align:right;">Valor Sugerido</th><th style="text-align:right;">Economia/ocorrência</th></tr></thead><tbody>';
+        candidatosPDF.forEach(function(d) {
+          var it = d.item;
+          var pctRed = calcPercentualReducao(d.score);
+          if (it.alteravel === 'nao' && it.disposto === 'nao') pctRed = 0;
+          if (it.disposto === 'nao') pctRed = 0;
+          if (it.disposto === 'cancelaria') pctRed = Math.max(50, pctRed);
+          var valorNovo = it.valor * (1 - pctRed / 100);
+          var economia = it.valor * (pctRed / 100);
+          var recLabel = pctRed === 0 ? 'Sem recomendação' : (it.disposto === 'cancelaria' ? 'CANCELAR' : '-' + pctRed + '%');
+          h += '<tr><td>' + it.nome + '</td>';
+          h += '<td style="text-align:right;">R$ ' + fmtCurrency(it.valor) + '</td>';
+          h += '<td style="text-align:center;font-weight:700;color:' + (pctRed > 0 ? '#c0392b' : '#666') + ';">' + recLabel + '</td>';
+          h += '<td style="text-align:right;">' + (pctRed > 0 ? 'R$ ' + fmtCurrency(valorNovo) : '—') + '</td>';
+          h += '<td style="text-align:right;" class="pos">' + (pctRed > 0 ? 'R$ ' + fmtCurrency(economia) : '—') + '</td></tr>';
+        });
+        h += '</tbody></table>';
+      }
+    }
+    h += '</div>';
   }
 
-  // Seção 8: Previsão das Faturas dos Cartões
-  var faturasSection = document.getElementById('faturas-section');
-  if (faturasSection && faturasSection.innerHTML.trim()) {
-    pdfHtml += '<div class="section"><h2>8. Previsão das Faturas dos Cartões</h2>';
-    var faturasHTML = faturasSection.innerHTML;
-    faturasHTML = faturasHTML.replace(/color:\s*#F2E8C9/gi, 'color:#1a1a1a');
-    faturasHTML = faturasHTML.replace(/color:\s*#fff/gi, 'color:#1a1a1a');
-    faturasHTML = faturasHTML.replace(/color:\s*#A0B8A6/gi, 'color:#555');
-    faturasHTML = faturasHTML.replace(/background:\s*#021C0E/gi, 'background:#fff');
-    faturasHTML = faturasHTML.replace(/background:\s*#052614/gi, 'background:#f9f9f9');
-    faturasHTML = faturasHTML.replace(/background:\s*#0A3520/gi, 'background:#f0f0f0');
-    faturasHTML = faturasHTML.replace(/color:\s*var\(--fg\)/gi, 'color:#1a1a1a');
-    faturasHTML = faturasHTML.replace(/color:\s*var\(--muted\)/gi, 'color:#555');
-    faturasHTML = faturasHTML.replace(/color:\s*var\(--primary\)/gi, 'color:#1a5e2e');
-    pdfHtml += faturasHTML;
-    pdfHtml += '</div>';
+  // ===== SEÇÃO 7: CENÁRIO OTIMIZADO (se ativo) =====
+  if (scenarioEnabled && scenarioAdjustments.length > 0) {
+    var ajustesAtivos = scenarioAdjustments.filter(function(sa) { return sa.enabled; });
+    if (ajustesAtivos.length > 0) {
+      h += '<div class="section"><h2>7. Cenário Otimizado — Ajustes Simulados</h2>';
+      h += '<p class="note">Itens com ajustes ativos na simulação de cenário otimizado:</p>';
+      h += '<table><thead><tr><th>Item</th><th>Tipo</th><th style="text-align:right;">Valor Original</th><th>Estratégia</th><th style="text-align:right;">Valor Final</th><th style="text-align:right;">Economia</th></tr></thead><tbody>';
+
+      ajustesAtivos.forEach(function(adj) {
+        var it = items[adj.itemIdx];
+        if (!it) return;
+        var tipoLabel = it.tipo === 'entrada' ? 'Entrada' : (it.subtipo === 'poupanca' ? 'Poupança' : 'Despesa');
+        var stratLabel = adj.strategy === 'imediato' ? 'Imediato (-' + (adj.targetPct || 0) + '%)' :
+                         adj.strategy === 'data' ? 'A partir de ' + (adj.startDate || '?') :
+                         'Gradativo (' + (adj.gradType === 'pct' ? adj.pctPerMonth + '%/mês' : 'R$' + (adj.nominalPerMonth || 0) + '/mês') + ')';
+        // Calculate final value (first occurrence for simplicity)
+        var valorFinal = getAdjustedValue(adj.itemIdx, new Date(), 0);
+        var economia = it.valor - valorFinal;
+        var econCls = it.tipo === 'entrada' ? (economia < 0 ? 'pos' : 'neg') : (economia > 0 ? 'pos' : '');
+
+        h += '<tr><td style="font-weight:600;">' + it.nome + '</td>';
+        h += '<td><span class="badge ' + (it.tipo === 'entrada' ? 'badge-g' : it.subtipo === 'poupanca' ? 'badge-b' : 'badge-r') + '">' + tipoLabel + '</span></td>';
+        h += '<td style="text-align:right;">R$ ' + fmtCurrency(it.valor) + '</td>';
+        h += '<td>' + stratLabel + '</td>';
+        h += '<td style="text-align:right;font-weight:700;">R$ ' + fmtCurrency(valorFinal) + '</td>';
+        h += '<td style="text-align:right;" class="' + econCls + '">' + (economia !== 0 ? 'R$ ' + fmtCurrency(Math.abs(economia)) : '—') + '</td></tr>';
+      });
+      h += '</tbody></table>';
+
+      // Summary of scenario impact
+      var totalEconCenario = 0;
+      ajustesAtivos.forEach(function(adj) {
+        var it = items[adj.itemIdx];
+        if (!it) return;
+        var vf = getAdjustedValue(adj.itemIdx, new Date(), 0);
+        if (it.tipo !== 'entrada') totalEconCenario += (it.valor - vf);
+      });
+      if (totalEconCenario > 0) {
+        h += '<p style="font-size:10px;font-weight:700;color:#0a7c3e;margin-top:6px;">Economia estimada por ocorrência (soma dos ajustes): R$ ' + fmtCurrency(totalEconCenario) + '</p>';
+      }
+      h += '</div>';
+    }
   }
 
-  // Rodapé
-  pdfHtml += '<div class="footer">HV Saúde Financeira — Relatório de Fluxo de Caixa Avançado</div>';
-  pdfHtml += '</body></html>';
+  // ===== SEÇÃO 8: FATURAS DOS CARTÕES =====
+  var cartoesMap = {};
+  accounts.forEach(function(acc) { if (acc.tipo === 'cartao') cartoesMap[acc.id] = acc; });
+  var temFaturas = Object.keys(faturasCalculadas).some(function(cid) {
+    return Object.keys(faturasCalculadas[cid]).length > 0;
+  });
 
-  doc.write(pdfHtml);
+  if (temFaturas) {
+    h += '<div class="section"><h2>' + (scenarioEnabled ? '8' : '7') + '. Previsão de Faturas dos Cartões</h2>';
+
+    Object.keys(faturasCalculadas).forEach(function(cartaoId) {
+      var cartao = cartoesMap[cartaoId];
+      if (!cartao) return;
+      var faturas = faturasCalculadas[cartaoId];
+      var fatKeys = Object.keys(faturas).sort();
+      if (fatKeys.length === 0) return;
+
+      h += '<h3>' + cartao.nome + (cartao.bandeira ? ' (' + cartao.bandeira + ')' : '') + '</h3>';
+      h += '<table><thead><tr><th>Fatura</th><th>Vencimento</th><th style="text-align:right;">Valor</th><th style="text-align:right;">Qtd Itens</th></tr></thead><tbody>';
+
+      var totalCartao = 0;
+      fatKeys.forEach(function(fk) {
+        var fat = faturas[fk];
+        totalCartao += fat.total;
+        var vencStr = fat.vencDate ? new Date(fat.vencDate).toLocaleDateString('pt-BR') : fk;
+        h += '<tr><td>' + fk + '</td><td>' + vencStr + '</td>';
+        h += '<td style="text-align:right;" class="neg">R$ ' + fmtCurrency(fat.total) + '</td>';
+        h += '<td style="text-align:right;">' + fat.itens.length + '</td></tr>';
+      });
+      h += '<tr style="font-weight:700;background:#f0f7f2;"><td colspan="2">Total</td><td style="text-align:right;" class="neg">R$ ' + fmtCurrency(totalCartao) + '</td><td></td></tr>';
+      h += '</tbody></table>';
+    });
+    h += '</div>';
+  }
+
+  // ===== SEÇÃO 9: ACOMPANHAMENTO MENSAL (se existir metas) =====
+  if (trackingData.metas && Object.keys(trackingData.metas).length > 0) {
+    var secNum = (scenarioEnabled ? 9 : 8);
+    if (!temFaturas) secNum--;
+    h += '<div class="section"><h2>' + secNum + '. Acompanhamento Mensal — Metas vs Realizado</h2>';
+
+    var catOrder = ['sobrevivencia','necessidades','aperfeicoamento','dividas','conforto','sem_categoria'];
+    var monthKeys = Object.keys(trackingData.metas).sort();
+
+    h += '<table><thead><tr><th>Mês</th><th style="text-align:right;">Meta Entradas</th><th style="text-align:right;">Real Entradas</th>';
+    h += '<th style="text-align:right;">Meta Despesas</th><th style="text-align:right;">Real Despesas</th>';
+    h += '<th style="text-align:right;">Saldo</th><th>Status</th></tr></thead><tbody>';
+
+    monthKeys.forEach(function(mk) {
+      var mObj = trackingData.metas[mk];
+      var m = mObj && mObj.categorias ? mObj.categorias : (mObj || {});
+      var mEnt = mObj && mObj.entradas ? mObj.entradas : 0;
+      var mPoup = mObj && mObj.poupanca ? mObj.poupanca : 0;
+      var metaDespTotal = 0;
+      catOrder.forEach(function(cat) { metaDespTotal += (m[cat] || 0); });
+
+      var lancM = trackingData.lancamentos.filter(function(l) { return l.data && l.data.substring(0, 7) === mk; });
+      var realEnt = 0, realDesp = 0, realPoup = 0;
+      lancM.forEach(function(l) {
+        if (l.tipo === 'entrada') realEnt += l.valor;
+        else if (l.tipo === 'poupanca') realPoup += l.valor;
+        else realDesp += l.valor;
+      });
+
+      var saldo = realEnt - realDesp - realPoup;
+      var mLabel = new Date(mk + '-15').toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' });
+      var status = saldo >= 0 ? '<span class="badge badge-g">OK</span>' : '<span class="badge badge-r">Déficit</span>';
+
+      h += '<tr><td style="font-weight:600;">' + mLabel + '</td>';
+      h += '<td style="text-align:right;">R$ ' + fmtCurrency(mEnt) + '</td>';
+      h += '<td style="text-align:right;" class="' + (realEnt >= mEnt * 0.9 ? 'pos' : 'neg') + '">R$ ' + fmtCurrency(realEnt) + '</td>';
+      h += '<td style="text-align:right;">R$ ' + fmtCurrency(metaDespTotal) + '</td>';
+      h += '<td style="text-align:right;" class="' + (realDesp <= metaDespTotal * 1.1 ? 'pos' : 'neg') + '">R$ ' + fmtCurrency(realDesp) + '</td>';
+      h += '<td style="text-align:right;font-weight:700;color:' + (saldo >= 0 ? '#0a7c3e' : '#c0392b') + ';">R$ ' + fmtCurrency(saldo) + '</td>';
+      h += '<td>' + status + '</td></tr>';
+    });
+    h += '</tbody></table>';
+
+    // Lancamentos summary
+    if (trackingData.lancamentos.length > 0) {
+      h += '<h3>Lançamentos Registrados (' + trackingData.lancamentos.length + ')</h3>';
+      h += '<table><thead><tr><th>Data</th><th>Tipo</th><th>Descrição</th><th style="text-align:right;">Valor</th><th>Categoria</th></tr></thead><tbody>';
+      var lancSorted = trackingData.lancamentos.slice().sort(function(a,b) { return a.data.localeCompare(b.data); });
+      lancSorted.slice(0, 50).forEach(function(l) {
+        var tipoL = l.tipo === 'entrada' ? '<span class="pos">Entrada</span>' : l.tipo === 'poupanca' ? '<span class="blue">Poupança</span>' : '<span class="neg">Despesa</span>';
+        var catL = l.categoria ? (CATEGORIA_LABELS[l.categoria] || l.categoria) : '—';
+        h += '<tr><td>' + (l.data ? new Date(l.data + 'T00:00').toLocaleDateString('pt-BR') : '—') + '</td>';
+        h += '<td>' + tipoL + '</td><td>' + (l.descricao || '—') + '</td>';
+        h += '<td style="text-align:right;font-weight:600;">' + (l.tipo === 'entrada' ? '+' : '-') + 'R$ ' + fmtCurrency(l.valor) + '</td>';
+        h += '<td>' + catL + '</td></tr>';
+      });
+      if (lancSorted.length > 50) {
+        h += '<tr><td colspan="5" style="text-align:center;color:#666;font-style:italic;">... e mais ' + (lancSorted.length - 50) + ' lançamentos</td></tr>';
+      }
+      h += '</tbody></table>';
+    }
+    h += '</div>';
+  }
+
+  // ===== RODAPÉ =====
+  h += '<div class="footer">HV Saúde Financeira — Relatório de Fluxo de Caixa Avançado</div>';
+  h += '</body></html>';
+
+  doc.write(h);
   doc.close();
 
-  // Aguardar o iframe renderizar e então gerar o PDF
+  // Generate PDF
   setTimeout(function() {
     var opt = {
-      margin: [6, 6, 6, 6],
+      margin: [5, 5, 5, 5],
       filename: 'fluxo-de-caixa-' + new Date().toISOString().split('T')[0] + '.pdf',
-      image: { type: 'jpeg', quality: 0.95 },
+      image: { type: 'jpeg', quality: 0.92 },
       html2canvas: {
         scale: 2,
         useCORS: true,
@@ -3039,13 +3220,12 @@ function gerarPDF() {
       btn.innerHTML = originalText;
       btn.disabled = false;
     }).catch(function(err) {
-      console.error('Erro ao gerar PDF:', err);
       document.body.removeChild(iframe);
       btn.innerHTML = originalText;
       btn.disabled = false;
       alert('Erro ao gerar PDF. Tente novamente.');
     });
-  }, 500);
+  }, 600);
 }
 
 function _forceSaveFluxo() {
