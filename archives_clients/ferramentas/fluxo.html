@@ -290,6 +290,14 @@
     background: linear-gradient(135deg, #10b981, #059669);
     color: #fff;
   }
+
+  /* === COLLAPSIBLE SECTIONS === */
+  .section-header-collapsible { display:flex; justify-content:space-between; align-items:center; cursor:pointer; user-select:none; }
+  .section-header-collapsible:hover { opacity:0.85; }
+  .section-collapse-icon { font-size:0.8rem; color:var(--muted); transition:transform 0.3s ease; }
+  .section-collapse-icon.collapsed { transform:rotate(-90deg); }
+  .section-body-collapsible { overflow:hidden; transition:max-height 0.4s ease, opacity 0.3s ease; max-height:9999px; opacity:1; }
+  .section-body-collapsible.collapsed { max-height:0 !important; opacity:0; padding-top:0 !important; padding-bottom:0 !important; margin-top:0 !important; }
 </style>
 </head>
 <body>
@@ -409,30 +417,35 @@
 
   <!-- Seção 2.5: Contas e Cartões -->
   <div class="card">
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+    <div class="section-header-collapsible" onclick="toggleSection('accounts')">
       <h2 style="margin:0;">3. Contas e Cartões</h2>
-      <div style="display:flex; gap:0.5rem;">
-        <button class="btn btn-outline btn-sm" onclick="openAccountModal('conta')">+ Conta</button>
-        <button class="btn btn-primary btn-sm" onclick="openAccountModal('cartao')">+ Cartão de Crédito</button>
+      <div style="display:flex; align-items:center; gap:0.5rem;">
+        <div onclick="event.stopPropagation(); openAccountModal('conta')" class="btn btn-outline btn-sm">+ Conta</div>
+        <div onclick="event.stopPropagation(); openAccountModal('cartao')" class="btn btn-primary btn-sm">+ Cartão de Crédito</div>
+        <span class="section-collapse-icon" id="collapse-icon-accounts">▼</span>
       </div>
     </div>
+    <div id="section-body-accounts" class="section-body-collapsible">
     <div id="accounts-list">
       <div class="empty" id="accounts-empty" style="padding:1.5rem; text-align:center; color:var(--muted); font-size:0.85rem;">
         Nenhuma conta ou cartão cadastrado. Adicione para vincular despesas à forma de pagamento.
       </div>
       <div id="accounts-grid" style="display:none; display:grid; grid-template-columns:repeat(auto-fill, minmax(280px, 1fr)); gap:1rem;"></div>
     </div>
+    </div>
   </div>
 
   <!-- Seção 4: Itens -->
   <div class="card">
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+    <div class="section-header-collapsible" onclick="toggleSection('items')">
       <h2 style="margin:0;">4. Itens do Fluxo</h2>
       <div style="display:flex; gap:0.5rem; align-items:center;">
-        <button class="btn-clear-badges" id="btn-clear-all-badges" onclick="clearAllNewBadges()" style="display:none;">Limpar Badges</button>
-        <button class="btn btn-primary" onclick="openModal()">+ Adicionar Item</button>
+        <button class="btn-clear-badges" id="btn-clear-all-badges" onclick="event.stopPropagation(); clearAllNewBadges()" style="display:none;">Limpar Badges</button>
+        <div onclick="event.stopPropagation(); openModal()" class="btn btn-primary">+ Adicionar Item</div>
+        <span class="section-collapse-icon" id="collapse-icon-items">▼</span>
       </div>
     </div>
+    <div id="section-body-items" class="section-body-collapsible">
     <div id="items-table-wrap">
       <div class="empty" id="items-empty">
         <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
@@ -462,6 +475,7 @@
         </table>
       </div>
     </div>
+    </div>
   </div>
 
   <!-- Botões calcular e PDF -->
@@ -472,7 +486,11 @@
 
   <!-- Seção 5: Resultado -->
   <div class="card" id="result-section" style="display:none;">
-    <h2>5. Resultado da Projeção</h2>
+    <div class="section-header-collapsible" onclick="toggleSection('result')">
+      <h2 style="margin:0;">5. Resultado da Projeção</h2>
+      <span class="section-collapse-icon" id="collapse-icon-result">▼</span>
+    </div>
+    <div id="section-body-result" class="section-body-collapsible">
     <div class="summary-bar" id="summary-bar"></div>
 
     <!-- Orçamento Mensal Equivalente -->
@@ -504,10 +522,15 @@
       <div id="scenario-adjustments" style="display:none;"></div>
     </div>
 
+    </div><!-- /section-body-result -->
+
     <!-- === ACOMPANHAMENTO MENSAL === -->
     <div class="tracking-section" id="tracking-section" style="display:none;">
       <div class="tracking-header">
-        <h2 style="margin:0;">Acompanhamento Mensal</h2>
+        <div class="section-header-collapsible" onclick="toggleSection('tracking')" style="flex:1;">
+          <h2 style="margin:0;">Acompanhamento Mensal</h2>
+          <span class="section-collapse-icon" id="collapse-icon-tracking">▼</span>
+        </div>
         <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
           <button class="btn btn-outline btn-sm" onclick="gerarMetas('atual')">Gerar Metas (Cenário Atual)</button>
           <button class="btn btn-outline btn-sm" onclick="gerarMetas('otimizado')" id="btn-metas-otimizado" style="display:none;">Gerar Metas (Cenário Otimizado)</button>
@@ -533,12 +556,15 @@
           </button>
         </div>
       </div>
+      <div id="section-body-tracking" class="section-body-collapsible">
       <div class="tracking-tabs" id="tracking-tabs" style="display:none;">
         <button class="tracking-tab active" onclick="setTrackingView('chart')">Gráfico</button>
         <button class="tracking-tab" onclick="setTrackingView('table')">Tabela</button>
         <button class="tracking-tab" onclick="setTrackingView('evolution')">Evolução</button>
+        <button class="tracking-tab" onclick="setTrackingView('faturas')">Faturas</button>
       </div>
       <div id="tracking-content"></div>
+      </div>
     </div>
   </div><!-- /result-section -->
   </div><!-- /sim-editor-view -->
@@ -1561,6 +1587,7 @@ function calcular() {
   });
 
   var numDias = Math.round((end - start) / (1000*60*60*24)) + 1;
+  saveCalcSummary(totalEntradas, totalDespesas, totalPoupancaFluxo, saldo, poupanca);
   renderSummary(totalEntradas, totalPoupancaFluxo, totalDespesas, saldo, poupanca);
   renderOrcamentoMensal(totaisPorItem, totalEntradas, totalPoupancaFluxo, totalDespesas, numDias);
   renderChart(labels, saldoData, poupancaData);
@@ -2486,10 +2513,10 @@ function applyPayload(data) {
   document.getElementById('poupanca-inicial').value = fmtBR(parseBRorNum(poupancaRaw));
   var intocavelRaw = data.poupanca_intocavel !== undefined ? data.poupanca_intocavel : data.poupancaIntocavel;
   document.getElementById('poupanca-intocavel').value = fmtBR(parseBRorNum(intocavelRaw));
-  var itensData = data.itens || data.items;
-  if (Array.isArray(itensData) && itensData.length > 0) { items = itensData; renderItemsTable(); }
   var contasData = data.contas || data.accounts;
   if (Array.isArray(contasData) && contasData.length > 0) { accounts = contasData; renderAccountsGrid(); updateFormaPagamentoSelect(); }
+  var itensData = data.itens || data.items;
+  if (Array.isArray(itensData) && itensData.length > 0) { items = itensData; renderItemsTable(); }
   if (mode === 'relative') updateRelativePeriod();
   else updateCustomPeriod();
   return true;
@@ -2662,6 +2689,18 @@ function renderSimList() {
       '<div class="sim-card-summary">' +
         '<div class="stat"><div class="stat-label">Saldo Inicial</div><div class="stat-value">' + saldo + '</div></div>' +
         '<div class="stat"><div class="stat-label">Itens</div><div class="stat-value">' + nItens + '</div></div>' +
+        (function() {
+          var nContas = (sim.payload && sim.payload.contas) ? sim.payload.contas.length : 0;
+          var summ = sim.payload && sim.payload.lastCalcSummary;
+          var extra = '<div class="stat"><div class="stat-label">Contas</div><div class="stat-value">' + nContas + '</div></div>';
+          if (summ) {
+            extra += '<div class="stat"><div class="stat-label">Saldo Final</div><div class="stat-value" style="color:' + (summ.saldoFinal >= 0 ? 'var(--green)' : 'var(--red)') + ';">' + fmtCurrency(summ.saldoFinal) + '</div></div>';
+            extra += '<div class="stat"><div class="stat-label">Poupança Final</div><div class="stat-value" style="color:var(--blue);">' + fmtCurrency(summ.poupFinal) + '</div></div>';
+            var economia = summ.totalEntradas - summ.totalDespesas;
+            extra += '<div class="stat"><div class="stat-label">Saldo Líquido</div><div class="stat-value" style="color:' + (economia >= 0 ? 'var(--green)' : 'var(--red)') + ';">' + fmtCurrency(economia) + '</div></div>';
+          }
+          return extra;
+        })() +
       '</div>' +
     '</div>';
     container.appendChild(card);
@@ -2730,6 +2769,7 @@ deleteItem = function(index) {
 
   renderSimList();
   showListView();
+  restoreCollapsedSections();
   _initDone = true;
 })();
 
@@ -3007,12 +3047,9 @@ document.addEventListener('importarDiagnostico', function(e) {
   }
 
   // Importar itens (receitas, poupanças, despesas)
-  console.log('[FLUXO IMPORT] contasImport recebidas:', contasImport.length, contasImport.map(function(a){return a.id;}));
-  console.log('[FLUXO IMPORT] accounts no array global:', accounts.length, accounts.map(function(a){return a.id;}));
   itens.forEach(function(item) {
     // formaPagamento já vem mapeado como 'diag_X' pelo mapeador
     var formaPag = item.formaPagamento || '';
-    console.log('[FLUXO IMPORT] item:', item.nome, 'formaPagamento:', formaPag);
     items.push({
       nome: item.nome || 'Item importado',
       valor: item.valor || 0,
@@ -3040,6 +3077,7 @@ document.addEventListener('importarDiagnostico', function(e) {
     document.getElementById('sim-nome').value = 'Importação Diagnóstico ' + new Date().toLocaleDateString('pt-BR');
     document.getElementById('sim-editing-label').textContent = 'Nova simulação (importada)';
   }
+  restoreCollapsedSections();
   _initDone = true; // Garantir que o save funcione
   salvarSimulacaoAtual(); // Salva diretamente (cria ou atualiza a simulação)
   renderSimList(); // Atualiza a lista com a nova simulação
@@ -3411,7 +3449,11 @@ function setTrackingView(view) {
   trackingView = view;
   document.querySelectorAll('.tracking-tab').forEach(function(t) { t.classList.remove('active'); });
   event.target.classList.add('active');
-  renderTracking();
+  if (view === 'faturas') {
+    renderTrackingFaturas();
+  } else {
+    renderTracking();
+  }
 }
 
 function gerarMetas(cenario) {
@@ -3923,12 +3965,14 @@ buildPayload = function() {
   p.scenarioAdjustments = scenarioAdjustments;
   p.scenarioEnabled = scenarioEnabled;
   p.trackingData = trackingData;
+  if (lastCalcSummary) p.lastCalcSummary = lastCalcSummary;
   return p;
 };
 
 var _origApplyPayload = applyPayload;
 applyPayload = function(data) {
   var result = _origApplyPayload(data);
+  if (data && data.lastCalcSummary) { lastCalcSummary = data.lastCalcSummary; }
   if (data && data.scenarioAdjustments) {
     scenarioAdjustments = data.scenarioAdjustments;
     scenarioEnabled = data.scenarioEnabled || false;
@@ -3950,6 +3994,208 @@ applyPayload = function(data) {
   }
   return result;
 };
+
+
+// ============================================================
+// COLLAPSIBLE SECTIONS
+// ============================================================
+var collapsedSections = JSON.parse(localStorage.getItem('fluxo_collapsed_sections') || '{}');
+
+function toggleSection(sectionId) {
+  var body = document.getElementById('section-body-' + sectionId);
+  var icon = document.getElementById('collapse-icon-' + sectionId);
+  if (!body) return;
+  var isCollapsed = body.classList.contains('collapsed');
+  if (isCollapsed) {
+    body.classList.remove('collapsed');
+    if (icon) icon.classList.remove('collapsed');
+    delete collapsedSections[sectionId];
+  } else {
+    body.classList.add('collapsed');
+    if (icon) icon.classList.add('collapsed');
+    collapsedSections[sectionId] = true;
+  }
+  localStorage.setItem('fluxo_collapsed_sections', JSON.stringify(collapsedSections));
+}
+
+function restoreCollapsedSections() {
+  Object.keys(collapsedSections).forEach(function(sectionId) {
+    var body = document.getElementById('section-body-' + sectionId);
+    var icon = document.getElementById('collapse-icon-' + sectionId);
+    if (body) body.classList.add('collapsed');
+    if (icon) icon.classList.add('collapsed');
+  });
+}
+
+// ============================================================
+// SIMULATION SUMMARY SNAPSHOT
+// ============================================================
+var lastCalcSummary = null;
+
+function saveCalcSummary(totalEntradas, totalDespesas, totalPoupanca, saldoFinal, poupFinal) {
+  lastCalcSummary = {
+    totalEntradas: totalEntradas,
+    totalDespesas: totalDespesas,
+    totalPoupanca: totalPoupanca,
+    saldoFinal: saldoFinal,
+    poupFinal: poupFinal,
+    calculadoEm: new Date().toISOString()
+  };
+}
+
+// ============================================================
+// FATURAS TAB IN TRACKING (scenario-aware)
+// ============================================================
+function renderTrackingFaturas() {
+  var container = document.getElementById('tracking-content');
+  var cartoesMap = {};
+  accounts.forEach(function(acc) { if (acc.tipo === 'cartao') cartoesMap[acc.id] = acc; });
+
+  var cartaoIds = Object.keys(cartoesMap);
+  if (cartaoIds.length === 0) {
+    container.innerHTML = '<div style="text-align:center;color:var(--muted);padding:2rem;">Nenhum cartão de crédito cadastrado.</div>';
+    return;
+  }
+
+  // Build faturas using scenario adjustments if scenario is enabled
+  var period = getPeriodDates();
+  if (!period) {
+    container.innerHTML = '<div style="text-align:center;color:var(--muted);padding:2rem;">Configure o período e calcule a projeção primeiro.</div>';
+    return;
+  }
+
+  var start = period.start, end = period.end;
+  var occCount = {};
+  items.forEach(function(it, idx) { occCount[idx] = 0; });
+
+  var fatMap = {}; // { cartaoId: { fatKey: { vencDate, total, totalOtimizado, itens:[] } } }
+
+  items.forEach(function(item, idx) {
+    if (!item.formaPagamento || !cartoesMap[item.formaPagamento]) return;
+    var cartao = cartoesMap[item.formaPagamento];
+    var occs = getOccurrences(item, start, end);
+    occs.forEach(function(d) {
+      var fat = getFaturaKey(d, cartao);
+      if (!fatMap[item.formaPagamento]) fatMap[item.formaPagamento] = {};
+      if (!fatMap[item.formaPagamento][fat.key]) {
+        fatMap[item.formaPagamento][fat.key] = { vencDate: fat.vencDate, total: 0, totalOtimizado: 0, itens: [] };
+      }
+      var origVal = item.valor;
+      var adjVal = origVal;
+      if (scenarioEnabled) {
+        adjVal = getAdjustedValue(idx, d, occCount[idx]);
+      }
+      occCount[idx]++;
+      fatMap[item.formaPagamento][fat.key].total += origVal;
+      fatMap[item.formaPagamento][fat.key].totalOtimizado += adjVal;
+      fatMap[item.formaPagamento][fat.key].itens.push({ nome: item.nome, valor: origVal, valorOtimizado: adjVal, data: new Date(d) });
+    });
+  });
+
+  // Filter by trackingMonth if set
+  var html = '';
+
+  // Month navigation (reuse existing trackingMonth)
+  var allFatKeys = [];
+  Object.keys(fatMap).forEach(function(cid) {
+    Object.keys(fatMap[cid]).forEach(function(fk) { if (allFatKeys.indexOf(fk) === -1) allFatKeys.push(fk); });
+  });
+  allFatKeys.sort();
+
+  if (allFatKeys.length === 0) {
+    container.innerHTML = '<div style="text-align:center;color:var(--muted);padding:2rem;">Nenhuma fatura projetada no período.</div>';
+    return;
+  }
+
+  // Use trackingMonth for filtering, or show all
+  var filterMonth = trackingMonth || null;
+  var showAll = !filterMonth;
+
+  html += '<div style="margin:1rem 0;">';
+  if (!showAll) {
+    var monthLabel = new Date(filterMonth + '-15').toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+    html += '<div style="font-size:0.85rem; color:var(--muted); margin-bottom:0.5rem;">Faturas com vencimento em: <strong style="color:var(--fg);">' + monthLabel.charAt(0).toUpperCase() + monthLabel.slice(1) + '</strong></div>';
+  } else {
+    html += '<div style="font-size:0.85rem; color:var(--muted); margin-bottom:0.5rem;">Todas as faturas projetadas no período</div>';
+  }
+  html += '</div>';
+
+  cartaoIds.forEach(function(cartaoId) {
+    var cartao = cartoesMap[cartaoId];
+    var faturas = fatMap[cartaoId];
+    if (!faturas) return;
+    var fatKeys = Object.keys(faturas).sort();
+    if (!showAll) {
+      fatKeys = fatKeys.filter(function(fk) { return fk === filterMonth; });
+    }
+    if (fatKeys.length === 0) return;
+
+    var totalCartao = fatKeys.reduce(function(s, k) { return s + faturas[k].total; }, 0);
+    var totalCartaoOpt = fatKeys.reduce(function(s, k) { return s + faturas[k].totalOtimizado; }, 0);
+
+    html += '<div style="background:var(--card2); border:1px solid var(--border); border-radius:8px; padding:1rem; margin-bottom:1rem;">';
+    html += '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.8rem;">';
+    html += '<div style="display:flex; align-items:center; gap:0.6rem;">';
+    html += '<span style="font-size:1.1rem;">\ud83d\udcb3</span>';
+    html += '<strong style="color:var(--fg);">' + cartao.nome + '</strong>';
+    if (cartao.bandeira) html += '<span class="badge badge-purple">' + cartao.bandeira.charAt(0).toUpperCase() + cartao.bandeira.slice(1) + '</span>';
+    html += '</div>';
+    html += '<div style="text-align:right;">';
+    if (scenarioEnabled && totalCartaoOpt !== totalCartao) {
+      html += '<div style="font-size:0.68rem; color:var(--muted); text-decoration:line-through;">' + fmtCurrency(totalCartao) + '</div>';
+      html += '<div style="font-weight:700; color:var(--green);">' + fmtCurrency(totalCartaoOpt) + '</div>';
+      html += '<div style="font-size:0.65rem; color:var(--green);">Economia: ' + fmtCurrency(totalCartao - totalCartaoOpt) + '</div>';
+    } else {
+      html += '<div style="font-weight:700; color:var(--red);">' + fmtCurrency(totalCartao) + '</div>';
+    }
+    html += '</div></div>';
+
+    // Table of faturas
+    html += '<table class="tracking-table"><thead><tr><th>Fatura</th><th>Vencimento</th><th>Valor Original</th>';
+    if (scenarioEnabled) html += '<th>Valor Otimizado</th><th>Economia</th>';
+    html += '<th>Itens</th></tr></thead><tbody>';
+
+    fatKeys.forEach(function(fatKey) {
+      var fat = faturas[fatKey];
+      var vencLabel = fat.vencDate.toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit', year:'numeric' });
+      var mesLabel = fat.vencDate.toLocaleDateString('pt-BR', { month:'long', year:'numeric' });
+      var economia = fat.total - fat.totalOtimizado;
+
+      html += '<tr>';
+      html += '<td style="font-weight:600;">' + mesLabel.charAt(0).toUpperCase() + mesLabel.slice(1) + '</td>';
+      html += '<td>' + vencLabel + '</td>';
+      html += '<td style="color:var(--red); font-weight:600;">' + fmtCurrency(fat.total) + '</td>';
+      if (scenarioEnabled) {
+        html += '<td style="color:' + (economia > 0 ? 'var(--green)' : 'var(--fg)') + '; font-weight:600;">' + fmtCurrency(fat.totalOtimizado) + '</td>';
+        html += '<td style="color:var(--green);">' + (economia > 0 ? '-' + fmtCurrency(economia) : '--') + '</td>';
+      }
+      html += '<td>' + fat.itens.length + ' itens</td>';
+      html += '</tr>';
+
+      // Expandable items detail
+      html += '<tr><td colspan="' + (scenarioEnabled ? 6 : 4) + '" style="padding:0;">';
+      html += '<details style="padding:0.3rem 0.5rem;"><summary style="font-size:0.72rem; color:var(--muted); cursor:pointer;">Ver itens da fatura</summary>';
+      html += '<div style="max-height:150px; overflow-y:auto; margin-top:0.3rem;">';
+      fat.itens.sort(function(a,b) { return a.data - b.data; }).forEach(function(fi) {
+        var dataLabel = fi.data.toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit' });
+        html += '<div style="display:flex; justify-content:space-between; padding:0.15rem 0; font-size:0.72rem; border-bottom:1px solid rgba(212,175,55,0.05);">';
+        html += '<span style="color:var(--fg);">' + fi.nome + '</span>';
+        html += '<span style="color:var(--muted);">' + dataLabel + '</span>';
+        if (scenarioEnabled && fi.valorOtimizado !== fi.valor) {
+          html += '<span><span style="text-decoration:line-through; color:var(--muted);">' + fmtCurrency(fi.valor) + '</span> <span style="color:var(--green); font-weight:600;">' + fmtCurrency(fi.valorOtimizado) + '</span></span>';
+        } else {
+          html += '<span style="color:var(--red); font-weight:600;">' + fmtCurrency(fi.valor) + '</span>';
+        }
+        html += '</div>';
+      });
+      html += '</div></details></td></tr>';
+    });
+
+    html += '</tbody></table></div>';
+  });
+
+  container.innerHTML = html;
+}
 
 </script>
 </main>
