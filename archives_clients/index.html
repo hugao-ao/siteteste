@@ -155,6 +155,23 @@
                 <div class="dash-widget-body" id="widget-fluxo-body" onclick="openFluxoModal()">
                   <span class="dash-widget-nodata">Carregando...</span>
                 </div>
+                <!-- Graficos de Evolucao (expansivel) -->
+                <div class="dash-charts-toggle" onclick="event.stopPropagation();toggleChartsSection()">
+                  <span class="toggle-arrow" id="charts-arrow">&#9654;</span>
+                  <span>Ver Gr&aacute;ficos de Evolu&ccedil;&atilde;o</span>
+                </div>
+                <div class="dash-charts-container" id="dash-charts-container">
+                  <div class="dash-charts-grid">
+                    <div class="dash-chart-box">
+                      <h4>Evolu&ccedil;&atilde;o Prevista (Simula&ccedil;&atilde;o)</h4>
+                      <canvas id="chart-previsto"></canvas>
+                    </div>
+                    <div class="dash-chart-box">
+                      <h4>Evolu&ccedil;&atilde;o Real (Lan&ccedil;amentos)</h4>
+                      <canvas id="chart-real"></canvas>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
         </div>
@@ -216,25 +233,6 @@
           <div id="dash-faturas"></div>
         </div>
 
-        <!-- Graficos de Evolucao -->
-        <div class="dash-card">
-          <div class="dash-charts-toggle" onclick="toggleChartsSection()">
-            <span class="toggle-arrow" id="charts-arrow">&#9654;</span>
-            <span>Ver Gr&aacute;ficos de Evolu&ccedil;&atilde;o</span>
-          </div>
-          <div class="dash-charts-container" id="dash-charts-container">
-            <div class="dash-charts-grid">
-              <div class="dash-chart-box">
-                <h4>Evolu&ccedil;&atilde;o Prevista (Simula&ccedil;&atilde;o)</h4>
-                <canvas id="chart-previsto"></canvas>
-              </div>
-              <div class="dash-chart-box">
-                <h4>Evolu&ccedil;&atilde;o Real (Lan&ccedil;amentos)</h4>
-                <canvas id="chart-real"></canvas>
-              </div>
-            </div>
-          </div>
-        </div>
 
         <!-- Link -->
         <div style="text-align:center;margin-top:.8rem;">
