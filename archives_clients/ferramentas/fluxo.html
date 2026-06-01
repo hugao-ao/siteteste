@@ -515,11 +515,20 @@
       </div>
       <div class="table-wrap" id="items-table" style="display:none;">
         <table>
-              <tr><th>Coluna</th><th>Formato</th><th>Exemplo</th></tr>
-              <tr><td>A - Data</td><td>DD/MM/AAAA</td><td>01/06/2026</td></tr>
-              <tr><td>B - Descri&ccedil;&atilde;o</td><td>Texto livre</td><td>Supermercado</td></tr>
-              <tr><td>C - Valor</td><td>N&uacute;mero (sem R$)</td><td>450,00</td></tr>
-            </table>
+          <thead>
+            <tr>
+              <th style="width:40px;"></th>
+              <th>Tipo</th>
+              <th>Item</th>
+              <th>Valor</th>
+              <th>Recorrência</th>
+              <th>Categoria</th>
+              <th>Pagamento</th>
+              <th style="width:60px;">Ações</th>
+            </tr>
+          </thead>
+          <tbody id="items-tbody"></tbody>
+        </table>
       </div>
     </div>
     </div>
@@ -597,14 +606,10 @@
               <table>
                 <tr><th>Coluna</th><th>Formato</th><th>Exemplo</th></tr>
                 <tr><td>A - Data</td><td>DD/MM/AAAA</td><td>01/06/2026</td></tr>
-                <tr><td>B - Descrição</td><td>Texto livre</td><td>Supermercado</td></tr>
+                <tr><td>B - Descrição</td><td>Texto livre (opcional)</td><td>Supermercado</td></tr>
                 <tr><td>C - Valor</td><td>Número (sem R$)</td><td>450,00</td></tr>
-                <tr><td>D - Categoria</td><td>Texto (ver abaixo)</td><td>Sobrevivência</td></tr>
-                <tr><td>E - Pagamento</td><td>Nome da conta/cartão</td><td>Nubank</td></tr>
-                <tr><td>F - Tipo</td><td>Despesa, Entrada ou Poupança</td><td>Despesa</td></tr>
               </table>
-              <p style="margin:4px 0;"><strong>Categorias válidas:</strong> Sobrevivência, Necessidades, Aperfeiçoamento, Dívidas, Conforto/Supérfluo</p>
-              <p style="margin:4px 0;"><strong>Coluna F (Tipo):</strong> Opcional. Se omitida, assume "Despesa".</p>
+              <p style="margin:4px 0;"><strong>Formato simplificado:</strong> Apenas Data, Descrição e Valor. As demais informações serão preenchidas na tela de revisão.</p>
               <p style="margin:4px 0;color:var(--orange);"><strong>Importante:</strong> A primeira linha deve ser o cabeçalho (será ignorada).</p>
             </span></span>
           </button>
