@@ -203,6 +203,23 @@
     .regime-section h4 { font-size: 0.72rem; }
     #btnSaveGlobal { font-size: 0.72rem !important; padding: 6px 10px !important; }
   }
+
+  /* === SIM LOCK & PRIMARY CHECKBOXES === */
+  .sim-checkbox-group { display:none; gap:0.5rem; align-items:center; margin-right:0.5rem; }
+  .equipe-mode .sim-checkbox-group { display:inline-flex !important; }
+  .sim-checkbox-group label { display:flex; align-items:center; gap:0.25rem; font-size:0.72rem; color:var(--muted); cursor:pointer; padding:0.2rem 0.5rem; border-radius:4px; border:1px solid transparent; transition:all 0.15s; user-select:none; }
+  .sim-checkbox-group label:hover { border-color:var(--border); background:rgba(255,255,255,0.03); }
+  .sim-checkbox-group input[type="checkbox"] { width:14px; height:14px; accent-color:var(--primary); cursor:pointer; }
+  .sim-checkbox-group label.active-lock { border-color:var(--red); background:rgba(239,68,68,0.08); color:var(--red); }
+  .sim-checkbox-group label.active-primary { border-color:var(--primary); background:rgba(212,175,55,0.08); color:var(--primary); }
+  .sim-card.locked { opacity:0.85; }
+  .sim-card.locked .sim-card-body { pointer-events:none; }
+  .sim-card.locked input:not(.sim-lock-cb):not(.sim-primary-cb), .sim-card.locked select, .sim-card.locked textarea { pointer-events:none !important; opacity:0.6; }
+  .sim-card.locked button:not([class*="sim-lock"]):not([class*="sim-primary"]) { pointer-events:none; opacity:0.5; }
+  .sim-card-item.locked { opacity:0.85; }
+  .sim-card-item.locked .sim-card-item-body { pointer-events:none; }
+  .sim-card-item.locked input:not(.sim-lock-cb):not(.sim-primary-cb), .sim-card-item.locked select, .sim-card-item.locked textarea { pointer-events:none !important; opacity:0.6; }
+
 </style>
 </head>
 <body>
@@ -514,6 +531,13 @@
 
 
 <script>
+// === EQUIPE MODE CHECK (show lock/primary only for consultors) ===
+(function() {
+  if (sessionStorage.getItem('equipe_modo_cliente') === 'true') {
+    document.documentElement.classList.add('equipe-mode');
+  }
+})();
+
 // ===== FORMATACAO =====
 function fmtBRL(v) { return 'R$ ' + (v||0).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2}); }
 function parseCurrency(el) {
@@ -1859,6 +1883,7 @@ function salvarSim() {
 }
 
 function editarSim(i) {
+  if (simulations[i] && simulations[i].locked) { alert("Simulação bloqueada. Desmarque o cadeado para editar."); return; }
   currentSimIdx = i;
   applyPayload(simulations[i]);
   document.getElementById('list-view').style.display = 'none';
@@ -1883,6 +1908,21 @@ function excluirSim(i) {
   }
 }
 
+
+// === LOCK & PRIMARY SIMULATION HELPERS ===
+function toggleSimLock(idx, ev) {
+  ev.stopPropagation();
+  simulations[idx].locked = !simulations[idx].locked;
+  persistir();
+  renderLista();
+}
+function toggleSimPrimary(idx, ev) {
+  ev.stopPropagation();
+  simulations.forEach(function(s, i) { s.primary = (i === idx) ? !s.primary : false; });
+  persistir();
+  renderLista();
+}
+
 function renderLista() {
   var container = document.getElementById('sim-list');
   if (simulations.length === 0) {
@@ -1893,11 +1933,15 @@ function renderLista() {
   simulations.forEach(function(sim, i) {
     var nAportes = sim.aportes ? sim.aportes.length : 0;
     var nVeiculos = sim.veiculos ? sim.veiculos.length : 0;
-    html += '<div class="sim-card" onclick="toggleCard(this,event)">';
+    html += '<div class="sim-card' + (sim.locked ? ' locked' : '') + '" onclick="toggleCard(this,event)">';
     html += '<div class="sim-card-header">';
     html += '<div class="chevron">&#9660;</div>';
     html += '<div class="sim-title">' + (sim.nome || 'Simulacao ' + (i+1)) + '</div>';
     html += '<div class="sim-meta">' + sim.prazo + ' meses | ' + nVeiculos + ' veiculo(s) | ' + nAportes + ' aporte(s)</div>';
+    html += '<div class="sim-checkbox-group" onclick="event.stopPropagation()">';
+    html += '<label class="' + (sim.locked ? 'active-lock' : '') + '" title="Bloquear edição"><input type="checkbox" class="sim-lock-cb" ' + (sim.locked ? 'checked' : '') + ' onchange="toggleSimLock('+i+', event)">&#128274;</label>';
+    html += '<label class="' + (sim.primary ? 'active-primary' : '') + '" title="Simulação principal"><input type="checkbox" class="sim-primary-cb" ' + (sim.primary ? 'checked' : '') + ' onchange="toggleSimPrimary('+i+', event)">&#11088;</label>';
+    html += '</div>';
     html += '<div class="sim-card-actions">';
     html += '<button onclick="editarSim('+i+');event.stopPropagation();">Editar</button>';
     html += '<button class="dup" onclick="duplicarSim('+i+');event.stopPropagation();">Duplicar</button>';
