@@ -104,6 +104,20 @@ tbody td{padding:0.6rem 0.75rem;font-size:0.85rem;vertical-align:middle;}
 .btn-save-global:hover{transform:translateY(-2px);box-shadow:0 6px 28px rgba(212,175,55,0.6);}
 .btn-save-global.saved{background:linear-gradient(135deg,#10b981,#059669);color:#fff;}
 .hidden{display:none!important;}
+
+  /* === LOCK & PRIMARY CHECKBOXES === */
+  .sim-checkbox-group { display:none; gap:0.5rem; align-items:center; margin-left:0.75rem; }
+  .equipe-mode .sim-checkbox-group { display:inline-flex !important; }
+  .sim-checkbox-group label { display:flex; align-items:center; gap:0.25rem; font-size:0.72rem; color:var(--muted); cursor:pointer; padding:0.2rem 0.5rem; border-radius:4px; border:1px solid transparent; transition:all 0.15s; user-select:none; }
+  .sim-checkbox-group label:hover { border-color:var(--border); background:rgba(255,255,255,0.03); }
+  .sim-checkbox-group input[type="checkbox"] { width:14px; height:14px; accent-color:var(--primary); cursor:pointer; }
+  .sim-checkbox-group label.active-lock { border-color:var(--red); background:rgba(239,68,68,0.08); color:var(--red); }
+  .sim-checkbox-group label.active-primary { border-color:var(--primary); background:rgba(212,175,55,0.08); color:var(--primary); }
+  .date-chip.locked { opacity:0.7; text-decoration:line-through; }
+  .date-chip.primary-mark { box-shadow:0 0 0 2px var(--primary); }
+  #section-editor.locked input, #section-editor.locked select, #section-editor.locked textarea { pointer-events:none !important; opacity:0.6; }
+  #section-editor.locked button:not(.lock-toggle):not(.primary-toggle) { pointer-events:none; opacity:0.5; }
+
 </style>
 </head>
 <body>
@@ -159,6 +173,10 @@ tbody td{padding:0.6rem 0.75rem;font-size:0.85rem;vertical-align:middle;}
       <div class="toolbar">
         <h3 id="editor-title" style="color:var(--primary);">Data: --</h3>
         <div class="spacer"></div>
+        <div class="sim-checkbox-group">
+          <label id="lbl-lock-date" class="" title="Bloquear edição desta data"><input type="checkbox" class="lock-toggle" onchange="toggleDateLock()">&#128274; Bloquear</label>
+          <label id="lbl-primary-date" class="" title="Marcar como data principal (integração)"><input type="checkbox" class="primary-toggle" onchange="toggleDatePrimary()">&#11088; Principal</label>
+        </div>
         <button class="btn btn-outline btn-sm" onclick="editarDataAtual()">&#9998; Editar Data</button>
         <button class="btn btn-danger btn-sm" onclick="excluirDataAtual()">&#128465; Excluir</button>
       </div>
@@ -283,6 +301,13 @@ tbody td{padding:0.6rem 0.75rem;font-size:0.85rem;vertical-align:middle;}
 </button>
 
 <script>
+// === EQUIPE MODE CHECK (show lock/primary only for consultors) ===
+(function() {
+  if (sessionStorage.getItem('equipe_modo_cliente') === 'true') {
+    document.documentElement.classList.add('equipe-mode');
+  }
+})();
+
 // ============================================================
 // PATRIMÔNIO DO CLIENTE - COMPLETO
 // ============================================================
@@ -374,6 +399,7 @@ function novaData() {
   openModal('modal-data');
 }
 function editarDataAtual() {
+  var dChk = state.datas.find(x => x.id === state.selectedDateId); if (dChk && dChk.locked) { alert("Data bloqueada. Desmarque o cadeado para editar."); return; }
   const d = state.datas.find(x => x.id === state.selectedDateId);
   if (!d) return;
   editingDataId = d.id;
@@ -411,6 +437,7 @@ function salvarData() {
   saveToSupabase();
 }
 function excluirDataAtual() {
+  var dChk = state.datas.find(x => x.id === state.selectedDateId); if (dChk && dChk.locked) { alert("Data bloqueada. Desmarque o cadeado para editar."); return; }
   if (!confirm('Excluir esta data e todos os dados associados?')) return;
   state.datas = state.datas.filter(x => x.id !== state.selectedDateId);
   state.selectedDateId = state.datas.length > 0 ? state.datas[state.datas.length - 1].id : null;
@@ -456,6 +483,7 @@ function delInstituicao(id) {
 
 // ---- ATIVO MODAL ----
 function openAtivoModal(tipo, id) {
+  var dChk = state.datas.find(x => x.id === state.selectedDateId); if (dChk && dChk.locked) { alert("Data bloqueada. Desmarque o cadeado para editar."); return; }
   editingAtivoType = tipo;
   editingAtivoId = id || null;
   const dateObj = state.datas.find(x => x.id === state.selectedDateId);
@@ -579,6 +607,7 @@ function delAtivo(tipo, id) {
 
 // ---- DÍVIDA MODAL ----
 function openDividaModal(id) {
+  var dChk = state.datas.find(x => x.id === state.selectedDateId); if (dChk && dChk.locked) { alert("Data bloqueada. Desmarque o cadeado para editar."); return; }
   editingDividaId = id || null;
   const dateObj = state.datas.find(x => x.id === state.selectedDateId);
   if (!dateObj) return;
@@ -633,6 +662,7 @@ function renderAll() {
   renderDashboard();
   renderChart();
   renderEditor();
+  updateLockPrimaryUI();
 }
 
 function renderDatesNav() {
@@ -641,7 +671,7 @@ function renderDatesNav() {
     nav.innerHTML = '<p style="color:var(--muted);font-size:0.8rem;font-style:italic;">Nenhuma data registrada. Clique em "+ Nova Data" para começar.</p>';
     return;
   }
-  nav.innerHTML = state.datas.map(d => `<span class="date-chip ${d.id === state.selectedDateId ? 'active' : ''}" onclick="selectDate('${d.id}')">${fmtDate(d.data)}</span>`).join('');
+  nav.innerHTML = state.datas.map(d => `<span class="date-chip ${d.id === state.selectedDateId ? 'active' : ''} ${d.locked ? 'locked' : ''} ${d.primary ? 'primary-mark' : ''}" onclick="selectDate('${d.id}')">${d.locked ? '🔒 ' : ''}${d.primary ? '⭐ ' : ''}${fmtDate(d.data)}</span>`).join('');
 }
 
 function renderDashboard() {
