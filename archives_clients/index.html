@@ -444,6 +444,12 @@
         else if (score >= 1) status = 'yellow';
         else status = 'green';
 
+        // === CALCULO DO DISPONIVEL REAL ===
+        // Disponivel = meta de despesas - ja gasto - despesas previstas que ainda nao sairam
+        var disponivelReal = metaDespTotal - realDespesas - valorFixosPendentes;
+        // Saldo projetado = entradas previstas restantes - despesas previstas restantes + saldo atual
+        var saldoProjetado = saldo + entradasPendentes - valorFixosPendentes;
+
         // === BUILD TITULO + EXPLICACAO ===
         var titulo, explicacao;
 
@@ -453,70 +459,68 @@
           if (lancMuitoPoucos) {
             explicacao = 'Poucos lan\u00e7amentos at\u00e9 agora. Registre seus gastos para um acompanhamento preciso.';
           } else if (saldo < 0 && entradasPendentes > Math.abs(saldo)) {
-            explicacao = 'Saldo parcial negativo, mas h\u00e1 ' + fmt(entradasPendentes) + ' em entradas previstas que cobrem a diferen\u00e7a.';
+            explicacao = 'Saldo parcial negativo, mas h\u00e1 ' + fmt(entradasPendentes) + ' em entradas previstas. Ainda h\u00e1 ~' + fmt(valorFixosPendentes) + ' em despesas por sair. Dispon\u00edvel real para gastar: ' + fmt(Math.max(0, disponivelReal)) + '.';
           } else if (saldo < 0 && entradasPendentes > 0) {
-            explicacao = 'Saldo negativo por enquanto. Entradas de ' + fmt(entradasPendentes) + ' ainda previstas para este m\u00eas.';
+            explicacao = 'Saldo negativo por enquanto. Entradas de ' + fmt(entradasPendentes) + ' previstas, mas ~' + fmt(valorFixosPendentes) + ' ainda sair\u00e1. Livre para gastar: ' + fmt(Math.max(0, disponivelReal)) + '.';
           } else if (saldo < 0 && diaAtual <= 10) {
-            explicacao = 'In\u00edcio do m\u00eas com saldo negativo \u2014 normal se a renda ainda n\u00e3o entrou. Despesas em ' + pctUsado + '%.';
+            explicacao = 'In\u00edcio do m\u00eas, renda pode n\u00e3o ter entrado ainda. Despesas em ' + pctUsado + '%. Dispon\u00edvel real: ' + fmt(Math.max(0, disponivelReal)) + '.';
           } else if (saldo < 0) {
-            explicacao = 'Saldo negativo pontual, por\u00e9m despesas bem abaixo da meta (' + pctUsado + '%). Tend\u00eancia favor\u00e1vel.';
+            explicacao = 'Saldo negativo pontual. Despesas abaixo da meta (' + pctUsado + '%). Livre para gastar: ' + fmt(Math.max(0, disponivelReal)) + '.';
           } else if (ritmoLento) {
-            explicacao = 'Ritmo de gastos abaixo do esperado para o dia ' + diaAtual + '. Boa folga no or\u00e7amento.';
+            explicacao = 'Ritmo abaixo do esperado para o dia ' + diaAtual + '. Dispon\u00edvel real: ' + fmt(Math.max(0, disponivelReal)) + '.';
           } else if (catsProximas.length === 1) {
-            explicacao = pctUsado + '% usado. ' + catsProximas[0].label + ' perto do limite (' + catsProximas[0].pct + '%), mas o geral est\u00e1 saud\u00e1vel.';
+            explicacao = catsProximas[0].label + ' perto do limite (' + catsProximas[0].pct + '%), mas o geral est\u00e1 ok. Dispon\u00edvel: ' + fmt(Math.max(0, disponivelReal)) + '.';
           } else if (fixosVaoAumentar && (realDespesas + valorFixosPendentes) <= metaDespTotal * 0.9) {
-            explicacao = pctUsado + '% usado. Ainda h\u00e1 ' + fixosPendentes + ' despesas previstas por vir, mas cabem no or\u00e7amento.';
+            explicacao = 'Ainda h\u00e1 ~' + fmt(valorFixosPendentes) + ' em despesas previstas por sair. Livre para gastar al\u00e9m delas: ' + fmt(Math.max(0, disponivelReal)) + '.';
           } else if (diaAtual >= diasNoMes - 3) {
-            explicacao = 'Fim do m\u00eas com ' + pctUsado + '% do or\u00e7amento usado. Resultado positivo!';
+            explicacao = 'Fim do m\u00eas com ' + pctUsado + '% usado. Resultado positivo! Sobra de ' + fmt(Math.max(0, disponivelReal)) + '.';
           } else {
-            explicacao = pctUsado + '% do or\u00e7amento usado em ' + diaAtual + '/' + diasNoMes + ' dias. Dentro do planejado.';
+            explicacao = pctUsado + '% usado (' + diaAtual + '/' + diasNoMes + ' dias). Dispon\u00edvel real: ' + fmt(Math.max(0, disponivelReal)) + '.';
           }
 
-          // Nota sobre poupanca
           if (poupancaAtrasada) {
-            explicacao += ' Lembre-se de registrar a poupan\u00e7a.';
+            explicacao += ' Lembre-se da poupan\u00e7a.';
           }
 
         } else if (status === 'yellow') {
           titulo = 'Fique atento!';
 
           if (lancInsuficientes && pctUsado < 40) {
-            // Falso verde evitado: poucos lancamentos podem esconder gastos reais
-            explicacao = 'Apenas ' + lancDoMes.length + ' lan\u00e7amentos em ' + diaAtual + ' dias. Pode haver gastos n\u00e3o registrados. Atualize para ter clareza.';
+            explicacao = 'Apenas ' + lancDoMes.length + ' lan\u00e7amentos em ' + diaAtual + ' dias. Pode haver gastos n\u00e3o registrados. Atualize para ter clareza real.';
           } else if (ritmoAcelerado && catsEstouradas.length === 0) {
-            // Ritmo acelerado sem estouro ainda
             var projecao = Math.round((realDespesas / diaAtual) * diasNoMes);
-            explicacao = 'Ritmo acelerado: se mantiver, projetar\u00e1 ' + fmt(projecao) + ' em despesas (meta: ' + fmt(metaDespTotal) + ').';
+            explicacao = 'Ritmo acelerado: proje\u00e7\u00e3o de ' + fmt(projecao) + ' (meta: ' + fmt(metaDespTotal) + '). Dispon\u00edvel real: ' + fmt(Math.max(0, disponivelReal)) + '.';
           } else if (catsEstouradas.length > 0 && pctUsado <= 70) {
             var nomes = catsEstouradas.map(function(c) { return c.label; }).join(', ');
-            explicacao = nomes + ' ultrapassou a meta, mas o total geral est\u00e1 em ' + pctUsado + '%. Remaneje se poss\u00edvel.';
+            explicacao = nomes + ' estourou, mas geral em ' + pctUsado + '%. Ainda h\u00e1 ~' + fmt(valorFixosPendentes) + ' por sair. Dispon\u00edvel: ' + fmt(Math.max(0, disponivelReal)) + '.';
           } else if (fixosVaoAumentar && (realDespesas + valorFixosPendentes) > metaDespTotal) {
-            explicacao = 'Ainda h\u00e1 ' + fmt(valorFixosPendentes) + ' em despesas previstas por vir. Com elas, o or\u00e7amento ser\u00e1 ultrapassado.';
+            var deficit = (realDespesas + valorFixosPendentes) - metaDespTotal;
+            explicacao = 'Ainda h\u00e1 ' + fmt(valorFixosPendentes) + ' em despesas por sair. Com elas, ultrapassar\u00e1 a meta em ' + fmt(deficit) + '. Evite gastos extras.';
           } else if (catsProximas.length >= 2 && pctUsado <= 70) {
             var nomes2 = catsProximas.map(function(c) { return c.label; }).join(', ');
-            explicacao = nomes2 + ' est\u00e3o pr\u00f3ximas do limite. Or\u00e7amento geral em ' + pctUsado + '%, mas cuidado.';
+            explicacao = nomes2 + ' pr\u00f3ximas do limite. Dispon\u00edvel real: ' + fmt(Math.max(0, disponivelReal)) + '. Cuidado nos pr\u00f3ximos dias.';
           } else if (pctUsado > 70 && pctUsado <= 100) {
-            var restante = metaDespTotal - realDespesas;
-            if (restante > 0 && diasRestantes > 0) {
-              explicacao = pctUsado + '% usado com ' + diasRestantes + ' dias restantes. Dispon\u00edvel: ' + fmt(restante) + ' (m\u00e9dia de ' + fmt(restante / diasRestantes) + '/dia).';
+            if (disponivelReal > 0 && diasRestantes > 0) {
+              explicacao = pctUsado + '% usado. Dispon\u00edvel real (j\u00e1 descontando previstos): ' + fmt(disponivelReal) + ' para ' + diasRestantes + ' dias (' + fmt(disponivelReal / diasRestantes) + '/dia).';
+            } else if (disponivelReal <= 0) {
+              explicacao = pctUsado + '% usado e despesas previstas j\u00e1 consomem o restante. Sem margem para gastos extras.';
             } else {
-              explicacao = pctUsado + '% j\u00e1 utilizado. Evite novos gastos para n\u00e3o estourar.';
+              explicacao = pctUsado + '% j\u00e1 utilizado. Evite novos gastos. Dispon\u00edvel: ' + fmt(Math.max(0, disponivelReal)) + '.';
             }
           } else {
-            explicacao = 'Or\u00e7amento em ' + pctUsado + '%. Algumas categorias precisam de aten\u00e7\u00e3o.';
+            explicacao = 'Or\u00e7amento em ' + pctUsado + '%. Dispon\u00edvel real: ' + fmt(Math.max(0, disponivelReal)) + '.';
           }
 
-          // Contexto positivo ou negativo adicional
           if (saldo > 0 && entradasPendentes <= 0) {
-            explicacao += ' Entradas j\u00e1 recebidas, saldo positivo por enquanto.';
+            explicacao += ' Entradas j\u00e1 recebidas.';
           } else if (entradasPendentes > 0 && saldo < 0) {
-            explicacao += ' Ainda h\u00e1 ' + fmt(entradasPendentes) + ' em entradas previstas.';
+            explicacao += ' Entradas de ' + fmt(entradasPendentes) + ' ainda previstas.';
           } else if (poupancaExcessiva) {
-            explicacao += ' Poupan\u00e7a acima da meta pode estar apertando o m\u00eas.';
+            explicacao += ' Poupan\u00e7a acima da meta pode estar apertando.';
           }
 
           if (poupancaAtrasada && !poupancaExcessiva) {
-            explicacao += ' Poupan\u00e7a ainda n\u00e3o registrada.';
+            explicacao += ' Poupan\u00e7a n\u00e3o registrada.';
           }
 
         } else { // red
@@ -525,31 +529,29 @@
 
           if (catsEstouradas.length >= 3) {
             var nomes3 = catsEstouradas.slice(0, 3).map(function(c) { return c.label; }).join(', ');
-            explicacao = nomes3 + ' acima da meta. Excedente total: ' + fmt(excedente > 0 ? excedente : 0) + '.';
+            explicacao = nomes3 + ' acima da meta. Excedente: ' + fmt(excedente > 0 ? excedente : 0) + '. Ainda h\u00e1 ' + fmt(valorFixosPendentes) + ' por sair.';
           } else if (excedente > 0 && catsEstouradas.length > 0) {
-            var nomes4 = catsEstouradas.map(function(c) { return c.label + ' (+' + c.pct + '%)'; }).join(', ');
-            explicacao = 'Excedente de ' + fmt(excedente) + '. Principais: ' + nomes4 + '.';
+            var nomes4 = catsEstouradas.map(function(c) { return c.label; }).join(', ');
+            explicacao = 'Excedente de ' + fmt(excedente) + ' (' + nomes4 + '). Mais ' + fmt(valorFixosPendentes) + ' previstos por sair. Sem margem.';
           } else if (excedente > 0) {
-            explicacao = 'Despesas excederam a meta em ' + fmt(excedente) + '. Contenha os gastos restantes.';
+            explicacao = 'Meta ultrapassada em ' + fmt(excedente) + '. Previstos por sair: ' + fmt(valorFixosPendentes) + '. Contenha gastos.';
           } else {
             var nomes5 = catsEstouradas.map(function(c) { return c.label; }).join(', ');
-            explicacao = 'Categorias cr\u00edticas: ' + nomes5 + '. Redistribua ou reduza.';
+            explicacao = 'Categorias cr\u00edticas: ' + nomes5 + '. Previstos por sair: ' + fmt(valorFixosPendentes) + '. Redistribua.';
           }
 
-          // Contexto sobre entradas e saldo
           if (saldo > 0) {
-            explicacao += ' Saldo ainda positivo gra\u00e7as \u00e0s entradas, mas o padr\u00e3o de gastos preocupa.';
+            explicacao += ' Saldo positivo por enquanto, mas padr\u00e3o preocupa.';
           } else if (entradasPendentes > Math.abs(saldo)) {
-            explicacao += ' Entradas previstas de ' + fmt(entradasPendentes) + ' cobrem o saldo, mas o or\u00e7amento precisa de ajuste.';
+            explicacao += ' Entradas de ' + fmt(entradasPendentes) + ' cobrem o saldo, mas or\u00e7amento precisa de ajuste.';
           } else if (entradasPendentes > 0) {
-            explicacao += ' Entradas de ' + fmt(entradasPendentes) + ' previstas, mas n\u00e3o cobrem o excedente.';
+            explicacao += ' Entradas de ' + fmt(entradasPendentes) + ' previstas, mas insuficientes.';
           } else if (saldo < 0) {
-            explicacao += ' Saldo negativo de ' + fmt(Math.abs(saldo)) + ' sem entradas previstas.';
+            explicacao += ' Saldo negativo de ' + fmt(Math.abs(saldo)) + '.';
           }
 
-          // Nota se fim do mes
           if (diaAtual >= diasNoMes - 3) {
-            explicacao += ' M\u00eas quase encerrando \u2014 foque em n\u00e3o agravar.';
+            explicacao += ' M\u00eas encerrando.';
           }
         }
 
