@@ -1076,14 +1076,15 @@
         }
 
         // --- GRAFICO REAL ---
-        var lancDoMes = (refTracking.lancamentos||[]).filter(function(l) {
-          return l.data && l.data.substring(0,7) === mk;
-        });
+        // Get ALL lancamentos (not just current month) because credit card purchases
+        // from previous months may have faturas that vence in the current month
+        var allLanc = refTracking.lancamentos || [];
 
         // Build real events per day (respecting credit card timing)
         var realEvents = {};
         var realFaturas = {}; // { cartaoId: { vencKey: { vencDate, total } } }
-        lancDoMes.forEach(function(l) {
+        allLanc.forEach(function(l) {
+          if (!l.data) return;
           var val = Math.abs(parseFloat(l.valor)||0);
           var dataISO = l.data;
           // Check if payment is a credit card
@@ -1092,29 +1093,31 @@
             cartao = refAccounts.find(function(a) { return a.tipo === 'cartao' && a.nome === l.pagamento; });
           }
           if (cartao && l.tipo !== 'entrada') {
-            // Credit card: accumulate in fatura
+            // Credit card: accumulate in fatura based on purchase date
             var purchaseDate = new Date(dataISO + 'T00:00');
             var fat = getFaturaKeyChart(purchaseDate, cartao);
-            if (!realFaturas[cartao.id]) realFaturas[cartao.id] = {};
-            if (!realFaturas[cartao.id][fat.key]) realFaturas[cartao.id][fat.key] = { vencDate: fat.vencDate, total: 0 };
-            realFaturas[cartao.id][fat.key].total += val;
+            // Only include faturas that vence within our month
+            if (fat.vencDate >= startDate && fat.vencDate <= endDate) {
+              if (!realFaturas[cartao.id]) realFaturas[cartao.id] = {};
+              if (!realFaturas[cartao.id][fat.key]) realFaturas[cartao.id][fat.key] = { vencDate: fat.vencDate, total: 0 };
+              realFaturas[cartao.id][fat.key].total += val;
+            }
           } else {
-            // Direct payment: event on the day
-            if (!realEvents[dataISO]) realEvents[dataISO] = [];
-            realEvents[dataISO].push({ tipo: l.tipo, valor: val });
+            // Direct payment: only include if in the selected month
+            if (dataISO.substring(0,7) === mk) {
+              if (!realEvents[dataISO]) realEvents[dataISO] = [];
+              realEvents[dataISO].push({ tipo: l.tipo, valor: val });
+            }
           }
         });
 
         // Add real fatura payments on vencimento day
         Object.keys(realFaturas).forEach(function(cartaoId) {
-          var cartao = cartoesMap[cartaoId];
           Object.keys(realFaturas[cartaoId]).forEach(function(fatKey) {
             var fat = realFaturas[cartaoId][fatKey];
-            if (fat.vencDate >= startDate && fat.vencDate <= endDate) {
-              var key = isoDate(fat.vencDate);
-              if (!realEvents[key]) realEvents[key] = [];
-              realEvents[key].push({ tipo: 'despesa', valor: fat.total });
-            }
+            var key = isoDate(fat.vencDate);
+            if (!realEvents[key]) realEvents[key] = [];
+            realEvents[key].push({ tipo: 'despesa', valor: fat.total });
           });
         });
 
@@ -1158,7 +1161,7 @@
           maintainAspectRatio: false,
           interaction: { mode: 'index', intersect: false },
           plugins: {
-            legend: { labels: { color: '#F2E8C9', font: { size: 9 } } },
+            legend: { position: 'top', labels: { color: '#F2E8C9', font: { size: 9 }, boxWidth: 12, padding: 6, usePointStyle: true } },
             tooltip: {
               backgroundColor: '#052614',
               borderColor: 'rgba(212,175,55,0.3)',
