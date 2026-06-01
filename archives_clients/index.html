@@ -8,68 +8,108 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="assets/layout.js" defer></script>
     <style>
-      /* === Card Compacto Clicável === */
-      .dash-widget { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem 1.2rem; cursor: pointer; transition: border-color 0.2s, transform 0.1s; }
-      .dash-widget:hover { border-color: var(--primary); transform: translateY(-1px); }
-      .dash-widget-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.6rem; }
-      .dash-widget-title { font-size: 0.85rem; font-weight: 600; color: var(--primary); }
-      .dash-widget-arrow { color: var(--muted-foreground); font-size: 0.9rem; }
-      .dash-widget-body { display: flex; align-items: center; gap: 1rem; }
-      .dash-widget-metric { text-align: center; }
-      .dash-widget-metric-label { font-size: 0.65rem; color: var(--muted-foreground); text-transform: uppercase; }
-      .dash-widget-metric-value { font-size: 0.95rem; font-weight: bold; color: var(--foreground); }
-      .dash-widget-metric-value.positive { color: #22c55e; }
-      .dash-widget-metric-value.negative { color: #ef4444; }
-      .dash-widget-metric-value.neutral { color: var(--primary); }
-      .dash-semaforo { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
-      .dash-semaforo.green { background: #22c55e; box-shadow: 0 0 4px #22c55e; }
-      .dash-semaforo.yellow { background: #eab308; box-shadow: 0 0 4px #eab308; }
-      .dash-semaforo.red { background: #ef4444; box-shadow: 0 0 4px #ef4444; }
-      .dash-widget-nodata { font-size: 0.8rem; color: var(--muted-foreground); }
+      /* === Widget Compacto === */
+      .dash-widget{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:1rem 1.2rem;cursor:pointer;transition:border-color .2s,transform .1s}
+      .dash-widget:hover{border-color:var(--primary);transform:translateY(-1px)}
+      .dash-widget-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:.6rem}
+      .dash-widget-title{font-size:.85rem;font-weight:600;color:var(--primary)}
+      .dash-widget-arrow{color:var(--muted-foreground);font-size:.9rem}
+      .dash-widget-body{display:flex;align-items:center;gap:1rem;flex-wrap:wrap}
+      .dash-widget-metric{text-align:center}
+      .dash-widget-metric-label{font-size:.63rem;color:var(--muted-foreground);text-transform:uppercase}
+      .dash-widget-metric-value{font-size:.95rem;font-weight:bold;color:var(--foreground)}
+      .dash-widget-metric-value.positive{color:#22c55e}
+      .dash-widget-metric-value.negative{color:#ef4444}
+      .dash-widget-metric-value.neutral{color:var(--primary)}
+      .dash-widget-nodata{font-size:.8rem;color:var(--muted-foreground)}
+      /* Semaforo SVG */
+      .semaforo-icon{width:28px;height:60px;flex-shrink:0}
+      .semaforo-text{font-size:.7rem;font-weight:600;margin-left:.2rem}
+      .semaforo-text.green{color:#22c55e}
+      .semaforo-text.yellow{color:#eab308}
+      .semaforo-text.red{color:#ef4444}
+      .semaforo-wrap{display:flex;align-items:center;gap:.3rem}
 
-      /* === Modal === */
-      .dash-modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 9999; align-items: center; justify-content: center; padding: 1rem; }
-      .dash-modal-overlay.active { display: flex; }
-      .dash-modal { background: var(--background); border: 1px solid var(--border); border-radius: 10px; width: 100%; max-width: 700px; max-height: 90vh; overflow-y: auto; padding: 1.5rem; position: relative; }
-      .dash-modal-close { position: absolute; top: 0.8rem; right: 1rem; background: none; border: none; color: var(--muted-foreground); font-size: 1.5rem; cursor: pointer; line-height: 1; }
-      .dash-modal-close:hover { color: var(--foreground); }
-      .dash-modal h2 { color: var(--primary); margin: 0 0 1rem 0; font-size: 1.1rem; }
+      /* === Modal Overlay === */
+      .dash-modal-overlay{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.75);z-index:9999;align-items:flex-start;justify-content:center;padding:1.5rem;overflow-y:auto}
+      .dash-modal-overlay.active{display:flex}
+      .dash-modal{background:var(--background);border:1px solid var(--border);border-radius:10px;width:100%;max-width:750px;padding:1.5rem;position:relative;margin:auto}
+      .dash-modal-close{position:absolute;top:.8rem;right:1rem;background:none;border:none;color:var(--muted-foreground);font-size:1.5rem;cursor:pointer;line-height:1}
+      .dash-modal-close:hover{color:var(--foreground)}
+      .dash-modal h2{color:var(--primary);margin:0 0 1rem;font-size:1.1rem}
 
-      /* === Dashboard dentro do Modal === */
-      .dash-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem; margin-bottom: 1rem; }
-      .dash-card h3 { color: var(--primary); margin: 0 0 0.7rem 0; font-size: 0.9rem; }
-      .dash-kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 0.6rem; }
-      .dash-kpi { background: rgba(212,175,55,0.05); border: 1px solid var(--border); border-radius: 6px; padding: 0.6rem; text-align: center; }
-      .dash-kpi-label { font-size: 0.65rem; color: var(--muted-foreground); text-transform: uppercase; margin-bottom: 0.2rem; }
-      .dash-kpi-value { font-size: 0.95rem; font-weight: bold; color: var(--foreground); }
-      .dash-kpi-value.positive { color: #22c55e; }
-      .dash-kpi-value.negative { color: #ef4444; }
-      .dash-kpi-value.neutral { color: var(--primary); }
-      .dash-progress-row { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.4rem; }
-      .dash-progress-label { font-size: 0.7rem; color: var(--foreground); min-width: 100px; }
-      .dash-progress-bar { flex: 1; height: 7px; background: rgba(255,255,255,0.1); border-radius: 4px; overflow: hidden; }
-      .dash-progress-fill { height: 100%; border-radius: 4px; transition: width 0.3s; }
-      .dash-progress-pct { font-size: 0.65rem; color: var(--muted-foreground); min-width: 35px; text-align: right; }
-      .dash-alert { padding: 0.5rem 0.7rem; border-radius: 6px; font-size: 0.75rem; margin-bottom: 0.4rem; display: flex; align-items: center; gap: 0.4rem; }
-      .dash-alert.warning { background: rgba(234,179,8,0.1); border: 1px solid rgba(234,179,8,0.3); color: #eab308; }
-      .dash-alert.danger { background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.3); color: #ef4444; }
-      .dash-alert.info { background: rgba(59,130,246,0.1); border: 1px solid rgba(59,130,246,0.3); color: #3b82f6; }
-      .dash-alert.success { background: rgba(34,197,94,0.1); border: 1px solid rgba(34,197,94,0.3); color: #22c55e; }
-      .dash-quick-form { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
-      .dash-quick-form input, .dash-quick-form select { background: var(--background); border: 1px solid var(--border); border-radius: 4px; padding: 0.45rem; color: var(--foreground); font-size: 0.75rem; }
-      .dash-quick-form .full-width { grid-column: 1 / -1; }
-      .dash-btn { background: var(--primary); color: var(--primary-foreground); border: none; border-radius: 4px; padding: 0.5rem 0.8rem; font-size: 0.75rem; cursor: pointer; font-weight: 600; }
-      .dash-btn:hover { opacity: 0.9; }
-      .dash-btn-outline { background: transparent; border: 1px solid var(--primary); color: var(--primary); border-radius: 4px; padding: 0.5rem 0.8rem; font-size: 0.75rem; cursor: pointer; }
-      .dash-btn-outline:hover { background: rgba(212,175,55,0.1); }
-      .dash-import-section { margin-top: 0.7rem; padding-top: 0.7rem; border-top: 1px solid var(--border); }
-      .dash-import-row { display: flex; gap: 0.4rem; align-items: center; }
-      .dash-import-row input { flex: 1; background: var(--background); border: 1px solid var(--border); border-radius: 4px; padding: 0.45rem; color: var(--foreground); font-size: 0.75rem; }
-      .dash-fatura-item { display: flex; justify-content: space-between; align-items: center; padding: 0.35rem 0; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 0.8rem; }
-      .dash-fatura-item:last-child { border-bottom: none; }
-      .dash-no-data { text-align: center; color: var(--muted-foreground); padding: 1rem; font-size: 0.8rem; }
-      .dash-link { color: var(--primary); text-decoration: none; font-size: 0.75rem; }
-      .dash-link:hover { text-decoration: underline; }
+      /* === Cards dentro do Modal === */
+      .dash-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:1rem;margin-bottom:1rem}
+      .dash-card h3{color:var(--primary);margin:0 0 .7rem;font-size:.9rem;display:flex;align-items:center;justify-content:space-between}
+      .dash-kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:.5rem}
+      .dash-kpi{background:rgba(212,175,55,.05);border:1px solid var(--border);border-radius:6px;padding:.5rem;text-align:center}
+      .dash-kpi-label{font-size:.6rem;color:var(--muted-foreground);text-transform:uppercase;margin-bottom:.15rem}
+      .dash-kpi-value{font-size:.9rem;font-weight:bold;color:var(--foreground)}
+      .dash-kpi-value.positive{color:#22c55e}
+      .dash-kpi-value.negative{color:#ef4444}
+      .dash-kpi-value.neutral{color:var(--primary)}
+
+      /* Progress bars */
+      .dash-progress-row{display:flex;align-items:center;gap:.5rem;margin-bottom:.35rem}
+      .dash-progress-label{font-size:.7rem;color:var(--foreground);min-width:95px;white-space:nowrap}
+      .dash-progress-bar{flex:1;height:7px;background:rgba(255,255,255,.1);border-radius:4px;overflow:hidden}
+      .dash-progress-fill{height:100%;border-radius:4px;transition:width .3s}
+      .dash-progress-pct{font-size:.63rem;color:var(--muted-foreground);min-width:35px;text-align:right}
+      .dash-progress-values{font-size:.6rem;color:var(--muted-foreground);min-width:90px;text-align:right}
+
+      /* Subcategoria detail */
+      .dash-subcat-detail{margin-left:1rem;margin-bottom:.5rem;padding:.4rem .6rem;background:rgba(255,255,255,.02);border-left:2px solid var(--border);border-radius:0 4px 4px 0}
+      .dash-subcat-row{display:flex;align-items:center;gap:.4rem;margin-bottom:.2rem}
+      .dash-subcat-label{font-size:.63rem;color:var(--muted-foreground);min-width:80px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+      .dash-subcat-bar{flex:1;height:5px;background:rgba(255,255,255,.08);border-radius:3px;overflow:hidden}
+      .dash-subcat-fill{height:100%;border-radius:3px}
+      .dash-subcat-val{font-size:.58rem;color:var(--muted-foreground);min-width:55px;text-align:right}
+
+      /* Alerts */
+      .dash-alert{padding:.5rem .7rem;border-radius:6px;font-size:.75rem;margin-bottom:.4rem;display:flex;align-items:center;gap:.4rem}
+      .dash-alert.warning{background:rgba(234,179,8,.1);border:1px solid rgba(234,179,8,.3);color:#eab308}
+      .dash-alert.danger{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);color:#ef4444}
+      .dash-alert.info{background:rgba(59,130,246,.1);border:1px solid rgba(59,130,246,.3);color:#3b82f6}
+
+      /* Quick form */
+      .dash-quick-form{display:grid;grid-template-columns:1fr 1fr;gap:.5rem}
+      .dash-quick-form input,.dash-quick-form select{background:var(--background);border:1px solid var(--border);border-radius:4px;padding:.45rem;color:var(--foreground);font-size:.75rem}
+      .dash-quick-form .full-width{grid-column:1/-1}
+      .dash-btn{background:var(--primary);color:var(--primary-foreground);border:none;border-radius:4px;padding:.5rem .8rem;font-size:.75rem;cursor:pointer;font-weight:600}
+      .dash-btn:hover{opacity:.9}
+      .dash-btn-outline{background:transparent;border:1px solid var(--primary);color:var(--primary);border-radius:4px;padding:.5rem .8rem;font-size:.75rem;cursor:pointer}
+      .dash-btn-outline:hover{background:rgba(212,175,55,.1)}
+      .dash-btn-sm{padding:.35rem .6rem;font-size:.7rem}
+      .dash-btn-ghost{background:transparent;border:none;color:var(--muted-foreground);cursor:pointer;font-size:.8rem;padding:.2rem .4rem}
+      .dash-btn-ghost:hover{color:var(--foreground)}
+
+      /* Import */
+      .dash-import-section{margin-top:.7rem;padding-top:.7rem;border-top:1px solid var(--border)}
+      .dash-import-row{display:flex;gap:.4rem;align-items:center}
+      .dash-import-row input{flex:1;background:var(--background);border:1px solid var(--border);border-radius:4px;padding:.45rem;color:var(--foreground);font-size:.75rem}
+
+      /* Faturas */
+      .dash-fatura-item{display:flex;justify-content:space-between;align-items:center;padding:.35rem 0;border-bottom:1px solid rgba(255,255,255,.05);font-size:.8rem}
+      .dash-fatura-item:last-child{border-bottom:none}
+
+      /* Link */
+      .dash-link{color:var(--primary);text-decoration:none;font-size:.75rem}
+      .dash-link:hover{text-decoration:underline}
+
+      /* Lancamentos table (inside corrigir modal) */
+      .dash-lanc-table{width:100%;border-collapse:collapse;font-size:.75rem}
+      .dash-lanc-table th{text-align:left;padding:.4rem .3rem;border-bottom:1px solid var(--border);color:var(--muted-foreground);font-size:.65rem;text-transform:uppercase}
+      .dash-lanc-table td{padding:.4rem .3rem;border-bottom:1px solid rgba(255,255,255,.04)}
+      .dash-lanc-table tr:hover{background:rgba(212,175,55,.03)}
+
+      /* Edit lancamento modal */
+      .dash-edit-overlay{display:flex;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.8);z-index:10001;align-items:center;justify-content:center;padding:1rem}
+      .dash-edit-modal{background:var(--background);border:1px solid var(--border);border-radius:10px;width:100%;max-width:500px;padding:1.5rem;position:relative}
+      .dash-edit-modal h3{color:var(--primary);margin:0 0 1rem;font-size:1rem}
+      .dash-edit-form{display:grid;grid-template-columns:1fr 1fr;gap:.5rem}
+      .dash-edit-form label{font-size:.7rem;color:var(--muted-foreground);display:block;margin-bottom:.2rem}
+      .dash-edit-form input,.dash-edit-form select{width:100%;background:var(--background);border:1px solid var(--border);border-radius:4px;padding:.45rem;color:var(--foreground);font-size:.75rem;box-sizing:border-box}
+      .dash-edit-form .full{grid-column:1/-1}
     </style>
 </head>
 <body>
@@ -82,9 +122,8 @@
                 <button id="mobile-toggle" class="mobile-toggle">&#9776;</button>
             </header>
 
-            <!-- Grid de widgets das ferramentas -->
-            <div class="grid grid-cols-1" style="max-width:420px;">
-              <!-- Widget Fluxo de Caixa -->
+            <!-- Grid de widgets -->
+            <div class="grid grid-cols-1" style="max-width:450px;">
               <div class="dash-widget" id="widget-fluxo" onclick="openFluxoModal()">
                 <div class="dash-widget-header">
                   <span class="dash-widget-title">Fluxo de Caixa</span>
@@ -98,7 +137,7 @@
         </div>
     </main>
 
-    <!-- Modal do Dashboard de Fluxo -->
+    <!-- Modal Principal do Fluxo -->
     <div class="dash-modal-overlay" id="fluxo-modal-overlay" onclick="closeFluxoModal(event)">
       <div class="dash-modal" onclick="event.stopPropagation()">
         <button class="dash-modal-close" onclick="closeFluxoModal()">&times;</button>
@@ -108,7 +147,14 @@
         <div class="dash-card">
           <h3>Resumo do M&ecirc;s</h3>
           <div class="dash-kpi-grid" id="dash-kpis"></div>
-          <div id="dash-progress-section" style="margin-top:0.8rem;"></div>
+        </div>
+
+        <!-- Orcamento por Categorias e Subcategorias -->
+        <div class="dash-card">
+          <h3>Or&ccedil;amento por Categoria
+            <button class="dash-btn-ghost" onclick="toggleSubcatDetails()" id="btn-toggle-subcat" title="Mostrar/ocultar subcategorias">&#9660;</button>
+          </h3>
+          <div id="dash-orcamento"></div>
         </div>
 
         <!-- Alertas -->
@@ -119,19 +165,21 @@
 
         <!-- Lancamento Rapido -->
         <div class="dash-card">
-          <h3>Lan&ccedil;amento R&aacute;pido</h3>
+          <h3>Lan&ccedil;amento R&aacute;pido
+            <button class="dash-btn dash-btn-sm" onclick="openCorrigirModal()">Ver/Corrigir Lan&ccedil;amentos</button>
+          </h3>
           <div class="dash-quick-form" id="dash-quick-form">
             <input type="date" id="dash-lanc-data">
-            <input type="number" id="dash-lanc-valor" placeholder="Valor" step="0.01" min="0">
+            <input type="number" id="dash-lanc-valor" placeholder="Valor (R$)" step="0.01" min="0">
             <input type="text" id="dash-lanc-desc" placeholder="Descri&ccedil;&atilde;o (opcional)" class="full-width">
-            <select id="dash-lanc-subcat" class="full-width"><option value="">Subcategoria (item do fluxo)</option></select>
+            <select id="dash-lanc-subcat" class="full-width" onchange="dashSubcatChanged()"><option value="">Subcategoria (item do fluxo)</option></select>
             <select id="dash-lanc-cat"><option value="">Categoria</option></select>
             <select id="dash-lanc-pag"><option value="">Pagamento</option></select>
             <select id="dash-lanc-tipo"><option value="despesa">Despesa</option><option value="entrada">Entrada</option><option value="poupanca">Poupan&ccedil;a</option></select>
             <button class="dash-btn" onclick="dashSalvarLancamento()">Salvar</button>
           </div>
           <div class="dash-import-section">
-            <p style="font-size:0.7rem; color:var(--muted-foreground); margin-bottom:0.4rem;">Importar do Google Sheets (Data, Valor, Descri&ccedil;&atilde;o):</p>
+            <p style="font-size:.7rem;color:var(--muted-foreground);margin-bottom:.4rem;">Importar do Google Sheets (Data, Descri&ccedil;&atilde;o, Valor):</p>
             <div class="dash-import-row">
               <input type="text" id="dash-sheets-url" placeholder="Cole o link da planilha...">
               <button class="dash-btn-outline" onclick="dashImportSheets()">Importar</button>
@@ -146,11 +194,23 @@
         </div>
 
         <!-- Link -->
-        <div style="text-align:center; margin-top:0.8rem;">
+        <div style="text-align:center;margin-top:.8rem;">
           <a href="ferramentas/fluxo.html" class="dash-link">Abrir ferramenta completa de Fluxo de Caixa &rarr;</a>
         </div>
       </div>
     </div>
+
+    <!-- Modal de Corrigir/Ver Lancamentos -->
+    <div class="dash-modal-overlay" id="corrigir-modal-overlay" style="z-index:10000;" onclick="closeCorrigirModal(event)">
+      <div class="dash-modal" style="max-width:850px;" onclick="event.stopPropagation()">
+        <button class="dash-modal-close" onclick="closeCorrigirModal()">&times;</button>
+        <h2>Lan&ccedil;amentos do M&ecirc;s</h2>
+        <div id="corrigir-content"></div>
+      </div>
+    </div>
+
+</body>
+</html>
 
     <script>
     (function() {
@@ -162,101 +222,137 @@
       var clienteId = sessionStorage.getItem('cliente_id');
       var clienteNome = sessionStorage.getItem('cliente_nome');
 
-      // Set page title with client name
       var pageTitle = document.getElementById('dash-page-title');
-      if (clienteNome) {
-        pageTitle.textContent = 'Ol\u00e1, ' + clienteNome.split(' ')[0] + '!';
-      }
+      if (clienteNome) { pageTitle.textContent = 'Ol\u00e1, ' + clienteNome.split(' ')[0] + '!'; }
 
       var refSim = null;
+      var refPayload = null;
       var refItems = [];
       var refAccounts = [];
       var refTracking = {};
-      var refFaturas = [];
+      var allSimulacoes = [];
       var dashLoaded = false;
+      var subcatDetailsVisible = false;
 
       var catConfig = {
-        sobrevivencia: { label: 'Sobreviv\u00eancia', color: '#22c55e' },
-        necessidades: { label: 'Necessidades', color: '#eab308' },
-        aperfeicoamento: { label: 'Aperfei\u00e7oamento', color: '#3b82f6' },
-        dividas: { label: 'D\u00edvidas', color: '#ef4444' },
-        conforto_superfluo: { label: 'Conforto/Sup\u00e9rfluo', color: '#a855f7' },
+        sobrevivencia: { label: 'Sobreviv\u00eancia', color: '#ef4444' },
+        necessidades: { label: 'Necessidades', color: '#f97316' },
+        aperfeicoamento: { label: 'Aperfei\u00e7oamento', color: '#a78bfa' },
+        dividas: { label: 'D\u00edvidas', color: '#f59e0b' },
+        conforto: { label: 'Conforto/Sup\u00e9rfluo', color: '#60a5fa' },
         sem_categoria: { label: 'Sem categoria', color: '#6b7280' }
       };
+      var catOrder = ['sobrevivencia','necessidades','aperfeicoamento','dividas','conforto','sem_categoria'];
 
-      function fmt(v) {
-        return 'R$ ' + (v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-      }
+      function fmt(v) { return 'R$ ' + (v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+      function isoDate(d) { return d.toISOString().split('T')[0]; }
+      function getCurrentMonthKey() { var n=new Date(); return n.getFullYear()+'-'+String(n.getMonth()+1).padStart(2,'0'); }
 
-      function getCurrentMonthKey() {
-        var now = new Date();
-        return now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
-      }
-
+      // Get lancamentos for current month using YYYY-MM-DD format (same as fluxo.html)
       function getLancDoMes() {
-        var now = new Date();
-        return (refTracking.lancamentos || []).filter(function(l) {
-          if (!l.data) return false;
-          var parts = l.data.split('/');
-          if (parts.length === 3) {
-            var m = parseInt(parts[1]);
-            var y = parseInt(parts[2]);
-            if (y < 100) y += 2000;
-            return m === (now.getMonth() + 1) && y === now.getFullYear();
-          }
-          return false;
+        var mk = getCurrentMonthKey();
+        return (refTracking.lancamentos||[]).filter(function(l) {
+          return l.data && l.data.substring(0,7) === mk;
         });
       }
 
+      // Get the effective month for a credit card purchase based on fechamento/vencimento
+      function getEffectiveMonth(dataISO, accountName) {
+        if (!accountName) return dataISO.substring(0,7);
+        var acc = refAccounts.find(function(a) { return a.nome === accountName && a.tipo === 'cartao'; });
+        if (!acc) return dataISO.substring(0,7);
+        var fechamento = parseInt(acc.fechamento) || 25;
+        var parts = dataISO.split('-');
+        var y = parseInt(parts[0]), m = parseInt(parts[1]), d = parseInt(parts[2]);
+        // If purchase day > fechamento, it goes to next month's invoice
+        if (d > fechamento) {
+          m++;
+          if (m > 12) { m = 1; y++; }
+        }
+        // The invoice is due in the following month (vencimento)
+        var vencM = m + 1;
+        var vencY = y;
+        if (vencM > 12) { vencM = 1; vencY++; }
+        return vencY + '-' + String(vencM).padStart(2,'0');
+      }
+
+      // Calculate KPIs considering credit card timing
       function calcKPIs() {
+        var mk = getCurrentMonthKey();
         var lancDoMes = getLancDoMes();
         var realEntradas = 0, realDespesas = 0, realPoupanca = 0;
+        var realPorCat = {};
+        var realPorSubcat = {};
+
         lancDoMes.forEach(function(l) {
-          var val = Math.abs(parseFloat(l.valor) || 0);
-          if (l.tipo === 'entrada') realEntradas += val;
-          else if (l.tipo === 'poupanca') realPoupanca += val;
-          else realDespesas += val;
+          var val = Math.abs(parseFloat(l.valor)||0);
+          if (l.tipo === 'entrada') { realEntradas += val; }
+          else if (l.tipo === 'poupanca') { realPoupanca += val; }
+          else {
+            // For credit card payments, check if this expense's effective month matches current month
+            var effectiveMonth = getEffectiveMonth(l.data, l.pagamento);
+            // We show it in the month it was registered (same behavior as fluxo.html tracking)
+            realDespesas += val;
+            var cat = l.categoria || 'sem_categoria';
+            realPorCat[cat] = (realPorCat[cat]||0) + val;
+            var subKey = cat + '|' + (l.subcategoria||'Outros');
+            realPorSubcat[subKey] = (realPorSubcat[subKey]||0) + val;
+          }
         });
-        var monthKey = getCurrentMonthKey();
+
         var metas = refTracking.metas || {};
-        var metaObj = metas[monthKey];
-        var metaCats = metaObj && metaObj.categorias ? metaObj.categorias : (metaObj || {});
+        var metaObj = metas[mk];
+        var metaCats = metaObj && metaObj.categorias ? metaObj.categorias : {};
+        var metaEntradas = metaObj && metaObj.entradas ? metaObj.entradas : 0;
+        var metaPoupanca = metaObj && metaObj.poupanca ? metaObj.poupanca : 0;
         var metaDespTotal = 0;
-        Object.keys(metaCats).forEach(function(k) { metaDespTotal += metaCats[k] || 0; });
-        var pctUsado = metaDespTotal > 0 ? Math.round((realDespesas / metaDespTotal) * 100) : null;
+        Object.keys(metaCats).forEach(function(k) { metaDespTotal += metaCats[k]||0; });
+        var pctUsado = metaDespTotal > 0 ? Math.round((realDespesas/metaDespTotal)*100) : null;
         var saldo = realEntradas - realDespesas - realPoupanca;
-        return { realEntradas: realEntradas, realDespesas: realDespesas, realPoupanca: realPoupanca, saldo: saldo, pctUsado: pctUsado, metaDespTotal: metaDespTotal, metaCats: metaCats, lancDoMes: lancDoMes };
+
+        return { realEntradas:realEntradas, realDespesas:realDespesas, realPoupanca:realPoupanca, saldo:saldo, pctUsado:pctUsado, metaDespTotal:metaDespTotal, metaCats:metaCats, metaEntradas:metaEntradas, metaPoupanca:metaPoupanca, lancDoMes:lancDoMes, realPorCat:realPorCat, realPorSubcat:realPorSubcat };
       }
 
-      // Render the compact widget
+      // SVG Semaforo
+      function buildSemaforoSVG(status) {
+        var rFill = status==='red' ? '#ef4444' : '#3a1111';
+        var yFill = status==='yellow' ? '#eab308' : '#3a3511';
+        var gFill = status==='green' ? '#22c55e' : '#113a1e';
+        var rGlow = status==='red' ? 'drop-shadow(0 0 4px #ef4444)' : '';
+        var yGlow = status==='yellow' ? 'drop-shadow(0 0 4px #eab308)' : '';
+        var gGlow = status==='green' ? 'drop-shadow(0 0 4px #22c55e)' : '';
+        return '<svg class="semaforo-icon" viewBox="0 0 24 52" fill="none" xmlns="http://www.w3.org/2000/svg">' +
+          '<rect x="3" y="1" width="18" height="50" rx="4" fill="#1a1a1a" stroke="#444" stroke-width="1"/>' +
+          '<circle cx="12" cy="11" r="6" fill="'+rFill+'" style="filter:'+rGlow+'"/>' +
+          '<circle cx="12" cy="26" r="6" fill="'+yFill+'" style="filter:'+yGlow+'"/>' +
+          '<circle cx="12" cy="41" r="6" fill="'+gFill+'" style="filter:'+gGlow+'"/>' +
+          '</svg>';
+      }
+
+      function getSemaforoStatus(pctUsado) {
+        if (pctUsado === null) return { status:'green', text:'Sem metas definidas' };
+        if (pctUsado <= 70) return { status:'green', text:'Tudo sob controle!' };
+        if (pctUsado <= 100) return { status:'yellow', text:'Aten\u00e7\u00e3o ao or\u00e7amento' };
+        return { status:'red', text:'Or\u00e7amento ultrapassado!' };
+      }
+
+      // === RENDER WIDGET ===
       function renderWidget() {
         var body = document.getElementById('widget-fluxo-body');
-        if (!refSim) {
-          body.innerHTML = '<span class="dash-widget-nodata">Simula\u00e7\u00e3o de refer\u00eancia n\u00e3o definida</span>';
-          return;
-        }
+        if (!refSim) { body.innerHTML = '<span class="dash-widget-nodata">Simula\u00e7\u00e3o de refer\u00eancia n\u00e3o definida</span>'; return; }
         var kpis = calcKPIs();
+        var sem = getSemaforoStatus(kpis.pctUsado);
         var html = '';
-        // Semaforo
-        var semaforoClass = 'green';
-        var semaforoTitle = 'Dentro do or\u00e7amento';
+        html += '<div class="semaforo-wrap">' + buildSemaforoSVG(sem.status) + '<span class="semaforo-text '+sem.status+'">' + sem.text + '</span></div>';
+        html += '<div class="dash-widget-metric"><div class="dash-widget-metric-label">Saldo do m\u00eas</div><div class="dash-widget-metric-value '+(kpis.saldo>=0?'positive':'negative')+'">' + fmt(kpis.saldo) + '</div></div>';
         if (kpis.pctUsado !== null) {
-          if (kpis.pctUsado > 100) { semaforoClass = 'red'; semaforoTitle = 'Or\u00e7amento ultrapassado'; }
-          else if (kpis.pctUsado > 70) { semaforoClass = 'yellow'; semaforoTitle = 'Aten\u00e7\u00e3o ao or\u00e7amento'; }
+          html += '<div class="dash-widget-metric"><div class="dash-widget-metric-label">Or\u00e7amento</div><div class="dash-widget-metric-value '+(kpis.pctUsado<=80?'positive':kpis.pctUsado<=100?'neutral':'negative')+'">' + kpis.pctUsado + '%</div></div>';
         }
-        html += '<span class="dash-semaforo ' + semaforoClass + '" title="' + semaforoTitle + '"></span>';
-        // Saldo
-        html += '<div class="dash-widget-metric"><div class="dash-widget-metric-label">Saldo do m\u00eas</div><div class="dash-widget-metric-value ' + (kpis.saldo >= 0 ? 'positive' : 'negative') + '">' + fmt(kpis.saldo) + '</div></div>';
-        // Pct usado
-        if (kpis.pctUsado !== null) {
-          html += '<div class="dash-widget-metric"><div class="dash-widget-metric-label">Or\u00e7amento usado</div><div class="dash-widget-metric-value ' + (kpis.pctUsado <= 80 ? 'positive' : kpis.pctUsado <= 100 ? 'neutral' : 'negative') + '">' + kpis.pctUsado + '%</div></div>';
-        }
-        // Lancamentos count
         html += '<div class="dash-widget-metric"><div class="dash-widget-metric-label">Lan\u00e7amentos</div><div class="dash-widget-metric-value">' + kpis.lancDoMes.length + '</div></div>';
         body.innerHTML = html;
       }
 
-      // Modal open/close
+      // === MODAL OPEN/CLOSE ===
       window.openFluxoModal = function() {
         document.getElementById('fluxo-modal-overlay').classList.add('active');
         if (!dashLoaded) { renderFullDashboard(); dashLoaded = true; }
@@ -265,7 +361,16 @@
         if (e && e.target !== document.getElementById('fluxo-modal-overlay')) return;
         document.getElementById('fluxo-modal-overlay').classList.remove('active');
       };
+      window.openCorrigirModal = function() {
+        document.getElementById('corrigir-modal-overlay').classList.add('active');
+        renderCorrigirTable();
+      };
+      window.closeCorrigirModal = function(e) {
+        if (e && e.target !== document.getElementById('corrigir-modal-overlay')) return;
+        document.getElementById('corrigir-modal-overlay').classList.remove('active');
+      };
 
+      // === FULL DASHBOARD ===
       function renderFullDashboard() {
         var now = new Date();
         var monthNames = ['Janeiro','Fevereiro','Mar\u00e7o','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
@@ -275,119 +380,164 @@
 
         // KPIs
         var kpisHtml = '';
-        kpisHtml += '<div class="dash-kpi"><div class="dash-kpi-label">Entradas</div><div class="dash-kpi-value positive">' + fmt(kpis.realEntradas) + '</div></div>';
-        kpisHtml += '<div class="dash-kpi"><div class="dash-kpi-label">Despesas</div><div class="dash-kpi-value negative">' + fmt(kpis.realDespesas) + '</div></div>';
-        kpisHtml += '<div class="dash-kpi"><div class="dash-kpi-label">Poupan\u00e7a</div><div class="dash-kpi-value neutral">' + fmt(kpis.realPoupanca) + '</div></div>';
-        kpisHtml += '<div class="dash-kpi"><div class="dash-kpi-label">Saldo</div><div class="dash-kpi-value ' + (kpis.saldo >= 0 ? 'positive' : 'negative') + '">' + fmt(kpis.saldo) + '</div></div>';
-        if (kpis.metaDespTotal > 0) {
-          kpisHtml += '<div class="dash-kpi"><div class="dash-kpi-label">Meta Despesas</div><div class="dash-kpi-value">' + fmt(kpis.metaDespTotal) + '</div></div>';
-          kpisHtml += '<div class="dash-kpi"><div class="dash-kpi-label">Usado</div><div class="dash-kpi-value ' + (kpis.pctUsado <= 80 ? 'positive' : kpis.pctUsado <= 100 ? 'neutral' : 'negative') + '">' + kpis.pctUsado + '%</div></div>';
-        }
+        kpisHtml += '<div class="dash-kpi"><div class="dash-kpi-label">Entradas</div><div class="dash-kpi-value positive">'+fmt(kpis.realEntradas)+'</div></div>';
+        kpisHtml += '<div class="dash-kpi"><div class="dash-kpi-label">Despesas</div><div class="dash-kpi-value negative">'+fmt(kpis.realDespesas)+'</div></div>';
+        kpisHtml += '<div class="dash-kpi"><div class="dash-kpi-label">Poupan\u00e7a</div><div class="dash-kpi-value neutral">'+fmt(kpis.realPoupanca)+'</div></div>';
+        kpisHtml += '<div class="dash-kpi"><div class="dash-kpi-label">Saldo</div><div class="dash-kpi-value '+(kpis.saldo>=0?'positive':'negative')+'">'+fmt(kpis.saldo)+'</div></div>';
+        if (kpis.metaEntradas > 0) { kpisHtml += '<div class="dash-kpi"><div class="dash-kpi-label">Meta Entradas</div><div class="dash-kpi-value">'+fmt(kpis.metaEntradas)+'</div></div>'; }
+        if (kpis.metaDespTotal > 0) { kpisHtml += '<div class="dash-kpi"><div class="dash-kpi-label">Meta Despesas</div><div class="dash-kpi-value">'+fmt(kpis.metaDespTotal)+'</div></div>'; }
         document.getElementById('dash-kpis').innerHTML = kpisHtml;
 
-        // Progress bars
-        var progressHtml = '';
-        var realPorCat = {};
-        kpis.lancDoMes.forEach(function(l) {
-          if (l.tipo !== 'entrada' && l.tipo !== 'poupanca') {
-            var cat = l.categoria || 'sem_categoria';
-            realPorCat[cat] = (realPorCat[cat] || 0) + Math.abs(parseFloat(l.valor) || 0);
-          }
-        });
-        if (Object.keys(kpis.metaCats).length > 0) {
-          Object.keys(catConfig).forEach(function(catKey) {
-            var meta = kpis.metaCats[catKey] || 0;
-            if (meta <= 0) return;
-            var real = realPorCat[catKey] || 0;
-            var pct = Math.min(Math.round((real / meta) * 100), 999);
-            var color = pct <= 80 ? '#22c55e' : pct <= 100 ? '#eab308' : '#ef4444';
-            progressHtml += '<div class="dash-progress-row">';
-            progressHtml += '<span class="dash-progress-label">' + catConfig[catKey].label + '</span>';
-            progressHtml += '<div class="dash-progress-bar"><div class="dash-progress-fill" style="width:' + Math.min(pct, 100) + '%;background:' + color + ';"></div></div>';
-            progressHtml += '<span class="dash-progress-pct">' + pct + '%</span>';
-            progressHtml += '</div>';
-          });
-        }
-        document.getElementById('dash-progress-section').innerHTML = progressHtml;
+        // Orcamento por Categoria + Subcategoria
+        renderOrcamento(kpis);
 
         // Alerts
-        var alertsHtml = '';
-        Object.keys(kpis.metaCats).forEach(function(catKey) {
-          var meta = kpis.metaCats[catKey] || 0;
-          var real = realPorCat[catKey] || 0;
-          if (meta > 0 && real > meta) {
-            var excesso = real - meta;
-            alertsHtml += '<div class="dash-alert danger"><span>' + (catConfig[catKey] ? catConfig[catKey].label : catKey) + ' ultrapassou a meta em ' + fmt(excesso) + '</span></div>';
-          }
-        });
-        if (kpis.lancDoMes.length === 0 && Object.keys(kpis.metaCats).length > 0) {
-          alertsHtml += '<div class="dash-alert warning"><span>Nenhum lan\u00e7amento registrado este m\u00eas.</span></div>';
-        }
-        var faturaProx = getProximaFatura();
-        if (faturaProx) {
-          alertsHtml += '<div class="dash-alert info"><span>Pr\u00f3xima fatura: ' + faturaProx.cartao + ' \u2014 ' + fmt(faturaProx.valor) + ' (venc. ' + faturaProx.vencimento + ')</span></div>';
-        }
-        if (alertsHtml) {
-          document.getElementById('dash-alerts').innerHTML = alertsHtml;
-          document.getElementById('dash-alerts-card').style.display = 'block';
-        }
+        renderAlerts(kpis);
+
+        // Populate dropdowns
+        populateDropdowns();
 
         // Faturas
         renderFaturas();
+      }
 
-        // Dropdowns
-        populateDropdowns();
+      // === ORCAMENTO POR CATEGORIA E SUBCATEGORIA ===
+      function renderOrcamento(kpis) {
+        var html = '';
+        catOrder.forEach(function(catKey) {
+          var meta = kpis.metaCats[catKey] || 0;
+          var real = kpis.realPorCat[catKey] || 0;
+          if (meta <= 0 && real <= 0) return;
+          var pct = meta > 0 ? Math.round((real/meta)*100) : (real > 0 ? 999 : 0);
+          var color = pct <= 80 ? '#22c55e' : pct <= 100 ? '#eab308' : '#ef4444';
+          var cfg = catConfig[catKey] || { label: catKey, color: '#888' };
+
+          html += '<div class="dash-progress-row">';
+          html += '<span class="dash-progress-label" style="color:'+cfg.color+';">'+cfg.label+'</span>';
+          html += '<div class="dash-progress-bar"><div class="dash-progress-fill" style="width:'+Math.min(pct,100)+'%;background:'+color+';"></div></div>';
+          html += '<span class="dash-progress-pct">'+pct+'%</span>';
+          html += '<span class="dash-progress-values">'+fmt(real)+' / '+fmt(meta)+'</span>';
+          html += '</div>';
+
+          // Subcategoria details (hidden by default)
+          html += '<div class="dash-subcat-detail subcat-detail-section" style="display:'+(subcatDetailsVisible?'block':'none')+'">';
+          // Find all subcats for this category
+          var subcats = {};
+          kpis.lancDoMes.forEach(function(l) {
+            if (l.tipo !== 'despesa' && l.tipo !== undefined) return;
+            if (l.tipo === 'entrada' || l.tipo === 'poupanca') return;
+            var lCat = l.categoria || 'sem_categoria';
+            if (lCat !== catKey) return;
+            var sub = l.subcategoria || 'Outros';
+            subcats[sub] = (subcats[sub]||0) + Math.abs(parseFloat(l.valor)||0);
+          });
+          // Also show items from refItems that have this category (as reference)
+          refItems.forEach(function(it) {
+            if ((it.categoria||'sem_categoria') !== catKey) return;
+            if (it.tipo === 'entrada' || it.subtipo === 'poupanca') return;
+            if (!subcats[it.nome]) subcats[it.nome] = 0;
+          });
+          Object.keys(subcats).sort().forEach(function(sub) {
+            var subVal = subcats[sub];
+            var subPct = meta > 0 ? Math.min(Math.round((subVal/meta)*100), 100) : 0;
+            html += '<div class="dash-subcat-row">';
+            html += '<span class="dash-subcat-label" title="'+sub+'">'+sub+'</span>';
+            html += '<div class="dash-subcat-bar"><div class="dash-subcat-fill" style="width:'+subPct+'%;background:'+cfg.color+';opacity:.7;"></div></div>';
+            html += '<span class="dash-subcat-val">'+fmt(subVal)+'</span>';
+            html += '</div>';
+          });
+          html += '</div>';
+        });
+
+        if (!html) { html = '<div style="font-size:.8rem;color:var(--muted-foreground);">Nenhuma meta definida para este m\u00eas.</div>'; }
+        document.getElementById('dash-orcamento').innerHTML = html;
+      }
+
+      window.toggleSubcatDetails = function() {
+        subcatDetailsVisible = !subcatDetailsVisible;
+        document.querySelectorAll('.subcat-detail-section').forEach(function(el) {
+          el.style.display = subcatDetailsVisible ? 'block' : 'none';
+        });
+        document.getElementById('btn-toggle-subcat').textContent = subcatDetailsVisible ? '\u25b2' : '\u25bc';
+      };
+
+      // === ALERTS ===
+      function renderAlerts(kpis) {
+        var html = '';
+        catOrder.forEach(function(catKey) {
+          var meta = kpis.metaCats[catKey]||0;
+          var real = kpis.realPorCat[catKey]||0;
+          if (meta > 0 && real > meta) {
+            var cfg = catConfig[catKey]||{label:catKey};
+            html += '<div class="dash-alert danger"><span>'+cfg.label+' ultrapassou a meta em '+fmt(real-meta)+'</span></div>';
+          }
+        });
+        if (kpis.lancDoMes.length === 0 && Object.keys(kpis.metaCats).length > 0) {
+          html += '<div class="dash-alert warning"><span>Nenhum lan\u00e7amento registrado este m\u00eas.</span></div>';
+        }
+        var faturaProx = getProximaFatura();
+        if (faturaProx) {
+          html += '<div class="dash-alert info"><span>Pr\u00f3xima fatura: '+faturaProx.cartao+' \u2014 '+fmt(faturaProx.valor)+' (venc. '+faturaProx.vencimento+')</span></div>';
+        }
+        if (html) {
+          document.getElementById('dash-alerts').innerHTML = html;
+          document.getElementById('dash-alerts-card').style.display = 'block';
+        } else {
+          document.getElementById('dash-alerts-card').style.display = 'none';
+        }
       }
 
       function getProximaFatura() {
-        if (!refFaturas || !refFaturas.length) return null;
+        // Check faturasCalculadas from lastCalcSummary or payload
+        var faturas = (refPayload && refPayload.lastCalcSummary && refPayload.lastCalcSummary.faturas) ? refPayload.lastCalcSummary.faturas : [];
+        if (!faturas.length && refPayload && refPayload.faturasCalculadas) faturas = refPayload.faturasCalculadas;
+        if (!faturas || !faturas.length) return null;
         var now = new Date();
         var closest = null;
-        refFaturas.forEach(function(f) {
+        faturas.forEach(function(f) {
           if (!f.vencimento) return;
           var parts = f.vencimento.split('/');
           if (parts.length < 3) return;
-          var d = new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0]));
-          if (d >= now) {
-            if (!closest || d < closest.date) {
-              closest = { date: d, cartao: f.cartao || 'Cart\u00e3o', valor: f.total || 0, vencimento: f.vencimento };
-            }
+          var d = new Date(parseInt(parts[2]),parseInt(parts[1])-1,parseInt(parts[0]));
+          if (d >= now && (!closest || d < closest.date)) {
+            closest = { date:d, cartao:f.cartao||'Cart\u00e3o', valor:f.total||0, vencimento:f.vencimento };
           }
         });
         return closest;
       }
 
       function renderFaturas() {
-        if (!refFaturas || !refFaturas.length) return;
-        var monthKey = getCurrentMonthKey();
-        var relevantes = refFaturas.filter(function(f) {
+        var faturas = (refPayload && refPayload.lastCalcSummary && refPayload.lastCalcSummary.faturas) ? refPayload.lastCalcSummary.faturas : [];
+        if (!faturas.length && refPayload && refPayload.faturasCalculadas) faturas = refPayload.faturasCalculadas;
+        if (!faturas || !faturas.length) return;
+        var mk = getCurrentMonthKey();
+        var relevantes = faturas.filter(function(f) {
           if (!f.vencimento) return false;
           var parts = f.vencimento.split('/');
-          if (parts.length < 3) return false;
-          var m = parseInt(parts[1]);
-          var y = parseInt(parts[2]);
-          var fKey = y + '-' + String(m).padStart(2, '0');
-          return fKey >= monthKey;
-        }).slice(0, 5);
-        if (relevantes.length === 0) return;
+          if (parts.length<3) return false;
+          var fKey = parseInt(parts[2])+'-'+String(parseInt(parts[1])).padStart(2,'0');
+          return fKey >= mk;
+        }).slice(0,5);
+        if (!relevantes.length) return;
         var html = '';
         relevantes.forEach(function(f) {
-          html += '<div class="dash-fatura-item">';
-          html += '<span>' + (f.cartao || 'Cart\u00e3o') + ' \u2014 venc. ' + f.vencimento + '</span>';
-          html += '<span style="font-weight:bold;color:var(--foreground);">' + fmt(f.total || 0) + '</span>';
-          html += '</div>';
+          html += '<div class="dash-fatura-item"><span>'+(f.cartao||'Cart\u00e3o')+' \u2014 venc. '+f.vencimento+'</span><span style="font-weight:bold;color:var(--foreground);">'+fmt(f.total||0)+'</span></div>';
         });
         document.getElementById('dash-faturas').innerHTML = html;
         document.getElementById('dash-faturas-card').style.display = 'block';
       }
 
+      // === DROPDOWNS ===
+      var dropdownsPopulated = false;
       function populateDropdowns() {
+        if (dropdownsPopulated) return;
+        dropdownsPopulated = true;
+
         var subcatSel = document.getElementById('dash-lanc-subcat');
-        if (subcatSel.options.length > 1) return;
         refItems.forEach(function(item) {
           var opt = document.createElement('option');
           opt.value = item.nome;
-          opt.textContent = item.nome + ' (' + (item.subtipo || item.tipo) + ')';
+          opt.textContent = item.nome;
           opt.dataset.cat = item.categoria || '';
           opt.dataset.tipo = item.tipo === 'entrada' ? 'entrada' : (item.subtipo === 'poupanca' ? 'poupanca' : 'despesa');
           opt.dataset.pag = item.formaPagamento || '';
@@ -395,7 +545,7 @@
         });
 
         var catSel = document.getElementById('dash-lanc-cat');
-        Object.keys(catConfig).forEach(function(k) {
+        catOrder.forEach(function(k) {
           if (k === 'sem_categoria') return;
           var opt = document.createElement('option');
           opt.value = k;
@@ -407,33 +557,32 @@
         refAccounts.forEach(function(acc) {
           var opt = document.createElement('option');
           opt.value = acc.nome;
-          opt.textContent = acc.nome + (acc.tipo ? ' (' + acc.tipo + ')' : '');
+          opt.textContent = acc.nome + (acc.tipo==='cartao' ? ' (Cart\u00e3o)' : ' (Conta)');
           pagSel.appendChild(opt);
         });
 
-        subcatSel.addEventListener('change', function() {
-          var sel = subcatSel.options[subcatSel.selectedIndex];
-          if (sel && sel.dataset.cat) catSel.value = sel.dataset.cat;
-          if (sel && sel.dataset.tipo) document.getElementById('dash-lanc-tipo').value = sel.dataset.tipo;
-          if (sel && sel.dataset.pag) pagSel.value = sel.dataset.pag;
-        });
-
-        var today = new Date();
-        document.getElementById('dash-lanc-data').value = today.toISOString().split('T')[0];
+        document.getElementById('dash-lanc-data').value = isoDate(new Date());
       }
 
-      // Save lancamento
+      // Auto-fill on subcategoria change
+      window.dashSubcatChanged = function() {
+        var subcatSel = document.getElementById('dash-lanc-subcat');
+        var sel = subcatSel.options[subcatSel.selectedIndex];
+        if (!sel || !sel.value) return;
+        if (sel.dataset.cat) document.getElementById('dash-lanc-cat').value = sel.dataset.cat;
+        if (sel.dataset.tipo) document.getElementById('dash-lanc-tipo').value = sel.dataset.tipo;
+        if (sel.dataset.pag) document.getElementById('dash-lanc-pag').value = sel.dataset.pag;
+      };
+
+      // === SAVE LANCAMENTO ===
       window.dashSalvarLancamento = async function() {
         var dataVal = document.getElementById('dash-lanc-data').value;
         var valorVal = document.getElementById('dash-lanc-valor').value;
         if (!dataVal || !valorVal) { alert('Preencha pelo menos Data e Valor.'); return; }
 
-        var parts = dataVal.split('-');
-        var dataFormatted = parts[2] + '/' + parts[1] + '/' + parts[0];
-
         var lanc = {
-          id: Date.now().toString(36) + Math.random().toString(36).substr(2, 5),
-          data: dataFormatted,
+          id: 'lanc_' + Date.now(),
+          data: dataVal,
           valor: parseFloat(valorVal),
           descricao: document.getElementById('dash-lanc-desc').value || '',
           subcategoria: document.getElementById('dash-lanc-subcat').value || '',
@@ -442,156 +591,275 @@
           tipo: document.getElementById('dash-lanc-tipo').value || 'despesa'
         };
 
-        if (!refSim.trackingData) refSim.trackingData = {};
-        if (!refSim.trackingData.lancamentos) refSim.trackingData.lancamentos = [];
-        refSim.trackingData.lancamentos.push(lanc);
-
-        try {
-          var res = await sb.from('ferramentas_dados').select('*').eq('cliente_id', clienteId).eq('ferramenta', 'fluxo');
-          if (!res.error && res.data && res.data.length > 0) {
-            var simulacoes = res.data[0].dados || [];
-            var idx = simulacoes.findIndex(function(s) { return s.id === refSim.id; });
-            if (idx >= 0) {
-              simulacoes[idx] = refSim;
-              await sb.from('ferramentas_dados').upsert({
-                cliente_id: clienteId,
-                ferramenta: 'fluxo',
-                dados: simulacoes,
-                updated_at: new Date().toISOString()
-              }, { onConflict: 'cliente_id,ferramenta' });
-            }
-          }
-        } catch(e) {}
+        if (!refTracking.lancamentos) refTracking.lancamentos = [];
+        refTracking.lancamentos.push(lanc);
+        await saveTrackingToSupabase();
 
         alert('Lan\u00e7amento salvo!');
         document.getElementById('dash-lanc-valor').value = '';
         document.getElementById('dash-lanc-desc').value = '';
         document.getElementById('dash-lanc-subcat').value = '';
-        refTracking = refSim.trackingData;
-        dashLoaded = false;
-        renderWidget();
-        renderFullDashboard();
-        dashLoaded = true;
+        refreshDashboard();
       };
 
-      // Import from Google Sheets
+      // === CORRIGIR MODAL (Lancamentos Table) ===
+      function renderCorrigirTable() {
+        var mk = getCurrentMonthKey();
+        var lancMes = (refTracking.lancamentos||[]).filter(function(l) { return l.data && l.data.substring(0,7)===mk; });
+        lancMes.sort(function(a,b) { return a.data.localeCompare(b.data); });
+
+        var html = '';
+        if (lancMes.length === 0) {
+          html = '<div style="text-align:center;color:var(--muted-foreground);padding:2rem;font-size:.85rem;">Nenhum lan\u00e7amento neste m\u00eas.</div>';
+        } else {
+          html += '<div style="overflow-x:auto;"><table class="dash-lanc-table"><thead><tr>';
+          html += '<th>Tipo</th><th>Data</th><th>Descri\u00e7\u00e3o</th><th>Valor</th><th>Categoria</th><th>Subcategoria</th><th>Pagamento</th><th></th>';
+          html += '</tr></thead><tbody>';
+          lancMes.forEach(function(l) {
+            var cfg = catConfig[l.categoria]||{label:l.categoria||'\u2014',color:'#888'};
+            var tipoLabel = l.tipo==='entrada' ? '<span style="color:#22c55e;">Entrada</span>' : l.tipo==='poupanca' ? '<span style="color:#60a5fa;">Poupan\u00e7a</span>' : '<span style="color:#ef4444;">Despesa</span>';
+            var valorColor = l.tipo==='entrada' ? '#22c55e' : '#ef4444';
+            var valorPrefix = l.tipo==='entrada' ? '+' : '-';
+            var dataDisplay = l.data ? new Date(l.data+'T00:00').toLocaleDateString('pt-BR') : '\u2014';
+            html += '<tr>';
+            html += '<td>'+tipoLabel+'</td>';
+            html += '<td>'+dataDisplay+'</td>';
+            html += '<td>'+(l.descricao||'\u2014')+'</td>';
+            html += '<td style="color:'+valorColor+';font-weight:600;">'+valorPrefix+'R$ '+(l.valor||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})+'</td>';
+            html += '<td style="color:'+cfg.color+';">'+(l.tipo==='despesa'?cfg.label:'\u2014')+'</td>';
+            html += '<td style="font-size:.7rem;">'+(l.subcategoria||'\u2014')+'</td>';
+            html += '<td>'+(l.pagamento||'\u2014')+'</td>';
+            html += '<td><button class="dash-btn-ghost" onclick="dashEditLanc(\''+l.id+'\')" title="Editar">\u270e</button><button class="dash-btn-ghost" style="color:#ef4444;" onclick="dashDeleteLanc(\''+l.id+'\')" title="Excluir">\u2715</button></td>';
+            html += '</tr>';
+          });
+          html += '</tbody></table></div>';
+        }
+        html += '<div style="margin-top:1rem;text-align:right;"><button class="dash-btn" onclick="dashAddLancFromCorrigir()">+ Novo Lan\u00e7amento</button></div>';
+        document.getElementById('corrigir-content').innerHTML = html;
+      }
+
+      // === EDIT LANCAMENTO MODAL ===
+      window.dashEditLanc = function(id) {
+        var lanc = (refTracking.lancamentos||[]).find(function(l) { return l.id===id; });
+        showEditModal(lanc);
+      };
+
+      window.dashAddLancFromCorrigir = function() {
+        showEditModal(null);
+      };
+
+      function showEditModal(lanc) {
+        var isEdit = !!lanc;
+        var catOptions = catOrder.filter(function(k){return k!=='sem_categoria';}).map(function(k) {
+          return '<option value="'+k+'" '+(lanc&&lanc.categoria===k?'selected':'')+'>'+catConfig[k].label+'</option>';
+        }).join('');
+        var subcatOptions = refItems.map(function(it) {
+          return '<option value="'+it.nome+'" '+(lanc&&lanc.subcategoria===it.nome?'selected':'')+'>'+it.nome+'</option>';
+        }).join('');
+        var pagOptions = refAccounts.map(function(a) {
+          return '<option value="'+a.nome+'" '+(lanc&&lanc.pagamento===a.nome?'selected':'')+'>'+a.nome+(a.tipo==='cartao'?' (Cart\u00e3o)':' (Conta)')+'</option>';
+        }).join('');
+
+        var html = '<div class="dash-edit-overlay" id="dash-edit-overlay" onclick="if(event.target===this)this.remove()">';
+        html += '<div class="dash-edit-modal">';
+        html += '<h3>'+(isEdit?'Editar':'Novo')+' Lan\u00e7amento</h3>';
+        html += '<div class="dash-edit-form">';
+        html += '<div><label>Tipo</label><select id="dedit-tipo"><option value="despesa" '+(lanc&&lanc.tipo==='despesa'?'selected':(!lanc?'selected':''))+'>Despesa</option><option value="entrada" '+(lanc&&lanc.tipo==='entrada'?'selected':'')+'>Entrada</option><option value="poupanca" '+(lanc&&lanc.tipo==='poupanca'?'selected':'')+'>Poupan\u00e7a</option></select></div>';
+        html += '<div><label>Data</label><input type="date" id="dedit-data" value="'+(lanc?lanc.data:isoDate(new Date()))+'"></div>';
+        html += '<div><label>Valor (R$)</label><input type="number" id="dedit-valor" step="0.01" min="0" value="'+(lanc?lanc.valor:'')+'"></div>';
+        html += '<div><label>Descri\u00e7\u00e3o</label><input type="text" id="dedit-desc" value="'+(lanc?lanc.descricao:'')+'"></div>';
+        html += '<div><label>Categoria</label><select id="dedit-cat"><option value="">\u2014</option>'+catOptions+'</select></div>';
+        html += '<div><label>Subcategoria</label><select id="dedit-subcat" onchange="dashEditSubcatChanged()"><option value="">\u2014</option>'+subcatOptions+'</select></div>';
+        html += '<div class="full"><label>Pagamento</label><select id="dedit-pag"><option value="">\u2014</option>'+pagOptions+'</select></div>';
+        html += '</div>';
+        html += '<div style="margin-top:1.2rem;display:flex;gap:.5rem;justify-content:flex-end;">';
+        html += '<button class="dash-btn-outline" onclick="document.getElementById(\'dash-edit-overlay\').remove()">Cancelar</button>';
+        html += '<button class="dash-btn" onclick="dashSaveEditLanc(\''+(lanc?lanc.id:'')+'\')">Salvar</button>';
+        html += '</div></div></div>';
+
+        document.body.insertAdjacentHTML('beforeend', html);
+      }
+
+      window.dashEditSubcatChanged = function() {
+        var sel = document.getElementById('dedit-subcat');
+        var item = refItems.find(function(it) { return it.nome === sel.value; });
+        if (item) {
+          if (item.categoria) document.getElementById('dedit-cat').value = item.categoria;
+          document.getElementById('dedit-tipo').value = item.tipo==='entrada'?'entrada':(item.subtipo==='poupanca'?'poupanca':'despesa');
+          if (item.formaPagamento) document.getElementById('dedit-pag').value = item.formaPagamento;
+        }
+      };
+
+      window.dashSaveEditLanc = async function(editId) {
+        var tipo = document.getElementById('dedit-tipo').value;
+        var data = document.getElementById('dedit-data').value;
+        var valor = parseFloat(document.getElementById('dedit-valor').value);
+        var desc = document.getElementById('dedit-desc').value.trim();
+        var cat = document.getElementById('dedit-cat').value;
+        var subcat = document.getElementById('dedit-subcat').value;
+        var pag = document.getElementById('dedit-pag').value;
+
+        if (!data || !valor) { alert('Preencha data e valor.'); return; }
+
+        if (editId) {
+          var lanc = (refTracking.lancamentos||[]).find(function(l) { return l.id===editId; });
+          if (lanc) { lanc.tipo=tipo; lanc.data=data; lanc.valor=valor; lanc.descricao=desc; lanc.categoria=cat; lanc.subcategoria=subcat; lanc.pagamento=pag; }
+        } else {
+          if (!refTracking.lancamentos) refTracking.lancamentos = [];
+          refTracking.lancamentos.push({ id:'lanc_'+Date.now(), tipo:tipo, data:data, valor:valor, descricao:desc, categoria:cat, subcategoria:subcat, pagamento:pag });
+        }
+
+        document.getElementById('dash-edit-overlay').remove();
+        await saveTrackingToSupabase();
+        renderCorrigirTable();
+        refreshDashboard();
+      };
+
+      // === DELETE LANCAMENTO ===
+      window.dashDeleteLanc = async function(id) {
+        if (!confirm('Excluir este lan\u00e7amento?')) return;
+        refTracking.lancamentos = (refTracking.lancamentos||[]).filter(function(l) { return l.id !== id; });
+        await saveTrackingToSupabase();
+        renderCorrigirTable();
+        refreshDashboard();
+      };
+
+      // === SAVE TO SUPABASE ===
+      async function saveTrackingToSupabase() {
+        if (!clienteId || !sb || !refSim) return;
+        try {
+          // Update the payload's trackingData
+          refSim.payload.trackingData = refTracking;
+          // Find and update in the array
+          var idx = allSimulacoes.findIndex(function(s) { return s.id === refSim.id; });
+          if (idx >= 0) { allSimulacoes[idx] = refSim; }
+          await sb.from('ferramentas_dados').upsert({
+            cliente_id: clienteId,
+            ferramenta: 'fluxo',
+            dados: allSimulacoes,
+            updated_at: new Date().toISOString()
+          }, { onConflict: 'cliente_id,ferramenta' });
+        } catch(e) { console.error('Erro ao salvar:', e); }
+      }
+
+      // === REFRESH DASHBOARD ===
+      function refreshDashboard() {
+        renderWidget();
+        if (dashLoaded) {
+          var kpis = calcKPIs();
+          // Re-render KPIs
+          var kpisHtml = '';
+          kpisHtml += '<div class="dash-kpi"><div class="dash-kpi-label">Entradas</div><div class="dash-kpi-value positive">'+fmt(kpis.realEntradas)+'</div></div>';
+          kpisHtml += '<div class="dash-kpi"><div class="dash-kpi-label">Despesas</div><div class="dash-kpi-value negative">'+fmt(kpis.realDespesas)+'</div></div>';
+          kpisHtml += '<div class="dash-kpi"><div class="dash-kpi-label">Poupan\u00e7a</div><div class="dash-kpi-value neutral">'+fmt(kpis.realPoupanca)+'</div></div>';
+          kpisHtml += '<div class="dash-kpi"><div class="dash-kpi-label">Saldo</div><div class="dash-kpi-value '+(kpis.saldo>=0?'positive':'negative')+'">'+fmt(kpis.saldo)+'</div></div>';
+          if (kpis.metaEntradas > 0) { kpisHtml += '<div class="dash-kpi"><div class="dash-kpi-label">Meta Entradas</div><div class="dash-kpi-value">'+fmt(kpis.metaEntradas)+'</div></div>'; }
+          if (kpis.metaDespTotal > 0) { kpisHtml += '<div class="dash-kpi"><div class="dash-kpi-label">Meta Despesas</div><div class="dash-kpi-value">'+fmt(kpis.metaDespTotal)+'</div></div>'; }
+          document.getElementById('dash-kpis').innerHTML = kpisHtml;
+          renderOrcamento(kpis);
+          renderAlerts(kpis);
+        }
+      }
+
+      // === IMPORT GOOGLE SHEETS ===
       window.dashImportSheets = async function() {
         var url = document.getElementById('dash-sheets-url').value.trim();
         if (!url) { alert('Cole o link da planilha.'); return; }
-
         var match = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
-        if (!match) { alert('Link inv\u00e1lido. Use o link de compartilhamento do Google Sheets.'); return; }
+        if (!match) { alert('Link inv\u00e1lido.'); return; }
         var sheetId = match[1];
         var csvUrl = 'https://docs.google.com/spreadsheets/d/' + sheetId + '/gviz/tq?tqx=out:csv&sheet=Lancamentos';
-
         try {
-          var response = await fetch(csvUrl);
-          if (!response.ok) throw new Error('Erro ao acessar planilha');
-          var text = await response.text();
+          var resp = await fetch(csvUrl);
+          if (!resp.ok) throw new Error('Erro ao acessar planilha');
+          var text = await resp.text();
           var lines = text.split('\n').filter(function(l) { return l.trim(); });
           if (lines.length < 2) { alert('Planilha vazia ou sem dados.'); return; }
-
-          var imported = [];
+          var imported = 0;
           for (var i = 1; i < lines.length; i++) {
-            var cols = parseCSVLine(lines[i]);
-            if (cols.length < 3) continue;
-            var data = cols[0].replace(/"/g, '').trim();
-            var desc = cols[1] ? cols[1].replace(/"/g, '').trim() : '';
-            var valor = cols[2] ? cols[2].replace(/"/g, '').replace(',', '.').trim() : '0';
-            if (!data || !valor) continue;
-            imported.push({
-              id: Date.now().toString(36) + Math.random().toString(36).substr(2, 5) + i,
-              data: data,
-              descricao: desc,
-              valor: parseFloat(valor) || 0,
-              subcategoria: '',
-              categoria: '',
-              pagamento: '',
-              tipo: 'despesa'
+            var cols = lines[i].match(/(".*?"|[^",]+)(?=\s*,|\s*$)/g);
+            if (!cols || cols.length < 3) continue;
+            var rawData = cols[0].replace(/"/g,'').trim();
+            var desc = cols[1].replace(/"/g,'').trim();
+            var rawValor = cols[2].replace(/"/g,'').trim();
+            // Parse date (DD/MM/YYYY or YYYY-MM-DD)
+            var dataISO = '';
+            if (rawData.indexOf('/') !== -1) {
+              var parts = rawData.split('/');
+              if (parts.length === 3) dataISO = parts[2]+'-'+parts[1].padStart(2,'0')+'-'+parts[0].padStart(2,'0');
+            } else { dataISO = rawData; }
+            var valor = parseFloat(rawValor.replace(/\./g,'').replace(',','.')) || 0;
+            if (!dataISO || !valor) continue;
+            // Check duplicate
+            var exists = (refTracking.lancamentos||[]).some(function(l) {
+              return l.data === dataISO && l.descricao === desc && Math.abs(l.valor - Math.abs(valor)) < 0.01;
             });
+            if (exists) continue;
+            if (!refTracking.lancamentos) refTracking.lancamentos = [];
+            refTracking.lancamentos.push({
+              id: 'lanc_' + Date.now() + '_' + i,
+              tipo: valor < 0 ? 'despesa' : 'entrada',
+              data: dataISO,
+              valor: Math.abs(valor),
+              descricao: desc,
+              categoria: '',
+              subcategoria: '',
+              pagamento: ''
+            });
+            imported++;
           }
-
-          if (imported.length === 0) { alert('Nenhum dado v\u00e1lido encontrado.'); return; }
-
-          var msg = 'Encontrados ' + imported.length + ' lan\u00e7amentos.\n\n';
-          msg += 'Ser\u00e3o importados sem categoria (categorize na ferramenta de Fluxo).\n\nImportar?';
-          if (!confirm(msg)) return;
-
-          if (!refSim.trackingData) refSim.trackingData = {};
-          if (!refSim.trackingData.lancamentos) refSim.trackingData.lancamentos = [];
-          imported.forEach(function(l) { refSim.trackingData.lancamentos.push(l); });
-
-          var res2 = await sb.from('ferramentas_dados').select('*').eq('cliente_id', clienteId).eq('ferramenta', 'fluxo');
-          if (!res2.error && res2.data && res2.data.length > 0) {
-            var simulacoes = res2.data[0].dados || [];
-            var idx = simulacoes.findIndex(function(s) { return s.id === refSim.id; });
-            if (idx >= 0) {
-              simulacoes[idx] = refSim;
-              await sb.from('ferramentas_dados').upsert({
-                cliente_id: clienteId,
-                ferramenta: 'fluxo',
-                dados: simulacoes,
-                updated_at: new Date().toISOString()
-              }, { onConflict: 'cliente_id,ferramenta' });
-            }
+          if (imported > 0) {
+            refTracking.sheetsUrl = url;
+            await saveTrackingToSupabase();
+            refreshDashboard();
+            alert(imported + ' lan\u00e7amento(s) importado(s) com sucesso!');
+          } else {
+            alert('Nenhum lan\u00e7amento novo encontrado (poss\u00edveis duplicatas).');
           }
-
-          alert(imported.length + ' lan\u00e7amentos importados!');
-          document.getElementById('dash-sheets-url').value = '';
-          refTracking = refSim.trackingData;
-          dashLoaded = false;
-          renderWidget();
-          renderFullDashboard();
-          dashLoaded = true;
         } catch(e) {
           alert('Erro ao importar: ' + e.message);
         }
       };
 
-      function parseCSVLine(line) {
-        var result = [];
-        var current = '';
-        var inQuotes = false;
-        for (var i = 0; i < line.length; i++) {
-          var ch = line[i];
-          if (ch === '"') { inQuotes = !inQuotes; }
-          else if (ch === ',' && !inQuotes) { result.push(current); current = ''; }
-          else { current += ch; }
-        }
-        result.push(current);
-        return result;
-      }
-
-      // Init
-      async function init() {
+      // === LOAD DATA FROM SUPABASE ===
+      async function loadData() {
         if (!clienteId || !sb) {
-          document.getElementById('widget-fluxo-body').innerHTML = '<span class="dash-widget-nodata">Fa\u00e7a login para ver seus dados</span>';
+          document.getElementById('widget-fluxo-body').innerHTML = '<span class="dash-widget-nodata">Sess\u00e3o n\u00e3o encontrada.</span>';
           return;
         }
         try {
-          var res = await sb.from('ferramentas_dados').select('*').eq('cliente_id', clienteId).eq('ferramenta', 'fluxo');
-          if (res.error || !res.data || !res.data.length) {
-            document.getElementById('widget-fluxo-body').innerHTML = '<span class="dash-widget-nodata">Nenhum dado de fluxo encontrado</span>';
+          var res = await sb.from('ferramentas_dados').select('dados').eq('cliente_id', clienteId).eq('ferramenta', 'fluxo').single();
+          if (!res.data || !res.data.dados) {
+            document.getElementById('widget-fluxo-body').innerHTML = '<span class="dash-widget-nodata">Nenhuma simula\u00e7\u00e3o encontrada.</span>';
             return;
           }
-          var simulacoes = res.data[0].dados || [];
-          refSim = simulacoes.find(function(s) { return s.primary === true; });
+          allSimulacoes = res.data.dados;
+          if (!Array.isArray(allSimulacoes)) { allSimulacoes = [allSimulacoes]; }
+
+          // Find primary simulation (reference)
+          refSim = allSimulacoes.find(function(s) { return s.primary; });
           if (!refSim) {
-            document.getElementById('widget-fluxo-body').innerHTML = '<span class="dash-widget-nodata">Simula\u00e7\u00e3o de refer\u00eancia n\u00e3o definida</span>';
+            document.getElementById('widget-fluxo-body').innerHTML = '<span class="dash-widget-nodata">Nenhuma simula\u00e7\u00e3o de refer\u00eancia (\u2b50) definida.</span>';
             return;
           }
-          refItems = refSim.items || [];
-          refAccounts = refSim.accounts || [];
-          refTracking = refSim.trackingData || {};
-          refFaturas = refSim.faturasCalculadas || [];
+
+          refPayload = refSim.payload || {};
+          refItems = refPayload.itens || refPayload.items || [];
+          refAccounts = refPayload.contas || refPayload.accounts || [];
+          refTracking = refPayload.trackingData || { metas:{}, lancamentos:[], sheetsUrl:'' };
+
+          // Ensure trackingData reference is in payload
+          if (!refPayload.trackingData) refPayload.trackingData = refTracking;
+
           renderWidget();
         } catch(e) {
-          document.getElementById('widget-fluxo-body').innerHTML = '<span class="dash-widget-nodata">Erro ao carregar dados</span>';
+          console.error('Erro ao carregar dados:', e);
+          document.getElementById('widget-fluxo-body').innerHTML = '<span class="dash-widget-nodata">Erro ao carregar dados.</span>';
         }
       }
 
-      setTimeout(init, 500);
+      // Init
+      loadData();
+
     })();
     </script>
-</body>
-</html>
