@@ -109,6 +109,13 @@
       .dash-import-section{margin-top:.7rem;padding-top:.7rem;border-top:1px solid var(--border)}
       .dash-import-row{display:flex;gap:.4rem;align-items:center}
       .dash-import-row input{flex:1;background:var(--background);border:1px solid var(--border);border-radius:4px;padding:.45rem;color:var(--foreground);font-size:.75rem}
+      .dash-import-preview-overlay{display:flex;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.8);z-index:99999;align-items:flex-start;justify-content:center;padding:1rem;overflow-y:auto}
+      .dash-import-preview-modal{background:var(--background);border:1px solid var(--border);border-radius:10px;width:100%;max-width:1000px;padding:1.2rem;position:relative;margin:auto}
+      .dash-import-preview-wrap{overflow-x:auto;border:1px solid var(--border);border-radius:6px;margin-top:.75rem}
+      .dash-import-preview-table{width:max-content;min-width:100%;border-collapse:collapse;font-size:.73rem}
+      .dash-import-preview-table th{background:rgba(212,175,55,.08);color:var(--primary);padding:.45rem .5rem;text-align:left;font-size:.68rem;text-transform:uppercase;white-space:nowrap}
+      .dash-import-preview-table td{padding:.35rem .45rem;border-bottom:1px solid rgba(212,175,55,.06)}
+      .dash-import-preview-table select,.dash-import-preview-table input[type=text]{font-size:.72rem;padding:.2rem .3rem;background:var(--background);border:1px solid var(--border);color:var(--foreground);border-radius:4px}
 
       /* Faturas */
       .dash-fatura-item{display:flex;justify-content:space-between;align-items:center;padding:.35rem 0;border-bottom:1px solid rgba(255,255,255,.05);font-size:.8rem}
@@ -1445,11 +1452,25 @@
       }
 
       // === IMPORT GOOGLE SHEETS ===
+      var _dashPendingImport = [];
+
+      function dashParseCSVLine(line) {
+        var result = [], current = '', inQuotes = false;
+        for (var i = 0; i < line.length; i++) {
+          var c = line[i];
+          if (c === '"') { inQuotes = !inQuotes; }
+          else if (c === ',' && !inQuotes) { result.push(current); current = ''; }
+          else { current += c; }
+        }
+        result.push(current);
+        return result;
+      }
+
       window.dashImportSheets = async function() {
         var url = document.getElementById('dash-sheets-url').value.trim();
         if (!url) { alert('Cole o link da planilha.'); return; }
         var match = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
-        if (!match) { alert('Link inv\u00e1lido.'); return; }
+        if (!match) { alert('Link inválido.'); return; }
         var sheetId = match[1];
         var csvUrl = 'https://docs.google.com/spreadsheets/d/' + sheetId + '/gviz/tq?tqx=out:csv&sheet=Lancamentos';
         try {
@@ -1458,14 +1479,14 @@
           var text = await resp.text();
           var lines = text.split('\n').filter(function(l) { return l.trim(); });
           if (lines.length < 2) { alert('Planilha vazia ou sem dados.'); return; }
-          var imported = 0;
+
+          _dashPendingImport = [];
           for (var i = 1; i < lines.length; i++) {
-            var cols = lines[i].match(/(".*?"|[^",]+)(?=\s*,|\s*$)/g);
-            if (!cols || cols.length < 3) continue;
+            var cols = dashParseCSVLine(lines[i]);
+            if (cols.length < 3) continue;
             var rawData = cols[0].replace(/"/g,'').trim();
-            var desc = cols[1].replace(/"/g,'').trim();
+            var desc = cols[1] ? cols[1].replace(/"/g,'').trim() : '';
             var rawValor = cols[2].replace(/"/g,'').trim();
-            // Parse date (DD/MM/YYYY or YYYY-MM-DD)
             var dataISO = '';
             if (rawData.indexOf('/') !== -1) {
               var parts = rawData.split('/');
@@ -1473,34 +1494,134 @@
             } else { dataISO = rawData; }
             var valor = parseFloat(rawValor.replace(/\./g,'').replace(',','.')) || 0;
             if (!dataISO || !valor) continue;
-            // Check duplicate
             var exists = (refTracking.lancamentos||[]).some(function(l) {
               return l.data === dataISO && l.descricao === desc && Math.abs(l.valor - Math.abs(valor)) < 0.01;
             });
             if (exists) continue;
-            if (!refTracking.lancamentos) refTracking.lancamentos = [];
-            refTracking.lancamentos.push({
-              id: 'lanc_' + Date.now() + '_' + i,
-              tipo: valor < 0 ? 'despesa' : 'entrada',
+            _dashPendingImport.push({
+              tipo: 'despesa',
               data: dataISO,
-              valor: Math.abs(valor),
               descricao: desc,
+              valor: Math.abs(valor),
               categoria: '',
               subcategoria: '',
               pagamento: ''
             });
-            imported++;
           }
-          if (imported > 0) {
-            refTracking.sheetsUrl = url;
-            await saveTrackingToSupabase();
-            refreshDashboard();
-            alert(imported + ' lan\u00e7amento(s) importado(s) com sucesso!');
-          } else {
-            alert('Nenhum lan\u00e7amento novo encontrado (poss\u00edveis duplicatas).');
+          if (_dashPendingImport.length === 0) {
+            alert('Nenhum dado novo encontrado (todos j\u00e1 existiam ou a planilha est\u00e1 vazia).');
+            return;
           }
+          refTracking.sheetsUrl = url;
+          dashShowImportPreview();
         } catch(e) {
           alert('Erro ao importar: ' + e.message);
+        }
+      };
+
+      function dashShowImportPreview() {
+        // Build dropdown options from refItems and refAccounts
+        var subcatOpts = '<option value="">\u2014</option>' + refItems.map(function(it) { return '<option value="' + it.nome + '">' + it.nome + '</option>'; }).join('');
+        var catOpts = '<option value="">\u2014</option><option value="sobrevivencia">Sobreviv\u00eancia</option><option value="necessidades">Necessidades</option><option value="aperfeicoamento">Aperfei\u00e7oamento</option><option value="dividas">D\u00edvidas</option><option value="conforto">Conforto/Sup\u00e9rfluo</option>';
+        var pagOpts = '<option value="">\u2014</option>' + refAccounts.map(function(a) { return '<option value="' + a.nome + '">' + a.nome + '</option>'; }).join('');
+        var tipoOpts = '<option value="despesa">Despesa</option><option value="entrada">Entrada</option><option value="poupanca">Poupan\u00e7a</option>';
+
+        var html = '<div class="dash-import-preview-overlay" id="dash-import-preview" onclick="if(event.target===this)this.remove()">';
+        html += '<div class="dash-import-preview-modal" onclick="event.stopPropagation()">';
+        html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem;"><h2 style="color:var(--primary);margin:0;font-size:1rem;">Revisar Importa\u00e7\u00e3o (' + _dashPendingImport.length + ' lan\u00e7amentos)</h2><button class="dash-btn-ghost" style="font-size:1.3rem;" onclick="document.getElementById(\'dash-import-preview\').remove()">\u2715</button></div>';
+        html += '<p style="font-size:.75rem;color:var(--muted-foreground);margin:0 0 .5rem;">Complete as informa\u00e7\u00f5es abaixo. Ao selecionar a <strong>Subcategoria</strong>, Categoria, Tipo e Pagamento ser\u00e3o preenchidos automaticamente.</p>';
+
+        html += '<div class="dash-import-preview-wrap"><table class="dash-import-preview-table" id="dash-import-tbl">';
+        html += '<thead><tr><th>Data</th><th>Descri\u00e7\u00e3o</th><th>Valor</th><th>Subcategoria</th><th>Categoria</th><th>Pagamento</th><th>Tipo</th><th></th></tr></thead><tbody>';
+
+        _dashPendingImport.forEach(function(row, idx) {
+          var dataFmt = row.data ? new Date(row.data + 'T00:00').toLocaleDateString('pt-BR') : '\u2014';
+          html += '<tr id="dash-imp-row-' + idx + '">';
+          html += '<td style="white-space:nowrap;">' + dataFmt + '</td>';
+          html += '<td><input type="text" value="' + (row.descricao||'').replace(/"/g,'&quot;') + '" style="width:100%;min-width:80px;" class="dash-imp-field" data-field="descricao" data-idx="' + idx + '"></td>';
+          html += '<td style="font-weight:600;white-space:nowrap;">R$ ' + row.valor.toFixed(2).replace('.',',') + '</td>';
+          html += '<td><select class="dash-imp-field" data-field="subcategoria" data-idx="' + idx + '" onchange="dashOnSubcatChange(this,' + idx + ')">' + subcatOpts + '</select></td>';
+          html += '<td><select class="dash-imp-field" data-field="categoria" data-idx="' + idx + '" id="dash-imp-cat-' + idx + '">' + catOpts + '</select></td>';
+          html += '<td><select class="dash-imp-field" data-field="pagamento" data-idx="' + idx + '" id="dash-imp-pag-' + idx + '">' + pagOpts + '</select></td>';
+          html += '<td><select class="dash-imp-field" data-field="tipo" data-idx="' + idx + '" id="dash-imp-tipo-' + idx + '">' + tipoOpts + '</select></td>';
+          html += '<td><button class="dash-btn-ghost" style="color:#ef4444;font-size:.7rem;" onclick="dashRemoveImportRow(' + idx + ')">\u2715</button></td>';
+          html += '</tr>';
+        });
+
+        html += '</tbody></table></div>';
+        html += '<div style="margin-top:.8rem;display:flex;gap:.6rem;justify-content:flex-end;">';
+        html += '<button class="dash-btn-outline" onclick="document.getElementById(\'dash-import-preview\').remove()">Cancelar</button>';
+        html += '<button class="dash-btn" onclick="dashConfirmarImportacao()">Confirmar Importa\u00e7\u00e3o</button>';
+        html += '</div>';
+        html += '</div></div>';
+        document.body.insertAdjacentHTML('beforeend', html);
+      }
+
+      window.dashOnSubcatChange = function(sel, idx) {
+        var subcatName = sel.value;
+        if (!subcatName) return;
+        var item = refItems.find(function(it) { return it.nome === subcatName; });
+        if (item) {
+          var catSel = document.getElementById('dash-imp-cat-' + idx);
+          var pagSel = document.getElementById('dash-imp-pag-' + idx);
+          var tipoSel = document.getElementById('dash-imp-tipo-' + idx);
+          if (catSel && item.categoria) catSel.value = item.categoria;
+          if (pagSel && item.formaPagamento) {
+            var acc = refAccounts.find(function(a) { return a.id === item.formaPagamento; });
+            if (acc) pagSel.value = acc.nome;
+          }
+          if (tipoSel) {
+            if (item.tipo === 'entrada') tipoSel.value = 'entrada';
+            else if (item.subtipo === 'poupanca') tipoSel.value = 'poupanca';
+            else tipoSel.value = 'despesa';
+          }
+        }
+      };
+
+      window.dashRemoveImportRow = function(idx) {
+        _dashPendingImport[idx] = null;
+        var row = document.getElementById('dash-imp-row-' + idx);
+        if (row) row.style.display = 'none';
+      };
+
+      window.dashConfirmarImportacao = async function() {
+        document.querySelectorAll('.dash-imp-field').forEach(function(el) {
+          var idx = parseInt(el.getAttribute('data-idx'));
+          var field = el.getAttribute('data-field');
+          if (_dashPendingImport[idx]) {
+            if (el.tagName === 'INPUT') _dashPendingImport[idx][field] = el.value.trim();
+            else if (el.tagName === 'SELECT') _dashPendingImport[idx][field] = el.value;
+          }
+        });
+
+        if (!refTracking.lancamentos) refTracking.lancamentos = [];
+        var imported = 0;
+        _dashPendingImport.forEach(function(row, i) {
+          if (!row) return;
+          if (!row.data || !row.valor) return;
+          refTracking.lancamentos.push({
+            id: 'lanc_' + Date.now() + '_' + i,
+            tipo: row.tipo || 'despesa',
+            data: row.data,
+            descricao: row.descricao || '',
+            valor: row.valor,
+            categoria: row.categoria || '',
+            subcategoria: row.subcategoria || '',
+            pagamento: row.pagamento || ''
+          });
+          imported++;
+        });
+
+        var previewEl = document.getElementById('dash-import-preview');
+        if (previewEl) previewEl.remove();
+        _dashPendingImport = [];
+
+        if (imported > 0) {
+          await saveTrackingToSupabase();
+          refreshDashboard();
+          alert(imported + ' lan\u00e7amento(s) importado(s) com sucesso!');
+        } else {
+          alert('Nenhum lan\u00e7amento importado.');
         }
       };
 
