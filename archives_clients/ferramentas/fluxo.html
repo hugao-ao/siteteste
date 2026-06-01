@@ -1670,6 +1670,7 @@ function calcular() {
   renderSummary(totalEntradas, totalPoupancaFluxo, totalDespesas, saldo, poupanca);
   renderOrcamentoMensal(totaisPorItem, totalEntradas, totalPoupancaFluxo, totalDespesas, numDias);
   renderChart(labels, saldoData, poupancaData);
+  addRealEvolutionToChart();
   renderAnalise(totaisPorItem, totalEntradas, totalPoupancaFluxo, totalDespesas);
   renderFaturas();
   document.getElementById('result-section').style.display = 'block';
@@ -1984,8 +1985,13 @@ function setChartView(view) {
     document.getElementById('cv-'+v).classList.toggle('btn-outline', v!==view);
   });
   if (chartInstance) {
-    chartInstance.data.datasets[0].hidden = view === 'savings';
-    chartInstance.data.datasets[1].hidden = view === 'balance';
+    chartInstance.data.datasets.forEach(function(ds) {
+      var lbl = ds.label.toLowerCase();
+      var isSaldo = lbl.indexOf('saldo') !== -1;
+      var isPoup = lbl.indexOf('poupan') !== -1;
+      if (isSaldo) ds.hidden = view === 'savings';
+      else if (isPoup) ds.hidden = view === 'balance';
+    });
     chartInstance.update();
   }
 }
@@ -3260,6 +3266,140 @@ function getAdjustedValue(itemIdx, occDate, occNumber) {
   return origVal;
 }
 
+function addRealEvolutionToChart() {
+  if (!chartInstance) return;
+  var period = getPeriodDates();
+  if (!period) return;
+  var start = period.start, end = period.end;
+
+  var saldoInicial = parseCurrency(document.getElementById('saldo-inicial').value);
+  var poupInicial = parseCurrency(document.getElementById('poupanca-inicial').value);
+  var poupIntocavel = parseCurrency(document.getElementById('poupanca-intocavel').value);
+  if (poupIntocavel > poupInicial) poupIntocavel = poupInicial;
+
+  // Build cartoes map
+  var cartoesMap = {};
+  accounts.forEach(function(acc) { if (acc.tipo === 'cartao') cartoesMap[acc.id] = acc; });
+
+  // Get ALL lancamentos (credit card purchases from previous months may vence in the period)
+  var allLanc = trackingData.lancamentos || [];
+  if (!allLanc.length) return; // No lancamentos, no real line
+
+  // Build real events per day (respecting credit card timing)
+  var realEvents = {};
+  var realFaturas = {}; // { cartaoId: { fatKey: { vencDate, total } } }
+
+  allLanc.forEach(function(l) {
+    if (!l.data) return;
+    var val = Math.abs(parseFloat(l.valor) || 0);
+    if (!val) return;
+    var dataISO = l.data;
+
+    // Check if payment is a credit card
+    var cartao = null;
+    if (l.pagamento) {
+      Object.keys(cartoesMap).forEach(function(cid) {
+        var c = cartoesMap[cid];
+        if (c.nome === l.pagamento || c.id === l.pagamento) cartao = c;
+      });
+    }
+
+    if (cartao && l.tipo !== 'entrada') {
+      // Credit card: accumulate in fatura based on purchase date
+      var purchaseDate = new Date(dataISO + 'T00:00');
+      var fat = getFaturaKey(purchaseDate, cartao);
+      // Only include faturas that vence within our period
+      if (fat.vencDate >= start && fat.vencDate <= end) {
+        if (!realFaturas[cartao.id]) realFaturas[cartao.id] = {};
+        if (!realFaturas[cartao.id][fat.key]) realFaturas[cartao.id][fat.key] = { vencDate: fat.vencDate, total: 0 };
+        realFaturas[cartao.id][fat.key].total += val;
+      }
+    } else {
+      // Direct payment: only include if within the period
+      var lDate = new Date(dataISO + 'T00:00');
+      if (lDate >= start && lDate <= end) {
+        if (!realEvents[dataISO]) realEvents[dataISO] = [];
+        realEvents[dataISO].push({ tipo: l.tipo, valor: val });
+      }
+    }
+  });
+
+  // Add real fatura payments on vencimento day
+  Object.keys(realFaturas).forEach(function(cartaoId) {
+    Object.keys(realFaturas[cartaoId]).forEach(function(fatKey) {
+      var fat = realFaturas[cartaoId][fatKey];
+      var key = isoDate(fat.vencDate);
+      if (!realEvents[key]) realEvents[key] = [];
+      realEvents[key].push({ tipo: 'despesa', valor: fat.total });
+    });
+  });
+
+  // Simulate day by day (real)
+  var saldoReal = [], poupReal = [];
+  var saldoR = saldoInicial, poupR = poupInicial;
+  var curR = new Date(start);
+  while (curR <= end) {
+    var keyR = isoDate(curR);
+    var dayItemsR = realEvents[keyR] || [];
+    dayItemsR.forEach(function(it) {
+      if (it.tipo === 'entrada') { saldoR += it.valor; }
+      else if (it.tipo === 'poupanca') {
+        if (saldoR >= it.valor) { saldoR -= it.valor; poupR += it.valor; }
+        else { poupR += Math.max(0, saldoR); saldoR = Math.min(0, saldoR - it.valor); }
+      } else {
+        saldoR -= it.valor;
+        if (saldoR < 0) {
+          var poupDispR = Math.max(0, poupR - poupIntocavel);
+          var deficitR = Math.abs(saldoR);
+          if (poupDispR >= deficitR) { poupR -= deficitR; saldoR = 0; }
+          else if (poupDispR > 0) { saldoR += poupDispR; poupR -= poupDispR; }
+        }
+      }
+    });
+    saldoReal.push(parseFloat(saldoR.toFixed(2)));
+    poupReal.push(parseFloat(poupR.toFixed(2)));
+    curR = addDays(curR, 1);
+  }
+
+  // Remove old real datasets if they exist (indices 4 and 5, or after scenario datasets)
+  var datasets = chartInstance.data.datasets;
+  // Remove any existing real datasets (identified by label)
+  for (var i = datasets.length - 1; i >= 0; i--) {
+    if (datasets[i].label === 'Saldo Real' || datasets[i].label === 'Poupança Real') {
+      datasets.splice(i, 1);
+    }
+  }
+
+  datasets.push({
+    label: 'Saldo Real',
+    data: saldoReal,
+    borderColor: '#facc15',
+    backgroundColor: 'transparent',
+    borderDash: [3, 2],
+    fill: false,
+    tension: 0,
+    pointRadius: 0,
+    pointHoverRadius: 3,
+    borderWidth: 2.5,
+    hidden: chartView === 'savings'
+  });
+  datasets.push({
+    label: 'Poupança Real',
+    data: poupReal,
+    borderColor: '#c084fc',
+    backgroundColor: 'transparent',
+    borderDash: [3, 2],
+    fill: false,
+    tension: 0,
+    pointRadius: 0,
+    pointHoverRadius: 3,
+    borderWidth: 2.5,
+    hidden: chartView === 'balance'
+  });
+
+  chartInstance.update();
+}
+
 function recalcScenario() {
   if (!scenarioEnabled || !chartInstance) return;
   var period = getPeriodDates();
@@ -3330,7 +3470,7 @@ function recalcScenario() {
 
   // Update chart with optimized lines
   var datasets = chartInstance.data.datasets;
-  // Remove old optimized datasets if they exist
+  // Remove old optimized and real datasets, keep only base (indices 0 and 1)
   while (datasets.length > 2) datasets.pop();
 
   datasets.push({
@@ -3361,6 +3501,8 @@ function recalcScenario() {
   });
 
   chartInstance.update();
+  // Add real evolution after scenario
+  addRealEvolutionToChart();
 }
 
 // ============================================================
