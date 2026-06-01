@@ -534,6 +534,22 @@
     background: linear-gradient(135deg, #10b981, #059669);
     color: #fff;
   }
+
+  /* === SIM LOCK & PRIMARY CHECKBOXES === */
+  .sim-checkbox-group { display:none; gap:0.5rem; align-items:center; margin-right:0.5rem; }
+  .equipe-mode .sim-checkbox-group { display:inline-flex !important; }
+  .sim-checkbox-group label { display:flex; align-items:center; gap:0.25rem; font-size:0.72rem; color:var(--muted); cursor:pointer; padding:0.2rem 0.5rem; border-radius:4px; border:1px solid transparent; transition:all 0.15s; user-select:none; }
+  .sim-checkbox-group label:hover { border-color:var(--border); background:rgba(255,255,255,0.03); }
+  .sim-checkbox-group input[type="checkbox"] { width:14px; height:14px; accent-color:var(--primary,var(--gold)); cursor:pointer; }
+  .sim-checkbox-group label.active-lock { border-color:var(--red,#ef4444); background:rgba(239,68,68,0.08); color:var(--red,#ef4444); }
+  .sim-checkbox-group label.active-primary { border-color:var(--primary,var(--gold)); background:rgba(212,175,55,0.08); color:var(--primary,var(--gold)); }
+  .comp-card.locked { opacity:0.85; }
+  .comp-card.locked .comp-card-body { pointer-events:none; }
+  .comp-card.locked input:not(.sim-lock-cb):not(.sim-primary-cb), .comp-card.locked select, .comp-card.locked textarea { pointer-events:none !important; opacity:0.6; }
+  .produto-card.locked { opacity:0.85; }
+  .produto-card.locked .produto-card-body { pointer-events:none; }
+  .produto-card.locked input:not(.sim-lock-cb):not(.sim-primary-cb), .produto-card.locked select, .produto-card.locked textarea { pointer-events:none !important; opacity:0.6; }
+
 </style>
 </head>
 <body>
@@ -836,6 +852,13 @@
   </div>
 
 <script>
+// === EQUIPE MODE CHECK (show lock/primary only for consultors) ===
+(function() {
+  if (sessionStorage.getItem('equipe_modo_cliente') === 'true') {
+    document.documentElement.classList.add('equipe-mode');
+  }
+})();
+
 /* ═══════════════════════════════════════════════════════
    SUPABASE
 ═══════════════════════════════════════════════════════ */
@@ -1147,6 +1170,7 @@ function getCtx() {
    MODAL
 ═══════════════════════════════════════════════════════ */
 function openModal(id = null) {
+  if (id) { const chk = comparisons.find(c=>c.id===id); if (chk && chk.locked) { alert("Comparação bloqueada. Desmarque o cadeado para editar."); return; } }
   editingId = id;
   if (id) {
     const c = comparisons.find(x=>x.id===id);
@@ -2017,6 +2041,19 @@ function fmtBRL(n) {
   return Number(n).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
 }
 
+
+// === LOCK & PRIMARY SIMULATION HELPERS ===
+function toggleCartLock(id, ev) {
+  ev.stopPropagation();
+  const comp = comparisons.find(c => c.id === id);
+  if (comp) { comp.locked = !comp.locked; saveComparisons(); renderList(); }
+}
+function toggleCartPrimary(id, ev) {
+  ev.stopPropagation();
+  comparisons.forEach(c => { c.primary = (c.id === id) ? !c.primary : false; });
+  saveComparisons(); renderList();
+}
+
 /* ═══════════════════════════════════════════════════════
    RENDER LIST
 ═══════════════════════════════════════════════════════ */
@@ -2028,7 +2065,7 @@ function renderList() {
   container.querySelectorAll('.comp-card').forEach(el=>el.remove());
   comparisons.forEach(comp => {
     const card = document.createElement('div');
-    card.className = 'comp-card';
+    card.className = 'comp-card' + (comp.locked ? ' locked' : '');
     card.id = 'card-'+comp.id;
     const winner = comp.result?.ranking?.[0];
     const date = new Date(comp.updatedAt).toLocaleDateString('pt-BR');
@@ -2040,6 +2077,10 @@ function renderList() {
           <div class="comp-meta">${comp.cards.length} cartões · ${date}</div>
         </div>
         ${winner ? `<div class="winner-badge">🏆 ${escHtml(winner.name)}</div>` : ''}
+        <div class="sim-checkbox-group" onclick="event.stopPropagation()">
+          <label class="${comp.locked ? 'active-lock' : ''}" title="Bloquear edição"><input type="checkbox" class="sim-lock-cb" ${comp.locked ? 'checked' : ''} onchange="toggleCartLock(${comp.id}, event)">&#128274;</label>
+          <label class="${comp.primary ? 'active-primary' : ''}" title="Comparação principal"><input type="checkbox" class="sim-primary-cb" ${comp.primary ? 'checked' : ''} onchange="toggleCartPrimary(${comp.id}, event)">&#11088;</label>
+        </div>
         <div class="comp-card-actions" onclick="event.stopPropagation()">
           <button class="btn-icon" onclick="openModal(${comp.id})">✏️ Editar</button>
           <button class="btn-icon danger" onclick="deleteComp(${comp.id})">🗑️ Excluir</button>
