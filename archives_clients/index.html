@@ -1079,6 +1079,7 @@
         // Get ALL lancamentos (not just current month) because credit card purchases
         // from previous months may have faturas that vence in the current month
         var allLanc = refTracking.lancamentos || [];
+        console.log('[Charts Real] Total lancamentos:', allLanc.length, 'Mes:', mk);
 
         // Build real events per day (respecting credit card timing)
         var realEvents = {};
@@ -1086,11 +1087,14 @@
         allLanc.forEach(function(l) {
           if (!l.data) return;
           var val = Math.abs(parseFloat(l.valor)||0);
+          if (!val) return;
           var dataISO = l.data;
-          // Check if payment is a credit card
+          // Check if payment is a credit card (match by nome or id)
           var cartao = null;
           if (l.pagamento) {
-            cartao = refAccounts.find(function(a) { return a.tipo === 'cartao' && a.nome === l.pagamento; });
+            cartao = refAccounts.find(function(a) {
+              return a.tipo === 'cartao' && (a.nome === l.pagamento || a.id === l.pagamento);
+            });
           }
           if (cartao && l.tipo !== 'entrada') {
             // Credit card: accumulate in fatura based on purchase date
@@ -1103,7 +1107,7 @@
               realFaturas[cartao.id][fat.key].total += val;
             }
           } else {
-            // Direct payment: only include if in the selected month
+            // Direct payment (or non-cartao): only include if in the selected month
             if (dataISO.substring(0,7) === mk) {
               if (!realEvents[dataISO]) realEvents[dataISO] = [];
               realEvents[dataISO].push({ tipo: l.tipo, valor: val });
@@ -1120,6 +1124,7 @@
             realEvents[key].push({ tipo: 'despesa', valor: fat.total });
           });
         });
+        console.log('[Charts Real] realEvents keys:', Object.keys(realEvents), 'realFaturas keys:', Object.keys(realFaturas));
 
         // Simulate day by day (real)
         var saldoReal = [], poupReal = [];
