@@ -5,153 +5,152 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Portal do Cliente - HV Saude Financeira</title>
     <link rel="stylesheet" href="assets/style.css">
-    <!-- Supabase CDN -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <!-- Layout Script (Handles Sidebar & Auth) -->
     <script src="assets/layout.js" defer></script>
     <style>
-      .dashboard-panel { margin-top: 1.5rem; }
-      .dash-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.2rem; margin-bottom: 1rem; }
-      .dash-card h3 { color: var(--primary); margin: 0 0 0.8rem 0; font-size: 1rem; }
-      .dash-kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 0.8rem; }
-      .dash-kpi { background: rgba(212,175,55,0.05); border: 1px solid var(--border); border-radius: 6px; padding: 0.8rem; text-align: center; }
-      .dash-kpi-label { font-size: 0.7rem; color: var(--muted-foreground); text-transform: uppercase; margin-bottom: 0.3rem; }
-      .dash-kpi-value { font-size: 1.1rem; font-weight: bold; color: var(--foreground); }
+      /* === Card Compacto Clicável === */
+      .dash-widget { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem 1.2rem; cursor: pointer; transition: border-color 0.2s, transform 0.1s; }
+      .dash-widget:hover { border-color: var(--primary); transform: translateY(-1px); }
+      .dash-widget-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.6rem; }
+      .dash-widget-title { font-size: 0.85rem; font-weight: 600; color: var(--primary); }
+      .dash-widget-arrow { color: var(--muted-foreground); font-size: 0.9rem; }
+      .dash-widget-body { display: flex; align-items: center; gap: 1rem; }
+      .dash-widget-metric { text-align: center; }
+      .dash-widget-metric-label { font-size: 0.65rem; color: var(--muted-foreground); text-transform: uppercase; }
+      .dash-widget-metric-value { font-size: 0.95rem; font-weight: bold; color: var(--foreground); }
+      .dash-widget-metric-value.positive { color: #22c55e; }
+      .dash-widget-metric-value.negative { color: #ef4444; }
+      .dash-widget-metric-value.neutral { color: var(--primary); }
+      .dash-semaforo { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+      .dash-semaforo.green { background: #22c55e; box-shadow: 0 0 4px #22c55e; }
+      .dash-semaforo.yellow { background: #eab308; box-shadow: 0 0 4px #eab308; }
+      .dash-semaforo.red { background: #ef4444; box-shadow: 0 0 4px #ef4444; }
+      .dash-widget-nodata { font-size: 0.8rem; color: var(--muted-foreground); }
+
+      /* === Modal === */
+      .dash-modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 9999; align-items: center; justify-content: center; padding: 1rem; }
+      .dash-modal-overlay.active { display: flex; }
+      .dash-modal { background: var(--background); border: 1px solid var(--border); border-radius: 10px; width: 100%; max-width: 700px; max-height: 90vh; overflow-y: auto; padding: 1.5rem; position: relative; }
+      .dash-modal-close { position: absolute; top: 0.8rem; right: 1rem; background: none; border: none; color: var(--muted-foreground); font-size: 1.5rem; cursor: pointer; line-height: 1; }
+      .dash-modal-close:hover { color: var(--foreground); }
+      .dash-modal h2 { color: var(--primary); margin: 0 0 1rem 0; font-size: 1.1rem; }
+
+      /* === Dashboard dentro do Modal === */
+      .dash-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem; margin-bottom: 1rem; }
+      .dash-card h3 { color: var(--primary); margin: 0 0 0.7rem 0; font-size: 0.9rem; }
+      .dash-kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 0.6rem; }
+      .dash-kpi { background: rgba(212,175,55,0.05); border: 1px solid var(--border); border-radius: 6px; padding: 0.6rem; text-align: center; }
+      .dash-kpi-label { font-size: 0.65rem; color: var(--muted-foreground); text-transform: uppercase; margin-bottom: 0.2rem; }
+      .dash-kpi-value { font-size: 0.95rem; font-weight: bold; color: var(--foreground); }
       .dash-kpi-value.positive { color: #22c55e; }
       .dash-kpi-value.negative { color: #ef4444; }
       .dash-kpi-value.neutral { color: var(--primary); }
-      .dash-progress-row { display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.5rem; }
-      .dash-progress-label { font-size: 0.75rem; color: var(--foreground); min-width: 110px; }
-      .dash-progress-bar { flex: 1; height: 8px; background: rgba(255,255,255,0.1); border-radius: 4px; overflow: hidden; }
+      .dash-progress-row { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.4rem; }
+      .dash-progress-label { font-size: 0.7rem; color: var(--foreground); min-width: 100px; }
+      .dash-progress-bar { flex: 1; height: 7px; background: rgba(255,255,255,0.1); border-radius: 4px; overflow: hidden; }
       .dash-progress-fill { height: 100%; border-radius: 4px; transition: width 0.3s; }
-      .dash-progress-pct { font-size: 0.7rem; color: var(--muted-foreground); min-width: 40px; text-align: right; }
-      .dash-alert { padding: 0.6rem 0.8rem; border-radius: 6px; font-size: 0.8rem; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem; }
+      .dash-progress-pct { font-size: 0.65rem; color: var(--muted-foreground); min-width: 35px; text-align: right; }
+      .dash-alert { padding: 0.5rem 0.7rem; border-radius: 6px; font-size: 0.75rem; margin-bottom: 0.4rem; display: flex; align-items: center; gap: 0.4rem; }
       .dash-alert.warning { background: rgba(234,179,8,0.1); border: 1px solid rgba(234,179,8,0.3); color: #eab308; }
       .dash-alert.danger { background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.3); color: #ef4444; }
       .dash-alert.info { background: rgba(59,130,246,0.1); border: 1px solid rgba(59,130,246,0.3); color: #3b82f6; }
       .dash-alert.success { background: rgba(34,197,94,0.1); border: 1px solid rgba(34,197,94,0.3); color: #22c55e; }
-      .dash-semaforo { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }
-      .dash-semaforo.green { background: #22c55e; }
-      .dash-semaforo.yellow { background: #eab308; }
-      .dash-semaforo.red { background: #ef4444; }
-      .dash-quick-form { display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; }
-      .dash-quick-form input, .dash-quick-form select { background: var(--background); border: 1px solid var(--border); border-radius: 4px; padding: 0.5rem; color: var(--foreground); font-size: 0.8rem; }
+      .dash-quick-form { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
+      .dash-quick-form input, .dash-quick-form select { background: var(--background); border: 1px solid var(--border); border-radius: 4px; padding: 0.45rem; color: var(--foreground); font-size: 0.75rem; }
       .dash-quick-form .full-width { grid-column: 1 / -1; }
-      .dash-btn { background: var(--primary); color: var(--primary-foreground); border: none; border-radius: 4px; padding: 0.6rem 1rem; font-size: 0.8rem; cursor: pointer; font-weight: 600; }
+      .dash-btn { background: var(--primary); color: var(--primary-foreground); border: none; border-radius: 4px; padding: 0.5rem 0.8rem; font-size: 0.75rem; cursor: pointer; font-weight: 600; }
       .dash-btn:hover { opacity: 0.9; }
-      .dash-btn-outline { background: transparent; border: 1px solid var(--primary); color: var(--primary); border-radius: 4px; padding: 0.6rem 1rem; font-size: 0.8rem; cursor: pointer; }
+      .dash-btn-outline { background: transparent; border: 1px solid var(--primary); color: var(--primary); border-radius: 4px; padding: 0.5rem 0.8rem; font-size: 0.75rem; cursor: pointer; }
       .dash-btn-outline:hover { background: rgba(212,175,55,0.1); }
-      .dash-import-section { margin-top: 0.8rem; padding-top: 0.8rem; border-top: 1px solid var(--border); }
-      .dash-import-row { display: flex; gap: 0.5rem; align-items: center; }
-      .dash-import-row input { flex: 1; background: var(--background); border: 1px solid var(--border); border-radius: 4px; padding: 0.5rem; color: var(--foreground); font-size: 0.8rem; }
-      .dash-fatura-item { display: flex; justify-content: space-between; align-items: center; padding: 0.4rem 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
+      .dash-import-section { margin-top: 0.7rem; padding-top: 0.7rem; border-top: 1px solid var(--border); }
+      .dash-import-row { display: flex; gap: 0.4rem; align-items: center; }
+      .dash-import-row input { flex: 1; background: var(--background); border: 1px solid var(--border); border-radius: 4px; padding: 0.45rem; color: var(--foreground); font-size: 0.75rem; }
+      .dash-fatura-item { display: flex; justify-content: space-between; align-items: center; padding: 0.35rem 0; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 0.8rem; }
       .dash-fatura-item:last-child { border-bottom: none; }
-      .dash-no-data { text-align: center; color: var(--muted-foreground); padding: 1.5rem; font-size: 0.85rem; }
-      .dash-link { color: var(--primary); text-decoration: none; font-size: 0.8rem; }
+      .dash-no-data { text-align: center; color: var(--muted-foreground); padding: 1rem; font-size: 0.8rem; }
+      .dash-link { color: var(--primary); text-decoration: none; font-size: 0.75rem; }
       .dash-link:hover { text-decoration: underline; }
-      .dash-section-title { display: flex; justify-content: space-between; align-items: center; }
-      .dash-tabs { display: flex; gap: 0.5rem; margin-bottom: 0.8rem; }
-      .dash-tab { background: transparent; border: 1px solid var(--border); color: var(--muted-foreground); border-radius: 4px; padding: 0.3rem 0.8rem; font-size: 0.75rem; cursor: pointer; }
-      .dash-tab.active { background: var(--primary); color: var(--primary-foreground); border-color: var(--primary); }
     </style>
 </head>
 <body>
-    <!-- Sidebar Container (Injected by layout.js) -->
     <div id="sidebar-container" class="sidebar"></div>
 
-    <!-- Main Content -->
     <main class="main-content">
         <div class="container">
             <header class="flex justify-between items-center mb-8">
-                <h1>Bem-vindo ao Seu Portal</h1>
-                <button id="mobile-toggle" class="mobile-toggle">☰</button>
+                <h1 id="dash-page-title">Ol&aacute;, Cliente!</h1>
+                <button id="mobile-toggle" class="mobile-toggle">&#9776;</button>
             </header>
 
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <!-- Welcome Card -->
-                <div class="card">
-                    <h2>Ol&aacute;, <span id="dash-client-name">Cliente</span>!</h2>
-                    <p class="mb-4">Este &eacute; o seu espa&ccedil;o exclusivo para gerenciar suas finan&ccedil;as e acessar ferramentas personalizadas da HV Saude Financeira.</p>
-                    <a href="ferramentas.html" class="btn btn-primary">Acessar Ferramentas</a>
+            <!-- Grid de widgets das ferramentas -->
+            <div class="grid grid-cols-1" style="max-width:420px;">
+              <!-- Widget Fluxo de Caixa -->
+              <div class="dash-widget" id="widget-fluxo" onclick="openFluxoModal()">
+                <div class="dash-widget-header">
+                  <span class="dash-widget-title">Fluxo de Caixa</span>
+                  <span class="dash-widget-arrow">&#8250;</span>
                 </div>
-
-                <!-- Quick Stats / Info -->
-                <div class="card">
-                    <h2>Status do Plano</h2>
-                    <div class="flex items-center justify-between mb-4">
-                        <span>Plano Atual:</span>
-                        <span class="text-primary font-bold">Premium</span>
-                    </div>
-                    <div class="w-full bg-gray-700 rounded-full h-2.5 dark:bg-gray-700" style="background-color: rgba(255,255,255,0.1);">
-                        <div class="bg-primary h-2.5 rounded-full" style="width: 75%; background-color: var(--primary);"></div>
-                    </div>
-                    <p class="text-sm text-gray-400 mt-2">Progresso da Consultoria: 75%</p>
-                </div>
-            </div>
-
-            <!-- Dashboard Financeiro -->
-            <div class="dashboard-panel" id="dashboard-panel" style="display:none;">
-              <!-- 1. Resumo do Mês -->
-              <div class="dash-card">
-                <div class="dash-section-title">
-                  <h3>Resumo Financeiro do M&ecirc;s <span id="dash-month-label"></span></h3>
-                  <span class="dash-semaforo" id="dash-semaforo" title="Sa&uacute;de financeira do m&ecirc;s"></span>
-                </div>
-                <div class="dash-kpi-grid" id="dash-kpis"></div>
-                <div id="dash-progress-section" style="margin-top:1rem;"></div>
-              </div>
-
-              <!-- 2. Alertas -->
-              <div class="dash-card" id="dash-alerts-card" style="display:none;">
-                <h3>Alertas</h3>
-                <div id="dash-alerts"></div>
-              </div>
-
-              <!-- 3. Lan&ccedil;amento R&aacute;pido + Importa&ccedil;&atilde;o -->
-              <div class="dash-card">
-                <h3>Lan&ccedil;amento R&aacute;pido</h3>
-                <div class="dash-quick-form" id="dash-quick-form">
-                  <input type="date" id="dash-lanc-data" placeholder="Data">
-                  <input type="number" id="dash-lanc-valor" placeholder="Valor" step="0.01" min="0">
-                  <input type="text" id="dash-lanc-desc" placeholder="Descri&ccedil;&atilde;o (opcional)" class="full-width">
-                  <select id="dash-lanc-subcat" class="full-width"><option value="">Subcategoria (item do fluxo)</option></select>
-                  <select id="dash-lanc-cat"><option value="">Categoria</option></select>
-                  <select id="dash-lanc-pag"><option value="">Pagamento</option></select>
-                  <select id="dash-lanc-tipo"><option value="despesa">Despesa</option><option value="entrada">Entrada</option><option value="poupanca">Poupan&ccedil;a</option></select>
-                  <button class="dash-btn" onclick="dashSalvarLancamento()">Salvar Lan&ccedil;amento</button>
-                </div>
-                <div class="dash-import-section">
-                  <p style="font-size:0.75rem; color:var(--muted-foreground); margin-bottom:0.5rem;">Ou importe da planilha Google Sheets (apenas Data, Valor e Descri&ccedil;&atilde;o):</p>
-                  <div class="dash-import-row">
-                    <input type="text" id="dash-sheets-url" placeholder="Cole o link da planilha aqui...">
-                    <button class="dash-btn-outline" onclick="dashImportSheets()">Importar</button>
-                  </div>
-                </div>
-              </div>
-
-              <!-- 4. Pr&oacute;ximas Faturas -->
-              <div class="dash-card" id="dash-faturas-card" style="display:none;">
-                <h3>Pr&oacute;ximas Faturas</h3>
-                <div id="dash-faturas"></div>
-              </div>
-
-              <!-- 5. Link para acompanhamento -->
-              <div style="text-align:center; margin-top:1rem;">
-                <a href="ferramentas/fluxo.html" class="dash-link" id="dash-link-fluxo">Ver acompanhamento completo na ferramenta de Fluxo de Caixa &rarr;</a>
-              </div>
-            </div>
-
-            <!-- No reference simulation message -->
-            <div class="dashboard-panel" id="dashboard-no-ref" style="display:none;">
-              <div class="dash-card">
-                <div class="dash-no-data">
-                  Nenhuma simula&ccedil;&atilde;o de refer&ecirc;ncia foi definida pelo seu consultor ainda.<br>
-                  <a href="ferramentas.html" class="dash-link" style="margin-top:0.5rem;display:inline-block;">Acessar Ferramentas</a>
+                <div class="dash-widget-body" id="widget-fluxo-body">
+                  <span class="dash-widget-nodata">Carregando...</span>
                 </div>
               </div>
             </div>
         </div>
     </main>
+
+    <!-- Modal do Dashboard de Fluxo -->
+    <div class="dash-modal-overlay" id="fluxo-modal-overlay" onclick="closeFluxoModal(event)">
+      <div class="dash-modal" onclick="event.stopPropagation()">
+        <button class="dash-modal-close" onclick="closeFluxoModal()">&times;</button>
+        <h2>Acompanhamento Financeiro <span id="dash-month-label"></span></h2>
+
+        <!-- KPIs -->
+        <div class="dash-card">
+          <h3>Resumo do M&ecirc;s</h3>
+          <div class="dash-kpi-grid" id="dash-kpis"></div>
+          <div id="dash-progress-section" style="margin-top:0.8rem;"></div>
+        </div>
+
+        <!-- Alertas -->
+        <div class="dash-card" id="dash-alerts-card" style="display:none;">
+          <h3>Alertas</h3>
+          <div id="dash-alerts"></div>
+        </div>
+
+        <!-- Lancamento Rapido -->
+        <div class="dash-card">
+          <h3>Lan&ccedil;amento R&aacute;pido</h3>
+          <div class="dash-quick-form" id="dash-quick-form">
+            <input type="date" id="dash-lanc-data">
+            <input type="number" id="dash-lanc-valor" placeholder="Valor" step="0.01" min="0">
+            <input type="text" id="dash-lanc-desc" placeholder="Descri&ccedil;&atilde;o (opcional)" class="full-width">
+            <select id="dash-lanc-subcat" class="full-width"><option value="">Subcategoria (item do fluxo)</option></select>
+            <select id="dash-lanc-cat"><option value="">Categoria</option></select>
+            <select id="dash-lanc-pag"><option value="">Pagamento</option></select>
+            <select id="dash-lanc-tipo"><option value="despesa">Despesa</option><option value="entrada">Entrada</option><option value="poupanca">Poupan&ccedil;a</option></select>
+            <button class="dash-btn" onclick="dashSalvarLancamento()">Salvar</button>
+          </div>
+          <div class="dash-import-section">
+            <p style="font-size:0.7rem; color:var(--muted-foreground); margin-bottom:0.4rem;">Importar do Google Sheets (Data, Valor, Descri&ccedil;&atilde;o):</p>
+            <div class="dash-import-row">
+              <input type="text" id="dash-sheets-url" placeholder="Cole o link da planilha...">
+              <button class="dash-btn-outline" onclick="dashImportSheets()">Importar</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Faturas -->
+        <div class="dash-card" id="dash-faturas-card" style="display:none;">
+          <h3>Pr&oacute;ximas Faturas</h3>
+          <div id="dash-faturas"></div>
+        </div>
+
+        <!-- Link -->
+        <div style="text-align:center; margin-top:0.8rem;">
+          <a href="ferramentas/fluxo.html" class="dash-link">Abrir ferramenta completa de Fluxo de Caixa &rarr;</a>
+        </div>
+      </div>
+    </div>
 
     <script>
     (function() {
@@ -162,18 +161,20 @@
 
       var clienteId = sessionStorage.getItem('cliente_id');
       var clienteNome = sessionStorage.getItem('cliente_nome');
+
+      // Set page title with client name
+      var pageTitle = document.getElementById('dash-page-title');
       if (clienteNome) {
-        var el = document.getElementById('dash-client-name');
-        if (el) el.textContent = clienteNome.split(' ')[0];
+        pageTitle.textContent = 'Ol\u00e1, ' + clienteNome.split(' ')[0] + '!';
       }
 
-      var refSim = null; // the primary simulation
+      var refSim = null;
       var refItems = [];
       var refAccounts = [];
       var refTracking = {};
       var refFaturas = [];
+      var dashLoaded = false;
 
-      // Categories config
       var catConfig = {
         sobrevivencia: { label: 'Sobreviv\u00eancia', color: '#22c55e' },
         necessidades: { label: 'Necessidades', color: '#eab308' },
@@ -183,28 +184,8 @@
         sem_categoria: { label: 'Sem categoria', color: '#6b7280' }
       };
 
-      async function init() {
-        if (!clienteId || !sb) { document.getElementById('dashboard-no-ref').style.display = 'block'; return; }
-
-        try {
-          var res = await sb.from('ferramentas_dados').select('*').eq('cliente_id', clienteId).eq('ferramenta', 'fluxo');
-          if (res.error || !res.data || !res.data.length) { document.getElementById('dashboard-no-ref').style.display = 'block'; return; }
-
-          var simulacoes = res.data[0].dados || [];
-          refSim = simulacoes.find(function(s) { return s.primary === true; });
-          if (!refSim) { document.getElementById('dashboard-no-ref').style.display = 'block'; return; }
-
-          // Extract data from the reference simulation
-          refItems = refSim.items || [];
-          refAccounts = refSim.accounts || [];
-          refTracking = refSim.trackingData || {};
-          refFaturas = refSim.faturasCalculadas || [];
-
-          document.getElementById('dashboard-panel').style.display = 'block';
-          renderDashboard();
-        } catch(e) {
-          document.getElementById('dashboard-no-ref').style.display = 'block';
-        }
+      function fmt(v) {
+        return 'R$ ' + (v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
       }
 
       function getCurrentMonthKey() {
@@ -212,23 +193,9 @@
         return now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
       }
 
-      function fmt(v) {
-        return 'R$ ' + (v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-      }
-
-      function renderDashboard() {
-        var monthKey = getCurrentMonthKey();
-        var monthNames = ['Janeiro','Fevereiro','Mar\u00e7o','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+      function getLancDoMes() {
         var now = new Date();
-        document.getElementById('dash-month-label').textContent = '(' + monthNames[now.getMonth()] + ' ' + now.getFullYear() + ')';
-
-        var metas = refTracking.metas || {};
-        var metaObj = metas[monthKey];
-        var lancamentos = (refTracking.lancamentos || []).filter(function(l) {
-          return l.data && l.data.startsWith(monthKey.replace('-', '/').substring(0,4) + '/' + monthKey.substring(5));
-        });
-        // Also try matching with different date formats
-        var lancDoMes = (refTracking.lancamentos || []).filter(function(l) {
+        return (refTracking.lancamentos || []).filter(function(l) {
           if (!l.data) return false;
           var parts = l.data.split('/');
           if (parts.length === 3) {
@@ -239,44 +206,97 @@
           }
           return false;
         });
+      }
 
-        // Calculate KPIs
-        var metaCats = metaObj && metaObj.categorias ? metaObj.categorias : (metaObj || {});
-        var metaEntradas = metaObj && metaObj.entradas ? metaObj.entradas : 0;
-        var metaPoupanca = metaObj && metaObj.poupanca ? metaObj.poupanca : 0;
-        var metaDespTotal = 0;
-        Object.keys(metaCats).forEach(function(k) { metaDespTotal += metaCats[k] || 0; });
-
+      function calcKPIs() {
+        var lancDoMes = getLancDoMes();
         var realEntradas = 0, realDespesas = 0, realPoupanca = 0;
-        var realPorCat = {};
         lancDoMes.forEach(function(l) {
           var val = Math.abs(parseFloat(l.valor) || 0);
           if (l.tipo === 'entrada') realEntradas += val;
           else if (l.tipo === 'poupanca') realPoupanca += val;
-          else { realDespesas += val; var cat = l.categoria || 'sem_categoria'; realPorCat[cat] = (realPorCat[cat] || 0) + val; }
+          else realDespesas += val;
         });
+        var monthKey = getCurrentMonthKey();
+        var metas = refTracking.metas || {};
+        var metaObj = metas[monthKey];
+        var metaCats = metaObj && metaObj.categorias ? metaObj.categorias : (metaObj || {});
+        var metaDespTotal = 0;
+        Object.keys(metaCats).forEach(function(k) { metaDespTotal += metaCats[k] || 0; });
+        var pctUsado = metaDespTotal > 0 ? Math.round((realDespesas / metaDespTotal) * 100) : null;
+        var saldo = realEntradas - realDespesas - realPoupanca;
+        return { realEntradas: realEntradas, realDespesas: realDespesas, realPoupanca: realPoupanca, saldo: saldo, pctUsado: pctUsado, metaDespTotal: metaDespTotal, metaCats: metaCats, lancDoMes: lancDoMes };
+      }
 
-        var saldoMes = realEntradas - realDespesas - realPoupanca;
+      // Render the compact widget
+      function renderWidget() {
+        var body = document.getElementById('widget-fluxo-body');
+        if (!refSim) {
+          body.innerHTML = '<span class="dash-widget-nodata">Simula\u00e7\u00e3o de refer\u00eancia n\u00e3o definida</span>';
+          return;
+        }
+        var kpis = calcKPIs();
+        var html = '';
+        // Semaforo
+        var semaforoClass = 'green';
+        var semaforoTitle = 'Dentro do or\u00e7amento';
+        if (kpis.pctUsado !== null) {
+          if (kpis.pctUsado > 100) { semaforoClass = 'red'; semaforoTitle = 'Or\u00e7amento ultrapassado'; }
+          else if (kpis.pctUsado > 70) { semaforoClass = 'yellow'; semaforoTitle = 'Aten\u00e7\u00e3o ao or\u00e7amento'; }
+        }
+        html += '<span class="dash-semaforo ' + semaforoClass + '" title="' + semaforoTitle + '"></span>';
+        // Saldo
+        html += '<div class="dash-widget-metric"><div class="dash-widget-metric-label">Saldo do m\u00eas</div><div class="dash-widget-metric-value ' + (kpis.saldo >= 0 ? 'positive' : 'negative') + '">' + fmt(kpis.saldo) + '</div></div>';
+        // Pct usado
+        if (kpis.pctUsado !== null) {
+          html += '<div class="dash-widget-metric"><div class="dash-widget-metric-label">Or\u00e7amento usado</div><div class="dash-widget-metric-value ' + (kpis.pctUsado <= 80 ? 'positive' : kpis.pctUsado <= 100 ? 'neutral' : 'negative') + '">' + kpis.pctUsado + '%</div></div>';
+        }
+        // Lancamentos count
+        html += '<div class="dash-widget-metric"><div class="dash-widget-metric-label">Lan\u00e7amentos</div><div class="dash-widget-metric-value">' + kpis.lancDoMes.length + '</div></div>';
+        body.innerHTML = html;
+      }
+
+      // Modal open/close
+      window.openFluxoModal = function() {
+        document.getElementById('fluxo-modal-overlay').classList.add('active');
+        if (!dashLoaded) { renderFullDashboard(); dashLoaded = true; }
+      };
+      window.closeFluxoModal = function(e) {
+        if (e && e.target !== document.getElementById('fluxo-modal-overlay')) return;
+        document.getElementById('fluxo-modal-overlay').classList.remove('active');
+      };
+
+      function renderFullDashboard() {
+        var now = new Date();
+        var monthNames = ['Janeiro','Fevereiro','Mar\u00e7o','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+        document.getElementById('dash-month-label').textContent = '\u2014 ' + monthNames[now.getMonth()] + ' ' + now.getFullYear();
+
+        var kpis = calcKPIs();
 
         // KPIs
         var kpisHtml = '';
-        kpisHtml += '<div class="dash-kpi"><div class="dash-kpi-label">Entradas</div><div class="dash-kpi-value positive">' + fmt(realEntradas) + '</div></div>';
-        kpisHtml += '<div class="dash-kpi"><div class="dash-kpi-label">Despesas</div><div class="dash-kpi-value negative">' + fmt(realDespesas) + '</div></div>';
-        kpisHtml += '<div class="dash-kpi"><div class="dash-kpi-label">Poupan\u00e7a</div><div class="dash-kpi-value neutral">' + fmt(realPoupanca) + '</div></div>';
-        kpisHtml += '<div class="dash-kpi"><div class="dash-kpi-label">Saldo do M\u00eas</div><div class="dash-kpi-value ' + (saldoMes >= 0 ? 'positive' : 'negative') + '">' + fmt(saldoMes) + '</div></div>';
-        if (metaEntradas > 0) {
-          kpisHtml += '<div class="dash-kpi"><div class="dash-kpi-label">Meta Entradas</div><div class="dash-kpi-value">' + fmt(metaEntradas) + '</div></div>';
-        }
-        if (metaDespTotal > 0) {
-          kpisHtml += '<div class="dash-kpi"><div class="dash-kpi-label">Meta Despesas</div><div class="dash-kpi-value">' + fmt(metaDespTotal) + '</div></div>';
+        kpisHtml += '<div class="dash-kpi"><div class="dash-kpi-label">Entradas</div><div class="dash-kpi-value positive">' + fmt(kpis.realEntradas) + '</div></div>';
+        kpisHtml += '<div class="dash-kpi"><div class="dash-kpi-label">Despesas</div><div class="dash-kpi-value negative">' + fmt(kpis.realDespesas) + '</div></div>';
+        kpisHtml += '<div class="dash-kpi"><div class="dash-kpi-label">Poupan\u00e7a</div><div class="dash-kpi-value neutral">' + fmt(kpis.realPoupanca) + '</div></div>';
+        kpisHtml += '<div class="dash-kpi"><div class="dash-kpi-label">Saldo</div><div class="dash-kpi-value ' + (kpis.saldo >= 0 ? 'positive' : 'negative') + '">' + fmt(kpis.saldo) + '</div></div>';
+        if (kpis.metaDespTotal > 0) {
+          kpisHtml += '<div class="dash-kpi"><div class="dash-kpi-label">Meta Despesas</div><div class="dash-kpi-value">' + fmt(kpis.metaDespTotal) + '</div></div>';
+          kpisHtml += '<div class="dash-kpi"><div class="dash-kpi-label">Usado</div><div class="dash-kpi-value ' + (kpis.pctUsado <= 80 ? 'positive' : kpis.pctUsado <= 100 ? 'neutral' : 'negative') + '">' + kpis.pctUsado + '%</div></div>';
         }
         document.getElementById('dash-kpis').innerHTML = kpisHtml;
 
-        // Progress bars per category
+        // Progress bars
         var progressHtml = '';
-        if (Object.keys(metaCats).length > 0) {
+        var realPorCat = {};
+        kpis.lancDoMes.forEach(function(l) {
+          if (l.tipo !== 'entrada' && l.tipo !== 'poupanca') {
+            var cat = l.categoria || 'sem_categoria';
+            realPorCat[cat] = (realPorCat[cat] || 0) + Math.abs(parseFloat(l.valor) || 0);
+          }
+        });
+        if (Object.keys(kpis.metaCats).length > 0) {
           Object.keys(catConfig).forEach(function(catKey) {
-            var meta = metaCats[catKey] || 0;
+            var meta = kpis.metaCats[catKey] || 0;
             if (meta <= 0) return;
             var real = realPorCat[catKey] || 0;
             var pct = Math.min(Math.round((real / meta) * 100), 999);
@@ -290,36 +310,22 @@
         }
         document.getElementById('dash-progress-section').innerHTML = progressHtml;
 
-        // Semaforo
-        var semaforo = document.getElementById('dash-semaforo');
-        if (metaDespTotal > 0) {
-          var totalPct = metaDespTotal > 0 ? (realDespesas / metaDespTotal) * 100 : 0;
-          if (totalPct <= 70) { semaforo.className = 'dash-semaforo green'; semaforo.title = 'Dentro do or\u00e7amento'; }
-          else if (totalPct <= 100) { semaforo.className = 'dash-semaforo yellow'; semaforo.title = 'Aten\u00e7\u00e3o: se aproximando do limite'; }
-          else { semaforo.className = 'dash-semaforo red'; semaforo.title = 'Or\u00e7amento ultrapassado!'; }
-        } else {
-          semaforo.style.display = 'none';
-        }
-
         // Alerts
         var alertsHtml = '';
-        // Check categories over budget
-        Object.keys(metaCats).forEach(function(catKey) {
-          var meta = metaCats[catKey] || 0;
+        Object.keys(kpis.metaCats).forEach(function(catKey) {
+          var meta = kpis.metaCats[catKey] || 0;
           var real = realPorCat[catKey] || 0;
           if (meta > 0 && real > meta) {
             var excesso = real - meta;
             alertsHtml += '<div class="dash-alert danger"><span>' + (catConfig[catKey] ? catConfig[catKey].label : catKey) + ' ultrapassou a meta em ' + fmt(excesso) + '</span></div>';
           }
         });
-        // Check if no lancamentos this month
-        if (lancDoMes.length === 0 && Object.keys(metaCats).length > 0) {
-          alertsHtml += '<div class="dash-alert warning"><span>Voc\u00ea ainda n\u00e3o registrou lan\u00e7amentos este m\u00eas.</span></div>';
+        if (kpis.lancDoMes.length === 0 && Object.keys(kpis.metaCats).length > 0) {
+          alertsHtml += '<div class="dash-alert warning"><span>Nenhum lan\u00e7amento registrado este m\u00eas.</span></div>';
         }
-        // Check upcoming faturas
-        var faturaProxima = getProximaFatura();
-        if (faturaProxima) {
-          alertsHtml += '<div class="dash-alert info"><span>Pr\u00f3xima fatura: ' + faturaProxima.cartao + ' \u2014 ' + fmt(faturaProxima.valor) + ' (venc. ' + faturaProxima.vencimento + ')</span></div>';
+        var faturaProx = getProximaFatura();
+        if (faturaProx) {
+          alertsHtml += '<div class="dash-alert info"><span>Pr\u00f3xima fatura: ' + faturaProx.cartao + ' \u2014 ' + fmt(faturaProx.valor) + ' (venc. ' + faturaProx.vencimento + ')</span></div>';
         }
         if (alertsHtml) {
           document.getElementById('dash-alerts').innerHTML = alertsHtml;
@@ -329,7 +335,7 @@
         // Faturas
         renderFaturas();
 
-        // Populate quick form dropdowns
+        // Dropdowns
         populateDropdowns();
       }
 
@@ -353,9 +359,7 @@
 
       function renderFaturas() {
         if (!refFaturas || !refFaturas.length) return;
-        var now = new Date();
         var monthKey = getCurrentMonthKey();
-        // Show faturas for current and next month
         var relevantes = refFaturas.filter(function(f) {
           if (!f.vencimento) return false;
           var parts = f.vencimento.split('/');
@@ -365,14 +369,12 @@
           var fKey = y + '-' + String(m).padStart(2, '0');
           return fKey >= monthKey;
         }).slice(0, 5);
-
         if (relevantes.length === 0) return;
-
         var html = '';
         relevantes.forEach(function(f) {
           html += '<div class="dash-fatura-item">';
-          html += '<span style="font-size:0.8rem;">' + (f.cartao || 'Cart\u00e3o') + ' \u2014 venc. ' + f.vencimento + '</span>';
-          html += '<span style="font-size:0.85rem;font-weight:bold;color:var(--foreground);">' + fmt(f.total || 0) + '</span>';
+          html += '<span>' + (f.cartao || 'Cart\u00e3o') + ' \u2014 venc. ' + f.vencimento + '</span>';
+          html += '<span style="font-weight:bold;color:var(--foreground);">' + fmt(f.total || 0) + '</span>';
           html += '</div>';
         });
         document.getElementById('dash-faturas').innerHTML = html;
@@ -380,8 +382,8 @@
       }
 
       function populateDropdowns() {
-        // Subcategoria = item names
         var subcatSel = document.getElementById('dash-lanc-subcat');
+        if (subcatSel.options.length > 1) return;
         refItems.forEach(function(item) {
           var opt = document.createElement('option');
           opt.value = item.nome;
@@ -392,7 +394,6 @@
           subcatSel.appendChild(opt);
         });
 
-        // Categoria
         var catSel = document.getElementById('dash-lanc-cat');
         Object.keys(catConfig).forEach(function(k) {
           if (k === 'sem_categoria') return;
@@ -402,7 +403,6 @@
           catSel.appendChild(opt);
         });
 
-        // Pagamento
         var pagSel = document.getElementById('dash-lanc-pag');
         refAccounts.forEach(function(acc) {
           var opt = document.createElement('option');
@@ -411,21 +411,13 @@
           pagSel.appendChild(opt);
         });
 
-        // Auto-fill on subcategoria change
         subcatSel.addEventListener('change', function() {
           var sel = subcatSel.options[subcatSel.selectedIndex];
-          if (sel && sel.dataset.cat) {
-            catSel.value = sel.dataset.cat;
-          }
-          if (sel && sel.dataset.tipo) {
-            document.getElementById('dash-lanc-tipo').value = sel.dataset.tipo;
-          }
-          if (sel && sel.dataset.pag) {
-            pagSel.value = sel.dataset.pag;
-          }
+          if (sel && sel.dataset.cat) catSel.value = sel.dataset.cat;
+          if (sel && sel.dataset.tipo) document.getElementById('dash-lanc-tipo').value = sel.dataset.tipo;
+          if (sel && sel.dataset.pag) pagSel.value = sel.dataset.pag;
         });
 
-        // Default date to today
         var today = new Date();
         document.getElementById('dash-lanc-data').value = today.toISOString().split('T')[0];
       }
@@ -450,12 +442,10 @@
           tipo: document.getElementById('dash-lanc-tipo').value || 'despesa'
         };
 
-        // Add to tracking data
         if (!refSim.trackingData) refSim.trackingData = {};
         if (!refSim.trackingData.lancamentos) refSim.trackingData.lancamentos = [];
         refSim.trackingData.lancamentos.push(lanc);
 
-        // Save to Supabase
         try {
           var res = await sb.from('ferramentas_dados').select('*').eq('cliente_id', clienteId).eq('ferramenta', 'fluxo');
           if (!res.error && res.data && res.data.length > 0) {
@@ -473,14 +463,15 @@
           }
         } catch(e) {}
 
-        alert('Lan\u00e7amento salvo com sucesso!');
-        // Reset form
+        alert('Lan\u00e7amento salvo!');
         document.getElementById('dash-lanc-valor').value = '';
         document.getElementById('dash-lanc-desc').value = '';
         document.getElementById('dash-lanc-subcat').value = '';
-        // Refresh dashboard
         refTracking = refSim.trackingData;
-        renderDashboard();
+        dashLoaded = false;
+        renderWidget();
+        renderFullDashboard();
+        dashLoaded = true;
       };
 
       // Import from Google Sheets
@@ -500,7 +491,6 @@
           var lines = text.split('\n').filter(function(l) { return l.trim(); });
           if (lines.length < 2) { alert('Planilha vazia ou sem dados.'); return; }
 
-          // Parse CSV (skip header)
           var imported = [];
           for (var i = 1; i < lines.length; i++) {
             var cols = parseCSVLine(lines[i]);
@@ -523,19 +513,14 @@
 
           if (imported.length === 0) { alert('Nenhum dado v\u00e1lido encontrado.'); return; }
 
-          // Show confirmation
-          var msg = 'Foram encontrados ' + imported.length + ' lan\u00e7amentos na planilha.\n\n';
-          msg += 'Eles ser\u00e3o importados sem categoria/subcategoria.\n';
-          msg += 'Voc\u00ea poder\u00e1 categoriz\u00e1-los na ferramenta de Fluxo de Caixa.\n\n';
-          msg += 'Deseja importar?';
+          var msg = 'Encontrados ' + imported.length + ' lan\u00e7amentos.\n\n';
+          msg += 'Ser\u00e3o importados sem categoria (categorize na ferramenta de Fluxo).\n\nImportar?';
           if (!confirm(msg)) return;
 
-          // Add to tracking
           if (!refSim.trackingData) refSim.trackingData = {};
           if (!refSim.trackingData.lancamentos) refSim.trackingData.lancamentos = [];
           imported.forEach(function(l) { refSim.trackingData.lancamentos.push(l); });
 
-          // Save
           var res2 = await sb.from('ferramentas_dados').select('*').eq('cliente_id', clienteId).eq('ferramenta', 'fluxo');
           if (!res2.error && res2.data && res2.data.length > 0) {
             var simulacoes = res2.data[0].dados || [];
@@ -551,10 +536,13 @@
             }
           }
 
-          alert(imported.length + ' lan\u00e7amentos importados com sucesso!');
+          alert(imported.length + ' lan\u00e7amentos importados!');
           document.getElementById('dash-sheets-url').value = '';
           refTracking = refSim.trackingData;
-          renderDashboard();
+          dashLoaded = false;
+          renderWidget();
+          renderFullDashboard();
+          dashLoaded = true;
         } catch(e) {
           alert('Erro ao importar: ' + e.message);
         }
@@ -574,7 +562,34 @@
         return result;
       }
 
-      // Wait for layout.js to set session then init
+      // Init
+      async function init() {
+        if (!clienteId || !sb) {
+          document.getElementById('widget-fluxo-body').innerHTML = '<span class="dash-widget-nodata">Fa\u00e7a login para ver seus dados</span>';
+          return;
+        }
+        try {
+          var res = await sb.from('ferramentas_dados').select('*').eq('cliente_id', clienteId).eq('ferramenta', 'fluxo');
+          if (res.error || !res.data || !res.data.length) {
+            document.getElementById('widget-fluxo-body').innerHTML = '<span class="dash-widget-nodata">Nenhum dado de fluxo encontrado</span>';
+            return;
+          }
+          var simulacoes = res.data[0].dados || [];
+          refSim = simulacoes.find(function(s) { return s.primary === true; });
+          if (!refSim) {
+            document.getElementById('widget-fluxo-body').innerHTML = '<span class="dash-widget-nodata">Simula\u00e7\u00e3o de refer\u00eancia n\u00e3o definida</span>';
+            return;
+          }
+          refItems = refSim.items || [];
+          refAccounts = refSim.accounts || [];
+          refTracking = refSim.trackingData || {};
+          refFaturas = refSim.faturasCalculadas || [];
+          renderWidget();
+        } catch(e) {
+          document.getElementById('widget-fluxo-body').innerHTML = '<span class="dash-widget-nodata">Erro ao carregar dados</span>';
+        }
+      }
+
       setTimeout(init, 500);
     })();
     </script>
