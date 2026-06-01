@@ -2721,18 +2721,18 @@ function salvarSimulacaoAtual() {
 
 
 // === LOCK & PRIMARY SIMULATION HELPERS ===
-function toggleSimLock(id, cb) {
+async function toggleSimLock(id, cb) {
   cb.stopPropagation && cb.stopPropagation();
   var sim = simulacoes.find(function(s) { return s.id === id; });
   if (!sim) return;
   sim.locked = !sim.locked;
-  saveSimulacoes();
+  await saveSimulacoes();
   renderSimList();
 }
-function toggleSimPrimary(id, cb) {
+async function toggleSimPrimary(id, cb) {
   cb.stopPropagation && cb.stopPropagation();
   simulacoes.forEach(function(s) { s.primary = (s.id === id) ? !s.primary : false; });
-  saveSimulacoes();
+  await saveSimulacoes();
   renderSimList();
 }
 
