@@ -702,8 +702,8 @@
         chartsRendered = false;
         renderWidget();
         // If charts section is expanded, re-render immediately
-        var chartsContent = document.getElementById('charts-content');
-        if (chartsContent && chartsContent.style.display !== 'none') {
+        var chartsContainer = document.getElementById('dash-charts-container');
+        if (chartsContainer && chartsContainer.classList.contains('open')) {
           renderEvolutionCharts();
         }
       };
