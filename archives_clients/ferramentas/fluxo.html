@@ -3367,7 +3367,14 @@ function setTrackingView(view) {
 
 function gerarMetas(cenario) {
   var period = getPeriodDates();
-  if (!period) { alert('Configure o período primeiro.'); return; }
+  if (!period) { alert('Configure o per\u00edodo primeiro.'); return; }
+
+  // Check if metas already exist and ask for confirmation
+  var existingMetas = Object.keys(trackingData.metas || {});
+  if (existingMetas.length > 0) {
+    var confirmar = confirm('J\u00e1 existem metas geradas anteriormente.\n\nAo gerar novas metas, as metas anteriores ser\u00e3o substitu\u00eddas.\n\nOs lan\u00e7amentos manuais e dados importados N\u00c3O ser\u00e3o alterados.\n\nDeseja continuar?');
+    if (!confirmar) return;
+  }
 
   var start = period.start, end = period.end;
   var metas = {};
