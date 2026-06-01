@@ -14,21 +14,29 @@
       .dash-widget-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:.6rem}
       .dash-widget-title{font-size:.85rem;font-weight:600;color:var(--primary)}
       .dash-widget-arrow{color:var(--muted-foreground);font-size:.9rem}
-      .dash-widget-body{display:flex;align-items:center;gap:1rem;flex-wrap:wrap}
-      .dash-widget-metric{text-align:center}
-      .dash-widget-metric-label{font-size:.63rem;color:var(--muted-foreground);text-transform:uppercase}
-      .dash-widget-metric-value{font-size:.95rem;font-weight:bold;color:var(--foreground)}
+      .dash-widget-body{display:flex;align-items:center;gap:.6rem;flex-wrap:nowrap}
+      .dash-widget-metrics{display:flex;align-items:center;gap:.5rem;flex:1;justify-content:space-evenly;min-width:0}
+      .dash-widget-metric{text-align:center;min-width:0;flex-shrink:1}
+      .dash-widget-metric-label{font-size:.58rem;color:var(--muted-foreground);text-transform:uppercase;white-space:nowrap}
+      .dash-widget-metric-value{font-size:.82rem;font-weight:bold;color:var(--foreground);white-space:nowrap}
       .dash-widget-metric-value.positive{color:#22c55e}
       .dash-widget-metric-value.negative{color:#ef4444}
       .dash-widget-metric-value.neutral{color:var(--primary)}
       .dash-widget-nodata{font-size:.8rem;color:var(--muted-foreground)}
+      /* Month selector */
+      .dash-month-select{background:transparent;border:1px solid var(--border);border-radius:4px;color:var(--muted-foreground);font-size:.65rem;padding:2px 4px;cursor:pointer;max-width:100px}
+      .dash-month-select:focus{outline:none;border-color:var(--primary)}
+      /* Poupanca icon */
+      .poup-icon{display:flex;flex-direction:column;align-items:center;gap:1px}
+      .poup-icon svg{width:18px;height:18px}
+      .poup-icon-label{font-size:.5rem;color:var(--muted-foreground);text-transform:uppercase;white-space:nowrap}
       /* Semaforo SVG */
-      .semaforo-icon{width:28px;height:60px;flex-shrink:0}
-      .semaforo-text{font-size:.7rem;font-weight:600;margin-left:.2rem}
+      .semaforo-icon{width:24px;height:52px;flex-shrink:0}
+      .semaforo-text{font-size:.65rem;font-weight:600;margin-left:.2rem}
       .semaforo-text.green{color:#22c55e}
       .semaforo-text.yellow{color:#eab308}
       .semaforo-text.red{color:#ef4444}
-      .semaforo-wrap{display:flex;align-items:center;gap:.3rem}
+      .semaforo-wrap{display:flex;align-items:center;gap:.3rem;flex-shrink:0;max-width:170px}
 
       /* === Modal Overlay === */
       .dash-modal-overlay{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.75);z-index:9999;align-items:flex-start;justify-content:center;padding:1.5rem;overflow-y:auto}
@@ -124,12 +132,13 @@
 
             <!-- Grid de widgets -->
             <div class="grid grid-cols-1" style="max-width:450px;">
-              <div class="dash-widget" id="widget-fluxo" onclick="openFluxoModal()">
+              <div class="dash-widget" id="widget-fluxo">
                 <div class="dash-widget-header">
                   <span class="dash-widget-title">Fluxo de Caixa</span>
-                  <span class="dash-widget-arrow">&#8250;</span>
+                  <select class="dash-month-select" id="widget-month-select" onclick="event.stopPropagation()" onchange="onWidgetMonthChange()"></select>
+                  <span class="dash-widget-arrow" onclick="openFluxoModal()">&#8250;</span>
                 </div>
-                <div class="dash-widget-body" id="widget-fluxo-body">
+                <div class="dash-widget-body" id="widget-fluxo-body" onclick="openFluxoModal()">
                   <span class="dash-widget-nodata">Carregando...</span>
                 </div>
               </div>
@@ -233,6 +242,7 @@
       var allSimulacoes = [];
       var dashLoaded = false;
       var subcatDetailsVisible = false;
+      var selectedMonthKey = null; // null = mes atual
 
       var catConfig = {
         sobrevivencia: { label: 'Sobreviv\u00eancia', color: '#ef4444' },
@@ -246,7 +256,10 @@
 
       function fmt(v) { return 'R$ ' + (v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}); }
       function isoDate(d) { return d.toISOString().split('T')[0]; }
-      function getCurrentMonthKey() { var n=new Date(); return n.getFullYear()+'-'+String(n.getMonth()+1).padStart(2,'0'); }
+      function getCurrentMonthKey() {
+        if (selectedMonthKey) return selectedMonthKey;
+        var n=new Date(); return n.getFullYear()+'-'+String(n.getMonth()+1).padStart(2,'0');
+      }
 
       // Get lancamentos for current month using YYYY-MM-DD format (same as fluxo.html)
       function getLancDoMes() {
@@ -558,6 +571,56 @@
         return { status: status, text: titulo, detail: explicacao };
       }
 
+      // === POUPANCA ICON BUILDER ===
+      function buildPoupancaIcon(metaPoup, realPoup) {
+        var color, label;
+        if (metaPoup <= 0) {
+          color = '#6b7280'; label = 'Sem meta';
+        } else if (realPoup >= metaPoup) {
+          color = '#22c55e'; label = 'Atingida';
+        } else if (realPoup >= metaPoup * 0.5) {
+          color = '#eab308'; label = Math.round((realPoup/metaPoup)*100) + '%';
+        } else if (realPoup > 0) {
+          color = '#ef4444'; label = Math.round((realPoup/metaPoup)*100) + '%';
+        } else {
+          color = '#ef4444'; label = 'Zero';
+        }
+        var svg = '<svg viewBox="0 0 24 24" fill="none" stroke="'+color+'" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+          '<path d="M19 5c-1.5 0-2.8 1.4-3 2-3.5-1.5-11-.3-11 5 0 1.8 0 3 2 4.5V20h4v-2h3v2h4v-4c1-0.5 1.7-1 2-2h2v-4h-2c0-1-.5-1.5-1-2"/>' +
+          '<path d="M2 9.5c1 0 2 1 2 2.5"/>' +
+          '<circle cx="15.5" cy="9.5" r=".5" fill="'+color+'"/>' +
+          '</svg>';
+        return '<div class="poup-icon">' + svg + '<span class="poup-icon-label" style="color:'+color+'">' + label + '</span></div>';
+      }
+
+      // === MONTH SELECTOR POPULATION ===
+      function populateMonthSelector() {
+        var sel = document.getElementById('widget-month-select');
+        if (!sel) return;
+        var monthNames = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+        var now = new Date();
+        var options = '';
+        // Show 12 months back + current + 2 forward
+        for (var i = -12; i <= 2; i++) {
+          var d = new Date(now.getFullYear(), now.getMonth() + i, 1);
+          var key = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0');
+          var label = monthNames[d.getMonth()] + '/' + d.getFullYear();
+          var selected = (key === getCurrentMonthKey()) ? ' selected' : '';
+          options += '<option value="'+key+'"'+selected+'>' + label + '</option>';
+        }
+        sel.innerHTML = options;
+      }
+
+      window.onWidgetMonthChange = function() {
+        var sel = document.getElementById('widget-month-select');
+        var val = sel.value;
+        var now = new Date();
+        var currentKey = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0');
+        selectedMonthKey = (val === currentKey) ? null : val;
+        dashLoaded = false; // force modal re-render on next open
+        renderWidget();
+      };
+
       // === RENDER WIDGET ===
       function renderWidget() {
         var body = document.getElementById('widget-fluxo-body');
@@ -565,19 +628,26 @@
         var kpis = calcKPIs();
         var sem = getSemaforoStatus(kpis);
         var html = '';
-        html += '<div class="semaforo-wrap">' + buildSemaforoSVG(sem.status) + '<div style="display:flex;flex-direction:column;"><span class="semaforo-text '+sem.status+'">' + sem.text + '</span><span style="font-size:.58rem;color:var(--muted-foreground);max-width:140px;line-height:1.2;margin-top:2px;">' + sem.detail + '</span></div></div>';
-        html += '<div class="dash-widget-metric"><div class="dash-widget-metric-label">Saldo do m\u00eas</div><div class="dash-widget-metric-value '+(kpis.saldo>=0?'positive':'negative')+'">' + fmt(kpis.saldo) + '</div></div>';
+        // Semaforo
+        html += '<div class="semaforo-wrap">' + buildSemaforoSVG(sem.status) + '<div style="display:flex;flex-direction:column;"><span class="semaforo-text '+sem.status+'">' + sem.text + '</span><span style="font-size:.52rem;color:var(--muted-foreground);max-width:130px;line-height:1.15;margin-top:2px;">' + sem.detail + '</span></div></div>';
+        // Metrics in a row
+        html += '<div class="dash-widget-metrics">';
+        html += '<div class="dash-widget-metric"><div class="dash-widget-metric-label">Saldo</div><div class="dash-widget-metric-value '+(kpis.saldo>=0?'positive':'negative')+'">' + fmt(kpis.saldo) + '</div></div>';
         if (kpis.pctUsado !== null) {
           html += '<div class="dash-widget-metric"><div class="dash-widget-metric-label">Or\u00e7amento</div><div class="dash-widget-metric-value '+(kpis.pctUsado<=80?'positive':kpis.pctUsado<=100?'neutral':'negative')+'">' + kpis.pctUsado + '%</div></div>';
         }
-        html += '<div class="dash-widget-metric"><div class="dash-widget-metric-label">Lan\u00e7amentos</div><div class="dash-widget-metric-value">' + kpis.lancDoMes.length + '</div></div>';
+        html += '<div class="dash-widget-metric"><div class="dash-widget-metric-label">Lanc.</div><div class="dash-widget-metric-value">' + kpis.lancDoMes.length + '</div></div>';
+        // Poupanca icon
+        html += buildPoupancaIcon(kpis.metaPoupanca, kpis.realPoupanca);
+        html += '</div>';
         body.innerHTML = html;
       }
 
       // === MODAL OPEN/CLOSE ===
       window.openFluxoModal = function() {
         document.getElementById('fluxo-modal-overlay').classList.add('active');
-        if (!dashLoaded) { renderFullDashboard(); dashLoaded = true; }
+        renderFullDashboard();
+        dashLoaded = true;
       };
       window.closeFluxoModal = function(e) {
         if (e && e.target !== document.getElementById('fluxo-modal-overlay')) return;
@@ -594,9 +664,12 @@
 
       // === FULL DASHBOARD ===
       function renderFullDashboard() {
-        var now = new Date();
+        var mk = getCurrentMonthKey();
+        var mkParts = mk.split('-');
+        var mkYear = parseInt(mkParts[0]);
+        var mkMonthIdx = parseInt(mkParts[1]) - 1;
         var monthNames = ['Janeiro','Fevereiro','Mar\u00e7o','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
-        document.getElementById('dash-month-label').textContent = '\u2014 ' + monthNames[now.getMonth()] + ' ' + now.getFullYear();
+        document.getElementById('dash-month-label').textContent = '\u2014 ' + monthNames[mkMonthIdx] + ' ' + mkYear;
 
         var kpis = calcKPIs();
 
@@ -1073,6 +1146,7 @@
           // Ensure trackingData reference is in payload
           if (!refPayload.trackingData) refPayload.trackingData = refTracking;
 
+          populateMonthSelector();
           renderWidget();
         } catch(e) {
           console.error('Erro ao carregar dados:', e);
