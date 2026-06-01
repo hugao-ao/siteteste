@@ -9,7 +9,6 @@
 <script src="../assets/importar-diagnostico.js"></script>
 <script src="../assets/layout.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 <style>
   :root {
     --bg: #021C0E;
@@ -137,6 +136,22 @@
   .sheets-tooltip table { width:100%; border-collapse:collapse; margin:6px 0; }
   .sheets-tooltip th, .sheets-tooltip td { border:1px solid var(--border); padding:3px 5px; text-align:left; font-size:0.68rem; }
   .sheets-tooltip th { background:rgba(212,175,55,0.1); color:var(--primary); }
+
+  /* === SIM LOCK & PRIMARY CHECKBOXES === */
+  .sim-checkbox-group { display:flex; gap:0.5rem; align-items:center; margin-right:0.5rem; }
+  .sim-checkbox-group label { display:flex; align-items:center; gap:0.25rem; font-size:0.72rem; color:var(--muted); cursor:pointer; padding:0.2rem 0.5rem; border-radius:4px; border:1px solid transparent; transition:all 0.15s; user-select:none; }
+  .sim-checkbox-group label:hover { border-color:var(--border); background:rgba(255,255,255,0.03); }
+  .sim-checkbox-group input[type="checkbox"] { width:14px; height:14px; accent-color:var(--primary); cursor:pointer; }
+  .sim-checkbox-group label.active-lock { border-color:var(--red); background:rgba(239,68,68,0.08); color:var(--red); }
+  .sim-checkbox-group label.active-primary { border-color:var(--primary); background:rgba(212,175,55,0.08); color:var(--primary); }
+  .sim-card.locked { opacity:0.85; }
+  .sim-card.locked .sim-card-body { pointer-events:none; }
+  .sim-card.locked input:not(.sim-lock-cb):not(.sim-primary-cb), .sim-card.locked select, .sim-card.locked textarea { pointer-events:none !important; opacity:0.6; }
+  .sim-card.locked button:not([class*="sim-lock"]):not([class*="sim-primary"]) { pointer-events:none; opacity:0.5; }
+  .sim-card-item.locked { opacity:0.85; }
+  .sim-card-item.locked .sim-card-item-body { pointer-events:none; }
+  .sim-card-item.locked input:not(.sim-lock-cb):not(.sim-primary-cb), .sim-card-item.locked select, .sim-card-item.locked textarea { pointer-events:none !important; opacity:0.6; }
+
 
 
   .table-wrap { overflow-x: auto; border-radius: var(--radius); border: 1px solid var(--border); }
@@ -500,10 +515,9 @@
     </div>
   </div>
 
-  <!-- Botões calcular e PDF -->
+  <!-- Botão calcular -->
   <div style="text-align:center; margin: 1.5rem 0; display:flex; justify-content:center; gap:1rem; flex-wrap:wrap;">
     <button class="btn btn-primary" style="padding:0.75rem 2.5rem; font-size:1rem;" onclick="calcular()">Calcular Projeção</button>
-    <button class="btn btn-outline" style="padding:0.75rem 2rem; font-size:1rem;" onclick="gerarPDF()" id="btn-pdf" title="Gerar relatório em PDF">📄 Exportar PDF</button>
   </div>
 
   <!-- Seção 5: Resultado -->
@@ -2648,6 +2662,8 @@ function novaSimulacao() {
 }
 
 function editarSimulacao(id) {
+  var simCheck = simulacoes.find(function(s) { return s.id === id; });
+  if (simCheck && simCheck.locked) { alert('Esta simulação está bloqueada. Desmarque o cadeado para editar.'); return; }
   var sim = simulacoes.find(function(s) { return s.id === id; });
   if (!sim) return;
   editingSimId = id;
@@ -2689,6 +2705,23 @@ function salvarSimulacaoAtual() {
   _globalSaveFeedback();
 }
 
+
+// === LOCK & PRIMARY SIMULATION HELPERS ===
+function toggleSimLock(id, cb) {
+  cb.stopPropagation && cb.stopPropagation();
+  var sim = simulacoes.find(function(s) { return s.id === id; });
+  if (!sim) return;
+  sim.locked = !sim.locked;
+  saveSimulacoes();
+  renderSimList();
+}
+function toggleSimPrimary(id, cb) {
+  cb.stopPropagation && cb.stopPropagation();
+  simulacoes.forEach(function(s) { s.primary = (s.id === id) ? !s.primary : false; });
+  saveSimulacoes();
+  renderSimList();
+}
+
 // --- RENDER LIST ---
 function renderSimList() {
   var container = document.getElementById('sim-list-container');
@@ -2699,7 +2732,7 @@ function renderSimList() {
   empty.style.display = 'none';
   simulacoes.slice().sort(function(a,b) { return new Date(b.updatedAt) - new Date(a.updatedAt); }).forEach(function(sim) {
     var card = document.createElement('div');
-    card.className = 'sim-card';
+    card.className = 'sim-card' + (sim.locked ? ' locked' : '');
     card.id = 'sim-card-' + sim.id;
     var date = new Date(sim.updatedAt).toLocaleDateString('pt-BR');
     var nItens = (sim.payload && sim.payload.itens) ? sim.payload.itens.length : 0;
@@ -2713,6 +2746,10 @@ function renderSimList() {
       '<div class="chevron">\u25bc</div>' +
       '<div class="sim-card-title">' + escapeHtml(sim.nome || 'Sem nome') + badgeCountHtml + '</div>' +
       '<div class="sim-card-meta">' + nItens + ' itens \u00b7 ' + date + '</div>' +
+      '<div class="sim-checkbox-group" onclick="event.stopPropagation()">' +
+        '<label class="' + (sim.locked ? 'active-lock' : '') + '" title="Bloquear edição"><input type="checkbox" class="sim-lock-cb" ' + (sim.locked ? 'checked' : '') + ' onchange="toggleSimLock(' + sim.id + ', event)">&#128274;</label>' +
+        '<label class="' + (sim.primary ? 'active-primary' : '') + '" title="Simulação principal (integração)"><input type="checkbox" class="sim-primary-cb" ' + (sim.primary ? 'checked' : '') + ' onchange="toggleSimPrimary(' + sim.id + ', event)">&#11088;</label>' +
+      '</div>' +
       '<div class="sim-card-actions" onclick="event.stopPropagation()">' +
         '<button onclick="editarSimulacao(' + sim.id + ')">\u270f\ufe0f Editar</button>' +
         '<button onclick="duplicarSimulacao(' + sim.id + ')">\ud83d\udccb Duplicar</button>' +
@@ -2820,350 +2857,6 @@ function _globalSaveFeedback() {
     icon.textContent = '💾';
     label.textContent = 'Salvar Alterações';
   }, 2500);
-}
-
-function gerarPDF() {
-  if (!lastCalcSummary) {
-    alert('Primeiro clique em "Calcular Projeção" para gerar os resultados.');
-    return;
-  }
-
-  var btn = document.getElementById('btn-pdf');
-  var originalText = btn.innerHTML;
-  btn.innerHTML = '⏳ Gerando relatório...';
-  btn.disabled = true;
-
-  // ========== COLETA DE DADOS (puro JS, sem DOM) ==========
-  var period = getPeriodDates();
-  var startDate = period ? period.start : new Date();
-  var endDate = period ? period.end : new Date();
-  var numDias = Math.round((endDate - startDate) / (1000*60*60*24)) + 1;
-  var numMeses = (numDias / 30).toFixed(1);
-
-  var saldoInicial = parseCurrency(document.getElementById('saldo-inicial').value);
-  var poupInicial = parseCurrency(document.getElementById('poupanca-inicial').value);
-  var intocavel = parseCurrency(document.getElementById('poupanca-intocavel').value);
-  var simNome = document.getElementById('sim-nome') ? document.getElementById('sim-nome').value : '';
-
-  // Totais por item (recalcular para ter dados frescos)
-  var totaisPorItem = {};
-  items.forEach(function(it, idx) {
-    var occs = getOccurrences(it, startDate, endDate);
-    totaisPorItem[idx] = { item: it, ocorrencias: occs.length, total: occs.length * it.valor };
-  });
-
-  // Totais globais
-  var totalEntradas = 0, totalPoupanca = 0, totalDespesas = 0;
-  items.forEach(function(it, idx) {
-    var t = totaisPorItem[idx].total;
-    if (it.tipo === 'entrada') totalEntradas += t;
-    else if (it.subtipo === 'poupanca') totalPoupanca += t;
-    else totalDespesas += t;
-  });
-
-  // Capturar gráfico principal
-  var chartImg = null;
-  try { var c = document.getElementById('main-chart'); if (c) chartImg = c.toDataURL('image/png'); } catch(e) {}
-
-  // Capturar gráfico orçamento
-  var orcImg = null;
-  try { var o = document.getElementById('orcamento-chart'); if (o) orcImg = o.toDataURL('image/png'); } catch(e) {}
-
-  // Cenário otimizado - dados
-  var ajustesAtivos = scenarioEnabled ? scenarioAdjustments.filter(function(sa) { return sa.enabled; }) : [];
-
-  // Faturas
-  var cartoesMap = {};
-  accounts.forEach(function(acc) { if (acc.tipo === 'cartao') cartoesMap[acc.id] = acc; });
-
-  // Tracking
-  var temMetas = trackingData.metas && Object.keys(trackingData.metas).length > 0;
-
-  // ========== CONSTRUÇÃO DO HTML DO RELATÓRIO ==========
-  var iframe = document.createElement('iframe');
-  iframe.style.cssText = 'position:fixed;left:-9999px;top:0;width:900px;height:600px;border:none;';
-  document.body.appendChild(iframe);
-  var doc = iframe.contentDocument || iframe.contentWindow.document;
-  doc.open();
-
-  var r = '<!DOCTYPE html><html><head><meta charset="UTF-8"><style>';
-  r += 'body{margin:0;padding:20px 24px;font-family:Georgia,serif;font-size:10px;color:#222;background:#fff;line-height:1.6;}';
-  r += '*{box-sizing:border-box;}';
-  r += 'h1{font-size:16px;color:#1a5e2e;margin:0;font-weight:700;}';
-  r += 'h2{font-size:11px;color:#1a5e2e;margin:14px 0 6px;padding:3px 0;border-bottom:1.5px solid #c9a832;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;}';
-  r += 'h3{font-size:9.5px;color:#444;margin:8px 0 4px;font-weight:700;}';
-  r += 'p{margin:3px 0;font-size:9.5px;}';
-  r += 'table{width:100%;border-collapse:collapse;margin:4px 0 10px;font-size:9px;}';
-  r += 'th{background:#1a5e2e;color:#fff;padding:3px 5px;text-align:left;font-size:8px;text-transform:uppercase;font-weight:600;}';
-  r += 'td{padding:2.5px 5px;border-bottom:1px solid #eee;}';
-  r += 'tr:nth-child(even) td{background:#f9f9f9;}';
-  r += '.g{color:#0a7c3e;font-weight:700;} .rd{color:#b91c1c;font-weight:700;} .bl{color:#1d4ed8;font-weight:700;}';
-  r += '.header{text-align:center;padding-bottom:10px;border-bottom:2.5px solid #c9a832;margin-bottom:12px;}';
-  r += '.header .sub{color:#666;font-size:8.5px;margin-top:2px;}';
-  r += '.header .nome{font-size:12px;color:#333;font-weight:600;margin-top:3px;}';
-  r += '.kpi{display:table;width:100%;margin:6px 0 10px;border:1px solid #ddd;border-radius:4px;overflow:hidden;}';
-  r += '.kpi-item{display:table-cell;text-align:center;padding:6px 4px;border-right:1px solid #eee;background:#f7faf7;}';
-  r += '.kpi-item:last-child{border-right:none;}';
-  r += '.kpi-item .k{font-size:7px;color:#666;text-transform:uppercase;letter-spacing:0.3px;}';
-  r += '.kpi-item .v{font-size:12px;font-weight:700;margin-top:1px;}';
-  r += '.chart-img{width:100%;margin:6px 0;border:1px solid #eee;border-radius:3px;}';
-  r += '.footer{text-align:center;color:#aaa;font-size:7.5px;margin-top:14px;padding-top:6px;border-top:1px solid #ddd;}';
-  r += '.tag{display:inline-block;padding:1px 4px;border-radius:2px;font-size:7.5px;font-weight:600;}';
-  r += '.tag-g{background:#dcfce7;color:#166534;} .tag-r{background:#fee2e2;color:#991b1b;} .tag-b{background:#dbeafe;color:#1e40af;} .tag-y{background:#fef9c3;color:#854d0e;}';
-  r += '.note{font-size:8px;color:#888;font-style:italic;}';
-  r += '.pb{page-break-before:always;}';
-  r += '</style></head><body>';
-
-  // ===== CAPA =====
-  r += '<div class="header">';
-  r += '<h1>Relatório de Simulação Financeira</h1>';
-  if (simNome) r += '<div class="nome">' + simNome + '</div>';
-  r += '<div class="sub">' + startDate.toLocaleDateString('pt-BR') + ' a ' + endDate.toLocaleDateString('pt-BR') + ' (' + numDias + ' dias / ~' + numMeses + ' meses)</div>';
-  r += '<div class="sub">Gerado em ' + new Date().toLocaleDateString('pt-BR') + ' às ' + new Date().toLocaleTimeString('pt-BR') + '</div>';
-  r += '</div>';
-
-  // ===== KPIs PRINCIPAIS =====
-  r += '<div class="kpi">';
-  r += '<div class="kpi-item"><div class="k">Saldo Inicial</div><div class="v g">R$ ' + fmtCurrency(saldoInicial) + '</div></div>';
-  r += '<div class="kpi-item"><div class="k">Saldo Final</div><div class="v ' + (lastCalcSummary.saldoFinal >= 0 ? 'g' : 'rd') + '">R$ ' + fmtCurrency(lastCalcSummary.saldoFinal) + '</div></div>';
-  r += '<div class="kpi-item"><div class="k">Poupança Final</div><div class="v bl">R$ ' + fmtCurrency(lastCalcSummary.poupFinal) + '</div></div>';
-  r += '<div class="kpi-item"><div class="k">Entradas</div><div class="v g">R$ ' + fmtCurrency(totalEntradas) + '</div></div>';
-  r += '<div class="kpi-item"><div class="k">Despesas</div><div class="v rd">R$ ' + fmtCurrency(totalDespesas) + '</div></div>';
-  r += '</div>';
-
-  // ===== GRÁFICO =====
-  if (chartImg) {
-    r += '<img class="chart-img" src="' + chartImg + '">';
-  }
-
-  // ===== COMPOSIÇÃO DO FLUXO =====
-  r += '<h2>Composição do Fluxo</h2>';
-
-  // Entradas
-  var entradas = items.filter(function(it) { return it.tipo === 'entrada'; });
-  if (entradas.length > 0) {
-    r += '<h3>Entradas (' + entradas.length + ')</h3>';
-    r += '<table><tr><th>Item</th><th style="text-align:right;">Valor/Ocorr.</th><th>Recorrência</th><th style="text-align:right;">Total no Período</th></tr>';
-    entradas.forEach(function(it) {
-      var idx = items.indexOf(it);
-      var t = totaisPorItem[idx];
-      var rec = it.recTipo === 'nao' ? 'Único' : ('A cada ' + it.recQty + ' ' + (REC_LABELS[it.recTipo] || it.recTipo));
-      r += '<tr><td>' + it.nome + '</td><td style="text-align:right;" class="g">R$ ' + fmtCurrency(it.valor) + '</td><td>' + rec + ' (' + t.ocorrencias + 'x)</td><td style="text-align:right;" class="g">R$ ' + fmtCurrency(t.total) + '</td></tr>';
-    });
-    r += '</table>';
-  }
-
-  // Poupança
-  var poupItens = items.filter(function(it) { return it.subtipo === 'poupanca'; });
-  if (poupItens.length > 0) {
-    r += '<h3>Poupança (' + poupItens.length + ')</h3>';
-    r += '<table><tr><th>Item</th><th style="text-align:right;">Valor/Ocorr.</th><th>Recorrência</th><th>Complemento</th><th style="text-align:right;">Total</th></tr>';
-    poupItens.forEach(function(it) {
-      var idx = items.indexOf(it);
-      var t = totaisPorItem[idx];
-      var rec = it.recTipo === 'nao' ? 'Único' : ('A cada ' + it.recQty + ' ' + (REC_LABELS[it.recTipo] || it.recTipo));
-      r += '<tr><td>' + it.nome + '</td><td style="text-align:right;" class="bl">R$ ' + fmtCurrency(it.valor) + '</td><td>' + rec + ' (' + t.ocorrencias + 'x)</td><td>' + (it.usarComoComplemento ? 'Sim' : 'Não') + '</td><td style="text-align:right;" class="bl">R$ ' + fmtCurrency(t.total) + '</td></tr>';
-    });
-    r += '</table>';
-  }
-
-  // Despesas
-  var despesas = items.filter(function(it) { return it.subtipo === 'despesa'; });
-  if (despesas.length > 0) {
-    r += '<h3>Despesas (' + despesas.length + ')</h3>';
-    r += '<table><tr><th>Item</th><th>Categoria</th><th style="text-align:right;">Valor/Ocorr.</th><th>Recorrência</th><th style="text-align:right;">Total</th><th style="text-align:right;">% Entradas</th></tr>';
-    // Ordenar por total decrescente
-    var despOrd = despesas.slice().sort(function(a,b) { return totaisPorItem[items.indexOf(b)].total - totaisPorItem[items.indexOf(a)].total; });
-    despOrd.forEach(function(it) {
-      var idx = items.indexOf(it);
-      var t = totaisPorItem[idx];
-      var rec = it.recTipo === 'nao' ? 'Único' : ('A cada ' + it.recQty + ' ' + (REC_LABELS[it.recTipo] || it.recTipo));
-      var catLabel = CATEGORIA_LABELS[it.categoria] || it.categoria || '—';
-      var pctEnt = totalEntradas > 0 ? ((t.total / totalEntradas) * 100).toFixed(1) + '%' : '—';
-      r += '<tr><td>' + it.nome + '</td><td>' + catLabel + '</td><td style="text-align:right;" class="rd">R$ ' + fmtCurrency(it.valor) + '</td><td>' + rec + ' (' + t.ocorrencias + 'x)</td><td style="text-align:right;" class="rd">R$ ' + fmtCurrency(t.total) + '</td><td style="text-align:right;">' + pctEnt + '</td></tr>';
-    });
-    r += '</table>';
-  }
-
-  // ===== DISTRIBUIÇÃO POR CATEGORIA =====
-  if (totalDespesas > 0) {
-    r += '<h2>Distribuição por Categoria</h2>';
-    var catTotais = {};
-    despesas.forEach(function(it) {
-      var idx = items.indexOf(it);
-      var cat = it.categoria || 'sem_categoria';
-      if (!catTotais[cat]) catTotais[cat] = 0;
-      catTotais[cat] += totaisPorItem[idx].total;
-    });
-    r += '<table><tr><th>Categoria</th><th style="text-align:right;">Total</th><th style="text-align:right;">% das Despesas</th><th style="text-align:right;">% das Entradas</th></tr>';
-    var catOrd = Object.keys(catTotais).sort(function(a,b) { return catTotais[b] - catTotais[a]; });
-    catOrd.forEach(function(cat) {
-      var v = catTotais[cat];
-      var pD = ((v / totalDespesas) * 100).toFixed(1);
-      var pE = totalEntradas > 0 ? ((v / totalEntradas) * 100).toFixed(1) : '0.0';
-      r += '<tr><td>' + (CATEGORIA_LABELS[cat] || cat) + '</td><td style="text-align:right;" class="rd">R$ ' + fmtCurrency(v) + '</td><td style="text-align:right;">' + pD + '%</td><td style="text-align:right;">' + pE + '%</td></tr>';
-    });
-    r += '</table>';
-
-    // Orçamento mensal equivalente
-    if (orcImg) {
-      r += '<h3>Orçamento Mensal (gráfico)</h3>';
-      r += '<img src="' + orcImg + '" style="width:180px;display:block;margin:4px auto;">';
-    }
-  }
-
-  // ===== ANÁLISE DE POTENCIAL DE AJUSTE =====
-  if (despesas.length > 0 && totalEntradas > 0) {
-    var despComScore = despesas.map(function(it) {
-      var idx = items.indexOf(it);
-      var t = totaisPorItem[idx];
-      var score = calcPotencialAjuste(it, t.total, totalEntradas, totalDespesas);
-      return { item: it, total: t.total, score: score, idx: idx };
-    }).sort(function(a,b) { return b.score - a.score; });
-
-    var candidatos = despComScore.filter(function(d) { return d.score >= 4.5; });
-    if (candidatos.length > 0) {
-      r += '<h2>Candidatos a Redução</h2>';
-      r += '<p class="note">Itens com score de ajustabilidade ≥ 4,5 (escala 0–10). Quanto maior, mais viável e recomendável a redução.</p>';
-      r += '<table><tr><th>Item</th><th>Categoria</th><th style="text-align:center;">Score</th><th style="text-align:center;">Redução Sugerida</th><th style="text-align:right;">De</th><th style="text-align:right;">Para</th><th style="text-align:right;">Economia/ocorr.</th></tr>';
-      candidatos.forEach(function(d) {
-        var it = d.item;
-        var pctRed = calcPercentualReducao(d.score);
-        if (it.alteravel === 'nao' && it.disposto === 'nao') pctRed = 0;
-        if (it.disposto === 'nao') pctRed = 0;
-        if (it.disposto === 'cancelaria') pctRed = Math.max(50, pctRed);
-        var valorNovo = it.valor * (1 - pctRed / 100);
-        var econ = it.valor - valorNovo;
-        var recLabel = pctRed === 0 ? '—' : (it.disposto === 'cancelaria' ? 'Cancelar' : '-' + pctRed + '%');
-        var scoreColor = d.score >= 7 ? '#b91c1c' : '#92400e';
-        r += '<tr><td>' + it.nome + '</td><td>' + (CATEGORIA_LABELS[it.categoria] || '—') + '</td>';
-        r += '<td style="text-align:center;font-weight:700;color:' + scoreColor + ';">' + d.score.toFixed(1) + '</td>';
-        r += '<td style="text-align:center;">' + recLabel + '</td>';
-        r += '<td style="text-align:right;">R$ ' + fmtCurrency(it.valor) + '</td>';
-        r += '<td style="text-align:right;">' + (pctRed > 0 ? 'R$ ' + fmtCurrency(valorNovo) : '—') + '</td>';
-        r += '<td style="text-align:right;" class="g">' + (pctRed > 0 ? 'R$ ' + fmtCurrency(econ) : '—') + '</td></tr>';
-      });
-      r += '</table>';
-      var totalEcon = candidatos.reduce(function(acc, d) {
-        var pctRed = calcPercentualReducao(d.score);
-        if (d.item.alteravel === 'nao' && d.item.disposto === 'nao') pctRed = 0;
-        if (d.item.disposto === 'nao') pctRed = 0;
-        return acc + d.item.valor * (pctRed / 100);
-      }, 0);
-      if (totalEcon > 0) {
-        r += '<p style="font-weight:700;color:#0a7c3e;">Economia potencial total por ocorrência: R$ ' + fmtCurrency(totalEcon) + '</p>';
-      }
-    }
-  }
-
-  // ===== CENÁRIO OTIMIZADO =====
-  if (scenarioEnabled && ajustesAtivos.length > 0) {
-    r += '<h2>Cenário Otimizado — Simulação de Ajustes</h2>';
-    r += '<p class="note">Ajustes configurados manualmente na simulação de cenário:</p>';
-    r += '<table><tr><th>Item</th><th>Tipo</th><th style="text-align:right;">Valor Original</th><th>Estratégia</th><th style="text-align:right;">Valor Ajustado</th><th style="text-align:right;">Diferença</th></tr>';
-    var totalDifCenario = 0;
-    ajustesAtivos.forEach(function(adj) {
-      var it = items[adj.itemIdx];
-      if (!it) return;
-      var tipoLabel = it.tipo === 'entrada' ? 'Entrada' : (it.subtipo === 'poupanca' ? 'Poupança' : 'Despesa');
-      var stratLabel = adj.strategy === 'imediato' ? 'Imediato' : adj.strategy === 'data' ? 'Data: ' + (adj.startDate || '?') : 'Gradativo';
-      if (adj.strategy === 'imediato') stratLabel += ' (-' + (adj.targetPct || 0) + '%)';
-      var vFinal = getAdjustedValue(adj.itemIdx, new Date(), 0);
-      var dif = it.valor - vFinal;
-      totalDifCenario += dif;
-      var difCls = dif > 0 ? 'g' : (dif < 0 ? 'rd' : '');
-      r += '<tr><td>' + it.nome + '</td><td><span class="tag ' + (it.tipo === 'entrada' ? 'tag-g' : it.subtipo === 'poupanca' ? 'tag-b' : 'tag-r') + '">' + tipoLabel + '</span></td>';
-      r += '<td style="text-align:right;">R$ ' + fmtCurrency(it.valor) + '</td><td>' + stratLabel + '</td>';
-      r += '<td style="text-align:right;font-weight:700;">R$ ' + fmtCurrency(vFinal) + '</td>';
-      r += '<td style="text-align:right;" class="' + difCls + '">' + (dif !== 0 ? (dif > 0 ? '-' : '+') + 'R$ ' + fmtCurrency(Math.abs(dif)) : '—') + '</td></tr>';
-    });
-    r += '</table>';
-    if (totalDifCenario > 0) {
-      r += '<p style="font-weight:700;color:#0a7c3e;">Economia total do cenário por ocorrência: R$ ' + fmtCurrency(totalDifCenario) + '</p>';
-    }
-  }
-
-  // ===== FATURAS DOS CARTÕES =====
-  var temFaturas = Object.keys(faturasCalculadas).some(function(cid) { return Object.keys(faturasCalculadas[cid]).length > 0; });
-  if (temFaturas) {
-    r += '<h2>Projeção de Faturas</h2>';
-    Object.keys(faturasCalculadas).forEach(function(cartaoId) {
-      var cartao = cartoesMap[cartaoId];
-      if (!cartao) return;
-      var faturas = faturasCalculadas[cartaoId];
-      var fatKeys = Object.keys(faturas).sort();
-      if (fatKeys.length === 0) return;
-      r += '<h3>' + cartao.nome + (cartao.bandeira ? ' — ' + cartao.bandeira : '') + '</h3>';
-      r += '<table><tr><th>Fatura</th><th>Vencimento</th><th style="text-align:right;">Valor</th><th style="text-align:right;">Itens</th></tr>';
-      var soma = 0;
-      fatKeys.forEach(function(fk) {
-        var fat = faturas[fk];
-        soma += fat.total;
-        var venc = fat.vencDate ? new Date(fat.vencDate).toLocaleDateString('pt-BR') : fk;
-        r += '<tr><td>' + fk + '</td><td>' + venc + '</td><td style="text-align:right;" class="rd">R$ ' + fmtCurrency(fat.total) + '</td><td style="text-align:right;">' + fat.itens.length + '</td></tr>';
-      });
-      r += '<tr style="font-weight:700;"><td colspan="2">Total</td><td style="text-align:right;" class="rd">R$ ' + fmtCurrency(soma) + '</td><td></td></tr>';
-      r += '</table>';
-    });
-  }
-
-  // ===== ACOMPANHAMENTO (METAS vs REALIZADO) =====
-  if (temMetas) {
-    var monthKeys = Object.keys(trackingData.metas).sort();
-    r += '<h2>Acompanhamento — Metas vs Realizado</h2>';
-    r += '<table><tr><th>Mês</th><th style="text-align:right;">Meta Ent.</th><th style="text-align:right;">Real Ent.</th><th style="text-align:right;">Meta Desp.</th><th style="text-align:right;">Real Desp.</th><th style="text-align:right;">Saldo</th></tr>';
-    monthKeys.forEach(function(mk) {
-      var mObj = trackingData.metas[mk];
-      var m = mObj && mObj.categorias ? mObj.categorias : (mObj || {});
-      var mEnt = mObj && mObj.entradas ? mObj.entradas : 0;
-      var catOrder = ['sobrevivencia','necessidades','aperfeicoamento','dividas','conforto','sem_categoria'];
-      var metaDesp = 0;
-      catOrder.forEach(function(cat) { metaDesp += (m[cat] || 0); });
-
-      var lancM = trackingData.lancamentos.filter(function(l) { return l.data && l.data.substring(0, 7) === mk; });
-      var realEnt = 0, realDesp = 0;
-      lancM.forEach(function(l) {
-        if (l.tipo === 'entrada') realEnt += l.valor;
-        else if (l.tipo !== 'poupanca') realDesp += l.valor;
-      });
-      var saldo = realEnt - realDesp;
-      var mLabel = new Date(mk + '-15').toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' });
-      r += '<tr><td style="font-weight:600;">' + mLabel + '</td>';
-      r += '<td style="text-align:right;">R$ ' + fmtCurrency(mEnt) + '</td>';
-      r += '<td style="text-align:right;" class="' + (realEnt >= mEnt * 0.9 ? 'g' : 'rd') + '">R$ ' + fmtCurrency(realEnt) + '</td>';
-      r += '<td style="text-align:right;">R$ ' + fmtCurrency(metaDesp) + '</td>';
-      r += '<td style="text-align:right;" class="' + (realDesp <= metaDesp * 1.1 ? 'g' : 'rd') + '">R$ ' + fmtCurrency(realDesp) + '</td>';
-      r += '<td style="text-align:right;font-weight:700;color:' + (saldo >= 0 ? '#0a7c3e' : '#b91c1c') + ';">R$ ' + fmtCurrency(saldo) + '</td></tr>';
-    });
-    r += '</table>';
-  }
-
-  // ===== RODAPÉ =====
-  r += '<div class="footer">HV Saúde Financeira — Relatório gerado automaticamente a partir da simulação de fluxo de caixa.</div>';
-  r += '</body></html>';
-
-  doc.write(r);
-  doc.close();
-
-  setTimeout(function() {
-    html2pdf().set({
-      margin: [5, 5, 5, 5],
-      filename: 'relatorio-fluxo-' + new Date().toISOString().split('T')[0] + '.pdf',
-      image: { type: 'jpeg', quality: 0.92 },
-      html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff', logging: false },
-      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-      pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
-    }).from(doc.body).save().then(function() {
-      document.body.removeChild(iframe);
-      btn.innerHTML = originalText;
-      btn.disabled = false;
-    }).catch(function() {
-      document.body.removeChild(iframe);
-      btn.innerHTML = originalText;
-      btn.disabled = false;
-      alert('Erro ao gerar PDF. Tente novamente.');
-    });
-  }, 600);
 }
 
 function _forceSaveFluxo() {
