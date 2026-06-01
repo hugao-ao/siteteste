@@ -138,7 +138,8 @@
   .sheets-tooltip th { background:rgba(212,175,55,0.1); color:var(--primary); }
 
   /* === SIM LOCK & PRIMARY CHECKBOXES === */
-  .sim-checkbox-group { display:flex; gap:0.5rem; align-items:center; margin-right:0.5rem; }
+  .sim-checkbox-group { display:none; gap:0.5rem; align-items:center; margin-right:0.5rem; }
+  .equipe-mode .sim-checkbox-group { display:inline-flex !important; }
   .sim-checkbox-group label { display:flex; align-items:center; gap:0.25rem; font-size:0.72rem; color:var(--muted); cursor:pointer; padding:0.2rem 0.5rem; border-radius:4px; border:1px solid transparent; transition:all 0.15s; user-select:none; }
   .sim-checkbox-group label:hover { border-color:var(--border); background:rgba(255,255,255,0.03); }
   .sim-checkbox-group input[type="checkbox"] { width:14px; height:14px; accent-color:var(--primary); cursor:pointer; }
@@ -837,6 +838,13 @@
 </div>
 
 <script>
+// === EQUIPE MODE CHECK (show lock/primary only for consultors) ===
+(function() {
+  if (sessionStorage.getItem('equipe_modo_cliente') === 'true') {
+    document.documentElement.classList.add('equipe-mode');
+  }
+})();
+
 // ============================================================
 // STATE
 // ============================================================
