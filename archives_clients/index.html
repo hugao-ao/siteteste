@@ -6,6 +6,7 @@
     <title>Portal do Cliente - HV Saude Financeira</title>
     <link rel="stylesheet" href="assets/style.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="assets/layout.js" defer></script>
     <style>
       /* === Widget Compacto === */
@@ -37,6 +38,19 @@
       .semaforo-text.yellow{color:#eab308}
       .semaforo-text.red{color:#ef4444}
       .semaforo-wrap{display:flex;align-items:center;gap:.3rem;flex-shrink:0;max-width:170px}
+
+      /* === Charts Section === */
+      .dash-charts-toggle{display:flex;align-items:center;gap:.5rem;cursor:pointer;padding:.6rem 0;color:var(--muted-foreground);font-size:.8rem;font-weight:500;transition:color .2s}
+      .dash-charts-toggle:hover{color:var(--primary)}
+      .dash-charts-toggle .toggle-arrow{transition:transform .3s;font-size:.7rem}
+      .dash-charts-toggle .toggle-arrow.open{transform:rotate(90deg)}
+      .dash-charts-container{display:none;padding:.5rem 0}
+      .dash-charts-container.open{display:block}
+      .dash-charts-grid{display:grid;grid-template-columns:1fr 1fr;gap:.8rem}
+      @media(max-width:600px){.dash-charts-grid{grid-template-columns:1fr}}
+      .dash-chart-box{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:.6rem;position:relative}
+      .dash-chart-box h4{font-size:.7rem;color:var(--primary);margin:0 0 .4rem;text-align:center}
+      .dash-chart-box canvas{width:100%!important;height:160px!important}
 
       /* === Modal Overlay === */
       .dash-modal-overlay{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.75);z-index:9999;align-items:flex-start;justify-content:center;padding:1.5rem;overflow-y:auto}
@@ -200,6 +214,26 @@
         <div class="dash-card" id="dash-faturas-card" style="display:none;">
           <h3>Pr&oacute;ximas Faturas</h3>
           <div id="dash-faturas"></div>
+        </div>
+
+        <!-- Graficos de Evolucao -->
+        <div class="dash-card">
+          <div class="dash-charts-toggle" onclick="toggleChartsSection()">
+            <span class="toggle-arrow" id="charts-arrow">&#9654;</span>
+            <span>Ver Gr&aacute;ficos de Evolu&ccedil;&atilde;o</span>
+          </div>
+          <div class="dash-charts-container" id="dash-charts-container">
+            <div class="dash-charts-grid">
+              <div class="dash-chart-box">
+                <h4>Evolu&ccedil;&atilde;o Prevista (Simula&ccedil;&atilde;o)</h4>
+                <canvas id="chart-previsto"></canvas>
+              </div>
+              <div class="dash-chart-box">
+                <h4>Evolu&ccedil;&atilde;o Real (Lan&ccedil;amentos)</h4>
+                <canvas id="chart-real"></canvas>
+              </div>
+            </div>
+          </div>
         </div>
 
         <!-- Link -->
@@ -667,6 +701,7 @@
         var currentKey = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0');
         selectedMonthKey = (val === currentKey) ? null : val;
         dashLoaded = false; // force modal re-render on next open
+        chartsRendered = false; // force charts re-render on next expand
         renderWidget();
       };
 
@@ -883,6 +918,293 @@
         });
         document.getElementById('dash-faturas').innerHTML = html;
         document.getElementById('dash-faturas-card').style.display = 'block';
+      }
+
+      // === GRAFICOS DE EVOLUCAO ===
+      var chartPrevisto = null;
+      var chartReal = null;
+      var chartsRendered = false;
+
+      window.toggleChartsSection = function() {
+        var container = document.getElementById('dash-charts-container');
+        var arrow = document.getElementById('charts-arrow');
+        var isOpen = container.classList.contains('open');
+        if (isOpen) {
+          container.classList.remove('open');
+          arrow.classList.remove('open');
+        } else {
+          container.classList.add('open');
+          arrow.classList.add('open');
+          if (!chartsRendered) renderEvolutionCharts();
+        }
+      };
+
+      // Helper: isBusinessDay
+      function isBusinessDay(d) { var dow = d.getDay(); return dow !== 0 && dow !== 6; }
+
+      // Helper: nextOccurrence (mirrors fluxo.html)
+      function nextOccurrence(cur, item) {
+        var next = new Date(cur);
+        if (item.recTipo === 'dias') { next.setDate(next.getDate() + item.recQty); }
+        else if (item.recTipo === 'uteis') {
+          var added = 0;
+          while (added < item.recQty) { next.setDate(next.getDate() + 1); if (isBusinessDay(next)) added++; }
+        }
+        else if (item.recTipo === 'semanas') { next.setDate(next.getDate() + item.recQty * 7); }
+        else if (item.recTipo === 'quinzenas') { next.setDate(next.getDate() + item.recQty * 15); }
+        else if (item.recTipo === 'meses') { next.setMonth(next.getMonth() + item.recQty); }
+        return next;
+      }
+
+      // Helper: getOccurrences (mirrors fluxo.html)
+      function getOccurrences(item, start, end) {
+        var dates = [];
+        if (!item.recInicio) return dates;
+        var refDate = new Date(item.recInicio + 'T00:00');
+        if (item.recTipo === 'nao') {
+          if (refDate >= start && refDate <= end) dates.push(refDate);
+          return dates;
+        }
+        var count = 0, maxOcc = Infinity;
+        var endDate = new Date(end);
+        if (item.recFimTipo === 'ocorrencias') maxOcc = item.recFimQty;
+        if (item.recFimTipo === 'data' && item.recFimData) {
+          var fimD = new Date(item.recFimData+'T00:00');
+          if (fimD < endDate) endDate = fimD;
+        }
+        var cur = new Date(refDate);
+        while (cur < start) { cur = nextOccurrence(cur, item); count++; if (count >= maxOcc) return dates; }
+        while (cur <= endDate && count < maxOcc) { if (cur >= start) dates.push(new Date(cur)); cur = nextOccurrence(cur, item); count++; }
+        return dates;
+      }
+
+      // Helper: getFaturaKey (mirrors fluxo.html)
+      function getFaturaKeyChart(purchaseDate, cartao) {
+        var dia = purchaseDate.getDate();
+        var mes = purchaseDate.getMonth();
+        var ano = purchaseDate.getFullYear();
+        var fatMes, fatAno;
+        if (dia > cartao.fechamento) { fatMes = mes + 1; fatAno = ano; if (fatMes > 11) { fatMes = 0; fatAno++; } }
+        else { fatMes = mes; fatAno = ano; }
+        var maxDia = new Date(fatAno, fatMes + 1, 0).getDate();
+        var vencDia = Math.min(cartao.vencimento, maxDia);
+        var vencDate = new Date(fatAno, fatMes, vencDia);
+        return { key: fatAno + '-' + String(fatMes + 1).padStart(2, '0'), vencDate: vencDate };
+      }
+
+      function renderEvolutionCharts() {
+        chartsRendered = true;
+        var mk = getCurrentMonthKey();
+        var parts = mk.split('-');
+        var year = parseInt(parts[0]), month = parseInt(parts[1]) - 1;
+        var startDate = new Date(year, month, 1);
+        var endDate = new Date(year, month + 1, 0); // last day of month
+
+        // --- GRAFICO PREVISTO ---
+        var saldoInicial = refPayload.saldo_inicial || refPayload.saldoInicial || 0;
+        if (typeof saldoInicial === 'string') saldoInicial = parseFloat(saldoInicial.replace(/\./g,'').replace(',','.')) || 0;
+        var poupInicial = refPayload.poupanca_inicial || refPayload.poupancaInicial || 0;
+        if (typeof poupInicial === 'string') poupInicial = parseFloat(poupInicial.replace(/\./g,'').replace(',','.')) || 0;
+        var poupIntocavel = refPayload.poupanca_intocavel || refPayload.poupancaIntocavel || 0;
+        if (typeof poupIntocavel === 'string') poupIntocavel = parseFloat(poupIntocavel.replace(/\./g,'').replace(',','.')) || 0;
+        if (poupIntocavel > poupInicial) poupIntocavel = poupInicial;
+
+        // Build cartoes map
+        var cartoesMap = {};
+        refAccounts.forEach(function(acc) { if (acc.tipo === 'cartao') cartoesMap[acc.id] = acc; });
+
+        // Build events per day (projected)
+        var events = {};
+        var faturasCalc = {};
+        refItems.forEach(function(item) {
+          var occs = getOccurrences(item, startDate, endDate);
+          var isCartao = item.formaPagamento && cartoesMap[item.formaPagamento];
+          occs.forEach(function(d) {
+            if (isCartao) {
+              var cartao = cartoesMap[item.formaPagamento];
+              var fat = getFaturaKeyChart(d, cartao);
+              if (!faturasCalc[item.formaPagamento]) faturasCalc[item.formaPagamento] = {};
+              if (!faturasCalc[item.formaPagamento][fat.key]) faturasCalc[item.formaPagamento][fat.key] = { vencDate: fat.vencDate, total: 0 };
+              faturasCalc[item.formaPagamento][fat.key].total += item.valor;
+            } else {
+              var key = isoDate(d);
+              if (!events[key]) events[key] = [];
+              events[key].push(item);
+            }
+          });
+        });
+
+        // Add fatura payments as events on vencimento day
+        Object.keys(faturasCalc).forEach(function(cartaoId) {
+          var cartao = cartoesMap[cartaoId];
+          var faturas = faturasCalc[cartaoId];
+          Object.keys(faturas).forEach(function(fatKey) {
+            var fat = faturas[fatKey];
+            if (fat.vencDate >= startDate && fat.vencDate <= endDate) {
+              var key = isoDate(fat.vencDate);
+              if (!events[key]) events[key] = [];
+              events[key].push({ tipo: 'saida', subtipo: 'despesa', valor: fat.total, _isFatura: true });
+            }
+          });
+        });
+
+        // Simulate day by day (projected)
+        var labels = [];
+        var saldoPrev = [], poupPrev = [];
+        var saldo = saldoInicial, poupanca = poupInicial;
+        var cur = new Date(startDate);
+        while (cur <= endDate) {
+          var key = isoDate(cur);
+          var dayItems = events[key] || [];
+          dayItems.forEach(function(it) {
+            if (it.tipo === 'entrada') { saldo += it.valor; }
+            else if (it.subtipo === 'poupanca') {
+              if (saldo >= it.valor) { saldo -= it.valor; poupanca += it.valor; }
+              else { poupanca += Math.max(0, saldo); saldo = Math.min(0, saldo - it.valor); }
+            } else {
+              saldo -= it.valor;
+              if (saldo < 0) {
+                var poupDisp = Math.max(0, poupanca - poupIntocavel);
+                var deficit = Math.abs(saldo);
+                if (poupDisp >= deficit) { poupanca -= deficit; saldo = 0; }
+                else if (poupDisp > 0) { saldo += poupDisp; poupanca -= poupDisp; }
+              }
+            }
+          });
+          labels.push(String(cur.getDate()).padStart(2,'0') + '/' + String(cur.getMonth()+1).padStart(2,'0'));
+          saldoPrev.push(parseFloat(saldo.toFixed(2)));
+          poupPrev.push(parseFloat(poupanca.toFixed(2)));
+          cur.setDate(cur.getDate() + 1);
+        }
+
+        // --- GRAFICO REAL ---
+        var lancDoMes = (refTracking.lancamentos||[]).filter(function(l) {
+          return l.data && l.data.substring(0,7) === mk;
+        });
+
+        // Build real events per day (respecting credit card timing)
+        var realEvents = {};
+        var realFaturas = {}; // { cartaoId: { vencKey: { vencDate, total } } }
+        lancDoMes.forEach(function(l) {
+          var val = Math.abs(parseFloat(l.valor)||0);
+          var dataISO = l.data;
+          // Check if payment is a credit card
+          var cartao = null;
+          if (l.pagamento) {
+            cartao = refAccounts.find(function(a) { return a.tipo === 'cartao' && a.nome === l.pagamento; });
+          }
+          if (cartao && l.tipo !== 'entrada') {
+            // Credit card: accumulate in fatura
+            var purchaseDate = new Date(dataISO + 'T00:00');
+            var fat = getFaturaKeyChart(purchaseDate, cartao);
+            if (!realFaturas[cartao.id]) realFaturas[cartao.id] = {};
+            if (!realFaturas[cartao.id][fat.key]) realFaturas[cartao.id][fat.key] = { vencDate: fat.vencDate, total: 0 };
+            realFaturas[cartao.id][fat.key].total += val;
+          } else {
+            // Direct payment: event on the day
+            if (!realEvents[dataISO]) realEvents[dataISO] = [];
+            realEvents[dataISO].push({ tipo: l.tipo, valor: val });
+          }
+        });
+
+        // Add real fatura payments on vencimento day
+        Object.keys(realFaturas).forEach(function(cartaoId) {
+          var cartao = cartoesMap[cartaoId];
+          Object.keys(realFaturas[cartaoId]).forEach(function(fatKey) {
+            var fat = realFaturas[cartaoId][fatKey];
+            if (fat.vencDate >= startDate && fat.vencDate <= endDate) {
+              var key = isoDate(fat.vencDate);
+              if (!realEvents[key]) realEvents[key] = [];
+              realEvents[key].push({ tipo: 'despesa', valor: fat.total });
+            }
+          });
+        });
+
+        // Simulate day by day (real)
+        var saldoReal = [], poupReal = [];
+        var saldoR = saldoInicial, poupR = poupInicial;
+        var curR = new Date(startDate);
+        var today = new Date(); today.setHours(0,0,0,0);
+        while (curR <= endDate) {
+          var keyR = isoDate(curR);
+          var dayItemsR = realEvents[keyR] || [];
+          dayItemsR.forEach(function(it) {
+            if (it.tipo === 'entrada') { saldoR += it.valor; }
+            else if (it.tipo === 'poupanca') {
+              if (saldoR >= it.valor) { saldoR -= it.valor; poupR += it.valor; }
+              else { poupR += Math.max(0, saldoR); saldoR = Math.min(0, saldoR - it.valor); }
+            } else {
+              saldoR -= it.valor;
+              if (saldoR < 0) {
+                var poupDispR = Math.max(0, poupR - poupIntocavel);
+                var deficitR = Math.abs(saldoR);
+                if (poupDispR >= deficitR) { poupR -= deficitR; saldoR = 0; }
+                else if (poupDispR > 0) { saldoR += poupDispR; poupR -= poupDispR; }
+              }
+            }
+          });
+          // Only show data up to today (future days have no real data)
+          if (curR <= today) {
+            saldoReal.push(parseFloat(saldoR.toFixed(2)));
+            poupReal.push(parseFloat(poupR.toFixed(2)));
+          } else {
+            saldoReal.push(null);
+            poupReal.push(null);
+          }
+          curR.setDate(curR.getDate() + 1);
+        }
+
+        // Render charts
+        var chartOpts = {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: { mode: 'index', intersect: false },
+          plugins: {
+            legend: { labels: { color: '#F2E8C9', font: { size: 9 } } },
+            tooltip: {
+              backgroundColor: '#052614',
+              borderColor: 'rgba(212,175,55,0.3)',
+              borderWidth: 1,
+              titleColor: '#D4AF37',
+              bodyColor: '#F2E8C9',
+              callbacks: { label: function(ctx) { return ctx.dataset.label + ': ' + fmt(ctx.parsed.y); } }
+            }
+          },
+          scales: {
+            x: { ticks: { color: '#A0B8A6', font: { size: 8 }, maxRotation: 45, autoSkip: true, maxTicksLimit: 15 }, grid: { color: 'rgba(212,175,55,0.06)' } },
+            y: { ticks: { color: '#A0B8A6', font: { size: 8 }, callback: function(v) { return 'R$' + (v/1000).toFixed(1) + 'k'; } }, grid: { color: 'rgba(212,175,55,0.08)' } }
+          }
+        };
+
+        // Destroy old charts
+        if (chartPrevisto) { chartPrevisto.destroy(); chartPrevisto = null; }
+        if (chartReal) { chartReal.destroy(); chartReal = null; }
+
+        var ctxP = document.getElementById('chart-previsto').getContext('2d');
+        chartPrevisto = new Chart(ctxP, {
+          type: 'line',
+          data: {
+            labels: labels,
+            datasets: [
+              { label: 'Saldo', data: saldoPrev, borderColor: '#22c55e', backgroundColor: 'rgba(34,197,94,0.08)', fill: true, tension: 0, pointRadius: 0, pointHoverRadius: 3, borderWidth: 1.5 },
+              { label: 'Poupan\u00e7a', data: poupPrev, borderColor: '#60a5fa', backgroundColor: 'rgba(96,165,250,0.08)', fill: true, tension: 0, pointRadius: 0, pointHoverRadius: 3, borderWidth: 1.5 }
+            ]
+          },
+          options: chartOpts
+        });
+
+        var ctxR = document.getElementById('chart-real').getContext('2d');
+        chartReal = new Chart(ctxR, {
+          type: 'line',
+          data: {
+            labels: labels,
+            datasets: [
+              { label: 'Saldo', data: saldoReal, borderColor: '#22c55e', backgroundColor: 'rgba(34,197,94,0.08)', fill: true, tension: 0, pointRadius: 0, pointHoverRadius: 3, borderWidth: 1.5, spanGaps: false },
+              { label: 'Poupan\u00e7a', data: poupReal, borderColor: '#60a5fa', backgroundColor: 'rgba(96,165,250,0.08)', fill: true, tension: 0, pointRadius: 0, pointHoverRadius: 3, borderWidth: 1.5, spanGaps: false }
+            ]
+          },
+          options: chartOpts
+        });
       }
 
       // === DROPDOWNS ===
