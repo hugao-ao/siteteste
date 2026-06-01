@@ -335,116 +335,225 @@
         var metaEntradas = kpis.metaEntradas;
         var realEntradas = kpis.realEntradas;
         var realDespesas = kpis.realDespesas;
+        var realPoupanca = kpis.realPoupanca || 0;
         var metaDespTotal = kpis.metaDespTotal;
+        var metaPoupanca = kpis.metaPoupanca || 0;
         var metaCats = kpis.metaCats;
         var realPorCat = kpis.realPorCat;
+        var lancDoMes = kpis.lancDoMes || [];
 
-        // Analyze categories individually
+        // === PARAMETROS DE TEMPO ===
+        var hoje = new Date();
+        var diasNoMes = new Date(hoje.getFullYear(), hoje.getMonth()+1, 0).getDate();
+        var diaAtual = hoje.getDate();
+        var diasRestantes = diasNoMes - diaAtual;
+        var pctMesDecorrido = Math.round((diaAtual / diasNoMes) * 100);
+
+        // === ANALISE POR CATEGORIA ===
         var catsEstouradas = [];
-        var catsProximas = []; // between 85-100%
+        var catsProximas = [];
+        var catsComMeta = 0;
         catOrder.forEach(function(catKey) {
           var meta = metaCats[catKey] || 0;
           var real = realPorCat[catKey] || 0;
           if (meta <= 0) return;
-          var pct = Math.round((real/meta)*100);
-          if (pct > 100) catsEstouradas.push({ key:catKey, label:catConfig[catKey].label, pct:pct });
-          else if (pct >= 85) catsProximas.push({ key:catKey, label:catConfig[catKey].label, pct:pct });
+          catsComMeta++;
+          var pct = Math.round((real / meta) * 100);
+          if (pct > 100) catsEstouradas.push({ label: catConfig[catKey].label, pct: pct, excedente: real - meta });
+          else if (pct >= 85) catsProximas.push({ label: catConfig[catKey].label, pct: pct });
         });
 
-        // Days analysis (progress vs expected)
-        var hoje = new Date();
-        var diasNoMes = new Date(hoje.getFullYear(), hoje.getMonth()+1, 0).getDate();
-        var diaAtual = hoje.getDate();
-        var pctMesDecorrido = Math.round((diaAtual/diasNoMes)*100);
-        var entradasPendentes = metaEntradas - realEntradas;
+        // === ANALISE DE ENTRADAS ===
+        var entradasPendentes = metaEntradas > 0 ? metaEntradas - realEntradas : 0;
+        var pctEntradas = metaEntradas > 0 ? Math.round((realEntradas / metaEntradas) * 100) : 100;
 
-        var status, titulo, explicacao;
+        // === ANALISE DE RITMO ===
+        // Ritmo proporcional: se estamos em X% do mes, deveriamos ter gasto ~X% do orcamento
+        var ritmoEsperado = pctMesDecorrido; // % esperado de gastos para este ponto do mes
+        var ritmoAcelerado = pctUsado !== null && pctUsado > ritmoEsperado * 1.4; // gastando 40% mais rapido
+        var ritmoLento = pctUsado !== null && pctUsado < ritmoEsperado * 0.5; // gastando metade do esperado
+
+        // === ANALISE DE POUPANCA ===
+        var poupancaAtrasada = metaPoupanca > 0 && realPoupanca === 0 && diaAtual > 10;
+        var poupancaExcessiva = metaPoupanca > 0 && realPoupanca > metaPoupanca * 1.5 && saldo < 0;
+
+        // === ANALISE DE LANCAMENTOS (poucos registros = dados incompletos) ===
+        var lancInsuficientes = lancDoMes.length < 3 && diaAtual > 15;
+        var lancMuitoPoucos = lancDoMes.length === 0 && diaAtual > 5;
+
+        // === ANALISE DE DESPESAS FIXAS PENDENTES ===
+        // Itens recorrentes que ainda nao foram lancados este mes
+        var fixosPendentes = 0;
+        var valorFixosPendentes = 0;
+        refItems.forEach(function(item) {
+          if (item.tipo === 'entrada') return;
+          if (item.subtipo === 'poupanca') return;
+          // Check if this item has been registered this month
+          var jaLancado = lancDoMes.some(function(l) {
+            return l.subcategoria === item.nome;
+          });
+          if (!jaLancado) {
+            fixosPendentes++;
+            valorFixosPendentes += parseFloat(item.valor) || 0;
+          }
+        });
+        var fixosVaoAumentar = fixosPendentes > 0 && valorFixosPendentes > 0;
 
         // === SEM METAS ===
         if (pctUsado === null) {
-          status = 'green';
-          titulo = 'Sem metas definidas';
-          explicacao = 'Gere as metas no fluxo para acompanhar.';
-          return { status:status, text:titulo, detail:explicacao };
+          if (lancMuitoPoucos) {
+            return { status:'green', text:'Sem metas definidas', detail:'Gere as metas no fluxo para acompanhar seu or\u00e7amento.' };
+          }
+          return { status:'green', text:'Sem metas definidas', detail:'Gere as metas no fluxo para ter um acompanhamento completo.' };
         }
 
-        // === DETERMINE STATUS ===
-        // Red: orcamento geral > 100% OR mais de 2 categorias estouradas
-        if (pctUsado > 100 || catsEstouradas.length >= 3) {
-          status = 'red';
-        }
-        // Yellow: orcamento 71-100% OR 1-2 categorias estouradas OR categorias proximas do limite
-        else if (pctUsado > 70 || catsEstouradas.length > 0 || catsProximas.length >= 2) {
-          status = 'yellow';
-        }
-        // Green: tudo dentro
-        else {
-          status = 'green';
-        }
+        // === DETERMINE STATUS (multi-parametro) ===
+        var score = 0; // 0=green, 1-2=yellow, 3+=red
+
+        // Orcamento geral
+        if (pctUsado > 100) score += 3;
+        else if (pctUsado > 85) score += 2;
+        else if (pctUsado > 70) score += 1;
+
+        // Categorias
+        score += catsEstouradas.length;
+        if (catsProximas.length >= 2) score += 1;
+
+        // Ritmo acelerado
+        if (ritmoAcelerado && pctUsado > 50) score += 1;
+
+        // Lancamentos insuficientes (pode ser falso verde)
+        if (lancInsuficientes && pctUsado < 30) score += 1;
+
+        // Despesas fixas pendentes que vao aumentar muito o total
+        if (fixosVaoAumentar && (realDespesas + valorFixosPendentes) > metaDespTotal) score += 1;
+
+        // Poupanca atrasada
+        if (poupancaAtrasada) score += 0; // nao muda a cor, mas entra no texto
+
+        // ATENUANTES (reduzem score)
+        // Fim do mes com % ok = mais seguro
+        if (diaAtual >= diasNoMes - 3 && pctUsado <= 95) score = Math.max(0, score - 1);
+        // Entradas pendentes grandes cobrem o saldo negativo
+        if (saldo < 0 && entradasPendentes > Math.abs(saldo)) score = Math.max(0, score - 1);
+        // Categorias estouradas mas compensadas por outras com folga
+        if (catsEstouradas.length > 0 && pctUsado <= 60) score = Math.max(0, score - 1);
+
+        var status;
+        if (score >= 3) status = 'red';
+        else if (score >= 1) status = 'yellow';
+        else status = 'green';
 
         // === BUILD TITULO + EXPLICACAO ===
+        var titulo, explicacao;
+
         if (status === 'green') {
           titulo = 'Tudo sob controle!';
-          // Explain why it's green even if something looks off
-          if (saldo < 0 && entradasPendentes > 0) {
-            explicacao = 'Saldo parcial negativo, mas h\u00e1 ' + fmt(entradasPendentes) + ' em entradas previstas para cobrir.';
+
+          if (lancMuitoPoucos) {
+            explicacao = 'Poucos lan\u00e7amentos at\u00e9 agora. Registre seus gastos para um acompanhamento preciso.';
+          } else if (saldo < 0 && entradasPendentes > Math.abs(saldo)) {
+            explicacao = 'Saldo parcial negativo, mas h\u00e1 ' + fmt(entradasPendentes) + ' em entradas previstas que cobrem a diferen\u00e7a.';
+          } else if (saldo < 0 && entradasPendentes > 0) {
+            explicacao = 'Saldo negativo por enquanto. Entradas de ' + fmt(entradasPendentes) + ' ainda previstas para este m\u00eas.';
+          } else if (saldo < 0 && diaAtual <= 10) {
+            explicacao = 'In\u00edcio do m\u00eas com saldo negativo \u2014 normal se a renda ainda n\u00e3o entrou. Despesas em ' + pctUsado + '%.';
           } else if (saldo < 0) {
-            explicacao = 'Saldo negativo pontual. Despesas bem abaixo da meta (' + pctUsado + '% usado).';
-          } else if (pctUsado < pctMesDecorrido * 0.7) {
-            explicacao = 'Ritmo de gastos abaixo do esperado para o dia ' + diaAtual + '/' + diasNoMes + '. Folga no or\u00e7amento.';
+            explicacao = 'Saldo negativo pontual, por\u00e9m despesas bem abaixo da meta (' + pctUsado + '%). Tend\u00eancia favor\u00e1vel.';
+          } else if (ritmoLento) {
+            explicacao = 'Ritmo de gastos abaixo do esperado para o dia ' + diaAtual + '. Boa folga no or\u00e7amento.';
           } else if (catsProximas.length === 1) {
-            explicacao = pctUsado + '% do or\u00e7amento usado. ' + catsProximas[0].label + ' se aproximando (' + catsProximas[0].pct + '%), mas o geral est\u00e1 tranquilo.';
+            explicacao = pctUsado + '% usado. ' + catsProximas[0].label + ' perto do limite (' + catsProximas[0].pct + '%), mas o geral est\u00e1 saud\u00e1vel.';
+          } else if (fixosVaoAumentar && (realDespesas + valorFixosPendentes) <= metaDespTotal * 0.9) {
+            explicacao = pctUsado + '% usado. Ainda h\u00e1 ' + fixosPendentes + ' despesas previstas por vir, mas cabem no or\u00e7amento.';
+          } else if (diaAtual >= diasNoMes - 3) {
+            explicacao = 'Fim do m\u00eas com ' + pctUsado + '% do or\u00e7amento usado. Resultado positivo!';
           } else {
-            explicacao = 'Despesas dentro do planejado \u2014 ' + pctUsado + '% do or\u00e7amento em ' + diaAtual + ' de ' + diasNoMes + ' dias.';
+            explicacao = pctUsado + '% do or\u00e7amento usado em ' + diaAtual + '/' + diasNoMes + ' dias. Dentro do planejado.';
+          }
+
+          // Nota sobre poupanca
+          if (poupancaAtrasada) {
+            explicacao += ' Lembre-se de registrar a poupan\u00e7a.';
           }
 
         } else if (status === 'yellow') {
           titulo = 'Fique atento!';
-          if (catsEstouradas.length > 0 && pctUsado <= 70) {
-            // Categorias estouradas mas geral ok
-            var nomes = catsEstouradas.map(function(c){return c.label;}).join(', ');
-            explicacao = nomes + ' ultrapassou a meta, mas o or\u00e7amento geral ainda est\u00e1 em ' + pctUsado + '%. Remaneje se poss\u00edvel.';
+
+          if (lancInsuficientes && pctUsado < 40) {
+            // Falso verde evitado: poucos lancamentos podem esconder gastos reais
+            explicacao = 'Apenas ' + lancDoMes.length + ' lan\u00e7amentos em ' + diaAtual + ' dias. Pode haver gastos n\u00e3o registrados. Atualize para ter clareza.';
+          } else if (ritmoAcelerado && catsEstouradas.length === 0) {
+            // Ritmo acelerado sem estouro ainda
+            var projecao = Math.round((realDespesas / diaAtual) * diasNoMes);
+            explicacao = 'Ritmo acelerado: se mantiver, projetar\u00e1 ' + fmt(projecao) + ' em despesas (meta: ' + fmt(metaDespTotal) + ').';
+          } else if (catsEstouradas.length > 0 && pctUsado <= 70) {
+            var nomes = catsEstouradas.map(function(c) { return c.label; }).join(', ');
+            explicacao = nomes + ' ultrapassou a meta, mas o total geral est\u00e1 em ' + pctUsado + '%. Remaneje se poss\u00edvel.';
+          } else if (fixosVaoAumentar && (realDespesas + valorFixosPendentes) > metaDespTotal) {
+            explicacao = 'Ainda h\u00e1 ' + fmt(valorFixosPendentes) + ' em despesas previstas por vir. Com elas, o or\u00e7amento ser\u00e1 ultrapassado.';
           } else if (catsProximas.length >= 2 && pctUsado <= 70) {
-            var nomes2 = catsProximas.map(function(c){return c.label;}).join(', ');
-            explicacao = nomes2 + ' est\u00e3o pr\u00f3ximas do limite. Or\u00e7amento geral em ' + pctUsado + '%, mas cuidado nos pr\u00f3ximos dias.';
+            var nomes2 = catsProximas.map(function(c) { return c.label; }).join(', ');
+            explicacao = nomes2 + ' est\u00e3o pr\u00f3ximas do limite. Or\u00e7amento geral em ' + pctUsado + '%, mas cuidado.';
           } else if (pctUsado > 70 && pctUsado <= 100) {
             var restante = metaDespTotal - realDespesas;
-            var diasRestantes = diasNoMes - diaAtual;
             if (restante > 0 && diasRestantes > 0) {
-              explicacao = pctUsado + '% usado. Restam ' + fmt(restante) + ' para ' + diasRestantes + ' dias. M\u00e9dia di\u00e1ria dispon\u00edvel: ' + fmt(restante/diasRestantes) + '.';
+              explicacao = pctUsado + '% usado com ' + diasRestantes + ' dias restantes. Dispon\u00edvel: ' + fmt(restante) + ' (m\u00e9dia de ' + fmt(restante / diasRestantes) + '/dia).';
             } else {
-              explicacao = pctUsado + '% do or\u00e7amento j\u00e1 utilizado. Reduza gastos para n\u00e3o estourar.';
+              explicacao = pctUsado + '% j\u00e1 utilizado. Evite novos gastos para n\u00e3o estourar.';
             }
           } else {
             explicacao = 'Or\u00e7amento em ' + pctUsado + '%. Algumas categorias precisam de aten\u00e7\u00e3o.';
           }
-          // Positive note if saldo is good
+
+          // Contexto positivo ou negativo adicional
           if (saldo > 0 && entradasPendentes <= 0) {
-            explicacao += ' Saldo positivo, pois as entradas j\u00e1 cobriram.';
-          } else if (entradasPendentes > 0) {
+            explicacao += ' Entradas j\u00e1 recebidas, saldo positivo por enquanto.';
+          } else if (entradasPendentes > 0 && saldo < 0) {
             explicacao += ' Ainda h\u00e1 ' + fmt(entradasPendentes) + ' em entradas previstas.';
+          } else if (poupancaExcessiva) {
+            explicacao += ' Poupan\u00e7a acima da meta pode estar apertando o m\u00eas.';
+          }
+
+          if (poupancaAtrasada && !poupancaExcessiva) {
+            explicacao += ' Poupan\u00e7a ainda n\u00e3o registrada.';
           }
 
         } else { // red
           titulo = 'Or\u00e7amento ultrapassado!';
           var excedente = realDespesas - metaDespTotal;
+
           if (catsEstouradas.length >= 3) {
-            var nomes3 = catsEstouradas.slice(0,3).map(function(c){return c.label;}).join(', ');
-            explicacao = nomes3 + ' est\u00e3o acima da meta. Excedente total: ' + fmt(excedente) + '.';
+            var nomes3 = catsEstouradas.slice(0, 3).map(function(c) { return c.label; }).join(', ');
+            explicacao = nomes3 + ' acima da meta. Excedente total: ' + fmt(excedente > 0 ? excedente : 0) + '.';
+          } else if (excedente > 0 && catsEstouradas.length > 0) {
+            var nomes4 = catsEstouradas.map(function(c) { return c.label + ' (+' + c.pct + '%)'; }).join(', ');
+            explicacao = 'Excedente de ' + fmt(excedente) + '. Principais: ' + nomes4 + '.';
           } else if (excedente > 0) {
-            explicacao = 'Despesas excederam a meta em ' + fmt(excedente) + '. Revise os gastos restantes do m\u00eas.';
+            explicacao = 'Despesas excederam a meta em ' + fmt(excedente) + '. Contenha os gastos restantes.';
           } else {
-            var nomes4 = catsEstouradas.map(function(c){return c.label + ' ('+c.pct+'%)';}).join(', ');
-            explicacao = 'Categorias cr\u00edticas: ' + nomes4 + '. Remaneje ou reduza.';
+            var nomes5 = catsEstouradas.map(function(c) { return c.label; }).join(', ');
+            explicacao = 'Categorias cr\u00edticas: ' + nomes5 + '. Redistribua ou reduza.';
           }
+
+          // Contexto sobre entradas e saldo
           if (saldo > 0) {
-            explicacao += ' Saldo ainda positivo gra\u00e7as \u00e0s entradas.';
+            explicacao += ' Saldo ainda positivo gra\u00e7as \u00e0s entradas, mas o padr\u00e3o de gastos preocupa.';
+          } else if (entradasPendentes > Math.abs(saldo)) {
+            explicacao += ' Entradas previstas de ' + fmt(entradasPendentes) + ' cobrem o saldo, mas o or\u00e7amento precisa de ajuste.';
           } else if (entradasPendentes > 0) {
-            explicacao += ' Entradas previstas de ' + fmt(entradasPendentes) + ' podem ajudar.';
+            explicacao += ' Entradas de ' + fmt(entradasPendentes) + ' previstas, mas n\u00e3o cobrem o excedente.';
+          } else if (saldo < 0) {
+            explicacao += ' Saldo negativo de ' + fmt(Math.abs(saldo)) + ' sem entradas previstas.';
+          }
+
+          // Nota se fim do mes
+          if (diaAtual >= diasNoMes - 3) {
+            explicacao += ' M\u00eas quase encerrando \u2014 foque em n\u00e3o agravar.';
           }
         }
 
-        return { status:status, text:titulo, detail:explicacao };
+        return { status: status, text: titulo, detail: explicacao };
       }
 
       // === RENDER WIDGET ===
