@@ -699,8 +699,13 @@
         var currentKey = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0');
         selectedMonthKey = (val === currentKey) ? null : val;
         dashLoaded = false; // force modal re-render on next open
-        chartsRendered = false; // force charts re-render on next expand
+        chartsRendered = false;
         renderWidget();
+        // If charts section is expanded, re-render immediately
+        var chartsContent = document.getElementById('charts-content');
+        if (chartsContent && chartsContent.style.display !== 'none') {
+          renderEvolutionCharts();
+        }
       };
 
       // === RENDER WIDGET ===
@@ -1079,7 +1084,6 @@
         // Get ALL lancamentos (not just current month) because credit card purchases
         // from previous months may have faturas that vence in the current month
         var allLanc = refTracking.lancamentos || [];
-        console.log('[Charts Real] Total lancamentos:', allLanc.length, 'Mes:', mk);
 
         // Build real events per day (respecting credit card timing)
         var realEvents = {};
@@ -1124,7 +1128,6 @@
             realEvents[key].push({ tipo: 'despesa', valor: fat.total });
           });
         });
-        console.log('[Charts Real] realEvents keys:', Object.keys(realEvents), 'realFaturas keys:', Object.keys(realFaturas));
 
         // Simulate day by day (real)
         // Show all days of the selected month based on lancamentos registered
