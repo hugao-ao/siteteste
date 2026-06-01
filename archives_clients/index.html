@@ -1127,10 +1127,10 @@
         console.log('[Charts Real] realEvents keys:', Object.keys(realEvents), 'realFaturas keys:', Object.keys(realFaturas));
 
         // Simulate day by day (real)
+        // Show all days of the selected month based on lancamentos registered
         var saldoReal = [], poupReal = [];
         var saldoR = saldoInicial, poupR = poupInicial;
         var curR = new Date(startDate);
-        var today = new Date(); today.setHours(0,0,0,0);
         while (curR <= endDate) {
           var keyR = isoDate(curR);
           var dayItemsR = realEvents[keyR] || [];
@@ -1149,14 +1149,8 @@
               }
             }
           });
-          // Only show data up to today (future days have no real data)
-          if (curR <= today) {
-            saldoReal.push(parseFloat(saldoR.toFixed(2)));
-            poupReal.push(parseFloat(poupR.toFixed(2)));
-          } else {
-            saldoReal.push(null);
-            poupReal.push(null);
-          }
+          saldoReal.push(parseFloat(saldoR.toFixed(2)));
+          poupReal.push(parseFloat(poupR.toFixed(2)));
           curR.setDate(curR.getDate() + 1);
         }
 
