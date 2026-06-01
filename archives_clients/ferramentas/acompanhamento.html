@@ -243,6 +243,19 @@
   .sim-panel-sc { font-size: 0.68rem; padding: 0.15rem 0.5rem; border-radius: 12px; background: rgba(255,255,255,0.06); border: 1px solid var(--border); color: var(--muted); }
   .sim-panel-link { display: inline-flex; align-items: center; gap: 0.3rem; font-size: 0.7rem; color: var(--primary); text-decoration: none; margin-top: 0.4rem; font-weight: 600; }
   .sim-panel-link:hover { text-decoration: underline; }
+
+  /* === LOCK & PRIMARY CHECKBOXES === */
+  .sim-checkbox-group { display:none; gap:0.5rem; align-items:center; }
+  .equipe-mode .sim-checkbox-group { display:inline-flex !important; }
+  .sim-checkbox-group label { display:flex; align-items:center; gap:0.25rem; font-size:0.75rem; color:var(--muted); cursor:pointer; padding:0.3rem 0.6rem; border-radius:4px; border:1px solid transparent; transition:all 0.15s; user-select:none; }
+  .sim-checkbox-group label:hover { border-color:var(--border); background:rgba(255,255,255,0.03); }
+  .sim-checkbox-group input[type="checkbox"] { width:14px; height:14px; accent-color:var(--primary); cursor:pointer; }
+  .sim-checkbox-group label.active-lock { border-color:var(--red); background:rgba(239,68,68,0.08); color:var(--red); }
+  .sim-checkbox-group label.active-primary { border-color:var(--primary); background:rgba(212,175,55,0.08); color:var(--primary); }
+  .page.locked .btn-primary, .page.locked .btn-icon { pointer-events:none; opacity:0.5; }
+  .page.locked .tl-actions, .page.locked .obj-actions { pointer-events:none; opacity:0.5; }
+  .page.locked input, .page.locked select, .page.locked textarea { pointer-events:none !important; opacity:0.6; }
+
 </style>
 </head>
 <body>
@@ -257,6 +270,10 @@
       <h1>Acompanhamento Financeiro</h1>
     </div>
     <p>Monitoramento de reuniões, evolução patrimonial, objetivos e plano de ação do cliente.</p>
+    <div class="sim-checkbox-group" style="margin-top:0.75rem;">
+      <label id="lbl-acomp-lock" class="" title="Bloquear edição de todos os dados"><input type="checkbox" onchange="toggleAcompLock()">&#128274; Bloquear Edição</label>
+      <label id="lbl-acomp-primary" class="" title="Marcar como acompanhamento principal (integração)"><input type="checkbox" onchange="toggleAcompPrimary()">&#11088; Principal</label>
+    </div>
   </header>
 
   <!-- DASHBOARD RESUMO -->
@@ -625,6 +642,13 @@
 </div>
 
 <script>
+// === EQUIPE MODE CHECK (show lock/primary only for consultors) ===
+(function() {
+  if (sessionStorage.getItem('equipe_modo_cliente') === 'true') {
+    document.documentElement.classList.add('equipe-mode');
+  }
+})();
+
 // ═══════════════════════════════════════════════════════════════════════════
 //  DADOS
 // ═══════════════════════════════════════════════════════════════════════════
@@ -944,6 +968,7 @@ function toggleMicroStatus(index) {
 // ═══════════════════════════════════════════════════════════════════════════
 var _delTarget = null;
 function openDelModal(tipo, index) {
+  if (_acompLocked) { alert("Acompanhamento bloqueado. Desmarque o cadeado para editar."); return; }
   var lists = {reuniao: reunioes, objetivo: objetivos, micro: microPassos, macro: macroPassos};
   var item = lists[tipo][index];
   var nome = item.nome || item.desc || item.fase || fmtData(item.data);
@@ -1254,6 +1279,7 @@ function renderAll() {
   renderObjetivos();
   renderMicroPassos();
   renderMacroPassos();
+  updateAcompLockUI();
   renderDashboard();
   renderChart();
   renderNextMeeting();
@@ -1301,7 +1327,9 @@ function buildPayload() {
     objetivos: objetivos,
     microPassos: microPassos,
     macroPassos: macroPassos,
-    nextId: nextId
+    nextId: nextId,
+    locked: _acompLocked,
+    primary: _acompPrimary
   };
 }
 
