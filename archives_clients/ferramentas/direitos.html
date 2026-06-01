@@ -139,6 +139,22 @@ body { background: var(--bg); color: var(--fg); font-family: 'Inter', system-ui,
   .produto-info { grid-template-columns: 1fr 1fr; }
   .resumo-bar { flex-direction: column; gap: 0.75rem; }
 }
+
+  /* === SIM LOCK & PRIMARY CHECKBOXES === */
+  .sim-checkbox-group { display:none; gap:0.5rem; align-items:center; margin-right:0.5rem; }
+  .equipe-mode .sim-checkbox-group { display:inline-flex !important; }
+  .sim-checkbox-group label { display:flex; align-items:center; gap:0.25rem; font-size:0.72rem; color:var(--muted); cursor:pointer; padding:0.2rem 0.5rem; border-radius:4px; border:1px solid transparent; transition:all 0.15s; user-select:none; }
+  .sim-checkbox-group label:hover { border-color:var(--border); background:rgba(255,255,255,0.03); }
+  .sim-checkbox-group input[type="checkbox"] { width:14px; height:14px; accent-color:var(--primary,var(--gold)); cursor:pointer; }
+  .sim-checkbox-group label.active-lock { border-color:var(--red,#ef4444); background:rgba(239,68,68,0.08); color:var(--red,#ef4444); }
+  .sim-checkbox-group label.active-primary { border-color:var(--primary,var(--gold)); background:rgba(212,175,55,0.08); color:var(--primary,var(--gold)); }
+  .comp-card.locked { opacity:0.85; }
+  .comp-card.locked .comp-card-body { pointer-events:none; }
+  .comp-card.locked input:not(.sim-lock-cb):not(.sim-primary-cb), .comp-card.locked select, .comp-card.locked textarea { pointer-events:none !important; opacity:0.6; }
+  .produto-card.locked { opacity:0.85; }
+  .produto-card.locked .produto-card-body { pointer-events:none; }
+  .produto-card.locked input:not(.sim-lock-cb):not(.sim-primary-cb), .produto-card.locked select, .produto-card.locked textarea { pointer-events:none !important; opacity:0.6; }
+
 </style>
 </head>
 <body>
@@ -241,6 +257,13 @@ body { background: var(--bg); color: var(--fg); font-family: 'Inter', system-ui,
 </div>
 
 <script>
+// === EQUIPE MODE CHECK (show lock/primary only for consultors) ===
+(function() {
+  if (sessionStorage.getItem('equipe_modo_cliente') === 'true') {
+    document.documentElement.classList.add('equipe-mode');
+  }
+})();
+
 // ═══════════════════════════════════════════════════════════════════════════
 //  ESTADO GLOBAL
 // ═══════════════════════════════════════════════════════════════════════════
@@ -285,6 +308,19 @@ function switchTab(tab) {
 // ═══════════════════════════════════════════════════════════════════════════
 //  RENDERIZAÇÃO: PRODUTOS
 // ═══════════════════════════════════════════════════════════════════════════
+
+// === LOCK & PRIMARY SIMULATION HELPERS ===
+function toggleProdLock(id, ev) {
+  ev.stopPropagation();
+  var p = produtos.find(function(x) { return x.id === id; });
+  if (p) { p.locked = !p.locked; saveData(); renderProdutos(); renderConsolidado(); }
+}
+function toggleProdPrimary(id, ev) {
+  ev.stopPropagation();
+  produtos.forEach(function(x) { x.primary = (x.id === id) ? !x.primary : false; });
+  saveData(); renderProdutos(); renderConsolidado();
+}
+
 function renderProdutos() {
   var container = document.getElementById('produtos-container');
   var empty = document.getElementById('empty-produtos');
@@ -315,7 +351,7 @@ function renderProdutos() {
   
   filtered.forEach(function(p) {
     var card = document.createElement('div');
-    card.className = 'produto-card';
+    card.className = 'produto-card' + (p.locked ? ' locked' : '');
     card.id = 'produto-' + p.id;
     
     var nDireitos = (p.direitos || []).length;
@@ -325,6 +361,10 @@ function renderProdutos() {
     html += '<div class="chevron">&#9660;</div>';
     html += '<div class="produto-card-title">' + escHtml(p.nome) + '</div>';
     html += '<div class="produto-card-meta">' + nDireitos + ' direito' + (nDireitos !== 1 ? 's' : '') + (custoStr ? ' · ' + custoStr : '') + '</div>';
+    html += '<div class="sim-checkbox-group" onclick="event.stopPropagation()">';
+    html += '<label class="' + (p.locked ? 'active-lock' : '') + '" title="Bloquear edição"><input type="checkbox" class="sim-lock-cb" ' + (p.locked ? 'checked' : '') + ' onchange="toggleProdLock(' + p.id + ', event)">&#128274;</label>';
+    html += '<label class="' + (p.primary ? 'active-primary' : '') + '" title="Produto principal"><input type="checkbox" class="sim-primary-cb" ' + (p.primary ? 'checked' : '') + ' onchange="toggleProdPrimary(' + p.id + ', event)">&#11088;</label>';
+    html += '</div>';
     html += '<div class="produto-card-actions" onclick="event.stopPropagation()">';
     html += '<button onclick="editProduto(' + p.id + ')">✏️ Editar</button>';
     html += '<button class="danger" onclick="deleteProduto(' + p.id + ')">🗑️</button>';
@@ -483,7 +523,8 @@ function openProdutoModal(editId) {
   document.getElementById('modal-produto').classList.add('open');
 }
 function closeProdutoModal() { document.getElementById('modal-produto').classList.remove('open'); _editingProdutoId = null; }
-function editProduto(id) { openProdutoModal(id); }
+function editProduto(id) {
+  var pChk = produtos.find(function(x) { return x.id === id; }); if (pChk && pChk.locked) { alert("Produto bloqueado. Desmarque o cadeado para editar."); return; } openProdutoModal(id); }
 
 function salvarProduto() {
   var nome = document.getElementById('mp_nome').value.trim();
