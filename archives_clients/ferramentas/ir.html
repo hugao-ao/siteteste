@@ -271,6 +271,23 @@
   .ref-section ul { list-style: disc; }
   .ref-section ul li { margin-bottom: 0.3rem; }
   .ref-section ul li a:hover { text-decoration: none; }
+
+  /* === SIM LOCK & PRIMARY CHECKBOXES === */
+  .sim-checkbox-group { display:none; gap:0.5rem; align-items:center; margin-right:0.5rem; }
+  .equipe-mode .sim-checkbox-group { display:inline-flex !important; }
+  .sim-checkbox-group label { display:flex; align-items:center; gap:0.25rem; font-size:0.72rem; color:var(--muted); cursor:pointer; padding:0.2rem 0.5rem; border-radius:4px; border:1px solid transparent; transition:all 0.15s; user-select:none; }
+  .sim-checkbox-group label:hover { border-color:var(--border); background:rgba(255,255,255,0.03); }
+  .sim-checkbox-group input[type="checkbox"] { width:14px; height:14px; accent-color:var(--primary); cursor:pointer; }
+  .sim-checkbox-group label.active-lock { border-color:var(--red); background:rgba(239,68,68,0.08); color:var(--red); }
+  .sim-checkbox-group label.active-primary { border-color:var(--primary); background:rgba(212,175,55,0.08); color:var(--primary); }
+  .sim-card.locked { opacity:0.85; }
+  .sim-card.locked .sim-card-body { pointer-events:none; }
+  .sim-card.locked input:not(.sim-lock-cb):not(.sim-primary-cb), .sim-card.locked select, .sim-card.locked textarea { pointer-events:none !important; opacity:0.6; }
+  .sim-card.locked button:not([class*="sim-lock"]):not([class*="sim-primary"]) { pointer-events:none; opacity:0.5; }
+  .sim-card-item.locked { opacity:0.85; }
+  .sim-card-item.locked .sim-card-item-body { pointer-events:none; }
+  .sim-card-item.locked input:not(.sim-lock-cb):not(.sim-primary-cb), .sim-card-item.locked select, .sim-card-item.locked textarea { pointer-events:none !important; opacity:0.6; }
+
 </style>
 </head>
 <body>
@@ -495,6 +512,13 @@
 </main>
 
 <script>
+// === EQUIPE MODE CHECK (show lock/primary only for consultors) ===
+(function() {
+  if (sessionStorage.getItem('equipe_modo_cliente') === 'true') {
+    document.documentElement.classList.add('equipe-mode');
+  }
+})();
+
 // ===== CONSTANTES E TABELAS =====
 
 // Tabela ANUAL - Declaracao 2026 (ano-base 2025)
@@ -1319,6 +1343,21 @@ function toggleSimCard(idx) {
   if (card) card.classList.toggle('open');
 }
 
+
+// === LOCK & PRIMARY SIMULATION HELPERS ===
+function toggleSimLock(idx, ev) {
+  ev.stopPropagation();
+  simulacoes[idx].locked = !simulacoes[idx].locked;
+  _saveIrData();
+  renderSimList();
+}
+function toggleSimPrimary(idx, ev) {
+  ev.stopPropagation();
+  simulacoes.forEach(function(s, i) { s.primary = (i === idx) ? !s.primary : false; });
+  _saveIrData();
+  renderSimList();
+}
+
 function renderSimList() {
   const container = document.getElementById('sim-list-container');
   const empty = document.getElementById('sim-empty-state');
@@ -1330,13 +1369,17 @@ function renderSimList() {
   simulacoes.forEach((s, i) => {
     const data = s.dataSalvo ? new Date(s.dataSalvo).toLocaleDateString('pt-BR') : '';
     const card = document.createElement('div');
-    card.className = 'sim-card';
+    card.className = 'sim-card' + (s.locked ? ' locked' : '');
     card.id = 'sim-card-' + i;
     card.innerHTML =
       '<div class="sim-card-header" onclick="toggleSimCard(' + i + ')">' +
         '<div class="chevron">&#9660;</div>' +
         '<div class="sim-title">' + _escHtml(s.nome || 'Sem nome') + '</div>' +
         '<div class="sim-meta">Ano-base: ' + (s.anoBase || 2025) + ' | Renda: ' + fmtBRL(s.rendaMensal || 0) + '/mes | ' + data + '</div>' +
+        '<div class="sim-checkbox-group" onclick="event.stopPropagation()">' +
+          '<label class="' + (s.locked ? 'active-lock' : '') + '" title="Bloquear edição"><input type="checkbox" class="sim-lock-cb" ' + (s.locked ? 'checked' : '') + ' onchange="toggleSimLock(' + i + ', event)">&#128274;</label>' +
+          '<label class="' + (s.primary ? 'active-primary' : '') + '" title="Simulação principal"><input type="checkbox" class="sim-primary-cb" ' + (s.primary ? 'checked' : '') + ' onchange="toggleSimPrimary(' + i + ', event)">&#11088;</label>' +
+        '</div>' +
         '<div class="sim-card-actions" onclick="event.stopPropagation()">' +
           '<button onclick="editarSimulacao(' + i + ')">&#9998; Editar</button>' +
           '<button class="dup" onclick="duplicarSimulacao(' + i + ')">&#128203; Duplicar</button>' +
