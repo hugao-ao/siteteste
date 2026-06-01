@@ -2745,9 +2745,31 @@ function applyClientLockMode(locked) {
   var editor = document.getElementById('sim-editor-view');
   // Remove previous lock class
   editor.classList.remove('client-locked');
+  // Re-enable all previously disabled elements
+  editor.querySelectorAll('[data-client-disabled]').forEach(function(el) {
+    el.disabled = false;
+    el.style.pointerEvents = '';
+    el.style.opacity = '';
+    el.removeAttribute('data-client-disabled');
+  });
   if (locked && !isEquipeMode()) {
     // Client viewing a locked sim: disable everything except tracking
     editor.classList.add('client-locked');
+    // Disable all inputs, selects, textareas, buttons EXCEPT inside #tracking-section
+    var trackingEl = document.getElementById('tracking-section');
+    editor.querySelectorAll('input, select, textarea, button, div[onclick], [onclick]').forEach(function(el) {
+      // Skip if inside tracking section
+      if (trackingEl && trackingEl.contains(el)) return;
+      // Skip voltar button and save button and collapsible headers
+      if (el.getAttribute('onclick') && el.getAttribute('onclick').indexOf('voltarParaLista') >= 0) return;
+      if (el.classList.contains('btn-save-global')) return;
+      if (el.classList.contains('section-header-collapsible') || el.closest('.section-header-collapsible')) return;
+      // Disable the element
+      el.disabled = true;
+      el.style.pointerEvents = 'none';
+      el.style.opacity = '0.5';
+      el.setAttribute('data-client-disabled', 'true');
+    });
   }
 }
 
@@ -3878,6 +3900,11 @@ calcular = function() {
   document.getElementById('tracking-section').style.display = 'block';
   if (scenarioEnabled) recalcScenario();
   if (trackingData.metas && Object.keys(trackingData.metas).length > 0) renderTracking();
+  // Re-apply client lock after rendering new elements
+  if (editingSimId) {
+    var sim = simulacoes.find(function(s) { return s.id === editingSimId; });
+    if (sim) applyClientLockMode(sim.locked);
+  }
 };
 
 // Persist tracking data in buildPayload/applyPayload
