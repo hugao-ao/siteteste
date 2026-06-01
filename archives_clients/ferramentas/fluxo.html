@@ -145,13 +145,17 @@
   .sim-checkbox-group input[type="checkbox"] { width:14px; height:14px; accent-color:var(--primary); cursor:pointer; }
   .sim-checkbox-group label.active-lock { border-color:var(--red); background:rgba(239,68,68,0.08); color:var(--red); }
   .sim-checkbox-group label.active-primary { border-color:var(--primary); background:rgba(212,175,55,0.08); color:var(--primary); }
-  .sim-card.locked { opacity:0.85; }
-  .sim-card.locked .sim-card-body { pointer-events:none; }
-  .sim-card.locked input:not(.sim-lock-cb):not(.sim-primary-cb), .sim-card.locked select, .sim-card.locked textarea { pointer-events:none !important; opacity:0.6; }
-  .sim-card.locked button:not([class*="sim-lock"]):not([class*="sim-primary"]) { pointer-events:none; opacity:0.5; }
-  .sim-card-item.locked { opacity:0.85; }
-  .sim-card-item.locked .sim-card-item-body { pointer-events:none; }
-  .sim-card-item.locked input:not(.sim-lock-cb):not(.sim-primary-cb), .sim-card-item.locked select, .sim-card-item.locked textarea { pointer-events:none !important; opacity:0.6; }
+  .sim-card.locked { opacity:0.85; border-left:3px solid var(--red); }
+  /* Client lock mode: disable all editing except tracking section */
+  .client-locked input, .client-locked select, .client-locked textarea { pointer-events:none !important; opacity:0.6; }
+  .client-locked button { pointer-events:none !important; opacity:0.5; }
+  .client-locked [onclick*="voltarParaLista"] { pointer-events:auto !important; opacity:1 !important; }
+  .client-locked .btn-save-global { pointer-events:auto !important; opacity:1 !important; }
+  .client-locked .section-header-collapsible { pointer-events:auto !important; opacity:1 !important; }
+  /* Tracking section is exempt from lock */
+  #tracking-section input, #tracking-section select, #tracking-section textarea { pointer-events:auto !important; opacity:1 !important; }
+  #tracking-section button { pointer-events:auto !important; opacity:1 !important; }
+  .client-locked #sim-nome { pointer-events:none !important; opacity:0.6; }
 
 
 
@@ -2670,8 +2674,6 @@ function novaSimulacao() {
 }
 
 function editarSimulacao(id) {
-  var simCheck = simulacoes.find(function(s) { return s.id === id; });
-  if (simCheck && simCheck.locked) { alert('Esta simulação está bloqueada. Desmarque o cadeado para editar.'); return; }
   var sim = simulacoes.find(function(s) { return s.id === id; });
   if (!sim) return;
   editingSimId = id;
@@ -2681,8 +2683,10 @@ function editarSimulacao(id) {
   document.getElementById('sim-nome').value = sim.nome || '';
   document.getElementById('result-section').style.display = 'none';
   applyPayload(sim.payload);
-  document.getElementById('sim-editing-label').textContent = 'Editando: ' + (sim.nome || 'Sem nome');
+  document.getElementById('sim-editing-label').textContent = (sim.locked ? '🔒 ' : '') + 'Editando: ' + (sim.nome || 'Sem nome');
   showEditorView();
+  // Apply client read-only if locked and NOT equipe
+  applyClientLockMode(sim.locked);
   // Auto-calcular se há itens (mostra resultado imediatamente)
   if (items.length > 0) {
     setTimeout(function() { calcular(); }, 100);
@@ -2690,6 +2694,8 @@ function editarSimulacao(id) {
 }
 
 function voltarParaLista() {
+  var editor = document.getElementById('sim-editor-view');
+  editor.classList.remove('client-locked');
   showListView();
   renderSimList();
 }
@@ -2730,6 +2736,21 @@ function toggleSimPrimary(id, cb) {
   renderSimList();
 }
 
+// === CLIENT LOCK MODE ===
+function isEquipeMode() {
+  return sessionStorage.getItem('equipe_modo_cliente') === 'true';
+}
+
+function applyClientLockMode(locked) {
+  var editor = document.getElementById('sim-editor-view');
+  // Remove previous lock class
+  editor.classList.remove('client-locked');
+  if (locked && !isEquipeMode()) {
+    // Client viewing a locked sim: disable everything except tracking
+    editor.classList.add('client-locked');
+  }
+}
+
 // --- RENDER LIST ---
 function renderSimList() {
   var container = document.getElementById('sim-list-container');
@@ -2759,9 +2780,9 @@ function renderSimList() {
         '<label class="' + (sim.primary ? 'active-primary' : '') + '" title="Simulação principal (integração)"><input type="checkbox" class="sim-primary-cb" ' + (sim.primary ? 'checked' : '') + ' onchange="toggleSimPrimary(' + sim.id + ', event)">&#11088;</label>' +
       '</div>' +
       '<div class="sim-card-actions" onclick="event.stopPropagation()">' +
-        '<button onclick="editarSimulacao(' + sim.id + ')">\u270f\ufe0f Editar</button>' +
+        '<button onclick="editarSimulacao(' + sim.id + ')">\u270f\ufe0f ' + (sim.locked && !isEquipeMode() ? 'Visualizar' : 'Editar') + '</button>' +
         '<button onclick="duplicarSimulacao(' + sim.id + ')">\ud83d\udccb Duplicar</button>' +
-        '<button class="danger" onclick="deleteSimulacao(' + sim.id + ')">\ud83d\uddd1\ufe0f Excluir</button>' +
+        (sim.locked && !isEquipeMode() ? '' : '<button class="danger" onclick="deleteSimulacao(' + sim.id + ')">\ud83d\uddd1\ufe0f Excluir</button>') +
       '</div>' +
     '</div>' +
     '<div class="sim-card-body">' +
@@ -2800,6 +2821,7 @@ function escapeHtml(str) {
 // saveToStorage agora salva a simulação atual
 function saveToStorage() {
   if (!_initDone) return;
+  if (!editingSimId) return; // Don't auto-create sims from list view
   salvarSimulacaoAtual();
 }
 
