@@ -164,6 +164,15 @@
   .import-edit { cursor:text; border-bottom:1px dashed var(--primary); min-width:60px; }
   .import-edit:focus { outline:none; background:rgba(212,175,55,0.1); }
   .table-wrap { overflow-x: auto; border-radius: var(--radius); border: 1px solid var(--border); }
+  /* === LANCAMENTOS TABLE ENHANCEMENTS === */
+  .lanc-table-wrap { overflow-x:auto; border:1px solid var(--border); border-radius:6px; margin-top:0.75rem; max-width:100%; }
+  .lanc-table { width:max-content; min-width:100%; border-collapse:collapse; font-size:0.8rem; table-layout:auto; }
+  .lanc-table th { background:var(--card2); color:var(--primary); padding:0.5rem; text-align:left; font-size:0.72rem; text-transform:uppercase; position:relative; white-space:nowrap; }
+  .lanc-table td { padding:0.4rem 0.5rem; border-bottom:1px solid rgba(212,175,55,0.08); white-space:nowrap; }
+  .lanc-table .col-resize-handle { position:absolute; right:0; top:0; bottom:0; width:4px; cursor:col-resize; background:transparent; z-index:10; user-select:none; }
+  .lanc-table .col-resize-handle:hover, .lanc-table .col-resize-handle.resizing { background:var(--gold-dim); opacity:0.7; }
+  .lanc-check { width:16px; height:16px; accent-color:var(--primary); cursor:pointer; }
+  .lanc-bulk-actions { display:flex; align-items:center; gap:0.5rem; margin-bottom:0.5rem; }
   table { width: 100%; border-collapse: collapse; }
   thead th { background: var(--card2); color: var(--primary); font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; padding: 0.65rem 0.75rem; text-align: left; border-bottom: 1px solid var(--border); white-space: nowrap; }
   tbody tr { border-bottom: 1px solid rgba(212,175,55,0.08); transition: background 0.1s; }
@@ -3703,31 +3712,47 @@ function renderTracking() {
     html += '</div>'; // evo-container
   }
 
-  // Lancamentos list
-  html += '<div style="margin-top:1.5rem;"><h3 style="font-size:0.9rem;margin-bottom:0.5rem;">Lançamentos do mês (' + lancMes.length + ')</h3>';
+  // Lancamentos list with checkboxes, bulk delete, resizable columns, horizontal scroll
+  html += '<div style="margin-top:1.5rem;">';
+  html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.5rem;">';
+  html += '<h3 style="font-size:0.9rem;margin:0;">Lan\u00e7amentos do m\u00eas (' + lancMes.length + ')</h3>';
+  html += '</div>';
   if (lancMes.length > 0) {
-    html += '<table class="tracking-table"><thead><tr><th>Tipo</th><th>Data</th><th>Descri\u00e7\u00e3o</th><th>Valor</th><th>Categoria</th><th>Subcategoria</th><th>Pagamento</th><th></th></tr></thead><tbody>';
+    html += '<div class="lanc-bulk-actions">';
+    html += '<label style="display:flex;align-items:center;gap:0.3rem;font-size:0.75rem;color:var(--muted);cursor:pointer;"><input type="checkbox" class="lanc-check" id="lanc-select-all" onchange="toggleSelectAllLanc(this)"> Selecionar todos</label>';
+    html += '<button class="btn btn-ghost btn-sm" style="color:var(--red);font-size:0.72rem;" onclick="deleteLancamentosSelecionados()">\u2715 Excluir selecionados</button>';
+    html += '</div>';
+    html += '<div class="lanc-table-wrap">';
+    html += '<table class="lanc-table" id="lanc-table-main"><thead><tr>';
+    html += '<th style="width:30px;"></th>';
+    html += '<th>Tipo</th><th>Data</th><th>Descri\u00e7\u00e3o</th><th>Valor</th><th>Categoria</th><th>Subcategoria</th><th>Pagamento</th><th>A\u00e7\u00f5es</th>';
+    html += '</tr></thead><tbody>';
     lancMes.sort(function(a,b) { return a.data.localeCompare(b.data); }).forEach(function(l) {
       var cfg = catConfig[l.categoria] || { label: l.categoria || '\u2014', color: '#888' };
       var tipoLabel = l.tipo === 'entrada' ? '<span style="color:var(--green);">Entrada</span>' : l.tipo === 'poupanca' ? '<span style="color:#60a5fa;">Poupan\u00e7a</span>' : '<span style="color:var(--red);">Despesa</span>';
       var valorColor = l.tipo === 'entrada' ? 'var(--green)' : 'var(--red)';
       var valorPrefix = l.tipo === 'entrada' ? '+' : '-';
-      html += '<tr><td>' + tipoLabel + '</td>';
+      html += '<tr data-lanc-id="' + l.id + '">';
+      html += '<td><input type="checkbox" class="lanc-check lanc-row-check" value="' + l.id + '"></td>';
+      html += '<td>' + tipoLabel + '</td>';
       html += '<td>' + (l.data ? new Date(l.data + 'T00:00').toLocaleDateString('pt-BR') : '\u2014') + '</td>';
       html += '<td>' + (l.descricao || '\u2014') + '</td>';
       html += '<td style="color:' + valorColor + ';font-weight:600;">' + valorPrefix + fmtCurrency(l.valor) + '</td>';
       html += '<td style="color:' + cfg.color + ';">' + (l.tipo === 'despesa' ? cfg.label : '\u2014') + '</td>';
       html += '<td style="font-size:0.75rem;">' + (l.subcategoria || '\u2014') + '</td>';
       html += '<td>' + (l.pagamento || '\u2014') + '</td>';
-      html += '<td><button class="btn btn-ghost btn-sm" onclick="editLancamento(\'' + l.id + '\')">\u270e</button><button class="btn btn-ghost btn-sm" style="color:var(--red);" onclick="deleteLancamento(\'' + l.id + '\')">\u2715</button></td></tr>';
+      html += '<td><button class="btn btn-ghost btn-sm" onclick="editLancamento(\'' + l.id + '\')">✎</button><button class="btn btn-ghost btn-sm" style="color:var(--red);" onclick="deleteLancamento(\'' + l.id + '\')">✕</button></td>';
+      html += '</tr>';
     });
-    html += '</tbody></table>';
+    html += '</tbody></table></div>';
   } else {
-    html += '<div style="font-size:0.82rem;color:var(--muted);">Nenhum lançamento neste mês.</div>';
+    html += '<div style="font-size:0.82rem;color:var(--muted);">Nenhum lan\u00e7amento neste m\u00eas.</div>';
   }
   html += '</div>';
 
   container.innerHTML = html;
+  // Initialize column resize on lancamentos table
+  if (document.getElementById('lanc-table-main')) initLancColResize('lanc-table-main');
 }
 
 function navTrackingMonth(dir) {
@@ -3738,6 +3763,58 @@ function navTrackingMonth(dir) {
     trackingMonth = monthKeys[newIdx];
     renderTracking();
   }
+}
+
+function toggleSelectAllLanc(masterCb) {
+  document.querySelectorAll('.lanc-row-check').forEach(function(cb) { cb.checked = masterCb.checked; });
+}
+
+function deleteLancamentosSelecionados() {
+  var selected = [];
+  document.querySelectorAll('.lanc-row-check:checked').forEach(function(cb) { selected.push(cb.value); });
+  if (selected.length === 0) { alert('Nenhum lan\u00e7amento selecionado.'); return; }
+  if (!confirm('Excluir ' + selected.length + ' lan\u00e7amento(s) selecionado(s)?')) return;
+  trackingData.lancamentos = trackingData.lancamentos.filter(function(l) { return selected.indexOf(l.id) === -1; });
+  if (trackingView === 'faturas') { renderTrackingFaturas(); } else { renderTracking(); }
+  saveToStorage();
+}
+
+function initLancColResize(tableId) {
+  var table = document.getElementById(tableId);
+  if (!table) return;
+  var ths = table.querySelectorAll('thead th');
+  ths.forEach(function(th, colIdx) {
+    if (th.querySelector('.col-resize-handle')) return;
+    var handle = document.createElement('div');
+    handle.className = 'col-resize-handle';
+    th.style.position = 'relative';
+    th.appendChild(handle);
+    var startX, startW;
+    handle.addEventListener('mousedown', function(e) {
+      e.preventDefault();
+      startX = e.clientX;
+      startW = th.offsetWidth;
+      handle.classList.add('resizing');
+      function onMove(ev) {
+        var diff = ev.clientX - startX;
+        var newW = Math.max(40, startW + diff);
+        th.style.width = newW + 'px';
+        th.style.minWidth = newW + 'px';
+        var rows = table.querySelectorAll('tbody tr');
+        rows.forEach(function(row) {
+          var cell = row.cells[colIdx];
+          if (cell) { cell.style.width = newW + 'px'; cell.style.minWidth = newW + 'px'; }
+        });
+      }
+      function onUp() {
+        handle.classList.remove('resizing');
+        document.removeEventListener('mousemove', onMove);
+        document.removeEventListener('mouseup', onUp);
+      }
+      document.addEventListener('mousemove', onMove);
+      document.addEventListener('mouseup', onUp);
+    });
+  });
 }
 
 function openLancamentoModal(editId) {
@@ -4243,41 +4320,31 @@ function renderTrackingFaturas() {
     });
   });
 
-  // Filter by trackingMonth if set
   var html = '';
 
-  // Month navigation (reuse existing trackingMonth)
-  var allFatKeys = [];
-  Object.keys(fatMap).forEach(function(cid) {
-    Object.keys(fatMap[cid]).forEach(function(fk) { if (allFatKeys.indexOf(fk) === -1) allFatKeys.push(fk); });
-  });
-  allFatKeys.sort();
-
-  if (allFatKeys.length === 0) {
-    container.innerHTML = '<div style="text-align:center;color:var(--muted);padding:2rem;">Nenhuma fatura projetada no período.</div>';
-    return;
+  // Month navigation (same as other tabs)
+  var monthKeys = Object.keys(trackingData.metas).sort();
+  if (monthKeys.length > 0) {
+    if (!trackingMonth || monthKeys.indexOf(trackingMonth) === -1) trackingMonth = monthKeys[0];
+    var curIdx = monthKeys.indexOf(trackingMonth);
+    var monthLabel = new Date(trackingMonth + '-15').toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+    html += '<div class="tracking-month-nav" style="margin:1rem 0;">';
+    html += '<button onclick="navTrackingMonthFaturas(-1)"' + (curIdx <= 0 ? ' disabled' : '') + '>&laquo;</button>';
+    html += '<span>' + monthLabel.charAt(0).toUpperCase() + monthLabel.slice(1) + '</span>';
+    html += '<button onclick="navTrackingMonthFaturas(1)"' + (curIdx >= monthKeys.length - 1 ? ' disabled' : '') + '>&raquo;</button>';
+    html += '</div>';
   }
 
-  // Use trackingMonth for filtering, or show all
+  // Filter faturas by current month
   var filterMonth = trackingMonth || null;
-  var showAll = !filterMonth;
-
-  html += '<div style="margin:1rem 0;">';
-  if (!showAll) {
-    var monthLabel = new Date(filterMonth + '-15').toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
-    html += '<div style="font-size:0.85rem; color:var(--muted); margin-bottom:0.5rem;">Faturas com vencimento em: <strong style="color:var(--fg);">' + monthLabel.charAt(0).toUpperCase() + monthLabel.slice(1) + '</strong></div>';
-  } else {
-    html += '<div style="font-size:0.85rem; color:var(--muted); margin-bottom:0.5rem;">Todas as faturas projetadas no período</div>';
-  }
-  html += '</div>';
 
   cartaoIds.forEach(function(cartaoId) {
     var cartao = cartoesMap[cartaoId];
     var faturas = fatMap[cartaoId];
     if (!faturas) return;
     var fatKeys = Object.keys(faturas).sort();
-    if (!showAll) {
-      fatKeys = fatKeys.filter(function(fk) { return fk === filterMonth; });
+    if (filterMonth) {
+      fatKeys = fatKeys.filter(function(fk) { return fk.substring(0, 7) === filterMonth; });
     }
     if (fatKeys.length === 0) return;
 
@@ -4345,7 +4412,72 @@ function renderTrackingFaturas() {
     html += '</tbody></table></div>';
   });
 
+  if (!html || html.indexOf('card2') === -1) {
+    html += '<div style="text-align:center;color:var(--muted);padding:2rem;">Nenhuma fatura neste m\u00eas.</div>';
+  }
+
+  // Lancamentos do mes (same as other tabs)
+  var catConfig = {
+    sobrevivencia: { label: 'Sobreviv\u00eancia', color: '#ef4444' },
+    necessidades: { label: 'Necessidades', color: '#f97316' },
+    aperfeicoamento: { label: 'Aperfei\u00e7oamento', color: '#a78bfa' },
+    dividas: { label: 'D\u00edvidas', color: '#f59e0b' },
+    conforto: { label: 'Conforto/Sup\u00e9rfluo', color: '#60a5fa' },
+    sem_categoria: { label: 'Sem categoria', color: '#6b7280' }
+  };
+  var lancMes = trackingData.lancamentos.filter(function(l) {
+    return l.data && l.data.substring(0, 7) === trackingMonth;
+  });
+
+  html += '<div style="margin-top:1.5rem;">';
+  html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.5rem;">';
+  html += '<h3 style="font-size:0.9rem;margin:0;">Lan\u00e7amentos do m\u00eas (' + lancMes.length + ')</h3>';
+  html += '</div>';
+  if (lancMes.length > 0) {
+    html += '<div class="lanc-bulk-actions">';
+    html += '<label style="display:flex;align-items:center;gap:0.3rem;font-size:0.75rem;color:var(--muted);cursor:pointer;"><input type="checkbox" class="lanc-check" id="lanc-select-all-fat" onchange="toggleSelectAllLanc(this)"> Selecionar todos</label>';
+    html += '<button class="btn btn-ghost btn-sm" style="color:var(--red);font-size:0.72rem;" onclick="deleteLancamentosSelecionados()">\u2715 Excluir selecionados</button>';
+    html += '</div>';
+    html += '<div class="lanc-table-wrap">';
+    html += '<table class="lanc-table" id="lanc-table-faturas"><thead><tr>';
+    html += '<th style="width:30px;"></th>';
+    html += '<th>Tipo</th><th>Data</th><th>Descri\u00e7\u00e3o</th><th>Valor</th><th>Categoria</th><th>Subcategoria</th><th>Pagamento</th><th>A\u00e7\u00f5es</th>';
+    html += '</tr></thead><tbody>';
+    lancMes.sort(function(a,b) { return a.data.localeCompare(b.data); }).forEach(function(l) {
+      var cfg = catConfig[l.categoria] || { label: l.categoria || '\u2014', color: '#888' };
+      var tipoLabel = l.tipo === 'entrada' ? '<span style="color:var(--green);">Entrada</span>' : l.tipo === 'poupanca' ? '<span style="color:#60a5fa;">Poupan\u00e7a</span>' : '<span style="color:var(--red);">Despesa</span>';
+      var valorColor = l.tipo === 'entrada' ? 'var(--green)' : 'var(--red)';
+      var valorPrefix = l.tipo === 'entrada' ? '+' : '-';
+      html += '<tr data-lanc-id="' + l.id + '">';
+      html += '<td><input type="checkbox" class="lanc-check lanc-row-check" value="' + l.id + '"></td>';
+      html += '<td>' + tipoLabel + '</td>';
+      html += '<td>' + (l.data ? new Date(l.data + 'T00:00').toLocaleDateString('pt-BR') : '\u2014') + '</td>';
+      html += '<td>' + (l.descricao || '\u2014') + '</td>';
+      html += '<td style="color:' + valorColor + ';font-weight:600;">' + valorPrefix + fmtCurrency(l.valor) + '</td>';
+      html += '<td style="color:' + cfg.color + ';">' + (l.tipo === 'despesa' ? cfg.label : '\u2014') + '</td>';
+      html += '<td style="font-size:0.75rem;">' + (l.subcategoria || '\u2014') + '</td>';
+      html += '<td>' + (l.pagamento || '\u2014') + '</td>';
+      html += '<td><button class="btn btn-ghost btn-sm" onclick="editLancamento(\'' + l.id + '\')">✎</button><button class="btn btn-ghost btn-sm" style="color:var(--red);" onclick="deleteLancamento(\'' + l.id + '\')">✕</button></td>';
+      html += '</tr>';
+    });
+    html += '</tbody></table></div>';
+  } else {
+    html += '<div style="font-size:0.82rem;color:var(--muted);">Nenhum lan\u00e7amento neste m\u00eas.</div>';
+  }
+  html += '</div>';
+
   container.innerHTML = html;
+  if (document.getElementById('lanc-table-faturas')) initLancColResize('lanc-table-faturas');
+}
+
+function navTrackingMonthFaturas(dir) {
+  var monthKeys = Object.keys(trackingData.metas).sort();
+  var curIdx = monthKeys.indexOf(trackingMonth);
+  var newIdx = curIdx + dir;
+  if (newIdx >= 0 && newIdx < monthKeys.length) {
+    trackingMonth = monthKeys[newIdx];
+    renderTrackingFaturas();
+  }
 }
 
 </script>
