@@ -159,6 +159,8 @@
 
 
 
+  .import-edit { cursor:text; border-bottom:1px dashed var(--primary); min-width:60px; }
+  .import-edit:focus { outline:none; background:rgba(212,175,55,0.1); }
   .table-wrap { overflow-x: auto; border-radius: var(--radius); border: 1px solid var(--border); }
   table { width: 100%; border-collapse: collapse; }
   thead th { background: var(--card2); color: var(--primary); font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; padding: 0.65rem 0.75rem; text-align: left; border-bottom: 1px solid var(--border); white-space: nowrap; }
@@ -2637,6 +2639,8 @@ async function duplicarSimulacao(id) {
   copy.id = Date.now();
   copy.nome = orig.nome + ' (c\u00f3pia)';
   copy.updatedAt = new Date().toISOString();
+  copy.locked = false;
+  copy.primary = false;
   simulacoes.push(copy);
   await saveSimulacoes();
   renderSimList();
@@ -3336,7 +3340,7 @@ function recalcScenario() {
 // ============================================================
 var trackingData = {
   metas: {}, // { 'YYYY-MM': { categoria: valor, ... } }
-  lancamentos: [], // [{ id, data, descricao, valor, categoria, pagamento }]
+  lancamentos: [], // [{ id, data, descricao, valor, categoria, subcategoria, pagamento }]
   sheetsUrl: ''
 };
 var trackingView = 'chart';
@@ -3683,7 +3687,7 @@ function renderTracking() {
   // Lancamentos list
   html += '<div style="margin-top:1.5rem;"><h3 style="font-size:0.9rem;margin-bottom:0.5rem;">Lançamentos do mês (' + lancMes.length + ')</h3>';
   if (lancMes.length > 0) {
-    html += '<table class="tracking-table"><thead><tr><th>Tipo</th><th>Data</th><th>Descri\u00e7\u00e3o</th><th>Valor</th><th>Categoria</th><th>Pagamento</th><th></th></tr></thead><tbody>';
+    html += '<table class="tracking-table"><thead><tr><th>Tipo</th><th>Data</th><th>Descri\u00e7\u00e3o</th><th>Valor</th><th>Categoria</th><th>Subcategoria</th><th>Pagamento</th><th></th></tr></thead><tbody>';
     lancMes.sort(function(a,b) { return a.data.localeCompare(b.data); }).forEach(function(l) {
       var cfg = catConfig[l.categoria] || { label: l.categoria || '\u2014', color: '#888' };
       var tipoLabel = l.tipo === 'entrada' ? '<span style="color:var(--green);">Entrada</span>' : l.tipo === 'poupanca' ? '<span style="color:#60a5fa;">Poupan\u00e7a</span>' : '<span style="color:var(--red);">Despesa</span>';
@@ -3694,6 +3698,7 @@ function renderTracking() {
       html += '<td>' + (l.descricao || '\u2014') + '</td>';
       html += '<td style="color:' + valorColor + ';font-weight:600;">' + valorPrefix + fmtCurrency(l.valor) + '</td>';
       html += '<td style="color:' + cfg.color + ';">' + (l.tipo === 'despesa' ? cfg.label : '\u2014') + '</td>';
+      html += '<td style="font-size:0.75rem;">' + (l.subcategoria || '\u2014') + '</td>';
       html += '<td>' + (l.pagamento || '\u2014') + '</td>';
       html += '<td><button class="btn btn-ghost btn-sm" onclick="editLancamento(\'' + l.id + '\')">\u270e</button><button class="btn btn-ghost btn-sm" style="color:var(--red);" onclick="deleteLancamento(\'' + l.id + '\')">\u2715</button></td></tr>';
     });
@@ -3723,15 +3728,18 @@ function openLancamentoModal(editId) {
 
   var tipoOptions = '<option value="despesa">Despesa</option><option value="entrada">Entrada</option><option value="poupanca">Poupan\u00e7a</option>';
 
+  var subcatOptions = items.map(function(it) { return '<option value="' + it.nome + '">' + it.nome + '</option>'; }).join('');
+
   var html = '<div class="modal-overlay open" id="lancamento-modal" onclick="if(event.target===this)this.classList.remove(\'open\')">';
-  html += '<div class="modal" style="max-width:500px;">';
+  html += '<div class="modal" style="max-width:550px;">';
   html += '<div class="modal-header"><h2>' + (lanc ? 'Editar' : 'Novo') + ' Lan\u00e7amento</h2><button class="btn btn-ghost btn-icon" onclick="document.getElementById(\'lancamento-modal\').remove()">\u2715</button></div>';
   html += '<div class="row"><div class="field"><label>Tipo</label><select id="lanc-tipo" onchange="toggleLancCat()">' + tipoOptions + '</select></div>';
   html += '<div class="field"><label>Data</label><input type="date" id="lanc-data" value="' + (lanc ? lanc.data : isoDate(new Date())) + '"></div>';
   html += '<div class="field"><label>Valor (R$)</label><input type="text" id="lanc-valor" value="' + (lanc ? fmtCurrency(lanc.valor) : '') + '" oninput="formatCurrencyInput(this)" placeholder="0,00"></div></div>';
   html += '<div class="field" style="margin-top:0.75rem;"><label>Descri\u00e7\u00e3o</label><input type="text" id="lanc-desc" value="' + (lanc ? lanc.descricao : '') + '" placeholder="Ex: Supermercado"></div>';
   html += '<div class="row" style="margin-top:0.75rem;"><div class="field" id="lanc-cat-wrap"><label>Categoria</label><select id="lanc-cat">' + catOptions + '</select></div>';
-  html += '<div class="field"><label>Forma de Pagamento</label><select id="lanc-pag"><option value="">\u2014</option>' + pagOptions + '</select></div></div>';
+  html += '<div class="field" id="lanc-subcat-wrap"><label>Subcategoria (item)</label><select id="lanc-subcat"><option value="">\u2014</option>' + subcatOptions + '</select></div></div>';
+  html += '<div class="field" style="margin-top:0.75rem;"><label>Forma de Pagamento</label><select id="lanc-pag"><option value="">\u2014</option>' + pagOptions + '</select></div>';
   html += '<div style="margin-top:1.5rem;text-align:right;"><button class="btn btn-primary" onclick="salvarLancamento(\'' + (editId || '') + '\')">Salvar</button></div>';
   html += '</div></div>';
 
@@ -3739,6 +3747,7 @@ function openLancamentoModal(editId) {
   if (lanc) {
     document.getElementById('lanc-tipo').value = lanc.tipo || 'despesa';
     document.getElementById('lanc-cat').value = lanc.categoria || 'sobrevivencia';
+    document.getElementById('lanc-subcat').value = lanc.subcategoria || '';
     document.getElementById('lanc-pag').value = lanc.pagamento || '';
   }
   toggleLancCat();
@@ -3749,7 +3758,9 @@ function editLancamento(id) { openLancamentoModal(id); }
 function toggleLancCat() {
   var tipo = document.getElementById('lanc-tipo').value;
   var catWrap = document.getElementById('lanc-cat-wrap');
+  var subcatWrap = document.getElementById('lanc-subcat-wrap');
   if (catWrap) catWrap.style.display = tipo === 'despesa' ? '' : 'none';
+  if (subcatWrap) subcatWrap.style.display = tipo === 'despesa' ? '' : 'none';
 }
 
 function salvarLancamento(editId) {
@@ -3758,15 +3769,16 @@ function salvarLancamento(editId) {
   var valor = parseCurrency(document.getElementById('lanc-valor').value);
   var desc = document.getElementById('lanc-desc').value.trim();
   var cat = tipo === 'despesa' ? document.getElementById('lanc-cat').value : '';
+  var subcat = document.getElementById('lanc-subcat') ? document.getElementById('lanc-subcat').value : '';
   var pag = document.getElementById('lanc-pag').value;
 
   if (!data || !valor) { alert('Preencha data e valor.'); return; }
 
   if (editId) {
     var lanc = trackingData.lancamentos.find(function(l) { return l.id === editId; });
-    if (lanc) { lanc.tipo = tipo; lanc.data = data; lanc.valor = valor; lanc.descricao = desc; lanc.categoria = cat; lanc.pagamento = pag; }
+    if (lanc) { lanc.tipo = tipo; lanc.data = data; lanc.valor = valor; lanc.descricao = desc; lanc.categoria = cat; lanc.subcategoria = subcat; lanc.pagamento = pag; }
   } else {
-    trackingData.lancamentos.push({ id: 'lanc_' + Date.now(), tipo: tipo, data: data, valor: valor, descricao: desc, categoria: cat, pagamento: pag });
+    trackingData.lancamentos.push({ id: 'lanc_' + Date.now(), tipo: tipo, data: data, valor: valor, descricao: desc, categoria: cat, subcategoria: subcat, pagamento: pag });
   }
 
   document.getElementById('lancamento-modal').remove();
@@ -3782,50 +3794,130 @@ function deleteLancamento(id) {
 }
 
 function openSheetsImport() {
+  var pagOptions = accounts.map(function(a) { return a.nome; });
+  var itemNames = items.map(function(it) { return it.nome; });
+
   var html = '<div class="modal-overlay open" id="sheets-modal" onclick="if(event.target===this)this.classList.remove(\'open\')">';
-  html += '<div class="modal" style="max-width:550px;">';
-  html += '<div class="modal-header"><h2>Importar do Google Sheets</h2><button class="btn btn-ghost btn-icon" onclick="document.getElementById(\'sheets-modal\').remove()">✕</button></div>';
-  html += '<div class="field"><label>URL da Planilha (deve estar pública)</label>';
+  html += '<div class="modal" style="max-width:650px; max-height:90vh; overflow-y:auto;">';
+  html += '<div class="modal-header"><h2>Importar do Google Sheets</h2><button class="btn btn-ghost btn-icon" onclick="document.getElementById(\'sheets-modal\').remove()">\u2715</button></div>';
+
+  // Step 1: URL
+  html += '<div class="field"><label>URL da Planilha (deve estar p\u00fablica)</label>';
   html += '<input type="text" id="sheets-url" value="' + (trackingData.sheetsUrl || '') + '" placeholder="https://docs.google.com/spreadsheets/d/..."></div>';
+
+  // Requisitos atualizados
   html += '<div style="margin-top:0.75rem;font-size:0.78rem;color:var(--muted);background:rgba(212,175,55,0.05);padding:0.75rem;border-radius:6px;">';
-  html += '<strong style="color:var(--primary);">Requisitos:</strong><br>';
-  html += '• Planilha compartilhada como "Qualquer pessoa com o link pode ver"<br>';
-  html += '• Aba chamada exatamente <code>Lancamentos</code> (sem acento)<br>';
-  html += '• Colunas: A=Data (DD/MM/AAAA), B=Descrição, C=Valor (número), D=Categoria, E=Pagamento<br>';
-  html += '• Primeira linha = cabeçalho (será ignorada)</div>';
-  html += '<div style="margin-top:1.5rem;text-align:right;"><button class="btn btn-primary" onclick="importFromSheets()">Sincronizar</button></div>';
+  html += '<strong style="color:var(--primary);">Passo a passo:</strong><br>';
+  html += '1. Crie ou abra uma planilha no Google Sheets<br>';
+  html += '2. Compartilhe como <strong>"Qualquer pessoa com o link pode ver"</strong><br>';
+  html += '3. Crie uma aba chamada exatamente <code>Lancamentos</code> (sem acento)<br>';
+  html += '4. Clique em <strong>"Preparar Planilha"</strong> abaixo para ver os cabe\u00e7alhos corretos<br>';
+  html += '5. Preencha os dados seguindo o formato indicado<br>';
+  html += '6. Volte aqui e clique em <strong>"Sincronizar"</strong></div>';
+
+  // Formato da planilha
+  html += '<div style="margin-top:1rem;font-size:0.78rem;background:var(--card2);padding:0.75rem;border-radius:6px;border:1px solid var(--border);">';
+  html += '<strong style="color:var(--primary);">Formato da Planilha Google Sheets</strong><br>';
+  html += '<span style="color:var(--muted);">A planilha deve estar compartilhada como "Qualquer pessoa com o link pode ver".</span><br>';
+  html += '<span style="color:var(--muted);">Nome da aba: <strong>Lancamentos</strong> (exatamente assim, sem acento)</span><br><br>';
+  html += '<table style="width:100%;font-size:0.75rem;border-collapse:collapse;">';
+  html += '<thead><tr style="background:var(--bg);"><th style="padding:4px 6px;border:1px solid var(--border);color:var(--primary);">Coluna</th><th style="padding:4px 6px;border:1px solid var(--border);color:var(--primary);">Formato</th><th style="padding:4px 6px;border:1px solid var(--border);color:var(--primary);">Exemplo</th></tr></thead>';
+  html += '<tbody>';
+  html += '<tr><td style="padding:4px 6px;border:1px solid var(--border);">A - Data</td><td style="padding:4px 6px;border:1px solid var(--border);">DD/MM/AAAA</td><td style="padding:4px 6px;border:1px solid var(--border);">01/06/2026</td></tr>';
+  html += '<tr><td style="padding:4px 6px;border:1px solid var(--border);">B - Descri\u00e7\u00e3o</td><td style="padding:4px 6px;border:1px solid var(--border);">Texto livre</td><td style="padding:4px 6px;border:1px solid var(--border);">Supermercado</td></tr>';
+  html += '<tr><td style="padding:4px 6px;border:1px solid var(--border);">C - Valor</td><td style="padding:4px 6px;border:1px solid var(--border);">N\u00famero (sem R$)</td><td style="padding:4px 6px;border:1px solid var(--border);">450,00</td></tr>';
+  html += '<tr><td style="padding:4px 6px;border:1px solid var(--border);">D - Categoria</td><td style="padding:4px 6px;border:1px solid var(--border);">Texto (ver abaixo)</td><td style="padding:4px 6px;border:1px solid var(--border);">Sobreviv\u00eancia</td></tr>';
+  html += '<tr><td style="padding:4px 6px;border:1px solid var(--border);">E - Subcategoria</td><td style="padding:4px 6px;border:1px solid var(--border);">Nome de item do fluxo</td><td style="padding:4px 6px;border:1px solid var(--border);">Condom\u00ednio</td></tr>';
+  html += '<tr><td style="padding:4px 6px;border:1px solid var(--border);">F - Pagamento</td><td style="padding:4px 6px;border:1px solid var(--border);">Nome da conta/cart\u00e3o</td><td style="padding:4px 6px;border:1px solid var(--border);">Nubank</td></tr>';
+  html += '<tr><td style="padding:4px 6px;border:1px solid var(--border);">G - Tipo</td><td style="padding:4px 6px;border:1px solid var(--border);">Despesa, Entrada ou Poupan\u00e7a</td><td style="padding:4px 6px;border:1px solid var(--border);">Despesa</td></tr>';
+  html += '</tbody></table><br>';
+  html += '<strong style="color:var(--primary);">Categorias v\u00e1lidas:</strong> Sobreviv\u00eancia, Necessidades, Aperfei\u00e7oamento, D\u00edvidas, Conforto/Sup\u00e9rfluo<br>';
+  html += '<strong style="color:var(--primary);">Subcategorias v\u00e1lidas:</strong> Qualquer nome de item cadastrado no fluxo de caixa<br>';
+  html += '<strong style="color:var(--primary);">Coluna G (Tipo):</strong> Opcional. Se omitida, assume "Despesa".<br>';
+  html += '<strong style="color:var(--red);">Importante:</strong> A primeira linha deve ser o cabe\u00e7alho (ser\u00e1 ignorada).';
+  html += '</div>';
+
+  // Buttons
+  html += '<div style="margin-top:1.5rem;display:flex;gap:0.75rem;justify-content:flex-end;flex-wrap:wrap;">';
+  html += '<button class="btn btn-outline" onclick="prepararPlanilha()">Preparar Planilha</button>';
+  html += '<button class="btn btn-primary" onclick="importFromSheets()">Sincronizar</button>';
+  html += '</div>';
+
   html += '</div></div>';
   document.body.insertAdjacentHTML('beforeend', html);
 }
+
+function prepararPlanilha() {
+  var cabecalhos = 'Data\tDescri\u00e7\u00e3o\tValor\tCategoria\tSubcategoria\tPagamento\tTipo';
+  
+  var categorias = 'Sobreviv\u00eancia, Necessidades, Aperfei\u00e7oamento, D\u00edvidas, Conforto/Sup\u00e9rfluo';
+  var subcategorias = items.map(function(it) { return it.nome; }).join(', ');
+  var pagamentos = accounts.map(function(a) { return a.nome; }).join(', ');
+  var tipos = 'Despesa, Entrada, Poupan\u00e7a';
+
+  navigator.clipboard.writeText(cabecalhos).then(function() {
+    var info = '<div class="modal-overlay open" id="prep-modal" onclick="if(event.target===this)this.classList.remove(\'open\')">';
+    info += '<div class="modal" style="max-width:600px; max-height:85vh; overflow-y:auto;">';
+    info += '<div class="modal-header"><h2>Planilha Preparada!</h2><button class="btn btn-ghost btn-icon" onclick="document.getElementById(\'prep-modal\').remove()">\u2715</button></div>';
+    info += '<div style="background:rgba(34,197,94,0.1);padding:0.75rem;border-radius:6px;margin-bottom:1rem;">';
+    info += '<strong style="color:var(--green);">\u2713 Cabe\u00e7alhos copiados!</strong><br>';
+    info += '<span style="font-size:0.8rem;">Cole na c\u00e9lula A1 da sua aba "Lancamentos" (Ctrl+V)</span></div>';
+    
+    info += '<div style="font-size:0.8rem;">';
+    info += '<strong style="color:var(--primary);">Valida\u00e7\u00f5es de dados para configurar manualmente:</strong><br><br>';
+    
+    info += '<strong>Coluna D (Categoria):</strong><br>';
+    info += '<code style="font-size:0.72rem;background:var(--card2);padding:2px 6px;border-radius:3px;">' + categorias + '</code><br><br>';
+    
+    info += '<strong>Coluna E (Subcategoria) - nomes dos itens do fluxo:</strong><br>';
+    info += '<code style="font-size:0.72rem;background:var(--card2);padding:2px 6px;border-radius:3px;word-break:break-all;">' + (subcategorias || 'Nenhum item cadastrado ainda') + '</code><br><br>';
+    
+    info += '<strong>Coluna F (Pagamento) - contas e cart\u00f5es:</strong><br>';
+    info += '<code style="font-size:0.72rem;background:var(--card2);padding:2px 6px;border-radius:3px;">' + (pagamentos || 'Nenhuma conta cadastrada ainda') + '</code><br><br>';
+    
+    info += '<strong>Coluna G (Tipo):</strong><br>';
+    info += '<code style="font-size:0.72rem;background:var(--card2);padding:2px 6px;border-radius:3px;">' + tipos + '</code><br><br>';
+    
+    info += '<span style="color:var(--muted);">Dica: No Google Sheets, selecione a coluna inteira (ex: D2:D1000), v\u00e1 em Dados > Valida\u00e7\u00e3o de dados > Lista de itens e cole os valores acima separados por v\u00edrgula.</span>';
+    info += '</div>';
+    
+    info += '<div style="margin-top:1rem;text-align:right;"><button class="btn btn-primary" onclick="document.getElementById(\'prep-modal\').remove()">Entendi</button></div>';
+    info += '</div></div>';
+    document.body.insertAdjacentHTML('beforeend', info);
+  }).catch(function() {
+    alert('Cabe\u00e7alhos: ' + cabecalhos + '\n\nCopie manualmente e cole na c\u00e9lula A1.');
+  });
+}
+
+var _pendingImportData = [];
 
 async function importFromSheets() {
   var url = document.getElementById('sheets-url').value.trim();
   if (!url) { alert('Cole a URL da planilha.'); return; }
 
-  // Extract spreadsheet ID
   var match = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
-  if (!match) { alert('URL inválida. Cole o link completo da planilha.'); return; }
+  if (!match) { alert('URL inv\u00e1lida. Cole o link completo da planilha.'); return; }
   var sheetId = match[1];
   trackingData.sheetsUrl = url;
 
-  // Fetch CSV via public export
   var csvUrl = 'https://docs.google.com/spreadsheets/d/' + sheetId + '/gviz/tq?tqx=out:csv&sheet=Lancamentos';
 
   try {
     var resp = await fetch(csvUrl);
-    if (!resp.ok) throw new Error('Erro ao acessar planilha. Verifique se está pública.');
+    if (!resp.ok) throw new Error('Erro ao acessar planilha. Verifique se est\u00e1 p\u00fablica.');
     var text = await resp.text();
     var lines = text.split('\n').filter(function(l) { return l.trim(); });
     if (lines.length <= 1) { alert('Planilha vazia ou sem dados.'); return; }
 
-    var imported = 0;
     var catMap = {
-      'sobrevivencia': 'sobrevivencia', 'sobrevivência': 'sobrevivencia',
+      'sobrevivencia': 'sobrevivencia', 'sobreviv\u00eancia': 'sobrevivencia',
       'necessidades': 'necessidades', 'necessidade': 'necessidades',
-      'aperfeicoamento': 'aperfeicoamento', 'aperfeiçoamento': 'aperfeicoamento',
-      'dividas': 'dividas', 'dívidas': 'dividas', 'dívida': 'dividas',
-      'conforto': 'conforto', 'conforto/supérfluo': 'conforto', 'supérfluo': 'conforto', 'superfluo': 'conforto'
+      'aperfeicoamento': 'aperfeicoamento', 'aperfei\u00e7oamento': 'aperfeicoamento',
+      'dividas': 'dividas', 'd\u00edvidas': 'dividas', 'd\u00edvida': 'dividas',
+      'conforto': 'conforto', 'conforto/sup\u00e9rfluo': 'conforto', 'sup\u00e9rfluo': 'conforto', 'superfluo': 'conforto'
     };
+
+    _pendingImportData = [];
 
     for (var i = 1; i < lines.length; i++) {
       var cols = parseCSVLine(lines[i]);
@@ -3835,11 +3927,11 @@ async function importFromSheets() {
       var desc = cols[1].replace(/"/g, '').trim();
       var valorRaw = cols[2].replace(/"/g, '').trim();
       var catRaw = cols.length > 3 ? cols[3].replace(/"/g, '').trim().toLowerCase() : '';
-      var pagRaw = cols.length > 4 ? cols[4].replace(/"/g, '').trim() : '';
-      var tipoRaw = cols.length > 5 ? cols[5].replace(/"/g, '').trim().toLowerCase() : 'despesa';
+      var subcatRaw = cols.length > 4 ? cols[4].replace(/"/g, '').trim() : '';
+      var pagRaw = cols.length > 5 ? cols[5].replace(/"/g, '').trim() : '';
+      var tipoRaw = cols.length > 6 ? cols[6].replace(/"/g, '').trim().toLowerCase() : 'despesa';
       var tipo = tipoRaw === 'entrada' ? 'entrada' : tipoRaw === 'poupanca' || tipoRaw === 'poupan\u00e7a' ? 'poupanca' : 'despesa';
 
-      // Parse date DD/MM/YYYY to YYYY-MM-DD
       var dateParts = dataRaw.split('/');
       var dataISO = '';
       if (dateParts.length === 3) {
@@ -3851,31 +3943,113 @@ async function importFromSheets() {
 
       var cat = catMap[catRaw] || 'sem_categoria';
 
-      // Check if already imported (same date + desc + valor)
       var exists = trackingData.lancamentos.some(function(l) {
         return l.data === dataISO && l.descricao === desc && Math.abs(l.valor - valor) < 0.01;
       });
       if (exists) continue;
 
-      trackingData.lancamentos.push({
-        id: 'lanc_' + Date.now() + '_' + i,
+      _pendingImportData.push({
         tipo: tipo,
         data: dataISO,
         descricao: desc,
         valor: valor,
         categoria: tipo === 'despesa' ? cat : '',
+        subcategoria: subcatRaw,
         pagamento: pagRaw
       });
-      imported++;
     }
 
-    document.getElementById('sheets-modal').remove();
-    renderTracking();
-    saveToStorage();
-    alert(imported + ' lançamento(s) importado(s) com sucesso!' + (imported === 0 ? ' (todos já existiam)' : ''));
+    if (_pendingImportData.length === 0) {
+      alert('Nenhum dado novo encontrado (todos j\u00e1 existiam ou a planilha est\u00e1 vazia).');
+      return;
+    }
+
+    showImportPreview();
+
   } catch(e) {
     alert('Erro: ' + e.message);
   }
+}
+
+function showImportPreview() {
+  document.getElementById('sheets-modal').remove();
+
+  var catLabels = {
+    sobrevivencia: 'Sobreviv\u00eancia', necessidades: 'Necessidades',
+    aperfeicoamento: 'Aperfei\u00e7oamento', dividas: 'D\u00edvidas',
+    conforto: 'Conforto/Sup\u00e9rfluo', sem_categoria: 'Sem categoria'
+  };
+
+  var html = '<div class="modal-overlay open" id="import-preview-modal" onclick="if(event.target===this)this.classList.remove(\'open\')">';
+  html += '<div class="modal" style="max-width:900px; max-height:90vh; overflow-y:auto;">';
+  html += '<div class="modal-header"><h2>Confirmar Importa\u00e7\u00e3o (' + _pendingImportData.length + ' lan\u00e7amentos)</h2><button class="btn btn-ghost btn-icon" onclick="document.getElementById(\'import-preview-modal\').remove()">\u2715</button></div>';
+  html += '<div style="font-size:0.78rem;color:var(--muted);margin-bottom:0.75rem;">Revise os dados abaixo. Voc\u00ea pode corrigir valores clicando nas c\u00e9lulas edit\u00e1veis antes de confirmar.</div>';
+
+  html += '<div style="overflow-x:auto;"><table class="tracking-table" style="font-size:0.75rem;">';
+  html += '<thead><tr><th>Tipo</th><th>Data</th><th>Descri\u00e7\u00e3o</th><th>Valor</th><th>Categoria</th><th>Subcategoria</th><th>Pagamento</th><th></th></tr></thead><tbody>';
+
+  _pendingImportData.forEach(function(row, idx) {
+    var tipoLabel = row.tipo === 'entrada' ? '<span style="color:var(--green);">Entrada</span>' : row.tipo === 'poupanca' ? '<span style="color:#60a5fa;">Poupan\u00e7a</span>' : '<span style="color:var(--red);">Despesa</span>';
+    var dataFormatted = row.data ? new Date(row.data + 'T00:00').toLocaleDateString('pt-BR') : '\u2014';
+    html += '<tr id="import-row-' + idx + '">';
+    html += '<td>' + tipoLabel + '</td>';
+    html += '<td>' + dataFormatted + '</td>';
+    html += '<td contenteditable="true" class="import-edit" data-field="descricao" data-idx="' + idx + '">' + (row.descricao || '') + '</td>';
+    html += '<td style="font-weight:600;">R$ ' + row.valor.toFixed(2).replace('.', ',') + '</td>';
+    html += '<td>' + (catLabels[row.categoria] || row.categoria || '\u2014') + '</td>';
+    html += '<td contenteditable="true" class="import-edit" data-field="subcategoria" data-idx="' + idx + '">' + (row.subcategoria || '') + '</td>';
+    html += '<td>' + (row.pagamento || '\u2014') + '</td>';
+    html += '<td><button class="btn btn-ghost btn-sm" style="color:var(--red);font-size:0.7rem;" onclick="removeImportRow(' + idx + ')">\u2715</button></td>';
+    html += '</tr>';
+  });
+
+  html += '</tbody></table></div>';
+
+  html += '<div style="margin-top:1rem;display:flex;gap:0.75rem;justify-content:flex-end;">';
+  html += '<button class="btn btn-outline" onclick="document.getElementById(\'import-preview-modal\').remove()">Cancelar</button>';
+  html += '<button class="btn btn-primary" onclick="confirmarImportacao()">Confirmar Importa\u00e7\u00e3o</button>';
+  html += '</div>';
+
+  html += '</div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function removeImportRow(idx) {
+  _pendingImportData[idx] = null;
+  var row = document.getElementById('import-row-' + idx);
+  if (row) row.style.display = 'none';
+}
+
+function confirmarImportacao() {
+  document.querySelectorAll('.import-edit').forEach(function(el) {
+    var idx = parseInt(el.getAttribute('data-idx'));
+    var field = el.getAttribute('data-field');
+    if (_pendingImportData[idx]) {
+      _pendingImportData[idx][field] = el.textContent.trim();
+    }
+  });
+
+  var imported = 0;
+  _pendingImportData.forEach(function(row, i) {
+    if (!row) return;
+    trackingData.lancamentos.push({
+      id: 'lanc_' + Date.now() + '_' + i,
+      tipo: row.tipo,
+      data: row.data,
+      descricao: row.descricao,
+      valor: row.valor,
+      categoria: row.categoria,
+      subcategoria: row.subcategoria || '',
+      pagamento: row.pagamento
+    });
+    imported++;
+  });
+
+  document.getElementById('import-preview-modal').remove();
+  _pendingImportData = [];
+  renderTracking();
+  saveToStorage();
+  alert(imported + ' lan\u00e7amento(s) importado(s) com sucesso!');
 }
 
 function parseCSVLine(line) {
