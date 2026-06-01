@@ -1083,6 +1083,23 @@
     background: linear-gradient(135deg, #10b981, #059669);
     color: #fff;
   }
+
+  /* === SIM LOCK & PRIMARY CHECKBOXES === */
+  .sim-checkbox-group { display:none; gap:0.5rem; align-items:center; margin-right:0.5rem; }
+  .equipe-mode .sim-checkbox-group { display:inline-flex !important; }
+  .sim-checkbox-group label { display:flex; align-items:center; gap:0.25rem; font-size:0.72rem; color:var(--muted); cursor:pointer; padding:0.2rem 0.5rem; border-radius:4px; border:1px solid transparent; transition:all 0.15s; user-select:none; }
+  .sim-checkbox-group label:hover { border-color:var(--border); background:rgba(255,255,255,0.03); }
+  .sim-checkbox-group input[type="checkbox"] { width:14px; height:14px; accent-color:var(--primary); cursor:pointer; }
+  .sim-checkbox-group label.active-lock { border-color:var(--red); background:rgba(239,68,68,0.08); color:var(--red); }
+  .sim-checkbox-group label.active-primary { border-color:var(--primary); background:rgba(212,175,55,0.08); color:var(--primary); }
+  .sim-card.locked { opacity:0.85; }
+  .sim-card.locked .sim-card-body { pointer-events:none; }
+  .sim-card.locked input:not(.sim-lock-cb):not(.sim-primary-cb), .sim-card.locked select, .sim-card.locked textarea { pointer-events:none !important; opacity:0.6; }
+  .sim-card.locked button:not([class*="sim-lock"]):not([class*="sim-primary"]) { pointer-events:none; opacity:0.5; }
+  .sim-card-item.locked { opacity:0.85; }
+  .sim-card-item.locked .sim-card-item-body { pointer-events:none; }
+  .sim-card-item.locked input:not(.sim-lock-cb):not(.sim-primary-cb), .sim-card-item.locked select, .sim-card-item.locked textarea { pointer-events:none !important; opacity:0.6; }
+
 </style>
 </head>
 <body>
@@ -1242,6 +1259,13 @@
   </div>
 
 <script>
+// === EQUIPE MODE CHECK (show lock/primary only for consultors) ===
+(function() {
+  if (sessionStorage.getItem('equipe_modo_cliente') === 'true') {
+    document.documentElement.classList.add('equipe-mode');
+  }
+})();
+
 /* ═══════════════════════════════════════════════════════════
    ESTADO
 ═══════════════════════════════════════════════════════════ */
@@ -2495,6 +2519,19 @@ function fmtN(n) {
 /* ═══════════════════════════════════════════════════════════
    RENDER LIST
 ═══════════════════════════════════════════════════════════ */
+
+// === LOCK & PRIMARY SIMULATION HELPERS ===
+function toggleCompLock(id, ev) {
+  ev.stopPropagation();
+  var comp = comparisons.find(function(c) { return c.id === id; });
+  if (comp) { comp.locked = !comp.locked; saveComps(); renderList(); }
+}
+function toggleCompPrimary(id, ev) {
+  ev.stopPropagation();
+  comparisons.forEach(function(c) { c.primary = (c.id === id) ? !c.primary : false; });
+  saveComps(); renderList();
+}
+
 function renderList() {
   const container = document.getElementById('list-container');
   const empty = document.getElementById('empty-state');
@@ -2509,7 +2546,7 @@ function renderList() {
   container.querySelectorAll('.comp-card').forEach(el=>el.remove());
   comparisons.forEach(comp => {
     const card = document.createElement('div');
-    card.className = 'comp-card';
+    card.className = 'comp-card' + (comp.locked ? ' locked' : '');
     card.id = 'card-'+comp.id;
     const winner = comp.result?.ranking?.[0];
     const date = new Date(comp.updatedAt).toLocaleDateString('pt-BR');
@@ -2521,6 +2558,10 @@ function renderList() {
           <div class="comp-meta">${comp.products.length} produtos · ${date}</div>
         </div>
         ${winner ? `<div class="winner-badge">🏆 ${escHtml(winner.name)}</div>` : ''}
+        <div class="sim-checkbox-group" onclick="event.stopPropagation()">
+          <label class="${comp.locked ? 'active-lock' : ''}" title="Bloquear edição"><input type="checkbox" class="sim-lock-cb" ${comp.locked ? 'checked' : ''} onchange="toggleCompLock(${comp.id}, event)">&#128274;</label>
+          <label class="${comp.primary ? 'active-primary' : ''}" title="Simulação principal"><input type="checkbox" class="sim-primary-cb" ${comp.primary ? 'checked' : ''} onchange="toggleCompPrimary(${comp.id}, event)">&#11088;</label>
+        </div>
         <div class="comp-card-actions" onclick="event.stopPropagation()">
           <button class="btn-icon" onclick="openModal(${comp.id})">✏️ Editar</button>
           <button class="btn-icon pdf" onclick="gerarPdfComp(${comp.id})">📄 PDF</button>
