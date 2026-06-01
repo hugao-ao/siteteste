@@ -159,6 +159,23 @@
 
 
 
+
+  /* === LANCAMENTOS TABLE ENHANCEMENTS === */
+  .lanc-table-wrap { overflow-x:auto; border:1px solid var(--border); border-radius:6px; margin-top:0.75rem; max-width:100%; }
+  .lanc-table { width:max-content; min-width:100%; border-collapse:collapse; font-size:0.8rem; table-layout:auto; }
+  .lanc-table th { background:var(--card2); color:var(--primary); padding:0.5rem; text-align:left; font-size:0.72rem; text-transform:uppercase; position:relative; white-space:nowrap; }
+  .lanc-table td { padding:0.4rem 0.5rem; border-bottom:1px solid rgba(212,175,55,0.08); white-space:nowrap; }
+  .lanc-table .col-resize-handle { position:absolute; right:0; top:0; bottom:0; width:4px; cursor:col-resize; background:transparent; z-index:10; user-select:none; }
+  .lanc-table .col-resize-handle:hover, .lanc-table .col-resize-handle.resizing { background:var(--gold-dim); opacity:0.7; }
+  .lanc-check { width:16px; height:16px; accent-color:var(--primary); cursor:pointer; }
+  .lanc-bulk-actions { display:flex; align-items:center; gap:0.5rem; margin-bottom:0.5rem; }
+  .lanc-bulk-actions button { font-size:0.75rem; padding:0.3rem 0.6rem; }
+  /* Import preview table improvements */
+  .import-preview-wrap { overflow-x:auto; border:1px solid var(--border); border-radius:6px; }
+  .import-preview-table { width:max-content; min-width:100%; border-collapse:collapse; font-size:0.75rem; }
+  .import-preview-table th { background:var(--card2); color:var(--primary); padding:0.5rem; text-align:left; font-size:0.7rem; text-transform:uppercase; white-space:nowrap; }
+  .import-preview-table td { padding:0.4rem 0.5rem; border-bottom:1px solid rgba(212,175,55,0.08); }
+  .import-preview-table select { font-size:0.72rem; padding:0.2rem 0.3rem; background:var(--card2); border:1px solid var(--border); color:var(--fg); border-radius:4px; }
   .import-edit { cursor:text; border-bottom:1px dashed var(--primary); min-width:60px; }
   .import-edit:focus { outline:none; background:rgba(212,175,55,0.1); }
   .table-wrap { overflow-x: auto; border-radius: var(--radius); border: 1px solid var(--border); }
@@ -498,25 +515,11 @@
       </div>
       <div class="table-wrap" id="items-table" style="display:none;">
         <table>
-          <thead>
-            <tr>
-              <th>Nome</th>
-              <th>Tipo</th>
-              <th>Categoria</th>
-              <th>Valor</th>
-              <th>Pagamento</th>
-              <th>Recorrência</th>
-              <th>Início</th>
-              <th>Fim</th>
-              <th>Alterável</th>
-              <th>Disposição</th>
-              <th>Importância</th>
-              <th>Conforto</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody id="items-tbody"></tbody>
-        </table>
+              <tr><th>Coluna</th><th>Formato</th><th>Exemplo</th></tr>
+              <tr><td>A - Data</td><td>DD/MM/AAAA</td><td>01/06/2026</td></tr>
+              <tr><td>B - Descri&ccedil;&atilde;o</td><td>Texto livre</td><td>Supermercado</td></tr>
+              <tr><td>C - Valor</td><td>N&uacute;mero (sem R$)</td><td>450,00</td></tr>
+            </table>
       </div>
     </div>
     </div>
@@ -3684,31 +3687,99 @@ function renderTracking() {
     html += '</div>'; // evo-container
   }
 
-  // Lancamentos list
-  html += '<div style="margin-top:1.5rem;"><h3 style="font-size:0.9rem;margin-bottom:0.5rem;">Lançamentos do mês (' + lancMes.length + ')</h3>';
+  // Lancamentos list with checkboxes, bulk delete, resizable columns, horizontal scroll
+  html += '<div style="margin-top:1.5rem;">';
+  html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.5rem;">';
+  html += '<h3 style="font-size:0.9rem;margin:0;">Lan\u00e7amentos do m\u00eas (' + lancMes.length + ')</h3>';
+  html += '</div>';
   if (lancMes.length > 0) {
-    html += '<table class="tracking-table"><thead><tr><th>Tipo</th><th>Data</th><th>Descri\u00e7\u00e3o</th><th>Valor</th><th>Categoria</th><th>Subcategoria</th><th>Pagamento</th><th></th></tr></thead><tbody>';
+    html += '<div class="lanc-bulk-actions">';
+    html += '<label style="display:flex;align-items:center;gap:0.3rem;font-size:0.75rem;color:var(--muted);cursor:pointer;"><input type="checkbox" class="lanc-check" id="lanc-select-all" onchange="toggleSelectAllLanc(this)"> Selecionar todos</label>';
+    html += '<button class="btn btn-ghost btn-sm" style="color:var(--red);font-size:0.72rem;" onclick="deleteLancamentosSelecionados()">\u2715 Excluir selecionados</button>';
+    html += '</div>';
+    html += '<div class="lanc-table-wrap">';
+    html += '<table class="lanc-table" id="lanc-table-main"><thead><tr>';
+    html += '<th style="width:30px;"></th>';
+    html += '<th>Tipo</th><th>Data</th><th>Descri\u00e7\u00e3o</th><th>Valor</th><th>Categoria</th><th>Subcategoria</th><th>Pagamento</th><th>A\u00e7\u00f5es</th>';
+    html += '</tr></thead><tbody>';
     lancMes.sort(function(a,b) { return a.data.localeCompare(b.data); }).forEach(function(l) {
       var cfg = catConfig[l.categoria] || { label: l.categoria || '\u2014', color: '#888' };
       var tipoLabel = l.tipo === 'entrada' ? '<span style="color:var(--green);">Entrada</span>' : l.tipo === 'poupanca' ? '<span style="color:#60a5fa;">Poupan\u00e7a</span>' : '<span style="color:var(--red);">Despesa</span>';
       var valorColor = l.tipo === 'entrada' ? 'var(--green)' : 'var(--red)';
       var valorPrefix = l.tipo === 'entrada' ? '+' : '-';
-      html += '<tr><td>' + tipoLabel + '</td>';
+      html += '<tr data-lanc-id="' + l.id + '">';
+      html += '<td><input type="checkbox" class="lanc-check lanc-row-check" value="' + l.id + '"></td>';
+      html += '<td>' + tipoLabel + '</td>';
       html += '<td>' + (l.data ? new Date(l.data + 'T00:00').toLocaleDateString('pt-BR') : '\u2014') + '</td>';
       html += '<td>' + (l.descricao || '\u2014') + '</td>';
       html += '<td style="color:' + valorColor + ';font-weight:600;">' + valorPrefix + fmtCurrency(l.valor) + '</td>';
       html += '<td style="color:' + cfg.color + ';">' + (l.tipo === 'despesa' ? cfg.label : '\u2014') + '</td>';
       html += '<td style="font-size:0.75rem;">' + (l.subcategoria || '\u2014') + '</td>';
       html += '<td>' + (l.pagamento || '\u2014') + '</td>';
-      html += '<td><button class="btn btn-ghost btn-sm" onclick="editLancamento(\'' + l.id + '\')">\u270e</button><button class="btn btn-ghost btn-sm" style="color:var(--red);" onclick="deleteLancamento(\'' + l.id + '\')">\u2715</button></td></tr>';
+      html += '<td><button class="btn btn-ghost btn-sm" onclick="editLancamento(\'' + l.id + '\')">\u270e</button><button class="btn btn-ghost btn-sm" style="color:var(--red);" onclick="deleteLancamento(\'' + l.id + '\')">\u2715</button></td>';
+      html += '</tr>';
     });
-    html += '</tbody></table>';
+    html += '</tbody></table></div>';
   } else {
-    html += '<div style="font-size:0.82rem;color:var(--muted);">Nenhum lançamento neste mês.</div>';
+    html += '<div style="font-size:0.82rem;color:var(--muted);">Nenhum lan\u00e7amento neste m\u00eas.</div>';
   }
   html += '</div>';
 
   container.innerHTML = html;
+  // Initialize column resize on lancamentos table
+  if (document.getElementById('lanc-table-main')) initLancColResize('lanc-table-main');
+}
+
+function toggleSelectAllLanc(masterCb) {
+  document.querySelectorAll('.lanc-row-check').forEach(function(cb) { cb.checked = masterCb.checked; });
+}
+
+function deleteLancamentosSelecionados() {
+  var selected = [];
+  document.querySelectorAll('.lanc-row-check:checked').forEach(function(cb) { selected.push(cb.value); });
+  if (selected.length === 0) { alert('Nenhum lan\u00e7amento selecionado.'); return; }
+  if (!confirm('Excluir ' + selected.length + ' lan\u00e7amento(s) selecionado(s)?')) return;
+  trackingData.lancamentos = trackingData.lancamentos.filter(function(l) { return selected.indexOf(l.id) === -1; });
+  renderTracking();
+  saveToStorage();
+}
+
+function initLancColResize(tableId) {
+  var table = document.getElementById(tableId);
+  if (!table) return;
+  var ths = table.querySelectorAll('thead th');
+  ths.forEach(function(th, colIdx) {
+    if (th.querySelector('.col-resize-handle')) return;
+    var handle = document.createElement('div');
+    handle.className = 'col-resize-handle';
+    th.style.position = 'relative';
+    th.appendChild(handle);
+    var startX, startW;
+    handle.addEventListener('mousedown', function(e) {
+      e.preventDefault();
+      startX = e.clientX;
+      startW = th.offsetWidth;
+      handle.classList.add('resizing');
+      function onMove(ev) {
+        var diff = ev.clientX - startX;
+        var newW = Math.max(40, startW + diff);
+        th.style.width = newW + 'px';
+        th.style.minWidth = newW + 'px';
+        var rows = table.querySelectorAll('tbody tr');
+        rows.forEach(function(row) {
+          var cell = row.cells[colIdx];
+          if (cell) { cell.style.width = newW + 'px'; cell.style.minWidth = newW + 'px'; }
+        });
+      }
+      function onUp() {
+        handle.classList.remove('resizing');
+        document.removeEventListener('mousemove', onMove);
+        document.removeEventListener('mouseup', onUp);
+      }
+      document.addEventListener('mousemove', onMove);
+      document.addEventListener('mouseup', onUp);
+    });
+  });
 }
 
 function navTrackingMonth(dir) {
@@ -3794,99 +3865,41 @@ function deleteLancamento(id) {
 }
 
 function openSheetsImport() {
-  var pagOptions = accounts.map(function(a) { return a.nome; });
-  var itemNames = items.map(function(it) { return it.nome; });
-
   var html = '<div class="modal-overlay open" id="sheets-modal" onclick="if(event.target===this)this.classList.remove(\'open\')">';
-  html += '<div class="modal" style="max-width:650px; max-height:90vh; overflow-y:auto;">';
+  html += '<div class="modal" style="max-width:600px; max-height:90vh; overflow-y:auto;">';
   html += '<div class="modal-header"><h2>Importar do Google Sheets</h2><button class="btn btn-ghost btn-icon" onclick="document.getElementById(\'sheets-modal\').remove()">\u2715</button></div>';
 
-  // Step 1: URL
+  // URL input
   html += '<div class="field"><label>URL da Planilha (deve estar p\u00fablica)</label>';
   html += '<input type="text" id="sheets-url" value="' + (trackingData.sheetsUrl || '') + '" placeholder="https://docs.google.com/spreadsheets/d/..."></div>';
 
-  // Requisitos atualizados
+  // Requisitos simplificados
   html += '<div style="margin-top:0.75rem;font-size:0.78rem;color:var(--muted);background:rgba(212,175,55,0.05);padding:0.75rem;border-radius:6px;">';
   html += '<strong style="color:var(--primary);">Passo a passo:</strong><br>';
   html += '1. Crie ou abra uma planilha no Google Sheets<br>';
   html += '2. Compartilhe como <strong>"Qualquer pessoa com o link pode ver"</strong><br>';
   html += '3. Crie uma aba chamada exatamente <code>Lancamentos</code> (sem acento)<br>';
-  html += '4. Clique em <strong>"Preparar Planilha"</strong> abaixo para ver os cabe\u00e7alhos corretos<br>';
-  html += '5. Preencha os dados seguindo o formato indicado<br>';
-  html += '6. Volte aqui e clique em <strong>"Sincronizar"</strong></div>';
-
-  // Formato da planilha
-  html += '<div style="margin-top:1rem;font-size:0.78rem;background:var(--card2);padding:0.75rem;border-radius:6px;border:1px solid var(--border);">';
-  html += '<strong style="color:var(--primary);">Formato da Planilha Google Sheets</strong><br>';
-  html += '<span style="color:var(--muted);">A planilha deve estar compartilhada como "Qualquer pessoa com o link pode ver".</span><br>';
-  html += '<span style="color:var(--muted);">Nome da aba: <strong>Lancamentos</strong> (exatamente assim, sem acento)</span><br><br>';
+  html += '4. Configure as colunas conforme abaixo:<br><br>';
   html += '<table style="width:100%;font-size:0.75rem;border-collapse:collapse;">';
   html += '<thead><tr style="background:var(--bg);"><th style="padding:4px 6px;border:1px solid var(--border);color:var(--primary);">Coluna</th><th style="padding:4px 6px;border:1px solid var(--border);color:var(--primary);">Formato</th><th style="padding:4px 6px;border:1px solid var(--border);color:var(--primary);">Exemplo</th></tr></thead>';
   html += '<tbody>';
   html += '<tr><td style="padding:4px 6px;border:1px solid var(--border);">A - Data</td><td style="padding:4px 6px;border:1px solid var(--border);">DD/MM/AAAA</td><td style="padding:4px 6px;border:1px solid var(--border);">01/06/2026</td></tr>';
-  html += '<tr><td style="padding:4px 6px;border:1px solid var(--border);">B - Descri\u00e7\u00e3o</td><td style="padding:4px 6px;border:1px solid var(--border);">Texto livre</td><td style="padding:4px 6px;border:1px solid var(--border);">Supermercado</td></tr>';
+  html += '<tr><td style="padding:4px 6px;border:1px solid var(--border);">B - Descri\u00e7\u00e3o</td><td style="padding:4px 6px;border:1px solid var(--border);">Texto livre (opcional)</td><td style="padding:4px 6px;border:1px solid var(--border);">Supermercado</td></tr>';
   html += '<tr><td style="padding:4px 6px;border:1px solid var(--border);">C - Valor</td><td style="padding:4px 6px;border:1px solid var(--border);">N\u00famero (sem R$)</td><td style="padding:4px 6px;border:1px solid var(--border);">450,00</td></tr>';
-  html += '<tr><td style="padding:4px 6px;border:1px solid var(--border);">D - Categoria</td><td style="padding:4px 6px;border:1px solid var(--border);">Texto (ver abaixo)</td><td style="padding:4px 6px;border:1px solid var(--border);">Sobreviv\u00eancia</td></tr>';
-  html += '<tr><td style="padding:4px 6px;border:1px solid var(--border);">E - Subcategoria</td><td style="padding:4px 6px;border:1px solid var(--border);">Nome de item do fluxo</td><td style="padding:4px 6px;border:1px solid var(--border);">Condom\u00ednio</td></tr>';
-  html += '<tr><td style="padding:4px 6px;border:1px solid var(--border);">F - Pagamento</td><td style="padding:4px 6px;border:1px solid var(--border);">Nome da conta/cart\u00e3o</td><td style="padding:4px 6px;border:1px solid var(--border);">Nubank</td></tr>';
-  html += '<tr><td style="padding:4px 6px;border:1px solid var(--border);">G - Tipo</td><td style="padding:4px 6px;border:1px solid var(--border);">Despesa, Entrada ou Poupan\u00e7a</td><td style="padding:4px 6px;border:1px solid var(--border);">Despesa</td></tr>';
   html += '</tbody></table><br>';
-  html += '<strong style="color:var(--primary);">Categorias v\u00e1lidas:</strong> Sobreviv\u00eancia, Necessidades, Aperfei\u00e7oamento, D\u00edvidas, Conforto/Sup\u00e9rfluo<br>';
-  html += '<strong style="color:var(--primary);">Subcategorias v\u00e1lidas:</strong> Qualquer nome de item cadastrado no fluxo de caixa<br>';
-  html += '<strong style="color:var(--primary);">Coluna G (Tipo):</strong> Opcional. Se omitida, assume "Despesa".<br>';
+  html += '5. Preencha os dados na planilha<br>';
+  html += '6. Volte aqui e clique em <strong>"Sincronizar"</strong><br>';
+  html += '7. Complete as informa\u00e7\u00f5es (subcategoria, categoria, etc.) na tabela de revis\u00e3o<br><br>';
   html += '<strong style="color:var(--red);">Importante:</strong> A primeira linha deve ser o cabe\u00e7alho (ser\u00e1 ignorada).';
   html += '</div>';
 
   // Buttons
-  html += '<div style="margin-top:1.5rem;display:flex;gap:0.75rem;justify-content:flex-end;flex-wrap:wrap;">';
-  html += '<button class="btn btn-outline" onclick="prepararPlanilha()">Preparar Planilha</button>';
+  html += '<div style="margin-top:1.5rem;display:flex;gap:0.75rem;justify-content:flex-end;">';
   html += '<button class="btn btn-primary" onclick="importFromSheets()">Sincronizar</button>';
   html += '</div>';
 
   html += '</div></div>';
   document.body.insertAdjacentHTML('beforeend', html);
-}
-
-function prepararPlanilha() {
-  var cabecalhos = 'Data\tDescri\u00e7\u00e3o\tValor\tCategoria\tSubcategoria\tPagamento\tTipo';
-  
-  var categorias = 'Sobreviv\u00eancia, Necessidades, Aperfei\u00e7oamento, D\u00edvidas, Conforto/Sup\u00e9rfluo';
-  var subcategorias = items.map(function(it) { return it.nome; }).join(', ');
-  var pagamentos = accounts.map(function(a) { return a.nome; }).join(', ');
-  var tipos = 'Despesa, Entrada, Poupan\u00e7a';
-
-  navigator.clipboard.writeText(cabecalhos).then(function() {
-    var info = '<div class="modal-overlay open" id="prep-modal" onclick="if(event.target===this)this.classList.remove(\'open\')">';
-    info += '<div class="modal" style="max-width:600px; max-height:85vh; overflow-y:auto;">';
-    info += '<div class="modal-header"><h2>Planilha Preparada!</h2><button class="btn btn-ghost btn-icon" onclick="document.getElementById(\'prep-modal\').remove()">\u2715</button></div>';
-    info += '<div style="background:rgba(34,197,94,0.1);padding:0.75rem;border-radius:6px;margin-bottom:1rem;">';
-    info += '<strong style="color:var(--green);">\u2713 Cabe\u00e7alhos copiados!</strong><br>';
-    info += '<span style="font-size:0.8rem;">Cole na c\u00e9lula A1 da sua aba "Lancamentos" (Ctrl+V)</span></div>';
-    
-    info += '<div style="font-size:0.8rem;">';
-    info += '<strong style="color:var(--primary);">Valida\u00e7\u00f5es de dados para configurar manualmente:</strong><br><br>';
-    
-    info += '<strong>Coluna D (Categoria):</strong><br>';
-    info += '<code style="font-size:0.72rem;background:var(--card2);padding:2px 6px;border-radius:3px;">' + categorias + '</code><br><br>';
-    
-    info += '<strong>Coluna E (Subcategoria) - nomes dos itens do fluxo:</strong><br>';
-    info += '<code style="font-size:0.72rem;background:var(--card2);padding:2px 6px;border-radius:3px;word-break:break-all;">' + (subcategorias || 'Nenhum item cadastrado ainda') + '</code><br><br>';
-    
-    info += '<strong>Coluna F (Pagamento) - contas e cart\u00f5es:</strong><br>';
-    info += '<code style="font-size:0.72rem;background:var(--card2);padding:2px 6px;border-radius:3px;">' + (pagamentos || 'Nenhuma conta cadastrada ainda') + '</code><br><br>';
-    
-    info += '<strong>Coluna G (Tipo):</strong><br>';
-    info += '<code style="font-size:0.72rem;background:var(--card2);padding:2px 6px;border-radius:3px;">' + tipos + '</code><br><br>';
-    
-    info += '<span style="color:var(--muted);">Dica: No Google Sheets, selecione a coluna inteira (ex: D2:D1000), v\u00e1 em Dados > Valida\u00e7\u00e3o de dados > Lista de itens e cole os valores acima separados por v\u00edrgula.</span>';
-    info += '</div>';
-    
-    info += '<div style="margin-top:1rem;text-align:right;"><button class="btn btn-primary" onclick="document.getElementById(\'prep-modal\').remove()">Entendi</button></div>';
-    info += '</div></div>';
-    document.body.insertAdjacentHTML('beforeend', info);
-  }).catch(function() {
-    alert('Cabe\u00e7alhos: ' + cabecalhos + '\n\nCopie manualmente e cole na c\u00e9lula A1.');
-  });
 }
 
 var _pendingImportData = [];
@@ -3909,14 +3922,6 @@ async function importFromSheets() {
     var lines = text.split('\n').filter(function(l) { return l.trim(); });
     if (lines.length <= 1) { alert('Planilha vazia ou sem dados.'); return; }
 
-    var catMap = {
-      'sobrevivencia': 'sobrevivencia', 'sobreviv\u00eancia': 'sobrevivencia',
-      'necessidades': 'necessidades', 'necessidade': 'necessidades',
-      'aperfeicoamento': 'aperfeicoamento', 'aperfei\u00e7oamento': 'aperfeicoamento',
-      'dividas': 'dividas', 'd\u00edvidas': 'dividas', 'd\u00edvida': 'dividas',
-      'conforto': 'conforto', 'conforto/sup\u00e9rfluo': 'conforto', 'sup\u00e9rfluo': 'conforto', 'superfluo': 'conforto'
-    };
-
     _pendingImportData = [];
 
     for (var i = 1; i < lines.length; i++) {
@@ -3924,13 +3929,8 @@ async function importFromSheets() {
       if (cols.length < 3) continue;
 
       var dataRaw = cols[0].replace(/"/g, '').trim();
-      var desc = cols[1].replace(/"/g, '').trim();
+      var desc = cols[1] ? cols[1].replace(/"/g, '').trim() : '';
       var valorRaw = cols[2].replace(/"/g, '').trim();
-      var catRaw = cols.length > 3 ? cols[3].replace(/"/g, '').trim().toLowerCase() : '';
-      var subcatRaw = cols.length > 4 ? cols[4].replace(/"/g, '').trim() : '';
-      var pagRaw = cols.length > 5 ? cols[5].replace(/"/g, '').trim() : '';
-      var tipoRaw = cols.length > 6 ? cols[6].replace(/"/g, '').trim().toLowerCase() : 'despesa';
-      var tipo = tipoRaw === 'entrada' ? 'entrada' : tipoRaw === 'poupanca' || tipoRaw === 'poupan\u00e7a' ? 'poupanca' : 'despesa';
 
       var dateParts = dataRaw.split('/');
       var dataISO = '';
@@ -3941,21 +3941,20 @@ async function importFromSheets() {
       var valor = parseFloat(valorRaw.replace(/\./g, '').replace(',', '.')) || 0;
       if (!dataISO || !valor) continue;
 
-      var cat = catMap[catRaw] || 'sem_categoria';
-
+      // Check duplicates
       var exists = trackingData.lancamentos.some(function(l) {
         return l.data === dataISO && l.descricao === desc && Math.abs(l.valor - valor) < 0.01;
       });
       if (exists) continue;
 
       _pendingImportData.push({
-        tipo: tipo,
+        tipo: 'despesa',
         data: dataISO,
         descricao: desc,
         valor: valor,
-        categoria: tipo === 'despesa' ? cat : '',
-        subcategoria: subcatRaw,
-        pagamento: pagRaw
+        categoria: '',
+        subcategoria: '',
+        pagamento: ''
       });
     }
 
@@ -3972,46 +3971,85 @@ async function importFromSheets() {
 }
 
 function showImportPreview() {
-  document.getElementById('sheets-modal').remove();
+  var sheetsModal = document.getElementById('sheets-modal');
+  if (sheetsModal) sheetsModal.remove();
 
-  var catLabels = {
-    sobrevivencia: 'Sobreviv\u00eancia', necessidades: 'Necessidades',
-    aperfeicoamento: 'Aperfei\u00e7oamento', dividas: 'D\u00edvidas',
-    conforto: 'Conforto/Sup\u00e9rfluo', sem_categoria: 'Sem categoria'
-  };
+  // Build options for dropdowns
+  var subcatOptions = '<option value="">\u2014</option>' + items.map(function(it) { return '<option value="' + it.nome + '">' + it.nome + '</option>'; }).join('');
+  var catOptions = '<option value="">\u2014</option><option value="sobrevivencia">Sobreviv\u00eancia</option><option value="necessidades">Necessidades</option><option value="aperfeicoamento">Aperfei\u00e7oamento</option><option value="dividas">D\u00edvidas</option><option value="conforto">Conforto/Sup\u00e9rfluo</option>';
+  var pagOptions = '<option value="">\u2014</option>' + accounts.map(function(a) { return '<option value="' + a.nome + '">' + a.nome + '</option>'; }).join('');
+  var tipoOptions = '<option value="despesa">Despesa</option><option value="entrada">Entrada</option><option value="poupanca">Poupan\u00e7a</option>';
 
   var html = '<div class="modal-overlay open" id="import-preview-modal" onclick="if(event.target===this)this.classList.remove(\'open\')">';
-  html += '<div class="modal" style="max-width:900px; max-height:90vh; overflow-y:auto;">';
-  html += '<div class="modal-header"><h2>Confirmar Importa\u00e7\u00e3o (' + _pendingImportData.length + ' lan\u00e7amentos)</h2><button class="btn btn-ghost btn-icon" onclick="document.getElementById(\'import-preview-modal\').remove()">\u2715</button></div>';
-  html += '<div style="font-size:0.78rem;color:var(--muted);margin-bottom:0.75rem;">Revise os dados abaixo. Voc\u00ea pode corrigir valores clicando nas c\u00e9lulas edit\u00e1veis antes de confirmar.</div>';
+  html += '<div class="modal" style="max-width:95vw; width:1100px; max-height:90vh; overflow-y:auto;">';
+  html += '<div class="modal-header"><h2>Revisar Importa\u00e7\u00e3o (' + _pendingImportData.length + ' lan\u00e7amentos)</h2><button class="btn btn-ghost btn-icon" onclick="document.getElementById(\'import-preview-modal\').remove()">\u2715</button></div>';
+  html += '<div style="font-size:0.78rem;color:var(--muted);margin-bottom:0.75rem;">Complete as informa\u00e7\u00f5es abaixo. Ao selecionar a <strong>Subcategoria</strong>, Categoria, Tipo e Pagamento ser\u00e3o preenchidos automaticamente.</div>';
 
-  html += '<div style="overflow-x:auto;"><table class="tracking-table" style="font-size:0.75rem;">';
-  html += '<thead><tr><th>Tipo</th><th>Data</th><th>Descri\u00e7\u00e3o</th><th>Valor</th><th>Categoria</th><th>Subcategoria</th><th>Pagamento</th><th></th></tr></thead><tbody>';
+  html += '<div class="import-preview-wrap"><table class="import-preview-table" id="import-preview-tbl">';
+  html += '<thead><tr><th>Data</th><th>Descri\u00e7\u00e3o</th><th>Valor</th><th>Subcategoria</th><th>Categoria</th><th>Pagamento</th><th>Tipo</th><th></th></tr></thead><tbody>';
 
   _pendingImportData.forEach(function(row, idx) {
-    var tipoLabel = row.tipo === 'entrada' ? '<span style="color:var(--green);">Entrada</span>' : row.tipo === 'poupanca' ? '<span style="color:#60a5fa;">Poupan\u00e7a</span>' : '<span style="color:var(--red);">Despesa</span>';
     var dataFormatted = row.data ? new Date(row.data + 'T00:00').toLocaleDateString('pt-BR') : '\u2014';
     html += '<tr id="import-row-' + idx + '">';
-    html += '<td>' + tipoLabel + '</td>';
     html += '<td>' + dataFormatted + '</td>';
-    html += '<td contenteditable="true" class="import-edit" data-field="descricao" data-idx="' + idx + '">' + (row.descricao || '') + '</td>';
-    html += '<td style="font-weight:600;">R$ ' + row.valor.toFixed(2).replace('.', ',') + '</td>';
-    html += '<td>' + (catLabels[row.categoria] || row.categoria || '\u2014') + '</td>';
-    html += '<td contenteditable="true" class="import-edit" data-field="subcategoria" data-idx="' + idx + '">' + (row.subcategoria || '') + '</td>';
-    html += '<td>' + (row.pagamento || '\u2014') + '</td>';
+    html += '<td><input type="text" value="' + (row.descricao || '') + '" style="width:100%;min-width:80px;font-size:0.72rem;background:var(--card2);border:1px solid var(--border);color:var(--fg);padding:0.2rem 0.3rem;border-radius:4px;" data-field="descricao" data-idx="' + idx + '" class="import-field"></td>';
+    html += '<td style="font-weight:600;white-space:nowrap;">R$ ' + row.valor.toFixed(2).replace('.', ',') + '</td>';
+    html += '<td><select class="import-field" data-field="subcategoria" data-idx="' + idx + '" onchange="onImportSubcatChange(this,' + idx + ')">' + subcatOptions + '</select></td>';
+    html += '<td><select class="import-field" data-field="categoria" data-idx="' + idx + '" id="import-cat-' + idx + '">' + catOptions + '</select></td>';
+    html += '<td><select class="import-field" data-field="pagamento" data-idx="' + idx + '" id="import-pag-' + idx + '">' + pagOptions + '</select></td>';
+    html += '<td><select class="import-field" data-field="tipo" data-idx="' + idx + '" id="import-tipo-' + idx + '">' + tipoOptions + '</select></td>';
     html += '<td><button class="btn btn-ghost btn-sm" style="color:var(--red);font-size:0.7rem;" onclick="removeImportRow(' + idx + ')">\u2715</button></td>';
     html += '</tr>';
   });
 
   html += '</tbody></table></div>';
 
-  html += '<div style="margin-top:1rem;display:flex;gap:0.75rem;justify-content:flex-end;">';
+  html += '<div style="margin-top:1rem;display:flex;gap:0.75rem;justify-content:space-between;align-items:center;">';
+  html += '<button class="btn btn-outline btn-sm" onclick="addImportRow()">+ Adicionar linha</button>';
+  html += '<div style="display:flex;gap:0.75rem;">';
   html += '<button class="btn btn-outline" onclick="document.getElementById(\'import-preview-modal\').remove()">Cancelar</button>';
   html += '<button class="btn btn-primary" onclick="confirmarImportacao()">Confirmar Importa\u00e7\u00e3o</button>';
-  html += '</div>';
+  html += '</div></div>';
 
   html += '</div></div>';
   document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function onImportSubcatChange(sel, idx) {
+  var subcatName = sel.value;
+  if (!subcatName) return;
+  // Find the item in items array to auto-fill categoria, tipo, pagamento
+  var item = items.find(function(it) { return it.nome === subcatName; });
+  if (item) {
+    var catSel = document.getElementById('import-cat-' + idx);
+    var pagSel = document.getElementById('import-pag-' + idx);
+    var tipoSel = document.getElementById('import-tipo-' + idx);
+    if (catSel && item.categoria) catSel.value = item.categoria;
+    if (pagSel && item.formaPagamento) {
+      // formaPagamento is account id, find account name
+      var acc = accounts.find(function(a) { return a.id === item.formaPagamento; });
+      if (acc) pagSel.value = acc.nome;
+    }
+    if (tipoSel && item.tipo) {
+      var tipoMap = { entrada: 'entrada', poupanca: 'poupanca', despesa: 'despesa' };
+      tipoSel.value = tipoMap[item.tipo] || 'despesa';
+    }
+  }
+}
+
+function addImportRow() {
+  _pendingImportData.push({
+    tipo: 'despesa',
+    data: new Date().toISOString().substring(0, 10),
+    descricao: '',
+    valor: 0,
+    categoria: '',
+    subcategoria: '',
+    pagamento: ''
+  });
+  // Re-render the preview
+  document.getElementById('import-preview-modal').remove();
+  showImportPreview();
 }
 
 function removeImportRow(idx) {
@@ -4021,33 +4059,39 @@ function removeImportRow(idx) {
 }
 
 function confirmarImportacao() {
-  document.querySelectorAll('.import-edit').forEach(function(el) {
+  // Collect all field values from the preview table
+  document.querySelectorAll('.import-field').forEach(function(el) {
     var idx = parseInt(el.getAttribute('data-idx'));
     var field = el.getAttribute('data-field');
     if (_pendingImportData[idx]) {
-      _pendingImportData[idx][field] = el.textContent.trim();
+      if (el.tagName === 'INPUT') {
+        _pendingImportData[idx][field] = el.value.trim();
+      } else if (el.tagName === 'SELECT') {
+        _pendingImportData[idx][field] = el.value;
+      }
     }
   });
 
   var imported = 0;
   _pendingImportData.forEach(function(row, i) {
     if (!row) return;
+    if (!row.data || !row.valor) return;
     trackingData.lancamentos.push({
       id: 'lanc_' + Date.now() + '_' + i,
-      tipo: row.tipo,
+      tipo: row.tipo || 'despesa',
       data: row.data,
-      descricao: row.descricao,
+      descricao: row.descricao || '',
       valor: row.valor,
-      categoria: row.categoria,
+      categoria: row.categoria || 'sem_categoria',
       subcategoria: row.subcategoria || '',
-      pagamento: row.pagamento
+      pagamento: row.pagamento || ''
     });
     imported++;
   });
 
   document.getElementById('import-preview-modal').remove();
   _pendingImportData = [];
-  renderTracking();
+  if (trackingView === 'faturas') { renderTrackingFaturas(); } else { renderTracking(); }
   saveToStorage();
   alert(imported + ' lan\u00e7amento(s) importado(s) com sucesso!');
 }
@@ -4185,14 +4229,13 @@ function renderTrackingFaturas() {
 
   var cartaoIds = Object.keys(cartoesMap);
   if (cartaoIds.length === 0) {
-    container.innerHTML = '<div style="text-align:center;color:var(--muted);padding:2rem;">Nenhum cartão de crédito cadastrado.</div>';
+    container.innerHTML = '<div style="text-align:center;color:var(--muted);padding:2rem;">Nenhum cart\u00e3o de cr\u00e9dito cadastrado.</div>';
     return;
   }
 
-  // Build faturas using scenario adjustments if scenario is enabled
   var period = getPeriodDates();
   if (!period) {
-    container.innerHTML = '<div style="text-align:center;color:var(--muted);padding:2rem;">Configure o período e calcule a projeção primeiro.</div>';
+    container.innerHTML = '<div style="text-align:center;color:var(--muted);padding:2rem;">Configure o per\u00edodo e calcule a proje\u00e7\u00e3o primeiro.</div>';
     return;
   }
 
@@ -4200,7 +4243,7 @@ function renderTrackingFaturas() {
   var occCount = {};
   items.forEach(function(it, idx) { occCount[idx] = 0; });
 
-  var fatMap = {}; // { cartaoId: { fatKey: { vencDate, total, totalOtimizado, itens:[] } } }
+  var fatMap = {};
 
   items.forEach(function(item, idx) {
     if (!item.formaPagamento || !cartoesMap[item.formaPagamento]) return;
@@ -4224,54 +4267,40 @@ function renderTrackingFaturas() {
     });
   });
 
-  // Filter by trackingMonth if set
   var html = '';
 
-  // Month navigation (reuse existing trackingMonth)
-  var allFatKeys = [];
-  Object.keys(fatMap).forEach(function(cid) {
-    Object.keys(fatMap[cid]).forEach(function(fk) { if (allFatKeys.indexOf(fk) === -1) allFatKeys.push(fk); });
-  });
-  allFatKeys.sort();
-
-  if (allFatKeys.length === 0) {
-    container.innerHTML = '<div style="text-align:center;color:var(--muted);padding:2rem;">Nenhuma fatura projetada no período.</div>';
-    return;
+  // Month navigation (same as other tabs)
+  var monthKeys = Object.keys(trackingData.metas).sort();
+  if (monthKeys.length > 0) {
+    if (!trackingMonth || monthKeys.indexOf(trackingMonth) === -1) trackingMonth = monthKeys[0];
+    var curIdx = monthKeys.indexOf(trackingMonth);
+    var monthLabel = new Date(trackingMonth + '-15').toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+    html += '<div class="tracking-month-nav" style="margin:1rem 0;">';
+    html += '<button onclick="navTrackingMonthFaturas(-1)"' + (curIdx <= 0 ? ' disabled' : '') + '>&laquo;</button>';
+    html += '<span>' + monthLabel.charAt(0).toUpperCase() + monthLabel.slice(1) + '</span>';
+    html += '<button onclick="navTrackingMonthFaturas(1)"' + (curIdx >= monthKeys.length - 1 ? ' disabled' : '') + '>&raquo;</button>';
+    html += '</div>';
   }
 
-  // Use trackingMonth for filtering, or show all
+  // Filter faturas by current month
   var filterMonth = trackingMonth || null;
-  var showAll = !filterMonth;
-
-  html += '<div style="margin:1rem 0;">';
-  if (!showAll) {
-    var monthLabel = new Date(filterMonth + '-15').toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
-    html += '<div style="font-size:0.85rem; color:var(--muted); margin-bottom:0.5rem;">Faturas com vencimento em: <strong style="color:var(--fg);">' + monthLabel.charAt(0).toUpperCase() + monthLabel.slice(1) + '</strong></div>';
-  } else {
-    html += '<div style="font-size:0.85rem; color:var(--muted); margin-bottom:0.5rem;">Todas as faturas projetadas no período</div>';
-  }
-  html += '</div>';
-
   cartaoIds.forEach(function(cartaoId) {
     var cartao = cartoesMap[cartaoId];
     var faturas = fatMap[cartaoId];
     if (!faturas) return;
     var fatKeys = Object.keys(faturas).sort();
-    if (!showAll) {
-      fatKeys = fatKeys.filter(function(fk) { return fk === filterMonth; });
+    if (filterMonth) {
+      fatKeys = fatKeys.filter(function(fk) { return fk.substring(0, 7) === filterMonth; });
     }
     if (fatKeys.length === 0) return;
 
-    var totalCartao = fatKeys.reduce(function(s, k) { return s + faturas[k].total; }, 0);
-    var totalCartaoOpt = fatKeys.reduce(function(s, k) { return s + faturas[k].totalOtimizado; }, 0);
+    // Card header
+    var totalCartao = 0; var totalCartaoOpt = 0;
+    fatKeys.forEach(function(fk) { totalCartao += faturas[fk].total; totalCartaoOpt += faturas[fk].totalOtimizado; });
 
-    html += '<div style="background:var(--card2); border:1px solid var(--border); border-radius:8px; padding:1rem; margin-bottom:1rem;">';
-    html += '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.8rem;">';
-    html += '<div style="display:flex; align-items:center; gap:0.6rem;">';
-    html += '<span style="font-size:1.1rem;">\ud83d\udcb3</span>';
-    html += '<strong style="color:var(--fg);">' + cartao.nome + '</strong>';
-    if (cartao.bandeira) html += '<span class="badge badge-purple">' + cartao.bandeira.charAt(0).toUpperCase() + cartao.bandeira.slice(1) + '</span>';
-    html += '</div>';
+    html += '<div style="background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:1rem;margin-bottom:1rem;">';
+    html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem;">';
+    html += '<div style="font-weight:700;color:var(--fg);">' + (cartao ? cartao.nome : cartaoId) + '</div>';
     html += '<div style="text-align:right;">';
     if (scenarioEnabled && totalCartaoOpt !== totalCartao) {
       html += '<div style="font-size:0.68rem; color:var(--muted); text-decoration:line-through;">' + fmtCurrency(totalCartao) + '</div>';
@@ -4326,7 +4355,72 @@ function renderTrackingFaturas() {
     html += '</tbody></table></div>';
   });
 
+  if (!html || html.trim() === '') {
+    html += '<div style="text-align:center;color:var(--muted);padding:2rem;">Nenhuma fatura neste m\u00eas.</div>';
+  }
+
+  // Lancamentos do mes (same as other tabs)
+  var catConfig = {
+    sobrevivencia: { label: 'Sobreviv\u00eancia', color: '#ef4444' },
+    necessidades: { label: 'Necessidades', color: '#f97316' },
+    aperfeicoamento: { label: 'Aperfei\u00e7oamento', color: '#a78bfa' },
+    dividas: { label: 'D\u00edvidas', color: '#f59e0b' },
+    conforto: { label: 'Conforto/Sup\u00e9rfluo', color: '#60a5fa' },
+    sem_categoria: { label: 'Sem categoria', color: '#6b7280' }
+  };
+  var lancMes = trackingData.lancamentos.filter(function(l) {
+    return l.data && l.data.substring(0, 7) === trackingMonth;
+  });
+
+  html += '<div style="margin-top:1.5rem;">';
+  html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.5rem;">';
+  html += '<h3 style="font-size:0.9rem;margin:0;">Lan\u00e7amentos do m\u00eas (' + lancMes.length + ')</h3>';
+  html += '</div>';
+  if (lancMes.length > 0) {
+    html += '<div class="lanc-bulk-actions">';
+    html += '<label style="display:flex;align-items:center;gap:0.3rem;font-size:0.75rem;color:var(--muted);cursor:pointer;"><input type="checkbox" class="lanc-check" id="lanc-select-all-fat" onchange="toggleSelectAllLanc(this)"> Selecionar todos</label>';
+    html += '<button class="btn btn-ghost btn-sm" style="color:var(--red);font-size:0.72rem;" onclick="deleteLancamentosSelecionados()">\u2715 Excluir selecionados</button>';
+    html += '</div>';
+    html += '<div class="lanc-table-wrap">';
+    html += '<table class="lanc-table" id="lanc-table-faturas"><thead><tr>';
+    html += '<th style="width:30px;"></th>';
+    html += '<th>Tipo</th><th>Data</th><th>Descri\u00e7\u00e3o</th><th>Valor</th><th>Categoria</th><th>Subcategoria</th><th>Pagamento</th><th>A\u00e7\u00f5es</th>';
+    html += '</tr></thead><tbody>';
+    lancMes.sort(function(a,b) { return a.data.localeCompare(b.data); }).forEach(function(l) {
+      var cfg = catConfig[l.categoria] || { label: l.categoria || '\u2014', color: '#888' };
+      var tipoLabel = l.tipo === 'entrada' ? '<span style="color:var(--green);">Entrada</span>' : l.tipo === 'poupanca' ? '<span style="color:#60a5fa;">Poupan\u00e7a</span>' : '<span style="color:var(--red);">Despesa</span>';
+      var valorColor = l.tipo === 'entrada' ? 'var(--green)' : 'var(--red)';
+      var valorPrefix = l.tipo === 'entrada' ? '+' : '-';
+      html += '<tr data-lanc-id="' + l.id + '">';
+      html += '<td><input type="checkbox" class="lanc-check lanc-row-check" value="' + l.id + '"></td>';
+      html += '<td>' + tipoLabel + '</td>';
+      html += '<td>' + (l.data ? new Date(l.data + 'T00:00').toLocaleDateString('pt-BR') : '\u2014') + '</td>';
+      html += '<td>' + (l.descricao || '\u2014') + '</td>';
+      html += '<td style="color:' + valorColor + ';font-weight:600;">' + valorPrefix + fmtCurrency(l.valor) + '</td>';
+      html += '<td style="color:' + cfg.color + ';">' + (l.tipo === 'despesa' ? cfg.label : '\u2014') + '</td>';
+      html += '<td style="font-size:0.75rem;">' + (l.subcategoria || '\u2014') + '</td>';
+      html += '<td>' + (l.pagamento || '\u2014') + '</td>';
+      html += '<td><button class="btn btn-ghost btn-sm" onclick="editLancamento(\'' + l.id + '\')">\u270e</button><button class="btn btn-ghost btn-sm" style="color:var(--red);" onclick="deleteLancamento(\'' + l.id + '\')">\u2715</button></td>';
+      html += '</tr>';
+    });
+    html += '</tbody></table></div>';
+  } else {
+    html += '<div style="font-size:0.82rem;color:var(--muted);">Nenhum lan\u00e7amento neste m\u00eas.</div>';
+  }
+  html += '</div>';
+
   container.innerHTML = html;
+  if (document.getElementById('lanc-table-faturas')) initLancColResize('lanc-table-faturas');
+}
+
+function navTrackingMonthFaturas(dir) {
+  var monthKeys = Object.keys(trackingData.metas).sort();
+  var curIdx = monthKeys.indexOf(trackingMonth);
+  var newIdx = curIdx + dir;
+  if (newIdx >= 0 && newIdx < monthKeys.length) {
+    trackingMonth = monthKeys[newIdx];
+    renderTrackingFaturas();
+  }
 }
 
 </script>
