@@ -329,11 +329,122 @@
           '</svg>';
       }
 
-      function getSemaforoStatus(pctUsado) {
-        if (pctUsado === null) return { status:'green', text:'Sem metas definidas' };
-        if (pctUsado <= 70) return { status:'green', text:'Tudo sob controle!' };
-        if (pctUsado <= 100) return { status:'yellow', text:'Aten\u00e7\u00e3o ao or\u00e7amento' };
-        return { status:'red', text:'Or\u00e7amento ultrapassado!' };
+      function getSemaforoStatus(kpis) {
+        var pctUsado = kpis.pctUsado;
+        var saldo = kpis.saldo;
+        var metaEntradas = kpis.metaEntradas;
+        var realEntradas = kpis.realEntradas;
+        var realDespesas = kpis.realDespesas;
+        var metaDespTotal = kpis.metaDespTotal;
+        var metaCats = kpis.metaCats;
+        var realPorCat = kpis.realPorCat;
+
+        // Analyze categories individually
+        var catsEstouradas = [];
+        var catsProximas = []; // between 85-100%
+        catOrder.forEach(function(catKey) {
+          var meta = metaCats[catKey] || 0;
+          var real = realPorCat[catKey] || 0;
+          if (meta <= 0) return;
+          var pct = Math.round((real/meta)*100);
+          if (pct > 100) catsEstouradas.push({ key:catKey, label:catConfig[catKey].label, pct:pct });
+          else if (pct >= 85) catsProximas.push({ key:catKey, label:catConfig[catKey].label, pct:pct });
+        });
+
+        // Days analysis (progress vs expected)
+        var hoje = new Date();
+        var diasNoMes = new Date(hoje.getFullYear(), hoje.getMonth()+1, 0).getDate();
+        var diaAtual = hoje.getDate();
+        var pctMesDecorrido = Math.round((diaAtual/diasNoMes)*100);
+        var entradasPendentes = metaEntradas - realEntradas;
+
+        var status, titulo, explicacao;
+
+        // === SEM METAS ===
+        if (pctUsado === null) {
+          status = 'green';
+          titulo = 'Sem metas definidas';
+          explicacao = 'Gere as metas no fluxo para acompanhar.';
+          return { status:status, text:titulo, detail:explicacao };
+        }
+
+        // === DETERMINE STATUS ===
+        // Red: orcamento geral > 100% OR mais de 2 categorias estouradas
+        if (pctUsado > 100 || catsEstouradas.length >= 3) {
+          status = 'red';
+        }
+        // Yellow: orcamento 71-100% OR 1-2 categorias estouradas OR categorias proximas do limite
+        else if (pctUsado > 70 || catsEstouradas.length > 0 || catsProximas.length >= 2) {
+          status = 'yellow';
+        }
+        // Green: tudo dentro
+        else {
+          status = 'green';
+        }
+
+        // === BUILD TITULO + EXPLICACAO ===
+        if (status === 'green') {
+          titulo = 'Tudo sob controle!';
+          // Explain why it's green even if something looks off
+          if (saldo < 0 && entradasPendentes > 0) {
+            explicacao = 'Saldo parcial negativo, mas h\u00e1 ' + fmt(entradasPendentes) + ' em entradas previstas para cobrir.';
+          } else if (saldo < 0) {
+            explicacao = 'Saldo negativo pontual. Despesas bem abaixo da meta (' + pctUsado + '% usado).';
+          } else if (pctUsado < pctMesDecorrido * 0.7) {
+            explicacao = 'Ritmo de gastos abaixo do esperado para o dia ' + diaAtual + '/' + diasNoMes + '. Folga no or\u00e7amento.';
+          } else if (catsProximas.length === 1) {
+            explicacao = pctUsado + '% do or\u00e7amento usado. ' + catsProximas[0].label + ' se aproximando (' + catsProximas[0].pct + '%), mas o geral est\u00e1 tranquilo.';
+          } else {
+            explicacao = 'Despesas dentro do planejado \u2014 ' + pctUsado + '% do or\u00e7amento em ' + diaAtual + ' de ' + diasNoMes + ' dias.';
+          }
+
+        } else if (status === 'yellow') {
+          titulo = 'Fique atento!';
+          if (catsEstouradas.length > 0 && pctUsado <= 70) {
+            // Categorias estouradas mas geral ok
+            var nomes = catsEstouradas.map(function(c){return c.label;}).join(', ');
+            explicacao = nomes + ' ultrapassou a meta, mas o or\u00e7amento geral ainda est\u00e1 em ' + pctUsado + '%. Remaneje se poss\u00edvel.';
+          } else if (catsProximas.length >= 2 && pctUsado <= 70) {
+            var nomes2 = catsProximas.map(function(c){return c.label;}).join(', ');
+            explicacao = nomes2 + ' est\u00e3o pr\u00f3ximas do limite. Or\u00e7amento geral em ' + pctUsado + '%, mas cuidado nos pr\u00f3ximos dias.';
+          } else if (pctUsado > 70 && pctUsado <= 100) {
+            var restante = metaDespTotal - realDespesas;
+            var diasRestantes = diasNoMes - diaAtual;
+            if (restante > 0 && diasRestantes > 0) {
+              explicacao = pctUsado + '% usado. Restam ' + fmt(restante) + ' para ' + diasRestantes + ' dias. M\u00e9dia di\u00e1ria dispon\u00edvel: ' + fmt(restante/diasRestantes) + '.';
+            } else {
+              explicacao = pctUsado + '% do or\u00e7amento j\u00e1 utilizado. Reduza gastos para n\u00e3o estourar.';
+            }
+          } else {
+            explicacao = 'Or\u00e7amento em ' + pctUsado + '%. Algumas categorias precisam de aten\u00e7\u00e3o.';
+          }
+          // Positive note if saldo is good
+          if (saldo > 0 && entradasPendentes <= 0) {
+            explicacao += ' Saldo positivo, pois as entradas j\u00e1 cobriram.';
+          } else if (entradasPendentes > 0) {
+            explicacao += ' Ainda h\u00e1 ' + fmt(entradasPendentes) + ' em entradas previstas.';
+          }
+
+        } else { // red
+          titulo = 'Or\u00e7amento ultrapassado!';
+          var excedente = realDespesas - metaDespTotal;
+          if (catsEstouradas.length >= 3) {
+            var nomes3 = catsEstouradas.slice(0,3).map(function(c){return c.label;}).join(', ');
+            explicacao = nomes3 + ' est\u00e3o acima da meta. Excedente total: ' + fmt(excedente) + '.';
+          } else if (excedente > 0) {
+            explicacao = 'Despesas excederam a meta em ' + fmt(excedente) + '. Revise os gastos restantes do m\u00eas.';
+          } else {
+            var nomes4 = catsEstouradas.map(function(c){return c.label + ' ('+c.pct+'%)';}).join(', ');
+            explicacao = 'Categorias cr\u00edticas: ' + nomes4 + '. Remaneje ou reduza.';
+          }
+          if (saldo > 0) {
+            explicacao += ' Saldo ainda positivo gra\u00e7as \u00e0s entradas.';
+          } else if (entradasPendentes > 0) {
+            explicacao += ' Entradas previstas de ' + fmt(entradasPendentes) + ' podem ajudar.';
+          }
+        }
+
+        return { status:status, text:titulo, detail:explicacao };
       }
 
       // === RENDER WIDGET ===
@@ -341,9 +452,9 @@
         var body = document.getElementById('widget-fluxo-body');
         if (!refSim) { body.innerHTML = '<span class="dash-widget-nodata">Simula\u00e7\u00e3o de refer\u00eancia n\u00e3o definida</span>'; return; }
         var kpis = calcKPIs();
-        var sem = getSemaforoStatus(kpis.pctUsado);
+        var sem = getSemaforoStatus(kpis);
         var html = '';
-        html += '<div class="semaforo-wrap">' + buildSemaforoSVG(sem.status) + '<span class="semaforo-text '+sem.status+'">' + sem.text + '</span></div>';
+        html += '<div class="semaforo-wrap">' + buildSemaforoSVG(sem.status) + '<div style="display:flex;flex-direction:column;"><span class="semaforo-text '+sem.status+'">' + sem.text + '</span><span style="font-size:.58rem;color:var(--muted-foreground);max-width:140px;line-height:1.2;margin-top:2px;">' + sem.detail + '</span></div></div>';
         html += '<div class="dash-widget-metric"><div class="dash-widget-metric-label">Saldo do m\u00eas</div><div class="dash-widget-metric-value '+(kpis.saldo>=0?'positive':'negative')+'">' + fmt(kpis.saldo) + '</div></div>';
         if (kpis.pctUsado !== null) {
           html += '<div class="dash-widget-metric"><div class="dash-widget-metric-label">Or\u00e7amento</div><div class="dash-widget-metric-value '+(kpis.pctUsado<=80?'positive':kpis.pctUsado<=100?'neutral':'negative')+'">' + kpis.pctUsado + '%</div></div>';
