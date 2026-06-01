@@ -793,6 +793,20 @@
           html += '</div>';
         });
 
+        // Poupança section
+        var metaPoup = kpis.metaPoupanca || 0;
+        var realPoup = kpis.realPoupanca || 0;
+        if (metaPoup > 0 || realPoup > 0) {
+          var pctPoup = metaPoup > 0 ? Math.round((realPoup/metaPoup)*100) : (realPoup > 0 ? 999 : 0);
+          var colorPoup = pctPoup >= 100 ? '#22c55e' : pctPoup >= 50 ? '#eab308' : '#ef4444';
+          html += '<div class="dash-progress-row" style="margin-top:.75rem;border-top:1px solid rgba(212,175,55,0.15);padding-top:.75rem;">';
+          html += '<span class="dash-progress-label" style="color:#60a5fa;">Poupan\u00e7a</span>';
+          html += '<div class="dash-progress-bar"><div class="dash-progress-fill" style="width:'+Math.min(pctPoup,100)+'%;background:'+colorPoup+';"></div></div>';
+          html += '<span class="dash-progress-pct">'+pctPoup+'%</span>';
+          html += '<span class="dash-progress-values">'+fmt(realPoup)+' / '+fmt(metaPoup)+'</span>';
+          html += '</div>';
+        }
+
         if (!html) { html = '<div style="font-size:.8rem;color:var(--muted-foreground);">Nenhuma meta definida para este m\u00eas.</div>'; }
         document.getElementById('dash-orcamento').innerHTML = html;
       }
