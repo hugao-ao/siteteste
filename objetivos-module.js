@@ -1688,8 +1688,11 @@ function renderAnalisesObjetivosInline() {
   
   container.innerHTML = `
     <div style="margin-top: 2rem; padding-top: 1.5rem; border-top: 2px solid rgba(212, 175, 55, 0.3);">
-      <h3 style="color: var(--accent-color); margin: 0 0 1rem 0; font-size: 1rem;">
+      <h3 style="color: var(--accent-color); margin: 0 0 1rem 0; font-size: 1rem; display: flex; align-items: center; gap: 0.5rem;">
         <i class="fas fa-chart-area"></i> Análise de Evolução Patrimonial
+        <button onclick="window.renderAnalisesObjetivosInline()" title="Atualizar análises" style="background: none; border: 1px solid var(--accent-color); color: var(--accent-color); border-radius: 50%; width: 26px; height: 26px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; transition: all 0.2s;" onmouseover="this.style.background='var(--accent-color)';this.style.color='#0d3320'" onmouseout="this.style.background='none';this.style.color='var(--accent-color)'">
+          <i class="fas fa-sync-alt"></i>
+        </button>
       </h3>
       
       <!-- Seletor de perfil de rentabilidade + comparativos -->
