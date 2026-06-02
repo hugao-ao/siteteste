@@ -1850,8 +1850,14 @@ function simularEvolucaoPatrimonial(aposentadorias, objetivosNormais, perfilIdOv
       tentativasDoMes.push(p);
     });
     
-    // Ordenar tentativas por prioridade (menor número = mais prioritário)
-    tentativasDoMes.sort((a, b) => a.objData.prioridade - b.objData.prioridade);
+    // Ordenar tentativas: pais antes de filhos (vinculação), depois por prioridade
+    tentativasDoMes.sort((a, b) => {
+      // Se B está vinculado a A, A deve vir antes de B
+      if (b.objData.vinculado_a === a.objData.id) return -1;
+      if (a.objData.vinculado_a === b.objData.id) return 1;
+      // Se ambos são filhos de pais diferentes, ou nenhum é vinculado, usar prioridade
+      return a.objData.prioridade - b.objData.prioridade;
+    });
     
     // Processar cada tentativa
     tentativasDoMes.forEach(tentativa => {
