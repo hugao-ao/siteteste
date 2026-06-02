@@ -4557,6 +4557,12 @@ function analyzePrefillChanges(dadosCad, form) {
         }
       }
     }
+    if (form.info_adicionais && form.info_adicionais.trim()) {
+      const obsAtual = document.getElementById('obs_dados_pessoais')?.value.trim() || '';
+      if (!obsAtual) {
+        changes.push({ campo: 'Informações Adicionais', atual: '', novo: form.info_adicionais.substring(0, 50) + (form.info_adicionais.length > 50 ? '...' : ''), tipo: 'acrescimo' });
+      }
+    }
   }
   
   return changes;
@@ -4769,7 +4775,7 @@ function applyPrefillData(dadosCad, form) {
               qtd_recorrencia: 1,
               und_recorrencia: 'mes',
               forma_pagamento: '',
-              titular: '',
+              titular: 'titular',
               categoria_comportamental: '',
               nivel_importancia: '',
               automatica: false,
@@ -4791,7 +4797,7 @@ function applyPrefillData(dadosCad, form) {
               qtd_recorrencia: 1,
               und_recorrencia: 'mes',
               forma_pagamento: '',
-              titular: '',
+              titular: 'titular',
               categoria_comportamental: '',
               nivel_importancia: '',
               automatica: false,
@@ -4914,6 +4920,15 @@ function applyPrefillData(dadosCad, form) {
         if (declaracoes.length > 0) {
           window.setDeclaracoesIRData(declaracoes);
         }
+      }
+    }
+    
+    // Informações Adicionais - importar para obs_dados_pessoais
+    if (form.info_adicionais && form.info_adicionais.trim()) {
+      const obsEl = document.getElementById('obs_dados_pessoais');
+      if (obsEl && !obsEl.value.trim()) {
+        obsEl.value = form.info_adicionais.trim();
+        camposPreenchidos++;
       }
     }
   }
