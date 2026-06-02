@@ -1773,58 +1773,41 @@ function simularEvolucaoPatrimonial(aposentadorias, objetivosNormais, perfilIdOv
   const aporteMensal = aportesTotais.mensal;
   const aporteAnual = aportesTotais.anual;
   
-  // Preparar eventos de objetivos (saques e acúmulos)
-  const eventosObjetivos = [];
-  objetivosNormais.forEach(obj => {
+  // Preparar objetivos com seus dados de simulação
+  const objSimData = objetivosNormais.map(obj => {
     const mesesPrazo = calcularMesesRestantesObjNormal(obj);
     const valorSaque = obj.meta_acumulo || 0;
     const isAcumulo = obj.acumulavel;
     const recTipo = obj.recorrencia_tipo || 'nenhuma';
-    // Usar valor padrão se recorrencia_valor for 0 mas tipo está definido
     let recValor = obj.recorrencia_valor || 0;
     if (recTipo === 'anos' && recValor === 0) recValor = 1;
     if (recTipo === 'meses' && recValor === 0) recValor = 12;
+    const intervaloMeses = (recTipo !== 'nenhuma' && recValor > 0) ? (recTipo === 'anos' ? recValor * 12 : recValor) : 0;
     
-    if (valorSaque > 0 && mesesPrazo > 0) {
-      // Primeiro evento (na data de realização)
-      eventosObjetivos.push({
-        mes: mesesPrazo,
-        valor: valorSaque,
-        descricao: obj.descricao || 'Objetivo',
-        isAcumulo: isAcumulo,
-        prioridade: obj.prioridade,
-        objetivoId: obj.id,
-        isRecorrente: false
-      });
-      
-      // MELHORIA 2: Eventos recorrentes a partir da data de realização
-      if (recTipo !== 'nenhuma' && recValor > 0) {
-        const intervaloMeses = recTipo === 'anos' ? recValor * 12 : recValor;
-        let proximoMes = mesesPrazo + intervaloMeses;
-        while (proximoMes <= maxMeses) {
-          eventosObjetivos.push({
-            mes: proximoMes,
-            valor: valorSaque,
-            descricao: obj.descricao + ' (rec.)',
-            isAcumulo: isAcumulo,
-            prioridade: obj.prioridade,
-            objetivoId: obj.id,
-            isRecorrente: true
-          });
-          proximoMes += intervaloMeses;
-        }
-      }
-    }
-  });
-  
-  // Ordenar eventos por mês
-  eventosObjetivos.sort((a, b) => a.mes - b.mes);
+    return {
+      id: obj.id,
+      descricao: obj.descricao || 'Objetivo',
+      valor: valorSaque,
+      isAcumulo: isAcumulo,
+      prioridade: obj.prioridade,
+      vinculado_a: obj.vinculado_a || null,
+      mesDesejado: mesesPrazo,
+      intervaloMeses: intervaloMeses,
+      recTipo: recTipo,
+      realizadoPrimeiraVez: false,
+      mesUltimaRealizacao: -1,
+      proximoMesRecorrencia: -1
+    };
+  }).filter(o => o.valor > 0 && o.mesDesejado > 0);
   
   // Simular mês a mês
   const pontos = [];
   const eventosMarcados = [];
   let saldo = patrimonioInicial;
   let somaAportes = 0;
+  
+  // Fila de objetivos pendentes (não realizados no prazo)
+  const pendentes = []; // { objData, isRecorrente }
   
   // Ponto 0
   pontos.push({ mes: 0, saldo: saldo, ano: new Date().getFullYear() });
@@ -1843,42 +1826,121 @@ function simularEvolucaoPatrimonial(aposentadorias, objetivosNormais, perfilIdOv
     // Rentabilidade
     saldo = saldo * (1 + rentMensal);
     
-    // Verificar eventos neste mês
-    const eventosDoMes = eventosObjetivos.filter(e => e.mes === mes);
-    eventosDoMes.forEach(evento => {
-      if (!evento.isAcumulo) {
-        // MELHORIA 2: Saque - verificar se há saldo suficiente
-        const saldoAntes = saldo;
-        const sucesso = saldo >= evento.valor;
-        if (sucesso) {
-          saldo -= evento.valor;
+    // Coletar eventos que devem ser tentados neste mês
+    const tentativasDoMes = [];
+    
+    // 1. Verificar objetivos cujo prazo desejado é este mês (primeira vez)
+    objSimData.forEach(o => {
+      if (o.mesDesejado === mes && !o.realizadoPrimeiraVez) {
+        tentativasDoMes.push({ objData: o, isRecorrente: false });
+      }
+    });
+    
+    // 2. Verificar recorrências agendadas para este mês
+    objSimData.forEach(o => {
+      if (o.realizadoPrimeiraVez && o.proximoMesRecorrencia === mes) {
+        tentativasDoMes.push({ objData: o, isRecorrente: true });
+      }
+    });
+    
+    // 3. Adicionar pendentes (objetivos atrasados tentando realizar)
+    const pendentesDoMes = [...pendentes];
+    pendentes.length = 0; // Limpar - serão re-adicionados se falharem novamente
+    pendentesDoMes.forEach(p => {
+      tentativasDoMes.push(p);
+    });
+    
+    // Ordenar tentativas por prioridade (menor número = mais prioritário)
+    tentativasDoMes.sort((a, b) => a.objData.prioridade - b.objData.prioridade);
+    
+    // Processar cada tentativa
+    tentativasDoMes.forEach(tentativa => {
+      const o = tentativa.objData;
+      const isRecorrente = tentativa.isRecorrente;
+      
+      // Verificar vinculação: se vinculado a outro, o pai precisa ter sido realizado pelo menos 1 vez
+      if (o.vinculado_a) {
+        const pai = objSimData.find(x => x.id === o.vinculado_a);
+        if (pai && !pai.realizadoPrimeiraVez) {
+          // Pai ainda não foi realizado - manter pendente
+          pendentes.push(tentativa);
+          return;
         }
-        
-        eventosMarcados.push({
-          mes: mes,
-          tipo: 'saque',
-          valor: evento.valor,
-          descricao: evento.descricao,
-          saldoAntes: saldoAntes,
-          saldoApos: saldo,
-          sucesso: sucesso,
-          isRecorrente: evento.isRecorrente,
-          objetivoId: evento.objetivoId
-        });
+      }
+      
+      if (!o.isAcumulo) {
+        // Saque - verificar se há saldo suficiente
+        const saldoAntes = saldo;
+        const sucesso = saldo >= o.valor;
+        if (sucesso) {
+          saldo -= o.valor;
+          if (!o.realizadoPrimeiraVez) {
+            o.realizadoPrimeiraVez = true;
+          }
+          o.mesUltimaRealizacao = mes;
+          // Agendar próxima recorrência a partir do mês REAL de realização
+          if (o.intervaloMeses > 0) {
+            o.proximoMesRecorrencia = mes + o.intervaloMeses;
+          }
+          
+          const comAtraso = tentativa.isPendente || false;
+          const mesOriginal = tentativa.mesFalhaOriginal || mes;
+          eventosMarcados.push({
+            mes: mes,
+            tipo: 'saque',
+            valor: o.valor,
+            descricao: isRecorrente ? o.descricao + ' (rec.)' : o.descricao,
+            saldoAntes: saldoAntes,
+            saldoApos: saldo,
+            sucesso: true,
+            isRecorrente: isRecorrente,
+            objetivoId: o.id,
+            comAtraso: comAtraso,
+            mesOriginal: mesOriginal
+          });
+        } else {
+          // Saldo insuficiente - marcar como pendente para tentar no próximo mês
+          if (!tentativa.isPendente) {
+            // Registrar evento de falha no mês original (quando deveria ter acontecido)
+            tentativa.isPendente = true;
+            tentativa.mesFalhaOriginal = mes;
+          }
+          pendentes.push(tentativa);
+        }
       } else {
         // Acúmulo - não saca, apenas marca que atingiu
-        const atingido = saldo >= evento.valor;
-        eventosMarcados.push({
-          mes: mes,
-          tipo: 'acumulo',
-          valor: evento.valor,
-          descricao: evento.descricao,
-          saldoAntes: saldo,
-          saldoApos: saldo,
-          sucesso: atingido,
-          isRecorrente: evento.isRecorrente,
-          objetivoId: evento.objetivoId
-        });
+        const atingido = saldo >= o.valor;
+        if (atingido) {
+          if (!o.realizadoPrimeiraVez) {
+            o.realizadoPrimeiraVez = true;
+          }
+          o.mesUltimaRealizacao = mes;
+          if (o.intervaloMeses > 0) {
+            o.proximoMesRecorrencia = mes + o.intervaloMeses;
+          }
+          const comAtraso = tentativa.isPendente || false;
+          const mesOriginal = tentativa.mesFalhaOriginal || mes;
+          eventosMarcados.push({
+            mes: mes,
+            tipo: 'acumulo',
+            valor: o.valor,
+            descricao: isRecorrente ? o.descricao + ' (rec.)' : o.descricao,
+            saldoAntes: saldo,
+            saldoApos: saldo,
+            sucesso: true,
+            isRecorrente: isRecorrente,
+            objetivoId: o.id,
+            comAtraso: comAtraso,
+            mesOriginal: mesOriginal
+          });
+        } else {
+          // Manter pendente para tentar no próximo mês
+          if (!tentativa.isPendente) {
+            tentativa.isPendente = true;
+            tentativa.mesFalhaOriginal = mes;
+          }
+          pendentes.push(tentativa);
+        }
       }
     });
     
@@ -1891,6 +1953,36 @@ function simularEvolucaoPatrimonial(aposentadorias, objetivosNormais, perfilIdOv
       ano: dataEstimada.getFullYear()
     });
   }
+  
+  // Registrar eventos de falha para objetivos que nunca se concretizaram
+  pendentes.forEach(tentativa => {
+    const o = tentativa.objData;
+    const isRecorrente = tentativa.isRecorrente;
+    eventosMarcados.push({
+      mes: tentativa.mesFalhaOriginal || o.mesDesejado,
+      tipo: o.isAcumulo ? 'acumulo' : 'saque',
+      valor: o.valor,
+      descricao: isRecorrente ? o.descricao + ' (rec.)' : o.descricao,
+      saldoAntes: saldo,
+      saldoApos: saldo,
+      sucesso: false,
+      isRecorrente: isRecorrente,
+      objetivoId: o.id,
+      naoConcretizado: true
+    });
+  });
+  
+  // Registrar recorrências que deveriam ter acontecido mas não puderam
+  // (porque o objetivo base ainda estava pendente no fim da simulação)
+  objSimData.forEach(o => {
+    if (o.intervaloMeses > 0 && o.realizadoPrimeiraVez) {
+      // Verificar se há recorrências agendadas que não foram processadas
+      // (o proximoMesRecorrencia ficou além do maxMeses - já estão fora do período, ok)
+    }
+  });
+  
+  // Ordenar eventos por mês para exibição correta
+  eventosMarcados.sort((a, b) => a.mes - b.mes);
   
   // Capital necessário (sem correção por inflação)
   const capitalNecessarioCorrigido = capitalNecessarioTotal;
@@ -2023,16 +2115,21 @@ function renderGraficoEvolucao(simulacao, objetivosNormais, aposentadorias, simu
   }
   
   // Coletar índices de eventos para traços verticais (sem figuras geométricas)
-  const linhasVerticaisSaque = []; // cor vermelha - saques iniciais
+  const linhasVerticaisSaque = []; // cor verde - saques no prazo
   const linhasVerticaisRecorrencia = []; // cor laranja - recorrências
-  const linhasVerticaisFalha = []; // cor vermelha tracejada - falhas
+  const linhasVerticaisAtraso = []; // cor amarela - realizados com atraso
+  const linhasVerticaisFalha = []; // cor vermelha - não concretizados
   
   simulacao.eventos.forEach(evento => {
     const posicao = Math.min(evento.mes, labels.length - 1);
     if (evento.tipo === 'saque' || evento.tipo === 'acumulo') {
-      if (evento.isRecorrente) {
+      if (!evento.sucesso && evento.naoConcretizado) {
+        linhasVerticaisFalha.push({ pos: posicao });
+      } else if (evento.sucesso && evento.comAtraso) {
+        linhasVerticaisAtraso.push({ pos: posicao });
+      } else if (evento.isRecorrente && evento.sucesso) {
         linhasVerticaisRecorrencia.push({ pos: posicao, sucesso: evento.sucesso });
-      } else {
+      } else if (evento.sucesso) {
         linhasVerticaisSaque.push({ pos: posicao, sucesso: evento.sucesso });
       }
     }
@@ -2041,10 +2138,21 @@ function renderGraficoEvolucao(simulacao, objetivosNormais, aposentadorias, simu
   // Datasets fictícios apenas para legenda
   if (linhasVerticaisSaque.length > 0) {
     datasets.push({
-      label: 'Realização de Objetivo',
+      label: 'Realização no Prazo',
       data: Array(labels.length).fill(null),
-      borderColor: '#dc3545',
-      backgroundColor: '#dc3545',
+      borderColor: '#28a745',
+      backgroundColor: '#28a745',
+      pointRadius: 0,
+      showLine: false,
+      borderWidth: 2
+    });
+  }
+  if (linhasVerticaisAtraso.length > 0) {
+    datasets.push({
+      label: 'Realização com Atraso',
+      data: Array(labels.length).fill(null),
+      borderColor: '#ffc107',
+      backgroundColor: '#ffc107',
       pointRadius: 0,
       showLine: false,
       borderWidth: 2
@@ -2061,6 +2169,17 @@ function renderGraficoEvolucao(simulacao, objetivosNormais, aposentadorias, simu
       borderWidth: 2
     });
   }
+  if (linhasVerticaisFalha.length > 0) {
+    datasets.push({
+      label: 'Não Concretizado',
+      data: Array(labels.length).fill(null),
+      borderColor: '#dc3545',
+      backgroundColor: '#dc3545',
+      pointRadius: 0,
+      showLine: false,
+      borderWidth: 2
+    });
+  }
   
   // Plugin customizado para desenhar traços verticais discretos
   const verticalLinesPlugin = {
@@ -2071,15 +2190,30 @@ function renderGraficoEvolucao(simulacao, objetivosNormais, aposentadorias, simu
       const yAxis = chart.scales.y;
       const chartArea = chart.chartArea;
       
-      // Desenhar traços verticais para saques iniciais (vermelho)
+      // Desenhar traços verticais para saques no prazo (verde)
       linhasVerticaisSaque.forEach(linha => {
         const x = xAxis.getPixelForValue(linha.pos);
         if (x >= chartArea.left && x <= chartArea.right) {
           ctx.save();
           ctx.beginPath();
-          ctx.strokeStyle = linha.sucesso ? 'rgba(220, 53, 69, 0.7)' : 'rgba(220, 53, 69, 0.35)';
-          ctx.lineWidth = linha.sucesso ? 1.5 : 1;
-          if (!linha.sucesso) ctx.setLineDash([3, 3]);
+          ctx.strokeStyle = 'rgba(40, 167, 69, 0.7)';
+          ctx.lineWidth = 1.5;
+          ctx.moveTo(x, chartArea.top);
+          ctx.lineTo(x, chartArea.bottom);
+          ctx.stroke();
+          ctx.restore();
+        }
+      });
+      
+      // Desenhar traços verticais para realizações com atraso (amarelo)
+      linhasVerticaisAtraso.forEach(linha => {
+        const x = xAxis.getPixelForValue(linha.pos);
+        if (x >= chartArea.left && x <= chartArea.right) {
+          ctx.save();
+          ctx.beginPath();
+          ctx.strokeStyle = 'rgba(255, 193, 7, 0.8)';
+          ctx.lineWidth = 1.5;
+          ctx.setLineDash([4, 2]);
           ctx.moveTo(x, chartArea.top);
           ctx.lineTo(x, chartArea.bottom);
           ctx.stroke();
@@ -2093,9 +2227,24 @@ function renderGraficoEvolucao(simulacao, objetivosNormais, aposentadorias, simu
         if (x >= chartArea.left && x <= chartArea.right) {
           ctx.save();
           ctx.beginPath();
-          ctx.strokeStyle = linha.sucesso ? 'rgba(255, 140, 0, 0.6)' : 'rgba(255, 140, 0, 0.3)';
-          ctx.lineWidth = linha.sucesso ? 1 : 0.8;
-          if (!linha.sucesso) ctx.setLineDash([2, 4]);
+          ctx.strokeStyle = 'rgba(255, 140, 0, 0.6)';
+          ctx.lineWidth = 1;
+          ctx.moveTo(x, chartArea.top);
+          ctx.lineTo(x, chartArea.bottom);
+          ctx.stroke();
+          ctx.restore();
+        }
+      });
+      
+      // Desenhar traços verticais para não concretizados (vermelho tracejado)
+      linhasVerticaisFalha.forEach(linha => {
+        const x = xAxis.getPixelForValue(linha.pos);
+        if (x >= chartArea.left && x <= chartArea.right) {
+          ctx.save();
+          ctx.beginPath();
+          ctx.strokeStyle = 'rgba(220, 53, 69, 0.6)';
+          ctx.lineWidth = 1.5;
+          ctx.setLineDash([3, 3]);
           ctx.moveTo(x, chartArea.top);
           ctx.lineTo(x, chartArea.bottom);
           ctx.stroke();
@@ -2225,12 +2374,20 @@ function renderResumoAnalise(simulacao, aposentadorias, objetivosNormais, simula
       if (recTipo === 'anos' && recValor === 0) recValor = 1;
       if (recTipo === 'meses' && recValor === 0) recValor = 12;
       
-      // Encontrar o mês em que o patrimônio acumulado atinge a meta (data provável)
-      let mesRealizacao = -1; // -1 = nunca
-      for (let i = 0; i < simulacao.pontos.length; i++) {
-        if (simulacao.pontos[i].saldo >= valorMeta) {
-          mesRealizacao = simulacao.pontos[i].mes;
-          break;
+      // Encontrar o evento de realização real deste objetivo na simulação
+      const primeiroEventoObj = simulacao.eventos.find(e => e.objetivoId === obj.id && !e.isRecorrente && e.sucesso);
+      const primeiroEventoFalha = simulacao.eventos.find(e => e.objetivoId === obj.id && !e.isRecorrente && !e.sucesso);
+      let mesRealizacao = primeiroEventoObj ? primeiroEventoObj.mes : -1;
+      const comAtraso = primeiroEventoObj ? (primeiroEventoObj.comAtraso || false) : false;
+      const mesOriginalPrimeiro = primeiroEventoObj ? (primeiroEventoObj.mesOriginal || mesRealizacao) : mesesPrazo;
+      
+      // Se não há evento de sucesso, verificar se o saldo atinge a meta em algum ponto
+      if (mesRealizacao === -1) {
+        for (let i = 0; i < simulacao.pontos.length; i++) {
+          if (simulacao.pontos[i].saldo >= valorMeta) {
+            mesRealizacao = simulacao.pontos[i].mes;
+            break;
+          }
         }
       }
       
@@ -2264,8 +2421,15 @@ function renderResumoAnalise(simulacao, aposentadorias, objetivosNormais, simula
         const eventosFalha = eventosDoObj.filter(e => !e.sucesso);
         
         if (eventosDoObj.length > 0) {
+          const eventosComAtraso = eventosDoObj.filter(e => e.sucesso && e.comAtraso);
+          const eventosNaoConcretizados = eventosDoObj.filter(e => !e.sucesso && e.naoConcretizado);
+          const eventosNoPrazo = eventosSucesso.filter(e => !e.comAtraso);
+          
           recDetalhe = `<div style="font-size: 0.65rem; color: #ff8c00; margin-top: 0.3rem; padding: 0.4rem 0.5rem; background: rgba(255,140,0,0.08); border-radius: 4px; border: 1px solid rgba(255,140,0,0.2);">`;
-          recDetalhe += `<div style="margin-bottom: 0.3rem;"><i class="fas fa-redo"></i> <strong>Recorrência (${recValor} ${recTipo === 'anos' ? 'ano(s)' : 'meses'}):</strong> ${eventosSucesso.length} execuções com sucesso de ${eventosDoObj.length} tentativas no período</div>`;
+          recDetalhe += `<div style="margin-bottom: 0.3rem;"><i class="fas fa-redo"></i> <strong>Recorrência (${recValor} ${recTipo === 'anos' ? 'ano(s)' : 'meses'}):</strong> ${eventosSucesso.length} realizada(s)`;
+          if (eventosComAtraso.length > 0) recDetalhe += ` (${eventosComAtraso.length} com atraso)`;
+          if (eventosNaoConcretizados.length > 0) recDetalhe += ` | <span style="color: #dc3545;">${eventosNaoConcretizados.length} não concretizada(s)</span>`;
+          recDetalhe += `</div>`;
           
           // Listar TODAS as datas de execução com status
           recDetalhe += `<div style="display: flex; flex-wrap: wrap; gap: 0.2rem 0.5rem; margin-top: 0.2rem;">`;
@@ -2273,10 +2437,26 @@ function renderResumoAnalise(simulacao, aposentadorias, objetivosNormais, simula
             const dataEv = new Date();
             dataEv.setMonth(dataEv.getMonth() + ev.mes);
             const dataTexto = `${String(dataEv.getMonth()+1).padStart(2,'0')}/${dataEv.getFullYear()}`;
-            const cor = ev.sucesso ? '#28a745' : '#dc3545';
-            const icone = ev.sucesso ? 'check-circle' : 'times-circle';
+            let cor, icone, sufixo = '';
+            if (ev.sucesso && ev.comAtraso) {
+              cor = '#ffc107'; // amarelo para atraso
+              icone = 'exclamation-circle';
+              const dataOriginal = new Date();
+              dataOriginal.setMonth(dataOriginal.getMonth() + ev.mesOriginal);
+              sufixo = ` (prevista ${String(dataOriginal.getMonth()+1).padStart(2,'0')}/${dataOriginal.getFullYear()})`;
+            } else if (ev.sucesso) {
+              cor = '#28a745';
+              icone = 'check-circle';
+            } else if (ev.naoConcretizado) {
+              cor = '#dc3545';
+              icone = 'ban';
+              sufixo = ' (não concretizada)';
+            } else {
+              cor = '#dc3545';
+              icone = 'times-circle';
+            }
             const tipoLabel = ev.isRecorrente ? '' : ' (1ª)';
-            recDetalhe += `<span style="color: ${cor}; font-size: 0.6rem;"><i class="fas fa-${icone}"></i> ${dataTexto}${tipoLabel}</span>`;
+            recDetalhe += `<span style="color: ${cor}; font-size: 0.6rem;"><i class="fas fa-${icone}"></i> ${dataTexto}${tipoLabel}${sufixo}</span>`;
           });
           recDetalhe += `</div>`;
           
@@ -2327,9 +2507,12 @@ function renderResumoAnalise(simulacao, aposentadorias, objetivosNormais, simula
       if (!atingido) {
         statusTexto = 'Nunca atingível';
         statusCor = '#dc3545';
-      } else if (dentroDoPrazo) {
+      } else if (dentroDoPrazo && !comAtraso) {
         statusTexto = 'No prazo';
         statusCor = '#28a745';
+      } else if (comAtraso) {
+        statusTexto = 'Realizado com atraso';
+        statusCor = '#ffc107';
       } else {
         statusTexto = 'Fora do prazo';
         statusCor = '#ffc107';
