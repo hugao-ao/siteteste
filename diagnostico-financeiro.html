@@ -2479,6 +2479,31 @@
     }
 
     // Funções para gerenciar múltiplas pessoas com renda
+    function syncPessoasFromDOM() {
+      pessoasRenda.forEach((pessoa, index) => {
+        const pessoaId = `pessoa_${index}`;
+        const nomeEl = document.getElementById(`${pessoaId}_nome`);
+        if (nomeEl) {
+          pessoa.nome = nomeEl.value.trim();
+          pessoa.cpf = document.getElementById(`${pessoaId}_cpf`)?.value || '';
+          pessoa.data_nascimento = document.getElementById(`${pessoaId}_data_nascimento`)?.value || '';
+          pessoa.profissao = document.getElementById(`${pessoaId}_profissao`)?.value.trim() || '';
+          pessoa.telefone = document.getElementById(`${pessoaId}_telefone`)?.value || '';
+          pessoa.email = document.getElementById(`${pessoaId}_email`)?.value.trim() || '';
+          pessoa.estado_civil = document.getElementById(`${pessoaId}_estado_civil`)?.value || '';
+          pessoa.regime_bens = document.getElementById(`${pessoaId}_regime_bens`)?.value || '';
+          pessoa.conjuge_nome = document.getElementById(`${pessoaId}_conjuge_nome`)?.value.trim() || '';
+          pessoa.conjuge_cpf = document.getElementById(`${pessoaId}_conjuge_cpf`)?.value || '';
+          pessoa.conjuge_data_nascimento = document.getElementById(`${pessoaId}_conjuge_data_nascimento`)?.value || '';
+          pessoa.conjuge_profissao = document.getElementById(`${pessoaId}_conjuge_profissao`)?.value.trim() || '';
+          pessoa.conjuge_telefone = document.getElementById(`${pessoaId}_conjuge_telefone`)?.value || '';
+          pessoa.conjuge_email = document.getElementById(`${pessoaId}_conjuge_email`)?.value.trim() || '';
+          pessoa.conjuge_dependente_ir = document.getElementById(`${pessoaId}_conjuge_dependente_ir`)?.value || 'nao';
+        }
+      });
+      window.pessoasRenda = pessoasRenda;
+    }
+
     function createPessoaCard(pessoa, index) {
       const pessoaId = `pessoa_${index}`;
       
@@ -2508,6 +2533,7 @@
                      name="${pessoaId}_nome" 
                      value="${pessoa.nome || ''}"
                      placeholder="Digite o nome completo"
+                     oninput="updatePessoaNome(${index})"
                      required>
             </div>
 
@@ -2613,7 +2639,8 @@
                        id="${pessoaId}_conjuge_nome" 
                        name="${pessoaId}_conjuge_nome" 
                        value="${pessoa.conjuge_nome || ''}"
-                       placeholder="Nome do cônjuge">
+                       placeholder="Nome do cônjuge"
+                       oninput="updatePessoaConjugeNome(${index})">
               </div>
 
               <div class="form-group">
@@ -2689,6 +2716,7 @@
     }
 
     function addPessoa() {
+      syncPessoasFromDOM(); // Salvar dados atuais antes de re-renderizar
       const novaPessoa = {
         nome: '',
         cpf: '',
@@ -2716,6 +2744,7 @@
 
     function deletePessoa(index) {
       if (confirm('Tem certeza que deseja excluir esta pessoa?')) {
+        syncPessoasFromDOM(); // Salvar dados atuais antes de re-renderizar
         pessoasRenda.splice(index, 1);
         window.pessoasRenda = pessoasRenda; // Atualizar referência global
         renderPessoas();
@@ -2759,6 +2788,15 @@
       
       // Atualizar dados da pessoa
       pessoasRenda[index].estado_civil = estadoCivil;
+      if (!showConjuge) {
+        pessoasRenda[index].conjuge_nome = '';
+        pessoasRenda[index].conjuge_cpf = '';
+        pessoasRenda[index].conjuge_data_nascimento = '';
+        pessoasRenda[index].conjuge_profissao = '';
+        pessoasRenda[index].conjuge_telefone = '';
+        pessoasRenda[index].conjuge_email = '';
+        pessoasRenda[index].conjuge_dependente_ir = 'nao';
+      }
       window.pessoasRenda = pessoasRenda; // Atualizar referência global
       // Atualizar seção de IR
       if (window.atualizarSecaoIR) window.atualizarSecaoIR();
@@ -2803,10 +2841,41 @@
       });
     }
 
+    // Funções de atualização em tempo real (oninput)
+    function updatePessoaNome(index) {
+      const pessoaId = `pessoa_${index}`;
+      const nomeEl = document.getElementById(`${pessoaId}_nome`);
+      if (nomeEl && pessoasRenda[index]) {
+        pessoasRenda[index].nome = nomeEl.value.trim();
+        window.pessoasRenda = pessoasRenda;
+        // Atualizar título do card
+        const titleEl = nomeEl.closest('.pessoa-card')?.querySelector('.pessoa-title');
+        if (titleEl) {
+          titleEl.innerHTML = `<i class="fas fa-user"></i> ${pessoasRenda[index].nome || 'Pessoa ' + (index + 1)}`;
+        }
+        // Atualizar seção de IR quando nome é preenchido
+        if (window.atualizarSecaoIR) window.atualizarSecaoIR();
+      }
+    }
+
+    function updatePessoaConjugeNome(index) {
+      const pessoaId = `pessoa_${index}`;
+      const nomeEl = document.getElementById(`${pessoaId}_conjuge_nome`);
+      if (nomeEl && pessoasRenda[index]) {
+        pessoasRenda[index].conjuge_nome = nomeEl.value.trim();
+        window.pessoasRenda = pessoasRenda;
+        // Atualizar seção de IR quando nome do cônjuge é preenchido
+        // (só adiciona IR se não for dependente)
+        if (window.atualizarSecaoIR) window.atualizarSecaoIR();
+      }
+    }
+
     // Tornar funções globais para uso nos event handlers inline
     window.editPessoa = editPessoa;
     window.deletePessoa = deletePessoa;
     window.toggleConjugePessoa = toggleConjugePessoa;
+    window.updatePessoaNome = updatePessoaNome;
+    window.updatePessoaConjugeNome = updatePessoaConjugeNome;
 
     // Funções para gerenciar dependentes
     function calcularIdade(dataNascimento) {
