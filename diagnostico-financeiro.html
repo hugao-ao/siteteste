@@ -3988,6 +3988,11 @@ console.log('=== FIM DEBUG PESSOAS COM RENDA ===');
           } catch (e) {
             console.log('Erro ao carregar objetivos:', e);
           }
+        } else {
+          // Mesmo sem dados salvos, renderizar a interface de objetivos
+          if (window.renderObjetivos) {
+            window.renderObjetivos();
+          }
         }
         
         // Carregar questões pertinentes
