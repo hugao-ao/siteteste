@@ -4604,7 +4604,8 @@ function analyzePrefillChanges(dadosCad, form) {
     }
     if (Array.isArray(form.objetivos) && form.objetivos.length > 0) {
       const objetivosExistentes = window.getObjetivosArray ? window.getObjetivosArray() : [];
-      if (!objetivosExistentes || objetivosExistentes.length === 0) {
+      const objetivosNormaisExistentes = (objetivosExistentes || []).filter(o => o.tipo === 'normal' && o.descricao && o.descricao.trim() !== '');
+      if (objetivosNormaisExistentes.length === 0) {
         changes.push({ campo: 'Objetivos', atual: '0 objetivos', novo: `${form.objetivos.length} objetivo(s)`, tipo: 'acrescimo' });
       }
     }
@@ -4886,10 +4887,11 @@ function applyPrefillData(dadosCad, form) {
       }
     }
     
-    // Objetivos - só acrescenta se não há nenhum
+    // Objetivos - só acrescenta se não há objetivos normais com descrição preenchida
     if (Array.isArray(form.objetivos) && form.objetivos.length > 0) {
       const objetivosExistentes = window.getObjetivosArray ? window.getObjetivosArray() : [];
-      if ((!objetivosExistentes || objetivosExistentes.length === 0) && window.setObjetivosData) {
+      const objetivosNormaisExistentes = (objetivosExistentes || []).filter(o => o.tipo === 'normal' && o.descricao && o.descricao.trim() !== '');
+      if (objetivosNormaisExistentes.length === 0 && window.setObjetivosData) {
         const objetivos = form.objetivos.map((obj, idx) => ({
           id: idx + 1,
           descricao: obj.descricao || '',
@@ -5254,5 +5256,4 @@ async function gerarPdfDiagnostico() {
 
 </body>
 </html>
-
 
