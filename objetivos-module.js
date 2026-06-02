@@ -2971,4 +2971,11 @@ window.selecionarPropostaFinal = function(tipo) {
 document.addEventListener('DOMContentLoaded', () => {
   console.log('Módulo de Objetivos v7.0 carregado');
   carregarVariaveisMercado();
+  // Garantir renderização inicial após tempo suficiente para loadDiagnostico
+  setTimeout(() => {
+    const container = document.getElementById('objetivos-container');
+    if (container && (container.innerHTML.trim() === '' || container.innerHTML.includes('<!-- Objetivos'))) {
+      renderObjetivos();
+    }
+  }, 3000);
 });
