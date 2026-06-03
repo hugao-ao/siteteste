@@ -732,7 +732,7 @@ function calcularAporteMensalNecessario(meta, valorInicial, meses, perfilId) {
   return Math.max(0, aporte);
 }
 
-function calcularRendaAnualPessoa(pessoaId) {{
+function calcularRendaAnualPessoa(pessoaId) {
   let rendaAnual = 0;
   const nomePessoa = getNomePessoaPorId(pessoaId);
   
