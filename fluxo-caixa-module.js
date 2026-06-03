@@ -259,12 +259,6 @@ function addReceita() {
 }
 
 function deleteReceita(id) {
-  const receita = receitas.find(r => r.id === id);
-  if (receita && receita.automatica) {
-    alert('Esta receita foi gerada automaticamente e não pode ser excluída.');
-    return;
-  }
-  
   if (!confirm('Tem certeza que deseja excluir esta receita?')) return;
   
   receitas = receitas.filter(r => r.id !== id);
@@ -309,7 +303,7 @@ function addDespesa() {
     qtd_recorrencia: 1,
     und_recorrencia: 'mes',
     forma_pagamento: '',
-    titular: '',
+    titular: 'titular',
     categoria_comportamental: '',
     automatica: false,
     origem: null
@@ -320,12 +314,6 @@ function addDespesa() {
 }
 
 function deleteDespesa(id) {
-  const despesa = despesas.find(d => d.id === id);
-  if (despesa && despesa.automatica) {
-    alert('Esta despesa foi gerada automaticamente e não pode ser excluída. Para removê-la, exclua o item original na seção correspondente.');
-    return;
-  }
-  
   if (!confirm('Tem certeza que deseja excluir esta despesa?')) return;
   
   despesas = despesas.filter(d => d.id !== id);
@@ -701,13 +689,14 @@ function calcularFluxoPorPessoa() {
   
   // Calcular despesas por pessoa
   despesas.forEach(despesa => {
-    const pessoaId = despesa.titular;
-    if (resultado[pessoaId]) {
+    const pessoaId = despesa.titular || 'titular';
+    const targetId = resultado[pessoaId] ? pessoaId : 'titular';
+    if (resultado[targetId]) {
       const tipoDespesa = despesa.tipo === 'fixa' ? 'despesas_fixas' : 'despesas_variaveis';
-      resultado[pessoaId][tipoDespesa].mes += calcularValorMensal(
+      resultado[targetId][tipoDespesa].mes += calcularValorMensal(
         despesa.valor, despesa.qtd_recorrencia, despesa.und_recorrencia
       );
-      resultado[pessoaId][tipoDespesa].ano += calcularValorAnual(
+      resultado[targetId][tipoDespesa].ano += calcularValorAnual(
         despesa.valor, despesa.qtd_recorrencia, despesa.und_recorrencia
       );
     }
@@ -1037,14 +1026,10 @@ function renderFluxoCaixa() {
                   </select>
                 </td>
                 <td style="padding: 0.4rem; border: 1px solid var(--border-color); text-align: center;">
-                  ${receita.automatica ? `
-                    <span style="color: var(--text-light); opacity: 0.5;" title="Item automático"><i class="fas fa-lock"></i></span>
-                  ` : `
                     <button type="button" onclick="deleteReceita(${receita.id})" 
-                            style="background: #dc3545; color: white; border: none; padding: 0.3rem 0.5rem; border-radius: 4px; cursor: pointer;">
+                            style="background: #dc3545; color: white; border: none; padding: 0.3rem 0.5rem; border-radius: 4px; cursor: pointer;" title="${receita.automatica ? 'Item sincronizado automaticamente' : 'Excluir'}">
                       <i class="fas fa-trash"></i>
                     </button>
-                  `}
                 </td>
               </tr>
             `).join('')}
@@ -1152,14 +1137,10 @@ function renderFluxoCaixa() {
                     ${titularNome}
                   </td>
                   <td style="padding: 0.4rem; border: 1px solid var(--border-color); text-align: center;">
-                    ${despesa.automatica ? `
-                      <span style="color: var(--text-light); opacity: 0.5;" title="Item automático - ${despesa.origem}"><i class="fas fa-lock"></i></span>
-                    ` : `
                       <button type="button" onclick="deleteDespesa(${despesa.id})" 
-                              style="background: #dc3545; color: white; border: none; padding: 0.3rem 0.5rem; border-radius: 4px; cursor: pointer;">
+                              style="background: #dc3545; color: white; border: none; padding: 0.3rem 0.5rem; border-radius: 4px; cursor: pointer;" title="${despesa.automatica ? 'Item sincronizado: ' + despesa.origem : 'Excluir'}">
                         <i class="fas fa-trash"></i>
                       </button>
-                    `}
                   </td>
                 </tr>
               `;
@@ -1409,9 +1390,9 @@ function getFluxoCaixaData() {
 
 function setFluxoCaixaData(data) {
   if (data) {
-    // Carregar receitas manuais
+    // Carregar receitas manuais (filtrar automáticas para evitar duplicatas)
     if (Array.isArray(data.receitas)) {
-      receitas = data.receitas;
+      receitas = data.receitas.filter(r => !r.automatica);
       if (receitas.length > 0) {
         receitaCounter = Math.max(...receitas.map(r => r.id || 0));
       }
