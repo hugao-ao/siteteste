@@ -4198,7 +4198,8 @@ console.log('=== FIM DEBUG PESSOAS COM RENDA ===');
         const dependenteData = {
           nome: document.getElementById(`${dependenteId}_nome`)?.value.trim() || '',
           data_nascimento: document.getElementById(`${dependenteId}_data_nascimento`)?.value || '',
-          parentesco: document.getElementById(`${dependenteId}_parentesco`)?.value.trim() || ''
+          parentesco: document.getElementById(`${dependenteId}_parentesco`)?.value.trim() || '',
+          responsavel: document.getElementById(`${dependenteId}_responsavel`)?.value || ''
         };
         
         // Validar campos obrigatórios para dependentes
