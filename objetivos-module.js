@@ -719,7 +719,20 @@ function calcularAportesTotaisDisponiveis() {
   return { mensal: totalMensal, anual: totalAnual };
 }
 
-function calcularRendaAnualPessoa(pessoaId) {
+// Calcula o aporte mensal necessário (PMT) para atingir uma meta
+function calcularAporteMensalNecessario(meta, valorInicial, meses, perfilId) {
+  if (meses <= 0 || meta <= 0) return 0;
+  const rentAnual = getRentabilidadePorPerfil(perfilId || getPerfilAnalise());
+  const r = Math.pow(1 + rentAnual / 100, 1/12) - 1;
+  const pv = valorInicial || 0;
+  const fv = meta;
+  if (r === 0) return Math.max(0, (fv - pv) / meses);
+  const fatorAcumulacao = Math.pow(1 + r, meses);
+  const aporte = (fv - pv * fatorAcumulacao) * r / (fatorAcumulacao - 1);
+  return Math.max(0, aporte);
+}
+
+function calcularRendaAnualPessoa(pessoaId) {{
   let rendaAnual = 0;
   const nomePessoa = getNomePessoaPorId(pessoaId);
   
@@ -1440,11 +1453,12 @@ function renderCardAposentadoria(obj, pessoas, patrimonioAposentadoriaPorPessoa)
         </div>
       </div>
       
-      <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+      <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;">
         <span style="padding: 0.15rem 0.5rem; background: rgba(40, 167, 69, 0.1); border-radius: 4px; font-size: 0.7rem;"><span style="color: var(--text-light);">Idade:</span> <span style="color: #28a745; font-weight: 600;">${idadeAtual}</span></span>
         <span style="padding: 0.15rem 0.5rem; background: rgba(40, 167, 69, 0.1); border-radius: 4px; font-size: 0.7rem;"><span style="color: var(--text-light);">Restam:</span> <span style="color: #28a745; font-weight: 600;">${anosRestantes} anos</span></span>
         <span style="padding: 0.15rem 0.5rem; background: rgba(40, 167, 69, 0.1); border-radius: 4px; font-size: 0.7rem;"><span style="color: var(--text-light);">Patrim.:</span> <span style="color: #28a745; font-weight: 600;">${formatarMoedaObj(patrimonioAtual)}</span></span>
         <span style="padding: 0.15rem 0.5rem; background: rgba(40, 167, 69, 0.1); border-radius: 4px; font-size: 0.7rem;"><span style="color: var(--text-light);">Capital Nec.:</span> <span id="capital-necessario-${obj.id}" style="color: #28a745; font-weight: 600;">${formatarMoedaObj(capitalNecessario)}</span></span>
+        <span style="padding: 0.15rem 0.5rem; background: rgba(40, 167, 69, 0.15); border: 1px solid #28a745; border-radius: 4px; font-size: 0.7rem;"><span style="color: var(--text-light);"><i class="fas fa-coins"></i> Aporte Mensal Nec.:</span> <span id="aporte-mensal-${obj.id}" style="color: #28a745; font-weight: 600;">${formatarMoedaObj(calcularAporteMensalNecessario(capitalNecessario, obj.valor_inicial || 0, anosRestantes * 12, null))}</span></span>
       </div>
     </div>
   `;
@@ -1525,6 +1539,11 @@ function renderCardObjetivo(obj, pessoas, todosObjetivos, saldoDisponivel) {
             ${objetivosParaVincular.map(o => `<option value="${o.id}" ${obj.vinculado_a === o.id ? 'selected' : ''}>${o.prioridade}º - ${o.descricao || 'Sem descrição'}</option>`).join('')}
           </select>
         </div>
+      </div>
+      
+      <!-- Aporte Mensal Necessário -->
+      <div style="display: flex; align-items: center; gap: 0.5rem; padding: 0.25rem 0.5rem; margin-bottom: 0.3rem;">
+        <span style="padding: 0.15rem 0.5rem; background: rgba(212, 175, 55, 0.15); border: 1px solid var(--accent-color); border-radius: 4px; font-size: 0.7rem;"><span style="color: var(--text-light);"><i class="fas fa-coins"></i> Aporte Mensal Nec.:</span> <span id="aporte-mensal-obj-${obj.id}" style="color: var(--accent-color); font-weight: 600;">${formatarMoedaObj(calcularAporteMensalNecessario(obj.meta_acumulo || 0, obj.valor_inicial || 0, calcularMesesRestantesObjNormal(obj), null))}</span></span>
       </div>
       
       <!-- Linha 3: Recorrência + Acumulável -->
@@ -2013,20 +2032,31 @@ function simularEvolucaoPatrimonial(aposentadorias, objetivosNormais, perfilIdOv
 
 function calcularMesesRestantesObj(obj, pessoas) {
   const prazoTipo = obj.prazo_tipo || 'idade';
+  // Usar data de referência da reunião, não hoje
+  const dataRef = variaveisMercado.data_reuniao ? new Date(variaveisMercado.data_reuniao + 'T00:00:00') : new Date();
+  
   if (prazoTipo === 'data' && obj.prazo_data) {
     const dataAlvo = new Date(obj.prazo_data);
-    const hoje = new Date();
-    return Math.max(0, Math.round((dataAlvo - hoje) / (1000 * 60 * 60 * 24 * 30.44)));
+    return Math.max(0, Math.round((dataAlvo - dataRef) / (1000 * 60 * 60 * 24 * 30.44)));
   } else if (prazoTipo === 'meses') {
     return obj.prazo_meses || 360;
   } else if (prazoTipo === 'anos') {
     return obj.prazo_meses || 360;
   } else {
-    // idade
+    // idade — calcular idade na data de referência
     const pessoa = pessoas.find(p => p.id === obj.prazo_pessoa);
-    const idadeAtual = pessoa ? pessoa.idade : 30;
+    const dataNasc = pessoa?.dataNascimento;
+    let idadeNaRef = 30;
+    if (dataNasc) {
+      const nasc = new Date(dataNasc);
+      idadeNaRef = dataRef.getFullYear() - nasc.getFullYear();
+      const m = dataRef.getMonth() - nasc.getMonth();
+      if (m < 0 || (m === 0 && dataRef.getDate() < nasc.getDate())) idadeNaRef--;
+    } else if (pessoa) {
+      idadeNaRef = pessoa.idade;
+    }
     const idadeAposentadoria = obj.prazo_idade || 65;
-    return Math.max(0, (idadeAposentadoria - idadeAtual) * 12);
+    return Math.max(0, (idadeAposentadoria - idadeNaRef) * 12);
   }
 }
 
@@ -2614,6 +2644,47 @@ function renderResumoAnalise(simulacao, aposentadorias, objetivosNormais, simula
       </div>
     `;
     html += `</div>`;
+  }
+  
+  // Somatório de aportes mensais necessários
+  let totalAporteMensal = 0;
+  aposentadorias.forEach(obj => {
+    const rendaAnual = obj.renda_anual || 0;
+    const rentAnual = variaveisMercado.rent_anual_aposentadoria || 6.0;
+    const capitalNec = rentAnual > 0 ? rendaAnual / (rentAnual / 100) : 0;
+    const meses = calcularMesesRestantesObj(obj, pessoas);
+    totalAporteMensal += calcularAporteMensalNecessario(capitalNec, obj.valor_inicial || 0, meses, null);
+  });
+  objetivosNormais.forEach(obj => {
+    const meta = obj.meta_acumulo || 0;
+    const meses = calcularMesesRestantesObjNormal(obj);
+    totalAporteMensal += calcularAporteMensalNecessario(meta, obj.valor_inicial || 0, meses, null);
+  });
+  
+  if (totalAporteMensal > 0) {
+    const aportesDisponiveis = calcularAportesTotaisDisponiveis();
+    const aporteDisponivel = aportesDisponiveis.mensal + (aportesDisponiveis.anual / 12);
+    const suficiente = aporteDisponivel >= totalAporteMensal;
+    html += `
+      <div style="margin-top: 0.8rem; padding: 0.6rem; background: rgba(${suficiente ? '40, 167, 69' : '220, 53, 69'}, 0.1); border-radius: 6px; border: 1px solid ${suficiente ? '#28a745' : '#dc3545'};">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
+          <div>
+            <div style="font-size: 0.7rem; color: var(--text-light);"><i class="fas fa-coins"></i> Aporte Mensal Necessário Total:</div>
+            <div style="font-size: 1rem; font-weight: 600; color: ${suficiente ? '#28a745' : '#dc3545'};">${formatarMoedaObj(totalAporteMensal)}</div>
+          </div>
+          <div>
+            <div style="font-size: 0.7rem; color: var(--text-light);"><i class="fas fa-piggy-bank"></i> Aporte Disponível (mensal):</div>
+            <div style="font-size: 1rem; font-weight: 600; color: ${suficiente ? '#28a745' : '#dc3545'};">${formatarMoedaObj(aporteDisponivel)}</div>
+          </div>
+          <div style="text-align: center;">
+            <div style="font-size: 0.7rem; color: var(--text-light);">Status:</div>
+            <div style="font-size: 0.85rem; font-weight: 600; color: ${suficiente ? '#28a745' : '#dc3545'};">
+              <i class="fas fa-${suficiente ? 'check-circle' : 'exclamation-triangle'}"></i> ${suficiente ? 'Suficiente' : 'Insuficiente'}
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
   }
   
   return html;
