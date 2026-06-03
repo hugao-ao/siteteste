@@ -417,6 +417,11 @@ function criarProdutoProtecaoDePatrimonio(patrimonio) {
     // Produto já existe, apenas atualizar o objeto (caso detalhes tenha mudado)
     produtoExistente.objeto = patrimonio.detalhes || '';
     renderProdutosProtecao();
+    // Sincronizar vencimento de volta ao patrimônio se já tiver preenchido
+    if (produtoExistente.vencimento) {
+      const idx = produtosProtecao.indexOf(produtoExistente);
+      if (idx >= 0) sincronizarVencimentoComPatrimonio(idx);
+    }
     return produtoExistente;
   }
   
@@ -761,6 +766,15 @@ function setProdutosProtecaoData(data) {
   produtosProtecao = data;
   produtoProtecaoCounter = Math.max(...produtosProtecao.map(p => p.id || 0), 0);
   renderProdutosProtecao();
+  
+  // Sincronizar vencimentos de volta aos patrimônios físicos vinculados
+  setTimeout(() => {
+    produtosProtecao.forEach((produto, i) => {
+      if (produto.origem_patrimonio && produto.vencimento) {
+        sincronizarVencimentoComPatrimonio(i);
+      }
+    });
+  }, 500);
 }
 
 // =========================================
