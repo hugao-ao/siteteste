@@ -1288,6 +1288,8 @@ function saveItem() {
   }
   closeModal();
   renderItemsTable();
+  // Salvar automaticamente após edição para garantir persistência da propagação
+  salvarSimulacaoAtual();
 }
 
 function deleteItem(index) {
@@ -4711,6 +4713,34 @@ if (typeof FerramentasLinkage !== 'undefined') {
     FerramentasLinkage.load();
   }
 })();
+
+// STORAGE LISTENER: detectar alterações feitas por outras ferramentas
+window.addEventListener('storage', function(e) {
+  var clienteId = sessionStorage.getItem('cliente_id');
+  if (!clienteId) return;
+  var fluxoKey = 'fluxo_simulacoes_v2_' + clienteId;
+  var linkageKey = 'hv_linkage_local';
+  if (e.key === fluxoKey || e.key === linkageKey) {
+    if (e.key === fluxoKey && e.newValue) {
+      try {
+        simulacoes = JSON.parse(e.newValue);
+        if (editingSimId) {
+          var sim = simulacoes.find(function(s) { return s.id === editingSimId; });
+          if (sim && sim.payload && sim.payload.itens) {
+            items = sim.payload.itens;
+            renderItemsTable();
+          }
+        } else {
+          renderSimList();
+        }
+      } catch(err) {}
+    }
+    if (e.key === linkageKey) {
+      FerramentasLinkage.load();
+      if (editingSimId) renderItemsTable();
+    }
+  }
+});
 
 </script>
 </main>
