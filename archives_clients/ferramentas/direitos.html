@@ -709,7 +709,7 @@ function renderAssocFluxo() {
 function _loadFluxoRefItems() {
   var clienteId = sessionStorage.getItem('cliente_id');
   if (!clienteId) return;
-  var lsKey = 'hv_fluxo_local_' + clienteId;
+  var lsKey = 'fluxo_simulacoes_v2_' + clienteId;
   var local = localStorage.getItem(lsKey);
   var simulacoes = [];
   if (local) { try { simulacoes = JSON.parse(local); } catch(e) {} }
