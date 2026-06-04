@@ -6,6 +6,7 @@
 <title>Comparador Inteligente - MithraSF</title>
 <link rel="stylesheet" href="../assets/style.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="../assets/ferramentas-linkage.js"></script>
 <script src="../assets/importar-diagnostico.js"></script>
 <script src="../assets/layout.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -1083,23 +1084,6 @@
     background: linear-gradient(135deg, #10b981, #059669);
     color: #fff;
   }
-
-  /* === SIM LOCK & PRIMARY CHECKBOXES === */
-  .sim-checkbox-group { display:none; gap:0.5rem; align-items:center; margin-right:0.5rem; }
-  .equipe-mode .sim-checkbox-group { display:inline-flex !important; }
-  .sim-checkbox-group label { display:flex; align-items:center; gap:0.25rem; font-size:0.72rem; color:var(--muted); cursor:pointer; padding:0.2rem 0.5rem; border-radius:4px; border:1px solid transparent; transition:all 0.15s; user-select:none; }
-  .sim-checkbox-group label:hover { border-color:var(--border); background:rgba(255,255,255,0.03); }
-  .sim-checkbox-group input[type="checkbox"] { width:14px; height:14px; accent-color:var(--primary); cursor:pointer; }
-  .sim-checkbox-group label.active-lock { border-color:var(--red); background:rgba(239,68,68,0.08); color:var(--red); }
-  .sim-checkbox-group label.active-primary { border-color:var(--primary); background:rgba(212,175,55,0.08); color:var(--primary); }
-  .sim-card.locked { opacity:0.85; }
-  .sim-card.locked .sim-card-body { pointer-events:none; }
-  .sim-card.locked input:not(.sim-lock-cb):not(.sim-primary-cb), .sim-card.locked select, .sim-card.locked textarea { pointer-events:none !important; opacity:0.6; }
-  .sim-card.locked button:not([class*="sim-lock"]):not([class*="sim-primary"]) { pointer-events:none; opacity:0.5; }
-  .sim-card-item.locked { opacity:0.85; }
-  .sim-card-item.locked .sim-card-item-body { pointer-events:none; }
-  .sim-card-item.locked input:not(.sim-lock-cb):not(.sim-primary-cb), .sim-card-item.locked select, .sim-card-item.locked textarea { pointer-events:none !important; opacity:0.6; }
-
 </style>
 </head>
 <body>
@@ -1204,7 +1188,10 @@
           <div class="section-block-body">
             <div class="tip"><b>Dica:</b> Adicione todos os produtos que deseja comparar. O preço é o custo total no período analisado.</div>
             <div class="products-grid" id="products-grid"></div>
-            <button class="btn-add" onclick="addProduct()">＋ Adicionar produto</button>
+            <div style="display:flex;gap:10px;flex-wrap:wrap;">
+              <button class="btn-add" onclick="addProduct()">＋ Adicionar produto</button>
+              <button class="btn-add" onclick="importarDeDireitos()" style="background:rgba(96,165,250,0.12);border-color:rgba(96,165,250,0.3);color:#60a5fa;">📋 Importar da Visão Referência (Direitos)</button>
+            </div>
           </div>
         </div>
 
@@ -1259,13 +1246,6 @@
   </div>
 
 <script>
-// === EQUIPE MODE CHECK (show lock/primary only for consultors) ===
-(function() {
-  if (sessionStorage.getItem('equipe_modo_cliente') === 'true') {
-    document.documentElement.classList.add('equipe-mode');
-  }
-})();
-
 /* ═══════════════════════════════════════════════════════════
    ESTADO
 ═══════════════════════════════════════════════════════════ */
@@ -1854,17 +1834,101 @@ function renderAll() {
 ═══════════════════════════════════════════════════════════ */
 function addProduct() {
   const id = pidCounter++;
-  tmpProducts.push({ id, name: '', price: 0, adjustments: [], refund: { enabled: false, mode: 'pct', value: 0, applyAdjustments: false } });
+  tmpProducts.push({ id, name: '', price: 0, adjustments: [], refund: { enabled: false, mode: 'pct', value: 0, applyAdjustments: false }, _linkId: _compGenId() });
   tmpObjParams.forEach(p => { p.hasParam[id] = true; p.values[id] = 0; });
   tmpSubjParams.forEach(p => { p.hasParam[id] = true; p.rankings[id] = 1; });
   renderAll();
 }
 
 function removeProduct(pid) {
+  // Registrar exclusão no linkage engine se o produto estava associado
+  var removedProd = tmpProducts.find(p => p.id === pid);
+  if (removedProd && removedProd._linkId && editingId && typeof FerramentasLinkage !== 'undefined') {
+    var links = FerramentasLinkage.getLinksForComparadorProduct(editingId, removedProd._linkId);
+    links.forEach(function(lk) { FerramentasLinkage.registerDeletion(lk.id, 'comparador'); });
+  }
   tmpProducts = tmpProducts.filter(p=>p.id!==pid);
   tmpObjParams.forEach(p => { delete p.hasParam[pid]; delete p.values[pid]; });
   tmpSubjParams.forEach(p => { delete p.hasParam[pid]; delete p.rankings[pid]; });
   renderAll();
+}
+
+// ---- ID generator for linkage ----
+function _compGenId() { return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+
+// ---- Importar produtos da Visão Referência de Direitos ----
+function importarDeDireitos() {
+  if (typeof FerramentasLinkage === 'undefined') { alert('Módulo de integração não carregado.'); return; }
+  // Carregar visões de Direitos do localStorage/Supabase
+  var clienteId = sessionStorage.getItem('cliente_id');
+  if (!clienteId) { alert('Nenhum cliente selecionado.'); return; }
+  var lsKey = 'hvsf_direitos_' + clienteId;
+  var raw = localStorage.getItem(lsKey);
+  var visoes = [];
+  if (raw) { try { visoes = JSON.parse(raw); } catch(e) {} }
+  // Encontrar visão marcada como primary (referência)
+  var visaoRef = visoes.find(function(v) { return v.primary; });
+  if (!visaoRef) { alert('Nenhuma visão consolidada está marcada como referência na ferramenta de Direitos.'); return; }
+  var produtos = visaoRef.produtos || [];
+  if (produtos.length === 0) { alert('A visão referência não possui produtos.'); return; }
+  // Mostrar seletor para o usuário escolher quais importar
+  var nomes = produtos.map(function(p, i) { return (i+1) + ') ' + (p.nome || 'Sem nome'); });
+  var msg = 'Produtos na visão referência "' + visaoRef.nome + '":\n\n' + nomes.join('\n') + '\n\nDigite os números separados por vírgula (ou "todos"):';
+  var resp = prompt(msg);
+  if (!resp) return;
+  var indices = [];
+  if (resp.trim().toLowerCase() === 'todos') {
+    indices = produtos.map(function(p, i) { return i; });
+  } else {
+    resp.split(',').forEach(function(s) {
+      var n = parseInt(s.trim()) - 1;
+      if (n >= 0 && n < produtos.length) indices.push(n);
+    });
+  }
+  if (indices.length === 0) { alert('Nenhum produto selecionado.'); return; }
+  indices.forEach(function(idx) {
+    var prod = produtos[idx];
+    var id = pidCounter++;
+    var linkId = _compGenId();
+    var price = 0;
+    if (prod.custo) {
+      var custoStr = String(prod.custo).replace(/\./g,'').replace(',','.');
+      price = parseFloat(custoStr) || 0;
+    }
+    tmpProducts.push({ id: id, name: prod.nome || '', price: price, adjustments: [], refund: { enabled: false, mode: 'pct', value: 0, applyAdjustments: false }, _linkId: linkId });
+    // Importar direitos como parâmetros
+    var direitos = prod.direitos || [];
+    direitos.forEach(function(d) {
+      var hasVal = d.valor && String(d.valor).trim() !== '';
+      if (hasVal) {
+        // Parâmetro OBJETIVO
+        var paramId = paramCounter++;
+        var hasParam = {}, values = {};
+        tmpProducts.forEach(function(p) { hasParam[p.id] = false; values[p.id] = 0; });
+        hasParam[id] = true;
+        var valStr = String(d.valor).replace(/\./g,'').replace(',','.');
+        values[id] = parseFloat(valStr) || 0;
+        tmpObjParams.push({ id: paramId, name: d.nome || '', unit: d.categoria || '', importance: 5, values: values, hasParam: hasParam, _direitoId: d.id });
+      } else {
+        // Parâmetro SUBJETIVO
+        var paramId2 = paramCounter++;
+        var hasParam2 = {}, rankings2 = {};
+        tmpProducts.forEach(function(p) { hasParam2[p.id] = false; rankings2[p.id] = 1; });
+        hasParam2[id] = true;
+        rankings2[id] = 1;
+        tmpSubjParams.push({ id: paramId2, name: d.nome || '', importance: 5, rankings: rankings2, hasParam: hasParam2, _direitoId: d.id });
+      }
+    });
+    // Criar link no linkage engine
+    FerramentasLinkage.createLink({
+      label: prod.nome || '', valor: price, periodicidade: prod.periodicidade || 'mensal',
+      direitos_visao_id: visaoRef.id, direitos_produto_id: prod.id,
+      comparador_comp_id: editingId || null, comparador_product_id: linkId,
+      direitos_params: direitos.map(function(d) { return { direito_id: d.id, nome: d.nome, valor: d.valor, categoria: d.categoria }; })
+    });
+  });
+  renderAll();
+  alert(indices.length + ' produto(s) importado(s) da visão referência de Direitos!');
 }
 
 function updateProductName(pid, val) {
@@ -1959,9 +2023,18 @@ function renderProducts() {
 
     const priceLabel = tmpPeriodEnabled ? 'Valor da parcela (R$)' : 'Preço total (R$)';
 
+    // Linkage badges/indicators
+    let linkBadges = '';
+    if (typeof FerramentasLinkage !== 'undefined' && p._linkId && editingId) {
+      const pLinks = FerramentasLinkage.getLinksForComparadorProduct(editingId, p._linkId);
+      if (pLinks.length > 0) linkBadges += FerramentasLinkage.renderLinkIndicatorHtml(pLinks[0], 'comparador');
+      const pBadges = FerramentasLinkage.getBadgesForItem('comparador', { compId: editingId, productId: p._linkId });
+      pBadges.forEach(function(b) { linkBadges += FerramentasLinkage.renderBadgeHtml(b); });
+    }
+
     return `
     <div class="product-card">
-      <div class="pc-num">Produto ${i+1}</div>
+      <div class="pc-num">Produto ${i+1} ${linkBadges}</div>
       <button class="pc-del" onclick="removeProduct(${p.id})" title="Remover">✕</button>
       <div class="field-group" style="margin-bottom:8px">
         <label class="field-label">Nome</label>
@@ -2519,19 +2592,6 @@ function fmtN(n) {
 /* ═══════════════════════════════════════════════════════════
    RENDER LIST
 ═══════════════════════════════════════════════════════════ */
-
-// === LOCK & PRIMARY SIMULATION HELPERS ===
-function toggleCompLock(id, ev) {
-  ev.stopPropagation();
-  var comp = comparisons.find(function(c) { return c.id === id; });
-  if (comp) { comp.locked = !comp.locked; saveComps(); renderList(); }
-}
-function toggleCompPrimary(id, ev) {
-  ev.stopPropagation();
-  comparisons.forEach(function(c) { c.primary = (c.id === id) ? !c.primary : false; });
-  saveComps(); renderList();
-}
-
 function renderList() {
   const container = document.getElementById('list-container');
   const empty = document.getElementById('empty-state');
@@ -2546,7 +2606,7 @@ function renderList() {
   container.querySelectorAll('.comp-card').forEach(el=>el.remove());
   comparisons.forEach(comp => {
     const card = document.createElement('div');
-    card.className = 'comp-card' + (comp.locked ? ' locked' : '');
+    card.className = 'comp-card';
     card.id = 'card-'+comp.id;
     const winner = comp.result?.ranking?.[0];
     const date = new Date(comp.updatedAt).toLocaleDateString('pt-BR');
@@ -2558,10 +2618,6 @@ function renderList() {
           <div class="comp-meta">${comp.products.length} produtos · ${date}</div>
         </div>
         ${winner ? `<div class="winner-badge">🏆 ${escHtml(winner.name)}</div>` : ''}
-        <div class="sim-checkbox-group" onclick="event.stopPropagation()">
-          <label class="${comp.locked ? 'active-lock' : ''}" title="Bloquear edição"><input type="checkbox" class="sim-lock-cb" ${comp.locked ? 'checked' : ''} onchange="toggleCompLock(${comp.id}, event)">&#128274;</label>
-          <label class="${comp.primary ? 'active-primary' : ''}" title="Simulação principal"><input type="checkbox" class="sim-primary-cb" ${comp.primary ? 'checked' : ''} onchange="toggleCompPrimary(${comp.id}, event)">&#11088;</label>
-        </div>
         <div class="comp-card-actions" onclick="event.stopPropagation()">
           <button class="btn-icon" onclick="openModal(${comp.id})">✏️ Editar</button>
           <button class="btn-icon pdf" onclick="gerarPdfComp(${comp.id})">📄 PDF</button>
@@ -4855,12 +4911,117 @@ document.addEventListener('importarDiagnostico', function(e) {
       name: item.name || 'Produto importado',
       price: item.price || 0,
       adjustments: [],
-      refund: { enabled: false, mode: 'pct', value: 0, applyAdjustments: false }
+      refund: { enabled: false, mode: 'pct', value: 0, applyAdjustments: false },
+      _linkId: _compGenId()
     });
   });
   renderProducts();
   alert(itens.length + ' produto(s) importado(s)! Complete os parâmetros e salve a comparação.');
 });
+
+// ============================================================
+// LINKAGE: EVENTOS DE EXCLUSÃO/ATUALIZAÇÃO DE OUTRAS FERRAMENTAS
+// ============================================================
+document.addEventListener('linkage-delete-confirmed', function(e) {
+  var badge = e.detail.badge;
+  if (!badge) return;
+  var link = FerramentasLinkage.state.links.find(function(l) { return l.id === badge.link_id; });
+  if (!link || !link.comparador_comp_id || !link.comparador_product_id) return;
+  // Encontrar a comparação e remover o produto
+  var comp = comparisons.find(function(c) { return c.id === link.comparador_comp_id; });
+  if (comp && comp.products) {
+    comp.products = comp.products.filter(function(p) { return p._linkId !== link.comparador_product_id; });
+    saveCompToSupabase(comp);
+    // Se estamos editando essa comparação, atualizar tmpProducts
+    if (editingId === link.comparador_comp_id) {
+      tmpProducts = tmpProducts.filter(function(p) { return p._linkId !== link.comparador_product_id; });
+      renderAll();
+    }
+  }
+  FerramentasLinkage.removeLink(link.id);
+});
+
+document.addEventListener('linkage-keep-confirmed', function(e) {
+  // Apenas re-renderizar para remover o badge visual
+  if (editingId) renderAll();
+  else renderList();
+});
+
+if (typeof FerramentasLinkage !== 'undefined') {
+  FerramentasLinkage.registerUpdateHandler('comparador', function(linkId, link, changes) {
+    if (!link.comparador_comp_id || !link.comparador_product_id) return;
+    var comp = comparisons.find(function(c) { return c.id === link.comparador_comp_id; });
+    if (!comp || !comp.products) return;
+    var prod = comp.products.find(function(p) { return p._linkId === link.comparador_product_id; });
+    if (!prod) return;
+    if (changes.label !== undefined) prod.name = changes.label;
+    if (changes.valor !== undefined) prod.price = changes.valor;
+    // Atualizar parâmetros (direitos_params) se vieram
+    if (changes.direitos_params && Array.isArray(changes.direitos_params)) {
+      changes.direitos_params.forEach(function(dp) {
+        // Procurar parâmetro objetivo existente com _direitoId
+        var existingObj = (comp.objParams || []).find(function(op) { return op._direitoId === dp.direito_id; });
+        if (existingObj) {
+          if (dp.nome) existingObj.name = dp.nome;
+          if (dp.valor && String(dp.valor).trim() !== '') {
+            var valStr = String(dp.valor).replace(/\./g,'').replace(',','.');
+            existingObj.values[prod.id] = parseFloat(valStr) || 0;
+          }
+        } else {
+          var existingSubj = (comp.subjParams || []).find(function(sp) { return sp._direitoId === dp.direito_id; });
+          if (existingSubj && dp.nome) existingSubj.name = dp.nome;
+        }
+      });
+    }
+    saveCompToSupabase(comp);
+    // Se estamos editando essa comparação, atualizar a view
+    if (editingId === link.comparador_comp_id) {
+      tmpProducts = JSON.parse(JSON.stringify(comp.products));
+      tmpObjParams = JSON.parse(JSON.stringify(comp.objParams || []));
+      tmpSubjParams = JSON.parse(JSON.stringify(comp.subjParams || []));
+      renderAll();
+    }
+  });
+}
+
+// Propagar alterações de parâmetros para Direitos ao salvar
+var _origSaveComparison = saveComparison;
+saveComparison = function() {
+  // Antes de salvar, propagar alterações de parâmetros para links associados
+  if (typeof FerramentasLinkage !== 'undefined' && editingId) {
+    tmpProducts.forEach(function(prod) {
+      if (!prod._linkId) return;
+      var links = FerramentasLinkage.getLinksForComparadorProduct(editingId, prod._linkId);
+      if (links.length === 0) return;
+      var link = links[0];
+      // Coletar parâmetros associados a este produto
+      var direitosParams = [];
+      tmpObjParams.forEach(function(op) {
+        if (op._direitoId && op.hasParam && op.hasParam[prod.id] !== false) {
+          direitosParams.push({ direito_id: op._direitoId, nome: op.name, valor: String(op.values[prod.id] || 0), categoria: op.unit || '' });
+        }
+      });
+      tmpSubjParams.forEach(function(sp) {
+        if (sp._direitoId && sp.hasParam && sp.hasParam[prod.id] !== false) {
+          direitosParams.push({ direito_id: sp._direitoId, nome: sp.name, valor: '', categoria: '' });
+        }
+      });
+      var changes = { label: prod.name, valor: prod.price, direitos_params: direitosParams };
+      // Verificar se houve mudança real comparando com o link atual
+      if (link.label !== prod.name || link.valor !== prod.price || JSON.stringify(link.direitos_params) !== JSON.stringify(direitosParams)) {
+        FerramentasLinkage.propagateChanges(link.id, 'comparador', changes);
+      }
+    });
+  }
+  _origSaveComparison();
+};
+
+// Inicializar linkage ao carregar
+(function() {
+  if (typeof FerramentasLinkage !== 'undefined') {
+    FerramentasLinkage.load();
+  }
+})();
 
 </script>
 <button class="btn-save-global" id="btnSaveGlobal" onclick="_forceSaveComparador()" title="Salvar todas as alterações">
