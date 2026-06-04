@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════════════════
-//  FERRAMENTAS LINKAGE ENGINE v3.0
+//  FERRAMENTAS LINKAGE ENGINE v4.0
 //  Módulo compartilhado de associação/sincronização entre ferramentas:
 //  - Direitos (produtos + direitos)
 //  - Fluxo de Caixa (itens)
@@ -7,6 +7,9 @@
 //
 //  Persistência: ferramentas_dados com ferramenta = 'linkage'
 //  Estrutura: { links: [...], deletedBadges: [...] }
+//
+//  ESCRITA CRUZADA DIRETA: propagateChanges escreve diretamente no
+//  localStorage e Supabase da outra ferramenta (não depende de handlers)
 //
 //  Uso: <script src="../assets/ferramentas-linkage.js"></script>
 // ═══════════════════════════════════════════════════════════════════════════
@@ -19,20 +22,18 @@
   var _linkSbClient = null;
   var _linkSaveTimer = null;
 
+  // Chaves de localStorage das ferramentas
+  var FLUXO_LS_KEY = 'fluxo_simulacoes_v2';
+  var DIREITOS_LS_KEY = 'hv_direitos_local';
+  var COMPARADOR_LS_KEY = 'hvsf_comparacoes';
+
+  // Supabase config (mesma para todas as ferramentas)
+  var _SB_URL = 'https://vbikskbfkhundhropykf.supabase.co';
+  var _SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZiaWtza2Jma2h1bmRocm9weWtmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDU1MTk5NjEsImV4cCI6MjA2MTA5NTk2MX0.-n-Tj_5JnF1NL2ZImWlMeTcobWDl_VD6Vqp0lxRQFFU';
+
   // ═══════════════════════════════════════════════════════════════════════
   //  ESTADO
   // ═══════════════════════════════════════════════════════════════════════
-  // Link: {
-  //   id, label, valor, periodicidade,
-  //   direitos_visao_id, direitos_produto_id,
-  //   fluxo_sim_id, fluxo_item_id, fluxo_item_nome,
-  //   comparador_comp_id, comparador_product_id,
-  //   direitos_params: [{ direito_id, nome, valor, categoria }],
-  //   created_at, updated_at
-  // }
-  // DeletedBadge: {
-  //   id, link_id, deleted_from, deleted_at, item_label, acknowledged: false
-  // }
   var state = {
     links: [],
     deletedBadges: []
@@ -43,22 +44,11 @@
   // ═══════════════════════════════════════════════════════════════════════
   function _initSb() {
     if (_linkSbClient) return _linkSbClient;
-    // Reuse existing supabase client from page
     if (global.mithraSupabaseClient) { _linkSbClient = global.mithraSupabaseClient; return _linkSbClient; }
     if (global.sb) { _linkSbClient = global.sb; return _linkSbClient; }
-    if (global.supabase && global._supabaseUrl && global._supabaseKey) {
-      _linkSbClient = global.supabase.createClient(global._supabaseUrl, global._supabaseKey);
-      return _linkSbClient;
-    }
     if (global.supabase && global.supabase.createClient) {
-      // Fallback: use hardcoded URL/key from layout.js pattern
-      try {
-        var scripts = document.querySelectorAll('script[src*="layout.js"]');
-        if (scripts.length > 0 && global.mithraSupabaseClient) {
-          _linkSbClient = global.mithraSupabaseClient;
-          return _linkSbClient;
-        }
-      } catch(e) {}
+      _linkSbClient = global.supabase.createClient(_SB_URL, _SB_KEY);
+      return _linkSbClient;
     }
     return null;
   }
@@ -68,7 +58,7 @@
   }
 
   // ═══════════════════════════════════════════════════════════════════════
-  //  PERSISTÊNCIA
+  //  PERSISTÊNCIA DO LINKAGE
   // ═══════════════════════════════════════════════════════════════════════
   function _getLsKey() {
     var cid = _getClienteId();
@@ -78,7 +68,6 @@
   async function load() {
     _initSb();
     var cid = _getClienteId();
-
     if (_linkSbClient && cid) {
       try {
         var res = await _linkSbClient.from('ferramentas_dados')
@@ -94,17 +83,13 @@
         }
       } catch(e) { console.warn('[Linkage] Erro Supabase load:', e); }
     }
-
     var local = localStorage.getItem(_getLsKey());
     if (local) {
       try {
         var d = JSON.parse(local);
         state.links = d.links || [];
         state.deletedBadges = d.deletedBadges || [];
-      } catch(e) {
-        state.links = [];
-        state.deletedBadges = [];
-      }
+      } catch(e) { state.links = []; state.deletedBadges = []; }
     }
   }
 
@@ -126,6 +111,91 @@
         updated_at: new Date().toISOString()
       }, { onConflict: 'cliente_id,ferramenta' });
     } catch(e) { console.warn('[Linkage] Erro Supabase save:', e); }
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════
+  //  LEITURA/ESCRITA DIRETA NAS OUTRAS FERRAMENTAS
+  // ═══════════════════════════════════════════════════════════════════════
+
+  function _getFluxoLsKey() {
+    var cid = _getClienteId();
+    return cid ? FLUXO_LS_KEY + '_' + cid : FLUXO_LS_KEY;
+  }
+  function _getDireitosLsKey() {
+    var cid = _getClienteId();
+    return cid ? DIREITOS_LS_KEY + '_' + cid : DIREITOS_LS_KEY;
+  }
+  function _getComparadorLsKey() {
+    var cid = _getClienteId();
+    return cid ? COMPARADOR_LS_KEY + '_' + cid : COMPARADOR_LS_KEY;
+  }
+
+  function _readFluxoData() {
+    try {
+      var raw = localStorage.getItem(_getFluxoLsKey());
+      return raw ? JSON.parse(raw) : [];
+    } catch(e) { return []; }
+  }
+  function _writeFluxoData(simulacoes) {
+    try { localStorage.setItem(_getFluxoLsKey(), JSON.stringify(simulacoes)); } catch(e) {}
+    _writeFluxoToSupabase(simulacoes);
+  }
+  function _writeFluxoToSupabase(simulacoes) {
+    var cid = _getClienteId();
+    var sb = _initSb();
+    if (!sb || !cid) return;
+    sb.from('ferramentas_dados').upsert({
+      cliente_id: cid, ferramenta: 'fluxo',
+      dados: simulacoes, updated_at: new Date().toISOString()
+    }, { onConflict: 'cliente_id,ferramenta' }).then(function(){}).catch(function(e) {
+      console.warn('[Linkage] Erro ao salvar fluxo:', e);
+    });
+  }
+
+  function _readDireitosData() {
+    try {
+      var raw = localStorage.getItem(_getDireitosLsKey());
+      if (!raw) return { visoes: [] };
+      var d = JSON.parse(raw);
+      return d.visoes ? d : { visoes: [] };
+    } catch(e) { return { visoes: [] }; }
+  }
+  function _writeDireitosData(data) {
+    try { localStorage.setItem(_getDireitosLsKey(), JSON.stringify(data)); } catch(e) {}
+    _writeDireitosToSupabase(data);
+  }
+  function _writeDireitosToSupabase(data) {
+    var cid = _getClienteId();
+    var sb = _initSb();
+    if (!sb || !cid) return;
+    sb.from('ferramentas_dados').upsert({
+      cliente_id: cid, ferramenta: 'direitos',
+      dados: data, updated_at: new Date().toISOString()
+    }, { onConflict: 'cliente_id,ferramenta' }).then(function(){}).catch(function(e) {
+      console.warn('[Linkage] Erro ao salvar direitos:', e);
+    });
+  }
+
+  function _readComparadorData() {
+    try {
+      var raw = localStorage.getItem(_getComparadorLsKey());
+      return raw ? JSON.parse(raw) : [];
+    } catch(e) { return []; }
+  }
+  function _writeComparadorData(comparisons) {
+    try { localStorage.setItem(_getComparadorLsKey(), JSON.stringify(comparisons)); } catch(e) {}
+    _writeComparadorToSupabase(comparisons);
+  }
+  function _writeComparadorToSupabase(comparisons) {
+    var cid = _getClienteId();
+    var sb = _initSb();
+    if (!sb || !cid) return;
+    sb.from('ferramentas_dados').upsert({
+      cliente_id: cid, ferramenta: 'comparador',
+      dados: comparisons, updated_at: new Date().toISOString()
+    }, { onConflict: 'cliente_id,ferramenta' }).then(function(){}).catch(function(e) {
+      console.warn('[Linkage] Erro ao salvar comparador:', e);
+    });
   }
 
   // ═══════════════════════════════════════════════════════════════════════
@@ -152,6 +222,18 @@
     };
     state.links.push(link);
     save();
+
+    // Ao criar link, aplicar nome/valor unificados nas ferramentas de destino
+    if (link.fluxo_sim_id && link.fluxo_item_id) {
+      _applyToFluxoItem(link);
+    }
+    if (link.comparador_comp_id && link.comparador_product_id) {
+      _applyToComparadorProduct(link);
+    }
+    if (link.direitos_visao_id && link.direitos_produto_id) {
+      _applyToDireitoProduto(link);
+    }
+
     return link;
   }
 
@@ -161,6 +243,17 @@
     Object.keys(fields).forEach(function(k) { link[k] = fields[k]; });
     link.updated_at = new Date().toISOString();
     save();
+
+    // Aplicar alterações diretamente nas ferramentas de destino
+    if (link.fluxo_sim_id && link.fluxo_item_id) {
+      _applyToFluxoItem(link);
+    }
+    if (link.direitos_visao_id && link.direitos_produto_id) {
+      _applyToDireitoProduto(link);
+    }
+    if (link.comparador_comp_id && link.comparador_product_id) {
+      _applyToComparadorProduct(link);
+    }
     return link;
   }
 
@@ -216,12 +309,73 @@
   }
 
   // ═══════════════════════════════════════════════════════════════════════
+  //  APLICAÇÃO DIRETA NAS FERRAMENTAS (escrita cruzada)
+  // ═══════════════════════════════════════════════════════════════════════
+
+  function _applyToFluxoItem(link) {
+    if (!link.fluxo_sim_id || !link.fluxo_item_id) return;
+    var simulacoes = _readFluxoData();
+    var sim = simulacoes.find(function(s) { return s.id === link.fluxo_sim_id; });
+    if (!sim || !sim.payload || !sim.payload.itens) return;
+    var item = sim.payload.itens.find(function(it) { return it._linkId === link.fluxo_item_id; });
+    if (!item) return;
+    var changed = false;
+    if (link.label && item.nome !== link.label) { item.nome = link.label; changed = true; }
+    if (link.valor !== undefined && link.valor !== null && item.valor !== link.valor) { item.valor = link.valor; changed = true; }
+    if (changed) _writeFluxoData(simulacoes);
+  }
+
+  function _applyToDireitoProduto(link) {
+    if (!link.direitos_visao_id || !link.direitos_produto_id) return;
+    var data = _readDireitosData();
+    var visao = (data.visoes || []).find(function(v) { return v.id === link.direitos_visao_id; });
+    if (!visao || !visao.produtos) return;
+    var produto = visao.produtos.find(function(p) { return p.id === link.direitos_produto_id; });
+    if (!produto) return;
+    var changed = false;
+    if (link.label && produto.nome !== link.label) { produto.nome = link.label; changed = true; }
+    if (link.valor !== undefined && link.valor !== null) {
+      var custoStr = typeof link.valor === 'number' ? link.valor.toLocaleString('pt-BR', {minimumFractionDigits:2}) : String(link.valor);
+      if (produto.custo !== custoStr) { produto.custo = custoStr; changed = true; }
+    }
+    if (link.periodicidade && produto.periodicidade !== link.periodicidade) { produto.periodicidade = link.periodicidade; changed = true; }
+    if (changed) _writeDireitosData(data);
+  }
+
+  function _applyToComparadorProduct(link) {
+    if (!link.comparador_comp_id || !link.comparador_product_id) return;
+    var comparisons = _readComparadorData();
+    var comp = comparisons.find(function(c) { return c.id === link.comparador_comp_id; });
+    if (!comp || !comp.products) return;
+    var product = comp.products.find(function(p) { return p.id === link.comparador_product_id; });
+    if (!product) return;
+    var changed = false;
+    if (link.label && product.name !== link.label) { product.name = link.label; changed = true; }
+    if (link.valor !== undefined && link.valor !== null && product.price !== link.valor) { product.price = link.valor; changed = true; }
+    // Atualizar parâmetros se houver direitos_params
+    if (link.direitos_params && link.direitos_params.length > 0 && comp.objParams) {
+      link.direitos_params.forEach(function(dp) {
+        if (dp.valor) {
+          var existing = comp.objParams.find(function(op) { return op.name === dp.nome; });
+          if (existing) {
+            // Atualizar valor no produto
+            if (product.objValues && product.objValues[existing.id] !== dp.valor) {
+              product.objValues[existing.id] = dp.valor;
+              changed = true;
+            }
+          }
+        }
+      });
+    }
+    if (changed) _writeComparadorData(comparisons);
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════
   //  BADGES DE EXCLUSÃO
   // ═══════════════════════════════════════════════════════════════════════
   function registerDeletion(linkId, deletedFrom) {
     var link = state.links.find(function(l) { return l.id === linkId; });
     if (!link) return null;
-
     var badge = {
       id: genId(),
       link_id: linkId,
@@ -273,7 +427,6 @@
     badge.acknowledged = true;
 
     if (action === 'keep') {
-      // Desassociar: limpar referência no link (não exclui o link inteiro)
       var link = state.links.find(function(l) { return l.id === badge.link_id; });
       if (link) {
         if (badge.deleted_from === 'direitos') {
@@ -287,13 +440,11 @@
           link.comparador_comp_id = null;
           link.comparador_product_id = null;
         }
-        // Se o link ficou sem nenhuma referência, remove
         if (!link.direitos_produto_id && !link.fluxo_sim_id && !link.comparador_comp_id) {
           removeLink(link.id);
         }
       }
     }
-    // Se action === 'delete', a ferramenta local deve tratar a exclusão do item
     save();
     return badge;
   }
@@ -327,7 +478,7 @@
   }
 
   // ═══════════════════════════════════════════════════════════════════════
-  //  PROPAGAÇÃO DE ALTERAÇÕES
+  //  PROPAGAÇÃO DE ALTERAÇÕES (ESCRITA CRUZADA DIRETA)
   // ═══════════════════════════════════════════════════════════════════════
   var _updateHandlers = {};
 
@@ -339,14 +490,25 @@
     var link = state.links.find(function(l) { return l.id === linkId; });
     if (!link) return;
 
-    // Atualizar o link
+    // Atualizar o link com as novas informações
     Object.keys(changes).forEach(function(k) {
       link[k] = changes[k];
     });
     link.updated_at = new Date().toISOString();
     save();
 
-    // Notificar handlers (se estiverem na mesma página)
+    // ESCRITA CRUZADA DIRETA: atualizar os dados nas outras ferramentas
+    if (originFerramenta !== 'fluxo' && link.fluxo_sim_id && link.fluxo_item_id) {
+      _applyToFluxoItem(link);
+    }
+    if (originFerramenta !== 'direitos' && link.direitos_visao_id && link.direitos_produto_id) {
+      _applyToDireitoProduto(link);
+    }
+    if (originFerramenta !== 'comparador' && link.comparador_comp_id && link.comparador_product_id) {
+      _applyToComparadorProduct(link);
+    }
+
+    // Também notificar handlers em memória (caso a outra ferramenta esteja aberta na mesma página)
     Object.keys(_updateHandlers).forEach(function(ferramenta) {
       if (ferramenta !== originFerramenta) {
         try {
