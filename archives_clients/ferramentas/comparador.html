@@ -5023,6 +5023,26 @@ saveComparison = function() {
   }
 })();
 
+// STORAGE LISTENER: detectar alterações feitas por outras ferramentas
+window.addEventListener('storage', function(e) {
+  var clienteId = sessionStorage.getItem('cliente_id');
+  if (!clienteId) return;
+  var compKey = 'hvsf_comparacoes_' + clienteId;
+  var linkageKey = 'hv_linkage_local';
+  if (e.key === compKey || e.key === linkageKey) {
+    if (e.key === compKey && e.newValue) {
+      try {
+        comparacoes = JSON.parse(e.newValue);
+        renderList();
+      } catch(err) {}
+    }
+    if (e.key === linkageKey) {
+      FerramentasLinkage.load();
+      renderList();
+    }
+  }
+});
+
 </script>
 <button class="btn-save-global" id="btnSaveGlobal" onclick="_forceSaveComparador()" title="Salvar todas as alterações">
   <span id="saveIcon">💾</span> <span id="saveLabel">Salvar Alterações</span>
