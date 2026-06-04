@@ -6,6 +6,7 @@
 <title>Fluxo de Caixa Avançado - MithraSF</title>
 <link rel="stylesheet" href="../assets/style.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="../assets/ferramentas-linkage.js"></script>
 <script src="../assets/importar-diagnostico.js"></script>
 <script src="../assets/layout.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
@@ -1263,8 +1264,26 @@ function saveItem() {
   };
 
   if (editingIndex >= 0) {
-    items[editingIndex] = item; // _isNew é removido pois não está no novo objeto
+    // Preservar _linkId existente
+    var oldItem = items[editingIndex];
+    item._linkId = oldItem._linkId || generateId();
+    // Verificar impacto em ferramentas associadas
+    if (typeof FerramentasLinkage !== 'undefined' && editingSimId) {
+      var fluxoLinks = FerramentasLinkage.getLinksForFluxoItem(editingSimId, item._linkId);
+      if (fluxoLinks.length > 0) {
+        var changes = {};
+        if (oldItem.nome !== nome) changes.label = nome;
+        if (oldItem.valor !== valor) changes.valor = valor;
+        if (Object.keys(changes).length > 0) {
+          var impactMsg = FerramentasLinkage.getImpactMessage(fluxoLinks[0].id, 'fluxo', changes);
+          if (impactMsg && !confirm(impactMsg)) return;
+          FerramentasLinkage.propagateChanges(fluxoLinks[0].id, 'fluxo', changes);
+        }
+      }
+    }
+    items[editingIndex] = item;
   } else {
+    item._linkId = generateId();
     items.push(item);
   }
   closeModal();
@@ -1273,6 +1292,14 @@ function saveItem() {
 
 function deleteItem(index) {
   if (!confirm('Excluir este item?')) return;
+  var deletedItem = items[index];
+  // Registrar exclusão no linkage engine se o item estava associado
+  if (typeof FerramentasLinkage !== 'undefined' && deletedItem && deletedItem._linkId && editingSimId) {
+    var links = FerramentasLinkage.getLinksForFluxoItem(editingSimId, deletedItem._linkId);
+    links.forEach(function(lk) {
+      FerramentasLinkage.registerDeletion(lk.id, 'fluxo');
+    });
+  }
   items.splice(index, 1);
   renderItemsTable();
 }
@@ -1353,8 +1380,18 @@ function renderItemsTable() {
     }
 
     var newBadge = it._isNew ? '<span class="badge-new">NOVO</span>' : '';
+    // Linkage: indicador de associação e badges de exclusão
+    var linkBadges = '';
+    if (typeof FerramentasLinkage !== 'undefined' && it._linkId && editingSimId) {
+      var itemLinks = FerramentasLinkage.getLinksForFluxoItem(editingSimId, it._linkId);
+      if (itemLinks.length > 0) {
+        linkBadges += FerramentasLinkage.renderLinkIndicatorHtml(itemLinks[0], 'fluxo');
+      }
+      var itemBadges = FerramentasLinkage.getBadgesForItem('fluxo', { simId: editingSimId, itemId: it._linkId });
+      itemBadges.forEach(function(b) { linkBadges += FerramentasLinkage.renderBadgeHtml(b); });
+    }
     return '<tr>' +
-      '<td class="td-name">' + it.nome + newBadge + '</td>' +
+      '<td class="td-name">' + it.nome + newBadge + linkBadges + '</td>' +
       '<td>' + tipoB + '</td>' +
       '<td>' + catB + '</td>' +
       '<td class="' + valClass + '">' + valSign + fmtCurrency(it.valor) + '</td>' +
@@ -3003,7 +3040,8 @@ document.addEventListener('importarDiagnostico', function(e) {
       recFimTipo: item.recFimTipo || 'nunca',
       recFimQty: item.recFimQty || '',
       recFimData: item.recFimData || '',
-      _isNew: true
+      _isNew: true,
+      _linkId: generateId()
     });
   });
   renderItemsTable();
@@ -4621,6 +4659,58 @@ function navTrackingMonthFaturas(dir) {
     renderTrackingFaturas();
   }
 }
+
+// ============================================================
+// LINKAGE: EVENTOS DE EXCLUSÃO/ATUALIZAÇÃO DE OUTRAS FERRAMENTAS
+// ============================================================
+document.addEventListener('linkage-delete-confirmed', function(e) {
+  var badge = e.detail.badge;
+  if (!badge) return;
+  var link = FerramentasLinkage.state.links.find(function(l) { return l.id === badge.link_id; });
+  if (!link || !link.fluxo_sim_id || !link.fluxo_item_id) return;
+  // Encontrar a simulação e remover o item
+  var sim = simulacoes.find(function(s) { return s.id === link.fluxo_sim_id; });
+  if (sim && sim.payload && sim.payload.itens) {
+    sim.payload.itens = sim.payload.itens.filter(function(it) { return it._linkId !== link.fluxo_item_id; });
+    // Se estamos editando essa simulação, atualizar items também
+    if (editingSimId === link.fluxo_sim_id) {
+      items = sim.payload.itens;
+      renderItemsTable();
+    }
+  }
+  FerramentasLinkage.removeLink(link.id);
+  saveSimulacoes();
+});
+
+document.addEventListener('linkage-keep-confirmed', function(e) {
+  // Apenas re-renderizar para remover o badge visual
+  if (editingSimId) renderItemsTable();
+});
+
+if (typeof FerramentasLinkage !== 'undefined') {
+  FerramentasLinkage.registerUpdateHandler('fluxo', function(linkId, link, changes) {
+    if (!link.fluxo_sim_id || !link.fluxo_item_id) return;
+    var sim = simulacoes.find(function(s) { return s.id === link.fluxo_sim_id; });
+    if (!sim || !sim.payload || !sim.payload.itens) return;
+    var item = sim.payload.itens.find(function(it) { return it._linkId === link.fluxo_item_id; });
+    if (!item) return;
+    if (changes.label !== undefined) item.nome = changes.label;
+    if (changes.valor !== undefined) item.valor = changes.valor;
+    saveSimulacoes();
+    // Se estamos editando essa simulação, atualizar a view
+    if (editingSimId === link.fluxo_sim_id) {
+      items = sim.payload.itens;
+      renderItemsTable();
+    }
+  });
+}
+
+// Inicializar linkage ao carregar
+(function() {
+  if (typeof FerramentasLinkage !== 'undefined') {
+    FerramentasLinkage.load();
+  }
+})();
 
 </script>
 </main>
