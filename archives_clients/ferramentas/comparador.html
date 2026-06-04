@@ -1862,10 +1862,10 @@ function importarDeDireitos() {
   // Carregar visões de Direitos do localStorage/Supabase
   var clienteId = sessionStorage.getItem('cliente_id');
   if (!clienteId) { alert('Nenhum cliente selecionado.'); return; }
-  var lsKey = 'hvsf_direitos_' + clienteId;
+  var lsKey = 'hv_direitos_local_' + clienteId;
   var raw = localStorage.getItem(lsKey);
   var visoes = [];
-  if (raw) { try { visoes = JSON.parse(raw); } catch(e) {} }
+  if (raw) { try { var parsed = JSON.parse(raw); visoes = parsed.visoes || (Array.isArray(parsed) ? parsed : []); } catch(e) {} }
   // Encontrar visão marcada como primary (referência)
   var visaoRef = visoes.find(function(v) { return v.primary; });
   if (!visaoRef) { alert('Nenhuma visão consolidada está marcada como referência na ferramenta de Direitos.'); return; }
