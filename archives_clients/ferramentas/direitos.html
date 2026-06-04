@@ -6,6 +6,7 @@
 <title>Produtos e Direitos - MithraSF</title>
 <link rel="stylesheet" href="../assets/style.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="../assets/ferramentas-linkage.js"></script>
 <script src="../assets/importar-diagnostico.js"></script>
 <script src="../assets/layout.js" defer></script>
 <style>
@@ -29,33 +30,34 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 body { background: var(--bg); color: var(--fg); font-family: 'Inter', system-ui, sans-serif; font-size: 14px; min-height: 100vh; }
 
-/* ── LAYOUT ── */
 .page-header { text-align: center; padding: 2rem 1rem 1rem; }
 .page-header h1 { font-size: 1.6rem; color: var(--primary); margin-bottom: 0.3rem; }
 .page-header p { color: var(--muted); font-size: 0.85rem; }
 
 /* ── VISÕES LIST ── */
-.visao-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 1rem; padding: 1rem 1.25rem; display: flex; align-items: center; gap: 1rem; transition: border-color 0.2s; }
-.visao-card:hover { border-color: var(--primary); }
-.visao-card.locked { border-color: rgba(239,68,68,0.3); }
-.visao-card .visao-title { flex: 1; font-weight: 700; color: #fff; font-size: 0.95rem; }
+.visao-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 1rem; padding: 1rem 1.25rem; display: flex; align-items: center; gap: 1rem; flex-wrap:wrap; }
+.visao-card.locked { border-left: 3px solid var(--red); opacity: 0.9; }
+.visao-card .visao-title { flex: 1; font-weight: 700; color: #fff; font-size: 0.95rem; min-width:0; }
 .visao-card .visao-meta { font-size: 0.75rem; color: var(--muted); margin-right: 1rem; }
 .visao-card .visao-actions { display: flex; gap: 0.4rem; align-items: center; }
 .visao-card .visao-actions button { background: transparent; border: 1px solid var(--border); color: var(--muted); border-radius: 6px; padding: 0.3rem 0.6rem; font-size: 0.75rem; cursor: pointer; transition: all 0.15s; }
 .visao-card .visao-actions button:hover { border-color: var(--primary); color: var(--primary); }
 .visao-card .visao-actions button.danger { border-color: rgba(239,68,68,0.3); color: var(--red); }
 .visao-card .visao-actions button.danger:hover { background: rgba(239,68,68,0.1); }
-.visao-card .checkbox-group { display: flex; gap: 0.5rem; align-items: center; margin-right: 0.5rem; }
-.visao-card .checkbox-group label { cursor: pointer; font-size: 1rem; opacity: 0.5; transition: opacity 0.2s; }
-.visao-card .checkbox-group label.active-lock { opacity: 1; }
-.visao-card .checkbox-group label.active-primary { opacity: 1; }
-.visao-card .checkbox-group input { display: none; }
 
-/* ── PRODUTO CARDS (dentro da visão) ── */
-.produto-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 0.75rem; overflow: hidden; transition: border-color 0.2s; }
-.produto-card:hover { border-color: var(--primary); }
-.produto-card-header { display: flex; align-items: center; gap: 1rem; padding: 0.8rem 1rem; }
-.produto-card-title { font-weight: 700; color: #fff; font-size: 0.9rem; flex: 1; }
+/* ── LOCK/REFERENCE CHECKBOXES (estáticos, sem animação) ── */
+.ctrl-group { display:none; gap:0.6rem; align-items:center; margin-right:0.5rem; }
+.equipe-mode .ctrl-group { display:inline-flex !important; }
+.ctrl-group .ctrl-item { display:flex; align-items:center; gap:0.25rem; font-size:0.72rem; color:var(--muted); padding:0.2rem 0.4rem; border-radius:4px; border:1px solid transparent; user-select:none; }
+.ctrl-group .ctrl-item .ctrl-icon { font-size:0.85rem; pointer-events:none; }
+.ctrl-group .ctrl-item input[type="checkbox"] { width:14px; height:14px; accent-color:var(--primary); cursor:pointer; }
+.ctrl-group .ctrl-item.active-lock { border-color:var(--red); background:rgba(239,68,68,0.08); color:var(--red); }
+.ctrl-group .ctrl-item.active-primary { border-color:var(--primary); background:rgba(212,175,55,0.08); color:var(--primary); }
+
+/* ── PRODUTO CARDS ── */
+.produto-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 0.75rem; overflow: hidden; }
+.produto-card-header { display: flex; align-items: center; gap: 1rem; padding: 0.8rem 1rem; flex-wrap:wrap; }
+.produto-card-title { font-weight: 700; color: #fff; font-size: 0.9rem; flex: 1; min-width:0; }
 .produto-card-meta { font-size: 0.72rem; color: var(--muted); }
 .produto-card-actions { display: flex; gap: 0.4rem; }
 .produto-card-actions button { background: transparent; border: 1px solid var(--border); color: var(--muted); border-radius: 6px; padding: 0.25rem 0.5rem; font-size: 0.72rem; cursor: pointer; transition: all 0.15s; }
@@ -63,45 +65,38 @@ body { background: var(--bg); color: var(--fg); font-family: 'Inter', system-ui,
 .produto-card-actions button.danger { border-color: rgba(239,68,68,0.3); color: var(--red); }
 .produto-card-actions button.danger:hover { background: rgba(239,68,68,0.1); }
 
-/* ── HEADER BAR ── */
-.header-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
+.header-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap:wrap; gap:0.5rem; }
 .header-bar h2 { margin: 0; color: var(--primary); font-size: 1.1rem; }
 
-/* ── BOTÕES ── */
-.btn-new { background: linear-gradient(135deg, var(--primary), #b8962e); color: #000; border: none; border-radius: 8px; padding: 0.6rem 1.2rem; font-size: 0.85rem; font-weight: 700; cursor: pointer; transition: all 0.2s; }
-.btn-new:hover { transform: translateY(-1px); box-shadow: 0 4px 16px rgba(212,175,55,0.4); }
-.btn-back { background: transparent; border: 1px solid var(--border); color: var(--muted); border-radius: 8px; padding: 0.5rem 1rem; font-size: 0.85rem; cursor: pointer; transition: all 0.2s; }
+.btn-new { background: linear-gradient(135deg, var(--primary), #b8962e); color: #000; border: none; border-radius: 8px; padding: 0.6rem 1.2rem; font-size: 0.85rem; font-weight: 700; cursor: pointer; }
+.btn-back { background: transparent; border: 1px solid var(--border); color: var(--muted); border-radius: 8px; padding: 0.5rem 1rem; font-size: 0.85rem; cursor: pointer; }
 .btn-back:hover { border-color: var(--primary); color: var(--primary); }
 
-/* ── EMPTY STATE ── */
 .empty-state { text-align: center; padding: 4rem 2rem; color: var(--muted); }
 .empty-state .icon { font-size: 3rem; margin-bottom: 0.75rem; opacity: 0.5; }
-.empty-state p { font-size: 0.9rem; line-height: 1.5; }
 
 /* ── MODAL ── */
 .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 10000; justify-content: center; align-items: center; backdrop-filter: blur(3px); }
 .modal-overlay.open { display: flex; }
-.modal { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 2rem; width: 90%; max-width: 550px; max-height: 90vh; overflow-y: auto; }
+.modal { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 2rem; width: 90%; max-width: 600px; max-height: 90vh; overflow-y: auto; }
 .modal h2 { color: var(--primary); font-size: 1.1rem; margin-bottom: 1.5rem; }
 .modal label { display: block; font-size: 0.78rem; color: var(--muted); margin-bottom: 0.3rem; text-transform: uppercase; letter-spacing: 0.3px; }
-.modal input, .modal select, .modal textarea { width: 100%; padding: 0.6rem 0.8rem; background: var(--card2); border: 1px solid var(--border); border-radius: 6px; color: var(--fg); font-size: 0.9rem; margin-bottom: 1rem; outline: none; transition: border-color 0.2s; }
+.modal input, .modal select, .modal textarea { width: 100%; padding: 0.6rem 0.8rem; background: var(--card2); border: 1px solid var(--border); border-radius: 6px; color: var(--fg); font-size: 0.9rem; margin-bottom: 1rem; outline: none; }
 .modal input:focus, .modal select:focus, .modal textarea:focus { border-color: var(--primary); }
 .modal textarea { resize: vertical; min-height: 60px; }
 .modal-footer { display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 1rem; }
-.modal-footer button { padding: 0.6rem 1.2rem; border-radius: 8px; font-size: 0.85rem; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+.modal-footer button { padding: 0.6rem 1.2rem; border-radius: 8px; font-size: 0.85rem; font-weight: 600; cursor: pointer; }
 .btn-cancel { background: transparent; border: 1px solid var(--border); color: var(--muted); }
 .btn-cancel:hover { border-color: var(--fg); color: var(--fg); }
 .btn-confirm { background: var(--primary); border: none; color: #000; font-weight: 700; }
-.btn-confirm:hover { box-shadow: 0 4px 12px rgba(212,175,55,0.4); }
 .btn-danger { background: rgba(239,68,68,0.15); border: 1px solid rgba(239,68,68,0.4); color: var(--red); }
-.btn-danger:hover { background: rgba(239,68,68,0.25); }
 
 /* ── DIREITOS NO MODAL ── */
 .direitos-list { margin-top: 0.5rem; margin-bottom: 1rem; }
 .direito-row { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.4rem; padding: 0.4rem 0.6rem; background: rgba(255,255,255,0.02); border-radius: 6px; border: 1px solid rgba(255,255,255,0.04); }
 .direito-row input { flex: 1; margin-bottom: 0; padding: 0.4rem 0.6rem; font-size: 0.82rem; }
 .direito-row button { background: transparent; border: none; color: var(--red); cursor: pointer; font-size: 0.85rem; padding: 0.2rem 0.4rem; }
-.btn-add-small { background: transparent; border: 1px dashed var(--border); color: var(--muted); border-radius: 6px; padding: 0.35rem 0.7rem; font-size: 0.75rem; cursor: pointer; transition: all 0.15s; width: 100%; }
+.btn-add-small { background: transparent; border: 1px dashed var(--border); color: var(--muted); border-radius: 6px; padding: 0.35rem 0.7rem; font-size: 0.75rem; cursor: pointer; width: 100%; }
 .btn-add-small:hover { border-color: var(--primary); color: var(--primary); }
 
 /* ── RESUMO ── */
@@ -110,14 +105,20 @@ body { background: var(--bg); color: var(--fg); font-family: 'Inter', system-ui,
 .resumo-stat .stat-value { font-size: 1.3rem; font-weight: 700; color: var(--primary); }
 .resumo-stat .stat-label { font-size: 0.7rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.3px; margin-top: 0.2rem; }
 
-/* ── SAVE BUTTON ── */
-.btn-save-global { position: fixed; bottom: 24px; right: 24px; z-index: 9999; background: linear-gradient(135deg, #d4af37, #b8962e); color: #000; border: none; border-radius: 12px; padding: 12px 24px; font-size: 0.95rem; font-weight: 700; cursor: pointer; box-shadow: 0 4px 20px rgba(212,175,55,0.4); display: flex; align-items: center; gap: 8px; transition: all 0.3s ease; }
-.btn-save-global:hover { transform: translateY(-2px); box-shadow: 0 6px 28px rgba(212,175,55,0.6); }
+/* ── ASSOCIAÇÃO ── */
+.assoc-section { border-top:1px solid var(--border); margin-top:0.5rem; padding-top:1rem; }
+.assoc-section .assoc-title { font-size:0.85rem; color:var(--primary); font-weight:700; margin-bottom:0.5rem; }
+.assoc-info { display:flex; align-items:center; gap:0.5rem; padding:0.5rem 0.7rem; background:rgba(96,165,250,0.08); border:1px solid rgba(96,165,250,0.2); border-radius:6px; margin-bottom:0.75rem; font-size:0.8rem; color:var(--blue); }
+.assoc-info .assoc-remove { background:transparent; border:none; color:var(--red); cursor:pointer; font-size:0.85rem; margin-left:auto; }
+
+.btn-save-global { position: fixed; bottom: 24px; right: 24px; z-index: 9999; background: linear-gradient(135deg, #d4af37, #b8962e); color: #000; border: none; border-radius: 12px; padding: 12px 24px; font-size: 0.95rem; font-weight: 700; cursor: pointer; box-shadow: 0 4px 20px rgba(212,175,55,0.4); display: flex; align-items: center; gap: 8px; }
 .btn-save-global.saved { background: linear-gradient(135deg, #10b981, #059669); color: #fff; }
 
-/* ── VIEWS ── */
 .view-hidden { display: none; }
 .content-area { padding: 1rem; max-width: 900px; margin: 0 auto; }
+
+.linkage-badge-deleted { display:inline-flex; align-items:center; gap:4px; background:rgba(239,68,68,0.15); border:1px solid rgba(239,68,68,0.4); color:#ef4444; padding:2px 8px; border-radius:4px; font-size:0.7rem; cursor:pointer; margin-left:6px; }
+.linkage-indicator { display:inline-flex; align-items:center; gap:3px; background:rgba(96,165,250,0.12); border:1px solid rgba(96,165,250,0.3); color:#60a5fa; padding:2px 7px; border-radius:4px; font-size:0.68rem; margin-left:5px; }
 
 @media (max-width: 768px) {
   .visao-card { flex-direction: column; align-items: flex-start; gap: 0.5rem; }
@@ -130,58 +131,51 @@ body { background: var(--bg); color: var(--fg); font-family: 'Inter', system-ui,
 <div id="sidebar-container" class="sidebar"></div>
 <main class="main-content">
 
-<!-- ── HEADER ── -->
 <header class="page-header">
   <h1>Produtos e Direitos</h1>
   <p>Mapeie todos os produtos contratados e descubra os direitos do seu cliente</p>
 </header>
 
-<!-- ══════════════════════════════════════════════════════════════════════════ -->
 <!-- VIEW 1: LISTA DE VISÕES CONSOLIDADAS -->
-<!-- ══════════════════════════════════════════════════════════════════════════ -->
 <div id="view-visoes" class="content-area">
   <div class="header-bar">
-    <h2>Visões Consolidadas</h2>
-    <button class="btn-new" id="btn-nova-visao" onclick="novaVisao()">+ Nova Visão</button>
+    <h2>Vis&otilde;es Consolidadas</h2>
+    <button class="btn-new" onclick="novaVisao()">+ Nova Vis&atilde;o</button>
   </div>
   <div id="visoes-container">
     <div class="empty-state" id="empty-visoes">
-      <div class="icon">📋</div>
-      <p>Nenhuma visão consolidada criada ainda.<br>Clique em <strong>+ Nova Visão</strong> para começar.</p>
+      <div class="icon">&#128203;</div>
+      <p>Nenhuma vis&atilde;o consolidada criada ainda.<br>Clique em <strong>+ Nova Vis&atilde;o</strong> para come&ccedil;ar.</p>
     </div>
   </div>
 </div>
 
-<!-- ══════════════════════════════════════════════════════════════════════════ -->
 <!-- VIEW 2: EDITOR DE VISÃO (lista de produtos) -->
-<!-- ══════════════════════════════════════════════════════════════════════════ -->
 <div id="view-editor" class="content-area view-hidden">
   <div class="header-bar">
     <div style="display:flex;align-items:center;gap:0.75rem;">
       <button class="btn-back" onclick="voltarParaLista()">&#8592; Voltar</button>
-      <h2 id="editor-title">Visão</h2>
+      <h2 id="editor-title">Vis&atilde;o</h2>
     </div>
     <button class="btn-new" onclick="novoProduto()">+ Novo Produto</button>
   </div>
   <div id="resumo-visao"></div>
   <div id="produtos-container">
     <div class="empty-state" id="empty-produtos">
-      <div class="icon">📦</div>
-      <p>Nenhum produto nesta visão.<br>Clique em <strong>+ Novo Produto</strong> para adicionar.</p>
+      <div class="icon">&#128230;</div>
+      <p>Nenhum produto nesta vis&atilde;o.<br>Clique em <strong>+ Novo Produto</strong> para adicionar.</p>
     </div>
   </div>
 </div>
 
-<!-- ══════════════════════════════════════════════════════════════════════════ -->
 <!-- MODAL: VISÃO -->
-<!-- ══════════════════════════════════════════════════════════════════════════ -->
 <div class="modal-overlay" id="modal-visao">
   <div class="modal">
-    <h2 id="modal-visao-title">Nova Visão Consolidada</h2>
-    <label>Nome da Visão *</label>
-    <input type="text" id="mv_nome" placeholder="Ex: Visão Geral, Proteção Familiar, Investimentos...">
-    <label>Descrição (opcional)</label>
-    <textarea id="mv_descricao" placeholder="Breve descrição desta visão..."></textarea>
+    <h2 id="modal-visao-title">Nova Vis&atilde;o Consolidada</h2>
+    <label>Nome da Vis&atilde;o *</label>
+    <input type="text" id="mv_nome" placeholder="Ex: Vis&atilde;o Geral, Prote&ccedil;&atilde;o Familiar...">
+    <label>Descri&ccedil;&atilde;o (opcional)</label>
+    <textarea id="mv_descricao" placeholder="Breve descri&ccedil;&atilde;o desta vis&atilde;o..."></textarea>
     <div class="modal-footer">
       <button class="btn-cancel" onclick="closeVisaoModal()">Cancelar</button>
       <button class="btn-confirm" onclick="salvarVisao()">Salvar</button>
@@ -189,19 +183,16 @@ body { background: var(--bg); color: var(--fg); font-family: 'Inter', system-ui,
   </div>
 </div>
 
-<!-- ══════════════════════════════════════════════════════════════════════════ -->
-<!-- MODAL: PRODUTO (com direitos embutidos e periodicidade) -->
-<!-- ══════════════════════════════════════════════════════════════════════════ -->
+<!-- MODAL: PRODUTO -->
 <div class="modal-overlay" id="modal-produto">
-  <div class="modal" style="max-width:600px;">
+  <div class="modal" style="max-width:620px;">
     <h2 id="modal-produto-title">Novo Produto</h2>
     <label>Nome do Produto *</label>
-    <input type="text" id="mp_nome" placeholder="Ex: Seguro de Vida Porto, Cartão Amex Platinum...">
+    <input type="text" id="mp_nome" placeholder="Ex: Seguro de Vida Porto, Cart&atilde;o Amex Platinum...">
     <label>Tipo / Categoria</label>
-    <input type="text" id="mp_tipo" placeholder="Ex: Seguro de Vida, Cartão, Previdência, Consórcio...">
-    <label>Instituição / Seguradora</label>
+    <input type="text" id="mp_tipo" placeholder="Ex: Seguro de Vida, Cart&atilde;o, Previd&ecirc;ncia...">
+    <label>Institui&ccedil;&atilde;o / Seguradora</label>
     <input type="text" id="mp_instituicao" placeholder="Ex: Porto Seguro, Nubank, Bradesco...">
-    
     <div style="display:flex;gap:0.75rem;">
       <div style="flex:1;">
         <label>Custo (R$)</label>
@@ -215,19 +206,30 @@ body { background: var(--bg); color: var(--fg); font-family: 'Inter', system-ui,
         </select>
       </div>
     </div>
-    
-    <label>Vigência / Vencimento</label>
+    <label>Vig&ecirc;ncia / Vencimento</label>
     <input type="date" id="mp_vigencia">
-    <label>Observações</label>
-    <textarea id="mp_obs" placeholder="Anotações livres sobre o produto..."></textarea>
-    
+    <label>Observa&ccedil;&otilde;es</label>
+    <textarea id="mp_obs" placeholder="Anota&ccedil;&otilde;es livres sobre o produto..."></textarea>
+
     <!-- DIREITOS DENTRO DO MODAL -->
     <div style="border-top:1px solid var(--border);margin-top:0.5rem;padding-top:1rem;">
-      <label style="font-size:0.85rem;color:var(--primary);font-weight:700;text-transform:none;letter-spacing:0;">Direitos / Benefícios</label>
+      <label style="font-size:0.85rem;color:var(--primary);font-weight:700;text-transform:none;letter-spacing:0;">Direitos / Benef&iacute;cios</label>
       <div class="direitos-list" id="mp_direitos_list"></div>
       <button type="button" class="btn-add-small" onclick="addDireitoNoModal()">+ Adicionar Direito</button>
     </div>
-    
+
+    <!-- ASSOCIAÇÃO COM FLUXO DE CAIXA -->
+    <div class="assoc-section" id="assoc-fluxo-section">
+      <div class="assoc-title">&#128279; Associar ao Fluxo de Caixa</div>
+      <div id="assoc-fluxo-content"></div>
+    </div>
+
+    <!-- ASSOCIAÇÃO COM COMPARADOR -->
+    <div class="assoc-section" id="assoc-comp-section">
+      <div class="assoc-title">&#128202; Associar ao Comparador de Produtos</div>
+      <div id="assoc-comp-content"></div>
+    </div>
+
     <div class="modal-footer">
       <button class="btn-cancel" onclick="closeProdutoModal()">Cancelar</button>
       <button class="btn-confirm" onclick="salvarProduto()">Salvar</button>
@@ -235,12 +237,10 @@ body { background: var(--bg); color: var(--fg); font-family: 'Inter', system-ui,
   </div>
 </div>
 
-<!-- ══════════════════════════════════════════════════════════════════════════ -->
-<!-- MODAL: CONFIRMAR EXCLUSÃO -->
-<!-- ══════════════════════════════════════════════════════════════════════════ -->
+<!-- MODAL: EXCLUSÃO -->
 <div class="modal-overlay" id="modal-del">
   <div class="modal">
-    <h2>Confirmar Exclusão</h2>
+    <h2>Confirmar Exclus&atilde;o</h2>
     <p id="modal-del-msg" style="color:var(--muted);margin-bottom:1.5rem;"></p>
     <div class="modal-footer">
       <button class="btn-cancel" onclick="closeDelModal()">Cancelar</button>
@@ -253,13 +253,14 @@ body { background: var(--bg); color: var(--fg); font-family: 'Inter', system-ui,
 // ═══════════════════════════════════════════════════════════════════════════
 //  ESTADO GLOBAL
 // ═══════════════════════════════════════════════════════════════════════════
-// Estrutura: visoes = [{id, nome, descricao, locked, primary, produtos: [{id, nome, tipo, instituicao, custo, periodicidade, vigencia, obs, direitos: [{id, nome, valor, categoria, detalhes}]}]}]
 var visoes = [];
 var _editingVisaoId = null;
 var _editingProdutoId = null;
 var _currentVisaoId = null;
 var _delCallback = null;
-var _tempDireitos = []; // direitos temporários no modal de produto
+var _tempDireitos = [];
+var _tempAssocFluxo = null;
+var _tempAssocComp = null;
 
 // ═══════════════════════════════════════════════════════════════════════════
 //  UTILITÁRIOS
@@ -280,52 +281,44 @@ function genId() { return Date.now() + Math.floor(Math.random() * 1000); }
 function isEquipeMode() {
   return sessionStorage.getItem('equipe_modo_cliente') === 'true';
 }
+function applyEquipeClass() {
+  if (isEquipeMode()) document.body.classList.add('equipe-mode');
+  else document.body.classList.remove('equipe-mode');
+}
 
 // ═══════════════════════════════════════════════════════════════════════════
 //  VIEW: LISTA DE VISÕES
 // ═══════════════════════════════════════════════════════════════════════════
 function renderVisoes() {
+  applyEquipeClass();
   var container = document.getElementById('visoes-container');
   var empty = document.getElementById('empty-visoes');
-  var btnNova = document.getElementById('btn-nova-visao');
-  
-  // Remover cards antigos
   container.querySelectorAll('.visao-card').forEach(function(el) { el.remove(); });
-  
-  if (visoes.length === 0) {
-    empty.style.display = 'block';
-    return;
-  }
+  if (visoes.length === 0) { empty.style.display = 'block'; return; }
   empty.style.display = 'none';
-  
+
   visoes.forEach(function(v) {
     var card = document.createElement('div');
     card.className = 'visao-card' + (v.locked ? ' locked' : '');
-    
+
     var nProdutos = (v.produtos || []).length;
     var nDireitos = 0;
     (v.produtos || []).forEach(function(p) { nDireitos += (p.direitos || []).length; });
-    
     var custoMensal = 0;
     (v.produtos || []).forEach(function(p) {
       var c = parseCur(p.custo);
       if (p.periodicidade === 'anual') custoMensal += c / 12;
       else custoMensal += c;
     });
-    
-    var metaStr = nProdutos + ' produto' + (nProdutos !== 1 ? 's' : '') + ' · ' + nDireitos + ' direito' + (nDireitos !== 1 ? 's' : '');
-    if (custoMensal > 0) metaStr += ' · R$ ' + custoMensal.toLocaleString('pt-BR', {minimumFractionDigits:2}) + '/mês';
-    
-    // Checkboxes de lock/primary (só para equipe)
-    var checkboxHtml = '';
-    if (isEquipeMode()) {
-      checkboxHtml = '<div class="checkbox-group" onclick="event.stopPropagation()">' +
-        '<label class="' + (v.locked ? 'active-lock' : '') + '" title="Bloquear edição para o cliente"><input type="checkbox" ' + (v.locked ? 'checked' : '') + ' onchange="toggleVisaoLock(' + v.id + ', event)">&#128274;</label>' +
-        '<label class="' + (v.primary ? 'active-primary' : '') + '" title="Visão principal (referência)"><input type="checkbox" ' + (v.primary ? 'checked' : '') + ' onchange="toggleVisaoPrimary(' + v.id + ', event)">&#11088;</label>' +
-      '</div>';
-    }
-    
-    // Ações
+    var metaStr = nProdutos + ' produto' + (nProdutos !== 1 ? 's' : '') + ' \u00b7 ' + nDireitos + ' direito' + (nDireitos !== 1 ? 's' : '');
+    if (custoMensal > 0) metaStr += ' \u00b7 R$ ' + custoMensal.toLocaleString('pt-BR', {minimumFractionDigits:2}) + '/m\u00eas';
+
+    // Controles lock/primary: ícone estático + checkbox ao lado (sem animação, não clicável no ícone)
+    var ctrlHtml = '<div class="ctrl-group" onclick="event.stopPropagation()">' +
+      '<span class="ctrl-item ' + (v.locked ? 'active-lock' : '') + '"><span class="ctrl-icon">&#128274;</span><input type="checkbox" ' + (v.locked ? 'checked' : '') + ' onchange="toggleVisaoLock(' + v.id + ', event)" title="Bloquear edi\u00e7\u00e3o"></span>' +
+      '<span class="ctrl-item ' + (v.primary ? 'active-primary' : '') + '"><span class="ctrl-icon">&#11088;</span><input type="checkbox" ' + (v.primary ? 'checked' : '') + ' onchange="toggleVisaoPrimary(' + v.id + ', event)" title="Vis\u00e3o refer\u00eancia"></span>' +
+    '</div>';
+
     var canEdit = isEquipeMode() || !v.locked;
     var actionsHtml = '<div class="visao-actions" onclick="event.stopPropagation()">';
     actionsHtml += '<button onclick="editarVisao(' + v.id + ')">&#9998; ' + (canEdit ? 'Editar' : 'Visualizar') + '</button>';
@@ -334,18 +327,17 @@ function renderVisoes() {
       actionsHtml += '<button class="danger" onclick="deleteVisao(' + v.id + ')">&#128465; Excluir</button>';
     }
     actionsHtml += '</div>';
-    
+
     card.innerHTML = '<div class="visao-title">' + escHtml(v.nome) + '</div>' +
       '<div class="visao-meta">' + metaStr + '</div>' +
-      checkboxHtml + actionsHtml;
-    
+      ctrlHtml + actionsHtml;
     container.appendChild(card);
   });
 }
 
 function novaVisao() {
   _editingVisaoId = null;
-  document.getElementById('modal-visao-title').textContent = 'Nova Visão Consolidada';
+  document.getElementById('modal-visao-title').textContent = 'Nova Vis\u00e3o Consolidada';
   document.getElementById('mv_nome').value = '';
   document.getElementById('mv_descricao').value = '';
   document.getElementById('modal-visao').classList.add('open');
@@ -355,7 +347,7 @@ function renomearVisao(id) {
   var v = visoes.find(function(x) { return x.id === id; });
   if (!v) return;
   _editingVisaoId = id;
-  document.getElementById('modal-visao-title').textContent = 'Editar Visão';
+  document.getElementById('modal-visao-title').textContent = 'Editar Vis\u00e3o';
   document.getElementById('mv_nome').value = v.nome || '';
   document.getElementById('mv_descricao').value = v.descricao || '';
   document.getElementById('modal-visao').classList.add('open');
@@ -368,25 +360,13 @@ function closeVisaoModal() {
 
 function salvarVisao() {
   var nome = document.getElementById('mv_nome').value.trim();
-  if (!nome) { alert('Informe o nome da visão.'); return; }
-  
+  if (!nome) { alert('Informe o nome da vis\u00e3o.'); return; }
   if (_editingVisaoId) {
     var v = visoes.find(function(x) { return x.id === _editingVisaoId; });
-    if (v) {
-      v.nome = nome;
-      v.descricao = document.getElementById('mv_descricao').value.trim();
-    }
+    if (v) { v.nome = nome; v.descricao = document.getElementById('mv_descricao').value.trim(); }
   } else {
-    visoes.push({
-      id: genId(),
-      nome: nome,
-      descricao: document.getElementById('mv_descricao').value.trim(),
-      locked: false,
-      primary: false,
-      produtos: []
-    });
+    visoes.push({ id: genId(), nome: nome, descricao: document.getElementById('mv_descricao').value.trim(), locked: false, primary: false, produtos: [] });
   }
-  
   closeVisaoModal();
   renderVisoes();
   saveData();
@@ -394,8 +374,14 @@ function salvarVisao() {
 
 function deleteVisao(id) {
   var v = visoes.find(function(x) { return x.id === id; });
-  document.getElementById('modal-del-msg').textContent = 'Deseja excluir a visão "' + (v ? v.nome : '') + '" e todos os seus produtos?';
+  document.getElementById('modal-del-msg').textContent = 'Deseja excluir a vis\u00e3o "' + (v ? v.nome : '') + '" e todos os seus produtos?';
   _delCallback = function() {
+    if (v && v.produtos) {
+      v.produtos.forEach(function(p) {
+        var links = FerramentasLinkage.getLinksForDireitoProduto(id, p.id);
+        links.forEach(function(lk) { FerramentasLinkage.registerDeletion(lk.id, 'direitos'); });
+      });
+    }
     visoes = visoes.filter(function(x) { return x.id !== id; });
     renderVisoes();
     saveData();
@@ -411,7 +397,6 @@ function toggleVisaoLock(id, event) {
 }
 
 function toggleVisaoPrimary(id, event) {
-  // Apenas uma pode ser primary
   visoes.forEach(function(x) { x.primary = false; });
   var v = visoes.find(function(x) { return x.id === id; });
   if (v) { v.primary = event.target.checked; }
@@ -423,19 +408,11 @@ function editarVisao(id) {
   _currentVisaoId = id;
   var v = visoes.find(function(x) { return x.id === id; });
   if (!v) return;
-  
-  document.getElementById('editor-title').textContent = v.nome || 'Visão';
+  document.getElementById('editor-title').textContent = v.nome || 'Vis\u00e3o';
   document.getElementById('view-visoes').classList.add('view-hidden');
   document.getElementById('view-editor').classList.remove('view-hidden');
-  
-  // Se locked e não é equipe, esconder botão de novo produto
   var btnNovo = document.querySelector('#view-editor .btn-new');
-  if (v.locked && !isEquipeMode()) {
-    btnNovo.style.display = 'none';
-  } else {
-    btnNovo.style.display = '';
-  }
-  
+  btnNovo.style.display = (v.locked && !isEquipeMode()) ? 'none' : '';
   renderProdutos();
 }
 
@@ -449,43 +426,36 @@ function voltarParaLista() {
 // ═══════════════════════════════════════════════════════════════════════════
 //  VIEW: EDITOR DE VISÃO (PRODUTOS)
 // ═══════════════════════════════════════════════════════════════════════════
-function getVisaoAtual() {
-  return visoes.find(function(x) { return x.id === _currentVisaoId; });
-}
+function getVisaoAtual() { return visoes.find(function(x) { return x.id === _currentVisaoId; }); }
 
 function renderProdutos() {
   var visao = getVisaoAtual();
   if (!visao) return;
-  
   var container = document.getElementById('produtos-container');
   var empty = document.getElementById('empty-produtos');
   var produtos = visao.produtos || [];
-  
-  // Remover cards antigos
   container.querySelectorAll('.produto-card').forEach(function(el) { el.remove(); });
-  
-  // Resumo
   renderResumoVisao(visao);
-  
-  if (produtos.length === 0) {
-    empty.style.display = 'block';
-    return;
-  }
+  if (produtos.length === 0) { empty.style.display = 'block'; return; }
   empty.style.display = 'none';
-  
   var canEdit = isEquipeMode() || !visao.locked;
-  
+
   produtos.forEach(function(p) {
     var card = document.createElement('div');
     card.className = 'produto-card';
-    
     var nDireitos = (p.direitos || []).length;
     var custoStr = '';
     if (p.custo) {
-      var perioLabel = p.periodicidade === 'anual' ? '/ano' : '/mês';
+      var perioLabel = p.periodicidade === 'anual' ? '/ano' : '/m\u00eas';
       custoStr = 'R$ ' + escHtml(p.custo) + perioLabel;
     }
-    
+    // Badges de linkage
+    var badgesHtml = '';
+    var links = FerramentasLinkage.getLinksForDireitoProduto(visao.id, p.id);
+    links.forEach(function(lk) { badgesHtml += FerramentasLinkage.renderLinkIndicatorHtml(lk); });
+    var delBadges = FerramentasLinkage.getBadgesForItem('direitos', { visaoId: visao.id, produtoId: p.id });
+    delBadges.forEach(function(b) { badgesHtml += FerramentasLinkage.renderBadgeHtml(b); });
+
     var actionsHtml = '<div class="produto-card-actions">';
     if (canEdit) {
       actionsHtml += '<button onclick="editProduto(' + p.id + ')">&#9998; Editar</button>';
@@ -494,13 +464,12 @@ function renderProdutos() {
       actionsHtml += '<button onclick="editProduto(' + p.id + ')">&#128065; Ver</button>';
     }
     actionsHtml += '</div>';
-    
+
     card.innerHTML = '<div class="produto-card-header">' +
-      '<div class="produto-card-title">' + escHtml(p.nome) + '</div>' +
-      '<div class="produto-card-meta">' + nDireitos + ' direito' + (nDireitos !== 1 ? 's' : '') + (custoStr ? ' · ' + custoStr : '') + '</div>' +
+      '<div class="produto-card-title">' + escHtml(p.nome) + badgesHtml + '</div>' +
+      '<div class="produto-card-meta">' + nDireitos + ' direito' + (nDireitos !== 1 ? 's' : '') + (custoStr ? ' \u00b7 ' + custoStr : '') + '</div>' +
       actionsHtml +
     '</div>';
-    
     container.appendChild(card);
   });
 }
@@ -509,24 +478,14 @@ function renderResumoVisao(visao) {
   var resumoEl = document.getElementById('resumo-visao');
   var produtos = visao.produtos || [];
   if (produtos.length === 0) { resumoEl.innerHTML = ''; return; }
-  
   var totalProdutos = produtos.length;
-  var totalDireitos = 0;
-  var custoMensal = 0;
-  var custoAnual = 0;
-  
+  var totalDireitos = 0, custoMensal = 0, custoAnual = 0;
   produtos.forEach(function(p) {
     totalDireitos += (p.direitos || []).length;
     var c = parseCur(p.custo);
-    if (p.periodicidade === 'anual') {
-      custoAnual += c;
-      custoMensal += c / 12;
-    } else {
-      custoMensal += c;
-      custoAnual += c * 12;
-    }
+    if (p.periodicidade === 'anual') { custoAnual += c; custoMensal += c / 12; }
+    else { custoMensal += c; custoAnual += c * 12; }
   });
-  
   resumoEl.innerHTML = '<div class="resumo-bar">' +
     '<div class="resumo-stat"><div class="stat-value">' + totalProdutos + '</div><div class="stat-label">Produtos</div></div>' +
     '<div class="resumo-stat"><div class="stat-value">' + totalDireitos + '</div><div class="stat-label">Direitos</div></div>' +
@@ -536,11 +495,13 @@ function renderResumoVisao(visao) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-//  MODAL: PRODUTO (com direitos embutidos)
+//  MODAL: PRODUTO
 // ═══════════════════════════════════════════════════════════════════════════
 function novoProduto() {
   _editingProdutoId = null;
   _tempDireitos = [];
+  _tempAssocFluxo = null;
+  _tempAssocComp = null;
   document.getElementById('modal-produto-title').textContent = 'Novo Produto';
   document.getElementById('mp_nome').value = '';
   document.getElementById('mp_tipo').value = '';
@@ -550,6 +511,8 @@ function novoProduto() {
   document.getElementById('mp_vigencia').value = '';
   document.getElementById('mp_obs').value = '';
   renderDireitosModal();
+  renderAssocFluxo();
+  renderAssocComp();
   document.getElementById('modal-produto').classList.add('open');
 }
 
@@ -558,10 +521,15 @@ function editProduto(id) {
   if (!visao) return;
   var p = (visao.produtos || []).find(function(x) { return x.id === id; });
   if (!p) return;
-  
   _editingProdutoId = id;
   _tempDireitos = JSON.parse(JSON.stringify(p.direitos || []));
-  
+
+  var links = FerramentasLinkage.getLinksForDireitoProduto(visao.id, id);
+  var fluxoLink = links.find(function(l) { return l.fluxo_sim_id != null; });
+  _tempAssocFluxo = fluxoLink ? { simId: fluxoLink.fluxo_sim_id, itemNome: fluxoLink.fluxo_item_nome, itemId: fluxoLink.fluxo_item_id, linkId: fluxoLink.id } : null;
+  var compLink = links.find(function(l) { return l.comparador_comp_id != null; });
+  _tempAssocComp = compLink ? { compId: compLink.comparador_comp_id, productId: compLink.comparador_product_id, linkId: compLink.id } : null;
+
   document.getElementById('modal-produto-title').textContent = 'Editar Produto';
   document.getElementById('mp_nome').value = p.nome || '';
   document.getElementById('mp_tipo').value = p.tipo || '';
@@ -571,21 +539,16 @@ function editProduto(id) {
   document.getElementById('mp_vigencia').value = p.vigencia || '';
   document.getElementById('mp_obs').value = p.obs || '';
   renderDireitosModal();
-  
-  // Se locked e não equipe, desabilitar campos
+  renderAssocFluxo();
+  renderAssocComp();
+
   var canEdit = isEquipeMode() || !visao.locked;
   var modal = document.querySelector('#modal-produto .modal');
   modal.querySelectorAll('input, select, textarea, button').forEach(function(el) {
     if (el.classList.contains('btn-cancel')) return;
-    if (!canEdit) {
-      el.disabled = true;
-      el.style.opacity = '0.6';
-    } else {
-      el.disabled = false;
-      el.style.opacity = '';
-    }
+    if (!canEdit) { el.disabled = true; el.style.opacity = '0.6'; }
+    else { el.disabled = false; el.style.opacity = ''; }
   });
-  
   document.getElementById('modal-produto').classList.add('open');
 }
 
@@ -593,54 +556,120 @@ function closeProdutoModal() {
   document.getElementById('modal-produto').classList.remove('open');
   _editingProdutoId = null;
   _tempDireitos = [];
-  // Re-enable all
+  _tempAssocFluxo = null;
+  _tempAssocComp = null;
   var modal = document.querySelector('#modal-produto .modal');
   modal.querySelectorAll('input, select, textarea, button').forEach(function(el) {
-    el.disabled = false;
-    el.style.opacity = '';
+    el.disabled = false; el.style.opacity = '';
   });
 }
 
 function salvarProduto() {
   var nome = document.getElementById('mp_nome').value.trim();
   if (!nome) { alert('Informe o nome do produto.'); return; }
-  
   var visao = getVisaoAtual();
   if (!visao) return;
   if (!visao.produtos) visao.produtos = [];
-  
-  // Coletar direitos do modal
   coletarDireitosDoModal();
-  
+
+  var custoVal = document.getElementById('mp_custo').value.trim();
+  var periodicidade = document.getElementById('mp_periodicidade').value;
+  var produtoId;
+
   if (_editingProdutoId) {
+    produtoId = _editingProdutoId;
     var p = visao.produtos.find(function(x) { return x.id === _editingProdutoId; });
     if (p) {
+      var existingLinks = FerramentasLinkage.getLinksForDireitoProduto(visao.id, produtoId);
+      if (existingLinks.length > 0) {
+        var changes = {};
+        if (p.nome !== nome) changes.label = nome;
+        if (parseCur(p.custo) !== parseCur(custoVal)) changes.valor = parseCur(custoVal);
+        if (p.periodicidade !== periodicidade) changes.periodicidade = periodicidade;
+        // Verificar se direitos mudaram
+        if (JSON.stringify(p.direitos) !== JSON.stringify(_tempDireitos)) {
+          changes.direitos_params = _tempDireitos.map(function(d) { return { direito_id: d.id, nome: d.nome, valor: d.valor, categoria: d.categoria }; });
+        }
+        if (Object.keys(changes).length > 0) {
+          var msg = FerramentasLinkage.getImpactMessage(existingLinks[0].id, 'direitos', changes);
+          if (msg && !confirm(msg)) return;
+          existingLinks.forEach(function(lk) { FerramentasLinkage.propagateChanges(lk.id, 'direitos', changes); });
+        }
+      }
       p.nome = nome;
       p.tipo = document.getElementById('mp_tipo').value.trim();
       p.instituicao = document.getElementById('mp_instituicao').value.trim();
-      p.custo = document.getElementById('mp_custo').value.trim();
-      p.periodicidade = document.getElementById('mp_periodicidade').value;
+      p.custo = custoVal;
+      p.periodicidade = periodicidade;
       p.vigencia = document.getElementById('mp_vigencia').value;
       p.obs = document.getElementById('mp_obs').value.trim();
       p.direitos = _tempDireitos;
     }
   } else {
+    produtoId = genId();
     visao.produtos.push({
-      id: genId(),
-      nome: nome,
+      id: produtoId, nome: nome,
       tipo: document.getElementById('mp_tipo').value.trim(),
       instituicao: document.getElementById('mp_instituicao').value.trim(),
-      custo: document.getElementById('mp_custo').value.trim(),
-      periodicidade: document.getElementById('mp_periodicidade').value,
+      custo: custoVal, periodicidade: periodicidade,
       vigencia: document.getElementById('mp_vigencia').value,
       obs: document.getElementById('mp_obs').value.trim(),
       direitos: _tempDireitos
     });
   }
-  
+
+  // Gerenciar associações
+  _handleFluxoAssociation(visao.id, produtoId, nome, custoVal, periodicidade);
+  _handleCompAssociation(visao.id, produtoId, nome, custoVal, periodicidade);
+
   closeProdutoModal();
   renderProdutos();
   saveData();
+}
+
+function _handleFluxoAssociation(visaoId, produtoId, nome, custoVal, periodicidade) {
+  var existingLinks = FerramentasLinkage.getLinksForDireitoProduto(visaoId, produtoId);
+  var existingFluxoLink = existingLinks.find(function(l) { return l.fluxo_sim_id != null; });
+
+  if (_tempAssocFluxo && _tempAssocFluxo.simId) {
+    var linkData = {
+      label: nome, valor: parseCur(custoVal), periodicidade: periodicidade,
+      fluxo_sim_id: _tempAssocFluxo.simId, fluxo_item_nome: _tempAssocFluxo.itemNome,
+      fluxo_item_id: _tempAssocFluxo.itemId || null,
+      direitos_params: _tempDireitos.map(function(d) { return { direito_id: d.id, nome: d.nome, valor: d.valor, categoria: d.categoria }; })
+    };
+    if (existingFluxoLink) {
+      FerramentasLinkage.updateLink(existingFluxoLink.id, linkData);
+    } else {
+      linkData.direitos_visao_id = visaoId;
+      linkData.direitos_produto_id = produtoId;
+      FerramentasLinkage.createLink(linkData);
+    }
+  } else if (existingFluxoLink && !_tempAssocFluxo) {
+    FerramentasLinkage.removeLink(existingFluxoLink.id);
+  }
+}
+
+function _handleCompAssociation(visaoId, produtoId, nome, custoVal, periodicidade) {
+  var existingLinks = FerramentasLinkage.getLinksForDireitoProduto(visaoId, produtoId);
+  var existingCompLink = existingLinks.find(function(l) { return l.comparador_comp_id != null; });
+
+  if (_tempAssocComp && _tempAssocComp.compId) {
+    var linkData = {
+      label: nome, valor: parseCur(custoVal), periodicidade: periodicidade,
+      comparador_comp_id: _tempAssocComp.compId, comparador_product_id: _tempAssocComp.productId || null,
+      direitos_params: _tempDireitos.map(function(d) { return { direito_id: d.id, nome: d.nome, valor: d.valor, categoria: d.categoria }; })
+    };
+    if (existingCompLink) {
+      FerramentasLinkage.updateLink(existingCompLink.id, linkData);
+    } else {
+      linkData.direitos_visao_id = visaoId;
+      linkData.direitos_produto_id = produtoId;
+      FerramentasLinkage.createLink(linkData);
+    }
+  } else if (existingCompLink && !_tempAssocComp) {
+    FerramentasLinkage.removeLink(existingCompLink.id);
+  }
 }
 
 function deleteProduto(id) {
@@ -649,12 +678,106 @@ function deleteProduto(id) {
   var p = (visao.produtos || []).find(function(x) { return x.id === id; });
   document.getElementById('modal-del-msg').textContent = 'Deseja excluir o produto "' + (p ? p.nome : '') + '" e todos os seus direitos?';
   _delCallback = function() {
+    var links = FerramentasLinkage.getLinksForDireitoProduto(visao.id, id);
+    links.forEach(function(lk) { FerramentasLinkage.registerDeletion(lk.id, 'direitos'); });
     visao.produtos = (visao.produtos || []).filter(function(x) { return x.id !== id; });
     renderProdutos();
     saveData();
   };
   document.getElementById('modal-del').classList.add('open');
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  ASSOCIAÇÃO COM FLUXO DE CAIXA
+// ═══════════════════════════════════════════════════════════════════════════
+function renderAssocFluxo() {
+  var container = document.getElementById('assoc-fluxo-content');
+  if (_tempAssocFluxo && _tempAssocFluxo.itemNome) {
+    container.innerHTML = '<div class="assoc-info">' +
+      '<span>&#128279; Associado a: <strong>' + escHtml(_tempAssocFluxo.itemNome) + '</strong> (Fluxo de Caixa)</span>' +
+      '<button class="assoc-remove" onclick="removeAssocFluxo()" title="Remover associa\u00e7\u00e3o">&#10005;</button>' +
+    '</div>';
+  } else {
+    container.innerHTML = '<select id="assoc-fluxo-select" onchange="onAssocFluxoChange(this.value)" style="margin-bottom:0;width:100%;padding:0.5rem;background:var(--card2);border:1px solid var(--border);border-radius:6px;color:var(--fg);font-size:0.85rem;">' +
+      '<option value="">-- N\u00e3o associar --</option>' +
+    '</select>' +
+    '<p style="font-size:0.7rem;color:var(--muted);margin-top:0.3rem;">Selecione um item do Fluxo de Caixa (simula\u00e7\u00e3o refer\u00eancia) para associar.</p>';
+    _loadFluxoRefItems();
+  }
+}
+
+function _loadFluxoRefItems() {
+  var clienteId = sessionStorage.getItem('cliente_id');
+  if (!clienteId) return;
+  var lsKey = 'hv_fluxo_local_' + clienteId;
+  var local = localStorage.getItem(lsKey);
+  var simulacoes = [];
+  if (local) { try { simulacoes = JSON.parse(local); } catch(e) {} }
+  var primarySim = simulacoes.find(function(s) { return s.primary; });
+  if (!primarySim || !primarySim.payload || !primarySim.payload.itens) return;
+  var select = document.getElementById('assoc-fluxo-select');
+  if (!select) return;
+  primarySim.payload.itens.forEach(function(item, idx) {
+    var opt = document.createElement('option');
+    var itemId = item._linkId || (primarySim.id + '_' + idx);
+    opt.value = primarySim.id + '|' + (item.nome || 'Item ' + idx) + '|' + itemId;
+    opt.textContent = item.nome + ' (R$ ' + (item.valor || 0).toLocaleString('pt-BR', {minimumFractionDigits:2}) + ' - ' + item.tipo + ')';
+    select.appendChild(opt);
+  });
+}
+
+function onAssocFluxoChange(val) {
+  if (!val) { _tempAssocFluxo = null; return; }
+  var parts = val.split('|');
+  _tempAssocFluxo = { simId: parseInt(parts[0]) || parts[0], itemNome: parts[1] || '', itemId: parts[2] || null, linkId: null };
+}
+
+function removeAssocFluxo() { _tempAssocFluxo = null; renderAssocFluxo(); }
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  ASSOCIAÇÃO COM COMPARADOR DE PRODUTOS
+// ═══════════════════════════════════════════════════════════════════════════
+function renderAssocComp() {
+  var container = document.getElementById('assoc-comp-content');
+  if (_tempAssocComp && _tempAssocComp.compId) {
+    var label = _tempAssocComp.compName || 'Compara\u00e7\u00e3o #' + _tempAssocComp.compId;
+    container.innerHTML = '<div class="assoc-info">' +
+      '<span>&#128202; Associado a: <strong>' + escHtml(label) + '</strong> (Comparador)</span>' +
+      '<button class="assoc-remove" onclick="removeAssocComp()" title="Remover associa\u00e7\u00e3o">&#10005;</button>' +
+    '</div>';
+  } else {
+    container.innerHTML = '<select id="assoc-comp-select" onchange="onAssocCompChange(this.value)" style="margin-bottom:0;width:100%;padding:0.5rem;background:var(--card2);border:1px solid var(--border);border-radius:6px;color:var(--fg);font-size:0.85rem;">' +
+      '<option value="">-- N\u00e3o associar --</option>' +
+    '</select>' +
+    '<p style="font-size:0.7rem;color:var(--muted);margin-top:0.3rem;">Selecione uma compara\u00e7\u00e3o para vincular este produto. Direitos com valor ser\u00e3o par\u00e2metros objetivos; sem valor, subjetivos.</p>';
+    _loadComparadorItems();
+  }
+}
+
+function _loadComparadorItems() {
+  var clienteId = sessionStorage.getItem('cliente_id');
+  if (!clienteId) return;
+  var lsKey = 'hvsf_comparacoes_' + clienteId;
+  var local = localStorage.getItem(lsKey);
+  var comparacoes = [];
+  if (local) { try { comparacoes = JSON.parse(local); } catch(e) {} }
+  var select = document.getElementById('assoc-comp-select');
+  if (!select) return;
+  comparacoes.forEach(function(comp) {
+    var opt = document.createElement('option');
+    opt.value = comp.id + '|' + (comp.name || 'Sem nome');
+    opt.textContent = (comp.name || 'Sem nome') + ' (' + (comp.products || []).length + ' produtos)';
+    select.appendChild(opt);
+  });
+}
+
+function onAssocCompChange(val) {
+  if (!val) { _tempAssocComp = null; return; }
+  var parts = val.split('|');
+  _tempAssocComp = { compId: parseInt(parts[0]) || parts[0], compName: parts[1] || '', productId: null, linkId: null };
+}
+
+function removeAssocComp() { _tempAssocComp = null; renderAssocComp(); }
 
 // ═══════════════════════════════════════════════════════════════════════════
 //  DIREITOS NO MODAL DO PRODUTO
@@ -665,11 +788,10 @@ function renderDireitosModal() {
     container.innerHTML = '<p style="font-size:0.8rem;color:var(--muted);font-style:italic;margin:0.3rem 0;">Nenhum direito adicionado.</p>';
     return;
   }
-  
   var html = '';
   _tempDireitos.forEach(function(d, idx) {
     html += '<div class="direito-row">' +
-      '<input type="text" value="' + escHtml(d.nome) + '" placeholder="Descrição do direito" onchange="updateTempDireito(' + idx + ',\'nome\',this.value)" style="flex:2;">' +
+      '<input type="text" value="' + escHtml(d.nome) + '" placeholder="Descri\u00e7\u00e3o" onchange="updateTempDireito(' + idx + ',\'nome\',this.value)" style="flex:2;">' +
       '<input type="text" value="' + escHtml(d.valor || '') + '" placeholder="Valor/Limite" onchange="updateTempDireito(' + idx + ',\'valor\',this.value)" style="flex:1;">' +
       '<input type="text" value="' + escHtml(d.categoria || '') + '" placeholder="Categoria" onchange="updateTempDireito(' + idx + ',\'categoria\',this.value)" style="flex:1;">' +
       '<button onclick="removeTempDireito(' + idx + ')" title="Remover">&#10005;</button>' +
@@ -695,7 +817,6 @@ function updateTempDireito(idx, campo, valor) {
 }
 
 function coletarDireitosDoModal() {
-  // Sincronizar valores dos inputs com _tempDireitos
   var container = document.getElementById('mp_direitos_list');
   var rows = container.querySelectorAll('.direito-row');
   rows.forEach(function(row, idx) {
@@ -714,28 +835,22 @@ function coletarDireitosDoModal() {
 function closeDelModal() { document.getElementById('modal-del').classList.remove('open'); _delCallback = null; }
 function confirmDel() { if (_delCallback) _delCallback(); closeDelModal(); }
 
-// ═══════════════════════════════════════════════════════════════════════════
-//  FECHAR MODAIS CLICANDO FORA
-// ═══════════════════════════════════════════════════════════════════════════
+// Fechar modais clicando fora
 ['modal-visao', 'modal-produto', 'modal-del'].forEach(function(id) {
   var el = document.getElementById(id);
   if (el) el.addEventListener('click', function(e) {
     if (e.target === e.currentTarget) {
       el.classList.remove('open');
-      // Re-enable if produto modal
       if (id === 'modal-produto') {
         var modal = document.querySelector('#modal-produto .modal');
-        modal.querySelectorAll('input, select, textarea, button').forEach(function(el2) {
-          el2.disabled = false;
-          el2.style.opacity = '';
-        });
+        modal.querySelectorAll('input, select, textarea, button').forEach(function(el2) { el2.disabled = false; el2.style.opacity = ''; });
       }
     }
   });
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
-//  PERSISTÊNCIA (localStorage + Supabase)
+//  PERSISTÊNCIA
 // ═══════════════════════════════════════════════════════════════════════════
 var _DIR_SUPABASE_URL = 'https://vbikskbfkhundhropykf.supabase.co';
 var _DIR_SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZiaWtza2Jma2h1bmRocm9weWtmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDU1MTk5NjEsImV4cCI6MjA2MTA5NTk2MX0.-n-Tj_5JnF1NL2ZImWlMeTcobWDl_VD6Vqp0lxRQFFU';
@@ -755,12 +870,8 @@ function _initSupabase() {
 async function saveData() {
   var clienteId = getClienteId();
   var data = { visoes: visoes };
-  
-  // LocalStorage
   var lsKey = clienteId ? _DIR_LS_KEY + '_' + clienteId : _DIR_LS_KEY;
   try { localStorage.setItem(lsKey, JSON.stringify(data)); } catch(e) {}
-  
-  // Supabase (debounce)
   if (_dirSaveTimer) clearTimeout(_dirSaveTimer);
   _dirSaveTimer = setTimeout(function() { _saveToSupabase(clienteId, data); }, 1500);
 }
@@ -769,99 +880,53 @@ async function _saveToSupabase(clienteId, data) {
   if (!_dirSbClient || !clienteId) return;
   try {
     await _dirSbClient.from('ferramentas_dados').upsert({
-      cliente_id: clienteId,
-      ferramenta: _DIR_FERRAMENTA,
-      dados: data,
-      updated_at: new Date().toISOString()
+      cliente_id: clienteId, ferramenta: _DIR_FERRAMENTA,
+      dados: data, updated_at: new Date().toISOString()
     }, { onConflict: 'cliente_id,ferramenta' });
     _globalSaveFeedback();
-  } catch(e) { console.warn('[Direitos] Erro ao salvar no Supabase:', e); }
+  } catch(e) { console.warn('[Direitos] Erro ao salvar:', e); }
 }
 
 async function loadData() {
   var clienteId = getClienteId();
   _initSupabase();
-  
-  // Tentar Supabase primeiro
   if (_dirSbClient && clienteId) {
     try {
       var res = await _dirSbClient.from('ferramentas_dados').select('dados').eq('cliente_id', clienteId).eq('ferramenta', _DIR_FERRAMENTA).maybeSingle();
       if (res.data && res.data.dados) {
         var d = res.data.dados;
-        // Migração: formato antigo tinha { produtos: [...] }, novo tem { visoes: [...] }
-        if (d.visoes) {
-          visoes = d.visoes;
-        } else if (d.produtos && d.produtos.length > 0) {
-          // Migrar formato antigo para novo
-          visoes = [{
-            id: genId(),
-            nome: 'Visão Importada',
-            descricao: 'Migrada automaticamente do formato anterior',
-            locked: false,
-            primary: true,
+        if (d.visoes) { visoes = d.visoes; }
+        else if (d.produtos && d.produtos.length > 0) {
+          visoes = [{ id: genId(), nome: 'Vis\u00e3o Importada', descricao: 'Migrada do formato anterior', locked: false, primary: true,
             produtos: d.produtos.map(function(p) {
-              return {
-                id: p.id || genId(),
-                nome: p.nome || '',
-                tipo: p.tipo || '',
-                instituicao: p.instituicao || '',
-                custo: p.custo || '',
-                periodicidade: 'mensal',
-                vigencia: p.vigencia || '',
-                obs: p.obs || '',
-                direitos: (p.direitos || []).map(function(dr) {
-                  return { id: dr.id || genId(), nome: dr.nome || '', valor: dr.valor || '', categoria: dr.categoria || '', detalhes: dr.detalhes || '' };
-                })
+              return { id: p.id || genId(), nome: p.nome || '', tipo: p.tipo || '', instituicao: p.instituicao || '', custo: p.custo || '', periodicidade: 'mensal', vigencia: p.vigencia || '', obs: p.obs || '',
+                direitos: (p.direitos || []).map(function(dr) { return { id: dr.id || genId(), nome: dr.nome || '', valor: dr.valor || '', categoria: dr.categoria || '', detalhes: dr.detalhes || '' }; })
               };
             })
           }];
-          // Salvar no novo formato
           saveData();
-        } else {
-          visoes = [];
-        }
+        } else { visoes = []; }
         var lsKeyS = clienteId ? _DIR_LS_KEY + '_' + clienteId : _DIR_LS_KEY;
         try { localStorage.setItem(lsKeyS, JSON.stringify({ visoes: visoes })); } catch(e2) {}
         return;
       }
-    } catch(e) { console.warn('[Direitos] Erro ao carregar do Supabase:', e); }
+    } catch(e) { console.warn('[Direitos] Erro ao carregar:', e); }
   }
-  
-  // Fallback: localStorage
   var lsKey = clienteId ? _DIR_LS_KEY + '_' + clienteId : _DIR_LS_KEY;
   var local = localStorage.getItem(lsKey);
   if (local) {
     try {
       var d = JSON.parse(local);
-      if (d.visoes) {
-        visoes = d.visoes;
-      } else if (d.produtos && d.produtos.length > 0) {
-        // Migrar
-        visoes = [{
-          id: genId(),
-          nome: 'Visão Importada',
-          descricao: 'Migrada automaticamente do formato anterior',
-          locked: false,
-          primary: true,
+      if (d.visoes) { visoes = d.visoes; }
+      else if (d.produtos && d.produtos.length > 0) {
+        visoes = [{ id: genId(), nome: 'Vis\u00e3o Importada', descricao: 'Migrada do formato anterior', locked: false, primary: true,
           produtos: d.produtos.map(function(p) {
-            return {
-              id: p.id || genId(),
-              nome: p.nome || '',
-              tipo: p.tipo || '',
-              instituicao: p.instituicao || '',
-              custo: p.custo || '',
-              periodicidade: 'mensal',
-              vigencia: p.vigencia || '',
-              obs: p.obs || '',
-              direitos: (p.direitos || []).map(function(dr) {
-                return { id: dr.id || genId(), nome: dr.nome || '', valor: dr.valor || '', categoria: dr.categoria || '', detalhes: dr.detalhes || '' };
-              })
+            return { id: p.id || genId(), nome: p.nome || '', tipo: p.tipo || '', instituicao: p.instituicao || '', custo: p.custo || '', periodicidade: 'mensal', vigencia: p.vigencia || '', obs: p.obs || '',
+              direitos: (p.direitos || []).map(function(dr) { return { id: dr.id || genId(), nome: dr.nome || '', valor: dr.valor || '', categoria: dr.categoria || '', detalhes: dr.detalhes || '' }; })
             };
           })
         }];
-      } else {
-        visoes = [];
-      }
+      } else { visoes = []; }
     } catch(e) { visoes = []; }
   }
 }
@@ -881,71 +946,123 @@ function _globalSaveFeedback() {
   var label = document.getElementById('saveLabel');
   if (!btn) return;
   btn.classList.add('saved');
-  icon.textContent = '✅';
+  icon.textContent = '\u2705';
   label.textContent = 'Salvo!';
-  setTimeout(function() {
-    btn.classList.remove('saved');
-    icon.textContent = '💾';
-    label.textContent = 'Salvar Alterações';
-  }, 2500);
+  setTimeout(function() { btn.classList.remove('saved'); icon.textContent = '\ud83d\udcbe'; label.textContent = 'Salvar Altera\u00e7\u00f5es'; }, 2500);
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  LINKAGE EVENTS (exclusão/atualização de outra ferramenta)
+// ═══════════════════════════════════════════════════════════════════════════
+document.addEventListener('linkage-delete-confirmed', function(e) {
+  var badge = e.detail.badge;
+  if (!badge) return;
+  var link = FerramentasLinkage.state.links.find(function(l) { return l.id === badge.link_id; });
+  if (!link || !link.direitos_visao_id || !link.direitos_produto_id) return;
+  var visao = visoes.find(function(v) { return v.id === link.direitos_visao_id; });
+  if (visao && visao.produtos) {
+    visao.produtos = visao.produtos.filter(function(p) { return p.id !== link.direitos_produto_id; });
+  }
+  FerramentasLinkage.removeLink(link.id);
+  renderProdutos();
+  renderVisoes();
+  saveData();
+});
+
+document.addEventListener('linkage-keep-confirmed', function(e) {
+  renderProdutos();
+  renderVisoes();
+});
+
+FerramentasLinkage.registerUpdateHandler('direitos', function(linkId, link, changes) {
+  if (!link.direitos_visao_id || !link.direitos_produto_id) return;
+  var visao = visoes.find(function(v) { return v.id === link.direitos_visao_id; });
+  if (!visao || !visao.produtos) return;
+  var produto = visao.produtos.find(function(p) { return p.id === link.direitos_produto_id; });
+  if (!produto) return;
+
+  if (changes.label !== undefined) produto.nome = changes.label;
+  if (changes.valor !== undefined) produto.custo = changes.valor.toLocaleString('pt-BR', {minimumFractionDigits:2});
+  if (changes.periodicidade !== undefined) produto.periodicidade = changes.periodicidade;
+  if (changes.direitos_params !== undefined) {
+    // Atualizar direitos do produto com base nos params vindos do comparador
+    changes.direitos_params.forEach(function(dp) {
+      var existing = produto.direitos.find(function(d) { return d.id === dp.direito_id || d.nome === dp.nome; });
+      if (existing) {
+        if (dp.nome) existing.nome = dp.nome;
+        if (dp.valor !== undefined) existing.valor = dp.valor;
+        if (dp.categoria) existing.categoria = dp.categoria;
+      } else {
+        produto.direitos.push({ id: dp.direito_id || genId(), nome: dp.nome || '', valor: dp.valor || '', categoria: dp.categoria || '' });
+      }
+    });
+  }
+  saveData();
+  if (_currentVisaoId === link.direitos_visao_id) renderProdutos();
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  HANDLER: IMPORTAR DIAGNÓSTICO (filtrado: Produtos e Proteção + Previdências)
+// ═══════════════════════════════════════════════════════════════════════════
+document.addEventListener('importarDiagnostico', function(e) {
+  var itens = e.detail.items || [];
+  if (itens.length === 0) return;
+
+  // Filtrar: apenas _fonte === 'protecao' ou _fonte === 'investimento' com tipo previdência
+  var filtrados = itens.filter(function(item) {
+    if (item._fonte === 'protecao') return true;
+    if (item._fonte === 'investimento') {
+      var tipo = (item.tipo || item.tipo_produto_nome || '').toLowerCase();
+      return tipo.indexOf('pgbl') !== -1 || tipo.indexOf('vgbl') !== -1 || tipo.indexOf('previd') !== -1;
+    }
+    return false;
+  });
+
+  if (filtrados.length === 0) {
+    alert('Nenhum produto de prote\u00e7\u00e3o ou previd\u00eancia encontrado no diagn\u00f3stico.');
+    return;
+  }
+
+  var produtosImportados = filtrados.map(function(item) {
+    var nome = item.nome || item.nome_produto_customizado || item.tipo_produto_nome || item.descricao || '';
+    var custoVal = item.custo_mensal || item.premio_mensal || '';
+    if (custoVal && typeof custoVal === 'number') custoVal = custoVal.toLocaleString('pt-BR', {minimumFractionDigits:2});
+    return {
+      id: genId(), nome: nome,
+      tipo: item.tipo || item.tipo_produto_nome || item.categoria || '',
+      instituicao: item.instituicao || item.instituicao_nome || item.seguradora || '',
+      custo: custoVal, periodicidade: item.periodicidade || 'mensal',
+      vigencia: item.vigencia || item.vencimento || '',
+      obs: item.obs || 'Importado do diagn\u00f3stico',
+      direitos: []
+    };
+  });
+
+  visoes.push({
+    id: genId(), nome: 'Importa\u00e7\u00e3o do Diagn\u00f3stico',
+    descricao: 'Produtos importados do diagn\u00f3stico (prote\u00e7\u00e3o + previd\u00eancia)',
+    locked: false, primary: visoes.length === 0,
+    produtos: produtosImportados
+  });
+  renderVisoes();
+  saveData();
+  alert(produtosImportados.length + ' produto(s) importado(s) (prote\u00e7\u00e3o e previd\u00eancia) em nova vis\u00e3o consolidada!');
+});
 
 // ═══════════════════════════════════════════════════════════════════════════
 //  INICIALIZAÇÃO
 // ═══════════════════════════════════════════════════════════════════════════
 (async function init() {
   _initSupabase();
+  applyEquipeClass();
+  await FerramentasLinkage.load();
   await loadData();
   renderVisoes();
 })();
 
-// ═══════════════════════════════════════════════════════════════════════════
-//  HANDLER: IMPORTAR DIAGNÓSTICO
-// ═══════════════════════════════════════════════════════════════════════════
-document.addEventListener('importarDiagnostico', function(e) {
-  var itens = e.detail.items || [];
-  if (itens.length > 0) {
-    // Criar uma nova visão com os itens importados
-    var produtosImportados = [];
-    itens.forEach(function(item) {
-      var nome = item.nome || item.nome_produto_customizado || item.tipo_produto_nome || item.descricao || '';
-      if (!nome) return;
-      var custoVal = item.custo_mensal || item.premio_mensal || '';
-      if (custoVal && typeof custoVal === 'number') custoVal = custoVal.toLocaleString('pt-BR', {minimumFractionDigits:2});
-      produtosImportados.push({
-        id: genId(),
-        nome: nome,
-        tipo: item.tipo || item.tipo_produto_nome || item.categoria || '',
-        instituicao: item.instituicao || item.instituicao_nome || item.seguradora || '',
-        custo: custoVal,
-        periodicidade: item.periodicidade || 'mensal',
-        vigencia: item.vigencia || item.vencimento || '',
-        obs: item.obs || 'Importado do diagnóstico',
-        direitos: []
-      });
-    });
-    
-    if (produtosImportados.length > 0) {
-      visoes.push({
-        id: genId(),
-        nome: 'Importação do Diagnóstico',
-        descricao: 'Produtos importados automaticamente do diagnóstico financeiro',
-        locked: false,
-        primary: visoes.length === 0,
-        produtos: produtosImportados
-      });
-      renderVisoes();
-      saveData();
-      alert(produtosImportados.length + ' produto(s) importado(s) em uma nova visão consolidada!');
-    } else {
-      alert('Nenhum produto novo para importar (dados insuficientes).');
-    }
-  }
-});
-
 </script>
-<button class="btn-save-global" id="btnSaveGlobal" onclick="_forceSaveDireitos()" title="Salvar todas as alterações">
-  <span id="saveIcon">💾</span> <span id="saveLabel">Salvar Alterações</span>
+<button class="btn-save-global" id="btnSaveGlobal" onclick="_forceSaveDireitos()" title="Salvar todas as altera&ccedil;&otilde;es">
+  <span id="saveIcon">&#128190;</span> <span id="saveLabel">Salvar Altera&ccedil;&otilde;es</span>
 </button>
 </main>
 </body>
