@@ -1810,6 +1810,8 @@ function openModal(id = null) {
 }
 
 function closeModal() {
+  // Limpar _pendingLink de produtos que não foram salvos (cancelamento)
+  tmpProducts.forEach(function(p) { delete p._pendingLink; });
   document.getElementById('modal-overlay').classList.remove('open');
 }
 
@@ -1919,13 +1921,12 @@ function importarDeDireitos() {
         tmpSubjParams.push({ id: paramId2, name: d.nome || '', importance: 5, rankings: rankings2, hasParam: hasParam2, _direitoId: d.id });
       }
     });
-    // Criar link no linkage engine
-    FerramentasLinkage.createLink({
+    // Marcar produto com dados pendentes de link (será criado ao salvar a comparação)
+    tmpProducts[tmpProducts.length - 1]._pendingLink = {
       label: prod.nome || '', valor: price, periodicidade: prod.periodicidade || 'mensal',
       direitos_visao_id: visaoRef.id, direitos_produto_id: prod.id,
-      comparador_comp_id: editingId || null, comparador_product_id: linkId,
       direitos_params: direitos.map(function(d) { return { direito_id: d.id, nome: d.nome, valor: d.valor, categoria: d.categoria }; })
-    });
+    };
   });
   renderAll();
   alert(indices.length + ' produto(s) importado(s) da visão referência de Direitos!');
@@ -4987,7 +4988,20 @@ if (typeof FerramentasLinkage !== 'undefined') {
 // Propagar alterações de parâmetros para Direitos ao salvar
 var _origSaveComparison = saveComparison;
 saveComparison = function() {
-  // Antes de salvar, propagar alterações de parâmetros para links associados
+  // Antes de salvar, criar links pendentes e propagar alterações
+  if (typeof FerramentasLinkage !== 'undefined') {
+    // O comp.id será editingId ou Date.now() (nova comparação)
+    var compId = editingId || Date.now();
+    // Criar links pendentes de produtos importados de Direitos
+    tmpProducts.forEach(function(prod) {
+      if (prod._pendingLink) {
+        prod._pendingLink.comparador_comp_id = compId;
+        prod._pendingLink.comparador_product_id = prod._linkId;
+        FerramentasLinkage.createLink(prod._pendingLink);
+        delete prod._pendingLink;
+      }
+    });
+  }
   if (typeof FerramentasLinkage !== 'undefined' && editingId) {
     tmpProducts.forEach(function(prod) {
       if (!prod._linkId) return;
