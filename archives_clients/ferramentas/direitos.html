@@ -1050,6 +1050,31 @@ document.addEventListener('importarDiagnostico', function(e) {
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
+//  STORAGE LISTENER: detectar alterações feitas por outras ferramentas
+// ═══════════════════════════════════════════════════════════════════════════
+window.addEventListener('storage', function(e) {
+  var clienteId = sessionStorage.getItem('cliente_id');
+  if (!clienteId) return;
+  var direitosKey = 'hv_direitos_local_' + clienteId;
+  var linkageKey = 'hv_linkage_local';
+  if (e.key === direitosKey || e.key === linkageKey) {
+    // Outra ferramenta alterou nossos dados — recarregar
+    if (e.key === direitosKey && e.newValue) {
+      try {
+        var newData = JSON.parse(e.newValue);
+        visoes = newData.visoes || [];
+        renderVisoes();
+        if (_currentVisaoId) renderProdutos();
+      } catch(err) {}
+    }
+    if (e.key === linkageKey) {
+      FerramentasLinkage.load();
+      if (_currentVisaoId) renderProdutos();
+    }
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
 //  INICIALIZAÇÃO
 // ═══════════════════════════════════════════════════════════════════════════
 (async function init() {
