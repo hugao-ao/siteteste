@@ -249,6 +249,38 @@ body { background: var(--bg); color: var(--fg); font-family: 'Inter', system-ui,
   </div>
 </div>
 
+<!-- MODAL: HARMONIZAÇÃO DE ASSOCIAÇÃO -->
+<div class="modal-overlay" id="modal-harmonizar">
+  <div class="modal" style="max-width:480px;">
+    <h2 style="font-size:1rem;color:var(--primary);">Definir Identificação da Associação</h2>
+    <p style="font-size:0.8rem;color:var(--muted);margin-bottom:1rem;">Defina o nome e valor que serão utilizados em ambas as ferramentas a partir desta associação. Esses dados serão sincronizados automaticamente.</p>
+    <label>Nome unificado *</label>
+    <input type="text" id="harm_nome" placeholder="Nome que será usado em ambas as ferramentas">
+    <div style="display:flex;gap:0.75rem;">
+      <div style="flex:1;">
+        <label>Valor (R$) *</label>
+        <input type="text" id="harm_valor" placeholder="Ex: 150,00" oninput="fmtCur(this)">
+      </div>
+      <div style="flex:1;">
+        <label>Periodicidade</label>
+        <select id="harm_periodicidade">
+          <option value="mensal">Mensal</option>
+          <option value="anual">Anual</option>
+          <option value="semanal">Semanal</option>
+          <option value="quinzenal">Quinzenal</option>
+          <option value="trimestral">Trimestral</option>
+          <option value="semestral">Semestral</option>
+          <option value="unica">Pagamento Único</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="cancelHarmonizar()">Cancelar</button>
+      <button class="btn-confirm" onclick="confirmarHarmonizar()">Confirmar Associação</button>
+    </div>
+  </div>
+</div>
+
 <script>
 // ═══════════════════════════════════════════════════════════════════════════
 //  ESTADO GLOBAL
@@ -261,6 +293,7 @@ var _delCallback = null;
 var _tempDireitos = [];
 var _tempAssocFluxo = null;
 var _tempAssocComp = null;
+var _harmonizarCallback = null; // callback para quando o modal de harmonização for confirmado
 
 // ═══════════════════════════════════════════════════════════════════════════
 //  UTILITÁRIOS
@@ -619,12 +652,29 @@ function salvarProduto() {
   }
 
   // Gerenciar associações
-  _handleFluxoAssociation(visao.id, produtoId, nome, custoVal, periodicidade);
-  _handleCompAssociation(visao.id, produtoId, nome, custoVal, periodicidade);
+  // Verificar se é uma NOVA associação com fluxo (não existia antes)
+  var existingFluxoLinks = FerramentasLinkage.getLinksForDireitoProduto(visao.id, produtoId).filter(function(l) { return l.fluxo_sim_id != null; });
+  var isNewFluxoAssoc = _tempAssocFluxo && _tempAssocFluxo.simId && existingFluxoLinks.length === 0;
 
-  closeProdutoModal();
-  renderProdutos();
-  saveData();
+  if (isNewFluxoAssoc) {
+    // Mostrar modal de harmonização antes de criar o link
+    _showHarmonizarModal(nome, custoVal, periodicidade, function(harmNome, harmValor, harmPeriodicidade) {
+      // Atualizar o produto com os dados harmonizados
+      var prod = visao.produtos.find(function(x) { return x.id === produtoId; });
+      if (prod) { prod.nome = harmNome; prod.custo = harmValor; prod.periodicidade = harmPeriodicidade; }
+      _handleFluxoAssociation(visao.id, produtoId, harmNome, harmValor, harmPeriodicidade);
+      _handleCompAssociation(visao.id, produtoId, harmNome, harmValor, harmPeriodicidade);
+      closeProdutoModal();
+      renderProdutos();
+      saveData();
+    });
+  } else {
+    _handleFluxoAssociation(visao.id, produtoId, nome, custoVal, periodicidade);
+    _handleCompAssociation(visao.id, produtoId, nome, custoVal, periodicidade);
+    closeProdutoModal();
+    renderProdutos();
+    saveData();
+  }
 }
 
 function _handleFluxoAssociation(visaoId, produtoId, nome, custoVal, periodicidade) {
@@ -778,6 +828,35 @@ function onAssocCompChange(val) {
 }
 
 function removeAssocComp() { _tempAssocComp = null; renderAssocComp(); }
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  MODAL DE HARMONIZAÇÃO (nome/valor unificados ao associar)
+// ═══════════════════════════════════════════════════════════════════════════
+function _showHarmonizarModal(nomeAtual, valorAtual, periodicidadeAtual, callback) {
+  document.getElementById('harm_nome').value = nomeAtual || '';
+  document.getElementById('harm_valor').value = valorAtual || '';
+  document.getElementById('harm_periodicidade').value = periodicidadeAtual || 'mensal';
+  _harmonizarCallback = callback;
+  document.getElementById('modal-harmonizar').classList.add('open');
+}
+
+function cancelHarmonizar() {
+  _harmonizarCallback = null;
+  document.getElementById('modal-harmonizar').classList.remove('open');
+}
+
+function confirmarHarmonizar() {
+  var harmNome = document.getElementById('harm_nome').value.trim();
+  var harmValor = document.getElementById('harm_valor').value.trim();
+  var harmPeriodicidade = document.getElementById('harm_periodicidade').value;
+  if (!harmNome) { alert('Informe o nome unificado.'); return; }
+  if (!harmValor) { alert('Informe o valor.'); return; }
+  document.getElementById('modal-harmonizar').classList.remove('open');
+  if (_harmonizarCallback) {
+    _harmonizarCallback(harmNome, harmValor, harmPeriodicidade);
+    _harmonizarCallback = null;
+  }
+}
 
 // ═══════════════════════════════════════════════════════════════════════════
 //  DIREITOS NO MODAL DO PRODUTO
