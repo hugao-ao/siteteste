@@ -532,44 +532,31 @@
         });
       });
 
-      // Patrimônios líquidos (investimentos, previdência)
+      // Patrimônios líquidos - APENAS previdências (PGBL, VGBL e similares)
       let patrimoniosLiquidos = diag.patrimonios_liquidos || [];
       if (!Array.isArray(patrimoniosLiquidos)) patrimoniosLiquidos = Object.values(patrimoniosLiquidos);
-      patrimoniosLiquidos.forEach(pl => {
+      const previdencias = patrimoniosLiquidos.filter(pl => {
+        const tipo = (pl.tipo_produto_nome || pl.nome_produto_customizado || '').toLowerCase();
+        return tipo.indexOf('pgbl') !== -1 || tipo.indexOf('vgbl') !== -1 || tipo.indexOf('previd') !== -1;
+      });
+      previdencias.forEach(pl => {
         items.push({
-          nome: pl.nome_produto_customizado || pl.tipo_produto_nome || 'Investimento',
-          tipo: pl.tipo_produto_nome || 'Investimento',
+          nome: pl.nome_produto_customizado || pl.tipo_produto_nome || 'Previdência',
+          tipo: pl.tipo_produto_nome || 'Previdência',
           instituicao: pl.instituicao_nome || '',
           custo_mensal: '',
           vigencia: '',
           obs: `Valor atual: R$ ${(pl.valor_atual || 0).toLocaleString('pt-BR')}. Classificação: ${pl.classificacao_risco || 'N/I'}`,
-          _fonte: 'investimento'
-        });
-      });
-
-      // Contas e cartões
-      let contasCartoes = diag.contas_cartoes || [];
-      if (!Array.isArray(contasCartoes)) contasCartoes = Object.values(contasCartoes);
-      contasCartoes.forEach(c => {
-        const nome = c.tipo === 'cartao' 
-          ? `Cartão ${c.bandeira || ''} ${c.instituicao || ''}`.trim()
-          : `Conta ${c.tipo_conta || ''} ${c.instituicao || ''}`.trim();
-        items.push({
-          nome: nome,
-          tipo: c.tipo === 'cartao' ? 'Cartão de Crédito' : 'Conta Bancária',
-          instituicao: c.instituicao || '',
-          custo_mensal: c.tarifa_anuidade ? Math.round(c.tarifa_anuidade / 12) : (c.tarifa_mensal || 0),
-          vigencia: '',
-          obs: c.tipo === 'cartao' ? `Bandeira: ${c.bandeira || 'N/I'}. Pontos/dólar: ${c.pontos_por_dolar || 0}` : '',
-          _fonte: c.tipo === 'cartao' ? 'cartao' : 'conta'
+          _fonte: 'investimento',
+          tipo_produto_nome: pl.tipo_produto_nome || ''
         });
       });
 
       if (items.length === 0) {
-        return { items: [], mensagem: 'Nenhum produto encontrado no diagnóstico.' };
+        return { items: [], mensagem: 'Nenhum produto de proteção ou previdência encontrado no diagnóstico.' };
       }
 
-      return { items, mensagem: `${items.length} produto(s) encontrado(s): ${produtosProtecao.length} seguro(s), ${patrimoniosLiquidos.length} investimento(s), ${contasCartoes.length} conta(s)/cartão(ões).` };
+      return { items, mensagem: `${items.length} produto(s) encontrado(s): ${produtosProtecao.length} seguro(s) e ${previdencias.length} previdência(s).` };
     }
   };
 
