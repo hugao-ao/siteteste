@@ -998,6 +998,11 @@ function saveAccount() {
 function deleteAccount(index) {
   if (!confirm('Excluir "' + accounts[index].nome + '"? Itens vinculados ficarão sem forma de pagamento.')) return;
   var removedId = accounts[index].id;
+  // Registrar exclusão no linkage (cartões)
+  if (typeof FerramentasLinkage !== 'undefined' && editingSimId && removedId) {
+    var accLinks = FerramentasLinkage.getLinksForFluxoAccount(editingSimId, removedId);
+    accLinks.forEach(function(lk) { FerramentasLinkage.registerDeletion(lk.id, 'fluxo'); });
+  }
   accounts.splice(index, 1);
   // Limpa referências nos itens
   items.forEach(function(it) { if (it.formaPagamento === removedId) it.formaPagamento = ''; });
@@ -1029,10 +1034,17 @@ function renderAccountsGrid() {
         '</div>';
     }
     var accNewBadge = acc._isNew ? '<span class="badge-new">NOVO</span>' : '';
+    var accLinkBadges = '';
+    if (typeof FerramentasLinkage !== 'undefined' && acc.id && editingSimId) {
+      var accLinks = FerramentasLinkage.getLinksForFluxoAccount(editingSimId, acc.id);
+      if (accLinks.length > 0) { accLinkBadges += FerramentasLinkage.renderLinkIndicatorHtml(accLinks[0], 'fluxo'); }
+      var accBadges = FerramentasLinkage.getBadgesForItem('fluxo', { simId: editingSimId, accountId: acc.id });
+      accBadges.forEach(function(b) { accLinkBadges += FerramentasLinkage.renderBadgeHtml(b); });
+    }
     html += '<div style="background:var(--card2); border:1px solid var(--border); border-radius:8px; padding:0.8rem 1rem; display:flex; align-items:center; gap:0.8rem;">' +
       '<span style="font-size:1.4rem;">' + icon + '</span>' +
       '<div style="flex:1;">' +
-        '<div style="font-weight:600; color:var(--fg); font-size:0.9rem;">' + acc.nome + accNewBadge + '</div>' +
+        '<div style="font-weight:600; color:var(--fg); font-size:0.9rem;">' + acc.nome + accNewBadge + accLinkBadges + '</div>' +
         '<span class="badge ' + (acc.tipo==='cartao'?'badge-purple':'badge-blue') + '">' + (acc.tipo==='cartao'?'Cartão':'Conta') + '</span>' +
         details +
       '</div>' +
@@ -4710,15 +4722,23 @@ document.addEventListener('linkage-delete-confirmed', function(e) {
   var badge = e.detail.badge;
   if (!badge) return;
   var link = FerramentasLinkage.state.links.find(function(l) { return l.id === badge.link_id; });
-  if (!link || !link.fluxo_sim_id || !link.fluxo_item_id) return;
-  // Encontrar a simulação e remover o item
+  if (!link || !link.fluxo_sim_id) return;
   var sim = simulacoes.find(function(s) { return s.id === link.fluxo_sim_id; });
-  if (sim && sim.payload && sim.payload.itens) {
+  // Caso 1: link com item (direitos/juros)
+  if (link.fluxo_item_id && sim && sim.payload && sim.payload.itens) {
     sim.payload.itens = sim.payload.itens.filter(function(it) { return it._linkId !== link.fluxo_item_id; });
-    // Se estamos editando essa simulação, atualizar items também
     if (editingSimId === link.fluxo_sim_id) {
       items = sim.payload.itens;
       renderItemsTable();
+    }
+  }
+  // Caso 2: link com account (cartoes)
+  if (link.fluxo_account_id && sim && sim.payload && sim.payload.contas) {
+    sim.payload.contas = sim.payload.contas.filter(function(a) { return a.id !== link.fluxo_account_id; });
+    if (editingSimId === link.fluxo_sim_id) {
+      accounts = sim.payload.contas;
+      renderAccountsGrid();
+      updateFormaPagamentoSelect();
     }
   }
   FerramentasLinkage.removeLink(link.id);
@@ -4732,19 +4752,34 @@ document.addEventListener('linkage-keep-confirmed', function(e) {
 
 if (typeof FerramentasLinkage !== 'undefined') {
   FerramentasLinkage.registerUpdateHandler('fluxo', function(linkId, link, changes) {
-    if (!link.fluxo_sim_id || !link.fluxo_item_id) return;
+    if (!link.fluxo_sim_id) return;
     var sim = simulacoes.find(function(s) { return s.id === link.fluxo_sim_id; });
-    if (!sim || !sim.payload || !sim.payload.itens) return;
-    var item = sim.payload.itens.find(function(it) { return it._linkId === link.fluxo_item_id; });
-    if (!item) return;
-    if (changes.label !== undefined) item.nome = changes.label;
-    if (changes.valor !== undefined) item.valor = changes.valor;
-    saveSimulacoes();
-    // Se estamos editando essa simulação, atualizar a view
-    if (editingSimId === link.fluxo_sim_id) {
-      items = sim.payload.itens;
-      renderItemsTable();
+    if (!sim || !sim.payload) return;
+    // Atualização de item (direitos/juros)
+    if (link.fluxo_item_id && sim.payload.itens) {
+      var item = sim.payload.itens.find(function(it) { return it._linkId === link.fluxo_item_id; });
+      if (item) {
+        if (changes.label !== undefined) item.nome = changes.label;
+        if (changes.valor !== undefined) item.valor = changes.valor;
+        if (editingSimId === link.fluxo_sim_id) {
+          items = sim.payload.itens;
+          renderItemsTable();
+        }
+      }
     }
+    // Atualização de account (cartoes)
+    if (link.fluxo_account_id && sim.payload.contas) {
+      var acc = sim.payload.contas.find(function(a) { return a.id === link.fluxo_account_id; });
+      if (acc) {
+        if (changes.label !== undefined) acc.nome = changes.label;
+        if (editingSimId === link.fluxo_sim_id) {
+          accounts = sim.payload.contas;
+          renderAccountsGrid();
+          updateFormaPagamentoSelect();
+        }
+      }
+    }
+    saveSimulacoes();
   });
 }
 
