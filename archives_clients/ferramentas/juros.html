@@ -7,6 +7,7 @@
 <link rel="stylesheet" href="../assets/style.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="../assets/importar-diagnostico.js"></script>
+<script src="../assets/ferramentas-linkage.js"></script>
 <script src="../assets/layout.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
@@ -564,6 +565,7 @@
       <div class="section-header">
         <h2>Dívidas Atuais</h2>
         <button class="btn btn-primary" onclick="openDebtModal('atual')">+ Adicionar Dívida</button>
+        <button class="btn" onclick="importarDividasDoFluxo()" style="background:rgba(96,165,250,0.12);border:1px solid rgba(96,165,250,0.3);color:#60a5fa;font-size:0.82rem;padding:6px 12px;border-radius:6px;cursor:pointer;">🔗 Importar do Fluxo de Caixa</button>
       </div>
       <div id="atual-table-container">
         <p style="color:var(--muted); font-size:0.85rem;">Nenhuma dívida cadastrada. Clique em "+ Adicionar Dívida" para começar.</p>
@@ -4026,17 +4028,47 @@ function novaAnalise() {
   _showJurosEditor();
 }
 
+function _isJurosEquipeMode() {
+  return sessionStorage.getItem('equipe_modo_cliente') === 'true';
+}
+
+function _applyJurosClientLockMode(locked) {
+  var editor = document.getElementById('sim-editor-view');
+  editor.classList.remove('client-locked');
+  editor.querySelectorAll('[data-client-disabled]').forEach(function(el) {
+    el.disabled = false;
+    el.style.pointerEvents = '';
+    el.style.opacity = '';
+    el.removeAttribute('data-client-disabled');
+  });
+  if (locked && !_isJurosEquipeMode()) {
+    editor.classList.add('client-locked');
+    editor.querySelectorAll('input, select, textarea, button, div[onclick], [onclick]').forEach(function(el) {
+      if (el.getAttribute('onclick') && el.getAttribute('onclick').indexOf('voltarParaLista') >= 0) return;
+      if (el.classList.contains('btn-save-global')) return;
+      el.disabled = true;
+      el.style.pointerEvents = 'none';
+      el.style.opacity = '0.5';
+      el.setAttribute('data-client-disabled', 'true');
+    });
+  }
+}
+
 function editarAnalise(id) {
-  var simChk = _jurosSimulacoes.find(function(s) { return s.id === id; }); if (simChk && simChk.locked) { alert("Simulação bloqueada. Desmarque o cadeado para editar."); return; }
   var sim = _jurosSimulacoes.find(function(s) { return s.id === id; });
   if (!sim) return;
+  // Se bloqueado e não é equipe, permitir visualização somente leitura
+  if (sim.locked && !_isJurosEquipeMode()) {
+    // Abrir em modo somente leitura
+  }
   _jurosEditingSimId = id;
   _jurosApplyPayload(sim.payload);
   document.getElementById('sim-nome').value = sim.nome || '';
-  document.getElementById('sim-editing-label').textContent = 'Editando: ' + (sim.nome || 'Sem nome');
+  document.getElementById('sim-editing-label').textContent = (sim.locked && !_isJurosEquipeMode() ? 'Visualizando: ' : 'Editando: ') + (sim.nome || 'Sem nome');
   document.getElementById('comp-result').classList.add('hidden');
   document.getElementById('strat-calendario').classList.add('hidden');
   _showJurosEditor();
+  _applyJurosClientLockMode(sim.locked);
 }
 
 function duplicarAnalise(id) {
@@ -4097,12 +4129,12 @@ function _showJurosEditor() {
 function toggleJurosLock(id, ev) {
   ev.stopPropagation();
   var sim = _jurosSimulacoes.find(function(s) { return s.id === id; });
-  if (sim) { sim.locked = !sim.locked; _saveJurosData(); _renderJurosList(); }
+  if (sim) { sim.locked = !sim.locked; _saveJurosSimulacoes(); _renderJurosList(); }
 }
 function toggleJurosPrimary(id, ev) {
   ev.stopPropagation();
   _jurosSimulacoes.forEach(function(s) { s.primary = (s.id === id) ? !s.primary : false; });
-  _saveJurosData(); _renderJurosList();
+  _saveJurosSimulacoes(); _renderJurosList();
 }
 
 function _renderJurosList() {
@@ -4127,9 +4159,9 @@ function _renderJurosList() {
         '<label class="' + (sim.primary ? 'active-primary' : '') + '" title="Simulação principal"><input type="checkbox" class="sim-primary-cb" ' + (sim.primary ? 'checked' : '') + ' onchange="toggleJurosPrimary(' + sim.id + ', event)">&#11088;</label>' +
       '</div>' +
       '<div class="sim-card-actions" onclick="event.stopPropagation()">' +
-        '<button onclick="editarAnalise(' + sim.id + ')">&#9998; Editar</button>' +
+        '<button onclick="editarAnalise(' + sim.id + ')">&#9998; ' + (sim.locked && !_isJurosEquipeMode() ? 'Visualizar' : 'Editar') + '</button>' +
         '<button onclick="duplicarAnalise(' + sim.id + ')">&#128203; Duplicar</button>' +
-        '<button class="danger" onclick="deleteAnalise(' + sim.id + ')">&#128465; Excluir</button>' +
+        (sim.locked && !_isJurosEquipeMode() ? '' : '<button class="danger" onclick="deleteAnalise(' + sim.id + ')">&#128465; Excluir</button>') +
       '</div>' +
     '</div>' +
     '<div class="sim-card-body">' +
@@ -4208,6 +4240,166 @@ document.addEventListener('importarDiagnostico', function(e) {
   renderAll();
   saveData();
   alert(itens.length + ' dívida(s) importada(s) com sucesso!');
+});
+
+// ═══════════════════════════════════════════════════════════════════════
+//  INTEGRAÇÃO LINKAGE: JUROS ↔ FLUXO (ITENS MARCADOS COMO DÍVIDA)
+// ═══════════════════════════════════════════════════════════════════════
+
+function importarDividasDoFluxo() {
+  if (typeof FerramentasLinkage === 'undefined') { alert('Módulo de integração não carregado.'); return; }
+  // Ler simulações do fluxo
+  var clienteId = sessionStorage.getItem('cliente_id');
+  var fluxoKey = clienteId ? 'fluxo_simulacoes_v2_' + clienteId : 'fluxo_simulacoes_v2';
+  var raw = localStorage.getItem(fluxoKey);
+  var simulacoes = [];
+  try { simulacoes = raw ? JSON.parse(raw) : []; } catch(e) {}
+  if (simulacoes.length === 0) { alert('Nenhuma simulação encontrada no Fluxo de Caixa.'); return; }
+  // Encontrar simulação primária ou a primeira
+  var simRef = simulacoes.find(function(s) { return s.primary; }) || simulacoes[0];
+  if (!simRef.payload || !simRef.payload.itens) { alert('A simulação não possui itens.'); return; }
+  // Filtrar itens com categoria 'dividas'
+  var dividas = simRef.payload.itens.filter(function(it) { return it.categoria === 'dividas'; });
+  if (dividas.length === 0) { alert('Nenhum item marcado como "Dívidas" encontrado na simulação do Fluxo.'); return; }
+  // Mostrar seleção
+  var msg = 'Itens de Dívida no Fluxo (sim: "' + (simRef.nome || simRef.name || 'Simulação') + '"):\n\n';
+  dividas.forEach(function(d, i) { msg += (i+1) + '. ' + d.nome + ' - R$ ' + (d.valor || 0).toLocaleString('pt-BR',{minimumFractionDigits:2}) + '/mês\n'; });
+  msg += '\nDigite os números separados por vírgula (ex: 1,3) ou "todos":';
+  var resp = prompt(msg);
+  if (!resp) return;
+  var indices = [];
+  if (resp.trim().toLowerCase() === 'todos') {
+    indices = dividas.map(function(_, i) { return i; });
+  } else {
+    resp.split(',').forEach(function(s) {
+      var n = parseInt(s.trim()) - 1;
+      if (n >= 0 && n < dividas.length) indices.push(n);
+    });
+  }
+  if (indices.length === 0) { alert('Nenhum item selecionado.'); return; }
+  indices.forEach(function(idx) {
+    var fluxoItem = dividas[idx];
+    var debt = {
+      nome: fluxoItem.nome,
+      valorContratado: fluxoItem.valor || 0,
+      parcela: fluxoItem.valor || 0,
+      totalParcelas: 12,
+      parcelasPagas: 0,
+      saldoDevedor: fluxoItem.valor * 12,
+      tipoAmort: 'price',
+      reajusteAnual: 0,
+      taxaFixa: 0,
+      _linkId: 'jd_' + Date.now() + '_' + Math.random().toString(36).substr(2,6),
+      _pendingLink: {
+        label: fluxoItem.nome,
+        valor: fluxoItem.valor || 0,
+        fluxo_sim_id: simRef.id,
+        fluxo_item_id: fluxoItem._linkId
+      }
+    };
+    dividasAtuais.push(debt);
+  });
+  renderAll();
+  // Resolver pending links imediatamente
+  _resolverPendingLinksJuros();
+  saveData();
+  alert(indices.length + ' dívida(s) importada(s) do Fluxo! Ajuste os parâmetros (parcelas, tipo, etc.) e salve.');
+}
+
+function _resolverPendingLinksJuros() {
+  if (typeof FerramentasLinkage === 'undefined') return;
+  var simId = _jurosEditingSimId || Date.now();
+  dividasAtuais.forEach(function(debt) {
+    if (debt._pendingLink) {
+      debt._pendingLink.juros_sim_id = simId;
+      debt._pendingLink.juros_divida_id = debt._linkId;
+      FerramentasLinkage.createLink(debt._pendingLink);
+      delete debt._pendingLink;
+    }
+  });
+}
+
+// Override _salvarAnaliseAtual para resolver pending links
+var _origSalvarAnalise = _salvarAnaliseAtual;
+_salvarAnaliseAtual = function() {
+  _resolverPendingLinksJuros();
+  // Propagar alterações de dívidas existentes com links
+  if (typeof FerramentasLinkage !== 'undefined' && _jurosEditingSimId) {
+    dividasAtuais.forEach(function(debt) {
+      if (!debt._linkId) return;
+      var links = FerramentasLinkage.getLinksForJurosDivida(_jurosEditingSimId, debt._linkId);
+      if (links.length === 0) return;
+      var link = links[0];
+      var changes = { label: debt.nome, valor: debt.parcela };
+      if (link.label !== debt.nome || link.valor !== debt.parcela) {
+        FerramentasLinkage.propagateChanges(link.id, 'juros', changes);
+      }
+    });
+  }
+  _origSalvarAnalise();
+};
+
+// Override deleteDebt para registrar exclusão no linkage
+var _origDeleteDebt = deleteDebt;
+deleteDebt = function(type, index) {
+  if (typeof FerramentasLinkage !== 'undefined' && type === 'atual' && _jurosEditingSimId) {
+    var debt = dividasAtuais[index];
+    if (debt && debt._linkId) {
+      var links = FerramentasLinkage.getLinksForJurosDivida(_jurosEditingSimId, debt._linkId);
+      links.forEach(function(lk) { FerramentasLinkage.registerDeletion(lk.id, 'juros'); });
+    }
+  }
+  _origDeleteDebt(type, index);
+};
+
+// Registrar handler de atualização do linkage
+if (typeof FerramentasLinkage !== 'undefined') {
+  FerramentasLinkage.registerUpdateHandler('juros', function(linkId, link, changes) {
+    if (!link.juros_sim_id || !link.juros_divida_id) return;
+    var sim = _jurosSimulacoes.find(function(s) { return s.id === link.juros_sim_id; });
+    if (!sim || !sim.payload || !sim.payload.dividasAtuais) return;
+    var debt = sim.payload.dividasAtuais.find(function(d) { return d._linkId === link.juros_divida_id; });
+    if (!debt) return;
+    if (changes.label !== undefined) debt.nome = changes.label;
+    if (changes.valor !== undefined) debt.parcela = changes.valor;
+    _saveJurosSimulacoes();
+    // Se estamos editando essa simulação, atualizar a view
+    if (_jurosEditingSimId === link.juros_sim_id) {
+      dividasAtuais = sim.payload.dividasAtuais;
+      renderAll();
+    }
+  });
+}
+
+// Inicializar linkage
+(function() {
+  if (typeof FerramentasLinkage !== 'undefined') {
+    FerramentasLinkage.load();
+  }
+})();
+
+// STORAGE LISTENER: detectar alterações feitas por outras ferramentas
+window.addEventListener('storage', function(e) {
+  var clienteId = sessionStorage.getItem('cliente_id');
+  if (!clienteId) return;
+  var jurosKey = _JUROS_SIM_LS_KEY + (clienteId ? '_' + clienteId : '');
+  var linkageKey = 'hv_linkage_local';
+  if (e.key === jurosKey || e.key === linkageKey) {
+    if (e.key === jurosKey && e.newValue) {
+      try {
+        _jurosSimulacoes = JSON.parse(e.newValue);
+        if (_jurosEditingSimId) {
+          var sim = _jurosSimulacoes.find(function(s) { return s.id === _jurosEditingSimId; });
+          if (sim && sim.payload) { _jurosApplyPayload(sim.payload); }
+        } else {
+          _renderJurosList();
+        }
+      } catch(err) {}
+    }
+    if (e.key === linkageKey) {
+      if (typeof FerramentasLinkage !== 'undefined') { FerramentasLinkage.load(); _renderJurosList(); }
+    }
+  }
 });
 
 </script>
