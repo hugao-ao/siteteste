@@ -9,6 +9,7 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="../assets/importar-diagnostico.js"></script>
+<script src="../assets/ferramentas-linkage.js"></script>
 <style>
   :root {
     --bg3:      #0a2e14;
@@ -629,6 +630,30 @@
           <input class="field-input" id="comp-name" placeholder="Ex: Melhor cartão para viagens internacionais"/>
         </div>
 
+        <!-- CONTEXTO GLOBAL (por comparação) -->
+        <div class="ctx-bar" style="margin:1rem 0;">
+          <span class="ctx-bar-title">⚙️ Contexto Global</span>
+          <div class="ctx-fields">
+            <div class="ctx-field">
+              <label>Gasto Nacional (R$/mês)</label>
+              <input type="text" id="modal-ctx-nacional" placeholder="R$ 3.000,00" onblur="fmtCtxBlur(this)"/>
+            </div>
+            <div class="ctx-field">
+              <label>Gasto Exterior (US$/mês)</label>
+              <input type="text" id="modal-ctx-exterior" placeholder="US$ 500,00" onblur="fmtCtxUsdBlur(this)"/>
+            </div>
+            <div class="ctx-field">
+              <label>Gasto Bonificado (R$/mês)</label>
+              <input type="text" id="modal-ctx-bonif" placeholder="R$ 500,00" onblur="fmtCtxBlur(this)"/>
+            </div>
+            <div class="ctx-field">
+              <label>Cotação do Dólar (R$)</label>
+              <input type="text" id="modal-ctx-dolar" placeholder="R$ 5,90" onblur="fmtCtxDolarBlur(this)"/>
+            </div>
+          </div>
+          <button class="btn-add" onclick="fetchDolarModal()" title="Buscar cotação atual">🔄 Atualizar cotação</button>
+        </div>
+
         <!-- CARTÕES -->
         <div class="section-block open" id="sb-cartoes">
           <div class="section-block-header" onclick="toggleSection('sb-cartoes')">
@@ -641,6 +666,7 @@
             <div class="tip"><b>Dica:</b> Adicione cada cartão. Informe a anuidade e use o pré-preenchimento por bandeira para agilizar os parâmetros subjetivos.</div>
             <div class="cards-grid" id="cards-grid"></div>
             <button class="btn-add" onclick="addCard()">＋ Adicionar cartão</button>
+            <button class="btn-add" onclick="importarDeFluxo()" style="background:rgba(96,165,250,0.12);border-color:rgba(96,165,250,0.3);color:#60a5fa;">🔗 Importar do Fluxo de Caixa</button>
           </div>
         </div>
 
@@ -1121,6 +1147,18 @@ async function fetchDolar() {
   }
 }
 
+async function fetchDolarModal() {
+  try {
+    const r = await fetch('https://economia.awesomeapi.com.br/json/last/USD-BRL');
+    const d = await r.json();
+    const val = parseFloat(d.USDBRL.bid).toFixed(2);
+    const fmtVal = 'R$ ' + val.replace('.',',');
+    document.getElementById('modal-ctx-dolar').value = fmtVal;
+  } catch(e) {
+    alert('Erro ao buscar cotação do dólar.');
+  }
+}
+
 function fmtCtx(el) {
   // formata no blur, não no input
 }
@@ -1151,13 +1189,22 @@ function fmtCtxDolarBlur(el) {
 function getCtx() {
   const parseBRL = id => {
     const v = document.getElementById(id)?.value || '0';
-    // Remove símbolo de moeda, pontos de milhar, converte vírgula decimal para ponto
     return parseFloat(v.replace(/[^\d,]/g,'').replace(/\./g,'').replace(',','.')) || 0;
   };
   const parseUSD = id => {
     const v = document.getElementById(id)?.value || '0';
     return parseFloat(v.replace(/[^\d,]/g,'').replace(/\./g,'').replace(',','.')) || 0;
   };
+  // Se o modal está aberto, ler dos campos do modal
+  const modalOpen = document.getElementById('modal-overlay')?.classList.contains('open');
+  if (modalOpen) {
+    return {
+      nacional: parseBRL('modal-ctx-nacional'),
+      exterior: parseUSD('modal-ctx-exterior'),
+      bonif:    parseBRL('modal-ctx-bonif'),
+      dolar:    parseBRL('modal-ctx-dolar'),
+    };
+  }
   return {
     nacional: parseBRL('ctx-nacional'),
     exterior: parseUSD('ctx-exterior'),
@@ -1170,7 +1217,11 @@ function getCtx() {
    MODAL
 ═══════════════════════════════════════════════════════ */
 function openModal(id = null) {
-  if (id) { const chk = comparisons.find(c=>c.id===id); if (chk && chk.locked) { alert("Comparação bloqueada. Desmarque o cadeado para editar."); return; } }
+  var _cartLocked = false;
+  if (id) {
+    const chk = comparisons.find(c=>c.id===id);
+    if (chk && chk.locked && !_isCartEquipeMode()) { _cartLocked = true; }
+  }
   editingId = id;
   if (id) {
     const c = comparisons.find(x=>x.id===id);
@@ -1189,18 +1240,52 @@ function openModal(id = null) {
       if (tmpObjVals['desc-pct'][card.id]   === undefined) tmpObjVals['desc-pct'][card.id]   = 0;
     });
     cidCounter = Math.max(...tmpCards.map(p=>p.id), 0) + 1;
+    // Carregar ctx da comparação
+    var savedCtx = c.ctx || {};
+    document.getElementById('modal-ctx-nacional').value = savedCtx.nacional ? 'R$ ' + savedCtx.nacional.toLocaleString('pt-BR',{minimumFractionDigits:2}) : '';
+    document.getElementById('modal-ctx-exterior').value = savedCtx.exterior ? 'US$ ' + savedCtx.exterior.toLocaleString('pt-BR',{minimumFractionDigits:2}) : '';
+    document.getElementById('modal-ctx-bonif').value = savedCtx.bonif ? 'R$ ' + savedCtx.bonif.toLocaleString('pt-BR',{minimumFractionDigits:2}) : '';
+    document.getElementById('modal-ctx-dolar').value = savedCtx.dolar ? 'R$ ' + savedCtx.dolar.toLocaleString('pt-BR',{minimumFractionDigits:2}) : '';
     document.getElementById('modal-title').textContent = 'Editar Comparação';
   } else {
     tmpName = ''; tmpCards = []; tmpObjVals = {}; tmpObjImps = {}; tmpSubjVals = {};
     tmpPtsGastoMoeda = {}; tmpAnuidImp = 'muito'; cidCounter = 1;
     OBJ_GROUPS.forEach(g => { tmpObjImps[g.id] = g.groupImp; });
     subjItems.forEach(s => { tmpSubjVals[s.id] = { importance: s.importance, hasParam: {}, rankings: {} }; });
+    // Defaults do ctx global para nova comparação
+    document.getElementById('modal-ctx-nacional').value = document.getElementById('ctx-nacional').value || 'R$ 3.000,00';
+    document.getElementById('modal-ctx-exterior').value = document.getElementById('ctx-exterior').value || 'US$ 500,00';
+    document.getElementById('modal-ctx-bonif').value = document.getElementById('ctx-bonif').value || 'R$ 500,00';
+    document.getElementById('modal-ctx-dolar').value = document.getElementById('ctx-dolar').value || '';
     document.getElementById('modal-title').textContent = 'Nova Comparação de Cartões';
   }
   document.getElementById('comp-name').value = tmpName;
   hideError();
   renderAll();
   document.getElementById('modal-overlay').classList.add('open');
+  // Aplicar modo somente leitura para clientes em comparações bloqueadas
+  _applyCartClientLockMode(_cartLocked);
+}
+
+function _applyCartClientLockMode(locked) {
+  var modal = document.getElementById('modal-overlay');
+  modal.classList.remove('client-locked');
+  modal.querySelectorAll('[data-client-disabled]').forEach(function(el) {
+    el.disabled = false;
+    el.style.pointerEvents = '';
+    el.style.opacity = '';
+    el.removeAttribute('data-client-disabled');
+  });
+  if (locked) {
+    modal.classList.add('client-locked');
+    modal.querySelectorAll('input, select, textarea, button').forEach(function(el) {
+      if (el.getAttribute('onclick') && el.getAttribute('onclick').indexOf('closeModal') >= 0) return;
+      el.disabled = true;
+      el.style.pointerEvents = 'none';
+      el.style.opacity = '0.5';
+      el.setAttribute('data-client-disabled', 'true');
+    });
+  }
 }
 
 function closeModal() { document.getElementById('modal-overlay').classList.remove('open'); }
@@ -2043,6 +2128,10 @@ function fmtBRL(n) {
 
 
 // === LOCK & PRIMARY SIMULATION HELPERS ===
+function _isCartEquipeMode() {
+  return sessionStorage.getItem('equipe_modo_cliente') === 'true';
+}
+
 function toggleCartLock(id, ev) {
   ev.stopPropagation();
   const comp = comparisons.find(c => c.id === id);
@@ -2082,8 +2171,8 @@ function renderList() {
           <label class="${comp.primary ? 'active-primary' : ''}" title="Comparação principal"><input type="checkbox" class="sim-primary-cb" ${comp.primary ? 'checked' : ''} onchange="toggleCartPrimary(${comp.id}, event)">&#11088;</label>
         </div>
         <div class="comp-card-actions" onclick="event.stopPropagation()">
-          <button class="btn-icon" onclick="openModal(${comp.id})">✏️ Editar</button>
-          <button class="btn-icon danger" onclick="deleteComp(${comp.id})">🗑️ Excluir</button>
+          <button class="btn-icon" onclick="openModal(${comp.id})">✏️ ${comp.locked && !_isCartEquipeMode() ? 'Visualizar' : 'Editar'}</button>
+          ${comp.locked && !_isCartEquipeMode() ? '' : '<button class="btn-icon danger" onclick="deleteComp(' + comp.id + ')">🗑️ Excluir</button>'}
         </div>
       </div>
       <div class="comp-card-body">${renderResult(comp)}</div>`;
@@ -2640,6 +2729,153 @@ document.addEventListener('importarDiagnostico', function(e) {
   });
   renderCards();
   alert(itens.length + ' cartão(ões) importado(s)! Clique em "Salvar Comparação" para persistir.');
+});
+
+// ═══════════════════════════════════════════════════════════════════════
+//  INTEGRAÇÃO LINKAGE: CARTÕES ↔ FLUXO (CONTAS/CARTÕES)
+// ═══════════════════════════════════════════════════════════════════════
+
+function importarDeFluxo() {
+  if (typeof FerramentasLinkage === 'undefined') { alert('Módulo de integração não carregado.'); return; }
+  // Ler simulações do fluxo
+  var clienteId = sessionStorage.getItem('cliente_id');
+  var fluxoKey = clienteId ? 'fluxo_simulacoes_v2_' + clienteId : 'fluxo_simulacoes_v2';
+  var raw = localStorage.getItem(fluxoKey);
+  var simulacoes = [];
+  try { simulacoes = raw ? JSON.parse(raw) : []; } catch(e) {}
+  if (simulacoes.length === 0) { alert('Nenhuma simulação encontrada no Fluxo de Caixa.'); return; }
+  // Encontrar simulação primária ou a primeira
+  var simRef = simulacoes.find(function(s) { return s.primary; }) || simulacoes[0];
+  if (!simRef.payload || !simRef.payload.contas) { alert('A simulação não possui contas/cartões cadastrados.'); return; }
+  var cartoes = simRef.payload.contas.filter(function(a) { return a.tipo === 'cartao'; });
+  if (cartoes.length === 0) { alert('Nenhum cartão encontrado na simulação do Fluxo.'); return; }
+  // Mostrar seleção
+  var msg = 'Cartões disponíveis no Fluxo (sim: "' + (simRef.nome || simRef.name || 'Simulação') + '"):\n\n';
+  cartoes.forEach(function(c, i) { msg += (i+1) + '. ' + c.nome + '\n'; });
+  msg += '\nDigite os números separados por vírgula (ex: 1,3) ou "todos":';
+  var resp = prompt(msg);
+  if (!resp) return;
+  var indices = [];
+  if (resp.trim().toLowerCase() === 'todos') {
+    indices = cartoes.map(function(_, i) { return i; });
+  } else {
+    resp.split(',').forEach(function(s) {
+      var n = parseInt(s.trim()) - 1;
+      if (n >= 0 && n < cartoes.length) indices.push(n);
+    });
+  }
+  if (indices.length === 0) { alert('Nenhum cartão selecionado.'); return; }
+  indices.forEach(function(idx) {
+    var fluxoCard = cartoes[idx];
+    var newId = cidCounter++;
+    tmpCards.push({
+      id: newId,
+      name: fluxoCard.nome,
+      anuidade_mensal: 0,
+      bandeira: fluxoCard.bandeira || '',
+      _pendingLink: {
+        label: fluxoCard.nome,
+        valor: 0,
+        fluxo_sim_id: simRef.id,
+        fluxo_account_id: fluxoCard.id
+      }
+    });
+    // Inicializar objVals para o novo cartão
+    OBJ_GROUPS.forEach(function(g) { g.params.forEach(function(p) {
+      if (p.tipo === 'desc-combo') {
+        if (!tmpObjVals['desc-gasto']) tmpObjVals['desc-gasto'] = {};
+        if (!tmpObjVals['desc-pct']) tmpObjVals['desc-pct'] = {};
+        tmpObjVals['desc-gasto'][newId] = 0;
+        tmpObjVals['desc-pct'][newId] = 0;
+      } else {
+        if (!tmpObjVals[p.id]) tmpObjVals[p.id] = {};
+        tmpObjVals[p.id][newId] = 0;
+      }
+    }); });
+  });
+  renderCards();
+  alert(indices.length + ' cartão(ões) importado(s) do Fluxo! Preencha os parâmetros e salve a comparação.');
+}
+
+// Resolver _pendingLink ao salvar
+var _origSaveCompCartoes = saveComparison;
+saveComparison = function() {
+  if (typeof FerramentasLinkage !== 'undefined') {
+    var compId = editingId || Date.now();
+    tmpCards.forEach(function(card) {
+      if (card._pendingLink) {
+        card._pendingLink.cartoes_comp_id = compId;
+        card._pendingLink.cartoes_card_id = card.id;
+        FerramentasLinkage.createLink(card._pendingLink);
+        delete card._pendingLink;
+      }
+    });
+    // Propagar alterações de cartões existentes com links
+    if (editingId) {
+      tmpCards.forEach(function(card) {
+        var links = FerramentasLinkage.getLinksForCartoesCard(editingId, card.id);
+        if (links.length === 0) return;
+        var link = links[0];
+        var changes = { label: card.name };
+        if (link.label !== card.name) {
+          FerramentasLinkage.propagateChanges(link.id, 'cartoes', changes);
+        }
+      });
+    }
+  }
+  _origSaveCompCartoes();
+};
+
+// Registrar deleção de cartão no linkage
+var _origDeleteComp = deleteComp;
+deleteComp = function(id) {
+  if (typeof FerramentasLinkage !== 'undefined') {
+    var comp = comparisons.find(function(c) { return c.id === id; });
+    if (comp && comp.cards) {
+      comp.cards.forEach(function(card) {
+        var links = FerramentasLinkage.getLinksForCartoesCard(id, card.id);
+        links.forEach(function(lk) { FerramentasLinkage.registerDeletion(lk.id, 'cartoes'); });
+      });
+    }
+  }
+  _origDeleteComp(id);
+};
+
+// Registrar handler de atualização
+if (typeof FerramentasLinkage !== 'undefined') {
+  FerramentasLinkage.registerUpdateHandler('cartoes', function(linkId, link, changes) {
+    if (!link.cartoes_comp_id || !link.cartoes_card_id) return;
+    var comp = comparisons.find(function(c) { return c.id === link.cartoes_comp_id; });
+    if (!comp || !comp.cards) return;
+    var card = comp.cards.find(function(c) { return c.id === link.cartoes_card_id; });
+    if (!card) return;
+    if (changes.label !== undefined) card.name = changes.label;
+    saveComparisons();
+    renderList();
+  });
+}
+
+// Inicializar linkage
+(function() {
+  if (typeof FerramentasLinkage !== 'undefined') {
+    FerramentasLinkage.load();
+  }
+})();
+
+// STORAGE LISTENER: detectar alterações feitas por outras ferramentas
+window.addEventListener('storage', function(e) {
+  var clienteId = sessionStorage.getItem('cliente_id');
+  if (!clienteId) return;
+  var cartKey = _CARTOES_LS_KEY;
+  var linkageKey = 'hv_linkage_local_' + clienteId;
+  if (e.key === cartKey || e.key === linkageKey) {
+    if (e.key === cartKey && e.newValue) {
+      try { comparisons = JSON.parse(e.newValue); renderList(); } catch(err) {}
+    }
+    if (e.key === linkageKey) {
+      if (typeof FerramentasLinkage !== 'undefined') { FerramentasLinkage.load(); renderList(); }
+    }
+  }
 });
 
 </script>
