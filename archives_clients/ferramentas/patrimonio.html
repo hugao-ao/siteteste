@@ -115,8 +115,10 @@ tbody td{padding:0.6rem 0.75rem;font-size:0.85rem;vertical-align:middle;}
   .sim-checkbox-group label.active-primary { border-color:var(--primary); background:rgba(212,175,55,0.08); color:var(--primary); }
   .date-chip.locked { opacity:0.7; text-decoration:line-through; }
   .date-chip.primary-mark { box-shadow:0 0 0 2px var(--primary); }
-  #section-editor.locked input, #section-editor.locked select, #section-editor.locked textarea { pointer-events:none !important; opacity:0.6; }
-  #section-editor.locked button:not(.lock-toggle):not(.primary-toggle) { pointer-events:none; opacity:0.5; }
+  /* Client lock mode: applied by JS when client views a locked date */
+  .client-locked input, .client-locked select, .client-locked textarea { pointer-events:none !important; opacity:0.6; }
+  .client-locked button:not(.lock-toggle):not(.primary-toggle) { pointer-events:none !important; opacity:0.5; }
+  .client-locked .btn-primary { pointer-events:none !important; opacity:0.5; }
 
 </style>
 </head>
@@ -227,6 +229,13 @@ tbody td{padding:0.6rem 0.75rem;font-size:0.85rem;vertical-align:middle;}
           <button class="btn btn-primary btn-sm" onclick="openDividaModal()">+ Adicionar</button>
         </div>
         <div id="tbl-dividas"></div>
+      </div>
+
+      <!-- DISTRIBUIÇÃO DE RISCO & SUITABILITY -->
+      <div style="margin-top:1.5rem;padding-top:1.5rem;border-top:1px solid var(--border);">
+        <h3 style="color:var(--primary);margin-bottom:1rem;">Distribuição de Risco & Perfil do Investidor</h3>
+        <div id="risk-distribution-panel"></div>
+        <div id="suitability-panel" style="margin-top:1.5rem;"></div>
       </div>
 
       <!-- RESUMO DA DATA -->
@@ -768,6 +777,8 @@ function renderEditor() {
   renderAtivoTable('intangiveis', dateObj.ativos_intangiveis, 'intangivel');
   renderDividasTable(dateObj.dividas);
   renderDateSummary(dateObj);
+  renderRiskDistribution();
+  renderSuitabilityPanel();
 }
 
 function calcRentabilidade(dateObj, ativo) {
@@ -889,6 +900,218 @@ function _forceSave() {
   setTimeout(() => { btn.classList.remove('saved'); lbl.textContent = 'Salvar Alterações'; }, 2000);
 }
 
+// ---- SUITABILITY & RISK DISTRIBUTION (per date) ----
+const QUESTOES_SUITABILITY = [
+  { id:'A1', secao:'A', texto:'Em quanto tempo você pretende parar de trabalhar?', alternativas:[{valor:1,texto:'Faltam 10 anos ou menos'},{valor:2,texto:'Faltam entre 10 e 15 anos'},{valor:3,texto:'Faltam entre 15 e 20 anos'},{valor:4,texto:'Faltam entre 20 e 30 anos'},{valor:5,texto:'Faltam mais de 30 anos'}] },
+  { id:'A2', secao:'A', texto:'Por quanto tempo você conseguiria deixar a maior parte do patrimônio aplicado?', alternativas:[{valor:1,texto:'Menos de 1 ano'},{valor:2,texto:'Entre 1 e 3 anos'},{valor:3,texto:'Entre 3 e 10 anos'},{valor:4,texto:'Entre 10 e 20 anos'},{valor:5,texto:'Mais de 20 anos'}] },
+  { id:'A3', secao:'A', texto:'Quanto tempo teria para esperar recuperação em cenário ruim?', alternativas:[{valor:1,texto:'Nenhum - precisaria resgatar'},{valor:2,texto:'Até 2 anos'},{valor:3,texto:'Entre 2 e 5 anos'},{valor:4,texto:'Entre 5 e 10 anos'},{valor:5,texto:'Mais de 10 anos'}] },
+  { id:'B1', secao:'B', texto:'Como reagiria se investimentos perdessem 20% em um mês?', alternativas:[{valor:1,texto:'Resgataria tudo imediatamente'},{valor:2,texto:'Consideraria resgatar parte'},{valor:3,texto:'Aguardaria a recuperação'},{valor:4,texto:'Ficaria tranquilo'},{valor:5,texto:'Compraria mais com desconto'}] },
+  { id:'B2', secao:'B', texto:'Qual sua atitude em relação a risco e retorno?', alternativas:[{valor:1,texto:'Não aceito risco algum'},{valor:2,texto:'Aceito risco mínimo'},{valor:3,texto:'Aceito risco moderado'},{valor:4,texto:'Aceito risco alto'},{valor:5,texto:'Aceito risco muito alto'}] },
+  { id:'B3', secao:'B', texto:'Qual perda temporária conseguiria suportar?', alternativas:[{valor:1,texto:'Nenhuma perda'},{valor:2,texto:'Até 5%'},{valor:3,texto:'Até 10%'},{valor:4,texto:'Até 20%'},{valor:5,texto:'Mais de 20%'}] },
+  { id:'C1', secao:'C', texto:'Qual seu nível de conhecimento sobre investimentos?', alternativas:[{valor:1,texto:'Nenhum'},{valor:2,texto:'Básico'},{valor:3,texto:'Intermediário'},{valor:4,texto:'Avançado'},{valor:5,texto:'Especialista'}] },
+  { id:'C2', secao:'C', texto:'Há quanto tempo investe no mercado financeiro?', alternativas:[{valor:1,texto:'Nunca investi'},{valor:2,texto:'Menos de 2 anos'},{valor:3,texto:'Entre 2 e 5 anos'},{valor:4,texto:'Entre 5 e 10 anos'},{valor:5,texto:'Mais de 10 anos'}] },
+  { id:'C3', secao:'C', texto:'Já investiu em renda variável?', alternativas:[{valor:1,texto:'Não, nunca'},{valor:2,texto:'Não, mas tenho interesse'},{valor:3,texto:'Sim, valores pequenos'},{valor:4,texto:'Sim, regularmente'},{valor:5,texto:'Sim, significativamente'}] }
+];
+
+const PERFIS_INVESTIDOR = [
+  { id:1, nome:'Ultra-Conservador', pfpMin:0, pfpMax:16.67, cor:'#006400' },
+  { id:2, nome:'Conservador', pfpMin:16.68, pfpMax:33.33, cor:'#228B22' },
+  { id:3, nome:'Conservador-Moderado', pfpMin:33.34, pfpMax:50.00, cor:'#90EE90' },
+  { id:4, nome:'Moderado', pfpMin:50.01, pfpMax:66.67, cor:'#FFD700' },
+  { id:5, nome:'Moderado-Arrojado', pfpMin:66.68, pfpMax:83.33, cor:'#FFA500' },
+  { id:6, nome:'Arrojado', pfpMin:83.34, pfpMax:91.67, cor:'#FF6347' },
+  { id:7, nome:'Ultra-Arrojado', pfpMin:91.68, pfpMax:100, cor:'#DC143C' }
+];
+
+const ALOCACAO_IDEAL_POR_PERFIL = {
+  1: { nome:'Ultra-Conservador', alocacao:{'RISCO_MUITO_BAIXO_GARANTIA_SOBERANA':100,'RISCO_MUITO_BAIXO_GARANTIA_FGC':0,'RISCO_BAIXO_GARANTIA_FGC':0,'RISCO_MEDIO_SEM_GARANTIA':0,'RISCO_ALTO_SEM_GARANTIA':0,'RISCO_MUITO_ALTO_SEM_GARANTIA':0,'RISCO_ABSOLUTO_SEM_GARANTIA':0} },
+  2: { nome:'Conservador', alocacao:{'RISCO_MUITO_BAIXO_GARANTIA_SOBERANA':50,'RISCO_MUITO_BAIXO_GARANTIA_FGC':40,'RISCO_BAIXO_GARANTIA_FGC':10,'RISCO_MEDIO_SEM_GARANTIA':0,'RISCO_ALTO_SEM_GARANTIA':0,'RISCO_MUITO_ALTO_SEM_GARANTIA':0,'RISCO_ABSOLUTO_SEM_GARANTIA':0} },
+  3: { nome:'Conservador-Moderado', alocacao:{'RISCO_MUITO_BAIXO_GARANTIA_SOBERANA':35,'RISCO_MUITO_BAIXO_GARANTIA_FGC':25,'RISCO_BAIXO_GARANTIA_FGC':10,'RISCO_MEDIO_SEM_GARANTIA':20,'RISCO_ALTO_SEM_GARANTIA':10,'RISCO_MUITO_ALTO_SEM_GARANTIA':0,'RISCO_ABSOLUTO_SEM_GARANTIA':0} },
+  4: { nome:'Moderado', alocacao:{'RISCO_MUITO_BAIXO_GARANTIA_SOBERANA':15,'RISCO_MUITO_BAIXO_GARANTIA_FGC':15,'RISCO_BAIXO_GARANTIA_FGC':10,'RISCO_MEDIO_SEM_GARANTIA':30,'RISCO_ALTO_SEM_GARANTIA':30,'RISCO_MUITO_ALTO_SEM_GARANTIA':0,'RISCO_ABSOLUTO_SEM_GARANTIA':0} },
+  5: { nome:'Moderado-Arrojado', alocacao:{'RISCO_MUITO_BAIXO_GARANTIA_SOBERANA':10,'RISCO_MUITO_BAIXO_GARANTIA_FGC':5,'RISCO_BAIXO_GARANTIA_FGC':0,'RISCO_MEDIO_SEM_GARANTIA':25,'RISCO_ALTO_SEM_GARANTIA':50,'RISCO_MUITO_ALTO_SEM_GARANTIA':10,'RISCO_ABSOLUTO_SEM_GARANTIA':0} },
+  6: { nome:'Arrojado', alocacao:{'RISCO_MUITO_BAIXO_GARANTIA_SOBERANA':5,'RISCO_MUITO_BAIXO_GARANTIA_FGC':0,'RISCO_BAIXO_GARANTIA_FGC':0,'RISCO_MEDIO_SEM_GARANTIA':15,'RISCO_ALTO_SEM_GARANTIA':60,'RISCO_MUITO_ALTO_SEM_GARANTIA':20,'RISCO_ABSOLUTO_SEM_GARANTIA':0} },
+  7: { nome:'Ultra-Arrojado', alocacao:{'RISCO_MUITO_BAIXO_GARANTIA_SOBERANA':5,'RISCO_MUITO_BAIXO_GARANTIA_FGC':0,'RISCO_BAIXO_GARANTIA_FGC':0,'RISCO_MEDIO_SEM_GARANTIA':5,'RISCO_ALTO_SEM_GARANTIA':45,'RISCO_MUITO_ALTO_SEM_GARANTIA':40,'RISCO_ABSOLUTO_SEM_GARANTIA':5} }
+};
+
+// Map 10-level patrimonio CLASSIFICACAO_RISCO to 7-level suitability buckets
+function _mapRiscoTo7(risco10) {
+  const map = {
+    'RISCO_MUITO_BAIXO_GARANTIA_SOBERANA': 'RISCO_MUITO_BAIXO_GARANTIA_SOBERANA',
+    'RISCO_MUITO_BAIXO_GARANTIA_FGC': 'RISCO_MUITO_BAIXO_GARANTIA_FGC',
+    'RISCO_BAIXO_GARANTIA_FGC': 'RISCO_BAIXO_GARANTIA_FGC',
+    'RISCO_BAIXO_SEM_GARANTIA': 'RISCO_BAIXO_GARANTIA_FGC',
+    'RISCO_MEDIO_SEM_GARANTIA': 'RISCO_MEDIO_SEM_GARANTIA',
+    'RISCO_ALTO_PROTECAO_MRP': 'RISCO_ALTO_SEM_GARANTIA',
+    'RISCO_ALTO_SEM_GARANTIA': 'RISCO_ALTO_SEM_GARANTIA',
+    'RISCO_MUITO_ALTO_PROTECAO_MRP': 'RISCO_MUITO_ALTO_SEM_GARANTIA',
+    'RISCO_MUITO_ALTO_SEM_GARANTIA': 'RISCO_MUITO_ALTO_SEM_GARANTIA',
+    'RISCO_ABSOLUTO_SEM_GARANTIA': 'RISCO_ABSOLUTO_SEM_GARANTIA'
+  };
+  return map[risco10] || 'RISCO_MEDIO_SEM_GARANTIA';
+}
+
+function calcularPerfilInvestidor(respostas) {
+  if (!respostas) return null;
+  const obrig = ['A1','A2','A3','B1','B2','B3','C1','C2','C3'];
+  for (const q of obrig) { if (!respostas[q] || respostas[q] === 0) return null; }
+  const PA = respostas.A1 + respostas.A2 + respostas.A3;
+  const PB = respostas.B1 + respostas.B2 + respostas.B3;
+  const PC = respostas.C1 + respostas.C2 + respostas.C3;
+  const PAN = ((PA - 3) / 12) * 100;
+  const PBN = ((PB - 3) / 12) * 100;
+  const PCN = ((PC - 3) / 12) * 100;
+  let PFP = (PAN * 0.25) + (PBN * 0.50) + (PCN * 0.25);
+  PFP = Math.max(0, Math.min(100, PFP));
+  let perfil = PERFIS_INVESTIDOR.find(p => PFP >= p.pfpMin && PFP <= p.pfpMax);
+  if (!perfil) perfil = PFP <= 0 ? PERFIS_INVESTIDOR[0] : PERFIS_INVESTIDOR[6];
+  if (PA <= 4 && perfil.id > 2) perfil = PERFIS_INVESTIDOR.find(p => p.id === 2);
+  if (PB <= 4 && perfil.id > 1) perfil = PERFIS_INVESTIDOR.find(p => p.id === 1);
+  if (PC <= 4 && perfil.id > 3) perfil = PERFIS_INVESTIDOR.find(p => p.id === 3);
+  if (PA <= 5 && PC <= 5 && perfil.id > 2) perfil = PERFIS_INVESTIDOR.find(p => p.id === 2);
+  return { perfil, PFP: PFP.toFixed(2), PA, PB, PC };
+}
+
+function renderRiskDistribution() {
+  const panel = document.getElementById('risk-distribution-panel');
+  if (!panel) return;
+  const dateObj = state.datas.find(x => x.id === state.selectedDateId);
+  if (!dateObj) { panel.innerHTML = ''; return; }
+  const liquidos = dateObj.ativos_liquidos || [];
+  const comRisco = liquidos.filter(a => a.risco);
+  if (comRisco.length === 0) {
+    panel.innerHTML = '<p style="color:var(--muted);font-size:0.8rem;">Adicione ativos líquidos com classificação de risco para ver a distribuição.</p>';
+    return;
+  }
+  // Aggregate by 7-level bucket
+  const buckets = {};
+  Object.keys(ALOCACAO_IDEAL_POR_PERFIL[1].alocacao).forEach(k => { buckets[k] = 0; });
+  let totalVal = 0;
+  comRisco.forEach(a => {
+    const bucket = _mapRiscoTo7(a.risco);
+    buckets[bucket] = (buckets[bucket] || 0) + a.valor;
+    totalVal += a.valor;
+  });
+  // Get profile from suitability
+  const suitResp = dateObj.suitability_respostas || {};
+  const perfilResult = calcularPerfilInvestidor(suitResp);
+  const idealAlloc = perfilResult ? ALOCACAO_IDEAL_POR_PERFIL[perfilResult.perfil.id]?.alocacao : null;
+
+  // Build table
+  const RISCO_LABELS_7 = {
+    'RISCO_MUITO_BAIXO_GARANTIA_SOBERANA': { label:'Muito Baixo (Soberana)', cor:'#006400' },
+    'RISCO_MUITO_BAIXO_GARANTIA_FGC': { label:'Muito Baixo (FGC)', cor:'#228B22' },
+    'RISCO_BAIXO_GARANTIA_FGC': { label:'Baixo (FGC)', cor:'#32CD32' },
+    'RISCO_MEDIO_SEM_GARANTIA': { label:'Médio', cor:'#FFD700' },
+    'RISCO_ALTO_SEM_GARANTIA': { label:'Alto', cor:'#FF8C00' },
+    'RISCO_MUITO_ALTO_SEM_GARANTIA': { label:'Muito Alto', cor:'#DC143C' },
+    'RISCO_ABSOLUTO_SEM_GARANTIA': { label:'Absoluto', cor:'#8B0000' }
+  };
+  let html = '<div class="table-wrap"><table><thead><tr><th>Nível de Risco</th><th>Valor</th><th>% Real</th>' + (idealAlloc ? '<th>% Ideal</th><th>Desvio</th>' : '') + '</tr></thead><tbody>';
+  Object.keys(RISCO_LABELS_7).forEach(k => {
+    const info = RISCO_LABELS_7[k];
+    const val = buckets[k] || 0;
+    const pctReal = totalVal > 0 ? (val / totalVal * 100) : 0;
+    let desvioHtml = '';
+    let idealHtml = '';
+    if (idealAlloc) {
+      const pctIdeal = idealAlloc[k] || 0;
+      const desvio = pctReal - pctIdeal;
+      idealHtml = `<td style="text-align:center;">${pctIdeal.toFixed(1)}%</td>`;
+      desvioHtml = `<td style="text-align:center;color:${desvio > 5 ? 'var(--red)' : desvio < -5 ? 'var(--blue)' : 'var(--green)'};font-weight:600;">${desvio >= 0 ? '+' : ''}${desvio.toFixed(1)}%</td>`;
+    }
+    html += `<tr><td><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${info.cor};margin-right:0.4rem;"></span>${info.label}</td><td style="color:var(--green);">${fmtMoeda(val)}</td><td style="text-align:center;">${pctReal.toFixed(1)}%</td>${idealHtml}${desvioHtml}</tr>`;
+  });
+  html += '</tbody></table></div>';
+  if (perfilResult) {
+    html += `<div style="margin-top:0.8rem;padding:0.6rem 1rem;border-radius:8px;background:${perfilResult.perfil.cor}22;border:1px solid ${perfilResult.perfil.cor};display:inline-block;"><strong style="color:${perfilResult.perfil.cor};">${perfilResult.perfil.nome}</strong> <span style="font-size:0.78rem;color:var(--muted);">(PFP: ${perfilResult.PFP}%)</span></div>`;
+  }
+  panel.innerHTML = html;
+}
+
+function renderSuitabilityPanel() {
+  const panel = document.getElementById('suitability-panel');
+  if (!panel) return;
+  const dateObj = state.datas.find(x => x.id === state.selectedDateId);
+  if (!dateObj) { panel.innerHTML = ''; return; }
+  if (!dateObj.suitability_respostas) dateObj.suitability_respostas = {};
+  const respostas = dateObj.suitability_respostas;
+
+  let html = '<h4 style="color:var(--primary);margin-bottom:0.8rem;font-size:0.85rem;text-transform:uppercase;letter-spacing:0.05em;">Teste de Suitability (Perfil do Investidor)</h4>';
+  html += '<div class="table-wrap"><table><thead><tr><th style="min-width:300px;">Pergunta</th><th style="min-width:180px;">Resposta</th></tr></thead><tbody>';
+  QUESTOES_SUITABILITY.forEach(q => {
+    const val = respostas[q.id] || 0;
+    html += `<tr><td style="font-size:0.8rem;"><strong style="color:var(--primary);">${q.id}:</strong> ${q.texto}</td>`;
+    html += `<td><select onchange="updateSuitResp('${q.id}', this.value)" style="width:100%;padding:0.4rem;background:var(--card2);color:var(--fg);border:1px solid var(--border);border-radius:4px;font-size:0.8rem;">`;
+    html += `<option value="0" ${val==0?'selected':''}>Selecione...</option>`;
+    q.alternativas.forEach(alt => {
+      html += `<option value="${alt.valor}" ${val==alt.valor?'selected':''}>${alt.valor} - ${alt.texto}</option>`;
+    });
+    html += '</select></td></tr>';
+  });
+  // Result row
+  const resultado = calcularPerfilInvestidor(respostas);
+  html += '<tr style="background:var(--card2);font-weight:700;"><td style="color:var(--primary);">PERFIL IDEAL</td>';
+  if (resultado) {
+    html += `<td style="text-align:center;background:${resultado.perfil.cor}33;color:${resultado.perfil.cor};font-weight:700;">${resultado.perfil.nome} (PFP: ${resultado.PFP}%)</td>`;
+  } else {
+    html += '<td style="text-align:center;color:var(--muted);font-style:italic;">Preencha todas as questões</td>';
+  }
+  html += '</tr></tbody></table></div>';
+  panel.innerHTML = html;
+}
+
+function updateSuitResp(qId, val) {
+  const dateObj = state.datas.find(x => x.id === state.selectedDateId);
+  if (!dateObj) return;
+  if (!dateObj.suitability_respostas) dateObj.suitability_respostas = {};
+  dateObj.suitability_respostas[qId] = parseInt(val);
+  renderSuitabilityPanel();
+  renderRiskDistribution();
+  saveToSupabase();
+}
+
+// ---- LOCK & PRIMARY ----
+function _isPatEquipeMode() {
+  return sessionStorage.getItem('equipe_modo_cliente') === 'true';
+}
+
+function toggleDateLock() {
+  const d = state.datas.find(x => x.id === state.selectedDateId);
+  if (!d) return;
+  d.locked = !d.locked;
+  saveToSupabase();
+  renderAll();
+}
+
+function toggleDatePrimary() {
+  const d = state.datas.find(x => x.id === state.selectedDateId);
+  if (!d) return;
+  // Only one can be primary
+  state.datas.forEach(dt => { dt.primary = (dt.id === d.id) ? !dt.primary : false; });
+  saveToSupabase();
+  renderAll();
+}
+
+function updateLockPrimaryUI() {
+  const d = state.datas.find(x => x.id === state.selectedDateId);
+  const lblLock = document.getElementById('lbl-lock-date');
+  const lblPrimary = document.getElementById('lbl-primary-date');
+  const editor = document.getElementById('section-editor');
+  if (!d || !lblLock || !lblPrimary) return;
+
+  // Update checkbox states
+  lblLock.querySelector('input').checked = !!d.locked;
+  lblLock.className = d.locked ? 'active-lock' : '';
+  lblPrimary.querySelector('input').checked = !!d.primary;
+  lblPrimary.className = d.primary ? 'active-primary' : '';
+
+  // Apply client lock mode (like fluxo.html)
+  editor.classList.remove('client-locked');
+  if (d.locked && !_isPatEquipeMode()) {
+    editor.classList.add('client-locked');
+  }
+}
+
 // ---- INIT ----
 async function init() {
   await loadFromSupabase();
@@ -906,37 +1129,88 @@ document.addEventListener('DOMContentLoaded', () => {
 // === HANDLER IMPORTAR DIAGNÓSTICO ===
 document.addEventListener('importarDiagnostico', function(e) {
   var itens = e.detail.items || [];
+  var suitData = e.detail.suitability_respostas || null;
   if (state.datas.length === 0) {
     alert('Crie pelo menos uma data antes de importar.');
     return;
   }
-  var dateObj = state.datas[state.currentDateIdx];
+  // Use the currently selected date (fix: was using non-existent state.currentDateIdx)
+  var dateObj = state.datas.find(function(x) { return x.id === state.selectedDateId; });
+  if (!dateObj) {
+    dateObj = state.datas[state.datas.length - 1];
+  }
+  if (!dateObj) { alert('Erro: nenhuma data disponível.'); return; }
+
   itens.forEach(function(item) {
     var tipoAtivo = (item.tipo_ativo || 'INVESTIMENTO').toUpperCase();
     var listKey = 'ativos_liquidos';
     if (tipoAtivo === 'IMOVEL' || tipoAtivo === 'VEICULO') listKey = 'ativos_fisicos';
     else if (tipoAtivo === 'OUTRO') listKey = 'ativos_intangiveis';
+
     var novoAtivo = {
-      id: Date.now() + Math.random(),
+      id: genId(),
       nome: item.nome || 'Ativo importado',
-      tipo_ativo: tipoAtivo,
-      instituicao_id: item.instituicao_nome || '',
       valor: item.valor_atual || 0,
       aporte: 0,
-      retirada: 0,
-      taxa_retorno_anual: item.taxa_retorno_anual || 0,
-      liquidez: item.liquidez || 'medio',
-      observacoes: item.observacoes || ''
+      retirada: 0
     };
+
     if (listKey === 'ativos_liquidos') {
-      novoAtivo.aporte_mensal = item.aporte_mensal || 0;
+      novoAtivo.instituicao_id = '';
+      novoAtivo.instituicao_nome = item.instituicao_nome || '';
+      novoAtivo.categoria = item.categoria || '';
+      // Try to map classificacao_risco from diagnostico to our 10-level system
+      novoAtivo.risco = _inferRiscoFromObs(item.observacoes || '', item.classificacao_risco || '');
+      novoAtivo.objetivo_id = '';
+    } else {
+      novoAtivo.descricao = item.observacoes || '';
     }
+
     dateObj[listKey].push(novoAtivo);
   });
+
+  // Import suitability responses if available
+  if (suitData && typeof suitData === 'object' && Object.keys(suitData).length > 0) {
+    // suitData may be { 'PersonName': {A1:x,...} } or flat {A1:x,...}
+    // If it has person keys, take the first person's responses
+    var firstKey = Object.keys(suitData)[0];
+    if (firstKey && typeof suitData[firstKey] === 'object' && suitData[firstKey].A1 !== undefined) {
+      dateObj.suitability_respostas = suitData[firstKey];
+    } else if (suitData.A1 !== undefined) {
+      dateObj.suitability_respostas = suitData;
+    }
+  }
+
   renderAll();
   saveToSupabase();
   alert(itens.length + ' ativo(s) importado(s) com sucesso!');
 });
+
+// Helper to infer risco from diagnostico observacoes field
+function _inferRiscoFromObs(obs, classRisco) {
+  if (classRisco) {
+    // Direct match to our keys
+    if (CLASSIFICACAO_RISCO[classRisco]) return classRisco;
+    // Try partial match
+    var lower = classRisco.toLowerCase();
+    if (lower.includes('soberana')) return 'RISCO_MUITO_BAIXO_GARANTIA_SOBERANA';
+    if (lower.includes('fgc') && lower.includes('muito')) return 'RISCO_MUITO_BAIXO_GARANTIA_FGC';
+    if (lower.includes('fgc') && lower.includes('baixo')) return 'RISCO_BAIXO_GARANTIA_FGC';
+    if (lower.includes('baixo')) return 'RISCO_BAIXO_SEM_GARANTIA';
+    if (lower.includes('m\u00e9dio') || lower.includes('medio')) return 'RISCO_MEDIO_SEM_GARANTIA';
+    if (lower.includes('muito alto')) return 'RISCO_MUITO_ALTO_SEM_GARANTIA';
+    if (lower.includes('alto')) return 'RISCO_ALTO_SEM_GARANTIA';
+    if (lower.includes('absoluto')) return 'RISCO_ABSOLUTO_SEM_GARANTIA';
+  }
+  // Try from observacoes text
+  if (obs.includes('Classifica\u00e7\u00e3o:')) {
+    var match = obs.match(/Classifica\u00e7\u00e3o:\s*([^.]+)/);
+    if (match && match[1] && match[1].trim() !== 'N/I') {
+      return _inferRiscoFromObs('', match[1].trim());
+    }
+  }
+  return '';
+}
 
 </script>
 </body>
