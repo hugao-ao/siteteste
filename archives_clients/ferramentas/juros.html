@@ -504,13 +504,11 @@
   .sim-checkbox-group input[type="checkbox"] { width:14px; height:14px; accent-color:var(--primary); cursor:pointer; }
   .sim-checkbox-group label.active-lock { border-color:var(--red); background:rgba(239,68,68,0.08); color:var(--red); }
   .sim-checkbox-group label.active-primary { border-color:var(--primary); background:rgba(212,175,55,0.08); color:var(--primary); }
-  .sim-card.locked { opacity:0.85; }
-  .sim-card.locked .sim-card-body { pointer-events:none; }
-  .sim-card.locked input:not(.sim-lock-cb):not(.sim-primary-cb), .sim-card.locked select, .sim-card.locked textarea { pointer-events:none !important; opacity:0.6; }
-  .sim-card.locked button:not([class*="sim-lock"]):not([class*="sim-primary"]) { pointer-events:none; opacity:0.5; }
-  .sim-card-item.locked { opacity:0.85; }
-  .sim-card-item.locked .sim-card-item-body { pointer-events:none; }
-  .sim-card-item.locked input:not(.sim-lock-cb):not(.sim-primary-cb), .sim-card-item.locked select, .sim-card-item.locked textarea { pointer-events:none !important; opacity:0.6; }
+  .sim-card.locked { opacity:0.85; border-left:3px solid var(--red); }
+  /* Client lock mode: disable all editing inside editor view (applied by JS) */
+  .client-locked input, .client-locked select, .client-locked textarea { pointer-events:none !important; opacity:0.6; }
+  .client-locked button { pointer-events:none !important; opacity:0.5; }
+  .client-locked [onclick*="voltarParaLista"] { pointer-events:auto !important; opacity:1 !important; }
 
 </style>
 </head>
