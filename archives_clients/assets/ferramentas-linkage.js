@@ -26,6 +26,8 @@
   var FLUXO_LS_KEY = 'fluxo_simulacoes_v2';
   var DIREITOS_LS_KEY = 'hv_direitos_local';
   var COMPARADOR_LS_KEY = 'hvsf_comparacoes';
+  var CARTOES_LS_KEY = 'hvsf_cartoes_v2';
+  var JUROS_LS_KEY = 'hv_dividas_sims_v2';
 
   // Supabase config (mesma para todas as ferramentas)
   var _SB_URL = 'https://vbikskbfkhundhropykf.supabase.co';
@@ -198,6 +200,63 @@
     });
   }
 
+  // --- Cartões ---
+  function _getCartoesLsKey() {
+    var cid = _getClienteId();
+    return cid ? CARTOES_LS_KEY + '_' + cid : CARTOES_LS_KEY;
+  }
+  function _readCartoesData() {
+    try {
+      var raw = localStorage.getItem(_getCartoesLsKey());
+      if (!raw) return { comparisons: [] };
+      var d = JSON.parse(raw);
+      return Array.isArray(d) ? { comparisons: d } : (d.comparisons ? d : { comparisons: [] });
+    } catch(e) { return { comparisons: [] }; }
+  }
+  function _writeCartoesData(data) {
+    var toStore = data.comparisons || data;
+    try { localStorage.setItem(_getCartoesLsKey(), JSON.stringify(toStore)); } catch(e) {}
+    _writeCartoesToSupabase(toStore);
+  }
+  function _writeCartoesToSupabase(comparisons) {
+    var cid = _getClienteId();
+    var sb = _initSb();
+    if (!sb || !cid) return;
+    sb.from('ferramentas_dados').upsert({
+      cliente_id: cid, ferramenta: 'cartoes',
+      dados: { comparisons: comparisons }, updated_at: new Date().toISOString()
+    }, { onConflict: 'cliente_id,ferramenta' }).then(function(){}).catch(function(e) {
+      console.warn('[Linkage] Erro ao salvar cartoes:', e);
+    });
+  }
+
+  // --- Juros/Dívidas ---
+  function _getJurosLsKey() {
+    var cid = _getClienteId();
+    return cid ? JUROS_LS_KEY + '_' + cid : JUROS_LS_KEY;
+  }
+  function _readJurosData() {
+    try {
+      var raw = localStorage.getItem(_getJurosLsKey());
+      return raw ? JSON.parse(raw) : [];
+    } catch(e) { return []; }
+  }
+  function _writeJurosData(simulacoes) {
+    try { localStorage.setItem(_getJurosLsKey(), JSON.stringify(simulacoes)); } catch(e) {}
+    _writeJurosToSupabase(simulacoes);
+  }
+  function _writeJurosToSupabase(simulacoes) {
+    var cid = _getClienteId();
+    var sb = _initSb();
+    if (!sb || !cid) return;
+    sb.from('ferramentas_dados').upsert({
+      cliente_id: cid, ferramenta: 'dividas',
+      dados: { simulacoes: simulacoes }, updated_at: new Date().toISOString()
+    }, { onConflict: 'cliente_id,ferramenta' }).then(function(){}).catch(function(e) {
+      console.warn('[Linkage] Erro ao salvar juros:', e);
+    });
+  }
+
   // ═══════════════════════════════════════════════════════════════════════
   //  CRUD DE LINKS
   // ═══════════════════════════════════════════════════════════════════════
@@ -216,6 +275,12 @@
       fluxo_item_nome: opts.fluxo_item_nome || null,
       comparador_comp_id: opts.comparador_comp_id || null,
       comparador_product_id: opts.comparador_product_id || null,
+      cartoes_comp_id: opts.cartoes_comp_id || null,
+      cartoes_card_id: opts.cartoes_card_id || null,
+      fluxo_account_id: opts.fluxo_account_id || null,
+      juros_sim_id: opts.juros_sim_id || null,
+      juros_divida_idx: opts.juros_divida_idx !== undefined ? opts.juros_divida_idx : null,
+      juros_divida_nome: opts.juros_divida_nome || null,
       direitos_params: opts.direitos_params || [],
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
@@ -232,6 +297,15 @@
     }
     if (link.direitos_visao_id && link.direitos_produto_id) {
       _applyToDireitoProduto(link);
+    }
+    if (link.cartoes_comp_id && link.cartoes_card_id) {
+      _applyToCartoesCard(link);
+    }
+    if (link.juros_sim_id && link.juros_divida_idx !== null) {
+      _applyToJurosDivida(link);
+    }
+    if (link.fluxo_account_id) {
+      _applyToFluxoAccount(link);
     }
 
     return link;
@@ -254,6 +328,15 @@
     if (link.comparador_comp_id && link.comparador_product_id) {
       _applyToComparadorProduct(link);
     }
+    if (link.cartoes_comp_id && link.cartoes_card_id) {
+      _applyToCartoesCard(link);
+    }
+    if (link.juros_sim_id && link.juros_divida_idx !== null) {
+      _applyToJurosDivida(link);
+    }
+    if (link.fluxo_account_id) {
+      _applyToFluxoAccount(link);
+    }
     return link;
   }
 
@@ -271,6 +354,11 @@
       if (filter.fluxo_item_id !== undefined && l.fluxo_item_id !== filter.fluxo_item_id) return false;
       if (filter.comparador_comp_id !== undefined && l.comparador_comp_id !== filter.comparador_comp_id) return false;
       if (filter.comparador_product_id !== undefined && l.comparador_product_id !== filter.comparador_product_id) return false;
+      if (filter.cartoes_comp_id !== undefined && l.cartoes_comp_id !== filter.cartoes_comp_id) return false;
+      if (filter.cartoes_card_id !== undefined && l.cartoes_card_id !== filter.cartoes_card_id) return false;
+      if (filter.fluxo_account_id !== undefined && l.fluxo_account_id !== filter.fluxo_account_id) return false;
+      if (filter.juros_sim_id !== undefined && l.juros_sim_id !== filter.juros_sim_id) return false;
+      if (filter.juros_divida_idx !== undefined && l.juros_divida_idx !== filter.juros_divida_idx) return false;
       return true;
     });
   }
@@ -306,6 +394,38 @@
       return state.links.filter(function(l) { return l.direitos_visao_id === visaoId; });
     }
     return state.links.filter(function(l) { return l.direitos_visao_id !== null; });
+  }
+
+  function getLinksForCartoesCard(compId, cardId) {
+    return state.links.filter(function(l) {
+      return l.cartoes_comp_id === compId && l.cartoes_card_id === cardId;
+    });
+  }
+
+  function getAllLinksForCartoes(compId) {
+    if (compId !== undefined) {
+      return state.links.filter(function(l) { return l.cartoes_comp_id === compId; });
+    }
+    return state.links.filter(function(l) { return l.cartoes_comp_id !== null; });
+  }
+
+  function getLinksForFluxoAccount(simId, accountId) {
+    return state.links.filter(function(l) {
+      return l.fluxo_sim_id === simId && l.fluxo_account_id === accountId;
+    });
+  }
+
+  function getLinksForJurosDivida(simId, dividaIdx) {
+    return state.links.filter(function(l) {
+      return l.juros_sim_id === simId && l.juros_divida_idx === dividaIdx;
+    });
+  }
+
+  function getAllLinksForJuros(simId) {
+    if (simId !== undefined) {
+      return state.links.filter(function(l) { return l.juros_sim_id === simId; });
+    }
+    return state.links.filter(function(l) { return l.juros_sim_id !== null; });
   }
 
   // ═══════════════════════════════════════════════════════════════════════
@@ -370,6 +490,44 @@
     if (changed) _writeComparadorData(comparisons);
   }
 
+  function _applyToCartoesCard(link) {
+    if (!link.cartoes_comp_id || !link.cartoes_card_id) return;
+    var data = _readCartoesData();
+    var comp = (data.comparisons || []).find(function(c) { return c.id === link.cartoes_comp_id; });
+    if (!comp || !comp.cards) return;
+    var card = comp.cards.find(function(c) { return c.id === link.cartoes_card_id; });
+    if (!card) return;
+    var changed = false;
+    if (link.label && card.name !== link.label) { card.name = link.label; changed = true; }
+    if (changed) _writeCartoesData(data);
+  }
+
+  function _applyToFluxoAccount(link) {
+    if (!link.fluxo_sim_id || !link.fluxo_account_id) return;
+    var simulacoes = _readFluxoData();
+    var sim = simulacoes.find(function(s) { return s.id === link.fluxo_sim_id; });
+    if (!sim || !sim.payload || !sim.payload.contas) return;
+    var acc = sim.payload.contas.find(function(a) { return a.id === link.fluxo_account_id; });
+    if (!acc) return;
+    var changed = false;
+    if (link.label && acc.nome !== link.label) { acc.nome = link.label; changed = true; }
+    if (changed) _writeFluxoData(simulacoes);
+  }
+
+  function _applyToJurosDivida(link) {
+    if (!link.juros_sim_id || link.juros_divida_idx === null) return;
+    var simulacoes = _readJurosData();
+    var sim = simulacoes.find(function(s) { return s.id === link.juros_sim_id; });
+    if (!sim || !sim.payload) return;
+    var dividas = sim.payload.dividasAtuais || [];
+    var divida = dividas[link.juros_divida_idx];
+    if (!divida) return;
+    var changed = false;
+    if (link.label && divida.nome !== link.label) { divida.nome = link.label; changed = true; }
+    if (link.valor !== undefined && link.valor !== null && divida.parcela !== link.valor) { divida.parcela = link.valor; changed = true; }
+    if (changed) _writeJurosData(simulacoes);
+  }
+
   // ═══════════════════════════════════════════════════════════════════════
   //  BADGES DE EXCLUSÃO
   // ═══════════════════════════════════════════════════════════════════════
@@ -398,6 +556,8 @@
       if (ferramenta === 'direitos') return link.direitos_produto_id != null;
       if (ferramenta === 'fluxo') return link.fluxo_sim_id != null;
       if (ferramenta === 'comparador') return link.comparador_comp_id != null;
+      if (ferramenta === 'cartoes') return link.cartoes_comp_id != null;
+      if (ferramenta === 'juros') return link.juros_sim_id != null;
       return false;
     });
   }
@@ -416,6 +576,15 @@
       }
       if (ferramenta === 'comparador') {
         return link.comparador_comp_id === identifiers.compId && link.comparador_product_id === identifiers.productId;
+      }
+      if (ferramenta === 'cartoes') {
+        return link.cartoes_comp_id === identifiers.compId && link.cartoes_card_id === identifiers.cardId;
+      }
+      if (ferramenta === 'juros') {
+        return link.juros_sim_id === identifiers.simId && link.juros_divida_idx === identifiers.dividaIdx;
+      }
+      if (ferramenta === 'fluxo_account') {
+        return link.fluxo_sim_id === identifiers.simId && link.fluxo_account_id === identifiers.accountId;
       }
       return false;
     });
@@ -439,8 +608,17 @@
         } else if (badge.deleted_from === 'comparador') {
           link.comparador_comp_id = null;
           link.comparador_product_id = null;
+        } else if (badge.deleted_from === 'cartoes') {
+          link.cartoes_comp_id = null;
+          link.cartoes_card_id = null;
+        } else if (badge.deleted_from === 'juros') {
+          link.juros_sim_id = null;
+          link.juros_divida_idx = null;
+          link.juros_divida_nome = null;
+        } else if (badge.deleted_from === 'fluxo_account') {
+          link.fluxo_account_id = null;
         }
-        if (!link.direitos_produto_id && !link.fluxo_sim_id && !link.comparador_comp_id) {
+        if (!link.direitos_produto_id && !link.fluxo_sim_id && !link.comparador_comp_id && !link.cartoes_comp_id && !link.juros_sim_id) {
           removeLink(link.id);
         }
       }
@@ -460,6 +638,8 @@
     if (link.direitos_produto_id && originFerramenta !== 'direitos') targets.push('Produtos e Direitos');
     if (link.fluxo_sim_id && originFerramenta !== 'fluxo') targets.push('Fluxo de Caixa');
     if (link.comparador_comp_id && originFerramenta !== 'comparador') targets.push('Comparador de Produtos');
+    if (link.cartoes_comp_id && originFerramenta !== 'cartoes') targets.push('Comparador de Cartões');
+    if (link.juros_sim_id && originFerramenta !== 'juros') targets.push('Análise de Dívidas');
 
     if (targets.length === 0) return '';
 
@@ -501,11 +681,20 @@
     if (originFerramenta !== 'fluxo' && link.fluxo_sim_id && link.fluxo_item_id) {
       _applyToFluxoItem(link);
     }
+    if (originFerramenta !== 'fluxo' && link.fluxo_sim_id && link.fluxo_account_id) {
+      _applyToFluxoAccount(link);
+    }
     if (originFerramenta !== 'direitos' && link.direitos_visao_id && link.direitos_produto_id) {
       _applyToDireitoProduto(link);
     }
     if (originFerramenta !== 'comparador' && link.comparador_comp_id && link.comparador_product_id) {
       _applyToComparadorProduct(link);
+    }
+    if (originFerramenta !== 'cartoes' && link.cartoes_comp_id && link.cartoes_card_id) {
+      _applyToCartoesCard(link);
+    }
+    if (originFerramenta !== 'juros' && link.juros_sim_id && link.juros_divida_idx !== null) {
+      _applyToJurosDivida(link);
     }
 
     // Também notificar handlers em memória (caso a outra ferramenta esteja aberta na mesma página)
@@ -529,7 +718,10 @@
   function renderBadgeHtml(badge) {
     var ferramentaLabel = badge.deleted_from === 'direitos' ? 'Produtos e Direitos' :
                          badge.deleted_from === 'fluxo' ? 'Fluxo de Caixa' :
-                         badge.deleted_from === 'comparador' ? 'Comparador de Produtos' : badge.deleted_from;
+                         badge.deleted_from === 'comparador' ? 'Comparador de Produtos' :
+                         badge.deleted_from === 'cartoes' ? 'Comparador de Cartões' :
+                         badge.deleted_from === 'juros' ? 'Análise de Dívidas' :
+                         badge.deleted_from === 'fluxo_account' ? 'Fluxo (Contas)' : badge.deleted_from;
     return '<span class="linkage-badge-deleted" data-badge-id="' + badge.id + '" ' +
            'title="Item excluído em: ' + ferramentaLabel + '" ' +
            'onclick="FerramentasLinkage.handleBadgeClick(' + badge.id + ')" ' +
@@ -543,6 +735,9 @@
     if (link.fluxo_sim_id && currentFerramenta !== 'fluxo') targets.push('Fluxo');
     if (link.comparador_comp_id && currentFerramenta !== 'comparador') targets.push('Comparador');
     if (link.direitos_produto_id && currentFerramenta !== 'direitos') targets.push('Direitos');
+    if (link.cartoes_comp_id && currentFerramenta !== 'cartoes') targets.push('Cartões');
+    if (link.juros_sim_id && currentFerramenta !== 'juros') targets.push('Dívidas');
+    if (link.fluxo_account_id && currentFerramenta !== 'fluxo') targets.push('Fluxo (Conta)');
     if (targets.length === 0) return '';
     return '<span class="linkage-indicator" ' +
            'style="display:inline-flex;align-items:center;gap:3px;background:rgba(96,165,250,0.12);border:1px solid rgba(96,165,250,0.3);color:#60a5fa;padding:2px 7px;border-radius:4px;font-size:0.68rem;margin-left:5px;" ' +
@@ -557,7 +752,10 @@
 
     var ferramentaLabel = badge.deleted_from === 'direitos' ? 'Produtos e Direitos' :
                          badge.deleted_from === 'fluxo' ? 'Fluxo de Caixa' :
-                         badge.deleted_from === 'comparador' ? 'Comparador de Produtos' : badge.deleted_from;
+                         badge.deleted_from === 'comparador' ? 'Comparador de Produtos' :
+                         badge.deleted_from === 'cartoes' ? 'Comparador de Cartões' :
+                         badge.deleted_from === 'juros' ? 'Análise de Dívidas' :
+                         badge.deleted_from === 'fluxo_account' ? 'Fluxo (Contas)' : badge.deleted_from;
 
     var msg = 'O item "' + badge.item_label + '" foi excluído na ferramenta "' + ferramentaLabel + '" em ' +
               new Date(badge.deleted_at).toLocaleDateString('pt-BR') + '.\n\n' +
@@ -588,9 +786,14 @@
     getLinksForDireitoProduto: getLinksForDireitoProduto,
     getLinksForFluxoItem: getLinksForFluxoItem,
     getLinksForComparadorProduct: getLinksForComparadorProduct,
+    getLinksForCartoesCard: getLinksForCartoesCard,
+    getLinksForFluxoAccount: getLinksForFluxoAccount,
+    getLinksForJurosDivida: getLinksForJurosDivida,
     getAllLinksForFluxo: getAllLinksForFluxo,
     getAllLinksForComparador: getAllLinksForComparador,
     getAllLinksForDireitos: getAllLinksForDireitos,
+    getAllLinksForCartoes: getAllLinksForCartoes,
+    getAllLinksForJuros: getAllLinksForJuros,
     registerDeletion: registerDeletion,
     getPendingBadges: getPendingBadges,
     getBadgesForItem: getBadgesForItem,
