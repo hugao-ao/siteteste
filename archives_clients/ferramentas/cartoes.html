@@ -570,34 +570,6 @@
         <button class="btn-new" onclick="openModal()">+ Nova Comparação</button>
       </header>
 
-      <!-- Contexto Global -->
-      <div class="ctx-bar">
-        <span class="ctx-bar-title">⚙️ Contexto Global</span>
-        <div class="ctx-fields">
-          <div class="ctx-field">
-            <label>Gasto Nacional (R$/mês)</label>
-            <input type="text" id="ctx-nacional" placeholder="R$ 3.000,00" onblur="fmtCtxBlur(this)"/>
-          </div>
-          <div class="ctx-field">
-            <label>Gasto Exterior (US$/mês)</label>
-            <input type="text" id="ctx-exterior" placeholder="US$ 500,00" onblur="fmtCtxUsdBlur(this)"/>
-          </div>
-          <div class="ctx-field">
-            <label>Gasto Bonificado (R$/mês)</label>
-            <input type="text" id="ctx-bonif" placeholder="R$ 500,00" onblur="fmtCtxBlur(this)"/>
-          </div>
-          <div class="ctx-field">
-            <label>Cotação do Dólar (R$)</label>
-            <input type="text" id="ctx-dolar" placeholder="R$ 5,90" onblur="fmtCtxDolarBlur(this)"/>
-          </div>
-        </div>
-        <div class="ctx-dolar-badge" id="ctx-dolar-badge">
-          <span class="live"></span>
-          <span id="ctx-dolar-display">—</span>
-        </div>
-        <button class="btn-add" onclick="fetchDolar()" title="Buscar cotação atual">🔄 Atualizar cotação</button>
-      </div>
-
       <!-- Lista -->
       <div id="list-container">
         <div class="empty-state" id="empty-state">
@@ -1132,17 +1104,14 @@ function saveSubjItems() { localStorage.setItem('hvsf_cartoes_subj_v2', JSON.str
    COTAÇÃO DO DÓLAR
 ═══════════════════════════════════════════════════════ */
 async function fetchDolar() {
-  const badge = document.getElementById('ctx-dolar-badge');
-  badge.innerHTML = `<span class="live"></span><span>Buscando...</span>`;
+  // Utilitário: retorna a cotação formatada
   try {
     const r = await fetch('https://economia.awesomeapi.com.br/json/last/USD-BRL');
     const d = await r.json();
     const val = parseFloat(d.USDBRL.bid).toFixed(2);
-    const fmtVal = 'R$ ' + val.replace('.',',');
-    document.getElementById('ctx-dolar').value = fmtVal;
-    badge.innerHTML = `<span class="live"></span><span id="ctx-dolar-display">${fmtVal}</span>`;
+    return 'R$ ' + val.replace('.',',');
   } catch(e) {
-    badge.innerHTML = `<span style="color:var(--red-lt)">⚠️ Erro ao buscar</span>`;
+    return null;
   }
 }
 
@@ -1181,8 +1150,7 @@ function fmtCtxDolarBlur(el) {
   const raw = el.value.replace(/[^\d,]/g,'').replace(/\./g,'').replace(',','.');
   const n = parseFloat(raw) || 0;
   el.value = n > 0 ? 'R$ ' + n.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}) : '';
-  const disp = document.getElementById('ctx-dolar-display');
-  if (disp) disp.textContent = el.value || '—';
+  // ctx-dolar-display removido (contexto agora é por comparação)
 }
 
 function getCtx() {
@@ -1194,21 +1162,12 @@ function getCtx() {
     const v = document.getElementById(id)?.value || '0';
     return parseFloat(v.replace(/[^\d,]/g,'').replace(/\./g,'').replace(',','.')) || 0;
   };
-  // Se o modal está aberto, ler dos campos do modal
-  const modalOpen = document.getElementById('modal-overlay')?.classList.contains('open');
-  if (modalOpen) {
-    return {
-      nacional: parseBRL('modal-ctx-nacional'),
-      exterior: parseUSD('modal-ctx-exterior'),
-      bonif:    parseBRL('modal-ctx-bonif'),
-      dolar:    parseBRL('modal-ctx-dolar'),
-    };
-  }
+  // Sempre ler dos campos do modal (contexto global agora é por comparação)
   return {
-    nacional: parseBRL('ctx-nacional'),
-    exterior: parseUSD('ctx-exterior'),
-    bonif:    parseBRL('ctx-bonif'),
-    dolar:    parseBRL('ctx-dolar'),
+    nacional: parseBRL('modal-ctx-nacional'),
+    exterior: parseUSD('modal-ctx-exterior'),
+    bonif:    parseBRL('modal-ctx-bonif'),
+    dolar:    parseBRL('modal-ctx-dolar'),
   };
 }
 
@@ -1251,11 +1210,11 @@ function openModal(id = null) {
     tmpPtsGastoMoeda = {}; tmpAnuidImp = 'muito'; cidCounter = 1;
     OBJ_GROUPS.forEach(g => { tmpObjImps[g.id] = g.groupImp; });
     subjItems.forEach(s => { tmpSubjVals[s.id] = { importance: s.importance, hasParam: {}, rankings: {} }; });
-    // Defaults do ctx global para nova comparação
-    document.getElementById('modal-ctx-nacional').value = document.getElementById('ctx-nacional').value || 'R$ 3.000,00';
-    document.getElementById('modal-ctx-exterior').value = document.getElementById('ctx-exterior').value || 'US$ 500,00';
-    document.getElementById('modal-ctx-bonif').value = document.getElementById('ctx-bonif').value || 'R$ 500,00';
-    document.getElementById('modal-ctx-dolar').value = document.getElementById('ctx-dolar').value || '';
+    // Defaults do ctx para nova comparação
+    document.getElementById('modal-ctx-nacional').value = 'R$ 3.000,00';
+    document.getElementById('modal-ctx-exterior').value = 'US$ 500,00';
+    document.getElementById('modal-ctx-bonif').value = 'R$ 500,00';
+    document.getElementById('modal-ctx-dolar').value = '';
     document.getElementById('modal-title').textContent = 'Nova Comparação de Cartões';
   }
   document.getElementById('comp-name').value = tmpName;
@@ -2653,11 +2612,8 @@ async function deleteBandeira(id) {
 OBJ_GROUPS.forEach(g => { tmpObjImps[g.id] = g.groupImp; });
 subjItems.forEach(s => { tmpSubjVals[s.id] = { importance:s.importance, hasParam:{}, rankings:{} }; });
 
-// Valores padrão do contexto
-document.getElementById('ctx-nacional').value = 'R$ 3.000,00';
-document.getElementById('ctx-exterior').value = 'US$ 500,00';
-document.getElementById('ctx-bonif').value    = 'R$ 500,00';
-document.getElementById('ctx-dolar').value    = 'R$ 5,90';
+// Valores padrão do contexto (agora armazenados por comparação no modal)
+var _ctxDefaults = { nacional: 3000, exterior: 500, bonif: 500, dolar: 5.90 };
 
 // Carregar dados do Supabase (subjetivos + bandeiras + comparações por cliente) e depois renderizar
 (async () => {
@@ -2704,9 +2660,7 @@ document.getElementById('ctx-dolar').value    = 'R$ 5,90';
   renderList();
 })();
 
-fetchDolar().catch(()=>{
-  document.getElementById('ctx-dolar-badge').innerHTML = `<span style="font-size:.78rem;color:var(--muted-foreground)">Cotação manual</span>`;
-});
+// fetchDolar na inicialização removido (contexto global agora é por comparação no modal)
 
 function _globalSaveFeedback() {{
   var btn = document.getElementById('btnSaveGlobal');
