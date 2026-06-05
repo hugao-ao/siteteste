@@ -544,12 +544,11 @@
   .sim-checkbox-group input[type="checkbox"] { width:14px; height:14px; accent-color:var(--primary,var(--gold)); cursor:pointer; }
   .sim-checkbox-group label.active-lock { border-color:var(--red,#ef4444); background:rgba(239,68,68,0.08); color:var(--red,#ef4444); }
   .sim-checkbox-group label.active-primary { border-color:var(--primary,var(--gold)); background:rgba(212,175,55,0.08); color:var(--primary,var(--gold)); }
-  .comp-card.locked { opacity:0.85; }
-  .comp-card.locked .comp-card-body { pointer-events:none; }
-  .comp-card.locked input:not(.sim-lock-cb):not(.sim-primary-cb), .comp-card.locked select, .comp-card.locked textarea { pointer-events:none !important; opacity:0.6; }
-  .produto-card.locked { opacity:0.85; }
-  .produto-card.locked .produto-card-body { pointer-events:none; }
-  .produto-card.locked input:not(.sim-lock-cb):not(.sim-primary-cb), .produto-card.locked select, .produto-card.locked textarea { pointer-events:none !important; opacity:0.6; }
+  .comp-card.locked { opacity:0.85; border-left:3px solid var(--red,#ef4444); }
+  /* Client lock mode: disable all editing inside modal (applied by JS) */
+  .client-locked input, .client-locked select, .client-locked textarea { pointer-events:none !important; opacity:0.6; }
+  .client-locked button { pointer-events:none !important; opacity:0.5; }
+  .client-locked [onclick*="closeModal"] { pointer-events:auto !important; opacity:1 !important; }
 
 </style>
 </head>
@@ -2172,6 +2171,7 @@ function renderList() {
         </div>
         <div class="comp-card-actions" onclick="event.stopPropagation()">
           <button class="btn-icon" onclick="openModal(${comp.id})">✏️ ${comp.locked && !_isCartEquipeMode() ? 'Visualizar' : 'Editar'}</button>
+          <button class="btn-icon" onclick="duplicarComp(${comp.id})">📋 Duplicar</button>
           ${comp.locked && !_isCartEquipeMode() ? '' : '<button class="btn-icon danger" onclick="deleteComp(' + comp.id + ')">🗑️ Excluir</button>'}
         </div>
       </div>
@@ -2186,6 +2186,20 @@ function deleteComp(id) {
   if (!confirm('Excluir esta comparação?')) return;
   comparisons = comparisons.filter(c=>c.id!==id);
   localStorage.setItem(_CARTOES_LS_KEY, JSON.stringify(comparisons));
+  saveComparisons();
+  renderList();
+}
+
+function duplicarComp(id) {
+  const orig = comparisons.find(c => c.id === id);
+  if (!orig) return;
+  const clone = JSON.parse(JSON.stringify(orig));
+  clone.id = Date.now();
+  clone.name = (orig.name || 'Comparação') + ' (cópia)';
+  clone.locked = false;
+  clone.primary = false;
+  clone.updatedAt = new Date().toISOString();
+  comparisons.push(clone);
   saveComparisons();
   renderList();
 }
