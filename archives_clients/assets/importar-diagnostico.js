@@ -691,7 +691,7 @@
         </div>
         <div class="modal-importar-btns">
           <button class="btn-importar-cancelar" onclick="fecharModalImportacao()">Cancelar</button>
-          <button class="btn-importar-confirmar" id="btn-confirmar-importacao" style="display:none;" onclick="confirmarImportacao()">
+          <button class="btn-importar-confirmar" id="btn-confirmar-importacao" style="display:none;" onclick="confirmarImportacaoDiag()">
             <i class="fas fa-check"></i> Importar Selecionados
           </button>
         </div>
@@ -827,7 +827,7 @@
     }
   }
 
-  function confirmarImportacao() {
+  function confirmarImportacaoDiag() {
     if (!dadosParaImportar || !callbackImportacao) return;
 
     // Coletar itens selecionados
@@ -918,7 +918,7 @@
 
   window.abrirModalImportacao = abrirModalImportacao;
   window.fecharModalImportacao = fecharModalImportacao;
-  window.confirmarImportacao = confirmarImportacao;
+  window.confirmarImportacaoDiag = confirmarImportacaoDiag;
   window.selecionarTodosImportacao = selecionarTodosImportacao;
   window.buscarDiagnostico = buscarDiagnostico;
 
