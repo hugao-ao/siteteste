@@ -55,7 +55,7 @@
       const camposJson = [
         'dividas', 'produtos_protecao', 'patrimonios_liquidos', 'patrimonios',
         'declaracoes_ir', 'dados_sucessao', 'contas_cartoes', 'objetivos',
-        'fluxo_caixa', 'pessoas_renda', 'dependentes'
+        'fluxo_caixa', 'pessoas_renda', 'dependentes', 'respostas_suitability'
       ];
       camposJson.forEach(campo => {
         if (diag[campo] && typeof diag[campo] === 'string') {
@@ -268,6 +268,8 @@
         aporte_mensal: pl.aporte_frequencia === 'MENSAL' ? (pl.aporte_valor || 0) :
                        pl.aporte_frequencia === 'ANUAL' ? Math.round((pl.aporte_valor || 0) / 12) : 0,
         taxa_retorno_anual: pl.rentabilidade_esperada || 0,
+        classificacao_risco: pl.classificacao_risco || '',
+        categoria: pl.categoria || '',
         liquidez: 'medio',
         observacoes: `Classificação: ${pl.classificacao_risco || 'N/I'}. Taxa Admin: ${pl.taxa_administracao || 0}%`
       }));
@@ -284,7 +286,9 @@
       }));
 
       const items = [...itemsLiquidos, ...itemsFisicos];
-      return { items, mensagem: `${patrimoniosLiquidos.length} investimento(s) e ${patrimoniosFisicos.length} bem(ns) físico(s) encontrado(s).` };
+      // Also pass suitability responses if available in the diagnostico
+      const suitability_respostas = diag.respostas_suitability || null;
+      return { items, suitability_respostas, mensagem: `${patrimoniosLiquidos.length} investimento(s) e ${patrimoniosFisicos.length} bem(ns) físico(s) encontrado(s).` };
     },
 
     // CARTÕES: Importa cartões do diagnóstico
@@ -840,8 +844,9 @@
       return;
     }
 
-    // Chamar o callback com os itens selecionados, dados cruzados e accounts
-    callbackImportacao(selecionados, dadosParaImportar.dadosCruzados || null, dadosParaImportar.accounts || []);
+    // Chamar o callback com os itens selecionados, dados cruzados, accounts, and extra data
+    const extraData = { suitability_respostas: dadosParaImportar.suitability_respostas || null };
+    callbackImportacao(selecionados, dadosParaImportar.dadosCruzados || null, dadosParaImportar.accounts || [], extraData);
     fecharModalImportacao();
   }
 
@@ -895,10 +900,10 @@
     btn.onmouseout = () => { btn.style.transform = 'scale(1)'; btn.style.boxShadow = '0 4px 15px rgba(212, 175, 55, 0.4)'; };
     
     btn.onclick = function() {
-      abrirModalImportacao(function(itensSelecionados, dadosCruzados, accounts) {
+      abrirModalImportacao(function(itensSelecionados, dadosCruzados, accounts, extraData) {
         // Disparar evento customizado para a ferramenta processar
         const evento = new CustomEvent('importarDiagnostico', {
-          detail: { items: itensSelecionados, dadosCruzados: dadosCruzados, accounts: accounts || [] }
+          detail: { items: itensSelecionados, dadosCruzados: dadosCruzados, accounts: accounts || [], suitability_respostas: (extraData && extraData.suitability_respostas) || null }
         });
         document.dispatchEvent(evento);
       });
