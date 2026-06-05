@@ -193,17 +193,47 @@ body { background: var(--bg); color: var(--fg); font-family: 'Inter', system-ui,
     <input type="text" id="mp_tipo" placeholder="Ex: Seguro de Vida, Cart&atilde;o, Previd&ecirc;ncia...">
     <label>Institui&ccedil;&atilde;o / Seguradora</label>
     <input type="text" id="mp_instituicao" placeholder="Ex: Porto Seguro, Nubank, Bradesco...">
-    <div style="display:flex;gap:0.75rem;">
-      <div style="flex:1;">
+    <div style="display:flex;gap:0.75rem;flex-wrap:wrap;">
+      <div style="flex:1;min-width:140px;">
         <label>Custo (R$)</label>
         <input type="text" id="mp_custo" placeholder="Ex: 150,00" oninput="fmtCur(this)">
       </div>
-      <div style="flex:1;">
-        <label>Periodicidade do Custo</label>
-        <select id="mp_periodicidade">
-          <option value="mensal">Mensal</option>
-          <option value="anual">Anual</option>
+      <div style="flex:1;min-width:160px;">
+        <label>Tipo de repeti&ccedil;&atilde;o</label>
+        <select id="mp_recTipo" onchange="updateMpRecFields()">
+          <option value="nao">N&atilde;o repete</option>
+          <option value="dias">A cada X dias</option>
+          <option value="uteis">A cada X dias &uacute;teis</option>
+          <option value="semanas">A cada X semanas</option>
+          <option value="quinzenas">A cada X quinzenas</option>
+          <option value="meses" selected>A cada X meses</option>
         </select>
+      </div>
+      <div style="flex:0 0 80px;" id="mp_recQty_wrap">
+        <label>Intervalo</label>
+        <input type="number" id="mp_recQty" value="1" min="1">
+      </div>
+    </div>
+    <div style="display:flex;gap:0.75rem;flex-wrap:wrap;margin-top:0.5rem;" id="mp_recDates_wrap">
+      <div style="flex:1;min-width:140px;">
+        <label>Data de in&iacute;cio (refer&ecirc;ncia)</label>
+        <input type="date" id="mp_recInicio">
+      </div>
+      <div style="flex:1;min-width:140px;">
+        <label>T&eacute;rmino</label>
+        <select id="mp_recFimTipo" onchange="updateMpRecFimFields()">
+          <option value="nunca">Nunca termina</option>
+          <option value="ocorrencias">Ap&oacute;s X ocorr&ecirc;ncias</option>
+          <option value="data">Em data espec&iacute;fica</option>
+        </select>
+      </div>
+      <div style="flex:0 0 100px;display:none;" id="mp_recFimQty_wrap">
+        <label>Ocorr&ecirc;ncias</label>
+        <input type="number" id="mp_recFimQty" value="12" min="1">
+      </div>
+      <div style="flex:1;min-width:140px;display:none;" id="mp_recFimData_wrap">
+        <label>Data de t&eacute;rmino</label>
+        <input type="date" id="mp_recFimData">
       </div>
     </div>
     <label>Vig&ecirc;ncia / Vencimento</label>
@@ -256,22 +286,47 @@ body { background: var(--bg); color: var(--fg); font-family: 'Inter', system-ui,
     <p style="font-size:0.8rem;color:var(--muted);margin-bottom:1rem;">Defina o nome e valor que serão utilizados em ambas as ferramentas a partir desta associação. Esses dados serão sincronizados automaticamente.</p>
     <label>Nome unificado *</label>
     <input type="text" id="harm_nome" placeholder="Nome que será usado em ambas as ferramentas">
-    <div style="display:flex;gap:0.75rem;">
-      <div style="flex:1;">
+    <div style="display:flex;gap:0.75rem;flex-wrap:wrap;">
+      <div style="flex:1;min-width:140px;">
         <label>Valor (R$) *</label>
         <input type="text" id="harm_valor" placeholder="Ex: 150,00" oninput="fmtCur(this)">
       </div>
-      <div style="flex:1;">
-        <label>Periodicidade</label>
-        <select id="harm_periodicidade">
-          <option value="mensal">Mensal</option>
-          <option value="anual">Anual</option>
-          <option value="semanal">Semanal</option>
-          <option value="quinzenal">Quinzenal</option>
-          <option value="trimestral">Trimestral</option>
-          <option value="semestral">Semestral</option>
-          <option value="unica">Pagamento Único</option>
+      <div style="flex:1;min-width:160px;">
+        <label>Tipo de repeti&ccedil;&atilde;o</label>
+        <select id="harm_recTipo" onchange="updateHarmRecFields()">
+          <option value="nao">N&atilde;o repete</option>
+          <option value="dias">A cada X dias</option>
+          <option value="uteis">A cada X dias &uacute;teis</option>
+          <option value="semanas">A cada X semanas</option>
+          <option value="quinzenas">A cada X quinzenas</option>
+          <option value="meses" selected>A cada X meses</option>
         </select>
+      </div>
+      <div style="flex:0 0 80px;" id="harm_recQty_wrap">
+        <label>Intervalo</label>
+        <input type="number" id="harm_recQty" value="1" min="1">
+      </div>
+    </div>
+    <div style="display:flex;gap:0.75rem;flex-wrap:wrap;margin-top:0.5rem;" id="harm_recDates_wrap">
+      <div style="flex:1;min-width:140px;">
+        <label>Data de in&iacute;cio (refer&ecirc;ncia)</label>
+        <input type="date" id="harm_recInicio">
+      </div>
+      <div style="flex:1;min-width:140px;">
+        <label>T&eacute;rmino</label>
+        <select id="harm_recFimTipo" onchange="updateHarmRecFimFields()">
+          <option value="nunca">Nunca termina</option>
+          <option value="ocorrencias">Ap&oacute;s X ocorr&ecirc;ncias</option>
+          <option value="data">Em data espec&iacute;fica</option>
+        </select>
+      </div>
+      <div style="flex:0 0 100px;display:none;" id="harm_recFimQty_wrap">
+        <label>Ocorr&ecirc;ncias</label>
+        <input type="number" id="harm_recFimQty" value="12" min="1">
+      </div>
+      <div style="flex:1;min-width:140px;display:none;" id="harm_recFimData_wrap">
+        <label>Data de t&eacute;rmino</label>
+        <input type="date" id="harm_recFimData">
       </div>
     </div>
     <div class="modal-footer">
@@ -310,6 +365,31 @@ function parseCur(str) {
 }
 function escHtml(str) { var div = document.createElement('div'); div.textContent = str || ''; return div.innerHTML; }
 function genId() { return Date.now() + Math.floor(Math.random() * 1000); }
+
+var REC_LABELS = { nao: 'Pagamento Único', dias: 'Dias', uteis: 'Dias Úteis', semanas: 'Semanas', quinzenas: 'Quinzenas', meses: 'Meses' };
+
+function updateMpRecFields() {
+  var t = document.getElementById('mp_recTipo').value;
+  var showQty = t !== 'nao';
+  document.getElementById('mp_recQty_wrap').style.display = showQty ? '' : 'none';
+  document.getElementById('mp_recDates_wrap').style.display = showQty ? '' : 'none';
+}
+function updateMpRecFimFields() {
+  var t = document.getElementById('mp_recFimTipo').value;
+  document.getElementById('mp_recFimQty_wrap').style.display = t === 'ocorrencias' ? '' : 'none';
+  document.getElementById('mp_recFimData_wrap').style.display = t === 'data' ? '' : 'none';
+}
+function updateHarmRecFields() {
+  var t = document.getElementById('harm_recTipo').value;
+  var showQty = t !== 'nao';
+  document.getElementById('harm_recQty_wrap').style.display = showQty ? '' : 'none';
+  document.getElementById('harm_recDates_wrap').style.display = showQty ? '' : 'none';
+}
+function updateHarmRecFimFields() {
+  var t = document.getElementById('harm_recFimTipo').value;
+  document.getElementById('harm_recFimQty_wrap').style.display = t === 'ocorrencias' ? '' : 'none';
+  document.getElementById('harm_recFimData_wrap').style.display = t === 'data' ? '' : 'none';
+}
 
 function isEquipeMode() {
   return sessionStorage.getItem('equipe_modo_cliente') === 'true';
@@ -479,7 +559,15 @@ function renderProdutos() {
     var nDireitos = (p.direitos || []).length;
     var custoStr = '';
     if (p.custo) {
-      var perioLabel = p.periodicidade === 'anual' ? '/ano' : '/m\u00eas';
+      var perioLabel = '';
+      if (p.recTipo) {
+        if (p.recTipo === 'nao') perioLabel = ' (pgto único)';
+        else if (p.recTipo === 'meses' && p.recQty === 1) perioLabel = '/mês';
+        else if (p.recTipo === 'meses' && p.recQty === 12) perioLabel = '/ano';
+        else perioLabel = ' a cada ' + (p.recQty || 1) + ' ' + (REC_LABELS[p.recTipo] || '').toLowerCase();
+      } else {
+        perioLabel = p.periodicidade === 'anual' ? '/ano' : '/mês';
+      }
       custoStr = 'R$ ' + escHtml(p.custo) + perioLabel;
     }
     // Badges de linkage
@@ -516,7 +604,9 @@ function renderResumoVisao(visao) {
   produtos.forEach(function(p) {
     totalDireitos += (p.direitos || []).length;
     var c = parseCur(p.custo);
-    if (p.periodicidade === 'anual') { custoAnual += c; custoMensal += c / 12; }
+    var isAnual = (p.recTipo === 'meses' && p.recQty === 12) || (!p.recTipo && p.periodicidade === 'anual');
+    if (isAnual) { custoAnual += c; custoMensal += c / 12; }
+    else if (p.recTipo === 'nao') { /* pgto único: não soma recorrente */ }
     else { custoMensal += c; custoAnual += c * 12; }
   });
   resumoEl.innerHTML = '<div class="resumo-bar">' +
@@ -540,7 +630,13 @@ function novoProduto() {
   document.getElementById('mp_tipo').value = '';
   document.getElementById('mp_instituicao').value = '';
   document.getElementById('mp_custo').value = '';
-  document.getElementById('mp_periodicidade').value = 'mensal';
+  document.getElementById('mp_recTipo').value = 'meses';
+  document.getElementById('mp_recQty').value = '1';
+  document.getElementById('mp_recInicio').value = '';
+  document.getElementById('mp_recFimTipo').value = 'nunca';
+  document.getElementById('mp_recFimQty').value = '12';
+  document.getElementById('mp_recFimData').value = '';
+  updateMpRecFields(); updateMpRecFimFields();
   document.getElementById('mp_vigencia').value = '';
   document.getElementById('mp_obs').value = '';
   renderDireitosModal();
@@ -568,7 +664,13 @@ function editProduto(id) {
   document.getElementById('mp_tipo').value = p.tipo || '';
   document.getElementById('mp_instituicao').value = p.instituicao || '';
   document.getElementById('mp_custo').value = p.custo || '';
-  document.getElementById('mp_periodicidade').value = p.periodicidade || 'mensal';
+  document.getElementById('mp_recTipo').value = p.recTipo || 'meses';
+  document.getElementById('mp_recQty').value = p.recQty || '1';
+  document.getElementById('mp_recInicio').value = p.recInicio || '';
+  document.getElementById('mp_recFimTipo').value = p.recFimTipo || 'nunca';
+  document.getElementById('mp_recFimQty').value = p.recFimQty || '12';
+  document.getElementById('mp_recFimData').value = p.recFimData || '';
+  updateMpRecFields(); updateMpRecFimFields();
   document.getElementById('mp_vigencia').value = p.vigencia || '';
   document.getElementById('mp_obs').value = p.obs || '';
   renderDireitosModal();
@@ -606,7 +708,13 @@ function salvarProduto() {
   coletarDireitosDoModal();
 
   var custoVal = document.getElementById('mp_custo').value.trim();
-  var periodicidade = document.getElementById('mp_periodicidade').value;
+  var recTipo = document.getElementById('mp_recTipo').value;
+  var recQty = parseInt(document.getElementById('mp_recQty').value) || 1;
+  var recInicio = document.getElementById('mp_recInicio').value;
+  var recFimTipo = document.getElementById('mp_recFimTipo').value;
+  var recFimQty = parseInt(document.getElementById('mp_recFimQty').value) || 12;
+  var recFimData = document.getElementById('mp_recFimData').value;
+  var periodicidade = recTipo === 'nao' ? 'unica' : recTipo === 'meses' && recQty === 1 ? 'mensal' : recTipo === 'meses' && recQty === 12 ? 'anual' : recTipo;
   var produtoId;
 
   if (_editingProdutoId) {
@@ -634,6 +742,8 @@ function salvarProduto() {
       p.instituicao = document.getElementById('mp_instituicao').value.trim();
       p.custo = custoVal;
       p.periodicidade = periodicidade;
+      p.recTipo = recTipo; p.recQty = recQty; p.recInicio = recInicio;
+      p.recFimTipo = recFimTipo; p.recFimQty = recFimQty; p.recFimData = recFimData;
       p.vigencia = document.getElementById('mp_vigencia').value;
       p.obs = document.getElementById('mp_obs').value.trim();
       p.direitos = _tempDireitos;
@@ -645,6 +755,8 @@ function salvarProduto() {
       tipo: document.getElementById('mp_tipo').value.trim(),
       instituicao: document.getElementById('mp_instituicao').value.trim(),
       custo: custoVal, periodicidade: periodicidade,
+      recTipo: recTipo, recQty: recQty, recInicio: recInicio,
+      recFimTipo: recFimTipo, recFimQty: recFimQty, recFimData: recFimData,
       vigencia: document.getElementById('mp_vigencia').value,
       obs: document.getElementById('mp_obs').value.trim(),
       direitos: _tempDireitos
@@ -658,10 +770,18 @@ function salvarProduto() {
 
   if (isNewFluxoAssoc) {
     // Mostrar modal de harmonização antes de criar o link
-    _showHarmonizarModal(nome, custoVal, periodicidade, function(harmNome, harmValor, harmPeriodicidade) {
+    _showHarmonizarModal(nome, custoVal, { recTipo: recTipo, recQty: recQty, recInicio: recInicio, recFimTipo: recFimTipo, recFimQty: recFimQty, recFimData: recFimData }, function(harmNome, harmValor, harmPeriodicidade) {
       // Atualizar o produto com os dados harmonizados
       var prod = visao.produtos.find(function(x) { return x.id === produtoId; });
-      if (prod) { prod.nome = harmNome; prod.custo = harmValor; prod.periodicidade = harmPeriodicidade; }
+      if (prod) {
+        prod.nome = harmNome; prod.custo = harmValor;
+        if (typeof harmPeriodicidade === 'object') {
+          prod.recTipo = harmPeriodicidade.recTipo; prod.recQty = harmPeriodicidade.recQty;
+          prod.recInicio = harmPeriodicidade.recInicio; prod.recFimTipo = harmPeriodicidade.recFimTipo;
+          prod.recFimQty = harmPeriodicidade.recFimQty; prod.recFimData = harmPeriodicidade.recFimData;
+          prod.periodicidade = prod.recTipo === 'nao' ? 'unica' : prod.recTipo === 'meses' && prod.recQty === 1 ? 'mensal' : prod.recTipo === 'meses' && prod.recQty === 12 ? 'anual' : prod.recTipo;
+        } else { prod.periodicidade = harmPeriodicidade; }
+      }
       _handleFluxoAssociation(visao.id, produtoId, harmNome, harmValor, harmPeriodicidade);
       _handleCompAssociation(visao.id, produtoId, harmNome, harmValor, harmPeriodicidade);
       closeProdutoModal();
@@ -835,7 +955,14 @@ function removeAssocComp() { _tempAssocComp = null; renderAssocComp(); }
 function _showHarmonizarModal(nomeAtual, valorAtual, periodicidadeAtual, callback) {
   document.getElementById('harm_nome').value = nomeAtual || '';
   document.getElementById('harm_valor').value = valorAtual || '';
-  document.getElementById('harm_periodicidade').value = periodicidadeAtual || 'mensal';
+  var harmRecData = typeof periodicidadeAtual === 'object' ? periodicidadeAtual : { recTipo: 'meses', recQty: 1 };
+  document.getElementById('harm_recTipo').value = harmRecData.recTipo || 'meses';
+  document.getElementById('harm_recQty').value = harmRecData.recQty || '1';
+  document.getElementById('harm_recInicio').value = harmRecData.recInicio || '';
+  document.getElementById('harm_recFimTipo').value = harmRecData.recFimTipo || 'nunca';
+  document.getElementById('harm_recFimQty').value = harmRecData.recFimQty || '12';
+  document.getElementById('harm_recFimData').value = harmRecData.recFimData || '';
+  updateHarmRecFields(); updateHarmRecFimFields();
   _harmonizarCallback = callback;
   document.getElementById('modal-harmonizar').classList.add('open');
 }
@@ -848,7 +975,13 @@ function cancelHarmonizar() {
 function confirmarHarmonizar() {
   var harmNome = document.getElementById('harm_nome').value.trim();
   var harmValor = document.getElementById('harm_valor').value.trim();
-  var harmPeriodicidade = document.getElementById('harm_periodicidade').value;
+  var harmRecTipo = document.getElementById('harm_recTipo').value;
+  var harmRecQty = parseInt(document.getElementById('harm_recQty').value) || 1;
+  var harmRecInicio = document.getElementById('harm_recInicio').value;
+  var harmRecFimTipo = document.getElementById('harm_recFimTipo').value;
+  var harmRecFimQty = parseInt(document.getElementById('harm_recFimQty').value) || 12;
+  var harmRecFimData = document.getElementById('harm_recFimData').value;
+  var harmPeriodicidade = { recTipo: harmRecTipo, recQty: harmRecQty, recInicio: harmRecInicio, recFimTipo: harmRecFimTipo, recFimQty: harmRecFimQty, recFimData: harmRecFimData };
   if (!harmNome) { alert('Informe o nome unificado.'); return; }
   if (!harmValor) { alert('Informe o valor.'); return; }
   document.getElementById('modal-harmonizar').classList.remove('open');
@@ -978,7 +1111,9 @@ async function loadData() {
         else if (d.produtos && d.produtos.length > 0) {
           visoes = [{ id: genId(), nome: 'Vis\u00e3o Importada', descricao: 'Migrada do formato anterior', locked: false, primary: true,
             produtos: d.produtos.map(function(p) {
-              return { id: p.id || genId(), nome: p.nome || '', tipo: p.tipo || '', instituicao: p.instituicao || '', custo: p.custo || '', periodicidade: 'mensal', vigencia: p.vigencia || '', obs: p.obs || '',
+              return { id: p.id || genId(), nome: p.nome || '', tipo: p.tipo || '', instituicao: p.instituicao || '', custo: p.custo || '', periodicidade: p.periodicidade || 'mensal',
+                recTipo: p.recTipo || 'meses', recQty: p.recQty || 1, recInicio: p.recInicio || '', recFimTipo: p.recFimTipo || 'nunca', recFimQty: p.recFimQty || 12, recFimData: p.recFimData || '',
+                vigencia: p.vigencia || '', obs: p.obs || '',
                 direitos: (p.direitos || []).map(function(dr) { return { id: dr.id || genId(), nome: dr.nome || '', valor: dr.valor || '', categoria: dr.categoria || '', detalhes: dr.detalhes || '' }; })
               };
             })
@@ -1000,7 +1135,9 @@ async function loadData() {
       else if (d.produtos && d.produtos.length > 0) {
         visoes = [{ id: genId(), nome: 'Vis\u00e3o Importada', descricao: 'Migrada do formato anterior', locked: false, primary: true,
           produtos: d.produtos.map(function(p) {
-            return { id: p.id || genId(), nome: p.nome || '', tipo: p.tipo || '', instituicao: p.instituicao || '', custo: p.custo || '', periodicidade: 'mensal', vigencia: p.vigencia || '', obs: p.obs || '',
+            return { id: p.id || genId(), nome: p.nome || '', tipo: p.tipo || '', instituicao: p.instituicao || '', custo: p.custo || '', periodicidade: p.periodicidade || 'mensal',
+              recTipo: p.recTipo || 'meses', recQty: p.recQty || 1, recInicio: p.recInicio || '', recFimTipo: p.recFimTipo || 'nunca', recFimQty: p.recFimQty || 12, recFimData: p.recFimData || '',
+              vigencia: p.vigencia || '', obs: p.obs || '',
               direitos: (p.direitos || []).map(function(dr) { return { id: dr.id || genId(), nome: dr.nome || '', valor: dr.valor || '', categoria: dr.categoria || '', detalhes: dr.detalhes || '' }; })
             };
           })
@@ -1111,8 +1248,10 @@ document.addEventListener('importarDiagnostico', function(e) {
       tipo: item.tipo || item.tipo_produto_nome || item.categoria || '',
       instituicao: item.instituicao || item.instituicao_nome || item.seguradora || '',
       custo: custoVal, periodicidade: item.periodicidade || 'mensal',
+      recTipo: item.recTipo || 'meses', recQty: item.recQty || 1, recInicio: item.recInicio || '',
+      recFimTipo: item.recFimTipo || 'nunca', recFimQty: item.recFimQty || 12, recFimData: item.recFimData || '',
       vigencia: item.vigencia || item.vencimento || '',
-      obs: item.obs || 'Importado do diagn\u00f3stico',
+      obs: item.obs || 'Importado do diagnóstico',
       direitos: []
     };
   });
