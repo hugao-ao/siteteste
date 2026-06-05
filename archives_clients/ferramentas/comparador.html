@@ -1924,6 +1924,8 @@ function importarDeDireitos() {
     // Marcar produto com dados pendentes de link (será criado ao salvar a comparação)
     tmpProducts[tmpProducts.length - 1]._pendingLink = {
       label: prod.nome || '', valor: price, periodicidade: prod.periodicidade || 'mensal',
+      recTipo: prod.recTipo || 'meses', recQty: prod.recQty || 1, recInicio: prod.recInicio || '',
+      recFimTipo: prod.recFimTipo || 'nunca', recFimQty: prod.recFimQty || 12, recFimData: prod.recFimData || '',
       direitos_visao_id: visaoRef.id, direitos_produto_id: prod.id,
       direitos_params: direitos.map(function(d) { return { direito_id: d.id, nome: d.nome, valor: d.valor, categoria: d.categoria }; })
     };
