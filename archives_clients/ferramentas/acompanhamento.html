@@ -1295,6 +1295,8 @@ var FERRAMENTA = 'acompanhamento';
 var _sbClient = null;
 var _initDone = false;
 var _saveTimer = null;
+var _acompLocked = false;
+var _acompPrimary = false;
 
 function getClienteId() { return sessionStorage.getItem('cliente_id') || null; }
 
@@ -1378,7 +1380,48 @@ function applyData(d) {
   if (Array.isArray(d.microPassos) && d.microPassos.length > 0) { microPassos = d.microPassos; hasData = true; }
   if (Array.isArray(d.macroPassos) && d.macroPassos.length > 0) { macroPassos = d.macroPassos; hasData = true; }
   if (typeof d.nextId === 'number') nextId = d.nextId;
+  if (typeof d.locked === 'boolean') _acompLocked = d.locked;
+  if (typeof d.primary === 'boolean') _acompPrimary = d.primary;
   return hasData;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  LOCK & PRIMARY
+// ═══════════════════════════════════════════════════════════════════════════
+function toggleAcompLock() {
+  var cb = document.querySelector('#lbl-acomp-lock input');
+  _acompLocked = cb ? cb.checked : false;
+  updateAcompLockUI();
+  saveData();
+}
+
+function toggleAcompPrimary() {
+  var cb = document.querySelector('#lbl-acomp-primary input');
+  _acompPrimary = cb ? cb.checked : false;
+  updateAcompLockUI();
+  saveData();
+}
+
+function updateAcompLockUI() {
+  var lockLabel = document.getElementById('lbl-acomp-lock');
+  var primaryLabel = document.getElementById('lbl-acomp-primary');
+  var lockCb = lockLabel ? lockLabel.querySelector('input') : null;
+  var primaryCb = primaryLabel ? primaryLabel.querySelector('input') : null;
+
+  if (lockCb) lockCb.checked = _acompLocked;
+  if (primaryCb) primaryCb.checked = _acompPrimary;
+
+  if (lockLabel) lockLabel.classList.toggle('active-lock', _acompLocked);
+  if (primaryLabel) primaryLabel.classList.toggle('active-primary', _acompPrimary);
+
+  // Apply client-locked mode: if locked AND user is client (not equipe), disable editing
+  var page = document.querySelector('.page') || document.body;
+  var isClient = !document.documentElement.classList.contains('equipe-mode');
+  if (_acompLocked && isClient) {
+    page.classList.add('locked');
+  } else {
+    page.classList.remove('locked');
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
