@@ -244,6 +244,31 @@
   .sim-panel-link { display: inline-flex; align-items: center; gap: 0.3rem; font-size: 0.7rem; color: var(--primary); text-decoration: none; margin-top: 0.4rem; font-weight: 600; }
   .sim-panel-link:hover { text-decoration: underline; }
 
+  /* === CRONOGRAMA / TIMELINE === */
+  .crono-section { margin-bottom: 1.5rem; }
+  .crono-section h3 { font-size: 0.85rem; color: var(--primary); margin-bottom: 0.75rem; border-bottom: 1px solid var(--border); padding-bottom: 0.3rem; }
+  .crono-gantt { position: relative; }
+  .crono-bar-row { display: flex; align-items: center; margin-bottom: 0.5rem; gap: 0.5rem; }
+  .crono-bar-label { min-width: 160px; max-width: 200px; font-size: 0.72rem; color: var(--fg); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .crono-bar-track { flex: 1; height: 22px; background: rgba(255,255,255,0.04); border-radius: 4px; position: relative; overflow: visible; }
+  .crono-bar { position: absolute; height: 100%; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 0.6rem; font-weight: 600; color: #fff; min-width: 2px; transition: width 0.3s, left 0.3s; }
+  .crono-bar.micro { background: var(--blue); }
+  .crono-bar.macro { background: var(--primary); }
+  .crono-bar.done { opacity: 0.5; }
+  .crono-bar.blocked { background: var(--red); opacity: 0.6; }
+  .crono-bar-dates { position: absolute; top: -14px; font-size: 0.55rem; color: var(--muted); white-space: nowrap; }
+  .crono-bar-dates.left { left: 0; }
+  .crono-bar-dates.right { right: 0; }
+  .crono-legend { display: flex; gap: 1rem; margin-top: 0.75rem; font-size: 0.65rem; color: var(--muted); }
+  .crono-legend-item { display: flex; align-items: center; gap: 0.3rem; }
+  .crono-legend-dot { width: 10px; height: 10px; border-radius: 2px; }
+  .crono-dep-line { font-size: 0.6rem; color: var(--muted); margin-left: 165px; margin-top: -0.35rem; margin-bottom: 0.3rem; font-style: italic; }
+  .crono-obj-card { background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-radius: 6px; padding: 0.75rem; margin-bottom: 0.75rem; }
+  .crono-obj-card h4 { font-size: 0.8rem; color: var(--fg); margin: 0 0 0.4rem 0; }
+  .crono-obj-progress { height: 6px; background: rgba(255,255,255,0.08); border-radius: 3px; overflow: hidden; margin-top: 0.3rem; }
+  .crono-obj-progress-fill { height: 100%; background: var(--primary); border-radius: 3px; transition: width 0.3s; }
+  .crono-obj-meta { font-size: 0.68rem; color: var(--muted); margin-top: 0.3rem; }
+
   /* === LOCK & PRIMARY CHECKBOXES === */
   .sim-checkbox-group { display:none; gap:0.5rem; align-items:center; }
   .equipe-mode .sim-checkbox-group { display:inline-flex !important; }
@@ -318,6 +343,7 @@
     <button class="tab-btn" onclick="switchTab('objetivos')">Objetivos</button>
     <button class="tab-btn" onclick="switchTab('micro')">Micro Passos</button>
     <button class="tab-btn" onclick="switchTab('macro')">Estratégia Macro</button>
+    <button class="tab-btn" onclick="switchTab('cronograma')">Cronograma</button>
   </div>
 
   <!-- TAB: REUNIÕES -->
@@ -364,6 +390,27 @@
     <div id="macro-wrap"></div>
   </div>
 
+  <!-- TAB: CRONOGRAMA -->
+  <div id="tab-cronograma" class="tab-content" style="display:none;">
+    <div class="toolbar">
+      <span class="label">Cronograma / Linha do Tempo</span>
+      <span class="spacer"></span>
+      <div class="field" style="display:inline-flex;align-items:center;gap:0.5rem;margin:0;">
+        <label style="font-size:0.75rem;white-space:nowrap;margin:0;">Data de Início Geral:</label>
+        <input type="date" id="crono_data_inicio" onchange="renderCronograma()" style="padding:0.3rem 0.5rem;font-size:0.8rem;">
+      </div>
+    </div>
+    <div id="crono-wrap"></div>
+    <div class="chart-card" id="crono-evolucao-section" style="margin-top:1.5rem;">
+      <h3>Evolução dos Indicadores (Reuniões)</h3>
+      <div class="chart-wrap"><canvas id="chart-crono-indicadores"></canvas></div>
+    </div>
+    <div class="chart-card" id="crono-objetivos-section" style="margin-top:1rem;">
+      <h3>Evolução dos Objetivos</h3>
+      <div id="crono-objetivos-wrap"></div>
+    </div>
+  </div>
+
 </div><!-- .page -->
 
 <!-- MODAL REUNIÃO -->
@@ -407,7 +454,7 @@
       <div class="modal-section-title">Indicadores na Data</div>
       <div class="sub-grid-3" style="margin-bottom:0.75rem;">
         <div class="field">
-          <label>Patrimônio Líquido</label>
+          <label>Patrimônio Total</label>
           <input type="text" id="rn_patrimonio" placeholder="Ex: 150.000,00" oninput="maskBRL(this)">
         </div>
         <div class="field">
@@ -535,21 +582,31 @@
 
 <!-- MODAL MICRO PASSO -->
 <div class="modal-overlay" id="modal-micro" onclick="if(event.target===this)closeModal('micro')">
-  <div class="modal" style="max-width:550px;">
+  <div class="modal" style="max-width:600px;">
     <div class="modal-header">
       <h2 id="modal-micro-title">Novo Micro Passo</h2>
       <button class="btn-icon" onclick="closeModal('micro')" style="font-size:1.2rem;color:var(--muted);">✕</button>
     </div>
     <div class="modal-section">
       <div class="field" style="margin-bottom:0.75rem;">
-        <label>Descrição da Ação *</label>
+        <label>Título da Ação *</label>
         <input type="text" id="mc_desc" placeholder="Ex: Abrir conta na corretora XP">
+      </div>
+      <div class="field" style="margin-bottom:0.75rem;">
+        <label>Descrição / Detalhamento</label>
+        <textarea id="mc_detalhamento" placeholder="Descreva em mais detalhes o que precisa ser feito..." rows="3"></textarea>
       </div>
       <div class="sub-grid" style="margin-bottom:0.75rem;">
         <div class="field">
-          <label>Prazo</label>
+          <label>Data de Início</label>
+          <input type="date" id="mc_inicio">
+        </div>
+        <div class="field">
+          <label>Prazo de Conclusão</label>
           <input type="date" id="mc_prazo">
         </div>
+      </div>
+      <div class="sub-grid" style="margin-bottom:0.75rem;">
         <div class="field">
           <label>Status</label>
           <select id="mc_status">
@@ -558,20 +615,22 @@
             <option value="concluido">Concluído</option>
           </select>
         </div>
-      </div>
-      <div class="sub-grid">
-        <div class="field">
-          <label>Vinculado ao Objetivo</label>
-          <select id="mc_objetivo">
-            <option value="">Nenhum (geral)</option>
-          </select>
-        </div>
         <div class="field">
           <label>Definido na Reunião</label>
           <select id="mc_reuniao">
             <option value="">Nenhuma</option>
           </select>
         </div>
+      </div>
+      <div class="field" style="margin-bottom:0.75rem;">
+        <label>Vinculado a Objetivo(s)</label>
+        <div id="mc_objetivos_checks" style="display:flex;flex-wrap:wrap;gap:0.4rem;margin-top:0.3rem;"></div>
+        <span style="font-size:0.68rem;color:var(--muted);margin-top:0.2rem;">Selecione um ou mais objetivos (opcional)</span>
+      </div>
+      <div class="field">
+        <label>Dependências (só pode iniciar após conclusão de)</label>
+        <div id="mc_deps_checks" style="display:flex;flex-wrap:wrap;gap:0.4rem;margin-top:0.3rem;"></div>
+        <span style="font-size:0.68rem;color:var(--muted);margin-top:0.2rem;">Selecione micro passos que devem ser concluídos antes (opcional = paralelo)</span>
       </div>
     </div>
     <div style="display:flex;gap:0.75rem;justify-content:flex-end;">
@@ -583,7 +642,7 @@
 
 <!-- MODAL MACRO PASSO -->
 <div class="modal-overlay" id="modal-macro" onclick="if(event.target===this)closeModal('macro')">
-  <div class="modal" style="max-width:550px;">
+  <div class="modal" style="max-width:650px;">
     <div class="modal-header">
       <h2 id="modal-macro-title">Nova Fase Estratégica</h2>
       <button class="btn-icon" onclick="closeModal('macro')" style="font-size:1.2rem;color:var(--muted);">✕</button>
@@ -605,7 +664,17 @@
       </div>
       <div class="sub-grid" style="margin-bottom:0.75rem;">
         <div class="field">
-          <label>Período Estimado</label>
+          <label>Data de Início</label>
+          <input type="date" id="mk_inicio">
+        </div>
+        <div class="field">
+          <label>Prazo de Conclusão</label>
+          <input type="date" id="mk_prazo">
+        </div>
+      </div>
+      <div class="sub-grid" style="margin-bottom:0.75rem;">
+        <div class="field">
+          <label>Período Estimado (texto)</label>
           <input type="text" id="mk_periodo" placeholder="Ex: 6 meses, Jan-Jun 2026">
         </div>
         <div class="field">
@@ -618,9 +687,20 @@
           </select>
         </div>
       </div>
+      <div class="field" style="margin-bottom:0.75rem;">
+        <label>Vinculado a Objetivo(s)</label>
+        <div id="mk_objetivos_checks" style="display:flex;flex-wrap:wrap;gap:0.4rem;margin-top:0.3rem;"></div>
+        <span style="font-size:0.68rem;color:var(--muted);margin-top:0.2rem;">Selecione um ou mais objetivos (opcional)</span>
+      </div>
+      <div class="field" style="margin-bottom:0.75rem;">
+        <label>Micro Passos desta Fase</label>
+        <div id="mk_micros_checks" style="display:flex;flex-wrap:wrap;gap:0.4rem;margin-top:0.3rem;"></div>
+        <span style="font-size:0.68rem;color:var(--muted);margin-top:0.2rem;">Selecione micro passos que pertencem a esta fase (o progresso será calculado com base neles)</span>
+      </div>
       <div class="field">
-        <label>Dependências / Pré-requisitos</label>
-        <input type="text" id="mk_deps" placeholder="Ex: Conclusão da Fase 1">
+        <label>Dependências (só pode iniciar após conclusão de)</label>
+        <div id="mk_deps_checks" style="display:flex;flex-wrap:wrap;gap:0.4rem;margin-top:0.3rem;"></div>
+        <span style="font-size:0.68rem;color:var(--muted);margin-top:0.2rem;">Selecione fases que devem ser concluídas antes (opcional = paralelo)</span>
       </div>
     </div>
     <div style="display:flex;gap:0.75rem;justify-content:flex-end;">
@@ -702,7 +782,7 @@ var QUESTOES_PERTINENTES = [
   {id:'q_objetivos_2', secao:'objetivos', texto:'Já tinha definido as metas de acúmulo para a aposentadoria?'},
   {id:'q_objetivos_5', secao:'objetivos', texto:'Conseguirá atingir os objetivos no prazo desejado?'}
 ];
-var SECAO_NOMES_QP = {'patrimonio-liquido':'Patrimônio Líquido','dividas':'Dívidas','sucessao':'Sucessão','produtos-protecao':'Produtos & Proteção','ir':'Imposto de Renda','contas-cartoes':'Contas & Cartões','fluxo-caixa':'Fluxo de Caixa','objetivos':'Objetivos'};
+var SECAO_NOMES_QP = {'patrimonio-liquido':'Patrimônio Total','dividas':'Dívidas','sucessao':'Sucessão','produtos-protecao':'Produtos & Proteção','ir':'Imposto de Renda','contas-cartoes':'Contas & Cartões','fluxo-caixa':'Fluxo de Caixa','objetivos':'Objetivos'};
 
 // Labels
 var TIPO_REUNIAO = {primeira:'Primeira Consulta',acompanhamento:'Acompanhamento',revisao:'Revisão de Estratégia',emergencial:'Emergencial',fechamento:'Fechamento de Ciclo'};
@@ -753,13 +833,14 @@ function setHumor(val) {
 // ═══════════════════════════════════════════════════════════════════════════
 function switchTab(tab) {
   currentTab = tab;
-  ['reunioes','objetivos','micro','macro'].forEach(function(t) {
+  ['reunioes','objetivos','micro','macro','cronograma'].forEach(function(t) {
     document.getElementById('tab-' + t).style.display = t === tab ? '' : 'none';
   });
   document.querySelectorAll('#main-tabs .tab-btn').forEach(function(btn, i) {
-    var tabs = ['reunioes','objetivos','micro','macro'];
+    var tabs = ['reunioes','objetivos','micro','macro','cronograma'];
     btn.classList.toggle('active', tabs[i] === tab);
   });
+  if (tab === 'cronograma') renderCronograma();
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -769,7 +850,8 @@ var _editMode = null;
 function openModal(tipo, index) {
   _editMode = (index !== undefined) ? {tipo: tipo, index: index} : null;
   var titleEl = document.getElementById('modal-' + tipo + '-title');
-  if (tipo === 'micro') updateMicroSelects();
+  if (tipo === 'micro') { updateMicroSelects(); populateMicroCheckboxes(); }
+  if (tipo === 'macro') { populateMacroCheckboxes(); }
   if (_editMode) {
     titleEl.textContent = 'Editar';
     fillModalFromData(tipo, index);
@@ -835,18 +917,45 @@ function fillModalFromData(tipo, index) {
   } else if (tipo === 'micro') {
     item = microPassos[index];
     document.getElementById('mc_desc').value = item.desc || '';
+    document.getElementById('mc_detalhamento').value = item.detalhamento || '';
+    document.getElementById('mc_inicio').value = item.inicio || '';
     document.getElementById('mc_prazo').value = item.prazo || '';
     document.getElementById('mc_status').value = item.status || 'pendente';
-    document.getElementById('mc_objetivo').value = item.objetivo_id || '';
     document.getElementById('mc_reuniao').value = item.reuniao_id || '';
+    // Check objetivos
+    var objIds = item.objetivos_ids || (item.objetivo_id ? [item.objetivo_id] : []);
+    document.querySelectorAll('#mc_objetivos_checks input').forEach(function(cb) {
+      cb.checked = objIds.indexOf(cb.value) >= 0;
+    });
+    // Check dependencias
+    var depIds = item.dependencias_ids || [];
+    document.querySelectorAll('#mc_deps_checks input').forEach(function(cb) {
+      cb.checked = depIds.indexOf(cb.value) >= 0;
+    });
   } else {
     item = macroPassos[index];
     document.getElementById('mk_fase').value = item.fase || '';
     document.getElementById('mk_ordem').value = item.ordem || 1;
     document.getElementById('mk_desc').value = item.desc || '';
+    document.getElementById('mk_inicio').value = item.inicio || '';
+    document.getElementById('mk_prazo').value = item.prazo || '';
     document.getElementById('mk_periodo').value = item.periodo || '';
     document.getElementById('mk_status').value = item.status || 'pendente';
-    document.getElementById('mk_deps').value = item.deps || '';
+    // Check objetivos
+    var mkObjIds = item.objetivos_ids || [];
+    document.querySelectorAll('#mk_objetivos_checks input').forEach(function(cb) {
+      cb.checked = mkObjIds.indexOf(cb.value) >= 0;
+    });
+    // Check micro passos
+    var mkMicroIds = item.micro_ids || [];
+    document.querySelectorAll('#mk_micros_checks input').forEach(function(cb) {
+      cb.checked = mkMicroIds.indexOf(cb.value) >= 0;
+    });
+    // Check dependencias
+    var mkDepIds = item.dependencias_ids || [];
+    document.querySelectorAll('#mk_deps_checks input').forEach(function(cb) {
+      cb.checked = mkDepIds.indexOf(cb.value) >= 0;
+    });
   }
 }
 
@@ -860,6 +969,51 @@ function updateMicroSelects() {
   selReu.innerHTML = '<option value="">Nenhuma</option>';
   reunioes.forEach(function(r) {
     selReu.innerHTML += '<option value="' + r.id + '">' + fmtData(r.data) + ' - ' + (TIPO_REUNIAO[r.tipo]||r.tipo) + '</option>';
+  });
+}
+
+function populateMicroCheckboxes() {
+  var currentId = (_editMode && _editMode.tipo === 'micro') ? microPassos[_editMode.index].id : null;
+  // Objetivos checkboxes
+  var objWrap = document.getElementById('mc_objetivos_checks');
+  objWrap.innerHTML = '';
+  if (objetivos.length === 0) { objWrap.innerHTML = '<span style="color:var(--muted);font-size:0.75rem;">Nenhum objetivo cadastrado</span>'; }
+  objetivos.forEach(function(o) {
+    objWrap.innerHTML += '<label style="display:flex;align-items:center;gap:0.3rem;font-size:0.8rem;cursor:pointer;"><input type="checkbox" value="' + o.id + '"> ' + escHtml(o.nome) + '</label>';
+  });
+  // Dependencias checkboxes (outros micro passos)
+  var depWrap = document.getElementById('mc_deps_checks');
+  depWrap.innerHTML = '';
+  var others = microPassos.filter(function(m) { return m.id !== currentId; });
+  if (others.length === 0) { depWrap.innerHTML = '<span style="color:var(--muted);font-size:0.75rem;">Nenhum outro micro passo cadastrado</span>'; }
+  others.forEach(function(m) {
+    depWrap.innerHTML += '<label style="display:flex;align-items:center;gap:0.3rem;font-size:0.8rem;cursor:pointer;"><input type="checkbox" value="' + m.id + '"> ' + escHtml(m.desc) + '</label>';
+  });
+}
+
+function populateMacroCheckboxes() {
+  var currentId = (_editMode && _editMode.tipo === 'macro') ? macroPassos[_editMode.index].id : null;
+  // Objetivos checkboxes
+  var objWrap = document.getElementById('mk_objetivos_checks');
+  objWrap.innerHTML = '';
+  if (objetivos.length === 0) { objWrap.innerHTML = '<span style="color:var(--muted);font-size:0.75rem;">Nenhum objetivo cadastrado</span>'; }
+  objetivos.forEach(function(o) {
+    objWrap.innerHTML += '<label style="display:flex;align-items:center;gap:0.3rem;font-size:0.8rem;cursor:pointer;"><input type="checkbox" value="' + o.id + '"> ' + escHtml(o.nome) + '</label>';
+  });
+  // Micro passos checkboxes
+  var microWrap = document.getElementById('mk_micros_checks');
+  microWrap.innerHTML = '';
+  if (microPassos.length === 0) { microWrap.innerHTML = '<span style="color:var(--muted);font-size:0.75rem;">Nenhum micro passo cadastrado</span>'; }
+  microPassos.forEach(function(m) {
+    microWrap.innerHTML += '<label style="display:flex;align-items:center;gap:0.3rem;font-size:0.8rem;cursor:pointer;"><input type="checkbox" value="' + m.id + '"> ' + escHtml(m.desc) + '</label>';
+  });
+  // Dependencias checkboxes (outras macros)
+  var depWrap = document.getElementById('mk_deps_checks');
+  depWrap.innerHTML = '';
+  var others = macroPassos.filter(function(m) { return m.id !== currentId; });
+  if (others.length === 0) { depWrap.innerHTML = '<span style="color:var(--muted);font-size:0.75rem;">Nenhuma outra fase cadastrada</span>'; }
+  others.forEach(function(m) {
+    depWrap.innerHTML += '<label style="display:flex;align-items:center;gap:0.3rem;font-size:0.8rem;cursor:pointer;"><input type="checkbox" value="' + m.id + '"> ' + escHtml(m.fase) + '</label>';
   });
 }
 
@@ -914,14 +1068,22 @@ function salvarObjetivo() {
 
 function salvarMicro() {
   var desc = document.getElementById('mc_desc').value.trim();
-  if (!desc) { alert('Informe a descrição da ação.'); return; }
+  if (!desc) { alert('Informe o título da ação.'); return; }
+  var objetivosIds = [];
+  document.querySelectorAll('#mc_objetivos_checks input:checked').forEach(function(cb) { objetivosIds.push(cb.value); });
+  var depsIds = [];
+  document.querySelectorAll('#mc_deps_checks input:checked').forEach(function(cb) { depsIds.push(cb.value); });
   var item = {
     id: (_editMode && _editMode.tipo === 'micro') ? microPassos[_editMode.index].id : nextId++,
     desc: desc,
+    detalhamento: document.getElementById('mc_detalhamento').value.trim(),
+    inicio: document.getElementById('mc_inicio').value || null,
     prazo: document.getElementById('mc_prazo').value,
     status: document.getElementById('mc_status').value,
-    objetivo_id: document.getElementById('mc_objetivo').value || null,
-    reuniao_id: document.getElementById('mc_reuniao').value || null
+    objetivo_id: objetivosIds.length === 1 ? objetivosIds[0] : null,
+    objetivos_ids: objetivosIds,
+    reuniao_id: document.getElementById('mc_reuniao').value || null,
+    dependencias_ids: depsIds
   };
   if (_editMode && _editMode.tipo === 'micro') microPassos[_editMode.index] = item;
   else microPassos.push(item);
@@ -934,14 +1096,24 @@ function salvarMacro() {
   var fase = document.getElementById('mk_fase').value.trim();
   var desc = document.getElementById('mk_desc').value.trim();
   if (!fase || !desc) { alert('Informe o nome e descrição da fase.'); return; }
+  var objetivosIds = [];
+  document.querySelectorAll('#mk_objetivos_checks input:checked').forEach(function(cb) { objetivosIds.push(cb.value); });
+  var microIds = [];
+  document.querySelectorAll('#mk_micros_checks input:checked').forEach(function(cb) { microIds.push(cb.value); });
+  var depsIds = [];
+  document.querySelectorAll('#mk_deps_checks input:checked').forEach(function(cb) { depsIds.push(cb.value); });
   var item = {
     id: (_editMode && _editMode.tipo === 'macro') ? macroPassos[_editMode.index].id : nextId++,
     fase: fase,
     ordem: parseInt(document.getElementById('mk_ordem').value) || 1,
     desc: desc,
+    inicio: document.getElementById('mk_inicio').value || null,
+    prazo: document.getElementById('mk_prazo').value || null,
     periodo: document.getElementById('mk_periodo').value.trim(),
     status: document.getElementById('mk_status').value,
-    deps: document.getElementById('mk_deps').value.trim()
+    objetivos_ids: objetivosIds,
+    micro_ids: microIds,
+    dependencias_ids: depsIds
   };
   if (_editMode && _editMode.tipo === 'macro') macroPassos[_editMode.index] = item;
   else macroPassos.push(item);
@@ -1016,7 +1188,7 @@ function renderReunioesTimeline() {
     html += '</div>';
     // Indicadores
     var inds = [];
-    if (r.patrimonio) inds.push('Patrimônio: <strong>' + fmtBRL(r.patrimonio) + '</strong>');
+    if (r.patrimonio) inds.push('Patrimônio Total: <strong>' + fmtBRL(r.patrimonio) + '</strong>');
     if (r.renda) inds.push('Renda: <strong>' + fmtBRL(r.renda) + '</strong>');
     if (r.investimentos) inds.push('Investimentos: <strong>' + fmtBRL(r.investimentos) + '</strong>');
     if (r.dividas) inds.push('Dívidas: <strong>' + fmtBRL(r.dividas) + '</strong>');
@@ -1122,19 +1294,36 @@ function renderMicroPassos() {
     var i = g.idx;
     var checkClass = m.status === 'concluido' ? 'done' : m.status === 'em_andamento' ? 'progress' : '';
     var descClass = m.status === 'concluido' ? 'done-text' : '';
-    var objNome = '';
-    if (m.objetivo_id) {
+    // Resolve objetivos (multiple)
+    var objNomes = [];
+    if (Array.isArray(m.objetivos_ids) && m.objetivos_ids.length > 0) {
+      m.objetivos_ids.forEach(function(oid) {
+        var obj = objetivos.find(function(o){ return String(o.id) === String(oid); });
+        if (obj) objNomes.push(obj.nome);
+      });
+    } else if (m.objetivo_id) {
       var obj = objetivos.find(function(o){ return String(o.id) === String(m.objetivo_id); });
-      if (obj) objNome = obj.nome;
+      if (obj) objNomes.push(obj.nome);
+    }
+    // Resolve dependencias
+    var depNomes = [];
+    if (Array.isArray(m.dependencias_ids) && m.dependencias_ids.length > 0) {
+      m.dependencias_ids.forEach(function(did) {
+        var dep = microPassos.find(function(x){ return String(x.id) === String(did); });
+        if (dep) depNomes.push(dep.desc);
+      });
     }
     html += '<div class="micro-item">';
     html += '<div class="micro-check ' + checkClass + '" onclick="toggleMicroStatus(' + i + ')" title="Clique para mudar status"></div>';
     html += '<div class="micro-body">';
     html += '<div class="micro-desc ' + descClass + '">' + escHtml(m.desc) + '</div>';
+    if (m.detalhamento) html += '<div style="font-size:0.7rem;color:var(--muted);margin-top:0.15rem;">' + escHtml(m.detalhamento).replace(/\n/g,'<br>') + '</div>';
     html += '<div class="micro-meta">';
     html += '<span class="badge ' + (STATUS_BADGE[m.status]||'') + '">' + (STATUS_MICRO[m.status]||m.status) + '</span>';
+    if (m.inicio) html += '<span>Início: ' + fmtData(m.inicio) + '</span>';
     if (m.prazo) html += '<span>Prazo: ' + fmtData(m.prazo) + '</span>';
-    if (objNome) html += '<span>Objetivo: ' + escHtml(objNome) + '</span>';
+    if (objNomes.length > 0) html += '<span>Objetivo(s): ' + escHtml(objNomes.join(', ')) + '</span>';
+    if (depNomes.length > 0) html += '<span>Depende de: ' + escHtml(depNomes.join(', ')) + '</span>';
     html += '</div></div>';
     html += '<div class="micro-actions">';
     html += '<button class="btn-icon" onclick="openModal(\'micro\',' + i + ')" style="color:var(--blue);font-size:0.8rem;">✏️</button>';
@@ -1154,6 +1343,42 @@ function renderMacroPassos() {
   }
   var html = '<div class="roadmap">';
   macroPassos.forEach(function(m, i) {
+    // Calculate progress from associated micro passos
+    var microProgress = 0;
+    if (Array.isArray(m.micro_ids) && m.micro_ids.length > 0) {
+      var total = m.micro_ids.length;
+      var done = 0;
+      m.micro_ids.forEach(function(mid) {
+        var mp = microPassos.find(function(x){ return String(x.id) === String(mid); });
+        if (mp && mp.status === 'concluido') done++;
+        else if (mp && mp.status === 'em_andamento') done += 0.5;
+      });
+      microProgress = Math.round((done / total) * 100);
+    }
+    // Resolve objetivos
+    var objNomes = [];
+    if (Array.isArray(m.objetivos_ids) && m.objetivos_ids.length > 0) {
+      m.objetivos_ids.forEach(function(oid) {
+        var obj = objetivos.find(function(o){ return String(o.id) === String(oid); });
+        if (obj) objNomes.push(obj.nome);
+      });
+    }
+    // Resolve dependencias
+    var depNomes = [];
+    if (Array.isArray(m.dependencias_ids) && m.dependencias_ids.length > 0) {
+      m.dependencias_ids.forEach(function(did) {
+        var dep = macroPassos.find(function(x){ return String(x.id) === String(did); });
+        if (dep) depNomes.push(dep.fase);
+      });
+    }
+    // Resolve micro passos nomes
+    var microNomes = [];
+    if (Array.isArray(m.micro_ids) && m.micro_ids.length > 0) {
+      m.micro_ids.forEach(function(mid) {
+        var mp = microPassos.find(function(x){ return String(x.id) === String(mid); });
+        if (mp) microNomes.push(mp.desc);
+      });
+    }
     html += '<div class="macro-item status-' + m.status + '">';
     html += '<div class="macro-header">';
     html += '<div class="macro-fase">' + escHtml(m.fase) + '</div>';
@@ -1162,10 +1387,19 @@ function renderMacroPassos() {
     html += '<button class="btn-icon" onclick="openDelModal(\'macro\',' + i + ')" style="color:var(--red);font-size:0.8rem;">🗑️</button>';
     html += '</div></div>';
     html += '<div class="macro-desc">' + escHtml(m.desc).replace(/\n/g,'<br>') + '</div>';
+    // Progress bar from micro passos
+    if (Array.isArray(m.micro_ids) && m.micro_ids.length > 0) {
+      html += '<div style="margin:0.4rem 0;"><div style="display:flex;justify-content:space-between;font-size:0.65rem;color:var(--muted);margin-bottom:0.15rem;"><span>Progresso (micro passos)</span><span>' + microProgress + '%</span></div>';
+      html += '<div style="height:6px;background:rgba(255,255,255,0.08);border-radius:3px;overflow:hidden;"><div style="height:100%;width:' + microProgress + '%;background:var(--primary);border-radius:3px;transition:width 0.3s;"></div></div></div>';
+    }
     html += '<div class="macro-meta">';
     html += '<span class="badge ' + (STATUS_BADGE[m.status]||'') + '">' + (STATUS_MACRO[m.status]||m.status) + '</span>';
+    if (m.inicio) html += '<span>Início: ' + fmtData(m.inicio) + '</span>';
+    if (m.prazo) html += '<span>Prazo: ' + fmtData(m.prazo) + '</span>';
     if (m.periodo) html += '<span>Período: ' + escHtml(m.periodo) + '</span>';
-    if (m.deps) html += '<span>Depende de: ' + escHtml(m.deps) + '</span>';
+    if (objNomes.length > 0) html += '<span>Objetivo(s): ' + escHtml(objNomes.join(', ')) + '</span>';
+    if (microNomes.length > 0) html += '<span>Micro Passos: ' + escHtml(microNomes.join(', ')) + '</span>';
+    if (depNomes.length > 0) html += '<span>Depende de: ' + escHtml(depNomes.join(', ')) + '</span>';
     html += '</div></div>';
   });
   html += '</div>';
@@ -1217,7 +1451,7 @@ function renderChart() {
   var hasDividas = sorted.some(function(r){ return r.dividas > 0; });
   var hasRenda = sorted.some(function(r){ return r.renda > 0; });
 
-  if (hasPatrimonio) datasets.push({ label: 'Patrimônio Líquido', data: sorted.map(function(r){ return parseBR(r.patrimonio); }), borderColor: '#22c55e', backgroundColor: 'rgba(34,197,94,0.1)', fill: true, tension: 0.3 });
+  if (hasPatrimonio) datasets.push({ label: 'Patrimônio Total', data: sorted.map(function(r){ return parseBR(r.patrimonio); }), borderColor: '#22c55e', backgroundColor: 'rgba(34,197,94,0.1)', fill: true, tension: 0.3 });
   if (hasInvest) datasets.push({ label: 'Investimentos', data: sorted.map(function(r){ return parseBR(r.investimentos); }), borderColor: '#60a5fa', backgroundColor: 'rgba(96,165,250,0.1)', fill: false, tension: 0.3 });
   if (hasDividas) datasets.push({ label: 'Dívidas', data: sorted.map(function(r){ return parseBR(r.dividas); }), borderColor: '#ef4444', backgroundColor: 'rgba(239,68,68,0.1)', fill: false, tension: 0.3 });
   if (hasRenda) datasets.push({ label: 'Renda Mensal', data: sorted.map(function(r){ return parseBR(r.renda); }), borderColor: '#14b8a6', backgroundColor: 'rgba(20,184,166,0.1)', fill: false, tension: 0.3 });
@@ -1283,6 +1517,7 @@ function renderAll() {
   renderDashboard();
   renderChart();
   renderNextMeeting();
+  if (currentTab === 'cronograma') renderCronograma();
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -1635,6 +1870,261 @@ function parseBRSimVal(v) {
   if (!v) return 0;
   if (typeof v === 'number') return v;
   return parseFloat(String(v).replace(/\./g,'').replace(',','.')) || 0;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  CRONOGRAMA / LINHA DO TEMPO
+// ═══════════════════════════════════════════════════════════════════════════
+function renderCronograma() {
+  var wrap = document.getElementById('crono-wrap');
+  var dataInicioInput = document.getElementById('crono_data_inicio');
+  var dataInicioGeral = dataInicioInput ? dataInicioInput.value : '';
+
+  // Find the earliest reunião date as the reference baseline
+  var baselineDate = null;
+  if (reunioes.length > 0) {
+    var sorted = reunioes.slice().sort(function(a,b){ return a.data.localeCompare(b.data); });
+    baselineDate = sorted[0].data; // earliest reunião
+  }
+
+  // Helper: recalculate a date based on delta from baseline to the new start date
+  function recalcDate(originalDate) {
+    if (!originalDate || !baselineDate || !dataInicioGeral) return originalDate;
+    var orig = new Date(originalDate + 'T00:00:00');
+    var base = new Date(baselineDate + 'T00:00:00');
+    var newStart = new Date(dataInicioGeral + 'T00:00:00');
+    var deltaMs = orig.getTime() - base.getTime();
+    var newDate = new Date(newStart.getTime() + deltaMs);
+    return newDate.toISOString().split('T')[0];
+  }
+
+  // Helper: get effective start/end for an item
+  function getItemDates(item, tipo) {
+    var inicio = item.inicio || null;
+    var fim = item.prazo || null;
+    // If no inicio, use baseline
+    if (!inicio && baselineDate) inicio = baselineDate;
+    // Recalculate dates if data inicio geral is set
+    if (dataInicioGeral && baselineDate) {
+      if (inicio) inicio = recalcDate(inicio);
+      if (fim) fim = recalcDate(fim);
+    }
+    // If no fim, assume 30 days after inicio
+    if (!fim && inicio) {
+      var d = new Date(inicio + 'T00:00:00');
+      d.setDate(d.getDate() + 30);
+      fim = d.toISOString().split('T')[0];
+    }
+    return { inicio: inicio, fim: fim };
+  }
+
+  // Check if item is blocked by dependencies
+  function isBlocked(item, allItems) {
+    if (!Array.isArray(item.dependencias_ids) || item.dependencias_ids.length === 0) return false;
+    for (var i = 0; i < item.dependencias_ids.length; i++) {
+      var dep = allItems.find(function(x){ return String(x.id) === String(item.dependencias_ids[i]); });
+      if (dep && dep.status !== 'concluido') return true;
+    }
+    return false;
+  }
+
+  // Collect all items with dates
+  var allItems = [];
+  microPassos.forEach(function(m) {
+    var dates = getItemDates(m, 'micro');
+    allItems.push({ id: m.id, label: m.desc, tipo: 'micro', status: m.status, inicio: dates.inicio, fim: dates.fim, deps: m.dependencias_ids || [], blocked: isBlocked(m, microPassos) });
+  });
+  macroPassos.forEach(function(m) {
+    var dates = getItemDates(m, 'macro');
+    // For macros, calculate progress from micro_ids
+    var progress = 0;
+    if (Array.isArray(m.micro_ids) && m.micro_ids.length > 0) {
+      var done = 0;
+      m.micro_ids.forEach(function(mid) {
+        var mp = microPassos.find(function(x){ return String(x.id) === String(mid); });
+        if (mp && mp.status === 'concluido') done++;
+        else if (mp && mp.status === 'em_andamento') done += 0.5;
+      });
+      progress = Math.round((done / m.micro_ids.length) * 100);
+    }
+    allItems.push({ id: m.id, label: m.fase, tipo: 'macro', status: m.status, inicio: dates.inicio, fim: dates.fim, deps: m.dependencias_ids || [], blocked: isBlocked(m, macroPassos), progress: progress });
+  });
+
+  if (allItems.length === 0) {
+    wrap.innerHTML = '<div class="empty"><span class="ico">📅</span><p>Cadastre micro passos e macro estratégias com datas para visualizar o cronograma.</p></div>';
+    renderCronoIndicadores();
+    renderCronoObjetivos();
+    return;
+  }
+
+  // Find global min/max dates for the timeline scale
+  var allDates = [];
+  allItems.forEach(function(it) {
+    if (it.inicio) allDates.push(new Date(it.inicio + 'T00:00:00'));
+    if (it.fim) allDates.push(new Date(it.fim + 'T00:00:00'));
+  });
+  var minDate = new Date(Math.min.apply(null, allDates));
+  var maxDate = new Date(Math.max.apply(null, allDates));
+  var totalDays = Math.max((maxDate - minDate) / 86400000, 1);
+
+  // Render Gantt-like bars
+  var html = '<div class="crono-section"><h3>Cronograma de Execução</h3>';
+  if (!dataInicioGeral) html += '<div style="font-size:0.7rem;color:var(--muted);margin-bottom:0.75rem;">💡 Defina uma "Data de Início Geral" acima para recalcular automaticamente todos os prazos.</div>';
+  html += '<div class="crono-gantt">';
+
+  // Micro passos first
+  var micros = allItems.filter(function(it){ return it.tipo === 'micro'; });
+  var macros = allItems.filter(function(it){ return it.tipo === 'macro'; });
+
+  if (micros.length > 0) {
+    html += '<div style="font-size:0.68rem;color:var(--muted);margin-bottom:0.3rem;font-weight:600;">MICRO PASSOS</div>';
+    micros.forEach(function(it) {
+      html += renderCronoBar(it, minDate, totalDays);
+    });
+  }
+  if (macros.length > 0) {
+    html += '<div style="font-size:0.68rem;color:var(--muted);margin:0.75rem 0 0.3rem;font-weight:600;">MACRO ESTRATÉGIAS</div>';
+    macros.forEach(function(it) {
+      html += renderCronoBar(it, minDate, totalDays);
+    });
+  }
+
+  html += '</div>'; // .crono-gantt
+  html += '<div class="crono-legend">';
+  html += '<div class="crono-legend-item"><div class="crono-legend-dot" style="background:var(--blue);"></div>Micro Passo</div>';
+  html += '<div class="crono-legend-item"><div class="crono-legend-dot" style="background:var(--primary);"></div>Macro Estratégia</div>';
+  html += '<div class="crono-legend-item"><div class="crono-legend-dot" style="background:var(--red);opacity:0.6;"></div>Bloqueado (dependência)</div>';
+  html += '</div>';
+  html += '</div>'; // .crono-section
+
+  wrap.innerHTML = html;
+  renderCronoIndicadores();
+  renderCronoObjetivos();
+}
+
+function renderCronoBar(item, minDate, totalDays) {
+  var startDate = item.inicio ? new Date(item.inicio + 'T00:00:00') : minDate;
+  var endDate = item.fim ? new Date(item.fim + 'T00:00:00') : startDate;
+  var leftDays = (startDate - minDate) / 86400000;
+  var widthDays = Math.max((endDate - startDate) / 86400000, 1);
+  var leftPct = (leftDays / totalDays) * 100;
+  var widthPct = (widthDays / totalDays) * 100;
+  if (widthPct < 2) widthPct = 2;
+
+  var barClass = item.tipo;
+  if (item.status === 'concluido') barClass += ' done';
+  if (item.blocked) barClass += ' blocked';
+
+  var barContent = '';
+  if (item.tipo === 'macro' && typeof item.progress === 'number') {
+    barContent = item.progress + '%';
+  } else if (item.status === 'concluido') {
+    barContent = '✓';
+  }
+
+  var fmtD = function(d) { return d ? new Date(d + 'T00:00:00').toLocaleDateString('pt-BR', {day:'2-digit',month:'short'}) : ''; };
+
+  var html = '<div class="crono-bar-row">';
+  html += '<div class="crono-bar-label" title="' + escHtml(item.label) + '">' + escHtml(item.label) + '</div>';
+  html += '<div class="crono-bar-track">';
+  html += '<div class="crono-bar ' + barClass + '" style="left:' + leftPct.toFixed(1) + '%;width:' + widthPct.toFixed(1) + '%;">' + barContent + '</div>';
+  html += '</div>';
+  html += '<div style="font-size:0.6rem;color:var(--muted);min-width:90px;text-align:right;">' + fmtD(item.inicio) + ' → ' + fmtD(item.fim) + '</div>';
+  html += '</div>';
+
+  // Show dependency info
+  if (item.deps && item.deps.length > 0 && item.blocked) {
+    html += '<div class="crono-dep-line">⚠️ Aguardando conclusão de dependência(s)</div>';
+  }
+  return html;
+}
+
+function renderCronoIndicadores() {
+  var canvas = document.getElementById('chart-crono-indicadores');
+  if (!canvas) return;
+  var section = document.getElementById('crono-evolucao-section');
+  if (reunioes.length < 2) {
+    section.style.display = 'none';
+    return;
+  }
+  section.style.display = '';
+  var sorted = reunioes.slice().sort(function(a,b){ return a.data.localeCompare(b.data); });
+  var labels = sorted.map(function(r){ return fmtData(r.data); });
+  var datasets = [
+    { label: 'Patrimônio Total', data: sorted.map(function(r){ return r.patrimonio || 0; }), borderColor: '#D4AF37', backgroundColor: 'rgba(212,175,55,0.1)', tension: 0.3, fill: true },
+    { label: 'Renda', data: sorted.map(function(r){ return r.renda || 0; }), borderColor: '#4CAF50', backgroundColor: 'rgba(76,175,80,0.1)', tension: 0.3, fill: false },
+    { label: 'Despesas', data: sorted.map(function(r){ return r.despesas || 0; }), borderColor: '#EF4444', backgroundColor: 'rgba(239,68,68,0.1)', tension: 0.3, fill: false },
+    { label: 'Investimentos', data: sorted.map(function(r){ return r.investimentos || 0; }), borderColor: '#3B82F6', backgroundColor: 'rgba(59,130,246,0.1)', tension: 0.3, fill: false },
+    { label: 'Dívidas', data: sorted.map(function(r){ return r.dividas || 0; }), borderColor: '#F97316', backgroundColor: 'rgba(249,115,22,0.1)', tension: 0.3, fill: false }
+  ];
+  var ctx = canvas.getContext('2d');
+  if (window._cronoChart) window._cronoChart.destroy();
+  window._cronoChart = new Chart(ctx, {
+    type: 'line',
+    data: { labels: labels, datasets: datasets },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      scales: {
+        x: { ticks: { color: '#A0B8A6', font: { size: 10 } }, grid: { color: 'rgba(212,175,55,0.08)' } },
+        y: { ticks: { color: '#A0B8A6', font: { size: 10 }, callback: function(v){ return 'R$ ' + (v/1000).toFixed(0) + 'k'; } }, grid: { color: 'rgba(212,175,55,0.08)' } }
+      },
+      plugins: { legend: { labels: { color: '#A0B8A6', font: { size: 11 } } } }
+    }
+  });
+}
+
+function renderCronoObjetivos() {
+  var wrap = document.getElementById('crono-objetivos-wrap');
+  if (!wrap) return;
+  if (objetivos.length === 0) {
+    wrap.innerHTML = '<div style="font-size:0.75rem;color:var(--muted);">Nenhum objetivo cadastrado.</div>';
+    return;
+  }
+  var html = '';
+  objetivos.forEach(function(obj) {
+    // Calculate progress: either by valor (numeric) or by associated micro passos
+    var progress = 0;
+    var progressLabel = '';
+    if (obj.valor && parseBR(obj.valor) > 0) {
+      var atual = parseBR(obj.atual || '0');
+      var meta = parseBR(obj.valor);
+      progress = Math.min((atual / meta) * 100, 100);
+      progressLabel = fmtBRL(atual) + ' / ' + fmtBRL(meta) + ' (' + progress.toFixed(0) + '%)';
+    } else {
+      // Progress by associated micro passos
+      var associatedMicros = microPassos.filter(function(m) {
+        return (Array.isArray(m.objetivos_ids) && m.objetivos_ids.indexOf(String(obj.id)) >= 0) ||
+               (String(m.objetivo_id) === String(obj.id));
+      });
+      if (associatedMicros.length > 0) {
+        var done = 0;
+        associatedMicros.forEach(function(m) {
+          if (m.status === 'concluido') done++;
+          else if (m.status === 'em_andamento') done += 0.5;
+        });
+        progress = Math.round((done / associatedMicros.length) * 100);
+        progressLabel = Math.round(done) + '/' + associatedMicros.length + ' micro passos (' + progress + '%)';
+      } else {
+        progressLabel = 'Sem micro passos associados';
+      }
+    }
+
+    // Evolution from reuniões (if obj has valor tracked in reuniões)
+    var reuniaoData = [];
+    reunioes.forEach(function(r) {
+      if (r.questoes && r.questoes['obj_' + obj.id]) {
+        reuniaoData.push({ data: r.data, valor: r.questoes['obj_' + obj.id] });
+      }
+    });
+
+    html += '<div class="crono-obj-card">';
+    html += '<h4>' + escHtml(obj.nome) + '</h4>';
+    html += '<div class="crono-obj-meta">' + escHtml(progressLabel) + '</div>';
+    html += '<div class="crono-obj-progress"><div class="crono-obj-progress-fill" style="width:' + progress + '%;"></div></div>';
+    if (obj.status) html += '<div class="crono-obj-meta">Status: <span class="badge ' + (STATUS_BADGE[obj.status]||'') + '">' + (STATUS_MACRO[obj.status]||obj.status) + '</span></div>';
+    html += '</div>';
+  });
+  wrap.innerHTML = html;
 }
 
 // === HANDLER IMPORTAR DIAGNÓSTICO ===
