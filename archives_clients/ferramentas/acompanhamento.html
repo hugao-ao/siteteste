@@ -622,15 +622,15 @@
           </select>
         </div>
       </div>
-      <div class="field" style="margin-bottom:0.75rem;">
-        <label>Vinculado a Objetivo(s)</label>
-        <div id="mc_objetivos_checks" style="display:flex;flex-wrap:wrap;gap:0.4rem;margin-top:0.3rem;"></div>
-        <span style="font-size:0.68rem;color:var(--muted);margin-top:0.2rem;">Selecione um ou mais objetivos (opcional)</span>
+      <div class="field" style="margin-bottom:0.75rem;padding:0.6rem;border:1px solid var(--border);border-radius:6px;">
+        <label style="font-weight:600;margin-bottom:0.4rem;display:block;">Vinculado a Objetivo(s)</label>
+        <div id="mc_objetivos_checks" style="display:flex;flex-direction:column;gap:0.5rem;margin-top:0.4rem;"></div>
+        <span style="font-size:0.68rem;color:var(--muted);margin-top:0.3rem;display:block;">Selecione um ou mais objetivos (opcional)</span>
       </div>
-      <div class="field">
-        <label>Dependências (só pode iniciar após conclusão de)</label>
-        <div id="mc_deps_checks" style="display:flex;flex-wrap:wrap;gap:0.4rem;margin-top:0.3rem;"></div>
-        <span style="font-size:0.68rem;color:var(--muted);margin-top:0.2rem;">Selecione micro passos que devem ser concluídos antes (opcional = paralelo)</span>
+      <div class="field" style="padding:0.6rem;border:1px solid var(--border);border-radius:6px;">
+        <label style="font-weight:600;margin-bottom:0.4rem;display:block;">Dependências (só pode iniciar após conclusão de)</label>
+        <div id="mc_deps_checks" style="display:flex;flex-direction:column;gap:0.5rem;margin-top:0.4rem;"></div>
+        <span style="font-size:0.68rem;color:var(--muted);margin-top:0.3rem;display:block;">Selecione micro passos que devem ser concluídos antes (opcional = paralelo)</span>
       </div>
     </div>
     <div style="display:flex;gap:0.75rem;justify-content:flex-end;">
@@ -687,20 +687,20 @@
           </select>
         </div>
       </div>
-      <div class="field" style="margin-bottom:0.75rem;">
-        <label>Vinculado a Objetivo(s)</label>
-        <div id="mk_objetivos_checks" style="display:flex;flex-wrap:wrap;gap:0.4rem;margin-top:0.3rem;"></div>
-        <span style="font-size:0.68rem;color:var(--muted);margin-top:0.2rem;">Selecione um ou mais objetivos (opcional)</span>
+      <div class="field" style="margin-bottom:0.75rem;padding:0.6rem;border:1px solid var(--border);border-radius:6px;">
+        <label style="font-weight:600;margin-bottom:0.4rem;display:block;">Vinculado a Objetivo(s)</label>
+        <div id="mk_objetivos_checks" style="display:flex;flex-direction:column;gap:0.5rem;margin-top:0.4rem;"></div>
+        <span style="font-size:0.68rem;color:var(--muted);margin-top:0.3rem;display:block;">Selecione um ou mais objetivos (opcional)</span>
       </div>
-      <div class="field" style="margin-bottom:0.75rem;">
-        <label>Micro Passos desta Fase</label>
-        <div id="mk_micros_checks" style="display:flex;flex-wrap:wrap;gap:0.4rem;margin-top:0.3rem;"></div>
-        <span style="font-size:0.68rem;color:var(--muted);margin-top:0.2rem;">Selecione micro passos que pertencem a esta fase (o progresso será calculado com base neles)</span>
+      <div class="field" style="margin-bottom:0.75rem;padding:0.6rem;border:1px solid var(--border);border-radius:6px;">
+        <label style="font-weight:600;margin-bottom:0.4rem;display:block;">Micro Passos desta Fase</label>
+        <div id="mk_micros_checks" style="display:flex;flex-direction:column;gap:0.5rem;margin-top:0.4rem;"></div>
+        <span style="font-size:0.68rem;color:var(--muted);margin-top:0.3rem;display:block;">Selecione micro passos que pertencem a esta fase (o progresso será calculado com base neles)</span>
       </div>
-      <div class="field">
-        <label>Dependências (só pode iniciar após conclusão de)</label>
-        <div id="mk_deps_checks" style="display:flex;flex-wrap:wrap;gap:0.4rem;margin-top:0.3rem;"></div>
-        <span style="font-size:0.68rem;color:var(--muted);margin-top:0.2rem;">Selecione fases que devem ser concluídas antes (opcional = paralelo)</span>
+      <div class="field" style="padding:0.6rem;border:1px solid var(--border);border-radius:6px;">
+        <label style="font-weight:600;margin-bottom:0.4rem;display:block;">Dependências (só pode iniciar após conclusão de)</label>
+        <div id="mk_deps_checks" style="display:flex;flex-direction:column;gap:0.5rem;margin-top:0.4rem;"></div>
+        <span style="font-size:0.68rem;color:var(--muted);margin-top:0.3rem;display:block;">Selecione fases que devem ser concluídas antes (opcional = paralelo)</span>
       </div>
     </div>
     <div style="display:flex;gap:0.75rem;justify-content:flex-end;">
@@ -960,16 +960,13 @@ function fillModalFromData(tipo, index) {
 }
 
 function updateMicroSelects() {
-  var selObj = document.getElementById('mc_objetivo');
   var selReu = document.getElementById('mc_reuniao');
-  selObj.innerHTML = '<option value="">Nenhum (geral)</option>';
-  objetivos.forEach(function(o) {
-    selObj.innerHTML += '<option value="' + o.id + '">' + escHtml(o.nome) + '</option>';
-  });
-  selReu.innerHTML = '<option value="">Nenhuma</option>';
-  reunioes.forEach(function(r) {
-    selReu.innerHTML += '<option value="' + r.id + '">' + fmtData(r.data) + ' - ' + (TIPO_REUNIAO[r.tipo]||r.tipo) + '</option>';
-  });
+  if (selReu) {
+    selReu.innerHTML = '<option value="">Nenhuma</option>';
+    reunioes.forEach(function(r) {
+      selReu.innerHTML += '<option value="' + r.id + '">' + fmtData(r.data) + ' - ' + (TIPO_REUNIAO[r.tipo]||r.tipo) + '</option>';
+    });
+  }
 }
 
 function populateMicroCheckboxes() {
