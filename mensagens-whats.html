@@ -445,9 +445,18 @@
             if (!clientesData[row.cliente_id]) clientesData[row.cliente_id] = {};
             let d = row.dados;
             if (typeof d === 'string') { try { d = JSON.parse(d); } catch(e) { d = null; } }
-            // Merge fluxo_caixa_avancado as fluxo if fluxo doesn't exist
-            if (row.ferramenta === 'fluxo_caixa_avancado' && !clientesData[row.cliente_id].fluxo) {
-              clientesData[row.cliente_id].fluxo = d;
+            
+            if (row.ferramenta === 'fluxo' || row.ferramenta === 'fluxo_caixa_avancado') {
+              // Fluxo is a LIST of simulations - extract the primary one's payload
+              if (!clientesData[row.cliente_id].fluxo && d) {
+                let simList = Array.isArray(d) ? d : (d.simulacoes || [d]);
+                let primarySim = simList.find(s => s.primary) || simList[0];
+                if (primarySim && primarySim.payload) {
+                  clientesData[row.cliente_id].fluxo = primarySim.payload;
+                } else if (primarySim && primarySim.itens) {
+                  clientesData[row.cliente_id].fluxo = primarySim;
+                }
+              }
             } else {
               clientesData[row.cliente_id][row.ferramenta] = d;
             }
@@ -608,8 +617,9 @@
       if (dom === 1 || dow === 1 || dow === 5 || dom === lastDay) return true;
       
       // Check if there are specific fluxo events on this day
-      if (data.fluxo && data.fluxo.itens) {
-        const events = getFluxoEventsForDate(data.fluxo.itens, simDate);
+      const fluxoItens = getFluxoItens(data);
+      if (fluxoItens.length > 0) {
+        const events = getFluxoEventsForDate(fluxoItens, simDate);
         if (events.length > 0) return true;
       }
       
@@ -620,6 +630,19 @@
       }
       
       return false;
+    }
+
+    // === HELPER: Extract fluxo itens from client data ===
+    function getFluxoItens(data) {
+      if (!data || !data.fluxo) return [];
+      // After normalization in loadAllClientData, fluxo should be the payload object
+      if (data.fluxo.itens) return data.fluxo.itens;
+      // Fallback: if it's still a list of simulations
+      if (Array.isArray(data.fluxo)) {
+        const sim = data.fluxo.find(s => s.primary) || data.fluxo[0];
+        return (sim && sim.payload && sim.payload.itens) ? sim.payload.itens : [];
+      }
+      return [];
     }
 
     // === FLUXO EVENTS FOR DATE ===
@@ -649,24 +672,25 @@
       // Check micro passos
       const micros = acomp.microPassos || [];
       micros.forEach(m => {
-        if (m.status === 'Concluído') return;
+        if (m.status === 'concluido' || m.status === 'Concluído') return;
         const dates = getItemDates(m, acomp);
         if (!dates) return;
         const { start, end } = dates;
+        const label = m.desc || m.nome || 'Micro passo';
         
         // Starting today
         if (start && isoDate(start) === targetISO) {
-          events.push({ tipo: 'inicio_micro', nome: m.nome });
+          events.push({ tipo: 'inicio_micro', nome: label });
         }
         // Ending today
         if (end && isoDate(end) === targetISO) {
-          events.push({ tipo: 'conclusao_micro', nome: m.nome });
+          events.push({ tipo: 'conclusao_micro', nome: label });
         }
         // 3 days before deadline
         if (end) {
           const diff = Math.round((end - target) / 86400000);
           if (diff > 0 && diff <= 3) {
-            events.push({ tipo: 'prazo_proximo_micro', nome: m.nome, dias: diff });
+            events.push({ tipo: 'prazo_proximo_micro', nome: label, dias: diff });
           }
         }
         // Halfway point
@@ -674,7 +698,7 @@
           const total = Math.round((end - start) / 86400000);
           const elapsed = Math.round((target - start) / 86400000);
           if (total > 2 && elapsed === Math.floor(total / 2)) {
-            events.push({ tipo: 'metade_micro', nome: m.nome });
+            events.push({ tipo: 'metade_micro', nome: label });
           }
         }
       });
@@ -682,20 +706,21 @@
       // Check macro estratégias
       const macros = acomp.macroPassos || [];
       macros.forEach(m => {
-        if (m.status === 'Concluído') return;
+        if (m.status === 'concluido' || m.status === 'Concluído') return;
         const dates = getItemDates(m, acomp);
         if (!dates) return;
         const { start, end } = dates;
+        const label = m.nome || m.desc || 'Macro';
         if (start && isoDate(start) === targetISO) {
-          events.push({ tipo: 'inicio_macro', nome: m.nome });
+          events.push({ tipo: 'inicio_macro', nome: label });
         }
         if (end && isoDate(end) === targetISO) {
-          events.push({ tipo: 'conclusao_macro', nome: m.nome });
+          events.push({ tipo: 'conclusao_macro', nome: label });
         }
         if (end) {
           const diff = Math.round((end - target) / 86400000);
           if (diff > 0 && diff <= 3) {
-            events.push({ tipo: 'prazo_proximo_macro', nome: m.nome, dias: diff });
+            events.push({ tipo: 'prazo_proximo_macro', nome: label, dias: diff });
           }
         }
       });
@@ -726,10 +751,11 @@
         report += `*RELATÓRIO MENSAL - ${simDate.toLocaleDateString('pt-BR', {month:'long', year:'numeric'}).toUpperCase()}*\n\n`;
         
         // Fluxo previsto para o mês
-        if (data?.fluxo?.itens) {
+        const fluxoItens1 = getFluxoItens(data);
+        if (fluxoItens1.length > 0) {
           const monthStart = new Date(simDate.getFullYear(), simDate.getMonth(), 1);
           const monthEnd = new Date(simDate.getFullYear(), simDate.getMonth() + 1, 0);
-          const monthEvents = getAllFluxoEvents(data.fluxo.itens, monthStart, monthEnd);
+          const monthEvents = getAllFluxoEvents(fluxoItens1, monthStart, monthEnd);
           
           let totalReceitas = 0, totalDespesas = 0, totalInvest = 0;
           monthEvents.forEach(e => {
@@ -769,8 +795,9 @@
         const weekEnd = new Date(simDate);
         weekEnd.setDate(weekEnd.getDate() + 4); // Seg a Sex
         
-        if (data?.fluxo?.itens) {
-          const weekEvents = getAllFluxoEvents(data.fluxo.itens, weekStart, weekEnd);
+        const fluxoItens2 = getFluxoItens(data);
+        if (fluxoItens2.length > 0) {
+          const weekEvents = getAllFluxoEvents(fluxoItens2, weekStart, weekEnd);
           if (weekEvents.length > 0) {
             let totalRec = 0, totalDesp = 0;
             report += `💰 *Movimentações previstas:*\n`;
@@ -803,8 +830,9 @@
         const weekStart = new Date(simDate);
         weekStart.setDate(weekStart.getDate() - 4); // Segunda
         
-        if (data?.fluxo?.itens) {
-          const weekEvents = getAllFluxoEvents(data.fluxo.itens, weekStart, simDate);
+        const fluxoItens3 = getFluxoItens(data);
+        if (fluxoItens3.length > 0) {
+          const weekEvents = getAllFluxoEvents(fluxoItens3, weekStart, simDate);
           if (weekEvents.length > 0) {
             let totalRec = 0, totalDesp = 0;
             report += `💰 *O que era esperado esta semana:*\n`;
@@ -847,8 +875,9 @@
         
         const monthStart = new Date(simDate.getFullYear(), simDate.getMonth(), 1);
         
-        if (data?.fluxo?.itens) {
-          const monthEvents = getAllFluxoEvents(data.fluxo.itens, monthStart, simDate);
+        const fluxoItens4 = getFluxoItens(data);
+        if (fluxoItens4.length > 0) {
+          const monthEvents = getAllFluxoEvents(fluxoItens4, monthStart, simDate);
           let totalRec = 0, totalDesp = 0, totalInv = 0;
           monthEvents.forEach(e => {
             if (e.item.tipo === 'entrada') totalRec += e.item.valor;
@@ -877,7 +906,7 @@
           
           // Overall progress
           const micros = data.acompanhamento.microPassos || [];
-          const concluidos = micros.filter(m => m.status === 'Concluído').length;
+          const concluidos = micros.filter(m => m.status === 'concluido' || m.status === 'Concluído').length;
           report += `📊 *Progresso geral:* ${concluidos}/${micros.length} micro passos concluídos\n\n`;
         }
         
@@ -889,8 +918,9 @@
         report += `Olá, ${primeiroNome}!\n\n`;
         let hasContent = false;
         
-        if (data?.fluxo?.itens) {
-          const dayEvents = getFluxoEventsForDate(data.fluxo.itens, simDate);
+        const fluxoItens5 = getFluxoItens(data);
+        if (fluxoItens5.length > 0) {
+          const dayEvents = getFluxoEventsForDate(fluxoItens5, simDate);
           if (dayEvents.length > 0) {
             hasContent = true;
             report += `💰 *Movimentações de hoje:*\n`;
@@ -955,26 +985,28 @@
       const macros = acomp.macroPassos || [];
       
       micros.forEach(m => {
-        if (m.status === 'Concluído') return;
+        if (m.status === 'concluido' || m.status === 'Concluído') return;
         const dates = getItemDates(m, acomp);
         if (!dates) return;
+        const label = m.desc || m.nome || 'Micro passo';
         if (dates.start && dates.start >= start && dates.start <= end) {
-          results.push({ desc: `Iniciar: "${m.nome}" (${dates.start.toLocaleDateString('pt-BR')})` });
+          results.push({ desc: `Iniciar: "${label}" (${dates.start.toLocaleDateString('pt-BR')})` });
         }
         if (dates.end && dates.end >= start && dates.end <= end) {
-          results.push({ desc: `Concluir: "${m.nome}" (${dates.end.toLocaleDateString('pt-BR')})` });
+          results.push({ desc: `Concluir: "${label}" (${dates.end.toLocaleDateString('pt-BR')})` });
         }
       });
       
       macros.forEach(m => {
-        if (m.status === 'Concluído') return;
+        if (m.status === 'concluido' || m.status === 'Concluído') return;
         const dates = getItemDates(m, acomp);
         if (!dates) return;
+        const label = m.nome || m.desc || 'Macro';
         if (dates.start && dates.start >= start && dates.start <= end) {
-          results.push({ desc: `Fase inicia: "${m.nome}" (${dates.start.toLocaleDateString('pt-BR')})` });
+          results.push({ desc: `Fase inicia: "${label}" (${dates.start.toLocaleDateString('pt-BR')})` });
         }
         if (dates.end && dates.end >= start && dates.end <= end) {
-          results.push({ desc: `Fase encerra: "${m.nome}" (${dates.end.toLocaleDateString('pt-BR')})` });
+          results.push({ desc: `Fase encerra: "${label}" (${dates.end.toLocaleDateString('pt-BR')})` });
         }
       });
       
@@ -989,10 +1021,11 @@
       
       micros.forEach(m => {
         if (!m.updates) return;
+        const label = m.desc || m.nome || 'Micro passo';
         m.updates.forEach(u => {
           const d = new Date(u.data + 'T00:00:00');
           if (d >= start && d <= end) {
-            results.push(`${m.nome}: ${u.texto || (u.concluido ? 'Marcado como concluído' : 'Atualização registrada')}`);
+            results.push(`${label}: ${u.texto || (u.concluido ? 'Marcado como concluído' : 'Atualização registrada')}`);
           }
         });
       });
@@ -1013,8 +1046,8 @@
     // === HELPER: Get item dates (prazo system) ===
     function getItemDates(item, acomp) {
       const tipo = item.prazo_tipo;
-      if (!tipo) return null;
       
+      // New prazo system
       if (tipo === 'duracao') {
         let startDate = item.prazo_inicio ? new Date(item.prazo_inicio + 'T00:00:00') : null;
         if (!startDate) return null;
@@ -1028,6 +1061,14 @@
         const e = item.prazo_fim ? new Date(item.prazo_fim + 'T00:00:00') : null;
         return { start: null, end: e };
       }
+      
+      // Legacy format: item has 'prazo' field (date string) and optionally 'inicio'
+      if (item.prazo) {
+        const endDate = new Date(item.prazo + 'T00:00:00');
+        let startDate = item.inicio ? new Date(item.inicio + 'T00:00:00') : null;
+        return { start: startDate, end: endDate };
+      }
+      
       return null;
     }
 
