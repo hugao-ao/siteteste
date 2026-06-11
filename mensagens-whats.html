@@ -744,18 +744,42 @@
       const lastDay = new Date(simDate.getFullYear(), simDate.getMonth() + 1, 0).getDate();
       
       let report = '';
+      const fluxoItens = getFluxoItens(data);
       
-      // === INÍCIO DO MÊS ===
-      if (dom === 1) {
-        report += `Olá, ${primeiroNome}! Bom início de mês! 🗓️\n\n`;
-        report += `*RELATÓRIO MENSAL - ${simDate.toLocaleDateString('pt-BR', {month:'long', year:'numeric'}).toUpperCase()}*\n\n`;
+      // Determine all applicable contexts for this date
+      const isInicioMes = (dom === 1);
+      const isFinalMes = (dom === lastDay);
+      const isSegunda = (dow === 1);
+      const isSexta = (dow === 5);
+      
+      // Build greeting based on primary context
+      if (isInicioMes && isSegunda) {
+        report += `Olá, ${primeiroNome}! Bom início de mês e boa semana! 📆💪\n\n`;
+      } else if (isInicioMes) {
+        report += `Olá, ${primeiroNome}! Bom início de mês! 📆\n\n`;
+      } else if (isFinalMes && isSexta) {
+        report += `Olá, ${primeiroNome}! Fechamento do mês e da semana! 📈📊\n\n`;
+      } else if (isFinalMes) {
+        report += `Olá, ${primeiroNome}! Fechamento do mês! 📈\n\n`;
+      } else if (isSexta) {
+        report += `Olá, ${primeiroNome}! Fechamento da semana 📊\n\n`;
+      } else if (isSegunda) {
+        report += `Olá, ${primeiroNome}! Boa semana! 💪\n\n`;
+      } else {
+        report += `Olá, ${primeiroNome}!\n\n`;
+      }
+      
+      let hasContent = false;
+      
+      // === SEÇÃO: INÍCIO DO MÊS ===
+      if (isInicioMes) {
+        hasContent = true;
+        report += `*📆 RELATÓRIO MENSAL - ${simDate.toLocaleDateString('pt-BR', {month:'long', year:'numeric'}).toUpperCase()}*\n\n`;
         
-        // Fluxo previsto para o mês
-        const fluxoItens1 = getFluxoItens(data);
-        if (fluxoItens1.length > 0) {
+        if (fluxoItens.length > 0) {
           const monthStart = new Date(simDate.getFullYear(), simDate.getMonth(), 1);
           const monthEnd = new Date(simDate.getFullYear(), simDate.getMonth() + 1, 0);
-          const monthEvents = getAllFluxoEvents(fluxoItens1, monthStart, monthEnd);
+          const monthEvents = getAllFluxoEvents(fluxoItens, monthStart, monthEnd);
           
           let totalReceitas = 0, totalDespesas = 0, totalInvest = 0;
           monthEvents.forEach(e => {
@@ -764,43 +788,75 @@
             else totalDespesas += e.item.valor;
           });
           
-          report += `📊 *Previsão de Fluxo de Caixa:*\n`;
+          report += `📊 *Previsão de Fluxo de Caixa do mês:*\n`;
           report += `• Receitas previstas: ${fmtBRL(totalReceitas)}\n`;
           report += `• Despesas previstas: ${fmtBRL(totalDespesas)}\n`;
           report += `• Investimentos/Poupança: ${fmtBRL(totalInvest)}\n`;
           report += `• Saldo previsto: ${fmtBRL(totalReceitas - totalDespesas - totalInvest)}\n\n`;
         }
         
-        // Cronograma do mês
         if (data?.acompanhamento) {
           const cronoMonth = getCronoForMonth(data.acompanhamento, simDate);
           if (cronoMonth.length > 0) {
             report += `📋 *Cronograma para este mês:*\n`;
-            cronoMonth.forEach(e => {
-              report += `• ${e.desc}\n`;
-            });
+            cronoMonth.forEach(e => report += `• ${e.desc}\n`);
             report += '\n';
           }
         }
-        
-        report += `Qualquer dúvida, estou à disposição!`;
       }
       
-      // === INÍCIO DA SEMANA (Segunda) ===
-      else if (dow === 1) {
-        report += `Olá, ${primeiroNome}! Boa semana! 💪\n\n`;
-        report += `*PREVISÃO DA SEMANA*\n\n`;
+      // === SEÇÃO: FINAL DO MÊS ===
+      if (isFinalMes) {
+        hasContent = true;
+        report += `*📈 COMPARATIVO MENSAL - ${simDate.toLocaleDateString('pt-BR', {month:'long', year:'numeric'}).toUpperCase()}*\n\n`;
+        
+        const monthStart = new Date(simDate.getFullYear(), simDate.getMonth(), 1);
+        
+        if (fluxoItens.length > 0) {
+          const monthEvents = getAllFluxoEvents(fluxoItens, monthStart, simDate);
+          let totalRec = 0, totalDesp = 0, totalInv = 0;
+          monthEvents.forEach(e => {
+            if (e.item.tipo === 'entrada') totalRec += e.item.valor;
+            else if (e.item.subtipo === 'investimento' || e.item.subtipo === 'poupanca') totalInv += e.item.valor;
+            else totalDesp += e.item.valor;
+          });
+          
+          report += `💰 *Planejado para o mês:*\n`;
+          report += `• Receitas: ${fmtBRL(totalRec)}\n`;
+          report += `• Despesas: ${fmtBRL(totalDesp)}\n`;
+          report += `• Investimentos: ${fmtBRL(totalInv)}\n`;
+          report += `• Saldo: ${fmtBRL(totalRec - totalDesp - totalInv)}\n\n`;
+          report += `_Espero que tudo tenha ocorrido conforme planejado! Caso contrário, vamos ajustar juntos._\n\n`;
+        }
+        
+        if (data?.acompanhamento) {
+          const updates = getUpdatesInPeriod(data.acompanhamento, monthStart, simDate);
+          if (updates.length > 0) {
+            report += `✅ *Atualizações do cronograma neste mês:*\n`;
+            updates.forEach(u => report += `• ${u}\n`);
+            report += '\n';
+          }
+          
+          const micros = data.acompanhamento.microPassos || [];
+          const concluidos = micros.filter(m => m.status === 'concluido' || m.status === 'Concluído').length;
+          report += `📊 *Progresso geral:* ${concluidos}/${micros.length} micro passos concluídos\n\n`;
+        }
+      }
+      
+      // === SEÇÃO: INÍCIO DA SEMANA (Segunda) ===
+      if (isSegunda) {
+        hasContent = true;
+        report += `*💪 PREVISÃO DA SEMANA*\n\n`;
         
         const weekStart = new Date(simDate);
         const weekEnd = new Date(simDate);
-        weekEnd.setDate(weekEnd.getDate() + 4); // Seg a Sex
+        weekEnd.setDate(weekEnd.getDate() + 4);
         
-        const fluxoItens2 = getFluxoItens(data);
-        if (fluxoItens2.length > 0) {
-          const weekEvents = getAllFluxoEvents(fluxoItens2, weekStart, weekEnd);
+        if (fluxoItens.length > 0) {
+          const weekEvents = getAllFluxoEvents(fluxoItens, weekStart, weekEnd);
           if (weekEvents.length > 0) {
             let totalRec = 0, totalDesp = 0;
-            report += `💰 *Movimentações previstas:*\n`;
+            report += `💰 *Movimentações previstas na semana:*\n`;
             weekEvents.forEach(e => {
               const tipo = e.item.tipo === 'entrada' ? '🟢' : '🔴';
               report += `${tipo} ${e.date.toLocaleDateString('pt-BR',{weekday:'short',day:'numeric'})} - ${e.item.nome}: ${fmtBRL(e.item.valor)}\n`;
@@ -818,21 +874,18 @@
             report += '\n';
           }
         }
-        
-        report += `Vamos com tudo!`;
       }
       
-      // === FINAL DA SEMANA (Sexta) ===
-      else if (dow === 5) {
-        report += `Olá, ${primeiroNome}! Fechamento da semana 📊\n\n`;
-        report += `*RESUMO SEMANAL*\n\n`;
+      // === SEÇÃO: FINAL DA SEMANA (Sexta) ===
+      if (isSexta) {
+        hasContent = true;
+        report += `*📊 RESUMO SEMANAL*\n\n`;
         
         const weekStart = new Date(simDate);
-        weekStart.setDate(weekStart.getDate() - 4); // Segunda
+        weekStart.setDate(weekStart.getDate() - 4);
         
-        const fluxoItens3 = getFluxoItens(data);
-        if (fluxoItens3.length > 0) {
-          const weekEvents = getAllFluxoEvents(fluxoItens3, weekStart, simDate);
+        if (fluxoItens.length > 0) {
+          const weekEvents = getAllFluxoEvents(fluxoItens, weekStart, simDate);
           if (weekEvents.length > 0) {
             let totalRec = 0, totalDesp = 0;
             report += `💰 *O que era esperado esta semana:*\n`;
@@ -847,7 +900,6 @@
           }
         }
         
-        // Cronograma updates this week
         if (data?.acompanhamento) {
           const cronoWeek = getCronoForPeriod(data.acompanhamento, weekStart, simDate);
           if (cronoWeek.length > 0) {
@@ -856,79 +908,29 @@
             report += '\n';
           }
           
-          // Updates received this week
           const updates = getUpdatesInPeriod(data.acompanhamento, weekStart, simDate);
           if (updates.length > 0) {
-            report += `✅ *Atualizações registradas:*\n`;
+            report += `✅ *Atualizações registradas na semana:*\n`;
             updates.forEach(u => report += `• ${u}\n`);
             report += '\n';
           }
         }
-        
-        report += `Tudo correu conforme o planejado? Me conte como foi! Bom fim de semana! 🙌`;
       }
       
-      // === FINAL DO MÊS ===
-      else if (dom === lastDay) {
-        report += `Olá, ${primeiroNome}! Fechamento do mês! 📈\n\n`;
-        report += `*COMPARATIVO MENSAL - ${simDate.toLocaleDateString('pt-BR', {month:'long', year:'numeric'}).toUpperCase()}*\n\n`;
+      // === SEÇÃO: EVENTOS ESPECÍFICOS DO DIA (sempre inclui se houver) ===
+      {
+        let daySection = '';
         
-        const monthStart = new Date(simDate.getFullYear(), simDate.getMonth(), 1);
-        
-        const fluxoItens4 = getFluxoItens(data);
-        if (fluxoItens4.length > 0) {
-          const monthEvents = getAllFluxoEvents(fluxoItens4, monthStart, simDate);
-          let totalRec = 0, totalDesp = 0, totalInv = 0;
-          monthEvents.forEach(e => {
-            if (e.item.tipo === 'entrada') totalRec += e.item.valor;
-            else if (e.item.subtipo === 'investimento' || e.item.subtipo === 'poupanca') totalInv += e.item.valor;
-            else totalDesp += e.item.valor;
-          });
-          
-          report += `💰 *Planejado para o mês:*\n`;
-          report += `• Receitas: ${fmtBRL(totalRec)}\n`;
-          report += `• Despesas: ${fmtBRL(totalDesp)}\n`;
-          report += `• Investimentos: ${fmtBRL(totalInv)}\n`;
-          report += `• Saldo: ${fmtBRL(totalRec - totalDesp - totalInv)}\n\n`;
-          report += `_Espero que tudo tenha ocorrido conforme planejado! Caso contrário, vamos ajustar juntos._\n\n`;
-        }
-        
-        // Cronograma do mês - evolução
-        if (data?.acompanhamento) {
-          const updates = getUpdatesInPeriod(data.acompanhamento, monthStart, simDate);
-          const cronoMonth = getCronoForMonth(data.acompanhamento, simDate);
-          
-          if (updates.length > 0) {
-            report += `✅ *Atualizações do cronograma neste mês:*\n`;
-            updates.forEach(u => report += `• ${u}\n`);
-            report += '\n';
-          }
-          
-          // Overall progress
-          const micros = data.acompanhamento.microPassos || [];
-          const concluidos = micros.filter(m => m.status === 'concluido' || m.status === 'Concluído').length;
-          report += `📊 *Progresso geral:* ${concluidos}/${micros.length} micro passos concluídos\n\n`;
-        }
-        
-        report += `Parabéns pelo mês! Vamos para o próximo com ainda mais foco! 🚀`;
-      }
-      
-      // === DIA ESPECÍFICO (eventos pontuais) ===
-      else {
-        report += `Olá, ${primeiroNome}!\n\n`;
-        let hasContent = false;
-        
-        const fluxoItens5 = getFluxoItens(data);
-        if (fluxoItens5.length > 0) {
-          const dayEvents = getFluxoEventsForDate(fluxoItens5, simDate);
+        if (fluxoItens.length > 0) {
+          const dayEvents = getFluxoEventsForDate(fluxoItens, simDate);
           if (dayEvents.length > 0) {
             hasContent = true;
-            report += `💰 *Movimentações de hoje:*\n`;
+            daySection += `💰 *Movimentações de hoje:*\n`;
             dayEvents.forEach(item => {
               const tipo = item.tipo === 'entrada' ? '🟢 Receber' : '🔴 Pagar';
-              report += `${tipo}: ${item.nome} - ${fmtBRL(item.valor)}\n`;
+              daySection += `${tipo}: ${item.nome} - ${fmtBRL(item.valor)}\n`;
             });
-            report += '\n';
+            daySection += '\n';
           }
         }
         
@@ -936,25 +938,41 @@
           const cronoEvents = getCronoEventsForDate(data.acompanhamento, simDate);
           if (cronoEvents.length > 0) {
             hasContent = true;
-            report += `📋 *Cronograma:*\n`;
+            daySection += `📋 *Cronograma - eventos de hoje:*\n`;
             cronoEvents.forEach(e => {
-              if (e.tipo === 'inicio_micro') report += `🟡 Início: ${e.nome}\n`;
-              else if (e.tipo === 'conclusao_micro') report += `🏁 Prazo de conclusão: ${e.nome}\n`;
-              else if (e.tipo === 'prazo_proximo_micro') report += `⚠️ ${e.dias} dia(s) para concluir: ${e.nome}\n`;
-              else if (e.tipo === 'metade_micro') report += `📍 Metade do prazo: ${e.nome}\n`;
-              else if (e.tipo === 'inicio_macro') report += `🟡 Início de fase: ${e.nome}\n`;
-              else if (e.tipo === 'conclusao_macro') report += `🏁 Prazo de fase: ${e.nome}\n`;
-              else if (e.tipo === 'prazo_proximo_macro') report += `⚠️ ${e.dias} dia(s) para fase: ${e.nome}\n`;
+              if (e.tipo === 'inicio_micro') daySection += `🟡 Início: ${e.nome}\n`;
+              else if (e.tipo === 'conclusao_micro') daySection += `🏁 Prazo de conclusão: ${e.nome}\n`;
+              else if (e.tipo === 'prazo_proximo_micro') daySection += `⚠️ ${e.dias} dia(s) para concluir: ${e.nome}\n`;
+              else if (e.tipo === 'metade_micro') daySection += `📍 Metade do prazo: ${e.nome}\n`;
+              else if (e.tipo === 'inicio_macro') daySection += `🟡 Início de fase: ${e.nome}\n`;
+              else if (e.tipo === 'conclusao_macro') daySection += `🏁 Prazo de fase: ${e.nome}\n`;
+              else if (e.tipo === 'prazo_proximo_macro') daySection += `⚠️ ${e.dias} dia(s) para fase: ${e.nome}\n`;
             });
-            report += '\n';
+            daySection += '\n';
           }
         }
         
-        if (!hasContent) {
-          report += `Nenhum evento específico para hoje. Tudo segue conforme o planejado! 👍`;
-        } else {
-          report += `Qualquer dúvida, estou aqui!`;
+        if (daySection) {
+          // Only add separator if there were previous sections
+          if (isInicioMes || isFinalMes || isSegunda || isSexta) {
+            report += `---\n\n`;
+            report += `*📅 EVENTOS DE HOJE (${simDate.toLocaleDateString('pt-BR')}):*\n\n`;
+          }
+          report += daySection;
         }
+      }
+      
+      // === FECHAMENTO ===
+      if (!hasContent) {
+        report += `Nenhum evento específico para hoje. Tudo segue conforme o planejado! 👍`;
+      } else if (isFinalMes) {
+        report += `Parabéns pelo mês! Vamos para o próximo com ainda mais foco! 🚀`;
+      } else if (isSexta) {
+        report += `Tudo correu conforme o planejado? Me conte como foi! Bom fim de semana! 🙌`;
+      } else if (isSegunda || isInicioMes) {
+        report += `Vamos com tudo! Qualquer dúvida, estou à disposição!`;
+      } else {
+        report += `Qualquer dúvida, estou aqui!`;
       }
       
       return report;
