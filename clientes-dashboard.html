@@ -62,7 +62,8 @@
         color: var(--theme-header-text);
         font-weight: bold;
     }
-    /* Ajuste de larguras das colunas */
+    /* Ajuste de larguras das colunas - redimensionáveis */
+    #clients-table { table-layout: fixed; }
     #clients-table th:nth-child(1), #clients-table td:nth-child(1) { width: 15%; } /* Nome */
     #clients-table th:nth-child(2), #clients-table td:nth-child(2) { width: 15%; } /* WhatsApp */
     #clients-table th:nth-child(3), #clients-table td:nth-child(3) { width: 10%; } /* Projeto */
@@ -70,6 +71,22 @@
     #clients-table th:nth-child(5), #clients-table td:nth-child(5) { width: 15%; } /* Status/Atribuição */
     #clients-table th:nth-child(6), #clients-table td:nth-child(6) { width: 10%; text-align: center; } /* Formulários */
     #clients-table th:nth-child(7), #clients-table td:nth-child(7) { width: 15%; text-align: center;} /* Ações */
+
+    /* Resize handle */
+    #clients-table th { position: relative; cursor: pointer; user-select: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    #clients-table th .resize-handle {
+      position: absolute; right: 0; top: 0; width: 5px; height: 100%;
+      cursor: col-resize; background: transparent; z-index: 10;
+    }
+    #clients-table th .resize-handle:hover, #clients-table th .resize-handle.active {
+      background: var(--theme-secondary);
+    }
+    /* Sort indicators */
+    #clients-table th .sort-arrow { font-size: 0.7rem; margin-left: 4px; opacity: 0.5; }
+    #clients-table th.sort-asc .sort-arrow::after { content: '▲'; }
+    #clients-table th.sort-desc .sort-arrow::after { content: '▼'; }
+    /* Hidden rows via search */
+    #clients-table tbody tr.search-hidden { display: none; }
 
     .whatsapp-cell {
         display: flex;
@@ -331,6 +348,9 @@
     <!-- Tabela de Clientes -->
     <section>
       <h2>Clientes Cadastrados</h2>
+      <div style="margin-bottom:1rem;display:flex;align-items:center;gap:1rem;">
+        <input type="text" id="clients-search" placeholder="Buscar por nome, WhatsApp, projeto..." style="flex:1;max-width:400px;padding:0.6rem 0.8rem;border-radius:6px;border:1px solid var(--theme-border-color);background:rgba(0,0,0,0.2);color:var(--theme-text-light);font-size:0.9rem;">
+      </div>
       <table id="clients-table">
         <thead>
           <tr>
@@ -388,6 +408,128 @@
         // Se for admin vendo como user, não injeta sidebar
         console.log("clientes-dashboard.html: Admin visualizando como usuário, sidebar não injetada.");
     }
+  </script>
+
+  <!-- Search, Sort & Resize -->
+  <script>
+  (function() {
+    // Wait for table to be populated by clientes.js
+    var _checkInterval = setInterval(function() {
+      var table = document.getElementById('clients-table');
+      if (!table) return;
+      var tbody = table.querySelector('tbody');
+      if (!tbody || tbody.rows.length === 0) return;
+      // Check if first row is still "Carregando"
+      if (tbody.rows[0].cells.length === 1 && tbody.rows[0].textContent.includes('Carregando')) return;
+      clearInterval(_checkInterval);
+      initTableEnhancements(table);
+    }, 500);
+
+    function initTableEnhancements(table) {
+      var thead = table.querySelector('thead');
+      if (!thead) return;
+      var ths = thead.querySelectorAll('th');
+
+      // Add sort arrows and resize handles to each th
+      ths.forEach(function(th, idx) {
+        // Sort arrow
+        var arrow = document.createElement('span');
+        arrow.className = 'sort-arrow';
+        th.appendChild(arrow);
+        th.dataset.colIdx = idx;
+        th.addEventListener('click', function(e) {
+          if (e.target.classList.contains('resize-handle')) return;
+          handleSort(table, idx, th);
+        });
+
+        // Resize handle
+        var handle = document.createElement('div');
+        handle.className = 'resize-handle';
+        th.appendChild(handle);
+        handle.addEventListener('mousedown', function(e) {
+          e.preventDefault();
+          e.stopPropagation();
+          startResize(e, th, table);
+        });
+      });
+
+      // Search
+      var searchInput = document.getElementById('clients-search');
+      if (searchInput) {
+        searchInput.addEventListener('input', function() {
+          var term = this.value.toLowerCase();
+          var rows = table.querySelectorAll('tbody tr');
+          rows.forEach(function(row) {
+            if (!term) { row.classList.remove('search-hidden'); return; }
+            var text = row.textContent.toLowerCase();
+            if (text.includes(term)) row.classList.remove('search-hidden');
+            else row.classList.add('search-hidden');
+          });
+        });
+      }
+    }
+
+    // Sort
+    var currentSortCol = -1;
+    var currentSortDir = '';
+    function handleSort(table, colIdx, th) {
+      var thead = table.querySelector('thead');
+      var ths = thead.querySelectorAll('th');
+      // Determine direction
+      if (currentSortCol === colIdx) {
+        currentSortDir = currentSortDir === 'asc' ? 'desc' : 'asc';
+      } else {
+        currentSortDir = 'asc';
+        currentSortCol = colIdx;
+      }
+      // Remove classes from all
+      ths.forEach(function(t) { t.classList.remove('sort-asc', 'sort-desc'); });
+      th.classList.add('sort-' + currentSortDir);
+
+      // Sort rows
+      var tbody = table.querySelector('tbody');
+      var rows = Array.from(tbody.querySelectorAll('tr'));
+      rows.sort(function(a, b) {
+        var aText = (a.cells[colIdx] ? a.cells[colIdx].textContent : '').trim().toLowerCase();
+        var bText = (b.cells[colIdx] ? b.cells[colIdx].textContent : '').trim().toLowerCase();
+        // Try numeric
+        var aNum = parseFloat(aText.replace(/[^\d.-]/g, ''));
+        var bNum = parseFloat(bText.replace(/[^\d.-]/g, ''));
+        if (!isNaN(aNum) && !isNaN(bNum)) {
+          return currentSortDir === 'asc' ? aNum - bNum : bNum - aNum;
+        }
+        if (aText < bText) return currentSortDir === 'asc' ? -1 : 1;
+        if (aText > bText) return currentSortDir === 'asc' ? 1 : -1;
+        return 0;
+      });
+      rows.forEach(function(row) { tbody.appendChild(row); });
+    }
+
+    // Resize
+    function startResize(e, th, table) {
+      var startX = e.pageX;
+      var startWidth = th.offsetWidth;
+      var handle = th.querySelector('.resize-handle');
+      handle.classList.add('active');
+      document.body.style.cursor = 'col-resize';
+      document.body.style.userSelect = 'none';
+
+      function onMove(ev) {
+        var diff = ev.pageX - startX;
+        var newWidth = Math.max(50, startWidth + diff);
+        th.style.width = newWidth + 'px';
+      }
+      function onUp() {
+        handle.classList.remove('active');
+        document.body.style.cursor = '';
+        document.body.style.userSelect = '';
+        document.removeEventListener('mousemove', onMove);
+        document.removeEventListener('mouseup', onUp);
+      }
+      document.addEventListener('mousemove', onMove);
+      document.addEventListener('mouseup', onUp);
+    }
+  })();
   </script>
 
 </body>
