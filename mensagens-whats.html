@@ -18,42 +18,37 @@
     #main-content-mensagens {
       flex-grow: 1;
       padding: 2rem;
-      margin-left: 250px; /* Default margin for expanded sidebar */
+      margin-left: 250px;
       transition: margin-left 0.3s ease;
       background-color: var(--bg-surface);
       color: var(--text-light);
     }
     #main-content-mensagens.sidebar-collapsed {
-      margin-left: 60px; /* Margin for collapsed sidebar */
+      margin-left: 60px;
     }
-    /* --- End Sidebar Integration Styles --- */
-    
+
     /* Estilo para links de clientes */
     .cliente-link {
       color: var(--text-light);
       text-decoration: none;
       transition: color 0.2s ease;
     }
-    
     .cliente-link:hover {
       color: var(--accent-color);
       text-decoration: underline;
     }
-    
-    /* Estilo para links de cadastro de dados */
     .cadastrar-dados-link {
       color: #ff9800;
       text-decoration: none;
       font-weight: 500;
       transition: color 0.2s ease;
     }
-    
     .cadastrar-dados-link:hover {
       color: #ffb74d;
       text-decoration: underline;
     }
 
-    /* Estilos específicos para esta página */
+    /* Container principal */
     .mensagens-container {
       background-color: var(--bg-card);
       border-radius: 8px;
@@ -62,12 +57,54 @@
       margin-top: 1.5rem;
     }
 
-    .search-container {
+    /* === DATA DE SIMULAÇÃO === */
+    .simulacao-section {
+      background: linear-gradient(135deg, rgba(218,165,32,0.08), rgba(218,165,32,0.02));
+      border: 1px solid rgba(218,165,32,0.3);
+      border-radius: 8px;
+      padding: 1.2rem 1.5rem;
       margin-bottom: 1.5rem;
     }
-
-    #search-input {
+    .simulacao-section label {
+      display: block;
+      font-weight: bold;
+      color: var(--text-accent, #daa520);
+      margin-bottom: 0.5rem;
+      font-size: 0.95rem;
+    }
+    .simulacao-section .sim-desc {
+      font-size: 0.8rem;
+      color: var(--text-muted, #aaa);
+      margin-bottom: 0.8rem;
+    }
+    #sim-date {
       width: 100%;
+      max-width: 300px;
+      padding: 0.75rem 1rem;
+      font-size: 1.1rem;
+      border-radius: 6px;
+      border: 1px solid var(--border-color);
+      background-color: var(--bg-input, #1a1a1a);
+      color: var(--text-light);
+    }
+    .sim-info {
+      margin-top: 0.6rem;
+      font-size: 0.85rem;
+      color: var(--text-muted, #aaa);
+      font-style: italic;
+    }
+    .sim-info strong { color: var(--text-accent, #daa520); }
+
+    /* === SEARCH & SORT === */
+    .controls-row {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      margin-bottom: 1rem;
+      flex-wrap: wrap;
+    }
+    #search-input {
+      flex: 1;
       max-width: 400px;
       padding: 0.75rem;
       border-radius: 4px;
@@ -76,28 +113,35 @@
       color: var(--text-light);
     }
 
+    /* === TABLE === */
     .clientes-table {
       width: 100%;
       border-collapse: collapse;
       margin-top: 1rem;
     }
-
     .clientes-table th {
       text-align: left;
       padding: 0.75rem;
       border-bottom: 2px solid var(--border-color);
       color: var(--text-accent);
+      cursor: pointer;
+      user-select: none;
+      white-space: nowrap;
     }
-
+    .clientes-table th:hover { opacity: 0.8; }
+    .clientes-table th .sort-icon { font-size: 0.7rem; margin-left: 4px; opacity: 0.5; }
+    .clientes-table th.sort-asc .sort-icon::after { content: '▲'; }
+    .clientes-table th.sort-desc .sort-icon::after { content: '▼'; }
     .clientes-table td {
       padding: 0.75rem;
       border-bottom: 1px solid var(--border-color);
     }
-
     .clientes-table tr:hover {
       background-color: var(--bg-hover);
     }
+    .clientes-table tr.search-hidden { display: none; }
 
+    /* === ACTION BUTTONS === */
     .action-btn {
       background: none;
       border: none;
@@ -105,34 +149,44 @@
       margin-right: 0.5rem;
       color: var(--text-accent);
       font-size: 1.1rem;
+      position: relative;
+    }
+    .action-btn:hover { color: var(--accent-color); }
+
+    /* Badge */
+    .action-btn .badge {
+      position: absolute;
+      top: -6px; right: -8px;
+      background: #e74c3c;
+      color: white;
+      font-size: 0.6rem;
+      font-weight: bold;
+      width: 14px; height: 14px;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      line-height: 1;
     }
 
-    .action-btn:hover {
-      color: var(--accent-color);
-    }
-
-    /* Modal de Edição de Mensagem */
+    /* === MODAL === */
     .modal {
       display: none;
       position: fixed;
       z-index: 1000;
-      left: 0;
-      top: 0;
-      width: 100%;
-      height: 100%;
+      left: 0; top: 0;
+      width: 100%; height: 100%;
       background-color: rgba(0, 0, 0, 0.5);
     }
-
     .modal-content {
       background-color: #1e1e1e;
-      margin: 10% auto;
+      margin: 5% auto;
       padding: 1.5rem;
       border-radius: 8px;
-      width: 80%;
-      max-width: 600px;
+      width: 85%;
+      max-width: 750px;
+      max-height: 80vh;
+      overflow-y: auto;
       box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
     }
-
     .modal-header {
       display: flex;
       justify-content: space-between;
@@ -141,7 +195,6 @@
       border-bottom: 1px solid var(--border-color);
       padding-bottom: 0.75rem;
     }
-
     .close-modal {
       background: none;
       border: none;
@@ -149,107 +202,105 @@
       cursor: pointer;
       color: var(--text-light);
     }
-
-    .modal-body {
-      margin-bottom: 1.5rem;
-    }
-
+    .modal-body { margin-bottom: 1.5rem; }
     .modal-body textarea {
       width: 100%;
-      min-height: 120px;
+      min-height: 200px;
       padding: 0.75rem;
       border-radius: 4px;
       border: 1px solid var(--border-color);
       background-color: #2a2a2a;
       color: white;
       resize: vertical;
-      opacity: 1;
+      font-family: monospace;
+      font-size: 0.85rem;
+      line-height: 1.5;
     }
-
     .modal-footer {
       display: flex;
       justify-content: flex-end;
       gap: 0.75rem;
     }
-
     .modal-btn {
       padding: 0.5rem 1rem;
       border-radius: 4px;
       cursor: pointer;
       font-weight: 500;
     }
-
     .cancel-btn {
       background-color: var(--bg-button-secondary);
       color: var(--text-light);
       border: 1px solid var(--border-color);
     }
-
     .save-btn {
       background-color: var(--accent-color);
       color: white;
       border: none;
     }
+    .generate-btn {
+      background-color: #2ecc71;
+      color: white;
+      border: none;
+    }
+    .generate-btn:hover { background-color: #27ae60; }
+
+    /* Report sections in modal */
+    .report-section {
+      background: rgba(0,0,0,0.2);
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      padding: 0.8rem;
+      margin-bottom: 0.8rem;
+    }
+    .report-section h4 {
+      margin: 0 0 0.5rem 0;
+      color: var(--text-accent, #daa520);
+      font-size: 0.9rem;
+    }
 
     /* Responsividade */
     @media (max-width: 768px) {
-      .clientes-table {
-        display: block;
-        overflow-x: auto;
-      }
-      
-      .modal-content {
-        width: 95%;
-        margin: 5% auto;
-      }
+      .clientes-table { display: block; overflow-x: auto; }
+      .modal-content { width: 95%; margin: 5% auto; }
+      .controls-row { flex-direction: column; align-items: stretch; }
+      #search-input { max-width: 100%; }
     }
 
-    /* Mensagem de carregamento e erro */
     .loading-message, .error-message {
       text-align: center;
       padding: 2rem;
       font-size: 1.1rem;
     }
-
-    .error-message {
-      color: #e74c3c;
-    }
-
-    /* Estilo para quando não há clientes */
+    .error-message { color: #e74c3c; }
     .no-clients-message {
       text-align: center;
       padding: 2rem;
       color: var(--text-muted);
       font-style: italic;
     }
-    
-    /* Estilo para debug info */
-    .debug-info {
-      margin-top: 1rem;
-      padding: 1rem;
-      background-color: rgba(0, 0, 0, 0.2);
-      border-radius: 4px;
-      font-family: monospace;
-      font-size: 0.8rem;
-    }
   </style>
 </head>
 <body>
-  <!-- Sidebar será injetada aqui pelo sidebar.js -->
   <main id="main-content-mensagens">
     <h1>Mensagens WhatsApp - Clientes</h1>
     
     <div class="mensagens-container">
-      <div class="search-container">
+      <!-- Data de Simulação -->
+      <div class="simulacao-section">
+        <label for="sim-date"><i class="fas fa-calendar-alt"></i> Data de Simulação</label>
+        <p class="sim-desc">Defina uma data para simular quais clientes receberão mensagens nesse dia. O sistema analisa o fluxo de caixa e cronograma de cada cliente.</p>
+        <input type="date" id="sim-date">
+        <div class="sim-info" id="sim-info"></div>
+      </div>
+
+      <!-- Busca e filtros -->
+      <div class="controls-row">
         <input type="text" id="search-input" placeholder="Buscar por nome ou CPF...">
       </div>
       
       <div id="clientes-table-container">
         <div class="loading-message">Carregando clientes...</div>
       </div>
-      
-      <!-- Área de debug (para desenvolvimento) -->
-      <div id="debug-info" class="debug-info" style="display: none;"></div>
     </div>
 
     <!-- Modal de Edição de Mensagem -->
@@ -260,7 +311,10 @@
           <button class="close-modal">&times;</button>
         </div>
         <div class="modal-body">
-          <textarea id="mensagem-texto" placeholder="Digite a mensagem personalizada...">Em desenvolvimento.</textarea>
+          <div style="margin-bottom:0.8rem;display:flex;gap:0.5rem;">
+            <button class="modal-btn generate-btn" id="btn-generate-report"><i class="fas fa-magic"></i> Gerar Relatório Automático</button>
+          </div>
+          <textarea id="mensagem-texto" placeholder="Clique em 'Gerar Relatório Automático' ou digite manualmente..."></textarea>
         </div>
         <div class="modal-footer">
           <button class="modal-btn cancel-btn">Cancelar</button>
@@ -270,23 +324,23 @@
     </div>
   </main>
 
-  <!-- Carrega Sidebar -->
   <script src="sidebar.js"></script>
 
   <script type="module">
     import { supabase } from './supabase.js';
     
-    // Injetar a sidebar (agora global) com detecção automática
+    // Sidebar
     if (typeof injectSidebarWithAutoDetection === 'function') {
         injectSidebarWithAutoDetection("main-content-mensagens");
     } else if (typeof injectSidebar === 'function') {
-        // Fallback
         injectSidebar("main-content-mensagens", "Planejamento");
-    } else {
-        console.error("injectSidebar não encontrado");
     }
     
-    // Elementos DOM
+    // === CONSTANTS ===
+    const SUPABASE_URL = "https://vbikskbfkhundhropykf.supabase.co";
+    const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZiaWtza2Jma2h1bmRocm9weWtmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDU1MTk5NjEsImV4cCI6MjA2MTA5NTk2MX0.-n-Tj_5JnF1NL2ZImWlMeTcobWDl_VD6Vqp0lxRQFFU";
+
+    // === DOM ===
     const clientesTableContainer = document.getElementById('clientes-table-container');
     const searchInput = document.getElementById('search-input');
     const mensagemModal = document.getElementById('mensagem-modal');
@@ -295,399 +349,828 @@
     const closeModalBtn = document.querySelector('.close-modal');
     const cancelBtn = document.querySelector('.cancel-btn');
     const saveBtn = document.querySelector('.save-btn');
-    const debugInfo = document.getElementById('debug-info');
+    const generateBtn = document.getElementById('btn-generate-report');
+    const simDateInput = document.getElementById('sim-date');
+    const simInfo = document.getElementById('sim-info');
     
-    // Variáveis globais
+    // === STATE ===
     let allClientes = [];
+    let clientesData = {}; // { clienteId: { fluxo, acompanhamento, ... } }
     let currentClienteId = null;
     let isAdmin = false;
     let currentUserId = null;
-    
-    // Função para debug
-    function logDebug(message, data = null) {
-      console.log(message, data);
-      
-      // Descomente para mostrar debug na interface
-      // debugInfo.style.display = 'block';
-      // const content = typeof data === 'object' ? JSON.stringify(data, null, 2) : data;
-      // debugInfo.innerHTML += `<p><strong>${message}:</strong> ${content || ''}</p>`;
-    }
-    
-    // Função para normalizar UUID (remover espaços, converter para minúsculas)
-    function normalizeUUID(uuid) {
-      if (!uuid) return '';
-      return String(uuid).trim().toLowerCase();
-    }
-    
-    // Função para comparar UUIDs com segurança
-    function compareUUIDs(uuid1, uuid2) {
-      return normalizeUUID(uuid1) === normalizeUUID(uuid2);
-    }
-    
-    // Verificar autenticação e nível do usuário
+    let currentSortCol = -1;
+    let currentSortDir = '';
+
+    // Set default sim date to today
+    simDateInput.value = new Date().toISOString().split('T')[0];
+    updateSimInfo();
+
+    // === AUTH ===
     async function checkAuth() {
       const nivel = sessionStorage.getItem("nivel");
-      const projeto = sessionStorage.getItem("projeto");
       const userId = sessionStorage.getItem("id");
-      
       currentUserId = userId;
-      
-      logDebug("Nível do usuário", nivel);
-      logDebug("Projeto do usuário", projeto);
-      logDebug("ID do usuário", userId);
-      
-      if (!nivel) {
-        alert("Acesso não autorizado. Faça login.");
-        window.location.href = "index.html";
-        return false;
-      }
-      
-      if (nivel === "admin") {
-        isAdmin = true;
-        logDebug("Usuário é admin", true);
-      } else if (nivel === "usuario" && projeto === "Planejamento") {
-        isAdmin = false;
-        logDebug("Usuário é comum do projeto Planejamento", true);
-      } else if (nivel === "usuario" && projeto !== "Planejamento") {
+      if (!nivel) { alert("Acesso não autorizado."); window.location.href = "index.html"; return false; }
+      if (nivel === "admin") { isAdmin = true; }
+      else if (nivel === "usuario" && sessionStorage.getItem("projeto") !== "Planejamento") {
         alert("Acesso não autorizado para este módulo.");
         window.location.href = "index.html";
         return false;
       }
-      
       return true;
     }
-    
-    // Carregar clientes com base no nível do usuário
+
+    // === LOAD CLIENTS ===
     async function loadClientes() {
       try {
         clientesTableContainer.innerHTML = '<div class="loading-message">Carregando clientes...</div>';
-        
         const userId = currentUserId;
-        let clientesData = [];
-        
-        // Verificar se o ID do usuário é válido
-        const isValidUserId = userId && userId !== 'null' && userId !== 'undefined';
-        logDebug("ID do usuário válido", isValidUserId);
-        
-        // Buscar todos os clientes do projeto Planejamento
         const { data, error } = await supabase
           .from('clientes')
-          .select(`
-            *,
-            dados_cadastrais(*)
-          `)
+          .select('*, dados_cadastrais(*)')
           .eq('projeto', 'Planejamento');
-          
         if (error) throw error;
-        
-        logDebug("Total de clientes do projeto Planejamento", data.length);
-        
-        // Filtrar os clientes com base no nível do usuário
+
         if (isAdmin) {
-          // Administrador vê todos os clientes
-          clientesData = data;
-          logDebug("Admin - Todos os clientes", clientesData.length);
-        } else if (isValidUserId) {
-          // Usuário comum - Filtrar no JavaScript para garantir comparação correta de UUIDs
-          clientesData = data.filter(cliente => {
-            // Cliente tem visibilidade TODOS
-            const isTodos = cliente.visibility === 'TODOS';
-            
-            // Cliente está atribuído ao usuário atual (INDIVIDUAL)
-            const isAssignedToUser = cliente.assigned_to_user_id && compareUUIDs(cliente.assigned_to_user_id, userId);
-            
-            // Log para depuração de cada cliente
-            if (isAssignedToUser) {
-              logDebug(`Cliente atribuído ao usuário: ${cliente.nome}`, {
-                cliente_id: cliente.id,
-                assigned_to_user_id: cliente.assigned_to_user_id,
-                userId: userId,
-                isMatch: compareUUIDs(cliente.assigned_to_user_id, userId)
-              });
-            }
-            
-            return isTodos || isAssignedToUser;
-          });
-          
-          logDebug("Usuário - Clientes filtrados", {
-            total: clientesData.length,
-            todos: data.filter(c => c.visibility === 'TODOS').length,
-            individual: data.filter(c => compareUUIDs(c.assigned_to_user_id, userId)).length
-          });
+          allClientes = data;
         } else {
-          // Se não tiver ID válido, mostra apenas os com visibilidade TODOS
-          clientesData = data.filter(cliente => cliente.visibility === 'TODOS');
-          logDebug("Usuário sem ID - Clientes TODOS", clientesData.length);
+          allClientes = data.filter(c => {
+            return c.visibility === 'TODOS' || 
+                   (c.assigned_to_user_id && c.assigned_to_user_id.trim().toLowerCase() === (userId||'').trim().toLowerCase());
+          });
         }
-        
-        allClientes = clientesData;
         renderClientesTable(allClientes);
-        
-        // Carregar mensagens personalizadas
         await loadMensagens();
+        // Load data for all clients in background for badge calculation
+        loadAllClientData();
       } catch (error) {
-        console.error('Erro ao carregar clientes:', error);
-        clientesTableContainer.innerHTML = `
-          <div class="error-message">
-            Erro ao carregar clientes: ${error.message || 'Desconhecido'}
-          </div>
-        `;
+        clientesTableContainer.innerHTML = `<div class="error-message">Erro: ${error.message}</div>`;
       }
     }
-    
-    // Carregar mensagens personalizadas para os clientes
+
+    // === LOAD MENSAGENS ===
     async function loadMensagens() {
       try {
         if (allClientes.length === 0) return;
-        
-        const clienteIds = allClientes.map(cliente => cliente.id);
-        
+        const ids = allClientes.map(c => c.id);
         const { data, error } = await supabase
           .from('mensagens_clientes')
           .select('cliente_id, mensagem')
-          .in('cliente_id', clienteIds);
-        
+          .in('cliente_id', ids);
+        if (error) throw error;
+        if (data) {
+          data.forEach(m => {
+            const c = allClientes.find(cl => cl.id === m.cliente_id);
+            if (c) c.mensagem = m.mensagem;
+          });
+        }
+      } catch (e) { console.error('Erro mensagens:', e); }
+    }
+
+    // === LOAD ALL CLIENT DATA (for report generation) ===
+    async function loadAllClientData() {
+      try {
+        const ids = allClientes.map(c => c.id);
+        const { data, error } = await supabase
+          .from('ferramentas_dados')
+          .select('cliente_id, ferramenta, dados')
+          .in('cliente_id', ids)
+          .in('ferramenta', ['fluxo', 'acompanhamento', 'fluxo_caixa_avancado']);
         if (error) throw error;
         
-        // Associar mensagens aos clientes
-        if (data && data.length > 0) {
-          data.forEach(mensagem => {
-            const cliente = allClientes.find(c => c.id === mensagem.cliente_id);
-            if (cliente) {
-              cliente.mensagem = mensagem.mensagem;
+        clientesData = {};
+        if (data) {
+          data.forEach(row => {
+            if (!clientesData[row.cliente_id]) clientesData[row.cliente_id] = {};
+            let d = row.dados;
+            if (typeof d === 'string') { try { d = JSON.parse(d); } catch(e) { d = null; } }
+            // Merge fluxo_caixa_avancado as fluxo if fluxo doesn't exist
+            if (row.ferramenta === 'fluxo_caixa_avancado' && !clientesData[row.cliente_id].fluxo) {
+              clientesData[row.cliente_id].fluxo = d;
+            } else {
+              clientesData[row.cliente_id][row.ferramenta] = d;
             }
           });
         }
-      } catch (error) {
-        console.error('Erro ao carregar mensagens:', error);
-      }
+        // After loading data, update badges
+        updateBadges();
+      } catch(e) { console.error('Erro ao carregar dados:', e); }
     }
-    
-    // Função para formatar número de WhatsApp (remover o + inicial)
-    function formatWhatsAppNumber(number) {
-      if (!number) return '';
-      // Remove o + inicial se existir
-      return number.toString().replace(/^\+/, '');
-    }
-    
-    // Função para abrir WhatsApp com mensagem personalizada
-    function openWhatsApp(event) {
-      const row = event.target.closest('tr');
-      const clienteId = row.dataset.id;
-      
-      const cliente = allClientes.find(c => c.id === clienteId);
-      if (!cliente) return;
-      
-      const dadosCadastraisArray = cliente.dados_cadastrais || [];
-      const dadosCadastrais = dadosCadastraisArray.find(dc => dc && dc.cliente_id === clienteId) || {};
-      
-      // Obter número de WhatsApp (priorizar dados cadastrais)
-      let whatsapp = dadosCadastrais.whatsapp || cliente.whatsapp || '';
-      
-      // Se não tiver WhatsApp, alertar e sair
-      if (!whatsapp || whatsapp.trim() === '') {
-        alert('Este cliente não possui número de WhatsApp cadastrado.');
-        return;
-      }
-      
-      // Formatar número (remover o + inicial)
-      whatsapp = formatWhatsAppNumber(whatsapp);
-      
-      // Obter mensagem personalizada
-      const mensagem = cliente.mensagem || 'Em desenvolvimento.';
-      
-      // Construir URL do WhatsApp
-      const whatsappUrl = `https://api.whatsapp.com/send?phone=${whatsapp}&text=${encodeURIComponent(mensagem)}`;
-      
-      // Abrir em nova aba
-      window.open(whatsappUrl, '_blank');
-    }
-    
-    // Renderizar tabela de clientes
+
+    // === RENDER TABLE ===
     function renderClientesTable(clientes) {
       if (!clientes || clientes.length === 0) {
         clientesTableContainer.innerHTML = '<div class="no-clients-message">Nenhum cliente encontrado.</div>';
         return;
       }
-      
       const tableHTML = `
-        <table class="clientes-table">
-          <thead>
-            <tr>
-              <th>Nome do Cliente</th>
-              <th>CPF</th>
-              <th>WhatsApp</th>
-              <th>Ações</th>
-            </tr>
-          </thead>
+        <table class="clientes-table" id="msg-table">
+          <thead><tr>
+            <th data-col="0">Nome <span class="sort-icon"></span></th>
+            <th data-col="1">CPF <span class="sort-icon"></span></th>
+            <th data-col="2">WhatsApp <span class="sort-icon"></span></th>
+            <th data-col="3">Ações</th>
+          </tr></thead>
           <tbody>
             ${clientes.map(cliente => {
-              // Obter dados cadastrais do cliente
-              const dadosCadastraisArray = cliente.dados_cadastrais || [];
-              
-              // Encontrar o registro de dados cadastrais correto (se houver)
-              const dadosCadastrais = dadosCadastraisArray.find(dc => dc && dc.cliente_id === cliente.id) || {};
-              
-              const nome = dadosCadastrais.nome_completo || cliente.nome || 'Nome não disponível';
-              
-              // Verificar se os dados cadastrais específicos existem
-              const temCpf = dadosCadastrais && dadosCadastrais.cpf && dadosCadastrais.cpf.trim() !== '';
-              const temWhatsapp = (dadosCadastrais && dadosCadastrais.whatsapp && dadosCadastrais.whatsapp.trim() !== '') || (cliente.whatsapp && cliente.whatsapp.trim() !== '');
-              
-              // Preparar CPF e WhatsApp
-              let cpfDisplay, whatsappDisplay;
-              
-              if (temCpf) {
-                cpfDisplay = `${dadosCadastrais.cpf}`;
-              } else {
-                cpfDisplay = `<a href="cliente-detalhes.html?id=${cliente.id}&edit=true" class="cadastrar-dados-link">Cadastrar Dados</a>`;
-              }
-              
-              if (temWhatsapp) {
-                // Formatar WhatsApp conforme regra
-                whatsappDisplay = dadosCadastrais.whatsapp || cliente.whatsapp;
-                const conjuge = dadosCadastrais.conjuge || {};
-                const whatsappConjuge = conjuge.whatsapp;
-                
-                if (whatsappConjuge) {
-                  whatsappDisplay = `${whatsappDisplay} / ${whatsappConjuge}`;
-                }
-              } else {
-                whatsappDisplay = `<a href="cliente-detalhes.html?id=${cliente.id}&edit=true" class="cadastrar-dados-link">Cadastrar Dados</a>`;
-              }
-              
+              const dc = (cliente.dados_cadastrais || []).find(d => d && d.cliente_id === cliente.id) || {};
+              const nome = dc.nome_completo || cliente.nome || 'Nome não disponível';
+              const cpf = dc.cpf || '';
+              const cpfDisplay = cpf ? cpf : `<a href="cliente-detalhes.html?id=${cliente.id}&edit=true" class="cadastrar-dados-link">Cadastrar</a>`;
+              let whats = dc.whatsapp || cliente.whatsapp || '';
+              const whatsDisplay = whats ? whats : `<a href="cliente-detalhes.html?id=${cliente.id}&edit=true" class="cadastrar-dados-link">Cadastrar</a>`;
               return `
-                <tr data-id="${cliente.id}">
+                <tr data-id="${cliente.id}" data-nome="${nome.toLowerCase()}" data-cpf="${cpf.toLowerCase()}">
                   <td><a href="cliente-detalhes.html?id=${cliente.id}" class="cliente-link">${nome}</a></td>
                   <td>${cpfDisplay}</td>
-                  <td>${whatsappDisplay}</td>
+                  <td>${whatsDisplay}</td>
                   <td>
-                    <button class="action-btn edit-msg-btn" title="Editar mensagem">
+                    <button class="action-btn edit-msg-btn" data-id="${cliente.id}" title="Editar/Gerar mensagem">
                       <i class="fas fa-comment-alt"></i>
                     </button>
-                    <button class="action-btn whats-btn" title="Enviar WhatsApp">
+                    <button class="action-btn whats-btn" data-id="${cliente.id}" title="Enviar WhatsApp">
                       <i class="fab fa-whatsapp"></i>
                     </button>
                   </td>
-                </tr>
-              `;
+                </tr>`;
             }).join('')}
           </tbody>
-        </table>
-      `;
-      
+        </table>`;
       clientesTableContainer.innerHTML = tableHTML;
+
+      // Event listeners
+      document.querySelectorAll('.edit-msg-btn').forEach(btn => btn.addEventListener('click', handleEditMessage));
+      document.querySelectorAll('.whats-btn').forEach(btn => btn.addEventListener('click', openWhatsApp));
       
-      // Adicionar event listeners aos botões
-      document.querySelectorAll('.edit-msg-btn').forEach(btn => {
-        btn.addEventListener('click', handleEditMessage);
+      // Sort headers
+      document.querySelectorAll('.clientes-table th[data-col]').forEach(th => {
+        th.addEventListener('click', () => handleSort(parseInt(th.dataset.col)));
       });
+
+      // Update badges after render
+      updateBadges();
+    }
+
+    // === SORT ===
+    function handleSort(colIdx) {
+      if (colIdx === 3) return; // Don't sort actions
+      const table = document.getElementById('msg-table');
+      if (!table) return;
+      const ths = table.querySelectorAll('th');
+      if (currentSortCol === colIdx) {
+        currentSortDir = currentSortDir === 'asc' ? 'desc' : 'asc';
+      } else {
+        currentSortDir = 'asc';
+        currentSortCol = colIdx;
+      }
+      ths.forEach(t => t.classList.remove('sort-asc', 'sort-desc'));
+      ths[colIdx].classList.add('sort-' + currentSortDir);
+
+      const tbody = table.querySelector('tbody');
+      const rows = Array.from(tbody.querySelectorAll('tr'));
+      rows.sort((a, b) => {
+        const aT = (a.cells[colIdx]?.textContent || '').trim().toLowerCase();
+        const bT = (b.cells[colIdx]?.textContent || '').trim().toLowerCase();
+        if (aT < bT) return currentSortDir === 'asc' ? -1 : 1;
+        if (aT > bT) return currentSortDir === 'asc' ? 1 : -1;
+        return 0;
+      });
+      rows.forEach(r => tbody.appendChild(r));
+    }
+
+    // === SEARCH ===
+    searchInput.addEventListener('input', () => {
+      const term = searchInput.value.toLowerCase();
+      const rows = document.querySelectorAll('.clientes-table tbody tr');
+      rows.forEach(row => {
+        if (!term) { row.classList.remove('search-hidden'); return; }
+        const text = row.textContent.toLowerCase();
+        row.classList.toggle('search-hidden', !text.includes(term));
+      });
+    });
+
+    // === SIMULATION DATE ===
+    simDateInput.addEventListener('change', () => {
+      updateSimInfo();
+      updateBadges();
+    });
+
+    function updateSimInfo() {
+      const d = getSimDate();
+      if (!d) { simInfo.textContent = ''; return; }
+      const dow = d.getDay();
+      const dom = d.getDate();
+      const lastDay = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+      let tags = [];
+      if (dom === 1) tags.push('Início do Mês');
+      if (dow === 1) tags.push('Início da Semana (Segunda)');
+      if (dow === 5) tags.push('Final da Semana (Sexta)');
+      if (dom === lastDay) tags.push('Final do Mês');
+      if (tags.length === 0) tags.push('Dia comum');
+      simInfo.innerHTML = `<strong>${d.toLocaleDateString('pt-BR', {weekday:'long', day:'numeric', month:'long', year:'numeric'})}</strong> — ${tags.join(' | ')}`;
+    }
+
+    function getSimDate() {
+      if (!simDateInput.value) return null;
+      return new Date(simDateInput.value + 'T00:00:00');
+    }
+
+    // === BADGE SYSTEM ===
+    function updateBadges() {
+      const simDate = getSimDate();
+      if (!simDate) return;
       
-      // Adicionar event listeners aos botões de WhatsApp
-      document.querySelectorAll('.whats-btn').forEach(btn => {
-        btn.addEventListener('click', openWhatsApp);
+      document.querySelectorAll('.edit-msg-btn').forEach(btn => {
+        const clienteId = btn.dataset.id;
+        const hasMessage = clienteHasMensagem(clienteId, simDate);
+        // Remove existing badge
+        const existing = btn.querySelector('.badge');
+        if (existing) existing.remove();
+        if (hasMessage) {
+          const badge = document.createElement('span');
+          badge.className = 'badge';
+          badge.textContent = '!';
+          btn.appendChild(badge);
+        }
       });
     }
-    
-    // Filtrar clientes com base na busca
-    function filterClientes(searchTerm) {
-      if (!searchTerm) {
-        renderClientesTable(allClientes);
-        return;
+
+    function clienteHasMensagem(clienteId, simDate) {
+      const data = clientesData[clienteId];
+      if (!data) return false;
+      
+      const dow = simDate.getDay();
+      const dom = simDate.getDate();
+      const lastDay = new Date(simDate.getFullYear(), simDate.getMonth() + 1, 0).getDate();
+      
+      // Always has message on: first day of month, monday, friday, last day of month
+      if (dom === 1 || dow === 1 || dow === 5 || dom === lastDay) return true;
+      
+      // Check if there are specific fluxo events on this day
+      if (data.fluxo && data.fluxo.itens) {
+        const events = getFluxoEventsForDate(data.fluxo.itens, simDate);
+        if (events.length > 0) return true;
       }
       
-      const searchTermLower = searchTerm.toLowerCase();
-      const filteredClientes = allClientes.filter(cliente => {
-        const dadosCadastraisArray = cliente.dados_cadastrais || [];
-        const dadosCadastrais = dadosCadastraisArray.find(dc => dc && dc.cliente_id === cliente.id) || {};
-        
-        const nome = (dadosCadastrais.nome_completo || cliente.nome || '').toLowerCase();
-        const cpf = (dadosCadastrais.cpf || '').toLowerCase();
-        
-        return nome.includes(searchTermLower) || cpf.includes(searchTermLower);
+      // Check cronograma events
+      if (data.acompanhamento) {
+        const cronoEvents = getCronoEventsForDate(data.acompanhamento, simDate);
+        if (cronoEvents.length > 0) return true;
+      }
+      
+      return false;
+    }
+
+    // === FLUXO EVENTS FOR DATE ===
+    function getFluxoEventsForDate(itens, targetDate) {
+      const events = [];
+      const target = new Date(targetDate);
+      target.setHours(0,0,0,0);
+      const targetISO = isoDate(target);
+
+      itens.forEach(item => {
+        if (!item.recInicio) return;
+        const occs = getOccurrences(item, target, target);
+        if (occs.length > 0) {
+          events.push(item);
+        }
       });
-      
-      renderClientesTable(filteredClientes);
+      return events;
     }
-    
-    // Manipular clique no botão de editar mensagem
-    function handleEditMessage(event) {
-      const row = event.target.closest('tr');
-      currentClienteId = row.dataset.id;
+
+    // === CRONOGRAMA EVENTS FOR DATE ===
+    function getCronoEventsForDate(acomp, targetDate) {
+      const events = [];
+      const target = new Date(targetDate);
+      target.setHours(0,0,0,0);
+      const targetISO = isoDate(target);
       
-      const cliente = allClientes.find(c => c.id === currentClienteId);
-      if (!cliente) return;
-      
-      const dadosCadastraisArray = cliente.dados_cadastrais || [];
-      const dadosCadastrais = dadosCadastraisArray.find(dc => dc && dc.cliente_id === cliente.id) || {};
-      const nome = dadosCadastrais.nome_completo || cliente.nome || 'Cliente';
-      
-      modalClienteNome.textContent = `Mensagem para: ${nome}`;
-      mensagemTexto.value = cliente.mensagem || 'Em desenvolvimento.';
-      
-      mensagemModal.style.display = 'block';
+      // Check micro passos
+      const micros = acomp.microPassos || [];
+      micros.forEach(m => {
+        if (m.status === 'Concluído') return;
+        const dates = getItemDates(m, acomp);
+        if (!dates) return;
+        const { start, end } = dates;
+        
+        // Starting today
+        if (start && isoDate(start) === targetISO) {
+          events.push({ tipo: 'inicio_micro', nome: m.nome });
+        }
+        // Ending today
+        if (end && isoDate(end) === targetISO) {
+          events.push({ tipo: 'conclusao_micro', nome: m.nome });
+        }
+        // 3 days before deadline
+        if (end) {
+          const diff = Math.round((end - target) / 86400000);
+          if (diff > 0 && diff <= 3) {
+            events.push({ tipo: 'prazo_proximo_micro', nome: m.nome, dias: diff });
+          }
+        }
+        // Halfway point
+        if (start && end) {
+          const total = Math.round((end - start) / 86400000);
+          const elapsed = Math.round((target - start) / 86400000);
+          if (total > 2 && elapsed === Math.floor(total / 2)) {
+            events.push({ tipo: 'metade_micro', nome: m.nome });
+          }
+        }
+      });
+
+      // Check macro estratégias
+      const macros = acomp.macroPassos || [];
+      macros.forEach(m => {
+        if (m.status === 'Concluído') return;
+        const dates = getItemDates(m, acomp);
+        if (!dates) return;
+        const { start, end } = dates;
+        if (start && isoDate(start) === targetISO) {
+          events.push({ tipo: 'inicio_macro', nome: m.nome });
+        }
+        if (end && isoDate(end) === targetISO) {
+          events.push({ tipo: 'conclusao_macro', nome: m.nome });
+        }
+        if (end) {
+          const diff = Math.round((end - target) / 86400000);
+          if (diff > 0 && diff <= 3) {
+            events.push({ tipo: 'prazo_proximo_macro', nome: m.nome, dias: diff });
+          }
+        }
+      });
+
+      return events;
     }
-    
-    // Salvar mensagem personalizada
-    async function saveMensagem() {
-      if (!currentClienteId) return;
+
+    // === REPORT GENERATION ===
+    async function generateReport(clienteId) {
+      const simDate = getSimDate();
+      if (!simDate) { alert('Defina uma data de simulação primeiro.'); return; }
       
-      const mensagem = mensagemTexto.value.trim();
+      const data = clientesData[clienteId];
+      const cliente = allClientes.find(c => c.id === clienteId);
+      const dc = (cliente?.dados_cadastrais || []).find(d => d?.cliente_id === clienteId) || {};
+      const nome = dc.nome_completo || cliente?.nome || 'Cliente';
+      const primeiroNome = nome.split(' ')[0];
       
-      try {
-        const { data, error } = await supabase
-          .from('mensagens_clientes')
-          .upsert({
-            cliente_id: currentClienteId,
-            mensagem: mensagem,
-            updated_at: new Date().toISOString()
-          }, {
-            onConflict: 'cliente_id'
+      const dow = simDate.getDay();
+      const dom = simDate.getDate();
+      const lastDay = new Date(simDate.getFullYear(), simDate.getMonth() + 1, 0).getDate();
+      
+      let report = '';
+      
+      // === INÍCIO DO MÊS ===
+      if (dom === 1) {
+        report += `Olá, ${primeiroNome}! Bom início de mês! 🗓️\n\n`;
+        report += `*RELATÓRIO MENSAL - ${simDate.toLocaleDateString('pt-BR', {month:'long', year:'numeric'}).toUpperCase()}*\n\n`;
+        
+        // Fluxo previsto para o mês
+        if (data?.fluxo?.itens) {
+          const monthStart = new Date(simDate.getFullYear(), simDate.getMonth(), 1);
+          const monthEnd = new Date(simDate.getFullYear(), simDate.getMonth() + 1, 0);
+          const monthEvents = getAllFluxoEvents(data.fluxo.itens, monthStart, monthEnd);
+          
+          let totalReceitas = 0, totalDespesas = 0, totalInvest = 0;
+          monthEvents.forEach(e => {
+            if (e.item.tipo === 'entrada') totalReceitas += e.item.valor;
+            else if (e.item.subtipo === 'investimento' || e.item.subtipo === 'poupanca') totalInvest += e.item.valor;
+            else totalDespesas += e.item.valor;
           });
-        
-        if (error) throw error;
-        
-        // Atualizar mensagem no cliente local
-        const cliente = allClientes.find(c => c.id === currentClienteId);
-        if (cliente) {
-          cliente.mensagem = mensagem;
+          
+          report += `📊 *Previsão de Fluxo de Caixa:*\n`;
+          report += `• Receitas previstas: ${fmtBRL(totalReceitas)}\n`;
+          report += `• Despesas previstas: ${fmtBRL(totalDespesas)}\n`;
+          report += `• Investimentos/Poupança: ${fmtBRL(totalInvest)}\n`;
+          report += `• Saldo previsto: ${fmtBRL(totalReceitas - totalDespesas - totalInvest)}\n\n`;
         }
         
-        alert('Mensagem salva com sucesso!');
+        // Cronograma do mês
+        if (data?.acompanhamento) {
+          const cronoMonth = getCronoForMonth(data.acompanhamento, simDate);
+          if (cronoMonth.length > 0) {
+            report += `📋 *Cronograma para este mês:*\n`;
+            cronoMonth.forEach(e => {
+              report += `• ${e.desc}\n`;
+            });
+            report += '\n';
+          }
+        }
+        
+        report += `Qualquer dúvida, estou à disposição!`;
+      }
+      
+      // === INÍCIO DA SEMANA (Segunda) ===
+      else if (dow === 1) {
+        report += `Olá, ${primeiroNome}! Boa semana! 💪\n\n`;
+        report += `*PREVISÃO DA SEMANA*\n\n`;
+        
+        const weekStart = new Date(simDate);
+        const weekEnd = new Date(simDate);
+        weekEnd.setDate(weekEnd.getDate() + 4); // Seg a Sex
+        
+        if (data?.fluxo?.itens) {
+          const weekEvents = getAllFluxoEvents(data.fluxo.itens, weekStart, weekEnd);
+          if (weekEvents.length > 0) {
+            let totalRec = 0, totalDesp = 0;
+            report += `💰 *Movimentações previstas:*\n`;
+            weekEvents.forEach(e => {
+              const tipo = e.item.tipo === 'entrada' ? '🟢' : '🔴';
+              report += `${tipo} ${e.date.toLocaleDateString('pt-BR',{weekday:'short',day:'numeric'})} - ${e.item.nome}: ${fmtBRL(e.item.valor)}\n`;
+              if (e.item.tipo === 'entrada') totalRec += e.item.valor; else totalDesp += e.item.valor;
+            });
+            report += `\n*Saldo semanal previsto: ${fmtBRL(totalRec - totalDesp)}*\n\n`;
+          }
+        }
+        
+        if (data?.acompanhamento) {
+          const cronoWeek = getCronoForPeriod(data.acompanhamento, weekStart, weekEnd);
+          if (cronoWeek.length > 0) {
+            report += `📋 *Cronograma da semana:*\n`;
+            cronoWeek.forEach(e => report += `• ${e.desc}\n`);
+            report += '\n';
+          }
+        }
+        
+        report += `Vamos com tudo!`;
+      }
+      
+      // === FINAL DA SEMANA (Sexta) ===
+      else if (dow === 5) {
+        report += `Olá, ${primeiroNome}! Fechamento da semana 📊\n\n`;
+        report += `*RESUMO SEMANAL*\n\n`;
+        
+        const weekStart = new Date(simDate);
+        weekStart.setDate(weekStart.getDate() - 4); // Segunda
+        
+        if (data?.fluxo?.itens) {
+          const weekEvents = getAllFluxoEvents(data.fluxo.itens, weekStart, simDate);
+          if (weekEvents.length > 0) {
+            let totalRec = 0, totalDesp = 0;
+            report += `💰 *O que era esperado esta semana:*\n`;
+            weekEvents.forEach(e => {
+              const tipo = e.item.tipo === 'entrada' ? '🟢 Receber' : '🔴 Pagar';
+              report += `${tipo}: ${e.item.nome} - ${fmtBRL(e.item.valor)}\n`;
+              if (e.item.tipo === 'entrada') totalRec += e.item.valor; else totalDesp += e.item.valor;
+            });
+            report += `\n`;
+          } else {
+            report += `Nenhuma movimentação prevista para esta semana.\n\n`;
+          }
+        }
+        
+        // Cronograma updates this week
+        if (data?.acompanhamento) {
+          const cronoWeek = getCronoForPeriod(data.acompanhamento, weekStart, simDate);
+          if (cronoWeek.length > 0) {
+            report += `📋 *Andamento do cronograma:*\n`;
+            cronoWeek.forEach(e => report += `• ${e.desc}\n`);
+            report += '\n';
+          }
+          
+          // Updates received this week
+          const updates = getUpdatesInPeriod(data.acompanhamento, weekStart, simDate);
+          if (updates.length > 0) {
+            report += `✅ *Atualizações registradas:*\n`;
+            updates.forEach(u => report += `• ${u}\n`);
+            report += '\n';
+          }
+        }
+        
+        report += `Tudo correu conforme o planejado? Me conte como foi! Bom fim de semana! 🙌`;
+      }
+      
+      // === FINAL DO MÊS ===
+      else if (dom === lastDay) {
+        report += `Olá, ${primeiroNome}! Fechamento do mês! 📈\n\n`;
+        report += `*COMPARATIVO MENSAL - ${simDate.toLocaleDateString('pt-BR', {month:'long', year:'numeric'}).toUpperCase()}*\n\n`;
+        
+        const monthStart = new Date(simDate.getFullYear(), simDate.getMonth(), 1);
+        
+        if (data?.fluxo?.itens) {
+          const monthEvents = getAllFluxoEvents(data.fluxo.itens, monthStart, simDate);
+          let totalRec = 0, totalDesp = 0, totalInv = 0;
+          monthEvents.forEach(e => {
+            if (e.item.tipo === 'entrada') totalRec += e.item.valor;
+            else if (e.item.subtipo === 'investimento' || e.item.subtipo === 'poupanca') totalInv += e.item.valor;
+            else totalDesp += e.item.valor;
+          });
+          
+          report += `💰 *Planejado para o mês:*\n`;
+          report += `• Receitas: ${fmtBRL(totalRec)}\n`;
+          report += `• Despesas: ${fmtBRL(totalDesp)}\n`;
+          report += `• Investimentos: ${fmtBRL(totalInv)}\n`;
+          report += `• Saldo: ${fmtBRL(totalRec - totalDesp - totalInv)}\n\n`;
+          report += `_Espero que tudo tenha ocorrido conforme planejado! Caso contrário, vamos ajustar juntos._\n\n`;
+        }
+        
+        // Cronograma do mês - evolução
+        if (data?.acompanhamento) {
+          const updates = getUpdatesInPeriod(data.acompanhamento, monthStart, simDate);
+          const cronoMonth = getCronoForMonth(data.acompanhamento, simDate);
+          
+          if (updates.length > 0) {
+            report += `✅ *Atualizações do cronograma neste mês:*\n`;
+            updates.forEach(u => report += `• ${u}\n`);
+            report += '\n';
+          }
+          
+          // Overall progress
+          const micros = data.acompanhamento.microPassos || [];
+          const concluidos = micros.filter(m => m.status === 'Concluído').length;
+          report += `📊 *Progresso geral:* ${concluidos}/${micros.length} micro passos concluídos\n\n`;
+        }
+        
+        report += `Parabéns pelo mês! Vamos para o próximo com ainda mais foco! 🚀`;
+      }
+      
+      // === DIA ESPECÍFICO (eventos pontuais) ===
+      else {
+        report += `Olá, ${primeiroNome}!\n\n`;
+        let hasContent = false;
+        
+        if (data?.fluxo?.itens) {
+          const dayEvents = getFluxoEventsForDate(data.fluxo.itens, simDate);
+          if (dayEvents.length > 0) {
+            hasContent = true;
+            report += `💰 *Movimentações de hoje:*\n`;
+            dayEvents.forEach(item => {
+              const tipo = item.tipo === 'entrada' ? '🟢 Receber' : '🔴 Pagar';
+              report += `${tipo}: ${item.nome} - ${fmtBRL(item.valor)}\n`;
+            });
+            report += '\n';
+          }
+        }
+        
+        if (data?.acompanhamento) {
+          const cronoEvents = getCronoEventsForDate(data.acompanhamento, simDate);
+          if (cronoEvents.length > 0) {
+            hasContent = true;
+            report += `📋 *Cronograma:*\n`;
+            cronoEvents.forEach(e => {
+              if (e.tipo === 'inicio_micro') report += `🟡 Início: ${e.nome}\n`;
+              else if (e.tipo === 'conclusao_micro') report += `🏁 Prazo de conclusão: ${e.nome}\n`;
+              else if (e.tipo === 'prazo_proximo_micro') report += `⚠️ ${e.dias} dia(s) para concluir: ${e.nome}\n`;
+              else if (e.tipo === 'metade_micro') report += `📍 Metade do prazo: ${e.nome}\n`;
+              else if (e.tipo === 'inicio_macro') report += `🟡 Início de fase: ${e.nome}\n`;
+              else if (e.tipo === 'conclusao_macro') report += `🏁 Prazo de fase: ${e.nome}\n`;
+              else if (e.tipo === 'prazo_proximo_macro') report += `⚠️ ${e.dias} dia(s) para fase: ${e.nome}\n`;
+            });
+            report += '\n';
+          }
+        }
+        
+        if (!hasContent) {
+          report += `Nenhum evento específico para hoje. Tudo segue conforme o planejado! 👍`;
+        } else {
+          report += `Qualquer dúvida, estou aqui!`;
+        }
+      }
+      
+      return report;
+    }
+
+    // === HELPER: Get all fluxo events in a period ===
+    function getAllFluxoEvents(itens, start, end) {
+      const events = [];
+      itens.forEach(item => {
+        if (!item.recInicio) return;
+        const occs = getOccurrences(item, start, end);
+        occs.forEach(d => events.push({ item, date: d }));
+      });
+      events.sort((a, b) => a.date - b.date);
+      return events;
+    }
+
+    // === HELPER: Cronograma items for a month ===
+    function getCronoForMonth(acomp, simDate) {
+      const monthStart = new Date(simDate.getFullYear(), simDate.getMonth(), 1);
+      const monthEnd = new Date(simDate.getFullYear(), simDate.getMonth() + 1, 0);
+      return getCronoForPeriod(acomp, monthStart, monthEnd);
+    }
+
+    function getCronoForPeriod(acomp, start, end) {
+      const results = [];
+      const micros = acomp.microPassos || [];
+      const macros = acomp.macroPassos || [];
+      
+      micros.forEach(m => {
+        if (m.status === 'Concluído') return;
+        const dates = getItemDates(m, acomp);
+        if (!dates) return;
+        if (dates.start && dates.start >= start && dates.start <= end) {
+          results.push({ desc: `Iniciar: "${m.nome}" (${dates.start.toLocaleDateString('pt-BR')})` });
+        }
+        if (dates.end && dates.end >= start && dates.end <= end) {
+          results.push({ desc: `Concluir: "${m.nome}" (${dates.end.toLocaleDateString('pt-BR')})` });
+        }
+      });
+      
+      macros.forEach(m => {
+        if (m.status === 'Concluído') return;
+        const dates = getItemDates(m, acomp);
+        if (!dates) return;
+        if (dates.start && dates.start >= start && dates.start <= end) {
+          results.push({ desc: `Fase inicia: "${m.nome}" (${dates.start.toLocaleDateString('pt-BR')})` });
+        }
+        if (dates.end && dates.end >= start && dates.end <= end) {
+          results.push({ desc: `Fase encerra: "${m.nome}" (${dates.end.toLocaleDateString('pt-BR')})` });
+        }
+      });
+      
+      return results;
+    }
+
+    // === HELPER: Get updates in period ===
+    function getUpdatesInPeriod(acomp, start, end) {
+      const results = [];
+      const micros = acomp.microPassos || [];
+      const objetivos = acomp.objetivos || [];
+      
+      micros.forEach(m => {
+        if (!m.updates) return;
+        m.updates.forEach(u => {
+          const d = new Date(u.data + 'T00:00:00');
+          if (d >= start && d <= end) {
+            results.push(`${m.nome}: ${u.texto || (u.concluido ? 'Marcado como concluído' : 'Atualização registrada')}`);
+          }
+        });
+      });
+      
+      objetivos.forEach(o => {
+        if (!o.updates) return;
+        o.updates.forEach(u => {
+          const d = new Date(u.data + 'T00:00:00');
+          if (d >= start && d <= end) {
+            results.push(`Objetivo "${o.nome}": valor atualizado para ${fmtBRL(u.valor || 0)}`);
+          }
+        });
+      });
+      
+      return results;
+    }
+
+    // === HELPER: Get item dates (prazo system) ===
+    function getItemDates(item, acomp) {
+      const tipo = item.prazo_tipo;
+      if (!tipo) return null;
+      
+      if (tipo === 'duracao') {
+        let startDate = item.prazo_inicio ? new Date(item.prazo_inicio + 'T00:00:00') : null;
+        if (!startDate) return null;
+        const endDate = calcEndDate(startDate, item.dur_qty || 0, item.dur_unit || 'dias');
+        return { start: startDate, end: endDate };
+      } else if (tipo === 'datas') {
+        const s = item.prazo_inicio ? new Date(item.prazo_inicio + 'T00:00:00') : null;
+        const e = item.prazo_fim ? new Date(item.prazo_fim + 'T00:00:00') : null;
+        return { start: s, end: e };
+      } else if (tipo === 'previsao') {
+        const e = item.prazo_fim ? new Date(item.prazo_fim + 'T00:00:00') : null;
+        return { start: null, end: e };
+      }
+      return null;
+    }
+
+    function calcEndDate(start, qty, unit) {
+      if (!start || !qty) return null;
+      const d = new Date(start);
+      if (unit === 'dias') d.setDate(d.getDate() + qty);
+      else if (unit === 'uteis') {
+        let added = 0;
+        while (added < qty) { d.setDate(d.getDate() + 1); if (d.getDay() !== 0 && d.getDay() !== 6) added++; }
+      }
+      else if (unit === 'semanas') d.setDate(d.getDate() + qty * 7);
+      else if (unit === 'meses') d.setMonth(d.getMonth() + qty);
+      return d;
+    }
+
+    // === HELPER: getOccurrences (same logic as fluxo.html) ===
+    function getOccurrences(item, start, end) {
+      const dates = [];
+      if (!item.recInicio) return dates;
+      const refDate = new Date(item.recInicio + 'T00:00');
+      
+      if (item.recTipo === 'nao' || !item.recTipo) {
+        if (refDate >= start && refDate <= end) dates.push(refDate);
+        return dates;
+      }
+      
+      let count = 0;
+      let maxOcc = Infinity;
+      let endDate = new Date(end);
+      
+      if (item.recFimTipo === 'ocorrencias') maxOcc = item.recFimQty || Infinity;
+      if (item.recFimTipo === 'data' && item.recFimData) {
+        const fimD = new Date(item.recFimData + 'T00:00');
+        if (fimD < endDate) endDate = fimD;
+      }
+      
+      let cur = new Date(refDate);
+      while (cur < start) {
+        cur = nextOccurrence(cur, item);
+        count++;
+        if (count >= maxOcc) return dates;
+      }
+      while (cur <= endDate && count < maxOcc) {
+        if (cur >= start) dates.push(new Date(cur));
+        cur = nextOccurrence(cur, item);
+        count++;
+      }
+      return dates;
+    }
+
+    function nextOccurrence(cur, item) {
+      const next = new Date(cur);
+      const qty = item.recQty || 1;
+      if (item.recTipo === 'dias') next.setDate(next.getDate() + qty);
+      else if (item.recTipo === 'uteis') {
+        let added = 0;
+        while (added < qty) { next.setDate(next.getDate() + 1); if (next.getDay() !== 0 && next.getDay() !== 6) added++; }
+      }
+      else if (item.recTipo === 'semanas') next.setDate(next.getDate() + qty * 7);
+      else if (item.recTipo === 'quinzenas') next.setDate(next.getDate() + qty * 15);
+      else if (item.recTipo === 'meses') next.setMonth(next.getMonth() + qty);
+      else next.setDate(next.getDate() + 1); // fallback
+      return next;
+    }
+
+    // === HELPERS ===
+    function isoDate(d) {
+      return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+    }
+    function fmtBRL(v) {
+      return 'R$ ' + (v||0).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});
+    }
+
+    // === WHATSAPP ===
+    function openWhatsApp(event) {
+      const clienteId = event.currentTarget.dataset.id;
+      const cliente = allClientes.find(c => c.id === clienteId);
+      if (!cliente) return;
+      const dc = (cliente.dados_cadastrais || []).find(d => d?.cliente_id === clienteId) || {};
+      let whatsapp = dc.whatsapp || cliente.whatsapp || '';
+      if (!whatsapp) { alert('WhatsApp não cadastrado.'); return; }
+      whatsapp = whatsapp.replace(/^\+/, '');
+      const mensagem = cliente.mensagem || '';
+      const url = `https://api.whatsapp.com/send?phone=${whatsapp}&text=${encodeURIComponent(mensagem)}`;
+      window.open(url, '_blank');
+    }
+
+    // === EDIT MESSAGE ===
+    function handleEditMessage(event) {
+      const clienteId = event.currentTarget.dataset.id;
+      currentClienteId = clienteId;
+      const cliente = allClientes.find(c => c.id === clienteId);
+      if (!cliente) return;
+      const dc = (cliente.dados_cadastrais || []).find(d => d?.cliente_id === clienteId) || {};
+      const nome = dc.nome_completo || cliente.nome || 'Cliente';
+      modalClienteNome.textContent = `Mensagem para: ${nome}`;
+      mensagemTexto.value = cliente.mensagem || '';
+      mensagemModal.style.display = 'block';
+    }
+
+    // === GENERATE REPORT BUTTON ===
+    generateBtn.addEventListener('click', async () => {
+      if (!currentClienteId) return;
+      generateBtn.disabled = true;
+      generateBtn.textContent = 'Gerando...';
+      try {
+        const report = await generateReport(currentClienteId);
+        mensagemTexto.value = report || 'Nenhum evento para esta data.';
+      } catch(e) {
+        console.error(e);
+        mensagemTexto.value = 'Erro ao gerar relatório: ' + e.message;
+      }
+      generateBtn.disabled = false;
+      generateBtn.innerHTML = '<i class="fas fa-magic"></i> Gerar Relatório Automático';
+    });
+
+    // === SAVE MESSAGE ===
+    async function saveMensagem() {
+      if (!currentClienteId) return;
+      const mensagem = mensagemTexto.value.trim();
+      try {
+        const { error } = await supabase
+          .from('mensagens_clientes')
+          .upsert({ cliente_id: currentClienteId, mensagem, updated_at: new Date().toISOString() }, { onConflict: 'cliente_id' });
+        if (error) throw error;
+        const cliente = allClientes.find(c => c.id === currentClienteId);
+        if (cliente) cliente.mensagem = mensagem;
+        alert('Mensagem salva!');
         mensagemModal.style.display = 'none';
-      } catch (error) {
-        console.error('Erro ao salvar mensagem:', error);
-        alert(`Erro ao salvar mensagem: ${error.message || 'Desconhecido'}`);
+      } catch (e) {
+        alert(`Erro: ${e.message}`);
       }
     }
-    
-    // Event Listeners
+
+    // === EVENT LISTENERS ===
     document.addEventListener('DOMContentLoaded', async () => {
-      if (await checkAuth()) {
-        loadClientes();
-      }
+      if (await checkAuth()) loadClientes();
     });
-    
-    searchInput.addEventListener('input', (e) => {
-      filterClientes(e.target.value);
-    });
-    
-    closeModalBtn.addEventListener('click', () => {
-      mensagemModal.style.display = 'none';
-    });
-    
-    cancelBtn.addEventListener('click', () => {
-      mensagemModal.style.display = 'none';
-    });
-    
+    closeModalBtn.addEventListener('click', () => { mensagemModal.style.display = 'none'; });
+    cancelBtn.addEventListener('click', () => { mensagemModal.style.display = 'none'; });
     saveBtn.addEventListener('click', saveMensagem);
-    
-    // Fechar modal ao clicar fora dele
-    window.addEventListener('click', (e) => {
-      if (e.target === mensagemModal) {
-        mensagemModal.style.display = 'none';
-      }
-    });
+    window.addEventListener('click', (e) => { if (e.target === mensagemModal) mensagemModal.style.display = 'none'; });
   </script>
 </body>
 </html>
