@@ -397,7 +397,7 @@
       <span class="spacer"></span>
       <div class="field" style="display:inline-flex;align-items:center;gap:0.5rem;margin:0;">
         <label style="font-size:0.75rem;white-space:nowrap;margin:0;">Data de Início Geral:</label>
-        <input type="date" id="crono_data_inicio" onchange="renderCronograma()" style="padding:0.3rem 0.5rem;font-size:0.8rem;">
+        <input type="date" id="crono_data_inicio" onchange="renderCronograma();saveData()" style="padding:0.3rem 0.5rem;font-size:0.8rem;">
       </div>
     </div>
     <div id="crono-wrap"></div>
@@ -1337,6 +1337,81 @@ function toggleMicroStatus(index) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
+//  ATUALIZAÇÕES DE EXECUÇÃO (MICRO PASSOS)
+// ═══════════════════════════════════════════════════════════════════════════
+function openMicroUpdate(index) {
+  var m = microPassos[index];
+  var hoje = new Date().toISOString().split('T')[0];
+  var overlay = document.getElementById('modal-micro-update');
+  if (!overlay) {
+    // Create modal dynamically
+    overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    overlay.id = 'modal-micro-update';
+    overlay.onclick = function(e) { if (e.target === overlay) overlay.classList.remove('open'); };
+    overlay.innerHTML = '<div class="modal" style="max-width:450px;"><div class="modal-header"><h2>Atualização de Execução</h2><button class="btn-icon" onclick="document.getElementById(\'modal-micro-update\').classList.remove(\'open\')" style="font-size:1.2rem;color:var(--muted);">✕</button></div><div class="modal-section"><div class="field" style="margin-bottom:0.75rem;"><label>Data da Atualização</label><input type="date" id="mu_data"></div><div class="field" style="margin-bottom:0.75rem;"><label>Observação / Informação</label><textarea id="mu_texto" rows="3" placeholder="Descreva o andamento, o que foi feito..."></textarea></div><div class="field"><label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer;"><input type="checkbox" id="mu_concluir" style="width:16px;height:16px;accent-color:var(--primary);"> Marcar como concluído</label></div></div><div style="display:flex;gap:0.75rem;justify-content:flex-end;"><button class="btn btn-outline" onclick="document.getElementById(\'modal-micro-update\').classList.remove(\'open\')">Cancelar</button><button class="btn btn-primary" id="mu_salvar_btn">Salvar</button></div></div>';
+    document.body.appendChild(overlay);
+  }
+  document.getElementById('mu_data').value = hoje;
+  document.getElementById('mu_texto').value = '';
+  document.getElementById('mu_concluir').checked = false;
+  document.getElementById('mu_salvar_btn').onclick = function() { salvarMicroUpdate(index); };
+  overlay.classList.add('open');
+}
+
+function salvarMicroUpdate(index) {
+  var data = document.getElementById('mu_data').value;
+  var texto = document.getElementById('mu_texto').value.trim();
+  var concluir = document.getElementById('mu_concluir').checked;
+  if (!texto && !concluir) { alert('Informe pelo menos uma observação ou marque como concluído.'); return; }
+  var m = microPassos[index];
+  if (!Array.isArray(m.atualizacoes)) m.atualizacoes = [];
+  if (texto) {
+    m.atualizacoes.push({ data: data || new Date().toISOString().split('T')[0], texto: texto });
+  }
+  if (concluir) m.status = 'concluido';
+  document.getElementById('modal-micro-update').classList.remove('open');
+  renderAll();
+  saveData();
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  ATUALIZAÇÕES DE VALOR (OBJETIVOS)
+// ═══════════════════════════════════════════════════════════════════════════
+function openObjetivoUpdate(index) {
+  var o = objetivos[index];
+  var hoje = new Date().toISOString().split('T')[0];
+  var overlay = document.getElementById('modal-obj-update');
+  if (!overlay) {
+    overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    overlay.id = 'modal-obj-update';
+    overlay.onclick = function(e) { if (e.target === overlay) overlay.classList.remove('open'); };
+    overlay.innerHTML = '<div class="modal" style="max-width:450px;"><div class="modal-header"><h2>Atualizar Valor Acumulado</h2><button class="btn-icon" onclick="document.getElementById(\'modal-obj-update\').classList.remove(\'open\')" style="font-size:1.2rem;color:var(--muted);">✕</button></div><div class="modal-section"><div class="field" style="margin-bottom:0.75rem;"><label>Data da Atualização</label><input type="date" id="ou_data"></div><div class="field" style="margin-bottom:0.75rem;"><label>Novo Valor Acumulado</label><input type="text" id="ou_valor" placeholder="Ex: 55.000,00" oninput="maskBRL(this)"></div><div class="field"><label>Observação (opcional)</label><textarea id="ou_texto" rows="2" placeholder="Comentário sobre a atualização..."></textarea></div></div><div style="display:flex;gap:0.75rem;justify-content:flex-end;"><button class="btn btn-outline" onclick="document.getElementById(\'modal-obj-update\').classList.remove(\'open\')">Cancelar</button><button class="btn btn-primary" id="ou_salvar_btn">Salvar</button></div></div>';
+    document.body.appendChild(overlay);
+  }
+  document.getElementById('ou_data').value = hoje;
+  document.getElementById('ou_valor').value = o.atual ? parseBR(o.atual).toLocaleString('pt-BR',{minimumFractionDigits:2}) : '';
+  document.getElementById('ou_texto').value = '';
+  document.getElementById('ou_salvar_btn').onclick = function() { salvarObjetivoUpdate(index); };
+  overlay.classList.add('open');
+}
+
+function salvarObjetivoUpdate(index) {
+  var data = document.getElementById('ou_data').value;
+  var valor = parseBR(document.getElementById('ou_valor').value);
+  var texto = document.getElementById('ou_texto').value.trim();
+  if (!valor && valor !== 0) { alert('Informe o valor acumulado atualizado.'); return; }
+  var o = objetivos[index];
+  if (!Array.isArray(o.atualizacoes_valor)) o.atualizacoes_valor = [];
+  o.atualizacoes_valor.push({ data: data || new Date().toISOString().split('T')[0], valor: valor, texto: texto });
+  o.atual = valor;
+  document.getElementById('modal-obj-update').classList.remove('open');
+  renderAll();
+  saveData();
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 //  EXCLUSÃO
 // ═══════════════════════════════════════════════════════════════════════════
 var _delTarget = null;
@@ -1441,8 +1516,11 @@ function renderObjetivos() {
     html += '<div class="obj-header">';
     html += '<div class="obj-name">' + escHtml(o.nome) + '</div>';
     html += '<div class="obj-actions">';
-    html += '<button class="btn-icon" onclick="openModal(\'objetivo\',' + i + ')" style="color:var(--blue);font-size:0.8rem;">✏️</button>';
-    html += '<button class="btn-icon" onclick="openDelModal(\'objetivo\',' + i + ')" style="color:var(--red);font-size:0.8rem;">🗑️</button>';
+    html += '<button class="btn-icon" onclick="openObjetivoUpdate(' + i + ')" title="Atualizar valor" style="color:var(--primary);font-size:0.8rem;">💰</button>';
+    if (!_acompLocked) {
+      html += '<button class="btn-icon" onclick="openModal(\'objetivo\',' + i + ')" style="color:var(--blue);font-size:0.8rem;">✏️</button>';
+      html += '<button class="btn-icon" onclick="openDelModal(\'objetivo\',' + i + ')" style="color:var(--red);font-size:0.8rem;">🗑️</button>';
+    }
     html += '</div></div>';
     html += '<div class="obj-cat" style="margin-bottom:0.5rem;">';
     html += '<span class="badge ' + (STATUS_BADGE[o.status]||'') + '">' + (STATUS_OBJ[o.status]||o.status) + '</span> ';
@@ -1458,6 +1536,16 @@ function renderObjetivos() {
     // Simulação Imobiliária vinculada
     if (o.simulacao_id && o.categoria === 'imovel') {
       html += renderSimPanel(o.simulacao_id);
+    }
+    // Histórico de atualizações de valor
+    if (Array.isArray(o.atualizacoes_valor) && o.atualizacoes_valor.length > 0) {
+      html += '<details style="margin-top:0.5rem;border-top:1px solid var(--border);padding-top:0.4rem;">';
+      html += '<summary style="cursor:pointer;font-size:0.7rem;font-weight:600;color:var(--primary);">Histórico de atualizações (' + o.atualizacoes_valor.length + ')</summary>';
+      html += '<div style="margin-top:0.3rem;">';
+      o.atualizacoes_valor.slice().reverse().forEach(function(at) {
+        html += '<div style="font-size:0.68rem;color:var(--muted);margin-bottom:0.2rem;"><strong>' + fmtData(at.data) + '</strong>: ' + fmtBRL(at.valor) + (at.texto ? ' - ' + escHtml(at.texto) : '') + '</div>';
+      });
+      html += '</div></details>';
     }
     // Micro passos vinculados
     var micros = microPassos.filter(function(m){ return String(m.objetivo_id) === String(o.id); });
@@ -1483,56 +1571,69 @@ function renderMicroPassos() {
     wrap.innerHTML = '<div class="empty"><span class="ico">✅</span><p>Nenhum micro passo cadastrado.<br>Clique em "+ Novo Micro Passo" para começar.</p></div>';
     return;
   }
-  // Ordenar: pendentes primeiro, depois em andamento, depois concluídos
   var sorted = microPassos.map(function(m, i){ return {item: m, idx: i}; });
-  sorted.sort(function(a,b) {
-    var order = {pendente:0, em_andamento:1, concluido:2};
-    return (order[a.item.status]||0) - (order[b.item.status]||0);
-  });
-  var html = '<div class="micro-list">';
-  sorted.forEach(function(g) {
+  var ativos = sorted.filter(function(g){ return g.item.status !== 'concluido'; });
+  var concluidos = sorted.filter(function(g){ return g.item.status === 'concluido'; });
+  ativos.sort(function(a,b) { var order = {pendente:0, em_andamento:1}; return (order[a.item.status]||0) - (order[b.item.status]||0); });
+
+  function buildMicroCard(g) {
     var m = g.item;
     var i = g.idx;
     var checkClass = m.status === 'concluido' ? 'done' : m.status === 'em_andamento' ? 'progress' : '';
     var descClass = m.status === 'concluido' ? 'done-text' : '';
-    // Resolve objetivos (multiple)
     var objNomes = [];
     if (Array.isArray(m.objetivos_ids) && m.objetivos_ids.length > 0) {
-      m.objetivos_ids.forEach(function(oid) {
-        var obj = objetivos.find(function(o){ return String(o.id) === String(oid); });
-        if (obj) objNomes.push(obj.nome);
-      });
-    } else if (m.objetivo_id) {
-      var obj = objetivos.find(function(o){ return String(o.id) === String(m.objetivo_id); });
-      if (obj) objNomes.push(obj.nome);
-    }
-    // Resolve dependencias
+      m.objetivos_ids.forEach(function(oid) { var obj = objetivos.find(function(o){ return String(o.id) === String(oid); }); if (obj) objNomes.push(obj.nome); });
+    } else if (m.objetivo_id) { var obj = objetivos.find(function(o){ return String(o.id) === String(m.objetivo_id); }); if (obj) objNomes.push(obj.nome); }
     var depNomes = [];
     if (Array.isArray(m.dependencias_ids) && m.dependencias_ids.length > 0) {
-      m.dependencias_ids.forEach(function(did) {
-        var dep = microPassos.find(function(x){ return String(x.id) === String(did); });
-        if (dep) depNomes.push(dep.desc);
-      });
+      m.dependencias_ids.forEach(function(did) { var dep = microPassos.find(function(x){ return String(x.id) === String(did); }); if (dep) depNomes.push(dep.desc); });
     }
-    html += '<div class="micro-item">';
-    html += '<div class="micro-check ' + checkClass + '" onclick="toggleMicroStatus(' + i + ')" title="Clique para mudar status"></div>';
-    html += '<div class="micro-body">';
-    html += '<div class="micro-desc ' + descClass + '">' + escHtml(m.desc) + '</div>';
-    if (m.detalhamento) html += '<div style="font-size:0.7rem;color:var(--muted);margin-top:0.15rem;">' + escHtml(m.detalhamento).replace(/\n/g,'<br>') + '</div>';
-    html += '<div class="micro-meta">';
-    html += '<span class="badge ' + (STATUS_BADGE[m.status]||'') + '">' + (STATUS_MICRO[m.status]||m.status) + '</span>';
-    if (m.inicio) html += '<span>Início: ' + fmtData(m.inicio) + '</span>';
-    if (m.prazo) html += '<span>Prazo: ' + fmtData(m.prazo) + '</span>';
-    if (m.dur_qty && m.dur_unit) { var uL = {dias:'dias',dias_uteis:'dias úteis',semanas:'semanas',meses:'meses'}; html += '<span>Duração: ' + m.dur_qty + ' ' + (uL[m.dur_unit]||m.dur_unit) + '</span>'; }
-    if (objNomes.length > 0) html += '<span>Objetivo(s): ' + escHtml(objNomes.join(', ')) + '</span>';
-    if (depNomes.length > 0) html += '<span>Depende de: ' + escHtml(depNomes.join(', ')) + '</span>';
-    html += '</div></div>';
-    html += '<div class="micro-actions">';
-    html += '<button class="btn-icon" onclick="openModal(\'micro\',' + i + ')" style="color:var(--blue);font-size:0.8rem;">✏️</button>';
-    html += '<button class="btn-icon" onclick="openDelModal(\'micro\',' + i + ')" style="color:var(--red);font-size:0.8rem;">🗑️</button>';
-    html += '</div></div>';
-  });
+    var h = '<div class="micro-item">';
+    h += '<div class="micro-check ' + checkClass + '" onclick="toggleMicroStatus(' + i + ')" title="Clique para mudar status"></div>';
+    h += '<div class="micro-body">';
+    h += '<div class="micro-desc ' + descClass + '">' + escHtml(m.desc) + '</div>';
+    if (m.detalhamento) h += '<div style="font-size:0.7rem;color:var(--muted);margin-top:0.15rem;">' + escHtml(m.detalhamento).replace(/\n/g,'<br>') + '</div>';
+    h += '<div class="micro-meta">';
+    h += '<span class="badge ' + (STATUS_BADGE[m.status]||'') + '">' + (STATUS_MICRO[m.status]||m.status) + '</span>';
+    if (m.inicio) h += '<span>Início: ' + fmtData(m.inicio) + '</span>';
+    if (m.prazo) h += '<span>Prazo: ' + fmtData(m.prazo) + '</span>';
+    if (m.dur_qty && m.dur_unit) { var uL = {dias:'dias',dias_uteis:'dias úteis',semanas:'semanas',meses:'meses'}; h += '<span>Duração: ' + m.dur_qty + ' ' + (uL[m.dur_unit]||m.dur_unit) + '</span>'; }
+    if (objNomes.length > 0) h += '<span>Objetivo(s): ' + escHtml(objNomes.join(', ')) + '</span>';
+    if (depNomes.length > 0) h += '<span>Depende de: ' + escHtml(depNomes.join(', ')) + '</span>';
+    h += '</div>';
+    // Show updates history
+    if (Array.isArray(m.atualizacoes) && m.atualizacoes.length > 0) {
+      h += '<div style="margin-top:0.4rem;border-top:1px solid var(--border);padding-top:0.3rem;">';
+      m.atualizacoes.forEach(function(at) {
+        h += '<div style="font-size:0.68rem;color:var(--muted);margin-bottom:0.2rem;"><strong>' + fmtData(at.data) + '</strong>: ' + escHtml(at.texto) + '</div>';
+      });
+      h += '</div>';
+    }
+    h += '</div>';
+    h += '<div class="micro-actions">';
+    h += '<button class="btn-icon" onclick="openMicroUpdate(' + i + ')" title="Adicionar atualização" style="color:var(--primary);font-size:0.8rem;">📝</button>';
+    if (!_acompLocked) {
+      h += '<button class="btn-icon" onclick="openModal(\'micro\',' + i + ')" style="color:var(--blue);font-size:0.8rem;">✏️</button>';
+      h += '<button class="btn-icon" onclick="openDelModal(\'micro\',' + i + ')" style="color:var(--red);font-size:0.8rem;">🗑️</button>';
+    }
+    h += '</div></div>';
+    return h;
+  }
+
+  var html = '<div class="micro-list">';
+  ativos.forEach(function(g) { html += buildMicroCard(g); });
   html += '</div>';
+
+  // Expandable section for concluded items
+  if (concluidos.length > 0) {
+    html += '<details class="micro-concluidos-details" style="margin-top:1rem;">';
+    html += '<summary style="cursor:pointer;font-size:0.8rem;font-weight:600;color:var(--primary);padding:0.5rem 0;">Concluídos (' + concluidos.length + ')</summary>';
+    html += '<div class="micro-list" style="margin-top:0.5rem;">';
+    concluidos.forEach(function(g) { html += buildMicroCard(g); });
+    html += '</div></details>';
+  }
+
   wrap.innerHTML = html;
 }
 
@@ -1762,6 +1863,7 @@ function waitForSupabase(timeout) {
 }
 
 function buildPayload() {
+  var cronoInput = document.getElementById('crono_data_inicio');
   return {
     reunioes: reunioes,
     objetivos: objetivos,
@@ -1769,7 +1871,8 @@ function buildPayload() {
     macroPassos: macroPassos,
     nextId: nextId,
     locked: _acompLocked,
-    primary: _acompPrimary
+    primary: _acompPrimary,
+    crono_data_inicio: cronoInput ? cronoInput.value : ''
   };
 }
 
@@ -1820,6 +1923,11 @@ function applyData(d) {
   if (typeof d.nextId === 'number') nextId = d.nextId;
   if (typeof d.locked === 'boolean') _acompLocked = d.locked;
   if (typeof d.primary === 'boolean') _acompPrimary = d.primary;
+  // Restore crono_data_inicio
+  if (d.crono_data_inicio) {
+    var cronoInput = document.getElementById('crono_data_inicio');
+    if (cronoInput) cronoInput.value = d.crono_data_inicio;
+  }
   return hasData;
 }
 
