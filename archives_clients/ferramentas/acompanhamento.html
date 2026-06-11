@@ -523,7 +523,7 @@
           </select>
         </div>
       </div>
-      <div class="sub-grid-3" style="margin-bottom:0.75rem;">
+      <div class="sub-grid" style="margin-bottom:0.75rem;">
         <div class="field">
           <label>Valor Alvo</label>
           <input type="text" id="ob_valor" placeholder="Ex: 300.000,00" oninput="maskBRL(this)">
@@ -532,9 +532,48 @@
           <label>Valor Atual Acumulado</label>
           <input type="text" id="ob_atual" placeholder="Ex: 50.000,00" oninput="maskBRL(this)">
         </div>
-        <div class="field">
-          <label>Prazo Estimado</label>
-          <input type="date" id="ob_prazo">
+      </div>
+      <div class="field" style="margin-bottom:0.75rem;">
+        <label>Prazo / Duração</label>
+        <select id="ob_prazo_tipo" onchange="togglePrazoFields('ob')" style="margin-bottom:0.5rem;">
+          <option value="duracao">Duração a partir do início</option>
+          <option value="datas">Datas específicas (início e fim)</option>
+          <option value="previsao">Apenas previsão de conclusão</option>
+        </select>
+        <div id="ob_prazo_duracao" class="sub-grid-3" style="margin-top:0.4rem;">
+          <div class="field">
+            <label style="font-size:0.72rem;">Quantidade</label>
+            <input type="number" id="ob_dur_qty" min="1" value="1" placeholder="Ex: 12">
+          </div>
+          <div class="field">
+            <label style="font-size:0.72rem;">Unidade</label>
+            <select id="ob_dur_unit">
+              <option value="dias">Dias</option>
+              <option value="dias_uteis">Dias Úteis</option>
+              <option value="semanas">Semanas</option>
+              <option value="meses">Meses</option>
+            </select>
+          </div>
+          <div class="field">
+            <label style="font-size:0.72rem;">A partir de</label>
+            <input type="date" id="ob_dur_inicio">
+          </div>
+        </div>
+        <div id="ob_prazo_datas" class="sub-grid" style="margin-top:0.4rem;display:none;">
+          <div class="field">
+            <label style="font-size:0.72rem;">Data de Início</label>
+            <input type="date" id="ob_inicio">
+          </div>
+          <div class="field">
+            <label style="font-size:0.72rem;">Data de Conclusão</label>
+            <input type="date" id="ob_prazo">
+          </div>
+        </div>
+        <div id="ob_prazo_previsao" style="margin-top:0.4rem;display:none;">
+          <div class="field">
+            <label style="font-size:0.72rem;">Previsão de Conclusão</label>
+            <input type="date" id="ob_previsao">
+          </div>
         </div>
       </div>
       <div class="sub-grid">
@@ -596,14 +635,47 @@
         <label>Descrição / Detalhamento</label>
         <textarea id="mc_detalhamento" placeholder="Descreva em mais detalhes o que precisa ser feito..." rows="3"></textarea>
       </div>
-      <div class="sub-grid" style="margin-bottom:0.75rem;">
-        <div class="field">
-          <label>Data de Início</label>
-          <input type="date" id="mc_inicio">
+      <div class="field" style="margin-bottom:0.75rem;">
+        <label>Prazo / Duração</label>
+        <select id="mc_prazo_tipo" onchange="togglePrazoFields('mc')" style="margin-bottom:0.5rem;">
+          <option value="duracao">Duração a partir do início</option>
+          <option value="datas">Datas específicas (início e fim)</option>
+          <option value="previsao">Apenas previsão de conclusão</option>
+        </select>
+        <div id="mc_prazo_duracao" class="sub-grid-3" style="margin-top:0.4rem;">
+          <div class="field">
+            <label style="font-size:0.72rem;">Quantidade</label>
+            <input type="number" id="mc_dur_qty" min="1" value="1" placeholder="Ex: 3">
+          </div>
+          <div class="field">
+            <label style="font-size:0.72rem;">Unidade</label>
+            <select id="mc_dur_unit">
+              <option value="dias">Dias</option>
+              <option value="dias_uteis">Dias Úteis</option>
+              <option value="semanas">Semanas</option>
+              <option value="meses">Meses</option>
+            </select>
+          </div>
+          <div class="field">
+            <label style="font-size:0.72rem;">A partir de</label>
+            <input type="date" id="mc_dur_inicio">
+          </div>
         </div>
-        <div class="field">
-          <label>Prazo de Conclusão</label>
-          <input type="date" id="mc_prazo">
+        <div id="mc_prazo_datas" class="sub-grid" style="margin-top:0.4rem;display:none;">
+          <div class="field">
+            <label style="font-size:0.72rem;">Data de Início</label>
+            <input type="date" id="mc_inicio">
+          </div>
+          <div class="field">
+            <label style="font-size:0.72rem;">Data de Conclusão</label>
+            <input type="date" id="mc_prazo">
+          </div>
+        </div>
+        <div id="mc_prazo_previsao" style="margin-top:0.4rem;display:none;">
+          <div class="field">
+            <label style="font-size:0.72rem;">Previsão de Conclusão</label>
+            <input type="date" id="mc_previsao">
+          </div>
         </div>
       </div>
       <div class="sub-grid" style="margin-bottom:0.75rem;">
@@ -662,30 +734,57 @@
         <label>Descrição / Objetivos da Fase *</label>
         <textarea id="mk_desc" placeholder="Descreva o que deve ser alcançado nesta fase..."></textarea>
       </div>
-      <div class="sub-grid" style="margin-bottom:0.75rem;">
-        <div class="field">
-          <label>Data de Início</label>
-          <input type="date" id="mk_inicio">
+      <div class="field" style="margin-bottom:0.75rem;">
+        <label>Prazo / Duração</label>
+        <select id="mk_prazo_tipo" onchange="togglePrazoFields('mk')" style="margin-bottom:0.5rem;">
+          <option value="duracao">Duração a partir do início</option>
+          <option value="datas">Datas específicas (início e fim)</option>
+          <option value="previsao">Apenas previsão de conclusão</option>
+        </select>
+        <div id="mk_prazo_duracao" class="sub-grid-3" style="margin-top:0.4rem;">
+          <div class="field">
+            <label style="font-size:0.72rem;">Quantidade</label>
+            <input type="number" id="mk_dur_qty" min="1" value="1" placeholder="Ex: 3">
+          </div>
+          <div class="field">
+            <label style="font-size:0.72rem;">Unidade</label>
+            <select id="mk_dur_unit">
+              <option value="dias">Dias</option>
+              <option value="dias_uteis">Dias Úteis</option>
+              <option value="semanas">Semanas</option>
+              <option value="meses">Meses</option>
+            </select>
+          </div>
+          <div class="field">
+            <label style="font-size:0.72rem;">A partir de</label>
+            <input type="date" id="mk_dur_inicio">
+          </div>
         </div>
-        <div class="field">
-          <label>Prazo de Conclusão</label>
-          <input type="date" id="mk_prazo">
+        <div id="mk_prazo_datas" class="sub-grid" style="margin-top:0.4rem;display:none;">
+          <div class="field">
+            <label style="font-size:0.72rem;">Data de Início</label>
+            <input type="date" id="mk_inicio">
+          </div>
+          <div class="field">
+            <label style="font-size:0.72rem;">Data de Conclusão</label>
+            <input type="date" id="mk_prazo">
+          </div>
+        </div>
+        <div id="mk_prazo_previsao" style="margin-top:0.4rem;display:none;">
+          <div class="field">
+            <label style="font-size:0.72rem;">Previsão de Conclusão</label>
+            <input type="date" id="mk_previsao">
+          </div>
         </div>
       </div>
-      <div class="sub-grid" style="margin-bottom:0.75rem;">
-        <div class="field">
-          <label>Período Estimado (texto)</label>
-          <input type="text" id="mk_periodo" placeholder="Ex: 6 meses, Jan-Jun 2026">
-        </div>
-        <div class="field">
-          <label>Status</label>
-          <select id="mk_status">
-            <option value="pendente">Pendente</option>
-            <option value="em_andamento">Em Andamento</option>
-            <option value="concluido">Concluído</option>
-            <option value="bloqueado">Bloqueado</option>
-          </select>
-        </div>
+      <div class="field" style="margin-bottom:0.75rem;">
+        <label>Status</label>
+        <select id="mk_status">
+          <option value="pendente">Pendente</option>
+          <option value="em_andamento">Em Andamento</option>
+          <option value="concluido">Concluído</option>
+          <option value="bloqueado">Bloqueado</option>
+        </select>
       </div>
       <div class="field" style="margin-bottom:0.75rem;padding:0.6rem;border:1px solid var(--border);border-radius:6px;">
         <label style="font-weight:600;margin-bottom:0.4rem;display:block;">Vinculado a Objetivo(s)</label>
@@ -882,9 +981,14 @@ function clearModalFields(tipo) {
     if (el.id && el.id.startsWith(prefix)) {
       if (el.tagName === 'SELECT') el.selectedIndex = 0;
       else if (el.type === 'hidden') { /* skip */ }
+      else if (el.type === 'number') el.value = el.id.indexOf('_dur_qty') >= 0 ? '1' : '';
       else el.value = '';
     }
   });
+  // Reset prazo fields visibility
+  if (tipo === 'micro' || tipo === 'macro' || tipo === 'objetivo') {
+    togglePrazoFields(prefix.replace('_',''));
+  }
 }
 
 function fillModalFromData(tipo, index) {
@@ -908,7 +1012,7 @@ function fillModalFromData(tipo, index) {
     document.getElementById('ob_categoria').value = item.categoria || 'outro';
     document.getElementById('ob_valor').value = item.valor ? parseBR(item.valor).toLocaleString('pt-BR',{minimumFractionDigits:2}) : '';
     document.getElementById('ob_atual').value = item.atual ? parseBR(item.atual).toLocaleString('pt-BR',{minimumFractionDigits:2}) : '';
-    document.getElementById('ob_prazo').value = item.prazo || '';
+    fillPrazoFields('ob', item);
     document.getElementById('ob_prioridade').value = item.prioridade || 'media';
     document.getElementById('ob_status').value = item.status || 'em_andamento';
     document.getElementById('ob_obs').value = item.obs || '';
@@ -918,8 +1022,7 @@ function fillModalFromData(tipo, index) {
     item = microPassos[index];
     document.getElementById('mc_desc').value = item.desc || '';
     document.getElementById('mc_detalhamento').value = item.detalhamento || '';
-    document.getElementById('mc_inicio').value = item.inicio || '';
-    document.getElementById('mc_prazo').value = item.prazo || '';
+    fillPrazoFields('mc', item);
     document.getElementById('mc_status').value = item.status || 'pendente';
     document.getElementById('mc_reuniao').value = item.reuniao_id || '';
     // Check objetivos
@@ -937,9 +1040,7 @@ function fillModalFromData(tipo, index) {
     document.getElementById('mk_fase').value = item.fase || '';
     document.getElementById('mk_ordem').value = item.ordem || 1;
     document.getElementById('mk_desc').value = item.desc || '';
-    document.getElementById('mk_inicio').value = item.inicio || '';
-    document.getElementById('mk_prazo').value = item.prazo || '';
-    document.getElementById('mk_periodo').value = item.periodo || '';
+    fillPrazoFields('mk', item);
     document.getElementById('mk_status').value = item.status || 'pendente';
     // Check objetivos
     var mkObjIds = item.objetivos_ids || [];
@@ -959,6 +1060,95 @@ function fillModalFromData(tipo, index) {
   }
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+//  PRAZO / DURAÇÃO HELPERS
+// ═══════════════════════════════════════════════════════════════════════════
+function togglePrazoFields(prefix) {
+  var tipo = document.getElementById(prefix + '_prazo_tipo').value;
+  var durDiv = document.getElementById(prefix + '_prazo_duracao');
+  var datasDiv = document.getElementById(prefix + '_prazo_datas');
+  var prevDiv = document.getElementById(prefix + '_prazo_previsao');
+  durDiv.style.display = tipo === 'duracao' ? '' : 'none';
+  datasDiv.style.display = tipo === 'datas' ? '' : 'none';
+  prevDiv.style.display = tipo === 'previsao' ? '' : 'none';
+}
+
+function calcEndDate(startDate, qty, unit) {
+  if (!startDate || !qty) return null;
+  var d = new Date(startDate + 'T00:00:00');
+  if (unit === 'dias') {
+    d.setDate(d.getDate() + qty);
+  } else if (unit === 'dias_uteis') {
+    var added = 0;
+    while (added < qty) {
+      d.setDate(d.getDate() + 1);
+      var dow = d.getDay();
+      if (dow !== 0 && dow !== 6) added++;
+    }
+  } else if (unit === 'semanas') {
+    d.setDate(d.getDate() + (qty * 7));
+  } else if (unit === 'meses') {
+    d.setMonth(d.getMonth() + qty);
+  }
+  return d.toISOString().split('T')[0];
+}
+
+function getPrazoDates(prefix) {
+  var tipo = document.getElementById(prefix + '_prazo_tipo').value;
+  var inicio = null;
+  var prazo = null;
+  if (tipo === 'duracao') {
+    inicio = document.getElementById(prefix + '_dur_inicio').value || null;
+    var qty = parseInt(document.getElementById(prefix + '_dur_qty').value) || 0;
+    var unit = document.getElementById(prefix + '_dur_unit').value;
+    if (inicio && qty > 0) {
+      prazo = calcEndDate(inicio, qty, unit);
+    }
+  } else if (tipo === 'datas') {
+    inicio = document.getElementById(prefix + '_inicio').value || null;
+    prazo = document.getElementById(prefix + '_prazo').value || null;
+  } else if (tipo === 'previsao') {
+    prazo = document.getElementById(prefix + '_previsao').value || null;
+  }
+  return { inicio: inicio, prazo: prazo };
+}
+
+function fillPrazoFields(prefix, item) {
+  var tipoEl = document.getElementById(prefix + '_prazo_tipo');
+  if (!tipoEl) return;
+  // Determine which mode to show based on saved data
+  var prazoTipo = item.prazo_tipo || 'datas'; // default to datas for legacy data
+  // Legacy support: if item has prazo but no prazo_tipo, use appropriate mode
+  if (!item.prazo_tipo) {
+    if (item.dur_qty && item.dur_unit) {
+      prazoTipo = 'duracao';
+    } else if (item.inicio && item.prazo) {
+      prazoTipo = 'datas';
+    } else if (item.prazo && !item.inicio) {
+      prazoTipo = 'previsao';
+    } else if (item.inicio) {
+      prazoTipo = 'datas';
+    }
+  }
+  tipoEl.value = prazoTipo;
+  togglePrazoFields(prefix);
+  // Fill duration fields
+  var durQtyEl = document.getElementById(prefix + '_dur_qty');
+  var durUnitEl = document.getElementById(prefix + '_dur_unit');
+  var durInicioEl = document.getElementById(prefix + '_dur_inicio');
+  if (durQtyEl) durQtyEl.value = item.dur_qty || 1;
+  if (durUnitEl) durUnitEl.value = item.dur_unit || 'meses';
+  if (durInicioEl) durInicioEl.value = item.inicio || '';
+  // Fill datas fields
+  var inicioEl = document.getElementById(prefix + '_inicio');
+  var prazoEl = document.getElementById(prefix + '_prazo');
+  if (inicioEl) inicioEl.value = item.inicio || '';
+  if (prazoEl) prazoEl.value = item.prazo || '';
+  // Fill previsao field
+  var previsaoEl = document.getElementById(prefix + '_previsao');
+  if (previsaoEl) previsaoEl.value = item.prazo || '';
+}
+
 function updateMicroSelects() {
   var selReu = document.getElementById('mc_reuniao');
   if (selReu) {
@@ -971,12 +1161,13 @@ function updateMicroSelects() {
 
 function populateMicroCheckboxes() {
   var currentId = (_editMode && _editMode.tipo === 'micro') ? microPassos[_editMode.index].id : null;
+  var cbStyle = 'display:flex;align-items:center;gap:0.5rem;font-size:0.78rem;cursor:pointer;padding:0.35rem 0.5rem;border-radius:4px;background:rgba(255,255,255,0.03);border:1px solid var(--border);transition:background 0.15s;';
   // Objetivos checkboxes
   var objWrap = document.getElementById('mc_objetivos_checks');
   objWrap.innerHTML = '';
   if (objetivos.length === 0) { objWrap.innerHTML = '<span style="color:var(--muted);font-size:0.75rem;">Nenhum objetivo cadastrado</span>'; }
   objetivos.forEach(function(o) {
-    objWrap.innerHTML += '<label style="display:flex;align-items:center;gap:0.3rem;font-size:0.8rem;cursor:pointer;"><input type="checkbox" value="' + o.id + '"> ' + escHtml(o.nome) + '</label>';
+    objWrap.innerHTML += '<label style="' + cbStyle + '"><input type="checkbox" value="' + o.id + '" style="width:16px;height:16px;accent-color:var(--primary);flex-shrink:0;"> <span>' + escHtml(o.nome) + '</span></label>';
   });
   // Dependencias checkboxes (outros micro passos)
   var depWrap = document.getElementById('mc_deps_checks');
@@ -984,25 +1175,26 @@ function populateMicroCheckboxes() {
   var others = microPassos.filter(function(m) { return m.id !== currentId; });
   if (others.length === 0) { depWrap.innerHTML = '<span style="color:var(--muted);font-size:0.75rem;">Nenhum outro micro passo cadastrado</span>'; }
   others.forEach(function(m) {
-    depWrap.innerHTML += '<label style="display:flex;align-items:center;gap:0.3rem;font-size:0.8rem;cursor:pointer;"><input type="checkbox" value="' + m.id + '"> ' + escHtml(m.desc) + '</label>';
+    depWrap.innerHTML += '<label style="' + cbStyle + '"><input type="checkbox" value="' + m.id + '" style="width:16px;height:16px;accent-color:var(--primary);flex-shrink:0;"> <span>' + escHtml(m.desc) + '</span></label>';
   });
 }
 
 function populateMacroCheckboxes() {
   var currentId = (_editMode && _editMode.tipo === 'macro') ? macroPassos[_editMode.index].id : null;
+  var cbStyle = 'display:flex;align-items:center;gap:0.5rem;font-size:0.78rem;cursor:pointer;padding:0.35rem 0.5rem;border-radius:4px;background:rgba(255,255,255,0.03);border:1px solid var(--border);transition:background 0.15s;';
   // Objetivos checkboxes
   var objWrap = document.getElementById('mk_objetivos_checks');
   objWrap.innerHTML = '';
   if (objetivos.length === 0) { objWrap.innerHTML = '<span style="color:var(--muted);font-size:0.75rem;">Nenhum objetivo cadastrado</span>'; }
   objetivos.forEach(function(o) {
-    objWrap.innerHTML += '<label style="display:flex;align-items:center;gap:0.3rem;font-size:0.8rem;cursor:pointer;"><input type="checkbox" value="' + o.id + '"> ' + escHtml(o.nome) + '</label>';
+    objWrap.innerHTML += '<label style="' + cbStyle + '"><input type="checkbox" value="' + o.id + '" style="width:16px;height:16px;accent-color:var(--primary);flex-shrink:0;"> <span>' + escHtml(o.nome) + '</span></label>';
   });
   // Micro passos checkboxes
   var microWrap = document.getElementById('mk_micros_checks');
   microWrap.innerHTML = '';
   if (microPassos.length === 0) { microWrap.innerHTML = '<span style="color:var(--muted);font-size:0.75rem;">Nenhum micro passo cadastrado</span>'; }
   microPassos.forEach(function(m) {
-    microWrap.innerHTML += '<label style="display:flex;align-items:center;gap:0.3rem;font-size:0.8rem;cursor:pointer;"><input type="checkbox" value="' + m.id + '"> ' + escHtml(m.desc) + '</label>';
+    microWrap.innerHTML += '<label style="' + cbStyle + '"><input type="checkbox" value="' + m.id + '" style="width:16px;height:16px;accent-color:var(--primary);flex-shrink:0;"> <span>' + escHtml(m.desc) + '</span></label>';
   });
   // Dependencias checkboxes (outras macros)
   var depWrap = document.getElementById('mk_deps_checks');
@@ -1010,7 +1202,7 @@ function populateMacroCheckboxes() {
   var others = macroPassos.filter(function(m) { return m.id !== currentId; });
   if (others.length === 0) { depWrap.innerHTML = '<span style="color:var(--muted);font-size:0.75rem;">Nenhuma outra fase cadastrada</span>'; }
   others.forEach(function(m) {
-    depWrap.innerHTML += '<label style="display:flex;align-items:center;gap:0.3rem;font-size:0.8rem;cursor:pointer;"><input type="checkbox" value="' + m.id + '"> ' + escHtml(m.fase) + '</label>';
+    depWrap.innerHTML += '<label style="' + cbStyle + '"><input type="checkbox" value="' + m.id + '" style="width:16px;height:16px;accent-color:var(--primary);flex-shrink:0;"> <span>' + escHtml(m.fase) + '</span></label>';
   });
 }
 
@@ -1044,13 +1236,18 @@ function salvarReuniao() {
 function salvarObjetivo() {
   var nome = document.getElementById('ob_nome').value.trim();
   if (!nome) { alert('Informe o nome do objetivo.'); return; }
+  var prazoDates = getPrazoDates('ob');
   var item = {
     id: (_editMode && _editMode.tipo === 'objetivo') ? objetivos[_editMode.index].id : nextId++,
     nome: nome,
     categoria: document.getElementById('ob_categoria').value,
     valor: parseBR(document.getElementById('ob_valor').value),
     atual: parseBR(document.getElementById('ob_atual').value),
-    prazo: document.getElementById('ob_prazo').value,
+    prazo_tipo: document.getElementById('ob_prazo_tipo').value,
+    dur_qty: parseInt(document.getElementById('ob_dur_qty').value) || null,
+    dur_unit: document.getElementById('ob_dur_unit').value,
+    inicio: prazoDates.inicio,
+    prazo: prazoDates.prazo,
     prioridade: document.getElementById('ob_prioridade').value,
     status: document.getElementById('ob_status').value,
     obs: document.getElementById('ob_obs').value.trim(),
@@ -1070,12 +1267,16 @@ function salvarMicro() {
   document.querySelectorAll('#mc_objetivos_checks input:checked').forEach(function(cb) { objetivosIds.push(cb.value); });
   var depsIds = [];
   document.querySelectorAll('#mc_deps_checks input:checked').forEach(function(cb) { depsIds.push(cb.value); });
+  var prazoDates = getPrazoDates('mc');
   var item = {
     id: (_editMode && _editMode.tipo === 'micro') ? microPassos[_editMode.index].id : nextId++,
     desc: desc,
     detalhamento: document.getElementById('mc_detalhamento').value.trim(),
-    inicio: document.getElementById('mc_inicio').value || null,
-    prazo: document.getElementById('mc_prazo').value,
+    prazo_tipo: document.getElementById('mc_prazo_tipo').value,
+    dur_qty: parseInt(document.getElementById('mc_dur_qty').value) || null,
+    dur_unit: document.getElementById('mc_dur_unit').value,
+    inicio: prazoDates.inicio,
+    prazo: prazoDates.prazo,
     status: document.getElementById('mc_status').value,
     objetivo_id: objetivosIds.length === 1 ? objetivosIds[0] : null,
     objetivos_ids: objetivosIds,
@@ -1099,14 +1300,17 @@ function salvarMacro() {
   document.querySelectorAll('#mk_micros_checks input:checked').forEach(function(cb) { microIds.push(cb.value); });
   var depsIds = [];
   document.querySelectorAll('#mk_deps_checks input:checked').forEach(function(cb) { depsIds.push(cb.value); });
+  var prazoDates = getPrazoDates('mk');
   var item = {
     id: (_editMode && _editMode.tipo === 'macro') ? macroPassos[_editMode.index].id : nextId++,
     fase: fase,
     ordem: parseInt(document.getElementById('mk_ordem').value) || 1,
     desc: desc,
-    inicio: document.getElementById('mk_inicio').value || null,
-    prazo: document.getElementById('mk_prazo').value || null,
-    periodo: document.getElementById('mk_periodo').value.trim(),
+    prazo_tipo: document.getElementById('mk_prazo_tipo').value,
+    dur_qty: parseInt(document.getElementById('mk_dur_qty').value) || null,
+    dur_unit: document.getElementById('mk_dur_unit').value,
+    inicio: prazoDates.inicio,
+    prazo: prazoDates.prazo,
     status: document.getElementById('mk_status').value,
     objetivos_ids: objetivosIds,
     micro_ids: microIds,
@@ -1319,6 +1523,7 @@ function renderMicroPassos() {
     html += '<span class="badge ' + (STATUS_BADGE[m.status]||'') + '">' + (STATUS_MICRO[m.status]||m.status) + '</span>';
     if (m.inicio) html += '<span>Início: ' + fmtData(m.inicio) + '</span>';
     if (m.prazo) html += '<span>Prazo: ' + fmtData(m.prazo) + '</span>';
+    if (m.dur_qty && m.dur_unit) { var uL = {dias:'dias',dias_uteis:'dias úteis',semanas:'semanas',meses:'meses'}; html += '<span>Duração: ' + m.dur_qty + ' ' + (uL[m.dur_unit]||m.dur_unit) + '</span>'; }
     if (objNomes.length > 0) html += '<span>Objetivo(s): ' + escHtml(objNomes.join(', ')) + '</span>';
     if (depNomes.length > 0) html += '<span>Depende de: ' + escHtml(depNomes.join(', ')) + '</span>';
     html += '</div></div>';
@@ -1393,7 +1598,8 @@ function renderMacroPassos() {
     html += '<span class="badge ' + (STATUS_BADGE[m.status]||'') + '">' + (STATUS_MACRO[m.status]||m.status) + '</span>';
     if (m.inicio) html += '<span>Início: ' + fmtData(m.inicio) + '</span>';
     if (m.prazo) html += '<span>Prazo: ' + fmtData(m.prazo) + '</span>';
-    if (m.periodo) html += '<span>Período: ' + escHtml(m.periodo) + '</span>';
+    if (m.dur_qty && m.dur_unit) { var uLabel = {dias:'dias',dias_uteis:'dias úteis',semanas:'semanas',meses:'meses'}; html += '<span>Duração: ' + m.dur_qty + ' ' + (uLabel[m.dur_unit]||m.dur_unit) + '</span>'; }
+    else if (m.periodo) html += '<span>Período: ' + escHtml(m.periodo) + '</span>';
     if (objNomes.length > 0) html += '<span>Objetivo(s): ' + escHtml(objNomes.join(', ')) + '</span>';
     if (microNomes.length > 0) html += '<span>Micro Passos: ' + escHtml(microNomes.join(', ')) + '</span>';
     if (depNomes.length > 0) html += '<span>Depende de: ' + escHtml(depNomes.join(', ')) + '</span>';
@@ -1899,12 +2105,20 @@ function renderCronograma() {
   function getItemDates(item, tipo) {
     var inicio = item.inicio || null;
     var fim = item.prazo || null;
+    // For duration-based items, recalculate fim from inicio + duration
+    if (item.prazo_tipo === 'duracao' && item.dur_qty && item.dur_unit && inicio) {
+      fim = calcEndDate(inicio, item.dur_qty, item.dur_unit);
+    }
     // If no inicio, use baseline
     if (!inicio && baselineDate) inicio = baselineDate;
     // Recalculate dates if data inicio geral is set
     if (dataInicioGeral && baselineDate) {
       if (inicio) inicio = recalcDate(inicio);
       if (fim) fim = recalcDate(fim);
+      // For duration items, recalculate fim from the shifted inicio
+      if (item.prazo_tipo === 'duracao' && item.dur_qty && item.dur_unit && inicio) {
+        fim = calcEndDate(inicio, item.dur_qty, item.dur_unit);
+      }
     }
     // If no fim, assume 30 days after inicio
     if (!fim && inicio) {
