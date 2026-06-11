@@ -490,7 +490,7 @@
             <th data-col="0">Nome <span class="sort-icon"></span></th>
             <th data-col="1">CPF <span class="sort-icon"></span></th>
             <th data-col="2">WhatsApp <span class="sort-icon"></span></th>
-            <th data-col="3">Ações</th>
+            <th data-col="3">Ações <span class="sort-icon"></span></th>
           </tr></thead>
           <tbody>
             ${clientes.map(cliente => {
@@ -534,7 +534,6 @@
 
     // === SORT ===
     function handleSort(colIdx) {
-      if (colIdx === 3) return; // Don't sort actions
       const table = document.getElementById('msg-table');
       if (!table) return;
       const ths = table.querySelectorAll('th');
@@ -550,6 +549,13 @@
       const tbody = table.querySelector('tbody');
       const rows = Array.from(tbody.querySelectorAll('tr'));
       rows.sort((a, b) => {
+        // For actions column (3), sort by badge presence
+        if (colIdx === 3) {
+          const aBadge = a.cells[colIdx]?.querySelector('.badge') ? 1 : 0;
+          const bBadge = b.cells[colIdx]?.querySelector('.badge') ? 1 : 0;
+          if (aBadge !== bBadge) return currentSortDir === 'asc' ? bBadge - aBadge : aBadge - bBadge;
+          return 0;
+        }
         const aT = (a.cells[colIdx]?.textContent || '').trim().toLowerCase();
         const bT = (b.cells[colIdx]?.textContent || '').trim().toLowerCase();
         if (aT < bT) return currentSortDir === 'asc' ? -1 : 1;
