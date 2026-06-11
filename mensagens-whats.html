@@ -311,6 +311,10 @@
           <button class="close-modal">&times;</button>
         </div>
         <div class="modal-body">
+          <div style="margin-bottom:0.8rem;">
+            <label style="font-size:0.85rem;color:var(--text-muted);display:block;margin-bottom:0.3rem;">Saudação padrão (salva automaticamente):</label>
+            <textarea id="saudacao-texto" rows="2" style="width:100%;resize:vertical;min-height:40px;max-height:100px;padding:0.5rem;border-radius:6px;border:1px solid var(--border);background:var(--bg-card);color:var(--text);font-size:0.9rem;" placeholder="Ex: Aqui é o Hugo da HV Saúde Financeira!"></textarea>
+          </div>
           <div style="margin-bottom:0.8rem;display:flex;gap:0.5rem;">
             <button class="modal-btn generate-btn" id="btn-generate-report"><i class="fas fa-magic"></i> Gerar Relatório Automático</button>
           </div>
@@ -352,6 +356,13 @@
     const generateBtn = document.getElementById('btn-generate-report');
     const simDateInput = document.getElementById('sim-date');
     const simInfo = document.getElementById('sim-info');
+    const saudacaoTexto = document.getElementById('saudacao-texto');
+    
+    // Load saved greeting
+    saudacaoTexto.value = localStorage.getItem('hv_saudacao_padrao') || 'Aqui é o Hugo da HV Saúde Financeira!';
+    saudacaoTexto.addEventListener('input', () => {
+      localStorage.setItem('hv_saudacao_padrao', saudacaoTexto.value);
+    });
     
     // === STATE ===
     let allClientes = [];
@@ -752,22 +763,29 @@
       const isSegunda = (dow === 1);
       const isSexta = (dow === 5);
       
+      // Saudação personalizada salva
+      const saudacao = saudacaoTexto.value.trim() || 'Aqui é o Hugo da HV Saúde Financeira!';
+      
       // Build greeting based on primary context
       if (isInicioMes && isSegunda) {
-        report += `Olá, ${primeiroNome}! Bom início de mês e boa semana! 📆💪\n\n`;
+        report += `Olá, ${primeiroNome}! Bom início de mês e boa semana! 📆💪\n`;
       } else if (isInicioMes) {
-        report += `Olá, ${primeiroNome}! Bom início de mês! 📆\n\n`;
+        report += `Olá, ${primeiroNome}! Bom início de mês! 📆\n`;
       } else if (isFinalMes && isSexta) {
-        report += `Olá, ${primeiroNome}! Fechamento do mês e da semana! 📈📊\n\n`;
+        report += `Olá, ${primeiroNome}! Fechamento do mês e da semana! 📈📊\n`;
       } else if (isFinalMes) {
-        report += `Olá, ${primeiroNome}! Fechamento do mês! 📈\n\n`;
+        report += `Olá, ${primeiroNome}! Fechamento do mês! 📈\n`;
       } else if (isSexta) {
-        report += `Olá, ${primeiroNome}! Fechamento da semana 📊\n\n`;
+        report += `Olá, ${primeiroNome}! Fechamento da semana 📊\n`;
       } else if (isSegunda) {
-        report += `Olá, ${primeiroNome}! Boa semana! 💪\n\n`;
+        report += `Olá, ${primeiroNome}! Boa semana! 💪\n`;
       } else {
-        report += `Olá, ${primeiroNome}!\n\n`;
+        report += `Olá, ${primeiroNome}!\n`;
       }
+      report += `${saudacao}\n\n`;
+      
+      // Introdução sobre o relatório gerado pelo sistema
+      report += `_Nosso sistema gerou este relatório para nos ajudar a manter o planejamento em dia. Dê uma atenção especial caso algo esteja diferente do esperado ou precise de atualização._\n\n`;
       
       let hasContent = false;
       
@@ -974,6 +992,16 @@
       } else {
         report += `Qualquer dúvida, estou aqui!`;
       }
+      
+      // === LEMBRETE DE ATUALIZAÇÃO + CREDENCIAIS ===
+      report += `\n\n---\n\n`;
+      report += `🔑 *Lembre-se de atualizar seu fluxo de caixa e cronograma!*\n`;
+      report += `Acesse: https://app.hvsaudefinanceira.com.br\n`;
+      if (cliente?.login && cliente?.senha) {
+        report += `Login: *${cliente.login}*\n`;
+        report += `Senha: *${cliente.senha}*\n`;
+      }
+      report += `\n🎤 Se preferir, me mande um áudio informando qualquer atualização, correção ou dúvida que eu faço os ajustes pra você!`;
       
       return report;
     }
