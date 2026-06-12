@@ -222,16 +222,21 @@
                 
                 // Se tem URL de retorno customizada, usar ela
                 if (retornoUrl) {
-                    const currentPath = window.location.pathname;
-                    let redirectPath = '';
-                    if (currentPath.includes('/ferramentas/')) {
-                        redirectPath = '../../' + retornoUrl;
-                    } else if (currentPath.includes('/archives_clients/')) {
-                        redirectPath = '../' + retornoUrl;
+                    // Se começa com /, é caminho absoluto - usar direto
+                    if (retornoUrl.startsWith('/')) {
+                        window.location.href = retornoUrl;
                     } else {
-                        redirectPath = retornoUrl;
+                        const currentPath = window.location.pathname;
+                        let redirectPath = '';
+                        if (currentPath.includes('/ferramentas/')) {
+                            redirectPath = '../../' + retornoUrl;
+                        } else if (currentPath.includes('/archives_clients/')) {
+                            redirectPath = '../' + retornoUrl;
+                        } else {
+                            redirectPath = retornoUrl;
+                        }
+                        window.location.href = redirectPath;
                     }
-                    window.location.href = redirectPath;
                 } else {
                     // Redirecionar de volta para a página de detalhes do cliente
                     const currentPath = window.location.pathname;
