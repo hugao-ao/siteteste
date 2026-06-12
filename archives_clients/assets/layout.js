@@ -236,6 +236,15 @@
         if (localSupabaseClient) {
             checkAuth(localSupabaseClient);
         }
+
+        // 7. Load Particularidades module (only for equipe/consultor)
+        if (isEquipeModoCliente) {
+            const particScript = document.createElement('script');
+            const isSubDir2 = pathSegments.includes('ferramentas') && !window.location.pathname.endsWith('ferramentas.html');
+            const basePath2 = isSubDir2 ? '../' : '';
+            particScript.src = basePath2 + 'assets/particularidades.js';
+            document.body.appendChild(particScript);
+        }
     });
 
     async function checkAuth(client) {
