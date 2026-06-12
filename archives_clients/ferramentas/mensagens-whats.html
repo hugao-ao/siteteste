@@ -562,6 +562,9 @@
                     <button class="action-btn whats-btn" data-id="${cliente.id}" title="Enviar WhatsApp">
                       <i class="fab fa-whatsapp"></i>
                     </button>
+                    <button class="action-btn system-btn" data-id="${cliente.id}" title="Acessar sistema do cliente">
+                      <i class="fas fa-external-link-alt"></i>
+                    </button>
                   </td>
                 </tr>`;
             }).join('')}
@@ -572,6 +575,7 @@
       // Event listeners
       document.querySelectorAll('.edit-msg-btn').forEach(btn => btn.addEventListener('click', handleEditMessage));
       document.querySelectorAll('.whats-btn').forEach(btn => btn.addEventListener('click', openWhatsApp));
+      document.querySelectorAll('.system-btn').forEach(btn => btn.addEventListener('click', openClientSystem));
       
       // Sort headers
       document.querySelectorAll('.clientes-table th[data-col]').forEach(th => {
@@ -1645,6 +1649,19 @@
       const mensagem = localStorage.getItem(storageKey) || cliente.mensagem || '';
       const url = `https://api.whatsapp.com/send?phone=${whatsapp}&text=${encodeURIComponent(mensagem)}`;
       window.open(url, '_blank');
+    }
+
+    // === ACESSO AO SISTEMA DO CLIENTE ===
+    function openClientSystem(event) {
+      const clienteId = event.currentTarget.dataset.id;
+      const cliente = allClientes.find(c => c.id === clienteId);
+      if (!cliente) return;
+      if (!cliente.login || !cliente.senha) {
+        alert('Este cliente não possui login/senha cadastrados.');
+        return;
+      }
+      // Abrir o sistema em nova aba (o admin pode logar com as credenciais do cliente)
+      window.open('https://app.hvsaudefinanceira.com.br', '_blank');
     }
 
     // === EDIT MESSAGE ===
