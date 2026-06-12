@@ -1,20 +1,34 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
+  <script src="page-guard.js"></script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Curadoria de Conteúdo - HV Saúde Financeira</title>
+  <link rel="stylesheet" href="style.css" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
+    /* --- Sidebar Integration Styles --- */
     body {
-      font-family: 'Segoe UI', sans-serif;
+      display: flex;
+      margin: 0;
+      min-height: 100vh;
+    }
+    #main-content-curadoria {
+      flex-grow: 1;
+      padding: 2rem;
+      margin-left: 250px;
+      transition: margin-left 0.3s ease;
       background: linear-gradient(135deg, #0d1b0d 0%, #1a2a1a 50%, #0d1b0d 100%);
       color: #e0e0e0;
       min-height: 100vh;
-      padding: 2rem;
     }
+    #main-content-curadoria.sidebar-collapsed {
+      margin-left: 60px;
+    }
+    /* --- End Sidebar Integration Styles --- */
+
     .container { max-width: 1200px; margin: 0 auto; }
     h1 { color: #d4af37; margin-bottom: 0.5rem; font-size: 1.8rem; }
     .subtitle { color: #aaa; margin-bottom: 2rem; font-size: 0.9rem; }
@@ -218,85 +232,100 @@
 
     /* Responsive */
     @media (max-width: 768px) {
-      body { padding: 1rem; }
+      #main-content-curadoria { padding: 1rem; margin-left: 60px; }
       .config-row { flex-direction: column; }
     }
   </style>
 </head>
 <body>
-  <div class="container">
-    <h1><i class="fas fa-newspaper"></i> Curadoria de Conteúdo</h1>
-    <p class="subtitle">Busca automática de notícias baseada nos interesses cadastrados dos clientes. Combina múltiplas fontes gratuitas.</p>
+  <!-- Sidebar será injetada aqui pelo sidebar.js -->
+  <main id="main-content-curadoria">
+    <div class="container">
+      <h1><i class="fas fa-newspaper"></i> Curadoria de Conteúdo</h1>
+      <p class="subtitle">Busca automática de notícias baseada nos interesses cadastrados dos clientes. Combina múltiplas fontes gratuitas.</p>
 
-    <div class="config-section">
-      <h2><i class="fas fa-cog"></i> Configuração da Busca</h2>
-      <div class="config-row">
-        <div class="config-field">
-          <label>Idioma</label>
-          <select id="cfg-lang">
-            <option value="pt" selected>Português</option>
-            <option value="en">English</option>
-            <option value="es">Español</option>
-          </select>
+      <div class="config-section">
+        <h2><i class="fas fa-cog"></i> Configuração da Busca</h2>
+        <div class="config-row">
+          <div class="config-field">
+            <label>Idioma</label>
+            <select id="cfg-lang">
+              <option value="pt" selected>Português</option>
+              <option value="en">English</option>
+              <option value="es">Español</option>
+            </select>
+          </div>
+          <div class="config-field">
+            <label>País</label>
+            <select id="cfg-country">
+              <option value="BR" selected>Brasil</option>
+              <option value="US">EUA</option>
+              <option value="PT">Portugal</option>
+            </select>
+          </div>
+          <div class="config-field">
+            <label>Máx. notícias por interesse</label>
+            <select id="cfg-max">
+              <option value="5">5</option>
+              <option value="10" selected>10</option>
+              <option value="15">15</option>
+              <option value="20">20</option>
+            </select>
+          </div>
+          <button class="btn-buscar" id="btn-buscar" onclick="buscarNoticias()">
+            <i class="fas fa-search"></i> Buscar Notícias
+          </button>
         </div>
-        <div class="config-field">
-          <label>País</label>
-          <select id="cfg-country">
-            <option value="BR" selected>Brasil</option>
-            <option value="US">EUA</option>
-            <option value="PT">Portugal</option>
-          </select>
-        </div>
-        <div class="config-field">
-          <label>Máx. notícias por interesse</label>
-          <select id="cfg-max">
-            <option value="5">5</option>
-            <option value="10" selected>10</option>
-            <option value="15">15</option>
-            <option value="20">20</option>
-          </select>
-        </div>
-        <button class="btn-buscar" id="btn-buscar" onclick="buscarNoticias()">
-          <i class="fas fa-search"></i> Buscar Notícias
-        </button>
+
+        <details class="api-keys-section">
+          <summary><i class="fas fa-key"></i> Chaves de API (opcional - para mais resultados)</summary>
+          <div class="api-keys-grid">
+            <div class="api-key-field">
+              <label>GNews (gnews.io)</label>
+              <input type="text" id="key-gnews" placeholder="Sua API key">
+            </div>
+            <div class="api-key-field">
+              <label>NewsData.io</label>
+              <input type="text" id="key-newsdata" placeholder="Sua API key">
+            </div>
+            <div class="api-key-field">
+              <label>Currents API</label>
+              <input type="text" id="key-currents" placeholder="Sua API key">
+            </div>
+            <div class="api-key-field">
+              <label>MediaStack</label>
+              <input type="text" id="key-mediastack" placeholder="Sua API key">
+            </div>
+          </div>
+        </details>
       </div>
 
-      <details class="api-keys-section">
-        <summary><i class="fas fa-key"></i> Chaves de API (opcional - para mais resultados)</summary>
-        <div class="api-keys-grid">
-          <div class="api-key-field">
-            <label>GNews (gnews.io)</label>
-            <input type="text" id="key-gnews" placeholder="Sua API key">
-          </div>
-          <div class="api-key-field">
-            <label>NewsData.io</label>
-            <input type="text" id="key-newsdata" placeholder="Sua API key">
-          </div>
-          <div class="api-key-field">
-            <label>Currents API</label>
-            <input type="text" id="key-currents" placeholder="Sua API key">
-          </div>
-          <div class="api-key-field">
-            <label>MediaStack</label>
-            <input type="text" id="key-mediastack" placeholder="Sua API key">
-          </div>
-        </div>
-      </details>
-    </div>
+      <div class="status-bar" id="status-bar">
+        <span class="status-item"><span class="dot dot-gray"></span> Aguardando busca...</span>
+      </div>
 
-    <div class="status-bar" id="status-bar">
-      <span class="status-item"><span class="dot dot-gray"></span> Aguardando busca...</span>
+      <div class="results-section" id="results-section">
+        <p style="color:#888; text-align:center; padding:2rem;">Clique em "Buscar Notícias" para carregar conteúdo baseado nos interesses dos clientes.</p>
+      </div>
     </div>
+  </main>
 
-    <div class="results-section" id="results-section">
-      <p style="color:#888; text-align:center; padding:2rem;">Clique em "Buscar Notícias" para carregar conteúdo baseado nos interesses dos clientes.</p>
-    </div>
-  </div>
-
+  <!-- Carrega Sidebar -->
+  <script src="sidebar.js"></script>
   <script>
-    const SUPABASE_URL = "https://vbikskbfkhundhropykf.supabase.co";
-    const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZiaWtza2Jma2h1bmRocm9weWtmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDU1MTk5NjEsImV4cCI6MjA2MTA5NTk2MX0.-n-Tj_5JnF1NL2ZImWlMeTcobWDl_VD6Vqp0lxRQFFU";
-    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    // Injetar sidebar
+    const isAdminViewingAsUser = sessionStorage.getItem("viewing_user_id") && sessionStorage.getItem("nivel") === 'admin';
+    if (!isAdminViewingAsUser) {
+      if (typeof injectSidebarWithAutoDetection === 'function') {
+        injectSidebarWithAutoDetection("main-content-curadoria");
+      } else if (typeof injectSidebar === 'function') {
+        injectSidebar("main-content-curadoria", "Planejamento");
+      }
+    }
+  </script>
+
+  <script type="module">
+    import { supabase } from './supabase.js';
 
     // CORS proxy for Google News RSS
     const CORS_PROXY = "https://api.allorigins.win/raw?url=";
@@ -353,11 +382,22 @@
           if (!cliente) return;
 
           d.interesses.forEach(int => {
-            const key = int.palavra_chave.toLowerCase().trim();
+            const key = (int.descricao || int.palavra_chave || '').toLowerCase().trim();
+            if (!key) return;
             if (!interesseMap[key]) {
+              // New model: subcategorias is array of {id, nome, nivel}
+              let subcats = [];
+              if (Array.isArray(int.subcategorias)) {
+                subcats = int.subcategorias.map(s => typeof s === 'string' ? s : (s.nome || '')).filter(Boolean);
+              } else {
+                // Legacy model: subcategoria_01 through subcategoria_05
+                subcats = [int.subcategoria_01, int.subcategoria_02, int.subcategoria_03, int.subcategoria_04, int.subcategoria_05].filter(Boolean);
+              }
               interesseMap[key] = {
-                palavra_chave: int.palavra_chave,
-                categoria: int.categoria || '',
+                palavra_chave: int.descricao || int.palavra_chave,
+                categoria: int.categoria_nome || int.categoria || '',
+                subcategorias: subcats,
+                tipo_busca: int.tipo_busca || 'ambos',
                 prioridade: int.prioridade || 1,
                 clientes: []
               };
@@ -372,6 +412,16 @@
         console.error('Erro ao carregar interesses:', e);
         return [];
       }
+    }
+
+    // Build search keywords from interest (description + category + subcategories)
+    function buildSearchKeywords(interesse) {
+      const parts = [interesse.palavra_chave];
+      if (interesse.categoria) parts.push(interesse.categoria);
+      if (interesse.subcategorias && interesse.subcategorias.length > 0) {
+        parts.push(...interesse.subcategorias);
+      }
+      return parts.join(' ');
     }
 
     // === NEWS FETCHERS ===
@@ -484,7 +534,6 @@
       try {
         const q = encodeURIComponent(keyword);
         const langMap = { pt: 'pt', en: 'en', es: 'es' };
-        // MediaStack free tier requires HTTP (not HTTPS)
         const resp = await fetch(`http://api.mediastack.com/v1/news?access_key=${key}&keywords=${q}&languages=${langMap[lang] || 'pt'}&limit=${Math.min(max, 10)}`);
         if (!resp.ok) throw new Error(`MediaStack ${resp.status}`);
         const data = await resp.json();
@@ -533,11 +582,40 @@
       const allResults = []; // [{keyword, clientes, articles}]
       const sources = [];
 
+      // Load cidades from particularidades for event-type searches
+      const clienteCidades = {};
+      try {
+        const { data: particRows } = await supabase
+          .from('ferramentas_dados')
+          .select('cliente_id, dados')
+          .eq('ferramenta_slug', 'particularidades');
+        (particRows || []).forEach(row => {
+          let d = row.dados;
+          if (typeof d === 'string') { try { d = JSON.parse(d); } catch(e) { return; } }
+          if (d && d.cidades && d.cidades.length > 0) {
+            clienteCidades[row.cliente_id] = d.cidades;
+          }
+        });
+      } catch(e) { console.warn('Erro ao carregar cidades:', e); }
+
       for (const interesse of allInteresses) {
         let articles = [];
+        let searchQuery = buildSearchKeywords(interesse);
+        
+        // For event-type searches, append client cities to query
+        if (interesse.tipo_busca === 'eventos' || interesse.tipo_busca === 'ambos') {
+          const cidadesSet = new Set();
+          interesse.clientes.forEach(c => {
+            const cids = clienteCidades[c.id];
+            if (cids) cids.forEach(ci => cidadesSet.add(ci));
+          });
+          if (cidadesSet.size > 0) {
+            searchQuery += ' ' + [...cidadesSet].slice(0, 2).join(' OR ');
+          }
+        }
         
         // Try Google News first (always available)
-        const googleResult = await fetchGoogleNews(interesse.palavra_chave, lang, country, max);
+        const googleResult = await fetchGoogleNews(searchQuery, lang, country, max);
         if (googleResult.results.length > 0) {
           articles = googleResult.results;
           if (!sources.includes('Google News RSS')) sources.push('Google News RSS');
@@ -546,8 +624,7 @@
         // If not enough results, try fallbacks
         if (articles.length < max) {
           const remaining = max - articles.length;
-          
-          const gnewsResult = await fetchGNews(interesse.palavra_chave, lang, country, remaining);
+          const gnewsResult = await fetchGNews(searchQuery, lang, country, remaining);
           if (gnewsResult.results.length > 0) {
             articles = articles.concat(gnewsResult.results);
             if (!sources.includes('GNews')) sources.push('GNews');
@@ -556,7 +633,7 @@
 
         if (articles.length < max) {
           const remaining = max - articles.length;
-          const newsDataResult = await fetchNewsData(interesse.palavra_chave, lang, country, remaining);
+          const newsDataResult = await fetchNewsData(searchQuery, lang, country, remaining);
           if (newsDataResult.results.length > 0) {
             articles = articles.concat(newsDataResult.results);
             if (!sources.includes('NewsData.io')) sources.push('NewsData.io');
@@ -565,7 +642,7 @@
 
         if (articles.length < max) {
           const remaining = max - articles.length;
-          const currentsResult = await fetchCurrents(interesse.palavra_chave, lang, country, remaining);
+          const currentsResult = await fetchCurrents(searchQuery, lang, country, remaining);
           if (currentsResult.results.length > 0) {
             articles = articles.concat(currentsResult.results);
             if (!sources.includes('Currents')) sources.push('Currents');
@@ -584,6 +661,8 @@
         allResults.push({
           keyword: interesse.palavra_chave,
           categoria: interesse.categoria,
+          subcategorias: interesse.subcategorias || [],
+          tipo_busca: interesse.tipo_busca,
           clientes: interesse.clientes,
           articles: articles.slice(0, max)
         });
@@ -607,16 +686,18 @@
 
       // Summary table
       html += `<h2><i class="fas fa-table"></i> Resumo de Envio</h2>`;
-      html += `<table class="summary-table"><thead><tr><th>Notícia</th><th>Interesse</th><th>Enviar para</th><th>Ação</th></tr></thead><tbody>`;
+      html += `<table class="summary-table"><thead><tr><th>Notícia</th><th>Interesse</th><th>Tipo</th><th>Enviar para</th><th>Ação</th></tr></thead><tbody>`;
       
       allResults.forEach(group => {
         group.articles.forEach((article, idx) => {
           const clienteNames = group.clientes.map(c => c.nome.split(' ')[0]).join(', ');
+          const tipoBadge = group.tipo_busca === 'informacao' ? '📰' : group.tipo_busca === 'eventos' ? '📍' : '📰📍';
           html += `<tr>
             <td><a href="${article.link}" target="_blank">${article.title.slice(0, 80)}${article.title.length > 80 ? '...' : ''}</a></td>
-            <td>${group.keyword}</td>
+            <td>${group.keyword}${group.subcategorias.length > 0 ? ' <span style="color:#888;font-size:0.7rem;">(' + group.subcategorias.join(' > ') + ')</span>' : ''}</td>
+            <td>${tipoBadge}</td>
             <td>${clienteNames}</td>
-            <td><button class="btn-copy" onclick="copiarLink('${article.link}')">Copiar link</button></td>
+            <td><button class="btn-copy" onclick="copiarLink('${article.link.replace(/'/g, "\\'")}')">Copiar link</button></td>
           </tr>`;
         });
       });
@@ -631,7 +712,7 @@
         html += `
           <div class="keyword-group">
             <div class="keyword-header">
-              <h3>${group.keyword} ${group.categoria ? `<span style="font-size:0.8rem;color:#aaa;">(${group.categoria})</span>` : ''}</h3>
+              <h3>${group.keyword} ${group.categoria ? `<span style="font-size:0.8rem;color:#aaa;">(${group.categoria}${group.subcategorias.length > 0 ? ' > ' + group.subcategorias.join(' > ') : ''})</span>` : ''}</h3>
               <span class="clients-list">Enviar para: ${clienteNames}</span>
             </div>
         `;
@@ -644,7 +725,7 @@
                 <div class="news-meta">${article.source} ${dateStr ? '• ' + dateStr : ''}</div>
               </div>
               <div class="news-actions">
-                <button class="btn-copy" onclick="copiarLink('${article.link}')">Copiar</button>
+                <button class="btn-copy" onclick="copiarLink('${article.link.replace(/'/g, "\\'")}')">Copiar</button>
               </div>
             </div>
           `;
@@ -660,13 +741,15 @@
     }
 
     // Copy link to clipboard
-    function copiarLink(link) {
+    window.copiarLink = function(link) {
       navigator.clipboard.writeText(link).then(() => {
-        // Brief visual feedback
         event.target.textContent = '✓';
         setTimeout(() => { event.target.textContent = 'Copiar'; }, 1500);
       });
-    }
+    };
+
+    // Make buscarNoticias global
+    window.buscarNoticias = buscarNoticias;
 
     // Init
     loadApiKeys();
