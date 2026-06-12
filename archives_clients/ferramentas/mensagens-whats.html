@@ -312,7 +312,7 @@
         </div>
         <div class="modal-body">
           <div style="margin-bottom:0.8rem;">
-            <label style="font-size:0.85rem;color:var(--text-muted);display:block;margin-bottom:0.3rem;">Saudação padrão (salva automaticamente):</label>
+            <label style="font-size:0.85rem;color:var(--text-muted);display:block;margin-bottom:0.3rem;">Saudação deste cliente (salva ao clicar Salvar):</label>
             <textarea id="saudacao-texto" rows="2" style="width:100%;resize:vertical;min-height:40px;max-height:100px;padding:0.5rem;border-radius:6px;border:1px solid var(--border);background:var(--bg-card);color:var(--text);font-size:0.9rem;" placeholder="Ex: Aqui é o Hugo da HV Saúde Financeira!"></textarea>
           </div>
           <div style="margin-bottom:0.8rem;display:flex;gap:0.5rem;">
@@ -358,11 +358,8 @@
     const simInfo = document.getElementById('sim-info');
     const saudacaoTexto = document.getElementById('saudacao-texto');
     
-    // Load saved greeting
-    saudacaoTexto.value = localStorage.getItem('hv_saudacao_padrao') || 'Aqui é o Hugo da HV Saúde Financeira!';
-    saudacaoTexto.addEventListener('input', () => {
-      localStorage.setItem('hv_saudacao_padrao', saudacaoTexto.value);
-    });
+    // Saudação agora é por cliente (salva no Supabase + localStorage como fallback)
+    // Será carregada ao abrir o modal de cada cliente
     
     // === STATE ===
     let allClientes = [];
@@ -437,6 +434,7 @@
         }
         renderClientesTable(allClientes);
         await loadMensagens();
+        await loadSaudacoes();
         // Load data for all clients in background for badge calculation
         loadAllClientData();
       } catch (error) {
@@ -461,6 +459,25 @@
           });
         }
       } catch (e) { console.error('Erro mensagens:', e); }
+    }
+
+    // === LOAD SAUDAÇÕES (por cliente) ===
+    async function loadSaudacoes() {
+      try {
+        if (allClientes.length === 0) return;
+        const ids = allClientes.map(c => c.id);
+        const { data, error } = await supabase
+          .from('saudacoes_clientes')
+          .select('cliente_id, saudacao')
+          .in('cliente_id', ids);
+        if (error) throw error;
+        if (data) {
+          data.forEach(s => {
+            const c = allClientes.find(cl => cl.id === s.cliente_id);
+            if (c) c._saudacao = s.saudacao;
+          });
+        }
+      } catch (e) { console.warn('Tabela saudacoes_clientes não encontrada (usando localStorage):', e.message); }
     }
 
     // === LOAD ALL CLIENT DATA (for report generation) ===
@@ -855,8 +872,9 @@
       const isSegunda = (dow === 1);
       const isSexta = (dow === 5);
       
-      // Saudação personalizada salva (primeira coisa na mensagem)
-      const saudacao = saudacaoTexto.value.trim() || 'Aqui é o Hugo da HV Saúde Financeira!';
+      // Saudação personalizada do cliente (primeira coisa na mensagem)
+      const saudKey = 'hv_saudacao_' + clienteId;
+      const saudacao = localStorage.getItem(saudKey) || cliente?._saudacao || saudacaoTexto.value.trim() || 'Aqui é o Hugo da HV Saúde Financeira!';
       report += `${saudacao}\n\n`;
       
       // Introdução do sistema + pedido de atualização (segunda parte)
@@ -1638,6 +1656,9 @@
       const dc = (cliente.dados_cadastrais || []).find(d => d?.cliente_id === clienteId) || {};
       const nome = dc.nome_completo || cliente.nome || 'Cliente';
       modalClienteNome.textContent = `Mensagem para: ${nome}`;
+      // Carregar saudação do cliente: localStorage > memória > padrão
+      const saudKey = 'hv_saudacao_' + clienteId;
+      saudacaoTexto.value = localStorage.getItem(saudKey) || cliente._saudacao || 'Aqui é o Hugo da HV Saúde Financeira!';
       // Carregar mensagem: localStorage primeiro, depois memória
       const storageKey = 'hv_msg_' + clienteId;
       mensagemTexto.value = localStorage.getItem(storageKey) || cliente.mensagem || '';
@@ -1676,22 +1697,36 @@
     async function saveMensagem() {
       if (!currentClienteId) return;
       const mensagem = mensagemTexto.value.trim();
+      const saudacao = saudacaoTexto.value.trim();
       
       // Salvar localmente (localStorage) - sempre funciona
       const storageKey = 'hv_msg_' + currentClienteId;
+      const saudKey = 'hv_saudacao_' + currentClienteId;
       localStorage.setItem(storageKey, mensagem);
+      localStorage.setItem(saudKey, saudacao);
       
       // Atualizar no objeto em memória
       const cliente = allClientes.find(c => c.id === currentClienteId);
-      if (cliente) cliente.mensagem = mensagem;
+      if (cliente) {
+        cliente.mensagem = mensagem;
+        cliente._saudacao = saudacao;
+      }
       
       // Tentar salvar no Supabase também (silencioso, não bloqueia)
+      try {
+        await supabase
+          .from('saudacoes_clientes')
+          .upsert({ cliente_id: currentClienteId, saudacao, updated_at: new Date().toISOString() }, { onConflict: 'cliente_id' });
+      } catch (e) {
+        console.warn('Saudação não salvou no Supabase (salva localmente):', e.message);
+      }
+      
       try {
         await supabase
           .from('mensagens_clientes')
           .upsert({ cliente_id: currentClienteId, mensagem, updated_at: new Date().toISOString() }, { onConflict: 'cliente_id' });
       } catch (e) {
-        console.warn('Não salvou no Supabase (salvo localmente):', e.message);
+        console.warn('Mensagem não salvou no Supabase (salva localmente):', e.message);
       }
       
       alert('Mensagem salva!');
