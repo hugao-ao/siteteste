@@ -312,7 +312,7 @@
         </div>
         <div class="modal-body">
           <div style="margin-bottom:0.8rem;">
-            <label style="font-size:0.85rem;color:var(--text-muted);display:block;margin-bottom:0.3rem;">Saudação padrão (salva automaticamente):</label>
+            <label style="font-size:0.85rem;color:var(--text-muted);display:block;margin-bottom:0.3rem;">Saudação deste cliente (salva ao clicar Salvar):</label>
             <textarea id="saudacao-texto" rows="2" style="width:100%;resize:vertical;min-height:40px;max-height:100px;padding:0.5rem;border-radius:6px;border:1px solid var(--border);background:var(--bg-card);color:var(--text);font-size:0.9rem;" placeholder="Ex: Aqui é o Hugo da HV Saúde Financeira!"></textarea>
           </div>
           <div style="margin-bottom:0.8rem;display:flex;gap:0.5rem;">
@@ -358,11 +358,8 @@
     const simInfo = document.getElementById('sim-info');
     const saudacaoTexto = document.getElementById('saudacao-texto');
     
-    // Load saved greeting
-    saudacaoTexto.value = localStorage.getItem('hv_saudacao_padrao') || 'Aqui é o Hugo da HV Saúde Financeira!';
-    saudacaoTexto.addEventListener('input', () => {
-      localStorage.setItem('hv_saudacao_padrao', saudacaoTexto.value);
-    });
+    // Saudação agora é por cliente (salva no Supabase + localStorage como fallback)
+    // Será carregada ao abrir o modal de cada cliente
     
     // === STATE ===
     let allClientes = [];
@@ -437,6 +434,7 @@
         }
         renderClientesTable(allClientes);
         await loadMensagens();
+        await loadSaudacoes();
         // Load data for all clients in background for badge calculation
         loadAllClientData();
       } catch (error) {
@@ -461,6 +459,25 @@
           });
         }
       } catch (e) { console.error('Erro mensagens:', e); }
+    }
+
+    // === LOAD SAUDAÇÕES (por cliente) ===
+    async function loadSaudacoes() {
+      try {
+        if (allClientes.length === 0) return;
+        const ids = allClientes.map(c => c.id);
+        const { data, error } = await supabase
+          .from('saudacoes_clientes')
+          .select('cliente_id, saudacao')
+          .in('cliente_id', ids);
+        if (error) throw error;
+        if (data) {
+          data.forEach(s => {
+            const c = allClientes.find(cl => cl.id === s.cliente_id);
+            if (c) c._saudacao = s.saudacao;
+          });
+        }
+      } catch (e) { console.warn('Tabela saudacoes_clientes não encontrada (usando localStorage):', e.message); }
     }
 
     // === LOAD ALL CLIENT DATA (for report generation) ===
@@ -855,18 +872,19 @@
       const isSegunda = (dow === 1);
       const isSexta = (dow === 5);
       
-      // Saudação personalizada salva (primeira coisa na mensagem)
-      const saudacao = saudacaoTexto.value.trim() || 'Aqui é o Hugo da HV Saúde Financeira!';
+      // Saudação personalizada do cliente (primeira coisa na mensagem)
+      const saudKey = 'hv_saudacao_' + clienteId;
+      const saudacao = localStorage.getItem(saudKey) || cliente?._saudacao || saudacaoTexto.value.trim() || 'Aqui é o Hugo da HV Saúde Financeira!';
       report += `${saudacao}\n\n`;
       
       // Introdução do sistema + pedido de atualização (segunda parte)
-      report += `_Nosso sistema gerou esse relatório pra gente manter tudo em dia. Se algo tiver diferente do esperado, me avisa!_\n`;
-      report += `_Se puder, atualiza direto no sistema (link abaixo) ou me manda um áudio aqui mesmo com o que mudou que eu ajusto pra você_ 🎤\n`;
+      report += `Nosso sistema gerou esse relatório pra gente manter tudo em dia. Se algo tiver diferente do esperado, me avisa!\n`;
       if (cliente?.login && cliente?.senha) {
-        report += `_Acesse:_ https://app.hvsaudefinanceira.com.br\n`;
-        report += `_Login:_ *${cliente.login}* | _Senha:_ *${cliente.senha}*\n`;
+        report += `Se puder, atualiza direto no sistema ou me manda um áudio aqui mesmo com o que mudou que eu ajusto pra você 🎤\n`;
+        report += `Acesse: https://app.hvsaudefinanceira.com.br\n`;
+        report += `Login: *${cliente.login}* | Senha: *${cliente.senha}*\n`;
       } else {
-        report += `_Acesse:_ https://app.hvsaudefinanceira.com.br\n`;
+        report += `Se algo tiver diferente do planejado, me manda um áudio aqui mesmo com o que mudou que eu ajusto pra você 🎤\n`;
       }
       report += `\n`;
       
@@ -941,6 +959,29 @@
           const micros = data.acompanhamento.microPassos || [];
           const concluidos = micros.filter(m => m.status === 'concluido' || m.status === 'Concluído').length;
           report += `📊 *Progresso geral:* ${concluidos}/${micros.length} micro passos concluídos\n\n`;
+        }
+        
+        // === CONSOLIDADO REAL DO MÊS ===
+        const monthStartReal = new Date(simDate.getFullYear(), simDate.getMonth(), 1);
+        const lancMonth = getLancamentosReais(data, monthStartReal, simDate, fluxoContas);
+        if (lancMonth.length > 0) {
+          let totalEntradas = 0, totalSaidas = 0;
+          report += `📝 *O que realmente aconteceu no mês:*\n`;
+          lancMonth.forEach(l => {
+            if (l.tipo === 'entrada') {
+              report += `🟢 ${l.descricao}: ${fmtBRL(l.valor)}\n`;
+              totalEntradas += l.valor;
+            } else {
+              if (l._isFatura) {
+                report += `💳 ${l.descricao}: ${fmtBRL(l.valor)}\n`;
+                l._faturaItens.forEach(fi => report += `   • ${fi.descricao}: ${fmtBRL(fi.valor)}\n`);
+              } else {
+                report += `🔴 ${l.descricao}: ${fmtBRL(l.valor)}\n`;
+              }
+              totalSaidas += l.valor;
+            }
+          });
+          report += `\n*Total entradas: ${fmtBRL(totalEntradas)} | Total saídas: ${fmtBRL(totalSaidas)} | Saldo real: ${fmtBRL(totalEntradas - totalSaidas)}*\n\n`;
         }
       }
       
@@ -1040,6 +1081,28 @@
             updates.forEach(u => report += `• ${u}\n`);
             report += '\n';
           }
+        }
+        
+        // === CONSOLIDADO REAL DA SEMANA ===
+        const lancWeek = getLancamentosReais(data, weekStart, simDate, fluxoContas);
+        if (lancWeek.length > 0) {
+          let totalEntradas = 0, totalSaidas = 0;
+          report += `📝 *O que realmente aconteceu essa semana:*\n`;
+          lancWeek.forEach(l => {
+            if (l.tipo === 'entrada') {
+              report += `🟢 ${l.descricao}: ${fmtBRL(l.valor)}\n`;
+              totalEntradas += l.valor;
+            } else {
+              if (l._isFatura) {
+                report += `💳 ${l.descricao}: ${fmtBRL(l.valor)}\n`;
+                l._faturaItens.forEach(fi => report += `   • ${fi.descricao}: ${fmtBRL(fi.valor)}\n`);
+              } else {
+                report += `🔴 ${l.descricao}: ${fmtBRL(l.valor)}\n`;
+              }
+              totalSaidas += l.valor;
+            }
+          });
+          report += `\n*Entradas: ${fmtBRL(totalEntradas)} | Saídas: ${fmtBRL(totalSaidas)} | Saldo: ${fmtBRL(totalEntradas - totalSaidas)}*\n\n`;
         }
       }
       
@@ -1514,6 +1577,60 @@
       return 'R$ ' + (v||0).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});
     }
 
+    // === HELPER: Get real lancamentos (trackingData) for a period ===
+    function getLancamentosReais(data, start, end, contas) {
+      if (!data || !data.trackingData || !data.trackingData.lancamentos) return [];
+      const lancamentos = data.trackingData.lancamentos;
+      const cartoesMap = buildCartoesMap(contas);
+      const startISO = isoDate(start);
+      const endISO = isoDate(end);
+      
+      // Filtrar lançamentos no período (considerando cartão -> data de vencimento da fatura)
+      const resultado = []; // { tipo, descricao, valor, data, pagamento, isCartao, faturaKey }
+      const faturas = {}; // { cartaoId_fatKey: { cartaoNome, total, itens: [] } }
+      
+      lancamentos.forEach(l => {
+        if (!l.data || !l.valor) return;
+        const val = Math.abs(parseFloat(l.valor) || 0);
+        if (!val) return;
+        
+        // Verificar se é pagamento por cartão
+        let cartao = null;
+        if (l.pagamento) {
+          Object.keys(cartoesMap).forEach(cid => {
+            const c = cartoesMap[cid];
+            if (c.nome === l.pagamento || c.id === l.pagamento) cartao = c;
+          });
+        }
+        
+        if (cartao && l.tipo !== 'entrada') {
+          // Cartão: acumular na fatura
+          const purchaseDate = new Date(l.data + 'T00:00:00');
+          const fat = getFaturaKey(purchaseDate, cartao);
+          const fatVencISO = isoDate(fat.vencDate);
+          // Só incluir se o vencimento da fatura cai no período
+          if (fatVencISO >= startISO && fatVencISO <= endISO) {
+            const key = cartao.id + '_' + fat.key;
+            if (!faturas[key]) faturas[key] = { cartaoNome: cartao.nome, fatKey: fat.key, total: 0, itens: [] };
+            faturas[key].total += val;
+            faturas[key].itens.push({ descricao: l.descricao || 'Sem descrição', valor: val });
+          }
+        } else {
+          // Pagamento direto: incluir se a data cai no período
+          if (l.data >= startISO && l.data <= endISO) {
+            resultado.push({ tipo: l.tipo, descricao: l.descricao || 'Sem descrição', valor: val, data: l.data, pagamento: l.pagamento || '' });
+          }
+        }
+      });
+      
+      // Adicionar faturas como itens consolidados
+      Object.values(faturas).forEach(fat => {
+        resultado.push({ tipo: 'despesa', descricao: `Fatura ${fat.cartaoNome} (${fat.fatKey})`, valor: fat.total, data: '', pagamento: 'cartão', _isFatura: true, _faturaItens: fat.itens });
+      });
+      
+      return resultado;
+    }
+
     // === WHATSAPP ===
     function openWhatsApp(event) {
       const clienteId = event.currentTarget.dataset.id;
@@ -1539,6 +1656,9 @@
       const dc = (cliente.dados_cadastrais || []).find(d => d?.cliente_id === clienteId) || {};
       const nome = dc.nome_completo || cliente.nome || 'Cliente';
       modalClienteNome.textContent = `Mensagem para: ${nome}`;
+      // Carregar saudação do cliente: localStorage > memória > padrão
+      const saudKey = 'hv_saudacao_' + clienteId;
+      saudacaoTexto.value = localStorage.getItem(saudKey) || cliente._saudacao || 'Aqui é o Hugo da HV Saúde Financeira!';
       // Carregar mensagem: localStorage primeiro, depois memória
       const storageKey = 'hv_msg_' + clienteId;
       mensagemTexto.value = localStorage.getItem(storageKey) || cliente.mensagem || '';
@@ -1577,22 +1697,36 @@
     async function saveMensagem() {
       if (!currentClienteId) return;
       const mensagem = mensagemTexto.value.trim();
+      const saudacao = saudacaoTexto.value.trim();
       
       // Salvar localmente (localStorage) - sempre funciona
       const storageKey = 'hv_msg_' + currentClienteId;
+      const saudKey = 'hv_saudacao_' + currentClienteId;
       localStorage.setItem(storageKey, mensagem);
+      localStorage.setItem(saudKey, saudacao);
       
       // Atualizar no objeto em memória
       const cliente = allClientes.find(c => c.id === currentClienteId);
-      if (cliente) cliente.mensagem = mensagem;
+      if (cliente) {
+        cliente.mensagem = mensagem;
+        cliente._saudacao = saudacao;
+      }
       
       // Tentar salvar no Supabase também (silencioso, não bloqueia)
+      try {
+        await supabase
+          .from('saudacoes_clientes')
+          .upsert({ cliente_id: currentClienteId, saudacao, updated_at: new Date().toISOString() }, { onConflict: 'cliente_id' });
+      } catch (e) {
+        console.warn('Saudação não salvou no Supabase (salva localmente):', e.message);
+      }
+      
       try {
         await supabase
           .from('mensagens_clientes')
           .upsert({ cliente_id: currentClienteId, mensagem, updated_at: new Date().toISOString() }, { onConflict: 'cliente_id' });
       } catch (e) {
-        console.warn('Não salvou no Supabase (salvo localmente):', e.message);
+        console.warn('Mensagem não salvou no Supabase (salva localmente):', e.message);
       }
       
       alert('Mensagem salva!');
