@@ -635,10 +635,10 @@
       // Always has message on: first day of month, monday, friday, last day of month
       if (dom === 1 || dow === 1 || dow === 5 || dom === lastDay) return true;
       
-      // Check if there are specific fluxo events on this day
-      const fluxoItens = getFluxoItens(data);
+      // Check if there are specific fluxo events on this day (including faturas)
+      const { itens: fluxoItens, contas: fluxoContas } = getFluxoPayload(data);
       if (fluxoItens.length > 0) {
-        const events = getFluxoEventsForDate(fluxoItens, simDate);
+        const events = getFluxoEventsForDate(fluxoItens, simDate, fluxoContas);
         if (events.length > 0) return true;
       }
       
@@ -659,33 +659,52 @@
       return false;
     }
 
-    // === HELPER: Extract fluxo itens from client data ===
-    function getFluxoItens(data) {
-      if (!data || !data.fluxo) return [];
+    // === HELPER: Extract fluxo payload (itens + contas) from client data ===
+    function getFluxoPayload(data) {
+      if (!data || !data.fluxo) return { itens: [], contas: [] };
+      const fluxo = data.fluxo;
+      let itens = [];
+      let contas = [];
       // After normalization in loadAllClientData, fluxo should be the payload object
-      if (data.fluxo.itens) return data.fluxo.itens;
-      // Fallback: if it's still a list of simulations
-      if (Array.isArray(data.fluxo)) {
-        const sim = data.fluxo.find(s => s.primary) || data.fluxo[0];
-        return (sim && sim.payload && sim.payload.itens) ? sim.payload.itens : [];
+      if (fluxo.itens || fluxo.items) {
+        itens = fluxo.itens || fluxo.items || [];
+        contas = fluxo.contas || fluxo.accounts || [];
+      } else if (Array.isArray(fluxo)) {
+        // Fallback: if it's still a list of simulations
+        const sim = fluxo.find(s => s.primary) || fluxo[0];
+        if (sim && sim.payload) {
+          itens = sim.payload.itens || sim.payload.items || [];
+          contas = sim.payload.contas || sim.payload.accounts || [];
+        }
       }
-      return [];
+      return { itens, contas };
+    }
+
+    function getFluxoItens(data) {
+      return getFluxoPayload(data).itens;
     }
 
     // === FLUXO EVENTS FOR DATE ===
-    function getFluxoEventsForDate(itens, targetDate) {
+    function getFluxoEventsForDate(itens, targetDate, contas) {
       const events = [];
       const target = new Date(targetDate);
       target.setHours(0,0,0,0);
-      const targetISO = isoDate(target);
+      const cartoesMap = buildCartoesMap(contas);
 
       itens.forEach(item => {
         if (!item.recInicio) return;
+        const isCartao = item.formaPagamento && cartoesMap[item.formaPagamento];
+        if (isCartao) return; // Itens de cartão não aparecem no dia da compra
         const occs = getOccurrences(item, target, target);
         if (occs.length > 0) {
           events.push(item);
         }
       });
+
+      // Adicionar faturas que vencem neste dia
+      const faturas = getFaturasForDate(itens, contas, target);
+      faturas.forEach(f => events.push(f));
+
       return events;
     }
 
@@ -771,7 +790,8 @@
       const lastDay = new Date(simDate.getFullYear(), simDate.getMonth() + 1, 0).getDate();
       
       let report = '';
-      const fluxoItens = getFluxoItens(data);
+      const { itens: fluxoItens, contas: fluxoContas } = getFluxoPayload(data);
+      const cartoesMap = buildCartoesMap(fluxoContas);
       
       // Determine all applicable contexts for this date
       const isInicioMes = (dom === 1);
@@ -813,7 +833,7 @@
         if (fluxoItens.length > 0) {
           const monthStart = new Date(simDate.getFullYear(), simDate.getMonth(), 1);
           const monthEnd = new Date(simDate.getFullYear(), simDate.getMonth() + 1, 0);
-          const monthEvents = getAllFluxoEvents(fluxoItens, monthStart, monthEnd);
+          const monthEvents = getAllFluxoEvents(fluxoItens, monthStart, monthEnd, fluxoContas);
           
           let totalReceitas = 0, totalDespesas = 0, totalInvest = 0;
           monthEvents.forEach(e => {
@@ -847,7 +867,7 @@
         const monthStart = new Date(simDate.getFullYear(), simDate.getMonth(), 1);
         
         if (fluxoItens.length > 0) {
-          const monthEvents = getAllFluxoEvents(fluxoItens, monthStart, simDate);
+          const monthEvents = getAllFluxoEvents(fluxoItens, monthStart, simDate, fluxoContas);
           let totalRec = 0, totalDesp = 0, totalInv = 0;
           monthEvents.forEach(e => {
             if (e.item.tipo === 'entrada') totalRec += e.item.valor;
@@ -887,13 +907,19 @@
         weekEnd.setDate(weekEnd.getDate() + 4);
         
         if (fluxoItens.length > 0) {
-          const weekEvents = getAllFluxoEvents(fluxoItens, weekStart, weekEnd);
+          const weekEvents = getAllFluxoEvents(fluxoItens, weekStart, weekEnd, fluxoContas);
           if (weekEvents.length > 0) {
             let totalRec = 0, totalDesp = 0;
             report += `💰 *Movimentações previstas na semana:*\n`;
             weekEvents.forEach(e => {
               const tipo = e.item.tipo === 'entrada' ? '🟢' : '🔴';
-              report += `${tipo} ${e.date.toLocaleDateString('pt-BR',{weekday:'short',day:'numeric'})} - ${e.item.nome}: ${fmtBRL(e.item.valor)}\n`;
+              let label = e.item.nome;
+              if (e.item._isFatura) {
+                label += ' 💳';
+              } else if (e.item.formaPagamento && cartoesMap[e.item.formaPagamento]) {
+                label += ` (via cartão ${cartoesMap[e.item.formaPagamento].nome})`;
+              }
+              report += `${tipo} ${e.date.toLocaleDateString('pt-BR',{weekday:'short',day:'numeric'})} - ${label}: ${fmtBRL(e.item.valor)}\n`;
               if (e.item.tipo === 'entrada') totalRec += e.item.valor; else totalDesp += e.item.valor;
             });
             report += `\n*Saldo semanal previsto: ${fmtBRL(totalRec - totalDesp)}*\n\n`;
@@ -919,13 +945,19 @@
         weekStart.setDate(weekStart.getDate() - 4);
         
         if (fluxoItens.length > 0) {
-          const weekEvents = getAllFluxoEvents(fluxoItens, weekStart, simDate);
+          const weekEvents = getAllFluxoEvents(fluxoItens, weekStart, simDate, fluxoContas);
           if (weekEvents.length > 0) {
             let totalRec = 0, totalDesp = 0;
             report += `💰 *O que era esperado esta semana:*\n`;
             weekEvents.forEach(e => {
               const tipo = e.item.tipo === 'entrada' ? '🟢 Receber' : '🔴 Pagar';
-              report += `${tipo}: ${e.item.nome} - ${fmtBRL(e.item.valor)}\n`;
+              let label = e.item.nome;
+              if (e.item._isFatura) {
+                label += ' 💳';
+              } else if (e.item.formaPagamento && cartoesMap[e.item.formaPagamento]) {
+                label += ` (via cartão ${cartoesMap[e.item.formaPagamento].nome})`;
+              }
+              report += `${tipo}: ${label} - ${fmtBRL(e.item.valor)}\n`;
               if (e.item.tipo === 'entrada') totalRec += e.item.valor; else totalDesp += e.item.valor;
             });
             report += `\n`;
@@ -974,13 +1006,28 @@
         let daySection = '';
         
         if (fluxoItens.length > 0) {
-          const dayEvents = getFluxoEventsForDate(fluxoItens, simDate);
+          const dayEvents = getFluxoEventsForDate(fluxoItens, simDate, fluxoContas);
           if (dayEvents.length > 0) {
             hasContent = true;
             daySection += `💰 *Movimentações de hoje:*\n`;
             dayEvents.forEach(item => {
               const tipo = item.tipo === 'entrada' ? '🟢 Receber' : '🔴 Pagar';
-              daySection += `${tipo}: ${item.nome} - ${fmtBRL(item.valor)}\n`;
+              if (item._isFatura) {
+                // Fatura de cartão - mostrar total e detalhamento
+                daySection += `${tipo}: 💳 ${item.nome} - *${fmtBRL(item.valor)}*\n`;
+                if (item._faturaItens && item._faturaItens.length > 0) {
+                  daySection += `  _Composição:_\n`;
+                  item._faturaItens.forEach(fi => {
+                    daySection += `  • ${fi.nome}: ${fmtBRL(fi.valor)}\n`;
+                  });
+                }
+              } else {
+                let label = item.nome;
+                if (item.formaPagamento && cartoesMap[item.formaPagamento]) {
+                  label += ` (via cartão ${cartoesMap[item.formaPagamento].nome})`;
+                }
+                daySection += `${tipo}: ${label} - ${fmtBRL(item.valor)}\n`;
+              }
             });
             daySection += '\n';
           }
@@ -1041,13 +1088,22 @@
     }
 
     // === HELPER: Get all fluxo events in a period ===
-    function getAllFluxoEvents(itens, start, end) {
+    function getAllFluxoEvents(itens, start, end, contas) {
       const events = [];
+      const cartoesMap = buildCartoesMap(contas);
+
       itens.forEach(item => {
         if (!item.recInicio) return;
+        const isCartao = item.formaPagamento && cartoesMap[item.formaPagamento];
+        if (isCartao) return; // Itens de cartão não entram diretamente
         const occs = getOccurrences(item, start, end);
         occs.forEach(d => events.push({ item, date: d }));
       });
+
+      // Adicionar faturas de cartão que vencem no período
+      const faturasEvents = getAllFaturasInPeriod(itens, contas, start, end);
+      faturasEvents.forEach(f => events.push(f));
+
       events.sort((a, b) => a.date - b.date);
       return events;
     }
@@ -1213,6 +1269,127 @@
       else if (item.recTipo === 'meses') next.setMonth(next.getMonth() + qty);
       else next.setDate(next.getDate() + 1); // fallback
       return next;
+    }
+
+    // === HELPER: Build cartões map from contas array ===
+    function buildCartoesMap(contas) {
+      const map = {};
+      if (!contas || !Array.isArray(contas)) return map;
+      contas.forEach(acc => {
+        if (acc.tipo === 'cartao') map[acc.id] = acc;
+      });
+      return map;
+    }
+
+    // === HELPER: Determine fatura key (month/year + due date) for a purchase date ===
+    function getFaturaKey(purchaseDate, cartao) {
+      const dia = purchaseDate.getDate();
+      const mes = purchaseDate.getMonth();
+      const ano = purchaseDate.getFullYear();
+      let fatMes, fatAno;
+      if (dia > cartao.fechamento) {
+        fatMes = mes + 1; fatAno = ano;
+        if (fatMes > 11) { fatMes = 0; fatAno++; }
+      } else {
+        fatMes = mes; fatAno = ano;
+      }
+      const maxDia = new Date(fatAno, fatMes + 1, 0).getDate();
+      const vencDia = Math.min(cartao.vencimento, maxDia);
+      const vencDate = new Date(fatAno, fatMes, vencDia);
+      return { key: fatAno + '-' + String(fatMes + 1).padStart(2, '0'), vencDate };
+    }
+
+    // === HELPER: Build faturas map for a period ===
+    function buildFaturasMap(itens, contas, start, end) {
+      const cartoesMap = buildCartoesMap(contas);
+      // faturasMap: { cartaoId: { fatKey: { vencDate, total, itens: [{nome, valor, data}] } } }
+      const faturasMap = {};
+
+      // We need a wider search window for purchases that generate faturas in our period
+      // A purchase up to ~60 days before the period start could generate a fatura in the period
+      const searchStart = new Date(start);
+      searchStart.setDate(searchStart.getDate() - 60);
+      // A purchase in the period could generate a fatura up to ~60 days after
+      const searchEnd = new Date(end);
+      searchEnd.setDate(searchEnd.getDate() + 60);
+
+      itens.forEach(item => {
+        if (!item.recInicio) return;
+        if (!item.formaPagamento || !cartoesMap[item.formaPagamento]) return;
+        const cartao = cartoesMap[item.formaPagamento];
+        const occs = getOccurrences(item, searchStart, searchEnd);
+        occs.forEach(d => {
+          const fat = getFaturaKey(d, cartao);
+          // Only include if fatura vencDate is within our target period
+          if (fat.vencDate < start || fat.vencDate > end) return;
+          if (!faturasMap[item.formaPagamento]) faturasMap[item.formaPagamento] = {};
+          if (!faturasMap[item.formaPagamento][fat.key]) {
+            faturasMap[item.formaPagamento][fat.key] = { vencDate: fat.vencDate, total: 0, itens: [] };
+          }
+          faturasMap[item.formaPagamento][fat.key].total += item.valor;
+          faturasMap[item.formaPagamento][fat.key].itens.push({ nome: item.nome, valor: item.valor, data: new Date(d) });
+        });
+      });
+
+      return faturasMap;
+    }
+
+    // === HELPER: Get faturas that fall on a specific date ===
+    function getFaturasForDate(itens, contas, targetDate) {
+      const target = new Date(targetDate);
+      target.setHours(0,0,0,0);
+      const targetISO = isoDate(target);
+      const cartoesMap = buildCartoesMap(contas);
+      const faturasMap = buildFaturasMap(itens, contas, target, target);
+      const results = [];
+
+      Object.keys(faturasMap).forEach(cartaoId => {
+        const cartao = cartoesMap[cartaoId];
+        const faturas = faturasMap[cartaoId];
+        Object.keys(faturas).forEach(fatKey => {
+          const fat = faturas[fatKey];
+          if (isoDate(fat.vencDate) === targetISO) {
+            results.push({
+              tipo: 'saida',
+              subtipo: 'fatura',
+              nome: 'Fatura ' + cartao.nome + ' (' + fatKey + ')',
+              valor: fat.total,
+              _isFatura: true,
+              _cartaoNome: cartao.nome,
+              _faturaItens: fat.itens
+            });
+          }
+        });
+      });
+
+      return results;
+    }
+
+    // === HELPER: Get all fatura events in a period (for getAllFluxoEvents) ===
+    function getAllFaturasInPeriod(itens, contas, start, end) {
+      const cartoesMap = buildCartoesMap(contas);
+      const faturasMap = buildFaturasMap(itens, contas, start, end);
+      const results = [];
+
+      Object.keys(faturasMap).forEach(cartaoId => {
+        const cartao = cartoesMap[cartaoId];
+        const faturas = faturasMap[cartaoId];
+        Object.keys(faturas).forEach(fatKey => {
+          const fat = faturas[fatKey];
+          const fatItem = {
+            tipo: 'saida',
+            subtipo: 'fatura',
+            nome: 'Fatura ' + cartao.nome + ' (' + fatKey + ')',
+            valor: fat.total,
+            _isFatura: true,
+            _cartaoNome: cartao.nome,
+            _faturaItens: fat.itens
+          };
+          results.push({ item: fatItem, date: fat.vencDate });
+        });
+      });
+
+      return results;
     }
 
     // === HELPER: Check if a data relevante occurs on a given date (supports new recurrence model) ===
