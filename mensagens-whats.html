@@ -1656,12 +1656,16 @@
       const clienteId = event.currentTarget.dataset.id;
       const cliente = allClientes.find(c => c.id === clienteId);
       if (!cliente) return;
-      if (!cliente.login || !cliente.senha) {
-        alert('Este cliente não possui login/senha cadastrados.');
-        return;
-      }
-      // Abrir o sistema em nova aba (o admin pode logar com as credenciais do cliente)
-      window.open('https://app.hvsaudefinanceira.com.br', '_blank');
+      const dc = (cliente.dados_cadastrais || []).find(d => d?.cliente_id === clienteId) || {};
+      const nome = dc.nome_completo || cliente.nome || 'Cliente';
+      // Setar flags no sessionStorage (mesmo método do cliente-detalhes.html)
+      sessionStorage.setItem('equipe_modo_cliente', 'true');
+      sessionStorage.setItem('cliente_id', clienteId);
+      sessionStorage.setItem('cliente_nome', nome);
+      sessionStorage.setItem('cliente_id_retorno', clienteId);
+      sessionStorage.setItem('retorno_url', 'ferramentas/mensagens-whats.html');
+      // Redirecionar para o portal do cliente
+      window.location.href = 'archives_clients/index.html';
     }
 
     // === EDIT MESSAGE ===
