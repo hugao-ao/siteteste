@@ -878,13 +878,13 @@
       report += `${saudacao}\n\n`;
       
       // Introdução do sistema + pedido de atualização (segunda parte)
-      report += `_Nosso sistema gerou esse relatório pra gente manter tudo em dia. Se algo tiver diferente do esperado, me avisa!_\n`;
-      report += `_Se puder, atualiza direto no sistema (link abaixo) ou me manda um áudio aqui mesmo com o que mudou que eu ajusto pra você_ 🎤\n`;
+      report += `Nosso sistema gerou esse relatório pra gente manter tudo em dia. Se algo tiver diferente do esperado, me avisa!\n`;
       if (cliente?.login && cliente?.senha) {
-        report += `_Acesse:_ https://app.hvsaudefinanceira.com.br\n`;
-        report += `_Login:_ *${cliente.login}* | _Senha:_ *${cliente.senha}*\n`;
+        report += `Se puder, atualiza direto no sistema ou me manda um áudio aqui mesmo com o que mudou que eu ajusto pra você 🎤\n`;
+        report += `Acesse: https://app.hvsaudefinanceira.com.br\n`;
+        report += `Login: *${cliente.login}* | Senha: *${cliente.senha}*\n`;
       } else {
-        report += `_Acesse:_ https://app.hvsaudefinanceira.com.br\n`;
+        report += `Se algo tiver diferente do planejado, me manda um áudio aqui mesmo com o que mudou que eu ajusto pra você 🎤\n`;
       }
       report += `\n`;
       
