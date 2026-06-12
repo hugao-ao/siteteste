@@ -632,31 +632,56 @@
       const dom = simDate.getDate();
       const lastDay = new Date(simDate.getFullYear(), simDate.getMonth() + 1, 0).getDate();
       
-      // Always has message on: first day of month, monday, friday, last day of month
-      if (dom === 1 || dow === 1 || dow === 5 || dom === lastDay) return true;
+      // Always has message on: first day of month, last day of month
+      if (dom === 1 || dom === lastDay) return true;
       
       // Check if there are specific fluxo events on this day (including faturas)
       const { itens: fluxoItens, contas: fluxoContas } = getFluxoPayload(data);
+      let hasFluxoEvents = false;
       if (fluxoItens.length > 0) {
         const events = getFluxoEventsForDate(fluxoItens, simDate, fluxoContas);
-        if (events.length > 0) return true;
+        if (events.length > 0) hasFluxoEvents = true;
       }
       
       // Check cronograma events
+      let hasCronoEvents = false;
       if (data.acompanhamento) {
         const cronoEvents = getCronoEventsForDate(data.acompanhamento, simDate);
-        if (cronoEvents.length > 0) return true;
+        if (cronoEvents.length > 0) hasCronoEvents = true;
       }
       
       // Check particularidades datas relevantes (new recurrence model)
+      let hasDatasRelevantes = false;
       if (data.particularidades && data.particularidades.datas_relevantes) {
         const datasRel = data.particularidades.datas_relevantes;
         for (const dr of datasRel) {
-          if (isDataRelevantOnDate(dr, simDate)) return true;
+          if (isDataRelevantOnDate(dr, simDate)) { hasDatasRelevantes = true; break; }
         }
       }
       
-      return false;
+      // For segunda/sexta: check if there's weekly content (events in the week)
+      if (dow === 1 || dow === 5) {
+        // Check weekly fluxo events
+        if (fluxoItens.length > 0) {
+          const weekStart = dow === 1 ? new Date(simDate) : new Date(simDate.getFullYear(), simDate.getMonth(), simDate.getDate() - 4);
+          const weekEnd = dow === 1 ? new Date(simDate.getFullYear(), simDate.getMonth(), simDate.getDate() + 4) : new Date(simDate);
+          const weekEvents = getAllFluxoEvents(fluxoItens, weekStart, weekEnd, fluxoContas);
+          if (weekEvents.length > 0) return true;
+        }
+        // Check weekly crono events
+        if (data.acompanhamento) {
+          const weekStart = dow === 1 ? new Date(simDate) : new Date(simDate.getFullYear(), simDate.getMonth(), simDate.getDate() - 4);
+          const weekEnd = dow === 1 ? new Date(simDate.getFullYear(), simDate.getMonth(), simDate.getDate() + 4) : new Date(simDate);
+          const cronoWeek = getCronoForPeriod(data.acompanhamento, weekStart, weekEnd);
+          if (cronoWeek.length > 0) return true;
+        }
+        if (hasDatasRelevantes) return true;
+        // No weekly content found - no badge
+        return false;
+      }
+      
+      // For other days: only show badge if there are specific day events
+      return hasFluxoEvents || hasCronoEvents || hasDatasRelevantes;
     }
 
     // === HELPER: Extract fluxo payload (itens + contas) from client data ===
@@ -799,29 +824,20 @@
       const isSegunda = (dow === 1);
       const isSexta = (dow === 5);
       
-      // Saudação personalizada salva
+      // Saudação personalizada salva (primeira coisa na mensagem)
       const saudacao = saudacaoTexto.value.trim() || 'Aqui é o Hugo da HV Saúde Financeira!';
-      
-      // Build greeting based on primary context
-      if (isInicioMes && isSegunda) {
-        report += `Olá, ${primeiroNome}! Bom início de mês e boa semana! 📆💪\n`;
-      } else if (isInicioMes) {
-        report += `Olá, ${primeiroNome}! Bom início de mês! 📆\n`;
-      } else if (isFinalMes && isSexta) {
-        report += `Olá, ${primeiroNome}! Fechamento do mês e da semana! 📈📊\n`;
-      } else if (isFinalMes) {
-        report += `Olá, ${primeiroNome}! Fechamento do mês! 📈\n`;
-      } else if (isSexta) {
-        report += `Olá, ${primeiroNome}! Fechamento da semana 📊\n`;
-      } else if (isSegunda) {
-        report += `Olá, ${primeiroNome}! Boa semana! 💪\n`;
-      } else {
-        report += `Olá, ${primeiroNome}!\n`;
-      }
       report += `${saudacao}\n\n`;
       
-      // Introdução sobre o relatório gerado pelo sistema
-      report += `_Nosso sistema gerou este relatório para nos ajudar a manter o planejamento em dia. Dê uma atenção especial caso algo esteja diferente do esperado ou precise de atualização._\n\n`;
+      // Introdução do sistema + pedido de atualização (segunda parte)
+      report += `_Nosso sistema gerou esse relatório pra gente manter tudo em dia. Se algo tiver diferente do esperado, me avisa!_\n`;
+      report += `_Se puder, atualiza direto no sistema (link abaixo) ou me manda um áudio aqui mesmo com o que mudou que eu ajusto pra você_ 🎤\n`;
+      if (cliente?.login && cliente?.senha) {
+        report += `_Acesse:_ https://app.hvsaudefinanceira.com.br\n`;
+        report += `_Login:_ *${cliente.login}* | _Senha:_ *${cliente.senha}*\n`;
+      } else {
+        report += `_Acesse:_ https://app.hvsaudefinanceira.com.br\n`;
+      }
+      report += `\n`;
       
       let hasContent = false;
       
@@ -1063,26 +1079,17 @@
       
       // === FECHAMENTO ===
       if (!hasContent) {
-        report += `Nenhum evento específico para hoje. Tudo segue conforme o planejado! 👍`;
+        // Sem conteúdo: retornar null para indicar que não há relatório
+        return null;
       } else if (isFinalMes) {
-        report += `Parabéns pelo mês! Vamos para o próximo com ainda mais foco! 🚀`;
+        report += `Parabéns pelo mês! Vamos pro próximo com ainda mais foco! 🚀`;
       } else if (isSexta) {
-        report += `Tudo correu conforme o planejado? Me conte como foi! Bom fim de semana! 🙌`;
+        report += `Tudo correu conforme o planejado? Me conta como foi! Bom fim de semana! 🙌`;
       } else if (isSegunda || isInicioMes) {
-        report += `Vamos com tudo! Qualquer dúvida, estou à disposição!`;
+        report += `Vamos com tudo! Qualquer dúvida, me chama!`;
       } else {
-        report += `Qualquer dúvida, estou aqui!`;
+        report += `Qualquer dúvida, me chama!`;
       }
-      
-      // === LEMBRETE DE ATUALIZAÇÃO + CREDENCIAIS ===
-      report += `\n\n---\n\n`;
-      report += `🔑 *Lembre-se de atualizar seu fluxo de caixa e cronograma!*\n`;
-      report += `Acesse: https://app.hvsaudefinanceira.com.br\n`;
-      if (cliente?.login && cliente?.senha) {
-        report += `Login: *${cliente.login}*\n`;
-        report += `Senha: *${cliente.senha}*\n`;
-      }
-      report += `\n🎤 Se preferir, me mande um áudio informando qualquer atualização, correção ou dúvida que eu faço os ajustes pra você!`;
       
       return report;
     }
@@ -1472,7 +1479,9 @@
       let whatsapp = dc.whatsapp || cliente.whatsapp || '';
       if (!whatsapp) { alert('WhatsApp não cadastrado.'); return; }
       whatsapp = whatsapp.replace(/^\+/, '');
-      const mensagem = cliente.mensagem || '';
+      // Buscar mensagem: primeiro localStorage, depois memória
+      const storageKey = 'hv_msg_' + clienteId;
+      const mensagem = localStorage.getItem(storageKey) || cliente.mensagem || '';
       const url = `https://api.whatsapp.com/send?phone=${whatsapp}&text=${encodeURIComponent(mensagem)}`;
       window.open(url, '_blank');
     }
@@ -1486,7 +1495,9 @@
       const dc = (cliente.dados_cadastrais || []).find(d => d?.cliente_id === clienteId) || {};
       const nome = dc.nome_completo || cliente.nome || 'Cliente';
       modalClienteNome.textContent = `Mensagem para: ${nome}`;
-      mensagemTexto.value = cliente.mensagem || '';
+      // Carregar mensagem: localStorage primeiro, depois memória
+      const storageKey = 'hv_msg_' + clienteId;
+      mensagemTexto.value = localStorage.getItem(storageKey) || cliente.mensagem || '';
       mensagemModal.style.display = 'block';
     }
 
@@ -1497,7 +1508,21 @@
       generateBtn.textContent = 'Gerando...';
       try {
         const report = await generateReport(currentClienteId);
-        mensagemTexto.value = report || 'Nenhum evento para esta data.';
+        if (report === null) {
+          // Sem conteúdo para relatar
+          const simDate = getSimDate();
+          const dow = simDate ? simDate.getDay() : -1;
+          if (dow === 1) {
+            alert('Não há nada previsto para esta semana para este cliente.');
+          } else if (dow === 5) {
+            alert('Não há nada para relatar nesta semana para este cliente.');
+          } else {
+            alert('Não há eventos para relatar nesta data para este cliente.');
+          }
+          mensagemTexto.value = '';
+        } else {
+          mensagemTexto.value = report;
+        }
       } catch(e) {
         console.error(e);
         mensagemTexto.value = 'Erro ao gerar relatório: ' + e.message;
@@ -1510,18 +1535,26 @@
     async function saveMensagem() {
       if (!currentClienteId) return;
       const mensagem = mensagemTexto.value.trim();
+      
+      // Salvar localmente (localStorage) - sempre funciona
+      const storageKey = 'hv_msg_' + currentClienteId;
+      localStorage.setItem(storageKey, mensagem);
+      
+      // Atualizar no objeto em memória
+      const cliente = allClientes.find(c => c.id === currentClienteId);
+      if (cliente) cliente.mensagem = mensagem;
+      
+      // Tentar salvar no Supabase também (silencioso, não bloqueia)
       try {
-        const { error } = await supabase
+        await supabase
           .from('mensagens_clientes')
           .upsert({ cliente_id: currentClienteId, mensagem, updated_at: new Date().toISOString() }, { onConflict: 'cliente_id' });
-        if (error) throw error;
-        const cliente = allClientes.find(c => c.id === currentClienteId);
-        if (cliente) cliente.mensagem = mensagem;
-        alert('Mensagem salva!');
-        mensagemModal.style.display = 'none';
       } catch (e) {
-        alert(`Erro: ${e.message}`);
+        console.warn('Não salvou no Supabase (salvo localmente):', e.message);
       }
+      
+      alert('Mensagem salva!');
+      mensagemModal.style.display = 'none';
     }
 
     // === EVENT LISTENERS ===
