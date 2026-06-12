@@ -949,7 +949,6 @@
           report += `• Despesas: ${fmtBRL(totalDesp)}\n`;
           report += `• Investimentos: ${fmtBRL(totalInv)}\n`;
           report += `• Saldo: ${fmtBRL(totalRec - totalDesp - totalInv)}\n\n`;
-          report += `_Espero que tudo tenha ocorrido conforme planejado! Caso contrário, vamos ajustar juntos._\n\n`;
         }
         
         if (data?.acompanhamento) {
@@ -1118,11 +1117,7 @@
           hasContent = true;
           report += `🎯 *Lembrete(s) especial(is) de hoje:*\n`;
           datasHoje.forEach(dr => {
-            const rec = dr.recorrencia || {};
-            let recLabel = '';
-            if (rec.tipo === 'repete') recLabel = ` (a cada ${rec.frequencia_qty || 1} ${rec.frequencia_unit || 'meses'})`;
-            else if (dr.recorrente) recLabel = ' (anual)';
-            report += `• ${dr.descricao}${recLabel}\n`;
+            report += `• ${dr.descricao}\n`;
           });
           report += '\n';
         }
@@ -1190,19 +1185,117 @@
       
       // === FECHAMENTO ===
       if (!hasContent) {
-        // Sem conteúdo: retornar null para indicar que não há relatório
         return null;
-      } else if (isFinalMes) {
-        report += `Parabéns pelo mês! Vamos pro próximo com ainda mais foco! 🚀`;
-      } else if (isSexta) {
-        report += `Tudo correu conforme o planejado? Me conta como foi! Bom fim de semana! 🙌`;
-      } else if (isSegunda || isInicioMes) {
-        report += `Vamos com tudo! Qualquer dúvida, me chama!`;
-      } else {
-        report += `Qualquer dúvida, me chama!`;
       }
       
+      // Construir despedida contextual baseada no conteúdo real do relatório
+      report += buildDespedida({
+        isFinalMes, isSexta, isSegunda, isInicioMes,
+        data, fluxoItens, fluxoContas, cartoesMap, simDate
+      });
+      
       return report;
+    }
+
+    // === HELPER: Build contextual despedida based on report content ===
+    function buildDespedida({ isFinalMes, isSexta, isSegunda, isInicioMes, data, fluxoItens, fluxoContas, cartoesMap, simDate }) {
+      // Coletar contexto do que foi reportado
+      const temLancReais = data?.trackingData?.lancamentos?.length > 0;
+      const temCrono = !!data?.acompanhamento;
+      const temDatasRel = data?.particularidades?.datas_relevantes?.length > 0;
+      
+      // Verificar se houve lançamentos reais no período relevante
+      let lancReaisPeriodo = [];
+      if (temLancReais) {
+        if (isSexta) {
+          const ws = new Date(simDate); ws.setDate(ws.getDate() - 4);
+          lancReaisPeriodo = getLancamentosReais(data, ws, simDate, fluxoContas);
+        } else if (isFinalMes) {
+          const ms = new Date(simDate.getFullYear(), simDate.getMonth(), 1);
+          lancReaisPeriodo = getLancamentosReais(data, ms, simDate, fluxoContas);
+        }
+      }
+      const temReais = lancReaisPeriodo.length > 0;
+      
+      // Verificar eventos planejados no período
+      let temPlanejado = false;
+      if (fluxoItens.length > 0) {
+        if (isSegunda) {
+          const ws = new Date(simDate); const we = new Date(simDate); we.setDate(we.getDate() + 4);
+          temPlanejado = getAllFluxoEvents(fluxoItens, ws, we, fluxoContas).length > 0;
+        } else if (isSexta) {
+          const ws = new Date(simDate); ws.setDate(ws.getDate() - 4);
+          temPlanejado = getAllFluxoEvents(fluxoItens, ws, simDate, fluxoContas).length > 0;
+        } else if (isFinalMes || isInicioMes) {
+          const ms = new Date(simDate.getFullYear(), simDate.getMonth(), 1);
+          const me = new Date(simDate.getFullYear(), simDate.getMonth() + 1, 0);
+          temPlanejado = getAllFluxoEvents(fluxoItens, ms, me, fluxoContas).length > 0;
+        } else {
+          temPlanejado = getFluxoEventsForDate(fluxoItens, simDate, fluxoContas).length > 0;
+        }
+      }
+      
+      // Verificar cronograma ativo
+      let temCronoAtivo = false;
+      if (temCrono) {
+        const micros = data.acompanhamento.microPassos || [];
+        temCronoAtivo = micros.some(m => m.status !== 'concluido' && m.status !== 'Concluído');
+      }
+      
+      // Verificar datas relevantes hoje
+      let datasHoje = [];
+      if (temDatasRel) {
+        datasHoje = data.particularidades.datas_relevantes.filter(dr => isDataRelevantOnDate(dr, simDate));
+      }
+      
+      // --- Prioridade 1: Despedida baseada em dados REAIS ---
+      if (temReais) {
+        let totalEnt = 0, totalSai = 0;
+        lancReaisPeriodo.forEach(l => { if (l.tipo === 'entrada') totalEnt += l.valor; else totalSai += l.valor; });
+        const saldo = totalEnt - totalSai;
+        
+        if (isFinalMes) {
+          if (saldo > 0) return `Mês fechou no positivo! Bora manter esse ritmo. Qualquer coisa, me chama! 💪`;
+          if (saldo < 0) return `Mês apertado, mas faz parte. Vamos ajustar pro próximo mês. Conta comigo! 🤝`;
+          return `Mês encerrado! Vamos analisar juntos e planejar o próximo. Me chama se precisar! 📊`;
+        }
+        if (isSexta) {
+          if (saldo > 0) return `Semana no positivo! Bom descanso e bom fim de semana! 😊`;
+          if (saldo < 0) return `Semana com bastante saída, mas tá tudo dentro do controle. Bom fim de semana! 🙌`;
+          return `Semana encerrada! Descansa e qualquer coisa me chama. Bom fim de semana! ✌️`;
+        }
+      }
+      
+      // --- Prioridade 2: Despedida baseada em DATAS RELEVANTES ---
+      if (datasHoje.length > 0) {
+        const desc = datasHoje[0].descricao || '';
+        if (desc.toLowerCase().includes('aniversário') || desc.toLowerCase().includes('aniversario')) {
+          return `Aproveita esse dia especial! E qualquer coisa, tô por aqui! 🎉`;
+        }
+        return `Dia importante hoje! Espero que corra tudo bem. Me chama se precisar! 🙏`;
+      }
+      
+      // --- Prioridade 3: Despedida baseada em PLANEJADO ---
+      if (temPlanejado) {
+        if (isFinalMes) return `Mês encerrado! Vamos ver como foi e planejar o próximo juntos. Conta comigo! 📈`;
+        if (isSexta) return `Semana com movimentações! Me conta se correu tudo certo. Bom fim de semana! 🙌`;
+        if (isSegunda) return `Semana com coisas previstas! Bora organizar tudo direitinho. Boa semana! 💪`;
+        if (isInicioMes) return `Mês novo com bastante coisa pela frente! Vamos juntos. Boa semana! 🚀`;
+        return `Dia com movimentações! Qualquer dúvida, me chama! 👊`;
+      }
+      
+      // --- Prioridade 4: Despedida baseada em CRONOGRAMA ---
+      if (temCronoAtivo) {
+        if (isSexta) return `Cronograma andando! Bom descanso e bom fim de semana! 📋✌️`;
+        if (isSegunda || isInicioMes) return `Semana com tarefas no cronograma! Bora avançar. Boa semana! 📋💪`;
+        return `Cronograma em andamento! Qualquer dúvida, me chama! 📋`;
+      }
+      
+      // --- Fallback: Despedida genérica simples ---
+      if (isFinalMes) return `Mês encerrado! Qualquer coisa, me chama. Bora pro próximo! 🤝`;
+      if (isSexta) return `Bom fim de semana! Qualquer coisa, tô por aqui! ✌️`;
+      if (isSegunda || isInicioMes) return `Boa semana! Qualquer coisa, me chama! 👊`;
+      return `Qualquer coisa, me chama! 👊`;
     }
 
     // === HELPER: Get all fluxo events in a period ===
