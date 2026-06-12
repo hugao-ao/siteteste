@@ -447,7 +447,7 @@
           .from('ferramentas_dados')
           .select('cliente_id, ferramenta, dados')
           .in('cliente_id', ids)
-          .in('ferramenta', ['fluxo', 'acompanhamento', 'fluxo_caixa_avancado']);
+          .in('ferramenta', ['fluxo', 'acompanhamento', 'fluxo_caixa_avancado', 'particularidades']);
         if (error) throw error;
         
         clientesData = {};
@@ -468,6 +468,8 @@
                   clientesData[row.cliente_id].fluxo = primarySim;
                 }
               }
+            } else if (row.ferramenta === 'particularidades') {
+              clientesData[row.cliente_id].particularidades = d;
             } else {
               clientesData[row.cliente_id][row.ferramenta] = d;
             }
@@ -644,6 +646,18 @@
       if (data.acompanhamento) {
         const cronoEvents = getCronoEventsForDate(data.acompanhamento, simDate);
         if (cronoEvents.length > 0) return true;
+      }
+      
+      // Check particularidades datas relevantes
+      if (data.particularidades && data.particularidades.datas_relevantes) {
+        const datasRel = data.particularidades.datas_relevantes;
+        const simISO = isoDate(simDate);
+        const simMD = simISO.slice(5); // MM-DD
+        for (const dr of datasRel) {
+          if (!dr.data) continue;
+          if (dr.recorrente && dr.data.slice(5) === simMD) return true;
+          if (dr.data === simISO) return true;
+        }
       }
       
       return false;
@@ -941,6 +955,27 @@
         }
       }
       
+      // === SEÇÃO: DATAS RELEVANTES (particularidades) ===
+      if (data?.particularidades?.datas_relevantes) {
+        const datasRel = data.particularidades.datas_relevantes;
+        const simISO = isoDate(simDate);
+        const simMD = simISO.slice(5);
+        const datasHoje = datasRel.filter(dr => {
+          if (!dr.data) return false;
+          if (dr.recorrente && dr.data.slice(5) === simMD) return true;
+          if (dr.data === simISO) return true;
+          return false;
+        });
+        if (datasHoje.length > 0) {
+          hasContent = true;
+          report += `🎯 *Lembrete(s) especial(is) de hoje:*\n`;
+          datasHoje.forEach(dr => {
+            report += `• ${dr.descricao}${dr.recorrente ? ' (anual)' : ''}\n`;
+          });
+          report += '\n';
+        }
+      }
+
       // === SEÇÃO: EVENTOS ESPECÍFICOS DO DIA (sempre inclui se houver) ===
       {
         let daySection = '';
