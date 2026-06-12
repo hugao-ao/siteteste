@@ -1,0 +1,680 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Curadoria de Conteúdo - HV Saúde Financeira</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, #0d1b0d 0%, #1a2a1a 50%, #0d1b0d 100%);
+      color: #e0e0e0;
+      min-height: 100vh;
+      padding: 2rem;
+    }
+    .container { max-width: 1200px; margin: 0 auto; }
+    h1 { color: #d4af37; margin-bottom: 0.5rem; font-size: 1.8rem; }
+    .subtitle { color: #aaa; margin-bottom: 2rem; font-size: 0.9rem; }
+
+    /* Config Section */
+    .config-section {
+      background: rgba(0,0,0,0.3);
+      border: 1px solid rgba(212, 175, 55, 0.2);
+      border-radius: 12px;
+      padding: 1.5rem;
+      margin-bottom: 2rem;
+    }
+    .config-section h2 { color: #d4af37; font-size: 1.1rem; margin-bottom: 1rem; }
+    .config-row {
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+      align-items: flex-end;
+    }
+    .config-field { display: flex; flex-direction: column; gap: 0.3rem; }
+    .config-field label { font-size: 0.8rem; color: #aaa; }
+    .config-field input, .config-field select {
+      background: rgba(0,0,0,0.4);
+      border: 1px solid rgba(212, 175, 55, 0.3);
+      border-radius: 6px;
+      color: #e0e0e0;
+      padding: 0.5rem 0.8rem;
+      font-size: 0.9rem;
+    }
+    .config-field input:focus, .config-field select:focus {
+      outline: none;
+      border-color: #d4af37;
+    }
+    .btn-buscar {
+      background: #d4af37;
+      color: #1a2a1a;
+      border: none;
+      padding: 0.6rem 1.5rem;
+      border-radius: 6px;
+      font-weight: bold;
+      cursor: pointer;
+      font-size: 0.9rem;
+      white-space: nowrap;
+    }
+    .btn-buscar:hover { background: #e5c040; }
+    .btn-buscar:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    /* API Keys Section */
+    .api-keys-section {
+      background: rgba(0,0,0,0.2);
+      border: 1px solid rgba(255,255,255,0.05);
+      border-radius: 8px;
+      padding: 1rem;
+      margin-top: 1rem;
+    }
+    .api-keys-section summary {
+      cursor: pointer;
+      color: #aaa;
+      font-size: 0.85rem;
+    }
+    .api-keys-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+      gap: 0.8rem;
+      margin-top: 0.8rem;
+    }
+    .api-key-field { display: flex; flex-direction: column; gap: 0.2rem; }
+    .api-key-field label { font-size: 0.75rem; color: #888; }
+    .api-key-field input {
+      background: rgba(0,0,0,0.3);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 4px;
+      color: #e0e0e0;
+      padding: 0.4rem 0.6rem;
+      font-size: 0.8rem;
+    }
+
+    /* Status Bar */
+    .status-bar {
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+      margin-bottom: 1.5rem;
+      padding: 0.8rem;
+      background: rgba(0,0,0,0.2);
+      border-radius: 8px;
+    }
+    .status-item {
+      font-size: 0.8rem;
+      color: #aaa;
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
+    }
+    .status-item .dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+    .dot-green { background: #4caf50; }
+    .dot-yellow { background: #ffc107; }
+    .dot-red { background: #f44336; }
+    .dot-gray { background: #666; }
+
+    /* Results */
+    .results-section { margin-top: 1.5rem; }
+    .results-section h2 { color: #d4af37; font-size: 1.1rem; margin-bottom: 1rem; }
+    .keyword-group {
+      margin-bottom: 2rem;
+      background: rgba(0,0,0,0.2);
+      border: 1px solid rgba(212, 175, 55, 0.15);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    .keyword-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.8rem 1.2rem;
+      background: rgba(212, 175, 55, 0.08);
+      border-bottom: 1px solid rgba(212, 175, 55, 0.15);
+    }
+    .keyword-header h3 { color: #d4af37; font-size: 1rem; }
+    .keyword-header .clients-list {
+      font-size: 0.8rem;
+      color: #aaa;
+    }
+    .news-item {
+      display: flex;
+      gap: 1rem;
+      padding: 0.8rem 1.2rem;
+      border-bottom: 1px solid rgba(255,255,255,0.03);
+      align-items: flex-start;
+    }
+    .news-item:last-child { border-bottom: none; }
+    .news-item:hover { background: rgba(255,255,255,0.02); }
+    .news-content { flex: 1; }
+    .news-title {
+      font-size: 0.9rem;
+      color: #e0e0e0;
+      margin-bottom: 0.2rem;
+    }
+    .news-title a { color: #e0e0e0; text-decoration: none; }
+    .news-title a:hover { color: #d4af37; text-decoration: underline; }
+    .news-meta {
+      font-size: 0.75rem;
+      color: #888;
+    }
+    .news-actions {
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
+    }
+    .btn-copy {
+      background: rgba(212, 175, 55, 0.15);
+      border: 1px solid rgba(212, 175, 55, 0.3);
+      color: #d4af37;
+      padding: 0.3rem 0.6rem;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.75rem;
+      white-space: nowrap;
+    }
+    .btn-copy:hover { background: rgba(212, 175, 55, 0.3); }
+
+    /* Loading */
+    .loading {
+      text-align: center;
+      padding: 2rem;
+      color: #aaa;
+    }
+    .loading .spinner {
+      display: inline-block;
+      width: 30px; height: 30px;
+      border: 3px solid rgba(212, 175, 55, 0.2);
+      border-top-color: #d4af37;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Summary Table */
+    .summary-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 1rem;
+    }
+    .summary-table th, .summary-table td {
+      padding: 0.6rem 0.8rem;
+      text-align: left;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+      font-size: 0.85rem;
+    }
+    .summary-table th {
+      background: rgba(212, 175, 55, 0.1);
+      color: #d4af37;
+      font-weight: 600;
+    }
+    .summary-table td a { color: #7fc8f8; text-decoration: none; }
+    .summary-table td a:hover { text-decoration: underline; }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      body { padding: 1rem; }
+      .config-row { flex-direction: column; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1><i class="fas fa-newspaper"></i> Curadoria de Conteúdo</h1>
+    <p class="subtitle">Busca automática de notícias baseada nos interesses cadastrados dos clientes. Combina múltiplas fontes gratuitas.</p>
+
+    <div class="config-section">
+      <h2><i class="fas fa-cog"></i> Configuração da Busca</h2>
+      <div class="config-row">
+        <div class="config-field">
+          <label>Idioma</label>
+          <select id="cfg-lang">
+            <option value="pt" selected>Português</option>
+            <option value="en">English</option>
+            <option value="es">Español</option>
+          </select>
+        </div>
+        <div class="config-field">
+          <label>País</label>
+          <select id="cfg-country">
+            <option value="BR" selected>Brasil</option>
+            <option value="US">EUA</option>
+            <option value="PT">Portugal</option>
+          </select>
+        </div>
+        <div class="config-field">
+          <label>Máx. notícias por interesse</label>
+          <select id="cfg-max">
+            <option value="5">5</option>
+            <option value="10" selected>10</option>
+            <option value="15">15</option>
+            <option value="20">20</option>
+          </select>
+        </div>
+        <button class="btn-buscar" id="btn-buscar" onclick="buscarNoticias()">
+          <i class="fas fa-search"></i> Buscar Notícias
+        </button>
+      </div>
+
+      <details class="api-keys-section">
+        <summary><i class="fas fa-key"></i> Chaves de API (opcional - para mais resultados)</summary>
+        <div class="api-keys-grid">
+          <div class="api-key-field">
+            <label>GNews (gnews.io)</label>
+            <input type="text" id="key-gnews" placeholder="Sua API key">
+          </div>
+          <div class="api-key-field">
+            <label>NewsData.io</label>
+            <input type="text" id="key-newsdata" placeholder="Sua API key">
+          </div>
+          <div class="api-key-field">
+            <label>Currents API</label>
+            <input type="text" id="key-currents" placeholder="Sua API key">
+          </div>
+          <div class="api-key-field">
+            <label>MediaStack</label>
+            <input type="text" id="key-mediastack" placeholder="Sua API key">
+          </div>
+        </div>
+      </details>
+    </div>
+
+    <div class="status-bar" id="status-bar">
+      <span class="status-item"><span class="dot dot-gray"></span> Aguardando busca...</span>
+    </div>
+
+    <div class="results-section" id="results-section">
+      <p style="color:#888; text-align:center; padding:2rem;">Clique em "Buscar Notícias" para carregar conteúdo baseado nos interesses dos clientes.</p>
+    </div>
+  </div>
+
+  <script>
+    const SUPABASE_URL = "https://vbikskbfkhundhropykf.supabase.co";
+    const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZiaWtza2Jma2h1bmRocm9weWtmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDU1MTk5NjEsImV4cCI6MjA2MTA5NTk2MX0.-n-Tj_5JnF1NL2ZImWlMeTcobWDl_VD6Vqp0lxRQFFU";
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    // CORS proxy for Google News RSS
+    const CORS_PROXY = "https://api.allorigins.win/raw?url=";
+
+    let allInteresses = []; // [{palavra_chave, clientes: [{nome, id}]}]
+    let apiUsage = { gnews: 0, newsdata: 0, currents: 0, mediastack: 0 };
+
+    // Load API keys from localStorage
+    function loadApiKeys() {
+      document.getElementById('key-gnews').value = localStorage.getItem('curadoria_key_gnews') || '';
+      document.getElementById('key-newsdata').value = localStorage.getItem('curadoria_key_newsdata') || '';
+      document.getElementById('key-currents').value = localStorage.getItem('curadoria_key_currents') || '';
+      document.getElementById('key-mediastack').value = localStorage.getItem('curadoria_key_mediastack') || '';
+    }
+
+    function saveApiKeys() {
+      localStorage.setItem('curadoria_key_gnews', document.getElementById('key-gnews').value.trim());
+      localStorage.setItem('curadoria_key_newsdata', document.getElementById('key-newsdata').value.trim());
+      localStorage.setItem('curadoria_key_currents', document.getElementById('key-currents').value.trim());
+      localStorage.setItem('curadoria_key_mediastack', document.getElementById('key-mediastack').value.trim());
+    }
+
+    // Auto-save keys on change
+    document.querySelectorAll('.api-key-field input').forEach(inp => {
+      inp.addEventListener('change', saveApiKeys);
+    });
+
+    // Load all client interests from Supabase
+    async function loadInteresses() {
+      try {
+        const { data: clientes, error: cErr } = await supabase
+          .from('clientes')
+          .select('id, nome')
+          .eq('projeto', 'Planejamento');
+        if (cErr) throw cErr;
+
+        const ids = clientes.map(c => c.id);
+        const { data: particData, error: pErr } = await supabase
+          .from('ferramentas_dados')
+          .select('cliente_id, dados')
+          .in('cliente_id', ids)
+          .eq('ferramenta_slug', 'particularidades');
+        if (pErr) throw pErr;
+
+        // Aggregate interests across clients
+        const interesseMap = {}; // keyword -> { palavra_chave, categoria, clientes: [] }
+        
+        (particData || []).forEach(row => {
+          let d = row.dados;
+          if (typeof d === 'string') { try { d = JSON.parse(d); } catch(e) { return; } }
+          if (!d || !d.interesses) return;
+
+          const cliente = clientes.find(c => c.id === row.cliente_id);
+          if (!cliente) return;
+
+          d.interesses.forEach(int => {
+            const key = int.palavra_chave.toLowerCase().trim();
+            if (!interesseMap[key]) {
+              interesseMap[key] = {
+                palavra_chave: int.palavra_chave,
+                categoria: int.categoria || '',
+                prioridade: int.prioridade || 1,
+                clientes: []
+              };
+            }
+            interesseMap[key].clientes.push({ id: cliente.id, nome: cliente.nome });
+          });
+        });
+
+        allInteresses = Object.values(interesseMap).sort((a, b) => a.prioridade - b.prioridade);
+        return allInteresses;
+      } catch(e) {
+        console.error('Erro ao carregar interesses:', e);
+        return [];
+      }
+    }
+
+    // === NEWS FETCHERS ===
+
+    // 1. Google News RSS (primary - unlimited)
+    async function fetchGoogleNews(keyword, lang, country, max) {
+      try {
+        const q = encodeURIComponent(keyword);
+        const url = `https://news.google.com/rss/search?q=${q}&hl=${lang}&gl=${country}&ceid=${country}:${lang}`;
+        const resp = await fetch(CORS_PROXY + encodeURIComponent(url));
+        if (!resp.ok) throw new Error('Google RSS failed');
+        const text = await resp.text();
+        const parser = new DOMParser();
+        const xml = parser.parseFromString(text, 'text/xml');
+        const items = xml.querySelectorAll('item');
+        const results = [];
+        for (let i = 0; i < Math.min(items.length, max); i++) {
+          const item = items[i];
+          results.push({
+            title: item.querySelector('title')?.textContent || '',
+            link: item.querySelector('link')?.textContent || '',
+            date: item.querySelector('pubDate')?.textContent || '',
+            source: item.querySelector('source')?.textContent || 'Google News'
+          });
+        }
+        return { results, source: 'Google News RSS' };
+      } catch(e) {
+        console.warn('Google News RSS falhou:', e);
+        return { results: [], source: 'Google News RSS', error: e.message };
+      }
+    }
+
+    // 2. GNews API
+    async function fetchGNews(keyword, lang, country, max) {
+      const key = document.getElementById('key-gnews').value.trim();
+      if (!key) return { results: [], source: 'GNews', error: 'sem chave' };
+      try {
+        const q = encodeURIComponent(keyword);
+        const resp = await fetch(`https://gnews.io/api/v4/search?q=${q}&lang=${lang}&country=${country.toLowerCase()}&max=${Math.min(max, 10)}&apikey=${key}`);
+        if (!resp.ok) throw new Error(`GNews ${resp.status}`);
+        const data = await resp.json();
+        apiUsage.gnews++;
+        return {
+          results: (data.articles || []).map(a => ({
+            title: a.title,
+            link: a.url,
+            date: a.publishedAt,
+            source: a.source?.name || 'GNews'
+          })),
+          source: 'GNews API'
+        };
+      } catch(e) {
+        return { results: [], source: 'GNews', error: e.message };
+      }
+    }
+
+    // 3. NewsData.io
+    async function fetchNewsData(keyword, lang, country, max) {
+      const key = document.getElementById('key-newsdata').value.trim();
+      if (!key) return { results: [], source: 'NewsData', error: 'sem chave' };
+      try {
+        const q = encodeURIComponent(keyword);
+        const resp = await fetch(`https://newsdata.io/api/1/latest?apikey=${key}&q=${q}&language=${lang}&country=${country.toLowerCase()}&size=${Math.min(max, 10)}`);
+        if (!resp.ok) throw new Error(`NewsData ${resp.status}`);
+        const data = await resp.json();
+        apiUsage.newsdata++;
+        return {
+          results: (data.results || []).map(a => ({
+            title: a.title,
+            link: a.link,
+            date: a.pubDate,
+            source: a.source_name || 'NewsData'
+          })),
+          source: 'NewsData.io'
+        };
+      } catch(e) {
+        return { results: [], source: 'NewsData', error: e.message };
+      }
+    }
+
+    // 4. Currents API
+    async function fetchCurrents(keyword, lang, country, max) {
+      const key = document.getElementById('key-currents').value.trim();
+      if (!key) return { results: [], source: 'Currents', error: 'sem chave' };
+      try {
+        const q = encodeURIComponent(keyword);
+        const langMap = { pt: 'pt', en: 'en', es: 'es' };
+        const resp = await fetch(`https://api.currentsapi.services/v1/search?apiKey=${key}&keywords=${q}&language=${langMap[lang] || 'pt'}&page_size=${Math.min(max, 10)}`);
+        if (!resp.ok) throw new Error(`Currents ${resp.status}`);
+        const data = await resp.json();
+        apiUsage.currents++;
+        return {
+          results: (data.news || []).map(a => ({
+            title: a.title,
+            link: a.url,
+            date: a.published,
+            source: a.author || 'Currents'
+          })),
+          source: 'Currents API'
+        };
+      } catch(e) {
+        return { results: [], source: 'Currents', error: e.message };
+      }
+    }
+
+    // 5. MediaStack
+    async function fetchMediaStack(keyword, lang, country, max) {
+      const key = document.getElementById('key-mediastack').value.trim();
+      if (!key) return { results: [], source: 'MediaStack', error: 'sem chave' };
+      try {
+        const q = encodeURIComponent(keyword);
+        const langMap = { pt: 'pt', en: 'en', es: 'es' };
+        // MediaStack free tier requires HTTP (not HTTPS)
+        const resp = await fetch(`http://api.mediastack.com/v1/news?access_key=${key}&keywords=${q}&languages=${langMap[lang] || 'pt'}&limit=${Math.min(max, 10)}`);
+        if (!resp.ok) throw new Error(`MediaStack ${resp.status}`);
+        const data = await resp.json();
+        apiUsage.mediastack++;
+        return {
+          results: (data.data || []).map(a => ({
+            title: a.title,
+            link: a.url,
+            date: a.published_at,
+            source: a.source || 'MediaStack'
+          })),
+          source: 'MediaStack'
+        };
+      } catch(e) {
+        return { results: [], source: 'MediaStack', error: e.message };
+      }
+    }
+
+    // === MAIN SEARCH FUNCTION ===
+    async function buscarNoticias() {
+      const btn = document.getElementById('btn-buscar');
+      btn.disabled = true;
+      btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Buscando...';
+
+      saveApiKeys();
+
+      const lang = document.getElementById('cfg-lang').value;
+      const country = document.getElementById('cfg-country').value;
+      const max = parseInt(document.getElementById('cfg-max').value);
+
+      // Load interests if not loaded
+      if (allInteresses.length === 0) {
+        document.getElementById('results-section').innerHTML = '<div class="loading"><div class="spinner"></div><p>Carregando interesses dos clientes...</p></div>';
+        await loadInteresses();
+      }
+
+      if (allInteresses.length === 0) {
+        document.getElementById('results-section').innerHTML = '<p style="color:#ff6b6b; text-align:center; padding:2rem;">Nenhum interesse cadastrado. Adicione interesses nas Particularidades dos clientes.</p>';
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-search"></i> Buscar Notícias';
+        return;
+      }
+
+      document.getElementById('results-section').innerHTML = '<div class="loading"><div class="spinner"></div><p>Buscando notícias para ' + allInteresses.length + ' interesse(s)...</p></div>';
+
+      const allResults = []; // [{keyword, clientes, articles}]
+      const sources = [];
+
+      for (const interesse of allInteresses) {
+        let articles = [];
+        
+        // Try Google News first (always available)
+        const googleResult = await fetchGoogleNews(interesse.palavra_chave, lang, country, max);
+        if (googleResult.results.length > 0) {
+          articles = googleResult.results;
+          if (!sources.includes('Google News RSS')) sources.push('Google News RSS');
+        }
+
+        // If not enough results, try fallbacks
+        if (articles.length < max) {
+          const remaining = max - articles.length;
+          
+          const gnewsResult = await fetchGNews(interesse.palavra_chave, lang, country, remaining);
+          if (gnewsResult.results.length > 0) {
+            articles = articles.concat(gnewsResult.results);
+            if (!sources.includes('GNews')) sources.push('GNews');
+          }
+        }
+
+        if (articles.length < max) {
+          const remaining = max - articles.length;
+          const newsDataResult = await fetchNewsData(interesse.palavra_chave, lang, country, remaining);
+          if (newsDataResult.results.length > 0) {
+            articles = articles.concat(newsDataResult.results);
+            if (!sources.includes('NewsData.io')) sources.push('NewsData.io');
+          }
+        }
+
+        if (articles.length < max) {
+          const remaining = max - articles.length;
+          const currentsResult = await fetchCurrents(interesse.palavra_chave, lang, country, remaining);
+          if (currentsResult.results.length > 0) {
+            articles = articles.concat(currentsResult.results);
+            if (!sources.includes('Currents')) sources.push('Currents');
+          }
+        }
+
+        // Deduplicate by title similarity
+        const seen = new Set();
+        articles = articles.filter(a => {
+          const key = a.title.toLowerCase().slice(0, 50);
+          if (seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        });
+
+        allResults.push({
+          keyword: interesse.palavra_chave,
+          categoria: interesse.categoria,
+          clientes: interesse.clientes,
+          articles: articles.slice(0, max)
+        });
+      }
+
+      renderResults(allResults, sources);
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fas fa-search"></i> Buscar Notícias';
+    }
+
+    // === RENDER RESULTS ===
+    function renderResults(allResults, sources) {
+      // Update status bar
+      const statusBar = document.getElementById('status-bar');
+      statusBar.innerHTML = sources.map(s => `<span class="status-item"><span class="dot dot-green"></span> ${s}</span>`).join('');
+      if (sources.length === 0) {
+        statusBar.innerHTML = '<span class="status-item"><span class="dot dot-red"></span> Nenhuma fonte retornou resultados</span>';
+      }
+
+      let html = '';
+
+      // Summary table
+      html += `<h2><i class="fas fa-table"></i> Resumo de Envio</h2>`;
+      html += `<table class="summary-table"><thead><tr><th>Notícia</th><th>Interesse</th><th>Enviar para</th><th>Ação</th></tr></thead><tbody>`;
+      
+      allResults.forEach(group => {
+        group.articles.forEach((article, idx) => {
+          const clienteNames = group.clientes.map(c => c.nome.split(' ')[0]).join(', ');
+          html += `<tr>
+            <td><a href="${article.link}" target="_blank">${article.title.slice(0, 80)}${article.title.length > 80 ? '...' : ''}</a></td>
+            <td>${group.keyword}</td>
+            <td>${clienteNames}</td>
+            <td><button class="btn-copy" onclick="copiarLink('${article.link}')">Copiar link</button></td>
+          </tr>`;
+        });
+      });
+      html += `</tbody></table>`;
+
+      // Detailed groups
+      html += `<h2 style="margin-top:2rem;"><i class="fas fa-newspaper"></i> Detalhes por Interesse</h2>`;
+      
+      allResults.forEach(group => {
+        if (group.articles.length === 0) return;
+        const clienteNames = group.clientes.map(c => c.nome.split(' ')[0]).join(', ');
+        html += `
+          <div class="keyword-group">
+            <div class="keyword-header">
+              <h3>${group.keyword} ${group.categoria ? `<span style="font-size:0.8rem;color:#aaa;">(${group.categoria})</span>` : ''}</h3>
+              <span class="clients-list">Enviar para: ${clienteNames}</span>
+            </div>
+        `;
+        group.articles.forEach(article => {
+          const dateStr = article.date ? new Date(article.date).toLocaleDateString('pt-BR') : '';
+          html += `
+            <div class="news-item">
+              <div class="news-content">
+                <div class="news-title"><a href="${article.link}" target="_blank">${article.title}</a></div>
+                <div class="news-meta">${article.source} ${dateStr ? '• ' + dateStr : ''}</div>
+              </div>
+              <div class="news-actions">
+                <button class="btn-copy" onclick="copiarLink('${article.link}')">Copiar</button>
+              </div>
+            </div>
+          `;
+        });
+        html += `</div>`;
+      });
+
+      if (allResults.every(g => g.articles.length === 0)) {
+        html = '<p style="color:#ff6b6b; text-align:center; padding:2rem;">Nenhuma notícia encontrada. Verifique os interesses cadastrados ou tente novamente.</p>';
+      }
+
+      document.getElementById('results-section').innerHTML = html;
+    }
+
+    // Copy link to clipboard
+    function copiarLink(link) {
+      navigator.clipboard.writeText(link).then(() => {
+        // Brief visual feedback
+        event.target.textContent = '✓';
+        setTimeout(() => { event.target.textContent = 'Copiar'; }, 1500);
+      });
+    }
+
+    // Init
+    loadApiKeys();
+    loadInteresses().then(interesses => {
+      if (interesses.length > 0) {
+        document.getElementById('results-section').innerHTML = `<p style="color:#aaa; text-align:center; padding:2rem;">${interesses.length} interesse(s) encontrado(s) em ${new Set(interesses.flatMap(i => i.clientes.map(c => c.id))).size} cliente(s). Clique em "Buscar Notícias" para começar.</p>`;
+      }
+    });
+  </script>
+</body>
+</html>
