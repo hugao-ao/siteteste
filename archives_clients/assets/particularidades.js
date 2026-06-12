@@ -894,7 +894,7 @@
   // ============================================================
   async function loadData() {
     try {
-      const resp = await sbFetch(`ferramentas_dados?cliente_id=eq.${clienteId}&ferramenta_slug=eq.particularidades&select=*`);
+      const resp = await sbFetch(`ferramentas_dados?cliente_id=eq.${clienteId}&ferramenta=eq.particularidades&select=*`);
       const rows = await resp.json();
       if (rows && rows.length > 0 && rows[0].dados) {
         const d = typeof rows[0].dados === 'string' ? JSON.parse(rows[0].dados) : rows[0].dados;
@@ -915,12 +915,12 @@
     saveBtn.disabled = true;
 
     try {
-      const checkResp = await sbFetch(`ferramentas_dados?cliente_id=eq.${clienteId}&ferramenta_slug=eq.particularidades&select=id`);
+      const checkResp = await sbFetch(`ferramentas_dados?cliente_id=eq.${clienteId}&ferramenta=eq.particularidades&select=id`);
       const existing = await checkResp.json();
 
       const payload = {
         cliente_id: clienteId,
-        ferramenta_slug: 'particularidades',
+        ferramenta: 'particularidades',
         dados: particData
       };
 
