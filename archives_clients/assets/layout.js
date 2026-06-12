@@ -212,23 +212,39 @@
         if (voltarBtn && isEquipeModoCliente) {
             voltarBtn.addEventListener('click', () => {
                 const clienteId = clienteIdRetorno;
+                const retornoUrl = sessionStorage.getItem('retorno_url');
                 // Limpar flags de modo cliente
                 sessionStorage.removeItem('equipe_modo_cliente');
                 sessionStorage.removeItem('cliente_id');
                 sessionStorage.removeItem('cliente_nome');
                 sessionStorage.removeItem('cliente_id_retorno');
-                // Redirecionar de volta para a página de detalhes do cliente
-                // Calcular o caminho correto baseado na localização atual
-                const currentPath = window.location.pathname;
-                let redirectPath = '';
-                if (currentPath.includes('/ferramentas/')) {
-                    redirectPath = '../../cliente-detalhes.html?id=' + clienteId;
-                } else if (currentPath.includes('/archives_clients/')) {
-                    redirectPath = '../cliente-detalhes.html?id=' + clienteId;
+                sessionStorage.removeItem('retorno_url');
+                
+                // Se tem URL de retorno customizada, usar ela
+                if (retornoUrl) {
+                    const currentPath = window.location.pathname;
+                    let redirectPath = '';
+                    if (currentPath.includes('/ferramentas/')) {
+                        redirectPath = '../../' + retornoUrl;
+                    } else if (currentPath.includes('/archives_clients/')) {
+                        redirectPath = '../' + retornoUrl;
+                    } else {
+                        redirectPath = retornoUrl;
+                    }
+                    window.location.href = redirectPath;
                 } else {
-                    redirectPath = 'cliente-detalhes.html?id=' + clienteId;
+                    // Redirecionar de volta para a página de detalhes do cliente
+                    const currentPath = window.location.pathname;
+                    let redirectPath = '';
+                    if (currentPath.includes('/ferramentas/')) {
+                        redirectPath = '../../cliente-detalhes.html?id=' + clienteId;
+                    } else if (currentPath.includes('/archives_clients/')) {
+                        redirectPath = '../cliente-detalhes.html?id=' + clienteId;
+                    } else {
+                        redirectPath = 'cliente-detalhes.html?id=' + clienteId;
+                    }
+                    window.location.href = redirectPath;
                 }
-                window.location.href = redirectPath;
             });
         }
 
