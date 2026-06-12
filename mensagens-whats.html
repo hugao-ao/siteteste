@@ -373,6 +373,30 @@
     let currentSortCol = -1;
     let currentSortDir = '';
 
+    // === MENSAGENS HUMORADAS PARA SEMANA LIVRE ===
+    const MSGS_SEMANA_LIVRE = [
+      'Semana livre de compromissos financeiros! Boas férias pro bolso 😎🏖️',
+      'Nada previsto essa semana! Aproveita pra respirar... o bolso agradece kkkk 💸',
+      'Semana tranquila! Nem parece segunda-feira né? Aproveita! 😂🙏',
+      'Zero compromissos financeiros essa semana! Pode até fingir que é milionário kkk 💰',
+      'Semana livre! Se alguém cobrar alguma coisa, diz que tá de férias financeiras 😎',
+      'Nenhuma movimentação prevista! Semana pra curtir sem pensar em boleto 🎉',
+      'Boa semana! E a melhor notícia: nada pra pagar nem receber kkk... ou será que a melhor seria receber? 🤔',
+      'Semana zen! Nenhum compromisso financeiro no radar. Namastê pro bolso 🧘‍♂️💵',
+      'Essa semana tá mais vazia que geladeira no fim do mês... só que no bom sentido! 😂',
+      'Nada previsto! Semana pra focar no que importa sem preocupação financeira 💪',
+      'Semana livre de boletos! Isso sim é qualidade de vida kkk 🌟',
+      'Nenhum evento financeiro essa semana! Pode relaxar... até segunda que vem 😅',
+      'Tá tudo tranquilo essa semana! Aproveita esse respiro financeiro 🙌',
+      'Semana sem movimentações! É tipo feriado pro planejamento financeiro 🌴',
+      'Nada no radar essa semana! Bora aproveitar essa paz financeira ✌️',
+      'Boa semana! E pode ficar tranquilo que essa semana o fluxo tá de boa 😎👍',
+      'Semana sem compromissos! Até o Excel tá de folga kkkk 📊😴',
+      'Nada pra essa semana! Bora aproveitar que semana que vem pode ser diferente kkk 😂',
+      'Semana livre! Se precisar de mim, tô aqui... mas financeiramente tá tudo certo! 👊',
+      'Zero eventos essa semana! Aproveita pra descansar a cabeça... e a carteira 😄💳'
+    ];
+
     // Set default sim date to today
     simDateInput.value = new Date().toISOString().split('T')[0];
     updateSimInfo();
@@ -464,8 +488,15 @@
                 let primarySim = simList.find(s => s.primary) || simList[0];
                 if (primarySim && primarySim.payload) {
                   clientesData[row.cliente_id].fluxo = primarySim.payload;
+                  // Extrair trackingData (lançamentos reais)
+                  if (primarySim.payload.trackingData) {
+                    clientesData[row.cliente_id].trackingData = primarySim.payload.trackingData;
+                  }
                 } else if (primarySim && primarySim.itens) {
                   clientesData[row.cliente_id].fluxo = primarySim;
+                  if (primarySim.trackingData) {
+                    clientesData[row.cliente_id].trackingData = primarySim.trackingData;
+                  }
                 }
               }
             } else if (row.ferramenta === 'particularidades') {
@@ -659,24 +690,24 @@
         }
       }
       
-      // For segunda/sexta: check if there's weekly content (events in the week)
-      if (dow === 1 || dow === 5) {
-        // Check weekly fluxo events
+      // Segunda-feira: SEMPRE tem badge (se não tiver eventos, gera mensagem de semana livre)
+      if (dow === 1) return true;
+      
+      // Sexta-feira: check if there's weekly content
+      if (dow === 5) {
         if (fluxoItens.length > 0) {
-          const weekStart = dow === 1 ? new Date(simDate) : new Date(simDate.getFullYear(), simDate.getMonth(), simDate.getDate() - 4);
-          const weekEnd = dow === 1 ? new Date(simDate.getFullYear(), simDate.getMonth(), simDate.getDate() + 4) : new Date(simDate);
+          const weekStart = new Date(simDate.getFullYear(), simDate.getMonth(), simDate.getDate() - 4);
+          const weekEnd = new Date(simDate);
           const weekEvents = getAllFluxoEvents(fluxoItens, weekStart, weekEnd, fluxoContas);
           if (weekEvents.length > 0) return true;
         }
-        // Check weekly crono events
         if (data.acompanhamento) {
-          const weekStart = dow === 1 ? new Date(simDate) : new Date(simDate.getFullYear(), simDate.getMonth(), simDate.getDate() - 4);
-          const weekEnd = dow === 1 ? new Date(simDate.getFullYear(), simDate.getMonth(), simDate.getDate() + 4) : new Date(simDate);
+          const weekStart = new Date(simDate.getFullYear(), simDate.getMonth(), simDate.getDate() - 4);
+          const weekEnd = new Date(simDate);
           const cronoWeek = getCronoForPeriod(data.acompanhamento, weekStart, weekEnd);
           if (cronoWeek.length > 0) return true;
         }
         if (hasDatasRelevantes) return true;
-        // No weekly content found - no badge
         return false;
       }
       
@@ -916,17 +947,20 @@
       // === SEÇÃO: INÍCIO DA SEMANA (Segunda) ===
       if (isSegunda) {
         hasContent = true;
-        report += `*💪 PREVISÃO DA SEMANA*\n\n`;
         
         const weekStart = new Date(simDate);
         const weekEnd = new Date(simDate);
         weekEnd.setDate(weekEnd.getDate() + 4);
         
+        let hasWeeklyContent = false;
+        let weekSection = '';
+        
         if (fluxoItens.length > 0) {
           const weekEvents = getAllFluxoEvents(fluxoItens, weekStart, weekEnd, fluxoContas);
           if (weekEvents.length > 0) {
+            hasWeeklyContent = true;
             let totalRec = 0, totalDesp = 0;
-            report += `💰 *Movimentações previstas na semana:*\n`;
+            weekSection += `💰 *Movimentações previstas na semana:*\n`;
             weekEvents.forEach(e => {
               const tipo = e.item.tipo === 'entrada' ? '🟢' : '🔴';
               let label = e.item.nome;
@@ -935,20 +969,30 @@
               } else if (e.item.formaPagamento && cartoesMap[e.item.formaPagamento]) {
                 label += ` (via cartão ${cartoesMap[e.item.formaPagamento].nome})`;
               }
-              report += `${tipo} ${e.date.toLocaleDateString('pt-BR',{weekday:'short',day:'numeric'})} - ${label}: ${fmtBRL(e.item.valor)}\n`;
+              weekSection += `${tipo} ${e.date.toLocaleDateString('pt-BR',{weekday:'short',day:'numeric'})} - ${label}: ${fmtBRL(e.item.valor)}\n`;
               if (e.item.tipo === 'entrada') totalRec += e.item.valor; else totalDesp += e.item.valor;
             });
-            report += `\n*Saldo semanal previsto: ${fmtBRL(totalRec - totalDesp)}*\n\n`;
+            weekSection += `\n*Saldo semanal previsto: ${fmtBRL(totalRec - totalDesp)}*\n\n`;
           }
         }
         
         if (data?.acompanhamento) {
           const cronoWeek = getCronoForPeriod(data.acompanhamento, weekStart, weekEnd);
           if (cronoWeek.length > 0) {
-            report += `📋 *Cronograma da semana:*\n`;
-            cronoWeek.forEach(e => report += `• ${e.desc}\n`);
-            report += '\n';
+            hasWeeklyContent = true;
+            weekSection += `📋 *Cronograma da semana:*\n`;
+            cronoWeek.forEach(e => weekSection += `• ${e.desc}\n`);
+            weekSection += '\n';
           }
+        }
+        
+        if (hasWeeklyContent) {
+          report += `*💪 PREVISÃO DA SEMANA*\n\n`;
+          report += weekSection;
+        } else {
+          // Semana livre - mensagem humorada aleatória
+          const msgIdx = Math.floor(Math.random() * MSGS_SEMANA_LIVRE.length);
+          report += MSGS_SEMANA_LIVRE[msgIdx] + '\n\n';
         }
       }
       
@@ -1512,9 +1556,7 @@
           // Sem conteúdo para relatar
           const simDate = getSimDate();
           const dow = simDate ? simDate.getDay() : -1;
-          if (dow === 1) {
-            alert('Não há nada previsto para esta semana para este cliente.');
-          } else if (dow === 5) {
+          if (dow === 5) {
             alert('Não há nada para relatar nesta semana para este cliente.');
           } else {
             alert('Não há eventos para relatar nesta data para este cliente.');
