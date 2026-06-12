@@ -648,15 +648,11 @@
         if (cronoEvents.length > 0) return true;
       }
       
-      // Check particularidades datas relevantes
+      // Check particularidades datas relevantes (new recurrence model)
       if (data.particularidades && data.particularidades.datas_relevantes) {
         const datasRel = data.particularidades.datas_relevantes;
-        const simISO = isoDate(simDate);
-        const simMD = simISO.slice(5); // MM-DD
         for (const dr of datasRel) {
-          if (!dr.data) continue;
-          if (dr.recorrente && dr.data.slice(5) === simMD) return true;
-          if (dr.data === simISO) return true;
+          if (isDataRelevantOnDate(dr, simDate)) return true;
         }
       }
       
@@ -955,22 +951,19 @@
         }
       }
       
-      // === SEÇÃO: DATAS RELEVANTES (particularidades) ===
+      // === SEÇÃO: DATAS RELEVANTES (particularidades - new recurrence model) ===
       if (data?.particularidades?.datas_relevantes) {
         const datasRel = data.particularidades.datas_relevantes;
-        const simISO = isoDate(simDate);
-        const simMD = simISO.slice(5);
-        const datasHoje = datasRel.filter(dr => {
-          if (!dr.data) return false;
-          if (dr.recorrente && dr.data.slice(5) === simMD) return true;
-          if (dr.data === simISO) return true;
-          return false;
-        });
+        const datasHoje = datasRel.filter(dr => isDataRelevantOnDate(dr, simDate));
         if (datasHoje.length > 0) {
           hasContent = true;
           report += `🎯 *Lembrete(s) especial(is) de hoje:*\n`;
           datasHoje.forEach(dr => {
-            report += `• ${dr.descricao}${dr.recorrente ? ' (anual)' : ''}\n`;
+            const rec = dr.recorrencia || {};
+            let recLabel = '';
+            if (rec.tipo === 'repete') recLabel = ` (a cada ${rec.frequencia_qty || 1} ${rec.frequencia_unit || 'meses'})`;
+            else if (dr.recorrente) recLabel = ' (anual)';
+            report += `• ${dr.descricao}${recLabel}\n`;
           });
           report += '\n';
         }
@@ -1220,6 +1213,69 @@
       else if (item.recTipo === 'meses') next.setMonth(next.getMonth() + qty);
       else next.setDate(next.getDate() + 1); // fallback
       return next;
+    }
+
+    // === HELPER: Check if a data relevante occurs on a given date (supports new recurrence model) ===
+    function isDataRelevantOnDate(dr, targetDate) {
+      if (!dr.data) return false;
+      const target = new Date(targetDate);
+      target.setHours(0,0,0,0);
+      const targetISO = isoDate2(target);
+      const drDate = new Date(dr.data + 'T00:00:00');
+      
+      const rec = dr.recorrencia || {};
+      
+      // New recurrence model
+      if (rec.tipo === 'repete') {
+        const inicio = rec.inicio ? new Date(rec.inicio + 'T00:00:00') : drDate;
+        if (target < inicio) return false;
+        
+        // Check fim (end condition)
+        if (rec.fim_tipo === 'data' && rec.fim_data) {
+          const fimD = new Date(rec.fim_data + 'T00:00:00');
+          if (target > fimD) return false;
+        }
+        
+        const qty = rec.frequencia_qty || 1;
+        const unit = rec.frequencia_unit || 'meses';
+        
+        // Iterate occurrences from inicio to target
+        let cur = new Date(inicio);
+        let count = 0;
+        const maxOcc = (rec.fim_tipo === 'ocorrencias' && rec.fim_ocorrencias) ? rec.fim_ocorrencias : 10000;
+        
+        while (cur <= target && count < maxOcc) {
+          if (isoDate2(cur) === targetISO) return true;
+          // Advance to next occurrence
+          const next = new Date(cur);
+          if (unit === 'dias') next.setDate(next.getDate() + qty);
+          else if (unit === 'dias_uteis') {
+            let added = 0;
+            while (added < qty) { next.setDate(next.getDate() + 1); if (next.getDay() !== 0 && next.getDay() !== 6) added++; }
+          }
+          else if (unit === 'semanas') next.setDate(next.getDate() + qty * 7);
+          else if (unit === 'quinzenas') next.setDate(next.getDate() + qty * 15);
+          else if (unit === 'meses') next.setMonth(next.getMonth() + qty);
+          else if (unit === 'anos') next.setFullYear(next.getFullYear() + qty);
+          else next.setDate(next.getDate() + qty);
+          cur = next;
+          count++;
+        }
+        return false;
+      }
+      
+      // Legacy: old format with just "recorrente: true" (annual)
+      if (dr.recorrente) {
+        return dr.data.slice(5) === targetISO.slice(5); // same month-day
+      }
+      
+      // Non-recurring: exact date match
+      return dr.data === targetISO;
+    }
+    
+    // Helper for isDataRelevantOnDate (avoids circular dependency with isoDate below)
+    function isoDate2(d) {
+      return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
     }
 
     // === HELPERS ===
