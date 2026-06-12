@@ -457,16 +457,38 @@
       var searchInput = document.getElementById('clients-search');
       if (searchInput) {
         searchInput.addEventListener('input', function() {
-          var term = this.value.toLowerCase();
+          var term = this.value.toLowerCase().trim();
           var rows = table.querySelectorAll('tbody tr');
           rows.forEach(function(row) {
             if (!term) { row.classList.remove('search-hidden'); return; }
-            var text = row.textContent.toLowerCase();
+            var text = getCellsText(row).toLowerCase();
             if (text.includes(term)) row.classList.remove('search-hidden');
             else row.classList.add('search-hidden');
           });
         });
       }
+    }
+
+    // Helper: extract real text from a row (including input/select values)
+    function getCellsText(row) {
+      var parts = [];
+      for (var i = 0; i < row.cells.length; i++) {
+        parts.push(getCellValue(row.cells[i]));
+      }
+      return parts.join(' ');
+    }
+
+    // Helper: extract real value from a single cell
+    function getCellValue(cell) {
+      if (!cell) return '';
+      // Check for inputs
+      var input = cell.querySelector('input[type="text"], input:not([type])');
+      if (input) return input.value || '';
+      // Check for selects
+      var select = cell.querySelector('select');
+      if (select) return select.options[select.selectedIndex]?.text || select.value || '';
+      // Fallback to textContent
+      return cell.textContent || '';
     }
 
     // Sort
@@ -490,8 +512,8 @@
       var tbody = table.querySelector('tbody');
       var rows = Array.from(tbody.querySelectorAll('tr'));
       rows.sort(function(a, b) {
-        var aText = (a.cells[colIdx] ? a.cells[colIdx].textContent : '').trim().toLowerCase();
-        var bText = (b.cells[colIdx] ? b.cells[colIdx].textContent : '').trim().toLowerCase();
+        var aText = getCellValue(a.cells[colIdx]).trim().toLowerCase();
+        var bText = getCellValue(b.cells[colIdx]).trim().toLowerCase();
         // Try numeric
         var aNum = parseFloat(aText.replace(/[^\d.-]/g, ''));
         var bNum = parseFloat(bText.replace(/[^\d.-]/g, ''));
