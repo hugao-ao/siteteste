@@ -4087,11 +4087,11 @@ function openLancamentoModal(editId) {
 function editLancamento(id) { openLancamentoModal(id); }
 
 function toggleLancCat() {
-  var tipo = document.getElementById('lanc-tipo').value;
+  // Categoria e subcategoria sempre visiveis independente do tipo
   var catWrap = document.getElementById('lanc-cat-wrap');
   var subcatWrap = document.getElementById('lanc-subcat-wrap');
-  if (catWrap) catWrap.style.display = tipo === 'despesa' ? '' : 'none';
-  if (subcatWrap) subcatWrap.style.display = tipo === 'despesa' ? '' : 'none';
+  if (catWrap) catWrap.style.display = '';
+  if (subcatWrap) subcatWrap.style.display = '';
 }
 
 function salvarLancamento(editId) {
@@ -4099,7 +4099,7 @@ function salvarLancamento(editId) {
   var data = document.getElementById('lanc-data').value;
   var valor = parseCurrency(document.getElementById('lanc-valor').value);
   var desc = document.getElementById('lanc-desc').value.trim();
-  var cat = tipo === 'despesa' ? document.getElementById('lanc-cat').value : '';
+  var cat = document.getElementById('lanc-cat') ? document.getElementById('lanc-cat').value : '';
   var subcat = document.getElementById('lanc-subcat') ? document.getElementById('lanc-subcat').value : '';
   var pag = document.getElementById('lanc-pag').value;
 
