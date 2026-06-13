@@ -4059,7 +4059,16 @@ function openLancamentoModal(editId) {
 
   var tipoOptions = '<option value="despesa">Despesa</option><option value="entrada">Entrada</option><option value="poupanca">Poupan\u00e7a</option>';
 
-  var subcatOptions = items.map(function(it) { return '<option value="' + it.nome + '">' + it.nome + '</option>'; }).join('');
+  // Gera opcoes de subcategoria filtradas por tipo
+  function getSubcatOptionsForTipo(tipo) {
+    var filtered = items.filter(function(it) {
+      if (tipo === 'entrada') return it.tipo === 'entrada';
+      if (tipo === 'poupanca') return it.subtipo === 'poupanca';
+      return it.subtipo === 'despesa';
+    });
+    return filtered.map(function(it) { return '<option value="' + it.nome + '">' + it.nome + '</option>'; }).join('');
+  }
+  var subcatOptions = getSubcatOptionsForTipo('despesa');
 
   var html = '<div class="modal-overlay open" id="lancamento-modal" onclick="if(event.target===this)this.classList.remove(\'open\')">';
   html += '<div class="modal" style="max-width:550px;">';
@@ -4070,7 +4079,7 @@ function openLancamentoModal(editId) {
   html += '<div class="field" style="margin-top:0.75rem;"><label>Descri\u00e7\u00e3o</label><input type="text" id="lanc-desc" value="' + (lanc ? lanc.descricao : '') + '" placeholder="Ex: Supermercado"></div>';
   html += '<div class="row" style="margin-top:0.75rem;"><div class="field" id="lanc-cat-wrap"><label>Categoria</label><select id="lanc-cat">' + catOptions + '</select></div>';
   html += '<div class="field" id="lanc-subcat-wrap"><label>Subcategoria (item)</label><select id="lanc-subcat"><option value="">\u2014</option>' + subcatOptions + '</select></div></div>';
-  html += '<div class="field" style="margin-top:0.75rem;"><label>Forma de Pagamento</label><select id="lanc-pag"><option value="">\u2014</option>' + pagOptions + '</select></div>';
+  html += '<div class="field" id="lanc-pag-wrap" style="margin-top:0.75rem;"><label>Forma de Pagamento</label><select id="lanc-pag"><option value="">\u2014</option>' + pagOptions + '</select></div>';
   html += '<div style="margin-top:1.5rem;text-align:right;"><button class="btn btn-primary" onclick="salvarLancamento(\'' + (editId || '') + '\')">Salvar</button></div>';
   html += '</div></div>';
 
@@ -4087,11 +4096,37 @@ function openLancamentoModal(editId) {
 function editLancamento(id) { openLancamentoModal(id); }
 
 function toggleLancCat() {
-  // Categoria e subcategoria sempre visiveis independente do tipo
+  var tipo = document.getElementById('lanc-tipo').value;
   var catWrap = document.getElementById('lanc-cat-wrap');
   var subcatWrap = document.getElementById('lanc-subcat-wrap');
-  if (catWrap) catWrap.style.display = '';
+  var pagWrap = document.getElementById('lanc-pag-wrap');
+
+  if (tipo === 'despesa') {
+    // Despesa: mostra Categoria + Subcategoria + Forma de Pagamento
+    if (catWrap) catWrap.style.display = '';
+    if (pagWrap) pagWrap.style.display = '';
+  } else {
+    // Entrada/Poupanca: esconde Categoria e Forma de Pagamento
+    if (catWrap) catWrap.style.display = 'none';
+    if (pagWrap) pagWrap.style.display = 'none';
+  }
+  // Subcategoria (item) sempre visivel
   if (subcatWrap) subcatWrap.style.display = '';
+
+  // Atualizar lista de subcategorias filtrada pelo tipo
+  var subcatSelect = document.getElementById('lanc-subcat');
+  if (subcatSelect) {
+    var currentVal = subcatSelect.value;
+    var filtered = items.filter(function(it) {
+      if (tipo === 'entrada') return it.tipo === 'entrada';
+      if (tipo === 'poupanca') return it.subtipo === 'poupanca';
+      return it.subtipo === 'despesa';
+    });
+    var opts = '<option value="">\u2014</option>';
+    filtered.forEach(function(it) { opts += '<option value="' + it.nome + '">' + it.nome + '</option>'; });
+    subcatSelect.innerHTML = opts;
+    subcatSelect.value = currentVal;
+  }
 }
 
 function salvarLancamento(editId) {
@@ -4099,9 +4134,9 @@ function salvarLancamento(editId) {
   var data = document.getElementById('lanc-data').value;
   var valor = parseCurrency(document.getElementById('lanc-valor').value);
   var desc = document.getElementById('lanc-desc').value.trim();
-  var cat = document.getElementById('lanc-cat') ? document.getElementById('lanc-cat').value : '';
+  var cat = (tipo === 'despesa' && document.getElementById('lanc-cat')) ? document.getElementById('lanc-cat').value : '';
   var subcat = document.getElementById('lanc-subcat') ? document.getElementById('lanc-subcat').value : '';
-  var pag = document.getElementById('lanc-pag').value;
+  var pag = (tipo === 'despesa' && document.getElementById('lanc-pag')) ? document.getElementById('lanc-pag').value : '';
 
   if (!data || !valor) { alert('Preencha data e valor.'); return; }
 
