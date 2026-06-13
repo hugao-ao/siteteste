@@ -222,21 +222,16 @@
                 
                 // Se tem URL de retorno customizada, usar ela
                 if (retornoUrl) {
-                    // Se começa com /, é caminho absoluto - usar direto
-                    if (retornoUrl.startsWith('/')) {
-                        window.location.href = retornoUrl;
+                    const currentPath = window.location.pathname;
+                    let redirectPath = '';
+                    if (currentPath.includes('/ferramentas/')) {
+                        redirectPath = '../../' + retornoUrl;
+                    } else if (currentPath.includes('/archives_clients/')) {
+                        redirectPath = '../' + retornoUrl;
                     } else {
-                        const currentPath = window.location.pathname;
-                        let redirectPath = '';
-                        if (currentPath.includes('/ferramentas/')) {
-                            redirectPath = '../../' + retornoUrl;
-                        } else if (currentPath.includes('/archives_clients/')) {
-                            redirectPath = '../' + retornoUrl;
-                        } else {
-                            redirectPath = retornoUrl;
-                        }
-                        window.location.href = redirectPath;
+                        redirectPath = retornoUrl;
                     }
+                    window.location.href = redirectPath;
                 } else {
                     // Redirecionar de volta para a página de detalhes do cliente
                     const currentPath = window.location.pathname;
@@ -266,7 +261,175 @@
             particScript.src = basePath2 + 'assets/particularidades.js';
             document.body.appendChild(particScript);
         }
+
+        // 8. Plano de Referencia como janela flutuante (apenas equipe em modo cliente)
+        if (isEquipeModoCliente) {
+            const navPlan = document.getElementById('nav-plan');
+            if (navPlan) {
+                navPlan.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    openPlanoFlutuante(basePath);
+                });
+            }
+        }
     });
+
+    // === PLANO FLUTUANTE ===
+    function openPlanoFlutuante(basePath) {
+        // Se ja existe, apenas restaurar
+        let container = document.getElementById('plano-flutuante-container');
+        if (container) {
+            container.style.display = 'flex';
+            container.classList.remove('minimizado');
+            return;
+        }
+
+        // Injetar CSS
+        const style = document.createElement('style');
+        style.textContent = `
+            #plano-flutuante-container {
+                position: fixed;
+                top: 60px;
+                left: 50%;
+                transform: translateX(-50%);
+                width: 700px;
+                height: 500px;
+                min-width: 350px;
+                min-height: 250px;
+                max-width: 95vw;
+                max-height: 85vh;
+                background: #1a1a2e;
+                border: 1px solid rgba(212, 175, 55, 0.4);
+                border-radius: 12px;
+                box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+                display: flex;
+                flex-direction: column;
+                z-index: 99999;
+                resize: both;
+                overflow: hidden;
+            }
+            #plano-flutuante-container.minimizado {
+                height: 42px !important;
+                width: 300px !important;
+                min-height: 42px;
+                resize: none;
+                top: auto !important;
+                bottom: 20px;
+                left: 20px;
+                transform: none;
+                border-radius: 8px;
+            }
+            #plano-flutuante-container.minimizado .plano-flutuante-body {
+                display: none;
+            }
+            #plano-flutuante-container.minimizado .plano-flutuante-header {
+                border-radius: 8px;
+            }
+            .plano-flutuante-header {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                padding: 8px 14px;
+                background: rgba(212, 175, 55, 0.15);
+                border-bottom: 1px solid rgba(212, 175, 55, 0.3);
+                cursor: move;
+                user-select: none;
+                flex-shrink: 0;
+            }
+            .plano-flutuante-header h3 {
+                margin: 0;
+                font-size: 0.9rem;
+                color: #d4af37;
+                font-weight: 600;
+            }
+            .plano-flutuante-header-btns {
+                display: flex;
+                gap: 6px;
+            }
+            .plano-flutuante-header-btns button {
+                background: none;
+                border: 1px solid rgba(255,255,255,0.2);
+                color: #ccc;
+                width: 26px;
+                height: 26px;
+                border-radius: 6px;
+                cursor: pointer;
+                font-size: 0.85rem;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                transition: all 0.2s;
+            }
+            .plano-flutuante-header-btns button:hover {
+                background: rgba(255,255,255,0.1);
+                color: #fff;
+            }
+            .plano-flutuante-body {
+                flex: 1;
+                overflow: hidden;
+            }
+            .plano-flutuante-body iframe {
+                width: 100%;
+                height: 100%;
+                border: none;
+            }
+        `;
+        document.head.appendChild(style);
+
+        // Criar container
+        container = document.createElement('div');
+        container.id = 'plano-flutuante-container';
+        container.innerHTML = `
+            <div class="plano-flutuante-header" id="plano-flutuante-drag">
+                <h3>Plano de Refer\u00eancia</h3>
+                <div class="plano-flutuante-header-btns">
+                    <button id="plano-flutuante-min" title="Minimizar">_</button>
+                    <button id="plano-flutuante-close" title="Fechar">\u2715</button>
+                </div>
+            </div>
+            <div class="plano-flutuante-body">
+                <iframe src="${basePath}plano.html?embed=1"></iframe>
+            </div>
+        `;
+        document.body.appendChild(container);
+
+        // Botao minimizar
+        document.getElementById('plano-flutuante-min').addEventListener('click', function() {
+            container.classList.toggle('minimizado');
+        });
+
+        // Botao fechar
+        document.getElementById('plano-flutuante-close').addEventListener('click', function() {
+            container.style.display = 'none';
+        });
+
+        // Drag (mover a janela)
+        const header = document.getElementById('plano-flutuante-drag');
+        let isDragging = false, offsetX = 0, offsetY = 0;
+
+        header.addEventListener('mousedown', function(e) {
+            if (e.target.tagName === 'BUTTON') return;
+            isDragging = true;
+            const rect = container.getBoundingClientRect();
+            offsetX = e.clientX - rect.left;
+            offsetY = e.clientY - rect.top;
+            container.style.transform = 'none';
+            container.style.left = rect.left + 'px';
+            container.style.top = rect.top + 'px';
+            document.body.style.userSelect = 'none';
+        });
+
+        document.addEventListener('mousemove', function(e) {
+            if (!isDragging) return;
+            container.style.left = (e.clientX - offsetX) + 'px';
+            container.style.top = (e.clientY - offsetY) + 'px';
+        });
+
+        document.addEventListener('mouseup', function() {
+            isDragging = false;
+            document.body.style.userSelect = '';
+        });
+    }
 
     async function checkAuth(client) {
         try {
