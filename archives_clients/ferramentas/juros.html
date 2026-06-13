@@ -509,6 +509,11 @@
   .client-locked input, .client-locked select, .client-locked textarea { pointer-events:none !important; opacity:0.6; }
   .client-locked button { pointer-events:none !important; opacity:0.5; }
   .client-locked [onclick*="voltarParaLista"] { pointer-events:auto !important; opacity:1 !important; }
+  .client-locked .tab-btn { pointer-events:auto !important; opacity:1 !important; }
+  .client-locked [onclick*="switchTab"] { pointer-events:auto !important; opacity:1 !important; }
+  .client-locked [onclick*="toggleComp"] { pointer-events:auto !important; opacity:1 !important; }
+  .client-locked [onclick*="expandStrat"] { pointer-events:auto !important; opacity:1 !important; }
+  .client-locked [onclick*="toggleSimCard"] { pointer-events:auto !important; opacity:1 !important; }
 
 </style>
 </head>
@@ -4044,6 +4049,16 @@ function _applyJurosClientLockMode(locked) {
     editor.querySelectorAll('input, select, textarea, button, div[onclick], [onclick]').forEach(function(el) {
       if (el.getAttribute('onclick') && el.getAttribute('onclick').indexOf('voltarParaLista') >= 0) return;
       if (el.classList.contains('btn-save-global')) return;
+      // Permitir navegação entre abas e botões de visualização
+      if (el.classList.contains('tab-btn')) return;
+      var oc = el.getAttribute('onclick') || '';
+      if (oc.indexOf('switchTab') >= 0) return;
+      if (oc.indexOf('toggleComp') >= 0) return;
+      if (oc.indexOf('expandStrat') >= 0) return;
+      if (oc.indexOf('toggleSimCard') >= 0) return;
+      if (oc.indexOf('compRenderList') >= 0) return;
+      if (oc.indexOf('stratRenderList') >= 0) return;
+      if (oc.indexOf('analisePopulate') >= 0) return;
       el.disabled = true;
       el.style.pointerEvents = 'none';
       el.style.opacity = '0.5';
@@ -4076,6 +4091,7 @@ function duplicarAnalise(id) {
   copy.id = Date.now();
   copy.nome = orig.nome + ' (copia)';
   copy.updatedAt = new Date().toISOString();
+  copy.locked = false;
   _jurosSimulacoes.push(copy);
   _saveJurosSimulacoes();
   _renderJurosList();
