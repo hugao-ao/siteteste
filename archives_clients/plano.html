@@ -702,5 +702,21 @@ document.getElementById('modal-rec').addEventListener('click', function(e) {
 // Iniciar
 init();
 </script>
+<script>
+// Modo embed: esconde sidebar e ajusta layout quando carregado em iframe
+(function() {
+  var params = new URLSearchParams(window.location.search);
+  if (params.get('embed') === '1') {
+    document.addEventListener('DOMContentLoaded', function() {
+      var sidebar = document.getElementById('sidebar-container');
+      if (sidebar) sidebar.style.display = 'none';
+      var main = document.querySelector('.main-content');
+      if (main) { main.style.marginLeft = '0'; main.style.padding = '1rem'; }
+      var header = document.querySelector('header');
+      if (header) header.style.display = 'none';
+    });
+  }
+})();
+</script>
 </body>
 </html>
