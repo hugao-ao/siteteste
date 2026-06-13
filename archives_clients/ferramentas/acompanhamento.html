@@ -1510,8 +1510,23 @@ function renderObjetivos() {
   }
   var html = '<div class="obj-grid">';
   objetivos.forEach(function(o, i) {
-    var progresso = (o.valor && o.valor > 0) ? Math.min((parseBR(o.atual) / parseBR(o.valor)) * 100, 100) : 0;
-    var barColor = o.status === 'concluido' ? 'var(--green)' : o.status === 'pausado' ? 'var(--orange)' : 'var(--primary)';
+    var metaVal = parseBR(o.valor);
+    var atualVal = parseBR(o.atual);
+    var isInverso = metaVal > 0 && atualVal > metaVal;
+    var progresso = 0;
+    if (o.valor && metaVal > 0) {
+      if (isInverso) {
+        var inicio = atualVal;
+        if (Array.isArray(o.atualizacoes_valor) && o.atualizacoes_valor.length > 0) {
+          inicio = parseBR(o.atualizacoes_valor[0].valor);
+          if (inicio <= metaVal) inicio = atualVal;
+        }
+        progresso = inicio > metaVal ? Math.min(((inicio - atualVal) / (inicio - metaVal)) * 100, 100) : 0;
+      } else {
+        progresso = Math.min((atualVal / metaVal) * 100, 100);
+      }
+    }
+    var barColor = o.status === 'concluido' ? 'var(--green)' : o.status === 'pausado' ? 'var(--orange)' : isInverso ? 'var(--orange)' : 'var(--primary)';
     html += '<div class="obj-card">';
     html += '<div class="obj-header">';
     html += '<div class="obj-name">' + escHtml(o.nome) + '</div>';
@@ -1529,7 +1544,8 @@ function renderObjetivos() {
     html += '</div>';
     if (o.valor > 0) {
       html += '<div class="obj-progress-bar"><div class="obj-progress-fill" style="width:' + progresso.toFixed(1) + '%;background:' + barColor + ';"></div></div>';
-      html += '<div class="obj-details"><span>' + fmtBRL(o.atual) + ' de ' + fmtBRL(o.valor) + '</span><span>' + progresso.toFixed(0) + '%</span></div>';
+      var labelDir = isInverso ? fmtBRL(o.atual) + ' \u2192 ' + fmtBRL(o.valor) : fmtBRL(o.atual) + ' de ' + fmtBRL(o.valor);
+      html += '<div class="obj-details"><span>' + labelDir + '</span><span>' + progresso.toFixed(0) + '%</span></div>';
     }
     if (o.prazo) html += '<div style="font-size:0.72rem;color:var(--muted);margin-top:0.4rem;">Prazo: ' + fmtData(o.prazo) + '</div>';
     if (o.obs) html += '<div style="font-size:0.78rem;color:var(--muted);margin-top:0.4rem;line-height:1.4;">' + escHtml(o.obs) + '</div>';
@@ -1722,7 +1738,20 @@ function renderDashboard() {
   var countProg = 0;
   objetivos.forEach(function(o) {
     if (o.valor > 0 && o.status === 'em_andamento') {
-      totalProg += Math.min((parseBR(o.atual) / parseBR(o.valor)) * 100, 100);
+      var metaD = parseBR(o.valor);
+      var atualD = parseBR(o.atual);
+      var progD = 0;
+      if (atualD > metaD) {
+        var inicioD = atualD;
+        if (Array.isArray(o.atualizacoes_valor) && o.atualizacoes_valor.length > 0) {
+          inicioD = parseBR(o.atualizacoes_valor[0].valor);
+          if (inicioD <= metaD) inicioD = atualD;
+        }
+        progD = inicioD > metaD ? Math.min(((inicioD - atualD) / (inicioD - metaD)) * 100, 100) : 0;
+      } else {
+        progD = Math.min((atualD / metaD) * 100, 100);
+      }
+      totalProg += progD;
       countProg++;
     }
   });
@@ -1788,8 +1817,22 @@ function renderNextMeeting() {
   // Objetivos em andamento
   var objAtivos = objetivos.filter(function(o){ return o.status === 'em_andamento'; });
   objAtivos.forEach(function(o) {
-    var prog = o.valor > 0 ? Math.min((parseBR(o.atual) / parseBR(o.valor)) * 100, 100) : 0;
-    items.push('Atualizar progresso: ' + o.nome + ' (' + prog.toFixed(0) + '% atual)');
+    var metaS = parseBR(o.valor);
+    var atualS = parseBR(o.atual);
+    var progS = 0;
+    if (metaS > 0) {
+      if (atualS > metaS) {
+        var inicioS = atualS;
+        if (Array.isArray(o.atualizacoes_valor) && o.atualizacoes_valor.length > 0) {
+          inicioS = parseBR(o.atualizacoes_valor[0].valor);
+          if (inicioS <= metaS) inicioS = atualS;
+        }
+        progS = inicioS > metaS ? Math.min(((inicioS - atualS) / (inicioS - metaS)) * 100, 100) : 0;
+      } else {
+        progS = Math.min((atualS / metaS) * 100, 100);
+      }
+    }
+    items.push('Atualizar progresso: ' + o.nome + ' (' + progS.toFixed(0) + '% atual)');
   });
 
   // Macro passos em andamento
@@ -2407,8 +2450,18 @@ function renderCronoObjetivos() {
     if (obj.valor && parseBR(obj.valor) > 0) {
       var atual = parseBR(obj.atual || '0');
       var meta = parseBR(obj.valor);
-      progress = Math.min((atual / meta) * 100, 100);
-      progressLabel = fmtBRL(atual) + ' / ' + fmtBRL(meta) + ' (' + progress.toFixed(0) + '%)';
+      if (atual > meta) {
+        var inicioC = atual;
+        if (Array.isArray(obj.atualizacoes_valor) && obj.atualizacoes_valor.length > 0) {
+          inicioC = parseBR(obj.atualizacoes_valor[0].valor);
+          if (inicioC <= meta) inicioC = atual;
+        }
+        progress = inicioC > meta ? Math.min(((inicioC - atual) / (inicioC - meta)) * 100, 100) : 0;
+        progressLabel = fmtBRL(atual) + ' \u2192 ' + fmtBRL(meta) + ' (' + progress.toFixed(0) + '%)';
+      } else {
+        progress = Math.min((atual / meta) * 100, 100);
+        progressLabel = fmtBRL(atual) + ' / ' + fmtBRL(meta) + ' (' + progress.toFixed(0) + '%)';
+      }
     } else {
       // Progress by associated micro passos
       var associatedMicros = microPassos.filter(function(m) {
