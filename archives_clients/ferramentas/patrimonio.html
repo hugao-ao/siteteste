@@ -521,6 +521,7 @@ function openAtivoModal(tipo, id) {
     html += `</div>`;
   } else {
     html += `<div class="field" style="margin-top:0.75rem;"><label>Descrição / Observações</label><textarea id="at-desc" rows="2" placeholder="Detalhes adicionais...">${ativo ? (ativo.descricao || '') : ''}</textarea></div>`;
+    html += `<div class="field" style="margin-top:0.75rem;"><label>Objetivo Vinculado</label><select id="at-objetivo"><option value="">Nenhum</option></select></div>`;
   }
   html += `</div>`;
 
@@ -538,8 +539,8 @@ function openAtivoModal(tipo, id) {
   document.getElementById('modal-ativo-content').innerHTML = html;
   openModal('modal-ativo');
 
-  // Carregar objetivos do acompanhamento
-  if (tipo === 'liquido') loadObjetivos(ativo);
+  // Carregar objetivos do acompanhamento (todos os tipos)
+  loadObjetivos(ativo);
 }
 
 async function loadObjetivos(ativo) {
@@ -555,6 +556,25 @@ async function loadObjetivos(ativo) {
         opt.value = obj.id;
         opt.textContent = obj.nome;
         if (ativo && ativo.objetivo_id === obj.id) opt.selected = true;
+        sel.appendChild(opt);
+      });
+    }
+  } catch (e) { console.log('Objetivos não carregados:', e); }
+}
+
+async function loadObjetivosDivida(divida) {
+  const sel = document.getElementById('dv-objetivo');
+  if (!sel) return;
+  try {
+    const clienteId = sessionStorage.getItem('cliente_id');
+    if (!clienteId) return;
+    const { data } = await sb.from('ferramentas_dados').select('dados').eq('cliente_id', clienteId).eq('ferramenta', 'acompanhamento').maybeSingle();
+    if (data && data.dados && data.dados.objetivos) {
+      data.dados.objetivos.forEach(obj => {
+        const opt = document.createElement('option');
+        opt.value = obj.id;
+        opt.textContent = obj.nome;
+        if (divida && divida.objetivo_id === obj.id) opt.selected = true;
         sel.appendChild(opt);
       });
     }
@@ -585,6 +605,7 @@ function salvarAtivo() {
     obj.objetivo_id = document.getElementById('at-objetivo')?.value || '';
   } else {
     obj.descricao = document.getElementById('at-desc')?.value || '';
+    obj.objetivo_id = document.getElementById('at-objetivo')?.value || '';
   }
 
   if (editingAtivoId) {
@@ -623,10 +644,12 @@ function openDividaModal(id) {
   html += `<div class="field"><label>Saldo Devedor Atualizado (R$) *</label><input id="dv-saldo" value="${div ? div.saldo.toLocaleString('pt-BR', {minimumFractionDigits:2}) : ''}" oninput="fmtCurrInput(this)" placeholder="0,00"></div>`;
   html += `</div>`;
   html += `<div class="field" style="margin-top:0.75rem;"><label>Observações</label><textarea id="dv-obs" rows="2" placeholder="Opcional">${div ? (div.obs || '') : ''}</textarea></div>`;
+  html += `<div class="field" style="margin-top:0.75rem;"><label>Objetivo Vinculado</label><select id="dv-objetivo"><option value="">Nenhum</option></select></div>`;
   html += `<div class="modal-footer"><button class="btn btn-outline" onclick="closeModal('modal-divida')">Cancelar</button><button class="btn btn-primary" onclick="salvarDivida()">Salvar</button></div>`;
 
   document.getElementById('modal-divida-content').innerHTML = html;
   openModal('modal-divida');
+  loadObjetivosDivida(div);
 }
 
 function salvarDivida() {
@@ -637,7 +660,7 @@ function salvarDivida() {
   const dateObj = state.datas.find(x => x.id === state.selectedDateId);
   if (!dateObj) return;
 
-  const obj = { id: editingDividaId || genId(), nome, saldo, obs: document.getElementById('dv-obs').value.trim() };
+  const obj = { id: editingDividaId || genId(), nome, saldo, obs: document.getElementById('dv-obs').value.trim(), objetivo_id: document.getElementById('dv-objetivo')?.value || '' };
 
   if (editingDividaId) {
     const idx = dateObj.dividas.findIndex(d => d.id === editingDividaId);
