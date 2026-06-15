@@ -325,31 +325,25 @@ const SUPABASE_URL = 'https://nfrwfugnmrlbyciusyqx.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5mcndmdWdubXJsYnljaXVzeXF4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQ4MjIxNjMsImV4cCI6MjA2MDM5ODE2M30.kV1VVSZMBOl5GtGFzMGXMO4VSNclSEVFKJnOlY4xWMY';
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-// ---- CLASSIFICAÇÃO DE RISCO (10 níveis HV) ----
+// ---- CLASSIFICAÇÃO DE RISCO (7 níveis HV) ----
 const CLASSIFICACAO_RISCO = {
-  'RISCO_MUITO_BAIXO_GARANTIA_SOBERANA': { label: 'Risco Muito Baixo (Garantia Soberana)', cor: '#006400', ordem: 1 },
-  'RISCO_MUITO_BAIXO_GARANTIA_FGC': { label: 'Risco Muito Baixo (Garantia FGC)', cor: '#228B22', ordem: 2 },
-  'RISCO_BAIXO_GARANTIA_FGC': { label: 'Risco Baixo (Garantia FGC)', cor: '#32CD32', ordem: 3 },
-  'RISCO_BAIXO_SEM_GARANTIA': { label: 'Risco Baixo', cor: '#90EE90', ordem: 4 },
-  'RISCO_MEDIO_SEM_GARANTIA': { label: 'Risco Médio', cor: '#FFD700', ordem: 5 },
-  'RISCO_ALTO_PROTECAO_MRP': { label: 'Risco Alto (Proteção MRP)', cor: '#FFA500', ordem: 6 },
-  'RISCO_ALTO_SEM_GARANTIA': { label: 'Risco Alto', cor: '#FF8C00', ordem: 7 },
-  'RISCO_MUITO_ALTO_PROTECAO_MRP': { label: 'Risco Muito Alto (Proteção MRP)', cor: '#FF6347', ordem: 8 },
-  'RISCO_MUITO_ALTO_SEM_GARANTIA': { label: 'Risco Muito Alto', cor: '#DC143C', ordem: 9 },
-  'RISCO_ABSOLUTO_SEM_GARANTIA': { label: 'Risco Absoluto', cor: '#8B0000', ordem: 10 }
+  'RISCO_MUITO_BAIXO': { label: 'Risco Muito Baixo', cor: '#006400', ordem: 1 },
+  'RISCO_BAIXO': { label: 'Risco Baixo', cor: '#228B22', ordem: 2 },
+  'RISCO_MEDIO_BAIXO': { label: 'Risco Médio-Baixo', cor: '#32CD32', ordem: 3 },
+  'RISCO_MEDIO': { label: 'Risco Médio', cor: '#FFD700', ordem: 4 },
+  'RISCO_MEDIO_ALTO': { label: 'Risco Médio-Alto', cor: '#FFA500', ordem: 5 },
+  'RISCO_ALTO': { label: 'Risco Alto', cor: '#FF6347', ordem: 6 },
+  'RISCO_MUITO_ALTO': { label: 'Risco Muito Alto', cor: '#DC143C', ordem: 7 }
 };
 
 const RISCO_HELP = {
-  'RISCO_MUITO_BAIXO_GARANTIA_SOBERANA': 'Tesouro Direto (Selic, IPCA+, Prefixado). Garantia do Governo Federal.',
-  'RISCO_MUITO_BAIXO_GARANTIA_FGC': 'CDB, LCI, LCA, LC de bancos grandes com cobertura FGC (até R$250k por CPF/instituição).',
-  'RISCO_BAIXO_GARANTIA_FGC': 'CDB, LCI, LCA de bancos médios/pequenos com cobertura FGC. Maior rentabilidade, mesmo FGC.',
-  'RISCO_BAIXO_SEM_GARANTIA': 'Debêntures incentivadas (infraestrutura), CRI, CRA de empresas sólidas. Sem FGC.',
-  'RISCO_MEDIO_SEM_GARANTIA': 'Fundos multimercado conservadores, fundos imobiliários (FIIs) de tijolo diversificados.',
-  'RISCO_ALTO_PROTECAO_MRP': 'Ações de empresas sólidas (blue chips), ETFs de índice. Proteção via MRP (Margem de Risco Prudente).',
-  'RISCO_ALTO_SEM_GARANTIA': 'Ações mid/small caps, fundos de ações concentrados, BDRs.',
-  'RISCO_MUITO_ALTO_PROTECAO_MRP': 'Opções com estratégias de proteção, operações estruturadas com hedge.',
-  'RISCO_MUITO_ALTO_SEM_GARANTIA': 'Day trade, swing trade agressivo, criptomoedas consolidadas (BTC, ETH).',
-  'RISCO_ABSOLUTO_SEM_GARANTIA': 'Criptomoedas altcoins, NFTs, startups (equity crowdfunding), empréstimos P2P.'
+  'RISCO_MUITO_BAIXO': 'Tesouro Direto (Selic, IPCA+, Prefixado). Garantia do Governo Federal.',
+  'RISCO_BAIXO': 'CDB, LCI, LCA, LC de bancos grandes e médios com cobertura FGC (até R$250k por CPF/instituição).',
+  'RISCO_MEDIO_BAIXO': 'Debêntures incentivadas (infraestrutura), CRI, CRA de empresas sólidas, fundos de renda fixa crédito privado.',
+  'RISCO_MEDIO': 'Fundos multimercado conservadores, fundos imobiliários (FIIs) de tijolo diversificados, previdência multimercado.',
+  'RISCO_MEDIO_ALTO': 'Ações de empresas sólidas (blue chips), ETFs de índice (BOVA11, IVVB11), fundos de ações diversificados.',
+  'RISCO_ALTO': 'Ações mid/small caps, fundos de ações concentrados, BDRs, criptomoedas consolidadas (BTC, ETH), operações estruturadas.',
+  'RISCO_MUITO_ALTO': 'Day trade, swing trade agressivo, opções, criptomoedas altcoins, NFTs, startups (equity crowdfunding), empréstimos P2P.'
 };
 
 // ---- STATE ----
@@ -924,30 +918,33 @@ const PERFIS_INVESTIDOR = [
 ];
 
 const ALOCACAO_IDEAL_POR_PERFIL = {
-  1: { nome:'Ultra-Conservador', alocacao:{'RISCO_MUITO_BAIXO_GARANTIA_SOBERANA':100,'RISCO_MUITO_BAIXO_GARANTIA_FGC':0,'RISCO_BAIXO_GARANTIA_FGC':0,'RISCO_MEDIO_SEM_GARANTIA':0,'RISCO_ALTO_SEM_GARANTIA':0,'RISCO_MUITO_ALTO_SEM_GARANTIA':0,'RISCO_ABSOLUTO_SEM_GARANTIA':0} },
-  2: { nome:'Conservador', alocacao:{'RISCO_MUITO_BAIXO_GARANTIA_SOBERANA':50,'RISCO_MUITO_BAIXO_GARANTIA_FGC':40,'RISCO_BAIXO_GARANTIA_FGC':10,'RISCO_MEDIO_SEM_GARANTIA':0,'RISCO_ALTO_SEM_GARANTIA':0,'RISCO_MUITO_ALTO_SEM_GARANTIA':0,'RISCO_ABSOLUTO_SEM_GARANTIA':0} },
-  3: { nome:'Conservador-Moderado', alocacao:{'RISCO_MUITO_BAIXO_GARANTIA_SOBERANA':35,'RISCO_MUITO_BAIXO_GARANTIA_FGC':25,'RISCO_BAIXO_GARANTIA_FGC':10,'RISCO_MEDIO_SEM_GARANTIA':20,'RISCO_ALTO_SEM_GARANTIA':10,'RISCO_MUITO_ALTO_SEM_GARANTIA':0,'RISCO_ABSOLUTO_SEM_GARANTIA':0} },
-  4: { nome:'Moderado', alocacao:{'RISCO_MUITO_BAIXO_GARANTIA_SOBERANA':15,'RISCO_MUITO_BAIXO_GARANTIA_FGC':15,'RISCO_BAIXO_GARANTIA_FGC':10,'RISCO_MEDIO_SEM_GARANTIA':30,'RISCO_ALTO_SEM_GARANTIA':30,'RISCO_MUITO_ALTO_SEM_GARANTIA':0,'RISCO_ABSOLUTO_SEM_GARANTIA':0} },
-  5: { nome:'Moderado-Arrojado', alocacao:{'RISCO_MUITO_BAIXO_GARANTIA_SOBERANA':10,'RISCO_MUITO_BAIXO_GARANTIA_FGC':5,'RISCO_BAIXO_GARANTIA_FGC':0,'RISCO_MEDIO_SEM_GARANTIA':25,'RISCO_ALTO_SEM_GARANTIA':50,'RISCO_MUITO_ALTO_SEM_GARANTIA':10,'RISCO_ABSOLUTO_SEM_GARANTIA':0} },
-  6: { nome:'Arrojado', alocacao:{'RISCO_MUITO_BAIXO_GARANTIA_SOBERANA':5,'RISCO_MUITO_BAIXO_GARANTIA_FGC':0,'RISCO_BAIXO_GARANTIA_FGC':0,'RISCO_MEDIO_SEM_GARANTIA':15,'RISCO_ALTO_SEM_GARANTIA':60,'RISCO_MUITO_ALTO_SEM_GARANTIA':20,'RISCO_ABSOLUTO_SEM_GARANTIA':0} },
-  7: { nome:'Ultra-Arrojado', alocacao:{'RISCO_MUITO_BAIXO_GARANTIA_SOBERANA':5,'RISCO_MUITO_BAIXO_GARANTIA_FGC':0,'RISCO_BAIXO_GARANTIA_FGC':0,'RISCO_MEDIO_SEM_GARANTIA':5,'RISCO_ALTO_SEM_GARANTIA':45,'RISCO_MUITO_ALTO_SEM_GARANTIA':40,'RISCO_ABSOLUTO_SEM_GARANTIA':5} }
+  1: { nome:'Ultra-Conservador', alocacao:{'RISCO_MUITO_BAIXO':80,'RISCO_BAIXO':20,'RISCO_MEDIO_BAIXO':0,'RISCO_MEDIO':0,'RISCO_MEDIO_ALTO':0,'RISCO_ALTO':0,'RISCO_MUITO_ALTO':0} },
+  2: { nome:'Conservador', alocacao:{'RISCO_MUITO_BAIXO':55,'RISCO_BAIXO':30,'RISCO_MEDIO_BAIXO':10,'RISCO_MEDIO':5,'RISCO_MEDIO_ALTO':0,'RISCO_ALTO':0,'RISCO_MUITO_ALTO':0} },
+  3: { nome:'Conservador-Moderado', alocacao:{'RISCO_MUITO_BAIXO':35,'RISCO_BAIXO':25,'RISCO_MEDIO_BAIXO':15,'RISCO_MEDIO':15,'RISCO_MEDIO_ALTO':10,'RISCO_ALTO':0,'RISCO_MUITO_ALTO':0} },
+  4: { nome:'Moderado', alocacao:{'RISCO_MUITO_BAIXO':20,'RISCO_BAIXO':15,'RISCO_MEDIO_BAIXO':15,'RISCO_MEDIO':20,'RISCO_MEDIO_ALTO':20,'RISCO_ALTO':10,'RISCO_MUITO_ALTO':0} },
+  5: { nome:'Moderado-Arrojado', alocacao:{'RISCO_MUITO_BAIXO':10,'RISCO_BAIXO':10,'RISCO_MEDIO_BAIXO':10,'RISCO_MEDIO':20,'RISCO_MEDIO_ALTO':25,'RISCO_ALTO':20,'RISCO_MUITO_ALTO':5} },
+  6: { nome:'Arrojado', alocacao:{'RISCO_MUITO_BAIXO':5,'RISCO_BAIXO':10,'RISCO_MEDIO_BAIXO':5,'RISCO_MEDIO':15,'RISCO_MEDIO_ALTO':20,'RISCO_ALTO':30,'RISCO_MUITO_ALTO':15} },
+  7: { nome:'Ultra-Arrojado', alocacao:{'RISCO_MUITO_BAIXO':5,'RISCO_BAIXO':10,'RISCO_MEDIO_BAIXO':5,'RISCO_MEDIO':10,'RISCO_MEDIO_ALTO':15,'RISCO_ALTO':30,'RISCO_MUITO_ALTO':25} }
 };
 
-// Map 10-level patrimonio CLASSIFICACAO_RISCO to 7-level suitability buckets
-function _mapRiscoTo7(risco10) {
-  const map = {
-    'RISCO_MUITO_BAIXO_GARANTIA_SOBERANA': 'RISCO_MUITO_BAIXO_GARANTIA_SOBERANA',
-    'RISCO_MUITO_BAIXO_GARANTIA_FGC': 'RISCO_MUITO_BAIXO_GARANTIA_FGC',
-    'RISCO_BAIXO_GARANTIA_FGC': 'RISCO_BAIXO_GARANTIA_FGC',
-    'RISCO_BAIXO_SEM_GARANTIA': 'RISCO_BAIXO_GARANTIA_FGC',
-    'RISCO_MEDIO_SEM_GARANTIA': 'RISCO_MEDIO_SEM_GARANTIA',
-    'RISCO_ALTO_PROTECAO_MRP': 'RISCO_ALTO_SEM_GARANTIA',
-    'RISCO_ALTO_SEM_GARANTIA': 'RISCO_ALTO_SEM_GARANTIA',
-    'RISCO_MUITO_ALTO_PROTECAO_MRP': 'RISCO_MUITO_ALTO_SEM_GARANTIA',
-    'RISCO_MUITO_ALTO_SEM_GARANTIA': 'RISCO_MUITO_ALTO_SEM_GARANTIA',
-    'RISCO_ABSOLUTO_SEM_GARANTIA': 'RISCO_ABSOLUTO_SEM_GARANTIA'
+// Map risk keys (including legacy 10-level) to new 7-level buckets
+function _mapRiscoTo7(risco) {
+  // Se já é uma chave válida do novo sistema, retorna direto
+  if (CLASSIFICACAO_RISCO[risco]) return risco;
+  // Mapeamento de chaves legadas (sistema antigo de 10 níveis)
+  const legacyMap = {
+    'RISCO_MUITO_BAIXO_GARANTIA_SOBERANA': 'RISCO_MUITO_BAIXO',
+    'RISCO_MUITO_BAIXO_GARANTIA_FGC': 'RISCO_BAIXO',
+    'RISCO_BAIXO_GARANTIA_FGC': 'RISCO_BAIXO',
+    'RISCO_BAIXO_SEM_GARANTIA': 'RISCO_MEDIO_BAIXO',
+    'RISCO_MEDIO_SEM_GARANTIA': 'RISCO_MEDIO',
+    'RISCO_ALTO_PROTECAO_MRP': 'RISCO_MEDIO_ALTO',
+    'RISCO_ALTO_SEM_GARANTIA': 'RISCO_ALTO',
+    'RISCO_MUITO_ALTO_PROTECAO_MRP': 'RISCO_ALTO',
+    'RISCO_MUITO_ALTO_SEM_GARANTIA': 'RISCO_MUITO_ALTO',
+    'RISCO_ABSOLUTO_SEM_GARANTIA': 'RISCO_MUITO_ALTO'
   };
-  return map[risco10] || 'RISCO_MEDIO_SEM_GARANTIA';
+  return legacyMap[risco] || 'RISCO_MEDIO';
 }
 
 function calcularPerfilInvestidor(respostas) {
@@ -998,13 +995,13 @@ function renderRiskDistribution() {
 
   // Build table
   const RISCO_LABELS_7 = {
-    'RISCO_MUITO_BAIXO_GARANTIA_SOBERANA': { label:'Muito Baixo (Soberana)', cor:'#006400' },
-    'RISCO_MUITO_BAIXO_GARANTIA_FGC': { label:'Muito Baixo (FGC)', cor:'#228B22' },
-    'RISCO_BAIXO_GARANTIA_FGC': { label:'Baixo (FGC)', cor:'#32CD32' },
-    'RISCO_MEDIO_SEM_GARANTIA': { label:'Médio', cor:'#FFD700' },
-    'RISCO_ALTO_SEM_GARANTIA': { label:'Alto', cor:'#FF8C00' },
-    'RISCO_MUITO_ALTO_SEM_GARANTIA': { label:'Muito Alto', cor:'#DC143C' },
-    'RISCO_ABSOLUTO_SEM_GARANTIA': { label:'Absoluto', cor:'#8B0000' }
+    'RISCO_MUITO_BAIXO': { label:'Muito Baixo', cor:'#006400' },
+    'RISCO_BAIXO': { label:'Baixo', cor:'#228B22' },
+    'RISCO_MEDIO_BAIXO': { label:'Médio-Baixo', cor:'#32CD32' },
+    'RISCO_MEDIO': { label:'Médio', cor:'#FFD700' },
+    'RISCO_MEDIO_ALTO': { label:'Médio-Alto', cor:'#FFA500' },
+    'RISCO_ALTO': { label:'Alto', cor:'#FF6347' },
+    'RISCO_MUITO_ALTO': { label:'Muito Alto', cor:'#DC143C' }
   };
   let html = '<div class="table-wrap"><table><thead><tr><th>Nível de Risco</th><th>Valor</th><th>% Real</th>' + (idealAlloc ? '<th>% Ideal</th><th>Desvio</th>' : '') + '</tr></thead><tbody>';
   Object.keys(RISCO_LABELS_7).forEach(k => {
@@ -1144,8 +1141,10 @@ document.addEventListener('importarDiagnostico', function(e) {
   itens.forEach(function(item) {
     var tipoAtivo = (item.tipo_ativo || 'INVESTIMENTO').toUpperCase();
     var listKey = 'ativos_liquidos';
-    if (tipoAtivo === 'IMOVEL' || tipoAtivo === 'VEICULO') listKey = 'ativos_fisicos';
-    else if (tipoAtivo === 'OUTRO') listKey = 'ativos_intangiveis';
+    if (tipoAtivo === 'IMOVEL' || tipoAtivo === 'VEICULO' || tipoAtivo === 'OUTRO') {
+      // Patrimônio físico: se marcado como intangível no diagnóstico, vai para intangíveis
+      listKey = item.intangivel ? 'ativos_intangiveis' : 'ativos_fisicos';
+    }
 
     var novoAtivo = {
       id: genId(),
@@ -1159,7 +1158,7 @@ document.addEventListener('importarDiagnostico', function(e) {
       novoAtivo.instituicao_id = '';
       novoAtivo.instituicao_nome = item.instituicao_nome || '';
       novoAtivo.categoria = item.categoria || '';
-      // Try to map classificacao_risco from diagnostico to our 10-level system
+      // Map classificacao_risco from diagnostico to our 7-level system
       novoAtivo.risco = _inferRiscoFromObs(item.observacoes || '', item.classificacao_risco || '');
       novoAtivo.objetivo_id = '';
     } else {
@@ -1189,22 +1188,25 @@ document.addEventListener('importarDiagnostico', function(e) {
 // Helper to infer risco from diagnostico observacoes field
 function _inferRiscoFromObs(obs, classRisco) {
   if (classRisco) {
-    // Direct match to our keys
+    // Direct match to our keys (new system)
     if (CLASSIFICACAO_RISCO[classRisco]) return classRisco;
-    // Try partial match
+    // Map legacy keys via _mapRiscoTo7
+    var mapped = _mapRiscoTo7(classRisco);
+    if (mapped && CLASSIFICACAO_RISCO[mapped]) return mapped;
+    // Try partial match by text
     var lower = classRisco.toLowerCase();
-    if (lower.includes('soberana')) return 'RISCO_MUITO_BAIXO_GARANTIA_SOBERANA';
-    if (lower.includes('fgc') && lower.includes('muito')) return 'RISCO_MUITO_BAIXO_GARANTIA_FGC';
-    if (lower.includes('fgc') && lower.includes('baixo')) return 'RISCO_BAIXO_GARANTIA_FGC';
-    if (lower.includes('baixo')) return 'RISCO_BAIXO_SEM_GARANTIA';
-    if (lower.includes('m\u00e9dio') || lower.includes('medio')) return 'RISCO_MEDIO_SEM_GARANTIA';
-    if (lower.includes('muito alto')) return 'RISCO_MUITO_ALTO_SEM_GARANTIA';
-    if (lower.includes('alto')) return 'RISCO_ALTO_SEM_GARANTIA';
-    if (lower.includes('absoluto')) return 'RISCO_ABSOLUTO_SEM_GARANTIA';
+    if (lower.includes('muito baixo') || lower.includes('soberana')) return 'RISCO_MUITO_BAIXO';
+    if (lower.includes('médio-baixo') || lower.includes('medio-baixo') || lower.includes('medio baixo')) return 'RISCO_MEDIO_BAIXO';
+    if (lower.includes('médio-alto') || lower.includes('medio-alto') || lower.includes('medio alto')) return 'RISCO_MEDIO_ALTO';
+    if (lower.includes('muito alto')) return 'RISCO_MUITO_ALTO';
+    if (lower.includes('baixo')) return 'RISCO_BAIXO';
+    if (lower.includes('médio') || lower.includes('medio')) return 'RISCO_MEDIO';
+    if (lower.includes('alto')) return 'RISCO_ALTO';
+    if (lower.includes('absoluto')) return 'RISCO_MUITO_ALTO';
   }
   // Try from observacoes text
-  if (obs.includes('Classifica\u00e7\u00e3o:')) {
-    var match = obs.match(/Classifica\u00e7\u00e3o:\s*([^.]+)/);
+  if (obs.includes('Classificação:')) {
+    var match = obs.match(/Classificação:\s*([^.]+)/);
     if (match && match[1] && match[1].trim() !== 'N/I') {
       return _inferRiscoFromObs('', match[1].trim());
     }
