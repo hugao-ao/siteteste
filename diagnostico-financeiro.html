@@ -3367,6 +3367,16 @@ console.log('=== FIM DEBUG PESSOAS COM RENDA ===');
               ${patrimonio.quitado ? '<span class="status-badge status-quitado">Quitado</span>' : '<span class="status-badge status-financiado">Financiado</span>'}
             </h4>
             <div class="patrimonio-actions">
+              <div style="display: flex; align-items: center; gap: 0.3rem; margin-right: 0.5rem;" title="Marcar como Intangível (ex: direitos autorais, marcas, patentes)">
+                <input type="checkbox" 
+                       id="${patrimonioId}_intangivel" 
+                       ${patrimonio.intangivel ? 'checked' : ''}
+                       onchange="updatePatrimonioIntangivel(${index})"
+                       style="width: 16px; height: 16px; cursor: pointer; accent-color: #a78bfa;">
+                <label for="${patrimonioId}_intangivel" style="cursor: pointer; margin: 0; font-size: 0.7rem; color: #a78bfa; white-space: nowrap;">
+                  Intangível
+                </label>
+              </div>
               <button type="button" class="edit-btn" onclick="editPatrimonio(${index})">
                 <i class="fas fa-edit"></i>
               </button>
@@ -3513,7 +3523,8 @@ console.log('=== FIM DEBUG PESSOAS COM RENDA ===');
         seguro_vencimento: '',
         saldo_devedor: 0,
         proprietarios: [],
-        inventariavel: true
+        inventariavel: true,
+        intangivel: false
       };
       
       patrimonios.push(novoPatrimonio);
@@ -3672,6 +3683,15 @@ console.log('=== FIM DEBUG PESSOAS COM RENDA ===');
       }
     }
 
+    function updatePatrimonioIntangivel(index) {
+      const patrimonioId = `patrimonio_${index}`;
+      const checkbox = document.getElementById(`${patrimonioId}_intangivel`);
+      
+      if (checkbox && patrimonios[index]) {
+        patrimonios[index].intangivel = checkbox.checked;
+      }
+    }
+
     function renderPatrimonios() {
       patrimoniosContainer.innerHTML = '';
       
@@ -3759,6 +3779,7 @@ console.log('=== FIM DEBUG PESSOAS COM RENDA ===');
     window.updatePatrimonioProprietarios = updatePatrimonioProprietarios;
     window.updatePatrimonioSaldoDevedor = updatePatrimonioSaldoDevedor;
     window.updatePatrimonioInventariavel = updatePatrimonioInventariavel;
+    window.updatePatrimonioIntangivel = updatePatrimonioIntangivel;
     window.updateAllPatrimoniosProprietarios = updateAllPatrimoniosProprietarios;
     
     function formatName(name) {
@@ -4230,7 +4251,9 @@ console.log('=== FIM DEBUG PESSOAS COM RENDA ===');
           seguro: document.getElementById(`${patrimonioId}_seguro`)?.value === 'true',
           seguro_vencimento: document.getElementById(`${patrimonioId}_seguro_vencimento`)?.value || '',
           saldo_devedor: parseMoeda(document.getElementById(`${patrimonioId}_saldo_devedor`)?.value || '0'),
-          proprietarios: patrimonio.proprietarios || []
+          proprietarios: patrimonio.proprietarios || [],
+          inventariavel: patrimonio.inventariavel !== false,
+          intangivel: patrimonio.intangivel || false
         };
         
         // Validar campos obrigatórios para patrimônios
