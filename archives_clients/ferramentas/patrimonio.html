@@ -226,6 +226,7 @@ tbody td{padding:0.6rem 0.75rem;font-size:0.85rem;vertical-align:middle;}
         <div class="toolbar">
           <span style="font-size:0.8rem;color:var(--muted);">Saldo devedor atualizado de cada dívida</span>
           <div class="spacer"></div>
+          <button class="btn btn-sm" style="background:var(--blue);color:#fff;margin-right:0.5rem;" onclick="importarDividas()" title="Importar dívidas da Análise de Juros ou Diagnóstico">&#128229; Importar Dívidas</button>
           <button class="btn btn-primary btn-sm" onclick="openDividaModal()">+ Adicionar</button>
         </div>
         <div id="tbl-dividas"></div>
@@ -1122,6 +1123,90 @@ async function init() {
 document.addEventListener('DOMContentLoaded', () => {
   setTimeout(init, 300);
 });
+
+// === IMPORTAR DÍVIDAS (Juros primary > Diagnóstico fallback) ===
+async function importarDividas() {
+  const clienteId = sessionStorage.getItem('cliente_id');
+  if (!clienteId) { alert('Nenhum cliente selecionado.'); return; }
+
+  const dateObj = state.datas.find(x => x.id === state.selectedDateId);
+  if (!dateObj) { alert('Crie pelo menos uma data antes de importar.'); return; }
+
+  let dividasImportadas = [];
+  let fonte = '';
+
+  try {
+    // 1. Tentar buscar da ferramenta de Juros (simulação marcada como primary)
+    const resJuros = await sb.from('ferramentas_dados').select('dados').eq('cliente_id', clienteId).eq('ferramenta', 'dividas').maybeSingle();
+    if (resJuros.data && resJuros.data.dados) {
+      const dados = resJuros.data.dados;
+      let simulacoes = [];
+      if (Array.isArray(dados.simulacoes)) {
+        simulacoes = dados.simulacoes;
+      } else if (dados.dividasAtuais) {
+        // Formato legado (simulação única)
+        simulacoes = [{ id: 1, primary: true, payload: dados }];
+      }
+
+      // Buscar simulação marcada como primary
+      let simRef = simulacoes.find(s => s.primary === true);
+      // Se nenhuma for primary, usar a mais recente
+      if (!simRef && simulacoes.length > 0) {
+        simRef = simulacoes.sort((a, b) => new Date(b.updatedAt || 0) - new Date(a.updatedAt || 0))[0];
+      }
+
+      if (simRef && simRef.payload && Array.isArray(simRef.payload.dividasAtuais) && simRef.payload.dividasAtuais.length > 0) {
+        dividasImportadas = simRef.payload.dividasAtuais.map(d => ({
+          nome: d.nome || 'Dívida importada',
+          saldo: d.saldoDevedor || 0
+        })).filter(d => d.saldo > 0);
+        fonte = 'Análise de Juros' + (simRef.nome ? ' (' + simRef.nome + ')' : '');
+      }
+    }
+
+    // 2. Se não encontrou no Juros, buscar no Diagnóstico
+    if (dividasImportadas.length === 0) {
+      const resDiag = await sb.from('diagnosticos_financeiros').select('dividas').eq('cliente_id', clienteId).maybeSingle();
+      if (resDiag.data && resDiag.data.dividas) {
+        let dividas = resDiag.data.dividas;
+        if (typeof dividas === 'string') dividas = JSON.parse(dividas);
+        if (Array.isArray(dividas) && dividas.length > 0) {
+          dividasImportadas = dividas.map(d => ({
+            nome: d.motivo || d.credor || 'Dívida importada',
+            saldo: d.saldo_devedor || 0
+          })).filter(d => d.saldo > 0);
+          fonte = 'Diagnóstico Financeiro';
+        }
+      }
+    }
+  } catch (e) {
+    console.error('Erro ao importar dívidas:', e);
+    alert('Erro ao buscar dívidas. Verifique a conexão.');
+    return;
+  }
+
+  if (dividasImportadas.length === 0) {
+    alert('Nenhuma dívida encontrada na Análise de Juros nem no Diagnóstico Financeiro deste cliente.');
+    return;
+  }
+
+  // Confirmar importação
+  if (!confirm(dividasImportadas.length + ' dívida(s) encontrada(s) em: ' + fonte + '.\n\nDeseja importar?')) return;
+
+  // Adicionar ao dateObj
+  dividasImportadas.forEach(d => {
+    dateObj.dividas.push({
+      id: genId(),
+      nome: d.nome,
+      saldo: d.saldo,
+      obs: 'Importado de: ' + fonte
+    });
+  });
+
+  renderAll();
+  saveToSupabase();
+  alert(dividasImportadas.length + ' dívida(s) importada(s) com sucesso de: ' + fonte);
+}
 
 // === HANDLER IMPORTAR DIAGNÓSTICO ===
 document.addEventListener('importarDiagnostico', function(e) {
