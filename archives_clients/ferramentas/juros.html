@@ -514,6 +514,12 @@
   .client-locked [onclick*="toggleComp"] { pointer-events:auto !important; opacity:1 !important; }
   .client-locked [onclick*="expandStrat"] { pointer-events:auto !important; opacity:1 !important; }
   .client-locked [onclick*="toggleSimCard"] { pointer-events:auto !important; opacity:1 !important; }
+  .client-locked [onclick*="analiseGerar"] { pointer-events:auto !important; opacity:1 !important; }
+  .client-locked .analise-check-item { pointer-events:auto !important; opacity:1 !important; }
+  /* Toda a aba Análise Combinada fica interativa mesmo com bloqueio */
+  .client-locked #tab-analise button { pointer-events:auto !important; opacity:1 !important; }
+  .client-locked #tab-analise .analise-check-item { pointer-events:auto !important; opacity:1 !important; cursor:pointer !important; }
+  .client-locked #tab-analise div[onclick] { pointer-events:auto !important; opacity:1 !important; }
 
 </style>
 </head>
@@ -4051,6 +4057,8 @@ function _applyJurosClientLockMode(locked) {
       if (el.classList.contains('btn-save-global')) return;
       // Permitir navegação entre abas e botões de visualização
       if (el.classList.contains('tab-btn')) return;
+      // Toda a aba Análise Combinada fica interativa
+      if (el.closest && el.closest('#tab-analise')) return;
       var oc = el.getAttribute('onclick') || '';
       if (oc.indexOf('switchTab') >= 0) return;
       if (oc.indexOf('toggleComp') >= 0) return;
@@ -4059,6 +4067,8 @@ function _applyJurosClientLockMode(locked) {
       if (oc.indexOf('compRenderList') >= 0) return;
       if (oc.indexOf('stratRenderList') >= 0) return;
       if (oc.indexOf('analisePopulate') >= 0) return;
+      if (oc.indexOf('analiseGerar') >= 0) return;
+      if (el.classList.contains('analise-check-item')) return;
       el.disabled = true;
       el.style.pointerEvents = 'none';
       el.style.opacity = '0.5';
