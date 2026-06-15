@@ -16,99 +16,99 @@ let respostasSuitability = {}; // { 'Nome da Pessoa': { A1: 3, A2: 4, ... } }
 
 // Mapeamento de classificação de risco (7 níveis)
 const CLASSIFICACAO_RISCO = {
-  'RISCO_MUITO_BAIXO_GARANTIA_SOBERANA': { label: 'Risco Muito Baixo (Garantia Soberana)', cor: '#006400', ordem: 1 },
-  'RISCO_MUITO_BAIXO_GARANTIA_FGC': { label: 'Risco Muito Baixo (Garantia FGC)', cor: '#228B22', ordem: 2 },
-  'RISCO_BAIXO_GARANTIA_FGC': { label: 'Risco Baixo (Garantia FGC)', cor: '#32CD32', ordem: 3 },
-  'RISCO_MEDIO_SEM_GARANTIA': { label: 'Risco Médio', cor: '#FFD700', ordem: 4 },
-  'RISCO_ALTO_SEM_GARANTIA': { label: 'Risco Alto', cor: '#FF8C00', ordem: 5 },
-  'RISCO_MUITO_ALTO_SEM_GARANTIA': { label: 'Risco Muito Alto', cor: '#DC143C', ordem: 6 },
-  'RISCO_ABSOLUTO_SEM_GARANTIA': { label: 'Risco Absoluto', cor: '#8B0000', ordem: 7 }
+  'RISCO_MUITO_BAIXO': { label: 'Risco Muito Baixo', cor: '#006400', ordem: 1 },
+  'RISCO_BAIXO': { label: 'Risco Baixo', cor: '#228B22', ordem: 2 },
+  'RISCO_MEDIO_BAIXO': { label: 'Risco Médio-Baixo', cor: '#32CD32', ordem: 3 },
+  'RISCO_MEDIO': { label: 'Risco Médio', cor: '#FFD700', ordem: 4 },
+  'RISCO_MEDIO_ALTO': { label: 'Risco Médio-Alto', cor: '#FFA500', ordem: 5 },
+  'RISCO_ALTO': { label: 'Risco Alto', cor: '#FF6347', ordem: 6 },
+  'RISCO_MUITO_ALTO': { label: 'Risco Muito Alto', cor: '#DC143C', ordem: 7 }
 };
 
-// Alocação ideal por perfil de investidor (baseado no documento 7 Perfis)
+// Alocação ideal por perfil de investidor (7 níveis de risco)
 const ALOCACAO_IDEAL_POR_PERFIL = {
   1: { // Ultra-Conservador
     nome: 'Ultra-Conservador',
     alocacao: {
-      'RISCO_MUITO_BAIXO_GARANTIA_SOBERANA': 100,
-      'RISCO_MUITO_BAIXO_GARANTIA_FGC': 0,
-      'RISCO_BAIXO_GARANTIA_FGC': 0,
-      'RISCO_MEDIO_SEM_GARANTIA': 0,
-      'RISCO_ALTO_SEM_GARANTIA': 0,
-      'RISCO_MUITO_ALTO_SEM_GARANTIA': 0,
-      'RISCO_ABSOLUTO_SEM_GARANTIA': 0
+      'RISCO_MUITO_BAIXO': 80,
+      'RISCO_BAIXO': 20,
+      'RISCO_MEDIO_BAIXO': 0,
+      'RISCO_MEDIO': 0,
+      'RISCO_MEDIO_ALTO': 0,
+      'RISCO_ALTO': 0,
+      'RISCO_MUITO_ALTO': 0
     }
   },
   2: { // Conservador
     nome: 'Conservador',
     alocacao: {
-      'RISCO_MUITO_BAIXO_GARANTIA_SOBERANA': 50,
-      'RISCO_MUITO_BAIXO_GARANTIA_FGC': 40,
-      'RISCO_BAIXO_GARANTIA_FGC': 10,
-      'RISCO_MEDIO_SEM_GARANTIA': 0,
-      'RISCO_ALTO_SEM_GARANTIA': 0,
-      'RISCO_MUITO_ALTO_SEM_GARANTIA': 0,
-      'RISCO_ABSOLUTO_SEM_GARANTIA': 0
+      'RISCO_MUITO_BAIXO': 55,
+      'RISCO_BAIXO': 30,
+      'RISCO_MEDIO_BAIXO': 10,
+      'RISCO_MEDIO': 5,
+      'RISCO_MEDIO_ALTO': 0,
+      'RISCO_ALTO': 0,
+      'RISCO_MUITO_ALTO': 0
     }
   },
   3: { // Conservador-Moderado
     nome: 'Conservador-Moderado',
     alocacao: {
-      'RISCO_MUITO_BAIXO_GARANTIA_SOBERANA': 35,
-      'RISCO_MUITO_BAIXO_GARANTIA_FGC': 25,
-      'RISCO_BAIXO_GARANTIA_FGC': 10,
-      'RISCO_MEDIO_SEM_GARANTIA': 20,
-      'RISCO_ALTO_SEM_GARANTIA': 10,
-      'RISCO_MUITO_ALTO_SEM_GARANTIA': 0,
-      'RISCO_ABSOLUTO_SEM_GARANTIA': 0
+      'RISCO_MUITO_BAIXO': 35,
+      'RISCO_BAIXO': 25,
+      'RISCO_MEDIO_BAIXO': 15,
+      'RISCO_MEDIO': 15,
+      'RISCO_MEDIO_ALTO': 10,
+      'RISCO_ALTO': 0,
+      'RISCO_MUITO_ALTO': 0
     }
   },
   4: { // Moderado
     nome: 'Moderado',
     alocacao: {
-      'RISCO_MUITO_BAIXO_GARANTIA_SOBERANA': 15,
-      'RISCO_MUITO_BAIXO_GARANTIA_FGC': 15,
-      'RISCO_BAIXO_GARANTIA_FGC': 10,
-      'RISCO_MEDIO_SEM_GARANTIA': 30,
-      'RISCO_ALTO_SEM_GARANTIA': 30,
-      'RISCO_MUITO_ALTO_SEM_GARANTIA': 0,
-      'RISCO_ABSOLUTO_SEM_GARANTIA': 0
+      'RISCO_MUITO_BAIXO': 20,
+      'RISCO_BAIXO': 15,
+      'RISCO_MEDIO_BAIXO': 15,
+      'RISCO_MEDIO': 20,
+      'RISCO_MEDIO_ALTO': 20,
+      'RISCO_ALTO': 10,
+      'RISCO_MUITO_ALTO': 0
     }
   },
   5: { // Moderado-Arrojado
     nome: 'Moderado-Arrojado',
     alocacao: {
-      'RISCO_MUITO_BAIXO_GARANTIA_SOBERANA': 10,
-      'RISCO_MUITO_BAIXO_GARANTIA_FGC': 5,
-      'RISCO_BAIXO_GARANTIA_FGC': 0,
-      'RISCO_MEDIO_SEM_GARANTIA': 25,
-      'RISCO_ALTO_SEM_GARANTIA': 50,
-      'RISCO_MUITO_ALTO_SEM_GARANTIA': 10,
-      'RISCO_ABSOLUTO_SEM_GARANTIA': 0
+      'RISCO_MUITO_BAIXO': 10,
+      'RISCO_BAIXO': 10,
+      'RISCO_MEDIO_BAIXO': 10,
+      'RISCO_MEDIO': 20,
+      'RISCO_MEDIO_ALTO': 25,
+      'RISCO_ALTO': 20,
+      'RISCO_MUITO_ALTO': 5
     }
   },
   6: { // Arrojado
     nome: 'Arrojado',
     alocacao: {
-      'RISCO_MUITO_BAIXO_GARANTIA_SOBERANA': 5,
-      'RISCO_MUITO_BAIXO_GARANTIA_FGC': 0,
-      'RISCO_BAIXO_GARANTIA_FGC': 0,
-      'RISCO_MEDIO_SEM_GARANTIA': 15,
-      'RISCO_ALTO_SEM_GARANTIA': 60,
-      'RISCO_MUITO_ALTO_SEM_GARANTIA': 20,
-      'RISCO_ABSOLUTO_SEM_GARANTIA': 0
+      'RISCO_MUITO_BAIXO': 5,
+      'RISCO_BAIXO': 10,
+      'RISCO_MEDIO_BAIXO': 5,
+      'RISCO_MEDIO': 15,
+      'RISCO_MEDIO_ALTO': 20,
+      'RISCO_ALTO': 30,
+      'RISCO_MUITO_ALTO': 15
     }
   },
   7: { // Ultra-Arrojado
     nome: 'Ultra-Arrojado',
     alocacao: {
-      'RISCO_MUITO_BAIXO_GARANTIA_SOBERANA': 5,
-      'RISCO_MUITO_BAIXO_GARANTIA_FGC': 0,
-      'RISCO_BAIXO_GARANTIA_FGC': 0,
-      'RISCO_MEDIO_SEM_GARANTIA': 5,
-      'RISCO_ALTO_SEM_GARANTIA': 45,
-      'RISCO_MUITO_ALTO_SEM_GARANTIA': 40,
-      'RISCO_ABSOLUTO_SEM_GARANTIA': 5
+      'RISCO_MUITO_BAIXO': 5,
+      'RISCO_BAIXO': 10,
+      'RISCO_MEDIO_BAIXO': 5,
+      'RISCO_MEDIO': 10,
+      'RISCO_MEDIO_ALTO': 15,
+      'RISCO_ALTO': 30,
+      'RISCO_MUITO_ALTO': 25
     }
   }
 };
