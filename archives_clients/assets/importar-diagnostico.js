@@ -282,6 +282,7 @@
         aporte_mensal: 0,
         taxa_retorno_anual: 0,
         liquidez: 'baixo',
+        intangivel: pf.intangivel || false,
         observacoes: `Quitado: ${pf.quitado ? 'Sim' : 'Não'}. Seguro: ${pf.seguro ? 'Sim' : 'Não'}. Saldo devedor: R$ ${pf.saldo_devedor || 0}`
       }));
 
