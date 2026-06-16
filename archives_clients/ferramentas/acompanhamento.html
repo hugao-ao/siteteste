@@ -169,6 +169,20 @@
   .next-meeting .nm-item { font-size: 0.85rem; color: var(--fg); padding-left: 1rem; position: relative; }
   .next-meeting .nm-item::before { content: '▸'; position: absolute; left: 0; color: var(--primary); }
 
+  /* Próxima reunião agendada */
+  .proxima-reuniao-box { background: linear-gradient(135deg, rgba(76,175,80,0.1), rgba(76,175,80,0.03)); border: 1px solid var(--green); border-radius: var(--radius); padding: 1.2rem 1.5rem; margin-bottom: 1.5rem; display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+  .proxima-reuniao-box .pr-info { display: flex; align-items: center; gap: 0.8rem; }
+  .proxima-reuniao-box .pr-icon { font-size: 1.4rem; }
+  .proxima-reuniao-box .pr-data { font-size: 1rem; font-weight: 600; color: var(--green); }
+  .proxima-reuniao-box .pr-obs { font-size: 0.82rem; color: var(--muted); margin-top: 0.2rem; }
+  .proxima-reuniao-box .pr-actions { display: flex; gap: 0.5rem; }
+  .proxima-reuniao-box .pr-actions button { background: none; border: none; cursor: pointer; font-size: 0.9rem; padding: 0.3rem; border-radius: 4px; }
+  .proxima-reuniao-box .pr-actions button:hover { background: rgba(255,255,255,0.1); }
+  .proxima-reuniao-box.pr-empty { border-style: dashed; opacity: 0.7; justify-content: center; }
+  .proxima-reuniao-box.pr-empty .pr-add-btn { background: var(--green); color: #fff; border: none; padding: 0.4rem 1rem; border-radius: 6px; cursor: pointer; font-size: 0.85rem; font-weight: 500; }
+  .proxima-reuniao-box.pr-empty .pr-add-btn:hover { opacity: 0.85; }
+  .locked .proxima-reuniao-box .pr-actions { display: none; }
+
   /* Table */
   .table-wrap { overflow-x: auto; border-radius: var(--radius); border: 1px solid var(--border); }
   table { width: 100%; border-collapse: collapse; }
@@ -325,7 +339,12 @@
     </div>
   </div>
 
-  <!-- PRÓXIMA REUNIÃO -->
+  <!-- PRÓXIMA REUNIÃO AGENDADA (editável pelo consultor, visível pelo cliente) -->
+  <div class="proxima-reuniao-box pr-empty" id="proxima-reuniao-box">
+    <button class="pr-add-btn" onclick="openProximaReuniao()">📅 Agendar Próxima Reunião</button>
+  </div>
+
+  <!-- PRÓXIMA REUNIÃO (sugestões automáticas) -->
   <div class="next-meeting" id="next-meeting-section" style="display:none;">
     <h3>Agenda Sugerida para Próxima Reunião</h3>
     <div class="nm-items" id="next-meeting-items"></div>
@@ -1855,6 +1874,88 @@ function renderNextMeeting() {
   wrap.innerHTML = items.map(function(it){ return '<div class="nm-item">' + escHtml(it) + '</div>'; }).join('');
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+//  PRÓXIMA REUNIÃO AGENDADA
+// ═══════════════════════════════════════════════════════════════════════════
+var proximaReuniao = null; // { data: 'YYYY-MM-DD', obs: '' }
+
+function openProximaReuniao() {
+  var dataAtual = proximaReuniao ? proximaReuniao.data : '';
+  var obsAtual = proximaReuniao ? proximaReuniao.obs : '';
+  var html = '<div style="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:center;justify-content:center;" id="pr-modal-overlay">';
+  html += '<div style="background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:1.5rem;width:90%;max-width:400px;">';
+  html += '<h3 style="color:var(--primary);margin:0 0 1rem;">📅 Próxima Reunião</h3>';
+  html += '<label style="font-size:0.8rem;color:var(--muted);display:block;margin-bottom:0.3rem;">Data:</label>';
+  html += '<input type="date" id="pr-data" value="' + dataAtual + '" style="width:100%;padding:0.5rem;border-radius:6px;border:1px solid var(--border);background:var(--bg);color:var(--fg);margin-bottom:0.8rem;">';
+  html += '<label style="font-size:0.8rem;color:var(--muted);display:block;margin-bottom:0.3rem;">Observação (opcional):</label>';
+  html += '<input type="text" id="pr-obs" value="' + escHtml(obsAtual) + '" placeholder="Ex: Revisão trimestral" style="width:100%;padding:0.5rem;border-radius:6px;border:1px solid var(--border);background:var(--bg);color:var(--fg);margin-bottom:1rem;">';
+  html += '<div style="display:flex;gap:0.5rem;justify-content:flex-end;">';
+  html += '<button onclick="closeProximaReuniao()" style="padding:0.4rem 1rem;border-radius:6px;border:1px solid var(--border);background:none;color:var(--fg);cursor:pointer;">Cancelar</button>';
+  html += '<button onclick="salvarProximaReuniao()" style="padding:0.4rem 1rem;border-radius:6px;border:none;background:var(--green);color:#fff;cursor:pointer;font-weight:500;">Salvar</button>';
+  html += '</div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function closeProximaReuniao() {
+  var overlay = document.getElementById('pr-modal-overlay');
+  if (overlay) overlay.remove();
+}
+
+function salvarProximaReuniao() {
+  var data = document.getElementById('pr-data').value;
+  if (!data) { alert('Informe a data da próxima reunião.'); return; }
+  var obs = document.getElementById('pr-obs').value.trim();
+  proximaReuniao = { data: data, obs: obs };
+  closeProximaReuniao();
+  renderProximaReuniao();
+  saveData();
+}
+
+function excluirProximaReuniao() {
+  if (!confirm('Remover agendamento da próxima reunião?')) return;
+  proximaReuniao = null;
+  renderProximaReuniao();
+  saveData();
+}
+
+function renderProximaReuniao() {
+  var box = document.getElementById('proxima-reuniao-box');
+  if (!box) return;
+  var isClient = !document.documentElement.classList.contains('equipe-mode');
+  if (!proximaReuniao) {
+    if (isClient && _acompLocked) {
+      box.style.display = 'none';
+    } else {
+      box.style.display = '';
+      box.className = 'proxima-reuniao-box pr-empty';
+      box.innerHTML = '<button class="pr-add-btn" onclick="openProximaReuniao()">📅 Agendar Próxima Reunião</button>';
+    }
+    return;
+  }
+  box.style.display = '';
+  box.className = 'proxima-reuniao-box';
+  var d = proximaReuniao.data.split('-');
+  var dataFmt = d[2] + '/' + d[1] + '/' + d[0];
+  var hoje = new Date(); hoje.setHours(0,0,0,0);
+  var reuniaoDate = new Date(proximaReuniao.data + 'T00:00:00');
+  var diffDias = Math.round((reuniaoDate - hoje) / 86400000);
+  var diffTxt = '';
+  if (diffDias === 0) diffTxt = '(Hoje!)';
+  else if (diffDias === 1) diffTxt = '(Amanhã)';
+  else if (diffDias > 1) diffTxt = '(em ' + diffDias + ' dias)';
+  else diffTxt = '(' + Math.abs(diffDias) + ' dia(s) atrás)';
+  var html = '<div class="pr-info">';
+  html += '<span class="pr-icon">📅</span>';
+  html += '<div><div class="pr-data">' + dataFmt + ' ' + diffTxt + '</div>';
+  if (proximaReuniao.obs) html += '<div class="pr-obs">' + escHtml(proximaReuniao.obs) + '</div>';
+  html += '</div></div>';
+  html += '<div class="pr-actions">';
+  html += '<button onclick="openProximaReuniao()" title="Editar">✏️</button>';
+  html += '<button onclick="excluirProximaReuniao()" title="Excluir" style="color:var(--red);">🗑️</button>';
+  html += '</div>';
+  box.innerHTML = html;
+}
+
 function renderAll() {
   renderReunioesTimeline();
   renderObjetivos();
@@ -1864,6 +1965,7 @@ function renderAll() {
   renderDashboard();
   renderChart();
   renderNextMeeting();
+  renderProximaReuniao();
   if (currentTab === 'cronograma') renderCronograma();
 }
 
@@ -1915,7 +2017,8 @@ function buildPayload() {
     nextId: nextId,
     locked: _acompLocked,
     primary: _acompPrimary,
-    crono_data_inicio: cronoInput ? cronoInput.value : ''
+    crono_data_inicio: cronoInput ? cronoInput.value : '',
+    proximaReuniao: proximaReuniao
   };
 }
 
@@ -1970,6 +2073,10 @@ function applyData(d) {
   if (d.crono_data_inicio) {
     var cronoInput = document.getElementById('crono_data_inicio');
     if (cronoInput) cronoInput.value = d.crono_data_inicio;
+  }
+  // Restore proximaReuniao
+  if (d.proximaReuniao && d.proximaReuniao.data) {
+    proximaReuniao = d.proximaReuniao;
   }
   return hasData;
 }
