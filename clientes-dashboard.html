@@ -288,6 +288,130 @@
     }
     /* --- End Modal Styles --- */
 
+    /* === WhatsApp Action Buttons === */
+    .msg-action-btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      margin-right: 0.4rem;
+      color: var(--theme-secondary-lighter);
+      font-size: 1.1rem;
+      position: relative;
+      opacity: 0.8;
+      transition: opacity 0.2s, color 0.2s;
+      vertical-align: middle;
+    }
+    .msg-action-btn:hover { opacity: 1; color: var(--theme-secondary); }
+    .msg-action-btn .badge {
+      position: absolute;
+      top: -6px; right: -8px;
+      background: #e74c3c;
+      color: white;
+      font-size: 0.6rem;
+      font-weight: bold;
+      width: 14px; height: 14px;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      line-height: 1;
+    }
+
+    /* === Simulação Section === */
+    .simulacao-section {
+      background: linear-gradient(135deg, rgba(218,165,32,0.08), rgba(218,165,32,0.02));
+      border: 1px solid rgba(218,165,32,0.3);
+      border-radius: 8px;
+      padding: 1rem 1.2rem;
+      margin-bottom: 1.5rem;
+    }
+    .simulacao-section label {
+      display: block;
+      font-weight: bold;
+      color: var(--theme-secondary-lighter);
+      margin-bottom: 0.4rem;
+      font-size: 0.9rem;
+    }
+    .simulacao-section .sim-desc {
+      font-size: 0.8rem;
+      color: var(--theme-text-muted);
+      margin-bottom: 0.6rem;
+    }
+    #sim-date {
+      width: 100%;
+      max-width: 280px;
+      padding: 0.6rem 0.8rem;
+      font-size: 1rem;
+      border-radius: 6px;
+      border: 1px solid var(--theme-border-color);
+      background-color: rgba(0,0,0,0.2);
+      color: var(--theme-text-light);
+    }
+    .sim-info {
+      margin-top: 0.5rem;
+      font-size: 0.82rem;
+      color: var(--theme-text-muted);
+      font-style: italic;
+    }
+    .sim-info strong { color: var(--theme-secondary-lighter); }
+
+    /* === Mensagem Modal === */
+    #mensagem-modal .modal-content {
+      max-width: 750px;
+      max-height: 80vh;
+      overflow-y: auto;
+    }
+    #mensagem-modal .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+      border-bottom: 1px solid var(--theme-border-color);
+      padding-bottom: 0.75rem;
+    }
+    #mensagem-modal .modal-header h3 { margin: 0; color: var(--theme-secondary-lighter); }
+    #mensagem-modal .close-msg-modal {
+      background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--theme-text-light);
+    }
+    #mensagem-modal .modal-body textarea {
+      width: 100%;
+      min-height: 200px;
+      padding: 0.75rem;
+      border-radius: 4px;
+      border: 1px solid var(--theme-border-color);
+      background-color: rgba(0,0,0,0.3);
+      color: white;
+      resize: vertical;
+      font-family: monospace;
+      font-size: 0.85rem;
+      line-height: 1.5;
+    }
+    #mensagem-modal .modal-footer {
+      display: flex;
+      justify-content: flex-end;
+      gap: 0.75rem;
+      margin-top: 1rem;
+    }
+    .msg-modal-btn {
+      padding: 0.5rem 1rem;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: 500;
+      border: none;
+    }
+    .msg-cancel-btn {
+      background-color: rgba(255,255,255,0.1);
+      color: var(--theme-text-light);
+      border: 1px solid var(--theme-border-color);
+    }
+    .msg-save-btn {
+      background-color: var(--theme-secondary);
+      color: white;
+    }
+    .msg-generate-btn {
+      background-color: #2ecc71;
+      color: white;
+    }
+    .msg-generate-btn:hover { background-color: #27ae60; }
+
     @media (max-width: 900px) {
         /* Responsive table styles (mantidos) */
         #clients-table thead { display: none; }
@@ -359,6 +483,14 @@
       </form>
     </section>
 
+    <!-- Data de Simulação para Mensagens WhatsApp -->
+    <div class="simulacao-section">
+      <label for="sim-date"><i class="fas fa-calendar-alt"></i> Data de Simulação (Mensagens WhatsApp)</label>
+      <p class="sim-desc">Defina uma data para simular quais clientes receberão mensagens nesse dia. O badge vermelho indica que há conteúdo para enviar.</p>
+      <input type="date" id="sim-date">
+      <div class="sim-info" id="sim-info"></div>
+    </div>
+
     <!-- Tabela de Clientes -->
     <section>
       <h2>Clientes Cadastrados</h2>
@@ -390,6 +522,30 @@
     </section>
 
   </main>
+
+  <!-- Modal de Mensagem WhatsApp -->
+  <div id="mensagem-modal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="msg-modal-cliente-nome">Mensagem para: </h3>
+        <button class="close-msg-modal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div style="margin-bottom:0.8rem;">
+          <label style="font-size:0.85rem;color:var(--theme-text-muted);display:block;margin-bottom:0.3rem;">Saudação deste cliente (salva ao clicar Salvar):</label>
+          <textarea id="saudacao-texto" rows="2" style="width:100%;resize:vertical;min-height:40px;max-height:100px;padding:0.5rem;border-radius:6px;border:1px solid var(--theme-border-color);background:rgba(0,0,0,0.3);color:var(--theme-text-light);font-size:0.9rem;" placeholder="Ex: Aqui é o Hugo da HV Saúde Financeira!"></textarea>
+        </div>
+        <div style="margin-bottom:0.8rem;display:flex;gap:0.5rem;">
+          <button class="msg-modal-btn msg-generate-btn" id="btn-generate-report"><i class="fas fa-magic"></i> Gerar Relatório Automático</button>
+        </div>
+        <textarea id="mensagem-texto" placeholder="Clique em 'Gerar Relatório Automático' ou digite manualmente..."></textarea>
+      </div>
+      <div class="modal-footer">
+        <button class="msg-modal-btn msg-cancel-btn" id="msg-cancel-btn">Cancelar</button>
+        <button class="msg-modal-btn msg-save-btn" id="msg-save-btn">Salvar</button>
+      </div>
+    </div>
+  </div>
 
   <!-- Modal para Visualizar/Excluir Formulários -->
   <div id="forms-modal" class="modal">
