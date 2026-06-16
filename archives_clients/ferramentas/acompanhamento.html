@@ -134,6 +134,8 @@
   /* Micro passos */
   .micro-list { display: flex; flex-direction: column; gap: 0.5rem; }
   .micro-item { display: flex; align-items: flex-start; gap: 0.75rem; background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 0.8rem 1rem; }
+  .micro-item.micro-consultor { border-left: 3px solid var(--primary); background: rgba(212,175,55,0.03); }
+  html:not(.equipe-mode) .equipe-only-field { display: none !important; }
   .micro-check { width: 20px; height: 20px; border-radius: 4px; border: 2px solid var(--border); cursor: pointer; flex-shrink: 0; display: flex; align-items: center; justify-content: center; margin-top: 2px; transition: all 0.15s; }
   .micro-check.done { background: var(--green); border-color: var(--green); }
   .micro-check.done::after { content: '✓'; color: #fff; font-size: 0.7rem; font-weight: 700; }
@@ -723,6 +725,13 @@
           </select>
         </div>
       </div>
+      <div class="field equipe-only-field" style="margin-bottom:0.75rem;padding:0.5rem 0.75rem;border:1px solid var(--border);border-radius:6px;background:rgba(212,175,55,0.05);">
+        <label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer;font-size:0.85rem;">
+          <input type="checkbox" id="mc_consultor" style="width:16px;height:16px;accent-color:var(--primary);flex-shrink:0;">
+          <span style="font-weight:600;color:var(--primary);">Responsabilidade do Consultor</span>
+        </label>
+        <span style="font-size:0.68rem;color:var(--muted);margin-top:0.3rem;display:block;margin-left:1.6rem;">Se marcado, o cliente não poderá editar, excluir ou atualizar este micro passo.</span>
+      </div>
       <div class="field" style="margin-bottom:0.75rem;padding:0.6rem;border:1px solid var(--border);border-radius:6px;">
         <label style="font-weight:600;margin-bottom:0.4rem;display:block;">Vinculado a Objetivo(s)</label>
         <div id="mc_objetivos_checks" style="display:flex;flex-direction:column;gap:0.5rem;margin-top:0.4rem;"></div>
@@ -1010,6 +1019,7 @@ function clearModalFields(tipo) {
     if (el.id && el.id.startsWith(prefix)) {
       if (el.tagName === 'SELECT') el.selectedIndex = 0;
       else if (el.type === 'hidden') { /* skip */ }
+      else if (el.type === 'checkbox') el.checked = false;
       else if (el.type === 'number') el.value = el.id.indexOf('_dur_qty') >= 0 ? '1' : '';
       else el.value = '';
     }
@@ -1054,6 +1064,7 @@ function fillModalFromData(tipo, index) {
     fillPrazoFields('mc', item);
     document.getElementById('mc_status').value = item.status || 'pendente';
     document.getElementById('mc_reuniao').value = item.reuniao_id || '';
+    document.getElementById('mc_consultor').checked = !!item.responsavel_consultor;
     // Check objetivos
     var objIds = item.objetivos_ids || (item.objetivo_id ? [item.objetivo_id] : []);
     document.querySelectorAll('#mc_objetivos_checks input').forEach(function(cb) {
@@ -1310,10 +1321,17 @@ function salvarMicro() {
     objetivo_id: objetivosIds.length === 1 ? objetivosIds[0] : null,
     objetivos_ids: objetivosIds,
     reuniao_id: document.getElementById('mc_reuniao').value || null,
-    dependencias_ids: depsIds
+    dependencias_ids: depsIds,
+    responsavel_consultor: document.getElementById('mc_consultor').checked
   };
-  if (_editMode && _editMode.tipo === 'micro') microPassos[_editMode.index] = item;
-  else microPassos.push(item);
+  // Preserve atualizacoes from existing item on edit
+  if (_editMode && _editMode.tipo === 'micro') {
+    item.atualizacoes = microPassos[_editMode.index].atualizacoes || [];
+    microPassos[_editMode.index] = item;
+  } else {
+    item.atualizacoes = [];
+    microPassos.push(item);
+  }
   closeModal('micro');
   renderAll();
   saveData();
@@ -1358,6 +1376,9 @@ function salvarMacro() {
 // ═══════════════════════════════════════════════════════════════════════════
 function toggleMicroStatus(index) {
   var item = microPassos[index];
+  // Block client from toggling consultor micro passos
+  var _isClientView2 = !document.documentElement.classList.contains('equipe-mode');
+  if (item.responsavel_consultor && _isClientView2) { alert('Este micro passo é responsabilidade do consultor.'); return; }
   if (item.status === 'pendente') item.status = 'em_andamento';
   else if (item.status === 'em_andamento') item.status = 'concluido';
   else item.status = 'pendente';
@@ -1621,9 +1642,13 @@ function renderMicroPassos() {
   var concluidos = sorted.filter(function(g){ return g.item.status === 'concluido'; });
   ativos.sort(function(a,b) { var order = {pendente:0, em_andamento:1}; return (order[a.item.status]||0) - (order[b.item.status]||0); });
 
+  var _isClientView = !document.documentElement.classList.contains('equipe-mode');
+
   function buildMicroCard(g) {
     var m = g.item;
     var i = g.idx;
+    var isConsultor = !!m.responsavel_consultor;
+    var clientBlocked = isConsultor && _isClientView;
     var checkClass = m.status === 'concluido' ? 'done' : m.status === 'em_andamento' ? 'progress' : '';
     var descClass = m.status === 'concluido' ? 'done-text' : '';
     var objNomes = [];
@@ -1634,13 +1659,18 @@ function renderMicroPassos() {
     if (Array.isArray(m.dependencias_ids) && m.dependencias_ids.length > 0) {
       m.dependencias_ids.forEach(function(did) { var dep = microPassos.find(function(x){ return String(x.id) === String(did); }); if (dep) depNomes.push(dep.desc); });
     }
-    var h = '<div class="micro-item">';
-    h += '<div class="micro-check ' + checkClass + '" onclick="toggleMicroStatus(' + i + ')" title="Clique para mudar status"></div>';
+    var h = '<div class="micro-item' + (isConsultor ? ' micro-consultor' : '') + '">';
+    if (clientBlocked) {
+      h += '<div class="micro-check ' + checkClass + '" title="Responsabilidade do consultor" style="cursor:default;opacity:0.6;"></div>';
+    } else {
+      h += '<div class="micro-check ' + checkClass + '" onclick="toggleMicroStatus(' + i + ')" title="Clique para mudar status"></div>';
+    }
     h += '<div class="micro-body">';
     h += '<div class="micro-desc ' + descClass + '">' + escHtml(m.desc) + '</div>';
     if (m.detalhamento) h += '<div style="font-size:0.7rem;color:var(--muted);margin-top:0.15rem;">' + escHtml(m.detalhamento).replace(/\n/g,'<br>') + '</div>';
     h += '<div class="micro-meta">';
     h += '<span class="badge ' + (STATUS_BADGE[m.status]||'') + '">' + (STATUS_MICRO[m.status]||m.status) + '</span>';
+    if (isConsultor) h += '<span class="badge badge-gold">Consultor</span>';
     if (m.inicio) h += '<span>Início: ' + fmtData(m.inicio) + '</span>';
     if (m.prazo) h += '<span>Prazo: ' + fmtData(m.prazo) + '</span>';
     if (m.dur_qty && m.dur_unit) { var uL = {dias:'dias',dias_uteis:'dias úteis',semanas:'semanas',meses:'meses'}; h += '<span>Duração: ' + m.dur_qty + ' ' + (uL[m.dur_unit]||m.dur_unit) + '</span>'; }
@@ -1657,8 +1687,10 @@ function renderMicroPassos() {
     }
     h += '</div>';
     h += '<div class="micro-actions">';
-    h += '<button class="btn-icon" onclick="openMicroUpdate(' + i + ')" title="Adicionar atualização" style="color:var(--primary);font-size:0.8rem;">📝</button>';
-    if (!_acompLocked) {
+    if (!clientBlocked) {
+      h += '<button class="btn-icon" onclick="openMicroUpdate(' + i + ')" title="Adicionar atualização" style="color:var(--primary);font-size:0.8rem;">📝</button>';
+    }
+    if (!_acompLocked && !clientBlocked) {
       h += '<button class="btn-icon" onclick="openModal(\'micro\',' + i + ')" style="color:var(--blue);font-size:0.8rem;">✏️</button>';
       h += '<button class="btn-icon" onclick="openDelModal(\'micro\',' + i + ')" style="color:var(--red);font-size:0.8rem;">🗑️</button>';
     }
