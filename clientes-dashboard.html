@@ -72,13 +72,20 @@
     /* Ajuste de larguras das colunas - redimensionáveis */
     #clients-table { table-layout: fixed; }
     #clients-table th:nth-child(1), #clients-table td:nth-child(1) { width: 14%; } /* Nome */
-    #clients-table th:nth-child(2), #clients-table td:nth-child(2) { width: 14%; } /* WhatsApp */
-    #clients-table th:nth-child(3), #clients-table td:nth-child(3) { width: 9%; } /* Projeto */
-    #clients-table th:nth-child(4), #clients-table td:nth-child(4) { width: 17%; } /* Login/Senha */
-    #clients-table th:nth-child(5), #clients-table td:nth-child(5) { width: 14%; } /* Status/Atribuição */
-    #clients-table th:nth-child(6), #clients-table td:nth-child(6) { width: 9%; text-align: center; } /* Formulários */
-    #clients-table th:nth-child(7), #clients-table td:nth-child(7) { width: 10%; text-align: center; } /* Últ. Reunião */
-    #clients-table th:nth-child(8), #clients-table td:nth-child(8) { width: 13%; text-align: center;} /* Ações */
+    #clients-table th:nth-child(2), #clients-table td:nth-child(2) { width: 12%; } /* WhatsApp */
+    #clients-table th:nth-child(3), #clients-table td:nth-child(3) { width: 8%; } /* Projeto */
+    #clients-table th:nth-child(4), #clients-table td:nth-child(4) { width: 14%; } /* Login/Senha */
+    #clients-table th:nth-child(5), #clients-table td:nth-child(5) { width: 12%; } /* Status/Atribuição */
+    #clients-table th:nth-child(6), #clients-table td:nth-child(6) { width: 8%; text-align: center; } /* Formulários */
+    #clients-table th:nth-child(7), #clients-table td:nth-child(7) { width: 8%; text-align: center; } /* Últ. Reunião */
+    #clients-table th:nth-child(8), #clients-table td:nth-child(8) { width: 7%; text-align: center; } /* Pend. Consultor */
+    #clients-table th:nth-child(9), #clients-table td:nth-child(9) { width: 7%; text-align: center; } /* Pend. Cliente */
+    #clients-table th:nth-child(10), #clients-table td:nth-child(10) { width: 13%; text-align: center;} /* Ações */
+    .pend-cell { text-align: center; font-size: 0.85rem; white-space: nowrap; }
+    .pend-cell .pend-num { font-weight: 700; font-size: 1rem; }
+    .pend-cell .pend-num.pend-zero { color: var(--theme-text-muted); opacity: 0.5; }
+    .pend-cell .pend-num.pend-active { color: #fb923c; }
+    .pend-cell .pend-label { font-size: 0.68rem; color: var(--theme-text-muted); display: block; }
     .ult-reuniao-cell { text-align: center; font-size: 0.85rem; white-space: nowrap; }
     .ult-reuniao-cell .dias-num { font-weight: 700; font-size: 1rem; color: var(--theme-secondary-lighter); }
     .ult-reuniao-cell .dias-label { font-size: 0.72rem; color: var(--theme-text-muted); display: block; }
@@ -425,22 +432,28 @@
         #clients-table td:nth-of-type(5), /* Status */
         #clients-table td:nth-of-type(6), /* Dashboard */
         #clients-table td:nth-of-type(7), /* Últ. Reunião */
-        #clients-table td:nth-of-type(8)  /* Ações */
+        #clients-table td:nth-of-type(8), /* Pend. Consultor */
+        #clients-table td:nth-of-type(9), /* Pend. Cliente */
+        #clients-table td:nth-of-type(10) /* Ações */
         { padding-left: 0.75rem; }
         #clients-table td:nth-of-type(2)::before, /* WhatsApp */
         #clients-table td:nth-of-type(4)::before, /* Login/Senha */
         #clients-table td:nth-of-type(5)::before, /* Status */
         #clients-table td:nth-of-type(6)::before, /* Dashboard */
         #clients-table td:nth-of-type(7)::before, /* Últ. Reunião */
-        #clients-table td:nth-of-type(8)::before  /* Ações */
+        #clients-table td:nth-of-type(8)::before, /* Pend. Consultor */
+        #clients-table td:nth-of-type(9)::before, /* Pend. Cliente */
+        #clients-table td:nth-of-type(10)::before /* Ações */
         { position: static; display: block; width: auto; margin-bottom: 0.5rem; text-align: left; }
         .whatsapp-cell { flex-direction: column; align-items: flex-start; }
         .whatsapp-cell input[type="text"] { width: 100%; }
         #clients-table td:nth-of-type(6), /* Dashboard */
         #clients-table td:nth-of-type(7), /* Últ. Reunião */
-        #clients-table td:nth-of-type(8)  /* Ações */
+        #clients-table td:nth-of-type(8), /* Pend. Consultor */
+        #clients-table td:nth-of-type(9), /* Pend. Cliente */
+        #clients-table td:nth-of-type(10) /* Ações */
         { text-align: center; }
-        #clients-table td:nth-of-type(8) button { margin: 0.2rem; }
+        #clients-table td:nth-of-type(10) button { margin: 0.2rem; }
 
         /* Modal responsivo */
         .modal-content {
@@ -508,12 +521,14 @@
             <th>Status/Atribuição</th>
             <th>Dashboard</th>
             <th>Últ. Reunião</th>
+            <th>Pend. Consultor</th>
+            <th>Pend. Cliente</th>
             <th>Ações</th>
           </tr>
         </thead>
         <tbody>
           <!-- Linhas preenchidas dinamicamente por clientes.js -->
-          <tr><td colspan="8">Carregando clientes...</td></tr>
+          <tr><td colspan="10">Carregando clientes...</td></tr>
         </tbody>
       </table>
       </div>
