@@ -244,7 +244,7 @@ async function loadClients(filterProject = null) {
     }
 
     try {
-        clientsTableBody.innerHTML = '<tr><td colspan="8">Carregando clientes...</td></tr>';
+        clientsTableBody.innerHTML = '<tr><td colspan="10">Carregando clientes...</td></tr>';
         console.log("clientes.js: Construindo query Supabase...");
         let query = supabase.from('clientes').select('*, formularios_clientes(count)');
 
@@ -275,7 +275,7 @@ async function loadClients(filterProject = null) {
         clientsTableBody.innerHTML = "";
 
         if (!clients || clients.length === 0) {
-            clientsTableBody.innerHTML = '<tr><td colspan="8" style="text-align: center;">Nenhum cliente encontrado.</td></tr>';
+            clientsTableBody.innerHTML = '<tr><td colspan="10" style="text-align: center;">Nenhum cliente encontrado.</td></tr>';
             return;
         }
 
@@ -296,7 +296,7 @@ async function loadClients(filterProject = null) {
         });
 
         if (filteredClients.length === 0) {
-             clientsTableBody.innerHTML = '<tr><td colspan="8" style="text-align: center;">Nenhum cliente visível para você.</td></tr>';
+             clientsTableBody.innerHTML = '<tr><td colspan="10" style="text-align: center;">Nenhum cliente visível para você.</td></tr>';
              return;
         }
 
@@ -403,6 +403,12 @@ async function loadClients(filterProject = null) {
                 <td data-label="Últ. Reunião" class="ult-reuniao-cell">
                     <span class="dias-loading">...</span>
                 </td>
+                <td data-label="Pend. Consultor" class="pend-cell">
+                    <span class="pend-loading">...</span>
+                </td>
+                <td data-label="Pend. Cliente" class="pend-cell">
+                    <span class="pend-loading">...</span>
+                </td>
                 <td data-label="Ações">
                     <button class="msg-action-btn edit-msg-btn" data-client-id="${client.id}" title="Editar/Gerar mensagem WhatsApp">
                       <i class="fas fa-comment-alt"></i>
@@ -423,8 +429,9 @@ async function loadClients(filterProject = null) {
                 </td>
             `;
             clientsTableBody.appendChild(row);
-            // Fetch última reunião async
+            // Fetch última reunião e pendentes async
             fetchUltimaReuniao(client.id, row);
+            fetchPendentes(client.id, row);
         }
 
         // Salvar referência dos clientes para mensagens WhatsApp
@@ -436,7 +443,7 @@ async function loadClients(filterProject = null) {
 
     } catch (error) {
         console.error("clientes.js: Erro GERAL em loadClients:", error);
-        clientsTableBody.innerHTML = `<tr><td colspan="8" style="color: red; text-align: center;">Erro ao carregar clientes: ${error.message}</td></tr>`;
+        clientsTableBody.innerHTML = `<tr><td colspan="10" style="color: red; text-align: center;">Erro ao carregar clientes: ${error.message}</td></tr>`;
     }
 }
 
@@ -495,6 +502,44 @@ function calcDiasDesde(dateStr) {
     const data = new Date(dateStr + 'T00:00:00');
     const diff = Math.floor((hoje - data) / 86400000);
     return Math.max(0, diff);
+}
+
+// --- Buscar Pendentes (Consultor e Cliente) ---
+async function fetchPendentes(clienteId, row) {
+    const cellConsultor = row.querySelectorAll('.pend-cell')[0];
+    const cellCliente = row.querySelectorAll('.pend-cell')[1];
+    if (!cellConsultor || !cellCliente) return;
+    try {
+        const { data: acompData, error: acompError } = await supabase
+            .from('ferramentas_dados')
+            .select('dados')
+            .eq('cliente_id', clienteId)
+            .eq('ferramenta', 'acompanhamento')
+            .maybeSingle();
+
+        if (!acompError && acompData && acompData.dados) {
+            const dados = acompData.dados;
+            const micros = Array.isArray(dados.microPassos) ? dados.microPassos : [];
+            const macros = Array.isArray(dados.macroPassos) ? dados.macroPassos : [];
+
+            // Pendentes Consultor: micro passos com responsavel_consultor=true e não concluídos
+            const pendConsultor = micros.filter(m => m.responsavel_consultor && m.status !== 'concluido').length;
+            // Pendentes Cliente: micro passos SEM responsavel_consultor e não concluídos + macros não concluídas
+            const pendMicrosCliente = micros.filter(m => !m.responsavel_consultor && m.status !== 'concluido').length;
+            const pendMacros = macros.filter(m => m.status !== 'concluido').length;
+            const pendCliente = pendMicrosCliente + pendMacros;
+
+            cellConsultor.innerHTML = `<span class="pend-num ${pendConsultor > 0 ? 'pend-active' : 'pend-zero'}">${pendConsultor}</span><span class="pend-label">micro${pendConsultor !== 1 ? 's' : ''}</span>`;
+            cellCliente.innerHTML = `<span class="pend-num ${pendCliente > 0 ? 'pend-active' : 'pend-zero'}">${pendCliente}</span><span class="pend-label">item${pendCliente !== 1 ? 'ns' : ''}</span>`;
+        } else {
+            cellConsultor.innerHTML = '<span style="color:var(--theme-text-muted);">--</span>';
+            cellCliente.innerHTML = '<span style="color:var(--theme-text-muted);">--</span>';
+        }
+    } catch (err) {
+        console.warn('fetchPendentes error for client ' + clienteId, err);
+        cellConsultor.innerHTML = '<span style="color:var(--theme-text-muted);">--</span>';
+        cellCliente.innerHTML = '<span style="color:var(--theme-text-muted);">--</span>';
+    }
 }
 
 // --- Adicionar Cliente --- 
