@@ -215,7 +215,7 @@ async function loadClients(filterProject = null) {
     }
 
     try {
-        clientsTableBody.innerHTML = '<tr><td colspan="7">Carregando clientes...</td></tr>';
+        clientsTableBody.innerHTML = '<tr><td colspan="8">Carregando clientes...</td></tr>';
         console.log("clientes.js: Construindo query Supabase...");
         let query = supabase.from('clientes').select('*, formularios_clientes(count)');
 
@@ -246,7 +246,7 @@ async function loadClients(filterProject = null) {
         clientsTableBody.innerHTML = "";
 
         if (!clients || clients.length === 0) {
-            clientsTableBody.innerHTML = '<tr><td colspan="7" style="text-align: center;">Nenhum cliente encontrado.</td></tr>';
+            clientsTableBody.innerHTML = '<tr><td colspan="8" style="text-align: center;">Nenhum cliente encontrado.</td></tr>';
             return;
         }
 
@@ -267,7 +267,7 @@ async function loadClients(filterProject = null) {
         });
 
         if (filteredClients.length === 0) {
-             clientsTableBody.innerHTML = '<tr><td colspan="7" style="text-align: center;">Nenhum cliente visível para você.</td></tr>';
+             clientsTableBody.innerHTML = '<tr><td colspan="8" style="text-align: center;">Nenhum cliente visível para você.</td></tr>';
              return;
         }
 
@@ -369,6 +369,9 @@ async function loadClients(filterProject = null) {
                         <i class="fa-solid fa-file-lines"></i> ${client.formularios_clientes[0].count}
                     </button>
                 </td>
+                <td data-label="Últ. Reunião" class="ult-reuniao-cell">
+                    <span class="dias-loading">...</span>
+                </td>
                 <td data-label="Ações">
                     <button class="view-details-btn" data-client-id="${client.id}" title="Ver Detalhes (Em breve)">
                         <i class="fa-solid fa-eye"></i>
@@ -380,12 +383,71 @@ async function loadClients(filterProject = null) {
                 </td>
             `;
             clientsTableBody.appendChild(row);
+            // Fetch última reunião async
+            fetchUltimaReuniao(client.id, row);
         }
 
     } catch (error) {
         console.error("clientes.js: Erro GERAL em loadClients:", error);
-        clientsTableBody.innerHTML = `<tr><td colspan="7" style="color: red; text-align: center;">Erro ao carregar clientes: ${error.message}</td></tr>`;
+        clientsTableBody.innerHTML = `<tr><td colspan="8" style="color: red; text-align: center;">Erro ao carregar clientes: ${error.message}</td></tr>`;
     }
+}
+
+// --- Buscar Última Reunião ---
+async function fetchUltimaReuniao(clienteId, row) {
+    const cell = row.querySelector('.ult-reuniao-cell');
+    if (!cell) return;
+    try {
+        // 1. Tentar buscar da ferramenta acompanhamento (reuniões salvas)
+        const { data: acompData, error: acompError } = await supabase
+            .from('ferramentas_dados')
+            .select('dados')
+            .eq('cliente_id', clienteId)
+            .eq('ferramenta', 'acompanhamento')
+            .maybeSingle();
+
+        if (!acompError && acompData && acompData.dados) {
+            const dados = acompData.dados;
+            // reunioes array sorted desc - first is most recent
+            if (Array.isArray(dados.reunioes) && dados.reunioes.length > 0) {
+                const ultimaData = dados.reunioes[0].data; // 'YYYY-MM-DD'
+                if (ultimaData) {
+                    const dias = calcDiasDesde(ultimaData);
+                    cell.innerHTML = `<span class="dias-num">${dias}</span><span class="dias-label">dia${dias !== 1 ? 's' : ''}</span>`;
+                    return;
+                }
+            }
+        }
+
+        // 2. Fallback: data de criação do diagnóstico financeiro
+        const { data: diagData, error: diagError } = await supabase
+            .from('diagnosticos_financeiros')
+            .select('created_at')
+            .eq('cliente_id', clienteId)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+        if (!diagError && diagData && diagData.created_at) {
+            const dias = calcDiasDesde(diagData.created_at.split('T')[0]);
+            cell.innerHTML = `<span class="dias-num">${dias}</span><span class="dias-label">dia${dias !== 1 ? 's' : ''}</span>`;
+            return;
+        }
+
+        // 3. Sem dados
+        cell.innerHTML = '<span style="color:var(--theme-text-muted);">--</span>';
+    } catch (err) {
+        console.warn('fetchUltimaReuniao error for client ' + clienteId, err);
+        cell.innerHTML = '<span style="color:var(--theme-text-muted);">--</span>';
+    }
+}
+
+function calcDiasDesde(dateStr) {
+    const hoje = new Date();
+    hoje.setHours(0, 0, 0, 0);
+    const data = new Date(dateStr + 'T00:00:00');
+    const diff = Math.floor((hoje - data) / 86400000);
+    return Math.max(0, diff);
 }
 
 // --- Adicionar Cliente --- 
