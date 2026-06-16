@@ -46,10 +46,17 @@
         align-items: end;
         margin-bottom: 2rem;
     }
+    .table-scroll-wrapper {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        margin-bottom: 1rem;
+        border-radius: 6px;
+        border: 1px solid var(--theme-border-color);
+    }
     #clients-table {
         width: 100%;
+        min-width: 900px;
         border-collapse: collapse;
-        margin-bottom: 1rem; /* Reduzido */
     }
     #clients-table th, #clients-table td {
         padding: 0.75rem;
@@ -64,13 +71,17 @@
     }
     /* Ajuste de larguras das colunas - redimensionáveis */
     #clients-table { table-layout: fixed; }
-    #clients-table th:nth-child(1), #clients-table td:nth-child(1) { width: 15%; } /* Nome */
-    #clients-table th:nth-child(2), #clients-table td:nth-child(2) { width: 15%; } /* WhatsApp */
-    #clients-table th:nth-child(3), #clients-table td:nth-child(3) { width: 10%; } /* Projeto */
-    #clients-table th:nth-child(4), #clients-table td:nth-child(4) { width: 20%; } /* Login/Senha */
-    #clients-table th:nth-child(5), #clients-table td:nth-child(5) { width: 15%; } /* Status/Atribuição */
-    #clients-table th:nth-child(6), #clients-table td:nth-child(6) { width: 10%; text-align: center; } /* Formulários */
-    #clients-table th:nth-child(7), #clients-table td:nth-child(7) { width: 15%; text-align: center;} /* Ações */
+    #clients-table th:nth-child(1), #clients-table td:nth-child(1) { width: 14%; } /* Nome */
+    #clients-table th:nth-child(2), #clients-table td:nth-child(2) { width: 14%; } /* WhatsApp */
+    #clients-table th:nth-child(3), #clients-table td:nth-child(3) { width: 9%; } /* Projeto */
+    #clients-table th:nth-child(4), #clients-table td:nth-child(4) { width: 17%; } /* Login/Senha */
+    #clients-table th:nth-child(5), #clients-table td:nth-child(5) { width: 14%; } /* Status/Atribuição */
+    #clients-table th:nth-child(6), #clients-table td:nth-child(6) { width: 9%; text-align: center; } /* Formulários */
+    #clients-table th:nth-child(7), #clients-table td:nth-child(7) { width: 10%; text-align: center; } /* Últ. Reunião */
+    #clients-table th:nth-child(8), #clients-table td:nth-child(8) { width: 13%; text-align: center;} /* Ações */
+    .ult-reuniao-cell { text-align: center; font-size: 0.85rem; white-space: nowrap; }
+    .ult-reuniao-cell .dias-num { font-weight: 700; font-size: 1rem; color: var(--theme-secondary-lighter); }
+    .ult-reuniao-cell .dias-label { font-size: 0.72rem; color: var(--theme-text-muted); display: block; }
 
     /* Resize handle */
     #clients-table th { position: relative; cursor: pointer; user-select: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -289,20 +300,23 @@
         #clients-table td:nth-of-type(4), /* Login/Senha */
         #clients-table td:nth-of-type(5), /* Status */
         #clients-table td:nth-of-type(6), /* Dashboard */
-        #clients-table td:nth-of-type(7)  /* Ações */
+        #clients-table td:nth-of-type(7), /* Últ. Reunião */
+        #clients-table td:nth-of-type(8)  /* Ações */
         { padding-left: 0.75rem; }
         #clients-table td:nth-of-type(2)::before, /* WhatsApp */
         #clients-table td:nth-of-type(4)::before, /* Login/Senha */
         #clients-table td:nth-of-type(5)::before, /* Status */
         #clients-table td:nth-of-type(6)::before, /* Dashboard */
-        #clients-table td:nth-of-type(7)::before  /* Ações */
+        #clients-table td:nth-of-type(7)::before, /* Últ. Reunião */
+        #clients-table td:nth-of-type(8)::before  /* Ações */
         { position: static; display: block; width: auto; margin-bottom: 0.5rem; text-align: left; }
         .whatsapp-cell { flex-direction: column; align-items: flex-start; }
         .whatsapp-cell input[type="text"] { width: 100%; }
         #clients-table td:nth-of-type(6), /* Dashboard */
-        #clients-table td:nth-of-type(7)  /* Ações */
+        #clients-table td:nth-of-type(7), /* Últ. Reunião */
+        #clients-table td:nth-of-type(8)  /* Ações */
         { text-align: center; }
-        #clients-table td:nth-of-type(7) button { margin: 0.2rem; }
+        #clients-table td:nth-of-type(8) button { margin: 0.2rem; }
 
         /* Modal responsivo */
         .modal-content {
@@ -351,6 +365,7 @@
       <div style="margin-bottom:1rem;display:flex;align-items:center;gap:1rem;">
         <input type="text" id="clients-search" placeholder="Buscar por nome, WhatsApp, projeto..." style="flex:1;max-width:400px;padding:0.6rem 0.8rem;border-radius:6px;border:1px solid var(--theme-border-color);background:rgba(0,0,0,0.2);color:var(--theme-text-light);font-size:0.9rem;">
       </div>
+      <div class="table-scroll-wrapper">
       <table id="clients-table">
         <thead>
           <tr>
@@ -360,14 +375,16 @@
             <th>Login / Senha</th>
             <th>Status/Atribuição</th>
             <th>Dashboard</th>
+            <th>Últ. Reunião</th>
             <th>Ações</th>
           </tr>
         </thead>
         <tbody>
           <!-- Linhas preenchidas dinamicamente por clientes.js -->
-          <tr><td colspan="7">Carregando clientes...</td></tr>
+          <tr><td colspan="8">Carregando clientes...</td></tr>
         </tbody>
       </table>
+      </div>
       <!-- Botão Salvar Tudo (Clientes) -->
       <button id="save-all-clients-btn" disabled>Salvar Todas as Alterações</button>
     </section>
