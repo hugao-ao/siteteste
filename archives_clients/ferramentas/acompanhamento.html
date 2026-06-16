@@ -1882,13 +1882,37 @@ var proximaReuniao = null; // { data: 'YYYY-MM-DD', obs: '' }
 function openProximaReuniao() {
   var dataAtual = proximaReuniao ? proximaReuniao.data : '';
   var obsAtual = proximaReuniao ? proximaReuniao.obs : '';
-  var html = '<div style="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:center;justify-content:center;" id="pr-modal-overlay">';
-  html += '<div style="background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:1.5rem;width:90%;max-width:400px;">';
+  var selMicros = (proximaReuniao && proximaReuniao.micros) ? proximaReuniao.micros : [];
+  var selMacros = (proximaReuniao && proximaReuniao.macros) ? proximaReuniao.macros : [];
+  var html = '<div style="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:center;justify-content:center;overflow-y:auto;" id="pr-modal-overlay">';
+  html += '<div style="background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:1.5rem;width:90%;max-width:500px;max-height:90vh;overflow-y:auto;margin:1rem;">';
   html += '<h3 style="color:var(--primary);margin:0 0 1rem;">📅 Próxima Reunião</h3>';
   html += '<label style="font-size:0.8rem;color:var(--muted);display:block;margin-bottom:0.3rem;">Data:</label>';
   html += '<input type="date" id="pr-data" value="' + dataAtual + '" style="width:100%;padding:0.5rem;border-radius:6px;border:1px solid var(--border);background:var(--bg);color:var(--fg);margin-bottom:0.8rem;">';
-  html += '<label style="font-size:0.8rem;color:var(--muted);display:block;margin-bottom:0.3rem;">Observação (opcional):</label>';
-  html += '<input type="text" id="pr-obs" value="' + escHtml(obsAtual) + '" placeholder="Ex: Revisão trimestral" style="width:100%;padding:0.5rem;border-radius:6px;border:1px solid var(--border);background:var(--bg);color:var(--fg);margin-bottom:1rem;">';
+  html += '<label style="font-size:0.8rem;color:var(--muted);display:block;margin-bottom:0.3rem;">Descrição / Pauta (opcional):</label>';
+  html += '<textarea id="pr-obs" placeholder="Descreva os assuntos da próxima reunião..." style="width:100%;padding:0.5rem;border-radius:6px;border:1px solid var(--border);background:var(--bg);color:var(--fg);margin-bottom:1rem;min-height:80px;resize:vertical;font-family:inherit;font-size:0.9rem;">' + escHtml(obsAtual) + '</textarea>';
+  // Micro Passos checkboxes
+  if (microPassos.length > 0) {
+    html += '<label style="font-size:0.8rem;color:var(--muted);display:block;margin-bottom:0.4rem;">Micro Passos a abordar:</label>';
+    html += '<div style="max-height:120px;overflow-y:auto;border:1px solid var(--border);border-radius:6px;padding:0.5rem;margin-bottom:0.8rem;background:var(--bg);">';
+    microPassos.forEach(function(m, i) {
+      var checked = selMicros.indexOf(m.id) >= 0 ? ' checked' : '';
+      var label = m.desc || m.nome || ('Micro #' + (i+1));
+      html += '<label style="display:flex;align-items:center;gap:0.4rem;font-size:0.82rem;color:var(--fg);padding:0.2rem 0;cursor:pointer;"><input type="checkbox" class="pr-micro-cb" value="' + m.id + '"' + checked + '> ' + escHtml(label) + '</label>';
+    });
+    html += '</div>';
+  }
+  // Macro Estratégias checkboxes
+  if (macroPassos.length > 0) {
+    html += '<label style="font-size:0.8rem;color:var(--muted);display:block;margin-bottom:0.4rem;">Estratégias Macro a abordar:</label>';
+    html += '<div style="max-height:120px;overflow-y:auto;border:1px solid var(--border);border-radius:6px;padding:0.5rem;margin-bottom:1rem;background:var(--bg);">';
+    macroPassos.forEach(function(m, i) {
+      var checked = selMacros.indexOf(m.id) >= 0 ? ' checked' : '';
+      var label = m.nome || m.desc || ('Macro #' + (i+1));
+      html += '<label style="display:flex;align-items:center;gap:0.4rem;font-size:0.82rem;color:var(--fg);padding:0.2rem 0;cursor:pointer;"><input type="checkbox" class="pr-macro-cb" value="' + m.id + '"' + checked + '> ' + escHtml(label) + '</label>';
+    });
+    html += '</div>';
+  }
   html += '<div style="display:flex;gap:0.5rem;justify-content:flex-end;">';
   html += '<button onclick="closeProximaReuniao()" style="padding:0.4rem 1rem;border-radius:6px;border:1px solid var(--border);background:none;color:var(--fg);cursor:pointer;">Cancelar</button>';
   html += '<button onclick="salvarProximaReuniao()" style="padding:0.4rem 1rem;border-radius:6px;border:none;background:var(--green);color:#fff;cursor:pointer;font-weight:500;">Salvar</button>';
@@ -1905,7 +1929,11 @@ function salvarProximaReuniao() {
   var data = document.getElementById('pr-data').value;
   if (!data) { alert('Informe a data da próxima reunião.'); return; }
   var obs = document.getElementById('pr-obs').value.trim();
-  proximaReuniao = { data: data, obs: obs };
+  var selMicros = [];
+  document.querySelectorAll('.pr-micro-cb:checked').forEach(function(cb) { selMicros.push(parseInt(cb.value)); });
+  var selMacros = [];
+  document.querySelectorAll('.pr-macro-cb:checked').forEach(function(cb) { selMacros.push(parseInt(cb.value)); });
+  proximaReuniao = { data: data, obs: obs, micros: selMicros, macros: selMacros };
   closeProximaReuniao();
   renderProximaReuniao();
   saveData();
@@ -1934,6 +1962,8 @@ function renderProximaReuniao() {
   }
   box.style.display = '';
   box.className = 'proxima-reuniao-box';
+  box.style.flexDirection = 'column';
+  box.style.alignItems = 'stretch';
   var d = proximaReuniao.data.split('-');
   var dataFmt = d[2] + '/' + d[1] + '/' + d[0];
   var hoje = new Date(); hoje.setHours(0,0,0,0);
@@ -1944,15 +1974,35 @@ function renderProximaReuniao() {
   else if (diffDias === 1) diffTxt = '(Amanhã)';
   else if (diffDias > 1) diffTxt = '(em ' + diffDias + ' dias)';
   else diffTxt = '(' + Math.abs(diffDias) + ' dia(s) atrás)';
-  var html = '<div class="pr-info">';
+  var html = '<div style="display:flex;align-items:center;justify-content:space-between;">';
+  html += '<div class="pr-info">';
   html += '<span class="pr-icon">📅</span>';
   html += '<div><div class="pr-data">' + dataFmt + ' ' + diffTxt + '</div>';
-  if (proximaReuniao.obs) html += '<div class="pr-obs">' + escHtml(proximaReuniao.obs) + '</div>';
+  if (proximaReuniao.obs) html += '<div class="pr-obs" style="white-space:pre-wrap;margin-top:0.3rem;">' + escHtml(proximaReuniao.obs) + '</div>';
   html += '</div></div>';
   html += '<div class="pr-actions">';
   html += '<button onclick="openProximaReuniao()" title="Editar">✏️</button>';
   html += '<button onclick="excluirProximaReuniao()" title="Excluir" style="color:var(--red);">🗑️</button>';
-  html += '</div>';
+  html += '</div></div>';
+  // Show selected micros and macros
+  var detalhes = '';
+  if (proximaReuniao.micros && proximaReuniao.micros.length > 0) {
+    detalhes += '<div style="margin-top:0.6rem;"><span style="font-size:0.75rem;color:var(--muted);font-weight:600;">MICRO PASSOS:</span><ul style="margin:0.2rem 0 0 1rem;padding:0;list-style:disc;">';
+    proximaReuniao.micros.forEach(function(mid) {
+      var m = microPassos.find(function(x) { return x.id === mid; });
+      if (m) detalhes += '<li style="font-size:0.82rem;color:var(--fg);">' + escHtml(m.desc || m.nome || 'Micro #' + mid) + '</li>';
+    });
+    detalhes += '</ul></div>';
+  }
+  if (proximaReuniao.macros && proximaReuniao.macros.length > 0) {
+    detalhes += '<div style="margin-top:0.4rem;"><span style="font-size:0.75rem;color:var(--muted);font-weight:600;">ESTRATÉGIAS MACRO:</span><ul style="margin:0.2rem 0 0 1rem;padding:0;list-style:disc;">';
+    proximaReuniao.macros.forEach(function(mid) {
+      var m = macroPassos.find(function(x) { return x.id === mid; });
+      if (m) detalhes += '<li style="font-size:0.82rem;color:var(--fg);">' + escHtml(m.nome || m.desc || 'Macro #' + mid) + '</li>';
+    });
+    detalhes += '</ul></div>';
+  }
+  html += detalhes;
   box.innerHTML = html;
 }
 
