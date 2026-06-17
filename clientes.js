@@ -244,7 +244,7 @@ async function loadClients(filterProject = null) {
     }
 
     try {
-        clientsTableBody.innerHTML = '<tr><td colspan="10">Carregando clientes...</td></tr>';
+        clientsTableBody.innerHTML = '<tr><td colspan="13">Carregando clientes...</td></tr>';
         console.log("clientes.js: Construindo query Supabase...");
         let query = supabase.from('clientes').select('*, formularios_clientes(count)');
 
@@ -275,7 +275,7 @@ async function loadClients(filterProject = null) {
         clientsTableBody.innerHTML = "";
 
         if (!clients || clients.length === 0) {
-            clientsTableBody.innerHTML = '<tr><td colspan="10" style="text-align: center;">Nenhum cliente encontrado.</td></tr>';
+            clientsTableBody.innerHTML = '<tr><td colspan="13" style="text-align: center;">Nenhum cliente encontrado.</td></tr>';
             return;
         }
 
@@ -296,7 +296,7 @@ async function loadClients(filterProject = null) {
         });
 
         if (filteredClients.length === 0) {
-             clientsTableBody.innerHTML = '<tr><td colspan="10" style="text-align: center;">Nenhum cliente visível para você.</td></tr>';
+             clientsTableBody.innerHTML = '<tr><td colspan="13" style="text-align: center;">Nenhum cliente visível para você.</td></tr>';
              return;
         }
 
@@ -409,6 +409,15 @@ async function loadClients(filterProject = null) {
                 <td data-label="Pend. Cliente" class="pend-cell">
                     <span class="pend-loading">...</span>
                 </td>
+                <td data-label="Patrimônio" class="fin-cell fin-patrimonio">
+                    <span class="fin-loading">...</span>
+                </td>
+                <td data-label="Dívidas" class="fin-cell fin-dividas">
+                    <span class="fin-loading">...</span>
+                </td>
+                <td data-label="Fluxo Mensal" class="fin-cell fin-fluxo">
+                    <span class="fin-loading">...</span>
+                </td>
                 <td data-label="Ações">
                     <button class="msg-action-btn edit-msg-btn" data-client-id="${client.id}" title="Editar/Gerar mensagem WhatsApp">
                       <i class="fas fa-comment-alt"></i>
@@ -429,9 +438,10 @@ async function loadClients(filterProject = null) {
                 </td>
             `;
             clientsTableBody.appendChild(row);
-            // Fetch última reunião e pendentes async
+            // Fetch última reunião, pendentes e financeiros async
             fetchUltimaReuniao(client.id, row);
             fetchPendentes(client.id, row);
+            fetchFinanceiros(client.id, row);
         }
 
         // Salvar referência dos clientes para mensagens WhatsApp
@@ -443,7 +453,7 @@ async function loadClients(filterProject = null) {
 
     } catch (error) {
         console.error("clientes.js: Erro GERAL em loadClients:", error);
-        clientsTableBody.innerHTML = `<tr><td colspan="10" style="color: red; text-align: center;">Erro ao carregar clientes: ${error.message}</td></tr>`;
+        clientsTableBody.innerHTML = `<tr><td colspan="13" style="color: red; text-align: center;">Erro ao carregar clientes: ${error.message}</td></tr>`;
     }
 }
 
@@ -539,6 +549,92 @@ async function fetchPendentes(clienteId, row) {
         console.warn('fetchPendentes error for client ' + clienteId, err);
         cellConsultor.innerHTML = '<span style="color:var(--theme-text-muted);">--</span>';
         cellCliente.innerHTML = '<span style="color:var(--theme-text-muted);">--</span>';
+    }
+}
+
+// --- Buscar Dados Financeiros (Patrimônio, Dívidas, Fluxo Mensal) ---
+async function fetchFinanceiros(clienteId, row) {
+    const cellPatrimonio = row.querySelector('.fin-patrimonio');
+    const cellDividas = row.querySelector('.fin-dividas');
+    const cellFluxo = row.querySelector('.fin-fluxo');
+    if (!cellPatrimonio || !cellDividas || !cellFluxo) return;
+    const dash = '<span style="color:var(--theme-text-muted);">--</span>';
+    try {
+        // Buscar patrimônio
+        const { data: patData } = await supabase
+            .from('ferramentas_dados')
+            .select('dados')
+            .eq('cliente_id', clienteId)
+            .eq('ferramenta', 'patrimonio')
+            .maybeSingle();
+
+        if (patData && patData.dados && patData.dados.datas && patData.dados.datas.length > 0) {
+            const datas = patData.dados.datas;
+            const refDate = datas.find(d => d.primary) || datas[datas.length - 1];
+            const ativosLiq = (refDate.ativos_liquidos || []).reduce((s, a) => s + (a.valor || 0), 0);
+            const ativosFis = (refDate.ativos_fisicos || []).reduce((s, a) => s + (a.valor || 0), 0);
+            const ativosInt = (refDate.ativos_intangiveis || []).reduce((s, a) => s + (a.valor || 0), 0);
+            const patrimonio = ativosLiq + ativosFis + ativosInt;
+            const dividas = (refDate.dividas || []).reduce((s, d) => s + (d.saldo || 0), 0);
+
+            cellPatrimonio.innerHTML = `<span class="fin-val fin-gold">${fmtBRL(patrimonio)}</span>`;
+            cellDividas.innerHTML = dividas > 0
+                ? `<span class="fin-val fin-red">${fmtBRL(dividas)}</span>`
+                : `<span class="fin-val fin-green">R$ 0</span>`;
+        } else {
+            cellPatrimonio.innerHTML = dash;
+            cellDividas.innerHTML = dash;
+        }
+
+        // Buscar fluxo (simulação primary → último mês com metas)
+        const { data: fluxoData } = await supabase
+            .from('ferramentas_dados')
+            .select('dados')
+            .eq('cliente_id', clienteId)
+            .eq('ferramenta', 'fluxo')
+            .maybeSingle();
+
+        if (fluxoData && fluxoData.dados && Array.isArray(fluxoData.dados) && fluxoData.dados.length > 0) {
+            const sims = fluxoData.dados;
+            const primarySim = sims.find(s => s.primary) || sims[0];
+            const tracking = primarySim.payload && primarySim.payload.trackingData;
+            if (tracking && tracking.metas && Object.keys(tracking.metas).length > 0) {
+                const monthKeys = Object.keys(tracking.metas).sort();
+                // Pegar o mês mais recente
+                const lastMonth = monthKeys[monthKeys.length - 1];
+                const lancMes = (tracking.lancamentos || []).filter(l => l.data && l.data.substring(0, 7) === lastMonth);
+                let renda = 0, despesas = 0, poupanca = 0;
+                if (lancMes.length > 0) {
+                    lancMes.forEach(l => {
+                        if (l.tipo === 'entrada') renda += l.valor;
+                        else if (l.tipo === 'poupanca') poupanca += l.valor;
+                        else despesas += l.valor;
+                    });
+                } else {
+                    const metaObj = tracking.metas[lastMonth];
+                    renda = metaObj && metaObj.entradas ? metaObj.entradas : 0;
+                    poupanca = metaObj && metaObj.poupanca ? metaObj.poupanca : 0;
+                    const cats = metaObj && metaObj.categorias ? metaObj.categorias : metaObj;
+                    if (cats) { Object.keys(cats).forEach(k => { if (k !== 'entradas' && k !== 'poupanca') despesas += cats[k] || 0; }); }
+                }
+                const sobra = renda - despesas - poupanca;
+                cellFluxo.innerHTML = `<div class="fin-row">
+                    <div class="fin-item"><span class="fin-val fin-green" style="font-size:0.78rem;">${fmtBRL(renda)}</span><span class="fin-label">Renda</span></div>
+                    <div class="fin-item"><span class="fin-val fin-red" style="font-size:0.78rem;">${fmtBRL(despesas)}</span><span class="fin-label">Desp.</span></div>
+                    <div class="fin-item"><span class="fin-val fin-blue" style="font-size:0.78rem;">${fmtBRL(poupanca)}</span><span class="fin-label">Poup.</span></div>
+                    <div class="fin-item"><span class="fin-val ${sobra >= 0 ? 'fin-green' : 'fin-red'}" style="font-size:0.78rem;">${fmtBRL(sobra)}</span><span class="fin-label">Sobra</span></div>
+                </div>`;
+            } else {
+                cellFluxo.innerHTML = dash;
+            }
+        } else {
+            cellFluxo.innerHTML = dash;
+        }
+    } catch (err) {
+        console.warn('fetchFinanceiros error for client ' + clienteId, err);
+        cellPatrimonio.innerHTML = dash;
+        cellDividas.innerHTML = dash;
+        cellFluxo.innerHTML = dash;
     }
 }
 
