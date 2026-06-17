@@ -2475,16 +2475,20 @@ document.addEventListener('click', async function(e) {
       var patState = res.data.dados;
       var refDate = patState.datas.find(function(d) { return d.primary; }) || patState.datas[patState.datas.length - 1];
       var valor = 0;
+      var nomeData = refDate.label || refDate.nome || refDate.id || 'refer\u00eancia';
       if (conceito === 'patrimonio_liquido') {
         valor = refDate.ativos_liquidos.reduce(function(s,a){ return s + (a.valor||0); }, 0)
               + refDate.ativos_fisicos.reduce(function(s,a){ return s + (a.valor||0); }, 0)
               + refDate.ativos_intangiveis.reduce(function(s,a){ return s + (a.valor||0); }, 0);
+        if (!confirm('Sincronizar PATRIM\u00d4NIO TOTAL?\n\nFonte: Ferramenta de Patrim\u00f4nio (data: ' + nomeData + ')\nValor encontrado: R$ ' + valor.toLocaleString('pt-BR',{minimumFractionDigits:2}) + '\n\nDeseja preencher o campo com este valor?')) return;
         document.getElementById('rn_patrimonio').value = valor.toLocaleString('pt-BR', {minimumFractionDigits:2});
       } else if (conceito === 'investimentos_totais') {
         valor = refDate.ativos_liquidos.reduce(function(s,a){ return s + (a.valor||0); }, 0);
+        if (!confirm('Sincronizar INVESTIMENTOS TOTAIS?\n\nFonte: Ativos L\u00edquidos na Ferramenta de Patrim\u00f4nio (data: ' + nomeData + ')\nValor encontrado: R$ ' + valor.toLocaleString('pt-BR',{minimumFractionDigits:2}) + '\n\nDeseja preencher o campo com este valor?')) return;
         document.getElementById('rn_investimentos').value = valor.toLocaleString('pt-BR', {minimumFractionDigits:2});
       } else if (conceito === 'dividas_total') {
         valor = refDate.dividas.reduce(function(s,d){ return s + (d.saldo||0); }, 0);
+        if (!confirm('Sincronizar D\u00cdVIDAS TOTAIS?\n\nFonte: Saldo de D\u00edvidas na Ferramenta de Patrim\u00f4nio (data: ' + nomeData + ')\nValor encontrado: R$ ' + valor.toLocaleString('pt-BR',{minimumFractionDigits:2}) + '\n\nDeseja preencher o campo com este valor?')) return;
         document.getElementById('rn_dividas').value = valor.toLocaleString('pt-BR', {minimumFractionDigits:2});
       }
 
@@ -2511,6 +2515,9 @@ document.addEventListener('click', async function(e) {
         return l.data && l.data.substring(0, 7) === selectedMonth;
       });
       var valor = 0;
+      var mesLabel = new Date(selectedMonth + '-15').toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+      mesLabel = mesLabel.charAt(0).toUpperCase() + mesLabel.slice(1);
+      var fonte = lancMes.length > 0 ? 'Lan\u00e7amentos Reais' : 'Meta';
       if (conceito === 'despesas_mensais') {
         if (lancMes.length > 0) {
           valor = lancMes.filter(function(l) { return l.tipo !== 'entrada' && l.tipo !== 'poupanca'; }).reduce(function(s,l){ return s + l.valor; }, 0);
@@ -2519,7 +2526,9 @@ document.addEventListener('click', async function(e) {
           var metaObj = tracking.metas[selectedMonth];
           var cats = metaObj && metaObj.categorias ? metaObj.categorias : metaObj;
           if (cats) { Object.keys(cats).forEach(function(k) { if (k !== 'entradas' && k !== 'poupanca') valor += cats[k] || 0; }); }
+          fonte = 'Meta';
         }
+        if (!confirm('Sincronizar DESPESAS MENSAIS?\n\nFonte: ' + fonte + ' do Fluxo de Caixa\nM\u00eas: ' + mesLabel + '\nValor encontrado: R$ ' + valor.toLocaleString('pt-BR',{minimumFractionDigits:2}) + '\n\nDeseja preencher o campo com este valor?')) return;
         document.getElementById('rn_despesas').value = valor.toLocaleString('pt-BR', {minimumFractionDigits:2});
       } else if (conceito === 'renda_mensal') {
         if (lancMes.length > 0) {
@@ -2528,7 +2537,9 @@ document.addEventListener('click', async function(e) {
         if (valor === 0) {
           var metaObj = tracking.metas[selectedMonth];
           valor = metaObj && metaObj.entradas ? metaObj.entradas : 0;
+          fonte = 'Meta';
         }
+        if (!confirm('Sincronizar RENDA MENSAL?\n\nFonte: ' + fonte + ' do Fluxo de Caixa (Entradas)\nM\u00eas: ' + mesLabel + '\nValor encontrado: R$ ' + valor.toLocaleString('pt-BR',{minimumFractionDigits:2}) + '\n\nDeseja preencher o campo com este valor?')) return;
         document.getElementById('rn_renda').value = valor.toLocaleString('pt-BR', {minimumFractionDigits:2});
       } else if (conceito === 'poder_poupanca') {
         if (lancMes.length > 0) {
@@ -2537,7 +2548,9 @@ document.addEventListener('click', async function(e) {
         if (valor === 0) {
           var metaObj = tracking.metas[selectedMonth];
           valor = metaObj && metaObj.poupanca ? metaObj.poupanca : 0;
+          fonte = 'Meta';
         }
+        if (!confirm('Sincronizar PODER DE POUPAN\u00c7A?\n\nFonte: ' + fonte + ' do Fluxo de Caixa (Poupan\u00e7a)\nM\u00eas: ' + mesLabel + '\nValor encontrado: R$ ' + valor.toLocaleString('pt-BR',{minimumFractionDigits:2}) + '\n\nDeseja preencher o campo com este valor?')) return;
         document.getElementById('rn_poupanca').value = valor.toLocaleString('pt-BR', {minimumFractionDigits:2});
       } else if (conceito === 'saldo_fluxo') {
         var entradas = 0, despesas = 0, poupanca = 0;
@@ -2557,7 +2570,9 @@ document.addEventListener('click', async function(e) {
           var cats = metaObj && metaObj.categorias ? metaObj.categorias : metaObj;
           if (cats) { Object.keys(cats).forEach(function(k) { if (k !== 'entradas' && k !== 'poupanca') mDesp += cats[k] || 0; }); }
           valor = mEnt - mDesp - mPoup;
+          fonte = 'Meta';
         }
+        if (!confirm('Sincronizar SALDO DO FLUXO?\n\nFonte: ' + fonte + ' do Fluxo de Caixa (Entradas - Despesas - Poupan\u00e7a)\nM\u00eas: ' + mesLabel + '\nValor encontrado: R$ ' + valor.toLocaleString('pt-BR',{minimumFractionDigits:2}) + '\n\nDeseja preencher o campo com este valor?')) return;
         document.getElementById('rn_saldo_fluxo').value = valor.toLocaleString('pt-BR', {minimumFractionDigits:2});
       }
     }
