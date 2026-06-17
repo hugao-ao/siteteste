@@ -244,7 +244,7 @@ async function loadClients(filterProject = null) {
     }
 
     try {
-        clientsTableBody.innerHTML = '<tr><td colspan="13">Carregando clientes...</td></tr>';
+        clientsTableBody.innerHTML = '<tr><td colspan="14">Carregando clientes...</td></tr>';
         console.log("clientes.js: Construindo query Supabase...");
         let query = supabase.from('clientes').select('*, formularios_clientes(count)');
 
@@ -275,7 +275,7 @@ async function loadClients(filterProject = null) {
         clientsTableBody.innerHTML = "";
 
         if (!clients || clients.length === 0) {
-            clientsTableBody.innerHTML = '<tr><td colspan="13" style="text-align: center;">Nenhum cliente encontrado.</td></tr>';
+            clientsTableBody.innerHTML = '<tr><td colspan="14" style="text-align: center;">Nenhum cliente encontrado.</td></tr>';
             return;
         }
 
@@ -296,9 +296,14 @@ async function loadClients(filterProject = null) {
         });
 
         if (filteredClients.length === 0) {
-             clientsTableBody.innerHTML = '<tr><td colspan="13" style="text-align: center;">Nenhum cliente visível para você.</td></tr>';
+             clientsTableBody.innerHTML = '<tr><td colspan="14" style="text-align: center;">Nenhum cliente visível para você.</td></tr>';
              return;
         }
+
+        // Reset summary data
+        _summaryData = { patrimonios: [], dividas: [], rendas: [], despesas: [], poupancas: [], saldos: [], pendConsultor: 0, pendCliente: 0 };
+        _summaryPendingCount = 0;
+        _summaryTotalClients = filteredClients.length;
 
         // Renderizar Tabela
         for (const client of filteredClients) {
@@ -325,6 +330,7 @@ async function loadClients(filterProject = null) {
             row.dataset.originalAssignedTo = client.assigned_to_user_id || '';
             row.dataset.originalLogin = client.login || '';
             row.dataset.originalSenha = client.senha || '';
+            row.dataset.originalSituacao = client.situacao || 'ATIVO';
 
             // Permissões de Edição da Linha
             // Admin pode editar tudo
@@ -418,6 +424,13 @@ async function loadClients(filterProject = null) {
                 <td data-label="Fluxo Mensal" class="fin-cell fin-fluxo">
                     <span class="fin-loading">...</span>
                 </td>
+                <td data-label="Situação" style="text-align:center;">
+                    <select class="situacao-select ${client.situacao === 'EM_HIATO' ? 'sit-hiato' : client.situacao === 'PAROU' ? 'sit-parou' : 'sit-ativo'}" data-client-id="${client.id}" ${!canEdit ? 'disabled' : ''}>
+                        <option value="ATIVO" ${(!client.situacao || client.situacao === 'ATIVO') ? 'selected' : ''}>Ativo</option>
+                        <option value="EM_HIATO" ${client.situacao === 'EM_HIATO' ? 'selected' : ''}>Em Hiato</option>
+                        <option value="PAROU" ${client.situacao === 'PAROU' ? 'selected' : ''}>Parou</option>
+                    </select>
+                </td>
                 <td data-label="Ações">
                     <button class="msg-action-btn edit-msg-btn" data-client-id="${client.id}" title="Editar/Gerar mensagem WhatsApp">
                       <i class="fas fa-comment-alt"></i>
@@ -442,6 +455,7 @@ async function loadClients(filterProject = null) {
             fetchUltimaReuniao(client.id, row);
             fetchPendentes(client.id, row);
             fetchFinanceiros(client.id, row);
+            _summaryPendingCount += 2; // 2 fetches contribute to summary (pendentes + financeiros)
         }
 
         // Salvar referência dos clientes para mensagens WhatsApp
@@ -453,7 +467,7 @@ async function loadClients(filterProject = null) {
 
     } catch (error) {
         console.error("clientes.js: Erro GERAL em loadClients:", error);
-        clientsTableBody.innerHTML = `<tr><td colspan="13" style="color: red; text-align: center;">Erro ao carregar clientes: ${error.message}</td></tr>`;
+        clientsTableBody.innerHTML = `<tr><td colspan="14" style="color: red; text-align: center;">Erro ao carregar clientes: ${error.message}</td></tr>`;
     }
 }
 
@@ -541,6 +555,8 @@ async function fetchPendentes(clienteId, row) {
 
             cellConsultor.innerHTML = `<span class="pend-num ${pendConsultor > 0 ? 'pend-active' : 'pend-zero'}">${pendConsultor}</span><span class="pend-label">micro${pendConsultor !== 1 ? 's' : ''}</span>`;
             cellCliente.innerHTML = `<span class="pend-num ${pendCliente > 0 ? 'pend-active' : 'pend-zero'}">${pendCliente}</span><span class="pend-label">item${pendCliente !== 1 ? 'ns' : ''}</span>`;
+            registerSummaryData('pendConsultor', pendConsultor);
+            registerSummaryData('pendCliente', pendCliente);
         } else {
             cellConsultor.innerHTML = '<span style="color:var(--theme-text-muted);">--</span>';
             cellCliente.innerHTML = '<span style="color:var(--theme-text-muted);">--</span>';
@@ -550,6 +566,8 @@ async function fetchPendentes(clienteId, row) {
         cellConsultor.innerHTML = '<span style="color:var(--theme-text-muted);">--</span>';
         cellCliente.innerHTML = '<span style="color:var(--theme-text-muted);">--</span>';
     }
+    _summaryPendingCount--;
+    if (_summaryPendingCount <= 0) renderDashboardSummary();
 }
 
 // --- Buscar Dados Financeiros (Patrimônio, Dívidas, Fluxo Mensal) ---
@@ -581,6 +599,8 @@ async function fetchFinanceiros(clienteId, row) {
             cellDividas.innerHTML = dividas > 0
                 ? `<span class="fin-val fin-red">${fmtBRL(dividas)}</span>`
                 : `<span class="fin-val fin-green">R$ 0</span>`;
+            registerSummaryData('patrimonio', patrimonio);
+            registerSummaryData('divida', dividas);
         } else {
             cellPatrimonio.innerHTML = dash;
             cellDividas.innerHTML = dash;
@@ -624,6 +644,10 @@ async function fetchFinanceiros(clienteId, row) {
                     <div class="fin-item"><span class="fin-val fin-blue" style="font-size:0.78rem;">${fmtBRL(poupanca)}</span><span class="fin-label">Poup.</span></div>
                     <div class="fin-item"><span class="fin-val ${sobra >= 0 ? 'fin-green' : 'fin-red'}" style="font-size:0.78rem;">${fmtBRL(sobra)}</span><span class="fin-label">Sobra</span></div>
                 </div>`;
+                registerSummaryData('renda', renda);
+                registerSummaryData('despesa', despesas);
+                registerSummaryData('poupanca', poupanca);
+                registerSummaryData('saldo', sobra);
             } else {
                 cellFluxo.innerHTML = dash;
             }
@@ -636,6 +660,61 @@ async function fetchFinanceiros(clienteId, row) {
         cellDividas.innerHTML = dash;
         cellFluxo.innerHTML = dash;
     }
+    _summaryPendingCount--;
+    if (_summaryPendingCount <= 0) renderDashboardSummary();
+}
+
+// --- Atualizar Painel de Resumo ---
+let _summaryData = { patrimonios: [], dividas: [], rendas: [], despesas: [], poupancas: [], saldos: [], pendConsultor: 0, pendCliente: 0 };
+let _summaryPendingCount = 0;
+let _summaryTotalClients = 0;
+
+function registerSummaryData(type, value) {
+    if (type === 'patrimonio' && value > 0) _summaryData.patrimonios.push(value);
+    else if (type === 'divida' && value > 0) _summaryData.dividas.push(value);
+    else if (type === 'renda' && value > 0) _summaryData.rendas.push(value);
+    else if (type === 'despesa' && value > 0) _summaryData.despesas.push(value);
+    else if (type === 'poupanca' && value > 0) _summaryData.poupancas.push(value);
+    else if (type === 'saldo') _summaryData.saldos.push(value);
+    else if (type === 'pendConsultor') _summaryData.pendConsultor += value;
+    else if (type === 'pendCliente') _summaryData.pendCliente += value;
+}
+
+function renderDashboardSummary() {
+    const fmt = (v) => v >= 1000 ? (v/1000).toFixed(1) + 'k' : v.toFixed(0);
+    const fmtR = (v) => 'R$ ' + fmt(v);
+    const avg = (arr) => arr.length > 0 ? arr.reduce((s,v) => s+v, 0) / arr.length : 0;
+    const sum = (arr) => arr.reduce((s,v) => s+v, 0);
+
+    const elPat = document.getElementById('sum-patrimonio');
+    const elDiv = document.getElementById('sum-dividas');
+    const elRen = document.getElementById('sum-renda');
+    const elDes = document.getElementById('sum-despesas');
+    const elPou = document.getElementById('sum-poupanca');
+    const elSal = document.getElementById('sum-saldo');
+    const elSit = document.getElementById('sum-situacao');
+    const elPen = document.getElementById('sum-pendentes');
+
+    if (elPat) elPat.textContent = _summaryData.patrimonios.length > 0 ? fmtR(sum(_summaryData.patrimonios)) : '--';
+    if (elDiv) elDiv.textContent = _summaryData.dividas.length > 0 ? fmtR(sum(_summaryData.dividas)) : '--';
+    if (elRen) elRen.textContent = _summaryData.rendas.length > 0 ? fmtR(avg(_summaryData.rendas)) : '--';
+    if (elDes) elDes.textContent = _summaryData.despesas.length > 0 ? fmtR(avg(_summaryData.despesas)) : '--';
+    if (elPou) elPou.textContent = _summaryData.poupancas.length > 0 ? fmtR(avg(_summaryData.poupancas)) : '--';
+    if (elSal) elSal.textContent = _summaryData.saldos.length > 0 ? fmtR(avg(_summaryData.saldos)) : '--';
+
+    // Contagem por situa\u00e7\u00e3o
+    const rows = clientsTableBody ? clientsTableBody.querySelectorAll('tr[data-client-id]') : [];
+    let ativos = 0, hiato = 0, parou = 0;
+    rows.forEach(r => {
+        const sel = r.querySelector('.situacao-select');
+        if (sel) {
+            if (sel.value === 'EM_HIATO') hiato++;
+            else if (sel.value === 'PAROU') parou++;
+            else ativos++;
+        } else ativos++;
+    });
+    if (elSit) elSit.innerHTML = '<span style="color:#22c55e;">' + ativos + '</span> / <span style="color:#f59e0b;">' + hiato + '</span> / <span style="color:#ef4444;">' + parou + '</span>';
+    if (elPen) elPen.innerHTML = '<span style="color:#f59e0b;">' + _summaryData.pendConsultor + '</span> / <span style="color:#60a5fa;">' + _summaryData.pendCliente + '</span>';
 }
 
 // --- Adicionar Cliente --- 
@@ -703,7 +782,7 @@ async function addClient(event) {
 function markClientAsModified(event) {
     const target = event.target;
     // Verifica se é um campo editável
-    if (!target.matches('.client-name, .client-whatsapp, .client-project, .client-visibility, .client-assigned-to, .client-login, .client-senha')) return;
+    if (!target.matches('.client-name, .client-whatsapp, .client-project, .client-visibility, .client-assigned-to, .client-login, .client-senha, .situacao-select')) return;
 
     const row = target.closest('tr');
     const clientId = row.dataset.clientId;
@@ -718,9 +797,16 @@ function markClientAsModified(event) {
     // Campos opcionais (podem não existir dependendo da view)
     const visibilitySelect = row.querySelector('.client-visibility');
     const assignedToSelect = row.querySelector('.client-assigned-to');
+    const situacaoSelect = row.querySelector('.situacao-select');
     
     const currentVisibility = visibilitySelect ? visibilitySelect.value : (row.dataset.originalVisibility || 'INDIVIDUAL');
     const currentAssignedTo = assignedToSelect ? assignedToSelect.value : (row.dataset.originalAssignedTo || '');
+    const currentSituacao = situacaoSelect ? situacaoSelect.value : (row.dataset.originalSituacao || 'ATIVO');
+
+    // Atualizar cor do select de situação
+    if (situacaoSelect) {
+        situacaoSelect.className = 'situacao-select ' + (currentSituacao === 'EM_HIATO' ? 'sit-hiato' : currentSituacao === 'PAROU' ? 'sit-parou' : 'sit-ativo');
+    }
 
     const originalNome = row.dataset.originalNome;
     const originalWhatsapp = row.dataset.originalWhatsapp;
@@ -729,6 +815,7 @@ function markClientAsModified(event) {
     const originalSenha = row.dataset.originalSenha;
     const originalVisibility = row.dataset.originalVisibility;
     const originalAssignedTo = row.dataset.originalAssignedTo;
+    const originalSituacao = row.dataset.originalSituacao || 'ATIVO';
 
     const hasChanged = 
         currentNome !== originalNome ||
@@ -737,7 +824,8 @@ function markClientAsModified(event) {
         currentLogin !== originalLogin ||
         currentSenha !== originalSenha ||
         currentVisibility !== originalVisibility ||
-        currentAssignedTo !== originalAssignedTo;
+        currentAssignedTo !== originalAssignedTo ||
+        currentSituacao !== originalSituacao;
 
     if (hasChanged) {
         row.classList.add('modified');
@@ -779,10 +867,14 @@ async function saveAllClientChanges() {
         const visibility = visibilitySelect ? visibilitySelect.value : undefined;
         const assigned_to_user_id = assignedToSelect ? (assignedToSelect.value || null) : undefined;
 
+        const situacaoSel = row.querySelector('.situacao-select');
+        const situacao = situacaoSel ? situacaoSel.value : undefined;
+
         // Objeto de atualização para tabela clientes
         const clientUpdate = { id: clientId, nome, projeto, login, senha };
         if (visibility !== undefined) clientUpdate.visibility = visibility;
         if (assigned_to_user_id !== undefined) clientUpdate.assigned_to_user_id = assigned_to_user_id;
+        if (situacao !== undefined) clientUpdate.situacao = situacao;
         
         updates.push(clientUpdate);
 
