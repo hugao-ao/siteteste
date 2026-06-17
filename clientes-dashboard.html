@@ -75,8 +75,9 @@
         max-width: 100%;
     }
     #clients-table {
-        min-width: 1600px;
-        border-collapse: collapse;
+        min-width: 1800px;
+        border-collapse: separate;
+        border-spacing: 0;
         table-layout: auto;
     }
     #clients-table th, #clients-table td {
@@ -90,8 +91,18 @@
         color: var(--theme-header-text);
         font-weight: bold;
     }
+    /* Coluna Nome congelada (sticky) */
+    #clients-table th:nth-child(1), #clients-table td:nth-child(1) {
+        position: sticky; left: 0; z-index: 2;
+        background: var(--theme-bg-darker, #1a2e1a);
+        min-width: 140px;
+        border-right: 2px solid rgba(218,165,32,0.3);
+    }
+    #clients-table th:nth-child(1) {
+        z-index: 3;
+        background: var(--theme-header-bg);
+    }
     /* Larguras iniciais das colunas (min-width para não encolher demais) */
-    #clients-table th:nth-child(1), #clients-table td:nth-child(1) { min-width: 140px; } /* Nome */
     #clients-table th:nth-child(2), #clients-table td:nth-child(2) { min-width: 130px; } /* WhatsApp */
     #clients-table th:nth-child(3), #clients-table td:nth-child(3) { min-width: 90px; } /* Projeto */
     #clients-table th:nth-child(4), #clients-table td:nth-child(4) { min-width: 150px; } /* Login/Senha */
@@ -103,7 +114,8 @@
     #clients-table th:nth-child(10), #clients-table td:nth-child(10) { min-width: 95px; text-align: center; } /* Patrimônio */
     #clients-table th:nth-child(11), #clients-table td:nth-child(11) { min-width: 90px; text-align: center; } /* Dívidas */
     #clients-table th:nth-child(12), #clients-table td:nth-child(12) { min-width: 130px; text-align: center; } /* Fluxo Mensal */
-    #clients-table th:nth-child(13), #clients-table td:nth-child(13) { min-width: 140px; text-align: center;} /* Ações */
+    #clients-table th:nth-child(13), #clients-table td:nth-child(13) { min-width: 100px; text-align: center; } /* Situação */
+    #clients-table th:nth-child(14), #clients-table td:nth-child(14) { min-width: 140px; text-align: center;} /* Ações */
     /* Separador lateral entre headers */
     #clients-table th { border-right: 1px solid rgba(255,255,255,0.12); }
     #clients-table th:last-child { border-right: none; }
@@ -122,6 +134,23 @@
     .fin-cell .fin-label { font-size: 0.62rem; color: var(--theme-text-muted); display: block; line-height: 1.3; }
     .fin-cell .fin-row { display: flex; justify-content: center; gap: 0.6rem; flex-wrap: wrap; }
     .fin-cell .fin-item { display: flex; flex-direction: column; align-items: center; }
+    /* Situação column */
+    .situacao-select { padding: 0.3rem 0.5rem; border-radius: 4px; font-size: 0.8rem; font-weight: 600; border: 1px solid var(--theme-border-color); background: rgba(0,0,0,0.2); color: var(--theme-text-light); cursor: pointer; text-align: center; }
+    .situacao-select.sit-ativo { border-color: #22c55e; color: #22c55e; }
+    .situacao-select.sit-hiato { border-color: #f59e0b; color: #f59e0b; }
+    .situacao-select.sit-parou { border-color: #ef4444; color: #ef4444; }
+    /* Dashboard Summary Panel */
+    .dashboard-summary {
+      display: flex; align-items: center; gap: 0.7rem; flex-wrap: wrap;
+      background: linear-gradient(135deg, rgba(218,165,32,0.06), rgba(218,165,32,0.02));
+      border: 1px solid rgba(218,165,32,0.25); border-radius: 8px;
+      padding: 0.5rem 1rem; font-size: 0.78rem; color: var(--theme-text-muted);
+      margin-left: auto;
+    }
+    .dashboard-summary .sum-item { display: flex; align-items: center; gap: 0.3rem; white-space: nowrap; }
+    .dashboard-summary .sum-item i { font-size: 0.75rem; opacity: 0.7; }
+    .dashboard-summary .sum-item span { font-weight: 600; color: var(--theme-text-light); }
+    .dashboard-summary .sum-sep { color: var(--theme-border-color); font-size: 1rem; opacity: 0.4; }
     .ult-reuniao-cell { text-align: center; font-size: 0.85rem; white-space: nowrap; }
     .ult-reuniao-cell .dias-num { font-weight: 700; font-size: 1rem; color: var(--theme-secondary-lighter); }
     .ult-reuniao-cell .dias-label { font-size: 0.72rem; color: var(--theme-text-muted); display: block; }
@@ -473,7 +502,8 @@
         #clients-table td:nth-of-type(10), /* Patrimônio */
         #clients-table td:nth-of-type(11), /* Dívidas */
         #clients-table td:nth-of-type(12), /* Fluxo Mensal */
-        #clients-table td:nth-of-type(13) /* Ações */
+        #clients-table td:nth-of-type(13), /* Situação */
+        #clients-table td:nth-of-type(14) /* Ações */
         { padding-left: 0.75rem; }
         #clients-table td:nth-of-type(2)::before, /* WhatsApp */
         #clients-table td:nth-of-type(4)::before, /* Login/Senha */
@@ -485,7 +515,8 @@
         #clients-table td:nth-of-type(10)::before, /* Patrimônio */
         #clients-table td:nth-of-type(11)::before, /* Dívidas */
         #clients-table td:nth-of-type(12)::before, /* Fluxo Mensal */
-        #clients-table td:nth-of-type(13)::before /* Ações */
+        #clients-table td:nth-of-type(13)::before, /* Situação */
+        #clients-table td:nth-of-type(14)::before /* Ações */
         { position: static; display: block; width: auto; margin-bottom: 0.5rem; text-align: left; }
         .whatsapp-cell { flex-direction: column; align-items: flex-start; }
         .whatsapp-cell input[type="text"] { width: 100%; }
@@ -496,9 +527,10 @@
         #clients-table td:nth-of-type(10), /* Patrimônio */
         #clients-table td:nth-of-type(11), /* Dívidas */
         #clients-table td:nth-of-type(12), /* Fluxo Mensal */
-        #clients-table td:nth-of-type(13) /* Ações */
+        #clients-table td:nth-of-type(13), /* Situação */
+        #clients-table td:nth-of-type(14) /* Ações */
         { text-align: center; }
-        #clients-table td:nth-of-type(13) button { margin: 0.2rem; }
+        #clients-table td:nth-of-type(14) button { margin: 0.2rem; }
 
         /* Modal responsivo */
         .modal-content {
@@ -552,8 +584,20 @@
     <!-- Tabela de Clientes -->
     <section>
       <h2>Clientes Cadastrados</h2>
-      <div style="margin-bottom:1rem;display:flex;align-items:center;gap:1rem;">
+      <div style="margin-bottom:1rem;display:flex;align-items:center;gap:1rem;flex-wrap:wrap;">
         <input type="text" id="clients-search" placeholder="Buscar por nome, WhatsApp, projeto..." style="flex:1;max-width:400px;padding:0.6rem 0.8rem;border-radius:6px;border:1px solid var(--theme-border-color);background:rgba(0,0,0,0.2);color:var(--theme-text-light);font-size:0.9rem;">
+        <div id="dashboard-summary" class="dashboard-summary">
+          <span class="sum-item" title="Patrimônio Total"><i class="fas fa-landmark"></i> <span id="sum-patrimonio">--</span></span>
+          <span class="sum-item" title="Dívidas Total"><i class="fas fa-credit-card"></i> <span id="sum-dividas">--</span></span>
+          <span class="sum-item" title="Média Entradas"><i class="fas fa-arrow-up" style="color:#22c55e;"></i> <span id="sum-renda">--</span></span>
+          <span class="sum-item" title="Média Saídas"><i class="fas fa-arrow-down" style="color:#ef4444;"></i> <span id="sum-despesas">--</span></span>
+          <span class="sum-item" title="Média Poupança"><i class="fas fa-piggy-bank" style="color:#60a5fa;"></i> <span id="sum-poupanca">--</span></span>
+          <span class="sum-item" title="Média Saldo"><i class="fas fa-balance-scale"></i> <span id="sum-saldo">--</span></span>
+          <span class="sum-sep">|</span>
+          <span class="sum-item sit-count" title="Ativos / Em Hiato / Parou"><i class="fas fa-users"></i> <span id="sum-situacao">--</span></span>
+          <span class="sum-sep">|</span>
+          <span class="sum-item" title="Pend. Consultor / Pend. Cliente"><i class="fas fa-tasks"></i> <span id="sum-pendentes">--</span></span>
+        </div>
       </div>
       <div class="table-scroll-wrapper">
       <table id="clients-table">
@@ -571,12 +615,13 @@
             <th>Patrimônio</th>
             <th>Dívidas</th>
             <th>Fluxo Mensal</th>
+            <th>Situação</th>
             <th>Ações</th>
           </tr>
         </thead>
         <tbody>
           <!-- Linhas preenchidas dinamicamente por clientes.js -->
-          <tr><td colspan="13">Carregando clientes...</td></tr>
+          <tr><td colspan="14">Carregando clientes...</td></tr>
         </tbody>
       </table>
       </div>
