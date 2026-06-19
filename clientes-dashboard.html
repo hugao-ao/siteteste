@@ -478,6 +478,14 @@
       background-color: var(--theme-secondary);
       color: white;
     }
+    .msg-whatsapp-btn {
+      background-color: #25d366;
+      color: white;
+      margin-left: auto;
+    }
+    .msg-whatsapp-btn:hover {
+      background-color: #1da851;
+    }
     .msg-generate-btn {
       background-color: #2ecc71;
       color: white;
@@ -597,6 +605,8 @@
           <span class="sum-item sit-count" title="Ativos / Em Hiato / Parou"><i class="fas fa-users"></i> <span id="sum-situacao">--</span></span>
           <span class="sum-sep">|</span>
           <span class="sum-item" title="Pend. Consultor / Pend. Cliente"><i class="fas fa-tasks"></i> <span id="sum-pendentes">--</span></span>
+          <span class="sum-sep">|</span>
+          <span class="sum-item" title="Clientes com mensagem para enviar hoje"><i class="fas fa-envelope" style="color:#ef4444;"></i> <span id="sum-badges">--</span></span>
         </div>
       </div>
       <div class="table-scroll-wrapper">
@@ -651,6 +661,7 @@
       <div class="modal-footer">
         <button class="msg-modal-btn msg-cancel-btn" id="msg-cancel-btn">Cancelar</button>
         <button class="msg-modal-btn msg-save-btn" id="msg-save-btn">Salvar</button>
+        <button class="msg-modal-btn msg-whatsapp-btn" id="msg-whatsapp-btn" title="Enviar via WhatsApp"><i class="fab fa-whatsapp"></i> Enviar WhatsApp</button>
       </div>
     </div>
   </div>
