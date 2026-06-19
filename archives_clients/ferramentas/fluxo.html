@@ -499,6 +499,7 @@
       <h2 style="margin:0;">4. Itens do Fluxo</h2>
       <div style="display:flex; gap:0.5rem; align-items:center;">
         <button class="btn-clear-badges" id="btn-clear-all-badges" onclick="event.stopPropagation(); clearAllNewBadges()" style="display:none;">Limpar Badges</button>
+        <div onclick="event.stopPropagation(); openImportPlanilhaModal()" class="btn btn-outline btn-sm" title="Importar itens de uma planilha Google Sheets"><i class="fas fa-file-import"></i> Importar Planilha</div>
         <div onclick="event.stopPropagation(); openModal()" class="btn btn-primary">+ Adicionar Item</div>
         <span class="section-collapse-icon" id="collapse-icon-items">▼</span>
       </div>
@@ -4417,6 +4418,306 @@ function confirmarImportacao() {
   saveToStorage();
   alert(imported + ' lan\u00e7amento(s) importado(s) com sucesso!');
 }
+
+// ============================================================
+// IMPORTAR PLANILHA (Seção 4 - Itens do Fluxo)
+// ============================================================
+var _pendingPlanilhaItems = [];
+var _pendingPlanilhaAccounts = [];
+
+function openImportPlanilhaModal() {
+  var html = '<div class="modal-overlay open" id="planilha-import-modal" onclick="if(event.target===this)this.classList.remove(\'open\')">'
+    + '<div class="modal" style="max-width:600px; max-height:90vh; overflow-y:auto;">'
+    + '<div class="modal-header"><h2><i class="fas fa-file-import"></i> Importar Itens da Planilha</h2><button class="btn btn-ghost btn-icon" onclick="document.getElementById(\'planilha-import-modal\').remove()">✕</button></div>'
+    + '<div style="padding:1rem;">'
+    + '<div class="field"><label>URL da Planilha Google Sheets (deve estar pública)</label>'
+    + '<input type="text" id="planilha-import-url" placeholder="https://docs.google.com/spreadsheets/d/..."></div>'
+    + '<div style="margin-top:0.75rem;font-size:0.78rem;color:var(--muted);background:rgba(212,175,55,0.05);padding:0.75rem;border-radius:6px;">'
+    + '<strong style="color:var(--primary);">Requisitos:</strong><br>'
+    + '• A planilha deve estar com acesso público ("Qualquer pessoa com o link")<br>'
+    + '• Deve conter uma aba chamada <strong>PLANEJAMENTO</strong><br>'
+    + '• Dados a partir da linha 5: C=Nome, D=Valor, E=Tipo, F=Forma Pgto, H=Recorrência, I=Data Início, J=Data Fim</div>'
+    + '<div style="margin-top:1rem;display:flex;gap:0.75rem;justify-content:flex-end;">'
+    + '<button class="btn btn-outline" onclick="document.getElementById(\'planilha-import-modal\').remove()">Cancelar</button>'
+    + '<button class="btn btn-primary" onclick="importarPlanilhaItens()"><i class="fas fa-download"></i> Importar</button>'
+    + '</div></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+async function importarPlanilhaItens() {
+  var url = document.getElementById('planilha-import-url').value.trim();
+  if (!url) { alert('Cole a URL da planilha.'); return; }
+
+  var match = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
+  if (!match) { alert('URL inválida. Cole o link completo da planilha.'); return; }
+  var sheetId = match[1];
+
+  // Fetch aba PLANEJAMENTO
+  var csvUrl = 'https://docs.google.com/spreadsheets/d/' + sheetId + '/gviz/tq?tqx=out:csv&sheet=PLANEJAMENTO';
+
+  try {
+    var resp = await fetch(csvUrl);
+    if (!resp.ok) throw new Error('Erro ao acessar planilha. Verifique se está pública e se a aba PLANEJAMENTO existe.');
+    var text = await resp.text();
+    var lines = text.split('\n').filter(function(l) { return l.trim(); });
+    if (lines.length < 5) { alert('Planilha vazia ou sem dados suficientes (dados esperados a partir da linha 5).'); return; }
+
+    var anoVigente = new Date().getFullYear();
+    _pendingPlanilhaItems = [];
+    _pendingPlanilhaAccounts = [];
+    var formasPagamentoUnicas = [];
+
+    // Pular header (linhas 1-4 = indices 0-3), dados começam no indice 4
+    for (var i = 4; i < lines.length; i++) {
+      var cols = parseCSVLine(lines[i]);
+      // C=col2, D=col3, E=col4, F=col5, G=col6, H=col7, I=col8, J=col9 (0-indexed)
+      var nome = cols.length > 2 ? cols[2].replace(/"/g, '').trim() : '';
+      var valorRaw = cols.length > 3 ? cols[3].replace(/"/g, '').trim() : '';
+      var tipoRaw = cols.length > 4 ? cols[4].replace(/"/g, '').trim().toUpperCase() : '';
+      var formaPag = cols.length > 5 ? cols[5].replace(/"/g, '').trim() : '';
+      var recRaw = cols.length > 7 ? cols[7].replace(/"/g, '').trim().toUpperCase() : '';
+      var dataIniRaw = cols.length > 8 ? cols[8].replace(/"/g, '').trim() : '';
+      var dataFimRaw = cols.length > 9 ? cols[9].replace(/"/g, '').trim() : '';
+
+      if (!nome && !valorRaw) continue; // linha vazia
+
+      var valor = parseFloat(valorRaw.replace(/[R$\s]/g, '').replace(/\./g, '').replace(',', '.')) || 0;
+      if (!nome || valor <= 0) continue;
+
+      // Tipo
+      var tipo = 'saida';
+      var subtipo = 'despesa';
+      if (tipoRaw === 'ENTRADA') { tipo = 'entrada'; subtipo = ''; }
+      else if (tipoRaw === 'APORTE') { tipo = 'saida'; subtipo = 'poupanca'; }
+      else { tipo = 'saida'; subtipo = 'despesa'; } // FIXO, VARIÁVEL, etc
+
+      // Recorrência
+      var recTipo = 'meses';
+      var recQty = 1;
+      var recNorm = recRaw.replace(/[ÁÀÂÃ]/g,'A').replace(/[ÉÈÊË]/g,'E').replace(/[ÍÌÎÏ]/g,'I').replace(/[ÓÒÔÕ]/g,'O').replace(/[ÚÙÛÜ]/g,'U');
+      if (recNorm === 'DIARIA' || recNorm === 'DIÁRIO' || recNorm === 'DIARIO') { recTipo = 'dias'; recQty = 1; }
+      else if (recNorm === 'DIAS UTEIS' || recNorm === 'DIAS ÚTEIS') { recTipo = 'uteis'; recQty = 1; }
+      else if (recNorm === 'SEMANAL') { recTipo = 'semanas'; recQty = 1; }
+      else if (recNorm === 'QUINZENAL') { recTipo = 'quinzenas'; recQty = 1; }
+      else if (recNorm === 'MENSAL') { recTipo = 'meses'; recQty = 1; }
+      else if (recNorm === 'ANUAL') { recTipo = 'meses'; recQty = 12; }
+      else if (recNorm === 'MES ALTERNADO' || recNorm === 'MÊS ALTERNADO' || recNorm === 'BIMESTRAL') { recTipo = 'meses'; recQty = 2; }
+      else if (recNorm === '1 PARA 2 MESES' || recNorm === 'TRIMESTRAL') { recTipo = 'meses'; recQty = 3; }
+      else if (recNorm === 'SEMESTRAL') { recTipo = 'meses'; recQty = 6; }
+      else if (recNorm === 'BIANUAL') { recTipo = 'meses'; recQty = 24; }
+      else if (recNorm) { recTipo = 'meses'; recQty = 1; } // fallback
+
+      // Data inicial
+      var recInicio = '';
+      if (dataIniRaw) {
+        var parts = dataIniRaw.split('/');
+        if (parts.length === 3) {
+          recInicio = parts[2] + '-' + parts[1].padStart(2,'0') + '-' + parts[0].padStart(2,'0');
+        } else if (dataIniRaw.includes('-')) {
+          recInicio = dataIniRaw; // já ISO
+        }
+      }
+      if (!recInicio) {
+        if (tipo === 'entrada') recInicio = anoVigente + '-01-01';
+        else if (subtipo === 'poupanca') recInicio = anoVigente + '-01-15';
+        else recInicio = anoVigente + '-01-15'; // despesas sempre 15/01
+      }
+
+      // Data final
+      var recFimTipo = 'nunca';
+      var recFimData = '';
+      if (dataFimRaw) {
+        var partsF = dataFimRaw.split('/');
+        if (partsF.length === 3) {
+          recFimData = partsF[2] + '-' + partsF[1].padStart(2,'0') + '-' + partsF[0].padStart(2,'0');
+          recFimTipo = 'data';
+        } else if (dataFimRaw.includes('-')) {
+          recFimData = dataFimRaw;
+          recFimTipo = 'data';
+        }
+      }
+
+      // Forma de pagamento - coletar únicas
+      if (formaPag && formasPagamentoUnicas.indexOf(formaPag) === -1) {
+        formasPagamentoUnicas.push(formaPag);
+      }
+
+      // Verificar duplicata
+      var exists = items.some(function(it) { return it.nome === nome && Math.abs(it.valor - valor) < 0.01; });
+      if (exists) continue;
+
+      _pendingPlanilhaItems.push({
+        nome: nome,
+        valor: valor,
+        tipo: tipo,
+        subtipo: subtipo,
+        categoria: subtipo === 'despesa' ? 'sobrevivencia' : '',
+        alteravel: 'nao',
+        disposto: 'nao',
+        importancia: '5',
+        conforto: '3',
+        formaPagamento: formaPag, // temporário, será mapeado para ID
+        usarComoComplemento: false,
+        recTipo: recTipo,
+        recQty: recQty,
+        recInicio: recInicio,
+        recFimTipo: recFimTipo,
+        recFimQty: '',
+        recFimData: recFimData,
+        _isNew: true
+      });
+    }
+
+    // Criar contas/cartões a partir das formas de pagamento únicas
+    formasPagamentoUnicas.forEach(function(fp) {
+      var fpLower = fp.toLowerCase();
+      var jaExiste = accounts.some(function(a) { return a.nome.toLowerCase() === fpLower; });
+      if (!jaExiste) {
+        var isCartao = fpLower.indexOf('cart') >= 0 || fpLower.indexOf('créd') >= 0 || fpLower.indexOf('cred') >= 0;
+        var newAcc = {
+          id: 'plan_' + Math.random().toString(36).slice(2,8),
+          nome: fp,
+          tipo: isCartao ? 'cartao' : 'conta',
+          fechamento: isCartao ? 10 : 0,
+          vencimento: isCartao ? 20 : 0,
+          bandeira: '',
+          _isNew: true
+        };
+        _pendingPlanilhaAccounts.push(newAcc);
+      }
+    });
+
+    // Mapear formaPagamento dos itens para o ID da conta
+    _pendingPlanilhaItems.forEach(function(it) {
+      if (it.formaPagamento) {
+        var fpNome = it.formaPagamento;
+        // Procurar nas contas existentes
+        var accExist = accounts.find(function(a) { return a.nome.toLowerCase() === fpNome.toLowerCase(); });
+        if (accExist) {
+          it.formaPagamento = accExist.id;
+        } else {
+          // Procurar nas novas contas pendentes
+          var accNew = _pendingPlanilhaAccounts.find(function(a) { return a.nome.toLowerCase() === fpNome.toLowerCase(); });
+          if (accNew) {
+            it.formaPagamento = accNew.id;
+          } else {
+            it.formaPagamento = '';
+          }
+        }
+      }
+    });
+
+    if (_pendingPlanilhaItems.length === 0 && _pendingPlanilhaAccounts.length === 0) {
+      alert('Nenhum dado novo encontrado (todos já existiam ou a planilha está vazia/incorreta).');
+      return;
+    }
+
+    showPlanilhaPreview();
+
+  } catch(e) {
+    alert('Erro: ' + e.message);
+  }
+}
+
+function showPlanilhaPreview() {
+  document.getElementById('planilha-import-modal').remove();
+
+  var recLabels = { nao:'Não repete', dias:'dias', uteis:'dias úteis', semanas:'semanas', quinzenas:'quinzenas', meses:'meses' };
+
+  var html = '<div class="modal-overlay open" id="planilha-preview-modal" onclick="if(event.target===this)this.classList.remove(\'open\')">'
+    + '<div class="modal" style="max-width:1000px; max-height:90vh; overflow-y:auto;">'
+    + '<div class="modal-header"><h2>Confirmar Importação</h2><button class="btn btn-ghost btn-icon" onclick="document.getElementById(\'planilha-preview-modal\').remove()">✕</button></div>'
+    + '<div style="padding:1rem;">';
+
+  // Contas novas
+  if (_pendingPlanilhaAccounts.length > 0) {
+    html += '<div style="margin-bottom:1rem;padding:0.75rem;background:rgba(96,165,250,0.1);border-radius:6px;border:1px solid rgba(96,165,250,0.3);">'
+      + '<strong style="color:#60a5fa;"><i class="fas fa-university"></i> ' + _pendingPlanilhaAccounts.length + ' conta(s)/cartão(ões) serão criados:</strong><br>'
+      + '<span style="font-size:0.8rem;color:var(--muted);">';
+    _pendingPlanilhaAccounts.forEach(function(a, i) {
+      html += (i > 0 ? ', ' : '') + a.nome + ' (' + (a.tipo === 'cartao' ? '💳 Cartão' : '🏦 Conta') + ')';
+    });
+    html += '</span></div>';
+  }
+
+  // Itens
+  html += '<div style="font-size:0.78rem;color:var(--muted);margin-bottom:0.5rem;">' + _pendingPlanilhaItems.length + ' item(ns) encontrado(s). Desmarque os que não deseja importar:</div>';
+  html += '<div style="overflow-x:auto;"><table class="tracking-table" style="font-size:0.75rem;">'
+    + '<thead><tr><th><input type="checkbox" id="planilha-check-all" checked onchange="toggleAllPlanilhaItems(this.checked)"></th><th>Nome</th><th>Tipo</th><th>Valor</th><th>Recorrência</th><th>Início</th><th>Fim</th><th>Pagamento</th></tr></thead><tbody>';
+
+  _pendingPlanilhaItems.forEach(function(it, idx) {
+    var tipoLabel = it.tipo === 'entrada' ? '<span style="color:var(--green);">Entrada</span>'
+      : it.subtipo === 'poupanca' ? '<span style="color:#60a5fa;">Poupança</span>'
+      : '<span style="color:var(--red);">Despesa</span>';
+    var recLabel = recLabels[it.recTipo] || it.recTipo;
+    var recText = it.recQty > 1 ? 'A cada ' + it.recQty + ' ' + recLabel : recLabel;
+    var inicioFmt = it.recInicio ? it.recInicio.split('-').reverse().join('/') : '—';
+    var fimFmt = it.recFimTipo === 'data' && it.recFimData ? it.recFimData.split('-').reverse().join('/') : 'Nunca';
+    var pagNome = '';
+    if (it.formaPagamento) {
+      var acc = accounts.find(function(a) { return a.id === it.formaPagamento; }) || _pendingPlanilhaAccounts.find(function(a) { return a.id === it.formaPagamento; });
+      pagNome = acc ? acc.nome : '';
+    }
+    html += '<tr>'
+      + '<td><input type="checkbox" class="planilha-item-check" data-idx="' + idx + '" checked></td>'
+      + '<td>' + it.nome + '</td>'
+      + '<td>' + tipoLabel + '</td>'
+      + '<td style="font-weight:600;">R$ ' + it.valor.toFixed(2).replace('.', ',') + '</td>'
+      + '<td>' + recText + '</td>'
+      + '<td>' + inicioFmt + '</td>'
+      + '<td>' + fimFmt + '</td>'
+      + '<td>' + (pagNome || '—') + '</td>'
+      + '</tr>';
+  });
+
+  html += '</tbody></table></div>';
+  html += '<div style="margin-top:1rem;display:flex;gap:0.75rem;justify-content:flex-end;">'
+    + '<button class="btn btn-outline" onclick="document.getElementById(\'planilha-preview-modal\').remove()">Cancelar</button>'
+    + '<button class="btn btn-primary" onclick="confirmarImportacaoPlanilha()"><i class="fas fa-check"></i> Confirmar Importação</button>'
+    + '</div></div></div></div>';
+
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function toggleAllPlanilhaItems(checked) {
+  document.querySelectorAll('.planilha-item-check').forEach(function(cb) { cb.checked = checked; });
+}
+
+function confirmarImportacaoPlanilha() {
+  // Adicionar contas novas
+  _pendingPlanilhaAccounts.forEach(function(acc) {
+    accounts.push(acc);
+  });
+  if (_pendingPlanilhaAccounts.length > 0) {
+    renderAccountsGrid();
+    updateFormaPagamentoSelect();
+  }
+
+  // Adicionar itens selecionados
+  var imported = 0;
+  document.querySelectorAll('.planilha-item-check').forEach(function(cb) {
+    if (!cb.checked) return;
+    var idx = parseInt(cb.getAttribute('data-idx'));
+    var it = _pendingPlanilhaItems[idx];
+    if (it) {
+      items.push(it);
+      imported++;
+    }
+  });
+
+  document.getElementById('planilha-preview-modal').remove();
+  _pendingPlanilhaItems = [];
+  _pendingPlanilhaAccounts = [];
+
+  renderItemsTable();
+  updateBadgeButtonVisibility();
+  saveToStorage();
+  alert(imported + ' item(ns) importado(s) com sucesso!' + (_pendingPlanilhaAccounts.length > 0 ? ' Contas/cartões também foram adicionados.' : ''));
+}
+
+// ============================================================
+// END IMPORTAR PLANILHA
+// ============================================================
 
 function parseCSVLine(line) {
   var result = [];
