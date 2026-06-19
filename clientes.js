@@ -205,10 +205,13 @@ async function initializeDashboard() {
     const generateBtn = document.getElementById('btn-generate-report');
     const mensagemModal = document.getElementById('mensagem-modal');
 
+    const msgWhatsBtn = document.getElementById('msg-whatsapp-btn');
+
     if (closeMsgModalBtn) closeMsgModalBtn.addEventListener('click', () => { mensagemModal.style.display = 'none'; });
     if (msgCancelBtn) msgCancelBtn.addEventListener('click', () => { mensagemModal.style.display = 'none'; });
     if (msgSaveBtn) msgSaveBtn.addEventListener('click', saveMensagem);
     if (generateBtn) generateBtn.addEventListener('click', handleGenerateReport);
+    if (msgWhatsBtn) msgWhatsBtn.addEventListener('click', () => { if (currentMsgClienteId) openWhatsApp(currentMsgClienteId); });
     window.addEventListener('click', (e) => { if (e.target === mensagemModal) mensagemModal.style.display = 'none'; });
 
     // Carrega clientes
@@ -435,9 +438,7 @@ async function loadClients(filterProject = null) {
                     <button class="msg-action-btn edit-msg-btn" data-client-id="${client.id}" title="Editar/Gerar mensagem WhatsApp">
                       <i class="fas fa-comment-alt"></i>
                     </button>
-                    <button class="msg-action-btn whats-btn" data-client-id="${client.id}" title="Enviar WhatsApp">
-                      <i class="fab fa-whatsapp"></i>
-                    </button>
+
                     <button class="msg-action-btn system-btn" data-client-id="${client.id}" title="Acessar sistema do cliente">
                       <i class="fas fa-external-link-alt"></i>
                     </button>
@@ -715,6 +716,13 @@ function renderDashboardSummary() {
     });
     if (elSit) elSit.innerHTML = '<span style="color:#22c55e;">' + ativos + '</span> / <span style="color:#f59e0b;">' + hiato + '</span> / <span style="color:#ef4444;">' + parou + '</span>';
     if (elPen) elPen.innerHTML = '<span style="color:#f59e0b;">' + _summaryData.pendConsultor + '</span> / <span style="color:#60a5fa;">' + _summaryData.pendCliente + '</span>';
+
+    // Contagem de badges (clientes com mensagem para enviar)
+    const elBadges = document.getElementById('sum-badges');
+    if (elBadges) {
+        const badgeCount = clientsTableBody ? clientsTableBody.querySelectorAll('.edit-msg-btn .badge').length : 0;
+        elBadges.innerHTML = badgeCount > 0 ? '<span style="color:#ef4444;">' + badgeCount + '</span>' : '0';
+    }
 }
 
 // --- Adicionar Cliente --- 
@@ -1207,8 +1215,6 @@ function handleTableClick(event) {
         window.location.href = `cliente-detalhes.html?id=${clientId}`;
     } else if (btn.classList.contains('edit-msg-btn')) {
         handleEditMessage(clientId);
-    } else if (btn.classList.contains('whats-btn')) {
-        openWhatsApp(clientId);
     } else if (btn.classList.contains('system-btn')) {
         openClientSystem(clientId);
     }
@@ -1375,6 +1381,12 @@ function updateMsgBadges() {
       btn.appendChild(badge);
     }
   });
+  // Atualizar contagem de badges no painel de resumo
+  const elBadges = document.getElementById('sum-badges');
+  if (elBadges) {
+    const badgeCount = document.querySelectorAll('.edit-msg-btn .badge').length;
+    elBadges.innerHTML = badgeCount > 0 ? '<span style="color:#ef4444;">' + badgeCount + '</span>' : '0';
+  }
 }
 
 function clienteHasMensagem(clienteId, simDate) {
