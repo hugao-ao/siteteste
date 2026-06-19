@@ -3044,8 +3044,8 @@ function _globalSaveFeedback() {
 
 function _forceSaveFluxo() {
   _initDone = true;
-  saveToStorage();
-  _globalSaveFeedback();
+  // Chamar salvarSimulacaoAtual diretamente para funcionar mesmo com nova simulação (editingSimId=null)
+  salvarSimulacaoAtual();
 }
 
 // === HANDLER IMPORTAR DIAGNÓSTICO ===
@@ -4274,13 +4274,25 @@ async function importFromSheets() {
     // Tentar aba Lancamentos primeiro
     var resp = await fetch(baseUrl + 'Lancamentos');
     var text = '';
-    if (!resp.ok) {
+    var lancamentosOk = false;
+    if (resp.ok) {
+      text = await resp.text();
+      // Verificar se é CSV válido (não HTML de erro e tem mais de 1 linha)
+      var testLines = text.split('\n').filter(function(l) { return l.trim(); });
+      if (testLines.length > 1 && !text.trim().startsWith('<!') && !text.trim().startsWith('<html')) {
+        lancamentosOk = true;
+      }
+    }
+    if (!lancamentosOk) {
       // Fallback: tentar aba REGISTROS
       resp = await fetch(baseUrl + 'REGISTROS');
       if (!resp.ok) throw new Error('Erro ao acessar planilha. Verifique se est\u00e1 p\u00fablica e se possui aba "Lancamentos" ou "REGISTROS".');
+      text = await resp.text();
+      if (text.trim().startsWith('<!') || text.trim().startsWith('<html')) {
+        throw new Error('Nenhuma aba v\u00e1lida encontrada. Verifique se a planilha possui aba "Lancamentos" ou "REGISTROS".');
+      }
       usedTab = 'REGISTROS';
     }
-    text = await resp.text();
     var lines = text.split('\n').filter(function(l) { return l.trim(); });
     if (lines.length <= 1) { alert('Planilha vazia ou sem dados.'); return; }
 
