@@ -499,8 +499,9 @@
       <h2 style="margin:0;">4. Itens do Fluxo</h2>
       <div style="display:flex; gap:0.5rem; align-items:center;">
         <button class="btn-clear-badges" id="btn-clear-all-badges" onclick="event.stopPropagation(); clearAllNewBadges()" style="display:none;">Limpar Badges</button>
-        <div onclick="event.stopPropagation(); openImportPlanilhaModal()" class="btn btn-outline btn-sm" title="Importar itens de uma planilha Google Sheets"><i class="fas fa-file-import"></i> Importar Planilha</div>
-        <div onclick="event.stopPropagation(); openModal()" class="btn btn-primary">+ Adicionar Item</div>
+         <button class="btn btn-outline btn-sm" id="btn-delete-selected" onclick="event.stopPropagation(); deleteSelectedItems()" style="display:none; color:var(--red); border-color:var(--red);"><i class="fas fa-trash"></i> Excluir Selecionados (<span id="delete-selected-count">0</span>)</button>
+         <div onclick="event.stopPropagation(); openImportPlanilhaModal()" class="btn btn-outline btn-sm" title="Importar itens de uma planilha Google Sheets"><i class="fas fa-file-import"></i> Importar Planilha</div>
+         <div onclick="event.stopPropagation(); openModal()" class="btn btn-primary">+ Adicionar Item</div>
         <span class="section-collapse-icon" id="collapse-icon-items">▼</span>
       </div>
     </div>
@@ -515,6 +516,7 @@
         <table>
           <thead>
             <tr>
+              <th style="width:32px;"><input type="checkbox" id="items-check-all" onchange="toggleAllItemsCheck(this.checked)" title="Selecionar todos"></th>
               <th>Nome</th>
               <th>Tipo</th>
               <th>Categoria</th>
@@ -1367,7 +1369,7 @@ function renderItemsTable() {
   var html = '';
 
   function groupRow(label, color) {
-    return '<tr class="group-header"><td colspan="13" style="color:' + color + '">' + label + '</td></tr>';
+    return '<tr class="group-header"><td colspan="14" style="color:' + color + '">' + label + '</td></tr>';
   }
 
   function itemRow(it, index) {
@@ -1408,6 +1410,7 @@ function renderItemsTable() {
       itemBadges.forEach(function(b) { linkBadges += FerramentasLinkage.renderBadgeHtml(b); });
     }
     return '<tr>' +
+      '<td style="text-align:center;"><input type="checkbox" class="item-select-cb" data-index="' + index + '" onchange="updateDeleteSelectedBtn()"></td>' +
       '<td class="td-name">' + it.nome + newBadge + linkBadges + '</td>' +
       '<td>' + tipoB + '</td>' +
       '<td>' + catB + '</td>' +
@@ -2985,6 +2988,41 @@ deleteItem = function(index) {
   items.splice(index, 1);
   renderItemsTable();
 };
+
+// === SELEÇÃO MÚLTIPLA DE ITENS ===
+function toggleAllItemsCheck(checked) {
+  document.querySelectorAll('.item-select-cb').forEach(function(cb) { cb.checked = checked; });
+  updateDeleteSelectedBtn();
+}
+
+function updateDeleteSelectedBtn() {
+  var checked = document.querySelectorAll('.item-select-cb:checked');
+  var btn = document.getElementById('btn-delete-selected');
+  var countEl = document.getElementById('delete-selected-count');
+  if (checked.length > 0) {
+    btn.style.display = 'inline-flex';
+    countEl.textContent = checked.length;
+  } else {
+    btn.style.display = 'none';
+  }
+}
+
+function deleteSelectedItems() {
+  var checked = document.querySelectorAll('.item-select-cb:checked');
+  if (checked.length === 0) return;
+  if (!confirm('Excluir ' + checked.length + ' item(ns) selecionado(s)?')) return;
+  // Coletar índices em ordem decrescente para remover sem deslocar
+  var indices = [];
+  checked.forEach(function(cb) { indices.push(parseInt(cb.getAttribute('data-index'))); });
+  indices.sort(function(a, b) { return b - a; });
+  indices.forEach(function(idx) { items.splice(idx, 1); });
+  renderItemsTable();
+  saveToStorage();
+  // Reset check-all
+  var checkAll = document.getElementById('items-check-all');
+  if (checkAll) checkAll.checked = false;
+  document.getElementById('btn-delete-selected').style.display = 'none';
+}
 
 // ============================================================
 // INIT — carrega simulações e mostra lista
