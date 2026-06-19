@@ -4346,8 +4346,17 @@ async function importFromSheets() {
 
     if (usedTab === 'REGISTROS') {
       // Aba REGISTROS: C=Data(col2), D=Valor(col3), E=Descrição(col4), F=Subcategoria(col5), G=FormaPagamento(col6)
-      // Dados a partir da linha 5 (indice 4)
-      for (var i = 4; i < lines.length; i++) {
+      // Auto-detectar início dos dados: pular header(s) até encontrar linha com data válida na coluna C
+      var regStartIdx = 1;
+      for (var ri = 1; ri < lines.length; ri++) {
+        var rTestCols = parseCSVLine(lines[ri]);
+        var rTestData = rTestCols.length > 2 ? rTestCols[2].replace(/"/g, '').trim() : '';
+        if (rTestData && (rTestData.match(/^\d{1,2}\/\d{1,2}\/\d{4}$/) || rTestData.match(/^\d{4}-\d{2}-\d{2}/))) {
+          regStartIdx = ri;
+          break;
+        }
+      }
+      for (var i = regStartIdx; i < lines.length; i++) {
         var cols = parseCSVLine(lines[i]);
 
         var pagRaw = cols.length > 6 ? cols[6].replace(/"/g, '').trim() : '';
@@ -4380,6 +4389,14 @@ async function importFromSheets() {
             if (matchedItem.tipo === 'entrada') { tipo = 'entrada'; cat = ''; }
             else if (matchedItem.subtipo === 'poupanca') { tipo = 'poupanca'; cat = ''; }
             else { tipo = 'despesa'; cat = matchedItem.categoria || 'sem_categoria'; }
+          } else {
+            // Heurística: se subcategoria contém "entrada" no nome, classificar como entrada
+            var subcatLower = subcatRaw.toLowerCase();
+            if (subcatLower.indexOf('entrada') >= 0 || subcatLower.indexOf('receita') >= 0 || subcatLower.indexOf('salário') >= 0 || subcatLower.indexOf('salario') >= 0) {
+              tipo = 'entrada'; cat = '';
+            } else if (subcatLower.indexOf('poupan') >= 0 || subcatLower.indexOf('aporte') >= 0 || subcatLower.indexOf('investimento') >= 0) {
+              tipo = 'poupanca'; cat = '';
+            }
           }
         }
 
@@ -4552,7 +4569,7 @@ function openImportPlanilhaModal() {
     + '<strong style="color:var(--primary);">Requisitos:</strong><br>'
     + '• A planilha deve estar com acesso público ("Qualquer pessoa com o link")<br>'
     + '• Deve conter uma aba chamada <strong>PLANEJAMENTO</strong><br>'
-    + '• Dados a partir da linha 5: C=Nome, D=Valor, E=Tipo, F=Forma Pgto, H=Recorrência, I=Data Início, J=Data Fim</div>'
+    + '• Colunas esperadas: C=Nome, D=Valor, E=Tipo, F=Forma Pgto, H=Recorrência, I=Data Início, J=Data Fim</div>'
     + '<div style="margin-top:1rem;display:flex;gap:0.75rem;justify-content:flex-end;">'
     + '<button class="btn btn-outline" onclick="document.getElementById(\'planilha-import-modal\').remove()">Cancelar</button>'
     + '<button class="btn btn-primary" onclick="importarPlanilhaItens()"><i class="fas fa-download"></i> Importar</button>'
@@ -4576,15 +4593,27 @@ async function importarPlanilhaItens() {
     if (!resp.ok) throw new Error('Erro ao acessar planilha. Verifique se está pública e se a aba PLANEJAMENTO existe.');
     var text = await resp.text();
     var lines = text.split('\n').filter(function(l) { return l.trim(); });
-    if (lines.length < 5) { alert('Planilha vazia ou sem dados suficientes (dados esperados a partir da linha 5).'); return; }
+    if (lines.length < 2) { alert('Planilha vazia ou sem dados suficientes.'); return; }
 
     var anoVigente = new Date().getFullYear();
     _pendingPlanilhaItems = [];
     _pendingPlanilhaAccounts = [];
     var formasPagamentoUnicas = [];
 
-    // Pular header (linhas 1-4 = indices 0-3), dados começam no indice 4
-    for (var i = 4; i < lines.length; i++) {
+    // Auto-detectar início dos dados: pular header(s) até encontrar linha com nome ou valor na coluna C/D
+    var startIdx = 1; // pular pelo menos a primeira linha (header)
+    for (var si = 1; si < lines.length; si++) {
+      var testCols = parseCSVLine(lines[si]);
+      var testNome = testCols.length > 2 ? testCols[2].replace(/"/g, '').trim() : '';
+      var testValor = testCols.length > 3 ? testCols[3].replace(/"/g, '').trim() : '';
+      var testTipo = testCols.length > 4 ? testCols[4].replace(/"/g, '').trim().toUpperCase() : '';
+      if ((testNome || testValor) && (testTipo === 'ENTRADA' || testTipo === 'FIXO' || testTipo === 'VARIÁVEL' || testTipo === 'VARIAVEL' || testTipo === 'APORTE')) {
+        startIdx = si;
+        break;
+      }
+    }
+
+    for (var i = startIdx; i < lines.length; i++) {
       var cols = parseCSVLine(lines[i]);
       // C=col2, D=col3, E=col4, F=col5, G=col6, H=col7, I=col8, J=col9 (0-indexed)
       var nome = cols.length > 2 ? cols[2].replace(/"/g, '').trim() : '';
