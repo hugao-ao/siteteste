@@ -4479,6 +4479,11 @@ async function importarPlanilhaItens() {
       var dataIniRaw = cols.length > 8 ? cols[8].replace(/"/g, '').trim() : '';
       var dataFimRaw = cols.length > 9 ? cols[9].replace(/"/g, '').trim() : '';
 
+      // Captar forma de pagamento ANTES de pular linhas sem nome/valor
+      if (formaPag && formasPagamentoUnicas.indexOf(formaPag) === -1) {
+        formasPagamentoUnicas.push(formaPag);
+      }
+
       if (!nome && !valorRaw) continue; // linha vazia
 
       var valor = parseFloat(valorRaw.replace(/[R$\s]/g, '').replace(/\./g, '').replace(',', '.')) || 0;
@@ -4537,10 +4542,6 @@ async function importarPlanilhaItens() {
         }
       }
 
-      // Forma de pagamento - coletar únicas
-      if (formaPag && formasPagamentoUnicas.indexOf(formaPag) === -1) {
-        formasPagamentoUnicas.push(formaPag);
-      }
 
       // Verificar duplicata
       var exists = items.some(function(it) { return it.nome === nome && Math.abs(it.valor - valor) < 0.01; });
