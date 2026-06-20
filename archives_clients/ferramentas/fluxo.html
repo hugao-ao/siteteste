@@ -3436,6 +3436,11 @@ function addRealEvolutionToChart() {
       });
     }
 
+    // Also check _isCardItem flag from imported REGISTROS
+    if (!cartao && l._isCardItem && l._cardId && cartoesMap[l._cardId]) {
+      cartao = cartoesMap[l._cardId];
+    }
+
     if (cartao && l.tipo !== 'entrada') {
       // Credit card: accumulate in fatura based on purchase date
       var purchaseDate = new Date(dataISO + 'T00:00');
@@ -3740,11 +3745,19 @@ function renderTracking() {
     return l.data && l.data.substring(0, 7) === trackingMonth;
   });
 
+  // Build cartoesMap for card item detection
+  var _cartoesMapTracking = {};
+  accounts.forEach(function(acc) { if (acc.tipo === 'cartao') _cartoesMapTracking[acc.id] = acc; });
+
   // Sum real by category and tipo
+  // Card items (_isCardItem=true) are EXCLUDED from direct despesa counting;
+  // they will be counted via the fatura payment row instead.
   var realPorCat = {};
   var realEntradas = 0;
   var realPoupanca = 0;
   lancMes.forEach(function(l) {
+    // Skip card items - they go to fatura, not direct despesas
+    if (l._isCardItem) return;
     if (l.tipo === 'entrada') {
       realEntradas += l.valor;
     } else if (l.tipo === 'poupanca') {
@@ -3909,6 +3922,7 @@ function renderTracking() {
       var lancM = trackingData.lancamentos.filter(function(l) { return l.data && l.data.substring(0, 7) === mk; });
       var realM = {}; var realEnt = 0; var realPoup = 0;
       lancM.forEach(function(l) {
+        if (l._isCardItem) return; // Card items go to fatura, not direct despesas
         if (l.tipo === 'entrada') { realEnt += l.valor; }
         else if (l.tipo === 'poupanca') { realPoup += l.valor; }
         else { var c = l.categoria || 'sem_categoria'; realM[c] = (realM[c] || 0) + l.valor; }
@@ -4356,6 +4370,15 @@ async function importFromSheets() {
           break;
         }
       }
+
+      // Build card name map for detecting card items
+      var cardNameMap = {};
+      accounts.forEach(function(acc) {
+        if (acc.tipo === 'cartao') {
+          cardNameMap[acc.nome.toLowerCase()] = acc;
+        }
+      });
+
       for (var i = regStartIdx; i < lines.length; i++) {
         var cols = parseCSVLine(lines[i]);
 
@@ -4400,13 +4423,22 @@ async function importFromSheets() {
           }
         }
 
+        // Detectar se pagamento é um cartão de crédito cadastrado
+        var isCardItem = false;
+        var cardId = '';
+        if (pagRaw && cardNameMap[pagRaw.toLowerCase()]) {
+          var matchedCard = cardNameMap[pagRaw.toLowerCase()];
+          isCardItem = true;
+          cardId = matchedCard.id;
+        }
+
         // Verificar duplicata
         var exists = trackingData.lancamentos.some(function(l) {
           return l.data === dataISO && l.descricao === (desc || subcatRaw) && Math.abs(l.valor - valor) < 0.01;
         });
         if (exists) continue;
 
-        _pendingImportData.push({
+        var importItem = {
           tipo: tipo,
           data: dataISO,
           descricao: desc || subcatRaw,
@@ -4414,7 +4446,15 @@ async function importFromSheets() {
           categoria: tipo === 'despesa' ? cat : '',
           subcategoria: subcatRaw,
           pagamento: pagRaw
-        });
+        };
+
+        // Marcar itens de cartão para roteamento à fatura
+        if (isCardItem) {
+          importItem._isCardItem = true;
+          importItem._cardId = cardId;
+        }
+
+        _pendingImportData.push(importItem);
       }
     } else {
       // Aba Lancamentos: formato original A=Data, B=Desc, C=Valor, D=Cat, E=Subcat, F=Pag, G=Tipo
@@ -4490,15 +4530,17 @@ function showImportPreview() {
 
   _pendingImportData.forEach(function(row, idx) {
     var tipoLabel = row.tipo === 'entrada' ? '<span style="color:var(--green);">Entrada</span>' : row.tipo === 'poupanca' ? '<span style="color:#60a5fa;">Poupan\u00e7a</span>' : '<span style="color:var(--red);">Despesa</span>';
+    if (row._isCardItem) tipoLabel = '<span style="color:#a78bfa;">\ud83d\udcb3 Fatura</span>';
     var dataFormatted = row.data ? new Date(row.data + 'T00:00').toLocaleDateString('pt-BR') : '\u2014';
-    html += '<tr id="import-row-' + idx + '">';
+    var rowStyle = row._isCardItem ? ' style="background:rgba(167,139,250,0.06);"' : '';
+    html += '<tr id="import-row-' + idx + '"' + rowStyle + '>';
     html += '<td>' + tipoLabel + '</td>';
     html += '<td>' + dataFormatted + '</td>';
     html += '<td contenteditable="true" class="import-edit" data-field="descricao" data-idx="' + idx + '">' + (row.descricao || '') + '</td>';
     html += '<td style="font-weight:600;">R$ ' + row.valor.toFixed(2).replace('.', ',') + '</td>';
     html += '<td>' + (catLabels[row.categoria] || row.categoria || '\u2014') + '</td>';
     html += '<td contenteditable="true" class="import-edit" data-field="subcategoria" data-idx="' + idx + '">' + (row.subcategoria || '') + '</td>';
-    html += '<td>' + (row.pagamento || '\u2014') + '</td>';
+    html += '<td>' + (row.pagamento || '\u2014') + (row._isCardItem ? ' <span style="font-size:0.65rem;color:#a78bfa;">\u2192 fatura</span>' : '') + '</td>';
     html += '<td><button class="btn btn-ghost btn-sm" style="color:var(--red);font-size:0.7rem;" onclick="removeImportRow(' + idx + ')">\u2715</button></td>';
     html += '</tr>';
   });
@@ -4532,7 +4574,7 @@ function confirmarImportacao() {
   var imported = 0;
   _pendingImportData.forEach(function(row, i) {
     if (!row) return;
-    trackingData.lancamentos.push({
+    var lancObj = {
       id: 'lanc_' + Date.now() + '_' + i,
       tipo: row.tipo,
       data: row.data,
@@ -4541,7 +4583,13 @@ function confirmarImportacao() {
       categoria: row.categoria,
       subcategoria: row.subcategoria || '',
       pagamento: row.pagamento
-    });
+    };
+    // Preservar marcação de item de cartão para roteamento à fatura
+    if (row._isCardItem) {
+      lancObj._isCardItem = true;
+      lancObj._cardId = row._cardId;
+    }
+    trackingData.lancamentos.push(lancObj);
     imported++;
   });
 
@@ -5055,6 +5103,42 @@ function renderTrackingFaturas() {
   // Filter faturas by current month
   var filterMonth = trackingMonth || null;
 
+  // Build REAL faturas from imported card items (lancamentos with _isCardItem)
+  var realFatMap = {}; // { cartaoId: { fatKey: { total, itens:[] } } }
+  trackingData.lancamentos.forEach(function(l) {
+    if (!l._isCardItem || !l._cardId) return;
+    var cartao = cartoesMap[l._cardId];
+    if (!cartao) return;
+    var purchaseDate = new Date(l.data + 'T00:00');
+    var fat = getFaturaKey(purchaseDate, cartao);
+    if (!realFatMap[l._cardId]) realFatMap[l._cardId] = {};
+    if (!realFatMap[l._cardId][fat.key]) realFatMap[l._cardId][fat.key] = { total: 0, itens: [] };
+    realFatMap[l._cardId][fat.key].total += l.valor;
+    realFatMap[l._cardId][fat.key].itens.push({ descricao: l.descricao, valor: l.valor, data: l.data, subcategoria: l.subcategoria });
+  });
+
+  // Find fatura payment rows (non-card lancamentos where pagamento matches card name)
+  // These represent the ACTUAL fatura payment amount
+  var faturaPayments = {}; // { cardId: { 'YYYY-MM': valor } }
+  trackingData.lancamentos.forEach(function(l) {
+    if (l._isCardItem) return; // skip card items themselves
+    if (!l.pagamento) return;
+    // Check if this lancamento's description or subcategoria indicates it's a fatura payment
+    // The real fatura payment is identified by: tipo=despesa AND subcategoria matches card name
+    var matchedCardId = null;
+    Object.keys(cartoesMap).forEach(function(cid) {
+      var c = cartoesMap[cid];
+      if (l.subcategoria && l.subcategoria.toLowerCase() === c.nome.toLowerCase()) matchedCardId = cid;
+      if (l.descricao && l.descricao.toLowerCase().indexOf('fatura') >= 0 && l.descricao.toLowerCase().indexOf(c.nome.toLowerCase()) >= 0) matchedCardId = cid;
+    });
+    if (matchedCardId && l.data) {
+      var payMonth = l.data.substring(0, 7);
+      if (!faturaPayments[matchedCardId]) faturaPayments[matchedCardId] = {};
+      if (!faturaPayments[matchedCardId][payMonth]) faturaPayments[matchedCardId][payMonth] = 0;
+      faturaPayments[matchedCardId][payMonth] += l.valor;
+    }
+  });
+
   cartaoIds.forEach(function(cartaoId) {
     var cartao = cartoesMap[cartaoId];
     var faturas = fatMap[cartaoId];
@@ -5126,7 +5210,60 @@ function renderTrackingFaturas() {
       html += '</div></details></td></tr>';
     });
 
-    html += '</tbody></table></div>';
+    html += '</tbody></table>';
+
+    // === REAL FATURAS SECTION for this card ===
+    var realFaturas = realFatMap[cartaoId];
+    if (realFaturas) {
+      var realFatKeys = Object.keys(realFaturas).sort();
+      if (filterMonth) {
+        realFatKeys = realFatKeys.filter(function(fk) { return fk.substring(0, 7) === filterMonth; });
+      }
+      if (realFatKeys.length > 0) {
+        html += '<div style="margin-top:1rem; padding-top:0.8rem; border-top:1px dashed var(--border);">';
+        html += '<div style="font-size:0.82rem; font-weight:600; color:#a78bfa; margin-bottom:0.5rem;">\ud83d\udcb3 Fatura Real (Importada)</div>';
+        html += '<table class="tracking-table"><thead><tr><th>Fatura</th><th>Total Itens</th><th>Pgto Real</th><th>Status</th><th>Itens</th></tr></thead><tbody>';
+        realFatKeys.forEach(function(fatKey) {
+          var rFat = realFaturas[fatKey];
+          var mesLabel2 = new Date(fatKey + '-15').toLocaleDateString('pt-BR', { month:'long', year:'numeric' });
+          var pgtoReal = (faturaPayments[cartaoId] && faturaPayments[cartaoId][fatKey]) ? faturaPayments[cartaoId][fatKey] : null;
+          var statusHtml = '';
+          if (pgtoReal !== null) {
+            var diff = Math.abs(pgtoReal - rFat.total);
+            if (diff < 0.01) {
+              statusHtml = '<span style="color:var(--green);font-weight:600;">\u2713 Consistente</span>';
+            } else {
+              statusHtml = '<span style="color:#f59e0b;font-weight:600;">\u26a0 Inconsist\u00eancia (' + (pgtoReal > rFat.total ? '+' : '-') + fmtCurrency(diff) + ')</span>';
+            }
+          } else {
+            statusHtml = '<span style="color:var(--muted);font-size:0.72rem;">Pgto n\u00e3o identificado</span>';
+          }
+          html += '<tr>';
+          html += '<td style="font-weight:600;">' + mesLabel2.charAt(0).toUpperCase() + mesLabel2.slice(1) + '</td>';
+          html += '<td style="color:var(--red); font-weight:600;">' + fmtCurrency(rFat.total) + '</td>';
+          html += '<td>' + (pgtoReal !== null ? fmtCurrency(pgtoReal) : '\u2014') + '</td>';
+          html += '<td>' + statusHtml + '</td>';
+          html += '<td>' + rFat.itens.length + ' itens</td>';
+          html += '</tr>';
+          // Expandable real items
+          html += '<tr><td colspan="5" style="padding:0;">';
+          html += '<details style="padding:0.3rem 0.5rem;"><summary style="font-size:0.72rem; color:var(--muted); cursor:pointer;">Ver itens reais da fatura</summary>';
+          html += '<div style="max-height:150px; overflow-y:auto; margin-top:0.3rem;">';
+          rFat.itens.sort(function(a,b) { return a.data.localeCompare(b.data); }).forEach(function(fi) {
+            var dataLabel2 = fi.data ? new Date(fi.data + 'T00:00').toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit' }) : '\u2014';
+            html += '<div style="display:flex; justify-content:space-between; padding:0.15rem 0; font-size:0.72rem; border-bottom:1px solid rgba(167,139,250,0.08);">';
+            html += '<span style="color:var(--fg);">' + (fi.descricao || fi.subcategoria || '\u2014') + '</span>';
+            html += '<span style="color:var(--muted);">' + dataLabel2 + '</span>';
+            html += '<span style="color:var(--red); font-weight:600;">' + fmtCurrency(fi.valor) + '</span>';
+            html += '</div>';
+          });
+          html += '</div></details></td></tr>';
+        });
+        html += '</tbody></table></div>';
+      }
+    }
+
+    html += '</div>';
   });
 
   if (!html || html.indexOf('card2') === -1) {
