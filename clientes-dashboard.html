@@ -14,7 +14,6 @@
       display: flex;
       margin: 0;
       min-height: 100vh;
-      overflow-x: hidden;
     }
     #main-content-clientes {
       flex-grow: 1;
@@ -26,7 +25,7 @@
       transition: margin-left 0.3s ease, width 0.3s ease, max-width 0.3s ease;
       background-color: var(--theme-bg-surface);
       color: var(--theme-text-light);
-      overflow-x: hidden;
+      overflow-x: auto;
     }
     #main-content-clientes.sidebar-collapsed {
       margin-left: 60px; /* Margin for collapsed sidebar */
@@ -68,11 +67,13 @@
     }
     .table-scroll-wrapper {
         overflow-x: auto;
+        overflow-y: visible;
         -webkit-overflow-scrolling: touch;
         margin-bottom: 1rem;
         border-radius: 6px;
         border: 1px solid var(--theme-border-color);
         max-width: 100%;
+        position: relative;
     }
     #clients-table {
         min-width: 1800px;
@@ -93,14 +94,21 @@
     }
     /* Coluna Nome congelada (sticky) */
     #clients-table th:nth-child(1), #clients-table td:nth-child(1) {
-        position: sticky; left: 0; z-index: 2;
-        background: var(--theme-bg-darker, #1a2e1a);
+        position: -webkit-sticky;
+        position: sticky;
+        left: 0;
+        z-index: 2;
+        background-color: var(--theme-bg-dark, #1a2e1a);
         min-width: 140px;
         border-right: 2px solid rgba(218,165,32,0.3);
+        box-shadow: 2px 0 5px rgba(0,0,0,0.15);
     }
     #clients-table th:nth-child(1) {
         z-index: 3;
-        background: var(--theme-header-bg);
+        background-color: var(--theme-header-bg);
+    }
+    #clients-table tbody tr:hover td:nth-child(1) {
+        background-color: var(--theme-bg-surface, #1e3a1e);
     }
     /* Larguras iniciais das colunas (min-width para não encolher demais) */
     #clients-table th:nth-child(2), #clients-table td:nth-child(2) { min-width: 130px; } /* WhatsApp */
@@ -358,6 +366,45 @@
         color: var(--theme-text-muted);
         padding: 1rem;
     }
+    /* --- Diagnostico Consolidado Styles --- */
+    .diag-consolidado {
+        text-align: left;
+        margin-top: 1rem;
+    }
+    .diag-consolidado h3 {
+        color: var(--theme-secondary);
+        margin: 1.5rem 0 0.5rem 0;
+        padding-bottom: 0.3rem;
+        border-bottom: 1px dashed var(--theme-border-color);
+        font-size: 1rem;
+    }
+    .diag-consolidado h3:first-child {
+        margin-top: 0;
+    }
+    .diag-consolidado p {
+        text-align: left;
+        margin-bottom: 0.4rem;
+        line-height: 1.5;
+        color: var(--theme-text-light) !important;
+        font-size: 0.92rem;
+    }
+    .diag-consolidado ul {
+        list-style: none;
+        padding-left: 1rem;
+        margin: 0.3rem 0 0.6rem 0;
+        border-left: 2px solid var(--theme-border-color);
+    }
+    .diag-consolidado li {
+        margin-bottom: 0.35rem;
+        font-size: 0.9rem;
+        color: var(--theme-text-light);
+    }
+    .diag-consolidado .obs-text {
+        color: var(--theme-text-muted);
+        font-style: italic;
+        font-size: 0.85rem;
+        margin-top: 0.2rem;
+    }
     /* --- End Modal Styles --- */
 
     /* === WhatsApp Action Buttons === */
@@ -494,6 +541,11 @@
 
     @media (max-width: 900px) {
         /* Responsive table styles (mantidos) */
+        #clients-table th:nth-child(1), #clients-table td:nth-child(1) {
+            position: static;
+            box-shadow: none;
+            border-right: none;
+        }
         #clients-table thead { display: none; }
         #clients-table tr { display: block; margin-bottom: 1rem; border: 1px solid var(--theme-border-color); border-radius: 6px; overflow: hidden; }
         #clients-table td { display: block; text-align: right; padding-left: 50%; position: relative; border-bottom: 1px dotted var(--theme-border-color); width: 100% !important; box-sizing: border-box; }
@@ -618,7 +670,8 @@
             <th>Projeto</th>
             <th>Login / Senha</th>
             <th>Status/Atribuição</th>
-            <th>Dashboard</th>
+            <th>Form.</th>
+            <th>Diag.</th>
             <th>Últ. Reunião</th>
             <th>Pend. Consultor</th>
             <th>Pend. Cliente</th>
@@ -631,7 +684,7 @@
         </thead>
         <tbody>
           <!-- Linhas preenchidas dinamicamente por clientes.js -->
-          <tr><td colspan="14">Carregando clientes...</td></tr>
+          <tr><td colspan="15">Carregando clientes...</td></tr>
         </tbody>
       </table>
       </div>
@@ -671,10 +724,23 @@
     <div class="modal-content">
       <span class="modal-close" id="modal-close-btn">&times;</span>
       <h2 id="modal-title">Formulários do Cliente</h2>
-      <ul id="client-forms-list">
-        <!-- Lista de formulários será preenchida aqui -->
-        <li id="no-forms-message" style="display: none;">Nenhum formulário encontrado para este cliente.</li>
-      </ul>
+      <div id="forms-modal-body">
+        <ul id="client-forms-list">
+          <!-- Lista de formulários será preenchida aqui -->
+          <li id="no-forms-message" style="display: none;">Nenhum formulário encontrado para este cliente.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal de Diagnóstico Financeiro -->
+  <div id="diagnostico-modal" class="modal">
+    <div class="modal-content" style="max-width:900px;max-height:85vh;overflow-y:auto;">
+      <span class="modal-close" id="diag-modal-close-btn">&times;</span>
+      <h2 id="diag-modal-title">Diagnóstico Financeiro</h2>
+      <div id="diagnostico-modal-body">
+        <p style="color:var(--theme-text-muted);">Carregando...</p>
+      </div>
     </div>
   </div>
 
