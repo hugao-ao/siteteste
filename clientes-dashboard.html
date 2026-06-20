@@ -366,6 +366,39 @@
         color: var(--theme-text-muted);
         padding: 1rem;
     }
+    /* --- Formulário Consolidado Styles --- */
+    .form-consolidado {
+        text-align: left;
+        margin-top: 1rem;
+    }
+    .form-consolidado h3 {
+        color: var(--theme-secondary);
+        margin: 1.5rem 0 0.5rem 0;
+        padding-bottom: 0.3rem;
+        border-bottom: 1px solid var(--theme-border-color);
+        font-size: 1rem;
+    }
+    .form-consolidado h3:first-child {
+        margin-top: 0;
+    }
+    .form-consolidado p {
+        text-align: left;
+        margin-bottom: 0.4rem;
+        line-height: 1.5;
+        font-size: 0.9rem;
+    }
+    .form-consolidado ul {
+        list-style: none;
+        padding-left: 1rem;
+        margin: 0.3rem 0 0.6rem 0;
+        border-left: 2px solid var(--theme-secondary);
+    }
+    .form-consolidado li {
+        margin-bottom: 0.35rem;
+        font-size: 0.9rem;
+        color: var(--theme-text-light);
+    }
+
     /* --- Diagnostico Consolidado Styles --- */
     .diag-consolidado {
         text-align: left;
@@ -670,8 +703,7 @@
             <th>Projeto</th>
             <th>Login / Senha</th>
             <th>Status/Atribuição</th>
-            <th>Form.</th>
-            <th>Diag.</th>
+            <th>Dashboard</th>
             <th>Últ. Reunião</th>
             <th>Pend. Consultor</th>
             <th>Pend. Cliente</th>
@@ -684,7 +716,7 @@
         </thead>
         <tbody>
           <!-- Linhas preenchidas dinamicamente por clientes.js -->
-          <tr><td colspan="15">Carregando clientes...</td></tr>
+          <tr><td colspan="14">Carregando clientes...</td></tr>
         </tbody>
       </table>
       </div>
@@ -721,12 +753,11 @@
 
   <!-- Modal para Visualizar/Excluir Formulários -->
   <div id="forms-modal" class="modal">
-    <div class="modal-content">
+    <div class="modal-content" style="max-width:900px;max-height:85vh;overflow-y:auto;">
       <span class="modal-close" id="modal-close-btn">&times;</span>
       <h2 id="modal-title">Formulários do Cliente</h2>
       <div id="forms-modal-body">
         <ul id="client-forms-list">
-          <!-- Lista de formulários será preenchida aqui -->
           <li id="no-forms-message" style="display: none;">Nenhum formulário encontrado para este cliente.</li>
         </ul>
       </div>
