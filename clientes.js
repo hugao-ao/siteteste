@@ -181,7 +181,16 @@ async function initializeDashboard() {
         if (event.target == formsModal) {
             formsModal.style.display = "none";
         }
+        const diagModal = document.getElementById('diagnostico-modal');
+        if (event.target == diagModal) {
+            diagModal.style.display = "none";
+        }
     });
+    // Diagnostico modal close button
+    const diagCloseBtn = document.getElementById('diag-modal-close-btn');
+    if (diagCloseBtn) {
+        diagCloseBtn.addEventListener('click', () => { document.getElementById('diagnostico-modal').style.display = 'none'; });
+    }
     if (clientFormsList) {
         clientFormsList.addEventListener('click', handleDeleteFormClick);
         console.log("clientes.js: Listener da lista de formulários no modal adicionado.");
@@ -404,9 +413,14 @@ async function loadClients(filterProject = null) {
                 <td data-label="Status/Atribuição">
                     ${statusHtml}
                 </td>
-                <td data-label="Dashboard">
+                <td data-label="Form.">
                     <button class="view-forms-btn" data-client-id="${client.id}" data-client-name="${sanitizeInput(client.nome)}" title="Ver Formulários">
                         <i class="fa-solid fa-file-lines"></i> ${client.formularios_clientes[0].count}
+                    </button>
+                </td>
+                <td data-label="Diag.">
+                    <button class="view-diag-btn" data-client-id="${client.id}" data-client-name="${sanitizeInput(client.nome)}" title="Ver Diagnóstico">
+                        <i class="fa-solid fa-stethoscope"></i>
                     </button>
                 </td>
                 <td data-label="Últ. Reunião" class="ult-reuniao-cell">
@@ -1086,59 +1100,463 @@ async function deleteClient(id) {
     }
 }
 
-// --- Lógica do Modal de Formulários --- 
+// --- Lógica do Modal de Formulários (Enhanced) --- 
+let _formsModalClientId = null;
+
 async function showClientFormsModal(clientId, clientName) {
     console.log(`clientes.js: showClientFormsModal() chamado para Cliente ID: ${clientId}, Nome: ${clientName}`);
-    if (!formsModal || !modalTitle || !clientFormsList || !noFormsMessage) {
+    _formsModalClientId = clientId;
+    if (!formsModal || !modalTitle) {
         console.error("clientes.js: Elementos do modal não encontrados!");
         return;
     }
 
-    modalTitle.textContent = `Formulários de: ${sanitizeInput(clientName)}`;
-    clientFormsList.innerHTML = '<li>Carregando formulários...</li>';
-    noFormsMessage.style.display = 'none';
+    modalTitle.textContent = `Formulário de: ${sanitizeInput(clientName)}`;
+    const body = document.getElementById('forms-modal-body');
+    if (body) body.innerHTML = '<p style="color:var(--theme-text-muted);">Carregando...</p>';
     formsModal.style.display = "block";
 
-    await loadClientForms(clientId);
+    await loadClientFormEnhanced(clientId);
 }
 
-async function loadClientForms(clientId) {
-    console.log(`clientes.js: loadClientForms() chamado para Cliente ID: ${clientId}`);
+function generateUUID() {
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+        var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+        return v.toString(16);
+    });
+}
+
+async function loadClientFormEnhanced(clientId) {
+    const body = document.getElementById('forms-modal-body');
+    if (!body) return;
     try {
+        // Buscar formulário mais recente
         const { data: forms, error } = await supabase
             .from('formularios_clientes')
-            .select('id, created_at') // Seleciona apenas id e created_at
+            .select('*')
             .eq('cliente_id', clientId)
-            .order('created_at', { ascending: false });
+            .order('created_at', { ascending: false })
+            .limit(1);
 
-        if (error) {
-            console.error("clientes.js: Erro ao carregar formulários (Supabase):", error);
-            throw error;
-        }
+        if (error) throw error;
 
-        console.log(`clientes.js: ${forms ? forms.length : 0} formulários encontrados para cliente ${clientId}.`);
-        clientFormsList.innerHTML = '';
+        // Verificar se existe diagnóstico ativo
+        let temDiagnosticoAtivo = false;
+        try {
+            const { data: diagData, error: diagErr } = await supabase
+                .from('diagnosticos_financeiros')
+                .select('id')
+                .eq('cliente_id', clientId)
+                .limit(1);
+            if (!diagErr && diagData && diagData.length > 0) temDiagnosticoAtivo = true;
+        } catch(e) {}
+
+        let html = '';
 
         if (!forms || forms.length === 0) {
-            noFormsMessage.style.display = 'block';
+            // Sem formulário
+            html = `
+                <p>Este cliente ainda não possui um formulário.</p>
+                <button class="generate-link-btn" id="dash-generate-form-btn" style="margin-top:0.8rem;padding:0.6rem 1.2rem;background:var(--theme-secondary);color:var(--theme-bg-dark);border:none;border-radius:6px;cursor:pointer;font-weight:bold;">
+                    <i class="fas fa-link"></i> Gerar Link de Formulário
+                </button>
+            `;
         } else {
-            noFormsMessage.style.display = 'none';
-            forms.forEach(form => {
-                const li = document.createElement('li');
-                const formDate = new Date(form.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
-                li.innerHTML = `
-                    <span class="form-info">Formulário - ${formDate}</span>
-                    <div class="form-actions">
-                        <button class="delete-form-btn" data-form-id="${form.id}" data-client-id="${clientId}" title="Excluir Formulário"><i class="fa-solid fa-trash-can"></i></button>
+            const latestForm = forms[0];
+            const formDate = new Date(latestForm.created_at).toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
+
+            if (latestForm.status === 'preenchido' && latestForm.dados_formulario) {
+                // Formulário preenchido
+                html = `
+                    <div style="background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.3);border-radius:6px;padding:0.8rem;margin-bottom:1rem;">
+                        <span style="color:#22c55e;font-weight:bold;"><i class="fas fa-check-circle"></i> Formulário Preenchido</span>
+                        <span style="color:var(--theme-text-muted);font-size:0.85rem;margin-left:0.5rem;">${formDate}</span>
+                    </div>
+                    <p style="font-size:0.85rem;color:var(--theme-text-muted);">O cliente já preencheu o formulário. Para ver os dados completos, acesse a página de detalhes.</p>
+                `;
+                // Botão excluir
+                if (temDiagnosticoAtivo) {
+                    html += `
+                        <button disabled style="margin-top:0.8rem;padding:0.5rem 1rem;background:#555;color:#999;border:none;border-radius:6px;cursor:not-allowed;font-size:0.85rem;opacity:0.6;">
+                            <i class="fas fa-trash"></i> Excluir Formulário e Gerar Novo
+                        </button>
+                        <p style="color:#f39c12;font-size:0.8rem;margin-top:0.4rem;"><i class="fas fa-exclamation-triangle"></i> Formulário protegido: existe um diagnóstico ativo. Exclua o diagnóstico primeiro.</p>
+                    `;
+                } else {
+                    html += `
+                        <button id="dash-delete-form-btn" data-form-id="${latestForm.id}" style="margin-top:0.8rem;padding:0.5rem 1rem;background:#ef4444;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:0.85rem;">
+                            <i class="fas fa-trash"></i> Excluir Formulário e Gerar Novo
+                        </button>
+                    `;
+                }
+            } else {
+                // Formulário pendente (link gerado)
+                const formLink = `${window.location.origin}/formulario-cliente.html?token=${latestForm.token_unico}`;
+                html = `
+                    <div style="background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.3);border-radius:6px;padding:0.8rem;margin-bottom:1rem;">
+                        <span style="color:#f59e0b;font-weight:bold;"><i class="fas fa-clock"></i> Aguardando Preenchimento</span>
+                        <span style="color:var(--theme-text-muted);font-size:0.85rem;margin-left:0.5rem;">Gerado em ${formDate}</span>
+                    </div>
+                    <p style="font-size:0.85rem;margin-bottom:0.5rem;">Compartilhe o link abaixo com o cliente:</p>
+                    <div style="background:rgba(0,0,0,0.3);border:1px solid var(--theme-border-color);border-radius:6px;padding:0.6rem;word-break:break-all;font-size:0.82rem;display:flex;align-items:center;gap:0.5rem;">
+                        <a href="${formLink}" target="_blank" style="color:var(--theme-secondary-lighter);flex:1;">${formLink}</a>
+                        <button onclick="navigator.clipboard.writeText('${formLink}');this.innerHTML='<i class=\'fas fa-check\'></i>';setTimeout(()=>{this.innerHTML='<i class=\'fas fa-copy\'></i>'},2000)" style="background:none;border:1px solid var(--theme-border-color);color:var(--theme-text-muted);padding:0.3rem 0.5rem;border-radius:4px;cursor:pointer;" title="Copiar link"><i class="fas fa-copy"></i></button>
                     </div>
                 `;
-                clientFormsList.appendChild(li);
-            });
+                // Botão excluir link
+                if (temDiagnosticoAtivo) {
+                    html += `
+                        <button disabled style="margin-top:0.8rem;padding:0.5rem 1rem;background:#555;color:#999;border:none;border-radius:6px;cursor:not-allowed;font-size:0.85rem;opacity:0.6;">
+                            <i class="fas fa-trash"></i> Excluir Link e Gerar Novo
+                        </button>
+                        <p style="color:#f39c12;font-size:0.8rem;margin-top:0.4rem;"><i class="fas fa-exclamation-triangle"></i> Formulário protegido: existe um diagnóstico ativo.</p>
+                    `;
+                } else {
+                    html += `
+                        <button id="dash-delete-form-btn" data-form-id="${latestForm.id}" style="margin-top:0.8rem;padding:0.5rem 1rem;background:#ef4444;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:0.85rem;">
+                            <i class="fas fa-trash"></i> Excluir Link e Gerar Novo
+                        </button>
+                    `;
+                }
+            }
         }
+
+        body.innerHTML = html;
+
+        // Event listeners
+        const genBtn = document.getElementById('dash-generate-form-btn');
+        if (genBtn) genBtn.addEventListener('click', () => dashGenerateForm(clientId));
+        const delBtn = document.getElementById('dash-delete-form-btn');
+        if (delBtn) delBtn.addEventListener('click', () => dashDeleteFormAndRegenerate(delBtn.dataset.formId, clientId));
+
     } catch (error) {
-        console.error("clientes.js: Erro GERAL em loadClientForms:", error);
-        clientFormsList.innerHTML = `<li style="color: red;">Erro ao carregar formulários: ${error.message}</li>`;
+        console.error("clientes.js: Erro em loadClientFormEnhanced:", error);
+        body.innerHTML = `<p style="color:red;">Erro ao carregar formulário: ${error.message}</p>`;
     }
+}
+
+async function dashGenerateForm(clientId) {
+    try {
+        const token = generateUUID();
+        const { data, error } = await supabase
+            .from('formularios_clientes')
+            .insert([{ cliente_id: clientId, token_unico: token, status: 'pendente', data_preenchimento: null, dados_formulario: null }])
+            .select();
+        if (error) throw error;
+        await loadClientFormEnhanced(clientId);
+        loadClients(currentUserProjeto);
+    } catch (error) {
+        alert('Erro ao gerar formulário: ' + error.message);
+    }
+}
+
+async function dashDeleteFormAndRegenerate(formId, clientId) {
+    if (!confirm('Tem certeza que deseja excluir este formulário? Um novo link será gerado automaticamente.')) return;
+    try {
+        const { error } = await supabase.from('formularios_clientes').delete().eq('id', formId);
+        if (error) throw error;
+        await dashGenerateForm(clientId);
+    } catch (error) {
+        alert('Erro ao excluir formulário: ' + error.message);
+    }
+}
+
+// Legacy function kept for backward compatibility
+async function loadClientForms(clientId) {
+    await loadClientFormEnhanced(clientId);
+}
+
+// --- Lógica do Modal de Diagnóstico ---
+async function showDiagnosticoModal(clientId, clientName) {
+    const diagModal = document.getElementById('diagnostico-modal');
+    const diagTitle = document.getElementById('diag-modal-title');
+    const diagBody = document.getElementById('diagnostico-modal-body');
+    if (!diagModal || !diagBody) return;
+
+    diagTitle.textContent = `Diagn\u00f3stico de: ${sanitizeInput(clientName)}`;
+    diagBody.innerHTML = '<p style="color:var(--theme-text-muted);">Carregando...</p>';
+    diagModal.style.display = 'block';
+
+    try {
+        // Verificar se existe formul\u00e1rio preenchido
+        const { data: formData, error: formErr } = await supabase
+            .from('formularios_clientes')
+            .select('id, status')
+            .eq('cliente_id', clientId)
+            .eq('status', 'preenchido')
+            .limit(1);
+
+        const temFormularioPreenchido = !formErr && formData && formData.length > 0;
+
+        // Buscar diagn\u00f3stico existente
+        const { data: diagData, error: diagErr } = await supabase
+            .from('diagnosticos_financeiros')
+            .select('*')
+            .eq('cliente_id', clientId)
+            .order('created_at', { ascending: false })
+            .limit(1);
+
+        if (diagErr) throw diagErr;
+
+        let html = '';
+
+        if (!diagData || diagData.length === 0) {
+            // Sem diagn\u00f3stico
+            html = `<p>Este cliente ainda n\u00e3o possui um diagn\u00f3stico financeiro.</p>`;
+            if (!temFormularioPreenchido) {
+                html += `
+                    <button disabled style="margin-top:0.8rem;padding:0.6rem 1.2rem;background:#555;color:#999;border:none;border-radius:6px;cursor:not-allowed;font-size:0.9rem;opacity:0.6;">
+                        <i class="fas fa-stethoscope"></i> Gerar Link de Diagn\u00f3stico
+                    </button>
+                    <p style="color:#f39c12;font-size:0.8rem;margin-top:0.4rem;"><i class="fas fa-exclamation-triangle"></i> N\u00e3o \u00e9 poss\u00edvel criar um diagn\u00f3stico sem que o cliente tenha preenchido o formul\u00e1rio primeiro.</p>
+                `;
+            } else {
+                html += `
+                    <button id="dash-generate-diag-btn" style="margin-top:0.8rem;padding:0.6rem 1.2rem;background:var(--theme-secondary);color:var(--theme-bg-dark);border:none;border-radius:6px;cursor:pointer;font-weight:bold;">
+                        <i class="fas fa-stethoscope"></i> Gerar Link de Diagn\u00f3stico
+                    </button>
+                `;
+            }
+        } else {
+            const diag = diagData[0];
+            const diagLink = `${window.location.origin}/diagnostico-financeiro.html?token=${diag.link_unico}`;
+            const diagDate = new Date(diag.created_at).toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
+
+            html = `
+                <div style="background:rgba(96,165,250,0.1);border:1px solid rgba(96,165,250,0.3);border-radius:6px;padding:0.8rem;margin-bottom:1rem;">
+                    <span style="color:#60a5fa;font-weight:bold;"><i class="fas fa-stethoscope"></i> Diagn\u00f3stico Ativo</span>
+                    <span style="color:var(--theme-text-muted);font-size:0.85rem;margin-left:0.5rem;">Criado em ${diagDate}</span>
+                </div>
+                <p style="font-size:0.85rem;margin-bottom:0.5rem;">Link do diagn\u00f3stico:</p>
+                <div style="background:rgba(0,0,0,0.3);border:1px solid var(--theme-border-color);border-radius:6px;padding:0.6rem;word-break:break-all;font-size:0.82rem;display:flex;align-items:center;gap:0.5rem;margin-bottom:1rem;">
+                    <a href="${diagLink}" target="_blank" style="color:var(--theme-secondary-lighter);flex:1;">${diagLink}</a>
+                    <button onclick="navigator.clipboard.writeText('${diagLink}');this.innerHTML='<i class=\\'fas fa-check\\'></i>';setTimeout(()=>{this.innerHTML='<i class=\\'fas fa-copy\\'></i>'},2000)" style="background:none;border:1px solid var(--theme-border-color);color:var(--theme-text-muted);padding:0.3rem 0.5rem;border-radius:4px;cursor:pointer;" title="Copiar link"><i class="fas fa-copy"></i></button>
+                </div>
+            `;
+
+            // Renderizar dados consolidados se existirem
+            if (diag.dados_consolidados || diag.nome_diagnostico) {
+                html += renderConsolidadoDiagnosticoDash(diag);
+            }
+
+            // Bot\u00e3o excluir
+            html += `
+                <button id="dash-delete-diag-btn" data-diag-id="${diag.id}" style="margin-top:1rem;padding:0.5rem 1rem;background:#ef4444;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:0.85rem;">
+                    <i class="fas fa-trash"></i> Excluir Diagn\u00f3stico
+                </button>
+            `;
+        }
+
+        diagBody.innerHTML = html;
+
+        // Event listeners
+        const genDiagBtn = document.getElementById('dash-generate-diag-btn');
+        if (genDiagBtn) genDiagBtn.addEventListener('click', () => dashGenerateDiagnostico(clientId, clientName));
+        const delDiagBtn = document.getElementById('dash-delete-diag-btn');
+        if (delDiagBtn) delDiagBtn.addEventListener('click', () => dashDeleteDiagnostico(delDiagBtn.dataset.diagId, clientId, clientName));
+
+    } catch (error) {
+        console.error('Erro ao carregar diagn\u00f3stico:', error);
+        diagBody.innerHTML = `<p style="color:red;">Erro ao carregar diagn\u00f3stico: ${error.message}</p>`;
+    }
+}
+
+async function dashGenerateDiagnostico(clientId, clientName) {
+    try {
+        // Buscar formul\u00e1rio preenchido para obter outras_pessoas
+        const { data: formData } = await supabase
+            .from('formularios_clientes')
+            .select('dados_formulario')
+            .eq('cliente_id', clientId)
+            .eq('status', 'preenchido')
+            .order('created_at', { ascending: false })
+            .limit(1);
+
+        let outrasPersonasRenda = '';
+        if (formData && formData[0]?.dados_formulario?.outras_pessoas) {
+            outrasPersonasRenda = formData[0].dados_formulario.outras_pessoas.map(p => p.nome).join(', ');
+        }
+
+        // Buscar nome do cliente
+        const { data: cliente } = await supabase
+            .from('clientes')
+            .select('nome')
+            .eq('id', clientId)
+            .single();
+
+        const linkUnico = 'diag_' + Math.random().toString(36).substr(2, 16);
+
+        const { error: createError } = await supabase
+            .from('diagnosticos_financeiros')
+            .insert({
+                cliente_id: clientId,
+                link_unico: linkUnico,
+                nome_principal: cliente?.nome || clientName || '',
+                nomes_outras_pessoas_renda: outrasPersonasRenda,
+                created_by_id: sessionStorage.getItem('user_id')
+            });
+
+        if (createError) throw createError;
+        await showDiagnosticoModal(clientId, clientName);
+    } catch (error) {
+        alert('Erro ao gerar diagn\u00f3stico: ' + error.message);
+    }
+}
+
+async function dashDeleteDiagnostico(diagId, clientId, clientName) {
+    if (!confirm('Tem certeza que deseja excluir este diagn\u00f3stico? Esta a\u00e7\u00e3o n\u00e3o pode ser desfeita.')) return;
+    try {
+        const { error } = await supabase.from('diagnosticos_financeiros').delete().eq('id', diagId);
+        if (error) throw error;
+        await showDiagnosticoModal(clientId, clientName);
+    } catch (error) {
+        alert('Erro ao excluir diagn\u00f3stico: ' + error.message);
+    }
+}
+
+function renderConsolidadoDiagnosticoDash(d) {
+    const S = (v) => v ? sanitizeInput(String(v)) : '';
+    const C = (v) => { if (v === null || v === undefined) return 'N/A'; const n = parseFloat(v); return isNaN(n) ? 'N/A' : n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }); };
+    const pct = (v) => { const n = parseFloat(v); return isNaN(n) ? '0,00%' : n.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2}) + '%'; };
+    const addObs = (campo) => { const val = d[campo]; if (val && val.trim()) return `<p class="obs-text">Obs: ${S(val)}</p>`; return ''; };
+
+    const RISCO_LABELS = {'RISCO_MUITO_BAIXO_GARANTIA_SOBERANA':'Risco Muito Baixo (Garantia Soberana)','RISCO_MUITO_BAIXO_GARANTIA_FGC':'Risco Muito Baixo (Garantia FGC)','RISCO_BAIXO_GARANTIA_FGC':'Risco Baixo (Garantia FGC)','RISCO_MEDIO_SEM_GARANTIA':'Risco M\u00e9dio','RISCO_ALTO_SEM_GARANTIA':'Risco Alto','RISCO_MUITO_ALTO_SEM_GARANTIA':'Risco Muito Alto','RISCO_ABSOLUTO_SEM_GARANTIA':'Risco Absoluto'};
+    const PERFIS_FIN = {'dividas_impagaveis':'D\u00edvidas Impag\u00e1veis','dividas_pagaveis':'D\u00edvidas Pag\u00e1veis','zero_a_zero_obrigatorio':'Zero a Zero Obrigat\u00f3rio','zero_a_zero_opcional':'Zero a Zero Opcional','fluxo_positivo':'Fluxo Positivo','poupador':'Poupador','investidor_amador':'Investidor-Amador','investidor_planejador':'Investidor-Planejador','nivel_1':'HV N\u00edvel I','nivel_2':'HV N\u00edvel II'};
+    const PERFIS_OBJ = {'sem_conhecimento':'Sem Conhecimento','iniciante':'Iniciante','ultra_cons':'Ultra-Conservador','cons':'Conservador','cons_mod':'Conservador-Moderado','mod':'Moderado','mod_arro':'Moderado-Arrojado','arro':'Arrojado','ultra_arro':'Ultra-Arrojado'};
+
+    let h = '<div class="diag-consolidado">';
+
+    // 1. DADOS PESSOAIS
+    h += '<h3>Dados Pessoais</h3>';
+    if (d.nome_diagnostico) h += `<p><strong>Nome:</strong> ${S(d.nome_diagnostico)}</p>`;
+    if (d.cpf) h += `<p><strong>CPF:</strong> ${d.cpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4')}</p>`;
+    if (d.data_nascimento) {
+        const dn = new Date(d.data_nascimento + 'T12:00:00');
+        const idade = Math.floor((new Date() - dn) / (365.25*24*60*60*1000));
+        h += `<p><strong>Data de Nascimento:</strong> ${dn.toLocaleDateString('pt-BR')} (${idade} anos)</p>`;
+    }
+    if (d.profissao) h += `<p><strong>Profiss\u00e3o:</strong> ${S(d.profissao)}</p>`;
+    if (d.estado_civil) h += `<p><strong>Estado Civil:</strong> ${S(d.estado_civil)}</p>`;
+    if (d.regime_bens) h += `<p><strong>Regime de Bens:</strong> ${S(d.regime_bens)}</p>`;
+    if (d.telefone) h += `<p><strong>Telefone:</strong> ${S(d.telefone)}</p>`;
+    if (d.email) h += `<p><strong>E-mail:</strong> ${S(d.email)}</p>`;
+    if (d.conjuge_nome) {
+        h += `<p style="margin-top:0.8rem;border-top:1px dotted var(--theme-border-color);padding-top:0.5rem"><strong>C\u00f4njuge:</strong> ${S(d.conjuge_nome)}</p>`;
+        if (d.conjuge_cpf) h += `<p><strong>CPF C\u00f4njuge:</strong> ${d.conjuge_cpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4')}</p>`;
+        if (d.conjuge_profissao) h += `<p><strong>Profiss\u00e3o C\u00f4njuge:</strong> ${S(d.conjuge_profissao)}</p>`;
+    }
+    h += addObs('obs_dados_pessoais');
+
+    // 2. PESSOAS COM RENDA
+    try {
+        const pessoas = typeof d.pessoas_renda === 'string' ? JSON.parse(d.pessoas_renda) : d.pessoas_renda;
+        if (pessoas && pessoas.length > 0) {
+            h += '<h3>Pessoas com Renda</h3><ul>';
+            pessoas.forEach(p => { h += `<li><strong>${S(p.nome||'N/A')}</strong> \u2014 Parentesco: ${S(p.parentesco||'N/A')}${p.idade ? ', Idade: '+p.idade : ''}</li>`; });
+            h += '</ul>'; h += addObs('obs_pessoas_renda');
+        }
+    } catch(e) {}
+
+    // 3. DEPENDENTES
+    try {
+        const deps = typeof d.dependentes === 'string' ? JSON.parse(d.dependentes) : d.dependentes;
+        if (deps && deps.length > 0) {
+            h += '<h3>Dependentes</h3><ul>';
+            deps.forEach(dep => { h += `<li><strong>${S(dep.nome||'N/A')}</strong> \u2014 Rela\u00e7\u00e3o: ${S(dep.relacao||dep.parentesco||'N/A')}${dep.idade ? ', Idade: '+dep.idade : ''}</li>`; });
+            h += '</ul>'; h += addObs('obs_dependentes');
+        }
+    } catch(e) {}
+
+    // 4. PATRIM\u00d4NIO F\u00cdSICO
+    try {
+        const pats = typeof d.patrimonios === 'string' ? JSON.parse(d.patrimonios) : d.patrimonios;
+        if (pats && pats.length > 0) {
+            h += '<h3>Patrim\u00f4nio F\u00edsico</h3>';
+            let totalPF = 0; h += '<ul>';
+            pats.forEach(p => { const val = parseFloat(p.valor)||0; totalPF += val; h += `<li><strong>${S(p.tipo||p.descricao||'N/A')}</strong> | Valor: ${C(val)} | Invent.: ${p.inventariavel===false?'N\u00e3o':'Sim'}</li>`; });
+            h += '</ul>'; h += `<p><strong>Total:</strong> ${C(totalPF)}</p>`; h += addObs('obs_patrimonio_fisico');
+        }
+    } catch(e) {}
+
+    // 5. PATRIM\u00d4NIO L\u00cdQUIDO
+    try {
+        const invs = typeof d.patrimonios_liquidos === 'string' ? JSON.parse(d.patrimonios_liquidos) : d.patrimonios_liquidos;
+        if (invs && invs.length > 0) {
+            h += '<h3>Patrim\u00f4nio L\u00edquido / Investimentos</h3>';
+            let totalPL = 0; h += '<ul>';
+            invs.forEach(inv => {
+                const val = parseFloat(inv.valor_atual)||0; totalPL += val;
+                const riscoLabel = RISCO_LABELS[inv.classificacao_risco]||inv.classificacao_risco||'';
+                const nome = inv.nome_produto_customizado||inv.tipo_produto_nome||'N/A';
+                h += `<li><strong>${S(nome)}</strong> | Valor: ${C(val)}${riscoLabel?' | Risco: '+S(riscoLabel):''}${inv.instituicao_nome?' | Inst.: '+S(inv.instituicao_nome):''}</li>`;
+            });
+            h += '</ul>'; h += `<p><strong>Total:</strong> ${C(totalPL)}</p>`; h += addObs('obs_patrimonio_liquido');
+        }
+    } catch(e) {}
+
+    // 6. D\u00cdVIDAS
+    try {
+        const divs = typeof d.dividas === 'string' ? JSON.parse(d.dividas) : d.dividas;
+        if (divs && divs.length > 0) {
+            h += '<h3>D\u00edvidas</h3>';
+            let totalSaldo = 0; h += '<ul>';
+            divs.forEach(div => { const saldo = parseFloat(div.saldo_devedor)||0; totalSaldo += saldo; h += `<li><strong>${S(div.credor||div.motivo||'N/A')}</strong> | Saldo: ${C(saldo)} | Parcela: ${C(div.valor_parcela)}</li>`; });
+            h += '</ul>'; h += `<p><strong>Total Saldo Devedor:</strong> ${C(totalSaldo)}</p>`; h += addObs('obs_dividas');
+        }
+    } catch(e) {}
+
+    // 7. FLUXO DE CAIXA
+    try {
+        const fluxo = typeof d.fluxo_caixa === 'string' ? JSON.parse(d.fluxo_caixa) : d.fluxo_caixa;
+        if (fluxo && (fluxo.receitas || fluxo.despesas)) {
+            h += '<h3>Fluxo de Caixa</h3>';
+            let totalR = 0, totalD = 0;
+            if (fluxo.receitas) { fluxo.receitas.forEach(r => { totalR += parseFloat(r.valor)||0; }); }
+            if (fluxo.despesas) { fluxo.despesas.forEach(desp => { totalD += parseFloat(desp.valor)||0; }); }
+            h += `<p><strong>Receita Mensal:</strong> ${C(totalR)} | <strong>Despesa Mensal:</strong> ${C(totalD)} | <strong>Saldo:</strong> ${C(totalR - totalD)}</p>`;
+            h += addObs('obs_fluxo_caixa');
+        }
+    } catch(e) {}
+
+    // 8. OBJETIVOS
+    try {
+        const obj = typeof d.objetivos === 'string' ? JSON.parse(d.objetivos) : d.objetivos;
+        if (obj && obj.objetivos && obj.objetivos.length > 0) {
+            h += '<h3>Objetivos Financeiros</h3><ul>';
+            obj.objetivos.forEach((o, idx) => {
+                h += `<li><strong>#${idx+1} ${S(o.descricao||'N/A')}</strong> (${S(o.tipo||'objetivo')})`;
+                if (o.valor_final) h += ` | Valor: ${C(o.valor_final)}`;
+                if (o.prazo_meses) h += ` | Prazo: ${o.prazo_meses} meses`;
+                h += '</li>';
+            });
+            h += '</ul>';
+            if (obj.perfilFinanceiro && obj.perfilFinanceiro.perfil_selecionado) {
+                const perfilNome = PERFIS_FIN[obj.perfilFinanceiro.perfil_selecionado] || obj.perfilFinanceiro.perfil_selecionado;
+                h += `<p><strong>Perfil Financeiro:</strong> ${S(perfilNome)}</p>`;
+            }
+            h += addObs('obs_objetivos');
+        }
+    } catch(e) {}
+
+    // 9. QUEST\u00d5ES PERTINENTES
+    try {
+        const q = typeof d.questoes_pertinentes === 'string' ? JSON.parse(d.questoes_pertinentes) : d.questoes_pertinentes;
+        if (q && Object.keys(q).length > 0) {
+            h += '<h3>Quest\u00f5es Pertinentes</h3>';
+            let simCount = 0, naoCount = 0;
+            Object.values(q).forEach(data => {
+                const resp = (data.resposta||'').toUpperCase();
+                if (resp === 'SIM') simCount++;
+                else if (resp === 'N\u00c3O' || resp === 'NAO') naoCount++;
+            });
+            const totalResp = simCount + naoCount;
+            const pctAprov = totalResp > 0 ? Math.round((simCount / totalResp) * 100) : 0;
+            h += `<p><strong>Resumo:</strong> ${simCount} SIM, ${naoCount} N\u00c3O | <strong>Aproveitamento:</strong> ${pctAprov}%</p>`;
+        }
+    } catch(e) {}
+
+    h += '</div>';
+    return h;
 }
 
 // --- Excluir Formulário --- 
@@ -1209,6 +1627,8 @@ function handleTableClick(event) {
 
     if (btn.classList.contains('view-forms-btn')) {
         showClientFormsModal(clientId, clientName);
+    } else if (btn.classList.contains('view-diag-btn')) {
+        showDiagnosticoModal(clientId, clientName);
     } else if (btn.classList.contains('delete-btn')) {
         deleteClient(clientId);
     } else if (btn.classList.contains('view-details-btn')) {
