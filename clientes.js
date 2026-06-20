@@ -413,12 +413,10 @@ async function loadClients(filterProject = null) {
                 <td data-label="Status/Atribuição">
                     ${statusHtml}
                 </td>
-                <td data-label="Form.">
-                    <button class="view-forms-btn" data-client-id="${client.id}" data-client-name="${sanitizeInput(client.nome)}" title="Ver Formulários">
+                <td data-label="Dashboard" style="white-space:nowrap;">
+                    <button class="view-forms-btn" data-client-id="${client.id}" data-client-name="${sanitizeInput(client.nome)}" title="Ver Formulário" style="margin-right:4px;">
                         <i class="fa-solid fa-file-lines"></i> ${client.formularios_clientes[0].count}
                     </button>
-                </td>
-                <td data-label="Diag.">
                     <button class="view-diag-btn" data-client-id="${client.id}" data-client-name="${sanitizeInput(client.nome)}" title="Ver Diagnóstico">
                         <i class="fa-solid fa-stethoscope"></i>
                     </button>
@@ -1166,14 +1164,16 @@ async function loadClientFormEnhanced(clientId) {
             const formDate = new Date(latestForm.created_at).toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
 
             if (latestForm.status === 'preenchido' && latestForm.dados_formulario) {
-                // Formulário preenchido
+                // Formulário preenchido - mostrar dados completos
                 html = `
                     <div style="background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.3);border-radius:6px;padding:0.8rem;margin-bottom:1rem;">
                         <span style="color:#22c55e;font-weight:bold;"><i class="fas fa-check-circle"></i> Formulário Preenchido</span>
                         <span style="color:var(--theme-text-muted);font-size:0.85rem;margin-left:0.5rem;">${formDate}</span>
                     </div>
-                    <p style="font-size:0.85rem;color:var(--theme-text-muted);">O cliente já preencheu o formulário. Para ver os dados completos, acesse a página de detalhes.</p>
                 `;
+                // Renderizar dados completos do formulário
+                html += renderFormDataComplete(latestForm.dados_formulario);
+
                 // Botão excluir
                 if (temDiagnosticoAtivo) {
                     html += `
@@ -1233,6 +1233,138 @@ async function loadClientFormEnhanced(clientId) {
         console.error("clientes.js: Erro em loadClientFormEnhanced:", error);
         body.innerHTML = `<p style="color:red;">Erro ao carregar formulário: ${error.message}</p>`;
     }
+}
+
+// Renderizar dados completos do formulário (igual a cliente-detalhes.html)
+function renderFormDataComplete(dados) {
+    if (!dados) return '';
+    const S = (v) => v ? sanitizeInput(String(v)) : '';
+    const C = (v) => { if (v === null || v === undefined) return 'R$ 0,00'; const n = parseFloat(v); return isNaN(n) ? 'R$ 0,00' : n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }); };
+    let h = '<div class="form-consolidado">';
+
+    // Formulário do Cliente
+    h += '<h3>Formulário do Cliente</h3>';
+    if (dados.nome_completo) h += `<p><strong>Nome Completo:</strong> ${S(dados.nome_completo)}</p>`;
+
+    // Única pessoa com renda
+    h += `<p><strong>Única pessoa com renda na casa?</strong> ${dados.unica_pessoa_renda ? 'Sim' : 'Não'}</p>`;
+    if (!dados.unica_pessoa_renda && dados.outras_pessoas && dados.outras_pessoas.length > 0) {
+        h += '<ul>';
+        dados.outras_pessoas.forEach(p => {
+            h += `<li>${S(p.nome)} (Precisa de autorização: ${p.precisa_autorizacao ? 'Sim' : 'Não'})</li>`;
+        });
+        h += '</ul>';
+    }
+
+    // Dependentes
+    h += `<p><strong>Tem dependentes?</strong> ${dados.tem_dependentes ? 'Sim' : 'Não'}</p>`;
+    if (dados.tem_dependentes && dados.dependentes && dados.dependentes.length > 0) {
+        h += '<ul>';
+        dados.dependentes.forEach(dep => {
+            h += `<li>${S(dep.nome)} — ${S(dep.parentesco || '')}${dep.idade ? ', ' + dep.idade + ' anos' : ''}</li>`;
+        });
+        h += '</ul>';
+    }
+
+    // Plano de Saúde
+    if (dados.plano_saude) {
+        h += '<h3>Informações sobre Plano de Saúde:</h3><ul>';
+        if (Array.isArray(dados.plano_saude)) {
+            dados.plano_saude.forEach(ps => {
+                h += `<li>${S(ps.nome || ps.pessoa || 'N/A')}: ${S(ps.resposta || ps.valor || 'N/A')}</li>`;
+            });
+        } else if (typeof dados.plano_saude === 'object') {
+            Object.entries(dados.plano_saude).forEach(([nome, val]) => {
+                h += `<li>${S(nome)}: ${S(typeof val === 'object' ? val.resposta || JSON.stringify(val) : String(val))}</li>`;
+            });
+        }
+        h += '</ul>';
+    }
+
+    // Seguro de Vida
+    if (dados.seguro_vida) {
+        h += '<h3>Informações sobre Seguro de Vida:</h3><ul>';
+        if (Array.isArray(dados.seguro_vida)) {
+            dados.seguro_vida.forEach(sv => {
+                h += `<li>${S(sv.nome || sv.pessoa || 'N/A')}: ${S(sv.resposta || sv.valor || 'N/A')}</li>`;
+            });
+        } else if (typeof dados.seguro_vida === 'object') {
+            Object.entries(dados.seguro_vida).forEach(([nome, val]) => {
+                h += `<li>${S(nome)}: ${S(typeof val === 'object' ? val.resposta || JSON.stringify(val) : String(val))}</li>`;
+            });
+        }
+        h += '</ul>';
+    }
+
+    // Patrimônio Físico
+    h += `<p><strong>Possui Patrimônio Físico?</strong> ${dados.patrimonio_fisico ? 'Sim' : 'Não'}</p>`;
+    if (dados.patrimonio_fisico && dados.patrimonios_fisicos && dados.patrimonios_fisicos.length > 0) {
+        h += '<ul>';
+        dados.patrimonios_fisicos.forEach(p => {
+            h += `<li>${S(p.descricao || p.tipo || 'N/A')}: ${C(p.valor)}</li>`;
+        });
+        h += '</ul>';
+    }
+
+    // Patrimônio Líquido
+    h += `<p><strong>Possui Patrimônio Líquido?</strong> ${dados.patrimonio_liquido ? 'Sim' : 'Não'}</p>`;
+    if (dados.patrimonio_liquido && dados.patrimonios_liquidos && dados.patrimonios_liquidos.length > 0) {
+        h += '<ul>';
+        dados.patrimonios_liquidos.forEach(p => {
+            h += `<li>${S(p.descricao || p.tipo || 'N/A')}: ${C(p.valor)}</li>`;
+        });
+        h += '</ul>';
+    }
+
+    // Entradas de Renda
+    if (dados.entradas_renda && dados.entradas_renda.length > 0) {
+        h += '<h3>Entradas de Renda:</h3><ul>';
+        dados.entradas_renda.forEach(r => {
+            h += `<li>${S(r.descricao || r.nome || 'N/A')}: ${C(r.valor)}</li>`;
+        });
+        h += '</ul>';
+    }
+
+    // Despesas Fixas
+    if (dados.despesas_fixas && dados.despesas_fixas.length > 0) {
+        h += '<h3>Despesas Fixas:</h3><ul>';
+        dados.despesas_fixas.forEach(d => {
+            h += `<li>${S(d.descricao || d.nome || 'N/A')}: ${C(d.valor)}</li>`;
+        });
+        h += '</ul>';
+    }
+
+    // Despesas Variáveis
+    if (dados.despesas_variaveis && dados.despesas_variaveis.length > 0) {
+        h += '<h3>Despesas Variáveis:</h3><ul>';
+        dados.despesas_variaveis.forEach(d => {
+            h += `<li>${S(d.descricao || d.nome || 'N/A')}: ${C(d.valor)}</li>`;
+        });
+        h += '</ul>';
+    }
+
+    // Objetivos Financeiros
+    if (dados.objetivos_financeiros && dados.objetivos_financeiros.length > 0) {
+        h += '<h3>Objetivos Financeiros:</h3><ul>';
+        dados.objetivos_financeiros.forEach(o => {
+            h += `<li>${S(o.descricao || o.nome || 'N/A')}`;
+            if (o.valor) h += ` (Valor: ${C(o.valor)})`;
+            if (o.prazo) h += ` | Prazo: ${S(o.prazo)}`;
+            h += '</li>';
+        });
+        h += '</ul>';
+    }
+
+    // Informações Adicionais
+    if (dados.informacoes_adicionais && dados.informacoes_adicionais.trim()) {
+        h += '<h3>Informações Adicionais:</h3>';
+        h += `<p>${S(dados.informacoes_adicionais)}</p>`;
+    } else {
+        h += '<h3>Informações Adicionais:</h3><p>Nenhuma informação adicional fornecida.</p>';
+    }
+
+    h += '</div>';
+    return h;
 }
 
 async function dashGenerateForm(clientId) {
@@ -1420,8 +1552,8 @@ function renderConsolidadoDiagnosticoDash(d) {
     const pct = (v) => { const n = parseFloat(v); return isNaN(n) ? '0,00%' : n.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2}) + '%'; };
     const addObs = (campo) => { const val = d[campo]; if (val && val.trim()) return `<p class="obs-text">Obs: ${S(val)}</p>`; return ''; };
 
-    const RISCO_LABELS = {'RISCO_MUITO_BAIXO_GARANTIA_SOBERANA':'Risco Muito Baixo (Garantia Soberana)','RISCO_MUITO_BAIXO_GARANTIA_FGC':'Risco Muito Baixo (Garantia FGC)','RISCO_BAIXO_GARANTIA_FGC':'Risco Baixo (Garantia FGC)','RISCO_MEDIO_SEM_GARANTIA':'Risco M\u00e9dio','RISCO_ALTO_SEM_GARANTIA':'Risco Alto','RISCO_MUITO_ALTO_SEM_GARANTIA':'Risco Muito Alto','RISCO_ABSOLUTO_SEM_GARANTIA':'Risco Absoluto'};
-    const PERFIS_FIN = {'dividas_impagaveis':'D\u00edvidas Impag\u00e1veis','dividas_pagaveis':'D\u00edvidas Pag\u00e1veis','zero_a_zero_obrigatorio':'Zero a Zero Obrigat\u00f3rio','zero_a_zero_opcional':'Zero a Zero Opcional','fluxo_positivo':'Fluxo Positivo','poupador':'Poupador','investidor_amador':'Investidor-Amador','investidor_planejador':'Investidor-Planejador','nivel_1':'HV N\u00edvel I','nivel_2':'HV N\u00edvel II'};
+    const RISCO_LABELS = {'RISCO_MUITO_BAIXO_GARANTIA_SOBERANA':'Risco Muito Baixo (Garantia Soberana)','RISCO_MUITO_BAIXO_GARANTIA_FGC':'Risco Muito Baixo (Garantia FGC)','RISCO_BAIXO_GARANTIA_FGC':'Risco Baixo (Garantia FGC)','RISCO_MEDIO_SEM_GARANTIA':'Risco Médio','RISCO_ALTO_SEM_GARANTIA':'Risco Alto','RISCO_MUITO_ALTO_SEM_GARANTIA':'Risco Muito Alto','RISCO_ABSOLUTO_SEM_GARANTIA':'Risco Absoluto'};
+    const PERFIS_FIN = {'dividas_impagaveis':'Dívidas Impagáveis','dividas_pagaveis':'Dívidas Pagáveis','zero_a_zero_obrigatorio':'Zero a Zero Obrigatório','zero_a_zero_opcional':'Zero a Zero Opcional','fluxo_positivo':'Fluxo Positivo','poupador':'Poupador','investidor_amador':'Investidor-Amador','investidor_planejador':'Investidor-Planejador','nivel_1':'HV Nível I','nivel_2':'HV Nível II'};
     const PERFIS_OBJ = {'sem_conhecimento':'Sem Conhecimento','iniciante':'Iniciante','ultra_cons':'Ultra-Conservador','cons':'Conservador','cons_mod':'Conservador-Moderado','mod':'Moderado','mod_arro':'Moderado-Arrojado','arro':'Arrojado','ultra_arro':'Ultra-Arrojado'};
 
     let h = '<div class="diag-consolidado">';
@@ -1435,15 +1567,15 @@ function renderConsolidadoDiagnosticoDash(d) {
         const idade = Math.floor((new Date() - dn) / (365.25*24*60*60*1000));
         h += `<p><strong>Data de Nascimento:</strong> ${dn.toLocaleDateString('pt-BR')} (${idade} anos)</p>`;
     }
-    if (d.profissao) h += `<p><strong>Profiss\u00e3o:</strong> ${S(d.profissao)}</p>`;
+    if (d.profissao) h += `<p><strong>Profissão:</strong> ${S(d.profissao)}</p>`;
     if (d.estado_civil) h += `<p><strong>Estado Civil:</strong> ${S(d.estado_civil)}</p>`;
     if (d.regime_bens) h += `<p><strong>Regime de Bens:</strong> ${S(d.regime_bens)}</p>`;
     if (d.telefone) h += `<p><strong>Telefone:</strong> ${S(d.telefone)}</p>`;
     if (d.email) h += `<p><strong>E-mail:</strong> ${S(d.email)}</p>`;
     if (d.conjuge_nome) {
-        h += `<p style="margin-top:0.8rem;border-top:1px dotted var(--theme-border-color);padding-top:0.5rem"><strong>C\u00f4njuge:</strong> ${S(d.conjuge_nome)}</p>`;
-        if (d.conjuge_cpf) h += `<p><strong>CPF C\u00f4njuge:</strong> ${d.conjuge_cpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4')}</p>`;
-        if (d.conjuge_profissao) h += `<p><strong>Profiss\u00e3o C\u00f4njuge:</strong> ${S(d.conjuge_profissao)}</p>`;
+        h += `<p style="margin-top:0.8rem;border-top:1px dotted var(--theme-border-color);padding-top:0.5rem"><strong>Cônjuge:</strong> ${S(d.conjuge_nome)}</p>`;
+        if (d.conjuge_cpf) h += `<p><strong>CPF Cônjuge:</strong> ${d.conjuge_cpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4')}</p>`;
+        if (d.conjuge_profissao) h += `<p><strong>Profissão Cônjuge:</strong> ${S(d.conjuge_profissao)}</p>`;
     }
     h += addObs('obs_dados_pessoais');
 
@@ -1462,102 +1594,383 @@ function renderConsolidadoDiagnosticoDash(d) {
         const deps = typeof d.dependentes === 'string' ? JSON.parse(d.dependentes) : d.dependentes;
         if (deps && deps.length > 0) {
             h += '<h3>Dependentes</h3><ul>';
-            deps.forEach(dep => { h += `<li><strong>${S(dep.nome||'N/A')}</strong> \u2014 Rela\u00e7\u00e3o: ${S(dep.relacao||dep.parentesco||'N/A')}${dep.idade ? ', Idade: '+dep.idade : ''}</li>`; });
+            deps.forEach(dep => { h += `<li><strong>${S(dep.nome||'N/A')}</strong> \u2014 Relação: ${S(dep.relacao||dep.parentesco||'N/A')}${dep.idade ? ', Idade: '+dep.idade : ''}</li>`; });
             h += '</ul>'; h += addObs('obs_dependentes');
         }
     } catch(e) {}
 
-    // 4. PATRIM\u00d4NIO F\u00cdSICO
+    // 4. PATRIMÔNIO FÍSICO
     try {
         const pats = typeof d.patrimonios === 'string' ? JSON.parse(d.patrimonios) : d.patrimonios;
         if (pats && pats.length > 0) {
-            h += '<h3>Patrim\u00f4nio F\u00edsico</h3>';
+            h += '<h3>Patrimônio Físico</h3>';
             let totalPF = 0; h += '<ul>';
-            pats.forEach(p => { const val = parseFloat(p.valor)||0; totalPF += val; h += `<li><strong>${S(p.tipo||p.descricao||'N/A')}</strong> | Valor: ${C(val)} | Invent.: ${p.inventariavel===false?'N\u00e3o':'Sim'}</li>`; });
+            pats.forEach(p => { const val = parseFloat(p.valor)||0; totalPF += val; h += `<li><strong>${S(p.tipo||p.descricao||'N/A')}</strong> | Valor: ${C(val)} | Invent.: ${p.inventariavel===false?'Não':'Sim'}</li>`; });
             h += '</ul>'; h += `<p><strong>Total:</strong> ${C(totalPF)}</p>`; h += addObs('obs_patrimonio_fisico');
         }
     } catch(e) {}
 
-    // 5. PATRIM\u00d4NIO L\u00cdQUIDO
+    // 5. PATRIMÔNIO LÍQUIDO
     try {
         const invs = typeof d.patrimonios_liquidos === 'string' ? JSON.parse(d.patrimonios_liquidos) : d.patrimonios_liquidos;
         if (invs && invs.length > 0) {
-            h += '<h3>Patrim\u00f4nio L\u00edquido / Investimentos</h3>';
+            h += '<h3>Patrimônio Líquido / Investimentos</h3>';
             let totalPL = 0; h += '<ul>';
             invs.forEach(inv => {
                 const val = parseFloat(inv.valor_atual)||0; totalPL += val;
                 const riscoLabel = RISCO_LABELS[inv.classificacao_risco]||inv.classificacao_risco||'';
                 const nome = inv.nome_produto_customizado||inv.tipo_produto_nome||'N/A';
-                h += `<li><strong>${S(nome)}</strong> | Valor: ${C(val)}${riscoLabel?' | Risco: '+S(riscoLabel):''}${inv.instituicao_nome?' | Inst.: '+S(inv.instituicao_nome):''}</li>`;
+                h += `<li><strong>${S(nome)}</strong> (${S(inv.tipo_produto_nome||inv.tipo||'')}) | Valor: ${C(val)}${riscoLabel?' | Risco: '+S(riscoLabel):''}${inv.instituicao_nome?' | Inst.: '+S(inv.instituicao_nome):''}${inv.aporte_mensal?' | Aporte: '+C(inv.aporte_mensal)+' ('+S(inv.aporte_periodicidade||'MENSAL')+')':''}${inv.inventariavel===false?' | Invent.: Não':''}${inv.donos?' | Donos: '+S(inv.donos):''}</li>`;
             });
             h += '</ul>'; h += `<p><strong>Total:</strong> ${C(totalPL)}</p>`; h += addObs('obs_patrimonio_liquido');
         }
     } catch(e) {}
 
-    // 6. D\u00cdVIDAS
+    // 6. SUITABILITY
+    try {
+        const suits = typeof d.suitability === 'string' ? JSON.parse(d.suitability) : d.suitability;
+        if (suits && suits.length > 0) {
+            const PERFIS_INV_CALC = [
+                {id:0,nome:'Ultra-Conservador',pfpMin:0,pfpMax:10},
+                {id:1,nome:'Conservador',pfpMin:10.01,pfpMax:25},
+                {id:2,nome:'Conservador-Moderado',pfpMin:25.01,pfpMax:40},
+                {id:3,nome:'Moderado',pfpMin:40.01,pfpMax:55},
+                {id:4,nome:'Moderado-Arrojado',pfpMin:55.01,pfpMax:70},
+                {id:5,nome:'Arrojado',pfpMin:70.01,pfpMax:85},
+                {id:6,nome:'Ultra-Arrojado',pfpMin:85.01,pfpMax:100}
+            ];
+            const PERGUNTAS_SUIT = {
+                A1:'Em quanto tempo pretende parar de trabalhar?',A2:'Por quanto tempo conseguiria deixar patrimônio aplicado?',A3:'Quanto tempo para esperar recuperação em cenário ruim?',
+                B1:'Como reagiria se investimentos perdessem 20% em um mês?',B2:'Atitude em relação a risco e retorno?',B3:'Qual perda temporária conseguiria suportar?',
+                C1:'Nível de conhecimento sobre investimentos?',C2:'Há quanto tempo investe no mercado financeiro?',C3:'Já investiu em renda variável?'
+            };
+            const RESPOSTAS_SUIT = {
+                A1:{1:'Menos de 5 anos',2:'Entre 5 e 10 anos',3:'Entre 10 e 20 anos',4:'Entre 20 e 30 anos',5:'Mais de 30 anos'},
+                A2:{1:'Menos de 1 ano',2:'Entre 1 e 3 anos',3:'Entre 3 e 5 anos',4:'Entre 5 e 10 anos',5:'Mais de 10 anos'},
+                A3:{1:'Nenhum - precisaria resgatar',2:'Até 6 meses',3:'Até 1 ano',4:'Até 2 anos',5:'Mais de 2 anos'},
+                B1:{1:'Resgataria tudo',2:'Resgataria parte',3:'Manteria e aguardaria',4:'Compraria mais um pouco',5:'Compraria muito mais'},
+                B2:{1:'Não aceito risco',2:'Pouco risco, pouco retorno',3:'Risco moderado',4:'Aceito risco por retorno',5:'Máximo retorno possível'},
+                B3:{1:'Nenhuma',2:'Até 5%',3:'Até 15%',4:'Até 30%',5:'Mais de 30%'},
+                C1:{1:'Nenhum',2:'Básico',3:'Intermediário',4:'Avançado',5:'Especialista'},
+                C2:{1:'Nunca investi',2:'Menos de 2 anos',3:'Entre 2 e 5 anos',4:'Entre 5 e 10 anos',5:'Mais de 10 anos'},
+                C3:{1:'Não, nunca',2:'Sim, pouco',3:'Sim, moderadamente',4:'Sim, bastante',5:'Sim, maioria em RV'}
+            };
+            h += '<h3>Teste de Perfil de Investidor (Suitability)</h3>';
+            suits.forEach(suit => {
+                h += `<p style="margin-top:0.5rem"><strong>${S(suit.nome||'N/A')}:</strong></p><ul>`;
+                const resps = suit.respostas || suit;
+                ['A1','A2','A3','B1','B2','B3','C1','C2','C3'].forEach(key => {
+                    if (resps[key] !== undefined) {
+                        const respTexto = RESPOSTAS_SUIT[key] ? (RESPOSTAS_SUIT[key][resps[key]] || resps[key]) : resps[key];
+                        h += `<li><strong>${key}:</strong> ${PERGUNTAS_SUIT[key]||key} \u2192 <em>${S(String(respTexto))}</em> (${resps[key]})</li>`;
+                    }
+                });
+                const PA = (resps.A1||0)+(resps.A2||0)+(resps.A3||0);
+                const PB = (resps.B1||0)+(resps.B2||0)+(resps.B3||0);
+                const PC = (resps.C1||0)+(resps.C2||0)+(resps.C3||0);
+                const PAN = ((PA-3)/12)*100;
+                const PBN = ((PB-3)/12)*100;
+                const PCN = ((PC-3)/12)*100;
+                let PFP = Math.max(0, Math.min(100, (PAN*0.25)+(PBN*0.50)+(PCN*0.25)));
+                let perfil = PERFIS_INV_CALC.find(p => PFP >= p.pfpMin && PFP <= p.pfpMax);
+                if (!perfil) perfil = PFP <= 0 ? PERFIS_INV_CALC[0] : PERFIS_INV_CALC[6];
+                if (PA <= 4 && perfil.id > 2) perfil = PERFIS_INV_CALC[1];
+                if (PB <= 4 && perfil.id > 1) perfil = PERFIS_INV_CALC[0];
+                if (PC <= 4 && perfil.id > 3) perfil = PERFIS_INV_CALC[2];
+                if (PA <= 5 && PC <= 5 && perfil.id > 2) perfil = PERFIS_INV_CALC[1];
+                h += `</ul><p><strong>PA:</strong> ${PA} | <strong>PB:</strong> ${PB} | <strong>PC:</strong> ${PC} | <strong>PFP:</strong> ${PFP.toFixed(2)} | <strong>Perfil:</strong> ${perfil.nome}</p>`;
+            });
+        }
+    } catch(e) { console.error('Erro suitability consolidado:', e); }
+
+    // 7. DÍVIDAS
     try {
         const divs = typeof d.dividas === 'string' ? JSON.parse(d.dividas) : d.dividas;
         if (divs && divs.length > 0) {
-            h += '<h3>D\u00edvidas</h3>';
-            let totalSaldo = 0; h += '<ul>';
-            divs.forEach(div => { const saldo = parseFloat(div.saldo_devedor)||0; totalSaldo += saldo; h += `<li><strong>${S(div.credor||div.motivo||'N/A')}</strong> | Saldo: ${C(saldo)} | Parcela: ${C(div.valor_parcela)}</li>`; });
-            h += '</ul>'; h += `<p><strong>Total Saldo Devedor:</strong> ${C(totalSaldo)}</p>`; h += addObs('obs_dividas');
+            h += '<h3>Dívidas</h3>';
+            let totalSaldo = 0, totalParcela = 0; h += '<ul>';
+            divs.forEach(div => {
+                const saldo = parseFloat(div.saldo_devedor)||0;
+                const parcela = parseFloat(div.valor_parcela)||0;
+                totalSaldo += saldo; totalParcela += parcela;
+                h += `<li><strong>${S(div.credor||div.motivo||'N/A')}</strong>`;
+                if (div.motivo && div.credor) h += ` \u2014 Motivo: ${S(div.motivo)}`;
+                h += ` | Valor Inicial: ${C(div.valor_inicial)} | Saldo Devedor: ${C(saldo)} | Parcela: ${C(parcela)} | Prazo: ${div.prazo||'N/A'} meses | Pagas: ${div.parcelas_pagas||0} | Taxa: ${pct(div.taxa_juros)} ${S(div.taxa_juros_tipo||'a.a.')}`;
+                if (div.tipo_amortizacao) h += ` | Amortização: ${S(div.tipo_amortizacao)}`;
+                if (div.reajuste_anual) h += ` | Reajuste: ${pct(div.reajuste_anual)} a.a.`;
+                h += ` | Planejada: ${div.planejada?'Sim':'Não'} | Invent.: ${div.inventariavel===false?'Não':'Sim'}`;
+                if (div.responsaveis && div.responsaveis.length > 0) h += ` | Responsáveis: ${div.responsaveis.map(r => S(r)).join(', ')}`;
+                h += '</li>';
+            });
+            h += '</ul>';
+            h += `<p><strong>Total Saldo Devedor:</strong> ${C(totalSaldo)} | <strong>Total Parcelas:</strong> ${C(totalParcela)}</p>`;
+            h += addObs('obs_dividas');
         }
     } catch(e) {}
 
-    // 7. FLUXO DE CAIXA
+    // 8. SUCESSÃO
+    try {
+        const suc = typeof d.dados_sucessao === 'string' ? JSON.parse(d.dados_sucessao) : d.dados_sucessao;
+        if (suc && Object.keys(suc).length > 0) {
+            h += '<h3>Sucessão Patrimonial</h3>';
+            h += `<p><strong>ITCMD:</strong> ${pct(suc.itcmd)} | <strong>Emolumentos:</strong> ${pct(suc.emolumentos)} | <strong>Honorários:</strong> ${pct(suc.honorarios)}</p>`;
+            const totalPctSuc = (parseFloat(suc.itcmd)||0)+(parseFloat(suc.emolumentos)||0)+(parseFloat(suc.honorarios)||0);
+            h += `<p><strong>Total Custos Sucessórios:</strong> ${pct(totalPctSuc)}</p>`;
+            try {
+                let totalPatrimonio = 0;
+                const patsS = typeof d.patrimonios === 'string' ? JSON.parse(d.patrimonios) : d.patrimonios;
+                const invsS = typeof d.patrimonios_liquidos === 'string' ? JSON.parse(d.patrimonios_liquidos) : d.patrimonios_liquidos;
+                if (patsS) patsS.filter(p => p.inventariavel !== false).forEach(p => totalPatrimonio += parseFloat(p.valor)||0);
+                if (invsS) invsS.filter(i => i.inventariavel !== false).forEach(i => totalPatrimonio += parseFloat(i.valor_atual)||0);
+                if (totalPatrimonio > 0) {
+                    const custoSucessao = totalPatrimonio * (totalPctSuc / 100);
+                    h += `<p><strong>Patrimônio Inventariável:</strong> ${C(totalPatrimonio)} | <strong>Custo Estimado Sucessão:</strong> ${C(custoSucessao)}</p>`;
+                }
+            } catch(e2) {}
+            h += addObs('obs_sucessao');
+        }
+    } catch(e) {}
+
+    // 9. PRODUTOS & PROTEÇÃO
+    try {
+        const prods = typeof d.produtos_protecao === 'string' ? JSON.parse(d.produtos_protecao) : d.produtos_protecao;
+        if (prods && prods.length > 0) {
+            h += '<h3>Produtos &amp; Proteção</h3>';
+            let totalCustoAnual = 0; h += '<ul>';
+            prods.forEach(p => {
+                const custo = parseFloat(p.custo)||0;
+                let custoAnual = custo;
+                if (p.periodicidade === 'mensal') custoAnual = custo * 12;
+                else if (p.periodicidade === 'semestral') custoAnual = custo * 2;
+                else if (p.periodicidade === 'trimestral') custoAnual = custo * 4;
+                totalCustoAnual += custoAnual;
+                h += `<li><strong>${S(p.tipo_produto||'N/A')}</strong>`;
+                if (p.objeto) h += ` \u2014 Objeto: ${S(p.objeto)}`;
+                h += ` | Custo: ${C(custo)} (${S(p.periodicidade||'anual')})`;
+                if (p.seguradora) h += ` | Seguradora: ${S(p.seguradora)}`;
+                h += ` | Cotou/Analisou: ${p.cotou_analisou?'Sim':'Não'}`;
+                if (p.contratacoes && p.contratacoes.length > 0) {
+                    h += '<ul>';
+                    p.contratacoes.forEach(c => { h += `<li>${S(c.tipo||c.cobertura||'Contratação')}: ${C(c.valor||c.capital)} ${c.carencia?'| Carência: '+S(c.carencia):''}</li>`; });
+                    h += '</ul>';
+                }
+                h += '</li>';
+            });
+            h += '</ul>';
+            h += `<p><strong>Total Custo Anual Proteção:</strong> ${C(totalCustoAnual)}</p>`;
+            h += addObs('obs_produtos_protecao');
+        }
+    } catch(e) {}
+
+    // 10. IMPOSTO DE RENDA
+    try {
+        const irs = typeof d.declaracoes_ir === 'string' ? JSON.parse(d.declaracoes_ir) : d.declaracoes_ir;
+        if (irs && irs.length > 0) {
+            h += '<h3>Imposto de Renda</h3>';
+            irs.forEach(ir => {
+                h += `<p style="margin-top:0.5rem"><strong>${S(ir.pessoa_nome||'N/A')}</strong> (${S(ir.pessoa_tipo||'')})</p>`;
+                h += `<p>Tipo Declaração: <strong>${S(ir.tipo_declaracao||'N/A')}</strong></p>`;
+                if (ir.tipo_declaracao && ir.tipo_declaracao !== 'nao_declara') {
+                    h += '<ul>';
+                    h += `<li>Renda Bruta Anual: ${C(ir.renda_bruta_anual)}</li>`;
+                    h += `<li>Total Recolhido IR: ${C(ir.total_recolhido_ir)}</li>`;
+                    h += `<li>Contribuição Previdência Oficial: ${C(ir.contribuicao_previdencia_oficial)}</li>`;
+                    h += `<li>Total Dependentes: ${ir.total_dependentes||0}</li>`;
+                    h += `<li>Gastos Instrução: ${C(ir.gastos_instrucao)}</li>`;
+                    h += `<li>Gastos Médicos: ${C(ir.gastos_medicos)}</li>`;
+                    h += `<li>Livro Caixa: ${C(ir.livro_caixa)}</li>`;
+                    h += `<li>Pensão Alimentícia: ${C(ir.pensao_alimenticia)}</li>`;
+                    h += `<li>Contribuição Não Oficial: ${C(ir.contribuicao_nao_oficial)}</li>`;
+                    h += `<li>Outras Deduções: ${C(ir.outras_deducoes)}</li>`;
+                    if (ir.resultado_tipo) h += `<li>Resultado: ${S(ir.resultado_tipo)} \u2014 ${C(ir.resultado_valor)}</li>`;
+                    h += '</ul>';
+                }
+            });
+            h += addObs('obs_ir');
+        }
+    } catch(e) {}
+
+    // 11. CONTAS & CARTÕES
+    try {
+        let contasData = typeof d.contas_cartoes === 'string' ? JSON.parse(d.contas_cartoes) : d.contas_cartoes;
+        let contasList = [];
+        if (Array.isArray(contasData)) { contasList = contasData; }
+        else if (contasData && contasData.contasCartoes) { contasList = contasData.contasCartoes; }
+        if (contasList.length > 0) {
+            h += '<h3>Contas &amp; Cartões</h3><ul>';
+            contasList.forEach(c => {
+                const tipoLabel = c.tipo === 'cartao' ? 'Cartão' : 'Conta';
+                h += `<li><strong>${tipoLabel}</strong>`;
+                if (c.titular) h += ` \u2014 Titular: ${S(c.titular)}`;
+                if (c.instituicao) h += ` | Instituição: ${S(c.instituicao)}`;
+                if (c.tipo_cartao) h += ` | Tipo: ${S(c.tipo_cartao)}`;
+                if (c.tarifa_anuidade) h += ` | Anuidade: ${C(c.tarifa_anuidade)}`;
+                if (c.pontos_por_dolar) h += ` | Pts/Dólar: ${c.pontos_por_dolar}`;
+                if (c.cashback) h += ` | Cashback: ${pct(c.cashback)}`;
+                if (c.beneficios) h += ` | Benefícios: ${S(c.beneficios)}`;
+                h += '</li>';
+            });
+            h += '</ul>';
+            h += addObs('obs_contas_cartoes');
+        }
+    } catch(e) {}
+
+    // 12. FLUXO DE CAIXA
     try {
         const fluxo = typeof d.fluxo_caixa === 'string' ? JSON.parse(d.fluxo_caixa) : d.fluxo_caixa;
         if (fluxo && (fluxo.receitas || fluxo.despesas)) {
             h += '<h3>Fluxo de Caixa</h3>';
-            let totalR = 0, totalD = 0;
-            if (fluxo.receitas) { fluxo.receitas.forEach(r => { totalR += parseFloat(r.valor)||0; }); }
-            if (fluxo.despesas) { fluxo.despesas.forEach(desp => { totalD += parseFloat(desp.valor)||0; }); }
-            h += `<p><strong>Receita Mensal:</strong> ${C(totalR)} | <strong>Despesa Mensal:</strong> ${C(totalD)} | <strong>Saldo:</strong> ${C(totalR - totalD)}</p>`;
+            let totalReceitaMensal = 0, totalDespesaMensal = 0;
+            if (fluxo.receitas && fluxo.receitas.length > 0) {
+                h += '<p><strong>Receitas:</strong></p><ul>';
+                fluxo.receitas.forEach(r => {
+                    const val = parseFloat(r.valor)||0;
+                    const qtdRec = parseInt(r.qtd_recorrencia)||1;
+                    const undRec = r.und_recorrencia||'mes';
+                    let valMensal = val;
+                    if (undRec === 'ano') valMensal = val / 12;
+                    else if (undRec === 'semana') valMensal = val * 4;
+                    else if (undRec === 'dia') valMensal = val * 30;
+                    if (qtdRec > 1) { if (undRec === 'mes') valMensal = val / qtdRec; else if (undRec === 'ano') valMensal = val / (qtdRec * 12); }
+                    totalReceitaMensal += valMensal;
+                    h += `<li><strong>${S(r.nome||r.descricao||'N/A')}</strong>: ${C(val)} (a cada ${qtdRec} ${undRec})`;
+                    if (r.titular) h += ` | Titular: ${S(r.titular)}`;
+                    if (r.tipo) h += ` | Tipo: ${S(r.tipo)}`;
+                    if (r.origem) h += ` | Origem: ${S(r.origem)}`;
+                    h += '</li>';
+                });
+                h += '</ul>';
+            }
+            if (fluxo.despesas && fluxo.despesas.length > 0) {
+                h += '<p><strong>Despesas:</strong></p><ul>';
+                fluxo.despesas.forEach(desp => {
+                    const val = parseFloat(desp.valor)||0;
+                    const qtdRec = parseInt(desp.qtd_recorrencia)||1;
+                    const undRec = desp.und_recorrencia||'mes';
+                    let valMensal = val;
+                    if (undRec === 'ano') valMensal = val / 12;
+                    else if (undRec === 'semana') valMensal = val * 4;
+                    else if (undRec === 'dia') valMensal = val * 30;
+                    if (qtdRec > 1) { if (undRec === 'mes') valMensal = val / qtdRec; else if (undRec === 'ano') valMensal = val / (qtdRec * 12); }
+                    totalDespesaMensal += valMensal;
+                    h += `<li><strong>${S(desp.nome||desp.descricao||'N/A')}</strong>: ${C(val)} (a cada ${qtdRec} ${undRec})`;
+                    if (desp.titular) h += ` | Titular: ${S(desp.titular)}`;
+                    if (desp.tipo) h += ` | Tipo: ${S(desp.tipo)}`;
+                    if (desp.forma_pagamento) h += ` | Pagamento: ${S(desp.forma_pagamento)}`;
+                    h += '</li>';
+                });
+                h += '</ul>';
+            }
+            const saldoMensal = totalReceitaMensal - totalDespesaMensal;
+            h += `<p><strong>Receita Mensal Total:</strong> ${C(totalReceitaMensal)} | <strong>Despesa Mensal Total:</strong> ${C(totalDespesaMensal)} | <strong>Saldo Mensal:</strong> ${C(saldoMensal)}</p>`;
+            h += `<p><strong>Receita Anual:</strong> ${C(totalReceitaMensal*12)} | <strong>Despesa Anual:</strong> ${C(totalDespesaMensal*12)} | <strong>Saldo Anual:</strong> ${C(saldoMensal*12)}</p>`;
             h += addObs('obs_fluxo_caixa');
         }
     } catch(e) {}
 
-    // 8. OBJETIVOS
+    // 13. OBJETIVOS FINANCEIROS
     try {
         const obj = typeof d.objetivos === 'string' ? JSON.parse(d.objetivos) : d.objetivos;
-        if (obj && obj.objetivos && obj.objetivos.length > 0) {
-            h += '<h3>Objetivos Financeiros</h3><ul>';
-            obj.objetivos.forEach((o, idx) => {
-                h += `<li><strong>#${idx+1} ${S(o.descricao||'N/A')}</strong> (${S(o.tipo||'objetivo')})`;
-                if (o.valor_final) h += ` | Valor: ${C(o.valor_final)}`;
-                if (o.prazo_meses) h += ` | Prazo: ${o.prazo_meses} meses`;
-                h += '</li>';
-            });
-            h += '</ul>';
-            if (obj.perfilFinanceiro && obj.perfilFinanceiro.perfil_selecionado) {
-                const perfilNome = PERFIS_FIN[obj.perfilFinanceiro.perfil_selecionado] || obj.perfilFinanceiro.perfil_selecionado;
-                h += `<p><strong>Perfil Financeiro:</strong> ${S(perfilNome)}</p>`;
+        if (obj) {
+            if (obj.variaveisMercado) {
+                const vm = obj.variaveisMercado;
+                h += '<h3>Variáveis de Mercado</h3>';
+                h += `<p><strong>Data Reunião:</strong> ${vm.data_reuniao||'N/A'} | <strong>Selic:</strong> ${pct(vm.selic)} | <strong>CDI:</strong> ${pct(vm.cdi)} | <strong>IPCA:</strong> ${pct(vm.ipca)} | <strong>Dólar:</strong> R$ ${parseFloat(vm.dolar||0).toFixed(2)}</p>`;
+                h += `<p><strong>CDI 120m:</strong> ${pct(vm.cdi_120_meses)} | <strong>IPCA 120m:</strong> ${pct(vm.ipca_120_meses)} | <strong>CDI a.a. médio 10a:</strong> ${pct(vm.cdi_aa_medio_10_anos)} | <strong>IPCA a.a. médio 10a:</strong> ${pct(vm.ipca_aa_medio_10_anos)}</p>`;
+                h += `<p><strong>Rent. Aposentadoria:</strong> ${pct(vm.rent_anual_aposentadoria)} a.a. / ${pct(vm.rent_mensal_aposentadoria)} a.m.</p>`;
+            }
+            if (obj.objetivos && obj.objetivos.length > 0) {
+                h += '<h3>Objetivos Financeiros</h3><ul>';
+                obj.objetivos.forEach((o, idx) => {
+                    h += `<li><strong>#${idx+1} ${S(o.descricao||'N/A')}</strong> (${S(o.tipo||'objetivo')})`;
+                    if (o.importancia) h += ` | Importância: ${S(o.importancia)}`;
+                    if (o.responsaveis && o.responsaveis.length > 0) h += ` | Responsáveis: ${o.responsaveis.map(r => S(r)).join(', ')}`;
+                    if (o.tipo === 'aposentadoria') {
+                        if (o.prazo_idade) h += ` | Idade: ${o.prazo_idade} anos`;
+                        if (o.renda_anual) h += ` | Renda Anual: ${C(o.renda_anual)}`;
+                    } else {
+                        if (o.prazo_meses) h += ` | Prazo: ${o.prazo_meses} meses`;
+                        if (o.prazo_tipo === 'data' && o.prazo_data) h += ` | Data: ${S(o.prazo_data)}`;
+                        if (o.valor_final) h += ` | Valor Final: ${C(o.valor_final)}`;
+                        if (o.meta_acumulo) h += ` | Meta Acúmulo: ${C(o.meta_acumulo)}`;
+                    }
+                    if (o.valor_inicial) h += ` | Valor Inicial: ${C(o.valor_inicial)}`;
+                    h += ` | Prioridade: ${o.prioridade||'N/A'}`;
+                    const perfilAtual = PERFIS_OBJ[o.perfil_atual]||o.perfil_atual||'N/A';
+                    const perfilConsult = PERFIS_OBJ[o.perfil_consultoria]||o.perfil_consultoria||'N/A';
+                    h += ` | Perfil Atual: ${perfilAtual} | Perfil Consultoria: ${perfilConsult}`;
+                    if (o.acumulavel) h += ' | Acumulável: Sim';
+                    if (o.vinculado_a) h += ` | Vinculado a: #${o.vinculado_a}`;
+                    h += '</li>';
+                });
+                h += '</ul>';
             }
             h += addObs('obs_objetivos');
+            if (obj.perfilFinanceiro && obj.perfilFinanceiro.perfil_selecionado) {
+                h += '<h3>Perfil Financeiro</h3>';
+                const perfilNome = PERFIS_FIN[obj.perfilFinanceiro.perfil_selecionado]||obj.perfilFinanceiro.perfil_selecionado;
+                h += `<p><strong>Perfil Selecionado:</strong> ${S(perfilNome)}</p>`;
+                if (obj.perfilFinanceiro.observacoes) h += `<p class="obs-text">Obs: ${S(obj.perfilFinanceiro.observacoes)}</p>`;
+            }
+            h += addObs('obs_perfil_financeiro');
+            if (obj.investimentoAssistencia) {
+                const ia = obj.investimentoAssistencia;
+                h += '<h3>Adesão</h3>';
+                if (ia.proposta_final) h += `<p><strong>Proposta Final:</strong> ${ia.proposta_final === 'ordinaria' ? 'Ordinária' : 'Especial'}</p>`;
+                if (ia.qtd_recomendacoes) h += `<p><strong>Qtd. Recomendações:</strong> ${ia.qtd_recomendacoes}</p>`;
+                if (ia.plano_acompanhamento) h += `<p><strong>Plano de Acompanhamento:</strong> ${S(ia.plano_acompanhamento)}</p>`;
+                if (ia.observacoes) h += `<p class="obs-text">Obs: ${S(ia.observacoes)}</p>`;
+            }
+            h += addObs('obs_adesao_plano');
         }
-    } catch(e) {}
+    } catch(e) { console.error('Erro objetivos consolidado:', e); }
 
-    // 9. QUEST\u00d5ES PERTINENTES
+    // 14. QUESTÕES PERTINENTES
     try {
         const q = typeof d.questoes_pertinentes === 'string' ? JSON.parse(d.questoes_pertinentes) : d.questoes_pertinentes;
         if (q && Object.keys(q).length > 0) {
-            h += '<h3>Quest\u00f5es Pertinentes</h3>';
-            let simCount = 0, naoCount = 0;
-            Object.values(q).forEach(data => {
+            h += '<h3>Questões Pertinentes</h3>';
+            let simCount = 0, naoCount = 0, naCount = 0, pendCount = 0;
+            const secoes = {};
+            Object.entries(q).forEach(([id, data]) => {
                 const resp = (data.resposta||'').toUpperCase();
                 if (resp === 'SIM') simCount++;
-                else if (resp === 'N\u00c3O' || resp === 'NAO') naoCount++;
+                else if (resp === 'NÃO' || resp === 'NAO') naoCount++;
+                else if (resp === 'INAPLICÁVEL' || resp === 'INAPLICAVEL' || resp === 'N/A' || resp === 'NA') naCount++;
+                else pendCount++;
+                const secao = data.secao || 'outros';
+                if (!secoes[secao]) secoes[secao] = [];
+                secoes[secao].push({ id, texto: data.texto, resposta: resp });
             });
             const totalResp = simCount + naoCount;
             const pctAprov = totalResp > 0 ? Math.round((simCount / totalResp) * 100) : 0;
-            h += `<p><strong>Resumo:</strong> ${simCount} SIM, ${naoCount} N\u00c3O | <strong>Aproveitamento:</strong> ${pctAprov}%</p>`;
+            h += `<p><strong>Resumo:</strong> ${simCount} SIM, ${naoCount} NÃO, ${naCount} N/A, ${pendCount} Pendentes | <strong>Aproveitamento:</strong> ${pctAprov}%</p>`;
+            const SECAO_NOMES = {
+                'patrimonio-liquido':'Patrimônio Líquido','dividas':'Dívidas','fluxo-caixa':'Fluxo de Caixa',
+                'produtos-protecao':'Produtos & Proteção','ir':'Imposto de Renda','contas-cartoes':'Contas & Cartões',
+                'objetivos':'Objetivos','dados-pessoais':'Dados Pessoais','sucessao':'Sucessão'
+            };
+            Object.entries(secoes).forEach(([secao, perguntas]) => {
+                const nomeSecao = SECAO_NOMES[secao]||secao;
+                h += `<p style="margin-top:0.4rem"><strong>${nomeSecao}:</strong></p><ul>`;
+                perguntas.forEach(p => {
+                    const r = p.resposta;
+                    const isSim = r === 'SIM';
+                    const isNao = r === 'NÃO' || r === 'NAO';
+                    const isNA = r === 'INAPLICÁVEL' || r === 'INAPLICAVEL' || r === 'N/A' || r === 'NA';
+                    const respLabel = isSim ? '\u2713 SIM' : isNao ? '\u2717 NÃO' : isNA ? '\u2014 N/A' : '\u23f3 Pendente';
+                    const cor = isSim ? '#4CAF50' : isNao ? '#f44336' : isNA ? '#9E9E9E' : '#FF9800';
+                    h += `<li>${S(p.texto)} \u2192 <strong style="color:${cor}">${respLabel}</strong></li>`;
+                });
+                h += '</ul>';
+            });
         }
     } catch(e) {}
 
     h += '</div>';
     return h;
 }
+
 
 // --- Excluir Formulário --- 
 async function deleteForm(formId, clientId) {
