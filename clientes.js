@@ -262,6 +262,58 @@ async function initializeDashboard() {
     // Carrega clientes
     console.log(`clientes.js: Chamando loadClients com filtro de projeto URL: ${filterProjectFromUrl || 'Nenhum'}`);
     loadClients(filterProjectFromUrl);
+    // Refresh summary button
+    const refreshSummaryBtn = document.getElementById('refresh-summary-btn');
+    if (refreshSummaryBtn) {
+        refreshSummaryBtn.addEventListener('click', async () => {
+            refreshSummaryBtn.querySelector('i').classList.add('fa-spin');
+            // Reset summary data
+            _summaryData = { patrimonios: [], dividas: [], rendas: [], despesas: [], poupancas: [], saldos: [], pendConsultor: 0, pendCliente: 0 };
+            _financialSummary = { totalVendido: 0, totalRecebido: 0, totalPendente: 0, totalMensalidades: 0 };
+            _summaryPendingCount = 0;
+            // Re-fetch all data for visible client rows
+            const rows = clientsTableBody ? clientsTableBody.querySelectorAll('tr[data-client-id]') : [];
+            for (const row of rows) {
+                if (row.dataset.tipo === 'lead') continue;
+                const cid = row.dataset.clientId;
+                _summaryPendingCount += 2;
+                fetchPendentes(cid, row);
+                fetchFinanceiros(cid, row);
+                const planoVal = parseFloat(row.dataset.planoRefValor || '0');
+                const mensalVal = parseFloat(row.dataset.mensalidade || '0');
+                fetchPlanoRefCell(cid, planoVal, mensalVal, row);
+            }
+            // Wait a bit then stop spinning
+            setTimeout(() => { refreshSummaryBtn.querySelector('i').classList.remove('fa-spin'); }, 2000);
+        });
+    }
+
+    // Pendencias cell click listener (delegated)
+    if (clientsTableBody) {
+        clientsTableBody.addEventListener('click', (e) => {
+            const pendCell = e.target.closest('.pend-cell.clickable');
+            if (pendCell) {
+                const clientId = pendCell.dataset.clientId;
+                const pendType = pendCell.dataset.pendType;
+                const row = pendCell.closest('tr');
+                const clientName = row ? (row.querySelector('.client-name')?.value || row.querySelector('td')?.textContent?.trim() || '') : '';
+                openPendenciasModal(clientId, clientName, pendType);
+                return;
+            }
+
+        });
+    }
+
+    // Close new modals
+    ['pendencias', 'objetivos', 'particularidades'].forEach(name => {
+        const modal = document.getElementById(name + '-modal');
+        const closeBtn = document.getElementById(name + '-close-btn');
+        if (modal && closeBtn) {
+            closeBtn.addEventListener('click', () => { modal.style.display = 'none'; });
+            modal.addEventListener('click', (e) => { if (e.target === modal) modal.style.display = 'none'; });
+        }
+    });
+
     console.log("clientes.js: initializeDashboard() CONCLUÍDO.");
 }
 
@@ -471,16 +523,16 @@ async function loadClients(filterProject = null) {
                 <td data-label="Últ. Reunião" class="ult-reuniao-cell">
                     <span class="dias-loading">...</span>
                 </td>
-                <td data-label="Pend. Consultor" class="pend-cell">
+                <td data-label="Pend. Consultor" class="pend-cell clickable" data-client-id="${client.id}" data-pend-type="consultor">
                     <span class="pend-loading">...</span>
                 </td>
-                <td data-label="Pend. Cliente" class="pend-cell">
+                <td data-label="Pend. Cliente" class="pend-cell clickable" data-client-id="${client.id}" data-pend-type="cliente">
                     <span class="pend-loading">...</span>
                 </td>
-                <td data-label="Patrimônio" class="fin-cell fin-patrimonio">
+                <td data-label="Patrimônio" class="fin-cell fin-patrimonio" data-client-id="${client.id}">
                     <span class="fin-loading">...</span>
                 </td>
-                <td data-label="Dívidas" class="fin-cell fin-dividas">
+                <td data-label="Dívidas" class="fin-cell fin-dividas" data-client-id="${client.id}">
                     <span class="fin-loading">...</span>
                 </td>
                 <td data-label="Fluxo Mensal" class="fin-cell fin-fluxo">
@@ -497,9 +549,14 @@ async function loadClients(filterProject = null) {
                     <button class="msg-action-btn edit-msg-btn" data-client-id="${client.id}" title="Editar/Gerar mensagem WhatsApp">
                       <i class="fas fa-comment-alt"></i>
                     </button>
-
                     <button class="msg-action-btn system-btn" data-client-id="${client.id}" title="Acessar sistema do cliente">
                       <i class="fas fa-external-link-alt"></i>
+                    </button>
+                    <button class="obj-action-btn" data-client-id="${client.id}" data-client-name="${sanitizeInput(client.nome)}" title="Objetivos Financeiros">
+                      <i class="fas fa-bullseye"></i>
+                    </button>
+                    <button class="partic-action-btn" data-client-id="${client.id}" data-client-name="${sanitizeInput(client.nome)}" title="Particularidades">
+                      <i class="fas fa-fingerprint"></i>
                     </button>
                     <button class="view-details-btn" data-client-id="${client.id}" title="Ver Detalhes">
                         <i class="fa-solid fa-eye"></i>
@@ -2123,6 +2180,10 @@ function handleTableClick(event) {
         openPlanoRefModal(clientId, clientName);
     } else if (btn.classList.contains('mensalidade-btn')) {
         openMensalidadeModal(clientId, clientName);
+    } else if (btn.classList.contains('obj-action-btn')) {
+        openObjetivosModal(clientId, clientName);
+    } else if (btn.classList.contains('partic-action-btn')) {
+        openParticularidadesModal(clientId, clientName);
     }
 }
 
@@ -3342,7 +3403,7 @@ async function loadAndRenderLeads(filterProject) {
                 </td>
                 <td data-label="WhatsApp">
                     <div class="whatsapp-cell">
-                        <i class="fa-brands fa-whatsapp phone-icon"></i>
+                        ${lead.whatsapp ? `<button class="whatsapp-btn-lead" data-phone="${sanitizeInput(lead.whatsapp)}" title="Abrir conversa no WhatsApp"><i class="fa-brands fa-whatsapp"></i></button>` : '<i class="fa-brands fa-whatsapp phone-icon"></i>'}
                         <span style="font-size:0.85rem;">${sanitizeInput(lead.whatsapp || '--')}</span>
                     </div>
                 </td>
@@ -3407,6 +3468,17 @@ async function loadAndRenderLeads(filterProject) {
                     } catch (err) {
                         alert('Erro ao excluir lead: ' + err.message);
                     }
+                });
+            }
+            
+            // WhatsApp button for lead
+            const whatsBtn = row.querySelector('.whatsapp-btn-lead');
+            if (whatsBtn) {
+                whatsBtn.addEventListener('click', () => {
+                    let phone = whatsBtn.dataset.phone.replace(/\D/g, '');
+                    if (phone.length === 11 && !phone.startsWith('55')) phone = '55' + phone;
+                    if (phone.length === 10 && !phone.startsWith('55')) phone = '55' + phone;
+                    window.open('https://wa.me/' + phone, '_blank');
                 });
             }
         }
@@ -3894,3 +3966,532 @@ function applyTipoFilter() {
 
 // Inicializar
 document.addEventListener("DOMContentLoaded", initializeDashboard);
+
+
+// ============================================================
+// PENDÊNCIAS MODAL (Consultor / Cliente)
+// ============================================================
+async function openPendenciasModal(clientId, clientName, pendType) {
+    const modal = document.getElementById('pendencias-modal');
+    const title = document.getElementById('pendencias-modal-title');
+    const body = document.getElementById('pendencias-modal-body');
+    if (!modal) return;
+    
+    const typeLabel = pendType === 'consultor' ? 'Consultor' : 'Cliente';
+    title.textContent = `Pendências ${typeLabel}: ${clientName}`;
+    body.innerHTML = '<p style="color:var(--theme-text-muted);">Carregando...</p>';
+    modal.style.display = 'block';
+    
+    try {
+        const { data, error } = await supabase
+            .from('ferramentas_dados')
+            .select('dados')
+            .eq('cliente_id', clientId)
+            .eq('ferramenta', 'acompanhamento')
+            .maybeSingle();
+        
+        if (error || !data || !data.dados) {
+            body.innerHTML = '<p class="dash-modal-empty">Nenhum dado de acompanhamento encontrado.</p>';
+            return;
+        }
+        
+        const dados = data.dados;
+        const micros = Array.isArray(dados.microPassos) ? dados.microPassos : [];
+        const objetivos = Array.isArray(dados.objetivos) ? dados.objetivos : [];
+        
+        // Filter by type
+        let filtered;
+        if (pendType === 'consultor') {
+            filtered = micros.filter(m => m.responsavel_consultor);
+        } else {
+            filtered = micros.filter(m => !m.responsavel_consultor);
+        }
+        
+        if (filtered.length === 0) {
+            body.innerHTML = '<p class="dash-modal-empty">Nenhum micro passo encontrado para este filtro.</p>';
+            return;
+        }
+        
+        // Build filterable table
+        let html = `<div class="dash-modal-filters">
+            <input type="text" id="pend-filter-text" placeholder="Buscar por título...">
+            <select id="pend-filter-status">
+                <option value="">Todos os status</option>
+                <option value="pendente">Pendente</option>
+                <option value="em_andamento">Em Andamento</option>
+                <option value="concluido">Concluído</option>
+            </select>
+            <select id="pend-filter-objetivo">
+                <option value="">Todos os objetivos</option>
+                ${objetivos.map((o, i) => `<option value="${i}">${o.nome || 'Objetivo ' + (i+1)}</option>`).join('')}
+            </select>
+        </div>`;
+        
+        html += `<table class="dash-list-table" id="pend-table">
+            <thead><tr>
+                <th data-sort="desc">Título</th>
+                <th data-sort="status">Status</th>
+                <th data-sort="prazo">Prazo</th>
+                <th data-sort="obj">Objetivo</th>
+                <th>Ações</th>
+            </tr></thead>
+            <tbody>`;
+        
+        filtered.forEach((m, idx) => {
+            const globalIdx = micros.indexOf(m);
+            const statusLabel = (m.status || 'pendente').replace('_', ' ');
+            const statusClass = 'st-' + (m.status || 'pendente');
+            let prazoStr = '--';
+            if (m.prazo) prazoStr = new Date(m.prazo + 'T00:00:00').toLocaleDateString('pt-BR');
+            else if (m.inicio) prazoStr = new Date(m.inicio + 'T00:00:00').toLocaleDateString('pt-BR');
+            
+            // Find linked objectives
+            let objNames = '--';
+            if (m.objetivos_ids && m.objetivos_ids.length > 0) {
+                objNames = m.objetivos_ids.map(oid => {
+                    const o = objetivos[oid];
+                    return o ? (o.nome || 'Obj ' + (oid+1)) : '';
+                }).filter(Boolean).join(', ') || '--';
+            }
+            
+            html += `<tr data-global-idx="${globalIdx}" data-status="${m.status || 'pendente'}" data-obj-ids="${(m.objetivos_ids || []).join(',')}">
+                <td><strong>${sanitizeInput(m.desc || 'Sem título')}</strong>${m.detalhamento ? '<br><span style="font-size:0.72rem;color:var(--theme-text-muted);">' + sanitizeInput(m.detalhamento.substring(0,60)) + '</span>' : ''}</td>
+                <td><span class="status-badge ${statusClass}">${statusLabel}</span></td>
+                <td style="font-size:0.78rem;">${prazoStr}</td>
+                <td style="font-size:0.78rem;">${sanitizeInput(objNames)}</td>
+                <td><button class="btn-update-micro" data-global-idx="${globalIdx}" data-client-id="${clientId}">Atualizar</button></td>
+            </tr>`;
+        });
+        
+        html += '</tbody></table>';
+        body.innerHTML = html;
+        
+        // Filter listeners
+        const filterText = document.getElementById('pend-filter-text');
+        const filterStatus = document.getElementById('pend-filter-status');
+        const filterObj = document.getElementById('pend-filter-objetivo');
+        const tableBody = document.querySelector('#pend-table tbody');
+        
+        function applyPendFilters() {
+            const term = filterText.value.toLowerCase().trim();
+            const status = filterStatus.value;
+            const objIdx = filterObj.value;
+            const rows = tableBody.querySelectorAll('tr');
+            rows.forEach(row => {
+                let show = true;
+                if (term && !row.textContent.toLowerCase().includes(term)) show = false;
+                if (status && row.dataset.status !== status) show = false;
+                if (objIdx !== '' && !(row.dataset.objIds || '').split(',').includes(objIdx)) show = false;
+                row.style.display = show ? '' : 'none';
+            });
+        }
+        
+        if (filterText) filterText.addEventListener('input', applyPendFilters);
+        if (filterStatus) filterStatus.addEventListener('change', applyPendFilters);
+        if (filterObj) filterObj.addEventListener('change', applyPendFilters);
+        
+        // Update button listeners
+        body.querySelectorAll('.btn-update-micro').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const gIdx = parseInt(btn.dataset.globalIdx);
+                const cId = btn.dataset.clientId;
+                openMicroUpdateDash(cId, gIdx);
+            });
+        });
+        
+        // Sort listeners
+        const ths = body.querySelectorAll('#pend-table thead th[data-sort]');
+        ths.forEach(th => {
+            th.addEventListener('click', () => {
+                const key = th.dataset.sort;
+                const rows = Array.from(tableBody.querySelectorAll('tr'));
+                const dir = th.classList.contains('sort-asc') ? 'desc' : 'asc';
+                ths.forEach(t => t.classList.remove('sort-asc', 'sort-desc'));
+                th.classList.add('sort-' + dir);
+                rows.sort((a, b) => {
+                    let aVal, bVal;
+                    if (key === 'desc') { aVal = a.cells[0].textContent; bVal = b.cells[0].textContent; }
+                    else if (key === 'status') { aVal = a.dataset.status; bVal = b.dataset.status; }
+                    else if (key === 'prazo') { aVal = a.cells[2].textContent; bVal = b.cells[2].textContent; }
+                    else { aVal = a.cells[3].textContent; bVal = b.cells[3].textContent; }
+                    if (dir === 'asc') return aVal.localeCompare(bVal);
+                    return bVal.localeCompare(aVal);
+                });
+                rows.forEach(r => tableBody.appendChild(r));
+            });
+        });
+        
+    } catch (err) {
+        body.innerHTML = '<p style="color:#ef4444;">Erro ao carregar: ' + err.message + '</p>';
+    }
+}
+
+// --- Micro Update Modal (from dashboard) ---
+function openMicroUpdateDash(clientId, microIndex) {
+    // Create overlay if not exists
+    let overlay = document.getElementById('dash-micro-update-overlay');
+    if (!overlay) {
+        overlay = document.createElement('div');
+        overlay.id = 'dash-micro-update-overlay';
+        overlay.className = 'modal';
+        overlay.innerHTML = `<div class="modal-content" style="max-width:450px;">
+            <span class="modal-close" id="dash-mu-close">&times;</span>
+            <h2>Atualização de Execução</h2>
+            <div style="margin-bottom:0.75rem;">
+                <label style="font-size:0.82rem;color:var(--theme-text-muted);display:block;margin-bottom:0.3rem;">Data da Atualização</label>
+                <input type="date" id="dash-mu-data" style="width:100%;padding:0.5rem;border-radius:4px;border:1px solid var(--theme-border-color);background:rgba(0,0,0,0.2);color:var(--theme-text-light);">
+            </div>
+            <div style="margin-bottom:0.75rem;">
+                <label style="font-size:0.82rem;color:var(--theme-text-muted);display:block;margin-bottom:0.3rem;">Observação / Informação</label>
+                <textarea id="dash-mu-texto" rows="3" style="width:100%;padding:0.5rem;border-radius:4px;border:1px solid var(--theme-border-color);background:rgba(0,0,0,0.2);color:var(--theme-text-light);resize:vertical;" placeholder="Descreva o andamento, o que foi feito..."></textarea>
+            </div>
+            <div style="margin-bottom:1rem;">
+                <label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer;font-size:0.85rem;color:var(--theme-text-light);">
+                    <input type="checkbox" id="dash-mu-concluir" style="width:16px;height:16px;accent-color:var(--theme-secondary);">
+                    Marcar como concluído
+                </label>
+            </div>
+            <div style="display:flex;gap:0.75rem;justify-content:flex-end;">
+                <button class="msg-modal-btn msg-cancel-btn" id="dash-mu-cancel">Cancelar</button>
+                <button class="msg-modal-btn msg-save-btn" id="dash-mu-save">Salvar</button>
+            </div>
+        </div>`;
+        document.body.appendChild(overlay);
+        document.getElementById('dash-mu-close').addEventListener('click', () => { overlay.style.display = 'none'; });
+        document.getElementById('dash-mu-cancel').addEventListener('click', () => { overlay.style.display = 'none'; });
+        overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.style.display = 'none'; });
+    }
+    
+    const hoje = new Date().toISOString().split('T')[0];
+    document.getElementById('dash-mu-data').value = hoje;
+    document.getElementById('dash-mu-texto').value = '';
+    document.getElementById('dash-mu-concluir').checked = false;
+    
+    document.getElementById('dash-mu-save').onclick = async () => {
+        const data = document.getElementById('dash-mu-data').value;
+        const texto = document.getElementById('dash-mu-texto').value.trim();
+        const concluir = document.getElementById('dash-mu-concluir').checked;
+        if (!texto && !concluir) { alert('Informe pelo menos uma observação ou marque como concluído.'); return; }
+        
+        try {
+            const { data: acompData, error } = await supabase
+                .from('ferramentas_dados')
+                .select('dados')
+                .eq('cliente_id', clientId)
+                .eq('ferramenta', 'acompanhamento')
+                .maybeSingle();
+            
+            if (error || !acompData) { alert('Erro ao carregar dados.'); return; }
+            
+            const dados = acompData.dados;
+            const m = dados.microPassos[microIndex];
+            if (!m) { alert('Micro passo não encontrado.'); return; }
+            
+            if (!Array.isArray(m.atualizacoes)) m.atualizacoes = [];
+            if (texto) {
+                m.atualizacoes.push({ data: data || hoje, texto: texto });
+            }
+            if (concluir) m.status = 'concluido';
+            
+            await supabase
+                .from('ferramentas_dados')
+                .update({ dados: dados })
+                .eq('cliente_id', clientId)
+                .eq('ferramenta', 'acompanhamento');
+            
+            overlay.style.display = 'none';
+            alert('Atualização salva com sucesso!');
+            
+            // Refresh the pendencias modal if open
+            const pendModal = document.getElementById('pendencias-modal');
+            if (pendModal && pendModal.style.display === 'block') {
+                const pendTitle = document.getElementById('pendencias-modal-title').textContent;
+                const pendType = pendTitle.includes('Consultor') ? 'consultor' : 'cliente';
+                const clientNameMatch = pendTitle.match(/:\s*(.+)$/);
+                const cName = clientNameMatch ? clientNameMatch[1] : '';
+                openPendenciasModal(clientId, cName, pendType);
+            }
+        } catch (err) {
+            alert('Erro ao salvar: ' + err.message);
+        }
+    };
+    
+    overlay.style.display = 'block';
+}
+
+// ============================================================
+// OBJETIVOS MODAL
+// ============================================================
+async function openObjetivosModal(clientId, clientName) {
+    const modal = document.getElementById('objetivos-modal');
+    const title = document.getElementById('objetivos-modal-title');
+    const body = document.getElementById('objetivos-modal-body');
+    if (!modal) return;
+    
+    title.textContent = `Objetivos: ${clientName}`;
+    body.innerHTML = '<p style="color:var(--theme-text-muted);">Carregando...</p>';
+    modal.style.display = 'block';
+    
+    try {
+        const { data, error } = await supabase
+            .from('ferramentas_dados')
+            .select('dados')
+            .eq('cliente_id', clientId)
+            .eq('ferramenta', 'acompanhamento')
+            .maybeSingle();
+        
+        if (error || !data || !data.dados) {
+            body.innerHTML = '<p class="dash-modal-empty">Nenhum dado de acompanhamento encontrado.</p>';
+            return;
+        }
+        
+        const dados = data.dados;
+        const objetivos = Array.isArray(dados.objetivos) ? dados.objetivos : [];
+        
+        if (objetivos.length === 0) {
+            body.innerHTML = '<p class="dash-modal-empty">Nenhum objetivo cadastrado.</p>';
+            return;
+        }
+        
+        let html = '';
+        objetivos.forEach((o, idx) => {
+            const valor = parseFloat(o.valor) || 0;
+            const atual = parseFloat(o.atual) || 0;
+            const pct = valor > 0 ? Math.min(100, (atual / valor) * 100) : 0;
+            
+            html += `<div class="obj-card">
+                <div class="obj-card-header">
+                    <span class="obj-card-title">${sanitizeInput(o.nome || 'Objetivo ' + (idx+1))}</span>
+                    <span class="obj-card-cat">${sanitizeInput(o.categoria || '')}</span>
+                </div>
+                <div class="obj-card-progress"><div class="obj-card-progress-bar" style="width:${pct.toFixed(1)}%"></div></div>
+                <div class="obj-card-values">
+                    <span>Atual: ${fmtBRL(atual)}</span>
+                    <span>${pct.toFixed(0)}%</span>
+                    <span>Meta: ${fmtBRL(valor)}</span>
+                </div>
+                ${o.obs ? `<p style="font-size:0.75rem;color:var(--theme-text-muted);margin-top:0.4rem;font-style:italic;">${sanitizeInput(o.obs)}</p>` : ''}
+                <div style="margin-top:0.5rem;display:flex;gap:0.5rem;justify-content:flex-end;">
+                    <button class="btn-update-micro dash-obj-update-btn" data-idx="${idx}" data-client-id="${clientId}">Atualizar Valor</button>
+                </div>
+            </div>`;
+        });
+        
+        body.innerHTML = html;
+        
+        // Update buttons
+        body.querySelectorAll('.dash-obj-update-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const idx = parseInt(btn.dataset.idx);
+                const cId = btn.dataset.clientId;
+                openObjetivoUpdateDash(cId, idx, clientName);
+            });
+        });
+        
+    } catch (err) {
+        body.innerHTML = '<p style="color:#ef4444;">Erro ao carregar: ' + err.message + '</p>';
+    }
+}
+
+// --- Objetivo Update Modal (from dashboard) ---
+function openObjetivoUpdateDash(clientId, objIndex, clientName) {
+    let overlay = document.getElementById('dash-obj-update-overlay');
+    if (!overlay) {
+        overlay = document.createElement('div');
+        overlay.id = 'dash-obj-update-overlay';
+        overlay.className = 'modal';
+        overlay.innerHTML = `<div class="modal-content" style="max-width:450px;">
+            <span class="modal-close" id="dash-ou-close">&times;</span>
+            <h2>Atualizar Valor Acumulado</h2>
+            <div style="margin-bottom:0.75rem;">
+                <label style="font-size:0.82rem;color:var(--theme-text-muted);display:block;margin-bottom:0.3rem;">Data da Atualização</label>
+                <input type="date" id="dash-ou-data" style="width:100%;padding:0.5rem;border-radius:4px;border:1px solid var(--theme-border-color);background:rgba(0,0,0,0.2);color:var(--theme-text-light);">
+            </div>
+            <div style="margin-bottom:0.75rem;">
+                <label style="font-size:0.82rem;color:var(--theme-text-muted);display:block;margin-bottom:0.3rem;">Novo Valor Acumulado</label>
+                <input type="text" id="dash-ou-valor" style="width:100%;padding:0.5rem;border-radius:4px;border:1px solid var(--theme-border-color);background:rgba(0,0,0,0.2);color:var(--theme-text-light);" placeholder="Ex: 55.000,00">
+            </div>
+            <div style="margin-bottom:1rem;">
+                <label style="font-size:0.82rem;color:var(--theme-text-muted);display:block;margin-bottom:0.3rem;">Observação (opcional)</label>
+                <textarea id="dash-ou-texto" rows="2" style="width:100%;padding:0.5rem;border-radius:4px;border:1px solid var(--theme-border-color);background:rgba(0,0,0,0.2);color:var(--theme-text-light);resize:vertical;" placeholder="Comentário sobre a atualização..."></textarea>
+            </div>
+            <div style="display:flex;gap:0.75rem;justify-content:flex-end;">
+                <button class="msg-modal-btn msg-cancel-btn" id="dash-ou-cancel">Cancelar</button>
+                <button class="msg-modal-btn msg-save-btn" id="dash-ou-save">Salvar</button>
+            </div>
+        </div>`;
+        document.body.appendChild(overlay);
+        document.getElementById('dash-ou-close').addEventListener('click', () => { overlay.style.display = 'none'; });
+        document.getElementById('dash-ou-cancel').addEventListener('click', () => { overlay.style.display = 'none'; });
+        overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.style.display = 'none'; });
+    }
+    
+    const hoje = new Date().toISOString().split('T')[0];
+    document.getElementById('dash-ou-data').value = hoje;
+    document.getElementById('dash-ou-valor').value = '';
+    document.getElementById('dash-ou-texto').value = '';
+    
+    // Apply currency mask
+    const valorInput = document.getElementById('dash-ou-valor');
+    valorInput.removeEventListener('input', _dashOuMask);
+    valorInput.addEventListener('input', _dashOuMask);
+    
+    document.getElementById('dash-ou-save').onclick = async () => {
+        const data = document.getElementById('dash-ou-data').value;
+        const valorStr = document.getElementById('dash-ou-valor').value;
+        const texto = document.getElementById('dash-ou-texto').value.trim();
+        const valor = parseBRL(valorStr);
+        if (!valor && valor !== 0) { alert('Informe o valor acumulado atualizado.'); return; }
+        
+        try {
+            const { data: acompData, error } = await supabase
+                .from('ferramentas_dados')
+                .select('dados')
+                .eq('cliente_id', clientId)
+                .eq('ferramenta', 'acompanhamento')
+                .maybeSingle();
+            
+            if (error || !acompData) { alert('Erro ao carregar dados.'); return; }
+            
+            const dados = acompData.dados;
+            const o = dados.objetivos[objIndex];
+            if (!o) { alert('Objetivo não encontrado.'); return; }
+            
+            if (!Array.isArray(o.atualizacoes_valor)) o.atualizacoes_valor = [];
+            o.atualizacoes_valor.push({ data: data || hoje, valor: valor, texto: texto });
+            o.atual = valor;
+            
+            await supabase
+                .from('ferramentas_dados')
+                .update({ dados: dados })
+                .eq('cliente_id', clientId)
+                .eq('ferramenta', 'acompanhamento');
+            
+            overlay.style.display = 'none';
+            alert('Valor atualizado com sucesso!');
+            openObjetivosModal(clientId, clientName);
+        } catch (err) {
+            alert('Erro ao salvar: ' + err.message);
+        }
+    };
+    
+    overlay.style.display = 'block';
+}
+
+function _dashOuMask(e) {
+    applyCurrencyMask(e.target);
+}
+
+// ============================================================
+// PARTICULARIDADES MODAL
+// ============================================================
+async function openParticularidadesModal(clientId, clientName) {
+    const modal = document.getElementById('particularidades-modal');
+    const title = document.getElementById('particularidades-modal-title');
+    const body = document.getElementById('particularidades-modal-body');
+    if (!modal) return;
+    
+    title.textContent = `Particularidades: ${clientName}`;
+    body.innerHTML = '<p style="color:var(--theme-text-muted);">Carregando...</p>';
+    modal.style.display = 'block';
+    
+    try {
+        const { data, error } = await supabase
+            .from('ferramentas_dados')
+            .select('dados')
+            .eq('cliente_id', clientId)
+            .eq('ferramenta', 'particularidades')
+            .maybeSingle();
+        
+        if (error || !data || !data.dados) {
+            body.innerHTML = '<p class="dash-modal-empty">Nenhuma particularidade registrada.</p>';
+            return;
+        }
+        
+        const pData = data.dados;
+        const tabs = [
+            { key: 'datas_relevantes', label: 'Datas Relevantes' },
+            { key: 'historia_vida', label: 'História de Vida' },
+            { key: 'cidades', label: 'Cidades' },
+            { key: 'comunicacao', label: 'Comunicação' },
+            { key: 'interesses', label: 'Interesses' }
+        ];
+        
+        let html = '<div class="partic-tabs">';
+        tabs.forEach((tab, i) => {
+            const count = Array.isArray(pData[tab.key]) ? pData[tab.key].length : (pData[tab.key] ? 1 : 0);
+            html += `<button class="partic-tab ${i === 0 ? 'active' : ''}" data-tab="${tab.key}">${tab.label} (${count})</button>`;
+        });
+        html += '</div><div class="partic-content" id="partic-content-area"></div>';
+        body.innerHTML = html;
+        
+        // Tab click
+        body.querySelectorAll('.partic-tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                body.querySelectorAll('.partic-tab').forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+                renderParticTab(pData, tab.dataset.tab);
+            });
+        });
+        
+        // Render first tab
+        renderParticTab(pData, 'datas_relevantes');
+        
+    } catch (err) {
+        body.innerHTML = '<p style="color:#ef4444;">Erro ao carregar: ' + err.message + '</p>';
+    }
+}
+
+function renderParticTab(pData, tabKey) {
+    const area = document.getElementById('partic-content-area');
+    if (!area) return;
+    
+    const items = Array.isArray(pData[tabKey]) ? pData[tabKey] : [];
+    
+    if (items.length === 0) {
+        area.innerHTML = '<p class="dash-modal-empty">Nenhum item nesta seção.</p>';
+        return;
+    }
+    
+    let html = '';
+    
+    if (tabKey === 'datas_relevantes') {
+        html = '<table class="dash-list-table"><thead><tr><th>Descrição</th><th>Data</th><th>Recorrência</th></tr></thead><tbody>';
+        items.forEach(item => {
+            const dataStr = item.data ? new Date(item.data + 'T00:00:00').toLocaleDateString('pt-BR') : '--';
+            html += `<tr><td>${sanitizeInput(item.descricao || '--')}</td><td>${dataStr}</td><td>${sanitizeInput(item.recorrencia || 'Nenhuma')}</td></tr>`;
+        });
+        html += '</tbody></table>';
+    } else if (tabKey === 'historia_vida') {
+        html = '<table class="dash-list-table"><thead><tr><th>Evento</th><th>Período</th></tr></thead><tbody>';
+        items.forEach(item => {
+            html += `<tr><td>${sanitizeInput(item.descricao || item.evento || '--')}</td><td>${sanitizeInput(item.periodo || item.ano || '--')}</td></tr>`;
+        });
+        html += '</tbody></table>';
+    } else if (tabKey === 'cidades') {
+        html = '<table class="dash-list-table"><thead><tr><th>Cidade</th><th>Contexto</th></tr></thead><tbody>';
+        items.forEach(item => {
+            html += `<tr><td>${sanitizeInput(item.nome || item.cidade || '--')}</td><td>${sanitizeInput(item.contexto || item.motivo || '--')}</td></tr>`;
+        });
+        html += '</tbody></table>';
+    } else if (tabKey === 'comunicacao') {
+        html = '<div style="padding:0.5rem;">';
+        if (typeof pData.comunicacao === 'string') {
+            html += `<p style="color:var(--theme-text-light);line-height:1.6;">${sanitizeInput(pData.comunicacao)}</p>`;
+        } else if (Array.isArray(items)) {
+            items.forEach(item => {
+                html += `<p style="color:var(--theme-text-light);margin-bottom:0.5rem;">• ${sanitizeInput(typeof item === 'string' ? item : (item.descricao || item.nota || JSON.stringify(item)))}</p>`;
+            });
+        }
+        html += '</div>';
+    } else if (tabKey === 'interesses') {
+        html = '<table class="dash-list-table"><thead><tr><th>Interesse</th><th>Categoria</th><th>Prioridade</th></tr></thead><tbody>';
+        items.forEach(item => {
+            const prioridade = item.prioridade || '--';
+            html += `<tr><td>${sanitizeInput(item.nome || item.descricao || '--')}</td><td>${sanitizeInput(item.categoria || '--')}</td><td>${sanitizeInput(String(prioridade))}</td></tr>`;
+        });
+        html += '</tbody></table>';
+    }
+    
+    area.innerHTML = html;
+}
