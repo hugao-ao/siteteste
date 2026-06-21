@@ -16,6 +16,10 @@ const modalCloseBtn = document.getElementById("modal-close-btn");
 const modalTitle = document.getElementById("modal-title");
 const clientFormsList = document.getElementById("client-forms-list");
 const noFormsMessage = document.getElementById("no-forms-message");
+// New Modals
+const planoRefModal = document.getElementById("plano-ref-modal");
+const mensalidadeModal = document.getElementById("mensalidade-modal");
+const leadModal = document.getElementById("lead-modal");
 
 // --- Variáveis de Estado e Informações do Usuário ---
 let currentUser = null;
@@ -31,6 +35,11 @@ const modifiedClientIds = new Set();
 let allClientes = [];
 let clientesData = {}; // { clienteId: { fluxo, acompanhamento, trackingData, particularidades } }
 let currentMsgClienteId = null;
+
+// --- Estado para Leads e Financeiro Comercial ---
+let allLeads = [];
+let allPlanoRefParcelas = {}; // { clienteId: [parcelas] }
+let _financialSummary = { totalVendido: 0, totalRecebido: 0, totalPendente: 0, totalMensalidades: 0 };
 
 // --- Funções de Utilidade ---
 const sanitizeInput = (str) => {
@@ -223,6 +232,33 @@ async function initializeDashboard() {
     if (msgWhatsBtn) msgWhatsBtn.addEventListener('click', () => { if (currentMsgClienteId) openWhatsApp(currentMsgClienteId); });
     window.addEventListener('click', (e) => { if (e.target === mensagemModal) mensagemModal.style.display = 'none'; });
 
+    // --- Listeners para novos modais ---
+    // Plano Ref Modal
+    const planoRefCloseBtn = document.getElementById('plano-ref-close-btn');
+    if (planoRefCloseBtn) planoRefCloseBtn.addEventListener('click', () => { planoRefModal.style.display = 'none'; });
+    // Mensalidade Modal
+    const mensalidadeCloseBtn = document.getElementById('mensalidade-close-btn');
+    if (mensalidadeCloseBtn) mensalidadeCloseBtn.addEventListener('click', () => { mensalidadeModal.style.display = 'none'; });
+    // Lead Modal
+    const leadCloseBtn = document.getElementById('lead-close-btn');
+    if (leadCloseBtn) leadCloseBtn.addEventListener('click', () => { leadModal.style.display = 'none'; });
+    const leadCancelBtn = document.getElementById('lead-cancel-btn');
+    if (leadCancelBtn) leadCancelBtn.addEventListener('click', () => { leadModal.style.display = 'none'; });
+    const leadSaveBtn = document.getElementById('lead-save-btn');
+    if (leadSaveBtn) leadSaveBtn.addEventListener('click', saveLead);
+    // Add Lead button
+    const addLeadBtn = document.getElementById('add-lead-btn');
+    if (addLeadBtn) addLeadBtn.addEventListener('click', openLeadModal);
+    // Filter tipo
+    const filterTipo = document.getElementById('filter-tipo');
+    if (filterTipo) filterTipo.addEventListener('change', applyTipoFilter);
+    // Close modals on backdrop click
+    window.addEventListener('click', (e) => {
+        if (e.target === planoRefModal) planoRefModal.style.display = 'none';
+        if (e.target === mensalidadeModal) mensalidadeModal.style.display = 'none';
+        if (e.target === leadModal) leadModal.style.display = 'none';
+    });
+
     // Carrega clientes
     console.log(`clientes.js: Chamando loadClients com filtro de projeto URL: ${filterProjectFromUrl || 'Nenhum'}`);
     loadClients(filterProjectFromUrl);
@@ -256,9 +292,9 @@ async function loadClients(filterProject = null) {
     }
 
     try {
-        clientsTableBody.innerHTML = '<tr><td colspan="14">Carregando clientes...</td></tr>';
+        clientsTableBody.innerHTML = '<tr><td colspan="17">Carregando clientes...</td></tr>';
         console.log("clientes.js: Construindo query Supabase...");
-        let query = supabase.from('clientes').select('*, formularios_clientes(count)');
+        let query = supabase.from('clientes').select('*, formularios_clientes(count), plano_ref_valor_total, mensalidade');
 
         // Lógica de filtro
         if (filterProject && isAdmin) {
@@ -287,7 +323,7 @@ async function loadClients(filterProject = null) {
         clientsTableBody.innerHTML = "";
 
         if (!clients || clients.length === 0) {
-            clientsTableBody.innerHTML = '<tr><td colspan="14" style="text-align: center;">Nenhum cliente encontrado.</td></tr>';
+            clientsTableBody.innerHTML = '<tr><td colspan="17" style="text-align: center;">Nenhum cliente encontrado.</td></tr>';
             return;
         }
 
@@ -308,12 +344,13 @@ async function loadClients(filterProject = null) {
         });
 
         if (filteredClients.length === 0) {
-             clientsTableBody.innerHTML = '<tr><td colspan="14" style="text-align: center;">Nenhum cliente visível para você.</td></tr>';
+             clientsTableBody.innerHTML = '<tr><td colspan="17" style="text-align: center;">Nenhum cliente visível para você.</td></tr>';
              return;
         }
 
         // Reset summary data
         _summaryData = { patrimonios: [], dividas: [], rendas: [], despesas: [], poupancas: [], saldos: [], pendConsultor: 0, pendCliente: 0 };
+        _financialSummary = { totalVendido: 0, totalRecebido: 0, totalPendente: 0, totalMensalidades: 0 };
         _summaryPendingCount = 0;
         _summaryTotalClients = filteredClients.length;
 
@@ -335,6 +372,7 @@ async function loadClients(filterProject = null) {
 
             const row = document.createElement("tr");
             row.dataset.clientId = client.id;
+            row.dataset.tipo = 'cliente';
             row.dataset.originalNome = client.nome;
             row.dataset.originalWhatsapp = whatsapp;
             row.dataset.originalProjeto = client.projeto;
@@ -394,6 +432,9 @@ async function loadClients(filterProject = null) {
                 <td data-label="Nome">
                     <input type="text" class="client-name" value="${sanitizeInput(client.nome)}" ${!canEdit ? 'disabled' : ''}>
                 </td>
+                <td data-label="Tipo">
+                    <span class="tipo-badge tipo-cliente">CLIENTE</span>
+                </td>
                 <td data-label="WhatsApp">
                     <div class="whatsapp-cell">
                         <i class="fa-brands fa-whatsapp phone-icon"></i>
@@ -420,6 +461,12 @@ async function loadClients(filterProject = null) {
                     <button class="view-diag-btn" data-client-id="${client.id}" data-client-name="${sanitizeInput(client.nome)}" title="Ver Diagnóstico">
                         <i class="fa-solid fa-stethoscope"></i>
                     </button>
+                </td>
+                <td data-label="Plano Ref." class="plano-ref-cell" data-client-id="${client.id}">
+                    <span class="fin-loading">...</span>
+                </td>
+                <td data-label="Mensalidade" class="mensalidade-cell" data-client-id="${client.id}">
+                    <span class="fin-loading">...</span>
                 </td>
                 <td data-label="Últ. Reunião" class="ult-reuniao-cell">
                     <span class="dias-loading">...</span>
@@ -468,11 +515,16 @@ async function loadClients(filterProject = null) {
             fetchUltimaReuniao(client.id, row);
             fetchPendentes(client.id, row);
             fetchFinanceiros(client.id, row);
+            fetchPlanoRefCell(client.id, client.plano_ref_valor_total, client.mensalidade, row);
             _summaryPendingCount += 2; // 2 fetches contribute to summary (pendentes + financeiros)
         }
 
         // Salvar referência dos clientes para mensagens WhatsApp
         allClientes = filteredClients;
+        
+        // Carregar leads e renderizá-los na tabela
+        await loadAndRenderLeads(filterProject);
+        
         // Carregar dados para mensagens em background (mesma ordem do original)
         await loadMensagens();
         await loadSaudacoes();
@@ -480,7 +532,7 @@ async function loadClients(filterProject = null) {
 
     } catch (error) {
         console.error("clientes.js: Erro GERAL em loadClients:", error);
-        clientsTableBody.innerHTML = `<tr><td colspan="14" style="color: red; text-align: center;">Erro ao carregar clientes: ${error.message}</td></tr>`;
+        clientsTableBody.innerHTML = `<tr><td colspan="17" style="color: red; text-align: center;">Erro ao carregar clientes: ${error.message}</td></tr>`;
     }
 }
 
@@ -735,6 +787,23 @@ function renderDashboardSummary() {
         const badgeCount = clientsTableBody ? clientsTableBody.querySelectorAll('.edit-msg-btn .badge').length : 0;
         elBadges.innerHTML = badgeCount > 0 ? '<span style="color:#ef4444;">' + badgeCount + '</span>' : '0';
     }
+
+    // --- Financial Summary (Plano Ref + Mensalidades) ---
+    const elVendido = document.getElementById('sum-vendido');
+    const elRecebido = document.getElementById('sum-recebido');
+    const elPendenteRef = document.getElementById('sum-pendente-ref');
+    const elMensalidades = document.getElementById('sum-mensalidades');
+    if (elVendido) elVendido.textContent = _financialSummary.totalVendido > 0 ? fmtR(_financialSummary.totalVendido) : '--';
+    if (elRecebido) elRecebido.textContent = _financialSummary.totalRecebido > 0 ? fmtR(_financialSummary.totalRecebido) : '--';
+    if (elPendenteRef) {
+        const pendente = _financialSummary.totalPendente;
+        if (pendente > 0) {
+            elPendenteRef.innerHTML = '<span class="sum-alert">' + fmtR(pendente) + '</span>';
+        } else {
+            elPendenteRef.textContent = '--';
+        }
+    }
+    if (elMensalidades) elMensalidades.textContent = _financialSummary.totalMensalidades > 0 ? fmtR(_financialSummary.totalMensalidades) : '--';
 }
 
 // --- Adicionar Cliente --- 
@@ -2050,6 +2119,10 @@ function handleTableClick(event) {
         handleEditMessage(clientId);
     } else if (btn.classList.contains('system-btn')) {
         openClientSystem(clientId);
+    } else if (btn.classList.contains('plano-ref-btn')) {
+        openPlanoRefModal(clientId, clientName);
+    } else if (btn.classList.contains('mensalidade-btn')) {
+        openMensalidadeModal(clientId, clientName);
     }
 }
 
@@ -3175,6 +3248,519 @@ function isoDate(d) {
 }
 function fmtBRL(v) {
   return 'R$ ' + (v||0).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});
+}
+
+
+// ============================================================
+// LEADS - Carregar e Renderizar
+// ============================================================
+async function loadAndRenderLeads(filterProject) {
+    try {
+        let query = supabase.from('leads').select('*');
+        if (filterProject && isAdmin) {
+            query = query.eq('projeto', filterProject);
+        } else if (!isAdmin && currentUserProjeto) {
+            query = query.eq('projeto', currentUserProjeto);
+        }
+        query = query.order('created_at', { ascending: false });
+        const { data: leads, error } = await query;
+        if (error) { console.warn('Erro ao carregar leads:', error); return; }
+        allLeads = leads || [];
+        
+        // Renderizar leads na tabela
+        for (const lead of allLeads) {
+            if (lead.status === 'CONVERTIDO') continue; // Não mostrar leads já convertidos
+            const row = document.createElement('tr');
+            row.dataset.leadId = lead.id;
+            row.dataset.tipo = 'lead';
+            row.classList.add('lead-row');
+            
+            // Encontrar quem indicou
+            let indicadoPor = '';
+            if (lead.indicado_por_cliente_id) {
+                const cliente = allClientes.find(c => c.id === lead.indicado_por_cliente_id);
+                if (cliente) indicadoPor = cliente.nome;
+            }
+            
+            const statusColors = { 'NOVO': '#60a5fa', 'EM_CONTATO': '#f59e0b', 'NEGOCIANDO': '#a78bfa', 'CONVERTIDO': '#22c55e', 'PERDIDO': '#ef4444' };
+            const statusColor = statusColors[lead.status] || '#888';
+            
+            row.innerHTML = `
+                <td data-label="Nome" style="position:sticky;left:0;z-index:2;background:var(--theme-bg-surface);">
+                    <span style="font-weight:600;">${sanitizeInput(lead.nome)}</span>
+                </td>
+                <td data-label="Tipo">
+                    <span class="tipo-badge tipo-lead">LEAD</span>
+                    ${indicadoPor ? `<div class="lead-indicado" title="Indicado por: ${sanitizeInput(indicadoPor)}">via ${sanitizeInput(indicadoPor)}</div>` : ''}
+                </td>
+                <td data-label="WhatsApp">
+                    <div class="whatsapp-cell">
+                        <i class="fa-brands fa-whatsapp phone-icon"></i>
+                        <span style="font-size:0.85rem;">${sanitizeInput(lead.whatsapp || '--')}</span>
+                    </div>
+                </td>
+                <td data-label="Projeto"><span style="font-size:0.85rem;">${sanitizeInput(lead.projeto || '--')}</span></td>
+                <td data-label="Login / Senha"><span style="color:var(--theme-text-muted);font-size:0.8rem;">--</span></td>
+                <td data-label="Status/Atribuição">
+                    <select class="lead-status-select" data-lead-id="${lead.id}" style="font-size:0.8rem;padding:0.3rem;border-radius:4px;border:1px solid var(--theme-border-color);background:rgba(0,0,0,0.2);color:${statusColor};">
+                        <option value="NOVO" ${lead.status === 'NOVO' ? 'selected' : ''}>Novo</option>
+                        <option value="EM_CONTATO" ${lead.status === 'EM_CONTATO' ? 'selected' : ''}>Em Contato</option>
+                        <option value="NEGOCIANDO" ${lead.status === 'NEGOCIANDO' ? 'selected' : ''}>Negociando</option>
+                        <option value="CONVERTIDO" ${lead.status === 'CONVERTIDO' ? 'selected' : ''}>Convertido</option>
+                        <option value="PERDIDO" ${lead.status === 'PERDIDO' ? 'selected' : ''}>Perdido</option>
+                    </select>
+                </td>
+                <td data-label="Dashboard"><span style="color:var(--theme-text-muted);">--</span></td>
+                <td data-label="Plano Ref."><span style="color:var(--theme-text-muted);">--</span></td>
+                <td data-label="Mensalidade"><span style="color:var(--theme-text-muted);">--</span></td>
+                <td data-label="Últ. Reunião"><span style="color:var(--theme-text-muted);">--</span></td>
+                <td data-label="Pend. Consultor"><span style="color:var(--theme-text-muted);">--</span></td>
+                <td data-label="Pend. Cliente"><span style="color:var(--theme-text-muted);">--</span></td>
+                <td data-label="Patrimônio"><span style="color:var(--theme-text-muted);">--</span></td>
+                <td data-label="Dívidas"><span style="color:var(--theme-text-muted);">--</span></td>
+                <td data-label="Fluxo Mensal"><span style="color:var(--theme-text-muted);">--</span></td>
+                <td data-label="Situação"><span style="color:var(--theme-text-muted);font-size:0.8rem;">${lead.observacoes ? sanitizeInput(lead.observacoes.substring(0,30)) + '...' : '--'}</span></td>
+                <td data-label="Ações">
+                    <button class="msg-action-btn delete-lead-btn" data-lead-id="${lead.id}" title="Excluir Lead" style="color:#ef4444;">
+                        <i class="fas fa-trash-can"></i>
+                    </button>
+                </td>
+            `;
+            clientsTableBody.appendChild(row);
+            
+            // Lead status change listener
+            const statusSelect = row.querySelector('.lead-status-select');
+            if (statusSelect) {
+                statusSelect.addEventListener('change', async (e) => {
+                    const newStatus = e.target.value;
+                    const leadId = e.target.dataset.leadId;
+                    try {
+                        await supabase.from('leads').update({ status: newStatus, updated_at: new Date().toISOString() }).eq('id', leadId);
+                        const colors = { 'NOVO': '#60a5fa', 'EM_CONTATO': '#f59e0b', 'NEGOCIANDO': '#a78bfa', 'CONVERTIDO': '#22c55e', 'PERDIDO': '#ef4444' };
+                        e.target.style.color = colors[newStatus] || '#888';
+                        if (newStatus === 'CONVERTIDO') {
+                            alert('Lead marcado como Convertido! Crie um novo cliente para ele na seção de cadastro acima.');
+                        }
+                    } catch (err) {
+                        console.error('Erro ao atualizar status do lead:', err);
+                        alert('Erro ao atualizar status: ' + err.message);
+                    }
+                });
+            }
+            
+            // Delete lead listener
+            const deleteLeadBtn = row.querySelector('.delete-lead-btn');
+            if (deleteLeadBtn) {
+                deleteLeadBtn.addEventListener('click', async () => {
+                    const leadId = deleteLeadBtn.dataset.leadId;
+                    if (!confirm('Tem certeza que deseja excluir este lead?')) return;
+                    try {
+                        await supabase.from('leads').delete().eq('id', leadId);
+                        row.remove();
+                    } catch (err) {
+                        alert('Erro ao excluir lead: ' + err.message);
+                    }
+                });
+            }
+        }
+    } catch (err) {
+        console.warn('Erro geral ao carregar leads:', err);
+    }
+}
+
+// ============================================================
+// LEADS - Modal e CRUD
+// ============================================================
+function openLeadModal() {
+    if (!leadModal) return;
+    // Preencher dropdown de "Indicado por" com clientes atuais
+    const selectIndicado = document.getElementById('lead-indicado-por');
+    if (selectIndicado) {
+        selectIndicado.innerHTML = '<option value="">-- Nenhum (sem indicação) --</option>';
+        allClientes.forEach(c => {
+            selectIndicado.innerHTML += `<option value="${c.id}">${sanitizeInput(c.nome)}</option>`;
+        });
+    }
+    // Limpar campos
+    const nomeInput = document.getElementById('lead-nome');
+    const whatsInput = document.getElementById('lead-whatsapp');
+    const emailInput = document.getElementById('lead-email');
+    const obsInput = document.getElementById('lead-obs');
+    if (nomeInput) nomeInput.value = '';
+    if (whatsInput) whatsInput.value = '';
+    if (emailInput) emailInput.value = '';
+    if (obsInput) obsInput.value = '';
+    leadModal.style.display = 'flex';
+}
+
+async function saveLead() {
+    const nome = document.getElementById('lead-nome')?.value.trim();
+    const whatsapp = document.getElementById('lead-whatsapp')?.value.trim();
+    const email = document.getElementById('lead-email')?.value.trim();
+    const indicadoPor = document.getElementById('lead-indicado-por')?.value || null;
+    const obs = document.getElementById('lead-obs')?.value.trim();
+    
+    if (!nome) { alert('O nome do lead é obrigatório.'); return; }
+    
+    try {
+        const { error } = await supabase.from('leads').insert([{
+            nome,
+            whatsapp: whatsapp || null,
+            email: email || null,
+            indicado_por_cliente_id: indicadoPor || null,
+            observacoes: obs || null,
+            projeto: currentUserProjeto || 'Planejamento',
+            criado_por_id: currentUserId,
+            status: 'NOVO'
+        }]);
+        if (error) throw error;
+        alert('Lead adicionado com sucesso!');
+        leadModal.style.display = 'none';
+        // Recarregar
+        loadClients(currentUserProjeto);
+    } catch (err) {
+        alert('Erro ao salvar lead: ' + err.message);
+    }
+}
+
+// ============================================================
+// PLANO DE REFERÊNCIA - Célula e Modal
+// ============================================================
+async function fetchPlanoRefCell(clienteId, planoValorTotal, mensalidade, row) {
+    const cellPlano = row.querySelector('.plano-ref-cell');
+    const cellMensal = row.querySelector('.mensalidade-cell');
+    
+    if (cellPlano) {
+        if (planoValorTotal && planoValorTotal > 0) {
+            // Buscar parcelas
+            try {
+                const { data: parcelas, error } = await supabase
+                    .from('plano_ref_parcelas')
+                    .select('*')
+                    .eq('cliente_id', clienteId)
+                    .order('numero_parcela', { ascending: true });
+                
+                if (error) throw error;
+                allPlanoRefParcelas[clienteId] = parcelas || [];
+                
+                const totalPago = (parcelas || []).filter(p => p.pago).reduce((s, p) => s + (p.valor || 0), 0);
+                const totalPendente = planoValorTotal - totalPago;
+                const hoje = new Date().toISOString().split('T')[0];
+                const temVencida = (parcelas || []).some(p => !p.pago && p.data_vencimento < hoje);
+                
+                let statusClass = 'status-em-dia';
+                let statusText = `${(parcelas||[]).filter(p=>p.pago).length}/${(parcelas||[]).length} pagas`;
+                let cellClass = '';
+                
+                if (totalPendente <= 0) {
+                    statusClass = 'status-quitado';
+                    statusText = 'Quitado';
+                } else if (temVencida) {
+                    statusClass = 'status-vencido';
+                    statusText = 'VENCIDO!';
+                    cellClass = 'cell-vencido';
+                } else if (totalPendente > 0) {
+                    cellClass = 'cell-pendente';
+                }
+                
+                cellPlano.className = 'plano-ref-cell ' + cellClass;
+                cellPlano.innerHTML = `
+                    <button class="plano-ref-btn" data-client-id="${clienteId}" data-client-name="${row.querySelector('.client-name')?.value || ''}" style="background:none;border:none;cursor:pointer;color:inherit;width:100%;">
+                        <span class="plano-valor">${fmtBRL(planoValorTotal)}</span>
+                        <span class="plano-status ${statusClass}">${statusText}</span>
+                    </button>
+                `;
+                
+                // Acumular para summary
+                _financialSummary.totalVendido += planoValorTotal;
+                _financialSummary.totalRecebido += totalPago;
+                if (temVencida) _financialSummary.totalPendente += totalPendente;
+            } catch (err) {
+                cellPlano.innerHTML = `<button class="plano-ref-btn" data-client-id="${clienteId}" data-client-name="${row.querySelector('.client-name')?.value || ''}" style="background:none;border:none;cursor:pointer;color:var(--theme-text-muted);width:100%;"><span style="font-size:0.8rem;">Configurar</span></button>`;
+            }
+        } else {
+            cellPlano.innerHTML = `<button class="plano-ref-btn" data-client-id="${clienteId}" data-client-name="${row.querySelector('.client-name')?.value || ''}" style="background:none;border:none;cursor:pointer;color:var(--theme-text-muted);width:100%;font-size:0.8rem;">--</button>`;
+        }
+    }
+    
+    if (cellMensal) {
+        if (mensalidade && mensalidade > 0) {
+            cellMensal.innerHTML = `<button class="mensalidade-btn" data-client-id="${clienteId}" data-client-name="${row.querySelector('.client-name')?.value || ''}" style="background:none;border:none;cursor:pointer;color:inherit;width:100%;font-weight:600;">${fmtBRL(mensalidade)}</button>`;
+            _financialSummary.totalMensalidades += mensalidade;
+        } else {
+            cellMensal.className = 'mensalidade-cell mensal-zero';
+            cellMensal.innerHTML = `<button class="mensalidade-btn" data-client-id="${clienteId}" data-client-name="${row.querySelector('.client-name')?.value || ''}" style="background:none;border:none;cursor:pointer;color:var(--theme-text-muted);width:100%;font-size:0.8rem;">--</button>`;
+        }
+    }
+}
+
+async function openPlanoRefModal(clienteId, clientName) {
+    if (!planoRefModal) return;
+    const title = document.getElementById('plano-ref-title');
+    const body = document.getElementById('plano-ref-body');
+    if (title) title.textContent = `Plano de Referência: ${clientName || ''}`;
+    if (body) body.innerHTML = '<p style="color:var(--theme-text-muted);">Carregando...</p>';
+    planoRefModal.style.display = 'flex';
+    
+    try {
+        // Buscar dados do cliente
+        const { data: clientData } = await supabase.from('clientes').select('plano_ref_valor_total, mensalidade').eq('id', clienteId).maybeSingle();
+        const valorTotal = clientData?.plano_ref_valor_total || 0;
+        
+        // Buscar parcelas
+        const { data: parcelas, error } = await supabase
+            .from('plano_ref_parcelas')
+            .select('*')
+            .eq('cliente_id', clienteId)
+            .order('numero_parcela', { ascending: true });
+        if (error) throw error;
+        
+        const parcelasArr = parcelas || [];
+        const totalPago = parcelasArr.filter(p => p.pago).reduce((s, p) => s + (p.valor || 0), 0);
+        const totalPendente = valorTotal - totalPago;
+        const hoje = new Date().toISOString().split('T')[0];
+        
+        let html = `
+            <div class="plano-form-grid">
+                <div>
+                    <label>Valor Total do Plano</label>
+                    <input type="number" id="plano-valor-total-input" value="${valorTotal}" step="0.01" min="0">
+                </div>
+                <div>
+                    <label>Nº de Parcelas para Gerar</label>
+                    <div style="display:flex;gap:0.5rem;">
+                        <input type="number" id="plano-num-parcelas" value="1" min="1" max="24" style="flex:1;">
+                        <button id="plano-gerar-parcelas-btn" style="padding:0.4rem 0.8rem;border-radius:4px;border:1px solid rgba(218,165,32,0.4);background:rgba(218,165,32,0.1);color:var(--theme-secondary-lighter);cursor:pointer;font-size:0.8rem;white-space:nowrap;">Gerar</button>
+                    </div>
+                </div>
+                <div>
+                    <label>Data 1ª Parcela (para geração)</label>
+                    <input type="date" id="plano-data-inicio" value="${new Date().toISOString().split('T')[0]}">
+                </div>
+                <div>
+                    <label>Salvar Valor Total</label>
+                    <button id="plano-salvar-valor-btn" style="width:100%;padding:0.5rem;border-radius:4px;border:1px solid rgba(34,197,94,0.4);background:rgba(34,197,94,0.1);color:#22c55e;cursor:pointer;font-weight:600;">Salvar</button>
+                </div>
+            </div>
+        `;
+        
+        if (valorTotal > 0) {
+            html += `
+                <div class="plano-summary-box">
+                    <div class="ps-item"><span class="ps-label">Total</span><span class="ps-value ps-gold">${fmtBRL(valorTotal)}</span></div>
+                    <div class="ps-item"><span class="ps-label">Recebido</span><span class="ps-value ps-green">${fmtBRL(totalPago)}</span></div>
+                    <div class="ps-item"><span class="ps-label">Pendente</span><span class="ps-value ${totalPendente > 0 ? 'ps-red' : 'ps-green'}">${fmtBRL(totalPendente)}</span></div>
+                    <div class="ps-item"><span class="ps-label">Parcelas</span><span class="ps-value">${parcelasArr.filter(p=>p.pago).length}/${parcelasArr.length}</span></div>
+                </div>
+            `;
+        }
+        
+        if (parcelasArr.length > 0) {
+            html += `<table class="parcelas-table">
+                <thead><tr><th>#</th><th>Valor</th><th>Vencimento</th><th>Pago?</th><th>Data Pgto</th><th>Obs</th><th></th></tr></thead>
+                <tbody>`;
+            parcelasArr.forEach(p => {
+                const vencida = !p.pago && p.data_vencimento < hoje;
+                const rowClass = p.pago ? 'parcela-paga' : vencida ? 'parcela-vencida' : '';
+                const vencFormatted = p.data_vencimento ? new Date(p.data_vencimento + 'T12:00:00').toLocaleDateString('pt-BR') : '--';
+                const pgtoFormatted = p.data_pagamento ? new Date(p.data_pagamento + 'T12:00:00').toLocaleDateString('pt-BR') : '';
+                html += `<tr class="${rowClass}">
+                    <td>${p.numero_parcela}</td>
+                    <td>${fmtBRL(p.valor)}</td>
+                    <td>${vencFormatted}${vencida ? ' <i class="fas fa-exclamation-circle" style="color:#ef4444;"></i>' : ''}</td>
+                    <td><input type="checkbox" class="check-pago" data-parcela-id="${p.id}" ${p.pago ? 'checked' : ''}></td>
+                    <td><input type="date" class="parcela-data-pgto" data-parcela-id="${p.id}" value="${p.data_pagamento || ''}" style="font-size:0.8rem;padding:0.2rem;border-radius:3px;border:1px solid var(--theme-border-color);background:rgba(0,0,0,0.2);color:var(--theme-text-light);"></td>
+                    <td><input type="text" class="parcela-obs" data-parcela-id="${p.id}" value="${sanitizeInput(p.observacao || '')}" placeholder="..." style="width:80px;font-size:0.78rem;padding:0.2rem;border-radius:3px;border:1px solid var(--theme-border-color);background:rgba(0,0,0,0.2);color:var(--theme-text-light);"></td>
+                    <td><button class="parcela-delete-btn" data-parcela-id="${p.id}" style="background:none;border:none;color:#ef4444;cursor:pointer;font-size:0.8rem;" title="Excluir parcela"><i class="fas fa-times"></i></button></td>
+                </tr>`;
+            });
+            html += `</tbody></table>`;
+        } else if (valorTotal > 0) {
+            html += `<p style="color:var(--theme-text-muted);font-size:0.85rem;text-align:center;margin-top:1rem;">Nenhuma parcela cadastrada. Use o botão "Gerar" acima para criar parcelas.</p>`;
+        }
+        
+        body.innerHTML = html;
+        
+        // --- Event Listeners dentro do modal ---
+        // Salvar valor total
+        const salvarValorBtn = document.getElementById('plano-salvar-valor-btn');
+        if (salvarValorBtn) {
+            salvarValorBtn.addEventListener('click', async () => {
+                const novoValor = parseFloat(document.getElementById('plano-valor-total-input')?.value) || 0;
+                try {
+                    await supabase.from('clientes').update({ plano_ref_valor_total: novoValor }).eq('id', clienteId);
+                    alert('Valor total salvo!');
+                    openPlanoRefModal(clienteId, clientName); // Refresh
+                    // Atualizar célula
+                    const row = clientsTableBody.querySelector(`tr[data-client-id="${clienteId}"]`);
+                    if (row) fetchPlanoRefCell(clienteId, novoValor, clientData?.mensalidade, row);
+                } catch (err) { alert('Erro: ' + err.message); }
+            });
+        }
+        
+        // Gerar parcelas
+        const gerarBtn = document.getElementById('plano-gerar-parcelas-btn');
+        if (gerarBtn) {
+            gerarBtn.addEventListener('click', async () => {
+                const numParcelas = parseInt(document.getElementById('plano-num-parcelas')?.value) || 1;
+                const dataInicio = document.getElementById('plano-data-inicio')?.value;
+                const valorTotalAtual = parseFloat(document.getElementById('plano-valor-total-input')?.value) || 0;
+                if (!dataInicio) { alert('Informe a data da 1ª parcela.'); return; }
+                if (valorTotalAtual <= 0) { alert('Informe o valor total do plano primeiro.'); return; }
+                
+                const valorParcela = Math.round((valorTotalAtual / numParcelas) * 100) / 100;
+                const novasParcelas = [];
+                const startDate = new Date(dataInicio + 'T12:00:00');
+                const ultimaParcela = parcelasArr.length > 0 ? Math.max(...parcelasArr.map(p => p.numero_parcela)) : 0;
+                
+                for (let i = 0; i < numParcelas; i++) {
+                    const dt = new Date(startDate);
+                    dt.setMonth(dt.getMonth() + i);
+                    novasParcelas.push({
+                        cliente_id: clienteId,
+                        numero_parcela: ultimaParcela + i + 1,
+                        valor: valorParcela,
+                        data_vencimento: dt.toISOString().split('T')[0],
+                        pago: false
+                    });
+                }
+                
+                try {
+                    const { error } = await supabase.from('plano_ref_parcelas').insert(novasParcelas);
+                    if (error) throw error;
+                    alert(`${numParcelas} parcela(s) gerada(s)!`);
+                    openPlanoRefModal(clienteId, clientName); // Refresh
+                } catch (err) { alert('Erro ao gerar parcelas: ' + err.message); }
+            });
+        }
+        
+        // Checkbox pago
+        body.querySelectorAll('.check-pago').forEach(chk => {
+            chk.addEventListener('change', async (e) => {
+                const parcelaId = e.target.dataset.parcelaId;
+                const pago = e.target.checked;
+                const dataPgto = pago ? new Date().toISOString().split('T')[0] : null;
+                try {
+                    await supabase.from('plano_ref_parcelas').update({ pago, data_pagamento: dataPgto }).eq('id', parcelaId);
+                    // Atualizar input de data ao lado
+                    const dateInput = body.querySelector(`.parcela-data-pgto[data-parcela-id="${parcelaId}"]`);
+                    if (dateInput && pago) dateInput.value = dataPgto;
+                    // Refresh modal after brief delay
+                    setTimeout(() => openPlanoRefModal(clienteId, clientName), 300);
+                } catch (err) { alert('Erro: ' + err.message); }
+            });
+        });
+        
+        // Data pagamento change
+        body.querySelectorAll('.parcela-data-pgto').forEach(input => {
+            input.addEventListener('change', async (e) => {
+                const parcelaId = e.target.dataset.parcelaId;
+                const dataPgto = e.target.value || null;
+                try {
+                    await supabase.from('plano_ref_parcelas').update({ data_pagamento: dataPgto }).eq('id', parcelaId);
+                } catch (err) { console.warn('Erro ao salvar data:', err); }
+            });
+        });
+        
+        // Observação change
+        body.querySelectorAll('.parcela-obs').forEach(input => {
+            input.addEventListener('change', async (e) => {
+                const parcelaId = e.target.dataset.parcelaId;
+                const obs = e.target.value || null;
+                try {
+                    await supabase.from('plano_ref_parcelas').update({ observacao: obs }).eq('id', parcelaId);
+                } catch (err) { console.warn('Erro ao salvar obs:', err); }
+            });
+        });
+        
+        // Delete parcela
+        body.querySelectorAll('.parcela-delete-btn').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                const parcelaId = e.currentTarget.dataset.parcelaId;
+                if (!confirm('Excluir esta parcela?')) return;
+                try {
+                    await supabase.from('plano_ref_parcelas').delete().eq('id', parcelaId);
+                    openPlanoRefModal(clienteId, clientName); // Refresh
+                } catch (err) { alert('Erro: ' + err.message); }
+            });
+        });
+        
+    } catch (err) {
+        body.innerHTML = `<p style="color:#ef4444;">Erro ao carregar dados: ${err.message}</p>`;
+    }
+}
+
+// ============================================================
+// MENSALIDADE - Modal
+// ============================================================
+async function openMensalidadeModal(clienteId, clientName) {
+    if (!mensalidadeModal) return;
+    const title = document.getElementById('mensalidade-title');
+    const body = document.getElementById('mensalidade-body');
+    if (title) title.textContent = `Mensalidade: ${clientName || ''}`;
+    if (body) body.innerHTML = '<p style="color:var(--theme-text-muted);">Carregando...</p>';
+    mensalidadeModal.style.display = 'flex';
+    
+    try {
+        const { data: clientData } = await supabase.from('clientes').select('mensalidade').eq('id', clienteId).maybeSingle();
+        const mensalidade = clientData?.mensalidade || 0;
+        
+        body.innerHTML = `
+            <div style="margin-bottom:1rem;">
+                <label style="font-size:0.85rem;color:var(--theme-text-muted);display:block;margin-bottom:0.5rem;">Valor da Mensalidade (R$)</label>
+                <input type="number" id="mensalidade-valor-input" value="${mensalidade}" step="0.01" min="0" style="width:100%;padding:0.6rem;border-radius:6px;border:1px solid var(--theme-border-color);background:rgba(0,0,0,0.2);color:var(--theme-text-light);font-size:1.1rem;font-weight:600;">
+            </div>
+            <div style="display:flex;justify-content:flex-end;gap:0.5rem;">
+                <button id="mensalidade-cancel" class="msg-modal-btn msg-cancel-btn">Cancelar</button>
+                <button id="mensalidade-salvar" class="msg-modal-btn msg-save-btn">Salvar</button>
+            </div>
+        `;
+        
+        document.getElementById('mensalidade-cancel')?.addEventListener('click', () => { mensalidadeModal.style.display = 'none'; });
+        document.getElementById('mensalidade-salvar')?.addEventListener('click', async () => {
+            const novoValor = parseFloat(document.getElementById('mensalidade-valor-input')?.value) || 0;
+            try {
+                await supabase.from('clientes').update({ mensalidade: novoValor }).eq('id', clienteId);
+                alert('Mensalidade salva!');
+                mensalidadeModal.style.display = 'none';
+                // Atualizar célula
+                const row = clientsTableBody.querySelector(`tr[data-client-id="${clienteId}"]`);
+                if (row) {
+                    const cell = row.querySelector('.mensalidade-cell');
+                    if (cell) {
+                        if (novoValor > 0) {
+                            cell.className = 'mensalidade-cell';
+                            cell.innerHTML = `<button class="mensalidade-btn" data-client-id="${clienteId}" data-client-name="${clientName}" style="background:none;border:none;cursor:pointer;color:inherit;width:100%;font-weight:600;">${fmtBRL(novoValor)}</button>`;
+                        } else {
+                            cell.className = 'mensalidade-cell mensal-zero';
+                            cell.innerHTML = `<button class="mensalidade-btn" data-client-id="${clienteId}" data-client-name="${clientName}" style="background:none;border:none;cursor:pointer;color:var(--theme-text-muted);width:100%;font-size:0.8rem;">--</button>`;
+                        }
+                    }
+                }
+            } catch (err) { alert('Erro: ' + err.message); }
+        });
+    } catch (err) {
+        body.innerHTML = `<p style="color:#ef4444;">Erro: ${err.message}</p>`;
+    }
+}
+
+// ============================================================
+// FILTRO TIPO (Lead/Cliente/Todos)
+// ============================================================
+function applyTipoFilter() {
+    const filterValue = document.getElementById('filter-tipo')?.value || 'todos';
+    const rows = clientsTableBody ? clientsTableBody.querySelectorAll('tr') : [];
+    rows.forEach(row => {
+        if (filterValue === 'todos') {
+            row.classList.remove('tipo-hidden');
+        } else if (filterValue === 'lead') {
+            if (row.dataset.tipo === 'lead') row.classList.remove('tipo-hidden');
+            else row.classList.add('tipo-hidden');
+        } else if (filterValue === 'cliente') {
+            if (row.dataset.tipo === 'lead') row.classList.add('tipo-hidden');
+            else row.classList.remove('tipo-hidden');
+        }
+    });
 }
 
 // Inicializar
