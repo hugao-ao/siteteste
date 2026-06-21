@@ -25,7 +25,7 @@
       transition: margin-left 0.3s ease, width 0.3s ease, max-width 0.3s ease;
       background-color: var(--theme-bg-surface);
       color: var(--theme-text-light);
-      overflow-x: auto;
+      overflow-x: visible;
     }
     #main-content-clientes.sidebar-collapsed {
       margin-left: 60px; /* Margin for collapsed sidebar */
@@ -165,6 +165,58 @@
     .ult-reuniao-cell { text-align: center; font-size: 0.85rem; white-space: nowrap; }
     .ult-reuniao-cell .dias-num { font-weight: 700; font-size: 1rem; color: var(--theme-secondary-lighter); }
     .ult-reuniao-cell .dias-label { font-size: 0.72rem; color: var(--theme-text-muted); display: block; }
+    /* WhatsApp button for leads */
+    .whatsapp-btn-lead {
+        background: none; border: none; cursor: pointer; color: #25d366; font-size: 1.2rem;
+        padding: 0.2rem; transition: transform 0.2s, color 0.2s;
+    }
+    .whatsapp-btn-lead:hover { transform: scale(1.2); color: #128c7e; }
+    /* Clickable cells */
+    .pend-cell.clickable { cursor: pointer; transition: background 0.2s; border-radius: 4px; }
+    .pend-cell.clickable:hover { background: rgba(218,165,32,0.08); }
+    /* Action buttons for objetivos/particularidades */
+    .obj-action-btn, .partic-action-btn {
+        background: none; border: none; cursor: pointer; padding: 0.2rem 0.4rem;
+        font-size: 1rem; color: var(--theme-secondary-lighter); opacity: 0.8;
+        transition: opacity 0.2s, color 0.2s; vertical-align: middle;
+    }
+    .obj-action-btn:hover, .partic-action-btn:hover { opacity: 1; color: var(--theme-secondary); }
+    /* --- Modal List Styles (pendencias, patrimonio, dividas, objetivos, particularidades) --- */
+    .dash-modal-filters { display:flex; gap:0.5rem; flex-wrap:wrap; margin-bottom:1rem; align-items:center; }
+    .dash-modal-filters input, .dash-modal-filters select {
+        padding:0.4rem 0.6rem; border-radius:4px; border:1px solid var(--theme-border-color);
+        background:rgba(0,0,0,0.2); color:var(--theme-text-light); font-size:0.82rem;
+    }
+    .dash-modal-filters input { flex:1; min-width:150px; }
+    .dash-list-table { width:100%; border-collapse:collapse; font-size:0.82rem; }
+    .dash-list-table th { background:rgba(0,0,0,0.15); padding:0.5rem; text-align:left; border-bottom:1px solid var(--theme-border-color); font-size:0.75rem; text-transform:uppercase; color:var(--theme-text-muted); cursor:pointer; white-space:nowrap; }
+    .dash-list-table td { padding:0.5rem; border-bottom:1px solid rgba(255,255,255,0.05); vertical-align:middle; }
+    .dash-list-table tr:hover td { background:rgba(218,165,32,0.04); }
+    .dash-list-table .status-badge { display:inline-block; padding:0.15rem 0.5rem; border-radius:10px; font-size:0.7rem; font-weight:600; text-transform:capitalize; }
+    .dash-list-table .status-badge.st-pendente { background:rgba(245,158,11,0.15); color:#f59e0b; }
+    .dash-list-table .status-badge.st-em_andamento { background:rgba(96,165,250,0.15); color:#60a5fa; }
+    .dash-list-table .status-badge.st-concluido { background:rgba(34,197,94,0.15); color:#22c55e; }
+    .dash-list-table .btn-update-micro { background:none; border:1px solid var(--theme-border-color); color:var(--theme-text-muted); padding:0.2rem 0.5rem; border-radius:4px; cursor:pointer; font-size:0.72rem; transition:all 0.2s; }
+    .dash-list-table .btn-update-micro:hover { border-color:var(--theme-secondary-lighter); color:var(--theme-secondary-lighter); }
+    .dash-modal-section-title { color:var(--theme-secondary); font-size:0.9rem; margin:1.2rem 0 0.5rem; padding-bottom:0.3rem; border-bottom:1px dashed var(--theme-border-color); }
+    .dash-modal-empty { text-align:center; color:var(--theme-text-muted); padding:2rem; font-style:italic; }
+    /* Patrimonio/Dividas table specific */
+    .pat-total-row td { font-weight:700; border-top:2px solid var(--theme-border-color); }
+    .pat-val-pos { color:#22c55e; font-weight:600; }
+    .pat-val-neg { color:#ef4444; font-weight:600; }
+    /* Objetivos cards */
+    .obj-card { border:1px solid var(--theme-border-color); border-radius:6px; padding:0.8rem; margin-bottom:0.8rem; background:rgba(0,0,0,0.1); }
+    .obj-card-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:0.4rem; }
+    .obj-card-title { font-weight:700; font-size:0.9rem; color:var(--theme-text-light); }
+    .obj-card-cat { font-size:0.7rem; color:var(--theme-text-muted); text-transform:uppercase; }
+    .obj-card-progress { height:6px; background:rgba(255,255,255,0.1); border-radius:3px; overflow:hidden; margin:0.4rem 0; }
+    .obj-card-progress-bar { height:100%; background:var(--theme-secondary); border-radius:3px; transition:width 0.3s; }
+    .obj-card-values { display:flex; justify-content:space-between; font-size:0.78rem; color:var(--theme-text-muted); }
+    /* Particularidades tabs */
+    .partic-tabs { display:flex; gap:0.3rem; flex-wrap:wrap; margin-bottom:1rem; }
+    .partic-tab { padding:0.4rem 0.8rem; border-radius:4px; border:1px solid var(--theme-border-color); background:rgba(0,0,0,0.1); color:var(--theme-text-muted); cursor:pointer; font-size:0.78rem; transition:all 0.2s; }
+    .partic-tab.active { background:rgba(218,165,32,0.15); border-color:var(--theme-secondary); color:var(--theme-secondary-lighter); }
+    .partic-content { min-height:200px; }
 
     /* Resize handle */
     #clients-table th { position: relative; cursor: pointer; user-select: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -899,6 +951,7 @@
           <option value="lead">Leads</option>
         </select>
         <button id="add-lead-btn" style="padding:0.5rem 1rem;border-radius:6px;border:1px solid rgba(96,165,250,0.4);background:rgba(96,165,250,0.1);color:#60a5fa;font-size:0.85rem;font-weight:600;cursor:pointer;transition:all 0.2s;"><i class="fas fa-user-plus"></i> Novo Lead</button>
+        <button id="refresh-summary-btn" title="Atualizar resumo" style="padding:0.5rem 0.7rem;border-radius:6px;border:1px solid var(--theme-border-color);background:rgba(0,0,0,0.15);color:var(--theme-text-muted);font-size:0.85rem;cursor:pointer;transition:all 0.2s;" onmouseover="this.style.color='var(--theme-secondary-lighter)';this.style.borderColor='var(--theme-secondary-lighter)'" onmouseout="this.style.color='var(--theme-text-muted)';this.style.borderColor='var(--theme-border-color)'"><i class="fas fa-sync-alt"></i></button>
         <div id="dashboard-summary" class="dashboard-summary">
           <span class="sum-item" title="Patrimônio Total"><i class="fas fa-landmark"></i> <span id="sum-patrimonio">--</span></span>
           <span class="sum-item" title="Dívidas Total"><i class="fas fa-credit-card"></i> <span id="sum-dividas">--</span></span>
@@ -1047,6 +1100,41 @@
           <button class="msg-modal-btn msg-cancel-btn" id="lead-cancel-btn">Cancelar</button>
           <button class="msg-modal-btn msg-save-btn" id="lead-save-btn">Salvar Leads</button>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal de Pendências (Consultor/Cliente) -->
+  <div id="pendencias-modal" class="modal">
+    <div class="modal-content" style="max-width:850px;max-height:85vh;overflow-y:auto;">
+      <span class="modal-close" id="pendencias-close-btn">&times;</span>
+      <h2 id="pendencias-modal-title">Pendências</h2>
+      <div id="pendencias-modal-body">
+        <p style="color:var(--theme-text-muted);">Carregando...</p>
+      </div>
+    </div>
+  </div>
+
+
+
+  <!-- Modal de Objetivos -->
+  <div id="objetivos-modal" class="modal">
+    <div class="modal-content" style="max-width:850px;max-height:85vh;overflow-y:auto;">
+      <span class="modal-close" id="objetivos-close-btn">&times;</span>
+      <h2 id="objetivos-modal-title">Objetivos Financeiros</h2>
+      <div id="objetivos-modal-body">
+        <p style="color:var(--theme-text-muted);">Carregando...</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal de Particularidades -->
+  <div id="particularidades-modal" class="modal">
+    <div class="modal-content" style="max-width:850px;max-height:85vh;overflow-y:auto;">
+      <span class="modal-close" id="particularidades-close-btn">&times;</span>
+      <h2 id="particularidades-modal-title">Particularidades</h2>
+      <div id="particularidades-modal-body">
+        <p style="color:var(--theme-text-muted);">Carregando...</p>
       </div>
     </div>
   </div>
