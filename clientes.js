@@ -3250,6 +3250,53 @@ function fmtBRL(v) {
   return 'R$ ' + (v||0).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});
 }
 
+// Converte string formatada "R$ 1.234,56" de volta para float 1234.56
+function parseBRL(str) {
+    if (!str) return 0;
+    const raw = String(str).replace(/[^\d]/g, '');
+    if (!raw) return 0;
+    return parseInt(raw, 10) / 100;
+}
+
+// Aplica máscara de moeda BRL em tempo real a um input (type="text")
+function addCurrencyMask(inputElement) {
+    if (!inputElement) return;
+    inputElement.addEventListener('input', (e) => {
+        const rawValue = e.target.value.replace(/[^\d]/g, '');
+        if (rawValue) {
+            const number = parseInt(rawValue, 10);
+            if (!isNaN(number)) {
+                e.target.value = (number / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+            } else {
+                e.target.value = '';
+            }
+        } else {
+            e.target.value = '';
+        }
+    });
+    inputElement.addEventListener('blur', (e) => {
+        const rawValue = e.target.value.replace(/[^\d]/g, '');
+        if (rawValue) {
+            const number = parseInt(rawValue, 10);
+            if (!isNaN(number)) {
+                e.target.value = (number / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+            } else {
+                e.target.value = '';
+            }
+        } else {
+            e.target.value = '';
+        }
+    });
+    // Formata valor inicial se houver
+    const initialRaw = inputElement.value.replace(/[^\d]/g, '');
+    if (initialRaw) {
+        const initialNumber = parseInt(initialRaw, 10);
+        if (!isNaN(initialNumber)) {
+            inputElement.value = (initialNumber / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        }
+    }
+}
+
 
 // ============================================================
 // LEADS - Carregar e Renderizar
@@ -3369,8 +3416,34 @@ async function loadAndRenderLeads(filterProject) {
 }
 
 // ============================================================
-// LEADS - Modal e CRUD
+// LEADS - Modal e CRUD (Multi-lead)
 // ============================================================
+let leadRowCounter = 0;
+
+function addLeadRow() {
+    const container = document.getElementById('leads-rows-container');
+    if (!container) return;
+    leadRowCounter++;
+    const rowDiv = document.createElement('div');
+    rowDiv.className = 'lead-row-item';
+    rowDiv.dataset.rowId = leadRowCounter;
+    rowDiv.innerHTML = `
+        <input type="text" class="lead-row-nome" placeholder="Nome *">
+        <input type="text" class="lead-row-whats" placeholder="(81) 9xxxx-xxxx">
+        <input type="text" class="lead-row-obs" placeholder="Observação...">
+        <button class="lead-remove-row" title="Remover linha"><i class="fas fa-times"></i></button>
+    `;
+    rowDiv.querySelector('.lead-remove-row').addEventListener('click', () => {
+        rowDiv.remove();
+        // Garantir pelo menos 1 linha
+        const remaining = container.querySelectorAll('.lead-row-item');
+        if (remaining.length === 0) addLeadRow();
+    });
+    container.appendChild(rowDiv);
+    // Foco no campo nome da nova linha
+    rowDiv.querySelector('.lead-row-nome').focus();
+}
+
 function openLeadModal() {
     if (!leadModal) return;
     // Preencher dropdown de "Indicado por" com clientes atuais
@@ -3381,45 +3454,70 @@ function openLeadModal() {
             selectIndicado.innerHTML += `<option value="${c.id}">${sanitizeInput(c.nome)}</option>`;
         });
     }
-    // Limpar campos
-    const nomeInput = document.getElementById('lead-nome');
-    const whatsInput = document.getElementById('lead-whatsapp');
-    const emailInput = document.getElementById('lead-email');
-    const obsInput = document.getElementById('lead-obs');
-    if (nomeInput) nomeInput.value = '';
-    if (whatsInput) whatsInput.value = '';
-    if (emailInput) emailInput.value = '';
-    if (obsInput) obsInput.value = '';
+    // Limpar container de linhas e adicionar header + 1 linha inicial
+    const container = document.getElementById('leads-rows-container');
+    if (container) {
+        container.innerHTML = `<div class="lead-rows-header"><span>Nome *</span><span>WhatsApp</span><span>Observação</span><span></span></div>`;
+    }
+    leadRowCounter = 0;
+    addLeadRow();
+    
+    // Listener do botão "Adicionar mais uma linha"
+    const addRowBtn = document.getElementById('lead-add-row-btn');
+    if (addRowBtn) {
+        // Remover listeners antigos clonando
+        const newBtn = addRowBtn.cloneNode(true);
+        addRowBtn.parentNode.replaceChild(newBtn, addRowBtn);
+        newBtn.addEventListener('click', addLeadRow);
+    }
+    
     leadModal.style.display = 'flex';
 }
 
 async function saveLead() {
-    const nome = document.getElementById('lead-nome')?.value.trim();
-    const whatsapp = document.getElementById('lead-whatsapp')?.value.trim();
-    const email = document.getElementById('lead-email')?.value.trim();
+    const container = document.getElementById('leads-rows-container');
+    if (!container) return;
     const indicadoPor = document.getElementById('lead-indicado-por')?.value || null;
-    const obs = document.getElementById('lead-obs')?.value.trim();
+    const rows = container.querySelectorAll('.lead-row-item');
     
-    if (!nome) { alert('O nome do lead é obrigatório.'); return; }
-    
-    try {
-        const { error } = await supabase.from('leads').insert([{
+    // Coletar dados de todas as linhas
+    const leadsToInsert = [];
+    let hasError = false;
+    rows.forEach((row, idx) => {
+        const nome = row.querySelector('.lead-row-nome')?.value.trim();
+        const whats = row.querySelector('.lead-row-whats')?.value.trim();
+        const obs = row.querySelector('.lead-row-obs')?.value.trim();
+        if (!nome) {
+            if (rows.length === 1 || whats || obs) {
+                // Linha com dados parciais mas sem nome
+                hasError = true;
+            }
+            return; // Pular linhas completamente vazias
+        }
+        leadsToInsert.push({
             nome,
-            whatsapp: whatsapp || null,
-            email: email || null,
-            indicado_por_cliente_id: indicadoPor || null,
+            whatsapp: whats || null,
             observacoes: obs || null,
+            indicado_por_cliente_id: indicadoPor || null,
             projeto: currentUserProjeto || 'Planejamento',
             criado_por_id: currentUserId,
             status: 'NOVO'
-        }]);
+        });
+    });
+    
+    if (hasError) { alert('Preencha o nome em todas as linhas que possuem dados.'); return; }
+    if (leadsToInsert.length === 0) { alert('Adicione pelo menos um lead com nome.'); return; }
+    
+    try {
+        const { error } = await supabase.from('leads').insert(leadsToInsert);
         if (error) throw error;
-        alert('Lead adicionado com sucesso!');
+        const msg = leadsToInsert.length === 1 ? 'Lead adicionado com sucesso!' : `${leadsToInsert.length} leads adicionados com sucesso!`;
+        alert(msg);
         leadModal.style.display = 'none';
         // Recarregar
         loadClients(currentUserProjeto);
     } catch (err) {
-        alert('Erro ao salvar lead: ' + err.message);
+        alert('Erro ao salvar lead(s): ' + err.message);
     }
 }
 
@@ -3524,7 +3622,7 @@ async function openPlanoRefModal(clienteId, clientName) {
             <div class="plano-form-grid">
                 <div>
                     <label>Valor Total do Plano</label>
-                    <input type="number" id="plano-valor-total-input" value="${valorTotal}" step="0.01" min="0">
+                    <input type="text" id="plano-valor-total-input" value="${valorTotal > 0 ? fmtBRL(valorTotal) : ''}" placeholder="R$ 0,00">
                 </div>
                 <div>
                     <label>Nº de Parcelas para Gerar</label>
@@ -3581,12 +3679,15 @@ async function openPlanoRefModal(clienteId, clientName) {
         
         body.innerHTML = html;
         
+        // Aplicar máscara de moeda ao campo de valor total
+        addCurrencyMask(document.getElementById('plano-valor-total-input'));
+        
         // --- Event Listeners dentro do modal ---
         // Salvar valor total
         const salvarValorBtn = document.getElementById('plano-salvar-valor-btn');
         if (salvarValorBtn) {
             salvarValorBtn.addEventListener('click', async () => {
-                const novoValor = parseFloat(document.getElementById('plano-valor-total-input')?.value) || 0;
+                const novoValor = parseBRL(document.getElementById('plano-valor-total-input')?.value);
                 try {
                     await supabase.from('clientes').update({ plano_ref_valor_total: novoValor }).eq('id', clienteId);
                     alert('Valor total salvo!');
@@ -3604,7 +3705,7 @@ async function openPlanoRefModal(clienteId, clientName) {
             gerarBtn.addEventListener('click', async () => {
                 const numParcelas = parseInt(document.getElementById('plano-num-parcelas')?.value) || 1;
                 const dataInicio = document.getElementById('plano-data-inicio')?.value;
-                const valorTotalAtual = parseFloat(document.getElementById('plano-valor-total-input')?.value) || 0;
+                const valorTotalAtual = parseBRL(document.getElementById('plano-valor-total-input')?.value);
                 if (!dataInicio) { alert('Informe a data da 1ª parcela.'); return; }
                 if (valorTotalAtual <= 0) { alert('Informe o valor total do plano primeiro.'); return; }
                 
@@ -3707,8 +3808,8 @@ async function openMensalidadeModal(clienteId, clientName) {
         
         body.innerHTML = `
             <div style="margin-bottom:1rem;">
-                <label style="font-size:0.85rem;color:var(--theme-text-muted);display:block;margin-bottom:0.5rem;">Valor da Mensalidade (R$)</label>
-                <input type="number" id="mensalidade-valor-input" value="${mensalidade}" step="0.01" min="0" style="width:100%;padding:0.6rem;border-radius:6px;border:1px solid var(--theme-border-color);background:rgba(0,0,0,0.2);color:var(--theme-text-light);font-size:1.1rem;font-weight:600;">
+                <label style="font-size:0.85rem;color:var(--theme-text-muted);display:block;margin-bottom:0.5rem;">Valor da Mensalidade</label>
+                <input type="text" id="mensalidade-valor-input" value="${mensalidade > 0 ? fmtBRL(mensalidade) : ''}" placeholder="R$ 0,00" style="width:100%;padding:0.6rem;border-radius:6px;border:1px solid var(--theme-border-color);background:rgba(0,0,0,0.2);color:var(--theme-text-light);font-size:1.1rem;font-weight:600;">
             </div>
             <div style="display:flex;justify-content:flex-end;gap:0.5rem;">
                 <button id="mensalidade-cancel" class="msg-modal-btn msg-cancel-btn">Cancelar</button>
@@ -3716,9 +3817,12 @@ async function openMensalidadeModal(clienteId, clientName) {
             </div>
         `;
         
+        // Aplicar máscara de moeda
+        addCurrencyMask(document.getElementById('mensalidade-valor-input'));
+        
         document.getElementById('mensalidade-cancel')?.addEventListener('click', () => { mensalidadeModal.style.display = 'none'; });
         document.getElementById('mensalidade-salvar')?.addEventListener('click', async () => {
-            const novoValor = parseFloat(document.getElementById('mensalidade-valor-input')?.value) || 0;
+            const novoValor = parseBRL(document.getElementById('mensalidade-valor-input')?.value);
             try {
                 await supabase.from('clientes').update({ mensalidade: novoValor }).eq('id', clienteId);
                 alert('Mensalidade salva!');
