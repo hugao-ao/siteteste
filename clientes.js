@@ -3660,12 +3660,10 @@ async function openPlanoRefModal(clienteId, clientName) {
             parcelasArr.forEach(p => {
                 const vencida = !p.pago && p.data_vencimento < hoje;
                 const rowClass = p.pago ? 'parcela-paga' : vencida ? 'parcela-vencida' : '';
-                const vencFormatted = p.data_vencimento ? new Date(p.data_vencimento + 'T12:00:00').toLocaleDateString('pt-BR') : '--';
-                const pgtoFormatted = p.data_pagamento ? new Date(p.data_pagamento + 'T12:00:00').toLocaleDateString('pt-BR') : '';
                 html += `<tr class="${rowClass}">
                     <td>${p.numero_parcela}</td>
-                    <td>${fmtBRL(p.valor)}</td>
-                    <td>${vencFormatted}${vencida ? ' <i class="fas fa-exclamation-circle" style="color:#ef4444;"></i>' : ''}</td>
+                    <td><input type="text" class="parcela-valor" data-parcela-id="${p.id}" value="${p.valor > 0 ? fmtBRL(p.valor) : ''}" placeholder="R$ 0,00" style="width:100px;font-size:0.8rem;padding:0.2rem 0.3rem;border-radius:3px;border:1px solid var(--theme-border-color);background:rgba(0,0,0,0.2);color:var(--theme-text-light);text-align:right;"></td>
+                    <td><input type="date" class="parcela-vencimento" data-parcela-id="${p.id}" value="${p.data_vencimento || ''}" style="font-size:0.8rem;padding:0.2rem;border-radius:3px;border:1px solid var(--theme-border-color);background:rgba(0,0,0,0.2);color:var(--theme-text-light);">${vencida ? ' <i class="fas fa-exclamation-circle" style="color:#ef4444;"></i>' : ''}</td>
                     <td><input type="checkbox" class="check-pago" data-parcela-id="${p.id}" ${p.pago ? 'checked' : ''}></td>
                     <td><input type="date" class="parcela-data-pgto" data-parcela-id="${p.id}" value="${p.data_pagamento || ''}" style="font-size:0.8rem;padding:0.2rem;border-radius:3px;border:1px solid var(--theme-border-color);background:rgba(0,0,0,0.2);color:var(--theme-text-light);"></td>
                     <td><input type="text" class="parcela-obs" data-parcela-id="${p.id}" value="${sanitizeInput(p.observacao || '')}" placeholder="..." style="width:80px;font-size:0.78rem;padding:0.2rem;border-radius:3px;border:1px solid var(--theme-border-color);background:rgba(0,0,0,0.2);color:var(--theme-text-light);"></td>
@@ -3681,6 +3679,11 @@ async function openPlanoRefModal(clienteId, clientName) {
         
         // Aplicar máscara de moeda ao campo de valor total
         addCurrencyMask(document.getElementById('plano-valor-total-input'));
+        
+        // Aplicar máscara de moeda a todos os campos de valor de parcela
+        body.querySelectorAll('.parcela-valor').forEach(input => {
+            addCurrencyMask(input);
+        });
         
         // --- Event Listeners dentro do modal ---
         // Salvar valor total
@@ -3749,6 +3752,28 @@ async function openPlanoRefModal(clienteId, clientName) {
                     // Refresh modal after brief delay
                     setTimeout(() => openPlanoRefModal(clienteId, clientName), 300);
                 } catch (err) { alert('Erro: ' + err.message); }
+            });
+        });
+        
+        // Valor da parcela change (com máscara de moeda)
+        body.querySelectorAll('.parcela-valor').forEach(input => {
+            input.addEventListener('change', async (e) => {
+                const parcelaId = e.target.dataset.parcelaId;
+                const novoValor = parseBRL(e.target.value);
+                try {
+                    await supabase.from('plano_ref_parcelas').update({ valor: novoValor }).eq('id', parcelaId);
+                } catch (err) { console.warn('Erro ao salvar valor:', err); }
+            });
+        });
+        
+        // Data vencimento change
+        body.querySelectorAll('.parcela-vencimento').forEach(input => {
+            input.addEventListener('change', async (e) => {
+                const parcelaId = e.target.dataset.parcelaId;
+                const dataVenc = e.target.value || null;
+                try {
+                    await supabase.from('plano_ref_parcelas').update({ data_vencimento: dataVenc }).eq('id', parcelaId);
+                } catch (err) { console.warn('Erro ao salvar vencimento:', err); }
             });
         });
         
