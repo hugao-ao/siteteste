@@ -595,35 +595,53 @@
     .plano-summary-box .ps-value.ps-gold { color: var(--theme-secondary-lighter); }
     /* --- Lead Modal --- */
     #lead-modal .modal-content {
-        max-width: 600px;
+        max-width: 750px;
     }
-    .lead-form-grid {
+    .lead-row-item {
         display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 0.8rem;
-        margin-bottom: 1rem;
+        grid-template-columns: 2fr 1.5fr 2fr auto;
+        gap: 0.5rem;
+        align-items: center;
+        padding: 0.6rem;
+        border: 1px solid var(--theme-border-color);
+        border-radius: 6px;
+        margin-bottom: 0.5rem;
+        background: rgba(0,0,0,0.15);
     }
-    .lead-form-grid .full-width {
-        grid-column: 1 / -1;
-    }
-    .lead-form-grid label {
-        font-size: 0.82rem;
-        color: var(--theme-text-muted);
-        display: block;
-        margin-bottom: 0.3rem;
-    }
-    .lead-form-grid input, .lead-form-grid select, .lead-form-grid textarea {
+    .lead-row-item input {
         width: 100%;
-        padding: 0.5rem;
+        padding: 0.45rem 0.5rem;
         border-radius: 4px;
         border: 1px solid var(--theme-border-color);
         background: rgba(0,0,0,0.2);
         color: var(--theme-text-light);
-        font-size: 0.9rem;
+        font-size: 0.85rem;
     }
-    .lead-form-grid textarea {
-        resize: vertical;
-        min-height: 60px;
+    .lead-row-item .lead-remove-row {
+        background: none;
+        border: none;
+        color: #ef4444;
+        cursor: pointer;
+        font-size: 1rem;
+        padding: 0.3rem;
+        opacity: 0.7;
+        transition: opacity 0.2s;
+    }
+    .lead-row-item .lead-remove-row:hover {
+        opacity: 1;
+    }
+    .lead-rows-header {
+        display: grid;
+        grid-template-columns: 2fr 1.5fr 2fr auto;
+        gap: 0.5rem;
+        padding: 0 0.6rem;
+        margin-bottom: 0.3rem;
+    }
+    .lead-rows-header span {
+        font-size: 0.75rem;
+        color: var(--theme-text-muted);
+        font-weight: 600;
+        text-transform: uppercase;
     }
     /* --- End Modal Styles --- */
 
@@ -1009,37 +1027,25 @@
 
   <!-- Modal de Adicionar Lead -->
   <div id="lead-modal" class="modal">
-    <div class="modal-content">
+    <div class="modal-content" style="max-width:750px;max-height:85vh;overflow-y:auto;">
       <span class="modal-close" id="lead-close-btn">&times;</span>
-      <h2>Adicionar Lead</h2>
+      <h2>Adicionar Leads</h2>
       <div id="lead-modal-body">
-        <div class="lead-form-grid">
-          <div>
-            <label>Nome *</label>
-            <input type="text" id="lead-nome" placeholder="Nome do lead">
-          </div>
-          <div>
-            <label>WhatsApp</label>
-            <input type="text" id="lead-whatsapp" placeholder="+55 81 9xxxx-xxxx">
-          </div>
-          <div>
-            <label>E-mail</label>
-            <input type="email" id="lead-email" placeholder="email@exemplo.com">
-          </div>
-          <div>
-            <label>Indicado por</label>
-            <select id="lead-indicado-por">
-              <option value="">-- Nenhum --</option>
-            </select>
-          </div>
-          <div class="full-width">
-            <label>Observações</label>
-            <textarea id="lead-obs" placeholder="Anotações sobre o lead..."></textarea>
-          </div>
+        <div style="margin-bottom:1rem;">
+          <label style="font-size:0.82rem;color:var(--theme-text-muted);display:block;margin-bottom:0.3rem;">Indicado por (opcional - aplica a todos)</label>
+          <select id="lead-indicado-por" style="width:100%;padding:0.5rem;border-radius:4px;border:1px solid var(--theme-border-color);background:rgba(0,0,0,0.2);color:var(--theme-text-light);font-size:0.9rem;">
+            <option value="">-- Nenhum (sem indicação) --</option>
+          </select>
+        </div>
+        <div id="leads-rows-container">
+          <!-- Linhas de leads serão inseridas aqui via JS -->
+        </div>
+        <div style="margin-bottom:1rem;">
+          <button id="lead-add-row-btn" style="background:none;border:1px dashed var(--theme-border-color);color:var(--theme-text-muted);padding:0.5rem 1rem;border-radius:4px;cursor:pointer;font-size:0.82rem;width:100%;transition:all 0.2s;" onmouseover="this.style.borderColor='var(--theme-secondary-lighter)';this.style.color='var(--theme-secondary-lighter)'" onmouseout="this.style.borderColor='var(--theme-border-color)';this.style.color='var(--theme-text-muted)'"><i class="fas fa-plus"></i> Adicionar mais uma linha</button>
         </div>
         <div style="display:flex;justify-content:flex-end;gap:0.5rem;">
           <button class="msg-modal-btn msg-cancel-btn" id="lead-cancel-btn">Cancelar</button>
-          <button class="msg-modal-btn msg-save-btn" id="lead-save-btn">Salvar Lead</button>
+          <button class="msg-modal-btn msg-save-btn" id="lead-save-btn">Salvar Leads</button>
         </div>
       </div>
     </div>
