@@ -1091,6 +1091,10 @@
         width:10px; height:10px; border-right:2px solid rgba(212,175,55,0.4);
         border-bottom:2px solid rgba(212,175,55,0.4);
     }
+    /* Dividas modal resize handles (reuse pat styles) */
+    .div-resize-handle {
+        position:absolute; z-index:10002;
+    }
     @media (max-width:768px) {
         .pat-modal-wrapper { width:95vw !important; left:2.5vw !important; top:3vh !important; height:92vh !important; }
     }
@@ -1358,6 +1362,24 @@
       <div class="pat-resize-handle pat-resize-tr" data-dir="tr"></div>
       <div class="pat-resize-handle pat-resize-r" data-dir="r"></div>
       <div class="pat-resize-handle pat-resize-b" data-dir="b"></div>
+    </div>
+  </div>
+
+  <!-- Modal de Dívidas/Juros (iframe) -->
+  <div id="dividas-modal" class="modal">
+    <div class="pat-modal-wrapper" id="div-modal-wrapper">
+      <div class="pat-modal-header" id="div-modal-header">
+        <h2 id="dividas-modal-title">Dívidas / Juros</h2>
+        <span class="modal-close" id="dividas-close-btn">&times;</span>
+      </div>
+      <div class="pat-modal-body">
+        <iframe id="dividas-iframe" src="" frameborder="0"></iframe>
+      </div>
+      <div class="div-resize-handle pat-resize-br" data-dir="br"></div>
+      <div class="div-resize-handle pat-resize-bl" data-dir="bl"></div>
+      <div class="div-resize-handle pat-resize-tr" data-dir="tr"></div>
+      <div class="div-resize-handle pat-resize-r" data-dir="r"></div>
+      <div class="div-resize-handle pat-resize-b" data-dir="b"></div>
     </div>
   </div>
 
