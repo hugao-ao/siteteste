@@ -923,10 +923,7 @@
             return;
         }
 
-        // Paginação simples (mostra os 50 primeiros para não travar)
-        const displayData = clients.slice(0, 50);
-
-        displayData.forEach(client => {
+        clients.forEach(client => {
                 const statusClass = client.active ? 'badge-active' : 'badge-inactive';
                 const statusLabel = client.active ? 'Ativo' : 'Inativo';
                 const createdDate = client.create_date ? new Date(client.create_date).toLocaleDateString('pt-BR') : '-';
