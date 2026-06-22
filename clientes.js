@@ -5362,6 +5362,85 @@ async function openTipoSyncModal(clientId, clientName) {
             field_whatsapp: 'whatsapp'
         });
 
+        // Source 5: Cyclopay API (busca direta — match por WhatsApp ou nome)
+        let cycloCpf = '';
+        let cycloWhatsapp = '';
+        try {
+            const CYCLOPAY_API_KEY = 'ak_aeb26f6be167cc077eb227c128262e731523d492';
+            const cycloResp = await fetch('https://api.cyclopay.com/v1/customers?count=100', {
+                method: 'GET',
+                headers: { 'api_key': CYCLOPAY_API_KEY, 'Accept': 'application/json' }
+            });
+            if (cycloResp.ok) {
+                const cycloData = await cycloResp.json();
+                const cycloCustomers = cycloData.items || [];
+                const dashWhatsClean = (cl?.whatsapp || '').replace(/\D/g, '');
+                const dashName = (clientName || '').toLowerCase().trim();
+
+                // Prioridade 1: Match por WhatsApp (últimos 9 dígitos)
+                let cycloMatch = null;
+                if (dashWhatsClean.length >= 8) {
+                    cycloMatch = cycloCustomers.find(cust => {
+                        const custPhone = String(cust.mobile_number || cust.mobile_phone || cust.phone || '').replace(/\D/g, '');
+                        if (custPhone.length < 8) return false;
+                        const minLen = Math.min(dashWhatsClean.length, custPhone.length, 9);
+                        return dashWhatsClean.slice(-minLen) === custPhone.slice(-minLen);
+                    });
+                }
+
+                // Prioridade 2: Match por nome exato
+                if (!cycloMatch && dashName) {
+                    cycloMatch = cycloCustomers.find(cust => {
+                        const custFull = ((cust.first_name || '') + ' ' + (cust.last_name || '')).toLowerCase().trim();
+                        return custFull === dashName;
+                    });
+                }
+
+                // Prioridade 3: Match por nome parcial (só se dashboard tem 2+ palavras)
+                if (!cycloMatch && dashName && dashName.split(/\s+/).length >= 2) {
+                    cycloMatch = cycloCustomers.find(cust => {
+                        const custFull = ((cust.first_name || '') + ' ' + (cust.last_name || '')).toLowerCase().trim();
+                        return custFull.includes(dashName) || dashName.includes(custFull);
+                    });
+                }
+
+                if (cycloMatch) {
+                    // Extrair CPF
+                    if (cycloMatch.document) {
+                        let rawDoc = '';
+                        if (typeof cycloMatch.document === 'object') {
+                            rawDoc = cycloMatch.document.number || cycloMatch.document.value || cycloMatch.document.cpf || cycloMatch.document.cnpj || '';
+                        } else {
+                            rawDoc = String(cycloMatch.document);
+                        }
+                        const cleanDoc = rawDoc.replace(/\D/g, '');
+                        if (cleanDoc.length === 11) {
+                            cycloCpf = cleanDoc.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
+                        } else if (cleanDoc.length === 14) {
+                            cycloCpf = cleanDoc.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5');
+                        } else if (cleanDoc) {
+                            cycloCpf = rawDoc;
+                        }
+                    }
+                    // Extrair WhatsApp
+                    const custPhone = cycloMatch.mobile_number || cycloMatch.mobile_phone || cycloMatch.phone || '';
+                    if (custPhone) cycloWhatsapp = custPhone;
+                }
+            }
+        } catch (cycloErr) {
+            console.warn('Cyclopay API não disponível para sync modal:', cycloErr.message);
+        }
+        if (cycloCpf || cycloWhatsapp) {
+            sources.push({
+                name: 'Cyclopay (API Direta)',
+                cpf: cycloCpf,
+                whatsapp: cycloWhatsapp,
+                table: null,
+                field_cpf: null,
+                field_whatsapp: null
+            });
+        }
+
         // Build the modal content
         _renderTipoSyncContent(body, sources, clientId, clientName);
 
