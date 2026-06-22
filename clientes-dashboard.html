@@ -994,16 +994,44 @@
     .pend-micro-card.macro-card { border-left:3px solid #a78bfa; }
     .pend-micro-card.macro-card .pend-micro-card-title { color:#c4b5fd; }
     .pend-micro-card.macro-card .pend-micro-card-title:hover { color:#a78bfa; }
-    /* Macro strategy cards (right column) */
+    /* Macro strategy cards (right column) - estilo Acompanhamento */
     .pend-macro-card {
-        border-radius:8px; padding:0.6rem 0.7rem; margin-bottom:0.5rem;
-        background:rgba(167,139,250,0.06); border:1px solid rgba(167,139,250,0.2);
-        border-left:4px solid #a78bfa; transition:all 0.2s;
+        border-radius:8px; padding:0.9rem 1rem; margin-bottom:0.7rem;
+        background:rgba(5,38,20,0.6); border:1px solid rgba(212,175,55,0.2);
+        border-left:4px solid var(--theme-border-color,rgba(212,175,55,0.2)); transition:all 0.2s;
     }
-    .pend-macro-card:hover { background:rgba(167,139,250,0.1); }
-    .pend-macro-card-name { font-size:0.82rem; font-weight:600; color:#c4b5fd; margin-bottom:0.2rem; }
-    .pend-macro-card-status { font-size:0.68rem; color:var(--theme-text-muted); }
-    .pend-macro-card-micros { font-size:0.65rem; color:var(--theme-text-muted); margin-top:0.2rem; }
+    .pend-macro-card:hover { background:rgba(5,38,20,0.8); border-color:rgba(212,175,55,0.35); }
+    .pend-macro-card[data-status="em_andamento"] { border-left-color:#D4AF37; }
+    .pend-macro-card[data-status="concluido"] { border-left-color:#22c55e; }
+    .pend-macro-card[data-status="pendente"] { border-left-color:var(--theme-text-muted,#A0B8A6); }
+    .pend-macro-card[data-status="bloqueado"] { border-left-color:#ef4444; }
+    .pend-macro-card-fase {
+        font-size:0.72rem; font-weight:700; text-transform:uppercase;
+        letter-spacing:0.08em; color:#D4AF37; margin-bottom:0.4rem;
+    }
+    .pend-macro-card-desc {
+        font-size:0.82rem; color:var(--theme-text-light,#F2E8C9); line-height:1.5;
+        margin-bottom:0.5rem;
+    }
+    .pend-macro-progress-wrap { margin:0.4rem 0; }
+    .pend-macro-progress-info {
+        display:flex; justify-content:space-between; font-size:0.65rem;
+        color:var(--theme-text-muted); margin-bottom:0.15rem;
+    }
+    .pend-macro-progress-bar {
+        height:6px; background:rgba(255,255,255,0.08); border-radius:3px; overflow:hidden;
+    }
+    .pend-macro-progress-fill {
+        height:100%; background:#D4AF37; border-radius:3px; transition:width 0.3s;
+    }
+    .pend-macro-card-meta {
+        display:flex; align-items:center; gap:0.6rem; flex-wrap:wrap;
+        font-size:0.72rem; color:var(--theme-text-muted);
+    }
+    .pend-macro-periodo { font-size:0.72rem; color:var(--theme-text-muted); }
+    .pend-macro-card-objs {
+        font-size:0.68rem; color:var(--theme-text-muted); margin-top:0.3rem;
+    }
     /* Connector dots on cards for SVG lines */
     .pend-connector-dot {
         position:absolute; width:6px; height:6px; border-radius:50%; z-index:3;
