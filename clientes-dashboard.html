@@ -896,7 +896,136 @@
             width: 90%;
             margin: 15% auto;
         }
+        .pend-modal-wrapper { width:95vw !important; left:2.5vw !important; top:3vh !important; height:92vh !important; }
+        .pend-three-col { flex-direction:column !important; }
+        .pend-col-left, .pend-col-center, .pend-col-right { min-width:100% !important; max-width:100% !important; flex:none !important; }
+        .pend-svg-layer { display:none !important; }
     }
+
+    /* ===== PENDENCIAS MODAL REDESIGN ===== */
+    .pend-modal-wrapper {
+        position:fixed; top:5vh; left:5vw; width:90vw; height:85vh;
+        background:var(--theme-bg-card,#1a1a2e); border:1px solid var(--theme-border-color);
+        border-radius:12px; box-shadow:0 20px 60px rgba(0,0,0,0.7);
+        display:flex; flex-direction:column; z-index:10001; overflow:hidden;
+    }
+    .pend-modal-header {
+        display:flex; justify-content:space-between; align-items:center;
+        padding:0.8rem 1.2rem; background:rgba(0,0,0,0.25);
+        border-bottom:1px solid var(--theme-border-color); cursor:move; user-select:none;
+    }
+    .pend-modal-header h2 { margin:0; font-size:1rem; color:var(--theme-text-light); }
+    .pend-modal-body { flex:1; overflow:hidden; display:flex; flex-direction:column; padding:0; }
+    /* Filter bar */
+    .pend-filter-bar {
+        display:flex; align-items:center; gap:0.6rem; padding:0.7rem 1.2rem;
+        border-bottom:1px solid rgba(255,255,255,0.06); flex-wrap:wrap; background:rgba(0,0,0,0.1);
+    }
+    .pend-filter-bar input[type="text"] {
+        flex:1; min-width:140px; padding:0.4rem 0.7rem; border-radius:6px;
+        border:1px solid var(--theme-border-color); background:rgba(0,0,0,0.25);
+        color:var(--theme-text-light); font-size:0.82rem;
+    }
+    .pend-status-badges { display:flex; gap:0.35rem; }
+    .pend-status-badge {
+        padding:0.25rem 0.6rem; border-radius:12px; font-size:0.72rem; font-weight:600;
+        cursor:pointer; border:1.5px solid transparent; transition:all 0.2s; text-transform:capitalize;
+    }
+    .pend-status-badge.psb-pendente { background:rgba(245,158,11,0.12); color:#f59e0b; }
+    .pend-status-badge.psb-em_andamento { background:rgba(96,165,250,0.12); color:#60a5fa; }
+    .pend-status-badge.psb-concluido { background:rgba(34,197,94,0.12); color:#22c55e; }
+    .pend-status-badge.psb-todos { background:rgba(255,255,255,0.08); color:var(--theme-text-muted); }
+    .pend-status-badge.active { border-color:currentColor; transform:scale(1.08); box-shadow:0 0 8px currentColor; }
+    /* 3-column layout */
+    .pend-content-area { flex:1; position:relative; overflow:hidden; }
+    .pend-svg-layer {
+        position:absolute; top:0; left:0; width:100%; height:100%;
+        pointer-events:none; z-index:1;
+    }
+    .pend-three-col {
+        display:flex; height:100%; position:relative; z-index:2; overflow:hidden;
+    }
+    .pend-col-left, .pend-col-center, .pend-col-right {
+        display:flex; flex-direction:column; overflow-y:auto; padding:0.8rem;
+        scrollbar-width:thin; scrollbar-color:rgba(255,255,255,0.15) transparent;
+    }
+    .pend-col-left { flex:0 0 22%; min-width:180px; border-right:1px solid rgba(255,255,255,0.06); }
+    .pend-col-center { flex:1; min-width:250px; }
+    .pend-col-right { flex:0 0 26%; min-width:200px; border-left:1px solid rgba(255,255,255,0.06); }
+    .pend-col-title {
+        font-size:0.72rem; text-transform:uppercase; letter-spacing:0.5px;
+        color:var(--theme-text-muted); margin-bottom:0.6rem; padding-bottom:0.3rem;
+        border-bottom:1px dashed rgba(255,255,255,0.1);
+    }
+    /* Objective cards */
+    .pend-obj-card {
+        border-radius:8px; padding:0.6rem 0.7rem; margin-bottom:0.5rem;
+        cursor:pointer; transition:all 0.2s; border-left:4px solid;
+        background:rgba(0,0,0,0.15);
+    }
+    .pend-obj-card:hover { transform:translateX(3px); box-shadow:0 2px 8px rgba(0,0,0,0.3); }
+    .pend-obj-card.active { box-shadow:0 0 12px rgba(218,165,32,0.3); transform:scale(1.02); }
+    .pend-obj-card-name { font-size:0.82rem; font-weight:600; color:var(--theme-text-light); margin-bottom:0.2rem; }
+    .pend-obj-card-count { font-size:0.68rem; color:var(--theme-text-muted); }
+    /* Micro passo cards */
+    .pend-micro-card {
+        border-radius:8px; padding:0.7rem 0.8rem; margin-bottom:0.5rem;
+        background:rgba(0,0,0,0.12); border:1px solid rgba(255,255,255,0.06);
+        transition:all 0.2s; position:relative;
+    }
+    .pend-micro-card:hover { border-color:rgba(218,165,32,0.3); background:rgba(0,0,0,0.2); }
+    .pend-micro-card-title {
+        font-size:0.82rem; font-weight:600; color:var(--theme-secondary-lighter,#f0d060);
+        cursor:pointer; transition:color 0.2s; margin-bottom:0.25rem;
+    }
+    .pend-micro-card-title:hover { color:var(--theme-secondary,#daa520); text-decoration:underline; }
+    .pend-micro-card-detail { font-size:0.72rem; color:var(--theme-text-muted); margin-bottom:0.3rem; }
+    .pend-micro-card-meta { display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap; }
+    .pend-micro-card-meta .status-badge {
+        display:inline-block; padding:0.12rem 0.45rem; border-radius:10px;
+        font-size:0.65rem; font-weight:600; text-transform:capitalize;
+    }
+    .pend-micro-card-meta .status-badge.st-pendente { background:rgba(245,158,11,0.15); color:#f59e0b; }
+    .pend-micro-card-meta .status-badge.st-em_andamento { background:rgba(96,165,250,0.15); color:#60a5fa; }
+    .pend-micro-card-meta .status-badge.st-concluido { background:rgba(34,197,94,0.15); color:#22c55e; }
+    .pend-micro-card-prazo { font-size:0.68rem; color:var(--theme-text-muted); }
+    .pend-micro-card-obj-dots { display:flex; gap:3px; margin-left:auto; }
+    .pend-micro-card-obj-dot { width:8px; height:8px; border-radius:50%; }
+    .pend-micro-card.macro-card { border-left:3px solid #a78bfa; }
+    .pend-micro-card.macro-card .pend-micro-card-title { color:#c4b5fd; }
+    .pend-micro-card.macro-card .pend-micro-card-title:hover { color:#a78bfa; }
+    /* Macro strategy cards (right column) */
+    .pend-macro-card {
+        border-radius:8px; padding:0.6rem 0.7rem; margin-bottom:0.5rem;
+        background:rgba(167,139,250,0.06); border:1px solid rgba(167,139,250,0.2);
+        border-left:4px solid #a78bfa; transition:all 0.2s;
+    }
+    .pend-macro-card:hover { background:rgba(167,139,250,0.1); }
+    .pend-macro-card-name { font-size:0.82rem; font-weight:600; color:#c4b5fd; margin-bottom:0.2rem; }
+    .pend-macro-card-status { font-size:0.68rem; color:var(--theme-text-muted); }
+    .pend-macro-card-micros { font-size:0.65rem; color:var(--theme-text-muted); margin-top:0.2rem; }
+    /* Connector dots on cards for SVG lines */
+    .pend-connector-dot {
+        position:absolute; width:6px; height:6px; border-radius:50%; z-index:3;
+    }
+    /* Resize handles */
+    .pend-resize-handle {
+        position:absolute; z-index:10002;
+    }
+    .pend-resize-br { bottom:0; right:0; width:18px; height:18px; cursor:nwse-resize; }
+    .pend-resize-bl { bottom:0; left:0; width:18px; height:18px; cursor:nesw-resize; }
+    .pend-resize-tr { top:0; right:0; width:18px; height:18px; cursor:nesw-resize; }
+    .pend-resize-r { top:50%; right:0; width:6px; height:40px; transform:translateY(-50%); cursor:ew-resize; }
+    .pend-resize-b { bottom:0; left:50%; width:40px; height:6px; transform:translateX(-50%); cursor:ns-resize; }
+    .pend-resize-br::after {
+        content:''; position:absolute; bottom:4px; right:4px;
+        width:10px; height:10px; border-right:2px solid rgba(255,255,255,0.3);
+        border-bottom:2px solid rgba(255,255,255,0.3);
+    }
+    /* Empty state */
+    .pend-empty-col { text-align:center; color:var(--theme-text-muted); font-size:0.8rem; padding:2rem 0.5rem; font-style:italic; }
+    /* Hide card when filtered out */
+    .pend-card-hidden { display:none !important; }
 
   </style>
 </head>
@@ -1106,12 +1235,19 @@
 
   <!-- Modal de Pendências (Consultor/Cliente) -->
   <div id="pendencias-modal" class="modal">
-    <div class="modal-content" style="max-width:850px;max-height:85vh;overflow-y:auto;">
-      <span class="modal-close" id="pendencias-close-btn">&times;</span>
-      <h2 id="pendencias-modal-title">Pendências</h2>
-      <div id="pendencias-modal-body">
+    <div class="pend-modal-wrapper" id="pend-modal-wrapper">
+      <div class="pend-modal-header" id="pend-modal-header">
+        <h2 id="pendencias-modal-title">Pendências</h2>
+        <span class="modal-close" id="pendencias-close-btn">&times;</span>
+      </div>
+      <div id="pendencias-modal-body" class="pend-modal-body">
         <p style="color:var(--theme-text-muted);">Carregando...</p>
       </div>
+      <div class="pend-resize-handle pend-resize-br" data-dir="br"></div>
+      <div class="pend-resize-handle pend-resize-bl" data-dir="bl"></div>
+      <div class="pend-resize-handle pend-resize-tr" data-dir="tr"></div>
+      <div class="pend-resize-handle pend-resize-r" data-dir="r"></div>
+      <div class="pend-resize-handle pend-resize-b" data-dir="b"></div>
     </div>
   </div>
 
