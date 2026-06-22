@@ -4385,6 +4385,13 @@ console.log('=== FIM DEBUG PESSOAS COM RENDA ===');
     
     // Inicialização
     document.addEventListener("DOMContentLoaded", async () => {
+      // Se aberto como embed (dentro de iframe), esconder botão voltar
+      const urlParams_embed = new URLSearchParams(window.location.search);
+      if (urlParams_embed.get('embed') === '1') {
+          const btnVoltar = document.querySelector('.btn-voltar');
+          if (btnVoltar) btnVoltar.style.display = 'none';
+      }
+
       try {
         // Aguardar módulos carregarem
         await waitForModules();
