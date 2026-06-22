@@ -4127,11 +4127,42 @@ async function openPendenciasModal(clientId, clientName, pendType) {
                 const statusClass = 'st-' + (macro.status || 'pendente');
                 // Find micros linked to this macro via macro.micro_ids
                 const linkedMicroIds = Array.isArray(macro.micro_ids) ? macro.micro_ids.map(String) : [];
-                const linkedMicros = filteredMicros.filter(m => linkedMicroIds.includes(String(m.id)));
+                const linkedMicros = micros.filter(m => linkedMicroIds.includes(String(m.id)));
+                // Calculate progress from linked micros
+                let macroProgress = 0;
+                if (linkedMicros.length > 0) {
+                    let done = 0;
+                    linkedMicros.forEach(m => {
+                        if (m.status === 'concluido') done++;
+                        else if (m.status === 'em_andamento') done += 0.5;
+                    });
+                    macroProgress = Math.round((done / linkedMicros.length) * 100);
+                }
+                // Duration/Period label
+                let periodoStr = '';
+                if (macro.dur_qty && macro.dur_unit) {
+                    const uLabel = {dias:'dias',dias_uteis:'dias úteis',semanas:'semanas',meses:'meses'};
+                    periodoStr = 'Período: ' + macro.dur_qty + ' ' + (uLabel[macro.dur_unit] || macro.dur_unit);
+                } else if (macro.periodo) {
+                    periodoStr = 'Período: ' + sanitizeInput(macro.periodo);
+                }
+                // Resolve linked objective names
+                let macroObjNames = '';
+                if (Array.isArray(macro.objetivos_ids) && macro.objetivos_ids.length > 0) {
+                    macroObjNames = macro.objetivos_ids.map(oid => {
+                        const o = objetivos.find(ob => String(ob.id) === String(oid));
+                        return o ? sanitizeInput(o.nome) : '';
+                    }).filter(Boolean).join(', ');
+                }
                 html += `<div class="pend-macro-card" data-macro-idx="${idx}" data-status="${macro.status||'pendente'}" id="pend-macro-${idx}">
-                    <div class="pend-macro-card-name">${sanitizeInput(macro.desc || 'Macro ' + (idx+1))}</div>
-                    <div class="pend-macro-card-status"><span class="status-badge ${statusClass}">${statusLabel}</span></div>
-                    ${linkedMicros.length > 0 ? `<div class="pend-macro-card-micros">${linkedMicros.length} micro(s) vinculado(s)</div>` : ''}
+                    <div class="pend-macro-card-fase">${sanitizeInput(macro.fase || 'Fase ' + (idx+1))}</div>
+                    <div class="pend-macro-card-desc">${sanitizeInput(macro.desc || '').replace(/\n/g,'<br>')}</div>
+                    ${linkedMicros.length > 0 ? `<div class="pend-macro-progress-wrap"><div class="pend-macro-progress-info"><span>Progresso (micro passos)</span><span>${macroProgress}%</span></div><div class="pend-macro-progress-bar"><div class="pend-macro-progress-fill" style="width:${macroProgress}%;"></div></div></div>` : ''}
+                    <div class="pend-macro-card-meta">
+                        <span class="status-badge ${statusClass}">${statusLabel}</span>
+                        ${periodoStr ? `<span class="pend-macro-periodo">${periodoStr}</span>` : ''}
+                    </div>
+                    ${macroObjNames ? `<div class="pend-macro-card-objs">Objetivo(s): ${macroObjNames}</div>` : ''}
                 </div>`;
             });
         }
