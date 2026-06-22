@@ -329,13 +329,8 @@
             </select>
           </div>
           <div class="config-field">
-            <label>Máx. notícias por interesse</label>
-            <select id="cfg-max">
-              <option value="5">5</option>
-              <option value="10" selected>10</option>
-              <option value="15">15</option>
-              <option value="20">20</option>
-            </select>
+            <label>Notícias por interesse</label>
+            <input type="number" id="cfg-max" value="10" min="1" max="100" style="width:70px;">
           </div>
           <button class="btn-buscar" id="btn-buscar" onclick="buscarNoticias()">
             <i class="fas fa-search"></i> Buscar Notícias
@@ -426,7 +421,7 @@
       try {
         const { data: clientes, error: cErr } = await supabase
           .from('clientes')
-          .select('id, nome')
+          .select('id, nome, whatsapp')
           .eq('projeto', 'Planejamento');
         if (cErr) throw cErr;
 
@@ -470,7 +465,7 @@
                 clientes: []
               };
             }
-            interesseMap[key].clientes.push({ id: cliente.id, nome: cliente.nome });
+            interesseMap[key].clientes.push({ id: cliente.id, nome: cliente.nome, whatsapp: cliente.whatsapp || '' });
           });
         });
 
@@ -626,7 +621,7 @@
 
       const lang = document.getElementById('cfg-lang').value;
       const country = document.getElementById('cfg-country').value;
-      const max = parseInt(document.getElementById('cfg-max').value);
+      const max = parseInt(document.getElementById('cfg-max').value) || 10;
 
       // Load interests if not loaded
       if (allInteresses.length === 0) {
@@ -738,7 +733,9 @@
     }
 
     // === RENDER RESULTS ===
+    let lastResults = []; // Store for WhatsApp modal
     function renderResults(allResults, sources) {
+      lastResults = allResults;
       // Update status bar
       const statusBar = document.getElementById('status-bar');
       statusBar.innerHTML = sources.map(s => `<span class="status-item"><span class="dot dot-green"></span> ${s}</span>`).join('');
@@ -748,60 +745,130 @@
 
       let html = '';
 
-      // Summary table
-      html += `<h2><i class="fas fa-table"></i> Resumo de Envio</h2>`;
-      html += `<table class="summary-table"><thead><tr><th>Notícia</th><th>Interesse</th><th>Tipo</th><th>Enviar para</th><th>Ação</th></tr></thead><tbody>`;
+      // Summary table with WhatsApp button
+      html += `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem;"><h2><i class="fas fa-table"></i> Resumo de Envio</h2><button class="btn-keywords" onclick="verDestinatarios()"><i class="fab fa-whatsapp"></i> Ver Destinat\u00e1rios</button></div>`;
+      html += `<table class="summary-table"><thead><tr><th>Not\u00edcia</th><th>Interesse</th><th>Tipo</th><th>Enviar para</th><th>A\u00e7\u00e3o</th></tr></thead><tbody>`;
       
-      allResults.forEach(group => {
-        group.articles.forEach((article, idx) => {
+      allResults.forEach((group, gi) => {
+        group.articles.forEach((article, ai) => {
           const clienteNames = group.clientes.map(c => c.nome.split(' ')[0]).join(', ');
-          const tipoBadge = group.tipo_busca === 'informacao' ? '📰' : group.tipo_busca === 'eventos' ? '📍' : '📰📍';
+          const tipoBadge = group.tipo_busca === 'informacao' ? '\ud83d\udcf0' : group.tipo_busca === 'eventos' ? '\ud83d\udccd' : '\ud83d\udcf0\ud83d\udccd';
+          const safeLink = article.link.replace(/'/g, "\\'");
           html += `<tr>
             <td><a href="${article.link}" target="_blank">${article.title.slice(0, 80)}${article.title.length > 80 ? '...' : ''}</a></td>
             <td>${group.keyword}${group.subcategorias.length > 0 ? ' <span style="color:#888;font-size:0.7rem;">(' + group.subcategorias.join(' > ') + ')</span>' : ''}</td>
             <td>${tipoBadge}</td>
-            <td>${clienteNames}</td>
-            <td><button class="btn-copy" onclick="copiarLink('${article.link.replace(/'/g, "\\'")}')">Copiar link</button></td>
+            <td><a href="#" onclick="event.preventDefault();verDestinatariosNoticia(${gi},${ai})" style="color:#25D366;text-decoration:none;cursor:pointer;">${clienteNames} <i class="fab fa-whatsapp" style="font-size:0.8rem;"></i></a></td>
+            <td><button class="btn-copy" onclick="copiarLink('${safeLink}')">Copiar link</button></td>
           </tr>`;
         });
       });
       html += `</tbody></table>`;
 
-      // Detailed groups
-      html += `<h2 style="margin-top:2rem;"><i class="fas fa-newspaper"></i> Detalhes por Interesse</h2>`;
-      
-      allResults.forEach(group => {
-        if (group.articles.length === 0) return;
-        const clienteNames = group.clientes.map(c => c.nome.split(' ')[0]).join(', ');
-        html += `
-          <div class="keyword-group">
-            <div class="keyword-header">
-              <h3>${group.keyword} ${group.categoria ? `<span style="font-size:0.8rem;color:#aaa;">(${group.categoria}${group.subcategorias.length > 0 ? ' > ' + group.subcategorias.join(' > ') : ''})</span>` : ''}</h3>
-              <span class="clients-list">Enviar para: ${clienteNames}</span>
-            </div>
-        `;
-        group.articles.forEach(article => {
-          const dateStr = article.date ? new Date(article.date).toLocaleDateString('pt-BR') : '';
-          html += `
-            <div class="news-item">
-              <div class="news-content">
-                <div class="news-title"><a href="${article.link}" target="_blank">${article.title}</a></div>
-                <div class="news-meta">${article.source} ${dateStr ? '• ' + dateStr : ''}</div>
-              </div>
-              <div class="news-actions">
-                <button class="btn-copy" onclick="copiarLink('${article.link.replace(/'/g, "\\'")}')">Copiar</button>
-              </div>
-            </div>
-          `;
-        });
-        html += `</div>`;
-      });
-
       if (allResults.every(g => g.articles.length === 0)) {
-        html = '<p style="color:#ff6b6b; text-align:center; padding:2rem;">Nenhuma notícia encontrada. Verifique os interesses cadastrados ou tente novamente.</p>';
+        html = '<p style="color:#ff6b6b; text-align:center; padding:2rem;">Nenhuma not\u00edcia encontrada. Verifique os interesses cadastrados ou tente novamente.</p>';
       }
 
       document.getElementById('results-section').innerHTML = html;
+    }
+
+    // === DESTINATARIOS MODAL (all clients) ===
+    function verDestinatarios() {
+      if (lastResults.length === 0) { alert('Busque not\u00edcias primeiro.'); return; }
+      
+      // Collect unique clients across all results
+      const clienteMap = {};
+      lastResults.forEach(group => {
+        group.clientes.forEach(c => {
+          if (!clienteMap[c.id]) clienteMap[c.id] = { ...c, interesses: [] };
+          clienteMap[c.id].interesses.push(group.keyword);
+        });
+      });
+      const clientes = Object.values(clienteMap);
+      
+      let rows = '';
+      clientes.forEach((c, i) => {
+        const whatsNum = (c.whatsapp || '').replace(/[^\d]/g, '');
+        const interList = c.interesses.join(', ');
+        rows += `<tr>
+          <td style="color:#A0B8A6;font-size:0.72rem;">${i+1}</td>
+          <td style="color:#F2E8C9;font-weight:600;">${c.nome}</td>
+          <td style="color:#A0B8A6;font-size:0.8rem;">${c.whatsapp || '-'}</td>
+          <td style="font-size:0.72rem;color:#A0B8A6;">${interList}</td>
+          <td>${whatsNum ? `<button onclick="abrirWhatsApp('${whatsNum}','')" style="background:#25D366;color:#fff;border:none;padding:0.3rem 0.6rem;border-radius:4px;cursor:pointer;font-size:0.75rem;"><i class='fab fa-whatsapp'></i> Enviar</button>` : '<span style="color:#666;font-size:0.7rem;">Sem n\u00famero</span>'}</td>
+        </tr>`;
+      });
+      
+      const modalHtml = `<div class="kw-modal-overlay" id="dest-modal-overlay">
+        <div class="kw-modal">
+          <div class="kw-modal-header">
+            <h3><i class="fab fa-whatsapp"></i> Destinat\u00e1rios (${clientes.length} clientes)</h3>
+            <button class="kw-modal-close" onclick="document.getElementById('dest-modal-overlay').remove()">&times;</button>
+          </div>
+          <div class="kw-modal-body">
+            <table><thead><tr><th>#</th><th>Cliente</th><th>WhatsApp</th><th>Interesses</th><th>A\u00e7\u00e3o</th></tr></thead>
+            <tbody>${rows}</tbody></table>
+          </div>
+        </div>
+      </div>`;
+      
+      const existing = document.getElementById('dest-modal-overlay');
+      if (existing) existing.remove();
+      document.body.insertAdjacentHTML('beforeend', modalHtml);
+      document.getElementById('dest-modal-overlay').addEventListener('click', (e) => {
+        if (e.target === e.currentTarget) e.currentTarget.remove();
+      });
+    }
+
+    // === DESTINATARIOS MODAL (per article) ===
+    function verDestinatariosNoticia(groupIdx, articleIdx) {
+      const group = lastResults[groupIdx];
+      if (!group) return;
+      const article = group.articles[articleIdx];
+      if (!article) return;
+      
+      const mensagem = `Ol\u00e1! Encontrei essa not\u00edcia que pode te interessar:\n\n*${article.title}*\n${article.link}`;
+      
+      let rows = '';
+      group.clientes.forEach((c, i) => {
+        const whatsNum = (c.whatsapp || '').replace(/[^\d]/g, '');
+        rows += `<tr>
+          <td style="color:#A0B8A6;font-size:0.72rem;">${i+1}</td>
+          <td style="color:#F2E8C9;font-weight:600;">${c.nome}</td>
+          <td style="color:#A0B8A6;font-size:0.8rem;">${c.whatsapp || '-'}</td>
+          <td>${whatsNum ? `<button onclick="abrirWhatsApp('${whatsNum}','${encodeURIComponent(mensagem)}')" style="background:#25D366;color:#fff;border:none;padding:0.3rem 0.6rem;border-radius:4px;cursor:pointer;font-size:0.75rem;"><i class='fab fa-whatsapp'></i> Enviar com link</button>` : '<span style="color:#666;font-size:0.7rem;">Sem n\u00famero</span>'}</td>
+        </tr>`;
+      });
+      
+      const modalHtml = `<div class="kw-modal-overlay" id="dest-modal-overlay">
+        <div class="kw-modal">
+          <div class="kw-modal-header">
+            <h3><i class="fab fa-whatsapp"></i> Enviar: ${article.title.slice(0, 50)}...</h3>
+            <button class="kw-modal-close" onclick="document.getElementById('dest-modal-overlay').remove()">&times;</button>
+          </div>
+          <div class="kw-modal-body">
+            <div style="background:rgba(0,0,0,0.3);padding:0.6rem 1rem;border-radius:6px;margin-bottom:1rem;font-size:0.8rem;color:#A0B8A6;">
+              <strong style="color:#D4AF37;">Mensagem:</strong><br>
+              <span style="white-space:pre-wrap;">${mensagem.replace(/</g,'&lt;')}</span>
+            </div>
+            <table><thead><tr><th>#</th><th>Cliente</th><th>WhatsApp</th><th>A\u00e7\u00e3o</th></tr></thead>
+            <tbody>${rows}</tbody></table>
+          </div>
+        </div>
+      </div>`;
+      
+      const existing = document.getElementById('dest-modal-overlay');
+      if (existing) existing.remove();
+      document.body.insertAdjacentHTML('beforeend', modalHtml);
+      document.getElementById('dest-modal-overlay').addEventListener('click', (e) => {
+        if (e.target === e.currentTarget) e.currentTarget.remove();
+      });
+    }
+
+    // === ABRIR WHATSAPP ===
+    function abrirWhatsApp(phone, encodedMsg) {
+      const url = `https://api.whatsapp.com/send?phone=${phone}${encodedMsg ? '&text=' + encodedMsg : ''}`;
+      window.open(url, '_blank');
     }
 
     // Copy link to clipboard
@@ -915,6 +982,9 @@
     // Make functions global
     window.buscarNoticias = buscarNoticias;
     window.verPalavrasChave = verPalavrasChave;
+    window.verDestinatarios = verDestinatarios;
+    window.verDestinatariosNoticia = verDestinatariosNoticia;
+    window.abrirWhatsApp = abrirWhatsApp;
 
     // Init
     loadApiKeys();
