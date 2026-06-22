@@ -395,13 +395,8 @@
   <script type="module">
     import { supabase } from './supabase.js';
 
-    // CORS proxy for Google News RSS (multiple fallbacks)
-    const CORS_PROXIES = [
-      "https://corsproxy.io/?",
-      "https://api.allorigins.win/raw?url=",
-      "https://api.codetabs.com/v1/proxy?quest="
-    ];
-    let CORS_PROXY = CORS_PROXIES[0];
+    // RSS2JSON API (no CORS issues, free tier)
+    const RSS2JSON_API = "https://api.rss2json.com/v1/api.json";
 
     let allInteresses = []; // [{palavra_chave, clientes: [{nome, id}]}]
     let apiUsage = { gnews: 0, newsdata: 0, currents: 0, mediastack: 0 };
@@ -499,45 +494,27 @@
 
     // === NEWS FETCHERS ===
 
-    // 1. Google News RSS (primary - unlimited) with proxy fallback
+    // 1. Google News via rss2json API (no CORS issues)
     async function fetchGoogleNews(keyword, lang, country, max) {
-      const q = encodeURIComponent(keyword);
-      const targetUrl = `https://news.google.com/rss/search?q=${q}&hl=${lang}&gl=${country}&ceid=${country}:${lang}`;
-      
-      for (let pi = 0; pi < CORS_PROXIES.length; pi++) {
-        try {
-          const proxy = CORS_PROXIES[pi];
-          const resp = await fetch(proxy + encodeURIComponent(targetUrl));
-          if (!resp.ok) throw new Error('Proxy ' + pi + ' returned ' + resp.status);
-          const text = await resp.text();
-          const parser = new DOMParser();
-          const xml = parser.parseFromString(text, 'text/xml');
-          const items = xml.querySelectorAll('item');
-          if (items.length === 0 && pi < CORS_PROXIES.length - 1) {
-            // Try next proxy if no results (might be a proxy issue)
-            continue;
-          }
-          const results = [];
-          for (let i = 0; i < Math.min(items.length, max); i++) {
-            const item = items[i];
-            results.push({
-              title: item.querySelector('title')?.textContent || '',
-              link: item.querySelector('link')?.textContent || '',
-              date: item.querySelector('pubDate')?.textContent || '',
-              source: item.querySelector('source')?.textContent || 'Google News'
-            });
-          }
-          // Update working proxy for subsequent calls
-          CORS_PROXY = proxy;
-          return { results, source: 'Google News RSS' };
-        } catch(e) {
-          console.warn(`Google News RSS proxy ${pi} falhou:`, e.message);
-          if (pi === CORS_PROXIES.length - 1) {
-            return { results: [], source: 'Google News RSS', error: e.message };
-          }
-        }
+      try {
+        const q = encodeURIComponent(keyword);
+        const rssUrl = `https://news.google.com/rss/search?q=${q}&hl=${lang}&gl=${country}&ceid=${country}:${lang}`;
+        const apiUrl = `${RSS2JSON_API}?rss_url=${encodeURIComponent(rssUrl)}&count=${max}`;
+        const resp = await fetch(apiUrl);
+        if (!resp.ok) throw new Error('rss2json returned ' + resp.status);
+        const data = await resp.json();
+        if (data.status !== 'ok') throw new Error(data.message || 'rss2json error');
+        const results = (data.items || []).slice(0, max).map(item => ({
+          title: item.title || '',
+          link: item.link || '',
+          date: item.pubDate || '',
+          source: item.author || 'Google News'
+        }));
+        return { results, source: 'Google News RSS' };
+      } catch(e) {
+        console.warn('Google News (rss2json) falhou:', e);
+        return { results: [], source: 'Google News RSS', error: e.message };
       }
-      return { results: [], source: 'Google News RSS', error: 'All proxies failed' };
     }
 
     // 2. GNews API
