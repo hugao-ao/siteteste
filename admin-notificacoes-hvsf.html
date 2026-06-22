@@ -11,154 +11,67 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" integrity="sha512-9usAa10IRO0HhonpyAIVpjrylPvoDwiPUiKdWk5t3PyolY1cOd4DSE0Ga+ri4AuTroPR5aQvXU9xC6qOPnzFeg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
   
   <style>
-    /* Estilos específicos para a página de notificações */
-    
-    /* LAYOUT RESPONSIVO: Ajuste para garantir que o conteúdo não fique atrás da sidebar */
+    /* LAYOUT RESPONSIVO */
     .main-content {
-        margin-left: 250px; /* Largura padrão da sidebar */
+        margin-left: 250px;
         padding: 20px;
         transition: margin-left 0.3s;
-        width: calc(100% - 250px); /* Garante que o conteúdo ocupe o espaço restante */
-        box-sizing: border-box; /* Inclui padding na largura total */
+        width: calc(100% - 250px);
+        box-sizing: border-box;
     }
 
     @media (max-width: 768px) {
         .main-content {
-            margin-left: 0; /* Em mobile, a sidebar geralmente recolhe */
+            margin-left: 0;
             width: 100%;
         }
     }
 
     .notifications-container {
-        padding: 0; /* Padding já tratado no main-content */
-        max-width: 100%; /* Ocupa toda a largura disponível */
+        padding: 0;
+        max-width: 100%;
         margin: 0 auto;
     }
 
-    .notification-card {
-        background-color: #1e1e1e;
-        border-left: 5px solid #ff4d4d; /* Vermelho para pendente */
-        border-radius: 8px;
+    /* --- Smart Header / Summary Cards --- */
+    .smart-header {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 15px;
+        margin-bottom: 25px;
         padding: 20px;
-        margin-bottom: 20px;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.3);
-        transition: transform 0.2s;
+        background: #1a1a1a;
+        border-radius: 12px;
+        border: 1px solid #333;
     }
-
-    .notification-card:hover {
-        transform: translateY(-2px);
+    .smart-card {
+        text-align: center;
+        padding: 12px 8px;
+        border-radius: 8px;
+        background: #222;
+        border: 1px solid #333;
     }
-
-    .notification-card.completed {
-        border-left-color: #28a745; /* Verde para concluído */
-        opacity: 0.7;
+    .smart-card .card-value {
+        font-size: 1.8rem;
+        font-weight: 700;
+        margin-bottom: 4px;
     }
-
-    .card-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 15px;
-        cursor: pointer; /* Indica que é clicável para expandir/recolher */
-    }
-
-    .card-header h3 {
-        margin: 0;
-        color: #fff;
-        font-size: 1.2rem;
-        display: flex;
-        align-items: center;
-        gap: 10px;
-    }
-
-    .card-meta {
-        font-size: 0.9rem;
+    .smart-card .card-label {
+        font-size: 0.75rem;
         color: #aaa;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
     }
+    .smart-card.card-total .card-value { color: #d4af37; }
+    .smart-card.card-ativos .card-value { color: #22c55e; }
+    .smart-card.card-inativos .card-value { color: #ef4444; }
+    .smart-card.card-adcs .card-value { color: #60a5fa; }
+    .smart-card.card-sem-adcs .card-value { color: #f59e0b; }
+    .smart-card.card-form .card-value { color: #a78bfa; }
 
-    /* Container para o conteúdo expansível (tarefas e botão) */
-    .card-content {
-        display: block; /* Padrão visível */
-        overflow: hidden;
-        transition: max-height 0.3s ease-out;
-    }
-    
-    .card-content.collapsed {
-        display: none;
-    }
-
-    .task-list {
-        list-style: none;
-        padding: 0;
-        margin: 0;
-    }
-
-    .task-item {
-        display: flex;
-        align-items: center;
-        margin-bottom: 10px;
-        background: #2a2a2a;
-        padding: 10px;
-        border-radius: 5px;
-    }
-
-    .task-item input[type="checkbox"] {
-        margin-right: 15px;
-        transform: scale(1.5);
-        cursor: pointer;
-    }
-
-    .task-item label {
-        color: #ddd;
-        cursor: pointer;
-        flex-grow: 1;
-    }
-
-    .btn-finalize {
-        background-color: #d4af37;
-        color: #000;
-        border: none;
-        padding: 10px 20px;
-        border-radius: 5px;
-        cursor: pointer;
-        font-weight: bold;
-        margin-top: 15px;
-        width: 100%;
-        transition: background 0.3s;
-    }
-
-    .btn-finalize:hover {
-        background-color: #f1c40f;
-    }
-
-    .btn-finalize:disabled {
-        background-color: #28a745; /* Verde fixo quando desabilitado (lançado) */
-        color: #fff;
-        cursor: default;
-        opacity: 1; /* Remove opacidade padrão de disabled */
-        border: 1px solid #28a745;
-    }
-
-    .btn-save-tasks {
-        background-color: #007bff;
-        color: white;
-        border: none;
-        padding: 8px 15px;
-        border-radius: 5px;
-        cursor: pointer;
-        font-weight: bold;
-        margin-top: 10px;
-        width: 100%;
-        transition: background 0.3s;
-    }
-
-    .btn-save-tasks:hover {
-        background-color: #0056b3;
-    }
-
-    /* Estilos para a seção Cyclopay */
+    /* --- Cyclopay Section --- */
     .cyclopay-section {
-        margin-top: 40px;
+        margin-top: 20px;
         border-top: 1px solid #333;
         padding-top: 20px;
     }
@@ -168,7 +81,7 @@
         justify-content: space-between;
         align-items: center;
         margin-bottom: 20px;
-        flex-wrap: wrap; /* Permite quebrar linha em telas pequenas */
+        flex-wrap: wrap;
         gap: 10px;
     }
 
@@ -184,15 +97,16 @@
     }
 
     .search-input {
-        padding: 8px 12px;
-        border-radius: 5px;
+        padding: 8px 15px;
         border: 1px solid #444;
-        background-color: #2a2a2a;
-        color: #fff;
-        outline: none;
+        border-radius: 5px;
+        background: #1e1e1e;
+        color: #ddd;
+        font-size: 0.9rem;
+        min-width: 250px;
     }
-
     .search-input:focus {
+        outline: none;
         border-color: #d4af37;
     }
 
@@ -200,7 +114,7 @@
         background-color: #2a2a2a;
         color: #d4af37;
         font-weight: bold;
-        cursor: pointer; /* Indica que é clicável */
+        cursor: pointer;
         user-select: none;
     }
 
@@ -216,17 +130,15 @@
 
     .cyclopay-table th.sorted-asc i {
         color: #d4af37;
-        transform: rotate(180deg);
     }
 
     .cyclopay-table th.sorted-desc i {
         color: #d4af37;
-        transform: rotate(180deg);
     }
 
     .table-responsive {
         overflow-x: auto;
-        -webkit-overflow-scrolling: touch; /* Rolagem suave em mobile */
+        -webkit-overflow-scrolling: touch;
     }
 
     .cyclopay-table {
@@ -235,7 +147,7 @@
         background-color: #1e1e1e;
         border-radius: 8px;
         overflow: hidden;
-        min-width: 800px; /* Garante largura mínima para não quebrar colunas */
+        min-width: 800px;
     }
 
     .cyclopay-table th, .cyclopay-table td {
@@ -243,7 +155,7 @@
         text-align: left;
         border-bottom: 1px solid #333;
         color: #ddd;
-        white-space: nowrap; /* Evita quebra de linha indesejada */
+        white-space: nowrap;
     }
 
     .cyclopay-table th {
@@ -258,57 +170,36 @@
 
     .badge {
         padding: 5px 10px;
-        border-radius: 15px;
-        font-size: 0.8rem;
+        border-radius: 12px;
+        font-size: 0.75rem;
         font-weight: bold;
     }
-
-    .badge-active {
-        background-color: rgba(40, 167, 69, 0.2);
-        color: #28a745;
-    }
-
-    .badge-pending {
-        background-color: rgba(255, 193, 7, 0.2);
-        color: #ffc107;
-    }
-
-    .badge-inactive {
-        background-color: rgba(220, 53, 69, 0.2);
-        color: #dc3545;
-    }
+    .badge-active { background-color: #28a745; color: white; }
+    .badge-inactive { background-color: #dc3545; color: white; }
+    .badge-pending { background-color: #ffc107; color: black; }
 
     .btn-import {
-        background-color: transparent;
-        border: 1px solid #d4af37;
-        color: #d4af37;
-        padding: 5px 10px;
+        background-color: #d4af37;
+        color: #1e1e1e;
+        border: none;
+        padding: 6px 12px;
         border-radius: 5px;
         cursor: pointer;
-        transition: all 0.3s;
+        font-weight: bold;
+        font-size: 0.8rem;
     }
+    .btn-import:hover { background-color: #e6c347; }
 
-    .btn-import:hover {
-        background-color: #d4af37;
-        color: #000;
-    }
-
-    /* Ícones de Status de Pagamento */
-    .status-icon {
-        margin-left: 8px;
-        font-size: 0.9rem;
-    }
-    .status-paid { color: #28a745; } /* Verde */
-    .status-refused { color: #dc3545; } /* Vermelho */
-    .status-pending { color: #ffc107; } /* Amarelo */
-    .status-unknown { color: #6c757d; } /* Cinza */
+    .status-icon { margin-left: 5px; }
+    .status-paid { color: #28a745; }
+    .status-refused { color: #dc3545; }
+    .status-pending { color: #ffc107; }
+    .status-unknown { color: #6c757d; }
 
   </style>
 </head>
 <body>
 
-  <!-- Sidebar será injetada aqui -->
-  
   <!-- Conteúdo Principal -->
   <div class="main-content" id="main-content">
     <header>
@@ -322,28 +213,43 @@
       <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 20px;">
           <i class="fas fa-bell fa-3x" style="color: #d4af37;"></i>
           <div style="flex-grow: 1;">
-              <h1 style="margin: 0; color: #d4af37;">Notificações SITE HVSF</h1>
-              <p style="color: #aaa; margin: 5px 0 0 0;">Gerencie aqui as tarefas de onboarding para novos clientes do Plano Financeiro.</p>
-          </div>
-          <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 10px;">
-              <div style="display: flex; align-items: center; gap: 10px;">
-                  <input type="checkbox" id="hide-notifications" onchange="toggleNotificationsVisibility()" style="transform: scale(1.5); cursor: pointer;">
-                  <label for="hide-notifications" style="color: #ddd; cursor: pointer; user-select: none;">Ocultar Notificações de Tarefa</label>
-              </div>
-              <button onclick="toggleAllCards()" style="background: transparent; border: 1px solid #666; color: #aaa; padding: 5px 10px; border-radius: 5px; cursor: pointer; font-size: 0.8rem;">
-                  <i class="fas fa-expand-alt"></i> Expandir/Recolher Tudo
-              </button>
+              <h1 style="margin: 0; color: #d4af37;">Integração Cyclopay</h1>
+              <p style="color: #aaa; margin: 5px 0 0 0;">Visão geral dos clientes do Plano Financeiro na plataforma de pagamentos.</p>
           </div>
       </div>
 
-      <div id="notifications-list">
-          <p style="color: #888;">Carregando notificações...</p>
+      <!-- Smart Header com resumo -->
+      <div class="smart-header" id="smart-header">
+          <div class="smart-card card-total">
+              <div class="card-value" id="sh-total">--</div>
+              <div class="card-label">Total Clientes</div>
+          </div>
+          <div class="smart-card card-ativos">
+              <div class="card-value" id="sh-ativos">--</div>
+              <div class="card-label">Ativos</div>
+          </div>
+          <div class="smart-card card-inativos">
+              <div class="card-value" id="sh-inativos">--</div>
+              <div class="card-label">Inativos</div>
+          </div>
+          <div class="smart-card card-adcs">
+              <div class="card-value" id="sh-adcs">--</div>
+              <div class="card-label">No Sistema (ADCS)</div>
+          </div>
+          <div class="smart-card card-sem-adcs">
+              <div class="card-value" id="sh-sem-adcs">--</div>
+              <div class="card-label">Fora do Sistema</div>
+          </div>
+          <div class="smart-card card-form">
+              <div class="card-value" id="sh-form">--</div>
+              <div class="card-label">Form Respondido</div>
+          </div>
       </div>
 
       <!-- Seção de Integração Cyclopay -->
       <div class="cyclopay-section">
         <div class="cyclopay-header">
-            <h2><i class="fas fa-sync-alt"></i> Integração Cyclopay (Clientes Recentes)</h2>
+            <h2><i class="fas fa-sync-alt"></i> Clientes Cyclopay</h2>
             <div class="cyclopay-controls">
                 <input type="text" id="searchInput" class="search-input" placeholder="Buscar por nome, email ou CPF..." onkeyup="filterTable()">
                 <button onclick="loadCyclopayData()" style="background: transparent; border: 1px solid #d4af37; color: #d4af37; padding: 8px 15px; border-radius: 5px; cursor: pointer;">
@@ -358,22 +264,20 @@
                     <tr>
                         <th onclick="sortTable(0)">Nome <i class="fas fa-sort"></i></th>
                         <th>Plano</th>
-                        <th onclick="sortTable(1)">Telefone <i class="fas fa-sort"></i></th>
-                        <th onclick="sortTable(2)">CPF <i class="fas fa-sort"></i></th>
-                        <th title="Login Criado">LOGIN</th>
-                        <th title="Email Criado">EMAIL</th>
+                        <th onclick="sortTable(2)">Telefone <i class="fas fa-sort"></i></th>
+                        <th onclick="sortTable(3)">CPF <i class="fas fa-sort"></i></th>
                         <th title="Adicionado ao Sistema">ADCS</th>
                         <th title="Formulário Preenchido">FORM</th>
-                        <th onclick="sortTable(3)">Data Criação <i class="fas fa-sort"></i></th>
-                        <th onclick="sortTable(4)">Última Cobrança <i class="fas fa-sort"></i></th>
-                        <th onclick="sortTable(5)">Próxima Cobrança <i class="fas fa-sort"></i></th>
-                        <th onclick="sortTable(6)">Status <i class="fas fa-sort"></i></th>
+                        <th onclick="sortTable(6)">Data Criação <i class="fas fa-sort"></i></th>
+                        <th onclick="sortTable(7)">Última Cobrança <i class="fas fa-sort"></i></th>
+                        <th onclick="sortTable(8)">Próxima Cobrança <i class="fas fa-sort"></i></th>
+                        <th onclick="sortTable(9)">Status <i class="fas fa-sort"></i></th>
                         <th>Ações</th>
                     </tr>
                 </thead>
                 <tbody id="cyclopay-list">
                     <tr>
-                        <td colspan="7" style="text-align: center; color: #888;">Carregando dados da Cyclopay...</td>
+                        <td colspan="11" style="text-align: center; color: #888;">Carregando dados da Cyclopay...</td>
                     </tr>
                 </tbody>
             </table>
@@ -386,19 +290,17 @@
   <!-- Scripts -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   
-  <!-- Configuração Inline do Supabase (Substituindo config.js e auth-check.js ausentes) -->
   <script>
     // ===== CONFIGURAÇÃO DO SUPABASE =====
     const SUPABASE_URL = "https://vbikskbfkhundhropykf.supabase.co";
     const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZiaWtza2Jma2h1bmRocm9weWtmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDU1MTk5NjEsImV4cCI6MjA2MTA5NTk2MX0.-n-Tj_5JnF1NL2ZImWlMeTcobWDl_VD6Vqp0lxRQFFU";
 
-    // Criar cliente Supabase globalmente
     let supabaseClient;
     try {
       supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-      console.log('✅ Supabase conectado com sucesso');
+      console.log('Supabase conectado com sucesso');
     } catch (error) {
-      console.error('❌ Erro ao conectar Supabase:', error);
+      console.error('Erro ao conectar Supabase:', error);
       alert('Erro crítico: Falha na conexão com o banco de dados.');
     }
 
@@ -406,8 +308,7 @@
     function checkAuth() {
         const userId = sessionStorage.getItem('user_id') || sessionStorage.getItem('id');
         if (!userId) {
-            console.warn('Usuário não autenticado. Redirecionando para login...');
-            // window.location.href = 'index.html'; // Comentado para evitar loop em dev, descomentar em prod
+            console.warn('Usuário não autenticado.');
         } else {
             console.log('Usuário autenticado:', userId);
         }
@@ -418,371 +319,19 @@
   <script src="sidebar.js"></script>
 
   <script>
-    // Variável global para controle de expansão
-    let allExpanded = true;
-
     document.addEventListener('DOMContentLoaded', () => {
-        // --- INJEÇÃO DA SIDEBAR ---
-        // Verifica se a função injectSidebar existe (carregada do sidebar.js)
         if (typeof injectSidebar === 'function') {
-            // Injeta a sidebar no elemento 'main-content' e força o contexto 'Planejamento'
             injectSidebar('main-content', 'Planejamento');
         } else {
-            console.error('Erro: Função injectSidebar não encontrada. Verifique se sidebar.js foi carregado corretamente.');
+            console.error('Erro: Função injectSidebar não encontrada.');
         }
-
-        loadNotifications();
         loadCyclopayData();
     });
 
-    // --- LÓGICA DE NOTIFICAÇÕES ---
-    async function loadNotifications() {
-        const list = document.getElementById('notifications-list');
-        const hideNotifications = document.getElementById('hide-notifications').checked;
-        
-        // Se o filtro de ocultar TUDO estiver ativo, limpa a lista e sai
-        if (hideNotifications) {
-            list.innerHTML = '';
-            list.style.display = 'none'; // Garante que o container suma
-            return;
-        } else {
-            list.style.display = 'block';
-        }
-
-        list.innerHTML = '<p style="color: #888;">Atualizando...</p>';
-
-        try {
-            let query = supabaseClient
-                .from('hvsf_tasks')
-                .select('*')
-                .order('created_at', { ascending: false });
-
-            const { data: notifications, error } = await query;
-
-            if (error) throw error;
-
-            list.innerHTML = '';
-
-            if (!notifications || notifications.length === 0) {
-                list.innerHTML = '<p style="color: #888;">Nenhuma notificação encontrada.</p>';
-                return;
-            }
-
-            // Salva notificações no escopo global para acesso fácil
-            window.notifications = notifications;
-
-            notifications.forEach(notif => {
-                const tasks = typeof notif.tasks === 'string' ? JSON.parse(notif.tasks) : notif.tasks;
-                
-                // Verifica se todas as tarefas estão marcadas
-                const allTasksChecked = tasks.login && tasks.email && tasks.form;
-                
-                // Verifica se o cliente já foi lançado (existe client_id salvo nas tasks ou status já é completed)
-                const isLaunched = tasks.client_launched === true;
-                const isFullyCompleted = isLaunched && allTasksChecked;
-
-                const card = document.createElement('div');
-                card.className = `notification-card ${isFullyCompleted ? 'completed' : ''}`;
-                card.id = `card-${notif.id}`;
-                
-                // Ícone da seta
-                const arrowIcon = 'fa-chevron-down'; // Padrão expandido
-
-                card.innerHTML = `
-                    <div class="card-header" onclick="toggleCard('${notif.id}')">
-                        <h3>
-                            <i id="icon-${notif.id}" class="fas ${arrowIcon}" style="font-size: 0.8rem; width: 20px;"></i>
-                            ${notif.client_name} 
-                            <span style="font-size: 0.8rem; color: #d4af37; margin-left: 10px;">(${notif.plan})</span>
-                        </h3>
-                        <div class="card-meta">
-                            ${new Date(notif.created_at).toLocaleDateString('pt-BR')}
-                        </div>
-                    </div>
-                    
-                    <div id="content-${notif.id}" class="card-content">
-                        <ul class="task-list">
-                            <li class="task-item">
-                                <input type="checkbox" id="task-login-${notif.id}" 
-                                    ${tasks.login ? 'checked' : ''}>
-                                <label for="task-login-${notif.id}">Criar Login</label>
-                            </li>
-                            <li class="task-item">
-                                <input type="checkbox" id="task-email-${notif.id}" 
-                                    ${tasks.email ? 'checked' : ''}>
-                                <label for="task-email-${notif.id}">Criar Email</label>
-                            </li>
-                            <li class="task-item">
-                                <input type="checkbox" id="task-form-${notif.id}" 
-                                    ${tasks.form ? 'checked' : ''}>
-                                <label for="task-form-${notif.id}">Enviar Formulário</label>
-                            </li>
-                        </ul>
-
-                        <button class="btn-save-tasks" onclick="saveTasks('${notif.id}')">
-                            <i class="fas fa-save"></i> Salvar Tarefas
-                        </button>
-
-                        <button class="btn-finalize" 
-                            onclick="lancarClienteNoSistema('${notif.id}')"
-                            ${isLaunched ? 'disabled' : ''}>
-                            ${isLaunched ? '<i class="fas fa-check-circle"></i> CLIENTE JÁ LANÇADO' : 'Lançar Cliente no Sistema'}
-                        </button>
-                    </div>
-                `;
-                list.appendChild(card);
-            });
-
-        } catch (error) {
-            console.error('Erro ao carregar notificações:', error);
-            list.innerHTML = '<p style="color: red;">Erro ao carregar notificações.</p>';
-        }
-    }
-
-    // Função para alternar visibilidade de TODAS as notificações
-    function toggleNotificationsVisibility() {
-        loadNotifications(); // Recarrega aplicando a lógica de display: none/block
-    }
-
-    // Função para expandir/recolher card individual
-    function toggleCard(id) {
-        const content = document.getElementById(`content-${id}`);
-        const icon = document.getElementById(`icon-${id}`);
-        
-        if (content.classList.contains('collapsed')) {
-            content.classList.remove('collapsed');
-            icon.classList.remove('fa-chevron-right');
-            icon.classList.add('fa-chevron-down');
-        } else {
-            content.classList.add('collapsed');
-            icon.classList.remove('fa-chevron-down');
-            icon.classList.add('fa-chevron-right');
-        }
-    }
-
-    // Função para expandir/recolher TODOS os cards
-    function toggleAllCards() {
-        const contents = document.querySelectorAll('.card-content');
-        const icons = document.querySelectorAll('.card-header i.fas');
-        
-        allExpanded = !allExpanded; // Inverte o estado global
-
-        contents.forEach(content => {
-            if (allExpanded) {
-                content.classList.remove('collapsed');
-            } else {
-                content.classList.add('collapsed');
-            }
-        });
-
-        icons.forEach(icon => {
-            // Filtra apenas os ícones de seta (evita alterar outros ícones se houver)
-            if (icon.classList.contains('fa-chevron-down') || icon.classList.contains('fa-chevron-right')) {
-                if (allExpanded) {
-                    icon.classList.remove('fa-chevron-right');
-                    icon.classList.add('fa-chevron-down');
-                } else {
-                    icon.classList.remove('fa-chevron-down');
-                    icon.classList.add('fa-chevron-right');
-                }
-            }
-        });
-    }
-
-    // NOVA FUNÇÃO: Salvar Tarefas Manualmente
-    async function saveTasks(id) {
-        id = isNaN(id) ? id : Number(id);
-        const notif = window.notifications.find(n => n.id === id);
-        if (!notif) return;
-
-        // Pega o estado atual dos checkboxes
-        const loginChecked = document.getElementById(`task-login-${id}`).checked;
-        const emailChecked = document.getElementById(`task-email-${id}`).checked;
-        const formChecked = document.getElementById(`task-form-${id}`).checked;
-
-        let tasks = typeof notif.tasks === 'string' ? JSON.parse(notif.tasks) : notif.tasks;
-        
-        // Atualiza objeto tasks
-        tasks.login = loginChecked;
-        tasks.email = emailChecked;
-        tasks.form = formChecked;
-
-        // Verifica status completo
-        const allTasksChecked = tasks.login && tasks.email && tasks.form;
-        const isLaunched = tasks.client_launched === true;
-        
-        // Só marca como completed no banco se TUDO estiver ok
-        const newStatus = (isLaunched && allTasksChecked) ? 'completed' : 'pending';
-
-        try {
-            const { error } = await supabaseClient
-                .from('hvsf_tasks')
-                .update({ 
-                    tasks: tasks,
-                    status: newStatus
-                })
-                .eq('id', id);
-
-            if (error) throw error;
-            
-            // Atualiza objeto local
-            notif.tasks = tasks;
-            notif.status = newStatus;
-
-            // Atualiza visualmente o card (cor verde se completou tudo)
-            const card = document.getElementById(`card-${id}`);
-            if (newStatus === 'completed') {
-                card.classList.add('completed');
-            } else {
-                card.classList.remove('completed');
-            }
-
-            alert('Tarefas salvas com sucesso!');
-
-        } catch (error) {
-            console.error('Erro ao salvar tarefas:', error);
-            alert('Erro ao salvar tarefas: ' + error.message);
-        }
-    }
-
-    async function lancarClienteNoSistema(notifId) {
-        notifId = isNaN(notifId) ? notifId : Number(notifId);
-        const notif = window.notifications.find(n => n.id === notifId);
-        if (!notif) return;
-
-        const tasks = typeof notif.tasks === 'string' ? JSON.parse(notif.tasks) : notif.tasks;
-        const clientData = tasks.client_data || {};
-        
-        console.log('DEBUG: Dados da notificação:', notif);
-        console.log('DEBUG: Dados do cliente (clientData):', clientData);
-
-        // Limpar dados para formato correto
-        const nome = notif.client_name;
-        
-        // Extração robusta de CPF e WhatsApp (MANTENDO FORMATAÇÃO)
-        let cpf = null;
-        if (clientData.cpf && clientData.cpf !== '-') {
-            // Mantém o valor original formatado se existir
-            cpf = String(clientData.cpf).trim();
-        }
-        
-        let whatsapp = null;
-        if (clientData.whatsapp && clientData.whatsapp !== '-') {
-            // Mantém o valor original formatado se existir
-            whatsapp = String(clientData.whatsapp).trim();
-        }
-
-        console.log(`DEBUG: CPF extraído: "${cpf}", WhatsApp extraído: "${whatsapp}"`);
-        
-        // Verifica duplicidade de CPF antes de criar
-        if (cpf) {
-            const { data: existingCpf } = await supabaseClient
-                .from('dados_cadastrais')
-                .select('id')
-                .eq('cpf', cpf); // Tenta match exato primeiro
-            
-            if (existingCpf && existingCpf.length > 0) {
-                alert('ERRO: Já existe um cliente cadastrado com este CPF no sistema.');
-                return;
-            }
-        }
-
-        if (!confirm(`Deseja criar o cliente "${nome}" no sistema?\n\nIsso irá:\n1. Criar o cliente no projeto Planejamento\n2. Preencher os Dados Cadastrais (Nome, CPF, WhatsApp)`)) {
-            return;
-        }
-
-        try {
-            // 1. Criar Cliente na tabela 'clientes'
-            
-            // Recupera ID do usuário logado (admin)
-            const userId = sessionStorage.getItem('user_id') || sessionStorage.getItem('id');
-            
-            if (!userId) {
-                alert('ERRO CRÍTICO: Usuário não identificado na sessão. Faça login novamente no painel administrativo.');
-                return;
-            }
-
-            // CORREÇÃO CRÍTICA: Garantir que whatsappValue NUNCA seja null
-            // Se whatsapp for null, undefined ou vazio, usa o placeholder
-            let whatsappValue = "00000000000";
-            if (whatsapp && String(whatsapp).trim().length > 0) {
-                whatsappValue = whatsapp;
-            }
-            
-            console.log(`DEBUG: Valor final do WhatsApp para insert: "${whatsappValue}"`);
-
-            const { data: newClient, error: clientError } = await supabaseClient
-                .from('clientes')
-                .insert([{
-                    nome: nome,
-                    whatsapp: whatsappValue, 
-                    projeto: 'Planejamento',
-                    criado_por_id: userId, // Campo obrigatório para FK
-                    created_at: new Date().toISOString()
-                }])
-                .select()
-                .single();
-
-            if (clientError) throw new Error('Erro ao criar cliente: ' + clientError.message);
-
-            const clientId = newClient.id;
-
-            // 2. Criar registro em 'dados_cadastrais'
-            console.log('DEBUG: Tentando inserir em dados_cadastrais:', {
-                cliente_id: clientId,
-                nome_completo: nome,
-                cpf: cpf,
-                whatsapp: whatsapp
-            });
-
-            const { data: dadosResult, error: dadosError } = await supabaseClient
-                .from('dados_cadastrais')
-                .insert([{
-                    cliente_id: clientId,
-                    nome_completo: nome,
-                    cpf: cpf,
-                    whatsapp: whatsapp,
-                    email: '', 
-                    conjuge: null 
-                }])
-                .select();
-
-            if (dadosError) {
-                console.error('Erro ao salvar dados cadastrais:', dadosError);
-                alert('Cliente criado, mas houve erro ao salvar dados cadastrais: ' + dadosError.message + '\n\nVerifique se o CPF já existe ou se há restrições no banco.');
-            } else {
-                console.log('DEBUG: Dados cadastrais salvos com sucesso:', dadosResult);
-                alert('Cliente lançado com sucesso no sistema! (Dados Cadastrais OK)');
-                
-                // Atualiza tasks para marcar que foi lançado
-                tasks.client_launched = true;
-                
-                // Verifica se já pode marcar como completed (se todas as tarefas já estavam ok)
-                const allTasksChecked = tasks.login && tasks.email && tasks.form;
-                const newStatus = allTasksChecked ? 'completed' : 'pending';
-
-                // Atualiza status da notificação
-                await supabaseClient
-                    .from('hvsf_tasks')
-                    .update({ 
-                        tasks: tasks,
-                        status: newStatus 
-                    })
-                    .eq('id', notifId);
-                
-                loadNotifications();
-            }
-
-        } catch (error) {
-            console.error('Erro ao lançar cliente:', error);
-            alert('Erro: ' + error.message);
-        }
-    }
-
-    // --- LÓGICA CYCLOPAY (REAL) ---
+    // --- LÓGICA CYCLOPAY ---
     async function loadCyclopayData() {
         const tbody = document.getElementById('cyclopay-list');
-        tbody.innerHTML = '<tr><td colspan="7" style="text-align: center;">Carregando TODOS os dados da Cyclopay... (Isso pode levar alguns segundos)</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="11" style="text-align: center;">Carregando dados da Cyclopay...</td></tr>';
         
         const CYCLOPAY_API_KEY = 'ak_aeb26f6be167cc077eb227c128262e731523d492'; 
         const BASE_URL = 'https://api.cyclopay.com/v1';
@@ -806,41 +355,28 @@
                     const items = data.items || [];
                     allItems = allItems.concat(items);
                     
-                    // Verifica se há mais páginas (se retornou menos que o limite, acabou)
                     if (items.length < 100) hasMore = false;
                     else page++;
                 }
                 return allItems;
             }
 
-            // 0. Buscar dados do Supabase para comparação (ADCS, FORM, CPF, Tarefas)
-            const { data: supabaseClients, error: sbError } = await supabaseClient
+            // Buscar dados do Supabase para comparação (ADCS, FORM)
+            const { data: supabaseClients } = await supabaseClient
                 .from('clientes')
                 .select('id, nome, whatsapp, projeto');
 
-            // Buscar dados cadastrais para verificar CPF duplicado
-            const { data: supabaseDados, error: sbDadosError } = await supabaseClient
+            const { data: supabaseDados } = await supabaseClient
                 .from('dados_cadastrais')
                 .select('cliente_id, cpf');
 
-            // Buscar tarefas existentes para verificar Login e Email
-            const { data: supabaseTasks, error: sbTasksError } = await supabaseClient
-                .from('hvsf_tasks')
-                .select('*');
-            
-            // Buscar formulários
-            const { data: supabaseForms, error: sbFormError } = await supabaseClient
+            const { data: supabaseForms } = await supabaseClient
                 .from('formularios_clientes')
-                .select('id, cliente_id, status, dados_formulario, data_preenchimento');
-
-            if (supabaseForms && supabaseForms.length > 0) {
-                console.log('Estrutura de formularios_clientes:', supabaseForms[0]);
-            }
+                .select('id, cliente_id, status, dados_formulario');
 
             // Salva dados do Supabase no escopo global
             window.supabaseClients = supabaseClients || [];
             window.supabaseDados = supabaseDados || [];
-            window.supabaseTasks = supabaseTasks || [];
 
             // Mapeia formulários por cliente_id
             window.formsByClientId = {};
@@ -853,38 +389,29 @@
                 });
             }
 
-            // 1. Busca TODOS os Clientes, Assinaturas e Transações em paralelo
+            // Busca TODOS os Clientes, Assinaturas e Transações em paralelo
             const [customers, subscriptions, transactions] = await Promise.all([
                 fetchAllPages('/customers'),
                 fetchAllPages('/subscriptions'),
-                fetchAllPages('/transactions?orderDir=desc') // Busca transações ordenadas para pegar as recentes
+                fetchAllPages('/transactions?orderDir=desc')
             ]);
 
-            // 4. Cruza os dados
+            // Cruza os dados
             const mergedData = customers.map(customer => {
-                // Encontra a assinatura correspondente ao cliente
                 const sub = subscriptions.find(s => s.customer_id === customer.customer_id);
                 
-                // Extrai nome do plano da assinatura (se existir)
                 let planName = null;
                 if (sub) {
-                    // Tenta extrair de sub.plan.name (estrutura aninhada vista no diagnóstico)
                     if (sub.plan && sub.plan.name) {
                         planName = sub.plan.name;
                     } else {
-                        // Fallback para outros campos possíveis
                         planName = sub.product_name || sub.plan_name || (sub.product ? sub.product.name : null);
                     }
                 }
 
-                // Encontra a transação mais recente do cliente
-                // Como buscamos todas as transações, filtramos pelo cliente e pegamos a primeira (mais recente)
                 const clientTransactions = transactions.filter(t => t.customer && t.customer.customer_id === customer.customer_id);
-                
                 const lastTransaction = clientTransactions.length > 0 ? clientTransactions[0] : null;
 
-                // Lógica para Data da Última Cobrança:
-                // Prioriza a data da última transação se existir, senão usa a da assinatura
                 let lastChargeDate = null;
                 if (lastTransaction) {
                     lastChargeDate = lastTransaction.create_date;
@@ -897,8 +424,7 @@
                     last_charge_date: lastChargeDate,
                     next_charge: sub ? sub.next_charge : null,
                     last_transaction_status: lastTransaction ? lastTransaction.transaction_status : null,
-                    plan_name: planName, // Adiciona o nome do plano ao objeto mesclado
-                    // Garante que telefone esteja acessível (prioriza mobile_number conforme diagnóstico)
+                    plan_name: planName,
                     phone: customer.mobile_number || customer.mobile_phone || customer.phone
                 };
             });
@@ -910,7 +436,7 @@
 
         } catch (error) {
             console.error('Erro ao carregar dados da Cyclopay:', error);
-            tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: #ff4d4d;">Erro ao carregar dados: ${error.message}</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="11" style="text-align: center; color: #ff4d4d;">Erro ao carregar dados: ${error.message}</td></tr>`;
         }
     }
 
@@ -919,16 +445,25 @@
         tbody.innerHTML = '';
         
         if (!clients || clients.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="7" style="text-align: center;">Nenhum cliente encontrado.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="11" style="text-align: center;">Nenhum cliente encontrado.</td></tr>';
+            updateSmartHeader([], 0, 0, 0, 0, 0);
             return;
         }
+
+        // Contadores para o smart header
+        let countTotal = clients.length;
+        let countAtivos = 0;
+        let countInativos = 0;
+        let countAdcs = 0;
+        let countSemAdcs = 0;
+        let countForm = 0;
 
         clients.forEach(client => {
                 const statusClass = client.active ? 'badge-active' : 'badge-inactive';
                 const statusLabel = client.active ? 'Ativo' : 'Inativo';
-                const createdDate = client.create_date ? new Date(client.create_date).toLocaleDateString('pt-BR') : '-';
+                if (client.active) countAtivos++; else countInativos++;
                 
-                // Formata datas de cobrança
+                const createdDate = client.create_date ? new Date(client.create_date).toLocaleDateString('pt-BR') : '-';
                 const lastCharge = client.last_charge_date ? new Date(client.last_charge_date).toLocaleDateString('pt-BR') : '-';
                 const nextCharge = client.next_charge ? new Date(client.next_charge).toLocaleDateString('pt-BR') : '-';
                 
@@ -946,59 +481,53 @@
                     }
                 }
 
-                // Tratamento do CPF (pode vir como objeto ou string)
+                // Tratamento do CPF
                 let cpfDisplay = '-';
                 let rawDocument = '';
                 
                 if (client.document) {
                     if (typeof client.document === 'object') {
-                        // Tenta pegar 'number', 'value', 'cpf', ou 'cnpj'
                         rawDocument = client.document.number || client.document.value || client.document.cpf || client.document.cnpj || '';
                     } else {
                         rawDocument = String(client.document);
                     }
                 }
 
-                // Aplica máscara de CPF ou CNPJ
                 let cleanDoc = '';
                 if (rawDocument) {
-                    cleanDoc = rawDocument.replace(/\D/g, ''); // Remove não-números
+                    cleanDoc = rawDocument.replace(/\D/g, '');
                     if (cleanDoc.length === 11) {
-                        // CPF: 000.000.000-00
                         cpfDisplay = cleanDoc.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
                     } else if (cleanDoc.length === 14) {
-                        // CNPJ: 00.000.000/0000-00
                         cpfDisplay = cleanDoc.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5');
                     } else {
-                        cpfDisplay = rawDocument; // Retorna original se não bater tamanho
+                        cpfDisplay = rawDocument;
                     }
                 }
 
-                // Lógica ADCS, FORM, Duplicidade e Tarefas
+                // Lógica ADCS e FORM
                 let isAdcs = false;
                 let formStatus = 'none';
-                let isDuplicateCpf = false;
                 let existingClientId = null;
 
-                // Verifica duplicidade por CPF
+                // Verifica por CPF primeiro
                 if (cleanDoc) {
                     const foundInDados = window.supabaseDados.find(d => d.cpf && d.cpf.replace(/\D/g, '') === cleanDoc);
                     if (foundInDados) {
-                        isDuplicateCpf = true;
+                        isAdcs = true;
                         existingClientId = foundInDados.cliente_id;
                     }
                 }
 
-                // Recupera dados do Supabase do escopo global
+                // Fallbacks para encontrar no sistema
                 const sbClients = window.supabaseClients || [];
                 const formsMap = window.formsByClientId || {};
 
-                // Tenta achar cliente no Supabase
                 let sbClient = null;
                 if (existingClientId) {
                     sbClient = sbClients.find(c => c.id === existingClientId);
                 } else {
-                    // Fallback 1: por nome completo (first + last contidos no nome do Supabase)
+                    // Fallback 1: por nome
                     const cycloFirst = (client.first_name || '').toLowerCase().trim();
                     const cycloLast = (client.last_name || '').toLowerCase().trim();
                     const cycloFull = (cycloFirst + ' ' + cycloLast).trim();
@@ -1006,13 +535,9 @@
                     sbClient = sbClients.find(c => {
                         if (!c.nome) return false;
                         const sbNome = c.nome.toLowerCase().trim();
-                        // Verifica se o nome do Supabase contém first E last
                         if (cycloFirst && sbNome.includes(cycloFirst) && (!cycloLast || sbNome.includes(cycloLast))) return true;
-                        // Verifica se o nome completo do Cyclopay está contido no Supabase
                         if (cycloFull && sbNome.includes(cycloFull)) return true;
-                        // Verifica inverso: nome do Supabase contido no nome completo do Cyclopay
                         if (sbNome && cycloFull.includes(sbNome)) return true;
-                        // Verifica por primeiro nome + primeira palavra do sobrenome
                         if (cycloLast) {
                             const firstLastWord = cycloLast.split(' ')[0];
                             if (cycloFirst && sbNome.includes(cycloFirst) && sbNome.includes(firstLastWord)) return true;
@@ -1020,14 +545,13 @@
                         return false;
                     });
 
-                    // Fallback 2: por WhatsApp (se não achou por nome)
+                    // Fallback 2: por WhatsApp
                     if (!sbClient && client.phone) {
                         const cycloPhone = String(client.phone).replace(/\D/g, '');
                         if (cycloPhone.length >= 10) {
                             sbClient = sbClients.find(c => {
                                 if (!c.whatsapp) return false;
                                 const sbPhone = String(c.whatsapp).replace(/\D/g, '');
-                                // Compara os últimos 8-9 dígitos (ignora DDI/DDD variações)
                                 const minLen = Math.min(cycloPhone.length, sbPhone.length, 9);
                                 return cycloPhone.slice(-minLen) === sbPhone.slice(-minLen);
                             });
@@ -1040,8 +564,6 @@
                     const clientForms = formsMap[sbClient.id];
                     
                     if (clientForms && clientForms.length > 0) {
-                        // Verifica se algum formulário foi respondido
-                        // Campos reais da tabela: dados_formulario (jsonb) e status = 'preenchido'
                         const hasAnsweredForm = clientForms.some(f => {
                             const hasData = f.dados_formulario != null;
                             const isCompleted = f.status === 'preenchido' || f.status === 'concluido' || f.status === 'respondido' || f.status === 'finalizado';
@@ -1056,6 +578,10 @@
                     }
                 }
 
+                // Contadores
+                if (isAdcs) countAdcs++; else countSemAdcs++;
+                if (formStatus === 'answered') countForm++;
+
                 // Ícone ADCS
                 const adcsIcon = isAdcs 
                     ? '<i class="fas fa-check-circle" style="color: #28a745;" title="Cliente encontrado no sistema"></i>' 
@@ -1064,44 +590,21 @@
                 // Ícone FORM
                 let formIcon = '';
                 if (!isAdcs) {
-                    // Cliente não encontrado -> X Vermelho
                     formIcon = '<i class="fas fa-times-circle" style="color: #dc3545;" title="Cliente não encontrado"></i>';
                 } else if (formStatus === 'none') {
-                    // Cliente encontrado, mas sem formulário -> X Vermelho
                     formIcon = '<i class="fas fa-times-circle" style="color: #dc3545;" title="Formulário não criado"></i>';
                 } else if (formStatus === 'created') {
-                    // Formulário criado, mas não respondido -> ! Amarelo
                     formIcon = '<i class="fas fa-exclamation-triangle" style="color: #ffc107;" title="Aguardando resposta"></i>';
                 } else {
-                    // Formulário respondido -> Check Verde
                     formIcon = '<i class="fas fa-check-circle" style="color: #28a745;" title="Formulário respondido"></i>';
-                }
-
-                // Verifica Status de Login e Email (Tarefas)
-                let loginIcon = '<i class="fas fa-times-circle" style="color: #dc3545;" title="Pendente"></i>';
-                let emailIcon = '<i class="fas fa-times-circle" style="color: #dc3545;" title="Pendente"></i>';
-                let taskExists = false;
-
-                // Procura tarefa pelo nome do cliente
-                const clientFullName = `${client.first_name} ${client.last_name || ''}`.trim();
-                const existingTask = window.supabaseTasks.find(t => t.client_name === clientFullName);
-
-                if (existingTask) {
-                    taskExists = true;
-                    const tasks = typeof existingTask.tasks === 'string' ? JSON.parse(existingTask.tasks) : existingTask.tasks;
-                    
-                    if (tasks.login) loginIcon = '<i class="fas fa-check-circle" style="color: #28a745;" title="Login Criado"></i>';
-                    if (tasks.email) emailIcon = '<i class="fas fa-check-circle" style="color: #28a745;" title="Email Criado"></i>';
                 }
 
                 // Formata Telefone
                 let phoneDisplay = '-';
                 if (client.phone) {
                     const rawPhone = client.phone;
-                    // Remove caracteres não numéricos
                     const cleanPhone = String(rawPhone).replace(/\D/g, '');
                     if (cleanPhone.length >= 10) {
-                        // Formata (XX) XXXXX-XXXX ou (XX) XXXX-XXXX
                         if (cleanPhone.length === 11) {
                             phoneDisplay = `(${cleanPhone.substring(0,2)}) ${cleanPhone.substring(2,7)}-${cleanPhone.substring(7)}`;
                         } else {
@@ -1112,8 +615,18 @@
                     }
                 }
 
-                // Obtém nome do Plano (se disponível na assinatura)
+                // Plano
                 let planName = client.plan_name || '-';
+
+                // Ação: Importar só aparece se NÃO está no ADCS
+                let actionCell = '';
+                if (isAdcs) {
+                    actionCell = `<span class="badge badge-active" style="background-color: #28a745; color: white;">Cadastrado</span>`;
+                } else {
+                    actionCell = `<button class="btn-import" onclick="importarCliente('${(client.first_name + ' ' + (client.last_name || '')).trim().replace(/'/g, "\\'")}', '${(client.email || '').replace(/'/g, "\\'")}', '${cpfDisplay}', '${phoneDisplay}')" title="Importar para o sistema">
+                        <i class="fas fa-file-import"></i> Importar
+                    </button>`;
+                }
                 
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
@@ -1121,50 +634,39 @@
                     <td>${planName}</td>
                     <td>${phoneDisplay}</td>
                     <td>${cpfDisplay}</td>
-                    <td style="text-align: center;">${loginIcon}</td>
-                    <td style="text-align: center;">${emailIcon}</td>
                     <td style="text-align: center;">${adcsIcon}</td>
                     <td style="text-align: center;">${formIcon}</td>
                     <td>${createdDate}</td>
                     <td>${lastCharge} ${statusIcon}</td>
                     <td>${nextCharge}</td>
                     <td><span class="badge ${statusClass}">${statusLabel}</span></td>
-                    <td>
-                        ${isDuplicateCpf ? 
-                            `<span class="badge badge-active" style="background-color: #28a745; color: white;">Cadastrado</span>` : 
-                            (taskExists ? 
-                                `<span class="badge badge-pending" style="background-color: #ffc107; color: black;">Em Onboarding</span>` :
-                                `<button class="btn-import" onclick="importarCliente('${client.first_name} ${client.last_name || ''}', '${client.email}', '${cpfDisplay}', '${phoneDisplay}')" title="Iniciar Onboarding">
-                                    <i class="fas fa-file-import"></i> Importar
-                                </button>`
-                            )
-                        }
-                    </td>
+                    <td>${actionCell}</td>
                 `;
                 tbody.appendChild(tr);
         });
+
+        // Atualizar smart header
+        updateSmartHeader(clients, countAtivos, countInativos, countAdcs, countSemAdcs, countForm);
+    }
+
+    function updateSmartHeader(clients, ativos, inativos, adcs, semAdcs, form) {
+        document.getElementById('sh-total').textContent = clients.length || 0;
+        document.getElementById('sh-ativos').textContent = ativos;
+        document.getElementById('sh-inativos').textContent = inativos;
+        document.getElementById('sh-adcs').textContent = adcs;
+        document.getElementById('sh-sem-adcs').textContent = semAdcs;
+        document.getElementById('sh-form').textContent = form;
     }
 
     async function importarCliente(nome, email, cpf, whatsapp) {
         if (!supabaseClient) {
-            alert('Supabase não configurado! Configure a chave API no código para salvar.');
+            alert('Supabase não configurado!');
             return;
         }
         
-        console.log('DEBUG: importarCliente chamado com:', { nome, email, cpf, whatsapp });
+        console.log('importarCliente chamado com:', { nome, email, cpf, whatsapp });
 
-        // Verifica duplicidade de tarefa antes de criar (por nome)
-        const { data: existingTasks } = await supabaseClient
-            .from('hvsf_tasks')
-            .select('*')
-            .eq('client_name', nome);
-
-        if (existingTasks && existingTasks.length > 0) {
-            alert('Já existe um processo de onboarding para este cliente (verificado por nome).');
-            return;
-        }
-
-        // Verifica duplicidade de CPF em dados_cadastrais (para avisar se já é cliente)
+        // Verifica duplicidade de CPF em dados_cadastrais
         if (cpf && cpf !== '-') {
             const cleanCpf = cpf.replace(/\D/g, '');
             const { data: existingClient } = await supabaseClient
@@ -1173,41 +675,89 @@
                 .eq('cpf', cleanCpf);
             
             if (existingClient && existingClient.length > 0) {
-                if (!confirm('ATENÇÃO: Este CPF já está cadastrado como cliente no sistema. Deseja criar uma nova tarefa de onboarding mesmo assim?')) {
-                    return;
-                }
+                alert('Este CPF já está cadastrado no sistema.');
+                return;
             }
         }
 
-        if(confirm(`Deseja iniciar o processo de onboarding para ${nome}?`)) {
-            const newTask = {
-                client_name: nome,
-                plan: 'Importado Cyclopay', 
-                tasks: { 
-                    login: false, 
-                    email: false, 
-                    form: false,
-                    client_launched: false, // Novo campo para controlar lançamento
-                    client_data: { 
-                        cpf: cpf || '', 
-                        whatsapp: whatsapp || '' 
-                    } // Armazena dados extras
-                },
-                status: 'pending'
-            };
+        if(!confirm(`Deseja importar "${nome}" para o sistema?\n\nIsso irá:\n1. Criar o cliente no projeto Planejamento\n2. Preencher os Dados Cadastrais (Nome, CPF, WhatsApp)`)) {
+            return;
+        }
+
+        try {
+            const userId = sessionStorage.getItem('user_id') || sessionStorage.getItem('id');
             
-            console.log('DEBUG: Criando nova tarefa:', newTask);
-            
-            const { error } = await supabaseClient.from('hvsf_tasks').insert([newTask]);
-            
-            if (error) {
-                alert('Erro ao importar: ' + error.message);
+            if (!userId) {
+                alert('Usuário não identificado. Faça login novamente.');
+                return;
+            }
+
+            let whatsappValue = "00000000000";
+            if (whatsapp && String(whatsapp).trim().length > 0 && whatsapp !== '-') {
+                whatsappValue = whatsapp;
+            }
+
+            // Criar Cliente
+            const { data: newClient, error: clientError } = await supabaseClient
+                .from('clientes')
+                .insert([{
+                    nome: nome,
+                    whatsapp: whatsappValue, 
+                    projeto: 'Planejamento',
+                    criado_por_id: userId,
+                    created_at: new Date().toISOString()
+                }])
+                .select()
+                .single();
+
+            if (clientError) throw new Error('Erro ao criar cliente: ' + clientError.message);
+
+            const clientId = newClient.id;
+
+            // Criar Dados Cadastrais
+            let cpfValue = null;
+            if (cpf && cpf !== '-') {
+                cpfValue = cpf;
+            }
+
+            const { error: dadosError } = await supabaseClient
+                .from('dados_cadastrais')
+                .insert([{
+                    cliente_id: clientId,
+                    nome_completo: nome,
+                    cpf: cpfValue,
+                    whatsapp: whatsapp !== '-' ? whatsapp : null,
+                    email: email || '',
+                    conjuge: null 
+                }]);
+
+            if (dadosError) {
+                alert('Cliente criado, mas erro nos dados cadastrais: ' + dadosError.message);
             } else {
-                alert('Cliente importado com sucesso! Verifique a lista de notificações.');
-                loadNotifications(); 
-                // Recarrega a lista da Cyclopay para atualizar os status (badges e ícones)
+                // Também criar task no hvsf_tasks para manter histórico
+                await supabaseClient.from('hvsf_tasks').insert([{
+                    client_name: nome,
+                    plan: 'Importado Cyclopay',
+                    tasks: { 
+                        login: false, 
+                        email: false, 
+                        form: false,
+                        client_launched: true,
+                        client_data: { 
+                            cpf: cpf || '', 
+                            whatsapp: whatsapp || '' 
+                        }
+                    },
+                    status: 'pending'
+                }]);
+
+                alert('Cliente importado com sucesso!');
                 loadCyclopayData();
             }
+
+        } catch (error) {
+            console.error('Erro ao importar cliente:', error);
+            alert('Erro: ' + error.message);
         }
     }
 
@@ -1244,14 +794,12 @@
         const tbody = document.getElementById('cyclopay-list');
         const rows = Array.from(tbody.querySelectorAll('tr'));
         
-        // Remove ícones de ordenação anteriores
         table.querySelectorAll('th').forEach(th => {
             th.classList.remove('sorted-asc', 'sorted-desc');
             const icon = th.querySelector('i');
             if(icon) icon.className = 'fas fa-sort';
         });
 
-        // Define direção
         if (currentSort.column === columnIndex) {
             currentSort.direction = currentSort.direction === 'asc' ? 'desc' : 'asc';
         } else {
@@ -1259,17 +807,15 @@
             currentSort.direction = 'asc';
         }
 
-        // Atualiza ícone da coluna atual
         const th = table.querySelectorAll('th')[columnIndex];
         th.classList.add(currentSort.direction === 'asc' ? 'sorted-asc' : 'sorted-desc');
-        th.querySelector('i').className = currentSort.direction === 'asc' ? 'fas fa-sort-up' : 'fas fa-sort-down';
+        const thIcon = th.querySelector('i');
+        if (thIcon) thIcon.className = currentSort.direction === 'asc' ? 'fas fa-sort-up' : 'fas fa-sort-down';
 
-        // Ordena
         rows.sort((a, b) => {
-            const aText = a.children[columnIndex].innerText.trim();
-            const bText = b.children[columnIndex].innerText.trim();
+            const aText = a.children[columnIndex] ? a.children[columnIndex].innerText.trim() : '';
+            const bText = b.children[columnIndex] ? b.children[columnIndex].innerText.trim() : '';
 
-            // Tenta ordenar como data (DD/MM/YYYY)
             if (aText.match(/^\d{2}\/\d{2}\/\d{4}/)) {
                 const dateA = parseDate(aText);
                 const dateB = parseDate(bText);
@@ -1286,7 +832,7 @@
 
     function parseDate(dateStr) {
         if (!dateStr || dateStr === '-') return 0;
-        const parts = dateStr.split(' ')[0].split('/'); // Remove ícones/espaços extras
+        const parts = dateStr.split(' ')[0].split('/');
         return new Date(parts[2], parts[1] - 1, parts[0]).getTime();
     }
 
