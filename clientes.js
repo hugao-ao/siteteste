@@ -4018,11 +4018,11 @@ async function openPendenciasModal(clientId, clientName, pendType) {
         // Filter by pendType
         let filteredMicros, filteredMacros;
         if (pendType === 'consultor') {
-            filteredMicros = micros.filter(m => m.responsavel_consultor && m.status !== 'concluido');
+            filteredMicros = micros.filter(m => m.responsavel_consultor);
             filteredMacros = [];
         } else {
-            filteredMicros = micros.filter(m => !m.responsavel_consultor && m.status !== 'concluido');
-            filteredMacros = macros.filter(m => m.status !== 'concluido');
+            filteredMicros = micros.filter(m => !m.responsavel_consultor);
+            filteredMacros = [...macros];
         }
         
         // Assign colors to objectives
