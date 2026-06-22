@@ -5242,8 +5242,8 @@ async function openTipoSyncModal(clientId, clientName) {
             supabase.from('dados_cadastrais').select('cpf, whatsapp').eq('cliente_id', clientId).maybeSingle(),
             // 2. Diagnóstico Financeiro
             supabase.from('diagnosticos_financeiros').select('cpf, telefone').eq('cliente_id', clientId).maybeSingle(),
-            // 3. HVSF Tasks (Cyclopay import)
-            supabase.from('hvsf_tasks').select('tasks, client_name').eq('status', 'completed'),
+            // 3. HVSF Tasks (Cyclopay import) - busca TODOS os status
+            supabase.from('hvsf_tasks').select('tasks, client_name'),
             // 4. Clientes table (dashboard list)
             supabase.from('clientes').select('whatsapp').eq('id', clientId).maybeSingle()
         ]);
@@ -5277,10 +5277,26 @@ async function openTipoSyncModal(clientId, clientName) {
         let hvsfCpf = '';
         let hvsfWhatsapp = '';
         if (hvsfTasks.data && hvsfTasks.data.length > 0) {
-            // Find the task matching this client by name
+            const searchName = (clientName || '').toLowerCase().trim();
+            // Matching robusto: exato, parcial (contém), ou por partes do nome
             const matchingTask = hvsfTasks.data.find(t => {
                 const taskName = (t.client_name || '').toLowerCase().trim();
-                return taskName === (clientName || '').toLowerCase().trim();
+                // Match exato
+                if (taskName === searchName) return true;
+                // Match parcial: nome do hvsf contido no nome do dashboard ou vice-versa
+                if (taskName && searchName && (taskName.includes(searchName) || searchName.includes(taskName))) return true;
+                // Match por primeiro + último nome
+                const searchParts = searchName.split(/\s+/);
+                const taskParts = taskName.split(/\s+/);
+                if (searchParts.length >= 2 && taskParts.length >= 2) {
+                    const searchFirst = searchParts[0];
+                    const searchLast = searchParts[searchParts.length - 1];
+                    if (taskName.includes(searchFirst) && taskName.includes(searchLast)) return true;
+                    const taskFirst = taskParts[0];
+                    const taskLast = taskParts[taskParts.length - 1];
+                    if (searchName.includes(taskFirst) && searchName.includes(taskLast)) return true;
+                }
+                return false;
             });
             if (matchingTask && matchingTask.tasks && matchingTask.tasks.client_data) {
                 hvsfCpf = matchingTask.tasks.client_data.cpf || '';
