@@ -5981,7 +5981,7 @@ async function checkDataConflicts(clients) {
 // ============================================================
 // DIAGNÓSTICO - Modal Iframe (abre dentro da página sem novo login)
 // ============================================================
-function openDiagIframeModal(url, clientName) {
+window.openDiagIframeModal = function(url, clientName) {
     // Verificar se já existe o modal
     let modal = document.getElementById('diag-iframe-modal');
     if (!modal) {
