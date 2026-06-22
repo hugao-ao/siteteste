@@ -19,6 +19,7 @@ const noFormsMessage = document.getElementById("no-forms-message");
 // New Modals
 const planoRefModal = document.getElementById("plano-ref-modal");
 const mensalidadeModal = document.getElementById("mensalidade-modal");
+const situacaoModal = document.getElementById("situacao-modal");
 const leadModal = document.getElementById("lead-modal");
 
 // --- Variáveis de Estado e Informações do Usuário ---
@@ -239,6 +240,9 @@ async function initializeDashboard() {
     // Mensalidade Modal
     const mensalidadeCloseBtn = document.getElementById('mensalidade-close-btn');
     if (mensalidadeCloseBtn) mensalidadeCloseBtn.addEventListener('click', () => { mensalidadeModal.style.display = 'none'; });
+    // Situacao Modal
+    const situacaoCloseBtn = document.getElementById('situacao-close-btn');
+    if (situacaoCloseBtn) situacaoCloseBtn.addEventListener('click', () => { situacaoModal.style.display = 'none'; });
     // Lead Modal
     const leadCloseBtn = document.getElementById('lead-close-btn');
     if (leadCloseBtn) leadCloseBtn.addEventListener('click', () => { leadModal.style.display = 'none'; });
@@ -256,6 +260,7 @@ async function initializeDashboard() {
     window.addEventListener('click', (e) => {
         if (e.target === planoRefModal) planoRefModal.style.display = 'none';
         if (e.target === mensalidadeModal) mensalidadeModal.style.display = 'none';
+        if (e.target === situacaoModal) situacaoModal.style.display = 'none';
         if (e.target === leadModal) leadModal.style.display = 'none';
     });
 
@@ -583,11 +588,16 @@ async function loadClients(filterProject = null) {
                     <span class="fin-loading">...</span>
                 </td>
                 <td data-label="Situação" style="text-align:center;">
-                    <select class="situacao-select ${client.situacao === 'EM_HIATO' ? 'sit-hiato' : client.situacao === 'PAROU' ? 'sit-parou' : 'sit-ativo'}" data-client-id="${client.id}" ${!canEdit ? 'disabled' : ''}>
-                        <option value="ATIVO" ${(!client.situacao || client.situacao === 'ATIVO') ? 'selected' : ''}>Ativo</option>
-                        <option value="EM_HIATO" ${client.situacao === 'EM_HIATO' ? 'selected' : ''}>Em Hiato</option>
-                        <option value="PAROU" ${client.situacao === 'PAROU' ? 'selected' : ''}>Parou</option>
-                    </select>
+                    <div style="display:flex;align-items:center;justify-content:center;gap:4px;">
+                        <select class="situacao-select ${client.situacao === 'EM_HIATO' ? 'sit-hiato' : client.situacao === 'PAROU' ? 'sit-parou' : 'sit-ativo'}" data-client-id="${client.id}" ${!canEdit ? 'disabled' : ''}>
+                            <option value="ATIVO" ${(!client.situacao || client.situacao === 'ATIVO') ? 'selected' : ''}>Ativo</option>
+                            <option value="EM_HIATO" ${client.situacao === 'EM_HIATO' ? 'selected' : ''}>Em Hiato</option>
+                            <option value="PAROU" ${client.situacao === 'PAROU' ? 'selected' : ''}>Parou</option>
+                        </select>
+                        <button class="situacao-info-btn" data-client-id="${client.id}" data-client-name="${sanitizeInput(client.nome)}" title="Ver dados Cyclopay" style="background:none;border:none;cursor:pointer;color:var(--theme-text-muted);font-size:0.75rem;padding:2px;">
+                            <i class="fas fa-info-circle"></i>
+                        </button>
+                    </div>
                 </td>
                 <td data-label="Ações">
                     <button class="msg-action-btn edit-msg-btn" data-client-id="${client.id}" title="Editar/Gerar mensagem WhatsApp">
@@ -623,6 +633,9 @@ async function loadClients(filterProject = null) {
         // Salvar referência dos clientes para mensagens WhatsApp
         allClientes = filteredClients;
         
+        // Verificar conflitos de CPF/WhatsApp em background
+        checkDataConflicts(filteredClients);
+
         // Carregar leads e renderizá-los na tabela
         await loadAndRenderLeads(filterProject);
         
@@ -2307,6 +2320,8 @@ function handleTableClick(event) {
         openObjetivosModal(clientId, clientName);
     } else if (btn.classList.contains('partic-action-btn')) {
         openParticularidadesModal(clientId, clientName);
+    } else if (btn.classList.contains('situacao-info-btn')) {
+        openSituacaoModal(clientId, clientName);
     }
 }
 
@@ -4012,23 +4027,104 @@ async function openPlanoRefModal(clienteId, clientName) {
 }
 
 // ============================================================
-// MENSALIDADE - Modal
+// MENSALIDADE - Modal (com dados Cyclopay como referência)
 // ============================================================
 async function openMensalidadeModal(clienteId, clientName) {
     if (!mensalidadeModal) return;
     const title = document.getElementById('mensalidade-title');
     const body = document.getElementById('mensalidade-body');
-    if (title) title.textContent = `Mensalidade: ${clientName || ''}`;
+    if (title) title.textContent = `Mensalidade — ${clientName || ''}`;
     if (body) body.innerHTML = '<p style="color:var(--theme-text-muted);">Carregando...</p>';
     mensalidadeModal.style.display = 'flex';
     
     try {
-        const { data: clientData } = await supabase.from('clientes').select('mensalidade').eq('id', clienteId).maybeSingle();
+        // Buscar dados do sistema
+        const { data: clientData } = await supabase.from('clientes').select('mensalidade, whatsapp, nome').eq('id', clienteId).maybeSingle();
         const mensalidade = clientData?.mensalidade || 0;
-        
+
+        // Buscar dados do Cyclopay para referência
+        let cycloInfo = null;
+        try {
+            const CYCLOPAY_API_KEY = 'ak_aeb26f6be167cc077eb227c128262e731523d492';
+            const cycloResp = await fetch('https://api.cyclopay.com/v1/customers?count=100', {
+                method: 'GET',
+                headers: { 'api_key': CYCLOPAY_API_KEY, 'Accept': 'application/json' }
+            });
+            if (cycloResp.ok) {
+                const cycloData = await cycloResp.json();
+                const cycloCustomers = cycloData.items || [];
+                const dashWhatsClean = (clientData?.whatsapp || '').replace(/\D/g, '');
+                const dashName = (clientName || '').toLowerCase().trim();
+
+                // Match por WhatsApp
+                let match = null;
+                if (dashWhatsClean.length >= 8) {
+                    match = cycloCustomers.find(cust => {
+                        const custPhone = String(cust.mobile_number || cust.mobile_phone || cust.phone || '').replace(/\D/g, '');
+                        if (custPhone.length < 8) return false;
+                        return dashWhatsClean.slice(-9) === custPhone.slice(-9);
+                    });
+                }
+                // Match por nome
+                if (!match && dashName) {
+                    match = cycloCustomers.find(cust => {
+                        const custFull = ((cust.first_name || '') + ' ' + (cust.last_name || '')).toLowerCase().trim();
+                        return custFull === dashName || (dashName.split(/\s+/).length >= 2 && (custFull.includes(dashName) || dashName.includes(custFull)));
+                    });
+                }
+
+                if (match) {
+                    // Buscar assinatura para obter valor
+                    const subsResp = await fetch(`https://api.cyclopay.com/v1/subscriptions?count=100`, {
+                        method: 'GET',
+                        headers: { 'api_key': CYCLOPAY_API_KEY, 'Accept': 'application/json' }
+                    });
+                    let planName = '-';
+                    let planValue = null;
+                    if (subsResp.ok) {
+                        const subsData = await subsResp.json();
+                        const sub = (subsData.items || []).find(s => s.customer_id === match.customer_id);
+                        if (sub) {
+                            planName = (sub.plan && sub.plan.name) || sub.product_name || sub.plan_name || '-';
+                            planValue = sub.amount || (sub.plan && sub.plan.amount) || null;
+                        }
+                    }
+                    cycloInfo = {
+                        nome: `${match.first_name} ${match.last_name || ''}`.trim(),
+                        plano: planName,
+                        valor: planValue,
+                        ativo: match.active
+                    };
+                }
+            }
+        } catch (cycloErr) {
+            console.warn('Cyclopay indisponível:', cycloErr.message);
+        }
+
+        // Montar HTML do modal
+        let cycloHtml = '';
+        if (cycloInfo) {
+            const valorDisplay = cycloInfo.valor ? `R$ ${(cycloInfo.valor / 100).toFixed(2).replace('.', ',')}` : '--';
+            cycloHtml = `
+                <div style="background:rgba(212,175,55,0.08);border:1px solid rgba(212,175,55,0.3);border-radius:8px;padding:12px;margin-bottom:1rem;">
+                    <div style="font-size:0.75rem;color:#d4af37;font-weight:700;margin-bottom:8px;text-transform:uppercase;letter-spacing:0.5px;">Dados Cyclopay (Referência)</div>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:0.82rem;">
+                        <div><span style="color:var(--theme-text-muted);">Plano:</span> <strong>${cycloInfo.plano}</strong></div>
+                        <div><span style="color:var(--theme-text-muted);">Valor:</span> <strong>${valorDisplay}</strong></div>
+                        <div><span style="color:var(--theme-text-muted);">Status:</span> <strong style="color:${cycloInfo.ativo ? '#22c55e' : '#ef4444'};">${cycloInfo.ativo ? 'Ativo' : 'Inativo'}</strong></div>
+                        <div><span style="color:var(--theme-text-muted);">Nome:</span> ${cycloInfo.nome}</div>
+                    </div>
+                    ${cycloInfo.valor ? `<button id="mensalidade-usar-cyclo" style="margin-top:8px;background:rgba(212,175,55,0.15);border:1px solid #d4af37;color:#d4af37;padding:4px 10px;border-radius:4px;cursor:pointer;font-size:0.75rem;">Usar valor Cyclopay</button>` : ''}
+                </div>
+            `;
+        } else {
+            cycloHtml = `<div style="background:rgba(100,100,100,0.1);border:1px solid rgba(100,100,100,0.3);border-radius:8px;padding:10px;margin-bottom:1rem;font-size:0.8rem;color:var(--theme-text-muted);text-align:center;">Cliente não encontrado no Cyclopay</div>`;
+        }
+
         body.innerHTML = `
+            ${cycloHtml}
             <div style="margin-bottom:1rem;">
-                <label style="font-size:0.85rem;color:var(--theme-text-muted);display:block;margin-bottom:0.5rem;">Valor da Mensalidade</label>
+                <label style="font-size:0.85rem;color:var(--theme-text-muted);display:block;margin-bottom:0.5rem;">Valor Final da Mensalidade</label>
                 <input type="text" id="mensalidade-valor-input" value="${mensalidade > 0 ? fmtBRL(mensalidade) : ''}" placeholder="R$ 0,00" style="width:100%;padding:0.6rem;border-radius:6px;border:1px solid var(--theme-border-color);background:rgba(0,0,0,0.2);color:var(--theme-text-light);font-size:1.1rem;font-weight:600;">
             </div>
             <div style="display:flex;justify-content:flex-end;gap:0.5rem;">
@@ -4039,6 +4135,15 @@ async function openMensalidadeModal(clienteId, clientName) {
         
         // Aplicar máscara de moeda
         addCurrencyMask(document.getElementById('mensalidade-valor-input'));
+
+        // Botão "Usar valor Cyclopay"
+        const usarCycloBtn = document.getElementById('mensalidade-usar-cyclo');
+        if (usarCycloBtn && cycloInfo?.valor) {
+            usarCycloBtn.addEventListener('click', () => {
+                const input = document.getElementById('mensalidade-valor-input');
+                if (input) input.value = fmtBRL(cycloInfo.valor / 100);
+            });
+        }
         
         document.getElementById('mensalidade-cancel')?.addEventListener('click', () => { mensalidadeModal.style.display = 'none'; });
         document.getElementById('mensalidade-salvar')?.addEventListener('click', async () => {
@@ -4047,7 +4152,6 @@ async function openMensalidadeModal(clienteId, clientName) {
                 await supabase.from('clientes').update({ mensalidade: novoValor }).eq('id', clienteId);
                 alert('Mensalidade salva!');
                 mensalidadeModal.style.display = 'none';
-                // Atualizar célula
                 const row = clientsTableBody.querySelector(`tr[data-client-id="${clienteId}"]`);
                 if (row) {
                     const cell = row.querySelector('.mensalidade-cell');
@@ -4059,6 +4163,172 @@ async function openMensalidadeModal(clienteId, clientName) {
                             cell.className = 'mensalidade-cell mensal-zero';
                             cell.innerHTML = `<button class="mensalidade-btn" data-client-id="${clienteId}" data-client-name="${clientName}" style="background:none;border:none;cursor:pointer;color:var(--theme-text-muted);width:100%;font-size:0.8rem;">--</button>`;
                         }
+                    }
+                }
+            } catch (err) { alert('Erro: ' + err.message); }
+        });
+    } catch (err) {
+        body.innerHTML = `<p style="color:#ef4444;">Erro: ${err.message}</p>`;
+    }
+}
+
+// ============================================================
+// SITUAÇÃO - Modal (com dados Cyclopay como referência)
+// ============================================================
+async function openSituacaoModal(clienteId, clientName) {
+    if (!situacaoModal) return;
+    const title = document.getElementById('situacao-title');
+    const body = document.getElementById('situacao-body');
+    if (title) title.textContent = `Situação — ${clientName || ''}`;
+    if (body) body.innerHTML = '<p style="color:var(--theme-text-muted);">Carregando...</p>';
+    situacaoModal.style.display = 'flex';
+    
+    try {
+        // Buscar dados do sistema
+        const { data: clientData } = await supabase.from('clientes').select('situacao, whatsapp, nome').eq('id', clienteId).maybeSingle();
+        const situacaoAtual = clientData?.situacao || 'ATIVO';
+
+        // Buscar dados do Cyclopay
+        let cycloInfo = null;
+        try {
+            const CYCLOPAY_API_KEY = 'ak_aeb26f6be167cc077eb227c128262e731523d492';
+            const cycloResp = await fetch('https://api.cyclopay.com/v1/customers?count=100', {
+                method: 'GET',
+                headers: { 'api_key': CYCLOPAY_API_KEY, 'Accept': 'application/json' }
+            });
+            if (cycloResp.ok) {
+                const cycloData = await cycloResp.json();
+                const cycloCustomers = cycloData.items || [];
+                const dashWhatsClean = (clientData?.whatsapp || '').replace(/\D/g, '');
+                const dashName = (clientName || '').toLowerCase().trim();
+
+                let match = null;
+                if (dashWhatsClean.length >= 8) {
+                    match = cycloCustomers.find(cust => {
+                        const custPhone = String(cust.mobile_number || cust.mobile_phone || cust.phone || '').replace(/\D/g, '');
+                        if (custPhone.length < 8) return false;
+                        return dashWhatsClean.slice(-9) === custPhone.slice(-9);
+                    });
+                }
+                if (!match && dashName) {
+                    match = cycloCustomers.find(cust => {
+                        const custFull = ((cust.first_name || '') + ' ' + (cust.last_name || '')).toLowerCase().trim();
+                        return custFull === dashName || (dashName.split(/\s+/).length >= 2 && (custFull.includes(dashName) || dashName.includes(custFull)));
+                    });
+                }
+
+                if (match) {
+                    // Buscar assinatura e transações
+                    const [subsResp, transResp] = await Promise.all([
+                        fetch('https://api.cyclopay.com/v1/subscriptions?count=100', { method: 'GET', headers: { 'api_key': CYCLOPAY_API_KEY, 'Accept': 'application/json' } }),
+                        fetch('https://api.cyclopay.com/v1/transactions?orderDir=desc&count=20', { method: 'GET', headers: { 'api_key': CYCLOPAY_API_KEY, 'Accept': 'application/json' } })
+                    ]);
+
+                    let planName = '-', nextCharge = null, lastChargeDate = null, lastStatus = null;
+                    if (subsResp.ok) {
+                        const subsData = await subsResp.json();
+                        const sub = (subsData.items || []).find(s => s.customer_id === match.customer_id);
+                        if (sub) {
+                            planName = (sub.plan && sub.plan.name) || sub.product_name || sub.plan_name || '-';
+                            nextCharge = sub.next_charge;
+                            lastChargeDate = sub.last_charge_date;
+                        }
+                    }
+                    if (transResp.ok) {
+                        const transData = await transResp.json();
+                        const clientTrans = (transData.items || []).filter(t => t.customer && t.customer.customer_id === match.customer_id);
+                        if (clientTrans.length > 0) {
+                            lastStatus = clientTrans[0].transaction_status;
+                            if (!lastChargeDate) lastChargeDate = clientTrans[0].create_date;
+                        }
+                    }
+
+                    cycloInfo = {
+                        nome: `${match.first_name} ${match.last_name || ''}`.trim(),
+                        plano: planName,
+                        ativo: match.active,
+                        nextCharge: nextCharge,
+                        lastChargeDate: lastChargeDate,
+                        lastStatus: lastStatus
+                    };
+                }
+            }
+        } catch (cycloErr) {
+            console.warn('Cyclopay indisponível:', cycloErr.message);
+        }
+
+        // Montar HTML
+        let cycloHtml = '';
+        if (cycloInfo) {
+            const fmtDate = (d) => d ? new Date(d).toLocaleDateString('pt-BR') : '--';
+            let statusLabel = '--';
+            let statusColor = 'var(--theme-text-muted)';
+            if (cycloInfo.lastStatus) {
+                if (cycloInfo.lastStatus === 'paid' || cycloInfo.lastStatus === 'authorized') { statusLabel = 'Pago'; statusColor = '#22c55e'; }
+                else if (cycloInfo.lastStatus === 'refused' || cycloInfo.lastStatus === 'failed') { statusLabel = 'Falhou'; statusColor = '#ef4444'; }
+                else if (cycloInfo.lastStatus === 'pending' || cycloInfo.lastStatus === 'waiting_payment') { statusLabel = 'Pendente'; statusColor = '#f59e0b'; }
+                else { statusLabel = cycloInfo.lastStatus; }
+            }
+
+            // Sugestão automática baseada nos dados
+            let sugestao = 'ATIVO';
+            let sugestaoMotivo = '';
+            if (!cycloInfo.ativo) {
+                sugestao = 'PAROU';
+                sugestaoMotivo = 'Cliente inativo no Cyclopay';
+            } else if (cycloInfo.lastStatus === 'refused' || cycloInfo.lastStatus === 'failed') {
+                sugestao = 'EM_HIATO';
+                sugestaoMotivo = 'Última cobrança falhou';
+            }
+
+            cycloHtml = `
+                <div style="background:rgba(212,175,55,0.08);border:1px solid rgba(212,175,55,0.3);border-radius:8px;padding:12px;margin-bottom:1rem;">
+                    <div style="font-size:0.75rem;color:#d4af37;font-weight:700;margin-bottom:8px;text-transform:uppercase;letter-spacing:0.5px;">Dados Cyclopay (Referência)</div>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:0.82rem;">
+                        <div><span style="color:var(--theme-text-muted);">Plano:</span> <strong>${cycloInfo.plano}</strong></div>
+                        <div><span style="color:var(--theme-text-muted);">Status Cyclopay:</span> <strong style="color:${cycloInfo.ativo ? '#22c55e' : '#ef4444'};">${cycloInfo.ativo ? 'Ativo' : 'Inativo'}</strong></div>
+                        <div><span style="color:var(--theme-text-muted);">Ult. Cobrança:</span> <strong>${fmtDate(cycloInfo.lastChargeDate)}</strong></div>
+                        <div><span style="color:var(--theme-text-muted);">Status Cobrança:</span> <strong style="color:${statusColor};">${statusLabel}</strong></div>
+                        <div><span style="color:var(--theme-text-muted);">Próx. Cobrança:</span> <strong>${fmtDate(cycloInfo.nextCharge)}</strong></div>
+                        <div><span style="color:var(--theme-text-muted);">Nome:</span> ${cycloInfo.nome}</div>
+                    </div>
+                    ${sugestaoMotivo ? `<div style="margin-top:8px;padding:6px 10px;background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.3);border-radius:4px;font-size:0.75rem;color:#f59e0b;"><strong>Sugestão:</strong> ${sugestaoMotivo} → <strong>${sugestao === 'PAROU' ? 'Parou' : 'Em Hiato'}</strong></div>` : ''}
+                </div>
+            `;
+        } else {
+            cycloHtml = `<div style="background:rgba(100,100,100,0.1);border:1px solid rgba(100,100,100,0.3);border-radius:8px;padding:10px;margin-bottom:1rem;font-size:0.8rem;color:var(--theme-text-muted);text-align:center;">Cliente não encontrado no Cyclopay</div>`;
+        }
+
+        body.innerHTML = `
+            ${cycloHtml}
+            <div style="margin-bottom:1rem;">
+                <label style="font-size:0.85rem;color:var(--theme-text-muted);display:block;margin-bottom:0.5rem;">Situação Final</label>
+                <select id="situacao-modal-select" style="width:100%;padding:0.6rem;border-radius:6px;border:1px solid var(--theme-border-color);background:rgba(0,0,0,0.2);color:var(--theme-text-light);font-size:1rem;font-weight:600;">
+                    <option value="ATIVO" ${situacaoAtual === 'ATIVO' ? 'selected' : ''}>Ativo</option>
+                    <option value="EM_HIATO" ${situacaoAtual === 'EM_HIATO' ? 'selected' : ''}>Em Hiato</option>
+                    <option value="PAROU" ${situacaoAtual === 'PAROU' ? 'selected' : ''}>Parou</option>
+                </select>
+            </div>
+            <div style="display:flex;justify-content:flex-end;gap:0.5rem;">
+                <button id="situacao-cancel" class="msg-modal-btn msg-cancel-btn">Cancelar</button>
+                <button id="situacao-salvar" class="msg-modal-btn msg-save-btn">Salvar</button>
+            </div>
+        `;
+
+        document.getElementById('situacao-cancel')?.addEventListener('click', () => { situacaoModal.style.display = 'none'; });
+        document.getElementById('situacao-salvar')?.addEventListener('click', async () => {
+            const novoValor = document.getElementById('situacao-modal-select')?.value || 'ATIVO';
+            try {
+                await supabase.from('clientes').update({ situacao: novoValor }).eq('id', clienteId);
+                alert('Situação salva!');
+                situacaoModal.style.display = 'none';
+                // Atualizar select na tabela
+                const row = clientsTableBody.querySelector(`tr[data-client-id="${clienteId}"]`);
+                if (row) {
+                    const sel = row.querySelector('.situacao-select');
+                    if (sel) {
+                        sel.value = novoValor;
+                        sel.className = 'situacao-select ' + (novoValor === 'EM_HIATO' ? 'sit-hiato' : novoValor === 'PAROU' ? 'sit-parou' : 'sit-ativo');
                     }
                 }
             } catch (err) { alert('Erro: ' + err.message); }
@@ -5631,4 +5901,77 @@ async function _applyTipoSync(clientId, clientName) {
 function _escHtml(str) {
     if (!str) return '';
     return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+// ============================================================
+// CONFLICT BADGES: CPF e WhatsApp divergentes entre fontes
+// ============================================================
+async function checkDataConflicts(clients) {
+    if (!clients || clients.length === 0) return;
+
+    // Buscar dados_cadastrais e diagnosticos_financeiros de uma vez
+    const clientIds = clients.map(c => c.id);
+    const [dadosRes, diagRes] = await Promise.all([
+        supabase.from('dados_cadastrais').select('cliente_id, cpf, whatsapp').in('cliente_id', clientIds),
+        supabase.from('diagnosticos_financeiros').select('cliente_id, cpf, telefone').in('cliente_id', clientIds)
+    ]);
+
+    const dadosMap = {};
+    (dadosRes.data || []).forEach(d => { dadosMap[d.cliente_id] = d; });
+    const diagMap = {};
+    (diagRes.data || []).forEach(d => { diagMap[d.cliente_id] = d; });
+
+    // Para cada cliente, verificar conflitos
+    for (const client of clients) {
+        const row = document.querySelector(`tr[data-client-id="${client.id}"]`);
+        if (!row) continue;
+
+        const tipoCell = row.querySelector('.tipo-cell');
+        if (!tipoCell) continue;
+
+        const dados = dadosMap[client.id];
+        const diag = diagMap[client.id];
+
+        // Coletar CPFs (apenas números, ignorar PEND-)
+        const cpfs = new Set();
+        const addCpf = (val) => {
+            if (!val || String(val).startsWith('PEND-')) return;
+            const clean = String(val).replace(/\D/g, '');
+            if (clean.length >= 11) cpfs.add(clean);
+        };
+        addCpf(dados?.cpf);
+        addCpf(diag?.cpf);
+
+        // Coletar WhatsApps (apenas números, últimos 9 dígitos para normalizar)
+        const whatsapps = new Set();
+        const addWhats = (val) => {
+            if (!val) return;
+            const clean = String(val).replace(/\D/g, '');
+            if (clean.length >= 8) whatsapps.add(clean.slice(-9));
+        };
+        addWhats(dados?.whatsapp);
+        addWhats(diag?.telefone);
+        addWhats(client.whatsapp);
+
+        // Verificar conflitos
+        const hasCpfConflict = cpfs.size > 1;
+        const hasWhatsConflict = whatsapps.size > 1;
+
+        if (hasCpfConflict || hasWhatsConflict) {
+            let badges = '';
+            if (hasCpfConflict) {
+                badges += '<span class="conflict-badge conflict-cpf" title="CPFs divergentes detectados entre fontes">CPF ⚠</span>';
+            }
+            if (hasWhatsConflict) {
+                badges += '<span class="conflict-badge conflict-whats" title="WhatsApps divergentes detectados entre fontes">WHATS ⚠</span>';
+            }
+            // Inserir badges após o badge de tipo
+            const existingBadge = tipoCell.querySelector('.tipo-badge');
+            if (existingBadge) {
+                existingBadge.insertAdjacentHTML('afterend', badges);
+            } else {
+                tipoCell.insertAdjacentHTML('beforeend', badges);
+            }
+        }
+    }
 }
