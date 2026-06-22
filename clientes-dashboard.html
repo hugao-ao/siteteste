@@ -174,8 +174,8 @@
     /* Clickable cells */
     .pend-cell.clickable { cursor: pointer; transition: background 0.2s; border-radius: 4px; }
     .pend-cell.clickable:hover { background: rgba(218,165,32,0.08); }
-    .fin-patrimonio, .fin-dividas { cursor: pointer; transition: background 0.2s; border-radius: 4px; }
-    .fin-patrimonio:hover, .fin-dividas:hover { background: rgba(218,165,32,0.08); }
+    .fin-patrimonio, .fin-dividas, .tipo-cell { cursor: pointer; transition: background 0.2s; border-radius: 4px; }
+    .fin-patrimonio:hover, .fin-dividas:hover, .tipo-cell:hover { background: rgba(218,165,32,0.08); }
     /* Action buttons for objetivos/particularidades */
     .obj-action-btn, .partic-action-btn {
         background: none; border: none; cursor: pointer; padding: 0.2rem 0.4rem;
@@ -1101,6 +1101,157 @@
         .pat-modal-wrapper { width:95vw !important; left:2.5vw !important; top:3vh !important; height:92vh !important; }
     }
 
+    /* === TIPO SYNC MODAL === */
+    .tipo-sync-wrapper {
+        background: #052614;
+        border: 1px solid rgba(212,175,55,0.3);
+        border-radius: 12px;
+        width: 700px;
+        max-width: 95vw;
+        max-height: 85vh;
+        overflow-y: auto;
+        box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+    }
+    .tipo-sync-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 1rem 1.5rem;
+        border-bottom: 1px solid rgba(212,175,55,0.2);
+        background: #021C0E;
+        border-radius: 12px 12px 0 0;
+    }
+    .tipo-sync-header h2 {
+        color: #D4AF37;
+        font-size: 1.1rem;
+        margin: 0;
+    }
+    .tipo-sync-body {
+        padding: 1.5rem;
+    }
+    .tipo-sync-loading {
+        text-align: center;
+        color: #A0B8A6;
+        padding: 2rem;
+    }
+    .tipo-sync-section {
+        margin-bottom: 1.5rem;
+    }
+    .tipo-sync-section h3 {
+        color: #F2E8C9;
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 0.5rem;
+        padding-bottom: 0.3rem;
+        border-bottom: 1px solid rgba(212,175,55,0.15);
+    }
+    .tipo-sync-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 0.5rem;
+    }
+    .tipo-sync-table th {
+        text-align: left;
+        color: #A0B8A6;
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        padding: 0.4rem 0.6rem;
+        border-bottom: 1px solid rgba(212,175,55,0.1);
+    }
+    .tipo-sync-table td {
+        padding: 0.5rem 0.6rem;
+        color: #F2E8C9;
+        font-size: 0.85rem;
+        border-bottom: 1px solid rgba(255,255,255,0.03);
+    }
+    .tipo-sync-table tr.selected-row {
+        background: rgba(212,175,55,0.12);
+        border-radius: 4px;
+    }
+    .tipo-sync-table tr:hover {
+        background: rgba(212,175,55,0.06);
+    }
+    .tipo-sync-radio {
+        accent-color: #D4AF37;
+        width: 16px;
+        height: 16px;
+        cursor: pointer;
+    }
+    .tipo-sync-value {
+        font-family: 'Courier New', monospace;
+        font-size: 0.9rem;
+    }
+    .tipo-sync-value.empty {
+        color: #666;
+        font-style: italic;
+    }
+    .tipo-sync-source {
+        font-size: 0.7rem;
+        color: #A0B8A6;
+        background: rgba(10,53,32,0.6);
+        padding: 2px 6px;
+        border-radius: 3px;
+    }
+    .tipo-sync-actions {
+        display: flex;
+        gap: 1rem;
+        justify-content: flex-end;
+        margin-top: 1.5rem;
+        padding-top: 1rem;
+        border-top: 1px solid rgba(212,175,55,0.15);
+    }
+    .tipo-sync-btn {
+        padding: 0.6rem 1.5rem;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 0.85rem;
+        font-weight: 600;
+        transition: all 0.2s;
+    }
+    .tipo-sync-btn.primary {
+        background: #D4AF37;
+        color: #021C0E;
+    }
+    .tipo-sync-btn.primary:hover {
+        background: #e6c347;
+        transform: translateY(-1px);
+    }
+    .tipo-sync-btn.primary:disabled {
+        background: #555;
+        color: #999;
+        cursor: not-allowed;
+        transform: none;
+    }
+    .tipo-sync-btn.secondary {
+        background: rgba(10,53,32,0.8);
+        color: #F2E8C9;
+        border: 1px solid rgba(212,175,55,0.2);
+    }
+    .tipo-sync-btn.secondary:hover {
+        background: rgba(10,53,32,1);
+    }
+    .tipo-sync-status {
+        margin-top: 0.8rem;
+        padding: 0.6rem 1rem;
+        border-radius: 6px;
+        font-size: 0.8rem;
+        display: none;
+    }
+    .tipo-sync-status.success {
+        display: block;
+        background: rgba(16,185,129,0.15);
+        color: #10b981;
+        border: 1px solid rgba(16,185,129,0.3);
+    }
+    .tipo-sync-status.error {
+        display: block;
+        background: rgba(239,68,68,0.15);
+        color: #ef4444;
+        border: 1px solid rgba(239,68,68,0.3);
+    }
+
   </style>
 </head>
 <body>
@@ -1382,6 +1533,19 @@
       <div class="div-resize-handle pat-resize-tr" data-dir="tr"></div>
       <div class="div-resize-handle pat-resize-r" data-dir="r"></div>
       <div class="div-resize-handle pat-resize-b" data-dir="b"></div>
+    </div>
+  </div>
+
+  <!-- Modal de Sincronização CPF/WhatsApp -->
+  <div id="tipo-sync-modal" class="modal">
+    <div class="tipo-sync-wrapper">
+      <div class="tipo-sync-header">
+        <h2 id="tipo-sync-title">Dados Cadastrais</h2>
+        <span class="modal-close" id="tipo-sync-close-btn">&times;</span>
+      </div>
+      <div class="tipo-sync-body" id="tipo-sync-body">
+        <div class="tipo-sync-loading">Carregando dados...</div>
+      </div>
     </div>
   </div>
 
