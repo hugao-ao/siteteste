@@ -3969,18 +3969,33 @@ document.addEventListener("DOMContentLoaded", initializeDashboard);
 
 
 // ============================================================
-// PENDÊNCIAS MODAL (Consultor / Cliente)
+// PENDÊNCIAS MODAL (Consultor / Cliente) - REDESIGN 3 COLUNAS
 // ============================================================
+const PEND_OBJ_COLORS = ['#f59e0b','#60a5fa','#34d399','#f472b6','#a78bfa','#fb923c','#22d3ee','#e879f9','#84cc16','#fbbf24'];
+
+
 async function openPendenciasModal(clientId, clientName, pendType) {
     const modal = document.getElementById('pendencias-modal');
+    const wrapper = document.getElementById('pend-modal-wrapper');
     const title = document.getElementById('pendencias-modal-title');
     const body = document.getElementById('pendencias-modal-body');
-    if (!modal) return;
+    if (!modal || !wrapper) return;
     
     const typeLabel = pendType === 'consultor' ? 'Consultor' : 'Cliente';
     title.textContent = `Pendências ${typeLabel}: ${clientName}`;
-    body.innerHTML = '<p style="color:var(--theme-text-muted);">Carregando...</p>';
+    body.innerHTML = '<p style="color:var(--theme-text-muted);padding:2rem;text-align:center;">Carregando...</p>';
     modal.style.display = 'block';
+    
+    // Reset wrapper position
+    wrapper.style.top = '5vh';
+    wrapper.style.left = '5vw';
+    wrapper.style.width = '90vw';
+    wrapper.style.height = '85vh';
+    
+    // Init drag
+    _initPendDrag(wrapper);
+    // Init resize
+    _initPendResize(wrapper);
     
     try {
         const { data, error } = await supabase
@@ -3991,148 +4006,374 @@ async function openPendenciasModal(clientId, clientName, pendType) {
             .maybeSingle();
         
         if (error || !data || !data.dados) {
-            body.innerHTML = '<p class="dash-modal-empty">Nenhum dado de acompanhamento encontrado.</p>';
+            body.innerHTML = '<p class="pend-empty-col">Nenhum dado de acompanhamento encontrado.</p>';
             return;
         }
         
         const dados = data.dados;
         const micros = Array.isArray(dados.microPassos) ? dados.microPassos : [];
+        const macros = Array.isArray(dados.macroPassos) ? dados.macroPassos : [];
         const objetivos = Array.isArray(dados.objetivos) ? dados.objetivos : [];
         
-        // Filter by type
-        const macros = Array.isArray(dados.macroPassos) ? dados.macroPassos : [];
-        let filtered;
+        // Filter by pendType
+        let filteredMicros, filteredMacros;
         if (pendType === 'consultor') {
-            filtered = micros.filter(m => m.responsavel_consultor && m.status !== 'concluido');
+            filteredMicros = micros.filter(m => m.responsavel_consultor && m.status !== 'concluido');
+            filteredMacros = [];
         } else {
-            // Cliente: micro passos sem responsavel_consultor não concluídos + macros não concluídas
-            const microsCli = micros.filter(m => !m.responsavel_consultor && m.status !== 'concluido');
-            const macrosCli = macros.filter(m => m.status !== 'concluido').map(m => ({...m, _isMacro: true}));
-            filtered = [...microsCli, ...macrosCli];
+            filteredMicros = micros.filter(m => !m.responsavel_consultor && m.status !== 'concluido');
+            filteredMacros = macros.filter(m => m.status !== 'concluido');
         }
         
-        if (filtered.length === 0) {
-            body.innerHTML = '<p class="dash-modal-empty">Nenhum micro passo encontrado para este filtro.</p>';
-            return;
-        }
+        // Assign colors to objectives
+        const objColorMap = {};
+        objetivos.forEach((obj, i) => {
+            objColorMap[String(obj.id)] = PEND_OBJ_COLORS[i % PEND_OBJ_COLORS.length];
+        });
         
-        // Build filterable table
-        let html = `<div class="dash-modal-filters">
-            <input type="text" id="pend-filter-text" placeholder="Buscar por título...">
-            <select id="pend-filter-status">
-                <option value="">Todos os status</option>
-                <option value="pendente">Pendente</option>
-                <option value="em_andamento">Em Andamento</option>
-                <option value="concluido">Concluído</option>
-            </select>
-            <select id="pend-filter-objetivo">
-                <option value="">Todos os objetivos</option>
-                ${objetivos.map((o, i) => `<option value="${o.id || i}">${o.nome || 'Objetivo ' + (i+1)}</option>`).join('')}
-            </select>
+        // Count micros per objective
+        const objMicroCount = {};
+        objetivos.forEach(obj => { objMicroCount[String(obj.id)] = 0; });
+        filteredMicros.forEach(m => {
+            const ids = m.objetivos_ids || (m.objetivo_id ? [m.objetivo_id] : []);
+            ids.forEach(oid => {
+                if (objMicroCount[String(oid)] !== undefined) objMicroCount[String(oid)]++;
+            });
+        });
+        
+        // Build HTML
+        let html = '';
+        
+        // Filter bar
+        html += `<div class="pend-filter-bar">
+            <input type="text" id="pend-search-input" placeholder="🔍 Buscar por título ou detalhe...">
+            <div class="pend-status-badges">
+                <span class="pend-status-badge psb-todos active" data-status="todos">Todos</span>
+                <span class="pend-status-badge psb-pendente" data-status="pendente">Pendente</span>
+                <span class="pend-status-badge psb-em_andamento" data-status="em_andamento">Em Andamento</span>
+                <span class="pend-status-badge psb-concluido" data-status="concluido">Concluído</span>
+            </div>
         </div>`;
         
-        html += `<table class="dash-list-table" id="pend-table">
-            <thead><tr>
-                <th data-sort="desc">Título</th>
-                <th data-sort="status">Status</th>
-                <th data-sort="prazo">Prazo</th>
-                <th data-sort="obj">Objetivo</th>
-                <th>Ações</th>
-            </tr></thead>
-            <tbody>`;
+        // Content area with SVG + 3 columns
+        html += `<div class="pend-content-area">
+            <svg class="pend-svg-layer" id="pend-svg-lines"></svg>
+            <div class="pend-three-col" id="pend-three-col">`;
         
-        filtered.forEach((m, idx) => {
-            const globalIdx = m._isMacro ? -1 : micros.indexOf(m);
-            const statusLabel = (m.status || 'pendente').replace('_', ' ');
-            const statusClass = 'st-' + (m.status || 'pendente');
-            let prazoStr = '--';
-            if (m.prazo) prazoStr = new Date(m.prazo + 'T00:00:00').toLocaleDateString('pt-BR');
-            else if (m.inicio) prazoStr = new Date(m.inicio + 'T00:00:00').toLocaleDateString('pt-BR');
-            
-            // Find linked objectives
-            let objNames = '--';
-            if (m.objetivos_ids && m.objetivos_ids.length > 0) {
-                objNames = m.objetivos_ids.map(oid => {
-                    const o = objetivos.find(ob => String(ob.id) === String(oid));
-                    return o ? (o.nome || 'Objetivo') : '';
-                }).filter(Boolean).join(', ') || '--';
-            } else if (m.objetivo_id) {
-                const o = objetivos.find(ob => String(ob.id) === String(m.objetivo_id));
-                objNames = o ? (o.nome || 'Objetivo') : '--';
-            }
-            
-            const typeLabel = m._isMacro ? '<span style="font-size:0.65rem;background:#555;color:#fff;padding:1px 4px;border-radius:3px;margin-left:4px;">MACRO</span>' : '';
-            html += `<tr data-global-idx="${globalIdx}" data-status="${m.status || 'pendente'}" data-obj-ids="${(m.objetivos_ids || []).join(',')}">
-                <td><strong>${sanitizeInput(m.desc || 'Sem título')}</strong>${typeLabel}${m.detalhamento ? '<br><span style="font-size:0.72rem;color:var(--theme-text-muted);">' + sanitizeInput(m.detalhamento.substring(0,60)) + '</span>' : ''}</td>
-                <td><span class="status-badge ${statusClass}">${statusLabel}</span></td>
-                <td style="font-size:0.78rem;">${prazoStr}</td>
-                <td style="font-size:0.78rem;">${sanitizeInput(objNames)}</td>
-                <td>${globalIdx >= 0 ? `<button class="btn-update-micro" data-global-idx="${globalIdx}" data-client-id="${clientId}">Atualizar</button>` : '--'}</td>
-            </tr>`;
-        });
-        
-        html += '</tbody></table>';
-        body.innerHTML = html;
-        
-        // Filter listeners
-        const filterText = document.getElementById('pend-filter-text');
-        const filterStatus = document.getElementById('pend-filter-status');
-        const filterObj = document.getElementById('pend-filter-objetivo');
-        const tableBody = document.querySelector('#pend-table tbody');
-        
-        function applyPendFilters() {
-            const term = filterText.value.toLowerCase().trim();
-            const status = filterStatus.value;
-            const objIdx = filterObj.value;
-            const rows = tableBody.querySelectorAll('tr');
-            rows.forEach(row => {
-                let show = true;
-                if (term && !row.textContent.toLowerCase().includes(term)) show = false;
-                if (status && row.dataset.status !== status) show = false;
-                if (objIdx !== '' && !(row.dataset.objIds || '').split(',').includes(objIdx)) show = false;
-                row.style.display = show ? '' : 'none';
+        // LEFT COLUMN: Objectives
+        html += `<div class="pend-col-left" id="pend-col-left">
+            <div class="pend-col-title">Objetivos</div>`;
+        if (objetivos.length === 0) {
+            html += '<div class="pend-empty-col">Nenhum objetivo cadastrado</div>';
+        } else {
+            objetivos.forEach((obj, i) => {
+                const color = objColorMap[String(obj.id)];
+                const count = objMicroCount[String(obj.id)] || 0;
+                html += `<div class="pend-obj-card" data-obj-id="${obj.id}" style="border-left-color:${color};" id="pend-obj-${obj.id}">
+                    <div class="pend-obj-card-name">${sanitizeInput(obj.nome || 'Objetivo ' + (i+1))}</div>
+                    <div class="pend-obj-card-count">${count} micro passo${count !== 1 ? 's' : ''}</div>
+                </div>`;
             });
         }
+        html += '</div>';
         
-        if (filterText) filterText.addEventListener('input', applyPendFilters);
-        if (filterStatus) filterStatus.addEventListener('change', applyPendFilters);
-        if (filterObj) filterObj.addEventListener('change', applyPendFilters);
-        
-        // Update button listeners
-        body.querySelectorAll('.btn-update-micro').forEach(btn => {
-            btn.addEventListener('click', () => {
-                const gIdx = parseInt(btn.dataset.globalIdx);
-                const cId = btn.dataset.clientId;
-                openMicroUpdateDash(cId, gIdx);
-            });
-        });
-        
-        // Sort listeners
-        const ths = body.querySelectorAll('#pend-table thead th[data-sort]');
-        ths.forEach(th => {
-            th.addEventListener('click', () => {
-                const key = th.dataset.sort;
-                const rows = Array.from(tableBody.querySelectorAll('tr'));
-                const dir = th.classList.contains('sort-asc') ? 'desc' : 'asc';
-                ths.forEach(t => t.classList.remove('sort-asc', 'sort-desc'));
-                th.classList.add('sort-' + dir);
-                rows.sort((a, b) => {
-                    let aVal, bVal;
-                    if (key === 'desc') { aVal = a.cells[0].textContent; bVal = b.cells[0].textContent; }
-                    else if (key === 'status') { aVal = a.dataset.status; bVal = b.dataset.status; }
-                    else if (key === 'prazo') { aVal = a.cells[2].textContent; bVal = b.cells[2].textContent; }
-                    else { aVal = a.cells[3].textContent; bVal = b.cells[3].textContent; }
-                    if (dir === 'asc') return aVal.localeCompare(bVal);
-                    return bVal.localeCompare(aVal);
+        // CENTER COLUMN: Micro Passos
+        html += `<div class="pend-col-center" id="pend-col-center">
+            <div class="pend-col-title">Micro Passos</div>`;
+        if (filteredMicros.length === 0) {
+            html += '<div class="pend-empty-col">Nenhum micro passo pendente</div>';
+        } else {
+            filteredMicros.forEach((m, idx) => {
+                const globalIdx = micros.indexOf(m);
+                const statusLabel = (m.status || 'pendente').replace('_', ' ');
+                const statusClass = 'st-' + (m.status || 'pendente');
+                let prazoStr = '';
+                if (m.prazo) prazoStr = new Date(m.prazo + 'T00:00:00').toLocaleDateString('pt-BR');
+                
+                // Objective IDs for this micro
+                const objIds = m.objetivos_ids || (m.objetivo_id ? [m.objetivo_id] : []);
+                const objIdsStr = objIds.map(String).join(',');
+                
+                // Color dots
+                let dotsHtml = '';
+                objIds.forEach(oid => {
+                    const c = objColorMap[String(oid)];
+                    if (c) dotsHtml += `<span class="pend-micro-card-obj-dot" style="background:${c};" title="${(objetivos.find(o=>String(o.id)===String(oid))||{}).nome||''}"></span>`;
                 });
-                rows.forEach(r => tableBody.appendChild(r));
+                
+                html += `<div class="pend-micro-card" data-global-idx="${globalIdx}" data-status="${m.status||'pendente'}" data-obj-ids="${objIdsStr}" data-client-id="${clientId}" id="pend-micro-${globalIdx}">
+                    <div class="pend-micro-card-title" data-global-idx="${globalIdx}" data-client-id="${clientId}">${sanitizeInput(m.desc || 'Sem título')}</div>
+                    ${m.detalhamento ? `<div class="pend-micro-card-detail">${sanitizeInput(m.detalhamento.substring(0,80))}${m.detalhamento.length > 80 ? '...' : ''}</div>` : ''}
+                    <div class="pend-micro-card-meta">
+                        <span class="status-badge ${statusClass}">${statusLabel}</span>
+                        ${prazoStr ? `<span class="pend-micro-card-prazo">📅 ${prazoStr}</span>` : ''}
+                        <span class="pend-micro-card-obj-dots">${dotsHtml}</span>
+                    </div>
+                </div>`;
+            });
+        }
+        html += '</div>';
+        
+        // RIGHT COLUMN: Macro Strategies
+        html += `<div class="pend-col-right" id="pend-col-right">
+            <div class="pend-col-title">Estratégias Macro</div>`;
+        if (filteredMacros.length === 0 && pendType === 'consultor') {
+            html += '<div class="pend-empty-col">Macros não se aplicam ao consultor</div>';
+        } else if (filteredMacros.length === 0) {
+            html += '<div class="pend-empty-col">Nenhuma estratégia macro pendente</div>';
+        } else {
+            filteredMacros.forEach((macro, idx) => {
+                const statusLabel = (macro.status || 'pendente').replace('_', ' ');
+                const statusClass = 'st-' + (macro.status || 'pendente');
+                // Find micros linked to this macro via macro.micro_ids
+                const linkedMicroIds = Array.isArray(macro.micro_ids) ? macro.micro_ids.map(String) : [];
+                const linkedMicros = filteredMicros.filter(m => linkedMicroIds.includes(String(m.id)));
+                html += `<div class="pend-macro-card" data-macro-idx="${idx}" data-status="${macro.status||'pendente'}" id="pend-macro-${idx}">
+                    <div class="pend-macro-card-name">${sanitizeInput(macro.desc || 'Macro ' + (idx+1))}</div>
+                    <div class="pend-macro-card-status"><span class="status-badge ${statusClass}">${statusLabel}</span></div>
+                    ${linkedMicros.length > 0 ? `<div class="pend-macro-card-micros">${linkedMicros.length} micro(s) vinculado(s)</div>` : ''}
+                </div>`;
+            });
+        }
+        html += '</div>';
+        
+        html += '</div></div>'; // close pend-three-col and pend-content-area
+        
+        body.innerHTML = html;
+        
+        // --- EVENT LISTENERS ---
+        
+        // Status badge filter
+        const badges = body.querySelectorAll('.pend-status-badge');
+        let activeStatus = 'todos';
+        badges.forEach(badge => {
+            badge.addEventListener('click', () => {
+                badges.forEach(b => b.classList.remove('active'));
+                badge.classList.add('active');
+                activeStatus = badge.dataset.status;
+                applyPendFilters();
             });
         });
+        
+        // Text search
+        const searchInput = document.getElementById('pend-search-input');
+        if (searchInput) {
+            searchInput.addEventListener('input', () => applyPendFilters());
+        }
+        
+        // Objective card click → filter
+        let activeObjId = null;
+        const objCards = body.querySelectorAll('.pend-obj-card');
+        objCards.forEach(card => {
+            card.addEventListener('click', () => {
+                const oid = card.dataset.objId;
+                if (activeObjId === oid) {
+                    // Deselect
+                    activeObjId = null;
+                    objCards.forEach(c => c.classList.remove('active'));
+                } else {
+                    activeObjId = oid;
+                    objCards.forEach(c => c.classList.remove('active'));
+                    card.classList.add('active');
+                }
+                applyPendFilters();
+            });
+        });
+        
+        // Micro card title click → open update modal
+        body.querySelectorAll('.pend-micro-card-title').forEach(titleEl => {
+            titleEl.addEventListener('click', () => {
+                const gIdx = parseInt(titleEl.dataset.globalIdx);
+                const cId = titleEl.dataset.clientId;
+                if (gIdx >= 0) openMicroUpdateDash(cId, gIdx);
+            });
+        });
+        
+        // Filter function
+        function applyPendFilters() {
+            const term = (searchInput ? searchInput.value : '').toLowerCase().trim();
+            const microCards = body.querySelectorAll('.pend-micro-card');
+            const macroCards = body.querySelectorAll('.pend-macro-card');
+            
+            microCards.forEach(card => {
+                let show = true;
+                if (activeStatus !== 'todos' && card.dataset.status !== activeStatus) show = false;
+                if (term && !card.textContent.toLowerCase().includes(term)) show = false;
+                if (activeObjId) {
+                    const cardObjIds = (card.dataset.objIds || '').split(',');
+                    if (!cardObjIds.includes(activeObjId)) show = false;
+                }
+                card.classList.toggle('pend-card-hidden', !show);
+            });
+            
+            macroCards.forEach(card => {
+                let show = true;
+                if (activeStatus !== 'todos' && card.dataset.status !== activeStatus) show = false;
+                if (term && !card.textContent.toLowerCase().includes(term)) show = false;
+                card.classList.toggle('pend-card-hidden', !show);
+            });
+            
+            // Redraw SVG lines
+            setTimeout(() => _drawPendConnectors(objetivos, objColorMap, filteredMicros, micros), 50);
+        }
+        
+        // Draw SVG connectors after render
+        setTimeout(() => _drawPendConnectors(objetivos, objColorMap, filteredMicros, micros), 150);
+        
+        // Redraw on scroll
+        const colLeft = document.getElementById('pend-col-left');
+        const colCenter = document.getElementById('pend-col-center');
+        if (colLeft) colLeft.addEventListener('scroll', () => setTimeout(() => _drawPendConnectors(objetivos, objColorMap, filteredMicros, micros), 30));
+        if (colCenter) colCenter.addEventListener('scroll', () => setTimeout(() => _drawPendConnectors(objetivos, objColorMap, filteredMicros, micros), 30));
         
     } catch (err) {
-        body.innerHTML = '<p style="color:#ef4444;">Erro ao carregar: ' + err.message + '</p>';
+        body.innerHTML = '<p style="color:#ef4444;padding:1rem;">Erro ao carregar: ' + err.message + '</p>';
     }
 }
+
+// --- SVG CONNECTOR LINES ---
+function _drawPendConnectors(objetivos, objColorMap, filteredMicros, allMicros) {
+    const svg = document.getElementById('pend-svg-lines');
+    if (!svg) return;
+    const contentArea = svg.parentElement;
+    if (!contentArea) return;
+    
+    const rect = contentArea.getBoundingClientRect();
+    svg.setAttribute('width', rect.width);
+    svg.setAttribute('height', rect.height);
+    svg.innerHTML = '';
+    
+    objetivos.forEach(obj => {
+        const objEl = document.getElementById('pend-obj-' + obj.id);
+        if (!objEl || objEl.classList.contains('pend-card-hidden')) return;
+        
+        const color = objColorMap[String(obj.id)] || '#888';
+        
+        // Find visible micro cards linked to this objective
+        filteredMicros.forEach(m => {
+            const globalIdx = allMicros.indexOf(m);
+            const microEl = document.getElementById('pend-micro-' + globalIdx);
+            if (!microEl || microEl.classList.contains('pend-card-hidden')) return;
+            
+            const objIds = m.objetivos_ids || (m.objetivo_id ? [m.objetivo_id] : []);
+            if (!objIds.map(String).includes(String(obj.id))) return;
+            
+            // Calculate positions relative to content area
+            const objRect = objEl.getBoundingClientRect();
+            const microRect = microEl.getBoundingClientRect();
+            
+            const x1 = objRect.right - rect.left;
+            const y1 = objRect.top + objRect.height / 2 - rect.top;
+            const x2 = microRect.left - rect.left;
+            const y2 = microRect.top + microRect.height / 2 - rect.top;
+            
+            // Draw curved path
+            const midX = (x1 + x2) / 2;
+            const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            path.setAttribute('d', `M${x1},${y1} C${midX},${y1} ${midX},${y2} ${x2},${y2}`);
+            path.setAttribute('stroke', color);
+            path.setAttribute('stroke-width', '1.5');
+            path.setAttribute('fill', 'none');
+            path.setAttribute('opacity', '0.5');
+            svg.appendChild(path);
+        });
+    });
+}
+
+// --- DRAG FUNCTIONALITY ---
+function _initPendDrag(wrapper) {
+    const header = document.getElementById('pend-modal-header');
+    if (!header || header._dragInit) return;
+    header._dragInit = true;
+    
+    let isDragging = false, startX, startY, startLeft, startTop;
+    
+    header.addEventListener('mousedown', (e) => {
+        if (e.target.classList.contains('modal-close')) return;
+        isDragging = true;
+        startX = e.clientX;
+        startY = e.clientY;
+        startLeft = wrapper.offsetLeft;
+        startTop = wrapper.offsetTop;
+        document.body.style.userSelect = 'none';
+    });
+    
+    document.addEventListener('mousemove', (e) => {
+        if (!isDragging) return;
+        const dx = e.clientX - startX;
+        const dy = e.clientY - startY;
+        wrapper.style.left = (startLeft + dx) + 'px';
+        wrapper.style.top = (startTop + dy) + 'px';
+    });
+    
+    document.addEventListener('mouseup', () => {
+        if (isDragging) {
+            isDragging = false;
+            document.body.style.userSelect = '';
+        }
+    });
+}
+
+// --- RESIZE FUNCTIONALITY ---
+function _initPendResize(wrapper) {
+    const handles = wrapper.querySelectorAll('.pend-resize-handle');
+    if (!handles.length || wrapper._resizeInit) return;
+    wrapper._resizeInit = true;
+    
+    handles.forEach(handle => {
+        let isResizing = false, startX, startY, startW, startH, startL, startT;
+        const dir = handle.dataset.dir;
+        
+        handle.addEventListener('mousedown', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            isResizing = true;
+            startX = e.clientX;
+            startY = e.clientY;
+            startW = wrapper.offsetWidth;
+            startH = wrapper.offsetHeight;
+            startL = wrapper.offsetLeft;
+            startT = wrapper.offsetTop;
+            document.body.style.userSelect = 'none';
+            
+            const onMove = (ev) => {
+                if (!isResizing) return;
+                const dx = ev.clientX - startX;
+                const dy = ev.clientY - startY;
+                
+                if (dir === 'br') {
+                    wrapper.style.width = Math.max(500, startW + dx) + 'px';
+                    wrapper.style.height = Math.max(350, startH + dy) + 'px';
+                } else if (dir === 'r') {
+                    wrapper.style.width = Math.max(500, startW + dx) + 'px';
+                } else if (dir === 'b') {
+                    wrapper.style.height = Math.max(350, startH + dy) + 'px';
+                } else if (dir === 'bl') {
+                    const newW = Math.max(500, startW - dx);
+                    wrapper.style.width = newW + 'px';
+                    wrapper.style.left = (startL + (startW - newW)) + 'px';
+                    wrapper.style.height = Math.max(350, startH + dy) + 'px';
+                } else if (dir === 'tr') {
+                    wrapper.style.width = Math.max(500, startW + dx) + 'px';
+                    const newH = Math.max(350, startH - dy);
+                    wrapper.style.height = newH + 'px';
+                    wrapper.style.top = (startT + (startH - newH)) + 'px';
+                }
+            };
+            
+            const onUp = () => {
+                isResizing = false;
+                document.body.style.userSelect = '';
+                document.removeEventListener('mousemove', onMove);
+                document.removeEventListener('mouseup', onUp);
+            };
+            
+            document.addEventListener('mousemove', onMove);
+            document.addEventListener('mouseup', onUp);
+        });
+    });
+}
+
 
 // --- Micro Update Modal (from dashboard) ---
 function openMicroUpdateDash(clientId, microIndex) {
