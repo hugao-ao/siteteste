@@ -5274,30 +5274,69 @@ async function openTipoSyncModal(clientId, clientName) {
         });
 
         // Source 3: HVSF Tasks / Cyclopay
+        // Estratégia de matching multi-critério para evitar falsos positivos:
+        // 1. WhatsApp match (mais confiável — número é único por pessoa)
+        // 2. CPF match (se dados_cadastrais tem CPF real)
+        // 3. Nome exato
+        // 4. Nome parcial (SOMENTE se o nome do dashboard tem 2+ palavras)
         let hvsfCpf = '';
         let hvsfWhatsapp = '';
         if (hvsfTasks.data && hvsfTasks.data.length > 0) {
             const searchName = (clientName || '').toLowerCase().trim();
-            // Matching robusto: exato, parcial (contém), ou por partes do nome
-            const matchingTask = hvsfTasks.data.find(t => {
-                const taskName = (t.client_name || '').toLowerCase().trim();
-                // Match exato
-                if (taskName === searchName) return true;
-                // Match parcial: nome do hvsf contido no nome do dashboard ou vice-versa
-                if (taskName && searchName && (taskName.includes(searchName) || searchName.includes(taskName))) return true;
-                // Match por primeiro + último nome
-                const searchParts = searchName.split(/\s+/);
-                const taskParts = taskName.split(/\s+/);
-                if (searchParts.length >= 2 && taskParts.length >= 2) {
-                    const searchFirst = searchParts[0];
-                    const searchLast = searchParts[searchParts.length - 1];
-                    if (taskName.includes(searchFirst) && taskName.includes(searchLast)) return true;
-                    const taskFirst = taskParts[0];
-                    const taskLast = taskParts[taskParts.length - 1];
-                    if (searchName.includes(taskFirst) && searchName.includes(taskLast)) return true;
-                }
-                return false;
-            });
+            // Pega o WhatsApp do cliente no dashboard (já carregado na source 4)
+            const clientWhatsapp = clienteRow.data?.whatsapp || '';
+            const clientWhatsappClean = clientWhatsapp.replace(/\D/g, '');
+            // Pega o CPF do dados_cadastrais (se não for PEND-)
+            const clientCpf = (dc?.cpf || '').startsWith('PEND-') ? '' : (dc?.cpf || '').replace(/\D/g, '');
+
+            let matchingTask = null;
+
+            // Prioridade 1: Match por WhatsApp (últimos 8-9 dígitos)
+            if (clientWhatsappClean.length >= 8) {
+                matchingTask = hvsfTasks.data.find(t => {
+                    if (!t.tasks?.client_data?.whatsapp) return false;
+                    const taskPhone = String(t.tasks.client_data.whatsapp).replace(/\D/g, '');
+                    if (taskPhone.length < 8) return false;
+                    const minLen = Math.min(clientWhatsappClean.length, taskPhone.length, 9);
+                    return clientWhatsappClean.slice(-minLen) === taskPhone.slice(-minLen);
+                });
+            }
+
+            // Prioridade 2: Match por CPF (se não achou por WhatsApp)
+            if (!matchingTask && clientCpf.length >= 11) {
+                matchingTask = hvsfTasks.data.find(t => {
+                    if (!t.tasks?.client_data?.cpf) return false;
+                    const taskCpf = String(t.tasks.client_data.cpf).replace(/\D/g, '');
+                    return taskCpf === clientCpf;
+                });
+            }
+
+            // Prioridade 3: Match por nome exato
+            if (!matchingTask) {
+                matchingTask = hvsfTasks.data.find(t => {
+                    const taskName = (t.client_name || '').toLowerCase().trim();
+                    return taskName === searchName;
+                });
+            }
+
+            // Prioridade 4: Match por nome parcial (SOMENTE se nome do dashboard tem 2+ palavras)
+            if (!matchingTask && searchName.split(/\s+/).length >= 2) {
+                matchingTask = hvsfTasks.data.find(t => {
+                    const taskName = (t.client_name || '').toLowerCase().trim();
+                    // Nome do dashboard contido no hvsf ou vice-versa
+                    if (taskName.includes(searchName) || searchName.includes(taskName)) return true;
+                    // Match por primeiro + último nome
+                    const searchParts = searchName.split(/\s+/);
+                    const taskParts = taskName.split(/\s+/);
+                    if (searchParts.length >= 2 && taskParts.length >= 2) {
+                        const searchFirst = searchParts[0];
+                        const searchLast = searchParts[searchParts.length - 1];
+                        if (taskName.includes(searchFirst) && taskName.includes(searchLast)) return true;
+                    }
+                    return false;
+                });
+            }
+
             if (matchingTask && matchingTask.tasks && matchingTask.tasks.client_data) {
                 hvsfCpf = matchingTask.tasks.client_data.cpf || '';
                 hvsfWhatsapp = matchingTask.tasks.client_data.whatsapp || '';
