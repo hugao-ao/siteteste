@@ -4077,6 +4077,9 @@ async function openPendenciasModal(clientId, clientName, pendType) {
         }
         html += '</div>';
         
+        // RESIZER between left and center
+        html += '<div class="pend-col-resizer" id="pend-resizer-left"></div>';
+        
         // CENTER COLUMN: Micro Passos
         html += `<div class="pend-col-center" id="pend-col-center">
             <div class="pend-col-title">Micro Passos</div>`;
@@ -4113,6 +4116,9 @@ async function openPendenciasModal(clientId, clientName, pendType) {
             });
         }
         html += '</div>';
+        
+        // RESIZER between center and right
+        html += '<div class="pend-col-resizer" id="pend-resizer-right"></div>';
         
         // RIGHT COLUMN: Macro Strategies
         html += `<div class="pend-col-right" id="pend-col-right">
@@ -4154,7 +4160,7 @@ async function openPendenciasModal(clientId, clientName, pendType) {
                         return o ? sanitizeInput(o.nome) : '';
                     }).filter(Boolean).join(', ');
                 }
-                html += `<div class="pend-macro-card" data-macro-idx="${idx}" data-status="${macro.status||'pendente'}" id="pend-macro-${idx}">
+                html += `<div class="pend-macro-card" data-macro-idx="${idx}" data-status="${macro.status||'pendente'}" data-micro-ids="${linkedMicroIds.join(',')}" id="pend-macro-${idx}">
                     <div class="pend-macro-card-fase">${sanitizeInput(macro.fase || 'Fase ' + (idx+1))}</div>
                     <div class="pend-macro-card-desc">${sanitizeInput(macro.desc || '').replace(/\n/g,'<br>')}</div>
                     ${linkedMicros.length > 0 ? `<div class="pend-macro-progress-wrap"><div class="pend-macro-progress-info"><span>Progresso (micro passos)</span><span>${macroProgress}%</span></div><div class="pend-macro-progress-bar"><div class="pend-macro-progress-fill" style="width:${macroProgress}%;"></div></div></div>` : ''}
@@ -4245,25 +4251,33 @@ async function openPendenciasModal(clientId, clientName, pendType) {
             });
             
             // Redraw SVG lines
-            setTimeout(() => _drawPendConnectors(objetivos, objColorMap, filteredMicros, micros), 50);
+            setTimeout(() => _drawPendConnectors(objetivos, objColorMap, filteredMicros, filteredMacros, micros), 50);
         }
         
         // Draw SVG connectors after render
-        setTimeout(() => _drawPendConnectors(objetivos, objColorMap, filteredMicros, micros), 150);
+        setTimeout(() => _drawPendConnectors(objetivos, objColorMap, filteredMicros, filteredMacros, micros), 150);
         
         // Redraw on scroll
         const colLeft = document.getElementById('pend-col-left');
         const colCenter = document.getElementById('pend-col-center');
-        if (colLeft) colLeft.addEventListener('scroll', () => setTimeout(() => _drawPendConnectors(objetivos, objColorMap, filteredMicros, micros), 30));
-        if (colCenter) colCenter.addEventListener('scroll', () => setTimeout(() => _drawPendConnectors(objetivos, objColorMap, filteredMicros, micros), 30));
+        const colRight = document.getElementById('pend-col-right');
+        const redrawFn = () => setTimeout(() => _drawPendConnectors(objetivos, objColorMap, filteredMicros, filteredMacros, micros), 30);
+        if (colLeft) colLeft.addEventListener('scroll', redrawFn);
+        if (colCenter) colCenter.addEventListener('scroll', redrawFn);
+        if (colRight) colRight.addEventListener('scroll', redrawFn);
+        
+        // Init column resizers
+        _initPendColResizers(redrawFn);
         
     } catch (err) {
         body.innerHTML = '<p style="color:#ef4444;padding:1rem;">Erro ao carregar: ' + err.message + '</p>';
     }
 }
 
-// --- SVG CONNECTOR LINES ---
-function _drawPendConnectors(objetivos, objColorMap, filteredMicros, allMicros) {
+// --- SVG CONNECTOR LINES (Objectives ↔ Micros ↔ Macros) ---
+const PEND_MACRO_COLORS = ['#D4AF37','#10b981','#3b82f6','#a855f7','#ef4444','#fb923c','#14b8a6','#eab308','#22c55e','#60a5fa'];
+
+function _drawPendConnectors(objetivos, objColorMap, filteredMicros, filteredMacros, allMicros) {
     const svg = document.getElementById('pend-svg-lines');
     if (!svg) return;
     const contentArea = svg.parentElement;
@@ -4274,13 +4288,13 @@ function _drawPendConnectors(objetivos, objColorMap, filteredMicros, allMicros) 
     svg.setAttribute('height', rect.height);
     svg.innerHTML = '';
     
+    // LEFT SIDE: Objectives → Micros
     objetivos.forEach(obj => {
         const objEl = document.getElementById('pend-obj-' + obj.id);
         if (!objEl || objEl.classList.contains('pend-card-hidden')) return;
         
         const color = objColorMap[String(obj.id)] || '#888';
         
-        // Find visible micro cards linked to this objective
         filteredMicros.forEach(m => {
             const globalIdx = allMicros.indexOf(m);
             const microEl = document.getElementById('pend-micro-' + globalIdx);
@@ -4289,7 +4303,6 @@ function _drawPendConnectors(objetivos, objColorMap, filteredMicros, allMicros) 
             const objIds = m.objetivos_ids || (m.objetivo_id ? [m.objetivo_id] : []);
             if (!objIds.map(String).includes(String(obj.id))) return;
             
-            // Calculate positions relative to content area
             const objRect = objEl.getBoundingClientRect();
             const microRect = microEl.getBoundingClientRect();
             
@@ -4298,7 +4311,6 @@ function _drawPendConnectors(objetivos, objColorMap, filteredMicros, allMicros) 
             const x2 = microRect.left - rect.left;
             const y2 = microRect.top + microRect.height / 2 - rect.top;
             
-            // Draw curved path
             const midX = (x1 + x2) / 2;
             const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
             path.setAttribute('d', `M${x1},${y1} C${midX},${y1} ${midX},${y2} ${x2},${y2}`);
@@ -4309,6 +4321,98 @@ function _drawPendConnectors(objetivos, objColorMap, filteredMicros, allMicros) 
             svg.appendChild(path);
         });
     });
+    
+    // RIGHT SIDE: Micros → Macros
+    if (Array.isArray(filteredMacros)) {
+        filteredMacros.forEach((macro, macroIdx) => {
+            const macroEl = document.getElementById('pend-macro-' + macroIdx);
+            if (!macroEl || macroEl.classList.contains('pend-card-hidden')) return;
+            
+            const macroColor = PEND_MACRO_COLORS[macroIdx % PEND_MACRO_COLORS.length];
+            const linkedMicroIds = (macroEl.dataset.microIds || '').split(',').filter(Boolean);
+            
+            linkedMicroIds.forEach(mid => {
+                // Find the micro element by its id in allMicros
+                const mIdx = allMicros.findIndex(m => String(m.id) === String(mid));
+                if (mIdx < 0) return;
+                const microEl = document.getElementById('pend-micro-' + mIdx);
+                if (!microEl || microEl.classList.contains('pend-card-hidden')) return;
+                
+                const microRect = microEl.getBoundingClientRect();
+                const macroRect = macroEl.getBoundingClientRect();
+                
+                const x1 = microRect.right - rect.left;
+                const y1 = microRect.top + microRect.height / 2 - rect.top;
+                const x2 = macroRect.left - rect.left;
+                const y2 = macroRect.top + macroRect.height / 2 - rect.top;
+                
+                const midX = (x1 + x2) / 2;
+                const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                path.setAttribute('d', `M${x1},${y1} C${midX},${y1} ${midX},${y2} ${x2},${y2}`);
+                path.setAttribute('stroke', macroColor);
+                path.setAttribute('stroke-width', '1.5');
+                path.setAttribute('fill', 'none');
+                path.setAttribute('opacity', '0.45');
+                path.setAttribute('stroke-dasharray', '4 2');
+                svg.appendChild(path);
+            });
+        });
+    }
+}
+
+// --- COLUMN RESIZER FUNCTIONALITY ---
+function _initPendColResizers(redrawFn) {
+    const resizerLeft = document.getElementById('pend-resizer-left');
+    const resizerRight = document.getElementById('pend-resizer-right');
+    const colLeft = document.getElementById('pend-col-left');
+    const colCenter = document.getElementById('pend-col-center');
+    const colRight = document.getElementById('pend-col-right');
+    const threeCol = document.getElementById('pend-three-col');
+    if (!threeCol) return;
+    
+    function initResizer(resizer, leftCol, rightCol) {
+        if (!resizer || !leftCol || !rightCol) return;
+        let isResizing = false, startX, startLeftW, startRightW;
+        
+        resizer.addEventListener('mousedown', (e) => {
+            e.preventDefault();
+            isResizing = true;
+            startX = e.clientX;
+            startLeftW = leftCol.offsetWidth;
+            startRightW = rightCol.offsetWidth;
+            resizer.classList.add('active');
+            document.body.style.userSelect = 'none';
+            document.body.style.cursor = 'col-resize';
+            
+            const onMove = (ev) => {
+                if (!isResizing) return;
+                const dx = ev.clientX - startX;
+                const totalW = threeCol.offsetWidth;
+                const newLeftW = Math.max(100, Math.min(totalW * 0.5, startLeftW + dx));
+                const newRightW = Math.max(100, Math.min(totalW * 0.5, startRightW - dx));
+                leftCol.style.flex = '0 0 ' + newLeftW + 'px';
+                leftCol.style.maxWidth = newLeftW + 'px';
+                rightCol.style.flex = '0 0 ' + newRightW + 'px';
+                rightCol.style.maxWidth = newRightW + 'px';
+                if (redrawFn) redrawFn();
+            };
+            
+            const onUp = () => {
+                isResizing = false;
+                resizer.classList.remove('active');
+                document.body.style.userSelect = '';
+                document.body.style.cursor = '';
+                document.removeEventListener('mousemove', onMove);
+                document.removeEventListener('mouseup', onUp);
+            };
+            
+            document.addEventListener('mousemove', onMove);
+            document.addEventListener('mouseup', onUp);
+        });
+    }
+    
+    initResizer(resizerLeft, colLeft, colCenter);
+    initResizer(resizerRight, colCenter, colRight);
 }
 
 // --- DRAG FUNCTIONALITY ---
