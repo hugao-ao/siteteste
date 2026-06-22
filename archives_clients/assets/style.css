@@ -94,6 +94,16 @@ body {
     width: calc(100% - 260px);
     background-color: var(--background);
 }
+/* When loaded inside an iframe, remove sidebar space */
+body.in-iframe .main-content {
+    margin-left: 0;
+    width: 100%;
+    padding: 1rem;
+}
+body.in-iframe .sidebar,
+body.in-iframe #sidebar-container {
+    display: none !important;
+}
 
 /* Sidebar Components */
 .sidebar-header {
