@@ -310,27 +310,37 @@ async function initializeDashboard() {
                 openPatrimonioModal(clientId, clientName);
                 return;
             }
+
+            // Dividas cell click
+            const divCell = e.target.closest('.fin-dividas');
+            if (divCell) {
+                const clientId = divCell.dataset.clientId;
+                const row = divCell.closest('tr');
+                const clientName = row ? (row.querySelector('.client-name')?.value || row.querySelector('td')?.textContent?.trim() || '') : '';
+                openDividasModal(clientId, clientName);
+                return;
+            }
         });
     }
 
     // Close new modals
-    ['pendencias', 'objetivos', 'particularidades', 'patrimonio'].forEach(name => {
+    ['pendencias', 'objetivos', 'particularidades', 'patrimonio', 'dividas'].forEach(name => {
         const modal = document.getElementById(name + '-modal');
         const closeBtn = document.getElementById(name + '-close-btn');
         if (modal && closeBtn) {
             closeBtn.addEventListener('click', () => {
                 modal.style.display = 'none';
-                // Clear iframe src when closing patrimonio modal
-                if (name === 'patrimonio') {
-                    const iframe = document.getElementById('patrimonio-iframe');
+                // Clear iframe src when closing iframe modals
+                if (name === 'patrimonio' || name === 'dividas') {
+                    const iframe = document.getElementById(name + '-iframe');
                     if (iframe) iframe.src = '';
                 }
             });
             modal.addEventListener('click', (e) => {
                 if (e.target === modal) {
                     modal.style.display = 'none';
-                    if (name === 'patrimonio') {
-                        const iframe = document.getElementById('patrimonio-iframe');
+                    if (name === 'patrimonio' || name === 'dividas') {
+                        const iframe = document.getElementById(name + '-iframe');
                         if (iframe) iframe.src = '';
                     }
                 }
@@ -556,7 +566,7 @@ async function loadClients(filterProject = null) {
                 <td data-label="Patrimônio" class="fin-cell fin-patrimonio" data-client-id="${client.id}" style="cursor:pointer;">
                     <span class="fin-loading">...</span>
                 </td>
-                <td data-label="Dívidas" class="fin-cell fin-dividas" data-client-id="${client.id}">
+                <td data-label="Dívidas" class="fin-cell fin-dividas" data-client-id="${client.id}" style="cursor:pointer;">
                     <span class="fin-loading">...</span>
                 </td>
                 <td data-label="Fluxo Mensal" class="fin-cell fin-fluxo">
@@ -4966,6 +4976,116 @@ function _initPatDrag(wrapper) {
 // --- RESIZE for Patrimonio modal ---
 function _initPatResize(wrapper) {
     const handles = wrapper.querySelectorAll('.pat-resize-handle');
+    handles.forEach(handle => {
+        handle.addEventListener('mousedown', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const dir = handle.dataset.dir;
+            const rect = wrapper.getBoundingClientRect();
+            const startX = e.clientX;
+            const startY = e.clientY;
+            const startW = rect.width;
+            const startH = rect.height;
+            const startL = rect.left;
+            const startT = rect.top;
+            document.body.style.userSelect = 'none';
+
+            // Add overlay to prevent iframe from capturing mouse events
+            const overlay = document.createElement('div');
+            overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;z-index:99999;cursor:' + getComputedStyle(handle).cursor;
+            document.body.appendChild(overlay);
+
+            const onMove = (ev) => {
+                const dx = ev.clientX - startX;
+                const dy = ev.clientY - startY;
+                let newW = startW, newH = startH, newL = startL, newT = startT;
+
+                if (dir.includes('r')) { newW = Math.max(400, startW + dx); }
+                if (dir.includes('l')) { newW = Math.max(400, startW - dx); newL = startL + dx; }
+                if (dir.includes('b')) { newH = Math.max(300, startH + dy); }
+                if (dir.includes('t')) { newH = Math.max(300, startH - dy); newT = startT + dy; }
+
+                wrapper.style.width = newW + 'px';
+                wrapper.style.height = newH + 'px';
+                wrapper.style.left = newL + 'px';
+                wrapper.style.top = newT + 'px';
+            };
+
+            const onUp = () => {
+                document.body.style.userSelect = '';
+                overlay.remove();
+                document.removeEventListener('mousemove', onMove);
+                document.removeEventListener('mouseup', onUp);
+            };
+
+            document.addEventListener('mousemove', onMove);
+            document.addEventListener('mouseup', onUp);
+        });
+    });
+}
+
+
+// === DIVIDAS MODAL (iframe window - juros.html) ===
+function openDividasModal(clientId, clientName) {
+    const modal = document.getElementById('dividas-modal');
+    const wrapper = document.getElementById('div-modal-wrapper');
+    const iframe = document.getElementById('dividas-iframe');
+    const title = document.getElementById('dividas-modal-title');
+    if (!modal || !iframe) return;
+
+    // Set the client in sessionStorage so the juros page loads the right data
+    sessionStorage.setItem('cliente_id', clientId);
+    sessionStorage.setItem('equipe_modo_cliente', 'true');
+
+    title.textContent = `Dívidas / Juros — ${clientName || ''}`;
+    iframe.src = 'archives_clients/ferramentas/juros.html';
+    modal.style.display = 'flex';
+
+    // Initialize drag and resize if not already done
+    if (!wrapper._divInitialized) {
+        _initDivDrag(wrapper);
+        _initDivResize(wrapper);
+        wrapper._divInitialized = true;
+    }
+}
+
+// --- DRAG for Dividas modal ---
+function _initDivDrag(wrapper) {
+    const header = document.getElementById('div-modal-header');
+    if (!header) return;
+    let isDragging = false, startX, startY, startLeft, startTop;
+
+    header.addEventListener('mousedown', (e) => {
+        if (e.target.closest('.modal-close')) return;
+        isDragging = true;
+        startX = e.clientX;
+        startY = e.clientY;
+        const rect = wrapper.getBoundingClientRect();
+        startLeft = rect.left;
+        startTop = rect.top;
+        document.body.style.userSelect = 'none';
+        e.preventDefault();
+    });
+
+    document.addEventListener('mousemove', (e) => {
+        if (!isDragging) return;
+        const dx = e.clientX - startX;
+        const dy = e.clientY - startY;
+        wrapper.style.left = (startLeft + dx) + 'px';
+        wrapper.style.top = (startTop + dy) + 'px';
+    });
+
+    document.addEventListener('mouseup', () => {
+        if (isDragging) {
+            isDragging = false;
+            document.body.style.userSelect = '';
+        }
+    });
+}
+
+// --- RESIZE for Dividas modal ---
+function _initDivResize(wrapper) {
+    const handles = wrapper.querySelectorAll('.div-resize-handle');
     handles.forEach(handle => {
         handle.addEventListener('mousedown', (e) => {
             e.preventDefault();
