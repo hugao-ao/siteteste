@@ -1723,7 +1723,8 @@ async function showDiagnosticoModal(clientId, clientName) {
                 </div>
                 <p style="font-size:0.85rem;margin-bottom:0.5rem;">Link do diagn\u00f3stico:</p>
                 <div style="background:rgba(0,0,0,0.3);border:1px solid var(--theme-border-color);border-radius:6px;padding:0.6rem;word-break:break-all;font-size:0.82rem;display:flex;align-items:center;gap:0.5rem;margin-bottom:1rem;">
-                    <a href="${diagLink}" target="_blank" style="color:var(--theme-secondary-lighter);flex:1;">${diagLink}</a>
+                    <a href="javascript:void(0)" onclick="openDiagIframeModal('${diagLink}','${clientName || ''}')" style="color:var(--theme-secondary-lighter);flex:1;cursor:pointer;">${diagLink}</a>
+                    <button onclick="openDiagIframeModal('${diagLink}','${clientName || ''}')" style="background:none;border:1px solid rgba(96,165,250,0.5);color:#60a5fa;padding:0.3rem 0.6rem;border-radius:4px;cursor:pointer;font-size:0.75rem;" title="Abrir diagn\u00f3stico"><i class="fas fa-external-link-alt"></i> Abrir</button>
                     <button onclick="navigator.clipboard.writeText('${diagLink}');this.innerHTML='<i class=\\'fas fa-check\\'></i>';setTimeout(()=>{this.innerHTML='<i class=\\'fas fa-copy\\'></i>'},2000)" style="background:none;border:1px solid var(--theme-border-color);color:var(--theme-text-muted);padding:0.3rem 0.5rem;border-radius:4px;cursor:pointer;" title="Copiar link"><i class="fas fa-copy"></i></button>
                 </div>
             `;
@@ -5974,4 +5975,52 @@ async function checkDataConflicts(clients) {
             }
         }
     }
+}
+
+
+// ============================================================
+// DIAGNÓSTICO - Modal Iframe (abre dentro da página sem novo login)
+// ============================================================
+function openDiagIframeModal(url, clientName) {
+    // Verificar se já existe o modal
+    let modal = document.getElementById('diag-iframe-modal');
+    if (!modal) {
+        // Criar o modal dinamicamente
+        modal = document.createElement('div');
+        modal.id = 'diag-iframe-modal';
+        modal.style.cssText = 'display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.85);z-index:10000;align-items:center;justify-content:center;padding:1rem;';
+        modal.innerHTML = `
+            <div style="width:95%;max-width:1200px;height:90vh;background:var(--theme-card-bg, #1a1a2e);border-radius:12px;border:1px solid var(--theme-border-color, #333);display:flex;flex-direction:column;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,0.5);">
+                <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--theme-border-color, #333);background:rgba(0,0,0,0.2);">
+                    <h3 id="diag-iframe-title" style="margin:0;font-size:1rem;color:var(--theme-text-light, #fff);"><i class="fas fa-stethoscope" style="color:#60a5fa;margin-right:8px;"></i>Diagnóstico Financeiro</h3>
+                    <button id="diag-iframe-close" style="background:none;border:none;color:var(--theme-text-muted, #999);font-size:1.5rem;cursor:pointer;padding:4px 8px;border-radius:4px;transition:all 0.2s;" onmouseover="this.style.color='#ef4444'" onmouseout="this.style.color='var(--theme-text-muted, #999)'">&times;</button>
+                </div>
+                <div style="flex:1;overflow:hidden;">
+                    <iframe id="diag-iframe-content" style="width:100%;height:100%;border:none;background:#fff;" sandbox="allow-same-origin allow-scripts allow-forms allow-popups"></iframe>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+
+        // Close handlers
+        document.getElementById('diag-iframe-close').addEventListener('click', () => {
+            modal.style.display = 'none';
+            document.getElementById('diag-iframe-content').src = '';
+        });
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                modal.style.display = 'none';
+                document.getElementById('diag-iframe-content').src = '';
+            }
+        });
+    }
+
+    // Configurar e abrir
+    const title = document.getElementById('diag-iframe-title');
+    if (title) title.innerHTML = `<i class="fas fa-stethoscope" style="color:#60a5fa;margin-right:8px;"></i>Diagnóstico — ${clientName || ''}`;
+    
+    // Adicionar parâmetro para esconder botão voltar
+    const iframeUrl = url + (url.includes('?') ? '&' : '?') + 'embed=1';
+    document.getElementById('diag-iframe-content').src = iframeUrl;
+    modal.style.display = 'flex';
 }
