@@ -320,11 +320,21 @@ async function initializeDashboard() {
                 openDividasModal(clientId, clientName);
                 return;
             }
+
+            // Tipo cell click - open CPF/WhatsApp sync modal
+            const tipoCell = e.target.closest('.tipo-cell');
+            if (tipoCell) {
+                const clientId = tipoCell.dataset.clientId;
+                const row = tipoCell.closest('tr');
+                const clientName = row ? (row.querySelector('.client-name')?.value || row.querySelector('td')?.textContent?.trim() || '') : '';
+                openTipoSyncModal(clientId, clientName);
+                return;
+            }
         });
     }
 
     // Close new modals
-    ['pendencias', 'objetivos', 'particularidades', 'patrimonio', 'dividas'].forEach(name => {
+    ['pendencias', 'objetivos', 'particularidades', 'patrimonio', 'dividas', 'tipo-sync'].forEach(name => {
         const modal = document.getElementById(name + '-modal');
         const closeBtn = document.getElementById(name + '-close-btn');
         if (modal && closeBtn) {
@@ -518,7 +528,7 @@ async function loadClients(filterProject = null) {
                 <td data-label="Nome">
                     <input type="text" class="client-name" value="${sanitizeInput(client.nome)}" ${!canEdit ? 'disabled' : ''}>
                 </td>
-                <td data-label="Tipo">
+                <td data-label="Tipo" class="tipo-cell" data-client-id="${client.id}" style="cursor:pointer;">
                     <span class="tipo-badge tipo-cliente">CLIENTE</span>
                 </td>
                 <td data-label="WhatsApp">
@@ -5132,4 +5142,262 @@ function _initDivResize(wrapper) {
             document.addEventListener('mouseup', onUp);
         });
     });
+}
+
+
+// === TIPO SYNC MODAL (CPF/WhatsApp from multiple sources) ===
+async function openTipoSyncModal(clientId, clientName) {
+    const modal = document.getElementById('tipo-sync-modal');
+    const body = document.getElementById('tipo-sync-body');
+    const title = document.getElementById('tipo-sync-title');
+    if (!modal || !body) return;
+
+    title.textContent = `Dados Cadastrais — ${clientName || ''}`;
+    body.innerHTML = '<div class="tipo-sync-loading">Carregando dados de todas as fontes...</div>';
+    modal.style.display = 'flex';
+
+    try {
+        // Fetch data from all 4 sources in parallel
+        const [dadosCad, diagnostico, hvsfTasks, clienteRow] = await Promise.all([
+            // 1. Dados Cadastrais
+            supabase.from('dados_cadastrais').select('cpf, whatsapp').eq('cliente_id', clientId).maybeSingle(),
+            // 2. Diagnóstico Financeiro
+            supabase.from('diagnosticos_financeiros').select('cpf, telefone').eq('cliente_id', clientId).maybeSingle(),
+            // 3. HVSF Tasks (Cyclopay import)
+            supabase.from('hvsf_tasks').select('tasks, client_name').eq('status', 'completed'),
+            // 4. Clientes table (dashboard list)
+            supabase.from('clientes').select('whatsapp').eq('id', clientId).maybeSingle()
+        ]);
+
+        // Process sources
+        const sources = [];
+
+        // Source 1: Dados Cadastrais
+        const dc = dadosCad.data;
+        sources.push({
+            name: 'Dados Cadastrais',
+            cpf: dc?.cpf || '',
+            whatsapp: dc?.whatsapp || '',
+            table: 'dados_cadastrais',
+            field_cpf: 'cpf',
+            field_whatsapp: 'whatsapp'
+        });
+
+        // Source 2: Diagnóstico
+        const diag = diagnostico.data;
+        sources.push({
+            name: 'Diagnóstico Financeiro',
+            cpf: diag?.cpf || '',
+            whatsapp: diag?.telefone || '',
+            table: 'diagnosticos_financeiros',
+            field_cpf: 'cpf',
+            field_whatsapp: 'telefone'
+        });
+
+        // Source 3: HVSF Tasks / Cyclopay
+        let hvsfCpf = '';
+        let hvsfWhatsapp = '';
+        if (hvsfTasks.data && hvsfTasks.data.length > 0) {
+            // Find the task matching this client by name
+            const matchingTask = hvsfTasks.data.find(t => {
+                const taskName = (t.client_name || '').toLowerCase().trim();
+                return taskName === (clientName || '').toLowerCase().trim();
+            });
+            if (matchingTask && matchingTask.tasks && matchingTask.tasks.client_data) {
+                hvsfCpf = matchingTask.tasks.client_data.cpf || '';
+                hvsfWhatsapp = matchingTask.tasks.client_data.whatsapp || '';
+            }
+        }
+        sources.push({
+            name: 'SITE HVSF (Cyclopay)',
+            cpf: hvsfCpf,
+            whatsapp: hvsfWhatsapp,
+            table: 'hvsf_tasks',
+            field_cpf: 'tasks.client_data.cpf',
+            field_whatsapp: 'tasks.client_data.whatsapp'
+        });
+
+        // Source 4: Dashboard list (clientes table - only whatsapp)
+        const cl = clienteRow.data;
+        sources.push({
+            name: 'Lista Dashboard (clientes)',
+            cpf: '',
+            whatsapp: cl?.whatsapp || '',
+            table: 'clientes',
+            field_cpf: null,
+            field_whatsapp: 'whatsapp'
+        });
+
+        // Build the modal content
+        _renderTipoSyncContent(body, sources, clientId, clientName);
+
+    } catch (err) {
+        console.error('Erro ao carregar dados para sync:', err);
+        body.innerHTML = `<div style="color:#ef4444;text-align:center;padding:2rem;">Erro ao carregar dados: ${err.message}</div>`;
+    }
+}
+
+function _renderTipoSyncContent(body, sources, clientId, clientName) {
+    // Collect unique CPFs and WhatsApps
+    const cpfValues = [];
+    const whatsappValues = [];
+
+    sources.forEach((s, idx) => {
+        if (s.cpf && s.cpf.trim() && !s.cpf.startsWith('PEND-')) {
+            cpfValues.push({ value: s.cpf.trim(), source: s.name, sourceIdx: idx });
+        }
+        if (s.whatsapp && s.whatsapp.trim() && s.whatsapp !== '00000000000') {
+            whatsappValues.push({ value: s.whatsapp.trim(), source: s.name, sourceIdx: idx });
+        }
+    });
+
+    let html = '';
+
+    // CPF Section
+    html += `<div class="tipo-sync-section">
+        <h3>CPF</h3>
+        <table class="tipo-sync-table">
+            <thead><tr><th></th><th>Valor</th><th>Fonte</th></tr></thead>
+            <tbody>`;
+
+    if (cpfValues.length === 0) {
+        html += `<tr><td colspan="3" style="color:#666;font-style:italic;text-align:center;">Nenhum CPF registrado</td></tr>`;
+    } else {
+        cpfValues.forEach((item, i) => {
+            html += `<tr>
+                <td><input type="radio" name="sync-cpf" class="tipo-sync-radio" value="${_escHtml(item.value)}" data-source="${item.sourceIdx}"></td>
+                <td><span class="tipo-sync-value">${_escHtml(item.value)}</span></td>
+                <td><span class="tipo-sync-source">${_escHtml(item.source)}</span></td>
+            </tr>`;
+        });
+    }
+    html += `</tbody></table></div>`;
+
+    // WhatsApp Section
+    html += `<div class="tipo-sync-section">
+        <h3>WhatsApp</h3>
+        <table class="tipo-sync-table">
+            <thead><tr><th></th><th>Valor</th><th>Fonte</th></tr></thead>
+            <tbody>`;
+
+    if (whatsappValues.length === 0) {
+        html += `<tr><td colspan="3" style="color:#666;font-style:italic;text-align:center;">Nenhum WhatsApp registrado</td></tr>`;
+    } else {
+        whatsappValues.forEach((item, i) => {
+            html += `<tr>
+                <td><input type="radio" name="sync-whatsapp" class="tipo-sync-radio" value="${_escHtml(item.value)}" data-source="${item.sourceIdx}"></td>
+                <td><span class="tipo-sync-value">${_escHtml(item.value)}</span></td>
+                <td><span class="tipo-sync-source">${_escHtml(item.source)}</span></td>
+            </tr>`;
+        });
+    }
+    html += `</tbody></table></div>`;
+
+    // Actions
+    html += `<div class="tipo-sync-status" id="tipo-sync-status"></div>`;
+    html += `<div class="tipo-sync-actions">
+        <button class="tipo-sync-btn secondary" onclick="document.getElementById('tipo-sync-modal').style.display='none'">Fechar</button>
+        <button class="tipo-sync-btn primary" id="tipo-sync-apply-btn" onclick="_applyTipoSync('${clientId}', '${_escHtml(clientName)}')">Sincronizar Selecionados</button>
+    </div>`;
+
+    body.innerHTML = html;
+
+    // Add radio selection highlight
+    body.querySelectorAll('.tipo-sync-radio').forEach(radio => {
+        radio.addEventListener('change', () => {
+            const table = radio.closest('table');
+            table.querySelectorAll('tr').forEach(tr => tr.classList.remove('selected-row'));
+            radio.closest('tr').classList.add('selected-row');
+        });
+    });
+}
+
+async function _applyTipoSync(clientId, clientName) {
+    const cpfRadio = document.querySelector('input[name="sync-cpf"]:checked');
+    const whatsRadio = document.querySelector('input[name="sync-whatsapp"]:checked');
+    const statusEl = document.getElementById('tipo-sync-status');
+
+    if (!cpfRadio && !whatsRadio) {
+        statusEl.className = 'tipo-sync-status error';
+        statusEl.textContent = 'Selecione pelo menos um CPF ou WhatsApp para sincronizar.';
+        return;
+    }
+
+    const selectedCpf = cpfRadio ? cpfRadio.value : null;
+    const selectedWhatsapp = whatsRadio ? whatsRadio.value : null;
+
+    const btn = document.getElementById('tipo-sync-apply-btn');
+    btn.disabled = true;
+    btn.textContent = 'Sincronizando...';
+    statusEl.className = 'tipo-sync-status';
+    statusEl.style.display = 'none';
+
+    try {
+        const updates = [];
+
+        // 1. Update dados_cadastrais
+        const updateDC = {};
+        if (selectedCpf) updateDC.cpf = selectedCpf;
+        if (selectedWhatsapp) updateDC.whatsapp = selectedWhatsapp;
+        if (Object.keys(updateDC).length > 0) {
+            updates.push(
+                supabase.from('dados_cadastrais').update(updateDC).eq('cliente_id', clientId)
+            );
+        }
+
+        // 2. Update diagnosticos_financeiros
+        const updateDiag = {};
+        if (selectedCpf) updateDiag.cpf = selectedCpf;
+        if (selectedWhatsapp) updateDiag.telefone = selectedWhatsapp;
+        if (Object.keys(updateDiag).length > 0) {
+            updates.push(
+                supabase.from('diagnosticos_financeiros').update(updateDiag).eq('cliente_id', clientId)
+            );
+        }
+
+        // 3. Update clientes table (only whatsapp)
+        if (selectedWhatsapp) {
+            updates.push(
+                supabase.from('clientes').update({ whatsapp: selectedWhatsapp }).eq('id', clientId)
+            );
+        }
+
+        // Execute all updates
+        const results = await Promise.all(updates);
+
+        // Check for errors
+        const errors = results.filter(r => r.error);
+        if (errors.length > 0) {
+            console.warn('Alguns updates falharam:', errors.map(e => e.error.message));
+            statusEl.className = 'tipo-sync-status error';
+            statusEl.textContent = `Sincronização parcial: ${errors.length} erro(s). Verifique se os registros existem em todas as tabelas.`;
+        } else {
+            statusEl.className = 'tipo-sync-status success';
+            let msg = 'Sincronização concluída com sucesso!';
+            if (selectedCpf) msg += ` CPF: ${selectedCpf}`;
+            if (selectedWhatsapp) msg += ` | WhatsApp: ${selectedWhatsapp}`;
+            statusEl.textContent = msg;
+
+            // Update the whatsapp input in the dashboard row if whatsapp was synced
+            if (selectedWhatsapp) {
+                const row = document.querySelector(`tr[data-client-id="${clientId}"]`);
+                if (row) {
+                    const whatsInput = row.querySelector('.client-whatsapp');
+                    if (whatsInput) whatsInput.value = selectedWhatsapp;
+                }
+            }
+        }
+    } catch (err) {
+        console.error('Erro na sincronização:', err);
+        statusEl.className = 'tipo-sync-status error';
+        statusEl.textContent = `Erro: ${err.message}`;
+    } finally {
+        btn.disabled = false;
+        btn.textContent = 'Sincronizar Selecionados';
+    }
+}
+
+function _escHtml(str) {
+    if (!str) return '';
+    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
