@@ -230,10 +230,75 @@
     .summary-table td a { color: #7fc8f8; text-decoration: none; }
     .summary-table td a:hover { text-decoration: underline; }
 
+    /* Keywords Preview Button */
+    .btn-keywords {
+      background: transparent;
+      color: #d4af37;
+      border: 1px solid rgba(212, 175, 55, 0.4);
+      padding: 0.6rem 1.2rem;
+      border-radius: 6px;
+      font-weight: 600;
+      cursor: pointer;
+      font-size: 0.85rem;
+      white-space: nowrap;
+      transition: all 0.2s;
+    }
+    .btn-keywords:hover { background: rgba(212,175,55,0.1); border-color: #d4af37; }
+    .btn-keywords:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    /* Keywords Modal Overlay */
+    .kw-modal-overlay {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.7); z-index: 10000;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .kw-modal {
+      background: #052614; border: 1px solid rgba(212,175,55,0.3);
+      border-radius: 12px; width: 90%; max-width: 700px; max-height: 80vh;
+      display: flex; flex-direction: column; box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+    }
+    .kw-modal-header {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 1rem 1.5rem; border-bottom: 1px solid rgba(212,175,55,0.2);
+      background: #021C0E; border-radius: 12px 12px 0 0;
+    }
+    .kw-modal-header h3 { margin: 0; color: #D4AF37; font-size: 1rem; }
+    .kw-modal-close {
+      background: none; border: none; color: #A0B8A6; font-size: 1.4rem;
+      cursor: pointer; padding: 0.2rem 0.5rem; line-height: 1;
+    }
+    .kw-modal-close:hover { color: #F2E8C9; }
+    .kw-modal-body {
+      padding: 1rem 1.5rem; overflow-y: auto; flex: 1;
+    }
+    .kw-modal-body table {
+      width: 100%; border-collapse: collapse;
+    }
+    .kw-modal-body th {
+      text-align: left; padding: 0.5rem 0.6rem; font-size: 0.75rem;
+      color: #A0B8A6; border-bottom: 1px solid rgba(212,175,55,0.15);
+      text-transform: uppercase; letter-spacing: 0.5px;
+    }
+    .kw-modal-body td {
+      padding: 0.5rem 0.6rem; font-size: 0.82rem; color: #F2E8C9;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+    }
+    .kw-modal-body td.kw-query { color: #D4AF37; font-weight: 600; }
+    .kw-modal-body td.kw-tipo {
+      font-size: 0.72rem; text-transform: capitalize;
+    }
+    .kw-modal-body .kw-clientes-list {
+      font-size: 0.7rem; color: #A0B8A6;
+    }
+    .kw-modal-empty {
+      text-align: center; color: #A0B8A6; padding: 2rem; font-style: italic;
+    }
+
     /* Responsive */
     @media (max-width: 768px) {
       #main-content-curadoria { padding: 1rem; margin-left: 60px; }
       .config-row { flex-direction: column; }
+      .kw-modal { width: 95%; max-width: none; }
     }
   </style>
 </head>
@@ -274,6 +339,9 @@
           </div>
           <button class="btn-buscar" id="btn-buscar" onclick="buscarNoticias()">
             <i class="fas fa-search"></i> Buscar Notícias
+          </button>
+          <button class="btn-keywords" id="btn-keywords" onclick="verPalavrasChave()">
+            <i class="fas fa-list-ul"></i> Ver Palavras-Chave
           </button>
         </div>
 
@@ -327,8 +395,13 @@
   <script type="module">
     import { supabase } from './supabase.js';
 
-    // CORS proxy for Google News RSS
-    const CORS_PROXY = "https://api.allorigins.win/raw?url=";
+    // CORS proxy for Google News RSS (multiple fallbacks)
+    const CORS_PROXIES = [
+      "https://corsproxy.io/?",
+      "https://api.allorigins.win/raw?url=",
+      "https://api.codetabs.com/v1/proxy?quest="
+    ];
+    let CORS_PROXY = CORS_PROXIES[0];
 
     let allInteresses = []; // [{palavra_chave, clientes: [{nome, id}]}]
     let apiUsage = { gnews: 0, newsdata: 0, currents: 0, mediastack: 0 };
@@ -426,32 +499,45 @@
 
     // === NEWS FETCHERS ===
 
-    // 1. Google News RSS (primary - unlimited)
+    // 1. Google News RSS (primary - unlimited) with proxy fallback
     async function fetchGoogleNews(keyword, lang, country, max) {
-      try {
-        const q = encodeURIComponent(keyword);
-        const url = `https://news.google.com/rss/search?q=${q}&hl=${lang}&gl=${country}&ceid=${country}:${lang}`;
-        const resp = await fetch(CORS_PROXY + encodeURIComponent(url));
-        if (!resp.ok) throw new Error('Google RSS failed');
-        const text = await resp.text();
-        const parser = new DOMParser();
-        const xml = parser.parseFromString(text, 'text/xml');
-        const items = xml.querySelectorAll('item');
-        const results = [];
-        for (let i = 0; i < Math.min(items.length, max); i++) {
-          const item = items[i];
-          results.push({
-            title: item.querySelector('title')?.textContent || '',
-            link: item.querySelector('link')?.textContent || '',
-            date: item.querySelector('pubDate')?.textContent || '',
-            source: item.querySelector('source')?.textContent || 'Google News'
-          });
+      const q = encodeURIComponent(keyword);
+      const targetUrl = `https://news.google.com/rss/search?q=${q}&hl=${lang}&gl=${country}&ceid=${country}:${lang}`;
+      
+      for (let pi = 0; pi < CORS_PROXIES.length; pi++) {
+        try {
+          const proxy = CORS_PROXIES[pi];
+          const resp = await fetch(proxy + encodeURIComponent(targetUrl));
+          if (!resp.ok) throw new Error('Proxy ' + pi + ' returned ' + resp.status);
+          const text = await resp.text();
+          const parser = new DOMParser();
+          const xml = parser.parseFromString(text, 'text/xml');
+          const items = xml.querySelectorAll('item');
+          if (items.length === 0 && pi < CORS_PROXIES.length - 1) {
+            // Try next proxy if no results (might be a proxy issue)
+            continue;
+          }
+          const results = [];
+          for (let i = 0; i < Math.min(items.length, max); i++) {
+            const item = items[i];
+            results.push({
+              title: item.querySelector('title')?.textContent || '',
+              link: item.querySelector('link')?.textContent || '',
+              date: item.querySelector('pubDate')?.textContent || '',
+              source: item.querySelector('source')?.textContent || 'Google News'
+            });
+          }
+          // Update working proxy for subsequent calls
+          CORS_PROXY = proxy;
+          return { results, source: 'Google News RSS' };
+        } catch(e) {
+          console.warn(`Google News RSS proxy ${pi} falhou:`, e.message);
+          if (pi === CORS_PROXIES.length - 1) {
+            return { results: [], source: 'Google News RSS', error: e.message };
+          }
         }
-        return { results, source: 'Google News RSS' };
-      } catch(e) {
-        console.warn('Google News RSS falhou:', e);
-        return { results: [], source: 'Google News RSS', error: e.message };
       }
+      return { results: [], source: 'Google News RSS', error: 'All proxies failed' };
     }
 
     // 2. GNews API
@@ -748,14 +834,115 @@
       });
     };
 
-    // Make buscarNoticias global
+    // === VER PALAVRAS-CHAVE MODAL ===
+    async function verPalavrasChave() {
+      // Load interests if not loaded
+      if (allInteresses.length === 0) {
+        await loadInteresses();
+      }
+      
+      if (allInteresses.length === 0) {
+        alert('Nenhum interesse cadastrado. Adicione interesses nas Particularidades dos clientes.');
+        return;
+      }
+      
+      // Load cidades for event-type searches
+      const clienteCidades = {};
+      try {
+        const { data: particRows } = await supabase
+          .from('ferramentas_dados')
+          .select('cliente_id, dados')
+          .eq('ferramenta', 'particularidades');
+        (particRows || []).forEach(row => {
+          let d = row.dados;
+          if (typeof d === 'string') { try { d = JSON.parse(d); } catch(e) { return; } }
+          if (d && d.cidades && d.cidades.length > 0) {
+            clienteCidades[row.cliente_id] = d.cidades;
+          }
+        });
+      } catch(e) { console.warn('Erro ao carregar cidades:', e); }
+      
+      // Build the list of search queries
+      const queryList = allInteresses.map(interesse => {
+        let searchQuery = buildSearchKeywords(interesse);
+        let cidadesStr = '';
+        
+        if (interesse.tipo_busca === 'eventos' || interesse.tipo_busca === 'ambos') {
+          const cidadesSet = new Set();
+          interesse.clientes.forEach(c => {
+            const cids = clienteCidades[c.id];
+            if (cids) cids.forEach(ci => cidadesSet.add(ci));
+          });
+          if (cidadesSet.size > 0) {
+            cidadesStr = [...cidadesSet].slice(0, 2).join(' OR ');
+            searchQuery += ' ' + cidadesStr;
+          }
+        }
+        
+        return {
+          palavra_chave: interesse.palavra_chave,
+          categoria: interesse.categoria || '-',
+          tipo_busca: interesse.tipo_busca || 'ambos',
+          cidades: cidadesStr || '-',
+          query_final: searchQuery,
+          clientes: interesse.clientes.map(c => c.nome).join(', ')
+        };
+      });
+      
+      // Build modal HTML
+      let tableRows = '';
+      queryList.forEach((item, i) => {
+        tableRows += `<tr>
+          <td style="color:#A0B8A6;font-size:0.72rem;">${i+1}</td>
+          <td class="kw-query">${item.query_final}</td>
+          <td class="kw-tipo">${item.tipo_busca}</td>
+          <td><span class="kw-clientes-list">${item.clientes}</span></td>
+        </tr>`;
+      });
+      
+      const modalHtml = `<div class="kw-modal-overlay" id="kw-modal-overlay">
+        <div class="kw-modal">
+          <div class="kw-modal-header">
+            <h3><i class="fas fa-list-ul"></i> Palavras-Chave de Busca (${queryList.length})</h3>
+            <button class="kw-modal-close" onclick="document.getElementById('kw-modal-overlay').remove()">&times;</button>
+          </div>
+          <div class="kw-modal-body">
+            ${queryList.length === 0 ? '<div class="kw-modal-empty">Nenhum interesse cadastrado</div>' : `
+            <table>
+              <thead><tr>
+                <th>#</th>
+                <th>Query de Busca</th>
+                <th>Tipo</th>
+                <th>Clientes</th>
+              </tr></thead>
+              <tbody>${tableRows}</tbody>
+            </table>`}
+          </div>
+        </div>
+      </div>`;
+      
+      // Remove existing modal if any
+      const existing = document.getElementById('kw-modal-overlay');
+      if (existing) existing.remove();
+      
+      // Insert modal
+      document.body.insertAdjacentHTML('beforeend', modalHtml);
+      
+      // Close on overlay click
+      document.getElementById('kw-modal-overlay').addEventListener('click', (e) => {
+        if (e.target === e.currentTarget) e.currentTarget.remove();
+      });
+    }
+
+    // Make functions global
     window.buscarNoticias = buscarNoticias;
+    window.verPalavrasChave = verPalavrasChave;
 
     // Init
     loadApiKeys();
     loadInteresses().then(interesses => {
       if (interesses.length > 0) {
-        document.getElementById('results-section').innerHTML = `<p style="color:#aaa; text-align:center; padding:2rem;">${interesses.length} interesse(s) encontrado(s) em ${new Set(interesses.flatMap(i => i.clientes.map(c => c.id))).size} cliente(s). Clique em "Buscar Notícias" para começar.</p>`;
+        document.getElementById('results-section').innerHTML = `<p style="color:#aaa; text-align:center; padding:2rem;">${interesses.length} interesse(s) encontrado(s) em ${new Set(interesses.flatMap(i => i.clientes.map(c => c.id))).size} cliente(s). Clique em "Buscar Not\u00edcias" para come\u00e7ar.</p>`;
       }
     });
   </script>
