@@ -998,12 +998,41 @@
                 if (existingClientId) {
                     sbClient = sbClients.find(c => c.id === existingClientId);
                 } else {
-                    // Fallback por nome se não achou por CPF (ou se CPF não existe na Cyclopay)
-                    sbClient = sbClients.find(c => 
-                        c.nome && client.first_name && 
-                        c.nome.toLowerCase().includes(client.first_name.toLowerCase()) &&
-                        (client.last_name ? c.nome.toLowerCase().includes(client.last_name.toLowerCase()) : true)
-                    );
+                    // Fallback 1: por nome completo (first + last contidos no nome do Supabase)
+                    const cycloFirst = (client.first_name || '').toLowerCase().trim();
+                    const cycloLast = (client.last_name || '').toLowerCase().trim();
+                    const cycloFull = (cycloFirst + ' ' + cycloLast).trim();
+
+                    sbClient = sbClients.find(c => {
+                        if (!c.nome) return false;
+                        const sbNome = c.nome.toLowerCase().trim();
+                        // Verifica se o nome do Supabase contém first E last
+                        if (cycloFirst && sbNome.includes(cycloFirst) && (!cycloLast || sbNome.includes(cycloLast))) return true;
+                        // Verifica se o nome completo do Cyclopay está contido no Supabase
+                        if (cycloFull && sbNome.includes(cycloFull)) return true;
+                        // Verifica inverso: nome do Supabase contido no nome completo do Cyclopay
+                        if (sbNome && cycloFull.includes(sbNome)) return true;
+                        // Verifica por primeiro nome + primeira palavra do sobrenome
+                        if (cycloLast) {
+                            const firstLastWord = cycloLast.split(' ')[0];
+                            if (cycloFirst && sbNome.includes(cycloFirst) && sbNome.includes(firstLastWord)) return true;
+                        }
+                        return false;
+                    });
+
+                    // Fallback 2: por WhatsApp (se não achou por nome)
+                    if (!sbClient && client.phone) {
+                        const cycloPhone = String(client.phone).replace(/\D/g, '');
+                        if (cycloPhone.length >= 10) {
+                            sbClient = sbClients.find(c => {
+                                if (!c.whatsapp) return false;
+                                const sbPhone = String(c.whatsapp).replace(/\D/g, '');
+                                // Compara os últimos 8-9 dígitos (ignora DDI/DDD variações)
+                                const minLen = Math.min(cycloPhone.length, sbPhone.length, 9);
+                                return cycloPhone.slice(-minLen) === sbPhone.slice(-minLen);
+                            });
+                        }
+                    }
                 }
                 
                 if (sbClient) {
