@@ -367,7 +367,7 @@
           .from('ferramentas_dados')
           .select('cliente_id, dados')
           .in('cliente_id', ids)
-          .eq('ferramenta_slug', 'particularidades');
+          .eq('ferramenta', 'particularidades');
         if (pErr) throw pErr;
 
         // Aggregate interests across clients
@@ -588,7 +588,7 @@
         const { data: particRows } = await supabase
           .from('ferramentas_dados')
           .select('cliente_id, dados')
-          .eq('ferramenta_slug', 'particularidades');
+          .eq('ferramenta', 'particularidades');
         (particRows || []).forEach(row => {
           let d = row.dados;
           if (typeof d === 'string') { try { d = JSON.parse(d); } catch(e) { return; } }
