@@ -1713,7 +1713,7 @@ async function showDiagnosticoModal(clientId, clientName) {
             }
         } else {
             const diag = diagData[0];
-            const diagLink = `${window.location.origin}/diagnostico-financeiro.html?token=${diag.link_unico}`;
+            const diagLink = `${window.location.origin}/diagnostico-financeiro.html?link=${diag.link_unico}`;
             const diagDate = new Date(diag.created_at).toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
 
             html = `
