@@ -1060,6 +1060,41 @@
     /* Hide card when filtered out */
     .pend-card-hidden { display:none !important; }
 
+    /* === PATRIMONIO MODAL (iframe window) === */
+    .pat-modal-wrapper {
+        position:fixed; top:5vh; left:5vw; width:90vw; height:85vh;
+        background:#052614; border:1px solid rgba(212,175,55,0.2);
+        border-radius:12px; box-shadow:0 20px 60px rgba(0,0,0,0.7);
+        display:flex; flex-direction:column; z-index:10001; overflow:hidden;
+    }
+    .pat-modal-header {
+        display:flex; justify-content:space-between; align-items:center;
+        padding:0.8rem 1.2rem; background:#021C0E;
+        border-bottom:1px solid rgba(212,175,55,0.2); cursor:move; user-select:none;
+    }
+    .pat-modal-header h2 { margin:0; font-size:1rem; color:#F2E8C9; }
+    .pat-modal-body { flex:1; overflow:hidden; }
+    .pat-modal-body iframe {
+        width:100%; height:100%; border:none; background:#021C0E;
+    }
+    /* Resize handles */
+    .pat-resize-handle {
+        position:absolute; z-index:10002;
+    }
+    .pat-resize-br { bottom:0; right:0; width:18px; height:18px; cursor:nwse-resize; }
+    .pat-resize-bl { bottom:0; left:0; width:18px; height:18px; cursor:nesw-resize; }
+    .pat-resize-tr { top:0; right:0; width:18px; height:18px; cursor:nesw-resize; }
+    .pat-resize-r { top:50%; right:0; width:6px; height:40px; transform:translateY(-50%); cursor:ew-resize; }
+    .pat-resize-b { bottom:0; left:50%; width:40px; height:6px; transform:translateX(-50%); cursor:ns-resize; }
+    .pat-resize-br::after {
+        content:''; position:absolute; bottom:4px; right:4px;
+        width:10px; height:10px; border-right:2px solid rgba(212,175,55,0.4);
+        border-bottom:2px solid rgba(212,175,55,0.4);
+    }
+    @media (max-width:768px) {
+        .pat-modal-wrapper { width:95vw !important; left:2.5vw !important; top:3vh !important; height:92vh !important; }
+    }
+
   </style>
 </head>
 <body>
@@ -1305,6 +1340,24 @@
       <div id="particularidades-modal-body">
         <p style="color:var(--theme-text-muted);">Carregando...</p>
       </div>
+    </div>
+  </div>
+
+  <!-- Modal de Patrimônio (iframe) -->
+  <div id="patrimonio-modal" class="modal">
+    <div class="pat-modal-wrapper" id="pat-modal-wrapper">
+      <div class="pat-modal-header" id="pat-modal-header">
+        <h2 id="patrimonio-modal-title">Patrimônio</h2>
+        <span class="modal-close" id="patrimonio-close-btn">&times;</span>
+      </div>
+      <div class="pat-modal-body">
+        <iframe id="patrimonio-iframe" src="" frameborder="0"></iframe>
+      </div>
+      <div class="pat-resize-handle pat-resize-br" data-dir="br"></div>
+      <div class="pat-resize-handle pat-resize-bl" data-dir="bl"></div>
+      <div class="pat-resize-handle pat-resize-tr" data-dir="tr"></div>
+      <div class="pat-resize-handle pat-resize-r" data-dir="r"></div>
+      <div class="pat-resize-handle pat-resize-b" data-dir="b"></div>
     </div>
   </div>
 
