@@ -3971,7 +3971,7 @@ document.addEventListener("DOMContentLoaded", initializeDashboard);
 // ============================================================
 // PENDÊNCIAS MODAL (Consultor / Cliente) - REDESIGN 3 COLUNAS
 // ============================================================
-const PEND_OBJ_COLORS = ['#f59e0b','#60a5fa','#34d399','#f472b6','#a78bfa','#fb923c','#22d3ee','#e879f9','#84cc16','#fbbf24'];
+const PEND_OBJ_COLORS = ['#D4AF37','#10b981','#3b82f6','#a855f7','#ef4444','#fb923c','#14b8a6','#eab308','#22c55e','#60a5fa'];
 
 
 async function openPendenciasModal(clientId, clientName, pendType) {
