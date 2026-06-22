@@ -676,7 +676,7 @@ async function fetchPendentes(clienteId, row) {
             const pendCliente = pendMicrosCliente + pendMacros;
 
             cellConsultor.innerHTML = `<span class="pend-num ${pendConsultor > 0 ? 'pend-active' : 'pend-zero'}">${pendConsultor}</span><span class="pend-label">micro${pendConsultor !== 1 ? 's' : ''}</span>`;
-            cellCliente.innerHTML = `<span class="pend-num ${pendCliente > 0 ? 'pend-active' : 'pend-zero'}">${pendCliente}</span><span class="pend-label">item${pendCliente !== 1 ? 'ns' : ''}</span>`;
+            cellCliente.innerHTML = `<span class="pend-num ${pendCliente > 0 ? 'pend-active' : 'pend-zero'}">${pendCliente}</span><span class="pend-label">${pendCliente !== 1 ? 'itens' : 'item'}</span>`;
             registerSummaryData('pendConsultor', pendConsultor);
             registerSummaryData('pendCliente', pendCliente);
         } else {
@@ -4000,11 +4000,15 @@ async function openPendenciasModal(clientId, clientName, pendType) {
         const objetivos = Array.isArray(dados.objetivos) ? dados.objetivos : [];
         
         // Filter by type
+        const macros = Array.isArray(dados.macroPassos) ? dados.macroPassos : [];
         let filtered;
         if (pendType === 'consultor') {
-            filtered = micros.filter(m => m.responsavel_consultor);
+            filtered = micros.filter(m => m.responsavel_consultor && m.status !== 'concluido');
         } else {
-            filtered = micros.filter(m => !m.responsavel_consultor);
+            // Cliente: micro passos sem responsavel_consultor não concluídos + macros não concluídas
+            const microsCli = micros.filter(m => !m.responsavel_consultor && m.status !== 'concluido');
+            const macrosCli = macros.filter(m => m.status !== 'concluido').map(m => ({...m, _isMacro: true}));
+            filtered = [...microsCli, ...macrosCli];
         }
         
         if (filtered.length === 0) {
@@ -4023,7 +4027,7 @@ async function openPendenciasModal(clientId, clientName, pendType) {
             </select>
             <select id="pend-filter-objetivo">
                 <option value="">Todos os objetivos</option>
-                ${objetivos.map((o, i) => `<option value="${i}">${o.nome || 'Objetivo ' + (i+1)}</option>`).join('')}
+                ${objetivos.map((o, i) => `<option value="${o.id || i}">${o.nome || 'Objetivo ' + (i+1)}</option>`).join('')}
             </select>
         </div>`;
         
@@ -4038,7 +4042,7 @@ async function openPendenciasModal(clientId, clientName, pendType) {
             <tbody>`;
         
         filtered.forEach((m, idx) => {
-            const globalIdx = micros.indexOf(m);
+            const globalIdx = m._isMacro ? -1 : micros.indexOf(m);
             const statusLabel = (m.status || 'pendente').replace('_', ' ');
             const statusClass = 'st-' + (m.status || 'pendente');
             let prazoStr = '--';
@@ -4049,17 +4053,21 @@ async function openPendenciasModal(clientId, clientName, pendType) {
             let objNames = '--';
             if (m.objetivos_ids && m.objetivos_ids.length > 0) {
                 objNames = m.objetivos_ids.map(oid => {
-                    const o = objetivos[oid];
-                    return o ? (o.nome || 'Obj ' + (oid+1)) : '';
+                    const o = objetivos.find(ob => String(ob.id) === String(oid));
+                    return o ? (o.nome || 'Objetivo') : '';
                 }).filter(Boolean).join(', ') || '--';
+            } else if (m.objetivo_id) {
+                const o = objetivos.find(ob => String(ob.id) === String(m.objetivo_id));
+                objNames = o ? (o.nome || 'Objetivo') : '--';
             }
             
+            const typeLabel = m._isMacro ? '<span style="font-size:0.65rem;background:#555;color:#fff;padding:1px 4px;border-radius:3px;margin-left:4px;">MACRO</span>' : '';
             html += `<tr data-global-idx="${globalIdx}" data-status="${m.status || 'pendente'}" data-obj-ids="${(m.objetivos_ids || []).join(',')}">
-                <td><strong>${sanitizeInput(m.desc || 'Sem título')}</strong>${m.detalhamento ? '<br><span style="font-size:0.72rem;color:var(--theme-text-muted);">' + sanitizeInput(m.detalhamento.substring(0,60)) + '</span>' : ''}</td>
+                <td><strong>${sanitizeInput(m.desc || 'Sem título')}</strong>${typeLabel}${m.detalhamento ? '<br><span style="font-size:0.72rem;color:var(--theme-text-muted);">' + sanitizeInput(m.detalhamento.substring(0,60)) + '</span>' : ''}</td>
                 <td><span class="status-badge ${statusClass}">${statusLabel}</span></td>
                 <td style="font-size:0.78rem;">${prazoStr}</td>
                 <td style="font-size:0.78rem;">${sanitizeInput(objNames)}</td>
-                <td><button class="btn-update-micro" data-global-idx="${globalIdx}" data-client-id="${clientId}">Atualizar</button></td>
+                <td>${globalIdx >= 0 ? `<button class="btn-update-micro" data-global-idx="${globalIdx}" data-client-id="${clientId}">Atualizar</button>` : '--'}</td>
             </tr>`;
         });
         
