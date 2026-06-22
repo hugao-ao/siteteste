@@ -390,7 +390,7 @@ async function loadClients(filterProject = null) {
     try {
         clientsTableBody.innerHTML = '<tr><td colspan="17">Carregando clientes...</td></tr>';
         console.log("clientes.js: Construindo query Supabase...");
-        let query = supabase.from('clientes').select('*, formularios_clientes(count), plano_ref_valor_total, mensalidade');
+        let query = supabase.from('clientes').select('*, formularios_clientes(count), diagnosticos_financeiros(count), plano_ref_valor_total, mensalidade');
 
         // Lógica de filtro
         if (filterProject && isAdmin) {
@@ -555,7 +555,7 @@ async function loadClients(filterProject = null) {
                         <i class="fa-solid fa-file-lines"></i> ${client.formularios_clientes[0].count}
                     </button>
                     <button class="view-diag-btn" data-client-id="${client.id}" data-client-name="${sanitizeInput(client.nome)}" title="Ver Diagnóstico">
-                        <i class="fa-solid fa-stethoscope"></i>
+                        <i class="fa-solid fa-stethoscope"></i>${client.diagnosticos_financeiros && client.diagnosticos_financeiros[0] && client.diagnosticos_financeiros[0].count > 0 ? ' ' + client.diagnosticos_financeiros[0].count : ''}
                     </button>
                 </td>
                 <td data-label="Plano Ref." class="plano-ref-cell" data-client-id="${client.id}">
@@ -1409,128 +1409,207 @@ async function loadClientFormEnhanced(clientId) {
 function renderFormDataComplete(dados) {
     if (!dados) return '';
     const S = (v) => v ? sanitizeInput(String(v)) : '';
-    const C = (v) => { if (v === null || v === undefined) return 'R$ 0,00'; const n = parseFloat(v); return isNaN(n) ? 'R$ 0,00' : n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }); };
+    const C = (v) => { if (v === null || v === undefined) return 'R$ 0,00'; const n = parseFloat(String(v).replace(/[^\d.,\-]/g, '').replace(',', '.')); return isNaN(n) ? 'R$ 0,00' : n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }); };
     let h = '<div class="form-consolidado">';
 
-    // Formulário do Cliente
-    h += '<h3>Formulário do Cliente</h3>';
-    if (dados.nome_completo) h += `<p><strong>Nome Completo:</strong> ${S(dados.nome_completo)}</p>`;
+    // Nome Completo
+    const nomeCompleto = dados.nome_completo ? S(dados.nome_completo) : 'N/A';
+    h += `<p><strong style="color: var(--theme-secondary-lighter);">Nome Completo:</strong> ${nomeCompleto}</p>`;
 
     // Única pessoa com renda
-    h += `<p><strong>Única pessoa com renda na casa?</strong> ${dados.unica_pessoa_renda ? 'Sim' : 'Não'}</p>`;
-    if (!dados.unica_pessoa_renda && dados.outras_pessoas && dados.outras_pessoas.length > 0) {
+    const rendaUnicaText = dados.renda_unica === 'sim' ? 'Sim' : (dados.renda_unica === 'nao' ? 'Não' : (dados.unica_pessoa_renda ? 'Sim' : 'Não'));
+    h += `<p><strong style="color: var(--theme-secondary-lighter);">Única pessoa com renda na casa?</strong> ${rendaUnicaText}</p>`;
+
+    if ((dados.renda_unica === 'nao' || !dados.unica_pessoa_renda) && Array.isArray(dados.outras_pessoas) && dados.outras_pessoas.length > 0) {
         h += '<ul>';
         dados.outras_pessoas.forEach(p => {
-            h += `<li>${S(p.nome)} (Precisa de autorização: ${p.precisa_autorizacao ? 'Sim' : 'Não'})</li>`;
+            const nomePessoa = p.nome ? S(p.nome) : 'Nome não informado';
+            const autText = p.autorizacao === 'sim' ? 'Sim' : (p.autorizacao === 'nao' ? 'Não' : (p.precisa_autorizacao ? 'Sim' : 'Não'));
+            h += `<li>${nomePessoa} (Precisa de autorização: ${autText})</li>`;
         });
         h += '</ul>';
     }
 
     // Dependentes
-    h += `<p><strong>Tem dependentes?</strong> ${dados.tem_dependentes ? 'Sim' : 'Não'}</p>`;
-    if (dados.tem_dependentes && dados.dependentes && dados.dependentes.length > 0) {
+    const temDependentesText = dados.tem_dependentes === 'sim' ? 'Sim' : (dados.tem_dependentes === 'nao' ? 'Não' : 'N/A');
+    h += `<p style="margin-top:1rem;"><strong style="color: var(--theme-secondary-lighter);">Tem dependentes?</strong> ${temDependentesText}</p>`;
+
+    if ((dados.tem_dependentes === 'sim' || dados.tem_dependentes === true) && Array.isArray(dados.dependentes) && dados.dependentes.length > 0) {
         h += '<ul>';
         dados.dependentes.forEach(dep => {
-            h += `<li>${S(dep.nome)} — ${S(dep.parentesco || '')}${dep.idade ? ', ' + dep.idade + ' anos' : ''}</li>`;
+            const nomeDep = dep.nome ? S(dep.nome) : 'Nome não informado';
+            let idadeDep = dep.idade !== undefined && dep.idade !== null ? S(String(dep.idade)) : 'N/A';
+            if (dep.data_nascimento && (idadeDep === 'N/A' || idadeDep === '')) {
+                const nascDep = new Date(dep.data_nascimento + 'T00:00:00');
+                const hojeDep = new Date();
+                let calcIdade = hojeDep.getFullYear() - nascDep.getFullYear();
+                const mDiff = hojeDep.getMonth() - nascDep.getMonth();
+                if (mDiff < 0 || (mDiff === 0 && hojeDep.getDate() < nascDep.getDate())) calcIdade--;
+                if (calcIdade >= 0) idadeDep = calcIdade + ' anos';
+            }
+            const relacaoDep = dep.relacao ? S(dep.relacao) : (dep.parentesco ? S(dep.parentesco) : 'N/A');
+            h += `<li>${nomeDep} (Idade: ${idadeDep}, Relação: ${relacaoDep})</li>`;
         });
         h += '</ul>';
     }
 
-    // Plano de Saúde
-    if (dados.plano_saude) {
-        h += '<h3>Informações sobre Plano de Saúde:</h3><ul>';
+    // Planos de Saúde
+    if (dados.planos_saude && Object.keys(dados.planos_saude).length > 0) {
+        h += `<p style="margin-top:1rem;"><strong style="color: var(--theme-secondary-lighter);">Informações sobre Plano de Saúde:</strong></p><ul>`;
+        Object.entries(dados.planos_saude).forEach(([nome, info]) => {
+            let statusText = 'N/A';
+            if (info.possui === 'sim') statusText = 'Sim';
+            else if (info.possui === 'nao') statusText = 'Não';
+            else if (info.possui === 'nao_sei') statusText = 'Não sei informar';
+            h += `<li>${S(nome)}: ${statusText}</li>`;
+        });
+        h += '</ul>';
+    } else if (dados.plano_saude) {
+        h += `<p style="margin-top:1rem;"><strong style="color: var(--theme-secondary-lighter);">Informações sobre Plano de Saúde:</strong></p><ul>`;
         if (Array.isArray(dados.plano_saude)) {
-            dados.plano_saude.forEach(ps => {
-                h += `<li>${S(ps.nome || ps.pessoa || 'N/A')}: ${S(ps.resposta || ps.valor || 'N/A')}</li>`;
-            });
+            dados.plano_saude.forEach(ps => { h += `<li>${S(ps.nome || ps.pessoa || 'N/A')}: ${S(ps.resposta || ps.valor || 'N/A')}</li>`; });
         } else if (typeof dados.plano_saude === 'object') {
-            Object.entries(dados.plano_saude).forEach(([nome, val]) => {
-                h += `<li>${S(nome)}: ${S(typeof val === 'object' ? val.resposta || JSON.stringify(val) : String(val))}</li>`;
-            });
+            Object.entries(dados.plano_saude).forEach(([nome, val]) => { h += `<li>${S(nome)}: ${S(typeof val === 'object' ? val.resposta || JSON.stringify(val) : String(val))}</li>`; });
         }
         h += '</ul>';
     }
 
-    // Seguro de Vida
-    if (dados.seguro_vida) {
-        h += '<h3>Informações sobre Seguro de Vida:</h3><ul>';
+    // Seguros de Vida
+    if (dados.seguros_vida && Object.keys(dados.seguros_vida).length > 0) {
+        h += `<p style="margin-top:1rem;"><strong style="color: var(--theme-secondary-lighter);">Informações sobre Seguro de Vida:</strong></p><ul>`;
+        Object.entries(dados.seguros_vida).forEach(([nome, info]) => {
+            let statusText = 'N/A';
+            if (info.possui === 'sim') statusText = 'Sim';
+            else if (info.possui === 'nao') statusText = 'Não';
+            else if (info.possui === 'nao_sei') statusText = 'Não sei informar';
+            h += `<li>${S(nome)}: ${statusText}</li>`;
+        });
+        h += '</ul>';
+    } else if (dados.seguro_vida) {
+        h += `<p style="margin-top:1rem;"><strong style="color: var(--theme-secondary-lighter);">Informações sobre Seguro de Vida:</strong></p><ul>`;
         if (Array.isArray(dados.seguro_vida)) {
-            dados.seguro_vida.forEach(sv => {
-                h += `<li>${S(sv.nome || sv.pessoa || 'N/A')}: ${S(sv.resposta || sv.valor || 'N/A')}</li>`;
-            });
+            dados.seguro_vida.forEach(sv => { h += `<li>${S(sv.nome || sv.pessoa || 'N/A')}: ${S(sv.resposta || sv.valor || 'N/A')}</li>`; });
         } else if (typeof dados.seguro_vida === 'object') {
-            Object.entries(dados.seguro_vida).forEach(([nome, val]) => {
-                h += `<li>${S(nome)}: ${S(typeof val === 'object' ? val.resposta || JSON.stringify(val) : String(val))}</li>`;
-            });
+            Object.entries(dados.seguro_vida).forEach(([nome, val]) => { h += `<li>${S(nome)}: ${S(typeof val === 'object' ? val.resposta || JSON.stringify(val) : String(val))}</li>`; });
         }
         h += '</ul>';
     }
 
     // Patrimônio Físico
-    h += `<p><strong>Possui Patrimônio Físico?</strong> ${dados.patrimonio_fisico ? 'Sim' : 'Não'}</p>`;
-    if (dados.patrimonio_fisico && dados.patrimonios_fisicos && dados.patrimonios_fisicos.length > 0) {
+    const possuiPatrimonioText = dados.tem_patrimonio === 'sim' ? 'Sim' : (dados.tem_patrimonio === 'nao' ? 'Não' : (dados.patrimonio_fisico ? 'Sim' : 'Não'));
+    h += `<p style="margin-top:1rem;"><strong style="color: var(--theme-secondary-lighter);">Possui Patrimônio Físico?</strong> ${possuiPatrimonioText}</p>`;
+
+    const patrimoniosFisicos = dados.patrimonios || dados.patrimonios_fisicos;
+    if ((dados.tem_patrimonio === 'sim' || dados.patrimonio_fisico) && Array.isArray(patrimoniosFisicos) && patrimoniosFisicos.length > 0) {
         h += '<ul>';
-        dados.patrimonios_fisicos.forEach(p => {
-            h += `<li>${S(p.descricao || p.tipo || 'N/A')}: ${C(p.valor)}</li>`;
+        patrimoniosFisicos.forEach(p => {
+            const desc = p.qual ? S(p.qual) : (p.descricao ? S(p.descricao) : (p.tipo ? S(p.tipo) : 'Descrição não informada'));
+            const valor = C(p.valor);
+            const seguroText = p.seguro === 'sim' ? 'Sim' : (p.seguro === 'nao' ? 'Não' : 'N/A');
+            const quitadoText = p.quitado === 'sim' ? 'Sim' : (p.quitado === 'nao' ? 'Não' : 'N/A');
+            h += `<li>${desc} (Valor: ${valor}, Seguro: ${seguroText}, Quitado: ${quitadoText})</li>`;
         });
         h += '</ul>';
     }
 
     // Patrimônio Líquido
-    h += `<p><strong>Possui Patrimônio Líquido?</strong> ${dados.patrimonio_liquido ? 'Sim' : 'Não'}</p>`;
-    if (dados.patrimonio_liquido && dados.patrimonios_liquidos && dados.patrimonios_liquidos.length > 0) {
+    const possuiPatLiqText = dados.tem_patrimonio_liquido === 'sim' ? 'Sim' : (dados.tem_patrimonio_liquido === 'nao' ? 'Não' : (dados.patrimonio_liquido ? 'Sim' : 'Não'));
+    h += `<p style="margin-top:1rem;"><strong style="color: var(--theme-secondary-lighter);">Possui Dinheiro Guardado ou Investido?</strong> ${possuiPatLiqText}</p>`;
+
+    if ((dados.tem_patrimonio_liquido === 'sim' || dados.patrimonio_liquido) && Array.isArray(dados.patrimonios_liquidos) && dados.patrimonios_liquidos.length > 0) {
         h += '<ul>';
         dados.patrimonios_liquidos.forEach(p => {
-            h += `<li>${S(p.descricao || p.tipo || 'N/A')}: ${C(p.valor)}</li>`;
+            const onde = p.qual ? S(p.qual) : (p.descricao ? S(p.descricao) : (p.tipo ? S(p.tipo) : 'Local não informado'));
+            const valor = C(p.valor);
+            h += `<li>${onde} (Valor: ${valor})</li>`;
         });
         h += '</ul>';
     }
 
-    // Entradas de Renda
-    if (dados.entradas_renda && dados.entradas_renda.length > 0) {
-        h += '<h3>Entradas de Renda:</h3><ul>';
-        dados.entradas_renda.forEach(r => {
+    // Dívidas
+    const possuiDividasText = dados.tem_dividas === 'sim' ? 'Sim' : (dados.tem_dividas === 'nao' ? 'Não' : 'N/A');
+    h += `<p style="margin-top:1rem;"><strong style="color: var(--theme-secondary-lighter);">Possui Dívidas?</strong> ${possuiDividasText}</p>`;
+
+    if (dados.tem_dividas === 'sim' && Array.isArray(dados.dividas) && dados.dividas.length > 0) {
+        h += '<ul>';
+        dados.dividas.forEach(d => {
+            const credor = d.credor ? S(d.credor) : 'Credor não informado';
+            const saldo = C(d.saldo);
+            h += `<li>A quem deve: ${credor} (Saldo Devedor Atual: ${saldo})</li>`;
+        });
+        h += '</ul>';
+    }
+
+    // Imposto de Renda
+    if (dados.impostos_renda && Object.keys(dados.impostos_renda).length > 0) {
+        h += `<p style="margin-top:1rem;"><strong style="color: var(--theme-secondary-lighter);">Informações sobre Imposto de Renda:</strong></p><ul>`;
+        Object.entries(dados.impostos_renda).forEach(([nome, info]) => {
+            let statusIRText = 'N/A';
+            if (info.declara === 'sim') statusIRText = 'Sim';
+            else if (info.declara === 'nao') statusIRText = 'Não';
+            else if (info.declara === 'nao_sei') statusIRText = 'Não sei informar';
+            let detalhes = `Declara: ${statusIRText}`;
+            if (info.declara === 'sim') {
+                const tipoIR = info.tipo_ir ? S(info.tipo_ir) : 'Tipo não informado';
+                const resultadoIR = info.resultado_ir ? S(info.resultado_ir) : 'Resultado não informado';
+                detalhes += ` | Tipo: ${tipoIR} | Resultado: ${resultadoIR}`;
+            }
+            h += `<li>${S(nome)}: ${detalhes}</li>`;
+        });
+        h += '</ul>';
+    }
+
+    // Entradas de Renda (orçamento)
+    const rendas = dados.orcamento_renda || dados.entradas_renda;
+    if (Array.isArray(rendas) && rendas.length > 0) {
+        h += `<p style="margin-top:1rem;"><strong style="color: var(--theme-secondary-lighter);">Entradas de Renda:</strong></p><ul>`;
+        rendas.forEach(r => {
             h += `<li>${S(r.descricao || r.nome || 'N/A')}: ${C(r.valor)}</li>`;
         });
         h += '</ul>';
     }
 
     // Despesas Fixas
-    if (dados.despesas_fixas && dados.despesas_fixas.length > 0) {
-        h += '<h3>Despesas Fixas:</h3><ul>';
-        dados.despesas_fixas.forEach(d => {
+    const despFixas = dados.orcamento_despesas_fixas || dados.despesas_fixas;
+    if (Array.isArray(despFixas) && despFixas.length > 0) {
+        h += `<p style="margin-top:1rem;"><strong style="color: var(--theme-secondary-lighter);">Despesas Fixas:</strong></p><ul>`;
+        despFixas.forEach(d => {
             h += `<li>${S(d.descricao || d.nome || 'N/A')}: ${C(d.valor)}</li>`;
         });
         h += '</ul>';
     }
 
     // Despesas Variáveis
-    if (dados.despesas_variaveis && dados.despesas_variaveis.length > 0) {
-        h += '<h3>Despesas Variáveis:</h3><ul>';
-        dados.despesas_variaveis.forEach(d => {
+    const despVar = dados.orcamento_despesas_variaveis || dados.despesas_variaveis;
+    if (Array.isArray(despVar) && despVar.length > 0) {
+        h += `<p style="margin-top:1rem;"><strong style="color: var(--theme-secondary-lighter);">Despesas Variáveis:</strong></p><ul>`;
+        despVar.forEach(d => {
             h += `<li>${S(d.descricao || d.nome || 'N/A')}: ${C(d.valor)}</li>`;
         });
         h += '</ul>';
     }
 
     // Objetivos Financeiros
-    if (dados.objetivos_financeiros && dados.objetivos_financeiros.length > 0) {
-        h += '<h3>Objetivos Financeiros:</h3><ul>';
-        dados.objetivos_financeiros.forEach(o => {
-            h += `<li>${S(o.descricao || o.nome || 'N/A')}`;
-            if (o.valor) h += ` (Valor: ${C(o.valor)})`;
-            if (o.prazo) h += ` | Prazo: ${S(o.prazo)}`;
-            h += '</li>';
+    const objetivos = dados.objetivos || dados.objetivos_financeiros;
+    if (Array.isArray(objetivos) && objetivos.length > 0) {
+        h += `<p style="margin-top:1rem;"><strong style="color: var(--theme-secondary-lighter);">Objetivos Financeiros:</strong></p><ul>`;
+        objetivos.forEach(o => {
+            const desc = S(o.descricao || o.nome || 'Descrição não informada');
+            const valor = o.valor ? C(o.valor) : '';
+            const prazo = o.prazo ? S(o.prazo) : 'Prazo não informado';
+            h += `<li>${desc}${valor ? ' (Valor: ' + valor + ')' : ''} | Prazo: ${prazo}</li>`;
         });
         h += '</ul>';
     }
 
     // Informações Adicionais
-    if (dados.informacoes_adicionais && dados.informacoes_adicionais.trim()) {
-        h += '<h3>Informações Adicionais:</h3>';
-        h += `<p>${S(dados.informacoes_adicionais)}</p>`;
+    const infoAd = dados.info_adicionais || dados.informacoes_adicionais;
+    if (typeof infoAd === 'string' && infoAd.trim() !== '') {
+        h += `<p style="margin-top:1rem;"><strong style="color: var(--theme-secondary-lighter);">Informações Adicionais:</strong></p>`;
+        h += `<p>${S(infoAd)}</p>`;
     } else {
-        h += '<h3>Informações Adicionais:</h3><p>Nenhuma informação adicional fornecida.</p>';
+        h += `<p style="margin-top:1rem;"><strong style="color: var(--theme-secondary-lighter);">Informações Adicionais:</strong></p>`;
+        h += '<p>Nenhuma informação adicional fornecida.</p>';
     }
 
     h += '</div>';
