@@ -827,7 +827,7 @@
       const article = group.articles[articleIdx];
       if (!article) return;
       
-      const mensagem = `Ol\u00e1! Encontrei essa not\u00edcia que pode te interessar:\n\n*${article.title}*\n${article.link}`;
+      const mensagem = article.link;
       
       let rows = '';
       group.clientes.forEach((c, i) => {
