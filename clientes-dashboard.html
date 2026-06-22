@@ -525,6 +525,32 @@
         text-overflow: ellipsis;
         max-width: 120px;
     }
+    /* --- Conflict Badges --- */
+    .conflict-badge {
+        display: inline-block;
+        padding: 0.15rem 0.4rem;
+        border-radius: 8px;
+        font-size: 0.62rem;
+        font-weight: 700;
+        margin-left: 4px;
+        vertical-align: middle;
+        cursor: pointer;
+        animation: conflict-pulse 2s ease-in-out infinite;
+    }
+    .conflict-cpf {
+        background: rgba(239,68,68,0.15);
+        color: #ef4444;
+        border: 1px solid rgba(239,68,68,0.5);
+    }
+    .conflict-whats {
+        background: rgba(245,158,11,0.15);
+        color: #f59e0b;
+        border: 1px solid rgba(245,158,11,0.5);
+    }
+    @keyframes conflict-pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.6; }
+    }
     /* --- Plano Ref Cell --- */
     .plano-ref-cell {
         text-align: center;
@@ -1423,10 +1449,21 @@
 
   <!-- Modal de Mensalidade -->
   <div id="mensalidade-modal" class="modal">
-    <div class="modal-content" style="max-width:450px;">
+    <div class="modal-content" style="max-width:550px;">
       <span class="modal-close" id="mensalidade-close-btn">&times;</span>
       <h2 id="mensalidade-title">Mensalidade</h2>
       <div id="mensalidade-body">
+        <p style="color:var(--theme-text-muted);">Carregando...</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal de Situação -->
+  <div id="situacao-modal" class="modal">
+    <div class="modal-content" style="max-width:550px;">
+      <span class="modal-close" id="situacao-close-btn">&times;</span>
+      <h2 id="situacao-title">Situação</h2>
+      <div id="situacao-body">
         <p style="color:var(--theme-text-muted);">Carregando...</p>
       </div>
     </div>
