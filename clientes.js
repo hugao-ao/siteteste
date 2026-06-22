@@ -5296,8 +5296,8 @@ function _renderTipoSyncContent(body, sources, clientId, clientName) {
     // Actions
     html += `<div class="tipo-sync-status" id="tipo-sync-status"></div>`;
     html += `<div class="tipo-sync-actions">
-        <button class="tipo-sync-btn secondary" onclick="document.getElementById('tipo-sync-modal').style.display='none'">Fechar</button>
-        <button class="tipo-sync-btn primary" id="tipo-sync-apply-btn" onclick="_applyTipoSync('${clientId}', '${_escHtml(clientName)}')">Sincronizar Selecionados</button>
+        <button class="tipo-sync-btn secondary" id="tipo-sync-close-secondary">Fechar</button>
+        <button class="tipo-sync-btn primary" id="tipo-sync-apply-btn" data-client-id="${clientId}" data-client-name="${_escHtml(clientName)}">Sincronizar Selecionados</button>
     </div>`;
 
     body.innerHTML = html;
@@ -5310,6 +5310,24 @@ function _renderTipoSyncContent(body, sources, clientId, clientName) {
             radio.closest('tr').classList.add('selected-row');
         });
     });
+
+    // Add apply button listener
+    const applyBtn = document.getElementById('tipo-sync-apply-btn');
+    if (applyBtn) {
+        applyBtn.addEventListener('click', () => {
+            const cId = applyBtn.dataset.clientId;
+            const cName = applyBtn.dataset.clientName;
+            _applyTipoSync(cId, cName);
+        });
+    }
+
+    // Fix close button
+    const closeSecBtn = document.getElementById('tipo-sync-close-secondary');
+    if (closeSecBtn) {
+        closeSecBtn.addEventListener('click', () => {
+            document.getElementById('tipo-sync-modal').style.display = 'none';
+        });
+    }
 }
 
 async function _applyTipoSync(clientId, clientName) {
