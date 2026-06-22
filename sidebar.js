@@ -394,7 +394,7 @@ function injectSidebarWithAutoDetection(mainContentElementId) {
             project = 'Argos';
         } else if (currentPage.includes('planejamento')) {
             project = 'Planejamento';
-        } else if (currentPage === 'mensagens-whats.html' || currentPage === 'admin-notificacoes-hvsf.html' || currentPage === 'clientes-dashboard.html') {
+        } else if (currentPage === 'mensagens-whats.html' || currentPage === 'admin-notificacoes-hvsf.html' || currentPage === 'clientes-dashboard.html' || currentPage === 'curadoria-conteudo.html') {
             project = 'Planejamento';
         }
     }
