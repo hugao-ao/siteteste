@@ -499,7 +499,8 @@
       try {
         const q = encodeURIComponent(keyword);
         const rssUrl = `https://news.google.com/rss/search?q=${q}&hl=${lang}&gl=${country}&ceid=${country}:${lang}`;
-        const apiUrl = `${RSS2JSON_API}?rss_url=${encodeURIComponent(rssUrl)}&count=${max}`;
+        // Free tier doesn't support count param, returns 10 by default
+        const apiUrl = `${RSS2JSON_API}?rss_url=${encodeURIComponent(rssUrl)}`;
         const resp = await fetch(apiUrl);
         if (!resp.ok) throw new Error('rss2json returned ' + resp.status);
         const data = await resp.json();
