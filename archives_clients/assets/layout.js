@@ -24,6 +24,15 @@
     }
 
     document.addEventListener('DOMContentLoaded', () => {
+        // Skip sidebar injection if loaded inside an iframe
+        if (window.self !== window.top) {
+            const sc = document.getElementById('sidebar-container');
+            if (sc) sc.style.display = 'none';
+            const mainContent = document.querySelector('.main-content, main, [class*="content"]');
+            if (mainContent) { mainContent.style.marginLeft = '0'; mainContent.style.width = '100%'; }
+            document.body.classList.add('in-iframe');
+            return;
+        }
         // 1. Inject Sidebar HTML if not present
         const sidebarContainer = document.getElementById('sidebar-container');
         
