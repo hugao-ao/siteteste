@@ -684,10 +684,22 @@
             <div class="comp-chips-container" id="comp-checkboxes-proposta"></div>
           </div>
         </div>
-        <div class="row" style="gap:0.5rem; margin-bottom:1rem;">
+        <div class="row" style="gap:0.5rem; margin-bottom:1rem; flex-wrap:wrap;">
           <div class="field" style="max-width:180px;">
             <label>Taxa de Investimento (% a.a.)</label>
             <input type="number" id="taxa-invest-comp" value="12" step="0.1">
+          </div>
+          <div class="field" style="max-width:200px;">
+            <label>Valor Inicial Já Guardado (R$)</label>
+            <input type="number" id="valor-inicial-invest" value="0" step="100" min="0" placeholder="0,00">
+          </div>
+          <div class="field" style="max-width:220px;">
+            <label>Modo de Simulação</label>
+            <select id="modo-simulacao-comp">
+              <option value="completa" selected>Simulação Completa</option>
+              <option value="sem-juros-neg">Desativar Juros Negativos</option>
+              <option value="manter-positivo">Manter Valores Positivos</option>
+            </select>
           </div>
           <button class="btn btn-secondary" onclick="runComparison()" style="align-self:flex-end;">Comparar</button>
         </div>
@@ -1652,20 +1664,22 @@ function getSelectedDebts(type) {
 function runComparison() {
   var selectedAtual = getSelectedDebts('atual');
   var selectedProposta = getSelectedDebts('proposta');
-  if (!selectedAtual.length || !selectedProposta.length) {
-    alert('Selecione pelo menos uma divida atual E uma proposta para comparar.');
+  if (!selectedAtual.length && !selectedProposta.length) {
+    alert('Selecione pelo menos uma dívida atual OU uma proposta para comparar.');
     return;
   }
 
   var taxaAnual = parseFloat(document.getElementById('taxa-invest-comp').value) || 12;
   var taxaMensal = Math.pow(1 + taxaAnual / 100, 1/12) - 1;
+  var valorInicial = parseFloat(document.getElementById('valor-inicial-invest').value) || 0;
+  var modoSim = document.getElementById('modo-simulacao-comp').value; // 'completa', 'sem-juros-neg', 'manter-positivo'
 
-  var custosAtual = calcCustoMensalAtual(selectedAtual, true);
-  var custosProposta = calcCustoMensalAtual(selectedProposta, false);
+  var custosAtual = selectedAtual.length ? calcCustoMensalAtual(selectedAtual, true) : [];
+  var custosProposta = selectedProposta.length ? calcCustoMensalAtual(selectedProposta, false) : [];
 
   var mesesAtualReal = custosAtual.length;
   var mesesPropostaReal = custosProposta.length;
-  var maxMeses = Math.max(custosAtual.length, custosProposta.length);
+  var maxMeses = Math.max(custosAtual.length, custosProposta.length) || 1;
 
   while (custosAtual.length < maxMeses) custosAtual.push(0);
   while (custosProposta.length < maxMeses) custosProposta.push(0);
@@ -1675,10 +1689,21 @@ function runComparison() {
     diferencas.push(custosAtual[i] - custosProposta[i]);
   }
 
+  // Aplica valor inicial e modo de simulação
   var saldoInvest = [];
-  var saldo = 0;
+  var saldo = valorInicial;
   for (var i = 0; i < maxMeses; i++) {
-    saldo = saldo * (1 + taxaMensal) + diferencas[i];
+    // Aplicar juros conforme modo
+    if (modoSim === 'sem-juros-neg') {
+      // Juros só incidem se saldo > 0
+      saldo = (saldo > 0 ? saldo * (1 + taxaMensal) : saldo) + diferencas[i];
+    } else if (modoSim === 'manter-positivo') {
+      saldo = saldo * (1 + taxaMensal) + diferencas[i];
+      if (saldo < 0) saldo = 0;
+    } else {
+      // Simulação completa (padrão)
+      saldo = saldo * (1 + taxaMensal) + diferencas[i];
+    }
     saldoInvest.push(saldo);
   }
 
@@ -1796,18 +1821,32 @@ function runComparison() {
   }
 
   var saldoAlt = [];
-  var saldoAltAcum = 0;
+  var saldoAltAcum = valorInicial;
   for (var m = 0; m < prazoTotal; m++) {
-    saldoAltAcum = saldoAltAcum * (1 + taxaMensal) + aporteAlt[m];
+    if (modoSim === 'sem-juros-neg') {
+      saldoAltAcum = (saldoAltAcum > 0 ? saldoAltAcum * (1 + taxaMensal) : saldoAltAcum) + aporteAlt[m];
+    } else if (modoSim === 'manter-positivo') {
+      saldoAltAcum = saldoAltAcum * (1 + taxaMensal) + aporteAlt[m];
+      if (saldoAltAcum < 0) saldoAltAcum = 0;
+    } else {
+      saldoAltAcum = saldoAltAcum * (1 + taxaMensal) + aporteAlt[m];
+    }
     saldoAlt.push(saldoAltAcum);
   }
   var saldoAltFinal = saldoAlt[saldoAlt.length - 1] || 0;
 
   var saldoMigrar = [];
-  var saldoMigrarAcum = 0;
+  var saldoMigrarAcum = valorInicial;
   for (var m = 0; m < prazoTotal; m++) {
     var difM = custoAtualFull[m] - custoPropostaFull[m];
-    saldoMigrarAcum = saldoMigrarAcum * (1 + taxaMensal) + difM;
+    if (modoSim === 'sem-juros-neg') {
+      saldoMigrarAcum = (saldoMigrarAcum > 0 ? saldoMigrarAcum * (1 + taxaMensal) : saldoMigrarAcum) + difM;
+    } else if (modoSim === 'manter-positivo') {
+      saldoMigrarAcum = saldoMigrarAcum * (1 + taxaMensal) + difM;
+      if (saldoMigrarAcum < 0) saldoMigrarAcum = 0;
+    } else {
+      saldoMigrarAcum = saldoMigrarAcum * (1 + taxaMensal) + difM;
+    }
     saldoMigrar.push(saldoMigrarAcum);
   }
   var saldoMigrarFinal = saldoMigrar[saldoMigrar.length - 1] || 0;
@@ -2870,6 +2909,11 @@ function compVoltarLista() {
 function compSalvarAtual() {
   var nome = document.getElementById('comp-nome').value.trim() || 'Comparação ' + (_comparacoes.length + 1);
   var config = _buildCompConfig();
+  // Permitir salvar com pelo menos 1 lado selecionado
+  if (!config.selectedAtualIdx.length && !config.selectedPropostaIdx.length) {
+    alert('Selecione pelo menos uma dívida atual OU uma proposta para salvar.');
+    return;
+  }
   if (_editingCompId) {
     var idx = _comparacoes.findIndex(function(e) { return e.id === _editingCompId; });
     if (idx >= 0) {
@@ -2908,7 +2952,7 @@ function compRenderList() {
     var nProp = (c.config && c.config.selectedPropostaIdx) ? c.config.selectedPropostaIdx.length : 0;
     card.innerHTML = '<div class="mc-info">' +
       '<div class="mc-title">' + _escHtml(c.nome) + '</div>' +
-      '<div class="mc-meta">Atuais: ' + nAtual + ' | Propostas: ' + nProp + ' | Taxa: ' + ((c.config && c.config.taxaInvest) || 12) + '% a.a.</div>' +
+      '<div class="mc-meta">Atuais: ' + nAtual + ' | Propostas: ' + nProp + ' | Taxa: ' + ((c.config && c.config.taxaInvest) || 12) + '% a.a.' + ((c.config && c.config.valorInicial) ? ' | Inicial: ' + fmtBRL(c.config.valorInicial) : '') + '</div>' +
     '</div>' +
     '<div class="mc-actions">' +
       '<button onclick="compEditar(' + c.id + ')">&#9998; Editar</button>' +
@@ -2931,7 +2975,9 @@ function _buildCompConfig() {
   return {
     selectedAtualIdx: selAtual,
     selectedPropostaIdx: selProposta,
-    taxaInvest: parseFloat(document.getElementById('taxa-invest-comp').value) || 12
+    taxaInvest: parseFloat(document.getElementById('taxa-invest-comp').value) || 12,
+    valorInicial: parseFloat(document.getElementById('valor-inicial-invest').value) || 0,
+    modoSimulacao: document.getElementById('modo-simulacao-comp').value || 'completa'
   };
 }
 
@@ -2958,6 +3004,10 @@ function _restoreCompSelection(config) {
   }
   updateSelAllBtn('atual');
   updateSelAllBtn('proposta');
+  // Restore new fields
+  if (config.taxaInvest !== undefined) document.getElementById('taxa-invest-comp').value = config.taxaInvest;
+  if (config.valorInicial !== undefined) document.getElementById('valor-inicial-invest').value = config.valorInicial;
+  if (config.modoSimulacao) document.getElementById('modo-simulacao-comp').value = config.modoSimulacao;
 }
 
 // ===== TAB 5: ANÁLISE COMBINADA =====
@@ -3039,20 +3089,25 @@ function _analiseRunComp(comp) {
   var jurosProp = totalPagoProp - totalSaldoProp;
 
   // Simulate investment of the difference
-  var maxPeriodo = Math.max(maxPrazoAtual, maxPrazoProp);
-  var custoAtualMensal = calcCustoMensalAtual(dividasAtualSel, true);
-  var custoPropMensal = calcCustoMensalAtual(dividasPropSel, false);
+  var maxPeriodo = Math.max(maxPrazoAtual, maxPrazoProp) || 1;
+  var custoAtualMensal = dividasAtualSel.length ? calcCustoMensalAtual(dividasAtualSel, true) : [];
+  var custoPropMensal = dividasPropSel.length ? calcCustoMensalAtual(dividasPropSel, false) : [];
 
-  var investAcumulado = 0;
+  var valorInicialCfg = cfg.valorInicial || 0;
+  var modoSimCfg = cfg.modoSimulacao || 'completa';
+  var investAcumulado = valorInicialCfg;
   var investData = [];
   for (var m = 0; m < maxPeriodo; m++) {
     var custoA = m < custoAtualMensal.length ? custoAtualMensal[m] : 0;
     var custoP = m < custoPropMensal.length ? custoPropMensal[m] : 0;
     var diff = custoA - custoP;
-    if (diff > 0) {
+    if (modoSimCfg === 'sem-juros-neg') {
+      investAcumulado = (investAcumulado > 0 ? investAcumulado * (1 + taxaMensal) : investAcumulado) + diff;
+    } else if (modoSimCfg === 'manter-positivo') {
       investAcumulado = investAcumulado * (1 + taxaMensal) + diff;
+      if (investAcumulado < 0) investAcumulado = 0;
     } else {
-      investAcumulado = investAcumulado * (1 + taxaMensal);
+      investAcumulado = investAcumulado * (1 + taxaMensal) + diff;
     }
     investData.push(investAcumulado);
   }
