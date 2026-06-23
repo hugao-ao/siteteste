@@ -495,6 +495,31 @@
 
   .cons-note { font-size: 0.75rem; color: var(--muted); font-style: italic; margin-top: 0.5rem; }
 
+  /* Weight selector */
+  .cons-weight-select {
+    font-size: 0.7rem; padding: 0.2rem 0.4rem; border-radius: 4px;
+    background: var(--card2); border: 1px solid var(--border); color: var(--fg);
+    margin-left: auto; cursor: pointer; min-width: 140px;
+  }
+  .cons-weight-select:focus { border-color: var(--primary); outline: none; }
+
+  /* Expandable memory */
+  .cons-memory-toggle {
+    font-size: 0.72rem; color: var(--muted); cursor: pointer; display: flex;
+    align-items: center; gap: 0.3rem; margin-top: 0.4rem; user-select: none;
+    padding: 0.3rem 0.5rem; border-radius: 4px; transition: all 0.2s;
+  }
+  .cons-memory-toggle:hover { color: var(--primary); background: rgba(212,175,55,0.05); }
+  .cons-memory-toggle .arrow { transition: transform 0.2s; display: inline-block; }
+  .cons-memory-toggle.open .arrow { transform: rotate(90deg); }
+  .cons-memory-content {
+    display: none; margin-top: 0.5rem; padding: 0.6rem; background: rgba(0,0,0,0.2);
+    border: 1px solid var(--border); border-radius: 6px; font-size: 0.72rem;
+    color: var(--muted); line-height: 1.5; max-height: 300px; overflow-y: auto;
+  }
+  .cons-memory-content.open { display: block; }
+  .cons-memory-content code { color: var(--primary); font-size: 0.7rem; }
+
 
   /* === SIM LOCK & PRIMARY CHECKBOXES === */
   .sim-checkbox-group { display:none; gap:0.5rem; align-items:center; margin-right:0.5rem; }
@@ -520,6 +545,7 @@
   .client-locked #tab-analise button { pointer-events:auto !important; opacity:1 !important; }
   .client-locked #tab-analise .analise-check-item { pointer-events:auto !important; opacity:1 !important; cursor:pointer !important; }
   .client-locked #tab-analise div[onclick] { pointer-events:auto !important; opacity:1 !important; }
+  .client-locked #tab-analise select { pointer-events:auto !important; opacity:1 !important; }
 
 </style>
 </head>
@@ -874,6 +900,8 @@
         </div>
       </div>
 
+      <p style="color:var(--muted); font-size:0.78rem; margin-top:1rem; font-style:italic;">ℹ️ O cenário ATUAL (dívidas sem alteração) é sempre incluído automaticamente na análise.</p>
+
       <div style="text-align:center; margin-top:1.5rem;">
         <button class="btn btn-secondary" onclick="analiseGerar()" style="padding:0.7rem 1.8rem; font-size:0.95rem;">Gerar Análise Combinada</button>
       </div>
@@ -887,6 +915,7 @@
       <!-- Visão consolidada -->
       <div class="card" id="analise-consolidado" style="display:none;">
         <h2>Visão Consolidada</h2>
+        <p style="color:var(--muted); font-size:0.8rem; margin-bottom:1rem;">Defina a importância de cada dimensão para a análise:</p>
         <div id="analise-consolidado-content"></div>
       </div>
     </div>
@@ -3101,7 +3130,7 @@ function _analiseRunStrat(strat) {
 
   if (!dividasSel.length) return null;
 
-  var periodoMax = Math.min(maxRestantes * 2, 360);
+  var periodoMax = maxRestantes;
   if (periodoMax < 12) periodoMax = 12;
 
   var taxaReservaMensal = Math.pow(1 + rentabAnual / 100, 1/12) - 1;
@@ -3253,7 +3282,7 @@ function _analiseRunStrat(strat) {
     saldoData.push(saldoDevedorTotal);
     reservaData.push(Math.max(0, reservaBruta - (lucro > 0 ? lucro * irPct / 100 : 0)));
 
-    if (saldoDevedorTotal <= 0 && m > quitouEm + 6) break;
+    if (saldoDevedorTotal <= 0) break;
   }
 
   var reservaFinal = reservaData.length > 0 ? reservaData[reservaData.length - 1] : 0;
@@ -3296,8 +3325,10 @@ function analiseGerar() {
     if (s) selectedStrats.push(s);
   });
 
-  if (!selectedComps.length && !selectedStrats.length) {
-    alert('Selecione pelo menos uma comparação ou estratégia para analisar.');
+  // Não precisa mais exigir seleção pois o cenário ATUAL é sempre incluído
+  // Mas se não há dívidas atuais, não há o que analisar
+  if (!dividasAtuais.length && !selectedComps.length && !selectedStrats.length) {
+    alert('Adicione dívidas na aba Atual para gerar a análise.');
     return;
   }
 
@@ -3452,6 +3483,37 @@ function _renderConsolidado(selectedComps, selectedStrats) {
   // Build unified scenario list
   var cenarios = [];
 
+  // ===== CENÁRIO ATUAL (sempre incluído automaticamente) =====
+  if (dividasAtuais.length > 0) {
+    var totalSaldoAtualBase = 0, totalPagoAtualBase = 0, maxPrazoAtualBase = 0, totalParcelaAtualBase = 0;
+    dividasAtuais.forEach(function(d) {
+      var restantes = d.totalParcelas - (d.parcelasPagas || 0);
+      var saldo = d.saldoDevedor || d.valorContratado;
+      totalSaldoAtualBase += saldo;
+      totalParcelaAtualBase += d.parcela;
+      if (restantes > maxPrazoAtualBase) maxPrazoAtualBase = restantes;
+      totalPagoAtualBase += calcTotalPagarDivida(d, restantes);
+    });
+    var jurosAtualBase = totalPagoAtualBase - totalSaldoAtualBase;
+    cenarios.push({
+      tipo: 'atual-base',
+      label: 'Cenário Atual (Sem Alteração)',
+      parcela: totalParcelaAtualBase,
+      jurosTotal: jurosAtualBase,
+      totalPago: totalPagoAtualBase,
+      saldoDevedor: totalSaldoAtualBase,
+      prazo: maxPrazoAtualBase,
+      nContratos: dividasAtuais.length,
+      investFinal: 0,
+      reservaFinal: 0,
+      economiaMeses: 0,
+      economiaJuros: 0,
+      quitouEm: maxPrazoAtualBase,
+      aporteMensal: 0,
+      source: null
+    });
+  }
+
   selectedComps.forEach(function(comp) {
     var r = _analiseRunComp(comp);
     if (!r) return;
@@ -3538,6 +3600,18 @@ function _renderConsolidado(selectedComps, selectedStrats) {
     return;
   }
 
+  // ===== NORMALIZAR PRAZO: o maior prazo entre todos os cenários define o limite =====
+  var maxPrazoGlobal = 0;
+  cenarios.forEach(function(c) {
+    var p = Math.max(c.prazo || 0, c.quitouEm || 0);
+    if (p > maxPrazoGlobal) maxPrazoGlobal = p;
+  });
+  // Garantir que nenhum cenário ultrapasse o prazo máximo real
+  cenarios.forEach(function(c) {
+    if (c.quitouEm > maxPrazoGlobal) c.quitouEm = maxPrazoGlobal;
+    if (c.prazo > maxPrazoGlobal) c.prazo = maxPrazoGlobal;
+  });
+
   var h = '';
 
   // Helper: find best/worst in array (lower is better by default)
@@ -3563,9 +3637,38 @@ function _renderConsolidado(selectedComps, selectedStrats) {
     return 'cons-neutral';
   }
 
+  // ===== WEIGHT SELECTOR HELPER =====
+  var _weightLabels = ['Mais importante de todos', 'Muito Importante', 'Importante', 'Relevante', 'Irrelevante'];
+  var _weightValues = { 'Mais importante de todos': 40, 'Muito Importante': 25, 'Importante': 15, 'Relevante': 8, 'Irrelevante': 2 };
+  var _sectionKeys = ['sobrev', 'custo', 'veloc', 'risco', 'flex', 'psico'];
+  var _sectionDefaults = ['Muito Importante', 'Muito Importante', 'Importante', 'Relevante', 'Relevante', 'Relevante'];
+
+  function _buildWeightSelect(sectionKey, idx) {
+    var currentVal = _consCurrentWeights[sectionKey] || _sectionDefaults[idx];
+    var sel = '<select class="cons-weight-select" data-section="' + sectionKey + '" onchange="_onWeightChange(this)">';
+    _weightLabels.forEach(function(lbl, li) {
+      var selected = (lbl === currentVal) ? ' selected' : '';
+      sel += '<option value="' + lbl + '"' + selected + '>' + lbl + '</option>';
+    });
+    sel += '</select>';
+    return sel;
+  }
+
+  // ===== MEMORY HELPER =====
+  var _memoryId = 0;
+  function _buildMemory(title, content) {
+    _memoryId++;
+    var id = 'cons-mem-' + _memoryId;
+    var mem = '<div class="cons-memory-toggle" onclick="var c=document.getElementById(\'' + id + '\');c.classList.toggle(\'open\');this.classList.toggle(\'open\');">';
+    mem += '<span class="arrow">&#9654;</span> Memória de Cálculo';
+    mem += '</div>';
+    mem += '<div class="cons-memory-content" id="' + id + '">' + content + '</div>';
+    return mem;
+  }
+
   // ===== 1. SOBREVIVÊNCIA FINANCEIRA =====
   h += '<div class="cons-section">';
-  h += '<div class="cons-section-title sobrev">1. Sobrevivência Financeira Imediata</div>';
+  h += '<div class="cons-section-title sobrev">1. Sobrevivência Financeira Imediata ' + _buildWeightSelect('sobrev', 0) + '</div>';
   var parcelas = cenarios.map(function(c) { return c.parcela; });
   var rParcela = rankLow(parcelas);
   h += '<div class="cons-table-wrap"><table class="cons-table"><thead><tr><th>Indicador</th>';
@@ -3597,11 +3700,19 @@ function _renderConsolidado(selectedComps, selectedStrats) {
   h += '</tr>';
   h += '</tbody></table></div>';
   h += '<p class="cons-note">Parcela mensal máxima e desembolso total medem o risco de sufocamento financeiro. Menor = mais seguro.</p>';
+  // Memory section 1
+  var mem1 = '<b>Fórmulas utilizadas:</b><br>';
+  mem1 += '<code>Desembolso Mensal Total = Parcela + Aporte da Estratégia</code><br>';
+  mem1 += '<b>Dados por cenário:</b><br>';
+  cenarios.forEach(function(c) {
+    mem1 += '• ' + _escHtml(c.label) + ': Parcela=' + fmtBRL(c.parcela) + ', Aporte=' + fmtBRL(c.aporteMensal || 0) + ', Total=' + fmtBRL(c.parcela + (c.aporteMensal || 0)) + '<br>';
+  });
+  h += _buildMemory('Sobrevivência', mem1);
   h += '</div>';
 
   // ===== 2. CUSTO TOTAL =====
   h += '<div class="cons-section">';
-  h += '<div class="cons-section-title custo">2. Custo Total da Dívida</div>';
+  h += '<div class="cons-section-title custo">2. Custo Total da Dívida ' + _buildWeightSelect('custo', 1) + '</div>';
   var jurosArr = cenarios.map(function(c) { return c.jurosTotal; });
   var totalPagoArr = cenarios.map(function(c) { return c.totalPago; });
   var rJuros = rankLow(jurosArr);
@@ -3640,11 +3751,20 @@ function _renderConsolidado(selectedComps, selectedStrats) {
   h += '</tr>';
   h += '</tbody></table></div>';
   h += '<p class="cons-note">O custo líquido desconta a reserva acumulada. Menor custo líquido = melhor resultado financeiro real.</p>';
+  // Memory section 2
+  var mem2 = '<b>Fórmulas utilizadas:</b><br>';
+  mem2 += '<code>Custo Líquido = Total Desembolsado - Reserva Final</code><br>';
+  mem2 += '<code>Juros / Principal = (Juros Totais / Saldo Devedor) x 100</code><br>';
+  mem2 += '<b>Dados por cenário:</b><br>';
+  cenarios.forEach(function(c) {
+    mem2 += '• ' + _escHtml(c.label) + ': Saldo=' + fmtBRL(c.saldoDevedor) + ', Juros=' + fmtBRL(c.jurosTotal) + ', Total=' + fmtBRL(c.totalPago) + ', Reserva=' + fmtBRL(c.reservaFinal || 0) + ', C.Líq=' + fmtBRL(c.totalPago - (c.reservaFinal || 0)) + '<br>';
+  });
+  h += _buildMemory('Custo Total', mem2);
   h += '</div>';
 
   // ===== 3. VELOCIDADE DE DESALAVANCAGEM =====
   h += '<div class="cons-section">';
-  h += '<div class="cons-section-title veloc">3. Velocidade de Desalavancagem</div>';
+  h += '<div class="cons-section-title veloc">3. Velocidade de Desalavancagem ' + _buildWeightSelect('veloc', 2) + '</div>';
   var prazos = cenarios.map(function(c) { return c.prazo; });
   var quitacao = cenarios.map(function(c) { return c.quitouEm; });
   var rPrazo = rankLow(prazos);
@@ -3673,11 +3793,19 @@ function _renderConsolidado(selectedComps, selectedStrats) {
   h += '</tr>';
   h += '</tbody></table></div>';
   h += '<p class="cons-note">Quitação efetiva considera amortizações extras e auto-quitação. Menor prazo = liberdade financeira mais rápida.</p>';
+  // Memory section 3
+  var mem3 = '<b>Fórmulas utilizadas:</b><br>';
+  mem3 += '<code>Economia em Meses = Prazo Original - Quitação Efetiva</code><br>';
+  mem3 += '<b>Dados por cenário:</b><br>';
+  cenarios.forEach(function(c) {
+    mem3 += '• ' + _escHtml(c.label) + ': Prazo=' + c.prazo + ' meses, Quitação=' + c.quitouEm + ' meses, Economia=' + (c.prazo - c.quitouEm) + ' meses<br>';
+  });
+  h += _buildMemory('Velocidade', mem3);
   h += '</div>';
 
   // ===== 4. RISCO FINANCEIRO =====
   h += '<div class="cons-section">';
-  h += '<div class="cons-section-title risco">4. Risco Financeiro</div>';
+  h += '<div class="cons-section-title risco">4. Risco Financeiro ' + _buildWeightSelect('risco', 3) + '</div>';
   var contratos = cenarios.map(function(c) { return c.nContratos; });
   var rContr = rankLow(contratos);
   h += '<div class="cons-table-wrap"><table class="cons-table"><thead><tr><th>Indicador</th>';
@@ -3704,11 +3832,20 @@ function _renderConsolidado(selectedComps, selectedStrats) {
   h += '</tr>';
   h += '</tbody></table></div>';
   h += '<p class="cons-note">Menos contratos = menor complexidade e risco operacional. Concentração alta em poucos contratos pode aumentar risco patrimonial.</p>';
+  // Memory section 4
+  var mem4 = '<b>Fórmulas utilizadas:</b><br>';
+  mem4 += '<code>Saldo Médio por Contrato = Saldo Devedor / Nº Contratos</code><br>';
+  mem4 += '<code>Peso da Parcela = (Parcela x Prazo / Total Pago) x 100</code><br>';
+  mem4 += '<b>Dados por cenário:</b><br>';
+  cenarios.forEach(function(c, i) {
+    mem4 += '• ' + _escHtml(c.label) + ': Contratos=' + c.nContratos + ', Saldo Médio=' + fmtBRL(c.nContratos > 0 ? c.saldoDevedor / c.nContratos : 0) + '<br>';
+  });
+  h += _buildMemory('Risco', mem4);
   h += '</div>';
 
   // ===== 5. FLEXIBILIDADE FUTURA =====
   h += '<div class="cons-section">';
-  h += '<div class="cons-section-title flex">5. Flexibilidade Futura</div>';
+  h += '<div class="cons-section-title flex">5. Flexibilidade Futura ' + _buildWeightSelect('flex', 4) + '</div>';
   var reservas = cenarios.map(function(c) { return c.reservaFinal || 0; });
   var rReserva = rankHigh(reservas);
   h += '<div class="cons-table-wrap"><table class="cons-table"><thead><tr><th>Indicador</th>';
@@ -3740,11 +3877,20 @@ function _renderConsolidado(selectedComps, selectedStrats) {
   h += '</tr>';
   h += '</tbody></table></div>';
   h += '<p class="cons-note">Liquidez preservada mede capacidade de enfrentar emergências. Mais reserva = mais segurança e flexibilidade.</p>';
+  // Memory section 5
+  var mem5 = '<b>Fórmulas utilizadas:</b><br>';
+  mem5 += '<code>Meses de Reserva = Reserva Final / Parcela Mensal</code><br>';
+  mem5 += '<b>Dados por cenário:</b><br>';
+  cenarios.forEach(function(c) {
+    var mRes = c.parcela > 0 ? ((c.reservaFinal || 0) / c.parcela).toFixed(1) : '0.0';
+    mem5 += '• ' + _escHtml(c.label) + ': Reserva=' + fmtBRL(c.reservaFinal || 0) + ', Meses de Reserva=' + mRes + '<br>';
+  });
+  h += _buildMemory('Flexibilidade', mem5);
   h += '</div>';
 
   // ===== 6. IMPACTO PSICOLÓGICO =====
   h += '<div class="cons-section">';
-  h += '<div class="cons-section-title psico">6. Impacto Psicológico e Comportamental</div>';
+  h += '<div class="cons-section-title psico">6. Impacto Psicológico e Comportamental ' + _buildWeightSelect('psico', 5) + '</div>';
   h += '<div class="cons-table-wrap"><table class="cons-table"><thead><tr><th>Indicador</th>';
   cenarios.forEach(function(c) { h += '<th>' + _escHtml(c.label) + '</th>'; });
   h += '</tr></thead><tbody>';
@@ -3772,6 +3918,17 @@ function _renderConsolidado(selectedComps, selectedStrats) {
   h += '</tr>';
   h += '</tbody></table></div>';
   h += '<p class="cons-note">Menos contratos e menor complexidade reduzem estresse. Progresso percebido aumenta motivação e disciplina.</p>';
+  // Memory section 6
+  var mem6 = '<b>Fórmulas utilizadas:</b><br>';
+  mem6 += '<code>Índice de Complexidade = Nº Contratos x Quitação Efetiva / 12</code><br>';
+  mem6 += '<code>Progresso Percebido = (Prazo - Quitação) / Prazo x 100</code><br>';
+  mem6 += '<b>Dados por cenário:</b><br>';
+  cenarios.forEach(function(c) {
+    var comp = (c.nContratos * c.quitouEm / 12).toFixed(1);
+    var prog = c.prazo > 0 ? ((c.prazo - c.quitouEm) / c.prazo * 100).toFixed(0) : '0';
+    mem6 += '• ' + _escHtml(c.label) + ': Dívidas=' + c.nContratos + ', Complexidade=' + comp + ', Progresso=' + prog + '%<br>';
+  });
+  h += _buildMemory('Psicológico', mem6);
   h += '</div>';
 
   // ===== SCORE MULTICRITÉRIO =====
@@ -3779,8 +3936,9 @@ function _renderConsolidado(selectedComps, selectedStrats) {
   h += '<div class="cons-section-title score">Score Multicritério</div>';
 
   // Normalizar cada métrica de 0 a 100 e calcular score ponderado
-  // Pesos: Sobrevivência 25%, Custo 25%, Velocidade 20%, Risco 10%, Flexibilidade 10%, Psicológico 10%
-  var pesos = { sobrev: 25, custo: 25, veloc: 20, risco: 10, flex: 10, psico: 10 };
+  // Pesos dinâmicos baseados nos seletores (lidos após render)
+  // Valores iniciais padrão
+  var pesos = _getConsolidadoWeights();
 
   function normalize(arr, lowerIsBetter) {
     var min = Math.min.apply(null, arr);
@@ -3799,6 +3957,7 @@ function _renderConsolidado(selectedComps, selectedStrats) {
   var nFlex = normalize(reservas, false);
   var nPsico = normalize(complex, true);
 
+  var totalPeso = pesos.sobrev + pesos.custo + pesos.veloc + pesos.risco + pesos.flex + pesos.psico;
   var scores = cenarios.map(function(c, i) {
     return (
       nParcela[i] * pesos.sobrev +
@@ -3807,22 +3966,32 @@ function _renderConsolidado(selectedComps, selectedStrats) {
       nRisco[i] * pesos.risco +
       nFlex[i] * pesos.flex +
       nPsico[i] * pesos.psico
-    ) / 100;
+    ) / totalPeso;
   });
 
   var rScore = rankHigh(scores);
+
+  // Calcular % de cada peso
+  var pesoPct = {
+    sobrev: (pesos.sobrev / totalPeso * 100).toFixed(0),
+    custo: (pesos.custo / totalPeso * 100).toFixed(0),
+    veloc: (pesos.veloc / totalPeso * 100).toFixed(0),
+    risco: (pesos.risco / totalPeso * 100).toFixed(0),
+    flex: (pesos.flex / totalPeso * 100).toFixed(0),
+    psico: (pesos.psico / totalPeso * 100).toFixed(0)
+  };
 
   h += '<div class="cons-table-wrap"><table class="cons-table"><thead><tr><th>Critério (Peso)</th>';
   cenarios.forEach(function(c) { h += '<th>' + _escHtml(c.label) + '</th>'; });
   h += '</tr></thead><tbody>';
 
   var criterios = [
-    { nome: 'Sobrevivência (' + pesos.sobrev + '%)', arr: nParcela },
-    { nome: 'Custo Total (' + pesos.custo + '%)', arr: nCusto },
-    { nome: 'Velocidade (' + pesos.veloc + '%)', arr: nVeloc },
-    { nome: 'Risco (' + pesos.risco + '%)', arr: nRisco },
-    { nome: 'Flexibilidade (' + pesos.flex + '%)', arr: nFlex },
-    { nome: 'Psicológico (' + pesos.psico + '%)', arr: nPsico }
+    { nome: 'Sobrevivência (' + pesoPct.sobrev + '%)', arr: nParcela },
+    { nome: 'Custo Total (' + pesoPct.custo + '%)', arr: nCusto },
+    { nome: 'Velocidade (' + pesoPct.veloc + '%)', arr: nVeloc },
+    { nome: 'Risco (' + pesoPct.risco + '%)', arr: nRisco },
+    { nome: 'Flexibilidade (' + pesoPct.flex + '%)', arr: nFlex },
+    { nome: 'Psicológico (' + pesoPct.psico + '%)', arr: nPsico }
   ];
 
   criterios.forEach(function(crit) {
@@ -3849,6 +4018,17 @@ function _renderConsolidado(selectedComps, selectedStrats) {
   });
   h += '</tr>';
   h += '</tbody></table></div>';
+
+  // Memory for Score section
+  var memScore = '<b>Fórmulas utilizadas:</b><br>';
+  memScore += '<code>Score = (N_sobrev x P_sobrev + N_custo x P_custo + ... ) / Soma_Pesos</code><br>';
+  memScore += '<code>Normalização: N = (valor - min) / (max - min) x 100 (invertido se menor=melhor)</code><br>';
+  memScore += '<b>Pesos aplicados:</b> Sobrevivência=' + pesos.sobrev + ' (' + pesoPct.sobrev + '%), Custo=' + pesos.custo + ' (' + pesoPct.custo + '%), Velocidade=' + pesos.veloc + ' (' + pesoPct.veloc + '%), Risco=' + pesos.risco + ' (' + pesoPct.risco + '%), Flexibilidade=' + pesos.flex + ' (' + pesoPct.flex + '%), Psicológico=' + pesos.psico + ' (' + pesoPct.psico + '%)<br>';
+  memScore += '<b>Scores normalizados por cenário:</b><br>';
+  cenarios.forEach(function(c, i) {
+    memScore += '• ' + _escHtml(c.label) + ': Sobrev=' + nParcela[i].toFixed(0) + ', Custo=' + nCusto[i].toFixed(0) + ', Veloc=' + nVeloc[i].toFixed(0) + ', Risco=' + nRisco[i].toFixed(0) + ', Flex=' + nFlex[i].toFixed(0) + ', Psico=' + nPsico[i].toFixed(0) + ' → <b>Score=' + scores[i].toFixed(1) + '</b><br>';
+  });
+  h += _buildMemory('Score Multicritério', memScore);
   h += '</div>';
 
   // ===== VEREDITO FINAL =====
@@ -3883,11 +4063,60 @@ function _renderConsolidado(selectedComps, selectedStrats) {
   h += '</div>';
 
   // Nota metodológica
-  h += '<p class="cons-note" style="margin-top:1rem; text-align:center;">Análise multicritério baseada em 6 dimensões ponderadas. Pesos: Sobrevivência ' + pesos.sobrev + '%, Custo ' + pesos.custo + '%, Velocidade ' + pesos.veloc + '%, Risco ' + pesos.risco + '%, Flexibilidade ' + pesos.flex + '%, Psicológico ' + pesos.psico + '%. Scores normalizados de 0 a 100.</p>';
+  h += '<p class="cons-note" style="margin-top:1rem; text-align:center;">Análise multicritério baseada em 6 dimensões ponderadas. Pesos: Sobrevivência ' + pesoPct.sobrev + '%, Custo ' + pesoPct.custo + '%, Velocidade ' + pesoPct.veloc + '%, Risco ' + pesoPct.risco + '%, Flexibilidade ' + pesoPct.flex + '%, Psicológico ' + pesoPct.psico + '%. Scores normalizados de 0 a 100. Prazo máximo da simulação: ' + maxPrazoGlobal + ' meses.</p>';
+
+  // Memory for Veredito
+  var memVer = '<b>Resultado Final:</b><br>';
+  memVer += 'Melhor cenário: ' + _escHtml(melhor.label) + ' (Score ' + scores[rScore.bestIdx].toFixed(1) + ')<br>';
+  memVer += 'Pior cenário: ' + _escHtml(pior.label) + ' (Score ' + scores[rScore.worstIdx].toFixed(1) + ')<br>';
+  memVer += 'Diferença: ' + diffScore.toFixed(1) + ' pontos<br>';
+  memVer += '<b>Prazo máximo global:</b> ' + maxPrazoGlobal + ' meses (' + (maxPrazoGlobal / 12).toFixed(1) + ' anos) — definido pelo cenário de maior duração.<br>';
+  memVer += '<b>Todos os scores:</b><br>';
+  cenarios.forEach(function(c, i) {
+    memVer += '• ' + _escHtml(c.label) + ': ' + scores[i].toFixed(1) + '/100<br>';
+  });
+  h += _buildMemory('Veredito', memVer);
 
   document.getElementById('analise-consolidado-content').innerHTML = h;
 }
 
+
+// ===== WEIGHT MANAGEMENT =====
+var _consWeightValues = { 'Mais importante de todos': 40, 'Muito Importante': 25, 'Importante': 15, 'Relevante': 8, 'Irrelevante': 2 };
+var _consWeightDefaults = { sobrev: 'Muito Importante', custo: 'Muito Importante', veloc: 'Importante', risco: 'Relevante', flex: 'Relevante', psico: 'Relevante' };
+var _consCurrentWeights = JSON.parse(JSON.stringify(_consWeightDefaults));
+
+function _getConsolidadoWeights() {
+  var w = {};
+  var keys = ['sobrev', 'custo', 'veloc', 'risco', 'flex', 'psico'];
+  keys.forEach(function(k) {
+    var label = _consCurrentWeights[k] || _consWeightDefaults[k];
+    w[k] = _consWeightValues[label] || 15;
+  });
+  return w;
+}
+
+function _onWeightChange(selectEl) {
+  var section = selectEl.getAttribute('data-section');
+  var value = selectEl.value;
+
+  // Enforce exclusivity of "Mais importante de todos"
+  if (value === 'Mais importante de todos') {
+    // Remove from any other section that has it
+    document.querySelectorAll('.cons-weight-select').forEach(function(sel) {
+      if (sel !== selectEl && sel.value === 'Mais importante de todos') {
+        sel.value = 'Muito Importante';
+        var otherSection = sel.getAttribute('data-section');
+        _consCurrentWeights[otherSection] = 'Muito Importante';
+      }
+    });
+  }
+
+  _consCurrentWeights[section] = value;
+
+  // Recalculate the Score section only (re-run analiseGerar)
+  analiseGerar();
+}
 
 // ===== UTILITIES =====
 function fmtBRL(v) {
