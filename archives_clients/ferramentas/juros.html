@@ -612,6 +612,10 @@
       <div class="chart-container">
         <canvas id="chart-atual"></canvas>
       </div>
+      <h3 style="margin-top:1.5rem;">Evolução do Saldo Devedor</h3>
+      <div class="chart-container">
+        <canvas id="chart-atual-saldo"></canvas>
+      </div>
     </div>
   </div>
 
@@ -631,6 +635,10 @@
       <div class="summary-grid" id="proposta-summary-grid"></div>
       <div class="chart-container">
         <canvas id="chart-proposta"></canvas>
+      </div>
+      <h3 style="margin-top:1.5rem;">Evolução do Saldo Devedor</h3>
+      <div class="chart-container">
+        <canvas id="chart-proposta-saldo"></canvas>
       </div>
     </div>
   </div>
@@ -684,6 +692,16 @@
             <div class="comp-chips-container" id="comp-checkboxes-proposta"></div>
           </div>
         </div>
+        <!-- Referência (aparece quando só 1 lado selecionado) -->
+        <div id="comp-ref-section" style="display:none; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.1); border-radius:8px; padding:0.8rem 1rem; margin-bottom:1rem;">
+          <div style="display:flex; align-items:center; gap:1rem; flex-wrap:wrap;">
+            <label style="color:var(--gold); font-weight:600; font-size:0.85rem;">📌 Dívida de Referência (opcional):</label>
+            <select id="comp-ref-divida" style="max-width:300px; font-size:0.85rem;">
+              <option value="">Nenhuma (usar maior parcela como base)</option>
+            </select>
+            <span style="color:var(--muted); font-size:0.8rem;">A diferença entre a parcela de referência e as demais será usada como aporte de investimento.</span>
+          </div>
+        </div>
         <div class="row" style="gap:0.5rem; margin-bottom:1rem; flex-wrap:wrap;">
           <div class="field" style="max-width:180px;">
             <label>Taxa de Investimento (% a.a.)</label>
@@ -719,6 +737,11 @@
             <canvas id="chart-alternativo"></canvas>
           </div>
           <div class="verdict-card" id="comp-verdict-alt"></div>
+          <hr style="border-color:rgba(255,255,255,0.1); margin:2rem 0;">
+          <h3 style="color:var(--primary); margin-bottom:0.5rem;">Evolução do Saldo Devedor</h3>
+          <div class="chart-container" style="height:350px;">
+            <canvas id="chart-comp-saldo"></canvas>
+          </div>
         </div>
       </div>
 
@@ -1105,6 +1128,7 @@ var editingIndex = -1;
 var editingType = 'atual';
 var useCET = false;
 var chartAtual = null, chartProposta = null, chartParcelas = null, chartAcumulado = null, chartAlternativo = null;
+var chartAtualSaldo = null, chartPropostaSaldo = null, chartCompSaldo = null;
 
 
 // ===== TABS =====
@@ -1434,6 +1458,7 @@ function renderSummary(type) {
     '<div class="summary-item"><div class="label">Prazo Maximo</div><div class="value white">' + maxMesesRestantes + ' meses</div></div>';
 
   renderCustoChart(type, custoMensal);
+  renderSaldoDevedorChart(type, list, isAtual);
 }
 
 // Calcula a parcela do mes 'm' (0-indexed) para uma divida conforme seu tipo
@@ -1595,6 +1620,93 @@ function renderCustoChart(type, custoMensal) {
   else chartProposta = chart;
 }
 
+// ===== SALDO DEVEDOR CHART (TABS 1 & 2) =====
+function renderSaldoDevedorChart(type, list, isAtual) {
+  var canvasId = 'chart-' + type + '-saldo';
+  var canvasEl = document.getElementById(canvasId);
+  if (!canvasEl) return;
+  var ctx = canvasEl.getContext('2d');
+
+  if (type === 'atual' && chartAtualSaldo) chartAtualSaldo.destroy();
+  if (type === 'proposta' && chartPropostaSaldo) chartPropostaSaldo.destroy();
+
+  // Calculate saldo devedor evolution for each debt
+  var maxMeses = 0;
+  list.forEach(function(d) {
+    var rest = isAtual ? d.totalParcelas - (d.parcelasPagas || 0) : d.totalParcelas;
+    if (rest > maxMeses) maxMeses = rest;
+  });
+  if (maxMeses === 0) return;
+
+  var datasets = [];
+  var colors = ['#ef4444','#60a5fa','#fbbf24','#34d399','#a78bfa','#f472b6','#fb923c','#22d3ee'];
+  var saldoTotal = [];
+  for (var m = 0; m <= maxMeses; m++) saldoTotal.push(0);
+
+  list.forEach(function(d, idx) {
+    var saldo = isAtual ? (d.saldoDevedor || d.valorContratado) : d.valorContratado;
+    var rest = isAtual ? d.totalParcelas - (d.parcelasPagas || 0) : d.totalParcelas;
+    var taxaMensal = Math.pow(1 + (d.taxaAnual || 0) / 100, 1/12) - 1;
+    var data = [saldo];
+    saldoTotal[0] += saldo;
+    var saldoAtual = saldo;
+    for (var m = 1; m <= maxMeses; m++) {
+      if (m <= rest && saldoAtual > 0) {
+        var jurosM = saldoAtual * taxaMensal;
+        var amort = d.parcela - jurosM;
+        saldoAtual = Math.max(0, saldoAtual - amort);
+      } else {
+        saldoAtual = 0;
+      }
+      data.push(saldoAtual);
+      saldoTotal[m] += saldoAtual;
+    }
+    datasets.push({
+      label: d.nome,
+      data: data,
+      borderColor: colors[idx % colors.length],
+      backgroundColor: 'transparent',
+      borderWidth: 1.5,
+      pointRadius: 0,
+      tension: 0.3
+    });
+  });
+
+  // Add total line
+  if (list.length > 1) {
+    datasets.push({
+      label: 'TOTAL',
+      data: saldoTotal,
+      borderColor: '#ffffff',
+      backgroundColor: 'transparent',
+      borderWidth: 2.5,
+      borderDash: [5, 3],
+      pointRadius: 0,
+      tension: 0.3
+    });
+  }
+
+  var labels = [];
+  for (var m = 0; m <= maxMeses; m++) labels.push('Mês ' + m);
+
+  var chart = new Chart(ctx, {
+    type: 'line',
+    data: { labels: labels, datasets: datasets },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { labels: { color: '#A0B8A6', font: { size: 10 } } } },
+      scales: {
+        x: { ticks: { color: '#A0B8A6', maxTicksLimit: 12 }, grid: { color: 'rgba(255,255,255,0.03)' } },
+        y: { ticks: { color: '#A0B8A6', callback: function(v) { return 'R$ ' + (v/1000).toFixed(0) + 'k'; } }, grid: { color: 'rgba(255,255,255,0.05)' } }
+      }
+    }
+  });
+
+  if (type === 'atual') chartAtualSaldo = chart;
+  else chartPropostaSaldo = chart;
+}
+
 // ===== COMPARISON CHECKBOXES =====
 function renderCompCheckboxes() {
   var containerAtual = document.getElementById('comp-checkboxes-atual');
@@ -1607,7 +1719,7 @@ function renderCompCheckboxes() {
     chip.setAttribute('data-idx', i);
     chip.setAttribute('data-type', 'atual');
     chip.innerHTML = '<span class="chip-dot"></span>' + d.nome + ' <small style="opacity:0.7;">' + fmtBRL(d.saldoDevedor || d.valorContratado) + '</small>';
-    chip.onclick = function() { this.classList.toggle('selected'); updateSelAllBtn('atual'); };
+    chip.onclick = function() { this.classList.toggle('selected'); updateSelAllBtn('atual'); _updateRefSection(); };
     containerAtual.appendChild(chip);
   });
   dividasProposta.forEach(function(d, i) {
@@ -1616,7 +1728,7 @@ function renderCompCheckboxes() {
     chip.setAttribute('data-idx', i);
     chip.setAttribute('data-type', 'proposta');
     chip.innerHTML = '<span class="chip-dot"></span>' + d.nome + ' <small style="opacity:0.7;">' + fmtBRL(d.valorContratado) + '</small>';
-    chip.onclick = function() { this.classList.toggle('selected'); this.classList.toggle('proposta', this.classList.contains('selected')); updateSelAllBtn('proposta'); };
+    chip.onclick = function() { this.classList.toggle('selected'); this.classList.toggle('proposta', this.classList.contains('selected')); updateSelAllBtn('proposta'); _updateRefSection(); };
     containerProposta.appendChild(chip);
   });
   updateSelAllBtn('atual');
@@ -1648,6 +1760,41 @@ function toggleAllCompCheckboxes(type) {
     }
   });
   updateSelAllBtn(type);
+  _updateRefSection();
+}
+
+function _updateRefSection() {
+  var atualSel = document.querySelectorAll('#comp-checkboxes-atual .comp-chip.selected');
+  var propSel = document.querySelectorAll('#comp-checkboxes-proposta .comp-chip.selected');
+  var refSection = document.getElementById('comp-ref-section');
+  var refSelect = document.getElementById('comp-ref-divida');
+  var hasOnlyOneSide = (atualSel.length > 0 && propSel.length === 0) || (propSel.length > 0 && atualSel.length === 0);
+  var multipleOnOneSide = (atualSel.length > 1 && propSel.length === 0) || (propSel.length > 1 && atualSel.length === 0);
+  
+  if (multipleOnOneSide) {
+    refSection.style.display = 'block';
+    // Populate select with the debts from the active side
+    refSelect.innerHTML = '<option value="">Nenhuma (usar maior parcela como base)</option>';
+    var list, chips;
+    if (atualSel.length > 0) {
+      list = dividasAtuais;
+      chips = atualSel;
+    } else {
+      list = dividasProposta;
+      chips = propSel;
+    }
+    chips.forEach(function(chip) {
+      var idx = parseInt(chip.getAttribute('data-idx'));
+      if (list[idx]) {
+        var opt = document.createElement('option');
+        opt.value = idx;
+        opt.textContent = list[idx].nome + ' (R$ ' + list[idx].parcela.toFixed(2) + '/m\u00eas)';
+        refSelect.appendChild(opt);
+      }
+    });
+  } else {
+    refSection.style.display = 'none';
+  }
 }
 function getSelectedDebts(type) {
   var chips = document.querySelectorAll('#comp-checkboxes-' + type + ' .comp-chip.selected');
@@ -1894,6 +2041,216 @@ function runComparison() {
       '<div class="desc" style="margin-top:0.3rem;">Se migrar agora, acumularia <strong style="color:var(--green);">' + fmtBRL(saldoMigrarFinal) + '</strong>.</div>' +
       '<div class="desc" style="margin-top:0.3rem;">Vantagem de manter: <strong style="color:var(--gold);">' + fmtBRL(Math.abs(diferencaFinal)) + '</strong></div>';
   }
+
+  // Render saldo devedor chart for comparativo
+  renderCompSaldoDevedorChart(selectedAtual, selectedProposta);
+
+  // ===== SINGLE-SIDE COMPARISON WITH REFERENCE LOGIC =====
+  var singleSideEl = document.getElementById('comp-single-side-result');
+  if (singleSideEl) singleSideEl.remove();
+  
+  var isSingleSide = (selectedAtual.length > 1 && selectedProposta.length === 0) || (selectedProposta.length > 1 && selectedAtual.length === 0);
+  if (isSingleSide) {
+    var singleDividas = selectedAtual.length > 0 ? selectedAtual : selectedProposta;
+    var isAtualSide = selectedAtual.length > 0;
+    var refIdx = document.getElementById('comp-ref-divida').value;
+    
+    // Determine reference parcela (either selected or max)
+    var refParcela = 0;
+    var refNome = '';
+    if (refIdx !== '') {
+      var refList = isAtualSide ? dividasAtuais : dividasProposta;
+      var refD = refList[parseInt(refIdx)];
+      if (refD) { refParcela = refD.parcela; refNome = refD.nome; }
+    }
+    if (refParcela === 0) {
+      // Use the max parcela month-by-month as reference
+      singleDividas.forEach(function(d) { if (d.parcela > refParcela) { refParcela = d.parcela; refNome = d.nome; } });
+    }
+    
+    // Calculate per-debt: when each finishes, its parcela becomes aporte
+    var maxPrazo = 0;
+    singleDividas.forEach(function(d) {
+      var rest = isAtualSide ? d.totalParcelas - (d.parcelasPagas || 0) : d.totalParcelas;
+      if (rest > maxPrazo) maxPrazo = rest;
+    });
+    
+    // For each month, calculate the max parcela among active debts and the difference for finished ones
+    var aportesMensais = [];
+    var saldoInvestSingle = [];
+    var saldoSingle = valorInicial;
+    for (var m = 0; m < maxPrazo; m++) {
+      var maxParcelaAtiva = 0;
+      var totalParcelasAtivas = 0;
+      var totalAporteLibre = 0;
+      singleDividas.forEach(function(d) {
+        var rest = isAtualSide ? d.totalParcelas - (d.parcelasPagas || 0) : d.totalParcelas;
+        if (m < rest) {
+          totalParcelasAtivas += d.parcela;
+          if (d.parcela > maxParcelaAtiva) maxParcelaAtiva = d.parcela;
+        } else {
+          // This debt is finished - its parcela becomes investment
+          totalAporteLibre += d.parcela;
+        }
+      });
+      // Aporte = difference from reference + freed parcelas from finished debts
+      var aporteM = totalAporteLibre;
+      // Also add difference between reference and each smaller active debt
+      singleDividas.forEach(function(d) {
+        var rest = isAtualSide ? d.totalParcelas - (d.parcelasPagas || 0) : d.totalParcelas;
+        if (m < rest && d.parcela < refParcela) {
+          aporteM += (refParcela - d.parcela);
+        }
+      });
+      aportesMensais.push(aporteM);
+      
+      if (modoSim === 'sem-juros-neg') {
+        saldoSingle = (saldoSingle > 0 ? saldoSingle * (1 + taxaMensal) : saldoSingle) + aporteM;
+      } else if (modoSim === 'manter-positivo') {
+        saldoSingle = saldoSingle * (1 + taxaMensal) + aporteM;
+        if (saldoSingle < 0) saldoSingle = 0;
+      } else {
+        saldoSingle = saldoSingle * (1 + taxaMensal) + aporteM;
+      }
+      saldoInvestSingle.push(saldoSingle);
+    }
+    
+    var singleHtml = '<div id="comp-single-side-result" style="margin-top:2rem; border-top:1px solid rgba(255,255,255,0.1); padding-top:1.5rem;">';
+    singleHtml += '<h3 style="color:var(--gold);">\ud83d\udcca An\u00e1lise Comparativa Interna (Mesmo Lado)</h3>';
+    singleHtml += '<p style="color:var(--muted); font-size:0.85rem;">Refer\u00eancia: <strong>' + refNome + '</strong> (R$ ' + refParcela.toFixed(2) + '/m\u00eas). Diferen\u00e7as e parcelas liberadas s\u00e3o investidas a ' + taxaAnual + '% a.a.</p>';
+    singleHtml += '<div class="summary-grid">';
+    singleHtml += '<div class="summary-item"><div class="label">Prazo M\u00e1ximo</div><div class="value white">' + maxPrazo + ' meses</div></div>';
+    singleHtml += '<div class="summary-item"><div class="label">Parcela Refer\u00eancia</div><div class="value white">' + fmtBRL(refParcela) + '/m\u00eas</div></div>';
+    singleHtml += '<div class="summary-item"><div class="label">Acumulado Final</div><div class="value green">' + fmtBRL(saldoSingle) + '</div></div>';
+    singleHtml += '</div>';
+    singleHtml += '<div class="chart-container" style="height:300px;"><canvas id="chart-single-side"></canvas></div>';
+    singleHtml += '</div>';
+    document.getElementById('comp-result').insertAdjacentHTML('beforeend', singleHtml);
+    
+    // Render chart
+    var ctxSingle = document.getElementById('chart-single-side').getContext('2d');
+    var labelsSingle = [];
+    for (var m = 0; m < maxPrazo; m++) labelsSingle.push('M\u00eas ' + (m+1));
+    new Chart(ctxSingle, {
+      type: 'line',
+      data: {
+        labels: labelsSingle,
+        datasets: [
+          { label: 'Aporte Mensal (R$)', data: aportesMensais, borderColor: '#D4AF37', backgroundColor: 'rgba(212,175,55,0.1)', fill: false, tension: 0.1, borderDash: [5,3] },
+          { label: 'Saldo Investido a ' + taxaAnual + '% a.a.', data: saldoInvestSingle, borderColor: '#22c55e', backgroundColor: 'rgba(34,197,94,0.1)', fill: true, tension: 0.1 }
+        ]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { title: { display: true, text: 'Investimento das Diferen\u00e7as + Parcelas Liberadas', color: '#fff' }, legend: { labels: { color: '#A0B8A6' } } },
+        scales: {
+          x: { ticks: { color: '#A0B8A6', maxTicksLimit: 12 }, grid: { color: 'rgba(255,255,255,0.03)' } },
+          y: { ticks: { color: '#A0B8A6', callback: function(v) { return 'R$ ' + v.toLocaleString('pt-BR'); } }, grid: { color: 'rgba(255,255,255,0.05)' } }
+        }
+      }
+    });
+  }
+}
+
+function renderCompSaldoDevedorChart(dividasAtualSel, dividasPropSel) {
+  var canvasEl = document.getElementById('chart-comp-saldo');
+  if (!canvasEl) return;
+  if (chartCompSaldo) chartCompSaldo.destroy();
+  var ctx = canvasEl.getContext('2d');
+
+  var allDividas = [];
+  dividasAtualSel.forEach(function(d) { allDividas.push({d: d, isAtual: true}); });
+  dividasPropSel.forEach(function(d) { allDividas.push({d: d, isAtual: false}); });
+
+  var maxMeses = 0;
+  allDividas.forEach(function(item) {
+    var rest = item.isAtual ? item.d.totalParcelas - (item.d.parcelasPagas || 0) : item.d.totalParcelas;
+    if (rest > maxMeses) maxMeses = rest;
+  });
+  if (maxMeses === 0) return;
+
+  var datasets = [];
+  var colorsAtual = ['#ef4444','#fb923c','#fbbf24','#f472b6'];
+  var colorsProp = ['#60a5fa','#34d399','#a78bfa','#22d3ee'];
+  var saldoTotalAtual = [], saldoTotalProp = [];
+  for (var m = 0; m <= maxMeses; m++) { saldoTotalAtual.push(0); saldoTotalProp.push(0); }
+
+  var idxA = 0, idxP = 0;
+  allDividas.forEach(function(item) {
+    var d = item.d;
+    var isAtual = item.isAtual;
+    var saldo = isAtual ? (d.saldoDevedor || d.valorContratado) : d.valorContratado;
+    var rest = isAtual ? d.totalParcelas - (d.parcelasPagas || 0) : d.totalParcelas;
+    var taxaMensal = Math.pow(1 + (d.taxaAnual || 0) / 100, 1/12) - 1;
+    var data = [saldo];
+    if (isAtual) saldoTotalAtual[0] += saldo; else saldoTotalProp[0] += saldo;
+    var saldoAtualM = saldo;
+    for (var m = 1; m <= maxMeses; m++) {
+      if (m <= rest && saldoAtualM > 0) {
+        var jurosM = saldoAtualM * taxaMensal;
+        var amort = d.parcela - jurosM;
+        saldoAtualM = Math.max(0, saldoAtualM - amort);
+      } else {
+        saldoAtualM = 0;
+      }
+      data.push(saldoAtualM);
+      if (isAtual) saldoTotalAtual[m] += saldoAtualM; else saldoTotalProp[m] += saldoAtualM;
+    }
+    var color = isAtual ? colorsAtual[idxA % colorsAtual.length] : colorsProp[idxP % colorsProp.length];
+    if (isAtual) idxA++; else idxP++;
+    datasets.push({
+      label: (isAtual ? '[A] ' : '[P] ') + d.nome,
+      data: data,
+      borderColor: color,
+      backgroundColor: 'transparent',
+      borderWidth: 1.5,
+      pointRadius: 0,
+      tension: 0.3
+    });
+  });
+
+  // Total lines
+  if (dividasAtualSel.length > 0) {
+    datasets.push({
+      label: 'TOTAL ATUAL',
+      data: saldoTotalAtual,
+      borderColor: '#ef4444',
+      backgroundColor: 'transparent',
+      borderWidth: 2.5,
+      borderDash: [5, 3],
+      pointRadius: 0,
+      tension: 0.3
+    });
+  }
+  if (dividasPropSel.length > 0) {
+    datasets.push({
+      label: 'TOTAL PROPOSTA',
+      data: saldoTotalProp,
+      borderColor: '#60a5fa',
+      backgroundColor: 'transparent',
+      borderWidth: 2.5,
+      borderDash: [5, 3],
+      pointRadius: 0,
+      tension: 0.3
+    });
+  }
+
+  var labels = [];
+  for (var m = 0; m <= maxMeses; m++) labels.push('Mês ' + m);
+
+  chartCompSaldo = new Chart(ctx, {
+    type: 'line',
+    data: { labels: labels, datasets: datasets },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { labels: { color: '#A0B8A6', font: { size: 10 } } } },
+      scales: {
+        x: { ticks: { color: '#A0B8A6', maxTicksLimit: 12 }, grid: { color: 'rgba(255,255,255,0.03)' } },
+        y: { ticks: { color: '#A0B8A6', callback: function(v) { return 'R$ ' + (v/1000).toFixed(0) + 'k'; } }, grid: { color: 'rgba(255,255,255,0.05)' } }
+      }
+    }
+  });
 }
 
 // ===== CALC TAXA IMPLICITA =====
@@ -2646,7 +3003,7 @@ function stratGerarCalendario() {
       eventos: eventos
     });
 
-    if (saldoDevedorTotal <= 0 && m > quitouEm + 6) break;
+    if (saldoDevedorTotal <= 0) break;
   }
 
   stratState.calendario = {
@@ -2977,7 +3334,8 @@ function _buildCompConfig() {
     selectedPropostaIdx: selProposta,
     taxaInvest: parseFloat(document.getElementById('taxa-invest-comp').value) || 12,
     valorInicial: parseFloat(document.getElementById('valor-inicial-invest').value) || 0,
-    modoSimulacao: document.getElementById('modo-simulacao-comp').value || 'completa'
+    modoSimulacao: document.getElementById('modo-simulacao-comp').value || 'completa',
+    refDivida: document.getElementById('comp-ref-divida').value || ''
   };
 }
 
@@ -3008,6 +3366,8 @@ function _restoreCompSelection(config) {
   if (config.taxaInvest !== undefined) document.getElementById('taxa-invest-comp').value = config.taxaInvest;
   if (config.valorInicial !== undefined) document.getElementById('valor-inicial-invest').value = config.valorInicial;
   if (config.modoSimulacao) document.getElementById('modo-simulacao-comp').value = config.modoSimulacao;
+  _updateRefSection();
+  if (config.refDivida !== undefined) document.getElementById('comp-ref-divida').value = config.refDivida;
 }
 
 // ===== TAB 5: ANÁLISE COMBINADA =====
@@ -3420,8 +3780,10 @@ function analiseGerar() {
     compsHtml += '<div class="arc-item"><div class="arc-label">Taxa Investimento</div><div class="arc-value" style="color:#fff;">' + r.taxaInvest + '% a.a.</div></div>';
     compsHtml += '</div>';
 
-    // Chart placeholder
+    // Chart placeholders
     compsHtml += '<div style="height:220px; margin-top:1rem;"><canvas id="' + chartId + '"></canvas></div>';
+    var saldoChartId = 'analise-comp-saldo-chart-' + ci;
+    compsHtml += '<div style="height:220px; margin-top:1rem;"><canvas id="' + saldoChartId + '"></canvas></div>';
     compsHtml += '</div>';
   });
   document.getElementById('analise-comps-resultado').innerHTML = compsHtml;
@@ -3460,10 +3822,64 @@ function analiseGerar() {
       }
     });
     _analiseCharts.push(chart);
+
+    // Saldo devedor chart for this comparison
+    var saldoChartId = 'analise-comp-saldo-chart-' + ci;
+    var saldoCanvas = document.getElementById(saldoChartId);
+    if (saldoCanvas && r.maxPeriodo > 0) {
+      var sCtx = saldoCanvas.getContext('2d');
+      var cfg = comp.config;
+      var divAtualSel = [];
+      (cfg.selectedAtualIdx || []).forEach(function(idx) { if (dividasAtuais[idx]) divAtualSel.push(dividasAtuais[idx]); });
+      var divPropSel = [];
+      (cfg.selectedPropostaIdx || []).forEach(function(idx) { if (dividasProposta[idx]) divPropSel.push(dividasProposta[idx]); });
+      var sDatasets = [];
+      var sLabels = [];
+      for (var sm = 0; sm <= r.maxPeriodo; sm++) sLabels.push('M\u00eas ' + sm);
+      var sColorsA = ['#ef4444','#fb923c','#fbbf24'];
+      var sColorsP = ['#60a5fa','#34d399','#a78bfa'];
+      divAtualSel.forEach(function(d, di) {
+        var saldo = d.saldoDevedor || d.valorContratado;
+        var rest = d.totalParcelas - (d.parcelasPagas || 0);
+        var txM = Math.pow(1 + (d.taxaAnual || 0) / 100, 1/12) - 1;
+        var sData = [saldo];
+        for (var sm = 1; sm <= r.maxPeriodo; sm++) {
+          if (sm <= rest && saldo > 0) { saldo = Math.max(0, saldo - (d.parcela - saldo * txM)); }
+          else { saldo = 0; }
+          sData.push(saldo);
+        }
+        sDatasets.push({ label: '[A] ' + d.nome, data: sData, borderColor: sColorsA[di % sColorsA.length], backgroundColor: 'transparent', borderWidth: 1.5, pointRadius: 0, tension: 0.3 });
+      });
+      divPropSel.forEach(function(d, di) {
+        var saldo = d.valorContratado;
+        var rest = d.totalParcelas;
+        var txM = Math.pow(1 + (d.taxaAnual || 0) / 100, 1/12) - 1;
+        var sData = [saldo];
+        for (var sm = 1; sm <= r.maxPeriodo; sm++) {
+          if (sm <= rest && saldo > 0) { saldo = Math.max(0, saldo - (d.parcela - saldo * txM)); }
+          else { saldo = 0; }
+          sData.push(saldo);
+        }
+        sDatasets.push({ label: '[P] ' + d.nome, data: sData, borderColor: sColorsP[di % sColorsP.length], backgroundColor: 'transparent', borderWidth: 1.5, pointRadius: 0, tension: 0.3 });
+      });
+      var sChart = new Chart(sCtx, {
+        type: 'line',
+        data: { labels: sLabels, datasets: sDatasets },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { title: { display: true, text: 'Evolu\u00e7\u00e3o do Saldo Devedor', color: '#fff' }, legend: { labels: { color: '#A0B8A6', font: { size: 10 } } } },
+          scales: {
+            x: { ticks: { color: '#A0B8A6', maxTicksLimit: 12 }, grid: { color: 'rgba(255,255,255,0.03)' } },
+            y: { ticks: { color: '#A0B8A6', callback: function(v) { return 'R$ ' + (v/1000).toFixed(0) + 'k'; } }, grid: { color: 'rgba(255,255,255,0.05)' } }
+          }
+        }
+      });
+      _analiseCharts.push(sChart);
+    }
     } catch(e) { console.warn("Chart comp error:", e.message); }
   });
 
-  // ===== ESTRATÉGIAS =====
+  // ===== ESTRAT\u00c9GIAS =====
   var stratsHtml = '';
   selectedStrats.forEach(function(strat, si) {
     var r = _analiseRunStrat(strat);
