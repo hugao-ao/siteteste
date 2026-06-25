@@ -1135,8 +1135,27 @@
     <div class="strat-update-modal-fields">
       <div class="row">
         <div class="field">
+          <label>Informar por:</label>
+          <div style="display:flex; gap:1rem; margin-bottom:0.5rem;">
+            <label style="display:flex; align-items:center; gap:0.3rem; cursor:pointer; font-size:0.85rem;">
+              <input type="radio" name="strat-spor-tipo" value="data" checked onchange="toggleSporTipo()"> Data
+            </label>
+            <label style="display:flex; align-items:center; gap:0.3rem; cursor:pointer; font-size:0.85rem;">
+              <input type="radio" name="strat-spor-tipo" value="mes" onchange="toggleSporTipo()"> Nº do Mês
+            </label>
+          </div>
+        </div>
+      </div>
+      <div class="row" id="strat-spor-row-data">
+        <div class="field">
           <label>Em qual mês?</label>
           <input type="date" id="strat-spor-data">
+        </div>
+      </div>
+      <div class="row hidden" id="strat-spor-row-mes">
+        <div class="field">
+          <label>Nº do Mês (a partir do início da simulação)</label>
+          <input type="number" id="strat-spor-mes-num" placeholder="Ex: 6" min="1">
         </div>
       </div>
       <div class="row">
@@ -2730,11 +2749,20 @@ function stratRenderUpdates() {
 // ===== STRATEGY: SPORADIC CONTRIBUTIONS =====
 var _stratSporadicEditIdx = -1;
 
+function toggleSporTipo() {
+  var tipo = document.querySelector('input[name="strat-spor-tipo"]:checked').value;
+  document.getElementById('strat-spor-row-data').classList.toggle('hidden', tipo !== 'data');
+  document.getElementById('strat-spor-row-mes').classList.toggle('hidden', tipo !== 'mes');
+}
+
 function stratAddSporadic() {
   _stratSporadicEditIdx = -1;
   document.getElementById('strat-spor-data').value = '';
+  document.getElementById('strat-spor-mes-num').value = '';
   document.getElementById('strat-spor-valor').value = '';
   document.getElementById('strat-spor-desc').value = '';
+  document.querySelector('input[name="strat-spor-tipo"][value="data"]').checked = true;
+  toggleSporTipo();
   document.getElementById('strat-spor-modal-title').textContent = 'Adicionar Aporte Esporádico';
   document.getElementById('strat-spor-modal').classList.add('active');
 }
@@ -2742,9 +2770,18 @@ function stratAddSporadic() {
 function stratEditSporadic(idx) {
   _stratSporadicEditIdx = idx;
   var sp = stratState.sporadics[idx];
-  document.getElementById('strat-spor-data').value = sp.data || '';
   document.getElementById('strat-spor-valor').value = fmtBRL(sp.valor);
   document.getElementById('strat-spor-desc').value = sp.descricao || '';
+  if (sp.mesNum) {
+    document.querySelector('input[name="strat-spor-tipo"][value="mes"]').checked = true;
+    document.getElementById('strat-spor-mes-num').value = sp.mesNum;
+    document.getElementById('strat-spor-data').value = '';
+  } else {
+    document.querySelector('input[name="strat-spor-tipo"][value="data"]').checked = true;
+    document.getElementById('strat-spor-data').value = sp.data || '';
+    document.getElementById('strat-spor-mes-num').value = '';
+  }
+  toggleSporTipo();
   document.getElementById('strat-spor-modal-title').textContent = 'Editar Aporte Esporádico';
   document.getElementById('strat-spor-modal').classList.add('active');
 }
@@ -2754,18 +2791,34 @@ function stratCloseSporModal() {
 }
 
 function stratSaveSporadic() {
-  var data = document.getElementById('strat-spor-data').value;
+  var tipo = document.querySelector('input[name="strat-spor-tipo"]:checked').value;
   var valor = parseCurr(document.getElementById('strat-spor-valor').value);
   var desc = document.getElementById('strat-spor-desc').value.trim();
-  if (!data || !valor) { alert('Informe a data e o valor do aporte.'); return; }
-  var sp = { id: Date.now(), data: data, valor: valor, descricao: desc };
+  if (!valor) { alert('Informe o valor do aporte.'); return; }
+  var sp = { id: Date.now(), valor: valor, descricao: desc };
+  if (tipo === 'mes') {
+    var mesNum = parseInt(document.getElementById('strat-spor-mes-num').value);
+    if (!mesNum || mesNum < 1) { alert('Informe o número do mês (mínimo 1).'); return; }
+    sp.mesNum = mesNum;
+    sp.data = ''; // sem data fixa
+  } else {
+    var data = document.getElementById('strat-spor-data').value;
+    if (!data) { alert('Informe a data do aporte.'); return; }
+    sp.data = data;
+    sp.mesNum = 0;
+  }
   if (_stratSporadicEditIdx >= 0) {
     sp.id = stratState.sporadics[_stratSporadicEditIdx].id;
     stratState.sporadics[_stratSporadicEditIdx] = sp;
   } else {
     stratState.sporadics.push(sp);
   }
-  stratState.sporadics.sort(function(a,b) { return a.data.localeCompare(b.data); });
+  stratState.sporadics.sort(function(a,b) {
+    // Ordenar: por data se tiver, senão por mesNum
+    var aKey = a.data || ('0000-' + String(a.mesNum || 0).padStart(4, '0'));
+    var bKey = b.data || ('0000-' + String(b.mesNum || 0).padStart(4, '0'));
+    return aKey.localeCompare(bKey);
+  });
   stratRenderSporadics();
   stratCloseSporModal();
 }
@@ -2784,10 +2837,15 @@ function stratRenderSporadics() {
   }
   var html = '';
   stratState.sporadics.forEach(function(sp, i) {
-    var dataFmt = sp.data ? new Date(sp.data + 'T00:00:00').toLocaleDateString('pt-BR') : '—';
+    var quando;
+    if (sp.mesNum) {
+      quando = 'Mês ' + sp.mesNum;
+    } else {
+      quando = sp.data ? new Date(sp.data + 'T00:00:00').toLocaleDateString('pt-BR') : '—';
+    }
     var descLabel = sp.descricao ? ' — <em>' + sp.descricao + '</em>' : '';
     html += '<div class="strat-update-item">' +
-      '<div class="info">Em <strong>' + dataFmt + '</strong>: aporte extra de <strong style="color:var(--green);">' + fmtBRL(sp.valor) + '</strong>' + descLabel + '</div>' +
+      '<div class="info">Em <strong>' + quando + '</strong>: aporte extra de <strong style="color:var(--green);">' + fmtBRL(sp.valor) + '</strong>' + descLabel + '</div>' +
       '<div class="actions">' +
         '<button class="btn btn-edit" onclick="stratEditSporadic(' + i + ')" style="font-size:0.7rem; padding:0.2rem 0.5rem;">&#9998;</button> ' +
         '<button class="btn btn-danger" onclick="stratDeleteSporadic(' + i + ')" style="font-size:0.7rem; padding:0.2rem 0.5rem;">&#128465;</button>' +
@@ -2950,9 +3008,17 @@ function stratGetSporadicMes(mesDate) {
   var mesY = mesDate.getFullYear();
   var mesM = mesDate.getMonth();
   for (var i = 0; i < stratState.sporadics.length; i++) {
-    var spDate = new Date(stratState.sporadics[i].data + 'T00:00:00');
-    if (spDate.getFullYear() === mesY && spDate.getMonth() === mesM) {
-      total += stratState.sporadics[i].valor;
+    var sp = stratState.sporadics[i];
+    if (sp.mesNum && sp.mesNum > 0) {
+      // Comparar pelo número do mês (1-based) com o índice do loop (mesIdx passado via argumento extra)
+      if (typeof arguments[1] === 'number' && (arguments[1] + 1) === sp.mesNum) {
+        total += sp.valor;
+      }
+    } else if (sp.data) {
+      var spDate = new Date(sp.data + 'T00:00:00');
+      if (spDate.getFullYear() === mesY && spDate.getMonth() === mesM) {
+        total += sp.valor;
+      }
     }
   }
   return total;
@@ -3055,7 +3121,7 @@ function stratGerarCalendario() {
     var mesLabel = mesDate.toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' });
 
     var aporteMes = stratGetAporteMes(mesDate);
-    var sporadicMes = stratGetSporadicMes(mesDate);
+    var sporadicMes = stratGetSporadicMes(mesDate, m);
     var aporteTotal = aporteMes + sporadicMes;
 
     var pctRes = stratState.overrides[m] !== undefined ? stratState.overrides[m] : stratState.pctReserva;
@@ -3808,13 +3874,20 @@ function _analiseRunStrat(strat) {
     }
     return base;
   }
-  function getSporadicMes(mesDate) {
+  function getSporadicMes(mesDate, mesIdx) {
     var total = 0;
     var mesY = mesDate.getFullYear();
     var mesM = mesDate.getMonth();
     for (var i = 0; i < sporadics.length; i++) {
-      var spDate = new Date(sporadics[i].data + 'T00:00:00');
-      if (spDate.getFullYear() === mesY && spDate.getMonth() === mesM) total += sporadics[i].valor;
+      var sp = sporadics[i];
+      if (sp.mesNum && sp.mesNum > 0) {
+        if (typeof mesIdx === 'number' && (mesIdx + 1) === sp.mesNum) {
+          total += sp.valor;
+        }
+      } else if (sp.data) {
+        var spDate = new Date(sp.data + 'T00:00:00');
+        if (spDate.getFullYear() === mesY && spDate.getMonth() === mesM) total += sp.valor;
+      }
     }
     return total;
   }
@@ -3824,7 +3897,7 @@ function _analiseRunStrat(strat) {
     mesDate.setMonth(mesDate.getMonth() + m);
 
     var aporteMes = getAporteMes(mesDate);
-    var sporadicMes = getSporadicMes(mesDate);
+    var sporadicMes = getSporadicMes(mesDate, m);
     var aporteTotal = aporteMes + sporadicMes;
 
     var pctRes = overrides[m] !== undefined ? overrides[m] : pctReserva;
