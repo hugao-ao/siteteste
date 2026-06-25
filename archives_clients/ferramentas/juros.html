@@ -1074,16 +1074,23 @@
       <div id="consorcio-redutor-fields" class="hidden">
         <div class="row">
           <div class="field">
-            <label>Parcela Alvo após Redução (R$)</label>
-            <input type="text" id="m-cons-parcela-alvo" placeholder="R$ 0,00" oninput="fmtCurrInput(this)">
-            <span class="note">Valor que a parcela terá ao final da redução (na parcela X). A redução é linear da parcela 1 até a parcela X.</span>
+            <label>Percentual de Redução na Parcela (%)</label>
+            <input type="number" id="m-cons-pct-reducao" placeholder="Ex: 30" step="0.1" oninput="calcConsorcioReducao()">
+            <span class="note">Percentual que será reduzido da parcela inicial. Ex: 30% = parcela final será 70% da parcela calculada.</span>
           </div>
         </div>
         <div class="row">
           <div class="field">
             <label>Reduzir até a Parcela Nº</label>
-            <input type="number" id="m-cons-periodo-reducao" placeholder="Ex: 24">
-            <span class="note">A parcela será reduzida linearmente da parcela 1 até esta parcela. A partir da parcela seguinte, o saldo devedor restante é redistribuído entre as parcelas faltantes.</span>
+            <input type="number" id="m-cons-periodo-reducao" placeholder="Ex: 24" oninput="calcConsorcioReducao()">
+            <span class="note">A parcela será reduzida linearmente da parcela 1 até esta parcela. A partir da parcela seguinte, o saldo restante é redistribuído.</span>
+          </div>
+        </div>
+        <div class="row">
+          <div class="field">
+            <label style="color:var(--gold);">Parcela Alvo (calculada)</label>
+            <div id="m-cons-parcela-alvo-display" style="background:rgba(212,175,55,0.1); border:1px solid var(--gold); border-radius:6px; padding:0.6rem 1rem; color:var(--gold); font-weight:600;">R$ 0,00</div>
+            <span class="note">Valor da parcela após aplicar o percentual de redução. Calculado automaticamente.</span>
           </div>
         </div>
       </div>
@@ -1220,6 +1227,7 @@ function toggleConsReducer() {
   toggle.classList.toggle('active');
   var fields = document.getElementById('consorcio-redutor-fields');
   fields.classList.toggle('hidden', !toggle.classList.contains('active'));
+  if (toggle.classList.contains('active')) calcConsorcioReducao();
 }
 
 function openDebtModal(type, index) {
@@ -1263,15 +1271,16 @@ function openDebtModal(type, index) {
       if (d.consRedutor) {
         document.getElementById('toggle-cons-redutor').classList.add('active');
         document.getElementById('consorcio-redutor-fields').classList.remove('hidden');
-        document.getElementById('m-cons-parcela-alvo').value = d.consParcelaAlvo ? fmtBRL(d.consParcelaAlvo) : '';
+        document.getElementById('m-cons-pct-reducao').value = d.consPctReducao || '';
         document.getElementById('m-cons-periodo-reducao').value = d.consPeriodoReducao || '';
       } else {
         document.getElementById('toggle-cons-redutor').classList.remove('active');
         document.getElementById('consorcio-redutor-fields').classList.add('hidden');
-        document.getElementById('m-cons-parcela-alvo').value = '';
+        document.getElementById('m-cons-pct-reducao').value = '';
         document.getElementById('m-cons-periodo-reducao').value = '';
       }
       calcParcelaPreview(); // Mostrar preview com dados do consórcio
+      calcConsorcioReducao(); // Atualizar parcela alvo display
     } else {
       _resetConsorcioFields();
     }
@@ -1297,8 +1306,27 @@ function _resetConsorcioFields() {
   document.getElementById('m-cons-fundo-reserva').value = '0';
   document.getElementById('toggle-cons-redutor').classList.remove('active');
   document.getElementById('consorcio-redutor-fields').classList.add('hidden');
-  document.getElementById('m-cons-parcela-alvo').value = '';
+  document.getElementById('m-cons-pct-reducao').value = '';
   document.getElementById('m-cons-periodo-reducao').value = '';
+  document.getElementById('m-cons-parcela-alvo-display').textContent = 'R$ 0,00';
+}
+
+function calcConsorcioReducao() {
+  // Calcula a parcela alvo com base no percentual de redução
+  var displayEl = document.getElementById('m-cons-parcela-alvo-display');
+  var valorContratado = parseCurr(document.getElementById('m-valor').value);
+  var totalParcelas = parseInt(document.getElementById('m-total-parcelas').value);
+  var taxaAdm = parseFloat(document.getElementById('m-cons-taxa-adm').value) || 0;
+  var fundoRes = parseFloat(document.getElementById('m-cons-fundo-reserva').value) || 0;
+  var pctReducao = parseFloat(document.getElementById('m-cons-pct-reducao').value) || 0;
+  if (!valorContratado || !totalParcelas || !pctReducao) {
+    displayEl.textContent = 'R$ 0,00';
+    return;
+  }
+  var totalComTaxas = valorContratado * (1 + (taxaAdm + fundoRes) / 100);
+  var parcelaBase = totalComTaxas / totalParcelas;
+  var parcelaAlvo = parcelaBase * (1 - pctReducao / 100);
+  displayEl.textContent = fmtBRL(parcelaAlvo);
 }
 
 function closeDebtModal() {
@@ -1328,6 +1356,7 @@ function calcParcelaPreview() {
     var parcCalc = totalCT / parcCons;
     previewEl.textContent = fmtBRL(parcCalc);
     document.getElementById('row-parcela-preview').classList.remove('hidden');
+    calcConsorcioReducao(); // Atualizar parcela alvo quando parcela base muda
     return;
   }
   if (!useCET) { document.getElementById('row-parcela-preview').classList.add('hidden'); return; }
@@ -1380,8 +1409,12 @@ function saveDebt() {
     return;
   }
 
+  var tipoAmortEarly = document.getElementById('m-tipo-amort').value || 'price';
   var parcela;
-  if (useCET) {
+  if (tipoAmortEarly === 'consorcio') {
+    // Consórcio: parcela será calculada abaixo a partir de Taxa Adm + Fundo Reserva
+    parcela = 0; // placeholder, será recalculada no bloco consórcio
+  } else if (useCET) {
     var cetVal = parseFloat(document.getElementById('m-cet').value);
     var cetTipo = document.getElementById('m-cet-tipo').value;
     if (!cetVal) { alert('Preencha o CET.'); return; }
@@ -1462,20 +1495,22 @@ function saveDebt() {
   }
 
   // Para CONSÓRCIO:
-  var consTaxaAdm = 0, consFundoReserva = 0, consRedutor = false, consParcelaAlvo = 0, consPeriodoReducao = 0;
+  var consTaxaAdm = 0, consFundoReserva = 0, consRedutor = false, consParcelaAlvo = 0, consPeriodoReducao = 0, consPctReducao = 0;
   if (tipoAmort === 'consorcio') {
     consTaxaAdm = parseFloat(document.getElementById('m-cons-taxa-adm').value) || 0;
     consFundoReserva = parseFloat(document.getElementById('m-cons-fundo-reserva').value) || 0;
     consRedutor = document.getElementById('toggle-cons-redutor').classList.contains('active');
-    if (consRedutor) {
-      consParcelaAlvo = parseCurr(document.getElementById('m-cons-parcela-alvo').value) || 0;
-      consPeriodoReducao = parseInt(document.getElementById('m-cons-periodo-reducao').value) || 0;
-    }
     // Consórcio: Taxa Adm + Fundo Reserva substituem o CET
     var taxaTotalCons = (consTaxaAdm + consFundoReserva) / 100;
     var totalComTaxa = valorContratado * (1 + taxaTotalCons);
     // Parcela sempre calculada a partir da taxa de administração (não usa CET)
     parcela = totalComTaxa / totalParcelas;
+    if (consRedutor) {
+      consPctReducao = parseFloat(document.getElementById('m-cons-pct-reducao').value) || 0;
+      consPeriodoReducao = parseInt(document.getElementById('m-cons-periodo-reducao').value) || 0;
+      // Calcular parcela alvo a partir do percentual
+      consParcelaAlvo = parcela * (1 - consPctReducao / 100);
+    }
     // Saldo devedor do consórcio = total com taxa - parcelas já pagas
     if (currentModalType === 'atual') {
       var saldoInformado = parseCurr(document.getElementById('m-saldo-devedor').value);
@@ -1486,7 +1521,7 @@ function saveDebt() {
     taxaFixa = 0; // Consórcio não tem taxa fixa mensal
   }
 
-  var debt = { nome: nome, valorContratado: valorContratado, parcela: parcela, totalParcelas: totalParcelas, parcelasPagas: parcelasPagas, saldoDevedor: saldoDevedor, tipoAmort: tipoAmort, reajusteAnual: reajusteAnual, taxaFixa: taxaFixa, consTaxaAdm: consTaxaAdm, consFundoReserva: consFundoReserva, consRedutor: consRedutor, consParcelaAlvo: consParcelaAlvo, consPeriodoReducao: consPeriodoReducao };
+  var debt = { nome: nome, valorContratado: valorContratado, parcela: parcela, totalParcelas: totalParcelas, parcelasPagas: parcelasPagas, saldoDevedor: saldoDevedor, tipoAmort: tipoAmort, reajusteAnual: reajusteAnual, taxaFixa: taxaFixa, consTaxaAdm: consTaxaAdm, consFundoReserva: consFundoReserva, consRedutor: consRedutor, consParcelaAlvo: consParcelaAlvo, consPeriodoReducao: consPeriodoReducao, consPctReducao: consPctReducao };
 
   var list = currentModalType === 'atual' ? dividasAtuais : dividasProposta;
   if (editingIndex >= 0) {
@@ -2367,22 +2402,12 @@ function renderCompSaldoDevedorChart(dividasAtualSel, dividasPropSel) {
   allDividas.forEach(function(item) {
     var d = item.d;
     var isAtual = item.isAtual;
-    var saldo = isAtual ? (d.saldoDevedor || d.valorContratado) : d.valorContratado;
-    var rest = isAtual ? d.totalParcelas - (d.parcelasPagas || 0) : d.totalParcelas;
-    var taxaMensal = Math.pow(1 + (d.taxaAnual || 0) / 100, 1/12) - 1;
-    var data = [saldo];
-    if (isAtual) saldoTotalAtual[0] += saldo; else saldoTotalProp[0] += saldo;
-    var saldoAtualM = saldo;
-    for (var m = 1; m <= maxMeses; m++) {
-      if (m <= rest && saldoAtualM > 0) {
-        var jurosM = saldoAtualM * taxaMensal;
-        var amort = d.parcela - jurosM;
-        saldoAtualM = Math.max(0, saldoAtualM - amort);
-      } else {
-        saldoAtualM = 0;
-      }
-      data.push(saldoAtualM);
-      if (isAtual) saldoTotalAtual[m] += saldoAtualM; else saldoTotalProp[m] += saldoAtualM;
+    var proj = gerarProjecaoSaldo(d, isAtual);
+    var data = proj.saldos.slice(0, maxMeses + 1);
+    // Pad with zeros if this debt ends before maxMeses
+    while (data.length <= maxMeses) data.push(0);
+    for (var mm = 0; mm <= maxMeses; mm++) {
+      if (isAtual) saldoTotalAtual[mm] += data[mm]; else saldoTotalProp[mm] += data[mm];
     }
     var color = isAtual ? colorsAtual[idxA % colorsAtual.length] : colorsProp[idxP % colorsProp.length];
     if (isAtual) idxA++; else idxP++;
