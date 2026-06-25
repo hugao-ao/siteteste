@@ -1036,8 +1036,9 @@
           <option value="price">PRICE (parcelas fixas)</option>
           <option value="sac">SAC (amortização constante)</option>
           <option value="simples">SIMPLES (amortização + taxa sobre valor contratado)</option>
+          <option value="consorcio">CONSÓRCIO (sem juros, com taxa de administração)</option>
         </select>
-        <span class="note">PRICE: parcela fixa. SAC: parcela decrescente (amortização constante + juros sobre saldo). SIMPLES: parcela fixa = amortização + taxa calculada sobre o valor contratado.</span>
+        <span class="note">PRICE: parcela fixa. SAC: parcela decrescente. SIMPLES: amortização + taxa fixa. CONSÓRCIO: sem juros, com taxa de administração e redutor de parcela.</span>
       </div>
     </div>
 
@@ -1048,6 +1049,46 @@
         <span class="note">Se a dívida tem correção anual (ex: IPCA, IGP-M), informe aqui. Parcela e saldo serão reajustados a cada 12 meses.</span>
       </div>
     </div>
+
+    <!-- CAMPOS EXCLUSIVOS CONSÓRCIO -->
+    <div id="consorcio-fields" class="hidden" style="border:1px solid var(--gold); border-radius:8px; padding:1rem; margin:0.5rem 0;">
+      <h4 style="color:var(--gold); margin:0 0 0.75rem;">⚙️ Configuração do Consórcio</h4>
+      <div class="row">
+        <div class="field">
+          <label>Taxa de Administração Total (%)</label>
+          <input type="number" id="m-cons-taxa-adm" placeholder="Ex: 15" step="0.01" value="0" oninput="calcParcelaPreview()">
+          <span class="note">Taxa total de administração do consórcio (diluída nas parcelas). Ex: 15% sobre o crédito.</span>
+        </div>
+      </div>
+      <div class="row">
+        <div class="field">
+          <label>Fundo de Reserva (%)</label>
+          <input type="number" id="m-cons-fundo-reserva" placeholder="Ex: 2" step="0.01" value="0" oninput="calcParcelaPreview()">
+          <span class="note">Percentual do fundo de reserva (se houver). Será adicionado à taxa de administração.</span>
+        </div>
+      </div>
+      <div class="toggle-row" style="margin:0.75rem 0;">
+        <div class="toggle-switch" id="toggle-cons-redutor" onclick="toggleConsReducer()"></div>
+        <label>Habilitar Redutor de Parcela</label>
+      </div>
+      <div id="consorcio-redutor-fields" class="hidden">
+        <div class="row">
+          <div class="field">
+            <label>Parcela Alvo após Redução (R$)</label>
+            <input type="text" id="m-cons-parcela-alvo" placeholder="R$ 0,00" oninput="fmtCurrInput(this)">
+            <span class="note">Valor que a parcela terá ao final da redução (na parcela X). A redução é linear da parcela 1 até a parcela X.</span>
+          </div>
+        </div>
+        <div class="row">
+          <div class="field">
+            <label>Reduzir até a Parcela Nº</label>
+            <input type="number" id="m-cons-periodo-reducao" placeholder="Ex: 24">
+            <span class="note">A parcela será reduzida linearmente da parcela 1 até esta parcela. A partir da parcela seguinte, o saldo devedor restante é redistribuído entre as parcelas faltantes.</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div class="modal-actions">
       <button class="btn btn-outline" onclick="closeDebtModal()">Cancelar</button>
       <button class="btn btn-primary" onclick="saveDebt()">Salvar</button>
@@ -1153,7 +1194,32 @@ function switchTab(tab) {
 
 // ===== DEBT MODAL =====
 function toggleTipoAmortFields() {
-  // No additional fields to toggle now - SIMPLES calculates taxaFixa automatically
+  var tipo = document.getElementById('m-tipo-amort').value;
+  var consFields = document.getElementById('consorcio-fields');
+  var cetToggleRow = document.getElementById('toggle-cet').parentElement;
+  var cetRow = document.getElementById('row-cet');
+  var cetPreviewRow = document.getElementById('row-parcela-preview');
+  var parcelaRow = document.getElementById('row-parcela');
+  if (tipo === 'consorcio') {
+    consFields.classList.remove('hidden');
+    // Esconder CET (consórcio usa Taxa Adm + Fundo Reserva no lugar)
+    cetToggleRow.classList.add('hidden');
+    cetRow.classList.add('hidden');
+    cetPreviewRow.classList.add('hidden');
+    parcelaRow.classList.add('hidden');
+  } else {
+    consFields.classList.add('hidden');
+    // Restaurar visibilidade do CET toggle
+    cetToggleRow.classList.remove('hidden');
+    parcelaRow.classList.remove('hidden');
+  }
+}
+
+function toggleConsReducer() {
+  var toggle = document.getElementById('toggle-cons-redutor');
+  toggle.classList.toggle('active');
+  var fields = document.getElementById('consorcio-redutor-fields');
+  fields.classList.toggle('hidden', !toggle.classList.contains('active'));
 }
 
 function openDebtModal(type, index) {
@@ -1190,6 +1256,25 @@ function openDebtModal(type, index) {
       document.getElementById('m-pagas').value = d.parcelasPagas;
       document.getElementById('m-saldo-devedor').value = d.saldoDevedor ? fmtBRL(d.saldoDevedor) : '';
     }
+    // Restaurar campos de consórcio
+    if (d.tipoAmort === 'consorcio') {
+      document.getElementById('m-cons-taxa-adm').value = d.consTaxaAdm || 0;
+      document.getElementById('m-cons-fundo-reserva').value = d.consFundoReserva || 0;
+      if (d.consRedutor) {
+        document.getElementById('toggle-cons-redutor').classList.add('active');
+        document.getElementById('consorcio-redutor-fields').classList.remove('hidden');
+        document.getElementById('m-cons-parcela-alvo').value = d.consParcelaAlvo ? fmtBRL(d.consParcelaAlvo) : '';
+        document.getElementById('m-cons-periodo-reducao').value = d.consPeriodoReducao || '';
+      } else {
+        document.getElementById('toggle-cons-redutor').classList.remove('active');
+        document.getElementById('consorcio-redutor-fields').classList.add('hidden');
+        document.getElementById('m-cons-parcela-alvo').value = '';
+        document.getElementById('m-cons-periodo-reducao').value = '';
+      }
+      calcParcelaPreview(); // Mostrar preview com dados do consórcio
+    } else {
+      _resetConsorcioFields();
+    }
   } else {
     document.getElementById('modal-title').textContent = 'Adicionar Divida';
     document.getElementById('m-nome').value = '';
@@ -1201,9 +1286,19 @@ function openDebtModal(type, index) {
     document.getElementById('m-cet').value = '';
     document.getElementById('m-tipo-amort').value = 'price';
     document.getElementById('m-reajuste').value = '0';
+    _resetConsorcioFields();
     toggleTipoAmortFields();
   }
   document.getElementById('debt-modal').classList.add('active');
+}
+
+function _resetConsorcioFields() {
+  document.getElementById('m-cons-taxa-adm').value = '0';
+  document.getElementById('m-cons-fundo-reserva').value = '0';
+  document.getElementById('toggle-cons-redutor').classList.remove('active');
+  document.getElementById('consorcio-redutor-fields').classList.add('hidden');
+  document.getElementById('m-cons-parcela-alvo').value = '';
+  document.getElementById('m-cons-periodo-reducao').value = '';
 }
 
 function closeDebtModal() {
@@ -1221,7 +1316,21 @@ function toggleCET() {
 
 function calcParcelaPreview() {
   var previewEl = document.getElementById('parcela-preview-value');
-  if (!useCET) return;
+  var tipoAmortCheck = document.getElementById('m-tipo-amort').value;
+  // Consórcio não usa CET - calcula preview diretamente
+  if (tipoAmortCheck === 'consorcio') {
+    var valCons = parseCurr(document.getElementById('m-valor').value);
+    var parcCons = parseInt(document.getElementById('m-total-parcelas').value);
+    if (!valCons || !parcCons) { previewEl.textContent = 'R$ 0,00'; return; }
+    var txAdmP = parseFloat(document.getElementById('m-cons-taxa-adm').value) || 0;
+    var frP = parseFloat(document.getElementById('m-cons-fundo-reserva').value) || 0;
+    var totalCT = valCons * (1 + (txAdmP + frP) / 100);
+    var parcCalc = totalCT / parcCons;
+    previewEl.textContent = fmtBRL(parcCalc);
+    document.getElementById('row-parcela-preview').classList.remove('hidden');
+    return;
+  }
+  if (!useCET) { document.getElementById('row-parcela-preview').classList.add('hidden'); return; }
   var valorContratado = parseCurr(document.getElementById('m-valor').value);
   var totalParcelas = parseInt(document.getElementById('m-total-parcelas').value);
   var cetVal = parseFloat(document.getElementById('m-cet').value);
@@ -1352,7 +1461,32 @@ function saveDebt() {
     }
   }
 
-  var debt = { nome: nome, valorContratado: valorContratado, parcela: parcela, totalParcelas: totalParcelas, parcelasPagas: parcelasPagas, saldoDevedor: saldoDevedor, tipoAmort: tipoAmort, reajusteAnual: reajusteAnual, taxaFixa: taxaFixa };
+  // Para CONSÓRCIO:
+  var consTaxaAdm = 0, consFundoReserva = 0, consRedutor = false, consParcelaAlvo = 0, consPeriodoReducao = 0;
+  if (tipoAmort === 'consorcio') {
+    consTaxaAdm = parseFloat(document.getElementById('m-cons-taxa-adm').value) || 0;
+    consFundoReserva = parseFloat(document.getElementById('m-cons-fundo-reserva').value) || 0;
+    consRedutor = document.getElementById('toggle-cons-redutor').classList.contains('active');
+    if (consRedutor) {
+      consParcelaAlvo = parseCurr(document.getElementById('m-cons-parcela-alvo').value) || 0;
+      consPeriodoReducao = parseInt(document.getElementById('m-cons-periodo-reducao').value) || 0;
+    }
+    // Consórcio: Taxa Adm + Fundo Reserva substituem o CET
+    var taxaTotalCons = (consTaxaAdm + consFundoReserva) / 100;
+    var totalComTaxa = valorContratado * (1 + taxaTotalCons);
+    // Parcela sempre calculada a partir da taxa de administração (não usa CET)
+    parcela = totalComTaxa / totalParcelas;
+    // Saldo devedor do consórcio = total com taxa - parcelas já pagas
+    if (currentModalType === 'atual') {
+      var saldoInformado = parseCurr(document.getElementById('m-saldo-devedor').value);
+      saldoDevedor = saldoInformado || (totalComTaxa - (parcela * parcelasPagas));
+    } else {
+      saldoDevedor = totalComTaxa;
+    }
+    taxaFixa = 0; // Consórcio não tem taxa fixa mensal
+  }
+
+  var debt = { nome: nome, valorContratado: valorContratado, parcela: parcela, totalParcelas: totalParcelas, parcelasPagas: parcelasPagas, saldoDevedor: saldoDevedor, tipoAmort: tipoAmort, reajusteAnual: reajusteAnual, taxaFixa: taxaFixa, consTaxaAdm: consTaxaAdm, consFundoReserva: consFundoReserva, consRedutor: consRedutor, consParcelaAlvo: consParcelaAlvo, consPeriodoReducao: consPeriodoReducao };
 
   var list = currentModalType === 'atual' ? dividasAtuais : dividasProposta;
   if (editingIndex >= 0) {
@@ -1391,7 +1525,7 @@ function renderTable(type) {
   }
 
   var isAtual = type === 'atual';
-  var tipoLabels = { price: 'PRICE', sac: 'SAC', simples: 'SIMPLES' };
+  var tipoLabels = { price: 'PRICE', sac: 'SAC', simples: 'SIMPLES', consorcio: 'CONSÓRCIO' };
   var html = '<table class="debt-table"><thead><tr>' +
     '<th>Nome</th><th>Tipo</th><th>Valor Contratado</th><th>Parcela Inicial</th><th>Parcelas</th>' +
     (isAtual ? '<th>Pagas</th><th>Restantes</th><th>Saldo Devedor</th>' : '') +
@@ -1488,6 +1622,37 @@ function calcParcelaMes(d, m, saldoInicial) {
     var amortSimples = saldoInicial / restantesTotal;
     var taxaFixa = d.taxaFixa || 0;
     return (amortSimples + taxaFixa) * fatorReaj;
+  } else if (tipo === 'consorcio') {
+    // Consórcio: sem juros, parcela com possível redutor
+    // m = índice do mês (0-based), então parcela nº = m + 1
+    if (d.consRedutor && d.consPeriodoReducao > 0 && d.consParcelaAlvo > 0) {
+      var parcelaInicial = d.parcela;
+      var parcelaAlvo = d.consParcelaAlvo;
+      var parcelaX = d.consPeriodoReducao; // "Reduzir até a Parcela Nº X"
+      var numeroParcela = m + 1; // parcela atual (1-based)
+      if (numeroParcela <= parcelaX) {
+        // Redução linear: parcela 1 = parcelaInicial, parcela X = parcelaAlvo
+        if (parcelaX <= 1) return parcelaInicial * fatorReaj;
+        var frac = (numeroParcela - 1) / (parcelaX - 1);
+        var parcelaMes = parcelaInicial - frac * (parcelaInicial - parcelaAlvo);
+        return parcelaMes * fatorReaj;
+      } else {
+        // Após parcela X: saldo restante redistribuído nas parcelas faltantes
+        // Calcular quanto foi amortizado durante a redução (parcelas 1 a X)
+        var pagoReducao = 0;
+        for (var r = 1; r <= parcelaX; r++) {
+          var fracR = (r - 1) / (parcelaX - 1);
+          pagoReducao += parcelaInicial - fracR * (parcelaInicial - parcelaAlvo);
+        }
+        var saldoAposReducao = saldoInicial - pagoReducao;
+        if (saldoAposReducao < 0) saldoAposReducao = 0;
+        var parcelasFaltantes = restantesTotal - parcelaX;
+        if (parcelasFaltantes <= 0) return parcelaAlvo * fatorReaj;
+        return (saldoAposReducao / parcelasFaltantes) * fatorReaj;
+      }
+    }
+    // Sem redutor: parcela fixa (amortização linear)
+    return d.parcela * fatorReaj;
   }
   return d.parcela * fatorReaj;
 }
@@ -1529,6 +1694,8 @@ function gerarProjecaoSaldo(d, isAtual) {
   } else if (tipo === 'sac') {
     var amortConst = saldo / restantes;
     taxaMensal = d.parcela > amortConst ? (d.parcela - amortConst) / saldo : 0;
+  } else if (tipo === 'consorcio') {
+    taxaMensal = 0; // Consórcio não tem juros
   }
 
   for (var m = 0; m < restantes; m++) {
@@ -1546,6 +1713,39 @@ function gerarProjecaoSaldo(d, isAtual) {
       amortMes = amortConstSac * fatorReaj;
       jurosMes = saldo * taxaMensal;
       parcelaMes = (amortMes + jurosMes) * fatorReaj;
+    } else if (tipo === 'consorcio') {
+      // Consórcio: sem juros, amortização direta com possível redutor
+      // m = índice 0-based, parcela nº = m + 1
+      if (d.consRedutor && d.consPeriodoReducao > 0 && d.consParcelaAlvo > 0) {
+        var parcelaIni = d.parcela;
+        var parcAlvo = d.consParcelaAlvo;
+        var parcelaX = d.consPeriodoReducao; // "Reduzir até a Parcela Nº X"
+        var numParcela = m + 1;
+        if (numParcela <= parcelaX) {
+          // Redução linear: parcela 1 = parcelaIni, parcela X = parcAlvo
+          if (parcelaX <= 1) {
+            parcelaMes = parcelaIni * fatorReaj;
+          } else {
+            var fracP = (numParcela - 1) / (parcelaX - 1);
+            parcelaMes = (parcelaIni - fracP * (parcelaIni - parcAlvo)) * fatorReaj;
+          }
+        } else {
+          // Após parcela X: saldo restante redistribuído
+          var pagoDuranteRed = 0;
+          for (var rr = 1; rr <= parcelaX; rr++) {
+            var fracRR = (rr - 1) / (parcelaX - 1);
+            pagoDuranteRed += parcelaIni - fracRR * (parcelaIni - parcAlvo);
+          }
+          var saldoAposRed = saldoBase - pagoDuranteRed;
+          if (saldoAposRed < 0) saldoAposRed = 0;
+          var parcFalt = restantes - parcelaX;
+          parcelaMes = parcFalt > 0 ? (saldoAposRed / parcFalt) * fatorReaj : 0;
+        }
+      } else {
+        parcelaMes = d.parcela * fatorReaj;
+      }
+      jurosMes = 0;
+      amortMes = parcelaMes; // Consórcio: toda parcela é amortização
     } else { // simples
       amortMes = (saldoBase / restantes) * fatorReaj;
       parcelaMes = (amortMes + (d.taxaFixa || 0)) * fatorReaj;
@@ -1644,23 +1844,11 @@ function renderSaldoDevedorChart(type, list, isAtual) {
   for (var m = 0; m <= maxMeses; m++) saldoTotal.push(0);
 
   list.forEach(function(d, idx) {
-    var saldo = isAtual ? (d.saldoDevedor || d.valorContratado) : d.valorContratado;
-    var rest = isAtual ? d.totalParcelas - (d.parcelasPagas || 0) : d.totalParcelas;
-    var taxaMensal = Math.pow(1 + (d.taxaAnual || 0) / 100, 1/12) - 1;
-    var data = [saldo];
-    saldoTotal[0] += saldo;
-    var saldoAtual = saldo;
-    for (var m = 1; m <= maxMeses; m++) {
-      if (m <= rest && saldoAtual > 0) {
-        var jurosM = saldoAtual * taxaMensal;
-        var amort = d.parcela - jurosM;
-        saldoAtual = Math.max(0, saldoAtual - amort);
-      } else {
-        saldoAtual = 0;
-      }
-      data.push(saldoAtual);
-      saldoTotal[m] += saldoAtual;
-    }
+    var proj = gerarProjecaoSaldo(d, isAtual);
+    var data = proj.saldos.slice(0, maxMeses + 1);
+    // Pad with zeros if this debt ends before maxMeses
+    while (data.length <= maxMeses) data.push(0);
+    for (var mm = 0; mm <= maxMeses; mm++) saldoTotal[mm] += data[mm];
     datasets.push({
       label: d.nome,
       data: data,
@@ -2804,6 +2992,11 @@ function stratGerarCalendario() {
       taxaFixa: d.taxaFixa || 0,
       valorContratado: d.valorContratado,
       parcelasPagas: isAtual ? (d.parcelasPagas || 0) : 0,
+      consRedutor: d.consRedutor || false,
+      consParcelaAlvo: d.consParcelaAlvo || 0,
+      consPeriodoReducao: d.consPeriodoReducao || 0,
+      consTaxaAdm: d.consTaxaAdm || 0,
+      consFundoReserva: d.consFundoReserva || 0,
       origIdx: idx,
       alocPct: stratState.alocPorDivida[idx] || (100 / stratState.selectedDividas.length)
     });
@@ -2830,6 +3023,8 @@ function stratGerarCalendario() {
     } else if (d.tipoAmort === 'sac') {
       var amortConst = d.saldoDevedor / d.restantes;
       return d.parcela > amortConst ? (d.parcela - amortConst) / d.saldoDevedor : 0;
+    } else if (d.tipoAmort === 'consorcio') {
+      return 0; // Consórcio não tem juros
     }
     return 0;
   });
@@ -2920,6 +3115,8 @@ function stratGerarCalendario() {
         var amortConst = dd.saldoDevedor / dd.restantes;
         var jurosMes = saldosDevedor[di] * taxasDividas[di];
         parcelaMes = (amortConst + jurosMes) * fatorReaj;
+      } else if (dd.tipoAmort === 'consorcio') {
+        parcelaMes = calcParcelaMes(dd, m, dd.saldoDevedor); // calcParcelaMes já aplica fatorReaj internamente
       } else {
         var amortSimp = dd.saldoDevedor / dd.restantes;
         parcelaMes = (amortSimp + (dd.taxaFixa || 0)) * fatorReaj;
@@ -2931,6 +3128,8 @@ function stratGerarCalendario() {
         amortNormal = parcelaMes - jurosMesP;
       } else if (dd.tipoAmort === 'sac') {
         amortNormal = (dd.saldoDevedor / dd.restantes) * fatorReaj;
+      } else if (dd.tipoAmort === 'consorcio') {
+        amortNormal = parcelaMes; // Consórcio: toda parcela é amortização
       } else {
         amortNormal = (dd.saldoDevedor / dd.restantes) * fatorReaj;
       }
@@ -3537,6 +3736,11 @@ function _analiseRunStrat(strat) {
       taxaFixa: d.taxaFixa || 0,
       valorContratado: d.valorContratado,
       parcelasPagas: isAtual ? (d.parcelasPagas || 0) : 0,
+      consRedutor: d.consRedutor || false,
+      consParcelaAlvo: d.consParcelaAlvo || 0,
+      consPeriodoReducao: d.consPeriodoReducao || 0,
+      consTaxaAdm: d.consTaxaAdm || 0,
+      consFundoReserva: d.consFundoReserva || 0,
       origIdx: idx,
       alocPct: alocPorDivida[idx] || (100 / selectedDividas.length)
     });
@@ -3567,6 +3771,8 @@ function _analiseRunStrat(strat) {
     } else if (d.tipoAmort === 'sac') {
       var amortConst = d.saldoDevedor / d.restantes;
       return d.parcela > amortConst ? (d.parcela - amortConst) / d.saldoDevedor : 0;
+    } else if (d.tipoAmort === 'consorcio') {
+      return 0; // Consórcio não tem juros
     }
     return 0;
   });
@@ -3660,6 +3866,8 @@ function _analiseRunStrat(strat) {
         amortNormal = dd.parcela * fatorReaj - jurosMes;
       } else if (dd.tipoAmort === 'sac') {
         amortNormal = (dd.saldoDevedor / dd.restantes) * fatorReaj;
+      } else if (dd.tipoAmort === 'consorcio') {
+        amortNormal = calcParcelaMes(dd, m, dd.saldoDevedor);
       } else {
         amortNormal = (dd.saldoDevedor / dd.restantes) * fatorReaj;
       }
