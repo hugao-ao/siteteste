@@ -1821,39 +1821,24 @@ function gerarProjecaoSaldo(d, isAtual) {
     } else if (tipo === 'consorcio') {
       // Consórcio: sem juros. Amortização = crédito/totalParcelas (não inclui taxa adm/fundo)
       // A parcela inclui taxa adm + fundo reserva, mas só a parte de amortização abate o saldo
-      var amortPura = saldoBase / restantes; // amortização base sem reajuste
+      var taxaTotalCons = ((d.consTaxaAdm || 0) + (d.consFundoReserva || 0)) / 100;
+      var propAmort = 1 / (1 + taxaTotalCons);
       if (d.consRedutor && d.consPeriodoReducao > 0 && d.consParcelaAlvo > 0) {
-        var parcReduz = d.consParcelaAlvo; // parcela fixa reduzida (inclui taxa adm)
+        var parcReduz = d.consParcelaAlvo;
         var parcelaX = d.consPeriodoReducao;
         var numParcela = m + 1;
-        // Calcular a proporção de amortização na parcela reduzida
-        var taxaTotalCons = ((d.consTaxaAdm || 0) + (d.consFundoReserva || 0)) / 100;
-        var propAmort = 1 / (1 + taxaTotalCons); // proporção da parcela que é amortização
         if (numParcela <= parcelaX) {
           parcelaMes = parcReduz * fatorReaj;
           amortMes = parcReduz * propAmort * fatorReaj;
         } else {
-          // Após parcela X: calcular saldo restante e redistribuir
-          var amortDuranteRed = 0;
-          for (var rr = 0; rr < parcelaX; rr++) {
-            var fReajRR = reajuste > 0 ? Math.pow(1 + reajuste, Math.floor(rr / 12)) : 1;
-            amortDuranteRed += parcReduz * propAmort * fReajRR;
-          }
-          // Considerar reajustes do saldo durante o período de redução
-          var saldoAcum = saldoBase;
-          for (var rr2 = 0; rr2 < parcelaX; rr2++) {
-            if (reajuste > 0 && rr2 > 0 && rr2 % 12 === 0) saldoAcum *= (1 + reajuste);
-            var fReajRR2 = reajuste > 0 ? Math.pow(1 + reajuste, Math.floor(rr2 / 12)) : 1;
-            saldoAcum -= parcReduz * propAmort * fReajRR2;
-          }
-          if (saldoAcum < 0) saldoAcum = 0;
-          var parcFalt = restantes - parcelaX;
-          amortMes = parcFalt > 0 ? (saldoAcum / parcFalt) * fatorReaj : 0;
+          // Após parcela X: distribuir saldo atual pelos meses restantes
+          var mesesRestantes = restantes - m;
+          amortMes = mesesRestantes > 0 ? saldo / mesesRestantes : saldo;
           parcelaMes = amortMes * (1 + taxaTotalCons);
         }
       } else {
         parcelaMes = d.parcela * fatorReaj;
-        amortMes = amortPura * fatorReaj;
+        amortMes = (saldoBase / restantes) * fatorReaj;
       }
       jurosMes = 0;
     } else { // simples
