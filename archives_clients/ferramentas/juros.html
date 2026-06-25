@@ -726,6 +726,7 @@
           <div class="chart-container" style="height:350px;">
             <canvas id="chart-parcelas"></canvas>
           </div>
+          <div id="comp-invest-section" class="hidden">
           <div class="chart-container" style="height:350px;">
             <canvas id="chart-acumulado"></canvas>
           </div>
@@ -737,6 +738,7 @@
             <canvas id="chart-alternativo"></canvas>
           </div>
           <div class="verdict-card" id="comp-verdict-alt"></div>
+          </div>
           <hr style="border-color:rgba(255,255,255,0.1); margin:2rem 0;">
           <h3 style="color:var(--primary); margin-bottom:0.5rem;">Evolução do Saldo Devedor</h3>
           <div class="chart-container" style="height:350px;">
@@ -2170,6 +2172,15 @@ function runComparison() {
 
   document.getElementById('comp-result').classList.remove('hidden');
 
+  // Mostrar seção de investimento APENAS se houver comparação real (dívidas E propostas)
+  var hasBothSides = selectedAtual.length > 0 && selectedProposta.length > 0;
+  var investSection = document.getElementById('comp-invest-section');
+  if (hasBothSides) {
+    investSection.classList.remove('hidden');
+  } else {
+    investSection.classList.add('hidden');
+  }
+
   document.getElementById('comp-summary-grid').innerHTML =
     '<div class="summary-item"><div class="label">Total Atual</div><div class="value red">' + fmtBRL(totalAtual) + '</div></div>' +
     '<div class="summary-item"><div class="label">Total Proposta</div><div class="value blue">' + fmtBRL(totalProposta) + '</div></div>' +
@@ -2177,7 +2188,7 @@ function runComparison() {
     '<div class="summary-item"><div class="label">Juros Restantes (Atual)</div><div class="value red">' + fmtBRL(jurosRestantesAtual) + '</div></div>' +
     '<div class="summary-item"><div class="label">Juros Totais (Proposta)</div><div class="value blue">' + fmtBRL(jurosProposta) + '</div></div>' +
     '<div class="summary-item"><div class="label">Economia em Juros</div><div class="value ' + (economiaJuros >= 0 ? 'green' : 'red') + '">' + fmtBRL(economiaJuros) + '</div></div>' +
-    '<div class="summary-item"><div class="label">Saldo Investido (' + taxaAnual + '% a.a.)</div><div class="value ' + (saldoFinal >= 0 ? 'green' : 'red') + '">' + fmtBRL(saldoFinal) + '</div></div>' +
+    (hasBothSides ? '<div class="summary-item"><div class="label">Saldo Investido (' + taxaAnual + '% a.a.)</div><div class="value ' + (saldoFinal >= 0 ? 'green' : 'red') + '">' + fmtBRL(saldoFinal) + '</div></div>' : '') +
     '<div class="summary-item"><div class="label">Prazo Total</div><div class="value white">' + maxMeses + ' meses</div></div>';
 
   var labels = [];
@@ -3124,10 +3135,7 @@ function stratGerarCalendario() {
   stratState.pctReserva = parseFloat(document.getElementById('strat-pct-reserva').value);
   if (isNaN(stratState.pctReserva)) stratState.pctReserva = 100;
 
-  if (!stratState.aporteMensal && !stratState.saldoInicial) {
-    alert('Informe o aporte mensal ou o saldo inicial.');
-    return;
-  }
+  // Aporte mensal e saldo inicial podem ser ambos 0 (ex: apenas visualizar evolução das dívidas)
   if (!stratState.selectedDividas.length) {
     alert('Selecione pelo menos uma dívida.');
     return;
