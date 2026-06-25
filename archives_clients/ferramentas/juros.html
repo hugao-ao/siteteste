@@ -3339,12 +3339,41 @@ function stratGerarCalendario() {
         var reajC = (dd.reajusteAnual || 0) / 100;
         var fatorReajC = reajC > 0 ? Math.pow(1 + reajC, Math.floor(m / 12)) : 1;
         var taxaTotC = ((dd.consTaxaAdm || 0) + (dd.consFundoReserva || 0)) / 100;
-        if (dd._amortFixaConsorcio && tipoAmortExtra === 'parcela') {
-          // Após amort extra no modo parcela: usar amort fixa recalculada
+        var propAmortC = 1 / (1 + taxaTotC);
+        var numeroParcC = m + 1;
+        var temRedutor = dd.consRedutor && dd.consPeriodoReducao > 0 && dd.consParcelaAlvo > 0;
+        var dentroReducao = temRedutor && numeroParcC <= dd.consPeriodoReducao;
+
+        if (dentroReducao) {
+          // Dentro do período de redução: parcela reduzida fixa (independente de amort extra)
+          parcelaMes = dd.consParcelaAlvo * fatorReajC;
+          amortNormal = parcelaMes * propAmortC;
+        } else if (temRedutor && !dentroReducao) {
+          // Após período de redução: recalcular com saldo REAL atual
+          var parcFaltC = (dd.totalParcelas - (dd.parcelasPagas || 0)) - dd.consPeriodoReducao;
+          if (parcFaltC <= 0) parcFaltC = 1;
+          // Na transição (primeiro mês após redução), calcular amort baseada no saldo REAL
+          if (!dd._amortPosReducao) {
+            // Recalcular com saldo real neste momento (já considera amort extras anteriores)
+            dd._amortPosReducao = saldosDevedor[di] / parcFaltC;
+            // Se houve amort extra durante redução, atualizar _amortFixaConsorcio com saldo real
+            if (dd._amortFixaConsorcio && tipoAmortExtra === 'parcela') {
+              dd._amortFixaConsorcio = saldosDevedor[di] / parcFaltC;
+            }
+          }
+          // Usar amort fixa recalculada (se houve amort extra) ou amort pós-redução
+          if (dd._amortFixaConsorcio && tipoAmortExtra === 'parcela') {
+            amortNormal = dd._amortFixaConsorcio * fatorReajC;
+          } else {
+            amortNormal = dd._amortPosReducao * fatorReajC;
+          }
+          parcelaMes = amortNormal * (1 + taxaTotC);
+        } else if (dd._amortFixaConsorcio && tipoAmortExtra === 'parcela') {
+          // Sem redutor, mas com amort extra no modo parcela
           amortNormal = dd._amortFixaConsorcio * fatorReajC;
           parcelaMes = amortNormal * (1 + taxaTotC);
         } else {
-          // Normal (ou modo prazo): usar cálculo original
+          // Sem redutor, sem amort extra: usar cálculo original
           parcelaMes = calcParcelaMes(dd, m, dd.saldoDevedor);
           amortNormal = calcAmortConsorcioMes(dd, m, dd.saldoDevedor);
         }
@@ -3401,9 +3430,22 @@ function stratGerarCalendario() {
             }
             dd._parcelaAtual = novaParcela / fatorReaj; // armazenar sem fatorReaj (será aplicado no próximo mês)
           } else if (dd.tipoAmort === 'consorcio') {
-            // Consórcio: recalcular amort fixa = saldoAtual / parcelasRestantes
-            var restantesC = dd.totalParcelas - (dd.parcelasPagas || 0) - m - 1;
+            // Consórcio: recalcular amort fixa
+            // Se estamos DENTRO do período de redução, o recalculo só vale após o fim da redução
+            var temRedutorC = dd.consRedutor && dd.consPeriodoReducao > 0;
+            var numParcAtual = m + 1;
+            var restantesC;
+            if (temRedutorC && numParcAtual <= dd.consPeriodoReducao) {
+              // Amort extra durante redução: calcular restantes a partir do FIM da redução
+              restantesC = (dd.totalParcelas - (dd.parcelasPagas || 0)) - dd.consPeriodoReducao;
+            } else {
+              // Amort extra após redução (ou sem redutor): restantes a partir de agora
+              restantesC = dd.totalParcelas - (dd.parcelasPagas || 0) - m - 1;
+            }
             if (restantesC <= 0) restantesC = 1;
+            // Guardar saldo no momento da amort extra para recalcular no fim da redução
+            dd._saldoAposAmortExtra = saldosDevedor[di];
+            dd._mesAmortExtra = m;
             dd._amortFixaConsorcio = saldosDevedor[di] / restantesC;
             // Verificar piso mínimo
             if (parcelaMinPct > 0) {
@@ -4231,7 +4273,28 @@ function _analiseRunStrat(strat) {
         var reajCA = (dd.reajusteAnual || 0) / 100;
         var fatorReajCA = reajCA > 0 ? Math.pow(1 + reajCA, Math.floor(m / 12)) : 1;
         var taxaTotCA2 = ((dd.consTaxaAdm || 0) + (dd.consFundoReserva || 0)) / 100;
-        if (dd._amortFixaConsorcio && tipoAmortExtra === 'parcela') {
+        var propAmortCA = 1 / (1 + taxaTotCA2);
+        var numeroParcCA = m + 1;
+        var temRedutorCA = dd.consRedutor && dd.consPeriodoReducao > 0 && dd.consParcelaAlvo > 0;
+        var dentroReducaoCA = temRedutorCA && numeroParcCA <= dd.consPeriodoReducao;
+
+        if (dentroReducaoCA) {
+          amortNormal = dd.consParcelaAlvo * fatorReajCA * propAmortCA;
+        } else if (temRedutorCA && !dentroReducaoCA) {
+          var parcFaltCA = (dd.totalParcelas - (dd.parcelasPagas || 0)) - dd.consPeriodoReducao;
+          if (parcFaltCA <= 0) parcFaltCA = 1;
+          if (!dd._amortPosReducao) {
+            dd._amortPosReducao = saldosDevedor[di] / parcFaltCA;
+            if (dd._amortFixaConsorcio && tipoAmortExtra === 'parcela') {
+              dd._amortFixaConsorcio = saldosDevedor[di] / parcFaltCA;
+            }
+          }
+          if (dd._amortFixaConsorcio && tipoAmortExtra === 'parcela') {
+            amortNormal = dd._amortFixaConsorcio * fatorReajCA;
+          } else {
+            amortNormal = dd._amortPosReducao * fatorReajCA;
+          }
+        } else if (dd._amortFixaConsorcio && tipoAmortExtra === 'parcela') {
           amortNormal = dd._amortFixaConsorcio * fatorReajCA;
         } else {
           amortNormal = calcAmortConsorcioMes(dd, m, dd.saldoDevedor);
