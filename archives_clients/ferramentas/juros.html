@@ -1661,28 +1661,24 @@ function calcParcelaMes(d, m, saldoInicial) {
     // Consórcio: sem juros, parcela com possível redutor
     // m = índice do mês (0-based), então parcela nº = m + 1
     if (d.consRedutor && d.consPeriodoReducao > 0 && d.consParcelaAlvo > 0) {
-      var parcelaInicial = d.parcela;
-      var parcelaAlvo = d.consParcelaAlvo;
+      var parcelaReduzida = d.consParcelaAlvo; // parcela com redução aplicada (fixa)
       var parcelaX = d.consPeriodoReducao; // "Reduzir até a Parcela Nº X"
       var numeroParcela = m + 1; // parcela atual (1-based)
       if (numeroParcela <= parcelaX) {
-        // Redução linear: parcela 1 = parcelaInicial, parcela X = parcelaAlvo
-        if (parcelaX <= 1) return parcelaInicial * fatorReaj;
-        var frac = (numeroParcela - 1) / (parcelaX - 1);
-        var parcelaMes = parcelaInicial - frac * (parcelaInicial - parcelaAlvo);
-        return parcelaMes * fatorReaj;
+        // Período de redução: parcela fixa reduzida + reajuste apenas no aniversário
+        return parcelaReduzida * fatorReaj;
       } else {
         // Após parcela X: saldo restante redistribuído nas parcelas faltantes
-        // Calcular quanto foi amortizado durante a redução (parcelas 1 a X)
+        // Calcular quanto foi pago durante a redução (considerando reajustes anuais)
         var pagoReducao = 0;
-        for (var r = 1; r <= parcelaX; r++) {
-          var fracR = (r - 1) / (parcelaX - 1);
-          pagoReducao += parcelaInicial - fracR * (parcelaInicial - parcelaAlvo);
+        for (var r = 0; r < parcelaX; r++) {
+          var fReaj = reajuste > 0 ? Math.pow(1 + reajuste, Math.floor(r / 12)) : 1;
+          pagoReducao += parcelaReduzida * fReaj;
         }
         var saldoAposReducao = saldoInicial - pagoReducao;
         if (saldoAposReducao < 0) saldoAposReducao = 0;
         var parcelasFaltantes = restantesTotal - parcelaX;
-        if (parcelasFaltantes <= 0) return parcelaAlvo * fatorReaj;
+        if (parcelasFaltantes <= 0) return parcelaReduzida * fatorReaj;
         return (saldoAposReducao / parcelasFaltantes) * fatorReaj;
       }
     }
@@ -1752,24 +1748,18 @@ function gerarProjecaoSaldo(d, isAtual) {
       // Consórcio: sem juros, amortização direta com possível redutor
       // m = índice 0-based, parcela nº = m + 1
       if (d.consRedutor && d.consPeriodoReducao > 0 && d.consParcelaAlvo > 0) {
-        var parcelaIni = d.parcela;
-        var parcAlvo = d.consParcelaAlvo;
-        var parcelaX = d.consPeriodoReducao; // "Reduzir até a Parcela Nº X"
+        var parcReduz = d.consParcelaAlvo; // parcela fixa reduzida
+        var parcelaX = d.consPeriodoReducao;
         var numParcela = m + 1;
         if (numParcela <= parcelaX) {
-          // Redução linear: parcela 1 = parcelaIni, parcela X = parcAlvo
-          if (parcelaX <= 1) {
-            parcelaMes = parcelaIni * fatorReaj;
-          } else {
-            var fracP = (numParcela - 1) / (parcelaX - 1);
-            parcelaMes = (parcelaIni - fracP * (parcelaIni - parcAlvo)) * fatorReaj;
-          }
+          // Período de redução: parcela fixa + reajuste apenas no aniversário
+          parcelaMes = parcReduz * fatorReaj;
         } else {
           // Após parcela X: saldo restante redistribuído
           var pagoDuranteRed = 0;
-          for (var rr = 1; rr <= parcelaX; rr++) {
-            var fracRR = (rr - 1) / (parcelaX - 1);
-            pagoDuranteRed += parcelaIni - fracRR * (parcelaIni - parcAlvo);
+          for (var rr = 0; rr < parcelaX; rr++) {
+            var fReajRR = reajuste > 0 ? Math.pow(1 + reajuste, Math.floor(rr / 12)) : 1;
+            pagoDuranteRed += parcReduz * fReajRR;
           }
           var saldoAposRed = saldoBase - pagoDuranteRed;
           if (saldoAposRed < 0) saldoAposRed = 0;
