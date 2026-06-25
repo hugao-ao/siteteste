@@ -3208,6 +3208,7 @@ function stratGerarCalendario() {
   var saldoDevedorTotal = saldosDevedor.reduce(function(a,b) { return a+b; }, 0);
   var quitouEm = -1;
   var totalJurosPagos = 0;
+  var totalReajusteComAmort = 0; // Total de reajuste aplicado ao saldo COM amortização extra
 
   var taxasDividas = dividasSel.map(function(d) {
     if (d.tipoAmort === 'price') {
@@ -3304,7 +3305,9 @@ function stratGerarCalendario() {
 
       // Reajuste anual do saldo (aniversário)
       if (reaj > 0 && m > 0 && m % 12 === 0) {
-        saldosDevedor[di] = saldosDevedor[di] * (1 + reaj);
+        var reajValor = saldosDevedor[di] * reaj;
+        totalReajusteComAmort += reajValor;
+        saldosDevedor[di] = saldosDevedor[di] + reajValor;
       }
 
       var fatorReaj = reaj > 0 ? Math.pow(1 + reaj, Math.floor(m / 12)) : 1;
@@ -3541,7 +3544,8 @@ function stratGerarCalendario() {
     dividasSel: dividasSel,
     quitouEm: quitouEm,
     periodoMax: periodoMax,
-    totalJurosPagos: totalJurosPagos
+    totalJurosPagos: totalJurosPagos,
+    totalReajusteComAmort: totalReajusteComAmort
   };
 
   stratRenderCalendario();
@@ -3585,6 +3589,37 @@ function stratRenderCalendario() {
   var economiaJuros = totalJurosBaseline - (cal.totalJurosPagos || 0);
   if (economiaJuros < 0) economiaJuros = 0;
 
+  // Calcular reajustes que seriam pagos SEM amortização extra (baseline)
+  var totalReajusteBaseline = 0;
+  dividasSel.forEach(function(dd) {
+    var reajB = (dd.reajusteAnual || 0) / 100;
+    if (reajB > 0) {
+      var saldoB = dd.saldoDevedor;
+      var restB = dd.restantes;
+      for (var mb = 0; mb < restB; mb++) {
+        if (mb > 0 && mb % 12 === 0) {
+          totalReajusteBaseline += saldoB * reajB;
+          saldoB *= (1 + reajB);
+        }
+        // Amortização normal sem extra
+        if (dd.tipoAmort === 'price') {
+          var taxaBp = calcTaxaImplicita(dd.saldoDevedor, dd.parcela, dd.restantes);
+          var jurosBp = saldoB * taxaBp;
+          saldoB -= (dd.parcela * Math.pow(1 + reajB, Math.floor(mb / 12)) - jurosBp);
+        } else if (dd.tipoAmort === 'sac' || dd.tipoAmort === 'simples') {
+          saldoB -= dd.saldoDevedor / restB;
+        } else if (dd.tipoAmort === 'consorcio') {
+          var taxaTotBc = ((dd.consTaxaAdm || 0) + (dd.consFundoReserva || 0)) / 100;
+          var propAmortBc = 1 / (1 + taxaTotBc);
+          saldoB -= (dd.saldoDevedor / restB) * propAmortBc;
+        }
+        if (saldoB < 0) saldoB = 0;
+      }
+    }
+  });
+  var economiaReajustes = totalReajusteBaseline - (cal.totalReajusteComAmort || 0);
+  if (economiaReajustes < 0) economiaReajustes = 0;
+
   var mesesEconomizados = quitouEm >= 0 ? (maxRestantes - quitouEm - 1) : 0;
   if (mesesEconomizados < 0) mesesEconomizados = 0;
 
@@ -3599,6 +3634,7 @@ function stratRenderCalendario() {
       '<div class="summary-item"><div class="label">Quitação</div><div class="value red">Não quitou no período</div></div>'
     ) +
     (economiaJuros > 0 ? '<div class="summary-item"><div class="label">Economia em Juros</div><div class="value green">' + fmtBRL(economiaJuros) + '</div></div>' : '') +
+    (economiaReajustes > 0 ? '<div class="summary-item"><div class="label">Economia em Reajustes</div><div class="value green">' + fmtBRL(economiaReajustes) + '</div></div>' : '') +
     '<div class="summary-item"><div class="label">Reserva Final (Líq.)</div><div class="value blue">' + fmtBRL(reservaFinal) + '</div></div>';
 
   var thead = document.getElementById('strat-cal-thead');
@@ -3749,6 +3785,8 @@ function stratRenderCalendario() {
       '<div class="big-value">' + (quitouEm + 1) + ' meses</div>' +
       '<div class="desc">Com o aporte configurado, as dívidas selecionadas serão quitadas em <strong>' + (quitouEm + 1) + ' meses</strong> — uma economia de <strong>' + mesesEconomizados + ' meses</strong> em relação ao prazo original (' + maxRestantes + ' meses).</div>' +
       '<div class="desc" style="margin-top:0.5rem;">Economia estimada em parcelas: <strong style="color:var(--green);">' + fmtBRL(parcelasEconomizadas) + '</strong></div>' +
+      (economiaJuros > 0 ? '<div class="desc" style="margin-top:0.3rem;">Economia em juros: <strong style="color:var(--green);">' + fmtBRL(economiaJuros) + '</strong></div>' : '') +
+      (economiaReajustes > 0 ? '<div class="desc" style="margin-top:0.3rem;">Economia em reajustes (correções anuais evitadas): <strong style="color:var(--green);">' + fmtBRL(economiaReajustes) + '</strong></div>' : '') +
       '<div class="desc" style="margin-top:0.3rem;">Reserva restante após quitação: <strong style="color:var(--blue);">' + fmtBRL(reservaFinal) + '</strong></div>';
   } else {
     verdictEl.innerHTML =
