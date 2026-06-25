@@ -3196,6 +3196,7 @@ function stratGerarCalendario() {
   var saldosDevedor = dividasSel.map(function(d) { return d.saldoDevedor; });
   var saldoDevedorTotal = saldosDevedor.reduce(function(a,b) { return a+b; }, 0);
   var quitouEm = -1;
+  var totalJurosPagos = 0;
 
   var taxasDividas = dividasSel.map(function(d) {
     if (d.tipoAmort === 'price') {
@@ -3280,6 +3281,7 @@ function stratGerarCalendario() {
 
     // Evolução normal das dívidas + amortização extra por dívida
     var parcelaTotalMes = 0;
+    var jurosTotalMes = 0;
     var amortExtraPorDivida = [];
     for (var di = 0; di < dividasSel.length; di++) {
       amortExtraPorDivida.push(0);
@@ -3301,25 +3303,37 @@ function stratGerarCalendario() {
         var parcelaAtual = dd._parcelaAtual || dd.parcela;
         parcelaMes = parcelaAtual * fatorReaj;
         var jurosMesP = saldosDevedor[di] * taxasDividas[di];
+        jurosTotalMes += jurosMesP;
         amortNormal = parcelaMes - jurosMesP;
         if (amortNormal < 0) amortNormal = 0;
       } else if (dd.tipoAmort === 'sac') {
-        // SAC: amortização constante baseada no saldo/prazo ATUAIS
+        // SAC: amortização constante
         var restantesSac = dd._restantesAtual || dd.restantes;
-        var amortConstSac = saldosDevedor[di] / restantesSac;
         var jurosMesSac = saldosDevedor[di] * taxasDividas[di];
+        jurosTotalMes += jurosMesSac;
+        var amortConstSac;
+        if (tipoAmortExtra === 'prazo') {
+          // Modo PRAZO: manter parcela original (amort fixa baseada no saldo/restantes ORIGINAIS)
+          amortConstSac = dd.saldoDevedor / dd.restantes;
+        } else {
+          // Modo PARCELA: amort baseada no saldo/restantes ATUAIS
+          amortConstSac = saldosDevedor[di] / restantesSac;
+        }
         amortNormal = amortConstSac;
-        parcelaMes = (amortConstSac + jurosMesSac) * (reaj > 0 ? fatorReaj / Math.pow(1 + reaj, Math.floor(m / 12)) : 1);
-        // SAC: parcela = amort + juros (sem duplicar fatorReaj nos juros)
         parcelaMes = amortConstSac + jurosMesSac;
       } else if (dd.tipoAmort === 'consorcio') {
         // Consórcio: parcela inclui taxa adm, mas só a amortização pura abate o saldo
         parcelaMes = calcParcelaMes(dd, m, dd.saldoDevedor);
         amortNormal = calcAmortConsorcioMes(dd, m, dd.saldoDevedor);
       } else {
-        // Simples: amortização constante baseada no saldo/prazo ATUAIS
+        // Simples: amortização constante
         var restantesSimp = dd._restantesAtual || dd.restantes;
-        var amortSimp = saldosDevedor[di] / restantesSimp;
+        var amortSimp;
+        if (tipoAmortExtra === 'prazo') {
+          amortSimp = dd.saldoDevedor / dd.restantes;
+        } else {
+          amortSimp = saldosDevedor[di] / restantesSimp;
+        }
         amortNormal = amortSimp;
         parcelaMes = amortSimp + (dd.taxaFixa || 0);
       }
@@ -3328,6 +3342,7 @@ function stratGerarCalendario() {
       saldosDevedor[di] -= amortNormal;
       if (saldosDevedor[di] < 0.01) saldosDevedor[di] = 0;
       parcelaTotalMes += parcelaMes;
+      totalJurosPagos += jurosTotalMes > 0 ? (parcelaMes - amortNormal) : 0;
 
       // Decrementar prazo restante (para SAC/Simples - não para consórcio que usa m diretamente)
       if (dd.tipoAmort !== 'consorcio') {
@@ -3442,7 +3457,8 @@ function stratGerarCalendario() {
     meses: meses,
     dividasSel: dividasSel,
     quitouEm: quitouEm,
-    periodoMax: periodoMax
+    periodoMax: periodoMax,
+    totalJurosPagos: totalJurosPagos
   };
 
   stratRenderCalendario();
@@ -3464,16 +3480,42 @@ function stratRenderCalendario() {
   var ultimoMes = meses[meses.length - 1];
   var reservaFinal = ultimoMes ? ultimoMes.reservaLiquida : 0;
 
+  // Calcular juros que seriam pagos SEM amortização extra (baseline)
+  var totalJurosBaseline = 0;
+  dividasSel.forEach(function(dd) {
+    if (dd.tipoAmort === 'price') {
+      var taxaM = calcTaxaImplicita(dd.saldoDevedor, dd.parcela, dd.restantes);
+      totalJurosBaseline += (dd.parcela * dd.restantes) - dd.saldoDevedor;
+    } else if (dd.tipoAmort === 'sac') {
+      var taxaS = dd.parcela > (dd.saldoDevedor / dd.restantes) ? (dd.parcela - dd.saldoDevedor / dd.restantes) / dd.saldoDevedor : 0;
+      var saldoS = dd.saldoDevedor;
+      var amortS = dd.saldoDevedor / dd.restantes;
+      for (var ms = 0; ms < dd.restantes; ms++) {
+        var jMs = saldoS * taxaS;
+        totalJurosBaseline += jMs;
+        saldoS -= amortS;
+        if (saldoS < 0) saldoS = 0;
+      }
+    }
+    // Consórcio e Simples não têm juros
+  });
+  var economiaJuros = totalJurosBaseline - (cal.totalJurosPagos || 0);
+  if (economiaJuros < 0) economiaJuros = 0;
+
+  var mesesEconomizados = quitouEm >= 0 ? (maxRestantes - quitouEm - 1) : 0;
+  if (mesesEconomizados < 0) mesesEconomizados = 0;
+
   var grid = document.getElementById('strat-resumo-grid');
   grid.innerHTML =
     '<div class="summary-item"><div class="label">Saldo Devedor Inicial</div><div class="value red">' + fmtBRL(saldoInicialTotal) + '</div></div>' +
     '<div class="summary-item"><div class="label">Prazo Original</div><div class="value white">' + maxRestantes + ' meses</div></div>' +
     (quitouEm >= 0 ?
       '<div class="summary-item"><div class="label">Quitação em</div><div class="value green">' + (quitouEm + 1) + ' meses</div></div>' +
-      '<div class="summary-item"><div class="label">Economia</div><div class="value green">' + (maxRestantes - quitouEm - 1) + ' meses</div></div>'
+      '<div class="summary-item"><div class="label">Economia</div><div class="value green">' + mesesEconomizados + ' meses</div></div>'
     :
       '<div class="summary-item"><div class="label">Quitação</div><div class="value red">Não quitou no período</div></div>'
     ) +
+    (economiaJuros > 0 ? '<div class="summary-item"><div class="label">Economia em Juros</div><div class="value green">' + fmtBRL(economiaJuros) + '</div></div>' : '') +
     '<div class="summary-item"><div class="label">Reserva Final (Líq.)</div><div class="value blue">' + fmtBRL(reservaFinal) + '</div></div>';
 
   var thead = document.getElementById('strat-cal-thead');
@@ -4110,12 +4152,20 @@ function _analiseRunStrat(strat) {
         if (amortNormal < 0) amortNormal = 0;
       } else if (dd.tipoAmort === 'sac') {
         var restSac = dd._restantesAtual || dd.restantes;
-        amortNormal = saldosDevedor[di] / restSac;
+        if (tipoAmortExtra === 'prazo') {
+          amortNormal = dd.saldoDevedor / dd.restantes;
+        } else {
+          amortNormal = saldosDevedor[di] / restSac;
+        }
       } else if (dd.tipoAmort === 'consorcio') {
         amortNormal = calcAmortConsorcioMes(dd, m, dd.saldoDevedor);
       } else {
         var restSimp = dd._restantesAtual || dd.restantes;
-        amortNormal = saldosDevedor[di] / restSimp;
+        if (tipoAmortExtra === 'prazo') {
+          amortNormal = dd.saldoDevedor / dd.restantes;
+        } else {
+          amortNormal = saldosDevedor[di] / restSimp;
+        }
       }
       if (amortNormal < 0) amortNormal = 0;
       if (amortNormal > saldosDevedor[di]) amortNormal = saldosDevedor[di];
