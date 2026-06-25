@@ -3135,6 +3135,11 @@ function stratGerarCalendario() {
   stratState.pctReserva = parseFloat(document.getElementById('strat-pct-reserva').value);
   if (isNaN(stratState.pctReserva)) stratState.pctReserva = 100;
 
+  // Ler tipo de amortização extra e parcela mínima do UI
+  var radioAmort = document.querySelector('input[name="strat-tipo-amort-extra"]:checked');
+  stratState.tipoAmortExtra = radioAmort ? radioAmort.value : 'prazo';
+  stratState.parcelaMinPct = parseFloat(document.getElementById('strat-parcela-min-pct').value) || 0;
+
   // Aporte mensal e saldo inicial podem ser ambos 0 (ex: apenas visualizar evolução das dívidas)
   if (!stratState.selectedDividas.length) {
     alert('Selecione pelo menos uma dívida.');
@@ -3153,6 +3158,9 @@ function stratGerarCalendario() {
 
   var list = stratState.source === 'atual' ? dividasAtuais : dividasProposta;
   var isAtual = stratState.source === 'atual';
+
+  // Reset overrides para garantir cálculos limpos a cada geração
+  stratState.overrides = stratState.overrides || {};
 
   var dividasSel = [];
   var maxRestantes = 0;
@@ -3226,6 +3234,8 @@ function stratGerarCalendario() {
 
     var pctRes = stratState.overrides[m] !== undefined ? stratState.overrides[m] : stratState.pctReserva;
     var pctAmort = 100 - pctRes;
+    // Aportes esporádicos vão 100% para amortização (não passam pelo split reserva/amort)
+    var sporadicAmort = sporadicMes;
 
     // CHANGE 3: Check which debts are still active and redistribute
     var algumaAtiva = false;
@@ -3269,8 +3279,8 @@ function stratGerarCalendario() {
       alocEfetiva[0] = dividaAtiva[0] ? 100 : 0;
     }
 
-    var valorReserva = aporteTotal * (pctRes / 100);
-    var valorAmort = aporteTotal * (pctAmort / 100);
+    var valorReserva = aporteMes * (pctRes / 100);
+    var valorAmort = aporteMes * (pctAmort / 100) + sporadicAmort;
 
     reservaBruta = reservaBruta * (1 + taxaReservaMensal) + valorReserva;
     totalAportado += valorReserva;
@@ -3323,8 +3333,16 @@ function stratGerarCalendario() {
         parcelaMes = amortConstSac + jurosMesSac;
       } else if (dd.tipoAmort === 'consorcio') {
         // Consórcio: parcela inclui taxa adm, mas só a amortização pura abate o saldo
-        parcelaMes = calcParcelaMes(dd, m, dd.saldoDevedor);
-        amortNormal = calcAmortConsorcioMes(dd, m, dd.saldoDevedor);
+        var saldoBaseC = dd._saldoBaseConsorcio || dd.saldoDevedor;
+        if (tipoAmortExtra === 'prazo') {
+          // Modo PRAZO: usar saldo ORIGINAL (amort fixa), quita antes
+          parcelaMes = calcParcelaMes(dd, m, dd.saldoDevedor);
+          amortNormal = calcAmortConsorcioMes(dd, m, dd.saldoDevedor);
+        } else {
+          // Modo PARCELA: usar saldo base atualizado (recalculado após amort extra)
+          parcelaMes = calcParcelaMes(dd, m, saldoBaseC);
+          amortNormal = calcAmortConsorcioMes(dd, m, saldoBaseC);
+        }
       } else {
         // Simples: amortização constante
         var restantesSimp = dd._restantesAtual || dd.restantes;
@@ -3377,8 +3395,27 @@ function stratGerarCalendario() {
               if (novaParcela < pisoMin) novaParcela = pisoMin;
             }
             dd._parcelaAtual = novaParcela / fatorReaj; // armazenar sem fatorReaj (será aplicado no próximo mês)
-          } else if (dd.tipoAmort === 'sac' || dd.tipoAmort === 'simples' || dd.tipoAmort === 'consorcio') {
-            // SAC/Simples/Consórcio: a parcela já se ajusta naturalmente pelo saldo/restantes
+          } else if (dd.tipoAmort === 'consorcio') {
+            // Consórcio: atualizar saldo base para recalcular parcelas futuras
+            dd._saldoBaseConsorcio = saldosDevedor[di];
+            // Verificar piso mínimo
+            if (parcelaMinPct > 0) {
+              var parcelaBaseC = dd.parcela * fatorReaj;
+              var pisoMinC = parcelaBaseC * (parcelaMinPct / 100);
+              var restantesC = dd.totalParcelas - (dd.parcelasPagas || 0) - m - 1;
+              if (restantesC > 0) {
+                var parcelaProjetadaC = saldosDevedor[di] / restantesC;
+                var taxaTotC = ((dd.consTaxaAdm || 0) + (dd.consFundoReserva || 0)) / 100;
+                var parcelaTotalProj = parcelaProjetadaC * (1 + taxaTotC);
+                if (parcelaTotalProj < pisoMinC) {
+                  // Usar piso: recalcular saldoBase para que a parcela fique no mínimo
+                  var amortMin = pisoMinC / (1 + taxaTotC);
+                  dd._saldoBaseConsorcio = amortMin * restantesC;
+                }
+              }
+            }
+          } else if (dd.tipoAmort === 'sac' || dd.tipoAmort === 'simples') {
+            // SAC/Simples: a parcela já se ajusta naturalmente pelo saldo/restantes
             // Mas verificar piso mínimo
             if (parcelaMinPct > 0 && restAtual > 0) {
               var parcelaBase = dd.parcela * fatorReaj;
@@ -4095,6 +4132,7 @@ function _analiseRunStrat(strat) {
     var aporteMes = getAporteMes(mesDate);
     var sporadicMes = getSporadicMes(mesDate, m);
     var aporteTotal = aporteMes + sporadicMes;
+    var sporadicAmort = sporadicMes; // esporádicos vão 100% para amortização
 
     var pctRes = overrides[m] !== undefined ? overrides[m] : pctReserva;
     var pctAmort = 100 - pctRes;
@@ -4128,8 +4166,8 @@ function _analiseRunStrat(strat) {
       alocEfetiva[0] = dividaAtiva[0] ? 100 : 0;
     }
 
-    var valorReserva = aporteTotal * (pctRes / 100);
-    var valorAmort = aporteTotal * (pctAmort / 100);
+    var valorReserva = aporteMes * (pctRes / 100);
+    var valorAmort = aporteMes * (pctAmort / 100) + sporadicAmort;
 
     reservaBruta = reservaBruta * (1 + taxaReservaMensal) + valorReserva;
     totalAportado += valorReserva;
@@ -4158,7 +4196,12 @@ function _analiseRunStrat(strat) {
           amortNormal = saldosDevedor[di] / restSac;
         }
       } else if (dd.tipoAmort === 'consorcio') {
-        amortNormal = calcAmortConsorcioMes(dd, m, dd.saldoDevedor);
+        var saldoBaseCA = dd._saldoBaseConsorcio || dd.saldoDevedor;
+        if (tipoAmortExtra === 'prazo') {
+          amortNormal = calcAmortConsorcioMes(dd, m, dd.saldoDevedor);
+        } else {
+          amortNormal = calcAmortConsorcioMes(dd, m, saldoBaseCA);
+        }
       } else {
         var restSimp = dd._restantesAtual || dd.restantes;
         if (tipoAmortExtra === 'prazo') {
@@ -4202,7 +4245,22 @@ function _analiseRunStrat(strat) {
               if (novaParcelaA < pisoA) novaParcelaA = pisoA;
             }
             dd._parcelaAtual = novaParcelaA / fatorReaj;
-          } else if (dd.tipoAmort === 'sac' || dd.tipoAmort === 'simples' || dd.tipoAmort === 'consorcio') {
+          } else if (dd.tipoAmort === 'consorcio') {
+            dd._saldoBaseConsorcio = saldosDevedor[di];
+            if (parcelaMinPct > 0) {
+              var parcelaBaseCA = dd.parcela * fatorReaj;
+              var pisoMinCA = parcelaBaseCA * (parcelaMinPct / 100);
+              var restantesCA = dd.totalParcelas - (dd.parcelasPagas || 0) - m - 1;
+              if (restantesCA > 0) {
+                var taxaTotCA = ((dd.consTaxaAdm || 0) + (dd.consFundoReserva || 0)) / 100;
+                var parcelaProjCA = (saldosDevedor[di] / restantesCA) * (1 + taxaTotCA);
+                if (parcelaProjCA < pisoMinCA) {
+                  var amortMinCA = pisoMinCA / (1 + taxaTotCA);
+                  dd._saldoBaseConsorcio = amortMinCA * restantesCA;
+                }
+              }
+            }
+          } else if (dd.tipoAmort === 'sac' || dd.tipoAmort === 'simples') {
             if (parcelaMinPct > 0 && restAtualA > 0) {
               var parcelaBaseA = dd.parcela * fatorReaj;
               var pisoMinA = parcelaBaseA * (parcelaMinPct / 100);
