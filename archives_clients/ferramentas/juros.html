@@ -1696,34 +1696,65 @@ function calcParcelaMes(d, m, saldoInicial) {
     var taxaFixa = d.taxaFixa || 0;
     return (amortSimples + taxaFixa) * fatorReaj;
   } else if (tipo === 'consorcio') {
-    // Consórcio: sem juros, parcela com possível redutor
-    // m = índice do mês (0-based), então parcela nº = m + 1
+    // Consórcio: retorna a PARCELA TOTAL (inclui taxa adm + fundo reserva)
     if (d.consRedutor && d.consPeriodoReducao > 0 && d.consParcelaAlvo > 0) {
-      var parcelaReduzida = d.consParcelaAlvo; // parcela com redução aplicada (fixa)
-      var parcelaX = d.consPeriodoReducao; // "Reduzir até a Parcela Nº X"
-      var numeroParcela = m + 1; // parcela atual (1-based)
+      var parcelaReduzida = d.consParcelaAlvo;
+      var parcelaX = d.consPeriodoReducao;
+      var numeroParcela = m + 1;
       if (numeroParcela <= parcelaX) {
-        // Período de redução: parcela fixa reduzida + reajuste apenas no aniversário
         return parcelaReduzida * fatorReaj;
       } else {
-        // Após parcela X: saldo restante redistribuído nas parcelas faltantes
-        // Calcular quanto foi pago durante a redução (considerando reajustes anuais)
-        var pagoReducao = 0;
+        // Após parcela X: recalcular com base no saldo restante
+        var taxaTotC = ((d.consTaxaAdm || 0) + (d.consFundoReserva || 0)) / 100;
+        var propAmortC = 1 / (1 + taxaTotC);
+        var saldoAcumC = saldoInicial;
         for (var r = 0; r < parcelaX; r++) {
+          if (reajuste > 0 && r > 0 && r % 12 === 0) saldoAcumC *= (1 + reajuste);
           var fReaj = reajuste > 0 ? Math.pow(1 + reajuste, Math.floor(r / 12)) : 1;
-          pagoReducao += parcelaReduzida * fReaj;
+          saldoAcumC -= parcelaReduzida * propAmortC * fReaj;
         }
-        var saldoAposReducao = saldoInicial - pagoReducao;
-        if (saldoAposReducao < 0) saldoAposReducao = 0;
+        if (saldoAcumC < 0) saldoAcumC = 0;
         var parcelasFaltantes = restantesTotal - parcelaX;
         if (parcelasFaltantes <= 0) return parcelaReduzida * fatorReaj;
-        return (saldoAposReducao / parcelasFaltantes) * fatorReaj;
+        var amortPosRed = saldoAcumC / parcelasFaltantes;
+        return amortPosRed * (1 + taxaTotC) * fatorReaj;
       }
     }
-    // Sem redutor: parcela fixa (amortização linear)
+    // Sem redutor: parcela fixa
     return d.parcela * fatorReaj;
   }
   return d.parcela * fatorReaj;
+}
+
+// Retorna apenas a AMORTIZAÇÃO (parte que abate o saldo) para consórcio
+function calcAmortConsorcioMes(d, m, saldoInicial) {
+  var restantesTotal = d.totalParcelas - (d.parcelasPagas || 0);
+  var reajuste = (d.reajusteAnual || 0) / 100;
+  var fatorReaj = reajuste > 0 ? Math.pow(1 + reajuste, Math.floor(m / 12)) : 1;
+  var taxaTotC = ((d.consTaxaAdm || 0) + (d.consFundoReserva || 0)) / 100;
+  var propAmort = 1 / (1 + taxaTotC);
+
+  if (d.consRedutor && d.consPeriodoReducao > 0 && d.consParcelaAlvo > 0) {
+    var parcelaReduzida = d.consParcelaAlvo;
+    var parcelaX = d.consPeriodoReducao;
+    var numeroParcela = m + 1;
+    if (numeroParcela <= parcelaX) {
+      return parcelaReduzida * propAmort * fatorReaj;
+    } else {
+      var saldoAcumA = saldoInicial;
+      for (var r = 0; r < parcelaX; r++) {
+        if (reajuste > 0 && r > 0 && r % 12 === 0) saldoAcumA *= (1 + reajuste);
+        var fReajA = reajuste > 0 ? Math.pow(1 + reajuste, Math.floor(r / 12)) : 1;
+        saldoAcumA -= parcelaReduzida * propAmort * fReajA;
+      }
+      if (saldoAcumA < 0) saldoAcumA = 0;
+      var parcFaltA = restantesTotal - parcelaX;
+      if (parcFaltA <= 0) return parcelaReduzida * propAmort * fatorReaj;
+      return (saldoAcumA / parcFaltA) * fatorReaj;
+    }
+  }
+  // Sem redutor: amortização = crédito / totalParcelas * fatorReaj
+  return (saldoInicial / restantesTotal) * fatorReaj;
 }
 
 // Calcula total a pagar considerando tipo e reajuste
@@ -1783,32 +1814,43 @@ function gerarProjecaoSaldo(d, isAtual) {
       jurosMes = saldo * taxaMensal;
       parcelaMes = (amortMes + jurosMes) * fatorReaj;
     } else if (tipo === 'consorcio') {
-      // Consórcio: sem juros, amortização direta com possível redutor
-      // m = índice 0-based, parcela nº = m + 1
+      // Consórcio: sem juros. Amortização = crédito/totalParcelas (não inclui taxa adm/fundo)
+      // A parcela inclui taxa adm + fundo reserva, mas só a parte de amortização abate o saldo
+      var amortPura = saldoBase / restantes; // amortização base sem reajuste
       if (d.consRedutor && d.consPeriodoReducao > 0 && d.consParcelaAlvo > 0) {
-        var parcReduz = d.consParcelaAlvo; // parcela fixa reduzida
+        var parcReduz = d.consParcelaAlvo; // parcela fixa reduzida (inclui taxa adm)
         var parcelaX = d.consPeriodoReducao;
         var numParcela = m + 1;
+        // Calcular a proporção de amortização na parcela reduzida
+        var taxaTotalCons = ((d.consTaxaAdm || 0) + (d.consFundoReserva || 0)) / 100;
+        var propAmort = 1 / (1 + taxaTotalCons); // proporção da parcela que é amortização
         if (numParcela <= parcelaX) {
-          // Período de redução: parcela fixa + reajuste apenas no aniversário
           parcelaMes = parcReduz * fatorReaj;
+          amortMes = parcReduz * propAmort * fatorReaj;
         } else {
-          // Após parcela X: saldo restante redistribuído
-          var pagoDuranteRed = 0;
+          // Após parcela X: calcular saldo restante e redistribuir
+          var amortDuranteRed = 0;
           for (var rr = 0; rr < parcelaX; rr++) {
             var fReajRR = reajuste > 0 ? Math.pow(1 + reajuste, Math.floor(rr / 12)) : 1;
-            pagoDuranteRed += parcReduz * fReajRR;
+            amortDuranteRed += parcReduz * propAmort * fReajRR;
           }
-          var saldoAposRed = saldoBase - pagoDuranteRed;
-          if (saldoAposRed < 0) saldoAposRed = 0;
+          // Considerar reajustes do saldo durante o período de redução
+          var saldoAcum = saldoBase;
+          for (var rr2 = 0; rr2 < parcelaX; rr2++) {
+            if (reajuste > 0 && rr2 > 0 && rr2 % 12 === 0) saldoAcum *= (1 + reajuste);
+            var fReajRR2 = reajuste > 0 ? Math.pow(1 + reajuste, Math.floor(rr2 / 12)) : 1;
+            saldoAcum -= parcReduz * propAmort * fReajRR2;
+          }
+          if (saldoAcum < 0) saldoAcum = 0;
           var parcFalt = restantes - parcelaX;
-          parcelaMes = parcFalt > 0 ? (saldoAposRed / parcFalt) * fatorReaj : 0;
+          amortMes = parcFalt > 0 ? (saldoAcum / parcFalt) * fatorReaj : 0;
+          parcelaMes = amortMes * (1 + taxaTotalCons);
         }
       } else {
         parcelaMes = d.parcela * fatorReaj;
+        amortMes = amortPura * fatorReaj;
       }
       jurosMes = 0;
-      amortMes = parcelaMes; // Consórcio: toda parcela é amortização
     } else { // simples
       amortMes = (saldoBase / restantes) * fatorReaj;
       parcelaMes = (amortMes + (d.taxaFixa || 0)) * fatorReaj;
@@ -3263,9 +3305,9 @@ function stratGerarCalendario() {
         // SAC: parcela = amort + juros (sem duplicar fatorReaj nos juros)
         parcelaMes = amortConstSac + jurosMesSac;
       } else if (dd.tipoAmort === 'consorcio') {
-        // Consórcio: usar saldo ATUAL como base
-        parcelaMes = calcParcelaMes(dd, m, saldosDevedor[di]);
-        amortNormal = parcelaMes; // toda parcela é amortização
+        // Consórcio: parcela inclui taxa adm, mas só a amortização pura abate o saldo
+        parcelaMes = calcParcelaMes(dd, m, dd.saldoDevedor);
+        amortNormal = calcAmortConsorcioMes(dd, m, dd.saldoDevedor);
       } else {
         // Simples: amortização constante baseada no saldo/prazo ATUAIS
         var restantesSimp = dd._restantesAtual || dd.restantes;
@@ -3279,9 +3321,11 @@ function stratGerarCalendario() {
       if (saldosDevedor[di] < 0.01) saldosDevedor[di] = 0;
       parcelaTotalMes += parcelaMes;
 
-      // Decrementar prazo restante (para SAC/Simples/Consórcio)
-      if (!dd._restantesAtual) dd._restantesAtual = dd.restantes;
-      if (dd._restantesAtual > 0) dd._restantesAtual--;
+      // Decrementar prazo restante (para SAC/Simples - não para consórcio que usa m diretamente)
+      if (dd.tipoAmort !== 'consorcio') {
+        if (!dd._restantesAtual) dd._restantesAtual = dd.restantes;
+        if (dd._restantesAtual > 0) dd._restantesAtual--;
+      }
 
       // Amortização extra (por dívida, usando alocEfetiva)
       if (valorAmort > 0 && saldosDevedor[di] > 0) {
@@ -4060,7 +4104,7 @@ function _analiseRunStrat(strat) {
         var restSac = dd._restantesAtual || dd.restantes;
         amortNormal = saldosDevedor[di] / restSac;
       } else if (dd.tipoAmort === 'consorcio') {
-        amortNormal = calcParcelaMes(dd, m, saldosDevedor[di]);
+        amortNormal = calcAmortConsorcioMes(dd, m, dd.saldoDevedor);
       } else {
         var restSimp = dd._restantesAtual || dd.restantes;
         amortNormal = saldosDevedor[di] / restSimp;
@@ -4070,9 +4114,11 @@ function _analiseRunStrat(strat) {
       saldosDevedor[di] -= amortNormal;
       if (saldosDevedor[di] < 0.01) saldosDevedor[di] = 0;
 
-      // Decrementar prazo restante
-      if (!dd._restantesAtual) dd._restantesAtual = dd.restantes;
-      if (dd._restantesAtual > 0) dd._restantesAtual--;
+      // Decrementar prazo restante (não para consórcio que usa m diretamente)
+      if (dd.tipoAmort !== 'consorcio') {
+        if (!dd._restantesAtual) dd._restantesAtual = dd.restantes;
+        if (dd._restantesAtual > 0) dd._restantesAtual--;
+      }
 
       // Amortização extra
       if (valorAmort > 0 && saldosDevedor[di] > 0) {
