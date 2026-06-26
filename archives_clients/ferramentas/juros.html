@@ -1554,12 +1554,14 @@ function saveDebt() {
       // Calcular parcela alvo a partir do percentual
       consParcelaAlvo = parcela * (1 - consPctReducao / 100);
     }
-    // Saldo devedor do consórcio = total com taxa - parcelas já pagas
+    // Saldo devedor do consórcio = apenas o crédito (fundo comum), sem taxas
+    // Taxas (adm + fundo reserva) são custos diluídos na parcela, não fazem parte do saldo devedor
+    var amortPorParcela = valorContratado / totalParcelas; // fundo comum mensal
     if (currentModalType === 'atual') {
       var saldoInformado = parseCurr(document.getElementById('m-saldo-devedor').value);
-      saldoDevedor = saldoInformado || (totalComTaxa - (parcela * parcelasPagas));
+      saldoDevedor = saldoInformado || (valorContratado - (amortPorParcela * parcelasPagas));
     } else {
-      saldoDevedor = totalComTaxa;
+      saldoDevedor = valorContratado;
     }
     taxaFixa = 0; // Consórcio não tem taxa fixa mensal
   }
