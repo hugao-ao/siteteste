@@ -3353,15 +3353,32 @@ function stratGerarCalendario() {
           var mesesRestantesC = dd.restantes - m;
           if (mesesRestantesC <= 0) mesesRestantesC = 1;
 
+          // Usar prazo ajustado se piso mínimo reduziu o prazo
+          var mesesRestEfetivo = mesesRestantesC;
+          if (dd._restantesAtualCons && dd._restantesAtualCons > m) {
+            mesesRestEfetivo = dd._restantesAtualCons - m;
+            if (mesesRestEfetivo <= 0) mesesRestEfetivo = 1;
+          }
+
           if (tipoAmortExtra === 'prazo' && dd._hadAmortExtraCons) {
             // PRAZO: usar saldo de REFERÊNCIA (mantém parcela no nível normal, quita antes)
             amortNormal = refSaldos[di] > 0.01 ? refSaldos[di] / mesesRestantesC : saldosDevedor[di] / mesesRestantesC;
             if (amortNormal > saldosDevedor[di]) amortNormal = saldosDevedor[di];
           } else {
             // PARCELA ou sem amort extra: usar saldo REAL (parcela menor, prazo mantido)
-            amortNormal = saldosDevedor[di] / mesesRestantesC;
+            amortNormal = saldosDevedor[di] / mesesRestEfetivo;
           }
           parcelaMes = amortNormal * (1 + taxaTotC);
+          // Aplicar piso mínimo da parcela para consórcio
+          if (parcelaMinPct > 0 && tipoAmortExtra === 'parcela' && dd._hadAmortExtraCons) {
+            var parcelaOrigC = dd.parcela * fatorReajC;
+            var pisoConsC = parcelaOrigC * (parcelaMinPct / 100);
+            if (parcelaMes < pisoConsC) {
+              parcelaMes = pisoConsC;
+              amortNormal = parcelaMes * propAmortC;
+              if (amortNormal > saldosDevedor[di]) amortNormal = saldosDevedor[di];
+            }
+          }
           // Atualizar saldo de referência (evolução normal sem amort extra)
           var refAmortC = refSaldos[di] > 0.01 ? refSaldos[di] / mesesRestantesC : 0;
           refSaldos[di] -= refAmortC;
@@ -3424,6 +3441,23 @@ function stratGerarCalendario() {
             // No modo PARCELA: próximo mês recalcula automaticamente com saldo menor
             // No modo PRAZO: próximo mês usa refSaldos (mantém parcela normal, quita antes)
             dd._hadAmortExtraCons = true;
+            // Aplicar piso mínimo para consórcio no modo PARCELA
+            if (parcelaMinPct > 0 && saldosDevedor[di] > 0) {
+              var taxaTotPiso = ((dd.consTaxaAdm || 0) + (dd.consFundoReserva || 0)) / 100;
+              var parcelaOrigCorrigida = dd.parcela * fatorReaj;
+              var pisoCons = parcelaOrigCorrigida * (parcelaMinPct / 100);
+              var mesesRestPiso = dd.restantes - m;
+              if (mesesRestPiso <= 0) mesesRestPiso = 1;
+              var amortProjetada = saldosDevedor[di] / mesesRestPiso;
+              var parcelaProjetada = amortProjetada * (1 + taxaTotPiso);
+              if (parcelaProjetada < pisoCons) {
+                // Parcela seria menor que o piso: reduzir prazo para respeitar o mínimo
+                var amortPiso = pisoCons / (1 + taxaTotPiso);
+                var novoPrazoCons = Math.ceil(saldosDevedor[di] / amortPiso);
+                if (novoPrazoCons < 1) novoPrazoCons = 1;
+                dd._restantesAtualCons = m + novoPrazoCons;
+              }
+            }
           } else if (dd.tipoAmort === 'sac' || dd.tipoAmort === 'simples') {
             // SAC/Simples: a parcela já se ajusta naturalmente pelo saldo/restantes
             // Mas verificar piso mínimo
@@ -4293,11 +4327,33 @@ function _analiseRunStrat(strat) {
         } else {
           var mesesRestantesCA = dd.restantes - m;
           if (mesesRestantesCA <= 0) mesesRestantesCA = 1;
+
+          // Usar prazo ajustado se piso mínimo reduziu o prazo
+          var mesesRestEfetivoA = mesesRestantesCA;
+          if (dd._restantesAtualCons && dd._restantesAtualCons > m) {
+            mesesRestEfetivoA = dd._restantesAtualCons - m;
+            if (mesesRestEfetivoA <= 0) mesesRestEfetivoA = 1;
+          }
+
           if (tipoAmortExtra === 'prazo' && dd._hadAmortExtraCons) {
             amortNormal = refSaldosA[di] > 0.01 ? refSaldosA[di] / mesesRestantesCA : saldosDevedor[di] / mesesRestantesCA;
             if (amortNormal > saldosDevedor[di]) amortNormal = saldosDevedor[di];
           } else {
-            amortNormal = saldosDevedor[di] / mesesRestantesCA;
+            amortNormal = saldosDevedor[di] / mesesRestEfetivoA;
+          }
+          // Aplicar piso mínimo da parcela para consórcio
+          if (parcelaMinPct > 0 && tipoAmortExtra === 'parcela' && dd._hadAmortExtraCons) {
+            var taxaTotCA2 = ((dd.consTaxaAdm || 0) + (dd.consFundoReserva || 0)) / 100;
+            var propAmortCA2 = 1 / (1 + taxaTotCA2);
+            var reajCA2 = (dd.reajusteAnual || 0) / 100;
+            var fatorReajCA2 = reajCA2 > 0 ? Math.pow(1 + reajCA2, Math.floor(m / 12)) : 1;
+            var parcelaOrigCA2 = dd.parcela * fatorReajCA2;
+            var pisoConsCA2 = parcelaOrigCA2 * (parcelaMinPct / 100);
+            var parcelaMesCA2 = amortNormal * (1 + taxaTotCA2);
+            if (parcelaMesCA2 < pisoConsCA2) {
+              amortNormal = pisoConsCA2 * propAmortCA2;
+              if (amortNormal > saldosDevedor[di]) amortNormal = saldosDevedor[di];
+            }
           }
           var refAmortCA = refSaldosA[di] > 0.01 ? refSaldosA[di] / mesesRestantesCA : 0;
           refSaldosA[di] -= refAmortCA;
@@ -4349,6 +4405,22 @@ function _analiseRunStrat(strat) {
           } else if (dd.tipoAmort === 'consorcio') {
             // Consórcio: marcar que houve amort extra
             dd._hadAmortExtraCons = true;
+            // Aplicar piso mínimo para consórcio no modo PARCELA
+            if (parcelaMinPct > 0 && saldosDevedor[di] > 0) {
+              var taxaTotPisoA = ((dd.consTaxaAdm || 0) + (dd.consFundoReserva || 0)) / 100;
+              var parcelaOrigCorrigidaA = dd.parcela * fatorReaj;
+              var pisoConsA = parcelaOrigCorrigidaA * (parcelaMinPct / 100);
+              var mesesRestPisoA = dd.restantes - m;
+              if (mesesRestPisoA <= 0) mesesRestPisoA = 1;
+              var amortProjetadaA = saldosDevedor[di] / mesesRestPisoA;
+              var parcelaProjetadaA = amortProjetadaA * (1 + taxaTotPisoA);
+              if (parcelaProjetadaA < pisoConsA) {
+                var amortPisoA = pisoConsA / (1 + taxaTotPisoA);
+                var novoPrazoConsA = Math.ceil(saldosDevedor[di] / amortPisoA);
+                if (novoPrazoConsA < 1) novoPrazoConsA = 1;
+                dd._restantesAtualCons = m + novoPrazoConsA;
+              }
+            }
           } else if (dd.tipoAmort === 'sac' || dd.tipoAmort === 'simples') {
             if (parcelaMinPct > 0 && restAtualA > 0) {
               var parcelaBaseA = dd.parcela * fatorReaj;
