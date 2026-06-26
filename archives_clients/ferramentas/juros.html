@@ -3364,19 +3364,39 @@ function stratGerarCalendario() {
             // PRAZO: usar saldo de REFERÊNCIA (mantém parcela no nível normal, quita antes)
             amortNormal = refSaldos[di] > 0.01 ? refSaldos[di] / mesesRestantesC : saldosDevedor[di] / mesesRestantesC;
             if (amortNormal > saldosDevedor[di]) amortNormal = saldosDevedor[di];
-          } else {
-            // PARCELA ou sem amort extra: usar saldo REAL (parcela menor, prazo mantido)
-            amortNormal = saldosDevedor[di] / mesesRestEfetivo;
-          }
-          parcelaMes = amortNormal * (1 + taxaTotC);
-          // Aplicar piso mínimo da parcela para consórcio
-          if (parcelaMinPct > 0 && tipoAmortExtra === 'parcela' && dd._hadAmortExtraCons) {
+            parcelaMes = amortNormal * (1 + taxaTotC);
+          } else if (parcelaMinPct > 0 && dd._restantesAtualCons && dd._hadAmortExtraCons) {
+            // PARCELA com piso ativo: usar o piso como parcela fixa
+            // O piso é a parcela original corrigida × percentual mínimo
             var parcelaOrigC = dd.parcela * fatorReajC;
             var pisoConsC = parcelaOrigC * (parcelaMinPct / 100);
-            if (parcelaMes < pisoConsC) {
+            var amortPisoC = pisoConsC * propAmortC;
+            if (amortPisoC > saldosDevedor[di]) {
+              // Saldo insuficiente para cobrir o piso: usar saldo restante
+              amortNormal = saldosDevedor[di];
+              parcelaMes = amortNormal * (1 + taxaTotC);
+            } else {
+              amortNormal = amortPisoC;
               parcelaMes = pisoConsC;
-              amortNormal = parcelaMes * propAmortC;
-              if (amortNormal > saldosDevedor[di]) amortNormal = saldosDevedor[di];
+            }
+          } else {
+            // PARCELA sem piso ou sem amort extra: usar saldo REAL / meses restantes
+            amortNormal = saldosDevedor[di] / mesesRestEfetivo;
+            parcelaMes = amortNormal * (1 + taxaTotC);
+            // Verificar piso mínimo (caso parcela caia abaixo após amort extra)
+            if (parcelaMinPct > 0 && tipoAmortExtra === 'parcela' && dd._hadAmortExtraCons) {
+              var parcelaOrigC2 = dd.parcela * fatorReajC;
+              var pisoConsC2 = parcelaOrigC2 * (parcelaMinPct / 100);
+              if (parcelaMes < pisoConsC2) {
+                parcelaMes = pisoConsC2;
+                amortNormal = pisoConsC2 * propAmortC;
+                if (amortNormal > saldosDevedor[di]) amortNormal = saldosDevedor[di];
+                // Ativar piso para próximos meses
+                var amortPisoCalc = pisoConsC2 * propAmortC;
+                var novoPrazoPiso = Math.ceil(saldosDevedor[di] / amortPisoCalc);
+                if (novoPrazoPiso < 1) novoPrazoPiso = 1;
+                dd._restantesAtualCons = m + novoPrazoPiso;
+              }
             }
           }
           // Atualizar saldo de referência (evolução normal sem amort extra)
@@ -4338,21 +4358,31 @@ function _analiseRunStrat(strat) {
           if (tipoAmortExtra === 'prazo' && dd._hadAmortExtraCons) {
             amortNormal = refSaldosA[di] > 0.01 ? refSaldosA[di] / mesesRestantesCA : saldosDevedor[di] / mesesRestantesCA;
             if (amortNormal > saldosDevedor[di]) amortNormal = saldosDevedor[di];
+          } else if (parcelaMinPct > 0 && dd._restantesAtualCons && dd._hadAmortExtraCons) {
+            // PARCELA com piso ativo: usar o piso como parcela fixa
+            var parcelaOrigCA2 = dd.parcela * fatorReajCA;
+            var pisoConsCA2 = parcelaOrigCA2 * (parcelaMinPct / 100);
+            var amortPisoCA2 = pisoConsCA2 * propAmortCA;
+            if (amortPisoCA2 > saldosDevedor[di]) {
+              amortNormal = saldosDevedor[di];
+            } else {
+              amortNormal = amortPisoCA2;
+            }
           } else {
             amortNormal = saldosDevedor[di] / mesesRestEfetivoA;
-          }
-          // Aplicar piso mínimo da parcela para consórcio
-          if (parcelaMinPct > 0 && tipoAmortExtra === 'parcela' && dd._hadAmortExtraCons) {
-            var taxaTotCA2 = ((dd.consTaxaAdm || 0) + (dd.consFundoReserva || 0)) / 100;
-            var propAmortCA2 = 1 / (1 + taxaTotCA2);
-            var reajCA2 = (dd.reajusteAnual || 0) / 100;
-            var fatorReajCA2 = reajCA2 > 0 ? Math.pow(1 + reajCA2, Math.floor(m / 12)) : 1;
-            var parcelaOrigCA2 = dd.parcela * fatorReajCA2;
-            var pisoConsCA2 = parcelaOrigCA2 * (parcelaMinPct / 100);
-            var parcelaMesCA2 = amortNormal * (1 + taxaTotCA2);
-            if (parcelaMesCA2 < pisoConsCA2) {
-              amortNormal = pisoConsCA2 * propAmortCA2;
-              if (amortNormal > saldosDevedor[di]) amortNormal = saldosDevedor[di];
+            // Verificar piso mínimo (caso parcela caia abaixo após amort extra)
+            if (parcelaMinPct > 0 && tipoAmortExtra === 'parcela' && dd._hadAmortExtraCons) {
+              var parcelaOrigCA3 = dd.parcela * fatorReajCA;
+              var pisoConsCA3 = parcelaOrigCA3 * (parcelaMinPct / 100);
+              var parcelaMesCA3 = amortNormal * (1 + taxaTotCA2);
+              if (parcelaMesCA3 < pisoConsCA3) {
+                amortNormal = pisoConsCA3 * propAmortCA;
+                if (amortNormal > saldosDevedor[di]) amortNormal = saldosDevedor[di];
+                // Ativar piso para próximos meses
+                var novoPrazoPisoA = Math.ceil(saldosDevedor[di] / (pisoConsCA3 * propAmortCA));
+                if (novoPrazoPisoA < 1) novoPrazoPisoA = 1;
+                dd._restantesAtualCons = m + novoPrazoPisoA;
+              }
             }
           }
           var refAmortCA = refSaldosA[di] > 0.01 ? refSaldosA[di] / mesesRestantesCA : 0;
