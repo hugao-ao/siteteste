@@ -1714,17 +1714,25 @@ function calcParcelaMes(d, m, saldoInicial) {
         // Após parcela X: recalcular com base no saldo restante
         var taxaTotC = ((d.consTaxaAdm || 0) + (d.consFundoReserva || 0)) / 100;
         var propAmortC = 1 / (1 + taxaTotC);
+        // Simular evolução do saldo até o mês atual
         var saldoAcumC = saldoInicial;
-        for (var r = 0; r < parcelaX; r++) {
+        for (var r = 0; r < m; r++) {
           if (reajuste > 0 && r > 0 && r % 12 === 0) saldoAcumC *= (1 + reajuste);
-          var fReaj = reajuste > 0 ? Math.pow(1 + reajuste, Math.floor(r / 12)) : 1;
-          saldoAcumC -= parcelaReduzida * propAmortC * fReaj;
+          var fReajR = reajuste > 0 ? Math.pow(1 + reajuste, Math.floor(r / 12)) : 1;
+          if (r + 1 <= parcelaX) {
+            saldoAcumC -= parcelaReduzida * propAmortC * fReajR;
+          } else {
+            var mesesRestR = restantesTotal - r;
+            if (mesesRestR <= 0) mesesRestR = 1;
+            saldoAcumC -= saldoAcumC / mesesRestR;
+          }
+          if (saldoAcumC < 0) { saldoAcumC = 0; break; }
         }
-        if (saldoAcumC < 0) saldoAcumC = 0;
-        var parcelasFaltantes = restantesTotal - parcelaX;
-        if (parcelasFaltantes <= 0) return parcelaReduzida * fatorReaj;
-        var amortPosRed = saldoAcumC / parcelasFaltantes;
-        return amortPosRed * (1 + taxaTotC) * fatorReaj;
+        if (saldoAcumC <= 0) return 0;
+        var mesesRestantes = restantesTotal - m;
+        if (mesesRestantes <= 0) return 0;
+        var amortMes = saldoAcumC / mesesRestantes;
+        return amortMes * (1 + taxaTotC);
       }
     }
     // Sem redutor: parcela fixa
@@ -1748,16 +1756,24 @@ function calcAmortConsorcioMes(d, m, saldoInicial) {
     if (numeroParcela <= parcelaX) {
       return parcelaReduzida * propAmort * fatorReaj;
     } else {
+      // Simular evolução do saldo até o mês atual
       var saldoAcumA = saldoInicial;
-      for (var r = 0; r < parcelaX; r++) {
+      for (var r = 0; r < m; r++) {
         if (reajuste > 0 && r > 0 && r % 12 === 0) saldoAcumA *= (1 + reajuste);
         var fReajA = reajuste > 0 ? Math.pow(1 + reajuste, Math.floor(r / 12)) : 1;
-        saldoAcumA -= parcelaReduzida * propAmort * fReajA;
+        if (r + 1 <= parcelaX) {
+          saldoAcumA -= parcelaReduzida * propAmort * fReajA;
+        } else {
+          var mesesRestA = restantesTotal - r;
+          if (mesesRestA <= 0) mesesRestA = 1;
+          saldoAcumA -= saldoAcumA / mesesRestA;
+        }
+        if (saldoAcumA < 0) { saldoAcumA = 0; break; }
       }
-      if (saldoAcumA < 0) saldoAcumA = 0;
-      var parcFaltA = restantesTotal - parcelaX;
-      if (parcFaltA <= 0) return parcelaReduzida * propAmort * fatorReaj;
-      return (saldoAcumA / parcFaltA) * fatorReaj;
+      if (saldoAcumA <= 0) return 0;
+      var mesesRestantes = restantesTotal - m;
+      if (mesesRestantes <= 0) return 0;
+      return saldoAcumA / mesesRestantes;
     }
   }
   // Sem redutor: amortização = crédito / totalParcelas * fatorReaj
@@ -4632,27 +4648,18 @@ function analiseGerar() {
       var sColorsA = ['#ef4444','#fb923c','#fbbf24'];
       var sColorsP = ['#60a5fa','#34d399','#a78bfa'];
       divAtualSel.forEach(function(d, di) {
-        var saldo = d.saldoDevedor || d.valorContratado;
-        var rest = d.totalParcelas - (d.parcelasPagas || 0);
-        var txM = Math.pow(1 + (d.taxaAnual || 0) / 100, 1/12) - 1;
-        var sData = [saldo];
-        for (var sm = 1; sm <= r.maxPeriodo; sm++) {
-          if (sm <= rest && saldo > 0) { saldo = Math.max(0, saldo - (d.parcela - saldo * txM)); }
-          else { saldo = 0; }
-          sData.push(saldo);
-        }
+        var proj = gerarProjecaoSaldo(d, true);
+        var sData = proj.saldos;
+        // Pad ou trim para maxPeriodo
+        while (sData.length <= r.maxPeriodo) sData.push(0);
+        if (sData.length > r.maxPeriodo + 1) sData = sData.slice(0, r.maxPeriodo + 1);
         sDatasets.push({ label: '[A] ' + d.nome, data: sData, borderColor: sColorsA[di % sColorsA.length], backgroundColor: 'transparent', borderWidth: 1.5, pointRadius: 0, tension: 0.3 });
       });
       divPropSel.forEach(function(d, di) {
-        var saldo = d.valorContratado;
-        var rest = d.totalParcelas;
-        var txM = Math.pow(1 + (d.taxaAnual || 0) / 100, 1/12) - 1;
-        var sData = [saldo];
-        for (var sm = 1; sm <= r.maxPeriodo; sm++) {
-          if (sm <= rest && saldo > 0) { saldo = Math.max(0, saldo - (d.parcela - saldo * txM)); }
-          else { saldo = 0; }
-          sData.push(saldo);
-        }
+        var proj = gerarProjecaoSaldo(d, false);
+        var sData = proj.saldos;
+        while (sData.length <= r.maxPeriodo) sData.push(0);
+        if (sData.length > r.maxPeriodo + 1) sData = sData.slice(0, r.maxPeriodo + 1);
         sDatasets.push({ label: '[P] ' + d.nome, data: sData, borderColor: sColorsP[di % sColorsP.length], backgroundColor: 'transparent', borderWidth: 1.5, pointRadius: 0, tension: 0.3 });
       });
       var sChart = new Chart(sCtx, {
