@@ -676,15 +676,12 @@
 
         <div class="row" style="margin-bottom:1rem;">
           <div class="field">
-            <label>Aporte Mensal Inicial (R$)</label>
-            <input type="text" id="cap-aporte-mensal" placeholder="R$ 0,00" oninput="fmtCurrInput(this)">
-          </div>
-          <div class="field">
             <label>Saldo Atual já Guardado (R$)</label>
             <input type="text" id="cap-saldo-inicial" placeholder="R$ 0,00" oninput="fmtCurrInput(this)">
             <span class="note">Se já tem uma reserva acumulada, informe aqui.</span>
           </div>
         </div>
+        <input type="hidden" id="cap-aporte-mensal" value="0">
         <div class="row" style="margin-bottom:1rem;">
           <div class="field">
             <label>Rentabilidade do Investimento (% a.a.)</label>
@@ -697,24 +694,92 @@
           </div>
         </div>
 
-        <!-- Atualizações de aporte -->
+        <!-- Aportes Programados -->
         <div class="section-header" style="margin-top:1.2rem;">
-          <h3 style="font-size:0.9rem;">Atualizações de Aporte ao Longo do Tempo</h3>
-          <button class="btn btn-primary" onclick="capAddUpdate()" style="font-size:0.75rem; padding:0.3rem 0.8rem;">+ Atualização</button>
+          <h3 style="font-size:0.9rem;">Aportes Programados</h3>
+          <button class="btn btn-primary" onclick="capAddAporte()" style="font-size:0.75rem; padding:0.3rem 0.8rem;">+ Novo Aporte</button>
         </div>
-        <p class="note" style="margin-bottom:0.8rem;">Se o aporte mensal vai mudar em alguma data futura (aumento de renda, fim de outra despesa, etc.), adicione aqui.</p>
-        <div id="cap-updates-list">
-          <p class="note" id="cap-updates-empty">Nenhuma atualização — o aporte será constante.</p>
+        <p class="note" style="margin-bottom:0.8rem;">Cadastre cada fonte de aporte com sua periodicidade, datas de início/fim, valor e reajuste. Eles serão somados na simulação.</p>
+        <div id="cap-aportes-list">
+          <p class="note" id="cap-aportes-empty">Nenhum aporte cadastrado.</p>
         </div>
 
-        <!-- Aportes Esporádicos -->
-        <div class="section-header" style="margin-top:1.2rem;">
-          <h3 style="font-size:0.9rem;">Aportes Esporádicos (Extras Pontuais)</h3>
-          <button class="btn btn-primary" onclick="capAddSporadic()" style="font-size:0.75rem; padding:0.3rem 0.8rem;">+ Aporte Extra</button>
-        </div>
-        <p class="note" style="margin-bottom:0.8rem;">Aportes únicos em meses específicos (13º salário, bônus, venda de bem, etc.).</p>
-        <div id="cap-sporadic-list">
-          <p class="note" id="cap-sporadic-empty">Nenhum aporte esporádico cadastrado.</p>
+        <!-- Modal/Form para adicionar/editar aporte -->
+        <div id="cap-aporte-form" style="display:none; margin-top:1rem; padding:1rem; border:1px solid var(--border); border-radius:var(--radius); background:rgba(0,0,0,0.2);">
+          <h4 style="font-size:0.85rem; color:var(--green); margin-bottom:0.8rem;" id="cap-aporte-form-title">Novo Aporte</h4>
+          <div class="row" style="margin-bottom:0.8rem;">
+            <div class="field" style="flex:1;">
+              <label>Descrição</label>
+              <input type="text" id="cap-ap-desc" placeholder="Ex: Salário extra, 13º, Aluguel recebido...">
+            </div>
+            <div class="field" style="flex:1;">
+              <label>Valor (R$)</label>
+              <input type="text" id="cap-ap-valor" placeholder="R$ 0,00" oninput="fmtCurrInput(this)">
+            </div>
+          </div>
+          <div class="row" style="margin-bottom:0.8rem;">
+            <div class="field" style="flex:1;">
+              <label>Periodicidade</label>
+              <select id="cap-ap-periodo" onchange="capAporteTerminaChange()">
+                <option value="mensal">Mensal</option>
+                <option value="bimestral">Bimestral (a cada 2 meses)</option>
+                <option value="trimestral">Trimestral (a cada 3 meses)</option>
+                <option value="semestral">Semestral (a cada 6 meses)</option>
+                <option value="anual">Anual (a cada 12 meses)</option>
+                <option value="unico">Único (não se repete)</option>
+              </select>
+            </div>
+            <div class="field" style="flex:1;">
+              <label>Data de Início</label>
+              <input type="date" id="cap-ap-inicio">
+            </div>
+          </div>
+          <div class="row" style="margin-bottom:0.8rem;" id="cap-ap-fim-row">
+            <div class="field" style="flex:1;">
+              <label>Termina?</label>
+              <select id="cap-ap-termina" onchange="capAporteTerminaChange()">
+                <option value="nao">Não termina (indefinido)</option>
+                <option value="data">Sim, em uma data específica</option>
+                <option value="ocorrencias">Sim, após X ocorrências</option>
+              </select>
+            </div>
+            <div class="field" style="flex:1; display:none;" id="cap-ap-fim-data-wrap">
+              <label>Data de Término</label>
+              <input type="date" id="cap-ap-fim-data">
+            </div>
+            <div class="field" style="flex:1; display:none;" id="cap-ap-fim-ocorr-wrap">
+              <label>Nº de Ocorrências</label>
+              <input type="number" id="cap-ap-fim-ocorr" min="1" value="12">
+            </div>
+          </div>
+          <div class="row" style="margin-bottom:0.8rem;">
+            <div class="field" style="flex:1;">
+              <label>Valor muda a partir de alguma data?</label>
+              <select id="cap-ap-muda" onchange="capAporteMudaChange()">
+                <option value="nao">Não</option>
+                <option value="sim">Sim</option>
+              </select>
+            </div>
+            <div class="field" style="flex:1; display:none;" id="cap-ap-muda-data-wrap">
+              <label>Data da Mudança</label>
+              <input type="date" id="cap-ap-muda-data">
+            </div>
+            <div class="field" style="flex:1; display:none;" id="cap-ap-muda-valor-wrap">
+              <label>Novo Valor (R$)</label>
+              <input type="text" id="cap-ap-muda-valor" placeholder="R$ 0,00" oninput="fmtCurrInput(this)">
+            </div>
+          </div>
+          <div class="row" style="margin-bottom:0.8rem;">
+            <div class="field" style="flex:1;">
+              <label>Reajuste Anual (%)</label>
+              <input type="number" id="cap-ap-reajuste" value="0" step="0.1" min="0">
+              <span class="note">Aplicado a cada aniversário do aporte (12 meses após início). 0 = sem reajuste.</span>
+            </div>
+          </div>
+          <div style="display:flex; gap:0.5rem; justify-content:flex-end;">
+            <button class="btn" onclick="capAporteFormCancel()" style="font-size:0.8rem; padding:0.4rem 1rem;">Cancelar</button>
+            <button class="btn btn-primary" onclick="capAporteFormSave()" style="font-size:0.8rem; padding:0.4rem 1rem;">Salvar Aporte</button>
+          </div>
         </div>
       </div>
 
@@ -903,7 +968,7 @@
         <p style="color:var(--muted); font-size:0.85rem; margin-bottom:1rem;"><strong style="color:var(--blue);">Arraste</strong> entre propostas e dívidas para criar vínculos (substituição/quitação). <strong style="color:var(--green);">Clique</strong> nas propostas ou dívidas não-vinculadas para selecioná-las para a simulação. Clique na linha para remover vínculo.</p>
 
         <div id="strat-link-canvas-wrap" style="position:relative; min-height:200px; padding:1rem; background:var(--bg); border-radius:var(--radius); border:1px solid var(--border);">
-          <svg id="strat-link-svg" style="position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:auto; z-index:2;"></svg>
+          <svg id="strat-link-svg" style="position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:10;"></svg>
           <div style="display:flex; justify-content:space-between; gap:1.5rem; position:relative; z-index:3;">
             <div style="flex:1;">
               <div style="font-size:0.7rem; color:var(--muted); text-align:center; margin-bottom:0.4rem; font-weight:600; text-transform:uppercase;">Propostas</div>
@@ -2713,10 +2778,8 @@ function calcTaxaImplicita(saldo, parcela, meses) {
 }
 
 // ===== CAPACIDADES DE AMORTIZAÇÃO (TAB 3) =====
-var _capacidades = []; // [{id, nome, aporteMensal, saldoInicial, rentabAnual, irPct, updates:[], sporadics:[]}]
+var _capacidades = []; // [{id, nome, aporteMensal, saldoInicial, rentabAnual, irPct, aportes:[]}]
 var _capEditingIndex = -1;
-var _capTempUpdates = [];
-var _capTempSporadics = [];
 
 function capRenderList() {
   var container = document.getElementById('cap-list-container');
@@ -2727,13 +2790,11 @@ function capRenderList() {
   _capacidades.forEach(function(cap, idx) {
     var card = document.createElement('div');
     card.className = 'mini-card';
-    var nUpdates = cap.updates ? cap.updates.length : 0;
-    var nSpor = cap.sporadics ? cap.sporadics.length : 0;
+    var nAportes = cap.aportes ? cap.aportes.length : 0;
     card.innerHTML = '<div class="mc-info">' +
       '<div class="mc-title">' + _escHtml(cap.nome || 'Capacidade ' + (idx + 1)) + '</div>' +
       '<div class="mc-meta">Aporte: ' + fmtBRL(cap.aporteMensal) + '/mês | Saldo: ' + fmtBRL(cap.saldoInicial) + ' | Rentab: ' + (cap.rentabAnual || 0).toFixed(1) + '% a.a.' +
-        (nUpdates ? ' | ' + nUpdates + ' atualiz.' : '') +
-        (nSpor ? ' | ' + nSpor + ' extras' : '') +
+        (nAportes ? ' | ' + nAportes + ' aporte(s)' : '') +
       '</div>' +
     '</div>' +
     '<div class="mc-actions">' +
@@ -2747,15 +2808,14 @@ function capRenderList() {
 
 function capNova() {
   _capEditingIndex = -1;
-  _capTempUpdates = [];
-  _capTempSporadics = [];
+  _capTempAportes = [];
   document.getElementById('cap-nome').value = '';
   document.getElementById('cap-aporte-mensal').value = '';
   document.getElementById('cap-saldo-inicial').value = '';
   document.getElementById('cap-rentab').value = '12';
   document.getElementById('cap-ir').value = '15';
-  _capRenderUpdates();
-  _capRenderSporadics();
+  _capRenderAportes();
+  document.getElementById('cap-aporte-form').style.display = 'none';
   document.getElementById('cap-list-view').style.display = 'none';
   document.getElementById('cap-editor-view').style.display = 'block';
 }
@@ -2764,31 +2824,68 @@ function capEditar(idx) {
   var cap = _capacidades[idx];
   if (!cap) return;
   _capEditingIndex = idx;
-  _capTempUpdates = cap.updates ? JSON.parse(JSON.stringify(cap.updates)) : [];
-  _capTempSporadics = cap.sporadics ? JSON.parse(JSON.stringify(cap.sporadics)) : [];
-  document.getElementById('cap-nome').value = cap.nome || '';
-  document.getElementById('cap-aporte-mensal').value = cap.aporteMensal ? (cap.aporteMensal / 100).toFixed(2).replace('.', ',').replace(/(\d)(?=(\d{3})+(?!\d))/g, '$1.') : '';
-  if (cap.aporteMensal) {
-    var el = document.getElementById('cap-aporte-mensal');
-    el.value = '';
-    var v = String(Math.round(cap.aporteMensal * 100));
-    v = (parseFloat(v) / 100).toFixed(2).replace('.', ',').replace(/(\d)(?=(\d{3})+(?!\d))/g, '$1.');
-    el.value = v;
+  _capTempAportes = cap.aportes ? JSON.parse(JSON.stringify(cap.aportes)) : [];
+  // Migração: se não tem aportes mas tem updates/sporadics antigos, migrar
+  if (!_capTempAportes.length && ((cap.updates && cap.updates.length) || (cap.sporadics && cap.sporadics.length))) {
+    _capTempAportes = _migrateOldAportes(cap);
   }
+  document.getElementById('cap-nome').value = cap.nome || '';
+  document.getElementById('cap-aporte-mensal').value = '';
   if (cap.saldoInicial) {
     var el2 = document.getElementById('cap-saldo-inicial');
-    var v2 = String(Math.round(cap.saldoInicial * 100));
-    v2 = (parseFloat(v2) / 100).toFixed(2).replace('.', ',').replace(/(\d)(?=(\d{3})+(?!\d))/g, '$1.');
+    var v2 = (cap.saldoInicial).toFixed(2).replace('.', ',').replace(/(\d)(?=(\d{3})+(?!\d))/g, '$1.');
     el2.value = v2;
   } else {
     document.getElementById('cap-saldo-inicial').value = '';
   }
   document.getElementById('cap-rentab').value = cap.rentabAnual || 12;
   document.getElementById('cap-ir').value = cap.irPct != null ? cap.irPct : 15;
-  _capRenderUpdates();
-  _capRenderSporadics();
+  _capRenderAportes();
+  document.getElementById('cap-aporte-form').style.display = 'none';
   document.getElementById('cap-list-view').style.display = 'none';
   document.getElementById('cap-editor-view').style.display = 'block';
+}
+
+// Migração de formato antigo para novo
+function _migrateOldAportes(cap) {
+  var result = [];
+  // Aporte mensal base como primeiro aporte
+  if (cap.aporteMensal > 0) {
+    result.push({
+      id: Date.now(),
+      descricao: 'Aporte Mensal',
+      valor: cap.aporteMensal,
+      periodo: 'mensal',
+      dataInicio: new Date().toISOString().slice(0, 10),
+      termina: 'nao',
+      dataFim: '',
+      ocorrencias: 0,
+      mudaValor: false,
+      dataMuda: '',
+      novoValor: 0,
+      reajusteAnual: 0
+    });
+  }
+  // Sporadics como aportes únicos
+  if (cap.sporadics) {
+    cap.sporadics.forEach(function(sp) {
+      result.push({
+        id: Date.now() + Math.random() * 1000,
+        descricao: sp.descricao || 'Aporte Extra',
+        valor: sp.valor,
+        periodo: 'unico',
+        dataInicio: sp.data,
+        termina: 'ocorrencias',
+        dataFim: '',
+        ocorrencias: 1,
+        mudaValor: false,
+        dataMuda: '',
+        novoValor: 0,
+        reajusteAnual: 0
+      });
+    });
+  }
+  return result;
 }
 
 function capDuplicar(idx) {
@@ -2817,20 +2914,27 @@ function capVoltarLista() {
 
 function capSalvar() {
   var nome = document.getElementById('cap-nome').value.trim() || 'Capacidade ' + (_capacidades.length + 1);
-  var aporteMensal = parseCurr(document.getElementById('cap-aporte-mensal').value);
   var saldoInicial = parseCurr(document.getElementById('cap-saldo-inicial').value);
   var rentabAnual = parseFloat(document.getElementById('cap-rentab').value) || 12;
   var irPct = parseFloat(document.getElementById('cap-ir').value) || 15;
 
+  // Calcular aporteMensal como soma dos aportes mensais (para exibição no card)
+  var aporteMensalCalc = 0;
+  _capTempAportes.forEach(function(ap) {
+    if (ap.periodo === 'mensal') aporteMensalCalc += ap.valor;
+  });
+
   var cap = {
     id: _capEditingIndex >= 0 ? _capacidades[_capEditingIndex].id : Date.now(),
     nome: nome,
-    aporteMensal: aporteMensal,
+    aporteMensal: aporteMensalCalc,
     saldoInicial: saldoInicial,
     rentabAnual: rentabAnual,
     irPct: irPct,
-    updates: JSON.parse(JSON.stringify(_capTempUpdates)),
-    sporadics: JSON.parse(JSON.stringify(_capTempSporadics))
+    aportes: JSON.parse(JSON.stringify(_capTempAportes)),
+    // Manter compat retroativa
+    updates: [],
+    sporadics: []
   };
 
   if (_capEditingIndex >= 0) {
@@ -2844,98 +2948,155 @@ function capSalvar() {
   alert('Capacidade salva com sucesso!');
 }
 
-// --- Atualizações de aporte ---
-function capAddUpdate() {
-  var data = prompt('Data da atualização (formato: AAAA-MM-DD):');
-  if (!data) return;
-  var valorStr = prompt('Novo valor do aporte mensal (R$):');
-  if (!valorStr) return;
-  var valor = parseCurr(valorStr);
-  _capTempUpdates.push({ data: data, novoValor: valor });
-  _capTempUpdates.sort(function(a, b) { return a.data.localeCompare(b.data); });
-  _capRenderUpdates();
+// --- Sistema de Aportes Programados ---
+var _capTempAportes = []; // [{id, descricao, valor, periodo, dataInicio, termina, dataFim, ocorrencias, mudaValor, dataMuda, novoValor, reajusteAnual}]
+var _capEditingAporteIdx = -1;
+
+var _periodoMap = { mensal: 1, bimestral: 2, trimestral: 3, semestral: 6, anual: 12, unico: 0 };
+var _periodoLabels = { mensal: 'Mensal', bimestral: 'Bimestral', trimestral: 'Trimestral', semestral: 'Semestral', anual: 'Anual', unico: 'Único' };
+
+function capAddAporte() {
+  _capEditingAporteIdx = -1;
+  _capResetAporteForm();
+  document.getElementById('cap-aporte-form-title').textContent = 'Novo Aporte';
+  document.getElementById('cap-aporte-form').style.display = 'block';
 }
 
-function capEditUpdate(idx) {
-  var upd = _capTempUpdates[idx];
-  if (!upd) return;
-  var data = prompt('Data da atualização (formato: AAAA-MM-DD):', upd.data);
-  if (!data) return;
-  var valorStr = prompt('Novo valor do aporte mensal (R$):', upd.novoValor ? upd.novoValor.toFixed(2).replace('.', ',') : '');
-  if (!valorStr) return;
-  _capTempUpdates[idx] = { data: data, novoValor: parseCurr(valorStr) };
-  _capTempUpdates.sort(function(a, b) { return a.data.localeCompare(b.data); });
-  _capRenderUpdates();
+function capEditAporte(idx) {
+  var ap = _capTempAportes[idx];
+  if (!ap) return;
+  _capEditingAporteIdx = idx;
+  document.getElementById('cap-ap-desc').value = ap.descricao || '';
+  var elVal = document.getElementById('cap-ap-valor');
+  elVal.value = ap.valor ? (ap.valor / 100 * 100).toFixed(2).replace('.', ',').replace(/(\d)(?=(\d{3})+(?!\d))/g, '$1.') : '';
+  if (ap.valor) { var vs = (ap.valor).toFixed(2).replace('.', ',').replace(/(\d)(?=(\d{3})+(?!\d))/g, '$1.'); elVal.value = vs; }
+  document.getElementById('cap-ap-periodo').value = ap.periodo || 'mensal';
+  document.getElementById('cap-ap-inicio').value = ap.dataInicio || '';
+  document.getElementById('cap-ap-termina').value = ap.termina || 'nao';
+  capAporteTerminaChange();
+  if (ap.termina === 'data') document.getElementById('cap-ap-fim-data').value = ap.dataFim || '';
+  if (ap.termina === 'ocorrencias') document.getElementById('cap-ap-fim-ocorr').value = ap.ocorrencias || 12;
+  document.getElementById('cap-ap-muda').value = ap.mudaValor ? 'sim' : 'nao';
+  capAporteMudaChange();
+  if (ap.mudaValor) {
+    document.getElementById('cap-ap-muda-data').value = ap.dataMuda || '';
+    var elMV = document.getElementById('cap-ap-muda-valor');
+    if (ap.novoValor) { elMV.value = (ap.novoValor).toFixed(2).replace('.', ',').replace(/(\d)(?=(\d{3})+(?!\d))/g, '$1.'); }
+  }
+  document.getElementById('cap-ap-reajuste').value = ap.reajusteAnual || 0;
+  document.getElementById('cap-aporte-form-title').textContent = 'Editar Aporte';
+  document.getElementById('cap-aporte-form').style.display = 'block';
 }
 
-function capDeleteUpdate(idx) {
-  _capTempUpdates.splice(idx, 1);
-  _capRenderUpdates();
+function capDeleteAporte(idx) {
+  _capTempAportes.splice(idx, 1);
+  _capRenderAportes();
 }
 
-function _capRenderUpdates() {
-  var container = document.getElementById('cap-updates-list');
-  if (!_capTempUpdates.length) {
-    container.innerHTML = '<p class="note" id="cap-updates-empty">Nenhuma atualização — o aporte será constante.</p>';
+function _capResetAporteForm() {
+  document.getElementById('cap-ap-desc').value = '';
+  document.getElementById('cap-ap-valor').value = '';
+  document.getElementById('cap-ap-periodo').value = 'mensal';
+  document.getElementById('cap-ap-inicio').value = '';
+  document.getElementById('cap-ap-termina').value = 'nao';
+  document.getElementById('cap-ap-fim-data').value = '';
+  document.getElementById('cap-ap-fim-ocorr').value = '12';
+  document.getElementById('cap-ap-muda').value = 'nao';
+  document.getElementById('cap-ap-muda-data').value = '';
+  document.getElementById('cap-ap-muda-valor').value = '';
+  document.getElementById('cap-ap-reajuste').value = '0';
+  document.getElementById('cap-ap-fim-data-wrap').style.display = 'none';
+  document.getElementById('cap-ap-fim-ocorr-wrap').style.display = 'none';
+  document.getElementById('cap-ap-muda-data-wrap').style.display = 'none';
+  document.getElementById('cap-ap-muda-valor-wrap').style.display = 'none';
+}
+
+function capAporteTerminaChange() {
+  var v = document.getElementById('cap-ap-termina').value;
+  document.getElementById('cap-ap-fim-data-wrap').style.display = v === 'data' ? 'block' : 'none';
+  document.getElementById('cap-ap-fim-ocorr-wrap').style.display = v === 'ocorrencias' ? 'block' : 'none';
+  // Se único, esconder a linha de término
+  var periodo = document.getElementById('cap-ap-periodo').value;
+  document.getElementById('cap-ap-fim-row').style.display = periodo === 'unico' ? 'none' : 'flex';
+}
+
+function capAporteMudaChange() {
+  var v = document.getElementById('cap-ap-muda').value;
+  document.getElementById('cap-ap-muda-data-wrap').style.display = v === 'sim' ? 'block' : 'none';
+  document.getElementById('cap-ap-muda-valor-wrap').style.display = v === 'sim' ? 'block' : 'none';
+}
+
+function capAporteFormCancel() {
+  document.getElementById('cap-aporte-form').style.display = 'none';
+  _capEditingAporteIdx = -1;
+}
+
+function capAporteFormSave() {
+  var desc = document.getElementById('cap-ap-desc').value.trim() || 'Aporte';
+  var valor = parseCurr(document.getElementById('cap-ap-valor').value);
+  if (!valor || valor <= 0) { alert('Informe um valor válido.'); return; }
+  var periodo = document.getElementById('cap-ap-periodo').value;
+  var dataInicio = document.getElementById('cap-ap-inicio').value;
+  if (!dataInicio) { alert('Informe a data de início.'); return; }
+  var termina = document.getElementById('cap-ap-termina').value;
+  var dataFim = '';
+  var ocorrencias = 0;
+  if (periodo === 'unico') { termina = 'ocorrencias'; ocorrencias = 1; }
+  else if (termina === 'data') { dataFim = document.getElementById('cap-ap-fim-data').value; }
+  else if (termina === 'ocorrencias') { ocorrencias = parseInt(document.getElementById('cap-ap-fim-ocorr').value) || 12; }
+  var mudaValor = document.getElementById('cap-ap-muda').value === 'sim';
+  var dataMuda = mudaValor ? document.getElementById('cap-ap-muda-data').value : '';
+  var novoValor = mudaValor ? parseCurr(document.getElementById('cap-ap-muda-valor').value) : 0;
+  var reajusteAnual = parseFloat(document.getElementById('cap-ap-reajuste').value) || 0;
+
+  var aporte = {
+    id: _capEditingAporteIdx >= 0 ? _capTempAportes[_capEditingAporteIdx].id : Date.now(),
+    descricao: desc,
+    valor: valor,
+    periodo: periodo,
+    dataInicio: dataInicio,
+    termina: termina,
+    dataFim: dataFim,
+    ocorrencias: ocorrencias,
+    mudaValor: mudaValor,
+    dataMuda: dataMuda,
+    novoValor: novoValor,
+    reajusteAnual: reajusteAnual
+  };
+
+  if (_capEditingAporteIdx >= 0) {
+    _capTempAportes[_capEditingAporteIdx] = aporte;
+  } else {
+    _capTempAportes.push(aporte);
+  }
+  _capEditingAporteIdx = -1;
+  document.getElementById('cap-aporte-form').style.display = 'none';
+  _capRenderAportes();
+}
+
+function _capRenderAportes() {
+  var container = document.getElementById('cap-aportes-list');
+  if (!_capTempAportes.length) {
+    container.innerHTML = '<p class="note" id="cap-aportes-empty">Nenhum aporte cadastrado.</p>';
     return;
   }
   var html = '';
-  _capTempUpdates.forEach(function(upd, i) {
-    var dataFmt = upd.data ? new Date(upd.data + 'T00:00:00').toLocaleDateString('pt-BR') : '—';
+  _capTempAportes.forEach(function(ap, i) {
+    var dataFmt = ap.dataInicio ? new Date(ap.dataInicio + 'T00:00:00').toLocaleDateString('pt-BR') : '—';
+    var perLabel = _periodoLabels[ap.periodo] || ap.periodo;
+    var fimStr = '';
+    if (ap.termina === 'data' && ap.dataFim) fimStr = ' até ' + new Date(ap.dataFim + 'T00:00:00').toLocaleDateString('pt-BR');
+    else if (ap.termina === 'ocorrencias') fimStr = ' (' + ap.ocorrencias + 'x)';
+    else if (ap.periodo !== 'unico') fimStr = ' (indefinido)';
+    var reajStr = ap.reajusteAnual > 0 ? ' | Reaj: ' + ap.reajusteAnual.toFixed(1) + '%/ano' : '';
+    var mudaStr = ap.mudaValor ? ' | Muda p/ ' + fmtBRL(ap.novoValor) + ' em ' + (ap.dataMuda ? new Date(ap.dataMuda + 'T00:00:00').toLocaleDateString('pt-BR') : '?') : '';
     html += '<div class="strat-update-item">' +
-      '<div class="info">A partir de <strong>' + dataFmt + '</strong>: aporte passa para <strong>' + fmtBRL(upd.novoValor) + '</strong>/mês</div>' +
+      '<div class="info">' +
+        '<strong>' + _escHtml(ap.descricao) + '</strong>: ' + fmtBRL(ap.valor) + ' | ' + perLabel + ' | Início: ' + dataFmt + fimStr + reajStr + mudaStr +
+      '</div>' +
       '<div class="actions">' +
-        '<button class="btn btn-edit" onclick="capEditUpdate(' + i + ')" style="font-size:0.7rem; padding:0.2rem 0.5rem;">&#9998;</button> ' +
-        '<button class="btn btn-danger" onclick="capDeleteUpdate(' + i + ')" style="font-size:0.7rem; padding:0.2rem 0.5rem;">&#128465;</button>' +
-      '</div></div>';
-  });
-  container.innerHTML = html;
-}
-
-// --- Aportes esporádicos ---
-function capAddSporadic() {
-  var data = prompt('Data do aporte esporádico (formato: AAAA-MM-DD):');
-  if (!data) return;
-  var valorStr = prompt('Valor do aporte (R$):');
-  if (!valorStr) return;
-  var desc = prompt('Descrição (opcional):') || '';
-  _capTempSporadics.push({ data: data, valor: parseCurr(valorStr), descricao: desc });
-  _capTempSporadics.sort(function(a, b) { return a.data.localeCompare(b.data); });
-  _capRenderSporadics();
-}
-
-function capEditSporadic(idx) {
-  var sp = _capTempSporadics[idx];
-  if (!sp) return;
-  var data = prompt('Data do aporte (formato: AAAA-MM-DD):', sp.data);
-  if (!data) return;
-  var valorStr = prompt('Valor do aporte (R$):', sp.valor ? sp.valor.toFixed(2).replace('.', ',') : '');
-  if (!valorStr) return;
-  var desc = prompt('Descrição (opcional):', sp.descricao || '') || '';
-  _capTempSporadics[idx] = { data: data, valor: parseCurr(valorStr), descricao: desc };
-  _capTempSporadics.sort(function(a, b) { return a.data.localeCompare(b.data); });
-  _capRenderSporadics();
-}
-
-function capDeleteSporadic(idx) {
-  _capTempSporadics.splice(idx, 1);
-  _capRenderSporadics();
-}
-
-function _capRenderSporadics() {
-  var container = document.getElementById('cap-sporadic-list');
-  if (!_capTempSporadics.length) {
-    container.innerHTML = '<p class="note" id="cap-sporadic-empty">Nenhum aporte esporádico cadastrado.</p>';
-    return;
-  }
-  var html = '';
-  _capTempSporadics.forEach(function(sp, i) {
-    var dataFmt = sp.data ? new Date(sp.data + 'T00:00:00').toLocaleDateString('pt-BR') : '—';
-    html += '<div class="strat-update-item">' +
-      '<div class="info"><strong>' + dataFmt + '</strong>: ' + fmtBRL(sp.valor) + (sp.descricao ? ' — ' + _escHtml(sp.descricao) : '') + '</div>' +
-      '<div class="actions">' +
-        '<button class="btn btn-edit" onclick="capEditSporadic(' + i + ')" style="font-size:0.7rem; padding:0.2rem 0.5rem;">&#9998;</button> ' +
-        '<button class="btn btn-danger" onclick="capDeleteSporadic(' + i + ')" style="font-size:0.7rem; padding:0.2rem 0.5rem;">&#128465;</button>' +
+        '<button class="btn btn-edit" onclick="capEditAporte(' + i + ')" style="font-size:0.7rem; padding:0.2rem 0.5rem;">&#9998;</button> ' +
+        '<button class="btn btn-danger" onclick="capDeleteAporte(' + i + ')" style="font-size:0.7rem; padding:0.2rem 0.5rem;">&#128465;</button>' +
       '</div></div>';
   });
   container.innerHTML = html;
@@ -2950,8 +3111,9 @@ var stratState = {
   saldoInicial: 0,
   rentabAnual: 12,
   irPct: 15,
+  aportes: [], // novo sistema de aportes programados
   updates: [],
-  sporadics: [], // [{id, data, valor, descricao}] - aportes esporádicos
+  sporadics: [], // [{id, data, valor, descricao}] - aportes esporádicos (legado)
   source: 'atual',
   selectedDividas: [],
   pctReserva: 100,
@@ -3079,6 +3241,7 @@ function _resetStratState() {
   stratState.saldoInicial = 0;
   stratState.rentabAnual = 12;
   stratState.irPct = 15;
+  stratState.aportes = [];
   stratState.updates = [];
   stratState.sporadics = [];
   stratState.source = 'atual';
@@ -3116,6 +3279,7 @@ function _buildStratConfig() {
     saldoInicial: stratState.saldoInicial,
     rentabAnual: stratState.rentabAnual,
     irPct: stratState.irPct,
+    aportes: stratState.aportes ? JSON.parse(JSON.stringify(stratState.aportes)) : [],
     updates: JSON.parse(JSON.stringify(stratState.updates)),
     sporadics: JSON.parse(JSON.stringify(stratState.sporadics)),
     source: stratState.source,
@@ -3141,6 +3305,7 @@ function _applyStratConfig(config) {
   stratState.saldoInicial = config.saldoInicial || 0;
   stratState.rentabAnual = config.rentabAnual || 12;
   stratState.irPct = config.irPct || 15;
+  stratState.aportes = Array.isArray(config.aportes) ? JSON.parse(JSON.stringify(config.aportes)) : [];
   stratState.updates = Array.isArray(config.updates) ? JSON.parse(JSON.stringify(config.updates)) : [];
   stratState.sporadics = Array.isArray(config.sporadics) ? JSON.parse(JSON.stringify(config.sporadics)) : [];
   stratState.source = config.source || 'atual';
@@ -3378,7 +3543,7 @@ function stratPopulateCapacidadeSelect() {
   _capacidades.forEach(function(cap) {
     var opt = document.createElement('option');
     opt.value = cap.id;
-    opt.textContent = cap.nome + ' (' + fmtBRL(cap.aporteMensal || 0) + '/mês)';
+    opt.textContent = cap.nome + ' (R$ ' + fmtBRL(cap.aporteMensal || 0) + '/mês)';
     select.appendChild(opt);
   });
   if (currentVal) select.value = currentVal;
@@ -3395,8 +3560,10 @@ function stratOnCapacidadeChange() {
       stratState.saldoInicial = cap.saldoInicial || 0;
       stratState.rentabAnual = cap.rentabAnual || 12;
       stratState.irPct = cap.irPct || 15;
-      stratState.updates = JSON.parse(JSON.stringify(cap.updates || []));
-      stratState.sporadics = JSON.parse(JSON.stringify(cap.sporadics || []));
+      stratState.aportes = cap.aportes ? JSON.parse(JSON.stringify(cap.aportes)) : [];
+      // Compat: manter updates/sporadics vazios
+      stratState.updates = [];
+      stratState.sporadics = [];
       // Update hidden inputs
       document.getElementById('strat-aporte-mensal').value = stratState.aporteMensal;
       document.getElementById('strat-saldo-inicial').value = stratState.saldoInicial;
@@ -3409,6 +3576,7 @@ function stratOnCapacidadeChange() {
     stratState.saldoInicial = 0;
     stratState.rentabAnual = 12;
     stratState.irPct = 15;
+    stratState.aportes = [];
     stratState.updates = [];
     stratState.sporadics = [];
     document.getElementById('strat-cap-resumo').classList.add('hidden');
@@ -3424,12 +3592,9 @@ function stratShowCapResumo() {
   document.getElementById('strat-cap-saldo').textContent = fmtBRL(cap.saldoInicial || 0);
   document.getElementById('strat-cap-rentab').textContent = (cap.rentabAnual || 12).toFixed(1) + '% a.a.';
   document.getElementById('strat-cap-ir').textContent = (cap.irPct || 15).toFixed(1) + '%';
-  var info = '';
-  var nUpd = (cap.updates || []).length;
-  var nSpo = (cap.sporadics || []).length;
-  if (nUpd) info += nUpd + ' atualização(ões) de aporte';
-  if (nSpo) info += (info ? ' | ' : '') + nSpo + ' aporte(s) esporádico(s)';
-  document.getElementById('strat-cap-updates-info').textContent = info || 'Sem atualizações ou aportes esporádicos.';
+  var nAportes = (cap.aportes || []).length;
+  var info = nAportes ? nAportes + ' aporte(s) programado(s)' : '';
+  document.getElementById('strat-cap-updates-info').textContent = info || 'Sem aportes programados.';
 }
 
 // ===== STRATEGY: LINKING PROPOSTAS ↔ DÍVIDAS =====
@@ -3588,7 +3753,7 @@ function _linkDrawLines() {
       if (diff < 0) lineColor = '#f59e0b'; // orange for partial
     }
 
-    lines += '<line x1="' + x1 + '" y1="' + y1 + '" x2="' + x2 + '" y2="' + y2 + '" stroke="' + lineColor + '" stroke-width="2" stroke-dasharray="4,2" data-link-idx="' + idx + '" style="pointer-events:stroke; cursor:pointer;" onclick="_linkClickLine(event,' + idx + ')" />';
+    lines += '<line x1="' + x1 + '" y1="' + y1 + '" x2="' + x2 + '" y2="' + y2 + '" stroke="' + lineColor + '" stroke-width="4" stroke-dasharray="6,3" data-link-idx="' + idx + '" style="pointer-events:auto; cursor:pointer;" onclick="_linkClickLine(event,' + idx + ')" />';
   });
   svg.innerHTML = lines;
 }
@@ -4236,7 +4401,67 @@ function populateStratTab() {
 }
 
 // ===== STRATEGY: GET APORTE FOR A GIVEN MONTH =====
+// Calcula o aporte total para um dado mês usando o novo sistema de aportes programados
+function _calcAportesMes(aportes, mesDate, dataRefInicio) {
+  if (!aportes || !aportes.length) return 0;
+  var total = 0;
+  var mesY = mesDate.getFullYear();
+  var mesM = mesDate.getMonth();
+  aportes.forEach(function(ap) {
+    if (!ap.dataInicio) return;
+    var inicio = new Date(ap.dataInicio + 'T00:00:00');
+    // Ainda não começou?
+    if (mesDate < inicio) return;
+    // Periodicidade
+    var intervalo = _periodoMap[ap.periodo] || 1;
+    if (intervalo === 0) {
+      // Único: só ocorre no mês de início
+      if (mesY === inicio.getFullYear() && mesM === inicio.getMonth()) {
+        total += _getAporteValorComReajuste(ap, mesDate, inicio);
+      }
+      return;
+    }
+    // Verificar se este mês é um mês de ocorrência
+    var diffMeses = (mesY - inicio.getFullYear()) * 12 + (mesM - inicio.getMonth());
+    if (diffMeses < 0) return;
+    if (diffMeses % intervalo !== 0) return;
+    // Verificar término
+    if (ap.termina === 'data' && ap.dataFim) {
+      var fim = new Date(ap.dataFim + 'T00:00:00');
+      if (mesDate > fim) return;
+    } else if (ap.termina === 'ocorrencias' && ap.ocorrencias > 0) {
+      var ocorrenciaAtual = Math.floor(diffMeses / intervalo) + 1;
+      if (ocorrenciaAtual > ap.ocorrencias) return;
+    }
+    total += _getAporteValorComReajuste(ap, mesDate, inicio);
+  });
+  return total;
+}
+
+function _getAporteValorComReajuste(ap, mesDate, inicio) {
+  var valor = ap.valor;
+  // Mudança de valor?
+  if (ap.mudaValor && ap.dataMuda) {
+    var dataMuda = new Date(ap.dataMuda + 'T00:00:00');
+    if (mesDate >= dataMuda) valor = ap.novoValor || valor;
+  }
+  // Reajuste anual (a cada 12 meses após início)
+  if (ap.reajusteAnual > 0) {
+    var mesesDesdeInicio = (mesDate.getFullYear() - inicio.getFullYear()) * 12 + (mesDate.getMonth() - inicio.getMonth());
+    var anosCompletos = Math.floor(mesesDesdeInicio / 12);
+    if (anosCompletos > 0) {
+      valor *= Math.pow(1 + ap.reajusteAnual / 100, anosCompletos);
+    }
+  }
+  return valor;
+}
+
 function stratGetAporteMes(mesDate) {
+  // Novo sistema: usar aportes programados
+  if (stratState.aportes && stratState.aportes.length) {
+    return _calcAportesMes(stratState.aportes, mesDate);
+  }
+  // Fallback: sistema antigo
   var base = stratState.aporteMensal;
   for (var i = 0; i < stratState.updates.length; i++) {
     var updDate = new Date(stratState.updates[i].data + 'T00:00:00');
@@ -4248,13 +4473,15 @@ function stratGetAporteMes(mesDate) {
 }
 
 function stratGetSporadicMes(mesDate) {
+  // No novo sistema, esporádicos são aportes com periodo='unico', já incluídos em stratGetAporteMes
+  if (stratState.aportes && stratState.aportes.length) return 0;
+  // Fallback: sistema antigo
   var total = 0;
   var mesY = mesDate.getFullYear();
   var mesM = mesDate.getMonth();
   for (var i = 0; i < stratState.sporadics.length; i++) {
     var sp = stratState.sporadics[i];
     if (sp.mesNum && sp.mesNum > 0) {
-      // Comparar pelo número do mês (1-based) com o índice do loop (mesIdx passado via argumento extra)
       if (typeof arguments[1] === 'number' && (arguments[1] + 1) === sp.mesNum) {
         total += sp.valor;
       }
@@ -5608,8 +5835,11 @@ function _analiseRunStrat(strat) {
   var totalPagoEmParcelas = 0;
   var custoTotalEstrategia = 0;
 
-  // Helper to get aporte for a month
+  // Helper to get aporte for a month (novo sistema)
+  var cfgAportes = cfg.aportes || [];
   function getAporteMes(mesDate) {
+    if (cfgAportes.length) return _calcAportesMes(cfgAportes, mesDate);
+    // Fallback antigo
     var base = aporteMensal;
     for (var i = 0; i < updates.length; i++) {
       var updDate = new Date(updates[i].data + 'T00:00:00');
@@ -5618,6 +5848,7 @@ function _analiseRunStrat(strat) {
     return base;
   }
   function getSporadicMes(mesDate, mesIdx) {
+    if (cfgAportes.length) return 0; // já incluído em getAporteMes
     var total = 0;
     var mesY = mesDate.getFullYear();
     var mesM = mesDate.getMonth();
@@ -6079,24 +6310,43 @@ function analiseGerar() {
   var labels = [];
   for (var lm = 0; lm < maxPeriodo; lm++) labels.push('Mês ' + (lm + 1));
 
-  var chartColors = ['#ef4444', '#60a5fa', '#22c55e', '#fbbf24', '#a78bfa', '#fb923c', '#ec4899', '#14b8a6'];
+  // Cores: vermelho para cenário base/referência, outras cores variadas para estratégias
+  var stratColors = ['#60a5fa', '#22c55e', '#fbbf24', '#a78bfa', '#fb923c', '#ec4899', '#14b8a6', '#f472b6'];
+  var baseColor = '#ef4444'; // vermelho para cenário base
+
+  // Tooltip config padrão: mostrar dados de TODAS as linhas ao passar o cursor
+  var sharedTooltip = {
+    mode: 'index',
+    intersect: false,
+    callbacks: {
+      label: function(ctx) {
+        var val = ctx.parsed.y;
+        return ctx.dataset.label + ': R$ ' + val.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});
+      }
+    }
+  };
+
+  var hasCenarioBase = cenarioBase.saldoData.length > 0;
 
   // 1. Evolução do Saldo Devedor
-  var saldoDatasets = [{
-    label: 'Cenário Base',
-    data: cenarioBase.saldoData,
-    borderColor: '#ffffff',
-    backgroundColor: 'transparent',
-    borderWidth: 2,
-    borderDash: [5, 5],
-    pointRadius: 0,
-    tension: 0.2
-  }];
+  var saldoDatasets = [];
+  if (hasCenarioBase) {
+    saldoDatasets.push({
+      label: 'Cenário Base',
+      data: cenarioBase.saldoData,
+      borderColor: baseColor,
+      backgroundColor: 'transparent',
+      borderWidth: 2,
+      borderDash: [5, 5],
+      pointRadius: 0,
+      tension: 0.2
+    });
+  }
   resultados.forEach(function(r, i) {
     saldoDatasets.push({
       label: r.nome,
       data: r.saldoData,
-      borderColor: chartColors[i % chartColors.length],
+      borderColor: stratColors[i % stratColors.length],
       backgroundColor: 'transparent',
       borderWidth: 2,
       pointRadius: 0,
@@ -6111,7 +6361,8 @@ function analiseGerar() {
       data: { labels: labels, datasets: saldoDatasets },
       options: {
         responsive: true, maintainAspectRatio: false,
-        plugins: { title: { display: true, text: 'Evolução do Saldo Devedor', color: '#fff' }, legend: { labels: { color: '#A0B8A6' } } },
+        interaction: { mode: 'index', intersect: false },
+        plugins: { title: { display: true, text: 'Evolução do Saldo Devedor', color: '#fff' }, legend: { labels: { color: '#A0B8A6' } }, tooltip: sharedTooltip },
         scales: {
           x: { ticks: { color: '#A0B8A6', maxTicksLimit: 12 }, grid: { color: 'rgba(255,255,255,0.03)' } },
           y: { ticks: { color: '#A0B8A6', callback: function(v) { return 'R$ ' + (v/1000).toFixed(0) + 'k'; } }, grid: { color: 'rgba(255,255,255,0.05)' } }
@@ -6122,21 +6373,24 @@ function analiseGerar() {
   }
 
   // 2. Evolução das Parcelas
-  var parcelasDatasets = [{
-    label: 'Cenário Base',
-    data: cenarioBase.parcelasData,
-    borderColor: '#ffffff',
-    backgroundColor: 'transparent',
-    borderWidth: 2,
-    borderDash: [5, 5],
-    pointRadius: 0,
-    tension: 0.2
-  }];
+  var parcelasDatasets = [];
+  if (hasCenarioBase) {
+    parcelasDatasets.push({
+      label: 'Cenário Base',
+      data: cenarioBase.parcelasData,
+      borderColor: baseColor,
+      backgroundColor: 'transparent',
+      borderWidth: 2,
+      borderDash: [5, 5],
+      pointRadius: 0,
+      tension: 0.2
+    });
+  }
   resultados.forEach(function(r, i) {
     parcelasDatasets.push({
       label: r.nome,
       data: r.parcelasData,
-      borderColor: chartColors[i % chartColors.length],
+      borderColor: stratColors[i % stratColors.length],
       backgroundColor: 'transparent',
       borderWidth: 2,
       pointRadius: 0,
@@ -6151,7 +6405,8 @@ function analiseGerar() {
       data: { labels: labels, datasets: parcelasDatasets },
       options: {
         responsive: true, maintainAspectRatio: false,
-        plugins: { title: { display: true, text: 'Evolução das Parcelas', color: '#fff' }, legend: { labels: { color: '#A0B8A6' } } },
+        interaction: { mode: 'index', intersect: false },
+        plugins: { title: { display: true, text: 'Evolução das Parcelas', color: '#fff' }, legend: { labels: { color: '#A0B8A6' } }, tooltip: sharedTooltip },
         scales: {
           x: { ticks: { color: '#A0B8A6', maxTicksLimit: 12 }, grid: { color: 'rgba(255,255,255,0.03)' } },
           y: { ticks: { color: '#A0B8A6', callback: function(v) { return 'R$ ' + v.toLocaleString('pt-BR'); } }, grid: { color: 'rgba(255,255,255,0.05)' } }
@@ -6162,19 +6417,50 @@ function analiseGerar() {
   }
 
   // 3. Evolução do Patrimônio Acumulado
+  // Se não há cenário base, usar a primeira estratégia como referência
   var patrimonioDatasets = [];
-  resultados.forEach(function(r, i) {
+  if (hasCenarioBase) {
+    // Cenário base: patrimônio = 0 (referência)
     patrimonioDatasets.push({
-      label: r.nome,
-      data: r.patrimonioData,
-      borderColor: chartColors[i % chartColors.length],
-      backgroundColor: 'rgba(' + (i === 0 ? '34,197,94' : i === 1 ? '96,165,250' : '251,191,36') + ',0.1)',
-      fill: true,
+      label: 'Cenário Base (referência)',
+      data: cenarioBase.patrimonioData,
+      borderColor: baseColor,
+      backgroundColor: 'transparent',
       borderWidth: 2,
+      borderDash: [5, 5],
       pointRadius: 0,
-      tension: 0.2
+      tension: 0.2,
+      fill: false
     });
-  });
+    resultados.forEach(function(r, i) {
+      patrimonioDatasets.push({
+        label: r.nome,
+        data: r.patrimonioData,
+        borderColor: stratColors[i % stratColors.length],
+        backgroundColor: 'rgba(96,165,250,0.05)',
+        fill: true,
+        borderWidth: 2,
+        pointRadius: 0,
+        tension: 0.2
+      });
+    });
+  } else {
+    // Sem cenário base: usar primeira estratégia como referência (vermelha)
+    resultados.forEach(function(r, i) {
+      var isRef = (i === 0);
+      patrimonioDatasets.push({
+        label: r.nome + (isRef ? ' (referência)' : ''),
+        data: r.patrimonioData,
+        borderColor: isRef ? baseColor : stratColors[(i - 1) % stratColors.length],
+        backgroundColor: isRef ? 'transparent' : 'rgba(96,165,250,0.05)',
+        borderWidth: 2,
+        borderDash: isRef ? [5, 5] : [],
+        pointRadius: 0,
+        tension: 0.2,
+        fill: !isRef
+      });
+    });
+  }
   var canvasPatrimonio = document.getElementById('analise-chart-patrimonio');
   if (canvasPatrimonio) {
     var ctxPatrimonio = canvasPatrimonio.getContext('2d');
@@ -6183,7 +6469,8 @@ function analiseGerar() {
       data: { labels: labels, datasets: patrimonioDatasets },
       options: {
         responsive: true, maintainAspectRatio: false,
-        plugins: { title: { display: true, text: 'Patrimônio Acumulado (diferença investida)', color: '#fff' }, legend: { labels: { color: '#A0B8A6' } } },
+        interaction: { mode: 'index', intersect: false },
+        plugins: { title: { display: true, text: 'Patrimônio Acumulado (diferença investida)', color: '#fff' }, legend: { labels: { color: '#A0B8A6' } }, tooltip: sharedTooltip },
         scales: {
           x: { ticks: { color: '#A0B8A6', maxTicksLimit: 12 }, grid: { color: 'rgba(255,255,255,0.03)' } },
           y: { ticks: { color: '#A0B8A6', callback: function(v) { return 'R$ ' + v.toLocaleString('pt-BR'); } }, grid: { color: 'rgba(255,255,255,0.05)' } }
