@@ -903,7 +903,7 @@
         <p style="color:var(--muted); font-size:0.85rem; margin-bottom:1rem;"><strong style="color:var(--blue);">Arraste</strong> entre propostas e dívidas para criar vínculos (substituição/quitação). <strong style="color:var(--green);">Clique</strong> nas propostas ou dívidas não-vinculadas para selecioná-las para a simulação. Clique na linha para remover vínculo.</p>
 
         <div id="strat-link-canvas-wrap" style="position:relative; min-height:200px; padding:1rem; background:var(--bg); border-radius:var(--radius); border:1px solid var(--border);">
-          <svg id="strat-link-svg" style="position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:2;"></svg>
+          <svg id="strat-link-svg" style="position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:auto; z-index:2;"></svg>
           <div style="display:flex; justify-content:space-between; gap:1.5rem; position:relative; z-index:3;">
             <div style="flex:1;">
               <div style="font-size:0.7rem; color:var(--muted); text-align:center; margin-bottom:0.4rem; font-weight:600; text-transform:uppercase;">Propostas</div>
@@ -3788,12 +3788,10 @@ function _linkFinishDrag(clientX, clientY) {
 
 function _linkClickLine(e, idx) {
   e.stopPropagation();
-  if (confirm('Remover este v\u00ednculo?')) {
-    stratState.linkedPropostas.splice(idx, 1);
-    stratRenderLinks();
-    stratRenderAlocPorDivida();
-    stratRenderCreditDist();
-  }
+  stratState.linkedPropostas.splice(idx, 1);
+  stratRenderLinks();
+  stratRenderAlocPorDivida();
+  stratRenderCreditDist();
 }
 
 // Get linked dívida indices (these should not participate in amortization allocation)
@@ -5273,17 +5271,13 @@ function analisePopulate() {
 
 // Helper: Calculate base scenario (no extra amortization) for comparison
 function _calcCenarioBase(selectedStrats, maxPeriodo) {
-  // Use the first strategy's config to determine which debts to use as reference
-  var cfg = selectedStrats[0].config;
-  var list = cfg.source === 'atual' ? dividasAtuais : dividasProposta;
-  var isAtual = cfg.source === 'atual';
-  var selectedDividas = cfg.selectedDividas || [];
-
+  // Cenário Base: TODAS as dívidas atuais, sem amortização extra
+  // Só gera se houver ao menos 1 dívida cadastrada
   var dividasSel = [];
-  selectedDividas.forEach(function(idx) {
-    var d = list[idx];
+  dividasAtuais.forEach(function(d) {
     if (d) dividasSel.push(d);
   });
+  var isAtual = true;
 
   if (!dividasSel.length) {
     return { saldoData: [], parcelasData: [], totalJurosPagos: 0, totalReajustesPagos: 0, totalPagoEmParcelas: 0, prazoOriginal: 0 };
