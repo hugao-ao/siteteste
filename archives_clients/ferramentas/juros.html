@@ -900,7 +900,7 @@
       <!-- STEP 2: Seleção e Vinculação de Dívidas e Propostas -->
       <div class="card">
         <h2>Passo 2 — Selecionar Dívidas e Propostas para Estratégia</h2>
-        <p style="color:var(--muted); font-size:0.85rem; margin-bottom:1rem;"><strong style="color:var(--blue);">Arraste</strong> entre propostas e dívidas para criar vínculos (substituição/quitação). <strong style="color:var(--green);">Clique</strong> nas dívidas não-vinculadas para selecioná-las para amortização. Clique na linha para remover vínculo.</p>
+        <p style="color:var(--muted); font-size:0.85rem; margin-bottom:1rem;"><strong style="color:var(--blue);">Arraste</strong> entre propostas e dívidas para criar vínculos (substituição/quitação). <strong style="color:var(--green);">Clique</strong> nas propostas ou dívidas não-vinculadas para selecioná-las para a simulação. Clique na linha para remover vínculo.</p>
 
         <div id="strat-link-canvas-wrap" style="position:relative; min-height:200px; padding:1rem; background:var(--bg); border-radius:var(--radius); border:1px solid var(--border);">
           <svg id="strat-link-svg" style="position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:2;"></svg>
@@ -3661,9 +3661,9 @@ function _linkStartDrag(e) {
   svg.appendChild(line);
   _linkTempLine = line;
 
-  // Mark all cards as potentially dragged
+  // Reset _wasDragged - will be set to true only if mouse actually moves
   var allCards = document.querySelectorAll('#strat-link-canvas-wrap .strat-link-card');
-  allCards.forEach(function(c) { c._wasDragged = true; });
+  allCards.forEach(function(c) { c._wasDragged = false; });
   document.addEventListener('mousemove', _linkOnDrag);
   document.addEventListener('mouseup', _linkEndDrag);
 }
@@ -3696,13 +3696,16 @@ function _linkStartDragTouch(e) {
   _linkTempLine = line;
 
   var allCards = document.querySelectorAll('#strat-link-canvas-wrap .strat-link-card');
-  allCards.forEach(function(c) { c._wasDragged = true; });
+  allCards.forEach(function(c) { c._wasDragged = false; });
   document.addEventListener('touchmove', _linkOnDragTouch, {passive:false});
   document.addEventListener('touchend', _linkEndDragTouch);
 }
 
 function _linkOnDrag(e) {
   if (!_linkDragging || !_linkTempLine) return;
+  // Mark as actually dragged (mouse moved)
+  var allCards = document.querySelectorAll('#strat-link-canvas-wrap .strat-link-card');
+  allCards.forEach(function(c) { c._wasDragged = true; });
   var wrap = document.getElementById('strat-link-canvas-wrap');
   var wrapRect = wrap.getBoundingClientRect();
   var x = e.clientX - wrapRect.left;
@@ -3714,6 +3717,9 @@ function _linkOnDrag(e) {
 function _linkOnDragTouch(e) {
   if (!_linkDragging || !_linkTempLine) return;
   e.preventDefault();
+  // Mark as actually dragged (touch moved)
+  var allCards = document.querySelectorAll('#strat-link-canvas-wrap .strat-link-card');
+  allCards.forEach(function(c) { c._wasDragged = true; });
   var touch = e.touches[0];
   var wrap = document.getElementById('strat-link-canvas-wrap');
   var wrapRect = wrap.getBoundingClientRect();
@@ -3873,11 +3879,14 @@ function stratRenderAlocPorDivida() {
     });
   });
 
-  // 3. Selected propostas (non-linked, click-selected) — these are NEW debts to include
-  stratState.selectedPropostas.forEach(function(pi) {
-    // Skip if this proposta is linked (linked propostas provide credit, not debt)
-    var isLinked = stratState.linkedPropostas.some(function(l) { return l.propostaIdx === pi; });
-    if (isLinked) return;
+  // 3. LINKED propostas — these are NEW debts that replace old dívidas
+  var linkedPropostaIndices = [];
+  stratState.linkedPropostas.forEach(function(link) {
+    if (link.propostaIdx !== '' && link.propostaIdx !== undefined) {
+      if (linkedPropostaIndices.indexOf(link.propostaIdx) < 0) linkedPropostaIndices.push(link.propostaIdx);
+    }
+  });
+  linkedPropostaIndices.forEach(function(pi) {
     var p = dividasProposta[pi];
     if (!p) return;
     var saldo = p.valorContratado;
@@ -3885,7 +3894,23 @@ function stratRenderAlocPorDivida() {
     effectiveItems.push({
       type: 'proposta', idx: pi, nome: p.nome,
       saldo: saldo, parcela: p.parcela, prazo: restantes,
-      label: p.nome + ' <small style="color:var(--purple, #a78bfa);">[proposta]</small>',
+      label: p.nome + ' <small style="color:var(--blue);">[nova dívida]</small>',
+      isLinkedPartial: false, isQuitada: false
+    });
+  });
+
+  // 4. Selected propostas (non-linked, click-selected) — also NEW debts to include
+  stratState.selectedPropostas.forEach(function(pi) {
+    // Skip if this proposta is linked (already added above)
+    if (linkedPropostaIndices.indexOf(pi) >= 0) return;
+    var p = dividasProposta[pi];
+    if (!p) return;
+    var saldo = p.valorContratado;
+    var restantes = p.totalParcelas;
+    effectiveItems.push({
+      type: 'proposta', idx: pi, nome: p.nome,
+      saldo: saldo, parcela: p.parcela, prazo: restantes,
+      label: p.nome + ' <small style="color:var(--purple, #a78bfa);">[proposta selecionada]</small>',
       isLinkedPartial: false, isQuitada: false
     });
   });
@@ -4264,16 +4289,10 @@ function stratGerarCalendario() {
   stratState.tipoAmortExtra = radioAmort ? radioAmort.value : 'prazo';
   stratState.parcelaMinPct = parseFloat(document.getElementById('strat-parcela-min-pct').value) || 0;
 
-  // Aporte mensal e saldo inicial podem ser ambos 0 (ex: apenas visualizar evolução das dívidas)
-  if (!stratState.selectedDividas.length && !stratState.selectedPropostas.length) {
-    alert('Selecione pelo menos uma dívida ou proposta.');
-    return;
-  }
-
-  // Build effective items count for allocation validation
-  var _effectiveCount = 0;
+  // Build effective items for calendar: dívidas (partial after credit) + ALL linked propostas + selected propostas
   var _linkedDivIdx = stratGetLinkedDividaIndices();
-  // Count dívidas that are selected or linked-partial
+
+  // Dívidas: selected + linked-partial (not fully paid off)
   var _dividasForCalendar = [];
   stratState.selectedDividas.forEach(function(idx) {
     if (_dividasForCalendar.indexOf(idx) < 0) _dividasForCalendar.push(idx);
@@ -4287,13 +4306,29 @@ function stratGerarCalendario() {
       if (_dividasForCalendar.indexOf(di) < 0) _dividasForCalendar.push(di);
     }
   });
-  // Count non-linked selected propostas
+
+  // Propostas: ALL linked propostas (they are new debts) + non-linked selected propostas
   var _propostasForCalendar = [];
-  stratState.selectedPropostas.forEach(function(pi) {
-    var isLinked = stratState.linkedPropostas.some(function(l) { return l.propostaIdx === pi; });
-    if (!isLinked) _propostasForCalendar.push(pi);
+  var _linkedPropIdx = [];
+  stratState.linkedPropostas.forEach(function(link) {
+    if (link.propostaIdx !== '' && link.propostaIdx !== undefined) {
+      if (_linkedPropIdx.indexOf(link.propostaIdx) < 0) _linkedPropIdx.push(link.propostaIdx);
+    }
   });
-  _effectiveCount = _dividasForCalendar.length + _propostasForCalendar.length;
+  _linkedPropIdx.forEach(function(pi) {
+    if (_propostasForCalendar.indexOf(pi) < 0) _propostasForCalendar.push(pi);
+  });
+  stratState.selectedPropostas.forEach(function(pi) {
+    if (_linkedPropIdx.indexOf(pi) >= 0) return; // already added
+    if (_propostasForCalendar.indexOf(pi) < 0) _propostasForCalendar.push(pi);
+  });
+
+  var _effectiveCount = _dividasForCalendar.length + _propostasForCalendar.length;
+
+  if (_effectiveCount === 0) {
+    alert('Selecione pelo menos uma dívida ou proposta.');
+    return;
+  }
 
   // Validar alocação por dívida/proposta
   if (_effectiveCount > 1) {
@@ -4306,7 +4341,7 @@ function stratGerarCalendario() {
     }
   }
 
-  var list = dividasAtuais; // Always use dividasAtuais for dívidas
+  var list = dividasAtuais;
   var isAtual = true;
 
   // Reset overrides para garantir cálculos limpos a cada geração
@@ -4350,7 +4385,7 @@ function stratGerarCalendario() {
     if (restantes > maxRestantes) maxRestantes = restantes;
   });
 
-  // Add selected propostas (non-linked) as debts to simulate
+  // Add propostas (linked + selected non-linked) as debts to simulate
   _propostasForCalendar.forEach(function(pi) {
     var p = dividasProposta[pi];
     if (!p) return;
@@ -4378,6 +4413,11 @@ function stratGerarCalendario() {
     });
     if (restantes > maxRestantes) maxRestantes = restantes;
   });
+
+  if (!dividasSel.length) {
+    alert('Nenhuma dívida ou proposta efetiva para simular.');
+    return;
+  }
 
   var periodoMax = Math.min(maxRestantes * 2, 360);
   if (periodoMax < 12) periodoMax = 12;
@@ -5455,11 +5495,20 @@ function _analiseRunStrat(strat) {
   });
 
   var _effectiveCountA = _allDividaIdx.length;
-  // Add non-linked selected propostas
+  // Add ALL linked propostas (they are new debts) + non-linked selected propostas
   var _propForCalA = [];
+  var _linkedPropIdxA = [];
+  linkedPropostas.forEach(function(link) {
+    if (link.propostaIdx !== '' && link.propostaIdx !== undefined) {
+      if (_linkedPropIdxA.indexOf(link.propostaIdx) < 0) _linkedPropIdxA.push(link.propostaIdx);
+    }
+  });
+  _linkedPropIdxA.forEach(function(pi) {
+    if (_propForCalA.indexOf(pi) < 0) _propForCalA.push(pi);
+  });
   selectedPropostas.forEach(function(pi) {
-    var isLinked = linkedPropostas.some(function(l) { return l.propostaIdx === pi; });
-    if (!isLinked) _propForCalA.push(pi);
+    if (_linkedPropIdxA.indexOf(pi) >= 0) return;
+    if (_propForCalA.indexOf(pi) < 0) _propForCalA.push(pi);
   });
   _effectiveCountA += _propForCalA.length;
 
