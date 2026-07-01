@@ -752,21 +752,14 @@
               <input type="number" id="cap-ap-fim-ocorr" min="1" value="12">
             </div>
           </div>
-          <div class="row" style="margin-bottom:0.8rem;">
-            <div class="field" style="flex:1;">
-              <label>Valor muda a partir de alguma data?</label>
-              <select id="cap-ap-muda" onchange="capAporteMudaChange()">
-                <option value="nao">Não</option>
-                <option value="sim">Sim</option>
-              </select>
+          <!-- Mudanças de valor (múltiplas) -->
+          <div style="margin-bottom:0.8rem; border:1px solid var(--border); border-radius:var(--radius); padding:0.6rem;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
+              <label style="font-size:0.8rem; color:var(--muted);">Mudanças de Valor Programadas</label>
+              <button class="btn btn-primary" onclick="capApAddMudanca()" style="font-size:0.7rem; padding:0.2rem 0.6rem;">+ Mudança</button>
             </div>
-            <div class="field" style="flex:1; display:none;" id="cap-ap-muda-data-wrap">
-              <label>Data da Mudança</label>
-              <input type="date" id="cap-ap-muda-data">
-            </div>
-            <div class="field" style="flex:1; display:none;" id="cap-ap-muda-valor-wrap">
-              <label>Novo Valor (R$)</label>
-              <input type="text" id="cap-ap-muda-valor" placeholder="R$ 0,00" oninput="fmtCurrInput(this)">
+            <div id="cap-ap-mudancas-list">
+              <p class="note" style="font-size:0.75rem;">Nenhuma mudança de valor. O aporte manterá o valor inicial (ou reajustado anualmente).</p>
             </div>
           </div>
           <div class="row" style="margin-bottom:0.8rem;">
@@ -2968,21 +2961,20 @@ function capEditAporte(idx) {
   _capEditingAporteIdx = idx;
   document.getElementById('cap-ap-desc').value = ap.descricao || '';
   var elVal = document.getElementById('cap-ap-valor');
-  elVal.value = ap.valor ? (ap.valor / 100 * 100).toFixed(2).replace('.', ',').replace(/(\d)(?=(\d{3})+(?!\d))/g, '$1.') : '';
-  if (ap.valor) { var vs = (ap.valor).toFixed(2).replace('.', ',').replace(/(\d)(?=(\d{3})+(?!\d))/g, '$1.'); elVal.value = vs; }
+  if (ap.valor) { var vs = (ap.valor).toFixed(2).replace('.', ',').replace(/(\d)(?=(\d{3})+(?!\d))/g, '$1.'); elVal.value = vs; } else { elVal.value = ''; }
   document.getElementById('cap-ap-periodo').value = ap.periodo || 'mensal';
   document.getElementById('cap-ap-inicio').value = ap.dataInicio || '';
   document.getElementById('cap-ap-termina').value = ap.termina || 'nao';
   capAporteTerminaChange();
   if (ap.termina === 'data') document.getElementById('cap-ap-fim-data').value = ap.dataFim || '';
   if (ap.termina === 'ocorrencias') document.getElementById('cap-ap-fim-ocorr').value = ap.ocorrencias || 12;
-  document.getElementById('cap-ap-muda').value = ap.mudaValor ? 'sim' : 'nao';
-  capAporteMudaChange();
-  if (ap.mudaValor) {
-    document.getElementById('cap-ap-muda-data').value = ap.dataMuda || '';
-    var elMV = document.getElementById('cap-ap-muda-valor');
-    if (ap.novoValor) { elMV.value = (ap.novoValor).toFixed(2).replace('.', ',').replace(/(\d)(?=(\d{3})+(?!\d))/g, '$1.'); }
+  // Carregar mudanças
+  _capTempMudancas = ap.mudancas ? JSON.parse(JSON.stringify(ap.mudancas)) : [];
+  // Compat: formato antigo
+  if (!_capTempMudancas.length && ap.mudaValor && ap.dataMuda) {
+    _capTempMudancas = [{ data: ap.dataMuda, valor: ap.novoValor || 0 }];
   }
+  _capRenderMudancas();
   document.getElementById('cap-ap-reajuste').value = ap.reajusteAnual || 0;
   document.getElementById('cap-aporte-form-title').textContent = 'Editar Aporte';
   document.getElementById('cap-aporte-form').style.display = 'block';
@@ -2993,6 +2985,8 @@ function capDeleteAporte(idx) {
   _capRenderAportes();
 }
 
+var _capTempMudancas = []; // [{data, valor}] - mudanças do aporte sendo editado
+
 function _capResetAporteForm() {
   document.getElementById('cap-ap-desc').value = '';
   document.getElementById('cap-ap-valor').value = '';
@@ -3001,29 +2995,68 @@ function _capResetAporteForm() {
   document.getElementById('cap-ap-termina').value = 'nao';
   document.getElementById('cap-ap-fim-data').value = '';
   document.getElementById('cap-ap-fim-ocorr').value = '12';
-  document.getElementById('cap-ap-muda').value = 'nao';
-  document.getElementById('cap-ap-muda-data').value = '';
-  document.getElementById('cap-ap-muda-valor').value = '';
   document.getElementById('cap-ap-reajuste').value = '0';
   document.getElementById('cap-ap-fim-data-wrap').style.display = 'none';
   document.getElementById('cap-ap-fim-ocorr-wrap').style.display = 'none';
-  document.getElementById('cap-ap-muda-data-wrap').style.display = 'none';
-  document.getElementById('cap-ap-muda-valor-wrap').style.display = 'none';
+  _capTempMudancas = [];
+  _capRenderMudancas();
 }
 
 function capAporteTerminaChange() {
   var v = document.getElementById('cap-ap-termina').value;
   document.getElementById('cap-ap-fim-data-wrap').style.display = v === 'data' ? 'block' : 'none';
   document.getElementById('cap-ap-fim-ocorr-wrap').style.display = v === 'ocorrencias' ? 'block' : 'none';
-  // Se único, esconder a linha de término
   var periodo = document.getElementById('cap-ap-periodo').value;
   document.getElementById('cap-ap-fim-row').style.display = periodo === 'unico' ? 'none' : 'flex';
 }
 
-function capAporteMudaChange() {
-  var v = document.getElementById('cap-ap-muda').value;
-  document.getElementById('cap-ap-muda-data-wrap').style.display = v === 'sim' ? 'block' : 'none';
-  document.getElementById('cap-ap-muda-valor-wrap').style.display = v === 'sim' ? 'block' : 'none';
+// --- Mudanças de valor (múltiplas) ---
+function capApAddMudanca() {
+  var data = prompt('Data da mudança de valor (AAAA-MM-DD):');
+  if (!data) return;
+  var valorStr = prompt('Novo valor a partir desta data (R$):');
+  if (!valorStr) return;
+  var valor = parseCurr(valorStr);
+  if (!valor || valor <= 0) { alert('Valor inválido.'); return; }
+  _capTempMudancas.push({ data: data, valor: valor });
+  _capTempMudancas.sort(function(a, b) { return a.data.localeCompare(b.data); });
+  _capRenderMudancas();
+}
+
+function capApEditMudanca(idx) {
+  var m = _capTempMudancas[idx];
+  if (!m) return;
+  var data = prompt('Data da mudança (AAAA-MM-DD):', m.data);
+  if (!data) return;
+  var valorStr = prompt('Novo valor (R$):', m.valor.toFixed(2).replace('.', ','));
+  if (!valorStr) return;
+  _capTempMudancas[idx] = { data: data, valor: parseCurr(valorStr) };
+  _capTempMudancas.sort(function(a, b) { return a.data.localeCompare(b.data); });
+  _capRenderMudancas();
+}
+
+function capApDeleteMudanca(idx) {
+  _capTempMudancas.splice(idx, 1);
+  _capRenderMudancas();
+}
+
+function _capRenderMudancas() {
+  var container = document.getElementById('cap-ap-mudancas-list');
+  if (!container) return;
+  if (!_capTempMudancas.length) {
+    container.innerHTML = '<p class="note" style="font-size:0.75rem;">Nenhuma mudança de valor. O aporte manterá o valor inicial (ou reajustado anualmente).</p>';
+    return;
+  }
+  var html = '';
+  _capTempMudancas.forEach(function(m, i) {
+    var dataFmt = m.data ? new Date(m.data + 'T00:00:00').toLocaleDateString('pt-BR') : '—';
+    html += '<div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:0.3rem; font-size:0.8rem;">' +
+      '<span>A partir de <strong>' + dataFmt + '</strong>: ' + fmtBRL(m.valor) + '</span>' +
+      '<button class="btn btn-edit" onclick="capApEditMudanca(' + i + ')" style="font-size:0.65rem; padding:0.1rem 0.3rem;">&#9998;</button>' +
+      '<button class="btn btn-danger" onclick="capApDeleteMudanca(' + i + ')" style="font-size:0.65rem; padding:0.1rem 0.3rem;">&#128465;</button>' +
+    '</div>';
+  });
+  container.innerHTML = html;
 }
 
 function capAporteFormCancel() {
@@ -3044,9 +3077,6 @@ function capAporteFormSave() {
   if (periodo === 'unico') { termina = 'ocorrencias'; ocorrencias = 1; }
   else if (termina === 'data') { dataFim = document.getElementById('cap-ap-fim-data').value; }
   else if (termina === 'ocorrencias') { ocorrencias = parseInt(document.getElementById('cap-ap-fim-ocorr').value) || 12; }
-  var mudaValor = document.getElementById('cap-ap-muda').value === 'sim';
-  var dataMuda = mudaValor ? document.getElementById('cap-ap-muda-data').value : '';
-  var novoValor = mudaValor ? parseCurr(document.getElementById('cap-ap-muda-valor').value) : 0;
   var reajusteAnual = parseFloat(document.getElementById('cap-ap-reajuste').value) || 0;
 
   var aporte = {
@@ -3058,9 +3088,7 @@ function capAporteFormSave() {
     termina: termina,
     dataFim: dataFim,
     ocorrencias: ocorrencias,
-    mudaValor: mudaValor,
-    dataMuda: dataMuda,
-    novoValor: novoValor,
+    mudancas: JSON.parse(JSON.stringify(_capTempMudancas)),
     reajusteAnual: reajusteAnual
   };
 
@@ -3089,7 +3117,13 @@ function _capRenderAportes() {
     else if (ap.termina === 'ocorrencias') fimStr = ' (' + ap.ocorrencias + 'x)';
     else if (ap.periodo !== 'unico') fimStr = ' (indefinido)';
     var reajStr = ap.reajusteAnual > 0 ? ' | Reaj: ' + ap.reajusteAnual.toFixed(1) + '%/ano' : '';
-    var mudaStr = ap.mudaValor ? ' | Muda p/ ' + fmtBRL(ap.novoValor) + ' em ' + (ap.dataMuda ? new Date(ap.dataMuda + 'T00:00:00').toLocaleDateString('pt-BR') : '?') : '';
+    var mudaStr = '';
+    var mudancas = ap.mudancas || [];
+    // Compat: formato antigo com mudaValor/dataMuda/novoValor
+    if (!mudancas.length && ap.mudaValor && ap.dataMuda) mudancas = [{ data: ap.dataMuda, valor: ap.novoValor }];
+    if (mudancas.length) {
+      mudaStr = ' | ' + mudancas.length + ' mudança(s) de valor';
+    }
     html += '<div class="strat-update-item">' +
       '<div class="info">' +
         '<strong>' + _escHtml(ap.descricao) + '</strong>: ' + fmtBRL(ap.valor) + ' | ' + perLabel + ' | Início: ' + dataFmt + fimStr + reajStr + mudaStr +
@@ -4440,10 +4474,20 @@ function _calcAportesMes(aportes, mesDate, dataRefInicio) {
 
 function _getAporteValorComReajuste(ap, mesDate, inicio) {
   var valor = ap.valor;
-  // Mudança de valor?
-  if (ap.mudaValor && ap.dataMuda) {
-    var dataMuda = new Date(ap.dataMuda + 'T00:00:00');
-    if (mesDate >= dataMuda) valor = ap.novoValor || valor;
+  // Mudanças de valor (múltiplas) - aplica a última mudança cuja data já passou
+  var mudancas = ap.mudancas || [];
+  // Compat: formato antigo
+  if (!mudancas.length && ap.mudaValor && ap.dataMuda) {
+    mudancas = [{ data: ap.dataMuda, valor: ap.novoValor || 0 }];
+  }
+  if (mudancas.length) {
+    for (var mi = mudancas.length - 1; mi >= 0; mi--) {
+      var dataMuda = new Date(mudancas[mi].data + 'T00:00:00');
+      if (mesDate >= dataMuda) {
+        valor = mudancas[mi].valor;
+        break;
+      }
+    }
   }
   // Reajuste anual (a cada 12 meses após início)
   if (ap.reajusteAnual > 0) {
