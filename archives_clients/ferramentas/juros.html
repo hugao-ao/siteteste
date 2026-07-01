@@ -911,12 +911,19 @@
           <p class="note">Cadastre dívidas nas abas anteriores para selecioná-las aqui.</p>
         </div>
 
-        <!-- Linking Dívida ↔ Proposta -->
-        <div id="strat-linking-section" class="hidden" style="margin-top:1.5rem; padding:1rem; background:var(--card2); border-radius:var(--radius); border:1px solid var(--border);">
-          <h3 style="font-size:0.9rem; color:var(--blue); margin-bottom:0.5rem;">Vincular Propostas a Dívidas</h3>
-          <p class="note" style="margin-bottom:0.8rem;">Vincule uma proposta a uma dívida para indicar que a proposta quita/substitui aquela dívida. Se o crédito da proposta for maior que o saldo, a diferença vira poder de amortização adicional.</p>
-          <div id="strat-linking-container"></div>
-          <button class="btn btn-primary" onclick="stratAddLink()" style="font-size:0.75rem; padding:0.3rem 0.8rem; margin-top:0.5rem;">+ Vincular Proposta</button>
+        <!-- Linking Dívida ↔ Proposta (Visual Drag-Connect) -->
+        <div id="strat-linking-section" class="hidden" style="margin-top:1.5rem; padding:1rem; background:var(--bg); border-radius:var(--radius); border:1px solid var(--border);">
+          <h3 style="font-size:0.9rem; color:var(--blue); margin-bottom:0.3rem;">Vincular Propostas a Dívidas</h3>
+          <p class="note" style="margin-bottom:0.8rem;">Arraste de uma proposta até uma dívida para criar o vínculo. Clique em uma linha para removê-la.</p>
+          <div id="strat-link-canvas-wrap" style="position:relative; min-height:200px;">
+            <svg id="strat-link-svg" style="position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:2;"></svg>
+            <div style="display:flex; justify-content:space-between; gap:1rem; position:relative; z-index:3;">
+              <div id="strat-link-propostas" style="flex:1; display:flex; flex-direction:column; gap:0.4rem;"></div>
+              <div style="flex:0 0 40px;"></div>
+              <div id="strat-link-dividas" style="flex:1; display:flex; flex-direction:column; gap:0.4rem;"></div>
+            </div>
+          </div>
+          <div id="strat-link-info" style="margin-top:0.6rem; font-size:0.8rem;"></div>
         </div>
       </div>
 
@@ -3427,64 +3434,274 @@ function stratUpdateLink(idx, field, value) {
   stratRenderAlocPorDivida();
 }
 
+// ===== VISUAL DRAG-TO-CONNECT LINKING =====
+var _linkDragging = false;
+var _linkDragFrom = null; // {type:'proposta', idx:number}
+var _linkTempLine = null;
+
 function stratRenderLinks() {
   var section = document.getElementById('strat-linking-section');
-  var container = document.getElementById('strat-linking-container');
-  // Show linking section only if there are both dívidas and propostas
   if (!dividasAtuais.length || !dividasProposta.length) {
     section.classList.add('hidden');
     return;
   }
   section.classList.remove('hidden');
 
+  // Render proposta cards (left)
+  var pContainer = document.getElementById('strat-link-propostas');
+  var pHtml = '<div style="font-size:0.7rem; color:var(--muted); text-align:center; margin-bottom:0.3rem; font-weight:600;">PROPOSTAS</div>';
+  dividasProposta.forEach(function(p, pi) {
+    var isLinked = stratState.linkedPropostas.some(function(l) { return l.propostaIdx === pi; });
+    var borderColor = isLinked ? 'var(--green)' : 'var(--border)';
+    var opacity = isLinked ? '0.6' : '1';
+    pHtml += '<div class="strat-link-card" data-type="proposta" data-idx="' + pi + '" style="padding:0.4rem 0.6rem; background:var(--card2); border:1px solid ' + borderColor + '; border-radius:var(--radius); cursor:grab; font-size:0.75rem; opacity:' + opacity + '; user-select:none; transition:all 0.2s;">';
+    pHtml += '<div style="font-weight:600; color:var(--blue); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">' + _escHtml(p.nome) + '</div>';
+    pHtml += '<div style="color:var(--muted); font-size:0.65rem;">' + fmtBRL(p.valorContratado) + '</div>';
+    pHtml += '</div>';
+  });
+  pContainer.innerHTML = pHtml;
+
+  // Render dívida cards (right)
+  var dContainer = document.getElementById('strat-link-dividas');
+  var dHtml = '<div style="font-size:0.7rem; color:var(--muted); text-align:center; margin-bottom:0.3rem; font-weight:600;">DÍVIDAS</div>';
+  dividasAtuais.forEach(function(d, di) {
+    var isLinked = stratState.linkedPropostas.some(function(l) { return l.dividaIdx === di; });
+    var borderColor = isLinked ? 'var(--green)' : 'var(--border)';
+    var opacity = isLinked ? '0.6' : '1';
+    dHtml += '<div class="strat-link-card" data-type="divida" data-idx="' + di + '" style="padding:0.4rem 0.6rem; background:var(--card2); border:1px solid ' + borderColor + '; border-radius:var(--radius); cursor:grab; font-size:0.75rem; opacity:' + opacity + '; user-select:none; transition:all 0.2s;">';
+    dHtml += '<div style="font-weight:600; color:var(--gold); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">' + _escHtml(d.nome) + '</div>';
+    dHtml += '<div style="color:var(--muted); font-size:0.65rem;">' + fmtBRL(d.saldoDevedor || d.valorContratado) + '</div>';
+    dHtml += '</div>';
+  });
+  dContainer.innerHTML = dHtml;
+
+  // Draw existing links as SVG lines
+  _linkDrawLines();
+
+  // Render info summary
+  _linkRenderInfo();
+
+  // Attach drag events
+  _linkAttachEvents();
+}
+
+function _linkDrawLines() {
+  var svg = document.getElementById('strat-link-svg');
+  var wrap = document.getElementById('strat-link-canvas-wrap');
+  var wrapRect = wrap.getBoundingClientRect();
+  // Set SVG size to match container
+  svg.setAttribute('width', wrap.offsetWidth);
+  svg.setAttribute('height', wrap.offsetHeight);
+  svg.style.width = wrap.offsetWidth + 'px';
+  svg.style.height = wrap.offsetHeight + 'px';
+
+  var lines = '';
+  stratState.linkedPropostas.forEach(function(link, idx) {
+    if (link.propostaIdx === '' || link.dividaIdx === '') return;
+    var pCard = document.querySelector('#strat-link-propostas .strat-link-card[data-idx="' + link.propostaIdx + '"]');
+    var dCard = document.querySelector('#strat-link-dividas .strat-link-card[data-idx="' + link.dividaIdx + '"]');
+    if (!pCard || !dCard) return;
+    var pRect = pCard.getBoundingClientRect();
+    var dRect = dCard.getBoundingClientRect();
+    var x1 = pRect.right - wrapRect.left;
+    var y1 = pRect.top + pRect.height / 2 - wrapRect.top;
+    var x2 = dRect.left - wrapRect.left;
+    var y2 = dRect.top + dRect.height / 2 - wrapRect.top;
+
+    // Determine color based on link result
+    var prop = dividasProposta[link.propostaIdx];
+    var div = dividasAtuais[link.dividaIdx];
+    var lineColor = '#4ade80'; // green
+    if (prop && div) {
+      var diff = prop.valorContratado - (div.saldoDevedor || div.valorContratado);
+      if (diff < 0) lineColor = '#f59e0b'; // orange for partial
+    }
+
+    lines += '<line x1="' + x1 + '" y1="' + y1 + '" x2="' + x2 + '" y2="' + y2 + '" stroke="' + lineColor + '" stroke-width="2" stroke-dasharray="4,2" data-link-idx="' + idx + '" style="pointer-events:stroke; cursor:pointer;" onclick="_linkClickLine(event,' + idx + ')" />';
+  });
+  svg.innerHTML = lines;
+}
+
+function _linkRenderInfo() {
+  var infoDiv = document.getElementById('strat-link-info');
   if (!stratState.linkedPropostas.length) {
-    container.innerHTML = '<p class="note">Nenhum vínculo criado. Clique em "+ Vincular Proposta" para ligar uma proposta a uma dívida.</p>';
+    infoDiv.innerHTML = '<span style="color:var(--muted);">Nenhum vínculo. Arraste de uma proposta até uma dívida.</span>';
     return;
   }
-
   var html = '';
   stratState.linkedPropostas.forEach(function(link, idx) {
-    html += '<div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:0.5rem; padding:0.5rem; background:var(--bg); border-radius:var(--radius); border:1px solid var(--border);">';
-    // Proposta selector
-    html += '<select onchange="stratUpdateLink(' + idx + ',\'propostaIdx\',this.value)" style="flex:1; min-width:120px;">';
-    html += '<option value="">Proposta...</option>';
-    dividasProposta.forEach(function(p, pi) {
-      var sel = link.propostaIdx === pi ? ' selected' : '';
-      html += '<option value="' + pi + '"' + sel + '>' + p.nome + ' (' + fmtBRL(p.valorContratado) + ')</option>';
-    });
-    html += '</select>';
-    html += '<span style="color:var(--blue); font-weight:600;">→</span>';
-    // Dívida selector
-    html += '<select onchange="stratUpdateLink(' + idx + ',\'dividaIdx\',this.value)" style="flex:1; min-width:120px;">';
-    html += '<option value="">Dívida...</option>';
-    dividasAtuais.forEach(function(d, di) {
-      var sel = link.dividaIdx === di ? ' selected' : '';
-      html += '<option value="' + di + '"' + sel + '>' + d.nome + ' (' + fmtBRL(d.saldoDevedor || d.valorContratado) + ')</option>';
-    });
-    html += '</select>';
-    // Info about the link result
-    var infoHtml = '';
-    if (link.propostaIdx !== '' && link.dividaIdx !== '') {
-      var prop = dividasProposta[link.propostaIdx];
-      var div = dividasAtuais[link.dividaIdx];
-      if (prop && div) {
-        var credito = prop.valorContratado;
-        var saldo = div.saldoDevedor || div.valorContratado;
-        var diff = credito - saldo;
-        if (diff > 0) {
-          infoHtml = '<span style="font-size:0.75rem; color:var(--green);">+' + fmtBRL(diff) + ' excedente</span>';
-        } else if (diff < 0) {
-          infoHtml = '<span style="font-size:0.75rem; color:var(--orange);">Amort. parcial: ' + fmtBRL(credito) + '</span>';
-        } else {
-          infoHtml = '<span style="font-size:0.75rem; color:var(--green);">Quita exatamente</span>';
-        }
-      }
+    if (link.propostaIdx === '' || link.dividaIdx === '') return;
+    var prop = dividasProposta[link.propostaIdx];
+    var div = dividasAtuais[link.dividaIdx];
+    if (!prop || !div) return;
+    var credito = prop.valorContratado;
+    var saldo = div.saldoDevedor || div.valorContratado;
+    var diff = credito - saldo;
+    var resultText;
+    if (diff > 0) {
+      resultText = '<span style="color:var(--green);">+' + fmtBRL(diff) + ' excedente</span>';
+    } else if (diff < 0) {
+      resultText = '<span style="color:var(--orange);">Amort. parcial ' + fmtBRL(credito) + '</span>';
+    } else {
+      resultText = '<span style="color:var(--green);">Quita exatamente</span>';
     }
-    html += infoHtml;
-    html += '<button class="btn btn-danger" onclick="stratRemoveLink(' + idx + ')" style="padding:0.2rem 0.5rem; font-size:0.75rem;">✕</button>';
+    html += '<div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:0.2rem;">';
+    html += '<span style="color:var(--blue);">' + _escHtml(prop.nome) + '</span>';
+    html += '<span style="color:var(--muted);">→</span>';
+    html += '<span style="color:var(--gold);">' + _escHtml(div.nome) + '</span>';
+    html += '<span style="margin-left:auto;">' + resultText + '</span>';
     html += '</div>';
   });
-  container.innerHTML = html;
+  infoDiv.innerHTML = html;
+}
+
+function _linkAttachEvents() {
+  var cards = document.querySelectorAll('#strat-link-canvas-wrap .strat-link-card');
+  cards.forEach(function(card) {
+    card.addEventListener('mousedown', _linkStartDrag);
+    card.addEventListener('touchstart', _linkStartDragTouch, {passive:false});
+  });
+}
+
+function _linkStartDrag(e) {
+  e.preventDefault();
+  var type = this.getAttribute('data-type');
+  var idx = parseInt(this.getAttribute('data-idx'));
+  // Only allow dragging from proposta to divida
+  if (type !== 'proposta') return;
+  _linkDragging = true;
+  _linkDragFrom = {type: type, idx: idx};
+  this.style.boxShadow = '0 0 8px var(--blue)';
+
+  var wrap = document.getElementById('strat-link-canvas-wrap');
+  var svg = document.getElementById('strat-link-svg');
+  var wrapRect = wrap.getBoundingClientRect();
+  var cardRect = this.getBoundingClientRect();
+  var x1 = cardRect.right - wrapRect.left;
+  var y1 = cardRect.top + cardRect.height / 2 - wrapRect.top;
+
+  // Create temp line
+  var line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+  line.setAttribute('x1', x1);
+  line.setAttribute('y1', y1);
+  line.setAttribute('x2', x1);
+  line.setAttribute('y2', y1);
+  line.setAttribute('stroke', 'var(--blue)');
+  line.setAttribute('stroke-width', '2');
+  line.setAttribute('stroke-dasharray', '6,3');
+  line.setAttribute('id', 'strat-link-temp-line');
+  svg.appendChild(line);
+  _linkTempLine = line;
+
+  document.addEventListener('mousemove', _linkOnDrag);
+  document.addEventListener('mouseup', _linkEndDrag);
+}
+
+function _linkStartDragTouch(e) {
+  e.preventDefault();
+  var type = this.getAttribute('data-type');
+  var idx = parseInt(this.getAttribute('data-idx'));
+  if (type !== 'proposta') return;
+  _linkDragging = true;
+  _linkDragFrom = {type: type, idx: idx};
+  this.style.boxShadow = '0 0 8px var(--blue)';
+
+  var wrap = document.getElementById('strat-link-canvas-wrap');
+  var svg = document.getElementById('strat-link-svg');
+  var wrapRect = wrap.getBoundingClientRect();
+  var cardRect = this.getBoundingClientRect();
+  var x1 = cardRect.right - wrapRect.left;
+  var y1 = cardRect.top + cardRect.height / 2 - wrapRect.top;
+
+  var line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+  line.setAttribute('x1', x1);
+  line.setAttribute('y1', y1);
+  line.setAttribute('x2', x1);
+  line.setAttribute('y2', y1);
+  line.setAttribute('stroke', 'var(--blue)');
+  line.setAttribute('stroke-width', '2');
+  line.setAttribute('stroke-dasharray', '6,3');
+  line.setAttribute('id', 'strat-link-temp-line');
+  svg.appendChild(line);
+  _linkTempLine = line;
+
+  document.addEventListener('touchmove', _linkOnDragTouch, {passive:false});
+  document.addEventListener('touchend', _linkEndDragTouch);
+}
+
+function _linkOnDrag(e) {
+  if (!_linkDragging || !_linkTempLine) return;
+  var wrap = document.getElementById('strat-link-canvas-wrap');
+  var wrapRect = wrap.getBoundingClientRect();
+  var x = e.clientX - wrapRect.left;
+  var y = e.clientY - wrapRect.top;
+  _linkTempLine.setAttribute('x2', x);
+  _linkTempLine.setAttribute('y2', y);
+}
+
+function _linkOnDragTouch(e) {
+  if (!_linkDragging || !_linkTempLine) return;
+  e.preventDefault();
+  var touch = e.touches[0];
+  var wrap = document.getElementById('strat-link-canvas-wrap');
+  var wrapRect = wrap.getBoundingClientRect();
+  var x = touch.clientX - wrapRect.left;
+  var y = touch.clientY - wrapRect.top;
+  _linkTempLine.setAttribute('x2', x);
+  _linkTempLine.setAttribute('y2', y);
+}
+
+function _linkEndDrag(e) {
+  document.removeEventListener('mousemove', _linkOnDrag);
+  document.removeEventListener('mouseup', _linkEndDrag);
+  _linkFinishDrag(e.clientX, e.clientY);
+}
+
+function _linkEndDragTouch(e) {
+  document.removeEventListener('touchmove', _linkOnDragTouch);
+  document.removeEventListener('touchend', _linkEndDragTouch);
+  var touch = e.changedTouches[0];
+  _linkFinishDrag(touch.clientX, touch.clientY);
+}
+
+function _linkFinishDrag(clientX, clientY) {
+  _linkDragging = false;
+  // Remove temp line
+  if (_linkTempLine) { _linkTempLine.remove(); _linkTempLine = null; }
+  // Remove highlight from source card
+  var srcCard = document.querySelector('#strat-link-propostas .strat-link-card[data-idx="' + _linkDragFrom.idx + '"]');
+  if (srcCard) srcCard.style.boxShadow = '';
+
+  // Check if dropped on a dívida card
+  var target = document.elementFromPoint(clientX, clientY);
+  if (!target) { _linkDragFrom = null; return; }
+  var card = target.closest('.strat-link-card[data-type="divida"]');
+  if (!card) { _linkDragFrom = null; return; }
+
+  var dividaIdx = parseInt(card.getAttribute('data-idx'));
+  var propostaIdx = _linkDragFrom.idx;
+
+  // Check if link already exists
+  var exists = stratState.linkedPropostas.some(function(l) {
+    return l.propostaIdx === propostaIdx && l.dividaIdx === dividaIdx;
+  });
+  if (!exists) {
+    stratState.linkedPropostas.push({ propostaIdx: propostaIdx, dividaIdx: dividaIdx });
+    stratRenderLinks();
+    stratRenderDividaChips();
+    stratRenderAlocPorDivida();
+  }
+  _linkDragFrom = null;
+}
+
+function _linkClickLine(e, idx) {
+  e.stopPropagation();
+  if (confirm('Remover este vínculo?')) {
+    stratState.linkedPropostas.splice(idx, 1);
+    stratRenderLinks();
+    stratRenderDividaChips();
+    stratRenderAlocPorDivida();
+  }
 }
 
 // Get linked dívida indices (these should not participate in amortization allocation)
