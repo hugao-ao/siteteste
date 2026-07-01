@@ -3361,8 +3361,10 @@ function stratSwitchSource(src, keepSelection) {
     stratState.selectedDividas = [];
     stratState.alocPorDivida = {};
   }
-  document.getElementById('strat-src-atual').classList.toggle('active', src === 'atual');
-  document.getElementById('strat-src-proposta').classList.toggle('active', src === 'proposta');
+  var btnAtual = document.getElementById('strat-src-atual');
+  var btnProp = document.getElementById('strat-src-proposta');
+  if (btnAtual) btnAtual.classList.toggle('active', src === 'atual');
+  if (btnProp) btnProp.classList.toggle('active', src === 'proposta');
   stratRenderDividaChips();
   stratRenderAlocPorDivida();
 }
