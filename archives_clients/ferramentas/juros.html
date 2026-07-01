@@ -3356,7 +3356,7 @@ function stratPopulateCapacidadeSelect() {
   _capacidades.forEach(function(cap) {
     var opt = document.createElement('option');
     opt.value = cap.id;
-    opt.textContent = cap.nome + ' (' + fmtBRL(cap.config.aporteMensal) + '/mês)';
+    opt.textContent = cap.nome + ' (' + fmtBRL(cap.aporteMensal || 0) + '/mês)';
     select.appendChild(opt);
   });
   if (currentVal) select.value = currentVal;
@@ -3369,12 +3369,12 @@ function stratOnCapacidadeChange() {
   if (capId) {
     var cap = _capacidades.find(function(c) { return c.id === capId; });
     if (cap) {
-      stratState.aporteMensal = cap.config.aporteMensal || 0;
-      stratState.saldoInicial = cap.config.saldoInicial || 0;
-      stratState.rentabAnual = cap.config.rentabAnual || 12;
-      stratState.irPct = cap.config.irPct || 15;
-      stratState.updates = JSON.parse(JSON.stringify(cap.config.updates || []));
-      stratState.sporadics = JSON.parse(JSON.stringify(cap.config.sporadics || []));
+      stratState.aporteMensal = cap.aporteMensal || 0;
+      stratState.saldoInicial = cap.saldoInicial || 0;
+      stratState.rentabAnual = cap.rentabAnual || 12;
+      stratState.irPct = cap.irPct || 15;
+      stratState.updates = JSON.parse(JSON.stringify(cap.updates || []));
+      stratState.sporadics = JSON.parse(JSON.stringify(cap.sporadics || []));
       // Update hidden inputs
       document.getElementById('strat-aporte-mensal').value = stratState.aporteMensal;
       document.getElementById('strat-saldo-inicial').value = stratState.saldoInicial;
@@ -3398,13 +3398,13 @@ function stratShowCapResumo() {
   var resumo = document.getElementById('strat-cap-resumo');
   if (!cap) { resumo.classList.add('hidden'); return; }
   resumo.classList.remove('hidden');
-  document.getElementById('strat-cap-aporte').textContent = fmtBRL(cap.config.aporteMensal || 0);
-  document.getElementById('strat-cap-saldo').textContent = fmtBRL(cap.config.saldoInicial || 0);
-  document.getElementById('strat-cap-rentab').textContent = (cap.config.rentabAnual || 12).toFixed(1) + '% a.a.';
-  document.getElementById('strat-cap-ir').textContent = (cap.config.irPct || 15).toFixed(1) + '%';
+  document.getElementById('strat-cap-aporte').textContent = fmtBRL(cap.aporteMensal || 0);
+  document.getElementById('strat-cap-saldo').textContent = fmtBRL(cap.saldoInicial || 0);
+  document.getElementById('strat-cap-rentab').textContent = (cap.rentabAnual || 12).toFixed(1) + '% a.a.';
+  document.getElementById('strat-cap-ir').textContent = (cap.irPct || 15).toFixed(1) + '%';
   var info = '';
-  var nUpd = (cap.config.updates || []).length;
-  var nSpo = (cap.config.sporadics || []).length;
+  var nUpd = (cap.updates || []).length;
+  var nSpo = (cap.sporadics || []).length;
   if (nUpd) info += nUpd + ' atualização(ões) de aporte';
   if (nSpo) info += (info ? ' | ' : '') + nSpo + ' aporte(s) esporádico(s)';
   document.getElementById('strat-cap-updates-info').textContent = info || 'Sem atualizações ou aportes esporádicos.';
