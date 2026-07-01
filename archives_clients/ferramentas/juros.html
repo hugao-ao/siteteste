@@ -866,59 +866,41 @@
         </div>
       </div>
 
-      <!-- STEP 1: Configuração do Aporte Mensal -->
+      <!-- STEP 1: Seleção de Capacidade de Amortização -->
       <div class="card">
-        <h2>Passo 1 — Poder de Poupança / Amortização</h2>
-        <p style="color:var(--muted); font-size:0.85rem; margin-bottom:1.2rem;">Informe quanto você consegue guardar/amortizar por mês além das parcelas normais.</p>
+        <h2>Passo 1 — Capacidade de Amortização</h2>
+        <p style="color:var(--muted); font-size:0.85rem; margin-bottom:1.2rem;">Selecione uma capacidade de amortização criada na aba 3. Ela define o aporte mensal, rentabilidade, IR e atualizações.</p>
 
-        <div class="row" style="margin-bottom:1rem;">
-          <div class="field">
-            <label>Aporte Mensal Inicial (R$)</label>
-            <input type="text" id="strat-aporte-mensal" placeholder="R$ 0,00" oninput="fmtCurrInput(this)">
-          </div>
-          <div class="field">
-            <label>Saldo Atual já Guardado (R$)</label>
-            <input type="text" id="strat-saldo-inicial" placeholder="R$ 0,00" oninput="fmtCurrInput(this)">
-            <span class="note">Se já tem uma reserva acumulada, informe aqui.</span>
-          </div>
-        </div>
-        <div class="row" style="margin-bottom:1rem;">
-          <div class="field">
-            <label>Rentabilidade do Investimento (% a.a.)</label>
-            <input type="number" id="strat-rentab" value="12" step="0.1">
-          </div>
-          <div class="field">
-            <label>IR sobre Rendimento (%)</label>
-            <input type="number" id="strat-ir" value="15" step="0.1">
-            <span class="note">Imposto sobre o lucro no momento do resgate</span>
-          </div>
+        <div class="field" style="max-width:400px; margin-bottom:1rem;">
+          <label>Capacidade de Amortização</label>
+          <select id="strat-capacidade-select" onchange="stratOnCapacidadeChange()">
+            <option value="">-- Selecione uma capacidade --</option>
+          </select>
+          <span class="note">Crie capacidades na aba <b>3. Poder de Amortização</b></span>
         </div>
 
-        <!-- Atualizações de aporte -->
-        <div class="section-header" style="margin-top:1.2rem;">
-          <h3 style="font-size:0.9rem;">Atualizações de Aporte ao Longo do Tempo</h3>
-          <button class="btn btn-primary" onclick="stratAddUpdate()" style="font-size:0.75rem; padding:0.3rem 0.8rem;">+ Atualização</button>
-        </div>
-        <p class="note" style="margin-bottom:0.8rem;">Se o aporte mensal vai mudar em alguma data futura (aumento de renda, fim de outra despesa, etc.), adicione aqui.</p>
-        <div id="strat-updates-list">
-          <p class="note" id="strat-updates-empty">Nenhuma atualização — o aporte será constante.</p>
+        <!-- Resumo da capacidade selecionada -->
+        <div id="strat-cap-resumo" class="hidden" style="padding:0.8rem; background:var(--card2); border-radius:var(--radius); border:1px solid var(--border);">
+          <div class="row" style="margin-bottom:0.5rem;">
+            <div class="field"><label>Aporte Mensal</label><span id="strat-cap-aporte" style="color:var(--green); font-weight:600;"></span></div>
+            <div class="field"><label>Saldo Inicial</label><span id="strat-cap-saldo" style="color:var(--blue); font-weight:600;"></span></div>
+            <div class="field"><label>Rentabilidade</label><span id="strat-cap-rentab" style="color:#fff;"></span></div>
+            <div class="field"><label>IR</label><span id="strat-cap-ir" style="color:#fff;"></span></div>
+          </div>
+          <div id="strat-cap-updates-info" style="font-size:0.8rem; color:var(--muted);"></div>
         </div>
 
-        <!-- Aportes Esporádicos -->
-        <div class="section-header" style="margin-top:1.2rem;">
-          <h3 style="font-size:0.9rem;">Aportes Esporádicos (Extras Pontuais)</h3>
-          <button class="btn btn-primary" onclick="stratAddSporadic()" style="font-size:0.75rem; padding:0.3rem 0.8rem;">+ Aporte Extra</button>
-        </div>
-        <p class="note" style="margin-bottom:0.8rem;">Aportes únicos em meses específicos (13º salário, bônus, venda de bem, etc.).</p>
-        <div id="strat-sporadic-list">
-          <p class="note" id="strat-sporadic-empty">Nenhum aporte esporádico cadastrado.</p>
-        </div>
+        <!-- Hidden inputs to maintain compatibility with _buildStratConfig -->
+        <input type="hidden" id="strat-aporte-mensal" value="">
+        <input type="hidden" id="strat-saldo-inicial" value="">
+        <input type="hidden" id="strat-rentab" value="12">
+        <input type="hidden" id="strat-ir" value="15">
       </div>
 
-      <!-- STEP 2: Seleção de Dívidas -->
+      <!-- STEP 2: Seleção de Dívidas e Propostas -->
       <div class="card">
-        <h2>Passo 2 — Selecionar Dívidas para a Simulação</h2>
-        <p style="color:var(--muted); font-size:0.85rem; margin-bottom:1rem;">Escolha quais dívidas entram nesta simulação. Pode ser do cenário <strong style="color:var(--green);">Atual</strong> ou do cenário <strong style="color:var(--blue);">Proposta</strong> (não ambos ao mesmo tempo).</p>
+        <h2>Passo 2 — Selecionar Dívidas e Propostas para Estratégia</h2>
+        <p style="color:var(--muted); font-size:0.85rem; margin-bottom:1rem;">Selecione as dívidas que participam da estratégia. Você pode <strong style="color:var(--blue);">ligar propostas a dívidas</strong> para indicar substituição/quitação. Dívidas ligadas a propostas não participam da amortização extra.</p>
 
         <div class="strat-source-toggle">
           <button class="strat-src-btn active" id="strat-src-atual" onclick="stratSwitchSource('atual')">Dívidas Atuais</button>
@@ -927,6 +909,14 @@
 
         <div id="strat-dividas-chips" class="comp-chips-container" style="margin-top:1rem;">
           <p class="note">Cadastre dívidas nas abas anteriores para selecioná-las aqui.</p>
+        </div>
+
+        <!-- Linking Dívida ↔ Proposta -->
+        <div id="strat-linking-section" class="hidden" style="margin-top:1.5rem; padding:1rem; background:var(--card2); border-radius:var(--radius); border:1px solid var(--border);">
+          <h3 style="font-size:0.9rem; color:var(--blue); margin-bottom:0.5rem;">Vincular Propostas a Dívidas</h3>
+          <p class="note" style="margin-bottom:0.8rem;">Vincule uma proposta a uma dívida para indicar que a proposta quita/substitui aquela dívida. Se o crédito da proposta for maior que o saldo, a diferença vira poder de amortização adicional.</p>
+          <div id="strat-linking-container"></div>
+          <button class="btn btn-primary" onclick="stratAddLink()" style="font-size:0.75rem; padding:0.3rem 0.8rem; margin-top:0.5rem;">+ Vincular Proposta</button>
         </div>
       </div>
 
@@ -1310,6 +1300,8 @@
 // ===== STATE =====
 var dividasAtuais = [];
 var dividasProposta = [];
+var _selectedAtuaisIdx = []; // indices of debts selected for summary/charts in Tab 1
+var _selectedPropostasIdx = []; // indices of proposals selected for summary/charts in Tab 2
 var currentModalType = 'atual';
 var editingIndex = -1;
 var editingType = 'atual';
@@ -1692,16 +1684,31 @@ function renderAll() {
 function renderTable(type) {
   var list = type === 'atual' ? dividasAtuais : dividasProposta;
   var container = document.getElementById(type + '-table-container');
+  var selectedArr = type === 'atual' ? _selectedAtuaisIdx : _selectedPropostasIdx;
 
   if (!list.length) {
     container.innerHTML = '<p style="color:var(--muted); font-size:0.85rem;">Nenhuma divida cadastrada.</p>';
     return;
   }
 
+  // Auto-select all if selection array is empty or out of sync
+  if (!selectedArr.length || selectedArr.some(function(i) { return i >= list.length; })) {
+    selectedArr.length = 0;
+    for (var k = 0; k < list.length; k++) selectedArr.push(k);
+    if (type === 'atual') _selectedAtuaisIdx = selectedArr;
+    else _selectedPropostasIdx = selectedArr;
+  }
+
   var isAtual = type === 'atual';
   var tipoLabels = { price: 'PRICE', sac: 'SAC', simples: 'SIMPLES', consorcio: 'CONSÓRCIO' };
-  var html = '<table class="debt-table"><thead><tr>' +
-    '<th>Nome</th><th>Tipo</th><th>Valor Contratado</th><th>Parcela Inicial</th><th>Parcelas</th>' +
+  var allChecked = selectedArr.length === list.length;
+  var html = '<div style="margin-bottom:0.5rem; display:flex; align-items:center; gap:0.5rem;">' +
+    '<label style="display:flex; align-items:center; gap:0.3rem; cursor:pointer; font-size:0.82rem; color:var(--muted);">' +
+    '<input type="checkbox" onchange="toggleAllDebts(\'' + type + '\', this.checked)"' + (allChecked ? ' checked' : '') + '> Selecionar Todas</label>' +
+    '<span style="font-size:0.75rem; color:var(--muted);">(' + selectedArr.length + '/' + list.length + ' selecionadas para resumo/gráficos)</span>' +
+    '</div>';
+  html += '<table class="debt-table"><thead><tr>' +
+    '<th style="width:30px;"></th><th>Nome</th><th>Tipo</th><th>Valor Contratado</th><th>Parcela Inicial</th><th>Parcelas</th>' +
     (isAtual ? '<th>Pagas</th><th>Restantes</th><th>Saldo Devedor</th>' : '') +
     '<th>Reajuste a.a.</th><th>Total a Pagar</th><th>Juros</th><th>Acoes</th>' +
     '</tr></thead><tbody>';
@@ -1712,7 +1719,9 @@ function renderTable(type) {
     var juros = totalPagar - (isAtual ? (d.saldoDevedor || d.valorContratado) : d.valorContratado);
     var tipoLabel = tipoLabels[d.tipoAmort || 'price'] || 'PRICE';
     var reajStr = (d.reajusteAnual && d.reajusteAnual > 0) ? d.reajusteAnual.toFixed(1) + '%' : '-';
-    html += '<tr>' +
+    var isChecked = selectedArr.indexOf(i) >= 0;
+    html += '<tr style="' + (!isChecked ? 'opacity:0.4;' : '') + '">' +
+      '<td><input type="checkbox" onchange="toggleDebtSelection(\'' + type + '\',' + i + ', this.checked)"' + (isChecked ? ' checked' : '') + '></td>' +
       '<td style="color:#fff;font-weight:600;">' + d.nome + '</td>' +
       '<td><span style="background:var(--card2);padding:2px 6px;border-radius:4px;font-size:0.75rem;color:var(--green);">' + tipoLabel + '</span></td>' +
       '<td>' + fmtBRL(d.valorContratado) + '</td>' +
@@ -1733,18 +1742,46 @@ function renderTable(type) {
   container.innerHTML = html;
 }
 
+function toggleDebtSelection(type, idx, checked) {
+  var selectedArr = type === 'atual' ? _selectedAtuaisIdx : _selectedPropostasIdx;
+  var pos = selectedArr.indexOf(idx);
+  if (checked && pos < 0) selectedArr.push(idx);
+  if (!checked && pos >= 0) selectedArr.splice(pos, 1);
+  if (type === 'atual') _selectedAtuaisIdx = selectedArr;
+  else _selectedPropostasIdx = selectedArr;
+  renderTable(type);
+  renderSummary(type);
+}
+
+function toggleAllDebts(type, checked) {
+  var list = type === 'atual' ? dividasAtuais : dividasProposta;
+  var selectedArr = [];
+  if (checked) {
+    for (var k = 0; k < list.length; k++) selectedArr.push(k);
+  }
+  if (type === 'atual') _selectedAtuaisIdx = selectedArr;
+  else _selectedPropostasIdx = selectedArr;
+  renderTable(type);
+  renderSummary(type);
+}
+
 function renderSummary(type) {
   var list = type === 'atual' ? dividasAtuais : dividasProposta;
+  var selectedArr = type === 'atual' ? _selectedAtuaisIdx : _selectedPropostasIdx;
   var summaryEl = document.getElementById(type + '-summary');
   var gridEl = document.getElementById(type + '-summary-grid');
 
   if (!list.length) { summaryEl.style.display = 'none'; return; }
+  // Filter list by selected indices
+  var filteredList = [];
+  selectedArr.forEach(function(idx) { if (list[idx]) filteredList.push(list[idx]); });
+  if (!filteredList.length) { summaryEl.style.display = 'none'; return; }
   summaryEl.style.display = '';
 
   var isAtual = type === 'atual';
   var totalJaPago = 0, totalAPagar = 0, totalJuros = 0, totalSaldoDevedor = 0;
   var maxMesesRestantes = 0;
-  list.forEach(function(d) {
+  filteredList.forEach(function(d) {
     var pagas = isAtual ? (d.parcelasPagas || 0) : 0;
     var restantes = d.totalParcelas - pagas;
     totalJaPago += d.parcela * pagas;
@@ -1755,7 +1792,7 @@ function renderSummary(type) {
     if (restantes > maxMesesRestantes) maxMesesRestantes = restantes;
   });
 
-  var custoMensal = calcCustoMensalAtual(list, isAtual);
+  var custoMensal = calcCustoMensalAtual(filteredList, isAtual);
 
   gridEl.innerHTML =
     (isAtual ? '<div class="summary-item"><div class="label">Ja Pago</div><div class="value blue">' + fmtBRL(totalJaPago) + '</div></div>' : '') +
@@ -1766,7 +1803,7 @@ function renderSummary(type) {
     '<div class="summary-item"><div class="label">Prazo Maximo</div><div class="value white">' + maxMesesRestantes + ' meses</div></div>';
 
   renderCustoChart(type, custoMensal);
-  renderSaldoDevedorChart(type, list, isAtual);
+  renderSaldoDevedorChart(type, filteredList, isAtual);
 }
 
 // Calcula a parcela do mes 'm' (0-indexed) para uma divida conforme seu tipo
@@ -2902,16 +2939,18 @@ var stratState = {
   rentabAnual: 12,
   irPct: 15,
   updates: [],
+  sporadics: [], // [{id, data, valor, descricao}] - aportes esporádicos
   source: 'atual',
   selectedDividas: [],
   pctReserva: 100,
   autoQuit: false,
   overrides: {},
   alocPorDivida: {}, // {dividaIdx: percentual} - distribuição da amortização
-  sporadics: [], // [{id, data, valor, descricao}] - aportes esporádicos
   alocPorDividaMes: {}, // {mesIdx: {dividaIdx: pct}} - alocação por dívida por mês
   tipoAmortExtra: 'prazo', // 'prazo' ou 'parcela'
   parcelaMinPct: 0, // % mínimo da parcela original (0 = sem mínimo)
+  capacidadeId: null, // ID da capacidade selecionada da Tab 3
+  linkedPropostas: [], // [{propostaIdx, dividaIdx}] - vínculos proposta↔dívida
   calendario: null
 };
 var chartStratEvolucao = null, chartStratAlocacao = null;
@@ -2937,9 +2976,14 @@ function stratEditar(id) {
   _editingStratId = id;
   _applyStratConfig(s.config);
   document.getElementById('strat-nome').value = s.nome || '';
-  document.getElementById('strat-calendario').classList.add('hidden');
   _showStratEditor();
   populateStratTab();
+  // Auto-generate calendar if there are selected debts and a capacidade
+  if (stratState.selectedDividas.length > 0 && stratState.aporteMensal > 0) {
+    stratGerarCalendario();
+  } else {
+    document.getElementById('strat-calendario').classList.add('hidden');
+  }
 }
 
 function stratDuplicar(id) {
@@ -3016,22 +3060,26 @@ function stratRenderList() {
 }
 
 function _resetStratState() {
+  stratState.capacidadeId = null;
   stratState.aporteMensal = 0;
   stratState.saldoInicial = 0;
   stratState.rentabAnual = 12;
   stratState.irPct = 15;
   stratState.updates = [];
+  stratState.sporadics = [];
   stratState.source = 'atual';
   stratState.selectedDividas = [];
+  stratState.linkedPropostas = [];
   stratState.pctReserva = 100;
   stratState.autoQuit = false;
   stratState.overrides = {};
   stratState.alocPorDivida = {};
-  stratState.sporadics = [];
   stratState.alocPorDividaMes = {};
   stratState.tipoAmortExtra = 'prazo';
   stratState.parcelaMinPct = 0;
   stratState.calendario = null;
+  document.getElementById('strat-capacidade-select').value = '';
+  document.getElementById('strat-cap-resumo').classList.add('hidden');
   document.getElementById('strat-aporte-mensal').value = '';
   document.getElementById('strat-saldo-inicial').value = '';
   document.getElementById('strat-rentab').value = '12';
@@ -3047,18 +3095,20 @@ function _resetStratState() {
 
 function _buildStratConfig() {
   return {
-    aporteMensal: parseCurr(document.getElementById('strat-aporte-mensal').value),
-    saldoInicial: parseCurr(document.getElementById('strat-saldo-inicial').value),
-    rentabAnual: parseFloat(document.getElementById('strat-rentab').value) || 12,
-    irPct: parseFloat(document.getElementById('strat-ir').value) || 15,
+    capacidadeId: stratState.capacidadeId,
+    aporteMensal: stratState.aporteMensal,
+    saldoInicial: stratState.saldoInicial,
+    rentabAnual: stratState.rentabAnual,
+    irPct: stratState.irPct,
     updates: JSON.parse(JSON.stringify(stratState.updates)),
+    sporadics: JSON.parse(JSON.stringify(stratState.sporadics)),
     source: stratState.source,
     selectedDividas: stratState.selectedDividas.slice(),
+    linkedPropostas: JSON.parse(JSON.stringify(stratState.linkedPropostas)),
     pctReserva: stratState.pctReserva,
     autoQuit: stratState.autoQuit,
     overrides: JSON.parse(JSON.stringify(stratState.overrides)),
     alocPorDivida: JSON.parse(JSON.stringify(stratState.alocPorDivida)),
-    sporadics: JSON.parse(JSON.stringify(stratState.sporadics)),
     alocPorDividaMes: JSON.parse(JSON.stringify(stratState.alocPorDividaMes)),
     tipoAmortExtra: stratState.tipoAmortExtra,
     parcelaMinPct: stratState.parcelaMinPct
@@ -3067,35 +3117,48 @@ function _buildStratConfig() {
 
 function _applyStratConfig(config) {
   if (!config) return;
-  document.getElementById('strat-aporte-mensal').value = config.aporteMensal ? fmtBRL(config.aporteMensal) : '';
-  document.getElementById('strat-saldo-inicial').value = config.saldoInicial ? fmtBRL(config.saldoInicial) : '';
-  document.getElementById('strat-rentab').value = config.rentabAnual || 12;
-  document.getElementById('strat-ir').value = config.irPct || 15;
-  stratState.updates = Array.isArray(config.updates) ? JSON.parse(JSON.stringify(config.updates)) : [];
-  stratState.source = config.source || 'atual';
-  stratState.selectedDividas = Array.isArray(config.selectedDividas) ? config.selectedDividas.slice() : [];
-  stratState.pctReserva = config.pctReserva !== undefined ? config.pctReserva : 100;
-  stratState.autoQuit = !!config.autoQuit;
-  stratState.overrides = config.overrides ? JSON.parse(JSON.stringify(config.overrides)) : {};
-  stratState.alocPorDivida = config.alocPorDivida ? JSON.parse(JSON.stringify(config.alocPorDivida)) : {};
+  // Capacidade
+  stratState.capacidadeId = config.capacidadeId || null;
   stratState.aporteMensal = config.aporteMensal || 0;
   stratState.saldoInicial = config.saldoInicial || 0;
   stratState.rentabAnual = config.rentabAnual || 12;
   stratState.irPct = config.irPct || 15;
-
-  document.getElementById('strat-pct-reserva').value = stratState.pctReserva;
-  document.getElementById('strat-pct-amort').value = (100 - stratState.pctReserva).toFixed(0);
-  document.getElementById('strat-toggle-autoquit').classList.toggle('active', stratState.autoQuit);
+  stratState.updates = Array.isArray(config.updates) ? JSON.parse(JSON.stringify(config.updates)) : [];
   stratState.sporadics = Array.isArray(config.sporadics) ? JSON.parse(JSON.stringify(config.sporadics)) : [];
+  stratState.source = config.source || 'atual';
+  stratState.selectedDividas = Array.isArray(config.selectedDividas) ? config.selectedDividas.slice() : [];
+  stratState.linkedPropostas = Array.isArray(config.linkedPropostas) ? JSON.parse(JSON.stringify(config.linkedPropostas)) : [];
+  stratState.pctReserva = config.pctReserva !== undefined ? config.pctReserva : 100;
+  stratState.autoQuit = !!config.autoQuit;
+  stratState.overrides = config.overrides ? JSON.parse(JSON.stringify(config.overrides)) : {};
+  stratState.alocPorDivida = config.alocPorDivida ? JSON.parse(JSON.stringify(config.alocPorDivida)) : {};
   stratState.alocPorDividaMes = config.alocPorDividaMes ? JSON.parse(JSON.stringify(config.alocPorDividaMes)) : {};
   stratState.tipoAmortExtra = config.tipoAmortExtra || 'prazo';
   stratState.parcelaMinPct = config.parcelaMinPct || 0;
+
+  // Populate hidden inputs (for backward compat)
+  document.getElementById('strat-aporte-mensal').value = stratState.aporteMensal || '';
+  document.getElementById('strat-saldo-inicial').value = stratState.saldoInicial || '';
+  document.getElementById('strat-rentab').value = stratState.rentabAnual;
+  document.getElementById('strat-ir').value = stratState.irPct;
+
+  // UI updates
+  document.getElementById('strat-pct-reserva').value = stratState.pctReserva;
+  document.getElementById('strat-pct-amort').value = (100 - stratState.pctReserva).toFixed(0);
+  document.getElementById('strat-toggle-autoquit').classList.toggle('active', stratState.autoQuit);
   document.querySelector('input[name="strat-tipo-amort-extra"][value="' + stratState.tipoAmortExtra + '"]').checked = true;
   document.getElementById('strat-parcela-min-pct').value = stratState.parcelaMinPct;
   toggleTipoAmortExtra();
+
+  // Populate capacidade selector and apply
+  stratPopulateCapacidadeSelect();
+  if (stratState.capacidadeId) {
+    document.getElementById('strat-capacidade-select').value = stratState.capacidadeId;
+    stratShowCapResumo();
+  }
+
   stratSwitchSource(stratState.source, true);
-  stratRenderUpdates();
-  stratRenderSporadics();
+  stratRenderLinks();
   stratRenderAlocPorDivida();
 }
 
@@ -3145,6 +3208,7 @@ function stratDeleteUpdate(idx) {
 
 function stratRenderUpdates() {
   var container = document.getElementById('strat-updates-list');
+  if (!container) return; // Container removed - updates managed via capacidade
   if (!stratState.updates.length) {
     container.innerHTML = '<p class="note" id="strat-updates-empty">Nenhuma atualização — o aporte será constante.</p>';
     return;
@@ -3247,6 +3311,7 @@ function stratDeleteSporadic(idx) {
 
 function stratRenderSporadics() {
   var container = document.getElementById('strat-sporadic-list');
+  if (!container) return; // Container removed - sporadics managed via capacidade
   if (!stratState.sporadics.length) {
     container.innerHTML = '<p class="note" id="strat-sporadic-empty">Nenhum aporte esporádico cadastrado.</p>';
     return;
@@ -3283,6 +3348,171 @@ function stratSwitchSource(src, keepSelection) {
   stratRenderAlocPorDivida();
 }
 
+// ===== STRATEGY: CAPACIDADE SELECTOR =====
+function stratPopulateCapacidadeSelect() {
+  var select = document.getElementById('strat-capacidade-select');
+  var currentVal = select.value;
+  select.innerHTML = '<option value="">-- Selecione uma capacidade --</option>';
+  _capacidades.forEach(function(cap) {
+    var opt = document.createElement('option');
+    opt.value = cap.id;
+    opt.textContent = cap.nome + ' (' + fmtBRL(cap.config.aporteMensal) + '/mês)';
+    select.appendChild(opt);
+  });
+  if (currentVal) select.value = currentVal;
+}
+
+function stratOnCapacidadeChange() {
+  var select = document.getElementById('strat-capacidade-select');
+  var capId = select.value ? parseInt(select.value) : null;
+  stratState.capacidadeId = capId;
+  if (capId) {
+    var cap = _capacidades.find(function(c) { return c.id === capId; });
+    if (cap) {
+      stratState.aporteMensal = cap.config.aporteMensal || 0;
+      stratState.saldoInicial = cap.config.saldoInicial || 0;
+      stratState.rentabAnual = cap.config.rentabAnual || 12;
+      stratState.irPct = cap.config.irPct || 15;
+      stratState.updates = JSON.parse(JSON.stringify(cap.config.updates || []));
+      stratState.sporadics = JSON.parse(JSON.stringify(cap.config.sporadics || []));
+      // Update hidden inputs
+      document.getElementById('strat-aporte-mensal').value = stratState.aporteMensal;
+      document.getElementById('strat-saldo-inicial').value = stratState.saldoInicial;
+      document.getElementById('strat-rentab').value = stratState.rentabAnual;
+      document.getElementById('strat-ir').value = stratState.irPct;
+    }
+    stratShowCapResumo();
+  } else {
+    stratState.aporteMensal = 0;
+    stratState.saldoInicial = 0;
+    stratState.rentabAnual = 12;
+    stratState.irPct = 15;
+    stratState.updates = [];
+    stratState.sporadics = [];
+    document.getElementById('strat-cap-resumo').classList.add('hidden');
+  }
+}
+
+function stratShowCapResumo() {
+  var cap = _capacidades.find(function(c) { return c.id === stratState.capacidadeId; });
+  var resumo = document.getElementById('strat-cap-resumo');
+  if (!cap) { resumo.classList.add('hidden'); return; }
+  resumo.classList.remove('hidden');
+  document.getElementById('strat-cap-aporte').textContent = fmtBRL(cap.config.aporteMensal || 0);
+  document.getElementById('strat-cap-saldo').textContent = fmtBRL(cap.config.saldoInicial || 0);
+  document.getElementById('strat-cap-rentab').textContent = (cap.config.rentabAnual || 12).toFixed(1) + '% a.a.';
+  document.getElementById('strat-cap-ir').textContent = (cap.config.irPct || 15).toFixed(1) + '%';
+  var info = '';
+  var nUpd = (cap.config.updates || []).length;
+  var nSpo = (cap.config.sporadics || []).length;
+  if (nUpd) info += nUpd + ' atualização(ões) de aporte';
+  if (nSpo) info += (info ? ' | ' : '') + nSpo + ' aporte(s) esporádico(s)';
+  document.getElementById('strat-cap-updates-info').textContent = info || 'Sem atualizações ou aportes esporádicos.';
+}
+
+// ===== STRATEGY: LINKING PROPOSTAS ↔ DÍVIDAS =====
+function stratAddLink() {
+  stratState.linkedPropostas.push({ propostaIdx: '', dividaIdx: '' });
+  stratRenderLinks();
+}
+
+function stratRemoveLink(idx) {
+  stratState.linkedPropostas.splice(idx, 1);
+  stratRenderLinks();
+  stratRenderAlocPorDivida();
+}
+
+function stratUpdateLink(idx, field, value) {
+  stratState.linkedPropostas[idx][field] = value === '' ? '' : parseInt(value);
+  stratRenderAlocPorDivida();
+}
+
+function stratRenderLinks() {
+  var section = document.getElementById('strat-linking-section');
+  var container = document.getElementById('strat-linking-container');
+  // Show linking section only if there are both dívidas and propostas
+  if (!dividasAtuais.length || !dividasProposta.length) {
+    section.classList.add('hidden');
+    return;
+  }
+  section.classList.remove('hidden');
+
+  if (!stratState.linkedPropostas.length) {
+    container.innerHTML = '<p class="note">Nenhum vínculo criado. Clique em "+ Vincular Proposta" para ligar uma proposta a uma dívida.</p>';
+    return;
+  }
+
+  var html = '';
+  stratState.linkedPropostas.forEach(function(link, idx) {
+    html += '<div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:0.5rem; padding:0.5rem; background:var(--bg); border-radius:var(--radius); border:1px solid var(--border);">';
+    // Proposta selector
+    html += '<select onchange="stratUpdateLink(' + idx + ',\'propostaIdx\',this.value)" style="flex:1; min-width:120px;">';
+    html += '<option value="">Proposta...</option>';
+    dividasProposta.forEach(function(p, pi) {
+      var sel = link.propostaIdx === pi ? ' selected' : '';
+      html += '<option value="' + pi + '"' + sel + '>' + p.nome + ' (' + fmtBRL(p.valorContratado) + ')</option>';
+    });
+    html += '</select>';
+    html += '<span style="color:var(--blue); font-weight:600;">→</span>';
+    // Dívida selector
+    html += '<select onchange="stratUpdateLink(' + idx + ',\'dividaIdx\',this.value)" style="flex:1; min-width:120px;">';
+    html += '<option value="">Dívida...</option>';
+    dividasAtuais.forEach(function(d, di) {
+      var sel = link.dividaIdx === di ? ' selected' : '';
+      html += '<option value="' + di + '"' + sel + '>' + d.nome + ' (' + fmtBRL(d.saldoDevedor || d.valorContratado) + ')</option>';
+    });
+    html += '</select>';
+    // Info about the link result
+    var infoHtml = '';
+    if (link.propostaIdx !== '' && link.dividaIdx !== '') {
+      var prop = dividasProposta[link.propostaIdx];
+      var div = dividasAtuais[link.dividaIdx];
+      if (prop && div) {
+        var credito = prop.valorContratado;
+        var saldo = div.saldoDevedor || div.valorContratado;
+        var diff = credito - saldo;
+        if (diff > 0) {
+          infoHtml = '<span style="font-size:0.75rem; color:var(--green);">+' + fmtBRL(diff) + ' excedente</span>';
+        } else if (diff < 0) {
+          infoHtml = '<span style="font-size:0.75rem; color:var(--orange);">Amort. parcial: ' + fmtBRL(credito) + '</span>';
+        } else {
+          infoHtml = '<span style="font-size:0.75rem; color:var(--green);">Quita exatamente</span>';
+        }
+      }
+    }
+    html += infoHtml;
+    html += '<button class="btn btn-danger" onclick="stratRemoveLink(' + idx + ')" style="padding:0.2rem 0.5rem; font-size:0.75rem;">✕</button>';
+    html += '</div>';
+  });
+  container.innerHTML = html;
+}
+
+// Get linked dívida indices (these should not participate in amortization allocation)
+function stratGetLinkedDividaIndices() {
+  var indices = [];
+  stratState.linkedPropostas.forEach(function(link) {
+    if (link.dividaIdx !== '' && link.dividaIdx !== undefined) {
+      if (indices.indexOf(link.dividaIdx) < 0) indices.push(link.dividaIdx);
+    }
+  });
+  return indices;
+}
+
+// Calculate extra amortization power from linked propostas (credit > saldo)
+function stratCalcLinkExcedente() {
+  var total = 0;
+  stratState.linkedPropostas.forEach(function(link) {
+    if (link.propostaIdx === '' || link.dividaIdx === '') return;
+    var prop = dividasProposta[link.propostaIdx];
+    var div = dividasAtuais[link.dividaIdx];
+    if (!prop || !div) return;
+    var credito = prop.valorContratado;
+    var saldo = div.saldoDevedor || div.valorContratado;
+    if (credito > saldo) total += (credito - saldo);
+  });
+  return total;
+}
+
 function stratRenderDividaChips() {
   var container = document.getElementById('strat-dividas-chips');
   var list = stratState.source === 'atual' ? dividasAtuais : dividasProposta;
@@ -3290,28 +3520,43 @@ function stratRenderDividaChips() {
     container.innerHTML = '<p class="note">Nenhuma dívida cadastrada no cenário ' + (stratState.source === 'atual' ? 'Atual' : 'Proposta') + '.</p>';
     return;
   }
+  var linkedIndices = stratGetLinkedDividaIndices();
   container.innerHTML = '';
   list.forEach(function(d, i) {
+    var isLinked = (stratState.source === 'atual') && linkedIndices.indexOf(i) >= 0;
     var isSelected = stratState.selectedDividas.indexOf(i) >= 0;
     var chip = document.createElement('div');
-    chip.className = 'comp-chip' + (isSelected ? ' selected' : '') + (stratState.source === 'proposta' && isSelected ? ' proposta' : '');
+    chip.className = 'comp-chip' + (isSelected ? ' selected' : '') + (stratState.source === 'proposta' && isSelected ? ' proposta' : '') + (isLinked ? ' linked' : '');
     chip.setAttribute('data-idx', i);
     var saldoLabel = stratState.source === 'atual' ? fmtBRL(d.saldoDevedor || d.valorContratado) : fmtBRL(d.valorContratado);
-    chip.innerHTML = '<span class="chip-dot"></span>' + d.nome + ' <small style="opacity:0.7;">' + saldoLabel + '</small>';
-    chip.onclick = function() {
-      var idx = parseInt(this.getAttribute('data-idx'));
-      var pos = stratState.selectedDividas.indexOf(idx);
+    var linkedLabel = isLinked ? ' <small style="color:var(--blue);">[vinculada]</small>' : '';
+    chip.innerHTML = '<span class="chip-dot"></span>' + d.nome + ' <small style="opacity:0.7;">' + saldoLabel + '</small>' + linkedLabel;
+    if (isLinked) {
+      chip.style.opacity = '0.5';
+      chip.style.pointerEvents = 'none';
+      chip.title = 'Dívida vinculada a uma proposta - não participa da amortização extra';
+      // Remove from selectedDividas if it was there
+      var pos = stratState.selectedDividas.indexOf(i);
       if (pos >= 0) {
         stratState.selectedDividas.splice(pos, 1);
-        this.classList.remove('selected', 'proposta');
-        delete stratState.alocPorDivida[idx];
-      } else {
-        stratState.selectedDividas.push(idx);
-        this.classList.add('selected');
-        if (stratState.source === 'proposta') this.classList.add('proposta');
+        delete stratState.alocPorDivida[i];
       }
-      stratRenderAlocPorDivida();
-    };
+    } else {
+      chip.onclick = function() {
+        var idx = parseInt(this.getAttribute('data-idx'));
+        var pos = stratState.selectedDividas.indexOf(idx);
+        if (pos >= 0) {
+          stratState.selectedDividas.splice(pos, 1);
+          this.classList.remove('selected', 'proposta');
+          delete stratState.alocPorDivida[idx];
+        } else {
+          stratState.selectedDividas.push(idx);
+          this.classList.add('selected');
+          if (stratState.source === 'proposta') this.classList.add('proposta');
+        }
+        stratRenderAlocPorDivida();
+      };
+    }
     container.appendChild(chip);
   });
 }
@@ -3416,9 +3661,13 @@ function toggleTipoAmortExtra() {
 
 // ===== STRATEGY: POPULATE ON TAB SWITCH =====
 function populateStratTab() {
+  stratPopulateCapacidadeSelect();
+  if (stratState.capacidadeId) {
+    document.getElementById('strat-capacidade-select').value = stratState.capacidadeId;
+    stratShowCapResumo();
+  }
   stratRenderDividaChips();
-  stratRenderUpdates();
-  stratRenderSporadics();
+  stratRenderLinks();
   stratRenderAlocPorDivida();
 }
 
@@ -3457,10 +3706,15 @@ function stratGetSporadicMes(mesDate) {
 
 // ===== STRATEGY: GERAR CALENDÁRIO =====
 function stratGerarCalendario() {
-  stratState.aporteMensal = parseCurr(document.getElementById('strat-aporte-mensal').value);
-  stratState.saldoInicial = parseCurr(document.getElementById('strat-saldo-inicial').value);
-  stratState.rentabAnual = parseFloat(document.getElementById('strat-rentab').value) || 12;
-  stratState.irPct = parseFloat(document.getElementById('strat-ir').value) || 15;
+  // Read from hidden inputs (which are set by capacidade selector or legacy data)
+  var aporteVal = document.getElementById('strat-aporte-mensal').value;
+  if (aporteVal && !stratState.capacidadeId) stratState.aporteMensal = parseCurr(aporteVal);
+  var saldoVal = document.getElementById('strat-saldo-inicial').value;
+  if (saldoVal && !stratState.capacidadeId) stratState.saldoInicial = parseCurr(saldoVal);
+  var rentabVal = document.getElementById('strat-rentab').value;
+  if (!stratState.capacidadeId) stratState.rentabAnual = parseFloat(rentabVal) || 12;
+  var irVal = document.getElementById('strat-ir').value;
+  if (!stratState.capacidadeId) stratState.irPct = parseFloat(irVal) || 15;
   stratState.pctReserva = parseFloat(document.getElementById('strat-pct-reserva').value);
   if (isNaN(stratState.pctReserva)) stratState.pctReserva = 100;
 
