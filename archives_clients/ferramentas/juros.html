@@ -541,7 +541,7 @@
   .client-locked [onclick*="toggleSimCard"] { pointer-events:auto !important; opacity:1 !important; }
   .client-locked [onclick*="analiseGerar"] { pointer-events:auto !important; opacity:1 !important; }
   .client-locked .analise-check-item { pointer-events:auto !important; opacity:1 !important; }
-  /* Toda a aba Análise Combinada fica interativa mesmo com bloqueio */
+  /* Toda a aba Análises Comparativas fica interativa mesmo com bloqueio */
   .client-locked #tab-analise button { pointer-events:auto !important; opacity:1 !important; }
   .client-locked #tab-analise .analise-check-item { pointer-events:auto !important; opacity:1 !important; cursor:pointer !important; }
   .client-locked #tab-analise div[onclick] { pointer-events:auto !important; opacity:1 !important; }
@@ -591,7 +591,7 @@
     <button class="tab-btn" onclick="switchTab('proposta')">2. Proposta Nova</button>
     <button class="tab-btn" onclick="switchTab('capacidade')">3. Poder de Amortização</button>
     <button class="tab-btn" onclick="switchTab('amortizacao')">4. Estratégias</button>
-    <button class="tab-btn" onclick="switchTab('analise')">5. Análise Comparativa</button>
+    <button class="tab-btn" onclick="switchTab('analise')">5. Análises Comparativas</button>
   </div>
 
   <!-- ===== TAB 1: CENÁRIO ATUAL ===== -->
@@ -1017,41 +1017,56 @@
   </div>
 
 
-  <!-- ===== TAB 5: ANÁLISE COMBINADA ===== -->
+  <!-- ===== TAB 5: ANÁLISES COMPARATIVAS ===== -->
   <div id="tab-analise" class="hidden">
     <div class="card">
-      <h2>Análise Combinada</h2>
-      <p style="color:var(--muted); font-size:0.85rem; margin-bottom:1.5rem;">Selecione comparações e/ou estratégias salvas para visualizar lado a lado e tomar a melhor decisão.</p>
+      <h2>Análises Comparativas</h2>
+      <p style="color:var(--muted); font-size:0.85rem; margin-bottom:1.5rem;">Selecione uma ou mais estratégias salvas para comparar lado a lado. O cenário atual (sem amortização extra) é sempre incluído como referência.</p>
 
-      <div class="row" style="gap:2rem;">
-        <!-- Comparações -->
-        <div class="field" style="flex:1;">
-          <label style="font-size:0.9rem; color:var(--primary); font-weight:700; margin-bottom:0.5rem;">Comparações Salvas</label>
-          <div id="analise-comp-list" style="display:flex; flex-direction:column; gap:0.4rem;">
-            <p class="note">Nenhuma comparação salva nesta análise.</p>
-          </div>
-        </div>
-        <!-- Estratégias -->
-        <div class="field" style="flex:1;">
-          <label style="font-size:0.9rem; color:var(--purple); font-weight:700; margin-bottom:0.5rem;">Estratégias de Amortização Salvas</label>
-          <div id="analise-strat-list" style="display:flex; flex-direction:column; gap:0.4rem;">
-            <p class="note">Nenhuma estratégia salva nesta análise.</p>
-          </div>
+      <!-- Estratégias -->
+      <div class="field">
+        <label style="font-size:0.9rem; color:var(--purple); font-weight:700; margin-bottom:0.5rem;">Estratégias de Amortização Salvas</label>
+        <div id="analise-strat-list" style="display:flex; flex-direction:column; gap:0.4rem;">
+          <p class="note">Nenhuma estratégia salva nesta análise.</p>
         </div>
       </div>
 
-      <p style="color:var(--muted); font-size:0.78rem; margin-top:1rem; font-style:italic;">ℹ️ O cenário ATUAL (dívidas sem alteração) é sempre incluído automaticamente na análise.</p>
+      <!-- Configurações do Patrimônio Acumulado -->
+      <div class="row" style="gap:0.5rem; margin-top:1.5rem; flex-wrap:wrap; align-items:flex-end;">
+        <div class="field" style="max-width:200px;">
+          <label>Taxa de Investimento (% a.a.)</label>
+          <input type="number" id="analise-taxa-invest" value="12" step="0.1" min="0">
+        </div>
+        <div class="field" style="max-width:220px;">
+          <label>Modo de Simulação do Patrimônio</label>
+          <select id="analise-modo-sim">
+            <option value="completa" selected>Simulação Completa</option>
+            <option value="sem-juros-neg">Desativar Juros Negativos</option>
+            <option value="manter-positivo">Manter Valores Positivos</option>
+          </select>
+        </div>
+      </div>
+
+      <p style="color:var(--muted); font-size:0.78rem; margin-top:1rem; font-style:italic;">ℹ️ O cenário ATUAL (dívidas sem alteração) é sempre incluído automaticamente na análise. O patrimônio acumulado é calculado investindo a diferença de parcelas entre cada estratégia e o cenário base.</p>
 
       <div style="text-align:center; margin-top:1.5rem;">
-        <button class="btn btn-secondary" onclick="analiseGerar()" style="padding:0.7rem 1.8rem; font-size:0.95rem;">Gerar Análise Combinada</button>
+        <button class="btn btn-secondary" onclick="analiseGerar()" style="padding:0.7rem 1.8rem; font-size:0.95rem;">Gerar Análise Comparativa</button>
       </div>
     </div>
 
     <div id="analise-resultado" class="hidden">
-      <!-- Resumo das comparações selecionadas -->
-      <div id="analise-comps-resultado"></div>
-      <!-- Resumo das estratégias selecionadas -->
-      <div id="analise-strats-resultado"></div>
+      <!-- Tabela de métricas comparativas -->
+      <div class="card" id="analise-metricas-card">
+        <h2>Métricas Comparativas</h2>
+        <div id="analise-metricas-content"></div>
+      </div>
+      <!-- Gráficos comparativos -->
+      <div class="card" id="analise-graficos-card">
+        <h2>Gráficos Comparativos</h2>
+        <div style="height:300px; margin-bottom:1.5rem;"><canvas id="analise-chart-saldo"></canvas></div>
+        <div style="height:300px; margin-bottom:1.5rem;"><canvas id="analise-chart-parcelas"></canvas></div>
+        <div style="height:300px; margin-bottom:1.5rem;"><canvas id="analise-chart-patrimonio"></canvas></div>
+      </div>
       <!-- Visão consolidada -->
       <div class="card" id="analise-consolidado" style="display:none;">
         <h2>Visão Consolidada</h2>
@@ -4335,25 +4350,9 @@ function _restoreCompSelection(config) {
   if (config.refDivida !== undefined) document.getElementById('comp-ref-divida').value = config.refDivida;
 }
 
-// ===== TAB 5: ANÁLISE COMBINADA =====
+// ===== TAB 5: ANÁLISES COMPARATIVAS =====
 function analisePopulate() {
-  var compContainer = document.getElementById('analise-comp-list');
   var stratContainer = document.getElementById('analise-strat-list');
-
-  if (!_comparacoes.length) {
-    compContainer.innerHTML = '<p class="note">Nenhuma comparação salva nesta análise.</p>';
-  } else {
-    compContainer.innerHTML = '';
-    _comparacoes.forEach(function(c) {
-      var item = document.createElement('div');
-      item.className = 'analise-check-item';
-      item.setAttribute('data-id', c.id);
-      item.setAttribute('data-type', 'comp');
-      item.innerHTML = '<div class="aci-dot">✓</div><span class="aci-label">' + _escHtml(c.nome) + '</span><span class="aci-meta">' + ((c.config.selectedAtualIdx || []).length) + ' atuais vs ' + ((c.config.selectedPropostaIdx || []).length) + ' propostas</span>';
-      item.onclick = function() { this.classList.toggle('checked'); };
-      compContainer.appendChild(item);
-    });
-  }
 
   if (!_estrategias.length) {
     stratContainer.innerHTML = '<p class="note">Nenhuma estratégia salva nesta análise.</p>';
@@ -4365,11 +4364,96 @@ function analisePopulate() {
       item.setAttribute('data-id', s.id);
       item.setAttribute('data-type', 'strat');
       var aporte = s.config ? fmtBRL(s.config.aporteMensal || 0) : 'R$ 0,00';
-      item.innerHTML = '<div class="aci-dot">✓</div><span class="aci-label">' + _escHtml(s.nome) + '</span><span class="aci-meta">Aporte: ' + aporte + '</span>';
+      var nDividas = s.config && s.config.selectedDividas ? s.config.selectedDividas.length : 0;
+      item.innerHTML = '<div class="aci-dot">✓</div><span class="aci-label">' + _escHtml(s.nome) + '</span><span class="aci-meta">Aporte: ' + aporte + ' | ' + nDividas + ' dívida(s)</span>';
       item.onclick = function() { this.classList.toggle('checked'); };
       stratContainer.appendChild(item);
     });
   }
+}
+
+// Helper: Calculate base scenario (no extra amortization) for comparison
+function _calcCenarioBase(selectedStrats, maxPeriodo) {
+  // Use the first strategy's config to determine which debts to use as reference
+  var cfg = selectedStrats[0].config;
+  var list = cfg.source === 'atual' ? dividasAtuais : dividasProposta;
+  var isAtual = cfg.source === 'atual';
+  var selectedDividas = cfg.selectedDividas || [];
+
+  var dividasSel = [];
+  selectedDividas.forEach(function(idx) {
+    var d = list[idx];
+    if (d) dividasSel.push(d);
+  });
+
+  if (!dividasSel.length) {
+    return { saldoData: [], parcelasData: [], totalJurosPagos: 0, totalReajustesPagos: 0, totalPagoEmParcelas: 0, prazoOriginal: 0 };
+  }
+
+  // Calculate max restantes
+  var maxRestantes = 0;
+  dividasSel.forEach(function(d) {
+    var restantes = d.totalParcelas - (isAtual ? (d.parcelasPagas || 0) : 0);
+    if (restantes > maxRestantes) maxRestantes = restantes;
+  });
+
+  // Use gerarProjecaoSaldo for each debt to get month-by-month data
+  var saldoData = [];
+  var parcelasData = [];
+  var totalJurosPagos = 0;
+  var totalReajustesPagos = 0;
+  var totalPagoEmParcelas = 0;
+
+  // Get projections for each debt
+  var projecoes = dividasSel.map(function(d) {
+    return gerarProjecaoSaldo(d, isAtual);
+  });
+
+  for (var m = 0; m < maxPeriodo; m++) {
+    var saldoTotal = 0;
+    var parcelaTotal = 0;
+    projecoes.forEach(function(proj, di) {
+      var d = dividasSel[di];
+      var restantes = d.totalParcelas - (isAtual ? (d.parcelasPagas || 0) : 0);
+      // Saldo devedor neste mes (proj.saldos tem indice 0 = saldo inicial)
+      if (m < proj.saldos.length) {
+        saldoTotal += proj.saldos[m];
+      }
+      // Parcela neste mes
+      if (m < restantes && m < proj.parcelas.length) {
+        parcelaTotal += proj.parcelas[m];
+        totalPagoEmParcelas += proj.parcelas[m];
+      }
+    });
+    saldoData.push(saldoTotal);
+    parcelasData.push(parcelaTotal);
+  }
+
+  // Calculate juros and reajustes from the projections
+  dividasSel.forEach(function(d) {
+    var restantes = d.totalParcelas - (isAtual ? (d.parcelasPagas || 0) : 0);
+    var saldoBase = isAtual ? (d.saldoDevedor || d.valorContratado) : d.valorContratado;
+    var totalPago = calcTotalPagarDivida(d, restantes);
+    totalJurosPagos += (totalPago - saldoBase);
+    // Reajustes
+    var reaj = (d.reajusteAnual || 0) / 100;
+    if (reaj > 0) {
+      var saldo = saldoBase;
+      for (var yr = 1; yr <= Math.floor(restantes / 12); yr++) {
+        totalReajustesPagos += saldo * reaj;
+        saldo *= (1 + reaj);
+      }
+    }
+  });
+
+  return {
+    saldoData: saldoData,
+    parcelasData: parcelasData,
+    totalJurosPagos: totalJurosPagos,
+    totalReajustesPagos: totalReajustesPagos,
+    totalPagoEmParcelas: totalPagoEmParcelas,
+    prazoOriginal: maxRestantes
+  };
 }
 
 // Helper: Run a comparison simulation and return detailed results
@@ -4552,6 +4636,10 @@ function _analiseRunStrat(strat) {
   var mesesData = [];
   var reservaData = [];
   var saldoData = [];
+  var parcelasData = [];
+  var totalReajustesPagos = 0;
+  var totalPagoEmParcelas = 0;
+  var custoTotalEstrategia = 0;
 
   // Helper to get aporte for a month
   function getAporteMes(mesDate) {
@@ -4591,6 +4679,7 @@ function _analiseRunStrat(strat) {
 
     var pctRes = overrides[m] !== undefined ? overrides[m] : pctReserva;
     var pctAmort = 100 - pctRes;
+    var parcelaTotalMesA = 0;
 
     // Check active debts
     var algumaAtiva = false;
@@ -4632,7 +4721,11 @@ function _analiseRunStrat(strat) {
       if (saldosDevedor[di] <= 0.01) { saldosDevedor[di] = 0; continue; }
       var dd = dividasSel[di];
       var reaj = (dd.reajusteAnual || 0) / 100;
-      if (reaj > 0 && m > 0 && m % 12 === 0) saldosDevedor[di] *= (1 + reaj);
+      // Calcular reajuste aplicado ao saldo (antes de aplicar)
+      if (reaj > 0 && m > 0 && m % 12 === 0) {
+        totalReajustesPagos += saldosDevedor[di] * reaj;
+        saldosDevedor[di] *= (1 + reaj);
+      }
 
       var fatorReaj = reaj > 0 ? Math.pow(1 + reaj, Math.floor(m / 12)) : 1;
       var jurosMes = saldosDevedor[di] * taxasDividas[di];
@@ -4723,6 +4816,20 @@ function _analiseRunStrat(strat) {
       }
       if (amortNormal < 0) amortNormal = 0;
       if (amortNormal > saldosDevedor[di]) amortNormal = saldosDevedor[di];
+      // Calcular parcela deste mês para esta dívida
+      var parcelaDividaMes = 0;
+      if (dd.tipoAmort === 'price') {
+        parcelaDividaMes = (dd._parcelaAtual || dd.parcela) * fatorReaj;
+      } else if (dd.tipoAmort === 'sac') {
+        parcelaDividaMes = amortNormal + jurosMes;
+      } else if (dd.tipoAmort === 'consorcio') {
+        var taxaTotParcA = ((dd.consTaxaAdm || 0) + (dd.consFundoReserva || 0)) / 100;
+        parcelaDividaMes = amortNormal * (1 + taxaTotParcA);
+      } else {
+        parcelaDividaMes = amortNormal + (dd.taxaFixa || 0);
+      }
+      parcelaTotalMesA += parcelaDividaMes;
+      totalPagoEmParcelas += parcelaDividaMes;
       saldosDevedor[di] -= amortNormal;
       if (saldosDevedor[di] < 0.01) saldosDevedor[di] = 0;
 
@@ -4803,6 +4910,7 @@ function _analiseRunStrat(strat) {
 
     if (autoQuit && saldoDevedorTotal > 0 && reservaLiquida >= saldoDevedorTotal && quitouEm < 0) {
       quitouEm = m;
+      custoTotalEstrategia += saldoDevedorTotal; // Valor usado para quitar
       reservaBruta -= saldoDevedorTotal;
       totalAportado -= saldoDevedorTotal;
       saldoDevedorTotal = 0;
@@ -4813,6 +4921,8 @@ function _analiseRunStrat(strat) {
 
     saldoData.push(saldoDevedorTotal);
     reservaData.push(Math.max(0, reservaBruta - (lucro > 0 ? lucro * irPct / 100 : 0)));
+    parcelasData.push(parcelaTotalMesA);
+    custoTotalEstrategia += valorAmort; // Amortizações extras mensais
 
     if (saldoDevedorTotal <= 0) break;
   }
@@ -4830,12 +4940,16 @@ function _analiseRunStrat(strat) {
     economiaMeses: quitouEm >= 0 ? maxRestantes - quitouEm - 1 : 0,
     totalJurosPagos: totalJurosPagos,
     totalAmortExtra: totalAmortExtra,
+    totalReajustesPagos: totalReajustesPagos,
+    totalPagoEmParcelas: totalPagoEmParcelas,
+    custoTotalEstrategia: custoTotalEstrategia,
     reservaFinal: reservaFinal,
     aporteMensal: aporteMensal,
     pctReserva: pctReserva,
     autoQuit: autoQuit,
     saldoData: saldoData,
     reservaData: reservaData,
+    parcelasData: parcelasData,
     periodoSimulado: saldoData.length
   };
 }
@@ -4843,13 +4957,6 @@ function _analiseRunStrat(strat) {
 var _analiseCharts = [];
 
 function analiseGerar() {
-  var selectedComps = [];
-  document.querySelectorAll('#analise-comp-list .analise-check-item.checked').forEach(function(el) {
-    var id = parseInt(el.getAttribute('data-id'));
-    var c = _comparacoes.find(function(x) { return x.id === id; });
-    if (c) selectedComps.push(c);
-  });
-
   var selectedStrats = [];
   document.querySelectorAll('#analise-strat-list .analise-check-item.checked').forEach(function(el) {
     var id = parseInt(el.getAttribute('data-id'));
@@ -4857,10 +4964,8 @@ function analiseGerar() {
     if (s) selectedStrats.push(s);
   });
 
-  // Não precisa mais exigir seleção pois o cenário ATUAL é sempre incluído
-  // Mas se não há dívidas atuais, não há o que analisar
-  if (!dividasAtuais.length && !selectedComps.length && !selectedStrats.length) {
-    alert('Adicione dívidas na aba Atual para gerar a análise.');
+  if (!selectedStrats.length) {
+    alert('Selecione pelo menos uma estratégia para gerar a análise comparativa.');
     return;
   }
 
@@ -4871,306 +4976,310 @@ function analiseGerar() {
   var resultado = document.getElementById('analise-resultado');
   resultado.classList.remove('hidden');
 
-  // ===== COMPARAÇÕES =====
-  var compsHtml = '';
-  selectedComps.forEach(function(comp, ci) {
-    var r = _analiseRunComp(comp);
-    if (!r) return;
+  // ===== CONFIGURAÇÕES DO PATRIMÔNIO =====
+  var taxaInvestAnual = parseFloat(document.getElementById('analise-taxa-invest').value) || 12;
+  var taxaInvestMensal = Math.pow(1 + taxaInvestAnual / 100, 1/12) - 1;
+  var modoSim = document.getElementById('analise-modo-sim').value;
 
-    var chartId = 'analise-comp-chart-' + ci;
-    compsHtml += '<div class="analise-result-card">';
-    compsHtml += '<h3 style="display:flex; align-items:center; gap:0.5rem;">⚖️ ' + _escHtml(r.nome) + '</h3>';
-
-    // Summary grid
-    compsHtml += '<div class="arc-grid">';
-    compsHtml += '<div class="arc-item"><div class="arc-label">Saldo Atual</div><div class="arc-value" style="color:var(--red);">' + fmtBRL(r.totalSaldoAtual) + '</div></div>';
-    compsHtml += '<div class="arc-item"><div class="arc-label">Juros Atual</div><div class="arc-value" style="color:var(--red);">' + fmtBRL(r.jurosAtual) + '</div></div>';
-    compsHtml += '<div class="arc-item"><div class="arc-label">Parcela Atual</div><div class="arc-value" style="color:#fff;">' + fmtBRL(r.parcelaAtual) + '/mês</div></div>';
-    compsHtml += '<div class="arc-item"><div class="arc-label">Prazo Atual</div><div class="arc-value" style="color:#fff;">' + r.prazoAtual + ' meses</div></div>';
-    compsHtml += '<div class="arc-item"><div class="arc-label">Saldo Proposta</div><div class="arc-value" style="color:var(--blue);">' + fmtBRL(r.totalSaldoProp) + '</div></div>';
-    compsHtml += '<div class="arc-item"><div class="arc-label">Juros Proposta</div><div class="arc-value" style="color:var(--blue);">' + fmtBRL(r.jurosProp) + '</div></div>';
-    compsHtml += '<div class="arc-item"><div class="arc-label">Parcela Proposta</div><div class="arc-value" style="color:#fff;">' + fmtBRL(r.parcelaProp) + '/mês</div></div>';
-    compsHtml += '<div class="arc-item"><div class="arc-label">Prazo Proposta</div><div class="arc-value" style="color:#fff;">' + r.prazoProp + ' meses</div></div>';
-    compsHtml += '<div class="arc-item"><div class="arc-label">Economia em Juros</div><div class="arc-value" style="color:' + (r.economiaJuros > 0 ? 'var(--green)' : 'var(--red)') + ';">' + fmtBRL(r.economiaJuros) + '</div></div>';
-    compsHtml += '<div class="arc-item"><div class="arc-label">Economia na Parcela</div><div class="arc-value" style="color:' + (r.economiaParcela > 0 ? 'var(--green)' : 'var(--red)') + ';">' + fmtBRL(r.economiaParcela) + '/mês</div></div>';
-    compsHtml += '<div class="arc-item"><div class="arc-label">Investimento Acumulado</div><div class="arc-value" style="color:var(--green);">' + fmtBRL(r.investFinal) + '</div></div>';
-    compsHtml += '<div class="arc-item"><div class="arc-label">Taxa Investimento</div><div class="arc-value" style="color:#fff;">' + r.taxaInvest + '% a.a.</div></div>';
-    compsHtml += '</div>';
-
-    // Chart placeholders
-    compsHtml += '<div style="height:220px; margin-top:1rem;"><canvas id="' + chartId + '"></canvas></div>';
-    var saldoChartId = 'analise-comp-saldo-chart-' + ci;
-    compsHtml += '<div style="height:220px; margin-top:1rem;"><canvas id="' + saldoChartId + '"></canvas></div>';
-    compsHtml += '</div>';
+  // ===== RODAR ANÁLISE DE CADA ESTRATÉGIA =====
+  var resultados = [];
+  selectedStrats.forEach(function(strat) {
+    var r = _analiseRunStrat(strat);
+    if (r) resultados.push(r);
   });
-  document.getElementById('analise-comps-resultado').innerHTML = compsHtml;
 
-  // Render comparison charts
-  selectedComps.forEach(function(comp, ci) {
-    try {
-    var r = _analiseRunComp(comp);
-    if (!r || !r.investData.length) return;
-    var chartId = 'analise-comp-chart-' + ci;
-    var canvas = document.getElementById(chartId);
-    if (!canvas) return;
-    var ctx = canvas.getContext('2d');
-    var labels = r.investData.map(function(_, i) { return 'Mês ' + (i + 1); });
-    var chart = new Chart(ctx, {
-      type: 'line',
-      data: {
-        labels: labels,
-        datasets: [{
-          label: 'Investimento Acumulado (diferença investida)',
-          data: r.investData,
-          borderColor: '#22c55e',
-          backgroundColor: 'rgba(34,197,94,0.1)',
-          fill: true,
-          tension: 0.2,
-          borderWidth: 2
-        }]
-      },
-      options: {
-        responsive: true, maintainAspectRatio: false,
-        plugins: { title: { display: true, text: 'Evolução do Investimento da Diferença', color: '#fff' }, legend: { labels: { color: '#A0B8A6' } } },
-        scales: {
-          x: { ticks: { color: '#A0B8A6', maxTicksLimit: 12 }, grid: { color: 'rgba(255,255,255,0.03)' } },
-          y: { ticks: { color: '#A0B8A6', callback: function(v) { return 'R$ ' + v.toLocaleString('pt-BR'); } }, grid: { color: 'rgba(255,255,255,0.05)' } }
-        }
+  if (!resultados.length) {
+    alert('Nenhuma estratégia válida para analisar.');
+    return;
+  }
+
+  // ===== CENÁRIO BASE (sem amortização extra) =====
+  // Calcular parcelas normais mês a mês usando as dívidas da primeira estratégia como referência
+  var maxPeriodo = 0;
+  resultados.forEach(function(r) { if (r.periodoSimulado > maxPeriodo) maxPeriodo = r.periodoSimulado; });
+  // Usar o prazo original mais longo como referência
+  var maxPrazoOriginal = 0;
+  resultados.forEach(function(r) { if (r.prazoOriginal > maxPrazoOriginal) maxPrazoOriginal = r.prazoOriginal; });
+  if (maxPrazoOriginal > maxPeriodo) maxPeriodo = maxPrazoOriginal;
+
+  // Calcular cenário base: parcelas normais sem amortização extra
+  var cenarioBase = _calcCenarioBase(selectedStrats, maxPeriodo);
+
+  // ===== NORMALIZAR ARRAYS PARA MESMO TAMANHO =====
+  resultados.forEach(function(r) {
+    while (r.saldoData.length < maxPeriodo) r.saldoData.push(0);
+    while (r.parcelasData.length < maxPeriodo) r.parcelasData.push(0);
+  });
+  while (cenarioBase.saldoData.length < maxPeriodo) cenarioBase.saldoData.push(0);
+  while (cenarioBase.parcelasData.length < maxPeriodo) cenarioBase.parcelasData.push(0);
+
+  // ===== CALCULAR PATRIMÔNIO ACUMULADO =====
+  // Para cada estratégia: diferença = parcela_base[m] - parcela_estrategia[m], investida mensalmente
+  resultados.forEach(function(r) {
+    var patrimonioData = [];
+    var saldo = 0;
+    for (var m = 0; m < maxPeriodo; m++) {
+      var diferenca = cenarioBase.parcelasData[m] - (r.parcelasData[m] || 0);
+      if (modoSim === 'sem-juros-neg') {
+        saldo = (saldo > 0 ? saldo * (1 + taxaInvestMensal) : saldo) + diferenca;
+      } else if (modoSim === 'manter-positivo') {
+        saldo = saldo * (1 + taxaInvestMensal) + diferenca;
+        if (saldo < 0) saldo = 0;
+      } else {
+        saldo = saldo * (1 + taxaInvestMensal) + diferenca;
       }
-    });
-    _analiseCharts.push(chart);
-
-    // Saldo devedor chart for this comparison
-    var saldoChartId = 'analise-comp-saldo-chart-' + ci;
-    var saldoCanvas = document.getElementById(saldoChartId);
-    if (saldoCanvas && r.maxPeriodo > 0) {
-      var sCtx = saldoCanvas.getContext('2d');
-      var cfg = comp.config;
-      var divAtualSel = [];
-      (cfg.selectedAtualIdx || []).forEach(function(idx) { if (dividasAtuais[idx]) divAtualSel.push(dividasAtuais[idx]); });
-      var divPropSel = [];
-      (cfg.selectedPropostaIdx || []).forEach(function(idx) { if (dividasProposta[idx]) divPropSel.push(dividasProposta[idx]); });
-      var sDatasets = [];
-      var sLabels = [];
-      for (var sm = 0; sm <= r.maxPeriodo; sm++) sLabels.push('M\u00eas ' + sm);
-      var sColorsA = ['#ef4444','#fb923c','#fbbf24'];
-      var sColorsP = ['#60a5fa','#34d399','#a78bfa'];
-      divAtualSel.forEach(function(d, di) {
-        var proj = gerarProjecaoSaldo(d, true);
-        var sData = proj.saldos;
-        // Pad ou trim para maxPeriodo
-        while (sData.length <= r.maxPeriodo) sData.push(0);
-        if (sData.length > r.maxPeriodo + 1) sData = sData.slice(0, r.maxPeriodo + 1);
-        sDatasets.push({ label: '[A] ' + d.nome, data: sData, borderColor: sColorsA[di % sColorsA.length], backgroundColor: 'transparent', borderWidth: 1.5, pointRadius: 0, tension: 0.3 });
-      });
-      divPropSel.forEach(function(d, di) {
-        var proj = gerarProjecaoSaldo(d, false);
-        var sData = proj.saldos;
-        while (sData.length <= r.maxPeriodo) sData.push(0);
-        if (sData.length > r.maxPeriodo + 1) sData = sData.slice(0, r.maxPeriodo + 1);
-        sDatasets.push({ label: '[P] ' + d.nome, data: sData, borderColor: sColorsP[di % sColorsP.length], backgroundColor: 'transparent', borderWidth: 1.5, pointRadius: 0, tension: 0.3 });
-      });
-      var sChart = new Chart(sCtx, {
-        type: 'line',
-        data: { labels: sLabels, datasets: sDatasets },
-        options: {
-          responsive: true, maintainAspectRatio: false,
-          plugins: { title: { display: true, text: 'Evolu\u00e7\u00e3o do Saldo Devedor', color: '#fff' }, legend: { labels: { color: '#A0B8A6', font: { size: 10 } } } },
-          scales: {
-            x: { ticks: { color: '#A0B8A6', maxTicksLimit: 12 }, grid: { color: 'rgba(255,255,255,0.03)' } },
-            y: { ticks: { color: '#A0B8A6', callback: function(v) { return 'R$ ' + (v/1000).toFixed(0) + 'k'; } }, grid: { color: 'rgba(255,255,255,0.05)' } }
-          }
-        }
-      });
-      _analiseCharts.push(sChart);
+      patrimonioData.push(saldo);
     }
-    } catch(e) { console.warn("Chart comp error:", e.message); }
+    r.patrimonioData = patrimonioData;
+    r.patrimonioFinal = patrimonioData.length > 0 ? patrimonioData[patrimonioData.length - 1] : 0;
   });
+  // Cenário base: patrimônio = 0 (ele é a referência)
+  cenarioBase.patrimonioData = [];
+  for (var m = 0; m < maxPeriodo; m++) cenarioBase.patrimonioData.push(0);
+  cenarioBase.patrimonioFinal = 0;
 
-  // ===== ESTRAT\u00c9GIAS =====
-  var stratsHtml = '';
-  selectedStrats.forEach(function(strat, si) {
-    var r = _analiseRunStrat(strat);
-    if (!r) return;
+  // ===== TABELA DE MÉTRICAS COMPARATIVAS =====
+  var metricasHtml = '<div class="cons-table-wrap"><table class="cons-table"><thead><tr><th>Métrica</th><th>Cenário Base</th>';
+  resultados.forEach(function(r) { metricasHtml += '<th>' + _escHtml(r.nome) + '</th>'; });
+  metricasHtml += '</tr></thead><tbody>';
 
-    var chartId = 'analise-strat-chart-' + si;
-    stratsHtml += '<div class="analise-result-card">';
-    stratsHtml += '<h3 style="display:flex; align-items:center; gap:0.5rem;">📋 ' + _escHtml(r.nome) + '</h3>';
-
-    // Summary grid
-    stratsHtml += '<div class="arc-grid">';
-    stratsHtml += '<div class="arc-item"><div class="arc-label">Saldo Devedor Inicial</div><div class="arc-value" style="color:var(--red);">' + fmtBRL(r.saldoInicialTotal) + '</div></div>';
-    stratsHtml += '<div class="arc-item"><div class="arc-label">Prazo Original</div><div class="arc-value" style="color:#fff;">' + r.prazoOriginal + ' meses</div></div>';
-    stratsHtml += '<div class="arc-item"><div class="arc-label">Quitação em</div><div class="arc-value" style="color:' + (r.quitouEm >= 0 ? 'var(--green)' : 'var(--red)') + ';">' + (r.quitouEm >= 0 ? (r.quitouEm + 1) + ' meses' : 'Não quitou') + '</div></div>';
-    stratsHtml += '<div class="arc-item"><div class="arc-label">Economia</div><div class="arc-value" style="color:var(--green);">' + (r.economiaMeses > 0 ? r.economiaMeses + ' meses' : '—') + '</div></div>';
-    stratsHtml += '<div class="arc-item"><div class="arc-label">Juros Pagos (até quitação)</div><div class="arc-value" style="color:var(--red);">' + fmtBRL(r.totalJurosPagos) + '</div></div>';
-    stratsHtml += '<div class="arc-item"><div class="arc-label">Amortização Extra Total</div><div class="arc-value" style="color:var(--blue);">' + fmtBRL(r.totalAmortExtra) + '</div></div>';
-    stratsHtml += '<div class="arc-item"><div class="arc-label">Reserva Final (Líq.)</div><div class="arc-value" style="color:var(--green);">' + fmtBRL(r.reservaFinal) + '</div></div>';
-    stratsHtml += '<div class="arc-item"><div class="arc-label">Aporte Mensal</div><div class="arc-value" style="color:#fff;">' + fmtBRL(r.aporteMensal) + '</div></div>';
-    stratsHtml += '<div class="arc-item"><div class="arc-label">Dívidas</div><div class="arc-value" style="color:#fff;">' + r.dividasNomes.join(', ') + '</div></div>';
-    stratsHtml += '<div class="arc-item"><div class="arc-label">Fonte</div><div class="arc-value" style="color:#fff;">' + (r.source === 'proposta' ? 'Proposta' : 'Atual') + '</div></div>';
-    stratsHtml += '<div class="arc-item"><div class="arc-label">% Reserva</div><div class="arc-value" style="color:#fff;">' + r.pctReserva + '%</div></div>';
-    stratsHtml += '<div class="arc-item"><div class="arc-label">Auto-Quitar</div><div class="arc-value" style="color:#fff;">' + (r.autoQuit ? 'Sim' : 'Não') + '</div></div>';
-    stratsHtml += '</div>';
-
-    // Chart placeholder
-    stratsHtml += '<div style="height:220px; margin-top:1rem;"><canvas id="' + chartId + '"></canvas></div>';
-    stratsHtml += '</div>';
+  // Juros totais pagos
+  metricasHtml += '<tr><td>Juros Totais Pagos</td><td style="color:var(--red);">' + fmtBRL(cenarioBase.totalJurosPagos) + '</td>';
+  resultados.forEach(function(r) {
+    var cor = r.totalJurosPagos < cenarioBase.totalJurosPagos ? 'var(--green)' : 'var(--red)';
+    metricasHtml += '<td style="color:' + cor + ';">' + fmtBRL(r.totalJurosPagos) + '</td>';
   });
-  document.getElementById('analise-strats-resultado').innerHTML = stratsHtml;
+  metricasHtml += '</tr>';
 
-  // Render strategy charts
-  selectedStrats.forEach(function(strat, si) {
-    try {
-    var r = _analiseRunStrat(strat);
-    if (!r || !r.saldoData.length) return;
-    var chartId = 'analise-strat-chart-' + si;
-    var canvas = document.getElementById(chartId);
-    if (!canvas) return;
-    var ctx = canvas.getContext('2d');
-    var labels = r.saldoData.map(function(_, i) { return 'Mês ' + (i + 1); });
-    var chart = new Chart(ctx, {
+  // Reajustes totais pagos
+  metricasHtml += '<tr><td>Reajustes Totais Pagos</td><td style="color:var(--red);">' + fmtBRL(cenarioBase.totalReajustesPagos) + '</td>';
+  resultados.forEach(function(r) {
+    var cor = r.totalReajustesPagos < cenarioBase.totalReajustesPagos ? 'var(--green)' : 'var(--red)';
+    metricasHtml += '<td style="color:' + cor + ';">' + fmtBRL(r.totalReajustesPagos) + '</td>';
+  });
+  metricasHtml += '</tr>';
+
+  // Valor total pago em parcelas
+  metricasHtml += '<tr><td>Total Pago em Parcelas</td><td style="color:#fff;">' + fmtBRL(cenarioBase.totalPagoEmParcelas) + '</td>';
+  resultados.forEach(function(r) {
+    var cor = r.totalPagoEmParcelas < cenarioBase.totalPagoEmParcelas ? 'var(--green)' : '#fff';
+    metricasHtml += '<td style="color:' + cor + ';">' + fmtBRL(r.totalPagoEmParcelas) + '</td>';
+  });
+  metricasHtml += '</tr>';
+
+  // Custo total da estratégia (amortizações + quitações)
+  metricasHtml += '<tr><td>Custo Total da Estratégia</td><td style="color:#fff;">—</td>';
+  resultados.forEach(function(r) {
+    metricasHtml += '<td style="color:var(--blue);">' + fmtBRL(r.custoTotalEstrategia) + '</td>';
+  });
+  metricasHtml += '</tr>';
+
+  // Patrimônio acumulado ao final
+  metricasHtml += '<tr><td>Patrimônio Acumulado (Final)</td><td style="color:#fff;">—</td>';
+  resultados.forEach(function(r) {
+    var cor = r.patrimonioFinal > 0 ? 'var(--green)' : 'var(--red)';
+    metricasHtml += '<td style="color:' + cor + ';">' + fmtBRL(r.patrimonioFinal) + '</td>';
+  });
+  metricasHtml += '</tr>';
+
+  // Prazo de quitação
+  metricasHtml += '<tr><td>Quitação Efetiva</td><td style="color:#fff;">' + cenarioBase.prazoOriginal + ' meses</td>';
+  resultados.forEach(function(r) {
+    var qMeses = r.quitouEm >= 0 ? (r.quitouEm + 1) : r.prazoOriginal;
+    var cor = qMeses < cenarioBase.prazoOriginal ? 'var(--green)' : '#fff';
+    metricasHtml += '<td style="color:' + cor + ';">' + qMeses + ' meses</td>';
+  });
+  metricasHtml += '</tr>';
+
+  // Economia em meses
+  metricasHtml += '<tr><td>Economia em Meses</td><td style="color:#fff;">—</td>';
+  resultados.forEach(function(r) {
+    metricasHtml += '<td style="color:var(--green);">' + (r.economiaMeses > 0 ? r.economiaMeses + ' meses' : '—') + '</td>';
+  });
+  metricasHtml += '</tr>';
+
+  // Reserva final
+  metricasHtml += '<tr><td>Reserva Final (Líquida)</td><td style="color:#fff;">—</td>';
+  resultados.forEach(function(r) {
+    metricasHtml += '<td style="color:var(--green);">' + fmtBRL(r.reservaFinal) + '</td>';
+  });
+  metricasHtml += '</tr>';
+
+  metricasHtml += '</tbody></table></div>';
+  document.getElementById('analise-metricas-content').innerHTML = metricasHtml;
+
+  // ===== GRÁFICOS COMPARATIVOS =====
+  var labels = [];
+  for (var lm = 0; lm < maxPeriodo; lm++) labels.push('Mês ' + (lm + 1));
+
+  var chartColors = ['#ef4444', '#60a5fa', '#22c55e', '#fbbf24', '#a78bfa', '#fb923c', '#ec4899', '#14b8a6'];
+
+  // 1. Evolução do Saldo Devedor
+  var saldoDatasets = [{
+    label: 'Cenário Base',
+    data: cenarioBase.saldoData,
+    borderColor: '#ffffff',
+    backgroundColor: 'transparent',
+    borderWidth: 2,
+    borderDash: [5, 5],
+    pointRadius: 0,
+    tension: 0.2
+  }];
+  resultados.forEach(function(r, i) {
+    saldoDatasets.push({
+      label: r.nome,
+      data: r.saldoData,
+      borderColor: chartColors[i % chartColors.length],
+      backgroundColor: 'transparent',
+      borderWidth: 2,
+      pointRadius: 0,
+      tension: 0.2
+    });
+  });
+  var canvasSaldo = document.getElementById('analise-chart-saldo');
+  if (canvasSaldo) {
+    var ctxSaldo = canvasSaldo.getContext('2d');
+    var chartSaldo = new Chart(ctxSaldo, {
       type: 'line',
-      data: {
-        labels: labels,
-        datasets: [
-          { label: 'Saldo Devedor', data: r.saldoData, borderColor: '#ef4444', backgroundColor: 'rgba(239,68,68,0.1)', fill: true, tension: 0.2, borderWidth: 2 },
-          { label: 'Reserva Líquida', data: r.reservaData, borderColor: '#22c55e', backgroundColor: 'rgba(34,197,94,0.1)', fill: true, tension: 0.2, borderWidth: 2 }
-        ]
-      },
+      data: { labels: labels, datasets: saldoDatasets },
       options: {
         responsive: true, maintainAspectRatio: false,
-        plugins: { title: { display: true, text: 'Saldo Devedor vs. Reserva Líquida', color: '#fff' }, legend: { labels: { color: '#A0B8A6' } } },
+        plugins: { title: { display: true, text: 'Evolução do Saldo Devedor', color: '#fff' }, legend: { labels: { color: '#A0B8A6' } } },
+        scales: {
+          x: { ticks: { color: '#A0B8A6', maxTicksLimit: 12 }, grid: { color: 'rgba(255,255,255,0.03)' } },
+          y: { ticks: { color: '#A0B8A6', callback: function(v) { return 'R$ ' + (v/1000).toFixed(0) + 'k'; } }, grid: { color: 'rgba(255,255,255,0.05)' } }
+        }
+      }
+    });
+    _analiseCharts.push(chartSaldo);
+  }
+
+  // 2. Evolução das Parcelas
+  var parcelasDatasets = [{
+    label: 'Cenário Base',
+    data: cenarioBase.parcelasData,
+    borderColor: '#ffffff',
+    backgroundColor: 'transparent',
+    borderWidth: 2,
+    borderDash: [5, 5],
+    pointRadius: 0,
+    tension: 0.2
+  }];
+  resultados.forEach(function(r, i) {
+    parcelasDatasets.push({
+      label: r.nome,
+      data: r.parcelasData,
+      borderColor: chartColors[i % chartColors.length],
+      backgroundColor: 'transparent',
+      borderWidth: 2,
+      pointRadius: 0,
+      tension: 0.2
+    });
+  });
+  var canvasParcelas = document.getElementById('analise-chart-parcelas');
+  if (canvasParcelas) {
+    var ctxParcelas = canvasParcelas.getContext('2d');
+    var chartParcelas = new Chart(ctxParcelas, {
+      type: 'line',
+      data: { labels: labels, datasets: parcelasDatasets },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { title: { display: true, text: 'Evolução das Parcelas', color: '#fff' }, legend: { labels: { color: '#A0B8A6' } } },
         scales: {
           x: { ticks: { color: '#A0B8A6', maxTicksLimit: 12 }, grid: { color: 'rgba(255,255,255,0.03)' } },
           y: { ticks: { color: '#A0B8A6', callback: function(v) { return 'R$ ' + v.toLocaleString('pt-BR'); } }, grid: { color: 'rgba(255,255,255,0.05)' } }
         }
       }
     });
-    _analiseCharts.push(chart);
-    } catch(e) { console.warn("Chart strat error:", e.message); }
+    _analiseCharts.push(chartParcelas);
+  }
+
+  // 3. Evolução do Patrimônio Acumulado
+  var patrimonioDatasets = [];
+  resultados.forEach(function(r, i) {
+    patrimonioDatasets.push({
+      label: r.nome,
+      data: r.patrimonioData,
+      borderColor: chartColors[i % chartColors.length],
+      backgroundColor: 'rgba(' + (i === 0 ? '34,197,94' : i === 1 ? '96,165,250' : '251,191,36') + ',0.1)',
+      fill: true,
+      borderWidth: 2,
+      pointRadius: 0,
+      tension: 0.2
+    });
   });
+  var canvasPatrimonio = document.getElementById('analise-chart-patrimonio');
+  if (canvasPatrimonio) {
+    var ctxPatrimonio = canvasPatrimonio.getContext('2d');
+    var chartPatrimonio = new Chart(ctxPatrimonio, {
+      type: 'line',
+      data: { labels: labels, datasets: patrimonioDatasets },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { title: { display: true, text: 'Patrimônio Acumulado (diferença investida)', color: '#fff' }, legend: { labels: { color: '#A0B8A6' } } },
+        scales: {
+          x: { ticks: { color: '#A0B8A6', maxTicksLimit: 12 }, grid: { color: 'rgba(255,255,255,0.03)' } },
+          y: { ticks: { color: '#A0B8A6', callback: function(v) { return 'R$ ' + v.toLocaleString('pt-BR'); } }, grid: { color: 'rgba(255,255,255,0.05)' } }
+        }
+      }
+    });
+    _analiseCharts.push(chartPatrimonio);
+  }
 
   // ===== VISÃO CONSOLIDADA =====
-  _renderConsolidado(selectedComps, selectedStrats);
+  _renderConsolidado(selectedStrats, resultados, cenarioBase, maxPeriodo);
 }
 
-function _renderConsolidado(selectedComps, selectedStrats) {
+function _renderConsolidado(selectedStrats, resultados, cenarioBase, maxPeriodo) {
   var consolidado = document.getElementById('analise-consolidado');
   consolidado.style.display = 'block';
 
-  // Build unified scenario list
+  // Build unified scenario list from the pre-computed results
   var cenarios = [];
 
-  // ===== CENÁRIO ATUAL (sempre incluído automaticamente) =====
-  if (dividasAtuais.length > 0) {
-    var totalSaldoAtualBase = 0, totalPagoAtualBase = 0, maxPrazoAtualBase = 0, totalParcelaAtualBase = 0;
-    dividasAtuais.forEach(function(d) {
-      var restantes = d.totalParcelas - (d.parcelasPagas || 0);
-      var saldo = d.saldoDevedor || d.valorContratado;
-      totalSaldoAtualBase += saldo;
-      totalParcelaAtualBase += d.parcela;
-      if (restantes > maxPrazoAtualBase) maxPrazoAtualBase = restantes;
-      totalPagoAtualBase += calcTotalPagarDivida(d, restantes);
-    });
-    var jurosAtualBase = totalPagoAtualBase - totalSaldoAtualBase;
-    cenarios.push({
-      tipo: 'atual-base',
-      label: 'Cenário Atual (Sem Alteração)',
-      parcela: totalParcelaAtualBase,
-      jurosTotal: jurosAtualBase,
-      totalPago: totalPagoAtualBase,
-      saldoDevedor: totalSaldoAtualBase,
-      prazo: maxPrazoAtualBase,
-      nContratos: dividasAtuais.length,
-      investFinal: 0,
-      reservaFinal: 0,
-      economiaMeses: 0,
-      economiaJuros: 0,
-      quitouEm: maxPrazoAtualBase,
-      aporteMensal: 0,
-      source: null
-    });
-  }
-
-  selectedComps.forEach(function(comp) {
-    var r = _analiseRunComp(comp);
-    if (!r) return;
-    // Cenário ATUAL
-    cenarios.push({
-      tipo: 'comp-atual',
-      label: r.nome + ' (Atual)',
-      parcela: r.parcelaAtual,
-      jurosTotal: r.jurosAtual,
-      totalPago: r.totalPagoAtual,
-      saldoDevedor: r.totalSaldoAtual,
-      prazo: r.prazoAtual,
-      nContratos: r.nDividasAtual,
-      investFinal: 0,
-      reservaFinal: 0,
-      economiaMeses: 0,
-      economiaJuros: 0,
-      quitouEm: r.prazoAtual,
-      aporteMensal: 0,
-      source: comp
-    });
-    // Cenário PROPOSTA
-    cenarios.push({
-      tipo: 'comp-prop',
-      label: r.nome + ' (Proposta)',
-      parcela: r.parcelaProp,
-      jurosTotal: r.jurosProp,
-      totalPago: r.totalPagoProp,
-      saldoDevedor: r.totalSaldoProp,
-      prazo: r.prazoProp,
-      nContratos: r.nDividasProp,
-      investFinal: r.investFinal,
-      reservaFinal: r.investFinal,
-      economiaMeses: 0,
-      economiaJuros: r.economiaJuros,
-      quitouEm: r.prazoProp,
-      aporteMensal: 0,
-      source: comp
-    });
+  // ===== CENÁRIO BASE (sem amortização extra) =====
+  var parcelaBase = cenarioBase.parcelasData.length > 0 ? cenarioBase.parcelasData[0] : 0;
+  cenarios.push({
+    tipo: 'base',
+    label: 'Cenário Base (Sem Amortização Extra)',
+    parcela: parcelaBase,
+    jurosTotal: cenarioBase.totalJurosPagos,
+    totalPago: cenarioBase.totalPagoEmParcelas,
+    saldoDevedor: cenarioBase.saldoData.length > 0 ? cenarioBase.saldoData[0] : 0,
+    prazo: cenarioBase.prazoOriginal,
+    nContratos: selectedStrats[0].config && selectedStrats[0].config.selectedDividas ? selectedStrats[0].config.selectedDividas.length : 1,
+    investFinal: 0,
+    reservaFinal: 0,
+    economiaMeses: 0,
+    economiaJuros: 0,
+    quitouEm: cenarioBase.prazoOriginal,
+    aporteMensal: 0,
+    patrimonioFinal: 0,
+    source: null
   });
 
-  selectedStrats.forEach(function(strat) {
-    var r = _analiseRunStrat(strat);
-    if (!r) return;
-    // Calcular juros totais e total pago para a estratégia
-    var cfg = strat.config;
-    var list = cfg.source === 'atual' ? dividasAtuais : dividasProposta;
-    var isAtual = cfg.source === 'atual';
-    var totalPagoOrig = 0, totalSaldoOrig = 0, maxPrazoOrig = 0, totalParcelaOrig = 0;
-    (cfg.selectedDividas || []).forEach(function(idx) {
-      var d = list[idx];
-      if (!d) return;
-      var restantes = d.totalParcelas - (isAtual ? (d.parcelasPagas || 0) : 0);
-      var saldo = isAtual ? (d.saldoDevedor || d.valorContratado) : d.valorContratado;
-      totalSaldoOrig += saldo;
-      totalParcelaOrig += d.parcela;
-      if (restantes > maxPrazoOrig) maxPrazoOrig = restantes;
-      totalPagoOrig += calcTotalPagarDivida(d, restantes);
-    });
-
+  // ===== ESTRATÉGIAS =====
+  resultados.forEach(function(r) {
     cenarios.push({
       tipo: 'strat',
       label: r.nome,
-      parcela: totalParcelaOrig,
+      parcela: r.parcelasData.length > 0 ? r.parcelasData[0] : 0,
       jurosTotal: r.totalJurosPagos,
-      totalPago: totalSaldoOrig + r.totalJurosPagos,
+      totalPago: r.totalPagoEmParcelas + r.custoTotalEstrategia,
       saldoDevedor: r.saldoInicialTotal,
       prazo: r.prazoOriginal,
       nContratos: r.nDividas,
-      investFinal: 0,
+      investFinal: r.patrimonioFinal || 0,
       reservaFinal: r.reservaFinal,
       economiaMeses: r.economiaMeses,
-      economiaJuros: 0,
+      economiaJuros: cenarioBase.totalJurosPagos - r.totalJurosPagos,
       quitouEm: r.quitouEm >= 0 ? r.quitouEm + 1 : r.prazoOriginal,
       aporteMensal: r.aporteMensal,
       totalAmortExtra: r.totalAmortExtra || 0,
+      custoTotalEstrategia: r.custoTotalEstrategia || 0,
+      patrimonioFinal: r.patrimonioFinal || 0,
       autoQuit: r.autoQuit,
-      source: strat
+      source: null
     });
   });
 
@@ -5870,7 +5979,7 @@ function _applyJurosClientLockMode(locked) {
       if (el.classList.contains('btn-save-global')) return;
       // Permitir navegação entre abas e botões de visualização
       if (el.classList.contains('tab-btn')) return;
-      // Toda a aba Análise Combinada fica interativa
+      // Toda a aba Análises Comparativas fica interativa
       if (el.closest && el.closest('#tab-analise')) return;
       var oc = el.getAttribute('onclick') || '';
       if (oc.indexOf('switchTab') >= 0) return;
