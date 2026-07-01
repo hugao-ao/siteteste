@@ -2964,6 +2964,7 @@ var stratState = {
   capacidadeId: null, // ID da capacidade selecionada da Tab 3
   linkedPropostas: [], // [{propostaIdx, dividaIdx}] - vínculos proposta↔dívida
   creditDist: {}, // {dividaIdx: valorR$} - quanto do crédito das propostas vai para cada dívida vinculada
+  selectedPropostas: [], // indices of non-linked propostas selected for this strategy
   calendario: null
 };
 var chartStratEvolucao = null, chartStratAlocacao = null;
@@ -3083,6 +3084,7 @@ function _resetStratState() {
   stratState.source = 'atual';
   stratState.selectedDividas = [];
   stratState.linkedPropostas = [];
+  stratState.selectedPropostas = [];
   stratState.pctReserva = 100;
   stratState.autoQuit = false;
   stratState.overrides = {};
@@ -3118,6 +3120,7 @@ function _buildStratConfig() {
     sporadics: JSON.parse(JSON.stringify(stratState.sporadics)),
     source: stratState.source,
     selectedDividas: stratState.selectedDividas.slice(),
+    selectedPropostas: stratState.selectedPropostas.slice(),
     linkedPropostas: JSON.parse(JSON.stringify(stratState.linkedPropostas)),
     pctReserva: stratState.pctReserva,
     autoQuit: stratState.autoQuit,
@@ -3142,6 +3145,7 @@ function _applyStratConfig(config) {
   stratState.sporadics = Array.isArray(config.sporadics) ? JSON.parse(JSON.stringify(config.sporadics)) : [];
   stratState.source = config.source || 'atual';
   stratState.selectedDividas = Array.isArray(config.selectedDividas) ? config.selectedDividas.slice() : [];
+  stratState.selectedPropostas = Array.isArray(config.selectedPropostas) ? config.selectedPropostas.slice() : [];
   stratState.linkedPropostas = Array.isArray(config.linkedPropostas) ? JSON.parse(JSON.stringify(config.linkedPropostas)) : [];
   stratState.pctReserva = config.pctReserva !== undefined ? config.pctReserva : 100;
   stratState.autoQuit = !!config.autoQuit;
@@ -3461,13 +3465,18 @@ function stratRenderLinks() {
     return;
   }
 
-  // Render proposta cards (left)
+  // Render proposta cards (left) - with click-to-select for non-linked
   var pHtml = '';
   dividasProposta.forEach(function(p, pi) {
     var isLinked = stratState.linkedPropostas.some(function(l) { return l.propostaIdx === pi; });
-    var borderColor = isLinked ? 'var(--green)' : 'var(--border)';
-    pHtml += '<div class="strat-link-card" data-type="proposta" data-idx="' + pi + '" style="padding:0.4rem 0.6rem; background:var(--card2); border:1px solid ' + borderColor + '; border-radius:var(--radius); cursor:grab; font-size:0.75rem; user-select:none; transition:all 0.2s;">';
-    pHtml += '<div style="font-weight:600; color:var(--blue); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">' + _escHtml(p.nome) + '</div>';
+    var isSelected = stratState.selectedPropostas.indexOf(pi) >= 0;
+    var borderColor = isLinked ? 'var(--green)' : (isSelected ? 'var(--green)' : 'var(--border)');
+    var bgColor = isSelected && !isLinked ? 'rgba(59,130,246,0.1)' : 'var(--card2)';
+    pHtml += '<div class="strat-link-card" data-type="proposta" data-idx="' + pi + '" style="padding:0.4rem 0.6rem; background:' + bgColor + '; border:1px solid ' + borderColor + '; border-radius:var(--radius); cursor:' + (isLinked ? 'grab' : 'pointer') + '; font-size:0.75rem; user-select:none; transition:all 0.2s;">';
+    pHtml += '<div style="font-weight:600; color:var(--blue); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">' + _escHtml(p.nome);
+    if (isLinked) pHtml += ' <small style="color:var(--green);">[vinculada]</small>';
+    else if (isSelected) pHtml += ' <small style="color:var(--green);">[\u2713 selecionada]</small>';
+    pHtml += '</div>';
     pHtml += '<div style="color:var(--muted); font-size:0.65rem;">' + fmtBRL(p.valorContratado) + '</div>';
     pHtml += '</div>';
   });
@@ -3510,7 +3519,6 @@ function _linkAttachClickSelect() {
     var di = parseInt(card.getAttribute('data-idx'));
     if (linkedDividaIndices.indexOf(di) >= 0) return; // linked = no click select
     card.addEventListener('click', function(e) {
-      // Only trigger if not a drag (check if mouse moved)
       if (card._wasDragged) { card._wasDragged = false; return; }
       var idx = parseInt(this.getAttribute('data-idx'));
       var pos = stratState.selectedDividas.indexOf(idx);
@@ -3519,6 +3527,27 @@ function _linkAttachClickSelect() {
         delete stratState.alocPorDivida[idx];
       } else {
         stratState.selectedDividas.push(idx);
+      }
+      stratRenderLinks();
+      stratRenderAlocPorDivida();
+      stratRenderCreditDist();
+    });
+  });
+
+  // Attach click-to-select on non-linked proposta cards
+  var pCards = document.querySelectorAll('#strat-link-propostas .strat-link-card[data-type="proposta"]');
+  pCards.forEach(function(card) {
+    var pi = parseInt(card.getAttribute('data-idx'));
+    var isLinked = stratState.linkedPropostas.some(function(l) { return l.propostaIdx === pi; });
+    if (isLinked) return; // linked = no click select
+    card.addEventListener('click', function(e) {
+      if (card._wasDragged) { card._wasDragged = false; return; }
+      var idx = parseInt(this.getAttribute('data-idx'));
+      var pos = stratState.selectedPropostas.indexOf(idx);
+      if (pos >= 0) {
+        stratState.selectedPropostas.splice(pos, 1);
+      } else {
+        stratState.selectedPropostas.push(idx);
       }
       stratRenderLinks();
       stratRenderAlocPorDivida();
@@ -3796,67 +3825,181 @@ function stratRenderAlocPorDivida() {
   var panel = document.getElementById('strat-aloc-por-divida');
   var container = document.getElementById('strat-aloc-dividas-container');
 
-  // Build effective list: selectedDividas (non-linked) + linked dívidas NOT fully paid off
-  var effectiveDividas = stratState.selectedDividas.slice(); // non-linked selected
+  // Build effective list of items that participate in amortization allocation
+  // Items are: {type:'divida'|'proposta', idx:number, nome:string, saldo:number, parcela:number, prazo:number, label:string, isLinkedPartial:boolean, isQuitada:boolean}
+  var effectiveItems = [];
   var linkedDividaIndices = stratGetLinkedDividaIndices();
+  var quitadasHtml = '';
+
+  // 1. Linked dívidas: show adjusted saldo (saldo - creditDist)
   linkedDividaIndices.forEach(function(di) {
     var d = dividasAtuais[di];
     if (!d) return;
-    var saldo = d.saldoDevedor || d.valorContratado;
+    var saldoOriginal = d.saldoDevedor || d.valorContratado;
     var creditAllocated = (stratState.creditDist && stratState.creditDist[di]) || 0;
-    if (creditAllocated < saldo) {
-      // Not fully paid off - enters amortization
-      if (effectiveDividas.indexOf(di) < 0) effectiveDividas.push(di);
+    var saldoAjustado = saldoOriginal - creditAllocated;
+    if (saldoAjustado <= 0.01) {
+      // Fully paid off by credit - show as quitada
+      quitadasHtml += '<div style="display:flex; align-items:center; gap:0.5rem; padding:0.3rem 0.6rem; background:rgba(16,185,129,0.1); border-radius:6px; margin-bottom:0.3rem;">' +
+        '<span style="color:var(--green); font-size:0.8rem;">&#10003;</span>' +
+        '<span style="font-size:0.8rem; color:var(--green);">' + _escHtml(d.nome) + '</span>' +
+        '<span style="font-size:0.7rem; color:var(--muted); margin-left:auto;">Quitada pelo crédito (' + fmtBRL(creditAllocated) + ')</span>' +
+      '</div>';
     } else {
-      // Fully paid off - remove from effective if somehow there
-      var pos = effectiveDividas.indexOf(di);
-      if (pos >= 0) effectiveDividas.splice(pos, 1);
+      // Partial payment - enters amortization with adjusted saldo
+      var restantes = d.totalParcelas - (d.parcelasPagas || 0);
+      effectiveItems.push({
+        type: 'divida', idx: di, nome: d.nome,
+        saldo: saldoAjustado, parcela: d.parcela, prazo: restantes,
+        label: d.nome + ' <small style="color:var(--blue);">[saldo ajustado: ' + fmtBRL(saldoAjustado) + ']</small>',
+        isLinkedPartial: true, isQuitada: false
+      });
     }
   });
 
-  if (effectiveDividas.length <= 1) {
+  // 2. Non-linked selected dívidas (from click-select)
+  stratState.selectedDividas.forEach(function(di) {
+    // Skip if already added as linked
+    if (linkedDividaIndices.indexOf(di) >= 0) return;
+    var d = dividasAtuais[di];
+    if (!d) return;
+    var saldo = d.saldoDevedor || d.valorContratado;
+    var restantes = d.totalParcelas - (d.parcelasPagas || 0);
+    effectiveItems.push({
+      type: 'divida', idx: di, nome: d.nome,
+      saldo: saldo, parcela: d.parcela, prazo: restantes,
+      label: d.nome,
+      isLinkedPartial: false, isQuitada: false
+    });
+  });
+
+  // 3. Selected propostas (non-linked, click-selected) — these are NEW debts to include
+  stratState.selectedPropostas.forEach(function(pi) {
+    // Skip if this proposta is linked (linked propostas provide credit, not debt)
+    var isLinked = stratState.linkedPropostas.some(function(l) { return l.propostaIdx === pi; });
+    if (isLinked) return;
+    var p = dividasProposta[pi];
+    if (!p) return;
+    var saldo = p.valorContratado;
+    var restantes = p.totalParcelas;
+    effectiveItems.push({
+      type: 'proposta', idx: pi, nome: p.nome,
+      saldo: saldo, parcela: p.parcela, prazo: restantes,
+      label: p.nome + ' <small style="color:var(--purple, #a78bfa);">[proposta]</small>',
+      isLinkedPartial: false, isQuitada: false
+    });
+  });
+
+  // Update stratState.selectedDividas to include all effective divida indices for calendar generation
+  // (This ensures stratGerarCalendario picks up linked partial dívidas)
+  var allEffectiveDividaIdx = [];
+  effectiveItems.forEach(function(item) {
+    if (item.type === 'divida') allEffectiveDividaIdx.push(item.idx);
+  });
+  // Sync selectedDividas with effective list (add linked partials if not present)
+  linkedDividaIndices.forEach(function(di) {
+    var d = dividasAtuais[di];
+    if (!d) return;
+    var saldoOriginal = d.saldoDevedor || d.valorContratado;
+    var creditAllocated = (stratState.creditDist && stratState.creditDist[di]) || 0;
+    if (saldoOriginal - creditAllocated > 0.01) {
+      if (stratState.selectedDividas.indexOf(di) < 0) {
+        stratState.selectedDividas.push(di);
+      }
+    } else {
+      // Remove quitada from selectedDividas
+      var pos = stratState.selectedDividas.indexOf(di);
+      if (pos >= 0) stratState.selectedDividas.splice(pos, 1);
+    }
+  });
+
+  // If only 0 or 1 effective items (dividas+propostas), hide panel but still show quitadas
+  if (effectiveItems.length <= 1 && !quitadasHtml) {
     panel.classList.add('hidden');
-    if (effectiveDividas.length === 1) {
+    if (effectiveItems.length === 1) {
       stratState.alocPorDivida = {};
-      stratState.alocPorDivida[effectiveDividas[0]] = 100;
+      stratState.alocPorDivida[effectiveItems[0].type + '_' + effectiveItems[0].idx] = 100;
+      // Also set with plain idx for backward compat with calendar
+      if (effectiveItems[0].type === 'divida') {
+        stratState.alocPorDivida[effectiveItems[0].idx] = 100;
+      }
     }
     return;
   }
-  panel.classList.remove('hidden');
-  var list = dividasAtuais;
+  if (effectiveItems.length <= 1 && quitadasHtml) {
+    // Show panel just for quitadas info + single item
+    panel.classList.remove('hidden');
+    if (effectiveItems.length === 1) {
+      stratState.alocPorDivida = {};
+      stratState.alocPorDivida[effectiveItems[0].type + '_' + effectiveItems[0].idx] = 100;
+      if (effectiveItems[0].type === 'divida') {
+        stratState.alocPorDivida[effectiveItems[0].idx] = 100;
+      }
+    }
+    var singleHtml = quitadasHtml;
+    if (effectiveItems.length === 1) {
+      var item = effectiveItems[0];
+      singleHtml += '<div class="aloc-divida-row" style="margin-top:0.5rem;">' +
+        '<span class="adr-name">' + item.label + '</span>' +
+        '<span class="adr-saldo">' + fmtBRL(item.saldo) + '</span>' +
+        '<span class="adr-pct" style="color:var(--green);">100%</span>' +
+      '</div>';
+    }
+    container.innerHTML = singleHtml;
+    return;
+  }
 
-  // Auto-distribuir igualmente se não há alocação definida
+  panel.classList.remove('hidden');
+
+  // Auto-distribute equally if no allocation defined for current items
   var hasAloc = false;
-  effectiveDividas.forEach(function(idx) {
-    if (stratState.alocPorDivida[idx] !== undefined) hasAloc = true;
+  effectiveItems.forEach(function(item) {
+    var key = item.type === 'divida' ? item.idx : ('p_' + item.idx);
+    if (stratState.alocPorDivida[key] !== undefined) hasAloc = true;
   });
   if (!hasAloc) {
-    var pctEach = Math.floor(100 / effectiveDividas.length);
-    var remainder = 100 - pctEach * effectiveDividas.length;
-    effectiveDividas.forEach(function(idx, i) {
-      stratState.alocPorDivida[idx] = pctEach + (i === 0 ? remainder : 0);
+    var pctEach = Math.floor(100 / effectiveItems.length);
+    var remainder = 100 - pctEach * effectiveItems.length;
+    effectiveItems.forEach(function(item, i) {
+      var key = item.type === 'divida' ? item.idx : ('p_' + item.idx);
+      stratState.alocPorDivida[key] = pctEach + (i === 0 ? remainder : 0);
     });
   }
 
   var html = '';
-  effectiveDividas.forEach(function(idx) {
-    var d = list[idx];
-    if (!d) return;
-    var saldo = fmtBRL(d.saldoDevedor || d.valorContratado);
-    var isLinkedPartial = linkedDividaIndices.indexOf(idx) >= 0;
-    var label = isLinkedPartial ? d.nome + ' <small style="color:var(--blue);">[parcial]</small>' : d.nome;
-    var pct = stratState.alocPorDivida[idx] || 0;
+  // Show quitadas first
+  if (quitadasHtml) {
+    html += '<div style="margin-bottom:0.6rem;">' + quitadasHtml + '</div>';
+  }
+
+  // Table header
+  html += '<div class="aloc-divida-row" style="font-weight:600; font-size:0.7rem; color:var(--muted); border-bottom:1px solid var(--border); padding-bottom:0.3rem; margin-bottom:0.3rem;">' +
+    '<span class="adr-name">Dívida/Proposta</span>' +
+    '<span class="adr-saldo">Saldo</span>' +
+    '<span style="width:60px; text-align:center;">Parcela</span>' +
+    '<span style="width:50px; text-align:center;">Prazo</span>' +
+    '<span style="width:70px; text-align:center;">Alocação</span>' +
+  '</div>';
+
+  effectiveItems.forEach(function(item) {
+    var key = item.type === 'divida' ? item.idx : ('p_' + item.idx);
+    var pct = stratState.alocPorDivida[key] || 0;
     html += '<div class="aloc-divida-row">' +
-      '<span class="adr-name">' + label + '</span>' +
-      '<span class="adr-saldo">' + saldo + '</span>' +
-      '<input type="number" class="cal-pct-input adr-input" value="' + pct + '" min="0" max="100" step="5" data-divida-idx="' + idx + '" onchange="stratUpdateAlocDivida(this)">' +
+      '<span class="adr-name">' + item.label + '</span>' +
+      '<span class="adr-saldo">' + fmtBRL(item.saldo) + '</span>' +
+      '<span style="width:60px; text-align:center; font-size:0.75rem;">' + fmtBRL(item.parcela) + '</span>' +
+      '<span style="width:50px; text-align:center; font-size:0.75rem;">' + item.prazo + 'x</span>' +
+      '<input type="number" class="cal-pct-input adr-input" value="' + pct + '" min="0" max="100" step="5" data-item-key="' + key + '" data-item-type="' + item.type + '" data-item-idx="' + item.idx + '" onchange="stratUpdateAlocDivida(this)">' +
       '<span class="adr-pct">%</span>' +
     '</div>';
   });
 
   // Total
   var total = 0;
-  effectiveDividas.forEach(function(idx) { total += (stratState.alocPorDivida[idx] || 0); });
+  effectiveItems.forEach(function(item) {
+    var key = item.type === 'divida' ? item.idx : ('p_' + item.idx);
+    total += (stratState.alocPorDivida[key] || 0);
+  });
   var okClass = total === 100 ? 'ok' : 'err';
   html += '<div class="aloc-total-row"><span>Total:</span> <span class="aloc-total-val ' + okClass + '">' + total + '%</span></div>';
 
@@ -3864,14 +4007,23 @@ function stratRenderAlocPorDivida() {
 }
 
 function stratUpdateAlocDivida(el) {
-  var idx = parseInt(el.getAttribute('data-divida-idx'));
+  var key = el.getAttribute('data-item-key');
   var val = parseFloat(el.value) || 0;
   if (val < 0) val = 0;
   if (val > 100) val = 100;
-  stratState.alocPorDivida[idx] = val;
-  // Update total display
+  stratState.alocPorDivida[key] = val;
+  // Also set numeric key for backward compat if type is divida
+  var itemType = el.getAttribute('data-item-type');
+  var itemIdx = parseInt(el.getAttribute('data-item-idx'));
+  if (itemType === 'divida') {
+    stratState.alocPorDivida[itemIdx] = val;
+  }
+  // Recalculate total from all inputs in the container
   var total = 0;
-  stratState.selectedDividas.forEach(function(i) { total += (stratState.alocPorDivida[i] || 0); });
+  var inputs = el.closest('#strat-aloc-dividas-container').querySelectorAll('.adr-input');
+  for (var i = 0; i < inputs.length; i++) {
+    total += (parseFloat(inputs[i].value) || 0);
+  }
   var totalEl = el.closest('#strat-aloc-dividas-container').querySelector('.aloc-total-val');
   if (totalEl) {
     totalEl.textContent = total + '%';
@@ -3925,7 +4077,8 @@ function stratRenderCreditDist() {
     fieldsHtml += '<div style="display:flex; align-items:center; gap:0.6rem; margin-bottom:0.4rem;">';
     fieldsHtml += '<span style="flex:1; font-size:0.8rem; color:var(--gold);">' + _escHtml(d.nome) + ' <small style="color:var(--muted);">(saldo: ' + fmtBRL(saldo) + ')</small></span>';
     fieldsHtml += '<span style="font-size:0.75rem; color:var(--muted);">R$</span>';
-    fieldsHtml += '<input type="text" class="cal-pct-input" value="' + fmtBRL(currentVal).replace('R$\u00a0','').replace('R$ ','') + '" data-divida-idx="' + di + '" data-max="' + saldo + '" onchange="stratUpdateCreditDist(this)" style="width:180px; min-width:120px; max-width:300px; resize:horizontal; text-align:right;">';
+    var displayVal = currentVal > 0 ? currentVal.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2}) : '';
+    fieldsHtml += '<input type="text" class="cal-pct-input" value="' + displayVal + '" data-divida-idx="' + di + '" data-max="' + saldo + '" oninput="stratFormatCreditInput(this)" onblur="stratUpdateCreditDist(this)" style="width:180px; min-width:120px; max-width:300px; resize:horizontal; text-align:right;">';
     fieldsHtml += '</div>';
   });
   document.getElementById('strat-credit-dist-fields').innerHTML = fieldsHtml;
@@ -3939,6 +4092,33 @@ function stratRenderCreditDist() {
   var restColor = restante >= 0 ? 'var(--green)' : 'var(--red, #ef4444)';
   document.getElementById('strat-credit-dist-restante').innerHTML =
     '<span style="color:var(--muted);">Restante para reserva/capital inicial:</span> <span style="color:' + restColor + ';">' + fmtBRL(restante) + '</span>';
+}
+
+function stratFormatCreditInput(el) {
+  // Format with milhar separators in real-time as user types
+  var cursorPos = el.selectionStart;
+  var oldLen = el.value.length;
+  // Remove all non-numeric chars except comma
+  var raw = el.value.replace(/[^0-9,]/g, '');
+  // Split by comma
+  var parts = raw.split(',');
+  var intPart = parts[0].replace(/^0+(?=\d)/, '') || '';
+  // Add dots for thousands
+  var formatted = '';
+  for (var i = intPart.length - 1, count = 0; i >= 0; i--) {
+    formatted = intPart[i] + formatted;
+    count++;
+    if (count % 3 === 0 && i > 0) formatted = '.' + formatted;
+  }
+  if (parts.length > 1) {
+    formatted += ',' + parts[1].substring(0, 2);
+  }
+  el.value = formatted;
+  // Adjust cursor
+  var newLen = el.value.length;
+  var newPos = cursorPos + (newLen - oldLen);
+  if (newPos < 0) newPos = 0;
+  el.setSelectionRange(newPos, newPos);
 }
 
 function stratUpdateCreditDist(el) {
@@ -4085,34 +4265,69 @@ function stratGerarCalendario() {
   stratState.parcelaMinPct = parseFloat(document.getElementById('strat-parcela-min-pct').value) || 0;
 
   // Aporte mensal e saldo inicial podem ser ambos 0 (ex: apenas visualizar evolução das dívidas)
-  if (!stratState.selectedDividas.length) {
-    alert('Selecione pelo menos uma dívida.');
+  if (!stratState.selectedDividas.length && !stratState.selectedPropostas.length) {
+    alert('Selecione pelo menos uma dívida ou proposta.');
     return;
   }
 
-  // Validar alocação por dívida
-  if (stratState.selectedDividas.length > 1) {
+  // Build effective items count for allocation validation
+  var _effectiveCount = 0;
+  var _linkedDivIdx = stratGetLinkedDividaIndices();
+  // Count dívidas that are selected or linked-partial
+  var _dividasForCalendar = [];
+  stratState.selectedDividas.forEach(function(idx) {
+    if (_dividasForCalendar.indexOf(idx) < 0) _dividasForCalendar.push(idx);
+  });
+  _linkedDivIdx.forEach(function(di) {
+    var d = dividasAtuais[di];
+    if (!d) return;
+    var saldoOrig = d.saldoDevedor || d.valorContratado;
+    var creditAlloc = (stratState.creditDist && stratState.creditDist[di]) || 0;
+    if (saldoOrig - creditAlloc > 0.01) {
+      if (_dividasForCalendar.indexOf(di) < 0) _dividasForCalendar.push(di);
+    }
+  });
+  // Count non-linked selected propostas
+  var _propostasForCalendar = [];
+  stratState.selectedPropostas.forEach(function(pi) {
+    var isLinked = stratState.linkedPropostas.some(function(l) { return l.propostaIdx === pi; });
+    if (!isLinked) _propostasForCalendar.push(pi);
+  });
+  _effectiveCount = _dividasForCalendar.length + _propostasForCalendar.length;
+
+  // Validar alocação por dívida/proposta
+  if (_effectiveCount > 1) {
     var totalAloc = 0;
-    stratState.selectedDividas.forEach(function(idx) { totalAloc += (stratState.alocPorDivida[idx] || 0); });
+    _dividasForCalendar.forEach(function(idx) { totalAloc += (stratState.alocPorDivida[idx] || 0); });
+    _propostasForCalendar.forEach(function(pi) { totalAloc += (stratState.alocPorDivida['p_' + pi] || 0); });
     if (totalAloc !== 100) {
-      alert('A distribuição da amortização entre dívidas deve somar 100%. Atualmente soma ' + totalAloc + '%.');
+      alert('A distribuição da amortização entre dívidas/propostas deve somar 100%. Atualmente soma ' + totalAloc + '%.');
       return;
     }
   }
 
-  var list = stratState.source === 'atual' ? dividasAtuais : dividasProposta;
-  var isAtual = stratState.source === 'atual';
+  var list = dividasAtuais; // Always use dividasAtuais for dívidas
+  var isAtual = true;
 
   // Reset overrides para garantir cálculos limpos a cada geração
   stratState.overrides = stratState.overrides || {};
 
   var dividasSel = [];
   var maxRestantes = 0;
-  stratState.selectedDividas.forEach(function(idx) {
+
+  // Add dívidas (with creditDist applied to linked ones)
+  _dividasForCalendar.forEach(function(idx) {
     var d = list[idx];
     if (!d) return;
-    var restantes = d.totalParcelas - (isAtual ? (d.parcelasPagas || 0) : 0);
-    var saldoDev = isAtual ? (d.saldoDevedor || d.valorContratado) : d.valorContratado;
+    var restantes = d.totalParcelas - (d.parcelasPagas || 0);
+    var saldoDev = d.saldoDevedor || d.valorContratado;
+    // Apply creditDist if this is a linked dívida
+    var creditAlloc = (stratState.creditDist && stratState.creditDist[idx]) || 0;
+    if (creditAlloc > 0) {
+      saldoDev = saldoDev - creditAlloc;
+      if (saldoDev < 0) saldoDev = 0;
+    }
+    var alocPct = _effectiveCount === 1 ? 100 : (stratState.alocPorDivida[idx] || 0);
     dividasSel.push({
       nome: d.nome,
       saldoDevedor: saldoDev,
@@ -4123,14 +4338,43 @@ function stratGerarCalendario() {
       reajusteAnual: d.reajusteAnual || 0,
       taxaFixa: d.taxaFixa || 0,
       valorContratado: d.valorContratado,
-      parcelasPagas: isAtual ? (d.parcelasPagas || 0) : 0,
+      parcelasPagas: d.parcelasPagas || 0,
       consRedutor: d.consRedutor || false,
       consParcelaAlvo: d.consParcelaAlvo || 0,
       consPeriodoReducao: d.consPeriodoReducao || 0,
       consTaxaAdm: d.consTaxaAdm || 0,
       consFundoReserva: d.consFundoReserva || 0,
       origIdx: idx,
-      alocPct: stratState.alocPorDivida[idx] || (100 / stratState.selectedDividas.length)
+      alocPct: alocPct
+    });
+    if (restantes > maxRestantes) maxRestantes = restantes;
+  });
+
+  // Add selected propostas (non-linked) as debts to simulate
+  _propostasForCalendar.forEach(function(pi) {
+    var p = dividasProposta[pi];
+    if (!p) return;
+    var restantes = p.totalParcelas;
+    var saldoDev = p.valorContratado;
+    var alocPct = _effectiveCount === 1 ? 100 : (stratState.alocPorDivida['p_' + pi] || 0);
+    dividasSel.push({
+      nome: p.nome,
+      saldoDevedor: saldoDev,
+      parcela: p.parcela,
+      totalParcelas: p.totalParcelas,
+      restantes: restantes,
+      tipoAmort: p.tipoAmort || 'price',
+      reajusteAnual: p.reajusteAnual || 0,
+      taxaFixa: p.taxaFixa || 0,
+      valorContratado: p.valorContratado,
+      parcelasPagas: 0,
+      consRedutor: p.consRedutor || false,
+      consParcelaAlvo: p.consParcelaAlvo || 0,
+      consPeriodoReducao: p.consPeriodoReducao || 0,
+      consTaxaAdm: p.consTaxaAdm || 0,
+      consFundoReserva: p.consFundoReserva || 0,
+      origIdx: pi,
+      alocPct: alocPct
     });
     if (restantes > maxRestantes) maxRestantes = restantes;
   });
@@ -5185,13 +5429,49 @@ function _analiseRunStrat(strat) {
   var tipoAmortExtra = cfg.tipoAmortExtra || 'prazo';
   var parcelaMinPct = cfg.parcelaMinPct || 0;
 
+  var creditDist = cfg.creditDist || {};
+  var linkedPropostas = cfg.linkedPropostas || [];
+  var selectedPropostas = cfg.selectedPropostas || [];
+
+  // Build effective divida list (apply creditDist to linked)
+  var _linkedDivIdxA = [];
+  linkedPropostas.forEach(function(link) {
+    if (link.dividaIdx !== '' && link.dividaIdx !== undefined) {
+      if (_linkedDivIdxA.indexOf(link.dividaIdx) < 0) _linkedDivIdxA.push(link.dividaIdx);
+    }
+  });
+
   var dividasSel = [];
   var maxRestantes = 0;
-  selectedDividas.forEach(function(idx) {
-    var d = list[idx];
+  var _allDividaIdx = selectedDividas.slice();
+  _linkedDivIdxA.forEach(function(di) {
+    var d = dividasAtuais[di];
     if (!d) return;
-    var restantes = d.totalParcelas - (isAtual ? (d.parcelasPagas || 0) : 0);
-    var saldoDev = isAtual ? (d.saldoDevedor || d.valorContratado) : d.valorContratado;
+    var saldoOrig = d.saldoDevedor || d.valorContratado;
+    var cAlloc = creditDist[di] || 0;
+    if (saldoOrig - cAlloc > 0.01 && _allDividaIdx.indexOf(di) < 0) {
+      _allDividaIdx.push(di);
+    }
+  });
+
+  var _effectiveCountA = _allDividaIdx.length;
+  // Add non-linked selected propostas
+  var _propForCalA = [];
+  selectedPropostas.forEach(function(pi) {
+    var isLinked = linkedPropostas.some(function(l) { return l.propostaIdx === pi; });
+    if (!isLinked) _propForCalA.push(pi);
+  });
+  _effectiveCountA += _propForCalA.length;
+
+  _allDividaIdx.forEach(function(idx) {
+    var d = dividasAtuais[idx];
+    if (!d) return;
+    var restantes = d.totalParcelas - (d.parcelasPagas || 0);
+    var saldoDev = d.saldoDevedor || d.valorContratado;
+    // Apply creditDist
+    var cAlloc = creditDist[idx] || 0;
+    if (cAlloc > 0) { saldoDev -= cAlloc; if (saldoDev < 0) saldoDev = 0; }
+    var alocPct = _effectiveCountA === 1 ? 100 : (alocPorDivida[idx] || 0);
     dividasSel.push({
       nome: d.nome,
       saldoDevedor: saldoDev,
@@ -5202,14 +5482,43 @@ function _analiseRunStrat(strat) {
       reajusteAnual: d.reajusteAnual || 0,
       taxaFixa: d.taxaFixa || 0,
       valorContratado: d.valorContratado,
-      parcelasPagas: isAtual ? (d.parcelasPagas || 0) : 0,
+      parcelasPagas: d.parcelasPagas || 0,
       consRedutor: d.consRedutor || false,
       consParcelaAlvo: d.consParcelaAlvo || 0,
       consPeriodoReducao: d.consPeriodoReducao || 0,
       consTaxaAdm: d.consTaxaAdm || 0,
       consFundoReserva: d.consFundoReserva || 0,
       origIdx: idx,
-      alocPct: alocPorDivida[idx] || (100 / selectedDividas.length)
+      alocPct: alocPct
+    });
+    if (restantes > maxRestantes) maxRestantes = restantes;
+  });
+
+  // Add non-linked selected propostas
+  _propForCalA.forEach(function(pi) {
+    var p = dividasProposta[pi];
+    if (!p) return;
+    var restantes = p.totalParcelas;
+    var saldoDev = p.valorContratado;
+    var alocPct = _effectiveCountA === 1 ? 100 : (alocPorDivida['p_' + pi] || 0);
+    dividasSel.push({
+      nome: p.nome,
+      saldoDevedor: saldoDev,
+      parcela: p.parcela,
+      totalParcelas: p.totalParcelas,
+      restantes: restantes,
+      tipoAmort: p.tipoAmort || 'price',
+      reajusteAnual: p.reajusteAnual || 0,
+      taxaFixa: p.taxaFixa || 0,
+      valorContratado: p.valorContratado,
+      parcelasPagas: 0,
+      consRedutor: p.consRedutor || false,
+      consParcelaAlvo: p.consParcelaAlvo || 0,
+      consPeriodoReducao: p.consPeriodoReducao || 0,
+      consTaxaAdm: p.consTaxaAdm || 0,
+      consFundoReserva: p.consFundoReserva || 0,
+      origIdx: pi,
+      alocPct: alocPct
     });
     if (restantes > maxRestantes) maxRestantes = restantes;
   });
