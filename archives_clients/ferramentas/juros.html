@@ -1133,7 +1133,11 @@
         </div>
       </div>
 
-      <p style="color:var(--muted); font-size:0.78rem; margin-top:1rem; font-style:italic;">ℹ️ A rentabilidade e saldo inicial do patrimônio de cada estratégia são definidos pela Capacidade de Amortização vinculada a ela.</p>
+      <div style="margin-top:1rem; display:flex; align-items:center; gap:1rem; flex-wrap:wrap;">
+        <label style="font-size:0.85rem; color:var(--muted);">Rentabilidade de referência (% a.a.) para estratégias sem capacidade:</label>
+        <input type="number" id="analise-rentab-ref" value="12" step="0.1" min="0" style="width:80px; padding:0.3rem 0.5rem; background:var(--card-bg); border:1px solid var(--border); color:var(--text); border-radius:4px;">
+      </div>
+      <p style="color:var(--muted); font-size:0.78rem; margin-top:0.5rem; font-style:italic;">ℹ️ A rentabilidade e saldo inicial do patrimônio de cada estratégia são definidos pela Capacidade de Amortização vinculada a ela. Estratégias sem capacidade usarão a rentabilidade de referência acima.</p>
 
       <div style="text-align:center; margin-top:1.5rem; display:flex; gap:1rem; justify-content:center;">
         <button class="btn btn-secondary" onclick="analiseGerar()" style="padding:0.7rem 1.8rem; font-size:0.95rem;">Gerar Análise Comparativa</button>
@@ -5946,7 +5950,7 @@ function _analiseRunComp(comp) {
 }
 
 // Helper: Run a strategy simulation and return detailed results
-function _analiseRunStrat(strat) {
+function _analiseRunStrat(strat, rentabRefFallback) {
   var cfg = strat.config;
   if (!cfg) return null;
 
@@ -5962,7 +5966,7 @@ function _analiseRunStrat(strat) {
   var alocPorDividaMes = cfg.alocPorDividaMes || {};
   var aporteMensal = cfg.aporteMensal || 0;
   var saldoInicial = cfg.saldoInicial || 0;
-  var rentabAnual = cfg.rentabAnual || 12;
+  var rentabAnual = cfg.rentabAnual || (rentabRefFallback || 12);
   var irPct = cfg.irPct || 15;
   var tipoAmortExtra = cfg.tipoAmortExtra || 'prazo';
   var parcelaMinPct = cfg.parcelaMinPct || 0;
@@ -6487,6 +6491,7 @@ function _analiseRunStrat(strat) {
     saldoInicial: saldoInicial,
     pctReserva: pctReserva,
     autoQuit: autoQuit,
+    incorporarPrimeiroMes: !!cfg.incorporarPrimeiroMes,
     saldoData: saldoData,
     reservaData: reservaData,
     parcelasData: parcelasData,
@@ -6498,6 +6503,7 @@ var _analiseCharts = [];
 
 function analiseGerar() {
   var incluirBase = document.getElementById('analise-incluir-base').checked;
+  var rentabRef = parseFloat(document.getElementById('analise-rentab-ref').value) || 12;
   var selectedStrats = [];
   document.querySelectorAll('#analise-strat-list .analise-check-item.checked').forEach(function(el) {
     var id = parseInt(el.getAttribute('data-id'));
@@ -6527,7 +6533,7 @@ function analiseGerar() {
   // ===== RODAR ANÁLISE DE CADA ESTRATÉGIA =====
   var resultados = [];
   selectedStrats.forEach(function(strat) {
-    var r = _analiseRunStrat(strat);
+    var r = _analiseRunStrat(strat, rentabRef);
     if (r) resultados.push(r);
   });
 
@@ -6558,13 +6564,36 @@ function analiseGerar() {
   // ===== CALCULAR PATRIMÔNIO ACUMULADO =====
   // Com cenário base: patrimônio = saldoInicial + acumulação mensal da diferença de parcelas (base - estratégia)
   // Sem cenário base: patrimônio = reservaData da própria estratégia (já calculada em _analiseRunStrat)
+
+  // Determinar a maior parcela mensal dentre estratégias que terminam no prazo máximo
+  // (para uso no aporte pós-quitação de estratégias que terminam antes)
+  var _maxParcelaPorMes = [];
+  for (var mp = 0; mp < maxPeriodo; mp++) {
+    var maxP = 0;
+    resultados.forEach(function(r2) {
+      // Considerar apenas estratégias que terminam no prazo máximo (não quitaram antes)
+      if (r2.quitouEm < 0 || r2.quitouEm >= maxPeriodo - 1) {
+        var p = r2.parcelasData[mp] || 0;
+        if (p > maxP) maxP = p;
+      }
+    });
+    // Se nenhuma estratégia vai até o prazo máximo, usar o cenário base
+    if (maxP === 0 && hasCenarioBase) maxP = cenarioBase.parcelasData[mp] || 0;
+    _maxParcelaPorMes.push(maxP);
+  }
+
   resultados.forEach(function(r) {
     if (hasCenarioBase) {
-      var taxaInvestMensal = Math.pow(1 + (r.rentabAnual || 12) / 100, 1/12) - 1;
+      var taxaInvestMensal = Math.pow(1 + (r.rentabAnual || rentabRef) / 100, 1/12) - 1;
       var patrimonioData = [];
       var saldo = r.saldoInicial || 0;
       for (var m = 0; m < maxPeriodo; m++) {
         var diferenca = (cenarioBase.parcelasData[m] || 0) - (r.parcelasData[m] || 0);
+        // Pós-quitação: se a estratégia quitou antes E tem incorporarPrimeiroMes,
+        // usar a maior parcela das estratégias que terminam no prazo máximo como aporte
+        if (r.incorporarPrimeiroMes && r.quitouEm >= 0 && m > r.quitouEm && (r.parcelasData[m] || 0) === 0) {
+          diferenca = (cenarioBase.parcelasData[m] || 0) + (_maxParcelaPorMes[m] || 0);
+        }
         if (modoSim === 'sem-juros-neg') {
           saldo = (saldo > 0 ? saldo * (1 + taxaInvestMensal) : saldo) + diferenca;
         } else if (modoSim === 'manter-positivo') {
@@ -6579,12 +6608,23 @@ function analiseGerar() {
       r.patrimonioFinal = patrimonioData.length > 0 ? patrimonioData[patrimonioData.length - 1] : 0;
     } else {
       // Sem base: usar reservaData da estratégia como patrimônio
+      // Pós-quitação com incorporarPrimeiroMes: continuar acumulando com aporte da maior parcela
+      var taxaInvestMensal = Math.pow(1 + (r.rentabAnual || rentabRef) / 100, 1/12) - 1;
       var patrimonioData = [];
       for (var m = 0; m < maxPeriodo; m++) {
-        patrimonioData.push(m < r.reservaData.length ? r.reservaData[m] : (r.reservaFinal || 0));
+        if (m < r.reservaData.length) {
+          patrimonioData.push(r.reservaData[m]);
+        } else if (r.incorporarPrimeiroMes && r.quitouEm >= 0 && m > r.quitouEm) {
+          // Continuar acumulando após quitação com aporte da maior parcela
+          var saldoAnt = patrimonioData.length > 0 ? patrimonioData[patrimonioData.length - 1] : (r.reservaFinal || 0);
+          var aportePos = _maxParcelaPorMes[m] || 0;
+          patrimonioData.push(saldoAnt * (1 + taxaInvestMensal) + aportePos);
+        } else {
+          patrimonioData.push(r.reservaFinal || 0);
+        }
       }
       r.patrimonioData = patrimonioData;
-      r.patrimonioFinal = r.reservaFinal || 0;
+      r.patrimonioFinal = patrimonioData.length > 0 ? patrimonioData[patrimonioData.length - 1] : (r.reservaFinal || 0);
     }
     // Patrimônio na quitação
     if (r.quitouEm >= 0 && r.quitouEm < r.patrimonioData.length) {
