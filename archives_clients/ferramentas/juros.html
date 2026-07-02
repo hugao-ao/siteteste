@@ -5114,7 +5114,7 @@ function stratGerarCalendario() {
       reservaBruta = reservaBruta * (1 + taxaReservaMensal) + valorReserva + _ajusteIncorpNeg;
     }
     if (stratState.modoSim === 'manter-positivo' && reservaBruta < 0) reservaBruta = 0;
-    else if (reservaBruta < 0) reservaBruta = 0;
+    // No modo 'completa', reserva pode ficar negativa
     totalAportado += valorReserva + _ajusteIncorpNeg;
 
     saldoDevedorTotal = saldosDevedor.reduce(function(a,b) { return a+b; }, 0);
@@ -6448,7 +6448,7 @@ function _analiseRunStrat(strat, rentabRefFallback) {
       reservaBruta = reservaBruta * (1 + taxaReservaMensal) + valorReserva + _ajusteIncorpNegA;
     }
     if (_modoSimCfg === 'manter-positivo' && reservaBruta < 0) reservaBruta = 0;
-    else if (reservaBruta < 0) reservaBruta = 0;
+    // No modo 'completa', reserva pode ficar negativa
     totalAportado += valorReserva + _ajusteIncorpNegA;
 
     saldoDevedorTotal = saldosDevedor.reduce(function(a,b) { return a+b; }, 0);
