@@ -995,9 +995,13 @@
             <label>Alocação Padrão para Amortização (%)</label>
             <input type="number" id="strat-pct-amort" value="0" min="0" max="100" step="5" disabled>
           </div>
-          <div class="toggle-row" style="margin-bottom:0;">
+          <div class="toggle-row" style="margin-bottom:0.5rem;">
             <div class="toggle-switch" id="strat-toggle-autoquit" onclick="stratToggleAutoQuit()"></div>
             <label style="font-size:0.8rem; color:var(--muted);">Quitar automaticamente quando a reserva líquida cobrir o saldo devedor</label>
+          </div>
+          <div class="toggle-row" style="margin-bottom:0;">
+            <div class="toggle-switch" id="strat-toggle-incorp1mes" onclick="stratToggleIncorp1Mes()"></div>
+            <label style="font-size:0.8rem; color:var(--muted);">Incorporar Primeiro Mês na Amortização</label>
           </div>
         </div>
 
@@ -1079,9 +1083,28 @@
 
   <!-- ===== TAB 5: ANÁLISES COMPARATIVAS ===== -->
   <div id="tab-analise" class="hidden">
-    <div class="card">
-      <h2>Análises Comparativas</h2>
-      <p style="color:var(--muted); font-size:0.85rem; margin-bottom:1.5rem;">Selecione uma ou mais estratégias salvas para comparar lado a lado. O cenário atual (sem amortização extra) é sempre incluído como referência.</p>
+    <!-- Lista de Análises Salvas -->
+    <div class="card" id="analise-list-card">
+      <div class="row" style="justify-content:space-between; align-items:center; margin-bottom:1rem;">
+        <h2 style="margin:0;">Análises Salvas</h2>
+        <button class="btn btn-primary" onclick="analiseNova()" style="padding:0.4rem 1rem; font-size:0.85rem;">+ Nova Análise</button>
+      </div>
+      <div id="analise-saved-list" style="display:flex; flex-direction:column; gap:0.5rem;">
+        <p class="note">Nenhuma análise salva.</p>
+      </div>
+    </div>
+
+    <!-- Editor de Análise -->
+    <div class="card" id="analise-editor-card" style="display:none;">
+      <div class="row" style="justify-content:space-between; align-items:center; margin-bottom:1rem;">
+        <h2 style="margin:0;">Editor de Análise</h2>
+        <button class="btn" onclick="analiseVoltar()" style="padding:0.3rem 0.8rem; font-size:0.8rem; background:var(--card2); border:1px solid var(--border);">Voltar</button>
+      </div>
+      <div class="field" style="max-width:300px; margin-bottom:1rem;">
+        <label>Nome da Análise</label>
+        <input type="text" id="analise-nome" placeholder="Ex: Análise Principal" style="background:var(--card2); border:1px solid var(--border); color:var(--text); padding:0.5rem; border-radius:var(--radius);">
+      </div>
+      <p style="color:var(--muted); font-size:0.85rem; margin-bottom:1.5rem;">Selecione uma ou mais estratégias salvas para comparar lado a lado.</p>
 
       <!-- Estratégias -->
       <div class="field">
@@ -1091,12 +1114,8 @@
         </div>
       </div>
 
-      <!-- Configurações do Patrimônio Acumulado -->
-      <div class="row" style="gap:0.5rem; margin-top:1.5rem; flex-wrap:wrap; align-items:flex-end;">
-        <div class="field" style="max-width:200px;">
-          <label>Taxa de Investimento (% a.a.)</label>
-          <input type="number" id="analise-taxa-invest" value="12" step="0.1" min="0">
-        </div>
+      <!-- Configurações da Análise -->
+      <div class="row" style="gap:1rem; margin-top:1.5rem; flex-wrap:wrap; align-items:center;">
         <div class="field" style="max-width:220px;">
           <label>Modo de Simulação do Patrimônio</label>
           <select id="analise-modo-sim">
@@ -1105,12 +1124,20 @@
             <option value="manter-positivo">Manter Valores Positivos</option>
           </select>
         </div>
+        <div style="display:flex; align-items:center; gap:0.5rem;">
+          <label class="switch" style="margin:0;">
+            <input type="checkbox" id="analise-incluir-base" checked>
+            <span class="slider"></span>
+          </label>
+          <span style="font-size:0.82rem; color:var(--muted);">Incluir Cenário Base (dívidas sem amortização extra)</span>
+        </div>
       </div>
 
-      <p style="color:var(--muted); font-size:0.78rem; margin-top:1rem; font-style:italic;">ℹ️ O cenário ATUAL (dívidas sem alteração) é sempre incluído automaticamente na análise. O patrimônio acumulado é calculado investindo a diferença de parcelas entre cada estratégia e o cenário base.</p>
+      <p style="color:var(--muted); font-size:0.78rem; margin-top:1rem; font-style:italic;">ℹ️ A rentabilidade e saldo inicial do patrimônio de cada estratégia são definidos pela Capacidade de Amortização vinculada a ela.</p>
 
-      <div style="text-align:center; margin-top:1.5rem;">
+      <div style="text-align:center; margin-top:1.5rem; display:flex; gap:1rem; justify-content:center;">
         <button class="btn btn-secondary" onclick="analiseGerar()" style="padding:0.7rem 1.8rem; font-size:0.95rem;">Gerar Análise Comparativa</button>
+        <button class="btn btn-primary" onclick="analiseSalvar()" style="padding:0.7rem 1.8rem; font-size:0.95rem;">Salvar Análise</button>
       </div>
     </div>
 
@@ -1394,7 +1421,7 @@ function switchTab(tab) {
   if (tabIdx >= 0 && btns[tabIdx]) btns[tabIdx].classList.add('active');
   if (tab === 'amortizacao') { _showStratList(); stratRenderList(); }
   if (tab === 'capacidade') { capRenderList(); }
-  if (tab === 'analise') analisePopulate();
+  if (tab === 'analise') { _analiseRenderList(); analisePopulate(); }
 }
 
 
@@ -3152,6 +3179,7 @@ var stratState = {
   selectedDividas: [],
   pctReserva: 100,
   autoQuit: false,
+  incorporarPrimeiroMes: false,
   overrides: {},
   alocPorDivida: {}, // {dividaIdx: percentual} - distribuição da amortização
   alocPorDividaMes: {}, // {mesIdx: {dividaIdx: pct}} - alocação por dívida por mês
@@ -3284,6 +3312,7 @@ function _resetStratState() {
   stratState.selectedPropostas = [];
   stratState.pctReserva = 100;
   stratState.autoQuit = false;
+  stratState.incorporarPrimeiroMes = false;
   stratState.overrides = {};
   stratState.alocPorDivida = {};
   stratState.alocPorDividaMes = {};
@@ -3300,6 +3329,7 @@ function _resetStratState() {
   document.getElementById('strat-pct-reserva').value = '100';
   document.getElementById('strat-pct-amort').value = '0';
   document.getElementById('strat-toggle-autoquit').classList.remove('active');
+  document.getElementById('strat-toggle-incorp1mes').classList.remove('active');
   document.querySelector('input[name="strat-tipo-amort-extra"][value="prazo"]').checked = true;
   document.getElementById('strat-parcela-min-pct').value = '0';
   document.getElementById('strat-parcela-min-row').classList.add('hidden');
@@ -3322,6 +3352,7 @@ function _buildStratConfig() {
     linkedPropostas: JSON.parse(JSON.stringify(stratState.linkedPropostas)),
     pctReserva: stratState.pctReserva,
     autoQuit: stratState.autoQuit,
+    incorporarPrimeiroMes: stratState.incorporarPrimeiroMes,
     overrides: JSON.parse(JSON.stringify(stratState.overrides)),
     alocPorDivida: JSON.parse(JSON.stringify(stratState.alocPorDivida)),
     alocPorDividaMes: JSON.parse(JSON.stringify(stratState.alocPorDividaMes)),
@@ -3348,6 +3379,7 @@ function _applyStratConfig(config) {
   stratState.linkedPropostas = Array.isArray(config.linkedPropostas) ? JSON.parse(JSON.stringify(config.linkedPropostas)) : [];
   stratState.pctReserva = config.pctReserva !== undefined ? config.pctReserva : 100;
   stratState.autoQuit = !!config.autoQuit;
+  stratState.incorporarPrimeiroMes = !!config.incorporarPrimeiroMes;
   stratState.overrides = config.overrides ? JSON.parse(JSON.stringify(config.overrides)) : {};
   stratState.alocPorDivida = config.alocPorDivida ? JSON.parse(JSON.stringify(config.alocPorDivida)) : {};
   stratState.alocPorDividaMes = config.alocPorDividaMes ? JSON.parse(JSON.stringify(config.alocPorDividaMes)) : {};
@@ -3365,6 +3397,7 @@ function _applyStratConfig(config) {
   document.getElementById('strat-pct-reserva').value = stratState.pctReserva;
   document.getElementById('strat-pct-amort').value = (100 - stratState.pctReserva).toFixed(0);
   document.getElementById('strat-toggle-autoquit').classList.toggle('active', stratState.autoQuit);
+  document.getElementById('strat-toggle-incorp1mes').classList.toggle('active', stratState.incorporarPrimeiroMes);
   document.querySelector('input[name="strat-tipo-amort-extra"][value="' + stratState.tipoAmortExtra + '"]').checked = true;
   document.getElementById('strat-parcela-min-pct').value = stratState.parcelaMinPct;
   toggleTipoAmortExtra();
@@ -4407,6 +4440,11 @@ function stratToggleAutoQuit() {
   document.getElementById('strat-toggle-autoquit').classList.toggle('active', stratState.autoQuit);
 }
 
+function stratToggleIncorp1Mes() {
+  stratState.incorporarPrimeiroMes = !stratState.incorporarPrimeiroMes;
+  document.getElementById('strat-toggle-incorp1mes').classList.toggle('active', stratState.incorporarPrimeiroMes);
+}
+
 function toggleTipoAmortExtra() {
   var tipo = document.querySelector('input[name="strat-tipo-amort-extra"]:checked').value;
   stratState.tipoAmortExtra = tipo;
@@ -4724,6 +4762,10 @@ function stratGerarCalendario() {
   // Track current effective per-debt allocation % (for redistribution)
   var alocEfetiva = dividasSel.map(function(d) { return d.alocPct; });
 
+  // Incorporar Primeiro Mês: variáveis de referência
+  var _parcelaRefPrimeiroMes = undefined;
+  var _parcelaPrevMes = 0;
+
   for (var m = 0; m < periodoMax; m++) {
     var mesDate = new Date(dataInicio);
     mesDate.setMonth(mesDate.getMonth() + m);
@@ -4778,6 +4820,15 @@ function stratGerarCalendario() {
       }
     } else if (dividasSel.length === 1) {
       alocEfetiva[0] = dividaAtiva[0] ? 100 : 0;
+    }
+
+    // Incorporar Primeiro Mês: ajustar aporte com base na diferença de parcelas
+    if (stratState.incorporarPrimeiroMes && m > 0 && typeof _parcelaRefPrimeiroMes !== 'undefined') {
+      var ajusteIncorp = _parcelaRefPrimeiroMes - _parcelaPrevMes;
+      aporteTotal += ajusteIncorp;
+      if (aporteTotal < 0) aporteTotal = 0;
+      aporteMes += ajusteIncorp;
+      if (aporteMes < 0) aporteMes = 0;
     }
 
     var valorReserva = aporteMes * (pctRes / 100);
@@ -5006,6 +5057,12 @@ function stratGerarCalendario() {
           dd._hadAmortExtraCons = true;
         }
       }
+    }
+
+    // Incorporar Primeiro Mês: capturar referência no mês 0 e guardar parcela atual para próximo mês
+    if (stratState.incorporarPrimeiroMes) {
+      if (m === 0) _parcelaRefPrimeiroMes = parcelaTotalMes;
+      _parcelaPrevMes = parcelaTotalMes;
     }
 
     saldoDevedorTotal = saldosDevedor.reduce(function(a,b) { return a+b; }, 0);
@@ -5519,6 +5576,119 @@ function _restoreCompSelection(config) {
 }
 
 // ===== TAB 5: ANÁLISES COMPARATIVAS =====
+// ===== ANÁLISES: CRUD SYSTEM =====
+var _analises = []; // [{id, nome, estrategiasIds:[], modoSimulacao, incluirCenarioBase}]
+var _editingAnaliseId = null;
+
+function _analiseRenderList() {
+  var container = document.getElementById('analise-saved-list');
+  if (!_analises.length) {
+    container.innerHTML = '<p class="note">Nenhuma análise salva.</p>';
+    return;
+  }
+  container.innerHTML = '';
+  _analises.forEach(function(a) {
+    var card = document.createElement('div');
+    card.style.cssText = 'display:flex; justify-content:space-between; align-items:center; padding:0.6rem 0.8rem; background:var(--card2); border:1px solid var(--border); border-radius:var(--radius);';
+    var nStrats = a.estrategiasIds ? a.estrategiasIds.length : 0;
+    var baseLabel = a.incluirCenarioBase ? ' | C/ Base' : '';
+    card.innerHTML = '<span style="color:var(--text); font-size:0.9rem;">' + _escHtml(a.nome) + ' <span style="color:var(--muted); font-size:0.75rem;">(' + nStrats + ' estratégia(s)' + baseLabel + ')</span></span>' +
+      '<span style="display:flex; gap:0.4rem;">' +
+      '<button class="btn" onclick="analiseEditar(' + a.id + ')" style="padding:0.2rem 0.5rem; font-size:0.75rem; background:var(--card); border:1px solid var(--border);">Editar</button>' +
+      '<button class="btn" onclick="analiseDuplicar(' + a.id + ')" style="padding:0.2rem 0.5rem; font-size:0.75rem; background:var(--card); border:1px solid var(--border);">Duplicar</button>' +
+      '<button class="btn" onclick="analiseExcluir(' + a.id + ')" style="padding:0.2rem 0.5rem; font-size:0.75rem; background:#3b1111; border:1px solid #7f1d1d; color:#fca5a5;">Excluir</button>' +
+      '</span>';
+    container.appendChild(card);
+  });
+}
+
+function analiseNova() {
+  _editingAnaliseId = null;
+  document.getElementById('analise-nome').value = 'Análise ' + (_analises.length + 1);
+  document.getElementById('analise-incluir-base').checked = true;
+  document.getElementById('analise-modo-sim').value = 'completa';
+  document.getElementById('analise-list-card').style.display = 'none';
+  document.getElementById('analise-editor-card').style.display = '';
+  document.getElementById('analise-resultado').classList.add('hidden');
+  analisePopulate();
+  // Uncheck all strategies
+  var items = document.querySelectorAll('#analise-strat-list .analise-check-item');
+  items.forEach(function(it) { it.classList.remove('checked'); });
+}
+
+function analiseSalvar() {
+  var nome = document.getElementById('analise-nome').value.trim() || 'Análise sem nome';
+  var incluirBase = document.getElementById('analise-incluir-base').checked;
+  var modo = document.getElementById('analise-modo-sim').value;
+  var stratIds = [];
+  document.querySelectorAll('#analise-strat-list .analise-check-item.checked').forEach(function(el) {
+    stratIds.push(parseInt(el.getAttribute('data-id')));
+  });
+  if (!stratIds.length && !incluirBase) {
+    alert('Selecione ao menos uma estratégia ou ative o cenário base.');
+    return;
+  }
+  if (_editingAnaliseId !== null) {
+    var existing = _analises.find(function(a) { return a.id === _editingAnaliseId; });
+    if (existing) {
+      existing.nome = nome;
+      existing.estrategiasIds = stratIds;
+      existing.modoSimulacao = modo;
+      existing.incluirCenarioBase = incluirBase;
+    }
+  } else {
+    var newId = _analises.length ? Math.max.apply(null, _analises.map(function(a) { return a.id; })) + 1 : 1;
+    _analises.push({ id: newId, nome: nome, estrategiasIds: stratIds, modoSimulacao: modo, incluirCenarioBase: incluirBase });
+  }
+  _analiseRenderList();
+  analiseVoltar();
+  _jurosAutoSave();
+}
+
+function analiseEditar(id) {
+  var a = _analises.find(function(x) { return x.id === id; });
+  if (!a) return;
+  _editingAnaliseId = id;
+  document.getElementById('analise-nome').value = a.nome;
+  document.getElementById('analise-incluir-base').checked = !!a.incluirCenarioBase;
+  document.getElementById('analise-modo-sim').value = a.modoSimulacao || 'completa';
+  document.getElementById('analise-list-card').style.display = 'none';
+  document.getElementById('analise-editor-card').style.display = '';
+  document.getElementById('analise-resultado').classList.add('hidden');
+  analisePopulate();
+  // Check the strategies that belong to this analysis
+  var items = document.querySelectorAll('#analise-strat-list .analise-check-item');
+  items.forEach(function(el) {
+    var sid = parseInt(el.getAttribute('data-id'));
+    if (a.estrategiasIds && a.estrategiasIds.indexOf(sid) >= 0) {
+      el.classList.add('checked');
+    } else {
+      el.classList.remove('checked');
+    }
+  });
+}
+
+function analiseDuplicar(id) {
+  var a = _analises.find(function(x) { return x.id === id; });
+  if (!a) return;
+  var newId = _analises.length ? Math.max.apply(null, _analises.map(function(x) { return x.id; })) + 1 : 1;
+  _analises.push({ id: newId, nome: a.nome + ' (cópia)', estrategiasIds: a.estrategiasIds.slice(), modoSimulacao: a.modoSimulacao, incluirCenarioBase: a.incluirCenarioBase });
+  _analiseRenderList();
+  _jurosAutoSave();
+}
+
+function analiseExcluir(id) {
+  _analises = _analises.filter(function(x) { return x.id !== id; });
+  _analiseRenderList();
+  _jurosAutoSave();
+}
+
+function analiseVoltar() {
+  document.getElementById('analise-list-card').style.display = '';
+  document.getElementById('analise-editor-card').style.display = 'none';
+  document.getElementById('analise-resultado').classList.add('hidden');
+}
+
 function analisePopulate() {
   var stratContainer = document.getElementById('analise-strat-list');
 
@@ -5910,6 +6080,11 @@ function _analiseRunStrat(strat) {
     return total;
   }
 
+  // Incorporar Primeiro Mês na Amortização
+  var _incorp1Mes = !!cfg.incorporarPrimeiroMes;
+  var _parcelaRefPrimMesA = undefined;
+  var _parcelaPrevMesA = 0;
+
   for (var m = 0; m < periodoMax; m++) {
     var mesDate = new Date(dataInicio);
     mesDate.setMonth(mesDate.getMonth() + m);
@@ -5918,6 +6093,15 @@ function _analiseRunStrat(strat) {
     var sporadicMes = getSporadicMes(mesDate, m);
     var aporteTotal = aporteMes + sporadicMes;
     var sporadicAmort = sporadicMes; // esporádicos vão 100% para amortização
+
+    // Incorporar Primeiro Mês: ajustar aporte
+    if (_incorp1Mes && m > 0 && typeof _parcelaRefPrimMesA !== 'undefined') {
+      var ajusteI = _parcelaRefPrimMesA - _parcelaPrevMesA;
+      aporteTotal += ajusteI;
+      if (aporteTotal < 0) aporteTotal = 0;
+      aporteMes += ajusteI;
+      if (aporteMes < 0) aporteMes = 0;
+    }
 
     var pctRes = overrides[m] !== undefined ? overrides[m] : pctReserva;
     var pctAmort = 100 - pctRes;
@@ -6144,6 +6328,12 @@ function _analiseRunStrat(strat) {
       }
     }
 
+    // Incorporar Primeiro Mês: capturar referência e parcela atual
+    if (_incorp1Mes) {
+      if (m === 0) _parcelaRefPrimMesA = parcelaTotalMesA;
+      _parcelaPrevMesA = parcelaTotalMesA;
+    }
+
     saldoDevedorTotal = saldosDevedor.reduce(function(a,b) { return a+b; }, 0);
 
     var lucro = reservaBruta - totalAportado;
@@ -6152,7 +6342,7 @@ function _analiseRunStrat(strat) {
 
     if (autoQuit && saldoDevedorTotal > 0 && reservaLiquida >= saldoDevedorTotal && quitouEm < 0) {
       quitouEm = m;
-      custoTotalEstrategia += saldoDevedorTotal; // Valor usado para quitar
+      totalAmortExtra += saldoDevedorTotal; // Quitação antecipada conta como amortização extra
       reservaBruta -= saldoDevedorTotal;
       totalAportado -= saldoDevedorTotal;
       saldoDevedorTotal = 0;
@@ -6164,12 +6354,19 @@ function _analiseRunStrat(strat) {
     saldoData.push(saldoDevedorTotal);
     reservaData.push(Math.max(0, reservaBruta - (lucro > 0 ? lucro * irPct / 100 : 0)));
     parcelasData.push(parcelaTotalMesA);
-    custoTotalEstrategia += valorAmort; // Amortizações extras mensais
-
     if (saldoDevedorTotal <= 0) break;
   }
 
+  // Custo Total = soma de todas as parcelas + soma de todas as amortizações extras
+  custoTotalEstrategia = totalPagoEmParcelas + totalAmortExtra;
+
   var reservaFinal = reservaData.length > 0 ? reservaData[reservaData.length - 1] : 0;
+
+  // Patrimônio na quitação
+  var patrimonioNaQuitacao = 0;
+  if (quitouEm >= 0 && quitouEm < reservaData.length) {
+    patrimonioNaQuitacao = reservaData[quitouEm];
+  }
 
   return {
     nome: strat.nome,
@@ -6186,7 +6383,10 @@ function _analiseRunStrat(strat) {
     totalPagoEmParcelas: totalPagoEmParcelas,
     custoTotalEstrategia: custoTotalEstrategia,
     reservaFinal: reservaFinal,
+    patrimonioNaQuitacao: patrimonioNaQuitacao,
     aporteMensal: aporteMensal,
+    rentabAnual: rentabAnual,
+    saldoInicial: saldoInicial,
     pctReserva: pctReserva,
     autoQuit: autoQuit,
     saldoData: saldoData,
@@ -6199,6 +6399,7 @@ function _analiseRunStrat(strat) {
 var _analiseCharts = [];
 
 function analiseGerar() {
+  var incluirBase = document.getElementById('analise-incluir-base').checked;
   var selectedStrats = [];
   document.querySelectorAll('#analise-strat-list .analise-check-item.checked').forEach(function(el) {
     var id = parseInt(el.getAttribute('data-id'));
@@ -6206,8 +6407,13 @@ function analiseGerar() {
     if (s) selectedStrats.push(s);
   });
 
-  if (!selectedStrats.length) {
-    alert('Selecione pelo menos uma estratégia para gerar a análise comparativa.');
+  // Permitir: ao menos 1 estratégia OU cenário base ativo (com dívidas)
+  if (!selectedStrats.length && !incluirBase) {
+    alert('Selecione pelo menos uma estratégia ou ative o Cenário Base.');
+    return;
+  }
+  if (!selectedStrats.length && incluirBase && !dividasAtuais.length) {
+    alert('Não há dívidas cadastradas para gerar o Cenário Base.');
     return;
   }
 
@@ -6218,9 +6424,6 @@ function analiseGerar() {
   var resultado = document.getElementById('analise-resultado');
   resultado.classList.remove('hidden');
 
-  // ===== CONFIGURAÇÕES DO PATRIMÔNIO =====
-  var taxaInvestAnual = parseFloat(document.getElementById('analise-taxa-invest').value) || 12;
-  var taxaInvestMensal = Math.pow(1 + taxaInvestAnual / 100, 1/12) - 1;
   var modoSim = document.getElementById('analise-modo-sim').value;
 
   // ===== RODAR ANÁLISE DE CADA ESTRATÉGIA =====
@@ -6230,22 +6433,21 @@ function analiseGerar() {
     if (r) resultados.push(r);
   });
 
-  if (!resultados.length) {
-    alert('Nenhuma estratégia válida para analisar.');
-    return;
-  }
-
   // ===== CENÁRIO BASE (sem amortização extra) =====
-  // Calcular parcelas normais mês a mês usando as dívidas da primeira estratégia como referência
   var maxPeriodo = 0;
   resultados.forEach(function(r) { if (r.periodoSimulado > maxPeriodo) maxPeriodo = r.periodoSimulado; });
-  // Usar o prazo original mais longo como referência
   var maxPrazoOriginal = 0;
   resultados.forEach(function(r) { if (r.prazoOriginal > maxPrazoOriginal) maxPrazoOriginal = r.prazoOriginal; });
   if (maxPrazoOriginal > maxPeriodo) maxPeriodo = maxPrazoOriginal;
 
-  // Calcular cenário base: parcelas normais sem amortização extra
-  var cenarioBase = _calcCenarioBase(selectedStrats, maxPeriodo);
+  var cenarioBase = { saldoData: [], parcelasData: [], totalJurosPagos: 0, totalReajustesPagos: 0, totalPagoEmParcelas: 0, prazoOriginal: 0, totalAmortExtra: 0, saldoInicialTotal: 0 };
+  var hasCenarioBase = false;
+  if (incluirBase && dividasAtuais.length > 0) {
+    cenarioBase = _calcCenarioBase(selectedStrats, maxPeriodo);
+    hasCenarioBase = cenarioBase.prazoOriginal > 0;
+    if (cenarioBase.prazoOriginal > maxPeriodo) maxPeriodo = cenarioBase.prazoOriginal;
+  }
+  if (maxPeriodo < 1) maxPeriodo = 12;
 
   // ===== NORMALIZAR ARRAYS PARA MESMO TAMANHO =====
   resultados.forEach(function(r) {
@@ -6256,12 +6458,14 @@ function analiseGerar() {
   while (cenarioBase.parcelasData.length < maxPeriodo) cenarioBase.parcelasData.push(0);
 
   // ===== CALCULAR PATRIMÔNIO ACUMULADO =====
-  // Para cada estratégia: diferença = parcela_base[m] - parcela_estrategia[m], investida mensalmente
+  // Para cada estratégia: usar rentab e saldoInicial próprios da capacidade
+  // Diferença = parcela_base[m] - parcela_estrategia[m], investida mensalmente
   resultados.forEach(function(r) {
+    var taxaInvestMensal = Math.pow(1 + (r.rentabAnual || 12) / 100, 1/12) - 1;
     var patrimonioData = [];
-    var saldo = 0;
+    var saldo = r.saldoInicial || 0;
     for (var m = 0; m < maxPeriodo; m++) {
-      var diferenca = cenarioBase.parcelasData[m] - (r.parcelasData[m] || 0);
+      var diferenca = hasCenarioBase ? (cenarioBase.parcelasData[m] || 0) - (r.parcelasData[m] || 0) : 0;
       if (modoSim === 'sem-juros-neg') {
         saldo = (saldo > 0 ? saldo * (1 + taxaInvestMensal) : saldo) + diferenca;
       } else if (modoSim === 'manter-positivo') {
@@ -6274,76 +6478,126 @@ function analiseGerar() {
     }
     r.patrimonioData = patrimonioData;
     r.patrimonioFinal = patrimonioData.length > 0 ? patrimonioData[patrimonioData.length - 1] : 0;
+    // Patrimônio na quitação
+    if (r.quitouEm >= 0 && r.quitouEm < patrimonioData.length) {
+      r.patrimonioNaQuitacao = patrimonioData[r.quitouEm];
+    } else {
+      r.patrimonioNaQuitacao = 0;
+    }
   });
   // Cenário base: patrimônio = 0 (ele é a referência)
   cenarioBase.patrimonioData = [];
   for (var m = 0; m < maxPeriodo; m++) cenarioBase.patrimonioData.push(0);
   cenarioBase.patrimonioFinal = 0;
 
-  // ===== TABELA DE MÉTRICAS COMPARATIVAS =====
-  var metricasHtml = '<div class="cons-table-wrap"><table class="cons-table"><thead><tr><th>Métrica</th><th>Cenário Base</th>';
+  // Calcular métricas derivadas do cenário base
+  var baseSaldoInicialTotal = 0;
+  dividasAtuais.forEach(function(d) { if (d) baseSaldoInicialTotal += (d.saldoDevedor || d.valorContratado); });
+  cenarioBase.saldoInicialTotal = baseSaldoInicialTotal;
+  cenarioBase.custoTotalEstrategia = cenarioBase.totalPagoEmParcelas; // Base não tem amort extra
+  cenarioBase.totalAmortExtra = 0;
+
+  // ===== TABELA DE MÉTRICAS COMPARATIVAS (10 itens) =====
+  var metricasHtml = '<div class="cons-table-wrap"><table class="cons-table"><thead><tr><th>Métrica</th>';
+  if (hasCenarioBase) metricasHtml += '<th style="color:var(--red);">Cenário Base</th>';
   resultados.forEach(function(r) { metricasHtml += '<th>' + _escHtml(r.nome) + '</th>'; });
   metricasHtml += '</tr></thead><tbody>';
 
-  // Juros totais pagos
-  metricasHtml += '<tr><td>Juros Totais Pagos</td><td style="color:var(--red);">' + fmtBRL(cenarioBase.totalJurosPagos) + '</td>';
+  // Helper: valor do cenário base para comparação de cor
+  function _baseVal(field) { return hasCenarioBase ? (cenarioBase[field] || 0) : null; }
+  function _corCompara(val, baseV, menorMelhor) {
+    if (baseV === null) return '#fff';
+    if (menorMelhor) return val < baseV ? 'var(--green)' : (val > baseV ? 'var(--red)' : '#fff');
+    return val > baseV ? 'var(--green)' : (val < baseV ? 'var(--red)' : '#fff');
+  }
+
+  // 1. Juros e Taxas Totais Pagos = Custo Total - Total Amortizado - Reajustes
+  metricasHtml += '<tr><td>Juros e Taxas Totais Pagos</td>';
+  if (hasCenarioBase) {
+    var baseJuros = cenarioBase.custoTotalEstrategia - baseSaldoInicialTotal - cenarioBase.totalReajustesPagos;
+    metricasHtml += '<td style="color:var(--red);">' + fmtBRL(baseJuros) + '</td>';
+  }
   resultados.forEach(function(r) {
-    var cor = r.totalJurosPagos < cenarioBase.totalJurosPagos ? 'var(--green)' : 'var(--red)';
-    metricasHtml += '<td style="color:' + cor + ';">' + fmtBRL(r.totalJurosPagos) + '</td>';
+    var juros = r.custoTotalEstrategia - r.saldoInicialTotal - r.totalReajustesPagos;
+    var baseJ = hasCenarioBase ? (cenarioBase.custoTotalEstrategia - baseSaldoInicialTotal - cenarioBase.totalReajustesPagos) : null;
+    metricasHtml += '<td style="color:' + _corCompara(juros, baseJ, true) + ';">' + fmtBRL(juros) + '</td>';
   });
   metricasHtml += '</tr>';
 
-  // Reajustes totais pagos
-  metricasHtml += '<tr><td>Reajustes Totais Pagos</td><td style="color:var(--red);">' + fmtBRL(cenarioBase.totalReajustesPagos) + '</td>';
+  // 2. Reajustes Totais Pagos
+  metricasHtml += '<tr><td>Reajustes Totais Pagos</td>';
+  if (hasCenarioBase) metricasHtml += '<td style="color:var(--red);">' + fmtBRL(cenarioBase.totalReajustesPagos) + '</td>';
   resultados.forEach(function(r) {
-    var cor = r.totalReajustesPagos < cenarioBase.totalReajustesPagos ? 'var(--green)' : 'var(--red)';
-    metricasHtml += '<td style="color:' + cor + ';">' + fmtBRL(r.totalReajustesPagos) + '</td>';
+    metricasHtml += '<td style="color:' + _corCompara(r.totalReajustesPagos, _baseVal('totalReajustesPagos'), true) + ';">' + fmtBRL(r.totalReajustesPagos) + '</td>';
   });
   metricasHtml += '</tr>';
 
-  // Valor total pago em parcelas
-  metricasHtml += '<tr><td>Total Pago em Parcelas</td><td style="color:#fff;">' + fmtBRL(cenarioBase.totalPagoEmParcelas) + '</td>';
+  // 3. Total Amortizado (saldo devedor inicial = principal original)
+  metricasHtml += '<tr><td>Total Amortizado (Principal)</td>';
+  if (hasCenarioBase) metricasHtml += '<td style="color:#fff;">' + fmtBRL(baseSaldoInicialTotal) + '</td>';
   resultados.forEach(function(r) {
-    var cor = r.totalPagoEmParcelas < cenarioBase.totalPagoEmParcelas ? 'var(--green)' : '#fff';
-    metricasHtml += '<td style="color:' + cor + ';">' + fmtBRL(r.totalPagoEmParcelas) + '</td>';
+    metricasHtml += '<td style="color:#fff;">' + fmtBRL(r.saldoInicialTotal) + '</td>';
   });
   metricasHtml += '</tr>';
 
-  // Custo total da estratégia (amortizações + quitações)
-  metricasHtml += '<tr><td>Custo Total da Estratégia</td><td style="color:#fff;">—</td>';
+  // 4. Amortizações Extras Totais
+  metricasHtml += '<tr><td>Amortizações Extras Totais</td>';
+  if (hasCenarioBase) metricasHtml += '<td style="color:#fff;">—</td>';
   resultados.forEach(function(r) {
-    metricasHtml += '<td style="color:var(--blue);">' + fmtBRL(r.custoTotalEstrategia) + '</td>';
+    metricasHtml += '<td style="color:var(--blue);">' + fmtBRL(r.totalAmortExtra) + '</td>';
   });
   metricasHtml += '</tr>';
 
-  // Patrimônio acumulado ao final
-  metricasHtml += '<tr><td>Patrimônio Acumulado (Final)</td><td style="color:#fff;">—</td>';
+  // 5. Custo Total da Estratégia = parcelas + amort extras
+  metricasHtml += '<tr><td><strong>Custo Total da Estratégia</strong></td>';
+  if (hasCenarioBase) metricasHtml += '<td style="color:var(--red);">' + fmtBRL(cenarioBase.custoTotalEstrategia) + '</td>';
+  resultados.forEach(function(r) {
+    metricasHtml += '<td style="color:' + _corCompara(r.custoTotalEstrategia, hasCenarioBase ? cenarioBase.custoTotalEstrategia : null, true) + ';">' + fmtBRL(r.custoTotalEstrategia) + '</td>';
+  });
+  metricasHtml += '</tr>';
+
+  // 6. Patrimônio Final
+  metricasHtml += '<tr><td>Patrimônio Final</td>';
+  if (hasCenarioBase) metricasHtml += '<td style="color:#fff;">—</td>';
   resultados.forEach(function(r) {
     var cor = r.patrimonioFinal > 0 ? 'var(--green)' : 'var(--red)';
     metricasHtml += '<td style="color:' + cor + ';">' + fmtBRL(r.patrimonioFinal) + '</td>';
   });
   metricasHtml += '</tr>';
 
-  // Prazo de quitação
-  metricasHtml += '<tr><td>Quitação Efetiva</td><td style="color:#fff;">' + cenarioBase.prazoOriginal + ' meses</td>';
+  // 7. Total Pago em Parcelas
+  metricasHtml += '<tr><td>Total Pago em Parcelas</td>';
+  if (hasCenarioBase) metricasHtml += '<td style="color:#fff;">' + fmtBRL(cenarioBase.totalPagoEmParcelas) + '</td>';
+  resultados.forEach(function(r) {
+    metricasHtml += '<td style="color:' + _corCompara(r.totalPagoEmParcelas, _baseVal('totalPagoEmParcelas'), true) + ';">' + fmtBRL(r.totalPagoEmParcelas) + '</td>';
+  });
+  metricasHtml += '</tr>';
+
+  // 8. Quitação Efetiva
+  metricasHtml += '<tr><td>Quitação Efetiva</td>';
+  if (hasCenarioBase) metricasHtml += '<td style="color:#fff;">' + cenarioBase.prazoOriginal + ' meses</td>';
   resultados.forEach(function(r) {
     var qMeses = r.quitouEm >= 0 ? (r.quitouEm + 1) : r.prazoOriginal;
-    var cor = qMeses < cenarioBase.prazoOriginal ? 'var(--green)' : '#fff';
+    var cor = hasCenarioBase && qMeses < cenarioBase.prazoOriginal ? 'var(--green)' : '#fff';
     metricasHtml += '<td style="color:' + cor + ';">' + qMeses + ' meses</td>';
   });
   metricasHtml += '</tr>';
 
-  // Economia em meses
-  metricasHtml += '<tr><td>Economia em Meses</td><td style="color:#fff;">—</td>';
+  // 9. Economia de Tempo
+  metricasHtml += '<tr><td>Economia de Tempo</td>';
+  if (hasCenarioBase) metricasHtml += '<td style="color:#fff;">—</td>';
   resultados.forEach(function(r) {
-    metricasHtml += '<td style="color:var(--green);">' + (r.economiaMeses > 0 ? r.economiaMeses + ' meses' : '—') + '</td>';
+    var eco = r.economiaMeses;
+    metricasHtml += '<td style="color:' + (eco > 0 ? 'var(--green)' : '#fff') + ';">' + (eco > 0 ? eco + ' meses' : '—') + '</td>';
   });
   metricasHtml += '</tr>';
 
-  // Reserva final
-  metricasHtml += '<tr><td>Reserva Final (Líquida)</td><td style="color:#fff;">—</td>';
+  // 10. Patrimônio na Quitação
+  metricasHtml += '<tr><td>Patrimônio na Quitação</td>';
+  if (hasCenarioBase) metricasHtml += '<td style="color:#fff;">—</td>';
   resultados.forEach(function(r) {
-    metricasHtml += '<td style="color:var(--green);">' + fmtBRL(r.reservaFinal) + '</td>';
+    var pq = r.patrimonioNaQuitacao || 0;
+    metricasHtml += '<td style="color:' + (pq > 0 ? 'var(--green)' : '#fff') + ';">' + fmtBRL(pq) + '</td>';
   });
   metricasHtml += '</tr>';
 
@@ -6369,8 +6623,6 @@ function analiseGerar() {
       }
     }
   };
-
-  var hasCenarioBase = cenarioBase.saldoData.length > 0;
 
   // 1. Evolução do Saldo Devedor
   var saldoDatasets = [];
@@ -6525,10 +6777,10 @@ function analiseGerar() {
   }
 
   // ===== VISÃO CONSOLIDADA =====
-  _renderConsolidado(selectedStrats, resultados, cenarioBase, maxPeriodo);
+  _renderConsolidado(selectedStrats, resultados, cenarioBase, maxPeriodo, hasCenarioBase);
 }
 
-function _renderConsolidado(selectedStrats, resultados, cenarioBase, maxPeriodo) {
+function _renderConsolidado(selectedStrats, resultados, cenarioBase, maxPeriodo, hasCenarioBase) {
   var consolidado = document.getElementById('analise-consolidado');
   consolidado.style.display = 'block';
 
@@ -6536,25 +6788,27 @@ function _renderConsolidado(selectedStrats, resultados, cenarioBase, maxPeriodo)
   var cenarios = [];
 
   // ===== CENÁRIO BASE (sem amortização extra) =====
-  var parcelaBase = cenarioBase.parcelasData.length > 0 ? cenarioBase.parcelasData[0] : 0;
-  cenarios.push({
-    tipo: 'base',
-    label: 'Cenário Base (Sem Amortização Extra)',
-    parcela: parcelaBase,
-    jurosTotal: cenarioBase.totalJurosPagos,
-    totalPago: cenarioBase.totalPagoEmParcelas,
-    saldoDevedor: cenarioBase.saldoData.length > 0 ? cenarioBase.saldoData[0] : 0,
-    prazo: cenarioBase.prazoOriginal,
-    nContratos: selectedStrats[0].config && selectedStrats[0].config.selectedDividas ? selectedStrats[0].config.selectedDividas.length : 1,
-    investFinal: 0,
-    reservaFinal: 0,
-    economiaMeses: 0,
-    economiaJuros: 0,
-    quitouEm: cenarioBase.prazoOriginal,
-    aporteMensal: 0,
-    patrimonioFinal: 0,
-    source: null
-  });
+  if (hasCenarioBase) {
+    var parcelaBase = cenarioBase.parcelasData.length > 0 ? cenarioBase.parcelasData[0] : 0;
+    cenarios.push({
+      tipo: 'base',
+      label: 'Cenário Base (Sem Amortização Extra)',
+      parcela: parcelaBase,
+      jurosTotal: cenarioBase.totalJurosPagos,
+      totalPago: cenarioBase.totalPagoEmParcelas,
+      saldoDevedor: cenarioBase.saldoData.length > 0 ? cenarioBase.saldoData[0] : 0,
+      prazo: cenarioBase.prazoOriginal,
+      nContratos: dividasAtuais.filter(function(d) { return !!d; }).length,
+      investFinal: 0,
+      reservaFinal: 0,
+      economiaMeses: 0,
+      economiaJuros: 0,
+      quitouEm: cenarioBase.prazoOriginal,
+      aporteMensal: 0,
+      patrimonioFinal: 0,
+      source: null
+    });
+  }
 
   // ===== ESTRATÉGIAS =====
   resultados.forEach(function(r) {
@@ -6563,14 +6817,14 @@ function _renderConsolidado(selectedStrats, resultados, cenarioBase, maxPeriodo)
       label: r.nome,
       parcela: r.parcelasData.length > 0 ? r.parcelasData[0] : 0,
       jurosTotal: r.totalJurosPagos,
-      totalPago: r.totalPagoEmParcelas + r.custoTotalEstrategia,
+      totalPago: r.custoTotalEstrategia, // Custo Total = parcelas + amort extras
       saldoDevedor: r.saldoInicialTotal,
       prazo: r.prazoOriginal,
       nContratos: r.nDividas,
       investFinal: r.patrimonioFinal || 0,
       reservaFinal: r.reservaFinal,
       economiaMeses: r.economiaMeses,
-      economiaJuros: cenarioBase.totalJurosPagos - r.totalJurosPagos,
+      economiaJuros: hasCenarioBase ? cenarioBase.totalJurosPagos - r.totalJurosPagos : 0,
       quitouEm: r.quitouEm >= 0 ? r.quitouEm + 1 : r.prazoOriginal,
       aporteMensal: r.aporteMensal,
       totalAmortExtra: r.totalAmortExtra || 0,
@@ -7130,6 +7384,22 @@ var _jurosSbClient = null;
 var _jurosInitDone = false;
 var _jurosSaveTimer = null;
 
+function _jurosAutoSave() {
+  // Auto-save current editing simulation with debounce
+  if (_jurosSaveTimer) clearTimeout(_jurosSaveTimer);
+  _jurosSaveTimer = setTimeout(function() {
+    if (_jurosEditingSimId) {
+      var payload = _jurosBuildPayload();
+      var idx = _jurosSimulacoes.findIndex(function(s) { return s.id === _jurosEditingSimId; });
+      if (idx >= 0) {
+        _jurosSimulacoes[idx].payload = payload;
+        _jurosSimulacoes[idx].updatedAt = new Date().toISOString();
+        _saveJurosSimulacoes();
+      }
+    }
+  }, 1000);
+}
+
 function getClienteId() {
   return sessionStorage.getItem('cliente_id') || null;
 }
@@ -7219,7 +7489,8 @@ function _jurosBuildPayload() {
     dividasProposta: dividasProposta,
     comparacoes: JSON.parse(JSON.stringify(_comparacoes)),
     estrategias: JSON.parse(JSON.stringify(_estrategias)),
-    capacidades: JSON.parse(JSON.stringify(_capacidades))
+    capacidades: JSON.parse(JSON.stringify(_capacidades)),
+    analises: JSON.parse(JSON.stringify(_analises))
   };
 }
 
@@ -7230,10 +7501,12 @@ function _jurosApplyPayload(d) {
   _comparacoes = Array.isArray(d.comparacoes) ? d.comparacoes : [];
   _estrategias = Array.isArray(d.estrategias) ? d.estrategias : [];
   _capacidades = Array.isArray(d.capacidades) ? d.capacidades : [];
+  _analises = Array.isArray(d.analises) ? d.analises : [];
   renderAll();
   compRenderList();
   stratRenderList();
   capRenderList();
+  _analiseRenderList();
   return true;
 }
 
@@ -7244,6 +7517,7 @@ function novaAnalise() {
   _comparacoes = [];
   _estrategias = [];
   _capacidades = [];
+  _analises = [];
   _resetStratState();
   document.getElementById('strat-calendario').classList.add('hidden');
   stratRenderUpdates();
@@ -7251,6 +7525,7 @@ function novaAnalise() {
   compRenderList();
   stratRenderList();
   capRenderList();
+  _analiseRenderList();
   document.getElementById('sim-nome').value = '';
   document.getElementById('sim-editing-label').textContent = 'Nova analise';
   document.getElementById('comp-result').classList.add('hidden');
