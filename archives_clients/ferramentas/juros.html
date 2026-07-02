@@ -5162,7 +5162,7 @@ function stratGerarCalendario() {
       valorReserva: valorReserva,
       valorAmort: valorAmort,
       reservaBruta: reservaBruta,
-      reservaLiquida: Math.max(0, reservaBruta - (reservaBruta - totalAportado > 0 ? (reservaBruta - totalAportado) * stratState.irPct / 100 : 0)),
+      reservaLiquida: reservaBruta - (reservaBruta - totalAportado > 0 ? (reservaBruta - totalAportado) * stratState.irPct / 100 : 0),
       saldoDevedor: saldoDevedorTotal,
       saldosIndividuais: saldosDevedor.slice(),
       alocEfetiva: alocEfetiva.slice(),
@@ -5225,40 +5225,58 @@ function stratRenderCalendario() {
   if (economiaJuros < 0) economiaJuros = 0;
 
   // Calcular reajustes que seriam pagos SEM amortização extra (baseline)
+  // Usa EXATAMENTE a mesma lógica do loop do calendário real, mas sem amort extra
   var totalReajusteBaseline = 0;
   dividasSel.forEach(function(dd) {
     var reajB = (dd.reajusteAnual || 0) / 100;
-    if (reajB > 0) {
-      var saldoB = dd.saldoDevedor;
-      var restB = dd.restantes;
-      var taxaBp = 0;
-      if (dd.tipoAmort === 'price') {
-        taxaBp = calcTaxaImplicita(dd.saldoDevedor, dd.parcela, dd.restantes);
+    if (reajB <= 0) return; // Sem reajuste, não contribui
+    var saldoB = dd.saldoDevedor;
+    var restB = dd.restantes;
+    var taxaBp = 0;
+    if (dd.tipoAmort === 'price') {
+      taxaBp = calcTaxaImplicita(dd.saldoDevedor, dd.parcela, dd.restantes);
+    }
+    // Consórcio: dados para redutor
+    var taxaTotBc = 0, propAmortBc = 1;
+    var temRedutorBc = false, periodoReducaoBc = 0, parcelaAlvoBc = 0;
+    if (dd.tipoAmort === 'consorcio') {
+      taxaTotBc = ((dd.consTaxaAdm || 0) + (dd.consFundoReserva || 0)) / 100;
+      propAmortBc = 1 / (1 + taxaTotBc);
+      temRedutorBc = dd.consRedutor && dd.consPeriodoReducao > 0 && dd.consParcelaAlvo > 0;
+      periodoReducaoBc = dd.consPeriodoReducao || 0;
+      parcelaAlvoBc = dd.consParcelaAlvo || 0;
+    }
+    for (var mb = 0; mb < restB; mb++) {
+      if (saldoB <= 0.01) { saldoB = 0; break; }
+      // Reajuste anual (mesmo ponto do calendário real)
+      if (mb > 0 && mb % 12 === 0) {
+        totalReajusteBaseline += saldoB * reajB;
+        saldoB *= (1 + reajB);
       }
-      for (var mb = 0; mb < restB; mb++) {
-        if (mb > 0 && mb % 12 === 0) {
-          totalReajusteBaseline += saldoB * reajB;
-          saldoB *= (1 + reajB);
-        }
-        // Amortização normal sem extra (mesma lógica do calendário real)
-        var fatorReajB = Math.pow(1 + reajB, Math.floor(mb / 12));
-        if (dd.tipoAmort === 'price') {
-          var jurosBp = saldoB * taxaBp;
-          var parcelaBp = dd.parcela * fatorReajB;
-          saldoB -= (parcelaBp - jurosBp);
-        } else if (dd.tipoAmort === 'sac') {
-          saldoB -= dd.saldoDevedor / restB;
-        } else if (dd.tipoAmort === 'simples') {
-          saldoB -= dd.saldoDevedor / restB;
-        } else if (dd.tipoAmort === 'consorcio') {
-          // Consórcio: amortização = saldoAtual / mesesRestantes (igual ao calendário real)
+      var fatorReajB = Math.pow(1 + reajB, Math.floor(mb / 12));
+      // Amortização normal sem extra (mesma lógica do calendário real)
+      var amortB = 0;
+      if (dd.tipoAmort === 'price') {
+        var jurosBp = saldoB * taxaBp;
+        var parcelaBp = dd.parcela * fatorReajB;
+        amortB = parcelaBp - jurosBp;
+        if (amortB < 0) amortB = 0;
+      } else if (dd.tipoAmort === 'sac' || dd.tipoAmort === 'simples') {
+        amortB = dd.saldoDevedor / restB;
+      } else if (dd.tipoAmort === 'consorcio') {
+        var numeroParcBc = mb + 1;
+        var dentroReducaoBc = temRedutorBc && numeroParcBc <= periodoReducaoBc;
+        if (dentroReducaoBc) {
+          amortB = parcelaAlvoBc * fatorReajB * propAmortBc;
+        } else {
           var mesesRestBc = restB - mb;
           if (mesesRestBc <= 0) mesesRestBc = 1;
-          var amortBc = saldoB / mesesRestBc;
-          saldoB -= amortBc;
+          amortB = saldoB / mesesRestBc;
         }
-        if (saldoB < 0) saldoB = 0;
       }
+      if (amortB > saldoB) amortB = saldoB;
+      saldoB -= amortB;
+      if (saldoB < 0.01) saldoB = 0;
     }
   });
   var economiaReajustes = totalReajusteBaseline - (cal.totalReajusteComAmort || 0);
@@ -5335,7 +5353,7 @@ function stratRenderCalendario() {
     });
     html += '<td style="color:' + (mes.saldoDevedor > 0 ? 'var(--red)' : 'var(--green)') + '; font-weight:600;">' + fmtBRL(mes.saldoDevedor) + '</td>';
     html += '<td>' + fmtBRL(mes.reservaBruta) + '</td>';
-    html += '<td style="color:var(--green);">' + fmtBRL(mes.reservaLiquida) + '</td>';
+    html += '<td style="color:' + (mes.reservaLiquida >= 0 ? 'var(--green)' : 'var(--red)') + ';">' + fmtBRL(mes.reservaLiquida) + '</td>';
     html += '<td>' + evento + '</td>';
     html += '</tr>';
   });
@@ -6478,7 +6496,7 @@ function _analiseRunStrat(strat, rentabRefFallback) {
     if (saldoDevedorTotal <= 0.01 && quitouEm < 0) quitouEm = m;
 
     saldoData.push(saldoDevedorTotal);
-    reservaData.push(Math.max(0, reservaBruta - (lucro > 0 ? lucro * irPct / 100 : 0)));
+    reservaData.push(reservaBruta - (lucro > 0 ? lucro * irPct / 100 : 0));
     parcelasData.push(parcelaTotalMesA);
     if (saldoDevedorTotal <= 0) break;
   }
@@ -6887,7 +6905,6 @@ function analiseGerar() {
   }
 
   // 3. Evolução do Patrimônio Acumulado
-  // Se não há cenário base, usar a primeira estratégia como referência
   var patrimonioDatasets = [];
   if (hasCenarioBase) {
     // Cenário base: patrimônio = 0 (referência)
@@ -6915,13 +6932,13 @@ function analiseGerar() {
       });
     });
   } else {
-    // Sem cenário base: usar primeira estratégia como referência (vermelha)
+    // Sem cenário base: primeira estratégia como referência (tracejada) mas MESMA COR
     resultados.forEach(function(r, i) {
       var isRef = (i === 0);
       patrimonioDatasets.push({
         label: r.nome + (isRef ? ' (referência)' : ''),
         data: r.patrimonioData,
-        borderColor: isRef ? baseColor : stratColors[(i - 1) % stratColors.length],
+        borderColor: stratColors[i % stratColors.length],
         backgroundColor: isRef ? 'transparent' : 'rgba(96,165,250,0.05)',
         borderWidth: 2,
         borderDash: isRef ? [5, 5] : [],
