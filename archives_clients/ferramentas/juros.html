@@ -4845,19 +4845,26 @@ function stratGerarCalendario() {
     }
 
     // Incorporar Primeiro Mês: ajustar aporte com base na diferença de parcelas
+    var _ajusteIncorpNeg = 0; // valor negativo a retirar da reserva
     if (stratState.incorporarPrimeiroMes && m > 0 && typeof _parcelaRefPrimeiroMes !== 'undefined') {
       var ajusteIncorp = _parcelaRefPrimeiroMes - _parcelaPrevMes;
       aporteTotal += ajusteIncorp;
-      if (aporteTotal < 0) aporteTotal = 0;
       aporteMes += ajusteIncorp;
-      if (aporteMes < 0) aporteMes = 0;
+      // Se aporteMes ficou negativo, a diferença negativa será retirada da reserva
+      if (aporteMes < 0) {
+        _ajusteIncorpNeg = aporteMes; // valor negativo
+        aporteMes = 0;
+        aporteTotal = Math.max(aporteTotal, 0);
+      }
     }
 
     var valorReserva = aporteMes * (pctRes / 100);
     var valorAmort = aporteMes * (pctAmort / 100) + sporadicAmort;
 
-    reservaBruta = reservaBruta * (1 + taxaReservaMensal) + valorReserva;
-    totalAportado += valorReserva;
+    // Aplicar rendimento e aporte à reserva, depois retirar ajuste negativo se houver
+    reservaBruta = reservaBruta * (1 + taxaReservaMensal) + valorReserva + _ajusteIncorpNeg;
+    if (reservaBruta < 0) reservaBruta = 0;
+    totalAportado += valorReserva + _ajusteIncorpNeg;
 
     // Ler configuração de tipo de amortização extra
     var tipoAmortExtra = stratState.tipoAmortExtra || 'prazo';
@@ -5734,73 +5741,95 @@ function analisePopulate() {
 
 // Helper: Calculate base scenario (no extra amortization) for comparison
 function _calcCenarioBase(selectedStrats, maxPeriodo) {
-  // Cenário Base: TODAS as dívidas atuais, sem amortização extra
-  // Só gera se houver ao menos 1 dívida cadastrada
+  // Cenário Base: TODAS as dívidas atuais, sem amortização extra, simulação mês a mês
   var dividasSel = [];
   dividasAtuais.forEach(function(d) {
     if (d) dividasSel.push(d);
   });
-  var isAtual = true;
 
   if (!dividasSel.length) {
     return { saldoData: [], parcelasData: [], totalJurosPagos: 0, totalReajustesPagos: 0, totalPagoEmParcelas: 0, prazoOriginal: 0 };
   }
 
-  // Calculate max restantes
   var maxRestantes = 0;
   dividasSel.forEach(function(d) {
-    var restantes = d.totalParcelas - (isAtual ? (d.parcelasPagas || 0) : 0);
+    var restantes = d.totalParcelas - (d.parcelasPagas || 0);
     if (restantes > maxRestantes) maxRestantes = restantes;
   });
 
-  // Use gerarProjecaoSaldo for each debt to get month-by-month data
+  // Inicializar saldos e taxas para simulação mês a mês
+  var saldos = dividasSel.map(function(d) { return d.saldoDevedor || d.valorContratado; });
+  var taxas = dividasSel.map(function(d) {
+    if (d.tipoAmort === 'price') {
+      return calcTaxaImplicita(d.saldoDevedor || d.valorContratado, d.parcela, d.totalParcelas - (d.parcelasPagas || 0));
+    } else if (d.tipoAmort === 'sac') {
+      var amortConst = (d.saldoDevedor || d.valorContratado) / (d.totalParcelas - (d.parcelasPagas || 0));
+      return d.parcela > amortConst ? (d.parcela - amortConst) / (d.saldoDevedor || d.valorContratado) : 0;
+    }
+    return 0;
+  });
+
   var saldoData = [];
   var parcelasData = [];
   var totalJurosPagos = 0;
   var totalReajustesPagos = 0;
   var totalPagoEmParcelas = 0;
 
-  // Get projections for each debt
-  var projecoes = dividasSel.map(function(d) {
-    return gerarProjecaoSaldo(d, isAtual);
-  });
+  var periodo = Math.max(maxPeriodo, maxRestantes);
 
-  for (var m = 0; m < maxPeriodo; m++) {
+  for (var m = 0; m < periodo; m++) {
     var saldoTotal = 0;
     var parcelaTotal = 0;
-    projecoes.forEach(function(proj, di) {
-      var d = dividasSel[di];
-      var restantes = d.totalParcelas - (isAtual ? (d.parcelasPagas || 0) : 0);
-      // Saldo devedor neste mes (proj.saldos tem indice 0 = saldo inicial)
-      if (m < proj.saldos.length) {
-        saldoTotal += proj.saldos[m];
+
+    for (var di = 0; di < dividasSel.length; di++) {
+      if (saldos[di] <= 0.01) { saldos[di] = 0; saldoTotal += 0; continue; }
+      var dd = dividasSel[di];
+      var restantes = dd.totalParcelas - (dd.parcelasPagas || 0);
+      var reaj = (dd.reajusteAnual || 0) / 100;
+
+      // Reajuste anual no aniversário
+      if (reaj > 0 && m > 0 && m % 12 === 0) {
+        var reajValor = saldos[di] * reaj;
+        totalReajustesPagos += reajValor;
+        saldos[di] += reajValor;
       }
-      // Parcela neste mes
-      if (m < restantes && m < proj.parcelas.length) {
-        parcelaTotal += proj.parcelas[m];
-        totalPagoEmParcelas += proj.parcelas[m];
+
+      if (m >= restantes) { saldoTotal += saldos[di]; continue; }
+
+      var fatorReaj = reaj > 0 ? Math.pow(1 + reaj, Math.floor(m / 12)) : 1;
+      var jurosMes = saldos[di] * taxas[di];
+      totalJurosPagos += jurosMes;
+
+      var amortNormal, parcelaMes;
+      if (dd.tipoAmort === 'price') {
+        parcelaMes = dd.parcela * fatorReaj;
+        amortNormal = parcelaMes - jurosMes;
+        if (amortNormal < 0) amortNormal = 0;
+      } else if (dd.tipoAmort === 'sac') {
+        amortNormal = (dd.saldoDevedor || dd.valorContratado) / restantes;
+        amortNormal *= fatorReaj;
+        parcelaMes = amortNormal + jurosMes;
+      } else if (dd.tipoAmort === 'consorcio') {
+        var taxaTot = ((dd.consTaxaAdm || 0) + (dd.consFundoReserva || 0)) / 100;
+        amortNormal = saldos[di] / (restantes - m > 0 ? restantes - m : 1);
+        parcelaMes = amortNormal * (1 + taxaTot);
+        jurosMes = amortNormal * taxaTot;
+      } else {
+        parcelaMes = dd.parcela * fatorReaj;
+        amortNormal = parcelaMes - jurosMes;
+        if (amortNormal < 0) amortNormal = 0;
       }
-    });
+
+      saldos[di] -= amortNormal;
+      if (saldos[di] < 0) saldos[di] = 0;
+      parcelaTotal += parcelaMes;
+      totalPagoEmParcelas += parcelaMes;
+      saldoTotal += saldos[di];
+    }
+
     saldoData.push(saldoTotal);
     parcelasData.push(parcelaTotal);
   }
-
-  // Calculate juros and reajustes from the projections
-  dividasSel.forEach(function(d) {
-    var restantes = d.totalParcelas - (isAtual ? (d.parcelasPagas || 0) : 0);
-    var saldoBase = isAtual ? (d.saldoDevedor || d.valorContratado) : d.valorContratado;
-    var totalPago = calcTotalPagarDivida(d, restantes);
-    totalJurosPagos += (totalPago - saldoBase);
-    // Reajustes
-    var reaj = (d.reajusteAnual || 0) / 100;
-    if (reaj > 0) {
-      var saldo = saldoBase;
-      for (var yr = 1; yr <= Math.floor(restantes / 12); yr++) {
-        totalReajustesPagos += saldo * reaj;
-        saldo *= (1 + reaj);
-      }
-    }
-  });
 
   return {
     saldoData: saldoData,
@@ -6139,12 +6168,16 @@ function _analiseRunStrat(strat) {
     var sporadicAmort = sporadicMes; // esporádicos vão 100% para amortização
 
     // Incorporar Primeiro Mês: ajustar aporte
+    var _ajusteIncorpNegA = 0;
     if (_incorp1Mes && m > 0 && typeof _parcelaRefPrimMesA !== 'undefined') {
       var ajusteI = _parcelaRefPrimMesA - _parcelaPrevMesA;
       aporteTotal += ajusteI;
-      if (aporteTotal < 0) aporteTotal = 0;
       aporteMes += ajusteI;
-      if (aporteMes < 0) aporteMes = 0;
+      if (aporteMes < 0) {
+        _ajusteIncorpNegA = aporteMes; // valor negativo a retirar da reserva
+        aporteMes = 0;
+        aporteTotal = Math.max(aporteTotal, 0);
+      }
     }
 
     var pctRes = overrides[m] !== undefined ? overrides[m] : pctReserva;
@@ -6183,8 +6216,9 @@ function _analiseRunStrat(strat) {
     var valorReserva = aporteMes * (pctRes / 100);
     var valorAmort = aporteMes * (pctAmort / 100) + sporadicAmort;
 
-    reservaBruta = reservaBruta * (1 + taxaReservaMensal) + valorReserva;
-    totalAportado += valorReserva;
+    reservaBruta = reservaBruta * (1 + taxaReservaMensal) + valorReserva + _ajusteIncorpNegA;
+    if (reservaBruta < 0) reservaBruta = 0;
+    totalAportado += valorReserva + _ajusteIncorpNegA;
 
     // Evolução dívidas
     for (var di = 0; di < dividasSel.length; di++) {
@@ -6502,29 +6536,39 @@ function analiseGerar() {
   while (cenarioBase.parcelasData.length < maxPeriodo) cenarioBase.parcelasData.push(0);
 
   // ===== CALCULAR PATRIMÔNIO ACUMULADO =====
-  // Para cada estratégia: usar rentab e saldoInicial próprios da capacidade
-  // Diferença = parcela_base[m] - parcela_estrategia[m], investida mensalmente
+  // Com cenário base: patrimônio = saldoInicial + acumulação mensal da diferença de parcelas (base - estratégia)
+  // Sem cenário base: patrimônio = reservaData da própria estratégia (já calculada em _analiseRunStrat)
   resultados.forEach(function(r) {
-    var taxaInvestMensal = Math.pow(1 + (r.rentabAnual || 12) / 100, 1/12) - 1;
-    var patrimonioData = [];
-    var saldo = r.saldoInicial || 0;
-    for (var m = 0; m < maxPeriodo; m++) {
-      var diferenca = hasCenarioBase ? (cenarioBase.parcelasData[m] || 0) - (r.parcelasData[m] || 0) : 0;
-      if (modoSim === 'sem-juros-neg') {
-        saldo = (saldo > 0 ? saldo * (1 + taxaInvestMensal) : saldo) + diferenca;
-      } else if (modoSim === 'manter-positivo') {
-        saldo = saldo * (1 + taxaInvestMensal) + diferenca;
-        if (saldo < 0) saldo = 0;
-      } else {
-        saldo = saldo * (1 + taxaInvestMensal) + diferenca;
+    if (hasCenarioBase) {
+      var taxaInvestMensal = Math.pow(1 + (r.rentabAnual || 12) / 100, 1/12) - 1;
+      var patrimonioData = [];
+      var saldo = r.saldoInicial || 0;
+      for (var m = 0; m < maxPeriodo; m++) {
+        var diferenca = (cenarioBase.parcelasData[m] || 0) - (r.parcelasData[m] || 0);
+        if (modoSim === 'sem-juros-neg') {
+          saldo = (saldo > 0 ? saldo * (1 + taxaInvestMensal) : saldo) + diferenca;
+        } else if (modoSim === 'manter-positivo') {
+          saldo = saldo * (1 + taxaInvestMensal) + diferenca;
+          if (saldo < 0) saldo = 0;
+        } else {
+          saldo = saldo * (1 + taxaInvestMensal) + diferenca;
+        }
+        patrimonioData.push(saldo);
       }
-      patrimonioData.push(saldo);
+      r.patrimonioData = patrimonioData;
+      r.patrimonioFinal = patrimonioData.length > 0 ? patrimonioData[patrimonioData.length - 1] : 0;
+    } else {
+      // Sem base: usar reservaData da estratégia como patrimônio
+      var patrimonioData = [];
+      for (var m = 0; m < maxPeriodo; m++) {
+        patrimonioData.push(m < r.reservaData.length ? r.reservaData[m] : (r.reservaFinal || 0));
+      }
+      r.patrimonioData = patrimonioData;
+      r.patrimonioFinal = r.reservaFinal || 0;
     }
-    r.patrimonioData = patrimonioData;
-    r.patrimonioFinal = patrimonioData.length > 0 ? patrimonioData[patrimonioData.length - 1] : 0;
     // Patrimônio na quitação
-    if (r.quitouEm >= 0 && r.quitouEm < patrimonioData.length) {
-      r.patrimonioNaQuitacao = patrimonioData[r.quitouEm];
+    if (r.quitouEm >= 0 && r.quitouEm < r.patrimonioData.length) {
+      r.patrimonioNaQuitacao = r.patrimonioData[r.quitouEm];
     } else {
       r.patrimonioNaQuitacao = 0;
     }
@@ -6834,12 +6878,16 @@ function _renderConsolidado(selectedStrats, resultados, cenarioBase, maxPeriodo,
   // ===== CENÁRIO BASE (sem amortização extra) =====
   if (hasCenarioBase) {
     var parcelaBase = cenarioBase.parcelasData.length > 0 ? cenarioBase.parcelasData[0] : 0;
+    var baseSaldoIni = cenarioBase.saldoInicialTotal || 0;
+    // Juros consistente: custoTotal - principal - reajustes
+    var baseJurosCalc = cenarioBase.custoTotalEstrategia - baseSaldoIni - cenarioBase.totalReajustesPagos;
+    if (baseJurosCalc < 0) baseJurosCalc = 0;
     cenarios.push({
       tipo: 'base',
       label: 'Cenário Base (Sem Amortização Extra)',
       parcela: parcelaBase,
-      jurosTotal: cenarioBase.totalJurosPagos,
-      totalPago: cenarioBase.totalPagoEmParcelas,
+      jurosTotal: baseJurosCalc,
+      totalPago: cenarioBase.custoTotalEstrategia,
       saldoDevedor: cenarioBase.saldoData.length > 0 ? cenarioBase.saldoData[0] : 0,
       prazo: cenarioBase.prazoOriginal,
       nContratos: dividasAtuais.filter(function(d) { return !!d; }).length,
@@ -6850,30 +6898,40 @@ function _renderConsolidado(selectedStrats, resultados, cenarioBase, maxPeriodo,
       quitouEm: cenarioBase.prazoOriginal,
       aporteMensal: 0,
       patrimonioFinal: 0,
+      totalReajustesPagos: cenarioBase.totalReajustesPagos || 0,
+      totalAmortExtra: 0,
+      saldoInicialTotal: baseSaldoIni,
       source: null
     });
   }
 
   // ===== ESTRATÉGIAS =====
   resultados.forEach(function(r) {
+    // Juros consistente: custoTotal - principal - reajustes
+    var stratJurosCalc = r.custoTotalEstrategia - r.saldoInicialTotal - r.totalReajustesPagos;
+    if (stratJurosCalc < 0) stratJurosCalc = 0;
+    var baseJurosRef = hasCenarioBase ? (cenarioBase.custoTotalEstrategia - (cenarioBase.saldoInicialTotal || 0) - cenarioBase.totalReajustesPagos) : 0;
+    if (baseJurosRef < 0) baseJurosRef = 0;
     cenarios.push({
       tipo: 'strat',
       label: r.nome,
       parcela: r.parcelasData.length > 0 ? r.parcelasData[0] : 0,
-      jurosTotal: r.totalJurosPagos,
-      totalPago: r.custoTotalEstrategia, // Custo Total = parcelas + amort extras
+      jurosTotal: stratJurosCalc,
+      totalPago: r.custoTotalEstrategia,
       saldoDevedor: r.saldoInicialTotal,
       prazo: r.prazoOriginal,
       nContratos: r.nDividas,
       investFinal: r.patrimonioFinal || 0,
       reservaFinal: r.reservaFinal,
       economiaMeses: r.economiaMeses,
-      economiaJuros: hasCenarioBase ? cenarioBase.totalJurosPagos - r.totalJurosPagos : 0,
+      economiaJuros: hasCenarioBase ? baseJurosRef - stratJurosCalc : 0,
       quitouEm: r.quitouEm >= 0 ? r.quitouEm + 1 : r.prazoOriginal,
       aporteMensal: r.aporteMensal,
       totalAmortExtra: r.totalAmortExtra || 0,
       custoTotalEstrategia: r.custoTotalEstrategia || 0,
       patrimonioFinal: r.patrimonioFinal || 0,
+      totalReajustesPagos: r.totalReajustesPagos || 0,
+      saldoInicialTotal: r.saldoInicialTotal || 0,
       autoQuit: r.autoQuit,
       source: null
     });
