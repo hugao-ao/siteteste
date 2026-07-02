@@ -4844,27 +4844,11 @@ function stratGerarCalendario() {
       alocEfetiva[0] = dividaAtiva[0] ? 100 : 0;
     }
 
-    // Incorporar Primeiro Mês: ajustar aporte com base na diferença de parcelas
-    var _ajusteIncorpNeg = 0; // valor negativo a retirar da reserva
-    if (stratState.incorporarPrimeiroMes && m > 0 && typeof _parcelaRefPrimeiroMes !== 'undefined') {
-      var ajusteIncorp = _parcelaRefPrimeiroMes - _parcelaPrevMes;
-      aporteTotal += ajusteIncorp;
-      aporteMes += ajusteIncorp;
-      // Se aporteMes ficou negativo, a diferença negativa será retirada da reserva
-      if (aporteMes < 0) {
-        _ajusteIncorpNeg = aporteMes; // valor negativo
-        aporteMes = 0;
-        aporteTotal = Math.max(aporteTotal, 0);
-      }
-    }
+    // Incorporar Primeiro Mês: será calculado APÓS o loop de dívidas (precisa de parcelaTotalMes)
+    var _ajusteIncorpNeg = 0; // valor negativo a retirar da reserva (preenchido depois)
 
     var valorReserva = aporteMes * (pctRes / 100);
     var valorAmort = aporteMes * (pctAmort / 100) + sporadicAmort;
-
-    // Aplicar rendimento e aporte à reserva, depois retirar ajuste negativo se houver
-    reservaBruta = reservaBruta * (1 + taxaReservaMensal) + valorReserva + _ajusteIncorpNeg;
-    if (reservaBruta < 0) reservaBruta = 0;
-    totalAportado += valorReserva + _ajusteIncorpNeg;
 
     // Ler configuração de tipo de amortização extra
     var tipoAmortExtra = stratState.tipoAmortExtra || 'prazo';
@@ -5091,8 +5075,32 @@ function stratGerarCalendario() {
     // Incorporar Primeiro Mês: capturar referência no mês 0 e guardar parcela atual para próximo mês
     if (stratState.incorporarPrimeiroMes) {
       if (m === 0) _parcelaRefPrimeiroMes = parcelaTotalMes;
-      _parcelaPrevMes = parcelaTotalMes;
     }
+
+    // Incorporar Primeiro Mês: ajustar aporte com base na parcela do mês ATUAL
+    if (stratState.incorporarPrimeiroMes && m > 0 && typeof _parcelaRefPrimeiroMes !== 'undefined') {
+      var ajusteIncorp = _parcelaRefPrimeiroMes - parcelaTotalMes;
+      if (ajusteIncorp < 0 && aporteMes === 0) {
+        // Aporte já era zero, retirar diretamente da reserva
+        _ajusteIncorpNeg = ajusteIncorp;
+      } else {
+        aporteMes += ajusteIncorp;
+        aporteTotal += ajusteIncorp;
+        if (aporteMes < 0) {
+          _ajusteIncorpNeg = aporteMes;
+          aporteMes = 0;
+          aporteTotal = Math.max(aporteTotal, 0);
+        }
+        // Recalcular valorReserva e valorAmort com aporte ajustado
+        valorReserva = aporteMes * (pctRes / 100);
+        valorAmort = aporteMes * (pctAmort / 100) + sporadicAmort;
+      }
+    }
+
+    // Atualizar reserva com rendimento + aporte + ajuste negativo
+    reservaBruta = reservaBruta * (1 + taxaReservaMensal) + valorReserva + _ajusteIncorpNeg;
+    if (reservaBruta < 0) reservaBruta = 0;
+    totalAportado += valorReserva + _ajusteIncorpNeg;
 
     saldoDevedorTotal = saldosDevedor.reduce(function(a,b) { return a+b; }, 0);
 
@@ -5134,6 +5142,7 @@ function stratGerarCalendario() {
       aporte: aporteMes,
       sporadicExtra: sporadicMes,
       aporteTotal: aporteTotal,
+      ajusteIncorp: _ajusteIncorpNeg,
       pctReserva: pctRes,
       valorReserva: valorReserva,
       valorAmort: valorAmort,
@@ -5277,6 +5286,9 @@ function stratRenderCalendario() {
     var aporteLabel = fmtBRL(mes.aporte);
     if (mes.sporadicExtra > 0) {
       aporteLabel += '<br><small style="color:var(--green);">+' + fmtBRL(mes.sporadicExtra) + '</small>';
+    }
+    if (mes.ajusteIncorp < 0) {
+      aporteLabel += '<br><small style="color:var(--red);">' + fmtBRL(mes.ajusteIncorp) + ' (incorp.)</small>';
     }
 
     html += '<tr' + rowClass + '>';
@@ -6167,18 +6179,8 @@ function _analiseRunStrat(strat) {
     var aporteTotal = aporteMes + sporadicMes;
     var sporadicAmort = sporadicMes; // esporádicos vão 100% para amortização
 
-    // Incorporar Primeiro Mês: ajustar aporte
+    // Incorporar Primeiro Mês: será calculado APÓS o loop de dívidas (precisa de parcelaTotalMesA)
     var _ajusteIncorpNegA = 0;
-    if (_incorp1Mes && m > 0 && typeof _parcelaRefPrimMesA !== 'undefined') {
-      var ajusteI = _parcelaRefPrimMesA - _parcelaPrevMesA;
-      aporteTotal += ajusteI;
-      aporteMes += ajusteI;
-      if (aporteMes < 0) {
-        _ajusteIncorpNegA = aporteMes; // valor negativo a retirar da reserva
-        aporteMes = 0;
-        aporteTotal = Math.max(aporteTotal, 0);
-      }
-    }
 
     var pctRes = overrides[m] !== undefined ? overrides[m] : pctReserva;
     var pctAmort = 100 - pctRes;
@@ -6215,10 +6217,6 @@ function _analiseRunStrat(strat) {
 
     var valorReserva = aporteMes * (pctRes / 100);
     var valorAmort = aporteMes * (pctAmort / 100) + sporadicAmort;
-
-    reservaBruta = reservaBruta * (1 + taxaReservaMensal) + valorReserva + _ajusteIncorpNegA;
-    if (reservaBruta < 0) reservaBruta = 0;
-    totalAportado += valorReserva + _ajusteIncorpNegA;
 
     // Evolução dívidas
     for (var di = 0; di < dividasSel.length; di++) {
@@ -6406,11 +6404,33 @@ function _analiseRunStrat(strat) {
       }
     }
 
-    // Incorporar Primeiro Mês: capturar referência e parcela atual
+    // Incorporar Primeiro Mês: capturar referência no mês 0
     if (_incorp1Mes) {
       if (m === 0) _parcelaRefPrimMesA = parcelaTotalMesA;
-      _parcelaPrevMesA = parcelaTotalMesA;
     }
+
+    // Incorporar Primeiro Mês: ajustar aporte com base na parcela do mês ATUAL
+    if (_incorp1Mes && m > 0 && typeof _parcelaRefPrimMesA !== 'undefined') {
+      var ajusteI = _parcelaRefPrimMesA - parcelaTotalMesA;
+      if (ajusteI < 0 && aporteMes === 0) {
+        _ajusteIncorpNegA = ajusteI;
+      } else {
+        aporteMes += ajusteI;
+        aporteTotal += ajusteI;
+        if (aporteMes < 0) {
+          _ajusteIncorpNegA = aporteMes;
+          aporteMes = 0;
+          aporteTotal = Math.max(aporteTotal, 0);
+        }
+        valorReserva = aporteMes * (pctRes / 100);
+        valorAmort = aporteMes * (pctAmort / 100) + sporadicAmort;
+      }
+    }
+
+    // Atualizar reserva com rendimento + aporte + ajuste negativo
+    reservaBruta = reservaBruta * (1 + taxaReservaMensal) + valorReserva + _ajusteIncorpNegA;
+    if (reservaBruta < 0) reservaBruta = 0;
+    totalAportado += valorReserva + _ajusteIncorpNegA;
 
     saldoDevedorTotal = saldosDevedor.reduce(function(a,b) { return a+b; }, 0);
 
