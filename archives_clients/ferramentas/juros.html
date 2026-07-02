@@ -999,9 +999,17 @@
             <div class="toggle-switch" id="strat-toggle-autoquit" onclick="stratToggleAutoQuit()"></div>
             <label style="font-size:0.8rem; color:var(--muted);">Quitar automaticamente quando a reserva líquida cobrir o saldo devedor</label>
           </div>
-          <div class="toggle-row" style="margin-bottom:0;">
+          <div class="toggle-row" style="margin-bottom:0.5rem;">
             <div class="toggle-switch" id="strat-toggle-incorp1mes" onclick="stratToggleIncorp1Mes()"></div>
             <label style="font-size:0.8rem; color:var(--muted);">Incorporar Primeiro Mês na Amortização</label>
+          </div>
+          <div style="margin-top:0.5rem;">
+            <label style="font-size:0.8rem; color:var(--muted); display:block; margin-bottom:0.3rem;">Modo de Simulação do Patrimônio</label>
+            <select id="strat-modo-sim" onchange="stratState.modoSim = this.value;" style="padding:0.3rem 0.5rem; background:var(--card-bg); border:1px solid var(--border); color:var(--text); border-radius:4px; font-size:0.82rem;">
+              <option value="completa" selected>Simulação Completa</option>
+              <option value="sem-juros-neg">Desativar Juros Negativos</option>
+              <option value="manter-positivo">Manter Valores Positivos</option>
+            </select>
           </div>
         </div>
 
@@ -1116,14 +1124,6 @@
 
       <!-- Configurações da Análise -->
       <div class="row" style="gap:1rem; margin-top:1.5rem; flex-wrap:wrap; align-items:center;">
-        <div class="field" style="max-width:220px;">
-          <label>Modo de Simulação do Patrimônio</label>
-          <select id="analise-modo-sim">
-            <option value="completa" selected>Simulação Completa</option>
-            <option value="sem-juros-neg">Desativar Juros Negativos</option>
-            <option value="manter-positivo">Manter Valores Positivos</option>
-          </select>
-        </div>
         <div style="display:flex; align-items:center; gap:0.5rem;">
           <label class="switch" style="margin:0;">
             <input type="checkbox" id="analise-incluir-base" checked>
@@ -3184,6 +3184,7 @@ var stratState = {
   pctReserva: 100,
   autoQuit: false,
   incorporarPrimeiroMes: false,
+  modoSim: 'completa',
   overrides: {},
   alocPorDivida: {}, // {dividaIdx: percentual} - distribuição da amortização
   alocPorDividaMes: {}, // {mesIdx: {dividaIdx: pct}} - alocação por dívida por mês
@@ -3317,6 +3318,7 @@ function _resetStratState() {
   stratState.pctReserva = 100;
   stratState.autoQuit = false;
   stratState.incorporarPrimeiroMes = false;
+  stratState.modoSim = 'completa';
   stratState.overrides = {};
   stratState.alocPorDivida = {};
   stratState.alocPorDividaMes = {};
@@ -3334,6 +3336,7 @@ function _resetStratState() {
   document.getElementById('strat-pct-amort').value = '0';
   document.getElementById('strat-toggle-autoquit').classList.remove('active');
   document.getElementById('strat-toggle-incorp1mes').classList.remove('active');
+  document.getElementById('strat-modo-sim').value = 'completa';
   document.querySelector('input[name="strat-tipo-amort-extra"][value="prazo"]').checked = true;
   document.getElementById('strat-parcela-min-pct').value = '0';
   document.getElementById('strat-parcela-min-row').classList.add('hidden');
@@ -3357,6 +3360,7 @@ function _buildStratConfig() {
     pctReserva: stratState.pctReserva,
     autoQuit: stratState.autoQuit,
     incorporarPrimeiroMes: stratState.incorporarPrimeiroMes,
+    modoSim: stratState.modoSim,
     overrides: JSON.parse(JSON.stringify(stratState.overrides)),
     alocPorDivida: JSON.parse(JSON.stringify(stratState.alocPorDivida)),
     alocPorDividaMes: JSON.parse(JSON.stringify(stratState.alocPorDividaMes)),
@@ -3384,6 +3388,7 @@ function _applyStratConfig(config) {
   stratState.pctReserva = config.pctReserva !== undefined ? config.pctReserva : 100;
   stratState.autoQuit = !!config.autoQuit;
   stratState.incorporarPrimeiroMes = !!config.incorporarPrimeiroMes;
+  stratState.modoSim = config.modoSim || 'completa';
   stratState.overrides = config.overrides ? JSON.parse(JSON.stringify(config.overrides)) : {};
   stratState.alocPorDivida = config.alocPorDivida ? JSON.parse(JSON.stringify(config.alocPorDivida)) : {};
   stratState.alocPorDividaMes = config.alocPorDividaMes ? JSON.parse(JSON.stringify(config.alocPorDividaMes)) : {};
@@ -3402,6 +3407,7 @@ function _applyStratConfig(config) {
   document.getElementById('strat-pct-amort').value = (100 - stratState.pctReserva).toFixed(0);
   document.getElementById('strat-toggle-autoquit').classList.toggle('active', stratState.autoQuit);
   document.getElementById('strat-toggle-incorp1mes').classList.toggle('active', stratState.incorporarPrimeiroMes);
+  document.getElementById('strat-modo-sim').value = stratState.modoSim || 'completa';
   document.querySelector('input[name="strat-tipo-amort-extra"][value="' + stratState.tipoAmortExtra + '"]').checked = true;
   document.getElementById('strat-parcela-min-pct').value = stratState.parcelaMinPct;
   toggleTipoAmortExtra();
@@ -5101,9 +5107,14 @@ function stratGerarCalendario() {
       }
     }
 
-    // Atualizar reserva com rendimento + aporte + ajuste negativo
-    reservaBruta = reservaBruta * (1 + taxaReservaMensal) + valorReserva + _ajusteIncorpNeg;
-    if (reservaBruta < 0) reservaBruta = 0;
+    // Atualizar reserva com rendimento + aporte + ajuste negativo (respeitando modoSim)
+    if (stratState.modoSim === 'sem-juros-neg') {
+      reservaBruta = (reservaBruta > 0 ? reservaBruta * (1 + taxaReservaMensal) : reservaBruta) + valorReserva + _ajusteIncorpNeg;
+    } else {
+      reservaBruta = reservaBruta * (1 + taxaReservaMensal) + valorReserva + _ajusteIncorpNeg;
+    }
+    if (stratState.modoSim === 'manter-positivo' && reservaBruta < 0) reservaBruta = 0;
+    else if (reservaBruta < 0) reservaBruta = 0;
     totalAportado += valorReserva + _ajusteIncorpNeg;
 
     saldoDevedorTotal = saldosDevedor.reduce(function(a,b) { return a+b; }, 0);
@@ -5651,7 +5662,6 @@ function analiseNova() {
   _editingAnaliseId = null;
   document.getElementById('analise-nome').value = 'Análise ' + (_analises.length + 1);
   document.getElementById('analise-incluir-base').checked = true;
-  document.getElementById('analise-modo-sim').value = 'completa';
   document.getElementById('analise-list-card').style.display = 'none';
   document.getElementById('analise-editor-card').style.display = '';
   document.getElementById('analise-resultado').classList.add('hidden');
@@ -5664,7 +5674,7 @@ function analiseNova() {
 function analiseSalvar() {
   var nome = document.getElementById('analise-nome').value.trim() || 'Análise sem nome';
   var incluirBase = document.getElementById('analise-incluir-base').checked;
-  var modo = document.getElementById('analise-modo-sim').value;
+  var modo = 'completa'; // modoSim agora é per-strategy, não per-analysis
   var stratIds = [];
   document.querySelectorAll('#analise-strat-list .analise-check-item.checked').forEach(function(el) {
     stratIds.push(parseInt(el.getAttribute('data-id')));
@@ -5696,7 +5706,6 @@ function analiseEditar(id) {
   _editingAnaliseId = id;
   document.getElementById('analise-nome').value = a.nome;
   document.getElementById('analise-incluir-base').checked = !!a.incluirCenarioBase;
-  document.getElementById('analise-modo-sim').value = a.modoSimulacao || 'completa';
   document.getElementById('analise-list-card').style.display = 'none';
   document.getElementById('analise-editor-card').style.display = '';
   document.getElementById('analise-resultado').classList.add('hidden');
@@ -6431,9 +6440,15 @@ function _analiseRunStrat(strat, rentabRefFallback) {
       }
     }
 
-    // Atualizar reserva com rendimento + aporte + ajuste negativo
-    reservaBruta = reservaBruta * (1 + taxaReservaMensal) + valorReserva + _ajusteIncorpNegA;
-    if (reservaBruta < 0) reservaBruta = 0;
+    // Atualizar reserva com rendimento + aporte + ajuste negativo (respeitando modoSim)
+    var _modoSimCfg = cfg.modoSim || 'completa';
+    if (_modoSimCfg === 'sem-juros-neg') {
+      reservaBruta = (reservaBruta > 0 ? reservaBruta * (1 + taxaReservaMensal) : reservaBruta) + valorReserva + _ajusteIncorpNegA;
+    } else {
+      reservaBruta = reservaBruta * (1 + taxaReservaMensal) + valorReserva + _ajusteIncorpNegA;
+    }
+    if (_modoSimCfg === 'manter-positivo' && reservaBruta < 0) reservaBruta = 0;
+    else if (reservaBruta < 0) reservaBruta = 0;
     totalAportado += valorReserva + _ajusteIncorpNegA;
 
     saldoDevedorTotal = saldosDevedor.reduce(function(a,b) { return a+b; }, 0);
@@ -6492,6 +6507,7 @@ function _analiseRunStrat(strat, rentabRefFallback) {
     pctReserva: pctReserva,
     autoQuit: autoQuit,
     incorporarPrimeiroMes: !!cfg.incorporarPrimeiroMes,
+    modoSim: cfg.modoSim || 'completa',
     saldoData: saldoData,
     reservaData: reservaData,
     parcelasData: parcelasData,
@@ -6528,7 +6544,7 @@ function analiseGerar() {
   var resultado = document.getElementById('analise-resultado');
   resultado.classList.remove('hidden');
 
-  var modoSim = document.getElementById('analise-modo-sim').value;
+  // modoSim agora é per-strategy (cfg.modoSim), usado no cálculo de patrimônio
 
   // ===== RODAR ANÁLISE DE CADA ESTRATÉGIA =====
   var resultados = [];
@@ -6594,9 +6610,10 @@ function analiseGerar() {
         if (r.incorporarPrimeiroMes && r.quitouEm >= 0 && m > r.quitouEm && (r.parcelasData[m] || 0) === 0) {
           diferenca = (cenarioBase.parcelasData[m] || 0) + (_maxParcelaPorMes[m] || 0);
         }
-        if (modoSim === 'sem-juros-neg') {
+        var _ms = r.modoSim || 'completa';
+        if (_ms === 'sem-juros-neg') {
           saldo = (saldo > 0 ? saldo * (1 + taxaInvestMensal) : saldo) + diferenca;
-        } else if (modoSim === 'manter-positivo') {
+        } else if (_ms === 'manter-positivo') {
           saldo = saldo * (1 + taxaInvestMensal) + diferenca;
           if (saldo < 0) saldo = 0;
         } else {
