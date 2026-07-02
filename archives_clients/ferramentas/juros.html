@@ -4733,9 +4733,31 @@ function stratGerarCalendario() {
   var dataInicio = new Date();
   dataInicio.setDate(1);
 
+  // Calcular restante do crédito (crédito total - soma distribuída) para incorporar à reserva
+  var _creditoRestanteParaReserva = 0;
+  if (stratState.creditDist && stratState.linkedPropostas && stratState.linkedPropostas.length > 0) {
+    var _totalCreditoDisp = 0;
+    var _propostasUsadasCred = [];
+    stratState.linkedPropostas.forEach(function(link) {
+      if (link.propostaIdx === '' || link.dividaIdx === '') return;
+      var prop = dividasProposta[link.propostaIdx];
+      if (!prop) return;
+      if (_propostasUsadasCred.indexOf(link.propostaIdx) < 0) {
+        _totalCreditoDisp += prop.valorContratado;
+        _propostasUsadasCred.push(link.propostaIdx);
+      }
+    });
+    var _totalDistribuido = 0;
+    Object.keys(stratState.creditDist).forEach(function(k) {
+      _totalDistribuido += (stratState.creditDist[k] || 0);
+    });
+    _creditoRestanteParaReserva = _totalCreditoDisp - _totalDistribuido;
+    if (_creditoRestanteParaReserva < 0) _creditoRestanteParaReserva = 0;
+  }
+
   var meses = [];
-  var reservaBruta = stratState.saldoInicial;
-  var totalAportado = stratState.saldoInicial;
+  var reservaBruta = stratState.saldoInicial + _creditoRestanteParaReserva;
+  var totalAportado = stratState.saldoInicial + _creditoRestanteParaReserva;
   var saldosDevedor = dividasSel.map(function(d) { return d.saldoDevedor; });
   var saldoDevedorTotal = saldosDevedor.reduce(function(a,b) { return a+b; }, 0);
   var quitouEm = -1;
@@ -6016,8 +6038,30 @@ function _analiseRunStrat(strat) {
   var dataInicio = new Date();
   dataInicio.setDate(1);
 
-  var reservaBruta = saldoInicial;
-  var totalAportado = saldoInicial;
+  // Calcular restante do crédito para incorporar à reserva
+  var _creditoRestanteA = 0;
+  if (linkedPropostas.length > 0) {
+    var _totalCreditoA = 0;
+    var _propUsadasA = [];
+    linkedPropostas.forEach(function(link) {
+      if (link.propostaIdx === '' || link.dividaIdx === '') return;
+      var prop = dividasProposta[link.propostaIdx];
+      if (!prop) return;
+      if (_propUsadasA.indexOf(link.propostaIdx) < 0) {
+        _totalCreditoA += prop.valorContratado;
+        _propUsadasA.push(link.propostaIdx);
+      }
+    });
+    var _totalDistA = 0;
+    Object.keys(creditDist).forEach(function(k) {
+      _totalDistA += (creditDist[k] || 0);
+    });
+    _creditoRestanteA = _totalCreditoA - _totalDistA;
+    if (_creditoRestanteA < 0) _creditoRestanteA = 0;
+  }
+
+  var reservaBruta = saldoInicial + _creditoRestanteA;
+  var totalAportado = saldoInicial + _creditoRestanteA;
   var saldosDevedor = dividasSel.map(function(d) { return d.saldoDevedor; });
   var saldoDevedorTotal = saldosDevedor.reduce(function(a,b) { return a+b; }, 0);
   var saldoInicialTotal = saldoDevedorTotal;
