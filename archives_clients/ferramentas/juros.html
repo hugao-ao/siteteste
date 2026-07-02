@@ -5231,22 +5231,31 @@ function stratRenderCalendario() {
     if (reajB > 0) {
       var saldoB = dd.saldoDevedor;
       var restB = dd.restantes;
+      var taxaBp = 0;
+      if (dd.tipoAmort === 'price') {
+        taxaBp = calcTaxaImplicita(dd.saldoDevedor, dd.parcela, dd.restantes);
+      }
       for (var mb = 0; mb < restB; mb++) {
         if (mb > 0 && mb % 12 === 0) {
           totalReajusteBaseline += saldoB * reajB;
           saldoB *= (1 + reajB);
         }
-        // Amortização normal sem extra
+        // Amortização normal sem extra (mesma lógica do calendário real)
+        var fatorReajB = Math.pow(1 + reajB, Math.floor(mb / 12));
         if (dd.tipoAmort === 'price') {
-          var taxaBp = calcTaxaImplicita(dd.saldoDevedor, dd.parcela, dd.restantes);
           var jurosBp = saldoB * taxaBp;
-          saldoB -= (dd.parcela * Math.pow(1 + reajB, Math.floor(mb / 12)) - jurosBp);
-        } else if (dd.tipoAmort === 'sac' || dd.tipoAmort === 'simples') {
+          var parcelaBp = dd.parcela * fatorReajB;
+          saldoB -= (parcelaBp - jurosBp);
+        } else if (dd.tipoAmort === 'sac') {
+          saldoB -= dd.saldoDevedor / restB;
+        } else if (dd.tipoAmort === 'simples') {
           saldoB -= dd.saldoDevedor / restB;
         } else if (dd.tipoAmort === 'consorcio') {
-          var taxaTotBc = ((dd.consTaxaAdm || 0) + (dd.consFundoReserva || 0)) / 100;
-          var propAmortBc = 1 / (1 + taxaTotBc);
-          saldoB -= (dd.saldoDevedor / restB) * propAmortBc;
+          // Consórcio: amortização = saldoAtual / mesesRestantes (igual ao calendário real)
+          var mesesRestBc = restB - mb;
+          if (mesesRestBc <= 0) mesesRestBc = 1;
+          var amortBc = saldoB / mesesRestBc;
+          saldoB -= amortBc;
         }
         if (saldoB < 0) saldoB = 0;
       }
