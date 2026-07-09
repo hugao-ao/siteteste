@@ -3464,7 +3464,7 @@ function renderScenarioAdjustments() {
       // Target value
       if (adj.strategy !== 'gradativo' || adj.gradType !== 'manual') {
         var targetVal = it.valor * (1 - (adj.targetPct || 0) / 100);
-        html += '<td><input type="text" value="' + fmtCurrency(Math.max(0, targetVal)) + '" oninput="formatCurrencyInput(this)" onchange="setAjusteTarget(' + a.idx + ', this.value)" style="width:90px;"></td>';
+        html += '<td><input type="text" value="' + fmtCurrency(targetVal) + '" oninput="formatCurrencyInput(this)" onchange="setAjusteTarget(' + a.idx + ', this.value)" style="width:90px;"></td>';
       } else {
         html += '<td style="color:var(--muted);font-size:0.72rem;">via grid</td>';
       }
@@ -3559,7 +3559,8 @@ function setAjusteTarget(idx, val) {
   if (!adj) return;
   var targetVal = parseCurrency(val);
   var origVal = items[idx].valor;
-  adj.targetPct = origVal > 0 ? Math.max(0, Math.min(100, ((origVal - targetVal) / origVal) * 100)) : 0;
+  // targetPct pode ser negativo (aumento) ou positivo (redução)
+  adj.targetPct = origVal > 0 ? ((origVal - targetVal) / origVal) * 100 : 0;
   recalcScenario();
 }
 
@@ -3602,12 +3603,20 @@ function getAdjustedValue(itemIdx, occDate, occNumber) {
     // Calculate months elapsed from first occurrence
     var monthsElapsed = occNumber; // approximate: each occurrence = 1 step
     if (adj.gradType === 'pct') {
-      var totalReduction = Math.min(adj.targetPct || 100, (adj.pctPerMonth || 10) * monthsElapsed);
+      var tp = adj.targetPct || 0;
+      var ppm = adj.pctPerMonth || 10;
+      var totalReduction;
+      if (tp >= 0) {
+        totalReduction = Math.min(tp, ppm * monthsElapsed);
+      } else {
+        // Aumento gradativo (targetPct negativo = aumento)
+        totalReduction = Math.max(tp, -(ppm * monthsElapsed));
+      }
       return origVal * (1 - totalReduction / 100);
     }
     if (adj.gradType === 'nominal') {
       var totalNominal = (adj.nominalPerMonth || 0) * monthsElapsed;
-      return Math.max(0, origVal - totalNominal);
+      return origVal - totalNominal;
     }
   }
 
