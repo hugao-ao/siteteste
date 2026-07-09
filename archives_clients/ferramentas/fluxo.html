@@ -336,26 +336,16 @@
   .section-body-collapsible.collapsed { max-height:0 !important; opacity:0; padding-top:0 !important; padding-bottom:0 !important; margin-top:0 !important; }
 
   /* === EVOLUTION REDESIGN === */
-  .evo-container { display:flex; flex-direction:column; gap:0.75rem; }
-  .evo-month-card { background:var(--card2); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; }
-  .evo-month-card[open] { border-color:var(--primary); }
-  .evo-month-header { display:flex; justify-content:space-between; align-items:center; padding:0.75rem 1rem; cursor:pointer; list-style:none; }
-  .evo-month-header::-webkit-details-marker { display:none; }
-  .evo-month-header::marker { display:none; content:''; }
-  .evo-month-title { font-weight:700; font-size:0.88rem; color:var(--fg); }
-  .evo-month-badges { display:flex; gap:0.4rem; flex-wrap:wrap; }
-  .evo-month-body { padding:0.75rem 1rem 1rem; border-top:1px solid var(--border); }
-  .evo-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(180px, 1fr)); gap:0.6rem; }
-  .evo-cell { background:var(--bg); border:1px solid rgba(212,175,55,0.1); border-radius:6px; padding:0.5rem 0.6rem; }
-  .evo-cell-header { display:flex; align-items:center; gap:0.3rem; margin-bottom:0.3rem; font-size:0.75rem; }
-  .evo-cell-values { display:flex; justify-content:space-between; align-items:baseline; }
-  .evo-real { font-size:0.85rem; font-weight:700; color:var(--fg); }
-  .evo-meta { font-size:0.68rem; color:var(--muted); }
-  .evo-bar-wrap { height:4px; background:rgba(255,255,255,0.08); border-radius:2px; margin-top:0.3rem; overflow:hidden; }
-  .evo-bar-fill { height:100%; border-radius:2px; transition:width 0.3s; }
-  .evo-pct { font-size:0.65rem; color:var(--muted); text-align:right; margin-top:0.15rem; }
-  .evo-saldo-row { display:flex; justify-content:space-between; align-items:center; margin-top:0.75rem; padding-top:0.6rem; border-top:1px solid var(--border); font-size:0.85rem; color:var(--muted); }
-  @media (max-width:600px) { .evo-grid { grid-template-columns:1fr 1fr; } .evo-month-badges { font-size:0.65rem; } }
+  /* Orc item rows - aligned layout */
+  .orc-item-row { display:flex; justify-content:space-between; align-items:center; padding:0.25rem 0; font-size:0.75rem; color:var(--muted); gap:0.5rem; }
+  .orc-item-left { display:flex; align-items:center; gap:0.4rem; flex:1; min-width:0; }
+  .orc-item-left label { display:flex; align-items:center; gap:0.4rem; cursor:pointer; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .orc-item-right { text-align:right; white-space:nowrap; flex-shrink:0; color:var(--fg); }
+  .orc-item-right .orc-pct { color:var(--muted); font-size:0.68rem; }
+  /* Tracking table expandable rows */
+  .tracking-table .cat-expand-btn { cursor:pointer; user-select:none; }
+  .tracking-table .cat-expand-btn:hover { opacity:0.8; }
+  .tracking-table .item-detail-row td { padding-left:2rem; font-size:0.75rem; color:var(--muted); border-bottom:1px solid rgba(255,255,255,0.03); }
 </style>
 </head>
 <body>
@@ -628,7 +618,7 @@
       <div class="tracking-tabs" id="tracking-tabs" style="display:none;">
         <button class="tracking-tab active" onclick="setTrackingView('chart')">Gráfico</button>
         <button class="tracking-tab" onclick="setTrackingView('table')">Tabela</button>
-        <button class="tracking-tab" onclick="setTrackingView('evolution')">Evolução</button>
+
         <button class="tracking-tab" onclick="setTrackingView('faturas')">Faturas</button>
       </div>
       <div id="tracking-content"></div>
@@ -1932,9 +1922,9 @@ function _buildOrcCard(title, subtitle, entMensal, poupMensal, catTotais, saldoL
     entItens.forEach(function(it, i) {
       var ck = _getCheckState(chartId, 'ent-' + i);
       var itPct = entMensal > 0 ? (it.valor / entMensal * 100) : 0;
-      html += '<div style="display:flex;justify-content:space-between;align-items:center;font-size:0.75rem;color:var(--muted);padding:0.2rem 0;">';
-      html += '<label style="display:flex;align-items:center;gap:0.4rem;cursor:pointer;"><input type="checkbox" ' + (ck ? 'checked' : '') + ' data-chart="' + chartId + '" data-key="ent-' + i + '" onchange="orcCheckChanged(this)" style="accent-color:#10b981;"> ' + it.nome + '</label>';
-      html += '<span style="color:var(--fg);">' + fmtCurrency(it.valor) + ' <span style="color:var(--muted);font-size:0.68rem;">(' + fmtPct(itPct) + ')</span></span>';
+      html += '<div class="orc-item-row">';
+      html += '<div class="orc-item-left"><label><input type="checkbox" ' + (ck ? 'checked' : '') + ' data-chart="' + chartId + '" data-key="ent-' + i + '" onchange="orcCheckChanged(this)" style="accent-color:#10b981;"> ' + it.nome + '</label></div>';
+      html += '<div class="orc-item-right">' + fmtCurrency(it.valor) + ' <span class="orc-pct">(' + fmtPct(itPct) + ')</span></div>';
       html += '</div>';
     });
   }
@@ -1955,9 +1945,9 @@ function _buildOrcCard(title, subtitle, entMensal, poupMensal, catTotais, saldoL
       poupItens.forEach(function(it, i) {
         var ck = _getCheckState(chartId, 'poup-' + i);
         var itPct = entMensal > 0 ? (it.valor / entMensal * 100) : 0;
-        html += '<div style="display:flex;justify-content:space-between;align-items:center;font-size:0.75rem;color:var(--muted);padding:0.2rem 0;">';
-        html += '<label style="display:flex;align-items:center;gap:0.4rem;cursor:pointer;"><input type="checkbox" ' + (ck ? 'checked' : '') + ' data-chart="' + chartId + '" data-key="poup-' + i + '" onchange="orcCheckChanged(this)" style="accent-color:#60a5fa;"> ' + it.nome + '</label>';
-        html += '<span style="color:var(--fg);">' + fmtCurrency(it.valor) + ' <span style="color:var(--muted);font-size:0.68rem;">(' + fmtPct(itPct) + ')</span></span>';
+        html += '<div class="orc-item-row">';
+        html += '<div class="orc-item-left"><label><input type="checkbox" ' + (ck ? 'checked' : '') + ' data-chart="' + chartId + '" data-key="poup-' + i + '" onchange="orcCheckChanged(this)" style="accent-color:#60a5fa;"> ' + it.nome + '</label></div>';
+        html += '<div class="orc-item-right">' + fmtCurrency(it.valor) + ' <span class="orc-pct">(' + fmtPct(itPct) + ')</span></div>';
         html += '</div>';
       });
     }
@@ -1981,9 +1971,9 @@ function _buildOrcCard(title, subtitle, entMensal, poupMensal, catTotais, saldoL
     catTotais[cat].itens.forEach(function(it, i) {
       var ck = _getCheckState(chartId, 'desp-' + cat + '-' + i);
       var itPct = entMensal > 0 ? (it.valor / entMensal * 100) : 0;
-      html += '<div style="display:flex;justify-content:space-between;align-items:center;font-size:0.75rem;color:var(--muted);padding:0.2rem 0;">';
-      html += '<label style="display:flex;align-items:center;gap:0.4rem;cursor:pointer;"><input type="checkbox" ' + (ck ? 'checked' : '') + ' data-chart="' + chartId + '" data-key="desp-' + cat + '-' + i + '" onchange="orcCheckChanged(this)" style="accent-color:' + cfg.color + ';"> ' + it.nome + '</label>';
-      html += '<span style="color:var(--fg);">' + fmtCurrency(it.valor) + ' <span style="color:var(--muted);font-size:0.68rem;">(' + fmtPct(itPct) + ')</span></span>';
+      html += '<div class="orc-item-row">';
+      html += '<div class="orc-item-left"><label><input type="checkbox" ' + (ck ? 'checked' : '') + ' data-chart="' + chartId + '" data-key="desp-' + cat + '-' + i + '" onchange="orcCheckChanged(this)" style="accent-color:' + cfg.color + ';"> ' + it.nome + '</label></div>';
+      html += '<div class="orc-item-right">' + fmtCurrency(it.valor) + ' <span class="orc-pct">(' + fmtPct(itPct) + ')</span></div>';
       html += '</div>';
     });
     html += '</div>';
@@ -4087,6 +4077,62 @@ function renderTracking() {
     html += '<div style="display:flex;gap:1rem;font-size:0.72rem;color:var(--muted);margin-top:0.5rem;"><span>■ Claro = Meta</span><span>■ Escuro = Real</span></div>';
 
   } else if (trackingView === 'table') {
+    // Build per-item metas for the current month
+    var monthStart = new Date(trackingMonth + '-01T00:00');
+    var monthEnd = new Date(monthStart.getFullYear(), monthStart.getMonth() + 1, 0);
+    var itemMetasByCat = {}; // { cat: [{nome, meta}] }
+    var itemMetasEntradas = []; // [{nome, meta}]
+    var itemMetasPoupanca = []; // [{nome, meta}]
+    items.forEach(function(item, idx) {
+      var occs = getOccurrences(item, monthStart, monthEnd);
+      if (occs.length === 0) return;
+      var itemVal = item.valor;
+      // Use optimized value if scenario is active
+      if (scenarioEnabled) {
+        var adj = scenarioAdjustments.find(function(sa) { return sa.itemIdx === idx && sa.enabled; });
+        if (adj) {
+          var totalAdj = 0;
+          occs.forEach(function(d, i) { totalAdj += getAdjustedValue(idx, d, i); });
+          itemVal = occs.length > 0 ? totalAdj / occs.length : item.valor;
+        }
+      }
+      var metaTotal = occs.length * itemVal;
+      if (item.tipo === 'entrada') {
+        itemMetasEntradas.push({ nome: item.nome, meta: metaTotal });
+      } else if (item.subtipo === 'poupanca') {
+        itemMetasPoupanca.push({ nome: item.nome, meta: metaTotal });
+      } else if (item.subtipo === 'despesa') {
+        var cat = item.categoria || 'sem_categoria';
+        if (!itemMetasByCat[cat]) itemMetasByCat[cat] = [];
+        itemMetasByCat[cat].push({ nome: item.nome, meta: metaTotal });
+      }
+    });
+
+    // Build per-item real from lancamentos (by subcategoria/descricao matching item nome)
+    var itemRealByCat = {}; // { cat: { nome: total } }
+    var itemRealEntradas = {}; // { nome: total }
+    var itemRealPoupanca = {}; // { nome: total }
+    lancMes.forEach(function(l) {
+      if (l._isCardItem) return;
+      var nome = l.subcategoria || l.descricao || '—';
+      if (l.tipo === 'entrada') {
+        if (!itemRealEntradas[nome]) itemRealEntradas[nome] = 0;
+        itemRealEntradas[nome] += l.valor;
+      } else if (l.tipo === 'poupanca') {
+        if (!itemRealPoupanca[nome]) itemRealPoupanca[nome] = 0;
+        itemRealPoupanca[nome] += l.valor;
+      } else {
+        var cat = l.categoria || 'sem_categoria';
+        if (!itemRealByCat[cat]) itemRealByCat[cat] = {};
+        if (!itemRealByCat[cat][nome]) itemRealByCat[cat][nome] = 0;
+        itemRealByCat[cat][nome] += l.valor;
+      }
+    });
+
+    // Helper: generate unique ID for expand/collapse
+    var _tblRowId = 0;
+    function _nextRowId() { return 'tbl-exp-' + (++_tblRowId); }
+
     html += '<table class="tracking-table"><thead><tr><th></th><th>Categoria</th><th>Meta</th><th>Real</th><th>Diferença</th><th>%</th></tr></thead><tbody>';
     var catOrder = ['sobrevivencia','necessidades','aperfeicoamento','dividas','conforto','sem_categoria'];
     var totalMeta = 0, totalReal = 0;
@@ -4099,12 +4145,33 @@ function renderTracking() {
       var pct = metaVal > 0 ? (realVal / metaVal * 100) : (realVal > 0 ? 999 : 0);
       var indicator = pct <= 90 ? 'ok' : pct <= 110 ? 'warn' : 'over';
       totalMeta += metaVal; totalReal += realVal;
-      html += '<tr><td><span class="tracking-indicator ' + indicator + '"></span></td>';
-      html += '<td style="color:' + cfg.color + ';font-weight:600;">' + cfg.label + '</td>';
+      var rowId = _nextRowId();
+      html += '<tr class="cat-expand-btn" onclick="toggleTrackingItems(\'' + rowId + '\')" style="cursor:pointer;"><td><span class="tracking-indicator ' + indicator + '"></span></td>';
+      html += '<td style="color:' + cfg.color + ';font-weight:600;"><span class="expand-arrow" id="arrow-' + rowId + '">▶</span> ' + cfg.label + '</td>';
       html += '<td>' + fmtCurrency(metaVal) + '</td>';
       html += '<td>' + fmtCurrency(realVal) + '</td>';
       html += '<td style="color:' + (diff > 0 ? 'var(--red)' : 'var(--green)') + ';">' + (diff > 0 ? '+' : '') + fmtCurrency(diff) + '</td>';
       html += '<td>' + pct.toFixed(0) + '%</td></tr>';
+      // Per-item detail rows (hidden by default)
+      var catItems = itemMetasByCat[cat] || [];
+      var catReals = itemRealByCat[cat] || {};
+      // Collect all unique item names (from metas + reals)
+      var allNames = {};
+      catItems.forEach(function(ci) { allNames[ci.nome] = true; });
+      Object.keys(catReals).forEach(function(n) { allNames[n] = true; });
+      Object.keys(allNames).forEach(function(nome) {
+        var iMeta = 0;
+        catItems.forEach(function(ci) { if (ci.nome === nome) iMeta += ci.meta; });
+        var iReal = catReals[nome] || 0;
+        var iDiff = iReal - iMeta;
+        var iPct = iMeta > 0 ? (iReal / iMeta * 100) : (iReal > 0 ? 999 : 0);
+        html += '<tr class="item-detail-row ' + rowId + '" style="display:none;"><td></td>';
+        html += '<td style="padding-left:1.5rem;font-size:0.75rem;color:var(--muted);">' + nome + '</td>';
+        html += '<td style="font-size:0.75rem;">' + fmtCurrency(iMeta) + '</td>';
+        html += '<td style="font-size:0.75rem;">' + fmtCurrency(iReal) + '</td>';
+        html += '<td style="font-size:0.75rem;color:' + (iDiff > 0 ? 'var(--red)' : 'var(--green)') + ';">' + (iDiff > 0 ? '+' : '') + fmtCurrency(iDiff) + '</td>';
+        html += '<td style="font-size:0.75rem;">' + iPct.toFixed(0) + '%</td></tr>';
+      });
     });
     // Subtotal despesas
     html += '<tr style="font-weight:600;border-top:1px solid var(--border);"><td></td><td>Subtotal Despesas</td><td>' + fmtCurrency(totalMeta) + '</td><td>' + fmtCurrency(totalReal) + '</td>';
@@ -4112,27 +4179,63 @@ function renderTracking() {
     html += '<td style="color:' + (subDiff > 0 ? 'var(--red)' : 'var(--green)') + ';">' + (subDiff > 0 ? '+' : '') + fmtCurrency(subDiff) + '</td>';
     html += '<td>' + (totalMeta > 0 ? (totalReal / totalMeta * 100).toFixed(0) : '0') + '%</td></tr>';
 
-    // Entradas row
+    // Entradas row (expandable)
     var entDiff = realEntradas - metaEntradas;
     var entPct = metaEntradas > 0 ? (realEntradas / metaEntradas * 100) : (realEntradas > 0 ? 999 : 0);
     var entInd = entPct >= 90 ? 'ok' : entPct >= 70 ? 'warn' : 'over';
-    html += '<tr><td><span class="tracking-indicator ' + entInd + '"></span></td>';
-    html += '<td style="color:#22c55e;font-weight:600;">Entradas</td>';
+    var entRowId = _nextRowId();
+    html += '<tr class="cat-expand-btn" onclick="toggleTrackingItems(\'' + entRowId + '\')" style="cursor:pointer;"><td><span class="tracking-indicator ' + entInd + '"></span></td>';
+    html += '<td style="color:#22c55e;font-weight:600;"><span class="expand-arrow" id="arrow-' + entRowId + '">▶</span> Entradas</td>';
     html += '<td>' + fmtCurrency(metaEntradas) + '</td>';
     html += '<td>' + fmtCurrency(realEntradas) + '</td>';
     html += '<td style="color:' + (entDiff >= 0 ? 'var(--green)' : 'var(--red)') + ';">' + (entDiff > 0 ? '+' : '') + fmtCurrency(entDiff) + '</td>';
     html += '<td>' + entPct.toFixed(0) + '%</td></tr>';
+    // Per-item entradas
+    var allEntNames = {};
+    itemMetasEntradas.forEach(function(ci) { allEntNames[ci.nome] = true; });
+    Object.keys(itemRealEntradas).forEach(function(n) { allEntNames[n] = true; });
+    Object.keys(allEntNames).forEach(function(nome) {
+      var iMeta = 0;
+      itemMetasEntradas.forEach(function(ci) { if (ci.nome === nome) iMeta += ci.meta; });
+      var iReal = itemRealEntradas[nome] || 0;
+      var iDiff = iReal - iMeta;
+      var iPct = iMeta > 0 ? (iReal / iMeta * 100) : (iReal > 0 ? 999 : 0);
+      html += '<tr class="item-detail-row ' + entRowId + '" style="display:none;"><td></td>';
+      html += '<td style="padding-left:1.5rem;font-size:0.75rem;color:var(--muted);">' + nome + '</td>';
+      html += '<td style="font-size:0.75rem;">' + fmtCurrency(iMeta) + '</td>';
+      html += '<td style="font-size:0.75rem;">' + fmtCurrency(iReal) + '</td>';
+      html += '<td style="font-size:0.75rem;color:' + (iDiff >= 0 ? 'var(--green)' : 'var(--red)') + ';">' + (iDiff > 0 ? '+' : '') + fmtCurrency(iDiff) + '</td>';
+      html += '<td style="font-size:0.75rem;">' + iPct.toFixed(0) + '%</td></tr>';
+    });
 
-    // Poupança row
+    // Poupança row (expandable)
     var poupDiff = realPoupanca - metaPoupanca;
     var poupPct = metaPoupanca > 0 ? (realPoupanca / metaPoupanca * 100) : (realPoupanca > 0 ? 999 : 0);
     var poupInd = poupPct >= 90 ? 'ok' : poupPct >= 70 ? 'warn' : 'over';
-    html += '<tr><td><span class="tracking-indicator ' + poupInd + '"></span></td>';
-    html += '<td style="color:#60a5fa;font-weight:600;">Poupança</td>';
+    var poupRowId = _nextRowId();
+    html += '<tr class="cat-expand-btn" onclick="toggleTrackingItems(\'' + poupRowId + '\')" style="cursor:pointer;"><td><span class="tracking-indicator ' + poupInd + '"></span></td>';
+    html += '<td style="color:#60a5fa;font-weight:600;"><span class="expand-arrow" id="arrow-' + poupRowId + '">▶</span> Poupança</td>';
     html += '<td>' + fmtCurrency(metaPoupanca) + '</td>';
     html += '<td>' + fmtCurrency(realPoupanca) + '</td>';
     html += '<td style="color:' + (poupDiff >= 0 ? 'var(--green)' : 'var(--red)') + ';">' + (poupDiff > 0 ? '+' : '') + fmtCurrency(poupDiff) + '</td>';
     html += '<td>' + poupPct.toFixed(0) + '%</td></tr>';
+    // Per-item poupança
+    var allPoupNames = {};
+    itemMetasPoupanca.forEach(function(ci) { allPoupNames[ci.nome] = true; });
+    Object.keys(itemRealPoupanca).forEach(function(n) { allPoupNames[n] = true; });
+    Object.keys(allPoupNames).forEach(function(nome) {
+      var iMeta = 0;
+      itemMetasPoupanca.forEach(function(ci) { if (ci.nome === nome) iMeta += ci.meta; });
+      var iReal = itemRealPoupanca[nome] || 0;
+      var iDiff = iReal - iMeta;
+      var iPct = iMeta > 0 ? (iReal / iMeta * 100) : (iReal > 0 ? 999 : 0);
+      html += '<tr class="item-detail-row ' + poupRowId + '" style="display:none;"><td></td>';
+      html += '<td style="padding-left:1.5rem;font-size:0.75rem;color:var(--muted);">' + nome + '</td>';
+      html += '<td style="font-size:0.75rem;">' + fmtCurrency(iMeta) + '</td>';
+      html += '<td style="font-size:0.75rem;">' + fmtCurrency(iReal) + '</td>';
+      html += '<td style="font-size:0.75rem;color:' + (iDiff >= 0 ? 'var(--green)' : 'var(--red)') + ';">' + (iDiff > 0 ? '+' : '') + fmtCurrency(iDiff) + '</td>';
+      html += '<td style="font-size:0.75rem;">' + iPct.toFixed(0) + '%</td></tr>';
+    });
 
     // TOTAL row (despesas + poupança vs entradas)
     html += '<tr style="font-weight:700;border-top:2px solid var(--border);"><td></td><td>SALDO MENSAL</td>';
@@ -4143,97 +4246,6 @@ function renderTracking() {
     html += '<td style="color:' + (saldoDiff >= 0 ? 'var(--green)' : 'var(--red)') + ';">' + (saldoDiff > 0 ? '+' : '') + fmtCurrency(saldoDiff) + '</td>';
     html += '<td>—</td></tr>';
     html += '</tbody></table>';
-
-  } else if (trackingView === 'evolution') {
-    // Redesigned evolution view - compact card layout per month
-    var catOrder = ['sobrevivencia','necessidades','aperfeicoamento','dividas','conforto','sem_categoria'];
-
-    html += '<div class="evo-container">';
-
-    monthKeys.forEach(function(mk) {
-      var mObj = trackingData.metas[mk];
-      var m = mObj && mObj.categorias ? mObj.categorias : (mObj || {});
-      var mEnt = mObj && mObj.entradas ? mObj.entradas : 0;
-      var mPoup = mObj && mObj.poupanca ? mObj.poupanca : 0;
-      var lancM = trackingData.lancamentos.filter(function(l) { return l.data && l.data.substring(0, 7) === mk; });
-      var realM = {}; var realEnt = 0; var realPoup = 0;
-      lancM.forEach(function(l) {
-        if (l._isCardItem) return; // Card items go to fatura, not direct despesas
-        if (l.tipo === 'entrada') { realEnt += l.valor; }
-        else if (l.tipo === 'poupanca') { realPoup += l.valor; }
-        else { var c = l.categoria || 'sem_categoria'; realM[c] = (realM[c] || 0) + l.valor; }
-      });
-      var totalR = 0;
-      catOrder.forEach(function(cat) { totalR += (realM[cat] || 0); });
-      var saldo = realEnt - totalR - realPoup;
-
-      var mLabel = new Date(mk + '-15').toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
-      mLabel = mLabel.charAt(0).toUpperCase() + mLabel.slice(1);
-
-      html += '<details class="evo-month-card"' + (mk === trackingMonth ? ' open' : '') + '>';
-      html += '<summary class="evo-month-header">';
-      html += '<span class="evo-month-title">' + mLabel + '</span>';
-      html += '<div class="evo-month-badges">';
-      html += '<span class="badge badge-green">Ent: ' + fmtCurrency(realEnt) + '</span>';
-      html += '<span class="badge badge-red">Desp: ' + fmtCurrency(totalR) + '</span>';
-      html += '<span class="badge ' + (saldo >= 0 ? 'badge-green' : 'badge-red') + '">Saldo: ' + fmtCurrency(saldo) + '</span>';
-      html += '</div>';
-      html += '</summary>';
-
-      html += '<div class="evo-month-body">';
-
-      // Grid of categories
-      html += '<div class="evo-grid">';
-
-      // Entradas
-      var entInd = mEnt === 0 && realEnt === 0 ? '' : (realEnt >= mEnt * 0.9 ? 'ok' : realEnt >= mEnt * 0.7 ? 'warn' : 'over');
-      var entPct = mEnt > 0 ? Math.round((realEnt / mEnt) * 100) : 0;
-      html += '<div class="evo-cell">';
-      html += '<div class="evo-cell-header"><span class="tracking-indicator ' + entInd + '"></span><span style="color:#22c55e; font-weight:600;">Entradas</span></div>';
-      html += '<div class="evo-cell-values"><span class="evo-real">' + fmtCurrency(realEnt) + '</span><span class="evo-meta">meta: ' + fmtCurrency(mEnt) + '</span></div>';
-      if (mEnt > 0) html += '<div class="evo-bar-wrap"><div class="evo-bar-fill" style="width:' + Math.min(entPct, 100) + '%; background:#22c55e;"></div></div>';
-      html += '</div>';
-
-      // Poupança
-      var poupInd = mPoup === 0 && realPoup === 0 ? '' : (realPoup >= mPoup * 0.9 ? 'ok' : realPoup >= mPoup * 0.7 ? 'warn' : 'over');
-      var poupPct = mPoup > 0 ? Math.round((realPoup / mPoup) * 100) : 0;
-      html += '<div class="evo-cell">';
-      html += '<div class="evo-cell-header"><span class="tracking-indicator ' + poupInd + '"></span><span style="color:#60a5fa; font-weight:600;">Poupança</span></div>';
-      html += '<div class="evo-cell-values"><span class="evo-real">' + fmtCurrency(realPoup) + '</span><span class="evo-meta">meta: ' + fmtCurrency(mPoup) + '</span></div>';
-      if (mPoup > 0) html += '<div class="evo-bar-wrap"><div class="evo-bar-fill" style="width:' + Math.min(poupPct, 100) + '%; background:#60a5fa;"></div></div>';
-      html += '</div>';
-
-      // Categories
-      catOrder.forEach(function(cat) {
-        if (!catConfig[cat]) return;
-        var meta = m[cat] || 0;
-        var real = realM[cat] || 0;
-        if (meta === 0 && real === 0) return; // Skip empty categories
-        var indicator = real <= meta * 0.9 ? 'ok' : real <= meta * 1.1 ? 'warn' : 'over';
-        var pct = meta > 0 ? Math.round((real / meta) * 100) : (real > 0 ? 100 : 0);
-        var barColor = indicator === 'ok' ? 'var(--green)' : indicator === 'warn' ? 'var(--orange)' : 'var(--red)';
-
-        html += '<div class="evo-cell">';
-        html += '<div class="evo-cell-header"><span class="tracking-indicator ' + indicator + '"></span><span style="color:' + catConfig[cat].color + '; font-weight:600;">' + catConfig[cat].label + '</span></div>';
-        html += '<div class="evo-cell-values"><span class="evo-real">' + fmtCurrency(real) + '</span><span class="evo-meta">meta: ' + fmtCurrency(meta) + '</span></div>';
-        if (meta > 0) html += '<div class="evo-bar-wrap"><div class="evo-bar-fill" style="width:' + Math.min(pct, 100) + '%; background:' + barColor + ';"></div></div>';
-        if (pct > 0) html += '<div class="evo-pct" style="color:' + barColor + ';">' + pct + '%</div>';
-        html += '</div>';
-      });
-
-      html += '</div>'; // evo-grid
-
-      // Saldo row
-      html += '<div class="evo-saldo-row">';
-      html += '<span>Saldo do mês:</span>';
-      html += '<span style="font-weight:700; font-size:1rem; color:' + (saldo >= 0 ? 'var(--green)' : 'var(--red)') + ';">' + fmtCurrency(saldo) + '</span>';
-      html += '</div>';
-
-      html += '</div>'; // evo-month-body
-      html += '</details>';
-    });
-
-    html += '</div>'; // evo-container
   }
 
   // Lancamentos list with checkboxes, bulk delete, resizable columns, horizontal scroll
@@ -4287,6 +4299,14 @@ function navTrackingMonth(dir) {
     trackingMonth = monthKeys[newIdx];
     renderTracking();
   }
+}
+
+function toggleTrackingItems(rowId) {
+  var rows = document.querySelectorAll('.' + rowId);
+  var arrow = document.getElementById('arrow-' + rowId);
+  var isVisible = rows.length > 0 && rows[0].style.display !== 'none';
+  rows.forEach(function(r) { r.style.display = isVisible ? 'none' : 'table-row'; });
+  if (arrow) arrow.textContent = isVisible ? '\u25B6' : '\u25BC';
 }
 
 function toggleSelectAllLanc(masterCb) {
