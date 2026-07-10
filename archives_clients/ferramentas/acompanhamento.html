@@ -978,13 +978,18 @@ function fmtBRL(v) {
 function parseBR(v) {
   if (!v) return 0;
   if (typeof v === 'number') return v;
-  return parseFloat(String(v).replace(/\./g,'').replace(',','.')) || 0;
+  var s = String(v);
+  var neg = s.indexOf('-') >= 0;
+  var num = parseFloat(s.replace(/[^\d,]/g,'').replace(',','.')) || 0;
+  return neg ? -num : num;
 }
 function maskBRL(el) {
-  var v = el.value.replace(/\D/g,'');
-  if (!v) { el.value = ''; return; }
+  var raw = el.value;
+  var neg = raw.indexOf('-') >= 0;
+  var v = raw.replace(/[^\d]/g,'');
+  if (!v) { el.value = neg ? '-' : ''; return; }
   v = (parseInt(v)/100).toFixed(2);
-  el.value = parseFloat(v).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});
+  el.value = (neg ? '-' : '') + parseFloat(v).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});
 }
 function escHtml(s) { var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
 function fmtData(d) {
@@ -1085,7 +1090,8 @@ function fillModalFromData(tipo, index) {
     document.getElementById('rn_investimentos').value = item.investimentos ? parseBR(item.investimentos).toLocaleString('pt-BR',{minimumFractionDigits:2}) : '';
     document.getElementById('rn_dividas').value = item.dividas ? parseBR(item.dividas).toLocaleString('pt-BR',{minimumFractionDigits:2}) : '';
     document.getElementById('rn_poupanca').value = item.poupanca ? parseBR(item.poupanca).toLocaleString('pt-BR',{minimumFractionDigits:2}) : '';
-    document.getElementById('rn_saldo_fluxo').value = item.saldo_fluxo ? parseBR(item.saldo_fluxo).toLocaleString('pt-BR',{minimumFractionDigits:2}) : '';
+    var _sfVal = item.saldo_fluxo ? parseBR(item.saldo_fluxo) : 0;
+    document.getElementById('rn_saldo_fluxo').value = item.saldo_fluxo ? (_sfVal < 0 ? '-' : '') + Math.abs(_sfVal).toLocaleString('pt-BR',{minimumFractionDigits:2}) : '';
     document.getElementById('rn_resumo').value = item.resumo || '';
     if (document.getElementById('rn_perfil_financeiro')) document.getElementById('rn_perfil_financeiro').value = item.perfil_financeiro || '';
     _questoesReuniao = item.questoes ? JSON.parse(JSON.stringify(item.questoes)) : getLastQuestoesState(index);
