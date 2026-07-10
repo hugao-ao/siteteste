@@ -1360,6 +1360,15 @@
       </div>
     </div>
 
+    <!-- DATA INICIAL DE REFERÊNCIA -->
+    <div class="row" style="margin-top:0.75rem; border-top:1px dashed rgba(212,175,55,0.2); padding-top:0.75rem;">
+      <div class="field">
+        <label>Data Inicial de Referência</label>
+        <input type="date" id="m-data-inicio">
+        <span class="note">Data em que a dívida começou (ou começará). Usada para alinhar os cálculos e gráficos no calendário real. Se não informada, usa a data de hoje.</span>
+      </div>
+    </div>
+
     <div class="modal-actions">
       <button class="btn btn-outline" onclick="closeDebtModal()">Cancelar</button>
       <button class="btn btn-primary" onclick="saveDebt()">Salvar</button>
@@ -1566,6 +1575,7 @@ function openDebtModal(type, index) {
     document.getElementById('m-total-parcelas').value = d.totalParcelas;
     document.getElementById('m-tipo-amort').value = d.tipoAmort || 'price';
     document.getElementById('m-reajuste').value = d.reajusteAnual || 0;
+    document.getElementById('m-data-inicio').value = d.dataInicio || '';
     toggleTipoAmortFields();
     if (type === 'atual') {
       document.getElementById('m-pagas').value = d.parcelasPagas;
@@ -1619,6 +1629,7 @@ function openDebtModal(type, index) {
     document.getElementById('m-cet').value = '';
     document.getElementById('m-tipo-amort').value = 'price';
     document.getElementById('m-reajuste').value = '0';
+    document.getElementById('m-data-inicio').value = '';
     _resetConsorcioFields();
     _resetFixaFields();
     toggleTipoAmortFields();
@@ -1889,7 +1900,8 @@ function saveDebt() {
     taxaFixa = 0; // Consórcio não tem taxa fixa mensal
   }
 
-  var debt = { nome: nome, valorContratado: valorContratado, parcela: parcela, totalParcelas: totalParcelas, parcelasPagas: parcelasPagas, saldoDevedor: saldoDevedor, tipoAmort: tipoAmort, reajusteAnual: reajusteAnual, taxaFixa: taxaFixa, consTaxaAdm: consTaxaAdm, consFundoReserva: consFundoReserva, consRedutor: consRedutor, consParcelaAlvo: consParcelaAlvo, consPeriodoReducao: consPeriodoReducao, consPctReducao: consPctReducao, fixaJurosAumentaSaldo: fixaJurosAumentaSaldo, fixaTaxa: fixaTaxa, fixaTaxaTipo: fixaTaxaTipo, fixaPeriodicidade: fixaPeriodicidade, fixaPeriodoTipo: fixaPeriodoTipo, fixaPrazoSimulacao: fixaPrazoSimulacao };
+  var dataInicioVal = document.getElementById('m-data-inicio').value || '';
+  var debt = { nome: nome, valorContratado: valorContratado, parcela: parcela, totalParcelas: totalParcelas, parcelasPagas: parcelasPagas, saldoDevedor: saldoDevedor, tipoAmort: tipoAmort, reajusteAnual: reajusteAnual, taxaFixa: taxaFixa, consTaxaAdm: consTaxaAdm, consFundoReserva: consFundoReserva, consRedutor: consRedutor, consParcelaAlvo: consParcelaAlvo, consPeriodoReducao: consPeriodoReducao, consPctReducao: consPctReducao, fixaJurosAumentaSaldo: fixaJurosAumentaSaldo, fixaTaxa: fixaTaxa, fixaTaxaTipo: fixaTaxaTipo, fixaPeriodicidade: fixaPeriodicidade, fixaPeriodoTipo: fixaPeriodoTipo, fixaPrazoSimulacao: fixaPrazoSimulacao, dataInicio: dataInicioVal };
 
   var list = currentModalType === 'atual' ? dividasAtuais : dividasProposta;
   if (editingIndex >= 0) {
@@ -1945,7 +1957,7 @@ function renderTable(type) {
     '<span style="font-size:0.75rem; color:var(--muted);">(' + selectedArr.length + '/' + list.length + ' selecionadas para resumo/gráficos)</span>' +
     '</div>';
   html += '<table class="debt-table"><thead><tr>' +
-    '<th style="width:30px;"></th><th>Nome</th><th>Tipo</th><th>Valor Contratado</th><th>Parcela Inicial</th><th>Parcelas</th>' +
+    '<th style="width:30px;"></th><th>Nome</th><th>Tipo</th><th>In\u00edcio</th><th>Valor Contratado</th><th>Parcela Inicial</th><th>Parcelas</th>' +
     (isAtual ? '<th>Pagas</th><th>Restantes</th><th>Saldo Devedor</th>' : '') +
     '<th>Reajuste a.a.</th><th>Total a Pagar</th><th>Juros</th><th>Acoes</th>' +
     '</tr></thead><tbody>';
@@ -1961,6 +1973,7 @@ function renderTable(type) {
       '<td><input type="checkbox" onchange="toggleDebtSelection(\'' + type + '\',' + i + ', this.checked)"' + (isChecked ? ' checked' : '') + '></td>' +
       '<td style="color:#fff;font-weight:600;">' + d.nome + '</td>' +
       '<td><span style="background:var(--card2);padding:2px 6px;border-radius:4px;font-size:0.75rem;color:var(--green);">' + tipoLabel + '</span></td>' +
+      '<td style="font-size:0.78rem;color:var(--muted);">' + (d.dataInicio ? d.dataInicio.split('-').reverse().slice(0,2).join('/') : '-') + '</td>' +
       '<td>' + fmtBRL(d.valorContratado) + '</td>' +
       '<td style="color:var(--red);">' + fmtBRL(d.parcela) + '</td>' +
       '<td>' + d.totalParcelas + '</td>' +
@@ -2294,6 +2307,30 @@ function calcCustoMensalAtual(list, isAtual) {
   return custos;
 }
 
+function _getEarliestDataInicio(list) {
+  var earliest = null;
+  list.forEach(function(d) {
+    if (d.dataInicio) {
+      var dt = new Date(d.dataInicio + 'T00:00:00');
+      dt.setDate(1);
+      if (!earliest || dt < earliest) earliest = dt;
+    }
+  });
+  return earliest;
+}
+
+function _buildCalendarLabels(count, startDate) {
+  var labels = [];
+  var base = startDate ? new Date(startDate) : new Date();
+  if (!startDate) base.setDate(1);
+  for (var i = 0; i < count; i++) {
+    var d = new Date(base);
+    d.setMonth(d.getMonth() + i);
+    labels.push(d.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' }));
+  }
+  return labels;
+}
+
 function renderCustoChart(type, custoMensal) {
   var canvasId = 'chart-' + type;
   var ctx = document.getElementById(canvasId).getContext('2d');
@@ -2301,7 +2338,9 @@ function renderCustoChart(type, custoMensal) {
   if (type === 'atual' && chartAtual) chartAtual.destroy();
   if (type === 'proposta' && chartProposta) chartProposta.destroy();
 
-  var labels = custoMensal.map(function(_, i) { return 'Mes ' + (i + 1); });
+  var listRef = type === 'atual' ? dividasAtuais : dividasProposta;
+  var earliest = _getEarliestDataInicio(listRef);
+  var labels = earliest ? _buildCalendarLabels(custoMensal.length, earliest) : custoMensal.map(function(_, i) { return 'Mes ' + (i + 1); });
   var chart = new Chart(ctx, {
     type: 'bar',
     data: {
@@ -2383,8 +2422,9 @@ function renderSaldoDevedorChart(type, list, isAtual) {
     });
   }
 
-  var labels = [];
-  for (var m = 0; m <= maxMeses; m++) labels.push('Mês ' + m);
+  var earliest = _getEarliestDataInicio(list);
+  var labels = earliest ? _buildCalendarLabels(maxMeses + 1, earliest) : [];
+  if (!earliest) { for (var m = 0; m <= maxMeses; m++) labels.push('M\u00eas ' + m); }
 
   var chart = new Chart(ctx, {
     type: 'line',
@@ -2593,8 +2633,9 @@ function runComparison() {
     (hasBothSides ? '<div class="summary-item"><div class="label">Saldo Investido (' + taxaAnual + '% a.a.)</div><div class="value ' + (saldoFinal >= 0 ? 'green' : 'red') + '">' + fmtBRL(saldoFinal) + '</div></div>' : '') +
     '<div class="summary-item"><div class="label">Prazo Total</div><div class="value white">' + maxMeses + ' meses</div></div>';
 
-  var labels = [];
-  for (var i = 0; i < maxMeses; i++) labels.push('Mes ' + (i+1));
+  var _earliestComp = _getEarliestDataInicio(dividasAtuais.concat(dividasProposta));
+  var labels = _earliestComp ? _buildCalendarLabels(maxMeses, _earliestComp) : [];
+  if (!_earliestComp) { for (var i = 0; i < maxMeses; i++) labels.push('Mes ' + (i+1)); }
 
   if (chartParcelas) chartParcelas.destroy();
   var ctxP = document.getElementById('chart-parcelas').getContext('2d');
@@ -2706,8 +2747,8 @@ function runComparison() {
 
   if (chartAlternativo) chartAlternativo.destroy();
   var ctxAlt = document.getElementById('chart-alternativo').getContext('2d');
-  var labelsAlt = [];
-  for (var i = 0; i < prazoTotal; i++) labelsAlt.push('Mes ' + (i+1));
+  var labelsAlt = _earliestComp ? _buildCalendarLabels(prazoTotal, _earliestComp) : [];
+  if (!_earliestComp) { for (var i = 0; i < prazoTotal; i++) labelsAlt.push('Mes ' + (i+1)); }
   chartAlternativo = new Chart(ctxAlt, {
     type: 'line',
     data: {
@@ -2931,8 +2972,9 @@ function renderCompSaldoDevedorChart(dividasAtualSel, dividasPropSel) {
     });
   }
 
-  var labels = [];
-  for (var m = 0; m <= maxMeses; m++) labels.push('Mês ' + m);
+  var _earliestCompSaldo = _getEarliestDataInicio(dividasAtuais.concat(dividasProposta));
+  var labels = _earliestCompSaldo ? _buildCalendarLabels(maxMeses + 1, _earliestCompSaldo) : [];
+  if (!_earliestCompSaldo) { for (var m = 0; m <= maxMeses; m++) labels.push('M\u00eas ' + m); }
 
   chartCompSaldo = new Chart(ctx, {
     type: 'line',
@@ -4866,6 +4908,7 @@ function stratGerarCalendario() {
       fixaPeriodicidade: d.fixaPeriodicidade || 1,
       fixaPeriodoTipo: d.fixaPeriodoTipo || 'meses',
       fixaPrazoSimulacao: d.fixaPrazoSimulacao || 60,
+      dataInicio: d.dataInicio || '',
       origIdx: idx,
       alocPct: alocPct
     });
@@ -4901,6 +4944,7 @@ function stratGerarCalendario() {
       fixaPeriodicidade: p.fixaPeriodicidade || 1,
       fixaPeriodoTipo: p.fixaPeriodoTipo || 'meses',
       fixaPrazoSimulacao: p.fixaPrazoSimulacao || 60,
+      dataInicio: p.dataInicio || '',
       origIdx: pi,
       alocPct: alocPct
     });
@@ -4916,8 +4960,26 @@ function stratGerarCalendario() {
   if (periodoMax < 12) periodoMax = 12;
 
   var taxaReservaMensal = Math.pow(1 + stratState.rentabAnual / 100, 1/12) - 1;
+  // Usar a menor dataInicio entre as dívidas selecionadas (ou hoje se nenhuma tiver)
   var dataInicio = new Date();
   dataInicio.setDate(1);
+  var _earliestDate = null;
+  dividasSel.forEach(function(d) {
+    var src = (d.origIdx !== undefined && list[d.origIdx]) ? list[d.origIdx] : null;
+    var diStr = src ? src.dataInicio : null;
+    if (!diStr) {
+      // Check propostas
+      _propostasForCalendar.forEach(function(pi) {
+        if (dividasProposta[pi] && dividasProposta[pi].nome === d.nome) diStr = dividasProposta[pi].dataInicio;
+      });
+    }
+    if (diStr) {
+      var dt = new Date(diStr + 'T00:00:00');
+      dt.setDate(1);
+      if (!_earliestDate || dt < _earliestDate) _earliestDate = dt;
+    }
+  });
+  if (_earliestDate && _earliestDate < dataInicio) dataInicio = _earliestDate;
 
   // Calcular restante do crédito (crédito total - soma distribuída) para incorporar à reserva
   var _creditoRestanteParaReserva = 0;
@@ -6290,6 +6352,7 @@ function _analiseRunStrat(strat, rentabRefFallback) {
       fixaPeriodicidade: d.fixaPeriodicidade || 1,
       fixaPeriodoTipo: d.fixaPeriodoTipo || 'meses',
       fixaPrazoSimulacao: d.fixaPrazoSimulacao || 60,
+      dataInicio: d.dataInicio || '',
       origIdx: idx,
       alocPct: alocPct
     });
@@ -6325,6 +6388,7 @@ function _analiseRunStrat(strat, rentabRefFallback) {
       fixaPeriodicidade: p.fixaPeriodicidade || 1,
       fixaPeriodoTipo: p.fixaPeriodoTipo || 'meses',
       fixaPrazoSimulacao: p.fixaPrazoSimulacao || 60,
+      dataInicio: p.dataInicio || '',
       origIdx: pi,
       alocPct: alocPct
     });
@@ -6339,6 +6403,14 @@ function _analiseRunStrat(strat, rentabRefFallback) {
   var taxaReservaMensal = Math.pow(1 + rentabAnual / 100, 1/12) - 1;
   var dataInicio = new Date();
   dataInicio.setDate(1);
+  // Use earliest dataInicio from debts
+  dividasSel.forEach(function(d) {
+    if (d.dataInicio) {
+      var dt = new Date(d.dataInicio + 'T00:00:00');
+      dt.setDate(1);
+      if (dt < dataInicio) dataInicio = dt;
+    }
+  });
 
   // Calcular restante do crédito para incorporar à reserva
   var _creditoRestanteA = 0;
@@ -7038,8 +7110,9 @@ function analiseGerar() {
   document.getElementById('analise-metricas-content').innerHTML = metricasHtml;
 
   // ===== GRÁFICOS COMPARATIVOS =====
-  var labels = [];
-  for (var lm = 0; lm < maxPeriodo; lm++) labels.push('Mês ' + (lm + 1));
+  var _earliestAnalise = _getEarliestDataInicio(dividasAtuais.concat(dividasProposta));
+  var labels = _earliestAnalise ? _buildCalendarLabels(maxPeriodo, _earliestAnalise) : [];
+  if (!_earliestAnalise) { for (var lm = 0; lm < maxPeriodo; lm++) labels.push('M\u00eas ' + (lm + 1)); }
 
   // Cores: vermelho para cenário base/referência, outras cores variadas para estratégias
   var stratColors = ['#60a5fa', '#22c55e', '#fbbf24', '#a78bfa', '#fb923c', '#ec4899', '#14b8a6', '#f472b6'];
