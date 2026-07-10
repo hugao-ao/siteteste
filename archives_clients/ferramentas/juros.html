@@ -1048,6 +1048,15 @@
           <div id="strat-aloc-dividas-container"></div>
         </div>
 
+        <!-- Data de Início da Estratégia -->
+        <div class="row" style="margin-bottom:1rem; max-width:300px;">
+          <div class="field">
+            <label>Data de Início da Estratégia</label>
+            <input type="date" id="strat-data-inicio">
+            <span class="note">Quando esta estratégia começa. Aportes anteriores ao início das dívidas irão 100% para a reserva.</span>
+          </div>
+        </div>
+
         <div style="text-align:center; margin-bottom:1rem;">
           <button class="btn btn-secondary" onclick="stratGerarCalendario()" style="padding:0.7rem 1.8rem; font-size:0.95rem;">Gerar Calendário</button>
         </div>
@@ -3400,6 +3409,7 @@ var stratState = {
   linkedPropostas: [], // [{propostaIdx, dividaIdx}] - vínculos proposta↔dívida
   creditDist: {}, // {dividaIdx: valorR$} - quanto do crédito das propostas vai para cada dívida vinculada
   selectedPropostas: [], // indices of non-linked propostas selected for this strategy
+  dataInicioStrat: '', // data de início da estratégia (YYYY-MM-DD)
   calendario: null
 };
 var chartStratEvolucao = null, chartStratAlocacao = null;
@@ -3531,7 +3541,9 @@ function _resetStratState() {
   stratState.tipoAmortExtra = 'prazo';
   stratState.parcelaMinPct = 0;
   stratState.creditDist = {};
+  stratState.dataInicioStrat = '';
   stratState.calendario = null;
+  document.getElementById('strat-data-inicio').value = '';
   document.getElementById('strat-capacidade-select').value = '';
   document.getElementById('strat-cap-resumo').classList.add('hidden');
   document.getElementById('strat-aporte-mensal').value = '';
@@ -3572,7 +3584,8 @@ function _buildStratConfig() {
     alocPorDividaMes: JSON.parse(JSON.stringify(stratState.alocPorDividaMes)),
     tipoAmortExtra: stratState.tipoAmortExtra,
     parcelaMinPct: stratState.parcelaMinPct,
-    creditDist: stratState.creditDist ? JSON.parse(JSON.stringify(stratState.creditDist)) : {}
+    creditDist: stratState.creditDist ? JSON.parse(JSON.stringify(stratState.creditDist)) : {},
+    dataInicioStrat: stratState.dataInicioStrat || ''
   };
 }
 
@@ -3601,8 +3614,10 @@ function _applyStratConfig(config) {
   stratState.tipoAmortExtra = config.tipoAmortExtra || 'prazo';
   stratState.parcelaMinPct = config.parcelaMinPct || 0;
   stratState.creditDist = config.creditDist ? JSON.parse(JSON.stringify(config.creditDist)) : {};
+  stratState.dataInicioStrat = config.dataInicioStrat || '';
 
   // Populate hidden inputs (for backward compat)
+  document.getElementById('strat-data-inicio').value = stratState.dataInicioStrat || '';
   document.getElementById('strat-aporte-mensal').value = stratState.aporteMensal || '';
   document.getElementById('strat-saldo-inicial').value = stratState.saldoInicial || '';
   document.getElementById('strat-rentab').value = stratState.rentabAnual;
@@ -4807,6 +4822,13 @@ function stratGerarCalendario() {
   stratState.pctReserva = parseFloat(document.getElementById('strat-pct-reserva').value);
   if (isNaN(stratState.pctReserva)) stratState.pctReserva = 100;
 
+  // Ler data de início da estratégia
+  stratState.dataInicioStrat = document.getElementById('strat-data-inicio').value || '';
+  if (!stratState.dataInicioStrat) {
+    alert('Informe a Data de Início da Estratégia.');
+    return;
+  }
+
   // Ler tipo de amortização extra e parcela mínima do UI
   var radioAmort = document.querySelector('input[name="strat-tipo-amort-extra"]:checked');
   stratState.tipoAmortExtra = radioAmort ? radioAmort.value : 'prazo';
@@ -4960,26 +4982,40 @@ function stratGerarCalendario() {
   if (periodoMax < 12) periodoMax = 12;
 
   var taxaReservaMensal = Math.pow(1 + stratState.rentabAnual / 100, 1/12) - 1;
-  // Usar a menor dataInicio entre as dívidas selecionadas (ou hoje se nenhuma tiver)
-  var dataInicio = new Date();
+
+  // Data de início da estratégia (obrigatória)
+  var dataInicio = new Date(stratState.dataInicioStrat + 'T00:00:00');
   dataInicio.setDate(1);
-  var _earliestDate = null;
+
+  // Calcular dataInicio efetiva de cada dívida (considerando parcelas já pagas)
+  // Se tem parcelas pagas > 0 e dataInicio, a dívida efetivamente começa na parcela seguinte
   dividasSel.forEach(function(d) {
-    var src = (d.origIdx !== undefined && list[d.origIdx]) ? list[d.origIdx] : null;
-    var diStr = src ? src.dataInicio : null;
-    if (!diStr) {
-      // Check propostas
-      _propostasForCalendar.forEach(function(pi) {
-        if (dividasProposta[pi] && dividasProposta[pi].nome === d.nome) diStr = dividasProposta[pi].dataInicio;
-      });
-    }
-    if (diStr) {
+    var diStr = d.dataInicio || '';
+    if (diStr && d.parcelasPagas > 0) {
+      // A data efetiva é dataInicio + parcelasPagas meses (próxima parcela a pagar)
+      var dtEfetiva = new Date(diStr + 'T00:00:00');
+      dtEfetiva.setMonth(dtEfetiva.getMonth() + d.parcelasPagas);
+      dtEfetiva.setDate(1);
+      d._dataEfetiva = dtEfetiva;
+    } else if (diStr) {
       var dt = new Date(diStr + 'T00:00:00');
       dt.setDate(1);
-      if (!_earliestDate || dt < _earliestDate) _earliestDate = dt;
+      d._dataEfetiva = dt;
+    } else {
+      d._dataEfetiva = new Date(dataInicio); // sem data = começa junto com a estratégia
     }
+    // Calcular em qual mês do calendário esta dívida começa (offset em meses desde dataInicio)
+    d._mesOffset = (d._dataEfetiva.getFullYear() - dataInicio.getFullYear()) * 12 + (d._dataEfetiva.getMonth() - dataInicio.getMonth());
+    if (d._mesOffset < 0) d._mesOffset = 0;
   });
-  if (_earliestDate && _earliestDate < dataInicio) dataInicio = _earliestDate;
+
+  // Ajustar periodoMax considerando offsets
+  var _maxEnd = 0;
+  dividasSel.forEach(function(d) {
+    var end = d._mesOffset + d.restantes;
+    if (end > _maxEnd) _maxEnd = end;
+  });
+  if (_maxEnd > periodoMax) periodoMax = Math.min(_maxEnd + 12, 600);
 
   // Calcular restante do crédito (crédito total - soma distribuída) para incorporar à reserva
   var _creditoRestanteParaReserva = 0;
@@ -5033,7 +5069,8 @@ function stratGerarCalendario() {
   var refSaldos = saldosDevedor.slice();
 
   // Track which debts are still active (for redistribution - CHANGE 3)
-  var dividaAtiva = dividasSel.map(function() { return true; });
+  // Initially: a debt is active only if it has started (m >= _mesOffset) AND saldo > 0
+  var dividaAtiva = dividasSel.map(function(d) { return d._mesOffset === 0; });
   // Track current effective per-debt allocation % (for redistribution)
   var alocEfetiva = dividasSel.map(function(d) { return d.alocPct; });
 
@@ -5056,14 +5093,14 @@ function stratGerarCalendario() {
     var sporadicAmort = sporadicMes;
 
     // CHANGE 3: Check which debts are still active and redistribute
+    // A debt is active if: (1) it has started (m >= _mesOffset) AND (2) saldo > 0
     var algumaAtiva = false;
     for (var di = 0; di < dividasSel.length; di++) {
-      var wasActive = dividaAtiva[di];
-      dividaAtiva[di] = saldosDevedor[di] > 0.01;
+      dividaAtiva[di] = (m >= dividasSel[di]._mesOffset) && (saldosDevedor[di] > 0.01);
       if (dividaAtiva[di]) algumaAtiva = true;
     }
 
-    // If no debts are active, 100% goes to reserve (CHANGE 3)
+    // If no debts are active (all not started yet or all paid), 100% goes to reserve
     if (!algumaAtiva) {
       pctRes = 100;
       pctAmort = 0;
@@ -5114,11 +5151,14 @@ function stratGerarCalendario() {
     for (var di = 0; di < dividasSel.length; di++) {
       amortExtraPorDivida.push(0);
       if (saldosDevedor[di] <= 0.01) { saldosDevedor[di] = 0; continue; }
+      // Se a dívida ainda não começou neste mês, pular (sem parcela, sem juros)
+      if (m < dividasSel[di]._mesOffset) { continue; }
       var dd = dividasSel[di];
+      var mRel = m - dd._mesOffset; // mês relativo ao início da dívida
       var reaj = (dd.reajusteAnual || 0) / 100;
 
-      // Reajuste anual do saldo (aniversário)
-      if (reaj > 0 && m > 0 && m % 12 === 0) {
+      // Reajuste anual do saldo (aniversário - baseado em meses relativos)
+      if (reaj > 0 && mRel > 0 && mRel % 12 === 0) {
         var reajValor = saldosDevedor[di] * reaj;
         totalReajusteComAmort += reajValor;
         saldosDevedor[di] = saldosDevedor[di] + reajValor;
@@ -5128,7 +5168,7 @@ function stratGerarCalendario() {
         }
       }
 
-      var fatorReaj = reaj > 0 ? Math.pow(1 + reaj, Math.floor(m / 12)) : 1;
+      var fatorReaj = reaj > 0 ? Math.pow(1 + reaj, Math.floor(mRel / 12)) : 1;
 
       // Calcular parcela e amortização normal do mês
       var parcelaMes, amortNormal;
@@ -5159,11 +5199,11 @@ function stratGerarCalendario() {
         // Consórcio: parcela inclui taxa adm, mas só a amortização pura abate o saldo
         var taxaTotC = ((dd.consTaxaAdm || 0) + (dd.consFundoReserva || 0)) / 100;
         var propAmortC = 1 / (1 + taxaTotC);
-        var numeroParcC = m + 1;
+        var numeroParcC = mRel + 1;
         var temRedutor = dd.consRedutor && dd.consPeriodoReducao > 0 && dd.consParcelaAlvo > 0;
         var dentroReducao = temRedutor && numeroParcC <= dd.consPeriodoReducao;
         var reajC = (dd.reajusteAnual || 0) / 100;
-        var fatorReajC = reajC > 0 ? Math.pow(1 + reajC, Math.floor(m / 12)) : 1;
+        var fatorReajC = reajC > 0 ? Math.pow(1 + reajC, Math.floor(mRel / 12)) : 1;
 
         if (dentroReducao) {
           // Dentro do período de redução: parcela reduzida fixa
@@ -5174,13 +5214,13 @@ function stratGerarCalendario() {
           if (refSaldos[di] < 0) refSaldos[di] = 0;
         } else {
           // Após período de redução (ou sem redutor): usar saldo/mesesRestantes
-          var mesesRestantesC = dd.restantes - m;
+          var mesesRestantesC = dd.restantes - mRel;
           if (mesesRestantesC <= 0) mesesRestantesC = 1;
 
           // Usar prazo ajustado se piso mínimo reduziu o prazo
           var mesesRestEfetivo = mesesRestantesC;
-          if (dd._restantesAtualCons && dd._restantesAtualCons > m) {
-            mesesRestEfetivo = dd._restantesAtualCons - m;
+          if (dd._restantesAtualCons && dd._restantesAtualCons > mRel) {
+            mesesRestEfetivo = dd._restantesAtualCons - mRel;
             if (mesesRestEfetivo <= 0) mesesRestEfetivo = 1;
           }
 
@@ -5219,7 +5259,7 @@ function stratGerarCalendario() {
                 var amortPisoCalc = pisoConsC2 * propAmortC;
                 var novoPrazoPiso = Math.ceil(saldosDevedor[di] / amortPisoCalc);
                 if (novoPrazoPiso < 1) novoPrazoPiso = 1;
-                dd._restantesAtualCons = m + novoPrazoPiso;
+                dd._restantesAtualCons = mRel + novoPrazoPiso;
               }
             }
           }
@@ -5236,7 +5276,7 @@ function stratGerarCalendario() {
         if (dd.fixaJurosAumentaSaldo && taxasDividas[di] > 0) {
           var periodMesesFixa = dd.fixaPeriodicidade || 1;
           if (dd.fixaPeriodoTipo === 'anos') periodMesesFixa = (dd.fixaPeriodicidade || 1) * 12;
-          if ((m + 1) % periodMesesFixa === 0) {
+          if ((mRel + 1) % periodMesesFixa === 0) {
             var jurosFixa = saldosDevedor[di] * taxasDividas[di] * periodMesesFixa;
             jurosTotalMes += jurosFixa;
             saldosDevedor[di] += jurosFixa;
@@ -5313,7 +5353,7 @@ function stratGerarCalendario() {
                 var amortPiso = pisoCons / (1 + taxaTotPiso);
                 var novoPrazoCons = Math.ceil(saldosDevedor[di] / amortPiso);
                 if (novoPrazoCons < 1) novoPrazoCons = 1;
-                dd._restantesAtualCons = m + novoPrazoCons;
+                dd._restantesAtualCons = mRel + novoPrazoCons;
               }
             }
           } else if (dd.tipoAmort === 'sac' || dd.tipoAmort === 'simples') {
@@ -6401,16 +6441,42 @@ function _analiseRunStrat(strat, rentabRefFallback) {
   if (periodoMax < 12) periodoMax = 12;
 
   var taxaReservaMensal = Math.pow(1 + rentabAnual / 100, 1/12) - 1;
-  var dataInicio = new Date();
+  // Usar dataInicioStrat da estratégia (ou hoje se legado sem campo)
+  var dataInicioStrat = cfg.dataInicioStrat || '';
+  var dataInicio;
+  if (dataInicioStrat) {
+    dataInicio = new Date(dataInicioStrat + 'T00:00:00');
+  } else {
+    dataInicio = new Date();
+  }
   dataInicio.setDate(1);
-  // Use earliest dataInicio from debts
+
+  // Calcular _mesOffset de cada dívida (considerando parcelas pagas)
   dividasSel.forEach(function(d) {
-    if (d.dataInicio) {
-      var dt = new Date(d.dataInicio + 'T00:00:00');
+    var diStr = d.dataInicio || '';
+    if (diStr && d.parcelasPagas > 0) {
+      var dtEfetiva = new Date(diStr + 'T00:00:00');
+      dtEfetiva.setMonth(dtEfetiva.getMonth() + d.parcelasPagas);
+      dtEfetiva.setDate(1);
+      d._dataEfetiva = dtEfetiva;
+    } else if (diStr) {
+      var dt = new Date(diStr + 'T00:00:00');
       dt.setDate(1);
-      if (dt < dataInicio) dataInicio = dt;
+      d._dataEfetiva = dt;
+    } else {
+      d._dataEfetiva = new Date(dataInicio);
     }
+    d._mesOffset = (d._dataEfetiva.getFullYear() - dataInicio.getFullYear()) * 12 + (d._dataEfetiva.getMonth() - dataInicio.getMonth());
+    if (d._mesOffset < 0) d._mesOffset = 0;
   });
+
+  // Ajustar periodoMax considerando offsets
+  var _maxEndA = 0;
+  dividasSel.forEach(function(d) {
+    var end = d._mesOffset + d.restantes;
+    if (end > _maxEndA) _maxEndA = end;
+  });
+  if (_maxEndA > periodoMax) periodoMax = Math.min(_maxEndA + 12, 600);
 
   // Calcular restante do crédito para incorporar à reserva
   var _creditoRestanteA = 0;
@@ -6460,7 +6526,7 @@ function _analiseRunStrat(strat, rentabRefFallback) {
     return 0;
   });
 
-  var dividaAtiva = dividasSel.map(function() { return true; });
+  var dividaAtiva = dividasSel.map(function(d) { return d._mesOffset === 0; });
   var alocEfetiva = dividasSel.map(function(d) { return d.alocPct; });
   var refSaldosA = saldosDevedor.slice(); // Saldo de referência para modo PRAZO consórcio
 
@@ -6524,10 +6590,10 @@ function _analiseRunStrat(strat, rentabRefFallback) {
     var pctAmort = 100 - pctRes;
     var parcelaTotalMesA = 0;
 
-    // Check active debts
+    // Check active debts (must have started AND have saldo > 0)
     var algumaAtiva = false;
     for (var di = 0; di < dividasSel.length; di++) {
-      dividaAtiva[di] = saldosDevedor[di] > 0.01;
+      dividaAtiva[di] = (m >= dividasSel[di]._mesOffset) && (saldosDevedor[di] > 0.01);
       if (dividaAtiva[di]) algumaAtiva = true;
     }
     if (!algumaAtiva) { pctRes = 100; pctAmort = 0; }
@@ -6559,15 +6625,18 @@ function _analiseRunStrat(strat, rentabRefFallback) {
     // Evolução dívidas
     for (var di = 0; di < dividasSel.length; di++) {
       if (saldosDevedor[di] <= 0.01) { saldosDevedor[di] = 0; continue; }
+      // Se a dívida ainda não começou, pular
+      if (m < dividasSel[di]._mesOffset) { continue; }
       var dd = dividasSel[di];
+      var mRel = m - dd._mesOffset; // mês relativo ao início da dívida
       var reaj = (dd.reajusteAnual || 0) / 100;
-      // Calcular reajuste aplicado ao saldo (antes de aplicar)
-      if (reaj > 0 && m > 0 && m % 12 === 0) {
+      // Calcular reajuste aplicado ao saldo (aniversário relativo)
+      if (reaj > 0 && mRel > 0 && mRel % 12 === 0) {
         totalReajustesPagos += saldosDevedor[di] * reaj;
         saldosDevedor[di] *= (1 + reaj);
       }
 
-      var fatorReaj = reaj > 0 ? Math.pow(1 + reaj, Math.floor(m / 12)) : 1;
+      var fatorReaj = reaj > 0 ? Math.pow(1 + reaj, Math.floor(mRel / 12)) : 1;
       var jurosMes = dd.tipoAmort === 'fixa' ? 0 : saldosDevedor[di] * taxasDividas[di];
       if (dd.tipoAmort !== 'fixa') totalJurosPagos += jurosMes;
 
@@ -6586,14 +6655,14 @@ function _analiseRunStrat(strat, rentabRefFallback) {
       } else if (dd.tipoAmort === 'consorcio') {
         var taxaTotCA2 = ((dd.consTaxaAdm || 0) + (dd.consFundoReserva || 0)) / 100;
         var propAmortCA = 1 / (1 + taxaTotCA2);
-        var numeroParcCA = m + 1;
+        var numeroParcCA = mRel + 1;
         var temRedutorCA = dd.consRedutor && dd.consPeriodoReducao > 0 && dd.consParcelaAlvo > 0;
         var dentroReducaoCA = temRedutorCA && numeroParcCA <= dd.consPeriodoReducao;
         var reajCA = (dd.reajusteAnual || 0) / 100;
-        var fatorReajCA = reajCA > 0 ? Math.pow(1 + reajCA, Math.floor(m / 12)) : 1;
+        var fatorReajCA = reajCA > 0 ? Math.pow(1 + reajCA, Math.floor(mRel / 12)) : 1;
 
         // Reajuste do saldo de referência
-        if (reajCA > 0 && m > 0 && m % 12 === 0 && refSaldosA[di] > 0.01) {
+        if (reajCA > 0 && mRel > 0 && mRel % 12 === 0 && refSaldosA[di] > 0.01) {
           refSaldosA[di] = refSaldosA[di] * (1 + reajCA);
         }
 
@@ -6602,13 +6671,13 @@ function _analiseRunStrat(strat, rentabRefFallback) {
           refSaldosA[di] -= amortNormal;
           if (refSaldosA[di] < 0) refSaldosA[di] = 0;
         } else {
-          var mesesRestantesCA = dd.restantes - m;
+          var mesesRestantesCA = dd.restantes - mRel;
           if (mesesRestantesCA <= 0) mesesRestantesCA = 1;
 
           // Usar prazo ajustado se piso mínimo reduziu o prazo
           var mesesRestEfetivoA = mesesRestantesCA;
-          if (dd._restantesAtualCons && dd._restantesAtualCons > m) {
-            mesesRestEfetivoA = dd._restantesAtualCons - m;
+          if (dd._restantesAtualCons && dd._restantesAtualCons > mRel) {
+            mesesRestEfetivoA = dd._restantesAtualCons - mRel;
             if (mesesRestEfetivoA <= 0) mesesRestEfetivoA = 1;
           }
 
@@ -6638,7 +6707,7 @@ function _analiseRunStrat(strat, rentabRefFallback) {
                 // Ativar piso para próximos meses
                 var novoPrazoPisoA = Math.ceil(saldosDevedor[di] / (pisoConsCA3 * propAmortCA));
                 if (novoPrazoPisoA < 1) novoPrazoPisoA = 1;
-                dd._restantesAtualCons = m + novoPrazoPisoA;
+                dd._restantesAtualCons = mRel + novoPrazoPisoA;
               }
             }
           }
@@ -6649,11 +6718,11 @@ function _analiseRunStrat(strat, rentabRefFallback) {
       } else if (dd.tipoAmort === 'fixa') {
         // FIXA: sem amortização normal, juros já aplicados acima
         amortNormal = 0;
-        // Aplicar juros se configurado e se é mês de incidência
+        // Aplicar juros se configurado e se é mês de incidência (relativo)
         if (dd.fixaJurosAumentaSaldo && taxasDividas[di] > 0) {
           var periodMesesFixaA = dd.fixaPeriodicidade || 1;
           if (dd.fixaPeriodoTipo === 'anos') periodMesesFixaA = (dd.fixaPeriodicidade || 1) * 12;
-          if ((m + 1) % periodMesesFixaA === 0) {
+          if ((mRel + 1) % periodMesesFixaA === 0) {
             var jurosFixaA = saldosDevedor[di] * taxasDividas[di] * periodMesesFixaA;
             totalJurosPagos += jurosFixaA;
             saldosDevedor[di] += jurosFixaA;
@@ -6825,6 +6894,10 @@ function _analiseRunStrat(strat, rentabRefFallback) {
     patrimonioNaQuitacao = reservaData[quitouEm];
   }
 
+  // Calcular data final da estratégia
+  var _dataFimStrat = new Date(dataInicio);
+  _dataFimStrat.setMonth(_dataFimStrat.getMonth() + saldoData.length);
+
   return {
     nome: strat.nome,
     source: cfg.source,
@@ -6851,7 +6924,9 @@ function _analiseRunStrat(strat, rentabRefFallback) {
     saldoData: saldoData,
     reservaData: reservaData,
     parcelasData: parcelasData,
-    periodoSimulado: saldoData.length
+    periodoSimulado: saldoData.length,
+    dataInicioStrat: dataInicio.toISOString().slice(0, 10),
+    dataFimStrat: _dataFimStrat.toISOString().slice(0, 10)
   };
 }
 
@@ -7110,9 +7185,48 @@ function analiseGerar() {
   document.getElementById('analise-metricas-content').innerHTML = metricasHtml;
 
   // ===== GRÁFICOS COMPARATIVOS =====
-  var _earliestAnalise = _getEarliestDataInicio(dividasAtuais.concat(dividasProposta));
+  // Usar a menor dataInicioStrat entre as estratégias selecionadas
+  var _earliestAnalise = null;
+  var _latestFimAnalise = null;
+  resultados.forEach(function(r) {
+    if (r.dataInicioStrat) {
+      var dt = new Date(r.dataInicioStrat + 'T00:00:00');
+      if (!_earliestAnalise || dt < _earliestAnalise) _earliestAnalise = dt;
+    }
+    if (r.dataFimStrat) {
+      var dtf = new Date(r.dataFimStrat + 'T00:00:00');
+      if (!_latestFimAnalise || dtf > _latestFimAnalise) _latestFimAnalise = dtf;
+    }
+  });
+  // Recalcular maxPeriodo baseado no envelope min/max de datas
+  if (_earliestAnalise && _latestFimAnalise) {
+    var _envelopeMeses = (_latestFimAnalise.getFullYear() - _earliestAnalise.getFullYear()) * 12 + (_latestFimAnalise.getMonth() - _earliestAnalise.getMonth());
+    if (_envelopeMeses > maxPeriodo) {
+      maxPeriodo = _envelopeMeses;
+      // Re-normalizar arrays
+      resultados.forEach(function(r) {
+        while (r.saldoData.length < maxPeriodo) r.saldoData.push(0);
+        while (r.parcelasData.length < maxPeriodo) r.parcelasData.push(0);
+      });
+      while (cenarioBase.saldoData.length < maxPeriodo) cenarioBase.saldoData.push(0);
+      while (cenarioBase.parcelasData.length < maxPeriodo) cenarioBase.parcelasData.push(0);
+    }
+  }
   var labels = _earliestAnalise ? _buildCalendarLabels(maxPeriodo, _earliestAnalise) : [];
   if (!_earliestAnalise) { for (var lm = 0; lm < maxPeriodo; lm++) labels.push('M\u00eas ' + (lm + 1)); }
+
+  // Normalizar patrimonioData também
+  resultados.forEach(function(r) {
+    if (r.patrimonioData) {
+      while (r.patrimonioData.length < maxPeriodo) {
+        var lastVal = r.patrimonioData.length > 0 ? r.patrimonioData[r.patrimonioData.length - 1] : 0;
+        r.patrimonioData.push(lastVal);
+      }
+    }
+  });
+  if (cenarioBase.patrimonioData) {
+    while (cenarioBase.patrimonioData.length < maxPeriodo) cenarioBase.patrimonioData.push(0);
+  }
 
   // Cores: vermelho para cenário base/referência, outras cores variadas para estratégias
   var stratColors = ['#60a5fa', '#22c55e', '#fbbf24', '#a78bfa', '#fb923c', '#ec4899', '#14b8a6', '#f472b6'];
