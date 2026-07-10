@@ -1134,6 +1134,50 @@
         .pat-modal-wrapper { width:95vw !important; left:2.5vw !important; top:3vh !important; height:92vh !important; }
     }
 
+    /* === REUNIAO MODALS (Última / Próxima) === */
+    .reuniao-modal-wrapper {
+        position:fixed; top:10vh; left:15vw; width:70vw; max-width:650px; height:auto; max-height:80vh;
+        background:#052614; border:1px solid rgba(212,175,55,0.2);
+        border-radius:12px; box-shadow:0 20px 60px rgba(0,0,0,0.7);
+        display:flex; flex-direction:column; z-index:10001; overflow:hidden;
+    }
+    .reuniao-modal-header {
+        display:flex; justify-content:space-between; align-items:center;
+        padding:0.8rem 1.2rem; background:#021C0E;
+        border-bottom:1px solid rgba(212,175,55,0.2); cursor:move; user-select:none;
+    }
+    .reuniao-modal-header h2 { margin:0; font-size:1rem; color:#F2E8C9; }
+    .reuniao-modal-body { flex:1; overflow-y:auto; padding:1.2rem; }
+    .reuniao-modal-body label { display:block; font-size:0.8rem; color:#A0B8A6; margin-bottom:0.3rem; margin-top:0.8rem; }
+    .reuniao-modal-body label:first-child { margin-top:0; }
+    .reuniao-modal-body input, .reuniao-modal-body select, .reuniao-modal-body textarea {
+        width:100%; padding:0.5rem 0.7rem; border-radius:6px; border:1px solid rgba(212,175,55,0.2);
+        background:#021C0E; color:#E8F5E9; font-size:0.85rem;
+    }
+    .reuniao-modal-body textarea { resize:vertical; min-height:60px; }
+    .reuniao-modal-body .sub-grid { display:grid; grid-template-columns:1fr 1fr; gap:0.8rem; }
+    .reuniao-modal-body .sub-grid-3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:0.8rem; }
+    .reuniao-modal-body .section-title { color:var(--theme-secondary); font-size:0.85rem; margin:1rem 0 0.5rem; padding-bottom:0.3rem; border-bottom:1px dashed rgba(212,175,55,0.2); }
+    .reuniao-modal-body .star-btn { cursor:pointer; font-size:1.3rem; color:rgba(255,255,255,0.15); transition:color 0.2s; }
+    .reuniao-modal-body .star-btn.active { color:#d4af37; }
+    .reuniao-modal-footer { padding:0.8rem 1.2rem; border-top:1px solid rgba(212,175,55,0.2); display:flex; justify-content:flex-end; gap:0.6rem; }
+    .reuniao-modal-footer button { padding:0.5rem 1.2rem; border-radius:6px; border:none; cursor:pointer; font-size:0.85rem; font-weight:600; }
+    .reuniao-modal-footer .btn-cancel { background:transparent; color:#A0B8A6; border:1px solid rgba(212,175,55,0.2); }
+    .reuniao-modal-footer .btn-save { background:#16a34a; color:#fff; }
+    .reuniao-modal-footer .btn-save:hover { background:#15803d; }
+    .reu-resize-handle { position:absolute; z-index:10002; }
+    .reu-resize-br { bottom:0; right:0; width:18px; height:18px; cursor:nwse-resize; }
+    .reu-resize-r { top:50%; right:0; width:6px; height:40px; transform:translateY(-50%); cursor:ew-resize; }
+    .reu-resize-b { bottom:0; left:50%; width:40px; height:6px; transform:translateX(-50%); cursor:ns-resize; }
+    .reu-resize-br::after {
+        content:''; position:absolute; bottom:4px; right:4px;
+        width:10px; height:10px; border-right:2px solid rgba(212,175,55,0.4);
+        border-bottom:2px solid rgba(212,175,55,0.4);
+    }
+    @media (max-width:768px) {
+        .reuniao-modal-wrapper { width:95vw !important; left:2.5vw !important; top:3vh !important; max-width:none; }
+    }
+
     /* === TIPO SYNC MODAL === */
     .tipo-sync-wrapper {
         background: #052614;
@@ -1591,6 +1635,46 @@
       <div class="tipo-sync-body" id="tipo-sync-body">
         <div class="tipo-sync-loading">Carregando dados...</div>
       </div>
+    </div>
+  </div>
+
+  <!-- Modal de Última Reunião -->
+  <div id="ultima-reuniao-modal" class="modal">
+    <div class="reuniao-modal-wrapper" id="ultima-reuniao-wrapper">
+      <div class="reuniao-modal-header" id="ultima-reuniao-header">
+        <h2 id="ultima-reuniao-title">Última Reunião</h2>
+        <span class="modal-close" id="ultima-reuniao-close-btn">&times;</span>
+      </div>
+      <div class="reuniao-modal-body" id="ultima-reuniao-body">
+        <p style="color:var(--theme-text-muted);">Carregando...</p>
+      </div>
+      <div class="reuniao-modal-footer">
+        <button class="btn-cancel" onclick="document.getElementById('ultima-reuniao-modal').style.display='none'">Cancelar</button>
+        <button class="btn-save" id="ultima-reuniao-save-btn">Salvar</button>
+      </div>
+      <div class="reu-resize-handle reu-resize-br" data-dir="br"></div>
+      <div class="reu-resize-handle reu-resize-r" data-dir="r"></div>
+      <div class="reu-resize-handle reu-resize-b" data-dir="b"></div>
+    </div>
+  </div>
+
+  <!-- Modal de Próxima Reunião -->
+  <div id="proxima-reuniao-modal" class="modal">
+    <div class="reuniao-modal-wrapper" id="proxima-reuniao-wrapper">
+      <div class="reuniao-modal-header" id="proxima-reuniao-header">
+        <h2 id="proxima-reuniao-title">Próxima Reunião</h2>
+        <span class="modal-close" id="proxima-reuniao-close-btn">&times;</span>
+      </div>
+      <div class="reuniao-modal-body" id="proxima-reuniao-body">
+        <p style="color:var(--theme-text-muted);">Carregando...</p>
+      </div>
+      <div class="reuniao-modal-footer">
+        <button class="btn-cancel" onclick="document.getElementById('proxima-reuniao-modal').style.display='none'">Cancelar</button>
+        <button class="btn-save" id="proxima-reuniao-save-btn">Salvar</button>
+      </div>
+      <div class="reu-resize-handle reu-resize-br" data-dir="br"></div>
+      <div class="reu-resize-handle reu-resize-r" data-dir="r"></div>
+      <div class="reu-resize-handle reu-resize-b" data-dir="b"></div>
     </div>
   </div>
 
