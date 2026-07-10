@@ -6287,7 +6287,8 @@ function _calcCenarioBase(selectedStrats, maxPeriodo) {
     totalReajustesPagos: totalReajustesPagos,
     totalPagoEmParcelas: totalPagoEmParcelas,
     prazoOriginal: prazoEfetivo,
-    temFixa: temFixa
+    temFixa: temFixa,
+    saldoDevedorFinal: saldoData.length > 0 ? saldoData[saldoData.length - 1] : 0
   };
 }
 
@@ -7216,15 +7217,15 @@ function analiseGerar() {
     return val > baseV ? 'var(--green)' : (val < baseV ? 'var(--red)' : '#fff');
   }
 
-  // 1. Juros e Taxas Totais Pagos = Custo Total - Total Amortizado - Reajustes
+  // 1. Juros e Taxas Totais Pagos
   metricasHtml += '<tr><td>Juros e Taxas Totais Pagos</td>';
   if (hasCenarioBase) {
-    var baseJuros = cenarioBase.custoTotalEstrategia - baseSaldoInicialTotal - cenarioBase.totalReajustesPagos;
+    var baseJuros = cenarioBase.totalJurosPagos;
     metricasHtml += '<td style="color:var(--red);">' + fmtBRL(baseJuros) + '</td>';
   }
   resultados.forEach(function(r) {
     var juros = r.custoTotalEstrategia - r.saldoInicialTotal - r.totalReajustesPagos;
-    var baseJ = hasCenarioBase ? (cenarioBase.custoTotalEstrategia - baseSaldoInicialTotal - cenarioBase.totalReajustesPagos) : null;
+    var baseJ = hasCenarioBase ? cenarioBase.totalJurosPagos : null;
     metricasHtml += '<td style="color:' + _corCompara(juros, baseJ, true) + ';">' + fmtBRL(juros) + '</td>';
   });
   metricasHtml += '</tr>';
@@ -7261,9 +7262,15 @@ function analiseGerar() {
   });
   metricasHtml += '</tr>';
 
-  // 6. Patrimônio Final
+  // 6. Patrimônio Final (base FIXA: saldo devedor final como patrimônio negativo)
   metricasHtml += '<tr><td>Patrimônio Final</td>';
-  if (hasCenarioBase) metricasHtml += '<td style="color:#fff;">—</td>';
+  if (hasCenarioBase) {
+    if (cenarioBase.temFixa && cenarioBase.saldoDevedorFinal > 0) {
+      metricasHtml += '<td style="color:var(--red);">' + fmtBRL(-cenarioBase.saldoDevedorFinal) + '</td>';
+    } else {
+      metricasHtml += '<td style="color:#fff;">—</td>';
+    }
+  }
   resultados.forEach(function(r) {
     var cor = r.patrimonioFinal > 0 ? 'var(--green)' : 'var(--red)';
     metricasHtml += '<td style="color:' + cor + ';">' + fmtBRL(r.patrimonioFinal) + '</td>';
@@ -7535,18 +7542,21 @@ function _renderConsolidado(selectedStrats, resultados, cenarioBase, maxPeriodo,
   if (hasCenarioBase) {
     var parcelaBase = cenarioBase.parcelasData.length > 0 ? cenarioBase.parcelasData[0] : 0;
     var baseSaldoIni = cenarioBase.saldoInicialTotal || 0;
-    // Juros consistente: custoTotal - principal - reajustes
-    var baseJurosCalc = cenarioBase.custoTotalEstrategia - baseSaldoIni - cenarioBase.totalReajustesPagos;
-    if (baseJurosCalc < 0) baseJurosCalc = 0;
+    // Juros: usar totalJurosPagos diretamente (evita negativos em FIXA)
+    var baseJurosCalc = cenarioBase.totalJurosPagos || 0;
     // Para FIXA pura sem amortização: nunca quita (quitouEm = prazo máximo da simulação)
     var baseQuitouEm = cenarioBase.temFixa ? maxPeriodo : cenarioBase.prazoOriginal;
+    // Para FIXA: totalPago real = juros acumulados (não amortiza), mas o saldo devedor final ainda é devido
+    var baseTotalPago = cenarioBase.custoTotalEstrategia;
+    var baseSaldoDevedorFinal = cenarioBase.saldoDevedorFinal || 0;
     cenarios.push({
       tipo: 'base',
       label: 'Cenário Base (Sem Amortização Extra)',
       parcela: parcelaBase,
       jurosTotal: baseJurosCalc,
-      totalPago: cenarioBase.custoTotalEstrategia,
+      totalPago: baseTotalPago,
       saldoDevedor: cenarioBase.saldoData.length > 0 ? cenarioBase.saldoData[0] : 0,
+      saldoDevedorFinal: baseSaldoDevedorFinal,
       prazo: cenarioBase.prazoOriginal,
       nContratos: dividasAtuais.filter(function(d) { return !!d; }).length,
       investFinal: 0,
@@ -7569,8 +7579,7 @@ function _renderConsolidado(selectedStrats, resultados, cenarioBase, maxPeriodo,
     // Juros consistente: custoTotal - principal - reajustes
     var stratJurosCalc = r.custoTotalEstrategia - r.saldoInicialTotal - r.totalReajustesPagos;
     if (stratJurosCalc < 0) stratJurosCalc = 0;
-    var baseJurosRef = hasCenarioBase ? (cenarioBase.custoTotalEstrategia - (cenarioBase.saldoInicialTotal || 0) - cenarioBase.totalReajustesPagos) : 0;
-    if (baseJurosRef < 0) baseJurosRef = 0;
+    var baseJurosRef = hasCenarioBase ? (cenarioBase.totalJurosPagos || 0) : 0;
     // prazo real = periodoSimulado (inclui offset de meses antes das dívidas começarem)
     var stratPrazoReal = r.periodoSimulado || r.prazoOriginal;
     cenarios.push({
@@ -7694,7 +7703,11 @@ function _renderConsolidado(selectedStrats, resultados, cenarioBase, maxPeriodo,
     h += '</tr>';
   }
   // Desembolso mensal total (parcela + aporte)
-  var desembolsos = cenarios.map(function(c) { return c.parcela + (c.aporteMensal || 0); });
+  // Para cenário base FIXA: parcela é juros equivalente virtual (não é desembolso real)
+  var desembolsos = cenarios.map(function(c) {
+    if (c.tipo === 'base' && c.temFixa) return 0; // FIXA base: sem desembolso real (juros acumulam no saldo)
+    return c.parcela + (c.aporteMensal || 0);
+  });
   var rDesemb = rankLow(desembolsos);
   h += '<tr><td>Desembolso Mensal Total</td>';
   cenarios.forEach(function(c, i) {
@@ -7705,10 +7718,10 @@ function _renderConsolidado(selectedStrats, resultados, cenarioBase, maxPeriodo,
   h += '<p class="cons-note">Parcela mensal máxima e desembolso total medem o risco de sufocamento financeiro. Menor = mais seguro.</p>';
   // Memory section 1
   var mem1 = '<b>Fórmulas utilizadas:</b><br>';
-  mem1 += '<code>Desembolso Mensal Total = Parcela + Aporte da Estratégia</code><br>';
+  mem1 += '<code>Desembolso Mensal Total = Parcela + Aporte (FIXA base = R$0, pois juros acumulam no saldo)</code><br>';
   mem1 += '<b>Dados por cenário:</b><br>';
-  cenarios.forEach(function(c) {
-    mem1 += '• ' + _escHtml(c.label) + ': Parcela=' + fmtBRL(c.parcela) + ', Aporte=' + fmtBRL(c.aporteMensal || 0) + ', Total=' + fmtBRL(c.parcela + (c.aporteMensal || 0)) + '<br>';
+  cenarios.forEach(function(c, i) {
+    mem1 += '• ' + _escHtml(c.label) + ': Desembolso=' + fmtBRL(desembolsos[i]) + '<br>';
   });
   h += _buildMemory('Sobrevivência', mem1);
   h += '</div>';
@@ -7721,7 +7734,14 @@ function _renderConsolidado(selectedStrats, resultados, cenarioBase, maxPeriodo,
   var rJuros = rankLow(jurosArr);
   var rTotal = rankLow(totalPagoArr);
   // Custo líquido = total pago - reserva final
-  var custoLiq = cenarios.map(function(c) { return c.totalPago - (c.reservaFinal || 0); });
+  // Para FIXA base: custo real inclui saldo devedor final (dívida não paga)
+  var custoLiq = cenarios.map(function(c) {
+    if (c.tipo === 'base' && c.temFixa) {
+      // FIXA base: custo = juros acumulados + saldo devedor final (ainda deve tudo + juros)
+      return c.totalPago + (c.saldoDevedorFinal || 0);
+    }
+    return c.totalPago - (c.reservaFinal || 0);
+  });
   var rCustoLiq = rankLow(custoLiq);
   h += '<div class="cons-table-wrap"><table class="cons-table"><thead><tr><th>Indicador</th>';
   cenarios.forEach(function(c) { h += '<th>' + _escHtml(c.label) + '</th>'; });
@@ -7739,7 +7759,7 @@ function _renderConsolidado(selectedStrats, resultados, cenarioBase, maxPeriodo,
     h += '<td class="' + cls(i, rTotal.bestIdx, rTotal.worstIdx) + '">' + fmtBRL(c.totalPago) + '</td>';
   });
   h += '</tr>';
-  h += '<tr><td>Custo Líquido (Total - Reserva)</td>';
+  h += '<tr><td>Custo Líquido (Total - Reserva + Saldo Residual)</td>';
   cenarios.forEach(function(c, i) {
     h += '<td class="' + cls(i, rCustoLiq.bestIdx, rCustoLiq.worstIdx) + '">' + fmtBRL(custoLiq[i]) + '</td>';
   });
@@ -7753,14 +7773,14 @@ function _renderConsolidado(selectedStrats, resultados, cenarioBase, maxPeriodo,
   });
   h += '</tr>';
   h += '</tbody></table></div>';
-  h += '<p class="cons-note">O custo líquido desconta a reserva acumulada. Menor custo líquido = melhor resultado financeiro real.</p>';
+  h += '<p class="cons-note">O custo líquido desconta a reserva acumulada. Para dívidas FIXA sem amortização, inclui o saldo devedor final (dívida ainda não paga). Menor custo líquido = melhor resultado financeiro real.</p>';
   // Memory section 2
   var mem2 = '<b>Fórmulas utilizadas:</b><br>';
-  mem2 += '<code>Custo Líquido = Total Desembolsado - Reserva Final</code><br>';
+  mem2 += '<code>Custo Líquido = Total Desembolsado - Reserva Final (FIXA base: + Saldo Devedor Final)</code><br>';
   mem2 += '<code>Juros / Principal = (Juros Totais / Saldo Devedor) x 100</code><br>';
   mem2 += '<b>Dados por cenário:</b><br>';
-  cenarios.forEach(function(c) {
-    mem2 += '• ' + _escHtml(c.label) + ': Saldo=' + fmtBRL(c.saldoDevedor) + ', Juros=' + fmtBRL(c.jurosTotal) + ', Total=' + fmtBRL(c.totalPago) + ', Reserva=' + fmtBRL(c.reservaFinal || 0) + ', C.Líq=' + fmtBRL(c.totalPago - (c.reservaFinal || 0)) + '<br>';
+  cenarios.forEach(function(c, i) {
+    mem2 += '• ' + _escHtml(c.label) + ': Saldo=' + fmtBRL(c.saldoDevedor) + ', Juros=' + fmtBRL(c.jurosTotal) + ', Total=' + fmtBRL(c.totalPago) + ', C.Líq=' + fmtBRL(custoLiq[i]) + '<br>';
   });
   h += _buildMemory('Custo Total', mem2);
   h += '</div>';
@@ -7870,9 +7890,12 @@ function _renderConsolidado(selectedStrats, resultados, cenarioBase, maxPeriodo,
     });
     h += '</tr>';
   }
-  // Meses de reserva (reserva / parcela)
+  // Meses de reserva (reserva / referência mensal)
   h += '<tr><td>Meses de Reserva</td>';
-  var mesesReserva = cenarios.map(function(c) { return c.parcela > 0 ? (c.reservaFinal || 0) / c.parcela : 0; });
+  var mesesReserva = cenarios.map(function(c) {
+    var ref = c.parcela > 0 ? c.parcela : (c.aporteMensal > 0 ? c.aporteMensal : 1);
+    return (c.reservaFinal || 0) / ref;
+  });
   var rMesesRes = rankHigh(mesesReserva);
   cenarios.forEach(function(c, i) {
     h += '<td class="' + cls(i, rMesesRes.bestIdx, rMesesRes.worstIdx) + '">' + mesesReserva[i].toFixed(1) + ' meses</td>';
@@ -7882,11 +7905,12 @@ function _renderConsolidado(selectedStrats, resultados, cenarioBase, maxPeriodo,
   h += '<p class="cons-note">Liquidez preservada mede capacidade de enfrentar emergências. Mais reserva = mais segurança e flexibilidade.</p>';
   // Memory section 5
   var mem5 = '<b>Fórmulas utilizadas:</b><br>';
-  mem5 += '<code>Meses de Reserva = Reserva Final / Parcela Mensal</code><br>';
+  mem5 += '<code>Meses de Reserva = Reserva Final / Referência Mensal (parcela ou aporte)</code><br>';
   mem5 += '<b>Dados por cenário:</b><br>';
   cenarios.forEach(function(c) {
-    var mRes = c.parcela > 0 ? ((c.reservaFinal || 0) / c.parcela).toFixed(1) : '0.0';
-    mem5 += '• ' + _escHtml(c.label) + ': Reserva=' + fmtBRL(c.reservaFinal || 0) + ', Meses de Reserva=' + mRes + '<br>';
+    var ref = c.parcela > 0 ? c.parcela : (c.aporteMensal > 0 ? c.aporteMensal : 1);
+    var mRes = ((c.reservaFinal || 0) / ref).toFixed(1);
+    mem5 += '• ' + _escHtml(c.label) + ': Reserva=' + fmtBRL(c.reservaFinal || 0) + ', Ref=' + fmtBRL(ref) + ', Meses de Reserva=' + mRes + '<br>';
   });
   h += _buildMemory('Flexibilidade', mem5);
   h += '</div>';
