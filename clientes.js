@@ -339,7 +339,7 @@ async function initializeDashboard() {
     }
 
     // Close new modals
-    ['pendencias', 'objetivos', 'particularidades', 'patrimonio', 'dividas', 'tipo-sync'].forEach(name => {
+    ['pendencias', 'objetivos', 'particularidades', 'patrimonio', 'dividas', 'tipo-sync', 'ultima-reuniao', 'proxima-reuniao'].forEach(name => {
         const modal = document.getElementById(name + '-modal');
         const closeBtn = document.getElementById(name + '-close-btn');
         if (modal && closeBtn) {
@@ -730,14 +730,14 @@ async function fetchUltimaReuniao(clienteId, row) {
             }
         }
 
-        // Tornar ambas as células clicáveis para abrir o acompanhamento
+        // Tornar ambas as células clicáveis para abrir os modais
         cell.style.cursor = 'pointer';
-        cell.title = 'Abrir Acompanhamento';
-        cell.onclick = function() { openAcompanhamento(clienteId); };
+        cell.title = 'Editar Última Reunião';
+        cell.onclick = function() { openUltimaReuniaoModal(clienteId); };
         if (proxCell) {
             proxCell.style.cursor = 'pointer';
-            proxCell.title = 'Abrir Acompanhamento';
-            proxCell.onclick = function() { openAcompanhamento(clienteId); };
+            proxCell.title = 'Editar Próxima Reunião';
+            proxCell.onclick = function() { openProximaReuniaoModal(clienteId); };
         }
     } catch (err) {
         console.warn('fetchUltimaReuniao error for client ' + clienteId, err);
@@ -754,17 +754,241 @@ function calcDiasDesde(dateStr) {
     return Math.max(0, diff);
 }
 
-function openAcompanhamento(clienteId) {
-    // Abre a ferramenta de acompanhamento do cliente diretamente
+// ============ REUNIAO MODALS (Última / Próxima) ============
+var _reuModalClienteId = null;
+var _reuModalDados = null;
+
+function openUltimaReuniaoModal(clienteId) {
+    _reuModalClienteId = clienteId;
+    const modal = document.getElementById('ultima-reuniao-modal');
+    const wrapper = document.getElementById('ultima-reuniao-wrapper');
+    const body = document.getElementById('ultima-reuniao-body');
+    const title = document.getElementById('ultima-reuniao-title');
     const cliente = allClientes.find(c => c.id === clienteId);
-    if (!cliente) return;
-    const nome = cliente._dadosCadastrais?.nome_completo || cliente.nome || 'Cliente';
-    sessionStorage.setItem('equipe_modo_cliente', 'true');
-    sessionStorage.setItem('cliente_id', clienteId);
-    sessionStorage.setItem('cliente_nome', nome);
-    sessionStorage.setItem('cliente_id_retorno', clienteId);
-    sessionStorage.setItem('retorno_url', 'clientes-dashboard.html');
-    window.location.href = 'archives_clients/ferramentas/acompanhamento.html';
+    const nome = cliente ? (cliente._dadosCadastrais?.nome_completo || cliente.nome || '') : '';
+    title.textContent = 'Última Reunião' + (nome ? ' — ' + nome : '');
+    body.innerHTML = '<p style="color:var(--theme-text-muted);text-align:center;padding:2rem;">Carregando...</p>';
+    modal.style.display = 'block';
+    wrapper.style.top = '10vh'; wrapper.style.left = '15vw';
+    _initReuDrag(wrapper, document.getElementById('ultima-reuniao-header'));
+    _initReuResize(wrapper);
+    _loadUltimaReuniaoData(clienteId, body);
+}
+
+function openProximaReuniaoModal(clienteId) {
+    _reuModalClienteId = clienteId;
+    const modal = document.getElementById('proxima-reuniao-modal');
+    const wrapper = document.getElementById('proxima-reuniao-wrapper');
+    const body = document.getElementById('proxima-reuniao-body');
+    const title = document.getElementById('proxima-reuniao-title');
+    const cliente = allClientes.find(c => c.id === clienteId);
+    const nome = cliente ? (cliente._dadosCadastrais?.nome_completo || cliente.nome || '') : '';
+    title.textContent = 'Próxima Reunião' + (nome ? ' — ' + nome : '');
+    body.innerHTML = '<p style="color:var(--theme-text-muted);text-align:center;padding:2rem;">Carregando...</p>';
+    modal.style.display = 'block';
+    wrapper.style.top = '10vh'; wrapper.style.left = '15vw';
+    _initReuDrag(wrapper, document.getElementById('proxima-reuniao-header'));
+    _initReuResize(wrapper);
+    _loadProximaReuniaoData(clienteId, body);
+}
+
+async function _loadUltimaReuniaoData(clienteId, body) {
+    try {
+        const { data, error } = await supabase.from('ferramentas_dados').select('dados').eq('cliente_id', clienteId).eq('ferramenta', 'acompanhamento').maybeSingle();
+        if (error) throw error;
+        _reuModalDados = data ? data.dados : { reunioes: [], proximaReuniao: null };
+        const reunioes = _reuModalDados.reunioes || [];
+        const ultima = reunioes.length > 0 ? reunioes[0] : null;
+        let html = '';
+        if (!ultima) {
+            html = '<p style="color:var(--theme-text-muted);text-align:center;">Nenhuma reunião registrada.</p>';
+        } else {
+            html += '<div class="section-title">Informações da Reunião</div>';
+            html += '<div class="sub-grid">';
+            html += '<div><label>Data *</label><input type="date" id="reu-ult-data" value="' + (ultima.data || '') + '"></div>';
+            html += '<div><label>Tipo</label><select id="reu-ult-tipo">';
+            var tipos = {primeira:'Primeira Consulta',acompanhamento:'Acompanhamento',revisao:'Revisão de Estratégia',emergencial:'Emergencial',fechamento:'Fechamento de Ciclo'};
+            for (var k in tipos) { html += '<option value="'+k+'"'+(ultima.tipo===k?' selected':'')+'>'+tipos[k]+'</option>'; }
+            html += '</select></div></div>';
+            html += '<label>Humor Financeiro (1-5)</label><div id="reu-ult-stars" style="display:flex;gap:0.4rem;margin-bottom:0.5rem;">';
+            var humor = ultima.humor || 3;
+            for (var s=1;s<=5;s++) { html += '<span class="star-btn'+(s<=humor?' active':'')+'" data-val="'+s+'" onclick="_setReuStar(this,\'reu-ult-stars\')">★</span>'; }
+            html += '</div>';
+            html += '<div class="section-title">Indicadores na Data</div>';
+            html += '<div class="sub-grid-3">';
+            html += '<div><label>Patrimônio Total</label><input type="text" id="reu-ult-patrimonio" value="' + _fmtBRLInput(ultima.patrimonio) + '" oninput="_maskBRLDash(this)"></div>';
+            html += '<div><label>Renda Mensal</label><input type="text" id="reu-ult-renda" value="' + _fmtBRLInput(ultima.renda) + '" oninput="_maskBRLDash(this)"></div>';
+            html += '<div><label>Despesas Mensais</label><input type="text" id="reu-ult-despesas" value="' + _fmtBRLInput(ultima.despesas) + '" oninput="_maskBRLDash(this)"></div>';
+            html += '</div><div class="sub-grid-3">';
+            html += '<div><label>Investimentos Totais</label><input type="text" id="reu-ult-investimentos" value="' + _fmtBRLInput(ultima.investimentos) + '" oninput="_maskBRLDash(this)"></div>';
+            html += '<div><label>Dívidas Totais</label><input type="text" id="reu-ult-dividas" value="' + _fmtBRLInput(ultima.dividas) + '" oninput="_maskBRLDash(this)"></div>';
+            html += '<div><label>Poder de Poupança</label><input type="text" id="reu-ult-poupanca" value="' + _fmtBRLInput(ultima.poupanca) + '" oninput="_maskBRLDash(this)"></div>';
+            html += '</div><div class="sub-grid-3">';
+            html += '<div><label>Saldo do Fluxo</label><input type="text" id="reu-ult-saldo_fluxo" value="' + _fmtBRLInput(ultima.saldo_fluxo) + '" oninput="_maskBRLDash(this)"></div>';
+            html += '</div>';
+            html += '<div class="section-title">Resumo / Notas</div>';
+            html += '<textarea id="reu-ult-resumo" rows="3">' + (ultima.resumo || '') + '</textarea>';
+        }
+        body.innerHTML = html;
+    } catch(e) {
+        body.innerHTML = '<p style="color:#ef4444;">Erro ao carregar: ' + e.message + '</p>';
+    }
+}
+
+async function _loadProximaReuniaoData(clienteId, body) {
+    try {
+        const { data, error } = await supabase.from('ferramentas_dados').select('dados').eq('cliente_id', clienteId).eq('ferramenta', 'acompanhamento').maybeSingle();
+        if (error) throw error;
+        _reuModalDados = data ? data.dados : { reunioes: [], proximaReuniao: null };
+        const prox = _reuModalDados.proximaReuniao || {};
+        let html = '';
+        html += '<label>Mês da reunião:</label>';
+        html += '<input type="month" id="reu-prox-mes" value="' + (prox.data || '') + '">';
+        html += '<label>Descrição / Pauta (opcional):</label>';
+        html += '<textarea id="reu-prox-obs" rows="3" placeholder="Descreva os assuntos da próxima reunião...">' + (prox.obs || '') + '</textarea>';
+        body.innerHTML = html;
+    } catch(e) {
+        body.innerHTML = '<p style="color:#ef4444;">Erro ao carregar: ' + e.message + '</p>';
+    }
+}
+
+function _setReuStar(el, containerId) {
+    var val = parseInt(el.dataset.val);
+    var stars = document.getElementById(containerId).querySelectorAll('.star-btn');
+    stars.forEach(function(s) { s.classList.toggle('active', parseInt(s.dataset.val) <= val); });
+}
+
+function _fmtBRLInput(val) {
+    if (val === null || val === undefined || val === '' || val === 0) return '';
+    var num = typeof val === 'string' ? parseFloat(val.replace(/\./g,'').replace(',','.')) : val;
+    if (isNaN(num)) return '';
+    return num.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});
+}
+
+function _maskBRLDash(el) {
+    var v = el.value.replace(/[^\d,.-]/g, '');
+    el.value = v;
+}
+
+function _parseBRDash(str) {
+    if (!str) return 0;
+    var s = str.replace(/\./g, '').replace(',', '.');
+    return parseFloat(s) || 0;
+}
+
+// Save handlers
+document.addEventListener('DOMContentLoaded', function() {
+    var saveUlt = document.getElementById('ultima-reuniao-save-btn');
+    if (saveUlt) saveUlt.addEventListener('click', _saveUltimaReuniao);
+    var saveProx = document.getElementById('proxima-reuniao-save-btn');
+    if (saveProx) saveProx.addEventListener('click', _saveProximaReuniao);
+});
+
+async function _saveUltimaReuniao() {
+    if (!_reuModalClienteId || !_reuModalDados) return;
+    var dataEl = document.getElementById('reu-ult-data');
+    if (!dataEl) return;
+    var reunioes = _reuModalDados.reunioes || [];
+    if (reunioes.length === 0) return;
+    var stars = document.getElementById('reu-ult-stars');
+    var humor = 3;
+    if (stars) { var actives = stars.querySelectorAll('.star-btn.active'); humor = actives.length; }
+    reunioes[0] = Object.assign(reunioes[0], {
+        data: dataEl.value,
+        tipo: document.getElementById('reu-ult-tipo').value,
+        humor: humor,
+        patrimonio: _parseBRDash(document.getElementById('reu-ult-patrimonio')?.value),
+        renda: _parseBRDash(document.getElementById('reu-ult-renda')?.value),
+        despesas: _parseBRDash(document.getElementById('reu-ult-despesas')?.value),
+        investimentos: _parseBRDash(document.getElementById('reu-ult-investimentos')?.value),
+        dividas: _parseBRDash(document.getElementById('reu-ult-dividas')?.value),
+        poupanca: _parseBRDash(document.getElementById('reu-ult-poupanca')?.value),
+        saldo_fluxo: _parseBRDash(document.getElementById('reu-ult-saldo_fluxo')?.value),
+        resumo: document.getElementById('reu-ult-resumo')?.value || ''
+    });
+    _reuModalDados.reunioes = reunioes;
+    try {
+        const { error } = await supabase.from('ferramentas_dados').upsert({
+            cliente_id: _reuModalClienteId,
+            ferramenta: 'acompanhamento',
+            dados: _reuModalDados
+        }, { onConflict: 'cliente_id,ferramenta' });
+        if (error) throw error;
+        alert('Última reunião salva com sucesso!');
+        document.getElementById('ultima-reuniao-modal').style.display = 'none';
+        // Refresh the cell
+        var row = document.querySelector('[data-client-id="'+_reuModalClienteId+'"]');
+        if (row) fetchUltimaReuniao(_reuModalClienteId, row);
+    } catch(e) {
+        alert('Erro ao salvar: ' + e.message);
+    }
+}
+
+async function _saveProximaReuniao() {
+    if (!_reuModalClienteId || !_reuModalDados) return;
+    var mesEl = document.getElementById('reu-prox-mes');
+    var obsEl = document.getElementById('reu-prox-obs');
+    _reuModalDados.proximaReuniao = {
+        data: mesEl ? mesEl.value : '',
+        obs: obsEl ? obsEl.value : ''
+    };
+    try {
+        const { error } = await supabase.from('ferramentas_dados').upsert({
+            cliente_id: _reuModalClienteId,
+            ferramenta: 'acompanhamento',
+            dados: _reuModalDados
+        }, { onConflict: 'cliente_id,ferramenta' });
+        if (error) throw error;
+        alert('Próxima reunião salva com sucesso!');
+        document.getElementById('proxima-reuniao-modal').style.display = 'none';
+        var row = document.querySelector('[data-client-id="'+_reuModalClienteId+'"]');
+        if (row) fetchUltimaReuniao(_reuModalClienteId, row);
+    } catch(e) {
+        alert('Erro ao salvar: ' + e.message);
+    }
+}
+
+function _initReuDrag(wrapper, header) {
+    if (!header || header._dragInit) return;
+    header._dragInit = true;
+    let isDragging = false, startX, startY, startLeft, startTop;
+    header.addEventListener('mousedown', (e) => {
+        if (e.target.classList.contains('modal-close')) return;
+        isDragging = true;
+        startX = e.clientX; startY = e.clientY;
+        startLeft = wrapper.offsetLeft; startTop = wrapper.offsetTop;
+        document.body.style.userSelect = 'none';
+    });
+    document.addEventListener('mousemove', (e) => {
+        if (!isDragging) return;
+        wrapper.style.left = (startLeft + e.clientX - startX) + 'px';
+        wrapper.style.top = (startTop + e.clientY - startY) + 'px';
+    });
+    document.addEventListener('mouseup', () => { if (isDragging) { isDragging = false; document.body.style.userSelect = ''; } });
+}
+
+function _initReuResize(wrapper) {
+    const handles = wrapper.querySelectorAll('.reu-resize-handle');
+    if (!handles.length || wrapper._resizeInit) return;
+    wrapper._resizeInit = true;
+    handles.forEach(handle => {
+        const dir = handle.dataset.dir;
+        handle.addEventListener('mousedown', (e) => {
+            e.preventDefault(); e.stopPropagation();
+            const startX = e.clientX, startY = e.clientY;
+            const startW = wrapper.offsetWidth, startH = wrapper.offsetHeight;
+            document.body.style.userSelect = 'none';
+            const onMove = (ev) => {
+                const dx = ev.clientX - startX, dy = ev.clientY - startY;
+                if (dir === 'br') { wrapper.style.width = Math.max(350, startW + dx) + 'px'; wrapper.style.height = Math.max(250, startH + dy) + 'px'; wrapper.style.maxHeight = 'none'; }
+                else if (dir === 'r') { wrapper.style.width = Math.max(350, startW + dx) + 'px'; }
+                else if (dir === 'b') { wrapper.style.height = Math.max(250, startH + dy) + 'px'; wrapper.style.maxHeight = 'none'; }
+            };
+            const onUp = () => { document.body.style.userSelect = ''; document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp); };
+            document.addEventListener('mousemove', onMove);
+            document.addEventListener('mouseup', onUp);
+        });
+    });
 }
 
 // --- Buscar Pendentes (Consultor e Cliente) ---
