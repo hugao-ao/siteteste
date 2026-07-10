@@ -1248,8 +1248,9 @@
           <option value="sac">SAC (amortização constante)</option>
           <option value="simples">SIMPLES (amortização + taxa sobre valor contratado)</option>
           <option value="consorcio">CONSÓRCIO (sem juros, com taxa de administração)</option>
+          <option value="fixa">FIXA (saldo fixo com ou sem juros)</option>
         </select>
-        <span class="note">PRICE: parcela fixa. SAC: parcela decrescente. SIMPLES: amortização + taxa fixa. CONSÓRCIO: sem juros, com taxa de administração e redutor de parcela.</span>
+        <span class="note">PRICE: parcela fixa. SAC: parcela decrescente. SIMPLES: amortização + taxa fixa. CONSÓRCIO: sem juros, com taxa de administração. FIXA: saldo permanente com juros opcionais.</span>
       </div>
     </div>
 
@@ -1303,6 +1304,58 @@
             <div id="m-cons-parcela-alvo-display" style="background:rgba(212,175,55,0.1); border:1px solid var(--gold); border-radius:6px; padding:0.6rem 1rem; color:var(--gold); font-weight:600;">R$ 0,00</div>
             <span class="note">Valor da parcela após aplicar o percentual de redução. Calculado automaticamente.</span>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CAMPOS EXCLUSIVOS FIXA -->
+    <div id="fixa-fields" class="hidden" style="border:1px solid var(--gold); border-radius:8px; padding:1rem; margin:0.5rem 0;">
+      <h4 style="color:var(--gold); margin:0 0 0.75rem;">⚙️ Configuração da Dívida Fixa</h4>
+      <div class="row">
+        <div class="field">
+          <label>Os juros aumentam o saldo devedor?</label>
+          <div class="toggle-row" style="margin:0.5rem 0;">
+            <div class="toggle-switch" id="toggle-fixa-juros-aumenta" onclick="toggleFixaJurosAumenta()"></div>
+            <label id="fixa-juros-aumenta-label">Não (saldo permanece fixo)</label>
+          </div>
+        </div>
+      </div>
+      <div id="fixa-juros-config" class="hidden">
+        <div class="row">
+          <div class="field">
+            <label>Taxa de Juros (%)</label>
+            <input type="number" id="m-fixa-taxa" placeholder="Ex: 1.5" step="0.01">
+            <span class="note">Taxa de juros que será incorporada ao saldo devedor periodicamente.</span>
+          </div>
+        </div>
+        <div class="row">
+          <div class="field">
+            <label>Tipo da Taxa</label>
+            <select id="m-fixa-taxa-tipo">
+              <option value="mensal">Mensal</option>
+              <option value="anual">Anual</option>
+            </select>
+          </div>
+        </div>
+        <div class="row">
+          <div class="field">
+            <label>Incidência: a cada</label>
+            <div style="display:flex;gap:0.5rem;align-items:center;">
+              <input type="number" id="m-fixa-periodicidade" placeholder="1" min="1" style="width:80px;" value="1">
+              <select id="m-fixa-periodo-tipo">
+                <option value="meses">mês(es)</option>
+                <option value="anos">ano(s)</option>
+              </select>
+            </div>
+            <span class="note">A cada quantos períodos os juros são incorporados ao saldo devedor.</span>
+          </div>
+        </div>
+      </div>
+      <div class="row">
+        <div class="field">
+          <label>Prazo de Simulação (meses)</label>
+          <input type="number" id="m-fixa-prazo" placeholder="Ex: 60" min="1">
+          <span class="note">Quantidade de meses para simular esta dívida nos gráficos e estratégias.</span>
         </div>
       </div>
     </div>
@@ -1433,23 +1486,47 @@ function switchTab(tab) {
 function toggleTipoAmortFields() {
   var tipo = document.getElementById('m-tipo-amort').value;
   var consFields = document.getElementById('consorcio-fields');
+  var fixaFields = document.getElementById('fixa-fields');
   var cetToggleRow = document.getElementById('toggle-cet').parentElement;
   var cetRow = document.getElementById('row-cet');
   var cetPreviewRow = document.getElementById('row-parcela-preview');
   var parcelaRow = document.getElementById('row-parcela');
+  var totalParcelasRow = document.getElementById('m-total-parcelas').parentElement.parentElement;
+  var reajusteRow = document.getElementById('m-reajuste').parentElement.parentElement;
   if (tipo === 'consorcio') {
     consFields.classList.remove('hidden');
-    // Esconder CET (consórcio usa Taxa Adm + Fundo Reserva no lugar)
+    fixaFields.classList.add('hidden');
     cetToggleRow.classList.add('hidden');
     cetRow.classList.add('hidden');
     cetPreviewRow.classList.add('hidden');
     parcelaRow.classList.add('hidden');
+    totalParcelasRow.classList.remove('hidden');
+    reajusteRow.classList.remove('hidden');
+  } else if (tipo === 'fixa') {
+    fixaFields.classList.remove('hidden');
+    consFields.classList.add('hidden');
+    cetToggleRow.classList.add('hidden');
+    cetRow.classList.add('hidden');
+    cetPreviewRow.classList.add('hidden');
+    parcelaRow.classList.add('hidden');
+    totalParcelasRow.classList.add('hidden');
+    reajusteRow.classList.add('hidden');
   } else {
     consFields.classList.add('hidden');
-    // Restaurar visibilidade do CET toggle
+    fixaFields.classList.add('hidden');
     cetToggleRow.classList.remove('hidden');
     parcelaRow.classList.remove('hidden');
+    totalParcelasRow.classList.remove('hidden');
+    reajusteRow.classList.remove('hidden');
   }
+}
+
+function toggleFixaJurosAumenta() {
+  var toggle = document.getElementById('toggle-fixa-juros-aumenta');
+  toggle.classList.toggle('active');
+  var isActive = toggle.classList.contains('active');
+  document.getElementById('fixa-juros-aumenta-label').textContent = isActive ? 'Sim (juros aumentam o saldo)' : 'N\u00e3o (saldo permanece fixo)';
+  document.getElementById('fixa-juros-config').classList.toggle('hidden', !isActive);
 }
 
 function toggleConsReducer() {
@@ -1509,10 +1586,27 @@ function openDebtModal(type, index) {
         document.getElementById('m-cons-pct-reducao').value = '';
         document.getElementById('m-cons-periodo-reducao').value = '';
       }
-      calcParcelaPreview(); // Mostrar preview com dados do consórcio
-      calcConsorcioReducao(); // Atualizar parcela alvo display
+      calcParcelaPreview();
+      calcConsorcioReducao();
+      _resetFixaFields();
+    } else if (d.tipoAmort === 'fixa') {
+      // Restaurar campos de FIXA
+      if (d.fixaJurosAumentaSaldo) {
+        document.getElementById('toggle-fixa-juros-aumenta').classList.add('active');
+        document.getElementById('fixa-juros-aumenta-label').textContent = 'Sim (juros aumentam o saldo)';
+        document.getElementById('fixa-juros-config').classList.remove('hidden');
+        document.getElementById('m-fixa-taxa').value = d.fixaTaxa || '';
+        document.getElementById('m-fixa-taxa-tipo').value = d.fixaTaxaTipo || 'mensal';
+        document.getElementById('m-fixa-periodicidade').value = d.fixaPeriodicidade || 1;
+        document.getElementById('m-fixa-periodo-tipo').value = d.fixaPeriodoTipo || 'meses';
+      } else {
+        _resetFixaFields();
+      }
+      document.getElementById('m-fixa-prazo').value = d.fixaPrazoSimulacao || '';
+      _resetConsorcioFields();
     } else {
       _resetConsorcioFields();
+      _resetFixaFields();
     }
   } else {
     document.getElementById('modal-title').textContent = 'Adicionar Divida';
@@ -1526,6 +1620,7 @@ function openDebtModal(type, index) {
     document.getElementById('m-tipo-amort').value = 'price';
     document.getElementById('m-reajuste').value = '0';
     _resetConsorcioFields();
+    _resetFixaFields();
     toggleTipoAmortFields();
   }
   document.getElementById('debt-modal').classList.add('active');
@@ -1539,6 +1634,17 @@ function _resetConsorcioFields() {
   document.getElementById('m-cons-pct-reducao').value = '';
   document.getElementById('m-cons-periodo-reducao').value = '';
   document.getElementById('m-cons-parcela-alvo-display').textContent = 'R$ 0,00';
+}
+
+function _resetFixaFields() {
+  document.getElementById('toggle-fixa-juros-aumenta').classList.remove('active');
+  document.getElementById('fixa-juros-aumenta-label').textContent = 'N\u00e3o (saldo permanece fixo)';
+  document.getElementById('fixa-juros-config').classList.add('hidden');
+  document.getElementById('m-fixa-taxa').value = '';
+  document.getElementById('m-fixa-taxa-tipo').value = 'mensal';
+  document.getElementById('m-fixa-periodicidade').value = '1';
+  document.getElementById('m-fixa-periodo-tipo').value = 'meses';
+  document.getElementById('m-fixa-prazo').value = '';
 }
 
 function calcConsorcioReducao() {
@@ -1632,16 +1738,27 @@ function calcParcelaPreview() {
 function saveDebt() {
   var nome = document.getElementById('m-nome').value.trim();
   var valorContratado = parseCurr(document.getElementById('m-valor').value);
-  var totalParcelas = parseInt(document.getElementById('m-total-parcelas').value);
+  var tipoAmortEarly = document.getElementById('m-tipo-amort').value || 'price';
+  var totalParcelas;
+  if (tipoAmortEarly === 'fixa') {
+    totalParcelas = parseInt(document.getElementById('m-fixa-prazo').value) || 60;
+  } else {
+    totalParcelas = parseInt(document.getElementById('m-total-parcelas').value);
+  }
 
-  if (!nome || !valorContratado || !totalParcelas) {
-    alert('Preencha nome, valor contratado e total de parcelas.');
+  if (!nome || !valorContratado) {
+    alert('Preencha nome e valor contratado.');
+    return;
+  }
+  if (tipoAmortEarly !== 'fixa' && !totalParcelas) {
+    alert('Preencha o total de parcelas.');
     return;
   }
 
-  var tipoAmortEarly = document.getElementById('m-tipo-amort').value || 'price';
   var parcela;
-  if (tipoAmortEarly === 'consorcio') {
+  if (tipoAmortEarly === 'fixa') {
+    parcela = 0; // FIXA não tem parcela mensal
+  } else if (tipoAmortEarly === 'consorcio') {
     // Consórcio: parcela será calculada abaixo a partir de Taxa Adm + Fundo Reserva
     parcela = 0; // placeholder, será recalculada no bloco consórcio
   } else if (useCET) {
@@ -1666,7 +1783,11 @@ function saveDebt() {
 
   var parcelasPagas = 0;
   var saldoDevedor = 0;
-  if (currentModalType === 'atual') {
+  if (tipoAmortEarly === 'fixa') {
+    // FIXA: saldo devedor = valor contratado (o valor informado é o saldo)
+    saldoDevedor = valorContratado;
+    parcelasPagas = 0;
+  } else if (currentModalType === 'atual') {
     parcelasPagas = parseInt(document.getElementById('m-pagas').value) || 0;
     var saldoInput = parseCurr(document.getElementById('m-saldo-devedor').value);
     if (saldoInput > 0) {
@@ -1724,6 +1845,21 @@ function saveDebt() {
     }
   }
 
+  // Para FIXA:
+  var fixaJurosAumentaSaldo = false, fixaTaxa = 0, fixaTaxaTipo = 'mensal', fixaPeriodicidade = 1, fixaPeriodoTipo = 'meses', fixaPrazoSimulacao = 60;
+  if (tipoAmort === 'fixa') {
+    fixaJurosAumentaSaldo = document.getElementById('toggle-fixa-juros-aumenta').classList.contains('active');
+    fixaPrazoSimulacao = parseInt(document.getElementById('m-fixa-prazo').value) || 60;
+    if (fixaJurosAumentaSaldo) {
+      fixaTaxa = parseFloat(document.getElementById('m-fixa-taxa').value) || 0;
+      fixaTaxaTipo = document.getElementById('m-fixa-taxa-tipo').value || 'mensal';
+      fixaPeriodicidade = parseInt(document.getElementById('m-fixa-periodicidade').value) || 1;
+      fixaPeriodoTipo = document.getElementById('m-fixa-periodo-tipo').value || 'meses';
+    }
+    totalParcelas = fixaPrazoSimulacao;
+    reajusteAnual = 0;
+  }
+
   // Para CONSÓRCIO:
   var consTaxaAdm = 0, consFundoReserva = 0, consRedutor = false, consParcelaAlvo = 0, consPeriodoReducao = 0, consPctReducao = 0;
   if (tipoAmort === 'consorcio') {
@@ -1753,7 +1889,7 @@ function saveDebt() {
     taxaFixa = 0; // Consórcio não tem taxa fixa mensal
   }
 
-  var debt = { nome: nome, valorContratado: valorContratado, parcela: parcela, totalParcelas: totalParcelas, parcelasPagas: parcelasPagas, saldoDevedor: saldoDevedor, tipoAmort: tipoAmort, reajusteAnual: reajusteAnual, taxaFixa: taxaFixa, consTaxaAdm: consTaxaAdm, consFundoReserva: consFundoReserva, consRedutor: consRedutor, consParcelaAlvo: consParcelaAlvo, consPeriodoReducao: consPeriodoReducao, consPctReducao: consPctReducao };
+  var debt = { nome: nome, valorContratado: valorContratado, parcela: parcela, totalParcelas: totalParcelas, parcelasPagas: parcelasPagas, saldoDevedor: saldoDevedor, tipoAmort: tipoAmort, reajusteAnual: reajusteAnual, taxaFixa: taxaFixa, consTaxaAdm: consTaxaAdm, consFundoReserva: consFundoReserva, consRedutor: consRedutor, consParcelaAlvo: consParcelaAlvo, consPeriodoReducao: consPeriodoReducao, consPctReducao: consPctReducao, fixaJurosAumentaSaldo: fixaJurosAumentaSaldo, fixaTaxa: fixaTaxa, fixaTaxaTipo: fixaTaxaTipo, fixaPeriodicidade: fixaPeriodicidade, fixaPeriodoTipo: fixaPeriodoTipo, fixaPrazoSimulacao: fixaPrazoSimulacao };
 
   var list = currentModalType === 'atual' ? dividasAtuais : dividasProposta;
   if (editingIndex >= 0) {
@@ -1801,7 +1937,7 @@ function renderTable(type) {
   }
 
   var isAtual = type === 'atual';
-  var tipoLabels = { price: 'PRICE', sac: 'SAC', simples: 'SIMPLES', consorcio: 'CONSÓRCIO' };
+  var tipoLabels = { price: 'PRICE', sac: 'SAC', simples: 'SIMPLES', consorcio: 'CONSÓRCIO', fixa: 'FIXA' };
   var allChecked = selectedArr.length === list.length;
   var html = '<div style="margin-bottom:0.5rem; display:flex; align-items:center; gap:0.5rem;">' +
     '<label style="display:flex; align-items:center; gap:0.3rem; cursor:pointer; font-size:0.82rem; color:var(--muted);">' +
@@ -1969,6 +2105,9 @@ function calcParcelaMes(d, m, saldoInicial) {
     }
     // Sem redutor: parcela fixa
     return d.parcela * fatorReaj;
+  } else if (tipo === 'fixa') {
+    // FIXA: não tem parcela mensal
+    return 0;
   }
   return d.parcela * fatorReaj;
 }
@@ -2014,6 +2153,7 @@ function calcAmortConsorcioMes(d, m, saldoInicial) {
 
 // Calcula total a pagar considerando tipo e reajuste
 function calcTotalPagarDivida(d, restantes) {
+  if (d.tipoAmort === 'fixa') return 0; // FIXA não tem parcelas
   var saldoBase = d.saldoDevedor || d.valorContratado;
   var total = 0;
   for (var m = 0; m < restantes; m++) {
@@ -2051,6 +2191,13 @@ function gerarProjecaoSaldo(d, isAtual) {
     taxaMensal = d.parcela > amortConst ? (d.parcela - amortConst) / saldo : 0;
   } else if (tipo === 'consorcio') {
     taxaMensal = 0; // Consórcio não tem juros
+  } else if (tipo === 'fixa') {
+    // FIXA: taxa mensal baseada na configuração
+    if (d.fixaJurosAumentaSaldo && d.fixaTaxa) {
+      taxaMensal = d.fixaTaxaTipo === 'anual' ? Math.pow(1 + d.fixaTaxa / 100, 1/12) - 1 : d.fixaTaxa / 100;
+    } else {
+      taxaMensal = 0;
+    }
   }
 
   for (var m = 0; m < restantes; m++) {
@@ -2091,6 +2238,23 @@ function gerarProjecaoSaldo(d, isAtual) {
         amortMes = (saldoBase / restantes) * fatorReaj;
       }
       jurosMes = 0;
+    } else if (tipo === 'fixa') {
+      // FIXA: sem parcela, sem amortização normal
+      parcelaMes = 0;
+      amortMes = 0;
+      jurosMes = 0;
+      if (d.fixaJurosAumentaSaldo && taxaMensal > 0) {
+        // Verificar se este mês é mês de incidência de juros
+        var periodMeses = d.fixaPeriodicidade || 1;
+        if (d.fixaPeriodoTipo === 'anos') periodMeses = (d.fixaPeriodicidade || 1) * 12;
+        if ((m + 1) % periodMeses === 0) {
+          jurosMes = saldo * taxaMensal * periodMeses;
+          saldo += jurosMes; // juros aumentam o saldo
+        }
+      }
+      saldos.push(saldo);
+      parcelas.push(parcelaMes);
+      continue;
     } else { // simples
       amortMes = (saldoBase / restantes) * fatorReaj;
       parcelaMes = (amortMes + (d.taxaFixa || 0)) * fatorReaj;
@@ -4696,6 +4860,12 @@ function stratGerarCalendario() {
       consPeriodoReducao: d.consPeriodoReducao || 0,
       consTaxaAdm: d.consTaxaAdm || 0,
       consFundoReserva: d.consFundoReserva || 0,
+      fixaJurosAumentaSaldo: d.fixaJurosAumentaSaldo || false,
+      fixaTaxa: d.fixaTaxa || 0,
+      fixaTaxaTipo: d.fixaTaxaTipo || 'mensal',
+      fixaPeriodicidade: d.fixaPeriodicidade || 1,
+      fixaPeriodoTipo: d.fixaPeriodoTipo || 'meses',
+      fixaPrazoSimulacao: d.fixaPrazoSimulacao || 60,
       origIdx: idx,
       alocPct: alocPct
     });
@@ -4725,6 +4895,12 @@ function stratGerarCalendario() {
       consPeriodoReducao: p.consPeriodoReducao || 0,
       consTaxaAdm: p.consTaxaAdm || 0,
       consFundoReserva: p.consFundoReserva || 0,
+      fixaJurosAumentaSaldo: p.fixaJurosAumentaSaldo || false,
+      fixaTaxa: p.fixaTaxa || 0,
+      fixaTaxaTipo: p.fixaTaxaTipo || 'mensal',
+      fixaPeriodicidade: p.fixaPeriodicidade || 1,
+      fixaPeriodoTipo: p.fixaPeriodoTipo || 'meses',
+      fixaPrazoSimulacao: p.fixaPrazoSimulacao || 60,
       origIdx: pi,
       alocPct: alocPct
     });
@@ -4782,6 +4958,11 @@ function stratGerarCalendario() {
       return d.parcela > amortConst ? (d.parcela - amortConst) / d.saldoDevedor : 0;
     } else if (d.tipoAmort === 'consorcio') {
       return 0; // Consórcio não tem juros
+    } else if (d.tipoAmort === 'fixa') {
+      if (d.fixaJurosAumentaSaldo && d.fixaTaxa) {
+        return d.fixaTaxaTipo === 'anual' ? Math.pow(1 + d.fixaTaxa / 100, 1/12) - 1 : d.fixaTaxa / 100;
+      }
+      return 0;
     }
     return 0;
   });
@@ -4985,6 +5166,20 @@ function stratGerarCalendario() {
           refSaldos[di] -= refAmortC;
           if (refSaldos[di] < 0) refSaldos[di] = 0;
         }
+      } else if (dd.tipoAmort === 'fixa') {
+        // FIXA: sem parcela, sem amortização normal
+        parcelaMes = 0;
+        amortNormal = 0;
+        // Aplicar juros se configurado e se é mês de incidência
+        if (dd.fixaJurosAumentaSaldo && taxasDividas[di] > 0) {
+          var periodMesesFixa = dd.fixaPeriodicidade || 1;
+          if (dd.fixaPeriodoTipo === 'anos') periodMesesFixa = (dd.fixaPeriodicidade || 1) * 12;
+          if ((m + 1) % periodMesesFixa === 0) {
+            var jurosFixa = saldosDevedor[di] * taxasDividas[di] * periodMesesFixa;
+            jurosTotalMes += jurosFixa;
+            saldosDevedor[di] += jurosFixa;
+          }
+        }
       } else {
         // Simples: amortização constante
         var restantesSimp = dd._restantesAtual || dd.restantes;
@@ -5004,8 +5199,8 @@ function stratGerarCalendario() {
       parcelaTotalMes += parcelaMes;
       totalJurosPagos += jurosTotalMes > 0 ? (parcelaMes - amortNormal) : 0;
 
-      // Decrementar prazo restante (para SAC/Simples - não para consórcio que usa m diretamente)
-      if (dd.tipoAmort !== 'consorcio') {
+      // Decrementar prazo restante (para SAC/Simples - não para consórcio/fixa que usam m diretamente)
+      if (dd.tipoAmort !== 'consorcio' && dd.tipoAmort !== 'fixa') {
         if (!dd._restantesAtual) dd._restantesAtual = dd.restantes;
         if (dd._restantesAtual > 0) dd._restantesAtual--;
       }
@@ -5220,6 +5415,20 @@ function stratRenderCalendario() {
       }
     }
     // Consórcio e Simples não têm juros
+    else if (dd.tipoAmort === 'fixa' && dd.fixaJurosAumentaSaldo && dd.fixaTaxa) {
+      // FIXA: calcular juros acumulados ao longo do prazo de simulação
+      var taxaFixaB = dd.fixaTaxaTipo === 'anual' ? Math.pow(1 + dd.fixaTaxa / 100, 1/12) - 1 : dd.fixaTaxa / 100;
+      var periodMesesFixaB = dd.fixaPeriodicidade || 1;
+      if (dd.fixaPeriodoTipo === 'anos') periodMesesFixaB = (dd.fixaPeriodicidade || 1) * 12;
+      var saldoFixaB = dd.saldoDevedor;
+      for (var mf = 0; mf < dd.restantes; mf++) {
+        if ((mf + 1) % periodMesesFixaB === 0) {
+          var jFixaB = saldoFixaB * taxaFixaB * periodMesesFixaB;
+          totalJurosBaseline += jFixaB;
+          saldoFixaB += jFixaB;
+        }
+      }
+    }
   });
   var economiaJuros = totalJurosBaseline - (cal.totalJurosPagos || 0);
   if (economiaJuros < 0) economiaJuros = 0;
@@ -6075,6 +6284,12 @@ function _analiseRunStrat(strat, rentabRefFallback) {
       consPeriodoReducao: d.consPeriodoReducao || 0,
       consTaxaAdm: d.consTaxaAdm || 0,
       consFundoReserva: d.consFundoReserva || 0,
+      fixaJurosAumentaSaldo: d.fixaJurosAumentaSaldo || false,
+      fixaTaxa: d.fixaTaxa || 0,
+      fixaTaxaTipo: d.fixaTaxaTipo || 'mensal',
+      fixaPeriodicidade: d.fixaPeriodicidade || 1,
+      fixaPeriodoTipo: d.fixaPeriodoTipo || 'meses',
+      fixaPrazoSimulacao: d.fixaPrazoSimulacao || 60,
       origIdx: idx,
       alocPct: alocPct
     });
@@ -6104,6 +6319,12 @@ function _analiseRunStrat(strat, rentabRefFallback) {
       consPeriodoReducao: p.consPeriodoReducao || 0,
       consTaxaAdm: p.consTaxaAdm || 0,
       consFundoReserva: p.consFundoReserva || 0,
+      fixaJurosAumentaSaldo: p.fixaJurosAumentaSaldo || false,
+      fixaTaxa: p.fixaTaxa || 0,
+      fixaTaxaTipo: p.fixaTaxaTipo || 'mensal',
+      fixaPeriodicidade: p.fixaPeriodicidade || 1,
+      fixaPeriodoTipo: p.fixaPeriodoTipo || 'meses',
+      fixaPrazoSimulacao: p.fixaPrazoSimulacao || 60,
       origIdx: pi,
       alocPct: alocPct
     });
@@ -6158,6 +6379,11 @@ function _analiseRunStrat(strat, rentabRefFallback) {
       return d.parcela > amortConst ? (d.parcela - amortConst) / d.saldoDevedor : 0;
     } else if (d.tipoAmort === 'consorcio') {
       return 0; // Consórcio não tem juros
+    } else if (d.tipoAmort === 'fixa') {
+      if (d.fixaJurosAumentaSaldo && d.fixaTaxa) {
+        return d.fixaTaxaTipo === 'anual' ? Math.pow(1 + d.fixaTaxa / 100, 1/12) - 1 : d.fixaTaxa / 100;
+      }
+      return 0;
     }
     return 0;
   });
@@ -6270,8 +6496,8 @@ function _analiseRunStrat(strat, rentabRefFallback) {
       }
 
       var fatorReaj = reaj > 0 ? Math.pow(1 + reaj, Math.floor(m / 12)) : 1;
-      var jurosMes = saldosDevedor[di] * taxasDividas[di];
-      totalJurosPagos += jurosMes;
+      var jurosMes = dd.tipoAmort === 'fixa' ? 0 : saldosDevedor[di] * taxasDividas[di];
+      if (dd.tipoAmort !== 'fixa') totalJurosPagos += jurosMes;
 
       var amortNormal;
       if (dd.tipoAmort === 'price') {
@@ -6348,6 +6574,19 @@ function _analiseRunStrat(strat, rentabRefFallback) {
           refSaldosA[di] -= refAmortCA;
           if (refSaldosA[di] < 0) refSaldosA[di] = 0;
         }
+      } else if (dd.tipoAmort === 'fixa') {
+        // FIXA: sem amortização normal, juros já aplicados acima
+        amortNormal = 0;
+        // Aplicar juros se configurado e se é mês de incidência
+        if (dd.fixaJurosAumentaSaldo && taxasDividas[di] > 0) {
+          var periodMesesFixaA = dd.fixaPeriodicidade || 1;
+          if (dd.fixaPeriodoTipo === 'anos') periodMesesFixaA = (dd.fixaPeriodicidade || 1) * 12;
+          if ((m + 1) % periodMesesFixaA === 0) {
+            var jurosFixaA = saldosDevedor[di] * taxasDividas[di] * periodMesesFixaA;
+            totalJurosPagos += jurosFixaA;
+            saldosDevedor[di] += jurosFixaA;
+          }
+        }
       } else {
         var restSimp = dd._restantesAtual || dd.restantes;
         if (tipoAmortExtra === 'prazo') {
@@ -6367,6 +6606,8 @@ function _analiseRunStrat(strat, rentabRefFallback) {
       } else if (dd.tipoAmort === 'consorcio') {
         var taxaTotParcA = ((dd.consTaxaAdm || 0) + (dd.consFundoReserva || 0)) / 100;
         parcelaDividaMes = amortNormal * (1 + taxaTotParcA);
+      } else if (dd.tipoAmort === 'fixa') {
+        parcelaDividaMes = 0; // FIXA não tem parcela
       } else {
         parcelaDividaMes = amortNormal + (dd.taxaFixa || 0);
       }
@@ -6375,8 +6616,8 @@ function _analiseRunStrat(strat, rentabRefFallback) {
       saldosDevedor[di] -= amortNormal;
       if (saldosDevedor[di] < 0.01) saldosDevedor[di] = 0;
 
-      // Decrementar prazo restante (não para consórcio que usa m diretamente)
-      if (dd.tipoAmort !== 'consorcio') {
+      // Decrementar prazo restante (não para consórcio/fixa que usam m diretamente)
+      if (dd.tipoAmort !== 'consorcio' && dd.tipoAmort !== 'fixa') {
         if (!dd._restantesAtual) dd._restantesAtual = dd.restantes;
         if (dd._restantesAtual > 0) dd._restantesAtual--;
       }
