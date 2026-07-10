@@ -1360,8 +1360,20 @@ function renderItemsTable() {
 
   var html = '';
 
-  function groupRow(label, color) {
-    return '<tr class="group-header"><td colspan="14" style="color:' + color + '">' + label + '</td></tr>';
+  var _groupIdx = 0;
+  function groupRow(label, color, catKey) {
+    _groupIdx++;
+    var gid = 'grp-' + _groupIdx;
+    return '<tr class="group-header" data-group="' + gid + '" data-cat-key="' + (catKey || '') + '">' +
+      '<td style="text-align:center;"><input type="checkbox" class="cat-select-all-cb" onchange="toggleCategoryCheck(this,\'' + gid + '\')" title="Selecionar/Desmarcar todos desta categoria"></td>' +
+      '<td colspan="13" style="color:' + color + ';display:flex;align-items:center;gap:0.5rem;">' + label +
+      ' <span class="cat-sort-btns" style="margin-left:auto;display:inline-flex;gap:0.2rem;">' +
+        '<button class="btn btn-ghost btn-sm" style="font-size:0.65rem;padding:0.1rem 0.3rem;" onclick="sortCategoryGroup(this,\'' + gid + '\',\'nome\')" title="Ordenar por Nome">Nome ↕</button>' +
+        '<button class="btn btn-ghost btn-sm" style="font-size:0.65rem;padding:0.1rem 0.3rem;" onclick="sortCategoryGroup(this,\'' + gid + '\',\'valor\')" title="Ordenar por Valor">Valor ↕</button>' +
+        '<button class="btn btn-ghost btn-sm" style="font-size:0.65rem;padding:0.1rem 0.3rem;" onclick="sortCategoryGroup(this,\'' + gid + '\',\'importancia\')" title="Ordenar por Importância">Imp ↕</button>' +
+        '<button class="btn btn-ghost btn-sm" style="font-size:0.65rem;padding:0.1rem 0.3rem;" onclick="sortCategoryGroup(this,\'' + gid + '\',\'conforto\')" title="Ordenar por Conforto">Conf ↕</button>' +
+      '</span>' +
+      '</td></tr>';
   }
 
   function itemRow(it, index) {
@@ -1402,7 +1414,7 @@ function renderItemsTable() {
       itemBadges.forEach(function(b) { linkBadges += FerramentasLinkage.renderBadgeHtml(b); });
     }
     return '<tr>' +
-      '<td style="text-align:center;"><input type="checkbox" class="item-select-cb" data-index="' + index + '" onchange="updateDeleteSelectedBtn()"></td>' +
+      '<td style="text-align:center;"><input type="checkbox" class="item-select-cb" data-index="' + index + '" onchange="onItemCheckChange(this)"></td>' +
       '<td class="td-name">' + it.nome + newBadge + linkBadges + '</td>' +
       '<td>' + tipoB + '</td>' +
       '<td>' + catB + '</td>' +
@@ -1423,11 +1435,11 @@ function renderItemsTable() {
   }
 
   if (entradas.length) {
-    html += groupRow('↑ Entradas', 'var(--green)');
+    html += groupRow('↑ Entradas', 'var(--green)', 'entrada');
     entradas.forEach(function(it) { html += itemRow(it, items.indexOf(it)); });
   }
   if (poupancas.length) {
-    html += groupRow('⬡ Poupança', 'var(--blue)');
+    html += groupRow('⬡ Poupança', 'var(--blue)', 'poupanca');
     poupancas.forEach(function(it) { html += itemRow(it, items.indexOf(it)); });
   }
   if (despesas.length) {
@@ -1435,13 +1447,13 @@ function renderItemsTable() {
     cats.forEach(function(cat) {
       var sub = despesas.filter(function(i) { return i.categoria === cat; });
       if (sub.length) {
-        html += groupRow('↓ Despesa — ' + CATEGORIA_LABELS[cat], 'var(--red)');
+        html += groupRow('↓ Despesa — ' + CATEGORIA_LABELS[cat], 'var(--red)', cat);
         sub.forEach(function(it) { html += itemRow(it, items.indexOf(it)); });
       }
     });
     var semCat = despesas.filter(function(i) { return !i.categoria; });
     if (semCat.length) {
-      html += groupRow('↓ Despesa — Sem categoria', 'var(--red)');
+      html += groupRow('↓ Despesa — Sem categoria', 'var(--red)', 'sem-cat');
       semCat.forEach(function(it) { html += itemRow(it, items.indexOf(it)); });
     }
   }
@@ -3198,7 +3210,128 @@ deleteItem = function(index) {
 // === SELEÇÃO MÚLTIPLA DE ITENS ===
 function toggleAllItemsCheck(checked) {
   document.querySelectorAll('.item-select-cb').forEach(function(cb) { cb.checked = checked; });
+  // Sync per-category checkboxes too
+  document.querySelectorAll('.cat-select-all-cb').forEach(function(cb) { cb.checked = checked; });
   updateDeleteSelectedBtn();
+}
+
+function toggleCategoryCheck(catCb, catGroup) {
+  var checked = catCb.checked;
+  // Find the group header row and select all item rows until the next group header
+  var groupRow = catCb.closest('tr');
+  var nextRow = groupRow.nextElementSibling;
+  while (nextRow && !nextRow.classList.contains('group-header')) {
+    var cb = nextRow.querySelector('.item-select-cb');
+    if (cb) cb.checked = checked;
+    nextRow = nextRow.nextElementSibling;
+  }
+  // Update master checkbox state
+  var allCbs = document.querySelectorAll('.item-select-cb');
+  var allChecked = allCbs.length > 0 && Array.from(allCbs).every(function(c) { return c.checked; });
+  var masterCb = document.getElementById('items-check-all');
+  if (masterCb) masterCb.checked = allChecked;
+  updateDeleteSelectedBtn();
+}
+
+function onItemCheckChange(cb) {
+  // Update master checkbox
+  var allCbs = document.querySelectorAll('.item-select-cb');
+  var allChecked = allCbs.length > 0 && Array.from(allCbs).every(function(c) { return c.checked; });
+  var masterCb = document.getElementById('items-check-all');
+  if (masterCb) masterCb.checked = allChecked;
+
+  // Update category checkbox for this item's group
+  var row = cb.closest('tr');
+  if (row) {
+    // Walk backwards to find the group header
+    var prevRow = row.previousElementSibling;
+    while (prevRow && !prevRow.classList.contains('group-header')) {
+      prevRow = prevRow.previousElementSibling;
+    }
+    if (prevRow) {
+      var catCb = prevRow.querySelector('.cat-select-all-cb');
+      if (catCb) {
+        // Check if all items in this category are checked
+        var catRows = [];
+        var nextRow = prevRow.nextElementSibling;
+        while (nextRow && !nextRow.classList.contains('group-header')) {
+          catRows.push(nextRow);
+          nextRow = nextRow.nextElementSibling;
+        }
+        var allCatChecked = catRows.every(function(r) {
+          var c = r.querySelector('.item-select-cb');
+          return c ? c.checked : true;
+        });
+        catCb.checked = allCatChecked;
+      }
+    }
+  }
+  updateDeleteSelectedBtn();
+}
+
+// State for per-category sort direction
+var _catSortState = {};
+
+function sortCategoryGroup(btn, groupId, field) {
+  // Toggle sort direction for this group+field
+  var key = groupId + '-' + field;
+  if (!_catSortState[key]) _catSortState[key] = 'asc';
+  else if (_catSortState[key] === 'asc') _catSortState[key] = 'desc';
+  else _catSortState[key] = 'asc';
+  var dir = _catSortState[key];
+
+  // Find the group header row in the DOM
+  var headerRow = document.querySelector('tr[data-group="' + groupId + '"]');
+  if (!headerRow) return;
+
+  // Collect all item rows until next group header
+  var rows = [];
+  var nextRow = headerRow.nextElementSibling;
+  while (nextRow && !nextRow.classList.contains('group-header')) {
+    rows.push(nextRow);
+    nextRow = nextRow.nextElementSibling;
+  }
+  if (rows.length === 0) return;
+
+  // Get sort values from each row
+  var IMPORTANCIA_ORDER = { essencial: 1, importante: 2, desejavel: 3, dispensavel: 4 };
+  var CONFORTO_ORDER = { nenhum: 1, pouco: 2, moderado: 3, muito: 4, extremo: 5 };
+
+  rows.sort(function(a, b) {
+    var valA, valB;
+    var cbA = a.querySelector('.item-select-cb');
+    var idxA = cbA ? parseInt(cbA.getAttribute('data-index')) : 0;
+    var cbB = b.querySelector('.item-select-cb');
+    var idxB = cbB ? parseInt(cbB.getAttribute('data-index')) : 0;
+    var itemA = items[idxA];
+    var itemB = items[idxB];
+    if (!itemA || !itemB) return 0;
+
+    if (field === 'nome') {
+      valA = (itemA.nome || '').toLowerCase();
+      valB = (itemB.nome || '').toLowerCase();
+      return dir === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
+    } else if (field === 'valor') {
+      valA = itemA.valor || 0;
+      valB = itemB.valor || 0;
+    } else if (field === 'importancia') {
+      valA = IMPORTANCIA_ORDER[itemA.importancia] || 99;
+      valB = IMPORTANCIA_ORDER[itemB.importancia] || 99;
+    } else if (field === 'conforto') {
+      valA = CONFORTO_ORDER[itemA.conforto] || 99;
+      valB = CONFORTO_ORDER[itemB.conforto] || 99;
+    } else {
+      return 0;
+    }
+    return dir === 'asc' ? valA - valB : valB - valA;
+  });
+
+  // Re-insert rows in sorted order after the header
+  var tbody = headerRow.parentNode;
+  var insertBefore = nextRow; // null if last group
+  rows.forEach(function(row) {
+    tbody.insertBefore(row, insertBefore);
+  });
 }
 
 function updateDeleteSelectedBtn() {
