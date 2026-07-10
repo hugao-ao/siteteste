@@ -2175,7 +2175,26 @@ function calcAmortConsorcioMes(d, m, saldoInicial) {
 
 // Calcula total a pagar considerando tipo e reajuste
 function calcTotalPagarDivida(d, restantes) {
-  if (d.tipoAmort === 'fixa') return 0; // FIXA não tem parcelas
+  if (d.tipoAmort === 'fixa') {
+    // FIXA: o "custo" é o total de juros acumulados ao longo do prazo
+    var saldoFixa = d.saldoDevedor || d.valorContratado;
+    var taxaFixa = (d.fixaTaxa || 0) / 100;
+    if ((d.fixaTaxaTipo || 'mensal') === 'anual') {
+      taxaFixa = Math.pow(1 + taxaFixa, 1/12) - 1;
+    }
+    var periodMeses = d.fixaPeriodicidade || 1;
+    if (d.fixaPeriodoTipo === 'anos') periodMeses = (d.fixaPeriodicidade || 1) * 12;
+    var totalFixa = 0;
+    for (var mf = 0; mf < restantes; mf++) {
+      if (d.fixaJurosAumentaSaldo && taxaFixa > 0 && (mf + 1) % periodMeses === 0) {
+        var jurosF = saldoFixa * taxaFixa * periodMeses;
+        totalFixa += jurosF;
+        saldoFixa += jurosF;
+      }
+    }
+    // Total = principal + juros acumulados (saldo final)
+    return saldoFixa;
+  }
   var saldoBase = d.saldoDevedor || d.valorContratado;
   var total = 0;
   for (var m = 0; m < restantes; m++) {
@@ -6147,13 +6166,15 @@ function _calcCenarioBase(selectedStrats, maxPeriodo) {
   });
 
   if (!dividasSel.length) {
-    return { saldoData: [], parcelasData: [], totalJurosPagos: 0, totalReajustesPagos: 0, totalPagoEmParcelas: 0, prazoOriginal: 0 };
+    return { saldoData: [], parcelasData: [], totalJurosPagos: 0, totalReajustesPagos: 0, totalPagoEmParcelas: 0, prazoOriginal: 0, temFixa: false };
   }
 
   var maxRestantes = 0;
+  var temFixa = false;
   dividasSel.forEach(function(d) {
     var restantes = d.totalParcelas - (d.parcelasPagas || 0);
     if (restantes > maxRestantes) maxRestantes = restantes;
+    if (d.tipoAmort === 'fixa') temFixa = true;
   });
 
   // Inicializar saldos e taxas para simulação mês a mês
@@ -6164,6 +6185,13 @@ function _calcCenarioBase(selectedStrats, maxPeriodo) {
     } else if (d.tipoAmort === 'sac') {
       var amortConst = (d.saldoDevedor || d.valorContratado) / (d.totalParcelas - (d.parcelasPagas || 0));
       return d.parcela > amortConst ? (d.parcela - amortConst) / (d.saldoDevedor || d.valorContratado) : 0;
+    } else if (d.tipoAmort === 'fixa') {
+      // Para FIXA: calcular taxa mensal equivalente
+      var taxaFixa = (d.fixaTaxa || 0) / 100;
+      if ((d.fixaTaxaTipo || 'mensal') === 'anual') {
+        return Math.pow(1 + taxaFixa, 1/12) - 1;
+      }
+      return taxaFixa;
     }
     return 0;
   });
@@ -6191,6 +6219,25 @@ function _calcCenarioBase(selectedStrats, maxPeriodo) {
         var reajValor = saldos[di] * reaj;
         totalReajustesPagos += reajValor;
         saldos[di] += reajValor;
+      }
+
+      if (dd.tipoAmort === 'fixa') {
+        // FIXA no cenário base: juros acumulam no saldo, sem amortização
+        // Calcular juros conforme periodicidade configurada
+        var periodMesesFixaBase = dd.fixaPeriodicidade || 1;
+        if (dd.fixaPeriodoTipo === 'anos') periodMesesFixaBase = (dd.fixaPeriodicidade || 1) * 12;
+        if (dd.fixaJurosAumentaSaldo && taxas[di] > 0 && (m + 1) % periodMesesFixaBase === 0) {
+          var jurosFixaBase = saldos[di] * taxas[di] * periodMesesFixaBase;
+          totalJurosPagos += jurosFixaBase;
+          saldos[di] += jurosFixaBase;
+        }
+        // No cenário base FIXA: o "custo" mensal equivalente é o juro que acumula
+        // Registramos como parcela equivalente para que a comparação funcione
+        var jurosMensalFixa = saldos[di] * taxas[di];
+        parcelaTotal += jurosMensalFixa;
+        totalPagoEmParcelas += jurosMensalFixa;
+        saldoTotal += saldos[di];
+        continue;
       }
 
       if (m >= restantes) { saldoTotal += saldos[di]; continue; }
@@ -6230,13 +6277,17 @@ function _calcCenarioBase(selectedStrats, maxPeriodo) {
     parcelasData.push(parcelaTotal);
   }
 
+  // Para FIXA pura: prazoOriginal = periodo (nunca quita sem amortização)
+  var prazoEfetivo = temFixa ? periodo : maxRestantes;
+
   return {
     saldoData: saldoData,
     parcelasData: parcelasData,
     totalJurosPagos: totalJurosPagos,
     totalReajustesPagos: totalReajustesPagos,
     totalPagoEmParcelas: totalPagoEmParcelas,
-    prazoOriginal: maxRestantes
+    prazoOriginal: prazoEfetivo,
+    temFixa: temFixa
   };
 }
 
@@ -7082,7 +7133,10 @@ function analiseGerar() {
       var patrimonioData = [];
       var saldo = r.saldoInicial || 0;
       for (var m = 0; m < maxPeriodo; m++) {
+        // Diferença de parcelas: o que o cenário base paga a mais que a estratégia
         var diferenca = (cenarioBase.parcelasData[m] || 0) - (r.parcelasData[m] || 0);
+        // Adicionar o aporte da estratégia que vai para reserva (não contabilizado em parcelasData)
+        // A reserva da estratégia já inclui rendimentos, então usamos a reservaData diretamente
         // Pós-quitação: se a estratégia quitou antes E tem incorporarPrimeiroMes,
         // usar a maior parcela das estratégias que terminam no prazo máximo como aporte
         if (r.incorporarPrimeiroMes && r.quitouEm >= 0 && m > r.quitouEm && (r.parcelasData[m] || 0) === 0) {
@@ -7098,6 +7152,14 @@ function analiseGerar() {
           saldo = saldo * (1 + taxaInvestMensal) + diferenca;
         }
         patrimonioData.push(saldo);
+      }
+      // Se a estratégia tem reservaData e o patrimônio calculado pela diferença é menor,
+      // usar o maior entre os dois (a reserva real da estratégia é o piso do patrimônio)
+      if (r.reservaData && r.reservaData.length > 0) {
+        for (var pm = 0; pm < patrimonioData.length; pm++) {
+          var reservaM = pm < r.reservaData.length ? r.reservaData[pm] : (r.reservaFinal || 0);
+          if (reservaM > patrimonioData[pm]) patrimonioData[pm] = reservaM;
+        }
       }
       r.patrimonioData = patrimonioData;
       r.patrimonioFinal = patrimonioData.length > 0 ? patrimonioData[patrimonioData.length - 1] : 0;
@@ -7476,6 +7538,8 @@ function _renderConsolidado(selectedStrats, resultados, cenarioBase, maxPeriodo,
     // Juros consistente: custoTotal - principal - reajustes
     var baseJurosCalc = cenarioBase.custoTotalEstrategia - baseSaldoIni - cenarioBase.totalReajustesPagos;
     if (baseJurosCalc < 0) baseJurosCalc = 0;
+    // Para FIXA pura sem amortização: nunca quita (quitouEm = prazo máximo da simulação)
+    var baseQuitouEm = cenarioBase.temFixa ? maxPeriodo : cenarioBase.prazoOriginal;
     cenarios.push({
       tipo: 'base',
       label: 'Cenário Base (Sem Amortização Extra)',
@@ -7489,12 +7553,13 @@ function _renderConsolidado(selectedStrats, resultados, cenarioBase, maxPeriodo,
       reservaFinal: 0,
       economiaMeses: 0,
       economiaJuros: 0,
-      quitouEm: cenarioBase.prazoOriginal,
+      quitouEm: baseQuitouEm,
       aporteMensal: 0,
       patrimonioFinal: 0,
       totalReajustesPagos: cenarioBase.totalReajustesPagos || 0,
       totalAmortExtra: 0,
       saldoInicialTotal: baseSaldoIni,
+      temFixa: cenarioBase.temFixa || false,
       source: null
     });
   }
@@ -7506,6 +7571,8 @@ function _renderConsolidado(selectedStrats, resultados, cenarioBase, maxPeriodo,
     if (stratJurosCalc < 0) stratJurosCalc = 0;
     var baseJurosRef = hasCenarioBase ? (cenarioBase.custoTotalEstrategia - (cenarioBase.saldoInicialTotal || 0) - cenarioBase.totalReajustesPagos) : 0;
     if (baseJurosRef < 0) baseJurosRef = 0;
+    // prazo real = periodoSimulado (inclui offset de meses antes das dívidas começarem)
+    var stratPrazoReal = r.periodoSimulado || r.prazoOriginal;
     cenarios.push({
       tipo: 'strat',
       label: r.nome,
@@ -7513,13 +7580,13 @@ function _renderConsolidado(selectedStrats, resultados, cenarioBase, maxPeriodo,
       jurosTotal: stratJurosCalc,
       totalPago: r.custoTotalEstrategia,
       saldoDevedor: r.saldoInicialTotal,
-      prazo: r.prazoOriginal,
+      prazo: stratPrazoReal,
       nContratos: r.nDividas,
       investFinal: r.patrimonioFinal || 0,
       reservaFinal: r.reservaFinal,
       economiaMeses: r.economiaMeses,
       economiaJuros: hasCenarioBase ? baseJurosRef - stratJurosCalc : 0,
-      quitouEm: r.quitouEm >= 0 ? r.quitouEm + 1 : r.prazoOriginal,
+      quitouEm: r.quitouEm >= 0 ? r.quitouEm + 1 : stratPrazoReal,
       aporteMensal: r.aporteMensal,
       totalAmortExtra: r.totalAmortExtra || 0,
       custoTotalEstrategia: r.custoTotalEstrategia || 0,
