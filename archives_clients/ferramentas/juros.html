@@ -5092,32 +5092,34 @@ function stratGerarCalendario() {
     // Aportes esporádicos vão 100% para amortização (não passam pelo split reserva/amort)
     var sporadicAmort = sporadicMes;
 
-    // CHANGE 3: Check which debts are still active and redistribute
-    // A debt is active if: (1) it has started (m >= _mesOffset) AND (2) saldo > 0
+    // Verificar quais dívidas já começaram E ainda têm saldo
     var algumaAtiva = false;
+    var todasComecaram = true;
     for (var di = 0; di < dividasSel.length; di++) {
-      dividaAtiva[di] = (m >= dividasSel[di]._mesOffset) && (saldosDevedor[di] > 0.01);
+      var jaComecou = (m >= dividasSel[di]._mesOffset);
+      dividaAtiva[di] = jaComecou && (saldosDevedor[di] > 0.01);
       if (dividaAtiva[di]) algumaAtiva = true;
+      if (!jaComecou && saldosDevedor[di] > 0.01) todasComecaram = false;
     }
 
-    // If no debts are active (all not started yet or all paid), 100% goes to reserve
+    // Se NENHUMA dívida começou ainda, 100% vai para reserva (ignora % definido)
     if (!algumaAtiva) {
       pctRes = 100;
       pctAmort = 0;
     }
 
-    // CHANGE 3: Redistribute amortization among active debts proportionally
+    // Redistribuição progressiva de amortização
     if (algumaAtiva && dividasSel.length > 1) {
-      // Check if we have per-month override for per-debt allocation (CHANGE 2)
+      // Check if we have per-month override for per-debt allocation
       var mesAlocOverride = stratState.alocPorDividaMes[m];
       if (mesAlocOverride) {
-        // Use per-month override
         for (var di = 0; di < dividasSel.length; di++) {
           var key = dividasSel[di].origIdx;
           alocEfetiva[di] = mesAlocOverride[key] !== undefined ? mesAlocOverride[key] : dividasSel[di].alocPct;
         }
-      } else {
-        // Auto-redistribute: take original allocation and redistribute proportionally among active debts
+      } else if (todasComecaram) {
+        // TODAS as dívidas já começaram: usar percentuais definidos pelo usuário
+        // redistribuindo entre as que ainda têm saldo
         var totalAlocAtivas = 0;
         for (var di = 0; di < dividasSel.length; di++) {
           if (dividaAtiva[di]) totalAlocAtivas += dividasSel[di].alocPct;
@@ -5127,6 +5129,40 @@ function stratGerarCalendario() {
             alocEfetiva[di] = (dividasSel[di].alocPct / totalAlocAtivas) * 100;
           } else {
             alocEfetiva[di] = 0;
+          }
+        }
+      } else {
+        // NEM TODAS começaram: redistribuição progressiva
+        // Verificar se alguma dívida ativa tem parcela (não-fixa sem parcela)
+        var temParcelaRef = false;
+        for (var di = 0; di < dividasSel.length; di++) {
+          if (dividaAtiva[di] && dividasSel[di].parcela > 0) { temParcelaRef = true; break; }
+        }
+        if (temParcelaRef) {
+          // Distribuir proporcional ao valor total das parcelas (parcela * restantes)
+          var totalParcelasAtivas = 0;
+          for (var di = 0; di < dividasSel.length; di++) {
+            if (dividaAtiva[di]) totalParcelasAtivas += (dividasSel[di].parcela * dividasSel[di].restantes);
+          }
+          for (var di = 0; di < dividasSel.length; di++) {
+            if (dividaAtiva[di] && totalParcelasAtivas > 0) {
+              alocEfetiva[di] = ((dividasSel[di].parcela * dividasSel[di].restantes) / totalParcelasAtivas) * 100;
+            } else {
+              alocEfetiva[di] = 0;
+            }
+          }
+        } else {
+          // Nenhuma dívida ativa tem parcela: distribuir proporcional ao saldo devedor
+          var totalSaldoAtivas = 0;
+          for (var di = 0; di < dividasSel.length; di++) {
+            if (dividaAtiva[di]) totalSaldoAtivas += saldosDevedor[di];
+          }
+          for (var di = 0; di < dividasSel.length; di++) {
+            if (dividaAtiva[di] && totalSaldoAtivas > 0) {
+              alocEfetiva[di] = (saldosDevedor[di] / totalSaldoAtivas) * 100;
+            } else {
+              alocEfetiva[di] = 0;
+            }
           }
         }
       }
@@ -6590,15 +6626,18 @@ function _analiseRunStrat(strat, rentabRefFallback) {
     var pctAmort = 100 - pctRes;
     var parcelaTotalMesA = 0;
 
-    // Check active debts (must have started AND have saldo > 0)
+    // Verificar quais dívidas já começaram E ainda têm saldo
     var algumaAtiva = false;
+    var todasComecaram = true;
     for (var di = 0; di < dividasSel.length; di++) {
-      dividaAtiva[di] = (m >= dividasSel[di]._mesOffset) && (saldosDevedor[di] > 0.01);
+      var jaComecou = (m >= dividasSel[di]._mesOffset);
+      dividaAtiva[di] = jaComecou && (saldosDevedor[di] > 0.01);
       if (dividaAtiva[di]) algumaAtiva = true;
+      if (!jaComecou && saldosDevedor[di] > 0.01) todasComecaram = false;
     }
     if (!algumaAtiva) { pctRes = 100; pctAmort = 0; }
 
-    // Redistribute
+    // Redistribuição progressiva de amortização
     if (algumaAtiva && dividasSel.length > 1) {
       var mesAlocOverride = alocPorDividaMes[m];
       if (mesAlocOverride) {
@@ -6606,13 +6645,37 @@ function _analiseRunStrat(strat, rentabRefFallback) {
           var key = dividasSel[di].origIdx;
           alocEfetiva[di] = mesAlocOverride[key] !== undefined ? mesAlocOverride[key] : dividasSel[di].alocPct;
         }
-      } else {
+      } else if (todasComecaram) {
+        // TODAS começaram: usar percentuais definidos, redistribuindo entre as com saldo
         var totalAlocAtivas = 0;
         for (var di = 0; di < dividasSel.length; di++) {
           if (dividaAtiva[di]) totalAlocAtivas += dividasSel[di].alocPct;
         }
         for (var di = 0; di < dividasSel.length; di++) {
           alocEfetiva[di] = (dividaAtiva[di] && totalAlocAtivas > 0) ? (dividasSel[di].alocPct / totalAlocAtivas) * 100 : 0;
+        }
+      } else {
+        // NEM TODAS começaram: redistribuição progressiva proporcional
+        var temParcelaRef = false;
+        for (var di = 0; di < dividasSel.length; di++) {
+          if (dividaAtiva[di] && dividasSel[di].parcela > 0) { temParcelaRef = true; break; }
+        }
+        if (temParcelaRef) {
+          var totalParcelasAtivas = 0;
+          for (var di = 0; di < dividasSel.length; di++) {
+            if (dividaAtiva[di]) totalParcelasAtivas += (dividasSel[di].parcela * dividasSel[di].restantes);
+          }
+          for (var di = 0; di < dividasSel.length; di++) {
+            alocEfetiva[di] = (dividaAtiva[di] && totalParcelasAtivas > 0) ? ((dividasSel[di].parcela * dividasSel[di].restantes) / totalParcelasAtivas) * 100 : 0;
+          }
+        } else {
+          var totalSaldoAtivas = 0;
+          for (var di = 0; di < dividasSel.length; di++) {
+            if (dividaAtiva[di]) totalSaldoAtivas += saldosDevedor[di];
+          }
+          for (var di = 0; di < dividasSel.length; di++) {
+            alocEfetiva[di] = (dividaAtiva[di] && totalSaldoAtivas > 0) ? (saldosDevedor[di] / totalSaldoAtivas) * 100 : 0;
+          }
         }
       }
     } else if (dividasSel.length === 1) {
