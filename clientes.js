@@ -3027,9 +3027,19 @@ function openWhatsApp(clienteId) {
   if (!cliente) return;
   let whatsapp = cliente._dadosCadastrais?.whatsapp || cliente.whatsapp || '';
   if (!whatsapp) { alert('WhatsApp não cadastrado.'); return; }
-  whatsapp = whatsapp.replace(/^\+/, '');
-  const storageKey = 'hv_msg_' + clienteId;
-  const mensagem = localStorage.getItem(storageKey) || cliente.mensagem || '';
+  // Remove TUDO que não for dígito (espaços, hífens, parênteses, +, pontos)
+  whatsapp = whatsapp.replace(/\D/g, '');
+  // Garantir que começa com 55 (Brasil) se não tiver código de país
+  if (whatsapp.length === 10 || whatsapp.length === 11) whatsapp = '55' + whatsapp;
+  // Pegar texto diretamente do textarea do modal (se estiver aberto) ou do localStorage
+  const mensagemTextarea = document.getElementById('mensagem-texto');
+  let mensagem = '';
+  if (mensagemTextarea && mensagemTextarea.value.trim()) {
+    mensagem = mensagemTextarea.value.trim();
+  } else {
+    const storageKey = 'hv_msg_' + clienteId;
+    mensagem = localStorage.getItem(storageKey) || cliente.mensagem || '';
+  }
   const url = `https://api.whatsapp.com/send?phone=${whatsapp}&text=${encodeURIComponent(mensagem)}`;
   window.open(url, '_blank');
 }
