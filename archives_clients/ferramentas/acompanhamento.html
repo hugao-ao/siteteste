@@ -1980,8 +1980,8 @@ function openProximaReuniao() {
   var html = '<div style="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:center;justify-content:center;overflow-y:auto;" id="pr-modal-overlay">';
   html += '<div style="background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:1.5rem;width:90%;max-width:500px;max-height:90vh;overflow-y:auto;margin:1rem;">';
   html += '<h3 style="color:var(--primary);margin:0 0 1rem;">📅 Próxima Reunião</h3>';
-  html += '<label style="font-size:0.8rem;color:var(--muted);display:block;margin-bottom:0.3rem;">Data:</label>';
-  html += '<input type="date" id="pr-data" value="' + dataAtual + '" style="width:100%;padding:0.5rem;border-radius:6px;border:1px solid var(--border);background:var(--bg);color:var(--fg);margin-bottom:0.8rem;">';
+  html += '<label style="font-size:0.8rem;color:var(--muted);display:block;margin-bottom:0.3rem;">Mês da reunião:</label>';
+  html += '<input type="month" id="pr-data" value="' + dataAtual + '" style="width:100%;padding:0.5rem;border-radius:6px;border:1px solid var(--border);background:var(--bg);color:var(--fg);margin-bottom:0.8rem;">';
   html += '<label style="font-size:0.8rem;color:var(--muted);display:block;margin-bottom:0.3rem;">Descrição / Pauta (opcional):</label>';
   html += '<textarea id="pr-obs" placeholder="Descreva os assuntos da próxima reunião..." style="width:100%;padding:0.5rem;border-radius:6px;border:1px solid var(--border);background:var(--bg);color:var(--fg);margin-bottom:1rem;min-height:80px;resize:vertical;font-family:inherit;font-size:0.9rem;">' + escHtml(obsAtual) + '</textarea>';
   // Micro Passos - lista selecionável
@@ -2030,7 +2030,7 @@ function closeProximaReuniao() {
 
 function salvarProximaReuniao() {
   var data = document.getElementById('pr-data').value;
-  if (!data) { alert('Informe a data da próxima reunião.'); return; }
+  if (!data) { alert('Informe o mês da próxima reunião.'); return; }
   var obs = document.getElementById('pr-obs').value.trim();
   var selMicros = [];
   document.querySelectorAll('.pr-micro-cb[data-checked="1"]').forEach(function(cb) { selMicros.push(parseInt(cb.value)); });
@@ -2081,16 +2081,25 @@ function renderProximaReuniao() {
   box.className = 'proxima-reuniao-box';
   box.style.flexDirection = 'column';
   box.style.alignItems = 'stretch';
-  var d = proximaReuniao.data.split('-');
-  var dataFmt = d[2] + '/' + d[1] + '/' + d[0];
+  var partes = proximaReuniao.data.split('-');
+  var meses = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  var mesIdx = parseInt(partes[1]) - 1;
+  var anoVal = parseInt(partes[0]);
+  var dataFmt = meses[mesIdx] + ' de ' + anoVal;
   var hoje = new Date(); hoje.setHours(0,0,0,0);
-  var reuniaoDate = new Date(proximaReuniao.data + 'T00:00:00');
-  var diffDias = Math.round((reuniaoDate - hoje) / 86400000);
+  // Calcular dias até o 1º dia do mês da reunião ou dias após o último dia do mês
+  var primeiroDia = new Date(anoVal, mesIdx, 1);
+  var ultimoDia = new Date(anoVal, mesIdx + 1, 0);
   var diffTxt = '';
-  if (diffDias === 0) diffTxt = '(Hoje!)';
-  else if (diffDias === 1) diffTxt = '(Amanhã)';
-  else if (diffDias > 1) diffTxt = '(em ' + diffDias + ' dias)';
-  else diffTxt = '(' + Math.abs(diffDias) + ' dia(s) atrás)';
+  if (hoje < primeiroDia) {
+    var diffDias = Math.round((primeiroDia - hoje) / 86400000);
+    diffTxt = '(em ' + diffDias + ' dias)';
+  } else if (hoje > ultimoDia) {
+    var diffDias = Math.round((hoje - ultimoDia) / 86400000);
+    diffTxt = '(' + diffDias + ' dia(s) atrás)';
+  } else {
+    diffTxt = '(Este mês!)';
+  }
   var html = '<div style="display:flex;align-items:center;justify-content:space-between;">';
   html += '<div class="pr-info">';
   html += '<span class="pr-icon">📅</span>';
