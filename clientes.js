@@ -812,7 +812,7 @@ async function _loadUltimaReuniaoData(clienteId, body) {
             html += '</select></div></div>';
             html += '<label>Humor Financeiro (1-5)</label><div id="reu-ult-stars" style="display:flex;gap:0.4rem;margin-bottom:0.5rem;">';
             var humor = ultima.humor || 3;
-            for (var s=1;s<=5;s++) { html += '<span class="star-btn'+(s<=humor?' active':'')+'" data-val="'+s+'" onclick="_setReuStar(this,\'reu-ult-stars\')">★</span>'; }
+            for (var s=1;s<=5;s++) { html += '<span class="star-btn'+(s<=humor?' active':'')+'" data-val="'+s+'" onclick="_setReuStar(this,\'reu-ult-stars\')">\u2605</span>'; }
             html += '</div>';
             html += '<div class="section-title">Indicadores na Data</div>';
             html += '<div class="sub-grid-3">';
@@ -826,10 +826,27 @@ async function _loadUltimaReuniaoData(clienteId, body) {
             html += '</div><div class="sub-grid-3">';
             html += '<div><label>Saldo do Fluxo</label><input type="text" id="reu-ult-saldo_fluxo" value="' + _fmtBRLInput(ultima.saldo_fluxo) + '" oninput="_maskBRLDash(this)"></div>';
             html += '</div>';
+            // Perfil Financeiro + Questões Pertinentes
+            html += '<div class="section-title" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;">Questões Pertinentes';
+            html += '<select id="reu-ult-perfil-financeiro" style="font-size:0.8rem;padding:0.3rem 0.5rem;border-radius:6px;border:1px solid rgba(212,175,55,0.2);background:#021C0E;color:#E8F5E9;">';
+            var perfilOpts = {'':'Perfil Financeiro...','dividas_impagaveis':'\ud83d\udea8 D\u00edvidas Impag\u00e1veis','dividas_pagaveis':'\u26a0\ufe0f D\u00edvidas Pag\u00e1veis','zero_a_zero_obrigatorio':'\ud83d\udd12 Zero a Zero Obrigat\u00f3rio','zero_a_zero_opcional':'\ud83c\udfad Zero a Zero Opcional','fluxo_positivo':'\ud83d\udca7 Fluxo Positivo','poupador':'\ud83d\udc37 Poupador','investidor_amador':'\ud83d\udcc8 Investidor-Amador','investidor_planejador':'\ud83c\udfaf Investidor-Planejador'};
+            var perfilAtual = ultima.perfil_financeiro || '';
+            for (var pk in perfilOpts) { html += '<option value="'+pk+'"'+(perfilAtual===pk?' selected':'')+'>'+perfilOpts[pk]+'</option>'; }
+            html += '</select></div>';
+            html += '<div id="reu-ult-questoes-resumo" style="font-size:0.78rem;color:#A0B8A6;margin-bottom:0.5rem;cursor:pointer;" onclick="var d=document.getElementById(\'reu-ult-questoes-details\');if(d)d.open=!d.open;"></div>';
+            html += '<details id="reu-ult-questoes-details">';
+            html += '<summary style="cursor:pointer;font-size:0.8rem;font-weight:600;color:#d4af37;padding:0.3rem 0;">Expandir quest\u00f5es</summary>';
+            html += '<div id="reu-ult-questoes-container" style="max-height:350px;overflow-y:auto;margin-top:0.5rem;"></div>';
+            html += '</details>';
             html += '<div class="section-title">Resumo / Notas</div>';
-            html += '<textarea id="reu-ult-resumo" rows="3">' + (ultima.resumo || '') + '</textarea>';
+            html += '<textarea id="reu-ult-resumo" rows="3">' + sanitizeInput(ultima.resumo || '') + '</textarea>';
         }
         body.innerHTML = html;
+        // Render questoes table if ultima exists
+        if (ultima) {
+            _reuQuestoesState = ultima.questoes ? JSON.parse(JSON.stringify(ultima.questoes)) : {};
+            _renderReuQuestoesTable();
+        }
     } catch(e) {
         body.innerHTML = '<p style="color:#ef4444;">Erro ao carregar: ' + e.message + '</p>';
     }
@@ -839,13 +856,49 @@ async function _loadProximaReuniaoData(clienteId, body) {
     try {
         const { data, error } = await supabase.from('ferramentas_dados').select('dados').eq('cliente_id', clienteId).eq('ferramenta', 'acompanhamento').maybeSingle();
         if (error) throw error;
-        _reuModalDados = data ? data.dados : { reunioes: [], proximaReuniao: null };
+        _reuModalDados = data ? data.dados : { reunioes: [], proximaReuniao: null, microPassos: [], macroPassos: [] };
         const prox = _reuModalDados.proximaReuniao || {};
+        var selMicros = (prox.micros && Array.isArray(prox.micros)) ? prox.micros : [];
+        var selMacros = (prox.macros && Array.isArray(prox.macros)) ? prox.macros : [];
+        var microPassos = Array.isArray(_reuModalDados.microPassos) ? _reuModalDados.microPassos : [];
+        var macroPassos = Array.isArray(_reuModalDados.macroPassos) ? _reuModalDados.macroPassos : [];
         let html = '';
         html += '<label>Mês da reunião:</label>';
         html += '<input type="month" id="reu-prox-mes" value="' + (prox.data || '') + '">';
         html += '<label>Descrição / Pauta (opcional):</label>';
-        html += '<textarea id="reu-prox-obs" rows="3" placeholder="Descreva os assuntos da próxima reunião...">' + (prox.obs || '') + '</textarea>';
+        html += '<textarea id="reu-prox-obs" rows="3" placeholder="Descreva os assuntos da próxima reunião...">' + sanitizeInput(prox.obs || '') + '</textarea>';
+        // Micro Passos - lista selecionável
+        if (microPassos.length > 0) {
+            html += '<div class="section-title">Micro Passos a Abordar</div>';
+            html += '<div class="pr-select-list">';
+            microPassos.forEach(function(m, i) {
+                var isSelected = selMicros.indexOf(m.id) >= 0;
+                var selClass = isSelected ? ' pr-item-selected' : '';
+                var label = m.desc || m.nome || m.texto || ('Micro #' + (i+1));
+                html += '<div class="pr-select-item' + selClass + '" data-type="micro" data-id="' + m.id + '" onclick="_toggleReuPrItem(this)">';
+                html += '<span class="pr-item-check">' + (isSelected ? '\u2713' : '') + '</span>';
+                html += '<span class="pr-item-label">' + sanitizeInput(label) + '</span>';
+                html += '<input type="hidden" class="pr-micro-cb" value="' + m.id + '"' + (isSelected ? ' data-checked="1"' : '') + '>';
+                html += '</div>';
+            });
+            html += '</div>';
+        }
+        // Macro Estratégias - lista selecionável
+        if (macroPassos.length > 0) {
+            html += '<div class="section-title">Estratégias Macro a Abordar</div>';
+            html += '<div class="pr-select-list">';
+            macroPassos.forEach(function(m, i) {
+                var isSelected = selMacros.indexOf(m.id) >= 0;
+                var selClass = isSelected ? ' pr-item-selected' : '';
+                var label = m.nome || m.desc || m.texto || ('Macro #' + (i+1));
+                html += '<div class="pr-select-item' + selClass + '" data-type="macro" data-id="' + m.id + '" onclick="_toggleReuPrItem(this)">';
+                html += '<span class="pr-item-check">' + (isSelected ? '\u2713' : '') + '</span>';
+                html += '<span class="pr-item-label">' + sanitizeInput(label) + '</span>';
+                html += '<input type="hidden" class="pr-macro-cb" value="' + m.id + '"' + (isSelected ? ' data-checked="1"' : '') + '>';
+                html += '</div>';
+            });
+            html += '</div>';
+        }
         body.innerHTML = html;
     } catch(e) {
         body.innerHTML = '<p style="color:#ef4444;">Erro ao carregar: ' + e.message + '</p>';
@@ -857,6 +910,124 @@ function _setReuStar(el, containerId) {
     var stars = document.getElementById(containerId).querySelectorAll('.star-btn');
     stars.forEach(function(s) { s.classList.toggle('active', parseInt(s.dataset.val) <= val); });
 }
+
+function _toggleReuPrItem(el) {
+    var isSelected = el.classList.contains('pr-item-selected');
+    var hiddenInput = el.querySelector('input[type="hidden"]');
+    if (isSelected) {
+        el.classList.remove('pr-item-selected');
+        el.querySelector('.pr-item-check').textContent = '';
+        if (hiddenInput) hiddenInput.removeAttribute('data-checked');
+    } else {
+        el.classList.add('pr-item-selected');
+        el.querySelector('.pr-item-check').textContent = '\u2713';
+        if (hiddenInput) hiddenInput.setAttribute('data-checked', '1');
+    }
+}
+
+// Questões Pertinentes data for Última Reunião modal
+var _reuQuestoesState = {};
+var QUESTOES_PERTINENTES = [
+  {id:'q_investimentos_1', secao:'patrimonio-liquido', texto:'Possui reserva de longo prazo adequada?'},
+  {id:'q_investimentos_2', secao:'patrimonio-liquido', texto:'Possui reserva de emerg\u00eancia adequada?'},
+  {id:'q_investimentos_3', secao:'patrimonio-liquido', texto:'Possui reservas espec\u00edficas para cada objetivo?'},
+  {id:'q_investimentos_4', secao:'patrimonio-liquido', texto:'A distribui\u00e7\u00e3o dos recursos est\u00e1 adequada ao perfil de investidor?'},
+  {id:'q_dividas_1', secao:'dividas', texto:'\u00c9 livre de d\u00edvidas?'},
+  {id:'q_dividas_2', secao:'dividas', texto:'Sensa\u00e7\u00e3o que as parcelas est\u00e3o adequadas (n\u00e3o atrapalham) o fluxo de caixa?'},
+  {id:'q_sucessao_1', secao:'sucessao', texto:'Definiu como ser\u00e1 a distribui\u00e7\u00e3o do patrim\u00f4nio para os (futuros) herdeiros?'},
+  {id:'q_sucessao_2', secao:'sucessao', texto:'Patrim\u00f4nio est\u00e1 blindado de forma a garantir exatamente a sucess\u00e3o desejada?'},
+  {id:'q_sucessao_3', secao:'sucessao', texto:'Tem estrat\u00e9gia em andamento para desonerar os Herdeiros?'},
+  {id:'q_patrimonio_1', secao:'produtos-protecao', texto:'J\u00e1 tem prote\u00e7\u00e3o contra preju\u00edzos de todos os patrim\u00f4nios?'},
+  {id:'q_patrimonio_2', secao:'produtos-protecao', texto:'Melhor custo benef\u00edcio da prote\u00e7\u00e3o dos patrim\u00f4nios?'},
+  {id:'q_protecao_5', secao:'produtos-protecao', texto:'Possui garantia da for\u00e7a de trabalho?'},
+  {id:'q_protecao_6', secao:'produtos-protecao', texto:'Melhor custo benef\u00edcio da garantia do trabalho?'},
+  {id:'q_protecao_7', secao:'produtos-protecao', texto:'Prote\u00e7\u00e3o adequada para sa\u00fade das PESSOAS?'},
+  {id:'q_protecao_8', secao:'produtos-protecao', texto:'Melhor custo benef\u00edcio da prote\u00e7\u00e3o sa\u00fade?'},
+  {id:'q_protecao_9', secao:'produtos-protecao', texto:'Prote\u00e7\u00e3o adequada para sa\u00fade dos PETs?'},
+  {id:'q_ir_1', secao:'ir', texto:'Recebe os recursos da forma mais vantajosa poss\u00edvel?'},
+  {id:'q_ir_2', secao:'ir', texto:'Faz declara\u00e7\u00e3o da forma mais adequada para o perfil?'},
+  {id:'q_ir_3', secao:'ir', texto:'Investe visando reduzir o pagamento ou aumentar a restitui\u00e7\u00e3o?'},
+  {id:'q_cartoes_1', secao:'contas-cartoes', texto:'Possui o cart\u00e3o mais adequado aos objetivos?'},
+  {id:'q_cartoes_2', secao:'contas-cartoes', texto:'Paga tudo que consegue no cart\u00e3o de cr\u00e9dito?'},
+  {id:'q_cartoes_3', secao:'contas-cartoes', texto:'Concentra os gastos em apenas um cart\u00e3o de cr\u00e9dito?'},
+  {id:'q_cartoes_4', secao:'contas-cartoes', texto:'Faz uso estrat\u00e9gico de compras bonificadas?'},
+  {id:'q_cartoes_5', secao:'contas-cartoes', texto:'\u00c9 livre de taxas de conta / anuidades de cart\u00e3o / outras desnecess\u00e1rias?'},
+  {id:'q_protecao_1', secao:'fluxo-caixa', texto:'100% da renda \u00e9 independente do trabalho?'},
+  {id:'q_protecao_2', secao:'fluxo-caixa', texto:'80% ou mais da renda \u00e9 est\u00e1vel?'},
+  {id:'q_protecao_3', secao:'fluxo-caixa', texto:'Consegue aumentar a renda no curto/m\u00e9dio prazo conforme a necessidade?'},
+  {id:'q_protecao_4', secao:'fluxo-caixa', texto:'H\u00e1 mais de uma fonte de renda?'},
+  {id:'q_fluxo_1', secao:'fluxo-caixa', texto:'Planeja os gastos anuais antecipadamente?'},
+  {id:'q_fluxo_2', secao:'fluxo-caixa', texto:'Confere o desempenho do fluxo todo m\u00eas?'},
+  {id:'q_fluxo_3', secao:'fluxo-caixa', texto:'Acompanha o fluxo diariamente/semanalmente?'},
+  {id:'q_fluxo_4', secao:'fluxo-caixa', texto:'Poupa todo m\u00eas?'},
+  {id:'q_fluxo_5', secao:'fluxo-caixa', texto:'Poupa o m\u00ednimo Ideal?'},
+  {id:'q_objetivos_1', secao:'objetivos', texto:'Possui Plano de a\u00e7\u00e3o e metas bem definidos para cada objetivo?'},
+  {id:'q_objetivos_2', secao:'objetivos', texto:'J\u00e1 tinha definido as metas de ac\u00famulo para a aposentadoria?'},
+  {id:'q_objetivos_5', secao:'objetivos', texto:'Conseguir\u00e1 atingir os objetivos no prazo desejado?'}
+];
+var SECAO_NOMES_QP = {'patrimonio-liquido':'Patrim\u00f4nio Total','dividas':'D\u00edvidas','sucessao':'Sucess\u00e3o','produtos-protecao':'Produtos & Prote\u00e7\u00e3o','ir':'Imposto de Renda','contas-cartoes':'Contas & Cart\u00f5es','fluxo-caixa':'Fluxo de Caixa','objetivos':'Objetivos'};
+
+function _renderReuQuestoesTable() {
+    var container = document.getElementById('reu-ult-questoes-container');
+    if (!container) return;
+    var secoes = {};
+    QUESTOES_PERTINENTES.forEach(function(q) {
+        if (!secoes[q.secao]) secoes[q.secao] = [];
+        secoes[q.secao].push(q);
+    });
+    var html = '<table class="qp-table"><thead><tr><th style="width:60%">Quest\u00e3o</th><th style="width:40%;text-align:center;">Resposta</th></tr></thead><tbody>';
+    var secaoOrder = ['patrimonio-liquido','dividas','sucessao','produtos-protecao','ir','contas-cartoes','fluxo-caixa','objetivos'];
+    secaoOrder.forEach(function(secaoId) {
+        if (!secoes[secaoId]) return;
+        html += '<tr class="qp-secao-row"><td colspan="2">' + (SECAO_NOMES_QP[secaoId] || secaoId) + '</td></tr>';
+        secoes[secaoId].forEach(function(q) {
+            var resp = _reuQuestoesState[q.id] || '';
+            html += '<tr>';
+            html += '<td style="line-height:1.3;">' + sanitizeInput(q.texto) + '</td>';
+            html += '<td style="text-align:center;"><div class="qp-btns" style="justify-content:center;">';
+            html += '<button type="button" class="qp-btn qp-sim ' + (resp === 'SIM' ? 'active' : '') + '" onclick="_setReuQP(\'' + q.id + '\',\'SIM\')">S</button>';
+            html += '<button type="button" class="qp-btn qp-nao ' + (resp === 'N\u00c3O' ? 'active' : '') + '" onclick="_setReuQP(\'' + q.id + '\',\'N\u00c3O\')">N</button>';
+            html += '<button type="button" class="qp-btn qp-na ' + (resp === 'N/A' ? 'active' : '') + '" onclick="_setReuQP(\'' + q.id + '\',\'N/A\')">&mdash;</button>';
+            html += '</div></td>';
+            html += '</tr>';
+        });
+    });
+    html += '</tbody></table>';
+    container.innerHTML = html;
+    _updateReuQuestoesResumo();
+}
+
+function _updateReuQuestoesResumo() {
+    var resumoEl = document.getElementById('reu-ult-questoes-resumo');
+    if (!resumoEl) return;
+    var qSim = 0, qNao = 0, qNA = 0, qPend = 0;
+    Object.values(_reuQuestoesState).forEach(function(v) {
+        if (v === 'SIM') qSim++;
+        else if (v === 'N\u00c3O') qNao++;
+        else if (v === 'N/A') qNA++;
+        else qPend++;
+    });
+    var total = QUESTOES_PERTINENTES.length;
+    var respondidas = qSim + qNao + qNA;
+    var pend = total - respondidas;
+    var pct = (qSim + qNao) > 0 ? Math.round((qSim / (qSim + qNao)) * 100) : 0;
+    resumoEl.innerHTML = '<span style="color:#22c55e">\u2714 ' + qSim + ' SIM</span> &nbsp;|&nbsp; <span style="color:#ef4444">\u2718 ' + qNao + ' N\u00c3O</span> &nbsp;|&nbsp; <span style="color:#A0B8A6">' + qNA + ' N/A</span> &nbsp;|&nbsp; <span style="color:#f59e0b">' + pend + ' pendentes</span> &nbsp;(' + respondidas + '/' + total + ' respondidas, ' + pct + '% positivo)';
+}
+
+function _setReuQP(qId, valor) {
+    if (_reuQuestoesState[qId] === valor) {
+        _reuQuestoesState[qId] = '';
+    } else {
+        _reuQuestoesState[qId] = valor;
+    }
+    _renderReuQuestoesTable();
+}
+
+// Expose to window for inline onclick handlers in dynamically generated HTML
+window._setReuStar = _setReuStar;
+window._toggleReuPrItem = _toggleReuPrItem;
+window._setReuQP = _setReuQP;
+window._maskBRLDash = _maskBRLDash;
 
 function _fmtBRLInput(val) {
     if (val === null || val === undefined || val === '' || val === 0) return '';
@@ -893,6 +1064,7 @@ async function _saveUltimaReuniao() {
     var stars = document.getElementById('reu-ult-stars');
     var humor = 3;
     if (stars) { var actives = stars.querySelectorAll('.star-btn.active'); humor = actives.length; }
+    var perfilEl = document.getElementById('reu-ult-perfil-financeiro');
     reunioes[0] = Object.assign(reunioes[0], {
         data: dataEl.value,
         tipo: document.getElementById('reu-ult-tipo').value,
@@ -904,7 +1076,9 @@ async function _saveUltimaReuniao() {
         dividas: _parseBRDash(document.getElementById('reu-ult-dividas')?.value),
         poupanca: _parseBRDash(document.getElementById('reu-ult-poupanca')?.value),
         saldo_fluxo: _parseBRDash(document.getElementById('reu-ult-saldo_fluxo')?.value),
-        resumo: document.getElementById('reu-ult-resumo')?.value || ''
+        resumo: document.getElementById('reu-ult-resumo')?.value || '',
+        perfil_financeiro: perfilEl ? perfilEl.value : '',
+        questoes: JSON.parse(JSON.stringify(_reuQuestoesState))
     });
     _reuModalDados.reunioes = reunioes;
     try {
@@ -928,9 +1102,15 @@ async function _saveProximaReuniao() {
     if (!_reuModalClienteId || !_reuModalDados) return;
     var mesEl = document.getElementById('reu-prox-mes');
     var obsEl = document.getElementById('reu-prox-obs');
+    var selMicros = [];
+    document.querySelectorAll('.pr-micro-cb[data-checked="1"]').forEach(function(cb) { selMicros.push(parseInt(cb.value)); });
+    var selMacros = [];
+    document.querySelectorAll('.pr-macro-cb[data-checked="1"]').forEach(function(cb) { selMacros.push(parseInt(cb.value)); });
     _reuModalDados.proximaReuniao = {
         data: mesEl ? mesEl.value : '',
-        obs: obsEl ? obsEl.value : ''
+        obs: obsEl ? obsEl.value : '',
+        micros: selMicros,
+        macros: selMacros
     };
     try {
         const { error } = await supabase.from('ferramentas_dados').upsert({
