@@ -1366,13 +1366,15 @@ function renderItemsTable() {
     var gid = 'grp-' + _groupIdx;
     return '<tr class="group-header" data-group="' + gid + '" data-cat-key="' + (catKey || '') + '">' +
       '<td style="text-align:center;"><input type="checkbox" class="cat-select-all-cb" onchange="toggleCategoryCheck(this,\'' + gid + '\')" title="Selecionar/Desmarcar todos desta categoria"></td>' +
-      '<td colspan="13" style="color:' + color + ';display:flex;align-items:center;gap:0.5rem;">' + label +
-      ' <span class="cat-sort-btns" style="margin-left:auto;display:inline-flex;gap:0.2rem;">' +
-        '<button class="btn btn-ghost btn-sm" style="font-size:0.65rem;padding:0.1rem 0.3rem;" onclick="sortCategoryGroup(this,\'' + gid + '\',\'nome\')" title="Ordenar por Nome">Nome ↕</button>' +
-        '<button class="btn btn-ghost btn-sm" style="font-size:0.65rem;padding:0.1rem 0.3rem;" onclick="sortCategoryGroup(this,\'' + gid + '\',\'valor\')" title="Ordenar por Valor">Valor ↕</button>' +
-        '<button class="btn btn-ghost btn-sm" style="font-size:0.65rem;padding:0.1rem 0.3rem;" onclick="sortCategoryGroup(this,\'' + gid + '\',\'importancia\')" title="Ordenar por Importância">Imp ↕</button>' +
-        '<button class="btn btn-ghost btn-sm" style="font-size:0.65rem;padding:0.1rem 0.3rem;" onclick="sortCategoryGroup(this,\'' + gid + '\',\'conforto\')" title="Ordenar por Conforto">Conf ↕</button>' +
-      '</span>' +
+      '<td colspan="13" style="color:' + color + ';">' +
+        '<span style="display:inline-flex;align-items:center;gap:0.5rem;width:100%;">' + label +
+        ' <span class="cat-sort-btns" style="margin-left:auto;display:inline-flex;gap:0.2rem;">' +
+          '<button class="btn btn-ghost btn-sm" style="font-size:0.65rem;padding:0.1rem 0.3rem;" onclick="sortCategoryGroup(this,\'' + gid + '\',\'nome\')" title="Ordenar por Nome">Nome ↕</button>' +
+          '<button class="btn btn-ghost btn-sm" style="font-size:0.65rem;padding:0.1rem 0.3rem;" onclick="sortCategoryGroup(this,\'' + gid + '\',\'valor\')" title="Ordenar por Valor">Valor ↕</button>' +
+          '<button class="btn btn-ghost btn-sm" style="font-size:0.65rem;padding:0.1rem 0.3rem;" onclick="sortCategoryGroup(this,\'' + gid + '\',\'importancia\')" title="Ordenar por Importância">Imp ↕</button>' +
+          '<button class="btn btn-ghost btn-sm" style="font-size:0.65rem;padding:0.1rem 0.3rem;" onclick="sortCategoryGroup(this,\'' + gid + '\',\'conforto\')" title="Ordenar por Conforto">Conf ↕</button>' +
+        '</span>' +
+        '</span>' +
       '</td></tr>';
   }
 
