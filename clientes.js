@@ -393,7 +393,7 @@ async function loadClients(filterProject = null) {
     }
 
     try {
-        clientsTableBody.innerHTML = '<tr><td colspan="17">Carregando clientes...</td></tr>';
+        clientsTableBody.innerHTML = '<tr><td colspan="18">Carregando clientes...</td></tr>';
         console.log("clientes.js: Construindo query Supabase...");
         let query = supabase.from('clientes').select('*, formularios_clientes(count), diagnosticos_financeiros(count), plano_ref_valor_total, mensalidade');
 
@@ -424,7 +424,7 @@ async function loadClients(filterProject = null) {
         clientsTableBody.innerHTML = "";
 
         if (!clients || clients.length === 0) {
-            clientsTableBody.innerHTML = '<tr><td colspan="17" style="text-align: center;">Nenhum cliente encontrado.</td></tr>';
+            clientsTableBody.innerHTML = '<tr><td colspan="18" style="text-align: center;">Nenhum cliente encontrado.</td></tr>';
             return;
         }
 
@@ -445,7 +445,7 @@ async function loadClients(filterProject = null) {
         });
 
         if (filteredClients.length === 0) {
-             clientsTableBody.innerHTML = '<tr><td colspan="17" style="text-align: center;">Nenhum cliente visível para você.</td></tr>';
+             clientsTableBody.innerHTML = '<tr><td colspan="18" style="text-align: center;">Nenhum cliente visível para você.</td></tr>';
              return;
         }
 
@@ -569,7 +569,10 @@ async function loadClients(filterProject = null) {
                 <td data-label="Mensalidade" class="mensalidade-cell" data-client-id="${client.id}">
                     <span class="fin-loading">...</span>
                 </td>
-                <td data-label="Últ. Reunião" class="ult-reuniao-cell">
+                <td data-label="Últ. Reunião" class="ult-reuniao-cell" data-client-id="${client.id}">
+                    <span class="dias-loading">...</span>
+                </td>
+                <td data-label="Próx. Reunião" class="prox-reuniao-cell" data-client-id="${client.id}">
                     <span class="dias-loading">...</span>
                 </td>
                 <td data-label="Pend. Consultor" class="pend-cell clickable" data-client-id="${client.id}" data-pend-type="consultor">
@@ -646,13 +649,14 @@ async function loadClients(filterProject = null) {
 
     } catch (error) {
         console.error("clientes.js: Erro GERAL em loadClients:", error);
-        clientsTableBody.innerHTML = `<tr><td colspan="17" style="color: red; text-align: center;">Erro ao carregar clientes: ${error.message}</td></tr>`;
+        clientsTableBody.innerHTML = `<tr><td colspan="18" style="color: red; text-align: center;">Erro ao carregar clientes: ${error.message}</td></tr>`;
     }
 }
 
-// --- Buscar Última Reunião ---
+// --- Buscar Última Reunião e Próxima Reunião ---
 async function fetchUltimaReuniao(clienteId, row) {
     const cell = row.querySelector('.ult-reuniao-cell');
+    const proxCell = row.querySelector('.prox-reuniao-cell');
     if (!cell) return;
     try {
         // 1. Tentar buscar da ferramenta acompanhamento (reuniões salvas)
@@ -663,6 +667,7 @@ async function fetchUltimaReuniao(clienteId, row) {
             .eq('ferramenta', 'acompanhamento')
             .maybeSingle();
 
+        let ultimaOk = false;
         if (!acompError && acompData && acompData.dados) {
             const dados = acompData.dados;
             // reunioes array sorted desc - first is most recent
@@ -671,31 +676,73 @@ async function fetchUltimaReuniao(clienteId, row) {
                 if (ultimaData) {
                     const dias = calcDiasDesde(ultimaData);
                     cell.innerHTML = `<span class="dias-num">${dias}</span><span class="dias-label">dia${dias !== 1 ? 's' : ''}</span>`;
-                    return;
+                    ultimaOk = true;
                 }
+            }
+            // Próxima reunião
+            if (proxCell && dados.proximaReuniao && dados.proximaReuniao.data) {
+                const prData = dados.proximaReuniao.data; // 'YYYY-MM' ou 'YYYY-MM-DD'
+                const partes = prData.split('-');
+                const anoVal = parseInt(partes[0]);
+                const mesIdx = parseInt(partes[1]) - 1;
+                const hoje = new Date(); hoje.setHours(0,0,0,0);
+                const primeiroDia = new Date(anoVal, mesIdx, 1);
+                const ultimoDia = new Date(anoVal, mesIdx + 1, 0);
+                let diffDias, cssClass, label;
+                if (hoje < primeiroDia) {
+                    diffDias = Math.round((primeiroDia - hoje) / 86400000);
+                    cssClass = 'futuro';
+                    label = `dia${diffDias !== 1 ? 's' : ''}`;
+                } else if (hoje > ultimoDia) {
+                    diffDias = Math.round((hoje - ultimoDia) / 86400000);
+                    cssClass = 'atrasado';
+                    label = `dia${diffDias !== 1 ? 's' : ''} atrás`;
+                } else {
+                    diffDias = 0;
+                    cssClass = 'este-mes';
+                    label = 'este mês';
+                }
+                const displayVal = diffDias === 0 ? '!' : diffDias;
+                proxCell.innerHTML = `<span class="dias-num ${cssClass}">${displayVal}</span><span class="dias-label">${label}</span>`;
+            } else if (proxCell) {
+                proxCell.innerHTML = '<span style="color:var(--theme-text-muted);">--</span>';
             }
         }
 
-        // 2. Fallback: data de criação do diagnóstico financeiro
-        const { data: diagData, error: diagError } = await supabase
-            .from('diagnosticos_financeiros')
-            .select('created_at')
-            .eq('cliente_id', clienteId)
-            .order('created_at', { ascending: false })
-            .limit(1)
-            .maybeSingle();
+        if (!ultimaOk) {
+            // 2. Fallback: data de criação do diagnóstico financeiro
+            const { data: diagData, error: diagError } = await supabase
+                .from('diagnosticos_financeiros')
+                .select('created_at')
+                .eq('cliente_id', clienteId)
+                .order('created_at', { ascending: false })
+                .limit(1)
+                .maybeSingle();
 
-        if (!diagError && diagData && diagData.created_at) {
-            const dias = calcDiasDesde(diagData.created_at.split('T')[0]);
-            cell.innerHTML = `<span class="dias-num">${dias}</span><span class="dias-label">dia${dias !== 1 ? 's' : ''}</span>`;
-            return;
+            if (!diagError && diagData && diagData.created_at) {
+                const dias = calcDiasDesde(diagData.created_at.split('T')[0]);
+                cell.innerHTML = `<span class="dias-num">${dias}</span><span class="dias-label">dia${dias !== 1 ? 's' : ''}</span>`;
+            } else {
+                cell.innerHTML = '<span style="color:var(--theme-text-muted);">--</span>';
+            }
+            if (proxCell && !proxCell.innerHTML.includes('dias-num')) {
+                proxCell.innerHTML = '<span style="color:var(--theme-text-muted);">--</span>';
+            }
         }
 
-        // 3. Sem dados
-        cell.innerHTML = '<span style="color:var(--theme-text-muted);">--</span>';
+        // Tornar ambas as células clicáveis para abrir o acompanhamento
+        cell.style.cursor = 'pointer';
+        cell.title = 'Abrir Acompanhamento';
+        cell.onclick = function() { openAcompanhamento(clienteId); };
+        if (proxCell) {
+            proxCell.style.cursor = 'pointer';
+            proxCell.title = 'Abrir Acompanhamento';
+            proxCell.onclick = function() { openAcompanhamento(clienteId); };
+        }
     } catch (err) {
         console.warn('fetchUltimaReuniao error for client ' + clienteId, err);
         cell.innerHTML = '<span style="color:var(--theme-text-muted);">--</span>';
+        if (proxCell) proxCell.innerHTML = '<span style="color:var(--theme-text-muted);">--</span>';
     }
 }
 
@@ -705,6 +752,19 @@ function calcDiasDesde(dateStr) {
     const data = new Date(dateStr + 'T00:00:00');
     const diff = Math.floor((hoje - data) / 86400000);
     return Math.max(0, diff);
+}
+
+function openAcompanhamento(clienteId) {
+    // Abre a ferramenta de acompanhamento do cliente diretamente
+    const cliente = allClientes.find(c => c.id === clienteId);
+    if (!cliente) return;
+    const nome = cliente._dadosCadastrais?.nome_completo || cliente.nome || 'Cliente';
+    sessionStorage.setItem('equipe_modo_cliente', 'true');
+    sessionStorage.setItem('cliente_id', clienteId);
+    sessionStorage.setItem('cliente_nome', nome);
+    sessionStorage.setItem('cliente_id_retorno', clienteId);
+    sessionStorage.setItem('retorno_url', 'clientes-dashboard.html');
+    window.location.href = 'archives_clients/ferramentas/acompanhamento.html';
 }
 
 // --- Buscar Pendentes (Consultor e Cliente) ---
@@ -3561,6 +3621,7 @@ async function loadAndRenderLeads(filterProject) {
                 <td data-label="Plano Ref."><span style="color:var(--theme-text-muted);">--</span></td>
                 <td data-label="Mensalidade"><span style="color:var(--theme-text-muted);">--</span></td>
                 <td data-label="Últ. Reunião"><span style="color:var(--theme-text-muted);">--</span></td>
+                <td data-label="Próx. Reunião"><span style="color:var(--theme-text-muted);">--</span></td>
                 <td data-label="Pend. Consultor"><span style="color:var(--theme-text-muted);">--</span></td>
                 <td data-label="Pend. Cliente"><span style="color:var(--theme-text-muted);">--</span></td>
                 <td data-label="Patrimônio"><span style="color:var(--theme-text-muted);">--</span></td>
