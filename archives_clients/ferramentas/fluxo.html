@@ -2334,7 +2334,18 @@ function renderChart(labels, saldoData, poupancaData) {
             var tooltipEl = document.getElementById('chart-tooltip');
             if (!tooltipEl) return;
             var tooltipModel = context.tooltip;
-            if (tooltipModel.opacity === 0) { tooltipEl.style.opacity = '0'; return; }
+            // When chart wants to hide, use delay so user can hover onto tooltip
+            if (tooltipModel.opacity === 0) {
+              if (!tooltipEl._hideTimer) {
+                tooltipEl._hideTimer = setTimeout(function() {
+                  if (!tooltipEl._hovered) tooltipEl.style.opacity = '0';
+                  tooltipEl._hideTimer = null;
+                }, 400);
+              }
+              return;
+            }
+            // Chart is showing tooltip — cancel any pending hide
+            if (tooltipEl._hideTimer) { clearTimeout(tooltipEl._hideTimer); tooltipEl._hideTimer = null; }
             var html = '';
             // Title
             if (tooltipModel.title && tooltipModel.title.length) {
@@ -2410,6 +2421,20 @@ function renderChart(labels, saldoData, poupancaData) {
   });
 
   setChartView(chartView);
+
+  // Setup tooltip hover persistence (so user can scroll it)
+  var tooltipEl = document.getElementById('chart-tooltip');
+  if (tooltipEl && !tooltipEl._listenersAttached) {
+    tooltipEl._listenersAttached = true;
+    tooltipEl.addEventListener('mouseenter', function() {
+      tooltipEl._hovered = true;
+      if (tooltipEl._hideTimer) { clearTimeout(tooltipEl._hideTimer); tooltipEl._hideTimer = null; }
+    });
+    tooltipEl.addEventListener('mouseleave', function() {
+      tooltipEl._hovered = false;
+      tooltipEl.style.opacity = '0';
+    });
+  }
 }
 
 // ============================================================
