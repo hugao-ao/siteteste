@@ -207,6 +207,16 @@
 
   .chart-wrap { position: relative; height: 320px; }
 
+  /* External scrollable tooltip for projection chart */
+  #chart-tooltip { position: absolute; pointer-events: auto; background: #052614; border: 1px solid rgba(212,175,55,0.3); border-radius: 8px; padding: 10px 12px; font-size: 0.75rem; color: #F2E8C9; z-index: 50; max-height: 280px; overflow-y: auto; min-width: 180px; max-width: 320px; box-shadow: 0 4px 12px rgba(0,0,0,0.4); transition: opacity 0.15s; }
+  #chart-tooltip::-webkit-scrollbar { width: 5px; }
+  #chart-tooltip::-webkit-scrollbar-track { background: transparent; }
+  #chart-tooltip::-webkit-scrollbar-thumb { background: rgba(212,175,55,0.3); border-radius: 3px; }
+  #chart-tooltip .tooltip-title { color: #D4AF37; font-weight: 700; margin-bottom: 6px; font-size: 0.78rem; }
+  #chart-tooltip .tooltip-line { margin-bottom: 2px; line-height: 1.5; }
+  #chart-tooltip .tooltip-section { margin-top: 6px; padding-top: 4px; border-top: 1px solid rgba(212,175,55,0.15); color: #A0B8A6; font-weight: 600; font-size: 0.72rem; }
+  #chart-tooltip .tooltip-item { color: #F2E8C9; font-size: 0.72rem; }
+
   .summary-bar { display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.5rem; }
   .summary-item { flex: 1; min-width: 140px; background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem; }
   .summary-item .label { font-size: 0.75rem; color: var(--muted); margin-bottom: 0.3rem; }
@@ -553,6 +563,7 @@
     </div>
     <div class="chart-wrap">
       <canvas id="main-chart"></canvas>
+      <div id="chart-tooltip" style="opacity:0;"></div>
     </div>
 
     <!-- Análise com memória de cálculo -->
@@ -2318,51 +2329,59 @@ function renderChart(labels, saldoData, poupancaData) {
       plugins: {
         legend: { labels: { color: '#F2E8C9', font: { size: 12 } } },
         tooltip: {
-          backgroundColor: '#052614',
-          borderColor: 'rgba(212,175,55,0.3)',
-          borderWidth: 1,
-          titleColor: '#D4AF37',
-          bodyColor: '#F2E8C9',
-          boxPadding: 4,
-          callbacks: {
-            label: function(ctx) { return ctx.dataset.label + ': ' + fmtCurrency(ctx.parsed.y); },
-            afterBody: function(tooltipItems) {
-              if (!tooltipItems || !tooltipItems.length) return [];
-              var idx = tooltipItems[0].dataIndex;
-              var lines = [];
-              // Itens projetados do dia
+          enabled: false,
+          external: function(context) {
+            var tooltipEl = document.getElementById('chart-tooltip');
+            if (!tooltipEl) return;
+            var tooltipModel = context.tooltip;
+            if (tooltipModel.opacity === 0) { tooltipEl.style.opacity = '0'; return; }
+            var html = '';
+            // Title
+            if (tooltipModel.title && tooltipModel.title.length) {
+              html += '<div class="tooltip-title">' + tooltipModel.title[0] + '</div>';
+            }
+            // Dataset lines
+            if (tooltipModel.body) {
+              tooltipModel.body.forEach(function(bodyItem) {
+                bodyItem.lines.forEach(function(line) {
+                  html += '<div class="tooltip-line">' + line + '</div>';
+                });
+              });
+            }
+            // Day items
+            var idx = tooltipModel.dataPoints && tooltipModel.dataPoints.length ? tooltipModel.dataPoints[0].dataIndex : -1;
+            if (idx >= 0) {
               var dayEvts = _chartDailyEvents[idx];
               if (dayEvts && dayEvts.length > 0) {
-                lines.push('');
-                lines.push('── Itens do dia ──');
+                html += '<div class="tooltip-section">── Itens do dia ──</div>';
                 dayEvts.forEach(function(ev) {
                   var sinal = ev.tipo === 'entrada' ? '+' : '-';
-                  var label = ev.nome || 'Item';
-                  lines.push(sinal + ' ' + label + ': ' + fmtCurrency(ev.valor));
+                  html += '<div class="tooltip-item">' + sinal + ' ' + (ev.nome || 'Item') + ': ' + fmtCurrency(ev.valor) + '</div>';
                 });
               }
-              // Itens otimizados (se diferentes)
               var optEvts = _chartDailyEventsOpt[idx];
               if (optEvts && optEvts.length > 0) {
                 var hasDiff = false;
                 if (!dayEvts || dayEvts.length !== optEvts.length) hasDiff = true;
-                else {
-                  for (var k = 0; k < dayEvts.length; k++) {
-                    if (Math.abs(dayEvts[k].valor - optEvts[k].valor) > 0.01) { hasDiff = true; break; }
-                  }
-                }
+                else { for (var k = 0; k < dayEvts.length; k++) { if (Math.abs(dayEvts[k].valor - optEvts[k].valor) > 0.01) { hasDiff = true; break; } } }
                 if (hasDiff) {
-                  lines.push('');
-                  lines.push('── Itens otimizados ──');
+                  html += '<div class="tooltip-section">── Itens otimizados ──</div>';
                   optEvts.forEach(function(ev) {
                     var sinal = ev.tipo === 'entrada' ? '+' : '-';
-                    var label = ev.nome || 'Item';
-                    lines.push(sinal + ' ' + label + ': ' + fmtCurrency(ev.valor));
+                    html += '<div class="tooltip-item">' + sinal + ' ' + (ev.nome || 'Item') + ': ' + fmtCurrency(ev.valor) + '</div>';
                   });
                 }
               }
-              return lines;
             }
+            tooltipEl.innerHTML = html;
+            tooltipEl.style.opacity = '1';
+            var chartArea = context.chart.chartArea;
+            var posX = tooltipModel.caretX;
+            var posY = tooltipModel.caretY;
+            // Keep tooltip within chart bounds
+            if (posX + tooltipEl.offsetWidth + 10 > chartArea.right) posX = posX - tooltipEl.offsetWidth - 10;
+            tooltipEl.style.left = posX + 'px';
+            tooltipEl.style.top = posY + 'px';
           }
         }
       },
@@ -3725,23 +3744,38 @@ function getAdjustedValue(itemIdx, occDate, occNumber) {
       return origVal;
     }
 
-    // Calculate months elapsed from first occurrence
-    var monthsElapsed = occNumber; // approximate: each occurrence = 1 step
+    // Calculate steps elapsed (each occurrence = 1 step)
+    var monthsElapsed = occNumber;
+    var targetVal = origVal * (1 - (adj.targetPct || 0) / 100);
+
     if (adj.gradType === 'pct') {
       var tp = adj.targetPct || 0;
       var ppm = adj.pctPerMonth || 10;
       var totalReduction;
       if (tp >= 0) {
+        // Redução gradativa: valor diminui até atingir targetVal
         totalReduction = Math.min(tp, ppm * monthsElapsed);
       } else {
         // Aumento gradativo (targetPct negativo = aumento)
         totalReduction = Math.max(tp, -(ppm * monthsElapsed));
       }
-      return origVal * (1 - totalReduction / 100);
+      var result = origVal * (1 - totalReduction / 100);
+      // Garantir que não ultrapasse o target (clamp)
+      if (tp >= 0) {
+        return Math.max(result, targetVal);
+      } else {
+        return Math.min(result, targetVal);
+      }
     }
     if (adj.gradType === 'nominal') {
       var totalNominal = (adj.nominalPerMonth || 0) * monthsElapsed;
-      return origVal - totalNominal;
+      var result = origVal - totalNominal;
+      // Clamp: não ultrapassar o target
+      if ((adj.targetPct || 0) >= 0) {
+        return Math.max(result, targetVal);
+      } else {
+        return Math.min(result, targetVal);
+      }
     }
   }
 
@@ -4032,6 +4066,11 @@ function gerarMetas(cenario) {
   var start = period.start, end = period.end;
   var metas = {};
 
+  // Pre-compute global occurrence counter per item across the whole period
+  // This ensures gradativo adjustments progress correctly across months
+  var globalOccCount = {};
+  items.forEach(function(it, idx) { globalOccCount[idx] = 0; });
+
   // Generate monthly budgets per category
   var curMonth = new Date(start.getFullYear(), start.getMonth(), 1);
   var endMonth = new Date(end.getFullYear(), end.getMonth(), 1);
@@ -4048,25 +4087,32 @@ function gerarMetas(cenario) {
     var metaPoupanca = 0;
     items.forEach(function(item, idx) {
       var occs = getOccurrences(item, monthStart, monthEnd);
-      var itemVal = item.valor;
+      var totalVal = 0;
 
       if (cenario === 'otimizado' && scenarioEnabled) {
         var adj = scenarioAdjustments.find(function(sa) { return sa.itemIdx === idx && sa.enabled; });
         if (adj) {
-          var totalAdj = 0;
-          occs.forEach(function(d, i) { totalAdj += getAdjustedValue(idx, d, i); });
-          itemVal = occs.length > 0 ? totalAdj / occs.length : item.valor;
+          occs.forEach(function(d) {
+            totalVal += getAdjustedValue(idx, d, globalOccCount[idx]);
+            globalOccCount[idx]++;
+          });
+        } else {
+          totalVal = occs.length * item.valor;
+          globalOccCount[idx] += occs.length;
         }
+      } else {
+        totalVal = occs.length * item.valor;
+        globalOccCount[idx] += occs.length;
       }
 
       if (item.tipo === 'entrada') {
-        metaEntradas += occs.length * itemVal;
+        metaEntradas += totalVal;
       } else if (item.subtipo === 'poupanca') {
-        metaPoupanca += occs.length * itemVal;
+        metaPoupanca += totalVal;
       } else if (item.subtipo === 'despesa') {
         var cat = item.categoria || 'sem_categoria';
         if (!catTotals[cat]) catTotals[cat] = 0;
-        catTotals[cat] += occs.length * itemVal;
+        catTotals[cat] += totalVal;
       }
     });
 
@@ -4212,34 +4258,50 @@ function renderTracking() {
     html += '<div style="display:flex;gap:1rem;font-size:0.72rem;color:var(--muted);margin-top:0.5rem;"><span>■ Claro = Meta</span><span>■ Escuro = Real</span></div>';
 
   } else if (trackingView === 'table') {
-    // Build per-item metas for the current month
+    // Build per-item metas for the current month using global occurrence counter
     var monthStart = new Date(trackingMonth + '-01T00:00');
     var monthEnd = new Date(monthStart.getFullYear(), monthStart.getMonth() + 1, 0);
     var itemMetasByCat = {}; // { cat: [{nome, meta}] }
     var itemMetasEntradas = []; // [{nome, meta}]
     var itemMetasPoupanca = []; // [{nome, meta}]
+
+    // Compute global occurrence offset: count occurrences from period start to current month start
+    var period = getPeriodDates();
+    var periodStart = period ? period.start : monthStart;
+    var globalOccOffset = {};
+    items.forEach(function(it, idx) {
+      if (periodStart < monthStart) {
+        globalOccOffset[idx] = getOccurrences(it, periodStart, new Date(monthStart.getTime() - 86400000)).length;
+      } else {
+        globalOccOffset[idx] = 0;
+      }
+    });
+
     items.forEach(function(item, idx) {
       var occs = getOccurrences(item, monthStart, monthEnd);
       if (occs.length === 0) return;
-      var itemVal = item.valor;
+      var totalVal = 0;
       // Use optimized value if scenario is active
       if (scenarioEnabled) {
         var adj = scenarioAdjustments.find(function(sa) { return sa.itemIdx === idx && sa.enabled; });
         if (adj) {
-          var totalAdj = 0;
-          occs.forEach(function(d, i) { totalAdj += getAdjustedValue(idx, d, i); });
-          itemVal = occs.length > 0 ? totalAdj / occs.length : item.valor;
+          occs.forEach(function(d, i) {
+            totalVal += getAdjustedValue(idx, d, globalOccOffset[idx] + i);
+          });
+        } else {
+          totalVal = occs.length * item.valor;
         }
+      } else {
+        totalVal = occs.length * item.valor;
       }
-      var metaTotal = occs.length * itemVal;
       if (item.tipo === 'entrada') {
-        itemMetasEntradas.push({ nome: item.nome, meta: metaTotal });
+        itemMetasEntradas.push({ nome: item.nome, meta: totalVal });
       } else if (item.subtipo === 'poupanca') {
-        itemMetasPoupanca.push({ nome: item.nome, meta: metaTotal });
+        itemMetasPoupanca.push({ nome: item.nome, meta: totalVal });
       } else if (item.subtipo === 'despesa') {
         var cat = item.categoria || 'sem_categoria';
         if (!itemMetasByCat[cat]) itemMetasByCat[cat] = [];
-        itemMetasByCat[cat].push({ nome: item.nome, meta: metaTotal });
+        itemMetasByCat[cat].push({ nome: item.nome, meta: totalVal });
       }
     });
 
