@@ -1,0 +1,1286 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gestão de Riscos - MithraSF</title>
+<link rel="stylesheet" href="../assets/style.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="../assets/ferramentas-linkage.js"></script>
+<script src="../assets/importar-diagnostico.js"></script>
+<script src="../assets/layout.js" defer></script>
+<style>
+:root {
+  --bg: #021C0E;
+  --card: #052614;
+  --card2: #0A3520;
+  --fg: #F2E8C9;
+  --muted: #A0B8A6;
+  --primary: #D4AF37;
+  --primary-dim: rgba(212,175,55,0.15);
+  --border: rgba(212,175,55,0.2);
+  --green: #22c55e;
+  --red: #ef4444;
+  --blue: #60a5fa;
+  --purple: #a78bfa;
+  --orange: #fb923c;
+  --teal: #14b8a6;
+  --radius: 10px;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: var(--bg); color: var(--fg); font-family: 'Inter', system-ui, sans-serif; font-size: 14px; min-height: 100vh; }
+
+.page { max-width: 1200px; margin: 0 auto; padding: 2rem 1rem 4rem; }
+.page-header { margin-bottom: 2rem; }
+.page-header h1 { font-size: 1.6rem; font-weight: 700; color: #fff; }
+.page-header p { color: var(--muted); margin-top: 0.3rem; font-size: 0.9rem; }
+
+.card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.5rem; margin-bottom: 1.5rem; }
+.card h2 { font-size: 1.1rem; font-weight: 600; color: var(--primary); margin-bottom: 1rem; }
+.card h3 { font-size: 0.95rem; font-weight: 600; color: #fff; margin-bottom: 0.75rem; }
+
+.field { display: flex; flex-direction: column; gap: 0.4rem; margin-bottom: 0.75rem; }
+.field label { font-size: 0.8rem; color: var(--muted); font-weight: 500; }
+.field input, .field select, .field textarea { background: var(--card2); border: 1px solid var(--border); border-radius: 6px; color: var(--fg); padding: 0.5rem 0.75rem; font-size: 0.9rem; outline: none; width: 100%; transition: border-color 0.2s; }
+.field input:focus, .field select:focus, .field textarea:focus { border-color: var(--primary); }
+.field select option { background: var(--card); }
+.field textarea { resize: vertical; min-height: 60px; font-family: inherit; }
+.row { display: flex; gap: 1rem; align-items: flex-end; flex-wrap: wrap; }
+.row .field { flex: 1; min-width: 140px; }
+
+.btn { padding: 0.6rem 1.2rem; border-radius: 6px; font-weight: 600; cursor: pointer; border: none; font-size: 0.85rem; transition: all 0.2s; }
+.btn-primary { background: var(--green); color: #fff; }
+.btn-primary:hover { background: #16a34a; }
+.btn-secondary { background: var(--primary); color: #000; }
+.btn-secondary:hover { background: #c9a030; }
+.btn-danger { background: var(--red); color: #fff; font-size: 0.75rem; padding: 0.3rem 0.6rem; }
+.btn-danger:hover { background: #dc2626; }
+.btn-edit { background: var(--orange); color: #fff; font-size: 0.75rem; padding: 0.3rem 0.6rem; }
+.btn-edit:hover { background: #ea580c; }
+.btn-outline { background: transparent; border: 1px solid var(--border); color: var(--fg); }
+.btn-outline:hover { border-color: var(--primary); color: var(--primary); }
+.btn-ghost { background: transparent; border: none; color: var(--muted); padding: 0.3rem 0.5rem; font-size: 0.8rem; cursor: pointer; }
+.btn-ghost:hover { color: var(--primary); }
+
+.btn-new { background: linear-gradient(135deg, var(--primary), #b8962e); color:#000; border:none; border-radius:8px; padding:0.6rem 1.2rem; font-size:0.85rem; font-weight:700; cursor:pointer; transition:all 0.2s; }
+.btn-new:hover { transform:translateY(-1px); box-shadow:0 4px 16px rgba(212,175,55,0.4); }
+.btn-back { background:transparent; border:1px solid var(--border); color:var(--muted); border-radius:6px; padding:0.4rem 0.8rem; font-size:0.82rem; cursor:pointer; transition:all 0.15s; margin-right:1rem; }
+.btn-back:hover { border-color:var(--primary); color:var(--primary); }
+
+/* Simulation list */
+.sim-list-view { }
+.sim-editor-view { display: none; }
+.sim-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem; flex-wrap:wrap; gap:0.5rem; }
+.sim-header h2 { margin:0; color:var(--primary); }
+.sim-card { background:var(--card); border:1px solid var(--border); border-radius:var(--radius); margin-bottom:0.75rem; overflow:hidden; transition:border-color 0.2s; padding:1rem 1.25rem; display:flex; align-items:center; gap:1rem; flex-wrap:wrap; }
+.sim-card:hover { border-color:var(--primary); }
+.sim-card.locked { opacity:0.85; border-left:3px solid var(--red); }
+.sim-card-title { font-weight:700; color:#fff; font-size:0.95rem; flex:1; min-width:0; }
+.sim-card-meta { font-size:0.75rem; color:var(--muted); margin-right:1rem; }
+.sim-card-actions { display:flex; gap:0.4rem; align-items:center; }
+.sim-card-actions button { background:transparent; border:1px solid var(--border); color:var(--muted); border-radius:6px; padding:0.3rem 0.6rem; font-size:0.75rem; cursor:pointer; transition:all 0.15s; }
+.sim-card-actions button:hover { border-color:var(--primary); color:var(--primary); }
+.sim-card-actions button.danger { border-color:rgba(239,68,68,0.3); color:var(--red); }
+.sim-card-actions button.danger:hover { background:rgba(239,68,68,0.1); }
+.sim-empty-state { text-align:center; padding:4rem 2rem; color:var(--muted); }
+.sim-empty-state .icon { font-size:3rem; margin-bottom:0.75rem; opacity:0.5; }
+.sim-empty-state p { font-size:0.9rem; line-height:1.5; }
+
+/* Lock/Primary controls */
+.ctrl-group { display:none; gap:0.6rem; align-items:center; margin-right:0.5rem; }
+.equipe-mode .ctrl-group { display:inline-flex !important; }
+.ctrl-group .ctrl-item { display:flex; align-items:center; gap:0.25rem; font-size:0.72rem; color:var(--muted); padding:0.2rem 0.4rem; border-radius:4px; border:1px solid transparent; user-select:none; }
+.ctrl-group .ctrl-item input[type="checkbox"] { width:14px; height:14px; accent-color:var(--primary); cursor:pointer; }
+.ctrl-group .ctrl-item.active-lock { border-color:var(--red); background:rgba(239,68,68,0.08); color:var(--red); }
+.ctrl-group .ctrl-item.active-primary { border-color:var(--primary); background:rgba(212,175,55,0.08); color:var(--primary); }
+
+/* Client lock mode */
+.client-locked input, .client-locked select, .client-locked textarea { pointer-events:none !important; opacity:0.6; }
+.client-locked button { pointer-events:none !important; opacity:0.5; }
+.client-locked [onclick*="voltarParaLista"] { pointer-events:auto !important; opacity:1 !important; }
+.client-locked .tab-btn { pointer-events:auto !important; opacity:1 !important; }
+.client-locked [onclick*="switchTab"] { pointer-events:auto !important; opacity:1 !important; }
+.client-locked #tab-resultado button { pointer-events:auto !important; opacity:1 !important; }
+.client-locked .memoria-toggle { pointer-events:auto !important; opacity:1 !important; }
+
+/* Tabs */
+.tabs { display: flex; gap: 0.5rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
+.tab-btn { padding: 0.5rem 1rem; border-radius: 6px; font-weight: 600; cursor: pointer; border: 1px solid var(--border); background: transparent; color: var(--muted); font-size: 0.8rem; transition: all 0.2s; }
+.tab-btn.active { background: var(--primary); color: #000; border-color: var(--primary); }
+
+/* Coverage items */
+.cob-item { background: var(--card2); border: 1px solid var(--border); border-radius: 8px; padding: 0.8rem 1rem; margin-bottom: 0.5rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem; }
+.cob-item .cob-info { flex: 1; min-width: 0; }
+.cob-item .cob-info .cob-name { font-weight: 600; color: #fff; font-size: 0.85rem; }
+.cob-item .cob-info .cob-desc { font-size: 0.75rem; color: var(--muted); margin-top: 0.2rem; }
+.cob-item .cob-valor { font-weight: 700; color: var(--green); font-size: 0.9rem; white-space: nowrap; }
+.cob-item .cob-actions { display: flex; gap: 0.3rem; }
+
+/* Summary grid */
+.summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; margin-top: 1rem; }
+.summary-item { background: var(--card2); border: 1px solid var(--border); border-radius: 8px; padding: 1rem; text-align: center; }
+.summary-item .label { font-size: 0.7rem; color: var(--muted); text-transform: uppercase; font-weight: 600; margin-bottom: 0.3rem; }
+.summary-item .value { font-size: 1.3rem; font-weight: 700; }
+.summary-item .value.green { color: var(--green); }
+.summary-item .value.red { color: var(--red); }
+.summary-item .value.blue { color: var(--blue); }
+.summary-item .value.white { color: #fff; }
+.summary-item .value.purple { color: var(--purple); }
+.summary-item .value.orange { color: var(--orange); }
+
+/* Result cards */
+.result-card { background: var(--card2); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.2rem; margin-bottom: 1rem; }
+.result-card h4 { color: var(--primary); font-size: 0.9rem; margin-bottom: 0.75rem; }
+.result-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+.result-table th { text-align: left; padding: 0.5rem; color: var(--muted); font-weight: 600; border-bottom: 1px solid var(--border); font-size: 0.75rem; text-transform: uppercase; }
+.result-table td { padding: 0.5rem; border-bottom: 1px solid rgba(255,255,255,0.03); vertical-align: middle; }
+.result-table tr:hover td { background: rgba(255,255,255,0.02); }
+
+/* Status badges */
+.badge { display: inline-block; padding: 0.2rem 0.6rem; border-radius: 12px; font-size: 0.72rem; font-weight: 600; }
+.badge-green { background: rgba(34,197,94,0.15); color: var(--green); }
+.badge-red { background: rgba(239,68,68,0.15); color: var(--red); }
+.badge-orange { background: rgba(251,146,60,0.15); color: var(--orange); }
+.badge-blue { background: rgba(96,165,250,0.15); color: var(--blue); }
+.badge-purple { background: rgba(167,139,250,0.15); color: var(--purple); }
+.badge-muted { background: rgba(160,184,166,0.15); color: var(--muted); }
+
+/* Memoria de calculo */
+.memoria-toggle { cursor: pointer; font-size: 0.78rem; color: var(--primary); display: inline-flex; align-items: center; gap: 0.3rem; margin-top: 0.5rem; user-select: none; }
+.memoria-toggle:hover { text-decoration: underline; }
+.memoria-toggle .arrow { transition: transform 0.2s; display: inline-block; }
+.memoria-toggle.open .arrow { transform: rotate(90deg); }
+.memoria-content { display: none; margin-top: 0.5rem; padding: 0.8rem; background: rgba(0,0,0,0.3); border-radius: 6px; border: 1px solid var(--border); font-size: 0.75rem; line-height: 1.7; color: var(--muted); }
+.memoria-content.open { display: block; }
+.memoria-content code { color: var(--primary); font-size: 0.72rem; background: rgba(212,175,55,0.08); padding: 0.1rem 0.3rem; border-radius: 3px; }
+.memoria-content .calc-line { margin-bottom: 0.3rem; }
+.memoria-content .calc-result { color: var(--green); font-weight: 600; }
+
+/* Modal */
+.modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); z-index: 1000; justify-content: center; align-items: center; padding: 1rem; }
+.modal-overlay.active { display: flex; }
+.modal { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 2rem; width: 100%; max-width: 650px; max-height: 90vh; overflow-y: auto; }
+.modal h3 { margin-bottom: 1.5rem; color: var(--primary); }
+.modal-actions { display: flex; gap: 1rem; justify-content: flex-end; margin-top: 1.5rem; }
+
+/* Suggestion card */
+.sugestao-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.2rem; margin-bottom: 1rem; transition: all 0.2s; }
+.sugestao-card.necessario { border-left: 3px solid var(--red); }
+.sugestao-card.recomendado { border-left: 3px solid var(--orange); }
+.sugestao-card.opcional { border-left: 3px solid var(--blue); }
+.sugestao-card.desnecessario { border-left: 3px solid var(--muted); opacity: 0.7; }
+.sugestao-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; flex-wrap: wrap; gap: 0.5rem; }
+.sugestao-header h4 { color: #fff; font-size: 0.95rem; margin: 0; }
+.sugestao-body { font-size: 0.82rem; }
+
+/* Section divider */
+.section-divider { border: none; border-top: 1px solid var(--border); margin: 1.5rem 0; }
+
+/* Hidden */
+.hidden { display: none; }
+
+/* Note */
+.note { font-size: 0.75rem; color: var(--muted); margin-top: 0.3rem; font-style: italic; }
+
+/* Toggle row */
+.toggle-row { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.75rem; }
+.toggle-row label { font-size: 0.82rem; color: var(--fg); cursor: pointer; }
+.toggle-row input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--primary); cursor: pointer; }
+
+/* Save button */
+.btn-save-global { position:fixed; bottom:1.5rem; right:1.5rem; z-index:900; background:var(--primary); color:#000; border:none; border-radius:10px; padding:0.7rem 1.3rem; font-weight:700; font-size:0.85rem; cursor:pointer; box-shadow:0 4px 16px rgba(0,0,0,0.3); display:flex; align-items:center; gap:0.5rem; transition:all 0.2s; }
+.btn-save-global:hover { transform:translateY(-2px); box-shadow:0 6px 20px rgba(212,175,55,0.4); }
+.btn-save-global.saved { background:var(--green); color:#fff; }
+
+/* Overrides section */
+.override-row { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem; padding: 0.5rem 0.75rem; background: var(--card2); border-radius: 6px; border: 1px solid var(--border); }
+.override-row label { font-size: 0.8rem; flex: 1; color: var(--fg); }
+.override-row input[type="text"] { width: 140px; background: var(--card); border: 1px solid var(--border); border-radius: 4px; color: var(--fg); padding: 0.3rem 0.5rem; font-size: 0.82rem; text-align: right; }
+.override-row select { background: var(--card); border: 1px solid var(--border); border-radius: 4px; color: var(--fg); padding: 0.3rem 0.5rem; font-size: 0.82rem; }
+
+@media(max-width:768px) {
+  .row { flex-direction: column; }
+  .summary-grid { grid-template-columns: 1fr 1fr; }
+}
+</style>
+</head>
+<body>
+<div id="sidebar-container" class="sidebar"></div>
+<main class="main-content">
+<div class="page">
+  <div class="page-header">
+    <h1>🛡️ Gestão de Riscos (Seguros)</h1>
+    <p>Analise necessidades de proteção, dimensione coberturas e avalie a viabilidade de cada seguro.</p>
+  </div>
+
+  <!-- ===== LISTA DE ANÁLISES ===== -->
+  <div id="sim-list-view" class="sim-list-view">
+    <div class="sim-header">
+      <h2>Análises de Risco</h2>
+      <button class="btn-new" onclick="novaAnalise()">+ Nova Análise</button>
+    </div>
+    <div id="sim-list-container">
+      <div class="sim-empty-state" id="sim-empty-state">
+        <div class="icon">🛡️</div>
+        <p>Nenhuma análise de risco salva ainda.<br>Clique em <b>+ Nova Análise</b> para começar.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== EDITOR ===== -->
+  <div id="sim-editor-view" class="sim-editor-view">
+    <div style="margin-bottom:1rem; display:flex; align-items:center; flex-wrap:wrap; gap:0.5rem;">
+      <button class="btn-back" onclick="voltarParaLista()">← Voltar</button>
+      <span style="font-size:0.8rem; color:var(--muted);" id="sim-editing-label"></span>
+    </div>
+    <div class="card" style="margin-bottom:1rem;">
+      <div class="row">
+        <div class="field" style="max-width:400px;">
+          <label>Nome da Análise</label>
+          <input type="text" id="analise-nome" placeholder="Ex: Análise Riscos João" value="" onchange="autoSave()">
+        </div>
+      </div>
+    </div>
+
+    <!-- TABS -->
+    <div class="tabs">
+      <button class="tab-btn active" onclick="switchTab('perfil')">1. Perfil do Cliente</button>
+      <button class="tab-btn" onclick="switchTab('sugestoes')">2. Diagnóstico e Sugestões</button>
+      <button class="tab-btn" onclick="switchTab('seguros')">3. Seguros Detalhados</button>
+      <button class="tab-btn" onclick="switchTab('resultado')">4. Resultado Final</button>
+    </div>
+
+    <!-- ===== TAB 1: PERFIL DO CLIENTE ===== -->
+    <div id="tab-perfil">
+      <div class="card">
+        <h2>Dados Pessoais</h2>
+        <div class="row">
+          <div class="field"><label>Idade</label><input type="number" id="p-idade" min="0" max="120" onchange="autoSave()"></div>
+          <div class="field"><label>Sexo</label><select id="p-sexo" onchange="autoSave()"><option value="">Selecione</option><option value="M">Masculino</option><option value="F">Feminino</option></select></div>
+          <div class="field"><label>Estado Civil</label><select id="p-estado-civil" onchange="autoSave()"><option value="">Selecione</option><option value="solteiro">Solteiro(a)</option><option value="casado">Casado(a)</option><option value="uniao">União Estável</option><option value="divorciado">Divorciado(a)</option><option value="viuvo">Viúvo(a)</option></select></div>
+        </div>
+        <div class="row">
+          <div class="field"><label>Profissão / Ocupação</label><input type="text" id="p-profissao" placeholder="Ex: Engenheiro" onchange="autoSave()"></div>
+          <div class="field"><label>Profissão de risco elevado?</label><select id="p-prof-risco" onchange="autoSave()"><option value="nao">Não</option><option value="sim">Sim</option></select></div>
+          <div class="field"><label>Fumante?</label><select id="p-fumante" onchange="autoSave()"><option value="nao">Não</option><option value="sim">Sim</option></select></div>
+        </div>
+        <div class="row">
+          <div class="field"><label>Pratica esportes de risco?</label><select id="p-esporte-risco" onchange="autoSave()"><option value="nao">Não</option><option value="sim">Sim</option></select></div>
+          <div class="field"><label>Estado de saúde geral</label><select id="p-saude" onchange="autoSave()"><option value="excelente">Excelente</option><option value="bom">Bom</option><option value="regular">Regular</option><option value="ruim">Ruim</option></select></div>
+          <div class="field"><label>Doença preexistente grave?</label><select id="p-doenca" onchange="autoSave()"><option value="nao">Não</option><option value="sim">Sim</option></select></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Família e Dependentes</h2>
+        <div class="row">
+          <div class="field"><label>Nº de Dependentes Financeiros</label><input type="number" id="p-dependentes" min="0" max="20" value="0" onchange="autoSave()"></div>
+          <div class="field"><label>Idades dos Dependentes (separar por vírgula)</label><input type="text" id="p-idades-dep" placeholder="5, 8, 12" onchange="autoSave()"></div>
+          <div class="field"><label>É o principal provedor?</label><select id="p-provedor" onchange="autoSave()"><option value="sim">Sim</option><option value="parcial">Parcialmente</option><option value="nao">Não</option></select></div>
+        </div>
+        <div class="row">
+          <div class="field"><label>Cônjuge trabalha?</label><select id="p-conjuge-trabalha" onchange="autoSave()"><option value="">N/A</option><option value="sim">Sim</option><option value="nao">Não</option></select></div>
+          <div class="field"><label>Renda do cônjuge (R$)</label><input type="text" id="p-renda-conjuge" placeholder="0,00" oninput="fmtMoneyInput(this)" onchange="autoSave()"></div>
+          <div class="field"><label>Custo educação filhos/ano (R$)</label><input type="text" id="p-educacao" placeholder="24.000,00" oninput="fmtMoneyInput(this)" onchange="autoSave()"></div>
+        </div>
+        <div class="row">
+          <div class="field"><label>Anos até independência dos dependentes</label><input type="number" id="p-anos-independencia" min="0" max="50" placeholder="15" onchange="autoSave()"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Renda e Despesas</h2>
+        <div class="row">
+          <div class="field"><label>Renda Mensal Bruta (R$)</label><input type="text" id="p-renda" placeholder="10.000,00" oninput="fmtMoneyInput(this)" onchange="autoSave()"></div>
+          <div class="field"><label>Renda Mensal Líquida (R$)</label><input type="text" id="p-renda-liq" placeholder="8.000,00" oninput="fmtMoneyInput(this)" onchange="autoSave()"></div>
+          <div class="field"><label>Despesas Fixas Mensais (R$)</label><input type="text" id="p-despesas" placeholder="6.000,00" oninput="fmtMoneyInput(this)" onchange="autoSave()"></div>
+        </div>
+        <div class="row">
+          <div class="field"><label>Possui outra fonte de renda?</label><select id="p-outra-renda" onchange="autoSave()"><option value="nao">Não</option><option value="sim">Sim</option></select></div>
+          <div class="field"><label>Valor outra renda (R$)</label><input type="text" id="p-outra-renda-valor" placeholder="0,00" oninput="fmtMoneyInput(this)" onchange="autoSave()"></div>
+          <div class="field"><label>Tipo de vínculo</label><select id="p-vinculo" onchange="autoSave()"><option value="clt">CLT</option><option value="pj">PJ / Autônomo</option><option value="servidor">Servidor Público</option><option value="empresario">Empresário</option><option value="aposentado">Aposentado</option></select></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Patrimônio e Dívidas</h2>
+        <div class="row">
+          <div class="field"><label>Patrimônio Total (R$)</label><input type="text" id="p-patrimonio" placeholder="500.000,00" oninput="fmtMoneyInput(this)" onchange="autoSave()"></div>
+          <div class="field"><label>Dívidas Totais (R$)</label><input type="text" id="p-dividas" placeholder="200.000,00" oninput="fmtMoneyInput(this)" onchange="autoSave()"></div>
+          <div class="field"><label>Reserva de Emergência Atual (R$)</label><input type="text" id="p-reserva" placeholder="30.000,00" oninput="fmtMoneyInput(this)" onchange="autoSave()"></div>
+        </div>
+        <hr class="section-divider">
+        <h3>Imóvel</h3>
+        <div class="row">
+          <div class="field"><label>Possui imóvel?</label><select id="p-tem-imovel" onchange="autoSave()"><option value="nao">Não</option><option value="sim">Sim</option></select></div>
+          <div class="field"><label>Valor do imóvel (R$)</label><input type="text" id="p-imovel-valor" placeholder="400.000,00" oninput="fmtMoneyInput(this)" onchange="autoSave()"></div>
+          <div class="field"><label>Tipo</label><select id="p-imovel-tipo" onchange="autoSave()"><option value="">Selecione</option><option value="casa">Casa</option><option value="apto">Apartamento</option><option value="condominio">Condomínio Fechado</option><option value="comercial">Comercial</option></select></div>
+        </div>
+        <div class="row">
+          <div class="field"><label>Propriedade</label><select id="p-imovel-prop" onchange="autoSave()"><option value="proprio">Próprio (quitado)</option><option value="financiado">Financiado</option><option value="alugado">Alugado</option></select></div>
+          <div class="field"><label>Valor do conteúdo/mobília (R$)</label><input type="text" id="p-imovel-conteudo" placeholder="80.000,00" oninput="fmtMoneyInput(this)" onchange="autoSave()"></div>
+          <div class="field"><label>Construção</label><select id="p-imovel-construcao" onchange="autoSave()"><option value="alvenaria">Alvenaria</option><option value="madeira">Madeira</option><option value="mista">Mista</option></select></div>
+        </div>
+        <div class="row">
+          <div class="field"><label>Área de risco (enchente/deslizamento)?</label><select id="p-imovel-risco" onchange="autoSave()"><option value="nao">Não</option><option value="enchente">Sim - Enchente</option><option value="deslizamento">Sim - Deslizamento</option><option value="ambos">Sim - Ambos</option></select></div>
+          <div class="field"><label>Segurança</label><select id="p-imovel-seguranca" onchange="autoSave()"><option value="nenhuma">Nenhuma</option><option value="alarme">Alarme</option><option value="cameras">Câmeras</option><option value="portaria">Portaria 24h</option><option value="completa">Alarme + Câmeras + Portaria</option></select></div>
+        </div>
+        <hr class="section-divider">
+        <h3>Veículo</h3>
+        <div class="row">
+          <div class="field"><label>Possui veículo?</label><select id="p-tem-veiculo" onchange="autoSave()"><option value="nao">Não</option><option value="sim">Sim</option></select></div>
+          <div class="field"><label>Valor FIPE (R$)</label><input type="text" id="p-veiculo-valor" placeholder="80.000,00" oninput="fmtMoneyInput(this)" onchange="autoSave()"></div>
+          <div class="field"><label>Ano</label><input type="number" id="p-veiculo-ano" placeholder="2022" onchange="autoSave()"></div>
+        </div>
+        <div class="row">
+          <div class="field"><label>Uso</label><select id="p-veiculo-uso" onchange="autoSave()"><option value="particular">Particular</option><option value="comercial">Comercial</option><option value="app">App (Uber/99)</option><option value="misto">Misto</option></select></div>
+          <div class="field"><label>Financiado?</label><select id="p-veiculo-financiado" onchange="autoSave()"><option value="nao">Não</option><option value="sim">Sim</option></select></div>
+          <div class="field"><label>Garagem fechada?</label><select id="p-veiculo-garagem" onchange="autoSave()"><option value="sim">Sim - Fechada</option><option value="aberta">Sim - Aberta</option><option value="nao">Não</option></select></div>
+        </div>
+        <hr class="section-divider">
+        <h3>Atividade Profissional / Empresarial</h3>
+        <div class="row">
+          <div class="field"><label>Possui empresa / atende clientes?</label><select id="p-tem-empresa" onchange="autoSave()"><option value="nao">Não</option><option value="sim">Sim</option></select></div>
+          <div class="field"><label>Faturamento anual (R$)</label><input type="text" id="p-faturamento" placeholder="0,00" oninput="fmtMoneyInput(this)" onchange="autoSave()"></div>
+          <div class="field"><label>Nº de funcionários</label><input type="number" id="p-funcionarios" min="0" placeholder="0" onchange="autoSave()"></div>
+        </div>
+        <div class="row">
+          <div class="field"><label>Atividade regulada por conselho (CRM, CREA, OAB)?</label><select id="p-regulado" onchange="autoSave()"><option value="nao">Não</option><option value="sim">Sim</option></select></div>
+          <div class="field"><label>Valor médio dos contratos (R$)</label><input type="text" id="p-contratos-valor" placeholder="50.000,00" oninput="fmtMoneyInput(this)" onchange="autoSave()"></div>
+        </div>
+      </div>
+
+      <div style="text-align:center; margin-top:1rem;">
+        <button class="btn-secondary" onclick="gerarDiagnostico(); switchTab('sugestoes');" style="padding:0.8rem 2rem; font-size:0.95rem;">Gerar Diagnóstico de Riscos →</button>
+      </div>
+    </div>
+
+    <!-- ===== TAB 2: DIAGNÓSTICO E SUGESTÕES ===== -->
+    <div id="tab-sugestoes" class="hidden">
+      <div class="card">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; flex-wrap:wrap; gap:0.5rem;">
+          <h2 style="margin:0;">Diagnóstico Automático</h2>
+          <button class="btn-secondary" onclick="gerarDiagnostico()">Recalcular</button>
+        </div>
+        <p class="note" style="margin-bottom:1rem;">Com base no perfil, o sistema sugere quais seguros são necessários e dimensiona automaticamente as coberturas. Você pode aceitar, ajustar ou rejeitar cada sugestão.</p>
+        <div id="diagnostico-content">
+          <div class="sim-empty-state" style="padding:2rem;"><p>Preencha o perfil na aba 1 e clique em <b>Gerar Diagnóstico</b>.</p></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== TAB 3: SEGUROS DETALHADOS ===== -->
+    <div id="tab-seguros" class="hidden">
+      <div class="card">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; flex-wrap:wrap; gap:0.5rem;">
+          <h2 style="margin:0;">Seguros na Análise</h2>
+          <button class="btn-primary" onclick="abrirModalSeguro()">+ Adicionar Seguro Manual</button>
+        </div>
+        <p class="note" style="margin-bottom:1rem;">Seguros aceitos do diagnóstico + seguros adicionados manualmente. Edite valores, viabilidade e prêmio.</p>
+        <div id="seguros-lista">
+          <div class="sim-empty-state" id="seguros-empty" style="padding:2rem;">
+            <p>Nenhum seguro na análise. Aceite sugestões na aba 2 ou adicione manualmente.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== TAB 4: RESULTADO FINAL ===== -->
+    <div id="tab-resultado" class="hidden">
+      <div class="card">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; flex-wrap:wrap; gap:0.5rem;">
+          <h2 style="margin:0;">Resultado Consolidado</h2>
+          <button class="btn-secondary" onclick="gerarResultado()">Gerar Resultado</button>
+        </div>
+        <div id="resultado-content">
+          <div class="sim-empty-state" style="padding:2rem;"><p>Clique em <b>Gerar Resultado</b> para ver o diagnóstico final.</p></div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /sim-editor-view -->
+</div><!-- /page -->
+
+<!-- ===== MODAL: ADICIONAR/EDITAR SEGURO ===== -->
+<div class="modal-overlay" id="modal-seguro">
+  <div class="modal" style="max-width:700px;">
+    <h3 id="modal-seguro-title">Adicionar Seguro</h3>
+    <div class="field">
+      <label>Tipo de Seguro</label>
+      <select id="seg-tipo" onchange="onTipoSeguroChange()">
+        <option value="">Selecione o tipo</option>
+        <option value="vida">Seguro de Vida</option>
+        <option value="auto">Seguro Auto</option>
+        <option value="residencial">Seguro Residencial</option>
+        <option value="rc">Seguro Responsabilidade Civil</option>
+        <option value="custom">Personalizado (criar novo tipo)</option>
+      </select>
+    </div>
+    <div class="field hidden" id="seg-custom-nome-wrap">
+      <label>Nome do Tipo de Seguro</label>
+      <input type="text" id="seg-custom-nome" placeholder="Ex: Seguro Viagem, Seguro Pet...">
+    </div>
+
+    <!-- Coberturas -->
+    <div id="seg-coberturas-section" class="hidden" style="margin-top:1rem;">
+      <h3 style="font-size:0.85rem; color:var(--primary); margin-bottom:0.5rem;">Coberturas</h3>
+      <div id="seg-coberturas-lista"></div>
+      <button class="btn-ghost" onclick="addCobertura()" style="margin-top:0.5rem;">+ Adicionar Cobertura</button>
+    </div>
+
+    <!-- Viabilidade -->
+    <div id="seg-viabilidade-section" class="hidden" style="margin-top:1rem;">
+      <hr class="section-divider">
+      <h3 style="font-size:0.85rem; color:var(--primary); margin-bottom:0.5rem;">Viabilidade</h3>
+      <div class="row">
+        <div class="field"><label>Pode contratar?</label><select id="seg-viavel" onchange="onViabilidadeChange()"><option value="">Avaliar</option><option value="sim">Sim</option><option value="nao">Não - Impedimento</option><option value="parcial">Parcial</option></select></div>
+        <div class="field"><label>Motivo (se não viável)</label><input type="text" id="seg-viavel-motivo" placeholder="Ex: Veículo antigo, doença preexistente..."></div>
+      </div>
+      <div id="seg-reserva-extra-section" class="hidden">
+        <div class="row">
+          <div class="field"><label>% do patrimônio em risco para reserva</label><input type="number" id="seg-pct-reserva" value="5" min="0" max="100" step="0.5"></div>
+          <div class="field"><label>Valor patrimônio em risco (R$)</label><input type="text" id="seg-patrimonio-risco" placeholder="0,00" oninput="fmtMoneyInput(this)"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Prêmio -->
+    <div id="seg-premio-section" class="hidden" style="margin-top:1rem;">
+      <hr class="section-divider">
+      <h3 style="font-size:0.85rem; color:var(--primary); margin-bottom:0.5rem;">Custo</h3>
+      <div class="row">
+        <div class="field"><label>Prêmio Mensal (R$)</label><input type="text" id="seg-premio" placeholder="150,00" oninput="fmtMoneyInput(this)"></div>
+        <div class="field"><label>Vigência (meses)</label><input type="number" id="seg-vigencia" value="12" min="1" max="600"></div>
+      </div>
+    </div>
+
+    <!-- Necessidade -->
+    <div id="seg-necessidade-section" class="hidden" style="margin-top:1rem;">
+      <hr class="section-divider">
+      <div class="row">
+        <div class="field"><label>Necessidade</label><select id="seg-necessario"><option value="">Avaliar</option><option value="essencial">Essencial</option><option value="recomendado">Recomendado</option><option value="opcional">Opcional</option><option value="desnecessario">Desnecessário</option></select></div>
+        <div class="field"><label>Justificativa</label><input type="text" id="seg-justificativa" placeholder="Motivo da avaliação..."></div>
+      </div>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn-outline" onclick="fecharModalSeguro()">Cancelar</button>
+      <button class="btn-primary" onclick="salvarSeguro()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== MODAL: COBERTURA ===== -->
+<div class="modal-overlay" id="modal-cobertura">
+  <div class="modal" style="max-width:500px;">
+    <h3 id="modal-cob-title">Adicionar Cobertura</h3>
+    <div class="field"><label>Nome da Cobertura</label><input type="text" id="cob-nome" placeholder="Ex: Morte Acidental"></div>
+    <div class="field"><label>Capital Segurado (R$)</label><input type="text" id="cob-valor" placeholder="500.000,00" oninput="fmtMoneyInput(this)"></div>
+    <div class="field"><label>Descrição</label><input type="text" id="cob-desc" placeholder="Opcional"></div>
+    <div class="toggle-row"><input type="checkbox" id="cob-incluir" checked><label for="cob-incluir">Incluir na análise</label></div>
+    <div class="modal-actions">
+      <button class="btn-outline" onclick="fecharModalCobertura()">Cancelar</button>
+      <button class="btn-primary" onclick="salvarCobertura()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Save button -->
+<button class="btn-save-global" id="btnSaveGlobal" onclick="forceSave()">
+  <span id="saveIcon">💾</span>
+  <span id="saveLabel">Salvar Alterações</span>
+</button>
+
+</main>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════════════
+// GESTÃO DE RISCOS - LÓGICA PRINCIPAL
+// ═══════════════════════════════════════════════════════════════════════════
+
+var analises = [];
+var editingAnaliseId = null;
+var editingSeguroIdx = -1;
+var editingCobIdx = -1;
+var currentSeguros = [];
+var tempCoberturas = [];
+var diagnosticoSugestoes = [];
+
+// === UTILITIES ===
+function genId() { return Date.now() + Math.floor(Math.random() * 1000); }
+function parseMoney(str) { if (!str) return 0; if (typeof str === 'number') return str; return parseFloat(str.toString().replace(/\./g, '').replace(',', '.')) || 0; }
+function fmtBRL(v) { if (typeof v !== 'number' || isNaN(v)) v = 0; return 'R$ ' + v.toFixed(2).replace('.', ',').replace(/(\d)(?=(\d{3})+(?!\d))/g, '$1.'); }
+function fmtMoneyInput(el) { var v = el.value.replace(/[^\d]/g, ''); if (!v) { el.value = ''; return; } v = (parseInt(v) / 100).toFixed(2); v = v.replace('.', ',').replace(/(\d)(?=(\d{3})+(?!\d))/g, '$1.'); el.value = v; }
+function fmtMoneyVal(v) { if (!v) return ''; return parseFloat(v).toFixed(2).replace('.', ',').replace(/(\d)(?=(\d{3})+(?!\d))/g, '$1.'); }
+function escHtml(s) { if (!s) return ''; return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+// === PROFILE READER ===
+function getPerfil() {
+  return {
+    idade: parseInt(document.getElementById('p-idade').value) || 0,
+    sexo: document.getElementById('p-sexo').value,
+    estadoCivil: document.getElementById('p-estado-civil').value,
+    profissao: document.getElementById('p-profissao').value,
+    profRisco: document.getElementById('p-prof-risco').value,
+    fumante: document.getElementById('p-fumante').value,
+    esporteRisco: document.getElementById('p-esporte-risco').value,
+    saude: document.getElementById('p-saude').value,
+    doenca: document.getElementById('p-doenca').value,
+    dependentes: parseInt(document.getElementById('p-dependentes').value) || 0,
+    idadesDep: document.getElementById('p-idades-dep').value,
+    provedor: document.getElementById('p-provedor').value,
+    conjugeTrabalha: document.getElementById('p-conjuge-trabalha').value,
+    rendaConjuge: parseMoney(document.getElementById('p-renda-conjuge').value),
+    educacao: parseMoney(document.getElementById('p-educacao').value),
+    anosIndependencia: parseInt(document.getElementById('p-anos-independencia').value) || 15,
+    renda: parseMoney(document.getElementById('p-renda').value),
+    rendaLiq: parseMoney(document.getElementById('p-renda-liq').value),
+    despesas: parseMoney(document.getElementById('p-despesas').value),
+    outraRenda: document.getElementById('p-outra-renda').value,
+    outraRendaValor: parseMoney(document.getElementById('p-outra-renda-valor').value),
+    vinculo: document.getElementById('p-vinculo').value,
+    patrimonio: parseMoney(document.getElementById('p-patrimonio').value),
+    dividas: parseMoney(document.getElementById('p-dividas').value),
+    reserva: parseMoney(document.getElementById('p-reserva').value),
+    temImovel: document.getElementById('p-tem-imovel').value,
+    imovelValor: parseMoney(document.getElementById('p-imovel-valor').value),
+    imovelTipo: document.getElementById('p-imovel-tipo').value,
+    imovelProp: document.getElementById('p-imovel-prop').value,
+    imovelConteudo: parseMoney(document.getElementById('p-imovel-conteudo').value),
+    imovelConstrucao: document.getElementById('p-imovel-construcao').value,
+    imovelRisco: document.getElementById('p-imovel-risco').value,
+    imovelSeguranca: document.getElementById('p-imovel-seguranca').value,
+    temVeiculo: document.getElementById('p-tem-veiculo').value,
+    veiculoValor: parseMoney(document.getElementById('p-veiculo-valor').value),
+    veiculoAno: parseInt(document.getElementById('p-veiculo-ano').value) || 0,
+    veiculoUso: document.getElementById('p-veiculo-uso').value,
+    veiculoFinanciado: document.getElementById('p-veiculo-financiado').value,
+    veiculoGaragem: document.getElementById('p-veiculo-garagem').value,
+    temEmpresa: document.getElementById('p-tem-empresa').value,
+    faturamento: parseMoney(document.getElementById('p-faturamento').value),
+    funcionarios: parseInt(document.getElementById('p-funcionarios').value) || 0,
+    regulado: document.getElementById('p-regulado').value,
+    contratosValor: parseMoney(document.getElementById('p-contratos-valor').value)
+  };
+}
+
+// === RECOMMENDATION ENGINE ===
+function gerarDiagnostico() {
+  var p = getPerfil();
+  diagnosticoSugestoes = [];
+  var html = '';
+
+  // ─── SEGURO DE VIDA ───
+  var vidaCalc = calcVida(p);
+  diagnosticoSugestoes.push(vidaCalc);
+
+  // ─── SEGURO AUTO ───
+  if (p.temVeiculo === 'sim' && p.veiculoValor > 0) {
+    var autoCalc = calcAuto(p);
+    diagnosticoSugestoes.push(autoCalc);
+  }
+
+  // ─── SEGURO RESIDENCIAL ───
+  if (p.temImovel === 'sim' && p.imovelValor > 0) {
+    var resCalc = calcResidencial(p);
+    diagnosticoSugestoes.push(resCalc);
+  }
+
+  // ─── SEGURO RC ───
+  if (p.temEmpresa === 'sim' || p.regulado === 'sim' || p.vinculo === 'pj') {
+    var rcCalc = calcRC(p);
+    diagnosticoSugestoes.push(rcCalc);
+  }
+
+  // Render
+  if (diagnosticoSugestoes.length === 0) {
+    html = '<div class="sim-empty-state" style="padding:2rem;"><p>Preencha mais dados no perfil para gerar sugestões.</p></div>';
+  } else {
+    diagnosticoSugestoes.forEach(function(sug, i) {
+      var classNec = sug.necessidade === 'essencial' ? 'necessario' : sug.necessidade === 'recomendado' ? 'recomendado' : sug.necessidade === 'opcional' ? 'opcional' : 'desnecessario';
+      var badgeNec = sug.necessidade === 'essencial' ? '<span class="badge badge-red">Essencial</span>' : sug.necessidade === 'recomendado' ? '<span class="badge badge-orange">Recomendado</span>' : sug.necessidade === 'opcional' ? '<span class="badge badge-blue">Opcional</span>' : '<span class="badge badge-muted">Desnecessário</span>';
+
+      html += '<div class="sugestao-card ' + classNec + '">';
+      html += '<div class="sugestao-header">';
+      html += '<h4>' + sug.icon + ' ' + escHtml(sug.nome) + ' ' + badgeNec + '</h4>';
+      var jaAdicionado = currentSeguros.some(function(s) { return s.tipo === sug.tipo; });
+      if (jaAdicionado) {
+        html += '<span class="badge badge-green">Já na análise</span>';
+      } else {
+        html += '<button class="btn-primary" onclick="aceitarSugestao(' + i + ')" style="font-size:0.78rem; padding:0.3rem 0.8rem;">Aceitar e Adicionar</button>';
+      }
+      html += '</div>';
+      html += '<div class="sugestao-body">';
+      html += '<p style="margin-bottom:0.5rem; color:var(--fg);">' + escHtml(sug.justificativa) + '</p>';
+
+      // Coberturas sugeridas
+      if (sug.coberturas && sug.coberturas.length > 0) {
+        html += '<table class="result-table"><thead><tr><th>Cobertura Sugerida</th><th>Capital Sugerido</th></tr></thead><tbody>';
+        sug.coberturas.forEach(function(c) {
+          html += '<tr><td>' + escHtml(c.nome) + '</td><td style="color:var(--green); font-weight:600;">' + (c.valor > 0 ? fmtBRL(c.valor) : 'A definir') + '</td></tr>';
+        });
+        html += '</tbody></table>';
+      }
+
+      // Memória de cálculo
+      if (sug.memoria && sug.memoria.length > 0) {
+        var memId = 'mem-' + i;
+        html += '<div class="memoria-toggle" onclick="toggleMemoria(\'' + memId + '\', this)"><span class="arrow">▶</span> Ver memória de cálculo</div>';
+        html += '<div class="memoria-content" id="' + memId + '">';
+        sug.memoria.forEach(function(line) {
+          if (line.tipo === 'resultado') {
+            html += '<div class="calc-line calc-result">' + escHtml(line.texto) + '</div>';
+          } else {
+            html += '<div class="calc-line">' + (line.code ? '<code>' + escHtml(line.code) + '</code> ' : '') + escHtml(line.texto) + '</div>';
+          }
+        });
+        html += '</div>';
+      }
+
+      html += '</div></div>';
+    });
+  }
+
+  document.getElementById('diagnostico-content').innerHTML = html;
+  autoSave();
+}
+
+function toggleMemoria(id, el) {
+  var content = document.getElementById(id);
+  if (content) { content.classList.toggle('open'); el.classList.toggle('open'); }
+}
+
+// ─── CÁLCULO SEGURO DE VIDA ───
+function calcVida(p) {
+  var memoria = [];
+  var coberturas = [];
+
+  // Necessidade
+  var necessidade = 'opcional';
+  if (p.dependentes > 0 && p.provedor !== 'nao') necessidade = 'essencial';
+  else if (p.dividas > p.patrimonio * 0.3) necessidade = 'recomendado';
+  else if (p.dependentes === 0 && p.dividas === 0) necessidade = 'desnecessario';
+
+  memoria.push({ texto: 'Dependentes: ' + p.dependentes + ' | Provedor: ' + p.provedor + ' | Dívidas: ' + fmtBRL(p.dividas) });
+
+  // Capital Morte — Método DIME (Dívidas + Income + Mortgage + Education)
+  var anosProtecao = p.anosIndependencia || 15;
+  var rendaAnual = p.rendaLiq > 0 ? p.rendaLiq * 12 : p.renda * 12;
+  var rendaConjuge = p.conjugeTrabalha === 'sim' ? p.rendaConjuge * 12 : 0;
+  var rendaSubstituir = rendaAnual - rendaConjuge;
+  if (rendaSubstituir < 0) rendaSubstituir = 0;
+
+  var capitalRenda = rendaSubstituir * anosProtecao;
+  var capitalDividas = p.dividas;
+  var capitalEducacao = p.educacao * anosProtecao;
+  var descReserva = p.reserva;
+
+  var capitalMorte = capitalRenda + capitalDividas + capitalEducacao - descReserva;
+  if (capitalMorte < 0) capitalMorte = 0;
+
+  memoria.push({ code: 'Renda anual líquida', texto: fmtBRL(rendaAnual) });
+  memoria.push({ code: 'Renda cônjuge anual', texto: fmtBRL(rendaConjuge) });
+  memoria.push({ code: 'Renda a substituir/ano', texto: fmtBRL(rendaSubstituir) });
+  memoria.push({ code: 'Anos de proteção', texto: anosProtecao + ' anos' });
+  memoria.push({ code: 'Capital renda', texto: fmtBRL(rendaSubstituir) + ' × ' + anosProtecao + ' = ' + fmtBRL(capitalRenda) });
+  memoria.push({ code: '+ Dívidas', texto: fmtBRL(capitalDividas) });
+  memoria.push({ code: '+ Educação', texto: fmtBRL(p.educacao) + '/ano × ' + anosProtecao + ' = ' + fmtBRL(capitalEducacao) });
+  memoria.push({ code: '- Reserva existente', texto: fmtBRL(descReserva) });
+  memoria.push({ tipo: 'resultado', texto: 'CAPITAL MORTE SUGERIDO = ' + fmtBRL(capitalMorte) });
+
+  coberturas.push({ nome: 'Morte (natural + acidental)', valor: capitalMorte, desc: 'Capital pago aos beneficiários', incluir: true });
+
+  // IPA
+  var capitalIPA = Math.round(capitalMorte * 0.5);
+  coberturas.push({ nome: 'Invalidez Permanente Total por Acidente (IPA)', valor: capitalIPA, desc: 'Indenização por invalidez permanente', incluir: true });
+  memoria.push({ code: 'IPA', texto: '50% do capital morte = ' + fmtBRL(capitalIPA) });
+
+  // DIT (se autônomo/PJ)
+  if (p.vinculo === 'pj' || p.vinculo === 'empresario') {
+    var dit = Math.round((p.rendaLiq || p.renda) / 30);
+    coberturas.push({ nome: 'Diária por Incapacidade Temporária (DIT)', valor: dit, desc: 'Valor por dia de afastamento', incluir: true });
+    memoria.push({ code: 'DIT', texto: 'Renda mensal / 30 = ' + fmtBRL(dit) + '/dia' });
+  }
+
+  // Doenças Graves
+  if (p.idade >= 35 || p.fumante === 'sim' || p.saude === 'regular' || p.saude === 'ruim') {
+    var dg = Math.round(rendaAnual * 2);
+    coberturas.push({ nome: 'Doenças Graves (DG)', valor: dg, desc: 'Antecipação de capital', incluir: true });
+    memoria.push({ code: 'DG', texto: '2× renda anual = ' + fmtBRL(dg) });
+  }
+
+  // Funeral
+  coberturas.push({ nome: 'Assistência Funeral (familiar)', valor: 10000, desc: 'Despesas funerárias', incluir: true });
+
+  var justificativa = '';
+  if (necessidade === 'essencial') justificativa = 'Cliente é provedor com ' + p.dependentes + ' dependente(s). Sem seguro, a família ficaria sem renda.';
+  else if (necessidade === 'recomendado') justificativa = 'Dívidas representam mais de 30% do patrimônio. Seguro protege herdeiros de herdar dívida.';
+  else if (necessidade === 'desnecessario') justificativa = 'Sem dependentes e sem dívidas significativas. Risco financeiro baixo em caso de falecimento.';
+  else justificativa = 'Proteção adicional para situações imprevistas.';
+
+  return { tipo: 'vida', nome: 'Seguro de Vida', icon: '❤️', necessidade: necessidade, justificativa: justificativa, coberturas: coberturas, memoria: memoria };
+}
+
+// ─── CÁLCULO SEGURO AUTO ───
+function calcAuto(p) {
+  var memoria = [];
+  var coberturas = [];
+  var necessidade = 'recomendado';
+
+  if (p.veiculoFinanciado === 'sim') necessidade = 'essencial';
+  else if (p.veiculoValor > p.renda * 12) necessidade = 'essencial';
+  else if (p.veiculoValor < p.renda * 3) necessidade = 'opcional';
+
+  memoria.push({ texto: 'Valor veículo: ' + fmtBRL(p.veiculoValor) + ' | Ano: ' + p.veiculoAno + ' | Financiado: ' + p.veiculoFinanciado });
+
+  // Compreensiva
+  coberturas.push({ nome: 'Compreensiva (colisão + incêndio + roubo/furto)', valor: p.veiculoValor, desc: '100% tabela FIPE', incluir: true });
+  memoria.push({ code: 'Compreensiva', texto: '100% FIPE = ' + fmtBRL(p.veiculoValor) });
+
+  // RCF-V
+  var rcfv = Math.max(100000, p.veiculoValor);
+  coberturas.push({ nome: 'Responsabilidade Civil Facultativa (RCF-V)', valor: rcfv, desc: 'Danos materiais e corporais a terceiros', incluir: true });
+  memoria.push({ code: 'RCF-V', texto: 'Máx(R$100.000, valor veículo) = ' + fmtBRL(rcfv) });
+
+  // APP
+  coberturas.push({ nome: 'Acidentes Pessoais de Passageiros (APP)', valor: 50000, desc: 'Morte/invalidez ocupantes', incluir: true });
+
+  // Assistência 24h
+  coberturas.push({ nome: 'Assistência 24h', valor: 0, desc: 'Guincho, pane, chaveiro', incluir: true });
+
+  // Carro reserva
+  coberturas.push({ nome: 'Carro Reserva (7 dias)', valor: 0, desc: 'Veículo substituto', incluir: p.veiculoUso !== 'particular' });
+
+  // Vidros
+  coberturas.push({ nome: 'Vidros', valor: 0, desc: 'Para-brisa, laterais, retrovisores', incluir: true });
+
+  // Danos morais
+  coberturas.push({ nome: 'Danos Morais', valor: 30000, desc: 'Cobertura para reclamações', incluir: true });
+
+  // Viabilidade
+  var anoAtual = new Date().getFullYear();
+  var idadeVeiculo = anoAtual - p.veiculoAno;
+  var viavel = 'sim';
+  var viavelMotivo = '';
+  if (idadeVeiculo > 20) { viavel = 'nao'; viavelMotivo = 'Veículo com mais de 20 anos — maioria das seguradoras recusa.'; }
+  else if (idadeVeiculo > 15) { viavel = 'parcial'; viavelMotivo = 'Veículo com mais de 15 anos — poucas seguradoras aceitam.'; }
+
+  memoria.push({ code: 'Idade veículo', texto: idadeVeiculo + ' anos (' + (viavel === 'sim' ? 'sem restrição' : viavel === 'parcial' ? 'restrição parcial' : 'inviável') + ')' });
+
+  var justificativa = '';
+  if (necessidade === 'essencial') justificativa = p.veiculoFinanciado === 'sim' ? 'Veículo financiado — seguro protege o bem alienado e é frequentemente exigido pelo banco.' : 'Valor do veículo é significativo em relação à renda. Perda total comprometeria as finanças.';
+  else if (necessidade === 'recomendado') justificativa = 'Veículo com valor relevante. Seguro protege contra perda patrimonial e responsabilidade civil.';
+  else justificativa = 'Veículo de baixo valor relativo à renda. Perda seria absorvível.';
+
+  return { tipo: 'auto', nome: 'Seguro Auto', icon: '🚗', necessidade: necessidade, justificativa: justificativa, coberturas: coberturas, memoria: memoria, viavel: viavel, viavelMotivo: viavelMotivo };
+}
+
+// ─── CÁLCULO SEGURO RESIDENCIAL ───
+function calcResidencial(p) {
+  var memoria = [];
+  var coberturas = [];
+  var necessidade = 'recomendado';
+
+  if (p.imovelProp === 'financiado') necessidade = 'essencial';
+  else if (p.imovelRisco !== 'nao') necessidade = 'essencial';
+  else if (p.imovelProp === 'alugado') necessidade = 'recomendado';
+
+  memoria.push({ texto: 'Imóvel: ' + fmtBRL(p.imovelValor) + ' | Tipo: ' + p.imovelTipo + ' | Prop: ' + p.imovelProp });
+
+  // Valor de reconstrução (60-70% do valor de mercado para alvenaria, 80% para madeira)
+  var fatorReconstrucao = p.imovelConstrucao === 'madeira' ? 0.80 : p.imovelConstrucao === 'mista' ? 0.70 : 0.65;
+  var valorReconstrucao = Math.round(p.imovelValor * fatorReconstrucao);
+
+  memoria.push({ code: 'Fator reconstrução', texto: (fatorReconstrucao * 100) + '% (construção: ' + p.imovelConstrucao + ')' });
+  memoria.push({ code: 'Valor reconstrução', texto: fmtBRL(p.imovelValor) + ' × ' + (fatorReconstrucao * 100) + '% = ' + fmtBRL(valorReconstrucao) });
+
+  coberturas.push({ nome: 'Incêndio, Raio e Explosão', valor: valorReconstrucao, desc: 'Cobertura básica — valor de reconstrução', incluir: true });
+
+  // Vendaval
+  var vendaval = Math.round(valorReconstrucao * 0.3);
+  coberturas.push({ nome: 'Vendaval, Granizo e Fumaça', valor: vendaval, desc: '30% do valor de reconstrução', incluir: true });
+  memoria.push({ code: 'Vendaval', texto: '30% × ' + fmtBRL(valorReconstrucao) + ' = ' + fmtBRL(vendaval) });
+
+  // Danos elétricos
+  var eletricos = Math.min(p.imovelConteudo * 0.3, 50000);
+  coberturas.push({ nome: 'Danos Elétricos', valor: Math.round(eletricos), desc: '30% do conteúdo (máx R$50k)', incluir: true });
+  memoria.push({ code: 'Danos elétricos', texto: '30% × ' + fmtBRL(p.imovelConteudo) + ' = ' + fmtBRL(eletricos) + ' (máx 50k)' });
+
+  // Roubo
+  var roubo = Math.round(p.imovelConteudo * 0.5);
+  coberturas.push({ nome: 'Roubo/Furto Qualificado', valor: roubo, desc: '50% do valor do conteúdo', incluir: true });
+  memoria.push({ code: 'Roubo', texto: '50% × ' + fmtBRL(p.imovelConteudo) + ' = ' + fmtBRL(roubo) });
+
+  // RC Familiar
+  coberturas.push({ nome: 'Responsabilidade Civil Familiar', valor: 100000, desc: 'Danos a terceiros por moradores', incluir: true });
+
+  // Danos por água
+  if (p.imovelRisco !== 'nao') {
+    coberturas.push({ nome: 'Danos por Água / Alagamento', valor: Math.round(valorReconstrucao * 0.2), desc: 'Área de risco identificada', incluir: true });
+  }
+
+  // Assistência
+  coberturas.push({ nome: 'Assistência 24h Residencial', valor: 0, desc: 'Encanador, eletricista, chaveiro', incluir: true });
+
+  var justificativa = '';
+  if (necessidade === 'essencial') justificativa = p.imovelProp === 'financiado' ? 'Imóvel financiado — seguro é exigido pelo banco e protege o investimento.' : 'Imóvel em área de risco — exposição elevada a sinistros.';
+  else justificativa = 'Proteção patrimonial recomendada para o imóvel e conteúdo.';
+
+  return { tipo: 'residencial', nome: 'Seguro Residencial', icon: '🏠', necessidade: necessidade, justificativa: justificativa, coberturas: coberturas, memoria: memoria };
+}
+
+// ─── CÁLCULO SEGURO RC ───
+function calcRC(p) {
+  var memoria = [];
+  var coberturas = [];
+  var necessidade = p.regulado === 'sim' ? 'essencial' : 'recomendado';
+
+  memoria.push({ texto: 'Empresa: ' + p.temEmpresa + ' | Regulado: ' + p.regulado + ' | Faturamento: ' + fmtBRL(p.faturamento) });
+
+  // Capital base = maior entre faturamento anual e 3× valor médio dos contratos
+  var capitalBase = Math.max(p.faturamento, p.contratosValor * 3, 100000);
+  memoria.push({ code: 'Capital base', texto: 'Máx(faturamento, 3×contratos, R$100k) = ' + fmtBRL(capitalBase) });
+
+  coberturas.push({ nome: 'Danos Materiais a Terceiros', valor: capitalBase, desc: 'Reparação de bens danificados', incluir: true });
+  coberturas.push({ nome: 'Danos Corporais a Terceiros', valor: capitalBase, desc: 'Lesões físicas a terceiros', incluir: true });
+
+  var danosMorais = Math.round(capitalBase * 0.5);
+  coberturas.push({ nome: 'Danos Morais', valor: danosMorais, desc: '50% do capital base', incluir: true });
+  memoria.push({ code: 'Danos morais', texto: '50% × ' + fmtBRL(capitalBase) + ' = ' + fmtBRL(danosMorais) });
+
+  coberturas.push({ nome: 'Custos de Defesa', valor: Math.round(capitalBase * 0.3), desc: 'Honorários e custas judiciais', incluir: true });
+
+  if (p.funcionarios > 0) {
+    var rcEmpregador = Math.round(p.funcionarios * 50000);
+    coberturas.push({ nome: 'RC Empregador', valor: rcEmpregador, desc: p.funcionarios + ' funcionários × R$50k', incluir: true });
+    memoria.push({ code: 'RC Empregador', texto: p.funcionarios + ' × R$50.000 = ' + fmtBRL(rcEmpregador) });
+  }
+
+  var justificativa = p.regulado === 'sim' ? 'Atividade regulada por conselho — exposição a processos por erro profissional é elevada.' : 'Empresa/atividade profissional expõe a riscos de responsabilização por danos a terceiros.';
+
+  return { tipo: 'rc', nome: 'Seguro Responsabilidade Civil', icon: '⚖️', necessidade: necessidade, justificativa: justificativa, coberturas: coberturas, memoria: memoria };
+}
+
+// === ACEITAR SUGESTÃO ===
+function aceitarSugestao(i) {
+  var sug = diagnosticoSugestoes[i];
+  if (!sug) return;
+  // Verificar se já existe
+  if (currentSeguros.some(function(s) { return s.tipo === sug.tipo; })) { alert('Este tipo de seguro já está na análise.'); return; }
+
+  var seguro = {
+    id: genId(),
+    tipo: sug.tipo,
+    customNome: '',
+    coberturas: sug.coberturas.map(function(c) { return { id: genId(), nome: c.nome, valor: c.valor, desc: c.desc, incluir: c.incluir !== false }; }),
+    viavel: sug.viavel || 'sim',
+    viavelMotivo: sug.viavelMotivo || '',
+    pctReserva: 5,
+    patrimonioRisco: 0,
+    premio: 0,
+    vigencia: 12,
+    necessario: sug.necessidade,
+    justificativa: sug.justificativa
+  };
+  currentSeguros.push(seguro);
+  renderSegurosLista();
+  gerarDiagnostico(); // Re-render para mostrar "Já na análise"
+  autoSave();
+}
+
+// === TAB MANAGEMENT ===
+function switchTab(tab) {
+  var tabs = ['perfil', 'sugestoes', 'seguros', 'resultado'];
+  tabs.forEach(function(t) { var el = document.getElementById('tab-' + t); if (el) el.classList.toggle('hidden', t !== tab); });
+  document.querySelectorAll('.tab-btn').forEach(function(btn, i) { btn.classList.toggle('active', tabs[i] === tab); });
+}
+
+// === SEGURO MODAL (MANUAL) ===
+function abrirModalSeguro(idx) {
+  editingSeguroIdx = (typeof idx === 'number') ? idx : -1;
+  document.getElementById('modal-seguro-title').textContent = editingSeguroIdx >= 0 ? 'Editar Seguro' : 'Adicionar Seguro';
+  if (editingSeguroIdx >= 0) {
+    var seg = currentSeguros[editingSeguroIdx];
+    document.getElementById('seg-tipo').value = seg.tipo;
+    if (seg.tipo === 'custom') document.getElementById('seg-custom-nome').value = seg.customNome || '';
+    tempCoberturas = JSON.parse(JSON.stringify(seg.coberturas || []));
+    document.getElementById('seg-viavel').value = seg.viavel || '';
+    document.getElementById('seg-viavel-motivo').value = seg.viavelMotivo || '';
+    document.getElementById('seg-pct-reserva').value = seg.pctReserva || 5;
+    document.getElementById('seg-patrimonio-risco').value = seg.patrimonioRisco ? fmtMoneyVal(seg.patrimonioRisco) : '';
+    document.getElementById('seg-premio').value = seg.premio ? fmtMoneyVal(seg.premio) : '';
+    document.getElementById('seg-vigencia').value = seg.vigencia || 12;
+    document.getElementById('seg-necessario').value = seg.necessario || '';
+    document.getElementById('seg-justificativa').value = seg.justificativa || '';
+    onTipoSeguroChange(true);
+    onViabilidadeChange();
+  } else {
+    document.getElementById('seg-tipo').value = '';
+    document.getElementById('seg-custom-nome').value = '';
+    tempCoberturas = [];
+    document.getElementById('seg-viavel').value = '';
+    document.getElementById('seg-viavel-motivo').value = '';
+    document.getElementById('seg-premio').value = '';
+    document.getElementById('seg-vigencia').value = '12';
+    document.getElementById('seg-necessario').value = '';
+    document.getElementById('seg-justificativa').value = '';
+    document.getElementById('seg-coberturas-section').classList.add('hidden');
+    document.getElementById('seg-viabilidade-section').classList.add('hidden');
+    document.getElementById('seg-premio-section').classList.add('hidden');
+    document.getElementById('seg-necessidade-section').classList.add('hidden');
+  }
+  document.getElementById('modal-seguro').classList.add('active');
+}
+
+function fecharModalSeguro() { document.getElementById('modal-seguro').classList.remove('active'); editingSeguroIdx = -1; tempCoberturas = []; }
+
+function onTipoSeguroChange(isEdit) {
+  var tipo = document.getElementById('seg-tipo').value;
+  document.getElementById('seg-custom-nome-wrap').classList.toggle('hidden', tipo !== 'custom');
+  if (!tipo) {
+    document.getElementById('seg-coberturas-section').classList.add('hidden');
+    document.getElementById('seg-viabilidade-section').classList.add('hidden');
+    document.getElementById('seg-premio-section').classList.add('hidden');
+    document.getElementById('seg-necessidade-section').classList.add('hidden');
+    return;
+  }
+  document.getElementById('seg-coberturas-section').classList.remove('hidden');
+  document.getElementById('seg-viabilidade-section').classList.remove('hidden');
+  document.getElementById('seg-premio-section').classList.remove('hidden');
+  document.getElementById('seg-necessidade-section').classList.remove('hidden');
+  if (!isEdit && tempCoberturas.length === 0) { tempCoberturas = []; }
+  renderTempCoberturas();
+}
+
+function onViabilidadeChange() {
+  var v = document.getElementById('seg-viavel').value;
+  document.getElementById('seg-reserva-extra-section').classList.toggle('hidden', v !== 'nao');
+}
+
+// === COBERTURAS TEMP ===
+function renderTempCoberturas() {
+  var html = '';
+  tempCoberturas.forEach(function(c, i) {
+    html += '<div class="cob-item"><div class="cob-info"><div class="cob-name">' + (c.incluir ? '✓ ' : '✗ ') + escHtml(c.nome) + '</div>';
+    if (c.desc) html += '<div class="cob-desc">' + escHtml(c.desc) + '</div>';
+    html += '</div><div class="cob-valor">' + (c.valor > 0 ? fmtBRL(c.valor) : '—') + '</div>';
+    html += '<div class="cob-actions"><button class="btn-ghost" onclick="editTempCob(' + i + ')">✏️</button><button class="btn-ghost" onclick="removeTempCob(' + i + ')" style="color:var(--red);">✗</button></div></div>';
+  });
+  document.getElementById('seg-coberturas-lista').innerHTML = html || '<p class="note">Nenhuma cobertura.</p>';
+}
+
+function addCobertura() { editingCobIdx = -1; document.getElementById('cob-nome').value = ''; document.getElementById('cob-valor').value = ''; document.getElementById('cob-desc').value = ''; document.getElementById('cob-incluir').checked = true; document.getElementById('modal-cob-title').textContent = 'Adicionar Cobertura'; document.getElementById('modal-cobertura').classList.add('active'); }
+function editTempCob(i) { editingCobIdx = i; var c = tempCoberturas[i]; document.getElementById('cob-nome').value = c.nome || ''; document.getElementById('cob-valor').value = c.valor ? fmtMoneyVal(c.valor) : ''; document.getElementById('cob-desc').value = c.desc || ''; document.getElementById('cob-incluir').checked = c.incluir !== false; document.getElementById('modal-cob-title').textContent = 'Editar Cobertura'; document.getElementById('modal-cobertura').classList.add('active'); }
+function removeTempCob(i) { tempCoberturas.splice(i, 1); renderTempCoberturas(); }
+function fecharModalCobertura() { document.getElementById('modal-cobertura').classList.remove('active'); }
+function salvarCobertura() {
+  var nome = document.getElementById('cob-nome').value.trim();
+  if (!nome) { alert('Informe o nome.'); return; }
+  var obj = { id: editingCobIdx >= 0 ? tempCoberturas[editingCobIdx].id : genId(), nome: nome, valor: parseMoney(document.getElementById('cob-valor').value), desc: document.getElementById('cob-desc').value.trim(), incluir: document.getElementById('cob-incluir').checked };
+  if (editingCobIdx >= 0) tempCoberturas[editingCobIdx] = obj; else tempCoberturas.push(obj);
+  renderTempCoberturas(); fecharModalCobertura();
+}
+
+// === SALVAR SEGURO ===
+function salvarSeguro() {
+  var tipo = document.getElementById('seg-tipo').value;
+  if (!tipo) { alert('Selecione o tipo.'); return; }
+  var seguro = {
+    id: editingSeguroIdx >= 0 ? currentSeguros[editingSeguroIdx].id : genId(),
+    tipo: tipo,
+    customNome: tipo === 'custom' ? document.getElementById('seg-custom-nome').value.trim() : '',
+    coberturas: JSON.parse(JSON.stringify(tempCoberturas)),
+    viavel: document.getElementById('seg-viavel').value,
+    viavelMotivo: document.getElementById('seg-viavel-motivo').value.trim(),
+    pctReserva: parseFloat(document.getElementById('seg-pct-reserva').value) || 5,
+    patrimonioRisco: parseMoney(document.getElementById('seg-patrimonio-risco').value),
+    premio: parseMoney(document.getElementById('seg-premio').value),
+    vigencia: parseInt(document.getElementById('seg-vigencia').value) || 12,
+    necessario: document.getElementById('seg-necessario').value,
+    justificativa: document.getElementById('seg-justificativa').value.trim()
+  };
+  if (editingSeguroIdx >= 0) currentSeguros[editingSeguroIdx] = seguro; else currentSeguros.push(seguro);
+  fecharModalSeguro(); renderSegurosLista(); autoSave();
+}
+
+// === RENDER SEGUROS LISTA ===
+function renderSegurosLista() {
+  var container = document.getElementById('seguros-lista');
+  var empty = document.getElementById('seguros-empty');
+  if (!currentSeguros.length) { container.innerHTML = ''; container.appendChild(empty); empty.style.display = 'block'; return; }
+  empty.style.display = 'none';
+  var nomes = { vida: '❤️ Seguro de Vida', auto: '🚗 Seguro Auto', residencial: '🏠 Seguro Residencial', rc: '⚖️ Seguro RC' };
+  var html = '';
+  currentSeguros.forEach(function(seg, i) {
+    var nome = nomes[seg.tipo] || '🔧 ' + (seg.customNome || 'Personalizado');
+    var totalCob = seg.coberturas.filter(function(c) { return c.incluir; }).reduce(function(s, c) { return s + (c.valor || 0); }, 0);
+    var badges = '';
+    if (seg.necessario === 'essencial') badges += '<span class="badge badge-red">Essencial</span> ';
+    else if (seg.necessario === 'recomendado') badges += '<span class="badge badge-orange">Recomendado</span> ';
+    else if (seg.necessario === 'opcional') badges += '<span class="badge badge-blue">Opcional</span> ';
+    else if (seg.necessario === 'desnecessario') badges += '<span class="badge badge-muted">Desnecessário</span> ';
+    if (seg.viavel === 'sim') badges += '<span class="badge badge-green">Viável</span>';
+    else if (seg.viavel === 'nao') badges += '<span class="badge badge-red">Inviável</span>';
+    else if (seg.viavel === 'parcial') badges += '<span class="badge badge-orange">Parcial</span>';
+
+    html += '<div class="cob-item" style="padding:1rem;">';
+    html += '<div class="cob-info" style="flex:1;"><div class="cob-name" style="font-size:0.95rem;">' + nome + '</div>';
+    html += '<div class="cob-desc" style="margin-top:0.3rem;">' + badges;
+    if (totalCob > 0) html += ' <span style="color:var(--muted); font-size:0.75rem;">Capital: ' + fmtBRL(totalCob) + '</span>';
+    if (seg.premio > 0) html += ' <span style="color:var(--muted); font-size:0.75rem;">| Prêmio: ' + fmtBRL(seg.premio) + '/mês</span>';
+    html += '</div></div>';
+    html += '<div class="cob-actions"><button class="btn-edit" onclick="abrirModalSeguro(' + i + ')">✏️ Editar</button> <button class="btn-danger" onclick="excluirSeguro(' + i + ')">🗑</button></div>';
+    html += '</div>';
+  });
+  container.innerHTML = html;
+}
+
+function excluirSeguro(i) { if (!confirm('Excluir?')) return; currentSeguros.splice(i, 1); renderSegurosLista(); autoSave(); }
+
+// === RESULTADO FINAL ===
+function gerarResultado() {
+  if (!currentSeguros.length) { document.getElementById('resultado-content').innerHTML = '<div class="sim-empty-state" style="padding:2rem;"><p>Adicione seguros nas abas 2 ou 3.</p></div>'; return; }
+  var p = getPerfil();
+  var html = '';
+  var totalPremio = 0, totalCapital = 0, totalReservaExtra = 0, essenciais = 0, inviaveis = 0;
+
+  currentSeguros.forEach(function(seg) {
+    if (seg.viavel !== 'nao') totalPremio += seg.premio || 0;
+    var cap = seg.coberturas.filter(function(c) { return c.incluir; }).reduce(function(s, c) { return s + (c.valor || 0); }, 0);
+    totalCapital += cap;
+    if (seg.necessario === 'essencial') essenciais++;
+    if (seg.viavel === 'nao') { inviaveis++; var patR = seg.patrimonioRisco || cap; totalReservaExtra += patR * ((seg.pctReserva || 5) / 100); }
+  });
+
+  var pctRenda = p.renda > 0 ? (totalPremio / p.renda * 100) : 0;
+
+  html += '<div class="summary-grid">';
+  html += '<div class="summary-item"><div class="label">Seguros</div><div class="value white">' + currentSeguros.length + '</div></div>';
+  html += '<div class="summary-item"><div class="label">Prêmio Mensal</div><div class="value ' + (pctRenda > 10 ? 'red' : 'green') + '">' + fmtBRL(totalPremio) + '</div></div>';
+  html += '<div class="summary-item"><div class="label">% da Renda</div><div class="value ' + (pctRenda > 10 ? 'red' : pctRenda > 5 ? 'orange' : 'green') + '">' + pctRenda.toFixed(1) + '%</div></div>';
+  html += '<div class="summary-item"><div class="label">Capital Total</div><div class="value blue">' + fmtBRL(totalCapital) + '</div></div>';
+  html += '<div class="summary-item"><div class="label">Inviáveis</div><div class="value ' + (inviaveis > 0 ? 'red' : 'green') + '">' + inviaveis + '</div></div>';
+  html += '<div class="summary-item"><div class="label">Reserva Extra</div><div class="value ' + (totalReservaExtra > 0 ? 'orange' : 'green') + '">' + fmtBRL(totalReservaExtra) + '</div></div>';
+  html += '</div>';
+
+  // Detalhamento
+  html += '<hr class="section-divider"><h3 style="color:var(--primary); margin-bottom:1rem;">Detalhamento</h3>';
+  var nomes = { vida: '❤️ Seguro de Vida', auto: '🚗 Seguro Auto', residencial: '🏠 Seguro Residencial', rc: '⚖️ Seguro RC' };
+  currentSeguros.forEach(function(seg) {
+    var nome = nomes[seg.tipo] || '🔧 ' + (seg.customNome || 'Personalizado');
+    var cobAtivas = seg.coberturas.filter(function(c) { return c.incluir; });
+    var totalCap = cobAtivas.reduce(function(s, c) { return s + (c.valor || 0); }, 0);
+
+    html += '<div class="result-card"><h4>' + nome + '</h4>';
+    html += '<div style="display:flex; gap:0.5rem; flex-wrap:wrap; margin-bottom:0.75rem;">';
+    if (seg.necessario === 'essencial') html += '<span class="badge badge-red">Essencial</span>';
+    else if (seg.necessario === 'recomendado') html += '<span class="badge badge-orange">Recomendado</span>';
+    else if (seg.necessario === 'opcional') html += '<span class="badge badge-blue">Opcional</span>';
+    else if (seg.necessario === 'desnecessario') html += '<span class="badge badge-muted">Desnecessário</span>';
+    if (seg.viavel === 'sim') html += '<span class="badge badge-green">Viável</span>';
+    else if (seg.viavel === 'nao') html += '<span class="badge badge-red">Inviável</span>';
+    else if (seg.viavel === 'parcial') html += '<span class="badge badge-orange">Parcial</span>';
+    html += '</div>';
+
+    if (cobAtivas.length > 0) {
+      html += '<table class="result-table"><thead><tr><th>Cobertura</th><th>Capital</th></tr></thead><tbody>';
+      cobAtivas.forEach(function(c) { html += '<tr><td>' + escHtml(c.nome) + '</td><td style="color:var(--green); font-weight:600;">' + (c.valor > 0 ? fmtBRL(c.valor) : '—') + '</td></tr>'; });
+      html += '<tr style="border-top:1px solid var(--border);"><td style="font-weight:700;">Total</td><td style="font-weight:700; color:var(--green);">' + fmtBRL(totalCap) + '</td></tr></tbody></table>';
+    }
+
+    if (seg.premio > 0 && seg.viavel !== 'nao') {
+      html += '<div style="margin-top:0.75rem; font-size:0.82rem;"><span style="color:var(--muted);">Prêmio:</span> <span style="color:var(--orange); font-weight:600;">' + fmtBRL(seg.premio) + '/mês</span> | <span style="color:var(--muted);">Anual:</span> ' + fmtBRL(seg.premio * 12) + ' | <span style="color:var(--muted);">Vigência:</span> ' + seg.vigencia + ' meses</div>';
+    }
+
+    if (seg.viavel === 'nao') {
+      var patR = seg.patrimonioRisco || totalCap;
+      var resExtra = patR * ((seg.pctReserva || 5) / 100);
+      html += '<div style="margin-top:0.75rem; padding:0.75rem; background:rgba(239,68,68,0.08); border-radius:6px; border:1px solid rgba(239,68,68,0.2);">';
+      html += '<div style="font-size:0.82rem; font-weight:600; color:var(--red);">⚠️ Inviável — Compensar com Reserva</div>';
+      if (seg.viavelMotivo) html += '<div style="font-size:0.78rem; color:var(--muted);">Motivo: ' + escHtml(seg.viavelMotivo) + '</div>';
+      html += '<div style="font-size:0.82rem; margin-top:0.3rem;">' + fmtBRL(patR) + ' × ' + (seg.pctReserva || 5) + '% = <strong style="color:var(--orange);">' + fmtBRL(resExtra) + '</strong> reserva adicional</div>';
+      html += '</div>';
+    }
+
+    if (seg.justificativa) html += '<div style="margin-top:0.5rem; font-size:0.78rem; color:var(--muted); font-style:italic;">💬 ' + escHtml(seg.justificativa) + '</div>';
+    html += '</div>';
+  });
+
+  // Recomendações
+  html += '<hr class="section-divider"><div class="result-card" style="border-color:var(--primary);"><h4>📋 Recomendações</h4><ul style="font-size:0.85rem; line-height:1.8; padding-left:1.2rem;">';
+  if (pctRenda > 10) html += '<li style="color:var(--red);">Custo total <strong>' + pctRenda.toFixed(1) + '%</strong> da renda — acima do ideal (5-10%). Priorize essenciais.</li>';
+  else if (pctRenda > 5) html += '<li style="color:var(--orange);">Custo total <strong>' + pctRenda.toFixed(1) + '%</strong> da renda — aceitável mas monitorar.</li>';
+  else if (totalPremio > 0) html += '<li style="color:var(--green);">Custo total <strong>' + pctRenda.toFixed(1) + '%</strong> da renda — dentro do ideal.</li>';
+
+  if (totalReservaExtra > 0) {
+    html += '<li style="color:var(--orange);">Reserva recomendada: <strong>' + fmtBRL(p.reserva + totalReservaExtra) + '</strong> (atual ' + fmtBRL(p.reserva) + ' + ' + fmtBRL(totalReservaExtra) + ' para cobrir riscos inviáveis).</li>';
+  }
+
+  currentSeguros.forEach(function(seg) {
+    var nome = (nomes[seg.tipo] || seg.customNome || 'Personalizado').replace(/[❤️🚗🏠⚖️🔧]/g, '').trim();
+    if (seg.necessario === 'essencial' && seg.viavel === 'nao') html += '<li style="color:var(--red);"><strong>' + escHtml(nome) + '</strong> é essencial mas inviável — prioridade máxima.</li>';
+    else if (seg.necessario === 'essencial' && !seg.premio) html += '<li style="color:var(--orange);"><strong>' + escHtml(nome) + '</strong> essencial — obter cotação urgente.</li>';
+    else if (seg.necessario === 'desnecessario' && seg.premio > 0) html += '<li style="color:var(--blue);"><strong>' + escHtml(nome) + '</strong> desnecessário — considerar cancelamento (' + fmtBRL(seg.premio) + '/mês).</li>';
+  });
+  html += '</ul></div>';
+
+  // Reserva final
+  if (totalReservaExtra > 0) {
+    html += '<div style="background:var(--card2); border:1px solid var(--border); border-radius:var(--radius); padding:1.5rem; text-align:center; margin-top:1.5rem;">';
+    html += '<div style="font-size:0.85rem; color:var(--muted); text-transform:uppercase; margin-bottom:0.5rem;">Reserva de Emergência Recomendada</div>';
+    html += '<div style="font-size:1.8rem; font-weight:700; color:var(--orange);">' + fmtBRL(p.reserva + totalReservaExtra) + '</div>';
+    html += '<div style="font-size:0.82rem; color:var(--muted); margin-top:0.5rem;">Atual: ' + fmtBRL(p.reserva) + ' + Adicional: ' + fmtBRL(totalReservaExtra) + '</div>';
+    html += '</div>';
+  }
+
+  document.getElementById('resultado-content').innerHTML = html;
+}
+
+// === CRUD ANÁLISES ===
+function novaAnalise() { editingAnaliseId = genId(); currentSeguros = []; diagnosticoSugestoes = []; clearForm(); document.getElementById('analise-nome').value = ''; document.getElementById('sim-editing-label').textContent = 'Nova análise'; showEditor(); renderSegurosLista(); }
+
+function clearForm() {
+  document.querySelectorAll('#tab-perfil input, #tab-perfil select').forEach(function(el) {
+    if (el.type === 'number') el.value = '';
+    else if (el.tagName === 'SELECT') el.selectedIndex = 0;
+    else el.value = '';
+  });
+}
+
+function editarAnalise(id) {
+  var a = analises.find(function(x) { return x.id === id; });
+  if (!a) return;
+  editingAnaliseId = id;
+  currentSeguros = JSON.parse(JSON.stringify(a.seguros || []));
+  document.getElementById('analise-nome').value = a.nome || '';
+  document.getElementById('sim-editing-label').textContent = (a.locked && !isEquipeMode() ? 'Visualizando: ' : 'Editando: ') + (a.nome || 'Sem nome');
+  // Restore perfil
+  var pf = a.perfil || {};
+  var fieldMap = {
+    'p-idade': pf.idade, 'p-sexo': pf.sexo, 'p-estado-civil': pf.estadoCivil, 'p-profissao': pf.profissao,
+    'p-prof-risco': pf.profRisco, 'p-fumante': pf.fumante, 'p-esporte-risco': pf.esporteRisco, 'p-saude': pf.saude,
+    'p-doenca': pf.doenca, 'p-dependentes': pf.dependentes, 'p-idades-dep': pf.idadesDep, 'p-provedor': pf.provedor,
+    'p-conjuge-trabalha': pf.conjugeTrabalha, 'p-anos-independencia': pf.anosIndependencia, 'p-vinculo': pf.vinculo,
+    'p-outra-renda': pf.outraRenda, 'p-tem-imovel': pf.temImovel, 'p-imovel-tipo': pf.imovelTipo,
+    'p-imovel-prop': pf.imovelProp, 'p-imovel-construcao': pf.imovelConstrucao, 'p-imovel-risco': pf.imovelRisco,
+    'p-imovel-seguranca': pf.imovelSeguranca, 'p-tem-veiculo': pf.temVeiculo, 'p-veiculo-ano': pf.veiculoAno,
+    'p-veiculo-uso': pf.veiculoUso, 'p-veiculo-financiado': pf.veiculoFinanciado, 'p-veiculo-garagem': pf.veiculoGaragem,
+    'p-tem-empresa': pf.temEmpresa, 'p-funcionarios': pf.funcionarios, 'p-regulado': pf.regulado
+  };
+  Object.keys(fieldMap).forEach(function(id) { var el = document.getElementById(id); if (el && fieldMap[id] !== undefined && fieldMap[id] !== null) el.value = fieldMap[id]; });
+  // Money fields
+  var moneyMap = { 'p-renda': pf.renda, 'p-renda-liq': pf.rendaLiq, 'p-despesas': pf.despesas, 'p-renda-conjuge': pf.rendaConjuge,
+    'p-educacao': pf.educacao, 'p-outra-renda-valor': pf.outraRendaValor, 'p-patrimonio': pf.patrimonio, 'p-dividas': pf.dividas,
+    'p-reserva': pf.reserva, 'p-imovel-valor': pf.imovelValor, 'p-imovel-conteudo': pf.imovelConteudo,
+    'p-veiculo-valor': pf.veiculoValor, 'p-faturamento': pf.faturamento, 'p-contratos-valor': pf.contratosValor };
+  Object.keys(moneyMap).forEach(function(id) { var el = document.getElementById(id); if (el && moneyMap[id]) el.value = fmtMoneyVal(moneyMap[id]); });
+
+  showEditor(); renderSegurosLista(); applyLockMode(a.locked);
+}
+
+function duplicarAnalise(id) { var o = analises.find(function(x) { return x.id === id; }); if (!o) return; var c = JSON.parse(JSON.stringify(o)); c.id = genId(); c.nome = (o.nome || 'Análise') + ' (cópia)'; c.updatedAt = new Date().toISOString(); c.locked = false; analises.push(c); saveData(); renderList(); }
+function deleteAnalise(id) { if (!confirm('Excluir?')) return; analises = analises.filter(function(x) { return x.id !== id; }); saveData(); renderList(); }
+function voltarParaLista() { showList(); renderList(); }
+function toggleLock(id, ev) { ev.stopPropagation(); var a = analises.find(function(x) { return x.id === id; }); if (a) { a.locked = !a.locked; saveData(); renderList(); } }
+function togglePrimary(id, ev) { ev.stopPropagation(); analises.forEach(function(a) { a.primary = (a.id === id) ? !a.primary : false; }); saveData(); renderList(); }
+function isEquipeMode() { return sessionStorage.getItem('equipe_modo_cliente') === 'true'; }
+function applyLockMode(locked) { var ed = document.getElementById('sim-editor-view'); ed.classList.remove('client-locked'); if (locked && !isEquipeMode()) ed.classList.add('client-locked'); }
+
+// === BUILD PAYLOAD ===
+function buildPayload() { return { perfil: getPerfil(), seguros: currentSeguros }; }
+
+// === AUTO-SAVE ===
+var _saveTimer = null;
+function autoSave() {
+  if (_saveTimer) clearTimeout(_saveTimer);
+  _saveTimer = setTimeout(function() {
+    if (!editingAnaliseId) return;
+    var payload = buildPayload();
+    var nome = document.getElementById('analise-nome').value.trim() || 'Análise ' + new Date().toLocaleDateString('pt-BR');
+    var idx = analises.findIndex(function(a) { return a.id === editingAnaliseId; });
+    if (idx >= 0) { analises[idx].nome = nome; analises[idx].perfil = payload.perfil; analises[idx].seguros = payload.seguros; analises[idx].updatedAt = new Date().toISOString(); }
+    else { analises.push({ id: editingAnaliseId, nome: nome, perfil: payload.perfil, seguros: payload.seguros, updatedAt: new Date().toISOString(), locked: false, primary: false }); }
+    saveData();
+  }, 1500);
+}
+
+function forceSave() {
+  if (_saveTimer) clearTimeout(_saveTimer);
+  if (!editingAnaliseId) return;
+  var payload = buildPayload();
+  var nome = document.getElementById('analise-nome').value.trim() || 'Análise ' + new Date().toLocaleDateString('pt-BR');
+  var idx = analises.findIndex(function(a) { return a.id === editingAnaliseId; });
+  if (idx >= 0) { analises[idx].nome = nome; analises[idx].perfil = payload.perfil; analises[idx].seguros = payload.seguros; analises[idx].updatedAt = new Date().toISOString(); }
+  else { analises.push({ id: editingAnaliseId, nome: nome, perfil: payload.perfil, seguros: payload.seguros, updatedAt: new Date().toISOString(), locked: false, primary: false }); }
+  saveData(); globalSaveFeedback();
+}
+
+// === VIEW ===
+function showList() { document.getElementById('sim-list-view').style.display = 'block'; document.getElementById('sim-editor-view').style.display = 'none'; }
+function showEditor() { document.getElementById('sim-list-view').style.display = 'none'; document.getElementById('sim-editor-view').style.display = 'block'; switchTab('perfil'); }
+
+// === RENDER LIST ===
+function renderList() {
+  var container = document.getElementById('sim-list-container');
+  var empty = document.getElementById('sim-empty-state');
+  if (!analises.length) { container.innerHTML = ''; container.appendChild(empty); empty.style.display = 'block'; return; }
+  empty.style.display = 'none';
+  var html = '';
+  analises.slice().sort(function(a, b) { return new Date(b.updatedAt) - new Date(a.updatedAt); }).forEach(function(a) {
+    var date = new Date(a.updatedAt).toLocaleDateString('pt-BR');
+    var n = (a.seguros || []).length;
+    html += '<div class="sim-card' + (a.locked ? ' locked' : '') + '">';
+    html += '<div class="ctrl-group"><span class="ctrl-item ' + (a.locked ? 'active-lock' : '') + '"><span class="ctrl-icon">🔒</span><input type="checkbox" ' + (a.locked ? 'checked' : '') + ' onchange="toggleLock(' + a.id + ', event)"></span><span class="ctrl-item ' + (a.primary ? 'active-primary' : '') + '"><span class="ctrl-icon">⭐</span><input type="checkbox" ' + (a.primary ? 'checked' : '') + ' onchange="togglePrimary(' + a.id + ', event)"></span></div>';
+    html += '<div class="sim-card-title">' + escHtml(a.nome || 'Sem nome') + '</div>';
+    html += '<div class="sim-card-meta">' + n + ' seguro(s) | ' + date + '</div>';
+    html += '<div class="sim-card-actions"><button onclick="editarAnalise(' + a.id + ')">✏️ ' + (a.locked && !isEquipeMode() ? 'Ver' : 'Editar') + '</button><button onclick="duplicarAnalise(' + a.id + ')">📋 Duplicar</button>';
+    if (!a.locked || isEquipeMode()) html += '<button class="danger" onclick="deleteAnalise(' + a.id + ')">🗑 Excluir</button>';
+    html += '</div></div>';
+  });
+  container.innerHTML = html;
+}
+
+// === PERSISTENCE ===
+var _RISK_SUPABASE_URL = 'https://vbikskbfkhundhropykf.supabase.co';
+var _RISK_SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZiaWtza2Jma2h1bmRocm9weWtmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDU1MTk5NjEsImV4cCI6MjA2MTA5NTk2MX0.-n-Tj_5JnF1NL2ZImWlMeTcobWDl_VD6Vqp0lxRQFFU';
+var _RISK_LS_KEY = 'hv_riscos_local';
+var _RISK_FERRAMENTA = 'riscos';
+var _riskSbClient = null;
+
+function getClienteId() { return sessionStorage.getItem('cliente_id') || null; }
+function _initSupabase() { if (window.mithraSupabaseClient) { _riskSbClient = window.mithraSupabaseClient; return; } if (window.supabase && window.supabase.createClient) { _riskSbClient = window.supabase.createClient(_RISK_SUPABASE_URL, _RISK_SUPABASE_KEY); } }
+
+async function saveData() {
+  var clienteId = getClienteId();
+  var data = { analises: analises };
+  var lsKey = clienteId ? _RISK_LS_KEY + '_' + clienteId : _RISK_LS_KEY;
+  try { localStorage.setItem(lsKey, JSON.stringify(data)); } catch(e) {}
+  if (!_riskSbClient || !clienteId) return;
+  try { await _riskSbClient.from('ferramentas_dados').upsert({ cliente_id: clienteId, ferramenta: _RISK_FERRAMENTA, dados: data, updated_at: new Date().toISOString() }, { onConflict: 'cliente_id,ferramenta' }); } catch(e) { console.warn('[Riscos] Erro:', e); }
+}
+
+async function loadData() {
+  var clienteId = getClienteId();
+  _initSupabase();
+  if (_riskSbClient && clienteId) {
+    try {
+      var res = await _riskSbClient.from('ferramentas_dados').select('dados').eq('cliente_id', clienteId).eq('ferramenta', _RISK_FERRAMENTA).maybeSingle();
+      if (res.data && res.data.dados && res.data.dados.analises) { analises = res.data.dados.analises; var lsK = _RISK_LS_KEY + '_' + clienteId; try { localStorage.setItem(lsK, JSON.stringify({ analises: analises })); } catch(e2) {} return; }
+    } catch(e) { console.warn('[Riscos] Erro load:', e); }
+  }
+  var lsKey = clienteId ? _RISK_LS_KEY + '_' + clienteId : _RISK_LS_KEY;
+  var local = localStorage.getItem(lsKey);
+  if (local) { try { var d = JSON.parse(local); if (d.analises) analises = d.analises; } catch(e) { analises = []; } }
+}
+
+function globalSaveFeedback() { var btn = document.getElementById('btnSaveGlobal'); var icon = document.getElementById('saveIcon'); var label = document.getElementById('saveLabel'); if (!btn) return; btn.classList.add('saved'); icon.textContent = '✅'; label.textContent = 'Salvo!'; setTimeout(function() { btn.classList.remove('saved'); icon.textContent = '💾'; label.textContent = 'Salvar Alterações'; }, 2500); }
+
+// === EQUIPE MODE ===
+(function() { if (sessionStorage.getItem('equipe_modo_cliente') === 'true') { document.documentElement.classList.add('equipe-mode'); } })();
+
+// === INIT ===
+async function init() { await loadData(); renderList(); showList(); }
+init();
+</script>
+</body>
+</html>
