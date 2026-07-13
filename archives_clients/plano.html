@@ -334,8 +334,16 @@
 
   <div class="argos-header">
     <h1>PROTOCOLO ARGOS DE PLANEJAMENTO FINANCEIRO</h1>
-    <p>Orientações gerais personalizadas</p>
+    <p id="argos-subtitle">Orientações gerais personalizadas</p>
   </div>
+  <script>
+  (function() {
+    var nome = sessionStorage.getItem('cliente_nome');
+    if (nome) {
+      document.getElementById('argos-subtitle').textContent = 'Orientações gerais personalizadas para ' + nome;
+    }
+  })();
+  </script>
 
   <div id="loading" class="loading-state">
     <div class="spinner"></div>
