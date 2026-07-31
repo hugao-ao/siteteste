@@ -169,6 +169,40 @@ async function initializeDashboard() {
         clientsTableBody.addEventListener("click", handleTableClick);
         clientsTableBody.addEventListener("input", markClientAsModified);
         clientsTableBody.addEventListener("change", markClientAsModified);
+        // Client -> Lead conversion via tipo select
+        clientsTableBody.addEventListener("change", async (e) => {
+            if (!e.target.matches('.client-tipo-select')) return;
+            const newTipo = e.target.value;
+            if (newTipo !== 'lead') return;
+            const clientId = e.target.dataset.clientId;
+            const row = e.target.closest('tr');
+            const clientName = row?.querySelector('.client-name')?.value || 'Cliente';
+            if (!confirm(`Converter "${clientName}" de CLIENTE para LEAD? O registro de cliente ser\u00e1 removido e um lead ser\u00e1 criado com os mesmos dados.`)) {
+                e.target.value = 'cliente';
+                return;
+            }
+            try {
+                const whatsapp = row?.querySelector('.client-whatsapp')?.value || '';
+                const projeto = row?.querySelector('.client-project')?.value || currentUserProjeto || 'Planejamento';
+                // 1. Create lead
+                const { error: leadErr } = await supabase.from('leads').insert({
+                    nome: clientName,
+                    whatsapp: whatsapp || null,
+                    projeto: projeto,
+                    criado_por_id: currentUserId,
+                    status: 'NOVO'
+                });
+                if (leadErr) throw leadErr;
+                // 2. Delete client (cascade should handle related data, or keep it orphaned)
+                const { error: delErr } = await supabase.from('clientes').delete().eq('id', clientId);
+                if (delErr) throw delErr;
+                alert('Cliente convertido em Lead com sucesso! Recarregando...');
+                location.reload();
+            } catch (err) {
+                alert('Erro ao converter cliente em lead: ' + err.message);
+                e.target.value = 'cliente';
+            }
+        });
         console.log("clientes.js: Listeners da tabela adicionados.");
     } else {
         console.error("clientes.js: Erro crítico - clientsTableBody não encontrado para adicionar listeners.");
@@ -255,7 +289,10 @@ async function initializeDashboard() {
     if (addLeadBtn) addLeadBtn.addEventListener('click', openLeadModal);
     // Filter tipo
     const filterTipo = document.getElementById('filter-tipo');
-    if (filterTipo) filterTipo.addEventListener('change', applyTipoFilter);
+    if (filterTipo) filterTipo.addEventListener('change', applyAllFilters);
+    // Filter indicado por
+    const filterIndicado = document.getElementById('filter-indicado');
+    if (filterIndicado) filterIndicado.addEventListener('change', applyAllFilters);
     // Close modals on backdrop click
     window.addEventListener('click', (e) => {
         if (e.target === planoRefModal) planoRefModal.style.display = 'none';
@@ -326,9 +363,9 @@ async function initializeDashboard() {
                 return;
             }
 
-            // Tipo cell click - open CPF/WhatsApp sync modal
+            // Tipo cell click - open CPF/WhatsApp sync modal (only if not clicking the select)
             const tipoCell = e.target.closest('.tipo-cell');
-            if (tipoCell) {
+            if (tipoCell && !e.target.matches('select, option')) {
                 const clientId = tipoCell.dataset.clientId;
                 const row = tipoCell.closest('tr');
                 const clientName = row ? (row.querySelector('.client-name')?.value || row.querySelector('td')?.textContent?.trim() || '') : '';
@@ -534,7 +571,10 @@ async function loadClients(filterProject = null) {
                     <input type="text" class="client-name" value="${sanitizeInput(client.nome)}" ${!canEdit ? 'disabled' : ''}>
                 </td>
                 <td data-label="Tipo" class="tipo-cell" data-client-id="${client.id}" style="cursor:pointer;">
-                    <span class="tipo-badge tipo-cliente">CLIENTE</span>
+                    <select class="client-tipo-select" data-client-id="${client.id}" style="font-size:0.75rem;padding:0.2rem 0.4rem;border-radius:4px;border:1px solid rgba(34,197,94,0.4);background:rgba(34,197,94,0.15);color:#22c55e;font-weight:600;cursor:pointer;" ${!canEdit ? 'disabled' : ''}>
+                        <option value="cliente" selected>CLIENTE</option>
+                        <option value="lead">LEAD</option>
+                    </select>
                 </td>
                 <td data-label="WhatsApp">
                     <div class="whatsapp-cell">
@@ -641,6 +681,9 @@ async function loadClients(filterProject = null) {
 
         // Carregar leads e renderizá-los na tabela
         await loadAndRenderLeads(filterProject);
+
+        // Populate indicado_por filter after clients and leads are loaded
+        populateIndicadoFilter();
         
         // Carregar dados para mensagens em background (mesma ordem do original)
         await loadMensagens();
@@ -1445,10 +1488,33 @@ async function addClient(event) {
     }
 }
 
-// --- Marcar Cliente como Modificado --- 
+// --- Marcar Cliente/Lead como Modificado --- 
 function markClientAsModified(event) {
     const target = event.target;
-    // Verifica se é um campo editável
+
+    // Handle lead fields
+    if (target.matches('.lead-name-input, .lead-whatsapp-input, .lead-indicado-select')) {
+        const row = target.closest('tr');
+        if (!row || row.dataset.tipo !== 'lead') return;
+        const leadId = row.dataset.leadId;
+        const curNome = (row.querySelector('.lead-name-input')?.value || '');
+        const curWhats = (row.querySelector('.lead-whatsapp-input')?.value || '');
+        const curIndicado = (row.querySelector('.lead-indicado-select')?.value || '');
+        const hasChanged = curNome !== row.dataset.originalLeadNome ||
+                           curWhats !== row.dataset.originalLeadWhatsapp ||
+                           curIndicado !== row.dataset.originalLeadIndicadoPor;
+        if (hasChanged) {
+            row.classList.add('modified');
+            modifiedClientIds.add('lead_' + leadId);
+        } else {
+            row.classList.remove('modified');
+            modifiedClientIds.delete('lead_' + leadId);
+        }
+        if (saveAllClientsBtn) saveAllClientsBtn.disabled = modifiedClientIds.size === 0;
+        return;
+    }
+
+    // Verifica se é um campo editável de cliente
     if (!target.matches('.client-name, .client-whatsapp, .client-project, .client-visibility, .client-assigned-to, .client-login, .client-senha, .situacao-select')) return;
 
     const row = target.closest('tr');
@@ -1517,8 +1583,21 @@ async function saveAllClientChanges() {
 
     const updates = [];
     const whatsappUpdates = [];
+    const leadUpdates = [];
 
     modifiedClientIds.forEach(clientId => {
+        // Handle lead updates (prefixed with 'lead_')
+        if (typeof clientId === 'string' && clientId.startsWith('lead_')) {
+            const leadId = clientId.replace('lead_', '');
+            const row = clientsTableBody.querySelector(`tr[data-lead-id="${leadId}"]`);
+            if (!row) return;
+            const nome = row.querySelector('.lead-name-input')?.value.trim() || '';
+            const whatsapp = row.querySelector('.lead-whatsapp-input')?.value.trim() || '';
+            const indicadoPor = row.querySelector('.lead-indicado-select')?.value || null;
+            leadUpdates.push({ id: leadId, nome, whatsapp, indicado_por_cliente_id: indicadoPor || null, row });
+            return;
+        }
+
         const row = clientsTableBody.querySelector(`tr[data-client-id="${clientId}"]`);
         if (!row) return;
 
@@ -1571,7 +1650,28 @@ async function saveAllClientChanges() {
              if (error) throw error;
         });
 
-        await Promise.all([...clientPromises, ...whatsappPromises]);
+        // 3. Atualizar Leads
+        const leadPromises = leadUpdates.map(async (update) => {
+            const { error } = await supabase.from('leads').update({
+                nome: update.nome,
+                whatsapp: update.whatsapp || null,
+                indicado_por_cliente_id: update.indicado_por_cliente_id,
+                updated_at: new Date().toISOString()
+            }).eq('id', update.id);
+            if (error) throw error;
+        });
+
+        await Promise.all([...clientPromises, ...whatsappPromises, ...leadPromises]);
+
+        // Update lead originals
+        leadUpdates.forEach(update => {
+            const row = update.row;
+            if (!row) return;
+            row.dataset.originalLeadNome = update.nome;
+            row.dataset.originalLeadWhatsapp = update.whatsapp || '';
+            row.dataset.originalLeadIndicadoPor = update.indicado_por_cliente_id || '';
+            row.classList.remove('modified');
+        });
 
         alert("Todas as alterações foram salvas com sucesso!");
         saveAllClientsBtn.textContent = "Salvar Todas as Alterações";
@@ -3995,12 +4095,16 @@ async function loadAndRenderLeads(filterProject) {
             row.dataset.leadId = lead.id;
             row.dataset.tipo = 'lead';
             row.classList.add('lead-row');
+            // Store originals for change detection
+            row.dataset.originalLeadNome = lead.nome || '';
+            row.dataset.originalLeadWhatsapp = lead.whatsapp || '';
+            row.dataset.originalLeadIndicadoPor = lead.indicado_por_cliente_id || '';
+            row.dataset.originalLeadTipo = 'lead';
             
-            // Encontrar quem indicou
-            let indicadoPor = '';
-            if (lead.indicado_por_cliente_id) {
-                const cliente = allClientes.find(c => c.id === lead.indicado_por_cliente_id);
-                if (cliente) indicadoPor = cliente.nome;
+            // Build indicado_por select options
+            let indicadoOptions = `<option value="">-- Nenhum --</option>`;
+            for (const c of allClientes) {
+                indicadoOptions += `<option value="${c.id}" ${lead.indicado_por_cliente_id === c.id ? 'selected' : ''}>${sanitizeInput(c.nome)}</option>`;
             }
             
             const statusColors = { 'NOVO': '#60a5fa', 'EM_CONTATO': '#f59e0b', 'NEGOCIANDO': '#a78bfa', 'CONVERTIDO': '#22c55e', 'PERDIDO': '#ef4444' };
@@ -4008,16 +4112,21 @@ async function loadAndRenderLeads(filterProject) {
             
             row.innerHTML = `
                 <td data-label="Nome" style="position:sticky;left:0;z-index:2;background:var(--theme-bg-surface);">
-                    <span style="font-weight:600;">${sanitizeInput(lead.nome)}</span>
+                    <input type="text" class="lead-name-input" value="${sanitizeInput(lead.nome)}" style="font-weight:600;">
                 </td>
                 <td data-label="Tipo">
-                    <span class="tipo-badge tipo-lead">LEAD</span>
-                    ${indicadoPor ? `<div class="lead-indicado" title="Indicado por: ${sanitizeInput(indicadoPor)}">via ${sanitizeInput(indicadoPor)}</div>` : ''}
+                    <select class="lead-tipo-select" data-lead-id="${lead.id}" style="font-size:0.75rem;padding:0.2rem 0.4rem;border-radius:4px;border:1px solid rgba(96,165,250,0.4);background:rgba(96,165,250,0.15);color:#60a5fa;font-weight:600;cursor:pointer;">
+                        <option value="lead" selected>LEAD</option>
+                        <option value="cliente">CLIENTE</option>
+                    </select>
+                    <select class="lead-indicado-select" data-lead-id="${lead.id}" style="font-size:0.7rem;padding:0.15rem 0.3rem;border-radius:4px;border:1px solid var(--theme-border-color);background:rgba(0,0,0,0.2);color:var(--theme-text-muted);margin-top:3px;max-width:130px;display:block;">
+                        ${indicadoOptions}
+                    </select>
                 </td>
                 <td data-label="WhatsApp">
                     <div class="whatsapp-cell">
                         ${lead.whatsapp ? `<button class="whatsapp-btn-lead" data-phone="${sanitizeInput(lead.whatsapp)}" title="Abrir conversa no WhatsApp"><i class="fa-brands fa-whatsapp"></i></button>` : '<i class="fa-brands fa-whatsapp phone-icon"></i>'}
-                        <span style="font-size:0.85rem;">${sanitizeInput(lead.whatsapp || '--')}</span>
+                        <input type="text" class="lead-whatsapp-input" value="${sanitizeInput(lead.whatsapp || '')}" placeholder="+55..." style="font-size:0.85rem;max-width:130px;">
                     </div>
                 </td>
                 <td data-label="Projeto"><span style="font-size:0.85rem;">${sanitizeInput(lead.projeto || '--')}</span></td>
@@ -4093,6 +4202,51 @@ async function loadAndRenderLeads(filterProject) {
                     if (phone.length === 11 && !phone.startsWith('55')) phone = '55' + phone;
                     if (phone.length === 10 && !phone.startsWith('55')) phone = '55' + phone;
                     window.open('https://wa.me/' + phone, '_blank');
+                });
+            }
+
+            // Lead tipo toggle listener (LEAD -> CLIENTE conversion)
+            const tipoSelect = row.querySelector('.lead-tipo-select');
+            if (tipoSelect) {
+                tipoSelect.addEventListener('change', async (e) => {
+                    const newTipo = e.target.value;
+                    const leadId = row.dataset.leadId;
+                    if (newTipo === 'cliente') {
+                        if (!confirm('Converter este lead em CLIENTE? Isso criar\u00e1 um novo registro de cliente com os dados atuais do lead.')) {
+                            e.target.value = 'lead';
+                            return;
+                        }
+                        try {
+                            const leadNome = row.querySelector('.lead-name-input')?.value.trim() || 'Lead';
+                            const leadWhats = row.querySelector('.lead-whatsapp-input')?.value.trim() || '';
+                            const leadData = allLeads.find(l => l.id === leadId);
+                            const projeto = leadData?.projeto || currentUserProjeto || 'Planejamento';
+                            // 1. Create client
+                            const { data: newClient, error: clientErr } = await supabase.from('clientes').insert({
+                                nome: leadNome,
+                                projeto: projeto,
+                                login: '',
+                                senha: '',
+                                visibility: 'INDIVIDUAL',
+                                assigned_to_user_id: currentUserId
+                            }).select().single();
+                            if (clientErr) throw clientErr;
+                            // 2. Create dados_cadastrais with whatsapp
+                            if (leadWhats) {
+                                await supabase.from('dados_cadastrais').insert({
+                                    cliente_id: newClient.id,
+                                    whatsapp: leadWhats
+                                });
+                            }
+                            // 3. Mark lead as CONVERTIDO
+                            await supabase.from('leads').update({ status: 'CONVERTIDO', updated_at: new Date().toISOString() }).eq('id', leadId);
+                            alert('Lead convertido em Cliente com sucesso! Recarregando...');
+                            location.reload();
+                        } catch (err) {
+                            alert('Erro ao converter lead em cliente: ' + err.message);
+                            e.target.value = 'lead';
+                        }
+                    }
                 });
             }
         }
@@ -4817,20 +4971,65 @@ async function openSituacaoModal(clienteId, clientName) {
 // ============================================================
 // FILTRO TIPO (Lead/Cliente/Todos)
 // ============================================================
-function applyTipoFilter() {
-    const filterValue = document.getElementById('filter-tipo')?.value || 'todos';
+function applyTipoFilter() { applyAllFilters(); }
+
+function applyAllFilters() {
+    const tipoValue = document.getElementById('filter-tipo')?.value || 'todos';
+    const indicadoValue = document.getElementById('filter-indicado')?.value || 'todos';
     const rows = clientsTableBody ? clientsTableBody.querySelectorAll('tr') : [];
     rows.forEach(row => {
-        if (filterValue === 'todos') {
+        let showTipo = true;
+        let showIndicado = true;
+
+        // Tipo filter
+        if (tipoValue === 'lead') {
+            showTipo = row.dataset.tipo === 'lead';
+        } else if (tipoValue === 'cliente') {
+            showTipo = row.dataset.tipo !== 'lead';
+        }
+
+        // Indicado por filter
+        if (indicadoValue !== 'todos') {
+            if (row.dataset.tipo === 'lead') {
+                const indicadoSelect = row.querySelector('.lead-indicado-select');
+                const indicadoVal = indicadoSelect ? indicadoSelect.value : (row.dataset.originalLeadIndicadoPor || '');
+                if (indicadoValue === 'nenhum') {
+                    showIndicado = !indicadoVal;
+                } else {
+                    showIndicado = indicadoVal === indicadoValue;
+                }
+            } else {
+                // Clientes: check if this client was indicated by someone (stored in data attribute)
+                const indicadoPorId = row.dataset.indicadoPorClienteId || '';
+                if (indicadoValue === 'nenhum') {
+                    showIndicado = !indicadoPorId;
+                } else {
+                    showIndicado = indicadoPorId === indicadoValue;
+                }
+            }
+        }
+
+        if (showTipo && showIndicado) {
             row.classList.remove('tipo-hidden');
-        } else if (filterValue === 'lead') {
-            if (row.dataset.tipo === 'lead') row.classList.remove('tipo-hidden');
-            else row.classList.add('tipo-hidden');
-        } else if (filterValue === 'cliente') {
-            if (row.dataset.tipo === 'lead') row.classList.add('tipo-hidden');
-            else row.classList.remove('tipo-hidden');
+        } else {
+            row.classList.add('tipo-hidden');
         }
     });
+}
+
+// Populate the indicado_por filter dropdown with all clients
+function populateIndicadoFilter() {
+    const filterIndicado = document.getElementById('filter-indicado');
+    if (!filterIndicado) return;
+    // Keep first two options (Todos, Sem indicação)
+    while (filterIndicado.options.length > 2) filterIndicado.remove(2);
+    // Add all clients as options
+    for (const c of allClientes) {
+        const opt = document.createElement('option');
+        opt.value = c.id;
+        opt.textContent = c.nome;
+        filterIndicado.appendChild(opt);
+    }
 }
 
 // Inicializar
