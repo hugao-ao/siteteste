@@ -98,65 +98,135 @@ function renderResumo() {
 }
 
 // ============================================================
-// LISTA DE CARDS
+// QUADRO KANBAN (5 listas por status)
 // ============================================================
-const ORDEM_STATUS = { marcada: 0, pendente_marcacao: 1, concluida_pendencias: 2, concluida: 3, desistiu: 4 };
+const KANBAN_ORDEM = ['pendente_marcacao', 'marcada', 'concluida_pendencias', 'concluida', 'desistiu'];
+let buscaColuna = {};   // status -> texto da busca daquela lista
+let colunasOcultas = lerLS('hermo_kanban_ocultas', {});
+let colunasLarguras = lerLS('hermo_kanban_larguras', {});
+let larguraObserver = null;
 
-function visitasFiltradas() {
-    const f = $('filtro-status').value;
-    let lista = f ? visitas.filter(v => v.status === f) : [...visitas];
+function lerLS(chave, padrao) {
+    try { return JSON.parse(localStorage.getItem(chave)) || padrao; }
+    catch (e) { return padrao; }
+}
+
+function visitasDaColuna(status) {
+    const q = (buscaColuna[status] || '').trim().toLowerCase();
+    let lista = visitas.filter(v => v.status === status);
+    if (q) {
+        lista = lista.filter(v =>
+            (v.endereco || '').toLowerCase().includes(q) ||
+            (v.cliente?.nome || '').toLowerCase().includes(q) ||
+            (v.problema || '').toLowerCase().includes(q));
+    }
     lista.sort((a, b) => {
-        const g = ORDEM_STATUS[a.status] - ORDEM_STATUS[b.status];
-        if (g !== 0) return g;
         const da = a.data_visita ? new Date(a.data_visita).getTime() : 0;
         const db = b.data_visita ? new Date(b.data_visita).getTime() : 0;
         // marcadas: mais próxima primeiro; demais: mais recente primeiro
-        return a.status === 'marcada' ? da - db : db - da;
+        return status === 'marcada' ? da - db : db - da;
     });
     return lista;
 }
 
+function cardMini(v) {
+    const servN = (v.servicos || []).length;
+    return `
+    <div class="kb-card ${selecionadas.has(v.id) ? 'selecionado' : ''}" data-id="${v.id}">
+        <div class="kb-l1">
+            <input type="checkbox" class="check" data-check="${v.id}" ${selecionadas.has(v.id) ? 'checked' : ''} />
+            <span class="kb-end">${esc(v.endereco)}</span>
+        </div>
+        ${v.cliente ? `<div class="kb-meta">👤 ${esc(v.cliente.nome)} · ${esc(v.cliente.whatsapp)}</div>` : ''}
+        <div class="kb-meta">🗓️ ${v.data_visita ? fmtDataHora(v.data_visita) : '<i>sem data</i>'}${servN ? ` · 🛠️ ${servN} serviço(s)` : ''}</div>
+        ${v.problema ? `<div class="kb-prob">${esc(v.problema)}</div>` : ''}
+        <div class="kb-acoes">
+            <button class="hermo-btn small ghost" data-editar="${v.id}" title="Editar">✎</button>
+            <button class="hermo-btn small danger" data-excluir="${v.id}" title="Excluir">🗑</button>
+        </div>
+    </div>`;
+}
+
+function ligarEventosCards(container) {
+    container.querySelectorAll('[data-check]').forEach(ch => ch.addEventListener('change', e => {
+        const id = e.target.dataset.check;
+        if (e.target.checked) selecionadas.add(id); else selecionadas.delete(id);
+        e.target.closest('.kb-card').classList.toggle('selecionado', e.target.checked);
+        renderSelbar();
+    }));
+    container.querySelectorAll('[data-editar]').forEach(b => b.addEventListener('click',
+        () => abrirModalVisita(visitas.find(v => v.id === b.dataset.editar))));
+    container.querySelectorAll('[data-excluir]').forEach(b => b.addEventListener('click',
+        () => excluirVisitas([b.dataset.excluir])));
+}
+
+function atualizarCorpoColuna(status) {
+    const corpo = document.querySelector(`.kb-col[data-col="${status}"] .kb-corpo`);
+    if (!corpo) return;
+    const lista = visitasDaColuna(status);
+    corpo.innerHTML = lista.length ? lista.map(cardMini).join('')
+        : `<div class="kb-vazia">${(buscaColuna[status] || '').trim() ? 'nada encontrado na busca' : 'nenhuma visita aqui'}</div>`;
+    ligarEventosCards(corpo);
+}
+
 function renderLista() {
-    const lista = visitasFiltradas();
-    const cont = $('lista-visitas');
-    if (lista.length === 0) {
-        cont.innerHTML = `<div class="hermo-vazio" style="grid-column:1/-1">
-            <div class="big">📭</div>Nenhuma visita ${$('filtro-status').value ? 'com esse status' : 'cadastrada'}.
-            Clique em <b>+ Nova visita</b> para começar.</div>`;
-        return;
-    }
-    cont.innerHTML = lista.map(v => {
-        const st = STATUS_VISITA[v.status] || { label: v.status };
-        const servTags = (v.servicos || []).map(sv =>
-            `<span class="tag">${esc(sv.servico?.codigo || '?')} — ${esc(sv.servico?.descricao || '?')}</span>`).join('');
+    const board = $('kanban');
+    board.innerHTML = KANBAN_ORDEM.map(st => {
+        const info = STATUS_VISITA[st];
+        const total = visitas.filter(v => v.status === st).length;
+        const oculta = !!colunasOcultas[st];
+        const largura = (!oculta && colunasLarguras[st]) ? `width:${colunasLarguras[st]}px;` : '';
         return `
-        <div class="hermo-item-card ${selecionadas.has(v.id) ? 'selecionado' : ''}" data-id="${v.id}">
-            <div class="linha1">
-                <input type="checkbox" class="check" data-check="${v.id}" ${selecionadas.has(v.id) ? 'checked' : ''} />
-                <div class="endereco">${esc(v.endereco)}</div>
-                <span class="badge-status ${v.status}">${st.label}</span>
+        <div class="kb-col ${oculta ? 'colapsada' : ''}" data-col="${st}" style="${largura}--cor-col:${info.cor}"
+             ${oculta ? `title="Clique para mostrar a lista ${info.label}"` : ''}>
+            <div class="kb-head">
+                <span class="dot" style="background:${info.cor}"></span>
+                <span class="kb-titulo">${info.label}</span>
+                <span class="kb-count">${total}</span>
+                <button class="kb-toggle" data-toggle="${st}" title="${oculta ? 'Mostrar lista' : 'Ocultar lista'}">${oculta ? '⊞' : '—'}</button>
             </div>
-            ${v.cliente ? `<div class="meta">👤 <b>${esc(v.cliente.nome)}</b> · ${esc(v.cliente.whatsapp)}</div>` : `<div class="meta">👤 <i>sem cliente associado</i></div>`}
-            <div class="meta">🗓️ ${v.data_visita ? `<b>${fmtDataHora(v.data_visita)}</b>` : '<i>sem data definida</i>'}</div>
-            ${v.problema ? `<div class="problema">${esc(v.problema)}</div>` : ''}
-            ${servTags ? `<div class="servicos-tags">${servTags}</div>` : ''}
-            <div class="acoes">
-                <button class="hermo-btn small ghost" data-editar="${v.id}">✎ Editar</button>
-                <button class="hermo-btn small danger" data-excluir="${v.id}">🗑 Excluir</button>
-            </div>
+            <input class="kb-busca" data-busca="${st}" type="text" placeholder="Buscar nesta lista…" value="${esc(buscaColuna[st] || '')}" />
+            <div class="kb-corpo"></div>
         </div>`;
     }).join('');
 
-    cont.querySelectorAll('[data-check]').forEach(ch => ch.addEventListener('change', e => {
-        const id = e.target.dataset.check;
-        if (e.target.checked) selecionadas.add(id); else selecionadas.delete(id);
-        e.target.closest('.hermo-item-card').classList.toggle('selecionado', e.target.checked);
-        renderSelbar();
+    KANBAN_ORDEM.forEach(atualizarCorpoColuna);
+
+    // busca por coluna (atualiza só o corpo — não perde o foco do input)
+    board.querySelectorAll('[data-busca]').forEach(inp => inp.addEventListener('input', e => {
+        buscaColuna[e.target.dataset.busca] = e.target.value;
+        atualizarCorpoColuna(e.target.dataset.busca);
     }));
-    cont.querySelectorAll('[data-editar]').forEach(b => b.addEventListener('click',
-        () => abrirModalVisita(visitas.find(v => v.id === b.dataset.editar))));
-    cont.querySelectorAll('[data-excluir]').forEach(b => b.addEventListener('click',
-        () => excluirVisitas([b.dataset.excluir])));
+
+    // ocultar / mostrar coluna
+    const alternarColuna = st => {
+        colunasOcultas[st] = !colunasOcultas[st];
+        try { localStorage.setItem('hermo_kanban_ocultas', JSON.stringify(colunasOcultas)); } catch (e) {}
+        renderLista();
+    };
+    board.querySelectorAll('[data-toggle]').forEach(b => b.addEventListener('click', e => {
+        e.stopPropagation();
+        alternarColuna(b.dataset.toggle);
+    }));
+    board.querySelectorAll('.kb-col.colapsada').forEach(col =>
+        col.addEventListener('click', () => alternarColuna(col.dataset.col)));
+
+    // persistir larguras ajustadas manualmente (alça de resize do CSS)
+    if (larguraObserver) larguraObserver.disconnect();
+    larguraObserver = new ResizeObserver(() => {
+        clearTimeout(renderLista._salvarLarguras);
+        renderLista._salvarLarguras = setTimeout(salvarLargurasVisiveis, 400);
+    });
+    board.querySelectorAll('.kb-col:not(.colapsada)').forEach(c => larguraObserver.observe(c));
+}
+
+function salvarLargurasVisiveis() {
+    document.querySelectorAll('.kb-col:not(.colapsada)').forEach(c => {
+        const st = c.dataset.col;
+        const w = Math.round(c.getBoundingClientRect().width);
+        if (st && w > 60) colunasLarguras[st] = w;
+    });
+    try { localStorage.setItem('hermo_kanban_larguras', JSON.stringify(colunasLarguras)); } catch (e) {}
 }
 
 // ============================================================
@@ -169,7 +239,9 @@ function renderSelbar() {
 }
 
 function selecionarTodas() {
-    visitasFiltradas().forEach(v => selecionadas.add(v.id));
+    // seleciona todas as visíveis (listas não ocultas, respeitando a busca de cada uma)
+    KANBAN_ORDEM.filter(st => !colunasOcultas[st])
+        .forEach(st => visitasDaColuna(st).forEach(v => selecionadas.add(v.id)));
     renderLista();
     renderSelbar();
 }
@@ -574,7 +646,8 @@ function refletirClienteAtualizado(c) {
 
 function ligarEventos() {
     $('btn-nova-visita').addEventListener('click', () => abrirModalVisita(null));
-    $('filtro-status').addEventListener('change', () => { renderLista(); });
+    // salvar largura das listas ao terminar o arraste da alça (independe do ResizeObserver)
+    $('kanban').addEventListener('pointerup', () => setTimeout(salvarLargurasVisiveis, 50));
 
     $('btn-sel-todas').addEventListener('click', selecionarTodas);
     $('btn-sel-limpar').addEventListener('click', limparSelecao);

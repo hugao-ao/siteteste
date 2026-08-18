@@ -207,6 +207,139 @@ body {
 }
 .hermo-item-card .acoes { display: flex; gap: 8px; justify-content: flex-end; margin-top: auto; }
 
+/* ---------- Kanban de visitas ---------- */
+.hermo-kanban {
+    display: flex;
+    gap: 12px;
+    overflow-x: auto;
+    align-items: flex-start;
+    padding-bottom: 10px;
+}
+.kb-col {
+    background: var(--hermo-surface);
+    border: 1px solid var(--hermo-border);
+    border-top: 3px solid var(--cor-col, var(--hermo-primary));
+    border-radius: 10px;
+    width: 272px;
+    min-width: 210px;
+    max-width: 620px;
+    flex: 0 0 auto;
+    padding: 10px;
+    resize: horizontal;   /* alça de ajuste manual no canto inferior direito */
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.kb-col.colapsada {
+    width: 46px !important;
+    min-width: 46px;
+    resize: none;
+    cursor: pointer;
+}
+.kb-col.colapsada .kb-busca,
+.kb-col.colapsada .kb-corpo { display: none; }
+.kb-col.colapsada .kb-head { flex-direction: column; gap: 8px; }
+.kb-col.colapsada .kb-titulo {
+    writing-mode: vertical-rl;
+    font-size: .72rem;
+    white-space: nowrap;
+    overflow: visible;
+}
+.kb-head { display: flex; align-items: center; gap: 6px; }
+.kb-head .dot { width: 10px; height: 10px; border-radius: 50%; flex: 0 0 auto; }
+.kb-titulo {
+    font-weight: 700;
+    font-size: .8rem;
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.kb-count {
+    background: var(--hermo-surface-2);
+    border-radius: 20px;
+    padding: 1px 8px;
+    font-size: .72rem;
+    font-weight: 700;
+}
+.kb-toggle {
+    background: none;
+    border: 1px solid var(--hermo-border);
+    border-radius: 6px;
+    color: var(--hermo-text-dim);
+    cursor: pointer;
+    font-size: .8rem;
+    line-height: 1.2;
+    padding: 2px 7px;
+}
+.kb-toggle:hover { color: var(--hermo-text); border-color: var(--hermo-primary); }
+.kb-busca {
+    background: var(--hermo-bg);
+    border: 1px solid var(--hermo-border);
+    border-radius: 6px;
+    color: var(--hermo-text);
+    padding: 6px 9px;
+    font-size: .8rem;
+    width: 100%;
+}
+.kb-busca:focus { outline: none; border-color: var(--hermo-primary); }
+.kb-corpo {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    overflow-y: auto;
+    max-height: 62vh;
+    padding-right: 2px;
+}
+.kb-vazia {
+    color: var(--hermo-text-dim);
+    font-size: .76rem;
+    text-align: center;
+    padding: 14px 4px;
+    border: 1px dashed var(--hermo-border);
+    border-radius: 8px;
+}
+.kb-card {
+    background: var(--hermo-surface-2);
+    border: 1px solid var(--hermo-border);
+    border-radius: 8px;
+    padding: 8px 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    font-size: .78rem;
+}
+.kb-card.selecionado { border-color: var(--hermo-primary); box-shadow: 0 0 0 1px var(--hermo-primary); }
+.kb-l1 { display: flex; gap: 6px; align-items: flex-start; }
+.kb-l1 .check { transform: scale(1.05); accent-color: var(--hermo-primary); margin-top: 2px; cursor: pointer; }
+.kb-end { font-weight: 700; line-height: 1.25; }
+.kb-meta { color: var(--hermo-text-dim); font-size: .73rem; }
+.kb-prob {
+    color: var(--hermo-text-dim);
+    font-size: .73rem;
+    background: var(--hermo-bg);
+    border-radius: 6px;
+    padding: 5px 7px;
+    max-height: 52px;
+    overflow: hidden;
+}
+.kb-acoes { display: flex; gap: 6px; justify-content: flex-end; }
+
+/* ---------- Responsividade (celular) ---------- */
+@media (max-width: 700px) {
+    .hermo-topbar { flex-wrap: wrap; padding: 10px 14px; gap: 8px; }
+    .hermo-topbar .brand { font-size: 1rem; }
+    .hermo-page, .hermo-home { padding-left: 12px; padding-right: 12px; }
+    .hermo-page-head h1 { font-size: 1.15rem; }
+    .kb-col { width: 240px; min-width: 190px; }
+    .kb-corpo { max-height: 55vh; }
+    #hermo-mapa { height: 320px; }
+    .hermo-btn { padding: 8px 12px; font-size: .85rem; }
+    .hermo-modal-overlay { padding: 12px 8px; }
+    .hermo-modal-body { padding: 14px; }
+}
+
 /* Badges de status */
 .badge-status {
     display: inline-block;

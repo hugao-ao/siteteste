@@ -2,7 +2,7 @@
 <html lang="pt-br">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5, user-scalable=yes" />
   <title>Hermogenes Obras — Visitas</title>
   <script src="hermo-guard.js"></script>
   <link rel="stylesheet" href="hermo-style.css" />
@@ -27,14 +27,6 @@
       <h1>Visitas</h1>
       <div style="display:flex;gap:10px;flex-wrap:wrap">
         <a class="hermo-btn" href="agenda-logistica.html" title="Montar rotas com as visitas marcadas">🧭 Montar rota</a>
-        <select id="filtro-status" class="hermo-btn ghost" style="padding:8px 12px">
-          <option value="">Todos os status</option>
-          <option value="marcada">Marcada</option>
-          <option value="pendente_marcacao">Pendente de marcação</option>
-          <option value="concluida">Concluída</option>
-          <option value="concluida_pendencias">Concluída c/ pendências</option>
-          <option value="desistiu">Desistiu</option>
-        </select>
         <button class="hermo-btn primary" id="btn-nova-visita">+ Nova visita</button>
       </div>
     </div>
@@ -47,8 +39,8 @@
       <button class="hermo-btn small danger" id="btn-sel-excluir">Excluir selecionadas</button>
     </div>
 
-    <!-- CARDS -->
-    <section class="hermo-lista" id="lista-visitas"></section>
+    <!-- QUADRO KANBAN POR STATUS -->
+    <div class="hermo-kanban" id="kanban"></div>
 
     <!-- MAPA -->
     <div id="hermo-mapa"></div>
