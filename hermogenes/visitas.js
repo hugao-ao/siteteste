@@ -14,7 +14,6 @@ let servicosDaVisita = [];        // lista de trabalho do modal de visita
 let subEditIndex = null;          // índice em servicosDaVisita sendo editado no sub-modal
 let mapa = null;
 let marcadores = [];
-let geocoder = null;
 
 const $ = id => document.getElementById(id);
 
@@ -401,89 +400,70 @@ function confirmarServicoDaVisita() {
 // MAPA
 // ============================================================
 function iniciarMapa() {
-    if (typeof google === 'undefined' || !google.maps) return;
-    // Se a chave do Maps falhar (domínio não autorizado etc.), desliga o
-    // geocoder — salvar visita NUNCA pode depender do mapa
-    window.gm_authFailure = () => { geocoder = null; };
-    geocoder = new google.maps.Geocoder();
-    mapa = new google.maps.Map($('hermo-mapa'), {
-        center: { lat: -8.0476, lng: -34.877 }, // Recife
-        zoom: 11,
-        styles: [{ elementType: 'geometry', stylers: [{ color: '#1e293b' }] },
-                 { elementType: 'labels.text.fill', stylers: [{ color: '#94a3b8' }] },
-                 { elementType: 'labels.text.stroke', stylers: [{ color: '#0f172a' }] },
-                 { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#334155' }] },
-                 { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#0c4a6e' }] }]
-    });
+    if (typeof L === 'undefined') return;
+    mapa = L.map('hermo-mapa').setView([-8.0476, -34.877], 11); // Recife
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
+        subdomains: 'abcd',
+        maxZoom: 19
+    }).addTo(mapa);
     $('mapa-legenda').innerHTML = Object.entries(STATUS_VISITA).map(([k, v]) =>
         `<span class="leg"><span class="dot" style="background:${v.cor}"></span>${v.label}</span>`).join('');
 }
 
 function atualizarMapa() {
     if (!mapa) return;
-    marcadores.forEach(m => m.setMap(null));
+    marcadores.forEach(m => mapa.removeLayer(m));
     marcadores = [];
-    const bounds = new google.maps.LatLngBounds();
-    let algum = false;
+    const pontos = [];
     visitas.filter(v => v.latitude != null && v.longitude != null).forEach(v => {
         const st = STATUS_VISITA[v.status] || { cor: '#94a3b8', label: v.status };
-        const marker = new google.maps.Marker({
-            map: mapa,
-            position: { lat: v.latitude, lng: v.longitude },
-            title: v.endereco,
-            icon: {
-                path: google.maps.SymbolPath.CIRCLE,
-                scale: 9,
-                fillColor: st.cor,
-                fillOpacity: 1,
-                strokeColor: '#0f172a',
-                strokeWeight: 2
-            }
-        });
-        const info = new google.maps.InfoWindow({
-            content: `<div style="color:#111;font-size:.85rem;max-width:240px">
-                <b>${esc(v.endereco)}</b><br>
-                Status: ${st.label}<br>
-                ${v.data_visita ? 'Data: ' + fmtDataHora(v.data_visita) + '<br>' : ''}
-                ${v.cliente ? 'Cliente: ' + esc(v.cliente.nome) : ''}
-            </div>`
-        });
-        marker.addListener('click', () => info.open(mapa, marker));
+        const marker = L.circleMarker([v.latitude, v.longitude], {
+            radius: 9,
+            color: '#0f172a',
+            weight: 2,
+            fillColor: st.cor,
+            fillOpacity: 1
+        }).addTo(mapa);
+        marker.bindPopup(`<div style="font-size:.85rem;max-width:240px">
+            <b>${esc(v.endereco)}</b><br>
+            Status: ${st.label}<br>
+            ${v.data_visita ? 'Data: ' + fmtDataHora(v.data_visita) + '<br>' : ''}
+            ${v.cliente ? 'Cliente: ' + esc(v.cliente.nome) : ''}
+        </div>`);
         marcadores.push(marker);
-        bounds.extend(marker.getPosition());
-        algum = true;
+        pontos.push([v.latitude, v.longitude]);
     });
-    if (marcadores.length === 1) {
-        // fitBounds com 1 ponto iria ao zoom máximo (telhado); centraliza com contexto
-        mapa.setCenter(marcadores[0].getPosition());
-        mapa.setZoom(15);
-    } else if (algum) {
-        mapa.fitBounds(bounds, 60);
+    if (pontos.length === 1) {
+        // fitBounds com 1 ponto iria ao zoom máximo; centraliza com contexto
+        mapa.setView(pontos[0], 15);
+    } else if (pontos.length > 1) {
+        mapa.fitBounds(pontos, { padding: [40, 40] });
     }
 }
 
-function geocodificar(endereco) {
-    return new Promise(resolve => {
-        if (!geocoder) { resolve(null); return; }
-        // timeout: se a API do Maps estiver quebrada o callback pode nunca vir —
-        // o salvar segue sem coordenadas em vez de travar
-        let respondeu = false;
-        const fim = r => { if (!respondeu) { respondeu = true; resolve(r); } };
-        setTimeout(() => fim(null), 5000);
-        try {
-            geocoder.geocode({ address: endereco, region: 'br' }, (results, status) => {
-                if (status === 'OK' && results[0]) {
-                    const loc = results[0].geometry.location;
-                    fim({ lat: loc.lat(), lng: loc.lng() });
-                } else fim(null);
-            });
-        } catch (e) { fim(null); }
-    });
+/** Geocodifica via Nominatim (OpenStreetMap) — gratuito, sem chave.
+ *  Nunca trava o salvar: timeout de 6s e qualquer erro vira null. */
+async function geocodificar(endereco) {
+    try {
+        const ctl = new AbortController();
+        const t = setTimeout(() => ctl.abort(), 6000);
+        const resp = await fetch(
+            'https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=br&q=' +
+            encodeURIComponent(endereco),
+            { signal: ctl.signal, headers: { 'Accept': 'application/json' } });
+        clearTimeout(t);
+        if (!resp.ok) return null;
+        const arr = await resp.json();
+        if (arr && arr[0]) return { lat: parseFloat(arr[0].lat), lng: parseFloat(arr[0].lon) };
+        return null;
+    } catch (e) {
+        return null;
+    }
 }
 
 /** Tenta geocodificar (aos poucos) visitas antigas sem coordenadas e persiste. */
 async function geocodificarPendentes() {
-    if (!geocoder) return;
     const pendentes = visitas.filter(v => v.latitude == null).slice(0, 8);
     let alterou = false;
     for (const v of pendentes) {
@@ -493,6 +473,8 @@ async function geocodificarPendentes() {
                 .update({ latitude: geo.lat, longitude: geo.lng }).eq('id', v.id);
             if (!error) { v.latitude = geo.lat; v.longitude = geo.lng; alterou = true; }
         }
+        // política de uso do Nominatim: no máx. 1 requisição/segundo
+        await new Promise(r => setTimeout(r, 1100));
     }
     if (alterou) atualizarMapa();
 }

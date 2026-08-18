@@ -261,7 +261,7 @@ body {
     position: fixed;
     inset: 0;
     background: rgba(2, 6, 23, .72);
-    z-index: 100;
+    z-index: 1100; /* acima dos controles do Leaflet (z-index 1000) */
     align-items: flex-start;
     justify-content: center;
     padding: 30px 14px;
@@ -375,7 +375,7 @@ table.hermo-tabela { width: 100%; border-collapse: collapse; background: var(--h
     border-radius: 10px;
     padding: 12px 22px;
     font-size: .9rem;
-    z-index: 200;
+    z-index: 1200;
     transition: transform .25s;
     box-shadow: var(--hermo-shadow);
     max-width: 92vw;
