@@ -588,7 +588,7 @@ async function excluir(id) {
     const { error } = await sb.from('hermo_servicos').delete().eq('id', id);
     if (error) {
         if ((error.code || '') === '23503') {
-            toast('Este serviço está vinculado a visitas e não pode ser excluído.', true);
+            toast('Este serviço está vinculado a visitas ou propostas e não pode ser excluído.', true);
         } else {
             toast('Erro ao excluir: ' + error.message, true);
         }

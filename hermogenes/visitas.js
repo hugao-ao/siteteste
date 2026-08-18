@@ -18,25 +18,42 @@ let localEscolhido = null;   // {lat,lng} definido pelo mini-mapa do modal
 let mpMapa = null;           // Leaflet do modal de escolha de local
 let mpMarcador = null;
 let mpPendente = null;       // clique ainda não confirmado
+let visitaPropostas = new Map(); // visita_id -> [propostas associadas] (trava status)
+let statusTravado = false;   // visita do modal atual está associada a proposta?
 
 const $ = id => document.getElementById(id);
+
+const fmtCodigoProposta = p => `${String(p.numero).padStart(4, '0')}/${p.ano}`;
 
 // ============================================================
 // CARREGAMENTO
 // ============================================================
 async function carregarTudo() {
-    const [v, s] = await Promise.all([
+    const [v, s, pv] = await Promise.all([
         sb.from('hermo_visitas')
             .select(`*,
                 cliente:hermo_clientes(id, nome, whatsapp),
                 servicos:hermo_visita_servicos(id, servico_id, local_execucao, quantidade, unidade,
                     servico:hermo_servicos(id, codigo, descricao))`)
             .order('created_at', { ascending: false }),
-        sb.from('hermo_servicos').select('*, precos:hermo_servico_precos(preco_final, aliquota)').order('codigo')
+        sb.from('hermo_servicos').select('*, precos:hermo_servico_precos(preco_final, aliquota)').order('codigo'),
+        sb.from('hermo_proposta_visitas').select('visita_id, proposta:hermo_propostas(id, numero, ano, titulo)')
     ]);
     if (v.error) { toast('Erro ao carregar visitas: ' + v.error.message, true); return; }
     if (s.error) { toast('Erro ao carregar serviços: ' + s.error.message, true); return; }
     visitas = v.data || [];
+    // visita_id -> propostas associadas (trava o status na página de Visitas)
+    visitaPropostas = new Map();
+    if (pv.error) {
+        toast('Aviso: não consegui verificar as propostas associadas — a trava de status pode não aparecer.', true);
+    } else {
+        (pv.data || []).forEach(l => {
+            if (!l.proposta) return;
+            const arr = visitaPropostas.get(l.visita_id) || [];
+            arr.push(l.proposta);
+            visitaPropostas.set(l.visita_id, arr);
+        });
+    }
     servicosCatalogo = (s.data || []).map(x => ({
         ...x,
         precos: Array.isArray(x.precos) ? x.precos[0] || null : x.precos
@@ -166,8 +183,10 @@ function cardMini(v) {
         </div>
         ${v.cliente ? `<div class="kb-meta">👤 ${esc(v.cliente.nome)} · ${esc(v.cliente.whatsapp)}</div>` : ''}
         <div class="kb-meta" ${servN ? `title="${esc(servResumo)}"` : ''}>🗓️ ${v.data_visita ? fmtDataHora(v.data_visita) : '<i>sem data</i>'}${servN ? ` · 🛠️ ${servN} serviço(s)` : ''}${temPreco ? ` · 💰 ≈ ${fmtMoeda(estTotal)}` : ''}${(ocultasMapa.has(v.id) || statusOcultosMapa.has(v.status)) ? ' · 🙈 oculta no mapa' : ''}</div>
+        ${(visitaPropostas.get(v.id) || []).length ? `<div class="kb-meta" title="Status travado — mude pela página de Propostas">🔒 Proposta(s): ${(visitaPropostas.get(v.id) || []).map(fmtCodigoProposta).join(', ')}</div>` : ''}
         ${v.problema ? `<div class="kb-prob">${esc(v.problema)}</div>` : ''}
         <div class="kb-acoes">
+            ${['concluida', 'concluida_pendencias'].includes(v.status) ? `<button class="hermo-btn small primary" data-proposta="${v.id}" title="Criar proposta pré-preenchida a partir desta visita">📄 Proposta</button>` : ''}
             <button class="hermo-btn small ghost" data-editar="${v.id}" title="Editar">✎</button>
             <button class="hermo-btn small danger" data-excluir="${v.id}" title="Excluir">🗑</button>
         </div>
@@ -185,6 +204,85 @@ function ligarEventosCards(container) {
         () => abrirModalVisita(visitas.find(v => v.id === b.dataset.editar))));
     container.querySelectorAll('[data-excluir]').forEach(b => b.addEventListener('click',
         () => excluirVisitas([b.dataset.excluir])));
+    container.querySelectorAll('[data-proposta]').forEach(b => b.addEventListener('click',
+        () => criarPropostaDaVisita(visitas.find(v => v.id === b.dataset.proposta))));
+}
+
+// ============================================================
+// CRIAR PROPOSTA A PARTIR DA VISITA (única origem do status CONFERIR)
+// ============================================================
+async function criarPropostaDaVisita(v) {
+    if (!v) return;
+    if (!confirm(
+        `Criar proposta a partir da visita "${v.endereco}"?\n\n` +
+        `• Nasce com status CONFERIR, já associada a esta visita\n` +
+        `• Cliente, endereço, serviços (com quantidades) e preços praticados são pré-preenchidos\n` +
+        `• O status desta visita passa a ser controlado pela proposta`)) return;
+
+    // propostas existentes: próximo código do ano + preços praticados do cliente
+    const { data: props, error } = await sb.from('hermo_propostas')
+        .select('id, numero, ano, cliente_id, itens:hermo_proposta_itens(servico_id, modo_preco, preco_mo, preco_material, preco_unit)')
+        .order('ano', { ascending: false }).order('numero', { ascending: false });
+    if (error) { toast('Erro ao consultar propostas: ' + error.message, true); return; }
+
+    const anoAtual = new Date().getFullYear();
+    const doAno = (props || []).filter(p => p.ano === anoAtual);
+    const numero = doAno.length ? Math.max(...doAno.map(p => p.numero)) + 1 : 1;
+
+    const praticado = servicoId => {
+        if (!v.cliente_id) return null;
+        for (const p of (props || [])) {
+            if (p.cliente_id !== v.cliente_id) continue;
+            const it = (p.itens || []).find(i => i.servico_id === servicoId && Number(i.preco_unit) > 0);
+            if (it) return it;
+        }
+        return null;
+    };
+
+    const itens = (v.servicos || []).map(sv => {
+        const cat = servicosCatalogo.find(x => x.id === sv.servico_id);
+        const prat = praticado(sv.servico_id);
+        const unit = prat ? Number(prat.preco_unit) : (Number(cat?.precos?.preco_final) || 0);
+        const qtd = Number(sv.quantidade) || 1;
+        return {
+            servico_id: sv.servico_id,
+            local_execucao: sv.local_execucao || null,
+            quantidade: qtd,
+            unidade: sv.unidade || cat?.unidade || null,
+            modo_preco: prat?.modo_preco === 'mo_material' ? 'mo_material' : 'global',
+            preco_mo: prat?.modo_preco === 'mo_material' ? prat.preco_mo : null,
+            preco_material: prat?.modo_preco === 'mo_material' ? prat.preco_material : null,
+            preco_unit: unit,
+            total: Math.round(unit * qtd * 100) / 100
+        };
+    });
+
+    const payload = {
+        id: null,
+        numero,
+        ano: anoAtual,
+        titulo: `Proposta — ${v.endereco}`,
+        cliente_id: v.cliente_id || null,
+        status: 'conferir',
+        endereco: v.endereco || null,
+        latitude: v.latitude,
+        longitude: v.longitude,
+        valor_total: Math.round(itens.reduce((t, i) => t + i.total, 0) * 100) / 100,
+        observacoes: null,
+        itens,
+        visitas: [v.id]
+    };
+    const { data: pid, error: e2 } = await sb.rpc('hermo_salvar_proposta', { p: payload });
+    if (e2) {
+        if ((e2.code || '') === '23505') {
+            toast('O número da proposta acabou de ser usado por outra criação — tente novamente.', true);
+        } else {
+            toast('Erro ao criar proposta: ' + e2.message, true);
+        }
+        return;
+    }
+    toast(`Proposta ${String(numero).padStart(4, '0')}/${anoAtual} criada em CONFERIR — abrindo…`);
+    window.location.href = `propostas.html?editar=${pid}`;
 }
 
 function atualizarCorpoColuna(status) {
@@ -281,9 +379,14 @@ function limparSelecao() {
 
 async function excluirVisitas(ids) {
     const n = ids.length;
-    const msg = n === 1
+    let msg = n === 1
         ? 'Excluir esta visita? Os serviços prováveis vinculados a ela também serão removidos.'
         : `Excluir ${n} visitas? Os serviços prováveis vinculados também serão removidos.`;
+    const comProposta = ids.filter(id => (visitaPropostas.get(id) || []).length > 0);
+    if (comProposta.length > 0) {
+        const codigos = [...new Set(comProposta.flatMap(id => (visitaPropostas.get(id) || []).map(fmtCodigoProposta)))];
+        msg += `\n\n⚠ ${comProposta.length} dela(s) está(ão) associada(s) à(s) proposta(s) ${codigos.join(', ')} — a associação será removida junto (as propostas continuam existindo).`;
+    }
     if (!confirm(msg)) return;
     const { error } = await sb.from('hermo_visitas').delete().in('id', ids);
     if (error) {
@@ -322,7 +425,16 @@ async function abrirModalVisita(visita) {
     $('mv-problema').value = visita?.problema || '';
 
     await carregarClientesSelect(visita?.cliente_id || null);
+
+    // TRAVA: visita associada a proposta(s) só muda de status pela página de Propostas
+    const associacoes = visitaPropostas.get(visita?.id) || [];
+    statusTravado = associacoes.length > 0;
+    $('mv-status').disabled = statusTravado;
     aplicarRegraDataStatus();
+    if (statusTravado) {
+        $('mv-regra-aviso').textContent =
+            `🔒 Status travado: esta visita está associada à(s) proposta(s) ${associacoes.map(fmtCodigoProposta).join(', ')} — mude o status pelo card da proposta, na página de Propostas.`;
+    }
     renderServicosDaVisita();
 
     $('mv-overlay').classList.add('aberto');
@@ -333,10 +445,13 @@ function fecharModalVisita() {
     $('mv-overlay').classList.remove('aberto');
     visitaEditando = null;
     servicosDaVisita = [];
+    statusTravado = false;
+    $('mv-status').disabled = false;
 }
 
 /** Regra: com data => NUNCA 'pendente_marcacao'; sem data => SOMENTE 'pendente_marcacao'. */
 function aplicarRegraDataStatus() {
+    if (statusTravado) return; // status controlado pela proposta associada
     const temData = !!$('mv-data').value;
     const sel = $('mv-status');
     const aviso = $('mv-regra-aviso');
@@ -398,7 +513,17 @@ async function salvarVisita() {
     if (!endereco) { toast('Endereço é obrigatório.', true); return; }
 
     const dataISO = inputParaISO($('mv-data').value);
-    const status = $('mv-status').value;
+    let status = $('mv-status').value;
+    // visita travada por proposta não pode perder a data (o status dela exige data)
+    if (statusTravado && !dataISO) {
+        toast('Esta visita está associada a proposta(s) e precisa manter uma data.', true);
+        return;
+    }
+    // travada: usa o status ATUAL do banco (pode ter sido mudado pela proposta em outra aba)
+    if (statusTravado && visitaEditando?.id) {
+        const { data: atual } = await sb.from('hermo_visitas').select('status').eq('id', visitaEditando.id).single();
+        if (atual?.status) status = atual.status;
+    }
     // validação redundante da regra (o banco também bloqueia via CHECK)
     if (dataISO && status === 'pendente_marcacao') { toast('Visita com data não pode ficar pendente de marcação.', true); return; }
     if (!dataISO && status !== 'pendente_marcacao') { toast('Visita sem data só pode ficar pendente de marcação.', true); return; }

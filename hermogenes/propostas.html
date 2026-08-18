@@ -6,6 +6,56 @@
   <title>Hermogenes Obras — Propostas</title>
   <script src="hermo-guard.js"></script>
   <link rel="stylesheet" href="hermo-style.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <style>
+    .pp-codigo-row { display: flex; gap: 8px; align-items: flex-end; }
+    .pp-codigo-row .hermo-field { flex: 1; }
+    .pp-codigo-row .sep { font-size: 1.3rem; font-weight: 700; color: var(--hermo-text-dim); padding-bottom: 10px; }
+    .pp-itens { display: flex; flex-direction: column; gap: 6px; }
+    .pp-item {
+        display: flex; align-items: center; gap: 8px;
+        background: var(--hermo-surface-2); border: 1px solid var(--hermo-border);
+        border-radius: 8px; padding: 7px 10px; font-size: .82rem;
+    }
+    .pp-item .check { transform: scale(1.15); accent-color: var(--hermo-primary); cursor: pointer; }
+    .pp-item .txt { flex: 1; }
+    .pp-item .txt small { display: block; color: var(--hermo-text-dim); }
+    .pp-item .valor { font-weight: 700; white-space: nowrap; }
+    .pp-total-row {
+        display: flex; justify-content: flex-end; gap: 8px; align-items: baseline;
+        font-size: .95rem; border-top: 1px solid var(--hermo-border); padding-top: 8px;
+    }
+    .pp-total-row b { font-size: 1.15rem; color: var(--hermo-primary); }
+    .pp-visitas { display: flex; flex-direction: column; gap: 6px; }
+    .pp-visita {
+        display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+        background: var(--hermo-surface-2); border: 1px solid var(--hermo-border);
+        border-radius: 8px; padding: 7px 10px; font-size: .8rem;
+    }
+    .pp-visita .txt { flex: 1; min-width: 150px; }
+    .pp-visita select {
+        background: var(--hermo-bg); border: 1px solid var(--hermo-border);
+        border-radius: 6px; color: var(--hermo-text); padding: 5px 8px; font-size: .78rem;
+    }
+    .pp-ferramentas { display: flex; gap: 8px; flex-wrap: wrap; }
+    .lista-check { display: flex; flex-direction: column; gap: 6px; max-height: 300px; overflow-y: auto; }
+    .lista-check .lc-item {
+        display: flex; align-items: flex-start; gap: 8px;
+        background: var(--hermo-surface-2); border: 1px solid var(--hermo-border);
+        border-radius: 8px; padding: 8px 10px; font-size: .82rem; cursor: pointer;
+    }
+    .lista-check .lc-item input { transform: scale(1.15); accent-color: var(--hermo-primary); margin-top: 2px; }
+    .lista-check .lc-item .txt small { display: block; color: var(--hermo-text-dim); }
+    .lista-check .lc-item.conflito { border-color: var(--hermo-warn); }
+    .lc-conflito-tag { font-size: .68rem; color: var(--hermo-warn); font-weight: 700; }
+    #pm2-mapa { width: 100%; height: 380px; border-radius: 10px; border: 1px solid var(--hermo-border); }
+    .pi-praticado {
+        font-size: .78rem; color: var(--hermo-text-dim);
+        background: var(--hermo-bg); border-radius: 6px; padding: 7px 10px;
+        display: none; align-items: center; gap: 8px; flex-wrap: wrap;
+    }
+  </style>
 </head>
 <body>
   <header class="hermo-topbar">
@@ -15,13 +65,302 @@
       <button class="hermo-btn danger" id="btn-logout">Sair</button>
     </div>
   </header>
+
   <main class="hermo-page">
-    <div class="hermo-placeholder">
-      <div class="icon">📄</div>
-      <h2>Propostas</h2>
-      <p>Elaboração e acompanhamento de propostas comerciais.</p>
-      <p style="margin-top:14px;font-size:.85rem">Módulo em desenvolvimento — em breve disponível aqui.</p>
+    <section class="hermo-resumo" id="resumo"></section>
+
+    <div class="hermo-page-head">
+      <h1>Propostas</h1>
+      <button class="hermo-btn primary" id="btn-nova">+ Nova proposta</button>
     </div>
+
+    <div class="hermo-selbar" id="selbar">
+      <div class="info" id="selbar-info">0 selecionadas</div>
+      <button class="hermo-btn small ghost" id="btn-sel-todas">Selecionar todas</button>
+      <button class="hermo-btn small ghost" id="btn-sel-limpar">Limpar seleção</button>
+      <button class="hermo-btn small ghost" id="btn-sel-ocultar">🙈 Ocultar do mapa</button>
+      <button class="hermo-btn small ghost" id="btn-sel-mostrar">👁 Mostrar no mapa</button>
+      <button class="hermo-btn small danger" id="btn-sel-excluir">Excluir selecionadas</button>
+    </div>
+
+    <div class="hermo-kanban" id="kanban"></div>
+
+    <div id="hermo-mapa"></div>
+    <div class="hermo-mapa-legenda" id="mapa-legenda"></div>
   </main>
+
+  <!-- MODAL DA PROPOSTA -->
+  <div class="hermo-modal-overlay" id="pp-overlay">
+    <div class="hermo-modal">
+      <div class="hermo-modal-head">
+        <h2 id="pp-titulo-modal">Nova proposta</h2>
+        <button class="fechar" id="pp-fechar" title="Fechar">&times;</button>
+      </div>
+      <div class="hermo-modal-body">
+        <div class="hermo-form-row">
+          <div class="hermo-field">
+            <label>Código <span class="req">*</span></label>
+            <div class="pp-codigo-row">
+              <div class="hermo-field"><input id="pp-numero" type="number" min="1" max="9999" placeholder="0001" /></div>
+              <span class="sep">/</span>
+              <div class="hermo-field"><input id="pp-ano" type="number" min="2000" max="2100" placeholder="2026" /></div>
+            </div>
+          </div>
+          <div class="hermo-field">
+            <label>Status <span class="req">*</span></label>
+            <select id="pp-status">
+              <option value="preparando">Preparando</option>
+              <option value="esperando_resposta">Esperando resposta</option>
+              <option value="contratada">Contratada</option>
+              <option value="recusada">Recusada</option>
+              <option value="adiada">Adiada</option>
+            </select>
+            <div id="pp-status-conferir-aviso" style="display:none;font-size:.74rem;color:var(--hermo-warn)">
+              Esta proposta está em <b>Conferir</b> (criada a partir de visita). Ao escolher outro status, não é possível voltar.
+            </div>
+          </div>
+        </div>
+
+        <div class="hermo-field">
+          <label>Título da proposta <span class="req">*</span></label>
+          <input id="pp-titulo" type="text" placeholder="ex.: Reforma da fachada — Bloco B" />
+        </div>
+
+        <div class="hermo-field">
+          <label>Cliente</label>
+          <div class="hermo-inline-add">
+            <div class="hermo-field">
+              <select id="pp-cliente"><option value="">— proposta avulsa (sem cliente) —</option></select>
+            </div>
+            <button class="hermo-btn small" id="pp-btn-novo-cliente" title="Adicionar novo cliente">+ Novo</button>
+            <button class="hermo-btn small ghost" id="pp-btn-editar-cliente" title="Editar cliente selecionado">✎</button>
+          </div>
+        </div>
+
+        <div class="hermo-field">
+          <label>Endereço (opcional)</label>
+          <div class="hermo-inline-add">
+            <div class="hermo-field">
+              <input id="pp-endereco" type="text" placeholder="Rua, número, bairro, cidade" />
+            </div>
+            <button class="hermo-btn small" id="pp-btn-mapa" title="Escolher o local no mapa">📍 Mapa</button>
+          </div>
+          <div id="pp-local-info" style="display:none;font-size:.78rem;color:var(--hermo-success)">✓ Local definido pelo mapa</div>
+        </div>
+
+        <!-- ITENS DE SERVIÇO -->
+        <div class="hermo-field">
+          <label>Itens de serviço</label>
+          <div class="hermo-selbar" id="pp-itens-selbar" style="margin-bottom:8px">
+            <div class="info" id="pp-itens-selinfo">0 itens marcados</div>
+            <button class="hermo-btn small ghost" id="pp-itens-sel-todos">Marcar todos</button>
+            <button class="hermo-btn small ghost" id="pp-itens-sel-limpar">Desmarcar</button>
+            <button class="hermo-btn small danger" id="pp-itens-sel-excluir">Excluir marcados</button>
+          </div>
+          <div class="pp-itens" id="pp-itens"></div>
+          <div class="pp-ferramentas" style="margin-top:8px">
+            <button class="hermo-btn small" id="pp-btn-add-servicos">+ Adicionar serviços</button>
+            <button class="hermo-btn small ghost" id="pp-btn-praticados" title="Aplicar aos itens os últimos preços praticados para este cliente">💲 Preços praticados do cliente</button>
+            <button class="hermo-btn small ghost" id="pp-btn-importar" title="Trazer serviços e preços de outra proposta (sem quantidades)">📥 Importar de outra proposta</button>
+          </div>
+          <div class="pp-total-row">Total da proposta: <b id="pp-total">R$ 0,00</b></div>
+        </div>
+
+        <!-- VISITAS ASSOCIADAS -->
+        <div class="hermo-field">
+          <label>Visitas associadas</label>
+          <div class="pp-visitas" id="pp-visitas"></div>
+          <button class="hermo-btn small" id="pp-btn-visitas" style="margin-top:6px">🔗 Associar / desassociar visitas</button>
+          <div style="font-size:.74rem;color:var(--hermo-text-dim);margin-top:4px">
+            Visita associada só muda de status por aqui — na página de Visitas o status fica travado.
+          </div>
+        </div>
+
+        <div class="hermo-field">
+          <label>Observações</label>
+          <textarea id="pp-obs" placeholder="Anotações internas da proposta…"></textarea>
+        </div>
+      </div>
+      <div class="hermo-modal-foot">
+        <button class="hermo-btn ghost" id="pp-cancelar">Cancelar</button>
+        <button class="hermo-btn primary" id="pp-salvar">Salvar proposta</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SUB-MODAL: ITEM DE SERVIÇO -->
+  <div class="hermo-modal-overlay" id="pi-overlay">
+    <div class="hermo-modal compacto">
+      <div class="hermo-modal-head">
+        <h2 id="pi-titulo">Editar item</h2>
+        <button class="fechar" id="pi-fechar" title="Fechar">&times;</button>
+      </div>
+      <div class="hermo-modal-body">
+        <div class="hermo-field">
+          <label>Serviço <span class="req">*</span></label>
+          <select id="pi-servico"></select>
+        </div>
+        <div class="pi-praticado" id="pi-praticado"></div>
+        <div class="hermo-field">
+          <label>Local / ambiente de execução</label>
+          <input id="pi-local" type="text" placeholder="ex.: cozinha, fachada norte, 2º andar" />
+        </div>
+        <div class="hermo-form-row">
+          <div class="hermo-field">
+            <label>Quantidade <span class="req">*</span></label>
+            <input id="pi-qtd" type="number" step="any" min="0" placeholder="1" />
+          </div>
+          <div class="hermo-field">
+            <label>Unidade</label>
+            <input id="pi-unidade" type="text" placeholder="ex.: m², un, h" />
+          </div>
+        </div>
+        <div class="hermo-field">
+          <label>Como informar o preço unitário?</label>
+          <select id="pi-modo">
+            <option value="global">Preço global (um valor único)</option>
+            <option value="mo_material">Mão de obra + material (global = soma)</option>
+          </select>
+        </div>
+        <div class="hermo-form-row" id="pi-wrap-global">
+          <div class="hermo-field">
+            <label>Preço unitário global (R$) <span class="req">*</span></label>
+            <input id="pi-preco-global" type="number" step="0.01" min="0" placeholder="0,00" />
+          </div>
+        </div>
+        <div class="hermo-form-row" id="pi-wrap-mm" style="display:none">
+          <div class="hermo-field">
+            <label>Preço unit. mão de obra (R$)</label>
+            <input id="pi-preco-mo" type="number" step="0.01" min="0" placeholder="0,00" />
+          </div>
+          <div class="hermo-field">
+            <label>Preço unit. material (R$)</label>
+            <input id="pi-preco-material" type="number" step="0.01" min="0" placeholder="0,00" />
+          </div>
+        </div>
+        <div class="sv-linha-total" style="font-size:.85rem;text-align:right;color:var(--hermo-text-dim)">
+          Unitário: <b id="pi-unit-preview" style="color:var(--hermo-text)">R$ 0,00</b>
+          &nbsp;·&nbsp; Total do item: <b id="pi-total-preview" style="color:var(--hermo-primary)">R$ 0,00</b>
+        </div>
+      </div>
+      <div class="hermo-modal-foot">
+        <button class="hermo-btn ghost" id="pi-cancelar">Cancelar</button>
+        <button class="hermo-btn primary" id="pi-confirmar">Confirmar item</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SUB-MODAL: ADICIONAR VÁRIOS SERVIÇOS -->
+  <div class="hermo-modal-overlay" id="psel-overlay">
+    <div class="hermo-modal compacto">
+      <div class="hermo-modal-head">
+        <h2>Adicionar serviços à proposta</h2>
+        <button class="fechar" id="psel-fechar" title="Fechar">&times;</button>
+      </div>
+      <div class="hermo-modal-body">
+        <input id="psel-busca" type="text" placeholder="Buscar serviço…"
+               style="background:var(--hermo-bg);border:1px solid var(--hermo-border);border-radius:8px;color:var(--hermo-text);padding:9px 12px" />
+        <div style="display:flex;gap:8px">
+          <button class="hermo-btn small ghost" id="psel-todos">Marcar todos</button>
+          <button class="hermo-btn small ghost" id="psel-nenhum">Desmarcar todos</button>
+        </div>
+        <div class="lista-check" id="psel-lista"></div>
+        <div style="font-size:.74rem;color:var(--hermo-text-dim)">
+          Cada serviço entra com qtd. 1 e preço pré-preenchido (praticado do cliente ou da precificação, quando houver) — ajuste depois no ✎ de cada item.
+        </div>
+      </div>
+      <div class="hermo-modal-foot">
+        <button class="hermo-btn ghost" id="psel-cancelar">Cancelar</button>
+        <button class="hermo-btn primary" id="psel-confirmar">Adicionar marcados</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SUB-MODAL: IMPORTAR DE OUTRA PROPOSTA -->
+  <div class="hermo-modal-overlay" id="pimp-overlay">
+    <div class="hermo-modal compacto">
+      <div class="hermo-modal-head">
+        <h2>Importar de outra proposta</h2>
+        <button class="fechar" id="pimp-fechar" title="Fechar">&times;</button>
+      </div>
+      <div class="hermo-modal-body">
+        <div class="hermo-field">
+          <label>Proposta de origem</label>
+          <select id="pimp-proposta"></select>
+        </div>
+        <div style="font-size:.78rem;color:var(--hermo-text-dim)">
+          Os serviços entram com os <b>preços da proposta de origem</b> e quantidade 1 (sem quantitativos), somando-se aos itens atuais.
+        </div>
+      </div>
+      <div class="hermo-modal-foot">
+        <button class="hermo-btn ghost" id="pimp-cancelar">Cancelar</button>
+        <button class="hermo-btn primary" id="pimp-confirmar">Importar itens</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SUB-MODAL: ASSOCIAR VISITAS -->
+  <div class="hermo-modal-overlay" id="pv-overlay">
+    <div class="hermo-modal compacto">
+      <div class="hermo-modal-head">
+        <h2>Associar visitas à proposta</h2>
+        <button class="fechar" id="pv-fechar" title="Fechar">&times;</button>
+      </div>
+      <div class="hermo-modal-body">
+        <div style="font-size:.78rem;color:var(--hermo-text-dim)">
+          Só entram visitas <b>Concluída</b>, <b>Concluída c/ pendências</b> ou <b>Desistiu</b>.
+        </div>
+        <div class="lista-check" id="pv-lista"></div>
+      </div>
+      <div class="hermo-modal-foot">
+        <button class="hermo-btn ghost" id="pv-cancelar">Cancelar</button>
+        <button class="hermo-btn primary" id="pv-confirmar">Confirmar associação</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SUB-MODAL: CHECKLIST DE PRÉ-PREENCHIMENTO/SOBRESCRITA -->
+  <div class="hermo-modal-overlay" id="pc-overlay">
+    <div class="hermo-modal compacto">
+      <div class="hermo-modal-head">
+        <h2>Pré-preenchimento a partir das visitas</h2>
+        <button class="fechar" id="pc-fechar" title="Fechar">&times;</button>
+      </div>
+      <div class="hermo-modal-body">
+        <div style="font-size:.78rem;color:var(--hermo-text-dim)">
+          Marque o que deseja aplicar. Itens com <span class="lc-conflito-tag">⚠ SOBRESCREVE</span> substituem algo que já está preenchido.
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="hermo-btn small ghost" id="pc-todos">Marcar todos</button>
+          <button class="hermo-btn small ghost" id="pc-nenhum">Desmarcar todos</button>
+        </div>
+        <div class="lista-check" id="pc-lista"></div>
+      </div>
+      <div class="hermo-modal-foot">
+        <button class="hermo-btn ghost" id="pc-cancelar">Não aplicar nada</button>
+        <button class="hermo-btn primary" id="pc-confirmar">Aplicar marcados</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SUB-MODAL: ESCOLHER LOCAL NO MAPA -->
+  <div class="hermo-modal-overlay" id="pm2-overlay">
+    <div class="hermo-modal compacto">
+      <div class="hermo-modal-head">
+        <h2>Escolher local no mapa</h2>
+        <button class="fechar" id="pm2-fechar" title="Fechar">&times;</button>
+      </div>
+      <div class="hermo-modal-body">
+        <div style="font-size:.78rem;color:var(--hermo-text-dim)">Clique no mapa para posicionar o local da proposta.</div>
+        <div id="pm2-mapa"></div>
+      </div>
+      <div class="hermo-modal-foot">
+        <button class="hermo-btn ghost" id="pm2-cancelar">Cancelar</button>
+        <button class="hermo-btn primary" id="pm2-confirmar" disabled>Usar este local</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="propostas.js"></script>
 </body>
 </html>
