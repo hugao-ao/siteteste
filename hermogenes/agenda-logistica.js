@@ -1,6 +1,6 @@
 // agenda-logistica.js — Montagem de rotas/agenda do dia a partir das visitas MARCADAS
 // Deslocamentos estimados via OSRM (OpenStreetMap) — gratuito, sem chave.
-import { sb, toast, fmtDataHora, inputParaISO, isoParaInput, esc } from './hermo-common.js';
+import { sb, toast, fmtDataHora, inputParaISO, isoParaInput, esc, STATUS_VISITA } from './hermo-common.js';
 
 const $ = id => document.getElementById(id);
 
@@ -27,7 +27,7 @@ async function carregarTudo() {
     const [v, r] = await Promise.all([
         sb.from('hermo_visitas')
             .select('id, endereco, latitude, longitude, status, data_visita, cliente:hermo_clientes(nome)')
-            .eq('status', 'marcada'),
+            .neq('status', 'pendente_marcacao'),
         sb.from('hermo_rotas')
             .select('*, paradas:hermo_rota_paradas(*, visita:hermo_visitas(id, endereco, latitude, longitude))')
             .order('inicio')
@@ -73,7 +73,7 @@ function renderResumo() {
         <div class="stat s-concluida"><div class="num">${fmtDuracao(totPerm)}</div><div class="lbl">Tempo em visitas</div></div>
         <div class="stat s-pendente"><div class="num">${fmtDuracao(totDesloc)}</div><div class="lbl">Tempo em deslocamento</div></div>
         <div class="stat ${sobre ? 's-desistiu' : ''}"><div class="num">${sobre}</div><div class="lbl">Sobreposições</div></div>
-        <div class="stat s-pendencias"><div class="num">${visitas.length}</div><div class="lbl">Visitas marcadas roteáveis</div></div>`;
+        <div class="stat s-pendencias"><div class="num">${visitas.length}</div><div class="lbl">Visitas roteáveis</div></div>`;
 }
 
 // ============================================================
@@ -87,8 +87,11 @@ function iniciarMapa() {
         subdomains: 'abcd', maxZoom: 19
     }).addTo(mapa);
     $('mapa-legenda').innerHTML =
-        `<span class="leg"><span class="dot" style="background:${COR_MARCADA}"></span>Visita marcada (clique para incluir na rota)</span>` +
-        `<span class="leg"><span class="dot" style="background:var(--hermo-primary)"></span>Parada da rota em montagem (nº = ordem)</span>`;
+        Object.entries(STATUS_VISITA)
+            .filter(([k]) => k !== 'pendente_marcacao')
+            .map(([k, v]) => `<span class="leg"><span class="dot" style="background:${v.cor}"></span>${v.label}</span>`)
+            .join('') +
+        `<span class="leg"><span class="dot" style="background:var(--hermo-primary)"></span>Nº = parada da rota em montagem</span>`;
 }
 
 let mapaEnquadrado = false;
@@ -107,14 +110,16 @@ function renderMarcadores() {
             });
         } else {
             marker = L.circleMarker([v.latitude, v.longitude], {
-                radius: 9, color: '#0f172a', weight: 2, fillColor: COR_MARCADA, fillOpacity: 1
+                radius: 9, color: '#0f172a', weight: 2,
+                fillColor: STATUS_VISITA[v.status]?.cor || COR_MARCADA, fillOpacity: 1
             });
         }
         marker.addTo(mapa);
         const emRotas = rotas.filter(r => r.paradas.some(p => p.visita_id === v.id)).map(r => r.nome);
         marker.bindTooltip(
             `${esc(v.endereco)}${v.cliente ? ' — ' + esc(v.cliente.nome) : ''}` +
-            `${v.data_visita ? '<br>Visita marcada p/ ' + fmtDataHora(v.data_visita) : ''}` +
+            `<br>Status: ${STATUS_VISITA[v.status]?.label || v.status}` +
+            `${v.data_visita ? '<br>Data: ' + fmtDataHora(v.data_visita) : ''}` +
             `${emRotas.length ? '<br>⚠ já na rota: ' + esc(emRotas.join(', ')) : ''}`,
             { sticky: true });
         marker.on('click', () => alternarParada(v.id));
@@ -208,18 +213,19 @@ function renderListaVisitas() {
     const cont = $('al-vlista');
     if (!cont) return;
     if (visitas.length === 0) {
-        cont.innerHTML = '<div class="al-dica">Nenhuma visita "Marcada" com localização no mapa.</div>';
+        cont.innerHTML = '<div class="al-dica">Nenhuma visita roteável — precisa ter localização e não estar "Pendente de marcação".</div>';
         return;
     }
     cont.innerHTML = visitas.map(v => {
         const idx = draft.paradas.findIndex(p => p.visita_id === v.id);
         const na = idx >= 0;
+        const st = STATUS_VISITA[v.status] || { label: v.status, cor: '#94a3b8' };
         return `
         <div class="al-vitem ${na ? 'na-rota' : ''}">
             <span class="num ${na ? '' : 'vazio'}">${na ? idx + 1 : ''}</span>
             <div class="txt">
                 ${esc(v.endereco)}
-                <small>${v.cliente ? esc(v.cliente.nome) + ' · ' : ''}${v.data_visita ? 'marcada p/ ' + fmtDataHora(v.data_visita) : ''}</small>
+                <small><span style="color:${st.cor}">●</span> ${st.label}${v.cliente ? ' · ' + esc(v.cliente.nome) : ''}${v.data_visita ? ' · ' + fmtDataHora(v.data_visita) : ''}</small>
             </div>
             <button class="hermo-btn small ${na ? 'danger' : 'primary'}" data-vtoggle="${v.id}">${na ? '× Remover' : '+ Rota'}</button>
         </div>`;
@@ -631,7 +637,7 @@ function editarRota(id) {
     const perdidas = draft.paradas.filter(p => !visitas.some(v => v.id === p.visita_id));
     if (perdidas.length > 0) {
         draft.paradas = draft.paradas.filter(p => visitas.some(v => v.id === p.visita_id));
-        toast(`${perdidas.length} parada(s) desta rota saíram do mapa (não estão mais "marcadas" ou perderam a localização) e foram removidas do rascunho.`, true);
+        toast(`${perdidas.length} parada(s) desta rota saíram do mapa (voltaram a "Pendente de marcação" ou perderam a localização) e foram removidas do rascunho.`, true);
     }
     $('al-titulo').textContent = `Editando: ${r.nome}`;
     $('al-nome').value = r.nome;
