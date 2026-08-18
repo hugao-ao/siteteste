@@ -1,7 +1,7 @@
 // visitas.js — Página de VISITAS da área Hermogenes
 import {
     sb, STATUS_VISITA, toast, fmtDataHora, inputParaISO, isoParaInput,
-    ligarFecharPorBackdrop, esc
+    ligarFecharPorBackdrop, esc, fmtMoeda
 } from './hermo-common.js';
 import { abrirModalCliente } from './hermo-cliente-modal.js';
 
@@ -32,12 +32,15 @@ async function carregarTudo() {
                 servicos:hermo_visita_servicos(id, servico_id, local_execucao, quantidade, unidade,
                     servico:hermo_servicos(id, codigo, descricao))`)
             .order('created_at', { ascending: false }),
-        sb.from('hermo_servicos').select('*').order('codigo')
+        sb.from('hermo_servicos').select('*, precos:hermo_servico_precos(preco_final, aliquota)').order('codigo')
     ]);
     if (v.error) { toast('Erro ao carregar visitas: ' + v.error.message, true); return; }
     if (s.error) { toast('Erro ao carregar serviços: ' + s.error.message, true); return; }
     visitas = v.data || [];
-    servicosCatalogo = s.data || [];
+    servicosCatalogo = (s.data || []).map(x => ({
+        ...x,
+        precos: Array.isArray(x.precos) ? x.precos[0] || null : x.precos
+    }));
     // descarta ocultações de visitas que não existem mais
     ocultasMapa = new Set([...ocultasMapa].filter(id => visitas.some(x => x.id === id)));
     salvarOcultasMapa();
@@ -144,6 +147,17 @@ function visitasDaColuna(status) {
 
 function cardMini(v) {
     const servN = (v.servicos || []).length;
+    // resumo (somente leitura) dos serviços com preço estimado, no tooltip e no rodapé se couber
+    let estTotal = 0, temPreco = false;
+    const servResumo = (v.servicos || []).map(sv => {
+        const cat = servicosCatalogo.find(x => x.id === sv.servico_id);
+        const preco = cat?.precos?.preco_final;
+        const qtd = (sv.quantidade != null && sv.quantidade !== '') ? Number(sv.quantidade) : null;
+        if (preco && qtd) { estTotal += preco * qtd; temPreco = true; }
+        return `${cat?.codigo || '?'} ${cat?.descricao || ''}` +
+            (preco ? ` — ${fmtMoeda(preco)}/${cat.unidade || 'un'}` : '') +
+            (qtd ? ` × ${qtd}` : '');
+    }).join('\n');
     return `
     <div class="kb-card ${selecionadas.has(v.id) ? 'selecionado' : ''}" data-id="${v.id}">
         <div class="kb-l1">
@@ -151,7 +165,7 @@ function cardMini(v) {
             <span class="kb-end">${esc(v.endereco)}</span>
         </div>
         ${v.cliente ? `<div class="kb-meta">👤 ${esc(v.cliente.nome)} · ${esc(v.cliente.whatsapp)}</div>` : ''}
-        <div class="kb-meta">🗓️ ${v.data_visita ? fmtDataHora(v.data_visita) : '<i>sem data</i>'}${servN ? ` · 🛠️ ${servN} serviço(s)` : ''}${(ocultasMapa.has(v.id) || statusOcultosMapa.has(v.status)) ? ' · 🙈 oculta no mapa' : ''}</div>
+        <div class="kb-meta" ${servN ? `title="${esc(servResumo)}"` : ''}>🗓️ ${v.data_visita ? fmtDataHora(v.data_visita) : '<i>sem data</i>'}${servN ? ` · 🛠️ ${servN} serviço(s)` : ''}${temPreco ? ` · 💰 ≈ ${fmtMoeda(estTotal)}` : ''}${(ocultasMapa.has(v.id) || statusOcultosMapa.has(v.status)) ? ' · 🙈 oculta no mapa' : ''}</div>
         ${v.problema ? `<div class="kb-prob">${esc(v.problema)}</div>` : ''}
         <div class="kb-acoes">
             <button class="hermo-btn small ghost" data-editar="${v.id}" title="Editar">✎</button>
@@ -348,18 +362,28 @@ function renderServicosDaVisita() {
         cont.innerHTML = '<div style="font-size:.82rem;color:var(--hermo-text-dim)">Nenhum serviço adicionado.</div>';
         return;
     }
-    cont.innerHTML = servicosDaVisita.map((s, i) => `
+    cont.innerHTML = servicosDaVisita.map((s, i) => {
+        const cat = servicosCatalogo.find(x => x.id === s.servico_id);
+        const preco = cat?.precos?.preco_final;
+        const qtd = (s.quantidade != null && s.quantidade !== '') ? Number(s.quantidade) : null;
+        // resumo somente leitura da precificação (edição só na página Serviços)
+        const resumoPreco = preco
+            ? ` · 💰 ${fmtMoeda(preco)}/${esc(cat.unidade || 'un')}` +
+              (qtd ? ` (≈ ${fmtMoeda(preco * qtd)})` : '')
+            : '';
+        return `
         <div class="subitem">
             <div class="txt">
                 <b>${esc(s.codigo)}</b> — ${esc(s.descricao)}
                 <small>
                     ${s.local_execucao ? 'Local: ' + esc(s.local_execucao) + ' · ' : ''}
-                    ${s.quantidade != null && s.quantidade !== '' ? 'Qtd: ' + esc(s.quantidade) + (s.unidade ? ' ' + esc(s.unidade) : '') : ''}
+                    ${qtd != null ? 'Qtd: ' + esc(s.quantidade) + (s.unidade ? ' ' + esc(s.unidade) : '') : ''}${resumoPreco}
                 </small>
             </div>
             <button class="hermo-btn small ghost" data-sub-editar="${i}">✎</button>
             <button class="hermo-btn small danger" data-sub-remover="${i}">🗑</button>
-        </div>`).join('');
+        </div>`;
+    }).join('');
     cont.querySelectorAll('[data-sub-editar]').forEach(b =>
         b.addEventListener('click', () => abrirSubModal(parseInt(b.dataset.subEditar))));
     cont.querySelectorAll('[data-sub-remover]').forEach(b =>
@@ -437,10 +461,31 @@ function popularSelectServicos(selecionarId = null) {
     servicosCatalogo.forEach(s => {
         const o = document.createElement('option');
         o.value = s.id;
-        o.textContent = `${s.codigo} — ${s.descricao}`;
+        const preco = s.precos?.preco_final;
+        o.textContent = `${s.codigo} — ${s.descricao}` +
+            (preco ? ` (${fmtMoeda(preco)}/${s.unidade || 'un'})` : '');
         sel.appendChild(o);
     });
     if (selecionarId) sel.value = selecionarId;
+    atualizarResumoServicoSelecionado();
+}
+
+/** Resumo somente leitura da precificação do serviço escolhido (edição só na página Serviços). */
+function atualizarResumoServicoSelecionado() {
+    const info = $('ms-precificacao-info');
+    if (!info) return;
+    const s = servicosCatalogo.find(x => x.id === $('ms-servico').value);
+    if (!s) { info.style.display = 'none'; return; }
+    info.style.display = '';
+    if (s.precos?.preco_final) {
+        const a = (Number(s.precos.aliquota) || 0);
+        info.innerHTML = `💰 Preço: <b>${fmtMoeda(s.precos.preco_final)}/${esc(s.unidade || 'un')}</b>` +
+            (a ? ` · imposto ${a}%` : '') +
+            ` — <a href="servicos.html?editar=${s.id}" target="_blank" rel="noopener" style="color:var(--hermo-primary)">editar precificação na página Serviços ↗</a>`;
+    } else {
+        info.innerHTML = `Este serviço ainda não tem precificação — ` +
+            `<a href="servicos.html?editar=${s.id}" target="_blank" rel="noopener" style="color:var(--hermo-primary)">preencher na página Serviços ↗</a>`;
+    }
 }
 
 function abrirSubModal(editIndex = null) {
@@ -748,6 +793,7 @@ function ligarEventos() {
     $('ms-servico').addEventListener('change', () => {
         const cat = servicosCatalogo.find(s => s.id === $('ms-servico').value);
         if (cat?.unidade) $('ms-unidade').value = cat.unidade;
+        atualizarResumoServicoSelecionado();
     });
     $('ms-btn-novo-servico').addEventListener('click', () => {
         const w = $('ms-novo-wrap');

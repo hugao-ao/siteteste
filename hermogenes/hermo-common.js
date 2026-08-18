@@ -95,6 +95,11 @@ export function ligarFecharPorBackdrop(overlayEl, fechar) {
     });
 }
 
+// ---------- Moeda ----------
+export function fmtMoeda(v) {
+    return (Number(v) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+}
+
 export function esc(s) {
     return String(s ?? '').replace(/[&<>"']/g, c =>
         ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));

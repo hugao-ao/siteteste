@@ -6,6 +6,50 @@
   <title>Hermogenes Obras — Serviços</title>
   <script src="hermo-guard.js"></script>
   <link rel="stylesheet" href="hermo-style.css" />
+  <style>
+    /* seções de precificação do modal de serviço */
+    .sv-secao {
+        border: 1px solid var(--hermo-border);
+        border-radius: 10px;
+        padding: 12px;
+        display: flex; flex-direction: column; gap: 10px;
+    }
+    .sv-secao > h3 { font-size: .85rem; color: var(--hermo-primary); }
+    .sv-itens { display: flex; flex-direction: column; gap: 6px; }
+    .sv-item {
+        display: flex; align-items: center; gap: 8px;
+        background: var(--hermo-surface-2); border: 1px solid var(--hermo-border);
+        border-radius: 8px; padding: 7px 10px; font-size: .82rem;
+    }
+    .sv-item .txt { flex: 1; }
+    .sv-item .txt small { display: block; color: var(--hermo-text-dim); }
+    .sv-linha-total { font-size: .82rem; color: var(--hermo-text-dim); text-align: right; }
+    .sv-linha-total b { color: var(--hermo-text); }
+    .sv-prefill { display: flex; gap: 6px; align-items: flex-end; }
+    .sv-prefill .hermo-field { flex: 1; }
+    .sv-reset {
+        background: none; border: 1px solid var(--hermo-border); border-radius: 6px;
+        color: var(--hermo-text-dim); cursor: pointer; padding: 8px 9px; font-size: .85rem;
+    }
+    .sv-reset:hover { border-color: var(--hermo-primary); color: var(--hermo-text); }
+    .sv-dre { display: flex; flex-direction: column; gap: 5px; font-size: .84rem; }
+    .sv-dre .linha { display: flex; justify-content: space-between; gap: 10px; }
+    .sv-dre .linha .rot { color: var(--hermo-text-dim); }
+    .sv-dre .linha .val { font-weight: 700; }
+    .sv-dre .linha.total { border-top: 1px solid var(--hermo-border); padding-top: 6px; margin-top: 3px; }
+    .val.pos { color: var(--hermo-success); }
+    .val.neg { color: var(--hermo-danger); }
+    .sv-locais { display: flex; flex-direction: column; gap: 5px; }
+    .sv-local {
+        display: flex; align-items: center; gap: 8px;
+        font-size: .78rem; background: var(--hermo-bg);
+        border: 1px solid var(--hermo-border); border-radius: 6px; padding: 5px 9px;
+    }
+    .sv-local .txt { flex: 1; }
+    .sv-imposto-valor { font-size: .82rem; color: var(--hermo-text-dim); }
+    .sv-imposto-valor b { color: var(--hermo-warn); }
+    #msi-simulador { font-size: .78rem; color: var(--hermo-text-dim); background: var(--hermo-bg); border-radius: 6px; padding: 8px 10px; }
+  </style>
 </head>
 <body>
   <header class="hermo-topbar">
@@ -31,7 +75,14 @@
     <div class="hermo-tabela-wrap">
       <table class="hermo-tabela">
         <thead>
-          <tr><th style="width:110px">Código</th><th>Descrição</th><th>Detalhe</th><th style="width:90px">Unidade</th><th style="width:130px">Ações</th></tr>
+          <tr>
+            <th style="width:100px">Código</th>
+            <th>Descrição</th>
+            <th style="width:80px">Unidade</th>
+            <th style="width:130px">Preço final /un</th>
+            <th style="width:140px">Resultado real /un</th>
+            <th style="width:110px">Ações</th>
+          </tr>
         </thead>
         <tbody id="corpo"></tbody>
       </table>
@@ -43,7 +94,7 @@
 
   <!-- MODAL DE SERVIÇO -->
   <div class="hermo-modal-overlay" id="msv-overlay">
-    <div class="hermo-modal compacto">
+    <div class="hermo-modal">
       <div class="hermo-modal-head">
         <h2 id="msv-titulo">Novo serviço</h2>
         <button class="fechar" id="msv-fechar" title="Fechar">&times;</button>
@@ -55,7 +106,7 @@
             <input id="msv-codigo" type="text" placeholder="ex.: 04.01" />
           </div>
           <div class="hermo-field">
-            <label>Unidade padrão</label>
+            <label>Unidade de medida</label>
             <input id="msv-unidade" type="text" placeholder="ex.: m², un, h" />
           </div>
         </div>
@@ -67,10 +118,201 @@
           <label>Detalhe</label>
           <textarea id="msv-detalhe" placeholder="Detalhamento opcional"></textarea>
         </div>
+
+        <div id="sv-aviso-novo" class="hermo-field" style="display:none;font-size:.8rem;color:var(--hermo-text-dim)">
+          💡 Salve o serviço primeiro — depois, ao <b>editá-lo</b>, você poderá preencher custos, preços, imposto e fornecedores.
+        </div>
+        <div id="sv-aviso-erro" class="hermo-field" style="display:none;font-size:.8rem;color:var(--hermo-danger)">
+          ⚠️ Não consegui carregar a precificação deste serviço (falha de conexão). Feche o modal e tente novamente —
+          salvar agora <b>não</b> altera a precificação já gravada.
+        </div>
+
+        <!-- ================= PRECIFICAÇÃO (só na edição) ================= -->
+        <div id="sv-precificacao" style="display:none;flex-direction:column;gap:14px">
+
+          <!-- 1. MÃO DE OBRA -->
+          <div class="sv-secao">
+            <h3>👷 Mão de obra (por <span class="sv-un">un</span>)</h3>
+            <div class="hermo-form-row">
+              <div class="hermo-field">
+                <label>1. Custo médio da mão de obra (R$/<span class="sv-un">un</span>)</label>
+                <input id="sv-custo-mo" type="number" step="0.01" min="0" placeholder="0,00" />
+              </div>
+              <div class="hermo-field">
+                <label>Mão de obra própria?</label>
+                <select id="sv-mo-propria">
+                  <option value="true">Sim — própria</option>
+                  <option value="false">Não — contratada</option>
+                </select>
+              </div>
+            </div>
+            <div id="sv-mo-locais-wrap" style="display:none;flex-direction:column;gap:6px">
+              <label style="font-size:.78rem;color:var(--hermo-text-dim)">Onde conseguir a mão de obra:</label>
+              <div class="sv-locais" id="sv-mo-locais"></div>
+              <button class="hermo-btn small" id="sv-btn-mo-local">+ Adicionar local/fornecedor</button>
+            </div>
+          </div>
+
+          <!-- 2. MATERIAIS -->
+          <div class="sv-secao">
+            <h3>🧱 Materiais (por <span class="sv-un">un</span>)</h3>
+            <div class="sv-itens" id="sv-materiais"></div>
+            <button class="hermo-btn small" id="sv-btn-add-material">+ Adicionar material</button>
+            <div class="sv-linha-total">2. Custo médio do material: <b id="sv-total-material">R$ 0,00</b>/<span class="sv-un">un</span></div>
+          </div>
+
+          <!-- 3. OUTROS CUSTOS -->
+          <div class="sv-secao">
+            <h3>📦 Outros custos (por <span class="sv-un">un</span>)</h3>
+            <div class="sv-itens" id="sv-outros"></div>
+            <button class="hermo-btn small" id="sv-btn-add-outro">+ Adicionar outro custo</button>
+            <div class="sv-linha-total">3. Total de outros custos: <b id="sv-total-outros">R$ 0,00</b>/<span class="sv-un">un</span></div>
+          </div>
+
+          <!-- 4-6. PREÇOS -->
+          <div class="sv-secao">
+            <h3>💵 Preços de venda (por <span class="sv-un">un</span>)</h3>
+            <div class="sv-prefill">
+              <div class="hermo-field">
+                <label>4. Preço de venda da mão de obra</label>
+                <input id="sv-preco-mo" type="number" step="0.01" min="0" placeholder="0,00" />
+              </div>
+              <button class="sv-reset" id="sv-reset-4" title="Voltar a acompanhar o item 1">↺</button>
+            </div>
+            <div class="sv-prefill">
+              <div class="hermo-field">
+                <label>5. Preço de venda do material</label>
+                <input id="sv-preco-material" type="number" step="0.01" min="0" placeholder="0,00" />
+              </div>
+              <button class="sv-reset" id="sv-reset-5" title="Voltar a acompanhar o item 2">↺</button>
+            </div>
+            <div class="sv-prefill">
+              <div class="hermo-field">
+                <label>6. Preço unitário final do serviço</label>
+                <input id="sv-preco-final" type="number" step="0.01" min="0" placeholder="0,00" />
+              </div>
+              <button class="sv-reset" id="sv-reset-6" title="Voltar a acompanhar a soma 4+5">↺</button>
+            </div>
+          </div>
+
+          <!-- 7. IMPOSTO -->
+          <div class="sv-secao">
+            <h3>🏛️ Imposto</h3>
+            <div class="hermo-form-row">
+              <div class="hermo-field">
+                <label>7. Alíquota (%)</label>
+                <input id="sv-aliquota" type="number" step="0.01" min="0" max="100" placeholder="0,00" />
+              </div>
+              <div class="hermo-field">
+                <label>Valor do imposto (sobre o preço final)</label>
+                <div class="sv-imposto-valor" style="padding:10px 0">= <b id="sv-imposto-valor">R$ 0,00</b>/<span class="sv-un">un</span></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 8. DEMONSTRATIVO -->
+          <div class="sv-secao">
+            <h3>📊 8. Demonstrativo do resultado (por <span class="sv-un">un</span>)</h3>
+            <div class="sv-dre">
+              <div class="linha"><span class="rot">8.1 Resultado mão de obra <small>(4 − 4×7 − 1)</small></span><span class="val" id="dre-mo">R$ 0,00</span></div>
+              <div class="linha"><span class="rot">8.2 Resultado material <small>(5 − 5×7 − 2)</small></span><span class="val" id="dre-mat">R$ 0,00</span></div>
+              <div class="linha"><span class="rot">8.3 Resultado parcial <small>(6 − 6×7)</small></span><span class="val" id="dre-parcial">R$ 0,00</span></div>
+              <div class="linha total"><span class="rot">8.4 Resultado real <small>(8.3 − outros custos)</small></span><span class="val" id="dre-real">R$ 0,00</span></div>
+            </div>
+          </div>
+        </div>
       </div>
       <div class="hermo-modal-foot">
         <button class="hermo-btn ghost" id="msv-cancelar">Cancelar</button>
         <button class="hermo-btn primary" id="msv-salvar">Salvar serviço</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SUB-MODAL: ITEM DE CUSTO (material / outro custo) -->
+  <div class="hermo-modal-overlay" id="msi-overlay">
+    <div class="hermo-modal compacto">
+      <div class="hermo-modal-head">
+        <h2 id="msi-titulo">Adicionar material</h2>
+        <button class="fechar" id="msi-fechar" title="Fechar">&times;</button>
+      </div>
+      <div class="hermo-modal-body">
+        <div class="hermo-field">
+          <label>Nome <span class="req">*</span></label>
+          <input id="msi-nome" type="text" placeholder="ex.: Tinta acrílica, Frete, Lixa…" />
+        </div>
+        <div class="hermo-field">
+          <label>Como o preço é informado?</label>
+          <select id="msi-modo">
+            <option value="direto">Já na unidade do serviço (R$/<span class="sv-un">un</span>)</option>
+            <option value="embalagem">Por embalagem (converter pelo rendimento)</option>
+          </select>
+        </div>
+        <div class="hermo-form-row" id="msi-wrap-direto">
+          <div class="hermo-field">
+            <label>Preço (R$ por <span class="sv-un">un</span>) <span class="req">*</span></label>
+            <input id="msi-preco-direto" type="number" step="0.01" min="0" placeholder="0,00" />
+          </div>
+        </div>
+        <div id="msi-wrap-embalagem" style="display:none;flex-direction:column;gap:10px">
+          <div class="hermo-form-row">
+            <div class="hermo-field">
+              <label>Preço da embalagem (R$) <span class="req">*</span></label>
+              <input id="msi-preco-embalagem" type="number" step="0.01" min="0" placeholder="ex.: 100,00" />
+            </div>
+            <div class="hermo-field">
+              <label>Rendimento (<span class="sv-un">un</span> por embalagem) <span class="req">*</span></label>
+              <input id="msi-rendimento" type="number" step="any" min="0" placeholder="ex.: 20" />
+            </div>
+          </div>
+          <div id="msi-simulador"></div>
+        </div>
+        <div class="sv-linha-total">Custo na unidade do serviço: <b id="msi-custo-unit">R$ 0,00</b>/<span class="sv-un">un</span></div>
+
+        <div class="hermo-field">
+          <label>Onde conseguir (locais/fornecedores)</label>
+          <div class="sv-locais" id="msi-locais"></div>
+          <div class="hermo-form-row tres" style="margin-top:6px">
+            <div class="hermo-field"><input id="msi-local-nome" type="text" placeholder="Nome do local" /></div>
+            <div class="hermo-field"><input id="msi-local-contato" type="text" placeholder="Contato (opcional)" /></div>
+            <div class="hermo-field"><input id="msi-local-obs" type="text" placeholder="Obs./preço (opcional)" /></div>
+          </div>
+          <button class="hermo-btn small" id="msi-btn-add-local" style="margin-top:6px">+ Adicionar local</button>
+        </div>
+      </div>
+      <div class="hermo-modal-foot">
+        <button class="hermo-btn ghost" id="msi-cancelar">Cancelar</button>
+        <button class="hermo-btn primary" id="msi-confirmar">Confirmar item</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SUB-MODAL: LOCAL DA MÃO DE OBRA -->
+  <div class="hermo-modal-overlay" id="msl-overlay">
+    <div class="hermo-modal compacto">
+      <div class="hermo-modal-head">
+        <h2>Local/fornecedor de mão de obra</h2>
+        <button class="fechar" id="msl-fechar" title="Fechar">&times;</button>
+      </div>
+      <div class="hermo-modal-body">
+        <div class="hermo-field">
+          <label>Nome <span class="req">*</span></label>
+          <input id="msl-nome" type="text" placeholder="ex.: Equipe do João" />
+        </div>
+        <div class="hermo-form-row">
+          <div class="hermo-field">
+            <label>Contato</label>
+            <input id="msl-contato" type="text" placeholder="opcional" />
+          </div>
+          <div class="hermo-field">
+            <label>Observação</label>
+            <input id="msl-obs" type="text" placeholder="opcional" />
+          </div>
+        </div>
+      </div>
+      <div class="hermo-modal-foot">
+        <button class="hermo-btn ghost" id="msl-cancelar">Cancelar</button>
+        <button class="hermo-btn primary" id="msl-confirmar">Confirmar</button>
       </div>
     </div>
   </div>
