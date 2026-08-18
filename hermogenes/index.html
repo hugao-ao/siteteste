@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Hermogenes Obras — Início</title>
+  <script src="hermo-guard.js"></script>
+  <link rel="stylesheet" href="hermo-style.css" />
+</head>
+<body>
+  <header class="hermo-topbar">
+    <div class="brand">HERMOGENES <span>OBRAS</span></div>
+    <div class="actions">
+      <button class="hermo-btn danger" id="btn-logout">Sair</button>
+    </div>
+  </header>
+
+  <main class="hermo-home">
+    <h1>Painel de Gestão</h1>
+    <p class="sub">Selecione um módulo para começar.</p>
+
+    <div class="hermo-cards-grid">
+      <a class="hermo-card-nav" href="visitas.html">
+        <div class="icon">📍</div>
+        <div class="titulo">Visitas</div>
+        <div class="desc">Agendamento, status, problemas relatados, serviços prováveis e mapa.</div>
+      </a>
+      <a class="hermo-card-nav" href="clientes.html">
+        <div class="icon">👥</div>
+        <div class="titulo">Clientes</div>
+        <div class="desc">Base única de clientes: contatos, documentos e indicações.</div>
+      </a>
+      <a class="hermo-card-nav" href="servicos.html">
+        <div class="icon">🛠️</div>
+        <div class="titulo">Serviços</div>
+        <div class="desc">Catálogo de serviços com código e descrição, usado em todo o sistema.</div>
+      </a>
+      <a class="hermo-card-nav dev" href="obras.html">
+        <div class="icon">🏗️</div>
+        <div class="titulo">Obras</div>
+        <div class="desc">Gestão completa de cada obra e acesso a tudo que se conecta a ela.</div>
+      </a>
+      <a class="hermo-card-nav dev" href="medicoes-notas.html">
+        <div class="icon">📐</div>
+        <div class="titulo">Medições e Notas Fiscais</div>
+        <div class="desc">Medições por obra e emissão/controle de notas fiscais.</div>
+      </a>
+      <a class="hermo-card-nav dev" href="propostas.html">
+        <div class="icon">📄</div>
+        <div class="titulo">Propostas</div>
+        <div class="desc">Elaboração e acompanhamento de propostas comerciais.</div>
+      </a>
+      <a class="hermo-card-nav dev" href="faturamento-despesas.html">
+        <div class="icon">💰</div>
+        <div class="titulo">Faturamento e Despesas</div>
+        <div class="desc">Entradas, saídas e resultado por período e por obra.</div>
+      </a>
+      <a class="hermo-card-nav dev" href="integrantes-equipes.html">
+        <div class="icon">🧑‍🤝‍🧑</div>
+        <div class="titulo">Integrantes e Equipes</div>
+        <div class="desc">Cadastro de pessoas, funções e formação de equipes.</div>
+      </a>
+      <a class="hermo-card-nav dev" href="agenda-logistica.html">
+        <div class="icon">🗓️</div>
+        <div class="titulo">Agenda e Logística</div>
+        <div class="desc">Compromissos, deslocamentos e alocação no tempo.</div>
+      </a>
+      <a class="hermo-card-nav dev" href="visao-geral.html">
+        <div class="icon">📊</div>
+        <div class="titulo">Visão Geral</div>
+        <div class="desc">Resumo executivo de tudo: visitas, obras, propostas e finanças.</div>
+      </a>
+    </div>
+  </main>
+
+  <!-- logout é ligado pelo hermo-guard.js (sem dependência de CDN) -->
+</body>
+</html>

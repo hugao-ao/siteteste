@@ -53,6 +53,31 @@ loginForm.addEventListener("submit", async (e) => {
       return;
     }
 
+    // ÁREA HERMOGENES: entra direto, sem OTP (2FA será adicionado depois)
+    if (usuario === "HermogenesObras" && data.projeto === "Hermogenes") {
+      const dadosLogin = {
+        usuario: usuario,
+        user_id: data.id,
+        id: data.id,
+        nivel: data.nivel,
+        projeto: data.projeto
+      };
+      if (window.AuthMiddleware) {
+        window.AuthMiddleware.salvarDadosLogin(dadosLogin);
+      } else {
+        Object.keys(dadosLogin).forEach(k => sessionStorage.setItem(k, dadosLogin[k]));
+      }
+      // Se tentou acessar uma subpágina antes do login, volta para ela
+      const pendente = localStorage.getItem("redirect_after_login");
+      if (pendente && pendente.indexOf("/hermogenes/") !== -1) {
+        localStorage.removeItem("redirect_after_login");
+        window.location.href = pendente;
+      } else {
+        window.location.href = "hermogenes/index.html";
+      }
+      return;
+    }
+
     // Guarda dados temporariamente
     usuarioAtual = usuario;
     emailUsuario = data.email; // Guarda o email para enviar OTP
@@ -130,6 +155,11 @@ otpForm.addEventListener("submit", async (e) => {
     }
     
     // Verificar se há redirecionamento pendente
+    // (nunca mandar usuário comum para a área Hermogenes — evita loop de login)
+    const redirPendente = localStorage.getItem("redirect_after_login");
+    if (redirPendente && redirPendente.indexOf("/hermogenes/") !== -1) {
+      localStorage.removeItem("redirect_after_login");
+    }
     if (window.AuthMiddleware) {
       const redirecionou = window.AuthMiddleware.verificarRedirecionamentoPendente();
       if (redirecionou) {

@@ -1,0 +1,403 @@
+/* hermo-style.css — Estilo da área Hermogenes (independente do restante do site) */
+
+:root {
+    --hermo-bg: #0f172a;
+    --hermo-surface: #1e293b;
+    --hermo-surface-2: #273449;
+    --hermo-border: #334155;
+    --hermo-text: #e2e8f0;
+    --hermo-text-dim: #94a3b8;
+    --hermo-primary: #f59e0b;
+    --hermo-primary-dark: #d97706;
+    --hermo-danger: #ef4444;
+    --hermo-success: #22c55e;
+    --hermo-info: #3b82f6;
+    --hermo-warn: #eab308;
+    --hermo-purple: #a855f7;
+    --hermo-radius: 12px;
+    --hermo-shadow: 0 4px 16px rgba(0, 0, 0, .35);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+    background: var(--hermo-bg);
+    color: var(--hermo-text);
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    min-height: 100vh;
+}
+
+/* ---------- Topbar ---------- */
+.hermo-topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 14px 22px;
+    background: var(--hermo-surface);
+    border-bottom: 2px solid var(--hermo-primary);
+    position: sticky;
+    top: 0;
+    z-index: 50;
+}
+.hermo-topbar .brand {
+    font-size: 1.15rem;
+    font-weight: 700;
+    letter-spacing: .5px;
+}
+.hermo-topbar .brand span { color: var(--hermo-primary); }
+.hermo-topbar .actions { display: flex; gap: 10px; }
+
+/* ---------- Botões ---------- */
+.hermo-btn {
+    border: none;
+    border-radius: 8px;
+    padding: 9px 16px;
+    font-size: .9rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    transition: filter .15s, transform .05s;
+    color: #fff;
+    background: var(--hermo-surface-2);
+}
+.hermo-btn:hover { filter: brightness(1.15); }
+.hermo-btn:active { transform: scale(.98); }
+.hermo-btn.primary { background: var(--hermo-primary); color: #1a1206; }
+.hermo-btn.danger { background: var(--hermo-danger); }
+.hermo-btn.ghost { background: transparent; border: 1px solid var(--hermo-border); color: var(--hermo-text); }
+.hermo-btn:disabled { opacity: .45; cursor: not-allowed; }
+.hermo-btn.small { padding: 5px 10px; font-size: .8rem; }
+
+/* ---------- Home: grade de cards ---------- */
+.hermo-home {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 30px 22px 60px;
+}
+.hermo-home h1 { font-size: 1.5rem; margin-bottom: 6px; }
+.hermo-home .sub { color: var(--hermo-text-dim); margin-bottom: 26px; }
+
+.hermo-cards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 18px;
+}
+.hermo-card-nav {
+    background: var(--hermo-surface);
+    border: 1px solid var(--hermo-border);
+    border-radius: var(--hermo-radius);
+    padding: 22px 20px;
+    cursor: pointer;
+    text-decoration: none;
+    color: var(--hermo-text);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    transition: border-color .15s, transform .12s, box-shadow .15s;
+}
+.hermo-card-nav:hover {
+    border-color: var(--hermo-primary);
+    transform: translateY(-3px);
+    box-shadow: var(--hermo-shadow);
+}
+.hermo-card-nav .icon { font-size: 1.7rem; }
+.hermo-card-nav .titulo { font-weight: 700; font-size: 1.02rem; }
+.hermo-card-nav .desc { color: var(--hermo-text-dim); font-size: .82rem; line-height: 1.35; }
+.hermo-card-nav.dev .titulo::after {
+    content: 'em breve';
+    font-size: .62rem;
+    font-weight: 600;
+    color: var(--hermo-bg);
+    background: var(--hermo-text-dim);
+    border-radius: 20px;
+    padding: 2px 8px;
+    margin-left: 8px;
+    vertical-align: middle;
+}
+
+/* ---------- Página interna ---------- */
+.hermo-page {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 24px 22px 70px;
+}
+.hermo-page-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    margin-bottom: 20px;
+}
+.hermo-page-head h1 { font-size: 1.35rem; }
+
+/* Resumo (cabeçalho de gestão) */
+.hermo-resumo {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 12px;
+    margin-bottom: 22px;
+}
+.hermo-resumo .stat {
+    background: var(--hermo-surface);
+    border: 1px solid var(--hermo-border);
+    border-left: 4px solid var(--hermo-primary);
+    border-radius: 10px;
+    padding: 12px 14px;
+}
+.hermo-resumo .stat .num { font-size: 1.45rem; font-weight: 700; }
+.hermo-resumo .stat .lbl { font-size: .75rem; color: var(--hermo-text-dim); text-transform: uppercase; letter-spacing: .4px; }
+.hermo-resumo .stat.s-marcada { border-left-color: var(--hermo-info); }
+.hermo-resumo .stat.s-pendente { border-left-color: var(--hermo-warn); }
+.hermo-resumo .stat.s-concluida { border-left-color: var(--hermo-success); }
+.hermo-resumo .stat.s-pendencias { border-left-color: var(--hermo-purple); }
+.hermo-resumo .stat.s-desistiu { border-left-color: var(--hermo-danger); }
+.hermo-resumo .stat.destaque { grid-column: 1 / -1; border-left-color: var(--hermo-primary); background: var(--hermo-surface-2); }
+.hermo-resumo .stat.destaque .num { font-size: 1rem; font-weight: 600; }
+
+/* ---------- Cards de listagem (visitas etc.) ---------- */
+.hermo-lista {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
+    gap: 16px;
+}
+.hermo-item-card {
+    background: var(--hermo-surface);
+    border: 1px solid var(--hermo-border);
+    border-radius: var(--hermo-radius);
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    position: relative;
+    transition: border-color .15s;
+}
+.hermo-item-card:hover { border-color: var(--hermo-primary); }
+.hermo-item-card.selecionado { border-color: var(--hermo-primary); box-shadow: 0 0 0 2px var(--hermo-primary); }
+.hermo-item-card .linha1 {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 10px;
+}
+.hermo-item-card .check { transform: scale(1.25); accent-color: var(--hermo-primary); cursor: pointer; margin-top: 3px; }
+.hermo-item-card .endereco { font-weight: 700; font-size: .98rem; flex: 1; }
+.hermo-item-card .meta { font-size: .84rem; color: var(--hermo-text-dim); display: flex; align-items: center; gap: 6px; }
+.hermo-item-card .meta b { color: var(--hermo-text); font-weight: 600; }
+.hermo-item-card .problema {
+    font-size: .84rem;
+    background: var(--hermo-surface-2);
+    border-radius: 8px;
+    padding: 8px 10px;
+    color: var(--hermo-text-dim);
+    white-space: pre-wrap;
+    max-height: 90px;
+    overflow: auto;
+}
+.hermo-item-card .servicos-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.hermo-item-card .servicos-tags .tag {
+    font-size: .72rem;
+    background: var(--hermo-surface-2);
+    border: 1px solid var(--hermo-border);
+    padding: 3px 8px;
+    border-radius: 20px;
+}
+.hermo-item-card .acoes { display: flex; gap: 8px; justify-content: flex-end; margin-top: auto; }
+
+/* Badges de status */
+.badge-status {
+    display: inline-block;
+    font-size: .72rem;
+    font-weight: 700;
+    padding: 3px 10px;
+    border-radius: 20px;
+    white-space: nowrap;
+}
+.badge-status.concluida { background: rgba(34,197,94,.15); color: var(--hermo-success); }
+.badge-status.concluida_pendencias { background: rgba(168,85,247,.15); color: var(--hermo-purple); }
+.badge-status.marcada { background: rgba(59,130,246,.15); color: var(--hermo-info); }
+.badge-status.pendente_marcacao { background: rgba(234,179,8,.15); color: var(--hermo-warn); }
+.badge-status.desistiu { background: rgba(239,68,68,.15); color: var(--hermo-danger); }
+
+/* Barra de seleção múltipla */
+.hermo-selbar {
+    display: none;
+    align-items: center;
+    gap: 12px;
+    background: var(--hermo-surface-2);
+    border: 1px solid var(--hermo-primary);
+    border-radius: 10px;
+    padding: 10px 14px;
+    margin-bottom: 16px;
+}
+.hermo-selbar.ativa { display: flex; flex-wrap: wrap; }
+.hermo-selbar .info { font-size: .88rem; font-weight: 600; flex: 1; }
+
+/* ---------- Mapa ---------- */
+#hermo-mapa {
+    width: 100%;
+    height: 430px;
+    border-radius: var(--hermo-radius);
+    border: 1px solid var(--hermo-border);
+    margin-top: 26px;
+}
+.hermo-mapa-legenda {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px;
+    margin-top: 10px;
+    font-size: .8rem;
+    color: var(--hermo-text-dim);
+}
+.hermo-mapa-legenda .leg { display: flex; align-items: center; gap: 6px; }
+.hermo-mapa-legenda .dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }
+
+/* ---------- Modais ---------- */
+.hermo-modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(2, 6, 23, .72);
+    z-index: 100;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 30px 14px;
+    overflow-y: auto;
+}
+.hermo-modal-overlay.aberto { display: flex; }
+.hermo-modal {
+    background: var(--hermo-surface);
+    border: 1px solid var(--hermo-border);
+    border-radius: var(--hermo-radius);
+    width: 100%;
+    max-width: 680px;
+    box-shadow: var(--hermo-shadow);
+}
+.hermo-modal.compacto { max-width: 520px; }
+.hermo-modal-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--hermo-border);
+}
+.hermo-modal-head h2 { font-size: 1.05rem; }
+.hermo-modal-head .fechar {
+    background: none;
+    border: none;
+    color: var(--hermo-text-dim);
+    font-size: 1.4rem;
+    cursor: pointer;
+    line-height: 1;
+}
+.hermo-modal-body { padding: 20px; display: flex; flex-direction: column; gap: 14px; }
+.hermo-modal-foot {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    padding: 14px 20px;
+    border-top: 1px solid var(--hermo-border);
+}
+
+/* ---------- Formulários ---------- */
+.hermo-field { display: flex; flex-direction: column; gap: 5px; }
+.hermo-field label { font-size: .8rem; font-weight: 600; color: var(--hermo-text-dim); }
+.hermo-field label .req { color: var(--hermo-danger); }
+.hermo-field input,
+.hermo-field select,
+.hermo-field textarea {
+    background: var(--hermo-bg);
+    border: 1px solid var(--hermo-border);
+    border-radius: 8px;
+    color: var(--hermo-text);
+    padding: 9px 12px;
+    font-size: .9rem;
+    font-family: inherit;
+    width: 100%;
+}
+.hermo-field input:focus,
+.hermo-field select:focus,
+.hermo-field textarea:focus {
+    outline: none;
+    border-color: var(--hermo-primary);
+}
+.hermo-field textarea { resize: both; min-height: 84px; }
+.hermo-form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.hermo-form-row.tres { grid-template-columns: 1fr 1fr 1fr; }
+@media (max-width: 640px) {
+    .hermo-form-row, .hermo-form-row.tres { grid-template-columns: 1fr; }
+}
+.hermo-inline-add { display: flex; gap: 8px; align-items: flex-end; }
+.hermo-inline-add .hermo-field { flex: 1; }
+
+/* Sub-lista dentro do modal (serviços da visita) */
+.hermo-sublista { display: flex; flex-direction: column; gap: 8px; }
+.hermo-sublista .subitem {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--hermo-surface-2);
+    border: 1px solid var(--hermo-border);
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: .85rem;
+}
+.hermo-sublista .subitem .txt { flex: 1; }
+.hermo-sublista .subitem .txt small { color: var(--hermo-text-dim); display: block; }
+
+/* ---------- Tabelas simples (clientes, serviços) ---------- */
+.hermo-tabela-wrap { overflow-x: auto; border-radius: var(--hermo-radius); border: 1px solid var(--hermo-border); }
+table.hermo-tabela { width: 100%; border-collapse: collapse; background: var(--hermo-surface); font-size: .88rem; }
+.hermo-tabela th {
+    text-align: left;
+    padding: 11px 14px;
+    background: var(--hermo-surface-2);
+    color: var(--hermo-text-dim);
+    font-size: .74rem;
+    text-transform: uppercase;
+    letter-spacing: .5px;
+}
+.hermo-tabela td { padding: 11px 14px; border-top: 1px solid var(--hermo-border); }
+.hermo-tabela tr:hover td { background: rgba(245, 158, 11, .05); }
+
+/* ---------- Toast ---------- */
+#hermo-toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(120%);
+    background: var(--hermo-surface-2);
+    border: 1px solid var(--hermo-primary);
+    color: var(--hermo-text);
+    border-radius: 10px;
+    padding: 12px 22px;
+    font-size: .9rem;
+    z-index: 200;
+    transition: transform .25s;
+    box-shadow: var(--hermo-shadow);
+    max-width: 92vw;
+}
+#hermo-toast.mostrar { transform: translateX(-50%) translateY(0); }
+#hermo-toast.erro { border-color: var(--hermo-danger); }
+
+/* ---------- Vazio ---------- */
+.hermo-vazio {
+    text-align: center;
+    color: var(--hermo-text-dim);
+    padding: 50px 20px;
+    border: 1px dashed var(--hermo-border);
+    border-radius: var(--hermo-radius);
+}
+.hermo-vazio .big { font-size: 2.2rem; margin-bottom: 8px; }
+
+/* ---------- Placeholder de módulo ---------- */
+.hermo-placeholder {
+    text-align: center;
+    padding: 70px 20px;
+    color: var(--hermo-text-dim);
+}
+.hermo-placeholder .icon { font-size: 3rem; margin-bottom: 14px; }
+.hermo-placeholder h2 { color: var(--hermo-text); margin-bottom: 8px; }

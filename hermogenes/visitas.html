@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Hermogenes Obras — Visitas</title>
+  <script src="hermo-guard.js"></script>
+  <link rel="stylesheet" href="hermo-style.css" />
+  <!-- Google Maps (mesma chave já usada na logística HVC) -->
+  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAexfeUSBJReq3_fIGfsom2gTBe0o77jHs&libraries=places,geometry"></script>
+</head>
+<body>
+  <header class="hermo-topbar">
+    <div class="brand">HERMOGENES <span>OBRAS</span> · Visitas</div>
+    <div class="actions">
+      <a class="hermo-btn ghost" href="index.html">← Voltar</a>
+      <button class="hermo-btn danger" id="btn-logout">Sair</button>
+    </div>
+  </header>
+
+  <main class="hermo-page">
+    <!-- RESUMO INTELIGENTE -->
+    <section class="hermo-resumo" id="resumo"></section>
+
+    <div class="hermo-page-head">
+      <h1>Visitas</h1>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <select id="filtro-status" class="hermo-btn ghost" style="padding:8px 12px">
+          <option value="">Todos os status</option>
+          <option value="marcada">Marcada</option>
+          <option value="pendente_marcacao">Pendente de marcação</option>
+          <option value="concluida">Concluída</option>
+          <option value="concluida_pendencias">Concluída c/ pendências</option>
+          <option value="desistiu">Desistiu</option>
+        </select>
+        <button class="hermo-btn primary" id="btn-nova-visita">+ Nova visita</button>
+      </div>
+    </div>
+
+    <!-- BARRA DE SELEÇÃO MÚLTIPLA -->
+    <div class="hermo-selbar" id="selbar">
+      <div class="info" id="selbar-info">0 selecionadas</div>
+      <button class="hermo-btn small ghost" id="btn-sel-todas">Selecionar todas</button>
+      <button class="hermo-btn small ghost" id="btn-sel-limpar">Limpar seleção</button>
+      <button class="hermo-btn small danger" id="btn-sel-excluir">Excluir selecionadas</button>
+    </div>
+
+    <!-- CARDS -->
+    <section class="hermo-lista" id="lista-visitas"></section>
+
+    <!-- MAPA -->
+    <div id="hermo-mapa"></div>
+    <div class="hermo-mapa-legenda" id="mapa-legenda"></div>
+  </main>
+
+  <!-- MODAL DE VISITA -->
+  <div class="hermo-modal-overlay" id="mv-overlay">
+    <div class="hermo-modal">
+      <div class="hermo-modal-head">
+        <h2 id="mv-titulo">Nova visita</h2>
+        <button class="fechar" id="mv-fechar" title="Fechar">&times;</button>
+      </div>
+      <div class="hermo-modal-body">
+        <div class="hermo-field">
+          <label>Endereço do local a ser visitado <span class="req">*</span></label>
+          <input id="mv-endereco" type="text" placeholder="Rua, número, bairro, cidade" />
+        </div>
+
+        <div class="hermo-field">
+          <label>Contato / Cliente solicitante</label>
+          <div class="hermo-inline-add">
+            <div class="hermo-field">
+              <select id="mv-cliente"><option value="">— sem cliente associado —</option></select>
+            </div>
+            <button class="hermo-btn small" id="mv-btn-novo-cliente" title="Adicionar novo cliente">+ Novo</button>
+            <button class="hermo-btn small ghost" id="mv-btn-editar-cliente" title="Editar cliente selecionado">✎</button>
+          </div>
+        </div>
+
+        <div class="hermo-form-row">
+          <div class="hermo-field">
+            <label>Data e hora da visita</label>
+            <input id="mv-data" type="datetime-local" />
+          </div>
+          <div class="hermo-field">
+            <label>Status <span class="req">*</span></label>
+            <select id="mv-status">
+              <option value="pendente_marcacao">Pendente de marcação</option>
+              <option value="marcada">Marcada</option>
+              <option value="concluida">Concluída</option>
+              <option value="concluida_pendencias">Concluída c/ pendências</option>
+              <option value="desistiu">Desistiu</option>
+            </select>
+          </div>
+        </div>
+        <div id="mv-regra-aviso" style="font-size:.78rem;color:var(--hermo-text-dim)"></div>
+
+        <div class="hermo-field">
+          <label>Qual o problema a ser resolvido?</label>
+          <textarea id="mv-problema" placeholder="Descreva o problema relatado…"></textarea>
+        </div>
+
+        <div class="hermo-field">
+          <label>Prováveis serviços a serem feitos</label>
+          <div class="hermo-sublista" id="mv-servicos-lista"></div>
+          <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
+            <button class="hermo-btn small" id="mv-btn-add-servico">+ Adicionar serviço</button>
+          </div>
+        </div>
+      </div>
+      <div class="hermo-modal-foot">
+        <button class="hermo-btn ghost" id="mv-cancelar">Cancelar</button>
+        <button class="hermo-btn primary" id="mv-salvar">Salvar visita</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL DE SERVIÇO DA VISITA -->
+  <div class="hermo-modal-overlay" id="ms-overlay">
+    <div class="hermo-modal compacto">
+      <div class="hermo-modal-head">
+        <h2 id="ms-titulo">Adicionar serviço provável</h2>
+        <button class="fechar" id="ms-fechar" title="Fechar">&times;</button>
+      </div>
+      <div class="hermo-modal-body">
+        <div class="hermo-field">
+          <label>Serviço (código — descrição) <span class="req">*</span></label>
+          <div class="hermo-inline-add">
+            <div class="hermo-field">
+              <select id="ms-servico"></select>
+            </div>
+            <button class="hermo-btn small" id="ms-btn-novo-servico" title="Criar novo serviço no catálogo">+ Novo</button>
+          </div>
+        </div>
+        <div id="ms-novo-wrap" style="display:none;border:1px dashed var(--hermo-border);border-radius:8px;padding:12px;flex-direction:column;gap:10px">
+          <div class="hermo-form-row">
+            <div class="hermo-field">
+              <label>Código <span class="req">*</span></label>
+              <input id="ms-novo-codigo" type="text" placeholder="ex.: 04.01" />
+            </div>
+            <div class="hermo-field">
+              <label>Unidade padrão</label>
+              <input id="ms-novo-unidade" type="text" placeholder="ex.: m², un, h" />
+            </div>
+          </div>
+          <div class="hermo-field">
+            <label>Descrição <span class="req">*</span></label>
+            <input id="ms-novo-descricao" type="text" placeholder="Descrição do serviço" />
+          </div>
+          <button class="hermo-btn small primary" id="ms-btn-salvar-novo-servico">Salvar no catálogo</button>
+        </div>
+        <div class="hermo-field">
+          <label>Local de execução</label>
+          <input id="ms-local" type="text" placeholder="opcional — ex.: cozinha, fachada" />
+        </div>
+        <div class="hermo-form-row">
+          <div class="hermo-field">
+            <label>Quantidade</label>
+            <input id="ms-qtd" type="number" step="any" min="0" placeholder="opcional" />
+          </div>
+          <div class="hermo-field">
+            <label>Unidade de medida</label>
+            <input id="ms-unidade" type="text" placeholder="só se houver quantidade" />
+          </div>
+        </div>
+      </div>
+      <div class="hermo-modal-foot">
+        <button class="hermo-btn ghost" id="ms-cancelar">Cancelar</button>
+        <button class="hermo-btn primary" id="ms-confirmar">Confirmar</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="visitas.js"></script>
+</body>
+</html>

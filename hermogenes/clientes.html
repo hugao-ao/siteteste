@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Hermogenes Obras — Clientes</title>
+  <script src="hermo-guard.js"></script>
+  <link rel="stylesheet" href="hermo-style.css" />
+</head>
+<body>
+  <header class="hermo-topbar">
+    <div class="brand">HERMOGENES <span>OBRAS</span> · Clientes</div>
+    <div class="actions">
+      <a class="hermo-btn ghost" href="index.html">← Voltar</a>
+      <button class="hermo-btn danger" id="btn-logout">Sair</button>
+    </div>
+  </header>
+
+  <main class="hermo-page">
+    <section class="hermo-resumo" id="resumo"></section>
+
+    <div class="hermo-page-head">
+      <h1>Clientes</h1>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <input id="busca" type="text" placeholder="Buscar por nome, WhatsApp, documento…"
+               style="background:var(--hermo-bg);border:1px solid var(--hermo-border);border-radius:8px;color:var(--hermo-text);padding:9px 12px;min-width:240px" />
+        <button class="hermo-btn primary" id="btn-novo">+ Novo cliente</button>
+      </div>
+    </div>
+
+    <div class="hermo-tabela-wrap">
+      <table class="hermo-tabela">
+        <thead>
+          <tr>
+            <th>Nome</th><th>WhatsApp</th><th>E-mail</th><th>Documento</th><th>Indicado por</th><th style="width:130px">Ações</th>
+          </tr>
+        </thead>
+        <tbody id="corpo"></tbody>
+      </table>
+    </div>
+    <div id="vazio" class="hermo-vazio" style="display:none;margin-top:16px">
+      <div class="big">👥</div>Nenhum cliente encontrado.
+    </div>
+  </main>
+
+  <script type="module" src="clientes.js"></script>
+</body>
+</html>
