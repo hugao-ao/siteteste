@@ -11,61 +11,63 @@
   <header class="hermo-topbar">
     <div class="brand">HERMOGENES <span>OBRAS</span></div>
     <div class="actions">
+      <button class="hermo-btn ghost" id="btn-ordem-padrao" style="display:none" title="Voltar à ordem original dos cards">↺ Ordem padrão</button>
+      <button class="hermo-btn ghost" id="btn-organizar" title="Reorganizar os cards arrastando">✥ Organizar</button>
       <button class="hermo-btn danger" id="btn-logout">Sair</button>
     </div>
   </header>
 
   <main class="hermo-home">
     <h1>Painel de Gestão</h1>
-    <p class="sub">Selecione um módulo para começar.</p>
+    <p class="sub" id="home-sub">Selecione um módulo para começar.</p>
 
-    <div class="hermo-cards-grid">
-      <a class="hermo-card-nav" href="visitas.html">
+    <div class="hermo-cards-grid" id="cards-grid">
+      <a class="hermo-card-nav" data-key="visitas" href="visitas.html">
         <div class="icon">📍</div>
         <div class="titulo">Visitas</div>
         <div class="desc">Agendamento, status, problemas relatados, serviços prováveis e mapa.</div>
       </a>
-      <a class="hermo-card-nav" href="clientes.html">
+      <a class="hermo-card-nav" data-key="clientes" href="clientes.html">
         <div class="icon">👥</div>
         <div class="titulo">Clientes</div>
         <div class="desc">Base única de clientes: contatos, documentos e indicações.</div>
       </a>
-      <a class="hermo-card-nav" href="servicos.html">
+      <a class="hermo-card-nav" data-key="servicos" href="servicos.html">
         <div class="icon">🛠️</div>
         <div class="titulo">Serviços</div>
         <div class="desc">Catálogo de serviços com código e descrição, usado em todo o sistema.</div>
       </a>
-      <a class="hermo-card-nav dev" href="obras.html">
+      <a class="hermo-card-nav dev" data-key="obras" href="obras.html">
         <div class="icon">🏗️</div>
         <div class="titulo">Obras</div>
         <div class="desc">Gestão completa de cada obra e acesso a tudo que se conecta a ela.</div>
       </a>
-      <a class="hermo-card-nav dev" href="medicoes-notas.html">
+      <a class="hermo-card-nav dev" data-key="medicoes" href="medicoes-notas.html">
         <div class="icon">📐</div>
         <div class="titulo">Medições e Notas Fiscais</div>
         <div class="desc">Medições por obra e emissão/controle de notas fiscais.</div>
       </a>
-      <a class="hermo-card-nav" href="propostas.html">
+      <a class="hermo-card-nav" data-key="propostas" href="propostas.html">
         <div class="icon">📄</div>
         <div class="titulo">Propostas</div>
         <div class="desc">Propostas por status com valores, itens precificados, visitas associadas e mapa.</div>
       </a>
-      <a class="hermo-card-nav dev" href="faturamento-despesas.html">
+      <a class="hermo-card-nav dev" data-key="faturamento" href="faturamento-despesas.html">
         <div class="icon">💰</div>
         <div class="titulo">Faturamento e Despesas</div>
         <div class="desc">Entradas, saídas e resultado por período e por obra.</div>
       </a>
-      <a class="hermo-card-nav dev" href="integrantes-equipes.html">
+      <a class="hermo-card-nav dev" data-key="integrantes" href="integrantes-equipes.html">
         <div class="icon">🧑‍🤝‍🧑</div>
         <div class="titulo">Integrantes e Equipes</div>
         <div class="desc">Cadastro de pessoas, funções e formação de equipes.</div>
       </a>
-      <a class="hermo-card-nav" href="agenda-logistica.html">
+      <a class="hermo-card-nav" data-key="agenda" href="agenda-logistica.html">
         <div class="icon">🗓️</div>
         <div class="titulo">Agenda e Logística</div>
         <div class="desc">Monte rotas de visitas no mapa: tempos, deslocamentos, encadeamento e conflitos.</div>
       </a>
-      <a class="hermo-card-nav dev" href="visao-geral.html">
+      <a class="hermo-card-nav dev" data-key="visao" href="visao-geral.html">
         <div class="icon">📊</div>
         <div class="titulo">Visão Geral</div>
         <div class="desc">Resumo executivo de tudo: visitas, obras, propostas e finanças.</div>
@@ -74,5 +76,90 @@
   </main>
 
   <!-- logout é ligado pelo hermo-guard.js (sem dependência de CDN) -->
+  <script>
+  // Reorganização dos cards da home (arrastar e soltar, mouse ou toque).
+  // A ordem fica salva neste navegador/aparelho (localStorage).
+  (function () {
+      'use strict';
+      var grid = document.getElementById('cards-grid');
+      var LS = 'hermo_home_ordem';
+
+      // aplica a ordem salva (cards novos que não estão na lista ficam ao final, na ordem padrão)
+      try {
+          var ordem = JSON.parse(localStorage.getItem(LS) || '[]');
+          ordem.forEach(function (k) {
+              var el = grid.querySelector('[data-key="' + k + '"]');
+              if (el) grid.appendChild(el);
+          });
+      } catch (e) {}
+
+      var organizando = false;
+      var arrastando = null;
+      var btn = document.getElementById('btn-organizar');
+      var btnReset = document.getElementById('btn-ordem-padrao');
+      var sub = document.getElementById('home-sub');
+      var subOriginal = sub.textContent;
+
+      function salvar() {
+          try {
+              localStorage.setItem(LS, JSON.stringify(
+                  Array.prototype.map.call(grid.children, function (c) { return c.dataset.key; })));
+          } catch (e) {}
+      }
+
+      btn.addEventListener('click', function () {
+          organizando = !organizando;
+          document.body.classList.toggle('home-organizando', organizando);
+          btn.textContent = organizando ? '✔ Concluir' : '✥ Organizar';
+          btnReset.style.display = organizando ? '' : 'none';
+          sub.textContent = organizando
+              ? '✥ Arraste os cards para a posição desejada — a ordem fica salva neste aparelho.'
+              : subOriginal;
+          if (!organizando) salvar();
+      });
+
+      btnReset.addEventListener('click', function () {
+          try { localStorage.removeItem(LS); } catch (e) {}
+          window.location.reload();
+      });
+
+      // no modo organizar, clique não navega
+      grid.addEventListener('click', function (e) {
+          if (organizando) e.preventDefault();
+      }, true);
+
+      grid.addEventListener('pointerdown', function (e) {
+          if (!organizando) return;
+          var card = e.target.closest('.hermo-card-nav');
+          if (!card) return;
+          e.preventDefault();
+          arrastando = card;
+          card.classList.add('arrastando');
+          if (card.setPointerCapture) {
+              try { card.setPointerCapture(e.pointerId); } catch (err) {}
+          }
+      });
+
+      grid.addEventListener('pointermove', function (e) {
+          if (!arrastando) return;
+          e.preventDefault();
+          var sob = document.elementFromPoint(e.clientX, e.clientY);
+          var alvo = sob && sob.closest ? sob.closest('.hermo-card-nav') : null;
+          if (!alvo || alvo === arrastando || alvo.parentNode !== grid) return;
+          var r = alvo.getBoundingClientRect();
+          var antes = (e.clientX - r.left) < r.width / 2;
+          grid.insertBefore(arrastando, antes ? alvo : alvo.nextSibling);
+      });
+
+      function soltar() {
+          if (!arrastando) return;
+          arrastando.classList.remove('arrastando');
+          arrastando = null;
+          salvar();
+      }
+      grid.addEventListener('pointerup', soltar);
+      grid.addEventListener('pointercancel', soltar);
+  })();
+  </script>
 </body>
 </html>

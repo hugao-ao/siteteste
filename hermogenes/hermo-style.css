@@ -106,6 +106,28 @@ body {
 .hermo-card-nav .icon { font-size: 1.7rem; }
 .hermo-card-nav .titulo { font-weight: 700; font-size: 1.02rem; }
 .hermo-card-nav .desc { color: var(--hermo-text-dim); font-size: .82rem; line-height: 1.35; }
+/* modo "Organizar" da home: cards arrastáveis */
+.home-organizando .hermo-card-nav {
+    cursor: grab;
+    touch-action: none;      /* o dedo arrasta o card, não a página */
+    user-select: none;
+    outline: 1px dashed var(--hermo-primary);
+    outline-offset: 3px;
+    animation: hermo-balanco 1.1s ease-in-out infinite;
+}
+.home-organizando .hermo-card-nav:hover { transform: none; box-shadow: none; }
+.hermo-card-nav.arrastando {
+    opacity: .55;
+    cursor: grabbing;
+    outline-style: solid;
+    box-shadow: var(--hermo-shadow);
+    animation: none;
+}
+@keyframes hermo-balanco {
+    0%, 100% { transform: rotate(.3deg); }
+    50% { transform: rotate(-.3deg); }
+}
+
 .hermo-card-nav.dev .titulo::after {
     content: 'em breve';
     font-size: .62rem;
