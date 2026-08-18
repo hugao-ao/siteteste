@@ -67,6 +67,22 @@
         color: var(--hermo-info); border-radius: 8px; padding: 6px 10px; font-size: .78rem;
     }
     .rota-card .acoes { display: flex; gap: 8px; justify-content: flex-end; }
+    .al-vlista-head { margin-top: 18px; font-weight: 700; font-size: .95rem; }
+    .al-vlista { margin-top: 10px; display: flex; flex-direction: column; gap: 8px; max-height: 320px; overflow-y: auto; }
+    .al-vitem {
+        display: flex; align-items: center; gap: 10px;
+        background: var(--hermo-surface); border: 1px solid var(--hermo-border);
+        border-radius: 8px; padding: 8px 12px; font-size: .85rem;
+    }
+    .al-vitem.na-rota { border-color: var(--hermo-primary); }
+    .al-vitem .num {
+        min-width: 24px; height: 24px; border-radius: 50%;
+        background: var(--hermo-primary); color: #1a1206; font-weight: 700;
+        display: flex; align-items: center; justify-content: center; font-size: .8rem;
+    }
+    .al-vitem .num.vazio { background: var(--hermo-surface-2); }
+    .al-vitem .txt { flex: 1; }
+    .al-vitem .txt small { display: block; color: var(--hermo-text-dim); }
     .al-marker-num {
         background: var(--hermo-primary); color: #1a1206; font-weight: 700;
         border: 2px solid #0f172a; border-radius: 50%;
@@ -96,6 +112,8 @@
       <div>
         <div id="al-mapa"></div>
         <div class="hermo-mapa-legenda" id="mapa-legenda"></div>
+        <div class="al-vlista-head">Visitas marcadas — acompanhe e monte a rota também por aqui</div>
+        <div class="al-vlista" id="al-vlista"></div>
       </div>
 
       <!-- PAINEL DA ROTA EM MONTAGEM -->

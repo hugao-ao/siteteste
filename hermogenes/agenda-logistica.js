@@ -200,7 +200,36 @@ function moverParada(i, delta) {
     renderParadasDraft();
 }
 
+/**
+ * Lista-espelho das visitas marcadas, fora do mapa: mostra em tempo real o que
+ * está na rota (com o nº da ordem) e permite adicionar/remover por botão.
+ */
+function renderListaVisitas() {
+    const cont = $('al-vlista');
+    if (!cont) return;
+    if (visitas.length === 0) {
+        cont.innerHTML = '<div class="al-dica">Nenhuma visita "Marcada" com localização no mapa.</div>';
+        return;
+    }
+    cont.innerHTML = visitas.map(v => {
+        const idx = draft.paradas.findIndex(p => p.visita_id === v.id);
+        const na = idx >= 0;
+        return `
+        <div class="al-vitem ${na ? 'na-rota' : ''}">
+            <span class="num ${na ? '' : 'vazio'}">${na ? idx + 1 : ''}</span>
+            <div class="txt">
+                ${esc(v.endereco)}
+                <small>${v.cliente ? esc(v.cliente.nome) + ' · ' : ''}${v.data_visita ? 'marcada p/ ' + fmtDataHora(v.data_visita) : ''}</small>
+            </div>
+            <button class="hermo-btn small ${na ? 'danger' : 'primary'}" data-vtoggle="${v.id}">${na ? '× Remover' : '+ Rota'}</button>
+        </div>`;
+    }).join('');
+    cont.querySelectorAll('[data-vtoggle]').forEach(b =>
+        b.addEventListener('click', () => alternarParada(b.dataset.vtoggle)));
+}
+
 function renderParadasDraft() {
+    renderListaVisitas();
     $('al-num-paradas').textContent = draft.paradas.length;
     const cont = $('al-paradas');
     if (draft.paradas.length === 0) {
