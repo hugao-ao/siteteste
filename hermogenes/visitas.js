@@ -38,6 +38,9 @@ async function carregarTudo() {
     if (s.error) { toast('Erro ao carregar serviços: ' + s.error.message, true); return; }
     visitas = v.data || [];
     servicosCatalogo = s.data || [];
+    // descarta ocultações de visitas que não existem mais
+    ocultasMapa = new Set([...ocultasMapa].filter(id => visitas.some(x => x.id === id)));
+    salvarOcultasMapa();
     selecionadas.clear();
     renderResumo();
     renderLista();
@@ -105,6 +108,16 @@ let buscaColuna = {};   // status -> texto da busca daquela lista
 let colunasOcultas = lerLS('hermo_kanban_ocultas', {});
 let colunasLarguras = lerLS('hermo_kanban_larguras', {});
 let larguraObserver = null;
+// visibilidade no MAPA (persistida no navegador)
+let ocultasMapa = new Set(lerLS('hermo_mapa_ocultas', []));
+let statusOcultosMapa = new Set(lerLS('hermo_mapa_status_ocultos', []));
+
+function salvarOcultasMapa() {
+    try {
+        localStorage.setItem('hermo_mapa_ocultas', JSON.stringify([...ocultasMapa]));
+        localStorage.setItem('hermo_mapa_status_ocultos', JSON.stringify([...statusOcultosMapa]));
+    } catch (e) {}
+}
 
 function lerLS(chave, padrao) {
     try { return JSON.parse(localStorage.getItem(chave)) || padrao; }
@@ -138,7 +151,7 @@ function cardMini(v) {
             <span class="kb-end">${esc(v.endereco)}</span>
         </div>
         ${v.cliente ? `<div class="kb-meta">👤 ${esc(v.cliente.nome)} · ${esc(v.cliente.whatsapp)}</div>` : ''}
-        <div class="kb-meta">🗓️ ${v.data_visita ? fmtDataHora(v.data_visita) : '<i>sem data</i>'}${servN ? ` · 🛠️ ${servN} serviço(s)` : ''}</div>
+        <div class="kb-meta">🗓️ ${v.data_visita ? fmtDataHora(v.data_visita) : '<i>sem data</i>'}${servN ? ` · 🛠️ ${servN} serviço(s)` : ''}${(ocultasMapa.has(v.id) || statusOcultosMapa.has(v.status)) ? ' · 🙈 oculta no mapa' : ''}</div>
         ${v.problema ? `<div class="kb-prob">${esc(v.problema)}</div>` : ''}
         <div class="kb-acoes">
             <button class="hermo-btn small ghost" data-editar="${v.id}" title="Editar">✎</button>
@@ -496,16 +509,45 @@ function iniciarMapa() {
         subdomains: 'abcd',
         maxZoom: 19
     }).addTo(mapa);
-    $('mapa-legenda').innerHTML = Object.entries(STATUS_VISITA).map(([k, v]) =>
-        `<span class="leg"><span class="dot" style="background:${v.cor}"></span>${v.label}</span>`).join('');
+    renderLegenda();
+}
+
+/** Legenda clicável: cada status liga/desliga suas visitas no mapa. */
+function renderLegenda() {
+    const el = $('mapa-legenda');
+    el.innerHTML = Object.entries(STATUS_VISITA).map(([k, v]) =>
+        `<span class="leg leg-toggle ${statusOcultosMapa.has(k) ? 'oculto' : ''}" data-leg="${k}"
+            title="Clique para ${statusOcultosMapa.has(k) ? 'mostrar' : 'ocultar'} no mapa">
+            <span class="dot" style="background:${v.cor}"></span>${v.label}</span>`).join('') +
+        (ocultasMapa.size > 0
+            ? `<span class="leg"><button class="hermo-btn small ghost" id="btn-mostrar-ocultas">👁 Mostrar ${ocultasMapa.size} visita(s) oculta(s) individualmente</button></span>`
+            : '');
+    el.querySelectorAll('[data-leg]').forEach(l => l.addEventListener('click', () => {
+        const st = l.dataset.leg;
+        if (statusOcultosMapa.has(st)) statusOcultosMapa.delete(st);
+        else statusOcultosMapa.add(st);
+        salvarOcultasMapa();
+        atualizarMapa();
+        renderLista();
+    }));
+    const btn = el.querySelector('#btn-mostrar-ocultas');
+    if (btn) btn.addEventListener('click', () => {
+        ocultasMapa.clear();
+        salvarOcultasMapa();
+        atualizarMapa();
+        renderLista();
+        toast('Todas as visitas ocultas individualmente voltaram ao mapa.');
+    });
 }
 
 function atualizarMapa() {
     if (!mapa) return;
+    renderLegenda();
     marcadores.forEach(m => mapa.removeLayer(m));
     marcadores = [];
     const pontos = [];
-    visitas.filter(v => v.latitude != null && v.longitude != null).forEach(v => {
+    visitas.filter(v => v.latitude != null && v.longitude != null
+        && !ocultasMapa.has(v.id) && !statusOcultosMapa.has(v.status)).forEach(v => {
         const st = STATUS_VISITA[v.status] || { cor: '#94a3b8', label: v.status };
         const marker = L.circleMarker([v.latitude, v.longitude], {
             radius: 9,
@@ -651,6 +693,22 @@ function ligarEventos() {
 
     $('btn-sel-todas').addEventListener('click', selecionarTodas);
     $('btn-sel-limpar').addEventListener('click', limparSelecao);
+    $('btn-sel-ocultar').addEventListener('click', () => {
+        if (selecionadas.size === 0) return;
+        selecionadas.forEach(id => ocultasMapa.add(id));
+        salvarOcultasMapa();
+        atualizarMapa();
+        renderLista();
+        toast(`${selecionadas.size} visita(s) oculta(s) do mapa.`);
+    });
+    $('btn-sel-mostrar').addEventListener('click', () => {
+        if (selecionadas.size === 0) return;
+        selecionadas.forEach(id => ocultasMapa.delete(id));
+        salvarOcultasMapa();
+        atualizarMapa();
+        renderLista();
+        toast(`${selecionadas.size} visita(s) de volta ao mapa.`);
+    });
     $('btn-sel-excluir').addEventListener('click', () => excluirVisitas([...selecionadas]));
 
     // modal visita
