@@ -130,6 +130,28 @@
         <!-- ================= PRECIFICAÇÃO (só na edição) ================= -->
         <div id="sv-precificacao" style="display:none;flex-direction:column;gap:14px">
 
+          <!-- IMPORTAR DE OUTRO SERVIÇO -->
+          <div class="sv-secao">
+            <h3>📥 Importar precificação de outro serviço</h3>
+            <div class="hermo-inline-add">
+              <div class="hermo-field">
+                <select id="sv-import-servico">
+                  <option value="">— escolha o serviço de origem —</option>
+                </select>
+              </div>
+              <button class="hermo-btn small primary" id="sv-import-btn">Importar</button>
+            </div>
+            <div id="sv-import-aviso-un" style="display:none;font-size:.76rem;color:var(--hermo-warn)"></div>
+            <div style="display:flex;flex-wrap:wrap;gap:12px;font-size:.8rem">
+              <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" id="sv-imp-mo" checked /> Mão de obra</label>
+              <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" id="sv-imp-materiais" checked /> Materiais</label>
+              <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" id="sv-imp-outros" checked /> Outros custos</label>
+              <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" id="sv-imp-precos" checked /> Preços de venda</label>
+              <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" id="sv-imp-imposto" checked /> Imposto</label>
+            </div>
+            <div style="font-size:.74rem;color:var(--hermo-text-dim)">Os fornecedores/locais de cada item e da mão de obra vêm junto. Nada é gravado até você clicar em Salvar.</div>
+          </div>
+
           <!-- 1. MÃO DE OBRA -->
           <div class="sv-secao">
             <h3>👷 Mão de obra (por <span class="sv-un">un</span>)</h3>
