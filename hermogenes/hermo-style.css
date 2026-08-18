@@ -243,6 +243,7 @@ body {
     border-radius: var(--hermo-radius);
     border: 1px solid var(--hermo-border);
     margin-top: 26px;
+    isolation: isolate; /* contém os z-index internos do Leaflet (até 1000) */
 }
 .hermo-mapa-legenda {
     display: flex;

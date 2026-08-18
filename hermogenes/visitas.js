@@ -14,6 +14,10 @@ let servicosDaVisita = [];        // lista de trabalho do modal de visita
 let subEditIndex = null;          // índice em servicosDaVisita sendo editado no sub-modal
 let mapa = null;
 let marcadores = [];
+let localEscolhido = null;   // {lat,lng} definido pelo mini-mapa do modal
+let mpMapa = null;           // Leaflet do modal de escolha de local
+let mpMarcador = null;
+let mpPendente = null;       // clique ainda não confirmado
 
 const $ = id => document.getElementById(id);
 
@@ -183,7 +187,14 @@ async function excluirVisitas(ids) {
         : `Excluir ${n} visitas? Os serviços prováveis vinculados também serão removidos.`;
     if (!confirm(msg)) return;
     const { error } = await sb.from('hermo_visitas').delete().in('id', ids);
-    if (error) { toast('Erro ao excluir: ' + error.message, true); return; }
+    if (error) {
+        if ((error.code || '') === '23503') {
+            toast('Alguma dessas visitas faz parte de uma rota na Agenda — remova-a da rota primeiro.', true);
+        } else {
+            toast('Erro ao excluir: ' + error.message, true);
+        }
+        return;
+    }
     toast(n === 1 ? 'Visita excluída.' : `${n} visitas excluídas.`);
     ids.forEach(id => selecionadas.delete(id));
     await carregarTudo();
@@ -205,6 +216,8 @@ async function abrirModalVisita(visita) {
 
     $('mv-titulo').textContent = visita ? 'Editar visita' : 'Nova visita';
     $('mv-endereco').value = visita?.endereco || '';
+    localEscolhido = null;
+    $('mv-local-info').style.display = 'none';
     $('mv-data').value = isoParaInput(visita?.data_visita);
     $('mv-status').value = visita?.status || 'pendente_marcacao';
     $('mv-problema').value = visita?.problema || '';
@@ -284,10 +297,13 @@ async function salvarVisita() {
     const btn = $('mv-salvar');
     btn.disabled = true;
     try {
-        // geocodifica se endereço novo/alterado
+        // local escolhido no mapa tem prioridade; senão, geocodifica o endereço
         let lat = visitaEditando?.latitude ?? null;
         let lng = visitaEditando?.longitude ?? null;
-        if (!visitaEditando || visitaEditando.endereco !== endereco || lat == null) {
+        if (localEscolhido) {
+            lat = localEscolhido.lat;
+            lng = localEscolhido.lng;
+        } else if (!visitaEditando || visitaEditando.endereco !== endereco || lat == null) {
             const geo = await geocodificar(endereco);
             lat = geo?.lat ?? null;
             lng = geo?.lng ?? null;
@@ -370,6 +386,7 @@ async function salvarNovoServicoCatalogo() {
     servicosCatalogo.push(data);
     servicosCatalogo.sort((a, b) => a.codigo.localeCompare(b.codigo));
     popularSelectServicos(data.id);
+    if (data.unidade) $('ms-unidade').value = data.unidade; // select mudou sem evento 'change'
     $('ms-novo-wrap').style.display = 'none';
     $('ms-novo-codigo').value = $('ms-novo-descricao').value = $('ms-novo-unidade').value = '';
     toast('Serviço adicionado ao catálogo.');
@@ -480,6 +497,69 @@ async function geocodificarPendentes() {
 }
 
 // ============================================================
+// MODAL: ESCOLHER LOCAL NO MAPA
+// ============================================================
+function abrirModalLocal() {
+    if (typeof L === 'undefined') { toast('Mapa indisponível no momento.', true); return; }
+    $('mp-overlay').classList.add('aberto');
+    mpPendente = localEscolhido
+        || (visitaEditando?.latitude != null ? { lat: visitaEditando.latitude, lng: visitaEditando.longitude } : null);
+    const centro = mpPendente ? [mpPendente.lat, mpPendente.lng] : [-8.0476, -34.877];
+    if (!mpMapa) {
+        mpMapa = L.map('mp-mapa').setView(centro, mpPendente ? 16 : 12);
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
+            subdomains: 'abcd', maxZoom: 19
+        }).addTo(mpMapa);
+        mpMapa.on('click', e => {
+            mpPendente = { lat: e.latlng.lat, lng: e.latlng.lng };
+            posicionarMpMarcador();
+            $('mp-confirmar').disabled = false;
+        });
+    } else {
+        mpMapa.setView(centro, mpPendente ? 16 : 12);
+    }
+    posicionarMpMarcador();
+    $('mp-confirmar').disabled = !mpPendente;
+    // o Leaflet precisa recalcular o tamanho depois que o modal fica visível
+    setTimeout(() => mpMapa.invalidateSize(), 150);
+}
+
+function posicionarMpMarcador() {
+    if (mpMarcador) { mpMapa.removeLayer(mpMarcador); mpMarcador = null; }
+    if (mpPendente) {
+        mpMarcador = L.marker([mpPendente.lat, mpPendente.lng]).addTo(mpMapa);
+    }
+}
+
+function fecharModalLocal() {
+    $('mp-overlay').classList.remove('aberto');
+}
+
+async function confirmarLocal() {
+    if (!mpPendente) return;
+    localEscolhido = mpPendente;
+    $('mv-local-info').style.display = '';
+    fecharModalLocal();
+    // endereço vazio? tenta preencher via geocodificação reversa (editável depois)
+    if (!$('mv-endereco').value.trim()) {
+        try {
+            const ctl = new AbortController();
+            const t = setTimeout(() => ctl.abort(), 6000);
+            const resp = await fetch(
+                `https://nominatim.openstreetmap.org/reverse?format=json&lat=${localEscolhido.lat}&lon=${localEscolhido.lng}`,
+                { signal: ctl.signal, headers: { 'Accept': 'application/json' } });
+            clearTimeout(t);
+            if (resp.ok) {
+                const j = await resp.json();
+                if (j.display_name) $('mv-endereco').value = j.display_name;
+            }
+        } catch (e) { /* endereço fica manual */ }
+    }
+    toast('Local definido pelo mapa — será usado no lugar da busca por endereço.');
+}
+
+// ============================================================
 // EVENTOS
 // ============================================================
 /** Reflete alteração de cliente nos cards/resumo/mapa já carregados (sem reload) */
@@ -521,11 +601,23 @@ function ligarEventos() {
         });
     });
 
+    // modal de escolha de local no mapa
+    $('mv-btn-mapa').addEventListener('click', abrirModalLocal);
+    $('mp-fechar').addEventListener('click', fecharModalLocal);
+    $('mp-cancelar').addEventListener('click', fecharModalLocal);
+    $('mp-confirmar').addEventListener('click', confirmarLocal);
+    ligarFecharPorBackdrop($('mp-overlay'), fecharModalLocal);
+
     // sub-modal serviço
     $('ms-fechar').addEventListener('click', fecharSubModal);
     $('ms-cancelar').addEventListener('click', fecharSubModal);
     ligarFecharPorBackdrop($('ms-overlay'), fecharSubModal);
     $('ms-confirmar').addEventListener('click', confirmarServicoDaVisita);
+    // unidade pré-preenchida com a unidade padrão do serviço selecionado (se houver)
+    $('ms-servico').addEventListener('change', () => {
+        const cat = servicosCatalogo.find(s => s.id === $('ms-servico').value);
+        if (cat?.unidade) $('ms-unidade').value = cat.unidade;
+    });
     $('ms-btn-novo-servico').addEventListener('click', () => {
         const w = $('ms-novo-wrap');
         w.style.display = w.style.display === 'none' ? 'flex' : 'none';
