@@ -326,6 +326,20 @@ body {
     border-color: var(--hermo-primary);
 }
 .hermo-field textarea { resize: both; min-height: 84px; }
+
+/* Lista de opções dos selects: fundo escuro + texto claro (contraste) */
+select option {
+    background-color: var(--hermo-surface);
+    color: var(--hermo-text);
+}
+select option:disabled {
+    color: #64748b;
+}
+select.hermo-btn, select.hermo-btn.ghost {
+    background: var(--hermo-surface-2);
+    color: var(--hermo-text);
+    border: 1px solid var(--hermo-border);
+}
 .hermo-form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
 .hermo-form-row.tres { grid-template-columns: 1fr 1fr 1fr; }
 @media (max-width: 640px) {

@@ -13,7 +13,8 @@ let rotas = [];              // rotas salvas (com paradas embutidas)
 let mapa = null;
 let marcadores = new Map();  // visita_id -> marker
 let linhasSalvas = [];       // polylines das rotas salvas
-let linhaDraft = null;       // polyline da rota em montagem
+let linhaDraft = null;       // polyline da rota calculada (OSRM)
+let linhaEsboco = null;      // prévia tracejada durante a montagem (linha reta)
 
 let draft = { paradas: [] }; // [{visita_id, permanencia_min}]
 let editandoRotaId = null;
@@ -150,7 +151,35 @@ function invalidarCalculo() {
     calcResultado = null;
     $('al-salvar').disabled = true;
     $('al-timeline').classList.remove('aberta');
-    if (linhaDraft) { mapa.removeLayer(linhaDraft); linhaDraft = null; }
+    if (linhaDraft && mapa) { mapa.removeLayer(linhaDraft); linhaDraft = null; }
+    desenharEsboco();
+}
+
+/**
+ * Prévia ao vivo da rota em montagem: liga as paradas na ordem dos cliques
+ * (linha reta tracejada) e mostra um resumo instantâneo, antes do cálculo.
+ */
+function desenharEsboco() {
+    const info = $('al-esboco-info');
+    if (mapa && linhaEsboco) { mapa.removeLayer(linhaEsboco); linhaEsboco = null; }
+    if (calcResultado || draft.paradas.length === 0) {
+        info.style.display = 'none';
+        return;
+    }
+    const pts = draft.paradas
+        .map(p => visitas.find(x => x.id === p.visita_id))
+        .filter(v => v && v.latitude != null)
+        .map(v => [v.latitude, v.longitude]);
+    if (mapa && pts.length >= 2) {
+        linhaEsboco = L.polyline(pts, { color: '#f59e0b', weight: 3, opacity: .85, dashArray: '4 10' }).addTo(mapa);
+    }
+    let km = 0;
+    for (let i = 0; i < pts.length - 1; i++) km += haversineKm(pts[i], pts[i + 1]);
+    const permMin = draft.paradas.reduce((s, p) => s + (p.permanencia_min || 0), 0);
+    info.style.display = '';
+    info.innerHTML = `Prévia: <b>${draft.paradas.length}</b> parada(s) · permanência <b>${fmtDuracao(permMin * 60)}</b>` +
+        (pts.length >= 2 ? ` · ~<b>${km.toFixed(1)} km</b> em linha reta` : '') +
+        ' — use 🧭 Calcular para os tempos reais de deslocamento.';
 }
 
 function alternarParada(visitaId) {
@@ -358,6 +387,7 @@ async function calcularRota() {
             partidaGeo
         };
         renderTimeline(origemLabel);
+        desenharEsboco(); // remove a prévia — a linha calculada assume
         desenharDraft();
         $('al-salvar').disabled = false;
     } finally {
