@@ -11,6 +11,7 @@ let perm = { pode: () => true, aplicarVisibilidade: () => {}, master: true };
 let tipos = [];
 let usuarios = [];
 let recursos = [];
+let especiais = []; // acessos da tabela credenciais (ArgosGestao e admins do site)
 
 let editandoUsuarioId = null;
 let editandoTipoId = null;
@@ -30,10 +31,13 @@ document.getElementById('abas').addEventListener('click', (e) => {
 
 // ---------- Carga inicial ----------
 async function carregarTudo() {
-    const [rTipos, rUsuarios, rRecursos] = await Promise.all([
+    const [rTipos, rUsuarios, rRecursos, rMestre, rAdmins] = await Promise.all([
         sb.from('argos_tipos_usuario').select('*').order('nome'),
         sb.from('argos_usuarios').select('*').order('created_at'),
-        sb.from('argos_recursos').select('*').order('tipo').order('nome')
+        sb.from('argos_recursos').select('*').order('tipo').order('nome'),
+        // Acessos especiais (somente leitura): login mestre da área e admins gerais do site
+        sb.from('credenciais').select('id, usuario, nivel').eq('usuario', 'ArgosGestao'),
+        sb.from('credenciais').select('id, usuario, nivel').eq('nivel', 'admin')
     ]);
     if (rTipos.error || rUsuarios.error || rRecursos.error) {
         console.error(rTipos.error || rUsuarios.error || rRecursos.error);
@@ -43,6 +47,10 @@ async function carregarTudo() {
     tipos = rTipos.data || [];
     usuarios = rUsuarios.data || [];
     recursos = rRecursos.data || [];
+    const vistos = {};
+    especiais = [...(rMestre.data || []), ...(rAdmins.data || [])]
+        .filter(c => !vistos[c.id] && (vistos[c.id] = true))
+        .sort((a, b) => (a.usuario === 'ArgosGestao' ? -1 : 1) - (b.usuario === 'ArgosGestao' ? -1 : 1));
     renderUsuarios();
     renderTipos();
     renderRecursos();
@@ -60,7 +68,20 @@ function renderUsuarios() {
     const podeEditar = perm.pode('usuarios_editar');
     const podeExcluir = perm.pode('usuarios_excluir');
     const podePermissoes = perm.pode('permissoes_gerenciar');
-    tb.innerHTML = usuarios.map(u => `
+    const linhasEspeciais = especiais.map(c => {
+        const mestre = c.usuario === 'ArgosGestao';
+        return `
+        <tr class="linha-especial">
+          <td>${mestre ? 'Login mestre da área Argos' : 'Admin geral de todos os sistemas do site'}</td>
+          <td><code>${esc(c.usuario)}</code></td>
+          <td><span class="badge ${mestre ? 'azul' : 'dourado'}">${mestre ? '★ Mestre Argos' : '★ Admin do site'}</span></td>
+          <td><span class="badge verde">Ativo</span></td>
+          <td class="acoes"><span class="dim">${mestre
+              ? 'Acesso total à área Argos — gerenciado no login do site'
+              : 'Gerenciado no login do site (não entra na área Argos)'}</span></td>
+        </tr>`;
+    }).join('');
+    tb.innerHTML = linhasEspeciais + usuarios.map(u => `
         <tr>
           <td>${esc(u.nome) || '<span class="dim">—</span>'}</td>
           <td><code>${esc(u.usuario)}</code></td>
@@ -72,7 +93,7 @@ function renderUsuarios() {
             ${podeExcluir ? `<button class="argos-btn small danger" data-acao="excluir-usuario" data-id="${u.id}">🗑️ Excluir</button>` : ''}
           </td>
         </tr>`).join('');
-    document.getElementById('usuarios-vazio').style.display = usuarios.length ? 'none' : '';
+    document.getElementById('usuarios-vazio').style.display = (usuarios.length || especiais.length) ? 'none' : '';
 }
 
 // ---------- Render: tipos ----------

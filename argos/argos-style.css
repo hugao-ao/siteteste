@@ -204,6 +204,11 @@ body {
 .badge.vermelho { background: rgba(239, 68, 68, .15); color: var(--argos-danger); }
 .badge.azul { background: rgba(59, 130, 246, .15); color: var(--argos-info); }
 .badge.roxo { background: rgba(168, 85, 247, .15); color: var(--argos-purple); }
+.badge.dourado { background: rgba(245, 158, 11, .15); color: #f59e0b; }
+
+/* Linhas de acessos especiais (credenciais do site, somente leitura) */
+.argos-tabela tr.linha-especial { background: rgba(56, 189, 248, .06); }
+.argos-tabela tr.linha-especial td { border-bottom-color: var(--argos-border); }
 
 /* ---------- Modais ---------- */
 .argos-modal-fundo {
