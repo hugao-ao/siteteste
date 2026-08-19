@@ -20,24 +20,32 @@ const ZOOM_MIN = 0.02; // piso da miniatura (2% do tamanho normal)
 function ativarZoomPinca() {
     let z = 1;            // escala da miniatura (sempre <= 1)
     let larguraBase = null;
+    let alturaBase = null;
     let pinca = null;     // gesto custom (afastar) em andamento
     let decidir = null;   // gesto ainda sem direção definida (em tamanho normal)
 
     const distancia = (a, b) => Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
 
-    // Congela a largura do layout no tamanho normal antes de escalar: sem
-    // isso o navegador re-diagrama a página ("acha" que a tela cresceu) e a
-    // redução não fica proporcional ao tamanho normal.
+    // Redução "fotográfica": transform:scale não recalcula layout nem fontes,
+    // então a página encolhe inteira, proporcional, em qualquer navegador
+    // (a propriedade CSS zoom re-diagramava e o iOS re-inflava os textos).
     function aplicarZoom() {
+        const b = document.body;
         if (z >= 0.999) {
             z = 1;
-            document.body.style.zoom = '';
-            document.body.style.width = '';
+            b.style.transform = '';
+            b.style.transformOrigin = '';
+            b.style.height = '';
+            alturaBase = null;
             return;
         }
         if (larguraBase == null) larguraBase = document.documentElement.clientWidth;
-        document.body.style.width = larguraBase + 'px';
-        document.body.style.zoom = z;
+        if (alturaBase == null) alturaBase = b.scrollHeight;
+        b.style.transformOrigin = '0 0';
+        // centraliza a miniatura na horizontal
+        b.style.transform = 'translateX(' + (larguraBase * (1 - z) / 2) + 'px) scale(' + z + ')';
+        // encurta a área de rolagem junto com a miniatura
+        b.style.height = Math.max(1, Math.round(alturaBase * z)) + 'px';
     }
 
     function iniciarCustom(a, b) {
