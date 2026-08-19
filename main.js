@@ -78,6 +78,32 @@ loginForm.addEventListener("submit", async (e) => {
       return;
     }
 
+    // ÁREA ARGOS: qualquer login atrelado ao projeto Argos (incluindo o
+    // ArgosGestao) entra direto, sem OTP, e vai para a página da área Argos
+    if (data.projeto === "Argos") {
+      const dadosLogin = {
+        usuario: usuario,
+        user_id: data.id,
+        id: data.id,
+        nivel: data.nivel,
+        projeto: data.projeto
+      };
+      if (window.AuthMiddleware) {
+        window.AuthMiddleware.salvarDadosLogin(dadosLogin);
+      } else {
+        Object.keys(dadosLogin).forEach(k => sessionStorage.setItem(k, dadosLogin[k]));
+      }
+      // Se tentou acessar uma subpágina antes do login, volta para ela
+      const pendenteArgos = localStorage.getItem("redirect_after_login");
+      if (pendenteArgos && pendenteArgos.indexOf("/argos/") !== -1) {
+        localStorage.removeItem("redirect_after_login");
+        window.location.href = pendenteArgos;
+      } else {
+        window.location.href = "argos/index.html";
+      }
+      return;
+    }
+
     // Guarda dados temporariamente
     usuarioAtual = usuario;
     emailUsuario = data.email; // Guarda o email para enviar OTP
@@ -155,9 +181,9 @@ otpForm.addEventListener("submit", async (e) => {
     }
     
     // Verificar se há redirecionamento pendente
-    // (nunca mandar usuário comum para a área Hermogenes — evita loop de login)
+    // (nunca mandar usuário comum para as áreas Hermogenes/Argos — evita loop de login)
     const redirPendente = localStorage.getItem("redirect_after_login");
-    if (redirPendente && redirPendente.indexOf("/hermogenes/") !== -1) {
+    if (redirPendente && (redirPendente.indexOf("/hermogenes/") !== -1 || redirPendente.indexOf("/argos/") !== -1)) {
       localStorage.removeItem("redirect_after_login");
     }
     if (window.AuthMiddleware) {
