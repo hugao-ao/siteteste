@@ -665,17 +665,29 @@ function recalcItemPreview() {
     $('pi-total-preview').textContent = fmtMoeda(u * num($('pi-qtd').value));
 }
 
-/** Dica de preço praticado para o cliente atual (com botão de aplicar). */
+/** Dica de preços: o PRATICADO para o cliente e o PADRÃO do catálogo — o usuário escolhe. */
 function atualizarPraticadoHint() {
     const el = $('pi-praticado');
     const clienteId = $('pp-cliente').value || null;
     const servicoId = $('pi-servico').value || null;
-    const prat = (clienteId && servicoId) ? precoPraticado(clienteId, servicoId, propostaEditando?.id) : null;
-    if (!prat) { el.style.display = 'none'; return; }
+    if (!servicoId) { el.style.display = 'none'; return; }
+    const prat = clienteId ? precoPraticado(clienteId, servicoId, propostaEditando?.id) : null;
+    const cat = servicosCatalogo.find(x => x.id === servicoId);
+    const padrao = num(cat?.precos?.preco_final) > 0 ? num(cat.precos.preco_final) : null;
+    if (!prat && !padrao) { el.style.display = 'none'; return; }
     el.style.display = 'flex';
-    el.innerHTML = `💲 Último preço praticado p/ este cliente: <b>${fmtMoeda(prat.preco_unit)}</b> (proposta ${prat.codigo})
-        <button class="hermo-btn small primary" id="pi-btn-praticado">Usar este preço</button>`;
-    el.querySelector('#pi-btn-praticado').addEventListener('click', () => {
+    el.style.flexDirection = 'column';
+    el.style.alignItems = 'stretch';
+    el.style.gap = '6px';
+    el.innerHTML =
+        (prat ? `<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+            💲 Praticado p/ este cliente: <b>${fmtMoeda(prat.preco_unit)}</b> <span>(proposta ${prat.codigo})</span>
+            <button class="hermo-btn small primary" id="pi-btn-praticado">Usar este</button></div>` : '') +
+        (padrao ? `<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+            🏷️ Preço padrão do serviço (catálogo): <b>${fmtMoeda(padrao)}</b>/${esc(cat.unidade || 'un')}
+            <button class="hermo-btn small ${prat ? 'ghost' : 'primary'}" id="pi-btn-padrao">Usar este</button></div>` : '');
+    const btnPrat = el.querySelector('#pi-btn-praticado');
+    if (btnPrat) btnPrat.addEventListener('click', () => {
         $('pi-modo').value = prat.modo_preco || 'global';
         aoMudarModoItem();
         if ((prat.modo_preco || 'global') === 'mo_material') {
@@ -684,6 +696,13 @@ function atualizarPraticadoHint() {
         } else {
             $('pi-preco-global').value = prat.preco_unit;
         }
+        recalcItemPreview();
+    });
+    const btnPad = el.querySelector('#pi-btn-padrao');
+    if (btnPad) btnPad.addEventListener('click', () => {
+        $('pi-modo').value = 'global';
+        aoMudarModoItem();
+        $('pi-preco-global').value = padrao;
         recalcItemPreview();
     });
 }
@@ -738,12 +757,18 @@ function renderSelecaoServicos() {
     $('psel-lista').innerHTML = lista.length === 0
         ? '<div style="font-size:.8rem;color:var(--hermo-text-dim)">Nenhum serviço encontrado.</div>'
         : lista.map(s => {
-            const sug = precoSugerido($('pp-cliente').value || null, s.id);
+            const clienteId = $('pp-cliente').value || null;
+            const prat = clienteId ? precoPraticado(clienteId, s.id, propostaEditando?.id) : null;
+            const padrao = num(s.precos?.preco_final) > 0 ? num(s.precos.preco_final) : null;
+            const partes = [];
+            if (prat) partes.push(`💲 praticado p/ cliente: <b>${fmtMoeda(prat.preco_unit)}</b> (${prat.codigo})${padrao !== null ? '' : ' — entra este'}`);
+            if (padrao !== null) partes.push(`🏷️ padrão do serviço: <b>${fmtMoeda(padrao)}</b>${prat ? '' : ' — entra este'}`);
+            if (prat && padrao !== null) partes[0] += ' — entra este';
             return `
             <label class="lc-item">
                 <input type="checkbox" data-psel="${s.id}" ${pselMarcados.has(s.id) ? 'checked' : ''} />
                 <div class="txt"><b>${esc(s.codigo)}</b> — ${esc(s.descricao)}
-                    <small>${sug ? `preço sugerido: ${fmtMoeda(sug.preco_unit)} (${sug.origem})` : 'sem preço sugerido'}</small>
+                    <small>${partes.length ? partes.join(' · ') : 'sem preço sugerido'}</small>
                 </div>
             </label>`;
         }).join('');
