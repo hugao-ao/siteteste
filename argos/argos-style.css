@@ -1,0 +1,119 @@
+/* argos-style.css — Estilo da área Argos (independente do restante do site) */
+
+:root {
+    --argos-bg: #0f172a;
+    --argos-surface: #1e293b;
+    --argos-surface-2: #273449;
+    --argos-border: #334155;
+    --argos-text: #e2e8f0;
+    --argos-text-dim: #94a3b8;
+    --argos-primary: #38bdf8;
+    --argos-primary-dark: #0284c7;
+    --argos-danger: #ef4444;
+    --argos-success: #22c55e;
+    --argos-info: #3b82f6;
+    --argos-warn: #eab308;
+    --argos-purple: #a855f7;
+    --argos-radius: 12px;
+    --argos-shadow: 0 4px 16px rgba(0, 0, 0, .35);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+    background: var(--argos-bg);
+    color: var(--argos-text);
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    min-height: 100vh;
+}
+
+/* ---------- Topbar ---------- */
+.argos-topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 14px 22px;
+    background: var(--argos-surface);
+    border-bottom: 2px solid var(--argos-primary);
+    position: sticky;
+    top: 0;
+    z-index: 50;
+}
+.argos-topbar .brand {
+    font-size: 1.15rem;
+    font-weight: 700;
+    letter-spacing: .5px;
+}
+.argos-topbar .brand span { color: var(--argos-primary); }
+.argos-topbar .actions { display: flex; gap: 10px; }
+
+/* ---------- Botões ---------- */
+.argos-btn {
+    border: none;
+    border-radius: 8px;
+    padding: 9px 16px;
+    font-size: .9rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    transition: filter .15s, transform .05s;
+    color: #fff;
+    background: var(--argos-surface-2);
+}
+.argos-btn:hover { filter: brightness(1.15); }
+.argos-btn:active { transform: scale(.98); }
+.argos-btn.primary { background: var(--argos-primary); color: #06202e; }
+.argos-btn.danger { background: var(--argos-danger); }
+.argos-btn.ghost { background: transparent; border: 1px solid var(--argos-border); color: var(--argos-text); }
+.argos-btn:disabled { opacity: .45; cursor: not-allowed; }
+.argos-btn.small { padding: 5px 10px; font-size: .8rem; }
+
+/* ---------- Home: grade de cards ---------- */
+.argos-home {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 30px 22px 60px;
+}
+.argos-home h1 { font-size: 1.5rem; margin-bottom: 6px; }
+.argos-home .sub { color: var(--argos-text-dim); margin-bottom: 26px; }
+
+.argos-cards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 18px;
+}
+.argos-card-nav {
+    background: var(--argos-surface);
+    border: 1px solid var(--argos-border);
+    border-radius: var(--argos-radius);
+    padding: 22px 20px;
+    cursor: pointer;
+    text-decoration: none;
+    color: var(--argos-text);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    transition: border-color .15s, transform .12s, box-shadow .15s;
+}
+.argos-card-nav:hover {
+    border-color: var(--argos-primary);
+    transform: translateY(-3px);
+    box-shadow: var(--argos-shadow);
+}
+.argos-card-nav .icon { font-size: 1.7rem; }
+.argos-card-nav .titulo { font-weight: 700; font-size: 1.02rem; }
+.argos-card-nav .desc { color: var(--argos-text-dim); font-size: .82rem; line-height: 1.35; }
+
+/* ---------- Home: estado vazio (módulos ainda por criar) ---------- */
+.argos-vazio {
+    border: 1px dashed var(--argos-border);
+    border-radius: var(--argos-radius);
+    padding: 48px 24px;
+    text-align: center;
+    color: var(--argos-text-dim);
+}
+.argos-vazio .icon { font-size: 2.2rem; margin-bottom: 10px; }
+.argos-vazio strong { color: var(--argos-text); display: block; margin-bottom: 4px; }
