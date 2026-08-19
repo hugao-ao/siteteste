@@ -6,6 +6,7 @@ import {
     sb, toast, fmtDataHora, ligarFecharPorBackdrop, esc, fmtMoeda, STATUS_VISITA
 } from './hermo-common.js';
 import { abrirModalCliente } from './hermo-cliente-modal.js';
+import { listarAnexos, renderGaleria, excluirAnexo, ligarUpload } from './hermo-anexos.js';
 
 const $ = id => document.getElementById(id);
 const num = v => { const n = parseFloat(v); return isFinite(n) ? n : 0; };
@@ -219,6 +220,8 @@ async function gerarObraDaProposta(p) {
             .select('numero').eq('ano', anoAtual).order('numero', { ascending: false }).limit(1);
         if (eNum) throw eNum;
         const numero = (ult && ult[0] ? ult[0].numero : 0) + 1;
+        // cria a obra "casca" e aplica a proposta como PRIMEIRO ADITIVO
+        // (o escopo passa a ser controlado exclusivamente pelos aditivos)
         const payload = {
             id: null,
             numero,
@@ -229,24 +232,13 @@ async function gerarObraDaProposta(p) {
             endereco: p.endereco || null,
             latitude: p.latitude,
             longitude: p.longitude,
-            valor_contratado: num(p.valor_total),
             observacoes: null,
-            itens: p.itens.map(i => ({
-                id: null,
-                servico_id: i.servico_id,
-                local_execucao: i.local_execucao || null,
-                quantidade: num(i.quantidade) || 1,
-                unidade: i.unidade || null,
-                preco_unit: num(i.preco_unit),
-                total: num(i.total),
-                perc_executado: 0,
-                inicio_previsto: null,
-                fim_previsto: null
-            })),
-            propostas: [p.id]
+            itens: []
         };
         const { data: oid, error } = await sb.rpc('hermo_salvar_obra', { p: payload });
         if (error) throw error;
+        const { error: eAd } = await sb.rpc('hermo_aplicar_aditivo', { p_obra: oid, p_proposta: p.id });
+        if (eAd) throw eAd;
         toast(`Obra OB-${String(numero).padStart(4, '0')}/${anoAtual} criada — abrindo…`);
         window.location.href = `obras.html?editar=${oid}`;
     } catch (e) {
@@ -496,6 +488,7 @@ async function abrirModalProposta(proposta) {
     await carregarClientesSelect(proposta?.cliente_id || null);
     renderItensDraft();
     renderVisitasDraft();
+    carregarAnexosProposta();
 
     $('pp-overlay').classList.add('aberto');
     $('pp-titulo').focus();
@@ -511,6 +504,22 @@ function fecharModalProposta() {
 
 function totalDraft() {
     return itensDraft.reduce((t, i) => t + num(i.total), 0);
+}
+
+/** Anexos da proposta + HERDADOS das visitas associadas (somente leitura). */
+async function carregarAnexosProposta() {
+    const salva = !!propostaEditando?.id;
+    $('pp-anexos-aviso').style.display = salva ? 'none' : '';
+    $('pp-btn-anexo').style.display = salva ? '' : 'none';
+    const anexos = await listarAnexos({
+        propostaIds: salva ? [propostaEditando.id] : [],
+        visitaIds: visitasDraft
+    });
+    renderGaleria($('pp-anexos'), anexos, {
+        podeExcluir: true,
+        rotuloOrigem: a => a.visita_id ? 'da visita' : null, // herdado: sem excluir aqui
+        aoExcluir: async a => { if (await excluirAnexo(a)) await carregarAnexosProposta(); }
+    });
 }
 
 function renderItensDraft() {
@@ -865,6 +874,7 @@ function confirmarAssociacao() {
     visitasDraft = marcadas;
     $('pv-overlay').classList.remove('aberto');
     renderVisitasDraft();
+    carregarAnexosProposta(); // os anexos herdados acompanham as visitas associadas
     if (novas.length > 0) montarChecklistPrefill(novas);
 }
 
@@ -1150,6 +1160,10 @@ $('pp-cancelar').addEventListener('click', fecharModalProposta);
 ligarFecharPorBackdrop($('pp-overlay'), fecharModalProposta);
 $('pp-salvar').addEventListener('click', salvarProposta);
 $('pp-btn-mapa').addEventListener('click', abrirModalLocal);
+ligarUpload($('pp-btn-anexo'), () => {
+    if (!propostaEditando?.id) { toast('Salve a proposta antes de anexar.', true); return null; }
+    return { tipo_ref: 'proposta', proposta_id: propostaEditando.id };
+}, carregarAnexosProposta);
 $('pp-btn-novo-cliente').addEventListener('click', () =>
     abrirModalCliente(null, c => carregarClientesSelect(c.id)));
 $('pp-btn-editar-cliente').addEventListener('click', async () => {

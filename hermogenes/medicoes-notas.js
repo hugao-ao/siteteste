@@ -274,7 +274,7 @@ async function montarItens() {
     const nestaMedicao = new Map();
     (medEditando?.itens || []).forEach(i => nestaMedicao.set(i.obra_servico_id, num(i.qtd_medida)));
 
-    itensMedicao = (obra?.itens || []).map(it => ({
+    itensMedicao = (obra?.itens || []).filter(it => it.vigente !== false).map(it => ({
         obra_servico_id: it.id,
         codigo: it.servico?.codigo || '?',
         descricao: it.servico?.descricao || '?',

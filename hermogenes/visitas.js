@@ -4,6 +4,7 @@ import {
     ligarFecharPorBackdrop, esc, fmtMoeda
 } from './hermo-common.js';
 import { abrirModalCliente } from './hermo-cliente-modal.js';
+import { listarAnexos, renderGaleria, excluirAnexo, ligarUpload } from './hermo-anexos.js';
 
 // ---------- Estado ----------
 let visitas = [];
@@ -436,6 +437,7 @@ async function abrirModalVisita(visita) {
             `🔒 Status travado: esta visita está associada à(s) proposta(s) ${associacoes.map(fmtCodigoProposta).join(', ')} — mude o status pelo card da proposta, na página de Propostas.`;
     }
     renderServicosDaVisita();
+    carregarAnexosVisita();
 
     $('mv-overlay').classList.add('aberto');
     $('mv-endereco').focus();
@@ -447,6 +449,18 @@ function fecharModalVisita() {
     servicosDaVisita = [];
     statusTravado = false;
     $('mv-status').disabled = false;
+}
+
+async function carregarAnexosVisita() {
+    const salva = !!visitaEditando?.id;
+    $('mv-anexos-aviso').style.display = salva ? 'none' : '';
+    $('mv-btn-anexo').style.display = salva ? '' : 'none';
+    if (!salva) { $('mv-anexos').innerHTML = ''; return; }
+    const anexos = await listarAnexos({ visitaIds: [visitaEditando.id] });
+    renderGaleria($('mv-anexos'), anexos, {
+        podeExcluir: true,
+        aoExcluir: async a => { if (await excluirAnexo(a)) await carregarAnexosVisita(); }
+    });
 }
 
 /** Regra: com data => NUNCA 'pendente_marcacao'; sem data => SOMENTE 'pendente_marcacao'. */
@@ -888,6 +902,11 @@ function ligarEventos() {
     $('mv-salvar').addEventListener('click', salvarVisita);
     $('mv-data').addEventListener('input', aplicarRegraDataStatus);
     $('mv-btn-add-servico').addEventListener('click', () => abrirSubModal(null));
+
+    ligarUpload($('mv-btn-anexo'), () => {
+        if (!visitaEditando?.id) { toast('Salve a visita antes de anexar.', true); return null; }
+        return { tipo_ref: 'visita', visita_id: visitaEditando.id };
+    }, carregarAnexosVisita);
 
     $('mv-btn-novo-cliente').addEventListener('click', () =>
         abrirModalCliente(null, c => carregarClientesSelect(c.id)));

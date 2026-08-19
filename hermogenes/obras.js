@@ -5,6 +5,7 @@ import {
     sb, toast, fmtDataHora, ligarFecharPorBackdrop, esc, fmtMoeda
 } from './hermo-common.js';
 import { abrirModalCliente } from './hermo-cliente-modal.js';
+import { listarAnexos, renderGaleria, excluirAnexo, uploadAnexo } from './hermo-anexos.js';
 
 const $ = id => document.getElementById(id);
 const num = v => { const n = parseFloat(v); return isFinite(n) ? n : 0; };
@@ -41,8 +42,6 @@ let itensDraft = [];          // {id?, sel, servico_id, codigo, descricao, local
 let propostasDraft = [];      // ids
 let diarioEntradas = [];
 let localEscolhido = null;
-let itemEditIndex = null;
-let os2Marcados = new Set();
 let alocItemIndex = null;     // índice em itensDraft do serviço sendo alocado
 let oaMarcados = new Set();
 
@@ -103,9 +102,10 @@ async function carregarTudo() {
 }
 
 function progressoObra(o) {
-    const totalV = o.itens.reduce((t, it) => t + num(it.total), 0);
+    const vigentes = o.itens.filter(it => it.vigente !== false);
+    const totalV = vigentes.reduce((t, it) => t + num(it.total), 0);
     if (totalV === 0) return 0;
-    const exec = o.itens.reduce((t, it) => t + num(it.total) * num(it.perc_executado) / 100, 0);
+    const exec = vigentes.reduce((t, it) => t + num(it.total) * num(it.perc_executado) / 100, 0);
     return Math.round(exec / totalV * 100);
 }
 
@@ -168,7 +168,7 @@ function cardMini(o) {
             <span class="kb-end">${fmtCodigo(o)} — ${esc(o.nome)}</span>
         </div>
         <div class="kb-meta">👤 ${o.cliente ? esc(o.cliente.nome) : '<i>sem cliente</i>'}</div>
-        <div class="kb-meta">💰 <b>${fmtMoeda(o.valor_contratado)}</b> · 🛠️ ${o.itens.length} serviço(s)${o.prazo ? ` · <span class="${estourou ? 'prazo-estourado' : ''}">📅 ${o.prazo.split('-').reverse().join('/')}</span>` : ''}${(ocultasMapa.has(o.id) || statusOcultosMapa.has(o.status)) ? ' · 🙈' : ''}</div>
+        <div class="kb-meta">💰 <b>${fmtMoeda(o.valor_contratado)}</b> · 🛠️ ${o.itens.filter(it => it.vigente !== false).length} serviço(s)${o.prazo ? ` · <span class="${estourou ? 'prazo-estourado' : ''}">📅 ${o.prazo.split('-').reverse().join('/')}</span>` : ''}${(ocultasMapa.has(o.id) || statusOcultosMapa.has(o.status)) ? ' · 🙈' : ''}</div>
         <div style="display:flex;align-items:center;gap:6px">
             <div class="ob-progresso" style="flex:1"><div style="width:${prog}%"></div></div>
             <span style="font-size:.72rem;font-weight:700">${prog}%</span>
@@ -374,6 +374,10 @@ async function abrirModalObra(obra) {
     obraEditando = obra || null;
     itensDraft = (obra?.itens || []).map(it => ({
         id: it.id,
+        vigente: it.vigente !== false,
+        proposta_id: it.proposta_id || null,
+        substituido_por: it.substituido_por || null,
+        created_at: it.created_at,
         sel: false,
         servico_id: it.servico_id,
         codigo: it.servico?.codigo || '?',
@@ -410,6 +414,7 @@ async function abrirModalObra(obra) {
     renderItensDraft();
     renderCronograma();
     await carregarDiario();
+    await carregarAnexosHerdados();
 
     $('ob-overlay').classList.add('aberto');
     $('ob-nome').focus();
@@ -445,238 +450,147 @@ function renderPropostasDraft() {
 }
 
 function abrirAssociarPropostas() {
+    // associações existentes aparecem marcadas E travadas (aditivo não se desfaz)
     $('op-lista').innerHTML = propostasContratadas.length === 0
         ? '<div style="font-size:.8rem;color:var(--hermo-text-dim)">Nenhuma proposta contratada disponível.</div>'
-        : propostasContratadas.map(p => `
-            <label class="lc-item">
-                <input type="checkbox" data-op="${p.id}" ${propostasDraft.includes(p.id) ? 'checked' : ''} />
+        : propostasContratadas.map(p => {
+            const jaAssociada = propostasDraft.includes(p.id);
+            return `
+            <label class="lc-item" style="${jaAssociada ? 'opacity:.65' : ''}">
+                <input type="checkbox" data-op="${p.id}" ${jaAssociada ? 'checked disabled' : ''} />
                 <div class="txt"><b>${String(p.numero).padStart(4, '0')}/${p.ano}</b> — ${esc(p.titulo)}
-                    <small>${p.cliente?.nome ? esc(p.cliente.nome) + ' · ' : ''}${fmtMoeda(p.valor_total)} · ${(p.itens || []).length} item(ns)</small>
+                    <small>${p.cliente?.nome ? esc(p.cliente.nome) + ' · ' : ''}${fmtMoeda(p.valor_total)} · ${(p.itens || []).length} item(ns)${jaAssociada ? ' · ✔ já aplicada' : ''}</small>
                 </div>
-            </label>`).join('');
+            </label>`;
+        }).join('');
     $('op-overlay').classList.add('aberto');
 }
 
-function confirmarAssociarPropostas() {
+async function confirmarAssociarPropostas() {
     const marcadas = [...document.querySelectorAll('[data-op]:checked')].map(c => c.dataset.op);
     const novas = marcadas.filter(id => !propostasDraft.includes(id));
-    // preserva associações a propostas que saíram de "contratada" (não aparecem no modal)
-    const listadas = propostasContratadas.map(p => p.id);
-    propostasDraft = [...marcadas, ...propostasDraft.filter(id => !listadas.includes(id))];
     $('op-overlay').classList.remove('aberto');
-    renderPropostasDraft();
-
-    // importar itens das propostas recém-associadas para o escopo?
-    const itensNovos = novas.flatMap(id => (propostasContratadas.find(p => p.id === id)?.itens || []));
-    if (itensNovos.length > 0 &&
-        confirm(`Importar ${itensNovos.length} item(ns) da(s) proposta(s) associada(s) para o escopo da obra?\n(Serviços repetidos entram como itens novos — aditivos.)`)) {
-        itensNovos.forEach(i => {
-            itensDraft.push({
-                id: null, sel: false,
-                servico_id: i.servico_id,
-                codigo: i.servico?.codigo || '?',
-                descricao: i.servico?.descricao || '?',
-                local_execucao: i.local_execucao || '',
-                quantidade: num(i.quantidade) || 1,
-                unidade: i.unidade || i.servico?.unidade || '',
-                preco_unit: num(i.preco_unit),
-                total: num(i.total),
-                perc_executado: 0,
-                inicio_previsto: '', fim_previsto: '',
-                alocacoes: []
-            });
-        });
-        renderItensDraft();
-        renderCronograma();
-        toast(`${itensNovos.length} item(ns) adicionados ao escopo.`);
+    if (novas.length === 0) { toast('Nenhuma proposta nova marcada.'); return; }
+    if (!obraEditando?.id) {
+        toast('Salve a obra antes de aplicar aditivos.', true);
+        return;
     }
+    if (!confirm(`Aplicar ${novas.length} aditivo(s)?\n\nOs serviços da(s) proposta(s) entram no escopo. ` +
+        `Se um serviço equivalente já existir, o item novo passa a valer e o antigo vai para o histórico — nada é apagado. ` +
+        `A associação não pode ser desfeita.`)) return;
 
-    // cliente/endereço herdados quando vazios
-    const primeira = novas.map(id => propostasContratadas.find(p => p.id === id)).find(Boolean);
-    if (primeira) {
-        if (!$('ob-cliente').value && primeira.cliente_id) carregarClientesSelect(primeira.cliente_id);
-        if (!$('ob-endereco').value.trim() && primeira.endereco) {
-            $('ob-endereco').value = primeira.endereco;
-            if (primeira.latitude != null) {
-                localEscolhido = { lat: primeira.latitude, lng: primeira.longitude };
-                $('ob-local-info').style.display = '';
-            }
+    let aplicados = 0;
+    for (const pid of novas) {
+        const { error } = await sb.rpc('hermo_aplicar_aditivo', { p_obra: obraEditando.id, p_proposta: pid });
+        if (error) {
+            toast(`Erro ao aplicar aditivo: ${error.message}`, true);
+            continue;
         }
-        if (!$('ob-nome').value.trim()) $('ob-nome').value = primeira.titulo;
+        aplicados++;
+        // cliente/endereço/nome herdados quando vazios
+        const p = propostasContratadas.find(x => x.id === pid);
+        if (p) {
+            if (!$('ob-cliente').value && p.cliente_id) await carregarClientesSelect(p.cliente_id);
+            if (!$('ob-endereco').value.trim() && p.endereco) {
+                $('ob-endereco').value = p.endereco;
+                if (p.latitude != null) {
+                    localEscolhido = { lat: p.latitude, lng: p.longitude };
+                    $('ob-local-info').style.display = '';
+                }
+            }
+            if (!$('ob-nome').value.trim()) $('ob-nome').value = p.titulo;
+        }
     }
+    if (aplicados === 0) return;
+    toast(`${aplicados} aditivo(s) aplicado(s) — escopo atualizado.`);
+    // recarrega a obra fresca (escopo/valor mudaram no banco) mantendo o modal aberto
+    await carregarTudo();
+    const atualizada = obras.find(o => o.id === obraEditando.id);
+    if (atualizada) await abrirModalObra(atualizada);
+}
+
+// ---------- histórico de aditivos ----------
+function abrirHistorico() {
+    const cont = $('oh-lista');
+    if (itensDraft.length === 0) {
+        cont.innerHTML = '<div style="color:var(--hermo-text-dim)">Escopo vazio — nenhum evento ainda.</div>';
+    } else {
+        const porProposta = new Map();
+        itensDraft.forEach(i => {
+            const chave = i.proposta_id || '__inicial__';
+            const arr = porProposta.get(chave) || [];
+            arr.push(i);
+            porProposta.set(chave, arr);
+        });
+        cont.innerHTML = [...porProposta.entries()].map(([pid, itens]) => {
+            const p = propostasContratadas.find(x => x.id === pid);
+            const titulo = pid === '__inicial__'
+                ? 'Escopo inicial (antes do controle de aditivos)'
+                : `📄 Proposta ${p ? String(p.numero).padStart(4, '0') + '/' + p.ano + ' — ' + esc(p.titulo) : 'não encontrada'}`;
+            const linhas = itens.map(i => {
+                const substituto = i.substituido_por ? itensDraft.find(x => x.id === i.substituido_por) : null;
+                return `<div style="padding-left:12px;${i.vigente === false ? 'opacity:.6' : ''}">
+                    ${i.vigente === false ? '✖' : '✔'} <b>${esc(i.codigo)}</b> ${esc(i.descricao)}
+                    — ${i.quantidade} ${esc(i.unidade || 'un')} × ${fmtMoeda(i.preco_unit)}
+                    ${i.local_execucao ? ' · 📍 ' + esc(i.local_execucao) : ''}
+                    ${i.vigente === false
+                        ? `<span style="color:var(--hermo-warn)"> · substituído${substituto ? ` por aditivo (${substituto.quantidade} ${esc(substituto.unidade || 'un')} × ${fmtMoeda(substituto.preco_unit)})` : ''}</span>`
+                        : ''}
+                </div>`;
+            }).join('');
+            return `<div style="border:1px solid var(--hermo-border);border-radius:8px;padding:10px">
+                <b>${titulo}</b>${linhas}</div>`;
+        }).join('');
+    }
+    $('oh-overlay').classList.add('aberto');
 }
 
 // ---------- escopo ----------
 function totalObraDraft() {
-    return itensDraft.reduce((t, i) => t + num(i.total), 0);
+    return itensDraft.filter(i => i.vigente !== false).reduce((t, i) => t + num(i.total), 0);
 }
 
 function renderItensDraft() {
     const cont = $('ob-itens');
-    if (itensDraft.length === 0) {
-        cont.innerHTML = '<div style="font-size:.8rem;color:var(--hermo-text-dim)">Nenhum serviço no escopo — associe uma proposta ou use "+ Adicionar serviços".</div>';
+    const vigentes = itensDraft.filter(i => i.vigente !== false);
+    if (vigentes.length === 0) {
+        cont.innerHTML = '<div style="font-size:.8rem;color:var(--hermo-text-dim)">Escopo vazio — aplique um aditivo (associe uma proposta contratada).</div>';
     } else {
-        cont.innerHTML = itensDraft.map((i, idx) => `
+        // escopo SOMENTE leitura (muda apenas via aditivo); só o % executado é editável
+        cont.innerHTML = vigentes.map(i => {
+            const idx = itensDraft.indexOf(i);
+            const prop = propostasContratadas.find(p => p.id === i.proposta_id);
+            const origem = prop ? `${String(prop.numero).padStart(4, '0')}/${prop.ano}` : (i.proposta_id ? 'proposta' : 'escopo inicial');
+            return `
         <div class="ob-item">
-            <input type="checkbox" class="check" data-isel="${idx}" ${i.sel ? 'checked' : ''} />
             <div class="txt">
                 <b>${esc(i.codigo)}</b> — ${esc(i.descricao)}
-                <small>${i.local_execucao ? '📍 ' + esc(i.local_execucao) + ' · ' : ''}${i.quantidade} ${esc(i.unidade || 'un')} × ${fmtMoeda(i.preco_unit)}</small>
+                <small>${i.local_execucao ? '📍 ' + esc(i.local_execucao) + ' · ' : ''}${i.quantidade} ${esc(i.unidade || 'un')} × ${fmtMoeda(i.preco_unit)} · <span style="color:var(--hermo-info)">📄 ${esc(origem)}</span></small>
             </div>
             <span class="valor">${fmtMoeda(i.total)}</span>
             <label style="font-size:.72rem;color:var(--hermo-text-dim)">%</label>
             <input class="perc" type="number" min="0" max="100" step="1" value="${i.perc_executado}" data-iperc="${idx}" />
-            <button class="hermo-btn small ghost" data-ieditar="${idx}">✎</button>
-            <button class="hermo-btn small danger" data-iremover="${idx}">🗑</button>
-        </div>`).join('');
+        </div>`;
+        }).join('');
     }
     atualizarProgressoETotal();
-    atualizarItensSelbar();
 
-    cont.querySelectorAll('[data-isel]').forEach(ch => ch.addEventListener('change', e => {
-        itensDraft[parseInt(e.target.dataset.isel)].sel = e.target.checked;
-        atualizarItensSelbar();
-    }));
     cont.querySelectorAll('[data-iperc]').forEach(inp => inp.addEventListener('change', e => {
         const v = Math.max(0, Math.min(100, num(e.target.value)));
         itensDraft[parseInt(e.target.dataset.iperc)].perc_executado = v;
         e.target.value = v;
         atualizarProgressoETotal();
     }));
-    cont.querySelectorAll('[data-ieditar]').forEach(b => b.addEventListener('click',
-        () => abrirItemModal(parseInt(b.dataset.ieditar))));
-    cont.querySelectorAll('[data-iremover]').forEach(b => b.addEventListener('click', () => {
-        const i = itensDraft[parseInt(b.dataset.iremover)];
-        if ((i.alocacoes || []).length > 0 &&
-            !confirm(`Este serviço tem ${i.alocacoes.length} alocação(ões) no cronograma — remover mesmo assim?\n(As alocações serão apagadas ao salvar.)`)) return;
-        itensDraft.splice(parseInt(b.dataset.iremover), 1);
-        renderItensDraft();
-        renderCronograma();
-    }));
 }
 
 function atualizarProgressoETotal() {
     const totalV = totalObraDraft();
-    const exec = itensDraft.reduce((t, i) => t + num(i.total) * num(i.perc_executado) / 100, 0);
+    const exec = itensDraft.filter(i => i.vigente !== false)
+        .reduce((t, i) => t + num(i.total) * num(i.perc_executado) / 100, 0);
     const prog = totalV > 0 ? Math.round(exec / totalV * 100) : 0;
     $('ob-progresso-fill').style.width = prog + '%';
     $('ob-progresso-txt').textContent = prog + '%';
     $('ob-total').textContent = fmtMoeda(totalV);
-}
-
-function atualizarItensSelbar() {
-    const n = itensDraft.filter(i => i.sel).length;
-    $('ob-itens-selbar').classList.toggle('ativa', n > 0);
-    $('ob-itens-selinfo').textContent = `${n} marcado(s)`;
-}
-
-// ---------- item modal (oe) ----------
-function abrirItemModal(editIndex) {
-    itemEditIndex = editIndex;
-    const item = editIndex != null ? itensDraft[editIndex] : null;
-    $('oe-titulo').textContent = item ? 'Editar item do escopo' : 'Adicionar item';
-    const sel = $('oe-servico');
-    sel.innerHTML = '<option value="">— selecione —</option>';
-    servicosCatalogo.forEach(s => {
-        const o = document.createElement('option');
-        o.value = s.id;
-        o.textContent = `${s.codigo} — ${s.descricao}`;
-        sel.appendChild(o);
-    });
-    if (item) sel.value = item.servico_id;
-    $('oe-local').value = item?.local_execucao || '';
-    $('oe-qtd').value = item?.quantidade ?? 1;
-    $('oe-unidade').value = item?.unidade || '';
-    $('oe-preco').value = item?.preco_unit ?? '';
-    $('oe-perc').value = item?.perc_executado ?? 0;
-    recalcItemPreview();
-    $('oe-overlay').classList.add('aberto');
-}
-
-function recalcItemPreview() {
-    $('oe-total-preview').textContent = fmtMoeda(num($('oe-qtd').value) * num($('oe-preco').value));
-}
-
-function confirmarItem() {
-    const servicoId = $('oe-servico').value;
-    if (!servicoId) { toast('Selecione um serviço.', true); return; }
-    const qtd = num($('oe-qtd').value);
-    if (qtd <= 0) { toast('Quantidade deve ser maior que zero.', true); return; }
-    const preco = Math.round(num($('oe-preco').value) * 100) / 100;
-    const cat = servicosCatalogo.find(s => s.id === servicoId);
-    const base = itemEditIndex != null ? itensDraft[itemEditIndex] : { id: null, sel: false, alocacoes: [] };
-    const item = {
-        ...base,
-        servico_id: servicoId,
-        codigo: cat?.codigo || '?',
-        descricao: cat?.descricao || '?',
-        local_execucao: $('oe-local').value.trim(),
-        quantidade: qtd,
-        unidade: $('oe-unidade').value.trim() || cat?.unidade || '',
-        preco_unit: preco,
-        total: Math.round(preco * qtd * 100) / 100,
-        perc_executado: Math.max(0, Math.min(100, num($('oe-perc').value)))
-    };
-    if (itemEditIndex != null) itensDraft[itemEditIndex] = item;
-    else itensDraft.push(item);
-    $('oe-overlay').classList.remove('aberto');
-    itemEditIndex = null;
-    renderItensDraft();
-    renderCronograma();
-}
-
-// ---------- multi-add serviços (os2) ----------
-function abrirSelecaoServicos() {
-    $('os2-busca').value = '';
-    os2Marcados = new Set();
-    renderSelecaoServicos();
-    $('os2-overlay').classList.add('aberto');
-}
-
-function renderSelecaoServicos() {
-    const q = $('os2-busca').value.trim().toLowerCase();
-    const lista = servicosCatalogo.filter(s =>
-        !q || (s.codigo || '').toLowerCase().includes(q) || (s.descricao || '').toLowerCase().includes(q));
-    $('os2-lista').innerHTML = lista.length === 0
-        ? '<div style="font-size:.8rem;color:var(--hermo-text-dim)">Nenhum serviço encontrado.</div>'
-        : lista.map(s => `
-            <label class="lc-item">
-                <input type="checkbox" data-os2="${s.id}" ${os2Marcados.has(s.id) ? 'checked' : ''} />
-                <div class="txt"><b>${esc(s.codigo)}</b> — ${esc(s.descricao)}
-                    <small>${s.precos?.preco_final ? 'preço de catálogo: ' + fmtMoeda(s.precos.preco_final) + '/' + (s.unidade || 'un') : 'sem preço de catálogo'}</small>
-                </div>
-            </label>`).join('');
-    $('os2-lista').querySelectorAll('[data-os2]').forEach(c => c.addEventListener('change', e => {
-        if (e.target.checked) os2Marcados.add(e.target.dataset.os2);
-        else os2Marcados.delete(e.target.dataset.os2);
-    }));
-}
-
-function confirmarSelecaoServicos() {
-    const marcados = [...os2Marcados].filter(id => servicosCatalogo.some(s => s.id === id));
-    if (marcados.length === 0) { toast('Marque ao menos um serviço.', true); return; }
-    marcados.forEach(sid => {
-        const cat = servicosCatalogo.find(s => s.id === sid);
-        const preco = num(cat?.precos?.preco_final);
-        itensDraft.push({
-            id: null, sel: false,
-            servico_id: sid,
-            codigo: cat?.codigo || '?',
-            descricao: cat?.descricao || '?',
-            local_execucao: '',
-            quantidade: 1,
-            unidade: cat?.unidade || '',
-            preco_unit: preco,
-            total: preco,
-            perc_executado: 0,
-            inicio_previsto: '', fim_previsto: '',
-            alocacoes: []
-        });
-    });
-    $('os2-overlay').classList.remove('aberto');
-    renderItensDraft();
-    renderCronograma();
-    toast(`${marcados.length} serviço(s) no escopo — ajuste qtd/preço no ✎.`);
 }
 
 // ============================================================
@@ -687,7 +601,7 @@ function renderCronograma() {
     $('ob-crono-aviso').style.display = salva ? 'none' : '';
     const cont = $('ob-crono');
     if (!salva) { cont.innerHTML = ''; return; }
-    const comId = itensDraft.filter(i => i.id);
+    const comId = itensDraft.filter(i => i.id && i.vigente !== false);
     if (comId.length === 0) {
         cont.innerHTML = '<div style="font-size:.78rem;color:var(--hermo-text-dim)">Adicione serviços ao escopo e salve para programar.</div>';
         return;
@@ -917,14 +831,79 @@ async function carregarDiario() {
         .select('*').eq('obra_id', obraEditando.id).order('data', { ascending: false }).limit(60);
     if (error) { toast('Erro ao carregar diário: ' + error.message, true); return; }
     diarioEntradas = data || [];
-    renderDiario();
+    await carregarAnexosDiario();
 }
+
+let anexosDiario = [];   // anexos de todas as entradas carregadas
+let diarioUploadInput = null;
+let diarioUploadAlvo = null;
 
 function renderDiario() {
     $('ob-diario').innerHTML = diarioEntradas.length === 0
         ? '<div style="font-size:.78rem;color:var(--hermo-text-dim)">Nenhum registro ainda.</div>'
         : diarioEntradas.map(d => `
-            <div class="entrada">${esc(d.texto)}<small>${fmtDataHora(d.data)}</small></div>`).join('');
+            <div class="entrada">
+                ${esc(d.texto)}<small>${fmtDataHora(d.data)}</small>
+                <div class="anx-galeria" data-diario-galeria="${d.id}" style="margin-top:6px"></div>
+                <button class="hermo-btn small ghost" data-diario-anexo="${d.id}" style="margin-top:4px">📎 Anexar</button>
+            </div>`).join('');
+    // galerias por entrada
+    diarioEntradas.forEach(d => {
+        const cont = document.querySelector(`[data-diario-galeria="${d.id}"]`);
+        const doItem = anexosDiario.filter(a => a.diario_id === d.id);
+        if (doItem.length === 0) { if (cont) cont.innerHTML = ''; return; }
+        renderGaleria(cont, doItem, {
+            podeExcluir: true,
+            aoExcluir: async a => { if (await excluirAnexo(a)) await carregarAnexosDiario(); }
+        });
+    });
+    // upload por entrada (um input escondido compartilhado)
+    if (!diarioUploadInput) {
+        diarioUploadInput = document.createElement('input');
+        diarioUploadInput.type = 'file';
+        diarioUploadInput.multiple = true;
+        diarioUploadInput.style.display = 'none';
+        document.body.appendChild(diarioUploadInput);
+        diarioUploadInput.addEventListener('change', async () => {
+            if (!diarioUploadAlvo || diarioUploadInput.files.length === 0) return;
+            let ok = 0;
+            for (const f of diarioUploadInput.files) {
+                const r = await uploadAnexo({ tipo_ref: 'diario', diario_id: diarioUploadAlvo }, f);
+                if (r) ok++;
+            }
+            diarioUploadInput.value = '';
+            if (ok > 0) toast(`${ok} anexo(s) enviado(s).`);
+            await carregarAnexosDiario();
+        });
+    }
+    $('ob-diario').querySelectorAll('[data-diario-anexo]').forEach(b => b.addEventListener('click', () => {
+        diarioUploadAlvo = b.dataset.diarioAnexo;
+        diarioUploadInput.click();
+    }));
+}
+
+async function carregarAnexosDiario() {
+    anexosDiario = diarioEntradas.length
+        ? await listarAnexos({ diarioIds: diarioEntradas.map(d => d.id) })
+        : [];
+    renderDiario();
+}
+
+/** Anexos herdados: das propostas associadas e das visitas dessas propostas. */
+async function carregarAnexosHerdados() {
+    const cont = $('ob-anexos-herdados');
+    if (propostasDraft.length === 0) {
+        cont.innerHTML = '<div style="font-size:.76rem;color:var(--hermo-text-dim)">Associe propostas para ver os anexos delas (e das visitas ligadas a elas).</div>';
+        return;
+    }
+    const { data: pv } = await sb.from('hermo_proposta_visitas')
+        .select('visita_id').in('proposta_id', propostasDraft);
+    const visitaIds = [...new Set((pv || []).map(x => x.visita_id))];
+    const anexos = await listarAnexos({ propostaIds: propostasDraft, visitaIds });
+    renderGaleria(cont, anexos, {
+        podeExcluir: false,
+        rotuloOrigem: a => a.proposta_id ? 'da proposta' : 'da visita'
+    });
 }
 
 async function registrarDiario() {
@@ -979,21 +958,14 @@ async function salvarObra() {
             prazo: $('ob-prazo').value || null,
             inicio_real: $('ob-inicio-real').value || null,
             conclusao: $('ob-conclusao').value || null,
-            valor_contratado: Math.round(totalObraDraft() * 100) / 100,
             observacoes: $('ob-obs').value.trim() || null,
-            itens: itensDraft.map(i => ({
+            // escopo é imutável aqui — só o CRONOGRAMA dos itens existentes é atualizado
+            itens: itensDraft.filter(i => i.id).map(i => ({
                 id: i.id,
-                servico_id: i.servico_id,
-                local_execucao: i.local_execucao || null,
-                quantidade: i.quantidade,
-                unidade: i.unidade || null,
-                preco_unit: i.preco_unit,
-                total: i.total,
                 perc_executado: i.perc_executado,
                 inicio_previsto: i.inicio_previsto || null,
                 fim_previsto: i.fim_previsto || null
-            })),
-            propostas: propostasDraft
+            }))
         };
         const eraEdicao = !!obraEditando;
         const { data: oid, error } = await sb.rpc('hermo_salvar_obra', { p: payload });
@@ -1121,40 +1093,12 @@ $('ob-btn-editar-cliente').addEventListener('click', async () => {
     abrirModalCliente(data, c => carregarClientesSelect(c.id));
 });
 
-// escopo
-$('ob-itens-sel-todos').addEventListener('click', () => { itensDraft.forEach(i => i.sel = true); renderItensDraft(); });
-$('ob-itens-sel-limpar').addEventListener('click', () => { itensDraft.forEach(i => i.sel = false); renderItensDraft(); });
-$('ob-itens-sel-excluir').addEventListener('click', () => {
-    const marcados = itensDraft.filter(i => i.sel);
-    if (marcados.length === 0) return;
-    const comAloc = marcados.reduce((t, i) => t + (i.alocacoes || []).length, 0);
-    if (!confirm(`Remover ${marcados.length} item(ns) do escopo?` +
-        (comAloc ? `\n⚠ ${comAloc} alocação(ões) de cronograma serão apagadas ao salvar.` : ''))) return;
-    itensDraft = itensDraft.filter(i => !i.sel);
-    renderItensDraft();
-    renderCronograma();
-});
-$('ob-btn-add-servicos').addEventListener('click', abrirSelecaoServicos);
+// escopo imutável: só o histórico e os aditivos
+$('ob-btn-historico').addEventListener('click', abrirHistorico);
+$('oh-fechar').addEventListener('click', () => $('oh-overlay').classList.remove('aberto'));
+$('oh-fechar2').addEventListener('click', () => $('oh-overlay').classList.remove('aberto'));
+ligarFecharPorBackdrop($('oh-overlay'), () => $('oh-overlay').classList.remove('aberto'));
 $('ob-btn-propostas').addEventListener('click', abrirAssociarPropostas);
-
-// sub-modais
-$('oe-fechar').addEventListener('click', () => $('oe-overlay').classList.remove('aberto'));
-$('oe-cancelar').addEventListener('click', () => $('oe-overlay').classList.remove('aberto'));
-ligarFecharPorBackdrop($('oe-overlay'), () => $('oe-overlay').classList.remove('aberto'));
-$('oe-confirmar').addEventListener('click', confirmarItem);
-['oe-qtd', 'oe-preco'].forEach(id => $(id).addEventListener('input', recalcItemPreview));
-
-$('os2-fechar').addEventListener('click', () => $('os2-overlay').classList.remove('aberto'));
-$('os2-cancelar').addEventListener('click', () => $('os2-overlay').classList.remove('aberto'));
-ligarFecharPorBackdrop($('os2-overlay'), () => $('os2-overlay').classList.remove('aberto'));
-$('os2-confirmar').addEventListener('click', confirmarSelecaoServicos);
-$('os2-busca').addEventListener('input', renderSelecaoServicos);
-$('os2-todos').addEventListener('click', () => document.querySelectorAll('[data-os2]').forEach(c => {
-    c.checked = true; os2Marcados.add(c.dataset.os2);
-}));
-$('os2-nenhum').addEventListener('click', () => document.querySelectorAll('[data-os2]').forEach(c => {
-    c.checked = false; os2Marcados.delete(c.dataset.os2);
-}));
 
 $('op-fechar').addEventListener('click', () => $('op-overlay').classList.remove('aberto'));
 $('op-cancelar').addEventListener('click', () => $('op-overlay').classList.remove('aberto'));

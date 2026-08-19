@@ -175,25 +175,24 @@
         <div class="ob-secao">
           <h3>📄 Propostas contratadas desta obra (aditivos = mais de uma)</h3>
           <div class="ob-props" id="ob-props"></div>
-          <button class="hermo-btn small" id="ob-btn-propostas">🔗 Associar propostas contratadas</button>
+          <button class="hermo-btn small" id="ob-btn-propostas">➕ Aplicar aditivo (associar proposta contratada)</button>
         </div>
 
-        <!-- ESCOPO -->
+        <!-- ESCOPO (imutável — só muda por aditivo) -->
         <div class="ob-secao">
-          <h3>🛠️ Escopo (serviços da obra)</h3>
-          <div class="hermo-selbar" id="ob-itens-selbar">
-            <div class="info" id="ob-itens-selinfo">0 marcados</div>
-            <button class="hermo-btn small ghost" id="ob-itens-sel-todos">Marcar todos</button>
-            <button class="hermo-btn small ghost" id="ob-itens-sel-limpar">Desmarcar</button>
-            <button class="hermo-btn small danger" id="ob-itens-sel-excluir">Excluir marcados</button>
+          <h3>🛠️ Escopo (serviços das propostas associadas)</h3>
+          <div style="font-size:.74rem;color:var(--hermo-text-dim)">
+            O escopo vem das propostas contratadas. Para incluir/alterar serviços,
+            aplique um <b>aditivo</b> (associe outra proposta). Nada do escopo original
+            é apagado — substituições ficam no histórico.
           </div>
           <div class="ob-itens" id="ob-itens"></div>
-          <button class="hermo-btn small" id="ob-btn-add-servicos">+ Adicionar serviços</button>
+          <button class="hermo-btn small ghost" id="ob-btn-historico">🕘 Histórico de aditivos</button>
           <div style="display:flex;align-items:center;gap:10px">
             <div class="ob-progresso" style="flex:1"><div id="ob-progresso-fill" style="width:0%"></div></div>
             <b id="ob-progresso-txt" style="font-size:.85rem">0%</b>
           </div>
-          <div class="pp-total-row" style="border:none;padding:0">Valor contratado: <b id="ob-total">R$ 0,00</b></div>
+          <div class="pp-total-row" style="border:none;padding:0">Valor contratado (vigente): <b id="ob-total">R$ 0,00</b></div>
         </div>
 
         <!-- CRONOGRAMA -->
@@ -205,9 +204,15 @@
           <div class="ob-crono" id="ob-crono"></div>
         </div>
 
+        <!-- ANEXOS HERDADOS -->
+        <div class="ob-secao">
+          <h3>📎 Anexos das propostas e visitas ligadas</h3>
+          <div id="ob-anexos-herdados"></div>
+        </div>
+
         <!-- DIÁRIO -->
         <div class="ob-secao">
-          <h3>📓 Diário de obra</h3>
+          <h3>📓 Diário de obra (anexe fotos e arquivos em cada registro)</h3>
           <div id="ob-diario-aviso" style="display:none;font-size:.78rem;color:var(--hermo-text-dim)">
             💡 Salve a obra para começar o diário.
           </div>
@@ -308,22 +313,40 @@
     </div>
   </div>
 
-  <!-- SUB-MODAL: ASSOCIAR PROPOSTAS -->
+  <!-- SUB-MODAL: APLICAR ADITIVO -->
   <div class="hermo-modal-overlay" id="op-overlay">
     <div class="hermo-modal compacto">
       <div class="hermo-modal-head">
-        <h2>Associar propostas contratadas</h2>
+        <h2>Aplicar aditivo</h2>
         <button class="fechar" id="op-fechar" title="Fechar">&times;</button>
       </div>
       <div class="hermo-modal-body">
         <div style="font-size:.78rem;color:var(--hermo-text-dim)">
-          Só aparecem propostas com status <b>Contratada</b>. Ao associar uma nova, você escolhe se os itens dela entram no escopo.
+          Marque a(s) proposta(s) <b>contratada(s)</b> a aplicar. Os serviços delas entram no escopo;
+          se um serviço já existir (mesmo serviço e local), o item novo passa a valer e o antigo vai
+          para o histórico — nada é apagado. Associações existentes não podem ser removidas.
         </div>
         <div class="lista-check" id="op-lista"></div>
       </div>
       <div class="hermo-modal-foot">
         <button class="hermo-btn ghost" id="op-cancelar">Cancelar</button>
-        <button class="hermo-btn primary" id="op-confirmar">Confirmar</button>
+        <button class="hermo-btn primary" id="op-confirmar">Aplicar aditivo(s)</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SUB-MODAL: HISTÓRICO DE ADITIVOS -->
+  <div class="hermo-modal-overlay" id="oh-overlay">
+    <div class="hermo-modal compacto">
+      <div class="hermo-modal-head">
+        <h2>Histórico de aditivos do escopo</h2>
+        <button class="fechar" id="oh-fechar" title="Fechar">&times;</button>
+      </div>
+      <div class="hermo-modal-body">
+        <div id="oh-lista" style="display:flex;flex-direction:column;gap:8px;font-size:.82rem"></div>
+      </div>
+      <div class="hermo-modal-foot">
+        <button class="hermo-btn ghost" id="oh-fechar2">Fechar</button>
       </div>
     </div>
   </div>
