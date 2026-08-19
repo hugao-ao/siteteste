@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5, user-scalable=yes" />
+  <title>Argos Gestão — Usuários e Permissões</title>
+  <script src="argos-guard.js"></script>
+  <link rel="stylesheet" href="argos-style.css" />
+</head>
+<body>
+  <header class="argos-topbar">
+    <div class="brand">ARGOS <span>GESTÃO</span></div>
+    <div class="actions">
+      <a class="argos-btn ghost" href="index.html">← Início</a>
+      <button class="argos-btn danger" id="btn-logout">Sair</button>
+    </div>
+  </header>
+
+  <main class="argos-pagina">
+    <h1>👥 Usuários e Permissões</h1>
+    <p class="sub">Crie usuários e tipos de usuário e controle o que cada um pode fazer e ver na área Argos.</p>
+
+    <nav class="argos-abas" id="abas">
+      <button class="aba ativa" data-aba="usuarios">Usuários</button>
+      <button class="aba" data-aba="tipos">Tipos de Usuário</button>
+      <button class="aba" data-aba="recursos">Funcionalidades e Elementos</button>
+    </nav>
+
+    <!-- ============ ABA USUÁRIOS ============ -->
+    <section class="argos-secao ativa" id="secao-usuarios">
+      <div class="argos-secao-topo">
+        <p class="dica">Usuários da área Argos. As permissões individuais sobrepõem as do tipo.</p>
+        <button class="argos-btn primary" id="btn-novo-usuario" data-argos-recurso="usuarios_criar">+ Novo usuário</button>
+      </div>
+      <div class="argos-tabela-wrap">
+        <table class="argos-tabela">
+          <thead>
+            <tr><th>Nome</th><th>Login</th><th>Tipo</th><th>Situação</th><th class="acoes">Ações</th></tr>
+          </thead>
+          <tbody id="tbody-usuarios"></tbody>
+        </table>
+        <div class="argos-tabela-vazia" id="usuarios-vazio" style="display:none">Nenhum usuário cadastrado ainda.</div>
+      </div>
+    </section>
+
+    <!-- ============ ABA TIPOS ============ -->
+    <section class="argos-secao" id="secao-tipos">
+      <div class="argos-secao-topo">
+        <p class="dica">Tipos (categorias) agrupam permissões em comum. Um usuário herda as permissões do seu tipo.</p>
+        <button class="argos-btn primary" id="btn-novo-tipo" data-argos-recurso="tipos_gerenciar">+ Novo tipo</button>
+      </div>
+      <div class="argos-tabela-wrap">
+        <table class="argos-tabela">
+          <thead>
+            <tr><th>Nome</th><th>Descrição</th><th>Usuários</th><th class="acoes">Ações</th></tr>
+          </thead>
+          <tbody id="tbody-tipos"></tbody>
+        </table>
+        <div class="argos-tabela-vazia" id="tipos-vazio" style="display:none">Nenhum tipo cadastrado ainda.</div>
+      </div>
+    </section>
+
+    <!-- ============ ABA RECURSOS (catálogo) ============ -->
+    <section class="argos-secao" id="secao-recursos">
+      <div class="argos-secao-topo">
+        <p class="dica">Catálogo de tudo que existe na área Argos: cada <b>funcionalidade</b> (ação que o usuário executa) e cada <b>elemento</b> (card, tela, gráfico…) aparece aqui com o que faz/mostra e as páginas conectadas.</p>
+        <button class="argos-btn primary" id="btn-novo-recurso" data-argos-recurso="recursos_gerenciar">+ Novo registro</button>
+      </div>
+      <div class="argos-tabela-wrap">
+        <table class="argos-tabela">
+          <thead>
+            <tr><th>Nome</th><th>Categoria</th><th>O que faz / mostra</th><th>Páginas conectadas</th><th>Acesso padrão</th><th class="acoes">Ações</th></tr>
+          </thead>
+          <tbody id="tbody-recursos"></tbody>
+        </table>
+        <div class="argos-tabela-vazia" id="recursos-vazio" style="display:none">Nenhum recurso cadastrado ainda.</div>
+      </div>
+    </section>
+  </main>
+
+  <!-- ============ MODAL: USUÁRIO ============ -->
+  <div class="argos-modal-fundo" id="modal-usuario">
+    <div class="argos-modal">
+      <div class="argos-modal-topo">
+        <h2 id="modal-usuario-titulo">Novo usuário</h2>
+        <button class="argos-modal-x" data-fechar>×</button>
+      </div>
+      <form id="form-usuario" class="argos-form">
+        <label>Nome
+          <input type="text" id="usu-nome" placeholder="Nome da pessoa" />
+        </label>
+        <label>Login *
+          <input type="text" id="usu-login" required autocomplete="off" placeholder="Nome de usuário para entrar" />
+        </label>
+        <label>Senha *
+          <input type="text" id="usu-senha" required autocomplete="off" placeholder="Senha de acesso" />
+        </label>
+        <label>E-mail
+          <input type="email" id="usu-email" placeholder="email@exemplo.com" />
+        </label>
+        <label>Tipo de usuário
+          <select id="usu-tipo"><option value="">— Sem tipo —</option></select>
+        </label>
+        <label class="linha-check">
+          <input type="checkbox" id="usu-ativo" checked /> Usuário ativo (pode entrar)
+        </label>
+        <div class="argos-modal-acoes">
+          <button type="button" class="argos-btn ghost" data-fechar>Cancelar</button>
+          <button type="submit" class="argos-btn primary">Salvar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ============ MODAL: TIPO ============ -->
+  <div class="argos-modal-fundo" id="modal-tipo">
+    <div class="argos-modal">
+      <div class="argos-modal-topo">
+        <h2 id="modal-tipo-titulo">Novo tipo de usuário</h2>
+        <button class="argos-modal-x" data-fechar>×</button>
+      </div>
+      <form id="form-tipo" class="argos-form">
+        <label>Nome *
+          <input type="text" id="tipo-nome" required placeholder="Ex.: Engenheiro, Financeiro, Visitante…" />
+        </label>
+        <label>Descrição
+          <textarea id="tipo-descricao" rows="3" placeholder="Para que serve este tipo de usuário"></textarea>
+        </label>
+        <div class="argos-modal-acoes">
+          <button type="button" class="argos-btn ghost" data-fechar>Cancelar</button>
+          <button type="submit" class="argos-btn primary">Salvar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ============ MODAL: RECURSO ============ -->
+  <div class="argos-modal-fundo" id="modal-recurso">
+    <div class="argos-modal">
+      <div class="argos-modal-topo">
+        <h2 id="modal-recurso-titulo">Novo registro no catálogo</h2>
+        <button class="argos-modal-x" data-fechar>×</button>
+      </div>
+      <form id="form-recurso" class="argos-form">
+        <label>Nome *
+          <input type="text" id="rec-nome" required placeholder="Ex.: Gráfico de faturamento mensal" />
+        </label>
+        <label>Chave única *
+          <input type="text" id="rec-chave" required autocomplete="off" placeholder="ex.: grafico_faturamento" pattern="[a-z0-9_]+" title="Somente letras minúsculas, números e _" />
+        </label>
+        <label>Categoria *
+          <select id="rec-tipo" required>
+            <option value="funcionalidade">Funcionalidade (ação que o usuário executa)</option>
+            <option value="elemento">Elemento (card, tela, gráfico, item visual)</option>
+          </select>
+        </label>
+        <label>O que faz / o que mostra
+          <textarea id="rec-descricao" rows="3" placeholder="Descreva o que este recurso faz ou mostra e como afeta a experiência do usuário"></textarea>
+        </label>
+        <label>Páginas conectadas
+          <input type="text" id="rec-paginas" placeholder="Ex.: argos/obras.html, argos/index.html" />
+        </label>
+        <label class="linha-check">
+          <input type="checkbox" id="rec-padrao" /> Liberado por padrão (quando não há regra de tipo nem de usuário)
+        </label>
+        <div class="argos-modal-acoes">
+          <button type="button" class="argos-btn ghost" data-fechar>Cancelar</button>
+          <button type="submit" class="argos-btn primary">Salvar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ============ MODAL: PERMISSÕES (usuário ou tipo) ============ -->
+  <div class="argos-modal-fundo" id="modal-permissoes">
+    <div class="argos-modal grande">
+      <div class="argos-modal-topo">
+        <h2 id="modal-permissoes-titulo">Permissões</h2>
+        <button class="argos-modal-x" data-fechar>×</button>
+      </div>
+      <p class="dica" id="modal-permissoes-dica"></p>
+      <div id="permissoes-lista"></div>
+      <div class="argos-modal-acoes">
+        <button type="button" class="argos-btn ghost" data-fechar>Cancelar</button>
+        <button type="button" class="argos-btn primary" id="btn-salvar-permissoes">Salvar permissões</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="usuarios.js"></script>
+</body>
+</html>
