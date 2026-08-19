@@ -2,9 +2,9 @@
  * argos-guard.js — Proteção de acesso à área Argos
  * =================================================
  * DEVE ser o PRIMEIRO script no <head> de TODA página desta pasta.
- * Permite acesso a qualquer sessão de login atrelado ao projeto Argos
- * (incluindo o login ArgosGestao). Qualquer outra situação: redireciona
- * para o login do site.
+ * Só permite acesso à sessão do login ArgosGestao (identificado apenas
+ * pelo usuário, sem vínculo com projeto). Qualquer outra situação:
+ * redireciona para o login do site.
  *
  * Também é o dono do botão "Sair" (#btn-logout): script clássico, sem
  * dependência de CDN — o logout funciona mesmo se o esm.sh estiver fora.
@@ -13,9 +13,8 @@
     'use strict';
 
     var usuario = sessionStorage.getItem('usuario');
-    var projeto = sessionStorage.getItem('projeto');
 
-    var autorizado = (!!usuario && projeto === 'Argos');
+    var autorizado = (usuario === 'ArgosGestao');
 
     if (!autorizado) {
         document.documentElement.style.visibility = 'hidden';

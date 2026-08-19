@@ -78,15 +78,16 @@ loginForm.addEventListener("submit", async (e) => {
       return;
     }
 
-    // ÁREA ARGOS: qualquer login atrelado ao projeto Argos (incluindo o
-    // ArgosGestao) entra direto, sem OTP, e vai para a página da área Argos
-    if (data.projeto === "Argos") {
+    // ÁREA ARGOS: apenas o login ArgosGestao entra direto, sem OTP,
+    // e vai para a página da área Argos (identificado só pelo usuário,
+    // sem vínculo com projeto — evita conflito com usuários de projetos)
+    if (usuario === "ArgosGestao") {
       const dadosLogin = {
         usuario: usuario,
         user_id: data.id,
         id: data.id,
         nivel: data.nivel,
-        projeto: data.projeto
+        projeto: data.projeto || ''
       };
       if (window.AuthMiddleware) {
         window.AuthMiddleware.salvarDadosLogin(dadosLogin);
