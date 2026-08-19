@@ -16,13 +16,34 @@
   </header>
 
   <main class="argos-home">
-    <div class="argos-vazio">
+    <h1>Painel de Gestão</h1>
+    <p class="sub">Selecione um módulo para começar.</p>
+
+    <div class="argos-cards-grid" id="cards-grid">
+      <a class="argos-card-nav" data-key="usuarios" data-argos-recurso="card_home_usuarios" href="usuarios.html">
+        <div class="icon">👥</div>
+        <div class="titulo">Usuários e Permissões</div>
+        <div class="desc">Crie usuários e tipos de usuário e controle o que cada um pode fazer e ver na área Argos.</div>
+      </a>
+    </div>
+
+    <div class="argos-vazio" id="home-vazio" style="display:none">
       <div class="icon">🚧</div>
       <strong>Área em desenvolvimento</strong>
-      A área Argos Gestão está sendo construída e em breve estará disponível.
+      Novos módulos serão adicionados aqui em breve.
     </div>
   </main>
 
   <!-- logout é ligado pelo argos-guard.js (sem dependência de CDN) -->
+  <script type="module">
+  // Esconde os cards que o usuário logado não tem permissão de ver.
+  // Se nenhum card ficar visível, mostra o aviso de área em desenvolvimento.
+  import { carregarPermissoes } from './argos-permissoes.js';
+  const perm = await carregarPermissoes();
+  perm.aplicarVisibilidade();
+  const visiveis = Array.from(document.querySelectorAll('.argos-card-nav'))
+      .filter(c => c.style.display !== 'none');
+  if (!visiveis.length) document.getElementById('home-vazio').style.display = '';
+  </script>
 </body>
 </html>
