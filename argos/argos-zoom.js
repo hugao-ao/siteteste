@@ -20,32 +20,33 @@ const ZOOM_MIN = 0.02; // piso da miniatura (2% do tamanho normal)
 function ativarZoomPinca() {
     let z = 1;            // escala da miniatura (sempre <= 1)
     let larguraBase = null;
-    let alturaBase = null;
     let pinca = null;     // gesto custom (afastar) em andamento
     let decidir = null;   // gesto ainda sem direção definida (em tamanho normal)
 
     const distancia = (a, b) => Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
 
-    // Redução "fotográfica": transform:scale não recalcula layout nem fontes,
-    // então a página encolhe inteira, proporcional, em qualquer navegador
-    // (a propriedade CSS zoom re-diagramava e o iOS re-inflava os textos).
+    // Zoom out estilo computador: a área de diagramação CRESCE (1/z) e a
+    // página é desenhada menor (scale z) — tudo diminui na mesma proporção
+    // e a tela passa a mostrar MAIS conteúdo (mais colunas da tabela etc.).
+    // transform:scale não recalcula fontes, então nada infla fora de escala.
     function aplicarZoom() {
         const b = document.body;
         if (z >= 0.999) {
             z = 1;
             b.style.transform = '';
             b.style.transformOrigin = '';
+            b.style.width = '';
             b.style.height = '';
-            alturaBase = null;
             return;
         }
         if (larguraBase == null) larguraBase = document.documentElement.clientWidth;
-        if (alturaBase == null) alturaBase = b.scrollHeight;
+        b.style.width = Math.round(larguraBase / z) + 'px';
         b.style.transformOrigin = '0 0';
-        // centraliza a miniatura na horizontal
-        b.style.transform = 'translateX(' + (larguraBase * (1 - z) / 2) + 'px) scale(' + z + ')';
-        // encurta a área de rolagem junto com a miniatura
-        b.style.height = Math.max(1, Math.round(alturaBase * z)) + 'px';
+        b.style.transform = 'scale(' + z + ')';
+        // encurta a área de rolagem junto com o conteúdo reduzido
+        b.style.height = '';
+        const alturaLayout = b.scrollHeight;
+        b.style.height = Math.max(1, Math.round(alturaLayout * z)) + 'px';
     }
 
     function iniciarCustom(a, b) {
