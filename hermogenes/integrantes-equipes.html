@@ -6,6 +6,26 @@
   <title>Hermogenes Obras — Integrantes e Equipes</title>
   <script src="hermo-guard.js"></script>
   <link rel="stylesheet" href="hermo-style.css" />
+  <style>
+    .ie-equipes { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; }
+    .ie-equipe {
+        background: var(--hermo-surface); border: 1px solid var(--hermo-border);
+        border-left: 6px solid var(--hermo-primary); border-radius: 10px; padding: 14px;
+        display: flex; flex-direction: column; gap: 8px; font-size: .86rem;
+    }
+    .ie-equipe .nome { font-weight: 700; font-size: .95rem; }
+    .ie-equipe .meta { color: var(--hermo-text-dim); font-size: .8rem; }
+    .ie-equipe .membros { display: flex; flex-wrap: wrap; gap: 5px; }
+    .ie-equipe .membros .tag {
+        font-size: .72rem; background: var(--hermo-surface-2);
+        border: 1px solid var(--hermo-border); padding: 2px 8px; border-radius: 20px;
+    }
+    .ie-equipe .acoes { display: flex; gap: 8px; justify-content: flex-end; margin-top: auto; }
+    .badge-inativo {
+        font-size: .68rem; font-weight: 700; padding: 2px 8px; border-radius: 20px;
+        background: rgba(148,163,184,.18); color: var(--hermo-text-dim);
+    }
+  </style>
 </head>
 <body>
   <header class="hermo-topbar">
@@ -15,13 +35,189 @@
       <button class="hermo-btn danger" id="btn-logout">Sair</button>
     </div>
   </header>
+
   <main class="hermo-page">
-    <div class="hermo-placeholder">
-      <div class="icon">🧑‍🤝‍🧑</div>
-      <h2>Integrantes e Equipes</h2>
-      <p>Cadastro de pessoas, funções e formação de equipes.</p>
-      <p style="margin-top:14px;font-size:.85rem">Módulo em desenvolvimento — em breve disponível aqui.</p>
+    <section class="hermo-resumo" id="resumo"></section>
+
+    <!-- ===== INTEGRANTES ===== -->
+    <div class="hermo-page-head">
+      <h1>Integrantes</h1>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <input id="busca" type="text" placeholder="Buscar por nome, função…"
+               style="background:var(--hermo-bg);border:1px solid var(--hermo-border);border-radius:8px;color:var(--hermo-text);padding:9px 12px;min-width:200px" />
+        <select id="filtro-funcao" class="hermo-btn ghost" style="padding:8px 12px">
+          <option value="">Todas as funções</option>
+        </select>
+        <label class="hermo-btn ghost" style="display:flex;align-items:center;gap:6px;cursor:pointer">
+          <input type="checkbox" id="mostrar-inativos" style="accent-color:var(--hermo-primary)" /> mostrar inativos
+        </label>
+        <button class="hermo-btn primary" id="btn-novo-int">+ Novo integrante</button>
+      </div>
+    </div>
+
+    <div class="hermo-selbar" id="selbar">
+      <div class="info" id="selbar-info">0 selecionados</div>
+      <button class="hermo-btn small ghost" id="btn-sel-todos">Selecionar todos</button>
+      <button class="hermo-btn small ghost" id="btn-sel-limpar">Limpar</button>
+      <button class="hermo-btn small ghost" id="btn-sel-inativar">Inativar</button>
+      <button class="hermo-btn small ghost" id="btn-sel-ativar">Reativar</button>
+      <button class="hermo-btn small danger" id="btn-sel-excluir">Excluir</button>
+    </div>
+
+    <div class="hermo-tabela-wrap">
+      <table class="hermo-tabela">
+        <thead>
+          <tr>
+            <th style="width:34px"></th>
+            <th>Nome</th><th>Função</th><th>Vínculo</th><th>Valor</th><th>WhatsApp</th><th style="width:110px">Ações</th>
+          </tr>
+        </thead>
+        <tbody id="corpo-int"></tbody>
+      </table>
+    </div>
+    <div id="vazio-int" class="hermo-vazio" style="display:none;margin-top:16px">
+      <div class="big">🧑‍🤝‍🧑</div>Nenhum integrante encontrado.
+    </div>
+
+    <!-- ===== EQUIPES ===== -->
+    <div class="hermo-page-head" style="margin-top:34px">
+      <h1>Equipes</h1>
+      <button class="hermo-btn primary" id="btn-nova-eq">+ Nova equipe</button>
+    </div>
+    <div class="ie-equipes" id="lista-equipes"></div>
+    <div id="vazio-eq" class="hermo-vazio" style="display:none;margin-top:16px">
+      <div class="big">👷</div>Nenhuma equipe montada ainda.
+    </div>
+
+    <div class="hermo-page-head" style="margin-top:34px"><h1>Agenda e Produção</h1></div>
+    <div class="hermo-placeholder" style="padding:30px 20px">
+      <div class="icon">🗓️</div>
+      <p>A agenda por integrante/equipe e o painel <b>Produção × Custo</b> entram na próxima etapa,
+      alimentados pelas alocações do cronograma das Obras.</p>
     </div>
   </main>
+
+  <!-- MODAL INTEGRANTE -->
+  <div class="hermo-modal-overlay" id="mi-overlay">
+    <div class="hermo-modal compacto">
+      <div class="hermo-modal-head">
+        <h2 id="mi-titulo">Novo integrante</h2>
+        <button class="fechar" id="mi-fechar" title="Fechar">&times;</button>
+      </div>
+      <div class="hermo-modal-body">
+        <div class="hermo-form-row">
+          <div class="hermo-field">
+            <label>Nome <span class="req">*</span></label>
+            <input id="mi-nome" type="text" placeholder="Nome completo" />
+          </div>
+          <div class="hermo-field">
+            <label>Apelido</label>
+            <input id="mi-apelido" type="text" placeholder="como é chamado na obra" />
+          </div>
+        </div>
+        <div class="hermo-form-row">
+          <div class="hermo-field">
+            <label>Função</label>
+            <div class="hermo-inline-add">
+              <div class="hermo-field"><select id="mi-funcao"><option value="">— sem função —</option></select></div>
+              <button class="hermo-btn small" id="mi-btn-nova-funcao" title="Criar nova função">+ Nova</button>
+            </div>
+          </div>
+          <div class="hermo-field">
+            <label>WhatsApp</label>
+            <input id="mi-whatsapp" type="text" placeholder="(81) 9XXXX-XXXX" />
+          </div>
+        </div>
+        <div id="mi-nova-funcao-wrap" style="display:none">
+          <div class="hermo-inline-add">
+            <div class="hermo-field"><input id="mi-nova-funcao" type="text" placeholder="Nome da nova função" /></div>
+            <button class="hermo-btn small primary" id="mi-btn-salvar-funcao">Salvar função</button>
+          </div>
+        </div>
+        <div class="hermo-form-row">
+          <div class="hermo-field">
+            <label>CPF</label>
+            <input id="mi-cpf" type="text" inputmode="numeric" placeholder="xxx.xxx.xxx-xx" />
+          </div>
+          <div class="hermo-field">
+            <label>PIX</label>
+            <input id="mi-pix" type="text" placeholder="chave PIX (opcional)" />
+          </div>
+        </div>
+        <div class="hermo-form-row">
+          <div class="hermo-field">
+            <label>Vínculo <span class="req">*</span></label>
+            <select id="mi-vinculo">
+              <option value="diarista">Diarista</option>
+              <option value="mensalista">Mensalista</option>
+              <option value="empreiteiro">Empreiteiro</option>
+            </select>
+          </div>
+          <div class="hermo-field">
+            <label id="mi-valor-label">Valor da diária (R$)</label>
+            <input id="mi-valor" type="number" step="0.01" min="0" placeholder="0,00" />
+          </div>
+        </div>
+        <div class="hermo-field">
+          <label>Observações</label>
+          <textarea id="mi-obs" placeholder="anotações sobre o integrante…"></textarea>
+        </div>
+        <div class="hermo-field" id="mi-ativo-wrap" style="display:none">
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+            <input type="checkbox" id="mi-ativo" style="accent-color:var(--hermo-primary)" /> Integrante ativo
+          </label>
+        </div>
+      </div>
+      <div class="hermo-modal-foot">
+        <button class="hermo-btn ghost" id="mi-cancelar">Cancelar</button>
+        <button class="hermo-btn primary" id="mi-salvar">Salvar integrante</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL EQUIPE -->
+  <div class="hermo-modal-overlay" id="me-overlay">
+    <div class="hermo-modal compacto">
+      <div class="hermo-modal-head">
+        <h2 id="me-titulo">Nova equipe</h2>
+        <button class="fechar" id="me-fechar" title="Fechar">&times;</button>
+      </div>
+      <div class="hermo-modal-body">
+        <div class="hermo-form-row">
+          <div class="hermo-field">
+            <label>Nome da equipe <span class="req">*</span></label>
+            <input id="me-nome" type="text" placeholder="ex.: Equipe do João" />
+          </div>
+          <div class="hermo-field">
+            <label>Cor de identificação</label>
+            <input id="me-cor" type="color" value="#f59e0b" style="height:42px;padding:4px" />
+          </div>
+        </div>
+        <div class="hermo-field">
+          <label>Líder</label>
+          <select id="me-lider"><option value="">— sem líder definido —</option></select>
+        </div>
+        <div class="hermo-field">
+          <label>Membros</label>
+          <input id="me-busca-membro" type="text" placeholder="Buscar integrante…"
+                 style="background:var(--hermo-bg);border:1px solid var(--hermo-border);border-radius:8px;color:var(--hermo-text);padding:8px 11px;margin-bottom:6px" />
+          <div class="lista-check" id="me-membros" style="max-height:260px"></div>
+          <div style="font-size:.78rem;color:var(--hermo-text-dim);margin-top:4px">
+            Custo/dia estimado da equipe: <b id="me-custo-dia" style="color:var(--hermo-text)">R$ 0,00</b>
+          </div>
+        </div>
+        <div class="hermo-field">
+          <label>Observações</label>
+          <textarea id="me-obs"></textarea>
+        </div>
+      </div>
+      <div class="hermo-modal-foot">
+        <button class="hermo-btn ghost" id="me-cancelar">Cancelar</button>
+        <button class="hermo-btn primary" id="me-salvar">Salvar equipe</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="integrantes-equipes.js"></script>
 </body>
 </html>

@@ -6,6 +6,60 @@
   <title>Hermogenes Obras — Obras</title>
   <script src="hermo-guard.js"></script>
   <link rel="stylesheet" href="hermo-style.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <style>
+    .ob-secao {
+        border: 1px solid var(--hermo-border);
+        border-radius: 10px; padding: 12px;
+        display: flex; flex-direction: column; gap: 10px;
+    }
+    .ob-secao > h3 { font-size: .85rem; color: var(--hermo-primary); }
+    .ob-itens, .ob-crono, .ob-diario, .ob-props { display: flex; flex-direction: column; gap: 6px; }
+    .ob-item {
+        display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+        background: var(--hermo-surface-2); border: 1px solid var(--hermo-border);
+        border-radius: 8px; padding: 7px 10px; font-size: .82rem;
+    }
+    .ob-item .check { transform: scale(1.15); accent-color: var(--hermo-primary); cursor: pointer; }
+    .ob-item .txt { flex: 1; min-width: 160px; }
+    .ob-item .txt small { display: block; color: var(--hermo-text-dim); }
+    .ob-item .valor { font-weight: 700; white-space: nowrap; }
+    .ob-item input.perc {
+        width: 64px; background: var(--hermo-bg); border: 1px solid var(--hermo-border);
+        border-radius: 6px; color: var(--hermo-text); padding: 5px 7px; font-size: .82rem; text-align: right;
+    }
+    .ob-progresso { height: 10px; background: var(--hermo-bg); border-radius: 6px; overflow: hidden; border: 1px solid var(--hermo-border); }
+    .ob-progresso > div { height: 100%; background: linear-gradient(90deg, var(--hermo-primary), var(--hermo-success)); }
+    .ob-crono-item {
+        background: var(--hermo-surface-2); border: 1px solid var(--hermo-border);
+        border-radius: 8px; padding: 8px 10px; font-size: .8rem;
+        display: flex; flex-direction: column; gap: 6px;
+    }
+    .ob-crono-item .linha1 { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .ob-crono-item .nome-serv { font-weight: 700; flex: 1; min-width: 140px; }
+    .ob-crono-item input[type=date] {
+        background: var(--hermo-bg); border: 1px solid var(--hermo-border);
+        border-radius: 6px; color: var(--hermo-text); padding: 4px 7px; font-size: .76rem;
+    }
+    .ob-aloc-chips { display: flex; flex-wrap: wrap; gap: 5px; }
+    .ob-aloc-chips .chip {
+        display: inline-flex; align-items: center; gap: 5px;
+        font-size: .72rem; background: var(--hermo-bg);
+        border: 1px solid var(--hermo-border); border-left: 4px solid var(--hermo-primary);
+        padding: 3px 8px; border-radius: 6px;
+    }
+    .ob-aloc-chips .chip button {
+        background: none; border: none; color: var(--hermo-danger);
+        cursor: pointer; font-size: .8rem; padding: 0 2px; line-height: 1;
+    }
+    .ob-diario .entrada {
+        background: var(--hermo-surface-2); border-left: 3px solid var(--hermo-border);
+        border-radius: 6px; padding: 7px 10px; font-size: .8rem;
+    }
+    .ob-diario .entrada small { color: var(--hermo-text-dim); display: block; }
+    .prazo-estourado { color: var(--hermo-danger); font-weight: 700; }
+  </style>
 </head>
 <body>
   <header class="hermo-topbar">
@@ -15,13 +69,336 @@
       <button class="hermo-btn danger" id="btn-logout">Sair</button>
     </div>
   </header>
+
   <main class="hermo-page">
-    <div class="hermo-placeholder">
-      <div class="icon">🏗️</div>
-      <h2>Obras</h2>
-      <p>Gestão completa de cada obra, com acesso a visitas, propostas, medições, equipe e finanças da obra.</p>
-      <p style="margin-top:14px;font-size:.85rem">Módulo em desenvolvimento — em breve disponível aqui.</p>
+    <section class="hermo-resumo" id="resumo"></section>
+
+    <div class="hermo-page-head">
+      <h1>Obras</h1>
+      <button class="hermo-btn primary" id="btn-nova">+ Nova obra</button>
     </div>
+
+    <div class="hermo-selbar" id="selbar">
+      <div class="info" id="selbar-info">0 selecionadas</div>
+      <button class="hermo-btn small ghost" id="btn-sel-todas">Selecionar todas</button>
+      <button class="hermo-btn small ghost" id="btn-sel-limpar">Limpar seleção</button>
+      <button class="hermo-btn small ghost" id="btn-sel-ocultar">🙈 Ocultar do mapa</button>
+      <button class="hermo-btn small ghost" id="btn-sel-mostrar">👁 Mostrar no mapa</button>
+      <button class="hermo-btn small danger" id="btn-sel-excluir">Excluir selecionadas</button>
+    </div>
+
+    <div class="hermo-kanban" id="kanban"></div>
+
+    <div id="hermo-mapa"></div>
+    <div class="hermo-mapa-legenda" id="mapa-legenda"></div>
   </main>
+
+  <!-- MODAL DA OBRA -->
+  <div class="hermo-modal-overlay" id="ob-overlay">
+    <div class="hermo-modal">
+      <div class="hermo-modal-head">
+        <h2 id="ob-titulo-modal">Nova obra</h2>
+        <button class="fechar" id="ob-fechar" title="Fechar">&times;</button>
+      </div>
+      <div class="hermo-modal-body">
+        <div class="hermo-form-row">
+          <div class="hermo-field">
+            <label>Código <span class="req">*</span></label>
+            <div style="display:flex;gap:8px;align-items:center">
+              <span style="color:var(--hermo-text-dim);font-weight:700">OB-</span>
+              <input id="ob-numero" type="number" min="1" max="9999" placeholder="0001" style="flex:1" />
+              <span style="color:var(--hermo-text-dim);font-weight:700">/</span>
+              <input id="ob-ano" type="number" min="2000" max="2100" placeholder="2026" style="flex:1" />
+            </div>
+          </div>
+          <div class="hermo-field">
+            <label>Status <span class="req">*</span></label>
+            <select id="ob-status">
+              <option value="a_iniciar">A iniciar</option>
+              <option value="em_andamento">Em andamento</option>
+              <option value="pausada">Pausada</option>
+              <option value="concluida">Concluída</option>
+              <option value="entregue">Entregue</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="hermo-field">
+          <label>Nome da obra <span class="req">*</span></label>
+          <input id="ob-nome" type="text" placeholder="ex.: Reforma apto 402 — Ed. Maracatu" />
+        </div>
+
+        <div class="hermo-field">
+          <label>Cliente</label>
+          <div class="hermo-inline-add">
+            <div class="hermo-field">
+              <select id="ob-cliente"><option value="">— sem cliente —</option></select>
+            </div>
+            <button class="hermo-btn small" id="ob-btn-novo-cliente">+ Novo</button>
+            <button class="hermo-btn small ghost" id="ob-btn-editar-cliente">✎</button>
+          </div>
+        </div>
+
+        <div class="hermo-field">
+          <label>Endereço</label>
+          <div class="hermo-inline-add">
+            <div class="hermo-field">
+              <input id="ob-endereco" type="text" placeholder="Rua, número, bairro, cidade" />
+            </div>
+            <button class="hermo-btn small" id="ob-btn-mapa" title="Escolher o local no mapa">📍 Mapa</button>
+          </div>
+          <div id="ob-local-info" style="display:none;font-size:.78rem;color:var(--hermo-success)">✓ Local definido pelo mapa</div>
+        </div>
+
+        <div class="hermo-form-row">
+          <div class="hermo-field">
+            <label>Início previsto</label>
+            <input id="ob-inicio-prev" type="date" />
+          </div>
+          <div class="hermo-field">
+            <label>Prazo de conclusão</label>
+            <input id="ob-prazo" type="date" />
+          </div>
+        </div>
+        <div class="hermo-form-row">
+          <div class="hermo-field">
+            <label>Início real</label>
+            <input id="ob-inicio-real" type="date" />
+          </div>
+          <div class="hermo-field">
+            <label>Conclusão</label>
+            <input id="ob-conclusao" type="date" />
+          </div>
+        </div>
+
+        <!-- PROPOSTAS ASSOCIADAS -->
+        <div class="ob-secao">
+          <h3>📄 Propostas contratadas desta obra (aditivos = mais de uma)</h3>
+          <div class="ob-props" id="ob-props"></div>
+          <button class="hermo-btn small" id="ob-btn-propostas">🔗 Associar propostas contratadas</button>
+        </div>
+
+        <!-- ESCOPO -->
+        <div class="ob-secao">
+          <h3>🛠️ Escopo (serviços da obra)</h3>
+          <div class="hermo-selbar" id="ob-itens-selbar">
+            <div class="info" id="ob-itens-selinfo">0 marcados</div>
+            <button class="hermo-btn small ghost" id="ob-itens-sel-todos">Marcar todos</button>
+            <button class="hermo-btn small ghost" id="ob-itens-sel-limpar">Desmarcar</button>
+            <button class="hermo-btn small danger" id="ob-itens-sel-excluir">Excluir marcados</button>
+          </div>
+          <div class="ob-itens" id="ob-itens"></div>
+          <button class="hermo-btn small" id="ob-btn-add-servicos">+ Adicionar serviços</button>
+          <div style="display:flex;align-items:center;gap:10px">
+            <div class="ob-progresso" style="flex:1"><div id="ob-progresso-fill" style="width:0%"></div></div>
+            <b id="ob-progresso-txt" style="font-size:.85rem">0%</b>
+          </div>
+          <div class="pp-total-row" style="border:none;padding:0">Valor contratado: <b id="ob-total">R$ 0,00</b></div>
+        </div>
+
+        <!-- CRONOGRAMA -->
+        <div class="ob-secao">
+          <h3>📅 Cronograma e alocações</h3>
+          <div id="ob-crono-aviso" style="display:none;font-size:.78rem;color:var(--hermo-text-dim)">
+            💡 Salve a obra para liberar o cronograma (datas e alocações por serviço).
+          </div>
+          <div class="ob-crono" id="ob-crono"></div>
+        </div>
+
+        <!-- DIÁRIO -->
+        <div class="ob-secao">
+          <h3>📓 Diário de obra</h3>
+          <div id="ob-diario-aviso" style="display:none;font-size:.78rem;color:var(--hermo-text-dim)">
+            💡 Salve a obra para começar o diário.
+          </div>
+          <div class="ob-diario" id="ob-diario"></div>
+          <div class="hermo-inline-add" id="ob-diario-form">
+            <div class="hermo-field">
+              <input id="ob-diario-texto" type="text" placeholder="ex.: chegou o material da cerâmica; chuva parou a obra à tarde…" />
+            </div>
+            <button class="hermo-btn small primary" id="ob-btn-diario">+ Registrar</button>
+          </div>
+        </div>
+
+        <div class="hermo-field">
+          <label>Observações</label>
+          <textarea id="ob-obs"></textarea>
+        </div>
+
+        <div class="ob-secao" style="border-style:dashed">
+          <h3>🔜 Medições e Financeiro</h3>
+          <div style="font-size:.78rem;color:var(--hermo-text-dim)">
+            As medições desta obra e o resumo financeiro (contratado × medido × recebido × despesas × margem)
+            aparecem aqui quando os módulos Medições/NF e Faturamento entrarem — próximas etapas.
+          </div>
+        </div>
+      </div>
+      <div class="hermo-modal-foot">
+        <button class="hermo-btn ghost" id="ob-cancelar">Cancelar</button>
+        <button class="hermo-btn primary" id="ob-salvar">Salvar obra</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SUB-MODAL: ITEM DO ESCOPO -->
+  <div class="hermo-modal-overlay" id="oe-overlay">
+    <div class="hermo-modal compacto">
+      <div class="hermo-modal-head">
+        <h2 id="oe-titulo">Editar item do escopo</h2>
+        <button class="fechar" id="oe-fechar" title="Fechar">&times;</button>
+      </div>
+      <div class="hermo-modal-body">
+        <div class="hermo-field">
+          <label>Serviço <span class="req">*</span></label>
+          <select id="oe-servico"></select>
+        </div>
+        <div class="hermo-field">
+          <label>Local / ambiente</label>
+          <input id="oe-local" type="text" placeholder="ex.: cozinha, fachada" />
+        </div>
+        <div class="hermo-form-row tres">
+          <div class="hermo-field">
+            <label>Qtd <span class="req">*</span></label>
+            <input id="oe-qtd" type="number" step="any" min="0" />
+          </div>
+          <div class="hermo-field">
+            <label>Unidade</label>
+            <input id="oe-unidade" type="text" />
+          </div>
+          <div class="hermo-field">
+            <label>Preço unit. (R$)</label>
+            <input id="oe-preco" type="number" step="0.01" min="0" />
+          </div>
+        </div>
+        <div class="hermo-field">
+          <label>% executado</label>
+          <input id="oe-perc" type="number" step="1" min="0" max="100" />
+        </div>
+        <div class="sv-linha-total" style="font-size:.85rem;text-align:right;color:var(--hermo-text-dim)">
+          Total do item: <b id="oe-total-preview" style="color:var(--hermo-primary)">R$ 0,00</b>
+        </div>
+      </div>
+      <div class="hermo-modal-foot">
+        <button class="hermo-btn ghost" id="oe-cancelar">Cancelar</button>
+        <button class="hermo-btn primary" id="oe-confirmar">Confirmar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SUB-MODAL: ADICIONAR VÁRIOS SERVIÇOS -->
+  <div class="hermo-modal-overlay" id="os2-overlay">
+    <div class="hermo-modal compacto">
+      <div class="hermo-modal-head">
+        <h2>Adicionar serviços ao escopo</h2>
+        <button class="fechar" id="os2-fechar" title="Fechar">&times;</button>
+      </div>
+      <div class="hermo-modal-body">
+        <input id="os2-busca" type="text" placeholder="Buscar serviço…"
+               style="background:var(--hermo-bg);border:1px solid var(--hermo-border);border-radius:8px;color:var(--hermo-text);padding:9px 12px" />
+        <div style="display:flex;gap:8px">
+          <button class="hermo-btn small ghost" id="os2-todos">Marcar todos</button>
+          <button class="hermo-btn small ghost" id="os2-nenhum">Desmarcar todos</button>
+        </div>
+        <div class="lista-check" id="os2-lista"></div>
+      </div>
+      <div class="hermo-modal-foot">
+        <button class="hermo-btn ghost" id="os2-cancelar">Cancelar</button>
+        <button class="hermo-btn primary" id="os2-confirmar">Adicionar marcados</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SUB-MODAL: ASSOCIAR PROPOSTAS -->
+  <div class="hermo-modal-overlay" id="op-overlay">
+    <div class="hermo-modal compacto">
+      <div class="hermo-modal-head">
+        <h2>Associar propostas contratadas</h2>
+        <button class="fechar" id="op-fechar" title="Fechar">&times;</button>
+      </div>
+      <div class="hermo-modal-body">
+        <div style="font-size:.78rem;color:var(--hermo-text-dim)">
+          Só aparecem propostas com status <b>Contratada</b>. Ao associar uma nova, você escolhe se os itens dela entram no escopo.
+        </div>
+        <div class="lista-check" id="op-lista"></div>
+      </div>
+      <div class="hermo-modal-foot">
+        <button class="hermo-btn ghost" id="op-cancelar">Cancelar</button>
+        <button class="hermo-btn primary" id="op-confirmar">Confirmar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SUB-MODAL: ALOCAÇÃO -->
+  <div class="hermo-modal-overlay" id="oa-overlay">
+    <div class="hermo-modal compacto">
+      <div class="hermo-modal-head">
+        <h2 id="oa-titulo">Alocar pessoas ao serviço</h2>
+        <button class="fechar" id="oa-fechar" title="Fechar">&times;</button>
+      </div>
+      <div class="hermo-modal-body">
+        <div class="hermo-field">
+          <label>Equipe (marca todos os membros de uma vez)</label>
+          <select id="oa-equipe"><option value="">— escolher individualmente —</option></select>
+        </div>
+        <div class="hermo-field">
+          <label>Integrantes <span class="req">*</span></label>
+          <div class="lista-check" id="oa-integrantes" style="max-height:220px"></div>
+        </div>
+        <div class="hermo-form-row">
+          <div class="hermo-field">
+            <label>De <span class="req">*</span></label>
+            <input id="oa-inicio" type="date" />
+          </div>
+          <div class="hermo-field">
+            <label>Até <span class="req">*</span></label>
+            <input id="oa-fim" type="date" />
+          </div>
+        </div>
+        <div class="hermo-form-row">
+          <div class="hermo-field">
+            <label>Período do dia</label>
+            <select id="oa-turno">
+              <option value="dia">Dia inteiro (07h–17h)</option>
+              <option value="manha">Manhã (07h–12h)</option>
+              <option value="tarde">Tarde (13h–17h)</option>
+              <option value="horario">Horário específico…</option>
+            </select>
+          </div>
+          <div class="hermo-field" id="oa-horas-wrap" style="display:none">
+            <label>Das / até</label>
+            <div style="display:flex;gap:6px">
+              <input id="oa-hora-ini" type="time" style="flex:1" />
+              <input id="oa-hora-fim" type="time" style="flex:1" />
+            </div>
+          </div>
+        </div>
+        <div id="oa-conflitos" style="display:none;font-size:.78rem;color:var(--hermo-danger);background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.35);border-radius:8px;padding:8px 10px;white-space:pre-line"></div>
+      </div>
+      <div class="hermo-modal-foot">
+        <button class="hermo-btn ghost" id="oa-cancelar">Cancelar</button>
+        <button class="hermo-btn primary" id="oa-confirmar">Alocar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SUB-MODAL: ESCOLHER LOCAL NO MAPA -->
+  <div class="hermo-modal-overlay" id="om-overlay">
+    <div class="hermo-modal compacto">
+      <div class="hermo-modal-head">
+        <h2>Escolher local no mapa</h2>
+        <button class="fechar" id="om-fechar" title="Fechar">&times;</button>
+      </div>
+      <div class="hermo-modal-body">
+        <div style="font-size:.78rem;color:var(--hermo-text-dim)">Clique no mapa para posicionar o local da obra.</div>
+        <div id="om-mapa" style="width:100%;height:380px;border-radius:10px;border:1px solid var(--hermo-border)"></div>
+      </div>
+      <div class="hermo-modal-foot">
+        <button class="hermo-btn ghost" id="om-cancelar">Cancelar</button>
+        <button class="hermo-btn primary" id="om-confirmar" disabled>Usar este local</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="obras.js"></script>
 </body>
 </html>

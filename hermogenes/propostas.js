@@ -176,6 +176,7 @@ function cardMini(p) {
         <div class="kb-meta">👤 ${p.cliente ? esc(p.cliente.nome) : '<i>avulsa</i>'}</div>
         <div class="kb-meta">💰 <b>${fmtMoeda(p.valor_total)}</b>${nItens ? ` · 🛠️ ${nItens} item(ns)` : ''}${nVisitas ? ` · 🔗 ${nVisitas} visita(s)` : ''}${(ocultasMapa.has(p.id) || statusOcultosMapa.has(p.status)) ? ' · 🙈 oculta no mapa' : ''}</div>
         <div class="kb-acoes">
+            ${p.status === 'contratada' ? `<button class="hermo-btn small" data-gerar-obra="${p.id}" title="Gerar obra a partir desta proposta">🏗️</button>` : ''}
             <button class="hermo-btn small ghost" data-editar="${p.id}" title="Editar">✎</button>
             <button class="hermo-btn small danger" data-excluir="${p.id}" title="Excluir">🗑</button>
         </div>
@@ -193,6 +194,65 @@ function ligarEventosCards(container) {
         () => abrirModalProposta(propostas.find(p => p.id === b.dataset.editar))));
     container.querySelectorAll('[data-excluir]').forEach(b => b.addEventListener('click',
         () => excluirPropostas([b.dataset.excluir])));
+    container.querySelectorAll('[data-gerar-obra]').forEach(b => b.addEventListener('click',
+        () => gerarObraDaProposta(propostas.find(p => p.id === b.dataset.gerarObra))));
+}
+
+/** Cria uma OBRA a partir de uma proposta CONTRATADA: escopo, cliente e endereço herdados. */
+async function gerarObraDaProposta(p) {
+    if (!p) return;
+    // já existe obra desta proposta? avisa antes de duplicar o valor no kanban de obras
+    const { data: jaTem } = await sb.from('hermo_obra_propostas')
+        .select('obra:hermo_obras(numero, ano, nome)').eq('proposta_id', p.id);
+    let avisoDup = '';
+    if (jaTem && jaTem.length > 0) {
+        const o = jaTem[0].obra;
+        avisoDup = `\n\n⚠ ATENÇÃO: esta proposta JÁ está associada à obra ` +
+            `${o ? 'OB-' + String(o.numero).padStart(4, '0') + '/' + o.ano + ' — ' + o.nome : 'existente'}. ` +
+            `Gerar outra obra duplicaria o valor contratado.`;
+    }
+    if (!confirm(`Gerar uma obra a partir da proposta ${fmtCodigo(p)} — "${p.titulo}"?\n\n` +
+        `O escopo (${p.itens.length} item(ns)), o cliente e o endereço vêm pré-preenchidos, e a proposta fica associada à obra.` + avisoDup)) return;
+    try {
+        const anoAtual = new Date().getFullYear();
+        const { data: ult, error: eNum } = await sb.from('hermo_obras')
+            .select('numero').eq('ano', anoAtual).order('numero', { ascending: false }).limit(1);
+        if (eNum) throw eNum;
+        const numero = (ult && ult[0] ? ult[0].numero : 0) + 1;
+        const payload = {
+            id: null,
+            numero,
+            ano: anoAtual,
+            nome: p.titulo,
+            cliente_id: p.cliente_id || null,
+            status: 'a_iniciar',
+            endereco: p.endereco || null,
+            latitude: p.latitude,
+            longitude: p.longitude,
+            valor_contratado: num(p.valor_total),
+            observacoes: null,
+            itens: p.itens.map(i => ({
+                id: null,
+                servico_id: i.servico_id,
+                local_execucao: i.local_execucao || null,
+                quantidade: num(i.quantidade) || 1,
+                unidade: i.unidade || null,
+                preco_unit: num(i.preco_unit),
+                total: num(i.total),
+                perc_executado: 0,
+                inicio_previsto: null,
+                fim_previsto: null
+            })),
+            propostas: [p.id]
+        };
+        const { data: oid, error } = await sb.rpc('hermo_salvar_obra', { p: payload });
+        if (error) throw error;
+        toast(`Obra OB-${String(numero).padStart(4, '0')}/${anoAtual} criada — abrindo…`);
+        window.location.href = `obras.html?editar=${oid}`;
+    } catch (e) {
+        if ((e.code || '') === '23505') toast('O número da obra acabou de ser usado — tente novamente.', true);
+        else toast('Erro ao gerar obra: ' + e.message, true);
+    }
 }
 
 function atualizarCorpoColuna(status) {

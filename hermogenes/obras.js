@@ -1,0 +1,1196 @@
+// obras.js — Página de OBRAS: kanban com valores e % execução, mapa, escopo,
+// cronograma com ALOCAÇÕES (dia/turno/horário) e bloqueio de conflitos de agenda,
+// diário de obra e associação com propostas contratadas (aditivos).
+import {
+    sb, toast, fmtDataHora, ligarFecharPorBackdrop, esc, fmtMoeda
+} from './hermo-common.js';
+import { abrirModalCliente } from './hermo-cliente-modal.js';
+
+const $ = id => document.getElementById(id);
+const num = v => { const n = parseFloat(v); return isFinite(n) ? n : 0; };
+
+export const STATUS_OBRA = {
+    a_iniciar:    { label: 'A iniciar',    cor: '#eab308' },
+    em_andamento: { label: 'Em andamento', cor: '#3b82f6' },
+    pausada:      { label: 'Pausada',      cor: '#f97316' },
+    concluida:    { label: 'Concluída',    cor: '#22c55e' },
+    entregue:     { label: 'Entregue',     cor: '#a855f7' }
+};
+const KANBAN_ORDEM = ['a_iniciar', 'em_andamento', 'pausada', 'concluida', 'entregue'];
+const TURNO_LABEL = { dia: 'dia inteiro', manha: 'manhã', tarde: 'tarde', horario: 'horário' };
+
+// ---------- Estado ----------
+let obras = [];
+let integrantes = [];
+let equipes = [];
+let servicosCatalogo = [];
+let propostasContratadas = [];
+let selecionadas = new Set();
+let buscaColuna = {};
+let colunasOcultas = lerLS('hermo_obras_kanban_ocultas', {});
+let colunasLarguras = lerLS('hermo_obras_kanban_larguras', {});
+let larguraObserver = null;
+let ocultasMapa = new Set(lerLS('hermo_obras_mapa_ocultas', []));
+let statusOcultosMapa = new Set(lerLS('hermo_obras_mapa_status_ocultos', []));
+let mapa = null;
+let marcadores = [];
+
+// draft do modal
+let obraEditando = null;
+let itensDraft = [];          // {id?, sel, servico_id, codigo, descricao, local_execucao, quantidade, unidade, preco_unit, total, perc_executado, inicio_previsto, fim_previsto, alocacoes:[]}
+let propostasDraft = [];      // ids
+let diarioEntradas = [];
+let localEscolhido = null;
+let itemEditIndex = null;
+let os2Marcados = new Set();
+let alocItemIndex = null;     // índice em itensDraft do serviço sendo alocado
+let oaMarcados = new Set();
+
+// mini-mapa
+let omMapa = null, omMarcador = null, omPendente = null;
+
+function lerLS(chave, padrao) {
+    try { return JSON.parse(localStorage.getItem(chave)) || padrao; }
+    catch (e) { return padrao; }
+}
+
+const fmtCodigo = o => `OB-${String(o.numero).padStart(4, '0')}/${o.ano}`;
+// data LOCAL (toISOString seria UTC e viraria "amanhã" à noite no fuso de Recife)
+const hoje = () => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
+
+// ============================================================
+// CARREGAMENTO
+// ============================================================
+async function carregarTudo() {
+    const [o, i, e, s, p] = await Promise.all([
+        sb.from('hermo_obras')
+            .select(`*, cliente:hermo_clientes(id, nome, whatsapp),
+                itens:hermo_obra_servicos(*, servico:hermo_servicos(id, codigo, descricao, unidade),
+                    alocacoes:hermo_alocacoes(*, integrante:hermo_integrantes(id, nome, apelido), equipe:hermo_equipes(id, nome, cor))),
+                propostas:hermo_obra_propostas(proposta_id)`)
+            .order('ano', { ascending: false }).order('numero', { ascending: false }),
+        sb.from('hermo_integrantes').select('*, funcao:hermo_funcoes(nome)').order('nome'),
+        sb.from('hermo_equipes').select('*, membros:hermo_equipe_membros(integrante_id)').order('nome'),
+        sb.from('hermo_servicos').select('*, precos:hermo_servico_precos(preco_final)').order('codigo'),
+        sb.from('hermo_propostas')
+            .select('id, numero, ano, titulo, valor_total, cliente_id, endereco, latitude, longitude, cliente:hermo_clientes(nome), itens:hermo_proposta_itens(*, servico:hermo_servicos(id, codigo, descricao, unidade))')
+            .eq('status', 'contratada')
+    ]);
+    if (o.error) { toast('Erro ao carregar obras: ' + o.error.message, true); return; }
+    if (i.error || e.error || s.error || p.error) {
+        toast('Erro ao carregar dados de apoio: ' + (i.error || e.error || s.error || p.error).message, true);
+    }
+    obras = (o.data || []).map(x => ({
+        ...x,
+        itens: (x.itens || []).sort((a, b) => a.ordem - b.ordem),
+        propostaIds: (x.propostas || []).map(op => op.proposta_id)
+    }));
+    integrantes = i.data || [];
+    equipes = (e.data || []).map(q => ({ ...q, membroIds: (q.membros || []).map(m => m.integrante_id) }));
+    servicosCatalogo = (s.data || []).map(x => ({
+        ...x, precos: Array.isArray(x.precos) ? x.precos[0] || null : x.precos
+    }));
+    propostasContratadas = p.data || [];
+    ocultasMapa = new Set([...ocultasMapa].filter(id => obras.some(x => x.id === id)));
+    selecionadas.clear();
+    renderResumo();
+    renderLista();
+    renderSelbar();
+    atualizarMapa();
+}
+
+function progressoObra(o) {
+    const totalV = o.itens.reduce((t, it) => t + num(it.total), 0);
+    if (totalV === 0) return 0;
+    const exec = o.itens.reduce((t, it) => t + num(it.total) * num(it.perc_executado) / 100, 0);
+    return Math.round(exec / totalV * 100);
+}
+
+function prazoEstourado(o) {
+    return o.prazo && o.prazo < hoje() && !['concluida', 'entregue'].includes(o.status);
+}
+
+// ============================================================
+// RESUMO
+// ============================================================
+function renderResumo() {
+    const porStatus = {};
+    KANBAN_ORDEM.forEach(st => porStatus[st] = { n: 0, valor: 0 });
+    obras.forEach(o => {
+        if (porStatus[o.status]) { porStatus[o.status].n++; porStatus[o.status].valor += num(o.valor_contratado); }
+    });
+    const andamento = obras.filter(o => o.status === 'em_andamento');
+    const progMedio = andamento.length
+        ? Math.round(andamento.reduce((t, o) => t + progressoObra(o), 0) / andamento.length) : 0;
+    const estouradas = obras.filter(prazoEstourado);
+    let destaque;
+    if (estouradas.length > 0) {
+        destaque = `⚠️ <b>${estouradas.length}</b> obra(s) com prazo estourado: ${estouradas.slice(0, 3).map(o => esc(o.nome)).join(', ')}${estouradas.length > 3 ? '…' : ''}`;
+    } else if (andamento.length > 0) {
+        destaque = `🏗️ ${andamento.length} obra(s) em andamento — execução média de <b>${progMedio}%</b>.`;
+    } else {
+        destaque = `✅ Nenhuma obra em andamento no momento.`;
+    }
+    $('resumo').innerHTML = KANBAN_ORDEM.map(st => `
+        <div class="stat" style="border-left-color:${STATUS_OBRA[st].cor}">
+            <div class="num">${porStatus[st].n} · ${fmtMoeda(porStatus[st].valor)}</div>
+            <div class="lbl">${STATUS_OBRA[st].label}</div>
+        </div>`).join('') +
+        `<div class="stat destaque"><div class="num">${destaque}</div></div>`;
+}
+
+// ============================================================
+// KANBAN
+// ============================================================
+function obrasDaColuna(status) {
+    const q = (buscaColuna[status] || '').trim().toLowerCase();
+    let lista = obras.filter(o => o.status === status);
+    if (q) {
+        lista = lista.filter(o =>
+            fmtCodigo(o).toLowerCase().includes(q) ||
+            (o.nome || '').toLowerCase().includes(q) ||
+            (o.cliente?.nome || '').toLowerCase().includes(q) ||
+            (o.endereco || '').toLowerCase().includes(q));
+    }
+    return lista;
+}
+
+function cardMini(o) {
+    const prog = progressoObra(o);
+    const estourou = prazoEstourado(o);
+    return `
+    <div class="kb-card ${selecionadas.has(o.id) ? 'selecionado' : ''}" data-id="${o.id}">
+        <div class="kb-l1">
+            <input type="checkbox" class="check" data-check="${o.id}" ${selecionadas.has(o.id) ? 'checked' : ''} />
+            <span class="kb-end">${fmtCodigo(o)} — ${esc(o.nome)}</span>
+        </div>
+        <div class="kb-meta">👤 ${o.cliente ? esc(o.cliente.nome) : '<i>sem cliente</i>'}</div>
+        <div class="kb-meta">💰 <b>${fmtMoeda(o.valor_contratado)}</b> · 🛠️ ${o.itens.length} serviço(s)${o.prazo ? ` · <span class="${estourou ? 'prazo-estourado' : ''}">📅 ${o.prazo.split('-').reverse().join('/')}</span>` : ''}${(ocultasMapa.has(o.id) || statusOcultosMapa.has(o.status)) ? ' · 🙈' : ''}</div>
+        <div style="display:flex;align-items:center;gap:6px">
+            <div class="ob-progresso" style="flex:1"><div style="width:${prog}%"></div></div>
+            <span style="font-size:.72rem;font-weight:700">${prog}%</span>
+        </div>
+        <div class="kb-acoes">
+            <button class="hermo-btn small ghost" data-editar="${o.id}" title="Abrir obra">✎</button>
+            <button class="hermo-btn small danger" data-excluir="${o.id}" title="Excluir">🗑</button>
+        </div>
+    </div>`;
+}
+
+function ligarEventosCards(container) {
+    container.querySelectorAll('[data-check]').forEach(ch => ch.addEventListener('change', e => {
+        const id = e.target.dataset.check;
+        if (e.target.checked) selecionadas.add(id); else selecionadas.delete(id);
+        e.target.closest('.kb-card').classList.toggle('selecionado', e.target.checked);
+        renderSelbar();
+    }));
+    container.querySelectorAll('[data-editar]').forEach(b => b.addEventListener('click',
+        () => abrirModalObra(obras.find(o => o.id === b.dataset.editar))));
+    container.querySelectorAll('[data-excluir]').forEach(b => b.addEventListener('click',
+        () => excluirObras([b.dataset.excluir])));
+}
+
+function atualizarCorpoColuna(status) {
+    const corpo = document.querySelector(`.kb-col[data-col="${status}"] .kb-corpo`);
+    if (!corpo) return;
+    const lista = obrasDaColuna(status);
+    corpo.innerHTML = lista.length ? lista.map(cardMini).join('')
+        : `<div class="kb-vazia">${(buscaColuna[status] || '').trim() ? 'nada encontrado' : 'nenhuma obra aqui'}</div>`;
+    ligarEventosCards(corpo);
+}
+
+function renderLista() {
+    const board = $('kanban');
+    board.innerHTML = KANBAN_ORDEM.map(st => {
+        const info = STATUS_OBRA[st];
+        const doStatus = obras.filter(o => o.status === st);
+        const valor = doStatus.reduce((t, o) => t + num(o.valor_contratado), 0);
+        const oculta = !!colunasOcultas[st];
+        const largura = (!oculta && colunasLarguras[st]) ? `width:${colunasLarguras[st]}px;` : '';
+        return `
+        <div class="kb-col ${oculta ? 'colapsada' : ''}" data-col="${st}" style="${largura}--cor-col:${info.cor}"
+             ${oculta ? `title="Clique para mostrar a lista ${info.label}"` : ''}>
+            <div class="kb-head">
+                <span class="dot" style="background:${info.cor}"></span>
+                <span class="kb-titulo">${info.label}</span>
+                <span class="kb-count" title="${fmtMoeda(valor)}">${doStatus.length}</span>
+                <button class="kb-toggle" data-toggle="${st}">${oculta ? '⊞' : '—'}</button>
+            </div>
+            ${oculta ? '' : `<div style="font-size:.72rem;color:var(--hermo-text-dim);text-align:right">${fmtMoeda(valor)}</div>`}
+            <input class="kb-busca" data-busca="${st}" type="text" placeholder="Buscar nesta lista…" value="${esc(buscaColuna[st] || '')}" />
+            <div class="kb-corpo"></div>
+        </div>`;
+    }).join('');
+
+    KANBAN_ORDEM.forEach(atualizarCorpoColuna);
+
+    board.querySelectorAll('[data-busca]').forEach(inp => inp.addEventListener('input', e => {
+        buscaColuna[e.target.dataset.busca] = e.target.value;
+        atualizarCorpoColuna(e.target.dataset.busca);
+    }));
+    const alternarColuna = st => {
+        colunasOcultas[st] = !colunasOcultas[st];
+        try { localStorage.setItem('hermo_obras_kanban_ocultas', JSON.stringify(colunasOcultas)); } catch (e) {}
+        renderLista();
+    };
+    board.querySelectorAll('[data-toggle]').forEach(b => b.addEventListener('click', e => {
+        e.stopPropagation();
+        alternarColuna(b.dataset.toggle);
+    }));
+    board.querySelectorAll('.kb-col.colapsada').forEach(col =>
+        col.addEventListener('click', () => alternarColuna(col.dataset.col)));
+
+    if (larguraObserver) larguraObserver.disconnect();
+    larguraObserver = new ResizeObserver(() => {
+        clearTimeout(renderLista._t);
+        renderLista._t = setTimeout(salvarLargurasVisiveis, 400);
+    });
+    board.querySelectorAll('.kb-col:not(.colapsada)').forEach(c => larguraObserver.observe(c));
+}
+
+function salvarLargurasVisiveis() {
+    document.querySelectorAll('.kb-col:not(.colapsada)').forEach(c => {
+        const st = c.dataset.col;
+        const w = Math.round(c.getBoundingClientRect().width);
+        if (st && w > 60) colunasLarguras[st] = w;
+    });
+    try { localStorage.setItem('hermo_obras_kanban_larguras', JSON.stringify(colunasLarguras)); } catch (e) {}
+}
+
+// ============================================================
+// SELEÇÃO / EXCLUSÃO / MAPA
+// ============================================================
+function renderSelbar() {
+    $('selbar').classList.toggle('ativa', selecionadas.size > 0);
+    $('selbar-info').textContent = `${selecionadas.size} selecionada(s)`;
+}
+
+function salvarOcultasMapa() {
+    try {
+        localStorage.setItem('hermo_obras_mapa_ocultas', JSON.stringify([...ocultasMapa]));
+        localStorage.setItem('hermo_obras_mapa_status_ocultos', JSON.stringify([...statusOcultosMapa]));
+    } catch (e) {}
+}
+
+async function excluirObras(ids) {
+    const n = ids.length;
+    if (!confirm((n === 1 ? 'Excluir esta obra?' : `Excluir ${n} obras?`) +
+        '\n\n⚠ O escopo, o cronograma (alocações) e o diário dela(s) serão removidos. As propostas continuam existindo.')) return;
+    const { error } = await sb.from('hermo_obras').delete().in('id', ids);
+    if (error) { toast('Erro ao excluir: ' + error.message, true); return; }
+    toast(n === 1 ? 'Obra excluída.' : `${n} obras excluídas.`);
+    ids.forEach(id => selecionadas.delete(id));
+    await carregarTudo();
+}
+
+function iniciarMapa() {
+    if (typeof L === 'undefined') return;
+    mapa = L.map('hermo-mapa').setView([-8.0476, -34.877], 11);
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
+        subdomains: 'abcd', maxZoom: 19
+    }).addTo(mapa);
+}
+
+function renderLegenda() {
+    const el = $('mapa-legenda');
+    el.innerHTML = Object.entries(STATUS_OBRA).map(([k, v]) =>
+        `<span class="leg leg-toggle ${statusOcultosMapa.has(k) ? 'oculto' : ''}" data-leg="${k}">
+            <span class="dot" style="background:${v.cor}"></span>${v.label}</span>`).join('') +
+        (ocultasMapa.size > 0
+            ? `<span class="leg"><button class="hermo-btn small ghost" id="btn-mostrar-ocultas">👁 Mostrar ${ocultasMapa.size} obra(s) oculta(s)</button></span>`
+            : '');
+    el.querySelectorAll('[data-leg]').forEach(l => l.addEventListener('click', () => {
+        const st = l.dataset.leg;
+        if (statusOcultosMapa.has(st)) statusOcultosMapa.delete(st);
+        else statusOcultosMapa.add(st);
+        salvarOcultasMapa();
+        atualizarMapa();
+        renderLista();
+    }));
+    const btn = el.querySelector('#btn-mostrar-ocultas');
+    if (btn) btn.addEventListener('click', () => {
+        ocultasMapa.clear();
+        salvarOcultasMapa();
+        atualizarMapa();
+        renderLista();
+    });
+}
+
+function atualizarMapa() {
+    if (!mapa) return;
+    renderLegenda();
+    marcadores.forEach(m => mapa.removeLayer(m));
+    marcadores = [];
+    const bounds = [];
+    obras
+        .filter(o => o.latitude != null && o.longitude != null
+            && !ocultasMapa.has(o.id) && !statusOcultosMapa.has(o.status))
+        .forEach(o => {
+            const st = STATUS_OBRA[o.status] || { cor: '#94a3b8', label: o.status };
+            const m = L.circleMarker([o.latitude, o.longitude], {
+                radius: 9, color: '#0f172a', weight: 2, fillColor: st.cor, fillOpacity: 1
+            }).addTo(mapa);
+            m.bindPopup(`<div style="font-size:.85rem;max-width:240px">
+                <b>${fmtCodigo(o)} — ${esc(o.nome)}</b><br>
+                ${st.label} · ${progressoObra(o)}% executado<br>
+                ${fmtMoeda(o.valor_contratado)}<br>
+                ${o.cliente ? 'Cliente: ' + esc(o.cliente.nome) + '<br>' : ''}
+                <a href="agenda-logistica.html" style="color:#b45309">🧭 Rotear na Agenda</a>
+            </div>`);
+            marcadores.push(m);
+            bounds.push([o.latitude, o.longitude]);
+        });
+    if (bounds.length === 1) mapa.setView(bounds[0], 15);
+    else if (bounds.length > 1) mapa.fitBounds(bounds, { padding: [40, 40] });
+}
+
+// ============================================================
+// MODAL DA OBRA
+// ============================================================
+async function carregarClientesSelect(selecionarId = null) {
+    const { data, error } = await sb.from('hermo_clientes').select('id, nome, whatsapp').order('nome');
+    if (error) { toast('Erro ao carregar clientes: ' + error.message, true); return; }
+    const sel = $('ob-cliente');
+    sel.innerHTML = '<option value="">— sem cliente —</option>';
+    (data || []).forEach(c => {
+        const o = document.createElement('option');
+        o.value = c.id;
+        o.textContent = `${c.nome} (${c.whatsapp})`;
+        sel.appendChild(o);
+    });
+    if (selecionarId) sel.value = selecionarId;
+}
+
+function proximoNumero(ano) {
+    const doAno = obras.filter(o => o.ano === ano);
+    return doAno.length ? Math.max(...doAno.map(o => o.numero)) + 1 : 1;
+}
+
+async function abrirModalObra(obra) {
+    obraEditando = obra || null;
+    itensDraft = (obra?.itens || []).map(it => ({
+        id: it.id,
+        sel: false,
+        servico_id: it.servico_id,
+        codigo: it.servico?.codigo || '?',
+        descricao: it.servico?.descricao || '?',
+        local_execucao: it.local_execucao || '',
+        quantidade: num(it.quantidade) || 1,
+        unidade: it.unidade || '',
+        preco_unit: num(it.preco_unit),
+        total: num(it.total),
+        perc_executado: num(it.perc_executado),
+        inicio_previsto: it.inicio_previsto || '',
+        fim_previsto: it.fim_previsto || '',
+        alocacoes: it.alocacoes || []
+    }));
+    propostasDraft = [...(obra?.propostaIds || [])];
+    localEscolhido = null;
+    $('ob-local-info').style.display = 'none';
+
+    $('ob-titulo-modal').textContent = obra ? `${fmtCodigo(obra)} — ${obra.nome}` : 'Nova obra';
+    const anoAtual = new Date().getFullYear();
+    $('ob-numero').value = obra ? obra.numero : proximoNumero(anoAtual);
+    $('ob-ano').value = obra ? obra.ano : anoAtual;
+    $('ob-nome').value = obra?.nome || '';
+    $('ob-status').value = obra?.status || 'a_iniciar';
+    $('ob-endereco').value = obra?.endereco || '';
+    $('ob-inicio-prev').value = obra?.inicio_previsto || '';
+    $('ob-prazo').value = obra?.prazo || '';
+    $('ob-inicio-real').value = obra?.inicio_real || '';
+    $('ob-conclusao').value = obra?.conclusao || '';
+    $('ob-obs').value = obra?.observacoes || '';
+
+    await carregarClientesSelect(obra?.cliente_id || null);
+    renderPropostasDraft();
+    renderItensDraft();
+    renderCronograma();
+    await carregarDiario();
+
+    $('ob-overlay').classList.add('aberto');
+    $('ob-nome').focus();
+}
+
+function fecharModalObra() {
+    $('ob-overlay').classList.remove('aberto');
+    obraEditando = null;
+    itensDraft = [];
+    propostasDraft = [];
+    diarioEntradas = [];
+    localEscolhido = null;
+}
+
+// ---------- propostas associadas ----------
+function renderPropostasDraft() {
+    const cont = $('ob-props');
+    if (propostasDraft.length === 0) {
+        cont.innerHTML = '<div style="font-size:.78rem;color:var(--hermo-text-dim)">Nenhuma proposta associada — obra avulsa.</div>';
+        return;
+    }
+    cont.innerHTML = propostasDraft.map(id => {
+        const p = propostasContratadas.find(x => x.id === id);
+        if (!p) return `<div class="ob-item"><div class="txt">proposta não encontrada (pode ter saído de "contratada")</div></div>`;
+        return `
+        <div class="ob-item">
+            <div class="txt"><b>${String(p.numero).padStart(4, '0')}/${p.ano}</b> — ${esc(p.titulo)}
+                <small>${p.cliente?.nome ? esc(p.cliente.nome) + ' · ' : ''}${fmtMoeda(p.valor_total)} · ${(p.itens || []).length} item(ns)</small>
+            </div>
+            <a class="hermo-btn small ghost" href="propostas.html?editar=${p.id}" target="_blank" rel="noopener" title="Abrir proposta">↗</a>
+        </div>`;
+    }).join('');
+}
+
+function abrirAssociarPropostas() {
+    $('op-lista').innerHTML = propostasContratadas.length === 0
+        ? '<div style="font-size:.8rem;color:var(--hermo-text-dim)">Nenhuma proposta contratada disponível.</div>'
+        : propostasContratadas.map(p => `
+            <label class="lc-item">
+                <input type="checkbox" data-op="${p.id}" ${propostasDraft.includes(p.id) ? 'checked' : ''} />
+                <div class="txt"><b>${String(p.numero).padStart(4, '0')}/${p.ano}</b> — ${esc(p.titulo)}
+                    <small>${p.cliente?.nome ? esc(p.cliente.nome) + ' · ' : ''}${fmtMoeda(p.valor_total)} · ${(p.itens || []).length} item(ns)</small>
+                </div>
+            </label>`).join('');
+    $('op-overlay').classList.add('aberto');
+}
+
+function confirmarAssociarPropostas() {
+    const marcadas = [...document.querySelectorAll('[data-op]:checked')].map(c => c.dataset.op);
+    const novas = marcadas.filter(id => !propostasDraft.includes(id));
+    // preserva associações a propostas que saíram de "contratada" (não aparecem no modal)
+    const listadas = propostasContratadas.map(p => p.id);
+    propostasDraft = [...marcadas, ...propostasDraft.filter(id => !listadas.includes(id))];
+    $('op-overlay').classList.remove('aberto');
+    renderPropostasDraft();
+
+    // importar itens das propostas recém-associadas para o escopo?
+    const itensNovos = novas.flatMap(id => (propostasContratadas.find(p => p.id === id)?.itens || []));
+    if (itensNovos.length > 0 &&
+        confirm(`Importar ${itensNovos.length} item(ns) da(s) proposta(s) associada(s) para o escopo da obra?\n(Serviços repetidos entram como itens novos — aditivos.)`)) {
+        itensNovos.forEach(i => {
+            itensDraft.push({
+                id: null, sel: false,
+                servico_id: i.servico_id,
+                codigo: i.servico?.codigo || '?',
+                descricao: i.servico?.descricao || '?',
+                local_execucao: i.local_execucao || '',
+                quantidade: num(i.quantidade) || 1,
+                unidade: i.unidade || i.servico?.unidade || '',
+                preco_unit: num(i.preco_unit),
+                total: num(i.total),
+                perc_executado: 0,
+                inicio_previsto: '', fim_previsto: '',
+                alocacoes: []
+            });
+        });
+        renderItensDraft();
+        renderCronograma();
+        toast(`${itensNovos.length} item(ns) adicionados ao escopo.`);
+    }
+
+    // cliente/endereço herdados quando vazios
+    const primeira = novas.map(id => propostasContratadas.find(p => p.id === id)).find(Boolean);
+    if (primeira) {
+        if (!$('ob-cliente').value && primeira.cliente_id) carregarClientesSelect(primeira.cliente_id);
+        if (!$('ob-endereco').value.trim() && primeira.endereco) {
+            $('ob-endereco').value = primeira.endereco;
+            if (primeira.latitude != null) {
+                localEscolhido = { lat: primeira.latitude, lng: primeira.longitude };
+                $('ob-local-info').style.display = '';
+            }
+        }
+        if (!$('ob-nome').value.trim()) $('ob-nome').value = primeira.titulo;
+    }
+}
+
+// ---------- escopo ----------
+function totalObraDraft() {
+    return itensDraft.reduce((t, i) => t + num(i.total), 0);
+}
+
+function renderItensDraft() {
+    const cont = $('ob-itens');
+    if (itensDraft.length === 0) {
+        cont.innerHTML = '<div style="font-size:.8rem;color:var(--hermo-text-dim)">Nenhum serviço no escopo — associe uma proposta ou use "+ Adicionar serviços".</div>';
+    } else {
+        cont.innerHTML = itensDraft.map((i, idx) => `
+        <div class="ob-item">
+            <input type="checkbox" class="check" data-isel="${idx}" ${i.sel ? 'checked' : ''} />
+            <div class="txt">
+                <b>${esc(i.codigo)}</b> — ${esc(i.descricao)}
+                <small>${i.local_execucao ? '📍 ' + esc(i.local_execucao) + ' · ' : ''}${i.quantidade} ${esc(i.unidade || 'un')} × ${fmtMoeda(i.preco_unit)}</small>
+            </div>
+            <span class="valor">${fmtMoeda(i.total)}</span>
+            <label style="font-size:.72rem;color:var(--hermo-text-dim)">%</label>
+            <input class="perc" type="number" min="0" max="100" step="1" value="${i.perc_executado}" data-iperc="${idx}" />
+            <button class="hermo-btn small ghost" data-ieditar="${idx}">✎</button>
+            <button class="hermo-btn small danger" data-iremover="${idx}">🗑</button>
+        </div>`).join('');
+    }
+    atualizarProgressoETotal();
+    atualizarItensSelbar();
+
+    cont.querySelectorAll('[data-isel]').forEach(ch => ch.addEventListener('change', e => {
+        itensDraft[parseInt(e.target.dataset.isel)].sel = e.target.checked;
+        atualizarItensSelbar();
+    }));
+    cont.querySelectorAll('[data-iperc]').forEach(inp => inp.addEventListener('change', e => {
+        const v = Math.max(0, Math.min(100, num(e.target.value)));
+        itensDraft[parseInt(e.target.dataset.iperc)].perc_executado = v;
+        e.target.value = v;
+        atualizarProgressoETotal();
+    }));
+    cont.querySelectorAll('[data-ieditar]').forEach(b => b.addEventListener('click',
+        () => abrirItemModal(parseInt(b.dataset.ieditar))));
+    cont.querySelectorAll('[data-iremover]').forEach(b => b.addEventListener('click', () => {
+        const i = itensDraft[parseInt(b.dataset.iremover)];
+        if ((i.alocacoes || []).length > 0 &&
+            !confirm(`Este serviço tem ${i.alocacoes.length} alocação(ões) no cronograma — remover mesmo assim?\n(As alocações serão apagadas ao salvar.)`)) return;
+        itensDraft.splice(parseInt(b.dataset.iremover), 1);
+        renderItensDraft();
+        renderCronograma();
+    }));
+}
+
+function atualizarProgressoETotal() {
+    const totalV = totalObraDraft();
+    const exec = itensDraft.reduce((t, i) => t + num(i.total) * num(i.perc_executado) / 100, 0);
+    const prog = totalV > 0 ? Math.round(exec / totalV * 100) : 0;
+    $('ob-progresso-fill').style.width = prog + '%';
+    $('ob-progresso-txt').textContent = prog + '%';
+    $('ob-total').textContent = fmtMoeda(totalV);
+}
+
+function atualizarItensSelbar() {
+    const n = itensDraft.filter(i => i.sel).length;
+    $('ob-itens-selbar').classList.toggle('ativa', n > 0);
+    $('ob-itens-selinfo').textContent = `${n} marcado(s)`;
+}
+
+// ---------- item modal (oe) ----------
+function abrirItemModal(editIndex) {
+    itemEditIndex = editIndex;
+    const item = editIndex != null ? itensDraft[editIndex] : null;
+    $('oe-titulo').textContent = item ? 'Editar item do escopo' : 'Adicionar item';
+    const sel = $('oe-servico');
+    sel.innerHTML = '<option value="">— selecione —</option>';
+    servicosCatalogo.forEach(s => {
+        const o = document.createElement('option');
+        o.value = s.id;
+        o.textContent = `${s.codigo} — ${s.descricao}`;
+        sel.appendChild(o);
+    });
+    if (item) sel.value = item.servico_id;
+    $('oe-local').value = item?.local_execucao || '';
+    $('oe-qtd').value = item?.quantidade ?? 1;
+    $('oe-unidade').value = item?.unidade || '';
+    $('oe-preco').value = item?.preco_unit ?? '';
+    $('oe-perc').value = item?.perc_executado ?? 0;
+    recalcItemPreview();
+    $('oe-overlay').classList.add('aberto');
+}
+
+function recalcItemPreview() {
+    $('oe-total-preview').textContent = fmtMoeda(num($('oe-qtd').value) * num($('oe-preco').value));
+}
+
+function confirmarItem() {
+    const servicoId = $('oe-servico').value;
+    if (!servicoId) { toast('Selecione um serviço.', true); return; }
+    const qtd = num($('oe-qtd').value);
+    if (qtd <= 0) { toast('Quantidade deve ser maior que zero.', true); return; }
+    const preco = Math.round(num($('oe-preco').value) * 100) / 100;
+    const cat = servicosCatalogo.find(s => s.id === servicoId);
+    const base = itemEditIndex != null ? itensDraft[itemEditIndex] : { id: null, sel: false, alocacoes: [] };
+    const item = {
+        ...base,
+        servico_id: servicoId,
+        codigo: cat?.codigo || '?',
+        descricao: cat?.descricao || '?',
+        local_execucao: $('oe-local').value.trim(),
+        quantidade: qtd,
+        unidade: $('oe-unidade').value.trim() || cat?.unidade || '',
+        preco_unit: preco,
+        total: Math.round(preco * qtd * 100) / 100,
+        perc_executado: Math.max(0, Math.min(100, num($('oe-perc').value)))
+    };
+    if (itemEditIndex != null) itensDraft[itemEditIndex] = item;
+    else itensDraft.push(item);
+    $('oe-overlay').classList.remove('aberto');
+    itemEditIndex = null;
+    renderItensDraft();
+    renderCronograma();
+}
+
+// ---------- multi-add serviços (os2) ----------
+function abrirSelecaoServicos() {
+    $('os2-busca').value = '';
+    os2Marcados = new Set();
+    renderSelecaoServicos();
+    $('os2-overlay').classList.add('aberto');
+}
+
+function renderSelecaoServicos() {
+    const q = $('os2-busca').value.trim().toLowerCase();
+    const lista = servicosCatalogo.filter(s =>
+        !q || (s.codigo || '').toLowerCase().includes(q) || (s.descricao || '').toLowerCase().includes(q));
+    $('os2-lista').innerHTML = lista.length === 0
+        ? '<div style="font-size:.8rem;color:var(--hermo-text-dim)">Nenhum serviço encontrado.</div>'
+        : lista.map(s => `
+            <label class="lc-item">
+                <input type="checkbox" data-os2="${s.id}" ${os2Marcados.has(s.id) ? 'checked' : ''} />
+                <div class="txt"><b>${esc(s.codigo)}</b> — ${esc(s.descricao)}
+                    <small>${s.precos?.preco_final ? 'preço de catálogo: ' + fmtMoeda(s.precos.preco_final) + '/' + (s.unidade || 'un') : 'sem preço de catálogo'}</small>
+                </div>
+            </label>`).join('');
+    $('os2-lista').querySelectorAll('[data-os2]').forEach(c => c.addEventListener('change', e => {
+        if (e.target.checked) os2Marcados.add(e.target.dataset.os2);
+        else os2Marcados.delete(e.target.dataset.os2);
+    }));
+}
+
+function confirmarSelecaoServicos() {
+    const marcados = [...os2Marcados].filter(id => servicosCatalogo.some(s => s.id === id));
+    if (marcados.length === 0) { toast('Marque ao menos um serviço.', true); return; }
+    marcados.forEach(sid => {
+        const cat = servicosCatalogo.find(s => s.id === sid);
+        const preco = num(cat?.precos?.preco_final);
+        itensDraft.push({
+            id: null, sel: false,
+            servico_id: sid,
+            codigo: cat?.codigo || '?',
+            descricao: cat?.descricao || '?',
+            local_execucao: '',
+            quantidade: 1,
+            unidade: cat?.unidade || '',
+            preco_unit: preco,
+            total: preco,
+            perc_executado: 0,
+            inicio_previsto: '', fim_previsto: '',
+            alocacoes: []
+        });
+    });
+    $('os2-overlay').classList.remove('aberto');
+    renderItensDraft();
+    renderCronograma();
+    toast(`${marcados.length} serviço(s) no escopo — ajuste qtd/preço no ✎.`);
+}
+
+// ============================================================
+// CRONOGRAMA E ALOCAÇÕES
+// ============================================================
+function renderCronograma() {
+    const salva = !!obraEditando;
+    $('ob-crono-aviso').style.display = salva ? 'none' : '';
+    const cont = $('ob-crono');
+    if (!salva) { cont.innerHTML = ''; return; }
+    const comId = itensDraft.filter(i => i.id);
+    if (comId.length === 0) {
+        cont.innerHTML = '<div style="font-size:.78rem;color:var(--hermo-text-dim)">Adicione serviços ao escopo e salve para programar.</div>';
+        return;
+    }
+    cont.innerHTML = comId.map(i => {
+        const idx = itensDraft.indexOf(i);
+        const chips = (i.alocacoes || []).map(a => {
+            const nome = a.integrante?.apelido || a.integrante?.nome?.split(' ')[0] || '?';
+            const per = a.data_inicio === a.data_fim
+                ? a.data_inicio.split('-').reverse().slice(0, 2).join('/')
+                : `${a.data_inicio.split('-').reverse().slice(0, 2).join('/')}–${a.data_fim.split('-').reverse().slice(0, 2).join('/')}`;
+            const turno = a.turno === 'horario' ? `${(a.hora_inicio || '').slice(0, 5)}-${(a.hora_fim || '').slice(0, 5)}` : TURNO_LABEL[a.turno];
+            return `<span class="chip" style="border-left-color:${a.equipe?.cor || 'var(--hermo-primary)'}"
+                title="${esc(a.integrante?.nome || '')}${a.equipe ? ' · equipe ' + esc(a.equipe.nome) : ''}">
+                ${esc(nome)} · ${per} · ${turno}
+                <button data-aloc-remover="${a.id}" title="Remover alocação">×</button>
+            </span>`;
+        }).join('');
+        return `
+        <div class="ob-crono-item">
+            <div class="linha1">
+                <span class="nome-serv">${esc(i.codigo)} — ${esc(i.descricao)}</span>
+                <label style="font-size:.72rem;color:var(--hermo-text-dim)">previsto:</label>
+                <input type="date" value="${i.inicio_previsto || ''}" data-crono-ini="${idx}" />
+                <span style="color:var(--hermo-text-dim)">→</span>
+                <input type="date" value="${i.fim_previsto || ''}" data-crono-fim="${idx}" />
+                <button class="hermo-btn small primary" data-alocar="${idx}">👷 Alocar</button>
+            </div>
+            <div class="ob-aloc-chips">${chips || '<span style="font-size:.72rem;color:var(--hermo-text-dim)">ninguém alocado ainda</span>'}</div>
+        </div>`;
+    }).join('');
+
+    cont.querySelectorAll('[data-crono-ini]').forEach(inp => inp.addEventListener('change', e => {
+        itensDraft[parseInt(e.target.dataset.cronoIni)].inicio_previsto = e.target.value;
+    }));
+    cont.querySelectorAll('[data-crono-fim]').forEach(inp => inp.addEventListener('change', e => {
+        itensDraft[parseInt(e.target.dataset.cronoFim)].fim_previsto = e.target.value;
+    }));
+    cont.querySelectorAll('[data-alocar]').forEach(b => b.addEventListener('click',
+        () => abrirAlocacaoModal(parseInt(b.dataset.alocar))));
+    cont.querySelectorAll('[data-aloc-remover]').forEach(b => b.addEventListener('click', async () => {
+        if (!confirm('Remover esta alocação do cronograma?')) return;
+        const { error } = await sb.from('hermo_alocacoes').delete().eq('id', b.dataset.alocRemover);
+        if (error) { toast('Erro: ' + error.message, true); return; }
+        itensDraft.forEach(i => { i.alocacoes = (i.alocacoes || []).filter(a => a.id !== b.dataset.alocRemover); });
+        sincronizarAlocacoesNaLista();
+        renderCronograma();
+        toast('Alocação removida.');
+    }));
+}
+
+// ---------- alocação (oa) ----------
+function abrirAlocacaoModal(itemIndex) {
+    alocItemIndex = itemIndex;
+    const item = itensDraft[itemIndex];
+    oaMarcados = new Set();
+    $('oa-titulo').textContent = `Alocar — ${item.codigo} ${item.descricao}`;
+    const selEq = $('oa-equipe');
+    selEq.innerHTML = '<option value="">— escolher individualmente —</option>';
+    equipes.forEach(q => {
+        const o = document.createElement('option');
+        o.value = q.id;
+        o.textContent = `${q.nome} (${q.membroIds.length} membros)`;
+        selEq.appendChild(o);
+    });
+    $('oa-inicio').value = item.inicio_previsto || hoje();
+    $('oa-fim').value = item.fim_previsto || item.inicio_previsto || hoje();
+    $('oa-turno').value = 'dia';
+    $('oa-horas-wrap').style.display = 'none';
+    $('oa-conflitos').style.display = 'none';
+    renderOaIntegrantes();
+    $('oa-overlay').classList.add('aberto');
+}
+
+function renderOaIntegrantes() {
+    $('oa-integrantes').innerHTML = integrantes.filter(i => i.ativo).map(i => `
+        <label class="lc-item">
+            <input type="checkbox" data-oa="${i.id}" ${oaMarcados.has(i.id) ? 'checked' : ''} />
+            <div class="txt"><b>${esc(i.nome)}</b>${i.apelido ? ' (' + esc(i.apelido) + ')' : ''}
+                <small>${esc(i.funcao?.nome || 'sem função')}</small>
+            </div>
+        </label>`).join('') || '<div style="font-size:.8rem;color:var(--hermo-text-dim)">Nenhum integrante ativo — cadastre em Integrantes e Equipes.</div>';
+    $('oa-integrantes').querySelectorAll('[data-oa]').forEach(c => c.addEventListener('change', e => {
+        if (e.target.checked) oaMarcados.add(e.target.dataset.oa);
+        else oaMarcados.delete(e.target.dataset.oa);
+    }));
+}
+
+function minutosTurno(turno, hi, hf) {
+    if (turno === 'dia') return [420, 1020];
+    if (turno === 'manha') return [420, 720];
+    if (turno === 'tarde') return [780, 1020];
+    const m = s => { const [h, mi] = String(s || '0:0').split(':').map(Number); return h * 60 + mi; };
+    return [m(hi), m(hf)];
+}
+
+function periodosConflitam(a, b) {
+    if (a.data_fim < b.data_inicio || b.data_fim < a.data_inicio) return false;
+    const [ai, af] = minutosTurno(a.turno, a.hora_inicio, a.hora_fim);
+    const [bi, bf] = minutosTurno(b.turno, b.hora_inicio, b.hora_fim);
+    return Math.max(ai, bi) < Math.min(af, bf);
+}
+
+async function confirmarAlocacao() {
+    const ids = [...oaMarcados];
+    if (ids.length === 0) { toast('Marque ao menos um integrante (ou escolha uma equipe).', true); return; }
+    const inicio = $('oa-inicio').value;
+    const fim = $('oa-fim').value;
+    if (!inicio || !fim) { toast('Informe o período (de/até).', true); return; }
+    if (fim < inicio) { toast('A data final não pode ser antes da inicial.', true); return; }
+    const turno = $('oa-turno').value;
+    const hi = $('oa-hora-ini').value || null;
+    const hf = $('oa-hora-fim').value || null;
+    if (turno === 'horario' && (!hi || !hf || hf <= hi)) { toast('Informe um horário válido (início < fim).', true); return; }
+
+    const btn = $('oa-confirmar');
+    btn.disabled = true;
+    try {
+        const nova = { data_inicio: inicio, data_fim: fim, turno, hora_inicio: hi, hora_fim: hf };
+        // busca compromissos existentes dos integrantes no período (todas as obras) + ausências
+        const [aloc, aus] = await Promise.all([
+            sb.from('hermo_alocacoes')
+                .select('*, integrante:hermo_integrantes(id, nome), obra_servico:hermo_obra_servicos(id, servico:hermo_servicos(codigo, descricao), obra:hermo_obras(nome, numero, ano))')
+                .in('integrante_id', ids)
+                .lte('data_inicio', fim)
+                .gte('data_fim', inicio),
+            sb.from('hermo_ausencias')
+                .select('*, integrante:hermo_integrantes(id, nome)')
+                .in('integrante_id', ids)
+                .lte('data_inicio', fim)
+                .gte('data_fim', inicio)
+        ]);
+        if (aloc.error || aus.error) throw (aloc.error || aus.error);
+
+        // BLOQUEIO de conflito: ninguém pode estar em dois lugares no mesmo período
+        const conflitos = [];
+        (aloc.data || []).forEach(a => {
+            if (periodosConflitam(nova, a)) {
+                const ob = a.obra_servico?.obra;
+                conflitos.push(`• ${a.integrante?.nome}: já alocado em "${ob ? 'OB-' + String(ob.numero).padStart(4, '0') + '/' + ob.ano + ' — ' + ob.nome : 'outra obra'}" (${a.obra_servico?.servico?.codigo || ''} ${a.obra_servico?.servico?.descricao || ''}), ${a.data_inicio} a ${a.data_fim}, ${a.turno === 'horario' ? (a.hora_inicio || '').slice(0, 5) + '-' + (a.hora_fim || '').slice(0, 5) : TURNO_LABEL[a.turno]}`);
+            }
+        });
+        (aus.data || []).forEach(a => {
+            if (periodosConflitam(nova, a)) {
+                conflitos.push(`• ${a.integrante?.nome}: ausência registrada (${a.tipo}) de ${a.data_inicio} a ${a.data_fim}`);
+            }
+        });
+        if (conflitos.length > 0) {
+            const box = $('oa-conflitos');
+            box.style.display = '';
+            box.textContent = '🚫 Conflito de agenda — ajuste o período ou os integrantes:\n' + conflitos.join('\n');
+            return;
+        }
+
+        const equipeSel = $('oa-equipe').value || null;
+        const equipe = equipes.find(q => q.id === equipeSel);
+        const linhas = ids.map(intId => ({
+            obra_servico_id: itensDraft[alocItemIndex].id,
+            integrante_id: intId,
+            // etiqueta de equipe só para quem realmente é membro dela
+            equipe_id: (equipe && equipe.membroIds.includes(intId)) ? equipeSel : null,
+            data_inicio: inicio,
+            data_fim: fim,
+            turno,
+            hora_inicio: turno === 'horario' ? hi : null,
+            hora_fim: turno === 'horario' ? hf : null
+        }));
+        const { data: inseridas, error } = await sb.from('hermo_alocacoes')
+            .insert(linhas)
+            .select('*, integrante:hermo_integrantes(id, nome, apelido), equipe:hermo_equipes(id, nome, cor)');
+        if (error) throw error;
+
+        // proteção contra corrida entre sessões: re-verifica após inserir; se outra aba
+        // criou um conflito na mesma janela, desfaz esta alocação e mostra o conflito
+        const idsInseridos = (inseridas || []).map(a => a.id);
+        const { data: recheck } = await sb.from('hermo_alocacoes')
+            .select('id, integrante_id, data_inicio, data_fim, turno, hora_inicio, hora_fim, integrante:hermo_integrantes(nome)')
+            .in('integrante_id', ids)
+            .lte('data_inicio', fim)
+            .gte('data_fim', inicio);
+        const corrida = (recheck || []).filter(a =>
+            !idsInseridos.includes(a.id) &&
+            (inseridas || []).some(n => n.integrante_id === a.integrante_id && periodosConflitam(n, a)));
+        if (corrida.length > 0) {
+            await sb.from('hermo_alocacoes').delete().in('id', idsInseridos);
+            const box = $('oa-conflitos');
+            box.style.display = '';
+            box.textContent = '🚫 Outra sessão alocou ' +
+                [...new Set(corrida.map(a => a.integrante?.nome))].join(', ') +
+                ' neste período agora há pouco — a alocação foi desfeita. Ajuste e tente de novo.';
+            return;
+        }
+
+        itensDraft[alocItemIndex].alocacoes = [...(itensDraft[alocItemIndex].alocacoes || []), ...(inseridas || [])];
+        sincronizarAlocacoesNaLista();
+        $('oa-overlay').classList.remove('aberto');
+        renderCronograma();
+        toast(`${ids.length} alocação(ões) criadas — sem conflitos.`);
+    } catch (e) {
+        toast('Erro ao alocar: ' + e.message, true);
+    } finally {
+        btn.disabled = false;
+    }
+}
+
+/** Reflete as alocações do draft na lista `obras` — cancelar/reabrir não mostra chips fantasma. */
+function sincronizarAlocacoesNaLista() {
+    if (!obraEditando?.id) return;
+    const obra = obras.find(o => o.id === obraEditando.id);
+    if (!obra) return;
+    itensDraft.filter(i => i.id).forEach(i => {
+        const item = obra.itens.find(x => x.id === i.id);
+        if (item) item.alocacoes = i.alocacoes || [];
+    });
+}
+
+// ============================================================
+// DIÁRIO
+// ============================================================
+async function carregarDiario() {
+    const salva = !!obraEditando;
+    $('ob-diario-aviso').style.display = salva ? 'none' : '';
+    $('ob-diario-form').style.display = salva ? '' : 'none';
+    diarioEntradas = [];
+    if (!salva) { $('ob-diario').innerHTML = ''; return; }
+    const { data, error } = await sb.from('hermo_obra_diario')
+        .select('*').eq('obra_id', obraEditando.id).order('data', { ascending: false }).limit(60);
+    if (error) { toast('Erro ao carregar diário: ' + error.message, true); return; }
+    diarioEntradas = data || [];
+    renderDiario();
+}
+
+function renderDiario() {
+    $('ob-diario').innerHTML = diarioEntradas.length === 0
+        ? '<div style="font-size:.78rem;color:var(--hermo-text-dim)">Nenhum registro ainda.</div>'
+        : diarioEntradas.map(d => `
+            <div class="entrada">${esc(d.texto)}<small>${fmtDataHora(d.data)}</small></div>`).join('');
+}
+
+async function registrarDiario() {
+    const texto = $('ob-diario-texto').value.trim();
+    if (!texto) { toast('Escreva o registro.', true); return; }
+    const { data, error } = await sb.from('hermo_obra_diario')
+        .insert({ obra_id: obraEditando.id, texto }).select().single();
+    if (error) { toast('Erro ao registrar: ' + error.message, true); return; }
+    diarioEntradas.unshift(data);
+    $('ob-diario-texto').value = '';
+    renderDiario();
+}
+
+// ============================================================
+// SALVAR OBRA
+// ============================================================
+async function salvarObra() {
+    const numero = parseInt($('ob-numero').value);
+    const ano = parseInt($('ob-ano').value);
+    const nome = $('ob-nome').value.trim();
+    if (!numero || numero < 1 || numero > 9999) { toast('Número inválido (1 a 9999).', true); return; }
+    if (!ano || ano < 2000 || ano > 2100) { toast('Ano inválido.', true); return; }
+    if (!nome) { toast('Nome da obra é obrigatório.', true); return; }
+    const dup = obras.find(o => o.numero === numero && o.ano === ano && o.id !== obraEditando?.id);
+    if (dup) { toast(`Já existe a obra ${fmtCodigo(dup)} — escolha outro número.`, true); return; }
+
+    const btn = $('ob-salvar');
+    btn.disabled = true;
+    try {
+        const endereco = $('ob-endereco').value.trim();
+        let lat = obraEditando?.latitude ?? null;
+        let lng = obraEditando?.longitude ?? null;
+        if (localEscolhido) {
+            lat = localEscolhido.lat; lng = localEscolhido.lng;
+        } else if (endereco && (!obraEditando || obraEditando.endereco !== endereco || lat == null)) {
+            const geo = await geocodificar(endereco);
+            lat = geo?.lat ?? null;
+            lng = geo?.lng ?? null;
+        } else if (!endereco) {
+            lat = null; lng = null;
+        }
+
+        const payload = {
+            id: obraEditando?.id || null,
+            numero, ano, nome,
+            cliente_id: $('ob-cliente').value || null,
+            status: $('ob-status').value,
+            endereco: endereco || null,
+            latitude: lat,
+            longitude: lng,
+            inicio_previsto: $('ob-inicio-prev').value || null,
+            prazo: $('ob-prazo').value || null,
+            inicio_real: $('ob-inicio-real').value || null,
+            conclusao: $('ob-conclusao').value || null,
+            valor_contratado: Math.round(totalObraDraft() * 100) / 100,
+            observacoes: $('ob-obs').value.trim() || null,
+            itens: itensDraft.map(i => ({
+                id: i.id,
+                servico_id: i.servico_id,
+                local_execucao: i.local_execucao || null,
+                quantidade: i.quantidade,
+                unidade: i.unidade || null,
+                preco_unit: i.preco_unit,
+                total: i.total,
+                perc_executado: i.perc_executado,
+                inicio_previsto: i.inicio_previsto || null,
+                fim_previsto: i.fim_previsto || null
+            })),
+            propostas: propostasDraft
+        };
+        const eraEdicao = !!obraEditando;
+        const { data: oid, error } = await sb.rpc('hermo_salvar_obra', { p: payload });
+        if (error) throw error;
+        if (!obraEditando && oid) obraEditando = { id: oid };
+        toast(eraEdicao ? 'Obra atualizada.' : 'Obra criada — reabra o card para programar o cronograma.');
+        fecharModalObra();
+        await carregarTudo();
+    } catch (e) {
+        if ((e.code || '') === '23505') toast('Já existe uma obra com esse número/ano.', true);
+        else toast('Erro ao salvar obra: ' + e.message, true);
+    } finally {
+        btn.disabled = false;
+    }
+}
+
+// ============================================================
+// GEOCODE / MINI-MAPA
+// ============================================================
+async function geocodificar(endereco) {
+    try {
+        const ctl = new AbortController();
+        const t = setTimeout(() => ctl.abort(), 6000);
+        const resp = await fetch(
+            'https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=br&q=' +
+            encodeURIComponent(endereco), { signal: ctl.signal, headers: { 'Accept': 'application/json' } });
+        clearTimeout(t);
+        if (!resp.ok) return null;
+        const arr = await resp.json();
+        return (arr && arr[0]) ? { lat: parseFloat(arr[0].lat), lng: parseFloat(arr[0].lon) } : null;
+    } catch (e) { return null; }
+}
+
+function abrirModalLocal() {
+    if (typeof L === 'undefined') { toast('Mapa indisponível no momento.', true); return; }
+    $('om-overlay').classList.add('aberto');
+    omPendente = localEscolhido
+        || (obraEditando?.latitude != null ? { lat: obraEditando.latitude, lng: obraEditando.longitude } : null);
+    const centro = omPendente ? [omPendente.lat, omPendente.lng] : [-8.0476, -34.877];
+    if (!omMapa) {
+        omMapa = L.map('om-mapa').setView(centro, omPendente ? 16 : 12);
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
+            subdomains: 'abcd', maxZoom: 19
+        }).addTo(omMapa);
+        omMapa.on('click', e => {
+            omPendente = { lat: e.latlng.lat, lng: e.latlng.lng };
+            posicionarOmMarcador();
+            $('om-confirmar').disabled = false;
+        });
+    } else {
+        omMapa.setView(centro, omPendente ? 16 : 12);
+    }
+    posicionarOmMarcador();
+    $('om-confirmar').disabled = !omPendente;
+    setTimeout(() => omMapa.invalidateSize(), 150);
+}
+
+function posicionarOmMarcador() {
+    if (omMarcador) { omMapa.removeLayer(omMarcador); omMarcador = null; }
+    if (omPendente) omMarcador = L.marker([omPendente.lat, omPendente.lng]).addTo(omMapa);
+}
+
+async function confirmarLocal() {
+    if (!omPendente) return;
+    localEscolhido = omPendente;
+    $('ob-local-info').style.display = '';
+    $('om-overlay').classList.remove('aberto');
+    if (!$('ob-endereco').value.trim()) {
+        try {
+            const ctl = new AbortController();
+            const t = setTimeout(() => ctl.abort(), 6000);
+            const resp = await fetch(
+                `https://nominatim.openstreetmap.org/reverse?format=json&lat=${localEscolhido.lat}&lon=${localEscolhido.lng}`,
+                { signal: ctl.signal, headers: { 'Accept': 'application/json' } });
+            clearTimeout(t);
+            if (resp.ok) {
+                const j = await resp.json();
+                if (j.display_name) $('ob-endereco').value = j.display_name;
+            }
+        } catch (e) {}
+    }
+    toast('Local definido pelo mapa.');
+}
+
+// ============================================================
+// EVENTOS / BOOT
+// ============================================================
+$('btn-nova').addEventListener('click', () => abrirModalObra(null));
+
+$('btn-sel-todas').addEventListener('click', () => {
+    KANBAN_ORDEM.filter(st => !colunasOcultas[st])
+        .forEach(st => obrasDaColuna(st).forEach(o => selecionadas.add(o.id)));
+    renderLista();
+    renderSelbar();
+});
+$('btn-sel-limpar').addEventListener('click', () => { selecionadas.clear(); renderLista(); renderSelbar(); });
+$('btn-sel-ocultar').addEventListener('click', () => {
+    if (selecionadas.size === 0) return;
+    selecionadas.forEach(id => ocultasMapa.add(id));
+    salvarOcultasMapa(); atualizarMapa(); renderLista();
+    toast(`${selecionadas.size} obra(s) oculta(s) do mapa.`);
+});
+$('btn-sel-mostrar').addEventListener('click', () => {
+    if (selecionadas.size === 0) return;
+    selecionadas.forEach(id => ocultasMapa.delete(id));
+    salvarOcultasMapa(); atualizarMapa(); renderLista();
+    toast(`${selecionadas.size} obra(s) de volta ao mapa.`);
+});
+$('btn-sel-excluir').addEventListener('click', () => excluirObras([...selecionadas]));
+
+// modal obra
+$('ob-fechar').addEventListener('click', fecharModalObra);
+$('ob-cancelar').addEventListener('click', fecharModalObra);
+ligarFecharPorBackdrop($('ob-overlay'), fecharModalObra);
+$('ob-salvar').addEventListener('click', salvarObra);
+$('ob-btn-mapa').addEventListener('click', abrirModalLocal);
+$('ob-btn-novo-cliente').addEventListener('click', () =>
+    abrirModalCliente(null, c => carregarClientesSelect(c.id)));
+$('ob-btn-editar-cliente').addEventListener('click', async () => {
+    const id = $('ob-cliente').value;
+    if (!id) { toast('Selecione um cliente para editar.', true); return; }
+    const { data, error } = await sb.from('hermo_clientes').select('*').eq('id', id).single();
+    if (error) { toast('Erro: ' + error.message, true); return; }
+    abrirModalCliente(data, c => carregarClientesSelect(c.id));
+});
+
+// escopo
+$('ob-itens-sel-todos').addEventListener('click', () => { itensDraft.forEach(i => i.sel = true); renderItensDraft(); });
+$('ob-itens-sel-limpar').addEventListener('click', () => { itensDraft.forEach(i => i.sel = false); renderItensDraft(); });
+$('ob-itens-sel-excluir').addEventListener('click', () => {
+    const marcados = itensDraft.filter(i => i.sel);
+    if (marcados.length === 0) return;
+    const comAloc = marcados.reduce((t, i) => t + (i.alocacoes || []).length, 0);
+    if (!confirm(`Remover ${marcados.length} item(ns) do escopo?` +
+        (comAloc ? `\n⚠ ${comAloc} alocação(ões) de cronograma serão apagadas ao salvar.` : ''))) return;
+    itensDraft = itensDraft.filter(i => !i.sel);
+    renderItensDraft();
+    renderCronograma();
+});
+$('ob-btn-add-servicos').addEventListener('click', abrirSelecaoServicos);
+$('ob-btn-propostas').addEventListener('click', abrirAssociarPropostas);
+
+// sub-modais
+$('oe-fechar').addEventListener('click', () => $('oe-overlay').classList.remove('aberto'));
+$('oe-cancelar').addEventListener('click', () => $('oe-overlay').classList.remove('aberto'));
+ligarFecharPorBackdrop($('oe-overlay'), () => $('oe-overlay').classList.remove('aberto'));
+$('oe-confirmar').addEventListener('click', confirmarItem);
+['oe-qtd', 'oe-preco'].forEach(id => $(id).addEventListener('input', recalcItemPreview));
+
+$('os2-fechar').addEventListener('click', () => $('os2-overlay').classList.remove('aberto'));
+$('os2-cancelar').addEventListener('click', () => $('os2-overlay').classList.remove('aberto'));
+ligarFecharPorBackdrop($('os2-overlay'), () => $('os2-overlay').classList.remove('aberto'));
+$('os2-confirmar').addEventListener('click', confirmarSelecaoServicos);
+$('os2-busca').addEventListener('input', renderSelecaoServicos);
+$('os2-todos').addEventListener('click', () => document.querySelectorAll('[data-os2]').forEach(c => {
+    c.checked = true; os2Marcados.add(c.dataset.os2);
+}));
+$('os2-nenhum').addEventListener('click', () => document.querySelectorAll('[data-os2]').forEach(c => {
+    c.checked = false; os2Marcados.delete(c.dataset.os2);
+}));
+
+$('op-fechar').addEventListener('click', () => $('op-overlay').classList.remove('aberto'));
+$('op-cancelar').addEventListener('click', () => $('op-overlay').classList.remove('aberto'));
+ligarFecharPorBackdrop($('op-overlay'), () => $('op-overlay').classList.remove('aberto'));
+$('op-confirmar').addEventListener('click', confirmarAssociarPropostas);
+
+$('oa-fechar').addEventListener('click', () => $('oa-overlay').classList.remove('aberto'));
+$('oa-cancelar').addEventListener('click', () => $('oa-overlay').classList.remove('aberto'));
+ligarFecharPorBackdrop($('oa-overlay'), () => $('oa-overlay').classList.remove('aberto'));
+$('oa-confirmar').addEventListener('click', confirmarAlocacao);
+$('oa-turno').addEventListener('change', () => {
+    $('oa-horas-wrap').style.display = $('oa-turno').value === 'horario' ? '' : 'none';
+});
+$('oa-equipe').addEventListener('change', () => {
+    const q = equipes.find(x => x.id === $('oa-equipe').value);
+    if (q) {
+        oaMarcados = new Set(q.membroIds.filter(id => integrantes.find(i => i.id === id)?.ativo));
+        renderOaIntegrantes();
+        toast(`Equipe "${q.nome}" marcada (${oaMarcados.size} ativos).`);
+    }
+});
+
+$('om-fechar').addEventListener('click', () => $('om-overlay').classList.remove('aberto'));
+$('om-cancelar').addEventListener('click', () => $('om-overlay').classList.remove('aberto'));
+ligarFecharPorBackdrop($('om-overlay'), () => $('om-overlay').classList.remove('aberto'));
+$('om-confirmar').addEventListener('click', confirmarLocal);
+
+$('ob-btn-diario').addEventListener('click', registrarDiario);
+$('ob-diario-texto').addEventListener('keydown', e => { if (e.key === 'Enter') registrarDiario(); });
+
+// boot (+ ?editar=ID)
+iniciarMapa();
+carregarTudo().then(() => {
+    const id = new URLSearchParams(window.location.search).get('editar');
+    if (id) {
+        const o = obras.find(x => x.id === id);
+        if (o) abrirModalObra(o);
+    }
+});

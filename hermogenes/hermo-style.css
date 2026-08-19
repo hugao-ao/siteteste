@@ -536,6 +536,18 @@ table.hermo-tabela { width: 100%; border-collapse: collapse; background: var(--h
 .hermo-tabela td { padding: 11px 14px; border-top: 1px solid var(--hermo-border); }
 .hermo-tabela tr:hover td { background: rgba(245, 158, 11, .05); }
 
+/* ---------- Lista com checkboxes (multi-seleção em modais) ---------- */
+.lista-check { display: flex; flex-direction: column; gap: 6px; max-height: 300px; overflow-y: auto; }
+.lista-check .lc-item {
+    display: flex; align-items: flex-start; gap: 8px;
+    background: var(--hermo-surface-2); border: 1px solid var(--hermo-border);
+    border-radius: 8px; padding: 8px 10px; font-size: .82rem; cursor: pointer;
+}
+.lista-check .lc-item input { transform: scale(1.15); accent-color: var(--hermo-primary); margin-top: 2px; }
+.lista-check .lc-item .txt small { display: block; color: var(--hermo-text-dim); }
+.lista-check .lc-item.conflito { border-color: var(--hermo-warn); }
+.lc-conflito-tag { font-size: .68rem; color: var(--hermo-warn); font-weight: 700; }
+
 /* ---------- Toast ---------- */
 #hermo-toast {
     position: fixed;
