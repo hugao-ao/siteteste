@@ -14,28 +14,64 @@ let selecionados = new Set();
 let intEditando = null;
 let eqEditando = null;
 let membrosMarcados = new Set();
+// agenda / produção
+let alocacoes = [];
+let ausencias = [];
+let semanaBase = inicioDaSemana(new Date());
+
+function hojeStr() {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+function dataStr(d) {
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+function inicioDaSemana(d) {
+    const x = new Date(d);
+    x.setDate(x.getDate() - ((x.getDay() + 6) % 7)); // segunda-feira
+    x.setHours(0, 0, 0, 0);
+    return x;
+}
+function somarDias(d, n) {
+    const x = new Date(d);
+    x.setDate(x.getDate() + n);
+    return x;
+}
 
 // ============================================================
 // CARREGAMENTO
 // ============================================================
 async function carregarTudo() {
-    const [f, i, e] = await Promise.all([
+    const [f, i, e, al, au] = await Promise.all([
         sb.from('hermo_funcoes').select('*').order('nome'),
         sb.from('hermo_integrantes').select('*, funcao:hermo_funcoes(id, nome)').order('nome'),
-        sb.from('hermo_equipes').select('*, lider:hermo_integrantes!hermo_equipes_lider_id_fkey(id, nome), membros:hermo_equipe_membros(integrante_id)').order('nome')
+        sb.from('hermo_equipes').select('*, lider:hermo_integrantes!hermo_equipes_lider_id_fkey(id, nome), membros:hermo_equipe_membros(integrante_id)').order('nome'),
+        sb.from('hermo_alocacoes')
+            .select(`*, equipe:hermo_equipes(id, nome, cor),
+                obra_servico:hermo_obra_servicos(id, total, perc_executado,
+                    servico:hermo_servicos(codigo, descricao),
+                    obra:hermo_obras(numero, ano, nome))`),
+        sb.from('hermo_ausencias').select('*').order('data_inicio', { ascending: false })
     ]);
     if (f.error) { toast('Erro ao carregar funções: ' + f.error.message, true); return; }
     if (i.error) { toast('Erro ao carregar integrantes: ' + i.error.message, true); return; }
     if (e.error) { toast('Erro ao carregar equipes: ' + e.error.message, true); return; }
+    if (al.error || au.error) { toast('Erro ao carregar agenda: ' + (al.error || au.error).message, true); }
     funcoes = f.data || [];
     integrantes = i.data || [];
     equipes = (e.data || []).map(q => ({ ...q, membroIds: (q.membros || []).map(m => m.integrante_id) }));
+    alocacoes = al.data || [];
+    ausencias = au.data || [];
     selecionados = new Set([...selecionados].filter(id => integrantes.some(x => x.id === id)));
     popularFiltroFuncao();
     renderResumo();
     renderIntegrantes();
     renderEquipes();
     renderSelbar();
+    popularFiltroEquipeAgenda();
+    renderAgenda();
+    renderAusencias();
+    renderProducao();
 }
 
 function custoDia(i) {
@@ -380,6 +416,253 @@ async function excluirEquipe(id) {
 }
 
 // ============================================================
+// AGENDA SEMANAL
+// ============================================================
+function minutosTurno(turno, hi, hf) {
+    if (turno === 'dia') return [420, 1020];
+    if (turno === 'manha') return [420, 720];
+    if (turno === 'tarde') return [780, 1020];
+    const m = s => { const [h, mi] = String(s || '0:0').split(':').map(Number); return h * 60 + mi; };
+    return [m(hi), m(hf)];
+}
+
+function periodosConflitam(a, b) {
+    if (a.data_fim < b.data_inicio || b.data_fim < a.data_inicio) return false;
+    const [ai, af] = minutosTurno(a.turno, a.hora_inicio, a.hora_fim);
+    const [bi, bf] = minutosTurno(b.turno, b.hora_inicio, b.hora_fim);
+    return Math.max(ai, bi) < Math.min(af, bf);
+}
+
+/** peso de produção/custo de um período do dia: dia=1, turno=0,5, horário=horas/8 */
+function pesoTurno(turno, hi, hf) {
+    if (turno === 'dia') return 1;
+    if (turno === 'manha' || turno === 'tarde') return 0.5;
+    const [a, b] = minutosTurno('horario', hi, hf);
+    return Math.max(0, (b - a) / 60) / 8;
+}
+
+function ausenteNoDia(integranteId, diaStr, turno, hi, hf) {
+    const bloco = { data_inicio: diaStr, data_fim: diaStr, turno, hora_inicio: hi, hora_fim: hf };
+    return ausencias.some(a => a.integrante_id === integranteId && periodosConflitam(bloco, a));
+}
+
+function popularFiltroEquipeAgenda() {
+    const sel = $('ag-filtro-equipe');
+    const atual = sel.value;
+    sel.innerHTML = '<option value="">Todas as equipes</option>';
+    equipes.forEach(q => {
+        const o = document.createElement('option');
+        o.value = q.id;
+        o.textContent = q.nome;
+        sel.appendChild(o);
+    });
+    if ([...sel.options].some(o => o.value === atual)) sel.value = atual;
+}
+
+function renderAgenda() {
+    const dias = Array.from({ length: 7 }, (_, k) => somarDias(semanaBase, k));
+    const diasStr = dias.map(dataStr);
+    const hj = hojeStr();
+    const fmt = d => d.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit' });
+    $('ag-semana-label').textContent =
+        `Semana de ${dias[0].toLocaleDateString('pt-BR')} a ${dias[6].toLocaleDateString('pt-BR')}`;
+
+    const filtroEq = $('ag-filtro-equipe').value;
+    const eq = equipes.find(q => q.id === filtroEq);
+    const linhas = integrantes.filter(i => i.ativo && (!eq || eq.membroIds.includes(i.id)));
+
+    let html = '<thead><tr><th style="min-width:130px">Integrante</th>' +
+        dias.map((d, k) => `<th class="${diasStr[k] === hj ? 'hoje-col' : ''}">${fmt(d)}</th>`).join('') +
+        '</tr></thead><tbody>';
+    for (const i of linhas) {
+        html += `<tr><td class="nome-col">${esc(i.apelido || i.nome.split(' ')[0])}<small>${esc(i.funcao?.nome || '')}</small></td>`;
+        for (let k = 0; k < 7; k++) {
+            const dia = diasStr[k];
+            const blocos = [];
+            alocacoes
+                .filter(a => a.integrante_id === i.id && a.data_inicio <= dia && a.data_fim >= dia)
+                .forEach(a => {
+                    const ob = a.obra_servico?.obra;
+                    const rotulo = `${ob ? 'OB-' + String(ob.numero).padStart(4, '0') : '?'} · ${a.obra_servico?.servico?.codigo || ''}`;
+                    const turno = a.turno === 'horario'
+                        ? `${(a.hora_inicio || '').slice(0, 5)}-${(a.hora_fim || '').slice(0, 5)}` : TURNO_LABEL_AG[a.turno];
+                    blocos.push(`<span class="ag-bloco" style="background:${a.equipe?.cor || 'var(--hermo-primary)'}"
+                        title="${esc(ob?.nome || '')} — ${esc(a.obra_servico?.servico?.descricao || '')} (${turno})">${rotulo} · ${turno}</span>`);
+                });
+            ausencias
+                .filter(a => a.integrante_id === i.id && a.data_inicio <= dia && a.data_fim >= dia)
+                .forEach(a => {
+                    blocos.push(`<span class="ag-bloco ausencia ${a.tipo === 'falta' ? '' : 'suave'}"
+                        title="${esc(a.motivo || a.tipo)}">${a.tipo}${a.turno !== 'dia' ? ' (' + TURNO_LABEL_AG[a.turno] + ')' : ''}</span>`);
+                });
+            html += `<td class="${dia === hj ? 'hoje-col' : ''}">${blocos.join('')}</td>`;
+        }
+        html += '</tr>';
+    }
+    html += '</tbody>';
+    $('ag-grid').innerHTML = html;
+}
+
+const TURNO_LABEL_AG = { dia: 'dia', manha: 'manhã', tarde: 'tarde', horario: 'horário' };
+
+// ---------- ausências ----------
+function renderAusencias() {
+    const cont = $('aus-lista');
+    if (ausencias.length === 0) {
+        cont.innerHTML = '<div style="font-size:.78rem;color:var(--hermo-text-dim)">Nenhuma ausência lançada.</div>';
+        return;
+    }
+    cont.innerHTML = ausencias.slice(0, 30).map(a => {
+        const i = integrantes.find(x => x.id === a.integrante_id);
+        return `
+        <div class="ob-item" style="background:var(--hermo-surface);border:1px solid var(--hermo-border);border-radius:8px;padding:7px 10px;display:flex;align-items:center;gap:8px;font-size:.82rem">
+            <div style="flex:1"><b>${esc(i?.nome || '?')}</b> — ${a.tipo}${a.turno !== 'dia' ? ' (' + TURNO_LABEL_AG[a.turno] + ')' : ''}
+                <small style="display:block;color:var(--hermo-text-dim)">${a.data_inicio.split('-').reverse().join('/')} a ${a.data_fim.split('-').reverse().join('/')}${a.motivo ? ' · ' + esc(a.motivo) : ''}</small>
+            </div>
+            <button class="hermo-btn small danger" data-aus-remover="${a.id}">🗑</button>
+        </div>`;
+    }).join('');
+    cont.querySelectorAll('[data-aus-remover]').forEach(b => b.addEventListener('click', async () => {
+        if (!confirm('Remover esta ausência? O dia volta a contar para produção e custo.')) return;
+        const { error } = await sb.from('hermo_ausencias').delete().eq('id', b.dataset.ausRemover);
+        if (error) { toast('Erro: ' + error.message, true); return; }
+        toast('Ausência removida.');
+        await carregarTudo();
+    }));
+}
+
+function abrirModalAusencia() {
+    const sel = $('ma-integrante');
+    sel.innerHTML = '';
+    integrantes.filter(i => i.ativo).forEach(i => {
+        const o = document.createElement('option');
+        o.value = i.id;
+        o.textContent = i.nome;
+        sel.appendChild(o);
+    });
+    $('ma-inicio').value = hojeStr();
+    $('ma-fim').value = hojeStr();
+    $('ma-turno').value = 'dia';
+    $('ma-horas-wrap').style.display = 'none';
+    $('ma-motivo').value = '';
+    $('ma-overlay').classList.add('aberto');
+}
+
+async function confirmarAusencia() {
+    const integranteId = $('ma-integrante').value;
+    const inicio = $('ma-inicio').value;
+    const fim = $('ma-fim').value;
+    if (!integranteId || !inicio || !fim) { toast('Preencha integrante e período.', true); return; }
+    if (fim < inicio) { toast('A data final não pode ser antes da inicial.', true); return; }
+    const turno = $('ma-turno').value;
+    const hi = $('ma-hora-ini').value || null;
+    const hf = $('ma-hora-fim').value || null;
+    if (turno === 'horario' && (!hi || !hf || hf <= hi)) { toast('Horário inválido.', true); return; }
+    const { error } = await sb.from('hermo_ausencias').insert({
+        integrante_id: integranteId,
+        tipo: $('ma-tipo').value,
+        data_inicio: inicio,
+        data_fim: fim,
+        turno,
+        hora_inicio: turno === 'horario' ? hi : null,
+        hora_fim: turno === 'horario' ? hf : null,
+        motivo: $('ma-motivo').value.trim() || null
+    });
+    if (error) { toast('Erro ao lançar: ' + error.message, true); return; }
+    $('ma-overlay').classList.remove('aberto');
+    toast('Ausência lançada — produção e custo do período foram zerados.');
+    await carregarTudo();
+}
+
+// ============================================================
+// PRODUÇÃO × CUSTO
+// ============================================================
+/** dias presentes (com peso) de uma alocação dentro de [de, ate] */
+function diasPresentes(aloc, de, ate) {
+    const ini = aloc.data_inicio > de ? aloc.data_inicio : de;
+    const fim = aloc.data_fim < ate ? aloc.data_fim : ate;
+    if (fim < ini) return 0;
+    let peso = 0;
+    let d = new Date(ini + 'T12:00:00');
+    const limite = new Date(fim + 'T12:00:00');
+    while (d <= limite) {
+        const dia = dataStr(d);
+        if (!ausenteNoDia(aloc.integrante_id, dia, aloc.turno, aloc.hora_inicio, aloc.hora_fim)) {
+            peso += pesoTurno(aloc.turno, aloc.hora_inicio, aloc.hora_fim);
+        }
+        d = somarDias(d, 1);
+    }
+    return peso;
+}
+
+function renderProducao() {
+    const de = $('pc-de').value;
+    const ate = $('pc-ate').value;
+    if (!de || !ate) return;
+
+    // pesos totais por serviço (TODO o histórico) para o rateio
+    const pesosTotaisServico = new Map();
+    alocacoes.forEach(a => {
+        const sid = a.obra_servico_id;
+        pesosTotaisServico.set(sid, (pesosTotaisServico.get(sid) || 0) + diasPresentes(a, '2000-01-01', '2100-12-31'));
+    });
+
+    const porInt = new Map(); // id -> {dias, producao, custo}
+    alocacoes.forEach(a => {
+        const pesoPeriodo = diasPresentes(a, de, ate);
+        if (pesoPeriodo <= 0) return;
+        const os = a.obra_servico;
+        const valorRec = os ? num(os.total) * num(os.perc_executado) / 100 : 0;
+        const totalPesos = pesosTotaisServico.get(a.obra_servico_id) || 0;
+        const producao = totalPesos > 0 ? valorRec * (pesoPeriodo / totalPesos) : 0;
+        const i = integrantes.find(x => x.id === a.integrante_id);
+        let custo = 0;
+        if (i?.vinculo === 'diarista') custo = num(i.valor_diaria) * pesoPeriodo;
+        else if (i?.vinculo === 'mensalista') custo = (num(i.salario_mensal) / 22) * pesoPeriodo;
+        const acc = porInt.get(a.integrante_id) || { dias: 0, producao: 0, custo: 0 };
+        acc.dias += pesoPeriodo;
+        acc.producao += producao;
+        acc.custo += custo;
+        porInt.set(a.integrante_id, acc);
+    });
+
+    const linhas = [...porInt.entries()]
+        .map(([id, v]) => ({ i: integrantes.find(x => x.id === id), ...v }))
+        .filter(x => x.i)
+        .sort((a, b) => b.producao - a.producao);
+    $('pc-corpo').innerHTML = linhas.length === 0
+        ? '<tr><td colspan="5" style="color:var(--hermo-text-dim)">Nenhuma alocação no período.</td></tr>'
+        : linhas.map(x => {
+            const margem = x.producao - x.custo;
+            return `<tr>
+                <td><b>${esc(x.i.nome)}</b>${x.i.apelido ? ` (${esc(x.i.apelido)})` : ''}</td>
+                <td>${x.dias.toFixed(1)}</td>
+                <td>${fmtMoeda(x.producao)}</td>
+                <td>${fmtMoeda(x.custo)}</td>
+                <td><b class="val ${margem >= 0 ? 'pos' : 'neg'}" style="color:${margem >= 0 ? 'var(--hermo-success)' : 'var(--hermo-danger)'}">${fmtMoeda(margem)}</b></td>
+            </tr>`;
+        }).join('');
+
+    // agregado por equipe (soma dos membros)
+    $('pc-corpo-eq').innerHTML = equipes.map(q => {
+        const acc = { dias: 0, producao: 0, custo: 0 };
+        q.membroIds.forEach(id => {
+            const v = porInt.get(id);
+            if (v) { acc.dias += v.dias; acc.producao += v.producao; acc.custo += v.custo; }
+        });
+        if (acc.dias === 0) return '';
+        const margem = acc.producao - acc.custo;
+        return `<tr>
+            <td><span class="dot" style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${q.cor};margin-right:6px"></span><b>${esc(q.nome)}</b></td>
+            <td>${acc.dias.toFixed(1)}</td>
+            <td>${fmtMoeda(acc.producao)}</td>
+            <td>${fmtMoeda(acc.custo)}</td>
+            <td><b style="color:${margem >= 0 ? 'var(--hermo-success)' : 'var(--hermo-danger)'}">${fmtMoeda(margem)}</b></td>
+        </tr>`;
+    }).join('') || '<tr><td colspan="5" style="color:var(--hermo-text-dim)">Sem dados de equipe no período.</td></tr>';
+}
+
+// ============================================================
 // EVENTOS / BOOT
 // ============================================================
 $('btn-novo-int').addEventListener('click', () => abrirModalIntegrante(null));
@@ -408,6 +691,28 @@ $('mi-btn-nova-funcao').addEventListener('click', () => {
     w.style.display = w.style.display === 'none' ? '' : 'none';
 });
 $('mi-btn-salvar-funcao').addEventListener('click', salvarNovaFuncao);
+
+// agenda / ausências / produção
+$('ag-prev').addEventListener('click', () => { semanaBase = somarDias(semanaBase, -7); renderAgenda(); });
+$('ag-hoje').addEventListener('click', () => { semanaBase = inicioDaSemana(new Date()); renderAgenda(); });
+$('ag-next').addEventListener('click', () => { semanaBase = somarDias(semanaBase, 7); renderAgenda(); });
+$('ag-filtro-equipe').addEventListener('change', renderAgenda);
+$('btn-ausencia').addEventListener('click', abrirModalAusencia);
+$('ma-fechar').addEventListener('click', () => $('ma-overlay').classList.remove('aberto'));
+$('ma-cancelar').addEventListener('click', () => $('ma-overlay').classList.remove('aberto'));
+ligarFecharPorBackdrop($('ma-overlay'), () => $('ma-overlay').classList.remove('aberto'));
+$('ma-confirmar').addEventListener('click', confirmarAusencia);
+$('ma-turno').addEventListener('change', () => {
+    $('ma-horas-wrap').style.display = $('ma-turno').value === 'horario' ? '' : 'none';
+});
+$('pc-de').addEventListener('change', renderProducao);
+$('pc-ate').addEventListener('change', renderProducao);
+// período padrão: mês corrente
+(() => {
+    const d = new Date();
+    $('pc-de').value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`;
+    $('pc-ate').value = dataStr(new Date(d.getFullYear(), d.getMonth() + 1, 0));
+})();
 
 $('btn-nova-eq').addEventListener('click', () => abrirModalEquipe(null));
 $('me-fechar').addEventListener('click', () => $('me-overlay').classList.remove('aberto'));

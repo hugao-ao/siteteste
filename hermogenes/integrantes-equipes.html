@@ -25,6 +25,21 @@
         font-size: .68rem; font-weight: 700; padding: 2px 8px; border-radius: 20px;
         background: rgba(148,163,184,.18); color: var(--hermo-text-dim);
     }
+    /* agenda semanal */
+    .ag-wrap { overflow-x: auto; border: 1px solid var(--hermo-border); border-radius: 10px; }
+    .ag-grid { border-collapse: collapse; width: 100%; min-width: 860px; background: var(--hermo-surface); }
+    .ag-grid th, .ag-grid td { border: 1px solid var(--hermo-border); padding: 5px 6px; vertical-align: top; }
+    .ag-grid th { background: var(--hermo-surface-2); font-size: .72rem; color: var(--hermo-text-dim); text-transform: uppercase; }
+    .ag-grid th.hoje-col, .ag-grid td.hoje-col { background: rgba(245,158,11,.06); }
+    .ag-grid td.nome-col { font-size: .8rem; font-weight: 700; white-space: nowrap; background: var(--hermo-surface-2); }
+    .ag-grid td.nome-col small { display: block; font-weight: 400; color: var(--hermo-text-dim); }
+    .ag-bloco {
+        display: block; font-size: .68rem; border-radius: 5px; padding: 2px 6px; margin-bottom: 3px;
+        background: var(--hermo-primary); color: #1a1206; font-weight: 600;
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 150px;
+    }
+    .ag-bloco.ausencia { background: var(--hermo-danger); color: #fff; }
+    .ag-bloco.ausencia.suave { background: #64748b; }
   </style>
 </head>
 <body>
@@ -89,13 +104,127 @@
       <div class="big">👷</div>Nenhuma equipe montada ainda.
     </div>
 
-    <div class="hermo-page-head" style="margin-top:34px"><h1>Agenda e Produção</h1></div>
-    <div class="hermo-placeholder" style="padding:30px 20px">
-      <div class="icon">🗓️</div>
-      <p>A agenda por integrante/equipe e o painel <b>Produção × Custo</b> entram na próxima etapa,
-      alimentados pelas alocações do cronograma das Obras.</p>
+    <!-- ===== AGENDA ===== -->
+    <div class="hermo-page-head" style="margin-top:34px">
+      <h1>Agenda</h1>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        <select id="ag-filtro-equipe" class="hermo-btn ghost" style="padding:8px 12px">
+          <option value="">Todas as equipes</option>
+        </select>
+        <button class="hermo-btn ghost" id="ag-prev">‹</button>
+        <button class="hermo-btn ghost" id="ag-hoje">Hoje</button>
+        <button class="hermo-btn ghost" id="ag-next">›</button>
+        <button class="hermo-btn primary" id="btn-ausencia">+ Lançar ausência</button>
+      </div>
+    </div>
+    <div id="ag-semana-label" style="font-size:.85rem;color:var(--hermo-text-dim);margin-bottom:8px"></div>
+    <div class="ag-wrap">
+      <table class="ag-grid" id="ag-grid"></table>
+    </div>
+    <div class="hermo-mapa-legenda" style="margin-top:8px">
+      <span class="leg"><span class="dot" style="background:var(--hermo-primary)"></span>alocação (cor da equipe)</span>
+      <span class="leg"><span class="dot" style="background:var(--hermo-danger)"></span>falta</span>
+      <span class="leg"><span class="dot" style="background:#64748b"></span>atestado/liberado/férias</span>
+    </div>
+
+    <!-- ausências lançadas -->
+    <div class="hermo-page-head" style="margin-top:26px"><h1 style="font-size:1.05rem">Ausências lançadas</h1></div>
+    <div id="aus-lista" class="ob-props" style="display:flex;flex-direction:column;gap:6px"></div>
+
+    <!-- ===== PRODUÇÃO × CUSTO ===== -->
+    <div class="hermo-page-head" style="margin-top:34px">
+      <h1>Produção × Custo</h1>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        <label style="font-size:.8rem;color:var(--hermo-text-dim)">de</label>
+        <input id="pc-de" type="date" class="hermo-btn ghost" style="padding:7px 10px" />
+        <label style="font-size:.8rem;color:var(--hermo-text-dim)">até</label>
+        <input id="pc-ate" type="date" class="hermo-btn ghost" style="padding:7px 10px" />
+      </div>
+    </div>
+    <div class="hermo-tabela-wrap">
+      <table class="hermo-tabela">
+        <thead>
+          <tr><th>Integrante</th><th>Dias equiv.</th><th>Produção</th><th>Custo</th><th>Margem</th></tr>
+        </thead>
+        <tbody id="pc-corpo"></tbody>
+      </table>
+    </div>
+    <div style="font-size:.74rem;color:var(--hermo-text-dim);margin-top:8px">
+      Produção = valor do serviço × % executado, rateado pelo tempo presente de cada um (dia = 1, turno = 0,5, horário = horas ÷ 8).
+      Faltas zeram o dia. Custo: diária × dias presentes (diarista) ou salário ÷ 22 × dias (mensalista); empreiteiro é combinado à parte.
+    </div>
+    <div class="hermo-tabela-wrap" style="margin-top:14px">
+      <table class="hermo-tabela">
+        <thead>
+          <tr><th>Equipe</th><th>Dias equiv.</th><th>Produção</th><th>Custo</th><th>Margem</th></tr>
+        </thead>
+        <tbody id="pc-corpo-eq"></tbody>
+      </table>
     </div>
   </main>
+
+  <!-- MODAL AUSÊNCIA -->
+  <div class="hermo-modal-overlay" id="ma-overlay">
+    <div class="hermo-modal compacto">
+      <div class="hermo-modal-head">
+        <h2>Lançar ausência</h2>
+        <button class="fechar" id="ma-fechar" title="Fechar">&times;</button>
+      </div>
+      <div class="hermo-modal-body">
+        <div class="hermo-form-row">
+          <div class="hermo-field">
+            <label>Integrante <span class="req">*</span></label>
+            <select id="ma-integrante"></select>
+          </div>
+          <div class="hermo-field">
+            <label>Tipo</label>
+            <select id="ma-tipo">
+              <option value="falta">Falta</option>
+              <option value="atestado">Atestado</option>
+              <option value="liberado">Liberado</option>
+              <option value="ferias">Férias</option>
+            </select>
+          </div>
+        </div>
+        <div class="hermo-form-row">
+          <div class="hermo-field">
+            <label>De <span class="req">*</span></label>
+            <input id="ma-inicio" type="date" />
+          </div>
+          <div class="hermo-field">
+            <label>Até <span class="req">*</span></label>
+            <input id="ma-fim" type="date" />
+          </div>
+        </div>
+        <div class="hermo-form-row">
+          <div class="hermo-field">
+            <label>Período do dia</label>
+            <select id="ma-turno">
+              <option value="dia">Dia inteiro</option>
+              <option value="manha">Manhã</option>
+              <option value="tarde">Tarde</option>
+              <option value="horario">Horário específico…</option>
+            </select>
+          </div>
+          <div class="hermo-field" id="ma-horas-wrap" style="display:none">
+            <label>Das / até</label>
+            <div style="display:flex;gap:6px">
+              <input id="ma-hora-ini" type="time" style="flex:1" />
+              <input id="ma-hora-fim" type="time" style="flex:1" />
+            </div>
+          </div>
+        </div>
+        <div class="hermo-field">
+          <label>Motivo</label>
+          <input id="ma-motivo" type="text" placeholder="opcional" />
+        </div>
+      </div>
+      <div class="hermo-modal-foot">
+        <button class="hermo-btn ghost" id="ma-cancelar">Cancelar</button>
+        <button class="hermo-btn primary" id="ma-confirmar">Lançar</button>
+      </div>
+    </div>
+  </div>
 
   <!-- MODAL INTEGRANTE -->
   <div class="hermo-modal-overlay" id="mi-overlay">
