@@ -43,11 +43,16 @@ function somaOutros(s) {
     return (s.custos || []).filter(c => c.tipo === 'outro').reduce((t, c) => t + num(c.custo_unit), 0);
 }
 
+function somaMateriais(s) {
+    return (s.custos || []).filter(c => c.tipo === 'material').reduce((t, c) => t + num(c.custo_unit), 0);
+}
+
 function resultadoReal(s) {
     const p = s.precos;
     if (!p) return null;
     const a = num(p.aliquota) / 100;
-    return num(p.preco_final) * (1 - a) - somaOutros(s);
+    // preço final líquido de imposto − outros custos − custo MO − custo material
+    return num(p.preco_final) * (1 - a) - somaOutros(s) - num(p.custo_mo) - somaMateriais(s);
 }
 
 function renderResumo() {
@@ -217,7 +222,8 @@ function recalc() {
         ['dre-mo', p4 - p4 * a - c1],
         ['dre-mat', p5 - p5 * a - c2],
         ['dre-parcial', p6 - p6 * a],
-        ['dre-real', p6 - p6 * a - c3]
+        // resultado REAL: desconta outros custos E os custos de MO e material
+        ['dre-real', p6 - p6 * a - c3 - c1 - c2]
     ];
     dre.forEach(([id, v]) => {
         const el = $(id);
