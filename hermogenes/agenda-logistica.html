@@ -112,7 +112,13 @@
       <div>
         <div id="al-mapa"></div>
         <div class="hermo-mapa-legenda" id="mapa-legenda"></div>
-        <div class="al-vlista-head">Visitas roteáveis — acompanhe e monte a rota também por aqui</div>
+        <div class="al-vlista-head">Paradas disponíveis — monte a rota também por aqui</div>
+        <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">
+          <button class="hermo-btn small" id="al-tab-visita">📍 Visitas</button>
+          <button class="hermo-btn small ghost" id="al-tab-obra">🏗️ Obras</button>
+          <button class="hermo-btn small ghost" id="al-tab-apoio">📦 Pontos de apoio</button>
+          <button class="hermo-btn small primary" id="al-btn-novo-apoio" style="display:none">+ Novo ponto</button>
+        </div>
         <div class="al-vlista" id="al-vlista"></div>
       </div>
 
@@ -145,6 +151,14 @@
         <div class="al-dica" id="al-encadear-dica" style="display:none"></div>
 
         <div class="hermo-field">
+          <label>Responsáveis pela rota (entra na agenda deles)</label>
+          <select id="al-resp-equipe">
+            <option value="">— marcar por equipe (opcional) —</option>
+          </select>
+          <div class="lista-check" id="al-responsaveis" style="max-height:150px;margin-top:6px"></div>
+        </div>
+
+        <div class="hermo-field">
           <label>Paradas da rota (<span id="al-num-paradas">0</span>)</label>
           <div class="al-paradas" id="al-paradas">
             <div class="al-dica">Nenhuma visita selecionada — clique nos marcadores azuis do mapa.</div>
@@ -170,6 +184,34 @@
       <div class="big">🗺️</div>Nenhuma rota criada ainda.
     </div>
   </main>
+
+  <!-- MODAL PONTO DE APOIO -->
+  <div class="hermo-modal-overlay" id="pa-overlay">
+    <div class="hermo-modal compacto">
+      <div class="hermo-modal-head">
+        <h2 id="pa-titulo">Novo ponto de apoio</h2>
+        <button class="fechar" id="pa-fechar" title="Fechar">&times;</button>
+      </div>
+      <div class="hermo-modal-body">
+        <div class="hermo-field">
+          <label>Nome <span class="req">*</span></label>
+          <input id="pa-nome" type="text" placeholder="ex.: Depósito Casa Amarela, Fornecedor de cimento" />
+        </div>
+        <div class="hermo-field">
+          <label>Endereço <span class="req">*</span></label>
+          <input id="pa-endereco" type="text" placeholder="Rua, número, bairro, cidade" />
+        </div>
+        <div class="hermo-field">
+          <label>Observações</label>
+          <input id="pa-obs" type="text" placeholder="opcional — ex.: buscar material X" />
+        </div>
+      </div>
+      <div class="hermo-modal-foot">
+        <button class="hermo-btn ghost" id="pa-cancelar">Cancelar</button>
+        <button class="hermo-btn primary" id="pa-confirmar">Salvar ponto</button>
+      </div>
+    </div>
+  </div>
 
   <script type="module" src="agenda-logistica.js"></script>
 </body>

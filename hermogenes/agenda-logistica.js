@@ -1,6 +1,6 @@
 // agenda-logistica.js — Montagem de rotas/agenda do dia a partir das visitas MARCADAS
 // Deslocamentos estimados via OSRM (OpenStreetMap) — gratuito, sem chave.
-import { sb, toast, fmtDataHora, inputParaISO, isoParaInput, esc, STATUS_VISITA } from './hermo-common.js';
+import { sb, toast, fmtDataHora, inputParaISO, isoParaInput, esc, STATUS_VISITA, ligarFecharPorBackdrop } from './hermo-common.js';
 
 const $ = id => document.getElementById(id);
 
@@ -8,41 +8,101 @@ const CORES_ROTA = ['#f59e0b', '#3b82f6', '#22c55e', '#a855f7', '#ef4444', '#14b
 const COR_MARCADA = '#3b82f6';
 
 // ---------- Estado ----------
-let visitas = [];            // visitas marcadas com coordenadas
+let visitas = [];            // visitas roteáveis com coordenadas
+let obras = [];              // obras com coordenadas
+let pontosApoio = [];        // depósitos/fornecedores
+let integrantes = [];
+let equipes = [];
 let rotas = [];              // rotas salvas (com paradas embutidas)
 let mapa = null;
-let marcadores = new Map();  // visita_id -> marker
+let marcadores = new Map();  // `${tipo}:${id}` -> marker
 let linhasSalvas = [];       // polylines das rotas salvas
 let linhaDraft = null;       // polyline da rota calculada (OSRM)
 let linhaEsboco = null;      // prévia tracejada durante a montagem (linha reta)
+let listaTipo = 'visita';    // aba ativa da lista-espelho
+let tiposOcultos = new Set(lerLS_('hermo_al_tipos_ocultos', []));
 
-let draft = { paradas: [] }; // [{visita_id, permanencia_min}]
+let draft = { paradas: [] }; // [{tipo:'visita'|'obra'|'apoio', ref_id, permanencia_min}]
+let responsaveisDraft = new Set();
 let editandoRotaId = null;
+let paEditandoId = null;
 let calcResultado = null;    // resultado do último "Calcular rota" (invalida ao mexer no draft)
+
+function lerLS_(chave, padrao) {
+    try { return JSON.parse(localStorage.getItem(chave)) || padrao; }
+    catch (e) { return padrao; }
+}
+
+const STATUS_OBRA_COR = { a_iniciar: '#eab308', em_andamento: '#3b82f6', pausada: '#f97316', concluida: '#22c55e', entregue: '#a855f7' };
+const TIPO_ICONE = { visita: '📍', obra: '🏗️', apoio: '📦' };
+
+/** Resolve uma parada tipada em {ponto, rotulo, sub} a partir das coleções carregadas. */
+function resolverParada(tipo, refId) {
+    if (tipo === 'visita') {
+        const v = visitas.find(x => x.id === refId);
+        return v ? { ponto: [v.latitude, v.longitude], rotulo: v.endereco, sub: (v.cliente?.nome || '') } : null;
+    }
+    if (tipo === 'obra') {
+        const o = obras.find(x => x.id === refId);
+        return o ? { ponto: [o.latitude, o.longitude], rotulo: `OB-${String(o.numero).padStart(4, '0')} — ${o.nome}`, sub: o.endereco || '' } : null;
+    }
+    const pa = pontosApoio.find(x => x.id === refId);
+    return pa ? { ponto: [pa.latitude, pa.longitude], rotulo: pa.nome, sub: pa.endereco || '' } : null;
+}
+
+/** Resolve a referência de uma PARADA SALVA (linha do banco com embeds). */
+function resolverParadaSalva(p) {
+    if (p.tipo === 'obra' && p.obra) {
+        return { ponto: [p.obra.latitude, p.obra.longitude], rotulo: `OB-${String(p.obra.numero).padStart(4, '0')} — ${p.obra.nome}` };
+    }
+    if (p.tipo === 'apoio' && p.ponto_apoio) {
+        return { ponto: [p.ponto_apoio.latitude, p.ponto_apoio.longitude], rotulo: p.ponto_apoio.nome };
+    }
+    if (p.visita) return { ponto: [p.visita.latitude, p.visita.longitude], rotulo: p.visita.endereco };
+    return null;
+}
 
 // ============================================================
 // CARREGAMENTO
 // ============================================================
 async function carregarTudo() {
-    const [v, r] = await Promise.all([
+    const [v, o, pa, it, eq, r] = await Promise.all([
         sb.from('hermo_visitas')
             .select('id, endereco, latitude, longitude, status, data_visita, cliente:hermo_clientes(nome)')
             .neq('status', 'pendente_marcacao'),
+        sb.from('hermo_obras')
+            .select('id, numero, ano, nome, status, endereco, latitude, longitude'),
+        sb.from('hermo_pontos_apoio').select('*').order('nome'),
+        sb.from('hermo_integrantes').select('id, nome, apelido, ativo, funcao:hermo_funcoes(nome)').order('nome'),
+        sb.from('hermo_equipes').select('id, nome, cor, membros:hermo_equipe_membros(integrante_id)').order('nome'),
         sb.from('hermo_rotas')
-            .select('*, paradas:hermo_rota_paradas(*, visita:hermo_visitas(id, endereco, latitude, longitude))')
+            .select(`*, paradas:hermo_rota_paradas(*,
+                visita:hermo_visitas(id, endereco, latitude, longitude),
+                obra:hermo_obras(id, numero, ano, nome, latitude, longitude),
+                ponto_apoio:hermo_pontos_apoio(id, nome, latitude, longitude)),
+                responsaveis:hermo_rota_responsaveis(integrante_id)`)
             .order('inicio')
     ]);
     if (v.error) { toast('Erro ao carregar visitas: ' + v.error.message, true); return; }
     if (r.error) { toast('Erro ao carregar rotas: ' + r.error.message, true); return; }
+    if (o.error || pa.error || it.error || eq.error) {
+        toast('Erro ao carregar dados de apoio: ' + (o.error || pa.error || it.error || eq.error).message, true);
+    }
     visitas = (v.data || []).filter(x => x.latitude != null && x.longitude != null);
+    obras = (o.data || []).filter(x => x.latitude != null && x.longitude != null);
+    pontosApoio = (pa.data || []).filter(x => x.latitude != null && x.longitude != null);
+    integrantes = it.data || [];
+    equipes = (eq.data || []).map(q => ({ ...q, membroIds: (q.membros || []).map(m => m.integrante_id) }));
     rotas = (r.data || []).map(x => ({
         ...x,
-        paradas: (x.paradas || []).sort((a, b) => a.ordem - b.ordem)
+        paradas: (x.paradas || []).sort((a, b) => a.ordem - b.ordem),
+        responsavelIds: (x.responsaveis || []).map(rr => rr.integrante_id)
     }));
     renderResumo();
     renderMarcadores();
     renderRotasSalvas();
     popularEncadeamento();
+    popularResponsaveis();
     renderParadasDraft();
 }
 
@@ -86,46 +146,86 @@ function iniciarMapa() {
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
         subdomains: 'abcd', maxZoom: 19
     }).addTo(mapa);
+    renderLegenda();
+}
+
+function renderLegenda() {
+    const tipoBtn = (tipo, rotulo) =>
+        `<span class="leg leg-toggle ${tiposOcultos.has(tipo) ? 'oculto' : ''}" data-tipo-leg="${tipo}"
+            title="Clique para ${tiposOcultos.has(tipo) ? 'mostrar' : 'ocultar'} no mapa">${TIPO_ICONE[tipo]} ${rotulo}</span>`;
     $('mapa-legenda').innerHTML =
+        tipoBtn('visita', 'Visitas') + tipoBtn('obra', 'Obras') + tipoBtn('apoio', 'Apoios') +
         Object.entries(STATUS_VISITA)
             .filter(([k]) => k !== 'pendente_marcacao')
             .map(([k, v]) => `<span class="leg"><span class="dot" style="background:${v.cor}"></span>${v.label}</span>`)
             .join('') +
         `<span class="leg"><span class="dot" style="background:var(--hermo-primary)"></span>Nº = parada da rota em montagem</span>`;
+    $('mapa-legenda').querySelectorAll('[data-tipo-leg]').forEach(l => l.addEventListener('click', () => {
+        const t = l.dataset.tipoLeg;
+        if (tiposOcultos.has(t)) tiposOcultos.delete(t);
+        else tiposOcultos.add(t);
+        try { localStorage.setItem('hermo_al_tipos_ocultos', JSON.stringify([...tiposOcultos])); } catch (e) {}
+        renderMarcadores();
+    }));
 }
 
 let mapaEnquadrado = false;
 
 function renderMarcadores() {
     if (!mapa) return;
+    renderLegenda();
     marcadores.forEach(m => mapa.removeLayer(m));
     marcadores.clear();
     const pontos = [];
-    visitas.forEach(v => {
-        const idx = draft.paradas.findIndex(p => p.visita_id === v.id);
+
+    const criarMarcador = (tipo, id, lat, lng, tooltip, corFallback) => {
+        const idx = draft.paradas.findIndex(p => p.tipo === tipo && p.ref_id === id);
         let marker;
         if (idx >= 0) {
-            marker = L.marker([v.latitude, v.longitude], {
+            marker = L.marker([lat, lng], {
                 icon: L.divIcon({ className: 'al-marker-num', html: String(idx + 1), iconSize: [26, 26] })
             });
-        } else {
-            marker = L.circleMarker([v.latitude, v.longitude], {
+        } else if (tipo === 'visita') {
+            marker = L.circleMarker([lat, lng], {
                 radius: 9, color: '#0f172a', weight: 2,
-                fillColor: STATUS_VISITA[v.status]?.cor || COR_MARCADA, fillOpacity: 1
+                fillColor: corFallback, fillOpacity: 1
+            });
+        } else {
+            marker = L.marker([lat, lng], {
+                icon: L.divIcon({
+                    className: '',
+                    html: `<div style="font-size:19px;filter:drop-shadow(0 1px 2px rgba(0,0,0,.6))">${TIPO_ICONE[tipo]}</div>`,
+                    iconSize: [22, 22]
+                })
             });
         }
         marker.addTo(mapa);
-        const emRotas = rotas.filter(r => r.paradas.some(p => p.visita_id === v.id)).map(r => r.nome);
-        marker.bindTooltip(
+        marker.bindTooltip(tooltip, { sticky: true });
+        marker.on('click', () => alternarParada(tipo, id));
+        marcadores.set(`${tipo}:${id}`, marker);
+        pontos.push([lat, lng]);
+    };
+
+    if (!tiposOcultos.has('visita')) visitas.forEach(v => {
+        const emRotas = rotas.filter(r => r.paradas.some(p => p.tipo === 'visita' && p.visita_id === v.id)).map(r => r.nome);
+        criarMarcador('visita', v.id, v.latitude, v.longitude,
             `${esc(v.endereco)}${v.cliente ? ' — ' + esc(v.cliente.nome) : ''}` +
             `<br>Status: ${STATUS_VISITA[v.status]?.label || v.status}` +
             `${v.data_visita ? '<br>Data: ' + fmtDataHora(v.data_visita) : ''}` +
             `${emRotas.length ? '<br>⚠ já na rota: ' + esc(emRotas.join(', ')) : ''}`,
-            { sticky: true });
-        marker.on('click', () => alternarParada(v.id));
-        marcadores.set(v.id, marker);
-        pontos.push([v.latitude, v.longitude]);
+            STATUS_VISITA[v.status]?.cor || COR_MARCADA);
     });
+    if (!tiposOcultos.has('obra')) obras.forEach(o => {
+        criarMarcador('obra', o.id, o.latitude, o.longitude,
+            `🏗️ OB-${String(o.numero).padStart(4, '0')}/${o.ano} — ${esc(o.nome)}<br>${esc(o.endereco || '')}`,
+            null);
+    });
+    if (!tiposOcultos.has('apoio')) pontosApoio.forEach(pa => {
+        criarMarcador('apoio', pa.id, pa.latitude, pa.longitude,
+            `📦 ${esc(pa.nome)}<br>${esc(pa.endereco || '')}${pa.observacoes ? '<br>' + esc(pa.observacoes) : ''}`,
+            null);
+    });
+
     // enquadrar só na primeira renderização — cliques de seleção não podem
     // resetar o zoom/pan que o usuário ajustou
     if (!mapaEnquadrado && pontos.length > 0) {
@@ -172,9 +272,9 @@ function desenharEsboco() {
         return;
     }
     const pts = draft.paradas
-        .map(p => visitas.find(x => x.id === p.visita_id))
-        .filter(v => v && v.latitude != null)
-        .map(v => [v.latitude, v.longitude]);
+        .map(p => resolverParada(p.tipo, p.ref_id))
+        .filter(r => r && r.ponto[0] != null)
+        .map(r => r.ponto);
     if (mapa && pts.length >= 2) {
         linhaEsboco = L.polyline(pts, { color: '#f59e0b', weight: 3, opacity: .85, dashArray: '4 10' }).addTo(mapa);
     }
@@ -187,10 +287,10 @@ function desenharEsboco() {
         ' — use 🧭 Calcular para os tempos reais de deslocamento.';
 }
 
-function alternarParada(visitaId) {
-    const i = draft.paradas.findIndex(p => p.visita_id === visitaId);
+function alternarParada(tipo, refId) {
+    const i = draft.paradas.findIndex(p => p.tipo === tipo && p.ref_id === refId);
     if (i >= 0) draft.paradas.splice(i, 1);
-    else draft.paradas.push({ visita_id: visitaId, permanencia_min: 60 });
+    else draft.paradas.push({ tipo, ref_id: refId, permanencia_min: tipo === 'apoio' ? 20 : 60 });
     invalidarCalculo();
     renderMarcadores();
     renderParadasDraft();
@@ -206,32 +306,64 @@ function moverParada(i, delta) {
 }
 
 /**
- * Lista-espelho das visitas marcadas, fora do mapa: mostra em tempo real o que
- * está na rota (com o nº da ordem) e permite adicionar/remover por botão.
+ * Lista-espelho (abas Visitas/Obras/Apoios), fora do mapa: mostra em tempo real
+ * o que está na rota (nº da ordem) e permite adicionar/remover por botão.
  */
 function renderListaVisitas() {
     const cont = $('al-vlista');
     if (!cont) return;
-    if (visitas.length === 0) {
-        cont.innerHTML = '<div class="al-dica">Nenhuma visita roteável — precisa ter localização e não estar "Pendente de marcação".</div>';
-        return;
-    }
-    cont.innerHTML = visitas.map(v => {
-        const idx = draft.paradas.findIndex(p => p.visita_id === v.id);
+    // abas
+    ['visita', 'obra', 'apoio'].forEach(t => {
+        const b = $('al-tab-' + t);
+        if (b) b.className = 'hermo-btn small' + (listaTipo === t ? '' : ' ghost');
+    });
+    $('al-btn-novo-apoio').style.display = listaTipo === 'apoio' ? '' : 'none';
+
+    const linha = (tipo, id, principal, sub, extra = '') => {
+        const idx = draft.paradas.findIndex(p => p.tipo === tipo && p.ref_id === id);
         const na = idx >= 0;
-        const st = STATUS_VISITA[v.status] || { label: v.status, cor: '#94a3b8' };
         return `
         <div class="al-vitem ${na ? 'na-rota' : ''}">
             <span class="num ${na ? '' : 'vazio'}">${na ? idx + 1 : ''}</span>
-            <div class="txt">
-                ${esc(v.endereco)}
-                <small><span style="color:${st.cor}">●</span> ${st.label}${v.cliente ? ' · ' + esc(v.cliente.nome) : ''}${v.data_visita ? ' · ' + fmtDataHora(v.data_visita) : ''}</small>
-            </div>
-            <button class="hermo-btn small ${na ? 'danger' : 'primary'}" data-vtoggle="${v.id}">${na ? '× Remover' : '+ Rota'}</button>
+            <div class="txt">${TIPO_ICONE[tipo]} ${principal}<small>${sub}</small></div>
+            ${extra}
+            <button class="hermo-btn small ${na ? 'danger' : 'primary'}" data-ptoggle="${tipo}:${id}">${na ? '× Remover' : '+ Rota'}</button>
         </div>`;
-    }).join('');
-    cont.querySelectorAll('[data-vtoggle]').forEach(b =>
-        b.addEventListener('click', () => alternarParada(b.dataset.vtoggle)));
+    };
+
+    let html = '';
+    if (listaTipo === 'visita') {
+        html = visitas.length === 0
+            ? '<div class="al-dica">Nenhuma visita roteável (precisa de localização e não estar pendente de marcação).</div>'
+            : visitas.map(v => {
+                const st = STATUS_VISITA[v.status] || { label: v.status, cor: '#94a3b8' };
+                return linha('visita', v.id, esc(v.endereco),
+                    `<span style="color:${st.cor}">●</span> ${st.label}${v.cliente ? ' · ' + esc(v.cliente.nome) : ''}${v.data_visita ? ' · ' + fmtDataHora(v.data_visita) : ''}`);
+            }).join('');
+    } else if (listaTipo === 'obra') {
+        html = obras.length === 0
+            ? '<div class="al-dica">Nenhuma obra com localização no mapa.</div>'
+            : obras.map(o => linha('obra', o.id,
+                `OB-${String(o.numero).padStart(4, '0')} — ${esc(o.nome)}`,
+                `<span style="color:${STATUS_OBRA_COR[o.status] || '#94a3b8'}">●</span> ${esc(o.endereco || '')}`)).join('');
+    } else {
+        html = pontosApoio.length === 0
+            ? '<div class="al-dica">Nenhum ponto de apoio — use "+ Novo ponto" para cadastrar depósitos/fornecedores.</div>'
+            : pontosApoio.map(pa => linha('apoio', pa.id, esc(pa.nome),
+                `${esc(pa.endereco || '')}${pa.observacoes ? ' · ' + esc(pa.observacoes) : ''}`,
+                `<button class="hermo-btn small ghost" data-pa-editar="${pa.id}">✎</button>
+                 <button class="hermo-btn small danger" data-pa-excluir="${pa.id}">🗑</button>`)).join('');
+    }
+    cont.innerHTML = html;
+    cont.querySelectorAll('[data-ptoggle]').forEach(b =>
+        b.addEventListener('click', () => {
+            const [tipo, id] = b.dataset.ptoggle.split(':');
+            alternarParada(tipo, id);
+        }));
+    cont.querySelectorAll('[data-pa-editar]').forEach(b =>
+        b.addEventListener('click', () => abrirModalApoio(pontosApoio.find(x => x.id === b.dataset.paEditar))));
+    cont.querySelectorAll('[data-pa-excluir]').forEach(b =>
+        b.addEventListener('click', () => excluirApoio(b.dataset.paExcluir)));
 }
 
 function renderParadasDraft() {
@@ -243,13 +375,13 @@ function renderParadasDraft() {
         return;
     }
     cont.innerHTML = draft.paradas.map((p, i) => {
-        const v = visitas.find(x => x.id === p.visita_id);
+        const r = resolverParada(p.tipo, p.ref_id);
         return `
         <div class="al-parada">
             <span class="num">${i + 1}</span>
             <div class="txt">
-                ${esc(v?.endereco || '?')}
-                <small>${v?.cliente ? esc(v.cliente.nome) + ' · ' : ''}${v?.data_visita ? 'marcada p/ ' + fmtDataHora(v.data_visita) : ''}</small>
+                ${TIPO_ICONE[p.tipo]} ${esc(r?.rotulo || '?')}
+                <small>${esc(r?.sub || '')}</small>
             </div>
             <input class="perm" type="number" min="5" step="5" value="${p.permanencia_min}" data-perm="${i}" title="Permanência (minutos)" /> min
             <button class="hermo-btn small ghost" data-sobe="${i}" title="Subir">↑</button>
@@ -265,7 +397,10 @@ function renderParadasDraft() {
     }));
     cont.querySelectorAll('[data-sobe]').forEach(b => b.addEventListener('click', () => moverParada(parseInt(b.dataset.sobe), -1)));
     cont.querySelectorAll('[data-desce]').forEach(b => b.addEventListener('click', () => moverParada(parseInt(b.dataset.desce), 1)));
-    cont.querySelectorAll('[data-tira]').forEach(b => b.addEventListener('click', () => alternarParada(draft.paradas[parseInt(b.dataset.tira)].visita_id)));
+    cont.querySelectorAll('[data-tira]').forEach(b => b.addEventListener('click', () => {
+        const p = draft.paradas[parseInt(b.dataset.tira)];
+        alternarParada(p.tipo, p.ref_id);
+    }));
 }
 
 /** Ids de todas as rotas encadeadas (direta ou indiretamente) após a rota dada. */
@@ -301,9 +436,9 @@ function aoMudarEncadeamento() {
         $('al-inicio').disabled = true;
         // não apagar o valor digitado — só desabilitar (é ignorado quando encadeada)
         $('al-partida-end').disabled = true;
-        const ult = pai.paradas[pai.paradas.length - 1];
+        const ult = resolverParadaSalva(pai.paradas[pai.paradas.length - 1] || {});
         dica.style.display = '';
-        dica.textContent = `Partida automática: ${fmtDataHora(pai.fim_previsto)}, saindo de "${ult?.visita?.endereco || 'última parada'}".`;
+        dica.textContent = `Partida automática: ${fmtDataHora(pai.fim_previsto)}, saindo de "${ult?.rotulo || 'última parada'}".`;
     } else {
         $('al-inicio').disabled = false;
         $('al-partida-end').disabled = false;
@@ -342,15 +477,15 @@ async function osrmRota(pontos) { // pontos: [[lat,lng],...]
 }
 
 async function calcularRota() {
-    // paradas cuja visita saiu do mapa (mudou de status / perdeu coordenadas em outra aba)
-    const perdidas = draft.paradas.filter(p => !visitas.some(v => v.id === p.visita_id));
+    // paradas cuja referência saiu do mapa (status mudou / perdeu coordenadas em outra aba)
+    const perdidas = draft.paradas.filter(p => !resolverParada(p.tipo, p.ref_id));
     if (perdidas.length > 0) {
-        draft.paradas = draft.paradas.filter(p => visitas.some(v => v.id === p.visita_id));
+        draft.paradas = draft.paradas.filter(p => resolverParada(p.tipo, p.ref_id));
         renderMarcadores();
         renderParadasDraft();
         toast(`${perdidas.length} parada(s) saíram do mapa (status mudou ou sem localização) e foram removidas.`, true);
     }
-    if (draft.paradas.length === 0) { toast('Selecione ao menos uma visita no mapa.', true); return; }
+    if (draft.paradas.length === 0) { toast('Selecione ao menos uma parada no mapa.', true); return; }
     const pai = rotas.find(r => r.id === $('al-encadear').value);
     if (!pai && !$('al-inicio').value) { toast('Informe a data e hora de partida.', true); return; }
     if (pai && pai.paradas.length === 0) { toast('A rota anterior não tem paradas — não dá para encadear.', true); return; }
@@ -362,12 +497,12 @@ async function calcularRota() {
         // ponto de origem
         let origem = null, origemLabel = null, partidaGeo = null;
         if (pai) {
-            const ult = pai.paradas[pai.paradas.length - 1];
-            if (ult?.visita?.latitude == null || ult?.visita?.longitude == null) {
+            const ult = resolverParadaSalva(pai.paradas[pai.paradas.length - 1]);
+            if (!ult || ult.ponto[0] == null) {
                 toast('A última parada da rota anterior está sem localização no mapa — não dá para encadear a partir dela.', true);
                 return;
             }
-            origem = [ult.visita.latitude, ult.visita.longitude];
+            origem = ult.ponto;
             origemLabel = `Saída da rota "${pai.nome}"`;
         } else if ($('al-partida-end').value.trim()) {
             partidaGeo = await geocodificar($('al-partida-end').value.trim());
@@ -377,8 +512,8 @@ async function calcularRota() {
         }
 
         const stops = draft.paradas.map(p => {
-            const v = visitas.find(x => x.id === p.visita_id);
-            return { ...p, visita: v, ponto: [v.latitude, v.longitude] };
+            const r = resolverParada(p.tipo, p.ref_id);
+            return { ...p, rotulo: r.rotulo, ponto: r.ponto };
         });
         const pontos = (origem ? [origem] : []).concat(stops.map(s => s.ponto));
 
@@ -443,7 +578,7 @@ function renderTimeline(origemLabel) {
     c.stops.forEach((s, i) => {
         if (s.leg) html += `<div class="tl-desloc">🚗 ${fmtDuracao(s.leg.seg)} · ${s.leg.km.toFixed(1)} km${c.aproximado ? ' (aprox.)' : ''}</div>`;
         html += `<div class="tl-linha"><span class="tl-hora">${horaCurta(s.chegada)}–${horaCurta(s.saida)}</span>
-            <span>📍 ${i + 1}. ${esc(s.visita.endereco)} <small style="color:var(--hermo-text-dim)">(${s.permanencia_min} min)</small></span></div>`;
+            <span>${TIPO_ICONE[s.tipo] || '📍'} ${i + 1}. ${esc(s.rotulo)} <small style="color:var(--hermo-text-dim)">(${s.permanencia_min} min)</small></span></div>`;
     });
     html += `<div class="tl-linha tl-total"><span class="tl-hora">${horaCurta(c.fim)}</span><span>🏁 Fim previsto</span></div>
         <div class="tl-total">Permanência ${fmtDuracao(c.permTotal)} · Deslocamento ${fmtDuracao(c.deslocTotal)} (${c.kmTotal.toFixed(1)} km) · <b>Duração total ${fmtDuracao((c.fim - c.inicio) / 1000)}</b></div>`;
@@ -560,7 +695,10 @@ async function salvarRota() {
             cor,
             geom: c.geom,
             paradas: c.stops.map((s, i) => ({
-                visita_id: s.visita_id,
+                tipo: s.tipo,
+                visita_id: s.tipo === 'visita' ? s.ref_id : null,
+                obra_id: s.tipo === 'obra' ? s.ref_id : null,
+                ponto_apoio_id: s.tipo === 'apoio' ? s.ref_id : null,
                 ordem: i + 1,
                 permanencia_min: s.permanencia_min,
                 chegada: s.chegada.toISOString(),
@@ -568,8 +706,17 @@ async function salvarRota() {
                 desloc_seg: s.leg?.seg || 0,
                 desloc_km: s.leg ? Math.round(s.leg.km * 100) / 100 : 0,
                 desloc_aproximado: c.aproximado
-            }))
+            })),
+            responsaveis: [...responsaveisDraft]
         };
+
+        // responsáveis: checar agenda (alocações/ausências) na janela da rota;
+        // conflito => oferecer "deslocar mesmo assim" lançando ausência 'liberado'
+        if (responsaveisDraft.size > 0) {
+            const prosseguir = await tratarConflitosResponsaveis(c, nome);
+            if (!prosseguir) return;
+        }
+
         const { data: rotaId, error } = await sb.rpc('hermo_salvar_rota', { p: payload });
         if (error) throw error;
         if (!editandoRotaId && rotaId) editandoRotaId = rotaId;
@@ -614,8 +761,130 @@ async function realinharDependentes(rotaPaiId, novoFimISO, visitados = new Set()
     }
 }
 
+// ============================================================
+// RESPONSÁVEIS: conflito de agenda + ausência automática ("deslocado p/ rota")
+// ============================================================
+function minutosDe(dt) { return dt.getHours() * 60 + dt.getMinutes(); }
+function diaDe(dt) {
+    return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
+}
+
+function popularResponsaveis() {
+    const selEq = $('al-resp-equipe');
+    if (!selEq) return;
+    const atual = selEq.value;
+    selEq.innerHTML = '<option value="">— marcar por equipe (opcional) —</option>';
+    equipes.forEach(q => {
+        const o = document.createElement('option');
+        o.value = q.id;
+        o.textContent = `${q.nome} (${q.membroIds.length})`;
+        selEq.appendChild(o);
+    });
+    if ([...selEq.options].some(o => o.value === atual)) selEq.value = atual;
+    renderResponsaveis();
+}
+
+function renderResponsaveis() {
+    const cont = $('al-responsaveis');
+    if (!cont) return;
+    cont.innerHTML = integrantes.filter(i => i.ativo).map(i => `
+        <label class="lc-item">
+            <input type="checkbox" data-resp="${i.id}" ${responsaveisDraft.has(i.id) ? 'checked' : ''} />
+            <div class="txt"><b>${esc(i.apelido || i.nome)}</b><small>${esc(i.funcao?.nome || '')}</small></div>
+        </label>`).join('') ||
+        '<div class="al-dica">Nenhum integrante ativo cadastrado.</div>';
+    cont.querySelectorAll('[data-resp]').forEach(c => c.addEventListener('change', e => {
+        if (e.target.checked) responsaveisDraft.add(e.target.dataset.resp);
+        else responsaveisDraft.delete(e.target.dataset.resp);
+    }));
+}
+
+/**
+ * Verifica a agenda dos responsáveis na janela da rota. Se houver conflito com
+ * alocação de obra, oferece prosseguir lançando ausência 'liberado' (a produção
+ * do serviço não conta para o deslocado no período — a "falta automática").
+ * Retorna true para prosseguir com o salvamento.
+ */
+async function tratarConflitosResponsaveis(c, nomeRota) {
+    const ids = [...responsaveisDraft];
+    const d1 = diaDe(c.inicio), d2 = diaDe(c.fim);
+    const bloco = (d1 === d2)
+        ? { data_inicio: d1, data_fim: d2, turno: 'horario',
+            hora_inicio: `${String(c.inicio.getHours()).padStart(2, '0')}:${String(c.inicio.getMinutes()).padStart(2, '0')}`,
+            hora_fim: `${String(c.fim.getHours()).padStart(2, '0')}:${String(c.fim.getMinutes()).padStart(2, '0')}` }
+        : { data_inicio: d1, data_fim: d2, turno: 'dia', hora_inicio: null, hora_fim: null };
+
+    const [aloc, aus] = await Promise.all([
+        sb.from('hermo_alocacoes')
+            .select('*, integrante:hermo_integrantes(id, nome), obra_servico:hermo_obra_servicos(servico:hermo_servicos(codigo), obra:hermo_obras(numero, ano, nome))')
+            .in('integrante_id', ids).lte('data_inicio', d2).gte('data_fim', d1),
+        sb.from('hermo_ausencias')
+            .select('*, integrante:hermo_integrantes(id, nome)')
+            .in('integrante_id', ids).lte('data_inicio', d2).gte('data_fim', d1)
+    ]);
+    if (aloc.error || aus.error) {
+        toast('Não consegui verificar a agenda dos responsáveis: ' + (aloc.error || aus.error).message, true);
+        return false;
+    }
+
+    const minutosTurnoAL = (turno, hi, hf) => {
+        if (turno === 'dia') return [420, 1020];
+        if (turno === 'manha') return [420, 720];
+        if (turno === 'tarde') return [780, 1020];
+        const m = s => { const [h, mi] = String(s || '0:0').split(':').map(Number); return h * 60 + mi; };
+        return [m(hi), m(hf)];
+    };
+    const conflita = (a, b) => {
+        if (a.data_fim < b.data_inicio || b.data_fim < a.data_inicio) return false;
+        const [ai, af] = minutosTurnoAL(a.turno, a.hora_inicio, a.hora_fim);
+        const [bi, bf] = minutosTurnoAL(b.turno, b.hora_inicio, b.hora_fim);
+        return Math.max(ai, bi) < Math.min(af, bf);
+    };
+
+    const conflAloc = (aloc.data || []).filter(a => conflita(bloco, a));
+    const conflAus = (aus.data || []).filter(a => conflita(bloco, a) && !(a.motivo || '').startsWith('em rota:'));
+    if (conflAloc.length === 0 && conflAus.length === 0) return true;
+
+    const linhas = [
+        ...conflAloc.map(a => {
+            const ob = a.obra_servico?.obra;
+            return `• ${a.integrante?.nome}: alocado em ${ob ? 'OB-' + String(ob.numero).padStart(4, '0') + ' — ' + ob.nome : 'obra'} (${a.obra_servico?.servico?.codigo || ''})`;
+        }),
+        ...conflAus.map(a => `• ${a.integrante?.nome}: ausência (${a.tipo}) no período`)
+    ];
+    const ok = confirm(
+        `⚠ Conflito de agenda dos responsáveis na janela da rota (${horaCurta(c.inicio)}–${horaCurta(c.fim)}):\n\n` +
+        linhas.join('\n') +
+        `\n\nDeslocar mesmo assim? Será lançada uma ausência "liberado — em rota: ${nomeRota}" ` +
+        `no período para quem está alocado (a produção do serviço não conta para eles nesse intervalo).`);
+    if (!ok) return false;
+
+    // ausência automática por integrante conflitante (só para conflitos de ALOCAÇÃO)
+    const integrantesConflitantes = [...new Set(conflAloc.map(a => a.integrante_id))];
+    if (integrantesConflitantes.length > 0) {
+        const { error } = await sb.from('hermo_ausencias').insert(integrantesConflitantes.map(intId => ({
+            integrante_id: intId,
+            tipo: 'liberado',
+            data_inicio: bloco.data_inicio,
+            data_fim: bloco.data_fim,
+            turno: bloco.turno,
+            hora_inicio: bloco.hora_inicio,
+            hora_fim: bloco.hora_fim,
+            motivo: `em rota: ${nomeRota}`
+        })));
+        if (error) {
+            toast('Erro ao lançar as ausências automáticas: ' + error.message, true);
+            return false;
+        }
+        toast(`${integrantesConflitantes.length} ausência(s) "liberado — em rota" lançada(s).`);
+    }
+    return true;
+}
+
 function limparDraft() {
     draft = { paradas: [] };
+    responsaveisDraft = new Set();
+    renderResponsaveis();
     editandoRotaId = null;
     $('al-titulo').textContent = 'Nova rota';
     $('al-nome').value = '';
@@ -632,12 +901,18 @@ function editarRota(id) {
     const r = rotas.find(x => x.id === id);
     if (!r) return;
     editandoRotaId = id;
-    draft.paradas = r.paradas.map(p => ({ visita_id: p.visita_id, permanencia_min: p.permanencia_min }));
-    // paradas cuja visita saiu de "marcada" não estão no mapa — avisa e mantém as roteáveis
-    const perdidas = draft.paradas.filter(p => !visitas.some(v => v.id === p.visita_id));
+    draft.paradas = r.paradas.map(p => ({
+        tipo: p.tipo || 'visita',
+        ref_id: p.tipo === 'obra' ? p.obra_id : (p.tipo === 'apoio' ? p.ponto_apoio_id : p.visita_id),
+        permanencia_min: p.permanencia_min
+    }));
+    responsaveisDraft = new Set(r.responsavelIds || []);
+    renderResponsaveis();
+    // paradas cuja referência saiu do mapa — avisa e mantém as roteáveis
+    const perdidas = draft.paradas.filter(p => !resolverParada(p.tipo, p.ref_id));
     if (perdidas.length > 0) {
-        draft.paradas = draft.paradas.filter(p => visitas.some(v => v.id === p.visita_id));
-        toast(`${perdidas.length} parada(s) desta rota saíram do mapa (voltaram a "Pendente de marcação" ou perderam a localização) e foram removidas do rascunho.`, true);
+        draft.paradas = draft.paradas.filter(p => resolverParada(p.tipo, p.ref_id));
+        toast(`${perdidas.length} parada(s) desta rota saíram do mapa (status mudou ou perderam a localização) e foram removidas do rascunho.`, true);
     }
     $('al-titulo').textContent = `Editando: ${r.nome}`;
     $('al-nome').value = r.nome;
@@ -684,7 +959,14 @@ function renderRotasSalvas() {
                 <span class="rc-meta">${dia}</span>
             </div>
             <div class="rc-meta">🕒 ${horaCurta(r.inicio)} → ${horaCurta(r.fim_previsto)}
-                · ${r.paradas.length} parada(s)</div>
+                · ${['visita', 'obra', 'apoio'].map(t => {
+                    const n = r.paradas.filter(p => (p.tipo || 'visita') === t).length;
+                    return n ? `${n} ${TIPO_ICONE[t]}` : '';
+                }).filter(Boolean).join(' · ') || '0 paradas'}</div>
+            ${(r.responsavelIds || []).length ? `<div class="rc-meta">👷 ${r.responsavelIds.map(id => {
+                const i = integrantes.find(x => x.id === id);
+                return esc(i?.apelido || i?.nome?.split(' ')[0] || '?');
+            }).join(', ')}</div>` : ''}
             <div class="rc-meta">📍 Permanência ${fmtDuracao(r.perman_total_seg || 0)}
                 · 🚗 Deslocamento ${fmtDuracao(r.desloc_total_seg || 0)} (${Number(r.desloc_total_km || 0).toFixed(1)} km)</div>
             ${pai ? `<div class="rc-chain">🔗 Inicia após "${esc(pai.nome)}"</div>` : ''}
@@ -697,6 +979,63 @@ function renderRotasSalvas() {
     }).join('');
     cont.querySelectorAll('[data-editar]').forEach(b => b.addEventListener('click', () => editarRota(b.dataset.editar)));
     cont.querySelectorAll('[data-excluir]').forEach(b => b.addEventListener('click', () => excluirRota(b.dataset.excluir)));
+}
+
+// ============================================================
+// PONTOS DE APOIO (depósitos/fornecedores) — CRUD
+// ============================================================
+function abrirModalApoio(pa) {
+    paEditandoId = pa?.id || null;
+    $('pa-titulo').textContent = pa ? 'Editar ponto de apoio' : 'Novo ponto de apoio';
+    $('pa-nome').value = pa?.nome || '';
+    $('pa-endereco').value = pa?.endereco || '';
+    $('pa-obs').value = pa?.observacoes || '';
+    $('pa-overlay').classList.add('aberto');
+    $('pa-nome').focus();
+}
+
+async function salvarApoio() {
+    const nome = $('pa-nome').value.trim();
+    const endereco = $('pa-endereco').value.trim();
+    if (!nome) { toast('Nome é obrigatório.', true); return; }
+    if (!endereco) { toast('Endereço é obrigatório (o ponto precisa aparecer no mapa).', true); return; }
+    const btn = $('pa-confirmar');
+    btn.disabled = true;
+    try {
+        const anterior = pontosApoio.find(x => x.id === paEditandoId);
+        let lat = anterior?.latitude ?? null;
+        let lng = anterior?.longitude ?? null;
+        if (!anterior || anterior.endereco !== endereco || lat == null) {
+            const geo = await geocodificar(endereco);
+            if (!geo) { toast('Não localizei esse endereço no mapa — ajuste e tente de novo.', true); return; }
+            lat = geo.lat;
+            lng = geo.lng;
+        }
+        const registro = { nome, endereco, latitude: lat, longitude: lng, observacoes: $('pa-obs').value.trim() || null };
+        const res = paEditandoId
+            ? await sb.from('hermo_pontos_apoio').update(registro).eq('id', paEditandoId)
+            : await sb.from('hermo_pontos_apoio').insert(registro);
+        if (res.error) throw res.error;
+        toast(paEditandoId ? 'Ponto de apoio atualizado.' : 'Ponto de apoio criado.');
+        $('pa-overlay').classList.remove('aberto');
+        paEditandoId = null;
+        await carregarTudo();
+    } catch (e) {
+        toast('Erro ao salvar ponto: ' + e.message, true);
+    } finally {
+        btn.disabled = false;
+    }
+}
+
+async function excluirApoio(id) {
+    const pa = pontosApoio.find(x => x.id === id);
+    if (!confirm(`Excluir o ponto de apoio "${pa?.nome}"?\nParadas de rotas salvas que o usam serão removidas dessas rotas.`)) return;
+    const { error } = await sb.from('hermo_pontos_apoio').delete().eq('id', id);
+    if (error) { toast('Erro ao excluir: ' + error.message, true); return; }
+    // remove do rascunho, se estava lá
+    draft.paradas = draft.paradas.filter(p => !(p.tipo === 'apoio' && p.ref_id === id));
+    toast('Ponto de apoio excluído.');
+    await carregarTudo();
 }
 
 // ============================================================
@@ -744,6 +1083,26 @@ $('al-limpar').addEventListener('click', limparDraft);
 $('al-encadear').addEventListener('change', aoMudarEncadeamento);
 $('al-inicio').addEventListener('input', invalidarCalculo);
 $('al-partida-end').addEventListener('input', invalidarCalculo);
+
+// abas da lista-espelho + pontos de apoio + responsáveis
+['visita', 'obra', 'apoio'].forEach(t => {
+    const b = $('al-tab-' + t);
+    if (b) b.addEventListener('click', () => { listaTipo = t; renderListaVisitas(); });
+});
+$('al-btn-novo-apoio').addEventListener('click', () => abrirModalApoio(null));
+$('pa-fechar').addEventListener('click', () => $('pa-overlay').classList.remove('aberto'));
+$('pa-cancelar').addEventListener('click', () => $('pa-overlay').classList.remove('aberto'));
+ligarFecharPorBackdrop($('pa-overlay'), () => $('pa-overlay').classList.remove('aberto'));
+$('pa-confirmar').addEventListener('click', salvarApoio);
+$('al-resp-equipe').addEventListener('change', () => {
+    const q = equipes.find(x => x.id === $('al-resp-equipe').value);
+    if (q) {
+        q.membroIds.filter(id => integrantes.find(i => i.id === id)?.ativo)
+            .forEach(id => responsaveisDraft.add(id));
+        renderResponsaveis();
+        toast(`Membros da equipe "${q.nome}" marcados como responsáveis.`);
+    }
+});
 
 iniciarMapa();
 carregarTudo().then(() => desenharRotasSalvas());
