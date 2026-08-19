@@ -465,7 +465,9 @@ body {
 .hermo-field { display: flex; flex-direction: column; gap: 5px; }
 .hermo-field label { font-size: .8rem; font-weight: 600; color: var(--hermo-text-dim); }
 .hermo-field label .req { color: var(--hermo-danger); }
-.hermo-field input,
+/* checkboxes/radios ficam FORA desta regra — width:100% neles estica a caixinha
+   e esmaga o texto das listas dentro de modais (bug visto nos itens de proposta) */
+.hermo-field input:not([type="checkbox"]):not([type="radio"]),
 .hermo-field select,
 .hermo-field textarea {
     background: var(--hermo-bg);
@@ -476,6 +478,11 @@ body {
     font-size: .9rem;
     font-family: inherit;
     width: 100%;
+}
+.hermo-field input[type="checkbox"],
+.hermo-field input[type="radio"] {
+    width: auto;
+    flex: 0 0 auto;
 }
 .hermo-field input:focus,
 .hermo-field select:focus,
