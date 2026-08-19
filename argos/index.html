@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5, user-scalable=yes" />
-  <title>Argos Gestão — Início</title>
+  <title>Argos Gestão</title>
   <script src="argos-guard.js"></script>
   <link rel="stylesheet" href="argos-style.css" />
 </head>
@@ -16,31 +16,13 @@
   </header>
 
   <main class="argos-home">
-    <h1>Painel de Gestão</h1>
-    <p class="sub">Selecione um módulo para começar.</p>
-
-    <div class="argos-cards-grid" id="cards-grid">
-      <!-- Os módulos da área Argos serão adicionados aqui como cards. -->
-    </div>
-
-    <div class="argos-vazio" id="home-vazio">
-      <div class="icon">🏗️</div>
-      <strong>Área Argos criada</strong>
-      Os módulos desta área serão adicionados aqui em breve.
+    <div class="argos-vazio">
+      <div class="icon">🚧</div>
+      <strong>Área em desenvolvimento</strong>
+      A área Argos Gestão está sendo construída e em breve estará disponível.
     </div>
   </main>
 
   <!-- logout é ligado pelo argos-guard.js (sem dependência de CDN) -->
-  <script>
-  // Esconde o aviso de "área vazia" assim que existirem cards de módulos.
-  (function () {
-      'use strict';
-      var grid = document.getElementById('cards-grid');
-      var vazio = document.getElementById('home-vazio');
-      if (grid && vazio && grid.querySelector('.argos-card-nav')) {
-          vazio.style.display = 'none';
-      }
-  })();
-  </script>
 </body>
 </html>
