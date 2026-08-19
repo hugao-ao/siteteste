@@ -6,6 +6,34 @@
   <title>Hermogenes Obras — Faturamento e Despesas</title>
   <script src="hermo-guard.js"></script>
   <link rel="stylesheet" href="hermo-style.css" />
+  <style>
+    .ft-filtros { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+    .ft-filtros input, .ft-filtros select {
+        background: var(--hermo-bg); border: 1px solid var(--hermo-border);
+        border-radius: 8px; color: var(--hermo-text); padding: 8px 11px; font-size: .85rem;
+    }
+    .ft-grafico {
+        display: flex; align-items: flex-end; gap: 14px;
+        border: 1px solid var(--hermo-border); border-radius: 10px;
+        padding: 14px 14px 6px; height: 170px; overflow-x: auto;
+        background: var(--hermo-surface);
+        margin-bottom: 18px;
+    }
+    .ft-mes { display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 74px; height: 100%; justify-content: flex-end; }
+    .ft-barras { display: flex; gap: 5px; align-items: flex-end; flex: 1; }
+    .ft-barra { width: 26px; border-radius: 4px 4px 0 0; min-height: 2px; }
+    .ft-barra.rec { background: var(--hermo-success); }
+    .ft-barra.desp { background: var(--hermo-danger); }
+    .ft-mes small { font-size: .68rem; color: var(--hermo-text-dim); white-space: nowrap; }
+    .badge-origem {
+        font-size: .64rem; font-weight: 700; padding: 2px 7px; border-radius: 20px;
+        background: rgba(59,130,246,.15); color: var(--hermo-info); white-space: nowrap;
+    }
+    .badge-prev { background: rgba(234,179,8,.15); color: var(--hermo-warn); }
+    .badge-real { background: rgba(34,197,94,.15); color: var(--hermo-success); }
+    td.vlr-rec { color: var(--hermo-success); font-weight: 700; }
+    td.vlr-desp { color: var(--hermo-danger); font-weight: 700; }
+  </style>
 </head>
 <body>
   <header class="hermo-topbar">
@@ -15,13 +43,134 @@
       <button class="hermo-btn danger" id="btn-logout">Sair</button>
     </div>
   </header>
+
   <main class="hermo-page">
-    <div class="hermo-placeholder">
-      <div class="icon">💰</div>
-      <h2>Faturamento e Despesas</h2>
-      <p>Entradas, saídas e resultado por período e por obra.</p>
-      <p style="margin-top:14px;font-size:.85rem">Módulo em desenvolvimento — em breve disponível aqui.</p>
+    <section class="hermo-resumo" id="resumo"></section>
+
+    <div class="hermo-page-head">
+      <h1>Extrato do período</h1>
+      <div class="ft-filtros">
+        <input id="ft-mes" type="month" />
+        <select id="ft-tipo">
+          <option value="">Receitas e despesas</option>
+          <option value="receita">Só receitas</option>
+          <option value="despesa">Só despesas</option>
+        </select>
+        <select id="ft-obra"><option value="">Todas as obras</option></select>
+        <select id="ft-categoria"><option value="">Todas as categorias</option></select>
+        <button class="hermo-btn primary" id="btn-novo">+ Lançamento</button>
+      </div>
+    </div>
+
+    <div class="ft-grafico" id="ft-grafico"></div>
+
+    <div class="hermo-tabela-wrap">
+      <table class="hermo-tabela">
+        <thead>
+          <tr>
+            <th style="width:92px">Data</th><th>Descrição</th><th>Categoria</th><th>Obra</th>
+            <th style="width:110px">Valor</th><th style="width:90px">Situação</th><th style="width:130px">Ações</th>
+          </tr>
+        </thead>
+        <tbody id="ft-corpo"></tbody>
+      </table>
+    </div>
+
+    <div class="hermo-page-head" style="margin-top:30px"><h1>Resultado por obra</h1></div>
+    <div class="hermo-tabela-wrap">
+      <table class="hermo-tabela">
+        <thead>
+          <tr>
+            <th>Obra</th><th>Contratado</th><th>Medido</th><th>Recebido</th><th>Despesas</th><th>Margem</th>
+          </tr>
+        </thead>
+        <tbody id="ft-obras-corpo"></tbody>
+      </table>
+    </div>
+    <div style="font-size:.74rem;color:var(--hermo-text-dim);margin-top:8px">
+      Receitas de medições (faturadas = previstas, pagas = realizadas) e custos de pessoal
+      (diárias × dias presentes das alocações) entram automaticamente — sem redigitação.
+      Margem = recebido − despesas (todas as datas, não só o período filtrado).
     </div>
   </main>
+
+  <!-- MODAL LANÇAMENTO -->
+  <div class="hermo-modal-overlay" id="fl-overlay">
+    <div class="hermo-modal compacto">
+      <div class="hermo-modal-head">
+        <h2 id="fl-titulo">Novo lançamento</h2>
+        <button class="fechar" id="fl-fechar" title="Fechar">&times;</button>
+      </div>
+      <div class="hermo-modal-body">
+        <div class="hermo-form-row">
+          <div class="hermo-field">
+            <label>Tipo <span class="req">*</span></label>
+            <select id="fl-tipo">
+              <option value="despesa">Despesa</option>
+              <option value="receita">Receita</option>
+            </select>
+          </div>
+          <div class="hermo-field">
+            <label>Valor (R$) <span class="req">*</span></label>
+            <input id="fl-valor" type="number" step="0.01" min="0" placeholder="0,00" />
+          </div>
+        </div>
+        <div class="hermo-field">
+          <label>Descrição <span class="req">*</span></label>
+          <input id="fl-descricao" type="text" placeholder="ex.: 20 sacos de cimento" />
+        </div>
+        <div class="hermo-field">
+          <label>Categoria</label>
+          <div class="hermo-inline-add">
+            <div class="hermo-field"><select id="fl-categoria"><option value="">— sem categoria —</option></select></div>
+            <button class="hermo-btn small" id="fl-btn-nova-cat">+ Nova</button>
+          </div>
+          <div id="fl-nova-cat-wrap" style="display:none;margin-top:6px">
+            <div class="hermo-inline-add">
+              <div class="hermo-field"><input id="fl-nova-cat" type="text" placeholder="Nome da categoria" /></div>
+              <button class="hermo-btn small primary" id="fl-btn-salvar-cat">Salvar</button>
+            </div>
+          </div>
+        </div>
+        <div class="hermo-field">
+          <label>Obra (opcional — despesa geral fica sem obra)</label>
+          <select id="fl-obra"><option value="">— sem obra —</option></select>
+        </div>
+        <div class="hermo-form-row">
+          <div class="hermo-field">
+            <label>Competência <span class="req">*</span></label>
+            <input id="fl-competencia" type="date" />
+          </div>
+          <div class="hermo-field">
+            <label>Pagamento/recebimento</label>
+            <input id="fl-pagamento" type="date" />
+          </div>
+        </div>
+        <div class="hermo-form-row">
+          <div class="hermo-field">
+            <label>Situação</label>
+            <select id="fl-status">
+              <option value="previsto">Previsto</option>
+              <option value="realizado">Realizado</option>
+            </select>
+          </div>
+          <div class="hermo-field">
+            <label>Forma de pagamento</label>
+            <input id="fl-forma" type="text" placeholder="PIX, dinheiro, boleto…" />
+          </div>
+        </div>
+        <div class="hermo-field">
+          <label>Observações</label>
+          <input id="fl-obs" type="text" placeholder="opcional" />
+        </div>
+      </div>
+      <div class="hermo-modal-foot">
+        <button class="hermo-btn ghost" id="fl-cancelar">Cancelar</button>
+        <button class="hermo-btn primary" id="fl-salvar">Salvar lançamento</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="faturamento-despesas.js"></script>
 </body>
 </html>

@@ -6,6 +6,31 @@
   <title>Hermogenes Obras — Visão Geral</title>
   <script src="hermo-guard.js"></script>
   <link rel="stylesheet" href="hermo-style.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <style>
+    .vg-funil { display: flex; gap: 10px; flex-wrap: wrap; }
+    .vg-etapa {
+        flex: 1; min-width: 150px;
+        background: var(--hermo-surface); border: 1px solid var(--hermo-border);
+        border-top: 4px solid var(--hermo-primary); border-radius: 10px;
+        padding: 12px 14px; position: relative;
+    }
+    .vg-etapa .num { font-size: 1.5rem; font-weight: 700; }
+    .vg-etapa .lbl { font-size: .75rem; color: var(--hermo-text-dim); text-transform: uppercase; }
+    .vg-etapa .taxa { font-size: .72rem; color: var(--hermo-success); margin-top: 4px; display: block; }
+    .vg-etapa .sub { font-size: .74rem; color: var(--hermo-text-dim); margin-top: 2px; display: block; }
+    .vg-pend { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
+    .vg-pend-card {
+        background: var(--hermo-surface); border: 1px solid var(--hermo-border);
+        border-left: 5px solid var(--hermo-warn); border-radius: 10px; padding: 12px 14px;
+        font-size: .84rem; display: flex; flex-direction: column; gap: 6px;
+    }
+    .vg-pend-card h3 { font-size: .82rem; }
+    .vg-pend-card ul { list-style: none; display: flex; flex-direction: column; gap: 4px; font-size: .78rem; color: var(--hermo-text-dim); }
+    .vg-pend-card a { color: var(--hermo-primary); text-decoration: none; font-size: .78rem; }
+    .vg-ok { border-left-color: var(--hermo-success); }
+  </style>
 </head>
 <body>
   <header class="hermo-topbar">
@@ -15,13 +40,24 @@
       <button class="hermo-btn danger" id="btn-logout">Sair</button>
     </div>
   </header>
+
   <main class="hermo-page">
-    <div class="hermo-placeholder">
-      <div class="icon">📊</div>
-      <h2>Visão Geral</h2>
-      <p>Resumo executivo de visitas, obras, propostas e finanças.</p>
-      <p style="margin-top:14px;font-size:.85rem">Módulo em desenvolvimento — em breve disponível aqui.</p>
+    <section class="hermo-resumo" id="resumo"></section>
+
+    <div class="hermo-page-head"><h1>Funil comercial</h1></div>
+    <div class="vg-funil" id="vg-funil"></div>
+
+    <div class="hermo-page-head" style="margin-top:28px"><h1>Pendências que pedem ação</h1></div>
+    <div class="vg-pend" id="vg-pend"></div>
+
+    <div class="hermo-page-head" style="margin-top:28px">
+      <h1>Mapa geral</h1>
+      <span style="font-size:.78rem;color:var(--hermo-text-dim)">visitas por status · 🏗️ obras · 📦 apoios</span>
     </div>
+    <div id="hermo-mapa"></div>
+    <div class="hermo-mapa-legenda" id="mapa-legenda"></div>
   </main>
+
+  <script type="module" src="visao-geral.js"></script>
 </body>
 </html>

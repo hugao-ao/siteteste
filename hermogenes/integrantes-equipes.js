@@ -196,9 +196,14 @@ function popularSelectFuncao(selecionarId = null) {
 
 function aoMudarVinculo() {
     const v = $('mi-vinculo').value;
+    const emp = v === 'empreiteiro';
     $('mi-valor-label').textContent =
         v === 'diarista' ? 'Valor da diária (R$)' :
-        v === 'mensalista' ? 'Salário mensal (R$)' : 'Valor combinado (informativo)';
+        v === 'mensalista' ? 'Salário mensal (R$)' : 'Valor por serviço';
+    // empreiteiro não tem valor fixo — o campo não é persistido, então desabilita
+    $('mi-valor').disabled = emp;
+    if (emp) $('mi-valor').value = '';
+    $('mi-valor').placeholder = emp ? 'combinado por serviço (não se aplica)' : '0,00';
 }
 
 function abrirModalIntegrante(i) {
@@ -441,9 +446,18 @@ function pesoTurno(turno, hi, hf) {
     return Math.max(0, (b - a) / 60) / 8;
 }
 
-function ausenteNoDia(integranteId, diaStr, turno, hi, hf) {
-    const bloco = { data_inicio: diaStr, data_fim: diaStr, turno, hora_inicio: hi, hora_fim: hf };
-    return ausencias.some(a => a.integrante_id === integranteId && periodosConflitam(bloco, a));
+/** Peso PRESENTE do dia: desconta proporcionalmente a sobreposição com ausências.
+ *  Falta de dia inteiro zera o dia; ausência "em rota" de 2h desconta só 2/8. */
+function pesoPresenteNoDia(integranteId, diaStr, turno, hi, hf) {
+    const [ai, af] = minutosTurno(turno, hi, hf);
+    let ocupado = 0;
+    ausencias.filter(a => a.integrante_id === integranteId &&
+        a.data_inicio <= diaStr && a.data_fim >= diaStr).forEach(a => {
+        const [bi, bf] = minutosTurno(a.turno, a.hora_inicio, a.hora_fim);
+        ocupado += Math.max(0, Math.min(af, bf) - Math.max(ai, bi));
+    });
+    const base = pesoTurno(turno, hi, hf);
+    return Math.max(0, base - Math.min(ocupado, af - ai) / 60 / 8);
 }
 
 function popularFiltroEquipeAgenda() {
@@ -483,7 +497,7 @@ function renderAgenda() {
                 .filter(a => a.integrante_id === i.id && a.data_inicio <= dia && a.data_fim >= dia)
                 .forEach(a => {
                     const ob = a.obra_servico?.obra;
-                    const rotulo = `${ob ? 'OB-' + String(ob.numero).padStart(4, '0') : '?'} · ${a.obra_servico?.servico?.codigo || ''}`;
+                    const rotulo = `${ob ? 'OB-' + String(ob.numero).padStart(4, '0') : '?'} · ${esc(a.obra_servico?.servico?.codigo || '')}`;
                     const turno = a.turno === 'horario'
                         ? `${(a.hora_inicio || '').slice(0, 5)}-${(a.hora_fim || '').slice(0, 5)}` : TURNO_LABEL_AG[a.turno];
                     blocos.push(`<span class="ag-bloco" style="background:${a.equipe?.cor || 'var(--hermo-primary)'}"
@@ -558,6 +572,8 @@ async function confirmarAusencia() {
     const hi = $('ma-hora-ini').value || null;
     const hf = $('ma-hora-fim').value || null;
     if (turno === 'horario' && (!hi || !hf || hf <= hi)) { toast('Horário inválido.', true); return; }
+    const btn = $('ma-confirmar');
+    btn.disabled = true; // duplo clique não pode duplicar a ausência
     const { error } = await sb.from('hermo_ausencias').insert({
         integrante_id: integranteId,
         tipo: $('ma-tipo').value,
@@ -568,16 +584,17 @@ async function confirmarAusencia() {
         hora_fim: turno === 'horario' ? hf : null,
         motivo: $('ma-motivo').value.trim() || null
     });
+    btn.disabled = false;
     if (error) { toast('Erro ao lançar: ' + error.message, true); return; }
     $('ma-overlay').classList.remove('aberto');
-    toast('Ausência lançada — produção e custo do período foram zerados.');
+    toast('Ausência lançada — produção e custo do período foram descontados.');
     await carregarTudo();
 }
 
 // ============================================================
 // PRODUÇÃO × CUSTO
 // ============================================================
-/** dias presentes (com peso) de uma alocação dentro de [de, ate] */
+/** dias presentes (com peso, descontando ausências proporcionalmente) dentro de [de, ate] */
 function diasPresentes(aloc, de, ate) {
     const ini = aloc.data_inicio > de ? aloc.data_inicio : de;
     const fim = aloc.data_fim < ate ? aloc.data_fim : ate;
@@ -586,10 +603,7 @@ function diasPresentes(aloc, de, ate) {
     let d = new Date(ini + 'T12:00:00');
     const limite = new Date(fim + 'T12:00:00');
     while (d <= limite) {
-        const dia = dataStr(d);
-        if (!ausenteNoDia(aloc.integrante_id, dia, aloc.turno, aloc.hora_inicio, aloc.hora_fim)) {
-            peso += pesoTurno(aloc.turno, aloc.hora_inicio, aloc.hora_fim);
-        }
+        peso += pesoPresenteNoDia(aloc.integrante_id, dataStr(d), aloc.turno, aloc.hora_inicio, aloc.hora_fim);
         d = somarDias(d, 1);
     }
     return peso;
@@ -643,13 +657,29 @@ function renderProducao() {
             </tr>`;
         }).join('');
 
-    // agregado por equipe (soma dos membros)
+    // agregado por equipe: pela EQUIPE DA ALOCAÇÃO (não pela composição atual),
+    // evitando dupla contagem de quem está em duas equipes
+    const porEquipe = new Map();
+    alocacoes.forEach(a => {
+        if (!a.equipe_id) return;
+        const pesoPeriodo = diasPresentes(a, de, ate);
+        if (pesoPeriodo <= 0) return;
+        const os = a.obra_servico;
+        const valorRec = os ? num(os.total) * num(os.perc_executado) / 100 : 0;
+        const totalPesos = pesosTotaisServico.get(a.obra_servico_id) || 0;
+        const producao = totalPesos > 0 ? valorRec * (pesoPeriodo / totalPesos) : 0;
+        const i = integrantes.find(x => x.id === a.integrante_id);
+        let custo = 0;
+        if (i?.vinculo === 'diarista') custo = num(i.valor_diaria) * pesoPeriodo;
+        else if (i?.vinculo === 'mensalista') custo = (num(i.salario_mensal) / 22) * pesoPeriodo;
+        const acc = porEquipe.get(a.equipe_id) || { dias: 0, producao: 0, custo: 0 };
+        acc.dias += pesoPeriodo;
+        acc.producao += producao;
+        acc.custo += custo;
+        porEquipe.set(a.equipe_id, acc);
+    });
     $('pc-corpo-eq').innerHTML = equipes.map(q => {
-        const acc = { dias: 0, producao: 0, custo: 0 };
-        q.membroIds.forEach(id => {
-            const v = porInt.get(id);
-            if (v) { acc.dias += v.dias; acc.producao += v.producao; acc.custo += v.custo; }
-        });
+        const acc = porEquipe.get(q.id) || { dias: 0, producao: 0, custo: 0 };
         if (acc.dias === 0) return '';
         const margem = acc.producao - acc.custo;
         return `<tr>

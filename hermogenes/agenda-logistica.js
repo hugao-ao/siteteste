@@ -110,7 +110,8 @@ async function carregarTudo() {
 // RESUMO
 // ============================================================
 function fmtDuracao(seg) {
-    const h = Math.floor(seg / 3600), m = Math.round((seg % 3600) / 60);
+    let h = Math.floor(seg / 3600), m = Math.round((seg % 3600) / 60);
+    if (m === 60) { h++; m = 0; }   // evita "1h60"/"60 min"
     return h > 0 ? `${h}h${String(m).padStart(2, '0')}` : `${m} min`;
 }
 
@@ -710,15 +711,19 @@ async function salvarRota() {
             responsaveis: [...responsaveisDraft]
         };
 
-        // responsáveis: checar agenda (alocações/ausências) na janela da rota;
-        // conflito => oferecer "deslocar mesmo assim" lançando ausência 'liberado'
+        // responsáveis: checar agenda ANTES de salvar (o usuário pode desistir);
+        // as ausências automáticas só são gravadas DEPOIS do RPC dar certo
+        let planoAusencias = null;
         if (responsaveisDraft.size > 0) {
-            const prosseguir = await tratarConflitosResponsaveis(c, nome);
-            if (!prosseguir) return;
+            planoAusencias = await verificarConflitosResponsaveis(c, nome);
+            if (!planoAusencias.ok) return;
         }
 
         const { data: rotaId, error } = await sb.rpc('hermo_salvar_rota', { p: payload });
         if (error) throw error;
+
+        // ausências "em rota" idempotentes: remove as antigas DESTA rota e regrava
+        if (rotaId) await aplicarAusenciasRota(rotaId, nome, planoAusencias);
         if (!editandoRotaId && rotaId) editandoRotaId = rotaId;
 
         // realinhar rotas encadeadas a esta (horários deslizam em cadeia)
@@ -799,20 +804,37 @@ function renderResponsaveis() {
     }));
 }
 
+const hhmm = dt => `${String(dt.getHours()).padStart(2, '0')}:${String(dt.getMinutes()).padStart(2, '0')}`;
+
+/** Janela exata da rota em blocos por dia (multi-dia: 1º e último dia por horário, meio dia inteiro). */
+function blocosDaJanela(inicio, fim) {
+    const d1 = diaDe(inicio), d2 = diaDe(fim);
+    if (d1 === d2) {
+        return [{ data_inicio: d1, data_fim: d2, turno: 'horario', hora_inicio: hhmm(inicio), hora_fim: hhmm(fim) }];
+    }
+    const blocos = [
+        { data_inicio: d1, data_fim: d1, turno: 'horario', hora_inicio: hhmm(inicio) < '23:58' ? hhmm(inicio) : '23:57', hora_fim: '23:59' }
+    ];
+    const meioIni = new Date(inicio);
+    meioIni.setDate(meioIni.getDate() + 1);
+    const meioFim = new Date(fim);
+    meioFim.setDate(meioFim.getDate() - 1);
+    if (diaDe(meioIni) <= diaDe(meioFim)) {
+        blocos.push({ data_inicio: diaDe(meioIni), data_fim: diaDe(meioFim), turno: 'dia', hora_inicio: null, hora_fim: null });
+    }
+    blocos.push({ data_inicio: d2, data_fim: d2, turno: 'horario', hora_inicio: '00:00', hora_fim: hhmm(fim) > '00:01' ? hhmm(fim) : '00:02' });
+    return blocos;
+}
+
 /**
- * Verifica a agenda dos responsáveis na janela da rota. Se houver conflito com
- * alocação de obra, oferece prosseguir lançando ausência 'liberado' (a produção
- * do serviço não conta para o deslocado no período — a "falta automática").
- * Retorna true para prosseguir com o salvamento.
+ * Verifica a agenda dos responsáveis na janela da rota (SEM gravar nada).
+ * Conflitos de alocação/ausência (inclusive de OUTRAS rotas) são listados;
+ * confirmando, retorna o plano de ausências a aplicar após o RPC.
  */
-async function tratarConflitosResponsaveis(c, nomeRota) {
+async function verificarConflitosResponsaveis(c, nomeRota) {
     const ids = [...responsaveisDraft];
     const d1 = diaDe(c.inicio), d2 = diaDe(c.fim);
-    const bloco = (d1 === d2)
-        ? { data_inicio: d1, data_fim: d2, turno: 'horario',
-            hora_inicio: `${String(c.inicio.getHours()).padStart(2, '0')}:${String(c.inicio.getMinutes()).padStart(2, '0')}`,
-            hora_fim: `${String(c.fim.getHours()).padStart(2, '0')}:${String(c.fim.getMinutes()).padStart(2, '0')}` }
-        : { data_inicio: d1, data_fim: d2, turno: 'dia', hora_inicio: null, hora_fim: null };
+    const blocos = blocosDaJanela(c.inicio, c.fim);
 
     const [aloc, aus] = await Promise.all([
         sb.from('hermo_alocacoes')
@@ -824,7 +846,7 @@ async function tratarConflitosResponsaveis(c, nomeRota) {
     ]);
     if (aloc.error || aus.error) {
         toast('Não consegui verificar a agenda dos responsáveis: ' + (aloc.error || aus.error).message, true);
-        return false;
+        return { ok: false };
     }
 
     const minutosTurnoAL = (turno, hi, hf) => {
@@ -834,51 +856,63 @@ async function tratarConflitosResponsaveis(c, nomeRota) {
         const m = s => { const [h, mi] = String(s || '0:0').split(':').map(Number); return h * 60 + mi; };
         return [m(hi), m(hf)];
     };
-    const conflita = (a, b) => {
+    const conflitaB = (a, b) => {
         if (a.data_fim < b.data_inicio || b.data_fim < a.data_inicio) return false;
         const [ai, af] = minutosTurnoAL(a.turno, a.hora_inicio, a.hora_fim);
         const [bi, bf] = minutosTurnoAL(b.turno, b.hora_inicio, b.hora_fim);
         return Math.max(ai, bi) < Math.min(af, bf);
     };
+    const conflitaJanela = x => blocos.some(b => conflitaB(b, x));
 
-    const conflAloc = (aloc.data || []).filter(a => conflita(bloco, a));
-    const conflAus = (aus.data || []).filter(a => conflita(bloco, a) && !(a.motivo || '').startsWith('em rota:'));
-    if (conflAloc.length === 0 && conflAus.length === 0) return true;
+    // ausências desta MESMA rota (marcador [rota:id]) não são conflito — serão regravadas
+    const marcadorPropria = editandoRotaId ? `[rota:${editandoRotaId}]` : null;
+    const conflAloc = (aloc.data || []).filter(a => conflitaJanela(a));
+    const conflAus = (aus.data || []).filter(a =>
+        conflitaJanela(a) && !(marcadorPropria && (a.motivo || '').includes(marcadorPropria)));
+
+    if (conflAloc.length === 0 && conflAus.length === 0) return { ok: true, integrantesConflitantes: [], blocos };
 
     const linhas = [
         ...conflAloc.map(a => {
             const ob = a.obra_servico?.obra;
             return `• ${a.integrante?.nome}: alocado em ${ob ? 'OB-' + String(ob.numero).padStart(4, '0') + ' — ' + ob.nome : 'obra'} (${a.obra_servico?.servico?.codigo || ''})`;
         }),
-        ...conflAus.map(a => `• ${a.integrante?.nome}: ausência (${a.tipo}) no período`)
+        ...conflAus.map(a => `• ${a.integrante?.nome}: ausência (${a.tipo}${(a.motivo || '').includes('[rota:') ? ' — outra rota' : ''}) no período`)
     ];
     const ok = confirm(
         `⚠ Conflito de agenda dos responsáveis na janela da rota (${horaCurta(c.inicio)}–${horaCurta(c.fim)}):\n\n` +
         linhas.join('\n') +
         `\n\nDeslocar mesmo assim? Será lançada uma ausência "liberado — em rota: ${nomeRota}" ` +
-        `no período para quem está alocado (a produção do serviço não conta para eles nesse intervalo).`);
-    if (!ok) return false;
+        `na janela exata para quem está alocado (a produção do serviço não conta para eles nesse intervalo).`);
+    if (!ok) return { ok: false };
 
-    // ausência automática por integrante conflitante (só para conflitos de ALOCAÇÃO)
-    const integrantesConflitantes = [...new Set(conflAloc.map(a => a.integrante_id))];
-    if (integrantesConflitantes.length > 0) {
-        const { error } = await sb.from('hermo_ausencias').insert(integrantesConflitantes.map(intId => ({
+    return { ok: true, integrantesConflitantes: [...new Set(conflAloc.map(a => a.integrante_id))], blocos };
+}
+
+/** Regrava as ausências "em rota" DESTA rota (idempotente: apaga as antigas pelo marcador). */
+async function aplicarAusenciasRota(rotaId, nomeRota, plano) {
+    // remove as ausências antigas desta rota mesmo se não há responsáveis agora
+    const { error: eDel } = await sb.from('hermo_ausencias')
+        .delete().like('motivo', `%[rota:${rotaId}]%`);
+    if (eDel) toast('Aviso: não consegui limpar ausências antigas desta rota: ' + eDel.message, true);
+    if (!plano || plano.integrantesConflitantes.length === 0) return;
+    const linhas = plano.integrantesConflitantes.flatMap(intId =>
+        plano.blocos.map(b => ({
             integrante_id: intId,
             tipo: 'liberado',
-            data_inicio: bloco.data_inicio,
-            data_fim: bloco.data_fim,
-            turno: bloco.turno,
-            hora_inicio: bloco.hora_inicio,
-            hora_fim: bloco.hora_fim,
-            motivo: `em rota: ${nomeRota}`
+            data_inicio: b.data_inicio,
+            data_fim: b.data_fim,
+            turno: b.turno,
+            hora_inicio: b.hora_inicio,
+            hora_fim: b.hora_fim,
+            motivo: `em rota: ${nomeRota} [rota:${rotaId}]`
         })));
-        if (error) {
-            toast('Erro ao lançar as ausências automáticas: ' + error.message, true);
-            return false;
-        }
-        toast(`${integrantesConflitantes.length} ausência(s) "liberado — em rota" lançada(s).`);
+    const { error } = await sb.from('hermo_ausencias').insert(linhas);
+    if (error) {
+        toast('Erro ao lançar as ausências automáticas: ' + error.message, true);
+        return;
     }
-    return true;
+    toast(`${plano.integrantesConflitantes.length} ausência(s) "liberado — em rota" lançada(s).`);
 }
 
 function limparDraft() {
@@ -936,6 +970,8 @@ async function excluirRota(id) {
     if (!confirm(msg)) return;
     const { error } = await sb.from('hermo_rotas').delete().eq('id', id);
     if (error) { toast('Erro ao excluir: ' + error.message, true); return; }
+    // ausências automáticas desta rota saem junto
+    await sb.from('hermo_ausencias').delete().like('motivo', `%[rota:${id}]%`);
     toast('Rota excluída.');
     if (editandoRotaId === id) limparDraft();
     await carregarTudo();
