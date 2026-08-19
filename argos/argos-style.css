@@ -22,8 +22,9 @@
 
 html {
     background: var(--argos-bg);
-    /* rolagem com um dedo continua nativa; a pinça é tratada pelo argos-zoom.js */
-    touch-action: pan-x pan-y;
+    /* impede o iOS de inflar textos sozinho (quebrava a proporção no zoom) */
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
 }
 
 body {
