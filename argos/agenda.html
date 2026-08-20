@@ -26,17 +26,28 @@
     </div>
 
     <div class="argos-filtros">
-      <div class="agenda-nav">
-        <button class="argos-btn ghost" id="btn-semana-ant">‹</button>
+      <select id="modo-visao">
+        <option value="semana">📅 Semana</option>
+        <option value="mes">🗓️ Mês</option>
+        <option value="periodo">↔️ Período (até 365 dias)</option>
+      </select>
+      <div class="agenda-nav" id="controles-navegacao">
+        <button class="argos-btn ghost" id="btn-ant">‹</button>
         <button class="argos-btn ghost" id="btn-hoje">Hoje</button>
-        <button class="argos-btn ghost" id="btn-semana-prox">›</button>
-        <b id="rotulo-semana"></b>
+        <button class="argos-btn ghost" id="btn-prox">›</button>
       </div>
+      <div class="agenda-nav" id="controles-periodo" style="display:none">
+        <label class="rotulo-inline">De <input type="date" id="periodo-de" class="argos-input" /></label>
+        <label class="rotulo-inline">Até <input type="date" id="periodo-ate" class="argos-input" /></label>
+        <button class="argos-btn primary small" id="btn-aplicar-periodo">Aplicar</button>
+      </div>
+      <b id="rotulo-intervalo"></b>
       <select id="filtro-sala"></select>
       <button class="argos-btn ghost" id="btn-salas" data-argos-recurso="salas_gerenciar">🚪 Espaços</button>
     </div>
 
     <div class="agenda-grade" id="agenda-grade"></div>
+    <div id="agenda-periodo" style="display:none"></div>
 
     <p class="dica" style="margin-top:14px">
       Legenda: <span class="chip-status" style="--c:#94a3b8">??</span> pendente/futura ·
@@ -89,7 +100,7 @@
     </div>
   </div>
 
-  <script type="module" src="agenda.js?v=1"></script>
+  <script type="module" src="agenda.js?v=2"></script>
   <script type="module" src="argos-zoom.js?v=4"></script>
 </body>
 </html>
