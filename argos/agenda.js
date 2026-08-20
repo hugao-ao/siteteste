@@ -367,6 +367,8 @@ function renderPeriodo() {
         || '<div class="argos-tabela-vazia">Nenhuma sessão neste período.</div>';
 }
 
+let voltarAoGrupo = null; // reabre o modal do grupo ao fechar o modal da sessão
+
 function aoClicarSessao(e) {
     const chipGrupo = e.target.closest('[data-grupo]');
     if (chipGrupo) { abrirModalGrupo(chipGrupo.dataset.grupo, chipGrupo.dataset.grupoIso); return; }
@@ -374,6 +376,11 @@ function aoClicarSessao(e) {
     if (!chip) return;
     const s = chaves.get(chip.dataset.chave);
     if (!s || !perm.pode('sessoes_status')) return;
+    voltarAoGrupo = null;
+    abrirModalSessaoPara(s);
+}
+
+function abrirModalSessaoPara(s) {
     sessaoAberta = s;
     document.getElementById('sessao-info').innerHTML =
         `<b>${formataBR(s.data)} ${s.hora}</b> — ${esc(nomePac(s.paciente_id))}<br>
@@ -397,11 +404,23 @@ function aoClicarSessao(e) {
 document.getElementById('agenda-grade').addEventListener('click', aoClicarSessao);
 document.getElementById('agenda-periodo').addEventListener('click', aoClicarSessao);
 
+// ao sair do modal da sessão, volta ao modal do grupo (se veio de lá)
+function retornarAoGrupoSePreciso() {
+    if (!voltarAoGrupo) return;
+    const v = voltarAoGrupo;
+    voltarAoGrupo = null;
+    setTimeout(() => abrirModalGrupo(v.gid, v.iso), 60);
+}
+document.getElementById('modal-sessao').addEventListener('click', (e) => {
+    if (e.target.closest('[data-fechar]') || e.target.id === 'modal-sessao') retornarAoGrupoSePreciso();
+});
+
 document.getElementById('botoes-status').addEventListener('click', async (e) => {
     const btn = e.target.closest('[data-marcar]');
     if (!btn || !sessaoAberta) return;
     await marcarSessao(sessaoAberta, btn.dataset.marcar);
     fecharModal('modal-sessao');
+    retornarAoGrupoSePreciso();
 });
 
 // ============================================================
@@ -427,6 +446,8 @@ async function recarregarSessoes() {
     grupos = rGru.data || grupos;
     grupoMembros = rMem.data || grupoMembros;
     renderTudo();
+    const modalGrupo = document.getElementById('modal-grupo');
+    if (modalGrupo && modalGrupo.classList.contains('aberto') && grupoAberto) renderModalGrupo();
 }
 
 // inicia o fluxo de remarcação (usado pelo modal e pelo arrastar-e-soltar)
@@ -639,16 +660,14 @@ function renderModalGrupo() {
         foraDoGrupo.map(p => `<option value="${p.id}">${esc(p.nome)}</option>`).join('');
 }
 
-document.getElementById('grupo-membros').addEventListener('click', async (e) => {
-    const btn = e.target.closest('[data-membro-marcar]');
-    if (!btn) return;
+// monta (ou cria em memória) a sessão de um membro na ocorrência do grupo
+function sessaoParaMembro(pacId) {
     const g = grupos.find(x => x.id === grupoAberto.gid);
-    const pacId = btn.closest('[data-membro]').dataset.membro;
     const iso = grupoAberto.iso;
     const mesclado = mesclarSessoes(dinamicas, sessoes, iso, iso);
     let s = sessaoDoMembro(pacId, g, iso, mesclado);
     if (!s) {
-        // paciente sem dinâmica nesse horário: cria sessão ligada ao grupo
+        // paciente sem dinâmica nesse horário: sessão ligada ao grupo
         s = {
             id: null, paciente_id: pacId, dinamica_ref: null,
             data: iso, hora: g.hora, duracao_min: g.duracao_min || 60,
@@ -656,8 +675,26 @@ document.getElementById('grupo-membros').addEventListener('click', async (e) => 
             servico_id: g.servico_id, status: '??', grupo_id: g.id, grupo_ref: g.id
         };
     }
-    await marcarSessao({ ...s, grupo_id: s.grupo_id || g.id, grupo_ref: s.grupo_ref || g.id }, btn.dataset.membroMarcar);
-    renderModalGrupo();
+    return { ...s, grupo_id: s.grupo_id || g.id, grupo_ref: s.grupo_ref || g.id };
+}
+
+document.getElementById('grupo-membros').addEventListener('click', async (e) => {
+    const btn = e.target.closest('[data-membro-marcar]');
+    if (btn) {
+        const pacId = btn.closest('[data-membro]').dataset.membro;
+        await marcarSessao(sessaoParaMembro(pacId), btn.dataset.membroMarcar);
+        renderModalGrupo();
+        return;
+    }
+    // toque no nome/linha do paciente: abre o modal completo da sessão
+    // (mesmas ações de um paciente fora do grupo, incl. remarcar)
+    const info = e.target.closest('.bloco-info');
+    if (info && perm.pode('sessoes_status')) {
+        const pacId = info.closest('[data-membro]').dataset.membro;
+        voltarAoGrupo = { gid: grupoAberto.gid, iso: grupoAberto.iso };
+        fecharModal('modal-grupo');
+        abrirModalSessaoPara(sessaoParaMembro(pacId));
+    }
 });
 
 document.getElementById('grupo-membros').addEventListener('change', async (e) => {
@@ -786,11 +823,23 @@ async function salvarSlotDeGrupo(gid, registro) {
             dow: atual.dow, hora: atual.hora, sala_id: atual.sala_id, duracao_min: atual.duracao_min
         }).eq('id', ocupante.id);
         if (eT) { toast('Erro ao trocar os grupos.', true); return false; }
+        // dinâmicas atreladas ao grupo trocado acompanham o novo horário dele
+        await sb.from('argos_dinamicas').update({
+            dias: [{ dow: atual.dow, hora: atual.hora }],
+            sala_id: atual.sala_id, duracao_min: atual.duracao_min
+        }).eq('grupo_id', ocupante.id);
     }
     let error;
     if (gid) ({ error } = await sb.from('argos_grupos').update(registro).eq('id', gid));
     else ({ error } = await sb.from('argos_grupos').insert(registro));
     if (error) { console.error(error); toast('Erro ao salvar grupo.', true); return false; }
+    if (gid) {
+        // dinâmicas atreladas a este grupo acompanham o novo dia/horário/espaço
+        await sb.from('argos_dinamicas').update({
+            dias: [{ dow: registro.dow, hora: registro.hora }],
+            sala_id: registro.sala_id, duracao_min: registro.duracao_min
+        }).eq('grupo_id', gid);
+    }
     return true;
 }
 

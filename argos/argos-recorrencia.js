@@ -253,6 +253,10 @@ function mesmoLugar(a, b) {
         || (a.profissional_id && b.profissional_id && a.profissional_id === b.profissional_id);
 }
 
+// modalidade efetiva de uma sessão: sessões nascidas de grupo terapêutico
+// (grupo_ref) contam como 'grupo'; sem informação, individual
+const modalidadeDe = s => s.modalidade || (s.grupo_ref || s.grupo_id ? 'grupo' : 'individual');
+
 /**
  * Conflitos que uma dinâmica NOVA/EDITADA criaria: sessões de OUTROS
  * pacientes no mesmo espaço ou com o mesmo profissional, em horário
@@ -270,7 +274,7 @@ export function conflitosDeDinamica(nova, outrasDinamicas, sessoes, horizonteDia
     for (const m of minhas) {
         for (const s of existentes) {
             if (!mesmoLugar(m, s) || !sobrepoe(m, s)) continue;
-            const temIndividual = nova.modalidade === 'individual' || (s.modalidade || 'individual') === 'individual';
+            const temIndividual = nova.modalidade === 'individual' || modalidadeDe(s) === 'individual';
             if (temIndividual) { out.push({ minha: m, outra: s }); if (out.length >= 5) return out; }
         }
     }
@@ -283,8 +287,7 @@ export function conflitosDeSessao(sessao, dinamicas, sessoes) {
         .filter(s => s.paciente_id !== sessao.paciente_id && s.status !== 'nc'
             && (!sessao.id || s.id !== sessao.id)
             && mesmoLugar(sessao, s) && sobrepoe(sessao, s)
-            && ((sessao.modalidade || 'individual') === 'individual'
-                || (s.modalidade || 'individual') === 'individual'))
+            && (modalidadeDe(sessao) === 'individual' || modalidadeDe(s) === 'individual'))
         .slice(0, 5);
 }
 

@@ -12,7 +12,7 @@ import {
 
 let perm = { pode: () => true, aplicarVisibilidade: () => {}, master: true };
 
-let pacientes = [], salas = [], profissionais = [], servicos = [], profServ = [], dinamicas = [];
+let pacientes = [], salas = [], profissionais = [], servicos = [], profServ = [], dinamicas = [], grupos = [];
 let pacienteAtual = null;    // paciente aberto no modal de dinâmicas/exclusão
 let editandoPacienteId = null;
 let editandoDinamicaId = null;
@@ -21,15 +21,16 @@ let editandoDinamicaId = null;
 // CARGA
 // ============================================================
 async function carregarTudo() {
-    const [rPac, rSalas, rProf, rServ, rPS, rDin] = await Promise.all([
+    const [rPac, rSalas, rProf, rServ, rPS, rDin, rGru] = await Promise.all([
         sb.from('argos_pacientes').select('*').order('nome'),
         sb.from('argos_salas').select('*').order('nome'),
         sb.from('argos_profissionais').select('*').order('nome'),
         sb.from('argos_servicos_base').select('*').order('nome'),
         sb.from('argos_profissional_servicos').select('*'),
-        sb.from('argos_dinamicas').select('*').order('created_at')
+        sb.from('argos_dinamicas').select('*').order('created_at'),
+        sb.from('argos_grupos').select('*').order('hora')
     ]);
-    const erro = rPac.error || rSalas.error || rProf.error || rServ.error || rPS.error || rDin.error;
+    const erro = rPac.error || rSalas.error || rProf.error || rServ.error || rPS.error || rDin.error || rGru.error;
     if (erro) { console.error(erro); toast('Erro ao carregar dados.', true); return; }
     pacientes = rPac.data || [];
     salas = rSalas.data || [];
@@ -37,8 +38,26 @@ async function carregarTudo() {
     servicos = rServ.data || [];
     profServ = rPS.data || [];
     dinamicas = rDin.data || [];
+    grupos = rGru.data || [];
     renderLista();
 }
+
+const nomeGrupo = id => (grupos.find(g => g.id === id) || {}).nome || '—';
+
+function selectGrupos(el, valor) {
+    el.innerHTML = '<option value="">— Escolher grupo —</option>' +
+        grupos.filter(g => g.ativo !== false).map(g =>
+            `<option value="${g.id}">👥 ${esc(g.nome)} — ${DOW_NOMES[g.dow]} ${g.hora} · ${esc(nomeSala(g.sala_id))}</option>`).join('');
+    el.value = valor || '';
+    atualizarResumoGrupo();
+}
+function atualizarResumoGrupo() {
+    const g = grupos.find(x => x.id === document.getElementById('din-grupo').value);
+    document.getElementById('resumo-grupo').textContent = g
+        ? `O paciente será encaixado em "${g.nome}": ${DOW_NOMES[g.dow]} às ${g.hora}, ${nomeSala(g.sala_id)}${g.profissional_id ? ', com ' + nomeProf(g.profissional_id) : ''}.`
+        : '';
+}
+document.getElementById('din-grupo').addEventListener('change', atualizarResumoGrupo);
 
 const nomeSala = id => (salas.find(s => s.id === id) || {}).nome || '—';
 const nomeProf = id => (profissionais.find(p => p.id === id) || {}).nome || '—';
@@ -215,7 +234,7 @@ async function renderDinamicas() {
                 ${d.ativo === false ? '<span class="badge vermelho">Inativa</span>' : '<span class="badge verde">Ativa</span>'}
               </div>
               <div class="bloco-info">
-                ${d.recorrencia_tipo === 'avulsa' ? '🗓️ Sessões avulsas (marcadas uma a uma)' : `🗓️ ${r.dias || '—'} — ${r.freq}, a partir de ${formataBR(d.data_inicio)}, ${r.fim}`}<br>
+                ${d.grupo_id ? `👥 Grupo: <b>${esc(nomeGrupo(d.grupo_id))}</b> · ` : ''}${d.recorrencia_tipo === 'avulsa' ? '🗓️ Sessões avulsas (marcadas uma a uma)' : `🗓️ ${r.dias || '—'} — ${r.freq}, a partir de ${formataBR(d.data_inicio)}, ${r.fim}`}<br>
                 ${d.modalidade === 'grupo' ? '👥 Em grupo' : '👤 Individual'} · 🚪 ${esc(nomeSala(d.sala_id))} · 🧑‍⚕️ ${esc(nomeProf(d.profissional_id))} (${esc(nomeServ(d.servico_id))})<br>
                 💰 ${esc(acordoLabel(d))}${d.acordo_tipo === 'pacote' && d.pacote_pagamento ? ` — ${esc(PACOTE_MODOS[d.pacote_pagamento.modo] || '')}` : ''}
               </div>
@@ -328,6 +347,14 @@ document.getElementById('btn-add-parcela').addEventListener('click', () =>
 function atualizarCondicionais() {
     const tipo = document.getElementById('din-tipo').value;
     document.getElementById('bloco-recorrencia').style.display = tipo === 'avulsa' ? 'none' : '';
+    // em grupo: dia/horário/espaço vêm do grupo escolhido
+    const emGrupo = tipo !== 'avulsa' && document.getElementById('din-modalidade').value === 'grupo';
+    document.getElementById('bloco-grupo').style.display = emGrupo ? '' : 'none';
+    document.getElementById('bloco-dias').style.display = emGrupo ? 'none' : '';
+    document.getElementById('rotulo-freq-qtd').style.display = emGrupo ? 'none' : '';
+    document.getElementById('rotulo-freq-periodo').style.display = emGrupo ? 'none' : '';
+    document.getElementById('rotulo-duracao').style.display = emGrupo ? 'none' : '';
+    document.getElementById('rotulo-sala').style.display = emGrupo ? 'none' : '';
     const periodo = document.getElementById('din-freq-periodo').value;
     document.querySelectorAll('#lista-dias .dia-dow').forEach(s => s.style.display = periodo === 'dia' ? 'none' : '');
     const fim = document.getElementById('din-fim-tipo').value;
@@ -345,7 +372,7 @@ function atualizarCondicionais() {
     document.getElementById('pp-nparcelas').style.display = modo === 'entrada_parcelas' ? '' : 'none';
     document.getElementById('pp-parcelas').style.display = modo === 'parcelas_datas' ? '' : 'none';
 }
-['din-tipo', 'din-freq-periodo', 'din-fim-tipo', 'din-acordo', 'din-pacote-modo'].forEach(id =>
+['din-tipo', 'din-modalidade', 'din-freq-periodo', 'din-fim-tipo', 'din-acordo', 'din-pacote-modo'].forEach(id =>
     document.getElementById(id).addEventListener('change', atualizarCondicionais));
 
 document.getElementById('din-profissional').addEventListener('change', () =>
@@ -370,6 +397,7 @@ function abrirFormDinamica(id) {
     v('din-fim-ocorrencias', d && d.fim_ocorrencias);
     v('din-fim-data', d && d.fim_data);
     v('din-modalidade', d ? d.modalidade : 'individual');
+    selectGrupos(document.getElementById('din-grupo'), d && d.grupo_id);
     selectSalas(document.getElementById('din-sala'), d && d.sala_id);
     selectProfissionais(document.getElementById('din-profissional'), d && d.profissional_id);
     selectServicosDoProf(document.getElementById('din-servico'), d && d.profissional_id, d && d.servico_id);
@@ -405,9 +433,10 @@ document.getElementById('form-dinamica').addEventListener('submit', async (e) =>
         hora: l.querySelector('.dia-hora').value
     })).filter(x => x.hora);
 
+    const emGrupo = tipo === 'recorrente' && g('din-modalidade') === 'grupo';
     if (tipo === 'recorrente') {
         if (!g('din-inicio')) { toast('Informe a data de início.', true); return; }
-        if (!dias.length) { toast('Adicione pelo menos um dia/horário.', true); return; }
+        if (!emGrupo && !dias.length) { toast('Adicione pelo menos um dia/horário.', true); return; }
     }
     const acordo = g('din-acordo');
     const pg = { modo: g('din-pacote-modo') };
@@ -441,8 +470,23 @@ document.getElementById('form-dinamica').addEventListener('submit', async (e) =>
         pacote_qtd: acordo === 'pacote' ? num('din-pacote-qtd') : null,
         pacote_valor: acordo === 'pacote' ? num('din-pacote-valor') : null,
         pacote_pagamento: acordo === 'pacote' ? pg : null,
+        grupo_id: null,
         ativo: document.getElementById('din-ativo').checked
     };
+
+    // Em grupo: dia/horário/espaço/duração vêm do grupo escolhido
+    if (emGrupo) {
+        const grupoSel = grupos.find(x => x.id === document.getElementById('din-grupo').value);
+        if (!grupoSel) { toast('Escolha o grupo terapêutico (ou crie um novo).', true); return; }
+        registro.grupo_id = grupoSel.id;
+        registro.dias = [{ dow: grupoSel.dow, hora: grupoSel.hora }];
+        registro.freq_qtd = 1;
+        registro.freq_periodo = 'semana';
+        registro.duracao_min = grupoSel.duracao_min || 60;
+        registro.sala_id = grupoSel.sala_id;
+    }
+    const dinamicaAntes = editandoDinamicaId ? dinamicas.find(x => x.id === editandoDinamicaId) : null;
+    const grupoAnterior = dinamicaAntes ? (dinamicaAntes.grupo_id || null) : null; // capturado ANTES do update
     // Bloqueio de conflito: individual não divide espaço/profissional/horário
     // com ninguém, e ninguém entra em cima de uma individual existente.
     if (registro.recorrencia_tipo === 'recorrente' && registro.ativo) {
@@ -463,10 +507,65 @@ document.getElementById('form-dinamica').addEventListener('submit', async (e) =>
         : sb.from('argos_dinamicas').insert(registro);
     const { error } = await q;
     if (error) { console.error(error); toast('Erro ao salvar dinâmica.', true); return; }
+
+    // sincroniza a participação do paciente no grupo terapêutico
+    if (registro.grupo_id) {
+        if (grupoAnterior && grupoAnterior !== registro.grupo_id) {
+            await sb.from('argos_grupo_membros').delete()
+                .eq('grupo_id', grupoAnterior).eq('paciente_id', pacienteAtual.id);
+        }
+        const { error: eM } = await sb.from('argos_grupo_membros')
+            .insert({ grupo_id: registro.grupo_id, paciente_id: pacienteAtual.id });
+        if (eM && eM.code !== '23505') console.error(eM);
+    } else if (grupoAnterior) {
+        await sb.from('argos_grupo_membros').delete()
+            .eq('grupo_id', grupoAnterior).eq('paciente_id', pacienteAtual.id);
+    }
+
     fecharModal('modal-dinamica-form');
     toast('Dinâmica salva.');
     await carregarTudo();
     renderDinamicas();
+});
+
+// ---------- novo grupo criado a partir da dinâmica ----------
+document.getElementById('btn-novo-grupo-inline').addEventListener('click', () => {
+    document.getElementById('gn-dow').innerHTML = DOW_NOMES.map((n, i) => `<option value="${i}">${n}</option>`).join('');
+    document.getElementById('gn-sala').innerHTML = '<option value="">— Sem espaço definido —</option>' +
+        salas.map(s => `<option value="${s.id}">${esc(s.nome)}</option>`).join('');
+    document.getElementById('gn-nome').value = '';
+    abrirModal('modal-grupo-novo');
+});
+
+const minutosDe = h => { const [a, b] = String(h).split(':').map(Number); return a * 60 + (b || 0); };
+
+document.getElementById('form-grupo-novo').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const registro = {
+        nome: document.getElementById('gn-nome').value.trim(),
+        dow: Number(document.getElementById('gn-dow').value),
+        hora: document.getElementById('gn-hora').value,
+        duracao_min: Number(document.getElementById('gn-duracao').value) || 60,
+        sala_id: document.getElementById('gn-sala').value || null,
+        ativo: true
+    };
+    if (!registro.nome || !registro.hora) { toast('Informe nome e hora do grupo.', true); return; }
+    // mesmo horário/espaço de outro grupo não pode (troca entre grupos é na Agenda)
+    const ocupante = grupos.find(gr => gr.ativo !== false && gr.dow === registro.dow
+        && ((gr.sala_id && registro.sala_id && gr.sala_id === registro.sala_id) || (!gr.sala_id && !registro.sala_id))
+        && minutosDe(gr.hora) < minutosDe(registro.hora) + registro.duracao_min
+        && minutosDe(registro.hora) < minutosDe(gr.hora) + (gr.duracao_min || 60));
+    if (ocupante) {
+        toast(`⛔ Esse horário já é do grupo "${ocupante.nome}". Escolha outro horário/espaço (a troca entre grupos é feita na Agenda).`, true);
+        return;
+    }
+    const { data, error } = await sb.from('argos_grupos').insert(registro).select().single();
+    if (error) { console.error(error); toast('Erro ao criar grupo.', true); return; }
+    fecharModal('modal-grupo-novo');
+    toast('Grupo criado.');
+    const { data: gs } = await sb.from('argos_grupos').select('*').order('hora');
+    grupos = gs || grupos;
+    selectGrupos(document.getElementById('din-grupo'), data.id);
 });
 
 // ============================================================

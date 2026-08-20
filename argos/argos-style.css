@@ -569,6 +569,8 @@ body.modal-aberto { overflow: hidden; }
 .botoes-status.compacto .btn-status { padding: 6px 10px; }
 .btn-status:hover { filter: brightness(1.25); }
 .pendente-linha { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+#grupo-membros .pendente-linha .bloco-info { cursor: pointer; }
+#grupo-membros .pendente-linha .bloco-info:hover b { color: var(--argos-primary); text-decoration: underline; }
 
 /* ---------- Serviços (profissionais) ---------- */
 .chips-servicos { display: flex; flex-wrap: wrap; gap: 6px; }

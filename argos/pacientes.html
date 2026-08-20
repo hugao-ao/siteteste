@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=0.1, maximum-scale=10, user-scalable=yes" />
   <title>Argos Gestão — Pacientes</title>
   <script src="argos-guard.js"></script>
-  <link rel="stylesheet" href="argos-style.css?v=5" />
+  <link rel="stylesheet" href="argos-style.css?v=6" />
 </head>
 <body>
   <header class="argos-topbar">
@@ -185,15 +185,27 @@
         </div>
 
         <div id="bloco-recorrencia">
-          <h3 class="form-secao">🗓️ Dias e horários</h3>
-          <div id="lista-dias"></div>
-          <button type="button" class="argos-btn small" id="btn-add-dia">+ Adicionar dia/horário</button>
+          <div id="bloco-grupo" style="display:none">
+            <h3 class="form-secao">👥 Grupo terapêutico</h3>
+            <p class="dica">Nos atendimentos em grupo, o dia, o horário e o espaço vêm do grupo escolhido.</p>
+            <div style="display:flex; gap:8px; flex-wrap:wrap; margin:8px 0">
+              <select id="din-grupo" class="argos-input" style="flex:1; min-width:200px"></select>
+              <button type="button" class="argos-btn small" id="btn-novo-grupo-inline">➕ Criar novo grupo</button>
+            </div>
+            <p class="dica" id="resumo-grupo"></p>
+          </div>
+
+          <div id="bloco-dias">
+            <h3 class="form-secao">🗓️ Dias e horários</h3>
+            <div id="lista-dias"></div>
+            <button type="button" class="argos-btn small" id="btn-add-dia">+ Adicionar dia/horário</button>
+          </div>
 
           <div class="form-grade" style="margin-top:12px">
-            <label>Frequência: X sessões…
+            <label id="rotulo-freq-qtd">Frequência: X sessões…
               <input type="number" min="1" id="din-freq-qtd" placeholder="Ex.: 2" />
             </label>
-            <label>…por período
+            <label id="rotulo-freq-periodo">…por período
               <select id="din-freq-periodo">
                 <option value="semana">Semana</option>
                 <option value="mes">Mês</option>
@@ -203,7 +215,7 @@
             <label>A partir de *
               <input type="date" id="din-inicio" />
             </label>
-            <label>Duração da sessão (min)
+            <label id="rotulo-duracao">Duração da sessão (min)
               <input type="number" min="5" step="5" id="din-duracao" value="60" />
             </label>
           </div>
@@ -233,7 +245,7 @@
               <option value="grupo">Em grupo (outros pacientes podem ter o mesmo horário)</option>
             </select>
           </label>
-          <label>Espaço
+          <label id="rotulo-sala">Espaço
             <select id="din-sala"></select>
           </label>
           <label>Profissional
@@ -297,6 +309,39 @@
         <div class="argos-modal-acoes">
           <button type="button" class="argos-btn ghost" data-fechar>Cancelar</button>
           <button type="submit" class="argos-btn primary">Salvar dinâmica</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ============ MODAL: NOVO GRUPO (a partir da dinâmica) ============ -->
+  <div class="argos-modal-fundo" id="modal-grupo-novo">
+    <div class="argos-modal">
+      <div class="argos-modal-topo">
+        <h2>Novo grupo terapêutico</h2>
+        <button class="argos-modal-x" data-fechar>×</button>
+      </div>
+      <form id="form-grupo-novo" class="argos-form">
+        <label>Nome do grupo *
+          <input type="text" id="gn-nome" required placeholder="Ex.: Grupo de habilidades sociais" />
+        </label>
+        <div class="form-grade">
+          <label>Dia da semana
+            <select id="gn-dow"></select>
+          </label>
+          <label>Hora
+            <input type="time" id="gn-hora" value="09:00" />
+          </label>
+          <label>Duração (min)
+            <input type="number" id="gn-duracao" value="60" min="5" step="5" />
+          </label>
+          <label>Espaço
+            <select id="gn-sala"></select>
+          </label>
+        </div>
+        <div class="argos-modal-acoes">
+          <button type="button" class="argos-btn ghost" data-fechar>Cancelar</button>
+          <button type="submit" class="argos-btn primary">Criar grupo</button>
         </div>
       </form>
     </div>
@@ -382,7 +427,7 @@
     </div>
   </div>
 
-  <script type="module" src="pacientes.js?v=4"></script>
+  <script type="module" src="pacientes.js?v=5"></script>
   <script type="module" src="argos-zoom.js?v=4"></script>
 </body>
 </html>
