@@ -794,16 +794,34 @@ function renderCronograma() {
         </div>`;
     }).join('');
 
-    cont.querySelectorAll('[data-crono-ini]').forEach(inp => inp.addEventListener('change', e => {
-        itensDraft[parseInt(e.target.dataset.cronoIni)].inicio_previsto = e.target.value;
-        renderCronograma();
-    }));
-    cont.querySelectorAll('[data-crono-fim]').forEach(inp => inp.addEventListener('change', e => {
-        const item = itensDraft[parseInt(e.target.dataset.cronoFim)];
-        item.fim_previsto = e.target.value;
-        item.prazo_dias = null; // data digitada à mão substitui o prazo
-        renderCronograma();
-    }));
+    // DATAS: o navegador dispara 'change' a CADA dígito do ano — re-renderizar aqui
+    // destruía o campo no meio da digitação (o 1º dígito virava ano "0002" e o resto
+    // se perdia). Por isso o valor é gravado a cada change, mas o recálculo da cadeia
+    // e o re-render só acontecem ao SAIR do campo (blur; Enter também conclui).
+    const aoConcluirData = (inp, aoSair) => {
+        inp.addEventListener('change', () => { inp._mudou = true; });
+        inp.addEventListener('keydown', e => { if (e.key === 'Enter') inp.blur(); });
+        inp.addEventListener('blur', () => {
+            if (!inp._mudou) return;
+            inp._mudou = false;
+            if (aoSair) aoSair();
+            renderCronograma();
+        });
+    };
+    cont.querySelectorAll('[data-crono-ini]').forEach(inp => {
+        inp.addEventListener('change', e => {
+            itensDraft[parseInt(e.target.dataset.cronoIni)].inicio_previsto = e.target.value;
+        });
+        aoConcluirData(inp);
+    });
+    cont.querySelectorAll('[data-crono-fim]').forEach(inp => {
+        inp.addEventListener('change', e => {
+            const item = itensDraft[parseInt(e.target.dataset.cronoFim)];
+            item.fim_previsto = e.target.value;
+            item.prazo_dias = null; // data digitada à mão substitui o prazo
+        });
+        aoConcluirData(inp);
+    });
     cont.querySelectorAll('[data-prazo-n]').forEach(inp => inp.addEventListener('change', e => {
         const idx = parseInt(e.target.dataset.prazoN);
         const item = itensDraft[idx];
@@ -821,26 +839,33 @@ function renderCronograma() {
         item.prazo_tipo = e.target.value;
         renderCronograma();
     }));
-    cont.querySelectorAll('[data-real-ini]').forEach(inp => inp.addEventListener('change', e => {
-        itensDraft[parseInt(e.target.dataset.realIni)].inicio_real = e.target.value;
-        renderCronograma();
-        toast(e.target.value
-            ? 'Início real informado — as datas da cadeia foram recalculadas (salve a obra para gravar).'
-            : 'Início real removido — datas recalculadas (salve a obra para gravar).');
-    }));
-    cont.querySelectorAll('[data-real-fim]').forEach(inp => inp.addEventListener('change', e => {
-        const item = itensDraft[parseInt(e.target.dataset.realFim)];
-        if (e.target.value && item.inicio_real && e.target.value < item.inicio_real) {
-            toast('A conclusão real não pode ser antes do início real.', true);
-            e.target.value = item.fim_real || '';
-            return;
-        }
-        item.fim_real = e.target.value;
-        renderCronograma();
-        toast(e.target.value
-            ? 'Serviço marcado como concluído — dependentes recalculados (salve a obra para gravar).'
-            : 'Conclusão real removida (salve a obra para gravar).');
-    }));
+    cont.querySelectorAll('[data-real-ini]').forEach(inp => {
+        inp.addEventListener('change', e => {
+            itensDraft[parseInt(e.target.dataset.realIni)].inicio_real = e.target.value;
+        });
+        aoConcluirData(inp, () => {
+            toast(itensDraft[parseInt(inp.dataset.realIni)].inicio_real
+                ? 'Início real informado — as datas da cadeia foram recalculadas (salve a obra para gravar).'
+                : 'Início real removido — datas recalculadas (salve a obra para gravar).');
+        });
+    });
+    cont.querySelectorAll('[data-real-fim]').forEach(inp => {
+        inp.addEventListener('focus', () => { inp._antes = inp.value; });
+        inp.addEventListener('change', e => {
+            itensDraft[parseInt(e.target.dataset.realFim)].fim_real = e.target.value;
+        });
+        aoConcluirData(inp, () => {
+            const item = itensDraft[parseInt(inp.dataset.realFim)];
+            if (item.fim_real && item.inicio_real && item.fim_real < item.inicio_real) {
+                toast('A conclusão real não pode ser antes do início real.', true);
+                item.fim_real = inp._antes || '';
+                return;
+            }
+            toast(item.fim_real
+                ? 'Serviço marcado como concluído — dependentes recalculados (salve a obra para gravar).'
+                : 'Conclusão real removida (salve a obra para gravar).');
+        });
+    });
     cont.querySelectorAll('[data-qtd-exec]').forEach(inp => inp.addEventListener('change', e => {
         const item = itensDraft[parseInt(e.target.dataset.qtdExec)];
         const bruto = e.target.value.trim();
