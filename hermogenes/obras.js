@@ -139,6 +139,30 @@ const somarDias = (iso, dias) => {
 };
 const difDias = (a, b) => Math.round((new Date(b + 'T00:00:00') - new Date(a + 'T00:00:00')) / 86400000);
 
+/** Soma um prazo a uma data (dia inicial conta como dia 1). 'uteis' = seg a sex,
+ *  feriados não descontados; começando em fim de semana, conta a partir da segunda.
+ *  Espelho de hermo_somar_prazo no banco. */
+function somarPrazo(iso, n, tipo) {
+    if (!iso) return iso;
+    n = Math.min(parseInt(n) || 0, 3650);
+    if (n < 1) return iso;
+    const [y, m, d] = iso.split('-').map(Number);
+    const dt = new Date(y, m - 1, d);
+    const fmt = t => `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`;
+    if (tipo === 'uteis') {
+        const util = t => t.getDay() >= 1 && t.getDay() <= 5;
+        while (!util(dt)) dt.setDate(dt.getDate() + 1);
+        let cont = 1;
+        while (cont < n) {
+            dt.setDate(dt.getDate() + 1);
+            if (util(dt)) cont++;
+        }
+        return fmt(dt);
+    }
+    dt.setDate(dt.getDate() + (n - 1));
+    return fmt(dt);
+}
+
 /** Itens que dependem (direta ou indiretamente) do item — não podem virar dependência dele (ciclo). */
 function descendentesDe(itemId) {
     const desc = new Set();
@@ -176,11 +200,22 @@ function recalcCadeiaDraft() {
             } else {
                 const fins = predsDe(i.id).map(p => p.fim_real || p.fim_previsto).filter(Boolean);
                 if (fins.length) base = fins.sort().pop();
+                // item com prazo mas sem prévios (ou prévios sem data): parte do próprio início
+                if (!base && i.prazo_dias) base = i.inicio_previsto || null;
             }
-            if (!base) return;
-            const dur = (i.inicio_previsto && i.fim_previsto)
-                ? Math.max(0, difDias(i.inicio_previsto, i.fim_previsto)) : 0;
-            const novoFim = somarDias(base, dur);
+            if (!base) {
+                // fim de item com prazo é derivado — sem base, limpa em vez de manter data velha
+                if (i.prazo_dias && i.fim_previsto) { i.fim_previsto = ''; mudou = true; }
+                return;
+            }
+            let novoFim;
+            if (i.prazo_dias) {
+                novoFim = somarPrazo(base, i.prazo_dias, i.prazo_tipo || 'corridos');
+            } else {
+                const dur = (i.inicio_previsto && i.fim_previsto)
+                    ? Math.max(0, difDias(i.inicio_previsto, i.fim_previsto)) : 0;
+                novoFim = somarDias(base, dur);
+            }
             if (i.inicio_previsto !== base || i.fim_previsto !== novoFim) {
                 i.inicio_previsto = base;
                 i.fim_previsto = novoFim;
@@ -475,6 +510,8 @@ async function abrirModalObra(obra) {
         inicio_real: it.inicio_real || '',
         fim_real: it.fim_real || '',
         qtd_executada: it.qtd_executada != null ? num(it.qtd_executada) : null,
+        prazo_dias: (it.prazo_dias != null && parseInt(it.prazo_dias) >= 1) ? parseInt(it.prazo_dias) : null,
+        prazo_tipo: it.prazo_tipo || 'corridos',
         alocacoes: it.alocacoes || []
     }));
     depsDraft = (obra?.dependencias || []).map(d => ({ item_id: d.item_id, depende_de_id: d.depende_de_id }));
@@ -734,7 +771,17 @@ function renderCronograma() {
                 <input type="date" value="${i.inicio_previsto || ''}" data-crono-ini="${idx}"
                     ${(iniAuto || concluido) ? `disabled title="${i.inicio_real ? 'Definido pelo início real informado' : concluido ? 'Serviço concluído' : 'Definido automaticamente pela conclusão dos serviços prévios'}"` : ''} />
                 <span style="color:var(--hermo-text-dim)">→</span>
-                <input type="date" value="${i.fim_previsto || ''}" data-crono-fim="${idx}" ${concluido ? 'disabled title="Serviço concluído"' : ''} />
+                <input type="date" value="${i.fim_previsto || ''}" data-crono-fim="${idx}"
+                    ${concluido ? 'disabled title="Serviço concluído"'
+                        : (i.prazo_dias ? 'disabled title="Calculado pelo prazo informado ao lado — apague o prazo para digitar a data"' : '')} />
+                <span style="color:var(--hermo-text-dim);font-size:.72rem">ou prazo</span>
+                <input type="number" class="prazo-dias" min="1" step="1" value="${i.prazo_dias ?? ''}" data-prazo-n="${idx}"
+                    ${concluido ? 'disabled' : ''} title="Prazo de execução em dias (o dia de início conta como dia 1) — a data-fim é calculada e recalculada automaticamente" />
+                <select class="prazo-tipo" data-prazo-tipo="${idx}" ${concluido ? 'disabled' : ''}
+                    title="Dias úteis = segunda a sexta (feriados não são descontados)">
+                    <option value="corridos" ${(i.prazo_tipo || 'corridos') === 'corridos' ? 'selected' : ''}>dias corridos</option>
+                    <option value="uteis" ${i.prazo_tipo === 'uteis' ? 'selected' : ''}>dias úteis</option>
+                </select>
                 <button class="hermo-btn small ghost" data-deps="${idx}" title="Este serviço só pode iniciar após a conclusão de quais serviços?">⛓ Depende${preds.length ? ` (${preds.length})` : ''}</button>
                 <button class="hermo-btn small primary" data-alocar="${idx}">👷 Alocar</button>
             </div>
@@ -758,7 +805,26 @@ function renderCronograma() {
         renderCronograma();
     }));
     cont.querySelectorAll('[data-crono-fim]').forEach(inp => inp.addEventListener('change', e => {
-        itensDraft[parseInt(e.target.dataset.cronoFim)].fim_previsto = e.target.value;
+        const item = itensDraft[parseInt(e.target.dataset.cronoFim)];
+        item.fim_previsto = e.target.value;
+        item.prazo_dias = null; // data digitada à mão substitui o prazo
+        renderCronograma();
+    }));
+    cont.querySelectorAll('[data-prazo-n]').forEach(inp => inp.addEventListener('change', e => {
+        const idx = parseInt(e.target.dataset.prazoN);
+        const item = itensDraft[idx];
+        const v = parseInt(e.target.value);
+        item.prazo_dias = (isFinite(v) && v >= 1) ? Math.min(v, 3650) : null;
+        if (item.prazo_dias && !item.inicio_previsto && !item.inicio_real && predsDe(item.id).length === 0) {
+            toast('Prazo anotado — informe também a data de início (ou uma dependência) para calcular o fim.');
+        }
+        renderCronograma();
+        // devolve o foco ao campo recriado — setas/spinner continuam funcionando
+        cont.querySelector(`[data-prazo-n="${idx}"]`)?.focus();
+    }));
+    cont.querySelectorAll('[data-prazo-tipo]').forEach(sel => sel.addEventListener('change', e => {
+        const item = itensDraft[parseInt(e.target.dataset.prazoTipo)];
+        item.prazo_tipo = e.target.value;
         renderCronograma();
     }));
     cont.querySelectorAll('[data-real-ini]').forEach(inp => inp.addEventListener('change', e => {
@@ -1190,7 +1256,9 @@ async function salvarObraCore({ silencioso = false } = {}) {
                 fim_previsto: i.fim_previsto || null,
                 inicio_real: i.inicio_real || null,
                 fim_real: i.fim_real || null,
-                qtd_executada: i.qtd_executada != null ? String(i.qtd_executada) : null
+                qtd_executada: i.qtd_executada != null ? String(i.qtd_executada) : null,
+                prazo_dias: i.prazo_dias != null ? String(i.prazo_dias) : null,
+                prazo_tipo: i.prazo_dias != null ? (i.prazo_tipo || 'corridos') : null
             }))
         };
         const { data: oid, error } = await sb.rpc('hermo_salvar_obra', { p: payload });
