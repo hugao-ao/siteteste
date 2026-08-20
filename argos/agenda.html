@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=0.1, maximum-scale=10, user-scalable=yes" />
+  <title>Argos Gestão — Agenda e Logística</title>
+  <script src="argos-guard.js"></script>
+  <link rel="stylesheet" href="argos-style.css?v=4" />
+</head>
+<body>
+  <header class="argos-topbar">
+    <div class="brand">ARGOS <span>GESTÃO</span></div>
+    <div class="actions">
+      <a class="argos-btn ghost" href="index.html">← Início</a>
+      <button class="argos-btn danger" id="btn-logout">Sair</button>
+    </div>
+  </header>
+
+  <main class="argos-pagina larga">
+    <h1>🗓️ Agenda e Logística</h1>
+    <p class="sub">Agenda geral da clínica e por espaço, preenchida automaticamente pelas dinâmicas financeiras dos pacientes.</p>
+
+    <div class="argos-aviso" id="aviso-pendentes" style="display:none">
+      <span id="aviso-pendentes-texto"></span>
+      <button class="argos-btn small primary" id="btn-abrir-pendentes" data-argos-recurso="sessoes_status">Preencher agora</button>
+    </div>
+
+    <div class="argos-filtros">
+      <div class="agenda-nav">
+        <button class="argos-btn ghost" id="btn-semana-ant">‹</button>
+        <button class="argos-btn ghost" id="btn-hoje">Hoje</button>
+        <button class="argos-btn ghost" id="btn-semana-prox">›</button>
+        <b id="rotulo-semana"></b>
+      </div>
+      <select id="filtro-sala"></select>
+      <button class="argos-btn ghost" id="btn-salas" data-argos-recurso="salas_gerenciar">🚪 Espaços</button>
+    </div>
+
+    <div class="agenda-grade" id="agenda-grade"></div>
+
+    <p class="dica" style="margin-top:14px">
+      Legenda: <span class="chip-status" style="--c:#94a3b8">??</span> pendente/futura ·
+      <span class="chip-status" style="--c:#22c55e">Ok</span> presente (cobra) ·
+      <span class="chip-status" style="--c:#eab308">Fj</span> falta não cobrável ·
+      <span class="chip-status" style="--c:#a855f7">Fc</span> falta cobrável ·
+      <span class="chip-status" style="--c:#ef4444">Nc</span> não houve (não cobra).
+      Toque numa sessão para marcar a frequência.
+    </p>
+  </main>
+
+  <!-- ============ MODAL: SESSÕES PENDENTES ============ -->
+  <div class="argos-modal-fundo" id="modal-pendentes">
+    <div class="argos-modal grande">
+      <div class="argos-modal-topo">
+        <h2>Sessões pendentes de preenchimento</h2>
+        <button class="argos-modal-x" data-fechar>×</button>
+      </div>
+      <p class="dica">Sessões já vencidas ainda marcadas com «??». Marque cada uma:</p>
+      <div id="lista-pendentes"></div>
+    </div>
+  </div>
+
+  <!-- ============ MODAL: MARCAR SESSÃO ============ -->
+  <div class="argos-modal-fundo" id="modal-sessao">
+    <div class="argos-modal">
+      <div class="argos-modal-topo">
+        <h2>Marcar sessão</h2>
+        <button class="argos-modal-x" data-fechar>×</button>
+      </div>
+      <div id="sessao-info" class="bloco-info" style="margin-bottom:14px"></div>
+      <div class="botoes-status" id="botoes-status"></div>
+    </div>
+  </div>
+
+  <!-- ============ MODAL: ESPAÇOS ============ -->
+  <div class="argos-modal-fundo" id="modal-salas">
+    <div class="argos-modal">
+      <div class="argos-modal-topo">
+        <h2>Espaços de atendimento</h2>
+        <button class="argos-modal-x" data-fechar>×</button>
+      </div>
+      <div id="lista-salas"></div>
+      <form id="form-sala" class="argos-form" style="margin-top:10px">
+        <div style="display:flex; gap:8px">
+          <input type="text" id="sala-nome" placeholder="Nome do espaço (ex.: Sala B)" style="flex:1" />
+          <button type="submit" class="argos-btn primary">Adicionar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script type="module" src="agenda.js?v=1"></script>
+  <script type="module" src="argos-zoom.js?v=4"></script>
+</body>
+</html>

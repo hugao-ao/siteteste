@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=0.1, maximum-scale=10, user-scalable=yes" />
+  <title>Argos Gestão — Profissionais</title>
+  <script src="argos-guard.js"></script>
+  <link rel="stylesheet" href="argos-style.css?v=4" />
+</head>
+<body>
+  <header class="argos-topbar">
+    <div class="brand">ARGOS <span>GESTÃO</span></div>
+    <div class="actions">
+      <a class="argos-btn ghost" href="index.html">← Início</a>
+      <button class="argos-btn danger" id="btn-logout">Sair</button>
+    </div>
+  </header>
+
+  <main class="argos-pagina">
+    <h1>🧑‍⚕️ Profissionais</h1>
+    <p class="sub">Cadastro dos profissionais e dos serviços que cada um presta. A base de serviços é única para toda a clínica, sem nomes repetidos.</p>
+
+    <div class="argos-filtros">
+      <input type="search" id="busca" placeholder="🔎 Buscar profissional…" />
+      <button class="argos-btn primary" id="btn-novo-prof" data-argos-recurso="profissionais_gerenciar">+ Novo profissional</button>
+    </div>
+
+    <div class="argos-minicards" id="lista-profissionais"></div>
+    <div class="argos-tabela-vazia" id="prof-vazio" style="display:none">Nenhum profissional cadastrado.</div>
+  </main>
+
+  <!-- ============ MODAL: NOME DO PROFISSIONAL ============ -->
+  <div class="argos-modal-fundo" id="modal-prof">
+    <div class="argos-modal">
+      <div class="argos-modal-topo">
+        <h2 id="modal-prof-titulo">Novo profissional</h2>
+        <button class="argos-modal-x" data-fechar>×</button>
+      </div>
+      <form id="form-prof" class="argos-form">
+        <label>Nome *
+          <input type="text" id="prof-nome" required />
+        </label>
+        <div class="argos-modal-acoes">
+          <button type="button" class="argos-btn ghost" data-fechar>Cancelar</button>
+          <button type="submit" class="argos-btn primary">Salvar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ============ MODAL: ADICIONAR SERVIÇO ============ -->
+  <div class="argos-modal-fundo" id="modal-servico">
+    <div class="argos-modal">
+      <div class="argos-modal-topo">
+        <h2 id="modal-servico-titulo">Adicionar serviço</h2>
+        <button class="argos-modal-x" data-fechar>×</button>
+      </div>
+      <p class="dica">Digite para filtrar a base única de serviços da clínica. Não são permitidos serviços com o mesmo nome (mesmo variando maiúsculas/minúsculas).</p>
+      <input type="search" id="servico-busca" placeholder="🔎 Digite o nome do serviço…" style="width:100%; margin:10px 0" class="argos-input" autocomplete="off" />
+      <div id="servico-lista" class="servico-lista"></div>
+    </div>
+  </div>
+
+  <script type="module" src="profissionais.js?v=1"></script>
+  <script type="module" src="argos-zoom.js?v=4"></script>
+</body>
+</html>
