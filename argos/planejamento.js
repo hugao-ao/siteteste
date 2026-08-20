@@ -9,7 +9,7 @@ import { carregarPermissoes } from './argos-permissoes.js';
 import { fechamentoPaciente, formataMoeda, formataBR, hojeISO, fimDoMes } from './argos-recorrencia.js';
 
 let perm = { pode: () => true, aplicarVisibilidade: () => {}, master: true };
-let pacientes = [], dinamicas = [], sessoes = [], profissionais = [], despesas = [], movimentacoes = [];
+let pacientes = [], dinamicas = [], sessoes = [], profissionais = [], despesas = [], movimentacoes = [], alocacoes = [];
 let editandoDespesaId = null;
 
 const MES_NOMES = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
@@ -17,13 +17,14 @@ const MES_NOMES = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
 const RECORRENCIA_LABELS = { unica: 'Única', semanal: 'Semanal', mensal: 'Mensal', anual: 'Anual' };
 
 async function carregarTudo() {
-    const [rPac, rDin, rSes, rProf, rDesp, rMov] = await Promise.all([
+    const [rPac, rDin, rSes, rProf, rDesp, rMov, rAloc] = await Promise.all([
         sb.from('argos_pacientes').select('*').order('nome'),
         sb.from('argos_dinamicas').select('*'),
         sb.from('argos_sessoes').select('*'),
         sb.from('argos_profissionais').select('*').order('nome'),
         sb.from('argos_despesas').select('*').order('created_at'),
-        sb.from('argos_movimentacoes').select('*').order('data', { ascending: false })
+        sb.from('argos_movimentacoes').select('*').order('data', { ascending: false }),
+        sb.from('argos_mov_alocacoes').select('*')
     ]);
     const erro = rPac.error || rDin.error || rSes.error || rProf.error || rDesp.error || rMov.error;
     if (erro) { console.error(erro); toast('Erro ao carregar dados.', true); return; }
@@ -33,6 +34,7 @@ async function carregarTudo() {
     profissionais = rProf.data || [];
     despesas = rDesp.data || [];
     movimentacoes = rMov.data || [];
+    alocacoes = (rAloc && rAloc.data) || [];
     render();
 }
 
@@ -42,27 +44,44 @@ function mesAnterior(mes) {
     return m === 1 ? `${a - 1}-12` : `${a}-${String(m - 1).padStart(2, '0')}`;
 }
 
-// ---------- realizado: movimentações reais de um mês ----------
+// ---------- realizado: movimentações reais confrontadas por MÊS DE REFERÊNCIA ----------
+// Cada movimentação pode ser rateada em alocações (destino + mês + valor):
+// um pagamento pode cobrir vários meses, ou só parte de um mês (outras
+// movimentações completam depois). O que não foi alocado conta como
+// "não classificado" no mês da própria movimentação (pela data).
+const alocDaMov = movId => alocacoes.filter(a => a.movimentacao_id === movId);
+const alocadoDaMov = m => alocDaMov(m.id).reduce((s2, a) => s2 + (Number(a.valor) || 0), 0);
+const restanteDaMov = m => Math.max(0, (Number(m.valor) || 0) - alocadoDaMov(m));
+
 function realizadoDoMes(mes) {
     const de = mes + '-01';
     const ate = fimDoMes(mes);
-    const doMes = movimentacoes.filter(m => m.data >= de && m.data <= ate);
-    const soma = l => l.reduce((s, m) => s + (Number(m.valor) || 0), 0);
-    const saidas = doMes.filter(m => m.tipo === 'saida');
+    const tipoDe = {};
+    movimentacoes.forEach(m => { tipoDe[m.id] = m.tipo; });
+    const alocMes = alocacoes.filter(a => a.mes_ref === mes);
+    const soma = l => l.reduce((s2, x) => s2 + (Number(x.valor) || 0), 0);
+    const entradasClass = soma(alocMes.filter(a => tipoDe[a.movimentacao_id] === 'entrada'));
+    const repasses = soma(alocMes.filter(a => tipoDe[a.movimentacao_id] === 'saida' && a.vinculo_tipo === 'profissional'));
+    const despesasClass = soma(alocMes.filter(a => tipoDe[a.movimentacao_id] === 'saida' && (a.vinculo_tipo === 'despesa' || a.vinculo_tipo === 'outro')));
+    const noMesPorData = movimentacoes.filter(m => m.data >= de && m.data <= ate);
+    const entradasNaoClass = noMesPorData.filter(m => m.tipo === 'entrada').reduce((s2, m) => s2 + restanteDaMov(m), 0);
+    const saidasNaoClass = noMesPorData.filter(m => m.tipo === 'saida').reduce((s2, m) => s2 + restanteDaMov(m), 0);
     const porVinculo = {};
-    doMes.forEach(m => {
-        if (m.vinculo_tipo && m.vinculo_id) {
-            const k = m.vinculo_tipo + ':' + m.vinculo_id;
-            porVinculo[k] = (porVinculo[k] || 0) + (Number(m.valor) || 0);
+    alocMes.forEach(a => {
+        if (a.vinculo_id) {
+            const k = a.vinculo_tipo + ':' + a.vinculo_id;
+            porVinculo[k] = (porVinculo[k] || 0) + (Number(a.valor) || 0);
         }
     });
+    const entradas = entradasClass + entradasNaoClass;
+    const saidasTotal = repasses + despesasClass + saidasNaoClass;
     return {
-        entradas: soma(doMes.filter(m => m.tipo === 'entrada')),
-        repasses: soma(saidas.filter(m => m.vinculo_tipo === 'profissional')),
-        despesas: soma(saidas.filter(m => m.vinculo_tipo === 'despesa' || m.vinculo_tipo === 'outro')),
-        naoClassificadas: soma(saidas.filter(m => !m.vinculo_tipo)),
-        saidasTotal: soma(saidas),
-        resultado: soma(doMes.filter(m => m.tipo === 'entrada')) - soma(saidas),
+        entradas, entradasNaoClass, repasses,
+        despesas: despesasClass,
+        naoClassificadas: saidasNaoClass,
+        saidasTotal,
+        resultado: entradas - saidasTotal,
+        outrasSaidas: soma(alocMes.filter(a => tipoDe[a.movimentacao_id] === 'saida' && a.vinculo_tipo === 'outro')),
         porVinculo
     };
 }
@@ -285,10 +304,7 @@ function renderMensal() {
         return `<tr><td>${esc(x.nome)}${x.extra ? ` <span class="dim">(${esc(x.extra)})</span>` : ''}</td><td>${RECORRENCIA_LABELS[x.recorrencia]}</td><td>${formataMoeda(x.valor)}</td><td>${real ? formataMoeda(real) : '—'}</td><td>${difHTML(real, x.valor, true)}</td></tr>`;
     });
     // saídas reais classificadas como "outro" (fora das despesas previstas)
-    const outras = movimentacoes.filter(m => m.tipo === 'saida' && m.vinculo_tipo === 'outro'
-        && m.data >= mes + '-01' && m.data <= fimDoMes(mes))
-        .reduce((s, m) => s + (Number(m.valor) || 0), 0);
-    if (outras) linhasDesp.push(`<tr><td>Outras saídas (classificadas como "outro")</td><td>—</td><td>—</td><td>${formataMoeda(outras)}</td><td></td></tr>`);
+    if (r.outrasSaidas) linhasDesp.push(`<tr><td>Outras saídas (classificadas como "outro")</td><td>—</td><td>—</td><td>${formataMoeda(r.outrasSaidas)}</td><td></td></tr>`);
     document.getElementById('tbody-mes-despesas').innerHTML = linhasDesp.join('')
         || '<tr><td colspan="5" class="dim">Nenhuma despesa neste mês.</td></tr>';
 }
@@ -326,39 +342,43 @@ function periodoMovimentacoes() {
     return { de: `${ano}-01-01`, ate: `${ano}-12-31`, rotulo: `ano de ${ano}` };
 }
 
-function opcoesClassificacao(m) {
-    const sel = m.vinculo_tipo ? `${m.vinculo_tipo}:${m.vinculo_id || ''}` : '';
-    const opt = (v, txt) => `<option value="${v}" ${v === sel ? 'selected' : ''}>${txt}</option>`;
-    if (m.tipo === 'entrada') {
-        return opt('', '— classificar —')
-            + `<optgroup label="Pagamento de paciente">`
-            + pacientes.filter(p => !p.cadastro_removido).map(p => opt('paciente:' + p.id, esc(p.nome))).join('')
-            + `</optgroup>` + opt('outro:', 'Outra entrada');
-    }
-    return opt('', '— classificar —')
-        + `<optgroup label="Repasse a profissional">`
-        + profissionais.map(p => opt('profissional:' + p.id, esc(p.nome))).join('')
-        + `</optgroup><optgroup label="Despesa cadastrada">`
-        + despesas.map(d => opt('despesa:' + d.id, esc(d.nome))).join('')
-        + `</optgroup>` + opt('outro:', 'Outra saída');
+const nomeVinculo = (tipo, id) => {
+    if (tipo === 'paciente') return (pacientes.find(p => p.id === id) || {}).nome || '?';
+    if (tipo === 'profissional') return (profissionais.find(p => p.id === id) || {}).nome || '?';
+    if (tipo === 'despesa') return (despesas.find(d => d.id === id) || {}).nome || '?';
+    return 'Outro';
+};
+const mesRefBR = mes => `${mes.slice(5, 7)}/${mes.slice(0, 4)}`;
+
+// resumo da classificação de uma movimentação (célula da tabela)
+function resumoClassificacao(m) {
+    const aloc = alocDaMov(m.id);
+    if (!aloc.length) return '<span class="badge vermelho">não classificada</span>';
+    const partes = aloc.map(a =>
+        `${esc(nomeVinculo(a.vinculo_tipo, a.vinculo_id))} · ${mesRefBR(a.mes_ref)}: ${formataMoeda(a.valor)}`);
+    const resto = restanteDaMov(m);
+    return partes.join('<br>') + (resto > 0.004 ? `<br><span class="badge vermelho">parcial — falta ${formataMoeda(resto)}</span>` : '');
 }
 
 function renderMovimentacoes() {
     const { de, ate, rotulo } = periodoMovimentacoes();
     const lista = movimentacoes.filter(m => m.data >= de && m.data <= ate)
         .sort((a, b) => (b.data + b.created_at).localeCompare(a.data + a.created_at));
-    const naoClass = lista.filter(m => !m.vinculo_tipo).length;
+    const naoClass = lista.filter(m => restanteDaMov(m) > 0.004).length;
     document.getElementById('mov-periodo').textContent =
         `Movimentações do ${rotulo}: ${lista.length} lançamento(s)` +
-        (naoClass ? ` — ⚠️ ${naoClass} sem classificação` : '');
+        (naoClass ? ` — ⚠️ ${naoClass} sem classificação completa` : '');
     document.getElementById('tbody-mov').innerHTML = lista.map(m => `
-      <tr class="${m.vinculo_tipo ? '' : 'linha-mov-pendente'}">
+      <tr>
         <td>${formataBR(m.data)}</td>
         <td>${esc(m.descricao)}${m.origem === 'importacao' ? ' <span class="dim">(importada)</span>' : ''}</td>
         <td>${m.tipo === 'entrada' ? '📥 Entrada' : '📤 Saída'}</td>
         <td style="color:${m.tipo === 'entrada' ? '#22c55e' : '#ef4444'}">${m.tipo === 'entrada' ? '' : '− '}${formataMoeda(m.valor)}</td>
-        <td><select class="argos-input" data-mov-classificar="${m.id}">${opcoesClassificacao(m)}</select></td>
-        <td class="acoes"><button class="argos-btn small danger" data-mov-excluir="${m.id}" title="Excluir lançamento">🗑️</button></td>
+        <td>${resumoClassificacao(m)}</td>
+        <td class="acoes">
+          <button class="argos-btn small primary" data-mov-classificar="${m.id}">🏷️ Classificar</button>
+          <button class="argos-btn small danger" data-mov-excluir="${m.id}" title="Excluir lançamento">🗑️</button>
+        </td>
       </tr>`).join('');
     document.getElementById('mov-vazio').style.display = lista.length ? 'none' : '';
 }
@@ -384,19 +404,13 @@ document.getElementById('form-mov').addEventListener('submit', async (e) => {
     await carregarTudo();
 });
 
-document.getElementById('tbody-mov').addEventListener('change', async (e) => {
-    const sel = e.target.closest('[data-mov-classificar]');
-    if (!sel) return;
-    const [vTipo, vId] = sel.value ? sel.value.split(':') : [null, null];
-    const { error } = await sb.from('argos_movimentacoes').update({
-        vinculo_tipo: vTipo || null, vinculo_id: vId || null
-    }).eq('id', sel.dataset.movClassificar);
-    if (error) { console.error(error); toast('Erro ao classificar.', true); return; }
-    toast(vTipo ? 'Movimentação classificada.' : 'Classificação removida.');
-    await carregarTudo(); // replaneja: o realizado muda na planilha e no mensal
-});
-
 document.getElementById('tbody-mov').addEventListener('click', async (e) => {
+    const clf = e.target.closest('[data-mov-classificar]');
+    if (clf) {
+        const m = movimentacoes.find(x => x.id === clf.dataset.movClassificar);
+        if (m) abrirModalClassificar(m);
+        return;
+    }
     const btn = e.target.closest('[data-mov-excluir]');
     if (!btn) return;
     const m = movimentacoes.find(x => x.id === btn.dataset.movExcluir);
@@ -404,6 +418,237 @@ document.getElementById('tbody-mov').addEventListener('click', async (e) => {
     const { error } = await sb.from('argos_movimentacoes').delete().eq('id', m.id);
     if (error) { toast('Erro ao excluir.', true); return; }
     toast('Lançamento excluído.');
+    await carregarTudo();
+});
+
+// ---------- modal de classificação (filtro + rateio por mês) ----------
+let clfMov = null;        // movimentação sendo classificada
+let clfAlocacoes = [];    // cópia de trabalho: [{vinculo_tipo, vinculo_id, mes_ref, valor}]
+
+function abrirModalClassificar(m) {
+    clfMov = m;
+    clfAlocacoes = alocDaMov(m.id).map(a => ({
+        vinculo_tipo: a.vinculo_tipo, vinculo_id: a.vinculo_id || null,
+        mes_ref: a.mes_ref, valor: Number(a.valor) || 0
+    }));
+    document.getElementById('clf-info').innerHTML =
+        `<b>${formataBR(m.data)}</b> — ${esc(m.descricao)} · ${m.tipo === 'entrada' ? '📥 Entrada' : '📤 Saída'} de <b>${formataMoeda(m.valor)}</b>`;
+    document.getElementById('clf-busca').value = '';
+    renderOpcoesClassificacao();
+    renderAlocacoes();
+    abrirModal('modal-classificar');
+}
+
+// opções filtráveis: entradas → pacientes; saídas → profissionais e despesas
+function opcoesDoTipo() {
+    if (!clfMov) return [];
+    if (clfMov.tipo === 'entrada') {
+        return pacientes.filter(p => !p.cadastro_removido)
+            .map(p => ({ tipo: 'paciente', id: p.id, nome: p.nome, grupo: '🧑 Pagamento de paciente' }))
+            .concat([{ tipo: 'outro', id: null, nome: 'Outra entrada (sem vínculo)', grupo: '📦 Outros' }]);
+    }
+    return profissionais.map(p => ({ tipo: 'profissional', id: p.id, nome: p.nome, grupo: '💼 Repasse a profissional' }))
+        .concat(despesas.map(d => ({ tipo: 'despesa', id: d.id, nome: d.nome, grupo: '💸 Despesa cadastrada' })))
+        .concat([{ tipo: 'outro', id: null, nome: 'Outra saída (sem vínculo)', grupo: '📦 Outros' }]);
+}
+
+const normaliza = t => String(t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+
+function renderOpcoesClassificacao() {
+    const termo = normaliza(document.getElementById('clf-busca').value);
+    const lista = opcoesDoTipo().filter(o => !termo || normaliza(o.nome).includes(termo));
+    let grupoAtual = '';
+    document.getElementById('clf-opcoes').innerHTML = lista.map(o => {
+        const cab = o.grupo !== grupoAtual ? `<p class="dica" style="margin:8px 0 2px"><b>${o.grupo}</b></p>` : '';
+        grupoAtual = o.grupo;
+        return `${cab}
+          <div class="servico-item">
+            <span>${esc(o.nome)}</span>
+            <button class="argos-btn small primary" data-clf-add="${o.tipo}:${o.id || ''}">+ Alocar</button>
+          </div>`;
+    }).join('') || '<p class="dim" style="padding:8px">Nada encontrado com esse filtro.</p>';
+}
+document.getElementById('clf-busca').addEventListener('input', renderOpcoesClassificacao);
+
+document.getElementById('clf-opcoes').addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-clf-add]');
+    if (!btn || !clfMov) return;
+    const [tipo, id] = btn.dataset.clfAdd.split(':');
+    const alocado = clfAlocacoes.reduce((s2, a) => s2 + a.valor, 0);
+    clfAlocacoes.push({
+        vinculo_tipo: tipo, vinculo_id: id || null,
+        mes_ref: clfMov.data.slice(0, 7),
+        valor: Math.max(0, Math.round(((Number(clfMov.valor) || 0) - alocado) * 100) / 100)
+    });
+    renderAlocacoes();
+});
+
+function renderAlocacoes() {
+    document.getElementById('clf-alocacoes').innerHTML = clfAlocacoes.map((a, i) => `
+      <div class="linha-dia" data-aloc="${i}">
+        <span style="flex:2; min-width:120px">${esc(nomeVinculo(a.vinculo_tipo, a.vinculo_id))}</span>
+        <input type="month" class="argos-input aloc-mes" value="${a.mes_ref}" title="Mês de referência" />
+        <input type="number" step="0.01" min="0.01" class="argos-input aloc-valor" value="${a.valor || ''}" placeholder="R$" title="Valor desta parte" />
+        <button type="button" class="argos-btn small danger aloc-remover">×</button>
+      </div>`).join('') || '<p class="dim">Nenhuma alocação ainda — escolha um destino acima.</p>';
+    atualizarResumoClassificacao();
+}
+
+function lerAlocacoesDoModal() {
+    document.querySelectorAll('#clf-alocacoes [data-aloc]').forEach(el => {
+        const a = clfAlocacoes[Number(el.dataset.aloc)];
+        if (!a) return;
+        a.mes_ref = el.querySelector('.aloc-mes').value || a.mes_ref;
+        a.valor = Number(el.querySelector('.aloc-valor').value) || 0;
+    });
+}
+
+function atualizarResumoClassificacao() {
+    if (!clfMov) return;
+    const total = Number(clfMov.valor) || 0;
+    const alocado = clfAlocacoes.reduce((s2, a) => s2 + (Number(a.valor) || 0), 0);
+    const resto = Math.round((total - alocado) * 100) / 100;
+    const el = document.getElementById('clf-resumo');
+    if (alocado > total + 0.004) {
+        el.style.color = '#e05555';
+        el.textContent = `⛔ Alocado ${formataMoeda(alocado)} — mais que o valor da movimentação (${formataMoeda(total)}).`;
+    } else {
+        el.style.color = '';
+        el.textContent = `Alocado ${formataMoeda(alocado)} de ${formataMoeda(total)}` +
+            (resto > 0.004 ? ` — falta ${formataMoeda(resto)} (pode ficar parcial).` : ' — tudo alocado. ✔');
+    }
+}
+
+document.getElementById('clf-alocacoes').addEventListener('input', () => { lerAlocacoesDoModal(); atualizarResumoClassificacao(); });
+document.getElementById('clf-alocacoes').addEventListener('click', (e) => {
+    const btn = e.target.closest('.aloc-remover');
+    if (!btn) return;
+    lerAlocacoesDoModal();
+    clfAlocacoes.splice(Number(btn.closest('[data-aloc]').dataset.aloc), 1);
+    renderAlocacoes();
+});
+
+document.getElementById('btn-clf-salvar').addEventListener('click', async () => {
+    if (!clfMov) return;
+    lerAlocacoesDoModal();
+    const validas = clfAlocacoes.filter(a => a.valor > 0 && a.mes_ref);
+    const total = Number(clfMov.valor) || 0;
+    const alocado = validas.reduce((s2, a) => s2 + a.valor, 0);
+    if (alocado > total + 0.004) {
+        toast('A soma das alocações não pode passar do valor da movimentação.', true);
+        return;
+    }
+    const { error: e1 } = await sb.from('argos_mov_alocacoes').delete().eq('movimentacao_id', clfMov.id);
+    if (e1) { console.error(e1); toast('Erro ao salvar a classificação.', true); return; }
+    if (validas.length) {
+        const { error: e2 } = await sb.from('argos_mov_alocacoes').insert(validas.map(a => ({
+            movimentacao_id: clfMov.id, vinculo_tipo: a.vinculo_tipo,
+            vinculo_id: a.vinculo_id, mes_ref: a.mes_ref, valor: a.valor
+        })));
+        if (e2) { console.error(e2); toast('Erro ao salvar a classificação.', true); return; }
+    }
+    // compatibilidade: guarda o vínculo "principal" no próprio lançamento
+    const principal = validas[0] || null;
+    await sb.from('argos_movimentacoes').update({
+        vinculo_tipo: principal ? principal.vinculo_tipo : null,
+        vinculo_id: principal ? principal.vinculo_id : null
+    }).eq('id', clfMov.id);
+    toast(validas.length ? 'Classificação salva.' : 'Classificação removida.');
+    fecharModal('modal-classificar');
+    clfMov = null;
+    await carregarTudo(); // replaneja: o realizado muda na planilha e no mensal
+});
+
+// ---------- importação de planilha (Excel / Google Sheets) ----------
+// Hoje: colar as linhas copiadas. Próxima etapa: leitura de arquivo .xlsx e
+// link do Google Sheets caem NESTE mesmo fluxo (mesma prévia e deduplicação
+// por origem_ref).
+let impLinhas = [];
+
+function parseValorPlanilha(txt) {
+    let t = String(txt || '').replace(/R\$|\s/g, '').trim();
+    if (!t) return NaN;
+    let neg = /^\(.*\)$/.test(t) || t.startsWith('-') || t.startsWith('\u2212');
+    t = t.replace(/^\((.*)\)$/, '$1').replace(/^[-\u2212]/, '');
+    if (t.includes(',')) t = t.replace(/\./g, '').replace(',', '.');
+    const v = Number(t);
+    return Number.isFinite(v) ? (neg ? -v : v) : NaN;
+}
+
+function parseDataPlanilha(txt) {
+    const t = String(txt || '').trim();
+    let m = t.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (m) return `${m[1]}-${m[2]}-${m[3]}`;
+    m = t.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
+    if (m) {
+        const ano = m[3].length === 2 ? '20' + m[3] : m[3];
+        return `${ano}-${String(m[2]).padStart(2, '0')}-${String(m[1]).padStart(2, '0')}`;
+    }
+    return null;
+}
+
+const origemRef = (data, descricao, valor) =>
+    `${data}|${String(descricao).trim().toLowerCase()}|${Math.abs(valor).toFixed(2)}`;
+
+function parseImportacao(texto) {
+    const linhas = String(texto || '').split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+    const refsExistentes = new Set(movimentacoes.map(m =>
+        m.origem_ref || origemRef(m.data, m.descricao, Number(m.valor) * (m.tipo === 'saida' ? -1 : 1))));
+    return linhas.map(l => {
+        let cols = l.split('\t');
+        if (cols.length < 2) cols = l.split(';');
+        cols = cols.map(c => c.trim()).filter(c => c !== '');
+        const data = parseDataPlanilha(cols[0]);
+        const valor = parseValorPlanilha(cols[cols.length - 1]);
+        if (!data || !Number.isFinite(valor) || valor === 0 || cols.length < 3) {
+            return { bruta: l, status: 'invalida' };
+        }
+        const descricao = cols.slice(1, -1).join(' — ');
+        const tipo = valor < 0 ? 'saida' : 'entrada';
+        const ref = origemRef(data, descricao, valor);
+        return {
+            bruta: l, data, descricao, tipo, valor: Math.abs(valor), ref,
+            status: refsExistentes.has(ref) ? 'duplicada' : 'nova'
+        };
+    });
+}
+
+document.getElementById('btn-importar').addEventListener('click', () => {
+    document.getElementById('imp-texto').value = '';
+    document.getElementById('imp-previa').innerHTML = '';
+    document.getElementById('btn-imp-confirmar').style.display = 'none';
+    impLinhas = [];
+    abrirModal('modal-importar');
+});
+
+document.getElementById('btn-imp-previa').addEventListener('click', () => {
+    impLinhas = parseImportacao(document.getElementById('imp-texto').value);
+    const novas = impLinhas.filter(x => x.status === 'nova').length;
+    const dup = impLinhas.filter(x => x.status === 'duplicada').length;
+    const inv = impLinhas.filter(x => x.status === 'invalida').length;
+    document.getElementById('imp-previa').innerHTML = impLinhas.length ? `
+      <p class="dica" id="imp-resumo" style="font-weight:600">${novas} nova(s) · ${dup} já importada(s) · ${inv} inválida(s)</p>
+      <div class="argos-tabela-wrap"><table class="argos-tabela">
+        <thead><tr><th>Data</th><th>Descrição</th><th>Tipo</th><th>Valor</th><th>Situação</th></tr></thead>
+        <tbody>${impLinhas.map(x => x.status === 'invalida'
+            ? `<tr><td colspan="4" class="dim">${esc(x.bruta)}</td><td><span class="badge vermelho">inválida</span></td></tr>`
+            : `<tr><td>${formataBR(x.data)}</td><td>${esc(x.descricao)}</td>
+                 <td>${x.tipo === 'entrada' ? '📥 Entrada' : '📤 Saída'}</td><td>${formataMoeda(x.valor)}</td>
+                 <td>${x.status === 'nova' ? '<span class="badge verde">nova</span>' : '<span class="badge azul">já importada</span>'}</td></tr>`).join('')}
+        </tbody></table></div>` : '<p class="dim">Nada para importar.</p>';
+    document.getElementById('btn-imp-confirmar').style.display = novas ? '' : 'none';
+});
+
+document.getElementById('btn-imp-confirmar').addEventListener('click', async () => {
+    const novas = impLinhas.filter(x => x.status === 'nova');
+    if (!novas.length) return;
+    const { error } = await sb.from('argos_movimentacoes').insert(novas.map(x => ({
+        data: x.data, descricao: x.descricao, tipo: x.tipo, valor: x.valor,
+        origem: 'importacao', origem_ref: x.ref
+    })));
+    if (error) { console.error(error); toast('Erro ao importar.', true); return; }
+    toast(`${novas.length} movimentação(ões) importada(s) — classifique-as para o confronto.`);
+    fecharModal('modal-importar');
     await carregarTudo();
 });
 

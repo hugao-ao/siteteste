@@ -104,7 +104,10 @@
     <!-- ============ MOVIMENTAÇÕES FINANCEIRAS REAIS ============ -->
     <section id="secao-movimentacoes" data-argos-recurso="movimentacoes_gerenciar" style="margin-top:30px">
       <h2 class="form-secao">📒 Movimentações financeiras reais</h2>
-      <p class="dica">Lance aqui as movimentações reais (em breve será possível importar de uma planilha). <b>Classifique</b> cada uma para associá-la ao planejamento: entradas → paciente; saídas → repasse a profissional ou despesa. À medida que você classifica, o <b>realizado</b> aparece confrontado com o previsto na planilha acima e no detalhe mensal.</p>
+      <p class="dica">Lance à mão ou <b>importe</b> da sua planilha (Excel / Google Sheets). <b>Classifique</b> cada movimentação para associá-la ao planejamento — entradas → paciente; saídas → repasse a profissional ou despesa — podendo <b>dividir o valor entre meses</b> (pagamento de vários meses de uma vez, ou pagamento parcial de um mês). À medida que você classifica, o <b>realizado</b> aparece confrontado com o previsto na planilha acima e no detalhe mensal.</p>
+      <div class="argos-modal-acoes" style="justify-content:flex-start; margin:0 0 8px">
+        <button type="button" class="argos-btn" id="btn-importar" data-argos-recurso="movimentacoes_importar">📥 Importar da planilha</button>
+      </div>
       <form id="form-mov" class="argos-form">
         <div class="form-grade">
           <label>Data *
@@ -137,6 +140,47 @@
       </div>
     </section>
   </main>
+
+  <!-- ============ MODAL: CLASSIFICAR MOVIMENTAÇÃO (com filtro e rateio por mês) ============ -->
+  <div class="argos-modal-fundo" id="modal-classificar">
+    <div class="argos-modal grande">
+      <div class="argos-modal-topo">
+        <h2>🏷️ Classificar movimentação</h2>
+        <button class="argos-modal-x" data-fechar>×</button>
+      </div>
+      <p class="bloco-info" id="clf-info" style="margin-bottom:10px"></p>
+      <p class="dica">Escolha o destino na lista (use o filtro) e informe <b>mês de referência</b> e <b>valor</b> de cada parte. Um pagamento pode cobrir vários meses (uma alocação por mês) ou só parte de um mês (o restante pode ser alocado por outra movimentação depois).</p>
+      <input type="search" id="clf-busca" class="argos-input" placeholder="🔎 Filtrar opções…" style="width:100%; margin:6px 0" autocomplete="off" />
+      <div id="clf-opcoes" class="servico-lista" style="max-height:220px; overflow:auto"></div>
+      <h3 class="form-secao">Alocações desta movimentação</h3>
+      <div id="clf-alocacoes"></div>
+      <p class="dica" id="clf-resumo" style="font-weight:600"></p>
+      <div class="argos-modal-acoes">
+        <button type="button" class="argos-btn ghost" data-fechar>Cancelar</button>
+        <button type="button" class="argos-btn primary" id="btn-clf-salvar">Salvar classificação</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ MODAL: IMPORTAR MOVIMENTAÇÕES (Excel / Google Sheets) ============ -->
+  <div class="argos-modal-fundo" id="modal-importar">
+    <div class="argos-modal grande">
+      <div class="argos-modal-topo">
+        <h2>📥 Importar movimentações da planilha</h2>
+        <button class="argos-modal-x" data-fechar>×</button>
+      </div>
+      <p class="dica">Copie as linhas da sua planilha (Excel ou Google Sheets) e cole abaixo — colunas <b>data</b>, <b>descrição</b> e <b>valor</b> (valor negativo ou com sinal − vira saída). A leitura direta de arquivo .xlsx e de link do Google Sheets entrará nesta mesma tela em uma próxima etapa; lançamentos já importados são reconhecidos e não duplicam.</p>
+      <textarea id="imp-texto" rows="7" class="argos-input" style="width:100%; font-family:monospace" placeholder="10/08/2026&#9;Pix recebido Bernardo&#9;800,00&#10;12/08/2026&#9;Aluguel&#9;-1500,00"></textarea>
+      <div class="argos-modal-acoes" style="justify-content:flex-start">
+        <button type="button" class="argos-btn small" id="btn-imp-previa">🔍 Pré-visualizar</button>
+      </div>
+      <div id="imp-previa"></div>
+      <div class="argos-modal-acoes">
+        <button type="button" class="argos-btn ghost" data-fechar>Cancelar</button>
+        <button type="button" class="argos-btn primary" id="btn-imp-confirmar" style="display:none">Importar lançamentos novos</button>
+      </div>
+    </div>
+  </div>
 
   <!-- ============ MODAL: DESPESAS ============ -->
   <div class="argos-modal-fundo" id="modal-despesas">
@@ -185,7 +229,7 @@
     </div>
   </div>
 
-  <script type="module" src="planejamento.js?v=3"></script>
+  <script type="module" src="planejamento.js?v=4"></script>
   <script type="module" src="argos-zoom.js?v=4"></script>
 </body>
 </html>
