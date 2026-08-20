@@ -68,6 +68,31 @@
     }
     .ob-badge.ok { background: rgba(34,197,94,.14); color: var(--hermo-success); border: 1px solid rgba(34,197,94,.4); }
     .ob-badge.aditivo { background: rgba(239,68,68,.12); color: var(--hermo-danger); border: 1px solid rgba(239,68,68,.4); }
+    .ob-badge.cadeia { background: rgba(59,130,246,.12); color: var(--hermo-info); border: 1px solid rgba(59,130,246,.4); }
+    .oc-serv {
+        display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+        background: var(--hermo-surface-2); border: 1px solid var(--hermo-border);
+        border-radius: 8px; padding: 6px 8px; font-size: .78rem;
+    }
+    .oc-serv .ordem { font-weight: 700; color: var(--hermo-primary); }
+    .oc-serv .nome { flex: 1; min-width: 160px; }
+    .oc-serv label { font-size: .68rem; color: var(--hermo-text-dim); }
+    .oc-serv input[type=number] {
+        width: 62px; background: var(--hermo-bg); border: 1px solid var(--hermo-border);
+        border-radius: 6px; color: var(--hermo-text); padding: 4px 6px; font-size: .76rem; text-align: right;
+    }
+    .oc-resumo {
+        font-size: .82rem; background: rgba(34,197,94,.1); border: 1px solid rgba(34,197,94,.35);
+        border-radius: 8px; padding: 8px 10px; margin-bottom: 8px;
+    }
+    .oc-matriz-wrap { overflow-x: auto; border: 1px solid var(--hermo-border); border-radius: 8px; }
+    .oc-matriz { border-collapse: collapse; font-size: .7rem; min-width: 100%; }
+    .oc-matriz th, .oc-matriz td {
+        border: 1px solid var(--hermo-border); padding: 4px 6px; white-space: nowrap; text-align: center;
+    }
+    .oc-matriz th { background: var(--hermo-surface-2); color: var(--hermo-text-dim); }
+    .oc-matriz td.serv { text-align: left; font-weight: 700; background: var(--hermo-surface-2); }
+    .oc-matriz td.faixa { color: var(--hermo-text-dim); }
     .ob-aloc-chips { display: flex; flex-wrap: wrap; gap: 5px; }
     .ob-aloc-chips .chip {
         display: inline-flex; align-items: center; gap: 5px;
@@ -228,6 +253,17 @@
             💡 Salve a obra para liberar o cronograma (datas e alocações por serviço).
           </div>
           <div class="ob-crono" id="ob-crono"></div>
+          <div id="ob-cadeias-wrap" style="display:none;border-top:1px dashed var(--hermo-border);padding-top:10px">
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+              <h4 style="font-size:.8rem;color:var(--hermo-primary);flex:1;min-width:200px">🧱 Execução por blocos (cadeias de serviços)</h4>
+              <button class="hermo-btn small" id="ob-btn-nova-cadeia">➕ Nova cadeia</button>
+            </div>
+            <div style="font-size:.74rem;color:var(--hermo-text-dim);margin:4px 0 8px">
+              Divida uma área em blocos e encadeie serviços (ex.: demolição → aplicação → proteção) para
+              <b>estimar o término</b> em pipeline (equipes em paralelo) ou bloco a bloco — e aplicar as datas no cronograma.
+            </div>
+            <div id="ob-cadeias" style="display:flex;flex-direction:column;gap:6px"></div>
+          </div>
         </div>
 
         <!-- ANEXOS HERDADOS -->
@@ -455,6 +491,66 @@
       <div class="hermo-modal-foot">
         <button class="hermo-btn ghost" id="od-cancelar">Cancelar</button>
         <button class="hermo-btn primary" id="od-confirmar">Salvar dependências</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SUB-MODAL: CADEIA POR BLOCOS (linha de balanço) -->
+  <div class="hermo-modal-overlay" id="oc-overlay">
+    <div class="hermo-modal">
+      <div class="hermo-modal-head">
+        <h2 id="oc-titulo">Cadeia por blocos</h2>
+        <button class="fechar" id="oc-fechar" title="Fechar">&times;</button>
+      </div>
+      <div class="hermo-modal-body">
+        <div class="hermo-form-row">
+          <div class="hermo-field">
+            <label>Nome da frente/área <span class="req">*</span></label>
+            <input id="oc-nome" type="text" placeholder="ex.: Impermeabilização da laje — 300 m²" />
+          </div>
+          <div class="hermo-field">
+            <label>Início <span class="req">*</span></label>
+            <input id="oc-inicio" type="date" />
+          </div>
+        </div>
+        <div class="hermo-form-row">
+          <div class="hermo-field">
+            <label>Blocos <span class="req">*</span></label>
+            <input id="oc-blocos" type="text" placeholder="ex.: 5 (iguais) ou 60,60,90,45,45" />
+          </div>
+          <div class="hermo-field">
+            <label>Contagem de dias</label>
+            <select id="oc-tipo">
+              <option value="corridos">dias corridos</option>
+              <option value="uteis">dias úteis (seg–sex)</option>
+            </select>
+          </div>
+          <div class="hermo-field">
+            <label>Modo</label>
+            <select id="oc-modo">
+              <option value="pipeline">Pipeline (equipes em paralelo)</option>
+              <option value="bloco_a_bloco">Bloco a bloco (um bloco inteiro por vez)</option>
+            </select>
+          </div>
+        </div>
+        <div style="font-size:.72rem;color:var(--hermo-text-dim)">
+          Em <b>Blocos</b>, um número divide a área em partes iguais; uma lista separada por vírgulas define
+          os tamanhos de cada bloco (o ritmo de cada serviço é proporcional ao tamanho).
+          No <b>pipeline</b>, o serviço seguinte entra num bloco assim que o anterior o conclui;
+          "equipes" diz quantos blocos o mesmo serviço toca ao mesmo tempo.
+        </div>
+        <div class="hermo-field">
+          <label>Serviços na ordem de execução <span class="req">*</span></label>
+          <div id="oc-servs" style="display:flex;flex-direction:column;gap:6px"></div>
+          <select id="oc-add-serv" style="margin-top:6px"></select>
+        </div>
+        <div id="oc-sim"></div>
+      </div>
+      <div class="hermo-modal-foot">
+        <button class="hermo-btn ghost" id="oc-cancelar">Cancelar</button>
+        <button class="hermo-btn" id="oc-simular">🔄 Simular</button>
+        <button class="hermo-btn" id="oc-salvar">💾 Salvar cadeia</button>
+        <button class="hermo-btn primary" id="oc-aplicar">📅 Salvar e aplicar ao cronograma</button>
       </div>
     </div>
   </div>

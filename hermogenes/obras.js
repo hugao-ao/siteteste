@@ -46,6 +46,8 @@ let alocItemIndex = null;     // índice em itensDraft do serviço sendo alocado
 let oaMarcados = new Set();
 let depsDraft = [];           // [{item_id, depende_de_id}] — dependências entre serviços da obra aberta
 let depItemIndex = null;      // índice em itensDraft do serviço cujas dependências estão sendo editadas
+let cadeiaEditando = null;    // cadeia por blocos aberta no modal oc (null = nova)
+let cadeiaServDraft = [];     // [{item_id, dias_por_bloco, equipes}] na ordem de execução
 
 // mini-mapa
 let omMapa = null, omMarcador = null, omPendente = null;
@@ -72,7 +74,8 @@ async function carregarTudo() {
                 itens:hermo_obra_servicos(*, servico:hermo_servicos(id, codigo, descricao, unidade),
                     alocacoes:hermo_alocacoes(*, integrante:hermo_integrantes(id, nome, apelido), equipe:hermo_equipes(id, nome, cor))),
                 propostas:hermo_obra_propostas(proposta_id),
-                dependencias:hermo_obra_dependencias(item_id, depende_de_id)`)
+                dependencias:hermo_obra_dependencias(item_id, depende_de_id),
+                cadeias:hermo_obra_cadeias(*, servicos:hermo_obra_cadeia_servicos(*))`)
             .order('ano', { ascending: false }).order('numero', { ascending: false }),
         sb.from('hermo_integrantes').select('*, funcao:hermo_funcoes(nome)').order('nome'),
         sb.from('hermo_equipes').select('*, membros:hermo_equipe_membros(integrante_id)').order('nome'),
@@ -89,7 +92,10 @@ async function carregarTudo() {
         ...x,
         itens: (x.itens || []).sort((a, b) => a.ordem - b.ordem),
         propostaIds: (x.propostas || []).map(op => op.proposta_id),
-        dependencias: x.dependencias || []
+        dependencias: x.dependencias || [],
+        cadeias: (x.cadeias || []).map(c => ({
+            ...c, servicos: (c.servicos || []).sort((a, b) => a.ordem - b.ordem)
+        }))
     }));
     integrantes = i.data || [];
     equipes = (e.data || []).map(q => ({ ...q, membroIds: (q.membros || []).map(m => m.integrante_id) }));
@@ -536,6 +542,7 @@ async function abrirModalObra(obra) {
     renderPropostasDraft();
     renderItensDraft();
     renderCronograma();
+    renderCadeias();
     await carregarDiario();
     await carregarAnexosHerdados();
 
@@ -548,6 +555,8 @@ function fecharModalObra() {
     obraEditando = null;
     itensDraft = [];
     depsDraft = [];
+    cadeiaEditando = null;
+    cadeiaServDraft = [];
     propostasDraft = [];
     diarioEntradas = [];
     localEscolhido = null;
@@ -756,9 +765,11 @@ function renderCronograma() {
             </span>`;
         }).join('');
         const excedente = itemExcedente(i);
+        const cadeiaDoItem = (obraEditando?.cadeias || []).find(c => (c.servicos || []).some(cs => cs.item_id === i.id));
         const badges =
             (concluido ? `<span class="ob-badge ok" title="Serviço finalizado">✓ concluído em ${fmtData(i.fim_real)}</span>` : '') +
-            (excedente ? `<span class="ob-badge aditivo" title="A quantidade executada passou do contratado — gere um aditivo (associe uma nova proposta) para cobrir o excedente.">⚠ +${fmtQtd(num(i.qtd_executada) - num(i.quantidade))} ${esc(i.unidade || 'un')} acima do contratado — aditivo</span>` : '');
+            (excedente ? `<span class="ob-badge aditivo" title="A quantidade executada passou do contratado — gere um aditivo (associe uma nova proposta) para cobrir o excedente.">⚠ +${fmtQtd(num(i.qtd_executada) - num(i.quantidade))} ${esc(i.unidade || 'un')} acima do contratado — aditivo</span>` : '') +
+            (cadeiaDoItem ? `<span class="ob-badge cadeia" title="Faz parte da cadeia por blocos '${esc(cadeiaDoItem.nome)}' — as datas previstas podem ser reaplicadas por ela">🧱 ${esc(cadeiaDoItem.nome)}</span>` : '');
         const chipsDeps = preds.length
             ? `<div class="ob-deps">⛓ só inicia após concluir: ${preds.map(p =>
                 `<b title="${esc(p.descricao)}">${esc(p.codigo)}${p.fim_real ? ' ✓' : ''}</b>`).join(', ')}</div>`
@@ -941,6 +952,351 @@ async function confirmarDeps() {
     } finally {
         btn.disabled = false;
     }
+}
+
+// ============================================================
+// CADEIAS POR BLOCOS (linha de balanço)
+// ============================================================
+
+/** Interpreta o campo Blocos: "5" → 5 blocos iguais; "60,60,90" → pesos proporcionais aos tamanhos. */
+function parseBlocos(texto) {
+    const t = String(texto || '').trim();
+    if (!t) return null;
+    if (/^\d+$/.test(t)) {
+        const n = parseInt(t);
+        return (n >= 1 && n <= 200) ? Array(n).fill(1) : null;
+    }
+    const tokens = t.split(/[,;]/).map(x => x.trim());
+    if (tokens.some(x => x === '')) return null; // vírgula sobrando / campo vazio = entrada inválida
+    const pesos = tokens.map(x => num(x));
+    if (pesos.some(v => !(v > 0))) return null;
+    return pesos.length <= 200 ? pesos : null;
+}
+
+/** Calendário: índice de dia de trabalho (0-based) → data ISO, pulando fins de semana se 'uteis'. */
+function criarCalendario(dataInicio, tipoDias, maxIdx) {
+    const [y, m, d] = dataInicio.split('-').map(Number);
+    const dt = new Date(y, m - 1, d);
+    const util = t => t.getDay() >= 1 && t.getDay() <= 5;
+    const fmt = t => `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`;
+    if (tipoDias === 'uteis') { while (!util(dt)) dt.setDate(dt.getDate() + 1); }
+    const datas = [];
+    for (let i = 0; i <= maxIdx; i++) {
+        datas.push(fmt(dt));
+        dt.setDate(dt.getDate() + 1);
+        if (tipoDias === 'uteis') { while (!util(dt)) dt.setDate(dt.getDate() + 1); }
+    }
+    return datas;
+}
+
+/**
+ * Simula a cadeia em dias de trabalho (frações permitidas).
+ * pipeline: o serviço s entra no bloco b quando (a) o serviço anterior concluiu o bloco b
+ *           E (b) uma das suas equipes ficou livre (concluiu o bloco b-equipes).
+ * bloco_a_bloco: tudo sequencial — um bloco inteiro (todos os serviços) antes do próximo.
+ * Retorna null se faltar dado.
+ */
+function simularCadeia({ dataInicio, pesos, tipoDias, modo, servicos }) {
+    if (!dataInicio || !pesos?.length || !servicos?.length) return null;
+    const B = pesos.length, S = servicos.length;
+    const soma = pesos.reduce((t, v) => t + v, 0);
+    const pesoNorm = pesos.map(v => v * B / soma); // média 1 → "dias por bloco" vale para o bloco médio
+    const ini = [], fim = [];
+    for (let s = 0; s < S; s++) { ini.push(Array(B).fill(0)); fim.push(Array(B).fill(0)); }
+    if (modo === 'bloco_a_bloco') {
+        let cursor = 0;
+        for (let b = 0; b < B; b++) {
+            for (let s = 0; s < S; s++) {
+                ini[s][b] = cursor;
+                cursor += Math.max(num(servicos[s].dias_por_bloco), 0.1) * pesoNorm[b];
+                fim[s][b] = cursor;
+            }
+        }
+    } else {
+        for (let s = 0; s < S; s++) {
+            const eq = Math.max(1, parseInt(servicos[s].equipes) || 1);
+            for (let b = 0; b < B; b++) {
+                const esperaServicoAnterior = s > 0 ? fim[s - 1][b] : 0;
+                const esperaEquipeLivre = b >= eq ? fim[s][b - eq] : 0;
+                ini[s][b] = Math.max(esperaServicoAnterior, esperaEquipeLivre);
+                fim[s][b] = ini[s][b] + Math.max(num(servicos[s].dias_por_bloco), 0.1) * pesoNorm[b];
+            }
+        }
+    }
+    const maxU = Math.max(...fim.map(f => Math.max(...f)));
+    const totalDias = Math.max(1, Math.ceil(maxU - 1e-9));
+    const cal = criarCalendario(dataInicio, tipoDias, totalDias - 1);
+    const idxIni = u => Math.min(Math.floor(u + 1e-9), cal.length - 1);
+    const idxFim = u => Math.min(Math.max(Math.ceil(u - 1e-9) - 1, 0), cal.length - 1);
+    const porServico = servicos.map((sv, s) => ({
+        ...sv,
+        blocos: pesos.map((p, b) => ({ ini: cal[idxIni(ini[s][b])], fim: cal[idxFim(fim[s][b])] })),
+        ini: cal[idxIni(Math.min(...ini[s]))],
+        fim: cal[idxFim(Math.max(...fim[s]))]
+    }));
+    return { porServico, fimData: cal[idxFim(maxU)], totalDias };
+}
+
+/** Roda a simulação de uma cadeia SALVA (para o resumo da lista). */
+function terminoCadeia(c) {
+    const pesos = Array.isArray(c.blocos) ? c.blocos.map(num).filter(v => v > 0) : null;
+    const servicos = (c.servicos || []).map(cs => ({
+        item_id: cs.item_id, dias_por_bloco: num(cs.dias_por_bloco) || 1, equipes: cs.equipes || 1
+    }));
+    if (!c.data_inicio || !pesos?.length || !servicos.length) return null;
+    return simularCadeia({ dataInicio: c.data_inicio, pesos, tipoDias: c.tipo_dias, modo: c.modo, servicos });
+}
+
+function renderCadeias() {
+    const salva = !!obraEditando?.id;
+    $('ob-cadeias-wrap').style.display = salva ? '' : 'none';
+    if (!salva) return;
+    const cadeias = obraEditando.cadeias || [];
+    $('ob-cadeias').innerHTML = cadeias.length === 0
+        ? '<div style="font-size:.76rem;color:var(--hermo-text-dim)">Nenhuma cadeia criada ainda.</div>'
+        : cadeias.map(c => {
+            const sim = terminoCadeia(c);
+            const nB = Array.isArray(c.blocos) ? c.blocos.length : 0;
+            return `
+            <div class="ob-item">
+                <div class="txt"><b>🧱 ${esc(c.nome)}</b>
+                    <small>${nB} bloco(s) · ${(c.servicos || []).length} serviço(s) ·
+                    ${c.modo === 'bloco_a_bloco' ? 'bloco a bloco' : 'pipeline'} ·
+                    ${c.tipo_dias === 'uteis' ? 'dias úteis' : 'dias corridos'}
+                    ${sim ? ` · início ${fmtData(c.data_inicio)} · <b style="color:var(--hermo-success)">término estimado ${fmtData(sim.fimData)}</b> (${sim.totalDias} dia(s))` : ' · complete início/blocos/serviços para estimar'}</small>
+                </div>
+                <button class="hermo-btn small ghost" data-cadeia-editar="${c.id}" title="Abrir/editar">✎</button>
+                <button class="hermo-btn small danger" data-cadeia-excluir="${c.id}" title="Excluir cadeia">🗑</button>
+            </div>`;
+        }).join('');
+    $('ob-cadeias').querySelectorAll('[data-cadeia-editar]').forEach(b => b.addEventListener('click',
+        () => abrirCadeiaModal((obraEditando.cadeias || []).find(c => c.id === b.dataset.cadeiaEditar))));
+    $('ob-cadeias').querySelectorAll('[data-cadeia-excluir]').forEach(b => b.addEventListener('click',
+        () => excluirCadeia(b.dataset.cadeiaExcluir)));
+}
+
+function abrirCadeiaModal(cadeia) {
+    cadeiaEditando = cadeia || null;
+    $('oc-titulo').textContent = cadeia ? `Cadeia — ${cadeia.nome}` : 'Nova cadeia por blocos';
+    $('oc-nome').value = cadeia?.nome || '';
+    $('oc-inicio').value = cadeia?.data_inicio || hoje();
+    const pesos = Array.isArray(cadeia?.blocos) ? cadeia.blocos : [];
+    // blocos todos iguais reabrem como CONTAGEM (round-trip estável: "3" ⇄ [1,1,1];
+    // um único peso salvo, ex. [60], jamais pode reabrir como "60" = 60 blocos)
+    $('oc-blocos').value = pesos.length
+        ? (pesos.every(v => num(v) === num(pesos[0])) ? String(pesos.length) : pesos.join(','))
+        : '';
+    $('oc-tipo').value = cadeia?.tipo_dias || 'corridos';
+    $('oc-modo').value = cadeia?.modo || 'pipeline';
+    cadeiaServDraft = (cadeia?.servicos || []).map(cs => ({
+        item_id: cs.item_id, dias_por_bloco: num(cs.dias_por_bloco) || 1, equipes: cs.equipes || 1
+    }));
+    $('oc-sim').innerHTML = '';
+    renderCadeiaServs();
+    $('oc-overlay').classList.add('aberto');
+    if (cadeia) simularNoModal(false);
+}
+
+/** Sugestão de dias/bloco ao adicionar: prazo (ou duração prevista) do serviço ÷ nº de blocos. */
+function sugerirDiasBloco(item) {
+    const pesos = parseBlocos($('oc-blocos').value);
+    const nB = pesos ? pesos.length : 0;
+    let total = null;
+    if (item.prazo_dias) total = item.prazo_dias;
+    else if (item.inicio_previsto && item.fim_previsto) {
+        total = Math.max(1, difDias(item.inicio_previsto, item.fim_previsto) + 1);
+    }
+    if (!total || !nB) return 1;
+    return Math.max(0.5, Math.round(total / nB * 2) / 2);
+}
+
+function renderCadeiaServs() {
+    const cont = $('oc-servs');
+    const vig = itensDraft.filter(i => i.id && i.vigente !== false);
+    const blocoABloco = $('oc-modo').value === 'bloco_a_bloco';
+    cont.innerHTML = cadeiaServDraft.length === 0
+        ? '<div style="font-size:.76rem;color:var(--hermo-text-dim)">Adicione abaixo os serviços, na ordem em que percorrem os blocos.</div>'
+        : cadeiaServDraft.map((cs, i) => {
+            const it = vig.find(x => x.id === cs.item_id);
+            return `
+            <div class="oc-serv">
+                <span class="ordem">${i + 1}º</span>
+                <span class="nome">${it ? `<b>${esc(it.codigo)}</b> — ${esc(it.descricao)}` : '<i>serviço fora do escopo vigente</i>'}</span>
+                <label>dias/bloco</label>
+                <input type="number" min="0.5" step="0.5" value="${cs.dias_por_bloco}" data-cs-dias="${i}" />
+                <label>equipes</label>
+                <input type="number" min="1" step="1" value="${cs.equipes}" data-cs-eq="${i}"
+                    ${blocoABloco ? 'disabled title="No modo bloco a bloco tudo é sequencial — equipes em paralelo não se aplicam"' : 'title="Quantos blocos este serviço consegue tocar ao mesmo tempo"'} />
+                <button class="hermo-btn small ghost" data-cs-sobe="${i}" ${i === 0 ? 'disabled' : ''}>↑</button>
+                <button class="hermo-btn small ghost" data-cs-desce="${i}" ${i === cadeiaServDraft.length - 1 ? 'disabled' : ''}>↓</button>
+                <button class="hermo-btn small danger" data-cs-rem="${i}" title="Remover da cadeia">×</button>
+            </div>`;
+        }).join('');
+    const sel = $('oc-add-serv');
+    sel.innerHTML = '<option value="">➕ adicionar serviço à cadeia…</option>';
+    vig.filter(i => !cadeiaServDraft.some(cs => cs.item_id === i.id)).forEach(i => {
+        const o = document.createElement('option');
+        o.value = i.id;
+        o.textContent = `${i.codigo} — ${i.descricao}`;
+        sel.appendChild(o);
+    });
+    cont.querySelectorAll('[data-cs-dias]').forEach(inp => inp.addEventListener('change', e => {
+        const v = num(e.target.value);
+        cadeiaServDraft[parseInt(e.target.dataset.csDias)].dias_por_bloco = v > 0 ? v : 1;
+        e.target.value = cadeiaServDraft[parseInt(e.target.dataset.csDias)].dias_por_bloco;
+    }));
+    cont.querySelectorAll('[data-cs-eq]').forEach(inp => inp.addEventListener('change', e => {
+        const v = parseInt(e.target.value);
+        cadeiaServDraft[parseInt(e.target.dataset.csEq)].equipes = (isFinite(v) && v >= 1) ? Math.min(v, 50) : 1;
+        e.target.value = cadeiaServDraft[parseInt(e.target.dataset.csEq)].equipes;
+    }));
+    cont.querySelectorAll('[data-cs-sobe]').forEach(b => b.addEventListener('click', () => {
+        const i = parseInt(b.dataset.csSobe);
+        [cadeiaServDraft[i - 1], cadeiaServDraft[i]] = [cadeiaServDraft[i], cadeiaServDraft[i - 1]];
+        renderCadeiaServs();
+    }));
+    cont.querySelectorAll('[data-cs-desce]').forEach(b => b.addEventListener('click', () => {
+        const i = parseInt(b.dataset.csDesce);
+        [cadeiaServDraft[i], cadeiaServDraft[i + 1]] = [cadeiaServDraft[i + 1], cadeiaServDraft[i]];
+        renderCadeiaServs();
+    }));
+    cont.querySelectorAll('[data-cs-rem]').forEach(b => b.addEventListener('click', () => {
+        cadeiaServDraft.splice(parseInt(b.dataset.csRem), 1);
+        renderCadeiaServs();
+    }));
+}
+
+/** Lê e valida o formulário da cadeia. Retorna {campos, sim} ou null (toast quando avisar=true). */
+function coletarCadeiaForm(avisar = true) {
+    const nome = $('oc-nome').value.trim();
+    const dataInicio = $('oc-inicio').value;
+    const pesos = parseBlocos($('oc-blocos').value);
+    const tipoDias = $('oc-tipo').value;
+    const modo = $('oc-modo').value;
+    const vig = itensDraft.filter(i => i.id && i.vigente !== false);
+    const orfaos = cadeiaServDraft.filter(cs => !vig.some(x => x.id === cs.item_id));
+    const erro = !nome ? 'Dê um nome à frente/área.'
+        : !dataInicio ? 'Informe a data de início.'
+        : !pesos ? 'Blocos inválidos — use um número (ex.: 5) ou tamanhos separados por vírgula, sem vírgula sobrando (ex.: 60,60,90; decimais com ponto: 60.5).'
+        : cadeiaServDraft.length === 0 ? 'Adicione ao menos um serviço à cadeia.'
+        : orfaos.length ? 'Há serviço(s) na cadeia fora do escopo vigente (substituído por aditivo ou removido) — remova a(s) linha(s) marcada(s) e adicione o serviço atual no lugar.'
+        : null;
+    if (erro) { if (avisar) toast(erro, true); return null; }
+    const servicos = cadeiaServDraft.map(cs => {
+        const it = vig.find(x => x.id === cs.item_id);
+        return { ...cs, codigo: it?.codigo || '?', descricao: it?.descricao || '?' };
+    });
+    return { nome, dataInicio, pesos, tipoDias, modo, servicos };
+}
+
+function simularNoModal(avisar = true) {
+    const f = coletarCadeiaForm(avisar);
+    if (!f) { $('oc-sim').innerHTML = ''; return null; }
+    const sim = simularCadeia({ dataInicio: f.dataInicio, pesos: f.pesos, tipoDias: f.tipoDias, modo: f.modo, servicos: f.servicos });
+    if (!sim) { $('oc-sim').innerHTML = ''; return null; }
+    const ddmm = iso => fmtData(iso).slice(0, 5);
+    const pesosDiferem = !f.pesos.every(v => v === f.pesos[0]);
+    const cab = f.pesos.map((p, b) =>
+        `<th>Bloco ${b + 1}${pesosDiferem ? `<br><span style="font-weight:400">${fmtQtd(p)}</span>` : ''}</th>`).join('');
+    const linhas = sim.porServico.map(ps => `
+        <tr>
+            <td class="serv">${esc(ps.codigo)} — ${esc(ps.descricao)}</td>
+            ${ps.blocos.map(bl => `<td class="faixa">${ddmm(bl.ini)}–${ddmm(bl.fim)}</td>`).join('')}
+            <td><b>${ddmm(ps.ini)} → ${ddmm(ps.fim)}</b></td>
+        </tr>`).join('');
+    $('oc-sim').innerHTML = `
+        <div class="oc-resumo">📅 <b>Término estimado: ${fmtData(sim.fimData)}</b> —
+            ${sim.totalDias} ${f.tipoDias === 'uteis' ? 'dia(s) útil(eis)' : 'dia(s) corrido(s)'}
+            a partir de ${fmtData(f.dataInicio)}
+            (${f.modo === 'bloco_a_bloco' ? 'bloco a bloco' : 'pipeline'}, ${f.pesos.length} bloco(s)).</div>
+        <div class="oc-matriz-wrap"><table class="oc-matriz">
+            <tr><th>Serviço</th>${cab}<th>Início → Fim</th></tr>${linhas}
+        </table></div>`;
+    return sim;
+}
+
+async function salvarCadeia(aplicar) {
+    if (!obraEditando?.id) { toast('Salve a obra antes de criar cadeias.', true); return; }
+    const f = coletarCadeiaForm(true);
+    if (!f) return;
+    const sim = simularNoModal(true);
+    if (!sim) return;
+    if (aplicar) {
+        const ids = cadeiaServDraft.map(cs => cs.item_id);
+        const comReal = itensDraft.filter(i => ids.includes(i.id) && (i.inicio_real || i.fim_real));
+        if (!confirm(`Aplicar as datas simuladas ao cronograma?\n\n` +
+            `• O início/fim previstos dos ${ids.length} serviço(s) da cadeia serão sobrescritos pela simulação.\n` +
+            `• Prazos em dias informados nesses serviços serão limpos (a cadeia passa a definir as datas).\n` +
+            `• Dependências ⛓ ENTRE os serviços da cadeia serão removidas (a ordem já está embutida nos blocos).` +
+            (comReal.length ? `\n• Atenção: ${comReal.map(i => i.codigo).join(', ')} já tem execução real informada — as datas reais prevalecem no recálculo.` : ''))) return;
+    }
+    const btns = ['oc-salvar', 'oc-aplicar', 'oc-simular'].map(id => $(id));
+    btns.forEach(b => b.disabled = true);
+    try {
+        const payload = {
+            id: cadeiaEditando?.id || null,
+            obra_id: obraEditando.id,
+            nome: f.nome,
+            data_inicio: f.dataInicio,
+            // pesos todos iguais são gravados como 1s (contagem) — round-trip estável
+            blocos: f.pesos.every(v => v === f.pesos[0]) ? Array(f.pesos.length).fill(1) : f.pesos,
+            tipo_dias: f.tipoDias,
+            modo: f.modo,
+            servicos: cadeiaServDraft.map((cs, i) => ({
+                item_id: cs.item_id, ordem: i + 1,
+                dias_por_bloco: String(cs.dias_por_bloco), equipes: cs.equipes
+            }))
+        };
+        const { data: cid, error } = await sb.rpc('hermo_salvar_cadeia', { p: payload });
+        if (error) throw error;
+        if (aplicar) {
+            // 1º grava a obra como está (preserva edições do modal; deps ainda intactas);
+            // 2º aplica a cadeia ATOMICAMENTE no banco (deps entre membros + datas + recálculo)
+            const oid = await salvarObraCore({ silencioso: true });
+            if (!oid) return;
+            const datas = sim.porServico.map(ps => ({ item_id: ps.item_id, inicio: ps.ini, fim: ps.fim }));
+            const { error: eAp } = await sb.rpc('hermo_aplicar_cadeia', { p_cadeia: cid, p_datas: datas });
+            if (eAp) throw eAp;
+            $('oc-overlay').classList.remove('aberto');
+            toast(`Cadeia aplicada — término estimado ${fmtData(sim.fimData)}.`);
+            await carregarTudo();
+            const atualizada = obras.find(o => o.id === obraEditando?.id);
+            if (atualizada) await abrirModalObra(atualizada);
+        } else {
+            await recarregarCadeias();
+            cadeiaEditando = (obraEditando.cadeias || []).find(c => c.id === cid) || null;
+            renderCadeias();
+            renderCronograma();
+            toast('Cadeia salva — término estimado ' + fmtData(sim.fimData) + '.');
+        }
+    } catch (e) {
+        toast('Erro ao salvar cadeia: ' + e.message, true);
+    } finally {
+        btns.forEach(b => b.disabled = false);
+    }
+}
+
+async function recarregarCadeias() {
+    const { data, error } = await sb.from('hermo_obra_cadeias')
+        .select('*, servicos:hermo_obra_cadeia_servicos(*)')
+        .eq('obra_id', obraEditando.id).order('created_at');
+    if (error) { toast('Erro ao recarregar cadeias: ' + error.message, true); return; }
+    obraEditando.cadeias = (data || []).map(c => ({
+        ...c, servicos: (c.servicos || []).sort((a, b) => a.ordem - b.ordem)
+    }));
+    const naLista = obras.find(o => o.id === obraEditando.id);
+    if (naLista) naLista.cadeias = obraEditando.cadeias;
+}
+
+async function excluirCadeia(id) {
+    const c = (obraEditando?.cadeias || []).find(x => x.id === id);
+    if (!confirm(`Excluir a cadeia "${c?.nome || ''}"?\n\nAs datas já aplicadas no cronograma NÃO mudam — só o plano por blocos é removido.`)) return;
+    const { error } = await sb.from('hermo_obra_cadeias').delete().eq('id', id);
+    if (error) { toast('Erro ao excluir: ' + error.message, true); return; }
+    await recarregarCadeias();
+    renderCadeias();
+    renderCronograma();
+    toast('Cadeia excluída.');
 }
 
 // ---------- alocação (oa) ----------
@@ -1409,6 +1765,22 @@ $('op-fechar').addEventListener('click', () => $('op-overlay').classList.remove(
 $('op-cancelar').addEventListener('click', () => $('op-overlay').classList.remove('aberto'));
 ligarFecharPorBackdrop($('op-overlay'), () => $('op-overlay').classList.remove('aberto'));
 $('op-confirmar').addEventListener('click', confirmarAssociarPropostas);
+
+$('ob-btn-nova-cadeia').addEventListener('click', () => abrirCadeiaModal(null));
+$('oc-fechar').addEventListener('click', () => $('oc-overlay').classList.remove('aberto'));
+$('oc-cancelar').addEventListener('click', () => $('oc-overlay').classList.remove('aberto'));
+ligarFecharPorBackdrop($('oc-overlay'), () => $('oc-overlay').classList.remove('aberto'));
+$('oc-simular').addEventListener('click', () => simularNoModal(true));
+$('oc-salvar').addEventListener('click', () => salvarCadeia(false));
+$('oc-aplicar').addEventListener('click', () => salvarCadeia(true));
+$('oc-modo').addEventListener('change', renderCadeiaServs);
+$('oc-add-serv').addEventListener('change', () => {
+    const id = $('oc-add-serv').value;
+    if (!id) return;
+    const item = itensDraft.find(i => i.id === id);
+    cadeiaServDraft.push({ item_id: id, dias_por_bloco: item ? sugerirDiasBloco(item) : 1, equipes: 1 });
+    renderCadeiaServs();
+});
 
 $('od-fechar').addEventListener('click', () => $('od-overlay').classList.remove('aberto'));
 $('od-cancelar').addEventListener('click', () => $('od-overlay').classList.remove('aberto'));
