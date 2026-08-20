@@ -9,7 +9,7 @@ import { carregarPermissoes } from './argos-permissoes.js';
 import { fechamentoPaciente, formataMoeda, formataBR, hojeISO, fimDoMes } from './argos-recorrencia.js';
 
 let perm = { pode: () => true, aplicarVisibilidade: () => {}, master: true };
-let pacientes = [], dinamicas = [], sessoes = [], profissionais = [], despesas = [], movimentacoes = [], alocacoes = [];
+let pacientes = [], dinamicas = [], sessoes = [], profissionais = [], despesas = [], movimentacoes = [], alocacoes = [], depara = [];
 let editandoDespesaId = null;
 
 const MES_NOMES = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
@@ -17,14 +17,15 @@ const MES_NOMES = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
 const RECORRENCIA_LABELS = { unica: 'Única', semanal: 'Semanal', mensal: 'Mensal', anual: 'Anual' };
 
 async function carregarTudo() {
-    const [rPac, rDin, rSes, rProf, rDesp, rMov, rAloc] = await Promise.all([
+    const [rPac, rDin, rSes, rProf, rDesp, rMov, rAloc, rDp] = await Promise.all([
         sb.from('argos_pacientes').select('*').order('nome'),
         sb.from('argos_dinamicas').select('*'),
         sb.from('argos_sessoes').select('*'),
         sb.from('argos_profissionais').select('*').order('nome'),
         sb.from('argos_despesas').select('*').order('created_at'),
         sb.from('argos_movimentacoes').select('*').order('data', { ascending: false }),
-        sb.from('argos_mov_alocacoes').select('*')
+        sb.from('argos_mov_alocacoes').select('*'),
+        sb.from('argos_mov_depara').select('*')
     ]);
     const erro = rPac.error || rDin.error || rSes.error || rProf.error || rDesp.error || rMov.error;
     if (erro) { console.error(erro); toast('Erro ao carregar dados.', true); return; }
@@ -35,6 +36,7 @@ async function carregarTudo() {
     despesas = rDesp.data || [];
     movimentacoes = rMov.data || [];
     alocacoes = (rAloc && rAloc.data) || [];
+    depara = (rDp && rDp.data) || [];
     render();
 }
 
@@ -396,9 +398,11 @@ document.getElementById('form-mov').addEventListener('submit', async (e) => {
         toast('Informe data, descrição e um valor maior que zero.', true);
         return;
     }
-    const { error } = await sb.from('argos_movimentacoes').insert(registro);
+    const { data: criada, error } = await sb.from('argos_movimentacoes').insert(registro).select().single();
     if (error) { console.error(error); toast('Erro ao lançar a movimentação.', true); return; }
-    toast('Movimentação lançada — agora classifique-a para o confronto com o previsto.');
+    const auto = criada ? await aplicarDeParaEm([criada]) : 0;
+    toast(auto ? 'Movimentação lançada e classificada automaticamente pelo de-para. ✔'
+        : 'Movimentação lançada — classifique-a para o confronto com o previsto.');
     document.getElementById('mov-descricao').value = '';
     document.getElementById('mov-valor').value = '';
     await carregarTudo();
@@ -434,6 +438,8 @@ function abrirModalClassificar(m) {
     document.getElementById('clf-info').innerHTML =
         `<b>${formataBR(m.data)}</b> — ${esc(m.descricao)} · ${m.tipo === 'entrada' ? '📥 Entrada' : '📤 Saída'} de <b>${formataMoeda(m.valor)}</b>`;
     document.getElementById('clf-busca').value = '';
+    document.getElementById('clf-lembrar').checked = false;
+    document.getElementById('clf-chave').value = m.descricao;
     renderOpcoesClassificacao();
     renderAlocacoes();
     abrirModal('modal-classificar');
@@ -553,6 +559,15 @@ document.getElementById('btn-clf-salvar').addEventListener('click', async () => 
         vinculo_tipo: principal ? principal.vinculo_tipo : null,
         vinculo_id: principal ? principal.vinculo_id : null
     }).eq('id', clfMov.id);
+    // "lembrar este pagador": grava o de-para para classificar as próximas sozinho
+    if (document.getElementById('clf-lembrar').checked && validas.length) {
+        const chave = document.getElementById('clf-chave').value.trim();
+        if (chave) {
+            await salvarDePara(chave, validas[0].vinculo_tipo, validas[0].vinculo_id);
+            const { data: dps } = await sb.from('argos_mov_depara').select('*');
+            depara = dps || depara;
+        }
+    }
     toast(validas.length ? 'Classificação salva.' : 'Classificação removida.');
     fecharModal('modal-classificar');
     clfMov = null;
@@ -642,14 +657,130 @@ document.getElementById('btn-imp-previa').addEventListener('click', () => {
 document.getElementById('btn-imp-confirmar').addEventListener('click', async () => {
     const novas = impLinhas.filter(x => x.status === 'nova');
     if (!novas.length) return;
-    const { error } = await sb.from('argos_movimentacoes').insert(novas.map(x => ({
+    const { data: criadas, error } = await sb.from('argos_movimentacoes').insert(novas.map(x => ({
         data: x.data, descricao: x.descricao, tipo: x.tipo, valor: x.valor,
         origem: 'importacao', origem_ref: x.ref
-    })));
+    }))).select();
     if (error) { console.error(error); toast('Erro ao importar.', true); return; }
-    toast(`${novas.length} movimentação(ões) importada(s) — classifique-as para o confronto.`);
+    const auto = await aplicarDeParaEm(criadas || []);
+    toast(`${novas.length} movimentação(ões) importada(s)` +
+        (auto ? ` — ${auto} classificada(s) automaticamente pelo de-para.` : ' — classifique-as para o confronto.'));
     fecharModal('modal-importar');
     await carregarTudo();
+});
+
+// ---------- De-Para de pagadores: classificação automática ----------
+// Como a aba de suporte da planilha: um trecho do pagador (como vem no
+// extrato) aponta para um destino; movimentações cuja descrição contém o
+// trecho são classificadas sozinhas (valor integral, mês da data).
+function deparaCompativel(m, d) {
+    if (d.vinculo_tipo === 'outro') return true;
+    return m.tipo === 'entrada' ? d.vinculo_tipo === 'paciente'
+        : (d.vinculo_tipo === 'profissional' || d.vinculo_tipo === 'despesa');
+}
+
+function encontraDePara(m) {
+    const desc = normaliza(m.descricao);
+    const candidatos = depara.filter(d => deparaCompativel(m, d) && d.chave_norm && desc.includes(d.chave_norm));
+    if (!candidatos.length) return null;
+    // o trecho mais longo (mais específico) vence
+    return candidatos.sort((a, b) => b.chave_norm.length - a.chave_norm.length)[0];
+}
+
+// aplica o de-para às movimentações informadas que ainda não têm alocação
+async function aplicarDeParaEm(movs) {
+    const novas = [];
+    for (const m of movs || []) {
+        if (!m || alocDaMov(m.id).length) continue;
+        const d = encontraDePara(m);
+        if (!d) continue;
+        novas.push({
+            movimentacao_id: m.id, vinculo_tipo: d.vinculo_tipo,
+            vinculo_id: d.vinculo_id || null,
+            mes_ref: m.data.slice(0, 7), valor: Number(m.valor) || 0
+        });
+        await sb.from('argos_movimentacoes').update({
+            vinculo_tipo: d.vinculo_tipo, vinculo_id: d.vinculo_id || null
+        }).eq('id', m.id);
+    }
+    if (novas.length) {
+        const { error } = await sb.from('argos_mov_alocacoes').insert(novas);
+        if (error) { console.error(error); return 0; }
+    }
+    return novas.length;
+}
+
+function selectDestinoDePara(el) {
+    el.innerHTML = '<option value="">— Destino —</option>'
+        + '<optgroup label="🧑 Paciente (entradas)">'
+        + pacientes.filter(p => !p.cadastro_removido).map(p => `<option value="paciente:${p.id}">${esc(p.nome)}</option>`).join('')
+        + '</optgroup><optgroup label="💼 Repasse a profissional (saídas)">'
+        + profissionais.map(p => `<option value="profissional:${p.id}">${esc(p.nome)}</option>`).join('')
+        + '</optgroup><optgroup label="💸 Despesa cadastrada (saídas)">'
+        + despesas.map(d => `<option value="despesa:${d.id}">${esc(d.nome)}</option>`).join('')
+        + '</optgroup><option value="outro:">📦 Outro (entrada ou saída)</option>';
+}
+
+const TIPO_ICONE = { paciente: '🧑', profissional: '💼', despesa: '💸', outro: '📦' };
+
+function renderDePara() {
+    document.getElementById('lista-depara').innerHTML = depara
+        .slice().sort((a, b) => a.chave.localeCompare(b.chave)).map(d => `
+      <div class="argos-bloco">
+        <div class="bloco-topo">
+          <span>«<b>${esc(d.chave)}</b>» → ${TIPO_ICONE[d.vinculo_tipo] || ''} <b>${esc(nomeVinculo(d.vinculo_tipo, d.vinculo_id))}</b></span>
+          <button class="argos-btn small danger" data-dp-excluir="${d.id}">🗑️</button>
+        </div>
+      </div>`).join('') || '<p class="dim">Nenhuma associação ainda. Você também pode criá-las marcando "Lembrar este pagador" ao classificar uma movimentação.</p>';
+}
+
+async function salvarDePara(chave, vinculo_tipo, vinculo_id) {
+    const chave_norm = normaliza(chave);
+    if (!chave_norm) return false;
+    await sb.from('argos_mov_depara').delete().eq('chave_norm', chave_norm);
+    const { error } = await sb.from('argos_mov_depara').insert({
+        chave: chave.trim(), chave_norm, vinculo_tipo, vinculo_id: vinculo_id || null
+    });
+    if (error) { console.error(error); toast('Erro ao salvar o de-para.', true); return false; }
+    return true;
+}
+
+document.getElementById('btn-depara').addEventListener('click', () => {
+    document.getElementById('dp-chave').value = '';
+    selectDestinoDePara(document.getElementById('dp-destino'));
+    renderDePara();
+    abrirModal('modal-depara');
+});
+
+document.getElementById('btn-dp-add').addEventListener('click', async () => {
+    const chave = document.getElementById('dp-chave').value.trim();
+    const destino = document.getElementById('dp-destino').value;
+    if (!chave || !destino) { toast('Informe o trecho do pagador e o destino.', true); return; }
+    const [vTipo, vId] = destino.split(':');
+    if (!(await salvarDePara(chave, vTipo, vId || null))) return;
+    toast('Associação salva.');
+    const { data } = await sb.from('argos_mov_depara').select('*');
+    depara = data || depara;
+    document.getElementById('dp-chave').value = '';
+    renderDePara();
+});
+
+document.getElementById('lista-depara').addEventListener('click', async (e) => {
+    const btn = e.target.closest('[data-dp-excluir]');
+    if (!btn) return;
+    const d = depara.find(x => x.id === btn.dataset.dpExcluir);
+    if (!d || !confirm(`Remover a associação «${d.chave}» → ${nomeVinculo(d.vinculo_tipo, d.vinculo_id)}?\n(As classificações já feitas não mudam.)`)) return;
+    await sb.from('argos_mov_depara').delete().eq('id', d.id);
+    const { data } = await sb.from('argos_mov_depara').select('*');
+    depara = data || [];
+    renderDePara();
+});
+
+document.getElementById('btn-dp-aplicar').addEventListener('click', async () => {
+    const semClassificacao = movimentacoes.filter(m => !alocDaMov(m.id).length);
+    const n = await aplicarDeParaEm(semClassificacao);
+    toast(n ? `${n} movimentação(ões) classificada(s) automaticamente pelo de-para.` : 'Nenhuma movimentação não classificada combina com o de-para.');
+    if (n) { await carregarTudo(); renderDePara(); }
 });
 
 // ---------- CRUD de despesas ----------
