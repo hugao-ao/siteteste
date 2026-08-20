@@ -9,7 +9,7 @@ import { carregarPermissoes } from './argos-permissoes.js';
 import { fechamentoPaciente, formataMoeda, formataBR, hojeISO, fimDoMes } from './argos-recorrencia.js';
 
 let perm = { pode: () => true, aplicarVisibilidade: () => {}, master: true };
-let pacientes = [], dinamicas = [], sessoes = [], profissionais = [], despesas = [];
+let pacientes = [], dinamicas = [], sessoes = [], profissionais = [], despesas = [], movimentacoes = [];
 let editandoDespesaId = null;
 
 const MES_NOMES = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
@@ -17,21 +17,54 @@ const MES_NOMES = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
 const RECORRENCIA_LABELS = { unica: 'Única', semanal: 'Semanal', mensal: 'Mensal', anual: 'Anual' };
 
 async function carregarTudo() {
-    const [rPac, rDin, rSes, rProf, rDesp] = await Promise.all([
+    const [rPac, rDin, rSes, rProf, rDesp, rMov] = await Promise.all([
         sb.from('argos_pacientes').select('*').order('nome'),
         sb.from('argos_dinamicas').select('*'),
         sb.from('argos_sessoes').select('*'),
         sb.from('argos_profissionais').select('*').order('nome'),
-        sb.from('argos_despesas').select('*').order('created_at')
+        sb.from('argos_despesas').select('*').order('created_at'),
+        sb.from('argos_movimentacoes').select('*').order('data', { ascending: false })
     ]);
-    const erro = rPac.error || rDin.error || rSes.error || rProf.error || rDesp.error;
+    const erro = rPac.error || rDin.error || rSes.error || rProf.error || rDesp.error || rMov.error;
     if (erro) { console.error(erro); toast('Erro ao carregar dados.', true); return; }
     pacientes = rPac.data || [];
     dinamicas = rDin.data || [];
     sessoes = rSes.data || [];
     profissionais = rProf.data || [];
     despesas = rDesp.data || [];
+    movimentacoes = rMov.data || [];
     render();
+}
+
+/** Mês anterior de 'YYYY-MM'. */
+function mesAnterior(mes) {
+    const [a, m] = mes.split('-').map(Number);
+    return m === 1 ? `${a - 1}-12` : `${a}-${String(m - 1).padStart(2, '0')}`;
+}
+
+// ---------- realizado: movimentações reais de um mês ----------
+function realizadoDoMes(mes) {
+    const de = mes + '-01';
+    const ate = fimDoMes(mes);
+    const doMes = movimentacoes.filter(m => m.data >= de && m.data <= ate);
+    const soma = l => l.reduce((s, m) => s + (Number(m.valor) || 0), 0);
+    const saidas = doMes.filter(m => m.tipo === 'saida');
+    const porVinculo = {};
+    doMes.forEach(m => {
+        if (m.vinculo_tipo && m.vinculo_id) {
+            const k = m.vinculo_tipo + ':' + m.vinculo_id;
+            porVinculo[k] = (porVinculo[k] || 0) + (Number(m.valor) || 0);
+        }
+    });
+    return {
+        entradas: soma(doMes.filter(m => m.tipo === 'entrada')),
+        repasses: soma(saidas.filter(m => m.vinculo_tipo === 'profissional')),
+        despesas: soma(saidas.filter(m => m.vinculo_tipo === 'despesa' || m.vinculo_tipo === 'outro')),
+        naoClassificadas: soma(saidas.filter(m => !m.vinculo_tipo)),
+        saidasTotal: soma(saidas),
+        resultado: soma(doMes.filter(m => m.tipo === 'entrada')) - soma(saidas),
+        porVinculo
+    };
 }
 
 // ---------- despesas expandidas num mês ----------
@@ -67,14 +100,19 @@ function despesasDoMes(mes) {
 }
 
 // ---------- conta de um mês: faturamento + repasses + despesas ----------
+// REGRA DE CAIXA: o que é PRODUZIDO no mês X (sessões do mês X) é a
+// perspectiva de faturamento do mês X+1 — por isso as entradas previstas
+// (e a produção dos repasses) de cada mês vêm da produção do mês anterior.
+// Repasses fixos e despesas pertencem ao próprio mês.
 function calculaMes(mes) {
+    const mesProducao = mesAnterior(mes);
     let faturamento = 0;
     const porPaciente = [];
     const producao = {};
     for (const p of pacientes) {
         const f = fechamentoPaciente(p,
             dinamicas.filter(d => d.paciente_id === p.id),
-            sessoes.filter(s => s.paciente_id === p.id), mes);
+            sessoes.filter(s => s.paciente_id === p.id), mesProducao);
         if (f.valor) porPaciente.push({ id: p.id, nome: p.nome, valor: f.valor });
         faturamento += f.valor;
         for (const pd of (f.porDinamica || [])) {
@@ -93,9 +131,10 @@ function calculaMes(mes) {
     const itensDespesas = despesasDoMes(mes);
     const totalDespesas = itensDespesas.reduce((s, x) => s + x.valor, 0);
     return {
-        faturamento, porPaciente, repProf, repasses,
+        mesProducao, faturamento, porPaciente, repProf, repasses,
         itensDespesas, totalDespesas,
-        resultado: faturamento - repasses - totalDespesas
+        resultado: faturamento - repasses - totalDespesas,
+        realizado: realizadoDoMes(mes)
     };
 }
 
@@ -107,6 +146,7 @@ function render() {
     document.getElementById('rotulo-ano').style.display = modo === 'anual' ? '' : 'none';
     document.getElementById('rotulo-mes').style.display = modo === 'mensal' ? '' : 'none';
     if (modo === 'anual') renderAnual(); else renderMensal();
+    renderMovimentacoes();
 }
 
 const corResultado = v => v >= 0 ? '#22c55e' : '#ef4444';
@@ -141,7 +181,10 @@ function renderAnual() {
 
     function linhaHTML(rotulo, valores, opts = {}) {
         const total = soma(valores);
-        const cor = v => opts.sinal ? (v < 0 ? 'neg' : (v > 0 ? 'pos' : '')) : '';
+        // sinal: true = positivo bom (verde); 'invertido' = positivo ruim (vermelho)
+        const cor = v => !opts.sinal ? ''
+            : (opts.sinal === 'invertido' ? (v > 0.004 ? 'neg' : (v < -0.004 ? 'pos' : ''))
+                : (v < -0.004 ? 'neg' : (v > 0.004 ? 'pos' : '')));
         const cls = opts.grupo ? 'grupo-linha' : (opts.detalheDe ? 'linha-detalhe-plan' : '') + (opts.classeExtra ? ' ' + opts.classeExtra : '');
         const attrs = (opts.grupo ? ` data-grupo="${opts.grupo}"` : '')
             + (opts.detalheDe ? ` data-detalhe-de="${opts.detalheDe}"` : '')
@@ -154,14 +197,33 @@ function renderAnual() {
     }
     const ordenado = map => [...map.values()].sort((a, b) => a.nome.localeCompare(b.nome));
 
+    const temMov = movimentacoes.length > 0;
     const linhas = [];
-    linhas.push(linhaHTML('📥 ENTRADAS — Faturamento (sessões e anamneses)', dados.map(c => c.faturamento), { grupo: 'entradas' }));
+    linhas.push(linhaHTML('📥 ENTRADAS previstas — produção do mês anterior', dados.map(c => c.faturamento), { grupo: 'entradas' }));
+    if (temMov) {
+        linhas.push(linhaHTML('✔ Entradas realizadas (movimentações)', dados.map(c => c.realizado.entradas), { classeExtra: 'linha-real' }));
+        linhas.push(linhaHTML('Δ diferença (real − previsto)', dados.map(c => c.realizado.entradas - c.faturamento), { classeExtra: 'linha-real', sinal: true }));
+    }
     ordenado(porPac).forEach(l => linhas.push(linhaHTML(esc(l.nome), l.valores, { detalheDe: 'entradas' })));
-    linhas.push(linhaHTML('💼 SAÍDAS — Repasses aos profissionais', dados.map(c => c.repasses), { grupo: 'repasses' }));
+    linhas.push(linhaHTML('💼 SAÍDAS previstas — Repasses aos profissionais', dados.map(c => c.repasses), { grupo: 'repasses' }));
+    if (temMov) {
+        linhas.push(linhaHTML('✔ Repasses realizados (movimentações)', dados.map(c => c.realizado.repasses), { classeExtra: 'linha-real' }));
+        linhas.push(linhaHTML('Δ diferença (real − previsto)', dados.map(c => c.realizado.repasses - c.repasses), { classeExtra: 'linha-real', sinal: 'invertido' }));
+    }
     ordenado(porRep).forEach(l => linhas.push(linhaHTML(esc(l.nome), l.valores, { detalheDe: 'repasses' })));
-    linhas.push(linhaHTML('💸 SAÍDAS — Despesas', dados.map(c => c.totalDespesas), { grupo: 'despesas' }));
+    linhas.push(linhaHTML('💸 SAÍDAS previstas — Despesas', dados.map(c => c.totalDespesas), { grupo: 'despesas' }));
+    if (temMov) {
+        linhas.push(linhaHTML('✔ Despesas realizadas (movimentações)', dados.map(c => c.realizado.despesas), { classeExtra: 'linha-real' }));
+        linhas.push(linhaHTML('Δ diferença (real − previsto)', dados.map(c => c.realizado.despesas - c.totalDespesas), { classeExtra: 'linha-real', sinal: 'invertido' }));
+        if (dados.some(c => c.realizado.naoClassificadas > 0)) {
+            linhas.push(linhaHTML('⚠ Saídas reais ainda não classificadas', dados.map(c => c.realizado.naoClassificadas), { classeExtra: 'linha-real' }));
+        }
+    }
     ordenado(porDesp).forEach(l => linhas.push(linhaHTML(esc(l.nome), l.valores, { detalheDe: 'despesas' })));
-    linhas.push(linhaHTML('<b>🟰 RESULTADO (entradas − saídas)</b>', dados.map(c => c.resultado), { classeExtra: 'linha-total', sinal: true }));
+    linhas.push(linhaHTML('<b>🟰 RESULTADO previsto (entradas − saídas)</b>', dados.map(c => c.resultado), { classeExtra: 'linha-total', sinal: true }));
+    if (temMov) {
+        linhas.push(linhaHTML('<b>✔ RESULTADO realizado (movimentações)</b>', dados.map(c => c.realizado.resultado), { classeExtra: 'linha-total linha-real', sinal: true }));
+    }
 
     document.getElementById('thead-anual').innerHTML = `<tr>
       <th>${ano}</th>
@@ -174,20 +236,61 @@ function renderMensal() {
     const mes = document.getElementById('mes-ref').value;
     if (!mes) return;
     const c = calculaMes(mes);
+    const r = c.realizado;
+    const [aP, mP] = c.mesProducao.split('-').map(Number);
+    const rotuloProducao = `${MES_NOMES[mP - 1]}/${aP}`;
+    const difHTML = (real, prev, invertido) => {
+        const d = real - prev;
+        if (Math.abs(d) < 0.005) return '<span class="dim">—</span>';
+        const boa = invertido ? d < 0 : d > 0;
+        return `<span style="color:${boa ? '#22c55e' : '#ef4444'}">${d > 0 ? '+' : ''}${formataMoeda(d)}</span>`;
+    };
+
     document.getElementById('tbody-resumo-mes').innerHTML = `
-      <tr><td><b>📥 Faturamento (sessões e anamneses)</b></td><td>${formataMoeda(c.faturamento)}</td></tr>
-      <tr><td><b>💼 Repasses aos profissionais</b></td><td>− ${formataMoeda(c.repasses)}</td></tr>
-      <tr><td><b>💸 Despesas</b></td><td>− ${formataMoeda(c.totalDespesas)}</td></tr>
-      <tr class="linha-total"><td><b>Resultado do mês</b></td><td><b style="color:${corResultado(c.resultado)}">${formataMoeda(c.resultado)}</b></td></tr>`;
-    document.getElementById('tbody-mes-faturamento').innerHTML =
-        c.porPaciente.map(x => `<tr><td>${esc(x.nome)}</td><td>${formataMoeda(x.valor)}</td></tr>`).join('')
-        || '<tr><td colspan="2" class="dim">Sem faturamento neste mês.</td></tr>';
+      <tr><th></th><th>Previsto</th><th>Realizado (movimentações)</th><th>Δ</th></tr>
+      <tr><td><b>📥 Entradas</b> <span class="dim">(produção de ${rotuloProducao})</span></td>
+        <td>${formataMoeda(c.faturamento)}</td><td>${formataMoeda(r.entradas)}</td><td>${difHTML(r.entradas, c.faturamento, false)}</td></tr>
+      <tr><td><b>💼 Repasses aos profissionais</b></td>
+        <td>− ${formataMoeda(c.repasses)}</td><td>− ${formataMoeda(r.repasses)}</td><td>${difHTML(r.repasses, c.repasses, true)}</td></tr>
+      <tr><td><b>💸 Despesas</b>${r.naoClassificadas ? ` <span class="badge vermelho">+ ${formataMoeda(r.naoClassificadas)} de saídas não classificadas</span>` : ''}</td>
+        <td>− ${formataMoeda(c.totalDespesas)}</td><td>− ${formataMoeda(r.despesas)}</td><td>${difHTML(r.despesas, c.totalDespesas, true)}</td></tr>
+      <tr class="linha-total"><td><b>Resultado do mês</b></td>
+        <td><b style="color:${corResultado(c.resultado)}">${formataMoeda(c.resultado)}</b></td>
+        <td><b style="color:${corResultado(r.resultado)}">${formataMoeda(r.resultado)}</b></td>
+        <td>${difHTML(r.resultado, c.resultado, false)}</td></tr>`;
+
+    // por paciente: previsto (produção do mês anterior) × entradas classificadas
+    const linhasPac = [];
+    const previstoPac = new Map(c.porPaciente.map(x => [x.id, x]));
+    const idsPac = new Set([...previstoPac.keys(),
+        ...pacientes.filter(p => r.porVinculo['paciente:' + p.id]).map(p => p.id)]);
+    [...idsPac].map(id => pacientes.find(p => p.id === id)).filter(Boolean)
+        .sort((a, b) => a.nome.localeCompare(b.nome)).forEach(p => {
+            const prev = (previstoPac.get(p.id) || {}).valor || 0;
+            const real = r.porVinculo['paciente:' + p.id] || 0;
+            linhasPac.push(`<tr><td>${esc(p.nome)}</td><td>${formataMoeda(prev)}</td><td>${real ? formataMoeda(real) : '—'}</td><td>${difHTML(real, prev, false)}</td></tr>`);
+        });
+    document.getElementById('tbody-mes-faturamento').innerHTML = linhasPac.join('')
+        || '<tr><td colspan="4" class="dim">Sem faturamento neste mês.</td></tr>';
+
     document.getElementById('tbody-mes-repasses').innerHTML =
-        c.repProf.map(x => `<tr><td>${esc(x.nome)}</td><td>${x.fixo ? formataMoeda(x.fixo) : '—'}</td><td>${x.prod ? formataMoeda(x.prod) : '—'}</td><td><b>${formataMoeda(x.total)}</b></td></tr>`).join('')
-        || '<tr><td colspan="4" class="dim">Nenhum repasse neste mês.</td></tr>';
-    document.getElementById('tbody-mes-despesas').innerHTML =
-        c.itensDespesas.map(x => `<tr><td>${esc(x.nome)}${x.extra ? ` <span class="dim">(${esc(x.extra)})</span>` : ''}</td><td>${RECORRENCIA_LABELS[x.recorrencia]}</td><td>${formataMoeda(x.valor)}</td></tr>`).join('')
-        || '<tr><td colspan="3" class="dim">Nenhuma despesa neste mês.</td></tr>';
+        c.repProf.map(x => {
+            const real = r.porVinculo['profissional:' + x.id] || 0;
+            return `<tr><td>${esc(x.nome)}</td><td>${x.fixo ? formataMoeda(x.fixo) : '—'}</td><td>${x.prod ? formataMoeda(x.prod) : '—'}</td><td><b>${formataMoeda(x.total)}</b></td><td>${real ? formataMoeda(real) : '—'}</td><td>${difHTML(real, x.total, true)}</td></tr>`;
+        }).join('')
+        || '<tr><td colspan="6" class="dim">Nenhum repasse neste mês.</td></tr>';
+
+    const linhasDesp = c.itensDespesas.map(x => {
+        const real = r.porVinculo['despesa:' + x.id] || 0;
+        return `<tr><td>${esc(x.nome)}${x.extra ? ` <span class="dim">(${esc(x.extra)})</span>` : ''}</td><td>${RECORRENCIA_LABELS[x.recorrencia]}</td><td>${formataMoeda(x.valor)}</td><td>${real ? formataMoeda(real) : '—'}</td><td>${difHTML(real, x.valor, true)}</td></tr>`;
+    });
+    // saídas reais classificadas como "outro" (fora das despesas previstas)
+    const outras = movimentacoes.filter(m => m.tipo === 'saida' && m.vinculo_tipo === 'outro'
+        && m.data >= mes + '-01' && m.data <= fimDoMes(mes))
+        .reduce((s, m) => s + (Number(m.valor) || 0), 0);
+    if (outras) linhasDesp.push(`<tr><td>Outras saídas (classificadas como "outro")</td><td>—</td><td>—</td><td>${formataMoeda(outras)}</td><td></td></tr>`);
+    document.getElementById('tbody-mes-despesas').innerHTML = linhasDesp.join('')
+        || '<tr><td colspan="5" class="dim">Nenhuma despesa neste mês.</td></tr>';
 }
 
 // ocultar/mostrar a memória de cálculo de um bloco
@@ -209,6 +312,99 @@ document.getElementById('thead-anual').addEventListener('click', (e) => {
     document.getElementById('mes-ref').value = th.dataset.mes;
     document.getElementById('modo-visao').value = 'mensal';
     render();
+});
+
+// ---------- movimentações financeiras reais ----------
+function periodoMovimentacoes() {
+    const modo = document.getElementById('modo-visao').value;
+    if (modo === 'mensal') {
+        const mes = document.getElementById('mes-ref').value;
+        const [a, m] = mes.split('-').map(Number);
+        return { de: mes + '-01', ate: fimDoMes(mes), rotulo: `${MES_NOMES[m - 1]} de ${a}` };
+    }
+    const ano = Number(document.getElementById('ano-ref').value) || new Date().getFullYear();
+    return { de: `${ano}-01-01`, ate: `${ano}-12-31`, rotulo: `ano de ${ano}` };
+}
+
+function opcoesClassificacao(m) {
+    const sel = m.vinculo_tipo ? `${m.vinculo_tipo}:${m.vinculo_id || ''}` : '';
+    const opt = (v, txt) => `<option value="${v}" ${v === sel ? 'selected' : ''}>${txt}</option>`;
+    if (m.tipo === 'entrada') {
+        return opt('', '— classificar —')
+            + `<optgroup label="Pagamento de paciente">`
+            + pacientes.filter(p => !p.cadastro_removido).map(p => opt('paciente:' + p.id, esc(p.nome))).join('')
+            + `</optgroup>` + opt('outro:', 'Outra entrada');
+    }
+    return opt('', '— classificar —')
+        + `<optgroup label="Repasse a profissional">`
+        + profissionais.map(p => opt('profissional:' + p.id, esc(p.nome))).join('')
+        + `</optgroup><optgroup label="Despesa cadastrada">`
+        + despesas.map(d => opt('despesa:' + d.id, esc(d.nome))).join('')
+        + `</optgroup>` + opt('outro:', 'Outra saída');
+}
+
+function renderMovimentacoes() {
+    const { de, ate, rotulo } = periodoMovimentacoes();
+    const lista = movimentacoes.filter(m => m.data >= de && m.data <= ate)
+        .sort((a, b) => (b.data + b.created_at).localeCompare(a.data + a.created_at));
+    const naoClass = lista.filter(m => !m.vinculo_tipo).length;
+    document.getElementById('mov-periodo').textContent =
+        `Movimentações do ${rotulo}: ${lista.length} lançamento(s)` +
+        (naoClass ? ` — ⚠️ ${naoClass} sem classificação` : '');
+    document.getElementById('tbody-mov').innerHTML = lista.map(m => `
+      <tr class="${m.vinculo_tipo ? '' : 'linha-mov-pendente'}">
+        <td>${formataBR(m.data)}</td>
+        <td>${esc(m.descricao)}${m.origem === 'importacao' ? ' <span class="dim">(importada)</span>' : ''}</td>
+        <td>${m.tipo === 'entrada' ? '📥 Entrada' : '📤 Saída'}</td>
+        <td style="color:${m.tipo === 'entrada' ? '#22c55e' : '#ef4444'}">${m.tipo === 'entrada' ? '' : '− '}${formataMoeda(m.valor)}</td>
+        <td><select class="argos-input" data-mov-classificar="${m.id}">${opcoesClassificacao(m)}</select></td>
+        <td class="acoes"><button class="argos-btn small danger" data-mov-excluir="${m.id}" title="Excluir lançamento">🗑️</button></td>
+      </tr>`).join('');
+    document.getElementById('mov-vazio').style.display = lista.length ? 'none' : '';
+}
+
+document.getElementById('form-mov').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const registro = {
+        data: document.getElementById('mov-data').value,
+        descricao: document.getElementById('mov-descricao').value.trim(),
+        tipo: document.getElementById('mov-tipo').value,
+        valor: Number(document.getElementById('mov-valor').value) || 0,
+        origem: 'manual'
+    };
+    if (!registro.data || !registro.descricao || registro.valor <= 0) {
+        toast('Informe data, descrição e um valor maior que zero.', true);
+        return;
+    }
+    const { error } = await sb.from('argos_movimentacoes').insert(registro);
+    if (error) { console.error(error); toast('Erro ao lançar a movimentação.', true); return; }
+    toast('Movimentação lançada — agora classifique-a para o confronto com o previsto.');
+    document.getElementById('mov-descricao').value = '';
+    document.getElementById('mov-valor').value = '';
+    await carregarTudo();
+});
+
+document.getElementById('tbody-mov').addEventListener('change', async (e) => {
+    const sel = e.target.closest('[data-mov-classificar]');
+    if (!sel) return;
+    const [vTipo, vId] = sel.value ? sel.value.split(':') : [null, null];
+    const { error } = await sb.from('argos_movimentacoes').update({
+        vinculo_tipo: vTipo || null, vinculo_id: vId || null
+    }).eq('id', sel.dataset.movClassificar);
+    if (error) { console.error(error); toast('Erro ao classificar.', true); return; }
+    toast(vTipo ? 'Movimentação classificada.' : 'Classificação removida.');
+    await carregarTudo(); // replaneja: o realizado muda na planilha e no mensal
+});
+
+document.getElementById('tbody-mov').addEventListener('click', async (e) => {
+    const btn = e.target.closest('[data-mov-excluir]');
+    if (!btn) return;
+    const m = movimentacoes.find(x => x.id === btn.dataset.movExcluir);
+    if (!m || !confirm(`Excluir o lançamento "${m.descricao}" (${formataMoeda(m.valor)})?`)) return;
+    const { error } = await sb.from('argos_movimentacoes').delete().eq('id', m.id);
+    if (error) { toast('Erro ao excluir.', true); return; }
+    toast('Lançamento excluído.');
+    await carregarTudo();
 });
 
 // ---------- CRUD de despesas ----------
@@ -315,6 +511,7 @@ document.getElementById('btn-imprimir').addEventListener('click', () => window.p
     }
     perm.aplicarVisibilidade();
     document.getElementById('ano-ref').value = new Date().getFullYear();
+    document.getElementById('mov-data').value = hojeISO();
     document.getElementById('mes-ref').value = hojeISO().slice(0, 7);
     await carregarTudo();
 })();
