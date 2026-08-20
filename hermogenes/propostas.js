@@ -26,6 +26,7 @@ const VISITA_STATUS_ASSOCIAVEIS = ['concluida', 'concluida_pendencias', 'desisti
 let propostas = [];
 let visitas = [];             // todas com coords/serviços (associação, prefill e mapa)
 let servicosCatalogo = [];
+let obraDaProposta = new Map(); // proposta_id → {id, numero, ano, nome} (uma proposta = uma obra)
 let selecionadas = new Set();
 let buscaColuna = {};
 let colunasOcultas = lerLS('hermo_prop_kanban_ocultas', {});
@@ -58,7 +59,7 @@ const fmtCodigo = p => `${String(p.numero).padStart(4, '0')}/${p.ano}`;
 // CARREGAMENTO
 // ============================================================
 async function carregarTudo() {
-    const [p, v, s] = await Promise.all([
+    const [p, v, s, ob] = await Promise.all([
         sb.from('hermo_propostas')
             .select(`*, cliente:hermo_clientes(id, nome, whatsapp),
                 itens:hermo_proposta_itens(*, servico:hermo_servicos(id, codigo, descricao, unidade)),
@@ -69,11 +70,15 @@ async function carregarTudo() {
                 cliente:hermo_clientes(id, nome),
                 servicos:hermo_visita_servicos(servico_id, local_execucao, quantidade, unidade,
                     servico:hermo_servicos(id, codigo, descricao, unidade))`),
-        sb.from('hermo_servicos').select('*, precos:hermo_servico_precos(preco_final)').order('codigo')
+        sb.from('hermo_servicos').select('*, precos:hermo_servico_precos(preco_final)').order('codigo'),
+        sb.from('hermo_obra_propostas').select('proposta_id, obra:hermo_obras(id, numero, ano, nome)')
     ]);
     if (p.error) { toast('Erro ao carregar propostas: ' + p.error.message, true); return; }
     if (v.error) { toast('Erro ao carregar visitas: ' + v.error.message, true); return; }
     if (s.error) { toast('Erro ao carregar serviços: ' + s.error.message, true); return; }
+    if (ob.error) toast('Aviso: não deu para carregar os vínculos proposta→obra (' + ob.error.message + ') — os selos 🏗️ podem não aparecer.', true);
+    obraDaProposta = new Map();
+    (ob.data || []).forEach(x => { if (x.obra) obraDaProposta.set(x.proposta_id, x.obra); });
     propostas = (p.data || []).map(x => ({
         ...x,
         itens: (x.itens || []).sort((a, b) => a.ordem - b.ordem),
@@ -168,6 +173,12 @@ function propostasDaColuna(status) {
 function cardMini(p) {
     const nItens = p.itens.length;
     const nVisitas = p.visitaIds.length;
+    const obra = obraDaProposta.get(p.id);
+    const acaoObra = p.status !== 'contratada' ? ''
+        : obra
+            ? `<a class="hermo-btn small ghost" href="obras.html?editar=${obra.id}"
+                 title="Esta proposta já pertence à obra OB-${String(obra.numero).padStart(4, '0')}/${obra.ano} — ${esc(obra.nome)} (uma proposta só gera uma obra). Clique para abrir.">🏗️✔</a>`
+            : `<button class="hermo-btn small" data-gerar-obra="${p.id}" title="Gerar obra a partir desta proposta">🏗️</button>`;
     return `
     <div class="kb-card ${selecionadas.has(p.id) ? 'selecionado' : ''}" data-id="${p.id}">
         <div class="kb-l1">
@@ -175,9 +186,9 @@ function cardMini(p) {
             <span class="kb-end">${fmtCodigo(p)} — ${esc(p.titulo)}</span>
         </div>
         <div class="kb-meta">👤 ${p.cliente ? esc(p.cliente.nome) : '<i>avulsa</i>'}</div>
-        <div class="kb-meta">💰 <b>${fmtMoeda(p.valor_total)}</b>${nItens ? ` · 🛠️ ${nItens} item(ns)` : ''}${nVisitas ? ` · 🔗 ${nVisitas} visita(s)` : ''}${(ocultasMapa.has(p.id) || statusOcultosMapa.has(p.status)) ? ' · 🙈 oculta no mapa' : ''}</div>
+        <div class="kb-meta">💰 <b>${fmtMoeda(p.valor_total)}</b>${nItens ? ` · 🛠️ ${nItens} item(ns)` : ''}${nVisitas ? ` · 🔗 ${nVisitas} visita(s)` : ''}${obra ? ` · 🏗️ OB-${String(obra.numero).padStart(4, '0')}/${obra.ano}` : ''}${(ocultasMapa.has(p.id) || statusOcultosMapa.has(p.status)) ? ' · 🙈 oculta no mapa' : ''}</div>
         <div class="kb-acoes">
-            ${p.status === 'contratada' ? `<button class="hermo-btn small" data-gerar-obra="${p.id}" title="Gerar obra a partir desta proposta">🏗️</button>` : ''}
+            ${acaoObra}
             <button class="hermo-btn small ghost" data-editar="${p.id}" title="Editar">✎</button>
             <button class="hermo-btn small danger" data-excluir="${p.id}" title="Excluir">🗑</button>
         </div>
@@ -199,21 +210,23 @@ function ligarEventosCards(container) {
         () => gerarObraDaProposta(propostas.find(p => p.id === b.dataset.gerarObra))));
 }
 
-/** Cria uma OBRA a partir de uma proposta CONTRATADA: escopo, cliente e endereço herdados. */
+/** Cria uma OBRA a partir de uma proposta CONTRATADA: escopo, cliente e endereço herdados.
+ *  Uma proposta só pode gerar/compor UMA obra — se já pertence a uma, o caminho é bloqueado. */
 async function gerarObraDaProposta(p) {
     if (!p) return;
-    // já existe obra desta proposta? avisa antes de duplicar o valor no kanban de obras
+    // BLOQUEIO: proposta já pertence a uma obra (verificação fresca no banco)
     const { data: jaTem } = await sb.from('hermo_obra_propostas')
-        .select('obra:hermo_obras(numero, ano, nome)').eq('proposta_id', p.id);
-    let avisoDup = '';
+        .select('obra:hermo_obras(id, numero, ano, nome)').eq('proposta_id', p.id);
     if (jaTem && jaTem.length > 0) {
         const o = jaTem[0].obra;
-        avisoDup = `\n\n⚠ ATENÇÃO: esta proposta JÁ está associada à obra ` +
-            `${o ? 'OB-' + String(o.numero).padStart(4, '0') + '/' + o.ano + ' — ' + o.nome : 'existente'}. ` +
-            `Gerar outra obra duplicaria o valor contratado.`;
+        toast(`Esta proposta já pertence à obra ${o ? 'OB-' + String(o.numero).padStart(4, '0') + '/' + o.ano + ' — ' + o.nome : 'existente'} — uma proposta só pode gerar uma única obra.`, true);
+        if (o) obraDaProposta.set(p.id, o);
+        renderLista();
+        return;
     }
     if (!confirm(`Gerar uma obra a partir da proposta ${fmtCodigo(p)} — "${p.titulo}"?\n\n` +
-        `O escopo (${p.itens.length} item(ns)), o cliente e o endereço vêm pré-preenchidos, e a proposta fica associada à obra.` + avisoDup)) return;
+        `O escopo (${p.itens.length} item(ns)), o cliente e o endereço vêm pré-preenchidos, e a proposta fica associada à obra.\n` +
+        `Depois disso, esta proposta não poderá gerar outra obra (novos serviços entram na mesma obra por aditivo).`)) return;
     try {
         const anoAtual = new Date().getFullYear();
         const { data: ult, error: eNum } = await sb.from('hermo_obras')
@@ -238,7 +251,12 @@ async function gerarObraDaProposta(p) {
         const { data: oid, error } = await sb.rpc('hermo_salvar_obra', { p: payload });
         if (error) throw error;
         const { error: eAd } = await sb.rpc('hermo_aplicar_aditivo', { p_obra: oid, p_proposta: p.id });
-        if (eAd) throw eAd;
+        if (eAd) {
+            // só desfaz a casca em erro DE NEGÓCIO do banco (tem código Postgres);
+            // falha de rede pode ter commitado no servidor — apagar destruiria a obra criada
+            if (eAd.code) await sb.from('hermo_obras').delete().eq('id', oid);
+            throw eAd;
+        }
         toast(`Obra OB-${String(numero).padStart(4, '0')}/${anoAtual} criada — abrindo…`);
         window.location.href = `obras.html?editar=${oid}`;
     } catch (e) {
@@ -665,17 +683,29 @@ function recalcItemPreview() {
     $('pi-total-preview').textContent = fmtMoeda(u * num($('pi-qtd').value));
 }
 
-/** Dica de preço praticado para o cliente atual (com botão de aplicar). */
+/** Dica de preços: o PRATICADO para o cliente e o PADRÃO do catálogo — o usuário escolhe. */
 function atualizarPraticadoHint() {
     const el = $('pi-praticado');
     const clienteId = $('pp-cliente').value || null;
     const servicoId = $('pi-servico').value || null;
-    const prat = (clienteId && servicoId) ? precoPraticado(clienteId, servicoId, propostaEditando?.id) : null;
-    if (!prat) { el.style.display = 'none'; return; }
+    if (!servicoId) { el.style.display = 'none'; return; }
+    const prat = clienteId ? precoPraticado(clienteId, servicoId, propostaEditando?.id) : null;
+    const cat = servicosCatalogo.find(x => x.id === servicoId);
+    const padrao = num(cat?.precos?.preco_final) > 0 ? num(cat.precos.preco_final) : null;
+    if (!prat && !padrao) { el.style.display = 'none'; return; }
     el.style.display = 'flex';
-    el.innerHTML = `💲 Último preço praticado p/ este cliente: <b>${fmtMoeda(prat.preco_unit)}</b> (proposta ${prat.codigo})
-        <button class="hermo-btn small primary" id="pi-btn-praticado">Usar este preço</button>`;
-    el.querySelector('#pi-btn-praticado').addEventListener('click', () => {
+    el.style.flexDirection = 'column';
+    el.style.alignItems = 'stretch';
+    el.style.gap = '6px';
+    el.innerHTML =
+        (prat ? `<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+            💲 Praticado p/ este cliente: <b>${fmtMoeda(prat.preco_unit)}</b> <span>(proposta ${prat.codigo})</span>
+            <button class="hermo-btn small primary" id="pi-btn-praticado">Usar este</button></div>` : '') +
+        (padrao ? `<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+            🏷️ Preço padrão do serviço (catálogo): <b>${fmtMoeda(padrao)}</b>/${esc(cat.unidade || 'un')}
+            <button class="hermo-btn small ${prat ? 'ghost' : 'primary'}" id="pi-btn-padrao">Usar este</button></div>` : '');
+    const btnPrat = el.querySelector('#pi-btn-praticado');
+    if (btnPrat) btnPrat.addEventListener('click', () => {
         $('pi-modo').value = prat.modo_preco || 'global';
         aoMudarModoItem();
         if ((prat.modo_preco || 'global') === 'mo_material') {
@@ -684,6 +714,13 @@ function atualizarPraticadoHint() {
         } else {
             $('pi-preco-global').value = prat.preco_unit;
         }
+        recalcItemPreview();
+    });
+    const btnPad = el.querySelector('#pi-btn-padrao');
+    if (btnPad) btnPad.addEventListener('click', () => {
+        $('pi-modo').value = 'global';
+        aoMudarModoItem();
+        $('pi-preco-global').value = padrao;
         recalcItemPreview();
     });
 }
@@ -738,12 +775,18 @@ function renderSelecaoServicos() {
     $('psel-lista').innerHTML = lista.length === 0
         ? '<div style="font-size:.8rem;color:var(--hermo-text-dim)">Nenhum serviço encontrado.</div>'
         : lista.map(s => {
-            const sug = precoSugerido($('pp-cliente').value || null, s.id);
+            const clienteId = $('pp-cliente').value || null;
+            const prat = clienteId ? precoPraticado(clienteId, s.id, propostaEditando?.id) : null;
+            const padrao = num(s.precos?.preco_final) > 0 ? num(s.precos.preco_final) : null;
+            const partes = [];
+            if (prat) partes.push(`💲 praticado p/ cliente: <b>${fmtMoeda(prat.preco_unit)}</b> (${prat.codigo})${padrao !== null ? '' : ' — entra este'}`);
+            if (padrao !== null) partes.push(`🏷️ padrão do serviço: <b>${fmtMoeda(padrao)}</b>${prat ? '' : ' — entra este'}`);
+            if (prat && padrao !== null) partes[0] += ' — entra este';
             return `
             <label class="lc-item">
                 <input type="checkbox" data-psel="${s.id}" ${pselMarcados.has(s.id) ? 'checked' : ''} />
                 <div class="txt"><b>${esc(s.codigo)}</b> — ${esc(s.descricao)}
-                    <small>${sug ? `preço sugerido: ${fmtMoeda(sug.preco_unit)} (${sug.origem})` : 'sem preço sugerido'}</small>
+                    <small>${partes.length ? partes.join(' · ') : 'sem preço sugerido'}</small>
                 </div>
             </label>`;
         }).join('');

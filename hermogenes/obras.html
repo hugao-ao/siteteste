@@ -42,6 +42,71 @@
         background: var(--hermo-bg); border: 1px solid var(--hermo-border);
         border-radius: 6px; color: var(--hermo-text); padding: 4px 7px; font-size: .76rem;
     }
+    .ob-crono-item input:disabled { opacity: .55; cursor: not-allowed; }
+    .ob-crono-item input.prazo-dias {
+        width: 58px; background: var(--hermo-bg); border: 1px solid var(--hermo-border);
+        border-radius: 6px; color: var(--hermo-text); padding: 4px 7px; font-size: .76rem; text-align: right;
+    }
+    .ob-crono-item select.prazo-tipo {
+        background: var(--hermo-bg); border: 1px solid var(--hermo-border);
+        border-radius: 6px; color: var(--hermo-text); padding: 4px 5px; font-size: .72rem;
+    }
+    .ob-crono-item.concluido { border-left: 3px solid var(--hermo-success); }
+    .ob-deps { font-size: .74rem; color: var(--hermo-info); }
+    .ob-crono-item .linha-real {
+        display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+        font-size: .74rem; color: var(--hermo-text-dim);
+    }
+    .ob-crono-item .linha-real label { font-weight: 700; }
+    .ob-crono-item .linha-real input[type=number].qtd-exec {
+        width: 84px; background: var(--hermo-bg); border: 1px solid var(--hermo-border);
+        border-radius: 6px; color: var(--hermo-text); padding: 4px 7px; font-size: .76rem; text-align: right;
+    }
+    .ob-badge {
+        display: inline-block; font-size: .68rem; font-weight: 700;
+        border-radius: 999px; padding: 2px 8px; margin-left: 6px; vertical-align: middle;
+    }
+    .ob-badge.ok { background: rgba(34,197,94,.14); color: var(--hermo-success); border: 1px solid rgba(34,197,94,.4); }
+    .ob-badge.aditivo { background: rgba(239,68,68,.12); color: var(--hermo-danger); border: 1px solid rgba(239,68,68,.4); }
+    .ob-badge.cadeia { background: rgba(59,130,246,.12); color: var(--hermo-info); border: 1px solid rgba(59,130,246,.4); }
+    .oc-serv {
+        display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+        background: var(--hermo-surface-2); border: 1px solid var(--hermo-border);
+        border-radius: 8px; padding: 6px 8px; font-size: .78rem;
+    }
+    .oc-serv .ordem { font-weight: 700; color: var(--hermo-primary); }
+    .oc-serv .nome { flex: 1; min-width: 160px; }
+    .oc-serv label { font-size: .68rem; color: var(--hermo-text-dim); }
+    .oc-serv input[type=number] {
+        width: 62px; background: var(--hermo-bg); border: 1px solid var(--hermo-border);
+        border-radius: 6px; color: var(--hermo-text); padding: 4px 6px; font-size: .76rem; text-align: right;
+    }
+    .oc-resumo {
+        font-size: .82rem; background: rgba(34,197,94,.1); border: 1px solid rgba(34,197,94,.35);
+        border-radius: 8px; padding: 8px 10px; margin-bottom: 8px;
+    }
+    .oc-matriz-wrap { overflow-x: auto; border: 1px solid var(--hermo-border); border-radius: 8px; }
+    .oc-matriz { border-collapse: collapse; font-size: .7rem; min-width: 100%; }
+    .oc-matriz th, .oc-matriz td {
+        border: 1px solid var(--hermo-border); padding: 4px 6px; white-space: nowrap; text-align: center;
+    }
+    .oc-matriz th { background: var(--hermo-surface-2); color: var(--hermo-text-dim); }
+    .oc-matriz td.serv { text-align: left; font-weight: 700; background: var(--hermo-surface-2); }
+    .oc-matriz td.faixa { color: var(--hermo-text-dim); }
+    .mn-item {
+        background: var(--hermo-surface-2); border: 1px solid var(--hermo-border);
+        border-radius: 8px; padding: 7px 10px; font-size: .78rem;
+        display: flex; flex-direction: column; gap: 4px;
+    }
+    .mn-item .linha { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .mn-item .nome { flex: 1; min-width: 160px; }
+    .mn-item small { color: var(--hermo-text-dim); }
+    .mn-item input.qtd {
+        width: 90px; background: var(--hermo-bg); border: 1px solid var(--hermo-border);
+        border-radius: 6px; color: var(--hermo-text); padding: 5px 7px; font-size: .8rem; text-align: right;
+    }
+    .mn-aviso-exec { font-size: .7rem; color: var(--hermo-warn); }
+    .mn-aviso-aditivo { font-size: .7rem; color: var(--hermo-danger); font-weight: 700; }
     .ob-aloc-chips { display: flex; flex-wrap: wrap; gap: 5px; }
     .ob-aloc-chips .chip {
         display: inline-flex; align-items: center; gap: 5px;
@@ -202,6 +267,32 @@
             💡 Salve a obra para liberar o cronograma (datas e alocações por serviço).
           </div>
           <div class="ob-crono" id="ob-crono"></div>
+          <div id="ob-cadeias-wrap" style="display:none;border-top:1px dashed var(--hermo-border);padding-top:10px">
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+              <h4 style="font-size:.8rem;color:var(--hermo-primary);flex:1;min-width:200px">🧱 Execução por blocos (cadeias de serviços)</h4>
+              <button class="hermo-btn small" id="ob-btn-nova-cadeia">➕ Nova cadeia</button>
+            </div>
+            <div style="font-size:.74rem;color:var(--hermo-text-dim);margin:4px 0 8px">
+              Divida uma área em blocos e encadeie serviços (ex.: demolição → aplicação → proteção) para
+              <b>estimar o término</b> em pipeline (equipes em paralelo) ou bloco a bloco — e aplicar as datas no cronograma.
+            </div>
+            <div id="ob-cadeias" style="display:flex;flex-direction:column;gap:6px"></div>
+          </div>
+        </div>
+
+        <!-- MEDIÇÕES DA OBRA -->
+        <div class="ob-secao">
+          <h3>📏 Medições e recebimento</h3>
+          <div id="ob-med-aviso" style="display:none;font-size:.78rem;color:var(--hermo-text-dim)">
+            💡 Salve a obra para gerenciar as medições.
+          </div>
+          <div id="ob-med-wrap" style="display:none">
+            <div id="ob-med-saldo" style="font-size:.8rem;margin-bottom:8px"></div>
+            <div id="ob-med-lista" style="display:flex;flex-direction:column;gap:6px"></div>
+            <div style="margin-top:8px">
+              <button class="hermo-btn small primary" id="ob-btn-nova-medicao">➕ Nova medição do executado</button>
+            </div>
+          </div>
         </div>
 
         <!-- ANEXOS HERDADOS -->
@@ -400,6 +491,165 @@
       <div class="hermo-modal-foot">
         <button class="hermo-btn ghost" id="oa-cancelar">Cancelar</button>
         <button class="hermo-btn primary" id="oa-confirmar">Alocar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SUB-MODAL: DEPENDÊNCIAS ENTRE SERVIÇOS -->
+  <div class="hermo-modal-overlay" id="od-overlay">
+    <div class="hermo-modal compacto">
+      <div class="hermo-modal-head">
+        <h2 id="od-titulo">Dependências do serviço</h2>
+        <button class="fechar" id="od-fechar" title="Fechar">&times;</button>
+      </div>
+      <div class="hermo-modal-body">
+        <div style="font-size:.78rem;color:var(--hermo-text-dim)">
+          Este serviço <b>só poderá iniciar após a conclusão</b> dos serviços marcados abaixo.
+          O início previsto dele passa a ser, automaticamente, a última data de fim dos prévios
+          (a conclusão real, quando informada) — e recalcula sempre que os prévios mudarem.
+        </div>
+        <div class="lista-check" id="od-lista" style="max-height:260px"></div>
+        <label class="lc-item" style="border-style:dashed">
+          <input type="checkbox" id="od-transpor" />
+          <div class="txt"><b>👷 Transpor os mesmos integrantes/equipes dos serviços prévios</b>
+            <small>Aloca automaticamente, neste serviço, as mesmas pessoas (e etiquetas de equipe) que trabalharam nos prévios,
+            no período previsto deste serviço. Quem tiver conflito de agenda é pulado e listado.</small>
+          </div>
+        </label>
+      </div>
+      <div class="hermo-modal-foot">
+        <button class="hermo-btn ghost" id="od-cancelar">Cancelar</button>
+        <button class="hermo-btn primary" id="od-confirmar">Salvar dependências</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SUB-MODAL: CADEIA POR BLOCOS (linha de balanço) -->
+  <div class="hermo-modal-overlay" id="oc-overlay">
+    <div class="hermo-modal">
+      <div class="hermo-modal-head">
+        <h2 id="oc-titulo">Cadeia por blocos</h2>
+        <button class="fechar" id="oc-fechar" title="Fechar">&times;</button>
+      </div>
+      <div class="hermo-modal-body">
+        <div class="hermo-form-row">
+          <div class="hermo-field">
+            <label>Nome da frente/área <span class="req">*</span></label>
+            <input id="oc-nome" type="text" placeholder="ex.: Impermeabilização da laje — 300 m²" />
+          </div>
+          <div class="hermo-field">
+            <label>Início <span class="req">*</span></label>
+            <input id="oc-inicio" type="date" />
+          </div>
+        </div>
+        <div class="hermo-form-row">
+          <div class="hermo-field">
+            <label>Blocos <span class="req">*</span></label>
+            <input id="oc-blocos" type="text" placeholder="ex.: 5 (iguais) ou 60,60,90,45,45" />
+          </div>
+          <div class="hermo-field">
+            <label>Contagem de dias</label>
+            <select id="oc-tipo">
+              <option value="corridos">dias corridos</option>
+              <option value="uteis">dias úteis (seg–sex)</option>
+            </select>
+          </div>
+          <div class="hermo-field">
+            <label>Modo</label>
+            <select id="oc-modo">
+              <option value="pipeline">Pipeline (equipes em paralelo)</option>
+              <option value="bloco_a_bloco">Bloco a bloco (um bloco inteiro por vez)</option>
+            </select>
+          </div>
+        </div>
+        <div style="font-size:.72rem;color:var(--hermo-text-dim)">
+          Em <b>Blocos</b>, um número divide a área em partes iguais; uma lista separada por vírgulas define
+          os tamanhos de cada bloco (o ritmo de cada serviço é proporcional ao tamanho).
+          No <b>pipeline</b>, o serviço seguinte entra num bloco assim que o anterior o conclui;
+          "equipes" diz quantos blocos o mesmo serviço toca ao mesmo tempo.
+        </div>
+        <div class="hermo-field">
+          <label>Serviços na ordem de execução <span class="req">*</span></label>
+          <div id="oc-servs" style="display:flex;flex-direction:column;gap:6px"></div>
+          <select id="oc-add-serv" style="margin-top:6px"></select>
+        </div>
+        <div id="oc-sim"></div>
+      </div>
+      <div class="hermo-modal-foot">
+        <button class="hermo-btn ghost" id="oc-cancelar">Cancelar</button>
+        <button class="hermo-btn" id="oc-simular">🔄 Simular</button>
+        <button class="hermo-btn" id="oc-salvar">💾 Salvar cadeia</button>
+        <button class="hermo-btn primary" id="oc-aplicar">📅 Salvar e aplicar ao cronograma</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SUB-MODAL: NOVA MEDIÇÃO DO EXECUTADO -->
+  <div class="hermo-modal-overlay" id="mn-overlay">
+    <div class="hermo-modal">
+      <div class="hermo-modal-head">
+        <h2 id="mn-titulo">Nova medição do executado</h2>
+        <button class="fechar" id="mn-fechar" title="Fechar">&times;</button>
+      </div>
+      <div class="hermo-modal-body">
+        <div style="font-size:.74rem;color:var(--hermo-text-dim)">
+          <b>Disponível</b> = executado no cronograma − já medido nas medições anteriores.
+          Meça nada, uma parte ou tudo — quantidades acima do executado ou do contratado são
+          permitidas, mas sinalizadas.
+        </div>
+        <div class="hermo-form-row">
+          <div class="hermo-field">
+            <label>Período — de</label>
+            <input id="mn-de" type="date" />
+          </div>
+          <div class="hermo-field">
+            <label>até</label>
+            <input id="mn-ate" type="date" />
+          </div>
+          <div class="hermo-field">
+            <label>Status inicial</label>
+            <select id="mn-status">
+              <option value="em_elaboracao">Em elaboração</option>
+              <option value="enviada">Enviada</option>
+              <option value="aprovada">Aprovada</option>
+              <option value="faturada">Faturada</option>
+            </select>
+          </div>
+        </div>
+        <div class="hermo-field">
+          <label>Serviços — quanto medir agora</label>
+          <div style="display:flex;gap:6px;margin-bottom:6px">
+            <button class="hermo-btn small" id="mn-tudo">Medir tudo disponível</button>
+            <button class="hermo-btn small ghost" id="mn-zerar">Zerar</button>
+          </div>
+          <div id="mn-itens" style="display:flex;flex-direction:column;gap:6px"></div>
+        </div>
+        <div class="hermo-form-row">
+          <div class="hermo-field">
+            <label>Previsão de recebimento — prazo</label>
+            <div style="display:flex;gap:6px;align-items:center">
+              <input id="mn-prazo" type="number" min="1" step="1" style="width:80px"
+                title="Prazo a partir do fim do período (ou de hoje) — preenche a data ao lado" />
+              <select id="mn-prazo-tipo" style="flex:1">
+                <option value="corridos">dias corridos</option>
+                <option value="uteis">dias úteis</option>
+              </select>
+            </div>
+          </div>
+          <div class="hermo-field">
+            <label>ou data prevista</label>
+            <input id="mn-previsao" type="date" />
+          </div>
+        </div>
+        <div style="font-size:.72rem;color:var(--hermo-text-dim)">
+          A previsão vira <b>receita prevista</b> no Faturamento nessa data (até a medição ser paga).
+          Retenção, desconto e NFs você ajusta depois na página de Medições.
+        </div>
+        <div class="pp-total-row" style="border:none;padding:0">Total desta medição: <b id="mn-total">R$ 0,00</b></div>
+      </div>
+      <div class="hermo-modal-foot">
+        <button class="hermo-btn ghost" id="mn-cancelar">Cancelar</button>
+        <button class="hermo-btn primary" id="mn-salvar">Criar medição</button>
       </div>
     </div>
   </div>

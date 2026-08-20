@@ -1,6 +1,6 @@
 // faturamento-despesas.js — Extrato financeiro por período/obra/categoria.
 // Lançamentos MANUAIS + linhas DERIVADAS (sem redigitação):
-//   receitas ← medições (faturada = prevista, paga = realizada)
+//   receitas ← medições (paga = realizada; faturada ou com previsão de recebimento = prevista)
 //   despesas ← custo de pessoal (diárias × dias presentes das alocações; faltas não custam)
 import { sb, toast, ligarFecharPorBackdrop, esc, fmtMoeda } from './hermo-common.js';
 
@@ -52,10 +52,12 @@ const fmtObra = o => o ? `OB-${String(o.numero).padStart(4, '0')} — ${o.nome}`
 // ============================================================
 // DERIVADOS
 // ============================================================
-/** Receitas derivadas das medições (líquido): faturada = prevista, paga = realizada. */
+/** Receitas derivadas das medições (líquido): paga = realizada; demais = prevista.
+ *  Entram: faturadas/pagas (como sempre) e QUALQUER medição com previsão de
+ *  recebimento informada — na data da previsão. */
 function receitasDeMedicoes() {
     return medicoes
-        .filter(m => m.status === 'faturada' || m.status === 'paga')
+        .filter(m => m.status === 'faturada' || m.status === 'paga' || m.previsao_recebimento)
         .map(m => {
             const o = obras.find(x => x.id === m.obra_id);
             return {
@@ -65,7 +67,11 @@ function receitasDeMedicoes() {
                 descricao: `Medição MED-${m.numero} — ${o ? o.nome : 'obra'}`,
                 categoriaNome: 'Medição de obra',
                 obra_id: m.obra_id,
-                data: m.status === 'paga' ? (m.data_pagamento || m.periodo_ate || m.created_at.slice(0, 10)) : (m.periodo_ate || m.created_at.slice(0, 10)),
+                // paga sem data de recebimento NÃO usa a previsão (poderia cair em mês futuro
+                // como "realizado"); cai no fim do período medido, como sempre foi
+                data: m.status === 'paga'
+                    ? (m.data_pagamento || m.periodo_ate || m.created_at.slice(0, 10))
+                    : (m.previsao_recebimento || m.periodo_ate || m.created_at.slice(0, 10)),
                 valor: num(m.valor_liquido),
                 status: m.status === 'paga' ? 'realizado' : 'previsto',
                 medicao_id: m.id

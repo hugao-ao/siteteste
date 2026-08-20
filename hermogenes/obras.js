@@ -2,7 +2,7 @@
 // cronograma com ALOCAÇÕES (dia/turno/horário) e bloqueio de conflitos de agenda,
 // diário de obra e associação com propostas contratadas (aditivos).
 import {
-    sb, toast, fmtDataHora, ligarFecharPorBackdrop, esc, fmtMoeda
+    sb, toast, fmtDataHora, ligarFecharPorBackdrop, esc, fmtMoeda, somarPrazo
 } from './hermo-common.js';
 import { abrirModalCliente } from './hermo-cliente-modal.js';
 import { listarAnexos, renderGaleria, excluirAnexo, uploadAnexo } from './hermo-anexos.js';
@@ -44,6 +44,12 @@ let diarioEntradas = [];
 let localEscolhido = null;
 let alocItemIndex = null;     // índice em itensDraft do serviço sendo alocado
 let oaMarcados = new Set();
+let depsDraft = [];           // [{item_id, depende_de_id}] — dependências entre serviços da obra aberta
+let depItemIndex = null;      // índice em itensDraft do serviço cujas dependências estão sendo editadas
+let cadeiaEditando = null;    // cadeia por blocos aberta no modal oc (null = nova)
+let cadeiaServDraft = [];     // [{item_id, dias_por_bloco, equipes}] na ordem de execução
+let medicoesObra = [];        // medições da obra aberta (com itens) — saldo executado × medido
+let mnItens = [];             // linhas da nova medição sendo montada no modal mn
 
 // mini-mapa
 let omMapa = null, omMarcador = null, omPendente = null;
@@ -69,7 +75,9 @@ async function carregarTudo() {
             .select(`*, cliente:hermo_clientes(id, nome, whatsapp),
                 itens:hermo_obra_servicos(*, servico:hermo_servicos(id, codigo, descricao, unidade),
                     alocacoes:hermo_alocacoes(*, integrante:hermo_integrantes(id, nome, apelido), equipe:hermo_equipes(id, nome, cor))),
-                propostas:hermo_obra_propostas(proposta_id)`)
+                propostas:hermo_obra_propostas(proposta_id),
+                dependencias:hermo_obra_dependencias(item_id, depende_de_id),
+                cadeias:hermo_obra_cadeias(*, servicos:hermo_obra_cadeia_servicos(*))`)
             .order('ano', { ascending: false }).order('numero', { ascending: false }),
         sb.from('hermo_integrantes').select('*, funcao:hermo_funcoes(nome)').order('nome'),
         sb.from('hermo_equipes').select('*, membros:hermo_equipe_membros(integrante_id)').order('nome'),
@@ -85,7 +93,11 @@ async function carregarTudo() {
     obras = (o.data || []).map(x => ({
         ...x,
         itens: (x.itens || []).sort((a, b) => a.ordem - b.ordem),
-        propostaIds: (x.propostas || []).map(op => op.proposta_id)
+        propostaIds: (x.propostas || []).map(op => op.proposta_id),
+        dependencias: x.dependencias || [],
+        cadeias: (x.cadeias || []).map(c => ({
+            ...c, servicos: (c.servicos || []).sort((a, b) => a.ordem - b.ordem)
+        }))
     }));
     integrantes = i.data || [];
     equipes = (e.data || []).map(q => ({ ...q, membroIds: (q.membros || []).map(m => m.integrante_id) }));
@@ -113,6 +125,93 @@ function prazoEstourado(o) {
     return o.prazo && o.prazo < hoje() && !['concluida', 'entregue'].includes(o.status);
 }
 
+/** Executado acima do contratado em algum serviço vigente → precisa de aditivo. */
+function itemExcedente(it) {
+    return it.qtd_executada != null && it.qtd_executada !== '' && num(it.qtd_executada) > num(it.quantidade);
+}
+function obraTemExcedente(o) {
+    return (o.itens || []).some(it => it.vigente !== false && itemExcedente(it));
+}
+
+const fmtData = iso => (iso || '').split('-').reverse().join('/');
+const fmtQtd = v => {
+    const n = Math.round(num(v) * 100) / 100;
+    return String(n).replace('.', ',');
+};
+
+// ---------- cadeia de dependências (espelho do recálculo do banco) ----------
+const somarDias = (iso, dias) => {
+    const [y, m, d] = iso.split('-').map(Number);
+    const dt = new Date(y, m - 1, d + dias);
+    return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
+};
+const difDias = (a, b) => Math.round((new Date(b + 'T00:00:00') - new Date(a + 'T00:00:00')) / 86400000);
+
+// somarPrazo agora vem de hermo-common.js (compartilhado com Medições)
+
+/** Itens que dependem (direta ou indiretamente) do item — não podem virar dependência dele (ciclo). */
+function descendentesDe(itemId) {
+    const desc = new Set();
+    let fronteira = [itemId];
+    while (fronteira.length) {
+        const novos = depsDraft
+            .filter(d => fronteira.includes(d.depende_de_id) && !desc.has(d.item_id))
+            .map(d => d.item_id);
+        novos.forEach(id => desc.add(id));
+        fronteira = novos;
+    }
+    return desc;
+}
+
+function predsDe(itemId) {
+    return depsDraft.filter(d => d.item_id === itemId)
+        .map(d => itensDraft.find(i => i.id === d.depende_de_id))
+        .filter(i => i && i.vigente !== false);
+}
+
+/**
+ * Recalcula as datas previstas do draft seguindo a cadeia (prévia do que o banco fará ao salvar):
+ * concluído (fim_real) congela; início real manda; com dependências, o início é a última
+ * data-fim dos prévios (fim_real ou fim previsto); a duração prevista é preservada.
+ */
+function recalcCadeiaDraft() {
+    const vig = itensDraft.filter(i => i.id && i.vigente !== false);
+    for (let passe = 0; passe < vig.length; passe++) {
+        let mudou = false;
+        vig.forEach(i => {
+            if (i.fim_real) return;
+            let base = null;
+            if (i.inicio_real) {
+                base = i.inicio_real;
+            } else {
+                const fins = predsDe(i.id).map(p => p.fim_real || p.fim_previsto).filter(Boolean);
+                if (fins.length) base = fins.sort().pop();
+                // item com prazo mas sem prévios (ou prévios sem data): parte do próprio início
+                if (!base && i.prazo_dias) base = i.inicio_previsto || null;
+            }
+            if (!base) {
+                // fim de item com prazo é derivado — sem base, limpa em vez de manter data velha
+                if (i.prazo_dias && i.fim_previsto) { i.fim_previsto = ''; mudou = true; }
+                return;
+            }
+            let novoFim;
+            if (i.prazo_dias) {
+                novoFim = somarPrazo(base, i.prazo_dias, i.prazo_tipo || 'corridos');
+            } else {
+                const dur = (i.inicio_previsto && i.fim_previsto)
+                    ? Math.max(0, difDias(i.inicio_previsto, i.fim_previsto)) : 0;
+                novoFim = somarDias(base, dur);
+            }
+            if (i.inicio_previsto !== base || i.fim_previsto !== novoFim) {
+                i.inicio_previsto = base;
+                i.fim_previsto = novoFim;
+                mudou = true;
+            }
+        });
+        if (!mudou) break;
+    }
+}
+
 // ============================================================
 // RESUMO
 // ============================================================
@@ -126,6 +225,7 @@ function renderResumo() {
     const progMedio = andamento.length
         ? Math.round(andamento.reduce((t, o) => t + progressoObra(o), 0) / andamento.length) : 0;
     const estouradas = obras.filter(prazoEstourado);
+    const excedentes = obras.filter(obraTemExcedente);
     let destaque;
     if (estouradas.length > 0) {
         destaque = `⚠️ <b>${estouradas.length}</b> obra(s) com prazo estourado: ${estouradas.slice(0, 3).map(o => esc(o.nome)).join(', ')}${estouradas.length > 3 ? '…' : ''}`;
@@ -133,6 +233,9 @@ function renderResumo() {
         destaque = `🏗️ ${andamento.length} obra(s) em andamento — execução média de <b>${progMedio}%</b>.`;
     } else {
         destaque = `✅ Nenhuma obra em andamento no momento.`;
+    }
+    if (excedentes.length > 0) {
+        destaque += `<br>🧾 <b>${excedentes.length}</b> obra(s) com serviço executado acima do contratado — gerar aditivo: ${excedentes.slice(0, 3).map(o => esc(o.nome)).join(', ')}${excedentes.length > 3 ? '…' : ''}`;
     }
     $('resumo').innerHTML = KANBAN_ORDEM.map(st => `
         <div class="stat" style="border-left-color:${STATUS_OBRA[st].cor}">
@@ -168,7 +271,7 @@ function cardMini(o) {
             <span class="kb-end">${fmtCodigo(o)} — ${esc(o.nome)}</span>
         </div>
         <div class="kb-meta">👤 ${o.cliente ? esc(o.cliente.nome) : '<i>sem cliente</i>'}</div>
-        <div class="kb-meta">💰 <b>${fmtMoeda(o.valor_contratado)}</b> · 🛠️ ${o.itens.filter(it => it.vigente !== false).length} serviço(s)${o.prazo ? ` · <span class="${estourou ? 'prazo-estourado' : ''}">📅 ${o.prazo.split('-').reverse().join('/')}</span>` : ''}${(ocultasMapa.has(o.id) || statusOcultosMapa.has(o.status)) ? ' · 🙈' : ''}</div>
+        <div class="kb-meta">💰 <b>${fmtMoeda(o.valor_contratado)}</b> · 🛠️ ${o.itens.filter(it => it.vigente !== false).length} serviço(s)${o.prazo ? ` · <span class="${estourou ? 'prazo-estourado' : ''}">📅 ${o.prazo.split('-').reverse().join('/')}</span>` : ''}${obraTemExcedente(o) ? ' · <span class="prazo-estourado" title="Serviço executado acima do contratado — gere um aditivo">⚠ aditivo</span>' : ''}${(ocultasMapa.has(o.id) || statusOcultosMapa.has(o.status)) ? ' · 🙈' : ''}</div>
         <div style="display:flex;align-items:center;gap:6px">
             <div class="ob-progresso" style="flex:1"><div style="width:${prog}%"></div></div>
             <span style="font-size:.72rem;font-weight:700">${prog}%</span>
@@ -390,8 +493,14 @@ async function abrirModalObra(obra) {
         perc_executado: num(it.perc_executado),
         inicio_previsto: it.inicio_previsto || '',
         fim_previsto: it.fim_previsto || '',
+        inicio_real: it.inicio_real || '',
+        fim_real: it.fim_real || '',
+        qtd_executada: it.qtd_executada != null ? num(it.qtd_executada) : null,
+        prazo_dias: (it.prazo_dias != null && parseInt(it.prazo_dias) >= 1) ? parseInt(it.prazo_dias) : null,
+        prazo_tipo: it.prazo_tipo || 'corridos',
         alocacoes: it.alocacoes || []
     }));
+    depsDraft = (obra?.dependencias || []).map(d => ({ item_id: d.item_id, depende_de_id: d.depende_de_id }));
     propostasDraft = [...(obra?.propostaIds || [])];
     localEscolhido = null;
     $('ob-local-info').style.display = 'none';
@@ -413,6 +522,8 @@ async function abrirModalObra(obra) {
     renderPropostasDraft();
     renderItensDraft();
     renderCronograma();
+    renderCadeias();
+    await carregarMedicoesObra();
     await carregarDiario();
     await carregarAnexosHerdados();
 
@@ -424,6 +535,11 @@ function fecharModalObra() {
     $('ob-overlay').classList.remove('aberto');
     obraEditando = null;
     itensDraft = [];
+    depsDraft = [];
+    cadeiaEditando = null;
+    cadeiaServDraft = [];
+    medicoesObra = [];
+    mnItens = [];
     propostasDraft = [];
     diarioEntradas = [];
     localEscolhido = null;
@@ -450,16 +566,21 @@ function renderPropostasDraft() {
 }
 
 function abrirAssociarPropostas() {
-    // associações existentes aparecem marcadas E travadas (aditivo não se desfaz)
+    // associações existentes aparecem marcadas E travadas (aditivo não se desfaz);
+    // propostas que já pertencem a OUTRA obra ficam bloqueadas (1 proposta = 1 obra)
     $('op-lista').innerHTML = propostasContratadas.length === 0
         ? '<div style="font-size:.8rem;color:var(--hermo-text-dim)">Nenhuma proposta contratada disponível.</div>'
         : propostasContratadas.map(p => {
             const jaAssociada = propostasDraft.includes(p.id);
+            const outraObra = !jaAssociada
+                ? obras.find(o => o.id !== obraEditando?.id && (o.propostaIds || []).includes(p.id))
+                : null;
+            const travada = jaAssociada || !!outraObra;
             return `
-            <label class="lc-item" style="${jaAssociada ? 'opacity:.65' : ''}">
-                <input type="checkbox" data-op="${p.id}" ${jaAssociada ? 'checked disabled' : ''} />
+            <label class="lc-item" style="${travada ? 'opacity:.65' : ''}">
+                <input type="checkbox" data-op="${p.id}" ${jaAssociada ? 'checked' : ''} ${travada ? 'disabled' : ''} />
                 <div class="txt"><b>${String(p.numero).padStart(4, '0')}/${p.ano}</b> — ${esc(p.titulo)}
-                    <small>${p.cliente?.nome ? esc(p.cliente.nome) + ' · ' : ''}${fmtMoeda(p.valor_total)} · ${(p.itens || []).length} item(ns)${jaAssociada ? ' · ✔ já aplicada' : ''}</small>
+                    <small>${p.cliente?.nome ? esc(p.cliente.nome) + ' · ' : ''}${fmtMoeda(p.valor_total)} · ${(p.itens || []).length} item(ns)${jaAssociada ? ' · ✔ já aplicada' : ''}${outraObra ? ` · 🚫 já pertence à obra ${fmtCodigo(outraObra)}` : ''}</small>
                 </div>
             </label>`;
         }).join('');
@@ -606,40 +727,161 @@ function renderCronograma() {
         cont.innerHTML = '<div style="font-size:.78rem;color:var(--hermo-text-dim)">Adicione serviços ao escopo e salve para programar.</div>';
         return;
     }
+    recalcCadeiaDraft();
     cont.innerHTML = comId.map(i => {
         const idx = itensDraft.indexOf(i);
+        const concluido = !!i.fim_real;
+        const preds = predsDe(i.id);
+        const iniAuto = preds.length > 0 || !!i.inicio_real;
         const chips = (i.alocacoes || []).map(a => {
             const nome = a.integrante?.apelido || a.integrante?.nome?.split(' ')[0] || '?';
             const per = a.data_inicio === a.data_fim
                 ? a.data_inicio.split('-').reverse().slice(0, 2).join('/')
                 : `${a.data_inicio.split('-').reverse().slice(0, 2).join('/')}–${a.data_fim.split('-').reverse().slice(0, 2).join('/')}`;
             const turno = a.turno === 'horario' ? `${(a.hora_inicio || '').slice(0, 5)}-${(a.hora_fim || '').slice(0, 5)}` : TURNO_LABEL[a.turno];
+            const fora = i.inicio_previsto && i.fim_previsto
+                && (a.data_fim < i.inicio_previsto || a.data_inicio > i.fim_previsto);
             return `<span class="chip" style="border-left-color:${a.equipe?.cor || 'var(--hermo-primary)'}"
-                title="${esc(a.integrante?.nome || '')}${a.equipe ? ' · equipe ' + esc(a.equipe.nome) : ''}">
-                ${esc(nome)} · ${per} · ${turno}
+                title="${esc(a.integrante?.nome || '')}${a.equipe ? ' · equipe ' + esc(a.equipe.nome) : ''}${fora ? ' · ⚠ fora do período previsto atual do serviço' : ''}">
+                ${fora ? '⚠ ' : ''}${esc(nome)} · ${per} · ${turno}
                 <button data-aloc-remover="${a.id}" title="Remover alocação">×</button>
             </span>`;
         }).join('');
+        const excedente = itemExcedente(i);
+        const cadeiaDoItem = (obraEditando?.cadeias || []).find(c => (c.servicos || []).some(cs => cs.item_id === i.id));
+        const badges =
+            (concluido ? `<span class="ob-badge ok" title="Serviço finalizado">✓ concluído em ${fmtData(i.fim_real)}</span>` : '') +
+            (excedente ? `<span class="ob-badge aditivo" title="A quantidade executada passou do contratado — gere um aditivo (associe uma nova proposta) para cobrir o excedente.">⚠ +${fmtQtd(num(i.qtd_executada) - num(i.quantidade))} ${esc(i.unidade || 'un')} acima do contratado — aditivo</span>` : '') +
+            (cadeiaDoItem ? `<span class="ob-badge cadeia" title="Faz parte da cadeia por blocos '${esc(cadeiaDoItem.nome)}' — as datas previstas podem ser reaplicadas por ela">🧱 ${esc(cadeiaDoItem.nome)}</span>` : '');
+        const chipsDeps = preds.length
+            ? `<div class="ob-deps">⛓ só inicia após concluir: ${preds.map(p =>
+                `<b title="${esc(p.descricao)}">${esc(p.codigo)}${p.fim_real ? ' ✓' : ''}</b>`).join(', ')}</div>`
+            : '';
         return `
-        <div class="ob-crono-item">
+        <div class="ob-crono-item ${concluido ? 'concluido' : ''}">
             <div class="linha1">
-                <span class="nome-serv">${esc(i.codigo)} — ${esc(i.descricao)}</span>
+                <span class="nome-serv">${esc(i.codigo)} — ${esc(i.descricao)} ${badges}</span>
                 <label style="font-size:.72rem;color:var(--hermo-text-dim)">previsto:</label>
-                <input type="date" value="${i.inicio_previsto || ''}" data-crono-ini="${idx}" />
+                <input type="date" value="${i.inicio_previsto || ''}" data-crono-ini="${idx}"
+                    ${(iniAuto || concluido) ? `disabled title="${i.inicio_real ? 'Definido pelo início real informado' : concluido ? 'Serviço concluído' : 'Definido automaticamente pela conclusão dos serviços prévios'}"` : ''} />
                 <span style="color:var(--hermo-text-dim)">→</span>
-                <input type="date" value="${i.fim_previsto || ''}" data-crono-fim="${idx}" />
+                <input type="date" value="${i.fim_previsto || ''}" data-crono-fim="${idx}"
+                    ${concluido ? 'disabled title="Serviço concluído"'
+                        : (i.prazo_dias ? 'disabled title="Calculado pelo prazo informado ao lado — apague o prazo para digitar a data"' : '')} />
+                <span style="color:var(--hermo-text-dim);font-size:.72rem">ou prazo</span>
+                <input type="number" class="prazo-dias" min="1" step="1" value="${i.prazo_dias ?? ''}" data-prazo-n="${idx}"
+                    ${concluido ? 'disabled' : ''} title="Prazo de execução em dias (o dia de início conta como dia 1) — a data-fim é calculada e recalculada automaticamente" />
+                <select class="prazo-tipo" data-prazo-tipo="${idx}" ${concluido ? 'disabled' : ''}
+                    title="Dias úteis = segunda a sexta (feriados não são descontados)">
+                    <option value="corridos" ${(i.prazo_tipo || 'corridos') === 'corridos' ? 'selected' : ''}>dias corridos</option>
+                    <option value="uteis" ${i.prazo_tipo === 'uteis' ? 'selected' : ''}>dias úteis</option>
+                </select>
+                <button class="hermo-btn small ghost" data-deps="${idx}" title="Este serviço só pode iniciar após a conclusão de quais serviços?">⛓ Depende${preds.length ? ` (${preds.length})` : ''}</button>
                 <button class="hermo-btn small primary" data-alocar="${idx}">👷 Alocar</button>
+            </div>
+            ${chipsDeps}
+            <div class="linha-real">
+                <label>real:</label>
+                <span>iniciou</span>
+                <input type="date" value="${i.inicio_real || ''}" data-real-ini="${idx}" ${concluido ? 'disabled title="Serviço concluído"' : ''} />
+                <span>· concluiu</span>
+                <input type="date" value="${i.fim_real || ''}" data-real-fim="${idx}" />
+                <span>· executado</span>
+                <input type="number" class="qtd-exec" min="0" step="0.01" value="${i.qtd_executada ?? ''}" data-qtd-exec="${idx}" />
+                <span>de ${fmtQtd(i.quantidade)} ${esc(i.unidade || 'un')}</span>
             </div>
             <div class="ob-aloc-chips">${chips || '<span style="font-size:.72rem;color:var(--hermo-text-dim)">ninguém alocado ainda</span>'}</div>
         </div>`;
     }).join('');
 
-    cont.querySelectorAll('[data-crono-ini]').forEach(inp => inp.addEventListener('change', e => {
-        itensDraft[parseInt(e.target.dataset.cronoIni)].inicio_previsto = e.target.value;
+    // DATAS: o navegador dispara 'change' a CADA dígito do ano — re-renderizar aqui
+    // destruía o campo no meio da digitação (o 1º dígito virava ano "0002" e o resto
+    // se perdia). Por isso o valor é gravado a cada change, mas o recálculo da cadeia
+    // e o re-render só acontecem ao SAIR do campo (blur; Enter também conclui).
+    const aoConcluirData = (inp, aoSair) => {
+        inp.addEventListener('change', () => { inp._mudou = true; });
+        inp.addEventListener('keydown', e => { if (e.key === 'Enter') inp.blur(); });
+        inp.addEventListener('blur', () => {
+            if (!inp._mudou) return;
+            inp._mudou = false;
+            if (aoSair) aoSair();
+            renderCronograma();
+        });
+    };
+    cont.querySelectorAll('[data-crono-ini]').forEach(inp => {
+        inp.addEventListener('change', e => {
+            itensDraft[parseInt(e.target.dataset.cronoIni)].inicio_previsto = e.target.value;
+        });
+        aoConcluirData(inp);
+    });
+    cont.querySelectorAll('[data-crono-fim]').forEach(inp => {
+        inp.addEventListener('change', e => {
+            const item = itensDraft[parseInt(e.target.dataset.cronoFim)];
+            item.fim_previsto = e.target.value;
+            item.prazo_dias = null; // data digitada à mão substitui o prazo
+        });
+        aoConcluirData(inp);
+    });
+    cont.querySelectorAll('[data-prazo-n]').forEach(inp => inp.addEventListener('change', e => {
+        const idx = parseInt(e.target.dataset.prazoN);
+        const item = itensDraft[idx];
+        const v = parseInt(e.target.value);
+        item.prazo_dias = (isFinite(v) && v >= 1) ? Math.min(v, 3650) : null;
+        if (item.prazo_dias && !item.inicio_previsto && !item.inicio_real && predsDe(item.id).length === 0) {
+            toast('Prazo anotado — informe também a data de início (ou uma dependência) para calcular o fim.');
+        }
+        renderCronograma();
+        // devolve o foco ao campo recriado — setas/spinner continuam funcionando
+        cont.querySelector(`[data-prazo-n="${idx}"]`)?.focus();
     }));
-    cont.querySelectorAll('[data-crono-fim]').forEach(inp => inp.addEventListener('change', e => {
-        itensDraft[parseInt(e.target.dataset.cronoFim)].fim_previsto = e.target.value;
+    cont.querySelectorAll('[data-prazo-tipo]').forEach(sel => sel.addEventListener('change', e => {
+        const item = itensDraft[parseInt(e.target.dataset.prazoTipo)];
+        item.prazo_tipo = e.target.value;
+        renderCronograma();
     }));
+    cont.querySelectorAll('[data-real-ini]').forEach(inp => {
+        inp.addEventListener('change', e => {
+            itensDraft[parseInt(e.target.dataset.realIni)].inicio_real = e.target.value;
+        });
+        aoConcluirData(inp, () => {
+            toast(itensDraft[parseInt(inp.dataset.realIni)].inicio_real
+                ? 'Início real informado — as datas da cadeia foram recalculadas (salve a obra para gravar).'
+                : 'Início real removido — datas recalculadas (salve a obra para gravar).');
+        });
+    });
+    cont.querySelectorAll('[data-real-fim]').forEach(inp => {
+        inp.addEventListener('focus', () => { inp._antes = inp.value; });
+        inp.addEventListener('change', e => {
+            itensDraft[parseInt(e.target.dataset.realFim)].fim_real = e.target.value;
+        });
+        aoConcluirData(inp, () => {
+            const item = itensDraft[parseInt(inp.dataset.realFim)];
+            if (item.fim_real && item.inicio_real && item.fim_real < item.inicio_real) {
+                toast('A conclusão real não pode ser antes do início real.', true);
+                item.fim_real = inp._antes || '';
+                return;
+            }
+            toast(item.fim_real
+                ? 'Serviço marcado como concluído — dependentes recalculados (salve a obra para gravar).'
+                : 'Conclusão real removida (salve a obra para gravar).');
+        });
+    });
+    cont.querySelectorAll('[data-qtd-exec]').forEach(inp => inp.addEventListener('change', e => {
+        const item = itensDraft[parseInt(e.target.dataset.qtdExec)];
+        const bruto = e.target.value.trim();
+        item.qtd_executada = bruto === '' ? null : Math.max(0, num(bruto));
+        if (item.qtd_executada != null && num(item.quantidade) > 0) {
+            item.perc_executado = Math.min(100, Math.round(item.qtd_executada / num(item.quantidade) * 1000) / 10);
+        }
+        renderItensDraft();
+        renderCronograma();
+        renderMedicoesObra(); // o saldo "disponível para medir" depende do executado
+        if (itemExcedente(item)) {
+            toast(`⚠ ${item.codigo}: executado passou do contratado — gere um aditivo para cobrir o excedente.`, true);
+        }
+    }));
+    cont.querySelectorAll('[data-deps]').forEach(b => b.addEventListener('click',
+        () => abrirDepsModal(parseInt(b.dataset.deps))));
     cont.querySelectorAll('[data-alocar]').forEach(b => b.addEventListener('click',
         () => abrirAlocacaoModal(parseInt(b.dataset.alocar))));
     cont.querySelectorAll('[data-aloc-remover]').forEach(b => b.addEventListener('click', async () => {
@@ -651,6 +893,419 @@ function renderCronograma() {
         renderCronograma();
         toast('Alocação removida.');
     }));
+}
+
+// ---------- dependências entre serviços (od) ----------
+function abrirDepsModal(itemIndex) {
+    depItemIndex = itemIndex;
+    const item = itensDraft[itemIndex];
+    const bloqueados = descendentesDe(item.id); // marcá-los criaria ciclo
+    const atuais = new Set(depsDraft.filter(d => d.item_id === item.id).map(d => d.depende_de_id));
+    $('od-titulo').textContent = `Dependências — ${item.codigo} ${item.descricao}`;
+    const outros = itensDraft.filter(i => i.id && i.vigente !== false && i.id !== item.id);
+    $('od-lista').innerHTML = outros.length === 0
+        ? '<div style="font-size:.8rem;color:var(--hermo-text-dim)">Não há outros serviços no escopo.</div>'
+        : outros.map(i => {
+            const ciclo = bloqueados.has(i.id);
+            return `
+            <label class="lc-item" style="${ciclo ? 'opacity:.5' : ''}">
+                <input type="checkbox" data-od="${i.id}" ${atuais.has(i.id) ? 'checked' : ''} ${ciclo ? 'disabled' : ''} />
+                <div class="txt"><b>${esc(i.codigo)}</b> — ${esc(i.descricao)}
+                    <small>${i.fim_real
+                        ? '✓ concluído em ' + fmtData(i.fim_real)
+                        : (i.fim_previsto ? 'fim previsto ' + fmtData(i.fim_previsto) : 'sem data prevista ainda')}${ciclo ? ' · ⚠ já depende deste serviço (criaria ciclo)' : ''}</small>
+                </div>
+            </label>`;
+        }).join('');
+    $('od-transpor').checked = false;
+    $('od-overlay').classList.add('aberto');
+}
+
+async function confirmarDeps() {
+    const item = itensDraft[depItemIndex];
+    if (!item?.id || !obraEditando?.id) return;
+    const marcados = [...document.querySelectorAll('[data-od]:checked')].map(c => c.dataset.od);
+    const transpor = $('od-transpor').checked;
+    const btn = $('od-confirmar');
+    btn.disabled = true;
+    try {
+        // grava antes as edições do modal (datas/percentuais) para o recálculo usar o que está na tela
+        const oid = await salvarObraCore({ silencioso: true });
+        if (!oid) return;
+        const { data, error } = await sb.rpc('hermo_salvar_dependencias',
+            { p_item: item.id, p_depende: marcados, p_transpor: transpor });
+        if (error) throw error;
+        $('od-overlay').classList.remove('aberto');
+        let msg = marcados.length
+            ? 'Dependências salvas — datas da cadeia recalculadas.'
+            : 'Dependências removidas.';
+        if (transpor && marcados.length) {
+            if (data?.sem_datas) {
+                msg += ' O serviço ainda não tem data prevista, então ninguém foi transposto.';
+            } else {
+                msg += ` ${data?.transpostos ?? 0} alocação(ões) transposta(s) dos serviços prévios.`;
+            }
+            if ((data?.ja_alocados || []).length) {
+                msg += ` Já estavam alocados neste serviço: ${data.ja_alocados.join(', ')}.`;
+            }
+            if ((data?.pulados || []).length) {
+                msg += ` Pulados por conflito de agenda: ${data.pulados.join(', ')}.`;
+            }
+        }
+        toast(msg);
+        await carregarTudo();
+        const atualizada = obras.find(o => o.id === obraEditando?.id);
+        if (atualizada) await abrirModalObra(atualizada);
+    } catch (e) {
+        toast('Erro ao salvar dependências: ' + e.message, true);
+    } finally {
+        btn.disabled = false;
+    }
+}
+
+// ============================================================
+// CADEIAS POR BLOCOS (linha de balanço)
+// ============================================================
+
+/** Interpreta o campo Blocos: "5" → 5 blocos iguais; "60,60,90" → pesos proporcionais aos tamanhos. */
+function parseBlocos(texto) {
+    const t = String(texto || '').trim();
+    if (!t) return null;
+    if (/^\d+$/.test(t)) {
+        const n = parseInt(t);
+        return (n >= 1 && n <= 200) ? Array(n).fill(1) : null;
+    }
+    const tokens = t.split(/[,;]/).map(x => x.trim());
+    if (tokens.some(x => x === '')) return null; // vírgula sobrando / campo vazio = entrada inválida
+    const pesos = tokens.map(x => num(x));
+    if (pesos.some(v => !(v > 0))) return null;
+    return pesos.length <= 200 ? pesos : null;
+}
+
+/** Calendário: índice de dia de trabalho (0-based) → data ISO, pulando fins de semana se 'uteis'. */
+function criarCalendario(dataInicio, tipoDias, maxIdx) {
+    const [y, m, d] = dataInicio.split('-').map(Number);
+    const dt = new Date(y, m - 1, d);
+    const util = t => t.getDay() >= 1 && t.getDay() <= 5;
+    const fmt = t => `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`;
+    if (tipoDias === 'uteis') { while (!util(dt)) dt.setDate(dt.getDate() + 1); }
+    const datas = [];
+    for (let i = 0; i <= maxIdx; i++) {
+        datas.push(fmt(dt));
+        dt.setDate(dt.getDate() + 1);
+        if (tipoDias === 'uteis') { while (!util(dt)) dt.setDate(dt.getDate() + 1); }
+    }
+    return datas;
+}
+
+/**
+ * Simula a cadeia em dias de trabalho (frações permitidas).
+ * pipeline: o serviço s entra no bloco b quando (a) o serviço anterior concluiu o bloco b
+ *           E (b) uma das suas equipes ficou livre (concluiu o bloco b-equipes).
+ * bloco_a_bloco: tudo sequencial — um bloco inteiro (todos os serviços) antes do próximo.
+ * Retorna null se faltar dado.
+ */
+function simularCadeia({ dataInicio, pesos, tipoDias, modo, servicos }) {
+    if (!dataInicio || !pesos?.length || !servicos?.length) return null;
+    const B = pesos.length, S = servicos.length;
+    const soma = pesos.reduce((t, v) => t + v, 0);
+    const pesoNorm = pesos.map(v => v * B / soma); // média 1 → "dias por bloco" vale para o bloco médio
+    const ini = [], fim = [];
+    for (let s = 0; s < S; s++) { ini.push(Array(B).fill(0)); fim.push(Array(B).fill(0)); }
+    if (modo === 'bloco_a_bloco') {
+        let cursor = 0;
+        for (let b = 0; b < B; b++) {
+            for (let s = 0; s < S; s++) {
+                ini[s][b] = cursor;
+                cursor += Math.max(num(servicos[s].dias_por_bloco), 0.1) * pesoNorm[b];
+                fim[s][b] = cursor;
+            }
+        }
+    } else {
+        for (let s = 0; s < S; s++) {
+            const eq = Math.max(1, parseInt(servicos[s].equipes) || 1);
+            for (let b = 0; b < B; b++) {
+                const esperaServicoAnterior = s > 0 ? fim[s - 1][b] : 0;
+                const esperaEquipeLivre = b >= eq ? fim[s][b - eq] : 0;
+                ini[s][b] = Math.max(esperaServicoAnterior, esperaEquipeLivre);
+                fim[s][b] = ini[s][b] + Math.max(num(servicos[s].dias_por_bloco), 0.1) * pesoNorm[b];
+            }
+        }
+    }
+    const maxU = Math.max(...fim.map(f => Math.max(...f)));
+    const totalDias = Math.max(1, Math.ceil(maxU - 1e-9));
+    const cal = criarCalendario(dataInicio, tipoDias, totalDias - 1);
+    const idxIni = u => Math.min(Math.floor(u + 1e-9), cal.length - 1);
+    const idxFim = u => Math.min(Math.max(Math.ceil(u - 1e-9) - 1, 0), cal.length - 1);
+    const porServico = servicos.map((sv, s) => ({
+        ...sv,
+        blocos: pesos.map((p, b) => ({ ini: cal[idxIni(ini[s][b])], fim: cal[idxFim(fim[s][b])] })),
+        ini: cal[idxIni(Math.min(...ini[s]))],
+        fim: cal[idxFim(Math.max(...fim[s]))]
+    }));
+    return { porServico, fimData: cal[idxFim(maxU)], totalDias };
+}
+
+/** Roda a simulação de uma cadeia SALVA (para o resumo da lista). */
+function terminoCadeia(c) {
+    const pesos = Array.isArray(c.blocos) ? c.blocos.map(num).filter(v => v > 0) : null;
+    const servicos = (c.servicos || []).map(cs => ({
+        item_id: cs.item_id, dias_por_bloco: num(cs.dias_por_bloco) || 1, equipes: cs.equipes || 1
+    }));
+    if (!c.data_inicio || !pesos?.length || !servicos.length) return null;
+    return simularCadeia({ dataInicio: c.data_inicio, pesos, tipoDias: c.tipo_dias, modo: c.modo, servicos });
+}
+
+function renderCadeias() {
+    const salva = !!obraEditando?.id;
+    $('ob-cadeias-wrap').style.display = salva ? '' : 'none';
+    if (!salva) return;
+    const cadeias = obraEditando.cadeias || [];
+    $('ob-cadeias').innerHTML = cadeias.length === 0
+        ? '<div style="font-size:.76rem;color:var(--hermo-text-dim)">Nenhuma cadeia criada ainda.</div>'
+        : cadeias.map(c => {
+            const sim = terminoCadeia(c);
+            const nB = Array.isArray(c.blocos) ? c.blocos.length : 0;
+            return `
+            <div class="ob-item">
+                <div class="txt"><b>🧱 ${esc(c.nome)}</b>
+                    <small>${nB} bloco(s) · ${(c.servicos || []).length} serviço(s) ·
+                    ${c.modo === 'bloco_a_bloco' ? 'bloco a bloco' : 'pipeline'} ·
+                    ${c.tipo_dias === 'uteis' ? 'dias úteis' : 'dias corridos'}
+                    ${sim ? ` · início ${fmtData(c.data_inicio)} · <b style="color:var(--hermo-success)">término estimado ${fmtData(sim.fimData)}</b> (${sim.totalDias} dia(s))` : ' · complete início/blocos/serviços para estimar'}</small>
+                </div>
+                <button class="hermo-btn small ghost" data-cadeia-editar="${c.id}" title="Abrir/editar">✎</button>
+                <button class="hermo-btn small danger" data-cadeia-excluir="${c.id}" title="Excluir cadeia">🗑</button>
+            </div>`;
+        }).join('');
+    $('ob-cadeias').querySelectorAll('[data-cadeia-editar]').forEach(b => b.addEventListener('click',
+        () => abrirCadeiaModal((obraEditando.cadeias || []).find(c => c.id === b.dataset.cadeiaEditar))));
+    $('ob-cadeias').querySelectorAll('[data-cadeia-excluir]').forEach(b => b.addEventListener('click',
+        () => excluirCadeia(b.dataset.cadeiaExcluir)));
+}
+
+function abrirCadeiaModal(cadeia) {
+    cadeiaEditando = cadeia || null;
+    $('oc-titulo').textContent = cadeia ? `Cadeia — ${cadeia.nome}` : 'Nova cadeia por blocos';
+    $('oc-nome').value = cadeia?.nome || '';
+    $('oc-inicio').value = cadeia?.data_inicio || hoje();
+    const pesos = Array.isArray(cadeia?.blocos) ? cadeia.blocos : [];
+    // blocos todos iguais reabrem como CONTAGEM (round-trip estável: "3" ⇄ [1,1,1];
+    // um único peso salvo, ex. [60], jamais pode reabrir como "60" = 60 blocos)
+    $('oc-blocos').value = pesos.length
+        ? (pesos.every(v => num(v) === num(pesos[0])) ? String(pesos.length) : pesos.join(','))
+        : '';
+    $('oc-tipo').value = cadeia?.tipo_dias || 'corridos';
+    $('oc-modo').value = cadeia?.modo || 'pipeline';
+    cadeiaServDraft = (cadeia?.servicos || []).map(cs => ({
+        item_id: cs.item_id, dias_por_bloco: num(cs.dias_por_bloco) || 1, equipes: cs.equipes || 1
+    }));
+    $('oc-sim').innerHTML = '';
+    renderCadeiaServs();
+    $('oc-overlay').classList.add('aberto');
+    if (cadeia) simularNoModal(false);
+}
+
+/** Sugestão de dias/bloco ao adicionar: prazo (ou duração prevista) do serviço ÷ nº de blocos. */
+function sugerirDiasBloco(item) {
+    const pesos = parseBlocos($('oc-blocos').value);
+    const nB = pesos ? pesos.length : 0;
+    let total = null;
+    if (item.prazo_dias) total = item.prazo_dias;
+    else if (item.inicio_previsto && item.fim_previsto) {
+        total = Math.max(1, difDias(item.inicio_previsto, item.fim_previsto) + 1);
+    }
+    if (!total || !nB) return 1;
+    return Math.max(0.5, Math.round(total / nB * 2) / 2);
+}
+
+function renderCadeiaServs() {
+    const cont = $('oc-servs');
+    const vig = itensDraft.filter(i => i.id && i.vigente !== false);
+    const blocoABloco = $('oc-modo').value === 'bloco_a_bloco';
+    cont.innerHTML = cadeiaServDraft.length === 0
+        ? '<div style="font-size:.76rem;color:var(--hermo-text-dim)">Adicione abaixo os serviços, na ordem em que percorrem os blocos.</div>'
+        : cadeiaServDraft.map((cs, i) => {
+            const it = vig.find(x => x.id === cs.item_id);
+            return `
+            <div class="oc-serv">
+                <span class="ordem">${i + 1}º</span>
+                <span class="nome">${it ? `<b>${esc(it.codigo)}</b> — ${esc(it.descricao)}` : '<i>serviço fora do escopo vigente</i>'}</span>
+                <label>dias/bloco</label>
+                <input type="number" min="0.5" step="0.5" value="${cs.dias_por_bloco}" data-cs-dias="${i}" />
+                <label>equipes</label>
+                <input type="number" min="1" step="1" value="${cs.equipes}" data-cs-eq="${i}"
+                    ${blocoABloco ? 'disabled title="No modo bloco a bloco tudo é sequencial — equipes em paralelo não se aplicam"' : 'title="Quantos blocos este serviço consegue tocar ao mesmo tempo"'} />
+                <button class="hermo-btn small ghost" data-cs-sobe="${i}" ${i === 0 ? 'disabled' : ''}>↑</button>
+                <button class="hermo-btn small ghost" data-cs-desce="${i}" ${i === cadeiaServDraft.length - 1 ? 'disabled' : ''}>↓</button>
+                <button class="hermo-btn small danger" data-cs-rem="${i}" title="Remover da cadeia">×</button>
+            </div>`;
+        }).join('');
+    const sel = $('oc-add-serv');
+    sel.innerHTML = '<option value="">➕ adicionar serviço à cadeia…</option>';
+    vig.filter(i => !cadeiaServDraft.some(cs => cs.item_id === i.id)).forEach(i => {
+        const o = document.createElement('option');
+        o.value = i.id;
+        o.textContent = `${i.codigo} — ${i.descricao}`;
+        sel.appendChild(o);
+    });
+    cont.querySelectorAll('[data-cs-dias]').forEach(inp => inp.addEventListener('change', e => {
+        const v = num(e.target.value);
+        cadeiaServDraft[parseInt(e.target.dataset.csDias)].dias_por_bloco = v > 0 ? v : 1;
+        e.target.value = cadeiaServDraft[parseInt(e.target.dataset.csDias)].dias_por_bloco;
+    }));
+    cont.querySelectorAll('[data-cs-eq]').forEach(inp => inp.addEventListener('change', e => {
+        const v = parseInt(e.target.value);
+        cadeiaServDraft[parseInt(e.target.dataset.csEq)].equipes = (isFinite(v) && v >= 1) ? Math.min(v, 50) : 1;
+        e.target.value = cadeiaServDraft[parseInt(e.target.dataset.csEq)].equipes;
+    }));
+    cont.querySelectorAll('[data-cs-sobe]').forEach(b => b.addEventListener('click', () => {
+        const i = parseInt(b.dataset.csSobe);
+        [cadeiaServDraft[i - 1], cadeiaServDraft[i]] = [cadeiaServDraft[i], cadeiaServDraft[i - 1]];
+        renderCadeiaServs();
+    }));
+    cont.querySelectorAll('[data-cs-desce]').forEach(b => b.addEventListener('click', () => {
+        const i = parseInt(b.dataset.csDesce);
+        [cadeiaServDraft[i], cadeiaServDraft[i + 1]] = [cadeiaServDraft[i + 1], cadeiaServDraft[i]];
+        renderCadeiaServs();
+    }));
+    cont.querySelectorAll('[data-cs-rem]').forEach(b => b.addEventListener('click', () => {
+        cadeiaServDraft.splice(parseInt(b.dataset.csRem), 1);
+        renderCadeiaServs();
+    }));
+}
+
+/** Lê e valida o formulário da cadeia. Retorna {campos, sim} ou null (toast quando avisar=true). */
+function coletarCadeiaForm(avisar = true) {
+    const nome = $('oc-nome').value.trim();
+    const dataInicio = $('oc-inicio').value;
+    const pesos = parseBlocos($('oc-blocos').value);
+    const tipoDias = $('oc-tipo').value;
+    const modo = $('oc-modo').value;
+    const vig = itensDraft.filter(i => i.id && i.vigente !== false);
+    const orfaos = cadeiaServDraft.filter(cs => !vig.some(x => x.id === cs.item_id));
+    const erro = !nome ? 'Dê um nome à frente/área.'
+        : !dataInicio ? 'Informe a data de início.'
+        : !pesos ? 'Blocos inválidos — use um número (ex.: 5) ou tamanhos separados por vírgula, sem vírgula sobrando (ex.: 60,60,90; decimais com ponto: 60.5).'
+        : cadeiaServDraft.length === 0 ? 'Adicione ao menos um serviço à cadeia.'
+        : orfaos.length ? 'Há serviço(s) na cadeia fora do escopo vigente (substituído por aditivo ou removido) — remova a(s) linha(s) marcada(s) e adicione o serviço atual no lugar.'
+        : null;
+    if (erro) { if (avisar) toast(erro, true); return null; }
+    const servicos = cadeiaServDraft.map(cs => {
+        const it = vig.find(x => x.id === cs.item_id);
+        return { ...cs, codigo: it?.codigo || '?', descricao: it?.descricao || '?' };
+    });
+    return { nome, dataInicio, pesos, tipoDias, modo, servicos };
+}
+
+function simularNoModal(avisar = true) {
+    const f = coletarCadeiaForm(avisar);
+    if (!f) { $('oc-sim').innerHTML = ''; return null; }
+    const sim = simularCadeia({ dataInicio: f.dataInicio, pesos: f.pesos, tipoDias: f.tipoDias, modo: f.modo, servicos: f.servicos });
+    if (!sim) { $('oc-sim').innerHTML = ''; return null; }
+    const ddmm = iso => fmtData(iso).slice(0, 5);
+    const pesosDiferem = !f.pesos.every(v => v === f.pesos[0]);
+    const cab = f.pesos.map((p, b) =>
+        `<th>Bloco ${b + 1}${pesosDiferem ? `<br><span style="font-weight:400">${fmtQtd(p)}</span>` : ''}</th>`).join('');
+    const linhas = sim.porServico.map(ps => `
+        <tr>
+            <td class="serv">${esc(ps.codigo)} — ${esc(ps.descricao)}</td>
+            ${ps.blocos.map(bl => `<td class="faixa">${ddmm(bl.ini)}–${ddmm(bl.fim)}</td>`).join('')}
+            <td><b>${ddmm(ps.ini)} → ${ddmm(ps.fim)}</b></td>
+        </tr>`).join('');
+    $('oc-sim').innerHTML = `
+        <div class="oc-resumo">📅 <b>Término estimado: ${fmtData(sim.fimData)}</b> —
+            ${sim.totalDias} ${f.tipoDias === 'uteis' ? 'dia(s) útil(eis)' : 'dia(s) corrido(s)'}
+            a partir de ${fmtData(f.dataInicio)}
+            (${f.modo === 'bloco_a_bloco' ? 'bloco a bloco' : 'pipeline'}, ${f.pesos.length} bloco(s)).</div>
+        <div class="oc-matriz-wrap"><table class="oc-matriz">
+            <tr><th>Serviço</th>${cab}<th>Início → Fim</th></tr>${linhas}
+        </table></div>`;
+    return sim;
+}
+
+async function salvarCadeia(aplicar) {
+    if (!obraEditando?.id) { toast('Salve a obra antes de criar cadeias.', true); return; }
+    const f = coletarCadeiaForm(true);
+    if (!f) return;
+    const sim = simularNoModal(true);
+    if (!sim) return;
+    if (aplicar) {
+        const ids = cadeiaServDraft.map(cs => cs.item_id);
+        const comReal = itensDraft.filter(i => ids.includes(i.id) && (i.inicio_real || i.fim_real));
+        if (!confirm(`Aplicar as datas simuladas ao cronograma?\n\n` +
+            `• O início/fim previstos dos ${ids.length} serviço(s) da cadeia serão sobrescritos pela simulação.\n` +
+            `• Prazos em dias informados nesses serviços serão limpos (a cadeia passa a definir as datas).\n` +
+            `• Dependências ⛓ ENTRE os serviços da cadeia serão removidas (a ordem já está embutida nos blocos).` +
+            (comReal.length ? `\n• Atenção: ${comReal.map(i => i.codigo).join(', ')} já tem execução real informada — as datas reais prevalecem no recálculo.` : ''))) return;
+    }
+    const btns = ['oc-salvar', 'oc-aplicar', 'oc-simular'].map(id => $(id));
+    btns.forEach(b => b.disabled = true);
+    try {
+        const payload = {
+            id: cadeiaEditando?.id || null,
+            obra_id: obraEditando.id,
+            nome: f.nome,
+            data_inicio: f.dataInicio,
+            // pesos todos iguais são gravados como 1s (contagem) — round-trip estável
+            blocos: f.pesos.every(v => v === f.pesos[0]) ? Array(f.pesos.length).fill(1) : f.pesos,
+            tipo_dias: f.tipoDias,
+            modo: f.modo,
+            servicos: cadeiaServDraft.map((cs, i) => ({
+                item_id: cs.item_id, ordem: i + 1,
+                dias_por_bloco: String(cs.dias_por_bloco), equipes: cs.equipes
+            }))
+        };
+        const { data: cid, error } = await sb.rpc('hermo_salvar_cadeia', { p: payload });
+        if (error) throw error;
+        if (aplicar) {
+            // 1º grava a obra como está (preserva edições do modal; deps ainda intactas);
+            // 2º aplica a cadeia ATOMICAMENTE no banco (deps entre membros + datas + recálculo)
+            const oid = await salvarObraCore({ silencioso: true });
+            if (!oid) return;
+            const datas = sim.porServico.map(ps => ({ item_id: ps.item_id, inicio: ps.ini, fim: ps.fim }));
+            const { error: eAp } = await sb.rpc('hermo_aplicar_cadeia', { p_cadeia: cid, p_datas: datas });
+            if (eAp) throw eAp;
+            $('oc-overlay').classList.remove('aberto');
+            toast(`Cadeia aplicada — término estimado ${fmtData(sim.fimData)}.`);
+            await carregarTudo();
+            const atualizada = obras.find(o => o.id === obraEditando?.id);
+            if (atualizada) await abrirModalObra(atualizada);
+        } else {
+            await recarregarCadeias();
+            cadeiaEditando = (obraEditando.cadeias || []).find(c => c.id === cid) || null;
+            renderCadeias();
+            renderCronograma();
+            toast('Cadeia salva — término estimado ' + fmtData(sim.fimData) + '.');
+        }
+    } catch (e) {
+        toast('Erro ao salvar cadeia: ' + e.message, true);
+    } finally {
+        btns.forEach(b => b.disabled = false);
+    }
+}
+
+async function recarregarCadeias() {
+    const { data, error } = await sb.from('hermo_obra_cadeias')
+        .select('*, servicos:hermo_obra_cadeia_servicos(*)')
+        .eq('obra_id', obraEditando.id).order('created_at');
+    if (error) { toast('Erro ao recarregar cadeias: ' + error.message, true); return; }
+    obraEditando.cadeias = (data || []).map(c => ({
+        ...c, servicos: (c.servicos || []).sort((a, b) => a.ordem - b.ordem)
+    }));
+    const naLista = obras.find(o => o.id === obraEditando.id);
+    if (naLista) naLista.cadeias = obraEditando.cadeias;
+}
+
+async function excluirCadeia(id) {
+    const c = (obraEditando?.cadeias || []).find(x => x.id === id);
+    if (!confirm(`Excluir a cadeia "${c?.nome || ''}"?\n\nAs datas já aplicadas no cronograma NÃO mudam — só o plano por blocos é removido.`)) return;
+    const { error } = await sb.from('hermo_obra_cadeias').delete().eq('id', id);
+    if (error) { toast('Erro ao excluir: ' + error.message, true); return; }
+    await recarregarCadeias();
+    renderCadeias();
+    renderCronograma();
+    toast('Cadeia excluída.');
 }
 
 // ---------- alocação (oa) ----------
@@ -819,6 +1474,227 @@ function sincronizarAlocacoesNaLista() {
 }
 
 // ============================================================
+// MEDIÇÕES DA OBRA (saldo executado × medido, criação rápida)
+// ============================================================
+const STATUS_MEDICAO_OBRA = {
+    em_elaboracao: { label: 'Em elaboração', cor: '#eab308' },
+    enviada:       { label: 'Enviada',       cor: '#f97316' },
+    aprovada:      { label: 'Aprovada',      cor: '#3b82f6' },
+    faturada:      { label: 'Faturada',      cor: '#a855f7' },
+    paga:          { label: 'Paga',          cor: '#22c55e' }
+};
+
+async function carregarMedicoesObra() {
+    medicoesObra = [];
+    if (obraEditando?.id) {
+        const { data, error } = await sb.from('hermo_medicoes')
+            .select('*, itens:hermo_medicao_itens(obra_servico_id, qtd_medida, valor)')
+            .eq('obra_id', obraEditando.id)
+            .order('numero');
+        if (error) { toast('Erro ao carregar medições da obra: ' + error.message, true); }
+        else medicoesObra = data || [];
+    }
+    renderMedicoesObra();
+}
+
+/** Σ quantidade já medida por serviço (todas as medições desta obra). */
+function medidoPorServico() {
+    const m = new Map();
+    medicoesObra.forEach(md => (md.itens || []).forEach(i =>
+        m.set(i.obra_servico_id, (m.get(i.obra_servico_id) || 0) + num(i.qtd_medida))));
+    return m;
+}
+
+function renderMedicoesObra() {
+    const salva = !!obraEditando?.id;
+    $('ob-med-aviso').style.display = salva ? 'none' : '';
+    $('ob-med-wrap').style.display = salva ? '' : 'none';
+    if (!salva) return;
+    const medido = medidoPorServico();
+    const vig = itensDraft.filter(i => i.id && i.vigente !== false);
+    let dispTotal = 0, medidoTotal = 0;
+    const excedentes = [];
+    vig.forEach(i => {
+        const md = medido.get(i.id) || 0;
+        medidoTotal += md * num(i.preco_unit);
+        const exec = i.qtd_executada != null ? num(i.qtd_executada) : 0;
+        dispTotal += Math.max(0, exec - md) * num(i.preco_unit);
+        if (md > num(i.quantidade) + 1e-9) excedentes.push(i.codigo);
+    });
+    $('ob-med-saldo').innerHTML =
+        `💰 Disponível para medir agora (executado no cronograma − já medido): <b>${fmtMoeda(dispTotal)}</b>` +
+        ` · já medido: ${fmtMoeda(medidoTotal)} em ${medicoesObra.length} medição(ões)` +
+        (excedentes.length
+            ? `<br><span class="mn-aviso-aditivo">⚠ Medição acumulada acima do contratado em: ${excedentes.join(', ')} — formalize um aditivo (associe uma nova proposta à obra).</span>`
+            : '');
+    $('ob-med-lista').innerHTML = medicoesObra.length === 0
+        ? '<div style="font-size:.76rem;color:var(--hermo-text-dim)">Nenhuma medição ainda — crie a primeira a partir do que já foi executado.</div>'
+        : medicoesObra.map(m => {
+            const st = STATUS_MEDICAO_OBRA[m.status] || { label: m.status, cor: '#94a3b8' };
+            const periodo = m.periodo_de
+                ? `${fmtData(m.periodo_de).slice(0, 5)}–${fmtData(m.periodo_ate || m.periodo_de).slice(0, 5)}`
+                : '';
+            const receb = m.status === 'paga'
+                ? `✓ recebida${m.data_pagamento ? ' em ' + fmtData(m.data_pagamento) : ''}`
+                : (m.previsao_recebimento ? `📥 receber até ${fmtData(m.previsao_recebimento)}` : 'sem previsão de recebimento');
+            return `
+            <div class="ob-item">
+                <div class="txt"><b>MED-${m.numero}</b> <span style="color:${st.cor}">· ${st.label}</span>
+                    <small>${fmtMoeda(m.valor_liquido)}${periodo ? ' · 📅 ' + periodo : ''} · ${receb}</small>
+                </div>
+                <a class="hermo-btn small ghost" href="medicoes-notas.html?editar=${m.id}" target="_blank" rel="noopener"
+                   title="Abrir na página de Medições (retenção, desconto, NFs, status)">↗</a>
+            </div>`;
+        }).join('');
+}
+
+// ---------- nova medição do executado (mn) ----------
+async function abrirNovaMedicao() {
+    if (!obraEditando?.id) return;
+    const vig = itensDraft.filter(i => i.id && i.vigente !== false);
+    if (vig.length === 0) { toast('A obra não tem escopo vigente para medir.', true); return; }
+    // recarrega as medições AGORA — o "já medido" e o nº podem ter mudado em outra aba
+    // (o próprio card abre a página de Medições em nova aba pelo ↗)
+    await carregarMedicoesObra();
+    const medido = medidoPorServico();
+    mnItens = vig.map(i => {
+        const md = medido.get(i.id) || 0;
+        const exec = i.qtd_executada != null ? num(i.qtd_executada) : 0;
+        const disp = Math.max(0, Math.round((exec - md) * 100) / 100);
+        return {
+            obra_servico_id: i.id,
+            codigo: i.codigo, descricao: i.descricao, local: i.local_execucao,
+            unidade: i.unidade || 'un',
+            contratado: num(i.quantidade),
+            preco_unit: num(i.preco_unit),
+            executado: exec,
+            medido: md,
+            disponivel: disp,
+            qtd: disp // pré-preenchido com tudo que está disponível — ajuste ou zere
+        };
+    });
+    abrirNovaMedicao._numero = medicoesObra.length
+        ? Math.max(...medicoesObra.map(m => m.numero)) + 1 : 1;
+    $('mn-titulo').textContent = `Nova medição — MED-${abrirNovaMedicao._numero} · ${fmtCodigo(obraEditando)}`;
+    const ultAte = medicoesObra.map(m => m.periodo_ate).filter(Boolean).sort().pop();
+    $('mn-de').value = ultAte ? somarDias(ultAte, 1) : '';
+    $('mn-ate').value = hoje();
+    $('mn-status').value = 'em_elaboracao';
+    $('mn-prazo').value = '';
+    $('mn-prazo-tipo').value = 'corridos';
+    $('mn-previsao').value = '';
+    renderMnItens();
+    $('mn-overlay').classList.add('aberto');
+}
+
+function avisosMn(i) {
+    const avisos = [];
+    if (i.qtd > i.disponivel + 1e-9) {
+        avisos.push(`<div class="mn-aviso-exec">↑ acima do disponível (${fmtQtd(i.disponivel)}) — passa do executado registrado no cronograma.</div>`);
+    }
+    if (i.medido + i.qtd > i.contratado + 1e-9) {
+        avisos.push(`<div class="mn-aviso-aditivo">⚠ acumulado ${fmtQtd(i.medido + i.qtd)} de ${fmtQtd(i.contratado)} ${esc(i.unidade)} contratado — formalize um aditivo.</div>`);
+    }
+    return avisos.join('');
+}
+
+function recalcMnTotal() {
+    $('mn-total').textContent = fmtMoeda(mnItens.reduce((t, i) => t + i.qtd * i.preco_unit, 0));
+}
+
+function renderMnItens() {
+    $('mn-itens').innerHTML = mnItens.map((i, idx) => `
+        <div class="mn-item">
+            <div class="linha">
+                <span class="nome"><b>${esc(i.codigo)}</b> — ${esc(i.descricao)}
+                    <small>${i.local ? '📍 ' + esc(i.local) + ' · ' : ''}executado ${fmtQtd(i.executado)} · já medido ${fmtQtd(i.medido)} · <b>disponível ${fmtQtd(i.disponivel)}</b> · contratado ${fmtQtd(i.contratado)} ${esc(i.unidade)} · ${fmtMoeda(i.preco_unit)}/${esc(i.unidade)}</small>
+                </span>
+                <label style="font-size:.7rem;color:var(--hermo-text-dim)">medir:</label>
+                <input class="qtd" type="number" step="any" min="0" value="${i.qtd || ''}" placeholder="0" data-mn-qtd="${idx}" />
+                <span style="font-weight:700" data-mn-valor="${idx}">${fmtMoeda(i.qtd * i.preco_unit)}</span>
+            </div>
+            <div data-mn-avisos="${idx}">${avisosMn(i)}</div>
+        </div>`).join('');
+    // enquanto digita: atualiza valor/avisos/total sem re-render (re-render por tecla impede decimais)
+    $('mn-itens').querySelectorAll('[data-mn-qtd]').forEach(inp => inp.addEventListener('input', e => {
+        const idx = parseInt(e.target.dataset.mnQtd);
+        mnItens[idx].qtd = Math.max(0, num(e.target.value));
+        const v = document.querySelector(`[data-mn-valor="${idx}"]`);
+        if (v) v.textContent = fmtMoeda(mnItens[idx].qtd * mnItens[idx].preco_unit);
+        const a = document.querySelector(`[data-mn-avisos="${idx}"]`);
+        if (a) a.innerHTML = avisosMn(mnItens[idx]);
+        recalcMnTotal();
+    }));
+    recalcMnTotal();
+}
+
+function mnAtualizarPrevisaoPeloPrazo() {
+    const n = parseInt($('mn-prazo').value);
+    if (isFinite(n) && n >= 1) {
+        $('mn-previsao').value = somarPrazo($('mn-ate').value || hoje(), n, $('mn-prazo-tipo').value);
+    }
+}
+
+async function salvarNovaMedicao() {
+    const comQtd = mnItens.filter(i => i.qtd > 0);
+    if (comQtd.length === 0) { toast('Informe a quantidade a medir de ao menos um serviço.', true); return; }
+    const de = $('mn-de').value, ate = $('mn-ate').value;
+    if (de && ate && ate < de) { toast('O fim do período não pode ser antes do início.', true); return; }
+    const bruto = Math.round(mnItens.reduce((t, i) => t + i.qtd * i.preco_unit, 0) * 100) / 100;
+    const prazoN = parseInt($('mn-prazo').value);
+    const btn = $('mn-salvar');
+    btn.disabled = true;
+    try {
+        // grava antes as edições do modal da obra (o "executado" que embasa esta medição)
+        const oid = await salvarObraCore({ silencioso: true });
+        if (!oid) return;
+        const payload = {
+            id: null,
+            obra_id: obraEditando.id,
+            numero: abrirNovaMedicao._numero,
+            periodo_de: de || null,
+            periodo_ate: ate || null,
+            status: $('mn-status').value,
+            retencao_perc: 0,
+            desconto: 0,
+            valor_bruto: bruto,
+            valor_liquido: bruto,
+            data_pagamento: null,
+            observacoes: null,
+            previsao_recebimento: $('mn-previsao').value || null,
+            prazo_receb_dias: (isFinite(prazoN) && prazoN >= 1) ? prazoN : null,
+            prazo_receb_tipo: (isFinite(prazoN) && prazoN >= 1) ? $('mn-prazo-tipo').value : null,
+            itens: comQtd.map(i => ({
+                obra_servico_id: i.obra_servico_id,
+                qtd_medida: i.qtd,
+                valor: Math.round(i.qtd * i.preco_unit * 100) / 100
+            }))
+        };
+        const { error } = await sb.rpc('hermo_salvar_medicao', { p: payload });
+        if (error) throw error;
+        $('mn-overlay').classList.remove('aberto');
+        toast(`MED-${payload.numero} criada — ${fmtMoeda(bruto)}${payload.previsao_recebimento ? ' · receber até ' + fmtData(payload.previsao_recebimento) : ''}. % executado recalculado.`);
+        // o % executado mudou no banco → recarrega e reabre a obra
+        await carregarTudo();
+        const atualizada = obras.find(o => o.id === obraEditando?.id);
+        if (atualizada) await abrirModalObra(atualizada);
+    } catch (e) {
+        if ((e.code || '') === '23505') {
+            // outra aba usou o número: recarrega e recalcula para o retry funcionar
+            await carregarMedicoesObra();
+            abrirNovaMedicao._numero = medicoesObra.length
+                ? Math.max(...medicoesObra.map(m => m.numero)) + 1 : 1;
+            $('mn-titulo').textContent = `Nova medição — MED-${abrirNovaMedicao._numero} · ${fmtCodigo(obraEditando)}`;
+            toast(`O número acabou de ser usado em outra aba — atualizei para MED-${abrirNovaMedicao._numero}, clique em Criar novamente.`, true);
+        } else {
+            toast('Erro ao criar medição: ' + e.message, true);
+        }
+    } finally {
+        btn.disabled = false;
+    }
+}
+
+// ============================================================
 // DIÁRIO
 // ============================================================
 async function carregarDiario() {
@@ -920,18 +1796,17 @@ async function registrarDiario() {
 // ============================================================
 // SALVAR OBRA
 // ============================================================
-async function salvarObra() {
+/** Valida e grava a obra via RPC. Retorna o id gravado ou null (erros já mostrados em toast). */
+async function salvarObraCore({ silencioso = false } = {}) {
     const numero = parseInt($('ob-numero').value);
     const ano = parseInt($('ob-ano').value);
     const nome = $('ob-nome').value.trim();
-    if (!numero || numero < 1 || numero > 9999) { toast('Número inválido (1 a 9999).', true); return; }
-    if (!ano || ano < 2000 || ano > 2100) { toast('Ano inválido.', true); return; }
-    if (!nome) { toast('Nome da obra é obrigatório.', true); return; }
+    if (!numero || numero < 1 || numero > 9999) { toast('Número inválido (1 a 9999).', true); return null; }
+    if (!ano || ano < 2000 || ano > 2100) { toast('Ano inválido.', true); return null; }
+    if (!nome) { toast('Nome da obra é obrigatório.', true); return null; }
     const dup = obras.find(o => o.numero === numero && o.ano === ano && o.id !== obraEditando?.id);
-    if (dup) { toast(`Já existe a obra ${fmtCodigo(dup)} — escolha outro número.`, true); return; }
+    if (dup) { toast(`Já existe a obra ${fmtCodigo(dup)} — escolha outro número.`, true); return null; }
 
-    const btn = $('ob-salvar');
-    btn.disabled = true;
     try {
         const endereco = $('ob-endereco').value.trim();
         let lat = obraEditando?.latitude ?? null;
@@ -959,24 +1834,40 @@ async function salvarObra() {
             inicio_real: $('ob-inicio-real').value || null,
             conclusao: $('ob-conclusao').value || null,
             observacoes: $('ob-obs').value.trim() || null,
-            // escopo é imutável aqui — só o CRONOGRAMA dos itens existentes é atualizado
+            // escopo é imutável aqui — só CRONOGRAMA e EXECUÇÃO dos itens existentes são atualizados
             itens: itensDraft.filter(i => i.id).map(i => ({
                 id: i.id,
                 perc_executado: i.perc_executado,
                 inicio_previsto: i.inicio_previsto || null,
-                fim_previsto: i.fim_previsto || null
+                fim_previsto: i.fim_previsto || null,
+                inicio_real: i.inicio_real || null,
+                fim_real: i.fim_real || null,
+                qtd_executada: i.qtd_executada != null ? String(i.qtd_executada) : null,
+                prazo_dias: i.prazo_dias != null ? String(i.prazo_dias) : null,
+                prazo_tipo: i.prazo_dias != null ? (i.prazo_tipo || 'corridos') : null
             }))
         };
-        const eraEdicao = !!obraEditando;
         const { data: oid, error } = await sb.rpc('hermo_salvar_obra', { p: payload });
         if (error) throw error;
         if (!obraEditando && oid) obraEditando = { id: oid };
-        toast(eraEdicao ? 'Obra atualizada.' : 'Obra criada — reabra o card para programar o cronograma.');
-        fecharModalObra();
-        await carregarTudo();
+        return oid || obraEditando?.id || null;
     } catch (e) {
         if ((e.code || '') === '23505') toast('Já existe uma obra com esse número/ano.', true);
         else toast('Erro ao salvar obra: ' + e.message, true);
+        return null;
+    }
+}
+
+async function salvarObra() {
+    const btn = $('ob-salvar');
+    btn.disabled = true;
+    try {
+        const eraEdicao = !!obraEditando;
+        const oid = await salvarObraCore();
+        if (!oid) return;
+        toast(eraEdicao ? 'Obra atualizada.' : 'Obra criada — reabra o card para programar o cronograma.');
+        fecharModalObra();
+        await carregarTudo();
     } finally {
         btn.disabled = false;
     }
@@ -1104,6 +1995,39 @@ $('op-fechar').addEventListener('click', () => $('op-overlay').classList.remove(
 $('op-cancelar').addEventListener('click', () => $('op-overlay').classList.remove('aberto'));
 ligarFecharPorBackdrop($('op-overlay'), () => $('op-overlay').classList.remove('aberto'));
 $('op-confirmar').addEventListener('click', confirmarAssociarPropostas);
+
+$('ob-btn-nova-medicao').addEventListener('click', abrirNovaMedicao);
+$('mn-fechar').addEventListener('click', () => $('mn-overlay').classList.remove('aberto'));
+$('mn-cancelar').addEventListener('click', () => $('mn-overlay').classList.remove('aberto'));
+ligarFecharPorBackdrop($('mn-overlay'), () => $('mn-overlay').classList.remove('aberto'));
+$('mn-salvar').addEventListener('click', salvarNovaMedicao);
+$('mn-tudo').addEventListener('click', () => { mnItens.forEach(i => { i.qtd = i.disponivel; }); renderMnItens(); });
+$('mn-zerar').addEventListener('click', () => { mnItens.forEach(i => { i.qtd = 0; }); renderMnItens(); });
+$('mn-prazo').addEventListener('change', mnAtualizarPrevisaoPeloPrazo);
+$('mn-prazo-tipo').addEventListener('change', mnAtualizarPrevisaoPeloPrazo);
+$('mn-ate').addEventListener('change', mnAtualizarPrevisaoPeloPrazo);
+$('mn-previsao').addEventListener('change', () => { $('mn-prazo').value = ''; }); // data manual limpa o prazo
+
+$('ob-btn-nova-cadeia').addEventListener('click', () => abrirCadeiaModal(null));
+$('oc-fechar').addEventListener('click', () => $('oc-overlay').classList.remove('aberto'));
+$('oc-cancelar').addEventListener('click', () => $('oc-overlay').classList.remove('aberto'));
+ligarFecharPorBackdrop($('oc-overlay'), () => $('oc-overlay').classList.remove('aberto'));
+$('oc-simular').addEventListener('click', () => simularNoModal(true));
+$('oc-salvar').addEventListener('click', () => salvarCadeia(false));
+$('oc-aplicar').addEventListener('click', () => salvarCadeia(true));
+$('oc-modo').addEventListener('change', renderCadeiaServs);
+$('oc-add-serv').addEventListener('change', () => {
+    const id = $('oc-add-serv').value;
+    if (!id) return;
+    const item = itensDraft.find(i => i.id === id);
+    cadeiaServDraft.push({ item_id: id, dias_por_bloco: item ? sugerirDiasBloco(item) : 1, equipes: 1 });
+    renderCadeiaServs();
+});
+
+$('od-fechar').addEventListener('click', () => $('od-overlay').classList.remove('aberto'));
+$('od-cancelar').addEventListener('click', () => $('od-overlay').classList.remove('aberto'));
+ligarFecharPorBackdrop($('od-overlay'), () => $('od-overlay').classList.remove('aberto'));
+$('od-confirmar').addEventListener('click', confirmarDeps);
 
 $('oa-fechar').addEventListener('click', () => $('oa-overlay').classList.remove('aberto'));
 $('oa-cancelar').addEventListener('click', () => $('oa-overlay').classList.remove('aberto'));

@@ -111,6 +111,26 @@
             <input id="md-pgto" type="date" />
           </div>
         </div>
+        <div class="hermo-form-row">
+          <div class="hermo-field">
+            <label>Previsão de recebimento — prazo</label>
+            <div style="display:flex;gap:6px;align-items:center">
+              <input id="md-prazo-receb" type="number" min="1" step="1" style="width:80px"
+                title="Prazo a partir do fim do período (ou de hoje) — preenche a data ao lado" />
+              <select id="md-prazo-receb-tipo" style="flex:1">
+                <option value="corridos">dias corridos</option>
+                <option value="uteis">dias úteis</option>
+              </select>
+            </div>
+          </div>
+          <div class="hermo-field">
+            <label>ou data prevista</label>
+            <input id="md-previsao" type="date" />
+          </div>
+        </div>
+        <div style="font-size:.72rem;color:var(--hermo-text-dim)">
+          A previsão de recebimento aparece como <b>receita prevista</b> no Faturamento nessa data, até a medição ser paga.
+        </div>
 
         <div class="hermo-field">
           <label>Itens medidos (do escopo da obra)</label>
