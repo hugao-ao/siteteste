@@ -49,6 +49,8 @@
       .planilha tr.grupo-linha td:first-child { background: var(--argos-surface-2); }
       .planilha tr.linha-detalhe-plan td { color: var(--argos-text-dim); }
       .planilha tr.linha-detalhe-plan td:first-child { padding-left: 26px; }
+      .planilha tr.linha-real td { font-style: italic; }
+      .planilha tr.linha-real td:first-child { padding-left: 16px; }
       .planilha td.neg { color: var(--argos-danger); }
       .planilha td.pos { color: var(--argos-success); }
       .planilha td.col-total { border-left: 2px solid var(--argos-border); font-weight: 700; }
@@ -74,28 +76,64 @@
         </table>
       </div>
 
-      <h2 class="form-secao">📥 Faturamento por paciente</h2>
+      <h2 class="form-secao">📥 Faturamento por paciente (previsto × realizado)</h2>
       <div class="argos-tabela-wrap">
         <table class="argos-tabela">
-          <thead><tr><th>Paciente</th><th>Valor no mês</th></tr></thead>
+          <thead><tr><th>Paciente</th><th>Previsto (produção do mês anterior)</th><th>Realizado (entradas classificadas)</th><th>Δ</th></tr></thead>
           <tbody id="tbody-mes-faturamento"></tbody>
         </table>
       </div>
 
-      <h2 class="form-secao">💼 Repasses aos profissionais</h2>
+      <h2 class="form-secao">💼 Repasses aos profissionais (previsto × realizado)</h2>
       <div class="argos-tabela-wrap">
         <table class="argos-tabela">
-          <thead><tr><th>Profissional</th><th>Fixo mensal</th><th>Produção</th><th>Total</th></tr></thead>
+          <thead><tr><th>Profissional</th><th>Fixo mensal</th><th>Produção</th><th>Total previsto</th><th>Realizado (saídas classificadas)</th><th>Δ</th></tr></thead>
           <tbody id="tbody-mes-repasses"></tbody>
         </table>
       </div>
 
-      <h2 class="form-secao">💸 Despesas do mês</h2>
+      <h2 class="form-secao">💸 Despesas do mês (previsto × realizado)</h2>
       <div class="argos-tabela-wrap">
         <table class="argos-tabela">
-          <thead><tr><th>Despesa</th><th>Recorrência</th><th>Valor no mês</th></tr></thead>
+          <thead><tr><th>Despesa</th><th>Recorrência</th><th>Previsto</th><th>Realizado (saídas classificadas)</th><th>Δ</th></tr></thead>
           <tbody id="tbody-mes-despesas"></tbody>
         </table>
+      </div>
+    </section>
+
+    <!-- ============ MOVIMENTAÇÕES FINANCEIRAS REAIS ============ -->
+    <section id="secao-movimentacoes" data-argos-recurso="movimentacoes_gerenciar" style="margin-top:30px">
+      <h2 class="form-secao">📒 Movimentações financeiras reais</h2>
+      <p class="dica">Lance aqui as movimentações reais (em breve será possível importar de uma planilha). <b>Classifique</b> cada uma para associá-la ao planejamento: entradas → paciente; saídas → repasse a profissional ou despesa. À medida que você classifica, o <b>realizado</b> aparece confrontado com o previsto na planilha acima e no detalhe mensal.</p>
+      <form id="form-mov" class="argos-form">
+        <div class="form-grade">
+          <label>Data *
+            <input type="date" id="mov-data" required />
+          </label>
+          <label>Descrição *
+            <input type="text" id="mov-descricao" required placeholder="Ex.: PIX recebido, aluguel, tarifa bancária…" />
+          </label>
+          <label>Tipo
+            <select id="mov-tipo">
+              <option value="entrada">📥 Entrada</option>
+              <option value="saida">📤 Saída</option>
+            </select>
+          </label>
+          <label>Valor (R$) *
+            <input type="number" step="0.01" min="0.01" id="mov-valor" required />
+          </label>
+        </div>
+        <div class="argos-modal-acoes" style="justify-content:flex-start; margin-top:4px">
+          <button type="submit" class="argos-btn primary small">+ Lançar movimentação</button>
+        </div>
+      </form>
+      <p class="dica" id="mov-periodo" style="font-weight:600"></p>
+      <div class="argos-tabela-wrap">
+        <table class="argos-tabela">
+          <thead><tr><th>Data</th><th>Descrição</th><th>Tipo</th><th>Valor</th><th>Classificação (associar ao planejamento)</th><th class="acoes"></th></tr></thead>
+          <tbody id="tbody-mov"></tbody>
+        </table>
+        <div class="argos-tabela-vazia" id="mov-vazio" style="display:none">Nenhuma movimentação no período.</div>
       </div>
     </section>
   </main>
@@ -147,7 +185,7 @@
     </div>
   </div>
 
-  <script type="module" src="planejamento.js?v=2"></script>
+  <script type="module" src="planejamento.js?v=3"></script>
   <script type="module" src="argos-zoom.js?v=4"></script>
 </body>
 </html>
