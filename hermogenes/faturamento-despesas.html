@@ -88,9 +88,10 @@
       </table>
     </div>
     <div style="font-size:.74rem;color:var(--hermo-text-dim);margin-top:8px">
-      Receitas de medições (faturadas = previstas, pagas = realizadas) e custos de pessoal
-      (diárias × dias presentes das alocações) entram automaticamente — sem redigitação.
-      Margem = recebido − despesas (todas as datas, não só o período filtrado).
+      Receitas de medições e custos de pessoal (diárias × dias presentes das alocações) entram
+      automaticamente — sem redigitação. Recebimentos são atrelados a uma medição: recebido a
+      menos numa medição paga = retenção; a mais = bônus; o saldo previsto aparece na data da
+      previsão de recebimento. Margem = recebido − despesas (todas as datas, não só o período filtrado).
     </div>
   </main>
 
@@ -135,6 +136,11 @@
         <div class="hermo-field">
           <label>Obra (opcional — despesa geral fica sem obra)</label>
           <select id="fl-obra"><option value="">— sem obra —</option></select>
+        </div>
+        <div class="hermo-field" id="fl-medicao-wrap" style="display:none">
+          <label>Medição <span class="req">*</span> (todo recebimento é atrelado a uma medição)</label>
+          <select id="fl-medicao"><option value="">— escolha a medição —</option></select>
+          <div id="fl-medicao-info" style="font-size:.72rem;color:var(--hermo-text-dim);margin-top:4px"></div>
         </div>
         <div class="hermo-form-row">
           <div class="hermo-field">

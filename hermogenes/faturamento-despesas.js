@@ -52,31 +52,75 @@ const fmtObra = o => o ? `OB-${String(o.numero).padStart(4, '0')} — ${o.nome}`
 // ============================================================
 // DERIVADOS
 // ============================================================
-/** Receitas derivadas das medições (líquido): paga = realizada; demais = prevista.
- *  Entram: faturadas/pagas (como sempre) e QUALQUER medição com previsão de
- *  recebimento informada — na data da previsão. */
+/** Soma dos lançamentos de RECEITA atrelados a cada medição (recebimentos). */
+function ligadosPorMedicao() {
+    const mapa = new Map();
+    lancamentos.forEach(l => {
+        if (l.tipo !== 'receita' || !l.medicao_id) return;
+        const ac = mapa.get(l.medicao_id) || { total: 0, realizado: 0 };
+        ac.total += num(l.valor);
+        if (l.status === 'realizado') ac.realizado += num(l.valor);
+        mapa.set(l.medicao_id, ac);
+    });
+    return mapa;
+}
+
+/** Receitas derivadas das medições, CONCILIADAS com os recebimentos atrelados:
+ *  - medição SEM lançamentos: paga = realizada (líquido, legado); com previsão
+ *    de recebimento ou faturada = prevista (líquido) na data prevista;
+ *  - medição COM lançamentos atrelados: os recebimentos já aparecem como
+ *    lançamentos — aqui entra só o SALDO ainda previsto (líquido − lançado)
+ *    enquanto ela não estiver paga. Paga recebendo menos = RETENÇÃO (não gera
+ *    saldo previsto); recebendo mais = BÔNUS (só constatado). */
 function receitasDeMedicoes() {
-    return medicoes
-        .filter(m => m.status === 'faturada' || m.status === 'paga' || m.previsao_recebimento)
-        .map(m => {
-            const o = obras.find(x => x.id === m.obra_id);
-            return {
-                id: 'med:' + m.id,
-                derivado: 'medição',
-                tipo: 'receita',
-                descricao: `Medição MED-${m.numero} — ${o ? o.nome : 'obra'}`,
-                categoriaNome: 'Medição de obra',
-                obra_id: m.obra_id,
-                // paga sem data de recebimento NÃO usa a previsão (poderia cair em mês futuro
-                // como "realizado"); cai no fim do período medido, como sempre foi
-                data: m.status === 'paga'
-                    ? (m.data_pagamento || m.periodo_ate || m.created_at.slice(0, 10))
-                    : (m.previsao_recebimento || m.periodo_ate || m.created_at.slice(0, 10)),
-                valor: num(m.valor_liquido),
-                status: m.status === 'paga' ? 'realizado' : 'previsto',
-                medicao_id: m.id
-            };
-        });
+    const ligados = ligadosPorMedicao();
+    const linhas = [];
+    medicoes.forEach(m => {
+        const o = obras.find(x => x.id === m.obra_id);
+        const liq = num(m.valor_liquido);
+        const lig = ligados.get(m.id);
+        const base = {
+            id: 'med:' + m.id,
+            derivado: 'medição',
+            tipo: 'receita',
+            descricao: `Medição MED-${m.numero} — ${o ? o.nome : 'obra'}`,
+            categoriaNome: 'Medição de obra',
+            obra_id: m.obra_id,
+            medicao_id: m.id
+        };
+        if (lig) {
+            if (m.status !== 'paga') {
+                const saldo = Math.round((liq - lig.total) * 100) / 100;
+                if (saldo > 0.005 && (m.previsao_recebimento || m.status === 'faturada')) {
+                    linhas.push({
+                        ...base,
+                        descricao: base.descricao + ' (saldo a receber)',
+                        data: m.previsao_recebimento || m.periodo_ate || m.created_at.slice(0, 10),
+                        valor: saldo,
+                        status: 'previsto'
+                    });
+                }
+            }
+            return; // os recebimentos em si já são lançamentos visíveis
+        }
+        if (m.status === 'paga') {
+            linhas.push({
+                ...base,
+                // paga sem data de recebimento não usa a previsão (cairia em mês futuro)
+                data: m.data_pagamento || m.periodo_ate || m.created_at.slice(0, 10),
+                valor: liq,
+                status: 'realizado'
+            });
+        } else if (m.status === 'faturada' || m.previsao_recebimento) {
+            linhas.push({
+                ...base,
+                data: m.previsao_recebimento || m.periodo_ate || m.created_at.slice(0, 10),
+                valor: liq,
+                status: 'previsto'
+            });
+        }
+    });
+    return linhas;
 }
 
 // ---- custo de pessoal (mesma regra da página de Integrantes) ----
@@ -327,13 +371,16 @@ function renderTabela(linhas) {
 /** Resultado por obra (todas as datas): contratado × medido × recebido × despesas × margem. */
 function renderPorObra() {
     const medDaObra = id => medicoes.filter(m => m.obra_id === id);
+    const ligados = ligadosPorMedicao();
     // pessoal por obra em toda a história (janela larga)
     const pessoal = despesasDePessoal('2000-01-01', '2100-12-31');
     $('ft-obras-corpo').innerHTML = obras.map(o => {
         const meds = medDaObra(o.id);
         const medido = meds.filter(m => ['aprovada', 'faturada', 'paga'].includes(m.status))
             .reduce((t, m) => t + num(m.valor_liquido), 0);
-        const recebido = meds.filter(m => m.status === 'paga')
+        // medição paga COM lançamentos atrelados é conciliada pelos lançamentos
+        // (evita contar o líquido E o recebimento — mesma regra do extrato)
+        const recebido = meds.filter(m => m.status === 'paga' && !ligados.get(m.id))
             .reduce((t, m) => t + num(m.valor_liquido), 0);
         // receitas manuais da obra entram no recebido (simetria com as despesas manuais)
         const recManual = lancamentos.filter(x => x.tipo === 'receita' && x.obra_id === o.id && x.status === 'realizado')
@@ -380,6 +427,39 @@ function popularSelectsModal(cat = null, obra = null) {
     if (obra) selO.value = obra;
 }
 
+/** Preenche o select de medições (recebimentos são atrelados a uma medição). */
+function popularMedicoesModal(selecionarId = null) {
+    const sel = $('fl-medicao');
+    sel.innerHTML = '<option value="">— escolha a medição —</option>';
+    const ordenadas = [...medicoes].sort((a, b) => (a.obra_id + a.numero).localeCompare(b.obra_id + b.numero));
+    ordenadas.forEach(m => {
+        const o = obras.find(x => x.id === m.obra_id);
+        const opt = document.createElement('option');
+        opt.value = m.id;
+        opt.textContent = `MED-${m.numero} · ${o ? fmtObra(o) : 'obra removida'} — líquido ${fmtMoeda(m.valor_liquido)} (${m.status})`;
+        sel.appendChild(opt);
+    });
+    if (selecionarId) sel.value = selecionarId;
+    atualizarInfoMedicao();
+}
+
+function atualizarInfoMedicao() {
+    const m = medicoes.find(x => x.id === $('fl-medicao').value);
+    const info = $('fl-medicao-info');
+    if (!m) { info.textContent = ''; return; }
+    const lig = ligadosPorMedicao().get(m.id) || { total: 0, realizado: 0 };
+    // em edição, o próprio lançamento não conta no "já lançado"
+    let jaLancado = lig.total;
+    if (flEditando?.medicao_id === m.id) jaLancado -= num(flEditando.valor);
+    const saldo = Math.round((num(m.valor_liquido) - jaLancado) * 100) / 100;
+    info.textContent = `Líquido ${fmtMoeda(m.valor_liquido)} · já lançado ${fmtMoeda(jaLancado)} · saldo ${fmtMoeda(saldo)}` +
+        (saldo < -0.005 ? ' (acima da medição = bônus)' : '');
+}
+
+function aoMudarTipoLanc() {
+    $('fl-medicao-wrap').style.display = $('fl-tipo').value === 'receita' ? '' : 'none';
+}
+
 function abrirModal(lanc) {
     flEditando = lanc?.id ? lanc : null;
     $('fl-titulo').textContent = flEditando ? 'Editar lançamento' : (lanc ? 'Duplicar lançamento' : 'Novo lançamento');
@@ -393,6 +473,10 @@ function abrirModal(lanc) {
     $('fl-forma').value = lanc?.forma_pagamento || '';
     $('fl-obs').value = lanc?.observacoes || '';
     $('fl-nova-cat-wrap').style.display = 'none';
+    popularMedicoesModal(lanc?.medicao_id || null);
+    $('fl-obra').disabled = !!lanc?.medicao_id;
+    $('fl-obra').title = lanc?.medicao_id ? 'A obra vem da medição escolhida' : '';
+    aoMudarTipoLanc();
     $('fl-overlay').classList.add('aberto');
     $('fl-descricao').focus();
 }
@@ -403,11 +487,21 @@ async function salvarLancamento() {
     if (!descricao) { toast('Descrição é obrigatória.', true); return; }
     if (valor <= 0) { toast('Informe um valor maior que zero.', true); return; }
     if (!$('fl-competencia').value) { toast('Informe a data de competência.', true); return; }
+    const ehReceita = $('fl-tipo').value === 'receita';
+    const medicaoSel = ehReceita ? medicoes.find(m => m.id === $('fl-medicao').value) : null;
+    // medição é obrigatória para recebimentos NOVOS; editar um lançamento antigo
+    // que nunca teve medição continua possível (registro histórico não é bloqueado)
+    if (ehReceita && !medicaoSel && !(flEditando && !flEditando.medicao_id)) {
+        toast('Todo recebimento deve ser atrelado a uma medição — escolha a medição.', true);
+        return;
+    }
     const registro = {
         tipo: $('fl-tipo').value,
         descricao,
         categoria_id: $('fl-categoria').value || null,
-        obra_id: $('fl-obra').value || null,
+        // receita atrelada: a obra vem da medição (evita divergência)
+        obra_id: medicaoSel ? medicaoSel.obra_id : ($('fl-obra').value || null),
+        medicao_id: medicaoSel ? medicaoSel.id : null,
         data_competencia: $('fl-competencia').value,
         data_pagamento: $('fl-pagamento').value || null,
         valor,
@@ -469,6 +563,28 @@ $('fl-fechar').addEventListener('click', () => $('fl-overlay').classList.remove(
 $('fl-cancelar').addEventListener('click', () => $('fl-overlay').classList.remove('aberto'));
 ligarFecharPorBackdrop($('fl-overlay'), () => $('fl-overlay').classList.remove('aberto'));
 $('fl-salvar').addEventListener('click', salvarLancamento);
+$('fl-tipo').addEventListener('change', aoMudarTipoLanc);
+$('fl-medicao').addEventListener('change', () => {
+    const m = medicoes.find(x => x.id === $('fl-medicao').value);
+    atualizarInfoMedicao();
+    // obra fica travada quando a medição manda nela (evita escolha ignorada no salvar)
+    $('fl-obra').disabled = !!m;
+    $('fl-obra').title = m ? 'A obra vem da medição escolhida' : '';
+    if (!m) return;
+    const o = obras.find(x => x.id === m.obra_id);
+    $('fl-obra').value = m.obra_id || '';
+    // pré-preenche com o SALDO da medição SOMENTE se o valor ainda não foi digitado
+    if (!num($('fl-valor').value)) {
+        const lig = ligadosPorMedicao().get(m.id) || { total: 0 };
+        let jaLancado = lig.total;
+        if (flEditando?.medicao_id === m.id) jaLancado -= num(flEditando.valor);
+        const saldo = Math.round((num(m.valor_liquido) - jaLancado) * 100) / 100;
+        $('fl-valor').value = Math.max(saldo, 0) || '';
+    }
+    if (!$('fl-descricao').value.trim()) {
+        $('fl-descricao').value = `Recebimento MED-${m.numero} — ${o ? o.nome : 'obra'}`;
+    }
+});
 $('fl-btn-nova-cat').addEventListener('click', () => {
     const w = $('fl-nova-cat-wrap');
     w.style.display = w.style.display === 'none' ? '' : 'none';

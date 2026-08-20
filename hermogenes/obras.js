@@ -49,6 +49,7 @@ let depItemIndex = null;      // índice em itensDraft do serviço cujas depend�
 let cadeiaEditando = null;    // cadeia por blocos aberta no modal oc (null = nova)
 let cadeiaServDraft = [];     // [{item_id, dias_por_bloco, equipes}] na ordem de execução
 let medicoesObra = [];        // medições da obra aberta (com itens) — saldo executado × medido
+let lancsMedicao = new Map(); // medicao_id → {recebido, ligado} dos lançamentos de receita atrelados
 let mnItens = [];             // linhas da nova medição sendo montada no modal mn
 
 // mini-mapa
@@ -117,7 +118,10 @@ function progressoObra(o) {
     const vigentes = o.itens.filter(it => it.vigente !== false);
     const totalV = vigentes.reduce((t, it) => t + num(it.total), 0);
     if (totalV === 0) return 0;
-    const exec = vigentes.reduce((t, it) => t + num(it.total) * num(it.perc_executado) / 100, 0);
+    // produzido: executado físico do cronograma; sem registro, cai no % das medições
+    const exec = vigentes.reduce((t, it) => t + ((it.qtd_executada != null)
+        ? num(it.qtd_executada) * num(it.preco_unit)
+        : num(it.total) * num(it.perc_executado) / 100), 0);
     return Math.round(exec / totalV * 100);
 }
 
@@ -520,10 +524,10 @@ async function abrirModalObra(obra) {
 
     await carregarClientesSelect(obra?.cliente_id || null);
     renderPropostasDraft();
+    await carregarMedicoesObra();   // antes do escopo: produzido/medido/recebido dependem disto
     renderItensDraft();
     renderCronograma();
     renderCadeias();
-    await carregarMedicoesObra();
     await carregarDiario();
     await carregarAnexosHerdados();
 
@@ -677,41 +681,92 @@ function renderItensDraft() {
     if (vigentes.length === 0) {
         cont.innerHTML = '<div style="font-size:.8rem;color:var(--hermo-text-dim)">Escopo vazio — aplique um aditivo (associe uma proposta contratada).</div>';
     } else {
-        // escopo SOMENTE leitura (muda apenas via aditivo); só o % executado é editável
+        // escopo SOMENTE leitura: os percentuais são CALCULADOS (produzido vem do
+        // cronograma, medido vem das medições) — nada é editado à mão aqui
+        const medVal = medidoValorPorServico();
         cont.innerHTML = vigentes.map(i => {
-            const idx = itensDraft.indexOf(i);
             const prop = propostasContratadas.find(p => p.id === i.proposta_id);
             const origem = prop ? `${String(prop.numero).padStart(4, '0')}/${prop.ano}` : (i.proposta_id ? 'proposta' : 'escopo inicial');
+            const total = num(i.total);
+            const pVal = Math.round(produzidoQtdItem(i) * num(i.preco_unit) * 100) / 100;
+            const mVal = Math.round((medVal.get(i.id) || 0) * 100) / 100;
+            const pc = v => total > 0 ? Math.round(v / total * 1000) / 10 : 0;
             return `
         <div class="ob-item">
             <div class="txt">
                 <b>${esc(i.codigo)}</b> — ${esc(i.descricao)}
                 <small>${i.local_execucao ? '📍 ' + esc(i.local_execucao) + ' · ' : ''}${i.quantidade} ${esc(i.unidade || 'un')} × ${fmtMoeda(i.preco_unit)} · <span style="color:var(--hermo-info)">📄 ${esc(origem)}</span></small>
+                <small>🔨 produzido <b>${fmtQtd(pc(pVal))}%</b> (${fmtMoeda(pVal)}) · 📏 medido <b>${fmtQtd(pc(mVal))}%</b> (${fmtMoeda(mVal)})</small>
             </div>
             <span class="valor">${fmtMoeda(i.total)}</span>
-            <label style="font-size:.72rem;color:var(--hermo-text-dim)">%</label>
-            <input class="perc" type="number" min="0" max="100" step="1" value="${i.perc_executado}" data-iperc="${idx}" />
         </div>`;
         }).join('');
     }
     atualizarProgressoETotal();
+}
 
-    cont.querySelectorAll('[data-iperc]').forEach(inp => inp.addEventListener('change', e => {
-        const v = Math.max(0, Math.min(100, num(e.target.value)));
-        itensDraft[parseInt(e.target.dataset.iperc)].perc_executado = v;
-        e.target.value = v;
-        atualizarProgressoETotal();
-    }));
+/** Quantidade produzida do item: executado do cronograma; sem registro físico,
+ *  cai no % (derivado das medições) sobre a quantidade contratada. */
+function produzidoQtdItem(i) {
+    return (i.qtd_executada != null && i.qtd_executada !== '')
+        ? num(i.qtd_executada)
+        : num(i.perc_executado) / 100 * num(i.quantidade);
+}
+
+/** Σ valor já medido por serviço (todas as medições desta obra). */
+function medidoValorPorServico() {
+    const m = new Map();
+    medicoesObra.forEach(md => (md.itens || []).forEach(mi =>
+        m.set(mi.obra_servico_id, (m.get(mi.obra_servico_id) || 0) + num(mi.valor))));
+    return m;
+}
+
+/** Recebido / retido / bônus da obra a partir dos lançamentos atrelados às medições.
+ *  Retenção só se materializa com a medição PAGA recebendo menos que o líquido;
+ *  recebido acima do líquido é constatado como bônus. */
+function resumoRecebimentos() {
+    let recebido = 0, retido = 0, bonus = 0;
+    medicoesObra.forEach(m => {
+        const l = lancsMedicao.get(m.id) || { recebido: 0, ligado: 0 };
+        const liq = num(m.valor_liquido);
+        if (l.ligado > 0) {
+            // conciliado pelos lançamentos: recebido = só os REALIZADOS;
+            // retenção só na medição PAGA e sobre o que não está nem recebido
+            // nem lançado a receber (parcela prevista pendente não é retenção)
+            recebido += l.recebido;
+            if (m.status === 'paga') {
+                const descoberto = liq - Math.max(l.recebido, l.ligado);
+                if (descoberto > 0.005) retido += descoberto;
+            }
+            if (l.recebido > liq + 0.005) bonus += l.recebido - liq;
+        } else if (m.status === 'paga') {
+            recebido += liq; // legado: paga sem NENHUM lançamento atrelado = recebida integral
+        }
+    });
+    return { recebido, retido, bonus };
 }
 
 function atualizarProgressoETotal() {
+    const vig = itensDraft.filter(i => i.vigente !== false);
     const totalV = totalObraDraft();
-    const exec = itensDraft.filter(i => i.vigente !== false)
-        .reduce((t, i) => t + num(i.total) * num(i.perc_executado) / 100, 0);
-    const prog = totalV > 0 ? Math.round(exec / totalV * 100) : 0;
-    $('ob-progresso-fill').style.width = prog + '%';
+    const medVal = medidoValorPorServico();
+    let produzido = 0, medido = 0;
+    vig.forEach(i => {
+        produzido += produzidoQtdItem(i) * num(i.preco_unit);
+        medido += medVal.get(i.id) || 0;
+    });
+    const prog = totalV > 0 ? Math.round(produzido / totalV * 100) : 0;
+    $('ob-progresso-fill').style.width = Math.min(prog, 100) + '%';
     $('ob-progresso-txt').textContent = prog + '%';
     $('ob-total').textContent = fmtMoeda(totalV);
+    const { recebido, retido, bonus } = resumoRecebimentos();
+    const pc = v => totalV > 0 ? fmtQtd(Math.round(v / totalV * 1000) / 10) : '0';
+    $('ob-fin').innerHTML =
+        `🔨 Produzido (cronograma): <b>${fmtMoeda(produzido)}</b> (${pc(produzido)}%) · ` +
+        `📏 Medido: <b>${fmtMoeda(medido)}</b> (${pc(medido)}%) · ` +
+        `💰 Recebido: <b>${fmtMoeda(recebido)}</b> (${pc(recebido)}%)` +
+        (retido > 0.005 ? ` · <span style="color:var(--hermo-warn)">Retido: <b>${fmtMoeda(retido)}</b></span>` : '') +
+        (bonus > 0.005 ? ` · <span style="color:var(--hermo-success)">Bônus: <b>${fmtMoeda(bonus)}</b></span>` : '');
 }
 
 // ============================================================
@@ -872,6 +927,11 @@ function renderCronograma() {
         item.qtd_executada = bruto === '' ? null : Math.max(0, num(bruto));
         if (item.qtd_executada != null && num(item.quantidade) > 0) {
             item.perc_executado = Math.min(100, Math.round(item.qtd_executada / num(item.quantidade) * 1000) / 10);
+        } else if (item.qtd_executada == null) {
+            // executado limpo: o % volta ao acumulado das medições (não fica o valor velho)
+            const md = medidoPorServico().get(item.id) || 0;
+            item.perc_executado = num(item.quantidade) > 0
+                ? Math.min(100, Math.round(md / num(item.quantidade) * 1000) / 10) : 0;
         }
         renderItensDraft();
         renderCronograma();
@@ -1486,6 +1546,7 @@ const STATUS_MEDICAO_OBRA = {
 
 async function carregarMedicoesObra() {
     medicoesObra = [];
+    lancsMedicao = new Map();
     if (obraEditando?.id) {
         const { data, error } = await sb.from('hermo_medicoes')
             .select('*, itens:hermo_medicao_itens(obra_servico_id, qtd_medida, valor)')
@@ -1493,6 +1554,20 @@ async function carregarMedicoesObra() {
             .order('numero');
         if (error) { toast('Erro ao carregar medições da obra: ' + error.message, true); }
         else medicoesObra = data || [];
+        const ids = medicoesObra.map(m => m.id);
+        if (ids.length) {
+            const { data: lncs, error: eL } = await sb.from('hermo_lancamentos')
+                .select('medicao_id, valor, status, tipo')
+                .in('medicao_id', ids);
+            if (eL) toast('Aviso: não deu para carregar os recebimentos das medições (' + eL.message + ').', true);
+            (lncs || []).forEach(l => {
+                if (l.tipo !== 'receita') return;
+                const ac = lancsMedicao.get(l.medicao_id) || { recebido: 0, ligado: 0 };
+                ac.ligado += num(l.valor);
+                if (l.status === 'realizado') ac.recebido += num(l.valor);
+                lancsMedicao.set(l.medicao_id, ac);
+            });
+        }
     }
     renderMedicoesObra();
 }
@@ -1534,9 +1609,25 @@ function renderMedicoesObra() {
             const periodo = m.periodo_de
                 ? `${fmtData(m.periodo_de).slice(0, 5)}–${fmtData(m.periodo_ate || m.periodo_de).slice(0, 5)}`
                 : '';
-            const receb = m.status === 'paga'
-                ? `✓ recebida${m.data_pagamento ? ' em ' + fmtData(m.data_pagamento) : ''}`
+            const liq = num(m.valor_liquido);
+            const lg = lancsMedicao.get(m.id) || { recebido: 0, ligado: 0 };
+            let receb = m.status === 'paga'
+                ? `✓ paga${m.data_pagamento ? ' em ' + fmtData(m.data_pagamento) : ''}`
                 : (m.previsao_recebimento ? `📥 receber até ${fmtData(m.previsao_recebimento)}` : 'sem previsão de recebimento');
+            if (lg.ligado > 0) {
+                if (lg.recebido > 0) receb += ` · 💰 recebido ${fmtMoeda(lg.recebido)}`;
+                const pendente = lg.ligado - lg.recebido;
+                if (pendente > 0.005) receb += ` · ⏳ ${fmtMoeda(pendente)} lançado a receber`;
+                if (m.status === 'paga') {
+                    const ret = liq - Math.max(lg.recebido, lg.ligado);
+                    if (ret > 0.005) {
+                        receb += ` · <span style="color:var(--hermo-warn);font-weight:700">retido ${fmtMoeda(ret)} (${liq > 0 ? fmtQtd(Math.round(ret / liq * 1000) / 10) : 0}%)</span>`;
+                    }
+                }
+                if (lg.recebido > liq + 0.005) {
+                    receb += ` · <span style="color:var(--hermo-success);font-weight:700">bônus ${fmtMoeda(lg.recebido - liq)}</span>`;
+                }
+            }
             return `
             <div class="ob-item">
                 <div class="txt"><b>MED-${m.numero}</b> <span style="color:${st.cor}">· ${st.label}</span>
@@ -1835,9 +1926,10 @@ async function salvarObraCore({ silencioso = false } = {}) {
             conclusao: $('ob-conclusao').value || null,
             observacoes: $('ob-obs').value.trim() || null,
             // escopo é imutável aqui — só CRONOGRAMA e EXECUÇÃO dos itens existentes são atualizados
+            // perc_executado NÃO vai no payload: o servidor o recomputa
+            // (qtd executada > medições > 0) a cada salvamento
             itens: itensDraft.filter(i => i.id).map(i => ({
                 id: i.id,
-                perc_executado: i.perc_executado,
                 inicio_previsto: i.inicio_previsto || null,
                 fim_previsto: i.fim_previsto || null,
                 inicio_real: i.inicio_real || null,
