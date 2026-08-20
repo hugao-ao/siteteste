@@ -488,6 +488,14 @@ body.modal-aberto { overflow: hidden; }
 .agenda-chip.vencida { outline: 1px dashed var(--argos-warn); outline-offset: 1px; }
 .agenda-chip.conflito { background: rgba(239, 68, 68, .12); }
 .agenda-chip .chip-sub { color: var(--argos-text-dim); font-size: .72rem; }
+.agenda-chip.grupo {
+    background: rgba(56, 189, 248, .12);
+    border-color: rgba(56, 189, 248, .55);
+    font-weight: 600;
+}
+.agenda-chip.grupo:hover { border-color: var(--argos-primary); }
+.agenda-chip[draggable="true"] { cursor: grab; }
+.drop-alvo { outline: 2px dashed var(--argos-primary); outline-offset: -2px; background: rgba(56, 189, 248, .07); }
 .chip-status {
     display: inline-block;
     padding: 0 7px;

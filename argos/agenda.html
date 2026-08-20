@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=0.1, maximum-scale=10, user-scalable=yes" />
   <title>Argos Gestão — Agenda e Logística</title>
   <script src="argos-guard.js"></script>
-  <link rel="stylesheet" href="argos-style.css?v=4" />
+  <link rel="stylesheet" href="argos-style.css?v=5" />
 </head>
 <body>
   <header class="argos-topbar">
@@ -44,6 +44,7 @@
       <b id="rotulo-intervalo"></b>
       <select id="filtro-sala"></select>
       <select id="filtro-prof"></select>
+      <button class="argos-btn ghost" id="btn-grupos" data-argos-recurso="grupos_gerenciar">👥 Grupos</button>
       <button class="argos-btn ghost" id="btn-salas" data-argos-recurso="salas_gerenciar">🚪 Espaços</button>
     </div>
 
@@ -112,6 +113,81 @@
     </div>
   </div>
 
+  <!-- ============ MODAL: GRUPO (ocorrência do dia) ============ -->
+  <div class="argos-modal-fundo" id="modal-grupo">
+    <div class="argos-modal grande">
+      <div class="argos-modal-topo">
+        <h2 id="modal-grupo-titulo">Grupo</h2>
+        <button class="argos-modal-x" data-fechar>×</button>
+      </div>
+      <p class="bloco-info" id="grupo-info" style="margin-bottom:12px"></p>
+      <div id="grupo-membros"></div>
+      <h3 class="form-secao">Gerenciar pacientes do grupo</h3>
+      <div class="agenda-nav" style="flex-wrap:wrap">
+        <select id="grupo-add-paciente" class="argos-input" style="flex:1; min-width:170px"></select>
+        <button class="argos-btn small primary" id="btn-grupo-add">+ Adicionar</button>
+        <button class="argos-btn small" id="btn-grupo-add-todos">Adicionar todos os pacientes</button>
+      </div>
+      <div class="argos-modal-acoes" style="justify-content:space-between">
+        <span>
+          <button class="argos-btn small" id="btn-grupo-editar">✏️ Editar grupo</button>
+          <button class="argos-btn small danger" id="btn-grupo-excluir">🗑️ Excluir grupo</button>
+        </span>
+        <button class="argos-btn ghost" data-fechar>Fechar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ MODAL: LISTA DE GRUPOS ============ -->
+  <div class="argos-modal-fundo" id="modal-grupos-lista">
+    <div class="argos-modal">
+      <div class="argos-modal-topo">
+        <h2>Grupos terapêuticos</h2>
+        <button class="argos-modal-x" data-fechar>×</button>
+      </div>
+      <div id="lista-grupos"></div>
+      <div class="argos-modal-acoes">
+        <button class="argos-btn primary" id="btn-novo-grupo">+ Novo grupo</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ MODAL: FORMULÁRIO DO GRUPO ============ -->
+  <div class="argos-modal-fundo" id="modal-grupo-form">
+    <div class="argos-modal">
+      <div class="argos-modal-topo">
+        <h2 id="modal-grupo-form-titulo">Novo grupo terapêutico</h2>
+        <button class="argos-modal-x" data-fechar>×</button>
+      </div>
+      <form id="form-grupo" class="argos-form">
+        <label>Nome do grupo *
+          <input type="text" id="gru-nome" required placeholder="Ex.: Grupo de habilidades sociais" />
+        </label>
+        <div class="form-grade">
+          <label>Dia da semana
+            <select id="gru-dow"></select>
+          </label>
+          <label>Hora
+            <input type="time" id="gru-hora" value="09:00" />
+          </label>
+          <label>Duração (min)
+            <input type="number" id="gru-duracao" value="60" min="5" step="5" />
+          </label>
+          <label>Espaço
+            <select id="gru-sala"></select>
+          </label>
+          <label>Profissional (opcional)
+            <select id="gru-prof"></select>
+          </label>
+        </div>
+        <div class="argos-modal-acoes">
+          <button type="button" class="argos-btn ghost" data-fechar>Cancelar</button>
+          <button type="submit" class="argos-btn primary">Salvar grupo</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <!-- ============ MODAL: ESPAÇOS ============ -->
   <div class="argos-modal-fundo" id="modal-salas">
     <div class="argos-modal">
@@ -129,7 +205,7 @@
     </div>
   </div>
 
-  <script type="module" src="agenda.js?v=5"></script>
+  <script type="module" src="agenda.js?v=6"></script>
   <script type="module" src="argos-zoom.js?v=4"></script>
 </body>
 </html>
