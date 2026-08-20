@@ -895,17 +895,42 @@ function renderCronograma() {
         renderCronograma();
     }));
     cont.querySelectorAll('[data-real-ini]').forEach(inp => {
+        inp._antes = inp.value; // último valor válido (da renderização) p/ reverter bloqueios
         inp.addEventListener('change', e => {
             itensDraft[parseInt(e.target.dataset.realIni)].inicio_real = e.target.value;
         });
         aoConcluirData(inp, () => {
-            toast(itensDraft[parseInt(inp.dataset.realIni)].inicio_real
+            const item = itensDraft[parseInt(inp.dataset.realIni)];
+            if (item.inicio_real) {
+                // regra da dependência vale para as datas REAIS: só inicia após
+                // a CONCLUSÃO real de todos os serviços dos quais depende
+                const preds = predsDe(item.id);
+                const pendente = preds.find(p => !p.fim_real);
+                if (pendente) {
+                    toast(`⛓ ${item.codigo} depende de ${pendente.codigo}, que ainda não foi concluído — informe a conclusão real dele antes (ou remova a dependência).`, true);
+                    item.inicio_real = inp._antes || '';
+                    return;
+                }
+                const maxFim = preds.map(p => p.fim_real).sort().pop();
+                if (maxFim && item.inicio_real < maxFim) {
+                    const pred = preds.find(p => p.fim_real === maxFim);
+                    toast(`O início real de ${item.codigo} não pode ser anterior à conclusão real de ${pred.codigo} (${fmtData(maxFim)}), do qual ele depende.`, true);
+                    item.inicio_real = inp._antes || '';
+                    return;
+                }
+                if (item.fim_real && item.fim_real < item.inicio_real) {
+                    toast('O início real não pode ser depois da conclusão real já informada.', true);
+                    item.inicio_real = inp._antes || '';
+                    return;
+                }
+            }
+            toast(item.inicio_real
                 ? 'Início real informado — as datas da cadeia foram recalculadas (salve a obra para gravar).'
                 : 'Início real removido — datas recalculadas (salve a obra para gravar).');
         });
     });
     cont.querySelectorAll('[data-real-fim]').forEach(inp => {
-        inp.addEventListener('focus', () => { inp._antes = inp.value; });
+        inp._antes = inp.value; // último valor válido (da renderização) p/ reverter bloqueios
         inp.addEventListener('change', e => {
             itensDraft[parseInt(e.target.dataset.realFim)].fim_real = e.target.value;
         });
@@ -913,6 +938,42 @@ function renderCronograma() {
             const item = itensDraft[parseInt(inp.dataset.realFim)];
             if (item.fim_real && item.inicio_real && item.fim_real < item.inicio_real) {
                 toast('A conclusão real não pode ser antes do início real.', true);
+                item.fim_real = inp._antes || '';
+                return;
+            }
+            // concluir também respeita os PRÉVIOS deste serviço — mesmo sem início
+            // real informado, a conclusão não pode vir antes deles (referência =
+            // início real, ou a própria conclusão quando o início está vazio)
+            if (item.fim_real) {
+                const ref = item.inicio_real || item.fim_real;
+                const preds = predsDe(item.id);
+                const pendente = preds.find(p => !p.fim_real);
+                if (pendente) {
+                    toast(`⛓ ${item.codigo} depende de ${pendente.codigo}, que ainda não foi concluído — informe a conclusão real de ${pendente.codigo} antes.`, true);
+                    item.fim_real = inp._antes || '';
+                    return;
+                }
+                const maxFim = preds.map(p => p.fim_real).sort().pop();
+                if (maxFim && ref < maxFim) {
+                    const pred = preds.find(p => p.fim_real === maxFim);
+                    toast(`${item.codigo} não pode ter ${item.inicio_real ? 'iniciado' : 'sido concluído'} antes da conclusão real de ${pred.codigo} (${fmtData(maxFim)}), do qual ele depende.`, true);
+                    item.fim_real = inp._antes || '';
+                    return;
+                }
+            }
+            // dependentes com execução real (início OU conclusão) travam esta conclusão
+            const dependentes = depsDraft.filter(d => d.depende_de_id === item.id)
+                .map(d => itensDraft.find(x => x.id === d.item_id))
+                .filter(x => x && x.vigente !== false && (x.inicio_real || x.fim_real));
+            if (item.fim_real) {
+                const viol = dependentes.find(x => (x.inicio_real || x.fim_real) < item.fim_real);
+                if (viol) {
+                    toast(`${viol.codigo} depende deste serviço e ${viol.inicio_real ? 'iniciou' : 'foi concluído'} em ${fmtData(viol.inicio_real || viol.fim_real)} — a conclusão não pode ficar depois disso.`, true);
+                    item.fim_real = inp._antes || '';
+                    return;
+                }
+            } else if (dependentes.length) {
+                toast(`${dependentes[0].codigo} depende deste serviço e já tem execução real informada — remova as datas reais dele antes de limpar esta conclusão.`, true);
                 item.fim_real = inp._antes || '';
                 return;
             }
