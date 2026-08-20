@@ -401,17 +401,63 @@ function renderPeriodo() {
 }
 
 let voltarAoGrupo = null; // reabre o modal do grupo ao fechar o modal da sessão
+let voltarAoDia = null;   // reabre o modal do dia ao fechar o modal aberto por ele
+let diaAberto = null;     // ISO do dia exibido no modal "Agenda do dia"
 
 function aoClicarSessao(e) {
     const chipGrupo = e.target.closest('[data-grupo]');
-    if (chipGrupo) { abrirModalGrupo(chipGrupo.dataset.grupo, chipGrupo.dataset.grupoIso); return; }
+    if (chipGrupo) { voltarAoDia = null; abrirModalGrupo(chipGrupo.dataset.grupo, chipGrupo.dataset.grupoIso); return; }
+    const chip = e.target.closest('[data-chave]');
+    if (chip) {
+        const s = chaves.get(chip.dataset.chave);
+        if (!s || !perm.pode('sessoes_status')) return;
+        voltarAoGrupo = null;
+        voltarAoDia = null;
+        abrirModalSessaoPara(s);
+        return;
+    }
+    // toque no card do dia (fora dos chips): abre a agenda daquele dia
+    const dia = e.target.closest('[data-iso]');
+    if (dia && perm.pode('agenda_dia_modal')) abrirModalDia(dia.dataset.iso);
+}
+
+// ---------- modal "Agenda do dia" ----------
+function abrirModalDia(iso) {
+    diaAberto = iso;
+    renderModalDia();
+    abrirModal('modal-dia');
+}
+
+function renderModalDia() {
+    if (!diaAberto) return;
+    const iso = diaAberto;
+    document.getElementById('modal-dia-titulo').textContent =
+        `📅 ${DOW_NOMES[paraData(iso).getDay()]} · ${formataBR(iso)}`;
+    const lista = sessoesDoIntervalo(iso, iso);
+    const conflita = detectorConflito(lista);
+    document.getElementById('dia-conteudo').innerHTML =
+        conteudoDoDia(iso, lista, conflita, false)
+        || '<p class="dim">Nenhuma sessão neste dia.</p>';
+}
+
+// chips dentro do modal do dia abrem o grupo/sessão e depois voltam ao dia
+document.getElementById('dia-conteudo').addEventListener('click', (e) => {
+    const chipGrupo = e.target.closest('[data-grupo]');
+    if (chipGrupo) {
+        voltarAoDia = diaAberto;
+        fecharModal('modal-dia');
+        abrirModalGrupo(chipGrupo.dataset.grupo, chipGrupo.dataset.grupoIso);
+        return;
+    }
     const chip = e.target.closest('[data-chave]');
     if (!chip) return;
     const s = chaves.get(chip.dataset.chave);
     if (!s || !perm.pode('sessoes_status')) return;
     voltarAoGrupo = null;
+    voltarAoDia = diaAberto;
+    fecharModal('modal-dia');
     abrirModalSessaoPara(s);
-}
+});
 
 function abrirModalSessaoPara(s) {
     sessaoAberta = s;
@@ -469,15 +515,27 @@ document.getElementById('btn-restaurar').addEventListener('click', async () => {
 document.getElementById('agenda-grade').addEventListener('click', aoClicarSessao);
 document.getElementById('agenda-periodo').addEventListener('click', aoClicarSessao);
 
+// ao sair de um modal aberto pelo modal do dia, volta ao dia
+function retornarAoDiaSePreciso() {
+    if (!voltarAoDia) return;
+    const iso = voltarAoDia;
+    voltarAoDia = null;
+    setTimeout(() => abrirModalDia(iso), 60);
+}
+
 // ao sair do modal da sessão, volta ao modal do grupo (se veio de lá)
+// ou ao modal do dia (se foi ele que abriu a sessão)
 function retornarAoGrupoSePreciso() {
-    if (!voltarAoGrupo) return;
+    if (!voltarAoGrupo) { retornarAoDiaSePreciso(); return; }
     const v = voltarAoGrupo;
     voltarAoGrupo = null;
     setTimeout(() => abrirModalGrupo(v.gid, v.iso), 60);
 }
 document.getElementById('modal-sessao').addEventListener('click', (e) => {
     if (e.target.closest('[data-fechar]') || e.target.id === 'modal-sessao') retornarAoGrupoSePreciso();
+});
+document.getElementById('modal-grupo').addEventListener('click', (e) => {
+    if (e.target.closest('[data-fechar]') || e.target.id === 'modal-grupo') retornarAoDiaSePreciso();
 });
 
 document.getElementById('botoes-status').addEventListener('click', async (e) => {
@@ -515,6 +573,8 @@ async function recarregarSessoes() {
     renderTudo();
     const modalGrupo = document.getElementById('modal-grupo');
     if (modalGrupo && modalGrupo.classList.contains('aberto') && grupoAberto) renderModalGrupo();
+    const modalDia = document.getElementById('modal-dia');
+    if (modalDia && modalDia.classList.contains('aberto') && diaAberto) renderModalDia();
 }
 
 // inicia o fluxo de remarcação (usado pelo modal e pelo arrastar-e-soltar)
