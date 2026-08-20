@@ -45,12 +45,12 @@ function despesasDoMes(mes) {
         const fim = d.fim_data || null;
         const v = Number(d.valor) || 0;
         if (d.recorrencia === 'unica') {
-            if (ini >= de && ini <= ate) itens.push({ nome: d.nome, recorrencia: 'unica', valor: v, extra: formataBR(ini) });
+            if (ini >= de && ini <= ate) itens.push({ id: d.id, nome: d.nome, recorrencia: 'unica', valor: v, extra: formataBR(ini) });
         } else if (d.recorrencia === 'mensal') {
-            if (ini <= ate && (!fim || fim >= de)) itens.push({ nome: d.nome, recorrencia: 'mensal', valor: v });
+            if (ini <= ate && (!fim || fim >= de)) itens.push({ id: d.id, nome: d.nome, recorrencia: 'mensal', valor: v });
         } else if (d.recorrencia === 'anual') {
             if (ini.slice(5, 7) === mes.slice(5, 7) && ini <= ate && (!fim || fim >= de))
-                itens.push({ nome: d.nome, recorrencia: 'anual', valor: v });
+                itens.push({ id: d.id, nome: d.nome, recorrencia: 'anual', valor: v });
         } else if (d.recorrencia === 'semanal') {
             // conta as ocorrências do dia-da-semana da data inicial dentro do mês
             const dow = new Date(ini + 'T12:00').getDay();
@@ -60,7 +60,7 @@ function despesasDoMes(mes) {
                 if (iso > ate) break;
                 if (dt.getDay() === dow && iso >= ini && (!fim || iso <= fim)) n++;
             }
-            if (n) itens.push({ nome: d.nome, recorrencia: 'semanal', valor: v * n, extra: `${n}× ${formataMoeda(v)}` });
+            if (n) itens.push({ id: d.id, nome: d.nome, recorrencia: 'semanal', valor: v * n, extra: `${n}× ${formataMoeda(v)}` });
         }
     }
     return itens;
@@ -75,7 +75,7 @@ function calculaMes(mes) {
         const f = fechamentoPaciente(p,
             dinamicas.filter(d => d.paciente_id === p.id),
             sessoes.filter(s => s.paciente_id === p.id), mes);
-        if (f.valor) porPaciente.push({ nome: p.nome, valor: f.valor });
+        if (f.valor) porPaciente.push({ id: p.id, nome: p.nome, valor: f.valor });
         faturamento += f.valor;
         for (const pd of (f.porDinamica || [])) {
             for (const r of (pd.repasses || [])) {
@@ -87,7 +87,7 @@ function calculaMes(mes) {
         const temFixo = pr.remuneracao_tipo === 'fixo' || pr.remuneracao_tipo === 'producao_fixo';
         const fixo = temFixo ? (Number(pr.valor_fixo_mensal) || 0) : 0;
         const prod = pr.remuneracao_tipo === 'fixo' ? 0 : (producao[pr.id] || 0);
-        return { nome: pr.nome, fixo, prod, total: fixo + prod };
+        return { id: pr.id, nome: pr.nome, fixo, prod, total: fixo + prod };
     }).filter(x => x.total > 0);
     const repasses = repProf.reduce((s, x) => s + x.total, 0);
     const itensDespesas = despesasDoMes(mes);
@@ -111,30 +111,63 @@ function render() {
 
 const corResultado = v => v >= 0 ? '#22c55e' : '#ef4444';
 
+let gruposFechados = new Set(); // blocos com a memória de cálculo oculta
+
 function renderAnual() {
     const ano = Number(document.getElementById('ano-ref').value) || new Date().getFullYear();
-    const total = { fat: 0, rep: 0, desp: 0, res: 0 };
-    const linhas = [];
-    for (let m = 1; m <= 12; m++) {
-        const mes = `${ano}-${String(m).padStart(2, '0')}`;
-        const c = calculaMes(mes);
-        total.fat += c.faturamento; total.rep += c.repasses;
-        total.desp += c.totalDespesas; total.res += c.resultado;
-        linhas.push(`
-          <tr>
-            <td><b>${MES_NOMES[m - 1]}</b></td>
-            <td>${formataMoeda(c.faturamento)}</td>
-            <td>${formataMoeda(c.repasses)}</td>
-            <td>${formataMoeda(c.totalDespesas)}</td>
-            <td><b style="color:${corResultado(c.resultado)}">${formataMoeda(c.resultado)}</b></td>
-            <td class="acoes"><button class="argos-btn small" data-detalhar="${mes}">🔎 Detalhar</button></td>
-          </tr>`);
+    const meses = Array.from({ length: 12 }, (_, i) => `${ano}-${String(i + 1).padStart(2, '0')}`);
+    const dados = meses.map(calculaMes);
+
+    // memória de cálculo: uma linha por paciente, por profissional (fixo e
+    // produção separados) e por despesa, com um valor em cada mês
+    const porPac = new Map(), porRep = new Map(), porDesp = new Map();
+    const linha = (map, chave, nome) => {
+        if (!map.has(chave)) map.set(chave, { nome, valores: Array(12).fill(0) });
+        return map.get(chave);
+    };
+    dados.forEach((c, i) => {
+        c.porPaciente.forEach(x => { linha(porPac, x.id, x.nome).valores[i] += x.valor; });
+        c.repProf.forEach(x => {
+            if (x.fixo) linha(porRep, x.id + '|fixo', `${x.nome} — fixo mensal`).valores[i] += x.fixo;
+            if (x.prod) linha(porRep, x.id + '|prod', `${x.nome} — produção`).valores[i] += x.prod;
+        });
+        c.itensDespesas.forEach(x =>
+            { linha(porDesp, x.id, `${x.nome} (${RECORRENCIA_LABELS[x.recorrencia] || x.recorrencia})`).valores[i] += x.valor; });
+    });
+
+    const fmt = v => Math.abs(v) < 0.005 ? '—'
+        : v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const soma = vs => vs.reduce((s2, v) => s2 + v, 0);
+
+    function linhaHTML(rotulo, valores, opts = {}) {
+        const total = soma(valores);
+        const cor = v => opts.sinal ? (v < 0 ? 'neg' : (v > 0 ? 'pos' : '')) : '';
+        const cls = opts.grupo ? 'grupo-linha' : (opts.detalheDe ? 'linha-detalhe-plan' : '') + (opts.classeExtra ? ' ' + opts.classeExtra : '');
+        const attrs = (opts.grupo ? ` data-grupo="${opts.grupo}"` : '')
+            + (opts.detalheDe ? ` data-detalhe-de="${opts.detalheDe}"` : '')
+            + (opts.detalheDe && gruposFechados.has(opts.detalheDe) ? ' style="display:none"' : '');
+        return `<tr class="${cls}"${attrs}>
+          <td>${opts.grupo ? `<span class="chev">${gruposFechados.has(opts.grupo) ? '▸' : '▾'}</span> ` : ''}${rotulo}</td>
+          ${valores.map(v => `<td class="${cor(v)}">${fmt(v)}</td>`).join('')}
+          <td class="col-total ${cor(total)}">${fmt(total)}</td>
+        </tr>`;
     }
+    const ordenado = map => [...map.values()].sort((a, b) => a.nome.localeCompare(b.nome));
+
+    const linhas = [];
+    linhas.push(linhaHTML('📥 ENTRADAS — Faturamento (sessões e anamneses)', dados.map(c => c.faturamento), { grupo: 'entradas' }));
+    ordenado(porPac).forEach(l => linhas.push(linhaHTML(esc(l.nome), l.valores, { detalheDe: 'entradas' })));
+    linhas.push(linhaHTML('💼 SAÍDAS — Repasses aos profissionais', dados.map(c => c.repasses), { grupo: 'repasses' }));
+    ordenado(porRep).forEach(l => linhas.push(linhaHTML(esc(l.nome), l.valores, { detalheDe: 'repasses' })));
+    linhas.push(linhaHTML('💸 SAÍDAS — Despesas', dados.map(c => c.totalDespesas), { grupo: 'despesas' }));
+    ordenado(porDesp).forEach(l => linhas.push(linhaHTML(esc(l.nome), l.valores, { detalheDe: 'despesas' })));
+    linhas.push(linhaHTML('<b>🟰 RESULTADO (entradas − saídas)</b>', dados.map(c => c.resultado), { classeExtra: 'linha-total', sinal: true }));
+
+    document.getElementById('thead-anual').innerHTML = `<tr>
+      <th>${ano}</th>
+      ${meses.map((m, i) => `<th data-mes="${m}" title="Abrir o detalhe de ${MES_NOMES[i]}">${MES_NOMES[i].slice(0, 3)}</th>`).join('')}
+      <th class="col-total">Total ${ano}</th></tr>`;
     document.getElementById('tbody-anual').innerHTML = linhas.join('');
-    document.getElementById('a-faturamento').innerHTML = `<b>${formataMoeda(total.fat)}</b>`;
-    document.getElementById('a-repasses').innerHTML = `<b>${formataMoeda(total.rep)}</b>`;
-    document.getElementById('a-despesas').innerHTML = `<b>${formataMoeda(total.desp)}</b>`;
-    document.getElementById('a-resultado').innerHTML = `<b style="color:${corResultado(total.res)}">${formataMoeda(total.res)}</b>`;
 }
 
 function renderMensal() {
@@ -157,10 +190,23 @@ function renderMensal() {
         || '<tr><td colspan="3" class="dim">Nenhuma despesa neste mês.</td></tr>';
 }
 
+// ocultar/mostrar a memória de cálculo de um bloco
 document.getElementById('tbody-anual').addEventListener('click', (e) => {
-    const btn = e.target.closest('[data-detalhar]');
-    if (!btn) return;
-    document.getElementById('mes-ref').value = btn.dataset.detalhar;
+    const g = e.target.closest('tr[data-grupo]');
+    if (!g) return;
+    const chave = g.dataset.grupo;
+    if (gruposFechados.has(chave)) gruposFechados.delete(chave); else gruposFechados.add(chave);
+    const fechado = gruposFechados.has(chave);
+    document.querySelectorAll(`#tbody-anual tr[data-detalhe-de="${chave}"]`)
+        .forEach(tr => tr.style.display = fechado ? 'none' : '');
+    g.querySelector('.chev').textContent = fechado ? '▸' : '▾';
+});
+
+// clicar no mês do cabeçalho abre o detalhe mensal daquele mês
+document.getElementById('thead-anual').addEventListener('click', (e) => {
+    const th = e.target.closest('[data-mes]');
+    if (!th) return;
+    document.getElementById('mes-ref').value = th.dataset.mes;
     document.getElementById('modo-visao').value = 'mensal';
     render();
 });
