@@ -12,6 +12,7 @@ import {
 
 let perm = { pode: () => true, aplicarVisibilidade: () => {}, master: true };
 let pacientes = [], salas = [], profissionais = [], dinamicas = [], sessoes = [];
+let grupos = [], grupoMembros = [];
 let segunda = segundaDaSemana(hojeISO()); // início da semana exibida
 let sessaoAberta = null;                  // sessão do modal de marcação
 
@@ -25,20 +26,24 @@ const nomeSala = id => (salas.find(s => s.id === id) || {}).nome || 'Sem espaço
 const nomeProf = id => (profissionais.find(p => p.id === id) || {}).nome || '—';
 
 async function carregarTudo() {
-    const [rPac, rSalas, rProf, rDin, rSes] = await Promise.all([
-        sb.from('argos_pacientes').select('id, nome, cadastro_removido').order('nome'),
+    const [rPac, rSalas, rProf, rDin, rSes, rGru, rMem] = await Promise.all([
+        sb.from('argos_pacientes').select('id, nome, ativo, cadastro_removido').order('nome'),
         sb.from('argos_salas').select('*').order('nome'),
         sb.from('argos_profissionais').select('*').order('nome'),
         sb.from('argos_dinamicas').select('*'),
-        sb.from('argos_sessoes').select('*')
+        sb.from('argos_sessoes').select('*'),
+        sb.from('argos_grupos').select('*').order('hora'),
+        sb.from('argos_grupo_membros').select('*')
     ]);
-    const erro = rPac.error || rSalas.error || rProf.error || rDin.error || rSes.error;
+    const erro = rPac.error || rSalas.error || rProf.error || rDin.error || rSes.error || rGru.error || rMem.error;
     if (erro) { console.error(erro); toast('Erro ao carregar a agenda.', true); return; }
     pacientes = rPac.data || [];
     salas = rSalas.data || [];
     profissionais = rProf.data || [];
     dinamicas = rDin.data || [];
     sessoes = rSes.data || [];
+    grupos = rGru.data || [];
+    grupoMembros = rMem.data || [];
     montarFiltroSalas();
     renderTudo();
 }
@@ -137,7 +142,8 @@ async function marcarSessao(s, status) {
             paciente_id: s.paciente_id, dinamica_id: s.dinamica_ref, dinamica_ref: s.dinamica_ref,
             data: s.data, hora: s.hora, duracao_min: s.duracao_min || 60,
             sala_id: s.sala_id || null, profissional_id: s.profissional_id || null,
-            servico_id: s.servico_id || null, status, justificativa
+            servico_id: s.servico_id || null, status, justificativa,
+            grupo_id: s.grupo_id || null, grupo_ref: s.grupo_ref || null
         }));
     }
     if (error) { console.error(error); toast('Erro ao marcar sessão.', true); return; }
@@ -234,10 +240,50 @@ function chipSessao(s, conflita, compacta) {
     const titulo = `${nomePac(s.paciente_id)} · ${nomeSala(s.sala_id)} · ${nomeProf(s.profissional_id)}${s.justificativa ? ' · 📝 ' + s.justificativa : ''}${conflita(s) ? ' · ⚠️ CONFLITO de espaço/horário' : ''}`;
     return `
       <div class="agenda-chip ${compacta ? 'compacta' : ''} ${vencida ? 'vencida' : ''} ${conflita(s) ? 'conflito' : ''}"
+           ${s.status === '??' ? 'draggable="true"' : ''}
            style="--c:${STATUS_SESSAO[s.status].cor}" data-chave="${chaveSessao(s)}" title="${esc(titulo)}">
         <b>${s.hora}</b> ${esc(nomePac(s.paciente_id))}
         ${compacta ? '' : `<div class="chip-sub">${esc(nomeSala(s.sala_id))}${s.modalidade === 'grupo' ? ' · 👥' : ''} · <span class="chip-status" style="--c:${STATUS_SESSAO[s.status].cor}">${STATUS_SESSAO[s.status].label}</span>${conflita(s) ? ' ⚠️' : ''}</div>`}
       </div>`;
+}
+
+// ---------- grupos terapêuticos: helpers de exibição ----------
+const dowDe = iso => paraData(iso).getDay();
+
+function membrosDoGrupo(gid) { return grupoMembros.filter(m => m.grupo_id === gid); }
+
+// sessão individual fica escondida quando o paciente é membro de um grupo
+// que acontece naquele mesmo dia-da-semana e horário (a agenda mostra o GRUPO)
+function cobertaPorGrupo(s) {
+    const dw = dowDe(s.data);
+    return grupos.some(g => g.ativo !== false && g.dow === dw && g.hora === s.hora
+        && grupoMembros.some(m => m.grupo_id === g.id && m.paciente_id === s.paciente_id));
+}
+
+function gruposDoDia(iso) {
+    const filtroSala = document.getElementById('filtro-sala').value;
+    const filtroProf = document.getElementById('filtro-prof').value;
+    return grupos.filter(g => g.ativo !== false && g.dow === dowDe(iso))
+        .filter(g => filtroSala === 'geral' ? true : (filtroSala === 'sem' ? !g.sala_id : g.sala_id === filtroSala))
+        .filter(g => (!filtroProf || filtroProf === 'todos') ? true : g.profissional_id === filtroProf)
+        .sort((a, b) => a.hora.localeCompare(b.hora));
+}
+
+function grupoChipHTML(g, iso, compacta) {
+    const n = membrosDoGrupo(g.id).length;
+    return `
+      <div class="agenda-chip grupo ${compacta ? 'compacta' : ''}" draggable="true"
+           data-grupo="${g.id}" data-grupo-iso="${iso}" style="--c:#38bdf8"
+           title="Grupo ${esc(g.nome)} · ${esc(nomeSala(g.sala_id))}${g.profissional_id ? ' · ' + esc(nomeProf(g.profissional_id)) : ''} · ${n} paciente(s) — toque para abrir">
+        <b>${g.hora}</b> 👥 ${esc(g.nome)}
+        ${compacta ? '' : `<div class="chip-sub">${esc(nomeSala(g.sala_id))} · ${n} paciente(s)</div>`}
+      </div>`;
+}
+
+function conteudoDoDia(iso, lista, conflita, compacta) {
+    const doDia = lista.filter(s => s.data === iso && !cobertaPorGrupo(s));
+    return gruposDoDia(iso).map(g => grupoChipHTML(g, iso, compacta)).join('')
+        + doDia.map(s => chipSessao(s, conflita, compacta)).join('');
 }
 
 function renderAgenda() {
@@ -261,11 +307,11 @@ function renderSemana() {
 
     grade.innerHTML = Array.from({ length: 7 }, (_, i) => {
         const iso = somarDias(segunda, i);
-        const doDia = lista.filter(s => s.data === iso);
+        const conteudo = conteudoDoDia(iso, lista, conflita, false);
         return `
-        <div class="agenda-dia ${iso === hoje ? 'hoje' : ''}">
+        <div class="agenda-dia ${iso === hoje ? 'hoje' : ''}" data-iso="${iso}">
           <div class="agenda-dia-titulo">${DOW_NOMES[paraData(iso).getDay()]} <span>${iso.slice(8)}/${iso.slice(5, 7)}</span></div>
-          ${doDia.map(s => chipSessao(s, conflita, false)).join('') || '<div class="dim agenda-vazio">—</div>'}
+          ${conteudo || '<div class="dim agenda-vazio">—</div>'}
         </div>`;
     }).join('');
 }
@@ -289,11 +335,10 @@ function renderMes() {
     let celulas = '';
     for (let iso = inicioGrade; iso <= fimGrade; iso = somarDias(iso, 1)) {
         const fora = iso < de || iso > ate;
-        const doDia = fora ? [] : lista.filter(s => s.data === iso);
         celulas += `
-        <div class="agenda-dia mes-dia ${fora ? 'fora' : ''} ${iso === hoje ? 'hoje' : ''}">
+        <div class="agenda-dia mes-dia ${fora ? 'fora' : ''} ${iso === hoje ? 'hoje' : ''}" ${fora ? '' : `data-iso="${iso}"`}>
           <div class="agenda-dia-titulo">${Number(iso.slice(8))}</div>
-          ${doDia.map(s => chipSessao(s, conflita, true)).join('')}
+          ${fora ? '' : conteudoDoDia(iso, lista, conflita, true)}
         </div>`;
     }
     grade.innerHTML = cabecalho + celulas;
@@ -307,20 +352,24 @@ function renderPeriodo() {
     document.getElementById('rotulo-intervalo').textContent =
         `${formataBR(de)} — ${formataBR(ate)} (${dias} dia(s), ${lista.length} sessão(ões))`;
 
-    const porData = {};
-    lista.forEach(s => { (porData[s.data] = porData[s.data] || []).push(s); });
-    const datas = Object.keys(porData).sort();
     const hoje = hojeISO();
-
-    document.getElementById('agenda-periodo').innerHTML = datas.map(iso => `
-      <div class="periodo-dia ${iso === hoje ? 'hoje' : ''}">
-        <div class="periodo-data">${DOW_NOMES[paraData(iso).getDay()]} · ${formataBR(iso)}</div>
-        <div class="periodo-chips">${porData[iso].map(s => chipSessao(s, conflita, false)).join('')}</div>
-      </div>`).join('')
-      || '<div class="argos-tabela-vazia">Nenhuma sessão neste período.</div>';
+    const blocos = [];
+    for (let iso = de; iso <= ate; iso = somarDias(iso, 1)) {
+        const conteudo = conteudoDoDia(iso, lista, conflita, false);
+        if (!conteudo) continue;
+        blocos.push(`
+          <div class="periodo-dia ${iso === hoje ? 'hoje' : ''}" data-iso="${iso}">
+            <div class="periodo-data">${DOW_NOMES[paraData(iso).getDay()]} · ${formataBR(iso)}</div>
+            <div class="periodo-chips">${conteudo}</div>
+          </div>`);
+    }
+    document.getElementById('agenda-periodo').innerHTML = blocos.join('')
+        || '<div class="argos-tabela-vazia">Nenhuma sessão neste período.</div>';
 }
 
 function aoClicarSessao(e) {
+    const chipGrupo = e.target.closest('[data-grupo]');
+    if (chipGrupo) { abrirModalGrupo(chipGrupo.dataset.grupo, chipGrupo.dataset.grupoIso); return; }
     const chip = e.target.closest('[data-chave]');
     if (!chip) return;
     const s = chaves.get(chip.dataset.chave);
@@ -367,20 +416,21 @@ async function registrarEvento(pacienteId, tipo, descricao, dados, justificativa
 }
 
 async function recarregarSessoes() {
-    const [rSes, rDin] = await Promise.all([
+    const [rSes, rDin, rGru, rMem] = await Promise.all([
         sb.from('argos_sessoes').select('*'),
-        sb.from('argos_dinamicas').select('*')
+        sb.from('argos_dinamicas').select('*'),
+        sb.from('argos_grupos').select('*').order('hora'),
+        sb.from('argos_grupo_membros').select('*')
     ]);
     sessoes = rSes.data || sessoes;
     dinamicas = rDin.data || dinamicas;
+    grupos = rGru.data || grupos;
+    grupoMembros = rMem.data || grupoMembros;
     renderTudo();
 }
 
-document.getElementById('btn-remarcar').addEventListener('click', async () => {
-    const s = sessaoAberta;
-    if (!s) return;
-    const novaData = document.getElementById('rem-data').value;
-    const novaHora = document.getElementById('rem-hora').value;
+// inicia o fluxo de remarcação (usado pelo modal e pelo arrastar-e-soltar)
+async function iniciarRemarcacao(s, novaData, novaHora, motivo) {
     if (!novaData || !novaHora) { toast('Informe o novo dia e a nova hora.', true); return; }
     if (novaData === s.data && novaHora === s.hora) { toast('A sessão já está nesse dia/horário.', true); return; }
 
@@ -394,7 +444,6 @@ document.getElementById('btn-remarcar').addEventListener('click', async () => {
         return;
     }
 
-    const motivo = document.getElementById('rem-motivo').value.trim() || null;
     const d = s.dinamica_ref ? dinamicas.find(x => x.id === s.dinamica_ref) : null;
     if (d && d.ativo !== false && d.recorrencia_tipo === 'recorrente') {
         remarcarCtx = { s, novaData, novaHora, d, motivo };
@@ -406,6 +455,15 @@ document.getElementById('btn-remarcar').addEventListener('click', async () => {
         await moverSessaoUnica(s, novaData, novaHora, motivo);
         fecharModal('modal-sessao');
     }
+}
+
+document.getElementById('btn-remarcar').addEventListener('click', async () => {
+    const s = sessaoAberta;
+    if (!s) return;
+    await iniciarRemarcacao(s,
+        document.getElementById('rem-data').value,
+        document.getElementById('rem-hora').value,
+        document.getElementById('rem-motivo').value.trim() || null);
 });
 
 document.getElementById('btn-so-esta').addEventListener('click', async () => {
@@ -512,6 +570,302 @@ async function novoHorarioFixo({ s, novaData, novaHora, d, motivo }) {
     fecharModal('modal-pergunta-horario');
     await recarregarSessoes();
 }
+
+// ============================================================
+// GRUPOS TERAPÊUTICOS
+// ============================================================
+let grupoAberto = null;   // { gid, iso }
+let editandoGrupoId = null;
+
+function proximaOcorrencia(g) {
+    let iso = hojeISO();
+    for (let i = 0; i < 7; i++) { if (dowDe(iso) === g.dow) return iso; iso = somarDias(iso, 1); }
+    return hojeISO();
+}
+
+// sessão (mesclada) do paciente no horário do grupo naquele dia
+function sessaoDoMembro(pacId, g, iso, mesclado) {
+    const candidatos = mesclado.filter(s => s.paciente_id === pacId && s.hora === g.hora);
+    return candidatos.find(s => s.id) || candidatos[0] || null;
+}
+
+function abrirModalGrupo(gid, iso) {
+    grupoAberto = { gid, iso };
+    renderModalGrupo();
+    abrirModal('modal-grupo');
+}
+
+function renderModalGrupo() {
+    const g = grupos.find(x => x.id === grupoAberto.gid);
+    if (!g) { fecharModal('modal-grupo'); return; }
+    const iso = grupoAberto.iso;
+    const membrosG = membrosDoGrupo(g.id);
+    document.getElementById('modal-grupo-titulo').textContent = `👥 ${g.nome}`;
+    document.getElementById('grupo-info').innerHTML =
+        `<b>${DOW_NOMES[g.dow]} às ${g.hora}</b> · ocorrência de <b>${formataBR(iso)}</b> · 🚪 ${esc(nomeSala(g.sala_id))}${g.profissional_id ? ' · 🧑‍⚕️ ' + esc(nomeProf(g.profissional_id)) : ''} · ${membrosG.length} paciente(s)`;
+
+    const mesclado = mesclarSessoes(dinamicas, sessoes, iso, iso);
+    const outrosGrupos = grupos.filter(x => x.id !== g.id && x.ativo !== false);
+    const podeStatus = perm.pode('sessoes_status');
+
+    document.getElementById('grupo-membros').innerHTML = membrosG.map(m => {
+        const p = pacientes.find(x => x.id === m.paciente_id) || { nome: '(paciente?)' };
+        const s = sessaoDoMembro(m.paciente_id, g, iso, mesclado);
+        const st = s ? s.status : '??';
+        return `
+        <div class="argos-bloco pendente-linha" data-membro="${m.paciente_id}">
+          <div class="bloco-info">
+            <b>${esc(p.nome)}</b> — <span class="chip-status" style="--c:${STATUS_SESSAO[st].cor}">${STATUS_SESSAO[st].label}</span>
+            ${s && s.justificativa ? `<br><span class="dim">📝 ${esc(s.justificativa)}</span>` : ''}
+          </div>
+          <div class="agenda-nav">
+            ${podeStatus ? `<span class="botoes-status compacto">
+              ${['??', 'ok', 'fj', 'fc', 'nc'].map(x => `
+                <button class="btn-status" style="--c:${STATUS_SESSAO[x].cor}" data-membro-marcar="${x}" title="${STATUS_SESSAO[x].desc}">${STATUS_SESSAO[x].label}</button>`).join('')}
+            </span>` : ''}
+            <select class="argos-input" data-membro-acao>
+              <option value="">⋯</option>
+              ${outrosGrupos.map(o => `<option value="mover:${o.id}">→ Mover para ${esc(o.nome)}</option>`).join('')}
+              <option value="remover">✖ Remover do grupo</option>
+            </select>
+          </div>
+        </div>`;
+    }).join('') || '<p class="dim">Nenhum paciente neste grupo ainda.</p>';
+
+    const foraDoGrupo = pacientes.filter(p => p.ativo && !p.cadastro_removido
+        && !membrosG.some(m => m.paciente_id === p.id));
+    document.getElementById('grupo-add-paciente').innerHTML =
+        '<option value="">— Escolher paciente —</option>' +
+        foraDoGrupo.map(p => `<option value="${p.id}">${esc(p.nome)}</option>`).join('');
+}
+
+document.getElementById('grupo-membros').addEventListener('click', async (e) => {
+    const btn = e.target.closest('[data-membro-marcar]');
+    if (!btn) return;
+    const g = grupos.find(x => x.id === grupoAberto.gid);
+    const pacId = btn.closest('[data-membro]').dataset.membro;
+    const iso = grupoAberto.iso;
+    const mesclado = mesclarSessoes(dinamicas, sessoes, iso, iso);
+    let s = sessaoDoMembro(pacId, g, iso, mesclado);
+    if (!s) {
+        // paciente sem dinâmica nesse horário: cria sessão ligada ao grupo
+        s = {
+            id: null, paciente_id: pacId, dinamica_ref: null,
+            data: iso, hora: g.hora, duracao_min: g.duracao_min || 60,
+            sala_id: g.sala_id, profissional_id: g.profissional_id,
+            servico_id: g.servico_id, status: '??', grupo_id: g.id, grupo_ref: g.id
+        };
+    }
+    await marcarSessao({ ...s, grupo_id: s.grupo_id || g.id, grupo_ref: s.grupo_ref || g.id }, btn.dataset.membroMarcar);
+    renderModalGrupo();
+});
+
+document.getElementById('grupo-membros').addEventListener('change', async (e) => {
+    const sel = e.target.closest('[data-membro-acao]');
+    if (!sel || !sel.value) return;
+    const g = grupos.find(x => x.id === grupoAberto.gid);
+    const pacId = sel.closest('[data-membro]').dataset.membro;
+    const nomeP = nomePac(pacId);
+    if (sel.value === 'remover') {
+        if (!confirm(`Remover ${nomeP} do grupo "${g.nome}"?\n(As presenças já registradas são mantidas.)`)) { sel.value = ''; return; }
+        await sb.from('argos_grupo_membros').delete().eq('grupo_id', g.id).eq('paciente_id', pacId);
+        toast(`${nomeP} removido(a) do grupo.`);
+    } else if (sel.value.startsWith('mover:')) {
+        const destinoId = sel.value.slice(6);
+        const destino = grupos.find(x => x.id === destinoId);
+        await sb.from('argos_grupo_membros').delete().eq('grupo_id', g.id).eq('paciente_id', pacId);
+        const { error } = await sb.from('argos_grupo_membros').insert({ grupo_id: destinoId, paciente_id: pacId });
+        if (error && error.code !== '23505') { toast('Erro ao mover paciente.', true); return; }
+        toast(`${nomeP} movido(a) para "${destino.nome}".`);
+    }
+    await recarregarSessoes();
+    renderModalGrupo();
+});
+
+document.getElementById('btn-grupo-add').addEventListener('click', async () => {
+    const pacId = document.getElementById('grupo-add-paciente').value;
+    if (!pacId) return;
+    const { error } = await sb.from('argos_grupo_membros')
+        .insert({ grupo_id: grupoAberto.gid, paciente_id: pacId });
+    if (error && error.code !== '23505') { toast('Erro ao adicionar.', true); return; }
+    await recarregarSessoes();
+    renderModalGrupo();
+});
+
+document.getElementById('btn-grupo-add-todos').addEventListener('click', async () => {
+    const g = grupos.find(x => x.id === grupoAberto.gid);
+    const faltam = pacientes.filter(p => p.ativo && !p.cadastro_removido
+        && !membrosDoGrupo(g.id).some(m => m.paciente_id === p.id));
+    if (!faltam.length) { toast('Todos os pacientes já estão no grupo.'); return; }
+    if (!confirm(`Adicionar ${faltam.length} paciente(s) ao grupo "${g.nome}"?`)) return;
+    const { error } = await sb.from('argos_grupo_membros')
+        .insert(faltam.map(p => ({ grupo_id: g.id, paciente_id: p.id })));
+    if (error && error.code !== '23505') { toast('Erro ao adicionar todos.', true); return; }
+    await recarregarSessoes();
+    renderModalGrupo();
+});
+
+document.getElementById('btn-grupo-editar').addEventListener('click', () => abrirFormGrupo(grupoAberto.gid));
+document.getElementById('btn-grupo-excluir').addEventListener('click', async () => {
+    const g = grupos.find(x => x.id === grupoAberto.gid);
+    if (!confirm(`Excluir o grupo "${g.nome}"?\nAs presenças já registradas dos pacientes são mantidas no histórico.`)) return;
+    const { error } = await sb.from('argos_grupos').delete().eq('id', g.id);
+    if (error) { toast('Erro ao excluir grupo.', true); return; }
+    toast('Grupo excluído.');
+    fecharModal('modal-grupo');
+    await recarregarSessoes();
+});
+
+// ---------- lista e formulário de grupos ----------
+document.getElementById('btn-grupos').addEventListener('click', () => { renderListaGrupos(); abrirModal('modal-grupos-lista'); });
+document.getElementById('btn-novo-grupo').addEventListener('click', () => abrirFormGrupo(null));
+
+function renderListaGrupos() {
+    document.getElementById('lista-grupos').innerHTML = grupos.filter(g => g.ativo !== false).map(g => `
+      <div class="argos-bloco pendente-linha">
+        <div class="bloco-info"><b>👥 ${esc(g.nome)}</b><br>
+          <span class="dim">${DOW_NOMES[g.dow]} às ${g.hora} · ${esc(nomeSala(g.sala_id))} · ${membrosDoGrupo(g.id).length} paciente(s)</span></div>
+        <div class="agenda-nav">
+          <button class="argos-btn small primary" data-grupo-abrir="${g.id}">Abrir</button>
+          <button class="argos-btn small" data-grupo-editar="${g.id}">✏️</button>
+        </div>
+      </div>`).join('') || '<p class="dim">Nenhum grupo criado ainda.</p>';
+}
+
+document.getElementById('lista-grupos').addEventListener('click', (e) => {
+    const abrir = e.target.closest('[data-grupo-abrir]');
+    const editar = e.target.closest('[data-grupo-editar]');
+    if (abrir) {
+        const g = grupos.find(x => x.id === abrir.dataset.grupoAbrir);
+        fecharModal('modal-grupos-lista');
+        abrirModalGrupo(g.id, proximaOcorrencia(g));
+    }
+    if (editar) abrirFormGrupo(editar.dataset.grupoEditar);
+});
+
+function abrirFormGrupo(id) {
+    editandoGrupoId = id;
+    const g = id ? grupos.find(x => x.id === id) : null;
+    document.getElementById('modal-grupo-form-titulo').textContent = g ? `Editar grupo: ${g.nome}` : 'Novo grupo terapêutico';
+    document.getElementById('gru-dow').innerHTML = DOW_NOMES.map((n, i) => `<option value="${i}">${n}</option>`).join('');
+    document.getElementById('gru-sala').innerHTML = '<option value="">— Sem espaço definido —</option>' +
+        salas.map(s => `<option value="${s.id}">${esc(s.nome)}</option>`).join('');
+    document.getElementById('gru-prof').innerHTML = '<option value="">— Nenhum —</option>' +
+        profissionais.map(p => `<option value="${p.id}">${esc(p.nome)}</option>`).join('');
+    document.getElementById('gru-nome').value = g ? g.nome : '';
+    document.getElementById('gru-dow').value = g ? g.dow : dowDe(hojeISO());
+    document.getElementById('gru-hora').value = g ? g.hora : '09:00';
+    document.getElementById('gru-duracao').value = g ? g.duracao_min : 60;
+    document.getElementById('gru-sala').value = g ? (g.sala_id || '') : '';
+    document.getElementById('gru-prof').value = g ? (g.profissional_id || '') : '';
+    abrirModal('modal-grupo-form');
+}
+
+const minutosDe = h => { const [a, b] = String(h).split(':').map(Number); return a * 60 + (b || 0); };
+
+// outro grupo já ocupa o mesmo espaço/dia/horário?
+function grupoOcupante(candidato, ignorarId) {
+    return grupos.find(g => g.id !== ignorarId && g.ativo !== false && g.dow === candidato.dow
+        && ((g.sala_id && candidato.sala_id && g.sala_id === candidato.sala_id) || (!g.sala_id && !candidato.sala_id))
+        && minutosDe(g.hora) < minutosDe(candidato.hora) + (candidato.duracao_min || 60)
+        && minutosDe(candidato.hora) < minutosDe(g.hora) + (g.duracao_min || 60));
+}
+
+// aplica novo horário/espaço a um grupo, com a regra de troca entre grupos
+async function salvarSlotDeGrupo(gid, registro) {
+    const ocupante = grupoOcupante(registro, gid);
+    if (ocupante) {
+        const atual = gid ? grupos.find(x => x.id === gid) : null;
+        if (!atual) {
+            toast(`⛔ Esse horário já é do grupo "${ocupante.nome}". Realoque-o primeiro ou escolha outro horário/espaço.`, true);
+            return false;
+        }
+        const trocar = confirm(`O horário escolhido já é do grupo "${ocupante.nome}".\n\nDeseja TROCAR os horários entre "${atual.nome}" e "${ocupante.nome}"?\n(OK = trocar · Cancelar = não fazer nada)`);
+        if (!trocar) return false;
+        const { error: eT } = await sb.from('argos_grupos').update({
+            dow: atual.dow, hora: atual.hora, sala_id: atual.sala_id, duracao_min: atual.duracao_min
+        }).eq('id', ocupante.id);
+        if (eT) { toast('Erro ao trocar os grupos.', true); return false; }
+    }
+    let error;
+    if (gid) ({ error } = await sb.from('argos_grupos').update(registro).eq('id', gid));
+    else ({ error } = await sb.from('argos_grupos').insert(registro));
+    if (error) { console.error(error); toast('Erro ao salvar grupo.', true); return false; }
+    return true;
+}
+
+document.getElementById('form-grupo').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const registro = {
+        nome: document.getElementById('gru-nome').value.trim(),
+        dow: Number(document.getElementById('gru-dow').value),
+        hora: document.getElementById('gru-hora').value,
+        duracao_min: Number(document.getElementById('gru-duracao').value) || 60,
+        sala_id: document.getElementById('gru-sala').value || null,
+        profissional_id: document.getElementById('gru-prof').value || null,
+        ativo: true
+    };
+    if (!registro.nome || !registro.hora) { toast('Informe nome e hora do grupo.', true); return; }
+    const ok = await salvarSlotDeGrupo(editandoGrupoId, registro);
+    if (!ok) return;
+    fecharModal('modal-grupo-form');
+    toast('Grupo salvo.');
+    await recarregarSessoes();
+    renderListaGrupos();
+    if (grupoAberto && grupoAberto.gid === editandoGrupoId) renderModalGrupo();
+});
+
+// mover grupo (arrastar para outro dia): muda o dia fixo, com regra de troca
+async function moverGrupo(g, novoDow) {
+    if (g.dow === novoDow) return;
+    const registro = { dow: novoDow, hora: g.hora, sala_id: g.sala_id, duracao_min: g.duracao_min };
+    const ok = await salvarSlotDeGrupo(g.id, registro);
+    if (!ok) return;
+    toast(`Grupo "${g.nome}" movido para ${DOW_NOMES[novoDow]}.`);
+    await recarregarSessoes();
+}
+
+// ---------- arrastar e soltar (mouse) ----------
+function configurarDragDrop(container) {
+    container.addEventListener('dragstart', (e) => {
+        const chip = e.target.closest('.agenda-chip');
+        if (!chip) return;
+        const payload = chip.dataset.grupo
+            ? { tipo: 'grupo', id: chip.dataset.grupo }
+            : { tipo: 'sessao', chave: chip.dataset.chave };
+        e.dataTransfer.setData('text/plain', JSON.stringify(payload));
+        e.dataTransfer.effectAllowed = 'move';
+    });
+    container.addEventListener('dragover', (e) => {
+        const dia = e.target.closest('[data-iso]');
+        if (dia) { e.preventDefault(); dia.classList.add('drop-alvo'); }
+    });
+    container.addEventListener('dragleave', (e) => {
+        const dia = e.target.closest('[data-iso]');
+        if (dia) dia.classList.remove('drop-alvo');
+    });
+    container.addEventListener('drop', async (e) => {
+        const dia = e.target.closest('[data-iso]');
+        if (!dia) return;
+        e.preventDefault();
+        dia.classList.remove('drop-alvo');
+        let payload;
+        try { payload = JSON.parse(e.dataTransfer.getData('text/plain')); } catch (x) { return; }
+        const alvoIso = dia.dataset.iso;
+        if (payload.tipo === 'grupo') {
+            const g = grupos.find(x => x.id === payload.id);
+            if (g) await moverGrupo(g, dowDe(alvoIso));
+        } else {
+            const s = chaves.get(payload.chave);
+            if (!s) return;
+            if (s.status !== '??') { toast('Só sessões pendentes («??») podem ser movidas.', true); return; }
+            if (s.data === alvoIso) return;
+            await iniciarRemarcacao(s, alvoIso, s.hora, null);
+        }
+    });
+}
+configurarDragDrop(document.getElementById('agenda-grade'));
+configurarDragDrop(document.getElementById('agenda-periodo'));
 
 // ---------- espaços (salas) ----------
 document.getElementById('btn-salas').addEventListener('click', () => { renderSalas(); abrirModal('modal-salas'); });
