@@ -35,18 +35,32 @@
       <button class="argos-btn ghost" id="btn-imprimir">🖨️ Imprimir / PDF</button>
     </div>
 
-    <!-- ============ VISÃO ANUAL ============ -->
+    <!-- ============ VISÃO ANUAL (planilha: meses nas colunas, itens nas linhas) ============ -->
+    <style>
+      .planilha th, .planilha td { white-space: nowrap; text-align: right; }
+      .planilha th:first-child, .planilha td:first-child {
+        text-align: left; position: sticky; left: 0; z-index: 2;
+        background: var(--argos-surface); max-width: 250px; overflow: hidden; text-overflow: ellipsis;
+      }
+      .planilha thead th { z-index: 3; }
+      .planilha thead th[data-mes] { cursor: pointer; }
+      .planilha thead th[data-mes]:hover { color: var(--argos-primary); }
+      .planilha tr.grupo-linha td { cursor: pointer; background: var(--argos-surface-2); font-weight: 700; }
+      .planilha tr.grupo-linha td:first-child { background: var(--argos-surface-2); }
+      .planilha tr.linha-detalhe-plan td { color: var(--argos-text-dim); }
+      .planilha tr.linha-detalhe-plan td:first-child { padding-left: 26px; }
+      .planilha td.neg { color: var(--argos-danger); }
+      .planilha td.pos { color: var(--argos-success); }
+      .planilha td.col-total { border-left: 2px solid var(--argos-border); font-weight: 700; }
+      .planilha th.col-total { border-left: 2px solid var(--argos-border); }
+      .planilha tr.mes-atual-col td { }
+    </style>
     <section id="secao-anual">
+      <p class="dica">Planilha do ano: <b>colunas = meses</b>, <b>linhas = cada entrada e cada saída</b>. Toque no nome de um bloco (▾) para ocultar/mostrar a memória de cálculo; toque no nome de um mês para abrir o detalhe mensal. Valores em R$.</p>
       <div class="argos-tabela-wrap">
-        <table class="argos-tabela">
-          <thead>
-            <tr><th>Mês</th><th>Faturamento (sessões)</th><th>Repasses aos profissionais</th><th>Despesas</th><th>Resultado</th><th class="acoes"></th></tr>
-          </thead>
+        <table class="argos-tabela planilha" id="tabela-anual">
+          <thead id="thead-anual"></thead>
           <tbody id="tbody-anual"></tbody>
-          <tfoot>
-            <tr class="linha-total"><td><b>TOTAL DO ANO</b></td>
-              <td id="a-faturamento"></td><td id="a-repasses"></td><td id="a-despesas"></td><td id="a-resultado"></td><td></td></tr>
-          </tfoot>
         </table>
       </div>
       <p class="dica">Meses passados usam as frequências registradas; meses futuros usam a projeção das dinâmicas (sessões «??» futuras contam como presença). Encerramentos de processo cortam o paciente a partir da data.</p>
@@ -133,7 +147,7 @@
     </div>
   </div>
 
-  <script type="module" src="planejamento.js?v=1"></script>
+  <script type="module" src="planejamento.js?v=2"></script>
   <script type="module" src="argos-zoom.js?v=4"></script>
 </body>
 </html>
