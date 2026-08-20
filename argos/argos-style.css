@@ -331,6 +331,236 @@ body.modal-aberto { overflow: hidden; }
     min-width: 165px;
 }
 
+/* ---------- Páginas largas (agenda, fechamento) ---------- */
+.argos-pagina.larga { max-width: 1500px; }
+
+/* ---------- Barra de filtros ---------- */
+.argos-filtros {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+    margin-bottom: 18px;
+}
+.argos-filtros input[type="search"],
+.argos-filtros select,
+.argos-filtros input[type="month"],
+.argos-input {
+    background: var(--argos-surface);
+    border: 1px solid var(--argos-border);
+    border-radius: 8px;
+    color: var(--argos-text);
+    padding: 9px 12px;
+    font-size: .9rem;
+}
+.argos-filtros input[type="search"] { flex: 1; min-width: 180px; }
+.rotulo-inline { display: flex; align-items: center; gap: 8px; color: var(--argos-text-dim); font-size: .85rem; font-weight: 600; }
+
+/* ---------- Formulários: grade e seções ---------- */
+.form-grade {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+    gap: 0 14px;
+}
+.form-secao {
+    font-size: .95rem;
+    color: var(--argos-primary);
+    margin: 14px 0 10px;
+    border-bottom: 1px solid var(--argos-border);
+    padding-bottom: 5px;
+}
+.linha-dia {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin-bottom: 8px;
+}
+.linha-dia select, .linha-dia input {
+    background: var(--argos-bg);
+    border: 1px solid var(--argos-border);
+    border-radius: 8px;
+    color: var(--argos-text);
+    padding: 7px 9px;
+    font-size: .88rem;
+}
+.linha-dia input[type="number"] { width: 110px; }
+
+/* ---------- Minicards (pacientes, profissionais) ---------- */
+.argos-minicards {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 14px;
+}
+.argos-minicard {
+    background: var(--argos-surface);
+    border: 1px solid var(--argos-border);
+    border-radius: var(--argos-radius);
+    padding: 14px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.argos-minicard.inativo { opacity: .55; }
+.mini-topo { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+.mini-nome { font-weight: 700; font-size: 1rem; }
+.mini-info { color: var(--argos-text-dim); font-size: .82rem; line-height: 1.5; }
+.mini-acoes { display: flex; flex-wrap: wrap; gap: 6px; margin-top: auto; }
+
+/* ---------- Blocos (dinâmicas, salas, pendências) ---------- */
+.argos-bloco {
+    background: var(--argos-bg);
+    border: 1px solid var(--argos-border);
+    border-radius: 10px;
+    padding: 11px 13px;
+    margin-bottom: 9px;
+}
+.argos-bloco.inativo { opacity: .55; }
+.bloco-topo { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 4px; }
+.bloco-info { color: var(--argos-text-dim); font-size: .84rem; line-height: 1.55; }
+
+/* ---------- Exclusão do paciente ---------- */
+.opcao-excluir {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    padding: 10px 12px;
+    border: 1px solid var(--argos-border);
+    border-radius: 10px;
+    margin-bottom: 8px;
+    cursor: pointer;
+    font-size: .86rem;
+    line-height: 1.45;
+}
+.opcao-excluir:hover { border-color: var(--argos-primary); }
+.opcao-excluir input { margin-top: 3px; }
+
+/* ---------- Aviso ---------- */
+.argos-aviso {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+    background: rgba(234, 179, 8, .12);
+    border: 1px solid rgba(234, 179, 8, .5);
+    border-radius: 10px;
+    padding: 10px 14px;
+    font-size: .88rem;
+    margin-bottom: 16px;
+}
+
+/* ---------- Agenda semanal ---------- */
+.agenda-nav { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.agenda-grade {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(150px, 1fr));
+    gap: 8px;
+    overflow-x: auto;
+}
+.agenda-dia {
+    background: var(--argos-surface);
+    border: 1px solid var(--argos-border);
+    border-radius: 10px;
+    padding: 8px;
+    min-height: 120px;
+}
+.agenda-dia.hoje { border-color: var(--argos-primary); box-shadow: 0 0 0 1px var(--argos-primary); }
+.agenda-dia-titulo {
+    font-weight: 700;
+    font-size: .82rem;
+    margin-bottom: 8px;
+    color: var(--argos-text-dim);
+}
+.agenda-dia.hoje .agenda-dia-titulo { color: var(--argos-primary); }
+.agenda-vazio { text-align: center; padding: 8px 0; }
+.agenda-chip {
+    background: var(--argos-bg);
+    border: 1px solid var(--argos-border);
+    border-left: 4px solid var(--c, #94a3b8);
+    border-radius: 8px;
+    padding: 6px 8px;
+    font-size: .78rem;
+    margin-bottom: 6px;
+    cursor: pointer;
+    line-height: 1.4;
+}
+.agenda-chip:hover { border-color: var(--argos-primary); border-left-color: var(--c, #94a3b8); }
+.agenda-chip.vencida { outline: 1px dashed var(--argos-warn); outline-offset: 1px; }
+.agenda-chip.conflito { background: rgba(239, 68, 68, .12); }
+.agenda-chip .chip-sub { color: var(--argos-text-dim); font-size: .72rem; }
+.chip-status {
+    display: inline-block;
+    padding: 0 7px;
+    border-radius: 999px;
+    font-size: .72rem;
+    font-weight: 700;
+    background: color-mix(in srgb, var(--c, #94a3b8) 18%, transparent);
+    color: var(--c, #94a3b8);
+}
+
+/* ---------- Botões de status (Ok/Fj/Fc/Nc) ---------- */
+.botoes-status { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 8px; }
+.botoes-status.compacto { display: flex; gap: 6px; }
+.btn-status {
+    background: color-mix(in srgb, var(--c, #94a3b8) 15%, transparent);
+    border: 1px solid var(--c, #94a3b8);
+    color: var(--c, #94a3b8);
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+}
+.btn-status small { font-weight: 500; font-size: .68rem; opacity: .85; }
+.botoes-status.compacto .btn-status { padding: 6px 10px; }
+.btn-status:hover { filter: brightness(1.25); }
+.pendente-linha { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+
+/* ---------- Serviços (profissionais) ---------- */
+.chips-servicos { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip-servico {
+    background: var(--argos-surface-2);
+    border: 1px solid var(--argos-border);
+    border-radius: 999px;
+    padding: 3px 10px;
+    font-size: .78rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+.chip-servico button {
+    background: none; border: none; color: var(--argos-danger);
+    cursor: pointer; font-size: .9rem; line-height: 1; padding: 0;
+}
+.servico-lista { max-height: 320px; overflow-y: auto; }
+.servico-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--argos-border);
+    font-size: .88rem;
+}
+.servico-item.vinculado { opacity: .7; }
+.servico-item.novo { background: rgba(56, 189, 248, .08); border-radius: 8px; }
+
+/* ---------- Fechamento ---------- */
+.linha-total td { background: var(--argos-surface-2); font-size: .92rem; }
+.linha-detalhe td { background: var(--argos-bg); color: var(--argos-text-dim); font-size: .82rem; }
+.linha-detalhe ul { margin-left: 18px; }
+.linha-removido td { opacity: .6; }
+
+@media print {
+    .argos-topbar, .argos-filtros, .argos-aviso, .dica, #btn-imprimir { display: none !important; }
+    body { background: #fff; color: #000; }
+    .argos-tabela-wrap { border: none; }
+    .argos-tabela th, .argos-tabela td { color: #000; border-color: #999; background: #fff !important; }
+}
+
 /* ---------- Toast ---------- */
 #argos-toast {
     position: fixed;

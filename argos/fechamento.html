@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=0.1, maximum-scale=10, user-scalable=yes" />
+  <title>Argos Gestão — Fechamento Mensal</title>
+  <script src="argos-guard.js"></script>
+  <link rel="stylesheet" href="argos-style.css?v=4" />
+</head>
+<body>
+  <header class="argos-topbar">
+    <div class="brand">ARGOS <span>GESTÃO</span></div>
+    <div class="actions">
+      <a class="argos-btn ghost" href="index.html">← Início</a>
+      <button class="argos-btn danger" id="btn-logout">Sair</button>
+    </div>
+  </header>
+
+  <main class="argos-pagina larga">
+    <h1>🧾 Fechamento Mensal</h1>
+    <p class="sub">Valor do acerto de cada paciente no mês, com o detalhe das frequências, conforme a dinâmica financeira de cada um.</p>
+
+    <div class="argos-filtros">
+      <label class="rotulo-inline">Mês de referência
+        <input type="month" id="mes-ref" />
+      </label>
+      <label class="linha-check" style="margin:0">
+        <input type="checkbox" id="so-movimento" checked /> Só pacientes com movimento no mês
+      </label>
+      <button class="argos-btn ghost" id="btn-imprimir">🖨️ Imprimir / PDF</button>
+    </div>
+
+    <div class="argos-aviso" id="aviso-pendencias" style="display:none"></div>
+
+    <div class="argos-tabela-wrap">
+      <table class="argos-tabela">
+        <thead>
+          <tr>
+            <th>Paciente</th><th>Ok</th><th>Fj</th><th>Fc</th><th>Nc</th><th>??</th>
+            <th>Valor do mês</th><th class="acoes"></th>
+          </tr>
+        </thead>
+        <tbody id="tbody-fechamento"></tbody>
+        <tfoot>
+          <tr class="linha-total"><td><b>TOTAL</b></td>
+            <td id="t-ok"></td><td id="t-fj"></td><td id="t-fc"></td><td id="t-nc"></td><td id="t-pd"></td>
+            <td id="t-valor"></td><td></td></tr>
+        </tfoot>
+      </table>
+      <div class="argos-tabela-vazia" id="fechamento-vazio" style="display:none">Nenhum movimento neste mês.</div>
+    </div>
+
+    <p class="dica" style="margin-top:12px">
+      Regras: <b>Ok</b> e <b>Fc</b> cobram; <b>??</b> com data futura conta como presença projetada (projeção de faturamento);
+      <b>??</b> vencida não cobra e aparece como pendência; <b>Fj</b> e <b>Nc</b> não cobram.
+      Pacotes entram pelo cronograma de pagamento; fixos mensais entram uma vez no mês; a anamnese entra se marcada como cobrada.
+    </p>
+  </main>
+
+  <script type="module" src="fechamento.js?v=1"></script>
+  <script type="module" src="argos-zoom.js?v=4"></script>
+</body>
+</html>

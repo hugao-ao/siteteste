@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=0.1, maximum-scale=10, user-scalable=yes" />
+  <title>Argos Gestão — Pacientes</title>
+  <script src="argos-guard.js"></script>
+  <link rel="stylesheet" href="argos-style.css?v=4" />
+</head>
+<body>
+  <header class="argos-topbar">
+    <div class="brand">ARGOS <span>GESTÃO</span></div>
+    <div class="actions">
+      <a class="argos-btn ghost" href="index.html">← Início</a>
+      <button class="argos-btn danger" id="btn-logout">Sair</button>
+    </div>
+  </header>
+
+  <main class="argos-pagina">
+    <h1>🧑‍⚕️ Pacientes</h1>
+    <p class="sub">Cadastro e informações dos pacientes, com anamnese e dinâmicas financeiras.</p>
+
+    <div class="argos-filtros">
+      <input type="search" id="busca" placeholder="🔎 Buscar por nome, telefone ou e-mail…" />
+      <select id="filtro-situacao">
+        <option value="ativos">Ativos</option>
+        <option value="inativos">Inativos</option>
+        <option value="todos">Todos</option>
+      </select>
+      <select id="ordenar">
+        <option value="nome">Nome (A→Z)</option>
+        <option value="recente">Cadastro mais recente</option>
+        <option value="antigo">Cadastro mais antigo</option>
+      </select>
+      <button class="argos-btn ghost" id="btn-salas" data-argos-recurso="salas_gerenciar">🚪 Espaços</button>
+      <button class="argos-btn primary" id="btn-novo-paciente" data-argos-recurso="pacientes_criar">+ Novo paciente</button>
+    </div>
+
+    <div class="argos-minicards" id="lista-pacientes"></div>
+    <div class="argos-tabela-vazia" id="pacientes-vazio" style="display:none">Nenhum paciente encontrado.</div>
+  </main>
+
+  <!-- ============ MODAL: CADASTRO DO PACIENTE ============ -->
+  <div class="argos-modal-fundo" id="modal-paciente">
+    <div class="argos-modal grande">
+      <div class="argos-modal-topo">
+        <h2 id="modal-paciente-titulo">Novo paciente</h2>
+        <button class="argos-modal-x" data-fechar>×</button>
+      </div>
+      <form id="form-paciente" class="argos-form">
+        <div class="form-grade">
+          <label>Nome do(a) paciente *
+            <input type="text" id="pac-nome" required />
+          </label>
+          <label>Data de nascimento
+            <input type="date" id="pac-nascimento" />
+          </label>
+          <label>CPF
+            <input type="text" id="pac-cpf" placeholder="000.000.000-00" />
+          </label>
+        </div>
+        <div class="form-grade">
+          <label>Colégio
+            <input type="text" id="pac-colegio" />
+          </label>
+          <label>Série
+            <input type="text" id="pac-serie" placeholder="Ex.: 3º ano" />
+          </label>
+          <label>Turno
+            <input type="text" id="pac-turno" placeholder="manhã / tarde" />
+          </label>
+        </div>
+
+        <h3 class="form-secao">👩 Mãe</h3>
+        <div class="form-grade">
+          <label>Nome da mãe
+            <input type="text" id="pac-mae-nome" />
+          </label>
+          <label>Profissão
+            <input type="text" id="pac-mae-profissao" />
+          </label>
+          <label>Fone
+            <input type="text" id="pac-mae-fone" />
+          </label>
+          <label>CPF
+            <input type="text" id="pac-mae-cpf" />
+          </label>
+        </div>
+
+        <h3 class="form-secao">👨 Pai</h3>
+        <div class="form-grade">
+          <label>Nome do pai
+            <input type="text" id="pac-pai-nome" />
+          </label>
+          <label>Profissão
+            <input type="text" id="pac-pai-profissao" />
+          </label>
+          <label>Fone
+            <input type="text" id="pac-pai-fone" />
+          </label>
+          <label>CPF
+            <input type="text" id="pac-pai-cpf" />
+          </label>
+        </div>
+
+        <h3 class="form-secao">🏠 Contato e responsável</h3>
+        <div class="form-grade">
+          <label>Endereço residencial
+            <input type="text" id="pac-endereco" />
+          </label>
+          <label>Responsável financeiro
+            <input type="text" id="pac-resp-financeiro" />
+          </label>
+          <label>E-mail
+            <input type="email" id="pac-email" />
+          </label>
+          <label>Indicação
+            <input type="text" id="pac-indicacao" placeholder="Quem indicou (ex.: neuropsicóloga)" />
+          </label>
+        </div>
+        <label>Observações
+          <textarea id="pac-observacoes" rows="2"></textarea>
+        </label>
+
+        <h3 class="form-secao">📋 Anamnese</h3>
+        <div class="form-grade">
+          <label>Data da anamnese
+            <input type="date" id="pac-anamnese-data" />
+          </label>
+          <label>Valor da anamnese (se cobrada)
+            <input type="number" step="0.01" min="0" id="pac-anamnese-valor" placeholder="R$" />
+          </label>
+        </div>
+        <label class="linha-check">
+          <input type="checkbox" id="pac-anamnese-cobrar" />
+          Cobrar a anamnese (por padrão ela NÃO entra nas contas das sessões)
+        </label>
+        <p class="dica">As informações clínicas da anamnese terão um campo próprio em uma etapa futura.</p>
+
+        <label class="linha-check">
+          <input type="checkbox" id="pac-ativo" checked /> Paciente ativo
+        </label>
+
+        <div class="argos-modal-acoes">
+          <button type="button" class="argos-btn ghost" data-fechar>Cancelar</button>
+          <button type="submit" class="argos-btn primary">Salvar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ============ MODAL: DINÂMICAS FINANCEIRAS DO PACIENTE ============ -->
+  <div class="argos-modal-fundo" id="modal-dinamicas">
+    <div class="argos-modal grande">
+      <div class="argos-modal-topo">
+        <h2 id="modal-dinamicas-titulo">Dinâmicas financeiras</h2>
+        <button class="argos-modal-x" data-fechar>×</button>
+      </div>
+      <div id="lista-dinamicas"></div>
+      <div class="argos-modal-acoes" style="justify-content:space-between">
+        <button type="button" class="argos-btn" id="btn-nova-avulsa" data-argos-recurso="sessao_avulsa_criar">+ Sessão avulsa</button>
+        <button type="button" class="argos-btn primary" id="btn-nova-dinamica" data-argos-recurso="dinamicas_gerenciar">+ Nova dinâmica</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ MODAL: FORMULÁRIO DE DINÂMICA ============ -->
+  <div class="argos-modal-fundo" id="modal-dinamica-form">
+    <div class="argos-modal grande">
+      <div class="argos-modal-topo">
+        <h2 id="modal-dinamica-titulo">Nova dinâmica financeira</h2>
+        <button class="argos-modal-x" data-fechar>×</button>
+      </div>
+      <form id="form-dinamica" class="argos-form">
+        <div class="form-grade">
+          <label>Rótulo (para diferenciar)
+            <input type="text" id="din-rotulo" placeholder="Ex.: Psicoterapia semanal" />
+          </label>
+          <label>Tipo
+            <select id="din-tipo">
+              <option value="recorrente">Sessões recorrentes</option>
+              <option value="avulsa">Sessões avulsas (marcadas uma a uma)</option>
+            </select>
+          </label>
+        </div>
+
+        <div id="bloco-recorrencia">
+          <h3 class="form-secao">🗓️ Dias e horários</h3>
+          <div id="lista-dias"></div>
+          <button type="button" class="argos-btn small" id="btn-add-dia">+ Adicionar dia/horário</button>
+
+          <div class="form-grade" style="margin-top:12px">
+            <label>Frequência: X sessões…
+              <input type="number" min="1" id="din-freq-qtd" placeholder="Ex.: 2" />
+            </label>
+            <label>…por período
+              <select id="din-freq-periodo">
+                <option value="semana">Semana</option>
+                <option value="mes">Mês</option>
+                <option value="dia">Dia</option>
+              </select>
+            </label>
+            <label>A partir de *
+              <input type="date" id="din-inicio" />
+            </label>
+            <label>Duração da sessão (min)
+              <input type="number" min="5" step="5" id="din-duracao" value="60" />
+            </label>
+          </div>
+
+          <div class="form-grade">
+            <label>Fim da recorrência
+              <select id="din-fim-tipo">
+                <option value="indeterminado">Indeterminado (sem fim)</option>
+                <option value="apos_ocorrencias">Após X ocorrências</option>
+                <option value="data">Em uma data específica</option>
+              </select>
+            </label>
+            <label id="rotulo-fim-ocorr" style="display:none">Número de ocorrências
+              <input type="number" min="1" id="din-fim-ocorrencias" />
+            </label>
+            <label id="rotulo-fim-data" style="display:none">Data final
+              <input type="date" id="din-fim-data" />
+            </label>
+          </div>
+        </div>
+
+        <h3 class="form-secao">📍 Modalidade, espaço e profissional</h3>
+        <div class="form-grade">
+          <label>Modalidade
+            <select id="din-modalidade">
+              <option value="individual">Individual (só este paciente no horário/espaço)</option>
+              <option value="grupo">Em grupo (outros pacientes podem ter o mesmo horário)</option>
+            </select>
+          </label>
+          <label>Espaço
+            <select id="din-sala"></select>
+          </label>
+          <label>Profissional
+            <select id="din-profissional"><option value="">— Selecionar —</option></select>
+          </label>
+          <label>Atividade/serviço prestado
+            <select id="din-servico"><option value="">— Selecione o profissional antes —</option></select>
+          </label>
+        </div>
+
+        <h3 class="form-secao">💰 Acordo financeiro</h3>
+        <div class="form-grade">
+          <label>Tipo de acordo
+            <select id="din-acordo">
+              <option value="por_sessao">Valor por sessão</option>
+              <option value="fixo_mensal">Valor fixo mensal</option>
+              <option value="pacote">Valor global por pacote de X sessões</option>
+            </select>
+          </label>
+          <label id="rotulo-valor">Valor (R$)
+            <input type="number" step="0.01" min="0" id="din-valor" />
+          </label>
+        </div>
+        <div id="bloco-pacote" style="display:none">
+          <div class="form-grade">
+            <label>Quantidade de sessões do pacote
+              <input type="number" min="1" id="din-pacote-qtd" />
+            </label>
+            <label>Valor global do pacote (R$)
+              <input type="number" step="0.01" min="0" id="din-pacote-valor" />
+            </label>
+            <label>Como será pago
+              <select id="din-pacote-modo"></select>
+            </label>
+          </div>
+          <div class="form-grade" id="pacote-params">
+            <label id="pp-valor-inicio" style="display:none">Valor pago no início (R$)
+              <input type="number" step="0.01" min="0" id="din-pp-valor-inicio" />
+            </label>
+            <label id="pp-x" style="display:none">Pagar a cada quantas sessões?
+              <input type="number" min="1" id="din-pp-x" />
+            </label>
+            <label id="pp-entrada" style="display:none">Valor da entrada (R$)
+              <input type="number" step="0.01" min="0" id="din-pp-entrada" />
+            </label>
+            <label id="pp-nparcelas" style="display:none">Quantidade de parcelas mensais
+              <input type="number" min="1" id="din-pp-nparcelas" />
+            </label>
+          </div>
+          <div id="pp-parcelas" style="display:none">
+            <p class="dica">Parcelas em datas específicas:</p>
+            <div id="lista-parcelas"></div>
+            <button type="button" class="argos-btn small" id="btn-add-parcela">+ Adicionar parcela</button>
+          </div>
+        </div>
+
+        <label class="linha-check" style="margin-top:12px">
+          <input type="checkbox" id="din-ativo" checked /> Dinâmica ativa
+        </label>
+
+        <div class="argos-modal-acoes">
+          <button type="button" class="argos-btn ghost" data-fechar>Cancelar</button>
+          <button type="submit" class="argos-btn primary">Salvar dinâmica</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ============ MODAL: SESSÃO AVULSA ============ -->
+  <div class="argos-modal-fundo" id="modal-avulsa">
+    <div class="argos-modal">
+      <div class="argos-modal-topo">
+        <h2>Nova sessão avulsa</h2>
+        <button class="argos-modal-x" data-fechar>×</button>
+      </div>
+      <form id="form-avulsa" class="argos-form">
+        <div class="form-grade">
+          <label>Data *
+            <input type="date" id="avu-data" required />
+          </label>
+          <label>Hora *
+            <input type="time" id="avu-hora" required />
+          </label>
+          <label>Duração (min)
+            <input type="number" min="5" step="5" id="avu-duracao" value="60" />
+          </label>
+          <label>Valor da sessão (R$)
+            <input type="number" step="0.01" min="0" id="avu-valor" />
+          </label>
+          <label>Espaço
+            <select id="avu-sala"></select>
+          </label>
+          <label>Profissional
+            <select id="avu-profissional"><option value="">— Selecionar —</option></select>
+          </label>
+          <label>Atividade/serviço
+            <select id="avu-servico"><option value="">—</option></select>
+          </label>
+        </div>
+        <div class="argos-modal-acoes">
+          <button type="button" class="argos-btn ghost" data-fechar>Cancelar</button>
+          <button type="submit" class="argos-btn primary">Adicionar sessão</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ============ MODAL: ESPAÇOS (salas) ============ -->
+  <div class="argos-modal-fundo" id="modal-salas">
+    <div class="argos-modal">
+      <div class="argos-modal-topo">
+        <h2>Espaços de atendimento</h2>
+        <button class="argos-modal-x" data-fechar>×</button>
+      </div>
+      <div id="lista-salas"></div>
+      <form id="form-sala" class="argos-form" style="margin-top:10px">
+        <div style="display:flex; gap:8px">
+          <input type="text" id="sala-nome" placeholder="Nome do espaço (ex.: Sala A)" style="flex:1" />
+          <button type="submit" class="argos-btn primary">Adicionar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ============ MODAL: EXCLUSÃO DO PACIENTE ============ -->
+  <div class="argos-modal-fundo" id="modal-excluir">
+    <div class="argos-modal">
+      <div class="argos-modal-topo">
+        <h2 id="modal-excluir-titulo">Excluir paciente</h2>
+        <button class="argos-modal-x" data-fechar>×</button>
+      </div>
+      <p class="dica" style="margin-bottom:12px">O histórico de frequência e financeiro não precisa ser apagado junto. Escolha o que fazer:</p>
+      <label class="opcao-excluir"><input type="radio" name="modo-excluir" value="manter" checked />
+        <span><b>Manter históricos</b> — remove os dados cadastrais do paciente, mas a frequência e o financeiro continuam no sistema (anonimizados).</span>
+      </label>
+      <label class="opcao-excluir"><input type="radio" name="modo-excluir" value="pdf" />
+        <span><b>Baixar PDF e apagar tudo</b> — gera o histórico completo de frequência e financeiro para impressão/PDF e depois apaga tudo.</span>
+      </label>
+      <label class="opcao-excluir"><input type="radio" name="modo-excluir" value="tudo" />
+        <span><b>Apagar tudo</b> — remove o paciente e todos os históricos definitivamente.</span>
+      </label>
+      <div class="argos-modal-acoes">
+        <button type="button" class="argos-btn ghost" data-fechar>Cancelar</button>
+        <button type="button" class="argos-btn danger" id="btn-confirmar-exclusao">Confirmar</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="pacientes.js?v=1"></script>
+  <script type="module" src="argos-zoom.js?v=4"></script>
+</body>
+</html>
