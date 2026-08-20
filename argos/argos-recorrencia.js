@@ -176,12 +176,19 @@ export function unidadeRepasse(d) {
         : d.acordo_tipo === 'pacote' ? 'do pacote' : 'por sessão';
 }
 
-/** Lista de repasses da dinâmica: [{profissional_id, tipo:'percentual'|'valor', valor}].
- *  Dinâmicas antigas (campo único repasse_percentual) entram como um repasse em %. */
+/** Profissionais responsáveis da dinâmica, com serviço e repasse:
+ *  [{profissional_id, servico_id, tipo:'percentual'|'valor', valor}].
+ *  valor vazio/0 = profissional atende mas não recebe por produção.
+ *  Dinâmicas antigas (profissional_id/servico_id/repasse_percentual em campos
+ *  próprios) entram como uma linha equivalente. */
 export function repassesDe(d) {
     if (Array.isArray(d.repasses)) return d.repasses.filter(r => r && r.profissional_id);
-    if (d.repasse_percentual != null && d.profissional_id) {
-        return [{ profissional_id: d.profissional_id, tipo: 'percentual', valor: Number(d.repasse_percentual) }];
+    if (d.profissional_id) {
+        return [{
+            profissional_id: d.profissional_id, servico_id: d.servico_id || null,
+            tipo: 'percentual',
+            valor: d.repasse_percentual != null ? Number(d.repasse_percentual) : null
+        }];
     }
     return [];
 }

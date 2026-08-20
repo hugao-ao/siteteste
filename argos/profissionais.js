@@ -48,20 +48,20 @@ function formataMoeda(v) {
 
 const pctFmt = x => (Math.round(x * 100) / 100).toLocaleString('pt-BR');
 
-// pacientes ligados ao profissional (atende e/ou recebe repasse) via dinâmicas ativas
+// pacientes ligados ao profissional (responsável e/ou recebe repasse),
+// lidos da lista de repasses das dinâmicas ativas — a fonte única
 function pacientesDoProfissional(profId) {
     const porPaciente = new Map();
     dinamicas.filter(d => d.ativo !== false).forEach(d => {
         const meusRep = repassesDe(d).filter(r => r.profissional_id === profId);
-        if (d.profissional_id !== profId && !meusRep.length) return;
+        if (!meusRep.length) return;
         const p = pacientes.find(x => x.id === d.paciente_id);
         if (!p || p.cadastro_removido) return;
         const atual = porPaciente.get(p.id) || { nome: p.nome, rotulos: [] };
-        if (meusRep.length) {
-            meusRep.forEach(r => atual.rotulos.push(r.tipo === 'valor'
+        meusRep.forEach(r => atual.rotulos.push(!(Number(r.valor) > 0) ? 'sem repasse'
+            : r.tipo === 'valor'
                 ? `${formataMoeda(r.valor)} (${pctFmt(fracaoRepasse(d, r) * 100)}%)`
                 : `${pctFmt(Number(r.valor))}%`));
-        } else atual.rotulos.push('sem repasse');
         porPaciente.set(p.id, atual);
     });
     return [...porPaciente.values()].sort((a, b) => a.nome.localeCompare(b.nome));

@@ -218,7 +218,15 @@ function sessoesDoIntervalo(de, ate) {
     let lista = mesclarSessoes(dinamicas, sessoes, de, ate);
     if (filtro === 'sem') lista = lista.filter(s => !s.sala_id);
     else if (filtro !== 'geral') lista = lista.filter(s => s.sala_id === filtro);
-    if (filtroProf && filtroProf !== 'todos') lista = lista.filter(s => s.profissional_id === filtroProf);
+    if (filtroProf && filtroProf !== 'todos') {
+        // o profissional pode ser qualquer um dos responsáveis da dinâmica
+        // (lista de repasses), não só o "principal" gravado na sessão
+        const dinsDoProf = new Set(dinamicas
+            .filter(d => repassesDe(d).some(r => r.profissional_id === filtroProf))
+            .map(d => d.id));
+        lista = lista.filter(s => s.profissional_id === filtroProf
+            || (s.dinamica_ref && dinsDoProf.has(s.dinamica_ref)));
+    }
     return lista;
 }
 
