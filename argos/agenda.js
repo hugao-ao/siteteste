@@ -12,7 +12,7 @@ import {
 
 let perm = { pode: () => true, aplicarVisibilidade: () => {}, master: true };
 let pacientes = [], salas = [], profissionais = [], dinamicas = [], sessoes = [];
-let grupos = [], grupoMembros = [];
+let grupos = [], grupoMembros = [], grupoProfs = [];
 let segunda = segundaDaSemana(hojeISO()); // início da semana exibida
 let sessaoAberta = null;                  // sessão do modal de marcação
 
@@ -26,16 +26,17 @@ const nomeSala = id => (salas.find(s => s.id === id) || {}).nome || 'Sem espaço
 const nomeProf = id => (profissionais.find(p => p.id === id) || {}).nome || '—';
 
 async function carregarTudo() {
-    const [rPac, rSalas, rProf, rDin, rSes, rGru, rMem] = await Promise.all([
+    const [rPac, rSalas, rProf, rDin, rSes, rGru, rMem, rGP] = await Promise.all([
         sb.from('argos_pacientes').select('id, nome, ativo, cadastro_removido').order('nome'),
         sb.from('argos_salas').select('*').order('nome'),
         sb.from('argos_profissionais').select('*').order('nome'),
         sb.from('argos_dinamicas').select('*'),
         sb.from('argos_sessoes').select('*'),
         sb.from('argos_grupos').select('*').order('hora'),
-        sb.from('argos_grupo_membros').select('*')
+        sb.from('argos_grupo_membros').select('*'),
+        sb.from('argos_grupo_profissionais').select('*')
     ]);
-    const erro = rPac.error || rSalas.error || rProf.error || rDin.error || rSes.error || rGru.error || rMem.error;
+    const erro = rPac.error || rSalas.error || rProf.error || rDin.error || rSes.error || rGru.error || rMem.error || rGP.error;
     if (erro) { console.error(erro); toast('Erro ao carregar a agenda.', true); return; }
     pacientes = rPac.data || [];
     salas = rSalas.data || [];
@@ -44,6 +45,7 @@ async function carregarTudo() {
     sessoes = rSes.data || [];
     grupos = rGru.data || [];
     grupoMembros = rMem.data || [];
+    grupoProfs = rGP.data || [];
     montarFiltroSalas();
     renderTudo();
 }
@@ -252,6 +254,13 @@ const dowDe = iso => paraData(iso).getDay();
 
 function membrosDoGrupo(gid) { return grupoMembros.filter(m => m.grupo_id === gid); }
 
+function profsDoGrupo(gid) { return grupoProfs.filter(x => x.grupo_id === gid).map(x => x.profissional_id); }
+function nomesProfsDoGrupo(g) {
+    const ids = profsDoGrupo(g.id);
+    if (!ids.length && g.profissional_id) ids.push(g.profissional_id);
+    return ids.map(nomeProf).join(', ');
+}
+
 // sessão individual fica escondida quando o paciente é membro de um grupo
 // que acontece naquele mesmo dia-da-semana e horário (a agenda mostra o GRUPO)
 function cobertaPorGrupo(s) {
@@ -265,7 +274,8 @@ function gruposDoDia(iso) {
     const filtroProf = document.getElementById('filtro-prof').value;
     return grupos.filter(g => g.ativo !== false && g.dow === dowDe(iso))
         .filter(g => filtroSala === 'geral' ? true : (filtroSala === 'sem' ? !g.sala_id : g.sala_id === filtroSala))
-        .filter(g => (!filtroProf || filtroProf === 'todos') ? true : g.profissional_id === filtroProf)
+        .filter(g => (!filtroProf || filtroProf === 'todos') ? true
+            : (profsDoGrupo(g.id).includes(filtroProf) || g.profissional_id === filtroProf))
         .sort((a, b) => a.hora.localeCompare(b.hora));
 }
 
@@ -274,7 +284,7 @@ function grupoChipHTML(g, iso, compacta) {
     return `
       <div class="agenda-chip grupo ${compacta ? 'compacta' : ''}" draggable="true"
            data-grupo="${g.id}" data-grupo-iso="${iso}" style="--c:#38bdf8"
-           title="Grupo ${esc(g.nome)} · ${esc(nomeSala(g.sala_id))}${g.profissional_id ? ' · ' + esc(nomeProf(g.profissional_id)) : ''} · ${n} paciente(s) — toque para abrir">
+           title="Grupo ${esc(g.nome)} · ${esc(nomeSala(g.sala_id))}${nomesProfsDoGrupo(g) ? ' · 🧑‍⚕️ ' + esc(nomesProfsDoGrupo(g)) : ''} · ${n} paciente(s) — toque para abrir">
         <b>${g.hora}</b> 👥 ${esc(g.nome)}
         ${compacta ? '' : `<div class="chip-sub">${esc(nomeSala(g.sala_id))} · ${n} paciente(s)</div>`}
       </div>`;
@@ -435,16 +445,18 @@ async function registrarEvento(pacienteId, tipo, descricao, dados, justificativa
 }
 
 async function recarregarSessoes() {
-    const [rSes, rDin, rGru, rMem] = await Promise.all([
+    const [rSes, rDin, rGru, rMem, rGP] = await Promise.all([
         sb.from('argos_sessoes').select('*'),
         sb.from('argos_dinamicas').select('*'),
         sb.from('argos_grupos').select('*').order('hora'),
-        sb.from('argos_grupo_membros').select('*')
+        sb.from('argos_grupo_membros').select('*'),
+        sb.from('argos_grupo_profissionais').select('*')
     ]);
     sessoes = rSes.data || sessoes;
     dinamicas = rDin.data || dinamicas;
     grupos = rGru.data || grupos;
     grupoMembros = rMem.data || grupoMembros;
+    grupoProfs = rGP.data || grupoProfs;
     renderTudo();
     const modalGrupo = document.getElementById('modal-grupo');
     if (modalGrupo && modalGrupo.classList.contains('aberto') && grupoAberto) renderModalGrupo();
@@ -623,7 +635,7 @@ function renderModalGrupo() {
     const membrosG = membrosDoGrupo(g.id);
     document.getElementById('modal-grupo-titulo').textContent = `👥 ${g.nome}`;
     document.getElementById('grupo-info').innerHTML =
-        `<b>${DOW_NOMES[g.dow]} às ${g.hora}</b> · ocorrência de <b>${formataBR(iso)}</b> · 🚪 ${esc(nomeSala(g.sala_id))}${g.profissional_id ? ' · 🧑‍⚕️ ' + esc(nomeProf(g.profissional_id)) : ''} · ${membrosG.length} paciente(s)`;
+        `<b>${DOW_NOMES[g.dow]} às ${g.hora}</b> · ocorrência de <b>${formataBR(iso)}</b> · 🚪 ${esc(nomeSala(g.sala_id))}${nomesProfsDoGrupo(g) ? ' · 🧑‍⚕️ ' + esc(nomesProfsDoGrupo(g)) : ''} · ${membrosG.length} paciente(s)`;
 
     const mesclado = mesclarSessoes(dinamicas, sessoes, iso, iso);
     const outrosGrupos = grupos.filter(x => x.id !== g.id && x.ativo !== false);
@@ -671,7 +683,7 @@ function sessaoParaMembro(pacId) {
         s = {
             id: null, paciente_id: pacId, dinamica_ref: null,
             data: iso, hora: g.hora, duracao_min: g.duracao_min || 60,
-            sala_id: g.sala_id, profissional_id: g.profissional_id,
+            sala_id: g.sala_id, profissional_id: profsDoGrupo(g.id)[0] || g.profissional_id || null,
             servico_id: g.servico_id, status: '??', grupo_id: g.id, grupo_ref: g.id
         };
     }
@@ -787,14 +799,16 @@ function abrirFormGrupo(id) {
     document.getElementById('gru-dow').innerHTML = DOW_NOMES.map((n, i) => `<option value="${i}">${n}</option>`).join('');
     document.getElementById('gru-sala').innerHTML = '<option value="">— Sem espaço definido —</option>' +
         salas.map(s => `<option value="${s.id}">${esc(s.nome)}</option>`).join('');
-    document.getElementById('gru-prof').innerHTML = '<option value="">— Nenhum —</option>' +
-        profissionais.map(p => `<option value="${p.id}">${esc(p.nome)}</option>`).join('');
+    const marcados = g ? profsDoGrupo(g.id) : [];
+    document.getElementById('gru-profs').innerHTML = profissionais.map(p => `
+        <label class="linha-check" style="margin:2px 0">
+          <input type="checkbox" value="${p.id}" ${marcados.includes(p.id) ? 'checked' : ''} /> ${esc(p.nome)}
+        </label>`).join('') || '<span class="dim">Nenhum profissional cadastrado ainda.</span>';
     document.getElementById('gru-nome').value = g ? g.nome : '';
     document.getElementById('gru-dow').value = g ? g.dow : dowDe(hojeISO());
     document.getElementById('gru-hora').value = g ? g.hora : '09:00';
     document.getElementById('gru-duracao').value = g ? g.duracao_min : 60;
     document.getElementById('gru-sala').value = g ? (g.sala_id || '') : '';
-    document.getElementById('gru-prof').value = g ? (g.profissional_id || '') : '';
     abrirModal('modal-grupo-form');
 }
 
@@ -815,24 +829,27 @@ async function salvarSlotDeGrupo(gid, registro) {
         const atual = gid ? grupos.find(x => x.id === gid) : null;
         if (!atual) {
             toast(`⛔ Esse horário já é do grupo "${ocupante.nome}". Realoque-o primeiro ou escolha outro horário/espaço.`, true);
-            return false;
+            return null;
         }
         const trocar = confirm(`O horário escolhido já é do grupo "${ocupante.nome}".\n\nDeseja TROCAR os horários entre "${atual.nome}" e "${ocupante.nome}"?\n(OK = trocar · Cancelar = não fazer nada)`);
-        if (!trocar) return false;
+        if (!trocar) return null;
         const { error: eT } = await sb.from('argos_grupos').update({
             dow: atual.dow, hora: atual.hora, sala_id: atual.sala_id, duracao_min: atual.duracao_min
         }).eq('id', ocupante.id);
-        if (eT) { toast('Erro ao trocar os grupos.', true); return false; }
+        if (eT) { toast('Erro ao trocar os grupos.', true); return null; }
         // dinâmicas atreladas ao grupo trocado acompanham o novo horário dele
         await sb.from('argos_dinamicas').update({
             dias: [{ dow: atual.dow, hora: atual.hora }],
             sala_id: atual.sala_id, duracao_min: atual.duracao_min
         }).eq('grupo_id', ocupante.id);
     }
-    let error;
+    let error, salvoId = gid;
     if (gid) ({ error } = await sb.from('argos_grupos').update(registro).eq('id', gid));
-    else ({ error } = await sb.from('argos_grupos').insert(registro));
-    if (error) { console.error(error); toast('Erro ao salvar grupo.', true); return false; }
+    else {
+        const { data, error: e2 } = await sb.from('argos_grupos').insert(registro).select().single();
+        error = e2; salvoId = data && data.id;
+    }
+    if (error) { console.error(error); toast('Erro ao salvar grupo.', true); return null; }
     if (gid) {
         // dinâmicas atreladas a este grupo acompanham o novo dia/horário/espaço
         await sb.from('argos_dinamicas').update({
@@ -840,23 +857,30 @@ async function salvarSlotDeGrupo(gid, registro) {
             sala_id: registro.sala_id, duracao_min: registro.duracao_min
         }).eq('grupo_id', gid);
     }
-    return true;
+    return salvoId;
 }
 
 document.getElementById('form-grupo').addEventListener('submit', async (e) => {
     e.preventDefault();
+    const profIds = Array.from(document.querySelectorAll('#gru-profs input:checked')).map(x => x.value);
     const registro = {
         nome: document.getElementById('gru-nome').value.trim(),
         dow: Number(document.getElementById('gru-dow').value),
         hora: document.getElementById('gru-hora').value,
         duracao_min: Number(document.getElementById('gru-duracao').value) || 60,
         sala_id: document.getElementById('gru-sala').value || null,
-        profissional_id: document.getElementById('gru-prof').value || null,
+        profissional_id: profIds[0] || null,
         ativo: true
     };
     if (!registro.nome || !registro.hora) { toast('Informe nome e hora do grupo.', true); return; }
-    const ok = await salvarSlotDeGrupo(editandoGrupoId, registro);
-    if (!ok) return;
+    const salvoId = await salvarSlotDeGrupo(editandoGrupoId, registro);
+    if (!salvoId) return;
+    // sincroniza os profissionais condutores do grupo
+    await sb.from('argos_grupo_profissionais').delete().eq('grupo_id', salvoId);
+    if (profIds.length) {
+        await sb.from('argos_grupo_profissionais')
+            .insert(profIds.map(id => ({ grupo_id: salvoId, profissional_id: id })));
+    }
     fecharModal('modal-grupo-form');
     toast('Grupo salvo.');
     await recarregarSessoes();

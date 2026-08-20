@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=0.1, maximum-scale=10, user-scalable=yes" />
   <title>Argos Gestão — Agenda e Logística</title>
   <script src="argos-guard.js"></script>
-  <link rel="stylesheet" href="argos-style.css?v=6" />
+  <link rel="stylesheet" href="argos-style.css?v=7" />
 </head>
 <body>
   <header class="argos-topbar">
@@ -176,10 +176,10 @@
           <label>Espaço
             <select id="gru-sala"></select>
           </label>
-          <label>Profissional (opcional)
-            <select id="gru-prof"></select>
-          </label>
         </div>
+        <label>Profissionais que conduzem o grupo (pode marcar mais de um)
+          <div id="gru-profs" class="checks-lista"></div>
+        </label>
         <div class="argos-modal-acoes">
           <button type="button" class="argos-btn ghost" data-fechar>Cancelar</button>
           <button type="submit" class="argos-btn primary">Salvar grupo</button>
@@ -205,7 +205,7 @@
     </div>
   </div>
 
-  <script type="module" src="agenda.js?v=7"></script>
+  <script type="module" src="agenda.js?v=8"></script>
   <script type="module" src="argos-zoom.js?v=4"></script>
 </body>
 </html>

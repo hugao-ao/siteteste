@@ -7,7 +7,13 @@ import { sb, toast, esc, abrirModal, fecharModal } from './argos-common.js';
 import { carregarPermissoes } from './argos-permissoes.js';
 
 let perm = { pode: () => true, aplicarVisibilidade: () => {}, master: true };
-let profissionais = [], servicos = [], vinculos = [];
+let profissionais = [], servicos = [], vinculos = [], dinamicas = [], pacientes = [];
+
+const REMUNERACAO_LABELS = {
+    fixo: '💼 Repasse fixo mensal',
+    producao: '💼 % por produção',
+    producao_fixo: '💼 Produção + fixo mensal'
+};
 let editandoProfId = null;
 let profServicoAtual = null; // profissional do modal de serviços
 
@@ -18,17 +24,38 @@ export function normalizar(s) {
 }
 
 async function carregarTudo() {
-    const [rProf, rServ, rVinc] = await Promise.all([
+    const [rProf, rServ, rVinc, rDin, rPac] = await Promise.all([
         sb.from('argos_profissionais').select('*').order('nome'),
         sb.from('argos_servicos_base').select('*').order('nome'),
-        sb.from('argos_profissional_servicos').select('*')
+        sb.from('argos_profissional_servicos').select('*'),
+        sb.from('argos_dinamicas').select('*'),
+        sb.from('argos_pacientes').select('id, nome, cadastro_removido')
     ]);
-    const erro = rProf.error || rServ.error || rVinc.error;
+    const erro = rProf.error || rServ.error || rVinc.error || rDin.error || rPac.error;
     if (erro) { console.error(erro); toast('Erro ao carregar dados.', true); return; }
     profissionais = rProf.data || [];
     servicos = rServ.data || [];
     vinculos = rVinc.data || [];
+    dinamicas = rDin.data || [];
+    pacientes = rPac.data || [];
     renderLista();
+}
+
+function formataMoeda(v) {
+    return (Number(v) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+}
+
+// pacientes atendidos pelo profissional (via dinâmicas ativas) com o % de repasse
+function pacientesDoProfissional(profId) {
+    const porPaciente = new Map();
+    dinamicas.filter(d => d.profissional_id === profId && d.ativo !== false).forEach(d => {
+        const p = pacientes.find(x => x.id === d.paciente_id);
+        if (!p || p.cadastro_removido) return;
+        const atual = porPaciente.get(p.id) || { nome: p.nome, percentuais: [] };
+        atual.percentuais.push(d.repasse_percentual != null ? Number(d.repasse_percentual) : null);
+        porPaciente.set(p.id, atual);
+    });
+    return [...porPaciente.values()].sort((a, b) => a.nome.localeCompare(b.nome));
 }
 
 function renderLista() {
@@ -41,6 +68,10 @@ function renderLista() {
         const meus = vinculos.filter(v => v.profissional_id === p.id)
             .map(v => servicos.find(s => s.id === v.servico_id)).filter(Boolean)
             .sort((a, b) => a.nome.localeCompare(b.nome));
+        const meusPacientes = pacientesDoProfissional(p.id);
+        const remun = REMUNERACAO_LABELS[p.remuneracao_tipo || 'producao'];
+        const fixoTxt = (p.remuneracao_tipo === 'fixo' || p.remuneracao_tipo === 'producao_fixo') && p.valor_fixo_mensal != null
+            ? ` — ${formataMoeda(p.valor_fixo_mensal)}/mês` : '';
         return `
         <div class="argos-minicard">
           <div class="mini-topo">
@@ -50,6 +81,15 @@ function renderLista() {
               <button class="argos-btn small danger" data-acao="excluir" data-id="${p.id}">🗑️</button>` : ''}
             </span>
           </div>
+          <div class="mini-info">${esc(remun)}${esc(fixoTxt)}</div>
+          ${meusPacientes.length ? `
+          <div class="mini-info">
+            <b>Pacientes e % de repasse:</b><br>
+            ${meusPacientes.map(mp => {
+                const pct = mp.percentuais.map(x => x == null ? 'sem %' : x + '%').join(' / ');
+                return `${esc(mp.nome)} — <b>${esc(pct)}</b>`;
+            }).join('<br>')}
+          </div>` : ''}
           <div class="chips-servicos">
             ${meus.map(s => `<span class="chip-servico">${esc(s.nome)}${podeServicos ? `<button data-acao="desvincular" data-id="${p.id}" data-servico="${s.id}" title="Remover este serviço do profissional">×</button>` : ''}</span>`).join('')
               || '<span class="dim">Nenhum serviço vinculado.</span>'}
@@ -74,6 +114,9 @@ document.getElementById('lista-profissionais').addEventListener('click', async (
         editandoProfId = p.id;
         document.getElementById('modal-prof-titulo').textContent = 'Editar profissional';
         document.getElementById('prof-nome').value = p.nome;
+        document.getElementById('prof-remuneracao').value = p.remuneracao_tipo || 'producao';
+        document.getElementById('prof-fixo').value = p.valor_fixo_mensal != null ? p.valor_fixo_mensal : '';
+        atualizarCampoFixo();
         abrirModal('modal-prof');
     }
     if (btn.dataset.acao === 'excluir') {
@@ -101,10 +144,20 @@ document.getElementById('lista-profissionais').addEventListener('click', async (
 });
 
 // ---------- CRUD do profissional ----------
+function atualizarCampoFixo() {
+    const tipo = document.getElementById('prof-remuneracao').value;
+    document.getElementById('rotulo-fixo').style.display =
+        (tipo === 'fixo' || tipo === 'producao_fixo') ? '' : 'none';
+}
+document.getElementById('prof-remuneracao').addEventListener('change', atualizarCampoFixo);
+
 document.getElementById('btn-novo-prof').addEventListener('click', () => {
     editandoProfId = null;
     document.getElementById('modal-prof-titulo').textContent = 'Novo profissional';
     document.getElementById('prof-nome').value = '';
+    document.getElementById('prof-remuneracao').value = 'producao';
+    document.getElementById('prof-fixo').value = '';
+    atualizarCampoFixo();
     abrirModal('modal-prof');
 });
 
@@ -112,9 +165,16 @@ document.getElementById('form-prof').addEventListener('submit', async (e) => {
     e.preventDefault();
     const nome = document.getElementById('prof-nome').value.trim();
     if (!nome) return;
+    const remuneracao_tipo = document.getElementById('prof-remuneracao').value;
+    const fixoBruto = document.getElementById('prof-fixo').value;
+    const registro = {
+        nome, remuneracao_tipo,
+        valor_fixo_mensal: (remuneracao_tipo === 'fixo' || remuneracao_tipo === 'producao_fixo') && fixoBruto !== ''
+            ? Number(fixoBruto) : null
+    };
     const q = editandoProfId
-        ? sb.from('argos_profissionais').update({ nome }).eq('id', editandoProfId)
-        : sb.from('argos_profissionais').insert({ nome });
+        ? sb.from('argos_profissionais').update(registro).eq('id', editandoProfId)
+        : sb.from('argos_profissionais').insert(registro);
     const { error } = await q;
     if (error) { console.error(error); toast('Erro ao salvar.', true); return; }
     fecharModal('modal-prof');

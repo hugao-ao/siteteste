@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=0.1, maximum-scale=10, user-scalable=yes" />
   <title>Argos Gestão — Fechamento Mensal</title>
   <script src="argos-guard.js"></script>
-  <link rel="stylesheet" href="argos-style.css?v=6" />
+  <link rel="stylesheet" href="argos-style.css?v=7" />
 </head>
 <body>
   <header class="argos-topbar">
@@ -50,6 +50,23 @@
       <div class="argos-tabela-vazia" id="fechamento-vazio" style="display:none">Nenhum movimento neste mês.</div>
     </div>
 
+    <div id="bloco-repasses" data-argos-recurso="fechamento_repasses" style="margin-top:24px">
+      <h2 class="form-secao">💼 Repasses aos profissionais</h2>
+      <div class="argos-tabela-wrap">
+        <table class="argos-tabela">
+          <thead>
+            <tr><th>Profissional</th><th>Fixo mensal</th><th>Produção (pelos % das dinâmicas)</th><th>Total do repasse</th></tr>
+          </thead>
+          <tbody id="tbody-repasses"></tbody>
+          <tfoot>
+            <tr class="linha-total"><td><b>Total de repasses</b></td><td></td><td></td><td id="r-total"></td></tr>
+            <tr class="linha-total"><td><b>Parte da clínica</b> (faturamento − repasses)</td><td></td><td></td><td id="r-clinica"></td></tr>
+          </tfoot>
+        </table>
+      </div>
+      <p class="dica">Produção = % de repasse de cada dinâmica aplicado ao faturamento do mês daquele paciente. Sessões avulsas sem % e anamneses ficam integralmente com a clínica.</p>
+    </div>
+
     <p class="dica" style="margin-top:12px">
       Regras: <b>Ok</b> e <b>Fc</b> cobram; <b>??</b> com data futura conta como presença projetada (projeção de faturamento);
       <b>??</b> vencida não cobra e aparece como pendência; <b>Fj</b> e <b>Nc</b> não cobram.
@@ -57,7 +74,7 @@
     </p>
   </main>
 
-  <script type="module" src="fechamento.js?v=2"></script>
+  <script type="module" src="fechamento.js?v=3"></script>
   <script type="module" src="argos-zoom.js?v=4"></script>
 </body>
 </html>
