@@ -498,6 +498,49 @@ body.modal-aberto { overflow: hidden; }
     color: var(--c, #94a3b8);
 }
 
+/* ---------- Agenda mensal ---------- */
+.agenda-grade.mes { grid-template-columns: repeat(7, minmax(105px, 1fr)); }
+.agenda-cabecalho {
+    text-align: center;
+    font-weight: 700;
+    font-size: .78rem;
+    color: var(--argos-text-dim);
+    padding: 2px 0;
+}
+.agenda-dia.mes-dia { min-height: 74px; padding: 6px; }
+.agenda-dia.mes-dia.fora { opacity: .35; background: transparent; }
+.agenda-chip.compacta {
+    padding: 2px 6px;
+    font-size: .7rem;
+    margin-bottom: 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* ---------- Agenda por período ---------- */
+.periodo-dia {
+    background: var(--argos-surface);
+    border: 1px solid var(--argos-border);
+    border-radius: 10px;
+    padding: 10px 12px;
+    margin-bottom: 10px;
+}
+.periodo-dia.hoje { border-color: var(--argos-primary); }
+.periodo-data {
+    font-weight: 700;
+    font-size: .85rem;
+    color: var(--argos-text-dim);
+    margin-bottom: 8px;
+}
+.periodo-dia.hoje .periodo-data { color: var(--argos-primary); }
+.periodo-chips {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 6px;
+}
+.periodo-chips .agenda-chip { margin-bottom: 0; }
+
 /* ---------- Botões de status (Ok/Fj/Fc/Nc) ---------- */
 .botoes-status { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 8px; }
 .botoes-status.compacto { display: flex; gap: 6px; }

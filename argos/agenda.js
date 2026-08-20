@@ -6,7 +6,7 @@ import { sb, toast, esc, abrirModal, fecharModal } from './argos-common.js';
 import { carregarPermissoes } from './argos-permissoes.js';
 import {
     STATUS_SESSAO, DOW_NOMES, mesclarSessoes, hojeISO, somarDias, paraData,
-    paraISO, formataBR
+    paraISO, formataBR, fimDoMes
 } from './argos-recorrencia.js';
 
 let perm = { pode: () => true, aplicarVisibilidade: () => {}, master: true };
@@ -52,7 +52,7 @@ function montarFiltroSalas() {
     if (!sel.value) sel.value = 'geral';
 }
 
-function renderTudo() { renderSemana(); renderAvisoPendentes(); }
+function renderTudo() { renderAgenda(); renderAvisoPendentes(); }
 
 // ---------- pendências (sessões vencidas «??») ----------
 function sessoesPendentes() {
@@ -131,55 +131,172 @@ async function marcarSessao(s, status) {
     renderTudo();
 }
 
-// ---------- agenda semanal ----------
-document.getElementById('btn-semana-ant').addEventListener('click', () => { segunda = somarDias(segunda, -7); renderSemana(); });
-document.getElementById('btn-semana-prox').addEventListener('click', () => { segunda = somarDias(segunda, 7); renderSemana(); });
-document.getElementById('btn-hoje').addEventListener('click', () => { segunda = segundaDaSemana(hojeISO()); renderSemana(); });
-document.getElementById('filtro-sala').addEventListener('change', renderSemana);
+// ---------- visões: semana, mês e período (máx. 365 dias) ----------
+let modo = 'semana';
+let mesRef = hojeISO().slice(0, 7);
+let periodo = { de: hojeISO(), ate: somarDias(hojeISO(), 29) };
 
-function renderSemana() {
-    const fim = somarDias(segunda, 6);
-    document.getElementById('rotulo-semana').textContent = `${formataBR(segunda)} — ${formataBR(fim)}`;
+const MES_NOMES = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+    'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+
+function mudarMes(mes, delta) {
+    const [a, m] = mes.split('-').map(Number);
+    const d = new Date(a, m - 1 + delta, 1);
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+}
+
+document.getElementById('modo-visao').addEventListener('change', (e) => {
+    modo = e.target.value;
+    document.getElementById('controles-navegacao').style.display = modo === 'periodo' ? 'none' : '';
+    document.getElementById('controles-periodo').style.display = modo === 'periodo' ? '' : 'none';
+    if (modo === 'periodo') {
+        document.getElementById('periodo-de').value = periodo.de;
+        document.getElementById('periodo-ate').value = periodo.ate;
+    }
+    renderAgenda();
+});
+document.getElementById('btn-ant').addEventListener('click', () => {
+    if (modo === 'semana') segunda = somarDias(segunda, -7);
+    if (modo === 'mes') mesRef = mudarMes(mesRef, -1);
+    renderAgenda();
+});
+document.getElementById('btn-prox').addEventListener('click', () => {
+    if (modo === 'semana') segunda = somarDias(segunda, 7);
+    if (modo === 'mes') mesRef = mudarMes(mesRef, 1);
+    renderAgenda();
+});
+document.getElementById('btn-hoje').addEventListener('click', () => {
+    segunda = segundaDaSemana(hojeISO());
+    mesRef = hojeISO().slice(0, 7);
+    renderAgenda();
+});
+document.getElementById('btn-aplicar-periodo').addEventListener('click', () => {
+    const de = document.getElementById('periodo-de').value;
+    const ate = document.getElementById('periodo-ate').value;
+    if (!de || !ate) { toast('Informe as duas datas do período.', true); return; }
+    if (ate < de) { toast('A data final deve ser igual ou depois da inicial.', true); return; }
+    const dias = Math.round((paraData(ate) - paraData(de)) / 86400000) + 1;
+    if (dias > 365) { toast('O período pode ter no máximo 365 dias.', true); return; }
+    periodo = { de, ate };
+    renderAgenda();
+});
+document.getElementById('filtro-sala').addEventListener('change', renderAgenda);
+
+function sessoesDoIntervalo(de, ate) {
     const filtro = document.getElementById('filtro-sala').value;
-    const hoje = hojeISO();
-
-    let lista = mesclarSessoes(dinamicas, sessoes, segunda, fim);
+    let lista = mesclarSessoes(dinamicas, sessoes, de, ate);
     if (filtro === 'sem') lista = lista.filter(s => !s.sala_id);
     else if (filtro !== 'geral') lista = lista.filter(s => s.sala_id === filtro);
+    return lista;
+}
 
-    // conflitos: mesmo espaço + mesmo horário + pacientes diferentes, com alguma individual
+// conflitos: mesmo espaço + mesmo horário + pacientes diferentes, com alguma individual
+function detectorConflito(lista) {
     const porSlot = {};
     lista.forEach(s => {
         const k = `${s.sala_id || 'x'}|${s.data}|${s.hora}`;
         (porSlot[k] = porSlot[k] || []).push(s);
     });
-    const conflita = s => {
+    return s => {
         const grupo = porSlot[`${s.sala_id || 'x'}|${s.data}|${s.hora}`];
         return grupo.length > 1 && new Set(grupo.map(g => g.paciente_id)).size > 1
             && grupo.some(g => g.modalidade === 'individual');
     };
+}
 
-    document.getElementById('agenda-grade').innerHTML = Array.from({ length: 7 }, (_, i) => {
+function chipSessao(s, conflita, compacta) {
+    const hoje = hojeISO();
+    const vencida = s.status === '??' && s.data < hoje;
+    const titulo = `${nomePac(s.paciente_id)} · ${nomeSala(s.sala_id)} · ${nomeProf(s.profissional_id)}${conflita(s) ? ' · ⚠️ CONFLITO de espaço/horário' : ''}`;
+    return `
+      <div class="agenda-chip ${compacta ? 'compacta' : ''} ${vencida ? 'vencida' : ''} ${conflita(s) ? 'conflito' : ''}"
+           style="--c:${STATUS_SESSAO[s.status].cor}" data-chave="${chaveSessao(s)}" title="${esc(titulo)}">
+        <b>${s.hora}</b> ${esc(nomePac(s.paciente_id))}
+        ${compacta ? '' : `<div class="chip-sub">${esc(nomeSala(s.sala_id))}${s.modalidade === 'grupo' ? ' · 👥' : ''} · <span class="chip-status" style="--c:${STATUS_SESSAO[s.status].cor}">${STATUS_SESSAO[s.status].label}</span>${conflita(s) ? ' ⚠️' : ''}</div>`}
+      </div>`;
+}
+
+function renderAgenda() {
+    const grade = document.getElementById('agenda-grade');
+    const listaPer = document.getElementById('agenda-periodo');
+    grade.style.display = modo === 'periodo' ? 'none' : '';
+    listaPer.style.display = modo === 'periodo' ? '' : 'none';
+    if (modo === 'semana') renderSemana();
+    else if (modo === 'mes') renderMes();
+    else renderPeriodo();
+}
+
+function renderSemana() {
+    const fim = somarDias(segunda, 6);
+    document.getElementById('rotulo-intervalo').textContent = `${formataBR(segunda)} — ${formataBR(fim)}`;
+    const hoje = hojeISO();
+    const grade = document.getElementById('agenda-grade');
+    grade.classList.remove('mes');
+    const lista = sessoesDoIntervalo(segunda, fim);
+    const conflita = detectorConflito(lista);
+
+    grade.innerHTML = Array.from({ length: 7 }, (_, i) => {
         const iso = somarDias(segunda, i);
         const doDia = lista.filter(s => s.data === iso);
         return `
         <div class="agenda-dia ${iso === hoje ? 'hoje' : ''}">
           <div class="agenda-dia-titulo">${DOW_NOMES[paraData(iso).getDay()]} <span>${iso.slice(8)}/${iso.slice(5, 7)}</span></div>
-          ${doDia.map(s => {
-              const vencida = s.status === '??' && s.data < hoje;
-              return `
-              <div class="agenda-chip ${vencida ? 'vencida' : ''} ${conflita(s) ? 'conflito' : ''}"
-                   style="--c:${STATUS_SESSAO[s.status].cor}" data-chave="${chaveSessao(s)}"
-                   title="${esc(nomePac(s.paciente_id))} · ${esc(nomeSala(s.sala_id))} · ${esc(nomeProf(s.profissional_id))}${conflita(s) ? ' · ⚠️ CONFLITO de espaço/horário' : ''}">
-                <b>${s.hora}</b> ${esc(nomePac(s.paciente_id))}
-                <div class="chip-sub">${esc(nomeSala(s.sala_id))}${s.modalidade === 'grupo' ? ' · 👥' : ''} · <span class="chip-status" style="--c:${STATUS_SESSAO[s.status].cor}">${STATUS_SESSAO[s.status].label}</span>${conflita(s) ? ' ⚠️' : ''}</div>
-              </div>`;
-          }).join('') || '<div class="dim agenda-vazio">—</div>'}
+          ${doDia.map(s => chipSessao(s, conflita, false)).join('') || '<div class="dim agenda-vazio">—</div>'}
         </div>`;
     }).join('');
 }
 
-document.getElementById('agenda-grade').addEventListener('click', (e) => {
+function renderMes() {
+    const de = mesRef + '-01';
+    const ate = fimDoMes(mesRef);
+    const [a, m] = mesRef.split('-').map(Number);
+    document.getElementById('rotulo-intervalo').textContent = `${MES_NOMES[m - 1]} de ${a}`;
+    const hoje = hojeISO();
+    const grade = document.getElementById('agenda-grade');
+    grade.classList.add('mes');
+    const lista = sessoesDoIntervalo(de, ate);
+    const conflita = detectorConflito(lista);
+
+    const inicioGrade = segundaDaSemana(de);
+    const fimGrade = somarDias(segundaDaSemana(ate), 6);
+    const cabecalho = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom']
+        .map(n => `<div class="agenda-cabecalho">${n}</div>`).join('');
+
+    let celulas = '';
+    for (let iso = inicioGrade; iso <= fimGrade; iso = somarDias(iso, 1)) {
+        const fora = iso < de || iso > ate;
+        const doDia = fora ? [] : lista.filter(s => s.data === iso);
+        celulas += `
+        <div class="agenda-dia mes-dia ${fora ? 'fora' : ''} ${iso === hoje ? 'hoje' : ''}">
+          <div class="agenda-dia-titulo">${Number(iso.slice(8))}</div>
+          ${doDia.map(s => chipSessao(s, conflita, true)).join('')}
+        </div>`;
+    }
+    grade.innerHTML = cabecalho + celulas;
+}
+
+function renderPeriodo() {
+    const { de, ate } = periodo;
+    const dias = Math.round((paraData(ate) - paraData(de)) / 86400000) + 1;
+    const lista = sessoesDoIntervalo(de, ate);
+    const conflita = detectorConflito(lista);
+    document.getElementById('rotulo-intervalo').textContent =
+        `${formataBR(de)} — ${formataBR(ate)} (${dias} dia(s), ${lista.length} sessão(ões))`;
+
+    const porData = {};
+    lista.forEach(s => { (porData[s.data] = porData[s.data] || []).push(s); });
+    const datas = Object.keys(porData).sort();
+    const hoje = hojeISO();
+
+    document.getElementById('agenda-periodo').innerHTML = datas.map(iso => `
+      <div class="periodo-dia ${iso === hoje ? 'hoje' : ''}">
+        <div class="periodo-data">${DOW_NOMES[paraData(iso).getDay()]} · ${formataBR(iso)}</div>
+        <div class="periodo-chips">${porData[iso].map(s => chipSessao(s, conflita, false)).join('')}</div>
+      </div>`).join('')
+      || '<div class="argos-tabela-vazia">Nenhuma sessão neste período.</div>';
+}
+
+function aoClicarSessao(e) {
     const chip = e.target.closest('[data-chave]');
     if (!chip) return;
     const s = chaves.get(chip.dataset.chave);
@@ -194,7 +311,9 @@ document.getElementById('agenda-grade').addEventListener('click', (e) => {
           <button class="btn-status" style="--c:${STATUS_SESSAO[st].cor}" data-marcar="${st}">
             ${STATUS_SESSAO[st].label}<small>${STATUS_SESSAO[st].desc}</small></button>`).join('');
     abrirModal('modal-sessao');
-});
+}
+document.getElementById('agenda-grade').addEventListener('click', aoClicarSessao);
+document.getElementById('agenda-periodo').addEventListener('click', aoClicarSessao);
 
 document.getElementById('botoes-status').addEventListener('click', async (e) => {
     const btn = e.target.closest('[data-marcar]');
