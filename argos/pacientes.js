@@ -8,7 +8,7 @@ import {
     DOW_NOMES, PACOTE_MODOS, STATUS_SESSAO, acordoLabel, mesclarSessoes,
     fechamentoPaciente, hojeISO, somarDias, formataBR, formataMoeda,
     conflitosDeDinamica, conflitosDeSessao,
-    divisaoRepasses, repassesDe, unidadeRepasse
+    divisaoRepasses, repassesDe, unidadeRepasse, aplicarFimDeProcesso
 } from './argos-recorrencia.js';
 
 let perm = { pode: () => true, aplicarVisibilidade: () => {}, master: true };
@@ -104,6 +104,7 @@ function renderLista() {
             <div class="mini-nome">${esc(p.nome)}</div>
             ${p.cadastro_removido ? '<span class="badge vermelho">Cadastro removido</span>'
               : (p.ativo ? '' : '<span class="badge vermelho">Inativo</span>')}
+            ${!p.cadastro_removido && p.processo_fim_data ? `<span class="badge vermelho">${p.processo_fim_tipo === 'finalizado' ? '🏁 Finalizado' : '⏸️ Interrompido'} em ${formataBR(p.processo_fim_data)}</span>` : ''}
           </div>
           <div class="mini-info">
             ${p.nascimento ? `🎂 ${formataBR(p.nascimento)} (${idade(p.nascimento)})<br>` : ''}
@@ -231,9 +232,44 @@ function resumoRepassesHTML(d) {
 function abrirModalDinamicas(p) {
     pacienteAtual = p;
     document.getElementById('modal-dinamicas-titulo').textContent = `Dinâmicas de ${p.nome}`;
+    renderProcesso();
     renderDinamicas();
     abrirModal('modal-dinamicas');
 }
+
+// ---------- situação do processo (em andamento / interrompido / finalizado) ----------
+function renderProcesso() {
+    const p = pacienteAtual;
+    document.getElementById('pac-proc-tipo').value = p.processo_fim_tipo || '';
+    document.getElementById('pac-proc-data').value = p.processo_fim_data || '';
+    document.getElementById('pac-proc-motivo').value = p.processo_fim_motivo || '';
+}
+
+document.getElementById('btn-proc-salvar').addEventListener('click', async () => {
+    const p = pacienteAtual;
+    if (!p) return;
+    const tipo = document.getElementById('pac-proc-tipo').value || null;
+    const data = document.getElementById('pac-proc-data').value || null;
+    const motivo = document.getElementById('pac-proc-motivo').value.trim() || null;
+    if (tipo && !data) { toast('Informe a data a partir da qual o processo para.', true); return; }
+    const registro = tipo
+        ? { processo_fim_tipo: tipo, processo_fim_data: data, processo_fim_motivo: motivo }
+        : { processo_fim_tipo: null, processo_fim_data: null, processo_fim_motivo: null };
+    const { error } = await sb.from('argos_pacientes').update(registro).eq('id', p.id);
+    if (error) { console.error(error); toast('Erro ao salvar a situação do processo.', true); return; }
+    const descricao = tipo
+        ? `Processo ${tipo} a partir de ${formataBR(data)}: o paciente deixa de constar na agenda e nas finanças a partir dessa data.`
+        : 'Processo retomado (em andamento): o corte de agenda e finanças foi desfeito.';
+    await sb.from('argos_paciente_eventos').insert({
+        paciente_id: p.id, tipo: tipo ? 'processo_' + tipo : 'processo_retomado',
+        descricao, dados: { tipo, data }, justificativa: motivo
+    });
+    toast(tipo ? `Processo ${tipo} a partir de ${formataBR(data)}.` : 'Processo em andamento novamente.');
+    await carregarTudo();
+    pacienteAtual = pacientes.find(x => x.id === p.id) || p;
+    renderProcesso();
+    renderDinamicas();
+});
 
 async function renderDinamicas() {
     const p = pacienteAtual;
@@ -620,7 +656,9 @@ document.getElementById('form-dinamica').addEventListener('submit', async (e) =>
         const outras = dinamicas.filter(d => d.id !== editandoDinamicaId && d.ativo !== false);
         const { data: sessTodas } = await sb.from('argos_sessoes').select('*');
         const sessOutras = (sessTodas || []).filter(s => s.dinamica_ref !== editandoDinamicaId);
-        const conflitos = conflitosDeDinamica({ ...registro, id: editandoDinamicaId || 'nova' }, outras, sessOutras);
+        // pacientes com processo encerrado liberam os horários a partir do corte
+        const cc = aplicarFimDeProcesso(outras, sessOutras, pacientes);
+        const conflitos = conflitosDeDinamica({ ...registro, id: editandoDinamicaId || 'nova' }, cc.dinamicas, cc.sessoes);
         if (conflitos.length) {
             const c = conflitos[0];
             const quem = (pacientes.find(x => x.id === c.outra.paciente_id) || {}).nome || 'outro paciente';
@@ -722,7 +760,8 @@ document.getElementById('form-avulsa').addEventListener('submit', async (e) => {
     };
     // Sessão avulsa é individual: não pode cair em cima de outra sessão
     const { data: sessTodas } = await sb.from('argos_sessoes').select('*');
-    const conflitos = conflitosDeSessao(registro, dinamicas.filter(d => d.ativo !== false), sessTodas || []);
+    const ca = aplicarFimDeProcesso(dinamicas.filter(d => d.ativo !== false), sessTodas || [], pacientes);
+    const conflitos = conflitosDeSessao(registro, ca.dinamicas, ca.sessoes);
     if (conflitos.length) {
         const quem = (pacientes.find(x => x.id === conflitos[0].paciente_id) || {}).nome || 'outro paciente';
         toast(`⛔ Conflito de agenda: já existe sessão de ${quem} nesse horário no mesmo espaço/profissional. A sessão não foi criada.`, true);

@@ -56,7 +56,7 @@ function render() {
 
     document.getElementById('tbody-fechamento').innerHTML = linhas.map(({ p, f }) => `
       <tr class="${p.cadastro_removido ? 'linha-removido' : ''}">
-        <td>${esc(p.nome)}${f.pendencias ? ` <span class="badge vermelho" title="Sessões vencidas sem preenchimento">${f.pendencias} pendência(s)</span>` : ''}</td>
+        <td>${esc(p.nome)}${p.processo_fim_data ? ` <span class="badge vermelho" title="A partir desta data o paciente não conta mais nas finanças">${p.processo_fim_tipo === 'finalizado' ? '🏁 finalizado' : '⏸️ interrompido'} em ${formataBR(p.processo_fim_data)}</span>` : ''}${f.pendencias ? ` <span class="badge vermelho" title="Sessões vencidas sem preenchimento">${f.pendencias} pendência(s)</span>` : ''}</td>
         <td>${f.contagens.ok}</td><td>${f.contagens.fj}</td><td>${f.contagens.fc}</td>
         <td>${f.contagens.nc}</td><td>${f.contagens['??']}</td>
         <td><b>${formataMoeda(f.valor)}</b></td>

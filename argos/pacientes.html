@@ -157,6 +157,20 @@
         <button class="argos-modal-x" data-fechar>×</button>
       </div>
       <div id="lista-dinamicas"></div>
+      <div id="bloco-processo-pac" data-argos-recurso="processo_encerrar">
+        <h3 class="form-secao">🏁 Situação do processo</h3>
+        <p class="dica">Ao interromper ou finalizar, o paciente deixa de constar na agenda, nos grupos e nas finanças a partir da data — não importa o que esteja programado. Voltar para "Em andamento" desfaz o corte.</p>
+        <div class="agenda-nav" style="flex-wrap:wrap; gap:8px">
+          <select id="pac-proc-tipo" class="argos-input">
+            <option value="">▶️ Em andamento</option>
+            <option value="interrompido">⏸️ Interrompido</option>
+            <option value="finalizado">🏁 Finalizado</option>
+          </select>
+          <input type="date" id="pac-proc-data" class="argos-input" title="A partir de" />
+          <input type="text" id="pac-proc-motivo" class="argos-input" placeholder="Motivo (opcional)" style="flex:1; min-width:140px" />
+          <button type="button" class="argos-btn small primary" id="btn-proc-salvar">Salvar situação</button>
+        </div>
+      </div>
       <div class="argos-modal-acoes" style="justify-content:space-between">
         <button type="button" class="argos-btn" id="btn-nova-avulsa" data-argos-recurso="sessao_avulsa_criar">+ Sessão avulsa</button>
         <button type="button" class="argos-btn primary" id="btn-nova-dinamica" data-argos-recurso="dinamicas_gerenciar">+ Nova dinâmica</button>
@@ -428,7 +442,7 @@
     </div>
   </div>
 
-  <script type="module" src="pacientes.js?v=8"></script>
+  <script type="module" src="pacientes.js?v=9"></script>
   <script type="module" src="argos-zoom.js?v=4"></script>
 </body>
 </html>

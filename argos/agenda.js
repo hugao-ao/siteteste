@@ -7,7 +7,7 @@ import { carregarPermissoes } from './argos-permissoes.js';
 import {
     STATUS_SESSAO, DOW_NOMES, mesclarSessoes, hojeISO, somarDias, paraData,
     paraISO, formataBR, fimDoMes, expandirDinamica, conflitosDeSessao,
-    conflitosDeDinamica, repassesDe
+    conflitosDeDinamica, repassesDe, aplicarFimDeProcesso
 } from './argos-recorrencia.js';
 
 let perm = { pode: () => true, aplicarVisibilidade: () => {}, master: true };
@@ -27,7 +27,7 @@ const nomeProf = id => (profissionais.find(p => p.id === id) || {}).nome || '—
 
 async function carregarTudo() {
     const [rPac, rSalas, rProf, rDin, rSes, rGru, rMem, rGP] = await Promise.all([
-        sb.from('argos_pacientes').select('id, nome, ativo, cadastro_removido').order('nome'),
+        sb.from('argos_pacientes').select('id, nome, ativo, cadastro_removido, processo_fim_data, processo_fim_tipo').order('nome'),
         sb.from('argos_salas').select('*').order('nome'),
         sb.from('argos_profissionais').select('*').order('nome'),
         sb.from('argos_dinamicas').select('*'),
@@ -76,7 +76,8 @@ function sessoesPendentes() {
     const deSessoes = sessoes.map(s => s.data).sort()[0];
     const de = [inicio, deSessoes].filter(Boolean).sort()[0];
     if (!de) return [];
-    return mesclarSessoes(dinamicas, sessoes, de, somarDias(hoje, -1))
+    const c = aplicarFimDeProcesso(dinamicas, sessoes, pacientes);
+    return mesclarSessoes(c.dinamicas, c.sessoes, de, somarDias(hoje, -1))
         .filter(s => s.status === '??');
 }
 
@@ -215,7 +216,9 @@ document.getElementById('filtro-prof').addEventListener('change', renderAgenda);
 function sessoesDoIntervalo(de, ate) {
     const filtro = document.getElementById('filtro-sala').value;
     const filtroProf = document.getElementById('filtro-prof').value;
-    let lista = mesclarSessoes(dinamicas, sessoes, de, ate);
+    // processo encerrado/interrompido: o paciente some da agenda a partir da data
+    const c = aplicarFimDeProcesso(dinamicas, sessoes, pacientes);
+    let lista = mesclarSessoes(c.dinamicas, c.sessoes, de, ate);
     if (filtro === 'sem') lista = lista.filter(s => !s.sala_id);
     else if (filtro !== 'geral') lista = lista.filter(s => s.sala_id === filtro);
     if (filtroProf && filtroProf !== 'todos') {
@@ -273,6 +276,8 @@ function sessaoMovidaDaOcorrencia(pacId, g, iso) {
 // (ex.: continuação por novo horário fixo) tiram o paciente das ocorrências
 // seguintes, mas as anteriores e as já registradas continuam aparecendo.
 function participaDaOcorrencia(pacId, g, iso) {
+    const pac = pacientes.find(p => p.id === pacId);
+    if (pac && pac.processo_fim_data && iso >= pac.processo_fim_data) return false;
     if (sessoes.some(s => s.paciente_id === pacId
         && (s.grupo_ref === g.id || s.grupo_id === g.id)
         && (s.data === iso || s.remarcada_de_data === iso))) return true;
@@ -494,8 +499,41 @@ function abrirModalSessaoPara(s) {
         document.getElementById('restaurar-texto').textContent =
             `Desfazer a remarcação e devolver esta sessão para ${formataBR(s.remarcada_de_data)} às ${s.remarcada_de_hora}.`;
     }
+    // interrupção/finalização do processo do paciente a partir de uma data
+    const pacSessao = pacientes.find(p => p.id === s.paciente_id);
+    const podeProcesso = perm.pode('processo_encerrar') && pacSessao && !pacSessao.processo_fim_data;
+    document.getElementById('bloco-processo').style.display = podeProcesso ? '' : 'none';
+    if (podeProcesso) {
+        document.getElementById('proc-tipo').value = 'interrompido';
+        document.getElementById('proc-data').value = s.data;
+        document.getElementById('proc-motivo').value = '';
+    }
     abrirModal('modal-sessao');
 }
+
+// aplica a interrupção/finalização do processo a partir do modal da sessão
+document.getElementById('btn-proc-aplicar').addEventListener('click', async () => {
+    const s = sessaoAberta;
+    if (!s) return;
+    const tipo = document.getElementById('proc-tipo').value;
+    const data = document.getElementById('proc-data').value;
+    const motivo = document.getElementById('proc-motivo').value.trim() || null;
+    if (!data) { toast('Informe a data a partir da qual o processo para.', true); return; }
+    const rotulo = tipo === 'finalizado' ? 'finalizado' : 'interrompido';
+    if (!confirm(`Marcar o processo de ${nomePac(s.paciente_id)} como ${rotulo.toUpperCase()} a partir de ${formataBR(data)}?\nO paciente deixa de constar na agenda e nas finanças a partir dessa data.`)) return;
+    const { error } = await sb.from('argos_pacientes').update({
+        processo_fim_tipo: tipo, processo_fim_data: data, processo_fim_motivo: motivo
+    }).eq('id', s.paciente_id);
+    if (error) { console.error(error); toast('Erro ao registrar o encerramento.', true); return; }
+    await registrarEvento(s.paciente_id, 'processo_' + tipo,
+        `Processo ${rotulo} a partir de ${formataBR(data)}: o paciente deixa de constar na agenda e nas finanças a partir dessa data.`,
+        { tipo, data }, motivo);
+    toast(`Processo ${rotulo} a partir de ${formataBR(data)}.`);
+    fecharModal('modal-sessao');
+    voltarAoGrupo = null;
+    retornarAoDiaSePreciso();
+    await carregarTudo();
+});
 
 // desfaz a remarcação: a sessão volta para a data/hora original
 document.getElementById('btn-restaurar').addEventListener('click', async () => {

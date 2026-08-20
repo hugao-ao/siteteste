@@ -62,6 +62,9 @@ export function expandirDinamica(d, de, ate) {
 
     let fim = ate;
     if (d.fim_tipo === 'data' && d.fim_data && d.fim_data < fim) fim = d.fim_data;
+    // corte duro (encerramento/interrupção do processo do paciente):
+    // vale por cima de qualquer fim programado, sem afetar a contagem de ocorrências
+    if (d.corte_data && d.corte_data < fim) fim = d.corte_data;
     const maxOcorr = d.fim_tipo === 'apos_ocorrencias' ? (d.fim_ocorrencias || 0) : Infinity;
 
     const out = [];
@@ -391,6 +394,26 @@ export function ocorrenciasDaCadeia(root, dinamicas, ateISO) {
     return occ;
 }
 
+/**
+ * Encerramento/interrupção do processo: a partir de paciente.processo_fim_data
+ * o paciente não consta mais na agenda nem nas finanças, não importa o que
+ * esteja programado. Devolve cópias com o corte aplicado:
+ * dinâmicas ganham corte_data (véspera) e sessões a partir da data somem.
+ */
+export function aplicarFimDeProcesso(dinamicas, sessoes, pacientes) {
+    const fimDe = {};
+    (pacientes || []).forEach(p => { if (p && p.processo_fim_data) fimDe[p.id] = p.processo_fim_data; });
+    if (!Object.keys(fimDe).length) return { dinamicas: dinamicas || [], sessoes: sessoes || [] };
+    const dins = (dinamicas || []).map(d => {
+        const fim = fimDe[d.paciente_id];
+        if (!fim) return d;
+        const corte = somarDias(fim, -1);
+        return { ...d, corte_data: d.corte_data && d.corte_data < corte ? d.corte_data : corte };
+    });
+    const sess = (sessoes || []).filter(s => !fimDe[s.paciente_id] || s.data < fimDe[s.paciente_id]);
+    return { dinamicas: dins, sessoes: sess };
+}
+
 /** Último dia do mês 'YYYY-MM' em ISO. */
 export function fimDoMes(mes) {
     const [a, m] = mes.split('-').map(Number);
@@ -407,6 +430,12 @@ export function fechamentoPaciente(paciente, dinamicas, sessoes, mes) {
     const de = mes + '-01';
     const ate = fimDoMes(mes);
     const hoje = hojeISO();
+    // processo encerrado/interrompido: nada conta a partir da data informada
+    if (paciente && paciente.processo_fim_data) {
+        const c = aplicarFimDeProcesso(dinamicas, sessoes, [paciente]);
+        dinamicas = c.dinamicas;
+        sessoes = c.sessoes;
+    }
     const sess = mesclarSessoes(dinamicas, sessoes, de, ate);
 
     const contagens = { '??': 0, ok: 0, fj: 0, fc: 0, nc: 0 };
@@ -430,6 +459,7 @@ export function fechamentoPaciente(paciente, dinamicas, sessoes, mes) {
                 const todas = expandirDinamica({ ...d, ativo: true }, d.data_inicio || de, somarDias(ate, 366 * 3));
                 fimJanela = todas.length ? todas[todas.length - 1].data : null;
             }
+            if (d.corte_data && (!fimJanela || d.corte_data < fimJanela)) fimJanela = d.corte_data;
             const cobre = d.data_inicio && d.data_inicio <= ate && (!fimJanela || fimJanela >= de)
                 && (d.ativo !== false || doMes.length > 0);
             if (cobre) {
