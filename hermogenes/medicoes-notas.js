@@ -1,10 +1,15 @@
 // medicoes-notas.js — Medições por obra (kanban 5 status) e registro de notas fiscais.
 // Salvar a medição atualiza automaticamente o % executado do escopo da obra.
 // Medições FATURADAS/PAGAS viram receitas no Faturamento (derivadas, sem redigitação).
-import { sb, toast, ligarFecharPorBackdrop, esc, fmtMoeda } from './hermo-common.js';
+import { sb, toast, ligarFecharPorBackdrop, esc, fmtMoeda, somarPrazo } from './hermo-common.js';
 
 const $ = id => document.getElementById(id);
 const num = v => { const n = parseFloat(v); return isFinite(n) ? n : 0; };
+// data LOCAL (toISOString seria UTC e viraria "amanhã" à noite no fuso de Recife)
+const hojeLocal = () => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
 
 export const STATUS_MEDICAO = {
     em_elaboracao: { label: 'Em elaboração', cor: '#eab308' },
@@ -114,7 +119,7 @@ function cardMini(m) {
     <div class="kb-card" data-id="${m.id}">
         <div class="kb-l1"><span class="kb-end">${fmtCod(m)}</span></div>
         <div class="kb-meta">🏗️ ${esc(o?.nome || 'obra removida')}</div>
-        <div class="kb-meta">💰 <b>${fmtMoeda(m.valor_liquido)}</b>${periodo ? ` · 📅 ${periodo}` : ''}${nfsAtivas ? ` · 🧾 ${nfsAtivas} NF` : ''}</div>
+        <div class="kb-meta">💰 <b>${fmtMoeda(m.valor_liquido)}</b>${periodo ? ` · 📅 ${periodo}` : ''}${nfsAtivas ? ` · 🧾 ${nfsAtivas} NF` : ''}${m.status !== 'paga' && m.previsao_recebimento ? ` · 📥 ${m.previsao_recebimento.split('-').reverse().slice(0, 2).join('/')}` : ''}</div>
         <div class="kb-acoes">
             <button class="hermo-btn small ghost" data-editar="${m.id}">✎</button>
             <button class="hermo-btn small danger" data-excluir="${m.id}">🗑</button>
@@ -224,6 +229,9 @@ async function abrirModal(medicao) {
     $('md-ate').value = medicao?.periodo_ate || '';
     $('md-status').value = medicao?.status || 'em_elaboracao';
     $('md-pgto').value = medicao?.data_pagamento || '';
+    $('md-prazo-receb').value = medicao?.prazo_receb_dias || '';
+    $('md-prazo-receb-tipo').value = medicao?.prazo_receb_tipo || 'corridos';
+    $('md-previsao').value = medicao?.previsao_recebimento || '';
     $('md-retencao').value = medicao?.retencao_perc || '';
     $('md-desconto').value = medicao?.desconto || '';
     $('md-obs').value = medicao?.observacoes || '';
@@ -368,6 +376,9 @@ async function salvarMedicao() {
             valor_liquido: Math.round(liquido * 100) / 100,
             data_pagamento: $('md-status').value === 'paga' ? ($('md-pgto').value || null) : null,
             observacoes: $('md-obs').value.trim() || null,
+            previsao_recebimento: $('md-previsao').value || null,
+            prazo_receb_dias: parseInt($('md-prazo-receb').value) >= 1 ? parseInt($('md-prazo-receb').value) : null,
+            prazo_receb_tipo: parseInt($('md-prazo-receb').value) >= 1 ? $('md-prazo-receb-tipo').value : null,
             itens: comQtd.map(i => ({
                 obra_servico_id: i.obra_servico_id,
                 qtd_medida: i.qtd,
@@ -466,6 +477,18 @@ ligarFecharPorBackdrop($('md-overlay'), fecharModal);
 $('md-salvar').addEventListener('click', salvarMedicao);
 $('md-obra').addEventListener('change', montarItens);
 $('md-status').addEventListener('change', aoMudarStatus);
+// previsão de recebimento: prazo (a partir do fim do período, ou de hoje) preenche a data;
+// digitar a data à mão limpa o prazo — o último que você mexer vale
+const mdAtualizarPrevisao = () => {
+    const n = parseInt($('md-prazo-receb').value);
+    if (isFinite(n) && n >= 1) {
+        $('md-previsao').value = somarPrazo($('md-ate').value || hojeLocal(), n, $('md-prazo-receb-tipo').value);
+    }
+};
+$('md-prazo-receb').addEventListener('change', mdAtualizarPrevisao);
+$('md-prazo-receb-tipo').addEventListener('change', mdAtualizarPrevisao);
+$('md-ate').addEventListener('change', mdAtualizarPrevisao);
+$('md-previsao').addEventListener('change', () => { $('md-prazo-receb').value = ''; });
 $('md-retencao').addEventListener('input', recalcTotais);
 $('md-desconto').addEventListener('input', recalcTotais);
 $('nf-btn-add').addEventListener('click', registrarNf);

@@ -93,6 +93,20 @@
     .oc-matriz th { background: var(--hermo-surface-2); color: var(--hermo-text-dim); }
     .oc-matriz td.serv { text-align: left; font-weight: 700; background: var(--hermo-surface-2); }
     .oc-matriz td.faixa { color: var(--hermo-text-dim); }
+    .mn-item {
+        background: var(--hermo-surface-2); border: 1px solid var(--hermo-border);
+        border-radius: 8px; padding: 7px 10px; font-size: .78rem;
+        display: flex; flex-direction: column; gap: 4px;
+    }
+    .mn-item .linha { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .mn-item .nome { flex: 1; min-width: 160px; }
+    .mn-item small { color: var(--hermo-text-dim); }
+    .mn-item input.qtd {
+        width: 90px; background: var(--hermo-bg); border: 1px solid var(--hermo-border);
+        border-radius: 6px; color: var(--hermo-text); padding: 5px 7px; font-size: .8rem; text-align: right;
+    }
+    .mn-aviso-exec { font-size: .7rem; color: var(--hermo-warn); }
+    .mn-aviso-aditivo { font-size: .7rem; color: var(--hermo-danger); font-weight: 700; }
     .ob-aloc-chips { display: flex; flex-wrap: wrap; gap: 5px; }
     .ob-aloc-chips .chip {
         display: inline-flex; align-items: center; gap: 5px;
@@ -263,6 +277,21 @@
               <b>estimar o término</b> em pipeline (equipes em paralelo) ou bloco a bloco — e aplicar as datas no cronograma.
             </div>
             <div id="ob-cadeias" style="display:flex;flex-direction:column;gap:6px"></div>
+          </div>
+        </div>
+
+        <!-- MEDIÇÕES DA OBRA -->
+        <div class="ob-secao">
+          <h3>📏 Medições e recebimento</h3>
+          <div id="ob-med-aviso" style="display:none;font-size:.78rem;color:var(--hermo-text-dim)">
+            💡 Salve a obra para gerenciar as medições.
+          </div>
+          <div id="ob-med-wrap" style="display:none">
+            <div id="ob-med-saldo" style="font-size:.8rem;margin-bottom:8px"></div>
+            <div id="ob-med-lista" style="display:flex;flex-direction:column;gap:6px"></div>
+            <div style="margin-top:8px">
+              <button class="hermo-btn small primary" id="ob-btn-nova-medicao">➕ Nova medição do executado</button>
+            </div>
           </div>
         </div>
 
@@ -551,6 +580,76 @@
         <button class="hermo-btn" id="oc-simular">🔄 Simular</button>
         <button class="hermo-btn" id="oc-salvar">💾 Salvar cadeia</button>
         <button class="hermo-btn primary" id="oc-aplicar">📅 Salvar e aplicar ao cronograma</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SUB-MODAL: NOVA MEDIÇÃO DO EXECUTADO -->
+  <div class="hermo-modal-overlay" id="mn-overlay">
+    <div class="hermo-modal">
+      <div class="hermo-modal-head">
+        <h2 id="mn-titulo">Nova medição do executado</h2>
+        <button class="fechar" id="mn-fechar" title="Fechar">&times;</button>
+      </div>
+      <div class="hermo-modal-body">
+        <div style="font-size:.74rem;color:var(--hermo-text-dim)">
+          <b>Disponível</b> = executado no cronograma − já medido nas medições anteriores.
+          Meça nada, uma parte ou tudo — quantidades acima do executado ou do contratado são
+          permitidas, mas sinalizadas.
+        </div>
+        <div class="hermo-form-row">
+          <div class="hermo-field">
+            <label>Período — de</label>
+            <input id="mn-de" type="date" />
+          </div>
+          <div class="hermo-field">
+            <label>até</label>
+            <input id="mn-ate" type="date" />
+          </div>
+          <div class="hermo-field">
+            <label>Status inicial</label>
+            <select id="mn-status">
+              <option value="em_elaboracao">Em elaboração</option>
+              <option value="enviada">Enviada</option>
+              <option value="aprovada">Aprovada</option>
+              <option value="faturada">Faturada</option>
+            </select>
+          </div>
+        </div>
+        <div class="hermo-field">
+          <label>Serviços — quanto medir agora</label>
+          <div style="display:flex;gap:6px;margin-bottom:6px">
+            <button class="hermo-btn small" id="mn-tudo">Medir tudo disponível</button>
+            <button class="hermo-btn small ghost" id="mn-zerar">Zerar</button>
+          </div>
+          <div id="mn-itens" style="display:flex;flex-direction:column;gap:6px"></div>
+        </div>
+        <div class="hermo-form-row">
+          <div class="hermo-field">
+            <label>Previsão de recebimento — prazo</label>
+            <div style="display:flex;gap:6px;align-items:center">
+              <input id="mn-prazo" type="number" min="1" step="1" style="width:80px"
+                title="Prazo a partir do fim do período (ou de hoje) — preenche a data ao lado" />
+              <select id="mn-prazo-tipo" style="flex:1">
+                <option value="corridos">dias corridos</option>
+                <option value="uteis">dias úteis</option>
+              </select>
+            </div>
+          </div>
+          <div class="hermo-field">
+            <label>ou data prevista</label>
+            <input id="mn-previsao" type="date" />
+          </div>
+        </div>
+        <div style="font-size:.72rem;color:var(--hermo-text-dim)">
+          A previsão vira <b>receita prevista</b> no Faturamento nessa data (até a medição ser paga).
+          Retenção, desconto e NFs você ajusta depois na página de Medições.
+        </div>
+        <div class="pp-total-row" style="border:none;padding:0">Total desta medição: <b id="mn-total">R$ 0,00</b></div>
+      </div>
+      <div class="hermo-modal-foot">
+        <button class="hermo-btn ghost" id="mn-cancelar">Cancelar</button>
+        <button class="hermo-btn primary" id="mn-salvar">Criar medição</button>
       </div>
     </div>
   </div>

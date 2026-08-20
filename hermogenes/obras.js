@@ -2,7 +2,7 @@
 // cronograma com ALOCAÇÕES (dia/turno/horário) e bloqueio de conflitos de agenda,
 // diário de obra e associação com propostas contratadas (aditivos).
 import {
-    sb, toast, fmtDataHora, ligarFecharPorBackdrop, esc, fmtMoeda
+    sb, toast, fmtDataHora, ligarFecharPorBackdrop, esc, fmtMoeda, somarPrazo
 } from './hermo-common.js';
 import { abrirModalCliente } from './hermo-cliente-modal.js';
 import { listarAnexos, renderGaleria, excluirAnexo, uploadAnexo } from './hermo-anexos.js';
@@ -48,6 +48,8 @@ let depsDraft = [];           // [{item_id, depende_de_id}] — dependências en
 let depItemIndex = null;      // índice em itensDraft do serviço cujas dependências estão sendo editadas
 let cadeiaEditando = null;    // cadeia por blocos aberta no modal oc (null = nova)
 let cadeiaServDraft = [];     // [{item_id, dias_por_bloco, equipes}] na ordem de execução
+let medicoesObra = [];        // medições da obra aberta (com itens) — saldo executado × medido
+let mnItens = [];             // linhas da nova medição sendo montada no modal mn
 
 // mini-mapa
 let omMapa = null, omMarcador = null, omPendente = null;
@@ -145,29 +147,7 @@ const somarDias = (iso, dias) => {
 };
 const difDias = (a, b) => Math.round((new Date(b + 'T00:00:00') - new Date(a + 'T00:00:00')) / 86400000);
 
-/** Soma um prazo a uma data (dia inicial conta como dia 1). 'uteis' = seg a sex,
- *  feriados não descontados; começando em fim de semana, conta a partir da segunda.
- *  Espelho de hermo_somar_prazo no banco. */
-function somarPrazo(iso, n, tipo) {
-    if (!iso) return iso;
-    n = Math.min(parseInt(n) || 0, 3650);
-    if (n < 1) return iso;
-    const [y, m, d] = iso.split('-').map(Number);
-    const dt = new Date(y, m - 1, d);
-    const fmt = t => `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`;
-    if (tipo === 'uteis') {
-        const util = t => t.getDay() >= 1 && t.getDay() <= 5;
-        while (!util(dt)) dt.setDate(dt.getDate() + 1);
-        let cont = 1;
-        while (cont < n) {
-            dt.setDate(dt.getDate() + 1);
-            if (util(dt)) cont++;
-        }
-        return fmt(dt);
-    }
-    dt.setDate(dt.getDate() + (n - 1));
-    return fmt(dt);
-}
+// somarPrazo agora vem de hermo-common.js (compartilhado com Medições)
 
 /** Itens que dependem (direta ou indiretamente) do item — não podem virar dependência dele (ciclo). */
 function descendentesDe(itemId) {
@@ -543,6 +523,7 @@ async function abrirModalObra(obra) {
     renderItensDraft();
     renderCronograma();
     renderCadeias();
+    await carregarMedicoesObra();
     await carregarDiario();
     await carregarAnexosHerdados();
 
@@ -557,6 +538,8 @@ function fecharModalObra() {
     depsDraft = [];
     cadeiaEditando = null;
     cadeiaServDraft = [];
+    medicoesObra = [];
+    mnItens = [];
     propostasDraft = [];
     diarioEntradas = [];
     localEscolhido = null;
@@ -867,6 +850,7 @@ function renderCronograma() {
         }
         renderItensDraft();
         renderCronograma();
+        renderMedicoesObra(); // o saldo "disponível para medir" depende do executado
         if (itemExcedente(item)) {
             toast(`⚠ ${item.codigo}: executado passou do contratado — gere um aditivo para cobrir o excedente.`, true);
         }
@@ -1465,6 +1449,227 @@ function sincronizarAlocacoesNaLista() {
 }
 
 // ============================================================
+// MEDIÇÕES DA OBRA (saldo executado × medido, criação rápida)
+// ============================================================
+const STATUS_MEDICAO_OBRA = {
+    em_elaboracao: { label: 'Em elaboração', cor: '#eab308' },
+    enviada:       { label: 'Enviada',       cor: '#f97316' },
+    aprovada:      { label: 'Aprovada',      cor: '#3b82f6' },
+    faturada:      { label: 'Faturada',      cor: '#a855f7' },
+    paga:          { label: 'Paga',          cor: '#22c55e' }
+};
+
+async function carregarMedicoesObra() {
+    medicoesObra = [];
+    if (obraEditando?.id) {
+        const { data, error } = await sb.from('hermo_medicoes')
+            .select('*, itens:hermo_medicao_itens(obra_servico_id, qtd_medida, valor)')
+            .eq('obra_id', obraEditando.id)
+            .order('numero');
+        if (error) { toast('Erro ao carregar medições da obra: ' + error.message, true); }
+        else medicoesObra = data || [];
+    }
+    renderMedicoesObra();
+}
+
+/** Σ quantidade já medida por serviço (todas as medições desta obra). */
+function medidoPorServico() {
+    const m = new Map();
+    medicoesObra.forEach(md => (md.itens || []).forEach(i =>
+        m.set(i.obra_servico_id, (m.get(i.obra_servico_id) || 0) + num(i.qtd_medida))));
+    return m;
+}
+
+function renderMedicoesObra() {
+    const salva = !!obraEditando?.id;
+    $('ob-med-aviso').style.display = salva ? 'none' : '';
+    $('ob-med-wrap').style.display = salva ? '' : 'none';
+    if (!salva) return;
+    const medido = medidoPorServico();
+    const vig = itensDraft.filter(i => i.id && i.vigente !== false);
+    let dispTotal = 0, medidoTotal = 0;
+    const excedentes = [];
+    vig.forEach(i => {
+        const md = medido.get(i.id) || 0;
+        medidoTotal += md * num(i.preco_unit);
+        const exec = i.qtd_executada != null ? num(i.qtd_executada) : 0;
+        dispTotal += Math.max(0, exec - md) * num(i.preco_unit);
+        if (md > num(i.quantidade) + 1e-9) excedentes.push(i.codigo);
+    });
+    $('ob-med-saldo').innerHTML =
+        `💰 Disponível para medir agora (executado no cronograma − já medido): <b>${fmtMoeda(dispTotal)}</b>` +
+        ` · já medido: ${fmtMoeda(medidoTotal)} em ${medicoesObra.length} medição(ões)` +
+        (excedentes.length
+            ? `<br><span class="mn-aviso-aditivo">⚠ Medição acumulada acima do contratado em: ${excedentes.join(', ')} — formalize um aditivo (associe uma nova proposta à obra).</span>`
+            : '');
+    $('ob-med-lista').innerHTML = medicoesObra.length === 0
+        ? '<div style="font-size:.76rem;color:var(--hermo-text-dim)">Nenhuma medição ainda — crie a primeira a partir do que já foi executado.</div>'
+        : medicoesObra.map(m => {
+            const st = STATUS_MEDICAO_OBRA[m.status] || { label: m.status, cor: '#94a3b8' };
+            const periodo = m.periodo_de
+                ? `${fmtData(m.periodo_de).slice(0, 5)}–${fmtData(m.periodo_ate || m.periodo_de).slice(0, 5)}`
+                : '';
+            const receb = m.status === 'paga'
+                ? `✓ recebida${m.data_pagamento ? ' em ' + fmtData(m.data_pagamento) : ''}`
+                : (m.previsao_recebimento ? `📥 receber até ${fmtData(m.previsao_recebimento)}` : 'sem previsão de recebimento');
+            return `
+            <div class="ob-item">
+                <div class="txt"><b>MED-${m.numero}</b> <span style="color:${st.cor}">· ${st.label}</span>
+                    <small>${fmtMoeda(m.valor_liquido)}${periodo ? ' · 📅 ' + periodo : ''} · ${receb}</small>
+                </div>
+                <a class="hermo-btn small ghost" href="medicoes-notas.html?editar=${m.id}" target="_blank" rel="noopener"
+                   title="Abrir na página de Medições (retenção, desconto, NFs, status)">↗</a>
+            </div>`;
+        }).join('');
+}
+
+// ---------- nova medição do executado (mn) ----------
+async function abrirNovaMedicao() {
+    if (!obraEditando?.id) return;
+    const vig = itensDraft.filter(i => i.id && i.vigente !== false);
+    if (vig.length === 0) { toast('A obra não tem escopo vigente para medir.', true); return; }
+    // recarrega as medições AGORA — o "já medido" e o nº podem ter mudado em outra aba
+    // (o próprio card abre a página de Medições em nova aba pelo ↗)
+    await carregarMedicoesObra();
+    const medido = medidoPorServico();
+    mnItens = vig.map(i => {
+        const md = medido.get(i.id) || 0;
+        const exec = i.qtd_executada != null ? num(i.qtd_executada) : 0;
+        const disp = Math.max(0, Math.round((exec - md) * 100) / 100);
+        return {
+            obra_servico_id: i.id,
+            codigo: i.codigo, descricao: i.descricao, local: i.local_execucao,
+            unidade: i.unidade || 'un',
+            contratado: num(i.quantidade),
+            preco_unit: num(i.preco_unit),
+            executado: exec,
+            medido: md,
+            disponivel: disp,
+            qtd: disp // pré-preenchido com tudo que está disponível — ajuste ou zere
+        };
+    });
+    abrirNovaMedicao._numero = medicoesObra.length
+        ? Math.max(...medicoesObra.map(m => m.numero)) + 1 : 1;
+    $('mn-titulo').textContent = `Nova medição — MED-${abrirNovaMedicao._numero} · ${fmtCodigo(obraEditando)}`;
+    const ultAte = medicoesObra.map(m => m.periodo_ate).filter(Boolean).sort().pop();
+    $('mn-de').value = ultAte ? somarDias(ultAte, 1) : '';
+    $('mn-ate').value = hoje();
+    $('mn-status').value = 'em_elaboracao';
+    $('mn-prazo').value = '';
+    $('mn-prazo-tipo').value = 'corridos';
+    $('mn-previsao').value = '';
+    renderMnItens();
+    $('mn-overlay').classList.add('aberto');
+}
+
+function avisosMn(i) {
+    const avisos = [];
+    if (i.qtd > i.disponivel + 1e-9) {
+        avisos.push(`<div class="mn-aviso-exec">↑ acima do disponível (${fmtQtd(i.disponivel)}) — passa do executado registrado no cronograma.</div>`);
+    }
+    if (i.medido + i.qtd > i.contratado + 1e-9) {
+        avisos.push(`<div class="mn-aviso-aditivo">⚠ acumulado ${fmtQtd(i.medido + i.qtd)} de ${fmtQtd(i.contratado)} ${esc(i.unidade)} contratado — formalize um aditivo.</div>`);
+    }
+    return avisos.join('');
+}
+
+function recalcMnTotal() {
+    $('mn-total').textContent = fmtMoeda(mnItens.reduce((t, i) => t + i.qtd * i.preco_unit, 0));
+}
+
+function renderMnItens() {
+    $('mn-itens').innerHTML = mnItens.map((i, idx) => `
+        <div class="mn-item">
+            <div class="linha">
+                <span class="nome"><b>${esc(i.codigo)}</b> — ${esc(i.descricao)}
+                    <small>${i.local ? '📍 ' + esc(i.local) + ' · ' : ''}executado ${fmtQtd(i.executado)} · já medido ${fmtQtd(i.medido)} · <b>disponível ${fmtQtd(i.disponivel)}</b> · contratado ${fmtQtd(i.contratado)} ${esc(i.unidade)} · ${fmtMoeda(i.preco_unit)}/${esc(i.unidade)}</small>
+                </span>
+                <label style="font-size:.7rem;color:var(--hermo-text-dim)">medir:</label>
+                <input class="qtd" type="number" step="any" min="0" value="${i.qtd || ''}" placeholder="0" data-mn-qtd="${idx}" />
+                <span style="font-weight:700" data-mn-valor="${idx}">${fmtMoeda(i.qtd * i.preco_unit)}</span>
+            </div>
+            <div data-mn-avisos="${idx}">${avisosMn(i)}</div>
+        </div>`).join('');
+    // enquanto digita: atualiza valor/avisos/total sem re-render (re-render por tecla impede decimais)
+    $('mn-itens').querySelectorAll('[data-mn-qtd]').forEach(inp => inp.addEventListener('input', e => {
+        const idx = parseInt(e.target.dataset.mnQtd);
+        mnItens[idx].qtd = Math.max(0, num(e.target.value));
+        const v = document.querySelector(`[data-mn-valor="${idx}"]`);
+        if (v) v.textContent = fmtMoeda(mnItens[idx].qtd * mnItens[idx].preco_unit);
+        const a = document.querySelector(`[data-mn-avisos="${idx}"]`);
+        if (a) a.innerHTML = avisosMn(mnItens[idx]);
+        recalcMnTotal();
+    }));
+    recalcMnTotal();
+}
+
+function mnAtualizarPrevisaoPeloPrazo() {
+    const n = parseInt($('mn-prazo').value);
+    if (isFinite(n) && n >= 1) {
+        $('mn-previsao').value = somarPrazo($('mn-ate').value || hoje(), n, $('mn-prazo-tipo').value);
+    }
+}
+
+async function salvarNovaMedicao() {
+    const comQtd = mnItens.filter(i => i.qtd > 0);
+    if (comQtd.length === 0) { toast('Informe a quantidade a medir de ao menos um serviço.', true); return; }
+    const de = $('mn-de').value, ate = $('mn-ate').value;
+    if (de && ate && ate < de) { toast('O fim do período não pode ser antes do início.', true); return; }
+    const bruto = Math.round(mnItens.reduce((t, i) => t + i.qtd * i.preco_unit, 0) * 100) / 100;
+    const prazoN = parseInt($('mn-prazo').value);
+    const btn = $('mn-salvar');
+    btn.disabled = true;
+    try {
+        // grava antes as edições do modal da obra (o "executado" que embasa esta medição)
+        const oid = await salvarObraCore({ silencioso: true });
+        if (!oid) return;
+        const payload = {
+            id: null,
+            obra_id: obraEditando.id,
+            numero: abrirNovaMedicao._numero,
+            periodo_de: de || null,
+            periodo_ate: ate || null,
+            status: $('mn-status').value,
+            retencao_perc: 0,
+            desconto: 0,
+            valor_bruto: bruto,
+            valor_liquido: bruto,
+            data_pagamento: null,
+            observacoes: null,
+            previsao_recebimento: $('mn-previsao').value || null,
+            prazo_receb_dias: (isFinite(prazoN) && prazoN >= 1) ? prazoN : null,
+            prazo_receb_tipo: (isFinite(prazoN) && prazoN >= 1) ? $('mn-prazo-tipo').value : null,
+            itens: comQtd.map(i => ({
+                obra_servico_id: i.obra_servico_id,
+                qtd_medida: i.qtd,
+                valor: Math.round(i.qtd * i.preco_unit * 100) / 100
+            }))
+        };
+        const { error } = await sb.rpc('hermo_salvar_medicao', { p: payload });
+        if (error) throw error;
+        $('mn-overlay').classList.remove('aberto');
+        toast(`MED-${payload.numero} criada — ${fmtMoeda(bruto)}${payload.previsao_recebimento ? ' · receber até ' + fmtData(payload.previsao_recebimento) : ''}. % executado recalculado.`);
+        // o % executado mudou no banco → recarrega e reabre a obra
+        await carregarTudo();
+        const atualizada = obras.find(o => o.id === obraEditando?.id);
+        if (atualizada) await abrirModalObra(atualizada);
+    } catch (e) {
+        if ((e.code || '') === '23505') {
+            // outra aba usou o número: recarrega e recalcula para o retry funcionar
+            await carregarMedicoesObra();
+            abrirNovaMedicao._numero = medicoesObra.length
+                ? Math.max(...medicoesObra.map(m => m.numero)) + 1 : 1;
+            $('mn-titulo').textContent = `Nova medição — MED-${abrirNovaMedicao._numero} · ${fmtCodigo(obraEditando)}`;
+            toast(`O número acabou de ser usado em outra aba — atualizei para MED-${abrirNovaMedicao._numero}, clique em Criar novamente.`, true);
+        } else {
+            toast('Erro ao criar medição: ' + e.message, true);
+        }
+    } finally {
+        btn.disabled = false;
+    }
+}
+
+// ============================================================
 // DIÁRIO
 // ============================================================
 async function carregarDiario() {
@@ -1765,6 +1970,18 @@ $('op-fechar').addEventListener('click', () => $('op-overlay').classList.remove(
 $('op-cancelar').addEventListener('click', () => $('op-overlay').classList.remove('aberto'));
 ligarFecharPorBackdrop($('op-overlay'), () => $('op-overlay').classList.remove('aberto'));
 $('op-confirmar').addEventListener('click', confirmarAssociarPropostas);
+
+$('ob-btn-nova-medicao').addEventListener('click', abrirNovaMedicao);
+$('mn-fechar').addEventListener('click', () => $('mn-overlay').classList.remove('aberto'));
+$('mn-cancelar').addEventListener('click', () => $('mn-overlay').classList.remove('aberto'));
+ligarFecharPorBackdrop($('mn-overlay'), () => $('mn-overlay').classList.remove('aberto'));
+$('mn-salvar').addEventListener('click', salvarNovaMedicao);
+$('mn-tudo').addEventListener('click', () => { mnItens.forEach(i => { i.qtd = i.disponivel; }); renderMnItens(); });
+$('mn-zerar').addEventListener('click', () => { mnItens.forEach(i => { i.qtd = 0; }); renderMnItens(); });
+$('mn-prazo').addEventListener('change', mnAtualizarPrevisaoPeloPrazo);
+$('mn-prazo-tipo').addEventListener('change', mnAtualizarPrevisaoPeloPrazo);
+$('mn-ate').addEventListener('change', mnAtualizarPrevisaoPeloPrazo);
+$('mn-previsao').addEventListener('change', () => { $('mn-prazo').value = ''; }); // data manual limpa o prazo
 
 $('ob-btn-nova-cadeia').addEventListener('click', () => abrirCadeiaModal(null));
 $('oc-fechar').addEventListener('click', () => $('oc-overlay').classList.remove('aberto'));

@@ -104,3 +104,28 @@ export function esc(s) {
     return String(s ?? '').replace(/[&<>"']/g, c =>
         ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
+
+// ---------- Prazos ----------
+/** Soma um prazo a uma data ISO (o dia inicial conta como dia 1).
+ *  'uteis' = segunda a sexta (feriados não descontados); começando em fim de
+ *  semana, a contagem parte da segunda. Espelho de hermo_somar_prazo no banco. */
+export function somarPrazo(iso, n, tipo) {
+    if (!iso) return iso;
+    n = Math.min(parseInt(n) || 0, 3650);
+    if (n < 1) return iso;
+    const [y, m, d] = iso.split('-').map(Number);
+    const dt = new Date(y, m - 1, d);
+    const fmt = t => `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`;
+    if (tipo === 'uteis') {
+        const util = t => t.getDay() >= 1 && t.getDay() <= 5;
+        while (!util(dt)) dt.setDate(dt.getDate() + 1);
+        let cont = 1;
+        while (cont < n) {
+            dt.setDate(dt.getDate() + 1);
+            if (util(dt)) cont++;
+        }
+        return fmt(dt);
+    }
+    dt.setDate(dt.getDate() + (n - 1));
+    return fmt(dt);
+}
