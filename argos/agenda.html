@@ -98,6 +98,21 @@
         <p class="dica" id="restaurar-texto"></p>
         <button class="argos-btn small" id="btn-restaurar">↩️ Restaurar ao horário original</button>
       </div>
+      <div id="bloco-processo" data-argos-recurso="processo_encerrar" style="display:none">
+        <h3 class="form-secao">🏁 Interromper / finalizar o processo do paciente</h3>
+        <p class="dica">A partir da data escolhida o paciente deixa de constar na agenda, nos grupos e nas finanças, não importa o que esteja programado. Registrado no card do paciente e reversível por lá.</p>
+        <div class="agenda-nav" style="flex-wrap:wrap">
+          <select id="proc-tipo" class="argos-input">
+            <option value="interrompido">⏸️ Processo interrompido</option>
+            <option value="finalizado">🏁 Processo finalizado</option>
+          </select>
+          <label class="rotulo-inline">A partir de <input type="date" id="proc-data" class="argos-input" /></label>
+        </div>
+        <div class="agenda-nav" style="margin-top:8px">
+          <input type="text" id="proc-motivo" class="argos-input" placeholder="Motivo (opcional)" style="flex:1" />
+          <button class="argos-btn danger small" id="btn-proc-aplicar">Aplicar</button>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -222,7 +237,7 @@
     </div>
   </div>
 
-  <script type="module" src="agenda.js?v=12"></script>
+  <script type="module" src="agenda.js?v=13"></script>
   <script type="module" src="argos-zoom.js?v=4"></script>
 </body>
 </html>
