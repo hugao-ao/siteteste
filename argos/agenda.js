@@ -6,7 +6,8 @@ import { sb, toast, esc, abrirModal, fecharModal } from './argos-common.js';
 import { carregarPermissoes } from './argos-permissoes.js';
 import {
     STATUS_SESSAO, DOW_NOMES, mesclarSessoes, hojeISO, somarDias, paraData,
-    paraISO, formataBR, fimDoMes
+    paraISO, formataBR, fimDoMes, expandirDinamica, conflitosDeSessao,
+    conflitosDeDinamica
 } from './argos-recorrencia.js';
 
 let perm = { pode: () => true, aplicarVisibilidade: () => {}, master: true };
@@ -320,6 +321,13 @@ function aoClicarSessao(e) {
         ['??', 'ok', 'fj', 'fc', 'nc'].map(st => `
           <button class="btn-status" style="--c:${STATUS_SESSAO[st].cor}" data-marcar="${st}">
             ${STATUS_SESSAO[st].label}<small>${STATUS_SESSAO[st].desc}</small></button>`).join('');
+    // remarcação: só para sessões ainda pendentes («??»)
+    const podeRemarcar = s.status === '??' && perm.pode('sessao_remarcar');
+    document.getElementById('bloco-remarcar').style.display = podeRemarcar ? '' : 'none';
+    if (podeRemarcar) {
+        document.getElementById('rem-data').value = s.data;
+        document.getElementById('rem-hora').value = s.hora;
+    }
     abrirModal('modal-sessao');
 }
 document.getElementById('agenda-grade').addEventListener('click', aoClicarSessao);
@@ -331,6 +339,163 @@ document.getElementById('botoes-status').addEventListener('click', async (e) => 
     await marcarSessao(sessaoAberta, btn.dataset.marcar);
     fecharModal('modal-sessao');
 });
+
+// ============================================================
+// REMARCAÇÃO DE SESSÃO
+// ============================================================
+let remarcarCtx = null;
+
+async function registrarEvento(pacienteId, tipo, descricao, dados) {
+    const { error } = await sb.from('argos_paciente_eventos')
+        .insert({ paciente_id: pacienteId, tipo, descricao, dados: dados || null });
+    if (error) console.error(error);
+}
+
+async function recarregarSessoes() {
+    const [rSes, rDin] = await Promise.all([
+        sb.from('argos_sessoes').select('*'),
+        sb.from('argos_dinamicas').select('*')
+    ]);
+    sessoes = rSes.data || sessoes;
+    dinamicas = rDin.data || dinamicas;
+    renderTudo();
+}
+
+document.getElementById('btn-remarcar').addEventListener('click', async () => {
+    const s = sessaoAberta;
+    if (!s) return;
+    const novaData = document.getElementById('rem-data').value;
+    const novaHora = document.getElementById('rem-hora').value;
+    if (!novaData || !novaHora) { toast('Informe o novo dia e a nova hora.', true); return; }
+    if (novaData === s.data && novaHora === s.hora) { toast('A sessão já está nesse dia/horário.', true); return; }
+
+    // conflito no destino (respeita individual × grupo)
+    const candidata = { ...s, id: s.id, data: novaData, hora: novaHora };
+    const conflitos = conflitosDeSessao(candidata, dinamicas.filter(d => d.ativo !== false),
+        sessoes.filter(x => x.id !== s.id));
+    if (conflitos.length) {
+        const quem = nomePac(conflitos[0].paciente_id);
+        toast(`⛔ Conflito: ${quem} já tem sessão nesse horário no mesmo espaço/profissional.`, true);
+        return;
+    }
+
+    const d = s.dinamica_ref ? dinamicas.find(x => x.id === s.dinamica_ref) : null;
+    if (d && d.ativo !== false && d.recorrencia_tipo === 'recorrente') {
+        remarcarCtx = { s, novaData, novaHora, d };
+        document.getElementById('pergunta-horario-texto').innerHTML =
+            `A sessão de <b>${esc(nomePac(s.paciente_id))}</b> de ${formataBR(s.data)} às ${s.hora} será movida para <b>${formataBR(novaData)} às ${novaHora}</b>.<br><br>Esse passa a ser o novo horário fixo do paciente?`;
+        fecharModal('modal-sessao');
+        abrirModal('modal-pergunta-horario');
+    } else {
+        await moverSessaoUnica(s, novaData, novaHora);
+        fecharModal('modal-sessao');
+    }
+});
+
+document.getElementById('btn-so-esta').addEventListener('click', async () => {
+    if (!remarcarCtx) return;
+    const { s, novaData, novaHora } = remarcarCtx;
+    await moverSessaoUnica(s, novaData, novaHora);
+    fecharModal('modal-pergunta-horario');
+    remarcarCtx = null;
+});
+
+document.getElementById('btn-horario-fixo').addEventListener('click', async () => {
+    if (!remarcarCtx) return;
+    await novoHorarioFixo(remarcarCtx);
+    remarcarCtx = null;
+});
+
+// Move APENAS a sessão: a linha materializada guarda a ocorrência original
+// (remarcada_de_*), então a projeção antiga não reaparece e o financeiro
+// passa a contar pela data nova.
+async function moverSessaoUnica(s, novaData, novaHora) {
+    let error;
+    if (s.id) {
+        ({ error } = await sb.from('argos_sessoes').update({
+            data: novaData, hora: novaHora,
+            remarcada_de_data: s.remarcada_de_data || (s.dinamica_ref ? s.data : null),
+            remarcada_de_hora: s.remarcada_de_hora || (s.dinamica_ref ? s.hora : null)
+        }).eq('id', s.id));
+    } else {
+        ({ error } = await sb.from('argos_sessoes').insert({
+            paciente_id: s.paciente_id, dinamica_id: s.dinamica_ref, dinamica_ref: s.dinamica_ref,
+            data: novaData, hora: novaHora, duracao_min: s.duracao_min || 60,
+            sala_id: s.sala_id || null, profissional_id: s.profissional_id || null,
+            servico_id: s.servico_id || null, status: '??',
+            remarcada_de_data: s.data, remarcada_de_hora: s.hora
+        }));
+    }
+    if (error) { console.error(error); toast('Erro ao remarcar a sessão.', true); return; }
+    await registrarEvento(s.paciente_id, 'remarcacao_sessao',
+        `Sessão de ${formataBR(s.data)} às ${s.hora} remarcada para ${formataBR(novaData)} às ${novaHora} (apenas esta sessão; o horário fixo não mudou).`,
+        { de: { data: s.data, hora: s.hora }, para: { data: novaData, hora: novaHora }, dinamica: s.dinamica_ref || null });
+    toast(`Sessão remarcada para ${formataBR(novaData)} às ${novaHora}.`);
+    await recarregarSessoes();
+}
+
+// Novo horário FIXO: encerra a dinâmica na véspera da sessão movida e cria
+// uma continuação com o mesmo acordo financeiro. Pacotes e contagens de
+// ocorrências seguem valendo pela cadeia (raiz + continuações).
+async function novoHorarioFixo({ s, novaData, novaHora, d }) {
+    const cutoff = somarDias(s.data, -1);
+    const jaOcorridas = d.data_inicio && d.data_inicio <= cutoff
+        ? expandirDinamica({ ...d, ativo: true }, d.data_inicio, cutoff).length : 0;
+
+    const dowOrig = paraData(s.data).getDay();
+    const dowNovo = paraData(novaData).getDay();
+    let trocou = false;
+    const dias = (d.dias || []).map(x => {
+        if (!trocou && Number(x.dow) === dowOrig && x.hora === s.hora) { trocou = true; return { dow: dowNovo, hora: novaHora }; }
+        return x;
+    });
+    if (!trocou) dias.push({ dow: dowNovo, hora: novaHora });
+
+    const nova = {
+        paciente_id: d.paciente_id,
+        rotulo: (d.rotulo || 'Dinâmica') + ' — novo horário',
+        recorrencia_tipo: 'recorrente', dias,
+        duracao_min: d.duracao_min || 60,
+        freq_qtd: d.freq_qtd, freq_periodo: d.freq_periodo,
+        data_inicio: novaData,
+        fim_tipo: d.fim_tipo,
+        fim_ocorrencias: d.fim_tipo === 'apos_ocorrencias' ? Math.max(1, (d.fim_ocorrencias || 0) - jaOcorridas) : null,
+        fim_data: d.fim_tipo === 'data' ? d.fim_data : null,
+        modalidade: d.modalidade, sala_id: d.sala_id,
+        profissional_id: d.profissional_id, servico_id: d.servico_id,
+        acordo_tipo: d.acordo_tipo, valor: d.valor,
+        // pacote fica na RAIZ da cadeia; a continuação herda pelo vínculo
+        pacote_qtd: null, pacote_valor: null, pacote_pagamento: null,
+        continuacao_de: d.id, ativo: true
+    };
+
+    const outras = dinamicas.filter(x => x.id !== d.id && x.ativo !== false);
+    const conflitos = conflitosDeDinamica(nova, outras, sessoes.filter(x => x.id !== s.id));
+    if (conflitos.length) {
+        const c = conflitos[0];
+        toast(`⛔ O novo horário fixo conflita com ${nomePac(c.outra.paciente_id)} em ${formataBR(c.minha.data)} às ${c.minha.hora}. Nada foi alterado.`, true);
+        fecharModal('modal-pergunta-horario');
+        return;
+    }
+
+    const { error: e1 } = await sb.from('argos_dinamicas').insert(nova);
+    if (e1) { console.error(e1); toast('Erro ao criar a nova dinâmica.', true); return; }
+    const { error: e2 } = await sb.from('argos_dinamicas')
+        .update({ fim_tipo: 'data', fim_data: cutoff }).eq('id', d.id);
+    if (e2) { console.error(e2); toast('Erro ao encerrar a dinâmica anterior.', true); return; }
+    if (s.id) await sb.from('argos_sessoes').delete().eq('id', s.id);
+
+    let extras = '';
+    if (d.fim_tipo === 'apos_ocorrencias') extras = ` Restavam ${nova.fim_ocorrencias} de ${d.fim_ocorrencias} ocorrências contratadas, que seguem na nova dinâmica.`;
+    if (d.acordo_tipo === 'pacote') extras += ` O pacote contratado (${d.pacote_qtd} sessões, ${d.pacote_valor != null ? 'R$ ' + d.pacote_valor : ''}) continua valendo pelo conjunto: sessões e pagamentos seguem na contagem única.`;
+    await registrarEvento(d.paciente_id, 'mudanca_horario_fixo',
+        `Horário fixo alterado a partir de ${formataBR(novaData)}: ${DOW_NOMES[dowOrig]} ${s.hora} → ${DOW_NOMES[dowNovo]} ${novaHora}. A dinâmica "${d.rotulo || 'sem rótulo'}" foi encerrada em ${formataBR(cutoff)} e uma continuação foi criada com o mesmo acordo financeiro.${extras}`,
+        { dinamica_encerrada: d.id, de: { dow: dowOrig, hora: s.hora }, para: { dow: dowNovo, hora: novaHora }, ocorridas_antes: jaOcorridas });
+
+    toast('Novo horário fixo aplicado; a alteração ficou registrada no card do paciente.');
+    fecharModal('modal-pergunta-horario');
+    await recarregarSessoes();
+}
 
 // ---------- espaços (salas) ----------
 document.getElementById('btn-salas').addEventListener('click', () => { renderSalas(); abrirModal('modal-salas'); });
