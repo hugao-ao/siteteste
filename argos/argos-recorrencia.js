@@ -226,6 +226,56 @@ export function cronogramaPacote(d, ocorrencias) {
     return ev.filter(e => e.data);
 }
 
+// ---------- Conflitos de agenda ----------
+
+function minutos(hora) { const [h, m] = String(hora).split(':').map(Number); return h * 60 + (m || 0); }
+
+/** Duas sessões se sobrepõem no tempo (mesma data, horários cruzados)? */
+export function sobrepoe(a, b) {
+    if (a.data !== b.data) return false;
+    const ia = minutos(a.hora), fa = ia + (a.duracao_min || 60);
+    const ib = minutos(b.hora), fb = ib + (b.duracao_min || 60);
+    return ia < fb && ib < fa;
+}
+
+function mesmoLugar(a, b) {
+    return (a.sala_id && b.sala_id && a.sala_id === b.sala_id)
+        || (a.profissional_id && b.profissional_id && a.profissional_id === b.profissional_id);
+}
+
+/**
+ * Conflitos que uma dinâmica NOVA/EDITADA criaria: sessões de OUTROS
+ * pacientes no mesmo espaço ou com o mesmo profissional, em horário
+ * sobreposto, quando qualquer um dos lados é INDIVIDUAL (grupo+grupo pode).
+ * Retorna até 5 conflitos [{minha, outra}].
+ */
+export function conflitosDeDinamica(nova, outrasDinamicas, sessoes, horizonteDias = 365) {
+    if (nova.recorrencia_tipo !== 'recorrente' || !nova.data_inicio || nova.ativo === false) return [];
+    const ate = somarDias(hojeISO(), horizonteDias);
+    const minhas = expandirDinamica({ ...nova, id: nova.id || 'nova', ativo: true }, nova.data_inicio, ate)
+        .map(m => ({ ...m, duracao_min: nova.duracao_min || 60 }));
+    const existentes = mesclarSessoes(outrasDinamicas, sessoes, nova.data_inicio, ate)
+        .filter(s => s.paciente_id !== nova.paciente_id && s.status !== 'nc');
+    const out = [];
+    for (const m of minhas) {
+        for (const s of existentes) {
+            if (!mesmoLugar(m, s) || !sobrepoe(m, s)) continue;
+            const temIndividual = nova.modalidade === 'individual' || (s.modalidade || 'individual') === 'individual';
+            if (temIndividual) { out.push({ minha: m, outra: s }); if (out.length >= 5) return out; }
+        }
+    }
+    return out;
+}
+
+/** Conflitos de uma sessão avulsa (tratada como individual). Até 5. */
+export function conflitosDeSessao(sessao, dinamicas, sessoes) {
+    return mesclarSessoes(dinamicas, sessoes, sessao.data, sessao.data)
+        .filter(s => s.paciente_id !== sessao.paciente_id && s.status !== 'nc'
+            && (!sessao.id || s.id !== sessao.id)
+            && mesmoLugar(sessao, s) && sobrepoe(sessao, s))
+        .slice(0, 5);
+}
+
 /** Último dia do mês 'YYYY-MM' em ISO. */
 export function fimDoMes(mes) {
     const [a, m] = mes.split('-').map(Number);

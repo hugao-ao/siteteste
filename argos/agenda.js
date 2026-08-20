@@ -50,6 +50,13 @@ function montarFiltroSalas() {
         '<option value="sem">Sem espaço definido</option>';
     if (atual) sel.value = atual;
     if (!sel.value) sel.value = 'geral';
+
+    const selP = document.getElementById('filtro-prof');
+    const atualP = selP.value || new URLSearchParams(location.search).get('profissional') || '';
+    selP.innerHTML = '<option value="todos">🧑‍⚕️ Todos os profissionais</option>' +
+        profissionais.map(p => `<option value="${p.id}">🧑‍⚕️ ${esc(p.nome)}</option>`).join('');
+    if (atualP) selP.value = atualP;
+    if (!selP.value) selP.value = 'todos';
 }
 
 function renderTudo() { renderAgenda(); renderAvisoPendentes(); }
@@ -181,12 +188,15 @@ document.getElementById('btn-aplicar-periodo').addEventListener('click', () => {
     renderAgenda();
 });
 document.getElementById('filtro-sala').addEventListener('change', renderAgenda);
+document.getElementById('filtro-prof').addEventListener('change', renderAgenda);
 
 function sessoesDoIntervalo(de, ate) {
     const filtro = document.getElementById('filtro-sala').value;
+    const filtroProf = document.getElementById('filtro-prof').value;
     let lista = mesclarSessoes(dinamicas, sessoes, de, ate);
     if (filtro === 'sem') lista = lista.filter(s => !s.sala_id);
     else if (filtro !== 'geral') lista = lista.filter(s => s.sala_id === filtro);
+    if (filtroProf && filtroProf !== 'todos') lista = lista.filter(s => s.profissional_id === filtroProf);
     return lista;
 }
 

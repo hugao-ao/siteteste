@@ -54,7 +54,10 @@ function renderLista() {
             ${meus.map(s => `<span class="chip-servico">${esc(s.nome)}${podeServicos ? `<button data-acao="desvincular" data-id="${p.id}" data-servico="${s.id}" title="Remover este serviço do profissional">×</button>` : ''}</span>`).join('')
               || '<span class="dim">Nenhum serviço vinculado.</span>'}
           </div>
-          ${podeServicos ? `<div class="mini-acoes"><button class="argos-btn small primary" data-acao="servicos" data-id="${p.id}">+ Serviço</button></div>` : ''}
+          <div class="mini-acoes">
+            ${podeServicos ? `<button class="argos-btn small primary" data-acao="servicos" data-id="${p.id}">+ Serviço</button>` : ''}
+            ${perm.pode('agenda_ver') ? `<a class="argos-btn small" href="agenda.html?profissional=${p.id}">🗓️ Agenda</a>` : ''}
+          </div>
         </div>`;
     }).join('');
     document.getElementById('prof-vazio').style.display = lista.length ? 'none' : '';
