@@ -4,7 +4,7 @@
 
 import { sb, toast, esc } from './argos-common.js';
 import { carregarPermissoes } from './argos-permissoes.js';
-import { fechamentoPaciente, formataMoeda, hojeISO } from './argos-recorrencia.js';
+import { fechamentoPaciente, formataMoeda, hojeISO, formataBR, STATUS_SESSAO } from './argos-recorrencia.js';
 
 let perm = { pode: () => true, aplicarVisibilidade: () => {}, master: true };
 let pacientes = [], dinamicas = [], sessoes = [];
@@ -57,6 +57,12 @@ function render() {
       </tr>
       ${abertos.has(p.id) ? `
       <tr class="linha-detalhe"><td colspan="8">
+        <b>🗓️ Frequência das sessões do mês:</b>
+        ${f.sessoes.length ? '<ul>' + f.sessoes.map(s => {
+            const st = STATUS_SESSAO[s.status] || {};
+            return `<li>${formataBR(s.data)} às ${s.hora} — <span class="chip-status" style="--c:${st.cor}">${st.label}</span> ${st.desc || ''}${s.justificativa ? ` — 📝 ${esc(s.justificativa)}` : ''}</li>`;
+        }).join('') + '</ul>' : '<span class="dim">Sem sessões no mês.</span>'}
+        <b style="display:block;margin-top:8px">💰 Lançamentos:</b>
         ${f.detalhes.length ? '<ul>' + f.detalhes.map(d => `<li>${esc(d)}</li>`).join('') + '</ul>' : '<span class="dim">Sem lançamentos no mês.</span>'}
       </td></tr>` : ''}
     `).join('');

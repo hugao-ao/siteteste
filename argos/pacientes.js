@@ -236,11 +236,28 @@ async function renderDinamicas() {
           <h3 class="form-secao">📜 Histórico de alterações</h3>
           ${(eventos || []).slice(0, 30).map(ev => `
             <div class="argos-bloco">
-              <div class="bloco-info"><b>${formataBR(String(ev.created_at).slice(0, 10))}</b> — ${esc(ev.descricao)}</div>
+              <div class="bloco-info"><b>${formataBR(String(ev.created_at).slice(0, 10))}</b> — ${esc(ev.descricao)}
+                ${ev.justificativa ? `<br>📝 <i>${esc(ev.justificativa)}</i>` : ''}</div>
+              <div class="mini-acoes">
+                <button class="argos-btn small" data-evento-just="${ev.id}">${ev.justificativa ? '✏️ Editar justificativa' : '📝 Justificar'}</button>
+              </div>
             </div>`).join('')}` : '');
 }
 
 document.getElementById('lista-dinamicas').addEventListener('click', async (e) => {
+    const jbtn = e.target.closest('[data-evento-just]');
+    if (jbtn) {
+        const id = jbtn.dataset.eventoJust;
+        const { data: ev } = await sb.from('argos_paciente_eventos').select('*').eq('id', id).single();
+        const j = prompt('Justificativa / causa desta alteração:', (ev && ev.justificativa) || '');
+        if (j === null) return;
+        const { error } = await sb.from('argos_paciente_eventos')
+            .update({ justificativa: j.trim() || null }).eq('id', id);
+        if (error) { toast('Erro ao salvar a justificativa.', true); return; }
+        toast('Justificativa registrada.');
+        renderDinamicas();
+        return;
+    }
     const del = e.target.closest('[data-avulsa-del]');
     if (del) {
         if (!confirm('Remover esta sessão avulsa?')) return;
