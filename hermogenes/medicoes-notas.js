@@ -45,7 +45,7 @@ async function carregarTudo() {
             .select('*, nfs:hermo_notas_fiscais(id, status), itens:hermo_medicao_itens(obra_servico_id, qtd_medida, valor)')
             .order('created_at', { ascending: false }),
         sb.from('hermo_obras')
-            .select('id, numero, ano, nome, status, cliente:hermo_clientes(nome), itens:hermo_obra_servicos(id, quantidade, unidade, preco_unit, total, perc_executado, local_execucao, servico:hermo_servicos(codigo, descricao))')
+            .select('id, numero, ano, nome, status, cliente:hermo_clientes(nome), itens:hermo_obra_servicos(id, vigente, quantidade, unidade, preco_unit, total, perc_executado, qtd_executada, local_execucao, servico:hermo_servicos(codigo, descricao))')
             .order('ano', { ascending: false }).order('numero', { ascending: false })
     ]);
     if (m.error) { toast('Erro ao carregar medições: ' + m.error.message, true); return; }
@@ -282,6 +282,7 @@ async function montarItens() {
         contratado: num(it.quantidade),
         unidade: it.unidade || 'un',
         preco_unit: num(it.preco_unit),
+        executadoObra: it.qtd_executada != null ? num(it.qtd_executada) : null,
         acumuladoAnterior: acumPorServico.get(it.id) || 0,
         qtd: nestaMedicao.get(it.id) || 0
     }));
@@ -302,7 +303,7 @@ function renderItens() {
         <div class="md-item ${excede ? 'excedente' : ''}">
             <div class="txt">
                 <b>${esc(i.codigo)}</b> — ${esc(i.descricao)}
-                <small>${i.local ? '📍 ' + esc(i.local) + ' · ' : ''}contratado ${i.contratado} ${esc(i.unidade)} · já medido ${i.acumuladoAnterior} · ${fmtMoeda(i.preco_unit)}/${esc(i.unidade)}</small>
+                <small>${i.local ? '📍 ' + esc(i.local) + ' · ' : ''}contratado ${i.contratado} ${esc(i.unidade)} · já medido ${i.acumuladoAnterior}${i.executadoObra != null ? ` · 🏗️ executado na obra ${i.executadoObra}` : ''} · ${fmtMoeda(i.preco_unit)}/${esc(i.unidade)}</small>
             </div>
             <label style="font-size:.7rem;color:var(--hermo-text-dim)">nesta:</label>
             <input class="qtd" type="number" step="any" min="0" value="${i.qtd || ''}" placeholder="0" data-qtd="${idx}" />

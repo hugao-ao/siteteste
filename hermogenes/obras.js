@@ -44,6 +44,8 @@ let diarioEntradas = [];
 let localEscolhido = null;
 let alocItemIndex = null;     // índice em itensDraft do serviço sendo alocado
 let oaMarcados = new Set();
+let depsDraft = [];           // [{item_id, depende_de_id}] — dependências entre serviços da obra aberta
+let depItemIndex = null;      // índice em itensDraft do serviço cujas dependências estão sendo editadas
 
 // mini-mapa
 let omMapa = null, omMarcador = null, omPendente = null;
@@ -69,7 +71,8 @@ async function carregarTudo() {
             .select(`*, cliente:hermo_clientes(id, nome, whatsapp),
                 itens:hermo_obra_servicos(*, servico:hermo_servicos(id, codigo, descricao, unidade),
                     alocacoes:hermo_alocacoes(*, integrante:hermo_integrantes(id, nome, apelido), equipe:hermo_equipes(id, nome, cor))),
-                propostas:hermo_obra_propostas(proposta_id)`)
+                propostas:hermo_obra_propostas(proposta_id),
+                dependencias:hermo_obra_dependencias(item_id, depende_de_id)`)
             .order('ano', { ascending: false }).order('numero', { ascending: false }),
         sb.from('hermo_integrantes').select('*, funcao:hermo_funcoes(nome)').order('nome'),
         sb.from('hermo_equipes').select('*, membros:hermo_equipe_membros(integrante_id)').order('nome'),
@@ -85,7 +88,8 @@ async function carregarTudo() {
     obras = (o.data || []).map(x => ({
         ...x,
         itens: (x.itens || []).sort((a, b) => a.ordem - b.ordem),
-        propostaIds: (x.propostas || []).map(op => op.proposta_id)
+        propostaIds: (x.propostas || []).map(op => op.proposta_id),
+        dependencias: x.dependencias || []
     }));
     integrantes = i.data || [];
     equipes = (e.data || []).map(q => ({ ...q, membroIds: (q.membros || []).map(m => m.integrante_id) }));
@@ -113,6 +117,80 @@ function prazoEstourado(o) {
     return o.prazo && o.prazo < hoje() && !['concluida', 'entregue'].includes(o.status);
 }
 
+/** Executado acima do contratado em algum serviço vigente → precisa de aditivo. */
+function itemExcedente(it) {
+    return it.qtd_executada != null && it.qtd_executada !== '' && num(it.qtd_executada) > num(it.quantidade);
+}
+function obraTemExcedente(o) {
+    return (o.itens || []).some(it => it.vigente !== false && itemExcedente(it));
+}
+
+const fmtData = iso => (iso || '').split('-').reverse().join('/');
+const fmtQtd = v => {
+    const n = Math.round(num(v) * 100) / 100;
+    return String(n).replace('.', ',');
+};
+
+// ---------- cadeia de dependências (espelho do recálculo do banco) ----------
+const somarDias = (iso, dias) => {
+    const [y, m, d] = iso.split('-').map(Number);
+    const dt = new Date(y, m - 1, d + dias);
+    return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
+};
+const difDias = (a, b) => Math.round((new Date(b + 'T00:00:00') - new Date(a + 'T00:00:00')) / 86400000);
+
+/** Itens que dependem (direta ou indiretamente) do item — não podem virar dependência dele (ciclo). */
+function descendentesDe(itemId) {
+    const desc = new Set();
+    let fronteira = [itemId];
+    while (fronteira.length) {
+        const novos = depsDraft
+            .filter(d => fronteira.includes(d.depende_de_id) && !desc.has(d.item_id))
+            .map(d => d.item_id);
+        novos.forEach(id => desc.add(id));
+        fronteira = novos;
+    }
+    return desc;
+}
+
+function predsDe(itemId) {
+    return depsDraft.filter(d => d.item_id === itemId)
+        .map(d => itensDraft.find(i => i.id === d.depende_de_id))
+        .filter(i => i && i.vigente !== false);
+}
+
+/**
+ * Recalcula as datas previstas do draft seguindo a cadeia (prévia do que o banco fará ao salvar):
+ * concluído (fim_real) congela; início real manda; com dependências, o início é a última
+ * data-fim dos prévios (fim_real ou fim previsto); a duração prevista é preservada.
+ */
+function recalcCadeiaDraft() {
+    const vig = itensDraft.filter(i => i.id && i.vigente !== false);
+    for (let passe = 0; passe < vig.length; passe++) {
+        let mudou = false;
+        vig.forEach(i => {
+            if (i.fim_real) return;
+            let base = null;
+            if (i.inicio_real) {
+                base = i.inicio_real;
+            } else {
+                const fins = predsDe(i.id).map(p => p.fim_real || p.fim_previsto).filter(Boolean);
+                if (fins.length) base = fins.sort().pop();
+            }
+            if (!base) return;
+            const dur = (i.inicio_previsto && i.fim_previsto)
+                ? Math.max(0, difDias(i.inicio_previsto, i.fim_previsto)) : 0;
+            const novoFim = somarDias(base, dur);
+            if (i.inicio_previsto !== base || i.fim_previsto !== novoFim) {
+                i.inicio_previsto = base;
+                i.fim_previsto = novoFim;
+                mudou = true;
+            }
+        });
+        if (!mudou) break;
+    }
+}
+
 // ============================================================
 // RESUMO
 // ============================================================
@@ -126,6 +204,7 @@ function renderResumo() {
     const progMedio = andamento.length
         ? Math.round(andamento.reduce((t, o) => t + progressoObra(o), 0) / andamento.length) : 0;
     const estouradas = obras.filter(prazoEstourado);
+    const excedentes = obras.filter(obraTemExcedente);
     let destaque;
     if (estouradas.length > 0) {
         destaque = `⚠️ <b>${estouradas.length}</b> obra(s) com prazo estourado: ${estouradas.slice(0, 3).map(o => esc(o.nome)).join(', ')}${estouradas.length > 3 ? '…' : ''}`;
@@ -133,6 +212,9 @@ function renderResumo() {
         destaque = `🏗️ ${andamento.length} obra(s) em andamento — execução média de <b>${progMedio}%</b>.`;
     } else {
         destaque = `✅ Nenhuma obra em andamento no momento.`;
+    }
+    if (excedentes.length > 0) {
+        destaque += `<br>🧾 <b>${excedentes.length}</b> obra(s) com serviço executado acima do contratado — gerar aditivo: ${excedentes.slice(0, 3).map(o => esc(o.nome)).join(', ')}${excedentes.length > 3 ? '…' : ''}`;
     }
     $('resumo').innerHTML = KANBAN_ORDEM.map(st => `
         <div class="stat" style="border-left-color:${STATUS_OBRA[st].cor}">
@@ -168,7 +250,7 @@ function cardMini(o) {
             <span class="kb-end">${fmtCodigo(o)} — ${esc(o.nome)}</span>
         </div>
         <div class="kb-meta">👤 ${o.cliente ? esc(o.cliente.nome) : '<i>sem cliente</i>'}</div>
-        <div class="kb-meta">💰 <b>${fmtMoeda(o.valor_contratado)}</b> · 🛠️ ${o.itens.filter(it => it.vigente !== false).length} serviço(s)${o.prazo ? ` · <span class="${estourou ? 'prazo-estourado' : ''}">📅 ${o.prazo.split('-').reverse().join('/')}</span>` : ''}${(ocultasMapa.has(o.id) || statusOcultosMapa.has(o.status)) ? ' · 🙈' : ''}</div>
+        <div class="kb-meta">💰 <b>${fmtMoeda(o.valor_contratado)}</b> · 🛠️ ${o.itens.filter(it => it.vigente !== false).length} serviço(s)${o.prazo ? ` · <span class="${estourou ? 'prazo-estourado' : ''}">📅 ${o.prazo.split('-').reverse().join('/')}</span>` : ''}${obraTemExcedente(o) ? ' · <span class="prazo-estourado" title="Serviço executado acima do contratado — gere um aditivo">⚠ aditivo</span>' : ''}${(ocultasMapa.has(o.id) || statusOcultosMapa.has(o.status)) ? ' · 🙈' : ''}</div>
         <div style="display:flex;align-items:center;gap:6px">
             <div class="ob-progresso" style="flex:1"><div style="width:${prog}%"></div></div>
             <span style="font-size:.72rem;font-weight:700">${prog}%</span>
@@ -390,8 +472,12 @@ async function abrirModalObra(obra) {
         perc_executado: num(it.perc_executado),
         inicio_previsto: it.inicio_previsto || '',
         fim_previsto: it.fim_previsto || '',
+        inicio_real: it.inicio_real || '',
+        fim_real: it.fim_real || '',
+        qtd_executada: it.qtd_executada != null ? num(it.qtd_executada) : null,
         alocacoes: it.alocacoes || []
     }));
+    depsDraft = (obra?.dependencias || []).map(d => ({ item_id: d.item_id, depende_de_id: d.depende_de_id }));
     propostasDraft = [...(obra?.propostaIds || [])];
     localEscolhido = null;
     $('ob-local-info').style.display = 'none';
@@ -424,6 +510,7 @@ function fecharModalObra() {
     $('ob-overlay').classList.remove('aberto');
     obraEditando = null;
     itensDraft = [];
+    depsDraft = [];
     propostasDraft = [];
     diarioEntradas = [];
     localEscolhido = null;
@@ -450,16 +537,21 @@ function renderPropostasDraft() {
 }
 
 function abrirAssociarPropostas() {
-    // associações existentes aparecem marcadas E travadas (aditivo não se desfaz)
+    // associações existentes aparecem marcadas E travadas (aditivo não se desfaz);
+    // propostas que já pertencem a OUTRA obra ficam bloqueadas (1 proposta = 1 obra)
     $('op-lista').innerHTML = propostasContratadas.length === 0
         ? '<div style="font-size:.8rem;color:var(--hermo-text-dim)">Nenhuma proposta contratada disponível.</div>'
         : propostasContratadas.map(p => {
             const jaAssociada = propostasDraft.includes(p.id);
+            const outraObra = !jaAssociada
+                ? obras.find(o => o.id !== obraEditando?.id && (o.propostaIds || []).includes(p.id))
+                : null;
+            const travada = jaAssociada || !!outraObra;
             return `
-            <label class="lc-item" style="${jaAssociada ? 'opacity:.65' : ''}">
-                <input type="checkbox" data-op="${p.id}" ${jaAssociada ? 'checked disabled' : ''} />
+            <label class="lc-item" style="${travada ? 'opacity:.65' : ''}">
+                <input type="checkbox" data-op="${p.id}" ${jaAssociada ? 'checked' : ''} ${travada ? 'disabled' : ''} />
                 <div class="txt"><b>${String(p.numero).padStart(4, '0')}/${p.ano}</b> — ${esc(p.titulo)}
-                    <small>${p.cliente?.nome ? esc(p.cliente.nome) + ' · ' : ''}${fmtMoeda(p.valor_total)} · ${(p.itens || []).length} item(ns)${jaAssociada ? ' · ✔ já aplicada' : ''}</small>
+                    <small>${p.cliente?.nome ? esc(p.cliente.nome) + ' · ' : ''}${fmtMoeda(p.valor_total)} · ${(p.itens || []).length} item(ns)${jaAssociada ? ' · ✔ já aplicada' : ''}${outraObra ? ` · 🚫 já pertence à obra ${fmtCodigo(outraObra)}` : ''}</small>
                 </div>
             </label>`;
         }).join('');
@@ -606,29 +698,56 @@ function renderCronograma() {
         cont.innerHTML = '<div style="font-size:.78rem;color:var(--hermo-text-dim)">Adicione serviços ao escopo e salve para programar.</div>';
         return;
     }
+    recalcCadeiaDraft();
     cont.innerHTML = comId.map(i => {
         const idx = itensDraft.indexOf(i);
+        const concluido = !!i.fim_real;
+        const preds = predsDe(i.id);
+        const iniAuto = preds.length > 0 || !!i.inicio_real;
         const chips = (i.alocacoes || []).map(a => {
             const nome = a.integrante?.apelido || a.integrante?.nome?.split(' ')[0] || '?';
             const per = a.data_inicio === a.data_fim
                 ? a.data_inicio.split('-').reverse().slice(0, 2).join('/')
                 : `${a.data_inicio.split('-').reverse().slice(0, 2).join('/')}–${a.data_fim.split('-').reverse().slice(0, 2).join('/')}`;
             const turno = a.turno === 'horario' ? `${(a.hora_inicio || '').slice(0, 5)}-${(a.hora_fim || '').slice(0, 5)}` : TURNO_LABEL[a.turno];
+            const fora = i.inicio_previsto && i.fim_previsto
+                && (a.data_fim < i.inicio_previsto || a.data_inicio > i.fim_previsto);
             return `<span class="chip" style="border-left-color:${a.equipe?.cor || 'var(--hermo-primary)'}"
-                title="${esc(a.integrante?.nome || '')}${a.equipe ? ' · equipe ' + esc(a.equipe.nome) : ''}">
-                ${esc(nome)} · ${per} · ${turno}
+                title="${esc(a.integrante?.nome || '')}${a.equipe ? ' · equipe ' + esc(a.equipe.nome) : ''}${fora ? ' · ⚠ fora do período previsto atual do serviço' : ''}">
+                ${fora ? '⚠ ' : ''}${esc(nome)} · ${per} · ${turno}
                 <button data-aloc-remover="${a.id}" title="Remover alocação">×</button>
             </span>`;
         }).join('');
+        const excedente = itemExcedente(i);
+        const badges =
+            (concluido ? `<span class="ob-badge ok" title="Serviço finalizado">✓ concluído em ${fmtData(i.fim_real)}</span>` : '') +
+            (excedente ? `<span class="ob-badge aditivo" title="A quantidade executada passou do contratado — gere um aditivo (associe uma nova proposta) para cobrir o excedente.">⚠ +${fmtQtd(num(i.qtd_executada) - num(i.quantidade))} ${esc(i.unidade || 'un')} acima do contratado — aditivo</span>` : '');
+        const chipsDeps = preds.length
+            ? `<div class="ob-deps">⛓ só inicia após concluir: ${preds.map(p =>
+                `<b title="${esc(p.descricao)}">${esc(p.codigo)}${p.fim_real ? ' ✓' : ''}</b>`).join(', ')}</div>`
+            : '';
         return `
-        <div class="ob-crono-item">
+        <div class="ob-crono-item ${concluido ? 'concluido' : ''}">
             <div class="linha1">
-                <span class="nome-serv">${esc(i.codigo)} — ${esc(i.descricao)}</span>
+                <span class="nome-serv">${esc(i.codigo)} — ${esc(i.descricao)} ${badges}</span>
                 <label style="font-size:.72rem;color:var(--hermo-text-dim)">previsto:</label>
-                <input type="date" value="${i.inicio_previsto || ''}" data-crono-ini="${idx}" />
+                <input type="date" value="${i.inicio_previsto || ''}" data-crono-ini="${idx}"
+                    ${(iniAuto || concluido) ? `disabled title="${i.inicio_real ? 'Definido pelo início real informado' : concluido ? 'Serviço concluído' : 'Definido automaticamente pela conclusão dos serviços prévios'}"` : ''} />
                 <span style="color:var(--hermo-text-dim)">→</span>
-                <input type="date" value="${i.fim_previsto || ''}" data-crono-fim="${idx}" />
+                <input type="date" value="${i.fim_previsto || ''}" data-crono-fim="${idx}" ${concluido ? 'disabled title="Serviço concluído"' : ''} />
+                <button class="hermo-btn small ghost" data-deps="${idx}" title="Este serviço só pode iniciar após a conclusão de quais serviços?">⛓ Depende${preds.length ? ` (${preds.length})` : ''}</button>
                 <button class="hermo-btn small primary" data-alocar="${idx}">👷 Alocar</button>
+            </div>
+            ${chipsDeps}
+            <div class="linha-real">
+                <label>real:</label>
+                <span>iniciou</span>
+                <input type="date" value="${i.inicio_real || ''}" data-real-ini="${idx}" ${concluido ? 'disabled title="Serviço concluído"' : ''} />
+                <span>· concluiu</span>
+                <input type="date" value="${i.fim_real || ''}" data-real-fim="${idx}" />
+                <span>· executado</span>
+                <input type="number" class="qtd-exec" min="0" step="0.01" value="${i.qtd_executada ?? ''}" data-qtd-exec="${idx}" />
+                <span>de ${fmtQtd(i.quantidade)} ${esc(i.unidade || 'un')}</span>
             </div>
             <div class="ob-aloc-chips">${chips || '<span style="font-size:.72rem;color:var(--hermo-text-dim)">ninguém alocado ainda</span>'}</div>
         </div>`;
@@ -636,10 +755,47 @@ function renderCronograma() {
 
     cont.querySelectorAll('[data-crono-ini]').forEach(inp => inp.addEventListener('change', e => {
         itensDraft[parseInt(e.target.dataset.cronoIni)].inicio_previsto = e.target.value;
+        renderCronograma();
     }));
     cont.querySelectorAll('[data-crono-fim]').forEach(inp => inp.addEventListener('change', e => {
         itensDraft[parseInt(e.target.dataset.cronoFim)].fim_previsto = e.target.value;
+        renderCronograma();
     }));
+    cont.querySelectorAll('[data-real-ini]').forEach(inp => inp.addEventListener('change', e => {
+        itensDraft[parseInt(e.target.dataset.realIni)].inicio_real = e.target.value;
+        renderCronograma();
+        toast(e.target.value
+            ? 'Início real informado — as datas da cadeia foram recalculadas (salve a obra para gravar).'
+            : 'Início real removido — datas recalculadas (salve a obra para gravar).');
+    }));
+    cont.querySelectorAll('[data-real-fim]').forEach(inp => inp.addEventListener('change', e => {
+        const item = itensDraft[parseInt(e.target.dataset.realFim)];
+        if (e.target.value && item.inicio_real && e.target.value < item.inicio_real) {
+            toast('A conclusão real não pode ser antes do início real.', true);
+            e.target.value = item.fim_real || '';
+            return;
+        }
+        item.fim_real = e.target.value;
+        renderCronograma();
+        toast(e.target.value
+            ? 'Serviço marcado como concluído — dependentes recalculados (salve a obra para gravar).'
+            : 'Conclusão real removida (salve a obra para gravar).');
+    }));
+    cont.querySelectorAll('[data-qtd-exec]').forEach(inp => inp.addEventListener('change', e => {
+        const item = itensDraft[parseInt(e.target.dataset.qtdExec)];
+        const bruto = e.target.value.trim();
+        item.qtd_executada = bruto === '' ? null : Math.max(0, num(bruto));
+        if (item.qtd_executada != null && num(item.quantidade) > 0) {
+            item.perc_executado = Math.min(100, Math.round(item.qtd_executada / num(item.quantidade) * 1000) / 10);
+        }
+        renderItensDraft();
+        renderCronograma();
+        if (itemExcedente(item)) {
+            toast(`⚠ ${item.codigo}: executado passou do contratado — gere um aditivo para cobrir o excedente.`, true);
+        }
+    }));
+    cont.querySelectorAll('[data-deps]').forEach(b => b.addEventListener('click',
+        () => abrirDepsModal(parseInt(b.dataset.deps))));
     cont.querySelectorAll('[data-alocar]').forEach(b => b.addEventListener('click',
         () => abrirAlocacaoModal(parseInt(b.dataset.alocar))));
     cont.querySelectorAll('[data-aloc-remover]').forEach(b => b.addEventListener('click', async () => {
@@ -651,6 +807,74 @@ function renderCronograma() {
         renderCronograma();
         toast('Alocação removida.');
     }));
+}
+
+// ---------- dependências entre serviços (od) ----------
+function abrirDepsModal(itemIndex) {
+    depItemIndex = itemIndex;
+    const item = itensDraft[itemIndex];
+    const bloqueados = descendentesDe(item.id); // marcá-los criaria ciclo
+    const atuais = new Set(depsDraft.filter(d => d.item_id === item.id).map(d => d.depende_de_id));
+    $('od-titulo').textContent = `Dependências — ${item.codigo} ${item.descricao}`;
+    const outros = itensDraft.filter(i => i.id && i.vigente !== false && i.id !== item.id);
+    $('od-lista').innerHTML = outros.length === 0
+        ? '<div style="font-size:.8rem;color:var(--hermo-text-dim)">Não há outros serviços no escopo.</div>'
+        : outros.map(i => {
+            const ciclo = bloqueados.has(i.id);
+            return `
+            <label class="lc-item" style="${ciclo ? 'opacity:.5' : ''}">
+                <input type="checkbox" data-od="${i.id}" ${atuais.has(i.id) ? 'checked' : ''} ${ciclo ? 'disabled' : ''} />
+                <div class="txt"><b>${esc(i.codigo)}</b> — ${esc(i.descricao)}
+                    <small>${i.fim_real
+                        ? '✓ concluído em ' + fmtData(i.fim_real)
+                        : (i.fim_previsto ? 'fim previsto ' + fmtData(i.fim_previsto) : 'sem data prevista ainda')}${ciclo ? ' · ⚠ já depende deste serviço (criaria ciclo)' : ''}</small>
+                </div>
+            </label>`;
+        }).join('');
+    $('od-transpor').checked = false;
+    $('od-overlay').classList.add('aberto');
+}
+
+async function confirmarDeps() {
+    const item = itensDraft[depItemIndex];
+    if (!item?.id || !obraEditando?.id) return;
+    const marcados = [...document.querySelectorAll('[data-od]:checked')].map(c => c.dataset.od);
+    const transpor = $('od-transpor').checked;
+    const btn = $('od-confirmar');
+    btn.disabled = true;
+    try {
+        // grava antes as edições do modal (datas/percentuais) para o recálculo usar o que está na tela
+        const oid = await salvarObraCore({ silencioso: true });
+        if (!oid) return;
+        const { data, error } = await sb.rpc('hermo_salvar_dependencias',
+            { p_item: item.id, p_depende: marcados, p_transpor: transpor });
+        if (error) throw error;
+        $('od-overlay').classList.remove('aberto');
+        let msg = marcados.length
+            ? 'Dependências salvas — datas da cadeia recalculadas.'
+            : 'Dependências removidas.';
+        if (transpor && marcados.length) {
+            if (data?.sem_datas) {
+                msg += ' O serviço ainda não tem data prevista, então ninguém foi transposto.';
+            } else {
+                msg += ` ${data?.transpostos ?? 0} alocação(ões) transposta(s) dos serviços prévios.`;
+            }
+            if ((data?.ja_alocados || []).length) {
+                msg += ` Já estavam alocados neste serviço: ${data.ja_alocados.join(', ')}.`;
+            }
+            if ((data?.pulados || []).length) {
+                msg += ` Pulados por conflito de agenda: ${data.pulados.join(', ')}.`;
+            }
+        }
+        toast(msg);
+        await carregarTudo();
+        const atualizada = obras.find(o => o.id === obraEditando?.id);
+        if (atualizada) await abrirModalObra(atualizada);
+    } catch (e) {
+        toast('Erro ao salvar dependências: ' + e.message, true);
+    } finally {
+        btn.disabled = false;
+    }
 }
 
 // ---------- alocação (oa) ----------
@@ -920,18 +1144,17 @@ async function registrarDiario() {
 // ============================================================
 // SALVAR OBRA
 // ============================================================
-async function salvarObra() {
+/** Valida e grava a obra via RPC. Retorna o id gravado ou null (erros já mostrados em toast). */
+async function salvarObraCore({ silencioso = false } = {}) {
     const numero = parseInt($('ob-numero').value);
     const ano = parseInt($('ob-ano').value);
     const nome = $('ob-nome').value.trim();
-    if (!numero || numero < 1 || numero > 9999) { toast('Número inválido (1 a 9999).', true); return; }
-    if (!ano || ano < 2000 || ano > 2100) { toast('Ano inválido.', true); return; }
-    if (!nome) { toast('Nome da obra é obrigatório.', true); return; }
+    if (!numero || numero < 1 || numero > 9999) { toast('Número inválido (1 a 9999).', true); return null; }
+    if (!ano || ano < 2000 || ano > 2100) { toast('Ano inválido.', true); return null; }
+    if (!nome) { toast('Nome da obra é obrigatório.', true); return null; }
     const dup = obras.find(o => o.numero === numero && o.ano === ano && o.id !== obraEditando?.id);
-    if (dup) { toast(`Já existe a obra ${fmtCodigo(dup)} — escolha outro número.`, true); return; }
+    if (dup) { toast(`Já existe a obra ${fmtCodigo(dup)} — escolha outro número.`, true); return null; }
 
-    const btn = $('ob-salvar');
-    btn.disabled = true;
     try {
         const endereco = $('ob-endereco').value.trim();
         let lat = obraEditando?.latitude ?? null;
@@ -959,24 +1182,38 @@ async function salvarObra() {
             inicio_real: $('ob-inicio-real').value || null,
             conclusao: $('ob-conclusao').value || null,
             observacoes: $('ob-obs').value.trim() || null,
-            // escopo é imutável aqui — só o CRONOGRAMA dos itens existentes é atualizado
+            // escopo é imutável aqui — só CRONOGRAMA e EXECUÇÃO dos itens existentes são atualizados
             itens: itensDraft.filter(i => i.id).map(i => ({
                 id: i.id,
                 perc_executado: i.perc_executado,
                 inicio_previsto: i.inicio_previsto || null,
-                fim_previsto: i.fim_previsto || null
+                fim_previsto: i.fim_previsto || null,
+                inicio_real: i.inicio_real || null,
+                fim_real: i.fim_real || null,
+                qtd_executada: i.qtd_executada != null ? String(i.qtd_executada) : null
             }))
         };
-        const eraEdicao = !!obraEditando;
         const { data: oid, error } = await sb.rpc('hermo_salvar_obra', { p: payload });
         if (error) throw error;
         if (!obraEditando && oid) obraEditando = { id: oid };
-        toast(eraEdicao ? 'Obra atualizada.' : 'Obra criada — reabra o card para programar o cronograma.');
-        fecharModalObra();
-        await carregarTudo();
+        return oid || obraEditando?.id || null;
     } catch (e) {
         if ((e.code || '') === '23505') toast('Já existe uma obra com esse número/ano.', true);
         else toast('Erro ao salvar obra: ' + e.message, true);
+        return null;
+    }
+}
+
+async function salvarObra() {
+    const btn = $('ob-salvar');
+    btn.disabled = true;
+    try {
+        const eraEdicao = !!obraEditando;
+        const oid = await salvarObraCore();
+        if (!oid) return;
+        toast(eraEdicao ? 'Obra atualizada.' : 'Obra criada — reabra o card para programar o cronograma.');
+        fecharModalObra();
+        await carregarTudo();
     } finally {
         btn.disabled = false;
     }
@@ -1104,6 +1341,11 @@ $('op-fechar').addEventListener('click', () => $('op-overlay').classList.remove(
 $('op-cancelar').addEventListener('click', () => $('op-overlay').classList.remove('aberto'));
 ligarFecharPorBackdrop($('op-overlay'), () => $('op-overlay').classList.remove('aberto'));
 $('op-confirmar').addEventListener('click', confirmarAssociarPropostas);
+
+$('od-fechar').addEventListener('click', () => $('od-overlay').classList.remove('aberto'));
+$('od-cancelar').addEventListener('click', () => $('od-overlay').classList.remove('aberto'));
+ligarFecharPorBackdrop($('od-overlay'), () => $('od-overlay').classList.remove('aberto'));
+$('od-confirmar').addEventListener('click', confirmarDeps);
 
 $('oa-fechar').addEventListener('click', () => $('oa-overlay').classList.remove('aberto'));
 $('oa-cancelar').addEventListener('click', () => $('oa-overlay').classList.remove('aberto'));
