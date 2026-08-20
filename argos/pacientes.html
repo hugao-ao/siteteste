@@ -237,7 +237,7 @@
           </div>
         </div>
 
-        <h3 class="form-secao">📍 Modalidade, espaço e profissional</h3>
+        <h3 class="form-secao">📍 Modalidade e espaço</h3>
         <div class="form-grade">
           <label>Modalidade
             <select id="din-modalidade">
@@ -248,13 +248,8 @@
           <label id="rotulo-sala">Espaço
             <select id="din-sala"></select>
           </label>
-          <label>Profissional
-            <select id="din-profissional"><option value="">— Selecionar —</option></select>
-          </label>
-          <label>Atividade/serviço prestado
-            <select id="din-servico"><option value="">— Selecione o profissional antes —</option></select>
-          </label>
         </div>
+        <p class="dica">O(s) profissional(is) responsável(is) e o serviço prestado são definidos abaixo, na seção de repasses.</p>
 
         <h3 class="form-secao">💰 Acordo financeiro</h3>
         <div class="form-grade">
@@ -270,10 +265,10 @@
           </label>
         </div>
 
-        <h3 class="form-secao">💼 Divisão com profissionais (repasses)</h3>
-        <p class="dica">Um ou mais profissionais podem atuar neste atendimento. Cada um recebe um <b>percentual</b> do acordo ou um <b>valor nominal</b> (convertido em % sobre o valor do acordo). A soma nunca pode passar de 100% — o restante fica com a clínica.</p>
+        <h3 class="form-secao">💼 Profissionais responsáveis e repasses</h3>
+        <p class="dica">Adicione o(s) profissional(is) que atende(m) este paciente, com o serviço prestado por cada um. O repasse de cada profissional pode ser um <b>percentual</b> do acordo ou um <b>valor nominal</b> (convertido em % sobre o valor do acordo) — deixe em branco se o profissional não recebe por produção. A soma nunca pode passar de 100% — o restante fica com a clínica.</p>
         <div id="lista-repasses"></div>
-        <button type="button" class="argos-btn small" id="btn-add-repasse">+ Adicionar profissional no repasse</button>
+        <button type="button" class="argos-btn small" id="btn-add-repasse">+ Adicionar profissional</button>
         <p class="dica" id="resumo-repasses" style="font-weight:600"></p>
         <div id="bloco-pacote" style="display:none">
           <div class="form-grade">
@@ -433,7 +428,7 @@
     </div>
   </div>
 
-  <script type="module" src="pacientes.js?v=7"></script>
+  <script type="module" src="pacientes.js?v=8"></script>
   <script type="module" src="argos-zoom.js?v=4"></script>
 </body>
 </html>

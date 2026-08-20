@@ -209,11 +209,20 @@ function resumoDinamica(d) {
 
 const pctFmt = x => (Math.round(x * 100) / 100).toLocaleString('pt-BR');
 
+// profissionais responsáveis (com serviço), vindos da lista de repasses
+function profissionaisDaDinamicaHTML(d) {
+    const resp = repassesDe(d);
+    if (!resp.length) return '<span class="dim">sem profissional definido</span>';
+    return resp.map(r =>
+        `${esc(nomeProf(r.profissional_id))} (${esc(nomeServ(r.servico_id))})`).join(', ');
+}
+
 // resumo da divisão do acordo com os profissionais, para o bloco da dinâmica
 function resumoRepassesHTML(d) {
     const div = divisaoRepasses(d);
-    if (!div.itens.length) return '';
-    const partes = div.itens.map(r => r.tipo === 'valor'
+    const comValor = div.itens.filter(r => Number(r.valor) > 0);
+    if (!comValor.length) return '';
+    const partes = comValor.map(r => r.tipo === 'valor'
         ? `${esc(nomeProf(r.profissional_id))} ${formataMoeda(r.valor)} (${pctFmt(r.pct)}%)`
         : `${esc(nomeProf(r.profissional_id))} ${pctFmt(r.pct)}%`);
     return `<br>💼 Repasses: <b>${partes.join(' + ')}</b> · clínica fica com <b>${pctFmt(div.pctClinica)}%</b> (${formataMoeda(div.valorClinica)} ${unidadeRepasse(d)})`;
@@ -248,7 +257,7 @@ async function renderDinamicas() {
               </div>
               <div class="bloco-info">
                 ${d.grupo_id ? `👥 Grupo: <b>${esc(nomeGrupo(d.grupo_id))}</b> · ` : ''}${d.recorrencia_tipo === 'avulsa' ? '🗓️ Sessões avulsas (marcadas uma a uma)' : `🗓️ ${r.dias || '—'} — ${r.freq}, a partir de ${formataBR(d.data_inicio)}, ${r.fim}`}<br>
-                ${d.modalidade === 'grupo' ? '👥 Em grupo' : '👤 Individual'} · 🚪 ${esc(nomeSala(d.sala_id))} · 🧑‍⚕️ ${esc(nomeProf(d.profissional_id))} (${esc(nomeServ(d.servico_id))})<br>
+                ${d.modalidade === 'grupo' ? '👥 Em grupo' : '👤 Individual'} · 🚪 ${esc(nomeSala(d.sala_id))} · 🧑‍⚕️ ${profissionaisDaDinamicaHTML(d)}<br>
                 💰 ${esc(acordoLabel(d))}${d.acordo_tipo === 'pacote' && d.pacote_pagamento ? ` — ${esc(PACOTE_MODOS[d.pacote_pagamento.modo] || '')}` : ''}${resumoRepassesHTML(d)}
               </div>
               <div class="mini-acoes">
@@ -357,23 +366,28 @@ function linhaParcela(p) {
 document.getElementById('btn-add-parcela').addEventListener('click', () =>
     document.getElementById('lista-parcelas').appendChild(linhaParcela()));
 
-// ---------- repasses: divisão do acordo com um ou mais profissionais ----------
+// ---------- profissionais responsáveis e repasses (fonte única do
+// profissional e do serviço da dinâmica) ----------
 function linhaRepasse(r) {
     const el = document.createElement('div');
     el.className = 'linha-dia';
     el.innerHTML = `
-      <select class="rep-prof" style="flex:2; min-width:140px">
+      <select class="rep-prof" style="flex:2; min-width:130px" title="Profissional responsável">
         <option value="">— Profissional —</option>
         ${profissionais.map(p => `<option value="${p.id}">${esc(p.nome)}</option>`).join('')}
       </select>
-      <select class="rep-tipo">
+      <select class="rep-servico" style="flex:2; min-width:130px" title="Serviço prestado por este profissional"></select>
+      <select class="rep-tipo" title="Forma do repasse">
         <option value="percentual">% do acordo</option>
         <option value="valor">R$ (valor nominal)</option>
       </select>
-      <input type="number" class="rep-valor" min="0" step="0.01" placeholder="Ex.: 40" value="${r && r.valor != null ? r.valor : ''}" />
+      <input type="number" class="rep-valor" min="0" step="0.01" placeholder="Repasse" title="Valor do repasse (vazio = sem repasse por produção)" value="${r && r.valor != null ? r.valor : ''}" />
       <button type="button" class="argos-btn small danger dia-remover">×</button>`;
     if (r && r.profissional_id) el.querySelector('.rep-prof').value = r.profissional_id;
+    selectServicosDoProf(el.querySelector('.rep-servico'), (r && r.profissional_id) || null, (r && r.servico_id) || null);
     if (r && r.tipo) el.querySelector('.rep-tipo').value = r.tipo;
+    el.querySelector('.rep-prof').addEventListener('change', () =>
+        selectServicosDoProf(el.querySelector('.rep-servico'), el.querySelector('.rep-prof').value, null));
     el.querySelector('.dia-remover').addEventListener('click', () => { el.remove(); atualizarResumoRepasses(); });
     return el;
 }
@@ -385,6 +399,7 @@ document.getElementById('btn-add-repasse').addEventListener('click', () => {
 function repassesDoFormulario() {
     return Array.from(document.querySelectorAll('#lista-repasses .linha-dia')).map(l => ({
         profissional_id: l.querySelector('.rep-prof').value || null,
+        servico_id: l.querySelector('.rep-servico').value || null,
         tipo: l.querySelector('.rep-tipo').value,
         valor: l.querySelector('.rep-valor').value === '' ? null : Number(l.querySelector('.rep-valor').value)
     }));
@@ -455,9 +470,6 @@ function atualizarCondicionais() {
 ['din-tipo', 'din-modalidade', 'din-freq-periodo', 'din-fim-tipo', 'din-acordo', 'din-pacote-modo'].forEach(id =>
     document.getElementById(id).addEventListener('change', atualizarCondicionais));
 
-document.getElementById('din-profissional').addEventListener('change', () =>
-    selectServicosDoProf(document.getElementById('din-servico'), document.getElementById('din-profissional').value, null));
-
 function abrirFormDinamica(id) {
     editandoDinamicaId = id;
     const d = id ? dinamicas.find(x => x.id === id) : null;
@@ -479,8 +491,6 @@ function abrirFormDinamica(id) {
     v('din-modalidade', d ? d.modalidade : 'individual');
     selectGrupos(document.getElementById('din-grupo'), d && d.grupo_id);
     selectSalas(document.getElementById('din-sala'), d && d.sala_id);
-    selectProfissionais(document.getElementById('din-profissional'), d && d.profissional_id);
-    selectServicosDoProf(document.getElementById('din-servico'), d && d.profissional_id, d && d.servico_id);
     v('din-acordo', d ? d.acordo_tipo : 'por_sessao');
     v('din-valor', d && d.valor);
     document.getElementById('lista-repasses').innerHTML = '';
@@ -533,10 +543,14 @@ document.getElementById('form-dinamica').addEventListener('submit', async (e) =>
         })).filter(p => p.data);
     }
 
-    // divisão do acordo com profissionais (repasses)
+    // profissionais responsáveis e repasses (fonte única do profissional/serviço)
     const repasses = repassesDoFormulario();
-    if (repasses.some(r => !r.profissional_id || !(r.valor > 0))) {
-        toast('Nos repasses, escolha o profissional e informe um valor maior que zero (ou remova a linha).', true);
+    if (repasses.some(r => !r.profissional_id)) {
+        toast('Escolha o profissional em cada linha de repasse (ou remova a linha).', true);
+        return;
+    }
+    if (repasses.some(r => r.valor != null && r.valor < 0)) {
+        toast('O repasse não pode ser negativo.', true);
         return;
     }
     const idsRep = repasses.map(r => r.profissional_id);
@@ -559,8 +573,10 @@ document.getElementById('form-dinamica').addEventListener('submit', async (e) =>
         fim_data: g('din-fim-data') || null,
         modalidade: g('din-modalidade'),
         sala_id: g('din-sala') || null,
-        profissional_id: g('din-profissional') || null,
-        servico_id: g('din-servico') || null,
+        // o profissional/serviço "principal" da dinâmica é o da primeira linha
+        // de repasses (agenda, conflitos e filtros continuam funcionando)
+        profissional_id: (repasses[0] && repasses[0].profissional_id) || null,
+        servico_id: (repasses[0] && repasses[0].servico_id) || null,
         acordo_tipo: acordo,
         valor: acordo === 'pacote' ? null : num('din-valor'),
         pacote_qtd: acordo === 'pacote' ? num('din-pacote-qtd') : null,
