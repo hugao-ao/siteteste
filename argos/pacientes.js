@@ -6,7 +6,8 @@ import { sb, toast, esc, abrirModal, fecharModal } from './argos-common.js';
 import { carregarPermissoes } from './argos-permissoes.js';
 import {
     DOW_NOMES, PACOTE_MODOS, STATUS_SESSAO, acordoLabel, mesclarSessoes,
-    fechamentoPaciente, hojeISO, somarDias, formataBR, formataMoeda
+    fechamentoPaciente, hojeISO, somarDias, formataBR, formataMoeda,
+    conflitosDeDinamica, conflitosDeSessao
 } from './argos-recorrencia.js';
 
 let perm = { pode: () => true, aplicarVisibilidade: () => {}, master: true };
@@ -415,6 +416,21 @@ document.getElementById('form-dinamica').addEventListener('submit', async (e) =>
         pacote_pagamento: acordo === 'pacote' ? pg : null,
         ativo: document.getElementById('din-ativo').checked
     };
+    // Bloqueio de conflito: individual não divide espaço/profissional/horário
+    // com ninguém, e ninguém entra em cima de uma individual existente.
+    if (registro.recorrencia_tipo === 'recorrente' && registro.ativo) {
+        const outras = dinamicas.filter(d => d.id !== editandoDinamicaId && d.ativo !== false);
+        const { data: sessTodas } = await sb.from('argos_sessoes').select('*');
+        const sessOutras = (sessTodas || []).filter(s => s.dinamica_ref !== editandoDinamicaId);
+        const conflitos = conflitosDeDinamica({ ...registro, id: editandoDinamicaId || 'nova' }, outras, sessOutras);
+        if (conflitos.length) {
+            const c = conflitos[0];
+            const quem = (pacientes.find(x => x.id === c.outra.paciente_id) || {}).nome || 'outro paciente';
+            toast(`⛔ Conflito de agenda: ${formataBR(c.minha.data)} às ${c.minha.hora} já tem sessão ${(c.outra.modalidade || 'individual') === 'individual' ? 'INDIVIDUAL' : 'em grupo'} de ${quem} no mesmo espaço/profissional${conflitos.length > 1 ? ` (+${conflitos.length - 1} outro(s) conflito(s))` : ''}. A dinâmica não foi salva.`, true);
+            return;
+        }
+    }
+
     const q = editandoDinamicaId
         ? sb.from('argos_dinamicas').update(registro).eq('id', editandoDinamicaId)
         : sb.from('argos_dinamicas').insert(registro);
@@ -451,6 +467,14 @@ document.getElementById('form-avulsa').addEventListener('submit', async (e) => {
         servico_id: g('avu-servico') || null,
         status: '??'
     };
+    // Sessão avulsa é individual: não pode cair em cima de outra sessão
+    const { data: sessTodas } = await sb.from('argos_sessoes').select('*');
+    const conflitos = conflitosDeSessao(registro, dinamicas.filter(d => d.ativo !== false), sessTodas || []);
+    if (conflitos.length) {
+        const quem = (pacientes.find(x => x.id === conflitos[0].paciente_id) || {}).nome || 'outro paciente';
+        toast(`⛔ Conflito de agenda: já existe sessão de ${quem} nesse horário no mesmo espaço/profissional. A sessão não foi criada.`, true);
+        return;
+    }
     const { error } = await sb.from('argos_sessoes').insert(registro);
     if (error) { console.error(error); toast('Erro ao criar sessão.', true); return; }
     fecharModal('modal-avulsa');
