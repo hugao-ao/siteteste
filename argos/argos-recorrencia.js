@@ -114,23 +114,33 @@ export function expandirDinamica(d, de, ate) {
  * como estão. Retorna lista ordenada por data+hora com campo status.
  */
 export function mesclarSessoes(dinamicas, sessoesMaterializadas, de, ate) {
+    // sessões remarcadas casam com a projeção da ocorrência ORIGINAL
+    // (remarcada_de_*), mas são exibidas na data/hora nova
     const mat = new Map();
-    const soltas = [];
+    const out = [];
     for (const s of sessoesMaterializadas || []) {
-        if (s.data < de || s.data > ate) continue;
-        if (s.dinamica_ref) mat.set(`${s.dinamica_ref}|${s.data}|${s.hora}`, s);
-        else soltas.push({ ...s, projetada: false });
-    }
-    const out = [...soltas];
-    for (const d of dinamicas || []) {
-        for (const p of expandirDinamica(d, de, ate)) {
-            const m = mat.get(`${p.dinamica_ref}|${p.data}|${p.hora}`);
-            if (m) { out.push({ ...p, ...m, projetada: false }); mat.delete(`${p.dinamica_ref}|${p.data}|${p.hora}`); }
-            else out.push({ ...p, id: null, status: '??', projetada: true });
+        if (s.dinamica_ref) {
+            mat.set(`${s.dinamica_ref}|${s.remarcada_de_data || s.data}|${s.remarcada_de_hora || s.hora}`, s);
+        } else if (s.data >= de && s.data <= ate) {
+            out.push({ ...s, projetada: false });
         }
     }
-    // materializadas de dinâmicas apagadas/alteradas que não casam mais com projeção
-    for (const m of mat.values()) out.push({ ...m, projetada: false });
+    const noIntervalo = s => s.data >= de && s.data <= ate;
+    for (const d of dinamicas || []) {
+        for (const p of expandirDinamica(d, de, ate)) {
+            const chave = `${p.dinamica_ref}|${p.data}|${p.hora}`;
+            const m = mat.get(chave);
+            if (m) {
+                mat.delete(chave);
+                if (noIntervalo(m)) out.push({ ...p, ...m, projetada: false });
+            } else {
+                out.push({ ...p, id: null, status: '??', projetada: true });
+            }
+        }
+    }
+    // materializadas restantes (dinâmicas apagadas/alteradas, remarcadas cuja
+    // ocorrência original está fora do intervalo, etc.)
+    for (const m of mat.values()) if (noIntervalo(m)) out.push({ ...m, projetada: false });
     out.sort((a, b) => (a.data + a.hora).localeCompare(b.data + b.hora));
     return out;
 }
@@ -267,13 +277,42 @@ export function conflitosDeDinamica(nova, outrasDinamicas, sessoes, horizonteDia
     return out;
 }
 
-/** Conflitos de uma sessão avulsa (tratada como individual). Até 5. */
+/** Conflitos de uma sessão pontual (sem modalidade = individual). Até 5. */
 export function conflitosDeSessao(sessao, dinamicas, sessoes) {
     return mesclarSessoes(dinamicas, sessoes, sessao.data, sessao.data)
         .filter(s => s.paciente_id !== sessao.paciente_id && s.status !== 'nc'
             && (!sessao.id || s.id !== sessao.id)
-            && mesmoLugar(sessao, s) && sobrepoe(sessao, s))
+            && mesmoLugar(sessao, s) && sobrepoe(sessao, s)
+            && ((sessao.modalidade || 'individual') === 'individual'
+                || (s.modalidade || 'individual') === 'individual'))
         .slice(0, 5);
+}
+
+// ---------- Cadeias de continuidade (mudança de horário fixo) ----------
+
+/** Raiz da cadeia de continuações de uma dinâmica. */
+export function raizDaCadeia(d, dinamicas) {
+    const porId = {};
+    (dinamicas || []).forEach(x => { porId[x.id] = x; });
+    let atual = d, guarda = 0;
+    while (atual && atual.continuacao_de && porId[atual.continuacao_de] && guarda++ < 20) {
+        atual = porId[atual.continuacao_de];
+    }
+    return atual || d;
+}
+
+/** Ocorrências da cadeia inteira (raiz + continuações), em ordem cronológica. */
+export function ocorrenciasDaCadeia(root, dinamicas, ateISO) {
+    const membros = (dinamicas || [])
+        .filter(x => raizDaCadeia(x, dinamicas).id === root.id)
+        .sort((a, b) => (a.data_inicio || '').localeCompare(b.data_inicio || ''));
+    if (!membros.length) membros.push(root);
+    const occ = [];
+    for (const m of membros) {
+        if (m.data_inicio) occ.push(...expandirDinamica({ ...m, ativo: true }, m.data_inicio, ateISO));
+    }
+    occ.sort((a, b) => (a.data + a.hora).localeCompare(b.data + b.hora));
+    return occ;
 }
 
 /** Último dia do mês 'YYYY-MM' em ISO. */
@@ -301,10 +340,13 @@ export function fechamentoPaciente(paciente, dinamicas, sessoes, mes) {
     let valor = 0;
     const detalhes = [];
     const cobraSessao = s => COBRAVEIS.includes(s.status) || (s.status === '??' && s.data >= hoje);
+    const fixoCobrado = new Set(); // uma cobrança fixa por cadeia de continuidade/mês
 
     for (const d of dinamicas || []) {
         const doMes = sess.filter(s => s.dinamica_ref === d.id);
         if (d.acordo_tipo === 'fixo_mensal') {
+            const root = raizDaCadeia(d, dinamicas);
+            if (fixoCobrado.has(root.id)) continue; // outro elo da cadeia já cobrou o mês
             let fimJanela = null;
             if (d.fim_tipo === 'data') fimJanela = d.fim_data;
             if (d.fim_tipo === 'apos_ocorrencias') {
@@ -314,6 +356,7 @@ export function fechamentoPaciente(paciente, dinamicas, sessoes, mes) {
             const cobre = d.data_inicio && d.data_inicio <= ate && (!fimJanela || fimJanela >= de)
                 && (d.ativo !== false || doMes.length > 0);
             if (cobre) {
+                fixoCobrado.add(root.id);
                 valor += Number(d.valor) || 0;
                 detalhes.push(`${d.rotulo || 'Dinâmica'} — fixo mensal: ${formataMoeda(d.valor)}`);
             }
@@ -324,7 +367,11 @@ export function fechamentoPaciente(paciente, dinamicas, sessoes, mes) {
                 detalhes.push(`${d.rotulo || 'Dinâmica'} — ${n} sessão(ões) × ${formataMoeda(d.valor)} = ${formataMoeda(n * (Number(d.valor) || 0))}`);
             }
         } else if (d.acordo_tipo === 'pacote') {
-            const todas = expandirDinamica({ ...d, ativo: true }, d.data_inicio || de, somarDias(ate, 366 * 3));
+            // o contrato do pacote vale pela CADEIA: só a raiz calcula, usando
+            // as ocorrências combinadas (dinâmica encerrada + continuações)
+            const root = raizDaCadeia(d, dinamicas);
+            if (root.id !== d.id) continue;
+            const todas = ocorrenciasDaCadeia(d, dinamicas, somarDias(ate, 366 * 3));
             const eventos = cronogramaPacote(d, todas).filter(e => e.data >= de && e.data <= ate);
             for (const e of eventos) {
                 valor += Number(e.valor) || 0;

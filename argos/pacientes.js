@@ -197,9 +197,13 @@ function abrirModalDinamicas(p) {
 async function renderDinamicas() {
     const p = pacienteAtual;
     const dins = dinamicas.filter(d => d.paciente_id === p.id);
-    // sessões avulsas futuras (sem dinâmica)
-    const { data: avulsas } = await sb.from('argos_sessoes').select('*')
-        .eq('paciente_id', p.id).is('dinamica_ref', null).gte('data', hojeISO()).order('data');
+    // sessões avulsas futuras (sem dinâmica) + histórico de alterações
+    const [{ data: avulsas }, { data: eventos }] = await Promise.all([
+        sb.from('argos_sessoes').select('*')
+            .eq('paciente_id', p.id).is('dinamica_ref', null).gte('data', hojeISO()).order('data'),
+        sb.from('argos_paciente_eventos').select('*').eq('paciente_id', p.id)
+            .order('created_at', { ascending: false })
+    ]);
 
     document.getElementById('lista-dinamicas').innerHTML =
         (dins.map(d => {
@@ -227,6 +231,12 @@ async function renderDinamicas() {
             <div class="argos-bloco">
               <div class="bloco-info">🗓️ ${formataBR(s.data)} ${s.hora} · 🚪 ${esc(nomeSala(s.sala_id))} · 🧑‍⚕️ ${esc(nomeProf(s.profissional_id))}${s.valor != null ? ' · ' + formataMoeda(s.valor) : ''}</div>
               <div class="mini-acoes"><button class="argos-btn small danger" data-avulsa-del="${s.id}">🗑️ Remover</button></div>
+            </div>`).join('')}` : '')
+        + ((eventos || []).length && perm.pode('paciente_historico') ? `
+          <h3 class="form-secao">📜 Histórico de alterações</h3>
+          ${(eventos || []).slice(0, 30).map(ev => `
+            <div class="argos-bloco">
+              <div class="bloco-info"><b>${formataBR(String(ev.created_at).slice(0, 10))}</b> — ${esc(ev.descricao)}</div>
             </div>`).join('')}` : '');
 }
 

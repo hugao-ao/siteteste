@@ -81,6 +81,31 @@
       </div>
       <div id="sessao-info" class="bloco-info" style="margin-bottom:14px"></div>
       <div class="botoes-status" id="botoes-status"></div>
+      <div id="bloco-remarcar" data-argos-recurso="sessao_remarcar" style="display:none">
+        <h3 class="form-secao">📆 Remarcar esta sessão</h3>
+        <div class="agenda-nav">
+          <label class="rotulo-inline">Novo dia <input type="date" id="rem-data" class="argos-input" /></label>
+          <label class="rotulo-inline">Nova hora <input type="time" id="rem-hora" class="argos-input" /></label>
+          <button class="argos-btn primary small" id="btn-remarcar">Mover</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ MODAL: NOVO HORÁRIO FIXO? ============ -->
+  <div class="argos-modal-fundo" id="modal-pergunta-horario">
+    <div class="argos-modal">
+      <div class="argos-modal-topo">
+        <h2>Este será o novo horário fixo?</h2>
+        <button class="argos-modal-x" data-fechar>×</button>
+      </div>
+      <p class="bloco-info" id="pergunta-horario-texto" style="margin-bottom:14px"></p>
+      <div class="argos-modal-acoes" style="flex-wrap:wrap">
+        <button class="argos-btn ghost" data-fechar>Cancelar</button>
+        <button class="argos-btn" id="btn-so-esta">Não, só esta sessão</button>
+        <button class="argos-btn primary" id="btn-horario-fixo">Sim, novo horário fixo</button>
+      </div>
+      <p class="dica" style="margin-top:10px">Se for o novo horário fixo, a dinâmica atual é encerrada na véspera e uma nova é criada a partir da data escolhida, mantendo o mesmo acordo financeiro (pacotes e contagens de ocorrências continuam valendo pelo conjunto). Tudo fica registrado no card do paciente.</p>
     </div>
   </div>
 
@@ -101,7 +126,7 @@
     </div>
   </div>
 
-  <script type="module" src="agenda.js?v=3"></script>
+  <script type="module" src="agenda.js?v=4"></script>
   <script type="module" src="argos-zoom.js?v=4"></script>
 </body>
 </html>
