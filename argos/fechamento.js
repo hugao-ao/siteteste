@@ -7,20 +7,22 @@ import { carregarPermissoes } from './argos-permissoes.js';
 import { fechamentoPaciente, formataMoeda, hojeISO, formataBR, STATUS_SESSAO } from './argos-recorrencia.js';
 
 let perm = { pode: () => true, aplicarVisibilidade: () => {}, master: true };
-let pacientes = [], dinamicas = [], sessoes = [];
+let pacientes = [], dinamicas = [], sessoes = [], profissionais = [];
 let abertos = new Set(); // pacientes com detalhe expandido
 
 async function carregarTudo() {
-    const [rPac, rDin, rSes] = await Promise.all([
+    const [rPac, rDin, rSes, rProf] = await Promise.all([
         sb.from('argos_pacientes').select('*').order('nome'),
         sb.from('argos_dinamicas').select('*'),
-        sb.from('argos_sessoes').select('*')
+        sb.from('argos_sessoes').select('*'),
+        sb.from('argos_profissionais').select('*').order('nome')
     ]);
-    const erro = rPac.error || rDin.error || rSes.error;
+    const erro = rPac.error || rDin.error || rSes.error || rProf.error;
     if (erro) { console.error(erro); toast('Erro ao carregar dados.', true); return; }
     pacientes = rPac.data || [];
     dinamicas = rDin.data || [];
     sessoes = rSes.data || [];
+    profissionais = rProf.data || [];
     render();
 }
 
@@ -29,13 +31,18 @@ function render() {
     if (!mes) return;
     const soMovimento = document.getElementById('so-movimento').checked;
 
+    // calcula o mês de TODOS os pacientes (repasses independem do filtro de exibição)
+    const todos = pacientes.map(p => ({
+        p,
+        f: fechamentoPaciente(p,
+            dinamicas.filter(d => d.paciente_id === p.id),
+            sessoes.filter(s => s.paciente_id === p.id), mes)
+    }));
+
     const linhas = [];
     const total = { ok: 0, fj: 0, fc: 0, nc: 0, pd: 0, valor: 0, pendencias: 0 };
 
-    for (const p of pacientes) {
-        const dins = dinamicas.filter(d => d.paciente_id === p.id);
-        const sess = sessoes.filter(s => s.paciente_id === p.id);
-        const f = fechamentoPaciente(p, dins, sess, mes);
+    for (const { p, f } of todos) {
         const temMovimento = f.sessoes.length > 0 || f.valor > 0;
         if (soMovimento && !temMovimento) continue;
 
@@ -64,6 +71,11 @@ function render() {
         }).join('') + '</ul>' : '<span class="dim">Sem sessões no mês.</span>'}
         <b style="display:block;margin-top:8px">💰 Lançamentos:</b>
         ${f.detalhes.length ? '<ul>' + f.detalhes.map(d => `<li>${esc(d)}</li>`).join('') + '</ul>' : '<span class="dim">Sem lançamentos no mês.</span>'}
+        ${(f.porDinamica || []).some(pd => pd.profissional_id && pd.repasse_percentual) ? `
+        <b style="display:block;margin-top:8px">💼 Divisão com profissionais:</b>
+        <ul>${(f.porDinamica || []).filter(pd => pd.profissional_id && pd.repasse_percentual).map(pd =>
+            `<li>${esc(nomeProf(pd.profissional_id))} recebe ${pd.repasse_percentual}% de ${formataMoeda(pd.valor)} = ${formataMoeda(pd.valor * Number(pd.repasse_percentual) / 100)} (clínica: ${formataMoeda(pd.valor * (100 - Number(pd.repasse_percentual)) / 100)})</li>`).join('')}
+        </ul>` : ''}
       </td></tr>` : ''}
     `).join('');
 
@@ -80,6 +92,43 @@ function render() {
         aviso.style.display = '';
         aviso.textContent = `⚠️ ${total.pendencias} sessão(ões) vencida(s) sem preenchimento neste mês — o valor pode mudar depois que forem marcadas (preencha na Agenda).`;
     } else aviso.style.display = 'none';
+
+    renderRepasses(todos);
+}
+
+const nomeProf = id => (profissionais.find(p => p.id === id) || {}).nome || '—';
+
+// Repasses do mês: fixo mensal conforme a forma de remuneração + produção
+// (% de cada dinâmica sobre o faturamento do mês do respectivo paciente)
+function renderRepasses(todos) {
+    const producao = {};
+    let faturamento = 0;
+    for (const { f } of todos) {
+        faturamento += f.valor;
+        for (const pd of (f.porDinamica || [])) {
+            if (pd.profissional_id && pd.repasse_percentual) {
+                producao[pd.profissional_id] = (producao[pd.profissional_id] || 0)
+                    + pd.valor * Number(pd.repasse_percentual) / 100;
+            }
+        }
+    }
+    let totalRepasses = 0;
+    const linhasR = profissionais.map(pr => {
+        const temFixo = pr.remuneracao_tipo === 'fixo' || pr.remuneracao_tipo === 'producao_fixo';
+        const fixo = temFixo ? (Number(pr.valor_fixo_mensal) || 0) : 0;
+        const prod = pr.remuneracao_tipo === 'fixo' ? 0 : (producao[pr.id] || 0);
+        const totalP = fixo + prod;
+        if (!totalP) return '';
+        totalRepasses += totalP;
+        return `<tr><td>${esc(pr.nome)}</td>
+          <td>${fixo ? formataMoeda(fixo) : '—'}</td>
+          <td>${prod ? formataMoeda(prod) : '—'}</td>
+          <td><b>${formataMoeda(totalP)}</b></td></tr>`;
+    }).filter(Boolean).join('');
+    document.getElementById('tbody-repasses').innerHTML = linhasR
+        || '<tr><td colspan="4" class="dim">Nenhum repasse configurado para este mês.</td></tr>';
+    document.getElementById('r-total').innerHTML = `<b>${formataMoeda(totalRepasses)}</b>`;
+    document.getElementById('r-clinica').innerHTML = `<b>${formataMoeda(faturamento - totalRepasses)}</b>`;
 }
 
 document.getElementById('tbody-fechamento').addEventListener('click', (e) => {

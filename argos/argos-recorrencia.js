@@ -342,6 +342,7 @@ export function fechamentoPaciente(paciente, dinamicas, sessoes, mes) {
 
     let valor = 0;
     const detalhes = [];
+    const porDinamica = []; // {dinamica_id, profissional_id, repasse_percentual, valor}
     const cobraSessao = s => COBRAVEIS.includes(s.status) || (s.status === '??' && s.data >= hoje);
     const fixoCobrado = new Set(); // uma cobrança fixa por cadeia de continuidade/mês
 
@@ -362,12 +363,15 @@ export function fechamentoPaciente(paciente, dinamicas, sessoes, mes) {
                 fixoCobrado.add(root.id);
                 valor += Number(d.valor) || 0;
                 detalhes.push(`${d.rotulo || 'Dinâmica'} — fixo mensal: ${formataMoeda(d.valor)}`);
+                porDinamica.push({ dinamica_id: d.id, profissional_id: d.profissional_id, repasse_percentual: d.repasse_percentual, valor: Number(d.valor) || 0 });
             }
         } else if (d.acordo_tipo === 'por_sessao') {
             const n = doMes.filter(cobraSessao).length;
             if (n) {
-                valor += n * (Number(d.valor) || 0);
-                detalhes.push(`${d.rotulo || 'Dinâmica'} — ${n} sessão(ões) × ${formataMoeda(d.valor)} = ${formataMoeda(n * (Number(d.valor) || 0))}`);
+                const v = n * (Number(d.valor) || 0);
+                valor += v;
+                detalhes.push(`${d.rotulo || 'Dinâmica'} — ${n} sessão(ões) × ${formataMoeda(d.valor)} = ${formataMoeda(v)}`);
+                porDinamica.push({ dinamica_id: d.id, profissional_id: d.profissional_id, repasse_percentual: d.repasse_percentual, valor: v });
             }
         } else if (d.acordo_tipo === 'pacote') {
             // o contrato do pacote vale pela CADEIA: só a raiz calcula, usando
@@ -376,18 +380,25 @@ export function fechamentoPaciente(paciente, dinamicas, sessoes, mes) {
             if (root.id !== d.id) continue;
             const todas = ocorrenciasDaCadeia(d, dinamicas, somarDias(ate, 366 * 3));
             const eventos = cronogramaPacote(d, todas).filter(e => e.data >= de && e.data <= ate);
+            let vPacote = 0;
             for (const e of eventos) {
-                valor += Number(e.valor) || 0;
+                vPacote += Number(e.valor) || 0;
                 detalhes.push(`${d.rotulo || 'Pacote'} — ${e.descricao} (${formataBR(e.data)}): ${formataMoeda(e.valor)}`);
+            }
+            if (vPacote) {
+                valor += vPacote;
+                porDinamica.push({ dinamica_id: d.id, profissional_id: d.profissional_id, repasse_percentual: d.repasse_percentual, valor: vPacote });
             }
         }
     }
 
     // sessões avulsas/manuais (sem dinâmica): valor próprio de cada sessão
+    // (sem % de repasse definido, o valor fica integralmente com a clínica)
     for (const s of sess.filter(x => !x.dinamica_ref)) {
         if (cobraSessao(s) && s.valor != null) {
             valor += Number(s.valor) || 0;
             detalhes.push(`Sessão avulsa ${formataBR(s.data)} ${s.hora}: ${formataMoeda(s.valor)}`);
+            porDinamica.push({ dinamica_id: null, profissional_id: s.profissional_id, repasse_percentual: null, valor: Number(s.valor) || 0 });
         }
     }
 
@@ -398,5 +409,5 @@ export function fechamentoPaciente(paciente, dinamicas, sessoes, mes) {
         detalhes.push(`Anamnese (${formataBR(paciente.anamnese_data)}): ${formataMoeda(paciente.anamnese_valor)}`);
     }
 
-    return { sessoes: sess, contagens, pendencias, valor, detalhes };
+    return { sessoes: sess, contagens, pendencias, valor, detalhes, porDinamica };
 }

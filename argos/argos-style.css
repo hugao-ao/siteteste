@@ -646,3 +646,12 @@ body.modal-aberto { overflow: hidden; }
 }
 .argos-vazio .icon { font-size: 2.2rem; margin-bottom: 10px; }
 .argos-vazio strong { color: var(--argos-text); display: block; margin-bottom: 4px; }
+
+/* ---------- Lista de checkboxes (profissionais do grupo) ---------- */
+.checks-lista {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 16px;
+    margin-top: 6px;
+    color: var(--argos-text);
+}

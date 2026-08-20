@@ -236,7 +236,7 @@ async function renderDinamicas() {
               <div class="bloco-info">
                 ${d.grupo_id ? `👥 Grupo: <b>${esc(nomeGrupo(d.grupo_id))}</b> · ` : ''}${d.recorrencia_tipo === 'avulsa' ? '🗓️ Sessões avulsas (marcadas uma a uma)' : `🗓️ ${r.dias || '—'} — ${r.freq}, a partir de ${formataBR(d.data_inicio)}, ${r.fim}`}<br>
                 ${d.modalidade === 'grupo' ? '👥 Em grupo' : '👤 Individual'} · 🚪 ${esc(nomeSala(d.sala_id))} · 🧑‍⚕️ ${esc(nomeProf(d.profissional_id))} (${esc(nomeServ(d.servico_id))})<br>
-                💰 ${esc(acordoLabel(d))}${d.acordo_tipo === 'pacote' && d.pacote_pagamento ? ` — ${esc(PACOTE_MODOS[d.pacote_pagamento.modo] || '')}` : ''}
+                💰 ${esc(acordoLabel(d))}${d.acordo_tipo === 'pacote' && d.pacote_pagamento ? ` — ${esc(PACOTE_MODOS[d.pacote_pagamento.modo] || '')}` : ''}${d.repasse_percentual != null ? ` · 💼 repasse de <b>${d.repasse_percentual}%</b> para ${esc(nomeProf(d.profissional_id))} (clínica fica com ${100 - Number(d.repasse_percentual)}%)` : ''}
               </div>
               <div class="mini-acoes">
                 <button class="argos-btn small" data-din="editar" data-id="${d.id}">✏️ Editar</button>
@@ -403,6 +403,7 @@ function abrirFormDinamica(id) {
     selectServicosDoProf(document.getElementById('din-servico'), d && d.profissional_id, d && d.servico_id);
     v('din-acordo', d ? d.acordo_tipo : 'por_sessao');
     v('din-valor', d && d.valor);
+    v('din-repasse', d && d.repasse_percentual);
     v('din-pacote-qtd', d && d.pacote_qtd);
     v('din-pacote-valor', d && d.pacote_valor);
     const pg = (d && d.pacote_pagamento) || {};
@@ -470,6 +471,7 @@ document.getElementById('form-dinamica').addEventListener('submit', async (e) =>
         pacote_qtd: acordo === 'pacote' ? num('din-pacote-qtd') : null,
         pacote_valor: acordo === 'pacote' ? num('din-pacote-valor') : null,
         pacote_pagamento: acordo === 'pacote' ? pg : null,
+        repasse_percentual: num('din-repasse'),
         grupo_id: null,
         ativo: document.getElementById('din-ativo').checked
     };
