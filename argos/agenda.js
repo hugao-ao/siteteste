@@ -239,13 +239,13 @@ function detectorConflito(lista) {
 function chipSessao(s, conflita, compacta) {
     const hoje = hojeISO();
     const vencida = s.status === '??' && s.data < hoje;
-    const titulo = `${nomePac(s.paciente_id)} · ${nomeSala(s.sala_id)} · ${nomeProf(s.profissional_id)}${s.justificativa ? ' · 📝 ' + s.justificativa : ''}${conflita(s) ? ' · ⚠️ CONFLITO de espaço/horário' : ''}`;
+    const titulo = `${nomePac(s.paciente_id)} · ${nomeSala(s.sala_id)} · ${nomeProf(s.profissional_id)}${s.remarcada_de_data ? ` · ↪️ remarcada de ${formataBR(s.remarcada_de_data)} às ${s.remarcada_de_hora}` : ''}${s.justificativa ? ' · 📝 ' + s.justificativa : ''}${conflita(s) ? ' · ⚠️ CONFLITO de espaço/horário' : ''}`;
     return `
       <div class="agenda-chip ${compacta ? 'compacta' : ''} ${vencida ? 'vencida' : ''} ${conflita(s) ? 'conflito' : ''}"
            ${s.status === '??' ? 'draggable="true"' : ''}
            style="--c:${STATUS_SESSAO[s.status].cor}" data-chave="${chaveSessao(s)}" title="${esc(titulo)}">
-        <b>${s.hora}</b> ${esc(nomePac(s.paciente_id))}
-        ${compacta ? '' : `<div class="chip-sub">${esc(nomeSala(s.sala_id))}${s.modalidade === 'grupo' ? ' · 👥' : ''} · <span class="chip-status" style="--c:${STATUS_SESSAO[s.status].cor}">${STATUS_SESSAO[s.status].label}</span>${conflita(s) ? ' ⚠️' : ''}</div>`}
+        <b>${s.hora}</b> ${s.remarcada_de_data ? '↪️ ' : ''}${esc(nomePac(s.paciente_id))}
+        ${compacta ? '' : `<div class="chip-sub">${esc(nomeSala(s.sala_id))}${s.modalidade === 'grupo' ? ' · 👥' : ''}${s.remarcada_de_data ? ` · ↪️ de ${formataBR(s.remarcada_de_data).slice(0, 5)}` : ''} · <span class="chip-status" style="--c:${STATUS_SESSAO[s.status].cor}">${STATUS_SESSAO[s.status].label}</span>${conflita(s) ? ' ⚠️' : ''}</div>`}
       </div>`;
 }
 
@@ -253,6 +253,29 @@ function chipSessao(s, conflita, compacta) {
 const dowDe = iso => paraData(iso).getDay();
 
 function membrosDoGrupo(gid) { return grupoMembros.filter(m => m.grupo_id === gid); }
+
+// sessão do paciente que FOI movida desta ocorrência do grupo para outro dia/hora
+function sessaoMovidaDaOcorrencia(pacId, g, iso) {
+    return sessoes.find(s => s.paciente_id === pacId
+        && s.remarcada_de_data === iso && s.remarcada_de_hora === g.hora
+        && !(s.data === iso && s.hora === g.hora)) || null;
+}
+
+// O membro participa da ocorrência do grupo naquele dia? Dinâmicas encerradas
+// (ex.: continuação por novo horário fixo) tiram o paciente das ocorrências
+// seguintes, mas as anteriores e as já registradas continuam aparecendo.
+function participaDaOcorrencia(pacId, g, iso) {
+    if (sessoes.some(s => s.paciente_id === pacId
+        && (s.grupo_ref === g.id || s.grupo_id === g.id)
+        && (s.data === iso || s.remarcada_de_data === iso))) return true;
+    const doGrupo = dinamicas.filter(d => d.paciente_id === pacId && d.grupo_id === g.id);
+    if (!doGrupo.length) return true; // membro sem dinâmica ligada ao grupo: sempre presente
+    return doGrupo.some(d => d.ativo !== false
+        && expandirDinamica({ ...d, ativo: true }, iso, iso).some(o => o.data === iso));
+}
+function membrosNaOcorrencia(g, iso) {
+    return membrosDoGrupo(g.id).filter(m => participaDaOcorrencia(m.paciente_id, g, iso));
+}
 
 function profsDoGrupo(gid) { return grupoProfs.filter(x => x.grupo_id === gid).map(x => x.profissional_id); }
 function nomesProfsDoGrupo(g) {
@@ -280,7 +303,7 @@ function gruposDoDia(iso) {
 }
 
 function grupoChipHTML(g, iso, compacta) {
-    const n = membrosDoGrupo(g.id).length;
+    const n = membrosNaOcorrencia(g, iso).length;
     return `
       <div class="agenda-chip grupo ${compacta ? 'compacta' : ''}" draggable="true"
            data-grupo="${g.id}" data-grupo-iso="${iso}" style="--c:#38bdf8"
@@ -396,6 +419,7 @@ function abrirModalSessaoPara(s) {
         `<b>${formataBR(s.data)} ${s.hora}</b> — ${esc(nomePac(s.paciente_id))}<br>
          <span class="dim">${esc(nomeSala(s.sala_id))} · ${esc(nomeProf(s.profissional_id))} · situação atual:
          <span class="chip-status" style="--c:${STATUS_SESSAO[s.status].cor}">${STATUS_SESSAO[s.status].label}</span></span>
+         ${s.remarcada_de_data ? `<br><span class="dim">↪️ Sessão remarcada: era ${DOW_NOMES[paraData(s.remarcada_de_data).getDay()]} ${formataBR(s.remarcada_de_data)} às ${s.remarcada_de_hora}</span>` : ''}
          ${s.justificativa ? `<br><span class="dim">📝 Justificativa: ${esc(s.justificativa)}</span>` : ''}`;
     document.getElementById('botoes-status').innerHTML =
         ['??', 'ok', 'fj', 'fc', 'nc'].map(st => `
@@ -409,8 +433,39 @@ function abrirModalSessaoPara(s) {
         document.getElementById('rem-hora').value = s.hora;
         document.getElementById('rem-motivo').value = '';
     }
+    // restauração: sessão remarcada e ainda pendente volta ao horário original
+    const podeRestaurar = !!(s.id && s.remarcada_de_data && s.status === '??' && perm.pode('sessao_restaurar'));
+    document.getElementById('bloco-restaurar').style.display = podeRestaurar ? '' : 'none';
+    if (podeRestaurar) {
+        document.getElementById('restaurar-texto').textContent =
+            `Desfazer a remarcação e devolver esta sessão para ${formataBR(s.remarcada_de_data)} às ${s.remarcada_de_hora}.`;
+    }
     abrirModal('modal-sessao');
 }
+
+// desfaz a remarcação: a sessão volta para a data/hora original
+document.getElementById('btn-restaurar').addEventListener('click', async () => {
+    const s = sessaoAberta;
+    if (!s || !s.id || !s.remarcada_de_data) return;
+    const candidata = { ...s, data: s.remarcada_de_data, hora: s.remarcada_de_hora };
+    const conflitos = conflitosDeSessao(candidata, dinamicas.filter(d => d.ativo !== false), sessoes);
+    if (conflitos.length) {
+        toast(`⛔ Conflito: ${nomePac(conflitos[0].paciente_id)} já ocupa o horário original no mesmo espaço/profissional.`, true);
+        return;
+    }
+    const { error } = await sb.from('argos_sessoes').update({
+        data: s.remarcada_de_data, hora: s.remarcada_de_hora,
+        remarcada_de_data: null, remarcada_de_hora: null
+    }).eq('id', s.id);
+    if (error) { console.error(error); toast('Erro ao restaurar a sessão.', true); return; }
+    await registrarEvento(s.paciente_id, 'remarcacao_desfeita',
+        `Remarcação desfeita: a sessão voltou para ${formataBR(s.remarcada_de_data)} às ${s.remarcada_de_hora} (estava em ${formataBR(s.data)} às ${s.hora}).`,
+        { de: { data: s.data, hora: s.hora }, para: { data: s.remarcada_de_data, hora: s.remarcada_de_hora } }, null);
+    toast(`Sessão restaurada para ${formataBR(s.remarcada_de_data)} às ${s.remarcada_de_hora}.`);
+    fecharModal('modal-sessao');
+    retornarAoGrupoSePreciso();
+    await recarregarSessoes();
+});
 document.getElementById('agenda-grade').addEventListener('click', aoClicarSessao);
 document.getElementById('agenda-periodo').addEventListener('click', aoClicarSessao);
 
@@ -521,8 +576,10 @@ async function moverSessaoUnica(s, novaData, novaHora, motivo) {
     if (s.id) {
         ({ error } = await sb.from('argos_sessoes').update({
             data: novaData, hora: novaHora,
-            remarcada_de_data: s.remarcada_de_data || (s.dinamica_ref ? s.data : null),
-            remarcada_de_hora: s.remarcada_de_hora || (s.dinamica_ref ? s.hora : null)
+            // guarda sempre a ocorrência ORIGINAL (1ª remarcação), para exibir
+            // a origem e permitir restaurar
+            remarcada_de_data: s.remarcada_de_data || s.data,
+            remarcada_de_hora: s.remarcada_de_hora || s.hora
         }).eq('id', s.id));
     } else {
         ({ error } = await sb.from('argos_sessoes').insert({
@@ -530,6 +587,7 @@ async function moverSessaoUnica(s, novaData, novaHora, motivo) {
             data: novaData, hora: novaHora, duracao_min: s.duracao_min || 60,
             sala_id: s.sala_id || null, profissional_id: s.profissional_id || null,
             servico_id: s.servico_id || null, status: '??',
+            grupo_id: s.grupo_id || null, grupo_ref: s.grupo_ref || null,
             remarcada_de_data: s.data, remarcada_de_hora: s.hora
         }));
     }
@@ -568,7 +626,10 @@ async function novoHorarioFixo({ s, novaData, novaHora, d, motivo }) {
         fim_tipo: d.fim_tipo,
         fim_ocorrencias: d.fim_tipo === 'apos_ocorrencias' ? Math.max(1, (d.fim_ocorrencias || 0) - jaOcorridas) : null,
         fim_data: d.fim_tipo === 'data' ? d.fim_data : null,
-        modalidade: d.modalidade, sala_id: d.sala_id,
+        // saindo de um grupo, a continuação vira um horário individual próprio
+        modalidade: d.grupo_id ? 'individual' : d.modalidade,
+        grupo_id: null,
+        sala_id: d.sala_id,
         profissional_id: d.profissional_id, servico_id: d.servico_id,
         acordo_tipo: d.acordo_tipo, valor: d.valor,
         repasses: repassesDe(d), // divisão com profissionais segue na continuação
@@ -594,7 +655,11 @@ async function novoHorarioFixo({ s, novaData, novaHora, d, motivo }) {
     if (s.id) await sb.from('argos_sessoes').delete().eq('id', s.id);
 
     let extras = '';
-    if (d.fim_tipo === 'apos_ocorrencias') extras = ` Restavam ${nova.fim_ocorrencias} de ${d.fim_ocorrencias} ocorrências contratadas, que seguem na nova dinâmica.`;
+    if (d.grupo_id) {
+        const gAntigo = grupos.find(x => x.id === d.grupo_id);
+        extras += ` O paciente deixa de frequentar o grupo "${gAntigo ? gAntigo.nome : ''}" a partir dessa data (as ocorrências anteriores ficam registradas no grupo).`;
+    }
+    if (d.fim_tipo === 'apos_ocorrencias') extras += ` Restavam ${nova.fim_ocorrencias} de ${d.fim_ocorrencias} ocorrências contratadas, que seguem na nova dinâmica.`;
     if (d.acordo_tipo === 'pacote') extras += ` O pacote contratado (${d.pacote_qtd} sessões, ${d.pacote_valor != null ? 'R$ ' + d.pacote_valor : ''}) continua valendo pelo conjunto: sessões e pagamentos seguem na contagem única.`;
     await registrarEvento(d.paciente_id, 'mudanca_horario_fixo',
         `Horário fixo alterado a partir de ${formataBR(novaData)}: ${DOW_NOMES[dowOrig]} ${s.hora} → ${DOW_NOMES[dowNovo]} ${novaHora}. A dinâmica "${d.rotulo || 'sem rótulo'}" foi encerrada em ${formataBR(cutoff)} e uma continuação foi criada com o mesmo acordo financeiro.${extras}`,
@@ -634,16 +699,36 @@ function renderModalGrupo() {
     if (!g) { fecharModal('modal-grupo'); return; }
     const iso = grupoAberto.iso;
     const membrosG = membrosDoGrupo(g.id);
+    const participantes = membrosNaOcorrencia(g, iso);
     document.getElementById('modal-grupo-titulo').textContent = `👥 ${g.nome}`;
     document.getElementById('grupo-info').innerHTML =
-        `<b>${DOW_NOMES[g.dow]} às ${g.hora}</b> · ocorrência de <b>${formataBR(iso)}</b> · 🚪 ${esc(nomeSala(g.sala_id))}${nomesProfsDoGrupo(g) ? ' · 🧑‍⚕️ ' + esc(nomesProfsDoGrupo(g)) : ''} · ${membrosG.length} paciente(s)`;
+        `<b>${DOW_NOMES[g.dow]} às ${g.hora}</b> · ocorrência de <b>${formataBR(iso)}</b> · 🚪 ${esc(nomeSala(g.sala_id))}${nomesProfsDoGrupo(g) ? ' · 🧑‍⚕️ ' + esc(nomesProfsDoGrupo(g)) : ''} · ${participantes.length} paciente(s) nesta ocorrência`;
 
     const mesclado = mesclarSessoes(dinamicas, sessoes, iso, iso);
     const outrosGrupos = grupos.filter(x => x.id !== g.id && x.ativo !== false);
     const podeStatus = perm.pode('sessoes_status');
 
-    document.getElementById('grupo-membros').innerHTML = membrosG.map(m => {
+    document.getElementById('grupo-membros').innerHTML = participantes.map(m => {
         const p = pacientes.find(x => x.id === m.paciente_id) || { nome: '(paciente?)' };
+        const movida = sessaoMovidaDaOcorrencia(m.paciente_id, g, iso);
+        if (movida) {
+            // a sessão desta ocorrência foi remarcada: tudo se faz no novo horário
+            return `
+            <div class="argos-bloco pendente-linha" data-membro="${m.paciente_id}">
+              <div class="bloco-info">
+                <b>${esc(p.nome)}</b> — ↪️ movida para <b>${formataBR(movida.data)} às ${movida.hora}</b>
+                <span class="chip-status" style="--c:${STATUS_SESSAO[movida.status].cor}">${STATUS_SESSAO[movida.status].label}</span>
+                <br><span class="dim">Toque para abrir a sessão no novo horário (marcar, remarcar de novo ou restaurar).</span>
+              </div>
+              <div class="agenda-nav">
+                <select class="argos-input" data-membro-acao>
+                  <option value="">⋯</option>
+                  ${outrosGrupos.map(o => `<option value="mover:${o.id}">→ Mover para ${esc(o.nome)}</option>`).join('')}
+                  <option value="remover">✖ Remover do grupo</option>
+                </select>
+              </div>
+            </div>`;
+        }
         const s = sessaoDoMembro(m.paciente_id, g, iso, mesclado);
         const st = s ? s.status : '??';
         return `
@@ -664,7 +749,7 @@ function renderModalGrupo() {
             </select>
           </div>
         </div>`;
-    }).join('') || '<p class="dim">Nenhum paciente neste grupo ainda.</p>';
+    }).join('') || '<p class="dim">Nenhum paciente nesta ocorrência do grupo.</p>';
 
     const foraDoGrupo = pacientes.filter(p => p.ativo && !p.cadastro_removido
         && !membrosG.some(m => m.paciente_id === p.id));
@@ -677,6 +762,9 @@ function renderModalGrupo() {
 function sessaoParaMembro(pacId) {
     const g = grupos.find(x => x.id === grupoAberto.gid);
     const iso = grupoAberto.iso;
+    // ocorrência remarcada: as ações acontecem na sessão do NOVO horário
+    const movida = sessaoMovidaDaOcorrencia(pacId, g, iso);
+    if (movida) return { ...movida };
     const mesclado = mesclarSessoes(dinamicas, sessoes, iso, iso);
     let s = sessaoDoMembro(pacId, g, iso, mesclado);
     if (!s) {
