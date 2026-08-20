@@ -6,6 +6,81 @@
   <title>Hermogenes Obras — Serviços</title>
   <script src="hermo-guard.js"></script>
   <link rel="stylesheet" href="hermo-style.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <style>
+    /* ---------- linha do tempo de execução (tlx) ---------- */
+    .tlx-secao {
+        border: 1px solid var(--hermo-border); border-radius: 12px;
+        background: var(--hermo-surface); padding: 14px; margin-bottom: 22px;
+        display: flex; flex-direction: column; gap: 10px;
+    }
+    .tlx-cabeca { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .tlx-cabeca h2 { font-size: .95rem; color: var(--hermo-primary); flex: 1; min-width: 220px; }
+    .tlx-cabeca select {
+        background: var(--hermo-bg); border: 1px solid var(--hermo-border);
+        border-radius: 8px; color: var(--hermo-text); padding: 7px 10px; font-size: .8rem;
+    }
+    .tlx-dica { font-size: .74rem; color: var(--hermo-text-dim); }
+    #tlx-mapa { width: 100%; height: 240px; border-radius: 10px; border: 1px solid var(--hermo-border); }
+    .tlx-wrap {
+        overflow: auto; border: 1px solid var(--hermo-border); border-radius: 10px;
+        max-height: 520px; background: var(--hermo-bg); position: relative;
+    }
+    .tlx-grade { position: relative; min-width: 100%; }
+    .tlx-linha { display: flex; position: relative; border-bottom: 1px solid rgba(148,163,184,.12); }
+    .tlx-rotulo {
+        position: sticky; left: 0; z-index: 5; flex: 0 0 210px; width: 210px;
+        background: var(--hermo-surface); border-right: 1px solid var(--hermo-border);
+        padding: 4px 8px; font-size: .72rem; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+    }
+    .tlx-rotulo b { font-size: .74rem; }
+    .tlx-rotulo small { color: var(--hermo-text-dim); display: block; }
+    .tlx-linha.obra .tlx-rotulo { background: var(--hermo-surface-2); font-weight: 700; font-size: .76rem; }
+    .tlx-faixa { position: relative; flex: 1; min-height: 30px; }
+    .tlx-escala-topo {
+        position: sticky; top: 0; z-index: 6; display: flex;
+        background: var(--hermo-surface); border-bottom: 1px solid var(--hermo-border);
+    }
+    .tlx-escala-topo .tlx-rotulo { z-index: 7; }
+    .tlx-mes {
+        position: absolute; top: 0; height: 16px; font-size: .66rem; color: var(--hermo-text-dim);
+        border-left: 1px solid var(--hermo-border); padding-left: 4px; overflow: hidden; white-space: nowrap;
+    }
+    .tlx-dia {
+        position: absolute; top: 16px; height: 16px; font-size: .62rem; color: var(--hermo-text-dim);
+        text-align: center; overflow: hidden;
+    }
+    .tlx-fundo-fds { position: absolute; top: 0; bottom: 0; background: rgba(148,163,184,.07); }
+    .tlx-hoje { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--hermo-danger); z-index: 3; opacity: .8; }
+    .tlx-bar {
+        position: absolute; top: 5px; height: 20px; border-radius: 6px; z-index: 2;
+        background: rgba(59,130,246,.35); border: 1px solid var(--hermo-info);
+        font-size: .66rem; line-height: 18px; padding: 0 6px; color: var(--hermo-text);
+        overflow: hidden; white-space: nowrap; cursor: grab; user-select: none; touch-action: none;
+    }
+    .tlx-bar.concluido { background: rgba(34,197,94,.3); border-color: var(--hermo-success); cursor: default; }
+    .tlx-bar.atrasado { border-color: var(--hermo-danger); box-shadow: 0 0 0 1px rgba(239,68,68,.35); }
+    .tlx-bar.arrastando { opacity: .85; cursor: grabbing; z-index: 4; } /* abaixo dos rótulos/escala sticky */
+    .tlx-bar .alca {
+        position: absolute; top: 0; bottom: 0; width: 8px; cursor: ew-resize;
+    }
+    .tlx-bar .alca.ini { left: 0; } .tlx-bar .alca.fim { right: 0; }
+    .tlx-aloc {
+        position: absolute; height: 13px; border-radius: 4px; z-index: 2;
+        font-size: .6rem; line-height: 12px; padding: 0 4px; color: var(--hermo-text);
+        background: rgba(234,179,8,.28); border-left: 3px solid var(--hermo-primary);
+        overflow: hidden; white-space: nowrap; cursor: grab; user-select: none; touch-action: none;
+    }
+    .tlx-aloc.arrastando { opacity: .85; cursor: grabbing; z-index: 4; }
+    .tlx-tooltip {
+        position: fixed; z-index: 99; background: var(--hermo-surface-2);
+        border: 1px solid var(--hermo-border); border-radius: 8px; padding: 6px 10px;
+        font-size: .74rem; pointer-events: none; display: none; white-space: nowrap;
+        box-shadow: 0 6px 18px rgba(0,0,0,.4);
+    }
+    @media (max-width: 700px) { .tlx-rotulo { flex-basis: 130px; width: 130px; } }
+  </style>
   <style>
     /* seções de precificação do modal de serviço */
     .sv-secao {
@@ -62,6 +137,29 @@
 
   <main class="hermo-page">
     <section class="hermo-resumo" id="resumo"></section>
+
+    <!-- LINHA DO TEMPO DE EXECUÇÃO (obras) -->
+    <section class="tlx-secao" id="tlx-secao">
+      <div class="tlx-cabeca">
+        <h2>🗓️ Execução no tempo — serviços das obras</h2>
+        <select id="tlx-obra"><option value="">Todas as obras</option></select>
+        <button class="hermo-btn small ghost" id="tlx-zoom-menos" title="Reduzir (ver mais tempo)">−</button>
+        <button class="hermo-btn small ghost" id="tlx-zoom-mais" title="Ampliar (ver mais detalhe)">+</button>
+        <button class="hermo-btn small" id="tlx-hoje-btn">Hoje</button>
+        <button class="hermo-btn small ghost" id="tlx-mapa-toggle">🗺️ Mapa</button>
+        <button class="hermo-btn small ghost" id="tlx-toggle" title="Mostrar/ocultar a linha do tempo">—</button>
+      </div>
+      <div id="tlx-corpo" style="display:flex;flex-direction:column;gap:10px">
+        <div class="tlx-dica">
+          Arraste a <b>barra</b> de um serviço para mover o período, ou as <b>bordas</b> para mudar início/fim —
+          o cronograma da obra recalcula sozinho (cadeias, prazos e regras valem aqui também).
+          Arraste as faixas menores para mover a <b>alocação</b> dos integrantes (a agenda deles acompanha; conflitos são bloqueados).
+        </div>
+        <div id="tlx-mapa" style="display:none"></div>
+        <div class="tlx-wrap" id="tlx-wrap"><div class="tlx-grade" id="tlx-grade"></div></div>
+      </div>
+    </section>
+    <div class="tlx-tooltip" id="tlx-tooltip"></div>
 
     <div class="hermo-page-head">
       <h1>Catálogo de Serviços</h1>
@@ -340,5 +438,6 @@
   </div>
 
   <script type="module" src="servicos.js"></script>
+  <script type="module" src="servicos-timeline.js"></script>
 </body>
 </html>
