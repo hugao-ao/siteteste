@@ -121,18 +121,31 @@ document.getElementById('lista-pendentes').addEventListener('click', async (e) =
 // ---------- marcação (materializa a projeção se preciso) ----------
 async function marcarSessao(s, status) {
     if (!perm.pode('sessoes_status')) { toast('Sem permissão para marcar frequência.', true); return; }
+    // Falta justificada exige justificativa registrada
+    let justificativa = s.justificativa || null;
+    if (status === 'fj') {
+        const j = prompt('Justificativa da falta (obrigatória):', s.justificativa || '');
+        if (j === null) return; // cancelou
+        if (!j.trim()) { toast('A falta justificada precisa de uma justificativa.', true); return; }
+        justificativa = j.trim();
+    }
     let error;
     if (s.id) {
-        ({ error } = await sb.from('argos_sessoes').update({ status }).eq('id', s.id));
+        ({ error } = await sb.from('argos_sessoes').update({ status, justificativa }).eq('id', s.id));
     } else {
         ({ error } = await sb.from('argos_sessoes').insert({
             paciente_id: s.paciente_id, dinamica_id: s.dinamica_ref, dinamica_ref: s.dinamica_ref,
             data: s.data, hora: s.hora, duracao_min: s.duracao_min || 60,
             sala_id: s.sala_id || null, profissional_id: s.profissional_id || null,
-            servico_id: s.servico_id || null, status
+            servico_id: s.servico_id || null, status, justificativa
         }));
     }
     if (error) { console.error(error); toast('Erro ao marcar sessão.', true); return; }
+    if (status === 'fj') {
+        await registrarEvento(s.paciente_id, 'falta_justificada',
+            `Falta justificada na sessão de ${formataBR(s.data)} às ${s.hora}.`,
+            { data: s.data, hora: s.hora }, justificativa);
+    }
     toast(`Sessão marcada: ${STATUS_SESSAO[status].label} — ${STATUS_SESSAO[status].desc}`);
     const { data } = await sb.from('argos_sessoes').select('*');
     sessoes = data || sessoes;
@@ -218,7 +231,7 @@ function detectorConflito(lista) {
 function chipSessao(s, conflita, compacta) {
     const hoje = hojeISO();
     const vencida = s.status === '??' && s.data < hoje;
-    const titulo = `${nomePac(s.paciente_id)} · ${nomeSala(s.sala_id)} · ${nomeProf(s.profissional_id)}${conflita(s) ? ' · ⚠️ CONFLITO de espaço/horário' : ''}`;
+    const titulo = `${nomePac(s.paciente_id)} · ${nomeSala(s.sala_id)} · ${nomeProf(s.profissional_id)}${s.justificativa ? ' · 📝 ' + s.justificativa : ''}${conflita(s) ? ' · ⚠️ CONFLITO de espaço/horário' : ''}`;
     return `
       <div class="agenda-chip ${compacta ? 'compacta' : ''} ${vencida ? 'vencida' : ''} ${conflita(s) ? 'conflito' : ''}"
            style="--c:${STATUS_SESSAO[s.status].cor}" data-chave="${chaveSessao(s)}" title="${esc(titulo)}">
@@ -316,7 +329,8 @@ function aoClicarSessao(e) {
     document.getElementById('sessao-info').innerHTML =
         `<b>${formataBR(s.data)} ${s.hora}</b> — ${esc(nomePac(s.paciente_id))}<br>
          <span class="dim">${esc(nomeSala(s.sala_id))} · ${esc(nomeProf(s.profissional_id))} · situação atual:
-         <span class="chip-status" style="--c:${STATUS_SESSAO[s.status].cor}">${STATUS_SESSAO[s.status].label}</span></span>`;
+         <span class="chip-status" style="--c:${STATUS_SESSAO[s.status].cor}">${STATUS_SESSAO[s.status].label}</span></span>
+         ${s.justificativa ? `<br><span class="dim">📝 Justificativa: ${esc(s.justificativa)}</span>` : ''}`;
     document.getElementById('botoes-status').innerHTML =
         ['??', 'ok', 'fj', 'fc', 'nc'].map(st => `
           <button class="btn-status" style="--c:${STATUS_SESSAO[st].cor}" data-marcar="${st}">
@@ -327,6 +341,7 @@ function aoClicarSessao(e) {
     if (podeRemarcar) {
         document.getElementById('rem-data').value = s.data;
         document.getElementById('rem-hora').value = s.hora;
+        document.getElementById('rem-motivo').value = '';
     }
     abrirModal('modal-sessao');
 }
@@ -345,9 +360,9 @@ document.getElementById('botoes-status').addEventListener('click', async (e) => 
 // ============================================================
 let remarcarCtx = null;
 
-async function registrarEvento(pacienteId, tipo, descricao, dados) {
+async function registrarEvento(pacienteId, tipo, descricao, dados, justificativa) {
     const { error } = await sb.from('argos_paciente_eventos')
-        .insert({ paciente_id: pacienteId, tipo, descricao, dados: dados || null });
+        .insert({ paciente_id: pacienteId, tipo, descricao, dados: dados || null, justificativa: justificativa || null });
     if (error) console.error(error);
 }
 
@@ -379,23 +394,24 @@ document.getElementById('btn-remarcar').addEventListener('click', async () => {
         return;
     }
 
+    const motivo = document.getElementById('rem-motivo').value.trim() || null;
     const d = s.dinamica_ref ? dinamicas.find(x => x.id === s.dinamica_ref) : null;
     if (d && d.ativo !== false && d.recorrencia_tipo === 'recorrente') {
-        remarcarCtx = { s, novaData, novaHora, d };
+        remarcarCtx = { s, novaData, novaHora, d, motivo };
         document.getElementById('pergunta-horario-texto').innerHTML =
             `A sessão de <b>${esc(nomePac(s.paciente_id))}</b> de ${formataBR(s.data)} às ${s.hora} será movida para <b>${formataBR(novaData)} às ${novaHora}</b>.<br><br>Esse passa a ser o novo horário fixo do paciente?`;
         fecharModal('modal-sessao');
         abrirModal('modal-pergunta-horario');
     } else {
-        await moverSessaoUnica(s, novaData, novaHora);
+        await moverSessaoUnica(s, novaData, novaHora, motivo);
         fecharModal('modal-sessao');
     }
 });
 
 document.getElementById('btn-so-esta').addEventListener('click', async () => {
     if (!remarcarCtx) return;
-    const { s, novaData, novaHora } = remarcarCtx;
-    await moverSessaoUnica(s, novaData, novaHora);
+    const { s, novaData, novaHora, motivo } = remarcarCtx;
+    await moverSessaoUnica(s, novaData, novaHora, motivo);
     fecharModal('modal-pergunta-horario');
     remarcarCtx = null;
 });
@@ -409,7 +425,7 @@ document.getElementById('btn-horario-fixo').addEventListener('click', async () =
 // Move APENAS a sessão: a linha materializada guarda a ocorrência original
 // (remarcada_de_*), então a projeção antiga não reaparece e o financeiro
 // passa a contar pela data nova.
-async function moverSessaoUnica(s, novaData, novaHora) {
+async function moverSessaoUnica(s, novaData, novaHora, motivo) {
     let error;
     if (s.id) {
         ({ error } = await sb.from('argos_sessoes').update({
@@ -429,7 +445,7 @@ async function moverSessaoUnica(s, novaData, novaHora) {
     if (error) { console.error(error); toast('Erro ao remarcar a sessão.', true); return; }
     await registrarEvento(s.paciente_id, 'remarcacao_sessao',
         `Sessão de ${formataBR(s.data)} às ${s.hora} remarcada para ${formataBR(novaData)} às ${novaHora} (apenas esta sessão; o horário fixo não mudou).`,
-        { de: { data: s.data, hora: s.hora }, para: { data: novaData, hora: novaHora }, dinamica: s.dinamica_ref || null });
+        { de: { data: s.data, hora: s.hora }, para: { data: novaData, hora: novaHora }, dinamica: s.dinamica_ref || null }, motivo);
     toast(`Sessão remarcada para ${formataBR(novaData)} às ${novaHora}.`);
     await recarregarSessoes();
 }
@@ -437,7 +453,7 @@ async function moverSessaoUnica(s, novaData, novaHora) {
 // Novo horário FIXO: encerra a dinâmica na véspera da sessão movida e cria
 // uma continuação com o mesmo acordo financeiro. Pacotes e contagens de
 // ocorrências seguem valendo pela cadeia (raiz + continuações).
-async function novoHorarioFixo({ s, novaData, novaHora, d }) {
+async function novoHorarioFixo({ s, novaData, novaHora, d, motivo }) {
     const cutoff = somarDias(s.data, -1);
     const jaOcorridas = d.data_inicio && d.data_inicio <= cutoff
         ? expandirDinamica({ ...d, ativo: true }, d.data_inicio, cutoff).length : 0;
@@ -490,7 +506,7 @@ async function novoHorarioFixo({ s, novaData, novaHora, d }) {
     if (d.acordo_tipo === 'pacote') extras += ` O pacote contratado (${d.pacote_qtd} sessões, ${d.pacote_valor != null ? 'R$ ' + d.pacote_valor : ''}) continua valendo pelo conjunto: sessões e pagamentos seguem na contagem única.`;
     await registrarEvento(d.paciente_id, 'mudanca_horario_fixo',
         `Horário fixo alterado a partir de ${formataBR(novaData)}: ${DOW_NOMES[dowOrig]} ${s.hora} → ${DOW_NOMES[dowNovo]} ${novaHora}. A dinâmica "${d.rotulo || 'sem rótulo'}" foi encerrada em ${formataBR(cutoff)} e uma continuação foi criada com o mesmo acordo financeiro.${extras}`,
-        { dinamica_encerrada: d.id, de: { dow: dowOrig, hora: s.hora }, para: { dow: dowNovo, hora: novaHora }, ocorridas_antes: jaOcorridas });
+        { dinamica_encerrada: d.id, de: { dow: dowOrig, hora: s.hora }, para: { dow: dowNovo, hora: novaHora }, ocorridas_antes: jaOcorridas }, motivo);
 
     toast('Novo horário fixo aplicado; a alteração ficou registrada no card do paciente.');
     fecharModal('modal-pergunta-horario');
