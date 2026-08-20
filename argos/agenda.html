@@ -101,6 +101,18 @@
     </div>
   </div>
 
+  <!-- ============ MODAL: AGENDA DO DIA ============ -->
+  <div class="argos-modal-fundo" id="modal-dia" data-argos-recurso="agenda_dia_modal">
+    <div class="argos-modal">
+      <div class="argos-modal-topo">
+        <h2 id="modal-dia-titulo">Agenda do dia</h2>
+        <button class="argos-modal-x" data-fechar>×</button>
+      </div>
+      <p class="dica">Toque num grupo ou numa sessão para abrir.</p>
+      <div id="dia-conteudo" style="display:flex; flex-direction:column; gap:8px"></div>
+    </div>
+  </div>
+
   <!-- ============ MODAL: NOVO HORÁRIO FIXO? ============ -->
   <div class="argos-modal-fundo" id="modal-pergunta-horario">
     <div class="argos-modal">
@@ -210,7 +222,7 @@
     </div>
   </div>
 
-  <script type="module" src="agenda.js?v=10"></script>
+  <script type="module" src="agenda.js?v=11"></script>
   <script type="module" src="argos-zoom.js?v=4"></script>
 </body>
 </html>
