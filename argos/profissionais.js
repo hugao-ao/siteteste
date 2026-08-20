@@ -5,6 +5,7 @@
 
 import { sb, toast, esc, abrirModal, fecharModal } from './argos-common.js';
 import { carregarPermissoes } from './argos-permissoes.js';
+import { repassesDe, fracaoRepasse } from './argos-recorrencia.js';
 
 let perm = { pode: () => true, aplicarVisibilidade: () => {}, master: true };
 let profissionais = [], servicos = [], vinculos = [], dinamicas = [], pacientes = [];
@@ -45,14 +46,22 @@ function formataMoeda(v) {
     return (Number(v) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 }
 
-// pacientes atendidos pelo profissional (via dinâmicas ativas) com o % de repasse
+const pctFmt = x => (Math.round(x * 100) / 100).toLocaleString('pt-BR');
+
+// pacientes ligados ao profissional (atende e/ou recebe repasse) via dinâmicas ativas
 function pacientesDoProfissional(profId) {
     const porPaciente = new Map();
-    dinamicas.filter(d => d.profissional_id === profId && d.ativo !== false).forEach(d => {
+    dinamicas.filter(d => d.ativo !== false).forEach(d => {
+        const meusRep = repassesDe(d).filter(r => r.profissional_id === profId);
+        if (d.profissional_id !== profId && !meusRep.length) return;
         const p = pacientes.find(x => x.id === d.paciente_id);
         if (!p || p.cadastro_removido) return;
-        const atual = porPaciente.get(p.id) || { nome: p.nome, percentuais: [] };
-        atual.percentuais.push(d.repasse_percentual != null ? Number(d.repasse_percentual) : null);
+        const atual = porPaciente.get(p.id) || { nome: p.nome, rotulos: [] };
+        if (meusRep.length) {
+            meusRep.forEach(r => atual.rotulos.push(r.tipo === 'valor'
+                ? `${formataMoeda(r.valor)} (${pctFmt(fracaoRepasse(d, r) * 100)}%)`
+                : `${pctFmt(Number(r.valor))}%`));
+        } else atual.rotulos.push('sem repasse');
         porPaciente.set(p.id, atual);
     });
     return [...porPaciente.values()].sort((a, b) => a.nome.localeCompare(b.nome));
@@ -84,11 +93,10 @@ function renderLista() {
           <div class="mini-info">${esc(remun)}${esc(fixoTxt)}</div>
           ${meusPacientes.length ? `
           <div class="mini-info">
-            <b>Pacientes e % de repasse:</b><br>
-            ${meusPacientes.map(mp => {
-                const pct = mp.percentuais.map(x => x == null ? 'sem %' : x + '%').join(' / ');
-                return `${esc(mp.nome)} — <b>${esc(pct)}</b>`;
-            }).join('<br>')}
+            <b>Pacientes e repasses:</b><br>
+            ${meusPacientes.map(mp =>
+                `${esc(mp.nome)} — <b>${esc(mp.rotulos.join(' / '))}</b>`
+            ).join('<br>')}
           </div>` : ''}
           <div class="chips-servicos">
             ${meus.map(s => `<span class="chip-servico">${esc(s.nome)}${podeServicos ? `<button data-acao="desvincular" data-id="${p.id}" data-servico="${s.id}" title="Remover este serviço do profissional">×</button>` : ''}</span>`).join('')

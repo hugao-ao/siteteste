@@ -71,10 +71,14 @@ function render() {
         }).join('') + '</ul>' : '<span class="dim">Sem sessões no mês.</span>'}
         <b style="display:block;margin-top:8px">💰 Lançamentos:</b>
         ${f.detalhes.length ? '<ul>' + f.detalhes.map(d => `<li>${esc(d)}</li>`).join('') + '</ul>' : '<span class="dim">Sem lançamentos no mês.</span>'}
-        ${(f.porDinamica || []).some(pd => pd.profissional_id && pd.repasse_percentual) ? `
+        ${(f.porDinamica || []).some(pd => (pd.repasses || []).length) ? `
         <b style="display:block;margin-top:8px">💼 Divisão com profissionais:</b>
-        <ul>${(f.porDinamica || []).filter(pd => pd.profissional_id && pd.repasse_percentual).map(pd =>
-            `<li>${esc(nomeProf(pd.profissional_id))} recebe ${pd.repasse_percentual}% de ${formataMoeda(pd.valor)} = ${formataMoeda(pd.valor * Number(pd.repasse_percentual) / 100)} (clínica: ${formataMoeda(pd.valor * (100 - Number(pd.repasse_percentual)) / 100)})</li>`).join('')}
+        <ul>${(f.porDinamica || []).filter(pd => (pd.repasses || []).length).map(pd => {
+            const somaProfs = pd.repasses.reduce((s, r) => s + r.valor, 0);
+            const partes = pd.repasses.map(r =>
+                `${esc(nomeProf(r.profissional_id))} recebe ${r.tipo === 'valor' ? `${formataMoeda(r.valor_config)} (${pctFmt(r.pct)}%)` : `${pctFmt(r.pct)}%`} = <b>${formataMoeda(r.valor)}</b>`);
+            return `<li>Sobre ${formataMoeda(pd.valor)}: ${partes.join(' · ')} · clínica: <b>${formataMoeda(pd.valor - somaProfs)}</b></li>`;
+        }).join('')}
         </ul>` : ''}
       </td></tr>` : ''}
     `).join('');
@@ -97,18 +101,19 @@ function render() {
 }
 
 const nomeProf = id => (profissionais.find(p => p.id === id) || {}).nome || '—';
+const pctFmt = x => (Math.round(x * 100) / 100).toLocaleString('pt-BR');
 
 // Repasses do mês: fixo mensal conforme a forma de remuneração + produção
-// (% de cada dinâmica sobre o faturamento do mês do respectivo paciente)
+// (divisão de cada dinâmica sobre o faturamento do mês do respectivo paciente;
+// a produção nunca ultrapassa o que o paciente pagou, por construção)
 function renderRepasses(todos) {
     const producao = {};
     let faturamento = 0;
     for (const { f } of todos) {
         faturamento += f.valor;
         for (const pd of (f.porDinamica || [])) {
-            if (pd.profissional_id && pd.repasse_percentual) {
-                producao[pd.profissional_id] = (producao[pd.profissional_id] || 0)
-                    + pd.valor * Number(pd.repasse_percentual) / 100;
+            for (const r of (pd.repasses || [])) {
+                producao[r.profissional_id] = (producao[r.profissional_id] || 0) + r.valor;
             }
         }
     }

@@ -7,7 +7,8 @@ import { carregarPermissoes } from './argos-permissoes.js';
 import {
     DOW_NOMES, PACOTE_MODOS, STATUS_SESSAO, acordoLabel, mesclarSessoes,
     fechamentoPaciente, hojeISO, somarDias, formataBR, formataMoeda,
-    conflitosDeDinamica, conflitosDeSessao
+    conflitosDeDinamica, conflitosDeSessao,
+    divisaoRepasses, repassesDe, unidadeRepasse
 } from './argos-recorrencia.js';
 
 let perm = { pode: () => true, aplicarVisibilidade: () => {}, master: true };
@@ -206,6 +207,18 @@ function resumoDinamica(d) {
     return { dias, freq, fim };
 }
 
+const pctFmt = x => (Math.round(x * 100) / 100).toLocaleString('pt-BR');
+
+// resumo da divisão do acordo com os profissionais, para o bloco da dinâmica
+function resumoRepassesHTML(d) {
+    const div = divisaoRepasses(d);
+    if (!div.itens.length) return '';
+    const partes = div.itens.map(r => r.tipo === 'valor'
+        ? `${esc(nomeProf(r.profissional_id))} ${formataMoeda(r.valor)} (${pctFmt(r.pct)}%)`
+        : `${esc(nomeProf(r.profissional_id))} ${pctFmt(r.pct)}%`);
+    return `<br>💼 Repasses: <b>${partes.join(' + ')}</b> · clínica fica com <b>${pctFmt(div.pctClinica)}%</b> (${formataMoeda(div.valorClinica)} ${unidadeRepasse(d)})`;
+}
+
 function abrirModalDinamicas(p) {
     pacienteAtual = p;
     document.getElementById('modal-dinamicas-titulo').textContent = `Dinâmicas de ${p.nome}`;
@@ -236,7 +249,7 @@ async function renderDinamicas() {
               <div class="bloco-info">
                 ${d.grupo_id ? `👥 Grupo: <b>${esc(nomeGrupo(d.grupo_id))}</b> · ` : ''}${d.recorrencia_tipo === 'avulsa' ? '🗓️ Sessões avulsas (marcadas uma a uma)' : `🗓️ ${r.dias || '—'} — ${r.freq}, a partir de ${formataBR(d.data_inicio)}, ${r.fim}`}<br>
                 ${d.modalidade === 'grupo' ? '👥 Em grupo' : '👤 Individual'} · 🚪 ${esc(nomeSala(d.sala_id))} · 🧑‍⚕️ ${esc(nomeProf(d.profissional_id))} (${esc(nomeServ(d.servico_id))})<br>
-                💰 ${esc(acordoLabel(d))}${d.acordo_tipo === 'pacote' && d.pacote_pagamento ? ` — ${esc(PACOTE_MODOS[d.pacote_pagamento.modo] || '')}` : ''}${d.repasse_percentual != null ? ` · 💼 repasse de <b>${d.repasse_percentual}%</b> para ${esc(nomeProf(d.profissional_id))} (clínica fica com ${100 - Number(d.repasse_percentual)}%)` : ''}
+                💰 ${esc(acordoLabel(d))}${d.acordo_tipo === 'pacote' && d.pacote_pagamento ? ` — ${esc(PACOTE_MODOS[d.pacote_pagamento.modo] || '')}` : ''}${resumoRepassesHTML(d)}
               </div>
               <div class="mini-acoes">
                 <button class="argos-btn small" data-din="editar" data-id="${d.id}">✏️ Editar</button>
@@ -344,6 +357,73 @@ function linhaParcela(p) {
 document.getElementById('btn-add-parcela').addEventListener('click', () =>
     document.getElementById('lista-parcelas').appendChild(linhaParcela()));
 
+// ---------- repasses: divisão do acordo com um ou mais profissionais ----------
+function linhaRepasse(r) {
+    const el = document.createElement('div');
+    el.className = 'linha-dia';
+    el.innerHTML = `
+      <select class="rep-prof" style="flex:2; min-width:140px">
+        <option value="">— Profissional —</option>
+        ${profissionais.map(p => `<option value="${p.id}">${esc(p.nome)}</option>`).join('')}
+      </select>
+      <select class="rep-tipo">
+        <option value="percentual">% do acordo</option>
+        <option value="valor">R$ (valor nominal)</option>
+      </select>
+      <input type="number" class="rep-valor" min="0" step="0.01" placeholder="Ex.: 40" value="${r && r.valor != null ? r.valor : ''}" />
+      <button type="button" class="argos-btn small danger dia-remover">×</button>`;
+    if (r && r.profissional_id) el.querySelector('.rep-prof').value = r.profissional_id;
+    if (r && r.tipo) el.querySelector('.rep-tipo').value = r.tipo;
+    el.querySelector('.dia-remover').addEventListener('click', () => { el.remove(); atualizarResumoRepasses(); });
+    return el;
+}
+document.getElementById('btn-add-repasse').addEventListener('click', () => {
+    document.getElementById('lista-repasses').appendChild(linhaRepasse());
+    atualizarResumoRepasses();
+});
+
+function repassesDoFormulario() {
+    return Array.from(document.querySelectorAll('#lista-repasses .linha-dia')).map(l => ({
+        profissional_id: l.querySelector('.rep-prof').value || null,
+        tipo: l.querySelector('.rep-tipo').value,
+        valor: l.querySelector('.rep-valor').value === '' ? null : Number(l.querySelector('.rep-valor').value)
+    }));
+}
+
+// dinâmica "de mentira" só com o que a divisão precisa (acordo + repasses do formulário)
+function dinamicaParaResumo() {
+    const g = id => document.getElementById(id).value;
+    return {
+        acordo_tipo: g('din-acordo'),
+        valor: g('din-valor') === '' ? null : Number(g('din-valor')),
+        pacote_valor: g('din-pacote-valor') === '' ? null : Number(g('din-pacote-valor')),
+        repasses: repassesDoFormulario().filter(r => r.profissional_id && r.valor > 0)
+    };
+}
+
+// mostra ao vivo quanto vai para os profissionais e quanto fica para a clínica
+function atualizarResumoRepasses() {
+    const el = document.getElementById('resumo-repasses');
+    const d = dinamicaParaResumo();
+    if (!d.repasses.length) { el.textContent = ''; el.style.color = ''; return; }
+    const div = divisaoRepasses(d);
+    if (!div.base && d.repasses.some(r => r.tipo === 'valor')) {
+        el.style.color = '#e05555';
+        el.textContent = '⚠️ Para usar repasse em R$, informe antes o valor do acordo financeiro.';
+        return;
+    }
+    const estoura = div.pctProfs > 100.0001;
+    el.style.color = estoura ? '#e05555' : '';
+    el.textContent = `Profissionais: ${pctFmt(div.pctProfs)}% (${formataMoeda(div.base * div.pctProfs / 100)} ${unidadeRepasse(d)}) · Clínica: ${pctFmt(div.pctClinica)}% (${formataMoeda(div.valorClinica)} ${unidadeRepasse(d)})`
+        + (estoura ? ' — ⛔ a soma passa de 100%!' : '');
+}
+['input', 'change'].forEach(ev => {
+    document.getElementById('lista-repasses').addEventListener(ev, atualizarResumoRepasses);
+    document.getElementById('din-valor').addEventListener(ev, atualizarResumoRepasses);
+    document.getElementById('din-pacote-valor').addEventListener(ev, atualizarResumoRepasses);
+    document.getElementById('din-acordo').addEventListener(ev, atualizarResumoRepasses);
+});
+
 function atualizarCondicionais() {
     const tipo = document.getElementById('din-tipo').value;
     document.getElementById('bloco-recorrencia').style.display = tipo === 'avulsa' ? 'none' : '';
@@ -403,7 +483,9 @@ function abrirFormDinamica(id) {
     selectServicosDoProf(document.getElementById('din-servico'), d && d.profissional_id, d && d.servico_id);
     v('din-acordo', d ? d.acordo_tipo : 'por_sessao');
     v('din-valor', d && d.valor);
-    v('din-repasse', d && d.repasse_percentual);
+    document.getElementById('lista-repasses').innerHTML = '';
+    (d ? repassesDe(d) : []).forEach(r =>
+        document.getElementById('lista-repasses').appendChild(linhaRepasse(r)));
     v('din-pacote-qtd', d && d.pacote_qtd);
     v('din-pacote-valor', d && d.pacote_valor);
     const pg = (d && d.pacote_pagamento) || {};
@@ -421,6 +503,7 @@ function abrirFormDinamica(id) {
         document.getElementById('lista-dias').appendChild(linhaDia(x)));
 
     atualizarCondicionais();
+    atualizarResumoRepasses();
     abrirModal('modal-dinamica-form');
 }
 
@@ -450,6 +533,18 @@ document.getElementById('form-dinamica').addEventListener('submit', async (e) =>
         })).filter(p => p.data);
     }
 
+    // divisão do acordo com profissionais (repasses)
+    const repasses = repassesDoFormulario();
+    if (repasses.some(r => !r.profissional_id || !(r.valor > 0))) {
+        toast('Nos repasses, escolha o profissional e informe um valor maior que zero (ou remova a linha).', true);
+        return;
+    }
+    const idsRep = repasses.map(r => r.profissional_id);
+    if (new Set(idsRep).size !== idsRep.length) {
+        toast('O mesmo profissional aparece mais de uma vez nos repasses.', true);
+        return;
+    }
+
     const registro = {
         paciente_id: pacienteAtual.id,
         rotulo: g('din-rotulo').trim() || null,
@@ -471,10 +566,24 @@ document.getElementById('form-dinamica').addEventListener('submit', async (e) =>
         pacote_qtd: acordo === 'pacote' ? num('din-pacote-qtd') : null,
         pacote_valor: acordo === 'pacote' ? num('din-pacote-valor') : null,
         pacote_pagamento: acordo === 'pacote' ? pg : null,
-        repasse_percentual: num('din-repasse'),
+        repasses,
+        repasse_percentual: null, // substituído pela lista de repasses
         grupo_id: null,
         ativo: document.getElementById('din-ativo').checked
     };
+
+    // soma dos repasses (% + nominais convertidos) nunca pode passar de 100% do acordo
+    if (repasses.length) {
+        const div = divisaoRepasses(registro);
+        if (!div.base && repasses.some(r => r.tipo === 'valor')) {
+            toast('Para repasse em R$, informe antes o valor do acordo financeiro.', true);
+            return;
+        }
+        if (div.pctProfs > 100.0001) {
+            toast(`⛔ A soma dos repasses dá ${pctFmt(div.pctProfs)}% do acordo — não pode passar de 100%. Ajuste para sobrar a parte da clínica.`, true);
+            return;
+        }
+    }
 
     // Em grupo: dia/horário/espaço/duração vêm do grupo escolhido
     if (emGrupo) {

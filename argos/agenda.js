@@ -7,7 +7,7 @@ import { carregarPermissoes } from './argos-permissoes.js';
 import {
     STATUS_SESSAO, DOW_NOMES, mesclarSessoes, hojeISO, somarDias, paraData,
     paraISO, formataBR, fimDoMes, expandirDinamica, conflitosDeSessao,
-    conflitosDeDinamica
+    conflitosDeDinamica, repassesDe
 } from './argos-recorrencia.js';
 
 let perm = { pode: () => true, aplicarVisibilidade: () => {}, master: true };
@@ -571,6 +571,7 @@ async function novoHorarioFixo({ s, novaData, novaHora, d, motivo }) {
         modalidade: d.modalidade, sala_id: d.sala_id,
         profissional_id: d.profissional_id, servico_id: d.servico_id,
         acordo_tipo: d.acordo_tipo, valor: d.valor,
+        repasses: repassesDe(d), // divisão com profissionais segue na continuação
         // pacote fica na RAIZ da cadeia; a continuação herda pelo vínculo
         pacote_qtd: null, pacote_valor: null, pacote_pagamento: null,
         continuacao_de: d.id, ativo: true

@@ -162,6 +162,72 @@ export function acordoLabel(d) {
     return '';
 }
 
+// ---------- Divisão do acordo com profissionais (repasses) ----------
+
+/** Valor de referência do acordo, base para converter repasses nominais em %:
+ *  por_sessao → valor da sessão; fixo_mensal → valor do mês; pacote → valor global. */
+export function baseRepasse(d) {
+    return Number(d.acordo_tipo === 'pacote' ? d.pacote_valor : d.valor) || 0;
+}
+
+/** Unidade da base do acordo, para exibição ("por sessão", "por mês", "do pacote"). */
+export function unidadeRepasse(d) {
+    return d.acordo_tipo === 'fixo_mensal' ? 'por mês'
+        : d.acordo_tipo === 'pacote' ? 'do pacote' : 'por sessão';
+}
+
+/** Lista de repasses da dinâmica: [{profissional_id, tipo:'percentual'|'valor', valor}].
+ *  Dinâmicas antigas (campo único repasse_percentual) entram como um repasse em %. */
+export function repassesDe(d) {
+    if (Array.isArray(d.repasses)) return d.repasses.filter(r => r && r.profissional_id);
+    if (d.repasse_percentual != null && d.profissional_id) {
+        return [{ profissional_id: d.profissional_id, tipo: 'percentual', valor: Number(d.repasse_percentual) }];
+    }
+    return [];
+}
+
+/** Fração (0–1) da base do acordo que um repasse representa. */
+export function fracaoRepasse(d, r) {
+    if (r.tipo === 'valor') {
+        const base = baseRepasse(d);
+        return base > 0 ? (Number(r.valor) || 0) / base : 0;
+    }
+    return (Number(r.valor) || 0) / 100;
+}
+
+/** Resumo da divisão do acordo: itens com % equivalente e a parte da clínica.
+ *  { itens:[{profissional_id, tipo, valor, pct, valorBase}], pctProfs, pctClinica, valorClinica, base } */
+export function divisaoRepasses(d) {
+    const base = baseRepasse(d);
+    const itens = repassesDe(d).map(r => {
+        const pct = fracaoRepasse(d, r) * 100;
+        return { ...r, pct, valorBase: base * pct / 100 };
+    });
+    const pctProfs = itens.reduce((s, r) => s + r.pct, 0);
+    const pctClinica = Math.max(0, 100 - pctProfs);
+    return { itens, pctProfs, pctClinica, valorClinica: base * pctClinica / 100, base };
+}
+
+/** Repasses em R$ sobre o faturamento de um período (valorFaturado da dinâmica no mês).
+ *  Nominais são proporcionais à base (ex.: R$ 30 numa sessão de R$ 200 = 15% do faturado).
+ *  GARANTIA: a soma dos repasses por produção nunca ultrapassa o valor faturado —
+ *  se a configuração somar mais de 100%, os repasses são reduzidos proporcionalmente. */
+export function repassesDoValor(d, valorFaturado) {
+    const v = Number(valorFaturado) || 0;
+    let itens = repassesDe(d).map(r => ({
+        profissional_id: r.profissional_id, tipo: r.tipo,
+        valor_config: Number(r.valor) || 0,
+        pct: fracaoRepasse(d, r) * 100,
+        valor: v * fracaoRepasse(d, r)
+    })).filter(r => r.valor > 0);
+    const soma = itens.reduce((s, r) => s + r.valor, 0);
+    if (soma > v && soma > 0) {
+        const fator = v / soma;
+        itens = itens.map(r => ({ ...r, valor: r.valor * fator, pct: r.pct * fator }));
+    }
+    return itens;
+}
+
 export const PACOTE_MODOS = {
     inicio:            'Tudo no início (na 1ª sessão)',
     final:             'Tudo no final (na última sessão)',
@@ -342,7 +408,7 @@ export function fechamentoPaciente(paciente, dinamicas, sessoes, mes) {
 
     let valor = 0;
     const detalhes = [];
-    const porDinamica = []; // {dinamica_id, profissional_id, repasse_percentual, valor}
+    const porDinamica = []; // {dinamica_id, profissional_id, valor, repasses:[{profissional_id, tipo, valor_config, pct, valor}]}
     const cobraSessao = s => COBRAVEIS.includes(s.status) || (s.status === '??' && s.data >= hoje);
     const fixoCobrado = new Set(); // uma cobrança fixa por cadeia de continuidade/mês
 
@@ -363,7 +429,7 @@ export function fechamentoPaciente(paciente, dinamicas, sessoes, mes) {
                 fixoCobrado.add(root.id);
                 valor += Number(d.valor) || 0;
                 detalhes.push(`${d.rotulo || 'Dinâmica'} — fixo mensal: ${formataMoeda(d.valor)}`);
-                porDinamica.push({ dinamica_id: d.id, profissional_id: d.profissional_id, repasse_percentual: d.repasse_percentual, valor: Number(d.valor) || 0 });
+                porDinamica.push({ dinamica_id: d.id, profissional_id: d.profissional_id, valor: Number(d.valor) || 0, repasses: repassesDoValor(d, Number(d.valor) || 0) });
             }
         } else if (d.acordo_tipo === 'por_sessao') {
             const n = doMes.filter(cobraSessao).length;
@@ -371,7 +437,7 @@ export function fechamentoPaciente(paciente, dinamicas, sessoes, mes) {
                 const v = n * (Number(d.valor) || 0);
                 valor += v;
                 detalhes.push(`${d.rotulo || 'Dinâmica'} — ${n} sessão(ões) × ${formataMoeda(d.valor)} = ${formataMoeda(v)}`);
-                porDinamica.push({ dinamica_id: d.id, profissional_id: d.profissional_id, repasse_percentual: d.repasse_percentual, valor: v });
+                porDinamica.push({ dinamica_id: d.id, profissional_id: d.profissional_id, valor: v, repasses: repassesDoValor(d, v) });
             }
         } else if (d.acordo_tipo === 'pacote') {
             // o contrato do pacote vale pela CADEIA: só a raiz calcula, usando
@@ -387,7 +453,7 @@ export function fechamentoPaciente(paciente, dinamicas, sessoes, mes) {
             }
             if (vPacote) {
                 valor += vPacote;
-                porDinamica.push({ dinamica_id: d.id, profissional_id: d.profissional_id, repasse_percentual: d.repasse_percentual, valor: vPacote });
+                porDinamica.push({ dinamica_id: d.id, profissional_id: d.profissional_id, valor: vPacote, repasses: repassesDoValor(d, vPacote) });
             }
         }
     }
@@ -398,7 +464,7 @@ export function fechamentoPaciente(paciente, dinamicas, sessoes, mes) {
         if (cobraSessao(s) && s.valor != null) {
             valor += Number(s.valor) || 0;
             detalhes.push(`Sessão avulsa ${formataBR(s.data)} ${s.hora}: ${formataMoeda(s.valor)}`);
-            porDinamica.push({ dinamica_id: null, profissional_id: s.profissional_id, repasse_percentual: null, valor: Number(s.valor) || 0 });
+            porDinamica.push({ dinamica_id: null, profissional_id: s.profissional_id, valor: Number(s.valor) || 0, repasses: [] });
         }
     }
 
