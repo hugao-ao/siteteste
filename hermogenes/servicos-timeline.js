@@ -3,7 +3,7 @@
 // (hermo_salvar_obra → recalcula cadeias, prazos, %, e valida datas reais);
 // arrastar as faixas de alocação move a agenda do integrante em hermo_alocacoes
 // (com bloqueio de conflito) — nada precisa ser refeito em outros cards.
-import { sb, toast, esc, fmtMoeda } from './hermo-common.js';
+import { sb, toast, esc, fmtMoeda, ligarFecharPorBackdrop } from './hermo-common.js';
 
 const $ = id => document.getElementById(id);
 const num = v => { const n = parseFloat(v); return isFinite(n) ? n : 0; };
@@ -321,13 +321,108 @@ function iniciarArrastoBarra(e, bar) {
             if (nFim < nIni) nFim = nIni;
             if (item.prazo_dias) limpaPrazo = true; // borda final manual substitui o prazo
         }
-        await salvarDatasServico(obra, item, nIni, nFim, limpaPrazo);
+        if (zona === 'meio') {
+            // mover o serviço leva as ALOCAÇÕES junto — checando se alguém ficaria
+            // em dois lugares (avulso ou via equipe) e oferecendo resolução
+            await moverServicoComAlocacoes(obra, item, nIni, nFim, diasDelta);
+        } else {
+            const ok = await salvarDatasServico(obra, item, nIni, nFim, limpaPrazo);
+            if (ok) {
+                await carregarDados();
+                render();
+                toast(`${item.servico?.codigo || 'Serviço'} reagendado — cronograma da obra recalculado${limpaPrazo ? ' (prazo em dias substituído pela data)' : ''}.`);
+            }
+        }
     };
     bar.addEventListener('pointermove', mover);
     bar.addEventListener('pointerup', soltar);
     bar.addEventListener('pointercancel', cancelar);
 }
 
+/** Re-consulta os "outros" por id e mantém só os que AINDA conflitam com a janela
+ *  do par (o painel pode ficar aberto — a outra sessão pode ter movido/removido). */
+async function outrosAindaConflitantes(pares) {
+    const ids = [...new Set(pares.map(p => p.id))];
+    if (!ids.length) return { manter: [], pulados: 0 };
+    const { data, error } = await sb.from('hermo_alocacoes').select('*').in('id', ids);
+    if (error) return { erro: error.message };
+    const manter = new Set();
+    let pulados = 0;
+    pares.forEach(p => {
+        const row = (data || []).find(x => x.id === p.id);
+        if (row && periodosConflitam(p.ref, row)) manter.add(p.id);
+        else pulados++; // sumiu ou moveu para janela sem conflito — não remover à toa
+    });
+    return { manter: [...manter], pulados };
+}
+
+/** Move o serviço E suas alocações (dados FRESCOS); conflitos abrem o painel de resolução. */
+async function moverServicoComAlocacoes(obra, item, nIni, nFim, delta) {
+    // alocações FRESCAS do serviço — o snapshot da página pode estar velho e o
+    // deslocamento absoluto sobrescreveria movimentos feitos em outra aba
+    const { data: alocs, error: eA } = await sb.from('hermo_alocacoes')
+        .select('*, integrante:hermo_integrantes(id, nome, apelido)')
+        .eq('obra_servico_id', item.id);
+    if (eA) { toast('Não deu para carregar as alocações do serviço: ' + eA.message, true); render(); return; }
+    const conflitos = [];
+    for (const a of (alocs || [])) {
+        const aIni = addDias(a.data_inicio, delta), aFim = addDias(a.data_fim, delta);
+        const res = await conflitosFrescos(a, aIni, aFim, item.id);
+        if (res.erro) { toast('Não deu para checar conflitos: ' + res.erro, true); render(); return; }
+        res.conflitos.forEach(o => conflitos.push({ aloc: a, nIni: aIni, nFim: aFim, outro: o }));
+    }
+    const rotulo = `${item.servico?.codigo || ''} — ${item.servico?.descricao || ''}`.trim();
+    if (conflitos.length) {
+        abrirResolucaoConflitos(rotulo, conflitos, async (cs, escolhas) => {
+            // "tirar do arrastado" tem prioridade: remove a alocação e TODOS os conflitos
+            // dela somem — os 'outro' das demais linhas dessa mesma alocação são ignorados
+            // (senão o outro serviço perderia gente sem necessidade)
+            const removerDeste = new Set(cs.filter((c, i) => escolhas[i] === 'deste').map(c => c.aloc.id));
+            const paresOutros = cs
+                .filter((c, i) => escolhas[i] === 'outro' && !removerDeste.has(c.aloc.id) && c.outro.tipo === 'aloc')
+                .map(c => ({ id: c.outro.row.id, ref: { data_inicio: c.nIni, data_fim: c.nFim, turno: c.aloc.turno, hora_inicio: c.aloc.hora_inicio, hora_fim: c.aloc.hora_fim } }));
+            const rev = await outrosAindaConflitantes(paresOutros);
+            if (rev.erro) { toast('Não deu para revalidar os conflitos: ' + rev.erro, true); render(); return; }
+            if (rev.pulados) toast(`${rev.pulados} alocação(ões) do outro lado já não conflita(m) mais — mantida(s).`);
+            await aplicarMovimentoServico(obra, item, nIni, nFim, delta, alocs || [], new Set(rev.manter), removerDeste);
+        });
+        return;
+    }
+    await aplicarMovimentoServico(obra, item, nIni, nFim, delta, alocs || [], new Set(), new Set());
+}
+
+async function aplicarMovimentoServico(obra, item, nIni, nFim, delta, alocsFrescas, removerOutros, removerDeste) {
+    // 1) datas do serviço pela RPC (regras/cadeia validam; se falhar, nada mais acontece)
+    const ok = await salvarDatasServico(obra, item, nIni, nFim, false);
+    if (!ok) return;
+    // 2) remoções escolhidas no painel — se falhar, ABORTA antes do deslocamento
+    //    (deslocar por cima das conflitantes criaria exatamente o double-booking)
+    const remover = [...new Set([...removerOutros, ...removerDeste])];
+    if (remover.length) {
+        const { error } = await sb.from('hermo_alocacoes').delete().in('id', remover);
+        if (error) {
+            toast('As remoções da resolução falharam (' + error.message + ') — o serviço foi movido, mas as alocações ficaram onde estavam. Ajuste-as pela linha do tempo.', true);
+            await carregarDados(); render();
+            return;
+        }
+    }
+    // 3) alocações restantes acompanham o deslocamento (datas FRESCAS + delta)
+    let movidas = 0, falhas = 0;
+    for (const a of alocsFrescas) {
+        if (removerDeste.has(a.id) || removerOutros.has(a.id)) continue;
+        const { error } = await sb.from('hermo_alocacoes')
+            .update({ data_inicio: addDias(a.data_inicio, delta), data_fim: addDias(a.data_fim, delta) })
+            .eq('id', a.id);
+        if (error) { falhas++; toast(`Aviso: a alocação de ${a.integrante?.nome || '?'} não acompanhou: ` + error.message, true); }
+        else movidas++;
+    }
+    await carregarDados();
+    render();
+    toast(`${item.servico?.codigo || 'Serviço'} movido${movidas ? ` com ${movidas} alocação(ões) junto` : ''}${remover.length ? ` · ${remover.length} removida(s) na resolução` : ''}${falhas ? ` · ⚠ ${falhas} não acompanhou(aram) — arraste manualmente` : ''} — cronograma recalculado.`);
+}
+
+/** Grava as datas do serviço pela RPC do card da obra. Retorna true em sucesso
+ *  (o chamador recarrega/avisa); em falha já mostra o toast e re-renderiza. */
 async function salvarDatasServico(obra, item, nIni, nFim, limpaPrazo) {
     if (nIni > nFim) nIni = nFim;
     // dados FRESCOS do banco (a página pode ficar aberta por horas — nunca
@@ -341,18 +436,18 @@ async function salvarDatasServico(obra, item, nIni, nFim, limpaPrazo) {
     if (eF || !o) {
         toast('Não deu para reagendar (obra não recarregada): ' + (eF?.message || ''), true);
         render();
-        return;
+        return false;
     }
     const alvo = (o.itens || []).find(i => i.id === item.id);
     if (!alvo || alvo.vigente === false) {
         toast('Este serviço mudou em outra aba (aditivo?) — recarregando a linha do tempo.', true);
         await carregarDados(); render();
-        return;
+        return false;
     }
     if (alvo.fim_real) {
         toast('Este serviço foi CONCLUÍDO em outra aba — as datas ficaram travadas.', true);
         await carregarDados(); render();
-        return;
+        return false;
     }
     const itemPayload = {
         id: item.id,
@@ -373,11 +468,9 @@ async function salvarDatasServico(obra, item, nIni, nFim, limpaPrazo) {
     if (error) {
         toast('Não deu para reagendar: ' + error.message, true);
         render();
-        return;
+        return false;
     }
-    await carregarDados();
-    render();
-    toast(`${item.servico?.codigo || 'Serviço'} reagendado — cronograma da obra recalculado${limpaPrazo ? ' (prazo em dias substituído pela data)' : ''}.`);
+    return true;
 }
 
 function iniciarArrastoAloc(e, el) {
@@ -434,12 +527,17 @@ function iniciarArrastoAloc(e, el) {
     el.addEventListener('pointercancel', cancelar);
 }
 
-/** Conflitos do integrante na janela, consultados FRESCOS no banco (a página pode ficar aberta). */
-async function conflitoFresco(aloc, nIni, nFim) {
+/**
+ * TODOS os conflitos do integrante na janela nova, consultados FRESCOS no banco.
+ * A checagem é por INTEGRANTE — vale igual para quem foi alocado avulso ou via equipe.
+ * excluirServicoId: ignora as alocações do próprio serviço arrastado (elas se movem juntas).
+ * Retorna { erro } ou { conflitos: [{tipo:'aloc'|'ausencia', row, descr}] }.
+ */
+async function conflitosFrescos(aloc, nIni, nFim, excluirServicoId = null) {
     const nova = { data_inicio: nIni, data_fim: nFim, turno: aloc.turno, hora_inicio: aloc.hora_inicio, hora_fim: aloc.hora_fim };
     const [al, au] = await Promise.all([
         sb.from('hermo_alocacoes')
-            .select('*, obra_servico:hermo_obra_servicos(servico:hermo_servicos(codigo), obra:hermo_obras(nome))')
+            .select('*, integrante:hermo_integrantes(nome, apelido), obra_servico:hermo_obra_servicos(id, servico:hermo_servicos(codigo, descricao), obra:hermo_obras(nome, numero, ano))')
             .eq('integrante_id', aloc.integrante_id)
             .lte('data_inicio', nFim).gte('data_fim', nIni),
         sb.from('hermo_ausencias').select('*')
@@ -447,35 +545,127 @@ async function conflitoFresco(aloc, nIni, nFim) {
             .lte('data_inicio', nFim).gte('data_fim', nIni)
     ]);
     if (al.error || au.error) return { erro: (al.error || au.error).message };
-    const a = (al.data || []).find(x => x.id !== aloc.id && periodosConflitam(nova, x));
-    if (a) {
-        return { conflito: `já está em "${a.obra_servico?.obra?.nome || 'outra obra'}" (${a.obra_servico?.servico?.codigo || ''}) de ${ddmm(a.data_inicio)} a ${ddmm(a.data_fim)}` };
-    }
-    const x = (au.data || []).find(y => periodosConflitam(nova, y));
-    if (x) return { conflito: `ausência (${x.tipo}) de ${ddmm(x.data_inicio)} a ${ddmm(x.data_fim)}` };
-    return {};
+    const conflitos = [];
+    (al.data || []).forEach(x => {
+        if (x.id === aloc.id) return;
+        if (excluirServicoId && x.obra_servico_id === excluirServicoId) return;
+        if (!periodosConflitam(nova, x)) return;
+        conflitos.push({
+            tipo: 'aloc', row: x,
+            descr: `"${x.obra_servico?.obra?.nome || 'outra obra'}" · ${x.obra_servico?.servico?.codigo || ''} ${x.obra_servico?.servico?.descricao || ''} · ${ddmm(x.data_inicio)}–${ddmm(x.data_fim)}`
+        });
+    });
+    (au.data || []).forEach(x => {
+        if (!periodosConflitam(nova, x)) return;
+        conflitos.push({ tipo: 'ausencia', row: x, descr: `ausência (${x.tipo}) de ${ddmm(x.data_inicio)} a ${ddmm(x.data_fim)}` });
+    });
+    return { conflitos };
 }
 
-async function salvarAloc(obra, item, aloc, nIni, nFim) {
-    // BLOQUEIO de conflito com consulta fresca (mesma régua do card da obra)
-    const pre = await conflitoFresco(aloc, nIni, nFim);
-    if (pre.erro) { toast('Não deu para checar conflitos: ' + pre.erro, true); render(); return; }
-    if (pre.conflito) {
-        toast(`🚫 ${aloc.integrante?.nome || 'Integrante'}: ${pre.conflito} — alocação mantida como estava.`, true);
+// ============================================================
+// PAINEL DE RESOLUÇÃO DE CONFLITOS
+// ============================================================
+let tlxcEstado = null; // { conflitos:[{aloc,nIni,nFim,outro}], aoAplicar(escolhas), rotuloArrastado }
+
+function abrirResolucaoConflitos(rotuloArrastado, conflitos, aoAplicar) {
+    tlxcEstado = { conflitos, aoAplicar };
+    $('tlxc-intro').innerHTML =
+        `O arrasto de <b>${esc(rotuloArrastado)}</b> deixaria integrante(s) em dois lugares ao mesmo tempo. ` +
+        `Escolha como resolver cada caso — ou desfaça o arrasto (nada foi gravado ainda).`;
+    $('tlxc-lista').innerHTML = conflitos.map((c, i) => {
+        const nome = c.aloc.integrante?.nome || c.aloc.integrante?.apelido || 'Integrante';
+        const ehAus = c.outro.tipo === 'ausencia';
+        return `
+        <div class="tlxc-conflito">
+            <div class="quem">👷 ${esc(nome)}</div>
+            <div class="lado">➡ com o arrasto: ${esc(rotuloArrastado)} · ${ddmm(c.nIni)}–${ddmm(c.nFim)}</div>
+            <div class="lado">✖ conflita com: ${esc(c.outro.descr)}</div>
+            <label class="${ehAus ? 'desabilitada' : ''}">
+                <input type="radio" name="tlxc-${i}" value="outro" ${ehAus ? 'disabled' : ''} />
+                Tirar ${esc(nome)} do serviço que <b>não</b> foi arrastado${ehAus ? ' (ausência não é removível por aqui)' : ''}
+            </label>
+            <label>
+                <input type="radio" name="tlxc-${i}" value="deste" />
+                Tirar ${esc(nome)} do serviço <b>arrastado</b> (a alocação dele aqui é removida)
+            </label>
+        </div>`;
+    }).join('');
+    $('tlxc-overlay').classList.add('aberto');
+}
+
+function fecharResolucao(desfazer = true) {
+    $('tlxc-overlay').classList.remove('aberto');
+    tlxcEstado = null;
+    if (desfazer) {
         render();
+        toast('↩ Arrasto desfeito — cronograma mantido como estava.');
+    }
+}
+
+$('tlxc-fechar').addEventListener('click', () => fecharResolucao(true));
+$('tlxc-desfazer').addEventListener('click', () => fecharResolucao(true));
+ligarFecharPorBackdrop($('tlxc-overlay'), () => fecharResolucao(true));
+$('tlxc-aplicar').addEventListener('click', async () => {
+    if (!tlxcEstado) return;
+    const escolhas = tlxcEstado.conflitos.map((c, i) =>
+        document.querySelector(`input[name="tlxc-${i}"]:checked`)?.value || null);
+    if (escolhas.some(e => !e)) {
+        toast('Escolha uma opção para cada conflito (ou use "Desfazer o arrasto").', true);
         return;
     }
+    const aoAplicar = tlxcEstado.aoAplicar;
+    const conflitos = tlxcEstado.conflitos;
+    $('tlxc-overlay').classList.remove('aberto');
+    tlxcEstado = null;
+    await aoAplicar(conflitos, escolhas);
+});
+
+async function salvarAloc(obra, item, aloc, nIni, nFim) {
+    // conflito com consulta fresca (mesma régua do card da obra) → painel de resolução
+    const pre = await conflitosFrescos(aloc, nIni, nFim);
+    if (pre.erro) { toast('Não deu para checar conflitos: ' + pre.erro, true); render(); return; }
+    if (pre.conflitos.length) {
+        const rotulo = `${item.servico?.codigo || ''} — alocação de ${aloc.integrante?.apelido || aloc.integrante?.nome || '?'}`;
+        abrirResolucaoConflitos(rotulo, pre.conflitos.map(o => ({ aloc, nIni, nFim, outro: o })), async (cs, escolhas) => {
+            if (escolhas.includes('deste')) {
+                // tirar o integrante do serviço arrastado resolve TODOS os conflitos dele
+                // de uma vez — os 'outro' marcados nas demais linhas são ignorados
+                // (removê-los também tiraria gente do outro serviço sem necessidade)
+                const { error } = await sb.from('hermo_alocacoes').delete().eq('id', aloc.id);
+                if (error) { toast('Erro ao remover a alocação: ' + error.message, true); render(); return; }
+                await carregarDados(); render();
+                toast(`👷 ${aloc.integrante?.nome || 'Integrante'} removido de ${item.servico?.codigo || 'serviço'} — conflito resolvido.`);
+                return;
+            }
+            // re-valida os "outros" antes de remover (o painel pode ter ficado aberto)
+            const pares = cs.filter((c, i) => escolhas[i] === 'outro' && c.outro.tipo === 'aloc')
+                .map(c => ({ id: c.outro.row.id, ref: { data_inicio: nIni, data_fim: nFim, turno: aloc.turno, hora_inicio: aloc.hora_inicio, hora_fim: aloc.hora_fim } }));
+            const rev = await outrosAindaConflitantes(pares);
+            if (rev.erro) { toast('Não deu para revalidar os conflitos: ' + rev.erro, true); render(); return; }
+            if (rev.pulados) toast(`${rev.pulados} alocação(ões) do outro lado já não conflita(m) mais — mantida(s).`);
+            if (rev.manter.length) {
+                const { error } = await sb.from('hermo_alocacoes').delete().in('id', rev.manter);
+                if (error) { toast('Erro ao remover alocação(ões) conflitante(s): ' + error.message, true); render(); return; }
+            }
+            await executarMoveAloc(aloc, nIni, nFim, rev.manter.length);
+        });
+        return;
+    }
+    await executarMoveAloc(aloc, nIni, nFim);
+}
+
+async function executarMoveAloc(aloc, nIni, nFim, houveRemocoes = 0) {
     const antesIni = aloc.data_inicio, antesFim = aloc.data_fim;
     const { error } = await sb.from('hermo_alocacoes')
         .update({ data_inicio: nIni, data_fim: nFim }).eq('id', aloc.id);
     if (error) { toast('Erro ao mover alocação: ' + error.message, true); render(); return; }
     // corrida entre sessões: re-verifica após gravar; se um conflito surgiu agora
     // há pouco, desfaz o movimento (mesmo padrão do card da obra)
-    const pos = await conflitoFresco(aloc, nIni, nFim);
-    if (pos.conflito) {
+    const pos = await conflitosFrescos(aloc, nIni, nFim);
+    if (pos.conflitos?.length) {
         await sb.from('hermo_alocacoes')
             .update({ data_inicio: antesIni, data_fim: antesFim }).eq('id', aloc.id);
-        toast(`🚫 Outra sessão criou um conflito agora há pouco (${pos.conflito}) — o movimento foi desfeito.`, true);
+        toast(`🚫 Outra sessão criou um conflito agora há pouco (${pos.conflitos[0].descr}) — o movimento foi desfeito${houveRemocoes ? ' (atenção: as remoções escolhidas na resolução foram mantidas)' : ''}.`, true);
         await carregarDados(); render();
         return;
     }
