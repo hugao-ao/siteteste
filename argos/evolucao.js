@@ -8,7 +8,7 @@ import { sb, toast, esc, abrirModal, fecharModal } from './argos-common.js';
 import { carregarPermissoes } from './argos-permissoes.js';
 import { hojeISO, formataBR, somarDias } from './argos-recorrencia.js';
 import {
-    IMPORTANCIAS, NIVEIS, MAX_FUNDAMENTAIS, MEMORIA_CAMPOS,
+    IMPORTANCIAS, NIVEIS, MAX_FUNDAMENTAIS, MEMORIA_GRUPOS, AREA_TEXTOS,
     indexarRespostas, calcularAvaliacao, pendencias, fundamentaisExcedentes,
     limiteProxima, avaliacaoTravada
 } from './argos-evolucao.js';
@@ -106,68 +106,99 @@ function renderAreas() {
     const calc = calcularAvaliacao(catalogo, resp);
     document.getElementById('ev-areas').innerHTML = catalogo.map((area, i) => {
         const c = calc[i];
-        const temBadge = badgesDaArea(area).length > 0;
-        const classe = temBadge ? 'tem-badge' : (c.completa ? 'completa' : 'incompleta');
+        const nBadges = badgesDaArea(area).length;
+        const classe = nBadges ? 'tem-badge' : (c.completa ? 'completa' : 'incompleta');
+        const feitos = c.subareas.filter(x => x.valor != null).length;
         return `
         <div class="ev-area ${abertas.has(area.id) ? 'aberta' : ''} ${classe} ${ro ? 'ev-travada' : ''}" data-area="${area.id}">
           <div class="ev-area-topo" data-toggle="${area.id}">
-            <span>${abertas.has(area.id) ? '▾' : '▸'}</span>
-            <span class="nome">${esc(area.nome)}</span>
-            ${temBadge ? `<button class="badge-conferir" data-conferir-area="${area.id}">🔎 conferir ${badgesDaArea(area).length}</button>` : ''}
-            <span class="dica" style="margin:0">competência ${fmt(c.competencia)} · foco ${fmt(c.foco)}</span>
-            <select class="argos-input" data-importancia="${area.id}" ${ro ? 'disabled' : ''} onclick="event.stopPropagation()">
-              <option value="">— importância da área —</option>
-              ${IMPORTANCIAS.map(im => `<option value="${im.valor}" ${resp.importancia[area.id] === im.valor ? 'selected' : ''}>${im.nome} — ${im.desc}</option>`).join('')}
-            </select>
+            <span class="chev">${abertas.has(area.id) ? '▼' : '▶'}</span>
+            <span class="nome">${i + 1}. ${esc(area.nome)}</span>
+            <span>${nBadges ? `<button class="badge-conferir" data-conferir-area="${area.id}">🔎 conferir ${nBadges}</button>` : ''}</span>
+            <span class="linha2">
+              <span class="ev-chip ${feitos === c.subareas.length ? 'ok' : 'erro'}">${feitos}/${c.subareas.length} subáreas</span>
+              <span class="ev-chip">competência <b>${fmt(c.competencia)}</b></span>
+              <span class="ev-chip">foco <b>${fmt(c.foco)}</b></span>
+              ${c.peso ? `<span class="ev-chip">${esc(IMPORTANCIAS.find(x => x.valor === c.peso).nome)}</span>`
+                       : '<span class="ev-chip erro">sem importância definida</span>'}
+            </span>
+            <label class="importancia" onclick="event.stopPropagation()">
+              <select class="argos-input" data-importancia="${area.id}" ${ro ? 'disabled' : ''}
+                      style="width:100%; ${resp.importancia[area.id] ? '' : 'border-color:var(--argos-danger)'}">
+                <option value="">⚠️ Escolha a importância desta área nesta avaliação…</option>
+                ${IMPORTANCIAS.map(im => `<option value="${im.valor}" ${resp.importancia[area.id] === im.valor ? 'selected' : ''}>${im.nome} — ${im.desc}</option>`).join('')}
+              </select>
+            </label>
           </div>
           <div class="ev-area-corpo">
             ${area.subareas.map(sa => renderSubarea(sa, ro)).join('')}
-            <div class="ev-subjetivo">
-              <label>Relevâncias no Contexto do Paciente
-                <textarea rows="2" data-texto="area:${area.id}:relevancias" ${ro ? 'disabled' : ''}>${esc(textos[`area:${area.id}:relevancias`] || '')}</textarea>
-              </label>
-              <label>Acontecimentos na sessão que merecem registro
-                <textarea rows="2" data-texto="area:${area.id}:acontecimentos" ${ro ? 'disabled' : ''}>${esc(textos[`area:${area.id}:acontecimentos`] || '')}</textarea>
-              </label>
+            <div class="ev-textos">
+              ${AREA_TEXTOS.map(t => campoTexto(
+                  `area:${area.id}:${t.sufixo}`, `${t.icone} ${t.rotulo}`, t.cor, ro, 3)).join('')}
             </div>
           </div>
         </div>`;
     }).join('');
 }
 
+/** Campo de texto livre com faixa colorida do assunto. */
+function campoTexto(chave, rotulo, cor, ro, linhas) {
+    return `<label class="ev-campo" style="--c:${cor}">
+      <span>${esc(rotulo)}</span>
+      <textarea rows="${linhas || 3}" data-texto="${chave}" ${ro ? 'disabled' : ''}>${esc(textos[chave] || '')}</textarea>
+    </label>`;
+}
+
 function renderSubarea(sa, ro) {
     const escolhida = resp.selecao[sa.id];
-    const badgeSub = resp.conferir[`selecao:${sa.id}`];
-    const nBadges = (sa.opcoes || []).filter(o => resp.conferir[`nivelamento:${o.id}`]).length + (badgeSub ? 1 : 0);
+    const nBadges = (sa.opcoes || []).filter(o => resp.conferir[`nivelamento:${o.id}`]).length
+        + (resp.conferir[`selecao:${sa.id}`] ? 1 : 0);
+    const nivelados = (sa.opcoes || []).filter(o => resp.nivelamento[o.id] != null).length;
     return `
     <div class="ev-sub" data-sub="${sa.id}">
-      <div class="ev-sub-topo">
+      <div class="ev-sub-cab">
         <b>${esc(sa.nome)}</b>
         ${nBadges ? `<button class="badge-conferir" data-conferir-sub="${sa.id}">🔎 conferir ${nBadges}</button>` : ''}
-        <select class="argos-input" data-selecao="${sa.id}" ${ro ? 'disabled' : ''}>
-          <option value="">— classificação do paciente —</option>
+        <span class="ev-chip ${nivelados === sa.opcoes.length ? 'ok' : 'erro'}">${nivelados}/${sa.opcoes.length} nivelados</span>
+      </div>
+      <label class="ev-sub-escolha ${escolhida ? '' : 'vazio'}">
+        <select data-selecao="${sa.id}" ${ro ? 'disabled' : ''}>
+          <option value="">⚠️ Como o paciente está nesta subárea?</option>
           ${sa.opcoes.map(o => `<option value="${o.id}" ${escolhida === o.id ? 'selected' : ''}>${esc(o.nome)}</option>`).join('')}
         </select>
+      </label>
+      <div class="ev-niveis-titulo">Nivelamento das opções — o que cada comportamento representa para este paciente agora</div>
+      <div class="ev-niveis">
+        ${sa.opcoes.map(o => {
+            const n = resp.nivelamento[o.id];
+            const cor = n ? (NIVEIS.find(x => x.valor === n) || {}).cor : null;
+            return `
+            <div class="ev-opcao ${escolhida === o.id ? 'escolhida' : ''}">
+              <span class="rot">${escolhida === o.id ? '▶ ' : ''}${esc(o.nome)}
+                ${resp.conferir[`nivelamento:${o.id}`] ? `<button class="badge-conferir" data-conferir-item="nivelamento:${o.id}">🔎</button>` : ''}</span>
+              <select data-nivel="${o.id}" class="${n ? '' : 'vazio'}" ${ro ? 'disabled' : ''}
+                      style="${cor ? `color:${cor}` : ''}">
+                <option value="">— nivelar —</option>
+                ${NIVEIS.map(x => `<option value="${x.valor}" ${n === x.valor ? 'selected' : ''}>${x.valor} · ${x.nome}</option>`).join('')}
+              </select>
+            </div>`;
+        }).join('')}
       </div>
-      ${sa.opcoes.map(o => `
-        <div class="ev-opcao ${escolhida === o.id ? 'escolhida' : ''}">
-          <span class="rot">${escolhida === o.id ? '▶ ' : ''}${esc(o.nome)}</span>
-          ${resp.conferir[`nivelamento:${o.id}`] ? `<button class="badge-conferir" data-conferir-item="nivelamento:${o.id}">🔎</button>` : ''}
-          <select class="argos-input" data-nivel="${o.id}" ${ro ? 'disabled' : ''}>
-            <option value="">— nivelamento —</option>
-            ${NIVEIS.map(n => `<option value="${n.valor}" ${resp.nivelamento[o.id] === n.valor ? 'selected' : ''}>${n.nome}</option>`).join('')}
-          </select>
-        </div>`).join('')}
     </div>`;
 }
 
 function renderMemoria() {
     if (!atual) { document.getElementById('ev-memoria').innerHTML = ''; return; }
     const ro = somenteLeitura();
-    document.getElementById('ev-memoria').innerHTML = MEMORIA_CAMPOS.map(c => `
-      <label>${esc(c.rotulo.replace('{PACIENTE}', (paciente && paciente.nome) || ''))}
-        <textarea rows="2" data-texto="memoria:${c.chave}" ${ro ? 'disabled' : ''}>${esc(textos['memoria:' + c.chave] || '')}</textarea>
-      </label>`).join('');
+    const nome = (paciente && paciente.nome) || '';
+    document.getElementById('ev-memoria').innerHTML = MEMORIA_GRUPOS.map(g => `
+      <div class="ev-memoria-grupo" style="--c:${g.cor}">
+        <h3>${g.icone} ${esc(g.titulo)}</h3>
+        <div class="ev-memoria-campos">
+          ${g.campos.map(c => campoTexto('memoria:' + c.chave,
+              c.rotulo.replace('{PACIENTE}', nome), g.cor, ro, 3)).join('')}
+        </div>
+      </div>`).join('');
 }
 
 const fmt = v => v == null ? '—' : (Math.round(v * 100) / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -190,12 +221,12 @@ function atualizarStatus() {
     document.getElementById('btn-conferir-tudo').style.display = nBadges ? '' : 'none';
     document.getElementById('btn-conferir-tudo').textContent = `✔ Conferir tudo (${nBadges})`;
     const fund = fundamentaisExcedentes(catalogo, resp);
-    const partes = [`${p.preenchidos} de ${p.total} campos objetivos (${pct}%)`];
-    if (nBadges) partes.push(`🔎 ${nBadges} item(ns) aguardando conferência`);
-    if (fund.excede) partes.push(`⛔ ${fund.nomes.length} áreas como Fundamental (máximo ${MAX_FUNDAMENTAIS})`);
-    if (travada()) partes.push('🔒 avaliação travada (prazo da próxima já venceu)');
-    else if (sujo) partes.push('• alterações não salvas');
-    document.getElementById('ev-status').textContent = partes.join(' · ');
+    const chips = [`<span class="ev-chip ${pct === 100 ? 'ok' : ''}">${p.preenchidos} de ${p.total} campos objetivos (${pct}%)</span>`];
+    if (nBadges) chips.push(`<span class="ev-chip alerta">🔎 ${nBadges} item(ns) aguardando conferência</span>`);
+    if (fund.excede) chips.push(`<span class="ev-chip erro">⛔ ${fund.nomes.length} áreas como Fundamental (máximo ${MAX_FUNDAMENTAIS})</span>`);
+    if (travada()) chips.push('<span class="ev-chip erro">🔒 avaliação travada</span>');
+    else if (sujo) chips.push('<span class="ev-chip alerta">• alterações não salvas</span>');
+    document.getElementById('ev-status').innerHTML = `<span class="ev-chips">${chips.join('')}</span>`;
 
     const aviso = document.getElementById('ev-aviso');
     if (travada()) {

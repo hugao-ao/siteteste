@@ -6,6 +6,17 @@
   <title>Argos Gestão — Pacientes</title>
   <script src="argos-guard.js"></script>
   <link rel="stylesheet" href="argos-style.css?v=7" />
+  <style>
+    #ev-graficos { align-items: start; }
+    #ev-graficos svg { background: var(--argos-bg); border: 1px solid var(--argos-border);
+      border-radius: var(--argos-radius); }
+    #ev-tabela table { min-width: 700px; }
+    #ev-tabela th, #ev-tabela td { white-space: nowrap; text-align: right; }
+    #ev-tabela th:first-child, #ev-tabela td:first-child { text-align: left; white-space: normal; min-width: 190px; }
+    #ev-tabela th.grupo { text-align: center; border-bottom: 1px solid var(--argos-border);
+      font-size: .78rem; letter-spacing: .03em; }
+    #ev-tabela .sep { border-left: 2px solid var(--argos-border); }
+  </style>
 </head>
 <body>
   <header class="argos-topbar">
@@ -466,7 +477,7 @@
     </div>
   </div>
 
-  <script type="module" src="pacientes.js?v=10"></script>
+  <script type="module" src="pacientes.js?v=11"></script>
   <script type="module" src="argos-zoom.js?v=4"></script>
 </body>
 </html>

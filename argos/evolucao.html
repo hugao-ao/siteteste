@@ -7,33 +7,85 @@
   <script src="argos-guard.js"></script>
   <link rel="stylesheet" href="argos-style.css?v=7" />
   <style>
-    .ev-topo { position: sticky; top: 0; z-index: 5; background: var(--argos-bg);
-      padding: 10px 0; border-bottom: 1px solid var(--argos-border); margin-bottom: 14px; }
-    .ev-progresso { height: 8px; background: var(--argos-surface-2); border-radius: 99px; overflow: hidden; margin: 6px 0; }
+    /* ---------- barra fixa de progresso e ações ---------- */
+    .ev-topo { position: sticky; top: 0; z-index: 6; background: var(--argos-bg);
+      padding: 10px 0 8px; border-bottom: 1px solid var(--argos-border); margin-bottom: 18px; }
+    .ev-progresso { height: 6px; background: var(--argos-surface-2); border-radius: 99px;
+      overflow: hidden; margin: 8px 0 6px; }
     .ev-progresso i { display: block; height: 100%; background: var(--argos-primary); transition: width .25s; }
+    .ev-chips { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; font-size: .82rem; }
+    .ev-chip { background: var(--argos-surface-2); border: 1px solid var(--argos-border);
+      border-radius: 99px; padding: 2px 10px; color: var(--argos-text-dim); }
+    .ev-chip.alerta { border-color: var(--argos-warn); color: var(--argos-warn); }
+    .ev-chip.erro { border-color: var(--argos-danger); color: var(--argos-danger); }
+    .ev-chip.ok { border-color: var(--argos-success); color: var(--argos-success); }
+
+    /* ---------- área (bloco recolhível) ---------- */
     .ev-area { border: 1px solid var(--argos-border); border-radius: var(--argos-radius);
-      margin-bottom: 12px; overflow: hidden; }
-    .ev-area-topo { display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
-      padding: 10px 12px; background: var(--argos-surface-2); cursor: pointer; }
-    .ev-area-topo .nome { flex: 1; font-weight: 700; min-width: 180px; }
-    .ev-area-corpo { padding: 12px; display: none; }
+      margin-bottom: 14px; overflow: hidden; background: var(--argos-surface); }
+    .ev-area-topo { display: grid; grid-template-columns: 22px 1fr auto; gap: 10px 12px;
+      align-items: center; padding: 12px 14px; background: var(--argos-surface-2); cursor: pointer; }
+    .ev-area-topo .chev { font-size: .9rem; color: var(--argos-text-dim); }
+    .ev-area-topo .nome { font-weight: 700; font-size: 1rem; }
+    .ev-area-topo .linha2 { grid-column: 2 / -1; display: flex; gap: 8px; flex-wrap: wrap;
+      align-items: center; font-size: .8rem; color: var(--argos-text-dim); }
+    .ev-area-topo .importancia { grid-column: 2 / -1; max-width: 520px; }
+    .ev-area-corpo { padding: 0; display: none; }
     .ev-area.aberta .ev-area-corpo { display: block; }
-    .ev-sub { border-top: 1px dashed var(--argos-border); padding: 10px 0; }
-    .ev-sub:first-child { border-top: none; }
-    .ev-sub-topo { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 6px; }
-    .ev-sub-topo b { flex: 1; min-width: 150px; }
-    .ev-opcao { display: flex; align-items: center; gap: 8px; padding: 3px 0 3px 14px; flex-wrap: wrap; }
-    .ev-opcao .rot { flex: 1; min-width: 160px; font-size: .88rem; color: var(--argos-text-dim); }
+    .ev-area.incompleta { border-left: 4px solid var(--argos-danger); }
+    .ev-area.completa { border-left: 4px solid var(--argos-success); }
+    .ev-area.tem-badge { border-left: 4px solid var(--argos-warn); }
+
+    /* ---------- subárea ---------- */
+    .ev-sub { border-top: 1px solid var(--argos-border); padding: 14px; }
+    .ev-sub-cab { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 4px; }
+    .ev-sub-cab b { font-size: .95rem; }
+    .ev-sub-escolha { display: block; margin: 6px 0 12px; }
+    .ev-sub-escolha select { width: 100%; max-width: 620px; padding: 9px 11px; font-size: .92rem;
+      background: var(--argos-bg); border: 1px solid var(--argos-primary); border-radius: 8px;
+      color: var(--argos-text); font-family: inherit; }
+    .ev-sub-escolha.vazio select { border-color: var(--argos-danger); }
+    .ev-niveis-titulo { font-size: .76rem; text-transform: uppercase; letter-spacing: .04em;
+      color: var(--argos-text-dim); margin-bottom: 6px; }
+    .ev-niveis { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 6px; }
+    .ev-opcao { display: grid; grid-template-columns: 1fr 140px; gap: 8px; align-items: center;
+      padding: 6px 9px; border: 1px solid var(--argos-border); border-radius: 8px;
+      background: var(--argos-bg); }
+    .ev-opcao .rot { font-size: .84rem; color: var(--argos-text-dim); line-height: 1.25; }
+    .ev-opcao.escolhida { border-color: var(--argos-primary); background: rgba(56,189,248,.07); }
     .ev-opcao.escolhida .rot { color: var(--argos-text); font-weight: 600; }
-    .ev-opcao select, .ev-sub-topo select, .ev-area-topo select { max-width: 260px; }
+    .ev-opcao select { width: 100%; padding: 5px 7px; font-size: .82rem; border-radius: 6px;
+      background: var(--argos-surface); border: 1px solid var(--argos-border);
+      color: var(--argos-text); font-family: inherit; }
+    .ev-opcao select.vazio { border-color: var(--argos-danger); }
+    .ev-opcao .nivel-cor { display: inline-block; width: 8px; height: 8px; border-radius: 99px; }
+
+    /* ---------- campos subjetivos (código de cores por assunto) ---------- */
+    .ev-textos { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 10px; padding: 14px; border-top: 1px solid var(--argos-border); }
+    .ev-campo { border: 1px solid var(--argos-border); border-left: 4px solid var(--c, var(--argos-border));
+      border-radius: 10px; padding: 10px 12px; background: var(--argos-bg); }
+    .ev-campo > span { display: block; font-size: .8rem; font-weight: 700; color: var(--c, var(--argos-text-dim));
+      margin-bottom: 6px; }
+    .ev-campo textarea { display: block; width: 100%; background: var(--argos-surface);
+      border: 1px solid var(--argos-border); border-radius: 8px; color: var(--argos-text);
+      padding: 8px 10px; font-size: .88rem; font-family: inherit; resize: vertical; }
+    .ev-campo textarea:focus { outline: none; border-color: var(--c, var(--argos-primary)); }
+
+    /* ---------- memória da terapia ---------- */
+    .ev-memoria-grupo { border: 1px solid var(--argos-border); border-top: 3px solid var(--c);
+      border-radius: var(--argos-radius); padding: 12px 14px; margin-bottom: 12px;
+      background: var(--argos-surface); }
+    .ev-memoria-grupo > h3 { margin: 0 0 10px; font-size: .95rem; color: var(--c); }
+    .ev-memoria-campos { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 10px; }
+
     .badge-conferir { background: var(--argos-warn); color: #1a1300; border: none; cursor: pointer;
-      border-radius: 99px; padding: 1px 8px; font-size: .72rem; font-weight: 700; white-space: nowrap; }
-    .ev-area.tem-badge .ev-area-topo { box-shadow: inset 3px 0 0 var(--argos-warn); }
-    .ev-area.incompleta .ev-area-topo { box-shadow: inset 3px 0 0 var(--argos-danger); }
-    .ev-area.completa .ev-area-topo { box-shadow: inset 3px 0 0 var(--argos-success); }
-    .ev-subjetivo { margin-top: 10px; }
-    .ev-subjetivo textarea { width: 100%; }
-    .ev-travada { opacity: .75; pointer-events: none; }
+      border-radius: 99px; padding: 2px 9px; font-size: .72rem; font-weight: 700; white-space: nowrap; }
+    .ev-travada { opacity: .8; pointer-events: none; }
+    @media (max-width: 640px) {
+      .ev-opcao { grid-template-columns: 1fr; }
+      .ev-area-topo { grid-template-columns: 20px 1fr; }
+    }
   </style>
 </head>
 <body>
@@ -68,7 +120,7 @@
     <div id="ev-areas"></div>
 
     <h2 class="form-secao">🧠 Memória da Terapia</h2>
-    <p class="dica">Campos livres — não entram nos cálculos dos gráficos.</p>
+    <p class="dica">Campos livres, agrupados por assunto — não entram nos cálculos dos gráficos.</p>
     <div id="ev-memoria"></div>
 
     <div class="argos-modal-acoes" style="margin:20px 0 40px">
@@ -112,7 +164,7 @@
     </div>
   </div>
 
-  <script type="module" src="evolucao.js?v=1"></script>
+  <script type="module" src="evolucao.js?v=2"></script>
   <script type="module" src="argos-zoom.js?v=4"></script>
 </body>
 </html>

@@ -25,17 +25,32 @@ export const NIVEIS = [
 export const COMPETENCIA_MAX = 5;                                  // nivelamento máximo
 export const FOCO_MAX = (5 - 1) * Math.max(...IMPORTANCIAS.map(i => i.valor)); // (5−1)×4 = 16
 
-export const MEMORIA_CAMPOS = [
-    { chave: 'evoluindo',        rotulo: 'O QUE ESTÁ EVOLUINDO?' },
-    { chave: 'nao_evoluindo',    rotulo: 'O QUE NÃO ESTÁ EVOLUINDO?' },
-    { chave: 'escola_ultima',    rotulo: 'COMO FOI A ÚLTIMA VISITA À ESCOLA?' },
-    { chave: 'escola_proxima',   rotulo: 'COMO DEVERÁ SER A PRÓXIMA VISITA À ESCOLA?' },
-    { chave: 'familia_ultima',   rotulo: 'COMO FOI A ÚLTIMA SESSÃO COM A FAMÍLIA? (ou ANAMNESE)' },
-    { chave: 'familia_proxima',  rotulo: 'COMO DEVERÁ SER A PRÓXIMA SESSÃO COM A FAMÍLIA?' },
-    { chave: 'evitar',           rotulo: 'O QUE EVITAR FAZER DAQUI PRA FRENTE?' },
-    { chave: 'procurar',         rotulo: 'O QUE PROCURAR FAZER DAQUI PRA FRENTE?' },
-    { chave: 'observacoes',      rotulo: 'OBSERVAÇÕES, ANOTAÇÕES, INSIGHTS ETC…' },
-    { chave: 'quem_e',           rotulo: 'DEPOIS DISSO TUDO, QUEM É {PACIENTE} (HUM)?' }
+// A Memória da Terapia é agrupada por ASSUNTO, com o mesmo código de cores
+// da planilha de origem (campos da mesma cor tratam do mesmo tema).
+export const MEMORIA_GRUPOS = [
+    { chave: 'balanco', titulo: 'Balanço da evolução', icone: '📊', cor: '#f97316', campos: [
+        { chave: 'evoluindo',       rotulo: 'O que está evoluindo?' },
+        { chave: 'nao_evoluindo',   rotulo: 'O que NÃO está evoluindo?' } ] },
+    { chave: 'escola', titulo: 'Escola', icone: '🏫', cor: '#3b82f6', campos: [
+        { chave: 'escola_ultima',   rotulo: 'Como foi a última visita à escola?' },
+        { chave: 'escola_proxima',  rotulo: 'Como deverá ser a próxima visita à escola?' } ] },
+    { chave: 'familia', titulo: 'Família', icone: '👨‍👩‍👦', cor: '#22c55e', campos: [
+        { chave: 'familia_ultima',  rotulo: 'Como foi a última sessão com a família? (ou anamnese)' },
+        { chave: 'familia_proxima', rotulo: 'Como deverá ser a próxima sessão com a família?' } ] },
+    { chave: 'rumo', titulo: 'Rumo do trabalho', icone: '🧭', cor: '#a855f7', campos: [
+        { chave: 'evitar',          rotulo: 'O que EVITAR fazer daqui pra frente?' },
+        { chave: 'procurar',        rotulo: 'O que PROCURAR fazer daqui pra frente?' } ] },
+    { chave: 'registro', titulo: 'Registro livre', icone: '📝', cor: '#94a3b8', campos: [
+        { chave: 'observacoes',     rotulo: 'Observações, anotações, insights etc.' } ] },
+    { chave: 'sintese', titulo: 'Síntese', icone: '💭', cor: '#6366f1', campos: [
+        { chave: 'quem_e',          rotulo: 'Depois disso tudo, quem é {PACIENTE} (hum)?' } ] }
+];
+export const MEMORIA_CAMPOS = MEMORIA_GRUPOS.flatMap(g => g.campos);
+
+// campos subjetivos que toda área possui (mesmas cores da planilha)
+export const AREA_TEXTOS = [
+    { sufixo: 'relevancias',    rotulo: 'Relevâncias no contexto do paciente', icone: '🔍', cor: '#38bdf8' },
+    { sufixo: 'acontecimentos', rotulo: 'Acontecimentos na sessão que merecem registro', icone: '🗒️', cor: '#a855f7' }
 ];
 
 // ============================================================
@@ -145,9 +160,10 @@ export function radarSVG(opts) {
     const eixos = opts.eixos || [];
     const series = (opts.series || []).filter(s => s && (s.valores || []).some(v => v != null));
     const n = eixos.length;
-    const tam = opts.tamanho || 460;
-    const cx = tam / 2, cy = tam / 2 + 6;
-    const raio = Math.min(tam, tam) * 0.31;
+    // tela retangular: sobra lateral para os rótulos dos eixos não serem cortados
+    const L = opts.largura || 580, A = opts.altura || 470;
+    const cx = L / 2, cy = A / 2 + 14;
+    const raio = opts.raio || 132;
     const aneis = opts.aneis || 4;
 
     let max = opts.max;
@@ -167,61 +183,69 @@ export function radarSVG(opts) {
         return [cx + raio * f * Math.cos(ang), cy + raio * f * Math.sin(ang)];
     };
 
-    // teia: anéis + raios
+    // teia: anéis concêntricos + raios
     let teia = '';
     for (let k = 1; k <= aneis; k++) {
         const f = k / aneis;
         const pts = Array.from({ length: n }, (_, i) => pontoEixo(i, f).map(x => x.toFixed(1)).join(',')).join(' ');
-        teia += `<polygon points="${pts}" fill="none" stroke="var(--argos-border,#334155)" stroke-width="1" opacity="${k === aneis ? .9 : .45}" />`;
+        teia += `<polygon points="${pts}" fill="${k === 1 ? 'var(--argos-surface-2,#273449)' : 'none'}" fill-opacity=".25"
+                  stroke="var(--argos-border,#334155)" stroke-width="1" opacity="${k === aneis ? .95 : .4}" />`;
     }
     for (let i = 0; i < n; i++) {
         const [x, y] = pontoEixo(i, 1);
-        teia += `<line x1="${cx}" y1="${cy}" x2="${x.toFixed(1)}" y2="${y.toFixed(1)}" stroke="var(--argos-border,#334155)" stroke-width="1" opacity=".7" />`;
+        teia += `<line x1="${cx}" y1="${cy}" x2="${x.toFixed(1)}" y2="${y.toFixed(1)}" stroke="var(--argos-border,#334155)" stroke-width="1" opacity=".55" />`;
     }
 
-    // rótulos dos eixos
+    // rótulos dos eixos, quebrados em linhas curtas
     let rotulos = '';
     for (let i = 0; i < n; i++) {
-        const [x, y] = pontoEixo(i, 1.19);
-        const meio = Math.abs(x - cx) < 6;
+        const [x, y] = pontoEixo(i, 1.13);
+        const meio = Math.abs(x - cx) < 8;
         const anchor = meio ? 'middle' : (x > cx ? 'start' : 'end');
-        const palavras = String(eixos[i]).split(' ');
-        const linhas = [];
-        let atual = '';
-        for (const p of palavras) {
-            if ((atual + ' ' + p).trim().length > 18) { linhas.push(atual.trim()); atual = p; }
-            else atual += ' ' + p;
-        }
-        if (atual.trim()) linhas.push(atual.trim());
-        const dy0 = y - (linhas.length - 1) * 6;
+        const linhas = quebrar(String(eixos[i]), 17);
+        const dy0 = y - (linhas.length - 1) * 6.5;
         rotulos += linhas.map((l, k) =>
-            `<text x="${x.toFixed(1)}" y="${(dy0 + k * 12).toFixed(1)}" text-anchor="${anchor}" dominant-baseline="middle"
-                   font-size="11" fill="var(--argos-text-dim,#94a3b8)">${escapar(l)}</text>`).join('');
+            `<text x="${x.toFixed(1)}" y="${(dy0 + k * 13).toFixed(1)}" text-anchor="${anchor}" dominant-baseline="middle"
+                   font-size="10.5" fill="var(--argos-text-dim,#94a3b8)">${escapar(l)}</text>`).join('');
     }
 
     // séries
     let poligonos = '';
     for (const s of series) {
-        const vals = s.valores || [];
-        const pts = vals.map((v, i) => ponto(i, v == null ? 0 : v));
+        const pts = (s.valores || []).map((v, i) => ponto(i, v == null ? 0 : v));
         const d = pts.map(p => p.map(x => x.toFixed(1)).join(',')).join(' ');
-        poligonos += `<polygon points="${d}" fill="${s.cor}" fill-opacity=".12" stroke="${s.cor}" stroke-width="2"
-                       ${s.tracejada ? 'stroke-dasharray="5 4"' : ''} stroke-linejoin="round" />`;
+        poligonos += `<polygon points="${d}" fill="${s.cor}" fill-opacity=".13" stroke="${s.cor}" stroke-width="2.2"
+                       ${s.tracejada ? 'stroke-dasharray="6 4"' : ''} stroke-linejoin="round" />`;
         poligonos += pts.map(p =>
-            `<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="3.2" fill="${s.cor}" />`).join('');
+            `<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="3.4" fill="${s.cor}"
+                     stroke="var(--argos-bg,#0f172a)" stroke-width="1" />`).join('');
     }
 
+    // legenda: uma linha por série, no rodapé
     const legenda = series.map((s, i) =>
-        `<g transform="translate(${12 + i * 190}, ${tam - 8})">
-           <line x1="0" y1="-4" x2="22" y2="-4" stroke="${s.cor}" stroke-width="2.5" ${s.tracejada ? 'stroke-dasharray="5 4"' : ''} />
-           <text x="28" y="-4" dominant-baseline="middle" font-size="11" fill="var(--argos-text,#e2e8f0)">${escapar(s.nome)}</text>
+        `<g transform="translate(14, ${A - 22 + i * 15})">
+           <line x1="0" y1="0" x2="24" y2="0" stroke="${s.cor}" stroke-width="2.5" ${s.tracejada ? 'stroke-dasharray="6 4"' : ''} />
+           <text x="31" y="0" dominant-baseline="middle" font-size="10.5" fill="var(--argos-text,#e2e8f0)">${escapar(s.nome)}</text>
          </g>`).join('');
+    const alturaTotal = A + Math.max(0, series.length - 2) * 15;
 
-    return `<svg viewBox="0 0 ${tam} ${tam}" width="100%" role="img" aria-label="${escapar(opts.titulo || 'Radar')}" style="max-width:${tam}px">
-      <text x="12" y="18" font-size="13" font-weight="700" fill="var(--argos-primary,#38bdf8)">${escapar(opts.titulo || '')}</text>
-      <text x="12" y="34" font-size="10.5" fill="var(--argos-text-dim,#94a3b8)">escala 0 – ${fmt(max)}</text>
+    return `<svg viewBox="0 0 ${L} ${alturaTotal}" width="100%" role="img" aria-label="${escapar(opts.titulo || 'Radar')}">
+      <text x="14" y="20" font-size="13" font-weight="700" fill="var(--argos-primary,#38bdf8)">${escapar(opts.titulo || '')}</text>
+      <text x="14" y="36" font-size="10.5" fill="var(--argos-text-dim,#94a3b8)">escala 0 – ${fmt(max)}</text>
       ${teia}${poligonos}${rotulos}${legenda}
     </svg>`;
+}
+
+/** Quebra um rótulo em linhas de no máximo `lim` caracteres. */
+function quebrar(texto, lim) {
+    const linhas = [];
+    let atual = '';
+    for (const p of String(texto).split(' ')) {
+        if (atual && (atual + ' ' + p).length > lim) { linhas.push(atual); atual = p; }
+        else atual = atual ? atual + ' ' + p : p;
+    }
+    if (atual) linhas.push(atual);
+    return linhas;
 }
 
 // rótulo curto (eixo do radar): sem casas desnecessárias
