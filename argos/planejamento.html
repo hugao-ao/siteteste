@@ -157,14 +157,7 @@
       <h3 class="form-secao">Alocações desta movimentação</h3>
       <div id="clf-alocacoes"></div>
       <p class="dica" id="clf-resumo" style="font-weight:600"></p>
-      <div id="clf-lembrar-bloco" style="margin-top:6px">
-        <label class="linha-check">
-          <input type="checkbox" id="clf-lembrar" />
-          🔁 Lembrar este pagador: classificar automaticamente as próximas movimentações que contenham o trecho abaixo
-        </label>
-        <input type="text" id="clf-chave" class="argos-input" style="width:100%; margin-top:4px" placeholder="Trecho identificador do pagador (ex.: MARIA SILVA)" />
-        <p class="dica">Dica: deixe só a parte que sempre aparece no extrato (o nome do pagador), removendo datas e números que mudam.</p>
-      </div>
+      <div id="clf-depara-status" style="margin-top:6px"></div>
       <div class="argos-modal-acoes">
         <button type="button" class="argos-btn ghost" data-fechar>Cancelar</button>
         <button type="button" class="argos-btn primary" id="btn-clf-salvar">Salvar classificação</button>
@@ -263,7 +256,7 @@
     </div>
   </div>
 
-  <script type="module" src="planejamento.js?v=6"></script>
+  <script type="module" src="planejamento.js?v=7"></script>
   <script type="module" src="argos-zoom.js?v=4"></script>
 </body>
 </html>

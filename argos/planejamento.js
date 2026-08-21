@@ -438,8 +438,6 @@ function abrirModalClassificar(m) {
     document.getElementById('clf-info').innerHTML =
         `<b>${formataBR(m.data)}</b> — ${esc(m.descricao)} · ${m.tipo === 'entrada' ? '📥 Entrada' : '📤 Saída'} de <b>${formataMoeda(m.valor)}</b>`;
     document.getElementById('clf-busca').value = '';
-    document.getElementById('clf-lembrar').checked = false;
-    document.getElementById('clf-chave').value = m.descricao;
     renderOpcoesClassificacao();
     renderAlocacoes();
     abrirModal('modal-classificar');
@@ -553,6 +551,37 @@ function renderExtratoPaciente() {
           `${formataBR(x.m.data)} — ${esc(x.m.descricao)}: ${formataMoeda(x.a.valor)} → ${mesRefBR(x.a.mes_ref)}`).join('<br>')}</p>` : ''}`;
 }
 
+// status do De-Para no modal: mostra se o pagador já é reconhecido; se não
+// for, oferece um atalho que abre o CRUD do De-Para já pré-preenchido
+function renderDeParaStatusModal() {
+    const el = document.getElementById('clf-depara-status');
+    if (!clfMov) { el.innerHTML = ''; return; }
+    const d = encontraDePara(clfMov);
+    if (d) {
+        el.innerHTML = `<p class="dica">🔁 Pagador reconhecido pelo De-Para: «${esc(d.chave)}» → <b>${esc(nomeVinculo(d.vinculo_tipo, d.vinculo_id))}</b> — novas movimentações deste pagador entram classificadas sozinhas.</p>`;
+        return;
+    }
+    const destino = clfAlocacoes.find(a => a.vinculo_tipo && a.vinculo_tipo !== 'outro' && a.vinculo_id);
+    el.innerHTML = destino
+        ? `<button type="button" class="argos-btn small" id="btn-clf-add-depara">🔁 Adicionar este pagador ao De-Para (${esc(nomeVinculo(destino.vinculo_tipo, destino.vinculo_id))})</button>
+           <span class="dica"> para as próximas entrarem classificadas sozinhas</span>`
+        : '';
+}
+
+document.getElementById('clf-depara-status').addEventListener('click', (e) => {
+    if (!e.target.closest('#btn-clf-add-depara') || !clfMov) return;
+    const destino = clfAlocacoes.find(a => a.vinculo_tipo && a.vinculo_tipo !== 'outro' && a.vinculo_id);
+    if (!destino) return;
+    // abre o CRUD do De-Para por cima, já pré-preenchido (edite a chave e salve lá)
+    selectDestinoDePara(document.getElementById('dp-destino'));
+    document.getElementById('dp-busca').value = '';
+    limparFormDePara();
+    document.getElementById('dp-chave').value = clfMov.descricao;
+    document.getElementById('dp-destino').value = destino.vinculo_tipo + ':' + (destino.vinculo_id || '');
+    renderDePara();
+    abrirModal('modal-depara');
+});
+
 function renderAlocacoes() {
     document.getElementById('clf-alocacoes').innerHTML = clfAlocacoes.map((a, i) => `
       <div class="linha-dia" data-aloc="${i}">
@@ -563,6 +592,7 @@ function renderAlocacoes() {
       </div>`).join('') || '<p class="dim">Nenhuma alocação ainda — escolha um destino acima.</p>';
     atualizarResumoClassificacao();
     renderExtratoPaciente();
+    renderDeParaStatusModal();
 }
 
 function lerAlocacoesDoModal() {
@@ -624,17 +654,6 @@ document.getElementById('btn-clf-salvar').addEventListener('click', async () => 
         vinculo_tipo: principal ? principal.vinculo_tipo : null,
         vinculo_id: principal ? principal.vinculo_id : null
     }).eq('id', clfMov.id);
-    // "lembrar este pagador": grava o de-para para classificar as próximas sozinho
-    if (document.getElementById('clf-lembrar').checked && validas.length) {
-        const chave = document.getElementById('clf-chave').value.trim();
-        if (chave) {
-            let r = await salvarDePara(chave, validas[0].vinculo_tipo, validas[0].vinculo_id);
-            if (r.conflito) {
-                const trocar = confirm(`«${chave}» já está associado a ${nomeVinculo(r.conflito.vinculo_tipo, r.conflito.vinculo_id)}.\nUm pagador só pode apontar para um destino. Substituir pela nova associação?`);
-                if (trocar) r = await salvarDePara(chave, validas[0].vinculo_tipo, validas[0].vinculo_id, { forcar: true });
-            }
-        }
-    }
     toast(validas.length ? 'Classificação salva.' : 'Classificação removida.');
     fecharModal('modal-classificar');
     clfMov = null;
@@ -893,6 +912,8 @@ document.getElementById('btn-dp-add').addEventListener('click', async () => {
     toast(editandoDeParaId ? 'Associação atualizada.' : 'Associação salva.');
     limparFormDePara();
     renderDePara();
+    // se o modal de classificação estiver aberto atrás, atualiza o status
+    if (document.getElementById('modal-classificar').classList.contains('aberto')) renderDeParaStatusModal();
 });
 
 document.getElementById('lista-depara').addEventListener('click', async (e) => {
