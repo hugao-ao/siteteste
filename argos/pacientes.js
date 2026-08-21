@@ -307,17 +307,21 @@ function renderEvolucao() {
     ].join('');
 
     document.getElementById('ev-tabela').innerHTML = `
-      <div class="argos-tabela-wrap" style="margin-top:10px"><table class="argos-tabela">
-        <thead><tr><th>Área</th><th>Peso</th><th>Competência</th><th>Foco</th>
-          ${mesmo ? '' : '<th>Peso</th><th>Competência</th><th>Foco</th><th>Δ competência</th>'}</tr></thead>
+      <div class="argos-tabela-wrap" style="margin-top:12px"><table class="argos-tabela">
+        <thead>
+          <tr><th></th><th class="grupo" colspan="3">${esc(rotuloAvaliacao(avA))}</th>
+            ${mesmo ? '' : `<th class="grupo sep" colspan="3">${esc(rotuloAvaliacao(avB))}</th><th class="grupo sep">Evolução</th>`}</tr>
+          <tr><th>Área</th><th>Peso</th><th>Comp.</th><th>Foco</th>
+            ${mesmo ? '' : '<th class="sep">Peso</th><th>Comp.</th><th>Foco</th><th class="sep">Δ competência</th>'}</tr>
+        </thead>
         <tbody>${evCatalogo.map((a, i) => {
             const A = calcA[i] || {}, B = calcB[i] || {};
             const d = (B.competencia != null && A.competencia != null) ? B.competencia - A.competencia : null;
-            const cor = d == null ? '' : (d > 0.004 ? '#22c55e' : (d < -0.004 ? '#ef4444' : ''));
+            const cor = d == null ? '' : (d > 0.004 ? '#22c55e' : (d < -0.004 ? '#ef4444' : 'var(--argos-text-dim)'));
             return `<tr><td>${esc(a.nome)}</td>
               <td>${A.peso || '—'}</td><td>${formataNota(A.competencia)}</td><td>${formataNota(A.foco)}</td>
-              ${mesmo ? '' : `<td>${B.peso || '—'}</td><td>${formataNota(B.competencia)}</td><td>${formataNota(B.foco)}</td>
-              <td style="color:${cor}">${d == null ? '—' : (d > 0 ? '+' : '') + formataNota(d)}</td>`}</tr>`;
+              ${mesmo ? '' : `<td class="sep">${B.peso || '—'}</td><td>${formataNota(B.competencia)}</td><td>${formataNota(B.foco)}</td>
+              <td class="sep" style="color:${cor}"><b>${d == null ? '—' : (d > 0 ? '+' : '') + formataNota(d)}</b></td>`}</tr>`;
         }).join('')}</tbody>
       </table></div>`;
 }
