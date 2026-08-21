@@ -7,7 +7,23 @@
   <script src="argos-guard.js"></script>
   <link rel="stylesheet" href="argos-style.css?v=7" />
   <style>
-    #imp-colar { width: 100%; min-height: 150px; background: var(--argos-bg);
+    .imp-drop { display: flex; flex-direction: column; align-items: center; gap: 4px;
+      border: 2px dashed var(--argos-border); border-radius: var(--argos-radius);
+      background: var(--argos-bg); padding: 26px 18px; text-align: center; cursor: pointer;
+      transition: border-color .15s, background .15s; }
+    .imp-drop:hover, .imp-drop.sobre { border-color: var(--argos-primary); background: rgba(56,189,248,.06); }
+    .imp-drop .icone { font-size: 2rem; line-height: 1; }
+    .imp-drop b { font-size: .98rem; color: var(--argos-text); }
+    .imp-drop span { font-size: .84rem; color: var(--argos-text-dim); max-width: 520px; }
+    .imp-drop.carregado { border-style: solid; border-color: var(--argos-success); }
+    #imp-arq { margin: 6px 0 0; font-size: .84rem; color: var(--argos-success); font-weight: 600; }
+
+    #imp-alternativa { margin-top: 12px; }
+    #imp-alternativa > summary { cursor: pointer; font-size: .84rem; color: var(--argos-text-dim);
+      list-style: none; }
+    #imp-alternativa > summary::before { content: '▸ '; }
+    #imp-alternativa[open] > summary::before { content: '▾ '; }
+    #imp-colar { width: 100%; min-height: 130px; margin-top: 8px; background: var(--argos-bg);
       border: 1px solid var(--argos-border); border-radius: 10px; color: var(--argos-text);
       padding: 10px 12px; font-family: ui-monospace, Menlo, Consolas, monospace;
       font-size: .78rem; resize: vertical; }
@@ -64,11 +80,22 @@
     <p class="sub">Aba <b>CADASTRO</b> — pacientes, responsáveis e o acordo financeiro de cada profissional.</p>
 
     <div class="imp-passo">
-      <h2><span class="n">1</span>Cole a aba</h2>
-      <p class="dica">Abra a aba CADASTRO, <b>Ctrl+A</b>, <b>Ctrl+C</b> e cole aqui — <b>com a linha de títulos</b>.
-        Também aceita o conteúdo de um CSV exportado da mesma aba.</p>
-      <textarea id="imp-colar" placeholder="CPF	RF	CONTATO	WHATSAPP	CPF PAC	EMAIL	PACIENTE	Profissional	Repasse	inicio	…"></textarea>
-      <div class="argos-filtros" style="margin:10px 0 0">
+      <h2><span class="n">1</span>Escolha o arquivo</h2>
+      <p class="dica">Na planilha: <b>Arquivo → Fazer download → Valores separados por vírgula (.csv)</b>,
+        com a aba <b>CADASTRO</b> aberta. O download traz só a aba que está na tela.</p>
+      <div class="imp-drop" id="imp-drop">
+        <input type="file" id="imp-arquivo" accept=".csv,.tsv,.txt,text/csv,text/tab-separated-values" hidden />
+        <div class="icone">📄</div>
+        <b>Arraste o arquivo aqui ou clique para escolher</b>
+        <span>Aceita <b>.csv</b> e <b>.tsv</b>, com vírgula ou tabulação, em UTF-8 ou ANSI/Windows.</span>
+        <p id="imp-arq"></p>
+      </div>
+      <details id="imp-alternativa">
+        <summary>Não quer baixar? Cole o conteúdo da aba aqui</summary>
+        <p class="dica" style="margin:6px 0 0">Abra a aba, <b>Ctrl+A</b>, <b>Ctrl+C</b> e cole abaixo — <b>com a linha de títulos</b>.</p>
+        <textarea id="imp-colar" placeholder="CPF	RF	CONTATO	WHATSAPP	CPF PAC	EMAIL	PACIENTE	Profissional	Repasse	inicio	…"></textarea>
+      </details>
+      <div class="argos-filtros" style="margin:12px 0 0">
         <button class="argos-btn primary" id="btn-ler">🔍 Ler planilha</button>
         <button class="argos-btn ghost" id="btn-limpar">Limpar</button>
       </div>
@@ -114,7 +141,7 @@
     </div>
   </main>
 
-  <script type="module" src="importar.js?v=1"></script>
+  <script type="module" src="importar.js?v=2"></script>
   <script type="module" src="argos-zoom.js?v=4"></script>
 </body>
 </html>
