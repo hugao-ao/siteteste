@@ -36,9 +36,20 @@
     .ev-area.completa { border-left: 4px solid var(--argos-success); }
     .ev-area.tem-badge { border-left: 4px solid var(--argos-warn); }
 
+    /* ---------- painel de gráficos na própria página ---------- */
+    #ev-painel { margin-bottom: 18px; }
+    .ev-painel-topo { display: flex; align-items: center; gap: 10px; }
+    #ev-graficos-pagina { display: grid; grid-template-columns: repeat(auto-fit, minmax(290px, 1fr)); gap: 10px; }
+    #ev-graficos-pagina svg { background: var(--argos-bg); border: 1px solid var(--argos-border);
+      border-radius: var(--argos-radius); }
+    #ev-painel.oculto #ev-graficos-pagina, #ev-painel.oculto #ev-graf-dica { display: none; }
+
     /* ---------- subárea ---------- */
     .ev-sub { border-top: 1px solid var(--argos-border); padding: 14px; }
-    .ev-sub-cab { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 4px; }
+    .ev-sub-cab { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 4px; cursor: pointer; }
+    .ev-sub-cab .chev { color: var(--argos-text-dim); font-size: .85rem; }
+    .ev-sub-corpo { display: none; }
+    .ev-sub.aberta .ev-sub-corpo { display: block; }
     .ev-sub-cab b { font-size: .95rem; }
     .ev-sub-escolha { display: block; margin: 6px 0 12px; }
     .ev-sub-escolha select { width: 100%; max-width: 620px; padding: 9px 11px; font-size: .92rem;
@@ -92,7 +103,7 @@
   <header class="argos-topbar">
     <div class="brand">ARGOS <span>GESTÃO</span></div>
     <div class="actions">
-      <a class="argos-btn ghost" href="pacientes.html">← Pacientes</a>
+      <a class="argos-btn ghost" id="btn-voltar" href="pacientes.html">← Voltar ao paciente</a>
       <button class="argos-btn danger" id="btn-logout">Sair</button>
     </div>
   </header>
@@ -104,6 +115,9 @@
     <div class="ev-topo">
       <div class="argos-filtros" style="margin:0">
         <select id="ev-avaliacao" class="argos-input" style="min-width:230px"></select>
+        <label class="rotulo-inline" id="rotulo-data">Data
+          <input type="date" id="ev-data" class="argos-input" title="Data desta avaliação" />
+        </label>
         <button class="argos-btn" id="btn-nova" data-argos-recurso="evolucao_editar">+ Nova avaliação</button>
         <button class="argos-btn ghost" id="btn-expandir">⊞ Expandir tudo</button>
         <button class="argos-btn ghost" id="btn-recolher">⊟ Recolher tudo</button>
@@ -117,6 +131,16 @@
     </div>
 
     <div id="ev-aviso" class="argos-aviso" style="display:none"></div>
+
+    <section id="ev-painel">
+      <div class="ev-painel-topo">
+        <h2 class="form-secao" style="margin:0">📊 Gráficos desta avaliação</h2>
+        <button class="argos-btn small ghost" id="btn-graficos">▾ ocultar</button>
+      </div>
+      <p class="dica" id="ev-graf-dica"></p>
+      <div id="ev-graficos-pagina"></div>
+    </section>
+
     <div id="ev-areas"></div>
 
     <h2 class="form-secao">🧠 Memória da Terapia</h2>
@@ -124,7 +148,7 @@
     <div id="ev-memoria"></div>
 
     <div class="argos-modal-acoes" style="margin:20px 0 40px">
-      <a class="argos-btn ghost" href="pacientes.html">← Voltar aos pacientes</a>
+      <a class="argos-btn ghost" id="btn-voltar2" href="pacientes.html">← Voltar ao paciente</a>
       <button class="argos-btn" id="btn-salvar2" data-argos-recurso="evolucao_editar">💾 Salvar rascunho</button>
       <button class="argos-btn primary" id="btn-concluir2" data-argos-recurso="evolucao_editar">✅ Concluir avaliação</button>
     </div>
@@ -164,7 +188,7 @@
     </div>
   </div>
 
-  <script type="module" src="evolucao.js?v=2"></script>
+  <script type="module" src="evolucao.js?v=3"></script>
   <script type="module" src="argos-zoom.js?v=4"></script>
 </body>
 </html>

@@ -121,6 +121,7 @@ function renderLista() {
           <div class="mini-acoes">
             ${podeDinamicas ? `<button class="argos-btn small" data-acao="dinamicas" data-id="${p.id}">💰 Dinâmicas</button>` : ''}
             ${perm.pode('evolucao_ver') ? `<button class="argos-btn small" data-acao="evolucao" data-id="${p.id}">📈 Evolução</button>` : ''}
+            ${perm.pode('anamnese_ficha') ? `<a class="argos-btn small" href="anamnese.html?paciente=${p.id}">📋 Anamnese</a>` : ''}
             ${podeEditar ? `<button class="argos-btn small" data-acao="editar" data-id="${p.id}">✏️ Editar</button>` : ''}
             ${podeExcluir ? `<button class="argos-btn small danger" data-acao="excluir" data-id="${p.id}">🗑️</button>` : ''}
           </div>`}
@@ -209,6 +210,7 @@ async function abrirModalEvolucao(p) {
     pacienteAtual = p;
     document.getElementById('modal-evolucao-titulo').textContent = `📈 Evolução Terapêutica — ${p.nome}`;
     document.getElementById('btn-ev-abrir').href = `evolucao.html?paciente=${p.id}`;
+    document.getElementById('btn-ev-anamnese').href = `anamnese.html?paciente=${p.id}`;
     document.getElementById('ev-graficos').innerHTML = '<p class="dim">Carregando…</p>';
     document.getElementById('ev-tabela').innerHTML = '';
     document.getElementById('ev-historico').innerHTML = '';
@@ -1049,4 +1051,11 @@ document.getElementById('btn-confirmar-exclusao').addEventListener('click', asyn
     perm = await carregarPermissoes();
     perm.aplicarVisibilidade();
     await carregarTudo();
+    // voltar da Evolução/Anamnese reabre o painel daquele paciente
+    const alvo = new URLSearchParams(location.search).get('paciente');
+    if (alvo) {
+        const p = pacientes.find(x => x.id === alvo);
+        if (p && perm.pode('evolucao_ver')) abrirModalEvolucao(p);
+        history.replaceState(null, '', 'pacientes.html');
+    }
 })();

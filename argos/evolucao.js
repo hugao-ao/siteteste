@@ -10,7 +10,7 @@ import { hojeISO, formataBR, somarDias } from './argos-recorrencia.js';
 import {
     IMPORTANCIAS, NIVEIS, MAX_FUNDAMENTAIS, MEMORIA_GRUPOS, AREA_TEXTOS,
     indexarRespostas, calcularAvaliacao, pendencias, fundamentaisExcedentes,
-    limiteProxima, avaliacaoTravada
+    limiteProxima, avaliacaoTravada, radarSVG, COMPETENCIA_MAX, FOCO_MAX
 } from './argos-evolucao.js';
 
 let perm = { pode: () => true, aplicarVisibilidade: () => {}, master: true };
@@ -18,7 +18,10 @@ let paciente = null, catalogo = [], avaliacoes = [], atual = null;
 let resp = { importancia: {}, selecao: {}, nivelamento: {}, conferir: {} };
 let textos = {};
 let sujo = false;   // há alterações não salvas
-let abertas = new Set();
+let respIniciais = null;   // respostas da avaliação inicial concluída (referência)
+let abertas = new Set();      // áreas expandidas
+let subAbertas = new Set();   // subáreas expandidas
+let graficosOcultos = false;
 
 const pacienteId = new URLSearchParams(location.search).get('paciente');
 
@@ -58,6 +61,13 @@ async function carregarAvaliacao(id) {
     ]);
     resp = indexarRespostas(rR.data || []);
     (rT.data || []).forEach(t => { textos[t.campo] = t.texto || ''; });
+    // referência dos gráficos: a avaliação inicial já concluída
+    respIniciais = null;
+    const inicial = avaliacoes.find(a => a.numero === 1 && a.status === 'concluida' && a.id !== atual.id);
+    if (inicial) {
+        const { data: ri } = await sb.from('argos_ev_respostas').select('*').eq('avaliacao_id', inicial.id);
+        respIniciais = indexarRespostas(ri || []);
+    }
     sujo = false;
     render();
 }
@@ -83,6 +93,17 @@ function render() {
     document.getElementById('ev-paciente').innerHTML = paciente
         ? `Paciente: <b>${esc(paciente.nome)}</b>` : 'Paciente não encontrado.';
     selectAvaliacoes();
+    const campoData = document.getElementById('rotulo-data');
+    const inputData = document.getElementById('ev-data');
+    campoData.style.display = atual ? '' : 'none';
+    if (atual) {
+        inputData.value = atual.data || '';
+        // a data só é editável enquanto a avaliação é rascunho
+        inputData.disabled = atual.status !== 'rascunho' || somenteLeitura();
+        inputData.title = inputData.disabled
+            ? 'A data só pode ser alterada enquanto a avaliação é rascunho.'
+            : 'Data desta avaliação — pode ser anterior a hoje.';
+    }
     if (!atual) {
         document.getElementById('ev-areas').innerHTML =
             '<p class="dim" style="padding:20px">Nenhuma avaliação ainda. Use <b>+ Nova avaliação</b> para começar a avaliação inicial.</p>';
@@ -93,7 +114,39 @@ function render() {
     }
     renderAreas();
     renderMemoria();
+    renderGraficos();
     atualizarStatus();
+}
+
+/** Radares da avaliação aberta, redesenhados a cada alteração. */
+function renderGraficos() {
+    const painel = document.getElementById('ev-painel');
+    const cont = document.getElementById('ev-graficos-pagina');
+    if (!atual) { painel.style.display = 'none'; return; }
+    painel.style.display = '';
+    const calc = calcularAvaliacao(catalogo, resp);
+    const eixos = catalogo.map(a => a.nome);
+    const rot = `${atual.numero === 1 ? 'Avaliação inicial' : atual.numero + 'ª avaliação'} — ${formataBR(atual.data)}`;
+    const feitas = calc.filter(c => c.competencia != null).length;
+
+    // série de referência: a avaliação inicial concluída (quando não é esta)
+    const inicial = avaliacoes.find(a => a.numero === 1 && a.status === 'concluida' && a.id !== atual.id);
+    const calcIni = inicial && respIniciais ? calcularAvaliacao(catalogo, respIniciais) : null;
+
+    const series = (campo, cor) => [
+        ...(calcIni ? [{ nome: `Avaliação inicial — ${formataBR(inicial.data)}`, cor, tracejada: true,
+                          valores: calcIni.map(c => c[campo]) }] : []),
+        { nome: rot, cor, valores: calc.map(c => c[campo]) }
+    ];
+    cont.innerHTML = [
+        radarSVG({ titulo: 'Competências — escala proporcional', eixos, series: series('competencia', '#38bdf8'), max: 'auto' }),
+        radarSVG({ titulo: `Competências — escala fixa (0–${COMPETENCIA_MAX})`, eixos, series: series('competencia', '#38bdf8'), max: COMPETENCIA_MAX, aneis: 5 }),
+        radarSVG({ titulo: 'Foco Terapêutico — escala proporcional', eixos, series: series('foco', '#e879f9'), max: 'auto' }),
+        radarSVG({ titulo: `Foco Terapêutico — escala fixa (0–${FOCO_MAX})`, eixos, series: series('foco', '#e879f9'), max: FOCO_MAX })
+    ].join('');
+    document.getElementById('ev-graf-dica').textContent = feitas === catalogo.length
+        ? 'Todas as áreas têm nota — os gráficos refletem a avaliação completa.'
+        : `Formando-se conforme você preenche: ${feitas} de ${catalogo.length} áreas já têm nota (as demais entram como zero).`;
 }
 
 function renderAreas() {
@@ -154,13 +207,18 @@ function renderSubarea(sa, ro) {
     const nBadges = (sa.opcoes || []).filter(o => resp.conferir[`nivelamento:${o.id}`]).length
         + (resp.conferir[`selecao:${sa.id}`] ? 1 : 0);
     const nivelados = (sa.opcoes || []).filter(o => resp.nivelamento[o.id] != null).length;
+    const nomeEscolhida = escolhida ? (sa.opcoes.find(o => o.id === escolhida) || {}).nome : null;
+    const aberta = subAbertas.has(sa.id);
     return `
-    <div class="ev-sub" data-sub="${sa.id}">
-      <div class="ev-sub-cab">
+    <div class="ev-sub ${aberta ? 'aberta' : ''}" data-sub="${sa.id}">
+      <div class="ev-sub-cab" data-toggle-sub="${sa.id}">
+        <span class="chev">${aberta ? '▼' : '▶'}</span>
         <b>${esc(sa.nome)}</b>
         ${nBadges ? `<button class="badge-conferir" data-conferir-sub="${sa.id}">🔎 conferir ${nBadges}</button>` : ''}
         <span class="ev-chip ${nivelados === sa.opcoes.length ? 'ok' : 'erro'}">${nivelados}/${sa.opcoes.length} nivelados</span>
+        ${!aberta ? `<span class="ev-chip ${escolhida ? 'ok' : 'erro'}">${escolhida ? esc(nomeEscolhida) : 'sem classificação'}</span>` : ''}
       </div>
+      <div class="ev-sub-corpo">
       <label class="ev-sub-escolha ${escolhida ? '' : 'vazio'}">
         <select data-selecao="${sa.id}" ${ro ? 'disabled' : ''}>
           <option value="">⚠️ Como o paciente está nesta subárea?</option>
@@ -183,6 +241,7 @@ function renderSubarea(sa, ro) {
               </select>
             </div>`;
         }).join('')}
+      </div>
       </div>
     </div>`;
 }
@@ -249,6 +308,13 @@ document.getElementById('ev-areas').addEventListener('click', (e) => {
         renderAreas();
         return;
     }
+    const togSub = e.target.closest('[data-toggle-sub]');
+    if (togSub && !e.target.closest('button')) {
+        const id = togSub.dataset.toggleSub;
+        if (subAbertas.has(id)) subAbertas.delete(id); else subAbertas.add(id);
+        renderAreas();
+        return;
+    }
     const bArea = e.target.closest('[data-conferir-area]');
     if (bArea) {
         const area = catalogo.find(a => a.id === bArea.dataset.conferirArea);
@@ -304,6 +370,7 @@ document.getElementById('ev-areas').addEventListener('change', (e) => {
     } else return;
     sujo = true;
     renderAreas();
+    renderGraficos();
     atualizarStatus();
 });
 
@@ -315,11 +382,31 @@ document.getElementById('ev-areas').addEventListener('input', (e) => {
 });
 
 document.getElementById('btn-expandir').addEventListener('click', () => {
-    catalogo.forEach(a => abertas.add(a.id)); renderAreas();
+    catalogo.forEach(a => { abertas.add(a.id); a.subareas.forEach(s2 => subAbertas.add(s2.id)); });
+    renderAreas();
 });
 document.getElementById('btn-recolher').addEventListener('click', () => {
-    abertas.clear(); renderAreas();
+    abertas.clear(); subAbertas.clear(); renderAreas();
 });
+document.getElementById('btn-graficos').addEventListener('click', () => {
+    graficosOcultos = !graficosOcultos;
+    document.getElementById('ev-painel').classList.toggle('oculto', graficosOcultos);
+    document.getElementById('btn-graficos').textContent = graficosOcultos ? '▸ mostrar' : '▾ ocultar';
+});
+document.getElementById('ev-data').addEventListener('change', async (e) => {
+    if (!atual || atual.status !== 'rascunho') return;
+    const nova = e.target.value;
+    if (!nova) { e.target.value = atual.data; return; }
+    const { error } = await sb.from('argos_ev_avaliacoes').update({ data: nova }).eq('id', atual.id);
+    if (error) { console.error(error); toast('Erro ao alterar a data.', true); e.target.value = atual.data; return; }
+    atual.data = nova;
+    const naLista = avaliacoes.find(a => a.id === atual.id);
+    if (naLista) naLista.data = nova;
+    toast(`Data da avaliação: ${formataBR(nova)}.`);
+    selectAvaliacoes();
+    renderGraficos();
+});
+
 document.getElementById('ev-avaliacao').addEventListener('change', async (e) => {
     if (sujo && !confirm('Há alterações não salvas nesta avaliação. Trocar mesmo assim?')) {
         e.target.value = atual ? atual.id : '';
@@ -503,6 +590,9 @@ window.addEventListener('beforeunload', (e) => {
         return;
     }
     perm.aplicarVisibilidade();
+    const volta = `pacientes.html?paciente=${pacienteId}`;
+    document.getElementById('btn-voltar').href = volta;
+    document.getElementById('btn-voltar2').href = volta;
     if (!pacienteId) {
         document.querySelector('main').innerHTML = '<p class="dim" style="padding:30px">Paciente não informado. Abra pela lista de pacientes.</p>';
         return;
