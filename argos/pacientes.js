@@ -149,6 +149,16 @@ document.getElementById('lista-pacientes').addEventListener('click', (e) => {
 // ============================================================
 document.getElementById('btn-novo-paciente').addEventListener('click', () => abrirModalPaciente(null));
 
+/** Mostra o link da pasta abaixo do campo, para abrir sem copiar e colar. */
+function mostrarLinkPasta(url) {
+    const alvo = document.getElementById('pac-pasta-link');
+    if (!alvo) return;
+    alvo.innerHTML = url
+        ? `<a href="${esc(url)}" target="_blank" rel="noopener" style="text-decoration:none">📁 <u>Abrir a pasta em outra aba</u></a>`
+        : '';
+}
+document.getElementById('pac-pasta-url').addEventListener('input', e => mostrarLinkPasta(e.target.value.trim()));
+
 function abrirModalPaciente(id) {
     editandoPacienteId = id;
     const p = id ? pacientes.find(x => x.id === id) : null;
@@ -163,6 +173,10 @@ function abrirModalPaciente(id) {
     v('pac-pai-fone', p && p.pai_fone); v('pac-pai-cpf', p && p.pai_cpf);
     v('pac-email', p && p.email); v('pac-endereco', p && p.endereco);
     v('pac-resp-financeiro', p && p.responsavel_financeiro);
+    v('pac-rf-cpf', p && p.rf_cpf); v('pac-rf-whatsapp', p && p.rf_whatsapp);
+    v('pac-contato', p && p.contato);
+    v('pac-pasta-url', p && p.pasta_url);
+    mostrarLinkPasta(p && p.pasta_url);
     v('pac-indicacao', p && p.indicacao);
     v('pac-observacoes', p && p.observacoes);
     v('pac-anamnese-data', p && p.anamnese_data); v('pac-anamnese-valor', p && p.anamnese_valor);
@@ -174,6 +188,9 @@ function abrirModalPaciente(id) {
 document.getElementById('form-paciente').addEventListener('submit', async (e) => {
     e.preventDefault();
     const g = id => document.getElementById(id).value.trim() || null;
+    // contatos são guardados como escritos: só as bordas são aparadas,
+    // as quebras de linha entre um responsável e outro ficam de pé
+    const gBruto = id => document.getElementById(id).value.replace(/^\n+|\s+$/g, '') || null;
     const registro = {
         nome: g('pac-nome'), nascimento: g('pac-nascimento'), cpf: g('pac-cpf'),
         colegio: g('pac-colegio'), serie: g('pac-serie'), turno: g('pac-turno'),
@@ -183,6 +200,9 @@ document.getElementById('form-paciente').addEventListener('submit', async (e) =>
         pai_fone: g('pac-pai-fone'), pai_cpf: g('pac-pai-cpf'),
         email: g('pac-email'), endereco: g('pac-endereco'),
         responsavel_financeiro: g('pac-resp-financeiro'),
+        rf_cpf: g('pac-rf-cpf'), rf_whatsapp: g('pac-rf-whatsapp'),
+        contato: gBruto('pac-contato'),
+        pasta_url: g('pac-pasta-url'),
         indicacao: g('pac-indicacao'),
         observacoes: g('pac-observacoes'),
         anamnese_data: g('pac-anamnese-data'),

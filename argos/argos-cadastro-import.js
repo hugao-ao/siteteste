@@ -50,9 +50,22 @@ export function dividirTabela(texto) {
     return linhas.filter(l => l.length > 1 || (l[0] || '').trim());
 }
 
+/** Normaliza espaços — para campos curtos (nome, CPF, telefone). */
 const limpar = v => {
     const s = String(v == null ? '' : v).replace(/\s+/g, ' ').trim();
     return VAZIOS.has(s) ? '' : s;
+};
+
+/**
+ * Preserva o conteúdo como está na planilha: só apara o vazio das bordas e
+ * normaliza a quebra de linha. Usado na coluna CONTATO, que traz nomes e
+ * telefones de vários responsáveis em várias linhas — colapsar isso perderia
+ * a separação entre uma pessoa e outra.
+ */
+const intacto = v => {
+    const s = String(v == null ? '' : v).replace(/\r\n/g, '\n').replace(/\r/g, '\n')
+        .replace(/[ \t]+$/gm, '').replace(/^\n+|\s+$/g, '');
+    return VAZIOS.has(s.trim()) ? '' : s;
 };
 
 /** Nome do paciente sem os sufixos, com espaços e pontuação solta aparados. */
@@ -170,8 +183,8 @@ export function lerCadastro(texto) {
             situacao: data ? 'ativo' : (iniRaw || 'sem_info'),
             cpf_rf: limpar(pega(bruta, 'CPF')),
             rf: limpar(pega(bruta, 'RF')),
-            contato: limpar(pega(bruta, 'CONTATO')),
-            whatsapp: limpar(pega(bruta, 'WHATSAPP')),
+            contato: intacto(pega(bruta, 'CONTATO')),   // como está na planilha
+            whatsapp: limpar(pega(bruta, 'WHATSAPP')),  // é o whatsapp do RF
             cpf_pac: limpar(pega(bruta, 'CPF PAC')),
             email: limpar(pega(bruta, 'EMAIL')),
             pasta_url: limpar(pega(bruta, 'Link Pasta')),
@@ -186,16 +199,16 @@ export function lerCadastro(texto) {
         if (l.aluguel) continue;                       // locação de sala não é paciente
         let p = mapa.get(l.paciente_chave);
         if (!p) {
-            p = { chave: l.paciente_chave, nome: l.paciente_nome, cpf: '', email: '', telefone: '',
-                contato: '', responsavel_financeiro: '', rf_cpf: '', pasta_url: '',
-                situacoes: [], profissionais: [], linhas: 0 };
+            p = { chave: l.paciente_chave, nome: l.paciente_nome, cpf: '', email: '',
+                responsavel_financeiro: '', rf_cpf: '', rf_whatsapp: '', contato: '',
+                pasta_url: '', situacoes: [], profissionais: [], linhas: 0 };
             mapa.set(l.paciente_chave, p);
         }
         p.linhas++;
         if (l.paciente_nome.length > p.nome.length) p.nome = l.paciente_nome;
         if (!p.cpf) p.cpf = l.cpf_pac;
         if (!p.email) p.email = l.email;
-        if (!p.telefone) p.telefone = l.whatsapp;
+        if (!p.rf_whatsapp) p.rf_whatsapp = l.whatsapp;
         if (!p.contato) p.contato = l.contato;
         if (!p.responsavel_financeiro) p.responsavel_financeiro = l.rf;
         if (!p.rf_cpf) p.rf_cpf = l.cpf_rf;

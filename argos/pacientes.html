@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=0.1, maximum-scale=10, user-scalable=yes" />
   <title>Argos Gestão — Pacientes</title>
   <script src="argos-guard.js"></script>
-  <link rel="stylesheet" href="argos-style.css?v=7" />
+  <link rel="stylesheet" href="argos-style.css?v=8" />
   <style>
     #ev-graficos { align-items: start; }
     #ev-graficos svg { background: var(--argos-bg); border: 1px solid var(--argos-border);
@@ -115,13 +115,27 @@
           </label>
         </div>
 
-        <h3 class="form-secao">🏠 Contato e responsável</h3>
+        <h3 class="form-secao">💳 Responsável financeiro</h3>
+        <div class="form-grade">
+          <label>Nome
+            <input type="text" id="pac-resp-financeiro" />
+          </label>
+          <label>CPF / CNPJ
+            <input type="text" id="pac-rf-cpf" placeholder="000.000.000-00" />
+          </label>
+          <label>Whatsapp
+            <input type="text" id="pac-rf-whatsapp" placeholder="81999999999" />
+          </label>
+        </div>
+
+        <h3 class="form-secao">🏠 Contato e endereço</h3>
+        <label>Contatos
+          <textarea id="pac-contato" rows="3" placeholder="Nomes e telefones dos responsáveis, um por linha"></textarea>
+        </label>
+        <p class="dica">Campo livre, guardado exatamente como você escrever — é para onde vai, na íntegra, a coluna <b>CONTATO</b> da planilha, com todos os nomes e telefones dos responsáveis.</p>
         <div class="form-grade">
           <label>Endereço residencial
             <input type="text" id="pac-endereco" />
-          </label>
-          <label>Responsável financeiro
-            <input type="text" id="pac-resp-financeiro" />
           </label>
           <label>E-mail
             <input type="email" id="pac-email" />
@@ -130,6 +144,10 @@
             <input type="text" id="pac-indicacao" placeholder="Quem indicou (ex.: neuropsicóloga)" />
           </label>
         </div>
+        <label>Pasta do paciente no Drive
+          <input type="url" id="pac-pasta-url" placeholder="https://drive.google.com/…" />
+        </label>
+        <p class="dica" id="pac-pasta-link"></p>
         <label>Observações
           <textarea id="pac-observacoes" rows="2"></textarea>
         </label>
@@ -479,7 +497,7 @@
     </div>
   </div>
 
-  <script type="module" src="pacientes.js?v=12"></script>
+  <script type="module" src="pacientes.js?v=13"></script>
   <script type="module" src="argos-zoom.js?v=4"></script>
 </body>
 </html>

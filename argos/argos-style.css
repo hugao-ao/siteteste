@@ -123,6 +123,9 @@ body {
 .argos-pagina h1 { font-size: 1.5rem; margin-bottom: 6px; }
 .argos-pagina .sub { color: var(--argos-text-dim); margin-bottom: 22px; }
 .dica { color: var(--argos-text-dim); font-size: .85rem; line-height: 1.4; }
+/* dentro de formulário a dica explica o campo acima — precisa de respiro
+   embaixo para não encostar no rótulo seguinte */
+.argos-form .dica { margin: 6px 0 14px; }
 .dim { color: var(--argos-text-dim); }
 
 /* ---------- Abas ---------- */
@@ -274,6 +277,8 @@ body.modal-aberto { overflow: hidden; }
 }
 .argos-form input[type="text"],
 .argos-form input[type="email"],
+.argos-form input[type="url"],
+.argos-form input[type="tel"],
 .argos-form select,
 .argos-form textarea {
     display: block;
