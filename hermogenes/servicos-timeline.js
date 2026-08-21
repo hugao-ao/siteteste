@@ -18,6 +18,8 @@ let pxIdx = lerLS('hermo_tlx_px', 2);
 let obraFiltro = '';
 let mapa = null, marcadores = [];
 let intervalo = null;             // {min, max, dias}
+let reguaA = null;                // data da régua vermelha (padrão: hoje) — arrastável
+let reguaB = null;                // data da 2ª régua (null = desligada)
 
 function lerLS(chave, padrao) {
     try { const v = JSON.parse(localStorage.getItem(chave)); return v == null ? padrao : v; }
@@ -32,6 +34,10 @@ const hoje = () => {
 };
 const fmtData = iso => (iso || '').split('-').reverse().join('/');
 const ddmm = iso => fmtData(iso).slice(0, 5);
+const fmtQtd = v => String(Math.round(num(v) * 100) / 100).replace('.', ',');
+const fmtTurno = a => a.turno === 'horario'
+    ? `${(a.hora_inicio || '').slice(0, 5)}–${(a.hora_fim || '').slice(0, 5)}`
+    : ({ dia: 'dia inteiro', manha: 'manhã', tarde: 'tarde' }[a.turno || 'dia'] || a.turno);
 function addDias(iso, n) {
     const [y, m, d] = iso.split('-').map(Number);
     const dt = new Date(y, m - 1, d + n);
@@ -106,6 +112,11 @@ function calcularIntervalo() {
     const h = hoje();
     if (h < min) min = h;
     if (h > max) max = h;
+    [reguaA, reguaB].forEach(d => {   // réguas sempre visíveis no intervalo
+        if (!d) return;
+        if (d < min) min = d;
+        if (d > max) max = d;
+    });
     min = addDias(min, -3);
     max = addDias(max, 7);
     intervalo = { min, max, dias: difDias(min, max) + 1 };
@@ -160,7 +171,20 @@ function render() {
             fundo += `<div class="tlx-fundo-fds" style="left:${rotW + d * px}px;width:${px}px"></div>`;
         }
     }
-    fundo += `<div class="tlx-hoje" style="left:${rotW + xDe(hoje())}px" title="hoje"></div>`;
+    // faixa entre as réguas (quando a 2ª está ligada) + as duas réguas arrastáveis
+    if (!reguaA) reguaA = hoje();
+    if (reguaB) {
+        const e = reguaA < reguaB ? reguaA : reguaB;
+        const d = reguaA < reguaB ? reguaB : reguaA;
+        fundo += `<div class="tlx-faixa-sel" style="left:${rotW + xDe(e)}px;width:${(difDias(e, d) + 1) * px}px"></div>`;
+    }
+    const rotA = reguaA === hoje() ? 'hoje' : fmtData(reguaA).slice(0, 5);
+    fundo += `<div class="tlx-hoje" data-regua="A" data-rot="${rotA}" style="left:${rotW + xDe(reguaA)}px"
+        title="Régua ${reguaA === hoje() ? '(hoje)' : fmtData(reguaA)} — arraste para medir; o botão Hoje devolve ao dia de hoje"></div>`;
+    if (reguaB) {
+        fundo += `<div class="tlx-hoje b" data-regua="B" data-rot="${fmtData(reguaB).slice(0, 5)}" style="left:${rotW + xDe(reguaB)}px"
+            title="2ª régua (${fmtData(reguaB)}) — arraste para medir a produção no intervalo"></div>`;
+    }
 
     // linhas
     const linhas = [];
@@ -213,7 +237,115 @@ function render() {
 
     grade.innerHTML = fundo + escala + linhas.join('');
     ligarArrastos();
+    ligarArrastoReguas();
+    renderProducao();
     atualizarMapa();
+}
+
+// ============================================================
+// PRODUÇÃO ENTRE AS RÉGUAS (rateio proporcional aos dias)
+// ============================================================
+/**
+ * Valor "produzido" no intervalo entre as réguas: para cada serviço com datas,
+ * a fração = dias do serviço DENTRO do intervalo ÷ dias totais do serviço
+ * (contagem inclusiva nas duas pontas), aplicada ao valor contratado do item.
+ */
+function producaoNoIntervalo(de, ate) {
+    const linhas = [];
+    let total = 0;
+    obrasVisiveis().forEach(o => itensDatados(o).forEach(i => {
+        const ini = i.inicio_previsto, fim = i.fim_previsto;
+        if (fim < de || ini > ate) return;             // fora da janela
+        const dTot = difDias(ini, fim) + 1;            // dias do serviço (inclusivo)
+        const sIni = ini > de ? ini : de;
+        const sFim = fim < ate ? fim : ate;
+        const dDentro = difDias(sIni, sFim) + 1;       // dias dentro da janela
+        const frac = dTot > 0 ? Math.min(1, dDentro / dTot) : 0;
+        const valor = num(i.total) * frac;
+        total += valor;
+        linhas.push({
+            obra: fmtCodObra(o),
+            cod: i.servico?.codigo || '?',
+            desc: i.servico?.descricao || '',
+            periodo: `${ddmm(ini)}–${ddmm(fim)}`,
+            dias: `${dDentro}/${dTot}`,
+            perc: Math.round(frac * 1000) / 10,
+            contratado: num(i.total),
+            valor
+        });
+    }));
+    linhas.sort((a, b) => b.valor - a.valor);
+    return { linhas, total };
+}
+
+function renderProducao() {
+    const box = $('tlx-producao');
+    if (!reguaB || !reguaA) { box.style.display = 'none'; box.innerHTML = ''; return; }
+    const de = reguaA < reguaB ? reguaA : reguaB;
+    const ate = reguaA < reguaB ? reguaB : reguaA;
+    const { linhas, total } = producaoNoIntervalo(de, ate);
+    const dias = difDias(de, ate) + 1;
+    box.style.display = '';
+    box.innerHTML = `
+    <div class="tlx-prod">
+        <div class="tot">📏 Entre <b>${fmtData(de)}</b> e <b>${fmtData(ate)}</b> (${dias} dia${dias > 1 ? 's' : ''}):
+            produção prevista de <b>${fmtMoeda(total)}</b>
+            <span style="color:var(--hermo-text-dim);font-size:.74rem">· ${linhas.length} serviço(s) no intervalo${obraFiltro ? ' · obra filtrada' : ''}</span>
+        </div>
+        ${linhas.length === 0 ? '<div style="font-size:.76rem;color:var(--hermo-text-dim)">Nenhum serviço programado nesse intervalo.</div>' : `
+        <div class="tlx-prod-wrap"><table>
+            <tr><th>Serviço</th><th>Período</th><th>Dias no intervalo</th><th>%</th><th>Contratado</th><th>No intervalo</th></tr>
+            ${linhas.map(l => `<tr>
+                <td><b>${esc(l.cod)}</b> ${esc(l.desc)}<br><small style="color:var(--hermo-text-dim)">${esc(l.obra)}</small></td>
+                <td>${l.periodo}</td><td>${l.dias}</td><td>${fmtQtd(l.perc)}%</td>
+                <td>${fmtMoeda(l.contratado)}</td><td><b>${fmtMoeda(l.valor)}</b></td>
+            </tr>`).join('')}
+        </table></div>`}
+        <div style="font-size:.7rem;color:var(--hermo-text-dim)">
+            Rateio proporcional aos dias de execução previstos (valor contratado do serviço × dias dentro do intervalo ÷ dias totais).
+        </div>
+    </div>`;
+}
+
+// ---------- arrastar as réguas ----------
+function ligarArrastoReguas() {
+    $('tlx-grade').querySelectorAll('[data-regua]').forEach(el => {
+        el.addEventListener('pointerdown', e => {
+            e.preventDefault();
+            e.stopPropagation();
+            try { el.setPointerCapture(e.pointerId); } catch (err) {}
+            const qual = el.dataset.regua;
+            const px = pxDia();
+            const x0 = e.clientX;
+            const base = qual === 'A' ? reguaA : reguaB;
+            const left0 = parseFloat(el.style.left);
+            let nova = base;
+            const mover = ev => {
+                const d = Math.round((ev.clientX - x0) / px);
+                nova = addDias(base, d);
+                if (nova < intervalo.min) nova = intervalo.min;
+                if (nova > intervalo.max) nova = intervalo.max;
+                el.style.left = (left0 + difDias(base, nova) * px) + 'px';
+                el.dataset.rot = fmtData(nova).slice(0, 5);
+                mostrarTooltip(ev, `📏 ${fmtData(nova)}`);
+            };
+            const limpar = () => {
+                el.removeEventListener('pointermove', mover);
+                el.removeEventListener('pointerup', soltar);
+                el.removeEventListener('pointercancel', limpar);
+                esconderTooltip();
+            };
+            const soltar = () => {
+                limpar();
+                if (qual === 'A') reguaA = nova; else reguaB = nova;
+                gravarLS('hermo_tlx_reguas', { a: reguaA, b: reguaB });
+                render();
+            };
+            el.addEventListener('pointermove', mover);
+            el.addEventListener('pointerup', soltar);
+            el.addEventListener('pointercancel', limpar);
+        });
+    });
 }
 
 function popularFiltro() {
@@ -326,11 +458,18 @@ function iniciarArrastoBarra(e, bar) {
             // em dois lugares (avulso ou via equipe) e oferecendo resolução
             await moverServicoComAlocacoes(obra, item, nIni, nFim, diasDelta);
         } else {
+            const snap = {
+                obraId: obra.id, itemId: item.id,
+                inicio: item.inicio_previsto, fim: item.fim_previsto,
+                prazo_dias: item.prazo_dias ?? null, prazo_tipo: item.prazo_tipo ?? null
+            };
             const ok = await salvarDatasServico(obra, item, nIni, nFim, limpaPrazo);
             if (ok) {
+                registrarUndo(`mudar ${zona === 'ini' ? 'o início' : 'o fim'} de ${item.servico?.codigo || 'serviço'}`,
+                    { servico: snap });
                 await carregarDados();
                 render();
-                toast(`${item.servico?.codigo || 'Serviço'} reagendado — cronograma da obra recalculado${limpaPrazo ? ' (prazo em dias substituído pela data)' : ''}.`);
+                toast(`${item.servico?.codigo || 'Serviço'} reagendado — cronograma da obra recalculado${limpaPrazo ? ' (prazo em dias substituído pela data)' : ''}. Ctrl+Z desfaz.`);
             }
         }
     };
@@ -369,7 +508,10 @@ async function moverServicoComAlocacoes(obra, item, nIni, nFim, delta) {
         const aIni = addDias(a.data_inicio, delta), aFim = addDias(a.data_fim, delta);
         const res = await conflitosFrescos(a, aIni, aFim, item.id);
         if (res.erro) { toast('Não deu para checar conflitos: ' + res.erro, true); render(); return; }
-        res.conflitos.forEach(o => conflitos.push({ aloc: a, nIni: aIni, nFim: aFim, outro: o }));
+        res.conflitos.forEach(o => conflitos.push({
+            aloc: a, nIni: aIni, nFim: aFim, outro: o,
+            obraArrastada: `${fmtCodObra(obra)} — ${obra.nome}`
+        }));
     }
     const rotulo = `${item.servico?.codigo || ''} — ${item.servico?.descricao || ''}`.trim();
     if (conflitos.length) {
@@ -392,12 +534,31 @@ async function moverServicoComAlocacoes(obra, item, nIni, nFim, delta) {
 }
 
 async function aplicarMovimentoServico(obra, item, nIni, nFim, delta, alocsFrescas, removerOutros, removerDeste) {
+    // snapshot para o Ctrl+Z (estado ANTES de qualquer gravação)
+    const snapServico = {
+        obraId: obra.id, itemId: item.id,
+        inicio: item.inicio_previsto, fim: item.fim_previsto,
+        prazo_dias: item.prazo_dias ?? null, prazo_tipo: item.prazo_tipo ?? null
+    };
+    const remover = [...new Set([...removerOutros, ...removerDeste])];
+    // snapshot das que serão APAGADAS — se a leitura falhar, não apaga (sem snapshot
+    // não há como desfazer, e o Ctrl+Z não pode mentir que devolveu)
+    const snapRem = await linhasDeAlocacoes(remover);
+    if (snapRem.erro) {
+        toast('Não deu para preparar o desfazer das remoções (' + snapRem.erro + ') — nada foi alterado. Tente de novo.', true);
+        render();
+        return;
+    }
+    const snapAlocs = alocsFrescas
+        .filter(a => !removerDeste.has(a.id) && !removerOutros.has(a.id))
+        .map(limparAloc);
     // 1) datas do serviço pela RPC (regras/cadeia validam; se falhar, nada mais acontece)
     const ok = await salvarDatasServico(obra, item, nIni, nFim, false);
     if (!ok) return;
+    registrarUndo(`mover ${item.servico?.codigo || 'serviço'}${snapAlocs.length ? ' e suas alocações' : ''}`,
+        { servico: snapServico, alocs: [...snapAlocs, ...snapRem.rows] });
     // 2) remoções escolhidas no painel — se falhar, ABORTA antes do deslocamento
     //    (deslocar por cima das conflitantes criaria exatamente o double-booking)
-    const remover = [...new Set([...removerOutros, ...removerDeste])];
     if (remover.length) {
         const { error } = await sb.from('hermo_alocacoes').delete().in('id', remover);
         if (error) {
@@ -420,6 +581,149 @@ async function aplicarMovimentoServico(obra, item, nIni, nFim, delta, alocsFresc
     render();
     toast(`${item.servico?.codigo || 'Serviço'} movido${movidas ? ` com ${movidas} alocação(ões) junto` : ''}${remover.length ? ` · ${remover.length} removida(s) na resolução` : ''}${falhas ? ` · ⚠ ${falhas} não acompanhou(aram) — arraste manualmente` : ''} — cronograma recalculado.`);
 }
+
+// ============================================================
+// DESFAZER (Ctrl+Z) — um passo, cobrindo o último arrasto inteiro
+// ============================================================
+// undoUltimo = { descricao, servico, alocs } — `alocs` são LINHAS COMPLETAS no
+// estado anterior (upsert devolve tanto as movidas quanto as removidas).
+let undoUltimo = null;
+let undoRodando = false;
+
+const CAMPOS_ALOC = ['id', 'obra_servico_id', 'integrante_id', 'equipe_id',
+    'data_inicio', 'data_fim', 'turno', 'hora_inicio', 'hora_fim'];
+const limparAloc = r => Object.fromEntries(CAMPOS_ALOC.map(k => [k, r[k] ?? null]));
+
+function registrarUndo(descricao, { servico = null, alocs = [] } = {}) {
+    undoUltimo = { descricao, servico, alocs };
+    atualizarBotaoUndo();
+}
+function limparUndo() { undoUltimo = null; atualizarBotaoUndo(); }
+function atualizarBotaoUndo() {
+    const b = $('tlx-undo');
+    if (!b) return;
+    b.style.display = undoUltimo ? '' : 'none';
+    if (undoUltimo) b.title = `Desfazer: ${undoUltimo.descricao} (Ctrl+Z)`;
+}
+
+/** Linhas completas de alocações por id. Retorna { rows } ou { erro } — nunca
+ *  confunde "falha de leitura" com "não existe" (o chamador apaga em seguida). */
+async function linhasDeAlocacoes(ids) {
+    if (!ids.length) return { rows: [] };
+    const { data, error } = await sb.from('hermo_alocacoes').select('*').in('id', ids);
+    if (error) return { erro: error.message };
+    return { rows: (data || []).map(limparAloc) };
+}
+
+async function desfazerUltimo() {
+    if (undoRodando) return;
+    if (!undoUltimo) { toast('Não há arrasto recente para desfazer.'); return; }
+    if ($('tlxc-overlay')?.classList.contains('aberto')) return; // resolução aberta: nada gravado ainda
+    const u = undoUltimo;
+    undoRodando = true;
+    const btn = $('tlx-undo');
+    if (btn) btn.disabled = true;
+    let concluido = false;
+    try {
+        const problemas = [], avisos = [];
+        // 1) o serviço ainda aceita voltar? (mesmas guardas do arrasto normal —
+        //    concluído ou substituído por aditivo em outra aba trava as datas)
+        let obraFresca = null;
+        if (u.servico) {
+            const { data: o, error: eF } = await sb.from('hermo_obras')
+                .select(`id, numero, ano, nome, status, cliente_id, endereco, latitude, longitude,
+                    inicio_previsto, prazo, inicio_real, conclusao, observacoes,
+                    itens:hermo_obra_servicos(id, vigente, fim_real)`)
+                .eq('id', u.servico.obraId).single();
+            if (eF || !o) {
+                toast('Não deu para desfazer agora (obra não recarregada): ' + (eF?.message || '') + ' — tente de novo.', true);
+                return;
+            }
+            const alvo = (o.itens || []).find(i => i.id === u.servico.itemId);
+            if (!alvo || alvo.vigente === false) {
+                toast('Não dá para desfazer: este serviço mudou em outra aba (aditivo?). O arrasto continua valendo.', true);
+                limparUndo(); concluido = true;
+                await carregarDados(); render();
+                return;
+            }
+            if (alvo.fim_real) {
+                toast('Não dá para desfazer: este serviço foi CONCLUÍDO em outra aba — as datas ficaram travadas.', true);
+                limparUndo(); concluido = true;
+                await carregarDados(); render();
+                return;
+            }
+            obraFresca = o;
+        }
+        // 2) alocações: só volta o que NÃO recria choque de agenda criado nesse meio-tempo
+        const idsLote = new Set(u.alocs.map(a => a.id));
+        const paraGravar = [];
+        for (const a of u.alocs) {
+            const res = await conflitosFrescos(a, a.data_inicio, a.data_fim);
+            if (res.erro) { problemas.push('conflitos não checados (' + res.erro + ')'); continue; }
+            const reais = (res.conflitos || []).filter(c => !(c.tipo === 'aloc' && idsLote.has(c.row.id)));
+            if (reais.length) {
+                avisos.push(`a alocação de ${a.integrante_id ? 'um integrante' : '?'} não voltou: ${reais[0].descr}`);
+                continue;
+            }
+            paraGravar.push(a);
+        }
+        if (paraGravar.length) {
+            const { error } = await sb.from('hermo_alocacoes').upsert(paraGravar);
+            if (error) problemas.push('alocações não voltaram (' + error.message + ')');
+        }
+        // 3) datas (e prazo) do serviço pela mesma RPC do card da obra
+        if (obraFresca) {
+            const s = u.servico, o = obraFresca;
+            const { error } = await sb.rpc('hermo_salvar_obra', {
+                p: {
+                    id: o.id, numero: o.numero, ano: o.ano, nome: o.nome,
+                    cliente_id: o.cliente_id || null, status: o.status,
+                    endereco: o.endereco || null, latitude: o.latitude, longitude: o.longitude,
+                    inicio_previsto: o.inicio_previsto || null, prazo: o.prazo || null,
+                    inicio_real: o.inicio_real || null, conclusao: o.conclusao || null,
+                    observacoes: o.observacoes || null,
+                    itens: [{
+                        id: s.itemId,
+                        inicio_previsto: s.inicio || null,
+                        fim_previsto: s.fim || null,
+                        prazo_dias: s.prazo_dias != null ? String(s.prazo_dias) : null,
+                        prazo_tipo: s.prazo_dias != null ? (s.prazo_tipo || 'corridos') : null
+                    }]
+                }
+            });
+            if (error) problemas.push('datas do serviço não voltaram (' + error.message + ')');
+        }
+        // desfazer só "gasta" o passo quando deu tudo certo — com falha, o botão
+        // continua ali para nova tentativa
+        if (!problemas.length) { limparUndo(); concluido = true; }
+        await carregarDados();
+        render();
+        const extra = avisos.length ? ` · ${avisos.join('; ')}` : '';
+        toast(problemas.length
+            ? `↩ Desfeito só em parte — ${problemas.join('; ')}${extra}. Tente novamente.`
+            : `↩ Desfeito: ${u.descricao}${extra}.`, problemas.length > 0 || avisos.length > 0);
+    } catch (e) {
+        toast('Erro ao desfazer: ' + e.message + ' — tente novamente.', true);
+    } finally {
+        undoRodando = false;
+        if (btn) { btn.disabled = false; }
+        if (!concluido) atualizarBotaoUndo();   // mantém o botão quando não concluiu
+    }
+}
+
+document.addEventListener('keydown', e => {
+    if (!(e.ctrlKey || e.metaKey) || e.shiftKey || e.altKey) return;
+    if (String(e.key).toLowerCase() !== 'z') return;
+    const t = e.target;
+    const digitando = t && (t.isContentEditable ||
+        ['INPUT', 'TEXTAREA', 'SELECT'].includes(t.tagName));
+    if (digitando) return;                                    // Ctrl+Z do campo é do campo
+    // offsetParent nulo cobre os dois casos: linha do tempo recolhida E aba inativa
+    if (!$('tlx-corpo') || $('tlx-corpo').offsetParent === null) return;
+    if (!undoUltimo) return;                                   // deixa o Ctrl+Z padrão passar
+    e.preventDefault();
+    desfazerUltimo();
+});
 
 /** Grava as datas do serviço pela RPC do card da obra. Retorna true em sucesso
  *  (o chamador recarrega/avisa); em falha já mostra o toast e re-renderiza. */
@@ -537,7 +841,7 @@ async function conflitosFrescos(aloc, nIni, nFim, excluirServicoId = null) {
     const nova = { data_inicio: nIni, data_fim: nFim, turno: aloc.turno, hora_inicio: aloc.hora_inicio, hora_fim: aloc.hora_fim };
     const [al, au] = await Promise.all([
         sb.from('hermo_alocacoes')
-            .select('*, integrante:hermo_integrantes(nome, apelido), obra_servico:hermo_obra_servicos(id, servico:hermo_servicos(codigo, descricao), obra:hermo_obras(nome, numero, ano))')
+            .select('*, integrante:hermo_integrantes(nome, apelido), equipe:hermo_equipes(nome), obra_servico:hermo_obra_servicos(id, servico:hermo_servicos(codigo, descricao), obra:hermo_obras(id, nome, numero, ano))')
             .eq('integrante_id', aloc.integrante_id)
             .lte('data_inicio', nFim).gte('data_fim', nIni),
         sb.from('hermo_ausencias').select('*')
@@ -550,14 +854,32 @@ async function conflitosFrescos(aloc, nIni, nFim, excluirServicoId = null) {
         if (x.id === aloc.id) return;
         if (excluirServicoId && x.obra_servico_id === excluirServicoId) return;
         if (!periodosConflitam(nova, x)) return;
+        const ob = x.obra_servico?.obra;
+        const servico = `${x.obra_servico?.servico?.codigo || '?'} — ${x.obra_servico?.servico?.descricao || 'serviço'}`;
+        const obraTxt = ob ? `OB-${String(ob.numero).padStart(4, '0')}/${ob.ano} — ${ob.nome}` : 'outra obra';
         conflitos.push({
             tipo: 'aloc', row: x,
-            descr: `"${x.obra_servico?.obra?.nome || 'outra obra'}" · ${x.obra_servico?.servico?.codigo || ''} ${x.obra_servico?.servico?.descricao || ''} · ${ddmm(x.data_inicio)}–${ddmm(x.data_fim)}`
+            servico, obra: obraTxt, obraId: ob?.id || null,
+            periodo: `${ddmm(x.data_inicio)}–${ddmm(x.data_fim)}`,
+            turno: fmtTurno(x),
+            equipe: x.equipe?.nome || null,
+            descr: `${servico} · ${obraTxt} · ${ddmm(x.data_inicio)}–${ddmm(x.data_fim)}`
         });
     });
     (au.data || []).forEach(x => {
         if (!periodosConflitam(nova, x)) return;
-        conflitos.push({ tipo: 'ausencia', row: x, descr: `ausência (${x.tipo}) de ${ddmm(x.data_inicio)} a ${ddmm(x.data_fim)}` });
+        // ausência automática de deslocamento (criada pela Agenda/Logística) é
+        // recriada a cada salvamento da rota — a origem real fica lá, não em Integrantes
+        const deRota = (x.motivo || '').includes('[rota:');
+        conflitos.push({
+            tipo: 'ausencia', row: x, deRota,
+            servico: `Ausência — ${x.tipo}${deRota ? ' (deslocamento de rota)' : ''}`,
+            obra: null, obraId: null,
+            motivo: (x.motivo || '').replace(/\s*\[rota:[^\]]*\]/, '').trim() || null,
+            periodo: `${ddmm(x.data_inicio)}–${ddmm(x.data_fim)}`,
+            turno: fmtTurno(x), equipe: null,
+            descr: `ausência (${x.tipo}) de ${ddmm(x.data_inicio)} a ${ddmm(x.data_fim)}`
+        });
     });
     return { conflitos };
 }
@@ -574,19 +896,36 @@ function abrirResolucaoConflitos(rotuloArrastado, conflitos, aoAplicar) {
         `Escolha como resolver cada caso — ou desfaça o arrasto (nada foi gravado ainda).`;
     $('tlxc-lista').innerHTML = conflitos.map((c, i) => {
         const nome = c.aloc.integrante?.nome || c.aloc.integrante?.apelido || 'Integrante';
-        const ehAus = c.outro.tipo === 'ausencia';
+        const o = c.outro;
+        const ehAus = o.tipo === 'ausencia';
+        const curto = s => (s || '').length > 46 ? s.slice(0, 46) + '…' : s;
         return `
         <div class="tlxc-conflito">
             <div class="quem">👷 ${esc(nome)}</div>
-            <div class="lado">➡ com o arrasto: ${esc(rotuloArrastado)} · ${ddmm(c.nIni)}–${ddmm(c.nFim)}</div>
-            <div class="lado">✖ conflita com: ${esc(c.outro.descr)}</div>
+            <div class="tlxc-lado arrastado">
+                <span class="tag">arrastado</span>
+                <span class="txt"><b>${esc(rotuloArrastado)}</b>
+                    <small>${ddmm(c.nIni)}–${ddmm(c.nFim)} · ${esc(fmtTurno(c.aloc))}${c.obraArrastada ? ' · ' + esc(c.obraArrastada) : ''}</small>
+                </span>
+            </div>
+            <div class="tlxc-lado conflita">
+                <span class="tag">conflita</span>
+                <span class="txt"><b>${esc(o.servico)}</b>
+                    <small>${o.obra ? esc(o.obra) + ' · ' : ''}${esc(o.periodo)} · ${esc(o.turno)}${o.equipe ? ' · equipe ' + esc(o.equipe) : ''}${o.motivo ? ' · ' + esc(o.motivo) : ''}</small>
+                </span>
+                ${o.obraId ? `<a class="hermo-btn small ghost" href="obras.html?editar=${o.obraId}" target="_blank" rel="noopener" title="Abrir a obra deste serviço">↗</a>` : ''}
+            </div>
             <label class="${ehAus ? 'desabilitada' : ''}">
                 <input type="radio" name="tlxc-${i}" value="outro" ${ehAus ? 'disabled' : ''} />
-                Tirar ${esc(nome)} do serviço que <b>não</b> foi arrastado${ehAus ? ' (ausência não é removível por aqui)' : ''}
+                <span>${ehAus
+                    ? (o.deRota
+                        ? `Esta ausência é automática do <b>deslocamento de uma rota</b> — remover aqui não adianta (a rota a recria). Ajuste a rota em <b>Agenda e Logística</b>.`
+                        : `Remover a ausência não é possível por aqui — ajuste-a em <b>Integrantes e Equipes</b>.`)
+                    : `Tirar <b>${esc(nome)}</b> de <b>${esc(curto(o.servico))}</b>${o.obra ? ` <small>(${esc(o.obra)})</small>` : ''}`}</span>
             </label>
             <label>
                 <input type="radio" name="tlxc-${i}" value="deste" />
-                Tirar ${esc(nome)} do serviço <b>arrastado</b> (a alocação dele aqui é removida)
+                <span>Tirar <b>${esc(nome)}</b> de <b>${esc(curto(rotuloArrastado))}</b> <small>(o serviço arrastado)</small></span>
             </label>
         </div>`;
     }).join('');
@@ -625,16 +964,25 @@ async function salvarAloc(obra, item, aloc, nIni, nFim) {
     const pre = await conflitosFrescos(aloc, nIni, nFim);
     if (pre.erro) { toast('Não deu para checar conflitos: ' + pre.erro, true); render(); return; }
     if (pre.conflitos.length) {
-        const rotulo = `${item.servico?.codigo || ''} — alocação de ${aloc.integrante?.apelido || aloc.integrante?.nome || '?'}`;
-        abrirResolucaoConflitos(rotulo, pre.conflitos.map(o => ({ aloc, nIni, nFim, outro: o })), async (cs, escolhas) => {
+        const rotulo = `${item.servico?.codigo || '?'} — ${item.servico?.descricao || 'serviço'}`;
+        abrirResolucaoConflitos(rotulo, pre.conflitos.map(o => ({
+            aloc, nIni, nFim, outro: o, obraArrastada: `${fmtCodObra(obra)} — ${obra.nome}`
+        })), async (cs, escolhas) => {
             if (escolhas.includes('deste')) {
                 // tirar o integrante do serviço arrastado resolve TODOS os conflitos dele
                 // de uma vez — os 'outro' marcados nas demais linhas são ignorados
                 // (removê-los também tiraria gente do outro serviço sem necessidade)
+                const snap = await linhasDeAlocacoes([aloc.id]);
+                if (snap.erro) {
+                    toast('Não deu para preparar o desfazer (' + snap.erro + ') — nada foi removido. Tente de novo.', true);
+                    render(); return;
+                }
                 const { error } = await sb.from('hermo_alocacoes').delete().eq('id', aloc.id);
                 if (error) { toast('Erro ao remover a alocação: ' + error.message, true); render(); return; }
+                registrarUndo(`remover ${aloc.integrante?.apelido || aloc.integrante?.nome || 'integrante'} de ${item.servico?.codigo || 'serviço'}`,
+                    { alocs: snap.rows });
                 await carregarDados(); render();
-                toast(`👷 ${aloc.integrante?.nome || 'Integrante'} removido de ${item.servico?.codigo || 'serviço'} — conflito resolvido.`);
+                toast(`👷 ${aloc.integrante?.nome || 'Integrante'} removido de ${item.servico?.codigo || 'serviço'} — conflito resolvido. Ctrl+Z desfaz.`);
                 return;
             }
             // re-valida os "outros" antes de remover (o painel pode ter ficado aberto)
@@ -643,19 +991,29 @@ async function salvarAloc(obra, item, aloc, nIni, nFim) {
             const rev = await outrosAindaConflitantes(pares);
             if (rev.erro) { toast('Não deu para revalidar os conflitos: ' + rev.erro, true); render(); return; }
             if (rev.pulados) toast(`${rev.pulados} alocação(ões) do outro lado já não conflita(m) mais — mantida(s).`);
+            let removidas = [];
             if (rev.manter.length) {
+                const snap = await linhasDeAlocacoes(rev.manter);
+                if (snap.erro) {
+                    toast('Não deu para preparar o desfazer das remoções (' + snap.erro + ') — nada foi alterado. Tente de novo.', true);
+                    render(); return;
+                }
+                removidas = snap.rows;
                 const { error } = await sb.from('hermo_alocacoes').delete().in('id', rev.manter);
                 if (error) { toast('Erro ao remover alocação(ões) conflitante(s): ' + error.message, true); render(); return; }
             }
-            await executarMoveAloc(aloc, nIni, nFim, rev.manter.length);
+            await executarMoveAloc(aloc, nIni, nFim, rev.manter.length, removidas);
         });
         return;
     }
     await executarMoveAloc(aloc, nIni, nFim);
 }
 
-async function executarMoveAloc(aloc, nIni, nFim, houveRemocoes = 0) {
+async function executarMoveAloc(aloc, nIni, nFim, houveRemocoes = 0, removidas = []) {
     const antesIni = aloc.data_inicio, antesFim = aloc.data_fim;
+    // linha completa ANTES de mover (base do Ctrl+Z); se não conseguir ler, o undo
+    // desta alocação fica sem snapshot — avisa em vez de prometer o que não pode
+    const snapMovida = await linhasDeAlocacoes([aloc.id]);
     const { error } = await sb.from('hermo_alocacoes')
         .update({ data_inicio: nIni, data_fim: nFim }).eq('id', aloc.id);
     if (error) { toast('Erro ao mover alocação: ' + error.message, true); render(); return; }
@@ -665,13 +1023,22 @@ async function executarMoveAloc(aloc, nIni, nFim, houveRemocoes = 0) {
     if (pos.conflitos?.length) {
         await sb.from('hermo_alocacoes')
             .update({ data_inicio: antesIni, data_fim: antesFim }).eq('id', aloc.id);
-        toast(`🚫 Outra sessão criou um conflito agora há pouco (${pos.conflitos[0].descr}) — o movimento foi desfeito${houveRemocoes ? ' (atenção: as remoções escolhidas na resolução foram mantidas)' : ''}.`, true);
+        // as remoções da resolução continuam válidas para o Ctrl+Z devolvê-las
+        if (removidas.length) {
+            registrarUndo(`remoção de ${removidas.length} alocação(ões) na resolução`, { alocs: removidas });
+        }
+        toast(`🚫 Outra sessão criou um conflito agora há pouco (${pos.conflitos[0].descr}) — o movimento foi desfeito${houveRemocoes ? ' (as remoções escolhidas na resolução foram mantidas — Ctrl+Z devolve)' : ''}.`, true);
         await carregarDados(); render();
         return;
     }
+    const antes = snapMovida.rows?.length
+        ? snapMovida.rows
+        : [limparAloc({ ...aloc, data_inicio: antesIni, data_fim: antesFim })];
+    registrarUndo(`mover ${aloc.integrante?.apelido || aloc.integrante?.nome || 'alocação'}`,
+        { alocs: [...antes, ...removidas] });
     await carregarDados();
     render();
-    toast(`👷 ${aloc.integrante?.apelido || aloc.integrante?.nome || 'Integrante'} agora em ${ddmm(nIni)}–${ddmm(nFim)} — agenda atualizada.`);
+    toast(`👷 ${aloc.integrante?.apelido || aloc.integrante?.nome || 'Integrante'} agora em ${ddmm(nIni)}–${ddmm(nFim)} — agenda atualizada. Ctrl+Z desfaz.`);
 }
 
 // ============================================================
@@ -745,7 +1112,26 @@ $('tlx-zoom-mais').addEventListener('click', () => {
 $('tlx-zoom-menos').addEventListener('click', () => {
     if (pxIdx > 0) { pxIdx--; gravarLS('hermo_tlx_px', pxIdx); render(); }
 });
-$('tlx-hoje-btn').addEventListener('click', irParaHoje);
+$('tlx-hoje-btn').addEventListener('click', () => {
+    reguaA = hoje();                       // devolve a régua vermelha ao momento atual
+    gravarLS('hermo_tlx_reguas', { a: reguaA, b: reguaB });
+    render();
+    irParaHoje();
+});
+$('tlx-undo').addEventListener('click', desfazerUltimo);
+$('tlx-regua2').addEventListener('click', () => {
+    if (reguaB) {
+        reguaB = null;
+        toast('2ª régua removida.');
+    } else {
+        // nasce 7 dias à frente da régua A (dentro do intervalo visível)
+        reguaB = addDias(reguaA || hoje(), 7);
+        if (intervalo && reguaB > intervalo.max) reguaB = intervalo.max;
+        toast('2ª régua ligada — arraste as réguas para medir a produção do intervalo.');
+    }
+    gravarLS('hermo_tlx_reguas', { a: reguaA, b: reguaB });
+    render();
+});
 $('tlx-obra').addEventListener('change', () => { obraFiltro = $('tlx-obra').value; render(); });
 $('tlx-mapa-toggle').addEventListener('click', () => {
     // com a linha do tempo recolhida, abre o corpo junto (mapa em container oculto tem tamanho 0)
@@ -765,16 +1151,28 @@ $('tlx-toggle').addEventListener('click', () => {
     if (mostrar) { render(); irParaHoje(); }
 });
 
+// a aba "Execução no tempo" pode estar oculta no load — ao aparecer, mede e desenha
+window.addEventListener('tlx-visivel', () => {
+    if ($('tlx-corpo').style.display === 'none') return;
+    render();
+    irParaHoje();
+    if ($('tlx-mapa').style.display !== 'none') setTimeout(atualizarMapa, 60);
+});
+
 (async () => {
     if (lerLS('hermo_tlx_oculto', false)) {
         $('tlx-corpo').style.display = 'none';
         $('tlx-toggle').textContent = '⊞';
     }
     if (lerLS('hermo_tlx_mapa', false)) $('tlx-mapa').style.display = '';
+    const rg = lerLS('hermo_tlx_reguas', null);
+    reguaA = rg?.a || hoje();
+    reguaB = rg?.b || null;
     if (await carregarDados()) {
         if ($('tlx-corpo').style.display !== 'none') {
             render();
-            irParaHoje();
+            // só rola até hoje se a aba já estiver visível (senão as medidas são 0)
+            if ($('tlx-secao').style.display !== 'none') irParaHoje();
         }
     }
 })();

@@ -52,7 +52,59 @@
         text-align: center; overflow: hidden;
     }
     .tlx-fundo-fds { position: absolute; top: 0; bottom: 0; background: rgba(148,163,184,.07); }
-    .tlx-hoje { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--hermo-danger); z-index: 3; opacity: .8; }
+    /* réguas móveis (A = vermelha/hoje, B = âmbar/livre) */
+    .tlx-hoje {
+        position: absolute; top: 0; bottom: 0; width: 2px;
+        background: var(--hermo-danger); z-index: 8; opacity: .85;
+        cursor: ew-resize; touch-action: none;
+    }
+    .tlx-hoje.b { background: var(--hermo-primary); }
+    .tlx-hoje::before {
+        content: attr(data-rot); position: absolute; top: 0; left: 3px;
+        font-size: .62rem; font-weight: 700; color: var(--hermo-text);
+        background: var(--hermo-danger); border-radius: 0 4px 4px 0;
+        padding: 1px 5px; white-space: nowrap;
+    }
+    .tlx-hoje.b::before { background: var(--hermo-primary); color: #1f1300; }
+    .tlx-hoje::after { /* área de pegada maior que a linha */
+        content: ''; position: absolute; top: 0; bottom: 0; left: -6px; right: -6px;
+    }
+    /* sombreado do intervalo: sem bordas próprias — as réguas já delimitam
+       (a faixa cobre os dias das réguas por inteiro, que é o que o cálculo usa) */
+    .tlx-faixa-sel {
+        position: absolute; top: 0; bottom: 0; z-index: 1;
+        background: rgba(234,179,8,.12); pointer-events: none;
+    }
+    /* painel de produção entre as réguas */
+    .tlx-prod {
+        border: 1px solid rgba(234,179,8,.4); border-radius: 10px;
+        background: rgba(234,179,8,.07); padding: 10px 12px; font-size: .8rem;
+        display: flex; flex-direction: column; gap: 6px;
+    }
+    .tlx-prod .tot { font-size: .95rem; }
+    .tlx-prod .tot b { color: var(--hermo-primary); }
+    .tlx-prod table { border-collapse: collapse; font-size: .72rem; width: 100%; }
+    .tlx-prod th, .tlx-prod td { border-bottom: 1px solid var(--hermo-border); padding: 3px 6px; text-align: right; white-space: nowrap; }
+    .tlx-prod th:first-child, .tlx-prod td:first-child { text-align: left; white-space: normal; }
+    .tlx-prod th { color: var(--hermo-text-dim); font-weight: 600; }
+    .tlx-prod-wrap { max-height: 200px; overflow: auto; }
+
+    /* abas da página de serviços */
+    .sv-abas { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 18px; }
+    .sv-aba {
+        flex: 1; min-width: 230px; display: flex; align-items: center; gap: 10px;
+        background: var(--hermo-surface); border: 1px solid var(--hermo-border);
+        border-radius: 12px; padding: 12px 14px; cursor: pointer; font-size: 1.15rem;
+        color: var(--hermo-text); text-align: left; transition: border-color .15s, background .15s;
+    }
+    .sv-aba span { display: flex; flex-direction: column; gap: 1px; }
+    .sv-aba b { font-size: .9rem; }
+    .sv-aba small { font-size: .72rem; color: var(--hermo-text-dim); }
+    .sv-aba:hover { border-color: var(--hermo-primary); }
+    .sv-aba.ativa {
+        border-color: var(--hermo-primary); background: rgba(234,179,8,.1);
+        box-shadow: inset 0 -3px 0 var(--hermo-primary);
+    }
     .tlx-bar {
         position: absolute; top: 5px; height: 20px; border-radius: 6px; z-index: 2;
         background: rgba(59,130,246,.35); border: 1px solid var(--hermo-info);
@@ -85,14 +137,31 @@
         display: flex; flex-direction: column; gap: 6px;
     }
     .tlxc-conflito .quem { font-weight: 700; }
-    .tlxc-conflito .lado { font-size: .74rem; color: var(--hermo-text-dim); }
-    .tlxc-conflito label {
-        display: flex; align-items: center; gap: 7px; font-size: .76rem; cursor: pointer;
-        background: var(--hermo-surface-2); border: 1px solid var(--hermo-border);
-        border-radius: 8px; padding: 6px 9px;
+    .tlxc-lado {
+        display: flex; align-items: flex-start; gap: 8px; font-size: .76rem;
+        background: var(--hermo-bg); border-radius: 8px; padding: 6px 9px;
+        border-left: 3px solid var(--hermo-border);
     }
-    .tlxc-conflito label.desabilitada { opacity: .5; cursor: not-allowed; }
-    .tlxc-conflito input[type="radio"] { accent-color: var(--hermo-primary); }
+    .tlxc-lado.arrastado { border-left-color: var(--hermo-info); }
+    .tlxc-lado.conflita { border-left-color: var(--hermo-danger); }
+    .tlxc-lado .tag {
+        font-size: .6rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em;
+        padding: 2px 6px; border-radius: 20px; white-space: nowrap; flex: 0 0 auto; margin-top: 1px;
+    }
+    .tlxc-lado.arrastado .tag { background: rgba(59,130,246,.18); color: var(--hermo-info); }
+    .tlxc-lado.conflita .tag { background: rgba(239,68,68,.18); color: var(--hermo-danger); }
+    .tlxc-lado .txt { flex: 1; min-width: 0; }
+    .tlxc-lado .txt small { display: block; color: var(--hermo-text-dim); font-size: .7rem; margin-top: 1px; }
+    .tlxc-conflito label {
+        display: flex; align-items: flex-start; gap: 8px; font-size: .78rem; cursor: pointer;
+        background: var(--hermo-surface-2); border: 1px solid var(--hermo-border);
+        border-radius: 8px; padding: 8px 10px; line-height: 1.35;
+    }
+    .tlxc-conflito label > span { flex: 1; min-width: 0; }
+    .tlxc-conflito label small { color: var(--hermo-text-dim); }
+    .tlxc-conflito label:hover:not(.desabilitada) { border-color: var(--hermo-primary); }
+    .tlxc-conflito label.desabilitada { opacity: .55; cursor: not-allowed; }
+    .tlxc-conflito input[type="radio"] { accent-color: var(--hermo-primary); margin-top: 2px; flex: 0 0 auto; }
     @media (max-width: 700px) { .tlx-rotulo { flex-basis: 130px; width: 130px; } }
   </style>
   <style>
@@ -152,14 +221,27 @@
   <main class="hermo-page">
     <section class="hermo-resumo" id="resumo"></section>
 
+    <!-- ABAS: catálogo (cadastro/preços) × execução no tempo (obras) -->
+    <div class="sv-abas" id="sv-abas">
+      <button class="sv-aba ativa" data-aba="catalogo">
+        📋 <span><b>Catálogo de serviços</b><small>cadastro, preços e DRE</small></span>
+      </button>
+      <button class="sv-aba" data-aba="tempo">
+        🗓️ <span><b>Execução no tempo</b><small>cronograma, alocações e mapa</small></span>
+      </button>
+    </div>
+
     <!-- LINHA DO TEMPO DE EXECUÇÃO (obras) -->
-    <section class="tlx-secao" id="tlx-secao">
+    <section class="tlx-secao sv-painel" id="tlx-secao" data-painel="tempo" style="display:none">
       <div class="tlx-cabeca">
         <h2>🗓️ Execução no tempo — serviços das obras</h2>
         <select id="tlx-obra"><option value="">Todas as obras</option></select>
         <button class="hermo-btn small ghost" id="tlx-zoom-menos" title="Reduzir (ver mais tempo)">−</button>
         <button class="hermo-btn small ghost" id="tlx-zoom-mais" title="Ampliar (ver mais detalhe)">+</button>
-        <button class="hermo-btn small" id="tlx-hoje-btn">Hoje</button>
+        <button class="hermo-btn small" id="tlx-hoje-btn" title="Rolar até hoje e devolver a régua vermelha ao dia de hoje">Hoje</button>
+        <button class="hermo-btn small ghost" id="tlx-regua2" title="Segunda régua para medir a produção entre as duas linhas">📏 2ª régua</button>
+        <button class="hermo-btn small ghost" id="tlx-undo" style="display:none"
+                title="Desfazer o último arrasto (Ctrl+Z)">↩ Desfazer</button>
         <button class="hermo-btn small ghost" id="tlx-mapa-toggle">🗺️ Mapa</button>
         <button class="hermo-btn small ghost" id="tlx-toggle" title="Mostrar/ocultar a linha do tempo">—</button>
       </div>
@@ -171,7 +253,9 @@
           <b>alocação</b> dos integrantes (a agenda deles acompanha). Se alguém ficar em dois lugares
           ao mesmo tempo — avulso ou via equipe —, um painel lista os conflitos e deixa você
           <b>resolver</b>: tirar do outro serviço, tirar deste, ou desfazer o arrasto.
+          Depois de gravar, <b>Ctrl+Z</b> (ou o botão ↩ Desfazer) volta o último arrasto ao estado anterior.
         </div>
+        <div id="tlx-producao" style="display:none"></div>
         <div id="tlx-mapa" style="display:none"></div>
         <div class="tlx-wrap" id="tlx-wrap"><div class="tlx-grade" id="tlx-grade"></div></div>
       </div>
@@ -196,32 +280,34 @@
       </div>
     </div>
 
-    <div class="hermo-page-head">
-      <h1>Catálogo de Serviços</h1>
-      <div style="display:flex;gap:10px;flex-wrap:wrap">
-        <input id="busca" type="text" placeholder="Buscar por código ou descrição…"
-               style="background:var(--hermo-bg);border:1px solid var(--hermo-border);border-radius:8px;color:var(--hermo-text);padding:9px 12px;min-width:240px" />
-        <button class="hermo-btn primary" id="btn-novo">+ Novo serviço</button>
+    <div class="sv-painel" data-painel="catalogo">
+      <div class="hermo-page-head">
+        <h1>Catálogo de Serviços</h1>
+        <div style="display:flex;gap:10px;flex-wrap:wrap">
+          <input id="busca" type="text" placeholder="Buscar por código ou descrição…"
+                 style="background:var(--hermo-bg);border:1px solid var(--hermo-border);border-radius:8px;color:var(--hermo-text);padding:9px 12px;min-width:240px" />
+          <button class="hermo-btn primary" id="btn-novo">+ Novo serviço</button>
+        </div>
       </div>
-    </div>
 
-    <div class="hermo-tabela-wrap">
-      <table class="hermo-tabela">
-        <thead>
-          <tr>
-            <th style="width:100px">Código</th>
-            <th>Descrição</th>
-            <th style="width:80px">Unidade</th>
-            <th style="width:130px">Preço final /un</th>
-            <th style="width:140px">Resultado real /un</th>
-            <th style="width:110px">Ações</th>
-          </tr>
-        </thead>
-        <tbody id="corpo"></tbody>
-      </table>
-    </div>
-    <div id="vazio" class="hermo-vazio" style="display:none;margin-top:16px">
-      <div class="big">🛠️</div>Nenhum serviço encontrado.
+      <div class="hermo-tabela-wrap">
+        <table class="hermo-tabela">
+          <thead>
+            <tr>
+              <th style="width:100px">Código</th>
+              <th>Descrição</th>
+              <th style="width:80px">Unidade</th>
+              <th style="width:130px">Preço final /un</th>
+              <th style="width:140px">Resultado real /un</th>
+              <th style="width:110px">Ações</th>
+            </tr>
+          </thead>
+          <tbody id="corpo"></tbody>
+        </table>
+      </div>
+      <div id="vazio" class="hermo-vazio" style="display:none;margin-top:16px">
+        <div class="big">🛠️</div>Nenhum serviço encontrado.
+      </div>
     </div>
   </main>
 
@@ -472,6 +558,25 @@
     </div>
   </div>
 
+  <script>
+    // abas: catálogo × execução no tempo (a aba escolhida fica lembrada por dispositivo)
+    (function () {
+        var abas = document.querySelectorAll('.sv-aba');
+        function mostrar(nome) {
+            abas.forEach(function (b) { b.classList.toggle('ativa', b.dataset.aba === nome); });
+            document.querySelectorAll('.sv-painel').forEach(function (p) {
+                p.style.display = p.dataset.painel === nome ? '' : 'none';
+            });
+            try { localStorage.setItem('hermo_sv_aba', nome); } catch (e) {}
+            // a linha do tempo precisa medir/renderizar quando fica visível
+            if (nome === 'tempo') window.dispatchEvent(new CustomEvent('tlx-visivel'));
+        }
+        abas.forEach(function (b) { b.addEventListener('click', function () { mostrar(b.dataset.aba); }); });
+        var salva = 'catalogo';
+        try { salva = localStorage.getItem('hermo_sv_aba') || 'catalogo'; } catch (e) {}
+        mostrar(salva);
+    })();
+  </script>
   <script type="module" src="servicos.js"></script>
   <script type="module" src="servicos-timeline.js"></script>
 </body>
