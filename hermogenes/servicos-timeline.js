@@ -142,6 +142,13 @@ function calcularIntervalo() {
 
 const xDe = iso => difDias(intervalo.min, iso) * pxDia();
 
+/** Qual régua fecha o intervalo pela direita (desenhada no fim do seu dia).
+ *  Empate no mesmo dia: A fecha, B abre — a faixa fica com 1 dia de largura. */
+function reguaDireita(qual, a = reguaA, b = reguaB) {
+    if (!b || !a) return false;
+    return qual === 'A' ? a >= b : b > a;
+}
+
 function render() {
     const grade = $('tlx-grade');
     popularFiltro();
@@ -196,11 +203,13 @@ function render() {
         const d = reguaA < reguaB ? reguaB : reguaA;
         fundo += `<div class="tlx-faixa-sel" style="left:${rotW + xDe(e)}px;width:${(difDias(e, d) + 1) * px}px"></div>`;
     }
+    // o intervalo inclui os DOIS dias inteiros; por isso a régua da direita é
+    // desenhada no FIM do seu dia — assim a faixa fica exatamente entre as linhas
     const rotA = reguaA === hoje() ? 'hoje' : fmtData(reguaA).slice(0, 5);
-    fundo += `<div class="tlx-hoje" data-regua="A" data-rot="${rotA}" style="left:${rotW + xDe(reguaA)}px"
+    fundo += `<div class="tlx-hoje" data-regua="A" data-rot="${rotA}" style="left:${rotW + xDe(reguaA) + (reguaDireita('A') ? px : 0)}px"
         title="Régua ${reguaA === hoje() ? '(hoje)' : fmtData(reguaA)} — arraste para medir; o botão Hoje devolve ao dia de hoje"></div>`;
     if (reguaB) {
-        fundo += `<div class="tlx-hoje b" data-regua="B" data-rot="${fmtData(reguaB).slice(0, 5)}" style="left:${rotW + xDe(reguaB)}px"
+        fundo += `<div class="tlx-hoje b" data-regua="B" data-rot="${fmtData(reguaB).slice(0, 5)}" style="left:${rotW + xDe(reguaB) + (reguaDireita('B') ? px : 0)}px"
             title="2ª régua (${fmtData(reguaB)}) — arraste para medir a produção no intervalo"></div>`;
     }
 
@@ -496,15 +505,28 @@ function ligarArrastoReguas() {
             const px = pxDia();
             const x0 = e.clientX;
             const base = qual === 'A' ? reguaA : reguaB;
-            const left0 = parseFloat(el.style.left);
+            const outra = qual === 'A' ? reguaB : reguaA;
+            const rotW = rotuloW();
+            const faixa = $('tlx-grade').querySelector('.tlx-faixa-sel');
             let nova = base;
             const mover = ev => {
                 const d = Math.round((ev.clientX - x0) / px);
                 nova = addDias(base, d);
                 if (nova < intervalo.min) nova = intervalo.min;
                 if (nova > intervalo.max) nova = intervalo.max;
-                el.style.left = (left0 + difDias(base, nova) * px) + 'px';
+                // a régua que fecha o intervalo fica no FIM do seu dia (a faixa
+                // cobre os dois dias inteiros) — recalculado a cada passo porque
+                // a régua pode ultrapassar a outra durante o arrasto
+                const a = qual === 'A' ? nova : outra;
+                const b = qual === 'A' ? outra : nova;
+                el.style.left = (rotW + xDe(nova) + (reguaDireita(qual, a, b) ? px : 0)) + 'px';
                 el.dataset.rot = fmtData(nova).slice(0, 5);
+                if (faixa && outra) {
+                    const ini = nova < outra ? nova : outra;
+                    const fim = nova < outra ? outra : nova;
+                    faixa.style.left = (rotW + xDe(ini)) + 'px';
+                    faixa.style.width = ((difDias(ini, fim) + 1) * px) + 'px';
+                }
                 mostrarTooltip(ev, `📏 ${fmtData(nova)}`);
             };
             const limpar = () => {
