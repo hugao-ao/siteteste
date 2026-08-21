@@ -21,7 +21,7 @@ let sujo = false;   // há alterações não salvas
 let respIniciais = null;   // respostas da avaliação inicial concluída (referência)
 let abertas = new Set();      // áreas expandidas
 let subAbertas = new Set();   // subáreas expandidas
-let graficosOcultos = false;
+let graficosOcultos = true;   // o painel de gráficos começa fechado
 
 const pacienteId = new URLSearchParams(location.search).get('paciente');
 
@@ -124,6 +124,9 @@ function renderGraficos() {
     const cont = document.getElementById('ev-graficos-pagina');
     if (!atual) { painel.style.display = 'none'; return; }
     painel.style.display = '';
+    painel.classList.toggle('oculto', graficosOcultos);
+    document.getElementById('btn-graficos').textContent = graficosOcultos ? '▸ mostrar' : '▾ ocultar';
+    if (graficosOcultos) return;   // fechado: nada a desenhar
     const calc = calcularAvaliacao(catalogo, resp);
     const eixos = catalogo.map(a => a.nome);
     const rot = `${atual.numero === 1 ? 'Avaliação inicial' : atual.numero + 'ª avaliação'} — ${formataBR(atual.data)}`;
@@ -390,8 +393,7 @@ document.getElementById('btn-recolher').addEventListener('click', () => {
 });
 document.getElementById('btn-graficos').addEventListener('click', () => {
     graficosOcultos = !graficosOcultos;
-    document.getElementById('ev-painel').classList.toggle('oculto', graficosOcultos);
-    document.getElementById('btn-graficos').textContent = graficosOcultos ? '▸ mostrar' : '▾ ocultar';
+    renderGraficos();
 });
 document.getElementById('ev-data').addEventListener('change', async (e) => {
     if (!atual || atual.status !== 'rascunho') return;
