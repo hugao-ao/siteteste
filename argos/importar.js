@@ -128,8 +128,8 @@ function renderTabela() {
             .filter(p => !busca || norm(p.nome).includes(busca))
             .filter(p => !soNovos || !porChave.has(p.chave));
         tab.innerHTML = `<thead><tr>
-            <th>Paciente</th><th>Situação</th><th>Profissionais</th><th>Responsável financeiro</th>
-            <th>Whatsapp</th><th>E-mail</th><th>CPF</th><th>Pasta</th></tr></thead><tbody>
+            <th>Paciente</th><th>Situação</th><th>Profissionais</th><th>Responsável financeiro</th><th>Contatos</th>
+            <th>Whatsapp do RF</th><th>E-mail</th><th>CPF</th><th>Pasta</th></tr></thead><tbody>
           ${lista.map(p => {
             const ja = porChave.get(p.chave);
             return `<tr>
@@ -138,7 +138,8 @@ function renderTabela() {
               <td class="${p.ativo ? '' : 'pill-inativo'}">${p.ativo ? 'ativo' : 'inativo'}</td>
               <td>${p.profissionais.map(n => `<span class="tag">${esc(n)}</span>`).join('')}</td>
               <td class="longo">${esc(p.responsavel_financeiro)}</td>
-              <td>${esc(p.telefone)}</td>
+              <td class="longo contato">${esc(p.contato)}</td>
+              <td>${esc(p.rf_whatsapp)}</td>
               <td class="longo">${esc((p.email || '').split(';')[0])}</td>
               <td>${esc(p.cpf)}</td>
               <td>${p.pasta_url ? '✔' : ''}</td></tr>`;
@@ -228,10 +229,10 @@ function camposDoPaciente(p, marcarInativo) {
         nome: p.nome,
         cpf: p.cpf || null,
         email: p.email || null,
-        telefone: p.telefone || null,
-        contato: p.contato || null,
         responsavel_financeiro: p.responsavel_financeiro || null,
         rf_cpf: p.rf_cpf || null,
+        rf_whatsapp: p.rf_whatsapp || null,
+        contato: p.contato || null,
         pasta_url: p.pasta_url || null
     };
     if (marcarInativo) campos.ativo = p.ativo;
