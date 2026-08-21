@@ -458,11 +458,18 @@ function iniciarArrastoBarra(e, bar) {
             // em dois lugares (avulso ou via equipe) e oferecendo resolução
             await moverServicoComAlocacoes(obra, item, nIni, nFim, diasDelta);
         } else {
+            const snap = {
+                obraId: obra.id, itemId: item.id,
+                inicio: item.inicio_previsto, fim: item.fim_previsto,
+                prazo_dias: item.prazo_dias ?? null, prazo_tipo: item.prazo_tipo ?? null
+            };
             const ok = await salvarDatasServico(obra, item, nIni, nFim, limpaPrazo);
             if (ok) {
+                registrarUndo(`mudar ${zona === 'ini' ? 'o início' : 'o fim'} de ${item.servico?.codigo || 'serviço'}`,
+                    { servico: snap });
                 await carregarDados();
                 render();
-                toast(`${item.servico?.codigo || 'Serviço'} reagendado — cronograma da obra recalculado${limpaPrazo ? ' (prazo em dias substituído pela data)' : ''}.`);
+                toast(`${item.servico?.codigo || 'Serviço'} reagendado — cronograma da obra recalculado${limpaPrazo ? ' (prazo em dias substituído pela data)' : ''}. Ctrl+Z desfaz.`);
             }
         }
     };
@@ -527,12 +534,31 @@ async function moverServicoComAlocacoes(obra, item, nIni, nFim, delta) {
 }
 
 async function aplicarMovimentoServico(obra, item, nIni, nFim, delta, alocsFrescas, removerOutros, removerDeste) {
+    // snapshot para o Ctrl+Z (estado ANTES de qualquer gravação)
+    const snapServico = {
+        obraId: obra.id, itemId: item.id,
+        inicio: item.inicio_previsto, fim: item.fim_previsto,
+        prazo_dias: item.prazo_dias ?? null, prazo_tipo: item.prazo_tipo ?? null
+    };
+    const remover = [...new Set([...removerOutros, ...removerDeste])];
+    // snapshot das que serão APAGADAS — se a leitura falhar, não apaga (sem snapshot
+    // não há como desfazer, e o Ctrl+Z não pode mentir que devolveu)
+    const snapRem = await linhasDeAlocacoes(remover);
+    if (snapRem.erro) {
+        toast('Não deu para preparar o desfazer das remoções (' + snapRem.erro + ') — nada foi alterado. Tente de novo.', true);
+        render();
+        return;
+    }
+    const snapAlocs = alocsFrescas
+        .filter(a => !removerDeste.has(a.id) && !removerOutros.has(a.id))
+        .map(limparAloc);
     // 1) datas do serviço pela RPC (regras/cadeia validam; se falhar, nada mais acontece)
     const ok = await salvarDatasServico(obra, item, nIni, nFim, false);
     if (!ok) return;
+    registrarUndo(`mover ${item.servico?.codigo || 'serviço'}${snapAlocs.length ? ' e suas alocações' : ''}`,
+        { servico: snapServico, alocs: [...snapAlocs, ...snapRem.rows] });
     // 2) remoções escolhidas no painel — se falhar, ABORTA antes do deslocamento
     //    (deslocar por cima das conflitantes criaria exatamente o double-booking)
-    const remover = [...new Set([...removerOutros, ...removerDeste])];
     if (remover.length) {
         const { error } = await sb.from('hermo_alocacoes').delete().in('id', remover);
         if (error) {
@@ -555,6 +581,149 @@ async function aplicarMovimentoServico(obra, item, nIni, nFim, delta, alocsFresc
     render();
     toast(`${item.servico?.codigo || 'Serviço'} movido${movidas ? ` com ${movidas} alocação(ões) junto` : ''}${remover.length ? ` · ${remover.length} removida(s) na resolução` : ''}${falhas ? ` · ⚠ ${falhas} não acompanhou(aram) — arraste manualmente` : ''} — cronograma recalculado.`);
 }
+
+// ============================================================
+// DESFAZER (Ctrl+Z) — um passo, cobrindo o último arrasto inteiro
+// ============================================================
+// undoUltimo = { descricao, servico, alocs } — `alocs` são LINHAS COMPLETAS no
+// estado anterior (upsert devolve tanto as movidas quanto as removidas).
+let undoUltimo = null;
+let undoRodando = false;
+
+const CAMPOS_ALOC = ['id', 'obra_servico_id', 'integrante_id', 'equipe_id',
+    'data_inicio', 'data_fim', 'turno', 'hora_inicio', 'hora_fim'];
+const limparAloc = r => Object.fromEntries(CAMPOS_ALOC.map(k => [k, r[k] ?? null]));
+
+function registrarUndo(descricao, { servico = null, alocs = [] } = {}) {
+    undoUltimo = { descricao, servico, alocs };
+    atualizarBotaoUndo();
+}
+function limparUndo() { undoUltimo = null; atualizarBotaoUndo(); }
+function atualizarBotaoUndo() {
+    const b = $('tlx-undo');
+    if (!b) return;
+    b.style.display = undoUltimo ? '' : 'none';
+    if (undoUltimo) b.title = `Desfazer: ${undoUltimo.descricao} (Ctrl+Z)`;
+}
+
+/** Linhas completas de alocações por id. Retorna { rows } ou { erro } — nunca
+ *  confunde "falha de leitura" com "não existe" (o chamador apaga em seguida). */
+async function linhasDeAlocacoes(ids) {
+    if (!ids.length) return { rows: [] };
+    const { data, error } = await sb.from('hermo_alocacoes').select('*').in('id', ids);
+    if (error) return { erro: error.message };
+    return { rows: (data || []).map(limparAloc) };
+}
+
+async function desfazerUltimo() {
+    if (undoRodando) return;
+    if (!undoUltimo) { toast('Não há arrasto recente para desfazer.'); return; }
+    if ($('tlxc-overlay')?.classList.contains('aberto')) return; // resolução aberta: nada gravado ainda
+    const u = undoUltimo;
+    undoRodando = true;
+    const btn = $('tlx-undo');
+    if (btn) btn.disabled = true;
+    let concluido = false;
+    try {
+        const problemas = [], avisos = [];
+        // 1) o serviço ainda aceita voltar? (mesmas guardas do arrasto normal —
+        //    concluído ou substituído por aditivo em outra aba trava as datas)
+        let obraFresca = null;
+        if (u.servico) {
+            const { data: o, error: eF } = await sb.from('hermo_obras')
+                .select(`id, numero, ano, nome, status, cliente_id, endereco, latitude, longitude,
+                    inicio_previsto, prazo, inicio_real, conclusao, observacoes,
+                    itens:hermo_obra_servicos(id, vigente, fim_real)`)
+                .eq('id', u.servico.obraId).single();
+            if (eF || !o) {
+                toast('Não deu para desfazer agora (obra não recarregada): ' + (eF?.message || '') + ' — tente de novo.', true);
+                return;
+            }
+            const alvo = (o.itens || []).find(i => i.id === u.servico.itemId);
+            if (!alvo || alvo.vigente === false) {
+                toast('Não dá para desfazer: este serviço mudou em outra aba (aditivo?). O arrasto continua valendo.', true);
+                limparUndo(); concluido = true;
+                await carregarDados(); render();
+                return;
+            }
+            if (alvo.fim_real) {
+                toast('Não dá para desfazer: este serviço foi CONCLUÍDO em outra aba — as datas ficaram travadas.', true);
+                limparUndo(); concluido = true;
+                await carregarDados(); render();
+                return;
+            }
+            obraFresca = o;
+        }
+        // 2) alocações: só volta o que NÃO recria choque de agenda criado nesse meio-tempo
+        const idsLote = new Set(u.alocs.map(a => a.id));
+        const paraGravar = [];
+        for (const a of u.alocs) {
+            const res = await conflitosFrescos(a, a.data_inicio, a.data_fim);
+            if (res.erro) { problemas.push('conflitos não checados (' + res.erro + ')'); continue; }
+            const reais = (res.conflitos || []).filter(c => !(c.tipo === 'aloc' && idsLote.has(c.row.id)));
+            if (reais.length) {
+                avisos.push(`a alocação de ${a.integrante_id ? 'um integrante' : '?'} não voltou: ${reais[0].descr}`);
+                continue;
+            }
+            paraGravar.push(a);
+        }
+        if (paraGravar.length) {
+            const { error } = await sb.from('hermo_alocacoes').upsert(paraGravar);
+            if (error) problemas.push('alocações não voltaram (' + error.message + ')');
+        }
+        // 3) datas (e prazo) do serviço pela mesma RPC do card da obra
+        if (obraFresca) {
+            const s = u.servico, o = obraFresca;
+            const { error } = await sb.rpc('hermo_salvar_obra', {
+                p: {
+                    id: o.id, numero: o.numero, ano: o.ano, nome: o.nome,
+                    cliente_id: o.cliente_id || null, status: o.status,
+                    endereco: o.endereco || null, latitude: o.latitude, longitude: o.longitude,
+                    inicio_previsto: o.inicio_previsto || null, prazo: o.prazo || null,
+                    inicio_real: o.inicio_real || null, conclusao: o.conclusao || null,
+                    observacoes: o.observacoes || null,
+                    itens: [{
+                        id: s.itemId,
+                        inicio_previsto: s.inicio || null,
+                        fim_previsto: s.fim || null,
+                        prazo_dias: s.prazo_dias != null ? String(s.prazo_dias) : null,
+                        prazo_tipo: s.prazo_dias != null ? (s.prazo_tipo || 'corridos') : null
+                    }]
+                }
+            });
+            if (error) problemas.push('datas do serviço não voltaram (' + error.message + ')');
+        }
+        // desfazer só "gasta" o passo quando deu tudo certo — com falha, o botão
+        // continua ali para nova tentativa
+        if (!problemas.length) { limparUndo(); concluido = true; }
+        await carregarDados();
+        render();
+        const extra = avisos.length ? ` · ${avisos.join('; ')}` : '';
+        toast(problemas.length
+            ? `↩ Desfeito só em parte — ${problemas.join('; ')}${extra}. Tente novamente.`
+            : `↩ Desfeito: ${u.descricao}${extra}.`, problemas.length > 0 || avisos.length > 0);
+    } catch (e) {
+        toast('Erro ao desfazer: ' + e.message + ' — tente novamente.', true);
+    } finally {
+        undoRodando = false;
+        if (btn) { btn.disabled = false; }
+        if (!concluido) atualizarBotaoUndo();   // mantém o botão quando não concluiu
+    }
+}
+
+document.addEventListener('keydown', e => {
+    if (!(e.ctrlKey || e.metaKey) || e.shiftKey || e.altKey) return;
+    if (String(e.key).toLowerCase() !== 'z') return;
+    const t = e.target;
+    const digitando = t && (t.isContentEditable ||
+        ['INPUT', 'TEXTAREA', 'SELECT'].includes(t.tagName));
+    if (digitando) return;                                    // Ctrl+Z do campo é do campo
+    // offsetParent nulo cobre os dois casos: linha do tempo recolhida E aba inativa
+    if (!$('tlx-corpo') || $('tlx-corpo').offsetParent === null) return;
+    if (!undoUltimo) return;                                   // deixa o Ctrl+Z padrão passar
+    e.preventDefault();
+    desfazerUltimo();
+});
 
 /** Grava as datas do serviço pela RPC do card da obra. Retorna true em sucesso
  *  (o chamador recarrega/avisa); em falha já mostra o toast e re-renderiza. */
@@ -803,10 +972,17 @@ async function salvarAloc(obra, item, aloc, nIni, nFim) {
                 // tirar o integrante do serviço arrastado resolve TODOS os conflitos dele
                 // de uma vez — os 'outro' marcados nas demais linhas são ignorados
                 // (removê-los também tiraria gente do outro serviço sem necessidade)
+                const snap = await linhasDeAlocacoes([aloc.id]);
+                if (snap.erro) {
+                    toast('Não deu para preparar o desfazer (' + snap.erro + ') — nada foi removido. Tente de novo.', true);
+                    render(); return;
+                }
                 const { error } = await sb.from('hermo_alocacoes').delete().eq('id', aloc.id);
                 if (error) { toast('Erro ao remover a alocação: ' + error.message, true); render(); return; }
+                registrarUndo(`remover ${aloc.integrante?.apelido || aloc.integrante?.nome || 'integrante'} de ${item.servico?.codigo || 'serviço'}`,
+                    { alocs: snap.rows });
                 await carregarDados(); render();
-                toast(`👷 ${aloc.integrante?.nome || 'Integrante'} removido de ${item.servico?.codigo || 'serviço'} — conflito resolvido.`);
+                toast(`👷 ${aloc.integrante?.nome || 'Integrante'} removido de ${item.servico?.codigo || 'serviço'} — conflito resolvido. Ctrl+Z desfaz.`);
                 return;
             }
             // re-valida os "outros" antes de remover (o painel pode ter ficado aberto)
@@ -815,19 +991,29 @@ async function salvarAloc(obra, item, aloc, nIni, nFim) {
             const rev = await outrosAindaConflitantes(pares);
             if (rev.erro) { toast('Não deu para revalidar os conflitos: ' + rev.erro, true); render(); return; }
             if (rev.pulados) toast(`${rev.pulados} alocação(ões) do outro lado já não conflita(m) mais — mantida(s).`);
+            let removidas = [];
             if (rev.manter.length) {
+                const snap = await linhasDeAlocacoes(rev.manter);
+                if (snap.erro) {
+                    toast('Não deu para preparar o desfazer das remoções (' + snap.erro + ') — nada foi alterado. Tente de novo.', true);
+                    render(); return;
+                }
+                removidas = snap.rows;
                 const { error } = await sb.from('hermo_alocacoes').delete().in('id', rev.manter);
                 if (error) { toast('Erro ao remover alocação(ões) conflitante(s): ' + error.message, true); render(); return; }
             }
-            await executarMoveAloc(aloc, nIni, nFim, rev.manter.length);
+            await executarMoveAloc(aloc, nIni, nFim, rev.manter.length, removidas);
         });
         return;
     }
     await executarMoveAloc(aloc, nIni, nFim);
 }
 
-async function executarMoveAloc(aloc, nIni, nFim, houveRemocoes = 0) {
+async function executarMoveAloc(aloc, nIni, nFim, houveRemocoes = 0, removidas = []) {
     const antesIni = aloc.data_inicio, antesFim = aloc.data_fim;
+    // linha completa ANTES de mover (base do Ctrl+Z); se não conseguir ler, o undo
+    // desta alocação fica sem snapshot — avisa em vez de prometer o que não pode
+    const snapMovida = await linhasDeAlocacoes([aloc.id]);
     const { error } = await sb.from('hermo_alocacoes')
         .update({ data_inicio: nIni, data_fim: nFim }).eq('id', aloc.id);
     if (error) { toast('Erro ao mover alocação: ' + error.message, true); render(); return; }
@@ -837,13 +1023,22 @@ async function executarMoveAloc(aloc, nIni, nFim, houveRemocoes = 0) {
     if (pos.conflitos?.length) {
         await sb.from('hermo_alocacoes')
             .update({ data_inicio: antesIni, data_fim: antesFim }).eq('id', aloc.id);
-        toast(`🚫 Outra sessão criou um conflito agora há pouco (${pos.conflitos[0].descr}) — o movimento foi desfeito${houveRemocoes ? ' (atenção: as remoções escolhidas na resolução foram mantidas)' : ''}.`, true);
+        // as remoções da resolução continuam válidas para o Ctrl+Z devolvê-las
+        if (removidas.length) {
+            registrarUndo(`remoção de ${removidas.length} alocação(ões) na resolução`, { alocs: removidas });
+        }
+        toast(`🚫 Outra sessão criou um conflito agora há pouco (${pos.conflitos[0].descr}) — o movimento foi desfeito${houveRemocoes ? ' (as remoções escolhidas na resolução foram mantidas — Ctrl+Z devolve)' : ''}.`, true);
         await carregarDados(); render();
         return;
     }
+    const antes = snapMovida.rows?.length
+        ? snapMovida.rows
+        : [limparAloc({ ...aloc, data_inicio: antesIni, data_fim: antesFim })];
+    registrarUndo(`mover ${aloc.integrante?.apelido || aloc.integrante?.nome || 'alocação'}`,
+        { alocs: [...antes, ...removidas] });
     await carregarDados();
     render();
-    toast(`👷 ${aloc.integrante?.apelido || aloc.integrante?.nome || 'Integrante'} agora em ${ddmm(nIni)}–${ddmm(nFim)} — agenda atualizada.`);
+    toast(`👷 ${aloc.integrante?.apelido || aloc.integrante?.nome || 'Integrante'} agora em ${ddmm(nIni)}–${ddmm(nFim)} — agenda atualizada. Ctrl+Z desfaz.`);
 }
 
 // ============================================================
@@ -923,6 +1118,7 @@ $('tlx-hoje-btn').addEventListener('click', () => {
     render();
     irParaHoje();
 });
+$('tlx-undo').addEventListener('click', desfazerUltimo);
 $('tlx-regua2').addEventListener('click', () => {
     if (reguaB) {
         reguaB = null;
