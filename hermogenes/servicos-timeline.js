@@ -35,6 +35,9 @@ const hoje = () => {
 const fmtData = iso => (iso || '').split('-').reverse().join('/');
 const ddmm = iso => fmtData(iso).slice(0, 5);
 const fmtQtd = v => String(Math.round(num(v) * 100) / 100).replace('.', ',');
+const fmtTurno = a => a.turno === 'horario'
+    ? `${(a.hora_inicio || '').slice(0, 5)}–${(a.hora_fim || '').slice(0, 5)}`
+    : ({ dia: 'dia inteiro', manha: 'manhã', tarde: 'tarde' }[a.turno || 'dia'] || a.turno);
 function addDias(iso, n) {
     const [y, m, d] = iso.split('-').map(Number);
     const dt = new Date(y, m - 1, d + n);
@@ -498,7 +501,10 @@ async function moverServicoComAlocacoes(obra, item, nIni, nFim, delta) {
         const aIni = addDias(a.data_inicio, delta), aFim = addDias(a.data_fim, delta);
         const res = await conflitosFrescos(a, aIni, aFim, item.id);
         if (res.erro) { toast('Não deu para checar conflitos: ' + res.erro, true); render(); return; }
-        res.conflitos.forEach(o => conflitos.push({ aloc: a, nIni: aIni, nFim: aFim, outro: o }));
+        res.conflitos.forEach(o => conflitos.push({
+            aloc: a, nIni: aIni, nFim: aFim, outro: o,
+            obraArrastada: `${fmtCodObra(obra)} — ${obra.nome}`
+        }));
     }
     const rotulo = `${item.servico?.codigo || ''} — ${item.servico?.descricao || ''}`.trim();
     if (conflitos.length) {
@@ -666,7 +672,7 @@ async function conflitosFrescos(aloc, nIni, nFim, excluirServicoId = null) {
     const nova = { data_inicio: nIni, data_fim: nFim, turno: aloc.turno, hora_inicio: aloc.hora_inicio, hora_fim: aloc.hora_fim };
     const [al, au] = await Promise.all([
         sb.from('hermo_alocacoes')
-            .select('*, integrante:hermo_integrantes(nome, apelido), obra_servico:hermo_obra_servicos(id, servico:hermo_servicos(codigo, descricao), obra:hermo_obras(nome, numero, ano))')
+            .select('*, integrante:hermo_integrantes(nome, apelido), equipe:hermo_equipes(nome), obra_servico:hermo_obra_servicos(id, servico:hermo_servicos(codigo, descricao), obra:hermo_obras(id, nome, numero, ano))')
             .eq('integrante_id', aloc.integrante_id)
             .lte('data_inicio', nFim).gte('data_fim', nIni),
         sb.from('hermo_ausencias').select('*')
@@ -679,14 +685,32 @@ async function conflitosFrescos(aloc, nIni, nFim, excluirServicoId = null) {
         if (x.id === aloc.id) return;
         if (excluirServicoId && x.obra_servico_id === excluirServicoId) return;
         if (!periodosConflitam(nova, x)) return;
+        const ob = x.obra_servico?.obra;
+        const servico = `${x.obra_servico?.servico?.codigo || '?'} — ${x.obra_servico?.servico?.descricao || 'serviço'}`;
+        const obraTxt = ob ? `OB-${String(ob.numero).padStart(4, '0')}/${ob.ano} — ${ob.nome}` : 'outra obra';
         conflitos.push({
             tipo: 'aloc', row: x,
-            descr: `"${x.obra_servico?.obra?.nome || 'outra obra'}" · ${x.obra_servico?.servico?.codigo || ''} ${x.obra_servico?.servico?.descricao || ''} · ${ddmm(x.data_inicio)}–${ddmm(x.data_fim)}`
+            servico, obra: obraTxt, obraId: ob?.id || null,
+            periodo: `${ddmm(x.data_inicio)}–${ddmm(x.data_fim)}`,
+            turno: fmtTurno(x),
+            equipe: x.equipe?.nome || null,
+            descr: `${servico} · ${obraTxt} · ${ddmm(x.data_inicio)}–${ddmm(x.data_fim)}`
         });
     });
     (au.data || []).forEach(x => {
         if (!periodosConflitam(nova, x)) return;
-        conflitos.push({ tipo: 'ausencia', row: x, descr: `ausência (${x.tipo}) de ${ddmm(x.data_inicio)} a ${ddmm(x.data_fim)}` });
+        // ausência automática de deslocamento (criada pela Agenda/Logística) é
+        // recriada a cada salvamento da rota — a origem real fica lá, não em Integrantes
+        const deRota = (x.motivo || '').includes('[rota:');
+        conflitos.push({
+            tipo: 'ausencia', row: x, deRota,
+            servico: `Ausência — ${x.tipo}${deRota ? ' (deslocamento de rota)' : ''}`,
+            obra: null, obraId: null,
+            motivo: (x.motivo || '').replace(/\s*\[rota:[^\]]*\]/, '').trim() || null,
+            periodo: `${ddmm(x.data_inicio)}–${ddmm(x.data_fim)}`,
+            turno: fmtTurno(x), equipe: null,
+            descr: `ausência (${x.tipo}) de ${ddmm(x.data_inicio)} a ${ddmm(x.data_fim)}`
+        });
     });
     return { conflitos };
 }
@@ -703,19 +727,36 @@ function abrirResolucaoConflitos(rotuloArrastado, conflitos, aoAplicar) {
         `Escolha como resolver cada caso — ou desfaça o arrasto (nada foi gravado ainda).`;
     $('tlxc-lista').innerHTML = conflitos.map((c, i) => {
         const nome = c.aloc.integrante?.nome || c.aloc.integrante?.apelido || 'Integrante';
-        const ehAus = c.outro.tipo === 'ausencia';
+        const o = c.outro;
+        const ehAus = o.tipo === 'ausencia';
+        const curto = s => (s || '').length > 46 ? s.slice(0, 46) + '…' : s;
         return `
         <div class="tlxc-conflito">
             <div class="quem">👷 ${esc(nome)}</div>
-            <div class="lado">➡ com o arrasto: ${esc(rotuloArrastado)} · ${ddmm(c.nIni)}–${ddmm(c.nFim)}</div>
-            <div class="lado">✖ conflita com: ${esc(c.outro.descr)}</div>
+            <div class="tlxc-lado arrastado">
+                <span class="tag">arrastado</span>
+                <span class="txt"><b>${esc(rotuloArrastado)}</b>
+                    <small>${ddmm(c.nIni)}–${ddmm(c.nFim)} · ${esc(fmtTurno(c.aloc))}${c.obraArrastada ? ' · ' + esc(c.obraArrastada) : ''}</small>
+                </span>
+            </div>
+            <div class="tlxc-lado conflita">
+                <span class="tag">conflita</span>
+                <span class="txt"><b>${esc(o.servico)}</b>
+                    <small>${o.obra ? esc(o.obra) + ' · ' : ''}${esc(o.periodo)} · ${esc(o.turno)}${o.equipe ? ' · equipe ' + esc(o.equipe) : ''}${o.motivo ? ' · ' + esc(o.motivo) : ''}</small>
+                </span>
+                ${o.obraId ? `<a class="hermo-btn small ghost" href="obras.html?editar=${o.obraId}" target="_blank" rel="noopener" title="Abrir a obra deste serviço">↗</a>` : ''}
+            </div>
             <label class="${ehAus ? 'desabilitada' : ''}">
                 <input type="radio" name="tlxc-${i}" value="outro" ${ehAus ? 'disabled' : ''} />
-                Tirar ${esc(nome)} do serviço que <b>não</b> foi arrastado${ehAus ? ' (ausência não é removível por aqui)' : ''}
+                <span>${ehAus
+                    ? (o.deRota
+                        ? `Esta ausência é automática do <b>deslocamento de uma rota</b> — remover aqui não adianta (a rota a recria). Ajuste a rota em <b>Agenda e Logística</b>.`
+                        : `Remover a ausência não é possível por aqui — ajuste-a em <b>Integrantes e Equipes</b>.`)
+                    : `Tirar <b>${esc(nome)}</b> de <b>${esc(curto(o.servico))}</b>${o.obra ? ` <small>(${esc(o.obra)})</small>` : ''}`}</span>
             </label>
             <label>
                 <input type="radio" name="tlxc-${i}" value="deste" />
-                Tirar ${esc(nome)} do serviço <b>arrastado</b> (a alocação dele aqui é removida)
+                <span>Tirar <b>${esc(nome)}</b> de <b>${esc(curto(rotuloArrastado))}</b> <small>(o serviço arrastado)</small></span>
             </label>
         </div>`;
     }).join('');
@@ -754,8 +795,10 @@ async function salvarAloc(obra, item, aloc, nIni, nFim) {
     const pre = await conflitosFrescos(aloc, nIni, nFim);
     if (pre.erro) { toast('Não deu para checar conflitos: ' + pre.erro, true); render(); return; }
     if (pre.conflitos.length) {
-        const rotulo = `${item.servico?.codigo || ''} — alocação de ${aloc.integrante?.apelido || aloc.integrante?.nome || '?'}`;
-        abrirResolucaoConflitos(rotulo, pre.conflitos.map(o => ({ aloc, nIni, nFim, outro: o })), async (cs, escolhas) => {
+        const rotulo = `${item.servico?.codigo || '?'} — ${item.servico?.descricao || 'serviço'}`;
+        abrirResolucaoConflitos(rotulo, pre.conflitos.map(o => ({
+            aloc, nIni, nFim, outro: o, obraArrastada: `${fmtCodObra(obra)} — ${obra.nome}`
+        })), async (cs, escolhas) => {
             if (escolhas.includes('deste')) {
                 // tirar o integrante do serviço arrastado resolve TODOS os conflitos dele
                 // de uma vez — os 'outro' marcados nas demais linhas são ignorados
