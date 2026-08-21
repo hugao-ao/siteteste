@@ -153,6 +153,7 @@
       <p class="dica">Escolha o destino na lista (use o filtro) e informe <b>mês de referência</b> e <b>valor</b> de cada parte. Um pagamento pode cobrir vários meses (uma alocação por mês) ou só parte de um mês (o restante pode ser alocado por outra movimentação depois).</p>
       <input type="search" id="clf-busca" class="argos-input" placeholder="🔎 Filtrar opções…" style="width:100%; margin:6px 0" autocomplete="off" />
       <div id="clf-opcoes" class="servico-lista" style="max-height:220px; overflow:auto"></div>
+      <div id="clf-extrato"></div>
       <h3 class="form-secao">Alocações desta movimentação</h3>
       <div id="clf-alocacoes"></div>
       <p class="dica" id="clf-resumo" style="font-weight:600"></p>
@@ -178,12 +179,14 @@
         <h2>🔁 De-Para de pagadores</h2>
         <button class="argos-modal-x" data-fechar>×</button>
       </div>
-      <p class="dica">Funciona como a sua aba de suporte da planilha: associe o <b>trecho do pagador</b> (como vem no extrato) a um destino do planejamento. Toda movimentação nova ou importada cuja descrição contenha o trecho é <b>classificada automaticamente</b> (valor integral, no mês da data) — sem precisar associar um a um todo mês. Você pode ajustar depois pelo modal de classificação.</p>
+      <p class="dica">Funciona como a sua aba de suporte da planilha: associe o <b>trecho do pagador</b> (como vem no extrato) a um destino do planejamento. Toda movimentação nova ou importada cuja descrição contenha o trecho é <b>classificada automaticamente</b>. Regra: <b>um pagador aponta para um único destino</b>, mas um mesmo paciente pode ter <b>vários pagadores</b>.</p>
+      <input type="search" id="dp-busca" class="argos-input" placeholder="🔎 Filtrar por pagador ou destino…" style="width:100%; margin:6px 0" autocomplete="off" />
       <div id="lista-depara"></div>
-      <h3 class="form-secao">Nova associação</h3>
+      <h3 class="form-secao" id="dp-form-titulo">Nova associação</h3>
       <div class="agenda-nav" style="flex-wrap:wrap">
         <input type="text" id="dp-chave" class="argos-input" placeholder="Trecho do pagador (ex.: MARIA SILVA)" style="flex:2; min-width:170px" autocomplete="off" />
         <select id="dp-destino" class="argos-input" style="flex:2; min-width:170px"></select>
+        <button type="button" class="argos-btn small ghost" id="btn-dp-cancelar" style="display:none">Cancelar edição</button>
         <button type="button" class="argos-btn small primary" id="btn-dp-add">+ Adicionar</button>
       </div>
       <div class="argos-modal-acoes" style="justify-content:space-between">
@@ -260,7 +263,7 @@
     </div>
   </div>
 
-  <script type="module" src="planejamento.js?v=5"></script>
+  <script type="module" src="planejamento.js?v=6"></script>
   <script type="module" src="argos-zoom.js?v=4"></script>
 </body>
 </html>
