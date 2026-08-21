@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=0.1, maximum-scale=10, user-scalable=yes" />
+  <title>Argos Gestão — Ficha de Anamnese</title>
+  <script src="argos-guard.js"></script>
+  <link rel="stylesheet" href="argos-style.css?v=7" />
+  <style>
+    .an-topo { position: sticky; top: 0; z-index: 6; background: var(--argos-bg);
+      padding: 10px 0 8px; border-bottom: 1px solid var(--argos-border); margin-bottom: 18px; }
+    .an-progresso { height: 6px; background: var(--argos-surface-2); border-radius: 99px;
+      overflow: hidden; margin: 8px 0 6px; }
+    .an-progresso i { display: block; height: 100%; background: var(--argos-primary); transition: width .25s; }
+    .an-chips { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; font-size: .82rem; }
+    .an-chip { background: var(--argos-surface-2); border: 1px solid var(--argos-border);
+      border-radius: 99px; padding: 2px 10px; color: var(--argos-text-dim); }
+    .an-chip.ok { border-color: var(--argos-success); color: var(--argos-success); }
+    .an-chip.alerta { border-color: var(--argos-warn); color: var(--argos-warn); }
+
+    .an-bloco { border: 1px solid var(--argos-border); border-top: 3px solid var(--c);
+      border-radius: var(--argos-radius); margin-bottom: 14px; background: var(--argos-surface); overflow: hidden; }
+    .an-bloco-topo { display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+      padding: 12px 14px; cursor: pointer; }
+    .an-bloco-topo h3 { margin: 0; font-size: 1rem; color: var(--c); flex: 1; }
+    .an-bloco-corpo { display: none; padding: 0 14px 14px; }
+    .an-bloco.aberto .an-bloco-corpo { display: block; }
+    .an-bloco-intro { font-size: .84rem; color: var(--argos-text-dim); margin: 0 0 12px; }
+
+    .an-pergunta { border: 1px solid var(--argos-border); border-left: 3px solid var(--c);
+      border-radius: 10px; padding: 10px 12px; margin-bottom: 10px; background: var(--argos-bg); }
+    .an-pergunta .txt { display: block; font-size: .9rem; font-weight: 600; color: var(--argos-text);
+      margin-bottom: 6px; }
+    .an-pergunta textarea { display: block; width: 100%; background: var(--argos-surface);
+      border: 1px solid var(--argos-border); border-radius: 8px; color: var(--argos-text);
+      padding: 8px 10px; font-size: .88rem; font-family: inherit; resize: vertical; }
+    .an-pergunta textarea:focus { outline: none; border-color: var(--c); }
+    .an-pergunta.respondida { border-left-color: var(--argos-success); }
+
+    .an-mapa { margin-top: 14px; border-top: 1px dashed var(--argos-border); padding-top: 12px; }
+    .an-mapa h4 { margin: 0 0 4px; font-size: .84rem; color: var(--argos-primary); }
+    .an-mapa .dica { margin-top: 0; }
+    .an-mapa-linha { display: grid; grid-template-columns: minmax(150px, 1fr) minmax(220px, 2fr);
+      gap: 8px; align-items: center; margin-bottom: 8px; }
+    .an-mapa-linha b { font-size: .86rem; }
+    .an-mapa-linha select { width: 100%; padding: 7px 9px; font-size: .86rem; border-radius: 8px;
+      background: var(--argos-bg); border: 1px solid var(--argos-border); color: var(--argos-text);
+      font-family: inherit; }
+    .an-mapa-linha select.vazio { border-color: var(--argos-warn); }
+    @media (max-width: 640px) { .an-mapa-linha { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <header class="argos-topbar">
+    <div class="brand">ARGOS <span>GESTÃO</span></div>
+    <div class="actions">
+      <a class="argos-btn ghost" id="btn-voltar" href="pacientes.html">← Voltar</a>
+      <button class="argos-btn danger" id="btn-logout">Sair</button>
+    </div>
+  </header>
+
+  <main class="argos-pagina larga">
+    <h1>📋 Ficha de Anamnese</h1>
+    <p class="sub" id="an-paciente">Carregando…</p>
+
+    <div class="an-topo">
+      <div class="argos-filtros" style="margin:0">
+        <button class="argos-btn ghost" id="btn-expandir">⊞ Expandir tudo</button>
+        <button class="argos-btn ghost" id="btn-recolher">⊟ Recolher tudo</button>
+        <button class="argos-btn ghost" id="btn-imprimir">🖨️ Imprimir roteiro</button>
+        <span style="flex:1"></span>
+        <button class="argos-btn" id="btn-salvar" data-argos-recurso="anamnese_ficha">💾 Salvar</button>
+        <button class="argos-btn primary" id="btn-gerar" data-argos-recurso="anamnese_gerar_avaliacao">📈 Gerar avaliação inicial</button>
+      </div>
+      <div class="an-progresso"><i id="an-barra" style="width:0%"></i></div>
+      <p class="dica" id="an-status" style="margin:0"></p>
+    </div>
+
+    <p class="dica">Roteiro para conduzir a conversa inicial com o paciente ou seus responsáveis. As perguntas seguem as mesmas áreas da Evolução Terapêutica: ao escolher, em cada subárea, a opção que melhor descreve o que você ouviu, a <b>avaliação inicial</b> pode ser gerada já preenchida — com tudo marcado para sua conferência.</p>
+
+    <div id="an-blocos"></div>
+
+    <div class="argos-modal-acoes" style="margin:20px 0 40px">
+      <a class="argos-btn ghost" id="btn-voltar2" href="pacientes.html">← Voltar</a>
+      <button class="argos-btn" id="btn-salvar2" data-argos-recurso="anamnese_ficha">💾 Salvar</button>
+      <button class="argos-btn primary" id="btn-gerar2" data-argos-recurso="anamnese_gerar_avaliacao">📈 Gerar avaliação inicial</button>
+    </div>
+  </main>
+
+  <!-- ============ MODAL: GERAR AVALIAÇÃO INICIAL ============ -->
+  <div class="argos-modal-fundo" id="modal-gerar">
+    <div class="argos-modal">
+      <div class="argos-modal-topo">
+        <h2>📈 Gerar avaliação inicial</h2>
+        <button class="argos-modal-x" data-fechar>×</button>
+      </div>
+      <div id="gerar-resumo"></div>
+      <div id="gerar-form">
+        <div class="form-grade">
+          <label>Data da avaliação inicial
+            <input type="date" id="ger-data" />
+          </label>
+          <label>Importância padrão das áreas
+            <select id="ger-importancia"></select>
+          </label>
+        </div>
+        <p class="dica">Os níveis de cada opção entram com a <b>sugestão do sistema</b> e todos os campos ficam marcados com 🔎 para você conferir na Evolução Terapêutica — nada é dado como definitivo.</p>
+      </div>
+      <div class="argos-modal-acoes">
+        <button type="button" class="argos-btn ghost" data-fechar>Cancelar</button>
+        <button type="button" class="argos-btn primary" id="btn-confirmar-gerar">Gerar e abrir avaliação</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="anamnese.js?v=1"></script>
+  <script type="module" src="argos-zoom.js?v=4"></script>
+</body>
+</html>
