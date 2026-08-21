@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=0.1, maximum-scale=10, user-scalable=yes" />
+  <title>Argos Gestão — Importar cadastro</title>
+  <script src="argos-guard.js"></script>
+  <link rel="stylesheet" href="argos-style.css?v=7" />
+  <style>
+    #imp-colar { width: 100%; min-height: 150px; background: var(--argos-bg);
+      border: 1px solid var(--argos-border); border-radius: 10px; color: var(--argos-text);
+      padding: 10px 12px; font-family: ui-monospace, Menlo, Consolas, monospace;
+      font-size: .78rem; resize: vertical; }
+    #imp-colar:focus { outline: none; border-color: var(--argos-primary); }
+
+    .imp-passo { border: 1px solid var(--argos-border); border-radius: var(--argos-radius);
+      background: var(--argos-surface); padding: 14px 16px; margin-bottom: 14px; }
+    .imp-passo > h2 { margin: 0 0 4px; font-size: 1rem; color: var(--argos-primary); }
+    .imp-passo > h2 .n { display: inline-flex; align-items: center; justify-content: center;
+      width: 22px; height: 22px; border-radius: 99px; margin-right: 8px; font-size: .78rem;
+      background: var(--argos-primary); color: #04202e; }
+
+    .imp-chips { display: flex; gap: 8px; flex-wrap: wrap; align-items: center;
+      font-size: .82rem; margin: 10px 0; }
+    .imp-chip { background: var(--argos-surface-2); border: 1px solid var(--argos-border);
+      border-radius: 99px; padding: 3px 11px; color: var(--argos-text-dim); }
+    .imp-chip b { color: var(--argos-text); }
+    .imp-chip.ok { border-color: var(--argos-success); color: var(--argos-success); }
+    .imp-chip.alerta { border-color: var(--argos-warn); color: var(--argos-warn); }
+    .imp-chip.erro { border-color: var(--argos-danger); color: var(--argos-danger); }
+
+    #imp-avisos { margin: 8px 0 0; padding-left: 18px; font-size: .84rem; color: var(--argos-warn); }
+    #imp-avisos li { margin-bottom: 3px; }
+
+    .imp-abas { display: flex; gap: 6px; flex-wrap: wrap; margin: 12px 0 8px; }
+    .imp-abas button { background: var(--argos-surface-2); border: 1px solid var(--argos-border);
+      border-radius: 99px; padding: 5px 13px; color: var(--argos-text-dim); cursor: pointer;
+      font-size: .84rem; font-family: inherit; }
+    .imp-abas button.ativa { border-color: var(--argos-primary); color: var(--argos-primary); }
+
+    #imp-tabela-wrap { max-height: 460px; overflow: auto; }
+    #imp-tabela { min-width: 900px; font-size: .8rem; }
+    #imp-tabela td, #imp-tabela th { white-space: nowrap; }
+    #imp-tabela td.longo { white-space: normal; min-width: 200px; }
+    .tag { display: inline-block; background: var(--argos-surface-2); border: 1px solid var(--argos-border);
+      border-radius: 5px; padding: 0 5px; font-size: .7rem; color: var(--argos-text-dim); margin-right: 3px; }
+    .pill-novo { color: var(--argos-success); }
+    .pill-atual { color: var(--argos-primary); }
+    .pill-inativo { color: var(--argos-warn); }
+    .acordo { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: .74rem; }
+  </style>
+</head>
+<body>
+  <header class="argos-topbar">
+    <div class="brand">ARGOS <span>GESTÃO</span></div>
+    <div class="actions">
+      <a class="argos-btn ghost" href="pacientes.html">← Pacientes</a>
+      <button class="argos-btn danger" id="btn-logout">Sair</button>
+    </div>
+  </header>
+
+  <main class="argos-pagina larga">
+    <h1>⬆️ Importar cadastro da planilha</h1>
+    <p class="sub">Aba <b>CADASTRO</b> — pacientes, responsáveis e o acordo financeiro de cada profissional.</p>
+
+    <div class="imp-passo">
+      <h2><span class="n">1</span>Cole a aba</h2>
+      <p class="dica">Abra a aba CADASTRO, <b>Ctrl+A</b>, <b>Ctrl+C</b> e cole aqui — <b>com a linha de títulos</b>.
+        Também aceita o conteúdo de um CSV exportado da mesma aba.</p>
+      <textarea id="imp-colar" placeholder="CPF	RF	CONTATO	WHATSAPP	CPF PAC	EMAIL	PACIENTE	Profissional	Repasse	inicio	…"></textarea>
+      <div class="argos-filtros" style="margin:10px 0 0">
+        <button class="argos-btn primary" id="btn-ler">🔍 Ler planilha</button>
+        <button class="argos-btn ghost" id="btn-limpar">Limpar</button>
+      </div>
+    </div>
+
+    <div class="imp-passo" id="imp-passo2" style="display:none">
+      <h2><span class="n">2</span>Confira o que foi entendido</h2>
+      <div class="imp-chips" id="imp-chips"></div>
+      <ul id="imp-avisos"></ul>
+
+      <div class="imp-abas">
+        <button data-aba="pacientes" class="ativa">Pacientes</button>
+        <button data-aba="acordos">Acordos por profissional</button>
+        <button data-aba="ignorados">Fora do cadastro</button>
+      </div>
+      <div class="argos-filtros" style="margin:0 0 8px">
+        <input type="search" id="imp-busca" class="argos-input" placeholder="Buscar nome…" />
+        <label class="rotulo-inline"><input type="checkbox" id="imp-so-novos" /> só os que ainda não existem</label>
+      </div>
+      <div class="argos-tabela-wrap" id="imp-tabela-wrap">
+        <table class="argos-tabela" id="imp-tabela"></table>
+      </div>
+    </div>
+
+    <div class="imp-passo" id="imp-passo3" style="display:none">
+      <h2><span class="n">3</span>Importar</h2>
+      <div class="argos-form">
+        <div class="checks-lista" style="gap:8px 20px">
+          <label class="linha-check"><input type="checkbox" id="opt-criar" checked /> Criar os pacientes que ainda não existem</label>
+          <label class="linha-check"><input type="checkbox" id="opt-atualizar" checked /> Atualizar contatos dos que já existem</label>
+          <label class="linha-check"><input type="checkbox" id="opt-inativos" checked /> Marcar como inativo quem só tem linhas “inativo”</label>
+          <label class="linha-check"><input type="checkbox" id="opt-acordos" checked /> Guardar os acordos para gerar as dinâmicas depois</label>
+        </div>
+      </div>
+      <div class="argos-aviso" style="display:block; margin-top:10px">
+        Os <b>horários</b> não estão nesta planilha, então nenhuma dinâmica, sessão ou agenda é criada agora.
+        Os acordos ficam guardados e viram dinâmica quando você mandar a planilha de horários.
+      </div>
+      <p class="dica" id="imp-progresso" style="margin:10px 0 0"></p>
+      <div class="argos-modal-acoes" style="justify-content:flex-start; margin-top:10px">
+        <button class="argos-btn primary" id="btn-importar" data-argos-recurso="cadastro_importar">⬆️ Importar</button>
+      </div>
+    </div>
+  </main>
+
+  <script type="module" src="importar.js?v=1"></script>
+  <script type="module" src="argos-zoom.js?v=4"></script>
+</body>
+</html>
