@@ -145,6 +145,7 @@
     .tlx-prod-wrap th.ord { cursor: pointer; user-select: none; white-space: nowrap; }
     .tlx-prod-wrap th.ord:hover { color: var(--hermo-primary); }
     .tlx-sem-equipe { color: var(--hermo-warn); font-size: .72rem; font-weight: 700; }
+    .tlx-btn-alocar { margin-left: 6px; padding: 2px 7px; font-size: .68rem; white-space: nowrap; }
     .tlx-chip-alerta, .tlx-chip-trava {
         font-size: .68rem; font-weight: 700; padding: 3px 8px; border-radius: 20px; white-space: nowrap;
     }
@@ -354,6 +355,64 @@
       </div>
     </section>
     <div class="tlx-tooltip" id="tlx-tooltip"></div>
+
+    <!-- MODAL: alocar direto pela tabela do recorte -->
+    <div class="hermo-modal-overlay" id="ta-overlay">
+      <div class="hermo-modal compacto">
+        <div class="hermo-modal-head">
+          <h2 id="ta-titulo">Alocar no serviço</h2>
+          <button class="fechar" id="ta-fechar" title="Fechar">&times;</button>
+        </div>
+        <div class="hermo-modal-body">
+          <div style="font-size:.76rem;color:var(--hermo-text-dim)" id="ta-contexto"></div>
+          <div class="hermo-field">
+            <label>Equipe (marca todos os membros de uma vez)</label>
+            <select id="ta-equipe"><option value="">— escolher individualmente —</option></select>
+          </div>
+          <div class="hermo-field">
+            <label>Integrantes <span class="req">*</span></label>
+            <div class="lista-check" id="ta-integrantes" style="max-height:210px"></div>
+          </div>
+          <div class="hermo-form-row">
+            <div class="hermo-field">
+              <label>De <span class="req">*</span></label>
+              <input id="ta-de" type="date" />
+            </div>
+            <div class="hermo-field">
+              <label>Até <span class="req">*</span></label>
+              <input id="ta-ate" type="date" />
+            </div>
+          </div>
+          <div class="hermo-form-row">
+            <div class="hermo-field">
+              <label>Período do dia</label>
+              <select id="ta-turno">
+                <option value="dia">Dia inteiro (07h–17h)</option>
+                <option value="manha">Manhã (07h–12h)</option>
+                <option value="tarde">Tarde (13h–17h)</option>
+                <option value="horario">Horário específico…</option>
+              </select>
+            </div>
+            <div class="hermo-field" id="ta-horas" style="display:none">
+              <label>Das / até</label>
+              <div style="display:flex;gap:6px">
+                <input id="ta-hora-ini" type="time" style="flex:1" />
+                <input id="ta-hora-fim" type="time" style="flex:1" />
+              </div>
+            </div>
+          </div>
+          <div style="font-size:.72rem;color:var(--hermo-text-dim)">
+            O período vem preenchido com a parte do serviço que cai dentro do recorte — ajuste se precisar.
+            Conflitos de agenda (outra obra ou ausência) são checados e bloqueiam a alocação.
+          </div>
+          <div id="ta-conflitos" style="display:none;font-size:.78rem;color:var(--hermo-danger);background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.35);border-radius:8px;padding:8px 10px;white-space:pre-line"></div>
+        </div>
+        <div class="hermo-modal-foot">
+          <button class="hermo-btn ghost" id="ta-cancelar">Cancelar</button>
+          <button class="hermo-btn primary" id="ta-confirmar">Alocar</button>
+        </div>
+      </div>
+    </div>
 
     <!-- MODAL: criar planejamento do período -->
     <div class="hermo-modal-overlay" id="plc-overlay">

@@ -14,6 +14,8 @@ const rotuloW = () => window.matchMedia('(max-width: 700px)').matches ? 130 : 21
 
 let obras = [];
 let ausencias = [];
+let integrantes = [];
+let equipes = [];
 let pxIdx = lerLS('hermo_tlx_px', 2);
 let obraFiltro = '';
 let mapa = null, marcadores = [];
@@ -38,6 +40,13 @@ const hoje = () => {
 };
 const fmtData = iso => (iso || '').split('-').reverse().join('/');
 const ddmm = iso => fmtData(iso).slice(0, 5);
+const DOW = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'];
+/** dia da semana da data (vazio se não houver data) */
+const diaSemana = iso => iso ? DOW[new Date(iso + 'T00:00:00').getDay()] : '';
+/** "seg 17/08" — data curta com o dia da semana */
+const ddmmSem = iso => iso ? `${diaSemana(iso)} ${ddmm(iso)}` : '';
+/** "seg, 17/08/2026" — data completa com o dia da semana */
+const dataSem = iso => iso ? `${diaSemana(iso)}, ${fmtData(iso)}` : '';
 const fmtQtd = v => String(Math.round(num(v) * 100) / 100).replace('.', ',');
 const fmtTurno = a => a.turno === 'horario'
     ? `${(a.hora_inicio || '').slice(0, 5)}–${(a.hora_fim || '').slice(0, 5)}`
@@ -71,7 +80,7 @@ function periodosConflitam(a, b) {
 // CARREGAMENTO
 // ============================================================
 async function carregarDados() {
-    const [o, au, pl] = await Promise.all([
+    const [o, au, pl, ie] = await Promise.all([
         sb.from('hermo_obras')
             .select(`id, numero, ano, nome, status, cliente_id, endereco, latitude, longitude,
                 inicio_previsto, prazo, inicio_real, conclusao, observacoes,
@@ -82,7 +91,11 @@ async function carregarDados() {
         sb.from('hermo_ausencias').select('*'),
         sb.from('hermo_planejamentos')
             .select('id, nome, periodo_de, periodo_ate, status, itens:hermo_planejamento_itens(obra_servico_id), alocacoes:hermo_planejamento_alocacoes(alocacao_id)')
-            .in('status', ['confirmado', 'executado'])
+            .in('status', ['confirmado', 'executado']),
+        Promise.all([
+            sb.from('hermo_integrantes').select('id, nome, apelido, ativo, funcao:hermo_funcoes(nome)').order('nome'),
+            sb.from('hermo_equipes').select('id, nome, cor, membros:hermo_equipe_membros(integrante_id)').order('nome')
+        ])
     ]);
     if (o.error) { toast('Erro ao carregar a linha do tempo: ' + o.error.message, true); return false; }
     if (au.error) { toast('Aviso: ausências não carregadas (' + au.error.message + ') — conflitos podem passar.', true); }
@@ -92,6 +105,10 @@ async function carregarDados() {
         dependencias: x.dependencias || []
     }));
     ausencias = au.data || [];
+    const [ri, re] = ie || [];
+    if (ri?.error || re?.error) toast('Aviso: integrantes/equipes não carregados — a alocação pela tabela pode não funcionar.', true);
+    integrantes = (ri?.data || []).filter(i => i.ativo !== false);
+    equipes = (re?.data || []).map(q => ({ ...q, membroIds: (q.membros || []).map(m => m.integrante_id) }));
     // travas: o que já pertence a um planejamento confirmado não se mexe aqui
     planTravaItem = new Map();
     planTravaAloc = new Map();
@@ -300,7 +317,7 @@ function producaoNoIntervalo(de, ate) {
             cod: i.servico?.codigo || '?',
             desc: i.servico?.descricao || '',
             ini, fim,
-            periodo: `${ddmm(ini)}–${ddmm(fim)}`,
+            periodo: `${ddmmSem(ini)} – ${ddmmSem(fim)}`,
             diasDentro: dDentro, diasTotais: dTot,
             dias: `${dDentro}/${dTot}`,
             perc: Math.round(frac * 1000) / 10,
@@ -323,7 +340,8 @@ function linhasProducaoVisiveis(linhas) {
         `${l.cod} ${l.desc} ${l.obra} ${l.obraNome} ${l.nomesEquipe.join(' ')}`.toLowerCase().includes(q)) : [...linhas];
     const { col, dir } = prodOrdem;
     const chave = {
-        servico: l => `${l.cod} ${l.desc}`.toLowerCase(),
+        codigo: l => l.cod.toLowerCase(),
+        servico: l => l.desc.toLowerCase(),
         obra: l => `${l.obra} ${l.obraNome}`.toLowerCase(),
         periodo: l => l.ini,
         dias: l => l.diasDentro,
@@ -355,7 +373,7 @@ function renderProducao() {
     box.style.display = '';
     box.innerHTML = `
     <div class="tlx-prod">
-        <div class="tot">📏 Entre <b>${fmtData(de)}</b> e <b>${fmtData(ate)}</b> (${dias} dia${dias > 1 ? 's' : ''}):
+        <div class="tot">📏 Entre <b>${dataSem(de)}</b> e <b>${dataSem(ate)}</b> (${dias} dia${dias > 1 ? 's' : ''}):
             produção prevista de <b>${fmtMoeda(total)}</b>
             <span style="color:var(--hermo-text-dim);font-size:.74rem">· ${linhas.length} serviço(s) no intervalo${obraFiltro ? ' · obra filtrada' : ''}</span>
         </div>
@@ -370,14 +388,18 @@ function renderProducao() {
         </div>
         ${lista.length === 0 ? '<div style="font-size:.76rem;color:var(--hermo-text-dim)">Nenhum serviço no intervalo com esse filtro.</div>' : `
         <div class="tlx-prod-wrap"><table>
-            <tr>${th('servico', 'Serviço')}${th('obra', 'Obra')}${th('periodo', 'Período')}${th('dias', 'Dias no intervalo')}${th('perc', '%')}${th('equipe', 'Equipe no período')}${th('contratado', 'Contratado')}${th('valor', 'No intervalo')}</tr>
-            ${lista.map(l => `<tr>
-                <td><b>${esc(l.cod)}</b> ${esc(l.desc)}${l.travadoPor ? ' <span title="Em planejamento confirmado">🔒</span>' : ''}</td>
+            <tr>${th('codigo', 'Cód.')}${th('servico', 'Serviço')}${th('obra', 'Obra')}${th('periodo', 'Período')}${th('dias', 'Dias no intervalo')}${th('perc', '%')}${th('equipe', 'Equipe no período')}${th('contratado', 'Contratado')}${th('valor', 'No intervalo')}</tr>
+            ${lista.map((l, idx) => `<tr>
+                <td><b>${esc(l.cod)}</b>${l.travadoPor ? ' <span title="Em planejamento confirmado">🔒</span>' : ''}</td>
+                <td>${esc(l.desc)}</td>
                 <td><b>${esc(l.obra)}</b><br><small style="color:var(--hermo-text-dim)">${esc(l.obraNome)}</small></td>
-                <td>${l.periodo}</td><td>${l.dias}</td><td>${fmtQtd(l.perc)}%</td>
-                <td>${l.equipe.length
-                    ? `<small>${esc(l.nomesEquipe.slice(0, 3).join(', '))}${l.nomesEquipe.length > 3 ? ` +${l.nomesEquipe.length - 3}` : ''}</small>`
-                    : '<span class="tlx-sem-equipe">⚠ ninguém alocado</span>'}</td>
+                <td style="white-space:nowrap">${esc(l.periodo)}</td><td>${l.dias}</td><td>${fmtQtd(l.perc)}%</td>
+                <td>
+                    ${l.equipe.length
+                        ? `<small>${esc(l.nomesEquipe.slice(0, 3).join(', '))}${l.nomesEquipe.length > 3 ? ` +${l.nomesEquipe.length - 3}` : ''}</small>`
+                        : '<span class="tlx-sem-equipe">⚠ ninguém alocado</span>'}
+                    ${l.travadoPor ? '' : `<button class="hermo-btn small ghost tlx-btn-alocar" data-alocar-linha="${idx}" title="Alocar integrantes ou equipe neste serviço, dentro do período">👷 ${l.equipe.length ? '+' : 'Alocar'}</button>`}
+                </td>
                 <td>${fmtMoeda(l.contratado)}</td><td><b>${fmtMoeda(l.valor)}</b></td>
             </tr>`).join('')}
         </table></div>`}
@@ -400,12 +422,121 @@ function renderProducao() {
     box.querySelectorAll('[data-prod-ord]').forEach(t => t.addEventListener('click', () => {
         const c = t.dataset.prodOrd;
         if (prodOrdem.col === c) prodOrdem.dir = prodOrdem.dir === 'asc' ? 'desc' : 'asc';
-        else prodOrdem = { col: c, dir: c === 'servico' || c === 'obra' || c === 'periodo' ? 'asc' : 'desc' };
+        else prodOrdem = { col: c, dir: ['codigo', 'servico', 'obra', 'periodo'].includes(c) ? 'asc' : 'desc' };
         gravarLS('hermo_tlx_prod_ord', prodOrdem);
         renderProducao();
     }));
     // planeja o que está NA TELA (respeitando o filtro) — o rótulo diz quantos
     $('tlx-planejar')?.addEventListener('click', () => abrirPlanejamento(de, ate, lista));
+    box.querySelectorAll('[data-alocar-linha]').forEach(b => b.addEventListener('click',
+        () => abrirAlocacaoRecorte(lista[parseInt(b.dataset.alocarLinha)], de, ate)));
+}
+
+// ============================================================
+// ALOCAR PELA TABELA DO RECORTE (ta-)
+// ============================================================
+let taAlvo = null;              // { linha, de, ate }
+let taMarcados = new Set();
+
+function abrirAlocacaoRecorte(linha, de, ate) {
+    if (!linha) return;
+    if (linha.travadoPor) {
+        toast(`Serviço ${rotuloTrava(linha.travadoPor)} — reabra o planejamento para mudar a equipe.`, true);
+        return;
+    }
+    if (!integrantes.length) { toast('Nenhum integrante ativo cadastrado.', true); return; }
+    taAlvo = { linha, de, ate };
+    taMarcados = new Set();
+    $('ta-titulo').textContent = `Alocar — ${linha.cod} ${linha.desc}`;
+    $('ta-contexto').innerHTML =
+        `${esc(linha.obra)} — ${esc(linha.obraNome)} · serviço previsto ${esc(linha.periodo)}` +
+        (linha.equipe.length ? `<br>👷 já no período: ${esc(linha.nomesEquipe.join(', '))}` : '');
+    // sugestão: interseção do serviço com o recorte (o que está na tela)
+    const ini = linha.ini > de ? linha.ini : de;
+    const fim = linha.fim < ate ? linha.fim : ate;
+    $('ta-de').value = ini;
+    $('ta-ate').value = fim;
+    $('ta-turno').value = 'dia';
+    $('ta-horas').style.display = 'none';
+    $('ta-conflitos').style.display = 'none';
+    const selEq = $('ta-equipe');
+    selEq.innerHTML = '<option value="">— escolher individualmente —</option>';
+    equipes.forEach(q => {
+        const o = document.createElement('option');
+        o.value = q.id;
+        o.textContent = `${q.nome} (${q.membroIds.length} membros)`;
+        selEq.appendChild(o);
+    });
+    renderTaIntegrantes();
+    $('ta-overlay').classList.add('aberto');
+}
+
+function renderTaIntegrantes() {
+    $('ta-integrantes').innerHTML = integrantes.map(i => `
+        <label class="lc-item">
+            <input type="checkbox" data-ta="${i.id}" ${taMarcados.has(i.id) ? 'checked' : ''} />
+            <div class="txt"><b>${esc(i.nome)}</b>${i.apelido ? ' (' + esc(i.apelido) + ')' : ''}
+                <small>${esc(i.funcao?.nome || 'sem função')}</small>
+            </div>
+        </label>`).join('');
+    $('ta-integrantes').querySelectorAll('[data-ta]').forEach(c => c.addEventListener('change', e => {
+        if (e.target.checked) taMarcados.add(e.target.dataset.ta);
+        else taMarcados.delete(e.target.dataset.ta);
+    }));
+}
+
+async function confirmarAlocacaoRecorte() {
+    if (!taAlvo) return;
+    const ids = [...taMarcados];
+    if (!ids.length) { toast('Marque ao menos um integrante (ou escolha uma equipe).', true); return; }
+    const ini = $('ta-de').value, fim = $('ta-ate').value;
+    if (!ini || !fim) { toast('Informe o período da alocação.', true); return; }
+    if (fim < ini) { toast('A data final não pode ser antes da inicial.', true); return; }
+    const turno = $('ta-turno').value;
+    const hi = $('ta-hora-ini').value || null, hf = $('ta-hora-fim').value || null;
+    if (turno === 'horario' && (!hi || !hf || hf <= hi)) { toast('Informe um horário válido (início < fim).', true); return; }
+
+    const btn = $('ta-confirmar');
+    btn.disabled = true;
+    try {
+        // conflito por integrante, com consulta fresca (mesma régua do resto do app)
+        const conflitos = [];
+        for (const id of ids) {
+            const res = await conflitosFrescos(
+                { id: null, integrante_id: id, turno, hora_inicio: hi, hora_fim: hf }, ini, fim);
+            if (res.erro) { toast('Não deu para checar conflitos: ' + res.erro, true); return; }
+            res.conflitos.forEach(c => {
+                const nome = integrantes.find(x => x.id === id)?.nome || 'Integrante';
+                conflitos.push(`• ${nome}: ${c.descr}`);
+            });
+        }
+        if (conflitos.length) {
+            const box = $('ta-conflitos');
+            box.style.display = '';
+            box.textContent = '🚫 Conflito de agenda — ajuste o período, o turno ou as pessoas:\n' + conflitos.join('\n');
+            return;
+        }
+        const eq = equipes.find(q => q.id === $('ta-equipe').value);
+        const linhas = ids.map(id => ({
+            obra_servico_id: taAlvo.linha.itemId,
+            integrante_id: id,
+            equipe_id: (eq && eq.membroIds.includes(id)) ? eq.id : null,   // etiqueta só para membro real
+            data_inicio: ini, data_fim: fim, turno,
+            hora_inicio: turno === 'horario' ? hi : null,
+            hora_fim: turno === 'horario' ? hf : null
+        }));
+        const { error } = await sb.from('hermo_alocacoes').insert(linhas);
+        if (error) throw error;
+        $('ta-overlay').classList.remove('aberto');
+        taAlvo = null;
+        await carregarDados();
+        render();
+        toast(`👷 ${ids.length} alocação(ões) criada(s) em ${ddmmSem(ini)} – ${ddmmSem(fim)} — sem conflitos.`);
+    } catch (e) {
+        toast('Erro ao alocar: ' + e.message, true);
+    } finally {
+        btn.disabled = false;
+    }
 }
 
 // ============================================================
@@ -1332,6 +1463,19 @@ $('tlx-undo').addEventListener('click', desfazerUltimo);
 $('plc-fechar').addEventListener('click', () => { $('plc-overlay').classList.remove('aberto'); planDraft = null; });
 $('plc-cancelar').addEventListener('click', () => { $('plc-overlay').classList.remove('aberto'); planDraft = null; });
 $('plc-confirmar').addEventListener('click', confirmarPlanejamento);
+$('ta-fechar').addEventListener('click', () => { $('ta-overlay').classList.remove('aberto'); taAlvo = null; });
+$('ta-cancelar').addEventListener('click', () => { $('ta-overlay').classList.remove('aberto'); taAlvo = null; });
+$('ta-confirmar').addEventListener('click', confirmarAlocacaoRecorte);
+$('ta-turno').addEventListener('change', () => {
+    $('ta-horas').style.display = $('ta-turno').value === 'horario' ? '' : 'none';
+});
+$('ta-equipe').addEventListener('change', () => {
+    const q = equipes.find(x => x.id === $('ta-equipe').value);
+    if (!q) return;
+    taMarcados = new Set(q.membroIds.filter(id => integrantes.some(i => i.id === id)));
+    renderTaIntegrantes();
+    toast(`Equipe "${q.nome}" marcada (${taMarcados.size} ativo(s)).`);
+});
 $('tlx-regua2').addEventListener('click', () => {
     if (reguaB) {
         reguaB = null;
