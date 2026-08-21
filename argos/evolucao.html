@@ -38,7 +38,7 @@
 
     /* ---------- painel de gráficos na própria página ---------- */
     #ev-painel { margin-bottom: 18px; }
-    .ev-painel-topo { display: flex; align-items: center; gap: 10px; }
+    .ev-painel-topo { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 6px; }
     #ev-graficos-pagina { display: grid; grid-template-columns: repeat(auto-fit, minmax(290px, 1fr)); gap: 10px; }
     #ev-graficos-pagina svg { background: var(--argos-bg); border: 1px solid var(--argos-border);
       border-radius: var(--argos-radius); }
@@ -135,7 +135,8 @@
     <section id="ev-painel">
       <div class="ev-painel-topo">
         <h2 class="form-secao" style="margin:0">📊 Gráficos desta avaliação</h2>
-        <button class="argos-btn small ghost" id="btn-graficos">▾ ocultar</button>
+        <button class="argos-btn small ghost" id="btn-graficos">▸ mostrar</button>
+        <span class="dica" style="margin:0">os radares se refazem conforme você preenche</span>
       </div>
       <p class="dica" id="ev-graf-dica"></p>
       <div id="ev-graficos-pagina"></div>
@@ -188,7 +189,7 @@
     </div>
   </div>
 
-  <script type="module" src="evolucao.js?v=3"></script>
+  <script type="module" src="evolucao.js?v=4"></script>
   <script type="module" src="argos-zoom.js?v=4"></script>
 </body>
 </html>
