@@ -79,6 +79,20 @@
         font-size: .74rem; pointer-events: none; display: none; white-space: nowrap;
         box-shadow: 0 6px 18px rgba(0,0,0,.4);
     }
+    .tlxc-conflito {
+        border: 1px solid rgba(239,68,68,.4); border-radius: 10px; padding: 10px 12px;
+        background: rgba(239,68,68,.06); font-size: .8rem;
+        display: flex; flex-direction: column; gap: 6px;
+    }
+    .tlxc-conflito .quem { font-weight: 700; }
+    .tlxc-conflito .lado { font-size: .74rem; color: var(--hermo-text-dim); }
+    .tlxc-conflito label {
+        display: flex; align-items: center; gap: 7px; font-size: .76rem; cursor: pointer;
+        background: var(--hermo-surface-2); border: 1px solid var(--hermo-border);
+        border-radius: 8px; padding: 6px 9px;
+    }
+    .tlxc-conflito label.desabilitada { opacity: .5; cursor: not-allowed; }
+    .tlxc-conflito input[type="radio"] { accent-color: var(--hermo-primary); }
     @media (max-width: 700px) { .tlx-rotulo { flex-basis: 130px; width: 130px; } }
   </style>
   <style>
@@ -151,15 +165,36 @@
       </div>
       <div id="tlx-corpo" style="display:flex;flex-direction:column;gap:10px">
         <div class="tlx-dica">
-          Arraste a <b>barra</b> de um serviço para mover o período, ou as <b>bordas</b> para mudar início/fim —
-          o cronograma da obra recalcula sozinho (cadeias, prazos e regras valem aqui também).
-          Arraste as faixas menores para mover a <b>alocação</b> dos integrantes (a agenda deles acompanha; conflitos são bloqueados).
+          Arraste a <b>barra</b> de um serviço para mover o período (as <b>alocações vão junto</b>),
+          ou as <b>bordas</b> para mudar início/fim — o cronograma da obra recalcula sozinho
+          (cadeias, prazos e regras valem aqui também). Arraste as faixas menores para mover a
+          <b>alocação</b> dos integrantes (a agenda deles acompanha). Se alguém ficar em dois lugares
+          ao mesmo tempo — avulso ou via equipe —, um painel lista os conflitos e deixa você
+          <b>resolver</b>: tirar do outro serviço, tirar deste, ou desfazer o arrasto.
         </div>
         <div id="tlx-mapa" style="display:none"></div>
         <div class="tlx-wrap" id="tlx-wrap"><div class="tlx-grade" id="tlx-grade"></div></div>
       </div>
     </section>
     <div class="tlx-tooltip" id="tlx-tooltip"></div>
+
+    <!-- MODAL: resolução de conflitos de agenda gerados por um arrasto -->
+    <div class="hermo-modal-overlay" id="tlxc-overlay">
+      <div class="hermo-modal compacto">
+        <div class="hermo-modal-head">
+          <h2>⚠️ Conflito de agenda</h2>
+          <button class="fechar" id="tlxc-fechar" title="Fechar (desfaz o arrasto)">&times;</button>
+        </div>
+        <div class="hermo-modal-body">
+          <div style="font-size:.78rem;color:var(--hermo-text-dim)" id="tlxc-intro"></div>
+          <div id="tlxc-lista" style="display:flex;flex-direction:column;gap:10px"></div>
+        </div>
+        <div class="hermo-modal-foot">
+          <button class="hermo-btn ghost" id="tlxc-desfazer">↩ Desfazer o arrasto</button>
+          <button class="hermo-btn primary" id="tlxc-aplicar">Aplicar resolução</button>
+        </div>
+      </div>
+    </div>
 
     <div class="hermo-page-head">
       <h1>Catálogo de Serviços</h1>
