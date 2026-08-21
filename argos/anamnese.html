@@ -59,6 +59,10 @@
       background: var(--argos-bg); border: 1px solid var(--argos-border); color: var(--argos-text);
       font-family: inherit; }
     .an-mapa-linha select.vazio { border-color: var(--argos-warn); }
+    #rel-opcoes { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      gap: 7px 16px; margin: 10px 0 0; }
+    #rel-opcoes label { margin: 0; }
+    #rel-opcoes label.oculto { display: none; }
     @media (max-width: 640px) { .an-perguntas, .an-mapa-linhas { grid-template-columns: 1fr; } }
   </style>
 </head>
@@ -79,7 +83,7 @@
       <div class="argos-filtros" style="margin:0">
         <button class="argos-btn ghost" id="btn-expandir">⊞ Expandir tudo</button>
         <button class="argos-btn ghost" id="btn-recolher">⊟ Recolher tudo</button>
-        <button class="argos-btn ghost" id="btn-imprimir">🖨️ Imprimir roteiro</button>
+        <button class="argos-btn ghost" id="btn-imprimir" data-argos-recurso="anamnese_relatorio">📄 Relatório / PDF</button>
         <span style="flex:1"></span>
         <button class="argos-btn" id="btn-salvar" data-argos-recurso="anamnese_ficha">💾 Salvar</button>
         <button class="argos-btn primary" id="btn-gerar" data-argos-recurso="anamnese_gerar_avaliacao">📈 Gerar avaliação inicial</button>
@@ -98,6 +102,40 @@
       <button class="argos-btn primary" id="btn-gerar2" data-argos-recurso="anamnese_gerar_avaliacao">📈 Gerar avaliação inicial</button>
     </div>
   </main>
+
+  <!-- ============ MODAL: DOCUMENTO DA ANAMNESE ============ -->
+  <div class="argos-modal-fundo" id="modal-relatorio">
+    <div class="argos-modal">
+      <div class="argos-modal-topo">
+        <h2>📄 Documento da anamnese</h2>
+        <button class="argos-modal-x" data-fechar>×</button>
+      </div>
+      <div class="argos-form">
+        <label>Tipo de documento
+          <select id="rel-tipo">
+            <option value="relatorio">Relatório da anamnese — texto corrido</option>
+            <option value="roteiro">Roteiro em branco para a entrevista</option>
+          </select>
+        </label>
+        <p class="dica" id="rel-explica"></p>
+        <div class="checks-lista" id="rel-opcoes">
+          <label class="linha-check"><input type="checkbox" id="rel-identificacao" checked /> Dados de identificação</label>
+          <label class="linha-check" data-so="relatorio"><input type="checkbox" id="rel-perguntas" /> Mostrar as perguntas na íntegra</label>
+          <label class="linha-check"><input type="checkbox" id="rel-mapa" checked /> Síntese das áreas avaliadas</label>
+          <label class="linha-check" data-so="relatorio"><input type="checkbox" id="rel-vazios" /> Incluir itens sem anotação</label>
+          <label class="linha-check"><input type="checkbox" id="rel-assinatura" checked /> Espaço para assinaturas</label>
+        </div>
+        <label id="rel-sintese-campo" style="margin-top:14px">Considerações finais do terapeuta
+          <textarea id="rel-sintese" rows="5" placeholder="Impressão geral, hipóteses de trabalho, encaminhamentos…"></textarea>
+        </label>
+        <p class="dica">As considerações ficam gravadas na ficha e fecham o relatório. O documento abre numa aba nova já com a caixa de impressão — escolha <b>Salvar como PDF</b>.</p>
+      </div>
+      <div class="argos-modal-acoes">
+        <button type="button" class="argos-btn ghost" data-fechar>Cancelar</button>
+        <button type="button" class="argos-btn primary" id="btn-gerar-doc">Gerar documento</button>
+      </div>
+    </div>
+  </div>
 
   <!-- ============ MODAL: GERAR AVALIAÇÃO INICIAL ============ -->
   <div class="argos-modal-fundo" id="modal-gerar">
@@ -125,7 +163,7 @@
     </div>
   </div>
 
-  <script type="module" src="anamnese.js?v=2"></script>
+  <script type="module" src="anamnese.js?v=3"></script>
   <script type="module" src="argos-zoom.js?v=4"></script>
 </body>
 </html>
