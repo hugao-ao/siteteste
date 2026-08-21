@@ -18,6 +18,8 @@ let pxIdx = lerLS('hermo_tlx_px', 2);
 let obraFiltro = '';
 let mapa = null, marcadores = [];
 let intervalo = null;             // {min, max, dias}
+let reguaA = null;                // data da régua vermelha (padrão: hoje) — arrastável
+let reguaB = null;                // data da 2ª régua (null = desligada)
 
 function lerLS(chave, padrao) {
     try { const v = JSON.parse(localStorage.getItem(chave)); return v == null ? padrao : v; }
@@ -32,6 +34,7 @@ const hoje = () => {
 };
 const fmtData = iso => (iso || '').split('-').reverse().join('/');
 const ddmm = iso => fmtData(iso).slice(0, 5);
+const fmtQtd = v => String(Math.round(num(v) * 100) / 100).replace('.', ',');
 function addDias(iso, n) {
     const [y, m, d] = iso.split('-').map(Number);
     const dt = new Date(y, m - 1, d + n);
@@ -106,6 +109,11 @@ function calcularIntervalo() {
     const h = hoje();
     if (h < min) min = h;
     if (h > max) max = h;
+    [reguaA, reguaB].forEach(d => {   // réguas sempre visíveis no intervalo
+        if (!d) return;
+        if (d < min) min = d;
+        if (d > max) max = d;
+    });
     min = addDias(min, -3);
     max = addDias(max, 7);
     intervalo = { min, max, dias: difDias(min, max) + 1 };
@@ -160,7 +168,20 @@ function render() {
             fundo += `<div class="tlx-fundo-fds" style="left:${rotW + d * px}px;width:${px}px"></div>`;
         }
     }
-    fundo += `<div class="tlx-hoje" style="left:${rotW + xDe(hoje())}px" title="hoje"></div>`;
+    // faixa entre as réguas (quando a 2ª está ligada) + as duas réguas arrastáveis
+    if (!reguaA) reguaA = hoje();
+    if (reguaB) {
+        const e = reguaA < reguaB ? reguaA : reguaB;
+        const d = reguaA < reguaB ? reguaB : reguaA;
+        fundo += `<div class="tlx-faixa-sel" style="left:${rotW + xDe(e)}px;width:${(difDias(e, d) + 1) * px}px"></div>`;
+    }
+    const rotA = reguaA === hoje() ? 'hoje' : fmtData(reguaA).slice(0, 5);
+    fundo += `<div class="tlx-hoje" data-regua="A" data-rot="${rotA}" style="left:${rotW + xDe(reguaA)}px"
+        title="Régua ${reguaA === hoje() ? '(hoje)' : fmtData(reguaA)} — arraste para medir; o botão Hoje devolve ao dia de hoje"></div>`;
+    if (reguaB) {
+        fundo += `<div class="tlx-hoje b" data-regua="B" data-rot="${fmtData(reguaB).slice(0, 5)}" style="left:${rotW + xDe(reguaB)}px"
+            title="2ª régua (${fmtData(reguaB)}) — arraste para medir a produção no intervalo"></div>`;
+    }
 
     // linhas
     const linhas = [];
@@ -213,7 +234,115 @@ function render() {
 
     grade.innerHTML = fundo + escala + linhas.join('');
     ligarArrastos();
+    ligarArrastoReguas();
+    renderProducao();
     atualizarMapa();
+}
+
+// ============================================================
+// PRODUÇÃO ENTRE AS RÉGUAS (rateio proporcional aos dias)
+// ============================================================
+/**
+ * Valor "produzido" no intervalo entre as réguas: para cada serviço com datas,
+ * a fração = dias do serviço DENTRO do intervalo ÷ dias totais do serviço
+ * (contagem inclusiva nas duas pontas), aplicada ao valor contratado do item.
+ */
+function producaoNoIntervalo(de, ate) {
+    const linhas = [];
+    let total = 0;
+    obrasVisiveis().forEach(o => itensDatados(o).forEach(i => {
+        const ini = i.inicio_previsto, fim = i.fim_previsto;
+        if (fim < de || ini > ate) return;             // fora da janela
+        const dTot = difDias(ini, fim) + 1;            // dias do serviço (inclusivo)
+        const sIni = ini > de ? ini : de;
+        const sFim = fim < ate ? fim : ate;
+        const dDentro = difDias(sIni, sFim) + 1;       // dias dentro da janela
+        const frac = dTot > 0 ? Math.min(1, dDentro / dTot) : 0;
+        const valor = num(i.total) * frac;
+        total += valor;
+        linhas.push({
+            obra: fmtCodObra(o),
+            cod: i.servico?.codigo || '?',
+            desc: i.servico?.descricao || '',
+            periodo: `${ddmm(ini)}–${ddmm(fim)}`,
+            dias: `${dDentro}/${dTot}`,
+            perc: Math.round(frac * 1000) / 10,
+            contratado: num(i.total),
+            valor
+        });
+    }));
+    linhas.sort((a, b) => b.valor - a.valor);
+    return { linhas, total };
+}
+
+function renderProducao() {
+    const box = $('tlx-producao');
+    if (!reguaB || !reguaA) { box.style.display = 'none'; box.innerHTML = ''; return; }
+    const de = reguaA < reguaB ? reguaA : reguaB;
+    const ate = reguaA < reguaB ? reguaB : reguaA;
+    const { linhas, total } = producaoNoIntervalo(de, ate);
+    const dias = difDias(de, ate) + 1;
+    box.style.display = '';
+    box.innerHTML = `
+    <div class="tlx-prod">
+        <div class="tot">📏 Entre <b>${fmtData(de)}</b> e <b>${fmtData(ate)}</b> (${dias} dia${dias > 1 ? 's' : ''}):
+            produção prevista de <b>${fmtMoeda(total)}</b>
+            <span style="color:var(--hermo-text-dim);font-size:.74rem">· ${linhas.length} serviço(s) no intervalo${obraFiltro ? ' · obra filtrada' : ''}</span>
+        </div>
+        ${linhas.length === 0 ? '<div style="font-size:.76rem;color:var(--hermo-text-dim)">Nenhum serviço programado nesse intervalo.</div>' : `
+        <div class="tlx-prod-wrap"><table>
+            <tr><th>Serviço</th><th>Período</th><th>Dias no intervalo</th><th>%</th><th>Contratado</th><th>No intervalo</th></tr>
+            ${linhas.map(l => `<tr>
+                <td><b>${esc(l.cod)}</b> ${esc(l.desc)}<br><small style="color:var(--hermo-text-dim)">${esc(l.obra)}</small></td>
+                <td>${l.periodo}</td><td>${l.dias}</td><td>${fmtQtd(l.perc)}%</td>
+                <td>${fmtMoeda(l.contratado)}</td><td><b>${fmtMoeda(l.valor)}</b></td>
+            </tr>`).join('')}
+        </table></div>`}
+        <div style="font-size:.7rem;color:var(--hermo-text-dim)">
+            Rateio proporcional aos dias de execução previstos (valor contratado do serviço × dias dentro do intervalo ÷ dias totais).
+        </div>
+    </div>`;
+}
+
+// ---------- arrastar as réguas ----------
+function ligarArrastoReguas() {
+    $('tlx-grade').querySelectorAll('[data-regua]').forEach(el => {
+        el.addEventListener('pointerdown', e => {
+            e.preventDefault();
+            e.stopPropagation();
+            try { el.setPointerCapture(e.pointerId); } catch (err) {}
+            const qual = el.dataset.regua;
+            const px = pxDia();
+            const x0 = e.clientX;
+            const base = qual === 'A' ? reguaA : reguaB;
+            const left0 = parseFloat(el.style.left);
+            let nova = base;
+            const mover = ev => {
+                const d = Math.round((ev.clientX - x0) / px);
+                nova = addDias(base, d);
+                if (nova < intervalo.min) nova = intervalo.min;
+                if (nova > intervalo.max) nova = intervalo.max;
+                el.style.left = (left0 + difDias(base, nova) * px) + 'px';
+                el.dataset.rot = fmtData(nova).slice(0, 5);
+                mostrarTooltip(ev, `📏 ${fmtData(nova)}`);
+            };
+            const limpar = () => {
+                el.removeEventListener('pointermove', mover);
+                el.removeEventListener('pointerup', soltar);
+                el.removeEventListener('pointercancel', limpar);
+                esconderTooltip();
+            };
+            const soltar = () => {
+                limpar();
+                if (qual === 'A') reguaA = nova; else reguaB = nova;
+                gravarLS('hermo_tlx_reguas', { a: reguaA, b: reguaB });
+                render();
+            };
+            el.addEventListener('pointermove', mover);
+            el.addEventListener('pointerup', soltar);
+            el.addEventListener('pointercancel', limpar);
+        });
+    });
 }
 
 function popularFiltro() {
@@ -745,7 +874,25 @@ $('tlx-zoom-mais').addEventListener('click', () => {
 $('tlx-zoom-menos').addEventListener('click', () => {
     if (pxIdx > 0) { pxIdx--; gravarLS('hermo_tlx_px', pxIdx); render(); }
 });
-$('tlx-hoje-btn').addEventListener('click', irParaHoje);
+$('tlx-hoje-btn').addEventListener('click', () => {
+    reguaA = hoje();                       // devolve a régua vermelha ao momento atual
+    gravarLS('hermo_tlx_reguas', { a: reguaA, b: reguaB });
+    render();
+    irParaHoje();
+});
+$('tlx-regua2').addEventListener('click', () => {
+    if (reguaB) {
+        reguaB = null;
+        toast('2ª régua removida.');
+    } else {
+        // nasce 7 dias à frente da régua A (dentro do intervalo visível)
+        reguaB = addDias(reguaA || hoje(), 7);
+        if (intervalo && reguaB > intervalo.max) reguaB = intervalo.max;
+        toast('2ª régua ligada — arraste as réguas para medir a produção do intervalo.');
+    }
+    gravarLS('hermo_tlx_reguas', { a: reguaA, b: reguaB });
+    render();
+});
 $('tlx-obra').addEventListener('change', () => { obraFiltro = $('tlx-obra').value; render(); });
 $('tlx-mapa-toggle').addEventListener('click', () => {
     // com a linha do tempo recolhida, abre o corpo junto (mapa em container oculto tem tamanho 0)
@@ -765,16 +912,28 @@ $('tlx-toggle').addEventListener('click', () => {
     if (mostrar) { render(); irParaHoje(); }
 });
 
+// a aba "Execução no tempo" pode estar oculta no load — ao aparecer, mede e desenha
+window.addEventListener('tlx-visivel', () => {
+    if ($('tlx-corpo').style.display === 'none') return;
+    render();
+    irParaHoje();
+    if ($('tlx-mapa').style.display !== 'none') setTimeout(atualizarMapa, 60);
+});
+
 (async () => {
     if (lerLS('hermo_tlx_oculto', false)) {
         $('tlx-corpo').style.display = 'none';
         $('tlx-toggle').textContent = '⊞';
     }
     if (lerLS('hermo_tlx_mapa', false)) $('tlx-mapa').style.display = '';
+    const rg = lerLS('hermo_tlx_reguas', null);
+    reguaA = rg?.a || hoje();
+    reguaB = rg?.b || null;
     if (await carregarDados()) {
         if ($('tlx-corpo').style.display !== 'none') {
             render();
-            irParaHoje();
+            // só rola até hoje se a aba já estiver visível (senão as medidas são 0)
+            if ($('tlx-secao').style.display !== 'none') irParaHoje();
         }
     }
 })();
