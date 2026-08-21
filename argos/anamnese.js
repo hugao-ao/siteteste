@@ -7,9 +7,10 @@
 
 import { sb, toast, esc, abrirModal, fecharModal } from './argos-common.js';
 import { carregarPermissoes } from './argos-permissoes.js';
-import { hojeISO } from './argos-recorrencia.js';
-import { ANAMNESE_BLOCOS, ANAMNESE_TOTAL } from './argos-anamnese.js';
+import { hojeISO, formataBR, paraData } from './argos-recorrencia.js';
+import { ANAMNESE_BLOCOS, ANAMNESE_TOTAL, ANAMNESE_CHAVES, ANAMNESE_SINTESE } from './argos-anamnese.js';
 import { IMPORTANCIAS } from './argos-evolucao.js';
+import { documento, abrirDocumento, secao, relato, ficha, pauta, assinaturas } from './argos-relatorio.js';
 
 let perm = { pode: () => true, aplicarVisibilidade: () => {}, master: true };
 let paciente = null, catalogo = [], respostas = {}, mapa = {};
@@ -103,7 +104,8 @@ function totaisMapa() {
 }
 
 function atualizarStatus() {
-    const anotadas = Object.values(respostas).filter(v => (v || '').trim()).length;
+    const anotadas = Object.entries(respostas)
+        .filter(([k, v]) => ANAMNESE_CHAVES.has(k) && (v || '').trim()).length;
     const m = totaisMapa();
     const pct = ANAMNESE_TOTAL ? Math.round((anotadas / ANAMNESE_TOTAL) * 100) : 0;
     document.getElementById('an-barra').style.width = pct + '%';
@@ -129,6 +131,19 @@ document.getElementById('an-blocos').addEventListener('input', (e) => {
     if (e.target.dataset.pergunta == null) return;
     respostas[e.target.dataset.pergunta] = e.target.value;
     sujo = true;
+    // marca a caixa e atualiza o contador do bloco sem perder o foco
+    const caixa = e.target.closest('.an-pergunta');
+    if (caixa) caixa.classList.toggle('respondida', !!e.target.value.trim());
+    const bloco = e.target.closest('[data-bloco]');
+    const b = bloco && ANAMNESE_BLOCOS.find(x => x.chave === bloco.dataset.bloco);
+    if (b) {
+        const feitas = b.perguntas.filter(p => (respostas[p.chave] || '').trim()).length;
+        const chip = bloco.querySelector('.an-chip');
+        if (chip) {
+            chip.textContent = `${feitas}/${b.perguntas.length} anotadas`;
+            chip.classList.toggle('ok', feitas === b.perguntas.length);
+        }
+    }
     atualizarStatus();
 });
 document.getElementById('an-blocos').addEventListener('change', (e) => {
@@ -157,9 +172,7 @@ document.getElementById('btn-expandir').addEventListener('click', () => {
     ANAMNESE_BLOCOS.forEach(b => abertos.add(b.chave)); render();
 });
 document.getElementById('btn-recolher').addEventListener('click', () => { abertos.clear(); render(); });
-document.getElementById('btn-imprimir').addEventListener('click', () => {
-    ANAMNESE_BLOCOS.forEach(b => abertos.add(b.chave)); render(); setTimeout(() => window.print(), 120);
-});
+document.getElementById('btn-imprimir').addEventListener('click', abrirRelatorio);
 
 // ============================================================
 // PERSISTÊNCIA
@@ -187,6 +200,154 @@ async function salvar(silencioso) {
 }
 document.getElementById('btn-salvar').addEventListener('click', () => salvar(false));
 document.getElementById('btn-salvar2').addEventListener('click', () => salvar(false));
+
+// ============================================================
+// DOCUMENTO: RELATÓRIO DA ANAMNESE / ROTEIRO DA ENTREVISTA
+// ============================================================
+function idadeEm(nascimento, refISO) {
+    if (!nascimento) return '';
+    const n = paraData(nascimento), r = paraData(refISO);
+    let anos = r.getFullYear() - n.getFullYear();
+    let meses = r.getMonth() - n.getMonth();
+    if (r.getDate() < n.getDate()) meses--;
+    if (meses < 0) { anos--; meses += 12; }
+    if (anos < 0) return '';
+    const pm = meses ? `${meses} ${meses === 1 ? 'mês' : 'meses'}` : '';
+    if (!anos) return pm || 'recém-nascido';
+    return `${anos} ano${anos > 1 ? 's' : ''}${pm ? ' e ' + pm : ''}`;
+}
+
+const juntar = (...xs) => xs.map(x => (x || '').trim()).filter(Boolean);
+
+function fichaDoPaciente(dataRef) {
+    const p = paciente || {};
+    const idade = idadeEm(p.nascimento, dataRef);
+    const contato = (nome, prof, fone) => juntar(nome, prof, fone).join(' · ');
+    return ficha([
+        ['Paciente', p.nome],
+        ['Data da anamnese', formataBR(dataRef)],
+        ['Nascimento', p.nascimento ? `${formataBR(p.nascimento)}${idade ? ` — ${idade}` : ''}` : ''],
+        ['Escola', juntar(p.colegio, p.serie, p.turno).join(' · ')],
+        ['Mãe', contato(p.mae_nome, p.mae_profissao, p.mae_fone)],
+        ['Pai', contato(p.pai_nome, p.pai_profissao, p.pai_fone)],
+        ['Responsável financeiro', p.responsavel_financeiro],
+        ['Indicação', p.indicacao]
+    ]);
+}
+
+/** Uma frase por área: subárea e a opção que o terapeuta marcou. */
+function sinteseDasAreas() {
+    return catalogo.map(a => {
+        const itens = a.subareas.filter(s => mapa[s.id]).map(s => {
+            const op = s.opcoes.find(o => o.id === mapa[s.id]);
+            return `${s.nome}: ${op ? op.nome.replace(/\.$/, '') : '—'}`;
+        });
+        return itens.length ? relato(a.nome, itens.join('; ') + '.') : '';
+    }).join('');
+}
+
+/** Lista de opções de cada subárea, para o terapeuta marcar no papel. */
+function checklistDasAreas() {
+    return catalogo.map(a => {
+        const itens = a.subareas.map(s =>
+            relato(s.nome, s.opcoes.map(o => o.nome.replace(/\.$/, '')).join('  ·  '))).join('');
+        return itens ? `<h3 class="subsec">${esc(a.nome)}</h3>${itens}` : '';
+    }).join('');
+}
+
+function corpoRelatorio(o) {
+    const secoes = ANAMNESE_BLOCOS.map(b => {
+        const itens = b.perguntas.filter(p => o.vazios || (respostas[p.chave] || '').trim());
+        let html = itens.map(p => relato(p.topico, respostas[p.chave], o.perguntas ? p.texto : '')).join('');
+        if (b.chave === 'identificacao' && (paciente || {}).observacoes) {
+            html += relato('Observações do cadastro', paciente.observacoes);
+        }
+        return secao(b.titulo, html);
+    }).join('');
+    const sintese = (respostas[ANAMNESE_SINTESE] || '').trim();
+    return secoes
+        + (o.mapa ? secao('Síntese das áreas avaliadas', sinteseDasAreas()) : '')
+        + (sintese ? secao('Considerações finais do terapeuta', relato('', sintese)) : '');
+}
+
+function corpoRoteiro(o) {
+    const secoes = ANAMNESE_BLOCOS.map(b => secao(b.titulo,
+        `<p class="relato intro">${esc(b.intro)}</p>`
+        + b.perguntas.map(p => relato(p.topico, '', p.texto, '') + pauta(3)).join('')
+    )).join('');
+    return secoes + (o.mapa ? secao('Áreas avaliadas — marque a opção que descreve o paciente',
+        checklistDasAreas()) : '');
+}
+
+function opcoesDoDocumento() {
+    const ck = id => document.getElementById(id).checked;
+    return {
+        tipo: document.getElementById('rel-tipo').value,
+        identificacao: ck('rel-identificacao'),
+        perguntas: ck('rel-perguntas'),
+        mapa: ck('rel-mapa'),
+        vazios: ck('rel-vazios'),
+        assinatura: ck('rel-assinatura')
+    };
+}
+
+function montarDocumento(o) {
+    const roteiro = o.tipo === 'roteiro';
+    const dataRef = (paciente || {}).anamnese_data || hojeISO();
+    const nome = (paciente || {}).nome || 'Paciente';
+    const titulo = `${roteiro ? 'Roteiro de anamnese' : 'Ficha de anamnese'} — ${nome}`;
+    const cabecalho = `
+      <h1>${roteiro ? 'Roteiro de Anamnese' : 'Ficha de Anamnese'}</h1>
+      <p class="sub">${esc(nome)}</p>
+      <p class="linhafina">${roteiro
+        ? 'Roteiro para conduzir a entrevista inicial com o paciente ou seus responsáveis.'
+        : 'Relatório da entrevista inicial conduzida com o paciente ou seus responsáveis.'}</p>
+      ${o.identificacao ? fichaDoPaciente(dataRef) : ''}`;
+    const rodape = (o.assinatura ? assinaturas(['Terapeuta responsável', 'Responsável pelo(a) paciente']) : '')
+        + `<div class="rodape">Documento de uso clínico e sigiloso, destinado ao prontuário do paciente.
+           Gerado pelo Argos Gestão em ${esc(formataBR(hojeISO()))}.</div>`;
+    return documento({
+        titulo,
+        quando: `Emitido em ${formataBR(hojeISO())}`,
+        cabecalho,
+        corpo: roteiro ? corpoRoteiro(o) : corpoRelatorio(o),
+        rodape
+    });
+}
+
+function ajustarOpcoes() {
+    const roteiro = document.getElementById('rel-tipo').value === 'roteiro';
+    document.querySelectorAll('#rel-opcoes [data-so]').forEach(l =>
+        l.classList.toggle('oculto', l.dataset.so !== (roteiro ? 'roteiro' : 'relatorio')));
+    document.getElementById('rel-sintese-campo').style.display = roteiro ? 'none' : '';
+    document.getElementById('rel-explica').textContent = roteiro
+        ? 'Folha para levar à entrevista: as perguntas com linhas em branco para escrever à mão.'
+        : 'Relatório em texto corrido com o que já foi anotado na ficha — pronto para o prontuário.';
+}
+
+function abrirRelatorio() {
+    document.getElementById('rel-sintese').value = respostas[ANAMNESE_SINTESE] || '';
+    ajustarOpcoes();
+    abrirModal('modal-relatorio');
+}
+document.getElementById('rel-tipo').addEventListener('change', ajustarOpcoes);
+
+document.getElementById('btn-gerar-doc').addEventListener('click', async () => {
+    const o = opcoesDoDocumento();
+    if (o.tipo !== 'roteiro') {
+        const texto = document.getElementById('rel-sintese').value;
+        if (texto !== (respostas[ANAMNESE_SINTESE] || '')) {
+            respostas[ANAMNESE_SINTESE] = texto;
+            sujo = true;
+            await salvar(true);
+        }
+    }
+    if (!abrirDocumento(montarDocumento(o))) {
+        toast('O navegador bloqueou a janela do documento. Libere os pop-ups deste site.', true);
+        return;
+    }
+    fecharModal('modal-relatorio');
+});
 
 // ============================================================
 // GERAR A AVALIAÇÃO INICIAL
