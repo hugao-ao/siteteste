@@ -69,16 +69,19 @@ function render() {
           </div>
           <div class="an-bloco-corpo">
             <p class="an-bloco-intro">${esc(b.intro)}</p>
-            ${b.perguntas.map(p => `
+            <div class="an-perguntas">
+              ${b.perguntas.map(p => `
               <label class="an-pergunta ${(respostas[p.chave] || '').trim() ? 'respondida' : ''}" style="--c:${b.cor}">
                 <span class="txt">${esc(p.texto)}</span>
-                <textarea rows="2" data-pergunta="${p.chave}" placeholder="Anotações do terapeuta…">${esc(respostas[p.chave] || '')}</textarea>
+                <textarea rows="3" data-pergunta="${p.chave}" placeholder="Anotações do terapeuta…">${esc(respostas[p.chave] || '')}</textarea>
               </label>`).join('')}
+            </div>
             ${area ? `
             <div class="an-mapa">
               <h4>🎯 Do que você ouviu, o que descreve melhor o paciente hoje?</h4>
               <p class="dica">Alimenta a avaliação inicial da área <b>${esc(area.nome)}</b>.</p>
-              ${area.subareas.map(s => `
+              <div class="an-mapa-linhas">
+                ${area.subareas.map(s => `
                 <div class="an-mapa-linha">
                   <b>${esc(s.nome)}</b>
                   <select data-subarea="${s.id}" class="${mapa[s.id] ? '' : 'vazio'}">
@@ -86,6 +89,7 @@ function render() {
                     ${s.opcoes.map(o => `<option value="${o.id}" ${mapa[s.id] === o.id ? 'selected' : ''}>${esc(o.nome)}</option>`).join('')}
                   </select>
                 </div>`).join('')}
+              </div>
             </div>` : ''}
           </div>
         </div>`;
