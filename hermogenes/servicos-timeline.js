@@ -20,6 +20,10 @@ let mapa = null, marcadores = [];
 let intervalo = null;             // {min, max, dias}
 let reguaA = null;                // data da régua vermelha (padrão: hoje) — arrastável
 let reguaB = null;                // data da 2ª régua (null = desligada)
+let prodBusca = '';               // filtro da tabela do recorte
+let prodOrdem = lerLS('hermo_tlx_prod_ord', { col: 'valor', dir: 'desc' });
+let planTravaItem = new Map();    // obra_servico_id → planejamento que o trava
+let planTravaAloc = new Map();    // alocacao_id → planejamento que a trava
 
 function lerLS(chave, padrao) {
     try { const v = JSON.parse(localStorage.getItem(chave)); return v == null ? padrao : v; }
@@ -67,7 +71,7 @@ function periodosConflitam(a, b) {
 // CARREGAMENTO
 // ============================================================
 async function carregarDados() {
-    const [o, au] = await Promise.all([
+    const [o, au, pl] = await Promise.all([
         sb.from('hermo_obras')
             .select(`id, numero, ano, nome, status, cliente_id, endereco, latitude, longitude,
                 inicio_previsto, prazo, inicio_real, conclusao, observacoes,
@@ -75,7 +79,10 @@ async function carregarDados() {
                     alocacoes:hermo_alocacoes(*, integrante:hermo_integrantes(id, nome, apelido), equipe:hermo_equipes(id, nome, cor))),
                 dependencias:hermo_obra_dependencias(item_id, depende_de_id)`)
             .order('ano', { ascending: false }).order('numero', { ascending: false }),
-        sb.from('hermo_ausencias').select('*')
+        sb.from('hermo_ausencias').select('*'),
+        sb.from('hermo_planejamentos')
+            .select('id, nome, periodo_de, periodo_ate, status, itens:hermo_planejamento_itens(obra_servico_id), alocacoes:hermo_planejamento_alocacoes(alocacao_id)')
+            .in('status', ['confirmado', 'executado'])
     ]);
     if (o.error) { toast('Erro ao carregar a linha do tempo: ' + o.error.message, true); return false; }
     if (au.error) { toast('Aviso: ausências não carregadas (' + au.error.message + ') — conflitos podem passar.', true); }
@@ -85,8 +92,19 @@ async function carregarDados() {
         dependencias: x.dependencias || []
     }));
     ausencias = au.data || [];
+    // travas: o que já pertence a um planejamento confirmado não se mexe aqui
+    planTravaItem = new Map();
+    planTravaAloc = new Map();
+    if (pl.error) toast('Aviso: planejamentos não carregados (' + pl.error.message + ') — as travas podem não aparecer.', true);
+    (pl.data || []).forEach(p => {
+        const info = { id: p.id, nome: p.nome || 'sem nome', de: p.periodo_de, ate: p.periodo_ate, status: p.status };
+        (p.itens || []).forEach(x => planTravaItem.set(x.obra_servico_id, info));
+        (p.alocacoes || []).forEach(x => { if (x.alocacao_id) planTravaAloc.set(x.alocacao_id, info); });
+    });
     return true;
 }
+
+const rotuloTrava = t => `🔒 no planejamento "${t.nome}" (${ddmm(t.de)}–${ddmm(t.ate)})`;
 
 function itensDatados(o) {
     return o.itens.filter(i => i.vigente !== false && i.inicio_previsto && i.fim_previsto);
@@ -200,7 +218,9 @@ function render() {
             const temDeps = o.dependencias.some(d => d.item_id === i.id);
             const concluido = !!i.fim_real;
             const atrasado = !concluido && i.fim_previsto < hoje();
+            const travaPlan = planTravaItem.get(i.id);
             const travas = [];
+            if (travaPlan) travas.push(rotuloTrava(travaPlan));
             if (concluido) travas.push('✓ concluído — travado');
             else {
                 if (temDeps) travas.push('🔗 início definido pela cadeia (arraste só a borda final)');
@@ -208,11 +228,11 @@ function render() {
                 if (i.prazo_dias) travas.push(`prazo de ${i.prazo_dias} dias ${i.prazo_tipo === 'uteis' ? 'úteis' : 'corridos'} — arrastar a borda final substitui o prazo`);
             }
             const barras = `
-            <div class="tlx-bar ${concluido ? 'concluido' : ''} ${atrasado ? 'atrasado' : ''}"
+            <div class="tlx-bar ${concluido ? 'concluido' : ''} ${atrasado ? 'atrasado' : ''} ${travaPlan ? 'planejado' : ''}"
                  style="left:${xDe(i.inicio_previsto)}px;width:${Math.max((difDias(i.inicio_previsto, i.fim_previsto) + 1) * px, 8)}px"
                  data-bar-obra="${o.id}" data-bar-item="${i.id}"
                  title="${esc(i.servico?.codigo || '')} ${esc(i.servico?.descricao || '')} · ${ddmm(i.inicio_previsto)}–${ddmm(i.fim_previsto)}${travas.length ? ' · ' + esc(travas.join(' · ')) : ''}">
-                <span class="alca ini"></span>${concluido ? '✓ ' : ''}${temDeps ? '🔗 ' : ''}${esc(i.servico?.codigo || '')}<span class="alca fim"></span>
+                <span class="alca ini"></span>${travaPlan ? '🔒 ' : ''}${concluido ? '✓ ' : ''}${temDeps ? '🔗 ' : ''}${esc(i.servico?.codigo || '')}<span class="alca fim"></span>
             </div>` +
             alocs.map((a, ai) => {
                 const nome = a.integrante?.apelido || (a.integrante?.nome || '?').split(' ')[0];
@@ -263,19 +283,52 @@ function producaoNoIntervalo(de, ate) {
         const frac = dTot > 0 ? Math.min(1, dDentro / dTot) : 0;
         const valor = num(i.total) * frac;
         total += valor;
+        // quem trabalha nesse serviço DENTRO da janela (integrante avulso ou via equipe)
+        const equipe = (i.alocacoes || []).filter(a => a.data_inicio <= ate && a.data_fim >= de);
         linhas.push({
-            obra: fmtCodObra(o),
+            itemId: i.id, obraId: o.id,
+            obra: fmtCodObra(o), obraNome: o.nome,
             cod: i.servico?.codigo || '?',
             desc: i.servico?.descricao || '',
+            ini, fim,
             periodo: `${ddmm(ini)}–${ddmm(fim)}`,
+            diasDentro: dDentro, diasTotais: dTot,
             dias: `${dDentro}/${dTot}`,
             perc: Math.round(frac * 1000) / 10,
             contratado: num(i.total),
-            valor
+            valor,
+            qtdPrevista: Math.round(num(i.quantidade) * frac * 100) / 100,
+            unidade: i.unidade || 'un',
+            equipe,
+            nomesEquipe: [...new Set(equipe.map(a => a.integrante?.apelido || a.integrante?.nome || '?'))],
+            travadoPor: planTravaItem.get(i.id) || null
         });
     }));
-    linhas.sort((a, b) => b.valor - a.valor);
     return { linhas, total };
+}
+
+/** Aplica busca e ordenação escolhidas pelo usuário na tabela do recorte. */
+function linhasProducaoVisiveis(linhas) {
+    const q = prodBusca.trim().toLowerCase();
+    let lista = q ? linhas.filter(l =>
+        `${l.cod} ${l.desc} ${l.obra} ${l.obraNome} ${l.nomesEquipe.join(' ')}`.toLowerCase().includes(q)) : [...linhas];
+    const { col, dir } = prodOrdem;
+    const chave = {
+        servico: l => `${l.cod} ${l.desc}`.toLowerCase(),
+        obra: l => `${l.obra} ${l.obraNome}`.toLowerCase(),
+        periodo: l => l.ini,
+        dias: l => l.diasDentro,
+        perc: l => l.perc,
+        contratado: l => l.contratado,
+        valor: l => l.valor,
+        equipe: l => l.nomesEquipe.length
+    }[col] || (l => l.valor);
+    lista.sort((a, b) => {
+        const x = chave(a), y = chave(b);
+        const c = typeof x === 'string' ? x.localeCompare(y, 'pt-BR') : (x - y);
+        return dir === 'asc' ? c : -c;
+    });
+    return lista;
 }
 
 function renderProducao() {
@@ -284,7 +337,12 @@ function renderProducao() {
     const de = reguaA < reguaB ? reguaA : reguaB;
     const ate = reguaA < reguaB ? reguaB : reguaA;
     const { linhas, total } = producaoNoIntervalo(de, ate);
+    const lista = linhasProducaoVisiveis(linhas);
     const dias = difDias(de, ate) + 1;
+    const semEquipe = linhas.filter(l => l.equipe.length === 0).length;
+    const jaTravados = linhas.filter(l => l.travadoPor).length;
+    const seta = c => prodOrdem.col === c ? (prodOrdem.dir === 'asc' ? ' ▲' : ' ▼') : '';
+    const th = (c, rot, extra = '') => `<th data-prod-ord="${c}" class="ord" ${extra}>${rot}${seta(c)}</th>`;
     box.style.display = '';
     box.innerHTML = `
     <div class="tlx-prod">
@@ -292,19 +350,139 @@ function renderProducao() {
             produção prevista de <b>${fmtMoeda(total)}</b>
             <span style="color:var(--hermo-text-dim);font-size:.74rem">· ${linhas.length} serviço(s) no intervalo${obraFiltro ? ' · obra filtrada' : ''}</span>
         </div>
-        ${linhas.length === 0 ? '<div style="font-size:.76rem;color:var(--hermo-text-dim)">Nenhum serviço programado nesse intervalo.</div>' : `
+        <div class="tlx-prod-barra">
+            <input id="tlx-prod-busca" type="text" placeholder="Filtrar por serviço, obra ou integrante…" value="${esc(prodBusca)}" />
+            <span style="font-size:.72rem;color:var(--hermo-text-dim)">${lista.length} de ${linhas.length}</span>
+            <span style="flex:1"></span>
+            ${semEquipe ? `<span class="tlx-chip-alerta" title="Serviços do recorte sem ninguém alocado no período">⚠ ${semEquipe} sem equipe</span>` : ''}
+            ${jaTravados ? `<span class="tlx-chip-trava" title="Já fazem parte de um planejamento confirmado">🔒 ${jaTravados} em planejamento</span>` : ''}
+            <button class="hermo-btn small primary" id="tlx-planejar" ${lista.length === 0 ? 'disabled' : ''}
+                title="Planeja exatamente os serviços listados abaixo (o filtro vale)">📋 Planejar ${lista.length} serviço(s)</button>
+        </div>
+        ${lista.length === 0 ? '<div style="font-size:.76rem;color:var(--hermo-text-dim)">Nenhum serviço no intervalo com esse filtro.</div>' : `
         <div class="tlx-prod-wrap"><table>
-            <tr><th>Serviço</th><th>Período</th><th>Dias no intervalo</th><th>%</th><th>Contratado</th><th>No intervalo</th></tr>
-            ${linhas.map(l => `<tr>
-                <td><b>${esc(l.cod)}</b> ${esc(l.desc)}<br><small style="color:var(--hermo-text-dim)">${esc(l.obra)}</small></td>
+            <tr>${th('servico', 'Serviço')}${th('obra', 'Obra')}${th('periodo', 'Período')}${th('dias', 'Dias no intervalo')}${th('perc', '%')}${th('equipe', 'Equipe no período')}${th('contratado', 'Contratado')}${th('valor', 'No intervalo')}</tr>
+            ${lista.map(l => `<tr>
+                <td><b>${esc(l.cod)}</b> ${esc(l.desc)}${l.travadoPor ? ' <span title="Em planejamento confirmado">🔒</span>' : ''}</td>
+                <td><b>${esc(l.obra)}</b><br><small style="color:var(--hermo-text-dim)">${esc(l.obraNome)}</small></td>
                 <td>${l.periodo}</td><td>${l.dias}</td><td>${fmtQtd(l.perc)}%</td>
+                <td>${l.equipe.length
+                    ? `<small>${esc(l.nomesEquipe.slice(0, 3).join(', '))}${l.nomesEquipe.length > 3 ? ` +${l.nomesEquipe.length - 3}` : ''}</small>`
+                    : '<span class="tlx-sem-equipe">⚠ ninguém alocado</span>'}</td>
                 <td>${fmtMoeda(l.contratado)}</td><td><b>${fmtMoeda(l.valor)}</b></td>
             </tr>`).join('')}
         </table></div>`}
         <div style="font-size:.7rem;color:var(--hermo-text-dim)">
             Rateio proporcional aos dias de execução previstos (valor contratado do serviço × dias dentro do intervalo ÷ dias totais).
+            Clique nos títulos das colunas para ordenar.
         </div>
     </div>`;
+
+    const inp = $('tlx-prod-busca');
+    inp.addEventListener('input', e => {
+        prodBusca = e.target.value;
+        clearTimeout(renderProducao._t);
+        renderProducao._t = setTimeout(() => {
+            renderProducao();
+            const novo = $('tlx-prod-busca');
+            if (novo) { novo.focus(); novo.setSelectionRange(novo.value.length, novo.value.length); }
+        }, 200);
+    });
+    box.querySelectorAll('[data-prod-ord]').forEach(t => t.addEventListener('click', () => {
+        const c = t.dataset.prodOrd;
+        if (prodOrdem.col === c) prodOrdem.dir = prodOrdem.dir === 'asc' ? 'desc' : 'asc';
+        else prodOrdem = { col: c, dir: c === 'servico' || c === 'obra' || c === 'periodo' ? 'asc' : 'desc' };
+        gravarLS('hermo_tlx_prod_ord', prodOrdem);
+        renderProducao();
+    }));
+    // planeja o que está NA TELA (respeitando o filtro) — o rótulo diz quantos
+    $('tlx-planejar')?.addEventListener('click', () => abrirPlanejamento(de, ate, lista));
+}
+
+// ============================================================
+// CRIAR PLANEJAMENTO A PARTIR DO RECORTE
+// ============================================================
+let planDraft = null;   // { de, ate, linhas }
+
+function abrirPlanejamento(de, ate, linhas) {
+    const livres = linhas.filter(l => !l.travadoPor);
+    if (!livres.length) {
+        toast('Todos os serviços deste recorte já pertencem a um planejamento confirmado.', true);
+        return;
+    }
+    planDraft = { de, ate, linhas: livres };
+    $('plc-periodo').textContent = `${fmtData(de)} a ${fmtData(ate)} (${difDias(de, ate) + 1} dias)`;
+    $('plc-nome').value = `Semana ${ddmm(de)}–${ddmm(ate)}`;
+    const bloqueados = linhas.length - livres.length;
+    $('plc-aviso').innerHTML = bloqueados
+        ? `<span class="tlx-chip-trava">🔒 ${bloqueados} serviço(s) do recorte já estão em outro planejamento e ficaram de fora.</span>` : '';
+    $('plc-itens').innerHTML = livres.map((l, i) => `
+        <div class="plc-item ${l.equipe.length ? '' : 'sem'}">
+            <div class="txt">
+                <b>${esc(l.cod)}</b> ${esc(l.desc)}
+                <small>${esc(l.obra)} · ${l.periodo} · ${l.diasDentro}/${l.diasTotais} dia(s) no período · previsto ${fmtMoeda(l.valor)}</small>
+                <small>${l.equipe.length
+                    ? '👷 ' + esc(l.nomesEquipe.join(', '))
+                    : '<span class="tlx-sem-equipe">⚠ ninguém alocado no período — escolha o que fazer</span>'}</small>
+            </div>
+            ${l.equipe.length ? '<span class="plc-ok">com equipe</span>' : `
+            <select data-plc-sit="${i}">
+                <option value="">— escolha —</option>
+                <option value="sem_avanco">Sem avanço no período</option>
+                <option value="adiado">Adiado para depois</option>
+            </select>`}
+        </div>`).join('');
+    $('plc-overlay').classList.add('aberto');
+}
+
+async function confirmarPlanejamento() {
+    if (!planDraft) return;
+    const { de, ate, linhas } = planDraft;
+    const itens = [];
+    for (let i = 0; i < linhas.length; i++) {
+        const l = linhas[i];
+        let situacao = 'com_equipe';
+        if (!l.equipe.length) {
+            situacao = document.querySelector(`[data-plc-sit="${i}"]`)?.value || '';
+            if (!situacao) {
+                toast(`Diga o que acontece com ${l.cod} — sem ninguém alocado, marque "sem avanço" ou "adiado".`, true);
+                return;
+            }
+        }
+        itens.push({
+            obra_servico_id: l.itemId,
+            inicio_previsto: l.ini, fim_previsto: l.fim,
+            dias_no_intervalo: l.diasDentro, dias_totais: l.diasTotais,
+            valor_previsto: situacao === 'com_equipe' ? l.valor : 0,
+            qtd_prevista: situacao === 'com_equipe' ? String(l.qtdPrevista) : null,
+            situacao,
+            motivo: situacao === 'com_equipe' ? null : 'sem alocação no período'
+        });
+    }
+    const btn = $('plc-confirmar');
+    btn.disabled = true;
+    try {
+        const { data: pid, error } = await sb.rpc('hermo_criar_planejamento', {
+            p: {
+                nome: $('plc-nome').value.trim() || null,
+                periodo_de: de, periodo_ate: ate,
+                observacoes: $('plc-obs').value.trim() || null,
+                itens
+            }
+        });
+        if (error) throw error;
+        $('plc-overlay').classList.remove('aberto');
+        planDraft = null;
+        await carregarDados();
+        render();
+        const comEquipe = itens.filter(x => x.situacao === 'com_equipe').length;
+        toast(`📋 Planejamento criado com ${itens.length} serviço(s) (${comEquipe} com equipe) — o período ficou travado na linha do tempo. Veja na aba Planejamentos.`);
+        window.dispatchEvent(new CustomEvent('plan-criado', { detail: { id: pid } }));
+    } catch (e) {
+        toast('Erro ao criar o planejamento: ' + e.message, true);
+    } finally {
+        btn.disabled = false;
+    }
 }
 
 // ---------- arrastar as réguas ----------
@@ -398,6 +576,11 @@ function iniciarArrastoBarra(e, bar) {
     const item = obra?.itens.find(i => i.id === bar.dataset.barItem);
     if (!obra || !item) return;
     if (item.fim_real) { toast('Serviço concluído — as datas estão travadas.', true); return; }
+    const trava = planTravaItem.get(item.id);
+    if (trava) {
+        toast(`Este serviço está ${rotuloTrava(trava)} — reabra o planejamento para reprogramá-lo.`, true);
+        return;
+    }
     const iniTravado = obra.dependencias.some(d => d.item_id === item.id) || !!item.inicio_real;
     const zona = zonaDoClique(bar, e, iniTravado);
     if (iniTravado && zona !== 'fim') {
@@ -783,6 +966,11 @@ function iniciarArrastoAloc(e, el) {
     const item = obra?.itens.find(i => i.id === el.dataset.alocItem);
     const aloc = item?.alocacoes.find(a => a.id === el.dataset.aloc);
     if (!aloc) return;
+    const travaA = planTravaAloc.get(aloc.id);
+    if (travaA) {
+        toast(`Esta alocação está ${rotuloTrava(travaA)} — reabra o planejamento para alterá-la.`, true);
+        return;
+    }
     const zona = zonaDoClique(el, e);
     e.preventDefault();
     try { el.setPointerCapture(e.pointerId); } catch (err) {}
@@ -1119,6 +1307,9 @@ $('tlx-hoje-btn').addEventListener('click', () => {
     irParaHoje();
 });
 $('tlx-undo').addEventListener('click', desfazerUltimo);
+$('plc-fechar').addEventListener('click', () => { $('plc-overlay').classList.remove('aberto'); planDraft = null; });
+$('plc-cancelar').addEventListener('click', () => { $('plc-overlay').classList.remove('aberto'); planDraft = null; });
+$('plc-confirmar').addEventListener('click', confirmarPlanejamento);
 $('tlx-regua2').addEventListener('click', () => {
     if (reguaB) {
         reguaB = null;
@@ -1151,9 +1342,21 @@ $('tlx-toggle').addEventListener('click', () => {
     if (mostrar) { render(); irParaHoje(); }
 });
 
+// planejamento criado/reaberto/executado em outra aba do app: os dados daqui
+// (datas, % e principalmente as TRAVAS) ficaram velhos — marca para recarregar
+let planSujo = false;
+window.addEventListener('plan-mudou', async () => {
+    planSujo = true;
+    if ($('tlx-secao')?.offsetParent !== null) {   // aba visível: recarrega já
+        planSujo = false;
+        if (await carregarDados()) render();
+    }
+});
+
 // a aba "Execução no tempo" pode estar oculta no load — ao aparecer, mede e desenha
-window.addEventListener('tlx-visivel', () => {
+window.addEventListener('tlx-visivel', async () => {
     if ($('tlx-corpo').style.display === 'none') return;
+    if (planSujo) { planSujo = false; await carregarDados(); }
     render();
     irParaHoje();
     if ($('tlx-mapa').style.display !== 'none') setTimeout(atualizarMapa, 60);
