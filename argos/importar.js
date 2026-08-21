@@ -1,7 +1,8 @@
 // importar.js — importação da aba CADASTRO da planilha da clínica
 // ================================================================
-// Lê o texto colado, mostra o que entendeu e grava: pacientes (cria ou
-// atualiza, casando por nome normalizado) e as linhas de acordo, que ficam
+// Recebe o arquivo .csv/.tsv exportado da aba (ou, na falta dele, o texto
+// colado), mostra o que entendeu e grava: pacientes (cria ou atualiza,
+// casando por nome normalizado) e as linhas de acordo, que ficam
 // estacionadas em argos_import_acordos até os horários chegarem.
 
 import { sb, toast, esc } from './argos-common.js';
@@ -15,6 +16,8 @@ let existentes = [];         // pacientes já cadastrados
 let porChave = new Map();    // chave normalizada -> paciente do banco
 let profPorNome = new Map(); // nome minúsculo -> profissional
 let aba = 'pacientes';
+let textoArquivo = '';       // conteúdo do .csv escolhido
+let nomeArquivo = '';
 
 const $ = id => document.getElementById(id);
 const norm = s => (s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
@@ -32,9 +35,43 @@ async function carregarBase() {
     profPorNome = new Map((rProf.data || []).map(p => [norm(p.nome), p]));
 }
 
+/**
+ * Lê o arquivo como texto. Tenta UTF-8; se aparecerem caracteres quebrados
+ * (CSV salvo pelo Excel costuma vir em ANSI), decodifica como Windows-1252.
+ * Também tira o BOM, que senão gruda no nome da primeira coluna.
+ */
+async function textoDoArquivo(file) {
+    const buf = await file.arrayBuffer();
+    let txt = new TextDecoder('utf-8').decode(buf);
+    if (txt.includes('\uFFFD')) {
+        try { txt = new TextDecoder('windows-1252').decode(buf); } catch (e) { /* fica o utf-8 */ }
+    }
+    return txt.replace(/^\uFEFF/, '');
+}
+
+const tamanho = n => n < 1024 ? `${n} B`
+    : n < 1024 * 1024 ? `${(n / 1024).toFixed(0)} KB` : `${(n / 1048576).toFixed(1)} MB`;
+
+async function receberArquivo(file) {
+    if (!file) return;
+    if (file.size > 20 * 1024 * 1024) { toast('Arquivo grande demais (limite de 20 MB).', true); return; }
+    try {
+        textoArquivo = await textoDoArquivo(file);
+        nomeArquivo = file.name;
+    } catch (e) {
+        console.error(e);
+        toast('Não consegui ler o arquivo.', true);
+        return;
+    }
+    $('imp-drop').classList.add('carregado');
+    $('imp-arq').textContent = `📄 ${nomeArquivo} — ${tamanho(file.size)}`;
+    $('imp-colar').value = '';
+    ler();
+}
+
 function ler() {
-    const texto = $('imp-colar').value;
-    if (!texto.trim()) { toast('Cole a aba antes de ler.', true); return; }
+    const texto = textoArquivo || $('imp-colar').value;
+    if (!texto.trim()) { toast('Escolha o arquivo .csv (ou cole a aba) antes de ler.', true); return; }
     leitura = lerCadastro(texto);
     if (!leitura.linhas.length) {
         $('imp-passo2').style.display = 'none';
@@ -147,8 +184,36 @@ $('imp-busca').addEventListener('input', renderTabela);
 $('imp-so-novos').addEventListener('change', renderTabela);
 $('btn-ler').addEventListener('click', ler);
 $('btn-limpar').addEventListener('click', () => {
-    $('imp-colar').value = ''; leitura = null;
+    $('imp-colar').value = ''; textoArquivo = ''; nomeArquivo = '';
+    $('imp-arquivo').value = ''; $('imp-arq').textContent = '';
+    $('imp-drop').classList.remove('carregado');
+    leitura = null;
     $('imp-passo2').style.display = 'none'; $('imp-passo3').style.display = 'none';
+});
+
+// escolher pelo seletor
+$('imp-drop').addEventListener('click', () => $('imp-arquivo').click());
+$('imp-arquivo').addEventListener('change', e => receberArquivo(e.target.files[0]));
+
+// arrastar e soltar
+const drop = $('imp-drop');
+['dragenter', 'dragover'].forEach(ev => drop.addEventListener(ev, e => {
+    e.preventDefault(); drop.classList.add('sobre');
+}));
+['dragleave', 'drop'].forEach(ev => drop.addEventListener(ev, e => {
+    e.preventDefault(); drop.classList.remove('sobre');
+}));
+drop.addEventListener('drop', e => receberArquivo(e.dataTransfer.files[0]));
+// soltar fora da área não abre o arquivo no navegador
+window.addEventListener('dragover', e => e.preventDefault());
+window.addEventListener('drop', e => e.preventDefault());
+
+// digitar na caixa de colagem desconsidera o arquivo escolhido
+$('imp-colar').addEventListener('input', () => {
+    if (!$('imp-colar').value.trim()) return;
+    textoArquivo = ''; nomeArquivo = '';
+    $('imp-arquivo').value = ''; $('imp-arq').textContent = '';
+    $('imp-drop').classList.remove('carregado');
 });
 
 // ============================================================

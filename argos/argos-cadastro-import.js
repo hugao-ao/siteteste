@@ -24,7 +24,9 @@ const VAZIOS = new Set(['', '?????', '-', '—']);
  * células com quebra de linha ou tabulação dentro vêm entre aspas.
  */
 export function dividirTabela(texto) {
-    const t = String(texto || '').replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+    // o BOM do CSV salvo pelo Excel gruda no nome da primeira coluna
+    const t = String(texto || '').replace(/^\uFEFF/, '')
+        .replace(/\r\n/g, '\n').replace(/\r/g, '\n');
     const primeira = t.slice(0, t.indexOf('\n') === -1 ? t.length : t.indexOf('\n'));
     const sep = primeira.includes('\t') ? '\t' : ',';
     const linhas = [];
