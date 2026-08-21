@@ -489,6 +489,70 @@ document.getElementById('clf-opcoes').addEventListener('click', (e) => {
     renderAlocacoes();
 });
 
+// mês seguinte de 'YYYY-MM'
+function mesSeguinte(mes) {
+    const [a, m] = mes.split('-').map(Number);
+    return m === 12 ? `${a + 1}-01` : `${a}-${String(m + 1).padStart(2, '0')}`;
+}
+
+// Extrato do paciente escolhido: honorários previstos por mês (regra de
+// caixa), o que já foi pago/associado em cada mês (incluindo as alocações
+// deste modal, ao vivo) e o saldo — para correlacionar os lançamentos.
+function renderExtratoPaciente() {
+    const el = document.getElementById('clf-extrato');
+    if (!clfMov) { el.innerHTML = ''; return; }
+    const alocPac = clfAlocacoes.find(a => a.vinculo_tipo === 'paciente' && a.vinculo_id);
+    if (!alocPac) { el.innerHTML = ''; return; }
+    const pacId = alocPac.vinculo_id;
+    const p = pacientes.find(x => x.id === pacId);
+    if (!p) { el.innerHTML = ''; return; }
+
+    const mesMov = clfMov.data.slice(0, 7);
+    let inicio = mesMov;
+    for (let i = 0; i < 6; i++) inicio = mesAnterior(inicio);
+    const meses = [];
+    for (let m = inicio, guarda = 0; guarda < 9; m = mesSeguinte(m), guarda++) {
+        meses.push(m);
+        if (m === mesSeguinte(mesMov)) break;
+    }
+
+    const dinsP = dinamicas.filter(d => d.paciente_id === pacId);
+    const sessP = sessoes.filter(s2 => s2.paciente_id === pacId);
+    const previstoDe = mes => fechamentoPaciente(p, dinsP, sessP, mesAnterior(mes)).valor;
+    const pagoDe = mes =>
+        alocacoes.filter(a => a.vinculo_tipo === 'paciente' && a.vinculo_id === pacId
+            && a.mes_ref === mes && a.movimentacao_id !== clfMov.id)
+            .reduce((s2, a) => s2 + (Number(a.valor) || 0), 0)
+        + clfAlocacoes.filter(a => a.vinculo_tipo === 'paciente' && a.vinculo_id === pacId && a.mes_ref === mes)
+            .reduce((s2, a) => s2 + (Number(a.valor) || 0), 0);
+
+    const linhas = meses.map(mes => ({ mes, prev: previstoDe(mes), pago: pagoDe(mes) }))
+        .filter(l => l.prev > 0.004 || l.pago > 0.004);
+
+    const hist = alocacoes
+        .filter(a => a.vinculo_tipo === 'paciente' && a.vinculo_id === pacId && a.movimentacao_id !== clfMov.id)
+        .map(a => ({ a, m: movimentacoes.find(x => x.id === a.movimentacao_id) }))
+        .filter(x => x.m)
+        .sort((x, y) => String(y.m.data).localeCompare(String(x.m.data)))
+        .slice(0, 12);
+
+    el.innerHTML = `
+      <h3 class="form-secao">📋 Extrato de ${esc(p.nome)} — para correlacionar</h3>
+      <div class="argos-tabela-wrap"><table class="argos-tabela">
+        <thead><tr><th>Mês</th><th>Honorários previstos</th><th>Pago/associado</th><th>Saldo</th></tr></thead>
+        <tbody>${linhas.map(l => {
+            const saldo = Math.round((l.prev - l.pago) * 100) / 100;
+            const quit = Math.abs(saldo) < 0.005;
+            const cor = quit ? '#22c55e' : (saldo > 0 ? '#eab308' : '#ef4444');
+            return `<tr><td>${mesRefBR(l.mes)}</td><td>${l.prev ? formataMoeda(l.prev) : '—'}</td>
+              <td>${l.pago ? formataMoeda(l.pago) : '—'}</td>
+              <td style="color:${cor}">${quit ? '✔ quitado' : (saldo > 0 ? 'falta ' + formataMoeda(saldo) : 'excedente ' + formataMoeda(-saldo))}</td></tr>`;
+        }).join('') || '<tr><td colspan="4" class="dim">Sem honorários nem pagamentos na janela.</td></tr>'}
+        </tbody></table></div>
+      ${hist.length ? `<p class="dica" style="margin-top:6px"><b>Pagamentos já associados a ${esc(p.nome)}:</b><br>${hist.map(x =>
+          `${formataBR(x.m.data)} — ${esc(x.m.descricao)}: ${formataMoeda(x.a.valor)} → ${mesRefBR(x.a.mes_ref)}`).join('<br>')}</p>` : ''}`;
+}
+
 function renderAlocacoes() {
     document.getElementById('clf-alocacoes').innerHTML = clfAlocacoes.map((a, i) => `
       <div class="linha-dia" data-aloc="${i}">
@@ -498,6 +562,7 @@ function renderAlocacoes() {
         <button type="button" class="argos-btn small danger aloc-remover">×</button>
       </div>`).join('') || '<p class="dim">Nenhuma alocação ainda — escolha um destino acima.</p>';
     atualizarResumoClassificacao();
+    renderExtratoPaciente();
 }
 
 function lerAlocacoesDoModal() {
@@ -525,7 +590,7 @@ function atualizarResumoClassificacao() {
     }
 }
 
-document.getElementById('clf-alocacoes').addEventListener('input', () => { lerAlocacoesDoModal(); atualizarResumoClassificacao(); });
+document.getElementById('clf-alocacoes').addEventListener('input', () => { lerAlocacoesDoModal(); atualizarResumoClassificacao(); renderExtratoPaciente(); });
 document.getElementById('clf-alocacoes').addEventListener('click', (e) => {
     const btn = e.target.closest('.aloc-remover');
     if (!btn) return;
@@ -563,9 +628,11 @@ document.getElementById('btn-clf-salvar').addEventListener('click', async () => 
     if (document.getElementById('clf-lembrar').checked && validas.length) {
         const chave = document.getElementById('clf-chave').value.trim();
         if (chave) {
-            await salvarDePara(chave, validas[0].vinculo_tipo, validas[0].vinculo_id);
-            const { data: dps } = await sb.from('argos_mov_depara').select('*');
-            depara = dps || depara;
+            let r = await salvarDePara(chave, validas[0].vinculo_tipo, validas[0].vinculo_id);
+            if (r.conflito) {
+                const trocar = confirm(`«${chave}» já está associado a ${nomeVinculo(r.conflito.vinculo_tipo, r.conflito.vinculo_id)}.\nUm pagador só pode apontar para um destino. Substituir pela nova associação?`);
+                if (trocar) r = await salvarDePara(chave, validas[0].vinculo_tipo, validas[0].vinculo_id, { forcar: true });
+            }
         }
     }
     toast(validas.length ? 'Classificação salva.' : 'Classificação removida.');
@@ -723,49 +790,124 @@ function selectDestinoDePara(el) {
 
 const TIPO_ICONE = { paciente: '🧑', profissional: '💼', despesa: '💸', outro: '📦' };
 
+let editandoDeParaId = null;
+
+// lista agrupada por DESTINO: um paciente pode ter vários pagadores,
+// mas cada pagador aponta para um único destino
 function renderDePara() {
-    document.getElementById('lista-depara').innerHTML = depara
-        .slice().sort((a, b) => a.chave.localeCompare(b.chave)).map(d => `
+    const termo = normaliza(document.getElementById('dp-busca').value);
+    const grupos = new Map(); // 'tipo:id' -> {tipo, id, nome, itens: []}
+    depara.forEach(d => {
+        const k = d.vinculo_tipo + ':' + (d.vinculo_id || '');
+        if (!grupos.has(k)) grupos.set(k, {
+            tipo: d.vinculo_tipo, id: d.vinculo_id || null,
+            nome: nomeVinculo(d.vinculo_tipo, d.vinculo_id), itens: []
+        });
+        grupos.get(k).itens.push(d);
+    });
+    const visiveis = [...grupos.values()]
+        .map(g => ({
+            ...g,
+            itens: g.itens.filter(d => !termo
+                || normaliza(d.chave).includes(termo) || normaliza(g.nome).includes(termo))
+        }))
+        .filter(g => g.itens.length)
+        .sort((a, b) => a.nome.localeCompare(b.nome));
+    document.getElementById('lista-depara').innerHTML = visiveis.map(g => `
       <div class="argos-bloco">
         <div class="bloco-topo">
-          <span>«<b>${esc(d.chave)}</b>» → ${TIPO_ICONE[d.vinculo_tipo] || ''} <b>${esc(nomeVinculo(d.vinculo_tipo, d.vinculo_id))}</b></span>
-          <button class="argos-btn small danger" data-dp-excluir="${d.id}">🗑️</button>
+          <b>${TIPO_ICONE[g.tipo] || ''} ${esc(g.nome)}</b>
+          <span class="dim">${g.itens.length} pagador(es)</span>
         </div>
-      </div>`).join('') || '<p class="dim">Nenhuma associação ainda. Você também pode criá-las marcando "Lembrar este pagador" ao classificar uma movimentação.</p>';
+        <div class="bloco-info">
+          ${g.itens.sort((a, b) => a.chave.localeCompare(b.chave)).map(d => `
+            <div style="display:flex; align-items:center; gap:8px; margin:3px 0">
+              <span style="flex:1">«${esc(d.chave)}»</span>
+              <button class="argos-btn small" data-dp-editar="${d.id}" title="Editar">✏️</button>
+              <button class="argos-btn small danger" data-dp-excluir="${d.id}" title="Excluir">🗑️</button>
+            </div>`).join('')}
+        </div>
+      </div>`).join('')
+        || (termo ? '<p class="dim">Nada encontrado com esse filtro.</p>'
+            : '<p class="dim">Nenhuma associação ainda. Você também pode criá-las marcando "Lembrar este pagador" ao classificar uma movimentação.</p>');
+}
+document.getElementById('dp-busca').addEventListener('input', renderDePara);
+
+// procura um de-para existente com a mesma chave (opcionalmente ignorando um id)
+function deparaExistente(chave_norm, ignorarId) {
+    return depara.find(d => d.chave_norm === chave_norm && d.id !== ignorarId) || null;
+}
+const mesmoDestino = (d, tipo, id) =>
+    d.vinculo_tipo === tipo && (d.vinculo_id || null) === (id || null);
+
+/** Salva uma associação. Se a chave já apontar para OUTRO destino, só
+ *  substitui com forcar=true; senão devolve {conflito}. */
+async function salvarDePara(chave, vinculo_tipo, vinculo_id, opts = {}) {
+    const chave_norm = normaliza(chave);
+    if (!chave_norm) return { ok: false };
+    const existente = deparaExistente(chave_norm, opts.ignorarId || null);
+    if (existente && !mesmoDestino(existente, vinculo_tipo, vinculo_id) && !opts.forcar) {
+        return { ok: false, conflito: existente };
+    }
+    if (existente) await sb.from('argos_mov_depara').delete().eq('id', existente.id);
+    const registro = { chave: chave.trim(), chave_norm, vinculo_tipo, vinculo_id: vinculo_id || null };
+    const q = opts.ignorarId
+        ? sb.from('argos_mov_depara').update(registro).eq('id', opts.ignorarId)
+        : sb.from('argos_mov_depara').insert(registro);
+    const { error } = await q;
+    if (error) { console.error(error); toast('Erro ao salvar o de-para.', true); return { ok: false }; }
+    const { data } = await sb.from('argos_mov_depara').select('*');
+    depara = data || depara;
+    return { ok: true };
 }
 
-async function salvarDePara(chave, vinculo_tipo, vinculo_id) {
-    const chave_norm = normaliza(chave);
-    if (!chave_norm) return false;
-    await sb.from('argos_mov_depara').delete().eq('chave_norm', chave_norm);
-    const { error } = await sb.from('argos_mov_depara').insert({
-        chave: chave.trim(), chave_norm, vinculo_tipo, vinculo_id: vinculo_id || null
-    });
-    if (error) { console.error(error); toast('Erro ao salvar o de-para.', true); return false; }
-    return true;
+function limparFormDePara() {
+    editandoDeParaId = null;
+    document.getElementById('dp-form-titulo').textContent = 'Nova associação';
+    document.getElementById('btn-dp-add').textContent = '+ Adicionar';
+    document.getElementById('btn-dp-cancelar').style.display = 'none';
+    document.getElementById('dp-chave').value = '';
+    document.getElementById('dp-destino').value = '';
 }
 
 document.getElementById('btn-depara').addEventListener('click', () => {
-    document.getElementById('dp-chave').value = '';
     selectDestinoDePara(document.getElementById('dp-destino'));
+    document.getElementById('dp-busca').value = '';
+    limparFormDePara();
     renderDePara();
     abrirModal('modal-depara');
 });
+document.getElementById('btn-dp-cancelar').addEventListener('click', limparFormDePara);
 
 document.getElementById('btn-dp-add').addEventListener('click', async () => {
     const chave = document.getElementById('dp-chave').value.trim();
     const destino = document.getElementById('dp-destino').value;
     if (!chave || !destino) { toast('Informe o trecho do pagador e o destino.', true); return; }
     const [vTipo, vId] = destino.split(':');
-    if (!(await salvarDePara(chave, vTipo, vId || null))) return;
-    toast('Associação salva.');
-    const { data } = await sb.from('argos_mov_depara').select('*');
-    depara = data || depara;
-    document.getElementById('dp-chave').value = '';
+    const r = await salvarDePara(chave, vTipo, vId || null, { ignorarId: editandoDeParaId });
+    if (r.conflito) {
+        toast(`⛔ «${chave}» já está associado a ${nomeVinculo(r.conflito.vinculo_tipo, r.conflito.vinculo_id)}. Um pagador só pode apontar para um destino — edite ou exclua a associação existente.`, true);
+        return;
+    }
+    if (!r.ok) return;
+    toast(editandoDeParaId ? 'Associação atualizada.' : 'Associação salva.');
+    limparFormDePara();
     renderDePara();
 });
 
 document.getElementById('lista-depara').addEventListener('click', async (e) => {
+    const ed = e.target.closest('[data-dp-editar]');
+    if (ed) {
+        const d = depara.find(x => x.id === ed.dataset.dpEditar);
+        if (!d) return;
+        editandoDeParaId = d.id;
+        document.getElementById('dp-form-titulo').textContent = `Editando: «${d.chave}»`;
+        document.getElementById('btn-dp-add').textContent = 'Salvar alteração';
+        document.getElementById('btn-dp-cancelar').style.display = '';
+        document.getElementById('dp-chave').value = d.chave;
+        document.getElementById('dp-destino').value = d.vinculo_tipo + ':' + (d.vinculo_id || '');
+        return;
+    }
     const btn = e.target.closest('[data-dp-excluir]');
     if (!btn) return;
     const d = depara.find(x => x.id === btn.dataset.dpExcluir);
@@ -773,6 +915,7 @@ document.getElementById('lista-depara').addEventListener('click', async (e) => {
     await sb.from('argos_mov_depara').delete().eq('id', d.id);
     const { data } = await sb.from('argos_mov_depara').select('*');
     depara = data || [];
+    if (editandoDeParaId === d.id) limparFormDePara();
     renderDePara();
 });
 
