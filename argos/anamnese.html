@@ -18,7 +18,7 @@
     .an-chip.ok { border-color: var(--argos-success); color: var(--argos-success); }
     .an-chip.alerta { border-color: var(--argos-warn); color: var(--argos-warn); }
 
-    .an-bloco { border: 1px solid var(--argos-border); border-top: 3px solid var(--c);
+    .an-bloco { scroll-margin-top: 96px; border: 1px solid var(--argos-border); border-top: 3px solid var(--c);
       border-radius: var(--argos-radius); margin-bottom: 14px; background: var(--argos-surface); overflow: hidden; }
     .an-bloco-topo { display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
       padding: 12px 14px; cursor: pointer; }
@@ -27,27 +27,39 @@
     .an-bloco.aberto .an-bloco-corpo { display: block; }
     .an-bloco-intro { font-size: .84rem; color: var(--argos-text-dim); margin: 0 0 12px; }
 
-    .an-pergunta { border: 1px solid var(--argos-border); border-left: 3px solid var(--c);
-      border-radius: 10px; padding: 10px 12px; margin-bottom: 10px; background: var(--argos-bg); }
-    .an-pergunta .txt { display: block; font-size: .9rem; font-weight: 600; color: var(--argos-text);
-      margin-bottom: 6px; }
-    .an-pergunta textarea { display: block; width: 100%; background: var(--argos-surface);
+    .an-perguntas { display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
+      gap: 10px; align-items: stretch; counter-reset: an-q; }
+    .an-pergunta { display: flex; flex-direction: column; gap: 6px; min-width: 0;
+      border: 1px solid var(--argos-border); border-left: 3px solid var(--c);
+      border-radius: 10px; padding: 10px 12px; background: var(--argos-bg); }
+    .an-pergunta .txt { display: flex; align-items: flex-start; gap: 8px; min-width: 0;
+      font-size: .9rem; font-weight: 600; line-height: 1.35; color: var(--argos-text); }
+    .an-pergunta .txt::before { counter-increment: an-q; content: counter(an-q);
+      flex: 0 0 auto; width: 20px; height: 20px; border-radius: 6px; margin-top: 1px;
+      display: inline-flex; align-items: center; justify-content: center;
+      background: var(--argos-surface-2); border: 1px solid var(--argos-border);
+      color: var(--c); font-size: .72rem; font-weight: 700; }
+    .an-pergunta textarea { display: block; width: 100%; box-sizing: border-box; margin: 0;
+      flex: 1 1 auto; min-height: 74px; background: var(--argos-surface);
       border: 1px solid var(--argos-border); border-radius: 8px; color: var(--argos-text);
       padding: 8px 10px; font-size: .88rem; font-family: inherit; resize: vertical; }
     .an-pergunta textarea:focus { outline: none; border-color: var(--c); }
     .an-pergunta.respondida { border-left-color: var(--argos-success); }
+    .an-pergunta.respondida .txt::before { border-color: var(--argos-success); color: var(--argos-success); }
 
     .an-mapa { margin-top: 14px; border-top: 1px dashed var(--argos-border); padding-top: 12px; }
     .an-mapa h4 { margin: 0 0 4px; font-size: .84rem; color: var(--argos-primary); }
     .an-mapa .dica { margin-top: 0; }
-    .an-mapa-linha { display: grid; grid-template-columns: minmax(150px, 1fr) minmax(220px, 2fr);
-      gap: 8px; align-items: center; margin-bottom: 8px; }
-    .an-mapa-linha b { font-size: .86rem; }
+    .an-mapa-linhas { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 10px; align-items: stretch; }
+    .an-mapa-linha { display: flex; flex-direction: column; justify-content: flex-end; gap: 5px; min-width: 0; }
+    .an-mapa-linha b { font-size: .82rem; line-height: 1.3; color: var(--argos-text-dim);
+      text-transform: uppercase; letter-spacing: .03em; }
     .an-mapa-linha select { width: 100%; padding: 7px 9px; font-size: .86rem; border-radius: 8px;
       background: var(--argos-bg); border: 1px solid var(--argos-border); color: var(--argos-text);
       font-family: inherit; }
     .an-mapa-linha select.vazio { border-color: var(--argos-warn); }
-    @media (max-width: 640px) { .an-mapa-linha { grid-template-columns: 1fr; } }
+    @media (max-width: 640px) { .an-perguntas, .an-mapa-linhas { grid-template-columns: 1fr; } }
   </style>
 </head>
 <body>
@@ -113,7 +125,7 @@
     </div>
   </div>
 
-  <script type="module" src="anamnese.js?v=1"></script>
+  <script type="module" src="anamnese.js?v=2"></script>
   <script type="module" src="argos-zoom.js?v=4"></script>
 </body>
 </html>
