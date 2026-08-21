@@ -178,6 +178,30 @@
     </div>
   </div>
 
+  <!-- ============ MODAL: EVOLUÇÃO TERAPÊUTICA (consulta) ============ -->
+  <div class="argos-modal-fundo" id="modal-evolucao" data-argos-recurso="evolucao_ver">
+    <div class="argos-modal grande">
+      <div class="argos-modal-topo">
+        <h2 id="modal-evolucao-titulo">📈 Evolução Terapêutica</h2>
+        <button class="argos-modal-x" data-fechar>×</button>
+      </div>
+      <div class="agenda-nav" style="flex-wrap:wrap; gap:8px; margin-bottom:10px">
+        <label class="rotulo-inline">Comparar
+          <select id="ev-serie-a" class="argos-input" title="Linha de referência (avaliação inicial)"></select>
+        </label>
+        <label class="rotulo-inline">com
+          <select id="ev-serie-b" class="argos-input" title="Avaliação a comparar"></select>
+        </label>
+        <span style="flex:1"></span>
+        <a class="argos-btn primary small" id="btn-ev-abrir" data-argos-recurso="evolucao_editar" href="#">✏️ Preencher / editar avaliações</a>
+      </div>
+      <div id="ev-graficos" style="display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:10px"></div>
+      <div id="ev-tabela"></div>
+      <h3 class="form-secao">🗂️ Avaliações</h3>
+      <div id="ev-historico"></div>
+    </div>
+  </div>
+
   <!-- ============ MODAL: FORMULÁRIO DE DINÂMICA ============ -->
   <div class="argos-modal-fundo" id="modal-dinamica-form">
     <div class="argos-modal grande">
@@ -442,7 +466,7 @@
     </div>
   </div>
 
-  <script type="module" src="pacientes.js?v=9"></script>
+  <script type="module" src="pacientes.js?v=10"></script>
   <script type="module" src="argos-zoom.js?v=4"></script>
 </body>
 </html>

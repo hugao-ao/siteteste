@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=0.1, maximum-scale=10, user-scalable=yes" />
+  <title>Argos Gestão — Evolução Terapêutica</title>
+  <script src="argos-guard.js"></script>
+  <link rel="stylesheet" href="argos-style.css?v=7" />
+  <style>
+    .ev-topo { position: sticky; top: 0; z-index: 5; background: var(--argos-bg);
+      padding: 10px 0; border-bottom: 1px solid var(--argos-border); margin-bottom: 14px; }
+    .ev-progresso { height: 8px; background: var(--argos-surface-2); border-radius: 99px; overflow: hidden; margin: 6px 0; }
+    .ev-progresso i { display: block; height: 100%; background: var(--argos-primary); transition: width .25s; }
+    .ev-area { border: 1px solid var(--argos-border); border-radius: var(--argos-radius);
+      margin-bottom: 12px; overflow: hidden; }
+    .ev-area-topo { display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+      padding: 10px 12px; background: var(--argos-surface-2); cursor: pointer; }
+    .ev-area-topo .nome { flex: 1; font-weight: 700; min-width: 180px; }
+    .ev-area-corpo { padding: 12px; display: none; }
+    .ev-area.aberta .ev-area-corpo { display: block; }
+    .ev-sub { border-top: 1px dashed var(--argos-border); padding: 10px 0; }
+    .ev-sub:first-child { border-top: none; }
+    .ev-sub-topo { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 6px; }
+    .ev-sub-topo b { flex: 1; min-width: 150px; }
+    .ev-opcao { display: flex; align-items: center; gap: 8px; padding: 3px 0 3px 14px; flex-wrap: wrap; }
+    .ev-opcao .rot { flex: 1; min-width: 160px; font-size: .88rem; color: var(--argos-text-dim); }
+    .ev-opcao.escolhida .rot { color: var(--argos-text); font-weight: 600; }
+    .ev-opcao select, .ev-sub-topo select, .ev-area-topo select { max-width: 260px; }
+    .badge-conferir { background: var(--argos-warn); color: #1a1300; border: none; cursor: pointer;
+      border-radius: 99px; padding: 1px 8px; font-size: .72rem; font-weight: 700; white-space: nowrap; }
+    .ev-area.tem-badge .ev-area-topo { box-shadow: inset 3px 0 0 var(--argos-warn); }
+    .ev-area.incompleta .ev-area-topo { box-shadow: inset 3px 0 0 var(--argos-danger); }
+    .ev-area.completa .ev-area-topo { box-shadow: inset 3px 0 0 var(--argos-success); }
+    .ev-subjetivo { margin-top: 10px; }
+    .ev-subjetivo textarea { width: 100%; }
+    .ev-travada { opacity: .75; pointer-events: none; }
+  </style>
+</head>
+<body>
+  <header class="argos-topbar">
+    <div class="brand">ARGOS <span>GESTÃO</span></div>
+    <div class="actions">
+      <a class="argos-btn ghost" href="pacientes.html">← Pacientes</a>
+      <button class="argos-btn danger" id="btn-logout">Sair</button>
+    </div>
+  </header>
+
+  <main class="argos-pagina larga">
+    <h1>📈 Evolução Terapêutica</h1>
+    <p class="sub" id="ev-paciente">Carregando…</p>
+
+    <div class="ev-topo">
+      <div class="argos-filtros" style="margin:0">
+        <select id="ev-avaliacao" class="argos-input" style="min-width:230px"></select>
+        <button class="argos-btn" id="btn-nova" data-argos-recurso="evolucao_editar">+ Nova avaliação</button>
+        <button class="argos-btn ghost" id="btn-expandir">⊞ Expandir tudo</button>
+        <button class="argos-btn ghost" id="btn-recolher">⊟ Recolher tudo</button>
+        <button class="argos-btn" id="btn-conferir-tudo" style="display:none">✔ Conferir tudo</button>
+        <span style="flex:1"></span>
+        <button class="argos-btn" id="btn-salvar" data-argos-recurso="evolucao_editar">💾 Salvar rascunho</button>
+        <button class="argos-btn primary" id="btn-concluir" data-argos-recurso="evolucao_editar">✅ Concluir avaliação</button>
+      </div>
+      <div class="ev-progresso"><i id="ev-barra" style="width:0%"></i></div>
+      <p class="dica" id="ev-status" style="margin:0"></p>
+    </div>
+
+    <div id="ev-aviso" class="argos-aviso" style="display:none"></div>
+    <div id="ev-areas"></div>
+
+    <h2 class="form-secao">🧠 Memória da Terapia</h2>
+    <p class="dica">Campos livres — não entram nos cálculos dos gráficos.</p>
+    <div id="ev-memoria"></div>
+
+    <div class="argos-modal-acoes" style="margin:20px 0 40px">
+      <a class="argos-btn ghost" href="pacientes.html">← Voltar aos pacientes</a>
+      <button class="argos-btn" id="btn-salvar2" data-argos-recurso="evolucao_editar">💾 Salvar rascunho</button>
+      <button class="argos-btn primary" id="btn-concluir2" data-argos-recurso="evolucao_editar">✅ Concluir avaliação</button>
+    </div>
+  </main>
+
+  <!-- ============ MODAL: CONCLUIR (prazo da próxima) ============ -->
+  <div class="argos-modal-fundo" id="modal-concluir">
+    <div class="argos-modal">
+      <div class="argos-modal-topo">
+        <h2>✅ Concluir avaliação</h2>
+        <button class="argos-modal-x" data-fechar>×</button>
+      </div>
+      <div id="concluir-pendencias"></div>
+      <div id="concluir-prazo">
+        <h3 class="form-secao">⏳ Prazo da próxima avaliação</h3>
+        <p class="dica">Obrigatório. Até essa data você ainda poderá editar esta avaliação; a partir dela, ela é travada e a próxima nasce pré-preenchida para conferência.</p>
+        <div class="form-grade">
+          <label>Modo
+            <select id="prazo-modo">
+              <option value="dias">Em X dias após esta avaliação</option>
+              <option value="data">Em uma data específica</option>
+            </select>
+          </label>
+          <label id="rotulo-prazo-dias">Dias
+            <input type="number" min="1" id="prazo-dias" value="90" />
+          </label>
+          <label id="rotulo-prazo-data" style="display:none">Data
+            <input type="date" id="prazo-data" />
+          </label>
+        </div>
+        <p class="dica" id="prazo-previsao" style="font-weight:600"></p>
+      </div>
+      <div class="argos-modal-acoes">
+        <button type="button" class="argos-btn ghost" data-fechar>Cancelar</button>
+        <button type="button" class="argos-btn primary" id="btn-confirmar-concluir">Concluir</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="evolucao.js?v=1"></script>
+  <script type="module" src="argos-zoom.js?v=4"></script>
+</body>
+</html>

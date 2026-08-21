@@ -10,6 +10,10 @@ import {
     conflitosDeDinamica, conflitosDeSessao,
     divisaoRepasses, repassesDe, unidadeRepasse, aplicarFimDeProcesso
 } from './argos-recorrencia.js';
+import {
+    indexarRespostas, calcularAvaliacao, radarSVG, limiteProxima,
+    avaliacaoTravada, COMPETENCIA_MAX, FOCO_MAX, formataNota
+} from './argos-evolucao.js';
 
 let perm = { pode: () => true, aplicarVisibilidade: () => {}, master: true };
 
@@ -116,6 +120,7 @@ function renderLista() {
           ${p.cadastro_removido ? '' : `
           <div class="mini-acoes">
             ${podeDinamicas ? `<button class="argos-btn small" data-acao="dinamicas" data-id="${p.id}">💰 Dinâmicas</button>` : ''}
+            ${perm.pode('evolucao_ver') ? `<button class="argos-btn small" data-acao="evolucao" data-id="${p.id}">📈 Evolução</button>` : ''}
             ${podeEditar ? `<button class="argos-btn small" data-acao="editar" data-id="${p.id}">✏️ Editar</button>` : ''}
             ${podeExcluir ? `<button class="argos-btn small danger" data-acao="excluir" data-id="${p.id}">🗑️</button>` : ''}
           </div>`}
@@ -134,6 +139,7 @@ document.getElementById('lista-pacientes').addEventListener('click', (e) => {
     if (!p) return;
     if (btn.dataset.acao === 'editar') abrirModalPaciente(p.id);
     if (btn.dataset.acao === 'dinamicas') abrirModalDinamicas(p);
+    if (btn.dataset.acao === 'evolucao') abrirModalEvolucao(p);
     if (btn.dataset.acao === 'excluir') { pacienteAtual = p; document.getElementById('modal-excluir-titulo').textContent = `Excluir: ${p.nome}`; abrirModal('modal-excluir'); }
 });
 
@@ -193,6 +199,131 @@ document.getElementById('form-paciente').addEventListener('submit', async (e) =>
     toast(editandoPacienteId ? 'Paciente atualizado.' : 'Paciente cadastrado.');
     await carregarTudo();
 });
+
+// ============================================================
+// EVOLUÇÃO TERAPÊUTICA (consulta: 4 radares + histórico)
+// ============================================================
+let evCatalogo = [], evAvaliacoes = [], evRespostas = {}; // respostas por avaliacao_id
+
+async function abrirModalEvolucao(p) {
+    pacienteAtual = p;
+    document.getElementById('modal-evolucao-titulo').textContent = `📈 Evolução Terapêutica — ${p.nome}`;
+    document.getElementById('btn-ev-abrir').href = `evolucao.html?paciente=${p.id}`;
+    document.getElementById('ev-graficos').innerHTML = '<p class="dim">Carregando…</p>';
+    document.getElementById('ev-tabela').innerHTML = '';
+    document.getElementById('ev-historico').innerHTML = '';
+    abrirModal('modal-evolucao');
+
+    if (!evCatalogo.length) {
+        const [rA, rS, rO] = await Promise.all([
+            sb.from('argos_ev_areas').select('*').order('ordem'),
+            sb.from('argos_ev_subareas').select('*').order('ordem'),
+            sb.from('argos_ev_opcoes').select('*').order('ordem')
+        ]);
+        const subs = rS.data || [], ops = rO.data || [];
+        evCatalogo = (rA.data || []).map(a => ({
+            ...a,
+            subareas: subs.filter(x => x.area_id === a.id).map(x => ({
+                ...x, opcoes: ops.filter(o => o.subarea_id === x.id)
+            }))
+        }));
+    }
+    const { data: avs } = await sb.from('argos_ev_avaliacoes').select('*')
+        .eq('paciente_id', p.id).order('numero');
+    evAvaliacoes = (avs || []).filter(a => a.status === 'concluida');
+    evRespostas = {};
+    if (evAvaliacoes.length) {
+        const { data: rr } = await sb.from('argos_ev_respostas').select('*')
+            .in('avaliacao_id', evAvaliacoes.map(a => a.id));
+        evAvaliacoes.forEach(a => {
+            evRespostas[a.id] = indexarRespostas((rr || []).filter(x => x.avaliacao_id === a.id));
+        });
+    }
+    montarSeletoresEv(avs || []);
+    renderEvolucao();
+}
+
+function rotuloAvaliacao(a) {
+    return `${a.numero === 1 ? 'Avaliação inicial' : a.numero + 'ª avaliação'} — ${formataBR(a.data)}`;
+}
+
+function montarSeletoresEv(todas) {
+    const opts = evAvaliacoes.map(a => `<option value="${a.id}">${esc(rotuloAvaliacao(a))}</option>`).join('');
+    const selA = document.getElementById('ev-serie-a');
+    const selB = document.getElementById('ev-serie-b');
+    selA.innerHTML = opts; selB.innerHTML = opts;
+    if (evAvaliacoes.length) {
+        selA.value = evAvaliacoes[0].id;
+        selB.value = evAvaliacoes[evAvaliacoes.length - 1].id;
+    }
+    const rascunhos = (todas || []).filter(a => a.status === 'rascunho').length;
+    document.getElementById('ev-historico').innerHTML = (todas || []).map(a => {
+        const lim = limiteProxima(a);
+        const estado = a.status === 'rascunho'
+            ? '<span class="badge vermelho">rascunho — pendente de conclusão</span>'
+            : (avaliacaoTravada(a, hojeISO())
+                ? '<span class="badge azul">concluída · travada</span>'
+                : '<span class="badge verde">concluída · editável</span>');
+        return `<div class="argos-bloco">
+            <div class="bloco-topo"><b>${esc(rotuloAvaliacao(a))}</b>${estado}</div>
+            <div class="bloco-info">${lim ? `Próxima avaliação até <b>${formataBR(lim)}</b>` : 'Prazo da próxima ainda não definido'}
+              · <a href="evolucao.html?paciente=${a.paciente_id}&avaliacao=${a.id}">abrir</a></div>
+          </div>`;
+    }).join('') || '<p class="dim">Nenhuma avaliação ainda.</p>'
+      + (rascunhos ? '' : '');
+}
+
+function renderEvolucao() {
+    const cont = document.getElementById('ev-graficos');
+    if (evAvaliacoes.length < 1) {
+        cont.innerHTML = '<p class="dim">Os gráficos aparecem quando houver pelo menos uma avaliação <b>concluída</b>.</p>';
+        return;
+    }
+    const idA = document.getElementById('ev-serie-a').value;
+    const idB = document.getElementById('ev-serie-b').value;
+    const avA = evAvaliacoes.find(a => a.id === idA);
+    const avB = evAvaliacoes.find(a => a.id === idB);
+    const calcA = avA ? calcularAvaliacao(evCatalogo, evRespostas[avA.id]) : [];
+    const calcB = avB ? calcularAvaliacao(evCatalogo, evRespostas[avB.id]) : [];
+    const eixos = evCatalogo.map(a => a.nome);
+    const serie = (calc, nome, cor, tracejada, campo) => calc.length
+        ? [{ nome, cor, tracejada, valores: calc.map(c => c[campo]) }] : [];
+    const mesmo = idA === idB;
+
+    const compSeries = [
+        ...serie(calcA, rotuloAvaliacao(avA), '#38bdf8', true, 'competencia'),
+        ...(mesmo ? [] : serie(calcB, rotuloAvaliacao(avB), '#38bdf8', false, 'competencia'))
+    ];
+    const focoSeries = [
+        ...serie(calcA, rotuloAvaliacao(avA), '#e879f9', true, 'foco'),
+        ...(mesmo ? [] : serie(calcB, rotuloAvaliacao(avB), '#e879f9', false, 'foco'))
+    ];
+
+    cont.innerHTML = [
+        radarSVG({ titulo: 'Competências — escala proporcional', eixos, series: compSeries, max: 'auto' }),
+        radarSVG({ titulo: `Competências — escala fixa (0–${COMPETENCIA_MAX})`, eixos, series: compSeries, max: COMPETENCIA_MAX, aneis: 5 }),
+        radarSVG({ titulo: 'Foco Terapêutico — escala proporcional', eixos, series: focoSeries, max: 'auto' }),
+        radarSVG({ titulo: `Foco Terapêutico — escala fixa (0–${FOCO_MAX})`, eixos, series: focoSeries, max: FOCO_MAX, aneis: 4 })
+    ].join('');
+
+    document.getElementById('ev-tabela').innerHTML = `
+      <div class="argos-tabela-wrap" style="margin-top:10px"><table class="argos-tabela">
+        <thead><tr><th>Área</th><th>Peso</th><th>Competência</th><th>Foco</th>
+          ${mesmo ? '' : '<th>Peso</th><th>Competência</th><th>Foco</th><th>Δ competência</th>'}</tr></thead>
+        <tbody>${evCatalogo.map((a, i) => {
+            const A = calcA[i] || {}, B = calcB[i] || {};
+            const d = (B.competencia != null && A.competencia != null) ? B.competencia - A.competencia : null;
+            const cor = d == null ? '' : (d > 0.004 ? '#22c55e' : (d < -0.004 ? '#ef4444' : ''));
+            return `<tr><td>${esc(a.nome)}</td>
+              <td>${A.peso || '—'}</td><td>${formataNota(A.competencia)}</td><td>${formataNota(A.foco)}</td>
+              ${mesmo ? '' : `<td>${B.peso || '—'}</td><td>${formataNota(B.competencia)}</td><td>${formataNota(B.foco)}</td>
+              <td style="color:${cor}">${d == null ? '—' : (d > 0 ? '+' : '') + formataNota(d)}</td>`}</tr>`;
+        }).join('')}</tbody>
+      </table></div>`;
+}
+
+document.getElementById('ev-serie-a').addEventListener('change', renderEvolucao);
+document.getElementById('ev-serie-b').addEventListener('change', renderEvolucao);
 
 // ============================================================
 // DINÂMICAS FINANCEIRAS
