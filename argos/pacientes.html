@@ -167,9 +167,19 @@
         </label>
         <p class="dica">As informações clínicas da anamnese terão um campo próprio em uma etapa futura.</p>
 
-        <label class="linha-check">
-          <input type="checkbox" id="pac-ativo" checked /> Paciente ativo
-        </label>
+        <h3 class="form-secao">🚦 Situação do paciente</h3>
+        <div class="form-grade">
+          <label>Situação
+            <select id="pac-situacao"></select>
+          </label>
+          <label>Desde <span class="dim">(opcional)</span>
+            <input type="date" id="pac-situacao-data" />
+          </label>
+          <label>Motivo / observação
+            <input type="text" id="pac-situacao-motivo" placeholder="Ex.: alta em comum acordo" />
+          </label>
+        </div>
+        <p class="dica" id="pac-situacao-dica"></p>
 
         <div class="argos-modal-acoes">
           <button type="button" class="argos-btn ghost" data-fechar>Cancelar</button>
@@ -189,14 +199,10 @@
       <div id="lista-dinamicas"></div>
       <div id="bloco-processo-pac" data-argos-recurso="processo_encerrar">
         <h3 class="form-secao">🏁 Situação do processo</h3>
-        <p class="dica">Ao interromper ou finalizar, o paciente deixa de constar na agenda, nos grupos e nas finanças a partir da data — não importa o que esteja programado. Voltar para "Em andamento" desfaz o corte.</p>
+        <p class="dica">Marcando qualquer situação diferente de "Em andamento", o paciente deixa de constar na agenda, nos grupos e nas finanças a partir da data — não importa o que esteja programado. <b>Sem data, o corte vale a partir de hoje.</b> Voltar para "Em andamento" desfaz o corte e reativa o paciente.</p>
         <div class="agenda-nav" style="flex-wrap:wrap; gap:8px">
-          <select id="pac-proc-tipo" class="argos-input">
-            <option value="">▶️ Em andamento</option>
-            <option value="interrompido">⏸️ Interrompido</option>
-            <option value="finalizado">🏁 Finalizado</option>
-          </select>
-          <input type="date" id="pac-proc-data" class="argos-input" title="A partir de" />
+          <select id="pac-proc-tipo" class="argos-input"></select>
+          <input type="date" id="pac-proc-data" class="argos-input" title="A partir de (opcional)" />
           <input type="text" id="pac-proc-motivo" class="argos-input" placeholder="Motivo (opcional)" style="flex:1; min-width:140px" />
           <button type="button" class="argos-btn small primary" id="btn-proc-salvar">Salvar situação</button>
         </div>
@@ -497,7 +503,7 @@
     </div>
   </div>
 
-  <script type="module" src="pacientes.js?v=13"></script>
+  <script type="module" src="pacientes.js?v=14"></script>
   <script type="module" src="argos-zoom.js?v=4"></script>
 </body>
 </html>

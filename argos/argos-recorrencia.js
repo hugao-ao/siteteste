@@ -24,6 +24,26 @@ export const PROJETAVEIS = ['ok', 'fc', '??']; // cobráveis + presença futura 
 
 export const DOW_NOMES = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 
+/**
+ * Por que o paciente não vem mais. Vazio = em andamento.
+ * Qualquer valor preenchido corta agenda e finanças e deixa o paciente
+ * inativo — a data é opcional, porque nem sempre se sabe quando parou.
+ */
+export const SITUACAO_PROCESSO = [
+    { valor: '',             rotulo: '▶️ Em andamento',       curto: 'Em andamento',  desc: 'O paciente segue vindo.' },
+    { valor: 'finalizado',   rotulo: '🏁 Finalizado',         curto: 'Finalizado',    desc: 'Alta: o objetivo do trabalho foi alcançado.' },
+    { valor: 'interrompido', rotulo: '⏸️ Interrompido',       curto: 'Interrompido',  desc: 'Pausa combinada — pode voltar.' },
+    { valor: 'abandono',     rotulo: '🚪 Abandono',           curto: 'Abandono',      desc: 'Parou de vir sem combinar.' },
+    { valor: 'transferido',  rotulo: '➡️ Transferido',        curto: 'Transferido',   desc: 'Foi para outro profissional ou serviço.' },
+    { valor: 'inativo',      rotulo: '⛔ Não vem mais',       curto: 'Não vem mais',  desc: 'Sabe-se que parou, mas o motivo não foi registrado.' }
+];
+
+/** Rótulo curto de uma situação (ou 'Em andamento' quando vazia). */
+export function situacaoLabel(tipo) {
+    const s = SITUACAO_PROCESSO.find(x => x.valor === (tipo || ''));
+    return s ? s.rotulo : tipo;
+}
+
 // ---------- datas (sempre em strings 'YYYY-MM-DD', sem fuso) ----------
 export function hojeISO() {
     const d = new Date();
@@ -402,7 +422,13 @@ export function ocorrenciasDaCadeia(root, dinamicas, ateISO) {
  */
 export function aplicarFimDeProcesso(dinamicas, sessoes, pacientes) {
     const fimDe = {};
-    (pacientes || []).forEach(p => { if (p && p.processo_fim_data) fimDe[p.id] = p.processo_fim_data; });
+    (pacientes || []).forEach(p => {
+        if (!p) return;
+        // sem data informada o corte vale de hoje: não se projeta mais nada
+        // para quem já não vem, e o histórico até aqui fica de pé
+        if (p.processo_fim_data) fimDe[p.id] = p.processo_fim_data;
+        else if (p.processo_fim_tipo) fimDe[p.id] = hojeISO();
+    });
     if (!Object.keys(fimDe).length) return { dinamicas: dinamicas || [], sessoes: sessoes || [] };
     const dins = (dinamicas || []).map(d => {
         const fim = fimDe[d.paciente_id];
