@@ -224,6 +224,8 @@ const emLotes = async (itens, n, fn) => {
     for (let i = 0; i < itens.length; i += n) await fn(itens.slice(i, i + n), i);
 };
 
+const MOTIVO_IMPORTADO = 'Marcado como inativo na planilha CADASTRO — motivo não registrado.';
+
 function camposDoPaciente(p, marcarInativo) {
     const campos = {
         nome: p.nome,
@@ -235,7 +237,17 @@ function camposDoPaciente(p, marcarInativo) {
         contato: p.contato || null,
         pasta_url: p.pasta_url || null
     };
-    if (marcarInativo) campos.ativo = p.ativo;
+    if (marcarInativo && !p.ativo) {
+        // "inativo" na planilha = não vem mais. Entra como situação de saída
+        // sem motivo nem data (a planilha não diz qual nem quando), para você
+        // reclassificar depois no cadastro.
+        campos.ativo = false;
+        campos.processo_fim_tipo = 'inativo';
+        campos.processo_fim_data = null;
+        campos.processo_fim_motivo = MOTIVO_IMPORTADO;
+    } else if (marcarInativo) {
+        campos.ativo = true;
+    }
     return campos;
 }
 
@@ -257,7 +269,7 @@ $('btn-importar').addEventListener('click', async () => {
             prog(`Criando ${novos.length} pacientes…`);
             await emLotes(novos, 60, async (lote, i) => {
                 const { data, error } = await sb.from('argos_pacientes')
-                    .insert(lote.map(p => ({ ...camposDoPaciente(p, marcarInativo), ativo: marcarInativo ? p.ativo : true })))
+                    .insert(lote.map(p => ({ ativo: true, ...camposDoPaciente(p, marcarInativo) })))
                     .select('id, nome');
                 if (error) throw error;
                 (data || []).forEach(d => porChave.set(chaveNome(d.nome), d));
@@ -272,7 +284,14 @@ $('btn-importar').addEventListener('click', async () => {
                 const alvo = porChave.get(p.chave);
                 const campos = camposDoPaciente(p, marcarInativo);
                 delete campos.nome;                      // não renomeia quem já existe
-                Object.keys(campos).forEach(k => { if (campos[k] == null) delete campos[k]; });
+                // não mexe na situação de quem já foi classificado na mão
+                if (alvo.processo_fim_tipo && alvo.processo_fim_tipo !== 'inativo') {
+                    delete campos.ativo; delete campos.processo_fim_tipo;
+                    delete campos.processo_fim_data; delete campos.processo_fim_motivo;
+                }
+                Object.keys(campos).forEach(k => {
+                    if (campos[k] == null && k !== 'processo_fim_data') delete campos[k];
+                });
                 if (!Object.keys(campos).length) continue;
                 const { error } = await sb.from('argos_pacientes').update(campos).eq('id', alvo.id);
                 if (error) throw error;

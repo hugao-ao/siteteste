@@ -8,7 +8,8 @@ import {
     DOW_NOMES, PACOTE_MODOS, STATUS_SESSAO, acordoLabel, mesclarSessoes,
     fechamentoPaciente, hojeISO, somarDias, formataBR, formataMoeda,
     conflitosDeDinamica, conflitosDeSessao,
-    divisaoRepasses, repassesDe, unidadeRepasse, aplicarFimDeProcesso
+    divisaoRepasses, repassesDe, unidadeRepasse, aplicarFimDeProcesso,
+    SITUACAO_PROCESSO, situacaoLabel
 } from './argos-recorrencia.js';
 import {
     indexarRespostas, calcularAvaliacao, radarSVG, limiteProxima,
@@ -107,8 +108,9 @@ function renderLista() {
           <div class="mini-topo">
             <div class="mini-nome">${esc(p.nome)}</div>
             ${p.cadastro_removido ? '<span class="badge vermelho">Cadastro removido</span>'
-              : (p.ativo ? '' : '<span class="badge vermelho">Inativo</span>')}
-            ${!p.cadastro_removido && p.processo_fim_data ? `<span class="badge vermelho">${p.processo_fim_tipo === 'finalizado' ? '🏁 Finalizado' : '⏸️ Interrompido'} em ${formataBR(p.processo_fim_data)}</span>` : ''}
+              : p.processo_fim_tipo
+                ? `<span class="badge vermelho">${situacaoLabel(p.processo_fim_tipo)}${p.processo_fim_data ? ' em ' + formataBR(p.processo_fim_data) : ''}</span>`
+                : (p.ativo ? '' : '<span class="badge vermelho">Inativo</span>')}
           </div>
           <div class="mini-info">
             ${p.nascimento ? `🎂 ${formataBR(p.nascimento)} (${idade(p.nascimento)})<br>` : ''}
@@ -149,6 +151,43 @@ document.getElementById('lista-pacientes').addEventListener('click', (e) => {
 // ============================================================
 document.getElementById('btn-novo-paciente').addEventListener('click', () => abrirModalPaciente(null));
 
+/** Preenche um <select> com o vocabulário de situação do processo. */
+function opcoesSituacao(sel) {
+    if (!sel) return;
+    sel.innerHTML = SITUACAO_PROCESSO.map(o =>
+        `<option value="${o.valor}">${o.rotulo}</option>`).join('');
+}
+opcoesSituacao(document.getElementById('pac-situacao'));
+opcoesSituacao(document.getElementById('pac-proc-tipo'));
+
+/** Explica, abaixo do campo, o que a situação escolhida faz. */
+function explicarSituacao() {
+    const tipo = document.getElementById('pac-situacao').value;
+    const o = SITUACAO_PROCESSO.find(x => x.valor === tipo);
+    const data = document.getElementById('pac-situacao-data').value;
+    const alvo = document.getElementById('pac-situacao-dica');
+    if (!o || !tipo) {
+        alvo.textContent = 'Paciente em atendimento: continua na agenda, nos grupos e nas finanças.';
+        return;
+    }
+    alvo.innerHTML = `${esc(o.desc)} O paciente fica <b>inativo</b> e sai da agenda, dos grupos e das finanças `
+        + (data ? `a partir de <b>${formataBR(data)}</b>.` : 'a partir de <b>hoje</b> — informe a data se souber quando parou.');
+}
+['pac-situacao', 'pac-situacao-data'].forEach(id =>
+    document.getElementById(id).addEventListener('change', explicarSituacao));
+
+/** Os quatro campos de situação, coerentes entre si, a partir do formulário. */
+function situacaoDoFormulario() {
+    const tipo = document.getElementById('pac-situacao').value || null;
+    const txt = id => document.getElementById(id).value.trim() || null;
+    return tipo
+        ? { ativo: false, processo_fim_tipo: tipo,
+            processo_fim_data: txt('pac-situacao-data'),
+            processo_fim_motivo: txt('pac-situacao-motivo') }
+        : { ativo: true, processo_fim_tipo: null,
+            processo_fim_data: null, processo_fim_motivo: null };
+}
+
 /** Mostra o link da pasta abaixo do campo, para abrir sem copiar e colar. */
 function mostrarLinkPasta(url) {
     const alvo = document.getElementById('pac-pasta-link');
@@ -181,7 +220,10 @@ function abrirModalPaciente(id) {
     v('pac-observacoes', p && p.observacoes);
     v('pac-anamnese-data', p && p.anamnese_data); v('pac-anamnese-valor', p && p.anamnese_valor);
     document.getElementById('pac-anamnese-cobrar').checked = p ? !!p.anamnese_cobrar : false;
-    document.getElementById('pac-ativo').checked = p ? !!p.ativo : true;
+    v('pac-situacao', p && p.processo_fim_tipo);
+    v('pac-situacao-data', p && p.processo_fim_data);
+    v('pac-situacao-motivo', p && p.processo_fim_motivo);
+    explicarSituacao();
     abrirModal('modal-paciente');
 }
 
@@ -208,7 +250,9 @@ document.getElementById('form-paciente').addEventListener('submit', async (e) =>
         anamnese_data: g('pac-anamnese-data'),
         anamnese_valor: g('pac-anamnese-valor'),
         anamnese_cobrar: document.getElementById('pac-anamnese-cobrar').checked,
-        ativo: document.getElementById('pac-ativo').checked
+        // uma verdade só: quem tem situação de saída está inativo, e voltar
+        // para "em andamento" limpa data e motivo junto
+        ...situacaoDoFormulario()
     };
     if (!registro.nome) { toast('Informe o nome.', true); return; }
     const q = editandoPacienteId
@@ -408,20 +452,20 @@ document.getElementById('btn-proc-salvar').addEventListener('click', async () =>
     const tipo = document.getElementById('pac-proc-tipo').value || null;
     const data = document.getElementById('pac-proc-data').value || null;
     const motivo = document.getElementById('pac-proc-motivo').value.trim() || null;
-    if (tipo && !data) { toast('Informe a data a partir da qual o processo para.', true); return; }
     const registro = tipo
-        ? { processo_fim_tipo: tipo, processo_fim_data: data, processo_fim_motivo: motivo }
-        : { processo_fim_tipo: null, processo_fim_data: null, processo_fim_motivo: null };
+        ? { processo_fim_tipo: tipo, processo_fim_data: data, processo_fim_motivo: motivo, ativo: false }
+        : { processo_fim_tipo: null, processo_fim_data: null, processo_fim_motivo: null, ativo: true };
     const { error } = await sb.from('argos_pacientes').update(registro).eq('id', p.id);
     if (error) { console.error(error); toast('Erro ao salvar a situação do processo.', true); return; }
+    const desde = data ? `a partir de ${formataBR(data)}` : 'a partir de hoje (data não informada)';
     const descricao = tipo
-        ? `Processo ${tipo} a partir de ${formataBR(data)}: o paciente deixa de constar na agenda e nas finanças a partir dessa data.`
-        : 'Processo retomado (em andamento): o corte de agenda e finanças foi desfeito.';
+        ? `${situacaoLabel(tipo)} ${desde}: o paciente fica inativo e deixa de constar na agenda e nas finanças.`
+        : 'Processo retomado (em andamento): o paciente volta a ficar ativo e o corte foi desfeito.';
     await sb.from('argos_paciente_eventos').insert({
         paciente_id: p.id, tipo: tipo ? 'processo_' + tipo : 'processo_retomado',
         descricao, dados: { tipo, data }, justificativa: motivo
     });
-    toast(tipo ? `Processo ${tipo} a partir de ${formataBR(data)}.` : 'Processo em andamento novamente.');
+    toast(tipo ? `${situacaoLabel(tipo)} ${desde}.` : 'Processo em andamento novamente.');
     await carregarTudo();
     pacienteAtual = pacientes.find(x => x.id === p.id) || p;
     renderProcesso();
