@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=0.1, maximum-scale=10, user-scalable=yes" />
   <title>Argos Gestão — Pacientes</title>
   <script src="argos-guard.js"></script>
-  <link rel="stylesheet" href="argos-style.css?v=9" />
+  <link rel="stylesheet" href="argos-style.css?v=10" />
   <style>
     #ev-graficos { align-items: start; }
     #ev-graficos svg { background: var(--argos-bg); border: 1px solid var(--argos-border);
@@ -158,7 +158,7 @@
             <input type="date" id="pac-anamnese-data" />
           </label>
           <label>Valor da anamnese (se cobrada)
-            <input type="number" step="0.01" min="0" id="pac-anamnese-valor" placeholder="R$" />
+            <span class="campo-moeda"><input type="number" step="0.01" min="0" id="pac-anamnese-valor" placeholder="R$" /></span>
           </label>
         </div>
         <label class="linha-check">
@@ -335,8 +335,8 @@
               <option value="pacote">Valor global por pacote de X sessões</option>
             </select>
           </label>
-          <label id="rotulo-valor">Valor (R$)
-            <input type="number" step="0.01" min="0" id="din-valor" />
+          <label id="rotulo-valor">Valor
+            <span class="campo-moeda"><input type="number" step="0.01" min="0" id="din-valor" /></span>
           </label>
           <label data-argos-recurso="nota_tipo_definir">Nota fiscal
             <select id="din-nota-tipo"></select>
@@ -354,22 +354,22 @@
             <label>Quantidade de sessões do pacote
               <input type="number" min="1" id="din-pacote-qtd" />
             </label>
-            <label>Valor global do pacote (R$)
-              <input type="number" step="0.01" min="0" id="din-pacote-valor" />
+            <label>Valor global do pacote
+              <span class="campo-moeda"><input type="number" step="0.01" min="0" id="din-pacote-valor" /></span>
             </label>
             <label>Como será pago
               <select id="din-pacote-modo"></select>
             </label>
           </div>
           <div class="form-grade" id="pacote-params">
-            <label id="pp-valor-inicio" style="display:none">Valor pago no início (R$)
-              <input type="number" step="0.01" min="0" id="din-pp-valor-inicio" />
+            <label id="pp-valor-inicio" style="display:none">Valor pago no início
+              <span class="campo-moeda"><input type="number" step="0.01" min="0" id="din-pp-valor-inicio" /></span>
             </label>
             <label id="pp-x" style="display:none">Pagar a cada quantas sessões?
               <input type="number" min="1" id="din-pp-x" />
             </label>
-            <label id="pp-entrada" style="display:none">Valor da entrada (R$)
-              <input type="number" step="0.01" min="0" id="din-pp-entrada" />
+            <label id="pp-entrada" style="display:none">Valor da entrada
+              <span class="campo-moeda"><input type="number" step="0.01" min="0" id="din-pp-entrada" /></span>
             </label>
             <label id="pp-nparcelas" style="display:none">Quantidade de parcelas mensais
               <input type="number" min="1" id="din-pp-nparcelas" />
@@ -445,8 +445,8 @@
           <label>Duração (min)
             <input type="number" min="5" step="5" id="avu-duracao" value="60" />
           </label>
-          <label>Valor da sessão (R$)
-            <input type="number" step="0.01" min="0" id="avu-valor" />
+          <label>Valor da sessão
+            <span class="campo-moeda"><input type="number" step="0.01" min="0" id="avu-valor" /></span>
           </label>
           <label>Espaço
             <select id="avu-sala"></select>
@@ -507,7 +507,7 @@
     </div>
   </div>
 
-  <script type="module" src="pacientes.js?v=15"></script>
+  <script type="module" src="pacientes.js?v=16"></script>
   <script type="module" src="argos-zoom.js?v=4"></script>
 </body>
 </html>

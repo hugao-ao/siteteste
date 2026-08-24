@@ -587,7 +587,9 @@ function renderAlocacoes() {
       <div class="linha-dia" data-aloc="${i}">
         <span style="flex:2; min-width:120px">${esc(nomeVinculo(a.vinculo_tipo, a.vinculo_id))}</span>
         <input type="month" class="argos-input aloc-mes" value="${a.mes_ref}" title="Mês de referência" />
-        <input type="number" step="0.01" min="0.01" class="argos-input aloc-valor" value="${a.valor || ''}" placeholder="R$" title="Valor desta parte" />
+        <span class="campo-moeda inline"><input type="number" step="0.01" min="0.01"
+          class="argos-input aloc-valor" value="${a.valor || ''}" placeholder="0,00"
+          title="Valor desta parte" /></span>
         <button type="button" class="argos-btn small danger aloc-remover">×</button>
       </div>`).join('') || '<p class="dim">Nenhuma alocação ainda — escolha um destino acima.</p>';
     atualizarResumoClassificacao();

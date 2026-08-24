@@ -628,7 +628,8 @@ function linhaParcela(p) {
     el.className = 'linha-dia';
     el.innerHTML = `
       <input type="date" class="par-data" value="${p && p.data || ''}" />
-      <input type="number" step="0.01" min="0" class="par-valor" placeholder="R$" value="${p && p.valor || ''}" />
+      <span class="campo-moeda"><input type="number" step="0.01" min="0" class="par-valor"
+        placeholder="0,00" value="${p && p.valor || ''}" /></span>
       <button type="button" class="argos-btn small danger dia-remover">×</button>`;
     el.querySelector('.dia-remover').addEventListener('click', () => el.remove());
     return el;
@@ -651,7 +652,8 @@ function linhaRepasse(r) {
         <option value="percentual">% do acordo</option>
         <option value="valor">R$ (valor nominal)</option>
       </select>
-      <input type="number" class="rep-valor" min="0" step="0.01" placeholder="Repasse" title="Valor do repasse (vazio = sem repasse por produção)" value="${r && r.valor != null ? r.valor : ''}" />
+      <input type="number" class="rep-valor" min="0" step="0.01" placeholder="Repasse"
+        title="Valor do repasse (vazio = sem repasse por produção)" value="${r && r.valor != null ? r.valor : ''}" />
       <button type="button" class="argos-btn small danger dia-remover">×</button>`;
     if (r && r.profissional_id) el.querySelector('.rep-prof').value = r.profissional_id;
     selectServicosDoProf(el.querySelector('.rep-servico'), (r && r.profissional_id) || null, (r && r.servico_id) || null);
@@ -728,7 +730,7 @@ function atualizarCondicionais() {
     const acordo = document.getElementById('din-acordo').value;
     document.getElementById('rotulo-valor').style.display = acordo === 'pacote' ? 'none' : '';
     document.getElementById('rotulo-valor').firstChild.textContent =
-        acordo === 'fixo_mensal' ? 'Valor fixo mensal (R$)' : 'Valor por sessão (R$)';
+        acordo === 'fixo_mensal' ? 'Valor fixo mensal' : 'Valor por sessão';
     document.getElementById('bloco-pacote').style.display = acordo === 'pacote' ? '' : 'none';
     const modo = document.getElementById('din-pacote-modo').value;
     document.getElementById('pp-valor-inicio').style.display = modo === 'inicio_final' ? '' : 'none';
