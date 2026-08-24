@@ -146,6 +146,29 @@
     .tlx-prod-wrap th.ord:hover { color: var(--hermo-primary); }
     .tlx-sem-equipe { color: var(--hermo-warn); font-size: .72rem; font-weight: 700; }
     .tlx-btn-alocar { margin-left: 6px; padding: 2px 7px; font-size: .68rem; white-space: nowrap; }
+    /* disponibilidade no modal de alocação */
+    .ta-int { border-left: 3px solid transparent; }
+    .ta-int.livre { border-left-color: var(--hermo-success); }
+    .ta-int.parcial { border-left-color: var(--hermo-warn); }
+    .ta-int.ocupado { border-left-color: var(--hermo-danger); opacity: .92; }
+    .ta-selo { font-weight: 700; font-size: .68rem !important; }
+    .ta-selo.livre { color: var(--hermo-success); }
+    .ta-selo.parcial { color: var(--hermo-warn); }
+    .ta-selo.ocupado { color: var(--hermo-danger); }
+    .ta-box {
+        font-size: .76rem; background: rgba(234,179,8,.08);
+        border: 1px solid rgba(234,179,8,.35); border-radius: 8px; padding: 8px 10px;
+        display: flex; flex-direction: column; gap: 5px; max-height: 190px; overflow: auto;
+    }
+    .ta-box.ok { background: rgba(34,197,94,.08); border-color: rgba(34,197,94,.35); color: var(--hermo-success); font-weight: 700; }
+    .ta-conf {
+        display: flex; align-items: flex-start; gap: 7px; cursor: pointer;
+        background: var(--hermo-surface-2); border: 1px solid var(--hermo-border);
+        border-radius: 7px; padding: 6px 8px;
+    }
+    .ta-conf.bloq { opacity: .6; cursor: not-allowed; border-style: dashed; }
+    .ta-conf small { display: block; color: var(--hermo-text-dim); font-size: .7rem; }
+    .ta-conf input { accent-color: var(--hermo-primary); margin-top: 2px; flex: 0 0 auto; }
     .tlx-chip-alerta, .tlx-chip-trava {
         font-size: .68rem; font-weight: 700; padding: 3px 8px; border-radius: 20px; white-space: nowrap;
     }
@@ -403,9 +426,11 @@
           </div>
           <div style="font-size:.72rem;color:var(--hermo-text-dim)">
             O período vem preenchido com a parte do serviço que cai dentro do recorte — ajuste se precisar.
-            Conflitos de agenda (outra obra ou ausência) são checados e bloqueiam a alocação.
+            Cada pessoa mostra se está <b style="color:var(--hermo-success)">livre</b>,
+            <b style="color:var(--hermo-warn)">parcialmente ocupada</b> (com os dias) ou
+            <b style="color:var(--hermo-danger)">indisponível</b> — e você pode desfazer o compromisso dela para alocar aqui.
           </div>
-          <div id="ta-conflitos" style="display:none;font-size:.78rem;color:var(--hermo-danger);background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.35);border-radius:8px;padding:8px 10px;white-space:pre-line"></div>
+          <div id="ta-conflitos" class="ta-box" style="display:none"></div>
         </div>
         <div class="hermo-modal-foot">
           <button class="hermo-btn ghost" id="ta-cancelar">Cancelar</button>
