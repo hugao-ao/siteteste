@@ -61,6 +61,7 @@ function lerLS(chave, padrao) {
 }
 
 const fmtCodigo = o => `OB-${String(o.numero).padStart(4, '0')}/${o.ano}`;
+const TITULO_SEM_EQUIPE = 'Ninguém alocado neste serviço — toda produção precisa ser atribuída a alguém. Use 👷 Alocar primeiro.';
 // data LOCAL (toISOString seria UTC e viraria "amanhã" à noite no fuso de Recife)
 const hoje = () => {
     const d = new Date();
@@ -786,6 +787,8 @@ function renderCronograma() {
     cont.innerHTML = comId.map(i => {
         const idx = itensDraft.indexOf(i);
         const concluido = !!i.fim_real;
+        // toda produção é de alguém: sem ninguém alocado não há o que registrar
+        const semEquipe = (i.alocacoes || []).length === 0;
         const preds = predsDe(i.id);
         const iniAuto = preds.length > 0 || !!i.inicio_real;
         const chips = (i.alocacoes || []).map(a => {
@@ -838,12 +841,16 @@ function renderCronograma() {
             <div class="linha-real">
                 <label>real:</label>
                 <span>iniciou</span>
-                <input type="date" value="${i.inicio_real || ''}" data-real-ini="${idx}" ${concluido ? 'disabled title="Serviço concluído"' : ''} />
+                <input type="date" value="${i.inicio_real || ''}" data-real-ini="${idx}"
+                    ${concluido ? 'disabled title="Serviço concluído"' : (semEquipe ? `disabled title="${TITULO_SEM_EQUIPE}"` : '')} />
                 <span>· concluiu</span>
-                <input type="date" value="${i.fim_real || ''}" data-real-fim="${idx}" />
+                <input type="date" value="${i.fim_real || ''}" data-real-fim="${idx}"
+                    ${semEquipe ? `disabled title="${TITULO_SEM_EQUIPE}"` : ''} />
                 <span>· executado</span>
-                <input type="number" class="qtd-exec" min="0" step="0.01" value="${i.qtd_executada ?? ''}" data-qtd-exec="${idx}" />
+                <input type="number" class="qtd-exec" min="0" step="0.01" value="${i.qtd_executada ?? ''}" data-qtd-exec="${idx}"
+                    ${semEquipe ? `disabled title="${TITULO_SEM_EQUIPE}"` : ''} />
                 <span>de ${fmtQtd(i.quantidade)} ${esc(i.unidade || 'un')}</span>
+                ${semEquipe ? '<span class="ob-sem-equipe">⚠ aloque alguém para registrar produção</span>' : ''}
             </div>
             <div class="ob-aloc-chips">${chips || '<span style="font-size:.72rem;color:var(--hermo-text-dim)">ninguém alocado ainda</span>'}</div>
         </div>`;
@@ -1713,6 +1720,7 @@ async function abrirNovaMedicao() {
         const md = medido.get(i.id) || 0;
         const exec = i.qtd_executada != null ? num(i.qtd_executada) : 0;
         const disp = Math.max(0, Math.round((exec - md) * 100) / 100);
+        const semEquipe = (i.alocacoes || []).length === 0;
         return {
             obra_servico_id: i.id,
             codigo: i.codigo, descricao: i.descricao, local: i.local_execucao,
@@ -1722,7 +1730,8 @@ async function abrirNovaMedicao() {
             executado: exec,
             medido: md,
             disponivel: disp,
-            qtd: disp // pré-preenchido com tudo que está disponível — ajuste ou zere
+            semEquipe,
+            qtd: semEquipe ? 0 : disp // sem equipe não há produção a medir
         };
     });
     abrirNovaMedicao._numero = medicoesObra.length
@@ -1762,10 +1771,13 @@ function renderMnItens() {
                     <small>${i.local ? '📍 ' + esc(i.local) + ' · ' : ''}executado ${fmtQtd(i.executado)} · já medido ${fmtQtd(i.medido)} · <b>disponível ${fmtQtd(i.disponivel)}</b> · contratado ${fmtQtd(i.contratado)} ${esc(i.unidade)} · ${fmtMoeda(i.preco_unit)}/${esc(i.unidade)}</small>
                 </span>
                 <label style="font-size:.7rem;color:var(--hermo-text-dim)">medir:</label>
-                <input class="qtd" type="number" step="any" min="0" value="${i.qtd || ''}" placeholder="0" data-mn-qtd="${idx}" />
+                <input class="qtd" type="number" step="any" min="0" value="${i.qtd || ''}" placeholder="0" data-mn-qtd="${idx}"
+                    ${i.semEquipe ? `disabled title="${TITULO_SEM_EQUIPE}"` : ''} />
                 <span style="font-weight:700" data-mn-valor="${idx}">${fmtMoeda(i.qtd * i.preco_unit)}</span>
             </div>
-            <div data-mn-avisos="${idx}">${avisosMn(i)}</div>
+            <div data-mn-avisos="${idx}">${i.semEquipe
+                ? '<div class="mn-aviso-exec">⚠ ninguém alocado — a produção precisa ser de alguém. Aloque no cronograma antes de medir.</div>'
+                : avisosMn(i)}</div>
         </div>`).join('');
     // enquanto digita: atualiza valor/avisos/total sem re-render (re-render por tecla impede decimais)
     $('mn-itens').querySelectorAll('[data-mn-qtd]').forEach(inp => inp.addEventListener('input', e => {

@@ -30,6 +30,7 @@ function addDias(iso, n) {
 }
 const difDias = (a, b) => Math.round((new Date(b + 'T00:00:00') - new Date(a + 'T00:00:00')) / 86400000);
 const codObra = o => o ? `OB-${String(o.numero).padStart(4, '0')}/${o.ano}` : '';
+const SEM_EQUIPE = 'Ninguém alocado neste serviço — toda produção precisa ser atribuída a alguém.';
 const SITUACAO = {
     com_equipe: { rot: 'com equipe', cor: 'var(--hermo-info)' },
     sem_avanco: { rot: 'sem avanço', cor: 'var(--hermo-warn)' },
@@ -331,6 +332,8 @@ function abrirExecucao() {
     $('ple-cabeca').innerHTML = `<b>${esc(p.nome || 'Planejamento')}</b> · ${fmtData(p.periodo_de)} → ${fmtData(p.periodo_ate)}`;
     $('ple-itens').innerHTML = (p.itens || []).map((i, idx) => {
         const s = i.servico;
+        // sem equipe no serviço, não há produção a atribuir — o campo fica travado
+        const semEquipe = !(p.alocacoes || []).some(a => a.obra_servico_id === i.obra_servico_id);
         const contratado = num(s?.quantidade);
         // ACUMULADO da obra (não a fatia do período): já executado + a fatia prevista aqui
         const jaExec = i.qtd_executada != null
@@ -344,11 +347,12 @@ function abrirExecucao() {
                 <small>${esc(codObra(s?.obra))} · fatia do período: ${i.qtd_prevista != null ? fmtQtd(i.qtd_prevista) : '—'} · já na obra: ${fmtQtd(s?.qtd_executada)} de ${fmtQtd(contratado)} ${esc(s?.unidade || 'un')} · ${SITUACAO[i.situacao]?.rot || i.situacao}</small>
             </div>
             <label title="Total acumulado do serviço na obra (não só o período)">executado acumulado</label>
-            <input type="number" step="any" min="0" value="${jaExec}" data-ple-qtd="${idx}" />
+            <input type="number" step="any" min="0" value="${semEquipe ? '' : jaExec}" data-ple-qtd="${idx}" ${semEquipe ? `disabled title="${SEM_EQUIPE}"` : ''} />
             <label>iniciou</label>
-            <input type="date" value="${i.iniciou_em || s?.inicio_real || ''}" data-ple-ini="${idx}" />
+            <input type="date" value="${i.iniciou_em || s?.inicio_real || ''}" data-ple-ini="${idx}" ${semEquipe ? `disabled title="${SEM_EQUIPE}"` : ''} />
             <label>concluiu</label>
-            <input type="date" value="${i.concluiu_em || s?.fim_real || ''}" data-ple-fim="${idx}" />
+            <input type="date" value="${i.concluiu_em || s?.fim_real || ''}" data-ple-fim="${idx}" ${semEquipe ? `disabled title="${SEM_EQUIPE}"` : ''} />
+            ${semEquipe ? '<small style="color:var(--hermo-warn);font-weight:700;width:100%">⚠ ninguém alocado — nada a confirmar (produção precisa ser de alguém)</small>' : ''}
         </div>`;
     }).join('') || '<div style="font-size:.8rem;color:var(--hermo-text-dim)">Sem itens.</div>';
     const alocs = p.alocacoes || [];
