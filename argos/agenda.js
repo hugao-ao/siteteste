@@ -9,10 +9,12 @@ import {
     paraISO, formataBR, fimDoMes, expandirDinamica, conflitosDeSessao,
     conflitosDeDinamica, repassesDe, aplicarFimDeProcesso
 } from './argos-recorrencia.js';
+import { STATUS_PROF, ORDEM_STATUS_PROF, responsaveisDe } from './argos-producao.js';
 
 let perm = { pode: () => true, aplicarVisibilidade: () => {}, master: true };
 let pacientes = [], salas = [], profissionais = [], dinamicas = [], sessoes = [];
 let grupos = [], grupoMembros = [], grupoProfs = [];
+let profFreq = [];                        // presença dos profissionais nos horários
 let segunda = segundaDaSemana(hojeISO()); // início da semana exibida
 let sessaoAberta = null;                  // sessão do modal de marcação
 
@@ -26,7 +28,7 @@ const nomeSala = id => (salas.find(s => s.id === id) || {}).nome || 'Sem espaço
 const nomeProf = id => (profissionais.find(p => p.id === id) || {}).nome || '—';
 
 async function carregarTudo() {
-    const [rPac, rSalas, rProf, rDin, rSes, rGru, rMem, rGP] = await Promise.all([
+    const [rPac, rSalas, rProf, rDin, rSes, rGru, rMem, rGP, rPF] = await Promise.all([
         sb.from('argos_pacientes').select('id, nome, ativo, cadastro_removido, processo_fim_data, processo_fim_tipo').order('nome'),
         sb.from('argos_salas').select('*').order('nome'),
         sb.from('argos_profissionais').select('*').order('nome'),
@@ -34,7 +36,8 @@ async function carregarTudo() {
         sb.from('argos_sessoes').select('*'),
         sb.from('argos_grupos').select('*').order('hora'),
         sb.from('argos_grupo_membros').select('*'),
-        sb.from('argos_grupo_profissionais').select('*')
+        sb.from('argos_grupo_profissionais').select('*'),
+        sb.from('argos_prof_frequencia').select('*')
     ]);
     const erro = rPac.error || rSalas.error || rProf.error || rDin.error || rSes.error || rGru.error || rMem.error || rGP.error;
     if (erro) { console.error(erro); toast('Erro ao carregar a agenda.', true); return; }
@@ -46,6 +49,7 @@ async function carregarTudo() {
     grupos = rGru.data || [];
     grupoMembros = rMem.data || [];
     grupoProfs = rGP.data || [];
+    profFreq = rPF.data || [];
     montarFiltroSalas();
     renderTudo();
 }
@@ -499,6 +503,8 @@ function abrirModalSessaoPara(s) {
         document.getElementById('restaurar-texto').textContent =
             `Desfazer a remarcação e devolver esta sessão para ${formataBR(s.remarcada_de_data)} às ${s.remarcada_de_hora}.`;
     }
+    renderProfFreq(s);
+    renderRepasseSessao(s);
     // interrupção/finalização do processo do paciente a partir de uma data
     const pacSessao = pacientes.find(p => p.id === s.paciente_id);
     const podeProcesso = perm.pode('processo_encerrar') && pacSessao && !pacSessao.processo_fim_data;
@@ -592,6 +598,151 @@ document.getElementById('botoes-status').addEventListener('click', async (e) => 
     retornarAoGrupoSePreciso();
 });
 
+
+// ============================================================
+// FREQUÊNCIA DO PROFISSIONAL E PAGAMENTO DA SESSÃO AVULSA
+// ============================================================
+// A presença do profissional vale para o HORÁRIO, não para o paciente: num
+// grupo de seis, quem conduziu conduziu para todos. Por isso a linha é
+// identificada por (profissional, data, hora, dinâmica).
+
+const freqDoSlot = (s, profId) => profFreq.find(f =>
+    f.profissional_id === profId && f.data === s.data && f.hora === s.hora
+    && (f.dinamica_ref || null) === (s.dinamica_ref || null));
+
+/** Quem já está no horário: os responsáveis da dinâmica mais os substitutos. */
+function profissionaisDoSlot(s) {
+    const d = dinamicas.find(x => x.id === s.dinamica_ref);
+    const donos = d ? responsaveisDe(d) : (s.profissional_id ? [s.profissional_id] : []);
+    const extras = profFreq.filter(f => f.data === s.data && f.hora === s.hora
+        && (f.dinamica_ref || null) === (s.dinamica_ref || null))
+        .map(f => f.profissional_id);
+    return [...new Set([...donos, ...extras])];
+}
+
+function renderProfFreq(s) {
+    const bloco = document.getElementById('bloco-prof-freq');
+    if (!perm.pode('prof_frequencia')) { bloco.style.display = 'none'; return; }
+    bloco.style.display = '';
+    const lista = profissionaisDoSlot(s);
+    const d = dinamicas.find(x => x.id === s.dinamica_ref);
+    const donos = d ? responsaveisDe(d) : [];
+
+    document.getElementById('prof-freq-lista').innerHTML = lista.length
+        ? lista.map(id => {
+            const f = freqDoSlot(s, id);
+            const st = f ? f.status : '??';
+            return `
+          <div class="pendente-linha">
+            <div><b>${esc(nomeProf(id))}</b>
+              ${donos.includes(id) ? '' : '<span class="badge azul">cobrindo</span>'}
+              ${f && f.obs ? `<br><span class="dim">📝 ${esc(f.obs)}</span>` : ''}</div>
+            <span class="botoes-status compacto">
+              ${ORDEM_STATUS_PROF.map(k => `
+                <button class="btn-status ${st === k ? 'ativo' : ''}"
+                  style="--c:${STATUS_PROF[k].cor}" title="${esc(STATUS_PROF[k].desc)}"
+                  data-pf="${id}" data-pf-status="${k}">${STATUS_PROF[k].label}</button>`).join('')}
+            </span>
+            ${donos.includes(id) ? '' : `<button class="argos-btn small danger"
+              data-pf-remover="${id}" title="Tirar do horário">🗑️</button>`}
+          </div>`;
+        }).join('')
+        : '<p class="dica">Esta dinâmica não tem profissional responsável definido.</p>';
+
+    const sel = document.getElementById('prof-freq-outro');
+    const fora = profissionais.filter(p => !lista.includes(p.id));
+    sel.innerHTML = fora.length
+        ? fora.map(p => `<option value="${p.id}">${esc(p.nome)}</option>`).join('')
+        : '<option value="">(todos já estão no horário)</option>';
+    sel.disabled = !fora.length;
+}
+
+async function gravarProfFreq(s, profId, status) {
+    const d = dinamicas.find(x => x.id === s.dinamica_ref);
+    const donos = d ? responsaveisDe(d) : [];
+    const existente = freqDoSlot(s, profId);
+    const linha = {
+        profissional_id: profId, data: s.data, hora: s.hora,
+        dinamica_ref: s.dinamica_ref || null, grupo_ref: s.grupo_ref || s.grupo_id || null,
+        status, substituto: !donos.includes(profId), atualizado_em: new Date().toISOString()
+    };
+    const { error } = existente
+        ? await sb.from('argos_prof_frequencia').update(linha).eq('id', existente.id)
+        : await sb.from('argos_prof_frequencia').insert(linha);
+    if (error) { console.error(error); toast('Erro ao marcar a frequência do profissional.', true); return; }
+    const { data } = await sb.from('argos_prof_frequencia').select('*');
+    profFreq = data || profFreq;
+    renderProfFreq(s);
+    toast(`${nomeProf(profId)}: ${STATUS_PROF[status].label}.`);
+}
+
+document.getElementById('prof-freq-lista').addEventListener('click', async (e) => {
+    if (!sessaoAberta) return;
+    const btn = e.target.closest('[data-pf-status]');
+    if (btn) return gravarProfFreq(sessaoAberta, btn.dataset.pf, btn.dataset.pfStatus);
+    const rm = e.target.closest('[data-pf-remover]');
+    if (rm) {
+        const f = freqDoSlot(sessaoAberta, rm.dataset.pfRemover);
+        if (!f) return;
+        const { error } = await sb.from('argos_prof_frequencia').delete().eq('id', f.id);
+        if (error) { console.error(error); return toast('Erro ao tirar do horário.', true); }
+        profFreq = profFreq.filter(x => x.id !== f.id);
+        renderProfFreq(sessaoAberta);
+        toast('Profissional tirado deste horário.');
+    }
+});
+
+document.getElementById('btn-prof-freq-add').addEventListener('click', () => {
+    const id = document.getElementById('prof-freq-outro').value;
+    if (!id || !sessaoAberta) return;
+    // entra já como presente: só se acrescenta quem de fato atendeu
+    gravarProfFreq(sessaoAberta, id, 'ok');
+});
+
+function renderRepasseSessao(s) {
+    const bloco = document.getElementById('bloco-repasse-sessao');
+    // só faz sentido em sessão que existe de verdade e tem dinâmica com divisão
+    const d = dinamicas.find(x => x.id === s.dinamica_ref);
+    const temDivisao = d && repassesDe(d).some(r => r.valor);
+    if (!perm.pode('sessao_repasse_avulso') || !s.id || !temDivisao) {
+        bloco.style.display = 'none';
+        return;
+    }
+    bloco.style.display = '';
+    const sel = document.getElementById('repasse-prof');
+    sel.innerHTML = '<option value="">Segue a divisão da dinâmica</option>'
+        + profissionais.map(p => `<option value="${p.id}">${esc(p.nome)} recebe esta sessão</option>`).join('');
+    sel.value = s.repasse_profissional_id || '';
+    document.getElementById('repasse-motivo').value = s.repasse_motivo || '';
+    document.getElementById('repasse-atual').innerHTML = s.repasse_profissional_id
+        ? `💸 Hoje esta sessão é paga a <b>${esc(nomeProf(s.repasse_profissional_id))}</b>`
+          + `${s.repasse_motivo ? ` — ${esc(s.repasse_motivo)}` : ''}.`
+        : `Divisão atual: ${repassesDe(d).filter(r => r.valor)
+            .map(r => `${esc(nomeProf(r.profissional_id))} ${r.tipo === 'valor' ? 'R$ ' + r.valor : r.valor + '%'}`)
+            .join(' · ')}.`;
+}
+
+document.getElementById('btn-repasse-salvar').addEventListener('click', async () => {
+    const s = sessaoAberta;
+    if (!s || !s.id) return;
+    const quem = document.getElementById('repasse-prof').value || null;
+    const motivo = document.getElementById('repasse-motivo').value.trim() || null;
+    const { error } = await sb.from('argos_sessoes').update({
+        repasse_profissional_id: quem, repasse_motivo: quem ? motivo : null
+    }).eq('id', s.id);
+    if (error) { console.error(error); return toast('Erro ao salvar o pagamento da sessão.', true); }
+    s.repasse_profissional_id = quem;
+    s.repasse_motivo = quem ? motivo : null;
+    const alvo = sessoes.find(x => x.id === s.id);
+    if (alvo) { alvo.repasse_profissional_id = quem; alvo.repasse_motivo = s.repasse_motivo; }
+    await registrarEvento(s.paciente_id, 'repasse_sessao',
+        quem ? `Sessão de ${formataBR(s.data)} às ${s.hora} passa a ser paga a ${nomeProf(quem)}.`
+             : `Sessão de ${formataBR(s.data)} às ${s.hora} volta a seguir a divisão da dinâmica.`,
+        { data: s.data, hora: s.hora, profissional_id: quem }, motivo);
+    toast(quem ? `Esta sessão será paga a ${nomeProf(quem)}.` : 'A sessão voltou a seguir a dinâmica.');
+    renderRepasseSessao(s);
+});
+
 // ============================================================
 // REMARCAÇÃO DE SESSÃO
 // ============================================================
@@ -604,18 +755,20 @@ async function registrarEvento(pacienteId, tipo, descricao, dados, justificativa
 }
 
 async function recarregarSessoes() {
-    const [rSes, rDin, rGru, rMem, rGP] = await Promise.all([
+    const [rSes, rDin, rGru, rMem, rGP, rPF] = await Promise.all([
         sb.from('argos_sessoes').select('*'),
         sb.from('argos_dinamicas').select('*'),
         sb.from('argos_grupos').select('*').order('hora'),
         sb.from('argos_grupo_membros').select('*'),
-        sb.from('argos_grupo_profissionais').select('*')
+        sb.from('argos_grupo_profissionais').select('*'),
+        sb.from('argos_prof_frequencia').select('*')
     ]);
     sessoes = rSes.data || sessoes;
     dinamicas = rDin.data || dinamicas;
     grupos = rGru.data || grupos;
     grupoMembros = rMem.data || grupoMembros;
     grupoProfs = rGP.data || grupoProfs;
+    profFreq = rPF.data || profFreq;
     renderTudo();
     const modalGrupo = document.getElementById('modal-grupo');
     if (modalGrupo && modalGrupo.classList.contains('aberto') && grupoAberto) renderModalGrupo();

@@ -573,7 +573,12 @@ body.modal-aberto { overflow: hidden; }
 .btn-status small { font-weight: 500; font-size: .68rem; opacity: .85; }
 .botoes-status.compacto .btn-status { padding: 6px 10px; }
 .btn-status:hover { filter: brightness(1.25); }
+/* o status marcado fica preenchido, para dar para ver de longe qual é */
+.btn-status.ativo { background: var(--c, #94a3b8); color: #0b1220; font-weight: 800; }
 .pendente-linha { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+/* lista de quem conduziu o horário: cada profissional é um bloco arejado */
+#prof-freq-lista .pendente-linha { padding: 8px 0; border-top: 1px solid var(--argos-border); }
+#prof-freq-lista .pendente-linha:first-child { border-top: none; }
 #grupo-membros .pendente-linha .bloco-info { cursor: pointer; }
 #grupo-membros .pendente-linha .bloco-info:hover b { color: var(--argos-primary); text-decoration: underline; }
 
