@@ -8,14 +8,33 @@
 export const MESES_EXTENSO = ['JANEIRO', 'FEVEREIRO', 'MARÇO', 'ABRIL', 'MAIO', 'JUNHO',
     'JULHO', 'AGOSTO', 'SETEMBRO', 'OUTUBRO', 'NOVEMBRO', 'DEZEMBRO'];
 
-/** Como cada status de sessão aparece na mensagem do responsável. */
+/**
+ * Como cada status de sessão aparece na mensagem do responsável.
+ * Sessão ainda pendente ('??') vale como presente no fechamento: o mês é
+ * enviado com ela contando, e a correção, se houver, vem pela conferência
+ * do próprio responsável.
+ */
 export const FREQUENCIA_TEXTO = {
     ok: 'Presente',
+    '??': 'Presente',
     fj: 'Falta *não* contabilizada',
     fc: 'Falta *contabilizada*',
-    nc: 'Não houve atendimento',
-    '??': 'A confirmar'
+    nc: 'Não houve atendimento'
 };
+
+/** Meses de férias escolares, em que o fechamento sai mais bagunçado. */
+export const MESES_FERIAS = [1, 7];
+
+export const OBSERVACAO_FERIAS = 'Pois esse mês envolve recesso e muita junção de grupos, '
+    + 'além de atendimentos fora do horário normal, ou seja, há maior possibilidade de erros.';
+
+/** Recado que entra na mensagem daquele mês — vazio fora das férias. */
+export function observacaoPadrao(mes) {
+    const m = Number(String(mes || '').split('-')[1]);
+    return MESES_FERIAS.includes(m) ? OBSERVACAO_FERIAS : '';
+}
+
+const SEPARADOR = '------------------------';
 
 /**
  * Situação da nota fiscal do paciente naquele mês.
@@ -29,9 +48,10 @@ export const SITUACAO_NOTA = [
     { valor: 'nao',        rotulo: 'Não emitir', emite: false, atencao: false,
       desc: 'Este paciente não recebe nota fiscal.' },
     { valor: 'indefinido', rotulo: 'Indefinido', emite: false, atencao: true,
-      desc: 'Ainda não foi definido se emite nota — resolver antes de fechar o mês.' }
+      desc: 'Faltam os dados de nota do paciente. É o estado de quem entrou pela frequência sem ficha financeira — resolver antes de cobrar.' }
 ];
 
+/** Sem definição no cadastro, a situação é "indefinido" — e vira pendência. */
 export const situacaoNota = v => SITUACAO_NOTA.find(s => s.valor === v) || SITUACAO_NOTA[3];
 
 const dinheiro = v => (Number(v) || 0).toLocaleString('pt-BR',
@@ -131,11 +151,13 @@ export function mensagemCobranca({ saudacao = 'Boa tarde', contato, mes, pacient
     const mesNome = MESES_EXTENSO[Number(m) - 1] || '';
     const partes = [];
 
+    // fora das férias o pedido é só "COM CUIDADO"; o "MAIS" acompanha o
+    // recado do mês, que é o que justifica a atenção extra
     partes.push(`${saudacao} ${primeiroNome(contato)}, tudo bem?`);
-    partes.push(`Por favor, você pode *CONFERIR COM MAIS CUIDADO* as informações do fechamento do mês de *${mesNome}*?`
+    partes.push(`Por favor, você pode *CONFERIR COM ${observacao ? 'MAIS ' : ''}CUIDADO* as informações do fechamento do mês de *${mesNome}*?`
         + (observacao ? ` ${observacao}` : ''));
     partes.push('');
-    partes.push('--------------------------');
+    partes.push(SEPARADOR);
     partes.push(`Paciente: *${nomeTitulo(paciente)}*`);
 
     if (frequencia.length) {
@@ -149,7 +171,7 @@ export function mensagemCobranca({ saudacao = 'Boa tarde', contato, mes, pacient
     partes.push(`Acordo Financeiro: ${acordoTexto(acordo)}`);
     partes.push('');
     partes.push(`Valor total: *${dinheiro(total)}*`);
-    partes.push('--------------------------');
+    partes.push(SEPARADOR);
     partes.push('');
     partes.push('Caso haja divergência, favor nos informar para corrigirmos o mais rápido possível!');
     partes.push('');
@@ -160,6 +182,14 @@ export function mensagemCobranca({ saudacao = 'Boa tarde', contato, mes, pacient
     partes.push('');
     partes.push('Obrigado! :)');
     return partes.join('\n');
+}
+
+/** Status que contam como sessão feita no fechamento. */
+export const CONTA_COMO_SESSAO = new Set(['ok', '??', 'fc']);
+
+/** Quantas sessões o mês fecha, pela lista de frequência. */
+export function contarSessoes(frequencia = []) {
+    return frequencia.filter(f => CONTA_COMO_SESSAO.has(f.status)).length;
 }
 
 /** Saudação pela hora do dia. */
