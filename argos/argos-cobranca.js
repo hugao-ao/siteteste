@@ -129,11 +129,26 @@ export function duracaoTexto(min) {
     return `${Math.floor(n / 60)}h${String(n % 60).padStart(2, '0')}`;
 }
 
-/** Como o acordo é descrito na mensagem do responsável. */
+/**
+ * Como o acordo é descrito na mensagem do responsável. Aceita um acordo só
+ * ou a lista de acordos do mês (paciente com mais de uma dinâmica) — nesse
+ * caso todos aparecem, separados por ponto.
+ */
 export function acordoTexto(acordo = {}) {
-    return acordo.tipo === 'fixo'
-        ? `Fixo mensal de ${dinheiro(acordo.valor)}`
-        : `${dinheiro(acordo.valor)} por sessão`;
+    if (Array.isArray(acordo)) {
+        const itens = acordo.filter(a => a && (a.valor || a.tipo));
+        if (!itens.length) return '';
+        const iguais = itens.every(a => a.tipo === itens[0].tipo && a.valor === itens[0].valor);
+        if (iguais) return acordoTexto(itens[0]);
+        return itens.map(a => {
+            const t = acordoTexto(a);
+            return a.rotulo ? `${a.rotulo}: ${t}` : t;
+        }).join(' · ');
+    }
+    if (acordo.tipo === 'fixo') return `Fixo mensal de ${dinheiro(acordo.valor)}`;
+    if (acordo.tipo === 'pacote') return `Pacote — ${dinheiro(acordo.valor)} no mês`;
+    if (acordo.tipo === 'avulso') return `Sessão avulsa — ${dinheiro(acordo.valor)}`;
+    return `${dinheiro(acordo.valor)} por sessão`;
 }
 
 /**
@@ -196,4 +211,175 @@ export function contarSessoes(frequencia = []) {
 export function saudacaoDe(hora) {
     const h = hora == null ? new Date().getHours() : hora;
     return h < 12 ? 'Bom dia' : h < 18 ? 'Boa tarde' : 'Boa noite';
+}
+
+// ---------------------------------------------------------------------------
+// Ponte com o fechamento
+// ---------------------------------------------------------------------------
+// O fechamento (argos-recorrencia.js) devolve as sessões do mês com data e
+// status. A cobrança precisa disso em outro formato: a lista de dias que vai
+// na mensagem e os dias que entram na descrição da nota.
+
+/** Sessões do fechamento viram [{ dia, data, hora, status }], em ordem. */
+export function frequenciaDoFechamento(fech) {
+    return (fech && fech.sessoes ? [...fech.sessoes] : [])
+        .sort((a, b) => String(a.data).localeCompare(String(b.data))
+            || String(a.hora || '').localeCompare(String(b.hora || '')))
+        .map(s => ({ dia: Number(String(s.data).slice(8, 10)), data: s.data,
+            hora: s.hora || '', status: s.status }));
+}
+
+/** Só os dias que contam como sessão feita — é o que vai para a nota. */
+export function diasCobrados(frequencia = []) {
+    const dias = frequencia.filter(f => CONTA_COMO_SESSAO.has(f.status))
+        .map(f => Number(f.dia));
+    return [...new Set(dias)].sort((a, b) => a - b);
+}
+
+/**
+ * Como o acordo do mês é descrito. Um paciente pode ter mais de uma dinâmica
+ * (dois profissionais, dois grupos), e cada uma tem o seu acordo — todas
+ * aparecem, porque o responsável confere o valor pela soma delas.
+ */
+export function acordosDoFechamento(fech, dinamicas = []) {
+    const porId = new Map((dinamicas || []).map(d => [d.id, d]));
+    const vistos = new Set();
+    const itens = [];
+    for (const pd of (fech && fech.porDinamica ? fech.porDinamica : [])) {
+        const d = porId.get(pd.dinamica_id);
+        if (!d) {                                   // sessão avulsa, sem dinâmica
+            itens.push({ tipo: 'avulso', valor: pd.valor, rotulo: 'Sessão avulsa' });
+            continue;
+        }
+        if (vistos.has(d.id)) continue;
+        vistos.add(d.id);
+        itens.push({
+            tipo: d.acordo_tipo === 'fixo_mensal' ? 'fixo'
+                : d.acordo_tipo === 'pacote' ? 'pacote' : 'sessao',
+            valor: Number(d.acordo_tipo === 'pacote' ? pd.valor : d.valor) || 0,
+            rotulo: d.rotulo || ''
+        });
+    }
+    return itens;
+}
+
+// ---------------------------------------------------------------------------
+// Regime de nota fiscal
+// ---------------------------------------------------------------------------
+
+/**
+ * Qual é o regime de nota do paciente naquele mês.
+ * A exceção do mês (argos_nota_mes) manda; sem ela, vale o que está nas
+ * dinâmicas. Dinâmicas em desacordo resolvem pelo lado mais cuidadoso:
+ * qualquer uma sem definição deixa o mês indefinido, e uma especial faz o
+ * mês inteiro pedir atenção.
+ */
+export function notaEfetiva({ dinamicas = [], excecao = null } = {}) {
+    if (excecao && excecao.nota_tipo) {
+        return { valor: excecao.nota_tipo, origem: 'mes', observacao: excecao.observacao || '' };
+    }
+    const tipos = (dinamicas || []).map(d => d.nota_tipo || 'indefinido');
+    if (!tipos.length) return { valor: 'indefinido', origem: 'ausente', observacao: '' };
+    const escolha = tipos.includes('indefinido') ? 'indefinido'
+        : tipos.includes('especial') ? 'especial'
+        : tipos.every(t => t === 'nao') ? 'nao' : 'normal';
+    return { valor: escolha, origem: 'dinamica', observacao: '' };
+}
+
+/**
+ * Retrato do mês para a nota: é isto que se congela na emissão e é contra
+ * isto que o fechamento vivo é comparado depois.
+ */
+export function retratoDaNota({ paciente = {}, fech, dinamicas = [], mes,
+    servico, excecao = null } = {}) {
+    const frequencia = frequenciaDoFechamento(fech);
+    const dias = diasCobrados(frequencia);
+    const sessoes = contarSessoes(frequencia);
+    const itens = acordosDoFechamento(fech, dinamicas);
+    const fixo = itens.length && itens.every(i => i.tipo === 'fixo');
+    const acordo = { tipo: fixo ? 'fixo' : 'sessao',
+        valor: fixo ? itens.reduce((s, i) => s + i.valor, 0)
+             : (itens.find(i => i.tipo === 'sessao') || {}).valor || 0 };
+    const situacao = notaEfetiva({ dinamicas, excecao }).valor;
+    return {
+        mes, valor: fech ? fech.valor : 0, sessoes, dias, nota_tipo: situacao,
+        descricao: descricaoNota({
+            servico: servico || 'Psicomotricidade Relacional',
+            paciente: paciente.nome, cpf: paciente.rf_cpf || paciente.cpf,
+            mes, dias, sessoes, acordo
+        })
+    };
+}
+
+/** Campos do retrato que, mudando, obrigam a refazer a nota. */
+const CAMPOS_RETRATO = [
+    ['valor', 'o valor do mês'],
+    ['sessoes', 'a quantidade de sessões'],
+    ['dias', 'os dias atendidos'],
+    ['descricao', 'a descrição da nota'],
+    ['nota_tipo', 'o regime de nota']
+];
+
+const mesmoValor = (a, b) => Array.isArray(a) || Array.isArray(b)
+    ? JSON.stringify(a || []) === JSON.stringify(b || [])
+    : String(a == null ? '' : a) === String(b == null ? '' : b);
+
+/**
+ * O que mudou entre a nota emitida e o fechamento de agora.
+ * Devolve [] quando a nota continua de pé.
+ */
+export function compararRetrato(nota = {}, atual = {}) {
+    const mudou = [];
+    for (const [campo, texto] of CAMPOS_RETRATO) {
+        if (mesmoValor(nota[campo], atual[campo])) continue;
+        mudou.push({ campo, texto, antes: nota[campo], depois: atual[campo] });
+    }
+    return mudou;
+}
+
+/** Frase da pendência, para o histórico e para a lista. */
+export function motivoDaDivergencia(mudou = []) {
+    if (!mudou.length) return '';
+    return `Mudou ${mudou.map(m => m.texto).join(', ')} depois da nota emitida.`;
+}
+
+// ---------------------------------------------------------------------------
+// Detalhes financeiros e contatos
+// ---------------------------------------------------------------------------
+
+/** Anotações que valem naquele mês: as gerais e as do período que o contém. */
+export function detalhesDoMes(lista = [], mes) {
+    return (lista || []).filter(d => {
+        if (d.escopo !== 'periodo') return true;
+        if (!mes) return true;
+        if (d.mes_de && mes < d.mes_de) return false;
+        if (d.mes_ate && mes > d.mes_ate) return false;
+        return true;
+    });
+}
+
+/**
+ * Para quem mandar o fechamento. Os contatos cadastrados vêm primeiro (o
+ * principal na frente); sem nenhum, cai no whatsapp do responsável
+ * financeiro, que é o que veio da planilha.
+ */
+export function contatosParaCobranca(paciente = {}, contatos = []) {
+    const lista = (contatos || []).filter(c => c.ativo !== false)
+        .sort((a, b) => (b.principal ? 1 : 0) - (a.principal ? 1 : 0))
+        .map(c => ({ id: c.id, nome: c.nome, telefone: c.telefone,
+            papel: c.papel || '', origem: 'cadastro' }));
+    if (lista.length) return lista;
+    if (paciente.rf_whatsapp) {
+        return [{ id: null, nome: paciente.responsavel_financeiro || paciente.nome,
+            telefone: paciente.rf_whatsapp, papel: 'Responsável financeiro',
+            origem: 'planilha' }];
+    }
+    return [];
+}
+
+/** 'YYYY-MM' → 'julho/2026'. */
+export function mesBR(mes) {
+    const [ano, m] = String(mes || '').split('-');
+    const nome = MESES_EXTENSO[Number(m) - 1];
+    return nome ? `${nome[0] + nome.slice(1).toLowerCase()}/${ano}` : String(mes || '');
 }

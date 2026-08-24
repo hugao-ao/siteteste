@@ -15,6 +15,8 @@ import {
     indexarRespostas, calcularAvaliacao, radarSVG, limiteProxima,
     avaliacaoTravada, COMPETENCIA_MAX, FOCO_MAX, formataNota
 } from './argos-evolucao.js';
+import { SITUACAO_NOTA, situacaoNota } from './argos-cobranca.js';
+import { montarCobrancaUI } from './argos-cobranca-ui.js';
 
 let perm = { pode: () => true, aplicarVisibilidade: () => {}, master: true };
 
@@ -22,6 +24,7 @@ let pacientes = [], salas = [], profissionais = [], servicos = [], profServ = []
 let pacienteAtual = null;    // paciente aberto no modal de dinâmicas/exclusão
 let editandoPacienteId = null;
 let editandoDinamicaId = null;
+let cobUI = null;            // modais de contatos, detalhes financeiros e extrato
 
 // ============================================================
 // CARGA
@@ -100,6 +103,8 @@ function renderLista() {
     const podeEditar = perm.pode('pacientes_editar');
     const podeExcluir = perm.pode('pacientes_excluir');
     const podeDinamicas = perm.pode('dinamicas_gerenciar');
+    const podeFinanceiro = perm.pode('cobranca_contatos_gerenciar') || perm.pode('paciente_financeiro_detalhes');
+    const podeExtrato = perm.pode('paciente_extrato');
 
     document.getElementById('lista-pacientes').innerHTML = lista.map(p => {
         const dins = dinamicas.filter(d => d.paciente_id === p.id && d.ativo !== false);
@@ -122,6 +127,8 @@ function renderLista() {
           ${p.cadastro_removido ? '' : `
           <div class="mini-acoes">
             ${podeDinamicas ? `<button class="argos-btn small" data-acao="dinamicas" data-id="${p.id}">💰 Dinâmicas</button>` : ''}
+            ${podeFinanceiro ? `<button class="argos-btn small" data-acao="financeiro" data-id="${p.id}">📱 Cobrança</button>` : ''}
+            ${podeExtrato ? `<button class="argos-btn small" data-acao="extrato" data-id="${p.id}">📊 Extrato</button>` : ''}
             ${perm.pode('evolucao_ver') ? `<button class="argos-btn small" data-acao="evolucao" data-id="${p.id}">📈 Evolução</button>` : ''}
             ${perm.pode('anamnese_ficha') ? `<a class="argos-btn small" href="anamnese.html?paciente=${p.id}">📋 Anamnese</a>` : ''}
             ${podeEditar ? `<button class="argos-btn small" data-acao="editar" data-id="${p.id}">✏️ Editar</button>` : ''}
@@ -143,6 +150,9 @@ document.getElementById('lista-pacientes').addEventListener('click', (e) => {
     if (btn.dataset.acao === 'editar') abrirModalPaciente(p.id);
     if (btn.dataset.acao === 'dinamicas') abrirModalDinamicas(p);
     if (btn.dataset.acao === 'evolucao') abrirModalEvolucao(p);
+    if (btn.dataset.acao === 'financeiro') cobUI.abrirFinanceiro(p);
+    if (btn.dataset.acao === 'extrato') cobUI.abrirExtrato(p, {
+        dinamicas: dinamicas.filter(d => d.paciente_id === p.id) });
     if (btn.dataset.acao === 'excluir') { pacienteAtual = p; document.getElementById('modal-excluir-titulo').textContent = `Excluir: ${p.nome}`; abrirModal('modal-excluir'); }
 });
 
@@ -159,6 +169,29 @@ function opcoesSituacao(sel) {
 }
 opcoesSituacao(document.getElementById('pac-situacao'));
 opcoesSituacao(document.getElementById('pac-proc-tipo'));
+
+/**
+ * Regime de nota fiscal do paciente. Fica na dinâmica porque é lá que o
+ * acordo financeiro mora: mudou o acordo, muda a nota junto. Exceções de um
+ * mês só se resolvem na página de Cobrança e Notas, sem mexer na dinâmica.
+ */
+(function opcoesNota() {
+    const sel = document.getElementById('din-nota-tipo');
+    if (!sel) return;
+    sel.innerHTML = SITUACAO_NOTA.map(o =>
+        `<option value="${o.valor}">${o.rotulo}</option>`).join('');
+    sel.addEventListener('change', dicaNota);
+})();
+
+function dicaNota() {
+    const el = document.getElementById('din-nota-dica');
+    const sel = document.getElementById('din-nota-tipo');
+    if (!el || !sel) return;
+    const s = situacaoNota(sel.value);
+    el.textContent = s.desc + (s.valor === 'indefinido'
+        ? ' Enquanto estiver assim, o paciente aparece nas pendências da página de Cobrança e Notas.'
+        : '');
+}
 
 /** Explica, abaixo do campo, o que a situação escolhida faz. */
 function explicarSituacao() {
@@ -730,6 +763,8 @@ function abrirFormDinamica(id) {
     selectSalas(document.getElementById('din-sala'), d && d.sala_id);
     v('din-acordo', d ? d.acordo_tipo : 'por_sessao');
     v('din-valor', d && d.valor);
+    v('din-nota-tipo', (d && d.nota_tipo) || 'indefinido');
+    dicaNota();
     document.getElementById('lista-repasses').innerHTML = '';
     (d ? repassesDe(d) : []).forEach(r =>
         document.getElementById('lista-repasses').appendChild(linhaRepasse(r)));
@@ -815,6 +850,7 @@ document.getElementById('form-dinamica').addEventListener('submit', async (e) =>
         profissional_id: (repasses[0] && repasses[0].profissional_id) || null,
         servico_id: (repasses[0] && repasses[0].servico_id) || null,
         acordo_tipo: acordo,
+        nota_tipo: g('din-nota-tipo') || 'indefinido',
         valor: acordo === 'pacote' ? null : num('din-valor'),
         pacote_qtd: acordo === 'pacote' ? num('din-pacote-qtd') : null,
         pacote_valor: acordo === 'pacote' ? num('din-pacote-valor') : null,
@@ -1114,6 +1150,7 @@ document.getElementById('btn-confirmar-exclusao').addEventListener('click', asyn
 (async function init() {
     perm = await carregarPermissoes();
     perm.aplicarVisibilidade();
+    cobUI = montarCobrancaUI(perm);
     await carregarTudo();
     // voltar da Evolução/Anamnese reabre o painel daquele paciente
     const alvo = new URLSearchParams(location.search).get('paciente');

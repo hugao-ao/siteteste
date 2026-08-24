@@ -338,7 +338,11 @@
           <label id="rotulo-valor">Valor (R$)
             <input type="number" step="0.01" min="0" id="din-valor" />
           </label>
+          <label data-argos-recurso="nota_tipo_definir">Nota fiscal
+            <select id="din-nota-tipo"></select>
+          </label>
         </div>
+        <p class="dica" id="din-nota-dica" data-argos-recurso="nota_tipo_definir"></p>
 
         <h3 class="form-secao">💼 Profissionais responsáveis e repasses</h3>
         <p class="dica">Adicione o(s) profissional(is) que atende(m) este paciente, com o serviço prestado por cada um. O repasse de cada profissional pode ser um <b>percentual</b> do acordo ou um <b>valor nominal</b> (convertido em % sobre o valor do acordo) — deixe em branco se o profissional não recebe por produção. A soma nunca pode passar de 100% — o restante fica com a clínica.</p>
@@ -503,7 +507,7 @@
     </div>
   </div>
 
-  <script type="module" src="pacientes.js?v=14"></script>
+  <script type="module" src="pacientes.js?v=15"></script>
   <script type="module" src="argos-zoom.js?v=4"></script>
 </body>
 </html>

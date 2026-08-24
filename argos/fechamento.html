@@ -2,79 +2,19 @@
 <html lang="pt-br">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=0.1, maximum-scale=10, user-scalable=yes" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Argos Gestão — Fechamento Mensal</title>
-  <script src="argos-guard.js"></script>
+  <!-- O Fechamento Mensal virou a primeira aba de Cobrança e Notas, onde ele
+       fica ao lado da nota fiscal, das pendências e do que está em aberto.
+       Este arquivo continua existindo só para não quebrar links antigos. -->
+  <script>location.replace('cobranca.html');</script>
   <link rel="stylesheet" href="argos-style.css?v=8" />
 </head>
 <body>
-  <header class="argos-topbar">
-    <div class="brand">ARGOS <span>GESTÃO</span></div>
-    <div class="actions">
-      <a class="argos-btn ghost" href="index.html">← Início</a>
-      <button class="argos-btn danger" id="btn-logout">Sair</button>
-    </div>
-  </header>
-
-  <main class="argos-pagina larga">
+  <main class="argos-pagina">
     <h1>🧾 Fechamento Mensal</h1>
-    <p class="sub">Valor do acerto de cada paciente no mês, com o detalhe das frequências, conforme a dinâmica financeira de cada um.</p>
-
-    <div class="argos-filtros">
-      <label class="rotulo-inline">Mês de referência
-        <input type="month" id="mes-ref" />
-      </label>
-      <label class="linha-check" style="margin:0">
-        <input type="checkbox" id="so-movimento" checked /> Só pacientes com movimento no mês
-      </label>
-      <button class="argos-btn ghost" id="btn-imprimir">🖨️ Imprimir / PDF</button>
-    </div>
-
-    <div class="argos-aviso" id="aviso-pendencias" style="display:none"></div>
-
-    <div class="argos-tabela-wrap">
-      <table class="argos-tabela">
-        <thead>
-          <tr>
-            <th>Paciente</th><th>Ok</th><th>Fj</th><th>Fc</th><th>Nc</th><th>??</th>
-            <th>Valor do mês</th><th class="acoes"></th>
-          </tr>
-        </thead>
-        <tbody id="tbody-fechamento"></tbody>
-        <tfoot>
-          <tr class="linha-total"><td><b>TOTAL</b></td>
-            <td id="t-ok"></td><td id="t-fj"></td><td id="t-fc"></td><td id="t-nc"></td><td id="t-pd"></td>
-            <td id="t-valor"></td><td></td></tr>
-        </tfoot>
-      </table>
-      <div class="argos-tabela-vazia" id="fechamento-vazio" style="display:none">Nenhum movimento neste mês.</div>
-    </div>
-
-    <div id="bloco-repasses" data-argos-recurso="fechamento_repasses" style="margin-top:24px">
-      <h2 class="form-secao">💼 Repasses aos profissionais</h2>
-      <div class="argos-tabela-wrap">
-        <table class="argos-tabela">
-          <thead>
-            <tr><th>Profissional</th><th>Fixo mensal</th><th>Produção (pela divisão das dinâmicas)</th><th>Total do repasse</th></tr>
-          </thead>
-          <tbody id="tbody-repasses"></tbody>
-          <tfoot>
-            <tr class="linha-total"><td><b>Total de repasses</b></td><td></td><td></td><td id="r-total"></td></tr>
-            <tr class="linha-total"><td><b>Parte da clínica</b> (faturamento − repasses)</td><td></td><td></td><td id="r-clinica"></td></tr>
-          </tfoot>
-        </table>
-      </div>
-      <p class="dica">Produção = divisão configurada em cada dinâmica (percentuais e valores nominais, que juntos nunca passam de 100%) aplicada ao faturamento do mês daquele paciente — por isso a produção nunca ultrapassa o que o paciente pagou. Repasses fixos não estão ligados a paciente algum (inclusive a parte fixa da remuneração híbrida). Sessões avulsas sem divisão e anamneses ficam integralmente com a clínica.</p>
-    </div>
-
-    <p class="dica" style="margin-top:12px">
-      Regras: <b>Ok</b> e <b>Fc</b> cobram; <b>??</b> com data futura conta como presença projetada (projeção de faturamento);
-      <b>??</b> vencida não cobra e aparece como pendência; <b>Fj</b> e <b>Nc</b> não cobram.
-      Pacotes entram pelo cronograma de pagamento; fixos mensais entram uma vez no mês; a anamnese entra se marcada como cobrada.
-    </p>
+    <p class="sub">O fechamento agora é a primeira aba de <b>Cobrança e Notas</b>.</p>
+    <p><a class="argos-btn primary" href="cobranca.html">Ir para Cobrança e Notas →</a></p>
   </main>
-
-  <script type="module" src="fechamento.js?v=6"></script>
-  <script type="module" src="argos-zoom.js?v=4"></script>
 </body>
 </html>

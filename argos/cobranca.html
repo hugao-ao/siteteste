@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=0.1, maximum-scale=10, user-scalable=yes" />
+  <title>Argos Gestão — Cobrança e Notas</title>
+  <script src="argos-guard.js"></script>
+  <link rel="stylesheet" href="argos-style.css?v=8" />
+  <style>
+    .cb-topo { display: flex; gap: 12px; flex-wrap: wrap; align-items: center;
+      justify-content: space-between; margin-bottom: 4px; }
+    .cb-mes { display: flex; gap: 8px; align-items: center; }
+    .cb-mes input[type="month"] { font-size: 1rem; }
+    .cb-mes button { padding: 6px 10px; }
+    .cb-mes .agora { font-size: .9rem; color: var(--argos-primary); font-weight: 600; }
+
+    .cb-resumo { display: flex; gap: 8px; flex-wrap: wrap; margin: 10px 0 4px; font-size: .84rem; }
+    .cb-resumo span { border: 1px solid var(--argos-border); border-radius: 99px; padding: 3px 12px;
+      color: var(--argos-text-dim); }
+    .cb-resumo span b { color: var(--argos-text); }
+    .cb-resumo span.alerta { border-color: var(--argos-warn); color: var(--argos-warn); }
+    .cb-resumo span.erro { border-color: var(--argos-danger); color: var(--argos-danger); }
+    .cb-resumo span.ok { border-color: var(--argos-success); color: var(--argos-success); }
+
+    .cb-tabela { min-width: 900px; font-size: .86rem; }
+    .cb-tabela td, .cb-tabela th { white-space: nowrap; vertical-align: top; }
+    .cb-tabela td.num { text-align: right; }
+    .cb-tabela td.livre { white-space: normal; min-width: 240px; }
+    .cb-tabela td.acoes { white-space: nowrap; }
+    .cb-tabela .sub { display: block; font-size: .78rem; color: var(--argos-text-dim); }
+    .cb-tabela input.n-nota { width: 120px; }
+    .cb-tabela tr.enviada td:first-child { border-left: 3px solid var(--argos-success); }
+
+    /* a descrição é longa: numa tabela de largura automática o max-width no
+       td é ignorado, então quem segura a largura é o div de dentro */
+    .cb-tabela td.desc { white-space: normal; }
+    .cb-desc { width: 420px; font-size: .78rem; color: var(--argos-text-dim);
+      line-height: 1.45; }
+    .cb-msg { width: 100%; min-height: 220px; background: var(--argos-bg); color: var(--argos-text);
+      border: 1px solid var(--argos-border); border-radius: 10px; padding: 10px 12px;
+      font-family: ui-monospace, Menlo, Consolas, monospace; font-size: .78rem; resize: vertical; }
+
+    .cb-badge-nota { display: inline-block; border-radius: 5px; padding: 1px 7px; font-size: .74rem;
+      border: 1px solid var(--argos-border); color: var(--argos-text-dim); cursor: pointer; }
+    .cb-badge-nota.normal { border-color: var(--argos-success); color: var(--argos-success); }
+    .cb-badge-nota.especial { border-color: var(--argos-warn); color: var(--argos-warn); }
+    .cb-badge-nota.nao { border-color: var(--argos-border); color: var(--argos-text-dim); }
+    .cb-badge-nota.indefinido { border-color: var(--argos-danger); color: var(--argos-danger); }
+    .cb-badge-nota .mes { opacity: .8; }
+
+    .cb-pend { border: 1px solid var(--argos-border); border-radius: var(--argos-radius);
+      background: var(--argos-surface); padding: 12px 14px; margin-bottom: 10px; }
+    .cb-pend.aberta { border-left: 4px solid var(--argos-danger); }
+    .cb-pend.em_andamento { border-left: 4px solid var(--argos-warn); }
+    .cb-pend.resolvida { border-left: 4px solid var(--argos-success); opacity: .75; }
+    .cb-pend.ignorada { border-left: 4px solid var(--argos-border); opacity: .6; }
+    .cb-pend h3 { margin: 0 0 3px; font-size: .96rem; }
+    .cb-pend .motivo { font-size: .86rem; color: var(--argos-text-dim); margin: 0 0 8px; }
+    .cb-pend .diff { display: flex; gap: 14px; flex-wrap: wrap; margin: 0 0 8px; font-size: .8rem; }
+    .cb-pend .diff div { border: 1px solid var(--argos-border); border-radius: 8px; padding: 5px 10px;
+      background: var(--argos-bg); }
+    .cb-pend .diff b { color: var(--argos-text-dim); font-weight: 600; }
+    .cb-pend .diff .antes { color: var(--argos-text-dim); text-decoration: line-through; }
+    .cb-pend .diff .depois { color: var(--argos-warn); }
+    .cb-pend .hist { margin: 8px 0 0; padding-left: 16px; font-size: .8rem; color: var(--argos-text-dim); }
+    .cb-pend .hist li { margin-bottom: 2px; }
+    .cb-pend .acoes { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin-top: 8px; }
+    .cb-pend .acoes input { flex: 1; min-width: 180px; }
+
+    .cb-aberto-nota { width: 100%; min-height: 54px; }
+    .cb-linhas-banco { display: flex; flex-direction: column; gap: 6px; }
+    .cb-linha-banco { display: flex; gap: 6px; align-items: center; }
+    .cb-linha-banco input { flex: 1; }
+    .cb-previa { white-space: pre-wrap; font-family: ui-monospace, Menlo, Consolas, monospace;
+      font-size: .76rem; color: var(--argos-text-dim); background: var(--argos-bg);
+      border: 1px solid var(--argos-border); border-radius: 8px; padding: 8px 10px; margin-top: 8px; }
+  </style>
+</head>
+<body>
+  <header class="argos-topbar">
+    <div class="brand">ARGOS <span>GESTÃO</span></div>
+    <div class="actions">
+      <a class="argos-btn ghost" href="index.html">← Início</a>
+      <button class="argos-btn danger" id="btn-logout">Sair</button>
+    </div>
+  </header>
+
+  <main class="argos-pagina larga">
+    <div class="cb-topo">
+      <div>
+        <h1>💰 Cobrança e Notas</h1>
+        <p class="sub">O mês inteiro num lugar só: o fechamento que vai para o responsável, a nota fiscal
+          de quem recebe nota, o que ficou pendente de corrigir e o que ainda está em aberto.</p>
+      </div>
+      <div class="cb-mes">
+        <button class="argos-btn ghost" id="btn-mes-ant" title="Mês anterior">‹</button>
+        <input type="month" id="mes-ref" class="argos-input" />
+        <button class="argos-btn ghost" id="btn-mes-prox" title="Próximo mês">›</button>
+        <button class="argos-btn ghost" id="btn-config" data-argos-recurso="cobranca_config"
+          title="Dados bancários, serviço da nota e recado do mês">⚙️</button>
+      </div>
+    </div>
+
+    <div class="argos-abas" id="cb-abas">
+      <button type="button" class="aba ativa" data-aba="fechamento" data-argos-recurso="fechamento_ver">🧾 Fechamento</button>
+      <button type="button" class="aba" data-aba="notas" data-argos-recurso="notas_gerenciar">📄 Notas fiscais</button>
+      <button type="button" class="aba" data-aba="pendencias" data-argos-recurso="nota_pendencias_resolver">⚠️ Pendências de nota</button>
+      <button type="button" class="aba" data-aba="aberto">💸 Em aberto</button>
+    </div>
+
+    <!-- ============ ABA: FECHAMENTO ============ -->
+    <section data-painel="fechamento">
+      <div class="argos-filtros">
+        <input type="search" id="busca-fech" class="argos-input" placeholder="🔎 Buscar paciente…" />
+        <label class="linha-check" style="margin:0">
+          <input type="checkbox" id="so-movimento" checked /> Só quem teve movimento no mês
+        </label>
+        <label class="linha-check" style="margin:0">
+          <input type="checkbox" id="esconder-enviadas" /> Esconder as já enviadas
+        </label>
+        <button class="argos-btn ghost" id="btn-imprimir">🖨️ Imprimir / PDF</button>
+      </div>
+      <div class="cb-resumo" id="resumo-fech"></div>
+      <div class="argos-aviso" id="aviso-pendencias" style="display:none"></div>
+      <div class="argos-tabela-wrap">
+        <table class="argos-tabela cb-tabela">
+          <thead>
+            <tr>
+              <th>Paciente</th><th>Ok</th><th>Fj</th><th>Fc</th><th>Nc</th><th>??</th>
+              <th>Valor do mês</th><th>Cobrança</th><th class="acoes"></th>
+            </tr>
+          </thead>
+          <tbody id="tbody-fechamento"></tbody>
+          <tfoot>
+            <tr class="linha-total"><td><b>TOTAL</b></td>
+              <td id="t-ok"></td><td id="t-fj"></td><td id="t-fc"></td><td id="t-nc"></td><td id="t-pd"></td>
+              <td id="t-valor"></td><td></td><td></td></tr>
+          </tfoot>
+        </table>
+        <div class="argos-tabela-vazia" id="fechamento-vazio" style="display:none">Nenhum movimento neste mês.</div>
+      </div>
+
+      <div id="bloco-repasses" data-argos-recurso="fechamento_repasses" style="margin-top:24px">
+        <h2 class="form-secao">💼 Repasses aos profissionais</h2>
+        <div class="argos-tabela-wrap">
+          <table class="argos-tabela">
+            <thead>
+              <tr><th>Profissional</th><th>Fixo mensal</th><th>Produção (pela divisão das dinâmicas)</th><th>Total do repasse</th></tr>
+            </thead>
+            <tbody id="tbody-repasses"></tbody>
+            <tfoot>
+              <tr class="linha-total"><td><b>Total de repasses</b></td><td></td><td></td><td id="r-total"></td></tr>
+              <tr class="linha-total"><td><b>Parte da clínica</b> (faturamento − repasses)</td><td></td><td></td><td id="r-clinica"></td></tr>
+            </tfoot>
+          </table>
+        </div>
+        <p class="dica">Produção = divisão configurada em cada dinâmica (percentuais e valores nominais, que juntos nunca passam de 100%) aplicada ao faturamento do mês daquele paciente — por isso a produção nunca ultrapassa o que o paciente pagou. Repasses fixos não estão ligados a paciente algum (inclusive a parte fixa da remuneração híbrida). Sessões avulsas sem divisão e anamneses ficam integralmente com a clínica.</p>
+      </div>
+
+      <p class="dica" style="margin-top:12px">
+        Regras do valor: <b>Ok</b> e <b>Fc</b> cobram; <b>??</b> com data futura conta como presença projetada;
+        <b>??</b> vencida não entra no valor, mas <b>conta como presente na mensagem</b> do fechamento —
+        a conferência do responsável é que corrige. <b>Fj</b> e <b>Nc</b> não cobram.
+      </p>
+    </section>
+
+    <!-- ============ ABA: NOTAS FISCAIS ============ -->
+    <section data-painel="notas" style="display:none">
+      <div class="argos-filtros">
+        <input type="search" id="busca-notas" class="argos-input" placeholder="🔎 Buscar paciente…" />
+        <select id="filtro-nota" class="argos-input">
+          <option value="emite">A faturar e indefinidos</option>
+          <option value="todos">Todos do mês</option>
+          <option value="pendente">Falta o número</option>
+          <option value="especial">Só as especiais</option>
+          <option value="indefinido">Só os indefinidos</option>
+        </select>
+      </div>
+      <div class="cb-resumo" id="resumo-notas"></div>
+      <div class="argos-tabela-wrap">
+        <table class="argos-tabela cb-tabela">
+          <thead>
+            <tr>
+              <th>Paciente</th><th>Responsável financeiro</th><th>Regime</th>
+              <th>Sessões</th><th>Valor</th><th>Descrição da nota</th><th>Nº da nota</th><th class="acoes"></th>
+            </tr>
+          </thead>
+          <tbody id="tbody-notas"></tbody>
+        </table>
+        <div class="argos-tabela-vazia" id="notas-vazio" style="display:none">Ninguém a faturar com este filtro.</div>
+      </div>
+      <p class="dica">O número da nota fica guardado no mês do paciente junto com um <b>retrato</b> do
+        fechamento na hora da emissão. Se a frequência mudar depois, o retrato deixa de bater com o mês
+        e uma pendência aparece na aba ao lado.</p>
+    </section>
+
+    <!-- ============ ABA: PENDÊNCIAS ============ -->
+    <section data-painel="pendencias" style="display:none">
+      <div class="argos-filtros">
+        <select id="filtro-pend" class="argos-input">
+          <option value="abertas">Abertas e em andamento</option>
+          <option value="todas">Todas, inclusive resolvidas</option>
+        </select>
+        <label class="linha-check" style="margin:0">
+          <input type="checkbox" id="pend-todos-meses" checked /> De todos os meses, não só do mês escolhido
+        </label>
+      </div>
+      <div class="cb-resumo" id="resumo-pend"></div>
+      <div id="lista-pendencias"></div>
+      <div class="argos-tabela-vazia" id="pend-vazio" style="display:none">Nenhuma pendência. 🎉</div>
+      <p class="dica">A pendência nasce sozinha quando o fechamento muda depois da nota emitida, ou quando
+        um paciente com produção no mês está sem os dados de nota. Ela só sai da lista quando você marcar
+        como resolvida — e todo o caminho fica registrado.</p>
+    </section>
+
+    <!-- ============ ABA: EM ABERTO ============ -->
+    <section data-painel="aberto" style="display:none">
+      <div class="argos-filtros">
+        <input type="search" id="busca-aberto" class="argos-input" placeholder="🔎 Buscar paciente…" />
+        <label class="linha-check" style="margin:0">
+          <input type="checkbox" id="aberto-ate-mes" /> Só até o mês escolhido
+        </label>
+      </div>
+      <div class="cb-resumo" id="resumo-aberto"></div>
+      <div class="argos-tabela-wrap">
+        <table class="argos-tabela cb-tabela">
+          <thead>
+            <tr>
+              <th>Paciente</th><th>Meses em aberto</th><th>Produção</th><th>Recebido</th>
+              <th>Em aberto</th><th>Andamento da conversa</th><th class="acoes"></th>
+            </tr>
+          </thead>
+          <tbody id="tbody-aberto"></tbody>
+        </table>
+        <div class="argos-tabela-vazia" id="aberto-vazio" style="display:none">Ninguém devendo. 🎉</div>
+      </div>
+      <p class="dica">Em aberto = mês com produção cujo valor não foi coberto por pagamento associado
+        àquele mês nas movimentações financeiras. Um pagamento lançado em maio e associado a abril
+        quita abril, não maio.</p>
+    </section>
+  </main>
+
+  <!-- ============ MODAL: MENSAGEM DE COBRANÇA ============ -->
+  <div class="argos-modal-fundo" id="modal-msg">
+    <div class="argos-modal grande">
+      <div class="argos-modal-topo">
+        <h2 id="msg-titulo">Mensagem de cobrança</h2>
+        <button class="argos-modal-x" data-fechar>×</button>
+      </div>
+      <div class="argos-form">
+        <div class="form-grade">
+          <label>Enviar para<select id="msg-contato"></select></label>
+          <label>Saudação
+            <select id="msg-saudacao">
+              <option>Bom dia</option><option>Boa tarde</option><option>Boa noite</option>
+            </select>
+          </label>
+        </div>
+        <label>Recado do mês (entra logo após o pedido de conferência)
+          <textarea id="msg-observacao" rows="2"></textarea>
+        </label>
+        <p class="dica" id="msg-detalhes"></p>
+        <label>Mensagem<textarea id="msg-texto" class="cb-msg"></textarea></label>
+        <p class="dica">Você pode editar o texto antes de enviar — o que estiver aqui é o que vai no link.</p>
+      </div>
+      <div class="argos-modal-acoes">
+        <button class="argos-btn ghost" id="btn-msg-copiar">📋 Copiar</button>
+        <a class="argos-btn primary" id="btn-msg-enviar" target="_blank" rel="noopener"
+          data-argos-recurso="cobranca_enviar">📲 Abrir no WhatsApp</a>
+        <button class="argos-btn ghost" data-fechar>Fechar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ MODAL: REGIME DE NOTA ============ -->
+  <div class="argos-modal-fundo" id="modal-regime">
+    <div class="argos-modal">
+      <div class="argos-modal-topo">
+        <h2 id="regime-titulo">Tipo de nota</h2>
+        <button class="argos-modal-x" data-fechar>×</button>
+      </div>
+      <div class="argos-form">
+        <label>Tipo de nota<select id="regime-tipo"></select></label>
+        <p class="dica" id="regime-desc"></p>
+        <label>Aplicar a
+          <select id="regime-alcance">
+            <option value="mes">Só este mês</option>
+            <option value="periodo">De um mês a outro</option>
+            <option value="tudo">Todos os meses (muda a dinâmica do paciente)</option>
+          </select>
+        </label>
+        <div class="form-grade" id="regime-periodo" style="display:none">
+          <label>Do mês<input type="month" id="regime-de" /></label>
+          <label>Até o mês<input type="month" id="regime-ate" /></label>
+        </div>
+        <label>Observação (por que sai do padrão)<textarea id="regime-obs" rows="2"></textarea></label>
+        <p class="dica" id="regime-aviso"></p>
+      </div>
+      <div class="argos-modal-acoes">
+        <button class="argos-btn ghost" id="btn-regime-limpar">Voltar ao que diz a dinâmica</button>
+        <button class="argos-btn primary" id="btn-regime-salvar">Salvar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ MODAL: CONFIGURAÇÃO ============ -->
+  <div class="argos-modal-fundo" id="modal-config">
+    <div class="argos-modal grande">
+      <div class="argos-modal-topo">
+        <h2>⚙️ Padrões da cobrança</h2>
+        <button class="argos-modal-x" data-fechar>×</button>
+      </div>
+      <div class="argos-form">
+        <h3 class="form-secao">🏦 Dados bancários</h3>
+        <p class="dica">Estas linhas vão no fim de toda mensagem de fechamento, uma embaixo da outra,
+          exatamente como estiverem escritas. O <b>*</b> em volta de um trecho é o negrito do WhatsApp.</p>
+        <div class="cb-linhas-banco" id="cfg-banco"></div>
+        <button class="argos-btn small" id="btn-banco-add" style="margin-top:8px">+ Nova linha</button>
+        <div class="cb-previa" id="cfg-banco-previa"></div>
+
+        <h3 class="form-secao">📄 Nota fiscal</h3>
+        <label>Serviço prestado (abre a descrição da nota)
+          <input type="text" id="cfg-servico" placeholder="Psicomotricidade Relacional" />
+        </label>
+
+        <h3 class="form-secao">📣 Recado do mês</h3>
+        <p class="dica">Julho e janeiro já vêm com o recado de recesso. Aqui você muda o recado
+          <b>deste mês</b> — em branco, volta ao padrão.</p>
+        <label id="cfg-rot-recado">Recado<textarea id="cfg-recado" rows="3"></textarea></label>
+      </div>
+      <div class="argos-modal-acoes">
+        <button class="argos-btn ghost" data-fechar>Cancelar</button>
+        <button class="argos-btn primary" id="btn-config-salvar">Salvar</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="cobranca.js?v=1"></script>
+  <script type="module" src="argos-zoom.js?v=4"></script>
+</body>
+</html>
