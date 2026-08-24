@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=0.1, maximum-scale=10, user-scalable=yes" />
+  <title>Argos Gestão — Produção e Assiduidade</title>
+  <script src="argos-guard.js"></script>
+  <link rel="stylesheet" href="argos-style.css?v=9" />
+  <style>
+    .pr-topo { display: flex; gap: 12px; flex-wrap: wrap; align-items: center;
+      justify-content: space-between; margin-bottom: 4px; }
+    .pr-mes { display: flex; gap: 8px; align-items: center; }
+    .pr-mes button { padding: 6px 10px; }
+
+    .pr-resumo { display: flex; gap: 8px; flex-wrap: wrap; margin: 10px 0 14px; font-size: .84rem; }
+    .pr-resumo span { border: 1px solid var(--argos-border); border-radius: 99px; padding: 3px 12px;
+      color: var(--argos-text-dim); }
+    .pr-resumo span b { color: var(--argos-text); }
+    .pr-resumo span.alerta { border-color: var(--argos-warn); color: var(--argos-warn); }
+    .pr-resumo span.ok { border-color: var(--argos-success); color: var(--argos-success); }
+
+    .pr-cards { display: grid; gap: 12px;
+      grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); }
+    .pr-card { border: 1px solid var(--argos-border); border-radius: var(--argos-radius);
+      background: var(--argos-surface); padding: 14px 16px; }
+    .pr-card h3 { margin: 0 0 2px; font-size: 1.02rem; }
+    .pr-card .papel { font-size: .78rem; color: var(--argos-text-dim); }
+    .pr-linha { display: flex; justify-content: space-between; gap: 10px; font-size: .86rem;
+      padding: 3px 0; }
+    .pr-linha.total { border-top: 1px solid var(--argos-border); margin-top: 6px; padding-top: 7px;
+      font-weight: 700; }
+    .pr-linha .dim { color: var(--argos-text-dim); }
+    .pr-barra { height: 8px; border-radius: 99px; background: var(--argos-surface-2);
+      overflow: hidden; margin: 8px 0 4px; }
+    .pr-barra i { display: block; height: 100%; background: var(--argos-success); }
+    .pr-barra.media i { background: var(--argos-warn); }
+    .pr-barra.ruim i { background: var(--argos-danger); }
+    .pr-freq { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; font-size: .76rem; }
+    .pr-freq span { border-radius: 5px; padding: 1px 7px; border: 1px solid var(--c);
+      color: var(--c); }
+    .pr-cobertura { margin: 8px 0 0; padding-left: 16px; font-size: .8rem; color: var(--argos-text-dim); }
+    .pr-cobertura li { margin-bottom: 2px; }
+    .pr-vazio { color: var(--argos-text-dim); font-size: .84rem; }
+
+    #tab-sub { min-width: 760px; font-size: .86rem; }
+    #tab-sub td, #tab-sub th { white-space: nowrap; }
+    #tab-sub td.livre { white-space: normal; min-width: 200px; }
+  </style>
+</head>
+<body>
+  <header class="argos-topbar">
+    <div class="brand">ARGOS <span>GESTÃO</span></div>
+    <div class="actions">
+      <a class="argos-btn ghost" href="index.html">← Início</a>
+      <button class="argos-btn danger" id="btn-logout">Sair</button>
+    </div>
+  </header>
+
+  <main class="argos-pagina larga">
+    <div class="pr-topo">
+      <div>
+        <h1>📊 Produção e Assiduidade</h1>
+        <p class="sub">Quanto cada profissional gera de faturamento e custa de repasse no mês, e
+          como está a presença de cada um nos horários pelos quais responde.</p>
+      </div>
+      <div class="pr-mes">
+        <button class="argos-btn ghost" id="btn-mes-ant" title="Mês anterior">‹</button>
+        <input type="month" id="mes-ref" class="argos-input" />
+        <button class="argos-btn ghost" id="btn-mes-prox" title="Próximo mês">›</button>
+        <button class="argos-btn ghost" id="btn-imprimir">🖨️</button>
+      </div>
+    </div>
+
+    <div class="argos-abas" id="pr-abas">
+      <button type="button" class="aba ativa" data-aba="profissionais">🧑‍🏫 Por profissional</button>
+      <button type="button" class="aba" data-aba="substituicoes">🔁 Atendimentos para outros</button>
+      <button type="button" class="aba" data-aba="pendentes">❓ Horários sem frequência</button>
+    </div>
+
+    <section data-painel="profissionais">
+      <div class="pr-resumo" id="pr-resumo"></div>
+      <div class="pr-cards" id="pr-cards"></div>
+      <div class="argos-tabela-vazia" id="pr-vazio" style="display:none">Nenhum movimento neste mês.</div>
+      <p class="dica" style="margin-top:14px">
+        O <b>dinheiro</b> vem da frequência do paciente: se ele veio, a sessão é cobrada e vai para
+        quem responde por ela na dinâmica — não importa quem conduziu o grupo naquele dia. A
+        <b>assiduidade</b> vem da frequência do profissional, marcada na Agenda, e não mexe em valor
+        nenhum. A única ponte entre as duas é a exceção «pagar esta sessão a quem atendeu».
+      </p>
+    </section>
+
+    <section data-painel="substituicoes" style="display:none">
+      <div class="pr-resumo" id="sub-resumo"></div>
+      <div class="argos-tabela-wrap">
+        <table class="argos-tabela" id="tab-sub">
+          <thead><tr>
+            <th>Quando</th><th>Paciente</th><th>Dinâmica</th>
+            <th>Quem recebeu</th><th>No lugar de</th><th>Valor</th><th>Motivo</th>
+          </tr></thead>
+          <tbody id="tbody-sub"></tbody>
+        </table>
+        <div class="argos-tabela-vazia" id="sub-vazio" style="display:none">
+          Nenhuma sessão foi redirecionada neste mês.
+        </div>
+      </div>
+      <p class="dica">São as sessões marcadas na Agenda para serem pagas a quem de fato atendeu.
+        A parte da clínica não muda: o que muda é entre quais profissionais o repasse é dividido.</p>
+    </section>
+
+    <section data-painel="pendentes" style="display:none">
+      <div class="pr-resumo" id="pend-resumo"></div>
+      <div class="argos-tabela-wrap">
+        <table class="argos-tabela" id="tab-pend">
+          <thead><tr><th>Profissional</th><th>Horários no mês</th><th>Sem frequência</th><th>Marcados</th></tr></thead>
+          <tbody id="tbody-pend"></tbody>
+        </table>
+        <div class="argos-tabela-vazia" id="pend-vazio" style="display:none">
+          Tudo marcado neste mês. 🎉
+        </div>
+      </div>
+      <p class="dica">A frequência do profissional é preenchida na <b>Agenda</b>, abrindo qualquer
+        sessão do horário. Enquanto estiver «a preencher», o horário não entra no cálculo da
+        assiduidade — nem para bem nem para mal.</p>
+    </section>
+  </main>
+
+  <script type="module" src="producao.js?v=1"></script>
+  <script type="module" src="argos-zoom.js?v=4"></script>
+</body>
+</html>

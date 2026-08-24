@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=0.1, maximum-scale=10, user-scalable=yes" />
   <title>Argos Gestão — Agenda e Logística</title>
   <script src="argos-guard.js"></script>
-  <link rel="stylesheet" href="argos-style.css?v=8" />
+  <link rel="stylesheet" href="argos-style.css?v=9" />
 </head>
 <body>
   <header class="argos-topbar">
@@ -82,6 +82,29 @@
       </div>
       <div id="sessao-info" class="bloco-info" style="margin-bottom:14px"></div>
       <div class="botoes-status" id="botoes-status"></div>
+      <div id="bloco-prof-freq" data-argos-recurso="prof_frequencia" style="display:none">
+        <h3 class="form-secao">🧑‍🏫 Quem conduziu este horário</h3>
+        <p class="dica">A frequência do profissional é registrada à parte da do paciente e
+          <b>não mexe em valor nenhum</b>: serve para a assiduidade e para saber quem cobriu quem.
+          Vale para o horário inteiro, não só para este paciente.</p>
+        <div id="prof-freq-lista"></div>
+        <div class="agenda-nav" style="margin-top:8px; flex-wrap:wrap">
+          <select id="prof-freq-outro" class="argos-input" style="flex:1; min-width:160px"></select>
+          <button class="argos-btn small" id="btn-prof-freq-add">+ Outro profissional atendeu</button>
+        </div>
+      </div>
+      <div id="bloco-repasse-sessao" data-argos-recurso="sessao_repasse_avulso" style="display:none">
+        <h3 class="form-secao">💸 Pagar esta sessão a quem atendeu</h3>
+        <p class="dica">Por padrão o dinheiro desta sessão segue a divisão da dinâmica, mesmo que
+          outra pessoa tenha conduzido. Aqui você abre exceção só para esta sessão — a parte da
+          clínica não muda.</p>
+        <div class="agenda-nav" style="flex-wrap:wrap">
+          <select id="repasse-prof" class="argos-input" style="min-width:160px"></select>
+          <input type="text" id="repasse-motivo" class="argos-input" placeholder="Motivo (opcional)" style="flex:1; min-width:140px" />
+          <button class="argos-btn primary small" id="btn-repasse-salvar">Salvar</button>
+        </div>
+        <p class="dica" id="repasse-atual"></p>
+      </div>
       <div id="bloco-remarcar" data-argos-recurso="sessao_remarcar" style="display:none">
         <h3 class="form-secao">📆 Remarcar esta sessão</h3>
         <div class="agenda-nav">
@@ -237,7 +260,7 @@
     </div>
   </div>
 
-  <script type="module" src="agenda.js?v=13"></script>
+  <script type="module" src="agenda.js?v=14"></script>
   <script type="module" src="argos-zoom.js?v=4"></script>
 </body>
 </html>
