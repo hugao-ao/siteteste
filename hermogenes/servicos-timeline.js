@@ -437,6 +437,70 @@ function renderProducao() {
 // ============================================================
 let taAlvo = null;              // { linha, de, ate }
 let taMarcados = new Set();
+let taDisp = new Map();         // integrante_id → { ocupados:[dias], conflitos:[...] }
+let taLiberar = new Set();      // ids de alocações que o usuário decidiu remover
+
+/** Disponibilidade de TODOS os integrantes na janela (uma consulta só).
+ *  Marca, por dia, quem está ocupado (alocação de outro serviço ou ausência),
+ *  respeitando a sobreposição de turno. */
+async function calcularDisponibilidade(ini, fim, turno, hi, hf) {
+    taDisp = new Map();
+    if (!ini || !fim) return { ok: true };
+    const nova = { data_inicio: ini, data_fim: fim, turno, hora_inicio: hi, hora_fim: hf };
+    const [al, au] = await Promise.all([
+        sb.from('hermo_alocacoes')
+            .select('*, obra_servico:hermo_obra_servicos(id, servico:hermo_servicos(codigo, descricao), obra:hermo_obras(numero, ano, nome))')
+            .lte('data_inicio', fim).gte('data_fim', ini),
+        sb.from('hermo_ausencias').select('*').lte('data_inicio', fim).gte('data_fim', ini)
+    ]);
+    if (al.error || au.error) return { erro: (al.error || au.error).message };
+    const dias = [];
+    for (let d = ini; d <= fim; d = addDias(d, 1)) dias.push(d);
+    const reg = id => {
+        if (!taDisp.has(id)) taDisp.set(id, { ocupados: new Set(), conflitos: [] });
+        return taDisp.get(id);
+    };
+    (al.data || []).forEach(a => {
+        if (a.obra_servico_id === taAlvo?.linha.itemId) return;   // já é deste serviço
+        if (!periodosConflitam(nova, a)) return;
+        const r = reg(a.integrante_id);
+        dias.forEach(d => { if (a.data_inicio <= d && a.data_fim >= d) r.ocupados.add(d); });
+        const ob = a.obra_servico?.obra;
+        r.conflitos.push({
+            tipo: 'aloc', id: a.id,
+            travada: !!planTravaAloc.get(a.id),
+            descr: `${a.obra_servico?.servico?.codigo || '?'} — ${a.obra_servico?.servico?.descricao || 'serviço'}` +
+                (ob ? ` · OB-${String(ob.numero).padStart(4, '0')}/${ob.ano}` : '') +
+                ` · ${ddmm(a.data_inicio)}–${ddmm(a.data_fim)} · ${fmtTurno(a)}`
+        });
+    });
+    (au.data || []).forEach(x => {
+        if (!periodosConflitam(nova, x)) return;
+        const r = reg(x.integrante_id);
+        dias.forEach(d => { if (x.data_inicio <= d && x.data_fim >= d) r.ocupados.add(d); });
+        r.conflitos.push({
+            tipo: 'ausencia', id: x.id, travada: true,
+            descr: `ausência (${x.tipo}) · ${ddmm(x.data_inicio)}–${ddmm(x.data_fim)}`
+        });
+    });
+    return { ok: true, totalDias: dias.length };
+}
+
+/** Selo de disponibilidade do integrante: livre / parcial (dias) / ocupado. */
+function seloDisponibilidade(id, totalDias) {
+    const d = taDisp.get(id);
+    if (!d || !d.ocupados.size) return { cls: 'livre', txt: '✓ livre no período', det: '' };
+    const ocup = [...d.ocupados].sort();
+    const det = d.conflitos.map(c => (c.travada && c.tipo === 'aloc' ? '🔒 ' : '') + c.descr).join(' · ');
+    if (ocup.length >= totalDias) {
+        return { cls: 'ocupado', txt: `✖ indisponível (${ocup.length}/${totalDias} dias)`, det };
+    }
+    return {
+        cls: 'parcial',
+        txt: `◐ parcial — ocupado ${ocup.length}/${totalDias} dia(s): ${ocup.map(ddmm).join(', ')}`,
+        det
+    };
+}
 
 function abrirAlocacaoRecorte(linha, de, ate) {
     if (!linha) return;
@@ -459,6 +523,8 @@ function abrirAlocacaoRecorte(linha, de, ate) {
     $('ta-turno').value = 'dia';
     $('ta-horas').style.display = 'none';
     $('ta-conflitos').style.display = 'none';
+    taDisp = new Map();
+    taLiberar = new Set();
     const selEq = $('ta-equipe');
     selEq.innerHTML = '<option value="">— escolher individualmente —</option>';
     equipes.forEach(q => {
@@ -469,20 +535,98 @@ function abrirAlocacaoRecorte(linha, de, ate) {
     });
     renderTaIntegrantes();
     $('ta-overlay').classList.add('aberto');
+    atualizarDisponibilidadeTa();   // pinta os selos de livre/parcial/ocupado
 }
 
-function renderTaIntegrantes() {
-    $('ta-integrantes').innerHTML = integrantes.map(i => `
-        <label class="lc-item">
+function renderTaIntegrantes(totalDias = 0) {
+    // livres primeiro, depois parciais, depois indisponíveis
+    const peso = i => {
+        const d = taDisp.get(i.id);
+        if (!d || !d.ocupados.size) return 0;
+        return d.ocupados.size >= totalDias ? 2 : 1;
+    };
+    const ordenados = [...integrantes].sort((a, b) => peso(a) - peso(b) || a.nome.localeCompare(b.nome, 'pt-BR'));
+    $('ta-integrantes').innerHTML = ordenados.map(i => {
+        const s = totalDias ? seloDisponibilidade(i.id, totalDias) : null;
+        return `
+        <label class="lc-item ta-int ${s ? s.cls : ''}" title="${s && s.det ? esc(s.det) : ''}">
             <input type="checkbox" data-ta="${i.id}" ${taMarcados.has(i.id) ? 'checked' : ''} />
             <div class="txt"><b>${esc(i.nome)}</b>${i.apelido ? ' (' + esc(i.apelido) + ')' : ''}
                 <small>${esc(i.funcao?.nome || 'sem função')}</small>
+                ${s ? `<small class="ta-selo ${s.cls}">${esc(s.txt)}</small>` : ''}
+                ${s && s.det ? `<small style="opacity:.85">${esc(s.det)}</small>` : ''}
             </div>
-        </label>`).join('');
+        </label>`;
+    }).join('');
     $('ta-integrantes').querySelectorAll('[data-ta]').forEach(c => c.addEventListener('change', e => {
         if (e.target.checked) taMarcados.add(e.target.dataset.ta);
         else taMarcados.delete(e.target.dataset.ta);
+        atualizarResumoTa();
     }));
+    atualizarResumoTa();
+}
+
+/** Rodapé do modal: o que acontece com os marcados (livres, parciais, bloqueados). */
+function atualizarResumoTa() {
+    const box = $('ta-conflitos');
+    const totalDias = taAlvo?.totalDias || 0;
+    const marcados = [...taMarcados];
+    if (!marcados.length || !totalDias) { box.style.display = 'none'; box.innerHTML = ''; return; }
+    const linhas = [];
+    let temBloqueio = false, temRemovivel = false;
+    marcados.forEach(id => {
+        const nome = integrantes.find(x => x.id === id)?.nome || 'Integrante';
+        const d = taDisp.get(id);
+        if (!d || !d.conflitos.length) return;
+        d.conflitos.forEach(c => {
+            const podeRemover = c.tipo === 'aloc' && !c.travada;
+            if (podeRemover) temRemovivel = true; else temBloqueio = true;
+            linhas.push(`
+            <label class="ta-conf ${podeRemover ? '' : 'bloq'}">
+                <input type="checkbox" data-ta-liberar="${c.id}" ${taLiberar.has(c.id) ? 'checked' : ''} ${podeRemover ? '' : 'disabled'} />
+                <span><b>${esc(nome)}</b> — ${esc(c.descr)}
+                    <small>${podeRemover
+                        ? 'marque para <b>tirar daqui</b> e liberar a agenda'
+                        : (c.tipo === 'ausencia'
+                            ? 'ausência não é removível por aqui (ajuste em Integrantes e Equipes)'
+                            : 'em planejamento confirmado — reabra o planejamento para mudar')}</small>
+                </span>
+            </label>`);
+        });
+    });
+    if (!linhas.length) {
+        box.style.display = '';
+        box.className = 'ta-box ok';
+        box.innerHTML = `✓ Todos os ${marcados.length} marcado(s) estão livres no período.`;
+        return;
+    }
+    box.style.display = '';
+    box.className = 'ta-box';
+    box.innerHTML = `<div style="font-weight:700;margin-bottom:6px">⚠ Conflitos de quem está marcado:</div>${linhas.join('')}
+        <div style="font-size:.72rem;color:var(--hermo-text-dim);margin-top:6px">
+            ${temRemovivel ? 'Marque os compromissos que devem ser <b>desfeitos</b> para liberar a pessoa. ' : ''}
+            ${temBloqueio ? 'Os itens travados/ausências precisam ser resolvidos onde foram criados.' : ''}
+        </div>`;
+    box.querySelectorAll('[data-ta-liberar]').forEach(c => c.addEventListener('change', e => {
+        if (e.target.checked) taLiberar.add(e.target.dataset.taLiberar);
+        else taLiberar.delete(e.target.dataset.taLiberar);
+    }));
+}
+
+/** Recalcula a disponibilidade quando período/turno mudam. */
+async function atualizarDisponibilidadeTa() {
+    if (!taAlvo) return;
+    const ini = $('ta-de').value, fim = $('ta-ate').value;
+    const turno = $('ta-turno').value;
+    const hi = $('ta-hora-ini').value || null, hf = $('ta-hora-fim').value || null;
+    if (!ini || !fim || fim < ini) return;
+    $('ta-integrantes').style.opacity = '.5';
+    const r = await calcularDisponibilidade(ini, fim, turno, hi, hf);
+    $('ta-integrantes').style.opacity = '';
+    if (r.erro) { toast('Não deu para checar a disponibilidade: ' + r.erro, true); return; }
+    taAlvo.totalDias = r.totalDias || 0;
+    taLiberar = new Set();
+    renderTaIntegrantes(taAlvo.totalDias);
 }
 
 async function confirmarAlocacaoRecorte() {
@@ -499,22 +643,31 @@ async function confirmarAlocacaoRecorte() {
     const btn = $('ta-confirmar');
     btn.disabled = true;
     try {
-        // conflito por integrante, com consulta fresca (mesma régua do resto do app)
-        const conflitos = [];
-        for (const id of ids) {
-            const res = await conflitosFrescos(
-                { id: null, integrante_id: id, turno, hora_inicio: hi, hora_fim: hf }, ini, fim);
-            if (res.erro) { toast('Não deu para checar conflitos: ' + res.erro, true); return; }
-            res.conflitos.forEach(c => {
-                const nome = integrantes.find(x => x.id === id)?.nome || 'Integrante';
-                conflitos.push(`• ${nome}: ${c.descr}`);
+        // disponibilidade FRESCA (a tela pode estar aberta há minutos)
+        const r = await calcularDisponibilidade(ini, fim, turno, hi, hf);
+        if (r.erro) { toast('Não deu para checar conflitos: ' + r.erro, true); return; }
+        taAlvo.totalDias = r.totalDias || 0;
+        const pendentes = [], bloqueios = [];
+        ids.forEach(id => {
+            const nome = integrantes.find(x => x.id === id)?.nome || 'Integrante';
+            (taDisp.get(id)?.conflitos || []).forEach(c => {
+                const podeRemover = c.tipo === 'aloc' && !c.travada;
+                if (!podeRemover) bloqueios.push(`${nome}: ${c.descr}`);
+                else if (!taLiberar.has(c.id)) pendentes.push(`${nome}: ${c.descr}`);
             });
-        }
-        if (conflitos.length) {
-            const box = $('ta-conflitos');
-            box.style.display = '';
-            box.textContent = '🚫 Conflito de agenda — ajuste o período, o turno ou as pessoas:\n' + conflitos.join('\n');
+        });
+        if (bloqueios.length || pendentes.length) {
+            renderTaIntegrantes(taAlvo.totalDias);   // reexibe com a situação atual
+            toast(bloqueios.length
+                ? `🚫 ${bloqueios[0]} — esse compromisso não pode ser desfeito por aqui.`
+                : `Marque o que deve ser desfeito para liberar: ${pendentes[0]}.`, true);
             return;
+        }
+        // libera as agendas escolhidas (tira a pessoa de onde estava)
+        const liberar = [...taLiberar];
+        if (liberar.length) {
+            const { error } = await sb.from('hermo_alocacoes').delete().in('id', liberar);
+            if (error) { toast('Não deu para liberar a agenda: ' + error.message, true); return; }
         }
         const eq = equipes.find(q => q.id === $('ta-equipe').value);
         const linhas = ids.map(id => ({
@@ -531,7 +684,8 @@ async function confirmarAlocacaoRecorte() {
         taAlvo = null;
         await carregarDados();
         render();
-        toast(`👷 ${ids.length} alocação(ões) criada(s) em ${ddmmSem(ini)} – ${ddmmSem(fim)} — sem conflitos.`);
+        toast(`👷 ${ids.length} alocação(ões) criada(s) em ${ddmmSem(ini)} – ${ddmmSem(fim)}` +
+            (liberar.length ? ` · ${liberar.length} compromisso(s) anterior(es) desfeito(s) para liberar a agenda.` : ' — sem conflitos.'));
     } catch (e) {
         toast('Erro ao alocar: ' + e.message, true);
     } finally {
@@ -1468,13 +1622,17 @@ $('ta-cancelar').addEventListener('click', () => { $('ta-overlay').classList.rem
 $('ta-confirmar').addEventListener('click', confirmarAlocacaoRecorte);
 $('ta-turno').addEventListener('change', () => {
     $('ta-horas').style.display = $('ta-turno').value === 'horario' ? '' : 'none';
+    atualizarDisponibilidadeTa();
 });
+['ta-de', 'ta-ate', 'ta-hora-ini', 'ta-hora-fim'].forEach(id =>
+    $(id).addEventListener('change', atualizarDisponibilidadeTa));
 $('ta-equipe').addEventListener('change', () => {
     const q = equipes.find(x => x.id === $('ta-equipe').value);
     if (!q) return;
     taMarcados = new Set(q.membroIds.filter(id => integrantes.some(i => i.id === id)));
-    renderTaIntegrantes();
-    toast(`Equipe "${q.nome}" marcada (${taMarcados.size} ativo(s)).`);
+    renderTaIntegrantes(taAlvo?.totalDias || 0);
+    const ocupados = [...taMarcados].filter(id => (taDisp.get(id)?.ocupados.size || 0) > 0).length;
+    toast(`Equipe "${q.nome}" marcada (${taMarcados.size} ativo(s))${ocupados ? ` · ${ocupados} com conflito no período` : ' · todos livres'}.`);
 });
 $('tlx-regua2').addEventListener('click', () => {
     if (reguaB) {
