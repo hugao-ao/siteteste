@@ -14,7 +14,7 @@
 //   cob.abrirExtrato(paciente);
 
 import { sb, toast, esc, abrirModal, fecharModal } from './argos-common.js';
-import { fechamentoPaciente, formataMoeda, formataBR, hojeISO } from './argos-recorrencia.js';
+import { fechamentoPaciente, formataMoeda, formataBR, hojeISO, STATUS_SESSAO } from './argos-recorrencia.js';
 import { mesBR, normalizarFone, linkWhatsApp, detalhesDoMes, notaEfetiva,
          situacaoNota, contatosParaCobranca, retratoDaNota, compararRetrato } from './argos-cobranca.js';
 import { documento, secao, ficha, abrirDocumento } from './argos-relatorio.js';
@@ -41,6 +41,15 @@ const CSS = `
 #tab-extrato td, #tab-extrato th { white-space: nowrap; }
 #tab-extrato td.num { text-align: right; }
 #tab-extrato tr.sem-pag td { color: var(--argos-text-dim); }
+#tab-extrato th.ord { cursor: pointer; user-select: none; white-space: nowrap; }
+#tab-extrato th.ord:hover { color: var(--argos-primary); }
+#tab-extrato th.ord.ativa { color: var(--argos-primary); }
+#tab-extrato th.ord i { font-style: normal; font-size: .7rem; }
+#tab-extrato td.acoes { width: 1%; }
+#tab-extrato .linha-detalhe td { white-space: normal; }
+.ext-sessoes { margin: 4px 0 0; padding-left: 18px; }
+.ext-sessoes li { margin-bottom: 5px; }
+.ext-marcas { display: block; margin-top: 2px; font-size: .78rem; color: var(--argos-text-dim); }
 .ext-resumo { display: flex; gap: 8px; flex-wrap: wrap; margin: 0 0 10px; font-size: .84rem; }
 .ext-resumo span { border: 1px solid var(--argos-border); border-radius: 99px; padding: 3px 11px;
   color: var(--argos-text-dim); }
@@ -398,6 +407,23 @@ function ligarEventos() {
     });
 
     document.getElementById('btn-cob-ext-imprimir').addEventListener('click', imprimirExtrato);
+
+    document.getElementById('tab-extrato').addEventListener('click', e => {
+        if (!extratoAtual) return;
+        const th = e.target.closest('[data-ord]');
+        if (th) {
+            const c = th.dataset.ord;
+            // mesma coluna inverte; coluna nova começa crescente
+            ordem = { coluna: c, desc: ordem.coluna === c ? !ordem.desc : false };
+            return renderExtrato(extratoAtual);
+        }
+        const bt = e.target.closest('[data-mes-detalhe]');
+        if (bt) {
+            const m = bt.dataset.mesDetalhe;
+            if (mesesAbertos.has(m)) mesesAbertos.delete(m); else mesesAbertos.add(m);
+            renderExtrato(extratoAtual);
+        }
+    });
 }
 
 // ---------------------------------------------------------------------------
@@ -418,6 +444,16 @@ export function mesesEntre(de, ate) {
     return saida;
 }
 
+/**
+ * A que mês um registro do histórico pertence. Um evento sobre uma sessão de
+ * junho vale para junho mesmo que tenha sido anotado em julho, então a data
+ * de dentro do evento manda sobre a data em que ele foi gravado.
+ */
+export function mesDoEvento(ev) {
+    const d = ev && ev.dados ? (ev.dados.data || (ev.dados.de && ev.dados.de.data)) : null;
+    return String(d || ev.created_at || '').slice(0, 7);
+}
+
 let extratoAtual = null;   // guardado para o relatório impresso
 
 /**
@@ -436,6 +472,17 @@ export async function calcularExtrato(paciente, cache = {}) {
     const sessoes = cache.sessoes || await busca('argos_sessoes', 'paciente_id');
     const notas = cache.notas || await busca('argos_notas_fiscais', 'paciente_id');
     const excecoes = cache.excecoes || await busca('argos_nota_mes', 'paciente_id');
+    const eventos = cache.eventos || await busca('argos_paciente_eventos', 'paciente_id');
+    let profissionais = cache.profissionais;
+    if (!profissionais) {
+        const { data } = await sb.from('argos_profissionais').select('id, nome');
+        profissionais = data || [];
+    }
+    const nomeProf = id => (profissionais.find(x => x.id === id) || {}).nome || '—';
+    const rotuloDin = id => {
+        const d = dinamicas.find(x => x.id === id);
+        return d ? (d.rotulo || 'Dinâmica') : '';
+    };
 
     let alocacoes = cache.alocacoes;
     let movimentacoes = cache.movimentacoes;
@@ -467,6 +514,7 @@ export async function calcularExtrato(paciente, cache = {}) {
 
     const linhas = [];
     const total = { valor: 0, pago: 0, sessoes: 0 };
+    const hoje = hojeISO();
     for (const mes of meses) {
         const fech = fechamentoPaciente(paciente, dinamicas, sessoes, mes);
         const pagos = alocacoes.filter(a => a.mes_ref === mes)
@@ -478,7 +526,33 @@ export async function calcularExtrato(paciente, cache = {}) {
         const dinsMes = dinamicasDoMes(dinamicas, mes);
         const regime = notaEfetiva({ dinamicas: dinsMes, excecao: excecoes.find(e => e.mes === mes) });
         if (!fech.sessoes.length && !fech.valor && !pago && !nota) continue;
+
+        // detalhe de cada sessão: data, hora, situação e tudo que ficou
+        // registrado nela (remarcação, justificativa, observação, pagamento
+        // redirecionado). É o que o mês esconde atrás do número de sessões.
+        const detalheSessoes = [...fech.sessoes]
+            .sort((a, b) => String(a.data).localeCompare(String(b.data))
+                || String(a.hora || '').localeCompare(String(b.hora || '')))
+            .map(x => ({
+                data: x.data, hora: x.hora || '', status: x.status,
+                dinamica: rotuloDin(x.dinamica_ref),
+                avulsa: !x.dinamica_ref,
+                valor: x.valor == null ? null : Number(x.valor),
+                remarcada_de_data: x.remarcada_de_data || null,
+                remarcada_de_hora: x.remarcada_de_hora || null,
+                justificativa: x.justificativa || '',
+                obs: x.obs || '',
+                pagaA: x.repasse_profissional_id ? nomeProf(x.repasse_profissional_id) : '',
+                pagaMotivo: x.repasse_motivo || '',
+                projetada: x.status === '??' && x.data >= hoje
+            }));
+
+        // registros do histórico do paciente que caem naquele mês
+        const registros = eventos.filter(ev => mesDoEvento(ev) === mes)
+            .sort((a, b) => String(a.created_at).localeCompare(String(b.created_at)));
+
         linhas.push({ mes, fech, pago, pagos, nota, regime,
+            sessoes: detalheSessoes, registros,
             sessoesCobradas: fech.contagens.ok + fech.contagens.fc });
         total.valor += fech.valor;
         total.pago += pago;
@@ -501,6 +575,8 @@ export function dinamicasDoMes(dinamicas = [], mes) {
 }
 
 export async function abrirExtrato(paciente, cache = {}) {
+    ordem = { coluna: 'mes', desc: false };
+    mesesAbertos = new Set();
     document.getElementById('cob-ext-titulo').textContent = `Extrato financeiro — ${paciente.nome}`;
     document.getElementById('tab-extrato').innerHTML =
         '<tbody><tr><td class="dim">Calculando…</td></tr></tbody>';
@@ -508,6 +584,48 @@ export async function abrirExtrato(paciente, cache = {}) {
     abrirModal('modal-cob-extrato');
     const ext = await calcularExtrato(paciente, cache);
     renderExtrato(ext);
+}
+
+// ---------------------------------------------------------------------------
+// A tabela do extrato: ordenável e com o detalhe de cada mês
+// ---------------------------------------------------------------------------
+
+/** Como cada coluna é comparada. Sem entrada aqui, a coluna não ordena. */
+const ORDENA = {
+    mes:      l => l.mes,
+    sessoes:  l => l.sessoesCobradas,
+    valor:    l => l.fech.valor,
+    nota:     l => (l.nota && l.nota.numero) || '',
+    pago:     l => l.pago,
+    pagador:  l => (l.pagos[0] && l.pagos[0].mov.descricao) || '',
+    quando:   l => (l.pagos[0] && l.pagos[0].mov.data) || '',
+    saldo:    l => l.fech.valor - l.pago
+};
+
+const COLUNAS = [
+    { chave: 'mes',     rotulo: 'Mês' },
+    { chave: 'sessoes', rotulo: 'Sessões', num: true },
+    { chave: 'valor',   rotulo: 'Valor do mês', num: true },
+    { chave: 'nota',    rotulo: 'Nota fiscal' },
+    { chave: 'pago',    rotulo: 'Pagamento', num: true },
+    { chave: 'pagador', rotulo: 'Pagador' },
+    { chave: 'quando',  rotulo: 'Pago em', dica: 'Quando o dinheiro entrou. A linha já diz a que mês de produção ele foi associado.' },
+    { chave: 'saldo',   rotulo: 'Saldo', num: true }
+];
+
+let ordem = { coluna: 'mes', desc: false };
+let mesesAbertos = new Set();
+
+function ordenar(linhas) {
+    const pega = ORDENA[ordem.coluna] || ORDENA.mes;
+    const sinal = ordem.desc ? -1 : 1;
+    return [...linhas].sort((a, b) => {
+        const x = pega(a), y = pega(b);
+        const cmp = typeof x === 'number' && typeof y === 'number'
+            ? x - y : String(x).localeCompare(String(y), 'pt-BR');
+        // empate volta à ordem do tempo, que é a leitura natural do extrato
+        return cmp !== 0 ? cmp * sinal : a.mes.localeCompare(b.mes);
+    });
 }
 
 function renderExtrato(ext) {
@@ -526,42 +644,101 @@ function renderExtrato(ext) {
         tab.innerHTML = '<tbody><tr><td class="dim">Nenhum movimento financeiro para este paciente.</td></tr></tbody>';
         return;
     }
+    const seta = c => ordem.coluna === c ? (ordem.desc ? ' ▼' : ' ▲') : '';
     tab.innerHTML = `
       <thead><tr>
-        <th>Mês</th><th>Sessões</th><th>Valor do mês</th><th>Nota fiscal</th>
-        <th>Pagamento</th><th>Pagador</th><th>Associado a</th><th>Saldo</th>
+        <th class="acoes"></th>
+        ${COLUNAS.map(c => `<th class="ord ${ordem.coluna === c.chave ? 'ativa' : ''} ${c.num ? 'num' : ''}"
+            data-ord="${c.chave}" title="${esc(c.dica || 'Clique para ordenar por ' + c.rotulo.toLowerCase())}"
+          >${esc(c.rotulo)}<i>${seta(c.chave)}</i></th>`).join('')}
       </tr></thead>
-      <tbody>${linhas.map(l => {
-          const s = l.fech.valor - l.pago;
-          const sit = situacaoNota(l.regime.valor);
-          return `
-        <tr class="${l.pago ? '' : 'sem-pag'}">
-          <td><b>${esc(mesBR(l.mes))}</b></td>
-          <td class="num">${l.sessoesCobradas}${l.fech.contagens['??'] ? ` <span class="badge vermelho" title="sessões ainda sem frequência">+${l.fech.contagens['??']}?</span>` : ''}</td>
-          <td class="num">${formataMoeda(l.fech.valor)}</td>
-          <td>${l.nota
-                ? `${l.nota.numero ? esc(l.nota.numero) : '<span class="dim">sem número</span>'}
-                   ${l.nota.status !== 'emitida' ? `<span class="badge vermelho">${esc(l.nota.status)}</span>` : ''}
-                   ${l.nota.emitida_em ? `<br><small class="dim">${formataBR(l.nota.emitida_em)}</small>` : ''}`
-                : `<span class="dim">${esc(sit.rotulo === 'Normal' ? 'não emitida' : sit.rotulo.toLowerCase())}</span>`}</td>
-          <td>${l.pagos.length
-                ? l.pagos.map(p => `${p.mov.data ? formataBR(p.mov.data) : '—'}: ${formataMoeda(p.valor)}`).join('<br>')
-                : '<span class="dim">—</span>'}</td>
-          <td>${l.pagos.length
-                ? [...new Set(l.pagos.map(p => p.mov.descricao || '—'))].map(esc).join('<br>')
-                : '<span class="dim">—</span>'}</td>
-          <td>${esc(mesBR(l.mes))}</td>
-          <td class="num">${s > 0.009
-                ? `<b style="color:var(--argos-danger)">${formataMoeda(s)}</b>`
-                : `<span class="dim">${formataMoeda(s)}</span>`}</td>
-        </tr>`;
-      }).join('')}</tbody>
+      <tbody>${ordenar(linhas).map(l => linhaMes(l) + (mesesAbertos.has(l.mes) ? detalheMes(l) : '')).join('')}</tbody>
       <tfoot><tr class="linha-total">
-        <td><b>TOTAL</b></td><td class="num">${total.sessoes}</td>
+        <td></td><td><b>TOTAL</b></td><td class="num">${total.sessoes}</td>
         <td class="num"><b>${formataMoeda(total.valor)}</b></td><td></td>
         <td class="num"><b>${formataMoeda(total.pago)}</b></td><td></td><td></td>
         <td class="num"><b>${formataMoeda(saldo)}</b></td>
       </tr></tfoot>`;
+}
+
+function linhaMes(l) {
+    const s = l.fech.valor - l.pago;
+    const sit = situacaoNota(l.regime.valor);
+    const aberto = mesesAbertos.has(l.mes);
+    const marcas = l.sessoes.filter(x => x.remarcada_de_data || x.justificativa || x.obs || x.pagaA).length;
+    return `
+    <tr class="${l.pago ? '' : 'sem-pag'}">
+      <td class="acoes"><button class="argos-btn small" data-mes-detalhe="${l.mes}"
+        title="Datas das sessões e registros do mês">${aberto ? '▲' : '▼'}</button></td>
+      <td><b>${esc(mesBR(l.mes))}</b>${l.registros.length
+          ? ` <span class="badge" title="${l.registros.length} registro(s) no histórico">🗂️ ${l.registros.length}</span>` : ''}</td>
+      <td class="num">${l.sessoesCobradas}${l.fech.contagens['??']
+          ? ` <span class="badge vermelho" title="sessões ainda sem frequência">+${l.fech.contagens['??']}?</span>` : ''}
+        ${marcas ? ` <span class="badge azul" title="${marcas} sessão(ões) com registro">📝</span>` : ''}</td>
+      <td class="num">${formataMoeda(l.fech.valor)}</td>
+      <td>${l.nota
+            ? `${l.nota.numero ? esc(l.nota.numero) : '<span class="dim">sem número</span>'}
+               ${l.nota.status !== 'emitida' ? `<span class="badge vermelho">${esc(l.nota.status)}</span>` : ''}
+               ${l.nota.emitida_em ? `<br><small class="dim">${formataBR(l.nota.emitida_em)}</small>` : ''}`
+            : `<span class="dim">${esc(sit.rotulo === 'Normal' ? 'não emitida' : sit.rotulo.toLowerCase())}</span>`}</td>
+      <td class="num">${l.pagos.length
+            ? l.pagos.map(p => formataMoeda(p.valor)).join('<br>')
+            : '<span class="dim">—</span>'}</td>
+      <td>${l.pagos.length
+            ? [...new Set(l.pagos.map(p => p.mov.descricao || '—'))].map(esc).join('<br>')
+            : '<span class="dim">—</span>'}</td>
+      <td>${l.pagos.length
+            ? l.pagos.map(p => {
+                const quando = p.mov.data ? formataBR(p.mov.data) : '—';
+                const outro = p.mov.data && p.mov.data.slice(0, 7) !== l.mes;
+                return `${quando}${outro ? `<br><span class="badge azul"
+                    title="O dinheiro entrou em outro mês e foi associado a ${esc(mesBR(l.mes))}">outro mês</span>` : ''}`;
+              }).join('<br>')
+            : '<span class="dim">—</span>'}</td>
+      <td class="num">${s > 0.009
+            ? `<b style="color:var(--argos-danger)">${formataMoeda(s)}</b>`
+            : `<span class="dim">${formataMoeda(s)}</span>`}</td>
+    </tr>`;
+}
+
+/** Um item da lista de sessões do mês, com tudo que ficou registrado nele. */
+function itemSessao(x) {
+    const st = STATUS_SESSAO[x.status] || {};
+    const marcas = [
+        x.remarcada_de_data ? `↪️ remarcada de ${formataBR(x.remarcada_de_data)} às ${esc(x.remarcada_de_hora || '')}` : '',
+        x.justificativa ? `📝 ${esc(x.justificativa)}` : '',
+        x.obs ? `🗒️ ${esc(x.obs)}` : '',
+        x.pagaA ? `💸 paga a ${esc(x.pagaA)}${x.pagaMotivo ? ` — ${esc(x.pagaMotivo)}` : ''}` : '',
+        x.projetada ? '🔮 ainda não aconteceu: entra como presença projetada' : ''
+    ].filter(Boolean);
+    return `
+    <li>
+      <b>${formataBR(x.data)}</b>${x.hora ? ` às ${esc(x.hora)}` : ''}
+      — <span class="chip-status" style="--c:${st.cor}">${esc(st.desc || st.label || x.status)}</span>
+      ${x.avulsa ? '<span class="badge azul">avulsa</span>' : (x.dinamica ? `<span class="dim">${esc(x.dinamica)}</span>` : '')}
+      ${x.avulsa && x.valor != null ? `<span class="dim">${formataMoeda(x.valor)}</span>` : ''}
+      ${marcas.length ? `<span class="ext-marcas">${marcas.join('<br>')}</span>` : ''}
+    </li>`;
+}
+
+function detalheMes(l) {
+    return `
+    <tr class="linha-detalhe"><td colspan="9">
+      <b>🗓️ Sessões de ${esc(mesBR(l.mes))}:</b>
+      ${l.sessoes.length
+        ? `<ul class="ext-sessoes">${l.sessoes.map(itemSessao).join('')}</ul>`
+        : '<span class="dim">Sem sessões neste mês.</span>'}
+      ${l.fech.detalhes.length ? `<b style="display:block;margin-top:8px">💰 Como o valor foi formado:</b>
+        <ul>${l.fech.detalhes.map(d => `<li>${esc(d)}</li>`).join('')}</ul>` : ''}
+      ${l.pagos.length ? `<b style="display:block;margin-top:8px">💵 Pagamentos associados a este mês:</b>
+        <ul>${l.pagos.map(p => `<li>${p.mov.data ? formataBR(p.mov.data) : 'sem data'} —
+          ${esc(p.mov.descricao || 'sem descrição')}: <b>${formataMoeda(p.valor)}</b>
+          ${p.mov.observacoes ? `<br><span class="dim">🗒️ ${esc(p.mov.observacoes)}</span>` : ''}</li>`).join('')}</ul>` : ''}
+      ${l.registros.length ? `<b style="display:block;margin-top:8px">🗂️ Registros do histórico:</b>
+        <ul>${l.registros.map(ev => `<li>${formataBR(String(ev.created_at).slice(0, 10))} —
+          ${esc(ev.descricao || ev.tipo)}
+          ${ev.justificativa ? `<br><span class="dim">📝 ${esc(ev.justificativa)}</span>` : ''}</li>`).join('')}</ul>` : ''}
+    </td></tr>`;
 }
 
 function imprimirExtrato() {
@@ -595,6 +772,26 @@ function imprimirExtrato() {
           <td style="padding:5px 6px;border-top:2px solid #14181d;text-align:right"><b>${formataMoeda(saldo)}</b></td>
         </tr></tfoot>
       </table>`);
+    const detalhe = secao('Sessões e registros, mês a mês', linhas.map(l => `
+      <h3 class="subsec">${esc(mesBR(l.mes))}</h3>
+      ${l.sessoes.length ? `<ul style="margin:0 0 6px;padding-left:18px;font:9.5pt/1.5 'Helvetica Neue',Arial,sans-serif">
+        ${l.sessoes.map(x => {
+            const st = STATUS_SESSAO[x.status] || {};
+            const marcas = [
+                x.remarcada_de_data ? `remarcada de ${formataBR(x.remarcada_de_data)} às ${esc(x.remarcada_de_hora || '')}` : '',
+                x.justificativa ? `justificativa: ${esc(x.justificativa)}` : '',
+                x.obs ? `observação: ${esc(x.obs)}` : '',
+                x.pagaA ? `paga a ${esc(x.pagaA)}${x.pagaMotivo ? ` (${esc(x.pagaMotivo)})` : ''}` : ''
+            ].filter(Boolean);
+            return `<li><b>${formataBR(x.data)}</b>${x.hora ? ` às ${esc(x.hora)}` : ''} — ${esc(st.desc || st.label || x.status)}`
+                + `${x.avulsa ? ' (sessão avulsa)' : (x.dinamica ? ` — ${esc(x.dinamica)}` : '')}`
+                + `${marcas.length ? `<br><span style="color:#5a6672">${marcas.join('; ')}</span>` : ''}</li>`;
+        }).join('')}</ul>` : '<p class="relato"><span class="vazio">Sem sessões neste mês.</span></p>'}
+      ${l.registros.length ? `<ul style="margin:0 0 6px;padding-left:18px;font:9.5pt/1.5 'Helvetica Neue',Arial,sans-serif;color:#5a6672">
+        ${l.registros.map(ev => `<li>${formataBR(String(ev.created_at).slice(0, 10))} — ${esc(ev.descricao || ev.tipo)}`
+            + `${ev.justificativa ? ` (${esc(ev.justificativa)})` : ''}</li>`).join('')}</ul>` : ''}
+    `).join(''));
+
     const html = documento({
         titulo: `Extrato financeiro — ${paciente.nome}`,
         quando: `Emitido em ${formataBR(hojeISO())}`,
@@ -609,7 +806,7 @@ function imprimirExtrato() {
                 ['Recebido', formataMoeda(total.pago)],
                 [saldo > 0.009 ? 'Em aberto' : 'Saldo', formataMoeda(saldo)]
             ]),
-        corpo,
+        corpo: corpo + detalhe,
         rodape: '<div class="rodape">O valor de cada mês é o fechamento vivo: muda se a frequência do mês for corrigida.</div>'
     });
     if (!abrirDocumento(html)) toast('O navegador bloqueou a janela do relatório.', true);

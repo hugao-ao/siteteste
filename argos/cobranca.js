@@ -218,8 +218,12 @@ function renderFechamento() {
         <td class="num"><b>${formataMoeda(f.valor)}</b></td>
         <td>${contatosP.length
             ? `<button class="argos-btn small ${envio ? '' : 'primary'}" data-msg="${p.id}"
+                 title="${envio ? 'Abrir a mensagem de novo' : 'Montar a mensagem do fechamento'}"
                  data-argos-recurso="cobranca_enviar">${envio ? '✅ Cobrança enviada' : '📲 Enviar mensagem'}</button>
-               ${envio ? `<span class="sub">${esc(envio.contato_nome || '')} · ${formataBR(String(envio.enviada_em).slice(0, 10))}</span>` : ''}`
+               ${envio ? `<button class="argos-btn small ghost" data-desmarcar="${p.id}"
+                   title="Desmarcar: a cobrança volta a constar como não enviada"
+                   data-argos-recurso="cobranca_enviar">↩️</button>
+                 <span class="sub">${esc(envio.contato_nome || '')} · ${formataBR(String(envio.enviada_em).slice(0, 10))}</span>` : ''}`
             : '<span class="sub" style="color:var(--argos-danger)">sem contato de cobrança</span>'}</td>
         <td class="acoes">
           <button class="argos-btn small" data-detalhe="${p.id}"
@@ -585,6 +589,24 @@ async function marcarEnviada() {
     toast('Cobrança marcada como enviada.');
 }
 
+/**
+ * Desfaz a marca de "cobrança enviada" daquele mês. Apaga o registro do envio
+ * — não há por que guardar um envio que não valeu — e o paciente volta para a
+ * fila de quem ainda precisa receber o fechamento.
+ */
+async function desmarcarEnvio(p) {
+    const doMes = envios.filter(e => e.paciente_id === p.id && e.mes === mesAtual);
+    if (!doMes.length) return;
+    if (!confirm(`Desmarcar a cobrança de ${mesBR(mesAtual)} de ${p.nome}?\n`
+        + 'Ela volta a aparecer como não enviada.')) return;
+    const { error } = await sb.from('argos_cobranca_envios').delete()
+        .eq('paciente_id', p.id).eq('mes', mesAtual);
+    if (error) { console.error(error); return toast('Erro ao desmarcar a cobrança.', true); }
+    envios = envios.filter(e => !(e.paciente_id === p.id && e.mes === mesAtual));
+    toast('Cobrança desmarcada.');
+    renderFechamento();
+}
+
 // ===========================================================================
 // REGIME DE NOTA (um mês, vários ou todos)
 // ===========================================================================
@@ -840,6 +862,8 @@ document.querySelector('main').addEventListener('click', async e => {
     });
     const msg = alvo('data-msg');
     if (msg) return abrirMensagem(pacDe(msg.dataset.msg));
+    const desm = alvo('data-desmarcar');
+    if (desm) return desmarcarEnvio(pacDe(desm.dataset.desmarcar));
     const reg = alvo('data-regime');
     if (reg) {
         if (!perm.pode('nota_tipo_definir')) return toast('Sem permissão para mudar o tipo de nota.', true);
