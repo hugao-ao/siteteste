@@ -1,6 +1,9 @@
 /* argos-style.css — Estilo da área Argos (independente do restante do site) */
 
 :root {
+    /* diz ao navegador que a área é escura: calendário, relógio, setas do
+       campo numérico e barras de rolagem passam a ser desenhados no escuro */
+    color-scheme: dark;
     --argos-bg: #0f172a;
     --argos-surface: #1e293b;
     --argos-surface-2: #273449;
@@ -275,10 +278,10 @@ body.modal-aberto { overflow: hidden; }
     color: var(--argos-text-dim);
     margin-bottom: 12px;
 }
-.argos-form input[type="text"],
-.argos-form input[type="email"],
-.argos-form input[type="url"],
-.argos-form input[type="tel"],
+/* qualquer tipo de campo — número, data, mês, hora, busca — e não uma lista
+   de tipos que sempre esquece o próximo: o que fica de fora são as caixas de
+   marcar, que têm forma própria */
+.argos-form input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]),
 .argos-form select,
 .argos-form textarea {
     display: block;
@@ -296,6 +299,72 @@ body.modal-aberto { overflow: hidden; }
     outline: none;
     border-color: var(--argos-primary);
 }
+
+/* ---------- Campos de dinheiro, data e hora ----------
+   Os controles nativos vinham brancos no meio de uma página escura. Aqui eles
+   entram no mesmo traje dos demais campos: o ícone do calendário/relógio
+   ganha a cor do texto e o campo de dinheiro ganha o "R$" na frente, para o
+   número ser lido como dinheiro sem precisar do rótulo. */
+
+/* ícone do calendário e do relógio: some o branco, fica a cor da página */
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="month"]::-webkit-calendar-picker-indicator,
+input[type="time"]::-webkit-calendar-picker-indicator,
+input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+    filter: invert(72%) sepia(12%) saturate(400%) hue-rotate(175deg);
+    cursor: pointer;
+    opacity: .8;
+}
+input[type="date"]::-webkit-calendar-picker-indicator:hover,
+input[type="month"]::-webkit-calendar-picker-indicator:hover,
+input[type="time"]::-webkit-calendar-picker-indicator:hover {
+    opacity: 1;
+}
+/* data e hora com números tabulares: a largura não dança ao digitar */
+input[type="date"], input[type="month"], input[type="time"],
+input[type="datetime-local"], input[type="number"] {
+    font-variant-numeric: tabular-nums;
+}
+/* campo vazio de data mostra o gabarito em cinza, não em branco */
+input[type="date"]:not(:focus):invalid::-webkit-datetime-edit,
+input[type="month"]:not(:focus):invalid::-webkit-datetime-edit,
+input[type="time"]:not(:focus):invalid::-webkit-datetime-edit {
+    color: var(--argos-text-dim);
+}
+
+/* dinheiro: o R$ mora na moldura, não no meio do texto digitado */
+.campo-moeda { position: relative; display: block; margin-top: 5px; }
+.campo-moeda::before {
+    content: 'R$';
+    position: absolute;
+    left: 11px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: .82rem;
+    font-weight: 600;
+    color: var(--argos-text-dim);
+    pointer-events: none;
+}
+.campo-moeda input {
+    margin-top: 0 !important;
+    padding-left: 34px !important;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+/* dinheiro não se digita de setinha em setinha: elas só encostavam no número */
+.campo-moeda input { -moz-appearance: textfield; appearance: textfield; }
+.campo-moeda input::-webkit-inner-spin-button,
+.campo-moeda input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+.campo-moeda:focus-within::before { color: var(--argos-primary); }
+/* dentro de uma linha de filtros o campo não é bloco: acompanha os vizinhos */
+.campo-moeda.inline { display: inline-block; margin-top: 0; vertical-align: middle; }
+.campo-moeda.inline input { width: 100%; }
+
+/* nos contadores (duração, ocorrências) as setinhas ficam discretas e
+   ganham nitidez quando o campo está em uso */
+.argos-form input[type="number"]::-webkit-inner-spin-button { opacity: .4; }
+.argos-form input[type="number"]:hover::-webkit-inner-spin-button,
+.argos-form input[type="number"]:focus::-webkit-inner-spin-button { opacity: 1; }
 .argos-form .linha-check {
     display: flex;
     align-items: center;

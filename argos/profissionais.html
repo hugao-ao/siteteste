@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=0.1, maximum-scale=10, user-scalable=yes" />
   <title>Argos Gestão — Profissionais</title>
   <script src="argos-guard.js"></script>
-  <link rel="stylesheet" href="argos-style.css?v=9" />
+  <link rel="stylesheet" href="argos-style.css?v=10" />
 </head>
 <body>
   <header class="argos-topbar">
@@ -48,8 +48,8 @@
             <option value="producao_fixo">Produção + valor fixo mensal</option>
           </select>
         </label>
-        <label id="rotulo-fixo" style="display:none">Valor fixo mensal (R$)
-          <input type="number" step="0.01" min="0" id="prof-fixo" />
+        <label id="rotulo-fixo" style="display:none">Valor fixo mensal
+          <span class="campo-moeda"><input type="number" step="0.01" min="0" id="prof-fixo" /></span>
         </label>
         <p class="dica">O % por produção de cada paciente é definido na Dinâmica Financeira do próprio paciente e aparece no card do profissional.</p>
         <div class="argos-modal-acoes">
