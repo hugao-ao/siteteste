@@ -42,6 +42,17 @@ function filtrados() {
         )));
 }
 
+/** O que ainda falta no cadastro para o contrato sair com as partes qualificadas. */
+function faltaParaContrato(c) {
+    const falta = [];
+    if (!c.cpf_cnpj) falta.push('CPF/CNPJ');
+    if (!c.endereco) falta.push('endereço');
+    if (!c.cep) falta.push('CEP');
+    // pessoa física assina por si; PJ precisa de quem assine
+    if (c.tipo_pessoa !== 'PF' && !c.representante) falta.push('representante');
+    return falta;
+}
+
 function render() {
     const lista = filtrados();
     $('vazio').style.display = lista.length ? 'none' : '';
@@ -51,6 +62,9 @@ function render() {
             <td>${esc(c.whatsapp)}</td>
             <td>${esc(c.email || '—')}</td>
             <td>${c.cpf_cnpj ? `${c.tipo_pessoa || ''} ${esc(c.cpf_cnpj)}` : '—'}</td>
+            <td>${faltaParaContrato(c).length
+                ? `<span class="cli-falta" title="Falta para gerar contrato: ${esc(faltaParaContrato(c).join(', '))}">⚠ ${faltaParaContrato(c).length} campo(s)</span>`
+                : '<span class="cli-ok" title="Dados completos para gerar contrato">✓ completo</span>'}</td>
             <td>${esc(c.indicador?.nome || c.indicado_por_nome || '—')}</td>
             <td>
                 <button class="hermo-btn small ghost" data-editar="${c.id}">✎</button>

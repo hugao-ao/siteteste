@@ -455,6 +455,9 @@ async function carregarClientesSelect(selecionarId = null) {
         sel.appendChild(o);
     });
     if (selecionarId) sel.value = selecionarId;
+    // a seleção pode ter mudado por aqui (ex.: cliente criado pelo "+ Novo" ou
+    // pelo checklist de pré-preenchimento), e o evento change não dispara nesse caminho
+    atualizarAvisoDocumentos();
 }
 
 function proximoNumero(ano) {
@@ -504,7 +507,8 @@ async function abrirModalProposta(proposta) {
     $('pp-contato').value = proposta?.contato_nome || '';
     $('pp-prazo-dias').value = proposta?.prazo_dias ?? '';
     $('pp-prazo-tipo').value = proposta?.prazo_tipo || 'uteis';
-    $('pp-garantia').value = proposta?.garantia_anos ?? 5;
+    $('pp-garantia').value = proposta?.garantia_anos ?? 3;
+    $('pp-garantia-contrato').value = proposta?.garantia_contrato_anos ?? 5;
     $('pp-forma-pgto').value = proposta?.forma_pagamento || 'sinal_parcelas';
     $('pp-pgto-obs').value = proposta?.pagamento_obs || '';
 
@@ -618,6 +622,19 @@ function ligarEventosParcelas() {
     });
 }
 
+/** Parcela definida por PERCENTUAL acompanha o total: se o escopo muda, o valor
+ *  se ajusta sozinho. Quem digitou um valor fixo (percentual nulo) não é tocado. */
+function recalcularParcelasPorPercentual() {
+    const total = totalDraft();
+    let mudou = false;
+    parcelasDraft.forEach(p => {
+        if (p.percentual == null) return;
+        const novo = Math.round(total * p.percentual) / 100;
+        if (Math.abs(novo - num(p.valor)) > 0.005) { p.valor = novo; mudou = true; }
+    });
+    return mudou;
+}
+
 function atualizarAvisoParcelas() {
     const total = totalDraft();
     const soma = parcelasDraft.reduce((t, x) => t + num(x.valor), 0);
@@ -668,7 +685,9 @@ async function dadosDoDocumento() {
             validade_dias: parseInt($('pp-validade').value) || null,
             prazo_dias: parseInt($('pp-prazo-dias').value) || null,
             prazo_tipo: $('pp-prazo-tipo').value,
-            garantia_anos: parseInt($('pp-garantia').value),
+            // campo vazio não pode virar NaN: o gerador cai no padrão só com null
+            garantia_anos: $('pp-garantia').value === '' ? null : parseInt($('pp-garantia').value),
+            garantia_contrato_anos: $('pp-garantia-contrato').value === '' ? null : parseInt($('pp-garantia-contrato').value),
             forma_pagamento: $('pp-forma-pgto').value,
             pagamento_obs: $('pp-pgto-obs').value.trim()
         },
@@ -782,8 +801,9 @@ function renderItensDraft() {
     }
     $('pp-total').textContent = fmtMoeda(totalDraft());
     atualizarItensSelbar();
-    atualizarAvisoParcelas();   // o total mudou: reavalia a soma das parcelas
-    atualizarAvisoDocumentos();
+    // o total mudou: parcelas por percentual acompanham, as demais só são reavaliadas
+    if (recalcularParcelasPorPercentual()) renderParcelasDraft();
+    else { atualizarAvisoParcelas(); atualizarAvisoDocumentos(); }
 
     cont.querySelectorAll('[data-isel]').forEach(ch => ch.addEventListener('change', e => {
         itensDraft[parseInt(e.target.dataset.isel)].sel = e.target.checked;
@@ -1301,6 +1321,7 @@ async function salvarProposta() {
             prazo_dias: $('pp-prazo-dias').value || null,
             prazo_tipo: $('pp-prazo-tipo').value,
             garantia_anos: $('pp-garantia').value || null,
+            garantia_contrato_anos: $('pp-garantia-contrato').value || null,
             forma_pagamento: $('pp-forma-pgto').value,
             pagamento_obs: $('pp-pgto-obs').value.trim() || null,
             parcelas: parcelasDraft.map(x => ({

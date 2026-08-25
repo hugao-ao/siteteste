@@ -60,7 +60,9 @@ export function valorPorExtenso(valor) {
 
     const escreveInteiro = n => {
         if (n === 0) return 'zero';
-        const grupos = [];             // [milhões, milhares, unidades]
+        // cada grupo guarda o texto E o número que representa — a ligação depende
+        // do valor do ÚLTIMO grupo, não do que sobrou das unidades
+        const grupos = [];
         let resto = n;
         const escalas = [
             { div: 1e9, sing: 'bilhão', plur: 'bilhões' },
@@ -70,17 +72,21 @@ export function valorPorExtenso(valor) {
         for (const e of escalas) {
             const q = Math.floor(resto / e.div);
             if (q > 0) {
-                grupos.push(`${e.div === 1e3 && q === 1 ? '' : ate999(q) + ' '}${q === 1 ? e.sing : e.plur}`.trim());
+                grupos.push({
+                    txt: `${e.div === 1e3 && q === 1 ? '' : ate999(q) + ' '}${q === 1 ? e.sing : e.plur}`.trim(),
+                    val: q
+                });
                 resto -= q * e.div;
             }
         }
-        if (resto > 0) grupos.push(ate999(resto));
-        if (grupos.length === 1) return grupos[0];
-        // grupos de escala separam por vírgula; o último liga com "e" só quando
-        // for menor que cem ou centena redonda ("mil e cem", "mil novecentos e oitenta")
+        if (resto > 0) grupos.push({ txt: ate999(resto), val: resto });
+        if (grupos.length === 1) return grupos[0].txt;
+        // classes separam por vírgula; a última liga com "e" quando vale menos de
+        // cem ou é centena redonda ("um milhão e quinhentos mil",
+        // "dois milhões, duzentos e trinta e sete mil, oitocentos e cinquenta e cinco")
         const ultimo = grupos.pop();
-        const ligaComE = resto > 0 && (resto < 100 || resto % 100 === 0);
-        return grupos.join(', ') + (ligaComE ? ' e ' : ' ') + ultimo;
+        const ligaComE = ultimo.val < 100 || ultimo.val % 100 === 0;
+        return grupos.map(g => g.txt).join(', ') + (ligaComE ? ' e ' : ', ') + ultimo.txt;
     };
 
     const partes = [];
@@ -121,6 +127,13 @@ export function dataBR(iso) {
     if (!iso) return '';
     const [y, m, d] = iso.split('-');
     return `${d}/${m}/${y}`;
+}
+
+/** Quantidade de anos válida, ou o padrão. Campo vazio vira NaN no parseInt e o
+ *  operador ?? NÃO pega NaN — sem isto o documento sairia com "até  anos". */
+export function anosOu(v, padrao) {
+    const n = parseInt(v);
+    return Number.isFinite(n) && n > 0 ? n : padrao;
 }
 
 /** Número por extenso entre parênteses, como nos prazos: "15 (quinze) dias úteis". */
@@ -175,7 +188,13 @@ function carregarScript(url) {
         const s = document.createElement('script');
         s.src = url;
         s.onload = () => ok();
-        s.onerror = () => erro(new Error('Não foi possível carregar ' + url));
+        s.onerror = () => {
+            // sem isto a promessa rejeitada ficaria no cache e o botão nunca mais
+            // funcionaria, mesmo depois de a internet voltar
+            s.remove();
+            carregados.delete(url);
+            erro(new Error('Não foi possível carregar ' + url));
+        };
         document.head.appendChild(s);
     });
     carregados.set(url, p);
@@ -205,9 +224,9 @@ export const TEXTOS = {
         'aplicação das mais atuais e eficientes técnicas de engenharia na elaboração de projetos de ' +
         'impermeabilização e execução de obras, fornecendo serviços de qualidade. Nossa equipe técnica é ' +
         'formada por profissionais altamente capacitados para atender as diversas necessidades de nossos clientes.',
-    // No acervo a proposta diz "três anos, art. 618" e o contrato "cinco anos, art. 1245" —
-    // dois textos que se contradizem. Aqui os dois documentos passam a usar a mesma redação,
-    // com o prazo vindo do campo da proposta e a citação do art. 618 (o que trata de obras).
+    // Cada documento tem a SUA cláusula, como sempre foi no acervo da empresa:
+    // a proposta fala em três anos citando o art. 618; o contrato, em cinco anos
+    // citando o art. 1245. Os prazos vêm de campos separados da proposta.
     garantiaProposta: anos =>
         `A garantia legal é válida para os serviços executados e a qualidade dos materiais empregados que ` +
         `por ventura apresentem falhas no seu rendimento, por um prazo de até ${numeroExtenso(anos)} anos a ` +
@@ -217,9 +236,7 @@ export const TEXTOS = {
     garantiaContrato: anos =>
         `A garantia legal é válida para os serviços executados e a qualidade dos materiais empregados que ` +
         `porventura apresentem falhas no seu rendimento por um prazo de até ${numeroExtenso(anos)} anos a contar ` +
-        `da data de entrega dos mesmos, conforme Capítulo oito, Artigo 618 do Código Civil Brasileiro. ` +
-        `É restrita à impermeabilização defeituosa e inválida caso haja danos causados por terceiros e/ou ` +
-        `deficiência estrutural.`,
+        `da data de entrega dos mesmos conforme artigo 1245 do Código Civil Brasileiro.`,
     reajuste: '- Preço fixo.',
     encargosContratada: [
         'Manter em regime de tempo parcial na obra um técnico qualificado para dirigir e supervisionar os ' +
@@ -417,7 +434,7 @@ export async function gerarPropostaPDF(d, opts) {
     y = paragrafo(doc, '- ' + frasePrazo(p.prazo_dias, p.prazo_tipo, null), y);
 
     y = tituloSecao(doc, 'GARANTIA', y);
-    y = paragrafo(doc, TEXTOS.garantiaProposta(p.garantia_anos ?? 3), y);
+    y = paragrafo(doc, TEXTOS.garantiaProposta(anosOu(p.garantia_anos, 3)), y);
 
     if (p.validade_dias) {
         y = tituloSecao(doc, 'VALIDADE DA PROPOSTA', y);
@@ -487,7 +504,7 @@ export async function gerarPropostaExcel(d, opts) {
     linhas.push(['- ' + frasePrazo(p.prazo_dias, p.prazo_tipo, null)]);
     linhas.push([]);
     linhas.push(['GARANTIA']);
-    linhas.push([TEXTOS.garantiaProposta(p.garantia_anos ?? 3)]);
+    linhas.push([TEXTOS.garantiaProposta(anosOu(p.garantia_anos, 3))]);
     if (p.observacoes) { linhas.push([]); linhas.push(['OBS.:']); linhas.push([p.observacoes]); }
     linhas.push([]);
     linhas.push([`${EMPRESA.cidade}, ${dataExtenso(p.data_proposta)}.`]);
@@ -592,7 +609,7 @@ export function montarContrato(d) {
                           `cronograma acordado entre as partes.`
                 ]
             },
-            { n: '8.0', titulo: 'GARANTIA', paragrafos: [TEXTOS.garantiaContrato(p.garantia_anos ?? 5)] },
+            { n: '8.0', titulo: 'GARANTIA', paragrafos: [TEXTOS.garantiaContrato(anosOu(p.garantia_contrato_anos, 5))] },
             { n: '9.0', titulo: 'FORO', paragrafos: [TEXTOS.foro] }
         ]
     };
