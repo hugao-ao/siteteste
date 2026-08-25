@@ -7,7 +7,7 @@
 //   • Em aberto — o acumulado de quem deve, mês a mês.
 // O extrato do paciente é um detalhe de qualquer uma delas, não uma aba.
 
-import { sb, toast, esc, abrirModal, fecharModal } from './argos-common.js';
+import { sb, todas, toast, esc, abrirModal, fecharModal } from './argos-common.js';
 import { carregarPermissoes } from './argos-permissoes.js';
 import { fechamentoPaciente, formataMoeda, formataBR, hojeISO, STATUS_SESSAO } from './argos-recorrencia.js';
 import {
@@ -41,9 +41,10 @@ const agora = () => new Date().toISOString();
 // CARGA
 // ===========================================================================
 async function carregarTudo() {
-    const t = (tabela, ordem) => ordem
+    // paginado: várias destas tabelas passam de mil linhas
+    const t = (tabela, ordem) => todas(() => ordem
         ? sb.from(tabela).select('*').order(ordem)
-        : sb.from(tabela).select('*');
+        : sb.from(tabela).select('*'));
     const r = await Promise.all([
         t('argos_pacientes', 'nome'), t('argos_dinamicas'), t('argos_sessoes'),
         t('argos_profissionais', 'nome'), t('argos_cobranca_contatos'),

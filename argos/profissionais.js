@@ -3,7 +3,7 @@
 // A base de serviços é única (sem homônimos, ignorando maiúsculas/minúsculas)
 // e serviços não podem ser excluídos da base por esta tela.
 
-import { sb, toast, esc, abrirModal, fecharModal } from './argos-common.js';
+import { sb, todas, toast, esc, abrirModal, fecharModal } from './argos-common.js';
 import { carregarPermissoes } from './argos-permissoes.js';
 import { repassesDe, fracaoRepasse } from './argos-recorrencia.js';
 
@@ -29,7 +29,7 @@ async function carregarTudo() {
         sb.from('argos_profissionais').select('*').order('nome'),
         sb.from('argos_servicos_base').select('*').order('nome'),
         sb.from('argos_profissional_servicos').select('*'),
-        sb.from('argos_dinamicas').select('*'),
+        todas(() => sb.from('argos_dinamicas').select('*')),
         sb.from('argos_pacientes').select('id, nome, cadastro_removido')
     ]);
     const erro = rProf.error || rServ.error || rVinc.error || rDin.error || rPac.error;

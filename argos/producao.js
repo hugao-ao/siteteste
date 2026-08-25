@@ -4,7 +4,7 @@
 // o que cada profissional gerou e custou, as sessões que foram pagas a
 // quem cobriu, e os horários cuja frequência ainda não foi marcada.
 
-import { sb, toast, esc, abrirModal, fecharModal } from './argos-common.js';
+import { sb, todas, toast, esc, abrirModal, fecharModal } from './argos-common.js';
 import { carregarPermissoes } from './argos-permissoes.js';
 import { formataMoeda, formataBR, hojeISO, fechamentoPaciente } from './argos-recorrencia.js';
 import { producaoDoMes, STATUS_PROF, ORDEM_STATUS_PROF } from './argos-producao.js';
@@ -35,11 +35,11 @@ const REMUNERACAO = {
 async function carregarTudo() {
     const [rPac, rDin, rSes, rProf, rPF, rAloc, rRet, rAc] = await Promise.all([
         sb.from('argos_pacientes').select('*').order('nome'),
-        sb.from('argos_dinamicas').select('*'),
-        sb.from('argos_sessoes').select('*'),
+        todas(() => sb.from('argos_dinamicas').select('*')),
+        todas(() => sb.from('argos_sessoes').select('*')),
         sb.from('argos_profissionais').select('*').order('nome'),
-        sb.from('argos_prof_frequencia').select('*'),
-        sb.from('argos_mov_alocacoes').select('*'),
+        todas(() => sb.from('argos_prof_frequencia').select('*')),
+        todas(() => sb.from('argos_mov_alocacoes').select('*')),
         sb.from('argos_repasse_retencoes').select('*'),
         sb.from('argos_repasse_acertos').select('*')
     ]);

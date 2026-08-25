@@ -2,7 +2,7 @@
 // Agenda semanal geral e por espaço, preenchida pelas dinâmicas financeiras;
 // lista de sessões vencidas «??» para marcar Ok/Fj/Fc/Nc.
 
-import { sb, toast, esc, abrirModal, fecharModal } from './argos-common.js';
+import { sb, todas, toast, esc, abrirModal, fecharModal } from './argos-common.js';
 import { carregarPermissoes } from './argos-permissoes.js';
 import {
     STATUS_SESSAO, DOW_NOMES, mesclarSessoes, hojeISO, somarDias, paraData,
@@ -32,12 +32,12 @@ async function carregarTudo() {
         sb.from('argos_pacientes').select('id, nome, ativo, cadastro_removido, processo_fim_data, processo_fim_tipo').order('nome'),
         sb.from('argos_salas').select('*').order('nome'),
         sb.from('argos_profissionais').select('*').order('nome'),
-        sb.from('argos_dinamicas').select('*'),
-        sb.from('argos_sessoes').select('*'),
+        todas(() => sb.from('argos_dinamicas').select('*')),
+        todas(() => sb.from('argos_sessoes').select('*')),
         sb.from('argos_grupos').select('*').order('hora'),
         sb.from('argos_grupo_membros').select('*'),
         sb.from('argos_grupo_profissionais').select('*'),
-        sb.from('argos_prof_frequencia').select('*')
+        todas(() => sb.from('argos_prof_frequencia').select('*'))
     ]);
     const erro = rPac.error || rSalas.error || rProf.error || rDin.error || rSes.error || rGru.error || rMem.error || rGP.error;
     if (erro) { console.error(erro); toast('Erro ao carregar a agenda.', true); return; }
@@ -169,7 +169,7 @@ async function marcarSessao(s, status) {
             { data: s.data, hora: s.hora }, justificativa);
     }
     toast(`Sessão marcada: ${STATUS_SESSAO[status].label} — ${STATUS_SESSAO[status].desc}`);
-    const { data } = await sb.from('argos_sessoes').select('*');
+    const { data } = await todas(() => sb.from('argos_sessoes').select('*'));
     sessoes = data || sessoes;
     renderTudo();
 }
@@ -679,7 +679,7 @@ async function gravarProfFreq(s, profId, status) {
         ? await sb.from('argos_prof_frequencia').update(linha).eq('id', existente.id)
         : await sb.from('argos_prof_frequencia').insert(linha);
     if (error) { console.error(error); toast('Erro ao marcar a frequência do profissional.', true); return; }
-    const { data } = await sb.from('argos_prof_frequencia').select('*');
+    const { data } = await todas(() => sb.from('argos_prof_frequencia').select('*'));
     profFreq = data || profFreq;
     renderProfFreq(s);
     toast(`${nomeProf(profId)}: ${STATUS_PROF[status].label}.`);
@@ -765,12 +765,12 @@ async function registrarEvento(pacienteId, tipo, descricao, dados, justificativa
 
 async function recarregarSessoes() {
     const [rSes, rDin, rGru, rMem, rGP, rPF] = await Promise.all([
-        sb.from('argos_sessoes').select('*'),
-        sb.from('argos_dinamicas').select('*'),
+        todas(() => sb.from('argos_sessoes').select('*')),
+        todas(() => sb.from('argos_dinamicas').select('*')),
         sb.from('argos_grupos').select('*').order('hora'),
         sb.from('argos_grupo_membros').select('*'),
         sb.from('argos_grupo_profissionais').select('*'),
-        sb.from('argos_prof_frequencia').select('*')
+        todas(() => sb.from('argos_prof_frequencia').select('*'))
     ]);
     sessoes = rSes.data || sessoes;
     dinamicas = rDin.data || dinamicas;
