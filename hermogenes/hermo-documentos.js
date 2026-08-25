@@ -291,12 +291,44 @@ export function blocoPagamento(parcelas, obs) {
     return linhas;
 }
 
-/** Frase padrão do prazo de execução. */
-export function frasePrazo(dias, tipo, inicioISO) {
-    if (!dias) return 'De acordo com o cronograma da obra.';
+const CRONOGRAMA_DA_OBRA = 'De acordo com o cronograma da obra.';
+
+/** Fecha a frase com ponto quando quem escreveu não fechou. */
+function comPonto(s) {
+    const t = String(s || '').trim();
+    return t && !/[.!?…]$/.test(t) ? t + '.' : t;
+}
+
+/** Como o prazo desta proposta deve ser lido. Proposta antiga que só tem os dias
+ *  gravados (sem tipo) continua valendo como prazo em dias. */
+function tipoDePrazo(prop) {
+    return prop?.prazo_tipo || (prop?.prazo_dias ? 'uteis' : 'cronograma');
+}
+
+/** Frase do prazo de execução da PROPOSTA, na redação que a empresa usa.
+ *  'cronograma' é o caso mais comum do acervo (obra tocada por construtora);
+ *  'texto' deixa o prazo escrito à mão para os casos fora do padrão. */
+export function frasePrazo(prop) {
+    const tipo = tipoDePrazo(prop);
+    if (tipo === 'texto') return comPonto(prop.prazo_texto) || CRONOGRAMA_DA_OBRA;
+    if (tipo === 'cronograma' || !prop?.prazo_dias) return CRONOGRAMA_DA_OBRA;
     const un = tipo === 'corridos' ? 'dias corridos' : 'dias úteis';
-    const ini = inicioISO ? `, com início em ${dataBR(inicioISO)}` : '';
-    return `${dias} (${numeroExtenso(dias)}) ${un}${ini}.`;
+    return `${prop.prazo_dias} (${numeroExtenso(prop.prazo_dias)}) ${un}.`;
+}
+
+/** Cláusula 7.0 do CONTRATO: o mesmo prazo, na redação do instrumento. */
+export function clausulaPrazoContrato(prop, inicioISO) {
+    const tipo = tipoDePrazo(prop);
+    const abre = 'O prazo de vigência do presente CONTRATO, bem como de execução dos serviços';
+    if (tipo === 'texto' && comPonto(prop.prazo_texto)) {
+        return `${abre}, é o seguinte: ${comPonto(prop.prazo_texto)}`;
+    }
+    if (tipo === 'cronograma' || !prop?.prazo_dias) {
+        return `${abre}, será de acordo com o cronograma da obra.`;
+    }
+    const un = tipo === 'corridos' ? 'dias corridos' : 'dias úteis';
+    return `${abre} é de ${prop.prazo_dias} (${numeroExtenso(prop.prazo_dias)}) ${un}, ` +
+        `com início em ${dataBR(inicioISO) || '____/____/______'}.`;
 }
 
 // ============================================================
@@ -431,7 +463,7 @@ export async function gerarPropostaPDF(d, opts) {
     for (const l of blocoPagamento(d.parcelas, p.pagamento_obs)) y = paragrafo(doc, l, y);
 
     y = tituloSecao(doc, 'PRAZO DE EXECUÇÃO', y);
-    y = paragrafo(doc, '- ' + frasePrazo(p.prazo_dias, p.prazo_tipo, null), y);
+    y = paragrafo(doc, '- ' + frasePrazo(p), y);
 
     y = tituloSecao(doc, 'GARANTIA', y);
     y = paragrafo(doc, TEXTOS.garantiaProposta(anosOu(p.garantia_anos, 3)), y);
@@ -501,7 +533,7 @@ export async function gerarPropostaExcel(d, opts) {
     blocoPagamento(d.parcelas, p.pagamento_obs).forEach(l => linhas.push([l]));
     linhas.push([]);
     linhas.push(['PRAZO DE EXECUÇÃO']);
-    linhas.push(['- ' + frasePrazo(p.prazo_dias, p.prazo_tipo, null)]);
+    linhas.push(['- ' + frasePrazo(p)]);
     linhas.push([]);
     linhas.push(['GARANTIA']);
     linhas.push([TEXTOS.garantiaProposta(anosOu(p.garantia_anos, 3))]);
@@ -599,15 +631,7 @@ export function montarContrato(d) {
             },
             {
                 n: '7.0', titulo: 'PRAZO DE EXECUÇÃO',
-                paragrafos: [
-                    p.prazo_dias
-                        ? `O prazo de vigência do presente CONTRATO, bem como de execução dos serviços é de ` +
-                          `${p.prazo_dias} (${numeroExtenso(p.prazo_dias)}) ` +
-                          `${p.prazo_tipo === 'corridos' ? 'dias corridos' : 'dias úteis'}, ` +
-                          `com início em ${dataBR(d.inicioPrevisto) || '____/____/______'}.`
-                        : `O prazo de vigência do presente CONTRATO, bem como de execução dos serviços seguirá o ` +
-                          `cronograma acordado entre as partes.`
-                ]
+                paragrafos: [clausulaPrazoContrato(p, d.inicioPrevisto)]
             },
             { n: '8.0', titulo: 'GARANTIA', paragrafos: [TEXTOS.garantiaContrato(anosOu(p.garantia_contrato_anos, 5))] },
             { n: '9.0', titulo: 'FORO', paragrafos: [TEXTOS.foro] }

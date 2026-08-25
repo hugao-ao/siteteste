@@ -506,7 +506,10 @@ async function abrirModalProposta(proposta) {
     $('pp-validade').value = proposta?.validade_dias ?? 15;
     $('pp-contato').value = proposta?.contato_nome || '';
     $('pp-prazo-dias').value = proposta?.prazo_dias ?? '';
-    $('pp-prazo-tipo').value = proposta?.prazo_tipo || 'uteis';
+    // sem prazo em dias, o padrão da casa é seguir o cronograma da obra
+    $('pp-prazo-tipo').value = proposta?.prazo_tipo || (proposta?.prazo_dias ? 'uteis' : 'cronograma');
+    $('pp-prazo-texto').value = proposta?.prazo_texto || '';
+    aoMudarPrazoTipo();
     $('pp-garantia').value = proposta?.garantia_anos ?? 3;
     $('pp-garantia-contrato').value = proposta?.garantia_contrato_anos ?? 5;
     $('pp-forma-pgto').value = proposta?.forma_pagamento || 'sinal_parcelas';
@@ -651,6 +654,28 @@ function atualizarAvisoParcelas() {
 }
 
 // ============================================================
+// PRAZO DE EXECUÇÃO
+// ============================================================
+/** Mostra o controle que corresponde ao tipo de prazo escolhido. */
+function aoMudarPrazoTipo() {
+    const tipo = $('pp-prazo-tipo').value;
+    const emDias = tipo === 'uteis' || tipo === 'corridos';
+    $('pp-prazo-dias').style.display = emDias ? '' : 'none';
+    $('pp-prazo-texto').style.display = tipo === 'texto' ? '' : 'none';
+    if (!emDias) $('pp-prazo-dias').value = '';
+    if (tipo !== 'texto') $('pp-prazo-texto').value = '';
+    atualizarAvisoDocumentos();
+}
+
+/** O prazo está resolvido? "Cronograma da obra" já é uma resposta completa. */
+function prazoPreenchido() {
+    const tipo = $('pp-prazo-tipo').value;
+    if (tipo === 'cronograma') return true;
+    if (tipo === 'texto') return !!$('pp-prazo-texto').value.trim();
+    return !!$('pp-prazo-dias').value;
+}
+
+// ============================================================
 // DOCUMENTOS (proposta em PDF/Excel, contrato em Word/PDF)
 // ============================================================
 function atualizarAvisoDocumentos() {
@@ -658,7 +683,7 @@ function atualizarAvisoDocumentos() {
     if (!itensDraft.length) faltas.push('itens de serviço');
     if (!$('pp-cliente').value) faltas.push('cliente');
     if (!parcelasDraft.length) faltas.push('parcelas');
-    if (!$('pp-prazo-dias').value) faltas.push('prazo de execução');
+    if (!prazoPreenchido()) faltas.push('prazo de execução');
     $('pp-doc-aviso').textContent = faltas.length
         ? `Faltando para o documento sair completo: ${faltas.join(', ')}.`
         : 'Tudo preenchido — os documentos saem completos.';
@@ -685,6 +710,7 @@ async function dadosDoDocumento() {
             validade_dias: parseInt($('pp-validade').value) || null,
             prazo_dias: parseInt($('pp-prazo-dias').value) || null,
             prazo_tipo: $('pp-prazo-tipo').value,
+            prazo_texto: $('pp-prazo-texto').value.trim(),
             // campo vazio não pode virar NaN: o gerador cai no padrão só com null
             garantia_anos: $('pp-garantia').value === '' ? null : parseInt($('pp-garantia').value),
             garantia_contrato_anos: $('pp-garantia-contrato').value === '' ? null : parseInt($('pp-garantia-contrato').value),
@@ -1320,6 +1346,7 @@ async function salvarProposta() {
             validade_dias: $('pp-validade').value || null,
             prazo_dias: $('pp-prazo-dias').value || null,
             prazo_tipo: $('pp-prazo-tipo').value,
+            prazo_texto: $('pp-prazo-texto').value.trim() || null,
             garantia_anos: $('pp-garantia').value || null,
             garantia_contrato_anos: $('pp-garantia-contrato').value || null,
             forma_pagamento: $('pp-forma-pgto').value,
@@ -1507,6 +1534,8 @@ $('pp-forma-pgto').addEventListener('change', () => {
 });
 ['pp-cliente', 'pp-prazo-dias'].forEach(id =>
     $(id).addEventListener('change', atualizarAvisoDocumentos));
+$('pp-prazo-tipo').addEventListener('change', aoMudarPrazoTipo);
+$('pp-prazo-texto').addEventListener('input', atualizarAvisoDocumentos);
 
 // documentos gerados
 $('pp-btn-doc-proposta-pdf').addEventListener('click', () => gerarDocumento('proposta-pdf'));

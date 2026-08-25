@@ -60,7 +60,10 @@
     .pp-cond-grid label.mini, label.mini { font-size: .72rem; color: var(--hermo-text-dim); }
     .pp-inline { display: flex; gap: 6px; }
     .pp-inline input { flex: 0 0 72px; }
-    .pp-inline select { flex: 1; }
+    .pp-inline select { flex: 1; min-width: 0; }
+    /* o prazo tem a opção mais longa do bloco: ocupa duas colunas quando cabe */
+    .pp-cond-larga { grid-column: span 2; }
+    @media (max-width: 560px) { .pp-cond-larga { grid-column: span 1; } }
     .pp-parc-head {
         display: flex; justify-content: space-between; align-items: baseline; gap: 8px;
         margin: 12px 0 6px; font-size: .78rem; color: var(--hermo-text-dim);
@@ -217,15 +220,19 @@
               <label class="mini">Aos cuidados de (Att.)</label>
               <input id="pp-contato" type="text" placeholder="ex.: Sr. Síndico" />
             </div>
-            <div class="hermo-field">
+            <div class="hermo-field pp-cond-larga">
               <label class="mini">Prazo de execução</label>
               <div class="pp-inline">
                 <input id="pp-prazo-dias" type="number" min="1" max="999" placeholder="15" />
                 <select id="pp-prazo-tipo">
+                  <option value="cronograma">de acordo com o cronograma da obra</option>
                   <option value="uteis">dias úteis</option>
                   <option value="corridos">dias corridos</option>
+                  <option value="texto">outro — escrever…</option>
                 </select>
               </div>
+              <input id="pp-prazo-texto" type="text" style="display:none;margin-top:6px"
+                     placeholder="ex.: Início 15 (quinze) dias após a chegada do material — prazo de 90 (noventa) dias" />
             </div>
             <div class="hermo-field">
               <label class="mini">Garantia — proposta (anos)</label>
