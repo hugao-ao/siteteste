@@ -354,17 +354,40 @@ function mesmoLugar(a, b) {
 const modalidadeDe = s => s.modalidade || (s.grupo_ref || s.grupo_id ? 'grupo' : 'individual');
 
 /**
+ * Duas versões da mesma dinâmica ocupam o mesmo lugar na agenda? Compara só
+ * o que decide onde e quando ela cai — dia, hora, duração, profissional,
+ * sala, modalidade e período. Serve para não recusar um salvamento que não
+ * mexeu na agenda: quem só muda o valor do acordo não está criando choque
+ * nenhum, e não deve ser barrado por um que já existia.
+ */
+export function mesmaAgenda(a, b) {
+    if (!a || !b) return false;
+    const campos = ['recorrencia_tipo', 'duracao_min', 'profissional_id', 'sala_id',
+        'modalidade', 'data_inicio', 'fim_tipo', 'fim_data', 'fim_ocorrencias', 'grupo_id'];
+    if (campos.some(c => (a[c] ?? null) !== (b[c] ?? null))) return false;
+    const dias = d => JSON.stringify((d.dias || []).map(x => `${x.dow}|${x.hora}`).sort());
+    return dias(a) === dias(b) && (a.ativo !== false) === (b.ativo !== false);
+}
+
+/**
  * Conflitos que uma dinâmica NOVA/EDITADA criaria: sessões de OUTROS
  * pacientes no mesmo espaço ou com o mesmo profissional, em horário
  * sobreposto, quando qualquer um dos lados é INDIVIDUAL (grupo+grupo pode).
  * Retorna até 5 conflitos [{minha, outra}].
+ *
+ * Só o que ainda vai acontecer conta. Sobreposição no passado é registro do
+ * que houve, não reserva a proteger: recusar o salvamento não a desfaz, e
+ * travaria para sempre a edição de quem herdou um histórico com choques —
+ * mudar só o valor do acordo é barrado por uma sessão de janeiro.
  */
 export function conflitosDeDinamica(nova, outrasDinamicas, sessoes, horizonteDias = 365) {
     if (nova.recorrencia_tipo !== 'recorrente' || !nova.data_inicio || nova.ativo === false) return [];
-    const ate = somarDias(hojeISO(), horizonteDias);
-    const minhas = expandirDinamica({ ...nova, id: nova.id || 'nova', ativo: true }, nova.data_inicio, ate)
+    const hoje = hojeISO();
+    const de = nova.data_inicio > hoje ? nova.data_inicio : hoje;
+    const ate = somarDias(hoje, horizonteDias);
+    const minhas = expandirDinamica({ ...nova, id: nova.id || 'nova', ativo: true }, de, ate)
         .map(m => ({ ...m, duracao_min: nova.duracao_min || 60 }));
-    const existentes = mesclarSessoes(outrasDinamicas, sessoes, nova.data_inicio, ate)
+    const existentes = mesclarSessoes(outrasDinamicas, sessoes, de, ate)
         .filter(s => s.paciente_id !== nova.paciente_id && s.status !== 'nc');
     const out = [];
     for (const m of minhas) {
