@@ -502,6 +502,7 @@ async function gravarDinamicas(idPorChave) {
     const cobertura = fimDaCobertura();
     const idDinamica = new Map();
     const semPaciente = [];
+    const criadas = [];
     let n = 0;
     for (const p of entendido.pares) {
         const pid = idPorChave.get(p.chave);
@@ -547,15 +548,70 @@ async function gravarDinamicas(idPorChave) {
             if (error) throw new Error(`dinâmica de ${p.paciente}: ${error.message}`);
             anterior = data.id;
             idDinamica.set(chaveTrecho(p, f), data.id);
+            criadas.push({ ...registro, id: data.id });
             n++;
             if (n % 25 === 0) marcar('dinamicas', { qtd: `${n}…` });
         }
     }
+    await separarEspacos(criadas);
     marcar('dinamicas', { fazendo: false, pronta: true,
         qtd: semPaciente.length
             ? `${n} — ${semPaciente.length} sem cadastro: ${[...new Set(semPaciente)].slice(0, 4).join(', ')}`
             : n });
     return idDinamica;
+}
+
+/**
+ * A clínica atende mais de um paciente no mesmo dia e hora. Quando um
+ * atendimento INDIVIDUAL divide o horário com outro paciente do mesmo
+ * profissional, ele não está disputando o salão: acontece em outro ambiente
+ * — às vezes ONLINE. Sem isso escrito nos dois lados, a regra de conflito
+ * recusa qualquer edição dessas dinâmicas, porque o profissional é o mesmo
+ * aqui e ali (nos grupos ele é quem cobra e supervisiona, não quem conduz).
+ *
+ * Só os horários que realmente se cruzam ganham espaço; o resto fica em
+ * branco, e aí quem decide o lugar continua sendo o profissional.
+ */
+async function separarEspacos(criadas) {
+    const OUTROS = ['Online', 'Sala 2', 'Sala 3'];
+    const recorrentes = criadas.filter(d => d.recorrencia_tipo === 'recorrente' && d.dias.length);
+    const fimDe = d => (d.fim_tipo === 'data' && d.fim_data) ? d.fim_data : '9999-12-31';
+    const cruzam = (a, b) => a.paciente_id !== b.paciente_id
+        && a.data_inicio <= fimDe(b) && b.data_inicio <= fimDe(a);
+
+    const porSlot = new Map();
+    for (const d of recorrentes) {
+        const k = `${d.profissional_id || '?'}|${d.dias[0].dow}|${d.dias[0].hora}`;
+        if (!porSlot.has(k)) porSlot.set(k, []);
+        porSlot.get(k).push(d);
+    }
+
+    const querem = new Set(); // nome do espaço → dinâmicas que vão para ele
+    const destino = new Map();
+    for (const lista of porSlot.values()) {
+        const envolvidas = lista.filter(a => lista.some(b => b !== a && cruzam(a, b)
+            && (a.modalidade === 'individual' || b.modalidade === 'individual')));
+        let i = 0;
+        for (const d of envolvidas) {
+            const nome = d.modalidade === 'individual'
+                ? OUTROS[Math.min(i++, OUTROS.length - 1)] : 'Salão';
+            destino.set(d.id, nome);
+            querem.add(nome);
+        }
+    }
+    if (!destino.size) return;
+
+    const { data: existentes } = await todas(() => sb.from('argos_salas').select('id, nome'));
+    const idSala = new Map((existentes || []).map(s => [s.nome, s.id]));
+    for (const nome of querem) {
+        if (idSala.has(nome)) continue;
+        const { data, error } = await sb.from('argos_salas').insert({ nome }).select('id').single();
+        if (error) throw new Error(`espaço "${nome}": ${error.message}`);
+        idSala.set(nome, data.id);
+    }
+    for (const [id, nome] of destino) {
+        await sb.from('argos_dinamicas').update({ sala_id: idSala.get(nome) }).eq('id', id);
+    }
 }
 
 // `p.id` já distingue dois acordos paralelos do mesmo paciente com o mesmo

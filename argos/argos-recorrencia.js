@@ -155,7 +155,12 @@ export function mesclarSessoes(dinamicas, sessoesMaterializadas, de, ate) {
             const m = mat.get(chave);
             if (m) {
                 mat.delete(chave);
-                if (noIntervalo(m)) out.push({ ...p, ...m, projetada: false });
+                // a sessão gravada só traz o que foi mudado nela: espaço e
+                // profissional em branco continuam sendo os da dinâmica, senão
+                // a ocorrência materializada perde o lugar onde acontece
+                if (noIntervalo(m)) out.push({ ...p, ...m, projetada: false,
+                    sala_id: m.sala_id || p.sala_id,
+                    profissional_id: m.profissional_id || p.profissional_id });
             } else {
                 out.push({ ...p, id: null, status: '??', projetada: true });
             }
@@ -344,9 +349,14 @@ export function sobrepoe(a, b) {
     return ia < fb && ib < fa;
 }
 
+// Mesmo lugar na agenda. Quando os DOIS lados dizem em que espaço acontecem,
+// o espaço decide sozinho: atendimento em outro ambiente — ou ONLINE — não
+// disputa a sala com quem ficou no salão, ainda que a dinâmica esteja no nome
+// do mesmo profissional (nos grupos ele é quem cobra e supervisiona, não quem
+// conduz). Sem espaço declarado de um dos lados, vale o profissional.
 function mesmoLugar(a, b) {
-    return (a.sala_id && b.sala_id && a.sala_id === b.sala_id)
-        || (a.profissional_id && b.profissional_id && a.profissional_id === b.profissional_id);
+    if (a.sala_id && b.sala_id) return a.sala_id === b.sala_id;
+    return !!(a.profissional_id && b.profissional_id && a.profissional_id === b.profissional_id);
 }
 
 // modalidade efetiva de uma sessão: sessões nascidas de grupo terapêutico
