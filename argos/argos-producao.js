@@ -71,9 +71,15 @@ export function producaoDoMes({ pacientes = [], dinamicas = [], sessoes = [],
         profissional: profissionais.find(p => p.id === id) || { id, nome: '—' },
         fixo: 0, producao: 0, recebidoDeOutros: 0, cedidoAOutros: 0,
         slots: 0, contagens: { '??': 0, ok: 0, fj: 0, f: 0, nc: 0 },
-        coberturas: [], cobertoPor: []
+        coberturas: [], cobertoPor: [], detalhePorPaciente: {}
     });
     profissionais.forEach(pr => zero(pr.id));
+    // de quem veio cada real da produção — é o que permite reter o repasse de
+    // um paciente específico sem recalcular o mês inteiro
+    const somaPaciente = (id, pacienteId, valor) => {
+        const d = conta[id].detalhePorPaciente;
+        d[pacienteId] = (d[pacienteId] || 0) + valor;
+    };
     const somaCobertura = (lista, chave, id, valor) => {
         let item = lista.find(x => x[chave] === id);
         if (!item) { item = { [chave]: id, sessoes: 0, valor: 0 }; lista.push(item); }
@@ -100,7 +106,11 @@ export function producaoDoMes({ pacientes = [], dinamicas = [], sessoes = [],
             const redirecionadas = doMes.filter(s => s.repasse_profissional_id);
 
             if (!redirecionadas.length) {
-                repasses.forEach(r => { zero(r.profissional_id); conta[r.profissional_id].producao += r.valor; });
+                repasses.forEach(r => {
+                    zero(r.profissional_id);
+                    conta[r.profissional_id].producao += r.valor;
+                    somaPaciente(r.profissional_id, p.id, r.valor);
+                });
                 continue;
             }
 
@@ -115,6 +125,7 @@ export function producaoDoMes({ pacientes = [], dinamicas = [], sessoes = [],
                 const fatia = somaProfs > 0 ? r.valor / somaProfs : 0;
                 zero(r.profissional_id);
                 conta[r.profissional_id].producao += sobra * fatia;
+                somaPaciente(r.profissional_id, p.id, sobra * fatia);
                 conta[r.profissional_id].cedidoAOutros += desviado * fatia;
             });
 
@@ -122,6 +133,7 @@ export function producaoDoMes({ pacientes = [], dinamicas = [], sessoes = [],
                 const quem = s.repasse_profissional_id;
                 zero(quem);
                 conta[quem].producao += porSessao;
+                somaPaciente(quem, p.id, porSessao);
                 conta[quem].recebidoDeOutros += porSessao;
                 const donos = repasses.map(r => r.profissional_id).filter(id => id !== quem);
                 donos.forEach(dono => {
@@ -182,6 +194,7 @@ export function producaoDoMes({ pacientes = [], dinamicas = [], sessoes = [],
             // remuneração puramente fixa não recebe por produção
             conta[pr.id].producao = 0;
             conta[pr.id].recebidoDeOutros = 0;
+            conta[pr.id].detalhePorPaciente = {};
         }
     }
 

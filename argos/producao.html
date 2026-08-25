@@ -42,6 +42,29 @@
     .pr-cobertura li { margin-bottom: 2px; }
     .pr-vazio { color: var(--argos-text-dim); font-size: .84rem; }
 
+    .rp-acoes { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 12px; }
+    .rp-card .cabeca { display: flex; justify-content: space-between; align-items: flex-start;
+      gap: 10px; }
+    .rp-card .cabeca .argos-btn { padding: 4px 9px; font-size: .76rem; }
+    .rp-bloco { margin-top: 10px; border-top: 1px dashed var(--argos-border); padding-top: 8px; }
+    .rp-bloco > .titulo { font-size: .78rem; letter-spacing: .04em; text-transform: uppercase;
+      color: var(--argos-text-dim); margin-bottom: 4px; }
+    .rp-item { display: flex; justify-content: space-between; gap: 8px; align-items: baseline;
+      font-size: .84rem; padding: 3px 0; }
+    .rp-item .quem { flex: 1; }
+    .rp-item .obs { display: block; font-size: .76rem; color: var(--argos-text-dim); }
+    .rp-item .valor.menos { color: var(--argos-warn); }
+    .rp-item .valor.mais { color: var(--argos-success); }
+    .rp-item button { padding: 1px 7px; font-size: .72rem; }
+    .rp-final { display: flex; justify-content: space-between; align-items: baseline;
+      margin-top: 10px; border-top: 1px solid var(--argos-border); padding-top: 8px; }
+    .rp-final b { font-size: 1.15rem; }
+    .rp-saldo { margin-top: 8px; font-size: .8rem; color: var(--argos-text-dim); }
+    .rp-saldo b { color: var(--argos-warn); }
+    .rp-fechado { font-size: .76rem; color: var(--argos-success); margin-top: 6px; }
+    .rp-msg { width: 100%; min-height: 190px; font-family: ui-monospace, monospace;
+      font-size: .82rem; white-space: pre; }
+
     #tab-sub { min-width: 760px; font-size: .86rem; }
     #tab-sub td, #tab-sub th { white-space: nowrap; }
     #tab-sub td.livre { white-space: normal; min-width: 200px; }
@@ -74,6 +97,7 @@
     <div class="argos-abas" id="pr-abas">
       <button type="button" class="aba ativa" data-aba="profissionais">🧑‍🏫 Por profissional</button>
       <button type="button" class="aba" data-aba="substituicoes">🔁 Atendimentos para outros</button>
+      <button type="button" class="aba" data-aba="repasses" data-argos-recurso="repasses_ver">💼 Repasses</button>
       <button type="button" class="aba" data-aba="pendentes">❓ Horários sem frequência</button>
     </div>
 
@@ -107,6 +131,27 @@
         A parte da clínica não muda: o que muda é entre quais profissionais o repasse é dividido.</p>
     </section>
 
+    <section data-painel="repasses" style="display:none" data-argos-recurso="repasses_ver">
+      <div class="pr-resumo" id="rp-resumo"></div>
+      <div class="rp-acoes">
+        <button class="argos-btn" id="btn-rp-sugerir" data-argos-recurso="repasses_reter">
+          🔎 Sugerir retenções pela inadimplência</button>
+        <button class="argos-btn ghost" id="btn-rp-reter" data-argos-recurso="repasses_reter">
+          ＋ Reter manualmente</button>
+      </div>
+      <div class="pr-cards" id="rp-cards"></div>
+      <div class="argos-tabela-vazia" id="rp-vazio" style="display:none">
+        Nenhum profissional com produção ou retenção neste mês.
+      </div>
+      <p class="dica" style="margin-top:14px">
+        O repasse sai como se todo paciente já tivesse pago no começo do mês. O que fica
+        <b>retido</b> é a parte dos pacientes que ainda não pagaram um mês já vencido — cada
+        retenção continua sendo <b>saldo a receber</b> do profissional até ele ser
+        <b>liberado</b>, o que acontece no acerto do mês em que o paciente regulariza, e não no
+        mês de origem.
+      </p>
+    </section>
+
     <section data-painel="pendentes" style="display:none">
       <div class="pr-resumo" id="pend-resumo"></div>
       <div class="argos-tabela-wrap">
@@ -124,7 +169,67 @@
     </section>
   </main>
 
-  <script type="module" src="producao.js?v=1"></script>
+  <!-- ============ MODAL: RETER MANUALMENTE ============ -->
+  <div class="argos-modal-fundo" id="modal-reter">
+    <div class="argos-modal">
+      <div class="argos-modal-topo">
+        <h2>Reter um valor do repasse</h2>
+        <button class="argos-modal-x" data-fechar>&times;</button>
+      </div>
+      <div class="argos-form">
+        <div class="form-grade">
+          <label>Profissional<select id="ret-prof"></select></label>
+          <label>Mês da produção<input type="month" id="ret-mes" /></label>
+        </div>
+        <div class="form-grade">
+          <label>Paciente (opcional)<select id="ret-pac"></select></label>
+          <label>Valor a reter
+            <span class="campo-moeda"><input type="number" id="ret-valor" step="0.01"
+              min="0" placeholder="0,00" /></span>
+          </label>
+        </div>
+        <label>Motivo<input type="text" id="ret-motivo"
+          placeholder="Ex.: Unimed Evelyn Jul/26" /></label>
+        <label>Observação<input type="text" id="ret-obs"
+          placeholder="Ex.: aguardar todo o trâmite da Unimed" /></label>
+        <label>Origem
+          <select id="ret-origem">
+            <option value="manual">Manual</option>
+            <option value="inadimplencia">Inadimplência</option>
+            <option value="convenio">Convênio</option>
+          </select>
+        </label>
+        <p class="dica">O valor sai do acerto do mês que está aberto na tela e continua como
+          saldo a receber do profissional até você liberá-lo.</p>
+      </div>
+      <div class="argos-modal-acoes">
+        <button class="argos-btn ghost" data-fechar>Cancelar</button>
+        <button class="argos-btn primary" id="btn-ret-salvar">Reter</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ MODAL: MENSAGEM DO ACERTO ============ -->
+  <div class="argos-modal-fundo" id="modal-acerto">
+    <div class="argos-modal grande">
+      <div class="argos-modal-topo">
+        <h2 id="ac-titulo">Acerto do mês</h2>
+        <button class="argos-modal-x" data-fechar>&times;</button>
+      </div>
+      <div class="argos-form">
+        <label>Mensagem<textarea id="ac-texto" class="rp-msg"></textarea></label>
+        <p class="dica">Pode editar antes de enviar — o acerto guarda exatamente este texto.</p>
+      </div>
+      <div class="argos-modal-acoes">
+        <button class="argos-btn ghost" id="btn-ac-copiar">📋 Copiar</button>
+        <button class="argos-btn primary" id="btn-ac-fechar" data-argos-recurso="repasses_fechar">
+          ✅ Fechar acerto do mês</button>
+        <button class="argos-btn ghost" data-fechar>Fechar</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="producao.js?v=2"></script>
   <script type="module" src="argos-zoom.js?v=4"></script>
 </body>
 </html>
