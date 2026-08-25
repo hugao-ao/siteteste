@@ -3,103 +3,101 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=0.1, maximum-scale=10, user-scalable=yes" />
-  <title>Argos Gestão — Importar cadastro</title>
+  <title>Argos Gestão — Importar planilhas</title>
   <script src="argos-guard.js"></script>
   <link rel="stylesheet" href="argos-style.css?v=10" />
   <style>
     .imp-drop { display: flex; flex-direction: column; align-items: center; gap: 4px;
       border: 2px dashed var(--argos-border); border-radius: var(--argos-radius);
-      background: var(--argos-bg); padding: 26px 18px; text-align: center; cursor: pointer;
+      background: var(--argos-bg); padding: 30px 18px; text-align: center; cursor: pointer;
       transition: border-color .15s, background .15s; }
     .imp-drop:hover, .imp-drop.sobre { border-color: var(--argos-primary); background: rgba(56,189,248,.06); }
-    .imp-drop .icone { font-size: 2rem; line-height: 1; }
-    .imp-drop b { font-size: .98rem; color: var(--argos-text); }
-    .imp-drop span { font-size: .84rem; color: var(--argos-text-dim); max-width: 520px; }
+    .imp-drop .icone { font-size: 2.2rem; line-height: 1; }
+    .imp-drop b { font-size: 1rem; color: var(--argos-text); }
+    .imp-drop span { font-size: .84rem; color: var(--argos-text-dim); max-width: 560px; }
     .imp-drop.carregado { border-style: solid; border-color: var(--argos-success); }
-    #imp-arq { margin: 6px 0 0; font-size: .84rem; color: var(--argos-success); font-weight: 600; }
-
-    #imp-alternativa { margin-top: 12px; }
-    #imp-alternativa > summary { cursor: pointer; font-size: .84rem; color: var(--argos-text-dim);
-      list-style: none; }
-    #imp-alternativa > summary::before { content: '▸ '; }
-    #imp-alternativa[open] > summary::before { content: '▾ '; }
-    #imp-colar { width: 100%; min-height: 130px; margin-top: 8px; background: var(--argos-bg);
-      border: 1px solid var(--argos-border); border-radius: 10px; color: var(--argos-text);
-      padding: 10px 12px; font-family: ui-monospace, Menlo, Consolas, monospace;
-      font-size: .78rem; resize: vertical; }
-    #imp-colar:focus { outline: none; border-color: var(--argos-primary); }
 
     .imp-passo { border: 1px solid var(--argos-border); border-radius: var(--argos-radius);
-      background: var(--argos-surface); padding: 14px 16px; margin-bottom: 14px; }
+      background: var(--argos-surface); padding: 16px 18px; margin-bottom: 14px; }
     .imp-passo > h2 { margin: 0 0 4px; font-size: 1rem; color: var(--argos-primary); }
     .imp-passo > h2 .n { display: inline-flex; align-items: center; justify-content: center;
       width: 22px; height: 22px; border-radius: 99px; margin-right: 8px; font-size: .78rem;
       background: var(--argos-primary); color: #04202e; }
 
+    .imp-arquivos { display: flex; flex-direction: column; gap: 5px; margin: 12px 0 0; }
+    .imp-arq { display: flex; gap: 10px; align-items: center; font-size: .85rem;
+      border: 1px solid var(--argos-border); border-radius: 9px; padding: 7px 11px;
+      background: var(--argos-bg); }
+    .imp-arq .ico { font-size: 1.05rem; }
+    .imp-arq .nome { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis;
+      white-space: nowrap; color: var(--argos-text-dim); }
+    .imp-arq .tipo { font-weight: 600; }
+    .imp-arq .conta { color: var(--argos-text-dim); font-size: .8rem; white-space: nowrap; }
+    .imp-arq.derivada { opacity: .62; }
+    .imp-arq.desconhecido { border-color: var(--argos-danger); }
+    .imp-arq.desconhecido .tipo { color: var(--argos-danger); }
+
     .imp-chips { display: flex; gap: 8px; flex-wrap: wrap; align-items: center;
-      font-size: .82rem; margin: 10px 0; }
+      font-size: .84rem; margin: 12px 0 0; }
     .imp-chip { background: var(--argos-surface-2); border: 1px solid var(--argos-border);
-      border-radius: 99px; padding: 3px 11px; color: var(--argos-text-dim); }
+      border-radius: 99px; padding: 4px 13px; color: var(--argos-text-dim); }
     .imp-chip b { color: var(--argos-text); }
     .imp-chip.ok { border-color: var(--argos-success); color: var(--argos-success); }
     .imp-chip.alerta { border-color: var(--argos-warn); color: var(--argos-warn); }
-    .imp-chip.erro { border-color: var(--argos-danger); color: var(--argos-danger); }
 
-    #imp-avisos { margin: 8px 0 0; padding-left: 18px; font-size: .84rem; color: var(--argos-warn); }
+    #imp-avisos { margin: 10px 0 0; padding-left: 18px; font-size: .84rem; color: var(--argos-warn); }
     #imp-avisos li { margin-bottom: 3px; }
 
-    .imp-abas { display: flex; gap: 6px; flex-wrap: wrap; margin: 12px 0 8px; }
+    .imp-etapas { display: flex; flex-direction: column; gap: 4px; margin-top: 10px; }
+    .imp-etapa { display: flex; gap: 10px; align-items: center; font-size: .86rem;
+      padding: 6px 2px; border-bottom: 1px solid var(--argos-border); }
+    .imp-etapa:last-child { border-bottom: none; }
+    .imp-etapa .sit { width: 22px; text-align: center; }
+    .imp-etapa .oque { flex: 1; }
+    .imp-etapa .qtd { color: var(--argos-text-dim); font-variant-numeric: tabular-nums; }
+    .imp-etapa.fazendo { color: var(--argos-primary); }
+    .imp-etapa.pronta .qtd { color: var(--argos-success); }
+    .imp-etapa.erro { color: var(--argos-danger); }
+
+    #imp-tabela-wrap { max-height: 440px; overflow: auto; margin-top: 10px; }
+    #imp-tabela { min-width: 780px; font-size: .8rem; }
+    #imp-tabela td, #imp-tabela th { white-space: nowrap; }
+    #imp-tabela td.livre { white-space: normal; min-width: 200px; }
+    .imp-abas { display: flex; gap: 6px; flex-wrap: wrap; margin: 12px 0 4px; }
     .imp-abas button { background: var(--argos-surface-2); border: 1px solid var(--argos-border);
       border-radius: 99px; padding: 5px 13px; color: var(--argos-text-dim); cursor: pointer;
       font-size: .84rem; font-family: inherit; }
     .imp-abas button.ativa { border-color: var(--argos-primary); color: var(--argos-primary); }
-
-    #imp-tabela-wrap { max-height: 460px; overflow: auto; }
-    #imp-tabela { min-width: 900px; font-size: .8rem; }
-    #imp-tabela td, #imp-tabela th { white-space: nowrap; }
-    #imp-tabela td.longo { white-space: normal; min-width: 200px; }
-    .tag { display: inline-block; background: var(--argos-surface-2); border: 1px solid var(--argos-border);
-      border-radius: 5px; padding: 0 5px; font-size: .7rem; color: var(--argos-text-dim); margin-right: 3px; }
-    .pill-novo { color: var(--argos-success); }
-    .pill-atual { color: var(--argos-primary); }
-    .pill-inativo { color: var(--argos-warn); }
-    .acordo { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: .74rem; }
-    #imp-tabela td.contato { white-space: pre-line; min-width: 220px; max-width: 320px;
-      font-size: .76rem; color: var(--argos-text-dim); }
   </style>
 </head>
 <body>
   <header class="argos-topbar">
     <div class="brand">ARGOS <span>GESTÃO</span></div>
     <div class="actions">
-      <a class="argos-btn ghost" href="pacientes.html">← Pacientes</a>
+      <a class="argos-btn ghost" href="index.html">← Início</a>
       <button class="argos-btn danger" id="btn-logout">Sair</button>
     </div>
   </header>
 
   <main class="argos-pagina larga">
-    <h1>⬆️ Importar cadastro da planilha</h1>
-    <p class="sub">Aba <b>CADASTRO</b> — pacientes, responsáveis e o acordo financeiro de cada profissional.</p>
+    <h1>⬆️ Importar planilhas</h1>
+    <p class="sub">Arraste as abas da planilha da clínica — todas de uma vez. O sistema reconhece
+      cada uma pelo conteúdo, mostra o que entendeu e só grava depois que você confirmar.</p>
 
     <div class="imp-passo">
-      <h2><span class="n">1</span>Escolha o arquivo</h2>
-      <p class="dica">Na planilha: <b>Arquivo → Fazer download → Valores separados por vírgula (.csv)</b>,
-        com a aba <b>CADASTRO</b> aberta. O download traz só a aba que está na tela.</p>
+      <h2><span class="n">1</span>Solte os arquivos</h2>
+      <p class="dica">Na planilha: <b>Arquivo → Fazer download → .csv</b>, com a aba desejada aberta.
+        As abas de frequência precisam ter a sigla do mês no nome do arquivo (JAN, FEV…) — o
+        download do Google já sai assim.</p>
       <div class="imp-drop" id="imp-drop">
-        <input type="file" id="imp-arquivo" accept=".csv,.tsv,.txt,text/csv,text/tab-separated-values" hidden />
-        <div class="icone">📄</div>
-        <b>Arraste o arquivo aqui ou clique para escolher</b>
-        <span>Aceita <b>.csv</b> e <b>.tsv</b>, com vírgula ou tabulação, em UTF-8 ou ANSI/Windows.</span>
-        <p id="imp-arq"></p>
+        <input type="file" id="imp-arquivo" accept=".csv,.tsv,.txt,text/csv" multiple hidden />
+        <div class="icone">📂</div>
+        <b>Arraste os .csv aqui ou clique para escolher</b>
+        <span>Pode soltar as 23 abas de uma vez. Aceita UTF-8 e ANSI/Windows.</span>
       </div>
-      <details id="imp-alternativa">
-        <summary>Não quer baixar? Cole o conteúdo da aba aqui</summary>
-        <p class="dica" style="margin:6px 0 0">Abra a aba, <b>Ctrl+A</b>, <b>Ctrl+C</b> e cole abaixo — <b>com a linha de títulos</b>.</p>
-        <textarea id="imp-colar" placeholder="CPF	RF	CONTATO	WHATSAPP	CPF PAC	EMAIL	PACIENTE	Profissional	Repasse	inicio	…"></textarea>
-      </details>
-      <div class="argos-filtros" style="margin:12px 0 0">
-        <button class="argos-btn primary" id="btn-ler">🔍 Ler planilha</button>
-        <button class="argos-btn ghost" id="btn-limpar">Limpar</button>
+      <div class="imp-arquivos" id="imp-arquivos"></div>
+      <div class="argos-filtros" style="margin:14px 0 0">
+        <button class="argos-btn ghost" id="btn-limpar">Limpar tudo</button>
       </div>
     </div>
 
@@ -107,44 +105,36 @@
       <h2><span class="n">2</span>Confira o que foi entendido</h2>
       <div class="imp-chips" id="imp-chips"></div>
       <ul id="imp-avisos"></ul>
-
-      <div class="imp-abas">
-        <button data-aba="pacientes" class="ativa">Pacientes</button>
-        <button data-aba="acordos">Acordos por profissional</button>
-        <button data-aba="ignorados">Fora do cadastro</button>
-      </div>
-      <div class="argos-filtros" style="margin:0 0 8px">
-        <input type="search" id="imp-busca" class="argos-input" placeholder="Buscar nome…" />
-        <label class="rotulo-inline"><input type="checkbox" id="imp-so-novos" /> só os que ainda não existem</label>
-      </div>
+      <div class="imp-abas" id="imp-abas"></div>
       <div class="argos-tabela-wrap" id="imp-tabela-wrap">
         <table class="argos-tabela" id="imp-tabela"></table>
       </div>
     </div>
 
     <div class="imp-passo" id="imp-passo3" style="display:none">
-      <h2><span class="n">3</span>Importar</h2>
+      <h2><span class="n">3</span>Gravar</h2>
       <div class="argos-form">
         <div class="checks-lista" style="gap:8px 20px">
-          <label class="linha-check"><input type="checkbox" id="opt-criar" checked /> Criar os pacientes que ainda não existem</label>
-          <label class="linha-check"><input type="checkbox" id="opt-atualizar" checked /> Atualizar contatos dos que já existem</label>
-          <label class="linha-check"><input type="checkbox" id="opt-inativos" checked /> Registrar como “não vem mais” quem só tem linhas “inativo”</label>
-          <label class="linha-check"><input type="checkbox" id="opt-acordos" checked /> Guardar os acordos para gerar as dinâmicas depois</label>
+          <label class="linha-check"><input type="checkbox" id="opt-pacientes" checked /> Pacientes, contatos e detalhes financeiros</label>
+          <label class="linha-check"><input type="checkbox" id="opt-dinamicas" checked /> Dinâmicas, grupos e sessões</label>
+          <label class="linha-check"><input type="checkbox" id="opt-notas" checked /> Notas fiscais emitidas</label>
+          <label class="linha-check"><input type="checkbox" id="opt-financeiro" checked /> Entradas, saídas e associação ao mês</label>
         </div>
       </div>
-      <p class="dica">Quem está marcado <b>inativo</b> na planilha entra com a situação <b>⛔ Não vem mais</b>, sem data e sem motivo — a planilha não diz qual nem quando. No cadastro do paciente você reclassifica para finalizado, interrompido, abandono ou transferido.</p>
-      <div class="argos-aviso" style="display:block; margin-top:10px">
-        Os <b>horários</b> não estão nesta planilha, então nenhuma dinâmica, sessão ou agenda é criada agora.
-        Os acordos ficam guardados e viram dinâmica quando você mandar a planilha de horários.
+      <div class="argos-aviso" style="display:block; margin-top:12px">
+        A gravação <b>substitui</b> o que já existe no sistema para o mesmo ano: pacientes são
+        reaproveitados pelo nome, e dinâmicas, sessões, notas e lançamentos do período importado
+        são refeitos. Nada fora do período é tocado.
       </div>
-      <p class="dica" id="imp-progresso" style="margin:10px 0 0"></p>
-      <div class="argos-modal-acoes" style="justify-content:flex-start; margin-top:10px">
-        <button class="argos-btn primary" id="btn-importar" data-argos-recurso="cadastro_importar">⬆️ Importar</button>
+      <div class="imp-etapas" id="imp-etapas"></div>
+      <div class="argos-modal-acoes" style="justify-content:flex-start; margin-top:12px">
+        <button class="argos-btn primary" id="btn-importar" data-argos-recurso="cadastro_importar">⬆️ Importar tudo</button>
+        <span class="dica" id="imp-progresso"></span>
       </div>
     </div>
   </main>
 
-  <script type="module" src="importar.js?v=4"></script>
+  <script type="module" src="importar.js?v=5"></script>
   <script type="module" src="argos-zoom.js?v=4"></script>
 </body>
 </html>

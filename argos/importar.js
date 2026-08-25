@@ -1,349 +1,669 @@
-// importar.js — importação da aba CADASTRO da planilha da clínica
-// ================================================================
-// Recebe o arquivo .csv/.tsv exportado da aba (ou, na falta dele, o texto
-// colado), mostra o que entendeu e grava: pacientes (cria ou atualiza,
-// casando por nome normalizado) e as linhas de acordo, que ficam
-// estacionadas em argos_import_acordos até os horários chegarem.
+// importar.js — carga das planilhas da clínica para dentro do sistema
+// ===================================================================
+// A tela junta os cinco leitores (frequência, cadastro, notas, financeiro e
+// de-para), mostra o que cada arquivo virou e só grava quando você confirma.
+// A ordem da gravação importa: paciente antes de dinâmica, dinâmica antes de
+// sessão, e assim por diante — quem depende entra depois.
 
 import { sb, toast, esc } from './argos-common.js';
 import { carregarPermissoes } from './argos-permissoes.js';
-import { lerCadastro, chaveNome } from './argos-cadastro-import.js';
+import { detectar, TIPOS, ordenarParaCarga, faltando } from './argos-import-deteccao.js';
+import { lerFrequencia, chaveNome, COBRA } from './argos-import-freq.js';
+import { trechosPorPar, gruposDosHorarios, sessoesDoTrecho, resumo } from './argos-import-dinamicas.js';
+import { lerEntradas, lerSaidas, lerDePara, lerDetalhesFinanceiros, blocosDeMeses } from './argos-import-financeiro.js';
+import { lerNotas, regimeNoMes } from './argos-import-notas.js';
+import { lerCadastro } from './argos-cadastro-import.js';
+
+let perm = { pode: () => true, aplicarVisibilidade: () => {}, master: true };
+let arquivos = [];          // { nome, texto, tipo, mes, dados, conta }
+let entendido = null;       // resultado consolidado, pronto para gravar
+let abaAtiva = 'pacientes';
 
 const ANO = 2026;
-let perm = { pode: () => true, aplicarVisibilidade: () => {}, master: true };
-let leitura = null;          // { linhas, pacientes, avisos, descartadas }
-let existentes = [];         // pacientes já cadastrados
-let porChave = new Map();    // chave normalizada -> paciente do banco
-let profPorNome = new Map(); // nome minúsculo -> profissional
-let aba = 'pacientes';
-let textoArquivo = '';       // conteúdo do .csv escolhido
-let nomeArquivo = '';
+const el = id => document.getElementById(id);
 
-const $ = id => document.getElementById(id);
-const norm = s => (s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+// ---------------------------------------------------------------------------
+// Leitura dos arquivos
+// ---------------------------------------------------------------------------
 
-// ============================================================
-// LEITURA
-// ============================================================
-async function carregarBase() {
-    const [rP, rProf] = await Promise.all([
-        sb.from('argos_pacientes').select('*'),
-        sb.from('argos_profissionais').select('id, nome')
-    ]);
-    existentes = (rP.data || []).filter(p => !p.cadastro_removido);
-    porChave = new Map(existentes.map(p => [chaveNome(p.nome), p]));
-    profPorNome = new Map((rProf.data || []).map(p => [norm(p.nome), p]));
-}
-
-/**
- * Lê o arquivo como texto. Tenta UTF-8; se aparecerem caracteres quebrados
- * (CSV salvo pelo Excel costuma vir em ANSI), decodifica como Windows-1252.
- * Também tira o BOM, que senão gruda no nome da primeira coluna.
- */
-async function textoDoArquivo(file) {
+/** UTF-8 primeiro; se vier com o caractere de substituição, é ANSI. */
+async function lerTexto(file) {
     const buf = await file.arrayBuffer();
-    let txt = new TextDecoder('utf-8').decode(buf);
-    if (txt.includes('\uFFFD')) {
-        try { txt = new TextDecoder('windows-1252').decode(buf); } catch (e) { /* fica o utf-8 */ }
-    }
-    return txt.replace(/^\uFEFF/, '');
+    const utf8 = new TextDecoder('utf-8').decode(buf);
+    return utf8.includes('�') ? new TextDecoder('windows-1252').decode(buf) : utf8;
 }
 
-const tamanho = n => n < 1024 ? `${n} B`
-    : n < 1024 * 1024 ? `${(n / 1024).toFixed(0)} KB` : `${(n / 1048576).toFixed(1)} MB`;
-
-async function receberArquivo(file) {
-    if (!file) return;
-    if (file.size > 20 * 1024 * 1024) { toast('Arquivo grande demais (limite de 20 MB).', true); return; }
-    try {
-        textoArquivo = await textoDoArquivo(file);
-        nomeArquivo = file.name;
-    } catch (e) {
-        console.error(e);
-        toast('Não consegui ler o arquivo.', true);
-        return;
+async function receber(lista) {
+    for (const file of lista) {
+        if (!/\.(csv|tsv|txt)$/i.test(file.name)) continue;
+        const texto = await lerTexto(file);
+        const { tipo, mes, aba } = detectar(file.name, texto);
+        arquivos = arquivos.filter(a => a.nome !== file.name);
+        arquivos.push({ nome: file.name, texto, tipo, mes, aba });
     }
-    $('imp-drop').classList.add('carregado');
-    $('imp-arq').textContent = `📄 ${nomeArquivo} — ${tamanho(file.size)}`;
-    $('imp-colar').value = '';
-    ler();
+    arquivos = ordenarParaCarga(arquivos);
+    interpretar();
+    render();
 }
 
-function ler() {
-    const texto = textoArquivo || $('imp-colar').value;
-    if (!texto.trim()) { toast('Escolha o arquivo .csv (ou cole a aba) antes de ler.', true); return; }
-    leitura = lerCadastro(texto);
-    if (!leitura.linhas.length) {
-        $('imp-passo2').style.display = 'none';
-        $('imp-passo3').style.display = 'none';
-        toast(leitura.avisos[0] || 'Não consegui ler nada.', true);
-        return;
+/** Passa cada arquivo pelo leitor certo e junta tudo. */
+function interpretar() {
+    const porTipo = t => arquivos.filter(a => a.tipo === t);
+    const porMes = {};
+    for (const a of porTipo('frequencia')) {
+        if (!a.mes) { a.conta = 'mês não identificado'; continue; }
+        const { linhas, avisos } = lerFrequencia(a.texto, { ano: ANO, mes: a.mes });
+        porMes[a.mes] = linhas;
+        a.dados = linhas;
+        a.avisos = avisos;
+        a.conta = `${linhas.length} linhas · ${linhas.reduce((s, l) => s + l.sessoes.length, 0)} sessões`;
     }
-    $('imp-passo2').style.display = '';
-    $('imp-passo3').style.display = '';
-    renderResumo();
+
+    const geral = porTipo('geral')[0];
+    const pacientes = geral ? pacientesDaGeral(geral.texto) : [];
+    if (geral) geral.conta = `${pacientes.length} pacientes`;
+
+    const cad = porTipo('cadastro')[0];
+    const cadastro = cad ? lerCadastro(cad.texto) : { linhas: [], pacientes: [] };
+    if (cad) cad.conta = `${cadastro.linhas.length} linhas de acordo`;
+
+    const nt = porTipo('notas')[0];
+    const notas = nt ? lerNotas(nt.texto) : { linhas: [] };
+    if (nt) nt.conta = `${notas.linhas.length} pacientes`;
+
+    const ent = porTipo('entradas')[0];
+    const entradas = ent ? lerEntradas(ent.texto) : { linhas: [] };
+    if (ent) ent.conta = `${entradas.linhas.length} lançamentos`;
+
+    const sai = porTipo('saidas')[0];
+    const saidas = sai ? lerSaidas(sai.texto) : { linhas: [] };
+    if (sai) sai.conta = `${saidas.linhas.length} lançamentos`;
+
+    const pp = porTipo('pagpacientes')[0];
+    const depara = pp ? lerDePara(pp.texto) : { linhas: [] };
+    if (pp) pp.conta = `${depara.linhas.length} pagadores`;
+
+    const sr = porTipo('saidasref')[0];
+    const deparaSaidas = sr ? lerDePara(sr.texto, { chaveCol: 1, valorCol: 2 }) : { linhas: [] };
+    if (sr) sr.conta = `${deparaSaidas.linhas.length} despesas`;
+
+    const df = porTipo('detfinanc')[0];
+    const detalhes = df ? lerDetalhesFinanceiros(df.texto) : { linhas: [] };
+    if (df) df.conta = `${detalhes.linhas.length} anotações`;
+
+    porTipo('derivada').forEach(a => { a.conta = a.aba || 'resumo calculado'; });
+    porTipo('desconhecido').forEach(a => { a.conta = 'não sei ler esta aba'; });
+
+    const pares = Object.keys(porMes).length ? trechosPorPar(porMes, ANO) : [];
+    const grupos = Object.keys(porMes).length ? gruposDosHorarios(porMes) : [];
+
+    entendido = { porMes, pacientes, cadastro, notas, entradas, saidas,
+        depara, deparaSaidas, detalhes, pares, grupos, resumo: resumo(pares, grupos) };
+}
+
+/** A aba GERAL é a fonte do cadastro: contatos, responsável e situação. */
+function pacientesDaGeral(texto) {
+    const { dividirTabela } = window.__argosDividir || {};
+    const linhas = (dividirTabela || dividirLocal)(texto);
+    if (!linhas.length) return [];
+    const cab = linhas[0].map(c => String(c || '').trim());
+    const idx = {};
+    cab.forEach((c, i) => { if (c && idx[c] === undefined) idx[c] = i; });
+    const colsSit = cab.map((c, i) => c === 'SITUAÇÃO' ? i : -1).filter(i => i >= 0);
+    const VAZIO = new Set(['', '?????', '-', '—']);
+    const lim = v => { const s = String(v || '').replace(/\s+/g, ' ').trim(); return VAZIO.has(s) ? '' : s; };
+    const intacto = v => {
+        const s = String(v || '').replace(/\r\n/g, '\n').replace(/[ \t]+$/gm, '').trim();
+        return VAZIO.has(s) ? '' : s;
+    };
+    const mapa = new Map();
+    for (let i = 1; i < linhas.length; i++) {
+        const l = linhas[i];
+        const bruto = String(l[idx.PACIENTE] || '').trim();
+        if (!bruto || /\(ALUGUEL\)/i.test(bruto)) continue;
+        const k = chaveNome(bruto);
+        let p = mapa.get(k);
+        if (!p) {
+            p = { chave: k, nome: bruto.replace(/\([A-ZÇÃ]+\)/gi, ' ').replace(/\s+/g, ' ').trim(),
+                cpf: '', email: '', rf: '', rf_cpf: '', rf_whatsapp: '', contato: '', situacoes: [] };
+            mapa.set(k, p);
+        }
+        if (!p.rf_cpf) p.rf_cpf = lim(l[idx.CPF]);
+        if (!p.rf) p.rf = lim(l[idx.RF]);
+        if (!p.contato) p.contato = intacto(l[idx.CONTATO]);
+        if (!p.rf_whatsapp) p.rf_whatsapp = lim(l[idx.WHATSAPP]);
+        if (!p.cpf) p.cpf = lim(l[idx['CPF PAC']]);
+        if (!p.email) p.email = lim(l[idx.EMAIL]);
+        colsSit.forEach(i2 => { if (lim(l[i2])) p.situacoes.push(lim(l[i2])); });
+    }
+    return [...mapa.values()].map(p => ({
+        ...p, ativo: !!p.situacoes.length && p.situacoes[p.situacoes.length - 1].toLowerCase() === 'ativo'
+    })).sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+}
+
+// divisor local, igual ao do módulo de cadastro (evita import circular na página)
+function dividirLocal(texto) {
+    const t = String(texto || '').replace(/^﻿/, '').replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+    const primeira = t.slice(0, t.indexOf('\n') === -1 ? t.length : t.indexOf('\n'));
+    const sep = primeira.includes('\t') ? '\t' : ',';
+    const linhas = [];
+    let campo = '', linha = [], aspas = false;
+    for (let i = 0; i < t.length; i++) {
+        const c = t[i];
+        if (aspas) {
+            if (c === '"') { if (t[i + 1] === '"') { campo += '"'; i++; } else aspas = false; }
+            else campo += c;
+        } else if (c === '"') aspas = true;
+        else if (c === sep) { linha.push(campo); campo = ''; }
+        else if (c === '\n') { linha.push(campo); linhas.push(linha); linha = []; campo = ''; }
+        else campo += c;
+    }
+    if (campo !== '' || linha.length) { linha.push(campo); linhas.push(linha); }
+    return linhas.filter(l => l.length > 1 || (l[0] || '').trim());
+}
+
+// ---------------------------------------------------------------------------
+// Tela
+// ---------------------------------------------------------------------------
+function render() {
+    el('imp-arquivos').innerHTML = arquivos.map(a => {
+        const t = TIPOS[a.tipo] || TIPOS.desconhecido;
+        const mes = a.tipo === 'frequencia' && a.mes
+            ? ` <span class="badge azul">${['', 'jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'][a.mes]}</span>` : '';
+        return `<div class="imp-arq ${a.tipo}">
+          <span class="ico">${t.icone}</span>
+          <span class="tipo">${esc(t.rotulo)}${mes}</span>
+          <span class="nome">${esc(a.nome)}</span>
+          <span class="conta">${esc(a.conta || '')}</span>
+        </div>`;
+    }).join('');
+    el('imp-drop').classList.toggle('carregado', arquivos.length > 0);
+
+    const temAlgo = arquivos.some(a => !['derivada', 'desconhecido'].includes(a.tipo));
+    el('imp-passo2').style.display = temAlgo ? '' : 'none';
+    el('imp-passo3').style.display = temAlgo ? '' : 'none';
+    if (!temAlgo) return;
+
+    const r = entendido.resumo;
+    el('imp-chips').innerHTML = [
+        chip('Pacientes', entendido.pacientes.length),
+        chip('Dinâmicas', r.dinamicas),
+        chip('Mudanças de horário', r.continuacoes),
+        chip('Grupos', r.grupos),
+        chip('Sessões', r.sessoes),
+        chip('Notas com número', entendido.notas.linhas.reduce((s, l) =>
+            s + Object.values(l.meses).filter(m => m.numero).length, 0)),
+        chip('Entradas', entendido.entradas.linhas.length),
+        chip('Saídas', entendido.saidas.linhas.length)
+    ].join('');
+
+    const avisos = [...faltando(arquivos),
+        ...arquivos.flatMap(a => (a.avisos || []).slice(0, 3))];
+    el('imp-avisos').innerHTML = avisos.map(t => `<li>${esc(t)}</li>`).join('');
+
+    const abas = [['pacientes', 'Pacientes'], ['dinamicas', 'Dinâmicas'], ['grupos', 'Grupos'],
+        ['notas', 'Notas'], ['financeiro', 'Financeiro']];
+    el('imp-abas').innerHTML = abas.map(([k, t]) =>
+        `<button data-aba="${k}" class="${abaAtiva === k ? 'ativa' : ''}">${t}</button>`).join('');
     renderTabela();
+    renderEtapas();
 }
 
-function renderResumo() {
-    const { linhas, pacientes, avisos, descartadas } = leitura;
-    const novos = pacientes.filter(p => !porChave.has(p.chave)).length;
-    const jaTem = pacientes.length - novos;
-    const inativos = pacientes.filter(p => !p.ativo).length;
-    const profsPlanilha = [...new Set(linhas.map(l => l.profissional).filter(Boolean))];
-    const semCadastro = profsPlanilha.filter(n => !profPorNome.has(norm(n)));
-    const chips = [
-        `<span class="imp-chip"><b>${linhas.length}</b> linhas de acordo</span>`,
-        `<span class="imp-chip"><b>${pacientes.length}</b> pacientes</span>`,
-        `<span class="imp-chip ok"><b>${novos}</b> a criar</span>`,
-        `<span class="imp-chip ${jaTem ? '' : ''}"><b>${jaTem}</b> já cadastrados</span>`,
-        `<span class="imp-chip ${inativos ? 'alerta' : ''}"><b>${inativos}</b> só com linhas “inativo”</span>`,
-        `<span class="imp-chip ${semCadastro.length ? 'erro' : 'ok'}"><b>${profsPlanilha.length}</b> profissionais${semCadastro.length ? ` — ${semCadastro.length} sem cadastro` : ''}</span>`,
-        descartadas ? `<span class="imp-chip"><b>${descartadas}</b> linhas vazias descartadas</span>` : ''
-    ];
-    $('imp-chips').innerHTML = chips.filter(Boolean).join('');
-    const todos = [...avisos];
-    if (semCadastro.length) todos.push(`Profissionais que não existem no sistema e precisam ser criados antes: <b>${semCadastro.map(esc).join(', ')}</b>.`);
-    $('imp-avisos').innerHTML = todos.map(a => `<li>${a}</li>`).join('');
-}
-
-// ============================================================
-// TABELA DE CONFERÊNCIA
-// ============================================================
-const resumoAcordo = a => a.acordos.map(b => {
-    const per = b.de === b.ate ? b.de : `${b.de}–${b.ate}`;
-    if (b.tipo === null) return `${per}: —`;
-    if (b.tipo === 'zero') return `${per}: 0`;
-    return `${per}: ${b.valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}${b.tipo === 'fixo' ? '/mês' : '/sessão'}`;
-}).join('  •  ');
+const chip = (rotulo, n) => `<span class="imp-chip ${n ? 'ok' : ''}">${rotulo} <b>${n}</b></span>`;
 
 function renderTabela() {
-    if (!leitura) return;
-    const busca = norm($('imp-busca').value.trim());
-    const soNovos = $('imp-so-novos').checked;
-    const tab = $('imp-tabela');
-
-    if (aba === 'pacientes') {
-        const lista = leitura.pacientes
-            .filter(p => !busca || norm(p.nome).includes(busca))
-            .filter(p => !soNovos || !porChave.has(p.chave));
-        tab.innerHTML = `<thead><tr>
-            <th>Paciente</th><th>Situação</th><th>Profissionais</th><th>Responsável financeiro</th><th>Contatos</th>
-            <th>Whatsapp do RF</th><th>E-mail</th><th>CPF</th><th>Pasta</th></tr></thead><tbody>
-          ${lista.map(p => {
-            const ja = porChave.get(p.chave);
-            return `<tr>
-              <td class="longo">${esc(p.nome)}
-                <span class="${ja ? 'pill-atual' : 'pill-novo'}">${ja ? '• já existe' : '• novo'}</span></td>
-              <td class="${p.ativo ? '' : 'pill-inativo'}">${p.ativo ? 'ativo' : 'inativo'}</td>
-              <td>${p.profissionais.map(n => `<span class="tag">${esc(n)}</span>`).join('')}</td>
-              <td class="longo">${esc(p.responsavel_financeiro)}</td>
-              <td class="longo contato">${esc(p.contato)}</td>
-              <td>${esc(p.rf_whatsapp)}</td>
-              <td class="longo">${esc((p.email || '').split(';')[0])}</td>
-              <td>${esc(p.cpf)}</td>
-              <td>${p.pasta_url ? '✔' : ''}</td></tr>`;
-        }).join('')}</tbody>`;
-        if (!lista.length) tab.innerHTML += '<tbody><tr><td>Nada encontrado.</td></tr></tbody>';
-        return;
+    const tab = el('imp-tabela');
+    const linha = (cels, th) => `<tr>${cels.map(c => `<${th ? 'th' : 'td'}>${c}</${th ? 'th' : 'td'}>`).join('')}</tr>`;
+    if (abaAtiva === 'pacientes') {
+        tab.innerHTML = linha(['Paciente', 'Responsável', 'WhatsApp', 'Situação'], true)
+            + entendido.pacientes.slice(0, 200).map(p => linha([
+                esc(p.nome), esc(p.rf || '—'), esc(p.rf_whatsapp || '—'),
+                p.ativo ? '<span class="badge azul">ativo</span>' : '<span class="badge vermelho">inativo</span>'
+            ])).join('');
+    } else if (abaAtiva === 'dinamicas') {
+        const l = entendido.pares.flatMap(p => p.trechos.map((t, i) => ({ p, t, i })));
+        tab.innerHTML = linha(['Paciente', 'Profissional', 'Horário', 'De', 'Até', 'Sessões', ''], true)
+            + l.slice(0, 250).map(({ p, t, i }) => linha([
+                esc(p.paciente), esc(p.profissional),
+                t.hora ? `${['Dom', '2ª', '3ª', '4ª', '5ª', '6ª', 'Sáb'][t.dow]} ${t.hora}` : '<span class="dim">avulso</span>',
+                t.de, t.ate, t.sessoes.length,
+                i ? '<span class="badge azul">continuação</span>' : ''
+            ])).join('');
+    } else if (abaAtiva === 'grupos') {
+        tab.innerHTML = linha(['Grupo', 'Pacientes', 'Maior turma', 'Profissionais', 'Meses'], true)
+            + entendido.grupos.map(g => linha([
+                `<b>${esc(g.nome)}</b>`, g.pacientes.length, g.maiorTurma,
+                g.profissionais.length ? esc(g.profissionais.join(', ')) : '<span class="dim">só Patricia</span>',
+                g.meses.length
+            ])).join('');
+    } else if (abaAtiva === 'notas') {
+        const l = entendido.notas.linhas.flatMap(x => Object.entries(x.meses)
+            .filter(([, m]) => m.numero || m.divergente)
+            .map(([mes, m]) => ({ x, mes, m })));
+        tab.innerHTML = linha(['Paciente', 'Mês', 'Regime', 'Nº da nota', 'Valor', 'Confere?'], true)
+            + l.slice(0, 250).map(({ x, mes, m }) => linha([
+                esc(x.paciente), mes, esc(m.regime || '—'), esc(m.numero || '—'),
+                m.valor == null ? '—' : m.valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }),
+                m.divergente ? '<span class="badge vermelho">virou pendência</span>' : '<span class="badge azul">ok</span>'
+            ])).join('');
+    } else {
+        const e = entendido.entradas.linhas.slice(0, 120);
+        tab.innerHTML = linha(['Data', 'Valor', 'Pagador', 'Paciente', 'Mês de produção'], true)
+            + e.map(x => linha([
+                x.data, x.valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }),
+                esc(x.pagador), esc(x.paciente),
+                x.mes_ref || '<span class="dim">sem mês</span>'
+            ])).join('');
     }
-
-    if (aba === 'acordos') {
-        const lista = leitura.linhas
-            .filter(l => !l.aluguel)
-            .filter(l => !busca || norm(l.paciente_nome).includes(busca));
-        tab.innerHTML = `<thead><tr>
-            <th>Paciente</th><th>Profissional</th><th>Repasse</th><th>Início</th>
-            <th>Nota</th><th>Acordo mês a mês</th></tr></thead><tbody>
-          ${lista.map(l => `<tr>
-              <td class="longo">${esc(l.paciente_nome)}
-                ${l.tags.filter(t => !['ANA','HUM','ELIS','CLA','CAT','BRUNO','TAT'].includes(t))
-                    .map(t => `<span class="tag">${t}</span>`).join('')}</td>
-              <td>${esc(l.profissional)}${profPorNome.has(norm(l.profissional)) ? '' : ' <span class="pill-inativo">?</span>'}</td>
-              <td>${l.repasse == null ? '' : l.repasse.toLocaleString('pt-BR') + '%'}</td>
-              <td class="${l.inicio_data ? '' : 'pill-inativo'}">${esc(l.inicio_raw || '—')}</td>
-              <td>${esc(l.notas.map(n => n.valor || '—').join(' → '))}</td>
-              <td class="longo acordo">${esc(resumoAcordo(l))}</td></tr>`).join('')}</tbody>`;
-        return;
-    }
-
-    const fora = leitura.linhas.filter(l => l.aluguel);
-    tab.innerHTML = `<thead><tr><th>Linha</th><th>O quê</th><th>Motivo</th><th>Valor</th></tr></thead><tbody>
-      ${fora.map(l => `<tr><td>${l.linha}</td><td class="longo">${esc(l.paciente_nome)}</td>
-        <td>Locação de sala — não é paciente</td>
-        <td class="acordo">${esc(resumoAcordo(l))}</td></tr>`).join('')}
-      ${leitura.descartadas ? `<tr><td>—</td><td>${leitura.descartadas} linhas sem nome</td>
-        <td>Sobra de arrasto de fórmula da planilha</td><td></td></tr>` : ''}</tbody>`;
 }
 
-document.querySelectorAll('.imp-abas button').forEach(b => b.addEventListener('click', () => {
-    document.querySelectorAll('.imp-abas button').forEach(x => x.classList.toggle('ativa', x === b));
-    aba = b.dataset.aba;
-    renderTabela();
-}));
-$('imp-busca').addEventListener('input', renderTabela);
-$('imp-so-novos').addEventListener('change', renderTabela);
-$('btn-ler').addEventListener('click', ler);
-$('btn-limpar').addEventListener('click', () => {
-    $('imp-colar').value = ''; textoArquivo = ''; nomeArquivo = '';
-    $('imp-arquivo').value = ''; $('imp-arq').textContent = '';
-    $('imp-drop').classList.remove('carregado');
-    leitura = null;
-    $('imp-passo2').style.display = 'none'; $('imp-passo3').style.display = 'none';
-});
+const ETAPAS = [
+    { id: 'pacientes', rotulo: 'Pacientes', opt: 'opt-pacientes' },
+    { id: 'contatos', rotulo: 'Contatos de cobrança', opt: 'opt-pacientes' },
+    { id: 'detalhes', rotulo: 'Detalhes financeiros', opt: 'opt-pacientes' },
+    { id: 'dinamicas', rotulo: 'Dinâmicas (com continuação)', opt: 'opt-dinamicas' },
+    { id: 'grupos', rotulo: 'Grupos e membros', opt: 'opt-dinamicas' },
+    { id: 'sessoes', rotulo: 'Sessões', opt: 'opt-dinamicas' },
+    { id: 'notas', rotulo: 'Notas fiscais', opt: 'opt-notas' },
+    { id: 'movimentacoes', rotulo: 'Entradas e saídas', opt: 'opt-financeiro' },
+    { id: 'alocacoes', rotulo: 'Associação ao mês de produção', opt: 'opt-financeiro' },
+    { id: 'depara', rotulo: 'De-para de pagadores e despesas', opt: 'opt-financeiro' }
+];
+let estado = {};
 
-// escolher pelo seletor
-$('imp-drop').addEventListener('click', () => $('imp-arquivo').click());
-$('imp-arquivo').addEventListener('change', e => receberArquivo(e.target.files[0]));
+function renderEtapas() {
+    el('imp-etapas').innerHTML = ETAPAS.map(e => {
+        const s = estado[e.id] || {};
+        const ico = s.erro ? '⛔' : s.pronta ? '✅' : s.fazendo ? '⏳' : '·';
+        return `<div class="imp-etapa ${s.erro ? 'erro' : s.pronta ? 'pronta' : s.fazendo ? 'fazendo' : ''}">
+          <span class="sit">${ico}</span>
+          <span class="oque">${esc(e.rotulo)}</span>
+          <span class="qtd">${s.erro ? esc(s.erro) : s.qtd != null ? s.qtd : ''}</span>
+        </div>`;
+    }).join('');
+}
 
-// arrastar e soltar
-const drop = $('imp-drop');
+// ---------------------------------------------------------------------------
+// Eventos
+// ---------------------------------------------------------------------------
+const drop = el('imp-drop');
+drop.addEventListener('click', () => el('imp-arquivo').click());
+el('imp-arquivo').addEventListener('change', e => receber(e.target.files));
 ['dragenter', 'dragover'].forEach(ev => drop.addEventListener(ev, e => {
     e.preventDefault(); drop.classList.add('sobre');
 }));
 ['dragleave', 'drop'].forEach(ev => drop.addEventListener(ev, e => {
     e.preventDefault(); drop.classList.remove('sobre');
 }));
-drop.addEventListener('drop', e => receberArquivo(e.dataTransfer.files[0]));
-// soltar fora da área não abre o arquivo no navegador
-window.addEventListener('dragover', e => e.preventDefault());
-window.addEventListener('drop', e => e.preventDefault());
-
-// digitar na caixa de colagem desconsidera o arquivo escolhido
-$('imp-colar').addEventListener('input', () => {
-    if (!$('imp-colar').value.trim()) return;
-    textoArquivo = ''; nomeArquivo = '';
-    $('imp-arquivo').value = ''; $('imp-arq').textContent = '';
-    $('imp-drop').classList.remove('carregado');
+drop.addEventListener('drop', e => receber(e.dataTransfer.files));
+el('btn-limpar').addEventListener('click', () => {
+    arquivos = []; entendido = null; estado = {};
+    el('imp-arquivo').value = '';
+    render();
 });
+el('imp-abas').addEventListener('click', e => {
+    const b = e.target.closest('[data-aba]');
+    if (!b) return;
+    abaAtiva = b.dataset.aba;
+    render();
+});
+el('btn-importar').addEventListener('click', importar);
 
-// ============================================================
-// IMPORTAÇÃO
-// ============================================================
-const emLotes = async (itens, n, fn) => {
-    for (let i = 0; i < itens.length; i += n) await fn(itens.slice(i, i + n), i);
+// ---------------------------------------------------------------------------
+// Gravação
+// ---------------------------------------------------------------------------
+const marcar = (id, campos) => {
+    if (campos.fazendo) etapaAtual = id;
+    if (campos.pronta && etapaAtual === id) etapaAtual = null;
+    estado[id] = { ...(estado[id] || {}), ...campos };
+    renderEtapas();
 };
 
-const MOTIVO_IMPORTADO = 'Marcado como inativo na planilha CADASTRO — motivo não registrado.';
-
-function camposDoPaciente(p, marcarInativo) {
-    const campos = {
-        nome: p.nome,
-        cpf: p.cpf || null,
-        email: p.email || null,
-        responsavel_financeiro: p.responsavel_financeiro || null,
-        rf_cpf: p.rf_cpf || null,
-        rf_whatsapp: p.rf_whatsapp || null,
-        contato: p.contato || null,
-        pasta_url: p.pasta_url || null
-    };
-    if (marcarInativo && !p.ativo) {
-        // "inativo" na planilha = não vem mais. Entra como situação de saída
-        // sem motivo nem data (a planilha não diz qual nem quando), para você
-        // reclassificar depois no cadastro.
-        campos.ativo = false;
-        campos.processo_fim_tipo = 'inativo';
-        campos.processo_fim_data = null;
-        campos.processo_fim_motivo = MOTIVO_IMPORTADO;
-    } else if (marcarInativo) {
-        campos.ativo = true;
+/**
+ * Esvazia uma tabela apagando pelos ids que ela tem. É mais explícito que um
+ * delete sem filtro e não depende de um truque de "id diferente de zero".
+ */
+async function esvaziar(tabela) {
+    const { data, error } = await sb.from(tabela).select('id');
+    if (error) throw new Error(`${tabela}: ${error.message}`);
+    const ids = (data || []).map(r => r.id);
+    for (let i = 0; i < ids.length; i += 200) {
+        const { error: e2 } = await sb.from(tabela).delete().in('id', ids.slice(i, i + 200));
+        if (e2) throw new Error(`${tabela}: ${e2.message}`);
     }
-    return campos;
+    return ids.length;
 }
 
-$('btn-importar').addEventListener('click', async () => {
-    if (!perm.pode('cadastro_importar')) { toast('Sem permissão para importar.', true); return; }
-    if (!leitura) return;
-    const btn = $('btn-importar');
-    btn.disabled = true;
-    const prog = m => { $('imp-progresso').innerHTML = m; };
-    const criar = $('opt-criar').checked, atualizar = $('opt-atualizar').checked;
-    const marcarInativo = $('opt-inativos').checked, guardar = $('opt-acordos').checked;
-    let criados = 0, atualizados = 0;
+/** Insere em blocos: uma requisição gigante estoura, mil pequenas demoram. */
+async function inserir(tabela, linhas, tamanho = 400) {
+    let n = 0;
+    for (let i = 0; i < linhas.length; i += tamanho) {
+        const { error } = await sb.from(tabela).insert(linhas.slice(i, i + tamanho));
+        if (error) throw new Error(`${tabela}: ${error.message}`);
+        n += Math.min(tamanho, linhas.length - i);
+    }
+    return n;
+}
 
+let etapaAtual = null;
+
+async function importar() {
+    if (!entendido) return;
+    const quer = id => el(ETAPAS.find(e => e.id === id).opt).checked;
+    el('btn-importar').disabled = true;
+    estado = {};
+    etapaAtual = null;
     try {
-        const novos = leitura.pacientes.filter(p => !porChave.has(p.chave));
-        const antigos = leitura.pacientes.filter(p => porChave.has(p.chave));
+        const idPorChave = quer('pacientes')
+            ? await gravarPacientes()
+            : await mapaDePacientes();
 
-        if (criar && novos.length) {
-            prog(`Criando ${novos.length} pacientes…`);
-            await emLotes(novos, 60, async (lote, i) => {
-                const { data, error } = await sb.from('argos_pacientes')
-                    .insert(lote.map(p => ({ ativo: true, ...camposDoPaciente(p, marcarInativo) })))
-                    .select('id, nome');
-                if (error) throw error;
-                (data || []).forEach(d => porChave.set(chaveNome(d.nome), d));
-                criados += (data || []).length;
-                prog(`Criando pacientes… ${Math.min(i + 60, novos.length)}/${novos.length}`);
-            });
-        }
-
-        if (atualizar && antigos.length) {
-            prog(`Atualizando ${antigos.length} pacientes…`);
-            for (const p of antigos) {
-                const alvo = porChave.get(p.chave);
-                const campos = camposDoPaciente(p, marcarInativo);
-                delete campos.nome;                      // não renomeia quem já existe
-                // não mexe na situação de quem já foi classificado na mão
-                if (alvo.processo_fim_tipo && alvo.processo_fim_tipo !== 'inativo') {
-                    delete campos.ativo; delete campos.processo_fim_tipo;
-                    delete campos.processo_fim_data; delete campos.processo_fim_motivo;
-                }
-                Object.keys(campos).forEach(k => {
-                    if (campos[k] == null && k !== 'processo_fim_data') delete campos[k];
-                });
-                if (!Object.keys(campos).length) continue;
-                const { error } = await sb.from('argos_pacientes').update(campos).eq('id', alvo.id);
-                if (error) throw error;
-                atualizados++;
-            }
-        }
-
-        if (guardar) {
-            prog('Guardando os acordos…');
-            await sb.from('argos_import_acordos').delete().eq('ano', ANO);
-            const linhas = leitura.linhas.map(l => {
-                const pac = l.aluguel ? null : porChave.get(l.paciente_chave);
-                const pro = profPorNome.get(norm(l.profissional));
-                return {
-                    ano: ANO, linha: l.linha,
-                    paciente_raw: l.paciente_raw, paciente_nome: l.paciente_nome,
-                    paciente_chave: l.paciente_chave, paciente_id: pac ? pac.id : null,
-                    tags: l.tags, profissional: l.profissional, profissional_id: pro ? pro.id : null,
-                    repasse: l.repasse, inicio_raw: l.inicio_raw, inicio_data: l.inicio_data,
-                    situacao: l.situacao, acordos: l.acordos, notas: l.notas
-                };
-            });
-            await emLotes(linhas, 100, async (lote, i) => {
-                const { error } = await sb.from('argos_import_acordos').insert(lote);
-                if (error) throw error;
-                prog(`Guardando os acordos… ${Math.min(i + 100, linhas.length)}/${linhas.length}`);
-            });
-        }
-
-        await carregarBase();
-        renderResumo();
-        renderTabela();
-        prog(`✅ Pronto: <b>${criados}</b> paciente(s) criado(s), <b>${atualizados}</b> atualizado(s)${guardar ? `, <b>${leitura.linhas.length}</b> linha(s) de acordo guardada(s)` : ''}.`);
+        if (quer('contatos')) await gravarContatos(idPorChave);
+        if (quer('detalhes')) await gravarDetalhes(idPorChave);
+        let idDinamica = new Map();
+        if (quer('dinamicas')) idDinamica = await gravarDinamicas(idPorChave);
+        if (quer('grupos')) await gravarGrupos(idPorChave);
+        if (quer('sessoes')) await gravarSessoes(idPorChave, idDinamica);
+        if (quer('notas')) await gravarNotas(idPorChave);
+        if (quer('movimentacoes')) await gravarFinanceiro(idPorChave);
+        if (quer('depara')) await gravarDePara(idPorChave);
         toast('Importação concluída.');
+        el('imp-progresso').textContent = 'Pronto — pode conferir nas páginas de Pacientes, Agenda e Cobrança.';
     } catch (e) {
         console.error(e);
-        prog(`❌ Erro na importação: ${esc(e.message || String(e))}`);
-        toast('Erro na importação — nada além do que já entrou foi gravado.', true);
+        // sem isto a etapa em curso fica girando para sempre e esconde o erro
+        if (etapaAtual) marcar(etapaAtual, { fazendo: false, erro: e.message });
+        toast(`Parou: ${e.message}`, true);
+        el('imp-progresso').textContent = `Parou em: ${e.message}`;
     } finally {
-        btn.disabled = false;
+        el('btn-importar').disabled = false;
     }
-});
+}
 
-// ============================================================
-// INÍCIO
-// ============================================================
+async function mapaDePacientes() {
+    const { data } = await sb.from('argos_pacientes').select('id, nome');
+    const m = new Map();
+    (data || []).forEach(p => m.set(chaveNome(p.nome), p.id));
+    return m;
+}
+
+/**
+ * Quem aparece na frequência mas não no cadastro. São gente de verdade, com
+ * sessão marcada — normalmente entraram pela seção OUTROS da planilha, que a
+ * secretária usa para lançar quem chegou antes de ter ficha. Criá-los com o
+ * nome é melhor que descartar a sessão: eles entram como "indefinido" e a
+ * página de Cobrança e Notas cobra os dados que faltam.
+ */
+function pacientesSoDaFrequencia() {
+    const noCadastro = new Set(entendido.pacientes.map(p => p.chave));
+    const mapa = new Map();
+    for (const p of entendido.pares) {
+        if (noCadastro.has(p.chave) || mapa.has(p.chave)) continue;
+        mapa.set(p.chave, { chave: p.chave, nome: p.paciente, cpf: '', email: '',
+            rf: '', rf_cpf: '', rf_whatsapp: '', contato: '', ativo: true, soFrequencia: true });
+    }
+    return [...mapa.values()];
+}
+
+async function gravarPacientes() {
+    marcar('pacientes', { fazendo: true });
+    const existentes = await mapaDePacientes();
+    const extras = pacientesSoDaFrequencia();
+    const todos = [...entendido.pacientes, ...extras];
+    const novos = todos.filter(p => !existentes.has(p.chave));
+    if (novos.length) {
+        await inserir('argos_pacientes', novos.map(p => ({
+            nome: p.nome, cpf: p.cpf || null, email: p.email || null,
+            responsavel_financeiro: p.rf || null, rf_cpf: p.rf_cpf || null,
+            rf_whatsapp: p.rf_whatsapp || null, contato: p.contato || null,
+            ativo: p.ativo, processo_fim_tipo: p.ativo ? null : 'inativo'
+        })));
+    }
+    const mapa = await mapaDePacientes();
+    marcar('pacientes', { fazendo: false, pronta: true,
+        qtd: `${novos.length} novos${extras.length ? ` (${extras.length} vindos só da frequência)` : ''}`
+            + ` · ${todos.length - novos.length} já existiam` });
+    return mapa;
+}
+
+async function gravarContatos(idPorChave) {
+    marcar('contatos', { fazendo: true });
+    const linhas = entendido.pacientes
+        .filter(p => p.rf_whatsapp && idPorChave.has(p.chave))
+        .map(p => ({ paciente_id: idPorChave.get(p.chave), nome: p.rf || p.nome,
+            telefone: p.rf_whatsapp, papel: 'Responsável financeiro', principal: true }));
+    const ids = [...new Set(linhas.map(l => l.paciente_id))];
+    for (let i = 0; i < ids.length; i += 200) {
+        await sb.from('argos_cobranca_contatos').delete().in('paciente_id', ids.slice(i, i + 200));
+    }
+    const n = await inserir('argos_cobranca_contatos', linhas);
+    marcar('contatos', { fazendo: false, pronta: true, qtd: n });
+}
+
+async function gravarDetalhes(idPorChave) {
+    marcar('detalhes', { fazendo: true });
+    const linhas = [];
+    for (const d of entendido.detalhes.linhas) {
+        const pid = idPorChave.get(d.chave);
+        if (!pid) continue;
+        if (d.escopo === 'geral') {
+            linhas.push({ paciente_id: pid, texto: d.texto, escopo: 'geral' });
+        } else {
+            for (const b of blocosDeMeses(d.meses, ANO)) {
+                linhas.push({ paciente_id: pid, texto: d.texto, escopo: 'periodo',
+                    mes_de: b.mes_de, mes_ate: b.mes_ate });
+            }
+        }
+    }
+    const ids = [...new Set(linhas.map(l => l.paciente_id))];
+    for (let i = 0; i < ids.length; i += 200) {
+        await sb.from('argos_paciente_financeiro').delete().in('paciente_id', ids.slice(i, i + 200));
+    }
+    const n = await inserir('argos_paciente_financeiro', linhas);
+    marcar('detalhes', { fazendo: false, pronta: true, qtd: n });
+}
+
+async function gravarDinamicas(idPorChave) {
+    marcar('dinamicas', { fazendo: true });
+    const { data: profs } = await sb.from('argos_profissionais').select('id, nome');
+    const idProf = new Map((profs || []).map(p => [p.nome.toLowerCase(), p.id]));
+    const notasPorChave = new Map(entendido.notas.linhas.map(l => [l.chave, l]));
+    const acordoPorChave = mapaDeAcordos();
+
+    const alvo = entendido.pares.map(p => idPorChave.get(p.chave)).filter(Boolean);
+    for (let i = 0; i < alvo.length; i += 200) {
+        await sb.from('argos_dinamicas').delete().in('paciente_id', alvo.slice(i, i + 200));
+    }
+
+    const idDinamica = new Map();
+    const semPaciente = [];
+    let n = 0;
+    for (const p of entendido.pares) {
+        const pid = idPorChave.get(p.chave);
+        if (!pid) { semPaciente.push(p.paciente); continue; }
+        let anterior = null;
+        for (const t of p.trechos) {
+            const mesInicial = t.meses[0];
+            const acordo = acordoPorChave.get(`${p.chave}|${p.profissional}`)?.[mesInicial]
+                || acordoPorChave.get(`${p.chave}|${p.profissional}`)?.[1] || {};
+            const nota = notasPorChave.get(p.chave);
+            const registro = {
+                paciente_id: pid,
+                rotulo: t.hora ? `${p.profissional} — ${['Dom', '2ª', '3ª', '4ª', '5ª', '6ª', 'Sáb'][t.dow]} ${t.hora}` : `${p.profissional} — avulso`,
+                recorrencia_tipo: t.hora ? 'recorrente' : 'avulso',
+                dias: t.hora ? [{ dow: t.dow, hora: t.hora }] : [],
+                duracao_min: 60,
+                data_inicio: t.de,
+                fim_tipo: p.trechos[p.trechos.length - 1] === t ? 'indeterminado' : 'data',
+                fim_data: p.trechos[p.trechos.length - 1] === t ? null : t.ate,
+                modalidade: 'individual',
+                acordo_tipo: acordo.tipo === 'fixo' ? 'fixo_mensal' : 'por_sessao',
+                valor: acordo.valor ?? null,
+                nota_tipo: nota ? regimeNoMes(nota, mesInicial) : 'indefinido',
+                profissional_id: idProf.get(p.profissional.toLowerCase()) || null,
+                repasses: idProf.get(p.profissional.toLowerCase())
+                    ? [{ profissional_id: idProf.get(p.profissional.toLowerCase()), tipo: 'percentual', valor: null }]
+                    : [],
+                continuacao_de: anterior,
+                ativo: true
+            };
+            const { data, error } = await sb.from('argos_dinamicas').insert(registro).select('id').single();
+            if (error) throw new Error(`dinâmica de ${p.paciente}: ${error.message}`);
+            anterior = data.id;
+            idDinamica.set(chaveTrecho(p, t), data.id);
+            n++;
+            if (n % 25 === 0) marcar('dinamicas', { qtd: `${n}…` });
+        }
+    }
+    marcar('dinamicas', { fazendo: false, pronta: true,
+        qtd: semPaciente.length
+            ? `${n} — ${semPaciente.length} sem cadastro: ${[...new Set(semPaciente)].slice(0, 4).join(', ')}`
+            : n });
+    return idDinamica;
+}
+
+const chaveTrecho = (p, t) => `${p.chave}|${p.profissional}|${t.de}`;
+
+/** Acordo mês a mês vindo da aba CADASTRO. */
+function mapaDeAcordos() {
+    const m = new Map();
+    for (const l of entendido.cadastro.linhas || []) {
+        const k = `${l.paciente_chave}|${l.profissional}`;
+        const porMes = {};
+        (l.acordos || []).forEach(b => {
+            const de = ['JAN', 'FEV', 'MAR', 'ABR', 'MAI', 'JUN', 'JUL', 'AGO', 'SET', 'OUT', 'NOV', 'DEZ'].indexOf(b.de) + 1;
+            const ate = ['JAN', 'FEV', 'MAR', 'ABR', 'MAI', 'JUN', 'JUL', 'AGO', 'SET', 'OUT', 'NOV', 'DEZ'].indexOf(b.ate) + 1;
+            for (let x = de; x <= ate; x++) porMes[x] = { tipo: b.tipo, valor: b.valor };
+        });
+        m.set(k, porMes);
+    }
+    return m;
+}
+
+async function gravarGrupos(idPorChave) {
+    marcar('grupos', { fazendo: true });
+    const { data: profs } = await sb.from('argos_profissionais').select('id, nome');
+    const idProf = new Map((profs || []).map(p => [p.nome.toLowerCase(), p.id]));
+    await esvaziar('argos_grupos');
+    let n = 0;
+    for (const g of entendido.grupos) {
+        const { data, error } = await sb.from('argos_grupos')
+            .insert({ nome: g.nome, dow: g.dow, hora: g.hora, duracao_min: 60, ativo: true })
+            .select('id').single();
+        if (error) throw new Error(`grupo ${g.nome}: ${error.message}`);
+        const membros = g.pacientes.map(c => idPorChave.get(c)).filter(Boolean)
+            .map(pid => ({ grupo_id: data.id, paciente_id: pid }));
+        if (membros.length) await inserir('argos_grupo_membros', membros);
+        const gp = g.profissionais.map(nome => idProf.get(nome.toLowerCase())).filter(Boolean)
+            .map(pid => ({ grupo_id: data.id, profissional_id: pid }));
+        if (gp.length) await inserir('argos_grupo_profissionais', gp);
+        n++;
+    }
+    marcar('grupos', { fazendo: false, pronta: true, qtd: n });
+}
+
+async function gravarSessoes(idPorChave, idDinamica) {
+    marcar('sessoes', { fazendo: true });
+    const linhas = [];
+    for (const p of entendido.pares) {
+        const pid = idPorChave.get(p.chave);
+        if (!pid) continue;
+        for (const t of p.trechos) {
+            const did = idDinamica.get(chaveTrecho(p, t)) || null;
+            for (const s of sessoesDoTrecho(t)) {
+                linhas.push({ paciente_id: pid, dinamica_id: did, dinamica_ref: did,
+                    data: s.data, hora: s.hora, duracao_min: 60, status: s.status });
+            }
+        }
+    }
+    const ids = [...new Set(linhas.map(l => l.paciente_id))];
+    for (let i = 0; i < ids.length; i += 200) {
+        await sb.from('argos_sessoes').delete().in('paciente_id', ids.slice(i, i + 200));
+    }
+    const n = await inserir('argos_sessoes', linhas, 500);
+    marcar('sessoes', { fazendo: false, pronta: true, qtd: n });
+}
+
+async function gravarNotas(idPorChave) {
+    marcar('notas', { fazendo: true });
+    const linhas = [];
+    for (const l of entendido.notas.linhas) {
+        const pid = idPorChave.get(l.chave);
+        if (!pid) continue;
+        for (const [mes, m] of Object.entries(l.meses)) {
+            if (!m.numero) continue;
+            linhas.push({ paciente_id: pid, mes: `${ANO}-${String(mes).padStart(2, '0')}`,
+                numero: m.numero, valor: m.valor_nota ?? m.valor, sessoes: null,
+                dias: m.dias, descricao: m.descricao || null, nota_tipo: m.regime,
+                status: 'emitida' });
+        }
+    }
+    const ids = [...new Set(linhas.map(l => l.paciente_id))];
+    for (let i = 0; i < ids.length; i += 200) {
+        await sb.from('argos_notas_fiscais').delete().in('paciente_id', ids.slice(i, i + 200));
+    }
+    const n = await inserir('argos_notas_fiscais', linhas);
+    marcar('notas', { fazendo: false, pronta: true, qtd: n });
+}
+
+async function gravarFinanceiro(idPorChave) {
+    marcar('movimentacoes', { fazendo: true });
+    await esvaziar('argos_mov_alocacoes');
+    await esvaziar('argos_movimentacoes');
+
+    const entradas = entendido.entradas.linhas.map(l => ({
+        data: l.data, descricao: l.pagador || 'Entrada', tipo: 'entrada', valor: l.valor,
+        origem: 'planilha', observacoes: l.paciente || null
+    }));
+    const saidas = entendido.saidas.linhas.map(l => ({
+        data: l.data, descricao: l.despesa || 'Saída', tipo: 'saida', valor: l.valor,
+        origem: 'planilha', observacoes: l.categoria || null
+    }));
+    await inserir('argos_movimentacoes', [...entradas, ...saidas], 400);
+    marcar('movimentacoes', { fazendo: false, pronta: true, qtd: entradas.length + saidas.length });
+
+    marcar('alocacoes', { fazendo: true });
+    const { data: movs } = await sb.from('argos_movimentacoes')
+        .select('id, data, descricao, valor, tipo').eq('origem', 'planilha');
+    const porChave = new Map();
+    (movs || []).forEach(m => porChave.set(`${m.tipo}|${m.data}|${m.descricao}|${m.valor}`, m.id));
+    const alocacoes = [];
+    for (const l of entendido.entradas.linhas) {
+        if (!l.mes_ref) continue;
+        const pid = idPorChave.get(l.chave);
+        const mid = porChave.get(`entrada|${l.data}|${l.pagador || 'Entrada'}|${l.valor}`);
+        if (!pid || !mid) continue;
+        alocacoes.push({ movimentacao_id: mid, vinculo_tipo: 'paciente', vinculo_id: pid,
+            mes_ref: l.mes_ref, valor: l.valor });
+    }
+    const n = await inserir('argos_mov_alocacoes', alocacoes, 400);
+    marcar('alocacoes', { fazendo: false, pronta: true, qtd: n });
+}
+
+async function gravarDePara(idPorChave) {
+    marcar('depara', { fazendo: true });
+    await esvaziar('argos_mov_depara');
+    const linhas = [];
+    for (const d of entendido.depara.linhas) {
+        const pid = idPorChave.get(chaveNome(d.para));
+        if (!pid) continue;
+        linhas.push({ chave: d.de, chave_norm: d.de.toUpperCase().trim(),
+            vinculo_tipo: 'paciente', vinculo_id: pid });
+    }
+    const vistos = new Set();
+    const unicas = linhas.filter(l => !vistos.has(l.chave_norm) && vistos.add(l.chave_norm));
+    const n = await inserir('argos_mov_depara', unicas);
+    marcar('depara', { fazendo: false, pronta: true, qtd: n });
+}
+
+// ---------------------------------------------------------------------------
 (async function init() {
     perm = await carregarPermissoes();
     if (!perm.pode('cadastro_importar') && !perm.master) {
-        document.querySelector('main').innerHTML = '<p class="dim" style="padding:30px">Sem permissão para importar cadastros.</p>';
+        document.querySelector('main').innerHTML =
+            '<p class="dim" style="padding:30px">Sem permissão para importar planilhas.</p>';
         return;
     }
     perm.aplicarVisibilidade();
-    await carregarBase();
+    render();
 })();
