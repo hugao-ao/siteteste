@@ -111,6 +111,47 @@ export function hojeISO() {
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
+/** Data LOCAL de um timestamptz do banco. Fatiar a string com slice(0,10) daria a
+ *  data em UTC, que à noite no fuso de Recife já é o dia seguinte. */
+export function dataLocalDe(ts) {
+    if (!ts) return null;
+    const d = new Date(ts);
+    if (isNaN(d)) return null;
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+/** Soma n dias corridos a uma data ISO. Diferente de somarPrazo, aqui o dia do
+ *  marco NÃO conta: "com 30 dias da assinatura" é a assinatura + 30 dias. */
+export function somarDiasCorridos(iso, n) {
+    if (!iso) return null;
+    const [y, m, d] = iso.split('-').map(Number);
+    if (!y || !m || !d) return null;
+    const t = new Date(y, m - 1, d);
+    t.setDate(t.getDate() + (parseInt(n) || 0));
+    return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`;
+}
+
+/** Data prevista de uma parcela de contrato, conforme o marco a que está presa.
+ *  Devolve null quando o marco ainda não existe — aí não dá para prever o mês.
+ *  Parcela de base 'medicao' não tem data própria: quem a data é a medição. */
+export function dataDaParcela(parcela, obra, proposta) {
+    if (!parcela) return null;
+    if (parcela.base === 'data') return parcela.data_prevista || null;
+    if (parcela.base === 'medicao') return null;
+    const inicio = obra?.inicio_real || obra?.inicio_previsto || null;
+    let marco;
+    if (parcela.base === 'conclusao') marco = obra?.conclusao || obra?.prazo || null;
+    else if (parcela.base === 'inicio') marco = inicio;
+    else marco = inicio || proposta?.data_proposta || null;   // 'assinatura'
+    if (!marco) return null;
+    return parcela.dias ? somarDiasCorridos(marco, parcela.dias) : marco;
+}
+
+/** A parcela é do tipo que a própria medição vai gerar (não entra no plano fixo)? */
+export function parcelaPorMedicao(p) {
+    return p.base === 'medicao' || p.tipo === 'medicao';
+}
+
 // ---------- Prazos ----------
 /** Soma um prazo a uma data ISO (o dia inicial conta como dia 1).
  *  'uteis' = segunda a sexta (feriados não descontados); começando em fim de

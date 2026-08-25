@@ -6,6 +6,10 @@
   <title>Hermogenes Obras — Clientes</title>
   <script src="hermo-guard.js"></script>
   <link rel="stylesheet" href="hermo-style.css" />
+  <style>
+    .cli-falta { color: var(--hermo-warn); font-size: .76rem; font-weight: 700; cursor: help; }
+    .cli-ok    { color: var(--hermo-success); font-size: .76rem; cursor: help; }
+  </style>
 </head>
 <body>
   <header class="hermo-topbar">
@@ -32,7 +36,9 @@
       <table class="hermo-tabela">
         <thead>
           <tr>
-            <th>Nome</th><th>WhatsApp</th><th>E-mail</th><th>Documento</th><th>Indicado por</th><th style="width:130px">Ações</th>
+            <th>Nome</th><th>WhatsApp</th><th>E-mail</th><th>Documento</th>
+            <th title="Dados necessários para gerar o contrato">Contrato</th>
+            <th>Indicado por</th><th style="width:130px">Ações</th>
           </tr>
         </thead>
         <tbody id="corpo"></tbody>

@@ -2,7 +2,8 @@
 // cronograma com ALOCAÇÕES (dia/turno/horário) e bloqueio de conflitos de agenda,
 // diário de obra e associação com propostas contratadas (aditivos).
 import {
-    sb, toast, fmtDataHora, ligarFecharPorBackdrop, esc, fmtMoeda, somarPrazo
+    sb, toast, fmtDataHora, ligarFecharPorBackdrop, esc, fmtMoeda, somarPrazo,
+    dataDaParcela, parcelaPorMedicao
 } from './hermo-common.js';
 import { abrirModalCliente } from './hermo-cliente-modal.js';
 import { listarAnexos, renderGaleria, excluirAnexo, uploadAnexo } from './hermo-anexos.js';
@@ -1749,20 +1750,32 @@ async function abrirNovaMedicao() {
     $('mn-prazo-tipo').value = 'corridos';
     $('mn-previsao').value = '';
 
-    // o que o contrato prevê receber em seguida: pré-preenche o prazo e avisa o valor
+    // o que o contrato prevê receber em seguida: pré-preenche a previsão e avisa o valor
     const dica = $('mn-parcela-dica');
     const prox = proximaParcelaDaObra(obraEditando, medicoesObra);
     if (prox) {
-        if (prox.dias) {
-            $('mn-prazo').value = prox.dias;
-            $('mn-prazo-tipo').value = 'corridos';
-            mnAtualizarPrevisaoPeloPrazo();
-        } else if (prox.base === 'data' && prox.data_prevista) {
-            $('mn-previsao').value = prox.data_prevista;
+        let quando = '';
+        if (prox.base === 'medicao') {
+            // só aqui o prazo é contado a partir da medição
+            if (prox.dias) {
+                $('mn-prazo').value = prox.dias;
+                $('mn-prazo-tipo').value = 'corridos';
+                mnAtualizarPrevisaoPeloPrazo();
+                quando = `${prox.dias} dias após a medição`;
+            }
+        } else {
+            // marco de assinatura/início/conclusão ou data fixa: a data é do contrato,
+            // não um prazo a contar do fim do período medido
+            const data = dataDaParcela(prox, obraEditando, prox.proposta);
+            if (data) {
+                $('mn-previsao').value = data;
+                $('mn-prazo').value = '';
+                quando = `previsto para ${fmtData(data)}`;
+            }
         }
         dica.style.display = '';
         dica.innerHTML = `📋 O contrato prevê a seguir: <b>${esc(prox.descricao || 'parcela')}</b> — ` +
-            `${fmtMoeda(prox.saldo)}${prox.dias ? ` (${prox.dias} dias)` : ''} ` +
+            `${fmtMoeda(prox.saldo)}${quando ? ` (${esc(quando)})` : ''} ` +
             `<span style="color:var(--hermo-text-dim)">· proposta ${String(prox.proposta.numero).padStart(4, '0')}/${prox.proposta.ano}</span>`;
     } else {
         dica.style.display = 'none';
@@ -1773,9 +1786,11 @@ async function abrirNovaMedicao() {
     $('mn-overlay').classList.add('aberto');
 }
 
-/** Próxima parcela do contrato ainda não coberta pelas medições já feitas.
- *  É o que o cliente combinou pagar em seguida — serve de palpite para o prazo
- *  de recebimento e para conferir se a medição está no tamanho esperado. */
+/** Parcela do contrato que governa o pagamento da PRÓXIMA medição.
+ *  Se o contrato prevê pagamento por medição, é essa parcela que manda — é ela
+ *  que diz o prazo a contar do fim do período. Só quando não existe parcela por
+ *  medição é que se olha a fila das parcelas fixas (sinal, 30/60 dias etc.),
+ *  descontando o que as medições já cobriram. */
 function proximaParcelaDaObra(obra, medicoesObra) {
     const parcelas = (obra.propostaIds || [])
         .map(id => propostasContratadas.find(p => p.id === id))
@@ -1787,7 +1802,21 @@ function proximaParcelaDaObra(obra, medicoesObra) {
             (a.ordem - b.ordem));
     if (!parcelas.length) return null;
 
-    let coberto = (medicoesObra || []).reduce((t, m) => t + num(m.valor_liquido), 0);
+    const medido = (medicoesObra || []).reduce((t, m) => t + num(m.valor_liquido), 0);
+    const porMedicao = parcelas.filter(parcelaPorMedicao);
+
+    if (porMedicao.length) {
+        // a faixa contratada por medição é consumida pelo que já foi medido
+        let restante = medido;
+        for (const p of porMedicao) {
+            const valor = num(p.valor);
+            if (restante >= valor - 0.005) { restante -= valor; continue; }
+            return { ...p, saldo: Math.round((valor - Math.max(0, restante)) * 100) / 100 };
+        }
+        return null;   // a faixa por medição já foi toda medida
+    }
+
+    let coberto = medido;
     for (const p of parcelas) {
         const valor = num(p.valor);
         if (coberto >= valor - 0.005) { coberto -= valor; continue; }

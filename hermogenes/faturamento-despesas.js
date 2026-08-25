@@ -1,8 +1,12 @@
 // faturamento-despesas.js — Extrato financeiro por período/obra/categoria.
 // Lançamentos MANUAIS + linhas DERIVADAS (sem redigitação):
 //   receitas ← medições (paga = realizada; faturada ou com previsão de recebimento = prevista)
+//   receitas ← parcelas do contrato (o que as medições ainda não cobriram)
 //   despesas ← custo de pessoal (diárias × dias presentes das alocações; faltas não custam)
-import { sb, toast, ligarFecharPorBackdrop, esc, fmtMoeda } from './hermo-common.js';
+import {
+    sb, toast, ligarFecharPorBackdrop, esc, fmtMoeda,
+    dataDaParcela, parcelaPorMedicao, dataLocalDe
+} from './hermo-common.js';
 
 const $ = id => document.getElementById(id);
 const num = v => { const n = parseFloat(v); return isFinite(n) ? n : 0; };
@@ -30,7 +34,9 @@ async function carregarTudo() {
         sb.from('hermo_lancamentos').select('*').order('data_competencia', { ascending: false }),
         sb.from('hermo_categorias_fin').select('*').order('nome'),
         sb.from('hermo_obras')
-            .select('id, numero, ano, nome, valor_contratado, inicio_previsto, inicio_real, conclusao')
+            // prazo = data prevista de término; é o marco da parcela "na conclusão"
+            // enquanto a obra não é concluída de fato
+            .select('id, numero, ano, nome, valor_contratado, inicio_previsto, inicio_real, conclusao, prazo')
             .order('ano', { ascending: false }).order('numero'),
         sb.from('hermo_medicoes').select('*'),
         sb.from('hermo_integrantes').select('id, nome, apelido, vinculo, valor_diaria, salario_mensal'),
@@ -103,7 +109,7 @@ function receitasDeMedicoes() {
                     linhas.push({
                         ...base,
                         descricao: base.descricao + ' (saldo a receber)',
-                        data: m.previsao_recebimento || m.periodo_ate || m.created_at.slice(0, 10),
+                        data: m.previsao_recebimento || m.periodo_ate || dataLocalDe(m.created_at),
                         valor: saldo,
                         status: 'previsto'
                     });
@@ -115,14 +121,14 @@ function receitasDeMedicoes() {
             linhas.push({
                 ...base,
                 // paga sem data de recebimento não usa a previsão (cairia em mês futuro)
-                data: m.data_pagamento || m.periodo_ate || m.created_at.slice(0, 10),
+                data: m.data_pagamento || m.periodo_ate || dataLocalDe(m.created_at),
                 valor: liq,
                 status: 'realizado'
             });
         } else if (m.status === 'faturada' || m.previsao_recebimento) {
             linhas.push({
                 ...base,
-                data: m.previsao_recebimento || m.periodo_ate || m.created_at.slice(0, 10),
+                data: m.previsao_recebimento || m.periodo_ate || dataLocalDe(m.created_at),
                 valor: liq,
                 status: 'previsto'
             });
@@ -131,48 +137,43 @@ function receitasDeMedicoes() {
     return linhas;
 }
 
-/** Soma n dias corridos a uma data ISO (aqui o dia do marco NÃO conta: "com 30
- *  dias da assinatura" é a assinatura + 30 dias). */
-function somarDias(iso, n) {
-    if (!iso) return null;
-    const [y, m, d] = iso.split('-').map(Number);
-    const t = new Date(y, m - 1, d);
-    t.setDate(t.getDate() + (parseInt(n) || 0));
-    return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`;
-}
-
-/** Data prevista de uma parcela, conforme o marco a que ela está presa. */
-function dataDaParcela(p, obra, proposta) {
-    if (p.base === 'data') return p.data_prevista || null;
-    const inicio = obra.inicio_real || obra.inicio_previsto || null;
-    let marco;
-    if (p.base === 'conclusao') marco = obra.conclusao || null;
-    else if (p.base === 'inicio') marco = inicio;
-    else marco = inicio || proposta.data_proposta || null;   // 'assinatura'
-    if (!marco) return null;
-    return p.dias ? somarDias(marco, p.dias) : marco;
-}
+/** A medição já colocou dinheiro no extrato por conta própria? É exatamente o
+ *  mesmo critério que receitasDeMedicoes() usa para emitir linha (incluindo as
+ *  conciliadas por lançamento, cujo dinheiro aparece como lançamento manual).
+ *  Medição em elaboração ou enviada sem data de recebimento não gera linha
+ *  nenhuma — nesse caso o plano do contrato tem de continuar de pé, senão o
+ *  dinheiro simplesmente some da previsão. */
+const medicaoJaNoExtrato = (m, ligados) =>
+    m.status === 'paga' || m.status === 'faturada' ||
+    !!m.previsao_recebimento || !!ligados.get(m.id);
 
 /** Previsão de recebimento vinda das PARCELAS do contrato — o plano combinado
  *  com o cliente, que existe antes de haver medição.
- *  Para não contar duas vezes, o que as medições já cobrem é abatido do plano:
- *  as medições geram a própria previsão em receitasDeMedicoes(). */
+ *  Para não contar duas vezes, abate do plano só o que as medições JÁ COLOCARAM
+ *  no extrato por receitasDeMedicoes(). */
 function receitasDeParcelas() {
     const linhas = [];
+    const ligados = ligadosPorMedicao();
     obras.forEach(o => {
         const vinculos = obraPropostas.filter(x => x.obra_id === o.id && x.proposta);
-        const parcelas = vinculos
+        const todas = vinculos
             .flatMap(v => (v.proposta.parcelas || []).map(p => ({ p, proposta: v.proposta })))
-            // parcela atrelada a medição já vira previsão pela própria medição
-            .filter(x => x.p.base !== 'medicao' && x.p.tipo !== 'medicao')
             .sort((a, b) =>
                 (a.proposta.ano - b.proposta.ano) ||
                 (a.proposta.numero - b.proposta.numero) ||
                 (a.p.ordem - b.p.ordem));
+        // parcela atrelada a medição já vira previsão pela própria medição
+        const parcelas = todas.filter(x => !parcelaPorMedicao(x.p));
         if (!parcelas.length) return;
 
-        let coberto = medicoes.filter(m => m.obra_id === o.id)
+        let coberto = medicoes.filter(m => m.obra_id === o.id && medicaoJaNoExtrato(m, ligados))
             .reduce((t, m) => t + num(m.valor_liquido), 0);
+        // a fatia do plano que era "por medição" JÁ saiu do plano acima; o medido
+        // consome essa fatia primeiro e só o excedente abate as parcelas fixas —
+        // sem isto, um contrato "sinal + resto por medição" perderia o sinal.
+        const fatiaPorMedicao = todas.filter(x => parcelaPorMedicao(x.p))
+            .reduce((t, x) => t + num(x.p.valor), 0);
+        coberto = Math.max(0, coberto - fatiaPorMedicao);
 
         parcelas.forEach(({ p, proposta }) => {
             let valor = num(p.valor);
@@ -388,12 +389,14 @@ function renderGrafico() {
         const d = new Date(base.getFullYear(), base.getMonth() - k, 15);
         meses.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
     }
+    // as derivadas não dependem do mês: calcula uma vez e recorta (antes rodava 6×)
+    const derivadasReceita = [...receitasDeMedicoes(), ...receitasDeParcelas()];
     const dados = meses.map(mes => {
         const mesIni = mes + '-01';
         const [y, mo] = mes.split('-').map(Number);
         const mesFim = `${y}-${String(mo).padStart(2, '0')}-${String(new Date(y, mo, 0).getDate()).padStart(2, '0')}`;
         const man = lancamentos.filter(x => x.data_competencia >= mesIni && x.data_competencia <= mesFim);
-        const med = receitasDeMedicoes().filter(x => x.data >= mesIni && x.data <= mesFim);
+        const med = derivadasReceita.filter(x => x.data >= mesIni && x.data <= mesFim);
         const pes = despesasDePessoal(mesIni, mesFim);
         const rec = man.filter(x => x.tipo === 'receita').reduce((t, x) => t + num(x.valor), 0)
             + med.reduce((t, x) => t + x.valor, 0);

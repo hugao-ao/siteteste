@@ -7,6 +7,17 @@ let overlay = null;
 let onSalvoCallback = null;
 let clienteEditando = null; // objeto cliente ou null (novo)
 
+// campos de texto simples: [seletor, coluna] — usados no preenchimento e no salvamento
+const CAMPOS_CADASTRO = [
+    ['#hcm-endereco', 'endereco'],
+    ['#hcm-bairro', 'bairro'],
+    ['#hcm-cidade', 'cidade'],
+    ['#hcm-uf', 'uf'],
+    ['#hcm-cep', 'cep'],
+    ['#hcm-representante', 'representante'],
+    ['#hcm-cpf-rep', 'cpf_representante']
+];
+
 function html() {
     return `
     <div class="hermo-modal compacto">
@@ -41,6 +52,41 @@ function html() {
                 <div class="hermo-field">
                     <label id="hcm-doc-label">CPF / CNPJ</label>
                     <input id="hcm-doc" type="text" inputmode="numeric" placeholder="apenas números" disabled />
+                </div>
+            </div>
+            <!-- Endereço e representante: é o que qualifica as partes no contrato -->
+            <div class="hermo-field">
+                <label>Endereço <span style="font-weight:400;color:var(--hermo-text-dim)">(entra no contrato)</span></label>
+                <input id="hcm-endereco" type="text" placeholder="Rua, número, complemento" />
+            </div>
+            <div class="hermo-form-row">
+                <div class="hermo-field">
+                    <label>Bairro</label>
+                    <input id="hcm-bairro" type="text" placeholder="opcional" />
+                </div>
+                <div class="hermo-field">
+                    <label>CEP</label>
+                    <input id="hcm-cep" type="text" placeholder="00000-000" />
+                </div>
+            </div>
+            <div class="hermo-form-row">
+                <div class="hermo-field">
+                    <label>Cidade</label>
+                    <input id="hcm-cidade" type="text" placeholder="Recife" />
+                </div>
+                <div class="hermo-field">
+                    <label>UF</label>
+                    <input id="hcm-uf" type="text" maxlength="2" placeholder="PE" style="text-transform:uppercase" />
+                </div>
+            </div>
+            <div class="hermo-form-row">
+                <div class="hermo-field">
+                    <label>Representante legal</label>
+                    <input id="hcm-representante" type="text" placeholder="quem assina pelo cliente" />
+                </div>
+                <div class="hermo-field">
+                    <label>CPF do representante</label>
+                    <input id="hcm-cpf-rep" type="text" inputmode="numeric" placeholder="xxx.xxx.xxx-xx" />
                 </div>
             </div>
             <div class="hermo-field">
@@ -130,6 +176,10 @@ export async function abrirModalCliente(cliente, onSalvo) {
     tipoSel.dispatchEvent(new Event('change'));
     if (cliente?.cpf_cnpj) overlay.querySelector('#hcm-doc').value = cliente.cpf_cnpj;
 
+    CAMPOS_CADASTRO.forEach(([id, campo]) => {
+        overlay.querySelector(id).value = cliente?.[campo] || '';
+    });
+
     await carregarListaIndicacao(cliente?.id);
 
     const sel = overlay.querySelector('#hcm-indicado-sel');
@@ -181,6 +231,11 @@ async function salvar() {
             ? (overlay.querySelector('#hcm-indicado-outro').value.trim() || null)
             : null
     };
+    CAMPOS_CADASTRO.forEach(([id, campo]) => {
+        const v = overlay.querySelector(id).value.trim();
+        registro[campo] = v || null;
+    });
+    if (registro.uf) registro.uf = registro.uf.toUpperCase();
 
     const btn = overlay.querySelector('#hcm-salvar');
     btn.disabled = true;
