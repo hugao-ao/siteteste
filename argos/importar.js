@@ -490,7 +490,7 @@ async function gravarDinamicas(idPorChave) {
             const registro = {
                 paciente_id: pid,
                 rotulo: t.hora ? `${p.profissional} — ${['Dom', '2ª', '3ª', '4ª', '5ª', '6ª', 'Sáb'][t.dow]} ${t.hora}` : `${p.profissional} — avulso`,
-                recorrencia_tipo: t.hora ? 'recorrente' : 'avulso',
+                recorrencia_tipo: t.hora ? 'recorrente' : 'avulsa',
                 dias: t.hora ? [{ dow: t.dow, hora: t.hora }] : [],
                 duracao_min: 60,
                 data_inicio: t.de,
@@ -586,18 +586,36 @@ async function gravarSessoes(idPorChave, idDinamica) {
 
 async function gravarNotas(idPorChave) {
     marcar('notas', { fazendo: true });
-    const linhas = [];
+    // Um paciente pode ocupar duas linhas da planilha (dois horários na
+    // semana), mas a clínica emite UMA nota por mês: o número se repete nas
+    // duas linhas. Então as linhas do mesmo mês são somadas numa nota só —
+    // é isso que a planilha quer dizer e é o que o banco aceita.
+    const porNota = new Map();
     for (const l of entendido.notas.linhas) {
         const pid = idPorChave.get(l.chave);
         if (!pid) continue;
         for (const [mes, m] of Object.entries(l.meses)) {
             if (!m.numero) continue;
-            linhas.push({ paciente_id: pid, mes: `${ANO}-${String(mes).padStart(2, '0')}`,
-                numero: m.numero, valor: m.valor_nota ?? m.valor, sessoes: null,
-                dias: m.dias, descricao: m.descricao || null, nota_tipo: m.regime,
-                status: 'emitida' });
+            const chave = `${pid}|${mes}`;
+            const valor = m.valor_nota ?? m.valor;
+            const nota = porNota.get(chave);
+            if (!nota) {
+                porNota.set(chave, { paciente_id: pid, mes: `${ANO}-${String(mes).padStart(2, '0')}`,
+                    numero: m.numero, valor: valor ?? 0, sessoes: null,
+                    dias: [...m.dias], descricao: m.descricao || null, nota_tipo: m.regime,
+                    status: 'emitida' });
+                continue;
+            }
+            nota.valor += valor || 0;
+            for (const d of m.dias) if (!nota.dias.includes(d)) nota.dias.push(d);
+            nota.dias.sort((a, b) => a - b);
+            if (m.descricao && m.descricao !== nota.descricao) {
+                nota.descricao = nota.descricao ? `${nota.descricao} ${m.descricao}` : m.descricao;
+            }
+            nota.nota_tipo = nota.nota_tipo || m.regime;
         }
     }
+    const linhas = [...porNota.values()];
     const ids = [...new Set(linhas.map(l => l.paciente_id))];
     for (let i = 0; i < ids.length; i += 200) {
         await sb.from('argos_notas_fiscais').delete().in('paciente_id', ids.slice(i, i + 200));
