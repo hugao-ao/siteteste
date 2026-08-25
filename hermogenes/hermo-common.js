@@ -105,6 +105,12 @@ export function esc(s) {
         ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
 
+/** Data de hoje em ISO (fuso local — nada de toISOString, que volta em UTC). */
+export function hojeISO() {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
 // ---------- Prazos ----------
 /** Soma um prazo a uma data ISO (o dia inicial conta como dia 1).
  *  'uteis' = segunda a sexta (feriados não descontados); começando em fim de
