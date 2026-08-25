@@ -133,13 +133,21 @@ document.getElementById('lista-pendentes').addEventListener('click', async (e) =
 // ---------- marcação (materializa a projeção se preciso) ----------
 async function marcarSessao(s, status) {
     if (!perm.pode('sessoes_status')) { toast('Sem permissão para marcar frequência.', true); return; }
-    // Falta justificada exige justificativa registrada
+    // Falta justificada pede o motivo escrito. Quem tem a permissão de dispensa
+    // pode deixar em branco — é o caso da importação das planilhas antigas e de
+    // quando o responsável só manda o motivo depois.
     let justificativa = s.justificativa || null;
     if (status === 'fj') {
-        const j = prompt('Justificativa da falta (obrigatória):', s.justificativa || '');
+        const dispensa = perm.pode('sessao_fj_sem_justificativa');
+        const j = prompt(dispensa
+            ? 'Justificativa da falta (pode deixar em branco):'
+            : 'Justificativa da falta (obrigatória):', s.justificativa || '');
         if (j === null) return; // cancelou
-        if (!j.trim()) { toast('A falta justificada precisa de uma justificativa.', true); return; }
-        justificativa = j.trim();
+        if (!j.trim() && !dispensa) {
+            toast('A falta justificada precisa de uma justificativa.', true);
+            return;
+        }
+        justificativa = j.trim() || null;
     }
     let error;
     if (s.id) {
@@ -156,7 +164,8 @@ async function marcarSessao(s, status) {
     if (error) { console.error(error); toast('Erro ao marcar sessão.', true); return; }
     if (status === 'fj') {
         await registrarEvento(s.paciente_id, 'falta_justificada',
-            `Falta justificada na sessão de ${formataBR(s.data)} às ${s.hora}.`,
+            `Falta justificada na sessão de ${formataBR(s.data)} às ${s.hora}`
+            + (justificativa ? '.' : ', sem motivo registrado.'),
             { data: s.data, hora: s.hora }, justificativa);
     }
     toast(`Sessão marcada: ${STATUS_SESSAO[status].label} — ${STATUS_SESSAO[status].desc}`);
