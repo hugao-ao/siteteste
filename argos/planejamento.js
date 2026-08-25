@@ -4,7 +4,7 @@
 // profissionais e despesas cadastradas com recorrências variadas.
 // Visões: anual (mês a mês) e mensal (detalhada).
 
-import { sb, toast, esc, abrirModal, fecharModal } from './argos-common.js';
+import { sb, todas, toast, esc, abrirModal, fecharModal } from './argos-common.js';
 import { carregarPermissoes } from './argos-permissoes.js';
 import { fechamentoPaciente, formataMoeda, formataBR, hojeISO, fimDoMes } from './argos-recorrencia.js';
 
@@ -19,13 +19,13 @@ const RECORRENCIA_LABELS = { unica: 'Única', semanal: 'Semanal', mensal: 'Mensa
 async function carregarTudo() {
     const [rPac, rDin, rSes, rProf, rDesp, rMov, rAloc, rDp] = await Promise.all([
         sb.from('argos_pacientes').select('*').order('nome'),
-        sb.from('argos_dinamicas').select('*'),
-        sb.from('argos_sessoes').select('*'),
+        todas(() => sb.from('argos_dinamicas').select('*')),
+        todas(() => sb.from('argos_sessoes').select('*')),
         sb.from('argos_profissionais').select('*').order('nome'),
         sb.from('argos_despesas').select('*').order('created_at'),
-        sb.from('argos_movimentacoes').select('*').order('data', { ascending: false }),
-        sb.from('argos_mov_alocacoes').select('*'),
-        sb.from('argos_mov_depara').select('*')
+        todas(() => sb.from('argos_movimentacoes').select('*').order('data', { ascending: false })),
+        todas(() => sb.from('argos_mov_alocacoes').select('*')),
+        todas(() => sb.from('argos_mov_depara').select('*'))
     ]);
     const erro = rPac.error || rDin.error || rSes.error || rProf.error || rDesp.error || rMov.error;
     if (erro) { console.error(erro); toast('Erro ao carregar dados.', true); return; }
@@ -877,7 +877,7 @@ async function salvarDePara(chave, vinculo_tipo, vinculo_id, opts = {}) {
         : sb.from('argos_mov_depara').insert(registro);
     const { error } = await q;
     if (error) { console.error(error); toast('Erro ao salvar o de-para.', true); return { ok: false }; }
-    const { data } = await sb.from('argos_mov_depara').select('*');
+    const { data } = await todas(() => sb.from('argos_mov_depara').select('*'));
     depara = data || depara;
     return { ok: true };
 }
@@ -936,7 +936,7 @@ document.getElementById('lista-depara').addEventListener('click', async (e) => {
     const d = depara.find(x => x.id === btn.dataset.dpExcluir);
     if (!d || !confirm(`Remover a associação «${d.chave}» → ${nomeVinculo(d.vinculo_tipo, d.vinculo_id)}?\n(As classificações já feitas não mudam.)`)) return;
     await sb.from('argos_mov_depara').delete().eq('id', d.id);
-    const { data } = await sb.from('argos_mov_depara').select('*');
+    const { data } = await todas(() => sb.from('argos_mov_depara').select('*'));
     depara = data || [];
     if (editandoDeParaId === d.id) limparFormDePara();
     renderDePara();

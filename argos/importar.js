@@ -5,7 +5,7 @@
 // A ordem da gravação importa: paciente antes de dinâmica, dinâmica antes de
 // sessão, e assim por diante — quem depende entra depois.
 
-import { sb, toast, esc } from './argos-common.js';
+import { sb, todas, toast, esc } from './argos-common.js';
 import { carregarPermissoes } from './argos-permissoes.js';
 import { detectar, TIPOS, ordenarParaCarga, faltando } from './argos-import-deteccao.js';
 import { lerFrequencia, chaveNome, COBRA } from './argos-import-freq.js';
@@ -13,6 +13,7 @@ import { trechosPorPar, gruposDosHorarios, sessoesDoTrecho, resumo } from './arg
 import { lerEntradas, lerSaidas, lerDePara, lerDetalhesFinanceiros, blocosDeMeses } from './argos-import-financeiro.js';
 import { lerNotas, regimeNoMes } from './argos-import-notas.js';
 import { lerCadastro } from './argos-cadastro-import.js';
+import { somarDias, hojeISO, paraData, fimDoMes } from './argos-recorrencia.js';
 
 let perm = { pode: () => true, aplicarVisibilidade: () => {}, master: true };
 let arquivos = [];          // { nome, texto, tipo, mes, dados, conta }
@@ -324,7 +325,7 @@ const marcar = (id, campos) => {
  * delete sem filtro e não depende de um truque de "id diferente de zero".
  */
 async function esvaziar(tabela) {
-    const { data, error } = await sb.from(tabela).select('id');
+    const { data, error } = await todas(() => sb.from(tabela).select('id'));
     if (error) throw new Error(`${tabela}: ${error.message}`);
     const ids = (data || []).map(r => r.id);
     for (let i = 0; i < ids.length; i += 200) {
@@ -381,7 +382,7 @@ async function importar() {
 }
 
 async function mapaDePacientes() {
-    const { data } = await sb.from('argos_pacientes').select('id, nome');
+    const { data } = await todas(() => sb.from('argos_pacientes').select('id, nome'));
     const m = new Map();
     (data || []).forEach(p => m.set(chaveNome(p.nome), p.id));
     return m;
@@ -405,8 +406,30 @@ function pacientesSoDaFrequencia() {
     return [...mapa.values()];
 }
 
+// Data do corte de quem saiu: o dia seguinte ao último atendimento que a
+// frequência registrou. Sem isso o paciente entra como inativo mas sem data,
+// e aplicarFimDeProcesso corta só a partir de HOJE — a agenda segue
+// projetando meses de sessões para quem parou de vir em fevereiro.
+function fimDosInativos() {
+    const fim = new Map();
+    for (const par of (entendido.pares || [])) {
+        let ultima = null, primeiroInicio = null;
+        for (const t of par.trechos) {
+            if (t.de && (!primeiroInicio || t.de < primeiroInicio)) primeiroInicio = t.de;
+            for (const s of sessoesDoTrecho(t)) if (!ultima || s.data > ultima) ultima = s.data;
+        }
+        // quem tem histórico é cortado no dia seguinte ao último atendimento;
+        // quem foi agendado e nunca veio é cortado no próprio início, para
+        // não deixar um horário fantasma na agenda
+        if (ultima) fim.set(par.chave, somarDias(ultima, 1));
+        else if (primeiroInicio) fim.set(par.chave, primeiroInicio);
+    }
+    return fim;
+}
+
 async function gravarPacientes() {
     marcar('pacientes', { fazendo: true });
+    const fimDePacienteInativo = fimDosInativos();
     const existentes = await mapaDePacientes();
     const extras = pacientesSoDaFrequencia();
     const todos = [...entendido.pacientes, ...extras];
@@ -416,7 +439,8 @@ async function gravarPacientes() {
             nome: p.nome, cpf: p.cpf || null, email: p.email || null,
             responsavel_financeiro: p.rf || null, rf_cpf: p.rf_cpf || null,
             rf_whatsapp: p.rf_whatsapp || null, contato: p.contato || null,
-            ativo: p.ativo, processo_fim_tipo: p.ativo ? null : 'inativo'
+            ativo: p.ativo, processo_fim_tipo: p.ativo ? null : 'inativo',
+            processo_fim_data: p.ativo ? null : (fimDePacienteInativo.get(p.chave) || null)
         })));
     }
     const mapa = await mapaDePacientes();
@@ -562,17 +586,54 @@ async function gravarGrupos(idPorChave) {
     marcar('grupos', { fazendo: false, pronta: true, qtd: n });
 }
 
+// Semanas em que o horário fixo existia mas a frequência não registrou nada:
+// feriado, recesso, clínica fechada. Ficam como «não houve» — sem isso a
+// agenda projeta a sessão, não acha registro e cobra o preenchimento de mil e
+// tantas ocorrências que nunca aconteceram.
+function semanasSemRegistro(trecho, registradas, coberto, aberto) {
+    if (!trecho.hora || trecho.dow == null || !trecho.de) return [];
+    // Até onde a planilha fala: dentro do período coberto pelas abas de
+    // frequência, ausência de registro é ausência de atendimento; depois
+    // dele é desconhecido, e desconhecido continua pendente.
+    // O último trecho de cada paciente vira dinâmica sem data de fim — a
+    // agenda projeta dali até hoje —, então ele vai até onde a planilha vai,
+    // e não até o fim do seu próprio mês.
+    const fim = aberto ? [coberto, hojeISO()] : [trecho.ate, coberto, hojeISO()];
+    const limite = fim.filter(Boolean).sort()[0];
+    const vazias = [];
+    for (let iso = trecho.de, passos = 0; iso <= limite && passos < 400; iso = somarDias(iso, 1), passos++) {
+        if (paraData(iso).getDay() !== Number(trecho.dow)) continue;
+        if (!registradas.has(`${iso}|${trecho.hora}`)) vazias.push(iso);
+    }
+    return vazias;
+}
+
 async function gravarSessoes(idPorChave, idDinamica) {
     marcar('sessoes', { fazendo: true });
+    const meses = Object.keys(entendido.porMes || {}).map(Number).filter(Boolean).sort((a, b) => a - b);
+    const ultimoMesCoberto = meses.length
+        ? fimDoMes(`${ANO}-${String(meses[meses.length - 1]).padStart(2, '0')}`) : null;
+    // quem já saiu não tem horário aberto: o último trecho dele termina onde
+    // termina, e não segue até o fim do que a planilha cobre
+    const inativos = new Set((entendido.pacientes || [])
+        .filter(x => !x.ativo).map(x => x.chave));
     const linhas = [];
     for (const p of entendido.pares) {
         const pid = idPorChave.get(p.chave);
         if (!pid) continue;
+        const ultimo = inativos.has(p.chave) ? null : p.trechos[p.trechos.length - 1];
         for (const t of p.trechos) {
             const did = idDinamica.get(chaveTrecho(p, t)) || null;
+            const registradas = new Set();
             for (const s of sessoesDoTrecho(t)) {
+                registradas.add(`${s.data}|${s.hora}`);
                 linhas.push({ paciente_id: pid, dinamica_id: did, dinamica_ref: did,
                     data: s.data, hora: s.hora, duracao_min: 60, status: s.status });
+            }
+            for (const vazio of semanasSemRegistro(t, registradas, ultimoMesCoberto, t === ultimo)) {
+                linhas.push({ paciente_id: pid, dinamica_id: did, dinamica_ref: did,
+                    data: vazio, hora: t.hora, duracao_min: 60, status: 'nc',
+                    justificativa: 'Sem registro na planilha de frequência' });
             }
         }
     }
@@ -641,8 +702,10 @@ async function gravarFinanceiro(idPorChave) {
     marcar('movimentacoes', { fazendo: false, pronta: true, qtd: entradas.length + saidas.length });
 
     marcar('alocacoes', { fazendo: true });
-    const { data: movs } = await sb.from('argos_movimentacoes')
-        .select('id, data, descricao, valor, tipo').eq('origem', 'planilha');
+    // paginado: são milhares de linhas, e o PostgREST devolveria só as mil
+    // primeiras — as alocações das demais sumiriam sem erro nenhum
+    const { data: movs } = await todas(() => sb.from('argos_movimentacoes')
+        .select('id, data, descricao, valor, tipo').eq('origem', 'planilha'));
     const porChave = new Map();
     (movs || []).forEach(m => porChave.set(`${m.tipo}|${m.data}|${m.descricao}|${m.valor}`, m.id));
     const alocacoes = [];

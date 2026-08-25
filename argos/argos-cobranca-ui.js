@@ -13,7 +13,7 @@
 //   cob.abrirFinanceiro(paciente);
 //   cob.abrirExtrato(paciente);
 
-import { sb, toast, esc, abrirModal, fecharModal } from './argos-common.js';
+import { sb, todas, toast, esc, abrirModal, fecharModal } from './argos-common.js';
 import { fechamentoPaciente, formataMoeda, formataBR, hojeISO, STATUS_SESSAO } from './argos-recorrencia.js';
 import { mesBR, normalizarFone, linkWhatsApp, detalhesDoMes, notaEfetiva,
          situacaoNota, contatosParaCobranca, retratoDaNota, compararRetrato } from './argos-cobranca.js';
@@ -487,14 +487,14 @@ export async function calcularExtrato(paciente, cache = {}) {
     let alocacoes = cache.alocacoes;
     let movimentacoes = cache.movimentacoes;
     if (!alocacoes) {
-        const { data } = await sb.from('argos_mov_alocacoes').select('*')
-            .eq('vinculo_tipo', 'paciente').eq('vinculo_id', pid);
+        const { data } = await todas(() => sb.from('argos_mov_alocacoes').select('*')
+            .eq('vinculo_tipo', 'paciente').eq('vinculo_id', pid));
         alocacoes = data || [];
     }
     if (!movimentacoes) {
         const ids = [...new Set(alocacoes.map(a => a.movimentacao_id))];
         if (ids.length) {
-            const { data } = await sb.from('argos_movimentacoes').select('*').in('id', ids);
+            const { data } = await todas(() => sb.from('argos_movimentacoes').select('*').in('id', ids));
             movimentacoes = data || [];
         } else movimentacoes = [];
     }

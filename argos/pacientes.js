@@ -2,7 +2,7 @@
 // Cadastro e informações, anamnese, dinâmicas financeiras, sessões avulsas,
 // espaços de atendimento e exclusão com opções de histórico.
 
-import { sb, toast, esc, abrirModal, fecharModal } from './argos-common.js';
+import { sb, todas, toast, esc, abrirModal, fecharModal } from './argos-common.js';
 import { carregarPermissoes } from './argos-permissoes.js';
 import {
     DOW_NOMES, PACOTE_MODOS, STATUS_SESSAO, acordoLabel, mesclarSessoes,
@@ -36,7 +36,7 @@ async function carregarTudo() {
         sb.from('argos_profissionais').select('*').order('nome'),
         sb.from('argos_servicos_base').select('*').order('nome'),
         sb.from('argos_profissional_servicos').select('*'),
-        sb.from('argos_dinamicas').select('*').order('created_at'),
+        todas(() => sb.from('argos_dinamicas').select('*').order('created_at')),
         sb.from('argos_grupos').select('*').order('hora')
     ]);
     const erro = rPac.error || rSalas.error || rProf.error || rServ.error || rPS.error || rDin.error || rGru.error;
@@ -510,8 +510,8 @@ async function renderDinamicas() {
     const dins = dinamicas.filter(d => d.paciente_id === p.id);
     // sessões avulsas futuras (sem dinâmica) + histórico de alterações
     const [{ data: avulsas }, { data: eventos }] = await Promise.all([
-        sb.from('argos_sessoes').select('*')
-            .eq('paciente_id', p.id).is('dinamica_ref', null).gte('data', hojeISO()).order('data'),
+        todas(() => sb.from('argos_sessoes').select('*')
+            .eq('paciente_id', p.id).is('dinamica_ref', null).gte('data', hojeISO()).order('data')),
         sb.from('argos_paciente_eventos').select('*').eq('paciente_id', p.id)
             .order('created_at', { ascending: false })
     ]);
@@ -893,7 +893,7 @@ document.getElementById('form-dinamica').addEventListener('submit', async (e) =>
     // com ninguém, e ninguém entra em cima de uma individual existente.
     if (registro.recorrencia_tipo === 'recorrente' && registro.ativo) {
         const outras = dinamicas.filter(d => d.id !== editandoDinamicaId && d.ativo !== false);
-        const { data: sessTodas } = await sb.from('argos_sessoes').select('*');
+        const { data: sessTodas } = await todas(() => sb.from('argos_sessoes').select('*'));
         const sessOutras = (sessTodas || []).filter(s => s.dinamica_ref !== editandoDinamicaId);
         // pacientes com processo encerrado liberam os horários a partir do corte
         const cc = aplicarFimDeProcesso(outras, sessOutras, pacientes);
@@ -998,7 +998,7 @@ document.getElementById('form-avulsa').addEventListener('submit', async (e) => {
         status: '??'
     };
     // Sessão avulsa é individual: não pode cair em cima de outra sessão
-    const { data: sessTodas } = await sb.from('argos_sessoes').select('*');
+    const { data: sessTodas } = await todas(() => sb.from('argos_sessoes').select('*'));
     const ca = aplicarFimDeProcesso(dinamicas.filter(d => d.ativo !== false), sessTodas || [], pacientes);
     const conflitos = conflitosDeSessao(registro, ca.dinamicas, ca.sessoes);
     if (conflitos.length) {
@@ -1068,11 +1068,11 @@ document.getElementById('form-sala').addEventListener('submit', async (e) => {
 // para que o histórico de frequência sobreviva à remoção das dinâmicas.
 async function materializarHistorico(pacId) {
     const dins = dinamicas.filter(d => d.paciente_id === pacId);
-    const { data: sess } = await sb.from('argos_sessoes').select('*').eq('paciente_id', pacId);
+    const { data: sess } = await todas(() => sb.from('argos_sessoes').select('*').eq('paciente_id', pacId));
     const inicio = dins.map(d => d.data_inicio).filter(Boolean).sort()[0];
     if (!inicio) return sess || [];
-    const todas = mesclarSessoes(dins, sess || [], inicio, hojeISO());
-    const novas = todas.filter(s => s.projetada).map(s => ({
+    const mescladas = mesclarSessoes(dins, sess || [], inicio, hojeISO());
+    const novas = mescladas.filter(s => s.projetada).map(s => ({
         paciente_id: pacId, dinamica_id: s.dinamica_ref, dinamica_ref: s.dinamica_ref,
         data: s.data, hora: s.hora, duracao_min: s.duracao_min,
         sala_id: s.sala_id || null, profissional_id: s.profissional_id || null,
@@ -1082,7 +1082,7 @@ async function materializarHistorico(pacId) {
         const { error } = await sb.from('argos_sessoes').insert(novas);
         if (error) console.error(error);
     }
-    return todas;
+    return mescladas;
 }
 
 function htmlHistorico(p, dins, sessoes) {
