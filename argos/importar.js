@@ -506,21 +506,26 @@ async function gravarDinamicas(idPorChave) {
         const pid = idPorChave.get(p.chave);
         if (!pid) { semPaciente.push(p.paciente); continue; }
         let anterior = null;
-        for (const t of p.trechos) {
-            const mesInicial = t.meses[0];
-            const acordo = acordoPorChave.get(`${p.chave}|${p.profissional}`)?.[mesInicial]
-                || acordoPorChave.get(`${p.chave}|${p.profissional}`)?.[1] || {};
+        const fatias = fatiasDoPar(p, acordoPorChave);
+        for (const f of fatias) {
+            const mesInicial = f.meses[0];
+            const acordo = f.acordo;
             const nota = notasPorChave.get(p.chave);
+            const ultima = f === fatias[fatias.length - 1];
             const registro = {
                 paciente_id: pid,
-                rotulo: t.hora ? `${p.profissional} — ${['Dom', '2ª', '3ª', '4ª', '5ª', '6ª', 'Sáb'][t.dow]} ${t.hora}` : `${p.profissional} — avulso`,
-                recorrencia_tipo: t.hora ? 'recorrente' : 'avulsa',
-                dias: t.hora ? [{ dow: t.dow, hora: t.hora }] : [],
+                rotulo: f.hora ? `${p.profissional} — ${['Dom', '2ª', '3ª', '4ª', '5ª', '6ª', 'Sáb'][f.dow]} ${f.hora}` : `${p.profissional} — avulso`,
+                recorrencia_tipo: f.hora ? 'recorrente' : 'avulsa',
+                dias: f.hora ? [{ dow: f.dow, hora: f.hora }] : [],
                 duracao_min: 60,
-                data_inicio: t.de,
-                fim_tipo: p.trechos[p.trechos.length - 1] === t ? 'indeterminado' : 'data',
-                fim_data: p.trechos[p.trechos.length - 1] === t ? null : t.ate,
-                modalidade: 'individual',
+                data_inicio: f.de,
+                fim_tipo: ultima ? 'indeterminado' : 'data',
+                fim_data: ultima ? null : f.ate,
+                // a clínica atende em grupo: o horário fixo que aparece no bloco
+                // GRUPO da frequência é compartilhado por vários pacientes, e
+                // marcá-lo como individual fazia a regra de conflito recusar
+                // qualquer edição («já tem sessão INDIVIDUAL de fulano»)
+                modalidade: (f.sessoes || []).some(x => x.bloco === 'grupo') ? 'grupo' : 'individual',
                 acordo_tipo: acordo.tipo === 'fixo' ? 'fixo_mensal' : 'por_sessao',
                 valor: acordo.valor ?? null,
                 nota_tipo: nota ? regimeNoMes(nota, mesInicial) : 'indefinido',
@@ -534,7 +539,7 @@ async function gravarDinamicas(idPorChave) {
             const { data, error } = await sb.from('argos_dinamicas').insert(registro).select('id').single();
             if (error) throw new Error(`dinâmica de ${p.paciente}: ${error.message}`);
             anterior = data.id;
-            idDinamica.set(chaveTrecho(p, t), data.id);
+            idDinamica.set(chaveTrecho(p, f), data.id);
             n++;
             if (n % 25 === 0) marcar('dinamicas', { qtd: `${n}…` });
         }
@@ -547,6 +552,46 @@ async function gravarDinamicas(idPorChave) {
 }
 
 const chaveTrecho = (p, t) => `${p.chave}|${p.profissional}|${t.de}`;
+
+const primeiroDiaDoMes = m => `${ANO}-${String(m).padStart(2, '0')}-01`;
+const ultimoDiaDoMes = m => fimDoMes(`${ANO}-${String(m).padStart(2, '0')}`);
+
+/**
+ * O acordo financeiro muda no meio do ano: a aba CADASTRO guarda um valor
+ * POR MÊS. Um paciente que passou de R$ 150 para R$ 170 em março não é uma
+ * dinâmica só — são duas, encadeadas, como já acontece quando o horário
+ * muda. Sem isso o ano inteiro fica com o valor de janeiro e o fechamento
+ * dos meses seguintes sai errado.
+ *
+ * Recebe o trecho (mesmo dia/hora) e devolve os pedaços em que o acordo se
+ * manteve igual, cada um com o seu próprio período.
+ */
+function fatiasDoTrecho(t, acordos) {
+    const meses = [...(t.meses || [])].sort((a, b) => a - b);
+    const acordoDe = m => acordos[m] || acordos[meses[0]] || acordos[1] || {};
+    if (!meses.length) return [{ ...t, meses: [], acordo: acordoDe(1) }];
+
+    const mesmo = (a, b) => (a.tipo || '') === (b.tipo || '')
+        && (a.valor ?? null) === (b.valor ?? null);
+    const partes = [];
+    for (const m of meses) {
+        const ac = acordoDe(m);
+        const ultima = partes[partes.length - 1];
+        if (ultima && mesmo(ultima.acordo, ac)) { ultima.meses.push(m); continue; }
+        partes.push({ dow: t.dow, hora: t.hora, sessoes: t.sessoes, meses: [m], acordo: ac });
+    }
+    return partes.map((f, i) => ({
+        ...f, trecho: t,
+        de: i === 0 ? t.de : primeiroDiaDoMes(f.meses[0]),
+        ate: i === partes.length - 1 ? t.ate : ultimoDiaDoMes(f.meses[f.meses.length - 1])
+    }));
+}
+
+/** Todas as fatias do paciente, na ordem, prontas para virar dinâmicas. */
+function fatiasDoPar(p, acordoPorChave) {
+    const acordos = acordoPorChave.get(`${p.chave}|${p.profissional}`) || {};
+    return p.trechos.flatMap(t => fatiasDoTrecho(t, acordos));
+}
 
 /** Acordo mês a mês vindo da aba CADASTRO. */
 function mapaDeAcordos() {
@@ -617,22 +662,27 @@ async function gravarSessoes(idPorChave, idDinamica) {
     // termina, e não segue até o fim do que a planilha cobre
     const inativos = new Set((entendido.pacientes || [])
         .filter(x => !x.ativo).map(x => x.chave));
+    const acordoPorChave = mapaDeAcordos();
     const linhas = [];
     for (const p of entendido.pares) {
         const pid = idPorChave.get(p.chave);
         if (!pid) continue;
-        const ultimo = inativos.has(p.chave) ? null : p.trechos[p.trechos.length - 1];
-        for (const t of p.trechos) {
-            const did = idDinamica.get(chaveTrecho(p, t)) || null;
+        // as fatias são as mesmas de gravarDinamicas: cada sessão precisa cair
+        // na dinâmica que valia no mês dela, senão vai para o acordo errado
+        const fatias = fatiasDoPar(p, acordoPorChave);
+        const ultima = inativos.has(p.chave) ? null : fatias[fatias.length - 1];
+        for (const f of fatias) {
+            const did = idDinamica.get(chaveTrecho(p, f)) || null;
             const registradas = new Set();
-            for (const s of sessoesDoTrecho(t)) {
+            for (const s of sessoesDoTrecho(f.trecho)) {
+                if (s.data < f.de || s.data > f.ate) continue;
                 registradas.add(`${s.data}|${s.hora}`);
                 linhas.push({ paciente_id: pid, dinamica_id: did, dinamica_ref: did,
                     data: s.data, hora: s.hora, duracao_min: 60, status: s.status });
             }
-            for (const vazio of semanasSemRegistro(t, registradas, ultimoMesCoberto, t === ultimo)) {
+            for (const vazio of semanasSemRegistro(f, registradas, ultimoMesCoberto, f === ultima)) {
                 linhas.push({ paciente_id: pid, dinamica_id: did, dinamica_ref: did,
-                    data: vazio, hora: t.hora, duracao_min: 60, status: 'nc',
+                    data: vazio, hora: f.hora, duracao_min: 60, status: 'nc',
                     justificativa: 'Sem registro na planilha de frequência' });
             }
         }
