@@ -85,7 +85,11 @@ async function carregarTudo() {
         sb.from('hermo_equipes').select('*, membros:hermo_equipe_membros(integrante_id)').order('nome'),
         sb.from('hermo_servicos').select('*, precos:hermo_servico_precos(preco_final)').order('codigo'),
         sb.from('hermo_propostas')
-            .select('id, numero, ano, titulo, valor_total, cliente_id, endereco, latitude, longitude, cliente:hermo_clientes(nome), itens:hermo_proposta_itens(*, servico:hermo_servicos(id, codigo, descricao, unidade))')
+            .select(`id, numero, ano, titulo, valor_total, cliente_id, endereco, latitude, longitude,
+                data_proposta, forma_pagamento, pagamento_obs,
+                cliente:hermo_clientes(nome),
+                itens:hermo_proposta_itens(*, servico:hermo_servicos(id, codigo, descricao, unidade)),
+                parcelas:hermo_proposta_parcelas(*)`)
             .eq('status', 'contratada')
     ]);
     if (o.error) { toast('Erro ao carregar obras: ' + o.error.message, true); return; }
@@ -1744,8 +1748,52 @@ async function abrirNovaMedicao() {
     $('mn-prazo').value = '';
     $('mn-prazo-tipo').value = 'corridos';
     $('mn-previsao').value = '';
+
+    // o que o contrato prevê receber em seguida: pré-preenche o prazo e avisa o valor
+    const dica = $('mn-parcela-dica');
+    const prox = proximaParcelaDaObra(obraEditando, medicoesObra);
+    if (prox) {
+        if (prox.dias) {
+            $('mn-prazo').value = prox.dias;
+            $('mn-prazo-tipo').value = 'corridos';
+            mnAtualizarPrevisaoPeloPrazo();
+        } else if (prox.base === 'data' && prox.data_prevista) {
+            $('mn-previsao').value = prox.data_prevista;
+        }
+        dica.style.display = '';
+        dica.innerHTML = `📋 O contrato prevê a seguir: <b>${esc(prox.descricao || 'parcela')}</b> — ` +
+            `${fmtMoeda(prox.saldo)}${prox.dias ? ` (${prox.dias} dias)` : ''} ` +
+            `<span style="color:var(--hermo-text-dim)">· proposta ${String(prox.proposta.numero).padStart(4, '0')}/${prox.proposta.ano}</span>`;
+    } else {
+        dica.style.display = 'none';
+        dica.innerHTML = '';
+    }
+
     renderMnItens();
     $('mn-overlay').classList.add('aberto');
+}
+
+/** Próxima parcela do contrato ainda não coberta pelas medições já feitas.
+ *  É o que o cliente combinou pagar em seguida — serve de palpite para o prazo
+ *  de recebimento e para conferir se a medição está no tamanho esperado. */
+function proximaParcelaDaObra(obra, medicoesObra) {
+    const parcelas = (obra.propostaIds || [])
+        .map(id => propostasContratadas.find(p => p.id === id))
+        .filter(Boolean)
+        .flatMap(p => (p.parcelas || []).map(x => ({ ...x, proposta: p })))
+        .sort((a, b) =>
+            (a.proposta.ano - b.proposta.ano) ||
+            (a.proposta.numero - b.proposta.numero) ||
+            (a.ordem - b.ordem));
+    if (!parcelas.length) return null;
+
+    let coberto = (medicoesObra || []).reduce((t, m) => t + num(m.valor_liquido), 0);
+    for (const p of parcelas) {
+        const valor = num(p.valor);
+        if (coberto >= valor - 0.005) { coberto -= valor; continue; }
+        return { ...p, saldo: Math.round((valor - Math.max(0, coberto)) * 100) / 100 };
+    }
+    return null;   // o contrato já foi todo medido
 }
 
 function avisosMn(i) {

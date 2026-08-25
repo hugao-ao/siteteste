@@ -14,6 +14,7 @@ let medicoes = [];
 let integrantes = [];
 let alocacoes = [];
 let ausencias = [];
+let obraPropostas = [];  // vínculo obra→proposta com as parcelas contratadas
 let flEditando = null;
 
 const hojeStr = () => {
@@ -25,17 +26,23 @@ const hojeStr = () => {
 // CARREGAMENTO
 // ============================================================
 async function carregarTudo() {
-    const [l, c, o, m, i, al, au] = await Promise.all([
+    const [l, c, o, m, i, al, au, op] = await Promise.all([
         sb.from('hermo_lancamentos').select('*').order('data_competencia', { ascending: false }),
         sb.from('hermo_categorias_fin').select('*').order('nome'),
-        sb.from('hermo_obras').select('id, numero, ano, nome, valor_contratado').order('ano', { ascending: false }).order('numero'),
+        sb.from('hermo_obras')
+            .select('id, numero, ano, nome, valor_contratado, inicio_previsto, inicio_real, conclusao')
+            .order('ano', { ascending: false }).order('numero'),
         sb.from('hermo_medicoes').select('*'),
         sb.from('hermo_integrantes').select('id, nome, apelido, vinculo, valor_diaria, salario_mensal'),
         sb.from('hermo_alocacoes').select('*, obra_servico:hermo_obra_servicos(obra_id)'),
-        sb.from('hermo_ausencias').select('*')
+        sb.from('hermo_ausencias').select('*'),
+        sb.from('hermo_obra_propostas').select(`obra_id,
+            proposta:hermo_propostas(id, numero, ano, data_proposta,
+                parcelas:hermo_proposta_parcelas(*))`)
     ]);
     const erro = l.error || c.error || o.error || m.error || i.error || al.error || au.error;
     if (erro) { toast('Erro ao carregar dados: ' + erro.message, true); return; }
+    if (op.error) toast('Aviso: não deu para carregar as parcelas dos contratos (' + op.error.message + ') — a previsão por contrato não aparece.', true);
     lancamentos = l.data || [];
     categorias = c.data || [];
     obras = o.data || [];
@@ -43,6 +50,7 @@ async function carregarTudo() {
     integrantes = i.data || [];
     alocacoes = al.data || [];
     ausencias = au.data || [];
+    obraPropostas = op.data || [];
     popularFiltros();
     renderTudo();
 }
@@ -119,6 +127,75 @@ function receitasDeMedicoes() {
                 status: 'previsto'
             });
         }
+    });
+    return linhas;
+}
+
+/** Soma n dias corridos a uma data ISO (aqui o dia do marco NÃO conta: "com 30
+ *  dias da assinatura" é a assinatura + 30 dias). */
+function somarDias(iso, n) {
+    if (!iso) return null;
+    const [y, m, d] = iso.split('-').map(Number);
+    const t = new Date(y, m - 1, d);
+    t.setDate(t.getDate() + (parseInt(n) || 0));
+    return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`;
+}
+
+/** Data prevista de uma parcela, conforme o marco a que ela está presa. */
+function dataDaParcela(p, obra, proposta) {
+    if (p.base === 'data') return p.data_prevista || null;
+    const inicio = obra.inicio_real || obra.inicio_previsto || null;
+    let marco;
+    if (p.base === 'conclusao') marco = obra.conclusao || null;
+    else if (p.base === 'inicio') marco = inicio;
+    else marco = inicio || proposta.data_proposta || null;   // 'assinatura'
+    if (!marco) return null;
+    return p.dias ? somarDias(marco, p.dias) : marco;
+}
+
+/** Previsão de recebimento vinda das PARCELAS do contrato — o plano combinado
+ *  com o cliente, que existe antes de haver medição.
+ *  Para não contar duas vezes, o que as medições já cobrem é abatido do plano:
+ *  as medições geram a própria previsão em receitasDeMedicoes(). */
+function receitasDeParcelas() {
+    const linhas = [];
+    obras.forEach(o => {
+        const vinculos = obraPropostas.filter(x => x.obra_id === o.id && x.proposta);
+        const parcelas = vinculos
+            .flatMap(v => (v.proposta.parcelas || []).map(p => ({ p, proposta: v.proposta })))
+            // parcela atrelada a medição já vira previsão pela própria medição
+            .filter(x => x.p.base !== 'medicao' && x.p.tipo !== 'medicao')
+            .sort((a, b) =>
+                (a.proposta.ano - b.proposta.ano) ||
+                (a.proposta.numero - b.proposta.numero) ||
+                (a.p.ordem - b.p.ordem));
+        if (!parcelas.length) return;
+
+        let coberto = medicoes.filter(m => m.obra_id === o.id)
+            .reduce((t, m) => t + num(m.valor_liquido), 0);
+
+        parcelas.forEach(({ p, proposta }) => {
+            let valor = num(p.valor);
+            if (coberto > 0.005) {
+                const usa = Math.min(coberto, valor);
+                coberto -= usa;
+                valor -= usa;
+            }
+            if (valor < 0.005) return;
+            const data = dataDaParcela(p, o, proposta);
+            if (!data) return;   // sem marco definido não dá para prever o mês
+            linhas.push({
+                id: 'parc:' + p.id,
+                derivado: 'contrato',
+                tipo: 'receita',
+                descricao: `${p.descricao || 'Parcela'} — ${o.nome} (proposta ${String(proposta.numero).padStart(4, '0')}/${proposta.ano})`,
+                categoriaNome: 'Parcela de contrato',
+                obra_id: o.id,
+                data,
+                valor: Math.round(valor * 100) / 100,
+                status: 'previsto'
+            });
+        });
     });
     return linhas;
 }
@@ -227,6 +304,7 @@ function linhasDoMes() {
         }));
     const derivadas = [
         ...receitasDeMedicoes().filter(x => x.data >= mesIni && x.data <= mesFim),
+        ...receitasDeParcelas().filter(x => x.data >= mesIni && x.data <= mesFim),
         ...despesasDePessoal(mesIni, mesFim)
     ];
 
@@ -352,7 +430,9 @@ function renderTabela(linhas) {
                 <td>${x.derivado
                     ? (x.derivado === 'medição'
                         ? `<a class="hermo-btn small ghost" href="medicoes-notas.html?editar=${x.medicao_id}" title="Abrir medição">↗</a>`
-                        : '<span style="font-size:.7rem;color:var(--hermo-text-dim)">via alocações</span>')
+                        : x.derivado === 'contrato'
+                            ? '<span style="font-size:.7rem;color:var(--hermo-text-dim)">parcela da proposta</span>'
+                            : '<span style="font-size:.7rem;color:var(--hermo-text-dim)">via alocações</span>')
                     : `<button class="hermo-btn small ghost" data-editar="${x.id}">✎</button>
                        <button class="hermo-btn small ghost" data-duplicar="${x.id}" title="Duplicar">⧉</button>
                        <button class="hermo-btn small danger" data-excluir="${x.id}">🗑</button>`}</td>

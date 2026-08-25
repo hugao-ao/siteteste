@@ -424,6 +424,31 @@ async function carregarNfs() {
     if (error) { toast('Erro ao carregar NFs: ' + error.message, true); return; }
     nfs = data || [];
     renderNfs();
+    prefixarNf();
+}
+
+/** Pré-preenche o formulário de NF com o que ainda falta faturar desta medição. */
+function prefixarNf() {
+    if (!medEditando) return;
+    const emitido = nfs.filter(n => n.status !== 'cancelada').reduce((t, n) => t + num(n.valor), 0);
+    const falta = Math.round((num(medEditando.valor_liquido) - emitido) * 100) / 100;
+    if (!$('nf-data').value) $('nf-data').value = hojeLocal();
+    // só sugere enquanto o campo estiver vazio — nunca sobrescreve o que o usuário digitou
+    if (!$('nf-valor').value && falta > 0.005) $('nf-valor').value = falta;
+    const aviso = $('nf-falta');
+    if (!aviso) return;
+    if (falta > 0.005) {
+        aviso.style.display = '';
+        aviso.textContent = emitido > 0
+            ? `Falta faturar ${fmtMoeda(falta)} desta medição (${fmtMoeda(emitido)} já em NF).`
+            : `Valor líquido da medição: ${fmtMoeda(falta)}.`;
+    } else if (Math.abs(falta) <= 0.005) {
+        aviso.style.display = '';
+        aviso.textContent = 'Medição totalmente faturada.';
+    } else {
+        aviso.style.display = '';
+        aviso.textContent = `⚠ NFs somam ${fmtMoeda(emitido)} — ${fmtMoeda(-falta)} acima do líquido da medição.`;
+    }
 }
 
 function renderNfs() {
@@ -461,7 +486,7 @@ async function registrarNf() {
     const { error } = await sb.from('hermo_notas_fiscais').insert({
         medicao_id: medEditando.id,
         numero,
-        data_emissao: $('nf-data').value || new Date().toISOString().slice(0, 10),
+        data_emissao: $('nf-data').value || hojeLocal(),
         valor,
         iss_retido: num($('nf-iss').value)
     });

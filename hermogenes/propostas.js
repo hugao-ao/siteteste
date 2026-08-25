@@ -3,7 +3,7 @@
 // preço, preços praticados por cliente, importação de propostas e associação
 // com visitas (com trava de status das visitas na página de Visitas).
 import {
-    sb, toast, fmtDataHora, ligarFecharPorBackdrop, esc, fmtMoeda, STATUS_VISITA
+    sb, toast, fmtDataHora, ligarFecharPorBackdrop, esc, fmtMoeda, STATUS_VISITA, hojeISO
 } from './hermo-common.js';
 import { abrirModalCliente } from './hermo-cliente-modal.js';
 import { listarAnexos, renderGaleria, excluirAnexo, ligarUpload } from './hermo-anexos.js';
@@ -41,6 +41,7 @@ let marcadores = [];
 let propostaEditando = null;
 let itensDraft = [];          // {sel, servico_id, codigo, descricao, local_execucao, quantidade, unidade, modo_preco, preco_mo, preco_material, preco_unit, total}
 let visitasDraft = [];        // ids das visitas associadas
+let parcelasDraft = [];       // {tipo, descricao, percentual, valor, base, dias, data_prevista}
 let localEscolhido = null;
 let itemEditIndex = null;
 let pcAcoes = [];             // checklist de pré-preenchimento pendente
@@ -61,8 +62,9 @@ const fmtCodigo = p => `${String(p.numero).padStart(4, '0')}/${p.ano}`;
 async function carregarTudo() {
     const [p, v, s, ob] = await Promise.all([
         sb.from('hermo_propostas')
-            .select(`*, cliente:hermo_clientes(id, nome, whatsapp),
+            .select(`*, cliente:hermo_clientes(*),
                 itens:hermo_proposta_itens(*, servico:hermo_servicos(id, codigo, descricao, unidade)),
+                parcelas:hermo_proposta_parcelas(*),
                 visitas:hermo_proposta_visitas(visita_id)`)
             .order('ano', { ascending: false }).order('numero', { ascending: false }),
         sb.from('hermo_visitas')
@@ -82,6 +84,7 @@ async function carregarTudo() {
     propostas = (p.data || []).map(x => ({
         ...x,
         itens: (x.itens || []).sort((a, b) => a.ordem - b.ordem),
+        parcelas: (x.parcelas || []).sort((a, b) => a.ordem - b.ordem),
         visitaIds: (x.visitas || []).map(pv => pv.visita_id)
     }));
     visitas = v.data || [];
@@ -476,6 +479,15 @@ async function abrirModalProposta(proposta) {
         total: num(i.total)
     }));
     visitasDraft = [...(proposta?.visitaIds || [])];
+    parcelasDraft = (proposta?.parcelas || []).map(x => ({
+        tipo: x.tipo || 'parcela',
+        descricao: x.descricao || '',
+        percentual: x.percentual,
+        valor: num(x.valor),
+        base: x.base || 'assinatura',
+        dias: x.dias,
+        data_prevista: x.data_prevista || ''
+    }));
     localEscolhido = null;
     $('pp-local-info').style.display = 'none';
 
@@ -486,6 +498,15 @@ async function abrirModalProposta(proposta) {
     $('pp-titulo').value = proposta?.titulo || '';
     $('pp-endereco').value = proposta?.endereco || '';
     $('pp-obs').value = proposta?.observacoes || '';
+
+    $('pp-data').value = proposta?.data_proposta || hojeISO();
+    $('pp-validade').value = proposta?.validade_dias ?? 15;
+    $('pp-contato').value = proposta?.contato_nome || '';
+    $('pp-prazo-dias').value = proposta?.prazo_dias ?? '';
+    $('pp-prazo-tipo').value = proposta?.prazo_tipo || 'uteis';
+    $('pp-garantia').value = proposta?.garantia_anos ?? 5;
+    $('pp-forma-pgto').value = proposta?.forma_pagamento || 'sinal_parcelas';
+    $('pp-pgto-obs').value = proposta?.pagamento_obs || '';
 
     // status: 'conferir' nunca é opção selecionável — só aparece se a proposta já está nele
     const sel = $('pp-status');
@@ -505,7 +526,9 @@ async function abrirModalProposta(proposta) {
 
     await carregarClientesSelect(proposta?.cliente_id || null);
     renderItensDraft();
+    renderParcelasDraft();
     renderVisitasDraft();
+    atualizarAvisoDocumentos();
     carregarAnexosProposta();
 
     $('pp-overlay').classList.add('aberto');
@@ -517,11 +540,207 @@ function fecharModalProposta() {
     propostaEditando = null;
     itensDraft = [];
     visitasDraft = [];
+    parcelasDraft = [];
     localEscolhido = null;
 }
 
 function totalDraft() {
     return itensDraft.reduce((t, i) => t + num(i.total), 0);
+}
+
+// ============================================================
+// PARCELAS / FORMA DE PAGAMENTO
+// ============================================================
+const PARC_TIPO = { sinal: 'Sinal', parcela: 'Parcela', medicao: 'Medição' };
+const PARC_BASE = {
+    assinatura: 'da assinatura',
+    inicio: 'do início',
+    medicao: 'da medição',
+    conclusao: 'da conclusão',
+    data: 'data fixa'
+};
+
+function renderParcelasDraft() {
+    const box = $('pp-parcelas');
+    if (!parcelasDraft.length) {
+        box.innerHTML = `<div style="font-size:.78rem;color:var(--hermo-text-dim)">Nenhuma parcela — use “Sugerir pelo total”.</div>`;
+    } else {
+        box.innerHTML = parcelasDraft.map((x, i) => `
+            <div class="pp-parcela" data-i="${i}">
+              <select class="p-tipo">
+                ${Object.entries(PARC_TIPO).map(([v, l]) =>
+                    `<option value="${v}"${x.tipo === v ? ' selected' : ''}>${l}</option>`).join('')}
+              </select>
+              <input class="p-desc" type="text" placeholder="descrição" value="${esc(x.descricao || '')}" />
+              <input class="p-pct" type="number" step="0.01" placeholder="%" value="${x.percentual ?? ''}" title="percentual do total" />
+              <input class="p-val" type="number" step="0.01" placeholder="valor" value="${x.valor ?? ''}" />
+              <select class="p-base">
+                ${Object.entries(PARC_BASE).map(([v, l]) =>
+                    `<option value="${v}"${x.base === v ? ' selected' : ''}>${l}</option>`).join('')}
+              </select>
+              ${x.base === 'data'
+                ? `<input class="p-data" type="date" value="${x.data_prevista || ''}" />`
+                : `<input class="p-dias" type="number" min="0" placeholder="dias" value="${x.dias ?? ''}" />`}
+              <button class="p-x" title="Remover">✕</button>
+            </div>`).join('');
+    }
+    ligarEventosParcelas();
+    atualizarAvisoParcelas();
+    atualizarAvisoDocumentos();
+}
+
+function ligarEventosParcelas() {
+    $('pp-parcelas').querySelectorAll('.pp-parcela').forEach(el => {
+        const i = parseInt(el.dataset.i);
+        const p = parcelasDraft[i];
+        const q = c => el.querySelector(c);
+        q('.p-tipo').onchange = e => { p.tipo = e.target.value; atualizarAvisoParcelas(); };
+        q('.p-desc').oninput = e => { p.descricao = e.target.value; };
+        q('.p-pct').oninput = e => {
+            p.percentual = e.target.value === '' ? null : num(e.target.value);
+            // percentual manda no valor: recalcula sobre o total dos itens
+            if (p.percentual != null) {
+                p.valor = Math.round(totalDraft() * p.percentual) / 100;
+                q('.p-val').value = p.valor;
+            }
+            atualizarAvisoParcelas();
+        };
+        q('.p-val').oninput = e => {
+            p.valor = num(e.target.value);
+            p.percentual = null;
+            q('.p-pct').value = '';
+            atualizarAvisoParcelas();
+        };
+        q('.p-base').onchange = e => { p.base = e.target.value; renderParcelasDraft(); };
+        if (q('.p-dias')) q('.p-dias').oninput = e => { p.dias = e.target.value === '' ? null : parseInt(e.target.value); };
+        if (q('.p-data')) q('.p-data').oninput = e => { p.data_prevista = e.target.value; };
+        q('.p-x').onclick = () => { parcelasDraft.splice(i, 1); renderParcelasDraft(); };
+    });
+}
+
+function atualizarAvisoParcelas() {
+    const total = totalDraft();
+    const soma = parcelasDraft.reduce((t, x) => t + num(x.valor), 0);
+    const el = $('pp-parc-aviso');
+    if (!parcelasDraft.length) { el.textContent = ''; el.className = 'pp-parc-aviso'; return; }
+    const dif = Math.round((total - soma) * 100) / 100;
+    if (Math.abs(dif) < 0.01) {
+        el.textContent = `soma ${fmtMoeda(soma)} = total ✓`;
+        el.className = 'pp-parc-aviso ok';
+    } else {
+        el.textContent = `soma ${fmtMoeda(soma)} — ${dif > 0 ? 'faltam' : 'excedem'} ${fmtMoeda(Math.abs(dif))}`;
+        el.className = 'pp-parc-aviso erro';
+    }
+}
+
+// ============================================================
+// DOCUMENTOS (proposta em PDF/Excel, contrato em Word/PDF)
+// ============================================================
+function atualizarAvisoDocumentos() {
+    const faltas = [];
+    if (!itensDraft.length) faltas.push('itens de serviço');
+    if (!$('pp-cliente').value) faltas.push('cliente');
+    if (!parcelasDraft.length) faltas.push('parcelas');
+    if (!$('pp-prazo-dias').value) faltas.push('prazo de execução');
+    $('pp-doc-aviso').textContent = faltas.length
+        ? `Faltando para o documento sair completo: ${faltas.join(', ')}.`
+        : 'Tudo preenchido — os documentos saem completos.';
+}
+
+/** Junta o que está na tela (mesmo sem salvar) no formato que os geradores esperam. */
+async function dadosDoDocumento() {
+    const clienteId = $('pp-cliente').value || null;
+    let cliente = null;
+    if (clienteId) {
+        const { data, error } = await sb.from('hermo_clientes').select('*').eq('id', clienteId).single();
+        if (error) throw new Error('Não deu para carregar o cliente: ' + error.message);
+        cliente = data;
+    }
+    return {
+        proposta: {
+            numero: parseInt($('pp-numero').value) || 0,
+            ano: parseInt($('pp-ano').value) || new Date().getFullYear(),
+            titulo: $('pp-titulo').value.trim(),
+            endereco: $('pp-endereco').value.trim(),
+            observacoes: $('pp-obs').value.trim(),
+            data_proposta: $('pp-data').value || hojeISO(),
+            contato_nome: $('pp-contato').value.trim(),
+            validade_dias: parseInt($('pp-validade').value) || null,
+            prazo_dias: parseInt($('pp-prazo-dias').value) || null,
+            prazo_tipo: $('pp-prazo-tipo').value,
+            garantia_anos: parseInt($('pp-garantia').value),
+            forma_pagamento: $('pp-forma-pgto').value,
+            pagamento_obs: $('pp-pgto-obs').value.trim()
+        },
+        cliente,
+        itens: itensDraft.map(i => ({
+            descricao: i.descricao,
+            codigo: i.codigo,
+            unidade: i.unidade,
+            quantidade: i.quantidade,
+            preco_unit: i.preco_unit,
+            total: i.total
+        })),
+        parcelas: parcelasDraft,
+        inicioPrevisto: null
+    };
+}
+
+async function gerarDocumento(qual) {
+    if (!itensDraft.length) { toast('Adicione pelo menos um item de serviço.', true); return; }
+    const botoes = ['pp-btn-doc-proposta-pdf', 'pp-btn-doc-proposta-xls', 'pp-btn-doc-contrato-doc', 'pp-btn-doc-contrato-pdf'];
+    botoes.forEach(b => $(b).disabled = true);
+    try {
+        const d = await dadosDoDocumento();
+        if ((qual === 'contrato-doc' || qual === 'contrato-pdf') && !d.cliente) {
+            toast('O contrato precisa de um cliente selecionado.', true);
+            return;
+        }
+        const mod = await import('./hermo-documentos.js');
+        if (qual === 'proposta-pdf') await mod.gerarPropostaPDF(d);
+        else if (qual === 'proposta-xls') await mod.gerarPropostaExcel(d);
+        else if (qual === 'contrato-doc') mod.gerarContratoWord(d);
+        else if (qual === 'contrato-pdf') await mod.gerarContratoPDF(d);
+        toast('Documento gerado.');
+    } catch (e) {
+        toast('Erro ao gerar o documento: ' + e.message, true);
+    } finally {
+        botoes.forEach(b => $(b).disabled = false);
+    }
+}
+
+/** Monta as parcelas a partir da forma de pagamento e do total dos itens. */
+function sugerirParcelas() {
+    const total = Math.round(totalDraft() * 100) / 100;
+    if (total <= 0) { toast('Adicione itens à proposta antes de sugerir as parcelas.', true); return; }
+    const forma = $('pp-forma-pgto').value;
+    // reparte em n partes, jogando a sobra de centavos na primeira
+    const reparte = (valor, n) => {
+        const base = Math.floor((valor / n) * 100) / 100;
+        const partes = Array(n).fill(base);
+        partes[0] = Math.round((valor - base * (n - 1)) * 100) / 100;
+        return partes;
+    };
+
+    if (forma === 'a_vista') {
+        parcelasDraft = [{ tipo: 'parcela', descricao: 'Pagamento à vista', percentual: 100, valor: total, base: 'conclusao', dias: null, data_prevista: '' }];
+    } else if (forma === 'sinal_parcelas') {
+        const sinal = Math.round(total * 0.4 * 100) / 100;
+        const resto = reparte(Math.round((total - sinal) * 100) / 100, 2);
+        parcelasDraft = [
+            { tipo: 'sinal', descricao: 'Sinal', percentual: null, valor: sinal, base: 'assinatura', dias: null, data_prevista: '' },
+            { tipo: 'parcela', descricao: 'Com 30 dias', percentual: null, valor: resto[0], base: 'assinatura', dias: 30, data_prevista: '' },
+            { tipo: 'parcela', descricao: 'Com 60 dias', percentual: null, valor: resto[1], base: 'assinatura', dias: 60, data_prevista: '' }
+        ];
+    } else if (forma === 'parcelas') {
+        parcelasDraft = reparte(total, 3).map((v, i) => ({
+            tipo: 'parcela', descricao: `${i + 1}ª parcela`, percentual: null, valor: v,
+            base: 'assinatura', dias: i * 30, data_prevista: ''
+        }));
+    } else { // medicao
+        parcelasDraft = [{ tipo: 'medicao', descricao: 'Conforme medição mensal', percentual: 100, valor: total, base: 'medicao', dias: 15, data_prevista: '' }];
+    }
+    renderParcelasDraft();
 }
 
 /** Anexos da proposta + HERDADOS das visitas associadas (somente leitura). */
@@ -563,6 +782,8 @@ function renderItensDraft() {
     }
     $('pp-total').textContent = fmtMoeda(totalDraft());
     atualizarItensSelbar();
+    atualizarAvisoParcelas();   // o total mudou: reavalia a soma das parcelas
+    atualizarAvisoDocumentos();
 
     cont.querySelectorAll('[data-isel]').forEach(ch => ch.addEventListener('change', e => {
         itensDraft[parseInt(e.target.dataset.isel)].sel = e.target.checked;
@@ -1074,6 +1295,23 @@ async function salvarProposta() {
             longitude: lng,
             valor_total: Math.round(totalDraft() * 100) / 100,
             observacoes: $('pp-obs').value.trim() || null,
+            data_proposta: $('pp-data').value || null,
+            contato_nome: $('pp-contato').value.trim() || null,
+            validade_dias: $('pp-validade').value || null,
+            prazo_dias: $('pp-prazo-dias').value || null,
+            prazo_tipo: $('pp-prazo-tipo').value,
+            garantia_anos: $('pp-garantia').value || null,
+            forma_pagamento: $('pp-forma-pgto').value,
+            pagamento_obs: $('pp-pgto-obs').value.trim() || null,
+            parcelas: parcelasDraft.map(x => ({
+                tipo: x.tipo,
+                descricao: x.descricao || null,
+                percentual: x.percentual,
+                valor: x.valor,
+                base: x.base,
+                dias: x.base === 'data' ? null : x.dias,
+                data_prevista: x.base === 'data' ? (x.data_prevista || null) : null
+            })),
             itens: itensDraft.map(i => ({
                 servico_id: i.servico_id,
                 local_execucao: i.local_execucao || null,
@@ -1231,6 +1469,29 @@ $('pp-btn-add-servicos').addEventListener('click', abrirSelecaoServicos);
 $('pp-btn-praticados').addEventListener('click', aplicarPraticados);
 $('pp-btn-importar').addEventListener('click', abrirImportar);
 $('pp-btn-visitas').addEventListener('click', abrirAssociarVisitas);
+
+// condições comerciais / parcelas
+$('pp-btn-add-parcela').addEventListener('click', () => {
+    parcelasDraft.push({
+        tipo: parcelasDraft.length ? 'parcela' : 'sinal',
+        descricao: '', percentual: null, valor: 0,
+        base: 'assinatura', dias: null, data_prevista: ''
+    });
+    renderParcelasDraft();
+});
+$('pp-btn-parc-sugerir').addEventListener('click', sugerirParcelas);
+$('pp-btn-parc-limpar').addEventListener('click', () => { parcelasDraft = []; renderParcelasDraft(); });
+$('pp-forma-pgto').addEventListener('change', () => {
+    if (!parcelasDraft.length) sugerirParcelas();
+});
+['pp-cliente', 'pp-prazo-dias'].forEach(id =>
+    $(id).addEventListener('change', atualizarAvisoDocumentos));
+
+// documentos gerados
+$('pp-btn-doc-proposta-pdf').addEventListener('click', () => gerarDocumento('proposta-pdf'));
+$('pp-btn-doc-proposta-xls').addEventListener('click', () => gerarDocumento('proposta-xls'));
+$('pp-btn-doc-contrato-doc').addEventListener('click', () => gerarDocumento('contrato-doc'));
+$('pp-btn-doc-contrato-pdf').addEventListener('click', () => gerarDocumento('contrato-pdf'));
 
 // sub-modal item
 $('pi-fechar').addEventListener('click', fecharItemModal);

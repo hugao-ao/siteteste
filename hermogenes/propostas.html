@@ -55,6 +55,41 @@
         background: var(--hermo-bg); border-radius: 6px; padding: 7px 10px;
         display: none; align-items: center; gap: 8px; flex-wrap: wrap;
     }
+    /* condições comerciais */
+    .pp-cond-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; }
+    .pp-cond-grid label.mini, label.mini { font-size: .72rem; color: var(--hermo-text-dim); }
+    .pp-inline { display: flex; gap: 6px; }
+    .pp-inline input { flex: 0 0 72px; }
+    .pp-inline select { flex: 1; }
+    .pp-parc-head {
+        display: flex; justify-content: space-between; align-items: baseline; gap: 8px;
+        margin: 12px 0 6px; font-size: .78rem; color: var(--hermo-text-dim);
+    }
+    .pp-parc-aviso { font-weight: 700; }
+    .pp-parc-aviso.ok { color: var(--hermo-success); }
+    .pp-parc-aviso.erro { color: var(--hermo-warn); }
+    .pp-parcelas { display: flex; flex-direction: column; gap: 6px; }
+    .pp-parcela {
+        display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+        background: var(--hermo-surface-2); border: 1px solid var(--hermo-border);
+        border-radius: 8px; padding: 6px 8px; font-size: .78rem;
+    }
+    .pp-parcela input, .pp-parcela select {
+        background: var(--hermo-bg); border: 1px solid var(--hermo-border);
+        border-radius: 6px; color: var(--hermo-text); padding: 5px 7px; font-size: .76rem;
+    }
+    .pp-parcela .p-tipo { flex: 0 0 96px; }
+    .pp-parcela .p-desc { flex: 1; min-width: 120px; }
+    .pp-parcela .p-pct  { flex: 0 0 62px; text-align: right; }
+    .pp-parcela .p-val  { flex: 0 0 96px; text-align: right; }
+    .pp-parcela .p-base { flex: 0 0 118px; }
+    .pp-parcela .p-dias { flex: 0 0 62px; text-align: right; }
+    .pp-parcela .p-data { flex: 0 0 132px; }
+    .pp-parcela .p-x {
+        flex: 0 0 auto; background: none; border: none; cursor: pointer;
+        color: var(--hermo-text-dim); font-size: 1rem; line-height: 1;
+    }
+    .pp-parcela .p-x:hover { color: var(--hermo-danger, #e5484d); }
   </style>
 </head>
 <body>
@@ -164,6 +199,75 @@
             <button class="hermo-btn small ghost" id="pp-btn-importar" title="Trazer serviços e preços de outra proposta (sem quantidades)">📥 Importar de outra proposta</button>
           </div>
           <div class="pp-total-row">Total da proposta: <b id="pp-total">R$ 0,00</b></div>
+        </div>
+
+        <!-- CONDIÇÕES COMERCIAIS -->
+        <div class="hermo-field">
+          <label>Condições comerciais</label>
+          <div class="pp-cond-grid">
+            <div class="hermo-field">
+              <label class="mini">Data da proposta</label>
+              <input id="pp-data" type="date" />
+            </div>
+            <div class="hermo-field">
+              <label class="mini">Validade (dias)</label>
+              <input id="pp-validade" type="number" min="1" max="365" placeholder="15" />
+            </div>
+            <div class="hermo-field">
+              <label class="mini">Aos cuidados de (Att.)</label>
+              <input id="pp-contato" type="text" placeholder="ex.: Sr. Síndico" />
+            </div>
+            <div class="hermo-field">
+              <label class="mini">Prazo de execução</label>
+              <div class="pp-inline">
+                <input id="pp-prazo-dias" type="number" min="1" max="999" placeholder="15" />
+                <select id="pp-prazo-tipo">
+                  <option value="uteis">dias úteis</option>
+                  <option value="corridos">dias corridos</option>
+                </select>
+              </div>
+            </div>
+            <div class="hermo-field">
+              <label class="mini">Garantia (anos)</label>
+              <input id="pp-garantia" type="number" min="0" max="20" placeholder="5" />
+            </div>
+            <div class="hermo-field">
+              <label class="mini">Forma de pagamento</label>
+              <select id="pp-forma-pgto">
+                <option value="a_vista">À vista</option>
+                <option value="sinal_parcelas">Sinal + parcelas</option>
+                <option value="parcelas">Parcelas</option>
+                <option value="medicao">Por medição</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="pp-parc-head">
+            <span>Parcelas previstas</span>
+            <span class="pp-parc-aviso" id="pp-parc-aviso"></span>
+          </div>
+          <div class="pp-parcelas" id="pp-parcelas"></div>
+          <div class="pp-ferramentas" style="margin-top:6px">
+            <button class="hermo-btn small" id="pp-btn-add-parcela">+ Parcela</button>
+            <button class="hermo-btn small ghost" id="pp-btn-parc-sugerir" title="Monta as parcelas conforme a forma de pagamento e o total da proposta">✨ Sugerir pelo total</button>
+            <button class="hermo-btn small ghost danger" id="pp-btn-parc-limpar">Limpar</button>
+          </div>
+          <div class="hermo-field" style="margin-top:8px">
+            <label class="mini">Observação de pagamento (entra na proposta e no contrato)</label>
+            <input id="pp-pgto-obs" type="text" placeholder="ex.: Sinal na assinatura; saldo em 30 e 60 dias." />
+          </div>
+        </div>
+
+        <!-- DOCUMENTOS GERADOS -->
+        <div class="hermo-field">
+          <label>Documentos</label>
+          <div class="pp-ferramentas">
+            <button class="hermo-btn small" id="pp-btn-doc-proposta-pdf">📄 Proposta (PDF)</button>
+            <button class="hermo-btn small" id="pp-btn-doc-proposta-xls">📊 Proposta (Excel)</button>
+            <button class="hermo-btn small" id="pp-btn-doc-contrato-doc">📝 Contrato (Word)</button>
+            <button class="hermo-btn small" id="pp-btn-doc-contrato-pdf">📄 Contrato (PDF)</button>
+          </div>
+          <div id="pp-doc-aviso" style="font-size:.74rem;color:var(--hermo-text-dim);margin-top:4px"></div>
         </div>
 
         <!-- VISITAS ASSOCIADAS -->
