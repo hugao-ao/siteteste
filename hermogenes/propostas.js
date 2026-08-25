@@ -656,23 +656,46 @@ function atualizarAvisoParcelas() {
 // ============================================================
 // PRAZO DE EXECUÇÃO
 // ============================================================
-/** Mostra o controle que corresponde ao tipo de prazo escolhido. */
+/** Mostra o controle que corresponde ao tipo de prazo escolhido.
+ *  NÃO apaga o que está escondido: passar pelo select (uma seta do teclado já
+ *  dispara change) não pode destruir o número ou a cláusula que o usuário
+ *  digitou — a coerência do que vai ao banco é resolvida em prazoDoFormulario. */
 function aoMudarPrazoTipo() {
     const tipo = $('pp-prazo-tipo').value;
     const emDias = tipo === 'uteis' || tipo === 'corridos';
     $('pp-prazo-dias').style.display = emDias ? '' : 'none';
     $('pp-prazo-texto').style.display = tipo === 'texto' ? '' : 'none';
-    if (!emDias) $('pp-prazo-dias').value = '';
-    if (tipo !== 'texto') $('pp-prazo-texto').value = '';
     atualizarAvisoDocumentos();
+}
+
+/** O prazo como vai ao banco e aos documentos: só o que pertence ao modo
+ *  escolhido. O campo escondido continua na tela, mas não é gravado. */
+function prazoDoFormulario() {
+    const tipo = $('pp-prazo-tipo').value;
+    const emDias = tipo === 'uteis' || tipo === 'corridos';
+    const dias = parseInt($('pp-prazo-dias').value);
+    return {
+        prazo_tipo: tipo,
+        // 0 ou vazio não é prazo: viraria a cláusula de cronograma sem avisar
+        prazo_dias: (emDias && Number.isFinite(dias) && dias >= 1) ? dias : null,
+        prazo_texto: tipo === 'texto' ? ($('pp-prazo-texto').value.trim() || null) : null
+    };
 }
 
 /** O prazo está resolvido? "Cronograma da obra" já é uma resposta completa. */
 function prazoPreenchido() {
-    const tipo = $('pp-prazo-tipo').value;
-    if (tipo === 'cronograma') return true;
-    if (tipo === 'texto') return !!$('pp-prazo-texto').value.trim();
-    return !!$('pp-prazo-dias').value;
+    const p = prazoDoFormulario();
+    if (p.prazo_tipo === 'cronograma') return true;
+    if (p.prazo_tipo === 'texto') return !!p.prazo_texto;
+    return p.prazo_dias != null;
+}
+
+/** Mensagem do que falta no prazo, para bloquear salvar/gerar com estado incoerente. */
+function faltaNoPrazo() {
+    if (prazoPreenchido()) return null;
+    return $('pp-prazo-tipo').value === 'texto'
+        ? 'Escreva o prazo de execução ou escolha outro modo.'
+        : 'Informe o prazo em dias (ou escolha "de acordo com o cronograma da obra").';
 }
 
 // ============================================================
@@ -708,9 +731,7 @@ async function dadosDoDocumento() {
             data_proposta: $('pp-data').value || hojeISO(),
             contato_nome: $('pp-contato').value.trim(),
             validade_dias: parseInt($('pp-validade').value) || null,
-            prazo_dias: parseInt($('pp-prazo-dias').value) || null,
-            prazo_tipo: $('pp-prazo-tipo').value,
-            prazo_texto: $('pp-prazo-texto').value.trim(),
+            ...prazoDoFormulario(),
             // campo vazio não pode virar NaN: o gerador cai no padrão só com null
             garantia_anos: $('pp-garantia').value === '' ? null : parseInt($('pp-garantia').value),
             garantia_contrato_anos: $('pp-garantia-contrato').value === '' ? null : parseInt($('pp-garantia-contrato').value),
@@ -733,6 +754,8 @@ async function dadosDoDocumento() {
 
 async function gerarDocumento(qual) {
     if (!itensDraft.length) { toast('Adicione pelo menos um item de serviço.', true); return; }
+    const faltaPrazo = faltaNoPrazo();
+    if (faltaPrazo) { toast(faltaPrazo, true); return; }
     const botoes = ['pp-btn-doc-proposta-pdf', 'pp-btn-doc-proposta-xls', 'pp-btn-doc-contrato-doc', 'pp-btn-doc-contrato-pdf'];
     botoes.forEach(b => $(b).disabled = true);
     try {
@@ -1311,6 +1334,10 @@ async function salvarProposta() {
     if (!numero || numero < 1 || numero > 9999) { toast('Número inválido (1 a 9999).', true); return; }
     if (!ano || ano < 2000 || ano > 2100) { toast('Ano inválido.', true); return; }
     if (!titulo) { toast('Título é obrigatório.', true); return; }
+    // modo de prazo escolhido sem o dado correspondente gravaria um estado incoerente,
+    // que os documentos imprimiriam como "cronograma da obra" sem avisar
+    const faltaPrazo = faltaNoPrazo();
+    if (faltaPrazo) { toast(faltaPrazo, true); return; }
     // código único por ano
     const duplicada = propostas.find(p => p.numero === numero && p.ano === ano && p.id !== propostaEditando?.id);
     if (duplicada) { toast(`Já existe a proposta ${fmtCodigo(duplicada)} — escolha outro número.`, true); return; }
@@ -1344,9 +1371,7 @@ async function salvarProposta() {
             data_proposta: $('pp-data').value || null,
             contato_nome: $('pp-contato').value.trim() || null,
             validade_dias: $('pp-validade').value || null,
-            prazo_dias: $('pp-prazo-dias').value || null,
-            prazo_tipo: $('pp-prazo-tipo').value,
-            prazo_texto: $('pp-prazo-texto').value.trim() || null,
+            ...prazoDoFormulario(),
             garantia_anos: $('pp-garantia').value || null,
             garantia_contrato_anos: $('pp-garantia-contrato').value || null,
             forma_pagamento: $('pp-forma-pgto').value,
@@ -1532,9 +1557,10 @@ $('pp-btn-parc-limpar').addEventListener('click', () => { parcelasDraft = []; re
 $('pp-forma-pgto').addEventListener('change', () => {
     if (!parcelasDraft.length) sugerirParcelas();
 });
-['pp-cliente', 'pp-prazo-dias'].forEach(id =>
-    $(id).addEventListener('change', atualizarAvisoDocumentos));
+$('pp-cliente').addEventListener('change', atualizarAvisoDocumentos);
 $('pp-prazo-tipo').addEventListener('change', aoMudarPrazoTipo);
+// 'input' (e não 'change'): o aviso tem de acompanhar a digitação, não o blur
+$('pp-prazo-dias').addEventListener('input', atualizarAvisoDocumentos);
 $('pp-prazo-texto').addEventListener('input', atualizarAvisoDocumentos);
 
 // documentos gerados
