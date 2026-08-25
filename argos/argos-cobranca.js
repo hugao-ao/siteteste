@@ -111,21 +111,39 @@ export function descricaoNota({ servico, paciente, cpf, mes, dias = [], sessoes,
         : `ao custo de ${dinheiro(acordo.valor)} por sessão`;
     const base = `Serviços de ${servico} devidamente prestados a ${quem}`;
 
-    if (!dias.length) {
-        return `${base}, no mês de ${mesNome} do ano de ${ano}. `
-            + `Sessões com duração aproximada de ${dur} e ${custo}.`;
-    }
     const n = sessoes == null ? dias.length : sessoes;
-    return `${base}, no(s) dia(s): ${dias.join(', ')}, no mês de ${mesNome} do ano de ${ano}. `
-        + `Total de ${n} sessões com duração aproximada de ${dur} e ${custo}.`;
+    const ondeQuando = dias.length
+        ? `, no(s) dia(s): ${dias.join(', ')}, no mês de ${mesNome} do ano de ${ano}. `
+        : `, no mês de ${mesNome} do ano de ${ano}. `;
+    // sem dias, ou com dias que não somam sessão nenhuma (mês só de
+    // atendimento familiar), a frase não anuncia total — dizer "Total de 0
+    // sessões" numa nota fiscal seria pior que não dizer nada
+    if (!dias.length || !n) {
+        return `${base}${ondeQuando}Sessões com duração aproximada de ${dur} e ${custo}.`;
+    }
+    return `${base}${ondeQuando}Total de ${n} sessões com duração aproximada de ${dur} e ${custo}.`;
 }
 
-/** 60 → "1 (uma) hora"; 90 → "1h30"; 30 → "30 minutos". */
+/**
+ * Duração como a nota fiscal escreve: o número seguido dele por extenso,
+ * entre parênteses — "1 (uma) hora", "30 (trinta) minutos". É o estilo da
+ * casa e é o que aparece nas notas já emitidas.
+ */
+const POR_EXTENSO = {
+    1: 'uma', 2: 'duas', 3: 'três', 4: 'quatro', 5: 'cinco', 10: 'dez',
+    15: 'quinze', 20: 'vinte', 25: 'vinte e cinco', 30: 'trinta',
+    40: 'quarenta', 45: 'quarenta e cinco', 50: 'cinquenta'
+};
+const extenso = n => POR_EXTENSO[n] ? ` (${POR_EXTENSO[n]})` : '';
+
 export function duracaoTexto(min) {
     const n = Number(min) || 60;
     if (n === 60) return '1 (uma) hora';
-    if (n % 60 === 0) return `${n / 60} horas`;
-    if (n < 60) return `${n} minutos`;
+    if (n % 60 === 0) {
+        const h = n / 60;
+        return `${h}${extenso(h)} horas`;
+    }
+    if (n < 60) return `${n}${extenso(n)} minutos`;
     return `${Math.floor(n / 60)}h${String(n % 60).padStart(2, '0')}`;
 }
 
