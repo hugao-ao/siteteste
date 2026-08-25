@@ -499,6 +499,7 @@ async function gravarDinamicas(idPorChave) {
         await sb.from('argos_dinamicas').delete().in('paciente_id', alvo.slice(i, i + 200));
     }
 
+    const cobertura = fimDaCobertura();
     const idDinamica = new Map();
     const semPaciente = [];
     let n = 0;
@@ -507,11 +508,17 @@ async function gravarDinamicas(idPorChave) {
         if (!pid) { semPaciente.push(p.paciente); continue; }
         let anterior = null;
         const fatias = fatiasDoPar(p, acordoPorChave);
+        // Um horário só continua em aberto se as linhas dele vão até o fim do
+        // que a planilha cobre. Quem parou de aparecer em junho parou em
+        // junho — deixar em aberto faz a agenda projetar sessão que não
+        // existe e o fechamento cobrar mensalidade de horário encerrado.
+        const vaiAteOFim = !cobertura
+            || (fatias.length && fatias[fatias.length - 1].ate >= cobertura);
         for (const f of fatias) {
             const mesInicial = f.meses[0];
             const acordo = f.acordo;
             const nota = notasPorChave.get(p.chave);
-            const ultima = f === fatias[fatias.length - 1];
+            const ultima = f === fatias[fatias.length - 1] && vaiAteOFim;
             const registro = {
                 paciente_id: pid,
                 rotulo: f.hora ? `${p.profissional} — ${['Dom', '2ª', '3ª', '4ª', '5ª', '6ª', 'Sáb'][f.dow]} ${f.hora}` : `${p.profissional} — avulso`,
@@ -551,7 +558,17 @@ async function gravarDinamicas(idPorChave) {
     return idDinamica;
 }
 
-const chaveTrecho = (p, t) => `${p.chave}|${p.profissional}|${t.de}`;
+// `p.id` já distingue dois acordos paralelos do mesmo paciente com o mesmo
+// profissional (os sufixos (PM)/(PP) da planilha). Usar só chave+profissional
+// faria os dois apontarem para a mesma dinâmica: uma ficaria sem sessão
+// nenhuma e a outra com as sessões das duas, repetidas no mesmo horário.
+const chaveTrecho = (p, t) => `${p.id || `${p.chave}|${p.profissional}`}|${t.de}`;
+
+/** Último dia do mês mais recente que as abas de frequência cobrem. */
+function fimDaCobertura() {
+    const meses = Object.keys(entendido.porMes || {}).map(Number).filter(Boolean).sort((a, b) => a - b);
+    return meses.length ? fimDoMes(`${ANO}-${String(meses[meses.length - 1]).padStart(2, '0')}`) : null;
+}
 
 const primeiroDiaDoMes = m => `${ANO}-${String(m).padStart(2, '0')}-01`;
 const ultimoDiaDoMes = m => fimDoMes(`${ANO}-${String(m).padStart(2, '0')}`);
@@ -655,9 +672,7 @@ function semanasSemRegistro(trecho, registradas, coberto, aberto) {
 
 async function gravarSessoes(idPorChave, idDinamica) {
     marcar('sessoes', { fazendo: true });
-    const meses = Object.keys(entendido.porMes || {}).map(Number).filter(Boolean).sort((a, b) => a - b);
-    const ultimoMesCoberto = meses.length
-        ? fimDoMes(`${ANO}-${String(meses[meses.length - 1]).padStart(2, '0')}`) : null;
+    const ultimoMesCoberto = fimDaCobertura();
     // quem já saiu não tem horário aberto: o último trecho dele termina onde
     // termina, e não segue até o fim do que a planilha cobre
     const inativos = new Set((entendido.pacientes || [])
@@ -670,7 +685,10 @@ async function gravarSessoes(idPorChave, idDinamica) {
         // as fatias são as mesmas de gravarDinamicas: cada sessão precisa cair
         // na dinâmica que valia no mês dela, senão vai para o acordo errado
         const fatias = fatiasDoPar(p, acordoPorChave);
-        const ultima = inativos.has(p.chave) ? null : fatias[fatias.length - 1];
+        const derradeira = fatias[fatias.length - 1];
+        const aberta = !inativos.has(p.chave) && derradeira
+            && (!ultimoMesCoberto || derradeira.ate >= ultimoMesCoberto);
+        const ultima = aberta ? derradeira : null;
         for (const f of fatias) {
             const did = idDinamica.get(chaveTrecho(p, f)) || null;
             const registradas = new Set();

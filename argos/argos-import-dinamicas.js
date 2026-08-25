@@ -12,7 +12,7 @@
 // menos a Patricia: ela é dona e supervisora, e entra num grupo só quando
 // o atendimento é individual ou familiar.
 
-import { COBRA, PROFISSIONAL_PADRAO } from './argos-import-freq.js';
+import { COBRA, PROFISSIONAL_PADRAO, SUFIXO_PROFISSIONAL} from './argos-import-freq.js';
 
 export const DOW_ROTULO = ['Dom', '2ª', '3ª', '4ª', '5ª', '6ª', 'Sáb'];
 
@@ -35,14 +35,40 @@ export const inicioDoMes = (ano, mes) => `${ano}-${String(mes).padStart(2, '0')}
  * Devolve [{ chave, paciente, profissional, trechos: [{ dow, hora,
  * de, ate, meses, sessoes }] }].
  */
+/**
+ * Assinatura que separa dois acordos do mesmo paciente com o mesmo
+ * profissional: os sufixos da planilha, tirando a sigla do profissional
+ * (que já está na chave). É o que distingue "(ELIS) (PM)" de "(ELIS) (PP)".
+ */
+const assinaturaDoAcordo = l => (l.sufixos || [])
+    .filter(x => !SUFIXO_PROFISSIONAL[x]).sort().join('+');
+
 export function trechosPorPar(porMes, ano) {
+    // Um paciente pode ter DOIS acordos em paralelo com o mesmo profissional
+    // no mesmo horário — a planilha os separa por sufixo, como (PM) e (PP) de
+    // um mesmo plano. Sem isso os dois colapsam num só e o mês fecha pela
+    // metade. Duas linhas com a MESMA assinatura continuam sendo a mesma
+    // coisa repetida, e seguem juntas.
+    const duplicados = new Set();
+    for (const mes of Object.keys(porMes)) {
+        const conta = new Map();
+        for (const l of porMes[mes]) {
+            const base = `${l.chave}|${l.profissional}`;
+            conta.set(base, (conta.get(base) || 0) + 1);
+        }
+        for (const [base, n] of conta) if (n > 1) duplicados.add(base);
+    }
+
     const pares = new Map();
     for (const mes of Object.keys(porMes).map(Number).sort((a, b) => a - b)) {
         for (const l of porMes[mes]) {
-            const k = `${l.chave}|${l.profissional}`;
+            const base = `${l.chave}|${l.profissional}`;
+            const k = duplicados.has(base) ? `${base}|${assinaturaDoAcordo(l)}` : base;
             let p = pares.get(k);
             if (!p) {
-                p = { chave: l.chave, paciente: l.paciente, profissional: l.profissional,
+                // `id` é a chave de agrupamento: quem consome os pares precisa
+                // dela para não confundir dois acordos paralelos do mesmo par
+                p = { id: k, chave: l.chave, paciente: l.paciente, profissional: l.profissional,
                       sufixos: l.sufixos, meses: [] };
                 pares.set(k, p);
             }

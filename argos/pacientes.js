@@ -7,7 +7,7 @@ import { carregarPermissoes } from './argos-permissoes.js';
 import {
     DOW_NOMES, PACOTE_MODOS, STATUS_SESSAO, acordoLabel, mesclarSessoes,
     fechamentoPaciente, hojeISO, somarDias, formataBR, formataMoeda,
-    conflitosDeDinamica, conflitosDeSessao,
+    conflitosDeDinamica, conflitosDeSessao, mesmaAgenda,
     divisaoRepasses, repassesDe, unidadeRepasse, aplicarFimDeProcesso,
     SITUACAO_PROCESSO, situacaoLabel
 } from './argos-recorrencia.js';
@@ -891,7 +891,10 @@ document.getElementById('form-dinamica').addEventListener('submit', async (e) =>
     const grupoAnterior = dinamicaAntes ? (dinamicaAntes.grupo_id || null) : null; // capturado ANTES do update
     // Bloqueio de conflito: individual não divide espaço/profissional/horário
     // com ninguém, e ninguém entra em cima de uma individual existente.
-    if (registro.recorrencia_tipo === 'recorrente' && registro.ativo) {
+    // quem só mexeu no acordo não criou choque nenhum: o que houver já estava
+    // lá antes, e recusar o salvamento não o desfaz
+    if (registro.recorrencia_tipo === 'recorrente' && registro.ativo
+        && !mesmaAgenda(registro, dinamicaAntes)) {
         const outras = dinamicas.filter(d => d.id !== editandoDinamicaId && d.ativo !== false);
         const { data: sessTodas } = await todas(() => sb.from('argos_sessoes').select('*'));
         const sessOutras = (sessTodas || []).filter(s => s.dinamica_ref !== editandoDinamicaId);
