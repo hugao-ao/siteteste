@@ -521,16 +521,41 @@ function getPessoasDisponiveis() {
   return pessoas;
 }
 
+// Data de referência do diagnóstico: a data da reunião, não "hoje".
+// Todo cálculo de prazo/idade deve partir daqui para não divergir entre
+// o card, o gráfico e o resumo da análise.
+function getDataReferenciaObj() {
+  if (variaveisMercado && variaveisMercado.data_reuniao) {
+    const d = new Date(variaveisMercado.data_reuniao + 'T00:00:00');
+    if (!isNaN(d)) return d;
+  }
+  return new Date();
+}
+
+// Interpreta uma data de campo (YYYY-MM-DD ou DD/MM/YYYY) sempre na hora
+// local, para não misturar UTC com local e perder um dia na conta.
+function parseDataLocalObj(valor) {
+  if (!valor) return null;
+  const str = String(valor).trim();
+  let m = str.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (m) return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  m = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if (m) return new Date(Number(m[3]), Number(m[2]) - 1, Number(m[1]));
+  const d = new Date(str);
+  return isNaN(d) ? null : d;
+}
+
 function calcularIdade(dataNascimento) {
   if (!dataNascimento) return 30;
-  const hoje = new Date();
-  const nascimento = new Date(dataNascimento);
-  let idade = hoje.getFullYear() - nascimento.getFullYear();
-  const m = hoje.getMonth() - nascimento.getMonth();
-  if (m < 0 || (m === 0 && hoje.getDate() < nascimento.getDate())) {
+  const ref = getDataReferenciaObj();
+  const nascimento = parseDataLocalObj(dataNascimento);
+  if (!nascimento) return 30;
+  let idade = ref.getFullYear() - nascimento.getFullYear();
+  const m = ref.getMonth() - nascimento.getMonth();
+  if (m < 0 || (m === 0 && ref.getDate() < nascimento.getDate())) {
     idade--;
   }
-  return idade || 30;
+  return idade >= 0 ? idade : 30;
 }
 
 function getMesAniversario(dataNascimento) {
@@ -953,6 +978,7 @@ function updateObjetivoField(id, field, value) {
   // MELHORIA 3: Atualizar análises ao mudar campos de prazo ou recorrência
   if (['prazo_meses', 'prazo_idade', 'prazo_data', 'prazo_tipo', 'recorrencia_tipo', 'recorrencia_valor', 'acumulavel'].includes(field)) {
     renderAnalisesObjetivosInline();
+    atualizarDerivadosObjetivos();
   }
 }
 
@@ -1008,6 +1034,63 @@ function atualizarPatrimonioObjetivos() {
       const rentAnual = variaveisMercado.rent_anual_aposentadoria || 6.0;
       const capitalNecessario = rentAnual > 0 ? rendaAnual / (rentAnual / 100) : 0;
       displayCapital.textContent = formatarMoedaObj(capitalNecessario);
+    }
+  });
+
+  atualizarDerivadosObjetivos();
+}
+
+// Recalcula, no lugar, os valores derivados exibidos em cada card
+// (aporte necessário, capital, prazo restante, saldo disponível).
+// Escreve direto nos spans em vez de re-renderizar, para não tirar o
+// foco do campo que o usuário está editando.
+function atualizarDerivadosObjetivos() {
+  if (typeof document === 'undefined' || !Array.isArray(objetivos)) return;
+
+  const pessoas = getPessoasDisponiveis();
+  const patrimonioTotal = calcularPatrimonioParaObjetivos();
+  const rentAposent = variaveisMercado.rent_anual_aposentadoria || 6.0;
+  const perfil = getPerfilAnalise();
+
+  const escrever = (id, texto) => {
+    const el = document.getElementById(id);
+    if (el && el.textContent !== texto) el.textContent = texto;
+  };
+
+  objetivos.forEach(obj => {
+    const saldoDisponivelParaEste = Math.max(
+      0,
+      patrimonioTotal - calcularValorInicialAlocadoExceto(obj.id)
+    );
+    escrever(`saldo-disp-${obj.id}`, formatarMoedaObj(saldoDisponivelParaEste));
+
+    if (obj.tipo === 'aposentadoria') {
+      const meses = calcularMesesRestantesObj(obj, pessoas);
+      const rendaAnual = obj.renda_anual || 0;
+      const capitalNecessario = rentAposent > 0 ? rendaAnual / (rentAposent / 100) : 0;
+      const pessoa = pessoas.find(p => p.id === obj.prazo_pessoa);
+
+      escrever(`capital-necessario-${obj.id}`, formatarMoedaObj(capitalNecessario));
+      escrever(`anos-restantes-${obj.id}`, `${Math.max(0, Math.round(meses / 12))} anos`);
+      if (pessoa) escrever(`idade-atual-${obj.id}`, String(pessoa.idade));
+      escrever(
+        `aporte-mensal-${obj.id}`,
+        formatarMoedaObj(
+          calcularAporteMensalNecessario(capitalNecessario, obj.valor_inicial || 0, meses, perfil)
+        )
+      );
+    } else if (obj.tipo !== 'intangivel') {
+      escrever(
+        `aporte-mensal-obj-${obj.id}`,
+        formatarMoedaObj(
+          calcularAporteMensalNecessario(
+            obj.meta_acumulo || 0,
+            obj.valor_inicial || 0,
+            calcularMesesRestantesObjNormal(obj),
+            perfil
+          )
+        )
+      );
     }
   });
 }
@@ -1094,6 +1177,9 @@ function updateVariavelMercado(campo, valor) {
   }
   // Atualizar análises sem re-renderizar todo o painel (evita perder foco dos inputs)
   renderAnalisesObjetivosInline();
+  // CDI, rentabilidade da aposentadoria e data da reunião mudam capital e
+  // aporte de todos os cards — atualizar os derivados no lugar
+  atualizarDerivadosObjetivos();
 }
 
 async function atualizarDadosMercado() {
@@ -1437,13 +1523,13 @@ function renderCardAposentadoria(obj, pessoas, patrimonioAposentadoriaPorPessoa)
         <div>
           <label style="font-size: 0.6rem; color: #28a745; display: block; margin-bottom: 0.1rem;"><i class="fas fa-wallet"></i> Valor Inicial</label>
           <input type="text" id="valor-inicial-${obj.id}" value="${formatarMoedaObj(obj.valor_inicial || 0).replace('R$', 'R$ ')}" oninput="formatarInputMoedaObj(this, ${obj.id}, 'valor_inicial')" style="width: 100%; padding: 0.3rem; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 4px; color: var(--text-light); font-size: 0.8rem;">
-          <div style="font-size: 0.55rem; color: #28a745; margin-top: 0.1rem;">Disponível: ${formatarMoedaObj(saldoDisponivelParaEste)}</div>
+          <div style="font-size: 0.55rem; color: #28a745; margin-top: 0.1rem;">Disponível: <span id="saldo-disp-${obj.id}">${formatarMoedaObj(saldoDisponivelParaEste)}</span></div>
         </div>
       </div>
-      
+
       <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;">
-        <span style="padding: 0.15rem 0.5rem; background: rgba(40, 167, 69, 0.1); border-radius: 4px; font-size: 0.7rem;"><span style="color: var(--text-light);">Idade:</span> <span style="color: #28a745; font-weight: 600;">${idadeAtual}</span></span>
-        <span style="padding: 0.15rem 0.5rem; background: rgba(40, 167, 69, 0.1); border-radius: 4px; font-size: 0.7rem;"><span style="color: var(--text-light);">Restam:</span> <span style="color: #28a745; font-weight: 600;">${anosRestantes} anos</span></span>
+        <span style="padding: 0.15rem 0.5rem; background: rgba(40, 167, 69, 0.1); border-radius: 4px; font-size: 0.7rem;"><span style="color: var(--text-light);">Idade:</span> <span id="idade-atual-${obj.id}" style="color: #28a745; font-weight: 600;">${idadeAtual}</span></span>
+        <span style="padding: 0.15rem 0.5rem; background: rgba(40, 167, 69, 0.1); border-radius: 4px; font-size: 0.7rem;"><span style="color: var(--text-light);">Restam:</span> <span id="anos-restantes-${obj.id}" style="color: #28a745; font-weight: 600;">${anosRestantes} anos</span></span>
         <span style="padding: 0.15rem 0.5rem; background: rgba(40, 167, 69, 0.1); border-radius: 4px; font-size: 0.7rem;"><span style="color: var(--text-light);">Patrim.:</span> <span style="color: #28a745; font-weight: 600;">${formatarMoedaObj(patrimonioAtual)}</span></span>
         <span style="padding: 0.15rem 0.5rem; background: rgba(40, 167, 69, 0.1); border-radius: 4px; font-size: 0.7rem;"><span style="color: var(--text-light);">Capital Nec.:</span> <span id="capital-necessario-${obj.id}" style="color: #28a745; font-weight: 600;">${formatarMoedaObj(capitalNecessario)}</span></span>
         <span style="padding: 0.15rem 0.5rem; background: rgba(40, 167, 69, 0.15); border: 1px solid #28a745; border-radius: 4px; font-size: 0.7rem;"><span style="color: var(--text-light);"><i class="fas fa-coins"></i> Aporte Mensal Nec.:</span> <span id="aporte-mensal-${obj.id}" style="color: #28a745; font-weight: 600;">${formatarMoedaObj(calcularAporteMensalNecessario(capitalNecessario, obj.valor_inicial || 0, mesesRestantesItem, perfilAnaliseSelecionado))}</span></span>
@@ -1510,7 +1596,7 @@ function renderCardObjetivo(obj, pessoas, todosObjetivos, saldoDisponivel) {
         <div>
           <label style="font-size: 0.6rem; color: var(--accent-color); display: block; margin-bottom: 0.1rem;"><i class="fas fa-wallet"></i> Valor Inicial</label>
           <input type="text" id="valor-inicial-${obj.id}" value="${formatarMoedaObj(obj.valor_inicial || 0).replace('R$', 'R$ ')}" oninput="formatarInputMoedaObj(this, ${obj.id}, 'valor_inicial')" style="width: 100%; padding: 0.3rem; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 4px; color: var(--text-light); font-size: 0.8rem;">
-          <div style="font-size: 0.55rem; color: #28a745; margin-top: 0.1rem;">Disponível: ${formatarMoedaObj(saldoDisponivelParaEste)}</div>
+          <div style="font-size: 0.55rem; color: #28a745; margin-top: 0.1rem;">Disponível: <span id="saldo-disp-${obj.id}">${formatarMoedaObj(saldoDisponivelParaEste)}</span></div>
         </div>
         <div>
           <label style="font-size: 0.6rem; color: var(--accent-color); display: block; margin-bottom: 0.1rem;"><i class="fas fa-bullseye"></i> Valor Final</label>
@@ -1830,7 +1916,7 @@ function simularEvolucaoPatrimonial(aposentadorias, objetivosNormais, perfilIdOv
   const pendentes = []; // { objData, isRecorrente }
   
   // Ponto 0
-  pontos.push({ mes: 0, saldo: saldo, ano: new Date().getFullYear() });
+  pontos.push({ mes: 0, saldo: saldo, ano: getDataReferenciaObj().getFullYear() });
   
   for (let mes = 1; mes <= maxMeses; mes++) {
     // Aporte mensal
@@ -2031,10 +2117,11 @@ function simularEvolucaoPatrimonial(aposentadorias, objetivosNormais, perfilIdOv
 function calcularMesesRestantesObj(obj, pessoas) {
   const prazoTipo = obj.prazo_tipo || 'idade';
   // Usar data de referência da reunião, não hoje
-  const dataRef = variaveisMercado.data_reuniao ? new Date(variaveisMercado.data_reuniao + 'T00:00:00') : new Date();
-  
+  const dataRef = getDataReferenciaObj();
+
   if (prazoTipo === 'data' && obj.prazo_data) {
-    const dataAlvo = new Date(obj.prazo_data);
+    const dataAlvo = parseDataLocalObj(obj.prazo_data);
+    if (!dataAlvo) return 0;
     return Math.max(0, Math.round((dataAlvo - dataRef) / (1000 * 60 * 60 * 24 * 30.44)));
   } else if (prazoTipo === 'meses') {
     return obj.prazo_meses || 360;
@@ -2045,8 +2132,8 @@ function calcularMesesRestantesObj(obj, pessoas) {
     const pessoa = pessoas.find(p => p.id === obj.prazo_pessoa);
     const dataNasc = pessoa?.dataNascimento;
     let idadeNaRef = 30;
-    if (dataNasc) {
-      const nasc = new Date(dataNasc);
+    const nasc = parseDataLocalObj(dataNasc);
+    if (nasc) {
       idadeNaRef = dataRef.getFullYear() - nasc.getFullYear();
       const m = dataRef.getMonth() - nasc.getMonth();
       if (m < 0 || (m === 0 && dataRef.getDate() < nasc.getDate())) idadeNaRef--;
@@ -2061,18 +2148,12 @@ function calcularMesesRestantesObj(obj, pessoas) {
 function calcularMesesRestantesObjNormal(obj) {
   const prazoTipo = obj.prazo_tipo || 'meses';
   // Usar data de referência da reunião, não hoje
-  const dataRef = variaveisMercado.data_reuniao ? new Date(variaveisMercado.data_reuniao + 'T00:00:00') : new Date();
-  
+  const dataRef = getDataReferenciaObj();
+
   if (prazoTipo === 'data' && obj.prazo_data) {
-    let dataAlvo = new Date(obj.prazo_data);
-    // Se a data é inválida, tentar parsear formato BR (DD/MM/YYYY)
-    if (isNaN(dataAlvo)) {
-      const partes = String(obj.prazo_data).split('/');
-      if (partes.length === 3) {
-        dataAlvo = new Date(`${partes[2]}-${partes[1].padStart(2,'0')}-${partes[0].padStart(2,'0')}`);
-      }
-    }
-    if (isNaN(dataAlvo)) return 60;
+    // parseDataLocalObj já cobre YYYY-MM-DD e DD/MM/YYYY, sempre em hora local
+    const dataAlvo = parseDataLocalObj(obj.prazo_data);
+    if (!dataAlvo) return 60;
     const meses = Math.round((dataAlvo - dataRef) / (1000 * 60 * 60 * 24 * 30.44));
     return Math.max(1, meses);
   } else if (prazoTipo === 'anos') {
@@ -2095,10 +2176,11 @@ function renderGraficoEvolucao(simulacao, objetivosNormais, aposentadorias, simu
   // Cada ponto = 1 mês (sem intervalo)
   const labels = [];
   const dataSaldo = [];
-  const hoje = new Date();
-  
+  const hoje = getDataReferenciaObj();
+
   simulacao.pontos.forEach(ponto => {
     const dataRef = new Date(hoje);
+    dataRef.setDate(1);
     dataRef.setMonth(dataRef.getMonth() + ponto.mes);
     const mesStr = String(dataRef.getMonth() + 1).padStart(2, '0');
     const anoStr = String(dataRef.getFullYear()).slice(-2);
@@ -3231,6 +3313,7 @@ window.deleteObjetivo = deleteObjetivo;
 window.updateObjetivoField = updateObjetivoField;
 window.updateObjetivoPrioridade = updateObjetivoPrioridade;
 window.renderAnalisesObjetivosInline = renderAnalisesObjetivosInline;
+window.atualizarDerivadosObjetivos = atualizarDerivadosObjetivos;
 window.formatarInputMoedaObj = formatarInputMoedaObj;
 window.getObjetivosData = getObjetivosData;
 window.getObjetivosArray = getObjetivosArray;
@@ -3248,6 +3331,7 @@ window.setPerfilAnalise = function(valor) {
   }
   perfilAnaliseSelecionado = valor;
   renderAnalisesObjetivosInline();
+  atualizarDerivadosObjetivos();
 };
 
 // Funções do Perfil Financeiro

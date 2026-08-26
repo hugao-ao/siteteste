@@ -1,0 +1,161 @@
+/* =========================================================================
+   diagnostico-fichas.css — Modelo D "Fichas"
+   =========================================================================
+   Camada de variação sobre diagnostico-painel.css (modelo B).
+   Exige que o painel esteja carregado antes: mantém o índice lateral,
+   a barra de progresso e o estado de preenchimento por seção.
+
+   O que muda em relação ao B:
+   - cada seção vira uma ficha fechada, com faixa dourada de cabeçalho
+   - campos voltam a ser caixas cheias (poço escuro), não linha de base
+   - grade de campos limitada a 2 colunas, para leitura em bloco
+   - resumos e totais das seções ganham tratamento de rodapé de ficha
+
+   Não altera nenhum id, name ou função de captação.
+   ========================================================================= */
+
+:root {
+  --ficha-poco: #0c2619;
+  --ficha-borda: #2a5c43;
+  --ficha-borda-hover: #3a7255;
+}
+
+/* ---------- a ficha ---------- */
+
+.form-container {
+  background: var(--painel-card);
+  border: none;
+  border-radius: 8px;
+  padding: 0;
+  overflow: hidden;
+  margin-top: 0.75rem;
+}
+
+/* o conteúdo respira dentro da ficha, o cabeçalho é full-bleed */
+.form-container > form,
+.form-container > .section-content,
+.form-container > div:not(.section-header) {
+  padding: 0 1.1rem;
+}
+
+.form-container > form {
+  padding-top: 0.9rem;
+  padding-bottom: 0.9rem;
+}
+
+.form-container > .section-content:not(.collapsed) {
+  padding-top: 0.9rem;
+  padding-bottom: 0.9rem;
+}
+
+/* ---------- faixa de cabeçalho ---------- */
+
+.section-header {
+  margin: 0;
+  padding: 0.6rem 1.1rem;
+  background: rgba(212, 175, 55, 0.07);
+  border-bottom: 1px solid rgba(212, 175, 55, 0.2);
+  border-radius: 0;
+}
+
+.section-header h3 {
+  font-size: 0.68rem !important;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--secondary-color) !important;
+  font-weight: 600;
+}
+
+.section-toggle-btn {
+  color: var(--secondary-color);
+}
+
+/* o header principal do diagnóstico continua sendo cartão, não ficha */
+.header {
+  padding: 0.9rem 1.2rem;
+}
+
+/* ---------- campos: poço fechado ---------- */
+
+.form-group label {
+  font-size: 0.63rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--painel-label);
+  margin-bottom: 0.28rem;
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+  background: var(--ficha-poco);
+  border: 1px solid var(--ficha-borda);
+  border-radius: 5px;
+  padding: 0.42rem 0.55rem;
+  font-size: 0.85rem;
+  color: var(--text-light);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.form-group input:hover,
+.form-group select:hover,
+.form-group textarea:hover {
+  border-color: var(--ficha-borda-hover);
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+  outline: none;
+  transform: none;
+  border-color: var(--secondary-color);
+  box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.14);
+}
+
+/* ---------- grade em duas colunas ---------- */
+
+.form-grid,
+.form-grid-3 {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
+  gap: 0.7rem 0.9rem;
+}
+
+@media (min-width: 1100px) {
+  .form-grid,
+  .form-grid-3 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* observações ocupam a ficha inteira */
+.form-group.full-width {
+  grid-column: 1 / -1;
+}
+
+/* ---------- tabelas dos módulos dentro da ficha ---------- */
+
+.form-container table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.form-container table th {
+  font-size: 0.6rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--painel-label);
+  font-weight: 500;
+}
+
+.form-container table td,
+.form-container table th {
+  padding: 0.3rem 0.4rem;
+}
+
+/* ---------- rodapé de ficha: onde os módulos mostram totais ---------- */
+
+.form-container table tfoot td,
+.form-container table tr:last-child td strong {
+  color: var(--secondary-color);
+  font-variant-numeric: tabular-nums;
+}

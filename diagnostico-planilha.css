@@ -1,0 +1,256 @@
+/* =========================================================================
+   diagnostico-planilha.css — Modelo E "Planilha"
+   =========================================================================
+   Camada de variação sobre diagnostico-painel.css (modelo B).
+   Exige que o painel esteja carregado antes.
+
+   O que muda em relação ao B:
+   - células sem moldura, que só se revelam ao passar o mouse ou focar
+   - densidade alta: menos respiro vertical, mais campos por tela
+   - números alinhados à direita, com algarismos de largura fixa
+   - linhas alternadas e divisórias finas em vez de caixas
+
+   Não altera nenhum id, name ou função de captação.
+   ========================================================================= */
+
+:root {
+  --plan-celula: #0c2619;
+  --plan-borda: #2a5c43;
+  --plan-zebra: rgba(20, 58, 38, 0.55);
+}
+
+/* ---------- densidade ---------- */
+
+.container {
+  padding: 0.8rem 1rem 2.5rem;
+}
+
+.form-container {
+  background: var(--painel-card);
+  border: none;
+  border-radius: 6px;
+  padding: 0.7rem 0.9rem;
+  margin-top: 0.5rem;
+}
+
+.header {
+  padding: 0.7rem 1rem;
+  margin-bottom: 0.6rem;
+}
+
+.section-header {
+  padding: 0 0 0.4rem;
+  margin-bottom: 0.6rem;
+  border-bottom: 1px solid var(--painel-line);
+}
+
+.section-header h3 {
+  font-size: 0.66rem !important;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--secondary-color) !important;
+  font-weight: 600;
+}
+
+/* ---------- rótulo enxuto ---------- */
+
+.form-group label {
+  font-size: 0.6rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--painel-label);
+  margin-bottom: 0.15rem;
+  font-weight: 500;
+}
+
+/* ---------- células: moldura só no hover e no foco ---------- */
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  padding: 0.32rem 0.4rem;
+  font-size: 0.82rem;
+  color: var(--text-light);
+  font-variant-numeric: tabular-nums;
+  transition: background 0.12s ease, border-color 0.12s ease;
+}
+
+.form-group input:hover,
+.form-group select:hover,
+.form-group textarea:hover {
+  background: var(--plan-celula);
+  border-color: var(--plan-borda);
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+  outline: none;
+  transform: none;
+  background: var(--plan-celula);
+  border-color: var(--secondary-color);
+  box-shadow: none;
+}
+
+.form-group textarea {
+  background: rgba(12, 38, 25, 0.5);
+  border-color: var(--painel-line);
+}
+
+/* ---------- grade mais apertada e com divisórias ---------- */
+
+.form-grid,
+.form-grid-3 {
+  gap: 0.25rem 0.6rem;
+  padding-bottom: 0.25rem;
+  border-bottom: 1px solid var(--painel-line-soft);
+  margin-bottom: 0.35rem;
+}
+
+.form-grid:last-child,
+.form-grid-3:last-child {
+  border-bottom: none;
+}
+
+.form-grid-3 {
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+}
+
+/* ---------- tabelas dos módulos ---------- */
+
+.form-container table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.78rem;
+}
+
+.form-container table th {
+  text-align: left;
+  font-size: 0.58rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--painel-label);
+  font-weight: 500;
+  padding: 0 0.4rem 0.3rem;
+  border-bottom: 1px solid var(--painel-line);
+}
+
+.form-container table td {
+  padding: 0.25rem 0.4rem;
+  border-bottom: 1px solid var(--painel-line-soft);
+  font-variant-numeric: tabular-nums;
+}
+
+.form-container table tbody tr:nth-child(even) {
+  background: var(--plan-zebra);
+}
+
+.form-container table tfoot td {
+  border-top: 1px solid var(--painel-line);
+  border-bottom: none;
+  color: var(--secondary-color);
+  font-weight: 600;
+}
+
+/* números à direita quando a célula é claramente numérica */
+.form-container table td input[type="number"],
+.form-container table td input[inputmode="numeric"] {
+  text-align: right;
+}
+
+/* =========================================================================
+   Itens de lista como linhas (diagnostico-planilha.js)
+   Cada dívida, investimento, conta ou declaração vira uma linha resumida
+   que se expande para edição.
+   ========================================================================= */
+
+.pl-card {
+  border-radius: 0 !important;
+  border: none !important;
+  border-bottom: 1px solid var(--painel-line-soft) !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  background: transparent !important;
+}
+
+.pl-card:nth-of-type(even) {
+  background: var(--plan-zebra) !important;
+}
+
+.pl-cab {
+  display: flex !important;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.35rem 0.5rem !important;
+  margin: 0 !important;
+  border: none !important;
+  cursor: pointer;
+  font-size: 0.78rem;
+  transition: background 0.12s ease;
+}
+
+.pl-cab:hover {
+  background: rgba(46, 139, 87, 0.12);
+}
+
+.pl-cab > *:not(.pl-resumo):not(.pl-seta) {
+  flex: none;
+  font-size: 0.72rem !important;
+  margin: 0 !important;
+  color: var(--painel-label) !important;
+  white-space: nowrap;
+}
+
+.pl-resumo {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-light);
+  font-size: 0.78rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.pl-card.pl-fechado .pl-resumo {
+  color: var(--painel-text-dim);
+}
+
+.pl-seta {
+  flex: none;
+  color: var(--secondary-color);
+  font-size: 0.6rem;
+  transition: transform 0.2s ease;
+}
+
+.pl-card.pl-fechado .pl-seta {
+  transform: rotate(-90deg);
+}
+
+/* a grade de campos só aparece com a linha aberta */
+.pl-card.pl-fechado > *:not(.pl-cab) {
+  display: none !important;
+}
+
+.pl-card:not(.pl-fechado) {
+  background: rgba(12, 38, 25, 0.5) !important;
+}
+
+.pl-card:not(.pl-fechado) > *:not(.pl-cab) {
+  padding: 0.5rem 0.6rem 0.7rem !important;
+}
+
+.pl-card:not(.pl-fechado) .pl-cab {
+  background: rgba(212, 175, 55, 0.08);
+  border-bottom: 1px solid rgba(212, 175, 55, 0.18) !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pl-cab,
+  .pl-seta {
+    transition: none;
+  }
+}
