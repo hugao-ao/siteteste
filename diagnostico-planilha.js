@@ -109,7 +109,9 @@
 
   function preparar(card) {
     if (card.classList.contains('pl-card')) return;
-    card.classList.add('pl-card', 'pl-fechado');
+    // nasce ABERTO: quem abre um diagnóstico salvo precisa ver os dados,
+    // não uma lista dobrada. Recolher é ação do usuário, no clique.
+    card.classList.add('pl-card');
 
     var cabecalho = card.firstElementChild;
     if (!cabecalho) return;
