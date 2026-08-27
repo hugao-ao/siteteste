@@ -215,13 +215,18 @@
   // =============================================
   let respostasQuestoes = {};
 
-  // Toda pergunta nasce como N/A. Assim o diagnóstico já pode ser salvo desde
-  // o primeiro momento com todas as questões respondidas de alguma maneira,
-  // e nunca existe estado "pendente".
-  const RESPOSTA_PADRAO = 'INAPLICÁVEL';
-
+  // Pergunta sem resposta fica em branco: nenhum botão marcado, e o
+  // salvamento continua gravando vazio, como sempre foi.
   function respostaDe(questaoId) {
-    return respostasQuestoes[questaoId] || RESPOSTA_PADRAO;
+    return respostasQuestoes[questaoId] || '';
+  }
+
+  // Só para montar o plano: em branco vale NÃO. Assim o plano nasce completo
+  // e vai encolhendo conforme os SIM e os N/A aparecem — nada é esquecido
+  // por omissão.
+  function contaComoNao(questaoId) {
+    const r = respostaDe(questaoId);
+    return r !== 'SIM' && r !== 'INAPLICÁVEL';
   }
 
   // =============================================
@@ -744,7 +749,7 @@
   function gerarConteudoPlano() {
     const dados = coletarDados();
     const regras = definirRegras(dados);
-    const ehNao = id => respostaDe(id) === 'NÃO';
+    const ehNao = contaComoNao;
     const topicos = [];
 
     // Ordem das seções é fixa: é a ordem de definirRegras.
