@@ -215,6 +215,15 @@
   // =============================================
   let respostasQuestoes = {};
 
+  // Toda pergunta nasce como N/A. Assim o diagnóstico já pode ser salvo desde
+  // o primeiro momento com todas as questões respondidas de alguma maneira,
+  // e nunca existe estado "pendente".
+  const RESPOSTA_PADRAO = 'INAPLICÁVEL';
+
+  function respostaDe(questaoId) {
+    return respostasQuestoes[questaoId] || RESPOSTA_PADRAO;
+  }
+
   // =============================================
   // RENDERIZAÇÃO DAS PERGUNTAS POR SEÇÃO (COMPACTA)
   // =============================================
@@ -232,7 +241,7 @@
     html += '<h4 class="questoes-titulo"><i class="fas fa-clipboard-check"></i> Questões Pertinentes</h4>';
 
     questoesDaSecao.forEach(q => {
-      const resposta = respostasQuestoes[q.id] || '';
+      const resposta = respostaDe(q.id);
       html += `<div class="questao-item" data-id="${q.id}">
         <span class="questao-texto">${q.texto}</span>
         <div class="questao-botoes">
@@ -318,7 +327,7 @@
     };
 
     QUESTOES.forEach(q => {
-      const resposta = respostasQuestoes[q.id] || '';
+      const resposta = respostaDe(q.id);
 
       if (resposta === 'SIM') totalSim++;
       else if (resposta === 'NÃO') totalNao++;
@@ -470,108 +479,304 @@
   };
 
   // =============================================
+  // DADOS DO DIAGNÓSTICO USADOS COMO CONDIÇÃO
+  // Só leitura. Nenhum cálculo entra no texto do plano — o plano declara
+  // o que será entregue, nunca o resultado da análise.
+  // =============================================
+  function coletarDados() {
+    const seguro = (fn, padrao) => {
+      try { const v = fn(); return v == null ? padrao : v; } catch (e) { return padrao; }
+    };
+
+    const objetivosData = seguro(() => window.getObjetivosData && window.getObjetivosData(), null);
+    const listaObjetivos = (objetivosData && objetivosData.objetivos) || [];
+    const dividas = seguro(() => window.getDividasData && window.getDividasData(), []) || [];
+    const protecao = seguro(() => window.getProdutosProtecaoData && window.getProdutosProtecaoData(), []) || [];
+    const declaracoesIR = seguro(() => window.getDeclaracoesIRData && window.getDeclaracoesIRData(), []) || [];
+    const investimentos = seguro(() => window.getPatrimoniosLiquidosData && window.getPatrimoniosLiquidosData(), []) || [];
+    const contasRaw = seguro(() => window.getContasCartoesData && window.getContasCartoesData(), null);
+    const contas = (contasRaw && contasRaw.contasCartoes) || [];
+
+    // Patrimônio físico e dependentes não têm getter: vêm do próprio formulário
+    const valoresPreenchidos = (containerId, sufixo) => {
+      const cont = document.getElementById(containerId);
+      if (!cont) return [];
+      return Array.prototype.slice
+        .call(cont.querySelectorAll('input[id$="' + sufixo + '"]'))
+        .map(el => String(el.value || '').trim())
+        .filter(Boolean);
+    };
+
+    const bens = valoresPreenchidos('content-patrimonio-fisico', '_tipo');
+    const dependentes = valoresPreenchidos('content-dependentes', '_nome');
+
+    const tipoProtecao = (padrao) => protecao.some(p =>
+      padrao.test(String(p.tipo_produto || '') + ' ' + String(p.objeto || ''))
+    );
+
+    return {
+      objetivos: listaObjetivos.filter(o => o.tipo !== 'aposentadoria' && o.tipo !== 'intangivel'),
+      nomesObjetivos: listaObjetivos
+        .filter(o => o.tipo !== 'aposentadoria' && o.descricao)
+        .map(o => o.descricao),
+      temAposentadoria: listaObjetivos.some(o => o.tipo === 'aposentadoria'),
+      dividas: dividas,
+      nomesCredores: dividas.map(d => d.credor || d.instituicao).filter(Boolean),
+      investimentos: investimentos,
+      bens: bens,
+      dependentes: dependentes,
+      declaracoesIR: declaracoesIR,
+      contas: contas,
+      temSeguroPatrimonial: tipoProtecao(/patrim|resid|autom|veic|imov|bike|bem/i),
+      temSeguroVida: tipoProtecao(/vida|invalid|acident|trabalh/i),
+      temPlanoSaude: tipoProtecao(/sa[úu]de|m[ée]dic|odont/i)
+    };
+  }
+
+  function listar(nomes, limite) {
+    const max = limite || 4;
+    if (!nomes || !nomes.length) return '';
+    if (nomes.length <= max) return nomes.join(', ');
+    return nomes.slice(0, max).join(', ') + ' e mais ' + (nomes.length - max);
+  }
+
+  // =============================================
+  // REGRAS DO PLANO
+  // Cada item nasce de uma pergunta específica em NÃO (camada 1) e, quando
+  // indicado, também depende de existir o dado correspondente (camada 2).
+  // "fusoes" junta perguntas irmãs: se TODAS estiverem em NÃO, sai um item
+  // único e abrangente no lugar dos itens individuais.
+  // =============================================
+  function definirRegras(d) {
+    return [
+      {
+        secao: 'objetivos',
+        titulo: 'Com relação aos principais objetivos:',
+        fusoes: [],
+        itens: [
+          {
+            id: 'q_objetivos_1',
+            texto: d.nomesObjetivos.length
+              ? 'Montar o plano de ação e as metas de cada objetivo: ' + listar(d.nomesObjetivos) + '.'
+              : 'Montar o plano de ação e as metas de cada objetivo.'
+          },
+          {
+            id: 'q_objetivos_2',
+            texto: d.temAposentadoria
+              ? 'Projetar o planejamento de aposentadoria.'
+              : 'Incluir a aposentadoria entre os objetivos e projetar o planejamento.'
+          },
+          {
+            id: 'q_objetivos_5',
+            texto: 'Estudar a viabilidade dos objetivos e apresentar os ajustes de prazo, meta ou aporte.'
+          }
+        ]
+      },
+      {
+        secao: 'fluxo-caixa',
+        titulo: 'Com relação ao controle do orçamento:',
+        fusoes: [
+          {
+            ids: ['q_fluxo_1', 'q_fluxo_2', 'q_fluxo_3'],
+            texto: 'Implantar o ciclo de controle do orçamento: registro, conferência mensal e replanejamento anual.'
+          },
+          {
+            ids: ['q_fluxo_4', 'q_fluxo_5'],
+            texto: 'Projetar a poupança mensal e transformá-la em compromisso fixo do orçamento.'
+          }
+        ],
+        itens: [
+          { id: 'q_protecao_1', texto: 'Traçar o caminho para a renda independente do trabalho.' },
+          { id: 'q_protecao_2', texto: 'Estudar formas de ampliar a parcela estável da renda.' },
+          { id: 'q_protecao_3', texto: 'Mapear caminhos de aumento de renda no curto e médio prazo.' },
+          { id: 'q_protecao_4', texto: 'Estudar a diversificação das fontes de renda.' },
+          { id: 'q_fluxo_1', texto: 'Montar o planejamento anual antecipado dos gastos.' },
+          { id: 'q_fluxo_2', texto: 'Implantar a rotina de conferência mensal do orçamento.' },
+          { id: 'q_fluxo_3', texto: 'Entregar ferramenta e rotina de registro do fluxo de caixa.' },
+          { id: 'q_fluxo_4', texto: 'Estabelecer a poupança mensal como compromisso fixo do orçamento.' },
+          { id: 'q_fluxo_5', texto: 'Projetar o percentual mínimo de poupança e o caminho até ele.' }
+        ]
+      },
+      {
+        secao: 'contas-cartoes',
+        titulo: 'Com relação a contas, cartão de crédito e milhas:',
+        fusoes: [
+          {
+            ids: ['q_cartoes_2', 'q_cartoes_4'],
+            texto: 'Estruturar o uso do cartão: migração de despesas e aproveitamento de bonificações.'
+          }
+        ],
+        itens: [
+          { id: 'q_cartoes_1', texto: 'Pesquisar e indicar o cartão mais aderente aos objetivos.' },
+          { id: 'q_cartoes_2', texto: 'Avaliar quais despesas podem migrar para o cartão de crédito.' },
+          {
+            id: 'q_cartoes_3',
+            texto: 'Estudar a concentração dos gastos no melhor cartão disponível.',
+            dado: () => d.contas.length > 1
+          },
+          { id: 'q_cartoes_4', texto: 'Estruturar o uso de compras bonificadas e o aproveitamento de pontos.' },
+          {
+            id: 'q_cartoes_5',
+            texto: 'Levantar e eliminar tarifas e anuidades desnecessárias.',
+            dado: () => d.contas.length > 0
+          }
+        ]
+      },
+      {
+        secao: 'ir',
+        titulo: 'Com relação ao imposto de renda:',
+        fusoes: [],
+        itens: [
+          { id: 'q_ir_1', texto: 'Estudar a forma mais vantajosa de receber a renda.' },
+          {
+            id: 'q_ir_2',
+            texto: 'Comparar os modelos de declaração e indicar o mais adequado ao perfil.',
+            dado: () => d.declaracoesIR.length > 0
+          },
+          { id: 'q_ir_3', texto: 'Analisar investimentos com efeito tributário e apresentar as opções cabíveis.' }
+        ]
+      },
+      {
+        secao: 'patrimonio-liquido',
+        titulo: 'Com relação ao patrimônio líquido:',
+        fusoes: [],
+        itens: [
+          { id: 'q_investimentos_1', texto: 'Projetar a reserva de longo prazo e as metas de rentabilidade que a sustentam.' },
+          { id: 'q_investimentos_2', texto: 'Dimensionar a reserva de emergência e definir onde ela ficará alocada.' },
+          {
+            id: 'q_investimentos_3',
+            texto: d.nomesObjetivos.length
+              ? 'Vincular uma reserva a cada objetivo: ' + listar(d.nomesObjetivos) + '.'
+              : 'Definir os objetivos antes de vincular reservas específicas a eles.'
+          },
+          {
+            id: 'q_investimentos_4',
+            texto: 'Reenquadrar a distribuição dos recursos ao perfil de investidor.',
+            dado: () => d.investimentos.length > 0
+          }
+        ]
+      },
+      {
+        secao: 'produtos-protecao',
+        titulo: 'Com relação à proteção patrimonial, renda e saúde:',
+        fusoes: [
+          { ids: ['q_patrimonio_1', 'q_patrimonio_2'], texto: 'Estruturar e cotar a proteção do patrimônio.' },
+          { ids: ['q_protecao_5', 'q_protecao_6'], texto: 'Estruturar e cotar a proteção da renda: vida e invalidez.' },
+          { ids: ['q_protecao_7', 'q_protecao_8'], texto: 'Estruturar e cotar a proteção da saúde.' }
+        ],
+        itens: [
+          {
+            id: 'q_patrimonio_1',
+            texto: d.bens.length
+              ? 'Analisar e apresentar soluções de seguro para os bens do patrimônio: ' + listar(d.bens) + '.'
+              : 'Analisar e apresentar soluções de seguro para os bens do patrimônio.',
+            dado: () => d.bens.length > 0
+          },
+          {
+            id: 'q_patrimonio_2',
+            texto: 'Cotar e comparar as apólices patrimoniais existentes.',
+            dado: () => d.temSeguroPatrimonial
+          },
+          { id: 'q_protecao_5', texto: 'Estruturar a proteção da renda: vida e invalidez.' },
+          {
+            id: 'q_protecao_6',
+            texto: 'Revisar e cotar as apólices de vida e invalidez.',
+            dado: () => d.temSeguroVida
+          },
+          {
+            id: 'q_protecao_7',
+            texto: d.dependentes.length
+              ? 'Estudar e apresentar opções de plano de saúde para as pessoas do planejamento, incluindo ' + listar(d.dependentes) + '.'
+              : 'Estudar e apresentar opções de plano de saúde para as pessoas do planejamento.'
+          },
+          {
+            id: 'q_protecao_8',
+            texto: 'Revisar e cotar o plano de saúde atual.',
+            dado: () => d.temPlanoSaude
+          },
+          { id: 'q_protecao_9', texto: 'Avaliar proteção para os animais.' }
+        ]
+      },
+      {
+        secao: 'dividas',
+        titulo: 'Com relação às dívidas:',
+        fusoes: [],
+        itens: [
+          {
+            id: 'q_dividas_1',
+            texto: d.nomesCredores.length
+              ? 'Apresentar estratégias de quitação ou renegociação: ' + listar(d.nomesCredores) + '.'
+              : 'Apresentar estratégias de quitação ou renegociação.',
+            dado: () => d.dividas.length > 0
+          },
+          {
+            id: 'q_dividas_2',
+            texto: 'Estudar portabilidade e o reenquadramento das parcelas ao orçamento.',
+            dado: () => d.dividas.length > 0
+          }
+        ]
+      },
+      {
+        secao: 'sucessao',
+        titulo: 'Com relação ao planejamento sucessório:',
+        fusoes: [],
+        itens: [
+          {
+            id: 'q_sucessao_1',
+            texto: d.dependentes.length
+              ? 'Conduzir a definição da destinação do patrimônio, considerando ' + listar(d.dependentes) + '.'
+              : 'Conduzir a definição da destinação do patrimônio.'
+          },
+          {
+            id: 'q_sucessao_2',
+            texto: 'Apresentar estratégias de blindagem patrimonial.',
+            dado: () => d.bens.length > 0
+          },
+          { id: 'q_sucessao_3', texto: 'Apresentar estratégias de desoneração do inventário.' }
+        ]
+      }
+    ];
+  }
+
+  // =============================================
   // GERAR CONTEÚDO DO PLANO FINANCEIRO
   // =============================================
   function gerarConteudoPlano() {
+    const dados = coletarDados();
+    const regras = definirRegras(dados);
+    const ehNao = id => respostaDe(id) === 'NÃO';
     const topicos = [];
 
-    // Verificar NÃOs por seção
-    const naosPorSecao = {};
-    QUESTOES.forEach(q => {
-      const resposta = respostasQuestoes[q.id] || '';
-      if (resposta === 'NÃO') {
-        if (!naosPorSecao[q.secao]) naosPorSecao[q.secao] = [];
-        naosPorSecao[q.secao].push(q.texto);
+    // Ordem das seções é fixa: é a ordem de definirRegras.
+    // Seção sem nenhum item sobrevivente simplesmente não aparece.
+    regras.forEach(regra => {
+      const itens = [];
+      const consumidos = {};
+
+      (regra.fusoes || []).forEach(fusao => {
+        if (fusao.ids.every(ehNao)) {
+          itens.push(fusao.texto);
+          fusao.ids.forEach(id => { consumidos[id] = true; });
+        }
+      });
+
+      (regra.itens || []).forEach(item => {
+        if (consumidos[item.id]) return;
+        if (!ehNao(item.id)) return;
+        if (item.dado && !item.dado()) return;
+        itens.push(item.texto);
+      });
+
+      if (itens.length > 0) {
+        topicos.push({ titulo: regra.titulo, itens: itens });
       }
     });
 
-    if (naosPorSecao['objetivos']) {
+    // Fechamento fixo: só faz sentido se houver ao menos uma frente
+    if (topicos.length > 0) {
       topicos.push({
-        titulo: 'Com relação aos principais objetivos:',
-        itens: [
-          'Montar o Plano de Ação para cada objetivo, com metas bem definidas e alcançáveis.',
-          'Estudar e apresentar planejamento de aposentadoria (reserva de longo prazo) adequada ao poder de poupança.',
-          'Montar estudo que permita que os objetivos sejam realizados de forma saudável, baseado nos parâmetros mercadológicos vigentes e condições financeiras atuais.'
-        ]
-      });
-    }
-
-    if (naosPorSecao['fluxo-caixa']) {
-      topicos.push({
-        titulo: 'Com relação ao controle do orçamento:',
-        itens: [
-          'Apresentar fundamentos, ferramentas e sugestões para que permitam:',
-          'Acompanhar os gastos anuais antecipadamente;',
-          'Conferir o desempenho do orçamento mensal estabelecido e reestruturar o planejamento anual;',
-          'Registrar e controlar o fluxo de caixa para que os dados possam ser analisados e o orçamento do mês e ano possam ser recalculados.'
-        ]
-      });
-    }
-
-    if (naosPorSecao['contas-cartoes']) {
-      topicos.push({
-        titulo: 'Com relação a cartão de crédito e milhas:',
-        itens: [
-          'Pesquisar, estudar e apresentar opções de:',
-          'Cartão de crédito mais adequado às necessidades e objetivos;',
-          'Viabilidade de maximizar as despesas que podem ser inseridas no cartão de crédito;',
-          'Adaptação para concentração de gastos no melhor cartão de crédito disponível;',
-          'Gastos inteligentes com compras que maximizarão o poder de pontuação ou cashback do cartão de crédito.'
-        ]
-      });
-    }
-
-    if (naosPorSecao['ir']) {
-      topicos.push({
-        titulo: 'Com relação ao imposto de renda:',
-        itens: [
-          'Analisar e apresentar:',
-          'Viabilidade de investir visando a redução do imposto pago ou aumento na restituição.'
-        ]
-      });
-    }
-
-    if (naosPorSecao['patrimonio-liquido']) {
-      topicos.push({
-        titulo: 'Com relação ao patrimônio líquido:',
-        itens: [
-          'Estudar e apresentar soluções, metas de rentabilidade e de valores para reservas de:',
-          'Longo Prazo;',
-          'Objetivos.',
-          'Estudar e apresentar soluções para ajustar a distribuição dos recursos e adequá-los ao perfil de investidor.'
-        ]
-      });
-    }
-
-    if (naosPorSecao['produtos-protecao']) {
-      topicos.push({
-        titulo: 'Com relação à proteção patrimonial, renda e saúde:',
-        itens: [
-          'Analisar e apresentar soluções de seguros para proteção dos bens patrimoniais;',
-          'Analisar e apresentar soluções de proteção da renda (seguros de vida/invalidez);',
-          'Pesquisar e apresentar opções de planos de saúde adequados ao perfil e necessidades.'
-        ]
-      });
-    }
-
-
-    if (naosPorSecao['dividas']) {
-      topicos.push({
-        titulo: 'Com relação às dívidas:',
-        itens: [
-          'Analisar e apresentar estratégias para quitação ou renegociação das dívidas;',
-          'Estudar viabilidade de portabilidade para taxas menores.'
-        ]
-      });
-    }
-
-    if (naosPorSecao['sucessao']) {
-      topicos.push({
-        titulo: 'Com relação ao planejamento sucessório:',
-        itens: [
-          'Estudar e apresentar estratégias de blindagem patrimonial e planejamento sucessório;',
-          'Analisar viabilidade de estratégias para desoneração dos herdeiros.'
-        ]
+        titulo: 'Para fechar o plano:',
+        itens: ['Consolidar as frentes acima em cronograma, com responsáveis e prazos.']
       });
     }
 
@@ -598,7 +803,7 @@
       resultado[q.id] = {
         texto: q.texto,
         secao: q.secao,
-        resposta: respostasQuestoes[q.id] || ''
+        resposta: respostaDe(q.id)
       };
     });
     return resultado;
