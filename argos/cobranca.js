@@ -16,6 +16,10 @@ import {
     notaEfetiva, retratoDaNota, compararRetrato, motivoDaDivergencia, contatosParaCobranca,
     detalhesDoMes, contarSessoes, mesBR
 } from './argos-cobranca.js';
+import {
+    TIPOS_EXCECAO, ESCOPOS_EXCECAO, DATAS_DESDOBRAMENTO, excecoesVigentes,
+    vigenciaTexto, resumoExcecao, partesIguais, rotuloTipo
+} from './argos-excecoes.js';
 import { montarCobrancaUI, mesesEntre, dinamicasDoMes } from './argos-cobranca-ui.js';
 
 let perm = { pode: () => true, aplicarVisibilidade: () => {}, master: true };
@@ -23,6 +27,7 @@ let cobUI = null;
 
 let pacientes = [], dinamicas = [], sessoes = [], profissionais = [];
 let contatos = [], detalhes = [], excecoes = [], notas = [], pendencias = [], eventos = [];
+let regrasExcecao = [];   // argos_excecoes_cobranca — desdobramento e rateio
 let envios = [], acompanhamento = [], alocacoes = [], movimentacoes = [];
 let config = { bancarios: [], servico: 'Psicomotricidade Relacional', recados: {} };
 
@@ -51,7 +56,8 @@ async function carregarTudo() {
         t('argos_paciente_financeiro'), t('argos_nota_mes'), t('argos_notas_fiscais'),
         t('argos_nota_pendencias'), t('argos_nota_pendencia_eventos'),
         t('argos_cobranca_envios'), t('argos_cobranca_acompanhamento'),
-        t('argos_mov_alocacoes'), t('argos_movimentacoes'), t('argos_config')
+        t('argos_mov_alocacoes'), t('argos_movimentacoes'), t('argos_config'),
+        t('argos_excecoes_cobranca')
     ]);
     const erro = r.find(x => x.error);
     if (erro) { console.error(erro.error); toast('Erro ao carregar os dados da cobrança.', true); return; }
@@ -59,6 +65,7 @@ async function carregarTudo() {
     [pacientes, dinamicas, sessoes, profissionais, contatos, detalhes, excecoes, notas,
      pendencias, eventos, envios, acompanhamento, alocacoes, movimentacoes] = d;
     lerConfig(d[14]);
+    regrasExcecao = d[15] || [];
     await render();
 }
 
@@ -103,7 +110,8 @@ function retratoAtual(paciente, mes) {
     return retratoDaNota({
         paciente, fech: fechDe(paciente.id), dinamicas: dinsDe(paciente.id),
         mes, servico: config.servico,
-        excecao: excecoes.find(e => e.paciente_id === paciente.id && e.mes === mes)
+        excecao: excecoes.find(e => e.paciente_id === paciente.id && e.mes === mes),
+        excecoes: regrasExcecao
     });
 }
 
@@ -363,7 +371,10 @@ function renderNotas() {
               title="${esc(sit.desc)} — clique para mudar">${esc(sit.rotulo)}
               ${regime.origem === 'mes' ? '<span class="mes">(só este mês)</span>' : ''}</span>
           ${regime.observacao ? `<span class="sub">${esc(regime.observacao)}</span>` : ''}</td>
-        <td class="num">${retrato.sessoes}<span class="sub">${retrato.dias.join(', ') || '—'}</span></td>
+        <td class="num">${retrato.sessoes}<span class="sub">${retrato.dias.join(', ') || '—'}</span>
+          ${retrato.desdobrado ? `<span class="cb-excecao" title="A nota sai desdobrada — o acordo real é ${esc(formataMoeda(retrato.acordo_real.valor))}">✂️ desdobrada</span>` : ''}
+          ${retrato.partes.length ? `<span class="cb-excecao" title="${esc(retrato.partes.map(x => `${x.nome}: ${formataMoeda(x.valor)}`).join(' · '))}">👥 ${retrato.partes.length} partes</span>` : ''}
+          ${retrato.avisos.length ? `<span class="cb-excecao alerta" title="${esc(retrato.avisos.join(' '))}">⚠️</span>` : ''}</td>
         <td class="num">${formataMoeda(f.valor)}</td>
         <td class="desc"><div class="cb-desc">${sit.emite ? esc(retrato.descricao)
             : regime.valor === 'indefinido'
@@ -377,6 +388,8 @@ function renderNotas() {
           ${sit.emite ? `<button class="argos-btn small primary" data-nota-salvar="${p.id}"
               data-argos-recurso="notas_gerenciar">${nota ? '🔄 Atualizar' : '💾 Registrar'}</button>` : ''}
           ${sit.emite ? `<button class="argos-btn small" data-copiar="${p.id}" title="Copiar a descrição">📋</button>` : ''}
+          <button class="argos-btn small" data-excecao="${p.id}" title="Exceções de cobrança e nota"
+              data-argos-recurso="excecoes_cobranca">⚖️</button>
           <button class="argos-btn small" data-extrato="${p.id}" data-argos-recurso="paciente_extrato">📊</button>
         </td>
       </tr>`;
@@ -865,6 +878,11 @@ document.querySelector('main').addEventListener('click', async e => {
     if (msg) return abrirMensagem(pacDe(msg.dataset.msg));
     const desm = alvo('data-desmarcar');
     if (desm) return desmarcarEnvio(pacDe(desm.dataset.desmarcar));
+    const exc = alvo('data-excecao');
+    if (exc) {
+        if (!perm.pode('excecoes_cobranca')) return toast('Sem permissão para mexer nas exceções.', true);
+        return abrirExcecoes(pacDe(exc.dataset.excecao));
+    }
     const reg = alvo('data-regime');
     if (reg) {
         if (!perm.pode('nota_tipo_definir')) return toast('Sem permissão para mudar o tipo de nota.', true);
@@ -929,6 +947,251 @@ async function copiarTexto(texto, aviso) {
 // modal do regime
 document.getElementById('regime-tipo').addEventListener('change', descRegime);
 document.getElementById('regime-alcance').addEventListener('change', alcanceRegime);
+// ===========================================================================
+// EXCEÇÕES DE COBRANÇA — desdobramento da nota e divisão entre responsáveis
+// ===========================================================================
+// O acordo é uma coisa, o que o plano aceita ver na nota é outra. Aqui o
+// financeiro descreve a diferença, e diz por quanto tempo ela vale.
+
+let excPaciente = null;      // paciente cujo modal está aberto
+let excEditando = null;      // id da exceção em edição (null = nova)
+let excPartes = [];          // responsáveis do rateio em edição
+
+const elExc = id => document.getElementById(id);
+
+function abrirExcecoes(paciente) {
+    excPaciente = paciente;
+    elExc('exc-titulo').textContent = `⚖️ Exceções de cobrança — ${paciente.nome}`;
+    elExc('exc-tipo').innerHTML = TIPOS_EXCECAO
+        .map(t => `<option value="${t.valor}">${esc(t.rotulo)}</option>`).join('');
+    elExc('exc-escopo').innerHTML = ESCOPOS_EXCECAO
+        .map(t => `<option value="${t.valor}">${esc(t.rotulo)}</option>`).join('');
+    elExc('exc-datas').innerHTML = DATAS_DESDOBRAMENTO
+        .map(t => `<option value="${t.valor}">${esc(t.rotulo)}</option>`).join('');
+    limparFormExcecao();
+    renderExcecoes();
+    abrirModal('modal-excecao');
+}
+
+function limparFormExcecao() {
+    excEditando = null;
+    excPartes = partesIguais(['', '']);
+    elExc('exc-form-titulo').textContent = 'Nova exceção';
+    elExc('exc-tipo').value = 'desdobrar';
+    elExc('exc-escopo').value = 'mes';
+    elExc('exc-de').value = mesAtual;
+    elExc('exc-ate').value = '';
+    elExc('exc-valor-linha').value = '';
+    elExc('exc-datas').value = 'mesma';
+    elExc('exc-desloc').value = 2;
+    elExc('exc-obs').value = '';
+    ajustarFormExcecao();
+}
+
+/** Mostra só os campos que o tipo e o escopo escolhidos usam. */
+function ajustarFormExcecao() {
+    const tipo = elExc('exc-tipo').value;
+    const escopo = elExc('exc-escopo').value;
+    const datas = elExc('exc-datas').value;
+    const acha = (lista, v) => lista.find(x => x.valor === v) || {};
+
+    elExc('exc-tipo-desc').textContent = acha(TIPOS_EXCECAO, tipo).desc || '';
+    elExc('exc-bloco-desdobrar').style.display = tipo === 'desdobrar' ? '' : 'none';
+    elExc('exc-bloco-rateio').style.display = tipo === 'rateio' ? '' : 'none';
+    elExc('exc-datas-desc').textContent = acha(DATAS_DESDOBRAMENTO, datas).desc || '';
+    elExc('exc-rot-desloc').style.display = datas === 'extra' ? '' : 'none';
+
+    // "só neste mês" não tem mês final; "novo normal" não tem fim nenhum
+    elExc('exc-rot-ate').style.display = escopo === 'periodo' ? '' : 'none';
+    elExc('exc-rot-de').querySelector('input').previousSibling.textContent =
+        escopo === 'mes' ? 'No mês de ' : 'A partir do mês ';
+    if (tipo === 'rateio') renderPartesExcecao();
+    renderPreviaExcecao();
+}
+
+function renderPartesExcecao() {
+    elExc('exc-partes').innerHTML = excPartes.map((x, i) => `
+      <div class="form-grade">
+        <label>Responsável ${i + 1}
+          <input type="text" class="argos-input" data-exc-nome="${i}"
+                 value="${esc(x.nome || '')}" placeholder="nome de quem recebe" /></label>
+        <label>Percentual
+          <input type="number" class="argos-input" data-exc-pct="${i}" step="0.01"
+                 min="0" max="100" value="${x.percentual}" /></label>
+        <button type="button" class="argos-btn small ghost" data-exc-tirar="${i}"
+          ${excPartes.length <= 2 ? 'disabled title="Precisa de pelo menos dois"' : ''}>🗑️</button>
+      </div>`).join('');
+}
+
+/** A prévia é o ponto: o financeiro vê a nota que vai sair antes de salvar. */
+function renderPreviaExcecao() {
+    const rascunho = lerFormExcecao({ silencioso: true });
+    if (!rascunho) { elExc('exc-previa').innerHTML = ''; return; }
+    const outras = regrasExcecao.filter(x => x.id !== excEditando);
+    const mesPrevia = rascunho.escopo === 'mes' ? rascunho.mes_de : mesAtual;
+    const fech = fechamentoPaciente(excPaciente, dinsDe(excPaciente.id),
+        sessoes.filter(x => x.paciente_id === excPaciente.id), mesPrevia);
+    const retrato = retratoDaNota({
+        paciente: excPaciente, fech, dinamicas: dinsDe(excPaciente.id),
+        mes: mesPrevia, servico: config.servico,
+        excecoes: [...outras, { ...rascunho, paciente_id: excPaciente.id, ativo: true }]
+    });
+    elExc('exc-previa').innerHTML = `
+      <h3>Como fica ${mesPrevia.split('-').reverse().join('/')}</h3>
+      ${retrato.avisos.length ? `<p class="dica alerta">⚠️ ${retrato.avisos.map(esc).join('<br>')}</p>` : ''}
+      <p class="dica">Mês fechado em <b>${formataMoeda(retrato.valor)}</b> —
+        ${retrato.desdobrado ? `escrito como <b>${retrato.sessoes}</b> sessões de
+          ${formataMoeda((retrato.acordo_real.valor && retrato.sessoes)
+            ? retrato.valor / retrato.sessoes : 0)}`
+          : `<b>${retrato.sessoes}</b> sessões`}.</p>
+      ${retrato.partes.length ? `<ul class="dica">${retrato.partes.map(x =>
+          `<li><b>${esc(x.nome || '(sem nome)')}</b> — ${x.percentual}% = ${formataMoeda(x.valor)}</li>`).join('')}</ul>` : ''}
+      <div class="cb-desc">${esc((retrato.partes[0] || retrato).descricao)}</div>`;
+}
+
+/** Lê o formulário. Sem `silencioso`, reclama do que estiver faltando. */
+function lerFormExcecao({ silencioso = false } = {}) {
+    const tipo = elExc('exc-tipo').value;
+    const escopo = elExc('exc-escopo').value;
+    const de = elExc('exc-de').value;
+    const ate = escopo === 'periodo' ? (elExc('exc-ate').value || null) : null;
+    const reclamar = m => { if (!silencioso) toast(m, true); return null; };
+
+    if (!de) return reclamar('Diga a partir de que mês a exceção vale.');
+    if (ate && ate < de) return reclamar('O mês final vem antes do inicial.');
+
+    const params = {};
+    if (tipo === 'desdobrar') {
+        const v = Number(String(elExc('exc-valor-linha').value).replace(',', '.'));
+        if (!(v > 0)) return reclamar('Informe o valor de cada linha da nota.');
+        params.valor_linha = v;
+        params.datas = elExc('exc-datas').value;
+        if (params.datas === 'extra') {
+            params.deslocamento_dias = Math.max(1, Number(elExc('exc-desloc').value) || 2);
+        }
+    } else {
+        const partes = excPartes
+            .map(x => ({ nome: String(x.nome || '').trim(), percentual: Number(x.percentual) || 0 }))
+            .filter(x => x.nome);
+        if (partes.length < 2) return reclamar('O rateio precisa de pelo menos dois responsáveis com nome.');
+        params.partes = partes;
+    }
+    return { tipo, escopo, mes_de: de, mes_ate: ate, params,
+             observacao: elExc('exc-obs').value.trim() || null };
+}
+
+function renderExcecoes() {
+    const minhas = regrasExcecao.filter(x => x.paciente_id === excPaciente.id)
+        .sort((a, b) => String(b.mes_de || '').localeCompare(String(a.mes_de || '')));
+    if (!minhas.length) {
+        elExc('exc-lista').innerHTML = '<p class="dica">Nenhuma exceção — este paciente segue o padrão.</p>';
+        return;
+    }
+    const valendo = excecoesVigentes(regrasExcecao, excPaciente.id, mesAtual);
+    const vigenteAgora = new Set(Object.values(valendo).filter(Boolean).map(x => x.id));
+    elExc('exc-lista').innerHTML = `<ul class="cb-excecoes">${minhas.map(x => `
+      <li class="${x.ativo === false ? 'desligada' : ''}">
+        <b>${esc(rotuloTipo(x.tipo))}</b>
+        <span class="sub">${esc(vigenciaTexto(x))}</span>
+        ${vigenteAgora.has(x.id) ? '<span class="cb-excecao">vale neste mês</span>' : ''}
+        ${x.ativo === false ? '<span class="dim">desligada</span>' : ''}
+        <div class="sub">${esc(resumoExcecao(x))}</div>
+        ${x.observacao ? `<div class="sub">📝 ${esc(x.observacao)}</div>` : ''}
+        <div class="acoes">
+          <button class="argos-btn small" data-exc-editar="${x.id}">✏️ Editar</button>
+          <button class="argos-btn small" data-exc-ligar="${x.id}">${x.ativo === false ? '▶️ Ligar' : '⏸️ Desligar'}</button>
+          <button class="argos-btn small" data-exc-apagar="${x.id}">🗑️</button>
+        </div>
+      </li>`).join('')}</ul>`;
+}
+
+function editarExcecao(id) {
+    const x = regrasExcecao.find(e => e.id === id);
+    if (!x) return;
+    excEditando = id;
+    const p = x.params || {};
+    elExc('exc-form-titulo').textContent = 'Editando exceção';
+    elExc('exc-tipo').value = x.tipo;
+    elExc('exc-escopo').value = x.escopo;
+    elExc('exc-de').value = x.mes_de || '';
+    elExc('exc-ate').value = x.mes_ate || '';
+    elExc('exc-valor-linha').value = p.valor_linha ?? '';
+    elExc('exc-datas').value = p.datas || 'mesma';
+    elExc('exc-desloc').value = p.deslocamento_dias || 2;
+    elExc('exc-obs').value = x.observacao || '';
+    excPartes = (p.partes && p.partes.length) ? p.partes.map(y => ({ ...y })) : partesIguais(['', '']);
+    ajustarFormExcecao();
+}
+
+async function salvarExcecao() {
+    const dados = lerFormExcecao();
+    if (!dados) return;
+    const registro = { ...dados, paciente_id: excPaciente.id, atualizado_em: agora() };
+    const q = excEditando
+        ? sb.from('argos_excecoes_cobranca').update(registro).eq('id', excEditando).select('*').single()
+        : sb.from('argos_excecoes_cobranca').insert(registro).select('*').single();
+    const { data, error } = await q;
+    if (error) { console.error(error); toast('Erro ao salvar a exceção.', true); return; }
+    regrasExcecao = regrasExcecao.filter(x => x.id !== data.id).concat(data);
+    limparFormExcecao();
+    renderExcecoes();
+    await render();
+    toast('Exceção salva.');
+}
+
+async function mexerNaExcecao(id, acao) {
+    const x = regrasExcecao.find(e => e.id === id);
+    if (!x) return;
+    if (acao === 'apagar') {
+        if (!confirm('Apagar esta exceção? As notas já emitidas não mudam.')) return;
+        const { error } = await sb.from('argos_excecoes_cobranca').delete().eq('id', id);
+        if (error) { console.error(error); toast('Erro ao apagar.', true); return; }
+        regrasExcecao = regrasExcecao.filter(e => e.id !== id);
+        if (excEditando === id) limparFormExcecao();
+    } else {
+        const ativo = x.ativo === false;
+        const { error } = await sb.from('argos_excecoes_cobranca')
+            .update({ ativo, atualizado_em: agora() }).eq('id', id);
+        if (error) { console.error(error); toast('Erro ao mudar a exceção.', true); return; }
+        regrasExcecao = regrasExcecao.map(e => e.id === id ? { ...e, ativo } : e);
+    }
+    renderExcecoes();
+    await render();
+}
+
+elExc('exc-tipo').addEventListener('change', ajustarFormExcecao);
+elExc('exc-escopo').addEventListener('change', ajustarFormExcecao);
+elExc('exc-datas').addEventListener('change', ajustarFormExcecao);
+['exc-de', 'exc-ate', 'exc-valor-linha', 'exc-desloc']
+    .forEach(id => elExc(id).addEventListener('input', renderPreviaExcecao));
+elExc('btn-exc-salvar').addEventListener('click', salvarExcecao);
+elExc('btn-exc-cancelar').addEventListener('click', () => { limparFormExcecao(); renderExcecoes(); });
+elExc('btn-exc-parte').addEventListener('click', () => {
+    excPartes = partesIguais([...excPartes.map(x => x.nome || ''), '']);
+    renderPartesExcecao(); renderPreviaExcecao();
+});
+elExc('exc-partes').addEventListener('input', e => {
+    const nome = e.target.closest('[data-exc-nome]');
+    if (nome) excPartes[Number(nome.dataset.excNome)].nome = nome.value;
+    const pct = e.target.closest('[data-exc-pct]');
+    if (pct) excPartes[Number(pct.dataset.excPct)].percentual = Number(pct.value) || 0;
+    if (nome || pct) renderPreviaExcecao();
+});
+elExc('exc-partes').addEventListener('click', e => {
+    const tirar = e.target.closest('[data-exc-tirar]');
+    if (!tirar || excPartes.length <= 2) return;
+    excPartes.splice(Number(tirar.dataset.excTirar), 1);
+    renderPartesExcecao(); renderPreviaExcecao();
+});
+elExc('exc-lista').addEventListener('click', e => {
+    const ed = e.target.closest('[data-exc-editar]');
+    if (ed) return editarExcecao(ed.dataset.excEditar);
+    const lig = e.target.closest('[data-exc-ligar]');
+    if (lig) return mexerNaExcecao(lig.dataset.excLigar, 'ligar');
+    const ap = e.target.closest('[data-exc-apagar]');
+    if (ap) return mexerNaExcecao(ap.dataset.excApagar, 'apagar');
+});
+
 document.getElementById('btn-regime-salvar').addEventListener('click', salvarRegime);
 document.getElementById('btn-regime-limpar').addEventListener('click', limparRegime);
 

@@ -734,3 +734,24 @@ input[type="time"]:not(:focus):invalid::-webkit-datetime-edit {
     margin-top: 6px;
     color: var(--argos-text);
 }
+
+/* ---- Exceções de cobrança: desdobramento da nota e rateio ---- */
+.cb-excecao {
+    display: inline-block; margin-top: 2px; padding: 1px 6px;
+    border-radius: 999px; font-size: .72rem; font-weight: 600;
+    background: var(--argos-accent-soft, rgba(99, 102, 241, .14));
+    color: var(--argos-accent, #6366f1); white-space: nowrap;
+}
+.cb-excecao.alerta {
+    background: rgba(234, 179, 8, .16); color: #a16207;
+}
+ul.cb-excecoes { list-style: none; margin: 0 0 14px; padding: 0; }
+ul.cb-excecoes li {
+    border: 1px solid var(--argos-borda, #e2e8f0); border-radius: 10px;
+    padding: 8px 10px; margin-bottom: 8px;
+}
+ul.cb-excecoes li.desligada { opacity: .55; }
+ul.cb-excecoes li .acoes { display: flex; gap: 6px; margin-top: 6px; flex-wrap: wrap; }
+#exc-previa { margin-top: 12px; border-top: 1px solid var(--argos-borda, #e2e8f0); padding-top: 10px; }
+#exc-previa h3 { margin: 0 0 6px; font-size: .95rem; }
+.dica.alerta { color: #a16207; }
