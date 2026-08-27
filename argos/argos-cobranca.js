@@ -5,6 +5,8 @@
 // WhatsApp. O texto é conferido contra a planilha, então mudanças aqui
 // mudam o que chega no cliente — mexer com cuidado.
 
+import { excecoesVigentes, desdobrar, ratear } from './argos-excecoes.js';
+
 export const MESES_EXTENSO = ['JANEIRO', 'FEVEREIRO', 'MARÇO', 'ABRIL', 'MAIO', 'JUNHO',
     'JULHO', 'AGOSTO', 'SETEMBRO', 'OUTUBRO', 'NOVEMBRO', 'DEZEMBRO'];
 
@@ -309,25 +311,62 @@ export function notaEfetiva({ dinamicas = [], excecao = null } = {}) {
  * isto que o fechamento vivo é comparado depois.
  */
 export function retratoDaNota({ paciente = {}, fech, dinamicas = [], mes,
-    servico, excecao = null } = {}) {
+    servico, excecao = null, excecoes = [] } = {}) {
     const frequencia = frequenciaDoFechamento(fech);
-    const dias = diasCobrados(frequencia);
-    const sessoes = contarSessoes(frequencia);
     const itens = acordosDoFechamento(fech, dinamicas);
     const fixo = itens.length && itens.every(i => i.tipo === 'fixo');
-    const acordo = { tipo: fixo ? 'fixo' : 'sessao',
+    const total = fech ? fech.valor : 0;
+    const acordoReal = { tipo: fixo ? 'fixo' : 'sessao',
         valor: fixo ? itens.reduce((s, i) => s + i.valor, 0)
              : (itens.find(i => i.tipo === 'sessao') || {}).valor || 0 };
     const situacao = notaEfetiva({ dinamicas, excecao }).valor;
-    return {
-        mes, valor: fech ? fech.valor : 0, sessoes, dias, nota_tipo: situacao,
-        descricao: descricaoNota({
-            servico: servico || 'Psicomotricidade Relacional',
-            paciente: paciente.nome, cpf: paciente.rf_cpf || paciente.cpf,
-            mes, dias, sessoes, acordo
-        })
+
+    // O que o plano aceita ver na nota pode não ser o acordo real: uma sessão
+    // de R$ 180 sai como duas de R$ 90. A exceção só troca os dias, a
+    // contagem e o valor unitário — a descrição continua sendo montada pela
+    // mesma função de sempre, e o total do mês não se mexe.
+    const vigentes = excecoesVigentes(excecoes, paciente.id, mes);
+    const quebra = vigentes.desdobrar
+        ? desdobrar({ frequencia, acordo: acordoReal, total,
+                      params: vigentes.desdobrar.params || {} })
+        : { aplicou: false, avisos: [] };
+
+    const dias = quebra.aplicou ? quebra.dias : diasCobrados(frequencia);
+    const sessoes = quebra.aplicou ? quebra.sessoes : contarSessoes(frequencia);
+    const acordo = quebra.aplicou ? quebra.acordo : acordoReal;
+
+    const texto = alvo => descricaoNota({
+        servico: servico || 'Psicomotricidade Relacional',
+        paciente: paciente.nome, cpf: paciente.rf_cpf || paciente.cpf,
+        mes, dias: alvo.dias, sessoes: alvo.sessoes, acordo: alvo.acordo
+    });
+
+    const retrato = {
+        mes, valor: total, sessoes, dias, nota_tipo: situacao,
+        descricao: texto({ dias, sessoes, acordo }),
+        // o que a exceção mudou, para a tela poder mostrar e conferir
+        desdobrado: !!quebra.aplicou, acordo_real: acordoReal,
+        avisos: [...(quebra.avisos || [])], partes: []
     };
+
+    // Pai e mãe recebem metade cada: um fechamento e uma nota para cada um.
+    // O valor de cada parte é do responsável; o do mês continua sendo o da
+    // clínica, e é ele que fecha a produção.
+    if (vigentes.rateio) {
+        const divisao = ratear({ total, partes: (vigentes.rateio.params || {}).partes || [] });
+        retrato.avisos.push(...divisao.avisos);
+        retrato.partes = divisao.partes.map(x => ({
+            ...x, parte_total: divisao.partes.length,
+            // cada nota fala das sessões do mês inteiro, mas do valor da parte
+            descricao: texto({ dias, sessoes,
+                acordo: { tipo: acordo.tipo,
+                          valor: sessoes ? arredondar(x.valor / sessoes) : x.valor } })
+        }));
+    }
+    return retrato;
 }
+
+const arredondar = v => Math.round((Number(v) || 0) * 100) / 100;
 
 /** Campos do retrato que, mudando, obrigam a refazer a nota. */
 const CAMPOS_RETRATO = [

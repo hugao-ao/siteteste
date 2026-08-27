@@ -303,6 +303,67 @@
     </div>
   </div>
 
+  <!-- ============ MODAL: EXCEÇÕES DE COBRANÇA ============ -->
+  <div class="argos-modal-fundo" id="modal-excecao">
+    <div class="argos-modal grande">
+      <div class="argos-modal-topo">
+        <h2 id="exc-titulo">⚖️ Exceções de cobrança</h2>
+        <button class="argos-modal-x" data-fechar>×</button>
+      </div>
+
+      <p class="dica">O acordo com o paciente é uma coisa; o que o plano aceita ver na
+        nota é outra. Aqui você diz como o mês deve ser <b>escrito</b> — sem mexer no
+        quanto a clínica recebe. Cada exceção vale só num mês, num intervalo, ou dali
+        em diante.</p>
+
+      <div id="exc-lista"></div>
+
+      <div class="argos-form" id="exc-form">
+        <h3 id="exc-form-titulo">Nova exceção</h3>
+        <div class="form-grade">
+          <label>O que muda<select id="exc-tipo"></select></label>
+          <label>Vale por<select id="exc-escopo"></select></label>
+        </div>
+        <p class="dica" id="exc-tipo-desc"></p>
+
+        <div class="form-grade">
+          <label id="exc-rot-de">A partir do mês<input type="month" id="exc-de" /></label>
+          <label id="exc-rot-ate">Até o mês<input type="month" id="exc-ate" /></label>
+        </div>
+
+        <!-- desdobramento -->
+        <div id="exc-bloco-desdobrar" style="display:none">
+          <div class="form-grade">
+            <label>Valor de cada linha na nota
+              <input type="number" id="exc-valor-linha" step="0.01" min="0" placeholder="90,00" /></label>
+            <label>As linhas a mais ficam<select id="exc-datas"></select></label>
+          </div>
+          <label id="exc-rot-desloc" style="display:none">Quantos dias depois
+            <input type="number" id="exc-desloc" step="1" min="1" max="6" value="2" /></label>
+          <p class="dica" id="exc-datas-desc"></p>
+        </div>
+
+        <!-- rateio -->
+        <div id="exc-bloco-rateio" style="display:none">
+          <div id="exc-partes"></div>
+          <button type="button" class="argos-btn small ghost" id="btn-exc-parte">+ responsável</button>
+          <p class="dica">Os percentuais precisam somar 100%. O último recebe a sobra do
+            arredondamento, para não sumir centavo.</p>
+        </div>
+
+        <label>Observação (por que sai do padrão)<textarea id="exc-obs" rows="2"></textarea></label>
+
+        <div id="exc-previa"></div>
+      </div>
+
+      <div class="argos-modal-acoes">
+        <button class="argos-btn ghost" id="btn-exc-cancelar">Limpar</button>
+        <button class="argos-btn primary" id="btn-exc-salvar"
+          data-argos-recurso="excecoes_cobranca">Salvar exceção</button>
+      </div>
+    </div>
+  </div>
+
   <!-- ============ MODAL: CONFIGURAÇÃO ============ -->
   <div class="argos-modal-fundo" id="modal-config">
     <div class="argos-modal grande">
@@ -335,7 +396,7 @@
     </div>
   </div>
 
-  <script type="module" src="cobranca.js?v=2"></script>
+  <script type="module" src="cobranca.js?v=3"></script>
   <script type="module" src="argos-zoom.js?v=4"></script>
 </body>
 </html>
