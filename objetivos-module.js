@@ -188,6 +188,94 @@ const PLANOS_ACOMPANHAMENTO = [
   }
 ];
 
+// =========================================================================
+// SINCRONIZAÇÃO DOS PLANOS COM O SITE PÚBLICO
+// =========================================================================
+// O site público (mithrasf) publica /planos.json a cada deploy, gerado do
+// próprio src/lib/planos.ts. Aqui a gente busca esse arquivo e substitui o
+// espelho local acima. Publicou o site, a tela de adesão acompanha.
+//
+// Se a busca falhar, o espelho local continua valendo — a tela nunca fica
+// sem planos. A última versão baixada fica guardada no navegador e é usada
+// enquanto a rede não responde.
+// =========================================================================
+
+// PREENCHER com o domínio de produção do site público, ex.:
+// 'https://hvsaudefinanceira.com.br/planos.json'
+// Vazio = sincronização desligada, vale só o espelho local.
+const PLANOS_URL = '';
+
+const PLANOS_CACHE_KEY = 'hv_planos_publicos';
+
+// Cores são decisão desta tela, não do site público: casam por nível.
+const CORES_PLANO = ['#6c757d', '#17a2b8', '#28a745', '#d4af37', '#9966ff'];
+
+function converterPlanoPublico(p, indice) {
+  const romanos = { I: 1, II: 2, III: 3, IV: 4, V: 5 };
+  const numero = romanos[p.nivel] || indice + 1;
+
+  return {
+    id: `nivel_${numero}`,
+    nome: p.nome,
+    valor: parseNumeroBR(p.preco),
+    subtitulo: p.apelido || '',
+    cor: CORES_PLANO[numero - 1] || '#6c757d',
+    destaque: !!p.destaque,
+    itens: Array.isArray(p.destaques) ? p.destaques : [],
+    reunioes: p.reuniao || '—',
+    cotacao: p.cotacao || '—',
+    especialista: p.especialista || '—',
+    sla_whatsapp: p.slaWhatsapp || '—',
+    nao_incluso: p.naoIncluso || ''
+  };
+}
+
+function aplicarPlanosPublicos(lista) {
+  if (!Array.isArray(lista) || !lista.length) return false;
+
+  const convertidos = lista
+    .map(converterPlanoPublico)
+    .filter(p => p.nome && p.valor > 0);
+
+  if (!convertidos.length) return false;
+
+  // troca o conteúdo no lugar: quem já guardou referência ao array continua válido
+  PLANOS_ACOMPANHAMENTO.length = 0;
+  convertidos.forEach(p => PLANOS_ACOMPANHAMENTO.push(p));
+  return true;
+}
+
+async function sincronizarPlanosPublicos() {
+  if (!PLANOS_URL) return;
+
+  // primeiro o que já foi baixado antes, para não esperar a rede
+  try {
+    const guardado = localStorage.getItem(PLANOS_CACHE_KEY);
+    if (guardado) aplicarPlanosPublicos(JSON.parse(guardado).planos);
+  } catch (e) {
+    console.warn('Planos: cache local ilegível, seguindo com o espelho.', e);
+  }
+
+  try {
+    const controle = new AbortController();
+    const prazo = setTimeout(() => controle.abort(), 6000);
+    const resposta = await fetch(PLANOS_URL, { signal: controle.signal, cache: 'no-cache' });
+    clearTimeout(prazo);
+
+    if (!resposta.ok) throw new Error('HTTP ' + resposta.status);
+
+    const dados = await resposta.json();
+    if (!aplicarPlanosPublicos(dados.planos)) throw new Error('formato inesperado');
+
+    try { localStorage.setItem(PLANOS_CACHE_KEY, JSON.stringify(dados)); } catch (e) {}
+
+    if (typeof renderAdesaoSection === 'function') renderAdesaoSection();
+    console.log('✅ Planos sincronizados com o site público');
+  } catch (e) {
+    console.warn('Planos: site público indisponível, valendo o espelho local.', e.message);
+  }
+}
+
 // Variáveis de mercado (carregadas do Supabase)
 let variaveisMercado = {
   selic: 14.75,
@@ -3437,6 +3525,7 @@ window.selecionarPropostaFinal = function(tipo) {
 document.addEventListener('DOMContentLoaded', () => {
   console.log('Módulo de Objetivos v7.0 carregado');
   carregarVariaveisMercado();
+  sincronizarPlanosPublicos();
   // Garantir renderização inicial após tempo suficiente para loadDiagnostico
   setTimeout(() => {
     const container = document.getElementById('objetivos-container');
