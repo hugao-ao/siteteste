@@ -98,20 +98,104 @@ document.getElementById('btn-abrir-pendentes').addEventListener('click', () => {
     renderPendentes(); abrirModal('modal-pendentes');
 });
 
+// Quando a frequência atrasa, o mesmo paciente falta três, quatro semanas
+// seguidas. Numa lista cronológica ele fica espalhado, e o financeiro tem de
+// caçar as linhas dele uma a uma. Agrupado, as semanas dele ficam juntas e
+// dá para resolver o paciente inteiro num clique — que é como a pessoa
+// realmente pensa: «a Lara faltou o mês todo».
+let pendAgrupar = 'paciente';
+let pendBusca = '';
+
+const STATUS_MARCAVEIS = ['ok', 'fj', 'fc', 'nc'];
+
+const botoesStatus = (attr, valor, titulo) => `
+  <div class="botoes-status compacto">
+    ${STATUS_MARCAVEIS.map(st => `
+      <button class="btn-status" style="--c:${STATUS_SESSAO[st].cor}"
+        data-${attr}="${valor}" data-status="${st}"
+        title="${titulo ? `${titulo}: ` : ''}${STATUS_SESSAO[st].desc}">${STATUS_SESSAO[st].label}</button>`).join('')}
+  </div>`;
+
 function renderPendentes() {
-    const pend = sessoesPendentes();
-    document.getElementById('lista-pendentes').innerHTML = pend.map(s => `
-      <div class="argos-bloco pendente-linha" data-chave="${chaveSessao(s)}">
-        <div class="bloco-info">
-          <b>${formataBR(s.data)} ${s.hora}</b> — ${esc(nomePac(s.paciente_id))}<br>
-          <span class="dim">${esc(nomeSala(s.sala_id))} · ${esc(nomeProf(s.profissional_id))}</span>
-        </div>
-        <div class="botoes-status compacto">
-          ${['ok', 'fj', 'fc', 'nc'].map(st => `
-            <button class="btn-status" style="--c:${STATUS_SESSAO[st].cor}" data-marcar="${st}" title="${STATUS_SESSAO[st].desc}">${STATUS_SESSAO[st].label}</button>`).join('')}
-        </div>
-      </div>`).join('') || '<p class="dim">Nenhuma pendência. 🎉</p>';
+    const todasPend = sessoesPendentes();
+    const busca = pendBusca.trim().toLowerCase();
+    const casa = s => !busca
+        || nomePac(s.paciente_id).toLowerCase().includes(busca)
+        || nomeProf(s.profissional_id).toLowerCase().includes(busca);
+    const pend = todasPend.filter(casa);
+
+    document.querySelectorAll('[data-agrupar]').forEach(b =>
+        b.classList.toggle('primary', b.dataset.agrupar === pendAgrupar));
+
+    const resumo = document.getElementById('pend-resumo');
+    const pacientesComPendencia = new Set(todasPend.map(s => s.paciente_id)).size;
+    resumo.textContent = todasPend.length
+        ? `${todasPend.length} pendência(s) em ${pacientesComPendencia} paciente(s)`
+          + (busca ? ` · mostrando ${pend.length}` : '')
+        : '';
+
+    const alvo = document.getElementById('lista-pendentes');
+    if (!pend.length) {
+        alvo.innerHTML = todasPend.length
+            ? '<p class="dim">Nenhuma pendência com esse filtro.</p>'
+            : '<p class="dim">Nenhuma pendência. 🎉</p>';
+        return;
+    }
+    alvo.innerHTML = pendAgrupar === 'paciente'
+        ? blocosDePendencias(pend, s => s.paciente_id, s => nomePac(s.paciente_id),
+            (nome, lista) => `${esc(nome)}<span class="dim"> · ${esc(nomeProf(lista[0].profissional_id))}</span>`,
+            s => `${formataBR(s.data)} ${s.hora}`,
+            s => `${esc(nomeSala(s.sala_id))}`)
+        : blocosDePendencias(pend, s => s.data, s => s.data,
+            nome => `${formataBR(nome)}<span class="dim"> · ${diaDaSemana(nome)}</span>`,
+            s => `${s.hora} — ${esc(nomePac(s.paciente_id))}`,
+            s => `${esc(nomeSala(s.sala_id))} · ${esc(nomeProf(s.profissional_id))}`);
 }
+
+const diaDaSemana = iso => DOW_NOMES[paraData(iso).getDay()];
+
+/**
+ * Monta os blocos. Cada grupo traz os botões que resolvem tudo de uma vez,
+ * e dentro dele as sessões continuam podendo ser marcadas uma a uma — nem
+ * sempre o mês inteiro teve o mesmo desfecho.
+ */
+function blocosDePendencias(pend, chaveDe, nomeDe, tituloHTML, linhaHTML, subHTML) {
+    const mapa = new Map();
+    for (const s of pend) {
+        const k = chaveDe(s);
+        if (!mapa.has(k)) mapa.set(k, { nome: nomeDe(s), itens: [] });
+        mapa.get(k).itens.push(s);
+    }
+    const ordenados = [...mapa.entries()].sort((a, b) =>
+        String(a[1].nome).localeCompare(String(b[1].nome), 'pt-BR'));
+
+    return ordenados.map(([k, g]) => {
+        const itens = [...g.itens].sort((a, b) =>
+            (a.data + a.hora).localeCompare(b.data + b.hora));
+        grupoDeChave.set(String(k), itens);
+        return `
+      <div class="pend-grupo">
+        <div class="pend-grupo-topo">
+          <div class="bloco-info">
+            <b>${tituloHTML(g.nome, itens)}</b>
+            <span class="pend-conta">${itens.length}</span>
+            ${itens.length > 1 ? '<span class="dim"> — marcar todas:</span>' : ''}
+          </div>
+          ${itens.length > 1 ? botoesStatus('marcar-grupo', esc(String(k)), `Todas as ${itens.length}`) : ''}
+        </div>
+        ${itens.map(s => `
+          <div class="argos-bloco pendente-linha" data-chave="${chaveSessao(s)}">
+            <div class="bloco-info">
+              <b>${linhaHTML(s)}</b><br>
+              <span class="dim">${subHTML(s)}</span>
+            </div>
+            ${botoesStatus('marcar', '')}
+          </div>`).join('')}
+      </div>`;
+    }).join('');
+}
+
+const grupoDeChave = new Map(); // chave do grupo -> sessões dele
 
 const chaves = new Map(); // chave -> objeto sessão (para achar no clique)
 function chaveSessao(s) {
@@ -121,27 +205,61 @@ function chaveSessao(s) {
 }
 
 document.getElementById('lista-pendentes').addEventListener('click', async (e) => {
+    const emLote = e.target.closest('[data-marcar-grupo]');
+    if (emLote) {
+        const lista = grupoDeChave.get(emLote.dataset.marcarGrupo) || [];
+        if (!lista.length) return;
+        const st = emLote.dataset.status;
+        if (!confirm(`Marcar as ${lista.length} sessões como `
+            + `«${STATUS_SESSAO[st].label} — ${STATUS_SESSAO[st].desc}»?`)) return;
+        await marcarSessoes(lista, st);
+        return renderPendentes();
+    }
     const btn = e.target.closest('[data-marcar]');
     if (!btn) return;
     const linha = btn.closest('[data-chave]');
     const s = chaves.get(linha.dataset.chave);
     if (!s) return;
-    await marcarSessao(s, btn.dataset.marcar);
+    await marcarSessoes([s], btn.dataset.status);
+    renderPendentes();
+});
+
+document.getElementById('pend-busca').addEventListener('input', e => {
+    pendBusca = e.target.value;
+    renderPendentes();
+});
+document.querySelector('.pend-agrupar').addEventListener('click', e => {
+    const b = e.target.closest('[data-agrupar]');
+    if (!b) return;
+    pendAgrupar = b.dataset.agrupar;
     renderPendentes();
 });
 
 // ---------- marcação (materializa a projeção se preciso) ----------
-async function marcarSessao(s, status) {
+
+/**
+ * Marca uma ou muitas sessões de uma vez.
+ *
+ * Marcar em lote não é marcar N vezes: a justificativa é pedida uma só vez,
+ * o banco leva um único insert e um único update, e a agenda é redesenhada no
+ * fim. Resolver o mês inteiro de um paciente costumava recarregar as milhares
+ * de sessões uma vez por clique.
+ */
+async function marcarSessoes(lista, status) {
     if (!perm.pode('sessoes_status')) { toast('Sem permissão para marcar frequência.', true); return; }
+    const alvos = (lista || []).filter(Boolean);
+    if (!alvos.length) return;
+
     // Falta justificada pede o motivo escrito. Quem tem a permissão de dispensa
     // pode deixar em branco — é o caso da importação das planilhas antigas e de
     // quando o responsável só manda o motivo depois.
-    let justificativa = s.justificativa || null;
+    let justificativa = alvos.length === 1 ? (alvos[0].justificativa || null) : null;
     if (status === 'fj') {
         const dispensa = perm.pode('sessao_fj_sem_justificativa');
+        const quantas = alvos.length > 1 ? ` (vale para as ${alvos.length})` : '';
         const j = prompt(dispensa
-            ? 'Justificativa da falta (pode deixar em branco):'
-            : 'Justificativa da falta (obrigatória):', s.justificativa || '');
+            ? `Justificativa da falta${quantas} (pode deixar em branco):`
+            : `Justificativa da falta${quantas} (obrigatória):`, justificativa || '');
         if (j === null) return; // cancelou
         if (!j.trim() && !dispensa) {
             toast('A falta justificada precisa de uma justificativa.', true);
@@ -149,30 +267,51 @@ async function marcarSessao(s, status) {
         }
         justificativa = j.trim() || null;
     }
-    let error;
-    if (s.id) {
-        ({ error } = await sb.from('argos_sessoes').update({ status, justificativa }).eq('id', s.id));
-    } else {
-        ({ error } = await sb.from('argos_sessoes').insert({
+
+    const jaGravadas = alvos.filter(s => s.id);
+    const projetadas = alvos.filter(s => !s.id);
+    const erros = [];
+
+    if (jaGravadas.length) {
+        const { error } = await sb.from('argos_sessoes')
+            .update({ status, justificativa }).in('id', jaGravadas.map(s => s.id));
+        if (error) erros.push(error);
+    }
+    if (projetadas.length) {
+        const { error } = await sb.from('argos_sessoes').insert(projetadas.map(s => ({
             paciente_id: s.paciente_id, dinamica_id: s.dinamica_ref, dinamica_ref: s.dinamica_ref,
             data: s.data, hora: s.hora, duracao_min: s.duracao_min || 60,
             sala_id: s.sala_id || null, profissional_id: s.profissional_id || null,
             servico_id: s.servico_id || null, status, justificativa,
             grupo_id: s.grupo_id || null, grupo_ref: s.grupo_ref || null
-        }));
+        })));
+        if (error) erros.push(error);
     }
-    if (error) { console.error(error); toast('Erro ao marcar sessão.', true); return; }
+    if (erros.length) {
+        console.error(erros[0]);
+        toast(alvos.length > 1 ? 'Erro ao marcar as sessões.' : 'Erro ao marcar sessão.', true);
+        return;
+    }
+
     if (status === 'fj') {
-        await registrarEvento(s.paciente_id, 'falta_justificada',
-            `Falta justificada na sessão de ${formataBR(s.data)} às ${s.hora}`
-            + (justificativa ? '.' : ', sem motivo registrado.'),
-            { data: s.data, hora: s.hora }, justificativa);
+        for (const s of alvos) {
+            await registrarEvento(s.paciente_id, 'falta_justificada',
+                `Falta justificada na sessão de ${formataBR(s.data)} às ${s.hora}`
+                + (justificativa ? '.' : ', sem motivo registrado.'),
+                { data: s.data, hora: s.hora }, justificativa);
+        }
     }
-    toast(`Sessão marcada: ${STATUS_SESSAO[status].label} — ${STATUS_SESSAO[status].desc}`);
+    toast(alvos.length > 1
+        ? `${alvos.length} sessões marcadas: ${STATUS_SESSAO[status].label} — ${STATUS_SESSAO[status].desc}`
+        : `Sessão marcada: ${STATUS_SESSAO[status].label} — ${STATUS_SESSAO[status].desc}`);
+
     const { data } = await todas(() => sb.from('argos_sessoes').select('*'));
     sessoes = data || sessoes;
     renderTudo();
 }
+
+/** Uma sessão só — o caminho de sempre, pelos cartões da agenda. */
+const marcarSessao = (s, status) => marcarSessoes([s], status);
 
 // ---------- visões: semana, mês e período (máx. 365 dias) ----------
 let modo = 'semana';
