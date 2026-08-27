@@ -755,3 +755,26 @@ ul.cb-excecoes li .acoes { display: flex; gap: 6px; margin-top: 6px; flex-wrap: 
 #exc-previa { margin-top: 12px; border-top: 1px solid var(--argos-borda, #e2e8f0); padding-top: 10px; }
 #exc-previa h3 { margin: 0 0 6px; font-size: .95rem; }
 .dica.alerta { color: #a16207; }
+
+/* ---- Pendências de frequência: agrupadas por paciente ou por dia ---- */
+.pend-barra {
+    display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 8px;
+}
+.pend-barra #pend-busca { flex: 1; min-width: 200px; }
+.pend-agrupar { display: flex; gap: 4px; }
+.pend-grupo {
+    border: 1px solid var(--argos-borda, #e2e8f0); border-radius: 12px;
+    padding: 8px 10px; margin-bottom: 12px;
+}
+.pend-grupo-topo {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 10px; flex-wrap: wrap; margin-bottom: 6px;
+}
+.pend-grupo-topo .bloco-info { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.pend-conta {
+    background: var(--argos-accent-soft, rgba(99, 102, 241, .16));
+    color: var(--argos-accent, #6366f1);
+    border-radius: 999px; padding: 1px 8px; font-size: .78rem; font-weight: 700;
+}
+.pend-grupo .pendente-linha { margin-bottom: 6px; }
+.pend-grupo .pendente-linha:last-child { margin-bottom: 0; }
