@@ -1201,6 +1201,8 @@ function formatarNumeroBR(valor, maxCasas) {
   });
 }
 
+// Devolve o valor já gravado, para o onchange reexibir o campo normalizado
+// sem precisar enxergar variaveisMercado (que é interna deste módulo).
 function updateVariavelMercado(campo, valor) {
   variaveisMercado[campo] = valor;
   // Recalcular rentabilidades se CDI mudou
@@ -1216,6 +1218,8 @@ function updateVariavelMercado(campo, valor) {
   // CDI, rentabilidade da aposentadoria e data da reunião mudam capital e
   // aporte de todos os cards — atualizar os derivados no lugar
   atualizarDerivadosObjetivos();
+
+  return variaveisMercado[campo];
 }
 
 async function atualizarDadosMercado() {
@@ -1386,23 +1390,23 @@ function renderObjetivos() {
         <div style="display: flex; gap: 0.4rem; flex: 1; justify-content: flex-end; flex-wrap: wrap; align-items: center;">
           <span style="padding: 0.2rem 0.3rem; background: rgba(212, 175, 55, 0.1); border-radius: 4px; font-size: 0.7rem; display: flex; align-items: center; gap: 0.2rem;">
             <span style="color: var(--text-light); font-size: 0.6rem;">SELIC</span>
-            <input type="text" inputmode="decimal" value="${formatarNumeroBR(variaveisMercado.selic)}" onchange="updateVariavelMercado('selic', parseNumeroBR(this.value)); this.value = formatarNumeroBR(variaveisMercado.selic);" style="width: 42px; padding: 0.1rem 0.2rem; background: transparent; border: 1px solid rgba(212,175,55,0.3); border-radius: 3px; color: var(--accent-color); font-size: 0.7rem; font-weight: 600; text-align: center;">%
+            <input type="text" inputmode="decimal" value="${formatarNumeroBR(variaveisMercado.selic)}" onchange="this.value = formatarNumeroBR(updateVariavelMercado('selic', parseNumeroBR(this.value)));" style="width: 42px; padding: 0.1rem 0.2rem; background: transparent; border: 1px solid rgba(212,175,55,0.3); border-radius: 3px; color: var(--accent-color); font-size: 0.7rem; font-weight: 600; text-align: center;">%
           </span>
           <span style="padding: 0.2rem 0.3rem; background: rgba(40, 167, 69, 0.1); border-radius: 4px; font-size: 0.7rem; display: flex; align-items: center; gap: 0.2rem;">
             <span style="color: var(--text-light); font-size: 0.6rem;">CDI</span>
-            <input type="text" inputmode="decimal" value="${formatarNumeroBR(variaveisMercado.cdi)}" onchange="updateVariavelMercado('cdi', parseNumeroBR(this.value)); this.value = formatarNumeroBR(variaveisMercado.cdi);" style="width: 42px; padding: 0.1rem 0.2rem; background: transparent; border: 1px solid rgba(40,167,69,0.3); border-radius: 3px; color: #28a745; font-size: 0.7rem; font-weight: 600; text-align: center;">%
+            <input type="text" inputmode="decimal" value="${formatarNumeroBR(variaveisMercado.cdi)}" onchange="this.value = formatarNumeroBR(updateVariavelMercado('cdi', parseNumeroBR(this.value)));" style="width: 42px; padding: 0.1rem 0.2rem; background: transparent; border: 1px solid rgba(40,167,69,0.3); border-radius: 3px; color: #28a745; font-size: 0.7rem; font-weight: 600; text-align: center;">%
           </span>
           <span style="padding: 0.2rem 0.3rem; background: rgba(220, 53, 69, 0.1); border-radius: 4px; font-size: 0.7rem; display: flex; align-items: center; gap: 0.2rem;">
             <span style="color: var(--text-light); font-size: 0.6rem;">IPCA</span>
-            <input type="text" inputmode="decimal" value="${formatarNumeroBR(variaveisMercado.ipca)}" onchange="updateVariavelMercado('ipca', parseNumeroBR(this.value)); this.value = formatarNumeroBR(variaveisMercado.ipca);" style="width: 42px; padding: 0.1rem 0.2rem; background: transparent; border: 1px solid rgba(220,53,69,0.3); border-radius: 3px; color: #dc3545; font-size: 0.7rem; font-weight: 600; text-align: center;">%
+            <input type="text" inputmode="decimal" value="${formatarNumeroBR(variaveisMercado.ipca)}" onchange="this.value = formatarNumeroBR(updateVariavelMercado('ipca', parseNumeroBR(this.value)));" style="width: 42px; padding: 0.1rem 0.2rem; background: transparent; border: 1px solid rgba(220,53,69,0.3); border-radius: 3px; color: #dc3545; font-size: 0.7rem; font-weight: 600; text-align: center;">%
           </span>
           <span style="padding: 0.2rem 0.3rem; background: rgba(23, 162, 184, 0.1); border-radius: 4px; font-size: 0.7rem; display: flex; align-items: center; gap: 0.2rem;">
             <span style="color: var(--text-light); font-size: 0.6rem;">Rent.Apos.</span>
-            <input type="text" inputmode="decimal" value="${formatarNumeroBR(variaveisMercado.rent_anual_aposentadoria)}" onchange="updateVariavelMercado('rent_anual_aposentadoria', parseNumeroBR(this.value)); this.value = formatarNumeroBR(variaveisMercado.rent_anual_aposentadoria);" style="width: 42px; padding: 0.1rem 0.2rem; background: transparent; border: 1px solid rgba(23,162,184,0.3); border-radius: 3px; color: #17a2b8; font-size: 0.7rem; font-weight: 600; text-align: center;">%
+            <input type="text" inputmode="decimal" value="${formatarNumeroBR(variaveisMercado.rent_anual_aposentadoria)}" onchange="this.value = formatarNumeroBR(updateVariavelMercado('rent_anual_aposentadoria', parseNumeroBR(this.value)));" style="width: 42px; padding: 0.1rem 0.2rem; background: transparent; border: 1px solid rgba(23,162,184,0.3); border-radius: 3px; color: #17a2b8; font-size: 0.7rem; font-weight: 600; text-align: center;">%
           </span>
           <span style="padding: 0.2rem 0.3rem; background: rgba(76, 175, 80, 0.1); border-radius: 4px; font-size: 0.7rem; display: flex; align-items: center; gap: 0.2rem;">
             <span style="color: var(--text-light); font-size: 0.6rem;">Dólar</span>
-            <input type="text" inputmode="decimal" value="${variaveisMercado.dolar ? formatarNumeroBR(variaveisMercado.dolar, 2) : ''}" onchange="updateVariavelMercado('dolar', parseNumeroBR(this.value)); this.value = variaveisMercado.dolar ? formatarNumeroBR(variaveisMercado.dolar, 2) : '';" style="width: 42px; padding: 0.1rem 0.2rem; background: transparent; border: 1px solid rgba(76,175,80,0.3); border-radius: 3px; color: #4CAF50; font-size: 0.7rem; font-weight: 600; text-align: center;">
+            <input type="text" inputmode="decimal" value="${variaveisMercado.dolar ? formatarNumeroBR(variaveisMercado.dolar, 2) : ''}" onchange="var d = updateVariavelMercado('dolar', parseNumeroBR(this.value)); this.value = d ? formatarNumeroBR(d, 2) : '';" style="width: 42px; padding: 0.1rem 0.2rem; background: transparent; border: 1px solid rgba(76,175,80,0.3); border-radius: 3px; color: #4CAF50; font-size: 0.7rem; font-weight: 600; text-align: center;">
           </span>
         </div>
       </div>
