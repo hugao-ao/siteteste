@@ -68,7 +68,17 @@
         <h2>Sessões pendentes de preenchimento</h2>
         <button class="argos-modal-x" data-fechar>×</button>
       </div>
-      <p class="dica">Sessões já vencidas ainda marcadas com «??». Marque cada uma:</p>
+      <p class="dica">Sessões já vencidas ainda marcadas com «??». Quem faltou várias
+        semanas aparece de uma vez só — dá para marcar o paciente inteiro num clique.</p>
+      <div class="pend-barra">
+        <input type="search" id="pend-busca" class="argos-input"
+               placeholder="🔎 filtrar por paciente ou profissional" />
+        <div class="pend-agrupar">
+          <button class="argos-btn small" data-agrupar="paciente">👤 Por paciente</button>
+          <button class="argos-btn small" data-agrupar="data">📅 Por data</button>
+        </div>
+      </div>
+      <p class="dica" id="pend-resumo"></p>
       <div id="lista-pendentes"></div>
     </div>
   </div>
@@ -260,7 +270,7 @@
     </div>
   </div>
 
-  <script type="module" src="agenda.js?v=17"></script>
+  <script type="module" src="agenda.js?v=18"></script>
   <script type="module" src="argos-zoom.js?v=4"></script>
 </body>
 </html>
