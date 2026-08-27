@@ -85,83 +85,106 @@ const PERFIS_FINANCEIROS = [
 ];
 
 // Planos de acompanhamento
+// Espelho de src/lib/planos.ts do repositório mithrasf (site público).
+// O site público é a fonte da verdade comercial: preço, cadência de reunião,
+// prazo de WhatsApp e escopo saem de lá. Se mudar lá, mude aqui — ou, quando
+// a sincronização automática entrar, este array vira apenas o retrato local
+// usado enquanto o arquivo remoto não responde.
 const PLANOS_ACOMPANHAMENTO = [
   {
     id: 'nivel_1',
     nome: 'HV Nível I',
     valor: 29.90,
-    subtitulo: 'Autonomia com direção',
+    subtitulo: 'Autonomia',
     cor: '#6c757d',
     destaque: false,
     itens: [
-      'Planejamento e metas definidos',
-      'WhatsApp Ilimitado (Dúvidas)',
-      'Resolução de demandas em reunião',
-      'Você executa, nós orientamos'
+      'WhatsApp ilimitado',
+      'Todas as ferramentas da plataforma',
+      'Vídeo-trilha de como montar seu plano',
+      'Contato de acompanhamento a cada 15 dias'
     ],
-    reunioes: 'Ilimitadas (mediante agendamento)',
-    prioridade: 'Baixa',
-    sla_agenda: '6 meses',
+    reunioes: 'Não tem — acompanhamento por WhatsApp',
+    cotacao: '—',
+    especialista: '—',
     sla_whatsapp: '30 dias',
-    nao_incluso: 'Cotações, pesquisas de mercado, contato com terceiros, execução operacional, relatórios fora de reunião'
+    nao_incluso: 'Reuniões, cotações, pesquisas de mercado, contato com terceiros, execução de tarefas operacionais'
   },
   {
     id: 'nivel_2',
     nome: 'HV Nível II',
     valor: 59.90,
-    subtitulo: 'Agilidade + pesquisas',
+    subtitulo: 'Companhia',
     cor: '#17a2b8',
     destaque: false,
     itens: [
       'Tudo do Nível I',
-      'Cotações de itens da reunião',
-      'Prioridade maior na agenda',
-      'Pesquisas de preços e opções'
+      'Reunião a cada 120 dias',
+      'Resposta no WhatsApp em 15 dias',
+      'Qualquer demanda resolvida na reunião'
     ],
-    reunioes: 'Ilimitadas (mediante agendamento)',
-    prioridade: 'Normal',
-    sla_agenda: '4 meses',
+    reunioes: 'A cada 120 dias',
+    cotacao: '—',
+    especialista: '—',
     sla_whatsapp: '15 dias',
-    nao_incluso: 'Contato com terceiros, intermediação, execução operacional, relatórios mensais'
+    nao_incluso: 'Cotações, pesquisas de mercado, contato com terceiros, execução de tarefas operacionais'
   },
   {
     id: 'nivel_3',
     nome: 'HV Nível III',
     valor: 119.90,
-    subtitulo: 'Acompanhamento próximo',
+    subtitulo: 'Direção',
     cor: '#28a745',
     destaque: true,
     itens: [
       'Tudo do Nível II',
-      'Supervisão Ativa de contratações',
-      'Relatórios mensais de progresso',
-      'Prioridade Alta na agenda'
+      'Reunião a cada 60 dias',
+      'Contatos de profissionais entregues',
+      'O que seria ideal conseguir na negociação'
     ],
-    reunioes: 'Ilimitadas (mediante agendamento)',
-    prioridade: 'Alta',
-    sla_agenda: '2 meses',
+    reunioes: 'A cada 60 dias',
+    cotacao: 'Contatos entregues a você',
+    especialista: '—',
     sla_whatsapp: '7 dias',
-    nao_incluso: 'Execução operacional de tarefas em nome do cliente'
+    nao_incluso: 'Condução da cotação pelo consultor, reunião com especialista, execução de tarefas operacionais em seu nome'
   },
   {
     id: 'nivel_4',
     nome: 'HV Nível IV',
-    valor: 299.90,
-    subtitulo: 'Nós resolvemos tudo',
+    valor: 179.90,
+    subtitulo: 'Representação',
     cor: '#d4af37',
     destaque: false,
     itens: [
       'Tudo do Nível III',
-      'Resolução total (o que for possível)',
-      'Relatórios semanais de evolução',
-      'Prioridade MÁXIMA (horário fixo)',
-      'Nós executamos por você'
+      'Cotação conduzida por nós',
+      '1 reunião por ano com especialista',
+      'Resposta no WhatsApp em 72 horas'
     ],
-    reunioes: 'Ilimitadas + Horário Fixo Mensal',
-    prioridade: 'Máxima',
-    sla_agenda: '1 mês',
+    reunioes: 'A cada 60 dias',
+    cotacao: 'Conduzida por nós',
+    especialista: '1 por ano',
     sla_whatsapp: '72 horas',
-    nao_incluso: 'Atos que exijam presença física, assinatura biométrica ou senha pessoal intransferível'
+    nao_incluso: 'Alimentação do sistema pelo consultor; atos que exijam presença física, assinatura biométrica ou senha pessoal intransferível'
+  },
+  {
+    id: 'nivel_5',
+    nome: 'HV Nível V',
+    valor: 349.90,
+    subtitulo: 'Delegação',
+    cor: '#9966ff',
+    destaque: false,
+    itens: [
+      'Tudo do Nível IV',
+      'Nós alimentamos o sistema por você',
+      'Relatório do orçamento toda sexta',
+      '2 reuniões por ano com especialista'
+    ],
+    reunioes: 'A cada 30 dias',
+    cotacao: 'Conduzida por nós',
+    especialista: '2 por ano',
+    sla_whatsapp: '72 horas',
+    nao_incluso: 'Atos que exijam presença física, assinatura biométrica ou uso de senha pessoal intransferível do titular'
   }
 ];
 
@@ -3226,9 +3249,10 @@ function renderInvestimentoAssistencia() {
               `).join('')}
             </ul>
             <div style="margin-top: 0.5rem; padding-top: 0.4rem; border-top: 1px solid rgba(255,255,255,0.1); font-size: 0.55rem; color: var(--text-light);">
-              <div><b>Prioridade:</b> ${plano.prioridade}</div>
-              <div><b>SLA Agenda:</b> ${plano.sla_agenda}</div>
-              <div><b>SLA WhatsApp:</b> ${plano.sla_whatsapp}</div>
+              <div><b>Reunião:</b> ${plano.reunioes}</div>
+              <div><b>Cotação:</b> ${plano.cotacao}</div>
+              <div><b>Especialista:</b> ${plano.especialista}</div>
+              <div><b>WhatsApp:</b> ${plano.sla_whatsapp}</div>
             </div>
           </div>
           `).join('')}
