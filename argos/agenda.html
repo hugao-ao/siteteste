@@ -25,6 +25,11 @@
       <button class="argos-btn small primary" id="btn-abrir-pendentes" data-argos-recurso="sessoes_status">Preencher agora</button>
     </div>
 
+    <div class="argos-aviso desfazer" id="aviso-desfazer" style="display:none">
+      <span id="aviso-desfazer-texto"></span>
+      <button class="argos-btn small" id="btn-desfazer">↩️ Desfazer (Ctrl+Z)</button>
+    </div>
+
     <div class="argos-filtros">
       <select id="modo-visao">
         <option value="semana">📅 Semana</option>
@@ -293,7 +298,7 @@
     </div>
   </div>
 
-  <script type="module" src="agenda.js?v=19"></script>
+  <script type="module" src="agenda.js?v=20"></script>
   <script type="module" src="argos-zoom.js?v=4"></script>
 </body>
 </html>

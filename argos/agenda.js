@@ -1008,8 +1008,12 @@ document.getElementById('btn-horario-fixo').addEventListener('click', async () =
 // (remarcada_de_*), então a projeção antiga não reaparece e o financeiro
 // passa a contar pela data nova.
 async function moverSessaoUnica(s, novaData, novaHora, motivo) {
-    let error;
+    let error, voltar;
     if (s.id) {
+        // o inverso é escrito ANTES de gravar, com os valores que a linha tinha
+        const antes = { data: s.data, hora: s.hora,
+            remarcada_de_data: s.remarcada_de_data || null,
+            remarcada_de_hora: s.remarcada_de_hora || null };
         ({ error } = await sb.from('argos_sessoes').update({
             data: novaData, hora: novaHora,
             // guarda sempre a ocorrência ORIGINAL (1ª remarcação), para exibir
@@ -1017,17 +1021,28 @@ async function moverSessaoUnica(s, novaData, novaHora, motivo) {
             remarcada_de_data: s.remarcada_de_data || s.data,
             remarcada_de_hora: s.remarcada_de_hora || s.hora
         }).eq('id', s.id));
+        voltar = async () => {
+            const { error: e } = await sb.from('argos_sessoes').update(antes).eq('id', s.id);
+            if (e) throw e;
+        };
     } else {
-        ({ error } = await sb.from('argos_sessoes').insert({
+        // a sessão era só projeção: desfazer é apagar a linha que nasceu agora
+        const { data: criada, error: e } = await sb.from('argos_sessoes').insert({
             paciente_id: s.paciente_id, dinamica_id: s.dinamica_ref, dinamica_ref: s.dinamica_ref,
             data: novaData, hora: novaHora, duracao_min: s.duracao_min || 60,
             sala_id: s.sala_id || null, profissional_id: s.profissional_id || null,
             servico_id: s.servico_id || null, status: '??',
             grupo_id: s.grupo_id || null, grupo_ref: s.grupo_ref || null,
             remarcada_de_data: s.data, remarcada_de_hora: s.hora
-        }));
+        }).select('id').single();
+        error = e;
+        voltar = async () => {
+            const { error: e2 } = await sb.from('argos_sessoes').delete().eq('id', criada.id);
+            if (e2) throw e2;
+        };
     }
     if (error) { console.error(error); toast('Erro ao remarcar a sessão.', true); return; }
+    armarDesfazer(`Remarcação de ${nomePac(s.paciente_id)} para ${formataBR(novaData)} ${novaHora}`, voltar);
     await registrarEvento(s.paciente_id, 'remarcacao_sessao',
         `Sessão de ${formataBR(s.data)} às ${s.hora} remarcada para ${formataBR(novaData)} às ${novaHora} (apenas esta sessão; o horário fixo não mudou).`,
         { de: { data: s.data, hora: s.hora }, para: { data: novaData, hora: novaHora }, dinamica: s.dinamica_ref || null }, motivo);
@@ -1083,12 +1098,31 @@ async function novoHorarioFixo({ s, novaData, novaHora, d, motivo }) {
         return;
     }
 
-    const { error: e1 } = await sb.from('argos_dinamicas').insert(nova);
+    // guardado antes de mexer: a dinâmica velha volta ao fim que tinha, e a
+    // sessão apagada volta com a linha inteira, não com uma aproximação
+    const fimAntes = { fim_tipo: d.fim_tipo, fim_data: d.fim_data || null };
+    const linhaDaSessao = s.id ? sessoes.find(x => x.id === s.id) : null;
+
+    const { data: criada, error: e1 } = await sb.from('argos_dinamicas')
+        .insert(nova).select('id').single();
     if (e1) { console.error(e1); toast('Erro ao criar a nova dinâmica.', true); return; }
     const { error: e2 } = await sb.from('argos_dinamicas')
         .update({ fim_tipo: 'data', fim_data: cutoff }).eq('id', d.id);
     if (e2) { console.error(e2); toast('Erro ao encerrar a dinâmica anterior.', true); return; }
     if (s.id) await sb.from('argos_sessoes').delete().eq('id', s.id);
+
+    armarDesfazer(`Novo horário fixo de ${nomePac(d.paciente_id)}`, async () => {
+        const { error: x1 } = await sb.from('argos_dinamicas').delete().eq('id', criada.id);
+        if (x1) throw x1;
+        const { error: x2 } = await sb.from('argos_dinamicas').update(fimAntes).eq('id', d.id);
+        if (x2) throw x2;
+        if (linhaDaSessao) {
+            const { id, created_at, ...campos } = linhaDaSessao;
+            const { error: x3 } = await sb.from('argos_sessoes').insert(campos);
+            if (x3) throw x3;
+        }
+        await carregarTudo();
+    });
 
     let extras = '';
     if (d.grupo_id) {
@@ -1417,10 +1451,97 @@ document.getElementById('form-grupo').addEventListener('submit', async (e) => {
 async function moverGrupo(g, novoDow) {
     if (g.dow === novoDow) return;
     const registro = { dow: novoDow, hora: g.hora, sala_id: g.sala_id, duracao_min: g.duracao_min };
+    // a troca com quem já ocupava o destino também precisa voltar: fotografa
+    // os dois lados antes, e desfazer restaura ambos
+    const ocupante = grupoOcupante(registro, g.id);
+    const fotos = [fotoDoGrupo(g.id), ocupante ? fotoDoGrupo(ocupante.id) : null].filter(Boolean);
+    const dowAntes = g.dow;
     const ok = await salvarSlotDeGrupo(g.id, registro);
     if (!ok) return;
+    armarDesfazer(`Grupo "${g.nome}" de ${DOW_NOMES[dowAntes]} para ${DOW_NOMES[novoDow]}`,
+        async () => {
+            for (const f of fotos) await restaurarFotoDeGrupo(f);
+            await carregarTudo();
+        });
     toast(`Grupo "${g.nome}" movido para ${DOW_NOMES[novoDow]}.`);
     await recarregarSessoes();
+}
+
+// ---------- desfazer a última mudança de horário ----------
+// A "dança das cadeiras" da agenda é onde mais se erra: arrastou para o dia
+// errado, mudou o horário fixo sem querer, trocou o grupo de dia. Cada uma
+// dessas mudanças guarda o SEU INVERSO exato — não um "recarregar e torcer" —
+// e Ctrl+Z (ou o botão) desfaz a última. Um nível só: desfazer o desfazer
+// seria refazer, e aí a conta de quem mexeu em quê deixa de fechar.
+//
+// De propósito, só as mudanças de horário entram aqui. Marcar frequência,
+// apagar grupo ou mexer em espaço continuam sem desfazer: são coisas que a
+// pessoa faz olhando, não arrastando.
+let desfazerPendente = null;
+
+function armarDesfazer(descricao, executar) {
+    desfazerPendente = { descricao, executar };
+    mostrarDesfazer();
+}
+
+function mostrarDesfazer() {
+    const barra = document.getElementById('aviso-desfazer');
+    if (!desfazerPendente) { barra.style.display = 'none'; return; }
+    document.getElementById('aviso-desfazer-texto').textContent =
+        `↩️ ${desfazerPendente.descricao}`;
+    barra.style.display = '';
+}
+
+async function executarDesfazer() {
+    if (!desfazerPendente) { toast('Não há mudança de horário para desfazer.', true); return; }
+    const { descricao, executar } = desfazerPendente;
+    // solta antes de executar: se der erro no meio, não fica um desfazer
+    // pela metade esperando um segundo clique que repetiria o estrago
+    desfazerPendente = null;
+    mostrarDesfazer();
+    try {
+        await executar();
+    } catch (e) {
+        console.error(e);
+        toast('Não deu para desfazer. Confira a agenda.', true);
+        return;
+    }
+    toast(`Desfeito: ${descricao.charAt(0).toLowerCase()}${descricao.slice(1)}`);
+    await recarregarSessoes();
+}
+
+document.getElementById('btn-desfazer').addEventListener('click', executarDesfazer);
+document.addEventListener('keydown', e => {
+    if (!(e.ctrlKey || e.metaKey) || e.key.toLowerCase() !== 'z' || e.shiftKey) return;
+    // dentro de um campo, Ctrl+Z é do campo — desfazer o que se está digitando
+    const alvo = e.target;
+    if (alvo && alvo.closest && alvo.closest('input, textarea, select, [contenteditable]')) return;
+    if (!desfazerPendente) return;
+    e.preventDefault();
+    executarDesfazer();
+});
+
+/** Foto do grupo e das dinâmicas presas a ele, para poder voltar tudo. */
+function fotoDoGrupo(gid) {
+    const g = grupos.find(x => x.id === gid);
+    if (!g) return null;
+    return {
+        grupo: { id: g.id, dow: g.dow, hora: g.hora, sala_id: g.sala_id, duracao_min: g.duracao_min },
+        dinamicas: dinamicas.filter(d => d.grupo_id === gid).map(d => ({
+            id: d.id, dias: d.dias, sala_id: d.sala_id, duracao_min: d.duracao_min
+        }))
+    };
+}
+
+async function restaurarFotoDeGrupo(foto) {
+    if (!foto) return;
+    const { id, ...campos } = foto.grupo;
+    const { error } = await sb.from('argos_grupos').update(campos).eq('id', id);
+    if (error) throw error;
+    for (const d of foto.dinamicas) {
+        const { id: did, ...camposD } = d;
+        await sb.from('argos_dinamicas').update(camposD).eq('id', did);
+    }
 }
 
 // ---------- confirmação de mudança ----------
