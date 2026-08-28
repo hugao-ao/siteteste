@@ -96,6 +96,101 @@ export function linkWhatsApp(fone, texto) {
 }
 
 /**
+ * Confere se o número tem cara de telefone do jeito que a clínica digita:
+ * código do país, DDD e o número. Devolve { ok, fone, erro } — `fone` já
+ * normalizado, pronto para o link.
+ *
+ * Aceita 8 ou 9 dígitos no número: fixo antigo ainda aparece na agenda de
+ * alguns responsáveis, e recusá-lo seria inventar uma regra que a clínica
+ * não tem.
+ */
+export function conferirFone(bruto) {
+    const d = String(bruto == null ? '' : bruto).replace(/\D/g, '');
+    if (!d) return { ok: false, fone: '', erro: 'Digite o número.' };
+    const fone = normalizarFone(bruto);
+    // país (1 a 3) + DDD (2) + número (8 ou 9)
+    if (fone.length < 12 || fone.length > 14) {
+        return { ok: false, fone,
+            erro: 'Use código do país + DDD + número. Ex.: 55 81 99999-9999.' };
+    }
+    return { ok: true, fone, erro: '' };
+}
+
+/** "2026-08-03" → "03/08 (seg)" — como se lê num aviso, sem o ano repetido. */
+const DIAS_CURTOS = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'];
+function dataCurta(iso) {
+    const [a, m, d] = String(iso || '').split('-').map(Number);
+    if (!a || !m || !d) return String(iso || '');
+    return `${String(d).padStart(2, '0')}/${String(m).padStart(2, '0')} `
+        + `(${DIAS_CURTOS[new Date(a, m - 1, d, 12).getDay()]})`;
+}
+
+/**
+ * Mensagem de WhatsApp com as sessões que ainda faltam preencher.
+ *
+ * itens — [{ paciente, profissional, sala, data, hora }]
+ *
+ * Vai agrupada do mesmo jeito que está na tela: quem olha a lista e quem
+ * recebe a mensagem precisam estar vendo a mesma coisa, senão a conferência
+ * a quatro mãos não fecha.
+ *
+ * `limite` corta a lista quando o atraso é grande — a URL do WhatsApp tem
+ * tamanho, e uma mensagem de duzentas linhas ninguém responde. O que ficou
+ * de fora é anunciado, nunca escondido.
+ */
+export function mensagemPendencias({ itens = [], agrupar = 'paciente',
+    hoje = '', limite = 60 } = {}) {
+    if (!itens.length) return '';
+
+    const porPaciente = agrupar !== 'data';
+    const chave = i => porPaciente ? String(i.paciente || '') : String(i.data || '');
+    const ordenados = [...itens].sort((a, b) =>
+        chave(a).localeCompare(chave(b), 'pt-BR')
+        || String(a.data + a.hora).localeCompare(String(b.data + b.hora)));
+
+    const mostrados = ordenados.slice(0, limite);
+    const sobraram = ordenados.length - mostrados.length;
+    const pacientes = new Set(itens.map(i => i.paciente)).size;
+
+    const linhas = ['*Sessões pendentes de preenchimento*'];
+    if (hoje) linhas.push(`_Argos Gestão · ${formataDataBR(hoje)}_`);
+    linhas.push('');
+    linhas.push(`Faltam marcar *${itens.length}* sessão(ões) já vencida(s)`
+        + (porPaciente ? ` de *${pacientes}* paciente(s):` : ':'));
+    linhas.push('');
+
+    let atual = null;
+    for (const i of mostrados) {
+        const k = chave(i);
+        if (k !== atual) {
+            if (atual !== null) linhas.push('');
+            atual = k;
+            const doGrupo = mostrados.filter(x => chave(x) === k);
+            linhas.push(porPaciente
+                ? `*${i.paciente}*${i.profissional ? ` (${i.profissional})` : ''} — ${doGrupo.length}`
+                : `*${dataCurta(i.data)}* — ${doGrupo.length}`);
+        }
+        linhas.push(porPaciente
+            ? `• ${dataCurta(i.data)} ${i.hora}`
+            : `• ${i.hora} ${i.paciente}${i.profissional ? ` (${i.profissional})` : ''}`);
+    }
+
+    if (sobraram > 0) {
+        linhas.push('');
+        linhas.push(`_… e mais ${sobraram} sessão(ões). A lista completa está no sistema._`);
+    }
+    linhas.push('');
+    linhas.push('Como foi cada uma? *Ok* (veio), *Fj* (faltou com justificativa), '
+        + '*Fc* (faltou sem avisar) ou *Nc* (não houve atendimento).');
+    return linhas.join('\n');
+}
+
+const formataDataBR = iso => {
+    const [a, m, d] = String(iso || '').split('-');
+    return a && m && d ? `${d}/${m}/${a}` : String(iso || '');
+};
+
+/**
  * Descrição que vai para a nota fiscal.
  *
  * mes  — 'YYYY-MM'
