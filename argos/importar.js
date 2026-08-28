@@ -710,13 +710,21 @@ async function gravarGrupos(idPorChave) {
 // tantas ocorrências que nunca aconteceram.
 function semanasSemRegistro(trecho, registradas, coberto, aberto) {
     if (!trecho.hora || trecho.dow == null || !trecho.de) return [];
-    // Até onde a planilha fala: dentro do período coberto pelas abas de
-    // frequência, ausência de registro é ausência de atendimento; depois
-    // dele é desconhecido, e desconhecido continua pendente.
+    // Até onde a planilha FALA: dentro do que as abas cobrem, ausência de
+    // registro é ausência de atendimento — o horário existia, a semana passou
+    // e ninguém anotou nada, então não houve. Depois disso é desconhecido, e
+    // desconhecido continua pendente («??») até alguém dizer o que houve.
+    //
+    // O dia da importação NÃO entra: a planilha chega de manhã e não relata o
+    // próprio dia em que foi enviada. Marcar esse dia como «não houve» inventa
+    // uma ausência que a planilha nunca afirmou — e some com sessões que ainda
+    // precisam ser preenchidas.
+    //
     // O último trecho de cada paciente vira dinâmica sem data de fim — a
-    // agenda projeta dali até hoje —, então ele vai até onde a planilha vai,
-    // e não até o fim do seu próprio mês.
-    const fim = aberto ? [coberto, hojeISO()] : [trecho.ate, coberto, hojeISO()];
+    // agenda projeta dali para a frente —, então ele vai até onde a planilha
+    // vai, e não até o fim do seu próprio mês.
+    const vespera = somarDias(hojeISO(), -1);
+    const fim = aberto ? [coberto, vespera] : [trecho.ate, coberto, vespera];
     const limite = fim.filter(Boolean).sort()[0];
     const vazias = [];
     for (let iso = trecho.de, passos = 0; iso <= limite && passos < 400; iso = somarDias(iso, 1), passos++) {

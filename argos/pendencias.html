@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=0.1, maximum-scale=10, user-scalable=yes" />
+  <title>Argos Gestão — Sessões pendentes</title>
+  <script src="argos-guard.js"></script>
+  <link rel="stylesheet" href="argos-style.css?v=10" />
+</head>
+<body class="janela-solta">
+  <header class="argos-topbar">
+    <div class="brand">ARGOS <span>GESTÃO</span></div>
+    <div class="actions">
+      <a class="argos-btn ghost" href="agenda.html" id="link-agenda">🗓️ Agenda</a>
+      <button class="argos-btn danger" id="btn-logout">Sair</button>
+    </div>
+  </header>
+
+  <main class="argos-pagina larga">
+    <h1>✍️ Sessões pendentes de preenchimento</h1>
+    <p class="sub">Sessões já vencidas ainda marcadas com «??». Quem faltou várias
+      semanas aparece de uma vez só — dá para marcar o paciente inteiro num clique.</p>
+
+    <div class="pend-barra">
+      <input type="search" id="pend-busca" class="argos-input"
+             placeholder="🔎 filtrar por paciente, profissional ou espaço" />
+    </div>
+    <div class="pend-barra">
+      <label class="pend-campo">Agrupar por
+        <select id="pend-agrupar" class="argos-input"></select></label>
+      <label class="pend-campo">Ordenar por
+        <select id="pend-ordem" class="argos-input"></select></label>
+    </div>
+    <div class="pend-barra">
+      <input type="tel" id="pend-fone" class="argos-input"
+             placeholder="📱 55 81 99999-9999 (país, DDD e número)" />
+      <button class="argos-btn small" id="btn-pend-whats"
+        data-argos-recurso="pendencias_whatsapp">📲 Enviar a lista</button>
+    </div>
+    <p class="dica" id="pend-resumo"></p>
+    <div id="lista-pendentes"><p class="dim">Carregando…</p></div>
+  </main>
+
+  <script type="module" src="pendencias.js?v=1"></script>
+  <script type="module" src="argos-zoom.js?v=4"></script>
+</body>
+</html>

@@ -67,35 +67,6 @@
   </main>
 
   <!-- ============ MODAL: SESSÕES PENDENTES ============ -->
-  <div class="argos-modal-fundo" id="modal-pendentes">
-    <div class="argos-modal grande">
-      <div class="argos-modal-topo">
-        <h2>Sessões pendentes de preenchimento</h2>
-        <button class="argos-modal-x" data-fechar>×</button>
-      </div>
-      <p class="dica">Sessões já vencidas ainda marcadas com «??». Quem faltou várias
-        semanas aparece de uma vez só — dá para marcar o paciente inteiro num clique.</p>
-      <div class="pend-barra">
-        <input type="search" id="pend-busca" class="argos-input"
-               placeholder="🔎 filtrar por paciente ou profissional" />
-      </div>
-      <div class="pend-barra">
-        <label class="pend-campo">Agrupar por
-          <select id="pend-agrupar" class="argos-input"></select></label>
-        <label class="pend-campo">Ordenar por
-          <select id="pend-ordem" class="argos-input"></select></label>
-      </div>
-      <div class="pend-barra">
-        <input type="tel" id="pend-fone" class="argos-input"
-               placeholder="📱 55 81 99999-9999 (país, DDD e número)" />
-        <button class="argos-btn small" id="btn-pend-whats"
-          data-argos-recurso="pendencias_whatsapp">📲 Enviar a lista</button>
-      </div>
-      <p class="dica" id="pend-resumo"></p>
-      <div id="lista-pendentes"></div>
-    </div>
-  </div>
-
   <!-- ============ MODAL: CONFIRMAR ARRASTO ============ -->
   <div class="argos-modal-fundo" id="modal-confirma">
     <div class="argos-modal">
@@ -300,7 +271,7 @@
     </div>
   </div>
 
-  <script type="module" src="agenda.js?v=23"></script>
+  <script type="module" src="agenda.js?v=24"></script>
   <script type="module" src="argos-zoom.js?v=4"></script>
 </body>
 </html>
