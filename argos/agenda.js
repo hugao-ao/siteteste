@@ -77,6 +77,14 @@ function montarFiltroSalas() {
 function renderTudo() { renderAgenda(); renderAvisoPendentes(); }
 
 // ---------- pendências (sessões vencidas «??») ----------
+// A regra: sessão que já venceu e ninguém classificou é «??» até alguém
+// dizer o que houve. Vale do primeiro dia da clínica até ONTEM — a de hoje
+// ainda pode acontecer, e cobrar o preenchimento dela seria cobrar o futuro.
+//
+// O banco garante metade disso sozinho: status é NOT NULL, nasce '??' e só
+// aceita os cinco valores, então linha gravada nunca fica sem classificação.
+// A outra metade é a projeção: o horário fixo que ainda não virou linha
+// aparece como «??» pela mesma regra.
 function sessoesPendentes() {
     const hoje = hojeISO();
     const inicio = dinamicas.map(d => d.data_inicio).filter(Boolean).sort()[0];
@@ -84,7 +92,13 @@ function sessoesPendentes() {
     const de = [inicio, deSessoes].filter(Boolean).sort()[0];
     if (!de) return [];
     const c = aplicarFimDeProcesso(dinamicas, sessoes, pacientes);
-    return mesclarSessoes(c.dinamicas, c.sessoes, de, somarDias(hoje, -1))
+    // Desligar uma dinâmica encerra o futuro dela, não apaga o passado: o que
+    // já venceu sem classificação continua pendente. Sem isto, desmarcar
+    // "ativa" faria a obrigação de preencher sumir em silêncio, e as sessões
+    // sairiam do fechamento sem ninguém ter dito o que aconteceu.
+    // O corte por fim de processo do paciente continua valendo por cima.
+    const paraPendencia = c.dinamicas.map(d => d.ativo === false ? { ...d, ativo: true } : d);
+    return mesclarSessoes(paraPendencia, c.sessoes, de, somarDias(hoje, -1))
         .filter(s => s.status === '??');
 }
 
