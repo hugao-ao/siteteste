@@ -761,7 +761,11 @@ ul.cb-excecoes li .acoes { display: flex; gap: 6px; margin-top: 6px; flex-wrap: 
     display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 8px;
 }
 .pend-barra #pend-busca { flex: 1; min-width: 200px; }
-.pend-agrupar { display: flex; gap: 4px; }
+.pend-campo {
+    display: flex; align-items: center; gap: 6px; flex: 1; min-width: 190px;
+    font-size: .85rem; white-space: nowrap;
+}
+.pend-campo select { flex: 1; min-width: 0; }
 .pend-grupo {
     border: 1px solid var(--argos-borda, #e2e8f0); border-radius: 12px;
     padding: 8px 10px; margin-bottom: 12px;
@@ -778,3 +782,20 @@ ul.cb-excecoes li .acoes { display: flex; gap: 6px; margin-top: 6px; flex-wrap: 
 }
 .pend-grupo .pendente-linha { margin-bottom: 6px; }
 .pend-grupo .pendente-linha:last-child { margin-bottom: 0; }
+
+/* ---- Confirmação de arrasto: dizer em palavras o que vai mudar ---- */
+.confirma-detalhe { margin: 10px 0; }
+.confirma-de-para {
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    background: var(--argos-fundo-suave, rgba(148, 163, 184, .12));
+    border-radius: 10px; padding: 10px 12px; font-weight: 600;
+}
+.confirma-de-para .de { text-decoration: line-through; opacity: .7; }
+.confirma-de-para .seta { color: var(--argos-accent, #6366f1); font-weight: 800; }
+.confirma-de-para .para { color: var(--argos-accent, #6366f1); }
+
+/* ---- Desfazer a última mudança de horário ---- */
+.argos-aviso.desfazer {
+    background: var(--argos-accent-soft, rgba(99, 102, 241, .12));
+    border-color: var(--argos-accent, #6366f1);
+}

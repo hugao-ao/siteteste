@@ -9,6 +9,9 @@ import {
     paraISO, formataBR, fimDoMes, expandirDinamica, conflitosDeSessao,
     conflitosDeDinamica, repassesDe, aplicarFimDeProcesso
 } from './argos-recorrencia.js';
+import { conferirFone, linkWhatsApp, mensagemPendencias } from './argos-cobranca.js';
+import { AGRUPAMENTOS, ORDENS, agrupamento, ordenacao, agruparPendencias, contarPendencias }
+    from './argos-pendencias.js';
 import { STATUS_PROF, ORDEM_STATUS_PROF, responsaveisDe } from './argos-producao.js';
 
 let perm = { pode: () => true, aplicarVisibilidade: () => {}, master: true };
@@ -95,6 +98,11 @@ function renderAvisoPendentes() {
 }
 
 document.getElementById('btn-abrir-pendentes').addEventListener('click', () => {
+    const campo = document.getElementById('pend-fone');
+    if (!campo.value) {
+        // o recado quase sempre vai para a mesma pessoa
+        try { campo.value = localStorage.getItem('argos_pend_fone') || ''; } catch (e) {}
+    }
     renderPendentes(); abrirModal('modal-pendentes');
 });
 
@@ -103,8 +111,14 @@ document.getElementById('btn-abrir-pendentes').addEventListener('click', () => {
 // caçar as linhas dele uma a uma. Agrupado, as semanas dele ficam juntas e
 // dá para resolver o paciente inteiro num clique — que é como a pessoa
 // realmente pensa: «a Lara faltou o mês todo».
+//
+// O agrupamento nunca some: muda só por qual critério se agrupa (paciente,
+// dia, espaço, profissional) e em que ordem os blocos aparecem. Quem organiza
+// isso é argos-pendencias.js, o mesmo módulo que monta a mensagem do WhatsApp.
 let pendAgrupar = 'paciente';
+let pendOrdem = 'alfabetica';
 let pendBusca = '';
+let pendMostradas = [];  // o que está na tela — é isto que vai na mensagem
 
 const STATUS_MARCAVEIS = ['ok', 'fj', 'fc', 'nc'];
 
@@ -116,83 +130,102 @@ const botoesStatus = (attr, valor, titulo) => `
         title="${titulo ? `${titulo}: ` : ''}${STATUS_SESSAO[st].desc}">${STATUS_SESSAO[st].label}</button>`).join('')}
   </div>`;
 
+/** A sessão da agenda com os ids já virados nome, como o módulo espera. */
+const itemDePendencia = s => ({
+    paciente: nomePac(s.paciente_id), profissional: nomeProf(s.profissional_id),
+    espaco: nomeSala(s.sala_id), data: s.data, hora: s.hora, ref: s
+});
+
+function preencherSelect(id, lista, atual) {
+    const el = document.getElementById(id);
+    if (el.options.length !== lista.length) {
+        el.innerHTML = lista.map(x =>
+            `<option value="${x.valor}" title="${esc(x.dica)}">${esc(x.rotulo)}</option>`).join('');
+    }
+    el.value = atual;
+}
+
 function renderPendentes() {
     const todasPend = sessoesPendentes();
     const busca = pendBusca.trim().toLowerCase();
     const casa = s => !busca
         || nomePac(s.paciente_id).toLowerCase().includes(busca)
-        || nomeProf(s.profissional_id).toLowerCase().includes(busca);
+        || nomeProf(s.profissional_id).toLowerCase().includes(busca)
+        || nomeSala(s.sala_id).toLowerCase().includes(busca);
     const pend = todasPend.filter(casa);
 
-    document.querySelectorAll('[data-agrupar]').forEach(b =>
-        b.classList.toggle('primary', b.dataset.agrupar === pendAgrupar));
+    preencherSelect('pend-agrupar', AGRUPAMENTOS, pendAgrupar);
+    preencherSelect('pend-ordem', ORDENS, pendOrdem);
 
-    const resumo = document.getElementById('pend-resumo');
-    const pacientesComPendencia = new Set(todasPend.map(s => s.paciente_id)).size;
-    resumo.textContent = todasPend.length
-        ? `${todasPend.length} pendência(s) em ${pacientesComPendencia} paciente(s)`
+    const { sessoes, pacientes } = contarPendencias(todasPend.map(itemDePendencia));
+    document.getElementById('pend-resumo').textContent = sessoes
+        ? `${sessoes} pendência(s) em ${pacientes} paciente(s)`
           + (busca ? ` · mostrando ${pend.length}` : '')
+          + ` · ${agrupamento(pendAgrupar).dica}`
         : '';
 
     const alvo = document.getElementById('lista-pendentes');
+    pendMostradas = pend;
     if (!pend.length) {
         alvo.innerHTML = todasPend.length
             ? '<p class="dim">Nenhuma pendência com esse filtro.</p>'
             : '<p class="dim">Nenhuma pendência. 🎉</p>';
         return;
     }
-    alvo.innerHTML = pendAgrupar === 'paciente'
-        ? blocosDePendencias(pend, s => s.paciente_id, s => nomePac(s.paciente_id),
-            (nome, lista) => `${esc(nome)}<span class="dim"> · ${esc(nomeProf(lista[0].profissional_id))}</span>`,
-            s => `${formataBR(s.data)} ${s.hora}`,
-            s => `${esc(nomeSala(s.sala_id))}`)
-        : blocosDePendencias(pend, s => s.data, s => s.data,
-            nome => `${formataBR(nome)}<span class="dim"> · ${diaDaSemana(nome)}</span>`,
-            s => `${s.hora} — ${esc(nomePac(s.paciente_id))}`,
-            s => `${esc(nomeSala(s.sala_id))} · ${esc(nomeProf(s.profissional_id))}`);
-}
 
-const diaDaSemana = iso => DOW_NOMES[paraData(iso).getDay()];
-
-/**
- * Monta os blocos. Cada grupo traz os botões que resolvem tudo de uma vez,
- * e dentro dele as sessões continuam podendo ser marcadas uma a uma — nem
- * sempre o mês inteiro teve o mesmo desfecho.
- */
-function blocosDePendencias(pend, chaveDe, nomeDe, tituloHTML, linhaHTML, subHTML) {
-    const mapa = new Map();
-    for (const s of pend) {
-        const k = chaveDe(s);
-        if (!mapa.has(k)) mapa.set(k, { nome: nomeDe(s), itens: [] });
-        mapa.get(k).itens.push(s);
-    }
-    const ordenados = [...mapa.entries()].sort((a, b) =>
-        String(a[1].nome).localeCompare(String(b[1].nome), 'pt-BR'));
-
-    return ordenados.map(([k, g]) => {
-        const itens = [...g.itens].sort((a, b) =>
-            (a.data + a.hora).localeCompare(b.data + b.hora));
-        grupoDeChave.set(String(k), itens);
+    const blocos = agruparPendencias(pend.map(itemDePendencia),
+        { agrupar: pendAgrupar, ordem: pendOrdem });
+    alvo.innerHTML = blocos.map(b => {
+        grupoDeChave.set(b.chave, b.itens.map(i => i.ref));
         return `
       <div class="pend-grupo">
         <div class="pend-grupo-topo">
           <div class="bloco-info">
-            <b>${tituloHTML(g.nome, itens)}</b>
-            <span class="pend-conta">${itens.length}</span>
-            ${itens.length > 1 ? '<span class="dim"> — marcar todas:</span>' : ''}
+            <b>${esc(tituloDoBloco(b))}</b>
+            ${subtituloDoBloco(b)}
+            <span class="pend-conta">${b.itens.length}</span>
+            ${b.itens.length > 1 ? '<span class="dim"> — marcar todas:</span>' : ''}
           </div>
-          ${itens.length > 1 ? botoesStatus('marcar-grupo', esc(String(k)), `Todas as ${itens.length}`) : ''}
+          ${b.itens.length > 1 ? botoesStatus('marcar-grupo', esc(b.chave), `Todas as ${b.itens.length}`) : ''}
         </div>
-        ${itens.map(s => `
-          <div class="argos-bloco pendente-linha" data-chave="${chaveSessao(s)}">
+        ${b.itens.map(i => `
+          <div class="argos-bloco pendente-linha" data-chave="${chaveSessao(i.ref)}">
             <div class="bloco-info">
-              <b>${linhaHTML(s)}</b><br>
-              <span class="dim">${subHTML(s)}</span>
+              <b>${esc(linhaDoBloco(i))}</b><br>
+              <span class="dim">${esc(subLinhaDoBloco(i))}</span>
             </div>
             ${botoesStatus('marcar', '')}
           </div>`).join('')}
       </div>`;
     }).join('');
+}
+
+const diaDaSemana = iso => DOW_NOMES[paraData(iso).getDay()];
+
+const tituloDoBloco = b => pendAgrupar === 'data'
+    ? `${formataBR(b.nome)} (${diaDaSemana(b.nome)})` : b.nome;
+
+/** Quando o bloco não é o paciente, o subtítulo diz o que ele tem em comum. */
+function subtituloDoBloco(b) {
+    if (pendAgrupar !== 'paciente') return '';
+    const profs = [...new Set(b.itens.map(i => i.profissional).filter(Boolean))];
+    return profs.length ? `<span class="dim"> · ${esc(profs.join(', '))}</span>` : '';
+}
+
+/** A linha diz o que o bloco ainda não disse — nunca repete o título. */
+function linhaDoBloco(i) {
+    if (pendAgrupar === 'paciente') return `${formataBR(i.data)} ${i.hora}`;
+    if (pendAgrupar === 'data') return `${i.hora} — ${i.paciente}`;
+    // no bloco do horário fixo, a hora já está no título: sobra a data e quem é
+    if (pendAgrupar === 'horario') return `${formataBR(i.data)} — ${i.paciente}`;
+    return `${formataBR(i.data)} ${i.hora} — ${i.paciente}`;
+}
+
+function subLinhaDoBloco(i) {
+    if (pendAgrupar === 'paciente') return i.espaco;
+    if (pendAgrupar === 'espaco') return i.profissional;
+    if (pendAgrupar === 'profissional') return i.espaco;
+    return `${i.espaco} · ${i.profissional}`;
 }
 
 const grupoDeChave = new Map(); // chave do grupo -> sessões dele
@@ -224,14 +257,34 @@ document.getElementById('lista-pendentes').addEventListener('click', async (e) =
     renderPendentes();
 });
 
+// A lista de pendências costuma virar recado para a secretária ou para o
+// profissional que não preencheu. Manda o que está na tela — com o filtro e o
+// agrupamento que a pessoa escolheu —, para quem lê e quem enviou estarem
+// vendo a mesma coisa.
+document.getElementById('btn-pend-whats').addEventListener('click', () => {
+    if (!pendMostradas.length) { toast('Não há pendências para enviar.', true); return; }
+    const campo = document.getElementById('pend-fone');
+    const { ok, fone, erro } = conferirFone(campo.value);
+    if (!ok) { toast(erro, true); campo.focus(); return; }
+
+    const texto = mensagemPendencias({
+        agrupar: pendAgrupar, ordem: pendOrdem, hoje: hojeISO(),
+        itens: pendMostradas.map(itemDePendencia)
+    });
+    try { localStorage.setItem('argos_pend_fone', fone); } catch (e) {}
+    window.open(linkWhatsApp(fone, texto), '_blank', 'noopener');
+});
+
 document.getElementById('pend-busca').addEventListener('input', e => {
     pendBusca = e.target.value;
     renderPendentes();
 });
-document.querySelector('.pend-agrupar').addEventListener('click', e => {
-    const b = e.target.closest('[data-agrupar]');
-    if (!b) return;
-    pendAgrupar = b.dataset.agrupar;
+document.getElementById('pend-agrupar').addEventListener('change', e => {
+    pendAgrupar = e.target.value;
+    renderPendentes();
+});
+document.getElementById('pend-ordem').addEventListener('change', e => {
+    pendOrdem = e.target.value;
     renderPendentes();
 });
 
@@ -979,8 +1032,12 @@ document.getElementById('btn-horario-fixo').addEventListener('click', async () =
 // (remarcada_de_*), então a projeção antiga não reaparece e o financeiro
 // passa a contar pela data nova.
 async function moverSessaoUnica(s, novaData, novaHora, motivo) {
-    let error;
+    let error, voltar;
     if (s.id) {
+        // o inverso é escrito ANTES de gravar, com os valores que a linha tinha
+        const antes = { data: s.data, hora: s.hora,
+            remarcada_de_data: s.remarcada_de_data || null,
+            remarcada_de_hora: s.remarcada_de_hora || null };
         ({ error } = await sb.from('argos_sessoes').update({
             data: novaData, hora: novaHora,
             // guarda sempre a ocorrência ORIGINAL (1ª remarcação), para exibir
@@ -988,17 +1045,28 @@ async function moverSessaoUnica(s, novaData, novaHora, motivo) {
             remarcada_de_data: s.remarcada_de_data || s.data,
             remarcada_de_hora: s.remarcada_de_hora || s.hora
         }).eq('id', s.id));
+        voltar = async () => {
+            const { error: e } = await sb.from('argos_sessoes').update(antes).eq('id', s.id);
+            if (e) throw e;
+        };
     } else {
-        ({ error } = await sb.from('argos_sessoes').insert({
+        // a sessão era só projeção: desfazer é apagar a linha que nasceu agora
+        const { data: criada, error: e } = await sb.from('argos_sessoes').insert({
             paciente_id: s.paciente_id, dinamica_id: s.dinamica_ref, dinamica_ref: s.dinamica_ref,
             data: novaData, hora: novaHora, duracao_min: s.duracao_min || 60,
             sala_id: s.sala_id || null, profissional_id: s.profissional_id || null,
             servico_id: s.servico_id || null, status: '??',
             grupo_id: s.grupo_id || null, grupo_ref: s.grupo_ref || null,
             remarcada_de_data: s.data, remarcada_de_hora: s.hora
-        }));
+        }).select('id').single();
+        error = e;
+        voltar = async () => {
+            const { error: e2 } = await sb.from('argos_sessoes').delete().eq('id', criada.id);
+            if (e2) throw e2;
+        };
     }
     if (error) { console.error(error); toast('Erro ao remarcar a sessão.', true); return; }
+    armarDesfazer(`Remarcação de ${nomePac(s.paciente_id)} para ${formataBR(novaData)} ${novaHora}`, voltar);
     await registrarEvento(s.paciente_id, 'remarcacao_sessao',
         `Sessão de ${formataBR(s.data)} às ${s.hora} remarcada para ${formataBR(novaData)} às ${novaHora} (apenas esta sessão; o horário fixo não mudou).`,
         { de: { data: s.data, hora: s.hora }, para: { data: novaData, hora: novaHora }, dinamica: s.dinamica_ref || null }, motivo);
@@ -1054,12 +1122,31 @@ async function novoHorarioFixo({ s, novaData, novaHora, d, motivo }) {
         return;
     }
 
-    const { error: e1 } = await sb.from('argos_dinamicas').insert(nova);
+    // guardado antes de mexer: a dinâmica velha volta ao fim que tinha, e a
+    // sessão apagada volta com a linha inteira, não com uma aproximação
+    const fimAntes = { fim_tipo: d.fim_tipo, fim_data: d.fim_data || null };
+    const linhaDaSessao = s.id ? sessoes.find(x => x.id === s.id) : null;
+
+    const { data: criada, error: e1 } = await sb.from('argos_dinamicas')
+        .insert(nova).select('id').single();
     if (e1) { console.error(e1); toast('Erro ao criar a nova dinâmica.', true); return; }
     const { error: e2 } = await sb.from('argos_dinamicas')
         .update({ fim_tipo: 'data', fim_data: cutoff }).eq('id', d.id);
     if (e2) { console.error(e2); toast('Erro ao encerrar a dinâmica anterior.', true); return; }
     if (s.id) await sb.from('argos_sessoes').delete().eq('id', s.id);
+
+    armarDesfazer(`Novo horário fixo de ${nomePac(d.paciente_id)}`, async () => {
+        const { error: x1 } = await sb.from('argos_dinamicas').delete().eq('id', criada.id);
+        if (x1) throw x1;
+        const { error: x2 } = await sb.from('argos_dinamicas').update(fimAntes).eq('id', d.id);
+        if (x2) throw x2;
+        if (linhaDaSessao) {
+            const { id, created_at, ...campos } = linhaDaSessao;
+            const { error: x3 } = await sb.from('argos_sessoes').insert(campos);
+            if (x3) throw x3;
+        }
+        await carregarTudo();
+    });
 
     let extras = '';
     if (d.grupo_id) {
@@ -1388,11 +1475,138 @@ document.getElementById('form-grupo').addEventListener('submit', async (e) => {
 async function moverGrupo(g, novoDow) {
     if (g.dow === novoDow) return;
     const registro = { dow: novoDow, hora: g.hora, sala_id: g.sala_id, duracao_min: g.duracao_min };
+    // a troca com quem já ocupava o destino também precisa voltar: fotografa
+    // os dois lados antes, e desfazer restaura ambos
+    const ocupante = grupoOcupante(registro, g.id);
+    const fotos = [fotoDoGrupo(g.id), ocupante ? fotoDoGrupo(ocupante.id) : null].filter(Boolean);
+    const dowAntes = g.dow;
     const ok = await salvarSlotDeGrupo(g.id, registro);
     if (!ok) return;
+    armarDesfazer(`Grupo "${g.nome}" de ${DOW_NOMES[dowAntes]} para ${DOW_NOMES[novoDow]}`,
+        async () => {
+            for (const f of fotos) await restaurarFotoDeGrupo(f);
+            await carregarTudo();
+        });
     toast(`Grupo "${g.nome}" movido para ${DOW_NOMES[novoDow]}.`);
     await recarregarSessoes();
 }
+
+// ---------- desfazer a última mudança de horário ----------
+// A "dança das cadeiras" da agenda é onde mais se erra: arrastou para o dia
+// errado, mudou o horário fixo sem querer, trocou o grupo de dia. Cada uma
+// dessas mudanças guarda o SEU INVERSO exato — não um "recarregar e torcer" —
+// e Ctrl+Z (ou o botão) desfaz a última. Um nível só: desfazer o desfazer
+// seria refazer, e aí a conta de quem mexeu em quê deixa de fechar.
+//
+// De propósito, só as mudanças de horário entram aqui. Marcar frequência,
+// apagar grupo ou mexer em espaço continuam sem desfazer: são coisas que a
+// pessoa faz olhando, não arrastando.
+let desfazerPendente = null;
+
+function armarDesfazer(descricao, executar) {
+    desfazerPendente = { descricao, executar };
+    mostrarDesfazer();
+}
+
+function mostrarDesfazer() {
+    const barra = document.getElementById('aviso-desfazer');
+    if (!desfazerPendente) { barra.style.display = 'none'; return; }
+    document.getElementById('aviso-desfazer-texto').textContent =
+        `↩️ ${desfazerPendente.descricao}`;
+    barra.style.display = '';
+}
+
+async function executarDesfazer() {
+    if (!desfazerPendente) { toast('Não há mudança de horário para desfazer.', true); return; }
+    const { descricao, executar } = desfazerPendente;
+    // solta antes de executar: se der erro no meio, não fica um desfazer
+    // pela metade esperando um segundo clique que repetiria o estrago
+    desfazerPendente = null;
+    mostrarDesfazer();
+    try {
+        await executar();
+    } catch (e) {
+        console.error(e);
+        toast('Não deu para desfazer. Confira a agenda.', true);
+        return;
+    }
+    toast(`Desfeito: ${descricao.charAt(0).toLowerCase()}${descricao.slice(1)}`);
+    await recarregarSessoes();
+}
+
+document.getElementById('btn-desfazer').addEventListener('click', executarDesfazer);
+document.addEventListener('keydown', e => {
+    if (!(e.ctrlKey || e.metaKey) || e.key.toLowerCase() !== 'z' || e.shiftKey) return;
+    // dentro de um campo, Ctrl+Z é do campo — desfazer o que se está digitando
+    const alvo = e.target;
+    if (alvo && alvo.closest && alvo.closest('input, textarea, select, [contenteditable]')) return;
+    if (!desfazerPendente) return;
+    e.preventDefault();
+    executarDesfazer();
+});
+
+/** Foto do grupo e das dinâmicas presas a ele, para poder voltar tudo. */
+function fotoDoGrupo(gid) {
+    const g = grupos.find(x => x.id === gid);
+    if (!g) return null;
+    return {
+        grupo: { id: g.id, dow: g.dow, hora: g.hora, sala_id: g.sala_id, duracao_min: g.duracao_min },
+        dinamicas: dinamicas.filter(d => d.grupo_id === gid).map(d => ({
+            id: d.id, dias: d.dias, sala_id: d.sala_id, duracao_min: d.duracao_min
+        }))
+    };
+}
+
+async function restaurarFotoDeGrupo(foto) {
+    if (!foto) return;
+    const { id, ...campos } = foto.grupo;
+    const { error } = await sb.from('argos_grupos').update(campos).eq('id', id);
+    if (error) throw error;
+    for (const d of foto.dinamicas) {
+        const { id: did, ...camposD } = d;
+        await sb.from('argos_dinamicas').update(camposD).eq('id', did);
+    }
+}
+
+// ---------- confirmação de mudança ----------
+// Arrastar é fácil de fazer sem querer: um clique que escorrega já remarca a
+// sessão de alguém, ou muda o dia fixo de um grupo inteiro. Antes de gravar,
+// a janela diz em palavras o que vai acontecer — de onde, para onde, e a quem
+// isso afeta.
+let confirmarResolve = null;
+
+function pedirConfirmacao({ titulo, texto, detalhe = '', aviso = '', botao = 'Confirmar' }) {
+    document.getElementById('confirma-titulo').textContent = titulo;
+    document.getElementById('confirma-texto').textContent = texto;
+    document.getElementById('confirma-detalhe').innerHTML = detalhe;
+    document.getElementById('confirma-aviso').textContent = aviso;
+    document.getElementById('btn-confirma-sim').textContent = botao;
+    abrirModal('modal-confirma');
+    return new Promise(resolve => { confirmarResolve = resolve; });
+}
+
+function responderConfirmacao(valor) {
+    const resolve = confirmarResolve;
+    confirmarResolve = null;
+    fecharModal('modal-confirma');
+    if (resolve) resolve(valor);
+}
+
+document.getElementById('btn-confirma-sim').addEventListener('click', () => responderConfirmacao(true));
+document.getElementById('btn-confirma-nao').addEventListener('click', () => responderConfirmacao(false));
+// fechar pelo × ou pelo fundo é o mesmo que desistir — nunca "sim" por omissão
+document.getElementById('modal-confirma').addEventListener('click', e => {
+    if (e.target.closest('[data-fechar]') || e.target.id === 'modal-confirma') {
+        responderConfirmacao(false);
+    }
+});
+
+const diaPorExtenso = iso => `${formataBR(iso)} (${DOW_NOMES[paraData(iso).getDay()]})`;
+
+/** Ler antes de mover: de onde sai, para onde vai. */
+const deParaHTML = (de, para) =>
+    `<div class="confirma-de-para"><span class="de">${esc(de)}</span>
+       <span class="seta">→</span><span class="para">${esc(para)}</span></div>`;
 
 // ---------- arrastar e soltar (mouse) ----------
 function configurarDragDrop(container) {
@@ -1423,13 +1637,34 @@ function configurarDragDrop(container) {
         const alvoIso = dia.dataset.iso;
         if (payload.tipo === 'grupo') {
             const g = grupos.find(x => x.id === payload.id);
-            if (g) await moverGrupo(g, dowDe(alvoIso));
+            if (!g) return;
+            const novoDow = dowDe(alvoIso);
+            if (g.dow === novoDow) return;
+            const quantos = membrosDoGrupo(g.id).length;
+            const sim = await pedirConfirmacao({
+                titulo: 'Mudar o dia do grupo?',
+                texto: `O grupo "${g.nome}" passa a acontecer noutro dia da semana.`,
+                detalhe: deParaHTML(`${DOW_NOMES[g.dow]} ${g.hora}`, `${DOW_NOMES[novoDow]} ${g.hora}`),
+                aviso: quantos
+                    ? `Muda o horário fixo de ${quantos} paciente(s) do grupo.`
+                    : 'O grupo ainda não tem pacientes.',
+                botao: 'Mudar o dia'
+            });
+            if (sim) await moverGrupo(g, novoDow);
         } else {
             const s = chaves.get(payload.chave);
             if (!s) return;
             if (s.status !== '??') { toast('Só sessões pendentes («??») podem ser movidas.', true); return; }
             if (s.data === alvoIso) return;
-            await iniciarRemarcacao(s, alvoIso, s.hora, null);
+            const sim = await pedirConfirmacao({
+                titulo: 'Remarcar a sessão?',
+                texto: `A sessão de ${nomePac(s.paciente_id)} muda de dia.`,
+                detalhe: deParaHTML(`${diaPorExtenso(s.data)} ${s.hora}`,
+                                    `${diaPorExtenso(alvoIso)} ${s.hora}`),
+                aviso: 'O horário continua o mesmo. A sessão original fica registrada como remarcada.',
+                botao: 'Remarcar'
+            });
+            if (sim) await iniciarRemarcacao(s, alvoIso, s.hora, null);
         }
     });
 }

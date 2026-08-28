@@ -6,6 +6,7 @@
 // mudam o que chega no cliente — mexer com cuidado.
 
 import { excecoesVigentes, desdobrar, ratear } from './argos-excecoes.js';
+import { agruparPendencias, contarPendencias } from './argos-pendencias.js';
 
 export const MESES_EXTENSO = ['JANEIRO', 'FEVEREIRO', 'MARÇO', 'ABRIL', 'MAIO', 'JUNHO',
     'JULHO', 'AGOSTO', 'SETEMBRO', 'OUTUBRO', 'NOVEMBRO', 'DEZEMBRO'];
@@ -94,6 +95,107 @@ export function linkWhatsApp(fone, texto) {
     if (!f) return '';
     return `https://api.whatsapp.com/send?phone=${f}&text=${encodeURIComponent(texto || '')}`;
 }
+
+/**
+ * Confere se o número tem cara de telefone do jeito que a clínica digita:
+ * código do país, DDD e o número. Devolve { ok, fone, erro } — `fone` já
+ * normalizado, pronto para o link.
+ *
+ * Aceita 8 ou 9 dígitos no número: fixo antigo ainda aparece na agenda de
+ * alguns responsáveis, e recusá-lo seria inventar uma regra que a clínica
+ * não tem.
+ */
+export function conferirFone(bruto) {
+    const d = String(bruto == null ? '' : bruto).replace(/\D/g, '');
+    if (!d) return { ok: false, fone: '', erro: 'Digite o número.' };
+    const fone = normalizarFone(bruto);
+    // país (1 a 3) + DDD (2) + número (8 ou 9)
+    if (fone.length < 12 || fone.length > 14) {
+        return { ok: false, fone,
+            erro: 'Use código do país + DDD + número. Ex.: 55 81 99999-9999.' };
+    }
+    return { ok: true, fone, erro: '' };
+}
+
+/** "2026-08-03" → "03/08 (seg)" — como se lê num aviso, sem o ano repetido. */
+const DIAS_CURTOS = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'];
+function dataCurta(iso) {
+    const [a, m, d] = String(iso || '').split('-').map(Number);
+    if (!a || !m || !d) return String(iso || '');
+    return `${String(d).padStart(2, '0')}/${String(m).padStart(2, '0')} `
+        + `(${DIAS_CURTOS[new Date(a, m - 1, d, 12).getDay()]})`;
+}
+
+/**
+ * Mensagem de WhatsApp com as sessões que ainda faltam preencher.
+ *
+ * itens — [{ paciente, profissional, espaco, data, hora }]
+ *
+ * Sai agrupada e ordenada exatamente como está na tela — pela MESMA função
+ * que a tela usa. Quem olha a lista e quem recebe a mensagem precisam estar
+ * vendo a mesma coisa, senão a conferência a quatro mãos não fecha.
+ *
+ * `limite` corta a lista quando o atraso é grande — a URL do WhatsApp tem
+ * tamanho, e uma mensagem de duzentas linhas ninguém responde. O que ficou
+ * de fora é anunciado, nunca escondido.
+ */
+export function mensagemPendencias({ itens = [], agrupar = 'paciente',
+    ordem = 'alfabetica', hoje = '', limite = 60 } = {}) {
+    if (!itens.length) return '';
+
+    const porPaciente = agrupar === 'paciente';
+    const blocos = agruparPendencias(itens, { agrupar, ordem });
+    const { sessoes, pacientes } = contarPendencias(itens);
+
+    const linhas = ['*Sessões pendentes de preenchimento*'];
+    if (hoje) linhas.push(`_Argos Gestão · ${formataDataBR(hoje)}_`);
+    linhas.push('');
+    linhas.push(`Faltam marcar *${sessoes}* sessão(ões) já vencida(s)`
+        + (porPaciente ? ` de *${pacientes}* paciente(s):` : ':'));
+
+    let mostrados = 0;
+    for (const b of blocos) {
+        if (mostrados >= limite) break;
+        const cabem = b.itens.slice(0, limite - mostrados);
+        mostrados += cabem.length;
+        linhas.push('');
+        linhas.push(`*${porPaciente ? b.nome : tituloDoBloco(agrupar, b)}*`
+            + (porPaciente && b.itens[0].profissional ? ` (${b.itens[0].profissional})` : '')
+            + ` — ${b.itens.length}`);
+        for (const i of cabem) linhas.push(`• ${linhaDoItem(agrupar, i)}`);
+        if (cabem.length < b.itens.length) {
+            linhas.push(`_(+${b.itens.length - cabem.length} deste bloco)_`);
+        }
+    }
+
+    const sobraram = sessoes - mostrados;
+    if (sobraram > 0) {
+        linhas.push('');
+        linhas.push(`_… e mais ${sobraram} sessão(ões). A lista completa está no sistema._`);
+    }
+    linhas.push('');
+    linhas.push('Como foi cada uma? *Ok* (veio), *Fj* (faltou com justificativa), '
+        + '*Fc* (faltou sem avisar) ou *Nc* (não houve atendimento).');
+    return linhas.join('\n');
+}
+
+const tituloDoBloco = (agrupar, b) => agrupar === 'data' ? dataCurta(b.nome) : b.nome;
+
+/** Fora do agrupamento por paciente, cada linha precisa dizer de quem é. */
+function linhaDoItem(agrupar, i) {
+    const quem = `${i.paciente}${i.profissional ? ` (${i.profissional})` : ''}`;
+    if (agrupar === 'paciente') return `${dataCurta(i.data)} ${i.hora}`;
+    if (agrupar === 'data') return `${i.hora} ${quem}`;
+    // o horário já está no título do bloco; repeti-lo em cada linha é ruído
+    if (agrupar === 'horario') return `${dataCurta(i.data)} ${quem}`;
+    if (agrupar === 'profissional') return `${dataCurta(i.data)} ${i.hora} ${i.paciente}`;
+    return `${dataCurta(i.data)} ${i.hora} ${quem}`;
+}
+
+const formataDataBR = iso => {
+    const [a, m, d] = String(iso || '').split('-');
+    return a && m && d ? `${d}/${m}/${a}` : String(iso || '');
+};
 
 /**
  * Descrição que vai para a nota fiscal.
