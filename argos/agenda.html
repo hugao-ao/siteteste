@@ -78,10 +78,12 @@
       <div class="pend-barra">
         <input type="search" id="pend-busca" class="argos-input"
                placeholder="🔎 filtrar por paciente ou profissional" />
-        <div class="pend-agrupar">
-          <button class="argos-btn small" data-agrupar="paciente">👤 Por paciente</button>
-          <button class="argos-btn small" data-agrupar="data">📅 Por data</button>
-        </div>
+      </div>
+      <div class="pend-barra">
+        <label class="pend-campo">Agrupar por
+          <select id="pend-agrupar" class="argos-input"></select></label>
+        <label class="pend-campo">Ordenar por
+          <select id="pend-ordem" class="argos-input"></select></label>
       </div>
       <div class="pend-barra">
         <input type="tel" id="pend-fone" class="argos-input"
@@ -298,7 +300,7 @@
     </div>
   </div>
 
-  <script type="module" src="agenda.js?v=20"></script>
+  <script type="module" src="agenda.js?v=21"></script>
   <script type="module" src="argos-zoom.js?v=4"></script>
 </body>
 </html>

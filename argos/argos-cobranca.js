@@ -6,6 +6,7 @@
 // mudam o que chega no cliente — mexer com cuidado.
 
 import { excecoesVigentes, desdobrar, ratear } from './argos-excecoes.js';
+import { agruparPendencias, contarPendencias } from './argos-pendencias.js';
 
 export const MESES_EXTENSO = ['JANEIRO', 'FEVEREIRO', 'MARÇO', 'ABRIL', 'MAIO', 'JUNHO',
     'JULHO', 'AGOSTO', 'SETEMBRO', 'OUTUBRO', 'NOVEMBRO', 'DEZEMBRO'];
@@ -128,53 +129,46 @@ function dataCurta(iso) {
 /**
  * Mensagem de WhatsApp com as sessões que ainda faltam preencher.
  *
- * itens — [{ paciente, profissional, sala, data, hora }]
+ * itens — [{ paciente, profissional, espaco, data, hora }]
  *
- * Vai agrupada do mesmo jeito que está na tela: quem olha a lista e quem
- * recebe a mensagem precisam estar vendo a mesma coisa, senão a conferência
- * a quatro mãos não fecha.
+ * Sai agrupada e ordenada exatamente como está na tela — pela MESMA função
+ * que a tela usa. Quem olha a lista e quem recebe a mensagem precisam estar
+ * vendo a mesma coisa, senão a conferência a quatro mãos não fecha.
  *
  * `limite` corta a lista quando o atraso é grande — a URL do WhatsApp tem
  * tamanho, e uma mensagem de duzentas linhas ninguém responde. O que ficou
  * de fora é anunciado, nunca escondido.
  */
 export function mensagemPendencias({ itens = [], agrupar = 'paciente',
-    hoje = '', limite = 60 } = {}) {
+    ordem = 'alfabetica', hoje = '', limite = 60 } = {}) {
     if (!itens.length) return '';
 
-    const porPaciente = agrupar !== 'data';
-    const chave = i => porPaciente ? String(i.paciente || '') : String(i.data || '');
-    const ordenados = [...itens].sort((a, b) =>
-        chave(a).localeCompare(chave(b), 'pt-BR')
-        || String(a.data + a.hora).localeCompare(String(b.data + b.hora)));
-
-    const mostrados = ordenados.slice(0, limite);
-    const sobraram = ordenados.length - mostrados.length;
-    const pacientes = new Set(itens.map(i => i.paciente)).size;
+    const porPaciente = agrupar === 'paciente';
+    const blocos = agruparPendencias(itens, { agrupar, ordem });
+    const { sessoes, pacientes } = contarPendencias(itens);
 
     const linhas = ['*Sessões pendentes de preenchimento*'];
     if (hoje) linhas.push(`_Argos Gestão · ${formataDataBR(hoje)}_`);
     linhas.push('');
-    linhas.push(`Faltam marcar *${itens.length}* sessão(ões) já vencida(s)`
+    linhas.push(`Faltam marcar *${sessoes}* sessão(ões) já vencida(s)`
         + (porPaciente ? ` de *${pacientes}* paciente(s):` : ':'));
-    linhas.push('');
 
-    let atual = null;
-    for (const i of mostrados) {
-        const k = chave(i);
-        if (k !== atual) {
-            if (atual !== null) linhas.push('');
-            atual = k;
-            const doGrupo = mostrados.filter(x => chave(x) === k);
-            linhas.push(porPaciente
-                ? `*${i.paciente}*${i.profissional ? ` (${i.profissional})` : ''} — ${doGrupo.length}`
-                : `*${dataCurta(i.data)}* — ${doGrupo.length}`);
+    let mostrados = 0;
+    for (const b of blocos) {
+        if (mostrados >= limite) break;
+        const cabem = b.itens.slice(0, limite - mostrados);
+        mostrados += cabem.length;
+        linhas.push('');
+        linhas.push(`*${porPaciente ? b.nome : tituloDoBloco(agrupar, b)}*`
+            + (porPaciente && b.itens[0].profissional ? ` (${b.itens[0].profissional})` : '')
+            + ` — ${b.itens.length}`);
+        for (const i of cabem) linhas.push(`• ${linhaDoItem(agrupar, i)}`);
+        if (cabem.length < b.itens.length) {
+            linhas.push(`_(+${b.itens.length - cabem.length} deste bloco)_`);
         }
-        linhas.push(porPaciente
-            ? `• ${dataCurta(i.data)} ${i.hora}`
-            : `• ${i.hora} ${i.paciente}${i.profissional ? ` (${i.profissional})` : ''}`);
     }
 
+    const sobraram = sessoes - mostrados;
     if (sobraram > 0) {
         linhas.push('');
         linhas.push(`_… e mais ${sobraram} sessão(ões). A lista completa está no sistema._`);
@@ -183,6 +177,17 @@ export function mensagemPendencias({ itens = [], agrupar = 'paciente',
     linhas.push('Como foi cada uma? *Ok* (veio), *Fj* (faltou com justificativa), '
         + '*Fc* (faltou sem avisar) ou *Nc* (não houve atendimento).');
     return linhas.join('\n');
+}
+
+const tituloDoBloco = (agrupar, b) => agrupar === 'data' ? dataCurta(b.nome) : b.nome;
+
+/** Fora do agrupamento por paciente, cada linha precisa dizer de quem é. */
+function linhaDoItem(agrupar, i) {
+    const quem = `${i.paciente}${i.profissional ? ` (${i.profissional})` : ''}`;
+    if (agrupar === 'paciente') return `${dataCurta(i.data)} ${i.hora}`;
+    if (agrupar === 'data') return `${i.hora} ${quem}`;
+    if (agrupar === 'profissional') return `${dataCurta(i.data)} ${i.hora} ${i.paciente}`;
+    return `${dataCurta(i.data)} ${i.hora} ${quem}`;
 }
 
 const formataDataBR = iso => {
