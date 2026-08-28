@@ -10,6 +10,8 @@ import {
     conflitosDeDinamica, repassesDe, aplicarFimDeProcesso
 } from './argos-recorrencia.js';
 import { conferirFone, linkWhatsApp, mensagemPendencias } from './argos-cobranca.js';
+import { AGRUPAMENTOS, ORDENS, agrupamento, ordenacao, agruparPendencias, contarPendencias }
+    from './argos-pendencias.js';
 import { STATUS_PROF, ORDEM_STATUS_PROF, responsaveisDe } from './argos-producao.js';
 
 let perm = { pode: () => true, aplicarVisibilidade: () => {}, master: true };
@@ -109,7 +111,12 @@ document.getElementById('btn-abrir-pendentes').addEventListener('click', () => {
 // caçar as linhas dele uma a uma. Agrupado, as semanas dele ficam juntas e
 // dá para resolver o paciente inteiro num clique — que é como a pessoa
 // realmente pensa: «a Lara faltou o mês todo».
+//
+// O agrupamento nunca some: muda só por qual critério se agrupa (paciente,
+// dia, espaço, profissional) e em que ordem os blocos aparecem. Quem organiza
+// isso é argos-pendencias.js, o mesmo módulo que monta a mensagem do WhatsApp.
 let pendAgrupar = 'paciente';
+let pendOrdem = 'alfabetica';
 let pendBusca = '';
 let pendMostradas = [];  // o que está na tela — é isto que vai na mensagem
 
@@ -123,22 +130,38 @@ const botoesStatus = (attr, valor, titulo) => `
         title="${titulo ? `${titulo}: ` : ''}${STATUS_SESSAO[st].desc}">${STATUS_SESSAO[st].label}</button>`).join('')}
   </div>`;
 
+/** A sessão da agenda com os ids já virados nome, como o módulo espera. */
+const itemDePendencia = s => ({
+    paciente: nomePac(s.paciente_id), profissional: nomeProf(s.profissional_id),
+    espaco: nomeSala(s.sala_id), data: s.data, hora: s.hora, ref: s
+});
+
+function preencherSelect(id, lista, atual) {
+    const el = document.getElementById(id);
+    if (el.options.length !== lista.length) {
+        el.innerHTML = lista.map(x =>
+            `<option value="${x.valor}" title="${esc(x.dica)}">${esc(x.rotulo)}</option>`).join('');
+    }
+    el.value = atual;
+}
+
 function renderPendentes() {
     const todasPend = sessoesPendentes();
     const busca = pendBusca.trim().toLowerCase();
     const casa = s => !busca
         || nomePac(s.paciente_id).toLowerCase().includes(busca)
-        || nomeProf(s.profissional_id).toLowerCase().includes(busca);
+        || nomeProf(s.profissional_id).toLowerCase().includes(busca)
+        || nomeSala(s.sala_id).toLowerCase().includes(busca);
     const pend = todasPend.filter(casa);
 
-    document.querySelectorAll('[data-agrupar]').forEach(b =>
-        b.classList.toggle('primary', b.dataset.agrupar === pendAgrupar));
+    preencherSelect('pend-agrupar', AGRUPAMENTOS, pendAgrupar);
+    preencherSelect('pend-ordem', ORDENS, pendOrdem);
 
-    const resumo = document.getElementById('pend-resumo');
-    const pacientesComPendencia = new Set(todasPend.map(s => s.paciente_id)).size;
-    resumo.textContent = todasPend.length
-        ? `${todasPend.length} pendência(s) em ${pacientesComPendencia} paciente(s)`
+    const { sessoes, pacientes } = contarPendencias(todasPend.map(itemDePendencia));
+    document.getElementById('pend-resumo').textContent = sessoes
+        ? `${sessoes} pendência(s) em ${pacientes} paciente(s)`
           + (busca ? ` · mostrando ${pend.length}` : '')
+          + ` · ${agrupamento(pendAgrupar).dica}`
         : '';
 
     const alvo = document.getElementById('lista-pendentes');
@@ -149,58 +172,58 @@ function renderPendentes() {
             : '<p class="dim">Nenhuma pendência. 🎉</p>';
         return;
     }
-    alvo.innerHTML = pendAgrupar === 'paciente'
-        ? blocosDePendencias(pend, s => s.paciente_id, s => nomePac(s.paciente_id),
-            (nome, lista) => `${esc(nome)}<span class="dim"> · ${esc(nomeProf(lista[0].profissional_id))}</span>`,
-            s => `${formataBR(s.data)} ${s.hora}`,
-            s => `${esc(nomeSala(s.sala_id))}`)
-        : blocosDePendencias(pend, s => s.data, s => s.data,
-            nome => `${formataBR(nome)}<span class="dim"> · ${diaDaSemana(nome)}</span>`,
-            s => `${s.hora} — ${esc(nomePac(s.paciente_id))}`,
-            s => `${esc(nomeSala(s.sala_id))} · ${esc(nomeProf(s.profissional_id))}`);
-}
 
-const diaDaSemana = iso => DOW_NOMES[paraData(iso).getDay()];
-
-/**
- * Monta os blocos. Cada grupo traz os botões que resolvem tudo de uma vez,
- * e dentro dele as sessões continuam podendo ser marcadas uma a uma — nem
- * sempre o mês inteiro teve o mesmo desfecho.
- */
-function blocosDePendencias(pend, chaveDe, nomeDe, tituloHTML, linhaHTML, subHTML) {
-    const mapa = new Map();
-    for (const s of pend) {
-        const k = chaveDe(s);
-        if (!mapa.has(k)) mapa.set(k, { nome: nomeDe(s), itens: [] });
-        mapa.get(k).itens.push(s);
-    }
-    const ordenados = [...mapa.entries()].sort((a, b) =>
-        String(a[1].nome).localeCompare(String(b[1].nome), 'pt-BR'));
-
-    return ordenados.map(([k, g]) => {
-        const itens = [...g.itens].sort((a, b) =>
-            (a.data + a.hora).localeCompare(b.data + b.hora));
-        grupoDeChave.set(String(k), itens);
+    const blocos = agruparPendencias(pend.map(itemDePendencia),
+        { agrupar: pendAgrupar, ordem: pendOrdem });
+    alvo.innerHTML = blocos.map(b => {
+        grupoDeChave.set(b.chave, b.itens.map(i => i.ref));
         return `
       <div class="pend-grupo">
         <div class="pend-grupo-topo">
           <div class="bloco-info">
-            <b>${tituloHTML(g.nome, itens)}</b>
-            <span class="pend-conta">${itens.length}</span>
-            ${itens.length > 1 ? '<span class="dim"> — marcar todas:</span>' : ''}
+            <b>${esc(tituloDoBloco(b))}</b>
+            ${subtituloDoBloco(b)}
+            <span class="pend-conta">${b.itens.length}</span>
+            ${b.itens.length > 1 ? '<span class="dim"> — marcar todas:</span>' : ''}
           </div>
-          ${itens.length > 1 ? botoesStatus('marcar-grupo', esc(String(k)), `Todas as ${itens.length}`) : ''}
+          ${b.itens.length > 1 ? botoesStatus('marcar-grupo', esc(b.chave), `Todas as ${b.itens.length}`) : ''}
         </div>
-        ${itens.map(s => `
-          <div class="argos-bloco pendente-linha" data-chave="${chaveSessao(s)}">
+        ${b.itens.map(i => `
+          <div class="argos-bloco pendente-linha" data-chave="${chaveSessao(i.ref)}">
             <div class="bloco-info">
-              <b>${linhaHTML(s)}</b><br>
-              <span class="dim">${subHTML(s)}</span>
+              <b>${esc(linhaDoBloco(i))}</b><br>
+              <span class="dim">${esc(subLinhaDoBloco(i))}</span>
             </div>
             ${botoesStatus('marcar', '')}
           </div>`).join('')}
       </div>`;
     }).join('');
+}
+
+const diaDaSemana = iso => DOW_NOMES[paraData(iso).getDay()];
+
+const tituloDoBloco = b => pendAgrupar === 'data'
+    ? `${formataBR(b.nome)} (${diaDaSemana(b.nome)})` : b.nome;
+
+/** Quando o bloco não é o paciente, o subtítulo diz o que ele tem em comum. */
+function subtituloDoBloco(b) {
+    if (pendAgrupar !== 'paciente') return '';
+    const profs = [...new Set(b.itens.map(i => i.profissional).filter(Boolean))];
+    return profs.length ? `<span class="dim"> · ${esc(profs.join(', '))}</span>` : '';
+}
+
+/** A linha diz o que o bloco ainda não disse — nunca repete o título. */
+function linhaDoBloco(i) {
+    if (pendAgrupar === 'paciente') return `${formataBR(i.data)} ${i.hora}`;
+    if (pendAgrupar === 'data') return `${i.hora} — ${i.paciente}`;
+    return `${formataBR(i.data)} ${i.hora} — ${i.paciente}`;
+}
+
+function subLinhaDoBloco(i) {
+    if (pendAgrupar === 'paciente') return i.espaco;
+    if (pendAgrupar === 'espaco') return i.profissional;
+    if (pendAgrupar === 'profissional') return i.espaco;
+    return `${i.espaco} · ${i.profissional}`;
 }
 
 const grupoDeChave = new Map(); // chave do grupo -> sessões dele
@@ -243,11 +266,8 @@ document.getElementById('btn-pend-whats').addEventListener('click', () => {
     if (!ok) { toast(erro, true); campo.focus(); return; }
 
     const texto = mensagemPendencias({
-        agrupar: pendAgrupar, hoje: hojeISO(),
-        itens: pendMostradas.map(s => ({
-            paciente: nomePac(s.paciente_id), profissional: nomeProf(s.profissional_id),
-            sala: nomeSala(s.sala_id), data: s.data, hora: s.hora
-        }))
+        agrupar: pendAgrupar, ordem: pendOrdem, hoje: hojeISO(),
+        itens: pendMostradas.map(itemDePendencia)
     });
     try { localStorage.setItem('argos_pend_fone', fone); } catch (e) {}
     window.open(linkWhatsApp(fone, texto), '_blank', 'noopener');
@@ -257,10 +277,12 @@ document.getElementById('pend-busca').addEventListener('input', e => {
     pendBusca = e.target.value;
     renderPendentes();
 });
-document.querySelector('.pend-agrupar').addEventListener('click', e => {
-    const b = e.target.closest('[data-agrupar]');
-    if (!b) return;
-    pendAgrupar = b.dataset.agrupar;
+document.getElementById('pend-agrupar').addEventListener('change', e => {
+    pendAgrupar = e.target.value;
+    renderPendentes();
+});
+document.getElementById('pend-ordem').addEventListener('change', e => {
+    pendOrdem = e.target.value;
     renderPendentes();
 });
 

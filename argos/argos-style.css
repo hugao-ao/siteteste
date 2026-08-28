@@ -761,7 +761,11 @@ ul.cb-excecoes li .acoes { display: flex; gap: 6px; margin-top: 6px; flex-wrap: 
     display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 8px;
 }
 .pend-barra #pend-busca { flex: 1; min-width: 200px; }
-.pend-agrupar { display: flex; gap: 4px; }
+.pend-campo {
+    display: flex; align-items: center; gap: 6px; flex: 1; min-width: 190px;
+    font-size: .85rem; white-space: nowrap;
+}
+.pend-campo select { flex: 1; min-width: 0; }
 .pend-grupo {
     border: 1px solid var(--argos-borda, #e2e8f0); border-radius: 12px;
     padding: 8px 10px; margin-bottom: 12px;
