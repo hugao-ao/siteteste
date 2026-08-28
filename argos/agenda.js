@@ -9,9 +9,8 @@ import {
     paraISO, formataBR, fimDoMes, expandirDinamica, conflitosDeSessao,
     conflitosDeDinamica, repassesDe, aplicarFimDeProcesso
 } from './argos-recorrencia.js';
-import { conferirFone, linkWhatsApp, mensagemPendencias } from './argos-cobranca.js';
-import { AGRUPAMENTOS, ORDENS, agrupamento, ordenacao, agruparPendencias, contarPendencias }
-    from './argos-pendencias.js';
+import { gravarFrequencia, registrarFaltasJustificadas, avisarMudanca, ouvirMudancas }
+    from './argos-frequencia.js';
 import { STATUS_PROF, ORDEM_STATUS_PROF, responsaveisDe } from './argos-producao.js';
 
 let perm = { pode: () => true, aplicarVisibilidade: () => {}, master: true };
@@ -111,138 +110,30 @@ function renderAvisoPendentes() {
         `⚠️ ${pend.length} sessão(ões) já vencida(s) aguardando preenchimento da frequência.`;
 }
 
+// Preencher a frequência atrasada é conferência a duas mãos: a planilha ou o
+// WhatsApp de um lado, o sistema do outro. Numa janela à parte, a agenda
+// continua visível atrás — como modal, obrigava a fechar tudo para consultar.
+// Reusa a janela já aberta em vez de empilhar cópias.
+let janelaPendencias = null;
 document.getElementById('btn-abrir-pendentes').addEventListener('click', () => {
-    const campo = document.getElementById('pend-fone');
-    if (!campo.value) {
-        // o recado quase sempre vai para a mesma pessoa
-        try { campo.value = localStorage.getItem('argos_pend_fone') || ''; } catch (e) {}
-    }
-    renderPendentes(); abrirModal('modal-pendentes');
-});
-
-// Quando a frequência atrasa, o mesmo paciente falta três, quatro semanas
-// seguidas. Numa lista cronológica ele fica espalhado, e o financeiro tem de
-// caçar as linhas dele uma a uma. Agrupado, as semanas dele ficam juntas e
-// dá para resolver o paciente inteiro num clique — que é como a pessoa
-// realmente pensa: «a Lara faltou o mês todo».
-//
-// O agrupamento nunca some: muda só por qual critério se agrupa (paciente,
-// dia, espaço, profissional) e em que ordem os blocos aparecem. Quem organiza
-// isso é argos-pendencias.js, o mesmo módulo que monta a mensagem do WhatsApp.
-let pendAgrupar = 'paciente';
-let pendOrdem = 'alfabetica';
-let pendBusca = '';
-let pendMostradas = [];  // o que está na tela — é isto que vai na mensagem
-
-const STATUS_MARCAVEIS = ['ok', 'fj', 'fc', 'nc'];
-
-const botoesStatus = (attr, valor, titulo) => `
-  <div class="botoes-status compacto">
-    ${STATUS_MARCAVEIS.map(st => `
-      <button class="btn-status" style="--c:${STATUS_SESSAO[st].cor}"
-        data-${attr}="${valor}" data-status="${st}"
-        title="${titulo ? `${titulo}: ` : ''}${STATUS_SESSAO[st].desc}">${STATUS_SESSAO[st].label}</button>`).join('')}
-  </div>`;
-
-/** A sessão da agenda com os ids já virados nome, como o módulo espera. */
-const itemDePendencia = s => ({
-    paciente: nomePac(s.paciente_id), profissional: nomeProf(s.profissional_id),
-    espaco: nomeSala(s.sala_id), data: s.data, hora: s.hora, ref: s
-});
-
-function preencherSelect(id, lista, atual) {
-    const el = document.getElementById(id);
-    if (el.options.length !== lista.length) {
-        el.innerHTML = lista.map(x =>
-            `<option value="${x.valor}" title="${esc(x.dica)}">${esc(x.rotulo)}</option>`).join('');
-    }
-    el.value = atual;
-}
-
-function renderPendentes() {
-    const todasPend = sessoesPendentes();
-    const busca = pendBusca.trim().toLowerCase();
-    const casa = s => !busca
-        || nomePac(s.paciente_id).toLowerCase().includes(busca)
-        || nomeProf(s.profissional_id).toLowerCase().includes(busca)
-        || nomeSala(s.sala_id).toLowerCase().includes(busca);
-    const pend = todasPend.filter(casa);
-
-    preencherSelect('pend-agrupar', AGRUPAMENTOS, pendAgrupar);
-    preencherSelect('pend-ordem', ORDENS, pendOrdem);
-
-    const { sessoes, pacientes } = contarPendencias(todasPend.map(itemDePendencia));
-    document.getElementById('pend-resumo').textContent = sessoes
-        ? `${sessoes} pendência(s) em ${pacientes} paciente(s)`
-          + (busca ? ` · mostrando ${pend.length}` : '')
-          + ` · ${agrupamento(pendAgrupar).dica}`
-        : '';
-
-    const alvo = document.getElementById('lista-pendentes');
-    pendMostradas = pend;
-    if (!pend.length) {
-        alvo.innerHTML = todasPend.length
-            ? '<p class="dim">Nenhuma pendência com esse filtro.</p>'
-            : '<p class="dim">Nenhuma pendência. 🎉</p>';
+    if (janelaPendencias && !janelaPendencias.closed) { janelaPendencias.focus(); return; }
+    const larg = Math.min(980, Math.max(560, Math.round(screen.availWidth * 0.6)));
+    const alt = Math.min(900, Math.round(screen.availHeight * 0.85));
+    janelaPendencias = window.open('pendencias.html', 'argos_pendencias',
+        `popup=yes,width=${larg},height=${alt},left=${Math.max(0, screen.availWidth - larg - 40)},top=60,`
+        + 'resizable=yes,scrollbars=yes');
+    if (!janelaPendencias) {
+        // bloqueador de pop-up: melhor abrir na mesma aba que não abrir nada
+        toast('O navegador bloqueou a janela. Abrindo na própria aba.', true);
+        window.location.href = 'pendencias.html';
         return;
     }
+    janelaPendencias.focus();
+});
 
-    const blocos = agruparPendencias(pend.map(itemDePendencia),
-        { agrupar: pendAgrupar, ordem: pendOrdem });
-    alvo.innerHTML = blocos.map(b => {
-        grupoDeChave.set(b.chave, b.itens.map(i => i.ref));
-        return `
-      <div class="pend-grupo">
-        <div class="pend-grupo-topo">
-          <div class="bloco-info">
-            <b>${esc(tituloDoBloco(b))}</b>
-            ${subtituloDoBloco(b)}
-            <span class="pend-conta">${b.itens.length}</span>
-            ${b.itens.length > 1 ? '<span class="dim"> — marcar todas:</span>' : ''}
-          </div>
-          ${b.itens.length > 1 ? botoesStatus('marcar-grupo', esc(b.chave), `Todas as ${b.itens.length}`) : ''}
-        </div>
-        ${b.itens.map(i => `
-          <div class="argos-bloco pendente-linha" data-chave="${chaveSessao(i.ref)}">
-            <div class="bloco-info">
-              <b>${esc(linhaDoBloco(i))}</b><br>
-              <span class="dim">${esc(subLinhaDoBloco(i))}</span>
-            </div>
-            ${botoesStatus('marcar', '')}
-          </div>`).join('')}
-      </div>`;
-    }).join('');
-}
+// a janela de pendências avisa quando alguém marca alguma coisa
+ouvirMudancas(dados => { if (dados.origem !== 'agenda') recarregarSessoes(); });
 
-const diaDaSemana = iso => DOW_NOMES[paraData(iso).getDay()];
-
-const tituloDoBloco = b => pendAgrupar === 'data'
-    ? `${formataBR(b.nome)} (${diaDaSemana(b.nome)})` : b.nome;
-
-/** Quando o bloco não é o paciente, o subtítulo diz o que ele tem em comum. */
-function subtituloDoBloco(b) {
-    if (pendAgrupar !== 'paciente') return '';
-    const profs = [...new Set(b.itens.map(i => i.profissional).filter(Boolean))];
-    return profs.length ? `<span class="dim"> · ${esc(profs.join(', '))}</span>` : '';
-}
-
-/** A linha diz o que o bloco ainda não disse — nunca repete o título. */
-function linhaDoBloco(i) {
-    if (pendAgrupar === 'paciente') return `${formataBR(i.data)} ${i.hora}`;
-    if (pendAgrupar === 'data') return `${i.hora} — ${i.paciente}`;
-    // no bloco do horário fixo, a hora já está no título: sobra a data e quem é
-    if (pendAgrupar === 'horario') return `${formataBR(i.data)} — ${i.paciente}`;
-    return `${formataBR(i.data)} ${i.hora} — ${i.paciente}`;
-}
-
-function subLinhaDoBloco(i) {
-    if (pendAgrupar === 'paciente') return i.espaco;
-    if (pendAgrupar === 'espaco') return i.profissional;
-    if (pendAgrupar === 'profissional') return i.espaco;
-    return `${i.espaco} · ${i.profissional}`;
-}
-
-const grupoDeChave = new Map(); // chave do grupo -> sessões dele
 
 const chaves = new Map(); // chave -> objeto sessão (para achar no clique)
 function chaveSessao(s) {
@@ -250,57 +141,6 @@ function chaveSessao(s) {
     chaves.set(k, s);
     return k;
 }
-
-document.getElementById('lista-pendentes').addEventListener('click', async (e) => {
-    const emLote = e.target.closest('[data-marcar-grupo]');
-    if (emLote) {
-        const lista = grupoDeChave.get(emLote.dataset.marcarGrupo) || [];
-        if (!lista.length) return;
-        const st = emLote.dataset.status;
-        if (!confirm(`Marcar as ${lista.length} sessões como `
-            + `«${STATUS_SESSAO[st].label} — ${STATUS_SESSAO[st].desc}»?`)) return;
-        await marcarSessoes(lista, st);
-        return renderPendentes();
-    }
-    const btn = e.target.closest('[data-marcar]');
-    if (!btn) return;
-    const linha = btn.closest('[data-chave]');
-    const s = chaves.get(linha.dataset.chave);
-    if (!s) return;
-    await marcarSessoes([s], btn.dataset.status);
-    renderPendentes();
-});
-
-// A lista de pendências costuma virar recado para a secretária ou para o
-// profissional que não preencheu. Manda o que está na tela — com o filtro e o
-// agrupamento que a pessoa escolheu —, para quem lê e quem enviou estarem
-// vendo a mesma coisa.
-document.getElementById('btn-pend-whats').addEventListener('click', () => {
-    if (!pendMostradas.length) { toast('Não há pendências para enviar.', true); return; }
-    const campo = document.getElementById('pend-fone');
-    const { ok, fone, erro } = conferirFone(campo.value);
-    if (!ok) { toast(erro, true); campo.focus(); return; }
-
-    const texto = mensagemPendencias({
-        agrupar: pendAgrupar, ordem: pendOrdem, hoje: hojeISO(),
-        itens: pendMostradas.map(itemDePendencia)
-    });
-    try { localStorage.setItem('argos_pend_fone', fone); } catch (e) {}
-    window.open(linkWhatsApp(fone, texto), '_blank', 'noopener');
-});
-
-document.getElementById('pend-busca').addEventListener('input', e => {
-    pendBusca = e.target.value;
-    renderPendentes();
-});
-document.getElementById('pend-agrupar').addEventListener('change', e => {
-    pendAgrupar = e.target.value;
-    renderPendentes();
-});
-document.getElementById('pend-ordem').addEventListener('change', e => {
-    pendOrdem = e.target.value;
-    renderPendentes();
-});
 
 // ---------- marcação (materializa a projeção se preciso) ----------
 
@@ -335,39 +175,14 @@ async function marcarSessoes(lista, status) {
         justificativa = j.trim() || null;
     }
 
-    const jaGravadas = alvos.filter(s => s.id);
-    const projetadas = alvos.filter(s => !s.id);
-    const erros = [];
-
-    if (jaGravadas.length) {
-        const { error } = await sb.from('argos_sessoes')
-            .update({ status, justificativa }).in('id', jaGravadas.map(s => s.id));
-        if (error) erros.push(error);
-    }
-    if (projetadas.length) {
-        const { error } = await sb.from('argos_sessoes').insert(projetadas.map(s => ({
-            paciente_id: s.paciente_id, dinamica_id: s.dinamica_ref, dinamica_ref: s.dinamica_ref,
-            data: s.data, hora: s.hora, duracao_min: s.duracao_min || 60,
-            sala_id: s.sala_id || null, profissional_id: s.profissional_id || null,
-            servico_id: s.servico_id || null, status, justificativa,
-            grupo_id: s.grupo_id || null, grupo_ref: s.grupo_ref || null
-        })));
-        if (error) erros.push(error);
-    }
-    if (erros.length) {
-        console.error(erros[0]);
+    const { erro } = await gravarFrequencia(sb, alvos, status, justificativa);
+    if (erro) {
+        console.error(erro);
         toast(alvos.length > 1 ? 'Erro ao marcar as sessões.' : 'Erro ao marcar sessão.', true);
         return;
     }
+    if (status === 'fj') await registrarFaltasJustificadas(sb, alvos, justificativa, formataBR);
 
-    if (status === 'fj') {
-        for (const s of alvos) {
-            await registrarEvento(s.paciente_id, 'falta_justificada',
-                `Falta justificada na sessão de ${formataBR(s.data)} às ${s.hora}`
-                + (justificativa ? '.' : ', sem motivo registrado.'),
-                { data: s.data, hora: s.hora }, justificativa);
-        }
-    }
     toast(alvos.length > 1
         ? `${alvos.length} sessões marcadas: ${STATUS_SESSAO[status].label} — ${STATUS_SESSAO[status].desc}`
         : `Sessão marcada: ${STATUS_SESSAO[status].label} — ${STATUS_SESSAO[status].desc}`);
@@ -375,6 +190,8 @@ async function marcarSessoes(lista, status) {
     const { data } = await todas(() => sb.from('argos_sessoes').select('*'));
     sessoes = data || sessoes;
     renderTudo();
+    // a janela de pendências, se estiver aberta, acompanha
+    avisarMudanca({ origem: 'agenda', quantas: alvos.length });
 }
 
 /** Uma sessão só — o caminho de sempre, pelos cartões da agenda. */
