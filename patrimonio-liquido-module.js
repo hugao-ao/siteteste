@@ -1224,16 +1224,20 @@ function calcularPerfilInvestidor(respostas) {
   // Garantir que PFP esteja entre 0 e 100
   PFP = Math.max(0, Math.min(100, PFP));
   
-  // Encontrar o perfil correspondente
-  let perfil = PERFIS_INVESTIDOR.find(p => PFP >= p.pfpMin && PFP <= p.pfpMax);
-  
-  // Se não encontrou (caso de borda), usar o primeiro ou último perfil
+  // Encontrar o perfil correspondente.
+  //
+  // As faixas terminam em 16,67 e a seguinte começa em 16,68, então sobravam
+  // buracos entre elas. Somas iguais em A, B e C caem exatamente nesses
+  // buracos: PA=PB=PC=7 dá PFP 33,3333, que não casava com nenhuma faixa.
+  // O fallback então escolhia o ÚLTIMO perfil — Ultra-Arrojado. Um investidor
+  // de respostas medianas era classificado como o mais agressivo da escala,
+  // e a alocação ideal saía junto.
+  //
+  // Comparar só com o teto elimina os buracos e preserva os mesmos cortes.
+  let perfil = PERFIS_INVESTIDOR.find(p => PFP <= p.pfpMax);
+
   if (!perfil) {
-    if (PFP <= 0) {
-      perfil = PERFIS_INVESTIDOR[0]; // Ultra-Conservador
-    } else {
-      perfil = PERFIS_INVESTIDOR[PERFIS_INVESTIDOR.length - 1]; // Ultra-Arrojado
-    }
+    perfil = PERFIS_INVESTIDOR[PERFIS_INVESTIDOR.length - 1];
   }
   
   // Regras de precedência (override)
