@@ -186,6 +186,8 @@ function linhaDoItem(agrupar, i) {
     const quem = `${i.paciente}${i.profissional ? ` (${i.profissional})` : ''}`;
     if (agrupar === 'paciente') return `${dataCurta(i.data)} ${i.hora}`;
     if (agrupar === 'data') return `${i.hora} ${quem}`;
+    // o horário já está no título do bloco; repeti-lo em cada linha é ruído
+    if (agrupar === 'horario') return `${dataCurta(i.data)} ${quem}`;
     if (agrupar === 'profissional') return `${dataCurta(i.data)} ${i.hora} ${i.paciente}`;
     return `${dataCurta(i.data)} ${i.hora} ${quem}`;
 }
