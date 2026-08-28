@@ -20,6 +20,10 @@ import {
     TIPOS_EXCECAO, ESCOPOS_EXCECAO, DATAS_DESDOBRAMENTO, excecoesVigentes,
     vigenciaTexto, resumoExcecao, partesIguais, rotuloTipo
 } from './argos-excecoes.js';
+import {
+    fixosSemSessao, valorDoMes, retratoDaCobranca, divergenciaDaCobranca,
+    motivoDaDivergenciaDeCobranca, totaisDoMes
+} from './argos-fechamento.js';
 import { montarCobrancaUI, mesesEntre, dinamicasDoMes } from './argos-cobranca-ui.js';
 
 let perm = { pode: () => true, aplicarVisibilidade: () => {}, master: true };
@@ -28,6 +32,7 @@ let cobUI = null;
 let pacientes = [], dinamicas = [], sessoes = [], profissionais = [];
 let contatos = [], detalhes = [], excecoes = [], notas = [], pendencias = [], eventos = [];
 let regrasExcecao = [];   // argos_excecoes_cobranca — desdobramento e rateio
+let ajustes = [];         // argos_cobranca_mes — valor editado e congelado
 let envios = [], acompanhamento = [], alocacoes = [], movimentacoes = [];
 let config = { bancarios: [], servico: 'Psicomotricidade Relacional', recados: {} };
 
@@ -57,7 +62,7 @@ async function carregarTudo() {
         t('argos_nota_pendencias'), t('argos_nota_pendencia_eventos'),
         t('argos_cobranca_envios'), t('argos_cobranca_acompanhamento'),
         t('argos_mov_alocacoes'), t('argos_movimentacoes'), t('argos_config'),
-        t('argos_excecoes_cobranca')
+        t('argos_excecoes_cobranca'), t('argos_cobranca_mes')
     ]);
     const erro = r.find(x => x.error);
     if (erro) { console.error(erro.error); toast('Erro ao carregar os dados da cobrança.', true); return; }
@@ -66,6 +71,7 @@ async function carregarTudo() {
      pendencias, eventos, envios, acompanhamento, alocacoes, movimentacoes] = d;
     lerConfig(d[14]);
     regrasExcecao = d[15] || [];
+    ajustes = d[16] || [];
     await render();
 }
 
@@ -107,12 +113,41 @@ function regimeDe(pacienteId, mes) {
 
 /** Retrato do mês como está agora — é contra isto que a nota emitida é conferida. */
 function retratoAtual(paciente, mes) {
-    return retratoDaNota({
+    const r = retratoDaNota({
         paciente, fech: fechDe(paciente.id), dinamicas: dinsDe(paciente.id),
         mes, servico: config.servico,
         excecao: excecoes.find(e => e.paciente_id === paciente.id && e.mes === mes),
         excecoes: regrasExcecao
     });
+    // A nota segue o valor EDITADO — um desconto combinado precisa sair nela
+    // igual ao que foi cobrado. Mas não segue o congelamento: aquele protege a
+    // conversa já enviada, enquanto a nota é documento fiscal e precisa
+    // continuar acusando que o mês mudou depois de emitida. São duas
+    // proteções diferentes, e amarrá-las cegaria a segunda.
+    const ajuste = ajusteDe(paciente.id, mes);
+    const editado = ajuste && ajuste.valor_ajustado != null ? Number(ajuste.valor_ajustado) : null;
+    return editado == null || editado === r.valor
+        ? r : { ...r, valor: editado, valor_calculado: r.valor };
+}
+
+/** O ajuste gravado deste paciente neste mês (valor editado e/ou congelado). */
+const ajusteDe = (pid, mes) => ajustes.find(a => a.paciente_id === pid && a.mes === mes) || null;
+
+/**
+ * O valor que vale para o mês, com a sua origem e o aviso de divergência.
+ * É por aqui que passa TODO mundo: a linha, a mensagem, a nota e os totais —
+ * para não existirem dois números concorrentes para a mesma cobrança.
+ */
+function cobrancaDoMes(paciente, mes) {
+    const fech = fechDe(paciente.id);
+    const ajuste = ajusteDe(paciente.id, mes);
+    const v = valorDoMes({ fech, ajuste });
+    const agora = retratoDaCobranca({ fech, valor: v.calculado });
+    const mudou = ajuste && ajuste.congelado_retrato
+        ? divergenciaDaCobranca(ajuste.congelado_retrato, agora) : [];
+    return { ...v, ajuste, fech,
+             avisosFixo: fixosSemSessao(fech, dinsDe(paciente.id)),
+             divergencia: mudou, motivo: motivoDaDivergenciaDeCobranca(mudou) };
 }
 
 const notaDoMes = (pid, mes) => notas.find(n => n.paciente_id === pid && n.mes === mes && n.status === 'emitida') || null;
@@ -207,11 +242,12 @@ function renderFechamento() {
         if (esconderEnviadas && envio) continue;
         total.ok += f.contagens.ok; total.fj += f.contagens.fj; total.fc += f.contagens.fc;
         total.nc += f.contagens.nc; total.pd += f.contagens['??'];
-        total.valor += f.valor; total.pendencias += f.pendencias;
-        linhas.push({ p, f, envio });
+        const cob = cobrancaDoMes(p, mesAtual);
+        total.valor += cob.valor; total.pendencias += f.pendencias;
+        linhas.push({ p, f, envio, cob });
     }
 
-    document.getElementById('tbody-fechamento').innerHTML = linhas.map(({ p, f, envio }) => {
+    document.getElementById('tbody-fechamento').innerHTML = linhas.map(({ p, f, envio, cob }) => {
         const contatosP = contatosParaCobranca(p, contatos.filter(c => c.paciente_id === p.id));
         const anota = detalhesDoMes(detalhes.filter(d => d.paciente_id === p.id), mesAtual);
         return `
@@ -224,7 +260,15 @@ function renderFechamento() {
         <td class="num">${f.contagens.ok}</td><td class="num">${f.contagens.fj}</td>
         <td class="num">${f.contagens.fc}</td><td class="num">${f.contagens.nc}</td>
         <td class="num">${f.contagens['??']}</td>
-        <td class="num"><b>${formataMoeda(f.valor)}</b></td>
+        <td class="num valor-mes">
+          <b class="${cob.origem !== 'calculado' ? 'valor-mexido' : ''}">${formataMoeda(cob.valor)}</b>
+          <button class="argos-btn small ghost" data-valor="${p.id}" title="Editar o valor cobrado neste mês"
+            data-argos-recurso="cobranca_valor_editar">✏️</button>
+          ${cob.origem === 'ajustado' ? `<span class="sub" title="${esc(cob.ajuste.motivo_ajuste || '')}">editado · calculado ${formataMoeda(cob.calculado)}</span>` : ''}
+          ${cob.origem === 'congelado' ? `<span class="sub">🔒 congelado no envio${cob.calculado !== cob.valor ? ` · hoje daria ${formataMoeda(cob.calculado)}` : ''}</span>` : ''}
+          ${cob.divergencia.length ? `<span class="badge vermelho" title="${esc(cob.motivo)}">⚠️ mudou depois do envio</span>` : ''}
+          ${cob.avisosFixo.length ? `<span class="badge amarelo" title="${esc(cob.avisosFixo.map(a => `${a.rotulo}: ${formataMoeda(a.valor)}`).join(' · '))}">📅 mês sem sessão</span>` : ''}
+        </td>
         <td>${contatosP.length
             ? `<button class="argos-btn small ${envio ? '' : 'primary'}" data-msg="${p.id}"
                  title="${envio ? 'Abrir a mensagem de novo' : 'Montar a mensagem do fechamento'}"
@@ -256,10 +300,17 @@ function renderFechamento() {
 
     const semContato = linhas.filter(l => !contatosParaCobranca(l.p,
         contatos.filter(c => c.paciente_id === l.p.id)).length).length;
+    // Quem está no meio da cobrança quer saber, em dinheiro, o que já saiu e
+    // o que ainda falta — "12 enviadas" não diz o tamanho do que resta.
+    const t = totaisDoMes(linhas.map(l => ({
+        valor: l.cob.valor, enviada: !!l.envio, divergente: l.cob.divergencia.length > 0 })));
+
     document.getElementById('resumo-fech').innerHTML = `
       <span>Pacientes <b>${linhas.length}</b></span>
-      <span>Faturamento do mês <b>${formataMoeda(total.valor)}</b></span>
-      <span class="${enviadas ? 'ok' : ''}">Cobranças enviadas <b>${enviadas}</b></span>
+      <span>Faturamento do mês <b>${formataMoeda(t.valorTotal)}</b></span>
+      <span class="${t.enviadas ? 'ok' : ''}">Cobrado <b>${t.enviadas}</b> · <b>${formataMoeda(t.valorEnviado)}</b></span>
+      <span class="${t.aEnviar ? 'alerta' : 'ok'}">Falta cobrar <b>${t.aEnviar}</b> · <b>${formataMoeda(t.valorAEnviar)}</b></span>
+      ${t.divergentes ? `<span class="erro">Mudaram após o envio <b>${t.divergentes}</b></span>` : ''}
       ${semContato ? `<span class="erro">Sem contato de cobrança <b>${semContato}</b></span>` : ''}
       ${total.pendencias ? `<span class="alerta">Sessões sem frequência <b>${total.pendencias}</b></span>` : ''}`;
 
@@ -569,7 +620,8 @@ function montarMensagem() {
         observacao: document.getElementById('msg-observacao').value.trim(),
         frequencia, sessoes: contarSessoes(frequencia),
         acordo: acordosDoFechamento(f, dinsDe(p.id)),
-        total: f.valor, bancarios: config.bancarios
+        // a mensagem diz o valor COBRADO — é o número que o responsável vai pagar
+        total: cobrancaDoMes(p, mesAtual).valor, bancarios: config.bancarios
     });
     document.getElementById('msg-texto').value = texto;
     atualizarLink();
@@ -599,8 +651,11 @@ async function marcarEnviada() {
     const { data, error } = await sb.from('argos_cobranca_envios').insert(registro).select();
     if (error) { console.error(error); return toast('Cobrança aberta, mas não deu para registrar o envio.', true); }
     envios = envios.concat(data || [registro]);
+    // O responsável acabou de ver um número. A partir de agora ele não muda
+    // sozinho: congela, e o que mudar depois vira aviso, não correção calada.
+    await congelarCobranca(p, mesAtual);
     renderFechamento();
-    toast('Cobrança marcada como enviada.');
+    toast('Cobrança marcada como enviada — o valor ficou congelado.');
 }
 
 /**
@@ -608,6 +663,34 @@ async function marcarEnviada() {
  * — não há por que guardar um envio que não valeu — e o paciente volta para a
  * fila de quem ainda precisa receber o fechamento.
  */
+async function gravarAjuste(pacienteId, campos) {
+    const registro = { paciente_id: pacienteId, mes: mesAtual, ...campos, atualizado_em: agora() };
+    const { data, error } = await sb.from('argos_cobranca_mes')
+        .upsert(registro, { onConflict: 'paciente_id,mes' }).select('*').single();
+    if (error) { console.error(error); toast('Erro ao salvar o valor do mês.', true); return null; }
+    ajustes = ajustes.filter(a => !(a.paciente_id === pacienteId && a.mes === mesAtual)).concat(data);
+    return data;
+}
+
+/**
+ * Congela a cobrança enviada. São dois números diferentes, e confundi-los é o
+ * que faria o aviso de divergência nunca calar:
+ *
+ *   congelado_valor    — o que o responsável viu e vai pagar;
+ *   congelado_retrato  — o estado do MÊS naquele instante (o calculado e as
+ *                        contagens), que é contra o que o mês vivo é conferido.
+ *
+ * Guardar o valor prometido dentro do retrato faria um desconto combinado
+ * parecer divergência para sempre, porque o calculado nunca alcançaria ele.
+ */
+async function congelarCobranca(p, mes) {
+    const cob = cobrancaDoMes(p, mes);
+    return gravarAjuste(p.id, {
+        congelado_valor: cob.valor, congelado_em: agora(),
+        congelado_retrato: retratoDaCobranca({ fech: cob.fech, valor: cob.calculado })
+    });
+}
+
 async function desmarcarEnvio(p) {
     const doMes = envios.filter(e => e.paciente_id === p.id && e.mes === mesAtual);
     if (!doMes.length) return;
@@ -617,9 +700,76 @@ async function desmarcarEnvio(p) {
         .eq('paciente_id', p.id).eq('mes', mesAtual);
     if (error) { console.error(error); return toast('Erro ao desmarcar a cobrança.', true); }
     envios = envios.filter(e => !(e.paciente_id === p.id && e.mes === mesAtual));
-    toast('Cobrança desmarcada.');
+    // sem envio não há promessa a proteger: o valor volta a acompanhar o mês
+    await gravarAjuste(p.id, { congelado_valor: null, congelado_em: null, congelado_retrato: null });
+    toast('Cobrança desmarcada — o valor voltou a acompanhar a frequência.');
     renderFechamento();
 }
+
+// ===========================================================================
+// VALOR COBRADO NO MÊS — editar, e recongelar depois de corrigir
+// ===========================================================================
+let valorPaciente = null;
+
+function abrirValor(p) {
+    valorPaciente = p;
+    const cob = cobrancaDoMes(p, mesAtual);
+    document.getElementById('valor-titulo').textContent =
+        `Valor cobrado — ${p.nome} · ${mesBR(mesAtual)}`;
+    document.getElementById('valor-contexto').innerHTML = `
+      <p class="dica">Calculado pela frequência: <b>${formataMoeda(cob.calculado)}</b>
+        ${cob.origem === 'congelado' ? ` · cobrado ao responsável: <b>${formataMoeda(cob.valor)}</b>` : ''}</p>
+      ${cob.avisosFixo.length ? `<p class="dica alerta">📅 Acordo fixo mensal cobrado num mês sem sessão
+        realizada: ${cob.avisosFixo.map(a => `${esc(a.rotulo)} (${formataMoeda(a.valor)})`).join(' · ')}.
+        Cobrar é o padrão — o horário ficou reservado —, mas vale conferir se foram férias ou encerramento.</p>` : ''}
+      ${cob.divergencia.length ? `<p class="dica alerta">⚠️ ${esc(cob.motivo)}<br>${
+        cob.divergencia.map(m => `${esc(m.rotulo)}: <b>${m.campo === 'valor' ? formataMoeda(m.antes) : m.antes}</b>
+          → <b>${m.campo === 'valor' ? formataMoeda(m.depois) : m.depois}</b>`).join('<br>')}</p>` : ''}`;
+    document.getElementById('valor-novo').value = cob.valor;
+    document.getElementById('valor-motivo').value = (cob.ajuste && cob.ajuste.motivo_ajuste) || '';
+    document.getElementById('valor-aviso').textContent = cob.origem === 'congelado'
+        ? 'Esta cobrança já foi enviada. Salvar aqui recongela o valor com o que você digitar — '
+          + 'use quando a correção já foi combinada com o responsável.'
+        : 'O valor editado substitui o calculado na mensagem e na nota deste mês.';
+    abrirModal('modal-valor');
+}
+
+async function salvarValor() {
+    const p = valorPaciente;
+    if (!p) return;
+    const bruto = document.getElementById('valor-novo').value;
+    const valor = Number(String(bruto).replace(',', '.'));
+    if (!(valor >= 0) || bruto === '') { toast('Informe um valor válido.', true); return; }
+    const cob = cobrancaDoMes(p, mesAtual);
+    const campos = { valor_ajustado: valor,
+        motivo_ajuste: document.getElementById('valor-motivo').value.trim() || null };
+    // já enviada: corrigir o valor é reafirmar o que passa a valer, então o
+    // congelamento acompanha — senão o aviso de divergência nunca se resolve
+    if (cob.origem === 'congelado') {
+        campos.congelado_valor = valor;
+        campos.congelado_em = agora();
+        // o retrato acompanha o mês de AGORA: corrigir a cobrança é dizer
+        // "conferi, é isto que vale", e o aviso precisa poder se resolver
+        campos.congelado_retrato = retratoDaCobranca({ fech: cob.fech, valor: cob.calculado });
+    }
+    if (!await gravarAjuste(p.id, campos)) return;
+    fecharModal('modal-valor');
+    await render();
+    toast('Valor do mês salvo.');
+}
+
+async function limparValor() {
+    const p = valorPaciente;
+    if (!p) return;
+    if (!confirm('Voltar ao valor calculado pela frequência?')) return;
+    if (!await gravarAjuste(p.id, { valor_ajustado: null, motivo_ajuste: null })) return;
+    fecharModal('modal-valor');
+    await render();
+    toast('O mês voltou ao valor calculado.');
+}
+
+document.getElementById('btn-valor-salvar').addEventListener('click', salvarValor);
+document.getElementById('btn-valor-voltar').addEventListener('click', limparValor);
 
 // ===========================================================================
 // REGIME DE NOTA (um mês, vários ou todos)
@@ -878,6 +1028,11 @@ document.querySelector('main').addEventListener('click', async e => {
     if (msg) return abrirMensagem(pacDe(msg.dataset.msg));
     const desm = alvo('data-desmarcar');
     if (desm) return desmarcarEnvio(pacDe(desm.dataset.desmarcar));
+    const val = alvo('data-valor');
+    if (val) {
+        if (!perm.pode('cobranca_valor_editar')) return toast('Sem permissão para editar o valor.', true);
+        return abrirValor(pacDe(val.dataset.valor));
+    }
     const exc = alvo('data-excecao');
     if (exc) {
         if (!perm.pode('excecoes_cobranca')) return toast('Sem permissão para mexer nas exceções.', true);

@@ -303,6 +303,30 @@
     </div>
   </div>
 
+  <!-- ============ MODAL: VALOR COBRADO NO MÊS ============ -->
+  <div class="argos-modal-fundo" id="modal-valor">
+    <div class="argos-modal">
+      <div class="argos-modal-topo">
+        <h2 id="valor-titulo">Valor cobrado no mês</h2>
+        <button class="argos-modal-x" data-fechar>×</button>
+      </div>
+      <div id="valor-contexto"></div>
+      <div class="argos-form">
+        <label>Valor a cobrar
+          <input type="number" id="valor-novo" step="0.01" min="0" /></label>
+        <label>Por que sai do calculado
+          <textarea id="valor-motivo" rows="2"
+            placeholder="ex.: desconto combinado, mês de férias, sessão cortesia"></textarea></label>
+        <p class="dica" id="valor-aviso"></p>
+      </div>
+      <div class="argos-modal-acoes">
+        <button class="argos-btn ghost" id="btn-valor-voltar">Voltar ao calculado</button>
+        <button class="argos-btn primary" id="btn-valor-salvar"
+          data-argos-recurso="cobranca_valor_editar">Salvar valor</button>
+      </div>
+    </div>
+  </div>
+
   <!-- ============ MODAL: EXCEÇÕES DE COBRANÇA ============ -->
   <div class="argos-modal-fundo" id="modal-excecao">
     <div class="argos-modal grande">
@@ -396,7 +420,7 @@
     </div>
   </div>
 
-  <script type="module" src="cobranca.js?v=3"></script>
+  <script type="module" src="cobranca.js?v=4"></script>
   <script type="module" src="argos-zoom.js?v=4"></script>
 </body>
 </html>
