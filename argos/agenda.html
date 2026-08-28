@@ -78,8 +78,31 @@
           <button class="argos-btn small" data-agrupar="data">📅 Por data</button>
         </div>
       </div>
+      <div class="pend-barra">
+        <input type="tel" id="pend-fone" class="argos-input"
+               placeholder="📱 55 81 99999-9999 (país, DDD e número)" />
+        <button class="argos-btn small" id="btn-pend-whats"
+          data-argos-recurso="pendencias_whatsapp">📲 Enviar a lista</button>
+      </div>
       <p class="dica" id="pend-resumo"></p>
       <div id="lista-pendentes"></div>
+    </div>
+  </div>
+
+  <!-- ============ MODAL: CONFIRMAR ARRASTO ============ -->
+  <div class="argos-modal-fundo" id="modal-confirma">
+    <div class="argos-modal">
+      <div class="argos-modal-topo">
+        <h2 id="confirma-titulo">Confirmar alteração</h2>
+        <button class="argos-modal-x" data-fechar>×</button>
+      </div>
+      <p id="confirma-texto"></p>
+      <div id="confirma-detalhe" class="confirma-detalhe"></div>
+      <p class="dica" id="confirma-aviso"></p>
+      <div class="argos-modal-acoes">
+        <button class="argos-btn ghost" id="btn-confirma-nao">Cancelar</button>
+        <button class="argos-btn primary" id="btn-confirma-sim">Confirmar</button>
+      </div>
     </div>
   </div>
 
@@ -270,7 +293,7 @@
     </div>
   </div>
 
-  <script type="module" src="agenda.js?v=18"></script>
+  <script type="module" src="agenda.js?v=19"></script>
   <script type="module" src="argos-zoom.js?v=4"></script>
 </body>
 </html>

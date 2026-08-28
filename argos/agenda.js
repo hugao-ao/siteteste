@@ -9,6 +9,7 @@ import {
     paraISO, formataBR, fimDoMes, expandirDinamica, conflitosDeSessao,
     conflitosDeDinamica, repassesDe, aplicarFimDeProcesso
 } from './argos-recorrencia.js';
+import { conferirFone, linkWhatsApp, mensagemPendencias } from './argos-cobranca.js';
 import { STATUS_PROF, ORDEM_STATUS_PROF, responsaveisDe } from './argos-producao.js';
 
 let perm = { pode: () => true, aplicarVisibilidade: () => {}, master: true };
@@ -95,6 +96,11 @@ function renderAvisoPendentes() {
 }
 
 document.getElementById('btn-abrir-pendentes').addEventListener('click', () => {
+    const campo = document.getElementById('pend-fone');
+    if (!campo.value) {
+        // o recado quase sempre vai para a mesma pessoa
+        try { campo.value = localStorage.getItem('argos_pend_fone') || ''; } catch (e) {}
+    }
     renderPendentes(); abrirModal('modal-pendentes');
 });
 
@@ -105,6 +111,7 @@ document.getElementById('btn-abrir-pendentes').addEventListener('click', () => {
 // realmente pensa: «a Lara faltou o mês todo».
 let pendAgrupar = 'paciente';
 let pendBusca = '';
+let pendMostradas = [];  // o que está na tela — é isto que vai na mensagem
 
 const STATUS_MARCAVEIS = ['ok', 'fj', 'fc', 'nc'];
 
@@ -135,6 +142,7 @@ function renderPendentes() {
         : '';
 
     const alvo = document.getElementById('lista-pendentes');
+    pendMostradas = pend;
     if (!pend.length) {
         alvo.innerHTML = todasPend.length
             ? '<p class="dim">Nenhuma pendência com esse filtro.</p>'
@@ -222,6 +230,27 @@ document.getElementById('lista-pendentes').addEventListener('click', async (e) =
     if (!s) return;
     await marcarSessoes([s], btn.dataset.status);
     renderPendentes();
+});
+
+// A lista de pendências costuma virar recado para a secretária ou para o
+// profissional que não preencheu. Manda o que está na tela — com o filtro e o
+// agrupamento que a pessoa escolheu —, para quem lê e quem enviou estarem
+// vendo a mesma coisa.
+document.getElementById('btn-pend-whats').addEventListener('click', () => {
+    if (!pendMostradas.length) { toast('Não há pendências para enviar.', true); return; }
+    const campo = document.getElementById('pend-fone');
+    const { ok, fone, erro } = conferirFone(campo.value);
+    if (!ok) { toast(erro, true); campo.focus(); return; }
+
+    const texto = mensagemPendencias({
+        agrupar: pendAgrupar, hoje: hojeISO(),
+        itens: pendMostradas.map(s => ({
+            paciente: nomePac(s.paciente_id), profissional: nomeProf(s.profissional_id),
+            sala: nomeSala(s.sala_id), data: s.data, hora: s.hora
+        }))
+    });
+    try { localStorage.setItem('argos_pend_fone', fone); } catch (e) {}
+    window.open(linkWhatsApp(fone, texto), '_blank', 'noopener');
 });
 
 document.getElementById('pend-busca').addEventListener('input', e => {
@@ -1394,6 +1423,46 @@ async function moverGrupo(g, novoDow) {
     await recarregarSessoes();
 }
 
+// ---------- confirmação de mudança ----------
+// Arrastar é fácil de fazer sem querer: um clique que escorrega já remarca a
+// sessão de alguém, ou muda o dia fixo de um grupo inteiro. Antes de gravar,
+// a janela diz em palavras o que vai acontecer — de onde, para onde, e a quem
+// isso afeta.
+let confirmarResolve = null;
+
+function pedirConfirmacao({ titulo, texto, detalhe = '', aviso = '', botao = 'Confirmar' }) {
+    document.getElementById('confirma-titulo').textContent = titulo;
+    document.getElementById('confirma-texto').textContent = texto;
+    document.getElementById('confirma-detalhe').innerHTML = detalhe;
+    document.getElementById('confirma-aviso').textContent = aviso;
+    document.getElementById('btn-confirma-sim').textContent = botao;
+    abrirModal('modal-confirma');
+    return new Promise(resolve => { confirmarResolve = resolve; });
+}
+
+function responderConfirmacao(valor) {
+    const resolve = confirmarResolve;
+    confirmarResolve = null;
+    fecharModal('modal-confirma');
+    if (resolve) resolve(valor);
+}
+
+document.getElementById('btn-confirma-sim').addEventListener('click', () => responderConfirmacao(true));
+document.getElementById('btn-confirma-nao').addEventListener('click', () => responderConfirmacao(false));
+// fechar pelo × ou pelo fundo é o mesmo que desistir — nunca "sim" por omissão
+document.getElementById('modal-confirma').addEventListener('click', e => {
+    if (e.target.closest('[data-fechar]') || e.target.id === 'modal-confirma') {
+        responderConfirmacao(false);
+    }
+});
+
+const diaPorExtenso = iso => `${formataBR(iso)} (${DOW_NOMES[paraData(iso).getDay()]})`;
+
+/** Ler antes de mover: de onde sai, para onde vai. */
+const deParaHTML = (de, para) =>
+    `<div class="confirma-de-para"><span class="de">${esc(de)}</span>
+       <span class="seta">→</span><span class="para">${esc(para)}</span></div>`;
+
 // ---------- arrastar e soltar (mouse) ----------
 function configurarDragDrop(container) {
     container.addEventListener('dragstart', (e) => {
@@ -1423,13 +1492,34 @@ function configurarDragDrop(container) {
         const alvoIso = dia.dataset.iso;
         if (payload.tipo === 'grupo') {
             const g = grupos.find(x => x.id === payload.id);
-            if (g) await moverGrupo(g, dowDe(alvoIso));
+            if (!g) return;
+            const novoDow = dowDe(alvoIso);
+            if (g.dow === novoDow) return;
+            const quantos = membrosDoGrupo(g.id).length;
+            const sim = await pedirConfirmacao({
+                titulo: 'Mudar o dia do grupo?',
+                texto: `O grupo "${g.nome}" passa a acontecer noutro dia da semana.`,
+                detalhe: deParaHTML(`${DOW_NOMES[g.dow]} ${g.hora}`, `${DOW_NOMES[novoDow]} ${g.hora}`),
+                aviso: quantos
+                    ? `Muda o horário fixo de ${quantos} paciente(s) do grupo.`
+                    : 'O grupo ainda não tem pacientes.',
+                botao: 'Mudar o dia'
+            });
+            if (sim) await moverGrupo(g, novoDow);
         } else {
             const s = chaves.get(payload.chave);
             if (!s) return;
             if (s.status !== '??') { toast('Só sessões pendentes («??») podem ser movidas.', true); return; }
             if (s.data === alvoIso) return;
-            await iniciarRemarcacao(s, alvoIso, s.hora, null);
+            const sim = await pedirConfirmacao({
+                titulo: 'Remarcar a sessão?',
+                texto: `A sessão de ${nomePac(s.paciente_id)} muda de dia.`,
+                detalhe: deParaHTML(`${diaPorExtenso(s.data)} ${s.hora}`,
+                                    `${diaPorExtenso(alvoIso)} ${s.hora}`),
+                aviso: 'O horário continua o mesmo. A sessão original fica registrada como remarcada.',
+                botao: 'Remarcar'
+            });
+            if (sim) await iniciarRemarcacao(s, alvoIso, s.hora, null);
         }
     });
 }

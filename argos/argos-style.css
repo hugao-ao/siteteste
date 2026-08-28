@@ -778,3 +778,14 @@ ul.cb-excecoes li .acoes { display: flex; gap: 6px; margin-top: 6px; flex-wrap: 
 }
 .pend-grupo .pendente-linha { margin-bottom: 6px; }
 .pend-grupo .pendente-linha:last-child { margin-bottom: 0; }
+
+/* ---- Confirmação de arrasto: dizer em palavras o que vai mudar ---- */
+.confirma-detalhe { margin: 10px 0; }
+.confirma-de-para {
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    background: var(--argos-fundo-suave, rgba(148, 163, 184, .12));
+    border-radius: 10px; padding: 10px 12px; font-weight: 600;
+}
+.confirma-de-para .de { text-decoration: line-through; opacity: .7; }
+.confirma-de-para .seta { color: var(--argos-accent, #6366f1); font-weight: 800; }
+.confirma-de-para .para { color: var(--argos-accent, #6366f1); }
