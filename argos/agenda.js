@@ -216,6 +216,8 @@ function subtituloDoBloco(b) {
 function linhaDoBloco(i) {
     if (pendAgrupar === 'paciente') return `${formataBR(i.data)} ${i.hora}`;
     if (pendAgrupar === 'data') return `${i.hora} — ${i.paciente}`;
+    // no bloco do horário fixo, a hora já está no título: sobra a data e quem é
+    if (pendAgrupar === 'horario') return `${formataBR(i.data)} — ${i.paciente}`;
     return `${formataBR(i.data)} ${i.hora} — ${i.paciente}`;
 }
 
