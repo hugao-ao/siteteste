@@ -789,3 +789,9 @@ ul.cb-excecoes li .acoes { display: flex; gap: 6px; margin-top: 6px; flex-wrap: 
 .confirma-de-para .de { text-decoration: line-through; opacity: .7; }
 .confirma-de-para .seta { color: var(--argos-accent, #6366f1); font-weight: 800; }
 .confirma-de-para .para { color: var(--argos-accent, #6366f1); }
+
+/* ---- Desfazer a última mudança de horário ---- */
+.argos-aviso.desfazer {
+    background: var(--argos-accent-soft, rgba(99, 102, 241, .12));
+    border-color: var(--argos-accent, #6366f1);
+}
