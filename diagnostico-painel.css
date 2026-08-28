@@ -24,11 +24,23 @@
 body {
   background: var(--painel-bg);
   padding-left: var(--painel-nav-w);
+  transition: padding-left 0.2s ease;
 }
 
-/* o botão voltar não pode virar item de fluxo */
+/* barra recolhida: só os marcadores de preenchimento */
+body.painel-recolhido {
+  --painel-nav-w: 58px;
+}
+
+/* O botão voltar é filho direto do body e ficava por cima do nome do
+   cliente. Passa a ocupar uma faixa própria no topo da barra lateral. */
 .btn-voltar {
   position: fixed;
+  top: 10px;
+  left: 12px;
+  width: 34px;
+  height: 34px;
+  font-size: 14px;
 }
 
 .container {
@@ -43,16 +55,46 @@ body {
   width: var(--painel-nav-w);
   height: 100vh;
   overflow-y: auto;
+  overflow-x: hidden;
   background: var(--painel-nav);
   border-right: 1px solid var(--painel-line);
   z-index: 500;
   display: flex;
   flex-direction: column;
+  transition: width 0.2s ease;
 }
 
+/* faixa do topo: abre espaço para o botão voltar e para o recolher */
 #painel-nav .pn-head {
-  padding: 1rem 1rem 0.85rem;
+  padding: 3.1rem 1rem 0.85rem;
   border-bottom: 1px solid var(--painel-line);
+}
+
+#painel-recolher {
+  position: absolute;
+  top: 12px;
+  right: 10px;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid var(--painel-field-line);
+  border-radius: 6px;
+  color: var(--painel-text-dim);
+  font: inherit;
+  font-size: 0.8rem;
+  line-height: 1;
+  cursor: pointer;
+  z-index: 2;
+  transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
+}
+
+#painel-recolher:hover {
+  border-color: var(--secondary-color);
+  color: var(--secondary-color);
+  background: rgba(212, 175, 55, 0.12);
 }
 
 #painel-nav .pn-cliente {
@@ -281,11 +323,75 @@ body {
   gap: 0.75rem 1rem;
 }
 
+/* ---------- estado recolhido ---------- */
+
+@media (min-width: 901px) {
+  /* largura explícita: não depender só da variável, que outras regras
+     do arquivo original acabam vencendo */
+  body.painel-recolhido {
+    padding-left: 58px;
+  }
+
+  body.painel-recolhido #painel-nav {
+    width: 58px;
+  }
+
+  body.painel-recolhido #painel-nav .pn-cliente,
+  body.painel-recolhido #painel-nav .pn-status,
+  body.painel-recolhido #painel-nav .pn-pct,
+  body.painel-recolhido #painel-nav .pn-title,
+  body.painel-recolhido #painel-nav .pn-rotulo {
+    display: none;
+  }
+
+  body.painel-recolhido #painel-nav .pn-head {
+    padding: 3.1rem 0.6rem 0.6rem;
+  }
+
+  /* o botão de recolher desce para não brigar com o voltar */
+  body.painel-recolhido #painel-recolher {
+    top: 52px;
+    right: 13px;
+  }
+
+  body.painel-recolhido #painel-nav .pn-head {
+    padding-top: 5.6rem;
+  }
+
+  body.painel-recolhido #painel-nav .pn-item {
+    justify-content: center;
+    padding: 0.5rem 0;
+    border-left-width: 3px;
+  }
+
+  body.painel-recolhido #painel-nav .pn-tick {
+    width: 9px;
+    height: 9px;
+  }
+
+  body.painel-recolhido .btn-voltar {
+    left: 12px;
+  }
+}
+
 /* ---------- barra lateral em telas estreitas ---------- */
 
 @media (max-width: 900px) {
-  body {
+  body,
+  body.painel-recolhido {
     padding-left: 0;
+  }
+
+  /* em tela estreita a barra é uma faixa horizontal: recolher não se aplica */
+  #painel-recolher {
+    display: none;
+  }
+
+  .btn-voltar {
+    top: 8px;
+    left: 8px;
+    width: 30px;
+    height: 30px;
   }
 
   #painel-nav {

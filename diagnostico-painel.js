@@ -56,6 +56,35 @@
     return secoes;
   }
 
+  /* ---------- recolher e expandir a barra ---------- */
+
+  var CHAVE_RECOLHIDO = 'diagnostico_painel_recolhido';
+
+  function estaRecolhido() {
+    try { return localStorage.getItem(CHAVE_RECOLHIDO) === '1'; } catch (e) { return false; }
+  }
+
+  function aplicarRecolhido(recolhido, botao) {
+    document.body.classList.toggle('painel-recolhido', recolhido);
+    try { localStorage.setItem(CHAVE_RECOLHIDO, recolhido ? '1' : '0'); } catch (e) {}
+    if (!botao) return;
+    botao.textContent = recolhido ? '»' : '«';
+    botao.title = recolhido ? 'Expandir a barra' : 'Recolher a barra';
+    botao.setAttribute('aria-label', botao.title);
+    botao.setAttribute('aria-expanded', recolhido ? 'false' : 'true');
+  }
+
+  function montarRecolher() {
+    var botao = document.createElement('button');
+    botao.type = 'button';
+    botao.id = 'painel-recolher';
+    botao.addEventListener('click', function () {
+      aplicarRecolhido(!document.body.classList.contains('painel-recolhido'), botao);
+    });
+    aplicarRecolhido(estaRecolhido(), botao);
+    return botao;
+  }
+
   /* ---------- construção do índice ---------- */
 
   function montarNav(secoes) {
@@ -64,6 +93,8 @@
     nav = document.createElement('nav');
     nav.id = NAV_ID;
     nav.setAttribute('aria-label', 'Seções do diagnóstico');
+
+    nav.appendChild(montarRecolher());
 
     var cabecalho = document.createElement('div');
     cabecalho.className = 'pn-head';
@@ -115,6 +146,9 @@
       var rotulo = document.createElement('span');
       rotulo.className = 'pn-rotulo';
       rotulo.textContent = secao.rotulo;
+
+      // com a barra recolhida, o rótulo some e o title vira a única pista
+      botao.title = secao.rotulo;
 
       botao.appendChild(tick);
       botao.appendChild(rotulo);
