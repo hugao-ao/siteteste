@@ -33,8 +33,8 @@ const RE_SUFIXO = new RegExp(`\\((${TODOS.join('|')})\\)`, 'gi');
 /** Situação na planilha → status da sessão no sistema. */
 export const STATUS_PLANILHA = {
     OK: 'ok',    // presente, cobra
-    F: 'fc',     // falta cobrável
-    FJ: 'fj',    // falta justificada, não cobra
+    F: 'fc',     // falta contabilizada
+    FJ: 'fj',    // falta justificada, não contabiliza
     '??': '??'   // ainda não preenchida
 };
 

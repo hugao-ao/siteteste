@@ -1105,7 +1105,7 @@ function htmlHistorico(p, dins, sessoes) {
       <style>body{font-family:sans-serif;padding:24px;color:#111}h1{font-size:1.3rem}h2{font-size:1.05rem;margin-top:22px}
       table{border-collapse:collapse;width:100%;font-size:.85rem}td,th{border:1px solid #999;padding:5px 8px;text-align:left}</style></head><body>
       <h1>Histórico de frequência e financeiro — ${esc(p.nome)}</h1>
-      <p>Gerado em ${formataBR(hojeISO())}. Legenda: Ok presente (cobra) · Fj falta não cobrável · Fc falta cobrável · Nc não houve · ?? pendente.</p>
+      <p>Gerado em ${formataBR(hojeISO())}. Legenda: Ok presente (contabiliza) · Fj falta não contabilizada · Fc falta contabilizada · Nc não houve · ?? pendente.</p>
       <h2>Resumo mensal</h2>
       <table><tr><th>Mês</th><th>Ok</th><th>Fj</th><th>Fc</th><th>Nc</th><th>??</th><th>Valor do mês</th></tr>${linhasMes || '<tr><td colspan="7">Sem registros</td></tr>'}</table>
       <h2>Todas as sessões</h2>

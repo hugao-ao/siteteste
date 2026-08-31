@@ -18,7 +18,7 @@
 const num = v => (v == null || v === '' ? null : Number(v));
 const cent = v => Math.round((Number(v) || 0) * 100);
 
-/** Situações que valem como sessão realizada e cobrável. */
+/** Situações que valem como sessão realizada e contabilizada. */
 const REALIZADA = new Set(['ok', 'fc']);
 
 // ---------------------------------------------------------------------------
@@ -101,7 +101,7 @@ export function retratoDaCobranca({ fech, valor }) {
 const CAMPOS_COBRANCA = [
     ['valor', 'o valor cobrado'],
     ['ok', 'as sessões presentes'],
-    ['fc', 'as faltas cobráveis'],
+    ['fc', 'as faltas contabilizadas'],
     ['fj', 'as faltas justificadas'],
     ['nc', 'as sessões que não houve']
 ];

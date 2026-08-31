@@ -6,21 +6,23 @@
 //
 // Status de sessão:
 //   '??' pendente/futura — para projeção de faturamento conta como presença
-//   'ok' presente        — cobrável
-//   'fc' falta cobrável  — cobrável
-//   'fj' falta justificada — NÃO cobrável
-//   'nc' não aconteceu     — NÃO cobrável
+//   'ok' presente        — contabiliza
+//   'fc' falta contabilizada — contabiliza
+//   'fj' falta justificada — NÃO contabiliza
+//   'nc' não aconteceu     — NÃO contabiliza
 
 export const STATUS_SESSAO = {
     '??': { label: '??', desc: 'Pendente', cor: '#94a3b8' },
-    'ok': { label: 'Ok', desc: 'Presente (cobra)', cor: '#22c55e' },
-    'fj': { label: 'Fj', desc: 'Falta não cobrável', cor: '#eab308' },
-    'fc': { label: 'Fc', desc: 'Falta cobrável', cor: '#a855f7' },
-    'nc': { label: 'Nc', desc: 'Não houve (não cobra)', cor: '#ef4444' }
+    'ok': { label: 'Ok', desc: 'Presente (contabiliza)', cor: '#22c55e' },
+    'fj': { label: 'Fj', desc: 'Falta não contabilizada', cor: '#eab308' },
+    'fc': { label: 'Fc', desc: 'Falta contabilizada', cor: '#a855f7' },
+    'nc': { label: 'Nc', desc: 'Não houve (não contabiliza)', cor: '#ef4444' }
 };
 
-export const COBRAVEIS = ['ok', 'fc'];         // efetivamente cobráveis
-export const PROJETAVEIS = ['ok', 'fc', '??']; // cobráveis + presença futura projetada
+// Na tela estes status se chamam «contabiliza»/«contabilizada»; aqui o nome
+// antigo ficou porque é o que a clínica usava quando o motor nasceu.
+export const COBRAVEIS = ['ok', 'fc'];         // as que contabilizam
+export const PROJETAVEIS = ['ok', 'fc', '??']; // as que contabilizam + presença futura projetada
 
 export const DOW_NOMES = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 
@@ -481,8 +483,9 @@ export function fimDoMes(mes) {
 
 /**
  * Fechamento de um mês ('YYYY-MM') para um paciente.
- * Regras: Ok e Fc cobram; ?? de data futura conta como presença projetada;
- * ?? de data já vencida NÃO cobra e vira pendência. Fj e Nc não cobram.
+ * Regras: Ok e Fc contabilizam; ?? de data futura conta como presença
+ * projetada; ?? de data já vencida NÃO contabiliza e vira pendência.
+ * Fj e Nc não contabilizam.
  * Retorna { sessoes, contagens, pendencias, valor, detalhes[] }.
  */
 export function fechamentoPaciente(paciente, dinamicas, sessoes, mes) {
