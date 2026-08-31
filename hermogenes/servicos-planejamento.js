@@ -4,7 +4,7 @@
 // DIA arrastável, mapa que acompanha esse dia (serviços que começam/terminam e
 // as TRAJETÓRIAS de quem sai de um serviço para outro) e a confirmação do que
 // foi executado — que volta para os cards das obras.
-import { sb, toast, esc, fmtMoeda } from './hermo-common.js';
+import { sb, toast, esc, fmtMoeda, descServico } from './hermo-common.js';
 
 const $ = id => document.getElementById(id);
 const num = v => { const n = parseFloat(v); return isFinite(n) ? n : 0; };
@@ -44,7 +44,7 @@ async function carregarPlanos() {
     const { data, error } = await sb.from('hermo_planejamentos')
         .select(`*,
             itens:hermo_planejamento_itens(*,
-                servico:hermo_obra_servicos(id, quantidade, unidade, total, preco_unit, qtd_executada,
+                servico:hermo_obra_servicos(id, descricao_livre, quantidade, unidade, total, preco_unit, qtd_executada,
                     inicio_real, fim_real, local_execucao,
                     servico:hermo_servicos(codigo, descricao),
                     obra:hermo_obras(id, numero, ano, nome, latitude, longitude))),
@@ -123,8 +123,8 @@ function render() {
         const comeca = ini >= min, termina = fim <= max;
         return `
         <div class="tlx-linha">
-            <div class="tlx-rotulo" title="${esc(s?.servico?.descricao || '')}">
-                <b>${esc(s?.servico?.codigo || '?')}</b> ${esc(s?.servico?.descricao || '')}
+            <div class="tlx-rotulo" title="${esc(descServico(s?.servico))}">
+                <b>${esc(s?.servico?.codigo || '?')}</b> ${esc(descServico(s?.servico))}
                 <small>${esc(codObra(s?.obra))} · ${sit.rot}${i.executado ? ' · ✅ executado' : ''}</small>
             </div>
             <div class="tlx-faixa" style="width:${W}px;min-height:30px">
@@ -214,7 +214,7 @@ function renderDia() {
     if (!atual || !diaCursor) { $('pl-dia-info').innerHTML = ''; return; }
     const f = fotoDoDia(diaCursor);
     const lista = (arr, ic) => arr.length
-        ? arr.map(i => `${ic} <b>${esc(i.servico?.servico?.codigo || '')}</b> ${esc(i.servico?.servico?.descricao || '')} <small style="color:var(--hermo-text-dim)">(${esc(codObra(i.servico?.obra))})</small>`).join(' · ')
+        ? arr.map(i => `${ic} <b>${esc(i.servico?.servico?.codigo || '')}</b> ${esc(descServico(i.servico))} <small style="color:var(--hermo-text-dim)">(${esc(codObra(i.servico?.obra))})</small>`).join(' · ')
         : '<span style="color:var(--hermo-text-dim)">—</span>';
     $('pl-dia-info').innerHTML = `
     <div class="pl-cartao" style="align-items:flex-start;flex-direction:column;gap:6px">
@@ -267,7 +267,7 @@ function atualizarMapaDia(f) {
         }).addTo(mapa);
         m.bindPopup(`<div style="font-size:.82rem;max-width:250px">
             <b>${esc(codObra(reg.ob))} — ${esc(reg.ob.nome)}</b><br>
-            ${reg.servicos.map(i => `• ${esc(i.servico?.servico?.codigo || '')} ${esc(i.servico?.servico?.descricao || '').slice(0, 26)}`).join('<br>')}
+            ${reg.servicos.map(i => `• ${esc(i.servico?.servico?.codigo || '')} ${esc(descServico(i.servico).slice(0, 26))}`).join('<br>')}
             ${reg.pessoas.size ? `<br>👷 ${esc([...reg.pessoas].join(', '))}` : ''}
             ${reg.comecam ? '<br>▶ começa hoje' : ''}${reg.terminam ? '<br>⏹ termina hoje' : ''}
         </div>`);
@@ -343,7 +343,7 @@ function abrirExecucao() {
                 : (s?.qtd_executada ?? ''));
         return `
         <div class="ple-item">
-            <div class="txt"><b>${esc(s?.servico?.codigo || '?')}</b> ${esc(s?.servico?.descricao || '')}
+            <div class="txt"><b>${esc(s?.servico?.codigo || '?')}</b> ${esc(descServico(s?.servico))}
                 <small>${esc(codObra(s?.obra))} · fatia do período: ${i.qtd_prevista != null ? fmtQtd(i.qtd_prevista) : '—'} · já na obra: ${fmtQtd(s?.qtd_executada)} de ${fmtQtd(contratado)} ${esc(s?.unidade || 'un')} · ${SITUACAO[i.situacao]?.rot || i.situacao}</small>
             </div>
             <label title="Total acumulado do serviço na obra (não só o período)">executado acumulado</label>

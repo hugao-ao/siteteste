@@ -50,7 +50,7 @@ async function carregarTudo() {
             .select('*, nfs:hermo_notas_fiscais(id, status), itens:hermo_medicao_itens(obra_servico_id, qtd_medida, valor)')
             .order('created_at', { ascending: false }),
         sb.from('hermo_obras')
-            .select('id, numero, ano, nome, status, cliente:hermo_clientes(nome), itens:hermo_obra_servicos(id, vigente, quantidade, unidade, preco_unit, total, perc_executado, qtd_executada, local_execucao, servico:hermo_servicos(codigo, descricao), alocacoes:hermo_alocacoes(id))')
+            .select('id, numero, ano, nome, status, cliente:hermo_clientes(nome), itens:hermo_obra_servicos(id, vigente, descricao_livre, quantidade, unidade, preco_unit, total, perc_executado, qtd_executada, local_execucao, servico:hermo_servicos(codigo, descricao), alocacoes:hermo_alocacoes(id))')
             .order('ano', { ascending: false }).order('numero', { ascending: false })
     ]);
     if (m.error) { toast('Erro ao carregar medições: ' + m.error.message, true); return; }
@@ -285,7 +285,8 @@ async function montarItens() {
     itensMedicao = (obra?.itens || []).filter(it => it.vigente !== false).map(it => ({
         obra_servico_id: it.id,
         codigo: it.servico?.codigo || '?',
-        descricao: it.servico?.descricao || '?',
+        // mesma redação que o cliente contratou — a medição vai para ele
+        descricao: it.descricao_livre || it.servico?.descricao || '?',
         local: it.local_execucao || '',
         contratado: num(it.quantidade),
         unidade: it.unidade || 'un',

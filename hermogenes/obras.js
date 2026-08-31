@@ -2,7 +2,7 @@
 // cronograma com ALOCAÇÕES (dia/turno/horário) e bloqueio de conflitos de agenda,
 // diário de obra e associação com propostas contratadas (aditivos).
 import {
-    sb, toast, fmtDataHora, ligarFecharPorBackdrop, esc, fmtMoeda, somarPrazo,
+    sb, toast, fmtDataHora, ligarFecharPorBackdrop, esc, fmtMoeda, somarPrazo, descServico,
     dataDaParcela, parcelaPorMedicao
 } from './hermo-common.js';
 import { abrirModalCliente } from './hermo-cliente-modal.js';
@@ -494,7 +494,8 @@ async function abrirModalObra(obra) {
         sel: false,
         servico_id: it.servico_id,
         codigo: it.servico?.codigo || '?',
-        descricao: it.servico?.descricao || '?',
+        // a redação que o cliente contratou acompanha o serviço até a obra
+        descricao: it.descricao_livre || it.servico?.descricao || '?',
         local_execucao: it.local_execucao || '',
         quantidade: num(it.quantidade) || 1,
         unidade: it.unidade || '',
@@ -1512,7 +1513,7 @@ async function confirmarAlocacao() {
         // busca compromissos existentes dos integrantes no período (todas as obras) + ausências
         const [aloc, aus] = await Promise.all([
             sb.from('hermo_alocacoes')
-                .select('*, integrante:hermo_integrantes(id, nome), obra_servico:hermo_obra_servicos(id, servico:hermo_servicos(codigo, descricao), obra:hermo_obras(nome, numero, ano))')
+                .select('*, integrante:hermo_integrantes(id, nome), obra_servico:hermo_obra_servicos(id, descricao_livre, servico:hermo_servicos(codigo, descricao), obra:hermo_obras(nome, numero, ano))')
                 .in('integrante_id', ids)
                 .lte('data_inicio', fim)
                 .gte('data_fim', inicio),
@@ -1529,7 +1530,7 @@ async function confirmarAlocacao() {
         (aloc.data || []).forEach(a => {
             if (periodosConflitam(nova, a)) {
                 const ob = a.obra_servico?.obra;
-                conflitos.push(`• ${a.integrante?.nome}: já alocado em "${ob ? 'OB-' + String(ob.numero).padStart(4, '0') + '/' + ob.ano + ' — ' + ob.nome : 'outra obra'}" (${a.obra_servico?.servico?.codigo || ''} ${a.obra_servico?.servico?.descricao || ''}), ${a.data_inicio} a ${a.data_fim}, ${a.turno === 'horario' ? (a.hora_inicio || '').slice(0, 5) + '-' + (a.hora_fim || '').slice(0, 5) : TURNO_LABEL[a.turno]}`);
+                conflitos.push(`• ${a.integrante?.nome}: já alocado em "${ob ? 'OB-' + String(ob.numero).padStart(4, '0') + '/' + ob.ano + ' — ' + ob.nome : 'outra obra'}" (${a.obra_servico?.servico?.codigo || ''} ${descServico(a.obra_servico)}), ${a.data_inicio} a ${a.data_fim}, ${a.turno === 'horario' ? (a.hora_inicio || '').slice(0, 5) + '-' + (a.hora_fim || '').slice(0, 5) : TURNO_LABEL[a.turno]}`);
             }
         });
         (aus.data || []).forEach(a => {

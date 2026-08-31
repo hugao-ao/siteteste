@@ -55,6 +55,28 @@
         background: var(--hermo-bg); border-radius: 6px; padding: 7px 10px;
         display: none; align-items: center; gap: 8px; flex-wrap: wrap;
     }
+    /* descrição livre do item + vínculo com o catálogo */
+    #pi-descricao { width: 100%; resize: vertical; min-height: 62px; }
+    .pi-desc-acoes {
+        display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+        margin-top: 5px; font-size: .74rem; color: var(--hermo-text-dim);
+    }
+    .pi-desc-acoes .igual { color: var(--hermo-text-dim); }
+    .pi-desc-acoes .propria { color: var(--hermo-primary); font-weight: 700; }
+    .pi-sugestoes { display: flex; flex-direction: column; gap: 4px; margin-top: 6px; }
+    .pi-sugestao {
+        text-align: left; width: 100%; cursor: pointer;
+        background: var(--hermo-surface-2); border: 1px solid var(--hermo-border);
+        border-radius: 6px; padding: 5px 8px; font-size: .74rem; color: var(--hermo-text);
+    }
+    .pi-sugestao:hover { border-color: var(--hermo-primary); }
+    .pi-sugestao small { display: block; color: var(--hermo-text-dim); }
+    .pi-fechado {
+        font-size: .76rem; color: var(--hermo-warn);
+        background: var(--hermo-bg); border-radius: 6px; padding: 7px 10px; margin-top: 6px;
+    }
+    /* o item da lista mostra o texto do cliente; o código fica como selo do vínculo */
+    .pp-item .cat { font-size: .68rem; color: var(--hermo-text-dim); }
     /* condições comerciais */
     .pp-cond-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; }
     .pp-cond-grid label.mini, label.mini { font-size: .72rem; color: var(--hermo-text-dim); }
@@ -321,7 +343,18 @@
       </div>
       <div class="hermo-modal-body">
         <div class="hermo-field">
-          <label>Serviço <span class="req">*</span></label>
+          <label>Descrição que sai na proposta <span class="req">*</span></label>
+          <textarea id="pi-descricao" rows="3"
+                    placeholder="Escreva exatamente como o cliente mandou"></textarea>
+          <div class="pi-desc-acoes">
+            <button class="hermo-btn small ghost" id="pi-btn-usar-catalogo"
+                    title="Substituir pelo texto do catálogo">↺ Usar a do catálogo</button>
+            <span id="pi-desc-estado"></span>
+          </div>
+          <div class="pi-sugestoes" id="pi-sugestoes"></div>
+        </div>
+        <div class="hermo-field">
+          <label>Serviço do catálogo (é o que guarda preço, histórico e produção) <span class="req">*</span></label>
           <select id="pi-servico"></select>
         </div>
         <div class="pi-praticado" id="pi-praticado"></div>
@@ -339,20 +372,7 @@
             <input id="pi-unidade" type="text" placeholder="ex.: m², un, h" />
           </div>
         </div>
-        <div class="hermo-field">
-          <label>Como informar o preço unitário?</label>
-          <select id="pi-modo">
-            <option value="global">Preço global (um valor único)</option>
-            <option value="mo_material">Mão de obra + material (global = soma)</option>
-          </select>
-        </div>
-        <div class="hermo-form-row" id="pi-wrap-global">
-          <div class="hermo-field">
-            <label>Preço unitário global (R$) <span class="req">*</span></label>
-            <input id="pi-preco-global" type="number" step="0.01" min="0" placeholder="0,00" />
-          </div>
-        </div>
-        <div class="hermo-form-row" id="pi-wrap-mm" style="display:none">
+        <div class="hermo-form-row">
           <div class="hermo-field">
             <label>Preço unit. mão de obra (R$)</label>
             <input id="pi-preco-mo" type="number" step="0.01" min="0" placeholder="0,00" />
@@ -362,6 +382,7 @@
             <input id="pi-preco-material" type="number" step="0.01" min="0" placeholder="0,00" />
           </div>
         </div>
+        <div class="pi-fechado" id="pi-fechado" style="display:none"></div>
         <div class="sv-linha-total" style="font-size:.85rem;text-align:right;color:var(--hermo-text-dim)">
           Unitário: <b id="pi-unit-preview" style="color:var(--hermo-text)">R$ 0,00</b>
           &nbsp;·&nbsp; Total do item: <b id="pi-total-preview" style="color:var(--hermo-primary)">R$ 0,00</b>

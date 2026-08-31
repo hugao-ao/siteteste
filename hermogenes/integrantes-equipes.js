@@ -1,6 +1,6 @@
 // integrantes-equipes.js — Cadastro de integrantes (funções gerenciáveis, vínculos)
 // e equipes (cor, líder, membros, custo/dia). Agenda e Produção×Custo: próxima etapa.
-import { sb, toast, ligarFecharPorBackdrop, esc, fmtMoeda, mascaraCPF } from './hermo-common.js';
+import { sb, toast, ligarFecharPorBackdrop, esc, fmtMoeda, mascaraCPF, descServico } from './hermo-common.js';
 
 const $ = id => document.getElementById(id);
 const num = v => { const n = parseFloat(v); return isFinite(n) ? n : 0; };
@@ -48,7 +48,7 @@ async function carregarTudo() {
         sb.from('hermo_equipes').select('*, lider:hermo_integrantes!hermo_equipes_lider_id_fkey(id, nome), membros:hermo_equipe_membros(integrante_id)').order('nome'),
         sb.from('hermo_alocacoes')
             .select(`*, equipe:hermo_equipes(id, nome, cor),
-                obra_servico:hermo_obra_servicos(id, total, perc_executado,
+                obra_servico:hermo_obra_servicos(id, descricao_livre, total, perc_executado,
                     servico:hermo_servicos(codigo, descricao),
                     obra:hermo_obras(numero, ano, nome))`),
         sb.from('hermo_ausencias').select('*').order('data_inicio', { ascending: false })
@@ -501,7 +501,7 @@ function renderAgenda() {
                     const turno = a.turno === 'horario'
                         ? `${(a.hora_inicio || '').slice(0, 5)}-${(a.hora_fim || '').slice(0, 5)}` : TURNO_LABEL_AG[a.turno];
                     blocos.push(`<span class="ag-bloco" style="background:${a.equipe?.cor || 'var(--hermo-primary)'}"
-                        title="${esc(ob?.nome || '')} — ${esc(a.obra_servico?.servico?.descricao || '')} (${turno})">${rotulo} · ${turno}</span>`);
+                        title="${esc(ob?.nome || '')} — ${esc(descServico(a.obra_servico))} (${turno})">${rotulo} · ${turno}</span>`);
                 });
             ausencias
                 .filter(a => a.integrante_id === i.id && a.data_inicio <= dia && a.data_fim >= dia)

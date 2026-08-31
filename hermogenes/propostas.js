@@ -44,6 +44,7 @@ let visitasDraft = [];        // ids das visitas associadas
 let parcelasDraft = [];       // {tipo, descricao, percentual, valor, base, dias, data_prevista}
 let localEscolhido = null;
 let itemEditIndex = null;
+let precoFechadoDoItem = 0;   // item legado sem divisão MO/material informada
 let pcAcoes = [];             // checklist de pré-preenchimento pendente
 
 // mini-mapa de escolha de local
@@ -471,7 +472,10 @@ async function abrirModalProposta(proposta) {
         sel: false,
         servico_id: i.servico_id,
         codigo: i.servico?.codigo || '?',
-        descricao: i.servico?.descricao || '?',
+        // o que sai na proposta é a redação do cliente quando existe
+        descricao: i.descricao_livre || i.servico?.descricao || '?',
+        descricaoCatalogo: i.servico?.descricao || '',
+        descricao_livre: i.descricao_livre || null,
         local_execucao: i.local_execucao || '',
         quantidade: num(i.quantidade) || 1,
         unidade: i.unidade || '',
@@ -744,6 +748,9 @@ async function dadosDoDocumento() {
             codigo: i.codigo,
             unidade: i.unidade,
             quantidade: i.quantidade,
+            modo_preco: i.modo_preco,
+            preco_mo: i.preco_mo,
+            preco_material: i.preco_material,
             preco_unit: i.preco_unit,
             total: i.total
         })),
@@ -836,11 +843,15 @@ function renderItensDraft() {
         <div class="pp-item">
             <input type="checkbox" class="check" data-isel="${idx}" ${i.sel ? 'checked' : ''} />
             <div class="txt">
-                <b>${esc(i.codigo)}</b> — ${esc(i.descricao)}
+                ${esc(i.descricao)}
+                ${i.descricao_livre ? `<span class="cat">✎ redação própria · catálogo: ${esc(i.codigo)} — ${esc(i.descricaoCatalogo || '')}</span>`
+                                    : `<span class="cat">catálogo: ${esc(i.codigo)}</span>`}
                 <small>
                     ${i.local_execucao ? '📍 ' + esc(i.local_execucao) + ' · ' : ''}
                     ${i.quantidade} ${esc(i.unidade || 'un')} × ${fmtMoeda(i.preco_unit)}
-                    ${i.modo_preco === 'mo_material' ? ` (MO ${fmtMoeda(i.preco_mo)} + mat. ${fmtMoeda(i.preco_material)})` : ''}
+                    ${i.modo_preco === 'mo_material'
+                        ? ` (MO ${fmtMoeda(i.preco_mo)} + mat. ${fmtMoeda(i.preco_material)})`
+                        : ' <b style="color:var(--hermo-warn)">· preço fechado, sem divisão MO/material</b>'}
                 </small>
             </div>
             <span class="valor">${fmtMoeda(i.total)}</span>
@@ -931,19 +942,30 @@ function popularSelectServicoItem(selecionarId = null) {
     if (selecionarId) sel.value = selecionarId;
 }
 
+/** Descrição do catálogo do serviço escolhido no sub-modal. */
+function descricaoCatalogoAtual() {
+    const cat = servicosCatalogo.find(s => s.id === $('pi-servico').value);
+    return cat?.descricao || '';
+}
+
 function abrirItemModal(editIndex) {
     itemEditIndex = editIndex;
     const item = editIndex != null ? itensDraft[editIndex] : null;
     $('pi-titulo').textContent = item ? 'Editar item' : 'Adicionar item';
     popularSelectServicoItem(item?.servico_id || null);
+    // o texto que sai na proposta: o do cliente quando houver, senão o do catálogo
+    $('pi-descricao').value = item?.descricao_livre || item?.descricao || descricaoCatalogoAtual();
     $('pi-local').value = item?.local_execucao || '';
     $('pi-qtd').value = item?.quantidade ?? 1;
     $('pi-unidade').value = item?.unidade || '';
-    $('pi-modo').value = item?.modo_preco || 'global';
-    $('pi-preco-global').value = item?.modo_preco === 'global' ? (item?.preco_unit || '') : '';
     $('pi-preco-mo').value = item?.preco_mo ?? '';
     $('pi-preco-material').value = item?.preco_material ?? '';
-    aoMudarModoItem();
+    // item antigo gravado com preço fechado: a divisão não é conhecida
+    precoFechadoDoItem = (item && item.modo_preco === 'global' && item.preco_mo == null
+        && item.preco_material == null) ? num(item.preco_unit) : 0;
+    atualizarEstadoDescricao();
+    renderSugestoesDescricao();
+    recalcItemPreview();
     atualizarPraticadoHint();
     $('pi-overlay').classList.add('aberto');
 }
@@ -951,26 +973,76 @@ function abrirItemModal(editIndex) {
 function fecharItemModal() {
     $('pi-overlay').classList.remove('aberto');
     itemEditIndex = null;
+    precoFechadoDoItem = 0;
 }
 
+/** Preço unitário: mão de obra + material. Enquanto a divisão de um item antigo
+ *  não for informada, o preço fechado que já estava gravado continua valendo. */
 function unitAtual() {
-    if ($('pi-modo').value === 'mo_material') {
-        return num($('pi-preco-mo').value) + num($('pi-preco-material').value);
-    }
-    return num($('pi-preco-global').value);
-}
-
-function aoMudarModoItem() {
-    const mm = $('pi-modo').value === 'mo_material';
-    $('pi-wrap-global').style.display = mm ? 'none' : '';
-    $('pi-wrap-mm').style.display = mm ? '' : 'none';
-    recalcItemPreview();
+    const soma = num($('pi-preco-mo').value) + num($('pi-preco-material').value);
+    return (soma === 0 && precoFechadoDoItem > 0) ? precoFechadoDoItem : soma;
 }
 
 function recalcItemPreview() {
     const u = unitAtual();
     $('pi-unit-preview').textContent = fmtMoeda(u);
     $('pi-total-preview').textContent = fmtMoeda(u * num($('pi-qtd').value));
+    const aviso = $('pi-fechado');
+    const usandoFechado = precoFechadoDoItem > 0 &&
+        num($('pi-preco-mo').value) + num($('pi-preco-material').value) === 0;
+    aviso.style.display = usandoFechado ? '' : 'none';
+    if (usandoFechado) {
+        aviso.textContent = `Item antigo com preço fechado de ${fmtMoeda(precoFechadoDoItem)} — ` +
+            `informe quanto é mão de obra e quanto é material. Enquanto não informar, o preço continua valendo.`;
+    }
+}
+
+/** Diz se o texto que sai na proposta é o do catálogo ou uma redação própria. */
+function atualizarEstadoDescricao() {
+    const cat = descricaoCatalogoAtual().trim();
+    const atual = $('pi-descricao').value.trim();
+    const el = $('pi-desc-estado');
+    if (!atual || atual === cat) {
+        el.className = 'igual';
+        el.textContent = 'igual à do catálogo';
+    } else {
+        el.className = 'propria';
+        el.textContent = '✎ redação própria desta proposta';
+    }
+}
+
+/** Redações já usadas para este serviço — as do mesmo cliente primeiro. */
+function renderSugestoesDescricao() {
+    const box = $('pi-sugestoes');
+    const servicoId = $('pi-servico').value;
+    const clienteId = $('pp-cliente').value || null;
+    const cat = descricaoCatalogoAtual().trim();
+    if (!servicoId) { box.innerHTML = ''; return; }
+
+    const vistos = new Set();
+    const achados = [];
+    for (const p of propostas) {                 // já vem por ano/número desc
+        if (p.id === propostaEditando?.id) continue;
+        for (const i of p.itens || []) {
+            const texto = (i.descricao_livre || '').trim();
+            if (i.servico_id !== servicoId || !texto || texto === cat) continue;
+            if (vistos.has(texto)) continue;
+            vistos.add(texto);
+            achados.push({ texto, proposta: p, mesmoCliente: !!clienteId && p.cliente_id === clienteId });
+        }
+    }
+    achados.sort((a, b) => (b.mesmoCliente ? 1 : 0) - (a.mesmoCliente ? 1 : 0));
+    const lista = achados.slice(0, 4);
+    box.innerHTML = lista.length
+        ? lista.map((s, k) => `<button type="button" class="pi-sugestao" data-sug="${k}">
+              ${esc(s.texto.length > 150 ? s.texto.slice(0, 150) + '…' : s.texto)}
+              <small>${s.mesmoCliente ? '★ mesmo cliente · ' : ''}proposta ${fmtCodigo(s.proposta)}${s.proposta.cliente?.nome ? ' · ' + esc(s.proposta.cliente.nome) : ''}</small>
+            </button>`).join('')
+        : '';
+    box.querySelectorAll('[data-sug]').forEach(b => b.addEventListener('click', () => {
+        $('pi-descricao').value = lista[parseInt(b.dataset.sug)].texto;
+        atualizarEstadoDescricao();
+    }));
 }
 
 /** Dica de preços: o PRATICADO para o cliente e o PADRÃO do catálogo — o usuário escolhe. */
@@ -994,47 +1066,49 @@ function atualizarPraticadoHint() {
         (padrao ? `<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
             🏷️ Preço padrão do serviço (catálogo): <b>${fmtMoeda(padrao)}</b>/${esc(cat.unidade || 'un')}
             <button class="hermo-btn small ${prat ? 'ghost' : 'primary'}" id="pi-btn-padrao">Usar este</button></div>` : '');
+    // ao aplicar um preço, a divisão vai para os dois campos; preço vindo sem
+    // divisão conhecida entra como mão de obra, que é o caso da maioria dos serviços
+    const aplicar = (mo, material) => {
+        $('pi-preco-mo').value = mo || '';
+        $('pi-preco-material').value = material || '';
+        precoFechadoDoItem = 0;
+        recalcItemPreview();
+    };
     const btnPrat = el.querySelector('#pi-btn-praticado');
     if (btnPrat) btnPrat.addEventListener('click', () => {
-        $('pi-modo').value = prat.modo_preco || 'global';
-        aoMudarModoItem();
-        if ((prat.modo_preco || 'global') === 'mo_material') {
-            $('pi-preco-mo').value = prat.preco_mo ?? '';
-            $('pi-preco-material').value = prat.preco_material ?? '';
-        } else {
-            $('pi-preco-global').value = prat.preco_unit;
-        }
-        recalcItemPreview();
+        if ((prat.modo_preco || 'global') === 'mo_material') aplicar(prat.preco_mo, prat.preco_material);
+        else aplicar(prat.preco_unit, 0);
     });
     const btnPad = el.querySelector('#pi-btn-padrao');
-    if (btnPad) btnPad.addEventListener('click', () => {
-        $('pi-modo').value = 'global';
-        aoMudarModoItem();
-        $('pi-preco-global').value = padrao;
-        recalcItemPreview();
-    });
+    if (btnPad) btnPad.addEventListener('click', () => aplicar(padrao, 0));
 }
 
 function confirmarItem() {
     const servicoId = $('pi-servico').value;
-    if (!servicoId) { toast('Selecione um serviço.', true); return; }
+    if (!servicoId) { toast('Selecione o serviço do catálogo.', true); return; }
+    const descricao = $('pi-descricao').value.trim();
+    if (!descricao) { toast('Escreva a descrição que sai na proposta.', true); return; }
     const qtd = num($('pi-qtd').value);
     if (qtd <= 0) { toast('Quantidade deve ser maior que zero.', true); return; }
-    const modo = $('pi-modo').value;
     const unit = unitAtual();
-    if (unit <= 0) { toast('Informe o preço unitário.', true); return; }
+    if (unit <= 0) { toast('Informe o preço de mão de obra e/ou de material.', true); return; }
     const cat = servicosCatalogo.find(s => s.id === servicoId);
+    // divisão informada nesta edição? senão o item segue com o preço fechado antigo
+    const divisaoInformada = num($('pi-preco-mo').value) + num($('pi-preco-material').value) > 0;
     const item = {
         sel: itemEditIndex != null ? itensDraft[itemEditIndex].sel : false,
         servico_id: servicoId,
         codigo: cat?.codigo || '?',
-        descricao: cat?.descricao || '?',
+        descricao,                                        // o que o cliente vê
+        descricaoCatalogo: cat?.descricao || '',
+        // só guarda redação própria quando ela difere do catálogo
+        descricao_livre: descricao === (cat?.descricao || '').trim() ? null : descricao,
         local_execucao: $('pi-local').value.trim(),
         quantidade: qtd,
         unidade: $('pi-unidade').value.trim() || cat?.unidade || '',
-        modo_preco: modo,
-        preco_mo: modo === 'mo_material' ? num($('pi-preco-mo').value) : null,
-        preco_material: modo === 'mo_material' ? num($('pi-preco-material').value) : null,
+        modo_preco: divisaoInformada ? 'mo_material' : 'global',
+        preco_mo: divisaoInformada ? num($('pi-preco-mo').value) : null,
+        preco_material: divisaoInformada ? num($('pi-preco-material').value) : null,
         // arredonda o unitário PRIMEIRO e calcula o total a partir dele
         // (invariante: total = quantidade × preco_unit, sem resíduo de 3ª casa)
         preco_unit: Math.round(unit * 100) / 100,
@@ -1098,13 +1172,16 @@ function confirmarSelecaoServicos() {
             sel: false,
             servico_id: sid,
             codigo: cat?.codigo || '?',
-            descricao: cat?.descricao || '?',
+            descricao: cat?.descricao || '?',      // parte do catálogo; edite no ✎ se o cliente escreve diferente
+            descricaoCatalogo: cat?.descricao || '',
+            descricao_livre: null,
             local_execucao: '',
             quantidade: 1,
             unidade: cat?.unidade || '',
-            modo_preco: (sug?.modo_preco === 'mo_material') ? 'mo_material' : 'global',
-            preco_mo: sug?.modo_preco === 'mo_material' ? num(sug.preco_mo) : null,
-            preco_material: sug?.modo_preco === 'mo_material' ? num(sug.preco_material) : null,
+            // preço vindo sem divisão conhecida entra como mão de obra
+            modo_preco: unit > 0 ? 'mo_material' : 'global',
+            preco_mo: sug?.modo_preco === 'mo_material' ? num(sug.preco_mo) : (unit > 0 ? unit : null),
+            preco_material: sug?.modo_preco === 'mo_material' ? num(sug.preco_material) : (unit > 0 ? 0 : null),
             preco_unit: unit,
             total: unit
         });
@@ -1162,7 +1239,10 @@ function confirmarImportar() {
             sel: false,
             servico_id: i.servico_id,
             codigo: i.servico?.codigo || '?',
-            descricao: i.servico?.descricao || '?',
+            // importar traz junto a redação usada lá — é justamente o que se quer reaproveitar
+            descricao: i.descricao_livre || i.servico?.descricao || '?',
+            descricaoCatalogo: i.servico?.descricao || '',
+            descricao_livre: i.descricao_livre || null,
             local_execucao: i.local_execucao || '',
             quantidade: 1,   // sem quantitativos
             unidade: i.unidade || i.servico?.unidade || '',
@@ -1309,12 +1389,14 @@ async function aplicarChecklist() {
                 servico_id: sv.servico_id,
                 codigo: sv.servico?.codigo || '?',
                 descricao: sv.servico?.descricao || '?',
+                descricaoCatalogo: sv.servico?.descricao || '',
+                descricao_livre: null,
                 local_execucao: sv.local_execucao || '',
                 quantidade: qtd,
                 unidade: sv.unidade || sv.servico?.unidade || '',
-                modo_preco: (sug?.modo_preco === 'mo_material') ? 'mo_material' : 'global',
-                preco_mo: sug?.modo_preco === 'mo_material' ? num(sug.preco_mo) : null,
-                preco_material: sug?.modo_preco === 'mo_material' ? num(sug.preco_material) : null,
+                modo_preco: unit > 0 ? 'mo_material' : 'global',
+                preco_mo: sug?.modo_preco === 'mo_material' ? num(sug.preco_mo) : (unit > 0 ? unit : null),
+                preco_material: sug?.modo_preco === 'mo_material' ? num(sug.preco_material) : (unit > 0 ? 0 : null),
                 preco_unit: unit,
                 total: Math.round(unit * qtd * 100) / 100
             });
@@ -1387,6 +1469,7 @@ async function salvarProposta() {
             })),
             itens: itensDraft.map(i => ({
                 servico_id: i.servico_id,
+                descricao_livre: i.descricao_livre || null,
                 local_execucao: i.local_execucao || null,
                 quantidade: i.quantidade,
                 unidade: i.unidade || null,
@@ -1574,9 +1657,23 @@ $('pi-fechar').addEventListener('click', fecharItemModal);
 $('pi-cancelar').addEventListener('click', fecharItemModal);
 ligarFecharPorBackdrop($('pi-overlay'), fecharItemModal);
 $('pi-confirmar').addEventListener('click', confirmarItem);
-$('pi-modo').addEventListener('change', aoMudarModoItem);
-$('pi-servico').addEventListener('change', atualizarPraticadoHint);
-['pi-qtd', 'pi-preco-global', 'pi-preco-mo', 'pi-preco-material'].forEach(id =>
+$('pi-servico').addEventListener('change', () => {
+    // trocou o serviço do catálogo: se a descrição ainda era a do catálogo antigo,
+    // acompanha; se o usuário já escreveu a dele, não mexe
+    const el = $('pi-descricao');
+    const eraDoCatalogo = !el.value.trim() ||
+        servicosCatalogo.some(s => (s.descricao || '').trim() === el.value.trim());
+    if (eraDoCatalogo) el.value = descricaoCatalogoAtual();
+    atualizarEstadoDescricao();
+    renderSugestoesDescricao();
+    atualizarPraticadoHint();
+});
+$('pi-descricao').addEventListener('input', atualizarEstadoDescricao);
+$('pi-btn-usar-catalogo').addEventListener('click', () => {
+    $('pi-descricao').value = descricaoCatalogoAtual();
+    atualizarEstadoDescricao();
+});
+['pi-qtd', 'pi-preco-mo', 'pi-preco-material'].forEach(id =>
     $(id).addEventListener('input', recalcItemPreview));
 
 // sub-modal seleção de serviços

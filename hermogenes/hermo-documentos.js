@@ -259,6 +259,19 @@ export const TEXTOS = {
     fechoContrato: 'E por estarem juntos e acordados, assinam o presente instrumento em duas vias de teor igual e forma.'
 };
 
+/** A proposta inteira tem a divisão mão de obra / material informada?
+ *  Só então vale mostrar a divisão no documento — proposta antiga com preço
+ *  fechado mantém o layout de coluna única do acervo. */
+export function temDivisaoMoMaterial(itens) {
+    return (itens || []).length > 0 && itens.every(i => i.modo_preco === 'mo_material');
+}
+
+/** Linha "Mão de obra R$ X + material R$ Y" que acompanha a descrição. */
+export function linhaMoMaterial(i) {
+    if (i.modo_preco !== 'mo_material') return '';
+    return `Mão de obra ${fmtMoeda(i.preco_mo)} + material ${fmtMoeda(i.preco_material)}`;
+}
+
 /** Unidade como aparece nos documentos ("m2" vira "m²"). */
 export function unidadeDoc(u) {
     const m = { m2: 'm²', m3: 'm³', m: 'm', un: 'un', vb: 'vb', kg: 'kg' };
@@ -432,7 +445,9 @@ export async function gerarPropostaPDF(d, opts) {
         head: [['ITEM', 'ESPEC. DOS SERVIÇOS', 'UND', 'QUANT.', 'P. UNITÁRIO', 'P. TOTAL']],
         body: itens.map((i, n) => [
             String(n + 1),
-            i.descricao,
+            // a divisão entra como segunda linha da descrição: mantém a tabela
+            // estreita e legível em A4, sem inventar colunas novas
+            i.descricao + (linhaMoMaterial(i) ? '\n' + linhaMoMaterial(i) : ''),
             unidadeDoc(i.unidade),
             Number(i.quantidade).toLocaleString('pt-BR', { maximumFractionDigits: 2 }),
             fmtMoeda(i.preco_unit),
@@ -517,15 +532,24 @@ export async function gerarPropostaExcel(d, opts) {
         ['PROPOSTA:', cod, '', 'DATA:', dataBR(p.data_proposta)],
         ['CLIENTE:', c?.nome || '', '', 'ATT:', p.contato_nome || ''],
         ['OBRA:', p.titulo || '', '', 'LOCAL:', p.endereco || ''],
-        [],
-        ['ITEM', 'ESPEC. DOS SERVIÇOS', 'UND', 'QUANT.', 'P. UNITÁRIO', 'P. TOTAL']
+        []
     ];
-    itens.forEach((i, n) => linhas.push([
-        n + 1, i.descricao, unidadeDoc(i.unidade),
-        Number(i.quantidade) || 0, Number(i.preco_unit) || 0, Number(i.total) || 0
-    ]));
+    // na planilha há espaço para as colunas de mão de obra e material
+    const comDivisao = temDivisaoMoMaterial(itens);
+    linhas.push(comDivisao
+        ? ['ITEM', 'ESPEC. DOS SERVIÇOS', 'UND', 'QUANT.', 'MÃO DE OBRA', 'MATERIAL', 'P. UNITÁRIO', 'P. TOTAL']
+        : ['ITEM', 'ESPEC. DOS SERVIÇOS', 'UND', 'QUANT.', 'P. UNITÁRIO', 'P. TOTAL']);
+    itens.forEach((i, n) => linhas.push(comDivisao
+        ? [n + 1, i.descricao, unidadeDoc(i.unidade), Number(i.quantidade) || 0,
+           Number(i.preco_mo) || 0, Number(i.preco_material) || 0,
+           Number(i.preco_unit) || 0, Number(i.total) || 0]
+        : [n + 1, i.descricao, unidadeDoc(i.unidade), Number(i.quantidade) || 0,
+           Number(i.preco_unit) || 0, Number(i.total) || 0]));
     linhas.push([]);
-    linhas.push(['', 'VALOR TOTAL DA OBRA', '', '', '', total]);
+    const linhaTotal = ['', 'VALOR TOTAL DA OBRA', '', '', '', ''];
+    if (comDivisao) linhaTotal.push('', '');
+    linhaTotal[comDivisao ? 7 : 5] = total;
+    linhas.push(linhaTotal);
     linhas.push([]);
     linhas.push([`Importa este orçamento a quantia de ${fmtMoeda(total)} (${extensoTitulo(total)}).`]);
     linhas.push([]);
@@ -543,19 +567,21 @@ export async function gerarPropostaExcel(d, opts) {
     linhas.push(['Hermógenes C. P. Viana — ' + EMPRESA.nomeCurto]);
 
     const ws = XLSX.utils.aoa_to_sheet(linhas);
-    ws['!cols'] = [{ wch: 6 }, { wch: 62 }, { wch: 7 }, { wch: 10 }, { wch: 14 }, { wch: 15 }];
+    ws['!cols'] = comDivisao
+        ? [{ wch: 6 }, { wch: 56 }, { wch: 7 }, { wch: 10 }, { wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 15 }]
+        : [{ wch: 6 }, { wch: 62 }, { wch: 7 }, { wch: 10 }, { wch: 14 }, { wch: 15 }];
     // moeda e quantidade nas linhas de item
+    const colValor = comDivisao ? ['E', 'F', 'G', 'H'] : ['E', 'F'];
+    const colTotal = comDivisao ? 'H' : 'F';
     const primeiraItem = 11;                       // 1-based: cabeçalho da tabela está na linha 10
     for (let r = 0; r < itens.length; r++) {
         const lin = primeiraItem + r;
-        ['D', 'E', 'F'].forEach((col, k) => {
-            const cel = ws[`${col}${lin}`];
-            if (cel) cel.z = k === 0 ? '#,##0.00' : 'R$ #,##0.00';
-        });
+        if (ws[`D${lin}`]) ws[`D${lin}`].z = '#,##0.00';
+        colValor.forEach(col => { if (ws[`${col}${lin}`]) ws[`${col}${lin}`].z = 'R$ #,##0.00'; });
     }
     const linTotal = primeiraItem + itens.length + 1;
-    if (ws[`F${linTotal}`]) ws[`F${linTotal}`].z = 'R$ #,##0.00';
-    ws['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 5 } }];
+    if (ws[`${colTotal}${linTotal}`]) ws[`${colTotal}${linTotal}`].z = 'R$ #,##0.00';
+    ws['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: comDivisao ? 7 : 5 } }];
 
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Proposta');

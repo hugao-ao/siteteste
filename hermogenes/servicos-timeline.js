@@ -3,7 +3,7 @@
 // (hermo_salvar_obra → recalcula cadeias, prazos, %, e valida datas reais);
 // arrastar as faixas de alocação move a agenda do integrante em hermo_alocacoes
 // (com bloqueio de conflito) — nada precisa ser refeito em outros cards.
-import { sb, toast, esc, fmtMoeda, ligarFecharPorBackdrop } from './hermo-common.js';
+import { sb, toast, esc, fmtMoeda, ligarFecharPorBackdrop, descServico } from './hermo-common.js';
 
 const $ = id => document.getElementById(id);
 const num = v => { const n = parseFloat(v); return isFinite(n) ? n : 0; };
@@ -257,7 +257,7 @@ function render() {
             <div class="tlx-bar ${concluido ? 'concluido' : ''} ${atrasado ? 'atrasado' : ''} ${travaPlan ? 'planejado' : ''}"
                  style="left:${xDe(i.inicio_previsto)}px;width:${Math.max((difDias(i.inicio_previsto, i.fim_previsto) + 1) * px, 8)}px"
                  data-bar-obra="${o.id}" data-bar-item="${i.id}"
-                 title="${esc(i.servico?.codigo || '')} ${esc(i.servico?.descricao || '')} · ${ddmm(i.inicio_previsto)}–${ddmm(i.fim_previsto)}${travas.length ? ' · ' + esc(travas.join(' · ')) : ''}">
+                 title="${esc(i.servico?.codigo || '')} ${esc(descServico(i))} · ${ddmm(i.inicio_previsto)}–${ddmm(i.fim_previsto)}${travas.length ? ' · ' + esc(travas.join(' · ')) : ''}">
                 <span class="alca ini"></span>${travaPlan ? '🔒 ' : ''}${concluido ? '✓ ' : ''}${temDeps ? '🔗 ' : ''}${esc(i.servico?.codigo || '')}<span class="alca fim"></span>
             </div>` +
             alocs.map((a, ai) => {
@@ -272,8 +272,8 @@ function render() {
             }).join('');
             linhas.push(`
             <div class="tlx-linha">
-                <div class="tlx-rotulo" title="${esc(i.servico?.descricao || '')}${i.local_execucao ? ' · 📍 ' + esc(i.local_execucao) : ''}">
-                    <b>${esc(i.servico?.codigo || '?')}</b> ${esc(i.servico?.descricao || '')}
+                <div class="tlx-rotulo" title="${esc(descServico(i))}${i.local_execucao ? ' · 📍 ' + esc(i.local_execucao) : ''}">
+                    <b>${esc(i.servico?.codigo || '?')}</b> ${esc(descServico(i))}
                     <small>${fmtMoeda(i.total)}${i.local_execucao ? ' · ' + esc(i.local_execucao) : ''}</small>
                 </div>
                 <div class="tlx-faixa" style="width:${W}px;min-height:${altura}px">${barras}</div>
@@ -315,7 +315,7 @@ function producaoNoIntervalo(de, ate) {
             itemId: i.id, obraId: o.id,
             obra: fmtCodObra(o), obraNome: o.nome,
             cod: i.servico?.codigo || '?',
-            desc: i.servico?.descricao || '',
+            desc: descServico(i),
             ini, fim,
             periodo: `${ddmmSem(ini)} – ${ddmmSem(fim)}`,
             diasDentro: dDentro, diasTotais: dTot,
@@ -449,7 +449,7 @@ async function calcularDisponibilidade(ini, fim, turno, hi, hf) {
     const nova = { data_inicio: ini, data_fim: fim, turno, hora_inicio: hi, hora_fim: hf };
     const [al, au] = await Promise.all([
         sb.from('hermo_alocacoes')
-            .select('*, obra_servico:hermo_obra_servicos(id, servico:hermo_servicos(codigo, descricao), obra:hermo_obras(numero, ano, nome))')
+            .select('*, obra_servico:hermo_obra_servicos(id, descricao_livre, servico:hermo_servicos(codigo, descricao), obra:hermo_obras(numero, ano, nome))')
             .lte('data_inicio', fim).gte('data_fim', ini),
         sb.from('hermo_ausencias').select('*').lte('data_inicio', fim).gte('data_fim', ini)
     ]);
@@ -469,7 +469,7 @@ async function calcularDisponibilidade(ini, fim, turno, hi, hf) {
         r.conflitos.push({
             tipo: 'aloc', id: a.id,
             travada: !!planTravaAloc.get(a.id),
-            descr: `${a.obra_servico?.servico?.codigo || '?'} — ${a.obra_servico?.servico?.descricao || 'serviço'}` +
+            descr: `${a.obra_servico?.servico?.codigo || '?'} — ${descServico(a.obra_servico) || 'serviço'}` +
                 (ob ? ` · OB-${String(ob.numero).padStart(4, '0')}/${ob.ano}` : '') +
                 ` · ${ddmm(a.data_inicio)}–${ddmm(a.data_fim)} · ${fmtTurno(a)}`
         });
@@ -1003,7 +1003,7 @@ async function moverServicoComAlocacoes(obra, item, nIni, nFim, delta) {
             obraArrastada: `${fmtCodObra(obra)} — ${obra.nome}`
         }));
     }
-    const rotulo = `${item.servico?.codigo || ''} — ${item.servico?.descricao || ''}`.trim();
+    const rotulo = `${item.servico?.codigo || ''} — ${descServico(item)}`.trim();
     if (conflitos.length) {
         abrirResolucaoConflitos(rotulo, conflitos, async (cs, escolhas) => {
             // "tirar do arrastado" tem prioridade: remove a alocação e TODOS os conflitos
@@ -1336,7 +1336,7 @@ async function conflitosFrescos(aloc, nIni, nFim, excluirServicoId = null) {
     const nova = { data_inicio: nIni, data_fim: nFim, turno: aloc.turno, hora_inicio: aloc.hora_inicio, hora_fim: aloc.hora_fim };
     const [al, au] = await Promise.all([
         sb.from('hermo_alocacoes')
-            .select('*, integrante:hermo_integrantes(nome, apelido), equipe:hermo_equipes(nome), obra_servico:hermo_obra_servicos(id, servico:hermo_servicos(codigo, descricao), obra:hermo_obras(id, nome, numero, ano))')
+            .select('*, integrante:hermo_integrantes(nome, apelido), equipe:hermo_equipes(nome), obra_servico:hermo_obra_servicos(id, descricao_livre, servico:hermo_servicos(codigo, descricao), obra:hermo_obras(id, nome, numero, ano))')
             .eq('integrante_id', aloc.integrante_id)
             .lte('data_inicio', nFim).gte('data_fim', nIni),
         sb.from('hermo_ausencias').select('*')
@@ -1350,7 +1350,7 @@ async function conflitosFrescos(aloc, nIni, nFim, excluirServicoId = null) {
         if (excluirServicoId && x.obra_servico_id === excluirServicoId) return;
         if (!periodosConflitam(nova, x)) return;
         const ob = x.obra_servico?.obra;
-        const servico = `${x.obra_servico?.servico?.codigo || '?'} — ${x.obra_servico?.servico?.descricao || 'serviço'}`;
+        const servico = `${x.obra_servico?.servico?.codigo || '?'} — ${descServico(x.obra_servico) || 'serviço'}`;
         const obraTxt = ob ? `OB-${String(ob.numero).padStart(4, '0')}/${ob.ano} — ${ob.nome}` : 'outra obra';
         conflitos.push({
             tipo: 'aloc', row: x,
@@ -1459,7 +1459,7 @@ async function salvarAloc(obra, item, aloc, nIni, nFim) {
     const pre = await conflitosFrescos(aloc, nIni, nFim);
     if (pre.erro) { toast('Não deu para checar conflitos: ' + pre.erro, true); render(); return; }
     if (pre.conflitos.length) {
-        const rotulo = `${item.servico?.codigo || '?'} — ${item.servico?.descricao || 'serviço'}`;
+        const rotulo = `${item.servico?.codigo || '?'} — ${descServico(item) || 'serviço'}`;
         abrirResolucaoConflitos(rotulo, pre.conflitos.map(o => ({
             aloc, nIni, nFim, outro: o, obraArrastada: `${fmtCodObra(obra)} — ${obra.nome}`
         })), async (cs, escolhas) => {
@@ -1566,7 +1566,7 @@ function atualizarMapa() {
             <b>${fmtCodObra(o)} — ${esc(o.nome)}</b><br>
             ${pendentes.length === 0 ? 'Sem serviços pendentes.'
                 : pendentes.slice(0, 3).map(i =>
-                    `• ${esc(i.servico?.codigo || '')} ${esc(i.servico?.descricao || '').slice(0, 28)} — ${ddmm(i.inicio_previsto)}–${ddmm(i.fim_previsto)}`).join('<br>')}
+                    `• ${esc(i.servico?.codigo || '')} ${esc(descServico(i).slice(0, 28))} — ${ddmm(i.inicio_previsto)}–${ddmm(i.fim_previsto)}`).join('<br>')}
             ${pendentes.length > 3 ? `<br>… +${pendentes.length - 3} serviço(s)` : ''}
             <br><a href="#" data-tlx-ir="${o.id}" style="color:#b45309">📜 ver na linha do tempo</a>
         </div>`);

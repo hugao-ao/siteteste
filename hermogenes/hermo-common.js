@@ -111,6 +111,14 @@ export function hojeISO() {
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
+/** Descrição de um item de obra (ou de proposta) como o cliente a vê: a redação
+ *  escrita na proposta quando existe, senão a do catálogo. O vínculo com o
+ *  serviço do catálogo continua sendo `servico_id` — é ele que guarda preço,
+ *  histórico e produção. */
+export function descServico(item) {
+    return (item?.descricao_livre || '').trim() || item?.servico?.descricao || '';
+}
+
 /** Data LOCAL de um timestamptz do banco. Fatiar a string com slice(0,10) daria a
  *  data em UTC, que à noite no fuso de Recife já é o dia seguinte. */
 export function dataLocalDe(ts) {
