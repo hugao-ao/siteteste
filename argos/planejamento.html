@@ -174,6 +174,7 @@
       </div>
       <p class="dica">Funciona como a sua aba de suporte da planilha: associe o <b>trecho do pagador</b> (como vem no extrato) a um destino do planejamento. Toda movimentação nova ou importada cuja descrição contenha o trecho é <b>classificada automaticamente</b>. Regra: <b>um pagador aponta para um único destino</b>, mas um mesmo paciente pode ter <b>vários pagadores</b>.</p>
       <input type="search" id="dp-busca" class="argos-input" placeholder="🔎 Filtrar por pagador ou destino…" style="width:100%; margin:6px 0" autocomplete="off" />
+      <div id="dp-sem-associacao" data-argos-recurso="mov_sem_associacao"></div>
       <div id="lista-depara"></div>
       <h3 class="form-secao" id="dp-form-titulo">Nova associação</h3>
       <div class="agenda-nav" style="flex-wrap:wrap">
@@ -216,7 +217,25 @@
         <h2>💸 Despesas da clínica</h2>
         <button class="argos-modal-x" data-fechar>×</button>
       </div>
-      <p class="dica">Cadastre despesas com recorrências e valores diferentes. Elas entram na projeção do planejamento a partir da data de início (e até a data final, se houver).</p>
+      <p class="dica">Cadastre despesas com recorrências e valores diferentes. Elas entram na projeção do planejamento a partir da data de início (e até a data final, se houver).
+        Ao lado de cada uma aparece o que ela <b>custou de fato</b> nas saídas já classificadas — é de onde sai a sugestão de previsão.</p>
+
+      <h3 class="form-secao">📋 Colar a previsão da planilha</h3>
+      <p class="dica">Cole as linhas com o <b>nome da despesa e o valor previsto</b> (a coluna do dia no meio não atrapalha).
+        Só entram os nomes que existem no catálogo — nada é criado por engano de digitação.</p>
+      <textarea id="prev-texto" rows="5" class="argos-input" style="width:100%; font-family:monospace"
+        placeholder="1&#9;ALMOÇO DANIEL&#9;R$ 350,00&#10;5&#9;PATRICIA&#9;R$ 16.280,00"></textarea>
+      <div class="argos-modal-acoes" style="justify-content:flex-start">
+        <button type="button" class="argos-btn small" id="btn-prev-previa" data-argos-recurso="despesas_previsao_colar">🔍 Pré-visualizar</button>
+        <button type="button" class="argos-btn small primary" id="btn-prev-aplicar" data-argos-recurso="despesas_previsao_colar" style="display:none">Aplicar</button>
+      </div>
+      <div id="prev-previa"></div>
+
+      <h3 class="form-secao">💸 Catálogo de despesas</h3>
+      <div class="pend-barra">
+        <input type="search" id="desp-busca" class="argos-input" placeholder="🔎 filtrar por nome" />
+        <button type="button" class="argos-btn small" id="btn-desp-adotar" data-argos-recurso="despesas_previsao" style="display:none"></button>
+      </div>
       <div id="lista-despesas"></div>
       <h3 class="form-secao" id="form-despesa-titulo">Nova despesa</h3>
       <form id="form-despesa" class="argos-form">
@@ -256,7 +275,7 @@
     </div>
   </div>
 
-  <script type="module" src="planejamento.js?v=9"></script>
+  <script type="module" src="planejamento.js?v=10"></script>
   <script type="module" src="argos-zoom.js?v=4"></script>
 </body>
 </html>

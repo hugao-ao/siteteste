@@ -7,6 +7,10 @@
 import { sb, todas, toast, esc, abrirModal, fecharModal } from './argos-common.js';
 import { carregarPermissoes } from './argos-permissoes.js';
 import { fechamentoPaciente, formataMoeda, formataBR, hojeISO, fimDoMes } from './argos-recorrencia.js';
+import {
+    encontraDePara, saidasSemAssociacao, realizadoPorDespesa, mesesObservados,
+    semPrevisaoComHistorico, lerPrevisoes, normalizaChave
+} from './argos-despesas.js';
 
 let perm = { pode: () => true, aplicarVisibilidade: () => {}, master: true };
 let pacientes = [], dinamicas = [], sessoes = [], profissionais = [], despesas = [], movimentacoes = [], alocacoes = [], depara = [];
@@ -216,7 +220,12 @@ function renderAnual() {
           <td class="col-total ${cor(total)}">${fmt(total)}</td>
         </tr>`;
     }
-    const ordenado = map => [...map.values()].sort((a, b) => a.nome.localeCompare(b.nome));
+    // uma linha de detalhe só aparece se tiver algum valor no ano: o catálogo
+    // tem dezenas de categorias, e as que ainda não custaram nada só fariam
+    // a planilha crescer com linhas de traço
+    const ordenado = map => [...map.values()]
+        .filter(l => l.valores.some(v => Math.abs(v) > 0.004))
+        .sort((a, b) => a.nome.localeCompare(b.nome));
 
     const temMov = movimentacoes.length > 0;
     const linhas = [];
@@ -456,7 +465,7 @@ function opcoesDoTipo() {
         .concat([{ tipo: 'outro', id: null, nome: 'Outra saída (sem vínculo)', grupo: '📦 Outros' }]);
 }
 
-const normaliza = t => String(t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+const normaliza = normalizaChave;
 
 function renderOpcoesClassificacao() {
     const termo = normaliza(document.getElementById('clf-busca').value);
@@ -556,7 +565,7 @@ function renderExtratoPaciente() {
 function renderDeParaStatusModal() {
     const el = document.getElementById('clf-depara-status');
     if (!clfMov) { el.innerHTML = ''; return; }
-    const d = encontraDePara(clfMov);
+    const d = encontraDePara(clfMov, depara);
     if (d) {
         el.innerHTML = `<p class="dica">🔁 Pagador reconhecido pelo De-Para: «${esc(d.chave)}» → <b>${esc(nomeVinculo(d.vinculo_tipo, d.vinculo_id))}</b> — novas movimentações deste pagador entram classificadas sozinhas.</p>`;
         return;
@@ -761,26 +770,12 @@ document.getElementById('btn-imp-confirmar').addEventListener('click', async () 
 // Como a aba de suporte da planilha: um trecho do pagador (como vem no
 // extrato) aponta para um destino; movimentações cuja descrição contém o
 // trecho são classificadas sozinhas (valor integral, mês da data).
-function deparaCompativel(m, d) {
-    if (d.vinculo_tipo === 'outro') return true;
-    return m.tipo === 'entrada' ? d.vinculo_tipo === 'paciente'
-        : (d.vinculo_tipo === 'profissional' || d.vinculo_tipo === 'despesa');
-}
-
-function encontraDePara(m) {
-    const desc = normaliza(m.descricao);
-    const candidatos = depara.filter(d => deparaCompativel(m, d) && d.chave_norm && desc.includes(d.chave_norm));
-    if (!candidatos.length) return null;
-    // o trecho mais longo (mais específico) vence
-    return candidatos.sort((a, b) => b.chave_norm.length - a.chave_norm.length)[0];
-}
-
 // aplica o de-para às movimentações informadas que ainda não têm alocação
 async function aplicarDeParaEm(movs) {
     const novas = [];
     for (const m of movs || []) {
         if (!m || alocDaMov(m.id).length) continue;
-        const d = encontraDePara(m);
+        const d = encontraDePara(m, depara);
         if (!d) continue;
         novas.push({
             movimentacao_id: m.id, vinculo_tipo: d.vinculo_tipo,
@@ -854,6 +849,37 @@ function renderDePara() {
 }
 document.getElementById('dp-busca').addEventListener('input', renderDePara);
 
+// A lista de trabalho de quem mantém o de-para: as saídas que apareceram no
+// extrato e ainda não têm para onde ir. Enquanto ela não zera, a linha
+// "saídas reais ainda não classificadas" do planejamento não zera também.
+function renderSemAssociacao() {
+    const sobras = saidasSemAssociacao(movimentacoes, alocacoes, depara);
+    const el = document.getElementById('dp-sem-associacao');
+    if (!sobras.length) {
+        el.innerHTML = '<p class="dica">✔ Toda saída do extrato já tem associação — nada pendente por aqui.</p>';
+        return;
+    }
+    const total = sobras.reduce((s2, x) => s2 + x.total, 0);
+    el.innerHTML = `<p class="dica">⚠️ <b>${sobras.length} descrição(ões)</b> do extrato ainda sem associação,
+        somando <b>${formataMoeda(total)}</b>. Clique numa delas para criar a associação já preenchida.</p>
+      <div class="tabela-rolagem" style="max-height:210px"><table class="argos-tabela compacta">
+        <thead><tr><th>Como vem no extrato</th><th>Lançamentos</th><th>Total</th><th></th></tr></thead>
+        <tbody>${sobras.map(x => `<tr>
+          <td>${esc(x.descricao)}</td>
+          <td>${x.quantas}× · ${formataBR(x.primeira)}${x.quantas > 1 ? ` a ${formataBR(x.ultima)}` : ''}</td>
+          <td>${formataMoeda(x.total)}</td>
+          <td><button class="argos-btn small" data-dp-usar="${esc(x.descricao)}">🔁 associar</button></td>
+        </tr>`).join('')}</tbody></table></div>`;
+}
+
+document.getElementById('dp-sem-associacao').addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-dp-usar]');
+    if (!btn) return;
+    limparFormDePara();
+    document.getElementById('dp-chave').value = btn.dataset.dpUsar;
+    document.getElementById('dp-destino').focus();
+});
+
 // procura um de-para existente com a mesma chave (opcionalmente ignorando um id)
 function deparaExistente(chave_norm, ignorarId) {
     return depara.find(d => d.chave_norm === chave_norm && d.id !== ignorarId) || null;
@@ -896,6 +922,7 @@ document.getElementById('btn-depara').addEventListener('click', () => {
     document.getElementById('dp-busca').value = '';
     limparFormDePara();
     renderDePara();
+    renderSemAssociacao();
     abrirModal('modal-depara');
 });
 document.getElementById('btn-dp-cancelar').addEventListener('click', limparFormDePara);
@@ -914,6 +941,7 @@ document.getElementById('btn-dp-add').addEventListener('click', async () => {
     toast(editandoDeParaId ? 'Associação atualizada.' : 'Associação salva.');
     limparFormDePara();
     renderDePara();
+    renderSemAssociacao();
     // se o modal de classificação estiver aberto atrás, atualiza o status
     if (document.getElementById('modal-classificar').classList.contains('aberto')) renderDeParaStatusModal();
 });
@@ -940,32 +968,127 @@ document.getElementById('lista-depara').addEventListener('click', async (e) => {
     depara = data || [];
     if (editandoDeParaId === d.id) limparFormDePara();
     renderDePara();
+    renderSemAssociacao();
 });
 
 document.getElementById('btn-dp-aplicar').addEventListener('click', async () => {
     const semClassificacao = movimentacoes.filter(m => !alocDaMov(m.id).length);
     const n = await aplicarDeParaEm(semClassificacao);
     toast(n ? `${n} movimentação(ões) classificada(s) automaticamente pelo de-para.` : 'Nenhuma movimentação não classificada combina com o de-para.');
-    if (n) { await carregarTudo(); renderDePara(); }
+    if (n) await carregarTudo();
+    renderDePara();
+    renderSemAssociacao();
 });
 
 // ---------- CRUD de despesas ----------
+// Cada despesa aparece com o que ela CUSTOU de fato, ao lado do que está
+// previsto. É a comparação que faz a previsão nascer: o catálogo chega só
+// com os nomes, e o extrato já classificado diz o número.
 function renderDespesas() {
-    document.getElementById('lista-despesas').innerHTML = despesas.map(d => `
+    const termo = normaliza(document.getElementById('desp-busca').value || '');
+    const real = realizadoPorDespesa(despesas, movimentacoes, alocacoes);
+    const porId = new Map(real.map(r => [r.id, r]));
+    const observados = mesesObservados(movimentacoes);
+    const aAdotar = semPrevisaoComHistorico(real);
+
+    const btnAdotar = document.getElementById('btn-desp-adotar');
+    btnAdotar.style.display = aAdotar.length && perm.pode('despesas_previsao') ? '' : 'none';
+    btnAdotar.textContent = `📈 Usar o realizado como previsão em ${aAdotar.length} despesa(s) sem previsão`;
+
+    const visiveis = despesas.filter(d => !termo || normaliza(d.nome).includes(termo));
+    document.getElementById('lista-despesas').innerHTML = visiveis.map(d => {
+        const r = porId.get(d.id) || { total: 0, meses: 0, tipico: 0, media: 0, ultimoMes: null };
+        const semPrevisao = !(Number(d.valor) > 0.004);
+        const historico = r.meses
+            ? `<span title="${r.meses} de ${observados} meses com gasto">📊 realizado: <b>${formataMoeda(r.total)}</b>`
+              + ` em ${r.meses} de ${observados} ${observados === 1 ? 'mês' : 'meses'}`
+              + ` · típico ${formataMoeda(r.tipico)}`
+              + (Math.abs(r.media - r.tipico) > 0.5 ? ` · média ${formataMoeda(r.media)}` : '')
+              + `</span>`
+            : '<span class="dim">📊 nenhuma saída classificada nesta despesa ainda</span>';
+        const adotar = r.tipico > 0.004 && Math.abs(r.tipico - Number(d.valor)) > 0.004
+            ? `<button class="argos-btn small" data-desp-adotar="${d.id}" data-valor="${r.tipico}"
+                 title="Passa a previsão para o valor típico do realizado">📈 usar ${formataMoeda(r.tipico)}</button>` : '';
+        return `
       <div class="argos-bloco ${d.ativo === false ? 'inativo' : ''}">
         <div class="bloco-topo">
           <b>${esc(d.nome)}</b>
           <span>
+            ${adotar}
             <button class="argos-btn small" data-desp-editar="${d.id}">✏️</button>
             <button class="argos-btn small danger" data-desp-excluir="${d.id}">🗑️</button>
           </span>
         </div>
         <div class="bloco-info">
-          ${formataMoeda(d.valor)} · ${RECORRENCIA_LABELS[d.recorrencia] || d.recorrencia} · a partir de ${formataBR(d.data_inicio)}${d.fim_data ? ` até ${formataBR(d.fim_data)}` : ''}${d.ativo === false ? ' · <span class="badge vermelho">Inativa</span>' : ''}
+          ${semPrevisao ? '<span class="badge vermelho">previsão a definir</span>' : `<b>${formataMoeda(d.valor)}</b>`}
+          · ${RECORRENCIA_LABELS[d.recorrencia] || d.recorrencia} · a partir de ${formataBR(d.data_inicio)}${d.fim_data ? ` até ${formataBR(d.fim_data)}` : ''}${d.ativo === false ? ' · <span class="badge vermelho">Inativa</span>' : ''}
+          <br>${historico}
           ${d.observacoes ? `<br><span class="dim">${esc(d.observacoes)}</span>` : ''}
         </div>
-      </div>`).join('') || '<p class="dim">Nenhuma despesa cadastrada ainda.</p>';
+      </div>`; }).join('')
+        || (termo ? '<p class="dim">Nenhuma despesa com esse nome.</p>'
+                  : '<p class="dim">Nenhuma despesa cadastrada ainda.</p>');
 }
+
+document.getElementById('desp-busca').addEventListener('input', renderDespesas);
+
+/** Grava a previsão de uma ou muitas despesas de uma vez. */
+async function gravarPrevisoes(mudancas) {
+    if (!mudancas.length) return false;
+    for (const m of mudancas) {
+        const { error } = await sb.from('argos_despesas').update({ valor: m.para }).eq('id', m.id);
+        if (error) { console.error(error); toast(`Erro ao salvar a previsão de ${m.nome}.`, true); return false; }
+    }
+    await carregarTudo();
+    renderDespesas();
+    return true;
+}
+
+document.getElementById('btn-desp-adotar').addEventListener('click', async () => {
+    const alvos = semPrevisaoComHistorico(realizadoPorDespesa(despesas, movimentacoes, alocacoes));
+    if (!alvos.length) return;
+    const lista = alvos.slice(0, 8).map(r => `• ${r.nome}: ${formataMoeda(r.tipico)}`).join('\n');
+    if (!confirm(`Definir a previsão de ${alvos.length} despesa(s) pelo valor típico do que já foi gasto?\n\n`
+        + lista + (alvos.length > 8 ? `\n• … e mais ${alvos.length - 8}` : '')
+        + '\n\nSó mexe em despesas que hoje estão sem previsão. Você pode editar qualquer uma depois.')) return;
+    if (await gravarPrevisoes(alvos.map(r => ({ id: r.id, nome: r.nome, para: r.tipico }))))
+        toast(`Previsão definida em ${alvos.length} despesa(s).`);
+});
+
+// ---------- colar a coluna de previsão da planilha ----------
+let previsaoLida = null;
+
+document.getElementById('btn-prev-previa').addEventListener('click', () => {
+    previsaoLida = lerPrevisoes(document.getElementById('prev-texto').value, despesas);
+    const { casadas, semCasar } = previsaoLida;
+    const mudam = casadas.filter(c => Math.abs(c.de - c.para) > 0.004);
+    document.getElementById('prev-previa').innerHTML = casadas.length ? `
+      <div class="tabela-rolagem"><table class="argos-tabela compacta">
+        <thead><tr><th>Despesa</th><th>Previsão hoje</th><th>Vai passar a</th></tr></thead>
+        <tbody>${casadas.map(c => `<tr>
+          <td>${esc(c.nome)}</td><td class="dim">${formataMoeda(c.de)}</td>
+          <td>${Math.abs(c.de - c.para) > 0.004
+              ? `<b>${formataMoeda(c.para)}</b>` : `<span class="dim">${formataMoeda(c.para)} (igual)</span>`}</td>
+        </tr>`).join('')}</tbody></table></div>
+      ${semCasar.length ? `<p class="dica">⚠️ Sem correspondência no catálogo, ficam de fora:
+         ${semCasar.map(x => `«${esc(x)}»`).join(', ')}</p>` : ''}`
+      : `<p class="dim">Nenhuma linha casou com o catálogo.${semCasar.length
+          ? ` Não reconheci: ${semCasar.map(x => `«${esc(x)}»`).join(', ')}.` : ''}</p>`;
+    document.getElementById('btn-prev-aplicar').style.display =
+        mudam.length && perm.pode('despesas_previsao_colar') ? '' : 'none';
+    document.getElementById('btn-prev-aplicar').textContent = `Aplicar em ${mudam.length} despesa(s)`;
+});
+
+document.getElementById('btn-prev-aplicar').addEventListener('click', async () => {
+    const mudam = (previsaoLida ? previsaoLida.casadas : []).filter(c => Math.abs(c.de - c.para) > 0.004);
+    if (!mudam.length) return;
+    if (await gravarPrevisoes(mudam)) {
+        toast(`Previsão atualizada em ${mudam.length} despesa(s).`);
+        document.getElementById('prev-texto').value = '';
+        document.getElementById('prev-previa').innerHTML = '';
+        document.getElementById('btn-prev-aplicar').style.display = 'none';
+    }
+});
 
 function limparFormDespesa() {
     editandoDespesaId = null;
@@ -985,6 +1108,15 @@ document.getElementById('btn-despesas').addEventListener('click', () => {
 document.getElementById('btn-desp-cancelar').addEventListener('click', limparFormDespesa);
 
 document.getElementById('lista-despesas').addEventListener('click', async (e) => {
+    const ad = e.target.closest('[data-desp-adotar]');
+    if (ad) {
+        const d = despesas.find(x => x.id === ad.dataset.despAdotar);
+        const para = Number(ad.dataset.valor) || 0;
+        if (!d) return;
+        if (await gravarPrevisoes([{ id: d.id, nome: d.nome, para }]))
+            toast(`Previsão de ${d.nome}: ${formataMoeda(para)}.`);
+        return;
+    }
     const ed = e.target.closest('[data-desp-editar]');
     if (ed) {
         const d = despesas.find(x => x.id === ed.dataset.despEditar);
