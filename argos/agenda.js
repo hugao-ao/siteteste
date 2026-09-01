@@ -6,7 +6,7 @@ import { sb, todas, toast, esc, abrirModal, fecharModal } from './argos-common.j
 import { carregarPermissoes } from './argos-permissoes.js';
 import {
     STATUS_SESSAO, DOW_NOMES, mesclarSessoes, hojeISO, somarDias, paraData,
-    paraISO, formataBR, fimDoMes, expandirDinamica, conflitosDeSessao,
+    paraISO, formataBR, formataMoeda, fimDoMes, expandirDinamica, conflitosDeSessao,
     conflitosDeDinamica, repassesDe, aplicarFimDeProcesso,
     definirRepassePadrao, fracaoRepasse
 } from './argos-recorrencia.js';
@@ -573,6 +573,17 @@ function abrirModalSessaoPara(s) {
         document.getElementById('proc-tipo').value = 'interrompido';
         document.getElementById('proc-data').value = s.data;
         document.getElementById('proc-motivo').value = '';
+    }
+    // excluir: só sessão gravada de verdade — projeção não tem o que apagar
+    const podeExcluir = !!s.id && perm.pode('sessao_excluir');
+    document.getElementById('bloco-excluir').style.display = podeExcluir ? '' : 'none';
+    if (podeExcluir) {
+        document.getElementById('excluir-texto').textContent = s.dinamica_ref
+            ? 'Esta sessão pertence a um horário fixo: excluir apaga o registro dela '
+              + '(frequência, justificativa e conferências) e o horário volta a aparecer '
+              + 'como pendente («??») na agenda e nas contas.'
+            : 'Sessão avulsa: excluir tira esta sessão da agenda e das finanças. '
+              + 'As conferências dela somem junto.';
     }
     abrirModal('modal-sessao');
 }
@@ -2000,5 +2011,146 @@ document.getElementById('btn-imes-aplicar').addEventListener('click', async () =
     fecharModal('modal-imp-mes');
     imesPlano = null; imesLinhas = null; imesAprovadas.clear();
     avisarMudanca({ origem: 'importacao-mes' });
+    await carregarTudo();
+});
+
+// ---------------------------------------------------------------------------
+// Excluir sessão e criar pela própria agenda (avulsa e horário fixo)
+// ---------------------------------------------------------------------------
+// A agenda sabia mexer em tudo, menos nascer e morrer: sessão só aparecia
+// vinda de dinâmica ou de grupo, e não havia como apagar um registro errado.
+
+document.getElementById('btn-sessao-excluir').addEventListener('click', async () => {
+    const s = sessaoAberta;
+    if (!s || !s.id || !perm.pode('sessao_excluir')) return;
+    const aviso = s.dinamica_ref
+        ? 'O horário fixo volta a aparecer como pendente («??»).'
+        : 'Ela sai da agenda e das finanças.';
+    if (!confirm(`Excluir a sessão de ${nomePac(s.paciente_id)} em ${formataBR(s.data)} às ${s.hora}?\n${aviso}`)) return;
+    // as conferências dos profissionais sobre esta sessão morrem junto
+    await sb.from('argos_sessao_validacao').delete().eq('sessao_id', s.id);
+    const { error } = await sb.from('argos_sessoes').delete().eq('id', s.id);
+    if (error) { console.error(error); toast('Erro ao excluir a sessão.', true); return; }
+    await registrarEvento(s.paciente_id, 'sessao_excluida',
+        `Sessão de ${formataBR(s.data)} às ${s.hora} excluída pela agenda`
+        + (s.dinamica_ref ? ' — o horário fixo volta a valer como pendente.' : ' (sessão avulsa).'),
+        { data: s.data, hora: s.hora, status: s.status || '??' }, null);
+    toast('Sessão excluída.');
+    fecharModal('modal-sessao');
+    voltarAoGrupo = null;
+    retornarAoDiaSePreciso();
+    await recarregarSessoes();
+    avisarMudanca({ origem: 'agenda', quantas: 1 });
+});
+
+// ---- selects compartilhados dos dois formulários de criação ----
+function encherSelecoesDeCriacao(prefixo) {
+    const ativos = pacientes.filter(p => p.ativo && !p.cadastro_removido && !p.processo_fim_tipo);
+    document.getElementById(prefixo + '-paciente').innerHTML =
+        '<option value="">— Paciente —</option>'
+        + ativos.map(p => `<option value="${p.id}">${esc(p.nome)}</option>`).join('');
+    document.getElementById(prefixo + '-prof').innerHTML =
+        '<option value="">— Profissional —</option>'
+        + profissionais.map(p => `<option value="${p.id}">${esc(p.nome)}</option>`).join('');
+    document.getElementById(prefixo + '-sala').innerHTML =
+        '<option value="">— Espaço —</option>'
+        + salas.map(s => `<option value="${s.id}">${esc(s.nome)}</option>`).join('');
+}
+
+// ---- sessão avulsa ----
+document.getElementById('btn-nova-sessao').addEventListener('click', () => {
+    encherSelecoesDeCriacao('ns');
+    document.getElementById('ns-data').value = hojeISO();
+    document.getElementById('ns-hora').value = '';
+    document.getElementById('ns-duracao').value = 60;
+    document.getElementById('ns-valor').value = '';
+    abrirModal('modal-nova-sessao');
+});
+
+document.getElementById('form-nova-sessao').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const g = id => document.getElementById(id).value;
+    const registro = {
+        paciente_id: g('ns-paciente'), data: g('ns-data'), hora: g('ns-hora'),
+        duracao_min: Number(g('ns-duracao')) || 60,
+        profissional_id: g('ns-prof') || null, sala_id: g('ns-sala') || null,
+        valor: g('ns-valor') === '' ? null : Number(g('ns-valor')),
+        status: '??', dinamica_id: null, dinamica_ref: null
+    };
+    if (!registro.paciente_id || !registro.data || !registro.hora) {
+        toast('Paciente, dia e hora são obrigatórios.', true);
+        return;
+    }
+    const conflitos = conflitosDeSessao(registro,
+        dinamicas.filter(d => d.ativo !== false), sessoes);
+    if (conflitos.length && !confirm('⚠ Choque de agenda: '
+        + `${nomePac(conflitos[0].paciente_id)} já ocupa esse horário no mesmo espaço/profissional.`
+        + '\nCriar mesmo assim?')) return;
+    const { error } = await sb.from('argos_sessoes').insert(registro);
+    if (error) { console.error(error); toast('Erro ao criar a sessão.', true); return; }
+    await registrarEvento(registro.paciente_id, 'sessao_avulsa_criada',
+        `Sessão avulsa criada pela agenda para ${formataBR(registro.data)} às ${registro.hora}`
+        + (registro.valor != null ? ` — ${formataMoeda(registro.valor)}.`
+            : ' — sem valor (não entra na cobrança).'),
+        { data: registro.data, hora: registro.hora, valor: registro.valor }, null);
+    toast(registro.valor != null
+        ? `Sessão avulsa criada — ${formataMoeda(registro.valor)} entram na cobrança do mês.`
+        : 'Sessão avulsa criada, sem valor: não entra na cobrança.');
+    fecharModal('modal-nova-sessao');
+    await recarregarSessoes();
+    avisarMudanca({ origem: 'agenda', quantas: 1 });
+});
+
+// ---- horário fixo individual (a dinâmica nasce enxuta) ----
+document.getElementById('btn-novo-horario').addEventListener('click', () => {
+    encherSelecoesDeCriacao('nh');
+    document.getElementById('nh-dow').innerHTML = [1, 2, 3, 4, 5, 6, 0]
+        .map(d => `<option value="${d}">${DOW_NOMES[d]}</option>`).join('');
+    document.getElementById('nh-hora').value = '';
+    document.getElementById('nh-duracao').value = 60;
+    document.getElementById('nh-inicio').value = hojeISO();
+    document.getElementById('nh-valor').value = '';
+    abrirModal('modal-novo-horario');
+});
+
+document.getElementById('form-novo-horario').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const g = id => document.getElementById(id).value;
+    const dow = Number(g('nh-dow'));
+    const prof = g('nh-prof');
+    if (!g('nh-paciente') || !g('nh-hora') || !g('nh-inicio') || !prof) {
+        toast('Paciente, profissional, dia da semana, hora e início são obrigatórios.', true);
+        return;
+    }
+    const registro = {
+        paciente_id: g('nh-paciente'),
+        rotulo: `${nomeProf(prof)} — ${DOW_NOMES[dow]} ${g('nh-hora')}`,
+        recorrencia_tipo: 'recorrente', dias: [{ dow, hora: g('nh-hora') }],
+        data_inicio: g('nh-inicio'), fim_tipo: 'indeterminado',
+        duracao_min: Number(g('nh-duracao')) || 60, modalidade: 'individual',
+        sala_id: g('nh-sala') || null, profissional_id: prof, servico_id: null,
+        acordo_tipo: 'por_sessao',
+        valor: g('nh-valor') === '' ? null : Number(g('nh-valor')),
+        nota_tipo: null, grupo_id: null, ativo: true,
+        // o repasse fica vazio de propósito: herda o padrão do profissional
+        repasses: [{ profissional_id: prof, servico_id: null, tipo: 'percentual', valor: null }]
+    };
+    const conflitos = conflitosDeDinamica(registro,
+        dinamicas.filter(d => d.ativo !== false), sessoes);
+    if (conflitos.length && !confirm('⚠ Choque de agenda: '
+        + `${nomePac(conflitos[0].outra.paciente_id)} já ocupa `
+        + `${formataBR(conflitos[0].minha.data)} às ${conflitos[0].minha.hora} `
+        + 'no mesmo espaço/profissional.\nCriar mesmo assim?')) return;
+    const { error } = await sb.from('argos_dinamicas').insert(registro);
+    if (error) { console.error(error); toast('Erro ao criar o horário.', true); return; }
+    await registrarEvento(registro.paciente_id, 'horario_criado',
+        `Horário fixo criado pela agenda: ${DOW_NOMES[dow]} às ${g('nh-hora')} com ${nomeProf(prof)}`
+        + (registro.valor != null ? ` — ${formataMoeda(registro.valor)} por sessão.`
+            : ' — acordo financeiro a definir na página de pacientes.'),
+        { dow, hora: g('nh-hora'), inicio: registro.data_inicio, valor: registro.valor }, null);
+    toast(registro.valor != null
+        ? 'Horário criado — complete o restante do acordo na página de pacientes quando quiser.'
+        : 'Horário criado sem valor: defina o acordo financeiro na página de pacientes.');
+    fecharModal('modal-novo-horario');
     await carregarTudo();
 });

@@ -52,6 +52,8 @@
       <button class="argos-btn ghost" id="btn-grupos" data-argos-recurso="grupos_gerenciar">👥 Grupos</button>
       <button class="argos-btn ghost" id="btn-salas" data-argos-recurso="salas_gerenciar">🚪 Espaços</button>
       <button class="argos-btn ghost" id="btn-imp-mes" data-argos-recurso="importar_mes">📥 Importar o mês</button>
+      <button class="argos-btn ghost" id="btn-nova-sessao" data-argos-recurso="sessao_avulsa_criar">➕ Sessão avulsa</button>
+      <button class="argos-btn ghost" id="btn-novo-horario" data-argos-recurso="agenda_horario_fixo">📌 Novo horário fixo</button>
     </div>
 
     <div class="agenda-grade" id="agenda-grade"></div>
@@ -132,6 +134,11 @@
         <h3 class="form-secao">↩️ Sessão remarcada</h3>
         <p class="dica" id="restaurar-texto"></p>
         <button class="argos-btn small" id="btn-restaurar">↩️ Restaurar ao horário original</button>
+      </div>
+      <div id="bloco-excluir" data-argos-recurso="sessao_excluir" style="display:none">
+        <h3 class="form-secao">🗑️ Excluir esta sessão</h3>
+        <p class="dica" id="excluir-texto"></p>
+        <button class="argos-btn danger small" id="btn-sessao-excluir">🗑️ Excluir sessão</button>
       </div>
       <div id="bloco-processo" data-argos-recurso="processo_encerrar" style="display:none">
         <h3 class="form-secao">🏁 Interromper / finalizar o processo do paciente</h3>
@@ -310,7 +317,73 @@
     </div>
   </div>
 
-  <script type="module" src="agenda.js?v=28"></script>
+  <!-- ============ MODAL: SESSÃO AVULSA ============ -->
+  <div class="argos-modal-fundo" id="modal-nova-sessao">
+    <div class="argos-modal">
+      <div class="argos-modal-topo">
+        <h2>➕ Sessão avulsa</h2>
+        <button class="argos-modal-x" data-fechar>×</button>
+      </div>
+      <p class="dica">Uma sessão pontual, fora de qualquer horário fixo. Ela nasce
+        pendente («??») para a frequência ser marcada depois. Com valor preenchido,
+        entra na cobrança do mês do paciente; em branco, não cobra nada.</p>
+      <form id="form-nova-sessao" class="argos-form">
+        <label>Paciente *<select id="ns-paciente" required></select></label>
+        <div class="form-grade">
+          <label>Dia *<input type="date" id="ns-data" required /></label>
+          <label>Hora *<input type="time" id="ns-hora" required /></label>
+          <label>Duração (min)<input type="number" id="ns-duracao" min="10" step="5" value="60" /></label>
+        </div>
+        <div class="form-grade">
+          <label>Profissional<select id="ns-prof"></select></label>
+          <label>Espaço<select id="ns-sala"></select></label>
+          <label>Valor da sessão
+            <span class="campo-moeda"><input type="number" id="ns-valor" min="0" step="0.01" placeholder="em branco = não cobra" /></span>
+          </label>
+        </div>
+        <div class="argos-modal-acoes">
+          <button type="button" class="argos-btn ghost" data-fechar>Cancelar</button>
+          <button type="submit" class="argos-btn primary">Criar sessão</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ============ MODAL: NOVO HORÁRIO FIXO INDIVIDUAL ============ -->
+  <div class="argos-modal-fundo" id="modal-novo-horario">
+    <div class="argos-modal">
+      <div class="argos-modal-topo">
+        <h2>📌 Novo horário fixo individual</h2>
+        <button class="argos-modal-x" data-fechar>×</button>
+      </div>
+      <p class="dica">Reserva um horário semanal para o paciente — ele passa a aparecer
+        na agenda toda semana. Isto cria uma dinâmica simples; o acordo financeiro
+        completo (valor, forma de cobrança, nota) se ajusta depois na página de
+        pacientes. O repasse do profissional segue o padrão do cadastro dele.</p>
+      <form id="form-novo-horario" class="argos-form">
+        <label>Paciente *<select id="nh-paciente" required></select></label>
+        <div class="form-grade">
+          <label>Dia da semana *<select id="nh-dow" required></select></label>
+          <label>Hora *<input type="time" id="nh-hora" required /></label>
+          <label>Duração (min)<input type="number" id="nh-duracao" min="10" step="5" value="60" /></label>
+        </div>
+        <div class="form-grade">
+          <label>Profissional *<select id="nh-prof" required></select></label>
+          <label>Espaço<select id="nh-sala"></select></label>
+          <label>A partir de *<input type="date" id="nh-inicio" required /></label>
+        </div>
+        <label>Valor por sessão
+          <span class="campo-moeda"><input type="number" id="nh-valor" min="0" step="0.01" placeholder="em branco = definir depois na página de pacientes" /></span>
+        </label>
+        <div class="argos-modal-acoes">
+          <button type="button" class="argos-btn ghost" data-fechar>Cancelar</button>
+          <button type="submit" class="argos-btn primary">Criar horário</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script type="module" src="agenda.js?v=29"></script>
   <script type="module" src="argos-zoom.js?v=4"></script>
 </body>
 </html>
