@@ -6,7 +6,7 @@
 import { sb, todas, toast, esc, abrirModal, fecharModal } from './argos-common.js';
 import { carregarPermissoes } from './argos-permissoes.js';
 import {
-    repassesDe, fracaoRepasse, formataBR, hojeISO,
+    repassesDe, divisaoRepasses, formataBR, hojeISO,
     definirRepassePadrao, repassePadraoDe
 } from './argos-recorrencia.js';
 import {
@@ -56,29 +56,6 @@ function formataMoeda(v) {
 
 const pctFmt = x => (Math.round(x * 100) / 100).toLocaleString('pt-BR');
 
-// pacientes ligados ao profissional (responsável e/ou recebe repasse),
-// lidos da lista de repasses das dinâmicas ativas — a fonte única
-function pacientesDoProfissional(profId) {
-    const porPaciente = new Map();
-    dinamicas.filter(d => d.ativo !== false).forEach(d => {
-        const meusRep = repassesDe(d).filter(r => r.profissional_id === profId);
-        if (!meusRep.length) return;
-        const p = pacientes.find(x => x.id === d.paciente_id);
-        if (!p || p.cadastro_removido) return;
-        const atual = porPaciente.get(p.id) || { nome: p.nome, rotulos: [] };
-        meusRep.forEach(r => atual.rotulos.push(
-            r.valor == null
-                ? (repassePadraoDe(profId) != null
-                    ? `${pctFmt(fracaoRepasse(d, r) * 100)}% (padrão)` : 'sem repasse definido')
-                : !(Number(r.valor) > 0) ? 'sem repasse'
-                : r.tipo === 'valor'
-                    ? `${formataMoeda(r.valor)} (${pctFmt(fracaoRepasse(d, r) * 100)}%)`
-                    : `${pctFmt(Number(r.valor))}%`));
-        porPaciente.set(p.id, atual);
-    });
-    return [...porPaciente.values()].sort((a, b) => a.nome.localeCompare(b.nome));
-}
-
 function renderLista() {
     const busca = normalizar(document.getElementById('busca').value);
     const podeGerenciar = perm.pode('profissionais_gerenciar');
@@ -89,7 +66,6 @@ function renderLista() {
         const meus = vinculos.filter(v => v.profissional_id === p.id)
             .map(v => servicos.find(s => s.id === v.servico_id)).filter(Boolean)
             .sort((a, b) => a.nome.localeCompare(b.nome));
-        const meusPacientes = pacientesDoProfissional(p.id);
         const remun = REMUNERACAO_LABELS[p.remuneracao_tipo || 'producao'];
         const fixoTxt = (p.remuneracao_tipo === 'fixo' || p.remuneracao_tipo === 'producao_fixo') && p.valor_fixo_mensal != null
             ? ` — ${formataMoeda(p.valor_fixo_mensal)}/mês` : '';
@@ -110,13 +86,6 @@ function renderLista() {
           </div>
           <div class="mini-info">${esc(remun)}${esc(fixoTxt)}</div>
           ${padraoTxt}
-          ${meusPacientes.length ? `
-          <div class="mini-info">
-            <b>Pacientes e repasses:</b><br>
-            ${meusPacientes.map(mp =>
-                `${esc(mp.nome)} — <b>${esc(mp.rotulos.join(' / '))}</b>`
-            ).join('<br>')}
-          </div>` : ''}
           <div class="chips-servicos">
             ${meus.map(s => `<span class="chip-servico">${esc(s.nome)}${podeServicos ? `<button data-acao="desvincular" data-id="${p.id}" data-servico="${s.id}" title="Remover este serviço do profissional">×</button>` : ''}</span>`).join('')
               || '<span class="dim">Nenhum serviço vinculado.</span>'}
@@ -388,39 +357,63 @@ function renderValidacao() {
     const visiveis = ordenarValidacao(
         filtrar(valLinhas, valEl('val-filtro').value, valEl('val-busca').value),
         valEl('val-ordem').value);
-    let pacAnterior = null;
-    valEl('val-lista').innerHTML = visiveis.length ? `
-      <div class="tabela-rolagem"><table class="argos-tabela compacta">
-        <thead><tr>
-          <th>Dia</th><th>Paciente</th><th>Por quê</th><th>Freq.</th>
-          <th>Vale</th><th>Conferência</th>
-        </tr></thead>
-        <tbody>${visiveis.map(l => {
-          const sit = l.validacao && l.validacao.situacao;
-          const m = MOTIVOS[l.motivo];
-          const trocaPaciente = pacAnterior !== null && pacAnterior !== l.paciente.id;
-          pacAnterior = l.paciente.id;
-          return `<tr class="${sit === 'contestada' ? 'linha-alerta' : ''}"${
-            trocaPaciente ? ' style="border-top:2px solid rgba(148,163,184,.35)"' : ''}>
-            <td>${formataBR(l.data)}<br><span class="dim">${esc(l.hora)}</span></td>
-            <td>${esc(l.paciente.nome)}</td>
-            <td title="${esc(m.ajuda)}">${m.icone} ${esc(m.rotulo)}${
-              l.motivo !== 'atendeu' ? `<br><span class="dim">${esc(l.atendidoPor)}</span>` : ''}</td>
-            <td>${esc(l.status.toUpperCase())}</td>
-            <td>${l.contabiliza ? formataMoeda(l.valor) : '<span class="dim">—</span>'}</td>
-            <td class="acoes">
-              <button class="argos-btn small ${sit === 'confirmada' ? 'primary' : ''}"
-                data-val-sit="confirmada" data-val-id="${l.sessao.id}"
-                title="${sit === 'confirmada' ? 'Clique de novo para desfazer a confirmação' : 'Confirmar'}">✔</button>
-              <button class="argos-btn small ${sit === 'contestada' ? 'danger' : ''}"
-                data-val-sit="contestada" data-val-id="${l.sessao.id}"
-                title="${sit === 'contestada' ? 'Clique de novo para desfazer a contestação' : 'Contestar'}">⚠</button>
-              ${l.validacao && l.validacao.observacao
-                  ? `<br><span class="dim">${esc(l.validacao.observacao)}</span>` : ''}
-            </td>
-          </tr>`; }).join('')}</tbody>
-      </table></div>`
-      : '<p class="dim">Nenhuma sessão com esses filtros.</p>';
+
+    // um bloco por paciente: cabeçalho com nome, % do par e subtotal, e a
+    // tabela só com as sessões dele — marcar em série fica muito mais fácil
+    const grupos = [];
+    for (const l of visiveis) {
+        const g = grupos[grupos.length - 1];
+        if (g && g.paciente.id === l.paciente.id) g.linhas.push(l);
+        else grupos.push({ paciente: l.paciente, linhas: [l] });
+    }
+
+    const linhaHTML = l => {
+        const sit = l.validacao && l.validacao.situacao;
+        const m = MOTIVOS[l.motivo];
+        return `<tr class="${sit === 'contestada' ? 'linha-alerta' : ''}">
+          <td>${formataBR(l.data)} <span class="dim">${esc(l.hora)}</span></td>
+          <td title="${esc(m.ajuda)}">${m.icone} ${esc(m.rotulo)}${
+            l.motivo !== 'atendeu' ? ` <span class="dim">${esc(l.atendidoPor)}</span>` : ''}</td>
+          <td>${esc(l.status.toUpperCase())}</td>
+          <td>${l.contabiliza ? formataMoeda(l.valor) : '<span class="dim">—</span>'}</td>
+          <td class="acoes">
+            <button class="argos-btn small ${sit === 'confirmada' ? 'primary' : ''}"
+              data-val-sit="confirmada" data-val-id="${l.sessao.id}"
+              title="${sit === 'confirmada' ? 'Clique de novo para desfazer a confirmação' : 'Confirmar'}">✔</button>
+            <button class="argos-btn small ${sit === 'contestada' ? 'danger' : ''}"
+              data-val-sit="contestada" data-val-id="${l.sessao.id}"
+              title="${sit === 'contestada' ? 'Clique de novo para desfazer a contestação' : 'Contestar'}">⚠</button>
+            ${l.validacao && l.validacao.observacao
+                ? `<br><span class="dim">${esc(l.validacao.observacao)}</span>` : ''}
+          </td>
+        </tr>`;
+    };
+
+    valEl('val-lista').innerHTML = grupos.length ? grupos.map(g => {
+        const soma = g.linhas.reduce((s, l) => s + (l.contabiliza ? l.valor : 0), 0);
+        const contam = g.linhas.filter(l => l.contabiliza).length;
+        const pendentes = g.linhas.filter(l => !l.validacao).length;
+        return `
+        <div class="imes-bloco" style="--cor:#38bdf8">
+          <div class="imes-bloco-topo">
+            <b>${esc(g.paciente.nome)}</b>
+            ${repasseDoParHTML(g.paciente.id)}
+            <span class="imes-conta">${contam} de ${g.linhas.length} contabilizam · ${formataMoeda(soma)}</span>
+            <span class="imes-bloco-acoes">
+              ${pendentes ? `<button class="argos-btn small" data-val-bloco="${g.paciente.id}"
+                  title="Confirmar as sessões deste paciente que ainda não foram conferidas">
+                  ✔ Confirmar ${pendentes} pendente(s)</button>`
+                : '<span class="dim">tudo conferido</span>'}
+            </span>
+          </div>
+          <div class="tabela-rolagem"><table class="argos-tabela compacta imes-tabela">
+            <thead><tr>
+              <th>Dia</th><th>Por quê</th><th>Freq.</th><th>Vale</th><th>Conferência</th>
+            </tr></thead>
+            <tbody>${g.linhas.map(linhaHTML).join('')}</tbody>
+          </table></div>
+        </div>`;
+    }).join('') : '<p class="dim">Nenhuma sessão com esses filtros.</p>';
 }
 
 ['val-mes', 'val-filtro', 'val-ordem'].forEach(id =>
@@ -448,6 +441,82 @@ valEl('val-resumo').addEventListener('click', async e => {
     toast(`Repasse padrão de ${valProf.nome}: ${v}% — valores recalculados.`);
 });
 
+// ---- a % de repasse do par paciente×profissional, editável do próprio modal
+
+/** Dinâmicas deste paciente em que o profissional em conferência tem repasse. */
+const dinamicasDoPar = pacId => valDinamicas.filter(d => d.paciente_id === pacId
+    && repassesDe(d).some(r => r.profissional_id === valProf.id));
+
+/** O que vale hoje para o par, dito em uma palavra. */
+function repasseAtualDoPar(pacId) {
+    const rotulos = new Set(dinamicasDoPar(pacId).map(d => {
+        const r = repassesDe(d).find(x => x.profissional_id === valProf.id);
+        return r.valor == null
+            ? (repassePadraoDe(valProf.id) != null
+                ? `${pctFmt(repassePadraoDe(valProf.id))}% (padrão)` : 'sem % definida')
+            : r.tipo === 'valor' ? formataMoeda(r.valor) : `${pctFmt(Number(r.valor))}%`;
+    }));
+    if (!rotulos.size) return null;                    // o par não existe em dinâmica
+    return rotulos.size === 1 ? [...rotulos][0] : 'varia por dinâmica';
+}
+
+function repasseDoParHTML(pacId) {
+    const atual = repasseAtualDoPar(pacId);
+    if (atual == null) return '';
+    const podeEditar = perm.master || perm.pode('dinamica_repasses');
+    return `<span class="dim" style="white-space:nowrap">💼 ${esc(atual)}
+        ${podeEditar ? `<input type="number" class="argos-input" data-rep-pac="${pacId}"
+            min="0" max="100" step="0.01" placeholder="%"
+            style="width:70px; padding:2px 6px" title="Nova % deste paciente para ${esc(valProf.nome)}
+(vazio = voltar ao padrão do profissional)" />
+        <button type="button" class="argos-btn small" data-rep-salvar="${pacId}"
+            title="Gravar esta % nas dinâmicas deste paciente">💾</button>` : ''}</span>`;
+}
+
+/** Grava a % nas dinâmicas do paciente para este profissional e recalcula. */
+async function salvarRepasseDoPar(pacId) {
+    const campo = valEl('val-lista').querySelector(`[data-rep-pac="${pacId}"]`);
+    if (!campo) return;
+    const bruto = campo.value.trim();
+    const valor = bruto === '' ? null : Number(bruto);
+    if (bruto !== '' && !(valor >= 0 && valor <= 100)) {
+        toast('A % fica entre 0 e 100 — ou vazio para voltar ao padrão do profissional.', true);
+        return;
+    }
+    const alvos = dinamicasDoPar(pacId);
+    if (!alvos.length) { toast('Este paciente não tem dinâmica com este profissional.', true); return; }
+
+    let feitas = 0;
+    const estouradas = [];
+    for (const d of alvos) {
+        const novos = repassesDe(d).map(r => r.profissional_id === valProf.id
+            ? { ...r, tipo: 'percentual', valor } : r);
+        // a soma dos repasses da dinâmica continua não podendo passar de 100%
+        if (divisaoRepasses({ ...d, repasses: novos }).pctProfs > 100.0001) {
+            estouradas.push(d.rotulo || 'dinâmica');
+            continue;
+        }
+        const { error } = await sb.from('argos_dinamicas')
+            .update({ repasses: novos }).eq('id', d.id);
+        if (error) { console.error(error); toast('Erro ao gravar numa das dinâmicas.', true); return; }
+        d.repasses = novos;
+        const naPagina = dinamicas.find(x => x.id === d.id);
+        if (naPagina) naPagina.repasses = novos;
+        feitas++;
+    }
+    renderValidacao();
+    renderLista();
+    const nomePac = (valPacientes.find(p => p.id === pacId) || {}).nome || 'paciente';
+    if (feitas) {
+        toast(valor == null
+            ? `${nomePac} voltou ao padrão de ${valProf.nome} em ${feitas} dinâmica(s).`
+            : `${pctFmt(valor)}% de ${nomePac} gravado em ${feitas} dinâmica(s) — valores recalculados.`);
+    }
+    if (estouradas.length) {
+        toast(`⛔ Não gravei em ${estouradas.join(', ')}: a soma dos repasses passaria de 100%.`, true);
+    }
+}
+
 /** Grava a conferência de uma ou muitas sessões, num upsert só. */
 async function gravarValidacao(itens) {
     if (!itens.length) return false;
@@ -467,6 +536,20 @@ async function gravarValidacao(itens) {
 }
 
 valEl('val-lista').addEventListener('click', async (e) => {
+    const salvarRep = e.target.closest('[data-rep-salvar]');
+    if (salvarRep && valProf) { await salvarRepasseDoPar(salvarRep.dataset.repSalvar); return; }
+    // confirmar de uma vez as pendentes de um paciente só
+    const bloco = e.target.closest('[data-val-bloco]');
+    if (bloco && valProf) {
+        const pend = valLinhas.filter(l =>
+            l.paciente.id === bloco.dataset.valBloco && !l.validacao);
+        if (!pend.length) return;
+        if (await gravarValidacao(pend.map(l =>
+            ({ sessao_id: l.sessao.id, situacao: 'confirmada' })))) {
+            toast(`${pend.length} sessão(ões) confirmada(s).`);
+        }
+        return;
+    }
     const btn = e.target.closest('[data-val-sit]');
     if (!btn || !valProf) return;
     const situacao = btn.dataset.valSit;
