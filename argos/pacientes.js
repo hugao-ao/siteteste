@@ -9,6 +9,7 @@ import {
     fechamentoPaciente, hojeISO, somarDias, formataBR, formataMoeda,
     conflitosDeDinamica, conflitosDeSessao, mesmaAgenda,
     divisaoRepasses, repassesDe, unidadeRepasse, aplicarFimDeProcesso,
+    definirRepassePadrao,
     SITUACAO_PROCESSO, situacaoLabel
 } from './argos-recorrencia.js';
 import {
@@ -48,6 +49,7 @@ async function carregarTudo() {
     profServ = rPS.data || [];
     dinamicas = rDin.data || [];
     grupos = rGru.data || [];
+    definirRepassePadrao(profissionais);
     renderLista();
 }
 
@@ -455,11 +457,13 @@ function profissionaisDaDinamicaHTML(d) {
 // resumo da divisão do acordo com os profissionais, para o bloco da dinâmica
 function resumoRepassesHTML(d) {
     const div = divisaoRepasses(d);
-    const comValor = div.itens.filter(r => Number(r.valor) > 0);
+    const comValor = div.itens.filter(r => r.pct > 0);
     if (!comValor.length) return '';
-    const partes = comValor.map(r => r.tipo === 'valor'
-        ? `${esc(nomeProf(r.profissional_id))} ${formataMoeda(r.valor)} (${pctFmt(r.pct)}%)`
-        : `${esc(nomeProf(r.profissional_id))} ${pctFmt(r.pct)}%`);
+    const partes = comValor.map(r => r.valor == null
+        ? `${esc(nomeProf(r.profissional_id))} ${pctFmt(r.pct)}% (padrão)`
+        : r.tipo === 'valor'
+            ? `${esc(nomeProf(r.profissional_id))} ${formataMoeda(r.valor)} (${pctFmt(r.pct)}%)`
+            : `${esc(nomeProf(r.profissional_id))} ${pctFmt(r.pct)}%`);
     return `<br>💼 Repasses: <b>${partes.join(' + ')}</b> · clínica fica com <b>${pctFmt(div.pctClinica)}%</b> (${formataMoeda(div.valorClinica)} ${unidadeRepasse(d)})`;
 }
 
@@ -653,7 +657,7 @@ function linhaRepasse(r) {
         <option value="valor">R$ (valor nominal)</option>
       </select>
       <input type="number" class="rep-valor" min="0" step="0.01" placeholder="Repasse"
-        title="Valor do repasse (vazio = sem repasse por produção)" value="${r && r.valor != null ? r.valor : ''}" />
+        title="Valor do repasse (vazio = usa o repasse padrão do profissional; 0 = sem repasse por produção)" value="${r && r.valor != null ? r.valor : ''}" />
       <button type="button" class="argos-btn small danger dia-remover">×</button>`;
     if (r && r.profissional_id) el.querySelector('.rep-prof').value = r.profissional_id;
     selectServicosDoProf(el.querySelector('.rep-servico'), (r && r.profissional_id) || null, (r && r.servico_id) || null);
@@ -684,7 +688,8 @@ function dinamicaParaResumo() {
         acordo_tipo: g('din-acordo'),
         valor: g('din-valor') === '' ? null : Number(g('din-valor')),
         pacote_valor: g('din-pacote-valor') === '' ? null : Number(g('din-pacote-valor')),
-        repasses: repassesDoFormulario().filter(r => r.profissional_id && r.valor > 0)
+        // valor null fica na lista: é a linha que herda o padrão do profissional
+        repasses: repassesDoFormulario().filter(r => r.profissional_id && (r.valor == null || r.valor > 0))
     };
 }
 
@@ -694,7 +699,7 @@ function atualizarResumoRepasses() {
     const d = dinamicaParaResumo();
     if (!d.repasses.length) { el.textContent = ''; el.style.color = ''; return; }
     const div = divisaoRepasses(d);
-    if (!div.base && d.repasses.some(r => r.tipo === 'valor')) {
+    if (!div.base && d.repasses.some(r => r.tipo === 'valor' && r.valor != null)) {
         el.style.color = '#e05555';
         el.textContent = '⚠️ Para usar repasse em R$, informe antes o valor do acordo financeiro.';
         return;
@@ -866,7 +871,7 @@ document.getElementById('form-dinamica').addEventListener('submit', async (e) =>
     // soma dos repasses (% + nominais convertidos) nunca pode passar de 100% do acordo
     if (repasses.length) {
         const div = divisaoRepasses(registro);
-        if (!div.base && repasses.some(r => r.tipo === 'valor')) {
+        if (!div.base && repasses.some(r => r.tipo === 'valor' && r.valor != null)) {
             toast('Para repasse em R$, informe antes o valor do acordo financeiro.', true);
             return;
         }
