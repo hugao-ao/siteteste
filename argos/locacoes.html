@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=0.1, maximum-scale=10, user-scalable=yes" />
+  <title>Argos Gestão — Aluguel de espaços</title>
+  <script src="argos-guard.js"></script>
+  <link rel="stylesheet" href="argos-style.css?v=11" />
+</head>
+<body>
+  <header class="argos-topbar">
+    <div class="brand">ARGOS <span>GESTÃO</span></div>
+    <div class="actions">
+      <a class="argos-btn ghost" href="index.html">← Início</a>
+      <button class="argos-btn danger" id="btn-logout">Sair</button>
+    </div>
+  </header>
+
+  <main class="argos-pagina larga">
+    <h1>🔑 Aluguel de espaços</h1>
+    <p class="sub">Quem aluga o quê, em que turnos, com que recorrência e por quanto.
+      A unidade é o <b>turno de um dia da semana</b> — manhã, tarde ou noite —,
+      que é como o aluguel é negociado e como ele precisa ser conferido depois.</p>
+
+    <div class="agenda-barra">
+      <label class="rotulo-inline">Mês
+        <input type="month" id="loc-mes" class="argos-input" /></label>
+      <select id="loc-filtro-sala" class="argos-input"></select>
+      <select id="loc-filtro-situacao" class="argos-input">
+        <option value="vigentes">Vigentes no mês</option>
+        <option value="ativas">Todas as ativas</option>
+        <option value="todas">Todas, inclusive encerradas</option>
+      </select>
+      <button class="argos-btn primary" id="btn-loc-nova" data-argos-recurso="locacoes_gerenciar">+ Nova locação</button>
+      <button class="argos-btn ghost" id="btn-loc-imprimir">🖨️ Imprimir</button>
+    </div>
+
+    <div id="loc-resumo"></div>
+
+    <h2 class="form-secao">📅 Locações</h2>
+    <div id="loc-lista"></div>
+
+    <h2 class="form-secao">🚪 Ocupação dos espaços no mês</h2>
+    <p class="dica">Quantos turnos de cada espaço estão alugados, dos que o mês tem
+      (3 turnos × dias do mês). O que sobra é o que ainda dá para vender.</p>
+    <div id="loc-ocupacao"></div>
+  </main>
+
+  <!-- ============ MODAL: LOCAÇÃO ============ -->
+  <div class="argos-modal-fundo" id="modal-locacao">
+    <div class="argos-modal grande">
+      <div class="argos-modal-topo">
+        <h2 id="loc-form-titulo">Nova locação</h2>
+        <button class="argos-modal-x" data-fechar>×</button>
+      </div>
+      <form id="form-locacao" class="argos-form">
+        <div class="form-grade">
+          <label>Locatário *
+            <input type="text" id="loc-locatario" required placeholder="Nome de quem aluga" />
+          </label>
+          <label>CPF / CNPJ
+            <input type="text" id="loc-documento" placeholder="opcional" />
+          </label>
+          <label>Contato
+            <input type="text" id="loc-contato" placeholder="telefone ou e-mail" />
+          </label>
+        </div>
+        <div class="form-grade">
+          <label>Espaço *
+            <select id="loc-sala" required></select>
+          </label>
+          <label>O que foi fechado
+            <select id="loc-tipo">
+              <option value="turnos">Turnos escolhidos</option>
+              <option value="integral">Integral (todos os turnos, todos os dias)</option>
+            </select>
+          </label>
+          <label>Recorrência
+            <select id="loc-recorrencia"></select>
+          </label>
+        </div>
+
+        <div id="loc-bloco-turnos">
+          <h3 class="form-secao">Turnos fechados</h3>
+          <p class="dica">Marque cada turno que faz parte do aluguel. Um turno solto
+            («3ª à tarde») é tão válido quanto a semana inteira.</p>
+          <div class="tabela-rolagem"><table class="argos-tabela compacta" id="tabela-turnos">
+            <thead><tr><th>Turno</th></tr></thead>
+            <tbody></tbody>
+          </table></div>
+        </div>
+
+        <div class="form-grade">
+          <label>A partir de *
+            <input type="date" id="loc-inicio" required />
+          </label>
+          <label>Até (em branco = sem prazo)
+            <input type="date" id="loc-fim" />
+          </label>
+          <label>Vencimento (dia do mês)
+            <input type="number" min="1" max="31" id="loc-vencimento" />
+          </label>
+        </div>
+        <div class="form-grade">
+          <label>Valor
+            <span class="campo-moeda"><input type="number" step="0.01" min="0" id="loc-valor" /></span>
+          </label>
+          <label>Como é cobrado
+            <select id="loc-cobranca"></select>
+          </label>
+          <label>Observações
+            <input type="text" id="loc-obs" placeholder="condições combinadas, chaves, limpeza…" />
+          </label>
+        </div>
+        <label class="linha-check"><input type="checkbox" id="loc-ativo" checked /> Locação ativa</label>
+
+        <div id="loc-previa" class="dica"></div>
+        <div id="loc-conflitos"></div>
+
+        <div class="argos-modal-acoes">
+          <button type="button" class="argos-btn ghost" data-fechar>Cancelar</button>
+          <button type="submit" class="argos-btn primary">Salvar locação</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script type="module" src="locacoes.js?v=1"></script>
+  <script type="module" src="argos-zoom.js?v=4"></script>
+</body>
+</html>

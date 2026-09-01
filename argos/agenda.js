@@ -12,11 +12,13 @@ import {
 import { gravarFrequencia, registrarFaltasJustificadas, avisarMudanca, ouvirMudancas }
     from './argos-frequencia.js';
 import { STATUS_PROF, ORDEM_STATUS_PROF, responsaveisDe } from './argos-producao.js';
+import { ocupacaoDoDia, TURNO_ROTULO } from './argos-locacoes.js';
 
 let perm = { pode: () => true, aplicarVisibilidade: () => {}, master: true };
 let pacientes = [], salas = [], profissionais = [], dinamicas = [], sessoes = [];
 let grupos = [], grupoMembros = [], grupoProfs = [];
 let profFreq = [];                        // presença dos profissionais nos horários
+let locacoes = [];                        // espaços alugados a terceiros
 let segunda = segundaDaSemana(hojeISO()); // início da semana exibida
 let sessaoAberta = null;                  // sessão do modal de marcação
 
@@ -30,7 +32,7 @@ const nomeSala = id => (salas.find(s => s.id === id) || {}).nome || 'Sem espaço
 const nomeProf = id => (profissionais.find(p => p.id === id) || {}).nome || '—';
 
 async function carregarTudo() {
-    const [rPac, rSalas, rProf, rDin, rSes, rGru, rMem, rGP, rPF] = await Promise.all([
+    const [rPac, rSalas, rProf, rDin, rSes, rGru, rMem, rGP, rPF, rLoc] = await Promise.all([
         sb.from('argos_pacientes').select('id, nome, ativo, cadastro_removido, processo_fim_data, processo_fim_tipo').order('nome'),
         sb.from('argos_salas').select('*').order('nome'),
         sb.from('argos_profissionais').select('*').order('nome'),
@@ -39,7 +41,8 @@ async function carregarTudo() {
         sb.from('argos_grupos').select('*').order('hora'),
         sb.from('argos_grupo_membros').select('*'),
         sb.from('argos_grupo_profissionais').select('*'),
-        todas(() => sb.from('argos_prof_frequencia').select('*'))
+        todas(() => sb.from('argos_prof_frequencia').select('*')),
+        todas(() => sb.from('argos_locacoes').select('*'))
     ]);
     const erro = rPac.error || rSalas.error || rProf.error || rDin.error || rSes.error || rGru.error || rMem.error || rGP.error;
     if (erro) { console.error(erro); toast('Erro ao carregar a agenda.', true); return; }
@@ -52,6 +55,7 @@ async function carregarTudo() {
     grupoMembros = rMem.data || [];
     grupoProfs = rGP.data || [];
     profFreq = rPF.data || [];
+    locacoes = (rLoc && rLoc.data) || [];
     montarFiltroSalas();
     renderTudo();
 }
@@ -364,8 +368,30 @@ function grupoChipHTML(g, iso, compacta) {
 
 function conteudoDoDia(iso, lista, conflita, compacta) {
     const doDia = lista.filter(s => s.data === iso && !cobertaPorGrupo(s));
-    return gruposDoDia(iso).map(g => grupoChipHTML(g, iso, compacta)).join('')
+    return alugueisDoDia(iso, compacta)
+        + gruposDoDia(iso).map(g => grupoChipHTML(g, iso, compacta)).join('')
         + doDia.map(s => chipSessao(s, conflita, compacta)).join('');
+}
+
+/**
+ * Os turnos em que o espaço está alugado a terceiros, no dia.
+ *
+ * Não é sessão nem conflito — é a sala não estar disponível. Aparece antes
+ * dos atendimentos justamente para quem vai marcar alguém ver primeiro que
+ * aquele turno já tem dono.
+ */
+function alugueisDoDia(iso, compacta) {
+    if (!perm.pode('agenda_locacoes')) return '';
+    const salaFiltro = document.getElementById('filtro-sala').value;
+    const doDia = ocupacaoDoDia(locacoes.filter(l =>
+        salaFiltro === 'geral' || !salaFiltro || l.sala_id === salaFiltro), iso);
+    if (!doDia.length) return '';
+    return doDia.map(({ locacao, turnos }) => `
+      <div class="chip-aluguel" title="${esc(locacao.locatario)} — ${esc(nomeSala(locacao.sala_id))}">
+        🔑 ${esc(locacao.locatario)}
+        ${compacta ? '' : `<div class="chip-sub">${esc(nomeSala(locacao.sala_id))} · ${
+            turnos.map(t => TURNO_ROTULO[t]).join(', ').toLowerCase()}</div>`}
+      </div>`).join('');
 }
 
 function renderAgenda() {
@@ -787,13 +813,14 @@ async function registrarEvento(pacienteId, tipo, descricao, dados, justificativa
 }
 
 async function recarregarSessoes() {
-    const [rSes, rDin, rGru, rMem, rGP, rPF] = await Promise.all([
+    const [rSes, rDin, rGru, rMem, rGP, rPF, rLoc] = await Promise.all([
         todas(() => sb.from('argos_sessoes').select('*')),
         todas(() => sb.from('argos_dinamicas').select('*')),
         sb.from('argos_grupos').select('*').order('hora'),
         sb.from('argos_grupo_membros').select('*'),
         sb.from('argos_grupo_profissionais').select('*'),
-        todas(() => sb.from('argos_prof_frequencia').select('*'))
+        todas(() => sb.from('argos_prof_frequencia').select('*')),
+        todas(() => sb.from('argos_locacoes').select('*'))
     ]);
     sessoes = rSes.data || sessoes;
     dinamicas = rDin.data || dinamicas;
@@ -801,6 +828,7 @@ async function recarregarSessoes() {
     grupoMembros = rMem.data || grupoMembros;
     grupoProfs = rGP.data || grupoProfs;
     profFreq = rPF.data || profFreq;
+    locacoes = (rLoc && rLoc.data) || locacoes;
     renderTudo();
     const modalGrupo = document.getElementById('modal-grupo');
     if (modalGrupo && modalGrupo.classList.contains('aberto') && grupoAberto) renderModalGrupo();
