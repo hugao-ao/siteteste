@@ -1588,14 +1588,19 @@ document.getElementById('form-sala').addEventListener('submit', async (e) => {
 // A planilha chega em cima de um mês que já está em uso: alguém já preencheu
 // faltas na agenda, cobranças já podem ter sido enviadas. Por isso nada é
 // gravado direto — o sistema mostra o que mudaria e quem está olhando aprova.
+// Paciente que a planilha traz e o cadastro não tem é gente nova: dá para
+// cadastrar daqui mesmo, sem sair da conferência.
 
 let imesPlano = null;                  // último plano conferido
+let imesLinhas = null;                 // linhas lidas da planilha (para reconferir)
+let imesAnoMes = null;                 // { ano, mes } da conferência
 const imesAprovadas = new Set();       // ids das mudanças marcadas
 
 const imesEl = id => document.getElementById(id);
 
 document.getElementById('btn-imp-mes').addEventListener('click', () => {
-    imesPlano = null; imesAprovadas.clear();
+    imesPlano = null; imesLinhas = null; imesAnoMes = null;
+    imesAprovadas.clear();
     imesEl('imes-mes').value = hojeISO().slice(0, 7);
     imesEl('imes-texto').value = '';
     imesEl('imes-arquivo').value = '';
@@ -1615,14 +1620,17 @@ document.getElementById('imes-arquivo').addEventListener('change', async (e) => 
     imesEl('imes-nome-arquivo').textContent = arq.name;
     // o nome do arquivo costuma dizer o mês ("…_AGO.xlsx"); se disser, obedece
     const { mesDoArquivo } = await import('./argos-import-freq.js');
-    const m = mesDoArquivo(arq.name);
-    if (m) {
-        const ano = (/(20\d{2})/.exec(arq.name) || [])[1] || String(new Date().getFullYear());
-        imesEl('imes-mes').value = `${ano}-${String(m).padStart(2, '0')}`;
-    }
+    const doNome = mesDoArquivo(arq.name);
+    const anoDoNome = (/(20\d{2})/.exec(arq.name) || [])[1] || String(new Date().getFullYear());
     try {
-        imesEl('imes-texto').value = /\.xlsx?$/i.test(arq.name)
-            ? await textoDeXlsx(arq) : await arq.text();
+        if (/\.xlsx?$/i.test(arq.name)) {
+            const mesDaAba = await lerArquivoXlsx(arq);
+            const m = mesDaAba || doNome;
+            if (m) imesEl('imes-mes').value = `${anoDoNome}-${String(m).padStart(2, '0')}`;
+        } else {
+            imesEl('imes-texto').value = await arq.text();
+            if (doNome) imesEl('imes-mes').value = `${anoDoNome}-${String(doNome).padStart(2, '0')}`;
+        }
         toast('Arquivo lido. Confira o que vai mudar.');
     } catch (err) {
         console.error(err);
@@ -1630,17 +1638,23 @@ document.getElementById('imes-arquivo').addEventListener('change', async (e) => 
     }
 });
 
-/** XLSX → CSV, pela primeira aba. Sem internet, pede o CSV em vez de quebrar. */
-async function textoDeXlsx(arq) {
-    let XLSX;
-    try {
-        XLSX = await import('https://cdn.jsdelivr.net/npm/xlsx@0.18.5/+esm');
-    } catch (e) {
-        throw new Error('Não consegui carregar o leitor de XLSX. Salve a aba como CSV e envie o CSV.');
+/**
+ * Lê o .xlsx aqui mesmo, sem biblioteca de fora: o arquivo é um ZIP de XML e
+ * o navegador sabe abrir os dois. A aba certa é a que tem nome de mês (o
+ * arquivo da clínica tem seis abas, e a de frequência é a última).
+ */
+async function lerArquivoXlsx(arq) {
+    const [{ abasDoXlsx, abaDeFrequencia, linhasParaCsv }, { pareceFrequencia }] =
+        await Promise.all([import('./argos-xlsx.js'), import('./argos-import-freq.js')]);
+    const abas = await abasDoXlsx(await arq.arrayBuffer());
+    const { aba, mes } = abaDeFrequencia(abas, pareceFrequencia);
+    if (!aba) {
+        throw new Error(`Não achei a aba de frequência entre ${abas.length} aba(s): `
+            + abas.map(a => `«${a.nome}»`).join(', ') + '. Salve a aba certa como CSV e envie o CSV.');
     }
-    const wb = XLSX.read(await arq.arrayBuffer(), { type: 'array' });
-    const aba = wb.Sheets[wb.SheetNames[0]];
-    return XLSX.utils.sheet_to_csv(aba);
+    imesEl('imes-texto').value = linhasParaCsv(aba.linhas);
+    toast(`Aba «${aba.nome}» lida (${abas.length} abas no arquivo).`);
+    return mes;
 }
 
 document.getElementById('btn-imes-conferir').addEventListener('click', async () => {
@@ -1651,7 +1665,6 @@ document.getElementById('btn-imes-conferir').addEventListener('click', async () 
     const [ano, mes] = mesRef.split('-').map(Number);
 
     const { lerFrequencia } = await import('./argos-import-freq.js');
-    const { planoDoMes } = await import('./argos-import-mes.js');
     const { linhas, avisos } = lerFrequencia(texto, { ano, mes });
     if (!linhas.length) {
         imesEl('imes-resumo').innerHTML =
@@ -1662,54 +1675,157 @@ document.getElementById('btn-imes-conferir').addEventListener('click', async () 
         imesEl('imes-acoes').style.display = 'none';
         return;
     }
-    imesPlano = planoDoMes({ linhas, pacientes, profissionais, sessoes, dinamicas, ano, mes });
-    imesPlano.avisosLeitura = avisos;
-    // por padrão tudo o que dá para aplicar vem marcado: o caso comum é
-    // aprovar o mês inteiro, e desmarcar o que destoa é menos trabalho
-    imesAprovadas.clear();
-    imesPlano.mudancas.forEach(m => { if (m.aplicavel) imesAprovadas.add(m.id); });
-    renderImes();
+    imesLinhas = linhas;
+    imesAnoMes = { ano, mes };
+    await reconferirImes({ avisos, marcarTudo: true });
 });
 
-function renderImes() {
+/** Refaz o plano com o cadastro atual (depois de cadastrar gente nova, etc.). */
+async function reconferirImes({ avisos = [], marcarTudo = false, marcarDe = null } = {}) {
+    if (!imesLinhas || !imesAnoMes) return;
+    const { planoDoMes } = await import('./argos-import-mes.js');
+    imesPlano = planoDoMes({ linhas: imesLinhas, pacientes, profissionais,
+        sessoes, dinamicas, ...imesAnoMes });
+    imesPlano.avisosLeitura = avisos;
+    if (marcarTudo) {
+        // o caso comum é aprovar o mês inteiro: tudo já vem marcado, e
+        // desmarcar o que destoa é menos trabalho que marcar 500 caixas
+        imesAprovadas.clear();
+        imesPlano.mudancas.forEach(m => { if (m.aplicavel) imesAprovadas.add(m.id); });
+    } else {
+        // depois de um cadastro, as mudanças recém-nascidas do paciente novo
+        // entram já marcadas; o resto fica como a pessoa deixou
+        const validas = new Set(imesPlano.mudancas.filter(m => m.aplicavel).map(m => m.id));
+        [...imesAprovadas].forEach(id => { if (!validas.has(id)) imesAprovadas.delete(id); });
+        if (marcarDe) {
+            imesPlano.mudancas.forEach(m => {
+                if (m.aplicavel && m.paciente_id === marcarDe) imesAprovadas.add(m.id);
+            });
+        }
+    }
+    await renderImes();
+}
+
+/** A frequência como um selo colorido, com as cores da agenda. */
+function seloFreq(st) {
+    const info = STATUS_SESSAO[st] || { label: st === '??' ? '??' : String(st || '—'), cor: '#64748b' };
+    return `<span class="freq-selo" style="--selo:${info.cor}"
+        title="${esc(info.desc || '')}">${esc(info.label)}</span>`;
+}
+const seloTexto = (t, cor) => `<span class="freq-selo" style="--selo:${cor}">${esc(t)}</span>`;
+const SETA = '<span class="imes-seta">→</span>';
+
+/** A célula "o que muda" de cada linha, desenhada pelo tipo. */
+function mudancaHTML(m) {
+    if (m.tipo === 'nova') {
+        return `${seloFreq(m.depois)} <span class="dim">${esc(m.profissional)}${
+            m.bloco ? ` · ${esc(m.bloco)}` : ''}</span>`;
+    }
+    if (m.tipo === 'status') return `${seloFreq(m.antes)} ${SETA} ${seloFreq(m.depois)}`;
+    if (m.tipo === 'profissional') {
+        return `${seloTexto(m.antes, '#64748b')} ${SETA} ${seloTexto(m.depois, '#a855f7')}`;
+    }
+    if (m.tipo === 'situacao') {
+        const selo = a => seloTexto(a, a === 'ativo' ? '#22c55e' : '#ef4444');
+        return `${selo(m.antes)} ${SETA} ${selo(m.depois)}`;
+    }
+    if (m.tipo === 'sobra') {
+        return `${seloFreq(m.antes)} <span class="dim">não veio na planilha — será excluída</span>`;
+    }
+    if (m.tipo === 'paciente_novo') {
+        return `<span class="dim">${esc(m.detalhe)}</span>`;
+    }
+    return `<span class="dim">${esc(m.detalhe)}</span>`;
+}
+
+const diaHora = m => m.data
+    ? `${m.data.slice(8, 10)}/${m.data.slice(5, 7)}${m.hora ? ` <span class="dim">${esc(m.hora)}</span>` : ''}`
+    : '—';
+
+async function renderImes() {
     if (!imesPlano) return;
     const { mudancas, resumo, avisosLeitura } = imesPlano;
-    import('./argos-import-mes.js').then(({ TIPOS, ORDEM_TIPOS, frase }) => {
-        imesEl('imes-resumo').innerHTML =
-            `<p class="dica"><b>${esc(frase(resumo))}</b>${
-                resumo.bloqueada ? ` ${resumo.bloqueada} linha(s) não dá para aplicar.` : ''}${
-                (avisosLeitura || []).length ? `<br><span class="dim">${avisosLeitura.length} aviso(s) de leitura: ${
-                    esc(avisosLeitura.slice(0, 3).join(' '))}</span>` : ''}</p>`;
+    const { TIPOS, ORDEM_TIPOS, frase } = await import('./argos-import-mes.js');
 
-        const blocos = ORDEM_TIPOS
-            .map(t => ({ tipo: t, meta: TIPOS[t], itens: mudancas.filter(m => m.tipo === t) }))
-            .filter(b => b.itens.length);
+    const blocos = ORDEM_TIPOS
+        .map(t => ({ tipo: t, meta: TIPOS[t], itens: mudancas.filter(m => m.tipo === t) }))
+        .filter(b => b.itens.length);
 
-        imesEl('imes-lista').innerHTML = blocos.map(b => `
-          <div class="argos-bloco">
-            <div class="bloco-topo">
-              <b>${b.meta.icone} ${b.meta.rotulo} <span class="dim">(${b.itens.length})</span></b>
-              ${b.itens.some(i => i.aplicavel)
-                ? `<span>
-                     <button class="argos-btn small" data-imes-bloco="${b.tipo}" data-marcar="1">☑️ marcar bloco</button>
-                     <button class="argos-btn small" data-imes-bloco="${b.tipo}" data-marcar="">☐ desmarcar</button>
-                   </span>` : ''}
-            </div>
-            <p class="dica" style="margin:2px 0 6px">${b.meta.ajuda}</p>
-            <div class="bloco-info">
-              ${b.itens.map(i => `
-                <label class="linha-check imes-item${i.aplicavel ? '' : ' dim'}">
-                  <input type="checkbox" data-imes-id="${esc(i.id)}"
-                    ${i.aplicavel ? '' : 'disabled'} ${imesAprovadas.has(i.id) ? 'checked' : ''} />
-                  <span><b>${esc(i.rotulo)}</b> — ${esc(i.detalhe)}</span>
-                </label>`).join('')}
-            </div>
-          </div>`).join('') || '<p class="dim">Nada a mudar.</p>';
+    imesEl('imes-resumo').innerHTML = `
+      <p class="dica" style="margin:10px 0 6px"><b>${esc(frase(resumo))}</b>${
+          (avisosLeitura || []).length ? `<br><span class="dim">${avisosLeitura.length} aviso(s) de leitura: ${
+              esc(avisosLeitura.slice(0, 3).join(' '))}</span>` : ''}</p>
+      <div class="imes-chips">${blocos.map(b => `
+        <a class="imes-chip" style="--cor:${b.meta.cor}" href="#imes-bloco-${b.tipo}">
+          ${b.meta.icone} ${esc(b.meta.rotulo)} <b>${b.itens.length}</b></a>`).join('')}
+      </div>`;
 
-        imesEl('imes-barra-selecao').style.display = resumo.aplicaveis ? '' : 'none';
-        imesEl('imes-acoes').style.display = resumo.aplicaveis ? '' : 'none';
-        atualizarContadorImes();
-    });
+    imesEl('imes-lista').innerHTML = blocos.map(b => {
+        const marcaveis = b.itens.some(i => i.aplicavel);
+        return `
+      <div class="imes-bloco" id="imes-bloco-${b.tipo}" style="--cor:${b.meta.cor}">
+        <div class="imes-bloco-topo">
+          <b>${b.meta.icone} ${esc(b.meta.rotulo)}</b>
+          <span class="imes-conta">${b.itens.length}</span>
+          <span class="dica imes-ajuda">${esc(b.meta.ajuda)}</span>
+          <span class="imes-bloco-acoes">
+            ${b.tipo === 'paciente_novo' && b.itens.some(i => i.cadastravel) ? `
+              <button class="argos-btn small primary" data-imes-cad-todos="1">➕ Cadastrar todos só com o nome</button>` : ''}
+            ${marcaveis ? `
+              <button class="argos-btn small" data-imes-bloco="${b.tipo}" data-marcar="1">☑ bloco</button>
+              <button class="argos-btn small ghost" data-imes-bloco="${b.tipo}" data-marcar="">☐</button>` : ''}
+          </span>
+        </div>
+        <table class="argos-tabela compacta imes-tabela"><tbody>
+          ${b.itens.map(i => linhaImesHTML(i)).join('')}
+        </tbody></table>
+      </div>`;
+    }).join('') || '<p class="dica">✔ Nada a mudar: a planilha bate com o sistema.</p>';
+
+    imesEl('imes-barra-selecao').style.display = resumo.aplicaveis ? '' : 'none';
+    imesEl('imes-acoes').style.display = resumo.aplicaveis ? '' : 'none';
+    atualizarContadorImes();
+}
+
+function linhaImesHTML(i) {
+    if (i.tipo === 'paciente_novo') {
+        return `
+      <tr class="${i.cadastrado ? 'imes-feita' : ''}">
+        <td class="imes-check">${i.cadastrado ? '✔' : '🆕'}</td>
+        <td><b>${esc(i.nome)}</b>${i.cadastrado ? ' <span class="badge verde">cadastrado</span>' : ''}</td>
+        <td class="dim">${i.sessoes} sessão(ões)</td>
+        <td>${mudancaHTML(i)}</td>
+        <td class="acoes">${i.cadastrado ? '' : `
+          <button class="argos-btn small primary" data-imes-cad="${esc(i.id)}">➕ Cadastrar</button>`}
+        </td>
+      </tr>
+      ${i.cadastrado ? '' : `
+      <tr class="imes-form-novo" data-form-de="${esc(i.id)}" hidden>
+        <td></td>
+        <td colspan="4">
+          <div class="imes-form-campos">
+            <label>Nome *<input type="text" class="argos-input" data-campo="nome"
+              value="${esc(i.nome)}" /></label>
+            <label>Responsável financeiro<input type="text" class="argos-input"
+              data-campo="responsavel_financeiro" placeholder="opcional" /></label>
+            <label>WhatsApp<input type="text" class="argos-input"
+              data-campo="rf_whatsapp" placeholder="opcional" /></label>
+            <button class="argos-btn small primary" data-imes-cad-salvar="${esc(i.id)}">Cadastrar</button>
+            <button class="argos-btn small ghost" data-imes-cad-fechar="${esc(i.id)}">Cancelar</button>
+          </div>
+          <p class="dica">Só o nome já basta — o resto se completa depois, no card do paciente.</p>
+        </td>
+      </tr>`}`;
+    }
+    return `
+      <tr class="${i.aplicavel ? '' : 'dim'}">
+        <td class="imes-check">${i.aplicavel
+            ? `<input type="checkbox" data-imes-id="${esc(i.id)}" ${imesAprovadas.has(i.id) ? 'checked' : ''} />`
+            : '⛔'}</td>
+        <td>${esc(i.paciente)}</td>
+        <td>${diaHora(i)}</td>
+        <td colspan="2">${mudancaHTML(i)}</td>
+      </tr>`;
 }
 
 function atualizarContadorImes() {
@@ -1725,22 +1841,92 @@ document.getElementById('imes-lista').addEventListener('change', (e) => {
     atualizarContadorImes();
 });
 
-document.getElementById('imes-lista').addEventListener('click', (e) => {
-    const btn = e.target.closest('[data-imes-bloco]');
-    if (!btn || !imesPlano) return;
-    const marcar = !!btn.dataset.marcar;
-    for (const m of imesPlano.mudancas) {
-        if (m.tipo !== btn.dataset.imesBloco || !m.aplicavel) continue;
-        if (marcar) imesAprovadas.add(m.id); else imesAprovadas.delete(m.id);
+// ---------- cadastrar paciente novo sem sair da conferência ----------
+
+/** Cria o paciente e reconfere: as sessões dele entram já marcadas. */
+async function cadastrarNovoDaImportacao(mudanca, extras = {}) {
+    const nome = String(extras.nome || mudanca.nome || '').trim();
+    if (!nome) { toast('O nome é o único campo obrigatório.', true); return null; }
+    const { data, error } = await sb.from('argos_pacientes').insert({
+        nome,
+        responsavel_financeiro: extras.responsavel_financeiro || null,
+        rf_whatsapp: extras.rf_whatsapp || null,
+        ativo: String(mudanca.situacao || '').toLowerCase() !== 'inativo'
+    }).select().single();
+    if (error) { console.error(error); toast(`Erro ao cadastrar ${nome}.`, true); return null; }
+    pacientes.push(data);
+    mudanca.cadastrado = true;
+    return data;
+}
+
+document.getElementById('imes-lista').addEventListener('click', async (e) => {
+    const abrir = e.target.closest('[data-imes-cad]');
+    if (abrir) {
+        const form = document.querySelector(`[data-form-de="${CSS.escape(abrir.dataset.imesCad)}"]`);
+        if (form) form.hidden = !form.hidden;
+        return;
     }
-    renderImes();
+    const fechar = e.target.closest('[data-imes-cad-fechar]');
+    if (fechar) {
+        const form = document.querySelector(`[data-form-de="${CSS.escape(fechar.dataset.imesCadFechar)}"]`);
+        if (form) form.hidden = true;
+        return;
+    }
+    const salvar = e.target.closest('[data-imes-cad-salvar]');
+    if (salvar && imesPlano) {
+        const m = imesPlano.mudancas.find(x => x.id === salvar.dataset.imesCadSalvar);
+        const form = document.querySelector(`[data-form-de="${CSS.escape(salvar.dataset.imesCadSalvar)}"]`);
+        if (!m || !form) return;
+        const campo = c => (form.querySelector(`[data-campo="${c}"]`) || {}).value || '';
+        const novo = await cadastrarNovoDaImportacao(m, {
+            nome: campo('nome'),
+            responsavel_financeiro: campo('responsavel_financeiro').trim(),
+            rf_whatsapp: campo('rf_whatsapp').trim()
+        });
+        if (!novo) return;
+        toast(`${novo.nome} cadastrado — as sessões dele entraram na conferência.`);
+        await reconferirImes({ marcarDe: novo.id });
+        return;
+    }
+    const todos = e.target.closest('[data-imes-cad-todos]');
+    if (todos && imesPlano) {
+        const novos = imesPlano.mudancas.filter(m => m.tipo === 'paciente_novo'
+            && m.cadastravel && !m.cadastrado);
+        if (!novos.length) return;
+        if (!confirm(`Cadastrar ${novos.length} paciente(s) só com o nome?\n\n`
+            + novos.slice(0, 8).map(m => `• ${m.nome}`).join('\n')
+            + (novos.length > 8 ? `\n• … e mais ${novos.length - 8}` : '')
+            + '\n\nO resto da ficha se completa depois, no card de cada um.')) return;
+        const criados = [];
+        for (const m of novos) {
+            const p = await cadastrarNovoDaImportacao(m);
+            if (p) criados.push(p.id);
+        }
+        toast(`${criados.length} paciente(s) cadastrado(s).`);
+        await reconferirImes({});
+        // as sessões de todos os recém-cadastrados entram já marcadas
+        imesPlano.mudancas.forEach(m => {
+            if (m.aplicavel && criados.includes(m.paciente_id)) imesAprovadas.add(m.id);
+        });
+        await renderImes();
+        return;
+    }
+    const btn = e.target.closest('[data-imes-bloco]');
+    if (btn && imesPlano) {
+        const marcar = !!btn.dataset.marcar;
+        for (const m of imesPlano.mudancas) {
+            if (m.tipo !== btn.dataset.imesBloco || !m.aplicavel) continue;
+            if (marcar) imesAprovadas.add(m.id); else imesAprovadas.delete(m.id);
+        }
+        await renderImes();
+    }
 });
 
-const marcarTodasImes = (marcar) => {
+const marcarTodasImes = async (marcar) => {
     if (!imesPlano) return;
     imesAprovadas.clear();
     if (marcar) imesPlano.mudancas.forEach(m => { if (m.aplicavel) imesAprovadas.add(m.id); });
-    renderImes();
+    await renderImes();
 };
 document.getElementById('btn-imes-todos').addEventListener('click', () => marcarTodasImes(true));
 document.getElementById('btn-imes-nenhum').addEventListener('click', () => marcarTodasImes(false));
@@ -1783,7 +1969,7 @@ document.getElementById('btn-imes-aplicar').addEventListener('click', async () =
     toast(`${escolhidas.length} alteração(ões) aplicada(s).`);
     btn.disabled = false; btn.textContent = 'Aplicar as aprovadas';
     fecharModal('modal-imp-mes');
-    imesPlano = null; imesAprovadas.clear();
+    imesPlano = null; imesLinhas = null; imesAprovadas.clear();
     avisarMudanca({ origem: 'importacao-mes' });
     await carregarTudo();
 });

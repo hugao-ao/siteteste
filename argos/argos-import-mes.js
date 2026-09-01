@@ -28,22 +28,24 @@ export const ROTULO_STATUS = {
 };
 
 export const TIPOS = {
-    nova: { rotulo: 'Sessões novas', icone: '➕',
+    paciente_novo: { rotulo: 'Pacientes novos', icone: '🆕', cor: '#38bdf8',
+        ajuda: 'Estão na planilha e não existem no cadastro. Cadastre-os aqui mesmo — só o nome já basta — e as sessões deles entram na importação.' },
+    nova: { rotulo: 'Sessões novas', icone: '➕', cor: '#22c55e',
         ajuda: 'Estão na planilha e ainda não existem no sistema.' },
-    status: { rotulo: 'Frequência alterada', icone: '✏️',
+    status: { rotulo: 'Frequência alterada', icone: '✏️', cor: '#eab308',
         ajuda: 'A sessão existe, mas a planilha diz outra coisa.' },
-    profissional: { rotulo: 'Profissional diferente', icone: '🔁',
+    profissional: { rotulo: 'Profissional diferente', icone: '🔁', cor: '#a855f7',
         ajuda: 'A sessão existe no dia certo, com outro profissional.' },
-    sobra: { rotulo: 'Sobrando no sistema', icone: '🗑️',
+    sobra: { rotulo: 'Sobrando no sistema', icone: '🗑️', cor: '#ef4444',
         ajuda: 'Existem no sistema e a planilha não trouxe — em geral projeção da dinâmica que não aconteceu.' },
-    situacao: { rotulo: 'Situação do paciente', icone: '🚦',
+    situacao: { rotulo: 'Situação do paciente', icone: '🚦', cor: '#f97316',
         ajuda: 'A planilha marca o paciente de um jeito e o cadastro de outro.' },
-    bloqueada: { rotulo: 'Não dá para aplicar', icone: '⛔',
-        ajuda: 'Linhas da planilha sem paciente ou profissional cadastrado.' }
+    bloqueada: { rotulo: 'Não dá para aplicar', icone: '⛔', cor: '#64748b',
+        ajuda: 'Linhas da planilha com profissional que não está no cadastro.' }
 };
 
 /** A ordem em que os grupos aparecem na tela: do mais inócuo ao mais grave. */
-export const ORDEM_TIPOS = ['nova', 'status', 'profissional', 'situacao', 'sobra', 'bloqueada'];
+export const ORDEM_TIPOS = ['paciente_novo', 'nova', 'status', 'profissional', 'situacao', 'sobra', 'bloqueada'];
 
 const chave = t => chaveNome(t);
 const norm = t => String(t || '').toLowerCase().normalize('NFD')
@@ -116,14 +118,35 @@ export function planoDoMes({ linhas = [], pacientes = [], profissionais = [],
         const prof = profPorNome.get(norm(l.profissional));
         const quem = l.paciente_raw;
 
-        if (!pac || !prof) {
+        if (!pac) {
+            // paciente que a planilha traz e o cadastro não tem: não é erro,
+            // é gente nova — a tela oferece cadastrar sem sair da importação
+            const id = `novo|${l.chave}`;
+            const existente = mudancas.find(m => m.id === id);
+            if (existente) {
+                existente.sessoes += (l.sessoes || []).length;
+                if (!existente.profissionais.includes(l.profissional)) {
+                    existente.profissionais.push(l.profissional);
+                }
+                existente.detalhe = detalheDoNovo(existente);
+            } else {
+                const novoPac = {
+                    id, tipo: 'paciente_novo', aplicavel: false, cadastravel: true,
+                    chave: l.chave, nome: l.paciente, paciente: l.paciente,
+                    profissional: l.profissional, profissionais: [l.profissional],
+                    situacao: l.situacao || '', rotulo: l.paciente,
+                    sessoes: (l.sessoes || []).length
+                };
+                novoPac.detalhe = detalheDoNovo(novoPac);
+                mudancas.push(novoPac);
+            }
+            continue;
+        }
+        if (!prof) {
             mudancas.push({
                 id: `bloq|${l.linha}`, tipo: 'bloqueada', aplicavel: false,
-                paciente: quem, profissional: l.profissional,
-                rotulo: quem,
-                detalhe: !pac
-                    ? `Paciente não encontrado no cadastro (linha ${l.linha} da planilha).`
-                    : `Profissional «${l.profissional}» não cadastrado (linha ${l.linha}).`,
+                paciente: quem, profissional: l.profissional, rotulo: quem,
+                detalhe: `Profissional «${l.profissional}» não cadastrado (linha ${l.linha}).`,
                 sessoes: (l.sessoes || []).length
             });
             continue;
@@ -182,8 +205,9 @@ export function planoDoMes({ linhas = [], pacientes = [], profissionais = [],
             if (!existente) {
                 mudancas.push({
                     id: `nova|${pac.id}|${prof.id}|${s.data}|${s.ordem}`,
-                    tipo: 'nova', aplicavel: true,
+                    tipo: 'nova', aplicavel: true, paciente_id: pac.id,
                     paciente: pac.nome, profissional: prof.nome, data: s.data,
+                    hora: s.hora, bloco: s.bloco,
                     rotulo: `${pac.nome} — ${dm(s.data)} ${s.hora}`,
                     detalhe: `${prof.nome} · ${s.bloco} · ${ROTULO_STATUS[s.status] || s.status}`,
                     depois: s.status,
@@ -205,6 +229,7 @@ export function planoDoMes({ linhas = [], pacientes = [], profissionais = [],
                 mudancas.push({
                     id: `prof|${existente.id}`, tipo: 'profissional', aplicavel: true,
                     paciente: pac.nome, profissional: prof.nome, data: s.data,
+                    hora: existente.hora || '',
                     rotulo: `${pac.nome} — ${dm(s.data)} ${existente.hora || ''}`.trim(),
                     detalhe: `Atendimento de ${antes} → ${prof.nome}.`,
                     antes, depois: prof.nome,
@@ -216,6 +241,7 @@ export function planoDoMes({ linhas = [], pacientes = [], profissionais = [],
                 mudancas.push({
                     id: `st|${existente.id}`, tipo: 'status', aplicavel: true,
                     paciente: pac.nome, profissional: prof.nome, data: s.data,
+                    hora: existente.hora || '',
                     rotulo: `${pac.nome} — ${dm(s.data)} ${existente.hora || ''}`.trim(),
                     detalhe: `${ROTULO_STATUS[existente.status] || existente.status || '—'} → ${ROTULO_STATUS[s.status] || s.status}.`,
                     antes: existente.status || '??', depois: s.status,
@@ -238,6 +264,7 @@ export function planoDoMes({ linhas = [], pacientes = [], profissionais = [],
         mudancas.push({
             id: `sobra|${s.id}`, tipo: 'sobra', aplicavel: true,
             paciente: (pac || {}).nome || '?', profissional: (prof || {}).nome || '?', data: s.data,
+            hora: s.hora || '',
             rotulo: `${(pac || {}).nome || '?'} — ${dm(s.data)} ${s.hora || ''}`.trim(),
             detalhe: `Está no sistema como ${ROTULO_STATUS[s.status] || s.status || '—'} e não veio na planilha.`,
             antes: s.status || '??',
@@ -267,10 +294,15 @@ export function contar(mudancas = []) {
     return r;
 }
 
+function detalheDoNovo(m) {
+    return `${m.sessoes} sessão(ões) na planilha · ${m.profissionais.join(', ')}`;
+}
+
 /** Uma frase curta do que a importação vai fazer, para o topo da conferência. */
 export function frase(resumo) {
     const partes = [];
     const dizer = (n, um, muitos) => { if (n) partes.push(`${n} ${n === 1 ? um : muitos}`); };
+    dizer(resumo.paciente_novo, 'paciente novo para cadastrar', 'pacientes novos para cadastrar');
     dizer(resumo.nova, 'sessão nova', 'sessões novas');
     dizer(resumo.status, 'frequência alterada', 'frequências alteradas');
     dizer(resumo.profissional, 'troca de profissional', 'trocas de profissional');
