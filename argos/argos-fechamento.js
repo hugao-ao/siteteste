@@ -84,6 +84,23 @@ export function valorDoMes({ fech, ajuste = null } = {}) {
              ajustado: null, congelado: null, editado: false };
 }
 
+/**
+ * O valor que a cobrança REALMENTE definiu para cada paciente num mês:
+ * congelado (enviado) ganha do ajustado, e quem não tem nenhum dos dois nem
+ * entra no mapa — vale o calculado. É a base sobre a qual o repasse incide:
+ * se a cobrança do mês foi alterada, o repasse acompanha.
+ * Devolve Map(paciente_id → valor cobrado).
+ */
+export function cobradoPorPaciente(ajustes = [], mes) {
+    const mapa = new Map();
+    for (const a of ajustes || []) {
+        if (!a || a.mes !== mes) continue;
+        const v = num(a.congelado_valor) != null ? num(a.congelado_valor) : num(a.valor_ajustado);
+        if (v != null) mapa.set(a.paciente_id, v);
+    }
+    return mapa;
+}
+
 // ---------------------------------------------------------------------------
 // Congelar e conferir
 // ---------------------------------------------------------------------------

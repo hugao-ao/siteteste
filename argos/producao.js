@@ -11,6 +11,7 @@ import {
 } from './argos-recorrencia.js';
 import { producaoDoMes, STATUS_PROF, ORDEM_STATUS_PROF } from './argos-producao.js';
 import { mesBR, fatorNFDoMes } from './argos-cobranca.js';
+import { cobradoPorPaciente } from './argos-fechamento.js';
 import {
     usarFechamento, abertoPorPaciente, retencoesSugeridas,
     acertoDoMes, mensagemAcerto, mesCurto
@@ -20,7 +21,7 @@ usarFechamento(fechamentoPaciente);
 
 let perm = { pode: () => true, aplicarVisibilidade: () => {}, master: true };
 let pacientes = [], dinamicas = [], sessoes = [], profissionais = [], presencas = [];
-let alocacoes = [], retencoes = [], acertos = [], mensagens = [], notasMes = [];
+let alocacoes = [], retencoes = [], acertos = [], mensagens = [], notasMes = [], ajustesCobranca = [];
 let mesAtual = hojeISO().slice(0, 7);
 let resultado = null, repasses = [];
 const producaoCache = new Map();   // 'YYYY-MM' → resultado de producaoDoMes
@@ -35,7 +36,7 @@ const REMUNERACAO = {
 };
 
 async function carregarTudo() {
-    const [rPac, rDin, rSes, rProf, rPF, rAloc, rRet, rAc, rMsg, rNM] = await Promise.all([
+    const [rPac, rDin, rSes, rProf, rPF, rAloc, rRet, rAc, rMsg, rNM, rCM] = await Promise.all([
         sb.from('argos_pacientes').select('*').order('nome'),
         todas(() => sb.from('argos_dinamicas').select('*')),
         todas(() => sb.from('argos_sessoes').select('*')),
@@ -45,7 +46,8 @@ async function carregarTudo() {
         sb.from('argos_repasse_retencoes').select('*'),
         sb.from('argos_repasse_acertos').select('*'),
         sb.from('argos_repasse_mensagens').select('*'),
-        todas(() => sb.from('argos_nota_mes').select('*'))
+        todas(() => sb.from('argos_nota_mes').select('*')),
+        todas(() => sb.from('argos_cobranca_mes').select('*'))
     ]);
     const erro = rPac.error || rDin.error || rSes.error || rProf.error || rPF.error
         || rAloc.error || rRet.error || rAc.error || rMsg.error;
@@ -60,6 +62,7 @@ async function carregarTudo() {
     acertos = rAc.data || [];
     mensagens = rMsg.data || [];
     notasMes = (rNM && rNM.data) || [];
+    ajustesCobranca = (rCM && rCM.data) || [];
     definirRepassePadrao(profissionais);
     render();
 }
@@ -79,8 +82,10 @@ function producaoDe(mes) {
     if (!producaoCache.has(mes)) {
         producaoCache.set(mes, producaoDoMes({
             pacientes, dinamicas, sessoes, profissionais, presencas, mes,
-            // paciente com nota fiscal no mês repassa sobre o total − 10%
-            notaFator: fatorNFDoMes({ pacientes, dinamicas, excecoes: notasMes, mes })
+            // paciente com nota fiscal no mês repassa sobre o total − 10%;
+            // cobrança ajustada/enviada muda a base do repasse junto
+            notaFator: fatorNFDoMes({ pacientes, dinamicas, excecoes: notasMes, mes }),
+            cobrado: cobradoPorPaciente(ajustesCobranca, mes)
         }));
     }
     return producaoCache.get(mes);
