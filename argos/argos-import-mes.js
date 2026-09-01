@@ -85,6 +85,26 @@ export function sessoesDaPlanilha(linha) {
 }
 
 /**
+ * Cadastros parecidos com um nome que veio na planilha.
+ *
+ * O critério é a chave de um começar com a do outro («BERNARDO» ×
+ * «BERNARDO DE FREITAS») — é como os apelidos de planilha costumam ser.
+ * A sugestão existe para a pessoa decidir; nada é vinculado sozinho.
+ */
+export function sugerirCadastro(chave, pacientes = []) {
+    const k0 = String(chave || '');
+    if (k0.length < 5) return [];
+    return (pacientes || [])
+        .filter(p => !p.cadastro_removido)
+        .map(p => ({ p, k: chaveNome(p.nome) }))
+        .filter(({ k }) => k.length >= 5 && k !== k0
+            && (k.startsWith(k0) || k0.startsWith(k)))
+        .sort((a, b) => Math.abs(a.k.length - k0.length) - Math.abs(b.k.length - k0.length))
+        .slice(0, 3)
+        .map(({ p }) => ({ id: p.id, nome: p.nome }));
+}
+
+/**
  * A dinâmica que responde por este slot (dow+hora) nesta data.
  *
  * O acordo de um paciente vive em "trechos": quando o valor ou o horário
@@ -115,7 +135,7 @@ function dinamicaDoSlot(dinamicas, pacienteId, data, hora) {
  * executar o que foi aprovado.
  */
 export function planoDoMes({ linhas = [], pacientes = [], profissionais = [],
-    sessoes = [], dinamicas = [], ano, mes } = {}) {
+    sessoes = [], dinamicas = [], apelidos = [], ano, mes } = {}) {
 
     const avisos = [];
     if (!ano || !mes) return { mudancas: [], resumo: vazio(), avisos: ['Não sei de que mês é esta planilha.'], pares: [] };
@@ -128,6 +148,13 @@ export function planoDoMes({ linhas = [], pacientes = [], profissionais = [],
         if (p.cadastro_removido) continue;
         const k = chave(p.nome);
         if (!pacPorChave.has(k)) pacPorChave.set(k, p);
+    }
+    // um apelido vinculado numa importação passada resolve a chave para
+    // sempre — mas nunca por cima de um nome que já casa sozinho
+    for (const a of apelidos || []) {
+        if (pacPorChave.has(a.chave)) continue;
+        const p = pacientes.find(x => x.id === a.paciente_id && !x.cadastro_removido);
+        if (p) pacPorChave.set(a.chave, p);
     }
     const profPorNome = new Map(profissionais.map(p => [norm(p.nome), p]));
 
@@ -155,6 +182,7 @@ export function planoDoMes({ linhas = [], pacientes = [], profissionais = [],
             } else {
                 const novoPac = {
                     id, tipo: 'paciente_novo', aplicavel: false, cadastravel: true,
+                    sugestoes: sugerirCadastro(l.chave, pacientes),
                     chave: l.chave, nome: l.paciente, paciente: l.paciente,
                     profissional: l.profissional, profissionais: [l.profissional],
                     situacao: l.situacao || '', rotulo: l.paciente,

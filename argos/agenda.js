@@ -1593,6 +1593,7 @@ document.getElementById('form-sala').addEventListener('submit', async (e) => {
 
 let imesPlano = null;                  // último plano conferido
 let imesLinhas = null;                 // linhas lidas da planilha (para reconferir)
+let imesApelidos = [];                 // nomes de planilha já vinculados a cadastros
 let imesAnoMes = null;                 // { ano, mes } da conferência
 const imesAprovadas = new Set();       // ids das mudanças marcadas
 
@@ -1684,8 +1685,10 @@ document.getElementById('btn-imes-conferir').addEventListener('click', async () 
 async function reconferirImes({ avisos = [], marcarTudo = false, marcarDe = null } = {}) {
     if (!imesLinhas || !imesAnoMes) return;
     const { planoDoMes } = await import('./argos-import-mes.js');
+    const { data: aps } = await sb.from('argos_paciente_apelidos').select('*');
+    imesApelidos = aps || [];
     imesPlano = planoDoMes({ linhas: imesLinhas, pacientes, profissionais,
-        sessoes, dinamicas, ...imesAnoMes });
+        sessoes, dinamicas, apelidos: imesApelidos, ...imesAnoMes });
     imesPlano.avisosLeitura = avisos;
     if (marcarTudo) {
         // o caso comum é aprovar o mês inteiro: tudo já vem marcado, e
@@ -1794,7 +1797,13 @@ function linhaImesHTML(i) {
         <td class="imes-check">${i.cadastrado ? '✔' : '🆕'}</td>
         <td><b>${esc(i.nome)}</b>${i.cadastrado ? ' <span class="badge verde">cadastrado</span>' : ''}</td>
         <td class="dim">${i.sessoes} sessão(ões)</td>
-        <td>${mudancaHTML(i)}</td>
+        <td>${mudancaHTML(i)}${(i.sugestoes || []).length && !i.cadastrado ? `
+          <br><span class="dica">🔗 Parecido com quem já está no cadastro:</span> ${
+            i.sugestoes.map(sg => `
+              <button class="argos-btn small ghost" data-imes-vincular="${esc(i.id)}"
+                data-pac="${esc(sg.id)}"
+                title="Se for a mesma pessoa, vincula em vez de cadastrar de novo — e a importação lembra disso nos próximos meses">
+                É «${esc(sg.nome)}»</button>`).join(' ')}` : ''}</td>
         <td class="acoes">${i.cadastrado ? '' : `
           <button class="argos-btn small primary" data-imes-cad="${esc(i.id)}">➕ Cadastrar</button>`}
         </td>
@@ -1870,6 +1879,22 @@ document.getElementById('imes-lista').addEventListener('click', async (e) => {
     if (fechar) {
         const form = document.querySelector(`[data-form-de="${CSS.escape(fechar.dataset.imesCadFechar)}"]`);
         if (form) form.hidden = true;
+        return;
+    }
+    const vincular = e.target.closest('[data-imes-vincular]');
+    if (vincular && imesPlano) {
+        const m = imesPlano.mudancas.find(x => x.id === vincular.dataset.imesVincular);
+        const pacExistente = pacientes.find(p => p.id === vincular.dataset.pac);
+        if (!m || !pacExistente) return;
+        if (!confirm(`«${m.nome}» da planilha é a mesma pessoa que «${pacExistente.nome}» do cadastro?\n\n`
+            + 'As sessões da planilha passam a valer para esse cadastro, e a importação '
+            + 'lembra do vínculo nos próximos meses.')) return;
+        const { error } = await sb.from('argos_paciente_apelidos')
+            .upsert({ chave: m.chave, paciente_id: pacExistente.id, origem: 'importacao' },
+                    { onConflict: 'chave' });
+        if (error) { console.error(error); toast('Erro ao gravar o vínculo.', true); return; }
+        toast(`«${m.nome}» vinculado a ${pacExistente.nome}.`);
+        await reconferirImes({ marcarDe: pacExistente.id });
         return;
     }
     const salvar = e.target.closest('[data-imes-cad-salvar]');
