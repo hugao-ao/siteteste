@@ -16,6 +16,8 @@
 import {
     lerFrequencia, chaveNome, STATUS_PLANILHA, DIA_SEMANA, somarHoras
 } from './argos-import-freq.js';
+import { mesclarSessoes, aplicarFimDeProcesso, hojeISO, somarDias }
+    from './argos-recorrencia.js';
 
 export { lerFrequencia };
 
@@ -36,8 +38,10 @@ export const TIPOS = {
         ajuda: 'A sessão existe, mas a planilha diz outra coisa.' },
     profissional: { rotulo: 'Profissional diferente', icone: '🔁', cor: '#a855f7',
         ajuda: 'A sessão existe no dia certo, com outro profissional.' },
-    sobra: { rotulo: 'Sobrando no sistema', icone: '🗑️', cor: '#ef4444',
-        ajuda: 'Existem no sistema e a planilha não trouxe — em geral projeção da dinâmica que não aconteceu.' },
+    sem_registro: { rotulo: 'Sem registro na planilha (viram Nc)', icone: '📭', cor: '#94a3b8',
+        ajuda: 'O horário fixo esperava sessão nesses dias e a planilha não trouxe nada. Como nas importações anteriores, viram «não houve» — sem isso, ficariam pendentes de frequência para sempre.' },
+    sobra: { rotulo: 'Sobrando no sistema (serão excluídas)', icone: '🗑️', cor: '#ef4444',
+        ajuda: 'Sessões avulsas que existem no sistema, a planilha não trouxe e nenhum horário fixo explica.' },
     situacao: { rotulo: 'Situação do paciente', icone: '🚦', cor: '#f97316',
         ajuda: 'A planilha marca o paciente de um jeito e o cadastro de outro.' },
     bloqueada: { rotulo: 'Não dá para aplicar', icone: '⛔', cor: '#64748b',
@@ -45,7 +49,7 @@ export const TIPOS = {
 };
 
 /** A ordem em que os grupos aparecem na tela: do mais inócuo ao mais grave. */
-export const ORDEM_TIPOS = ['paciente_novo', 'nova', 'status', 'profissional', 'situacao', 'sobra', 'bloqueada'];
+export const ORDEM_TIPOS = ['paciente_novo', 'nova', 'status', 'profissional', 'situacao', 'sem_registro', 'sobra', 'bloqueada'];
 
 const chave = t => chaveNome(t);
 const norm = t => String(t || '').toLowerCase().normalize('NFD')
@@ -261,6 +265,27 @@ export function planoDoMes({ linhas = [], pacientes = [], profissionais = [],
         if (!s.profissional_id || !paresIds.has(`${s.paciente_id}|${s.profissional_id}`)) continue;
         const pac = pacientes.find(p => p.id === s.paciente_id);
         const prof = profissionais.find(p => p.id === s.profissional_id);
+        // «não houve» é ausência de registro — a planilha sem a célula está
+        // CONCORDANDO com ele. Propor excluir esses nc a cada importação seria
+        // desfazer o próprio "sem registro" das importações passadas.
+        if ((s.status || '') === 'nc') continue;
+        // «??» de horário fixo não some: excluí-la faria a projeção da dinâmica
+        // renascer pendente no mesmo lugar. Ela vira «não houve», que é o que
+        // a planilha vazia está dizendo — o mesmo que as importações grandes
+        // sempre fizeram.
+        if ((s.status || '??') === '??' && s.dinamica_ref) {
+            mudancas.push({
+                id: `nc|${s.id}`, tipo: 'sem_registro', aplicavel: true,
+                paciente: (pac || {}).nome || '?', profissional: (prof || {}).nome || '?',
+                data: s.data, hora: s.hora || '',
+                rotulo: `${(pac || {}).nome || '?'} — ${dm(s.data)} ${s.hora || ''}`.trim(),
+                detalhe: 'A planilha não trouxe este dia — a sessão pendente vira «não houve».',
+                antes: '??', depois: 'nc',
+                acao: { op: 'atualizar', tabela: 'argos_sessoes', id: s.id,
+                        campos: { status: 'nc', justificativa: 'Sem registro na planilha de frequência' } }
+            });
+            continue;
+        }
         mudancas.push({
             id: `sobra|${s.id}`, tipo: 'sobra', aplicavel: true,
             paciente: (pac || {}).nome || '?', profissional: (prof || {}).nome || '?', data: s.data,
@@ -270,6 +295,56 @@ export function planoDoMes({ linhas = [], pacientes = [], profissionais = [],
             antes: s.status || '??',
             acao: { op: 'excluir', tabela: 'argos_sessoes', id: s.id }
         });
+    }
+
+    // ---------------- os dias que o horário fixo esperava e ninguém registrou
+    // A dinâmica projeta a sessão, a planilha veio sem a célula, e não há nada
+    // gravado: sem esta parte, essas projeções ficariam «??» para sempre no
+    // aviso de pendências. Elas nascem já como «não houve», aprováveis uma a
+    // uma. Só até ontem (o futuro ainda pode acontecer) e só para quem a
+    // planilha cobre.
+    const ontem = somarDias(hojeISO(), -1);
+    const ateNc = ate < ontem ? ate : ontem;
+    if (ateNc >= de) {
+        const corte = aplicarFimDeProcesso(dinamicas || [], sessoes, pacientes);
+        // dinâmica desligada encerra o futuro, não o passado: para o buraco
+        // vencido ela ainda conta (mesma regra do aviso de pendências)
+        const paraProjecao = corte.dinamicas.map(d => d.ativo === false ? { ...d, ativo: true } : d);
+        const pacsCobertos = new Set(pares.map(p => p.paciente.id));
+        const diaTemPlanilha = new Set();
+        for (const l of linhas) {
+            const pac = pacPorChave.get(l.chave);
+            if (!pac) continue;
+            for (const sp of l.sessoes || []) diaTemPlanilha.add(`${pac.id}|${sp.data}`);
+        }
+        const diaTemGravada = new Set(doMes.map(x => `${x.paciente_id}|${x.data}`));
+        for (const proj of mesclarSessoes(paraProjecao, corte.sessoes, de, ateNc)) {
+            if (!proj.projetada || proj.status !== '??') continue;
+            if (!pacsCobertos.has(proj.paciente_id)) continue;
+            if (proj.profissional_id
+                && !paresIds.has(`${proj.paciente_id}|${proj.profissional_id}`)) continue;
+            if (diaTemPlanilha.has(`${proj.paciente_id}|${proj.data}`)) continue;
+            if (diaTemGravada.has(`${proj.paciente_id}|${proj.data}`)) continue;
+            const pac = pacientes.find(x => x.id === proj.paciente_id);
+            const prof = profissionais.find(x => x.id === proj.profissional_id);
+            mudancas.push({
+                id: `ncp|${proj.paciente_id}|${proj.data}|${proj.hora}`,
+                tipo: 'sem_registro', aplicavel: true,
+                paciente: (pac || {}).nome || '?', profissional: (prof || {}).nome || '—',
+                data: proj.data, hora: proj.hora || '',
+                rotulo: `${(pac || {}).nome || '?'} — ${dm(proj.data)} ${proj.hora || ''}`.trim(),
+                detalhe: 'O horário fixo esperava sessão e a planilha não trouxe — nasce como «não houve».',
+                depois: 'nc',
+                acao: { op: 'inserir', tabela: 'argos_sessoes', registro: {
+                    paciente_id: proj.paciente_id, profissional_id: proj.profissional_id || null,
+                    dinamica_id: proj.dinamica_ref || null, dinamica_ref: proj.dinamica_ref || null,
+                    sala_id: proj.sala_id || null, servico_id: proj.servico_id || null,
+                    data: proj.data, hora: proj.hora, duracao_min: proj.duracao_min || 60,
+                    grupo_id: proj.grupo_id || null, grupo_ref: proj.grupo_ref || null,
+                    status: 'nc', justificativa: 'Sem registro na planilha de frequência'
+                } }
+            });
+        }
     }
 
     mudancas.sort((a, b) =>
@@ -307,6 +382,7 @@ export function frase(resumo) {
     dizer(resumo.status, 'frequência alterada', 'frequências alteradas');
     dizer(resumo.profissional, 'troca de profissional', 'trocas de profissional');
     dizer(resumo.situacao, 'mudança de situação', 'mudanças de situação');
+    dizer(resumo.sem_registro, 'dia sem registro (vira Nc)', 'dias sem registro (viram Nc)');
     dizer(resumo.sobra, 'sessão sobrando', 'sessões sobrando');
     if (!partes.length) return 'Nada a fazer: a planilha bate com o sistema.';
     const lista = partes.length === 1 ? partes[0]
