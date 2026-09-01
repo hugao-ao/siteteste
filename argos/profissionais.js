@@ -5,7 +5,10 @@
 
 import { sb, todas, toast, esc, abrirModal, fecharModal } from './argos-common.js';
 import { carregarPermissoes } from './argos-permissoes.js';
-import { repassesDe, fracaoRepasse, formataBR, hojeISO } from './argos-recorrencia.js';
+import {
+    repassesDe, fracaoRepasse, formataBR, hojeISO,
+    definirRepassePadrao, repassePadraoDe
+} from './argos-recorrencia.js';
 import {
     atendimentosDoProfissional, resumoDaValidacao, fraseDaValidacao, filtrar,
     textoDoRelatorio, MOTIVOS, SITUACOES
@@ -43,6 +46,7 @@ async function carregarTudo() {
     vinculos = rVinc.data || [];
     dinamicas = rDin.data || [];
     pacientes = rPac.data || [];
+    definirRepassePadrao(profissionais);
     renderLista();
 }
 
@@ -62,10 +66,14 @@ function pacientesDoProfissional(profId) {
         const p = pacientes.find(x => x.id === d.paciente_id);
         if (!p || p.cadastro_removido) return;
         const atual = porPaciente.get(p.id) || { nome: p.nome, rotulos: [] };
-        meusRep.forEach(r => atual.rotulos.push(!(Number(r.valor) > 0) ? 'sem repasse'
-            : r.tipo === 'valor'
-                ? `${formataMoeda(r.valor)} (${pctFmt(fracaoRepasse(d, r) * 100)}%)`
-                : `${pctFmt(Number(r.valor))}%`));
+        meusRep.forEach(r => atual.rotulos.push(
+            r.valor == null
+                ? (repassePadraoDe(profId) != null
+                    ? `${pctFmt(fracaoRepasse(d, r) * 100)}% (padrão)` : 'sem repasse definido')
+                : !(Number(r.valor) > 0) ? 'sem repasse'
+                : r.tipo === 'valor'
+                    ? `${formataMoeda(r.valor)} (${pctFmt(fracaoRepasse(d, r) * 100)}%)`
+                    : `${pctFmt(Number(r.valor))}%`));
         porPaciente.set(p.id, atual);
     });
     return [...porPaciente.values()].sort((a, b) => a.nome.localeCompare(b.nome));
@@ -85,6 +93,12 @@ function renderLista() {
         const remun = REMUNERACAO_LABELS[p.remuneracao_tipo || 'producao'];
         const fixoTxt = (p.remuneracao_tipo === 'fixo' || p.remuneracao_tipo === 'producao_fixo') && p.valor_fixo_mensal != null
             ? ` — ${formataMoeda(p.valor_fixo_mensal)}/mês` : '';
+        const recebeProducao = (p.remuneracao_tipo || 'producao') !== 'fixo';
+        const padraoTxt = !recebeProducao ? ''
+            : p.repasse_padrao != null
+                ? `<div class="mini-info">Repasse padrão: <b>${pctFmt(Number(p.repasse_padrao))}%</b> da produção</div>`
+                : `<div class="mini-info" style="color:var(--argos-warn)">⚠ Sem repasse padrão — a produção
+                    dele calcula R$ 0,00 nas dinâmicas que não definem o repasse.</div>`;
         return `
         <div class="argos-minicard">
           <div class="mini-topo">
@@ -95,6 +109,7 @@ function renderLista() {
             </span>
           </div>
           <div class="mini-info">${esc(remun)}${esc(fixoTxt)}</div>
+          ${padraoTxt}
           ${meusPacientes.length ? `
           <div class="mini-info">
             <b>Pacientes e repasses:</b><br>
@@ -129,6 +144,7 @@ document.getElementById('lista-profissionais').addEventListener('click', async (
         document.getElementById('prof-nome').value = p.nome;
         document.getElementById('prof-remuneracao').value = p.remuneracao_tipo || 'producao';
         document.getElementById('prof-fixo').value = p.valor_fixo_mensal != null ? p.valor_fixo_mensal : '';
+        document.getElementById('prof-repasse-padrao').value = p.repasse_padrao != null ? p.repasse_padrao : '';
         atualizarCampoFixo();
         abrirModal('modal-prof');
     }
@@ -162,6 +178,9 @@ function atualizarCampoFixo() {
     const tipo = document.getElementById('prof-remuneracao').value;
     document.getElementById('rotulo-fixo').style.display =
         (tipo === 'fixo' || tipo === 'producao_fixo') ? '' : 'none';
+    // quem é só fixo não recebe por produção — o padrão não se aplica
+    document.getElementById('rotulo-repasse-padrao').style.display =
+        tipo === 'fixo' ? 'none' : '';
 }
 document.getElementById('prof-remuneracao').addEventListener('change', atualizarCampoFixo);
 
@@ -171,6 +190,7 @@ document.getElementById('btn-novo-prof').addEventListener('click', () => {
     document.getElementById('prof-nome').value = '';
     document.getElementById('prof-remuneracao').value = 'producao';
     document.getElementById('prof-fixo').value = '';
+    document.getElementById('prof-repasse-padrao').value = '';
     atualizarCampoFixo();
     abrirModal('modal-prof');
 });
@@ -181,10 +201,16 @@ document.getElementById('form-prof').addEventListener('submit', async (e) => {
     if (!nome) return;
     const remuneracao_tipo = document.getElementById('prof-remuneracao').value;
     const fixoBruto = document.getElementById('prof-fixo').value;
+    const padraoBruto = document.getElementById('prof-repasse-padrao').value;
+    if (padraoBruto !== '' && (Number(padraoBruto) < 0 || Number(padraoBruto) > 100)) {
+        toast('O repasse padrão é uma % entre 0 e 100.', true);
+        return;
+    }
     const registro = {
         nome, remuneracao_tipo,
         valor_fixo_mensal: (remuneracao_tipo === 'fixo' || remuneracao_tipo === 'producao_fixo') && fixoBruto !== ''
-            ? Number(fixoBruto) : null
+            ? Number(fixoBruto) : null,
+        repasse_padrao: remuneracao_tipo !== 'fixo' && padraoBruto !== '' ? Number(padraoBruto) : null
     };
     const q = editandoProfId
         ? sb.from('argos_profissionais').update(registro).eq('id', editandoProfId)

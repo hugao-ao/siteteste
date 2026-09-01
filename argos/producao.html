@@ -218,10 +218,15 @@
       </div>
       <div class="argos-form">
         <label>Mensagem<textarea id="ac-texto" class="rp-msg"></textarea></label>
-        <p class="dica">Pode editar antes de enviar — o acerto guarda exatamente este texto.</p>
+        <p class="dica">Pode editar antes de enviar — o acerto guarda exatamente este texto.
+          Depois de mandar a mensagem ao profissional (WhatsApp, e-mail…), use
+          «Registrar envio» para o histórico guardar o que foi enviado e quando.</p>
+        <div id="ac-envios" class="rp-bloco"></div>
       </div>
       <div class="argos-modal-acoes">
         <button class="argos-btn ghost" id="btn-ac-copiar">📋 Copiar</button>
+        <button class="argos-btn" id="btn-ac-registrar" data-argos-recurso="repasses_mensagens">
+          📨 Registrar envio</button>
         <button class="argos-btn primary" id="btn-ac-fechar" data-argos-recurso="repasses_fechar">
           ✅ Fechar acerto do mês</button>
         <button class="argos-btn ghost" data-fechar>Fechar</button>
@@ -229,7 +234,7 @@
     </div>
   </div>
 
-  <script type="module" src="producao.js?v=4"></script>
+  <script type="module" src="producao.js?v=5"></script>
   <script type="module" src="argos-zoom.js?v=4"></script>
 </body>
 </html>

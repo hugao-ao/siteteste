@@ -7,7 +7,8 @@ import { carregarPermissoes } from './argos-permissoes.js';
 import {
     STATUS_SESSAO, DOW_NOMES, mesclarSessoes, hojeISO, somarDias, paraData,
     paraISO, formataBR, fimDoMes, expandirDinamica, conflitosDeSessao,
-    conflitosDeDinamica, repassesDe, aplicarFimDeProcesso
+    conflitosDeDinamica, repassesDe, aplicarFimDeProcesso,
+    definirRepassePadrao, fracaoRepasse
 } from './argos-recorrencia.js';
 import { gravarFrequencia, registrarFaltasJustificadas, avisarMudanca, ouvirMudancas }
     from './argos-frequencia.js';
@@ -49,6 +50,7 @@ async function carregarTudo() {
     pacientes = rPac.data || [];
     salas = rSalas.data || [];
     profissionais = rProf.data || [];
+    definirRepassePadrao(profissionais);
     dinamicas = rDin.data || [];
     sessoes = rSes.data || [];
     grupos = rGru.data || [];
@@ -761,7 +763,7 @@ function renderRepasseSessao(s) {
     const bloco = document.getElementById('bloco-repasse-sessao');
     // só faz sentido em sessão que existe de verdade e tem dinâmica com divisão
     const d = dinamicas.find(x => x.id === s.dinamica_ref);
-    const temDivisao = d && repassesDe(d).some(r => r.valor);
+    const temDivisao = d && repassesDe(d).some(r => fracaoRepasse(d, r) > 0);
     if (!perm.pode('sessao_repasse_avulso') || !s.id || !temDivisao) {
         bloco.style.display = 'none';
         return;
@@ -775,8 +777,10 @@ function renderRepasseSessao(s) {
     document.getElementById('repasse-atual').innerHTML = s.repasse_profissional_id
         ? `💸 Hoje esta sessão é paga a <b>${esc(nomeProf(s.repasse_profissional_id))}</b>`
           + `${s.repasse_motivo ? ` — ${esc(s.repasse_motivo)}` : ''}.`
-        : `Divisão atual: ${repassesDe(d).filter(r => r.valor)
-            .map(r => `${esc(nomeProf(r.profissional_id))} ${r.tipo === 'valor' ? 'R$ ' + r.valor : r.valor + '%'}`)
+        : `Divisão atual: ${repassesDe(d).filter(r => fracaoRepasse(d, r) > 0)
+            .map(r => `${esc(nomeProf(r.profissional_id))} ${r.valor == null
+                ? (Math.round(fracaoRepasse(d, r) * 10000) / 100) + '% (padrão)'
+                : r.tipo === 'valor' ? 'R$ ' + r.valor : r.valor + '%'}`)
             .join(' · ')}.`;
 }
 

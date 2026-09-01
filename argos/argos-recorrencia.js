@@ -223,8 +223,34 @@ export function repassesDe(d) {
     return [];
 }
 
+// ---------- Repasse padrão do profissional ----------
+// A % combinada com cada profissional vive no cadastro dele; a dinâmica só
+// precisa dizer algo quando o combinado daquele paciente é diferente. Linha
+// de repasse com valor VAZIO (null) herda o padrão; valor 0 é a escolha
+// explícita de não repassar por aquela dinâmica.
+let REPASSE_PADRAO = new Map(); // profissional_id → % (0–100)
+
+/** Registra os padrões a partir da lista de profissionais carregada da página. */
+export function definirRepassePadrao(profissionais) {
+    REPASSE_PADRAO = new Map();
+    for (const p of profissionais || []) {
+        if (p && p.id && p.repasse_padrao != null && p.repasse_padrao !== '') {
+            REPASSE_PADRAO.set(p.id, Number(p.repasse_padrao) || 0);
+        }
+    }
+}
+
+/** A % padrão de um profissional, ou null se ele não tem uma definida. */
+export function repassePadraoDe(profissional_id) {
+    return REPASSE_PADRAO.has(profissional_id) ? REPASSE_PADRAO.get(profissional_id) : null;
+}
+
 /** Fração (0–1) da base do acordo que um repasse representa. */
 export function fracaoRepasse(d, r) {
+    if (r.valor == null) { // a dinâmica não definiu: vale o padrão do profissional
+        const padrao = repassePadraoDe(r.profissional_id);
+        return padrao != null ? padrao / 100 : 0;
+    }
     if (r.tipo === 'valor') {
         const base = baseRepasse(d);
         return base > 0 ? (Number(r.valor) || 0) / base : 0;
