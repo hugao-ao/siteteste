@@ -51,6 +51,7 @@
       <select id="filtro-prof"></select>
       <button class="argos-btn ghost" id="btn-grupos" data-argos-recurso="grupos_gerenciar">👥 Grupos</button>
       <button class="argos-btn ghost" id="btn-salas" data-argos-recurso="salas_gerenciar">🚪 Espaços</button>
+      <button class="argos-btn ghost" id="btn-imp-mes" data-argos-recurso="importar_mes">📥 Importar o mês</button>
     </div>
 
     <div class="agenda-grade" id="agenda-grade"></div>
@@ -271,7 +272,45 @@
     </div>
   </div>
 
-  <script type="module" src="agenda.js?v=24"></script>
+  <!-- ============ MODAL: IMPORTAR A FREQUÊNCIA DO MÊS ============ -->
+  <div class="argos-modal-fundo" id="modal-imp-mes">
+    <div class="argos-modal grande">
+      <div class="argos-modal-topo">
+        <h2>📥 Importar a frequência do mês</h2>
+        <button class="argos-modal-x" data-fechar>×</button>
+      </div>
+      <p class="dica">Envie o <b>CSV ou XLSX</b> da planilha de frequência (ou cole o conteúdo).
+        Nada é gravado sem a sua aprovação: primeiro o sistema mostra tudo o que essa importação
+        mudaria, e você aprova item a item, por bloco ou de uma vez.</p>
+
+      <div class="pend-barra">
+        <label class="rotulo-inline">Mês
+          <input type="month" id="imes-mes" class="argos-input" /></label>
+        <button type="button" class="argos-btn small" id="btn-imes-arquivo">📂 Escolher arquivo</button>
+        <input type="file" id="imes-arquivo" accept=".csv,.tsv,.txt,.xlsx,.xls" hidden />
+        <span class="dim" id="imes-nome-arquivo"></span>
+      </div>
+      <textarea id="imes-texto" rows="4" class="argos-input" style="width:100%; font-family:monospace"
+        placeholder="…ou cole aqui o conteúdo da aba de frequência"></textarea>
+      <div class="argos-modal-acoes" style="justify-content:flex-start">
+        <button type="button" class="argos-btn primary small" id="btn-imes-conferir">🔍 Conferir o que vai mudar</button>
+      </div>
+
+      <div id="imes-resumo"></div>
+      <div class="pend-barra" id="imes-barra-selecao" style="display:none">
+        <button type="button" class="argos-btn small" id="btn-imes-todos">☑️ Marcar tudo</button>
+        <button type="button" class="argos-btn small" id="btn-imes-nenhum">☐ Desmarcar tudo</button>
+        <span class="dica" id="imes-contador"></span>
+      </div>
+      <div id="imes-lista"></div>
+      <div class="argos-modal-acoes" id="imes-acoes" style="display:none">
+        <button type="button" class="argos-btn ghost" data-fechar>Cancelar</button>
+        <button type="button" class="argos-btn primary" id="btn-imes-aplicar">Aplicar as aprovadas</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="agenda.js?v=25"></script>
   <script type="module" src="argos-zoom.js?v=4"></script>
 </body>
 </html>

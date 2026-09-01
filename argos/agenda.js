@@ -1553,3 +1553,209 @@ document.getElementById('form-sala').addEventListener('submit', async (e) => {
     perm.aplicarVisibilidade();
     await carregarTudo();
 })();
+
+// ---------------------------------------------------------------------------
+// Importar a frequência do mês, com conferência item a item
+// ---------------------------------------------------------------------------
+// A planilha chega em cima de um mês que já está em uso: alguém já preencheu
+// faltas na agenda, cobranças já podem ter sido enviadas. Por isso nada é
+// gravado direto — o sistema mostra o que mudaria e quem está olhando aprova.
+
+let imesPlano = null;                  // último plano conferido
+const imesAprovadas = new Set();       // ids das mudanças marcadas
+
+const imesEl = id => document.getElementById(id);
+
+document.getElementById('btn-imp-mes').addEventListener('click', () => {
+    imesPlano = null; imesAprovadas.clear();
+    imesEl('imes-mes').value = hojeISO().slice(0, 7);
+    imesEl('imes-texto').value = '';
+    imesEl('imes-arquivo').value = '';
+    imesEl('imes-nome-arquivo').textContent = '';
+    imesEl('imes-resumo').innerHTML = '';
+    imesEl('imes-lista').innerHTML = '';
+    imesEl('imes-barra-selecao').style.display = 'none';
+    imesEl('imes-acoes').style.display = 'none';
+    abrirModal('modal-imp-mes');
+});
+
+document.getElementById('btn-imes-arquivo').addEventListener('click', () => imesEl('imes-arquivo').click());
+
+document.getElementById('imes-arquivo').addEventListener('change', async (e) => {
+    const arq = e.target.files && e.target.files[0];
+    if (!arq) return;
+    imesEl('imes-nome-arquivo').textContent = arq.name;
+    // o nome do arquivo costuma dizer o mês ("…_AGO.xlsx"); se disser, obedece
+    const { mesDoArquivo } = await import('./argos-import-freq.js');
+    const m = mesDoArquivo(arq.name);
+    if (m) {
+        const ano = (/(20\d{2})/.exec(arq.name) || [])[1] || String(new Date().getFullYear());
+        imesEl('imes-mes').value = `${ano}-${String(m).padStart(2, '0')}`;
+    }
+    try {
+        imesEl('imes-texto').value = /\.xlsx?$/i.test(arq.name)
+            ? await textoDeXlsx(arq) : await arq.text();
+        toast('Arquivo lido. Confira o que vai mudar.');
+    } catch (err) {
+        console.error(err);
+        toast(String(err.message || err), true);
+    }
+});
+
+/** XLSX → CSV, pela primeira aba. Sem internet, pede o CSV em vez de quebrar. */
+async function textoDeXlsx(arq) {
+    let XLSX;
+    try {
+        XLSX = await import('https://cdn.jsdelivr.net/npm/xlsx@0.18.5/+esm');
+    } catch (e) {
+        throw new Error('Não consegui carregar o leitor de XLSX. Salve a aba como CSV e envie o CSV.');
+    }
+    const wb = XLSX.read(await arq.arrayBuffer(), { type: 'array' });
+    const aba = wb.Sheets[wb.SheetNames[0]];
+    return XLSX.utils.sheet_to_csv(aba);
+}
+
+document.getElementById('btn-imes-conferir').addEventListener('click', async () => {
+    const texto = imesEl('imes-texto').value.trim();
+    const mesRef = imesEl('imes-mes').value;
+    if (!texto) { toast('Envie o arquivo ou cole o conteúdo da planilha.', true); return; }
+    if (!mesRef) { toast('Diga de que mês é esta planilha.', true); return; }
+    const [ano, mes] = mesRef.split('-').map(Number);
+
+    const { lerFrequencia } = await import('./argos-import-freq.js');
+    const { planoDoMes } = await import('./argos-import-mes.js');
+    const { linhas, avisos } = lerFrequencia(texto, { ano, mes });
+    if (!linhas.length) {
+        imesEl('imes-resumo').innerHTML =
+            `<p class="dica">⛔ Não reconheci nenhuma linha de frequência nesse conteúdo.${
+                avisos.length ? ' ' + esc(avisos[0]) : ''}</p>`;
+        imesEl('imes-lista').innerHTML = '';
+        imesEl('imes-barra-selecao').style.display = 'none';
+        imesEl('imes-acoes').style.display = 'none';
+        return;
+    }
+    imesPlano = planoDoMes({ linhas, pacientes, profissionais, sessoes, dinamicas, ano, mes });
+    imesPlano.avisosLeitura = avisos;
+    // por padrão tudo o que dá para aplicar vem marcado: o caso comum é
+    // aprovar o mês inteiro, e desmarcar o que destoa é menos trabalho
+    imesAprovadas.clear();
+    imesPlano.mudancas.forEach(m => { if (m.aplicavel) imesAprovadas.add(m.id); });
+    renderImes();
+});
+
+function renderImes() {
+    if (!imesPlano) return;
+    const { mudancas, resumo, avisosLeitura } = imesPlano;
+    import('./argos-import-mes.js').then(({ TIPOS, ORDEM_TIPOS, frase }) => {
+        imesEl('imes-resumo').innerHTML =
+            `<p class="dica"><b>${esc(frase(resumo))}</b>${
+                resumo.bloqueada ? ` ${resumo.bloqueada} linha(s) não dá para aplicar.` : ''}${
+                (avisosLeitura || []).length ? `<br><span class="dim">${avisosLeitura.length} aviso(s) de leitura: ${
+                    esc(avisosLeitura.slice(0, 3).join(' '))}</span>` : ''}</p>`;
+
+        const blocos = ORDEM_TIPOS
+            .map(t => ({ tipo: t, meta: TIPOS[t], itens: mudancas.filter(m => m.tipo === t) }))
+            .filter(b => b.itens.length);
+
+        imesEl('imes-lista').innerHTML = blocos.map(b => `
+          <div class="argos-bloco">
+            <div class="bloco-topo">
+              <b>${b.meta.icone} ${b.meta.rotulo} <span class="dim">(${b.itens.length})</span></b>
+              ${b.itens.some(i => i.aplicavel)
+                ? `<span>
+                     <button class="argos-btn small" data-imes-bloco="${b.tipo}" data-marcar="1">☑️ marcar bloco</button>
+                     <button class="argos-btn small" data-imes-bloco="${b.tipo}" data-marcar="">☐ desmarcar</button>
+                   </span>` : ''}
+            </div>
+            <p class="dica" style="margin:2px 0 6px">${b.meta.ajuda}</p>
+            <div class="bloco-info">
+              ${b.itens.map(i => `
+                <label class="linha-check imes-item${i.aplicavel ? '' : ' dim'}">
+                  <input type="checkbox" data-imes-id="${esc(i.id)}"
+                    ${i.aplicavel ? '' : 'disabled'} ${imesAprovadas.has(i.id) ? 'checked' : ''} />
+                  <span><b>${esc(i.rotulo)}</b> — ${esc(i.detalhe)}</span>
+                </label>`).join('')}
+            </div>
+          </div>`).join('') || '<p class="dim">Nada a mudar.</p>';
+
+        imesEl('imes-barra-selecao').style.display = resumo.aplicaveis ? '' : 'none';
+        imesEl('imes-acoes').style.display = resumo.aplicaveis ? '' : 'none';
+        atualizarContadorImes();
+    });
+}
+
+function atualizarContadorImes() {
+    const total = imesPlano ? imesPlano.resumo.aplicaveis : 0;
+    imesEl('imes-contador').textContent = `${imesAprovadas.size} de ${total} aprovada(s)`;
+    imesEl('btn-imes-aplicar').disabled = !imesAprovadas.size;
+}
+
+document.getElementById('imes-lista').addEventListener('change', (e) => {
+    const cb = e.target.closest('[data-imes-id]');
+    if (!cb) return;
+    if (cb.checked) imesAprovadas.add(cb.dataset.imesId); else imesAprovadas.delete(cb.dataset.imesId);
+    atualizarContadorImes();
+});
+
+document.getElementById('imes-lista').addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-imes-bloco]');
+    if (!btn || !imesPlano) return;
+    const marcar = !!btn.dataset.marcar;
+    for (const m of imesPlano.mudancas) {
+        if (m.tipo !== btn.dataset.imesBloco || !m.aplicavel) continue;
+        if (marcar) imesAprovadas.add(m.id); else imesAprovadas.delete(m.id);
+    }
+    renderImes();
+});
+
+const marcarTodasImes = (marcar) => {
+    if (!imesPlano) return;
+    imesAprovadas.clear();
+    if (marcar) imesPlano.mudancas.forEach(m => { if (m.aplicavel) imesAprovadas.add(m.id); });
+    renderImes();
+};
+document.getElementById('btn-imes-todos').addEventListener('click', () => marcarTodasImes(true));
+document.getElementById('btn-imes-nenhum').addEventListener('click', () => marcarTodasImes(false));
+
+document.getElementById('btn-imes-aplicar').addEventListener('click', async () => {
+    if (!imesPlano || !imesAprovadas.size) return;
+    const { loteDeAcoes } = await import('./argos-import-mes.js');
+    const escolhidas = imesPlano.mudancas.filter(m => m.aplicavel && imesAprovadas.has(m.id));
+    const conta = escolhidas.reduce((c, m) => (c[m.tipo] = (c[m.tipo] || 0) + 1, c), {});
+    if (conta.sobra && !confirm(
+        `${conta.sobra} sessão(ões) serão EXCLUÍDAS do sistema por não estarem na planilha.\n\n`
+        + 'Isso não pode ser desfeito. Confirmar a importação?')) return;
+
+    const lote = loteDeAcoes(escolhidas);
+    const btn = imesEl('btn-imes-aplicar');
+    btn.disabled = true; btn.textContent = 'Aplicando…';
+    try {
+        for (const { tabela, registros } of lote.inserir) {
+            for (let i = 0; i < registros.length; i += 200) {
+                const { error } = await sb.from(tabela).insert(registros.slice(i, i + 200));
+                if (error) throw error;
+            }
+        }
+        for (const u of lote.atualizar) {
+            const { error } = await sb.from(u.tabela).update(u.campos).eq('id', u.id);
+            if (error) throw error;
+        }
+        for (const { tabela, ids } of lote.excluir) {
+            for (let i = 0; i < ids.length; i += 200) {
+                const { error } = await sb.from(tabela).delete().in('id', ids.slice(i, i + 200));
+                if (error) throw error;
+            }
+        }
+    } catch (err) {
+        console.error(err);
+        toast('Erro ao aplicar a importação. Nada mais foi gravado.', true);
+        btn.disabled = false; btn.textContent = 'Aplicar as aprovadas';
+        return;
+    }
+    toast(`${escolhidas.length} alteração(ões) aplicada(s).`);
+    btn.disabled = false; btn.textContent = 'Aplicar as aprovadas';
+    fecharModal('modal-imp-mes');
+    imesPlano = null; imesAprovadas.clear();
+    avisarMudanca({ origem: 'importacao-mes' });
+    await carregarTudo();
+});
