@@ -7,8 +7,12 @@ import { sb, todas, toast, esc, abrirModal, fecharModal } from './argos-common.j
 import { carregarPermissoes } from './argos-permissoes.js';
 import {
     repassesDe, divisaoRepasses, formataBR, hojeISO,
-    definirRepassePadrao, repassePadraoDe
+    definirRepassePadrao, repassePadraoDe, STATUS_SESSAO
 } from './argos-recorrencia.js';
+import {
+    gravarFrequencia, registrarFaltasJustificadas, avisarMudanca
+} from './argos-frequencia.js';
+import { fatorNFDoMes } from './argos-cobranca.js';
 import {
     atendimentosDoProfissional, resumoDaValidacao, fraseDaValidacao, filtrar,
     ordenarValidacao, textoDoRelatorio, MOTIVOS, SITUACOES
@@ -268,7 +272,7 @@ document.getElementById('servico-lista').addEventListener('click', async (e) => 
 
 let valProf = null;        // profissional em conferência
 let valSessoes = [], valDinamicas = [], valPacientes = [], valValidacoes = [];
-let valLinhas = [];
+let valNotasMes = [], valLinhas = [];
 
 const valEl = id => document.getElementById(id);
 
@@ -286,11 +290,12 @@ async function abrirValidacao(prof) {
 
 async function carregarValidacao() {
     if (!valProf) return;
-    const [rPac, rDin, rSes, rVal] = await Promise.all([
+    const [rPac, rDin, rSes, rVal, rNM] = await Promise.all([
         sb.from('argos_pacientes').select('id, nome, ativo, cadastro_removido, processo_fim_data, processo_fim_tipo').order('nome'),
         todas(() => sb.from('argos_dinamicas').select('*')),
         todas(() => sb.from('argos_sessoes').select('*')),
-        todas(() => sb.from('argos_sessao_validacao').select('*').eq('profissional_id', valProf.id))
+        todas(() => sb.from('argos_sessao_validacao').select('*').eq('profissional_id', valProf.id)),
+        todas(() => sb.from('argos_nota_mes').select('*'))
     ]);
     if (rPac.error || rDin.error || rSes.error) {
         console.error(rPac.error || rDin.error || rSes.error);
@@ -301,6 +306,7 @@ async function carregarValidacao() {
     valDinamicas = rDin.data || [];
     valSessoes = rSes.data || [];
     valValidacoes = (rVal && rVal.data) || [];
+    valNotasMes = (rNM && rNM.data) || [];
     renderValidacao();
 }
 
@@ -310,7 +316,11 @@ function renderValidacao() {
     valLinhas = atendimentosDoProfissional({
         profissional_id: valProf.id, mes, pacientes: valPacientes,
         dinamicas: valDinamicas, sessoes: valSessoes,
-        profissionais, validacoes: valValidacoes
+        profissionais, validacoes: valValidacoes,
+        // paciente com nota fiscal no mês: o repasse incide sobre total − 10%
+        notaFator: fatorNFDoMes({
+            pacientes: valPacientes, dinamicas: valDinamicas,
+            excecoes: valNotasMes, mes })
     });
     const resumo = resumoDaValidacao(valLinhas);
 
@@ -367,14 +377,25 @@ function renderValidacao() {
         else grupos.push({ paciente: l.paciente, linhas: [l] });
     }
 
+    const podeFreq = perm.master || perm.pode('sessoes_status');
     const linhaHTML = l => {
         const sit = l.validacao && l.validacao.situacao;
         const m = MOTIVOS[l.motivo];
+        const st = l.sessao.status || '??';
+        const freqTd = podeFreq
+            ? `<select class="argos-input" data-freq-sessao="${l.sessao.id}"
+                 style="padding:2px 6px; color:${STATUS_SESSAO[st] ? STATUS_SESSAO[st].cor : 'inherit'}"
+                 title="${esc((STATUS_SESSAO[st] || {}).desc || '')} — mudar aqui grava a frequência da sessão">
+                 ${Object.keys(STATUS_SESSAO).map(k =>
+                    `<option value="${k}"${k === st ? ' selected' : ''}>${STATUS_SESSAO[k].label}</option>`).join('')}
+               </select>${l.sessao.justificativa
+                 ? `<br><span class="dim">${esc(l.sessao.justificativa)}</span>` : ''}`
+            : esc(l.status.toUpperCase());
         return `<tr class="${sit === 'contestada' ? 'linha-alerta' : ''}">
           <td>${formataBR(l.data)} <span class="dim">${esc(l.hora)}</span></td>
           <td title="${esc(m.ajuda)}">${m.icone} ${esc(m.rotulo)}${
             l.motivo !== 'atendeu' ? ` <span class="dim">${esc(l.atendidoPor)}</span>` : ''}</td>
-          <td>${esc(l.status.toUpperCase())}</td>
+          <td>${freqTd}</td>
           <td>${l.contabiliza ? formataMoeda(l.valor) : '<span class="dim">—</span>'}</td>
           <td class="acoes">
             <button class="argos-btn small ${sit === 'confirmada' ? 'primary' : ''}"
@@ -398,6 +419,9 @@ function renderValidacao() {
           <div class="imes-bloco-topo">
             <b>${esc(g.paciente.nome)}</b>
             ${repasseDoParHTML(g.paciente.id)}
+            ${g.linhas[0].nf > 0.005 ? `<span class="imes-conta" style="--cor:#f97316"
+                title="Este mês emite nota fiscal: o repasse incide sobre o total menos os 10% da nota">
+                🧾 NF ${formataMoeda(g.linhas[0].nf)}</span>` : ''}
             <span class="imes-conta">${contam} de ${g.linhas.length} contabilizam · ${formataMoeda(soma)}</span>
             <span class="imes-bloco-acoes">
               ${pendentes ? `<button class="argos-btn small" data-val-bloco="${g.paciente.id}"
@@ -419,6 +443,53 @@ function renderValidacao() {
 ['val-mes', 'val-filtro', 'val-ordem'].forEach(id =>
     valEl(id).addEventListener('change', renderValidacao));
 valEl('val-busca').addEventListener('input', renderValidacao);
+
+// mudar a frequência de uma sessão pelo próprio relatório — as mesmas regras
+// da agenda: mesma permissão, Fj pede justificativa, e as outras janelas
+// abertas ficam sabendo
+valEl('val-lista').addEventListener('change', async (e) => {
+    const sel = e.target.closest('[data-freq-sessao]');
+    if (!sel || !valProf) return;
+    const linha = valLinhas.find(l => l.sessao.id === sel.dataset.freqSessao);
+    if (!linha) return;
+    const status = sel.value;
+    if (status === (linha.sessao.status || '??')) return;
+    if (!perm.pode('sessoes_status')) {
+        toast('Sem permissão para marcar frequência.', true);
+        renderValidacao();
+        return;
+    }
+    let justificativa = linha.sessao.justificativa || null;
+    if (status === 'fj') {
+        const dispensa = perm.pode('sessao_fj_sem_justificativa');
+        const j = prompt(dispensa
+            ? 'Justificativa da falta (pode deixar em branco):'
+            : 'Justificativa da falta (obrigatória):', justificativa || '');
+        if (j === null) { renderValidacao(); return; } // cancelou
+        if (!j.trim() && !dispensa) {
+            toast('A falta justificada precisa de uma justificativa.', true);
+            renderValidacao();
+            return;
+        }
+        justificativa = j.trim() || null;
+    }
+    const { erro } = await gravarFrequencia(sb, [linha.sessao], status, justificativa);
+    if (erro) {
+        console.error(erro);
+        toast('Erro ao marcar a sessão.', true);
+        renderValidacao();
+        return;
+    }
+    if (status === 'fj') {
+        await registrarFaltasJustificadas(sb, [linha.sessao], justificativa, formataBR);
+    }
+    const s = valSessoes.find(x => x.id === linha.sessao.id);
+    if (s) { s.status = status; s.justificativa = justificativa; }
+    renderValidacao();
+    avisarMudanca({ origem: 'validacao', quantas: 1 });
+    toast(`Sessão de ${formataBR(linha.data)} marcada: ${STATUS_SESSAO[status].label}`
+        + ` — ${STATUS_SESSAO[status].desc}`);
+});
 
 // salvar o repasse padrão sem sair do modal (o aviso de R$ 0,00 traz o campo)
 valEl('val-resumo').addEventListener('click', async e => {
