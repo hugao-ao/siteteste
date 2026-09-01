@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=0.1, maximum-scale=10, user-scalable=yes" />
   <title>Argos Gestão — Profissionais</title>
   <script src="argos-guard.js"></script>
-  <link rel="stylesheet" href="argos-style.css?v=10" />
+  <link rel="stylesheet" href="argos-style.css?v=11" />
 </head>
 <body>
   <header class="argos-topbar">
@@ -73,7 +73,43 @@
     </div>
   </div>
 
-  <script type="module" src="profissionais.js?v=6"></script>
+  <!-- ============ MODAL: ATENDIMENTOS DO MÊS (validação) ============ -->
+  <div class="argos-modal-fundo" id="modal-validacao">
+    <div class="argos-modal grande">
+      <div class="argos-modal-topo">
+        <h2 id="val-titulo">📋 Atendimentos do mês</h2>
+        <button class="argos-modal-x" data-fechar>×</button>
+      </div>
+      <p class="dica">Tudo o que o sistema captou como sendo deste profissional no mês —
+        o que ele atendeu, o que foi de paciente dele mas outra pessoa atendeu, e o que
+        ele cobriu de outro. É esta lista que ele confere antes do acerto: confirma o
+        que reconhece e contesta o que não reconhece, sem mexer na frequência de ninguém.</p>
+
+      <div class="pend-barra">
+        <label class="rotulo-inline">Mês
+          <input type="month" id="val-mes" class="argos-input" /></label>
+        <select id="val-filtro" class="argos-input">
+          <option value="todas">Todas as sessões</option>
+          <option value="pendentes">Só as que faltam conferir</option>
+          <option value="confirmadas">Só as confirmadas</option>
+          <option value="contestadas">Só as contestadas</option>
+          <option value="contabilizadas">Só as que contabilizam</option>
+        </select>
+        <input type="search" id="val-busca" class="argos-input" placeholder="🔎 paciente ou quem atendeu" />
+      </div>
+      <div class="pend-barra">
+        <button class="argos-btn small" id="btn-val-confirmar-todas"
+          data-argos-recurso="validacao_atendimentos">✔ Confirmar todas as que faltam</button>
+        <button class="argos-btn small ghost" id="btn-val-copiar">📄 Copiar o relatório</button>
+        <button class="argos-btn small ghost" id="btn-val-imprimir">🖨️ Imprimir</button>
+      </div>
+
+      <div id="val-resumo"></div>
+      <div id="val-lista"></div>
+    </div>
+  </div>
+
+  <script type="module" src="profissionais.js?v=7"></script>
   <script type="module" src="argos-zoom.js?v=4"></script>
 </body>
 </html>

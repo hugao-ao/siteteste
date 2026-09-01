@@ -5,7 +5,11 @@
 
 import { sb, todas, toast, esc, abrirModal, fecharModal } from './argos-common.js';
 import { carregarPermissoes } from './argos-permissoes.js';
-import { repassesDe, fracaoRepasse } from './argos-recorrencia.js';
+import { repassesDe, fracaoRepasse, formataBR, hojeISO } from './argos-recorrencia.js';
+import {
+    atendimentosDoProfissional, resumoDaValidacao, fraseDaValidacao, filtrar,
+    textoDoRelatorio, MOTIVOS, SITUACOES
+} from './argos-validacao.js';
 
 let perm = { pode: () => true, aplicarVisibilidade: () => {}, master: true };
 let profissionais = [], servicos = [], vinculos = [], dinamicas = [], pacientes = [];
@@ -105,6 +109,7 @@ function renderLista() {
           <div class="mini-acoes">
             ${podeServicos ? `<button class="argos-btn small primary" data-acao="servicos" data-id="${p.id}">+ Serviço</button>` : ''}
             ${perm.pode('agenda_ver') ? `<a class="argos-btn small" href="agenda.html?profissional=${p.id}">🗓️ Agenda</a>` : ''}
+            ${perm.pode('validacao_atendimentos') ? `<button class="argos-btn small" data-acao="validar" data-id="${p.id}">📋 Atendimentos do mês</button>` : ''}
           </div>
         </div>`;
     }).join('');
@@ -141,6 +146,7 @@ document.getElementById('lista-profissionais').addEventListener('click', async (
         renderListaServicos();
         abrirModal('modal-servico');
     }
+    if (btn.dataset.acao === 'validar') { await abrirValidacao(p); return; }
     if (btn.dataset.acao === 'desvincular') {
         const s = servicos.find(x => x.id === btn.dataset.servico);
         if (!confirm(`Remover "${s.nome}" dos serviços de ${p.nome}?\n(O serviço continua na base da clínica.)`)) return;
@@ -257,3 +263,170 @@ document.getElementById('servico-lista').addEventListener('click', async (e) => 
     perm.aplicarVisibilidade();
     await carregarTudo();
 })();
+
+// ---------------------------------------------------------------------------
+// Atendimentos do mês: o que o profissional confere antes do acerto
+// ---------------------------------------------------------------------------
+// O repasse é uma conta que o sistema faz. Para o profissional poder conferi-la
+// ele precisa ver o que ela conta — e ver também as sessões que são dele sem
+// ele ter atendido, e as que ele atendeu no lugar de outro.
+
+let valProf = null;        // profissional em conferência
+let valSessoes = [], valDinamicas = [], valPacientes = [], valValidacoes = [];
+let valLinhas = [];
+
+const valEl = id => document.getElementById(id);
+
+async function abrirValidacao(prof) {
+    valProf = prof;
+    valEl('val-titulo').textContent = `📋 Atendimentos de ${prof.nome}`;
+    valEl('val-mes').value = valEl('val-mes').value || hojeISO().slice(0, 7);
+    valEl('val-filtro').value = 'todas';
+    valEl('val-busca').value = '';
+    valEl('val-lista').innerHTML = '<p class="dim">Carregando…</p>';
+    valEl('val-resumo').innerHTML = '';
+    abrirModal('modal-validacao');
+    await carregarValidacao();
+}
+
+async function carregarValidacao() {
+    if (!valProf) return;
+    const [rPac, rDin, rSes, rVal] = await Promise.all([
+        sb.from('argos_pacientes').select('id, nome, ativo, cadastro_removido, processo_fim_data, processo_fim_tipo').order('nome'),
+        todas(() => sb.from('argos_dinamicas').select('*')),
+        todas(() => sb.from('argos_sessoes').select('*')),
+        todas(() => sb.from('argos_sessao_validacao').select('*').eq('profissional_id', valProf.id))
+    ]);
+    if (rPac.error || rDin.error || rSes.error) {
+        console.error(rPac.error || rDin.error || rSes.error);
+        toast('Erro ao carregar os atendimentos.', true);
+        return;
+    }
+    valPacientes = rPac.data || [];
+    valDinamicas = rDin.data || [];
+    valSessoes = rSes.data || [];
+    valValidacoes = (rVal && rVal.data) || [];
+    renderValidacao();
+}
+
+function renderValidacao() {
+    if (!valProf) return;
+    const mes = valEl('val-mes').value;
+    valLinhas = atendimentosDoProfissional({
+        profissional_id: valProf.id, mes, pacientes: valPacientes,
+        dinamicas: valDinamicas, sessoes: valSessoes,
+        profissionais, validacoes: valValidacoes
+    });
+    const resumo = resumoDaValidacao(valLinhas);
+
+    valEl('val-resumo').innerHTML = `
+      <div class="resumo-linha">
+        <span class="resumo-item">${esc(fraseDaValidacao(resumo))}</span>
+        <span class="resumo-item"><b>${resumo.contabilizadas}</b> contabilizam ·
+          <b>${formataMoeda(resumo.valor)}</b></span>
+        ${resumo.contestadas ? `<span class="resumo-item" style="color:#ef4444">⚠ ${
+            resumo.contestadas} contestada(s) — ${formataMoeda(resumo.valorContestado)}</span>` : ''}
+      </div>
+      <p class="dica">${Object.entries(resumo.porMotivo).filter(([, n]) => n)
+          .map(([k, n]) => `${MOTIVOS[k].icone} ${n} ${MOTIVOS[k].rotulo.toLowerCase()}`).join(' · ')
+          || 'Nada captado neste mês.'}</p>`;
+
+    const visiveis = filtrar(valLinhas, valEl('val-filtro').value, valEl('val-busca').value);
+    valEl('val-lista').innerHTML = visiveis.length ? `
+      <div class="tabela-rolagem"><table class="argos-tabela compacta">
+        <thead><tr>
+          <th>Dia</th><th>Paciente</th><th>Por quê</th><th>Freq.</th>
+          <th>Vale</th><th>Conferência</th>
+        </tr></thead>
+        <tbody>${visiveis.map(l => {
+          const sit = l.validacao && l.validacao.situacao;
+          const m = MOTIVOS[l.motivo];
+          return `<tr class="${sit === 'contestada' ? 'linha-alerta' : ''}">
+            <td>${formataBR(l.data)}<br><span class="dim">${esc(l.hora)}</span></td>
+            <td>${esc(l.paciente.nome)}</td>
+            <td title="${esc(m.ajuda)}">${m.icone} ${esc(m.rotulo)}${
+              l.motivo !== 'atendeu' ? `<br><span class="dim">${esc(l.atendidoPor)}</span>` : ''}</td>
+            <td>${esc(l.status.toUpperCase())}</td>
+            <td>${l.contabiliza ? formataMoeda(l.valor) : '<span class="dim">—</span>'}</td>
+            <td class="acoes">
+              <button class="argos-btn small ${sit === 'confirmada' ? 'primary' : ''}"
+                data-val-sit="confirmada" data-val-id="${l.sessao.id}" title="Confirmar">✔</button>
+              <button class="argos-btn small ${sit === 'contestada' ? 'danger' : ''}"
+                data-val-sit="contestada" data-val-id="${l.sessao.id}" title="Contestar">⚠</button>
+              ${l.validacao && l.validacao.observacao
+                  ? `<br><span class="dim">${esc(l.validacao.observacao)}</span>` : ''}
+            </td>
+          </tr>`; }).join('')}</tbody>
+      </table></div>`
+      : '<p class="dim">Nenhuma sessão com esses filtros.</p>';
+}
+
+['val-mes', 'val-filtro'].forEach(id => valEl(id).addEventListener('change', () =>
+    id === 'val-mes' ? renderValidacao() : renderValidacao()));
+valEl('val-busca').addEventListener('input', renderValidacao);
+
+/** Grava a conferência de uma ou muitas sessões, num upsert só. */
+async function gravarValidacao(itens) {
+    if (!itens.length) return false;
+    const { error } = await sb.from('argos_sessao_validacao')
+        .upsert(itens.map(i => ({
+            sessao_id: i.sessao_id, profissional_id: valProf.id,
+            situacao: i.situacao, observacao: i.observacao || null,
+            quem: sessionStorage.getItem('usuario') || null,
+            atualizado_em: new Date().toISOString()
+        })), { onConflict: 'sessao_id,profissional_id' });
+    if (error) { console.error(error); toast('Erro ao gravar a conferência.', true); return false; }
+    const { data } = await todas(() => sb.from('argos_sessao_validacao')
+        .select('*').eq('profissional_id', valProf.id));
+    valValidacoes = data || valValidacoes;
+    renderValidacao();
+    return true;
+}
+
+valEl('val-lista').addEventListener('click', async (e) => {
+    const btn = e.target.closest('[data-val-sit]');
+    if (!btn || !valProf) return;
+    const situacao = btn.dataset.valSit;
+    const linha = valLinhas.find(l => l.sessao.id === btn.dataset.valId);
+    if (!linha) return;
+    // contestar sem dizer o motivo não ajuda ninguém a resolver depois
+    let observacao = linha.validacao ? linha.validacao.observacao : '';
+    if (situacao === 'contestada') {
+        const dito = prompt(`O que está errado nesta sessão de ${linha.paciente.nome} `
+            + `em ${formataBR(linha.data)}?`, observacao || '');
+        if (dito === null) return;
+        observacao = dito.trim();
+    } else observacao = '';
+    if (await gravarValidacao([{ sessao_id: linha.sessao.id, situacao, observacao }])) {
+        toast(situacao === 'confirmada' ? 'Sessão confirmada.' : 'Sessão contestada.');
+    }
+});
+
+valEl('btn-val-confirmar-todas').addEventListener('click', async () => {
+    const pendentes = filtrar(valLinhas, 'pendentes');
+    if (!pendentes.length) { toast('Nada pendente para confirmar.'); return; }
+    if (!confirm(`Confirmar ${pendentes.length} sessão(ões) que ainda não foram conferidas?\n\n`
+        + 'As já contestadas não são tocadas.')) return;
+    if (await gravarValidacao(pendentes.map(l =>
+        ({ sessao_id: l.sessao.id, situacao: 'confirmada' })))) {
+        toast(`${pendentes.length} sessão(ões) confirmada(s).`);
+    }
+});
+
+valEl('btn-val-copiar').addEventListener('click', async () => {
+    if (!valProf) return;
+    const texto = textoDoRelatorio({
+        profissional: valProf.nome, mes: valEl('val-mes').value,
+        linhas: filtrar(valLinhas, valEl('val-filtro').value, valEl('val-busca').value),
+        resumo: resumoDaValidacao(valLinhas), formataBR, formataMoeda
+    });
+    try {
+        await navigator.clipboard.writeText(texto);
+        toast('Relatório copiado — é só colar onde quiser.');
+    } catch (e) {
+        // sem permissão de área de transferência: mostra para copiar à mão
+        window.prompt('Copie o relatório:', texto);
+    }
+});
+
+valEl('btn-val-imprimir').addEventListener('click', () => window.print());

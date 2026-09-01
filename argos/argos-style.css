@@ -807,3 +807,21 @@ td.valor-mes .sub { display: block; font-size: .72rem; }
 td.valor-mes .badge { display: inline-block; margin-top: 3px; }
 .badge.amarelo { background: rgba(234, 179, 8, .18); color: #a16207; }
 #valor-contexto .dica.alerta { color: #a16207; }
+
+/* Espaço alugado a terceiros: aparece na agenda antes dos atendimentos,
+   porque é a sala não estar disponível — não é sessão nem conflito. */
+.chip-aluguel {
+  background: repeating-linear-gradient(135deg,
+    rgba(148,163,184,.16) 0 8px, rgba(148,163,184,.07) 8px 16px);
+  border: 1px dashed #94a3b8;
+  border-radius: 8px;
+  padding: 5px 8px;
+  margin-bottom: 5px;
+  font-size: .82rem;
+  color: #cbd5e1;
+}
+.chip-aluguel .chip-sub { font-size: .74rem; opacity: .78; }
+
+/* Linha contestada na conferência do profissional: precisa saltar aos olhos
+   de quem vai resolver, sem virar alarme na tela inteira. */
+.argos-tabela tr.linha-alerta > td { background: rgba(239, 68, 68, .09); }
