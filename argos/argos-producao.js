@@ -58,11 +58,13 @@ export function valorDaSessao(valorDoMes, sessoesCobradas) {
  * presencas — linhas de argos_prof_frequencia (só as do mês bastam)
  * notaFator — Map(paciente_id → fator) de fatorNFDoMes: mês com nota fiscal
  *             repassa sobre o total menos os 10% da nota
+ * cobrado   — Map(paciente_id → valor) de cobradoPorPaciente: cobrança
+ *             ajustada/enviada no mês; o repasse acompanha esse valor
  *
  * Devolve { porProfissional, faturamento, totalRepasses, clinica, substituicoes }.
  */
 export function producaoDoMes({ pacientes = [], dinamicas = [], sessoes = [],
-    profissionais = [], presencas = [], mes, notaFator = null } = {}) {
+    profissionais = [], presencas = [], mes, notaFator = null, cobrado = null } = {}) {
     const de = mes + '-01';
     const ate = fimDoMes(mes);
     const hoje = hojeISO();
@@ -95,9 +97,12 @@ export function producaoDoMes({ pacientes = [], dinamicas = [], sessoes = [],
         const dinsP = dinamicas.filter(d => d.paciente_id === p.id);
         const sessP = sessoes.filter(s => s.paciente_id === p.id);
         const fech = fechamentoPaciente(p, dinsP, sessP, mes);
-        faturamento += fech.valor;
-        // a cobrança segue cheia; só a BASE DE REPASSE desconta a nota fiscal
-        const fator = (notaFator && notaFator.get(p.id)) ?? 1;
+        // cobrança ajustada/enviada manda no que o mês vale — e o repasse
+        // é proporcional a ela; a nota fiscal tira os 10% dela por cima
+        const vCobrado = cobrado && cobrado.has(p.id) ? cobrado.get(p.id) : null;
+        const fatorAjuste = vCobrado != null && fech.valor > 0 ? vCobrado / fech.valor : 1;
+        faturamento += vCobrado != null ? vCobrado : fech.valor;
+        const fator = (((notaFator && notaFator.get(p.id)) ?? 1)) * fatorAjuste;
 
         for (const pd of (fech.porDinamica || [])) {
             const repasses = (pd.repasses || []).map(r => ({ ...r, valor: r.valor * fator }));

@@ -15,8 +15,9 @@ import {
 import { fatorNFDoMes } from './argos-cobranca.js';
 import {
     atendimentosDoProfissional, resumoDaValidacao, fraseDaValidacao, filtrar,
-    ordenarValidacao, textoDoRelatorio, MOTIVOS, SITUACOES
+    ordenarValidacao, cobradosSemSessao, textoDoRelatorio, MOTIVOS, SITUACOES
 } from './argos-validacao.js';
+import { cobradoPorPaciente } from './argos-fechamento.js';
 
 let perm = { pode: () => true, aplicarVisibilidade: () => {}, master: true };
 let profissionais = [], servicos = [], vinculos = [], dinamicas = [], pacientes = [];
@@ -272,7 +273,7 @@ document.getElementById('servico-lista').addEventListener('click', async (e) => 
 
 let valProf = null;        // profissional em conferência
 let valSessoes = [], valDinamicas = [], valPacientes = [], valValidacoes = [];
-let valNotasMes = [], valLinhas = [];
+let valNotasMes = [], valAjustes = [], valLinhas = [], valFixos = [];
 
 const valEl = id => document.getElementById(id);
 
@@ -290,12 +291,13 @@ async function abrirValidacao(prof) {
 
 async function carregarValidacao() {
     if (!valProf) return;
-    const [rPac, rDin, rSes, rVal, rNM] = await Promise.all([
+    const [rPac, rDin, rSes, rVal, rNM, rAj] = await Promise.all([
         sb.from('argos_pacientes').select('id, nome, ativo, cadastro_removido, processo_fim_data, processo_fim_tipo').order('nome'),
         todas(() => sb.from('argos_dinamicas').select('*')),
         todas(() => sb.from('argos_sessoes').select('*')),
         todas(() => sb.from('argos_sessao_validacao').select('*').eq('profissional_id', valProf.id)),
-        todas(() => sb.from('argos_nota_mes').select('*'))
+        todas(() => sb.from('argos_nota_mes').select('*')),
+        todas(() => sb.from('argos_cobranca_mes').select('*'))
     ]);
     if (rPac.error || rDin.error || rSes.error) {
         console.error(rPac.error || rDin.error || rSes.error);
@@ -307,20 +309,28 @@ async function carregarValidacao() {
     valSessoes = rSes.data || [];
     valValidacoes = (rVal && rVal.data) || [];
     valNotasMes = (rNM && rNM.data) || [];
+    valAjustes = (rAj && rAj.data) || [];
     renderValidacao();
 }
 
 function renderValidacao() {
     if (!valProf) return;
     const mes = valEl('val-mes').value;
+    // paciente com nota fiscal no mês repassa sobre total − 10%; cobrança
+    // ajustada/enviada na página de cobrança muda a base na mesma proporção
+    const notaFator = fatorNFDoMes({
+        pacientes: valPacientes, dinamicas: valDinamicas,
+        excecoes: valNotasMes, mes });
+    const cobrado = cobradoPorPaciente(valAjustes, mes);
     valLinhas = atendimentosDoProfissional({
         profissional_id: valProf.id, mes, pacientes: valPacientes,
         dinamicas: valDinamicas, sessoes: valSessoes,
         profissionais, validacoes: valValidacoes,
-        // paciente com nota fiscal no mês: o repasse incide sobre total − 10%
-        notaFator: fatorNFDoMes({
-            pacientes: valPacientes, dinamicas: valDinamicas,
-            excecoes: valNotasMes, mes })
+        notaFator, cobrado
+    });
+    valFixos = cobradosSemSessao({
+        profissional_id: valProf.id, mes, pacientes: valPacientes,
+        dinamicas: valDinamicas, sessoes: valSessoes, notaFator, cobrado
     });
     const resumo = resumoDaValidacao(valLinhas);
 
@@ -362,7 +372,10 @@ function renderValidacao() {
       </div>
       <p class="dica">${Object.entries(resumo.porMotivo).filter(([, n]) => n)
           .map(([k, n]) => `${MOTIVOS[k].icone} ${n} ${MOTIVOS[k].rotulo.toLowerCase()}`).join(' · ')
-          || 'Nada captado neste mês.'}</p>`;
+          || 'Nada captado neste mês.'}</p>
+      ${valFixos.length ? `<p class="dica">💼 Fixos cobrados sem sessão no mês:
+        <b>${formataMoeda(valFixos.reduce((s, f) => s + f.valor, 0))}</b> de repasse
+        (${valFixos.length} paciente(s)) — entram no acerto e estão no fim da lista.</p>` : ''}`;
 
     const visiveis = ordenarValidacao(
         filtrar(valLinhas, valEl('val-filtro').value, valEl('val-busca').value),
@@ -410,7 +423,30 @@ function renderValidacao() {
         </tr>`;
     };
 
-    valEl('val-lista').innerHTML = grupos.length ? grupos.map(g => {
+    // os fixos cobrados sem sessão fecham a lista: não têm o que conferir,
+    // mas o repasse deles existe e precisa estar à vista
+    const termoBusca = String(valEl('val-busca').value || '').toLowerCase()
+        .normalize('NFD').replace(/[̀-ͯ]/g, '').trim();
+    const fixosVisiveis = ['todas', 'contabilizadas'].includes(valEl('val-filtro').value)
+        ? valFixos.filter(f => !termoBusca || f.paciente.nome.toLowerCase()
+            .normalize('NFD').replace(/[̀-ͯ]/g, '').includes(termoBusca))
+        : [];
+    const blocosFixos = fixosVisiveis.map(f => `
+        <div class="imes-bloco" style="--cor:#a78bfa">
+          <div class="imes-bloco-topo">
+            <b>${esc(f.paciente.nome)}</b>
+            <span class="dim">💼 fixo cobrado sem sessão no mês</span>
+            ${f.ajustadoPara != null ? `<span class="imes-conta" style="--cor:#eab308"
+                title="A cobrança deste mês foi alterada na página de cobrança — o repasse acompanha">
+                ⚖️ cobrado ${formataMoeda(f.ajustadoPara)}</span>` : ''}
+            ${f.nf > 0.005 ? `<span class="imes-conta" style="--cor:#f97316"
+                title="Este mês emite nota fiscal: o repasse incide sobre o total menos os 10% da nota">
+                🧾 NF ${formataMoeda(f.nf)}</span>` : ''}
+            <span class="imes-conta">repasse ${formataMoeda(f.valor)}</span>
+          </div>
+        </div>`).join('');
+
+    valEl('val-lista').innerHTML = (grupos.length || fixosVisiveis.length) ? grupos.map(g => {
         const soma = g.linhas.reduce((s, l) => s + (l.contabiliza ? l.valor : 0), 0);
         const contam = g.linhas.filter(l => l.contabiliza).length;
         const pendentes = g.linhas.filter(l => !l.validacao).length;
@@ -419,6 +455,9 @@ function renderValidacao() {
           <div class="imes-bloco-topo">
             <b>${esc(g.paciente.nome)}</b>
             ${repasseDoParHTML(g.paciente.id)}
+            ${g.linhas[0].ajustadoPara != null ? `<span class="imes-conta" style="--cor:#eab308"
+                title="A cobrança deste mês foi alterada na página de cobrança — o repasse acompanha o valor cobrado">
+                ⚖️ cobrado ${formataMoeda(g.linhas[0].ajustadoPara)}</span>` : ''}
             ${g.linhas[0].nf > 0.005 ? `<span class="imes-conta" style="--cor:#f97316"
                 title="Este mês emite nota fiscal: o repasse incide sobre o total menos os 10% da nota">
                 🧾 NF ${formataMoeda(g.linhas[0].nf)}</span>` : ''}
@@ -437,7 +476,7 @@ function renderValidacao() {
             <tbody>${g.linhas.map(linhaHTML).join('')}</tbody>
           </table></div>
         </div>`;
-    }).join('') : '<p class="dim">Nenhuma sessão com esses filtros.</p>';
+    }).join('') + blocosFixos : '<p class="dim">Nenhuma sessão com esses filtros.</p>';
 }
 
 ['val-mes', 'val-filtro', 'val-ordem'].forEach(id =>

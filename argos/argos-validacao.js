@@ -47,7 +47,7 @@ const CONTABILIZA = new Set(['ok', 'fc']);
  */
 export function atendimentosDoProfissional({ profissional_id, mes, pacientes = [],
     dinamicas = [], sessoes = [], profissionais = [], validacoes = [],
-    notaFator = null } = {}) {
+    notaFator = null, cobrado = null } = {}) {
     if (!profissional_id || !mes) return [];
 
     const de = `${mes}-01`, ate = fimDoMes(mes);
@@ -68,8 +68,15 @@ export function atendimentosDoProfissional({ profissional_id, mes, pacientes = [
         // pela mesma conta que o fechamento faz — nada de regra paralela.
         // Mês que emite nota fiscal repassa sobre o total menos os 10% dela.
         const fech = fechamentoPaciente(p, dinsP, sessoes.filter(s => s.paciente_id === p.id), mes);
-        const fator = (notaFator && notaFator.get(p.id)) ?? 1;
-        const nf = fech.valor * (1 - fator);
+        // cobrança ajustada/enviada manda: o repasse é proporcional a ela,
+        // e a nota fiscal tira os 10% já do valor cobrado
+        const vCobrado = cobrado && cobrado.has(p.id) ? cobrado.get(p.id) : null;
+        const fatorAjuste = vCobrado != null && fech.valor > 0 ? vCobrado / fech.valor : 1;
+        const fatorNF = (notaFator && notaFator.get(p.id)) ?? 1;
+        const fator = fatorNF * fatorAjuste;
+        const baseDoMes = vCobrado != null ? vCobrado : fech.valor;
+        const nf = baseDoMes * (1 - fatorNF);
+        const ajustadoPara = fatorAjuste !== 1 ? vCobrado : null;
         const valorPorDinamica = new Map();
         for (const pd of (fech.porDinamica || [])) {
             const meu = (pd.repasses || []).find(r => r.profissional_id === profissional_id);
@@ -110,6 +117,7 @@ export function atendimentosDoProfissional({ profissional_id, mes, pacientes = [
                 data: s.data, hora: s.hora || '', status: s.status || '??',
                 contabiliza, valor: contabiliza ? meu : 0,
                 nf, // valor da nota fiscal do mês deste paciente (0 = sem nota)
+                ajustadoPara, // cobrança do mês alterada na página de cobrança
                 validacao: validacaoDe(s.id)
             });
         }
@@ -119,6 +127,47 @@ export function atendimentosDoProfissional({ profissional_id, mes, pacientes = [
         || String(a.hora).localeCompare(String(b.hora))
         || String(a.paciente.nome).localeCompare(String(b.paciente.nome)));
     return linhas;
+}
+
+/**
+ * Pacientes deste profissional COBRADOS no mês sem nenhuma sessão na lista —
+ * o caso clássico é o fixo mensal de quem não veio: a cobrança sai mesmo
+ * assim, e o repasse correspondente também. Eles não têm sessão para
+ * conferir, mas precisam aparecer para a conta do modal bater com o acerto.
+ *
+ * Devolve [{ paciente, valor, base, nf, ajustadoPara }] — `valor` é a parte
+ * deste profissional, já com cobrança ajustada e nota fiscal descontada.
+ */
+export function cobradosSemSessao({ profissional_id, mes, pacientes = [],
+    dinamicas = [], sessoes = [], notaFator = null, cobrado = null } = {}) {
+    if (!profissional_id || !mes) return [];
+    const de = `${mes}-01`, ate = fimDoMes(mes);
+    const saida = [];
+    for (const p of pacientes) {
+        const dinsP = dinamicas.filter(d => d.paciente_id === p.id);
+        if (!dinsP.length) continue;
+        const sessP = sessoes.filter(s => s.paciente_id === p.id
+            && s.data >= de && s.data <= ate);
+        if (sessP.length) continue;    // tem sessão: já está na lista normal
+        const fech = fechamentoPaciente(p, dinsP,
+            sessoes.filter(s => s.paciente_id === p.id), mes);
+        if (!(fech.valor > 0)) continue;   // nada cobrado, nada a repassar
+        const meu = (fech.porDinamica || []).reduce((t, pd) =>
+            t + ((pd.repasses || []).find(r => r.profissional_id === profissional_id)
+                || { valor: 0 }).valor, 0);
+        if (!(meu > 0)) continue;          // a cobrança não é deste profissional
+        const vCobrado = cobrado && cobrado.has(p.id) ? cobrado.get(p.id) : null;
+        const fatorAjuste = vCobrado != null && fech.valor > 0 ? vCobrado / fech.valor : 1;
+        const fatorNF = (notaFator && notaFator.get(p.id)) ?? 1;
+        const base = vCobrado != null ? vCobrado : fech.valor;
+        saida.push({
+            paciente: p, base,
+            nf: base * (1 - fatorNF),
+            ajustadoPara: fatorAjuste !== 1 ? vCobrado : null,
+            valor: meu * fatorAjuste * fatorNF
+        });
+    }
+    return saida.sort((a, b) => a.paciente.nome.localeCompare(b.paciente.nome));
 }
 
 /** O placar da conferência: quanto já foi olhado e quanto falta. */
