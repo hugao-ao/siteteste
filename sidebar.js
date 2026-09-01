@@ -52,6 +52,7 @@ function createAdminSidebarHTML(projectContext = null) {
             <li class="sub-menu"><a href="clientes-dashboard.html" id="nav-gerenciar-clientes-planejamento"><i class="fas fa-briefcase"></i> <span>Gerenciar Clientes</span></a></li>
             <li class="sub-menu"><a href="mensagens-whats.html" id="nav-mensagens-whats-planejamento"><i class="fab fa-whatsapp"></i> <span>Mensagens Whats</span></a></li>
             <li class="sub-menu"><a href="curadoria-conteudo.html" id="nav-curadoria-conteudo"><i class="fas fa-newspaper"></i> <span>Curadoria de Conteúdo</span></a></li>
+            <li class="sub-menu"><a href="quadro-disjuntores.html" id="nav-quadro-disjuntores"><i class="fas fa-bolt"></i> <span>Quadro de Disjuntores</span></a></li>
             <li class="sub-menu">
                 <a href="admin-notificacoes-hvsf.html" id="nav-notificacoes-hvsf" style="position: relative;">
                     <i class="fas fa-bell"></i> 

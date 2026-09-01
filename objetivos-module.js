@@ -85,6 +85,72 @@ const PERFIS_FINANCEIROS = [
 ];
 
 // Planos de acompanhamento
+// Quadro de Disjuntores: quais planos estão liberados para contratação.
+// Preenchido a partir da tabela disjuntores_planos. Enquanto não carrega,
+// tudo é tratado como liberado — uma falha de rede não pode travar a venda.
+let disjuntoresPlanos = {};
+
+async function carregarDisjuntores() {
+  try {
+    const { data, error } = await supabase
+      .from('disjuntores_planos')
+      .select('plano_id, contratacao_ativa');
+
+    if (error || !data) return;
+
+    const mapa = {};
+    data.forEach(d => { mapa[d.plano_id] = d.contratacao_ativa !== false; });
+    disjuntoresPlanos = mapa;
+
+    if (document.getElementById('adesao-plano-container')) renderAdesaoSection();
+  } catch (e) {
+    console.warn('Disjuntores indisponíveis, seguindo com tudo liberado:', e.message);
+  }
+}
+
+function contratacaoLiberada(planoId) {
+  return disjuntoresPlanos[planoId] !== false;
+}
+
+// Disjuntor desligado: o plano continua à vista, mas a contratação para aqui.
+function mostrarModalManutencao(nomePlano) {
+  document.getElementById('modal-manutencao-plano')?.remove();
+
+  const overlay = document.createElement('div');
+  overlay.id = 'modal-manutencao-plano';
+  overlay.setAttribute('role', 'dialog');
+  overlay.setAttribute('aria-modal', 'true');
+  overlay.setAttribute('aria-label', 'Contratação em manutenção');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:99999;display:flex;align-items:center;justify-content:center;padding:1rem;';
+
+  overlay.innerHTML = `
+    <div style="background:#143a26;border:1px solid #2a5c43;border-radius:10px;max-width:400px;width:100%;padding:1.6rem 1.5rem;text-align:center;box-shadow:0 20px 50px rgba(0,0,0,.5);">
+      <div style="width:52px;height:52px;margin:0 auto 1rem;border-radius:50%;background:rgba(212,175,55,.14);border:1px solid rgba(212,175,55,.45);display:flex;align-items:center;justify-content:center;color:#d4af37;font-size:1.3rem;">
+        <i class="fas fa-screwdriver-wrench"></i>
+      </div>
+      <h3 style="margin:0 0 .6rem;color:#ffd700;font-size:1.05rem;">Contratação em manutenção</h3>
+      <p style="margin:0 0 1.3rem;color:#a8c9b6;font-size:.88rem;line-height:1.55;">
+        A contratação${nomePlano ? ' do <b style="color:#f0f8f0;">' + nomePlano + '</b>' : ''}
+        está temporariamente indisponível. Em breve retomaremos a normalidade.
+      </p>
+      <button type="button" id="fechar-modal-manutencao"
+        style="background:#d4af37;border:none;color:#14311f;padding:.55rem 1.6rem;border-radius:6px;font:inherit;font-size:.85rem;font-weight:600;cursor:pointer;">
+        Entendi
+      </button>
+    </div>
+  `;
+
+  const fechar = () => overlay.remove();
+  overlay.addEventListener('click', e => { if (e.target === overlay) fechar(); });
+  overlay.querySelector('#fechar-modal-manutencao').addEventListener('click', fechar);
+  document.addEventListener('keydown', function esc(e) {
+    if (e.key === 'Escape') { fechar(); document.removeEventListener('keydown', esc); }
+  });
+
+  document.body.appendChild(overlay);
+  overlay.querySelector('#fechar-modal-manutencao').focus();
+}
+
 // Espelho de src/lib/planos.ts do repositório mithrasf (site público).
 // O site público é a fonte da verdade comercial: preço, cadência de reunião,
 // prazo de WhatsApp e escopo saem de lá. Se mudar lá, mude aqui — ou, quando
@@ -3317,8 +3383,9 @@ function renderInvestimentoAssistencia() {
         </h4>
         <div style="display: none; gap: 0.6rem; flex-wrap: wrap; margin-top: 0.8rem;">
           ${PLANOS_ACOMPANHAMENTO.map(plano => `
-          <div onclick="window.selecionarPlanoAcompanhamento('${plano.id}')" 
-               style="flex: 1; min-width: 180px; border: 2px solid ${planoSelecionado === plano.id ? plano.cor : 'var(--border-color)'}; border-radius: 8px; padding: 0.8rem; cursor: pointer; transition: all 0.2s; position: relative; ${plano.destaque ? 'box-shadow: 0 0 12px rgba(40,167,69,0.3);' : ''} ${planoSelecionado === plano.id ? 'background: rgba(' + hexToRgb(plano.cor) + ', 0.08);' : ''}">
+          <div onclick="window.selecionarPlanoAcompanhamento('${plano.id}')"
+               style="flex: 1; min-width: 180px; border: 2px solid ${planoSelecionado === plano.id ? plano.cor : 'var(--border-color)'}; border-radius: 8px; padding: 0.8rem; cursor: pointer; transition: all 0.2s; position: relative; ${plano.destaque ? 'box-shadow: 0 0 12px rgba(40,167,69,0.3);' : ''} ${planoSelecionado === plano.id ? 'background: rgba(' + hexToRgb(plano.cor) + ', 0.08);' : ''} ${!contratacaoLiberada(plano.id) ? 'opacity: 0.55;' : ''}">
+            ${!contratacaoLiberada(plano.id) ? '<span style="position: absolute; top: -8px; left: 8px; background: #d4af37; color: #14311f; font-size: 0.55rem; font-weight: 700; padding: 0.1rem 0.4rem; border-radius: 3px;">EM MANUTENÇÃO</span>' : ''}
             ${plano.destaque ? '<span style="position: absolute; top: -8px; right: 8px; background: #28a745; color: white; font-size: 0.55rem; padding: 0.1rem 0.4rem; border-radius: 3px;">POPULAR</span>' : ''}
             ${planoSelecionado === plano.id ? '<span style="position: absolute; top: 5px; right: 8px; color: ' + plano.cor + '; font-size: 0.8rem;"><i class="fas fa-check-circle"></i></span>' : ''}
             <div style="text-align: center; margin-bottom: 0.5rem;">
@@ -3507,7 +3574,12 @@ window.updateInvestimentoObs = function(valor) {
   investimentoAssistenciaData.observacoes = valor;
 };
 window.selecionarPlanoAcompanhamento = function(planoId) {
-  investimentoAssistenciaData.plano_acompanhamento = 
+  if (!contratacaoLiberada(planoId)) {
+    const plano = PLANOS_ACOMPANHAMENTO.find(p => p.id === planoId);
+    mostrarModalManutencao(plano ? plano.nome : '');
+    return;
+  }
+  investimentoAssistenciaData.plano_acompanhamento =
     investimentoAssistenciaData.plano_acompanhamento === planoId ? '' : planoId;
   renderAdesaoSection();
 };
@@ -3526,6 +3598,7 @@ document.addEventListener('DOMContentLoaded', () => {
   console.log('Módulo de Objetivos v7.0 carregado');
   carregarVariaveisMercado();
   sincronizarPlanosPublicos();
+  carregarDisjuntores();
   // Garantir renderização inicial após tempo suficiente para loadDiagnostico
   setTimeout(() => {
     const container = document.getElementById('objetivos-container');
