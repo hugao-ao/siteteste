@@ -388,20 +388,27 @@ export function planoDoMes({ linhas = [], pacientes = [], profissionais = [],
         // vencido ela ainda conta (mesma regra do aviso de pendências)
         const paraProjecao = corte.dinamicas.map(d => d.ativo === false ? { ...d, ativo: true } : d);
         const pacsCobertos = new Set(pares.map(p => p.paciente.id));
-        const diaTemPlanilha = new Set();
-        for (const l of linhas) {
-            const pac = pacPorChave.get(l.chave);
-            if (!pac) continue;
-            for (const sp of l.sessoes || []) diaTemPlanilha.add(`${pac.id}|${sp.data}`);
+        // o que já responde por cada dinâmica em cada dia: uma sessão nova que
+        // esta importação propõe, ou uma sessão gravada (em qualquer hora — as
+        // antigas às vezes ficaram na hora deslocada). Um paciente com DUAS
+        // linhas na planilha pode ter registro numa dinâmica e buraco na
+        // outra no mesmo dia — e o buraco da outra continua sendo buraco.
+        const respondido = new Set();
+        for (const m of mudancas) {
+            if (m.tipo !== 'nova' || !m.acao) continue;
+            const r = m.acao.registro;
+            respondido.add(`${r.paciente_id}|${r.data}|${r.dinamica_ref || 'h:' + r.hora}`);
         }
-        const diaTemGravada = new Set(doMes.map(x => `${x.paciente_id}|${x.data}`));
+        for (const x of doMes) {
+            respondido.add(`${x.paciente_id}|${x.data}|${x.dinamica_ref || 'h:' + x.hora}`);
+        }
         for (const proj of mesclarSessoes(paraProjecao, corte.sessoes, de, ateNc)) {
             if (!proj.projetada || proj.status !== '??') continue;
             if (!pacsCobertos.has(proj.paciente_id)) continue;
             if (proj.profissional_id
                 && !paresIds.has(`${proj.paciente_id}|${proj.profissional_id}`)) continue;
-            if (diaTemPlanilha.has(`${proj.paciente_id}|${proj.data}`)) continue;
-            if (diaTemGravada.has(`${proj.paciente_id}|${proj.data}`)) continue;
+            if (respondido.has(`${proj.paciente_id}|${proj.data}|${proj.dinamica_ref}`)) continue;
+            if (respondido.has(`${proj.paciente_id}|${proj.data}|h:${proj.hora}`)) continue;
             const pac = pacientes.find(x => x.id === proj.paciente_id);
             const prof = profissionais.find(x => x.id === proj.profissional_id);
             mudancas.push({
