@@ -165,6 +165,32 @@ export function filtrar(linhas = [], filtro = 'todas', busca = '') {
     });
 }
 
+/**
+ * Ordena as linhas para a tela mantendo as sessões do MESMO paciente juntas.
+ *
+ * modo 'paciente' — grupos em ordem alfabética do nome;
+ * modo 'horario'  — grupos pela hora mais cedo do paciente no mês.
+ * Dentro do grupo, sempre por data e hora.
+ */
+export function ordenarValidacao(linhas = [], modo = 'paciente') {
+    const grupos = new Map();
+    for (const l of linhas) {
+        const k = l.paciente.id || l.paciente.nome;
+        if (!grupos.has(k)) grupos.set(k, []);
+        grupos.get(k).push(l);
+    }
+    const gs = [...grupos.values()];
+    for (const g of gs) {
+        g.sort((a, b) => (a.data + a.hora).localeCompare(b.data + b.hora));
+    }
+    const horaDoGrupo = g => g.reduce((m, l) => !m || l.hora < m ? l.hora : m, '');
+    gs.sort(modo === 'horario'
+        ? (a, b) => horaDoGrupo(a).localeCompare(horaDoGrupo(b))
+            || a[0].paciente.nome.localeCompare(b[0].paciente.nome)
+        : (a, b) => a[0].paciente.nome.localeCompare(b[0].paciente.nome));
+    return gs.flat();
+}
+
 /** O texto que o profissional recebe para conferir fora do sistema. */
 export function textoDoRelatorio({ profissional, mes, linhas = [], resumo,
     formataBR, formataMoeda }) {

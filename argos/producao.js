@@ -201,6 +201,17 @@ function renderRepasses() {
         <b>${fechados}/${repasses.length}</b></span>`
       : '<span>Nada a repassar neste mês.</span>';
 
+    // sem a % padrão o profissional calcula R$ 0,00 e pode nem aparecer aqui —
+    // este é o lugar onde a ausência dela precisa gritar
+    const semPadrao = profissionais.filter(p =>
+        (p.remuneracao_tipo || 'producao') !== 'fixo' && p.repasse_padrao == null);
+    if (semPadrao.length) {
+        document.getElementById('rp-resumo').innerHTML += `
+          <span class="alerta">⚠ Sem repasse padrão definido:
+            <b>${semPadrao.map(p => esc(p.nome)).join(', ')}</b> — a produção deles sai
+            R$ 0,00 até a % ser preenchida no <a href="profissionais.html">cadastro de profissionais</a>.</span>`;
+    }
+
     document.getElementById('rp-cards').innerHTML = repasses.map(cartaoAcerto).join('');
     document.getElementById('rp-vazio').style.display = repasses.length ? 'none' : '';
 }
