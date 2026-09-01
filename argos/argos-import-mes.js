@@ -84,6 +84,25 @@ export function sessoesDaPlanilha(linha) {
         });
 }
 
+/**
+ * A dinâmica que responde por este slot (dow+hora) nesta data.
+ *
+ * O acordo de um paciente vive em "trechos": quando o valor ou o horário
+ * muda, nasce uma dinâmica nova e a velha ganha data de fim. Ligar a sessão
+ * ao trecho errado — o de fevereiro, vencido — deixa a projeção do trecho
+ * vigente órfã, pendente para sempre. Por isso a escolha é por horário E
+ * vigência, preferindo o trecho mais novo.
+ */
+function dinamicaDoSlot(dinamicas, pacienteId, data, hora) {
+    const dow = new Date(data + 'T12:00:00').getDay();
+    return (dinamicas || []).filter(d => d.paciente_id === pacienteId
+        && Array.isArray(d.dias)
+        && d.dias.some(x => Number(x.dow) === dow && x.hora === hora)
+        && d.data_inicio && d.data_inicio <= data
+        && !(d.fim_tipo === 'data' && d.fim_data && d.fim_data < data))
+        .sort((a, b) => String(b.data_inicio).localeCompare(String(a.data_inicio)));
+}
+
 // ---------------------------------------------------------------------------
 // O plano de importação
 // ---------------------------------------------------------------------------
@@ -194,8 +213,25 @@ export function planoDoMes({ linhas = [], pacientes = [], profissionais = [],
         const pac = pacPorChave.get(l.chave);
         const prof = profPorNome.get(norm(l.profissional));
         if (!pac || !prof) continue;
-        const din = (dinamicas || []).find(d => d.paciente_id === pac.id
-            && d.profissional_id === prof.id && d.ativo !== false) || null;
+        // reserva das dinâmicas já ocupadas em cada dia deste paciente, para
+        // duas sessões no mesmo dia (grupo + individual no mesmo horário da
+        // planilha) caírem cada uma no seu acordo
+        const usadasNoDia = new Map();
+        for (const g of sessoes) {
+            if (g.paciente_id !== pac.id || !g.dinamica_ref) continue;
+            if (!usadasNoDia.has(g.data)) usadasNoDia.set(g.data, new Set());
+            usadasNoDia.get(g.data).add(g.dinamica_ref);
+        }
+        const reservar = (data, id) => {
+            if (!usadasNoDia.has(data)) usadasNoDia.set(data, new Set());
+            usadasNoDia.get(data).add(id);
+        };
+        const fallbackProf = (data) => (dinamicas || []).filter(d =>
+            d.paciente_id === pac.id && d.profissional_id === prof.id
+            && d.data_inicio && d.data_inicio <= data
+            && !(d.fim_tipo === 'data' && d.fim_data && d.fim_data < data)
+            && d.ativo !== false)
+            .sort((a, b) => String(b.data_inicio).localeCompare(String(a.data_inicio)))[0] || null;
 
         for (const s of sessoesDaPlanilha(l)) {
             const candidatas = (porPacDia.get(`${pac.id}|${s.data}`) || [])
@@ -207,19 +243,32 @@ export function planoDoMes({ linhas = [], pacientes = [], profissionais = [],
                 || candidatas.find(x => !x.profissional_id) || candidatas[0] || null;
 
             if (!existente) {
+                // primeiro a dinâmica que projeta esta hora exata; senão, a
+                // que projeta a hora base da linha (é o caso da 2ª sessão do
+                // dia, que a planilha empurra +1h) — e aí a sessão nasce na
+                // hora da dinâmica, para a projeção casar com ela
+                const livre = ds => ds.find(d => !(usadasNoDia.get(s.data) || new Set()).has(d.id));
+                let din = livre(dinamicaDoSlot(dinamicas, pac.id, s.data, s.hora)) || null;
+                let hora = s.hora;
+                if (!din && s.hora !== l.hora) {
+                    din = livre(dinamicaDoSlot(dinamicas, pac.id, s.data, l.hora)) || null;
+                    if (din) hora = l.hora;
+                }
+                if (!din) din = fallbackProf(s.data);
+                if (din) reservar(s.data, din.id);
                 mudancas.push({
                     id: `nova|${pac.id}|${prof.id}|${s.data}|${s.ordem}`,
                     tipo: 'nova', aplicavel: true, paciente_id: pac.id,
                     paciente: pac.nome, profissional: prof.nome, data: s.data,
-                    hora: s.hora, bloco: s.bloco,
-                    rotulo: `${pac.nome} — ${dm(s.data)} ${s.hora}`,
+                    hora, bloco: s.bloco,
+                    rotulo: `${pac.nome} — ${dm(s.data)} ${hora}`,
                     detalhe: `${prof.nome} · ${s.bloco} · ${ROTULO_STATUS[s.status] || s.status}`,
                     depois: s.status,
                     acao: { op: 'inserir', tabela: 'argos_sessoes', registro: {
                         paciente_id: pac.id, profissional_id: prof.id,
                         dinamica_id: din ? din.id : null, dinamica_ref: din ? din.id : null,
                         sala_id: din ? din.sala_id : null, servico_id: din ? din.servico_id : null,
-                        data: s.data, hora: s.hora, duracao_min: (din && din.duracao_min) || 60,
+                        data: s.data, hora, duracao_min: (din && din.duracao_min) || 60,
                         status: s.status
                     } }
                 });
