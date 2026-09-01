@@ -16,7 +16,10 @@
 import { sb, todas, toast, esc, abrirModal, fecharModal } from './argos-common.js';
 import { fechamentoPaciente, formataMoeda, formataBR, hojeISO, STATUS_SESSAO } from './argos-recorrencia.js';
 import { mesBR, normalizarFone, linkWhatsApp, detalhesDoMes, notaEfetiva,
-         situacaoNota, contatosParaCobranca, retratoDaNota, compararRetrato } from './argos-cobranca.js';
+         situacaoNota, contatosParaCobranca, retratoDaNota, compararRetrato,
+         dinamicasDoMes } from './argos-cobranca.js';
+
+export { dinamicasDoMes }; // a regra mudou de arquivo; quem importava daqui segue valendo
 import { documento, secao, ficha, abrirDocumento } from './argos-relatorio.js';
 
 const CSS = `
@@ -562,17 +565,6 @@ export async function calcularExtrato(paciente, cache = {}) {
     return extratoAtual;
 }
 
-/** Dinâmicas que estavam de pé naquele mês (para saber o regime de nota). */
-export function dinamicasDoMes(dinamicas = [], mes) {
-    const de = mes + '-01';
-    const ate = mes + '-31';
-    const vivas = (dinamicas || []).filter(d => {
-        if (d.data_inicio && d.data_inicio > ate) return false;
-        if (d.fim_tipo === 'data' && d.fim_data && d.fim_data < de) return false;
-        return true;
-    });
-    return vivas.length ? vivas : (dinamicas || []);
-}
 
 export async function abrirExtrato(paciente, cache = {}) {
     ordem = { coluna: 'mes', desc: false };

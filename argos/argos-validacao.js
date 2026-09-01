@@ -46,7 +46,8 @@ const CONTABILIZA = new Set(['ok', 'fc']);
  * dele tanto quanto a presença.
  */
 export function atendimentosDoProfissional({ profissional_id, mes, pacientes = [],
-    dinamicas = [], sessoes = [], profissionais = [], validacoes = [] } = {}) {
+    dinamicas = [], sessoes = [], profissionais = [], validacoes = [],
+    notaFator = null } = {}) {
     if (!profissional_id || !mes) return [];
 
     const de = `${mes}-01`, ate = fimDoMes(mes);
@@ -64,8 +65,11 @@ export function atendimentosDoProfissional({ profissional_id, mes, pacientes = [
         if (!sessP.length) continue;
 
         // quanto cada sessão daquela dinâmica vale para este profissional,
-        // pela mesma conta que o fechamento faz — nada de regra paralela
+        // pela mesma conta que o fechamento faz — nada de regra paralela.
+        // Mês que emite nota fiscal repassa sobre o total menos os 10% dela.
         const fech = fechamentoPaciente(p, dinsP, sessoes.filter(s => s.paciente_id === p.id), mes);
+        const fator = (notaFator && notaFator.get(p.id)) ?? 1;
+        const nf = fech.valor * (1 - fator);
         const valorPorDinamica = new Map();
         for (const pd of (fech.porDinamica || [])) {
             const meu = (pd.repasses || []).find(r => r.profissional_id === profissional_id);
@@ -75,8 +79,8 @@ export function atendimentosDoProfissional({ profissional_id, mes, pacientes = [
             valorPorDinamica.set(pd.dinamica_id, {
                 // a minha parte por sessão, e a parte de TODOS os profissionais
                 // por sessão: quem cobre uma sessão leva a segunda, não a primeira
-                minha: meu && contadas.length ? meu.valor / contadas.length : 0,
-                pool: contadas.length ? pool / contadas.length : 0
+                minha: meu && contadas.length ? (meu.valor * fator) / contadas.length : 0,
+                pool: contadas.length ? (pool * fator) / contadas.length : 0
             });
         }
 
@@ -105,6 +109,7 @@ export function atendimentosDoProfissional({ profissional_id, mes, pacientes = [
                 atendidoPor: s.profissional_id ? nomeProf(s.profissional_id) : '—',
                 data: s.data, hora: s.hora || '', status: s.status || '??',
                 contabiliza, valor: contabiliza ? meu : 0,
+                nf, // valor da nota fiscal do mês deste paciente (0 = sem nota)
                 validacao: validacaoDe(s.id)
             });
         }

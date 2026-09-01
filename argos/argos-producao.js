@@ -56,11 +56,13 @@ export function valorDaSessao(valorDoMes, sessoesCobradas) {
  *
  * pacientes, dinamicas, sessoes, profissionais — as tabelas inteiras
  * presencas — linhas de argos_prof_frequencia (só as do mês bastam)
+ * notaFator — Map(paciente_id → fator) de fatorNFDoMes: mês com nota fiscal
+ *             repassa sobre o total menos os 10% da nota
  *
  * Devolve { porProfissional, faturamento, totalRepasses, clinica, substituicoes }.
  */
 export function producaoDoMes({ pacientes = [], dinamicas = [], sessoes = [],
-    profissionais = [], presencas = [], mes } = {}) {
+    profissionais = [], presencas = [], mes, notaFator = null } = {}) {
     const de = mes + '-01';
     const ate = fimDoMes(mes);
     const hoje = hojeISO();
@@ -94,9 +96,11 @@ export function producaoDoMes({ pacientes = [], dinamicas = [], sessoes = [],
         const sessP = sessoes.filter(s => s.paciente_id === p.id);
         const fech = fechamentoPaciente(p, dinsP, sessP, mes);
         faturamento += fech.valor;
+        // a cobrança segue cheia; só a BASE DE REPASSE desconta a nota fiscal
+        const fator = (notaFator && notaFator.get(p.id)) ?? 1;
 
         for (const pd of (fech.porDinamica || [])) {
-            const repasses = pd.repasses || [];
+            const repasses = (pd.repasses || []).map(r => ({ ...r, valor: r.valor * fator }));
             if (!repasses.length) continue;
             const d = dinsP.find(x => x.id === pd.dinamica_id);
 
