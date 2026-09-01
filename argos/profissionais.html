@@ -100,6 +100,11 @@
           <option value="contestadas">Só as contestadas</option>
           <option value="contabilizadas">Só as que contabilizam</option>
         </select>
+        <select id="val-ordem" class="argos-input"
+          title="Nas duas ordens, as sessões do mesmo paciente ficam juntas">
+          <option value="paciente">Ordem alfabética (paciente)</option>
+          <option value="horario">Ordem de horário</option>
+        </select>
         <input type="search" id="val-busca" class="argos-input" placeholder="🔎 paciente ou quem atendeu" />
       </div>
       <div class="pend-barra">
@@ -116,7 +121,7 @@
     </div>
   </div>
 
-  <script type="module" src="profissionais.js?v=8"></script>
+  <script type="module" src="profissionais.js?v=9"></script>
   <script type="module" src="argos-zoom.js?v=4"></script>
 </body>
 </html>

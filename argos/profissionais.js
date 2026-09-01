@@ -11,7 +11,7 @@ import {
 } from './argos-recorrencia.js';
 import {
     atendimentosDoProfissional, resumoDaValidacao, fraseDaValidacao, filtrar,
-    textoDoRelatorio, MOTIVOS, SITUACOES
+    ordenarValidacao, textoDoRelatorio, MOTIVOS, SITUACOES
 } from './argos-validacao.js';
 
 let perm = { pode: () => true, aplicarVisibilidade: () => {}, master: true };
@@ -345,7 +345,35 @@ function renderValidacao() {
     });
     const resumo = resumoDaValidacao(valLinhas);
 
-    valEl('val-resumo').innerHTML = `
+    // o sintoma clássico de padrão não definido: sessões contabilizando R$ 0,00.
+    // O aviso traz o campo junto — dá para resolver sem sair do modal.
+    // só é sintoma de padrão faltando quando a linha zerada vem de dinâmica
+    // cujo repasse deste profissional está VAZIO (herdaria o padrão). Sessão
+    // redirecionada a quem cobriu, ou de dinâmica em que ele não tem repasse,
+    // vale 0 de propósito.
+    const semPadrao = (valProf.remuneracao_tipo || 'producao') !== 'fixo'
+        && valProf.repasse_padrao == null
+        && valLinhas.some(l => {
+            if (!l.contabiliza || l.valor > 0) return false;
+            if (l.sessao.repasse_profissional_id
+                && l.sessao.repasse_profissional_id !== valProf.id) return false;
+            const d = valDinamicas.find(x =>
+                x.id === (l.sessao.dinamica_ref || l.sessao.dinamica_id));
+            return d && repassesDe(d).some(r =>
+                r.profissional_id === valProf.id && r.valor == null);
+        });
+    const podeDefinir = perm.master || perm.pode('profissionais_gerenciar');
+    const aviso = !semPadrao ? '' : `
+      <div class="linha-alerta" style="padding:10px 12px; margin-bottom:10px; border-radius:8px">
+        ⚠ <b>${esc(valProf.nome)} está sem repasse padrão definido</b> — por isso as sessões
+        estão valendo R$ 0,00. ${podeDefinir ? `Defina a % combinada:
+        <input type="number" id="val-padrao-pct" class="argos-input" min="0" max="100"
+          step="0.01" placeholder="%" style="width:90px" />
+        <button type="button" class="argos-btn small primary" id="btn-val-padrao">Salvar e recalcular</button>`
+        : 'Peça a quem gerencia os profissionais para definir a % no cadastro dele.'}
+      </div>`;
+
+    valEl('val-resumo').innerHTML = `${aviso}
       <div class="resumo-linha">
         <span class="resumo-item">${esc(fraseDaValidacao(resumo))}</span>
         <span class="resumo-item"><b>${resumo.contabilizadas}</b> contabilizam ·
@@ -357,7 +385,10 @@ function renderValidacao() {
           .map(([k, n]) => `${MOTIVOS[k].icone} ${n} ${MOTIVOS[k].rotulo.toLowerCase()}`).join(' · ')
           || 'Nada captado neste mês.'}</p>`;
 
-    const visiveis = filtrar(valLinhas, valEl('val-filtro').value, valEl('val-busca').value);
+    const visiveis = ordenarValidacao(
+        filtrar(valLinhas, valEl('val-filtro').value, valEl('val-busca').value),
+        valEl('val-ordem').value);
+    let pacAnterior = null;
     valEl('val-lista').innerHTML = visiveis.length ? `
       <div class="tabela-rolagem"><table class="argos-tabela compacta">
         <thead><tr>
@@ -367,7 +398,10 @@ function renderValidacao() {
         <tbody>${visiveis.map(l => {
           const sit = l.validacao && l.validacao.situacao;
           const m = MOTIVOS[l.motivo];
-          return `<tr class="${sit === 'contestada' ? 'linha-alerta' : ''}">
+          const trocaPaciente = pacAnterior !== null && pacAnterior !== l.paciente.id;
+          pacAnterior = l.paciente.id;
+          return `<tr class="${sit === 'contestada' ? 'linha-alerta' : ''}"${
+            trocaPaciente ? ' style="border-top:2px solid rgba(148,163,184,.35)"' : ''}>
             <td>${formataBR(l.data)}<br><span class="dim">${esc(l.hora)}</span></td>
             <td>${esc(l.paciente.nome)}</td>
             <td title="${esc(m.ajuda)}">${m.icone} ${esc(m.rotulo)}${
@@ -376,9 +410,11 @@ function renderValidacao() {
             <td>${l.contabiliza ? formataMoeda(l.valor) : '<span class="dim">—</span>'}</td>
             <td class="acoes">
               <button class="argos-btn small ${sit === 'confirmada' ? 'primary' : ''}"
-                data-val-sit="confirmada" data-val-id="${l.sessao.id}" title="Confirmar">✔</button>
+                data-val-sit="confirmada" data-val-id="${l.sessao.id}"
+                title="${sit === 'confirmada' ? 'Clique de novo para desfazer a confirmação' : 'Confirmar'}">✔</button>
               <button class="argos-btn small ${sit === 'contestada' ? 'danger' : ''}"
-                data-val-sit="contestada" data-val-id="${l.sessao.id}" title="Contestar">⚠</button>
+                data-val-sit="contestada" data-val-id="${l.sessao.id}"
+                title="${sit === 'contestada' ? 'Clique de novo para desfazer a contestação' : 'Contestar'}">⚠</button>
               ${l.validacao && l.validacao.observacao
                   ? `<br><span class="dim">${esc(l.validacao.observacao)}</span>` : ''}
             </td>
@@ -387,9 +423,30 @@ function renderValidacao() {
       : '<p class="dim">Nenhuma sessão com esses filtros.</p>';
 }
 
-['val-mes', 'val-filtro'].forEach(id => valEl(id).addEventListener('change', () =>
-    id === 'val-mes' ? renderValidacao() : renderValidacao()));
+['val-mes', 'val-filtro', 'val-ordem'].forEach(id =>
+    valEl(id).addEventListener('change', renderValidacao));
 valEl('val-busca').addEventListener('input', renderValidacao);
+
+// salvar o repasse padrão sem sair do modal (o aviso de R$ 0,00 traz o campo)
+valEl('val-resumo').addEventListener('click', async e => {
+    if (e.target.id !== 'btn-val-padrao' || !valProf) return;
+    const campo = document.getElementById('val-padrao-pct');
+    const v = Number(campo.value);
+    if (campo.value === '' || !(v >= 0 && v <= 100)) {
+        toast('Informe a % combinada, entre 0 e 100.', true);
+        return;
+    }
+    const { error } = await sb.from('argos_profissionais')
+        .update({ repasse_padrao: v }).eq('id', valProf.id);
+    if (error) { console.error(error); toast('Não consegui salvar o padrão.', true); return; }
+    valProf.repasse_padrao = v;
+    const p = profissionais.find(x => x.id === valProf.id);
+    if (p) p.repasse_padrao = v;
+    definirRepassePadrao(profissionais);
+    renderLista();
+    renderValidacao();
+    toast(`Repasse padrão de ${valProf.nome}: ${v}% — valores recalculados.`);
+});
 
 /** Grava a conferência de uma ou muitas sessões, num upsert só. */
 async function gravarValidacao(itens) {
@@ -415,6 +472,17 @@ valEl('val-lista').addEventListener('click', async (e) => {
     const situacao = btn.dataset.valSit;
     const linha = valLinhas.find(l => l.sessao.id === btn.dataset.valId);
     if (!linha) return;
+    // clicar de novo no que já está marcado desfaz a conferência
+    if (linha.validacao && linha.validacao.situacao === situacao) {
+        const { error } = await sb.from('argos_sessao_validacao').delete()
+            .eq('sessao_id', linha.sessao.id).eq('profissional_id', valProf.id);
+        if (error) { console.error(error); toast('Erro ao desfazer a conferência.', true); return; }
+        valValidacoes = valValidacoes.filter(v =>
+            !(v.sessao_id === linha.sessao.id && v.profissional_id === valProf.id));
+        renderValidacao();
+        toast('Conferência desfeita — a sessão volta a «sem conferir».');
+        return;
+    }
     // contestar sem dizer o motivo não ajuda ninguém a resolver depois
     let observacao = linha.validacao ? linha.validacao.observacao : '';
     if (situacao === 'contestada') {
@@ -443,7 +511,9 @@ valEl('btn-val-copiar').addEventListener('click', async () => {
     if (!valProf) return;
     const texto = textoDoRelatorio({
         profissional: valProf.nome, mes: valEl('val-mes').value,
-        linhas: filtrar(valLinhas, valEl('val-filtro').value, valEl('val-busca').value),
+        linhas: ordenarValidacao(
+            filtrar(valLinhas, valEl('val-filtro').value, valEl('val-busca').value),
+            valEl('val-ordem').value),
         resumo: resumoDaValidacao(valLinhas), formataBR, formataMoeda
     });
     try {
