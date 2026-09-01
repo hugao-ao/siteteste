@@ -266,10 +266,9 @@ const PLANOS_ACOMPANHAMENTO = [
 // enquanto a rede não responde.
 // =========================================================================
 
-// PREENCHER com o domínio de produção do site público, ex.:
-// 'https://hvsaudefinanceira.com.br/planos.json'
-// Vazio = sincronização desligada, vale só o espelho local.
-const PLANOS_URL = '';
+// O site público gera este arquivo a cada publicação, a partir do próprio
+// src/lib/planos.ts. Vazio desligaria a sincronização e valeria só o espelho.
+const PLANOS_URL = 'https://www.hvsaudefinanceira.com.br/planos.json';
 
 const PLANOS_CACHE_KEY = 'hv_planos_publicos';
 
