@@ -583,13 +583,22 @@ export function fechamentoPaciente(paciente, dinamicas, sessoes, mes) {
         }
     }
 
-    // sessões avulsas/manuais (sem dinâmica): valor próprio de cada sessão
-    // (sem % de repasse definido, o valor fica integralmente com a clínica)
+    // sessões avulsas/manuais (sem dinâmica): valor próprio de cada sessão.
+    // Quem atendeu recebe pelo repasse padrão do cadastro dele; sessão sem
+    // profissional (ou profissional sem padrão) fica integralmente com a clínica.
     for (const s of sess.filter(x => !x.dinamica_ref)) {
         if (cobraSessao(s) && s.valor != null) {
-            valor += Number(s.valor) || 0;
+            const v = Number(s.valor) || 0;
+            valor += v;
             detalhes.push(`Sessão avulsa ${formataBR(s.data)} ${s.hora}: ${formataMoeda(s.valor)}`);
-            porDinamica.push({ dinamica_id: null, profissional_id: s.profissional_id, valor: Number(s.valor) || 0, repasses: [] });
+            porDinamica.push({
+                dinamica_id: null, profissional_id: s.profissional_id, valor: v,
+                repasses: s.profissional_id
+                    ? repassesDoValor({ acordo_tipo: 'por_sessao', valor: v,
+                        repasses: [{ profissional_id: s.profissional_id,
+                            tipo: 'percentual', valor: null }] }, v)
+                    : []
+            });
         }
     }
 

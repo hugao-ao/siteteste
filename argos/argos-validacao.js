@@ -14,7 +14,9 @@
 // que o profissional valida — confirmando o que reconhece e contestando o
 // que não reconhece, sem precisar mexer na frequência de ninguém.
 
-import { repassesDe, fechamentoPaciente, fimDoMes, hojeISO } from './argos-recorrencia.js';
+import {
+    repassesDe, fechamentoPaciente, fimDoMes, hojeISO, repassePadraoDe
+} from './argos-recorrencia.js';
 
 /** Por que esta sessão está na lista do profissional. */
 export const MOTIVOS = {
@@ -79,6 +81,7 @@ export function atendimentosDoProfissional({ profissional_id, mes, pacientes = [
         const ajustadoPara = fatorAjuste !== 1 ? vCobrado : null;
         const valorPorDinamica = new Map();
         for (const pd of (fech.porDinamica || [])) {
+            if (pd.dinamica_id == null) continue; // avulsas se resolvem por sessão, abaixo
             const meu = (pd.repasses || []).find(r => r.profissional_id === profissional_id);
             const contadas = (fech.sessoes || []).filter(s => s.dinamica_ref === pd.dinamica_id
                 && (CONTABILIZA.has(s.status) || (s.status === '??' && s.data >= hoje)));
@@ -105,7 +108,17 @@ export function atendimentosDoProfissional({ profissional_id, mes, pacientes = [
 
             // uma sessão redirecionada deixa de pagar o dono e passa a pagar
             // quem cobriu: a lista mostra as duas pontas, com o valor certo
-            const v = valorPorDinamica.get(s.dinamica_ref || s.dinamica_id) || { minha: 0, pool: 0 };
+            let v = valorPorDinamica.get(s.dinamica_ref || s.dinamica_id) || { minha: 0, pool: 0 };
+            if (!din && s.valor != null) {
+                // avulsa: o valor da própria sessão, repassado pelo padrão de
+                // quem a recebe (quem atendeu, ou quem cobriu se redirecionada)
+                const alvo = redirecionada || s.profissional_id;
+                const padrao = repassePadraoDe(alvo);
+                const parte = padrao != null
+                    ? (Number(s.valor) || 0) * (padrao / 100) * fator : 0;
+                v = { minha: !redirecionada && s.profissional_id === profissional_id
+                        ? parte : 0, pool: parte };
+            }
             const contabiliza = CONTABILIZA.has(s.status);
             const meu = redirecionada
                 ? (redirecionada === profissional_id ? v.pool : 0)

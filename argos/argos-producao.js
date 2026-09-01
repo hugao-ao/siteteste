@@ -112,7 +112,10 @@ export function producaoDoMes({ pacientes = [], dinamicas = [], sessoes = [],
             // sessões daquela dinâmica que entraram no valor do mês
             const doMes = fech.sessoes.filter(s => s.dinamica_ref === pd.dinamica_id
                 && (s.status === 'ok' || s.status === 'fc' || (s.status === '??' && s.data >= hoje)));
-            const redirecionadas = doMes.filter(s => s.repasse_profissional_id);
+            // avulsa (dinamica_id null) é um lançamento por sessão: credita
+            // direto a quem atendeu, sem a aritmética de redirecionamento
+            const redirecionadas = pd.dinamica_id == null ? []
+                : doMes.filter(s => s.repasse_profissional_id);
 
             if (!redirecionadas.length) {
                 repasses.forEach(r => {
