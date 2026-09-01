@@ -15,7 +15,7 @@
 // que não reconhece, sem precisar mexer na frequência de ninguém.
 
 import {
-    repassesDe, fechamentoPaciente, fimDoMes, hojeISO, repassePadraoDe
+    repassesDe, fechamentoPaciente, fimDoMes, hojeISO, fracaoDoPar
 } from './argos-recorrencia.js';
 
 /** Por que esta sessão está na lista do profissional. */
@@ -110,12 +110,11 @@ export function atendimentosDoProfissional({ profissional_id, mes, pacientes = [
             // quem cobriu: a lista mostra as duas pontas, com o valor certo
             let v = valorPorDinamica.get(s.dinamica_ref || s.dinamica_id) || { minha: 0, pool: 0 };
             if (!din && s.valor != null) {
-                // avulsa: o valor da própria sessão, repassado pelo padrão de
-                // quem a recebe (quem atendeu, ou quem cobriu se redirecionada)
+                // avulsa: o valor da própria sessão, repassado pelo combinado
+                // do PAR de quem a recebe — a % dele nas dinâmicas deste
+                // paciente; sem dinâmica, o padrão do cadastro dele
                 const alvo = redirecionada || s.profissional_id;
-                const padrao = repassePadraoDe(alvo);
-                const parte = padrao != null
-                    ? (Number(s.valor) || 0) * (padrao / 100) * fator : 0;
+                const parte = (Number(s.valor) || 0) * fracaoDoPar(dinsP, alvo, s.data) * fator;
                 v = { minha: !redirecionada && s.profissional_id === profissional_id
                         ? parte : 0, pool: parte };
             }

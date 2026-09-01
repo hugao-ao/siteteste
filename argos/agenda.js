@@ -543,7 +543,10 @@ function abrirModalSessaoPara(s) {
          <span class="dim">${esc(nomeSala(s.sala_id))} · ${esc(nomeProf(s.profissional_id))} · situação atual:
          <span class="chip-status" style="--c:${STATUS_SESSAO[s.status].cor}">${STATUS_SESSAO[s.status].label}</span></span>
          ${s.remarcada_de_data ? `<br><span class="dim">↪️ Sessão remarcada: era ${DOW_NOMES[paraData(s.remarcada_de_data).getDay()]} ${formataBR(s.remarcada_de_data)} às ${s.remarcada_de_hora}</span>` : ''}
-         ${s.justificativa ? `<br><span class="dim">📝 Justificativa: ${esc(s.justificativa)}</span>` : ''}`;
+         ${s.justificativa ? `<br><span class="dim">📝 Justificativa: ${esc(s.justificativa)}</span>` : ''}
+         ${s.id && !s.dinamica_ref ? `<br><span class="dim">💰 Sessão avulsa${s.valor != null
+             ? ` — valor: <b>${formataMoeda(s.valor)}</b>`
+             : ' — sem valor (não entra na cobrança)'}</span>` : ''}`;
     document.getElementById('botoes-status').innerHTML =
         ['??', 'ok', 'fj', 'fc', 'nc'].map(st => `
           <button class="btn-status" style="--c:${STATUS_SESSAO[st].cor}" data-marcar="${st}">

@@ -258,6 +258,30 @@ export function fracaoRepasse(d, r) {
     return (Number(r.valor) || 0) / 100;
 }
 
+/**
+ * Fração (0–1) que um profissional recebe de um paciente numa data qualquer —
+ * para lançamentos sem dinâmica (sessões avulsas). Vale o combinado do PAR:
+ * a % dele na dinâmica do paciente vigente na data (senão, a mais recente);
+ * só sem dinâmica nenhuma com ele é que o padrão do cadastro decide.
+ */
+export function fracaoDoPar(dinamicas, profissional_id, data) {
+    if (!profissional_id) return 0;
+    const porInicio = (a, b) => String(b.data_inicio || '').localeCompare(String(a.data_inicio || ''));
+    const minhas = (dinamicas || []).filter(d =>
+        repassesDe(d).some(r => r.profissional_id === profissional_id));
+    const vigente = d => d.ativo !== false
+        && (!d.data_inicio || d.data_inicio <= data)
+        && !(d.fim_tipo === 'data' && d.fim_data && d.fim_data < data);
+    const escolhida = minhas.filter(vigente).sort(porInicio)[0]
+        || minhas.sort(porInicio)[0];
+    if (escolhida) {
+        const r = repassesDe(escolhida).find(x => x.profissional_id === profissional_id);
+        return fracaoRepasse(escolhida, r);
+    }
+    const padrao = repassePadraoDe(profissional_id);
+    return padrao != null ? padrao / 100 : 0;
+}
+
 /** Resumo da divisão do acordo: itens com % equivalente e a parte da clínica.
  *  { itens:[{profissional_id, tipo, valor, pct, valorBase}], pctProfs, pctClinica, valorClinica, base } */
 export function divisaoRepasses(d) {
@@ -584,20 +608,21 @@ export function fechamentoPaciente(paciente, dinamicas, sessoes, mes) {
     }
 
     // sessões avulsas/manuais (sem dinâmica): valor próprio de cada sessão.
-    // Quem atendeu recebe pelo repasse padrão do cadastro dele; sessão sem
-    // profissional (ou profissional sem padrão) fica integralmente com a clínica.
+    // Quem atendeu recebe pelo combinado do PAR (a % dele nas dinâmicas deste
+    // paciente; sem dinâmica, o padrão do cadastro). Sem profissional ou sem
+    // % nenhuma, o valor fica integralmente com a clínica.
     for (const s of sess.filter(x => !x.dinamica_ref)) {
         if (cobraSessao(s) && s.valor != null) {
             const v = Number(s.valor) || 0;
             valor += v;
             detalhes.push(`Sessão avulsa ${formataBR(s.data)} ${s.hora}: ${formataMoeda(s.valor)}`);
+            const frac = fracaoDoPar(dinamicas || [], s.profissional_id, s.data);
             porDinamica.push({
                 dinamica_id: null, profissional_id: s.profissional_id, valor: v,
-                repasses: s.profissional_id
-                    ? repassesDoValor({ acordo_tipo: 'por_sessao', valor: v,
-                        repasses: [{ profissional_id: s.profissional_id,
-                            tipo: 'percentual', valor: null }] }, v)
-                    : []
+                repasses: frac > 0 ? [{
+                    profissional_id: s.profissional_id, tipo: 'percentual',
+                    valor_config: frac * 100, pct: frac * 100, valor: v * frac
+                }] : []
             });
         }
     }
