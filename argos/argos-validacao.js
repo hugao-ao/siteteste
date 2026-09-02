@@ -94,10 +94,17 @@ export function atendimentosDoProfissional({ profissional_id, mes, pacientes = [
             });
         }
 
+        // processo encerrado/interrompido: sessão registrada depois do corte
+        // aparece na lista (o profissional precisa vê-la), mas não cobra nem
+        // repassa — é a mesma régua do fechamento e da produção
+        const fimProcesso = p.processo_fim_data
+            || (p.processo_fim_tipo ? hoje : null);
+
         for (const s of sessP) {
             const din = dinsP.find(d => d.id === (s.dinamica_ref || s.dinamica_id));
             const donos = din ? repassesDe(din).map(r => r.profissional_id) : [];
             const redirecionada = s.repasse_profissional_id || null;
+            const aposFim = !!(fimProcesso && s.data >= fimProcesso);
 
             let motivo = null;
             if (redirecionada === profissional_id) motivo = 'cobriu';
@@ -118,7 +125,7 @@ export function atendimentosDoProfissional({ profissional_id, mes, pacientes = [
                 v = { minha: !redirecionada && s.profissional_id === profissional_id
                         ? parte : 0, pool: parte };
             }
-            const contabiliza = CONTABILIZA.has(s.status);
+            const contabiliza = CONTABILIZA.has(s.status) && !aposFim;
             const meu = redirecionada
                 ? (redirecionada === profissional_id ? v.pool : 0)
                 : v.minha;
@@ -130,6 +137,7 @@ export function atendimentosDoProfissional({ profissional_id, mes, pacientes = [
                 contabiliza, valor: contabiliza ? meu : 0,
                 nf, // valor da nota fiscal do mês deste paciente (0 = sem nota)
                 ajustadoPara, // cobrança do mês alterada na página de cobrança
+                aposFim, // registrada depois do encerramento do processo
                 validacao: validacaoDe(s.id)
             });
         }
