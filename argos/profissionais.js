@@ -414,7 +414,8 @@ function renderValidacao() {
           <td title="${esc(m.ajuda)}">${m.icone} ${esc(m.rotulo)}${
             l.motivo !== 'atendeu' ? ` <span class="dim">${esc(l.atendidoPor)}</span>` : ''}${
             !l.sessao.dinamica_ref ? `<br><span class="dim">avulsa${
-                tipoAvulsa ? ` · ${esc(tipoAvulsa)}` : ''}</span>` : ''}</td>
+                tipoAvulsa ? ` · ${esc(tipoAvulsa)}` : ''}</span>` : ''}${
+            l.aposFim ? '<br><span class="dim">🏁 após o encerramento do processo — não cobra nem repassa</span>' : ''}</td>
           <td>${freqTd}</td>
           <td>${l.contabiliza ? formataMoeda(l.valor) : '<span class="dim">—</span>'}</td>
           <td class="acoes">

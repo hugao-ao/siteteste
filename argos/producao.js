@@ -13,7 +13,7 @@ import { producaoDoMes, STATUS_PROF, ORDEM_STATUS_PROF } from './argos-producao.
 import { mesBR, fatorNFDoMes } from './argos-cobranca.js';
 import { cobradoPorPaciente } from './argos-fechamento.js';
 import {
-    usarFechamento, abertoPorPaciente, retencoesSugeridas,
+    usarFechamento, abertoPorPaciente, retencoesSugeridas, liberacoesSugeridas,
     acertoDoMes, mensagemAcerto, mesCurto
 } from './argos-repasses.js';
 
@@ -238,6 +238,8 @@ function cartaoAcerto(a) {
             : `${esc(nomePac(r.paciente_id))} regularizou ${esc(mesCurto(r.mes_producao))}`;
         return `
       <div class="rp-item">
+        ${menos && podeReter ? `<input type="checkbox" class="rp-sel" value="${r.id}"
+            title="Marcar para tirar em lote" />` : ''}
         <span class="quem">${quem}
           ${menos && r.observacao ? `<span class="obs">${esc(r.observacao)}</span>` : ''}</span>
         <span class="valor ${menos ? 'menos' : 'mais'}">${sinal} ${formataMoeda(r.valor)}</span>
@@ -265,7 +267,12 @@ function cartaoAcerto(a) {
           <span>${formataMoeda(a.producao)}</span></div>
 
         <div class="rp-bloco">
-          <div class="titulo">Menos — ${formataMoeda(a.retido)}</div>
+          <div class="titulo">Menos — ${formataMoeda(a.retido)}
+            ${podeReter && a.retidasAgora.length > 1 ? `
+              <button class="argos-btn ghost" data-rp="desfazer-sel" data-prof="${a.profissional.id}"
+                title="Tirar as retenções marcadas de uma vez">✕ tirar marcadas</button>
+              <button class="argos-btn ghost" data-rp="desfazer-todas" data-prof="${a.profissional.id}"
+                title="Tirar todas as retenções deste mês">✕ todas</button>` : ''}</div>
           ${a.retidasAgora.length ? a.retidasAgora.map(r => linha(r, '−')).join('')
             : '<div class="rp-item"><span class="quem dim">Nada retido neste mês.</span></div>'}
         </div>
@@ -321,27 +328,42 @@ async function sugerirRetencoes() {
         const chave = r => `${r.profissional_id}|${r.paciente_id}|${r.mes_producao}`;
         const jaTem = new Set(retencoes.map(chave));
         const novas = sug.filter(r => !jaTem.has(chave(r)));
-        if (!novas.length) {
-            toast('Nenhuma retenção nova: tudo que estava em aberto já está registrado.');
+        // e o caminho de volta: retenções seguradas cujo mês já foi pago
+        const liberar = liberacoesSugeridas({ retencoes, aberto });
+        if (!novas.length && !liberar.length) {
+            toast('Nada a fazer: o que está em aberto já está retido, e nada retido foi pago.');
             return;
         }
         const total = novas.reduce((s, r) => s + r.valor, 0);
-        if (!confirm(`Reter ${novas.length} valor(es), somando ${formataMoeda(total)}, `
-            + `no acerto de ${mesBR(mesAtual)}?`)) return;
+        const totalLib = liberar.reduce((s, r) => s + (Number(r.valor) || 0), 0);
+        const partes = [];
+        if (novas.length) partes.push(`RETER ${novas.length} valor(es) — ${formataMoeda(total)}`);
+        if (liberar.length) partes.push(`LIBERAR ${liberar.length} valor(es) já regularizados — `
+            + formataMoeda(totalLib) + ' (entram como «MAIS»)');
+        if (!confirm(`No acerto de ${mesBR(mesAtual)}:\n• ${partes.join('\n• ')}\n\nConfirmar?`)) return;
 
-        const linhas = novas.map(r => ({
-            profissional_id: r.profissional_id, paciente_id: r.paciente_id,
-            mes_producao: r.mes_producao, valor: Number(r.valor.toFixed(2)),
-            motivo: r.motivo, origem: 'inadimplencia', status: 'retido', retido_em: mesAtual
-        }));
-        const { data, error } = await sb.from('argos_repasse_retencoes').insert(linhas).select();
-        if (error) { console.error(error); toast('Não consegui gravar as retenções.', true); return; }
-        retencoes = retencoes.concat(data || []);
+        if (novas.length) {
+            const linhas = novas.map(r => ({
+                profissional_id: r.profissional_id, paciente_id: r.paciente_id,
+                mes_producao: r.mes_producao, valor: Number(r.valor.toFixed(2)),
+                motivo: r.motivo, origem: 'inadimplencia', status: 'retido', retido_em: mesAtual
+            }));
+            const { data, error } = await sb.from('argos_repasse_retencoes').insert(linhas).select();
+            if (error) { console.error(error); toast('Não consegui gravar as retenções.', true); return; }
+            retencoes = retencoes.concat(data || []);
+        }
+        for (const r of liberar) {
+            const dados = { status: 'liberado', liberado_em: mesAtual,
+                atualizado_em: new Date().toISOString() };
+            const { error } = await sb.from('argos_repasse_retencoes').update(dados).eq('id', r.id);
+            if (error) { console.error(error); toast('Não consegui liberar uma retenção.', true); return; }
+            Object.assign(retencoes.find(x => x.id === r.id) || {}, dados);
+        }
         renderRepasses();
-        toast(`${linhas.length} retenção(ões) registrada(s).`);
+        toast(`${novas.length} retida(s) · ${liberar.length} liberada(s).`);
     } finally {
         btn.disabled = false;
-        btn.textContent = '🔎 Sugerir retenções pela inadimplência';
+        btn.textContent = '🔎 Conferir inadimplência (reter e liberar)';
     }
 }
 
@@ -401,6 +423,19 @@ async function desfazerRetencao(id) {
     if (error) { console.error(error); toast('Não consegui desfazer.', true); return; }
     retencoes = retencoes.filter(x => x.id !== id);
     renderRepasses();
+}
+
+/** Tira várias retenções de uma vez (as marcadas de um card, ou todas). */
+async function desfazerVarias(ids) {
+    if (!ids.length) { toast('Marque as retenções que quer tirar.', true); return; }
+    const soma = retencoes.filter(r => ids.includes(r.id))
+        .reduce((s, r) => s + (Number(r.valor) || 0), 0);
+    if (!confirm(`Tirar ${ids.length} retenção(ões), devolvendo ${formataMoeda(soma)} ao acerto?`)) return;
+    const { error } = await sb.from('argos_repasse_retencoes').delete().in('id', ids);
+    if (error) { console.error(error); toast('Não consegui desfazer.', true); return; }
+    retencoes = retencoes.filter(x => !ids.includes(x.id));
+    renderRepasses();
+    toast(`${ids.length} retenção(ões) desfeita(s).`);
 }
 
 // --- mensagem e fechamento do acerto ---------------------------------------
@@ -485,6 +520,14 @@ document.getElementById('rp-cards').addEventListener('click', e => {
     if (b.dataset.rp === 'mensagem') abrirMensagem(b.dataset.prof);
     if (b.dataset.rp === 'liberar') liberarRetencao(b.dataset.id);
     if (b.dataset.rp === 'desfazer') desfazerRetencao(b.dataset.id);
+    if (b.dataset.rp === 'desfazer-sel' || b.dataset.rp === 'desfazer-todas') {
+        const a = repasses.find(x => x.profissional.id === b.dataset.prof);
+        if (!a) return;
+        const ids = b.dataset.rp === 'desfazer-todas'
+            ? a.retidasAgora.map(r => r.id)
+            : [...b.closest('.rp-card').querySelectorAll('.rp-sel:checked')].map(x => x.value);
+        desfazerVarias(ids);
+    }
 });
 document.getElementById('btn-rp-sugerir').addEventListener('click', sugerirRetencoes);
 document.getElementById('btn-rp-reter').addEventListener('click', abrirReter);
