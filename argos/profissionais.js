@@ -472,6 +472,8 @@ function renderValidacao() {
                 🧾 NF ${formataMoeda(g.linhas[0].nf)}</span>` : ''}
             <span class="imes-conta">${contam} de ${g.linhas.length} contabilizam · ${formataMoeda(soma)}</span>
             <span class="imes-bloco-acoes">
+              ${perm.pode('validacao_ver_cartao') ? `<button class="argos-btn small" data-val-cartao="${g.paciente.id}"
+                  title="Abrir o card deste cliente sem sair desta tela">👤 Ver card do cliente</button>` : ''}
               ${pendentes ? `<button class="argos-btn small" data-val-bloco="${g.paciente.id}"
                   title="Confirmar as sessões deste paciente que ainda não foram conferidas">
                   ✔ Confirmar ${pendentes} pendente(s)</button>`
@@ -657,6 +659,9 @@ async function gravarValidacao(itens) {
 valEl('val-lista').addEventListener('click', async (e) => {
     const salvarRep = e.target.closest('[data-rep-salvar]');
     if (salvarRep && valProf) { await salvarRepasseDoPar(salvarRep.dataset.repSalvar); return; }
+    // abrir o card do cliente aqui mesmo, sem sair do modal de atendimentos
+    const cartao = e.target.closest('[data-val-cartao]');
+    if (cartao) { abrirCartaoCliente(cartao.dataset.valCartao); return; }
     // confirmar de uma vez as pendentes de um paciente só
     const bloco = e.target.closest('[data-val-bloco]');
     if (bloco && valProf) {
@@ -728,3 +733,23 @@ valEl('btn-val-copiar').addEventListener('click', async () => {
 });
 
 valEl('btn-val-imprimir').addEventListener('click', () => window.print());
+
+// ---- card do cliente aberto por cima, sem sair do modal de atendimentos ----
+// carrega a própria página de pacientes num iframe, focada só neste paciente:
+// é literalmente o mesmo card, com as mesmas ações (dinâmicas, cobrança,
+// extrato, evolução, editar), sem duplicar nada nem trocar de tela.
+function abrirCartaoCliente(pacienteId) {
+    const frame = valEl('cartao-frame');
+    frame.src = `pacientes.html?cartao=${encodeURIComponent(pacienteId)}`;
+    abrirModal('modal-cartao-cliente');
+}
+// fechar (pelo × ou clicando no fundo — o fechamento em si é global): descarrega
+// o iframe e relê os dados, pois no card o usuário pode ter mexido no repasse,
+// na situação do processo ou na frequência de uma sessão
+valEl('modal-cartao-cliente').addEventListener('click', async (e) => {
+    const fechou = e.target.classList.contains('argos-modal-fundo')
+        || e.target.closest('[data-fechar]');
+    if (!fechou) return;
+    valEl('cartao-frame').src = 'about:blank';
+    if (valProf) await carregarValidacao();
+});
