@@ -16,7 +16,7 @@
 
 import {
     repassesDe, fechamentoPaciente, fimDoMes, hojeISO, fracaoDoPar,
-    fimEfetivoDoProcesso
+    fimEfetivoDoProcesso, reconduzirSessoesOrfas
 } from './argos-recorrencia.js';
 
 /** Por que esta sessão está na lista do profissional. */
@@ -52,6 +52,10 @@ export function atendimentosDoProfissional({ profissional_id, mes, pacientes = [
     dinamicas = [], sessoes = [], profissionais = [], validacoes = [],
     notaFator = null, cobrado = null } = {}) {
     if (!profissional_id || !mes) return [];
+
+    // sessão órfã (dinâmica apagada e recriada) volta para a dinâmica ativa do
+    // mesmo slot — senão o dono não é encontrado e a sessão some da lista
+    sessoes = reconduzirSessoesOrfas(dinamicas, sessoes);
 
     const de = `${mes}-01`, ate = fimDoMes(mes);
     const hoje = hojeISO();
