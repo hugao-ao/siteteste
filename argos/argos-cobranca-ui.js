@@ -548,8 +548,8 @@ export async function calcularExtrato(paciente, cache = {}) {
                 data: x.data, hora: x.hora || '', status: x.status,
                 dinamica: rotuloDin(x.dinamica_ref),
                 avulsa: !x.dinamica_ref,
-                // o tipo da sessão avulsa (online, familiar, grupo tal…)
-                tipo: !x.dinamica_ref && x.modalidade
+                // o tipo da sessão, quando marcado (online, familiar, grupo tal…)
+                tipo: x.modalidade
                     ? tipoSessaoLabel(x.modalidade, nomeGrupo(x.grupo_id)) : '',
                 valor: x.valor == null ? null : Number(x.valor),
                 remarcada_de_data: x.remarcada_de_data || null,
@@ -788,7 +788,8 @@ function imprimirExtrato() {
                 x.pagaA ? `paga a ${esc(x.pagaA)}${x.pagaMotivo ? ` (${esc(x.pagaMotivo)})` : ''}` : ''
             ].filter(Boolean);
             return `<li><b>${formataBR(x.data)}</b>${x.hora ? ` às ${esc(x.hora)}` : ''} — ${esc(st.desc || st.label || x.status)}`
-                + `${x.avulsa ? ` (sessão avulsa${x.tipo ? `, ${esc(x.tipo)}` : ''})` : (x.dinamica ? ` — ${esc(x.dinamica)}` : '')}`
+                + `${x.avulsa ? ` (sessão avulsa${x.tipo ? `, ${esc(x.tipo)}` : ''})`
+                    : `${x.dinamica ? ` — ${esc(x.dinamica)}` : ''}${x.tipo ? ` (${esc(x.tipo)})` : ''}`}`
                 + `${marcas.length ? `<br><span style="color:#5a6672">${marcas.join('; ')}</span>` : ''}</li>`;
         }).join('')}</ul>` : '<p class="relato"><span class="vazio">Sem sessões neste mês.</span></p>'}
       ${l.registros.length ? `<ul style="margin:0 0 6px;padding-left:18px;font:9.5pt/1.5 'Helvetica Neue',Arial,sans-serif;color:#5a6672">

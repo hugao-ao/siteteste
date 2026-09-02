@@ -8,7 +8,7 @@ import {
     STATUS_SESSAO, DOW_NOMES, mesclarSessoes, hojeISO, somarDias, paraData,
     paraISO, formataBR, formataMoeda, fimDoMes, expandirDinamica, conflitosDeSessao,
     conflitosDeDinamica, repassesDe, aplicarFimDeProcesso, fimEfetivoDoProcesso,
-    definirRepassePadrao, fracaoRepasse, tipoSessaoLabel
+    definirRepassePadrao, fracaoRepasse, tipoSessaoLabel, TIPOS_SESSAO_AVULSA
 } from './argos-recorrencia.js';
 import { gravarFrequencia, registrarFaltasJustificadas, avisarMudanca, ouvirMudancas }
     from './argos-frequencia.js';
@@ -563,7 +563,9 @@ function abrirModalSessaoPara(s) {
              ? ` — valor: <b>${formataMoeda(s.valor)}</b>`
              : ' — sem valor (não entra na cobrança)'}${s.modalidade
              ? ` · ${esc(tipoSessaoLabel(s.modalidade,
-                 (grupos.find(x => x.id === s.grupo_id) || {}).nome))}` : ''}</span>` : ''}`;
+                 (grupos.find(x => x.id === s.grupo_id) || {}).nome))}` : ''}</span>` : ''}
+         ${s.dinamica_ref && s.modalidade && s.modalidade !== 'grupo'
+             ? `<br><span class="dim">🏷️ Tipo: ${esc(tipoSessaoLabel(s.modalidade))}</span>` : ''}`;
     document.getElementById('botoes-status').innerHTML =
         ['??', 'ok', 'fj', 'fc', 'nc'].map(st => `
           <button class="btn-status" style="--c:${STATUS_SESSAO[st].cor}" data-marcar="${st}">
@@ -593,6 +595,16 @@ function abrirModalSessaoPara(s) {
         document.getElementById('proc-tipo').value = 'interrompido';
         document.getElementById('proc-data').value = s.data;
         document.getElementById('proc-motivo').value = '';
+    }
+    // tipo da sessão (individual/online/familiar): só fora de grupo
+    const ehGrupo = !!(s.grupo_id || s.grupo_ref || s.modalidade === 'grupo');
+    const podeTipo = !ehGrupo && perm.pode('sessao_tipo_editar');
+    document.getElementById('bloco-tipo').style.display = podeTipo ? '' : 'none';
+    if (podeTipo) {
+        document.getElementById('st-tipo').innerHTML = Object.entries(TIPOS_SESSAO_AVULSA)
+            .filter(([k]) => k !== 'grupo')
+            .map(([k, t]) => `<option value="${k}">${t.icone} ${t.rotulo}</option>`).join('');
+        document.getElementById('st-tipo').value = s.modalidade || 'individual';
     }
     // excluir: só sessão gravada de verdade — projeção não tem o que apagar
     const podeExcluir = !!s.id && perm.pode('sessao_excluir');
@@ -2071,6 +2083,35 @@ document.getElementById('btn-sessao-excluir').addEventListener('click', async ()
     retornarAoDiaSePreciso();
     await recarregarSessoes();
     avisarMudanca({ origem: 'agenda', quantas: 1 });
+});
+
+// tipo da sessão (individual/online/familiar) — grava na hora ao escolher
+document.getElementById('st-tipo').addEventListener('change', async () => {
+    const s = sessaoAberta;
+    if (!s || !perm.pode('sessao_tipo_editar')) return;
+    const novo = document.getElementById('st-tipo').value;
+    if (s.id) {
+        const { error } = await sb.from('argos_sessoes')
+            .update({ modalidade: novo }).eq('id', s.id);
+        if (error) { console.error(error); toast('Erro ao gravar o tipo da sessão.', true); return; }
+    } else {
+        // projeção do horário fixo: a sessão nasce agora, ainda pendente,
+        // só para o tipo ter onde morar — a frequência continua «??»
+        const { data, error } = await sb.from('argos_sessoes').insert({
+            paciente_id: s.paciente_id, dinamica_id: s.dinamica_ref, dinamica_ref: s.dinamica_ref,
+            data: s.data, hora: s.hora, duracao_min: s.duracao_min || 60,
+            sala_id: s.sala_id || null, profissional_id: s.profissional_id || null,
+            servico_id: s.servico_id || null, status: s.status || '??',
+            grupo_id: s.grupo_id || null, grupo_ref: s.grupo_ref || null,
+            modalidade: novo
+        }).select('id').single();
+        if (error) { console.error(error); toast('Erro ao gravar o tipo da sessão.', true); return; }
+        s.id = (data || {}).id || s.id;
+    }
+    s.modalidade = novo;
+    toast(`Tipo da sessão: ${tipoSessaoLabel(novo)}.`);
+    avisarMudanca({ origem: 'agenda', quantas: 1 });
+    await recarregarSessoes();
 });
 
 // ---- selects compartilhados dos dois formulários de criação ----
