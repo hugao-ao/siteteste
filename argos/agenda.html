@@ -341,6 +341,19 @@
             <span class="campo-moeda"><input type="number" id="ns-valor" min="0" step="0.01" placeholder="em branco = não cobra" /></span>
           </label>
         </div>
+        <div class="form-grade">
+          <label>Tipo da sessão
+            <select id="ns-tipo">
+              <option value="individual">👤 Individual</option>
+              <option value="online">🌐 Online</option>
+              <option value="familiar">👨‍👩‍👧 Familiar</option>
+              <option value="grupo">👥 Em grupo</option>
+            </select>
+          </label>
+          <label id="ns-rotulo-grupo" style="display:none">Qual grupo
+            <select id="ns-grupo"></select>
+          </label>
+        </div>
         <div class="argos-modal-acoes">
           <button type="button" class="argos-btn ghost" data-fechar>Cancelar</button>
           <button type="submit" class="argos-btn primary">Criar sessão</button>
@@ -383,7 +396,7 @@
     </div>
   </div>
 
-  <script type="module" src="agenda.js?v=30"></script>
+  <script type="module" src="agenda.js?v=31"></script>
   <script type="module" src="argos-zoom.js?v=4"></script>
 </body>
 </html>

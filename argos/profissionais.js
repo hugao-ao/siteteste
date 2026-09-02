@@ -7,7 +7,7 @@ import { sb, todas, toast, esc, abrirModal, fecharModal } from './argos-common.j
 import { carregarPermissoes } from './argos-permissoes.js';
 import {
     repassesDe, divisaoRepasses, formataBR, hojeISO,
-    definirRepassePadrao, repassePadraoDe, STATUS_SESSAO
+    definirRepassePadrao, repassePadraoDe, STATUS_SESSAO, tipoSessaoLabel
 } from './argos-recorrencia.js';
 import {
     gravarFrequencia, registrarFaltasJustificadas, avisarMudanca
@@ -273,7 +273,7 @@ document.getElementById('servico-lista').addEventListener('click', async (e) => 
 
 let valProf = null;        // profissional em conferência
 let valSessoes = [], valDinamicas = [], valPacientes = [], valValidacoes = [];
-let valNotasMes = [], valAjustes = [], valLinhas = [], valFixos = [];
+let valNotasMes = [], valAjustes = [], valGrupos = [], valLinhas = [], valFixos = [];
 
 const valEl = id => document.getElementById(id);
 
@@ -291,13 +291,14 @@ async function abrirValidacao(prof) {
 
 async function carregarValidacao() {
     if (!valProf) return;
-    const [rPac, rDin, rSes, rVal, rNM, rAj] = await Promise.all([
+    const [rPac, rDin, rSes, rVal, rNM, rAj, rGru] = await Promise.all([
         sb.from('argos_pacientes').select('id, nome, ativo, cadastro_removido, processo_fim_data, processo_fim_tipo').order('nome'),
         todas(() => sb.from('argos_dinamicas').select('*')),
         todas(() => sb.from('argos_sessoes').select('*')),
         todas(() => sb.from('argos_sessao_validacao').select('*').eq('profissional_id', valProf.id)),
         todas(() => sb.from('argos_nota_mes').select('*')),
-        todas(() => sb.from('argos_cobranca_mes').select('*'))
+        todas(() => sb.from('argos_cobranca_mes').select('*')),
+        sb.from('argos_grupos').select('id, nome')
     ]);
     if (rPac.error || rDin.error || rSes.error) {
         console.error(rPac.error || rDin.error || rSes.error);
@@ -310,6 +311,7 @@ async function carregarValidacao() {
     valValidacoes = (rVal && rVal.data) || [];
     valNotasMes = (rNM && rNM.data) || [];
     valAjustes = (rAj && rAj.data) || [];
+    valGrupos = (rGru && rGru.data) || [];
     renderValidacao();
 }
 
@@ -404,10 +406,15 @@ function renderValidacao() {
                </select>${l.sessao.justificativa
                  ? `<br><span class="dim">${esc(l.sessao.justificativa)}</span>` : ''}`
             : esc(l.status.toUpperCase());
+        const tipoAvulsa = !l.sessao.dinamica_ref && l.sessao.modalidade
+            ? tipoSessaoLabel(l.sessao.modalidade,
+                (valGrupos.find(x => x.id === l.sessao.grupo_id) || {}).nome) : '';
         return `<tr class="${sit === 'contestada' ? 'linha-alerta' : ''}">
           <td>${formataBR(l.data)} <span class="dim">${esc(l.hora)}</span></td>
           <td title="${esc(m.ajuda)}">${m.icone} ${esc(m.rotulo)}${
-            l.motivo !== 'atendeu' ? ` <span class="dim">${esc(l.atendidoPor)}</span>` : ''}</td>
+            l.motivo !== 'atendeu' ? ` <span class="dim">${esc(l.atendidoPor)}</span>` : ''}${
+            !l.sessao.dinamica_ref ? `<br><span class="dim">avulsa${
+                tipoAvulsa ? ` · ${esc(tipoAvulsa)}` : ''}</span>` : ''}</td>
           <td>${freqTd}</td>
           <td>${l.contabiliza ? formataMoeda(l.valor) : '<span class="dim">—</span>'}</td>
           <td class="acoes">
