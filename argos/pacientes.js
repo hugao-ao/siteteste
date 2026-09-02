@@ -9,7 +9,7 @@ import {
     fechamentoPaciente, hojeISO, somarDias, formataBR, formataMoeda,
     conflitosDeDinamica, conflitosDeSessao, mesmaAgenda,
     divisaoRepasses, repassesDe, unidadeRepasse, aplicarFimDeProcesso,
-    definirRepassePadrao,
+    definirRepassePadrao, tipoSessaoLabel,
     SITUACAO_PROCESSO, situacaoLabel
 } from './argos-recorrencia.js';
 import {
@@ -544,7 +544,7 @@ async function renderDinamicas() {
           <h3 class="form-secao">Sessões avulsas futuras</h3>
           ${avulsas.map(s => `
             <div class="argos-bloco">
-              <div class="bloco-info">🗓️ ${formataBR(s.data)} ${s.hora} · 🚪 ${esc(nomeSala(s.sala_id))} · 🧑‍⚕️ ${esc(nomeProf(s.profissional_id))}${s.valor != null ? ' · ' + formataMoeda(s.valor) : ''}</div>
+              <div class="bloco-info">🗓️ ${formataBR(s.data)} ${s.hora} · 🚪 ${esc(nomeSala(s.sala_id))} · 🧑‍⚕️ ${esc(nomeProf(s.profissional_id))}${s.valor != null ? ' · ' + formataMoeda(s.valor) : ''}${s.modalidade ? ' · ' + esc(tipoSessaoLabel(s.modalidade, nomeGrupo(s.grupo_id))) : ''}</div>
               <div class="mini-acoes"><button class="argos-btn small danger" data-avulsa-del="${s.id}">🗑️ Remover</button></div>
             </div>`).join('')}` : '')
         + ((eventos || []).length && perm.pode('paciente_historico') ? `
@@ -555,6 +555,9 @@ async function renderDinamicas() {
                 ${ev.justificativa ? `<br>📝 <i>${esc(ev.justificativa)}</i>` : ''}</div>
               <div class="mini-acoes">
                 <button class="argos-btn small" data-evento-just="${ev.id}">${ev.justificativa ? '✏️ Editar justificativa' : '📝 Justificar'}</button>
+                ${perm.master || perm.pode('historico_editar') ? `
+                <button class="argos-btn small" data-evento-editar="${ev.id}" title="Reescrever o texto deste registro">✏️ Editar texto</button>
+                <button class="argos-btn small danger" data-evento-del="${ev.id}" title="Apagar este registro do histórico">🗑️</button>` : ''}
               </div>
             </div>`).join('')}` : '');
 }
@@ -570,6 +573,31 @@ document.getElementById('lista-dinamicas').addEventListener('click', async (e) =
             .update({ justificativa: j.trim() || null }).eq('id', id);
         if (error) { toast('Erro ao salvar a justificativa.', true); return; }
         toast('Justificativa registrada.');
+        renderDinamicas();
+        return;
+    }
+    // editar o texto de um registro do histórico (não mexe na alteração em si)
+    const ebtn = e.target.closest('[data-evento-editar]');
+    if (ebtn) {
+        const { data: ev } = await sb.from('argos_paciente_eventos')
+            .select('*').eq('id', ebtn.dataset.eventoEditar).single();
+        const d = prompt('Texto deste registro do histórico:', (ev && ev.descricao) || '');
+        if (d === null) return;
+        if (!d.trim()) { toast('O texto não pode ficar vazio — para apagar o registro, use o 🗑️.', true); return; }
+        const { error } = await sb.from('argos_paciente_eventos')
+            .update({ descricao: d.trim() }).eq('id', ebtn.dataset.eventoEditar);
+        if (error) { toast('Erro ao salvar o registro.', true); return; }
+        toast('Registro do histórico atualizado.');
+        renderDinamicas();
+        return;
+    }
+    const evDel = e.target.closest('[data-evento-del]');
+    if (evDel) {
+        if (!confirm('Apagar este registro do histórico?\nIsso não desfaz a alteração em si — só remove a anotação.')) return;
+        const { error } = await sb.from('argos_paciente_eventos')
+            .delete().eq('id', evDel.dataset.eventoDel);
+        if (error) { toast('Erro ao apagar o registro.', true); return; }
+        toast('Registro apagado do histórico.');
         renderDinamicas();
         return;
     }
@@ -987,7 +1015,21 @@ document.getElementById('btn-nova-avulsa').addEventListener('click', () => {
     selectSalas(document.getElementById('avu-sala'), null);
     selectProfissionais(document.getElementById('avu-profissional'), null);
     selectServicosDoProf(document.getElementById('avu-servico'), null, null);
+    document.getElementById('avu-tipo').value = 'individual';
+    document.getElementById('avu-rotulo-grupo').style.display = 'none';
     abrirModal('modal-avulsa');
+});
+
+// tipo «em grupo» pede qual grupo — só os grupos ativos entram na lista
+document.getElementById('avu-tipo').addEventListener('change', () => {
+    const emGrupo = document.getElementById('avu-tipo').value === 'grupo';
+    document.getElementById('avu-rotulo-grupo').style.display = emGrupo ? '' : 'none';
+    if (emGrupo) {
+        document.getElementById('avu-grupo').innerHTML =
+            '<option value="">— Escolher grupo —</option>'
+            + grupos.filter(g => g.ativo !== false).map(g =>
+                `<option value="${g.id}">👥 ${esc(g.nome)} — ${DOW_NOMES[g.dow]} ${g.hora}</option>`).join('');
+    }
 });
 document.getElementById('avu-profissional').addEventListener('change', () =>
     selectServicosDoProf(document.getElementById('avu-servico'), document.getElementById('avu-profissional').value, null));
@@ -1003,8 +1045,14 @@ document.getElementById('form-avulsa').addEventListener('submit', async (e) => {
         sala_id: g('avu-sala') || null,
         profissional_id: g('avu-profissional') || null,
         servico_id: g('avu-servico') || null,
+        modalidade: g('avu-tipo') || 'individual',
+        grupo_id: g('avu-tipo') === 'grupo' ? (g('avu-grupo') || null) : null,
         status: '??'
     };
+    if (registro.modalidade === 'grupo' && !registro.grupo_id) {
+        toast('Diga em qual grupo a sessão aconteceu.', true);
+        return;
+    }
     // Sessão avulsa é individual: não pode cair em cima de outra sessão
     const { data: sessTodas } = await todas(() => sb.from('argos_sessoes').select('*'));
     const ca = aplicarFimDeProcesso(dinamicas.filter(d => d.ativo !== false), sessTodas || [], pacientes);

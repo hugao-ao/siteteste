@@ -457,6 +457,17 @@
           <label>Atividade/serviço
             <select id="avu-servico"><option value="">—</option></select>
           </label>
+          <label>Tipo da sessão
+            <select id="avu-tipo">
+              <option value="individual">👤 Individual</option>
+              <option value="online">🌐 Online</option>
+              <option value="familiar">👨‍👩‍👧 Familiar</option>
+              <option value="grupo">👥 Em grupo</option>
+            </select>
+          </label>
+          <label id="avu-rotulo-grupo" style="display:none">Qual grupo
+            <select id="avu-grupo"></select>
+          </label>
         </div>
         <div class="argos-modal-acoes">
           <button type="button" class="argos-btn ghost" data-fechar>Cancelar</button>
@@ -507,7 +518,7 @@
     </div>
   </div>
 
-  <script type="module" src="pacientes.js?v=21"></script>
+  <script type="module" src="pacientes.js?v=23"></script>
   <script type="module" src="argos-zoom.js?v=4"></script>
 </body>
 </html>

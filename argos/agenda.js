@@ -8,7 +8,7 @@ import {
     STATUS_SESSAO, DOW_NOMES, mesclarSessoes, hojeISO, somarDias, paraData,
     paraISO, formataBR, formataMoeda, fimDoMes, expandirDinamica, conflitosDeSessao,
     conflitosDeDinamica, repassesDe, aplicarFimDeProcesso,
-    definirRepassePadrao, fracaoRepasse
+    definirRepassePadrao, fracaoRepasse, tipoSessaoLabel
 } from './argos-recorrencia.js';
 import { gravarFrequencia, registrarFaltasJustificadas, avisarMudanca, ouvirMudancas }
     from './argos-frequencia.js';
@@ -546,7 +546,9 @@ function abrirModalSessaoPara(s) {
          ${s.justificativa ? `<br><span class="dim">📝 Justificativa: ${esc(s.justificativa)}</span>` : ''}
          ${s.id && !s.dinamica_ref ? `<br><span class="dim">💰 Sessão avulsa${s.valor != null
              ? ` — valor: <b>${formataMoeda(s.valor)}</b>`
-             : ' — sem valor (não entra na cobrança)'}</span>` : ''}`;
+             : ' — sem valor (não entra na cobrança)'}${s.modalidade
+             ? ` · ${esc(tipoSessaoLabel(s.modalidade,
+                 (grupos.find(x => x.id === s.grupo_id) || {}).nome))}` : ''}</span>` : ''}`;
     document.getElementById('botoes-status').innerHTML =
         ['??', 'ok', 'fj', 'fc', 'nc'].map(st => `
           <button class="btn-status" style="--c:${STATUS_SESSAO[st].cor}" data-marcar="${st}">
@@ -2067,7 +2069,21 @@ document.getElementById('btn-nova-sessao').addEventListener('click', () => {
     document.getElementById('ns-hora').value = '';
     document.getElementById('ns-duracao').value = 60;
     document.getElementById('ns-valor').value = '';
+    document.getElementById('ns-tipo').value = 'individual';
+    document.getElementById('ns-rotulo-grupo').style.display = 'none';
     abrirModal('modal-nova-sessao');
+});
+
+// tipo «em grupo» pede qual grupo foi — só os grupos ativos entram na lista
+document.getElementById('ns-tipo').addEventListener('change', () => {
+    const emGrupo = document.getElementById('ns-tipo').value === 'grupo';
+    document.getElementById('ns-rotulo-grupo').style.display = emGrupo ? '' : 'none';
+    if (emGrupo) {
+        document.getElementById('ns-grupo').innerHTML =
+            '<option value="">— Escolher grupo —</option>'
+            + grupos.filter(g => g.ativo !== false).map(g =>
+                `<option value="${g.id}">👥 ${esc(g.nome)} — ${DOW_NOMES[g.dow]} ${g.hora}</option>`).join('');
+    }
 });
 
 document.getElementById('form-nova-sessao').addEventListener('submit', async (e) => {
@@ -2078,10 +2094,16 @@ document.getElementById('form-nova-sessao').addEventListener('submit', async (e)
         duracao_min: Number(g('ns-duracao')) || 60,
         profissional_id: g('ns-prof') || null, sala_id: g('ns-sala') || null,
         valor: g('ns-valor') === '' ? null : Number(g('ns-valor')),
+        modalidade: g('ns-tipo') || 'individual',
+        grupo_id: g('ns-tipo') === 'grupo' ? (g('ns-grupo') || null) : null,
         status: '??', dinamica_id: null, dinamica_ref: null
     };
     if (!registro.paciente_id || !registro.data || !registro.hora) {
         toast('Paciente, dia e hora são obrigatórios.', true);
+        return;
+    }
+    if (registro.modalidade === 'grupo' && !registro.grupo_id) {
+        toast('Diga em qual grupo a sessão aconteceu.', true);
         return;
     }
     const conflitos = conflitosDeSessao(registro,

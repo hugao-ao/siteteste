@@ -46,6 +46,21 @@ export function situacaoLabel(tipo) {
     return s ? s.rotulo : tipo;
 }
 
+/** Tipo de uma sessão avulsa — como ela aconteceu. */
+export const TIPOS_SESSAO_AVULSA = {
+    individual: { rotulo: 'Individual', icone: '👤' },
+    online:     { rotulo: 'Online',     icone: '🌐' },
+    familiar:   { rotulo: 'Familiar',   icone: '👨‍👩‍👧' },
+    grupo:      { rotulo: 'Em grupo',   icone: '👥' }
+};
+
+/** Rótulo curto do tipo de uma sessão avulsa ('' quando não marcado). */
+export function tipoSessaoLabel(modalidade, nomeGrupo) {
+    const t = TIPOS_SESSAO_AVULSA[modalidade];
+    if (!t) return '';
+    return `${t.icone} ${t.rotulo}${modalidade === 'grupo' && nomeGrupo ? `: ${nomeGrupo}` : ''}`;
+}
+
 // ---------- datas (sempre em strings 'YYYY-MM-DD', sem fuso) ----------
 export function hojeISO() {
     const d = new Date();
@@ -615,7 +630,8 @@ export function fechamentoPaciente(paciente, dinamicas, sessoes, mes) {
         if (cobraSessao(s) && s.valor != null) {
             const v = Number(s.valor) || 0;
             valor += v;
-            detalhes.push(`Sessão avulsa ${formataBR(s.data)} ${s.hora}: ${formataMoeda(s.valor)}`);
+            detalhes.push(`Sessão avulsa${s.modalidade
+                ? ` (${tipoSessaoLabel(s.modalidade)})` : ''} ${formataBR(s.data)} ${s.hora}: ${formataMoeda(s.valor)}`);
             const frac = fracaoDoPar(dinamicas || [], s.profissional_id, s.data);
             porDinamica.push({
                 dinamica_id: null, profissional_id: s.profissional_id, valor: v,

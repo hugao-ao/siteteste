@@ -14,7 +14,9 @@
 //   cob.abrirExtrato(paciente);
 
 import { sb, todas, toast, esc, abrirModal, fecharModal } from './argos-common.js';
-import { fechamentoPaciente, formataMoeda, formataBR, hojeISO, STATUS_SESSAO } from './argos-recorrencia.js';
+import {
+    fechamentoPaciente, formataMoeda, formataBR, hojeISO, STATUS_SESSAO, tipoSessaoLabel
+} from './argos-recorrencia.js';
 import { mesBR, normalizarFone, linkWhatsApp, detalhesDoMes, notaEfetiva,
          situacaoNota, contatosParaCobranca, retratoDaNota, compararRetrato,
          dinamicasDoMes } from './argos-cobranca.js';
@@ -482,6 +484,12 @@ export async function calcularExtrato(paciente, cache = {}) {
         profissionais = data || [];
     }
     const nomeProf = id => (profissionais.find(x => x.id === id) || {}).nome || '—';
+    let grupos = cache.grupos;
+    if (!grupos) {
+        const { data } = await sb.from('argos_grupos').select('id, nome');
+        grupos = data || [];
+    }
+    const nomeGrupo = id => (grupos.find(x => x.id === id) || {}).nome || '';
     const rotuloDin = id => {
         const d = dinamicas.find(x => x.id === id);
         return d ? (d.rotulo || 'Dinâmica') : '';
@@ -540,6 +548,9 @@ export async function calcularExtrato(paciente, cache = {}) {
                 data: x.data, hora: x.hora || '', status: x.status,
                 dinamica: rotuloDin(x.dinamica_ref),
                 avulsa: !x.dinamica_ref,
+                // o tipo da sessão avulsa (online, familiar, grupo tal…)
+                tipo: !x.dinamica_ref && x.modalidade
+                    ? tipoSessaoLabel(x.modalidade, nomeGrupo(x.grupo_id)) : '',
                 valor: x.valor == null ? null : Number(x.valor),
                 remarcada_de_data: x.remarcada_de_data || null,
                 remarcada_de_hora: x.remarcada_de_hora || null,
@@ -708,6 +719,7 @@ function itemSessao(x) {
       <b>${formataBR(x.data)}</b>${x.hora ? ` às ${esc(x.hora)}` : ''}
       — <span class="chip-status" style="--c:${st.cor}">${esc(st.desc || st.label || x.status)}</span>
       ${x.avulsa ? '<span class="badge azul">avulsa</span>' : (x.dinamica ? `<span class="dim">${esc(x.dinamica)}</span>` : '')}
+      ${x.tipo ? `<span class="dim">${esc(x.tipo)}</span>` : ''}
       ${x.avulsa && x.valor != null ? `<span class="dim">${formataMoeda(x.valor)}</span>` : ''}
       ${marcas.length ? `<span class="ext-marcas">${marcas.join('<br>')}</span>` : ''}
     </li>`;
@@ -776,7 +788,7 @@ function imprimirExtrato() {
                 x.pagaA ? `paga a ${esc(x.pagaA)}${x.pagaMotivo ? ` (${esc(x.pagaMotivo)})` : ''}` : ''
             ].filter(Boolean);
             return `<li><b>${formataBR(x.data)}</b>${x.hora ? ` às ${esc(x.hora)}` : ''} — ${esc(st.desc || st.label || x.status)}`
-                + `${x.avulsa ? ' (sessão avulsa)' : (x.dinamica ? ` — ${esc(x.dinamica)}` : '')}`
+                + `${x.avulsa ? ` (sessão avulsa${x.tipo ? `, ${esc(x.tipo)}` : ''})` : (x.dinamica ? ` — ${esc(x.dinamica)}` : '')}`
                 + `${marcas.length ? `<br><span style="color:#5a6672">${marcas.join('; ')}</span>` : ''}</li>`;
         }).join('')}</ul>` : '<p class="relato"><span class="vazio">Sem sessões neste mês.</span></p>'}
       ${l.registros.length ? `<ul style="margin:0 0 6px;padding-left:18px;font:9.5pt/1.5 'Helvetica Neue',Arial,sans-serif;color:#5a6672">
