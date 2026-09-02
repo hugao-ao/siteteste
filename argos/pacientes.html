@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=0.1, maximum-scale=10, user-scalable=yes" />
   <title>Argos Gestão — Pacientes</title>
   <script src="argos-guard.js"></script>
-  <link rel="stylesheet" href="argos-style.css?v=12" />
+  <link rel="stylesheet" href="argos-style.css?v=13" />
   <style>
     #ev-graficos { align-items: start; }
     #ev-graficos svg { background: var(--argos-bg); border: 1px solid var(--argos-border);
@@ -211,6 +211,54 @@
         <button type="button" class="argos-btn" id="btn-nova-avulsa" data-argos-recurso="sessao_avulsa_criar">+ Sessão avulsa</button>
         <button type="button" class="argos-btn primary" id="btn-nova-dinamica" data-argos-recurso="dinamicas_gerenciar">+ Nova dinâmica</button>
       </div>
+    </div>
+  </div>
+
+  <!-- ============ MODAL: FREQUÊNCIA (todas as sessões, em tabela) ============ -->
+  <div class="argos-modal-fundo" id="modal-frequencia" data-argos-recurso="paciente_frequencia">
+    <div class="argos-modal grande">
+      <div class="argos-modal-topo">
+        <h2 id="modal-freq-titulo">🗓️ Frequência</h2>
+        <button class="argos-modal-x" data-fechar>×</button>
+      </div>
+      <p class="dica">Todas as sessões do paciente, em tabela. <b>Clique e arraste</b> sobre as linhas
+        para selecionar várias (ou use as caixas — clique, ou Shift+clique para um intervalo). Com a
+        seleção, dá para marcar a frequência de todas de uma vez ou excluí-las. Também dá para
+        <b>adicionar várias sessões</b> de uma vez. Tudo aqui reflete na agenda automaticamente.
+        Linhas com <span class="badge vermelho">duplicada</span> têm outra sessão no mesmo dia e hora.</p>
+
+      <div class="pend-barra">
+        <label class="rotulo-inline">Mês
+          <select id="freq-mes" class="argos-input"></select></label>
+        <button class="argos-btn small" id="btn-freq-add" data-argos-recurso="sessao_avulsa_criar">➕ Adicionar sessões</button>
+        <span class="dim" id="freq-contagem"></span>
+      </div>
+
+      <!-- barra de ações da seleção (aparece quando há linhas selecionadas) -->
+      <div class="pend-barra freq-acoes" id="freq-acoes" style="display:none">
+        <b id="freq-sel-contagem"></b>
+        <span class="dim">marcar como:</span>
+        <span id="freq-status-botoes"></span>
+        <button class="argos-btn small danger" id="btn-freq-excluir" data-argos-recurso="sessao_excluir">🗑️ Excluir selecionadas</button>
+        <button class="argos-btn small ghost" id="btn-freq-limpar">Limpar seleção</button>
+      </div>
+
+      <!-- formulário de adicionar várias (escondido até clicar em Adicionar) -->
+      <div id="freq-form-add" style="display:none; margin:8px 0; padding:12px; border:1px solid #22314f; border-radius:10px">
+        <h3 class="form-secao">➕ Adicionar sessões de uma dinâmica</h3>
+        <p class="dica">Escolha a dinâmica e um período: o sistema gera as ocorrências do horário fixo
+          nesse intervalo e cria as que ainda não existem, com a frequência escolhida.</p>
+        <div class="agenda-nav" style="flex-wrap:wrap; gap:8px">
+          <select id="freq-add-dinamica" class="argos-input" style="min-width:200px"></select>
+          <label class="rotulo-inline">De <input type="date" id="freq-add-de" class="argos-input" /></label>
+          <label class="rotulo-inline">Até <input type="date" id="freq-add-ate" class="argos-input" /></label>
+          <select id="freq-add-status" class="argos-input"></select>
+          <button class="argos-btn small primary" id="btn-freq-add-gerar">Gerar e adicionar</button>
+          <button class="argos-btn small ghost" id="btn-freq-add-cancelar">Cancelar</button>
+        </div>
+      </div>
+
+      <div class="tabela-rolagem" id="freq-tabela"></div>
     </div>
   </div>
 
@@ -518,7 +566,7 @@
     </div>
   </div>
 
-  <script type="module" src="pacientes.js?v=25"></script>
+  <script type="module" src="pacientes.js?v=26"></script>
   <script type="module" src="argos-zoom.js?v=4"></script>
 </body>
 </html>
