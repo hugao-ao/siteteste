@@ -580,8 +580,9 @@ export function fechamentoPaciente(paciente, dinamicas, sessoes, mes) {
     const de = mes + '-01';
     const ate = fimDoMes(mes);
     const hoje = hojeISO();
-    // processo encerrado/interrompido: nada conta a partir da data informada
-    if (paciente && paciente.processo_fim_data) {
+    // processo encerrado/interrompido: nada conta a partir do fim efetivo
+    // (tipo sem data corta a partir de hoje — a mesma régua da agenda)
+    if (paciente && (paciente.processo_fim_data || paciente.processo_fim_tipo)) {
         const c = aplicarFimDeProcesso(dinamicas, sessoes, [paciente]);
         dinamicas = c.dinamicas;
         sessoes = c.sessoes;

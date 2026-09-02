@@ -7,7 +7,7 @@ import { carregarPermissoes } from './argos-permissoes.js';
 import {
     STATUS_SESSAO, DOW_NOMES, mesclarSessoes, hojeISO, somarDias, paraData,
     paraISO, formataBR, formataMoeda, fimDoMes, expandirDinamica, conflitosDeSessao,
-    conflitosDeDinamica, repassesDe, aplicarFimDeProcesso,
+    conflitosDeDinamica, repassesDe, aplicarFimDeProcesso, fimEfetivoDoProcesso,
     definirRepassePadrao, fracaoRepasse, tipoSessaoLabel
 } from './argos-recorrencia.js';
 import { gravarFrequencia, registrarFaltasJustificadas, avisarMudanca, ouvirMudancas }
@@ -58,6 +58,7 @@ async function carregarTudo() {
     grupoProfs = rGP.data || [];
     profFreq = rPF.data || [];
     locacoes = (rLoc && rLoc.data) || [];
+    recalcularFimEfetivo();
     montarFiltroSalas();
     renderTudo();
 }
@@ -314,12 +315,26 @@ function sessaoMovidaDaOcorrencia(pacId, g, iso) {
         && !(s.data === iso && s.hora === g.hora)) || null;
 }
 
+// fim efetivo do processo por paciente (o registrado, empurrado por sessões
+// com frequência real posterior) — recalculado a cada carga de sessões, para
+// a agenda inteira consultar barato
+let fimEfetivo = new Map();
+function recalcularFimEfetivo() {
+    fimEfetivo = new Map();
+    for (const p of pacientes) {
+        const fim = fimEfetivoDoProcesso(p, sessoes);
+        if (fim) fimEfetivo.set(p.id, fim);
+    }
+}
+
 // O membro participa da ocorrência do grupo naquele dia? Dinâmicas encerradas
 // (ex.: continuação por novo horário fixo) tiram o paciente das ocorrências
 // seguintes, mas as anteriores e as já registradas continuam aparecendo.
 function participaDaOcorrencia(pacId, g, iso) {
-    const pac = pacientes.find(p => p.id === pacId);
-    if (pac && pac.processo_fim_data && iso >= pac.processo_fim_data) return false;
+    // o corte é o fim EFETIVO: sessão real registrada depois do encerramento
+    // mantém o paciente na ocorrência (senão ela cobraria invisível)
+    const fimPac = fimEfetivo.get(pacId);
+    if (fimPac && iso >= fimPac) return false;
     if (sessoes.some(s => s.paciente_id === pacId
         && (s.grupo_ref === g.id || s.grupo_id === g.id)
         && (s.data === iso || s.remarcada_de_data === iso))) return true;
@@ -849,6 +864,7 @@ async function recarregarSessoes() {
     grupoProfs = rGP.data || grupoProfs;
     profFreq = rPF.data || profFreq;
     locacoes = (rLoc && rLoc.data) || locacoes;
+    recalcularFimEfetivo();
     renderTudo();
     const modalGrupo = document.getElementById('modal-grupo');
     if (modalGrupo && modalGrupo.classList.contains('aberto') && grupoAberto) renderModalGrupo();
@@ -911,6 +927,15 @@ document.getElementById('btn-horario-fixo').addEventListener('click', async () =
 // (remarcada_de_*), então a projeção antiga não reaparece e o financeiro
 // passa a contar pela data nova.
 async function moverSessaoUnica(s, novaData, novaHora, motivo) {
+    // mover para depois do fim efetivo esconderia a sessão da agenda inteira
+    // («??» não empurra o encerramento) — barra e explica o caminho certo
+    const fimMov = fimEfetivo.get(s.paciente_id);
+    if (fimMov && novaData >= fimMov) {
+        toast(`⛔ O processo de ${nomePac(s.paciente_id)} termina em ${formataBR(fimMov)} — `
+            + 'não dá para remarcar para depois disso. Reative o processo no card do '
+            + 'paciente, ou registre a vinda direto com a frequência real.', true);
+        return;
+    }
     let error, voltar;
     if (s.id) {
         // o inverso é escrito ANTES de gravar, com os valores que a linha tinha
