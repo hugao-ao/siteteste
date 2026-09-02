@@ -135,6 +135,11 @@
         <p class="dica" id="restaurar-texto"></p>
         <button class="argos-btn small" id="btn-restaurar">↩️ Restaurar ao horário original</button>
       </div>
+      <div id="bloco-tipo" data-argos-recurso="sessao_tipo_editar" style="display:none">
+        <h3 class="form-secao">🏷️ Tipo da sessão</h3>
+        <p class="dica">Como esta sessão aconteceu (ou vai acontecer): individual, online ou familiar. Aparece no extrato do paciente e nos atendimentos do profissional. Sessões de grupo não passam por aqui.</p>
+        <select id="st-tipo" class="argos-input" style="max-width:220px"></select>
+      </div>
       <div id="bloco-excluir" data-argos-recurso="sessao_excluir" style="display:none">
         <h3 class="form-secao">🗑️ Excluir esta sessão</h3>
         <p class="dica" id="excluir-texto"></p>
@@ -396,7 +401,7 @@
     </div>
   </div>
 
-  <script type="module" src="agenda.js?v=32"></script>
+  <script type="module" src="agenda.js?v=33"></script>
   <script type="module" src="argos-zoom.js?v=4"></script>
 </body>
 </html>

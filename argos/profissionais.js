@@ -406,7 +406,7 @@ function renderValidacao() {
                </select>${l.sessao.justificativa
                  ? `<br><span class="dim">${esc(l.sessao.justificativa)}</span>` : ''}`
             : esc(l.status.toUpperCase());
-        const tipoAvulsa = !l.sessao.dinamica_ref && l.sessao.modalidade
+        const tipoAvulsa = l.sessao.modalidade
             ? tipoSessaoLabel(l.sessao.modalidade,
                 (valGrupos.find(x => x.id === l.sessao.grupo_id) || {}).nome) : '';
         return `<tr class="${sit === 'contestada' ? 'linha-alerta' : ''}">
@@ -414,7 +414,8 @@ function renderValidacao() {
           <td title="${esc(m.ajuda)}">${m.icone} ${esc(m.rotulo)}${
             l.motivo !== 'atendeu' ? ` <span class="dim">${esc(l.atendidoPor)}</span>` : ''}${
             !l.sessao.dinamica_ref ? `<br><span class="dim">avulsa${
-                tipoAvulsa ? ` · ${esc(tipoAvulsa)}` : ''}</span>` : ''}${
+                tipoAvulsa ? ` · ${esc(tipoAvulsa)}` : ''}</span>`
+            : (tipoAvulsa ? `<br><span class="dim">${esc(tipoAvulsa)}</span>` : '')}${
             l.aposFim ? '<br><span class="dim">🏁 após o encerramento do processo — não cobra nem repassa</span>' : ''}</td>
           <td>${freqTd}</td>
           <td>${l.contabiliza ? formataMoeda(l.valor) : '<span class="dim">—</span>'}</td>

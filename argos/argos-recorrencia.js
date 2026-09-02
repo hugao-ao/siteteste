@@ -449,7 +449,7 @@ export function mesmaAgenda(a, b) {
 /**
  * Conflitos que uma dinâmica NOVA/EDITADA criaria: sessões de OUTROS
  * pacientes no mesmo espaço ou com o mesmo profissional, em horário
- * sobreposto, quando qualquer um dos lados é INDIVIDUAL (grupo+grupo pode).
+ * sobreposto, quando qualquer um dos lados NÃO é grupo (grupo+grupo pode).
  * Retorna até 5 conflitos [{minha, outra}].
  *
  * Só o que ainda vai acontecer conta. Sobreposição no passado é registro do
@@ -470,7 +470,9 @@ export function conflitosDeDinamica(nova, outrasDinamicas, sessoes, horizonteDia
     for (const m of minhas) {
         for (const s of existentes) {
             if (!mesmoLugar(m, s) || !sobrepoe(m, s)) continue;
-            const temIndividual = nova.modalidade === 'individual' || modalidadeDe(s) === 'individual';
+            // online/familiar ocupam o horário como individual: só grupo+grupo convive
+            const temIndividual = (nova.modalidade || 'individual') !== 'grupo'
+                || modalidadeDe(s) !== 'grupo';
             if (temIndividual) { out.push({ minha: m, outra: s }); if (out.length >= 5) return out; }
         }
     }
@@ -483,7 +485,7 @@ export function conflitosDeSessao(sessao, dinamicas, sessoes) {
         .filter(s => s.paciente_id !== sessao.paciente_id && s.status !== 'nc'
             && (!sessao.id || s.id !== sessao.id)
             && mesmoLugar(sessao, s) && sobrepoe(sessao, s)
-            && (modalidadeDe(sessao) === 'individual' || modalidadeDe(s) === 'individual'))
+            && (modalidadeDe(sessao) !== 'grupo' || modalidadeDe(s) !== 'grupo'))
         .slice(0, 5);
 }
 
