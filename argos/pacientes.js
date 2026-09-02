@@ -9,9 +9,10 @@ import {
     fechamentoPaciente, hojeISO, somarDias, formataBR, formataMoeda,
     conflitosDeDinamica, conflitosDeSessao, mesmaAgenda,
     divisaoRepasses, repassesDe, unidadeRepasse, aplicarFimDeProcesso,
-    definirRepassePadrao, tipoSessaoLabel,
+    definirRepassePadrao, tipoSessaoLabel, expandirDinamica, paraData,
     SITUACAO_PROCESSO, situacaoLabel
 } from './argos-recorrencia.js';
+import { gravarFrequencia, avisarMudanca } from './argos-frequencia.js';
 import {
     indexarRespostas, calcularAvaliacao, radarSVG, limiteProxima,
     avaliacaoTravada, COMPETENCIA_MAX, FOCO_MAX, formataNota
@@ -79,6 +80,13 @@ const nomeSala = id => (salas.find(s => s.id === id) || {}).nome || '—';
 const nomeProf = id => (profissionais.find(p => p.id === id) || {}).nome || '—';
 const nomeServ = id => (servicos.find(s => s.id === id) || {}).nome || '—';
 
+/** Registra um evento no histórico do paciente (usado pela tela de frequência). */
+async function registrarEvento(pacienteId, tipo, descricao, dados = null, justificativa = null) {
+    const { error } = await sb.from('argos_paciente_eventos')
+        .insert({ paciente_id: pacienteId, tipo, descricao, dados, justificativa });
+    if (error) console.error(error);
+}
+
 function idade(nasc) {
     if (!nasc) return '';
     const n = new Date(nasc + 'T12:00');
@@ -137,6 +145,7 @@ function renderLista() {
             ${podeDinamicas ? `<button class="argos-btn small" data-acao="dinamicas" data-id="${p.id}">💰 Dinâmicas</button>` : ''}
             ${podeFinanceiro ? `<button class="argos-btn small" data-acao="financeiro" data-id="${p.id}">📱 Cobrança</button>` : ''}
             ${podeExtrato ? `<button class="argos-btn small" data-acao="extrato" data-id="${p.id}">📊 Extrato</button>` : ''}
+            ${perm.pode('paciente_frequencia') ? `<button class="argos-btn small" data-acao="frequencia" data-id="${p.id}">🗓️ Frequência</button>` : ''}
             ${perm.pode('evolucao_ver') ? `<button class="argos-btn small" data-acao="evolucao" data-id="${p.id}">📈 Evolução</button>` : ''}
             ${perm.pode('anamnese_ficha') ? `<a class="argos-btn small" href="anamnese.html?paciente=${p.id}">📋 Anamnese</a>` : ''}
             ${podeEditar ? `<button class="argos-btn small" data-acao="editar" data-id="${p.id}">✏️ Editar</button>` : ''}
@@ -161,6 +170,7 @@ document.getElementById('lista-pacientes').addEventListener('click', (e) => {
     if (btn.dataset.acao === 'financeiro') cobUI.abrirFinanceiro(p);
     if (btn.dataset.acao === 'extrato') cobUI.abrirExtrato(p, {
         dinamicas: dinamicas.filter(d => d.paciente_id === p.id) });
+    if (btn.dataset.acao === 'frequencia') abrirModalFrequencia(p);
     if (btn.dataset.acao === 'excluir') { pacienteAtual = p; document.getElementById('modal-excluir-titulo').textContent = `Excluir: ${p.nome}`; abrirModal('modal-excluir'); }
 });
 
@@ -882,8 +892,11 @@ document.getElementById('form-dinamica').addEventListener('submit', async (e) =>
         freq_periodo: g('din-freq-periodo'),
         data_inicio: g('din-inicio') || null,
         fim_tipo: g('din-fim-tipo'),
-        fim_ocorrencias: num('din-fim-ocorrencias'),
-        fim_data: g('din-fim-data') || null,
+        // só guarda o fim que combina com o tipo escolhido: um fim_data que
+        // sobrou de um tipo 'indeterminado' faz o motor ignorá-lo e a dinâmica
+        // nunca encerra (foi o que deixou duas dinâmicas vivas no mesmo horário)
+        fim_ocorrencias: g('din-fim-tipo') === 'apos_ocorrencias' ? num('din-fim-ocorrencias') : null,
+        fim_data: g('din-fim-tipo') === 'data' ? (g('din-fim-data') || null) : null,
         modalidade: g('din-modalidade'),
         sala_id: g('din-sala') || null,
         // o profissional/serviço "principal" da dinâmica é o da primeira linha
@@ -1206,6 +1219,295 @@ document.getElementById('btn-confirmar-exclusao').addEventListener('click', asyn
     }
     fecharModal('modal-excluir');
     await carregarTudo();
+});
+
+// ============================================================
+// FREQUÊNCIA — todas as sessões do paciente, em tabela editável
+// ============================================================
+// A mesma tabela argos_sessoes que a agenda lê: editar aqui é editar a
+// agenda. Serve para arrumar de vez casos bagunçados (sessões duplicadas de
+// dinâmicas que se sobrepõem, frequências trocadas) com clique-e-arrasta,
+// seleção múltipla e adição em lote.
+let freqPac = null;             // paciente aberto na frequência
+let freqSessoes = [];           // sessões gravadas dele (linhas de verdade)
+let freqSel = new Set();        // ids das sessões selecionadas
+let freqMes = 'todos';          // filtro de mês
+let freqArrastando = false;     // clique-e-arrasta em andamento
+let freqAncora = -1;            // índice inicial do arrasto
+
+const fEl = id => document.getElementById(id);
+
+function dinamicaDaSessao(s) {
+    const d = dinamicas.find(x => x.id === (s.dinamica_ref || s.dinamica_id));
+    if (d) return d.rotulo || 'Dinâmica';
+    if (!s.dinamica_ref && !s.dinamica_id) return 'avulsa';
+    return '⚠️ dinâmica apagada';
+}
+
+async function abrirModalFrequencia(p) {
+    freqPac = p;
+    freqSel = new Set();
+    freqMes = 'todos';
+    fEl('modal-freq-titulo').textContent = `🗓️ Frequência — ${p.nome}`;
+    fEl('freq-form-add').style.display = 'none';
+    fEl('freq-tabela').innerHTML = '<p class="dim">Carregando…</p>';
+    abrirModal('modal-frequencia');
+    await recarregarFrequencia();
+}
+
+async function recarregarFrequencia() {
+    if (!freqPac) return;
+    const { data } = await todas(() => sb.from('argos_sessoes').select('*')
+        .eq('paciente_id', freqPac.id));
+    freqSessoes = (data || []).slice().sort((a, b) =>
+        String(a.data).localeCompare(String(b.data))
+        || String(a.hora || '').localeCompare(String(b.hora || '')));
+    // ids que sumiram (excluídos) saem da seleção
+    const vivos = new Set(freqSessoes.map(s => s.id));
+    freqSel = new Set([...freqSel].filter(id => vivos.has(id)));
+    renderFrequencia();
+}
+
+function freqStatusBotoesHTML() {
+    return ['??', 'ok', 'fj', 'fc', 'nc'].map(st =>
+        `<button class="btn-status" style="--c:${STATUS_SESSAO[st].cor}" data-freq-status="${st}"
+            title="${STATUS_SESSAO[st].desc || ''}">${STATUS_SESSAO[st].label}</button>`).join(' ');
+}
+
+function renderFrequencia() {
+    // seletor de mês
+    const meses = [...new Set(freqSessoes.map(s => String(s.data).slice(0, 7)))].sort().reverse();
+    fEl('freq-mes').innerHTML = `<option value="todos">Todos os meses</option>`
+        + meses.map(m => `<option value="${m}">${m.split('-').reverse().join('/')}</option>`).join('');
+    fEl('freq-mes').value = freqMes;
+
+    const visiveis = freqSessoes.filter(s => freqMes === 'todos' || String(s.data).slice(0, 7) === freqMes);
+    fEl('freq-contagem').textContent = `${visiveis.length} sessão(ões)`
+        + (freqSessoes.length !== visiveis.length ? ` de ${freqSessoes.length}` : '');
+
+    // duplicadas: mesma data+hora aparecendo mais de uma vez
+    const conta = new Map();
+    for (const s of freqSessoes) {
+        const k = `${s.data}|${s.hora}`;
+        conta.set(k, (conta.get(k) || 0) + 1);
+    }
+
+    if (!visiveis.length) {
+        fEl('freq-tabela').innerHTML = '<p class="dim">Nenhuma sessão neste filtro.</p>';
+    } else {
+        const linhas = visiveis.map((s, i) => {
+            const dup = conta.get(`${s.data}|${s.hora}`) > 1;
+            const sel = freqSel.has(s.id);
+            const dow = DOW_NOMES[paraData(s.data).getDay()];
+            return `<tr class="freq-linha${sel ? ' sel' : ''}" data-freq-idx="${i}" data-freq-id="${s.id}">
+              <td class="freq-check"><input type="checkbox" ${sel ? 'checked' : ''} data-freq-check="${s.id}"></td>
+              <td>${formataBR(s.data)} <span class="dim">${dow}</span>${dup ? ' <span class="badge vermelho">duplicada</span>' : ''}</td>
+              <td>${esc(s.hora || '')}</td>
+              <td>${esc(dinamicaDaSessao(s))}<br><span class="dim">${esc(nomeProf(s.profissional_id))}</span></td>
+              <td>
+                <select class="argos-input freq-status-sel" data-freq-uma="${s.id}">
+                  ${['??', 'ok', 'fj', 'fc', 'nc'].map(st =>
+                    `<option value="${st}"${st === (s.status || '??') ? ' selected' : ''}>${STATUS_SESSAO[st].label}</option>`).join('')}
+                </select>
+              </td>
+              <td class="dim">${esc(s.justificativa || '')}</td>
+            </tr>`;
+        }).join('');
+        fEl('freq-tabela').innerHTML = `<table class="argos-tabela compacta freq-tabela">
+          <thead><tr>
+            <th class="freq-check"><input type="checkbox" id="freq-check-todas"
+              title="Selecionar/limpar todas as visíveis"></th>
+            <th>Dia</th><th>Hora</th><th>Dinâmica / profissional</th><th>Frequência</th><th>Observação</th>
+          </tr></thead><tbody>${linhas}</tbody></table>`;
+        const todasCheck = fEl('freq-check-todas');
+        if (todasCheck) todasCheck.checked = visiveis.every(s => freqSel.has(s.id));
+    }
+
+    // barra de ações da seleção
+    fEl('freq-status-botoes').innerHTML = freqStatusBotoesHTML();
+    fEl('freq-acoes').style.display = freqSel.size ? '' : 'none';
+    fEl('freq-sel-contagem').textContent = `${freqSel.size} selecionada(s)`;
+}
+
+// índices visíveis (para o arrasto e o Shift+clique respeitarem o filtro de mês)
+function freqVisiveis() {
+    return freqSessoes.filter(s => freqMes === 'todos' || String(s.data).slice(0, 7) === freqMes);
+}
+function freqSelecionarIntervalo(a, b) {
+    const vis = freqVisiveis();
+    const [de, ate] = a <= b ? [a, b] : [b, a];
+    for (let i = de; i <= ate && i < vis.length; i++) if (i >= 0) freqSel.add(vis[i].id);
+}
+// pinta a seleção nas linhas SEM reconstruir a tabela (reconstruir durante o
+// arrasto mataria os eventos de mouseover nas linhas trocadas)
+function pintarSelecao() {
+    fEl('freq-tabela').querySelectorAll('.freq-linha').forEach(tr => {
+        const on = freqSel.has(tr.dataset.freqId);
+        tr.classList.toggle('sel', on);
+        const chk = tr.querySelector('[data-freq-check]');
+        if (chk) chk.checked = on;
+    });
+    const acoes = fEl('freq-acoes');
+    if (acoes) acoes.style.display = freqSel.size ? '' : 'none';
+    const cont = fEl('freq-sel-contagem');
+    if (cont) cont.textContent = `${freqSel.size} selecionada(s)`;
+    const todas = fEl('freq-check-todas');
+    if (todas) { const vis = freqVisiveis(); todas.checked = vis.length > 0 && vis.every(s => freqSel.has(s.id)); }
+}
+
+// clique-e-arrasta sobre as linhas: seleciona um intervalo
+fEl('freq-tabela').addEventListener('mousedown', (e) => {
+    if (e.target.closest('select, option, input, button, a')) return; // controles próprios
+    const tr = e.target.closest('.freq-linha');
+    if (!tr) return;
+    e.preventDefault();
+    freqArrastando = true;
+    freqAncora = Number(tr.dataset.freqIdx);
+    if (!e.shiftKey && !e.ctrlKey && !e.metaKey) freqSel = new Set();
+    freqSelecionarIntervalo(freqAncora, freqAncora);
+    pintarSelecao();
+});
+// durante o arrasto o alvo do mousemove fica preso à linha inicial (pointer
+// capture), então descobrimos a linha sob o cursor por elementFromPoint
+document.addEventListener('mousemove', (e) => {
+    if (!freqArrastando) return;
+    const tr = document.elementFromPoint(e.clientX, e.clientY);
+    const linha = tr && tr.closest('.freq-linha');
+    if (!linha || !fEl('freq-tabela').contains(linha)) return;
+    const vis = freqVisiveis();
+    const base = new Set();               // mantém o que está fora do mês + o intervalo atual
+    freqSel.forEach(id => { if (!vis.some(s => s.id === id)) base.add(id); });
+    freqSel = base;
+    freqSelecionarIntervalo(freqAncora, Number(linha.dataset.freqIdx));
+    pintarSelecao();
+});
+document.addEventListener('mouseup', (e) => {
+    // fecha o intervalo pela linha onde o arrasto terminou (garante o alvo
+    // final mesmo se algum mousemove intermediário não registrou)
+    if (freqArrastando) {
+        const el = document.elementFromPoint(e.clientX, e.clientY);
+        const linha = el && el.closest('.freq-linha');
+        if (linha && fEl('freq-tabela').contains(linha)) {
+            freqSelecionarIntervalo(freqAncora, Number(linha.dataset.freqIdx));
+            pintarSelecao();
+        }
+    }
+    freqArrastando = false;
+});
+
+// caixas de seleção (clique e Shift+clique), e "todas"
+fEl('freq-tabela').addEventListener('click', (e) => {
+    const todas = e.target.closest('#freq-check-todas');
+    if (todas) {
+        const vis = freqVisiveis();
+        if (todas.checked) vis.forEach(s => freqSel.add(s.id));
+        else vis.forEach(s => freqSel.delete(s.id));
+        pintarSelecao();
+        return;
+    }
+    const chk = e.target.closest('[data-freq-check]');
+    if (!chk) return;
+    const id = chk.dataset.freqCheck;
+    const vis = freqVisiveis();
+    const idx = vis.findIndex(s => s.id === id);
+    if (e.shiftKey && freqAncora >= 0) freqSelecionarIntervalo(freqAncora, idx);
+    else { if (freqSel.has(id)) freqSel.delete(id); else freqSel.add(id); freqAncora = idx; }
+    pintarSelecao();
+});
+
+// filtro de mês
+fEl('freq-mes').addEventListener('change', () => { freqMes = fEl('freq-mes').value; renderFrequencia(); });
+fEl('btn-freq-limpar').addEventListener('click', () => { freqSel = new Set(); pintarSelecao(); });
+
+// mudar a frequência de UMA sessão pelo seletor da linha
+fEl('freq-tabela').addEventListener('change', async (e) => {
+    const uma = e.target.closest('[data-freq-uma]');
+    if (!uma) return;
+    const s = freqSessoes.find(x => x.id === uma.dataset.freqUma);
+    if (!s) return;
+    const status = uma.value;
+    const { erro } = await gravarFrequencia(sb, [s], status, s.justificativa || null);
+    if (erro) { console.error(erro); toast('Erro ao gravar a frequência.', true); return; }
+    s.status = status;
+    avisarMudanca({ origem: 'pacientes', quantas: 1 });
+    toast(`Frequência de ${formataBR(s.data)} → ${STATUS_SESSAO[status].label}.`);
+    renderFrequencia();
+});
+
+// marcar a frequência de TODAS as selecionadas de uma vez
+fEl('freq-status-botoes').addEventListener('click', async (e) => {
+    const b = e.target.closest('[data-freq-status]');
+    if (!b || !freqSel.size) return;
+    const status = b.dataset.freqStatus;
+    const alvos = freqSessoes.filter(s => freqSel.has(s.id));
+    const { erro } = await gravarFrequencia(sb, alvos, status, null);
+    if (erro) { console.error(erro); toast('Erro ao gravar a frequência.', true); return; }
+    alvos.forEach(s => { s.status = status; });
+    avisarMudanca({ origem: 'pacientes', quantas: alvos.length });
+    toast(`${alvos.length} sessão(ões) → ${STATUS_SESSAO[status].label}.`);
+    renderFrequencia();
+});
+
+// excluir as selecionadas (com as conferências dos profissionais junto)
+fEl('btn-freq-excluir').addEventListener('click', async () => {
+    if (!freqSel.size || !perm.pode('sessao_excluir')) return;
+    const ids = [...freqSel];
+    if (!confirm(`Excluir ${ids.length} sessão(ões) selecionada(s)?\n`
+        + 'Elas saem da agenda e das finanças. As que vinham de horário fixo voltam a valer como pendentes.')) return;
+    await sb.from('argos_sessao_validacao').delete().in('sessao_id', ids);
+    const { error } = await sb.from('argos_sessoes').delete().in('id', ids);
+    if (error) { console.error(error); toast('Erro ao excluir as sessões.', true); return; }
+    await registrarEvento(freqPac.id, 'sessoes_excluidas',
+        `${ids.length} sessão(ões) excluída(s) pela tela de frequência.`, { quantas: ids.length });
+    freqSel = new Set();
+    avisarMudanca({ origem: 'pacientes', quantas: ids.length });
+    toast(`${ids.length} sessão(ões) excluída(s).`);
+    await recarregarFrequencia();
+});
+
+// ---- adicionar várias sessões de uma dinâmica num período ----
+fEl('btn-freq-add').addEventListener('click', () => {
+    const dins = dinamicas.filter(d => d.paciente_id === freqPac.id && d.recorrencia_tipo === 'recorrente');
+    fEl('freq-add-dinamica').innerHTML = dins.length
+        ? dins.map(d => `<option value="${d.id}">${esc(d.rotulo || 'Dinâmica')} — ${(d.dias || [])
+            .map(x => `${DOW_NOMES[x.dow]} ${x.hora}`).join(', ')}</option>`).join('')
+        : '<option value="">— sem dinâmica recorrente —</option>';
+    fEl('freq-add-status').innerHTML = ['ok', '??', 'fj', 'fc', 'nc'].map(st =>
+        `<option value="${st}">${STATUS_SESSAO[st].label} — ${STATUS_SESSAO[st].desc || ''}</option>`).join('');
+    fEl('freq-add-de').value = freqMes !== 'todos' ? `${freqMes}-01` : '';
+    fEl('freq-add-ate').value = '';
+    fEl('freq-form-add').style.display = '';
+});
+fEl('btn-freq-add-cancelar').addEventListener('click', () => { fEl('freq-form-add').style.display = 'none'; });
+
+fEl('btn-freq-add-gerar').addEventListener('click', async () => {
+    const d = dinamicas.find(x => x.id === fEl('freq-add-dinamica').value);
+    const de = fEl('freq-add-de').value, ate = fEl('freq-add-ate').value;
+    const status = fEl('freq-add-status').value;
+    if (!d) { toast('Escolha uma dinâmica.', true); return; }
+    if (!de || !ate || de > ate) { toast('Informe um período válido (de/até).', true); return; }
+    // ocorrências projetadas do horário fixo no intervalo
+    const proj = expandirDinamica({ ...d, ativo: true }, de, ate);
+    if (!proj.length) { toast('A dinâmica não tem ocorrências nesse período.', true); return; }
+    // não recriar as que já existem (mesma data+hora)
+    const jaTem = new Set(freqSessoes.map(s => `${s.data}|${s.hora}`));
+    const novas = proj.filter(o => !jaTem.has(`${o.data}|${o.hora}`)).map(o => ({
+        paciente_id: freqPac.id, profissional_id: d.profissional_id || null,
+        dinamica_id: d.id, dinamica_ref: d.id, sala_id: d.sala_id || null,
+        servico_id: d.servico_id || null, data: o.data, hora: o.hora,
+        duracao_min: d.duracao_min || 60, modalidade: d.modalidade || null,
+        grupo_id: d.grupo_id || null, status
+    }));
+    if (!novas.length) { toast('Todas as ocorrências desse período já existem.'); return; }
+    const { error } = await sb.from('argos_sessoes').insert(novas);
+    if (error) { console.error(error); toast('Erro ao adicionar as sessões.', true); return; }
+    await registrarEvento(freqPac.id, 'sessoes_adicionadas',
+        `${novas.length} sessão(ões) adicionada(s) pela tela de frequência (${d.rotulo || 'dinâmica'}, `
+        + `${formataBR(de)}–${formataBR(ate)}, ${STATUS_SESSAO[status].label}).`, { quantas: novas.length });
+    avisarMudanca({ origem: 'pacientes', quantas: novas.length });
+    toast(`${novas.length} sessão(ões) adicionada(s).`);
+    fEl('freq-form-add').style.display = 'none';
+    await recarregarFrequencia();
 });
 
 // ============================================================

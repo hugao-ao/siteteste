@@ -867,3 +867,16 @@ td.valor-mes .badge { display: inline-block; margin-top: 3px; }
   display: flex; flex-wrap: wrap; gap: 10px; align-items: end; margin: 6px 0 2px;
 }
 .imes-form-novo label { display: flex; flex-direction: column; gap: 3px; font-size: .8rem; }
+
+/* ---- Frequência (tabela de todas as sessões, no card do paciente) ---- */
+.freq-tabela { width: 100%; border-collapse: collapse; }
+.freq-tabela th, .freq-tabela td { padding: 6px 8px; text-align: left; vertical-align: middle; }
+.freq-tabela thead th { position: sticky; top: 0; background: #0f1830; z-index: 1; }
+.freq-tabela td.freq-check, .freq-tabela th.freq-check { width: 34px; text-align: center; }
+.freq-tabela .freq-linha { cursor: pointer; border-top: 1px solid #1c2942; user-select: none; }
+.freq-tabela .freq-linha:hover { background: rgba(56,189,248,.06); }
+.freq-tabela .freq-linha.sel { background: rgba(56,189,248,.16); }
+.freq-tabela .freq-status-sel { padding: 3px 6px; min-width: 70px; cursor: pointer; }
+.freq-acoes { align-items: center; gap: 8px; flex-wrap: wrap; background: #101a30; padding: 8px 10px; border-radius: 10px; }
+.freq-acoes .btn-status { padding: 5px 10px; }
+#modal-frequencia #freq-tabela { max-height: 54vh; overflow: auto; }
