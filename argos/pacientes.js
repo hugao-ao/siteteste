@@ -27,6 +27,11 @@ let editandoPacienteId = null;
 let editandoDinamicaId = null;
 let cobUI = null;            // modais de contatos, detalhes financeiros e extrato
 
+// modo embarcado: a página abre dentro de um iframe (ex.: modal de
+// atendimentos do profissional) focada num único paciente. Mostra só o card
+// dele, sem a barra de topo, os filtros nem o cabeçalho da página.
+const FOCO_CARTAO = new URLSearchParams(location.search).get('cartao');
+
 // ============================================================
 // CARGA
 // ============================================================
@@ -92,6 +97,7 @@ function renderLista() {
     const ordem = document.getElementById('ordenar').value;
 
     let lista = pacientes.filter(p => {
+        if (FOCO_CARTAO) return p.id === FOCO_CARTAO;   // embarcado: só este paciente
         if (situacao === 'ativos' && (!p.ativo || p.cadastro_removido)) return false;
         if (situacao === 'inativos' && p.ativo && !p.cadastro_removido) return false;
         if (!busca) return true;
@@ -1209,6 +1215,17 @@ document.getElementById('btn-confirmar-exclusao').addEventListener('click', asyn
     perm = await carregarPermissoes();
     perm.aplicarVisibilidade();
     cobUI = montarCobrancaUI(perm);
+    // embarcado num iframe, focado num paciente: enxuga o cromo da página e
+    // mostra só o card dele — é "o mesmo card" aberto de dentro de outra tela
+    if (FOCO_CARTAO) {
+        document.body.classList.add('embarcado');
+        ['argos-topbar'].forEach(c => document.querySelectorAll('.' + c).forEach(el => el.style.display = 'none'));
+        const main = document.querySelector('main.argos-pagina');
+        if (main) {
+            main.querySelectorAll('h1, .sub, .argos-filtros').forEach(el => el.style.display = 'none');
+            main.style.padding = '10px';
+        }
+    }
     await carregarTudo();
     // voltar da Evolução/Anamnese reabre o painel daquele paciente
     const alvo = new URLSearchParams(location.search).get('paciente');
