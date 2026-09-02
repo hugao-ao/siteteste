@@ -16,7 +16,7 @@
 import {
     lerFrequencia, chaveNome, STATUS_PLANILHA, DIA_SEMANA, somarHoras
 } from './argos-import-freq.js';
-import { mesclarSessoes, aplicarFimDeProcesso, hojeISO, somarDias }
+import { mesclarSessoes, aplicarFimDeProcesso, hojeISO, somarDias, reconduzirSessoesOrfas }
     from './argos-recorrencia.js';
 
 export { lerFrequencia };
@@ -142,6 +142,11 @@ export function planoDoMes({ linhas = [], pacientes = [], profissionais = [],
 
     const de = `${ano}-${String(mes).padStart(2, '0')}-01`;
     const ate = `${ano}-${String(mes).padStart(2, '0')}-${String(ultimoDia(ano, mes)).padStart(2, '0')}`;
+
+    // sessão órfã (dinâmica apagada e recriada) volta para a dinâmica ativa do
+    // mesmo slot: senão a projeção da dinâmica nova não a reconhece e a
+    // planilha, mesmo trazendo o dia, propõe um «não houve» indevido
+    sessoes = reconduzirSessoesOrfas(dinamicas, sessoes);
 
     const pacPorChave = new Map();
     for (const p of pacientes) {

@@ -190,6 +190,33 @@ export function mesclarSessoes(dinamicas, sessoesMaterializadas, de, ate) {
     return out;
 }
 
+/**
+ * Reconduz sessões órfãs: quando o dinamica_ref de uma sessão aponta para uma
+ * dinâmica que não existe mais (uma dinâmica apagada e recriada deixa as
+ * sessões antigas apontando para o vazio), a sessão volta, em memória, para a
+ * dinâmica ATIVA do mesmo paciente que projeta o mesmo dia da semana e hora.
+ *
+ * Sem isto a sessão real fica invisível: não casa com a projeção da dinâmica
+ * nova (ref diferente), some do repasse do profissional (não se acha o dono),
+ * some da cobrança (não entra em nenhuma dinâmica) e a importação a trata como
+ * "sem registro". Só reconduz quando há EXATAMENTE uma candidata no slot, para
+ * nunca chutar entre dois acordos no mesmo horário.
+ */
+export function reconduzirSessoesOrfas(dinamicas, sessoes) {
+    const ids = new Set((dinamicas || []).map(d => d.id));
+    const ativas = (dinamicas || []).filter(d => d.ativo !== false);
+    return (sessoes || []).map(s => {
+        const ref = s.dinamica_ref || s.dinamica_id;
+        if (!ref || ids.has(ref)) return s;
+        const dow = paraData(s.data).getDay();
+        const hora = s.remarcada_de_hora || s.hora;
+        const cand = ativas.filter(d => d.paciente_id === s.paciente_id
+            && (d.dias || []).some(x => Number(x.dow) === dow && x.hora === hora));
+        if (cand.length !== 1) return s;
+        return { ...s, dinamica_ref: cand[0].id, dinamica_id: cand[0].id };
+    });
+}
+
 // ---------- Acordo financeiro ----------
 
 /** Valor unitário de referência de uma sessão da dinâmica (para pacote/por_sessao). */
@@ -582,6 +609,9 @@ export function fechamentoPaciente(paciente, dinamicas, sessoes, mes) {
     const de = mes + '-01';
     const ate = fimDoMes(mes);
     const hoje = hojeISO();
+    // sessão órfã (dinâmica apagada e recriada) volta para a dinâmica ativa do
+    // mesmo slot, senão não casa com projeção nenhuma e some das contas
+    sessoes = reconduzirSessoesOrfas(dinamicas, sessoes);
     // processo encerrado/interrompido: nada conta a partir do fim efetivo
     // (tipo sem data corta a partir de hoje — a mesma régua da agenda)
     if (paciente && (paciente.processo_fim_data || paciente.processo_fim_tipo)) {
