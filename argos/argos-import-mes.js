@@ -403,7 +403,22 @@ export function planoDoMes({ linhas = [], pacientes = [], profissionais = [],
     const ontem = somarDias(hojeISO(), -1);
     const ateNc = ate < ontem ? ate : ontem;
     if (ateNc >= de) {
-        const corte = aplicarFimDeProcesso(dinamicas || [], sessoes, pacientes);
+        // o fim efetivo precisa enxergar também o que ESTA importação propõe:
+        // uma sessão real da planilha depois do encerramento empurra o fim,
+        // e os buracos ressuscitados entre o fim antigo e ela viram «nc» já
+        // neste mesmo plano (senão ficariam como «??» eternos nas pendências)
+        const porId = new Map((sessoes || []).map(s => [s.id, s]));
+        const propostas = [];
+        for (const m of mudancas) {
+            const a = m.acao;
+            if (!a) continue;
+            if (a.op === 'inserir' && a.registro && a.registro.data) propostas.push(a.registro);
+            else if (a.op === 'atualizar' && a.tabela === 'argos_sessoes' && a.campos && a.campos.status) {
+                const s0 = porId.get(a.id);
+                if (s0) propostas.push({ paciente_id: s0.paciente_id, data: s0.data, status: a.campos.status });
+            }
+        }
+        const corte = aplicarFimDeProcesso(dinamicas || [], (sessoes || []).concat(propostas), pacientes);
         // dinâmica desligada encerra o futuro, não o passado: para o buraco
         // vencido ela ainda conta (mesma regra do aviso de pendências)
         const paraProjecao = corte.dinamicas.map(d => d.ativo === false ? { ...d, ativo: true } : d);
