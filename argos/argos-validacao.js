@@ -15,7 +15,8 @@
 // que não reconhece, sem precisar mexer na frequência de ninguém.
 
 import {
-    repassesDe, fechamentoPaciente, fimDoMes, hojeISO, fracaoDoPar
+    repassesDe, fechamentoPaciente, fimDoMes, hojeISO, fracaoDoPar,
+    fimEfetivoDoProcesso
 } from './argos-recorrencia.js';
 
 /** Por que esta sessão está na lista do profissional. */
@@ -94,11 +95,13 @@ export function atendimentosDoProfissional({ profissional_id, mes, pacientes = [
             });
         }
 
-        // processo encerrado/interrompido: sessão registrada depois do corte
-        // aparece na lista (o profissional precisa vê-la), mas não cobra nem
-        // repassa — é a mesma régua do fechamento e da produção
-        const fimProcesso = p.processo_fim_data
-            || (p.processo_fim_tipo ? hoje : null);
+        // processo encerrado/interrompido: o corte é o fim EFETIVO — registro
+        // real (ok/fj/fc) depois do encerramento empurra o fim para a frente,
+        // então essas sessões cobram e repassam normalmente. Só o que sobra
+        // além disso (nc/?? soltos) aparece marcado e vale 0 — a mesma régua
+        // do fechamento e da produção.
+        const fimProcesso = fimEfetivoDoProcesso(p,
+            sessoes.filter(s => s.paciente_id === p.id));
 
         for (const s of sessP) {
             const din = dinsP.find(d => d.id === (s.dinamica_ref || s.dinamica_id));

@@ -514,8 +514,34 @@ export function ocorrenciasDaCadeia(root, dinamicas, ateISO) {
     return occ;
 }
 
+/** Situações de sessão que valem como registro real de atendimento. */
+const REGISTRO_REAL = new Set(['ok', 'fj', 'fc']);
+
 /**
- * Encerramento/interrupção do processo: a partir de paciente.processo_fim_data
+ * O fim EFETIVO do processo de um paciente: a data registrada, empurrada
+ * para a frente pelo registro real. Se a planilha do mês (ou a agenda)
+ * trouxe sessão com frequência de verdade (ok/fj/fc) em data posterior ao
+ * encerramento, o encerramento passa a valer depois da última dessas datas —
+ * o que aconteceu ganha do que estava programado.
+ * Devolve a data de corte em ISO, ou null quando o processo está aberto.
+ */
+export function fimEfetivoDoProcesso(paciente, sessoes) {
+    if (!paciente) return null;
+    // sem data informada o corte vale de hoje: não se projeta mais nada
+    // para quem já não vem, e o histórico até aqui fica de pé
+    let fim = paciente.processo_fim_data
+        || (paciente.processo_fim_tipo ? hojeISO() : null);
+    if (!fim) return null;
+    for (const s of sessoes || []) {
+        if (s.paciente_id !== paciente.id) continue;
+        if (s.data >= fim && REGISTRO_REAL.has(s.status)) fim = somarDias(s.data, 1);
+    }
+    return fim;
+}
+
+/**
+ * Encerramento/interrupção do processo: a partir do fim EFETIVO (o
+ * registrado, empurrado por sessões reais posteriores — fimEfetivoDoProcesso)
  * o paciente não consta mais na agenda nem nas finanças, não importa o que
  * esteja programado. Devolve cópias com o corte aplicado:
  * dinâmicas ganham corte_data (véspera) e sessões a partir da data somem.
@@ -523,11 +549,8 @@ export function ocorrenciasDaCadeia(root, dinamicas, ateISO) {
 export function aplicarFimDeProcesso(dinamicas, sessoes, pacientes) {
     const fimDe = {};
     (pacientes || []).forEach(p => {
-        if (!p) return;
-        // sem data informada o corte vale de hoje: não se projeta mais nada
-        // para quem já não vem, e o histórico até aqui fica de pé
-        if (p.processo_fim_data) fimDe[p.id] = p.processo_fim_data;
-        else if (p.processo_fim_tipo) fimDe[p.id] = hojeISO();
+        const fim = fimEfetivoDoProcesso(p, sessoes);
+        if (fim) fimDe[p.id] = fim;
     });
     if (!Object.keys(fimDe).length) return { dinamicas: dinamicas || [], sessoes: sessoes || [] };
     const dins = (dinamicas || []).map(d => {
