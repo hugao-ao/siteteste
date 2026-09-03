@@ -148,12 +148,32 @@ export function expandirDinamica(d, de, ate) {
     return out;
 }
 
+// ---- meses soberanos da planilha (congelados) ----------------------------
+// Uma vez importada a planilha de um mês para um paciente, aquele mês é a
+// palavra final: nenhuma dinâmica projeta sessão-fantasma ali, mesmo que
+// depois a dinâmica seja alterada (datas/horário). Só as sessões REAIS
+// (gravadas pela planilha) aparecem. Registro global, no estilo do repasse
+// padrão — cada página carrega e chama definirMesesCongelados.
+let MESES_CONGELADOS = new Set(); // `${paciente_id}|${YYYY-MM}`
+export function definirMesesCongelados(lista) {
+    MESES_CONGELADOS = new Set((lista || [])
+        .filter(x => x && x.paciente_id && x.mes)
+        .map(x => `${x.paciente_id}|${x.mes}`));
+}
+export function mesCongelado(paciente_id, mes) {
+    return MESES_CONGELADOS.has(`${paciente_id}|${mes}`);
+}
+
 /**
  * Mescla projeções com sessões materializadas: a materializada (mesma
  * dinâmica+data+hora) substitui a projeção. Sessões avulsas/manuais entram
  * como estão. Retorna lista ordenada por data+hora com campo status.
+ *
+ * Num mês congelado (planilha soberana) a projeção NÃO nasce: só o que está
+ * gravado aparece. `respeitarCongelamento=false` ignora isso — é o que a
+ * própria importação usa, já que a planilha é quem define o mês naquele ato.
  */
-export function mesclarSessoes(dinamicas, sessoesMaterializadas, de, ate) {
+export function mesclarSessoes(dinamicas, sessoesMaterializadas, de, ate, respeitarCongelamento = true) {
     // sessões remarcadas casam com a projeção da ocorrência ORIGINAL
     // (remarcada_de_*), mas são exibidas na data/hora nova
     const mat = new Map();
@@ -179,6 +199,8 @@ export function mesclarSessoes(dinamicas, sessoesMaterializadas, de, ate) {
                     sala_id: m.sala_id || p.sala_id,
                     profissional_id: m.profissional_id || p.profissional_id });
             } else {
+                // mês congelado: a planilha é soberana, a dinâmica não projeta
+                if (respeitarCongelamento && mesCongelado(p.paciente_id, p.data.slice(0, 7))) continue;
                 out.push({ ...p, id: null, status: '??', projetada: true });
             }
         }

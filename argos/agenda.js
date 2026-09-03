@@ -8,7 +8,8 @@ import {
     STATUS_SESSAO, DOW_NOMES, mesclarSessoes, hojeISO, somarDias, paraData,
     paraISO, formataBR, formataMoeda, fimDoMes, expandirDinamica, conflitosDeSessao,
     conflitosDeDinamica, repassesDe, aplicarFimDeProcesso, fimEfetivoDoProcesso,
-    definirRepassePadrao, fracaoRepasse, tipoSessaoLabel, TIPOS_SESSAO_AVULSA
+    definirRepassePadrao, fracaoRepasse, tipoSessaoLabel, TIPOS_SESSAO_AVULSA,
+    definirMesesCongelados
 } from './argos-recorrencia.js';
 import { gravarFrequencia, registrarFaltasJustificadas, avisarMudanca, ouvirMudancas }
     from './argos-frequencia.js';
@@ -33,7 +34,7 @@ const nomeSala = id => (salas.find(s => s.id === id) || {}).nome || 'Sem espaço
 const nomeProf = id => (profissionais.find(p => p.id === id) || {}).nome || '—';
 
 async function carregarTudo() {
-    const [rPac, rSalas, rProf, rDin, rSes, rGru, rMem, rGP, rPF, rLoc] = await Promise.all([
+    const [rPac, rSalas, rProf, rDin, rSes, rGru, rMem, rGP, rPF, rLoc, rCong] = await Promise.all([
         sb.from('argos_pacientes').select('id, nome, ativo, cadastro_removido, processo_fim_data, processo_fim_tipo').order('nome'),
         sb.from('argos_salas').select('*').order('nome'),
         sb.from('argos_profissionais').select('*').order('nome'),
@@ -43,7 +44,8 @@ async function carregarTudo() {
         sb.from('argos_grupo_membros').select('*'),
         sb.from('argos_grupo_profissionais').select('*'),
         todas(() => sb.from('argos_prof_frequencia').select('*')),
-        todas(() => sb.from('argos_locacoes').select('*'))
+        todas(() => sb.from('argos_locacoes').select('*')),
+        todas(() => sb.from('argos_meses_congelados').select('*'))
     ]);
     const erro = rPac.error || rSalas.error || rProf.error || rDin.error || rSes.error || rGru.error || rMem.error || rGP.error;
     if (erro) { console.error(erro); toast('Erro ao carregar a agenda.', true); return; }
@@ -51,6 +53,7 @@ async function carregarTudo() {
     salas = rSalas.data || [];
     profissionais = rProf.data || [];
     definirRepassePadrao(profissionais);
+    definirMesesCongelados((rCong && rCong.data) || []);
     dinamicas = rDin.data || [];
     sessoes = rSes.data || [];
     grupos = rGru.data || [];
@@ -860,14 +863,15 @@ async function registrarEvento(pacienteId, tipo, descricao, dados, justificativa
 }
 
 async function recarregarSessoes() {
-    const [rSes, rDin, rGru, rMem, rGP, rPF, rLoc] = await Promise.all([
+    const [rSes, rDin, rGru, rMem, rGP, rPF, rLoc, rCong] = await Promise.all([
         todas(() => sb.from('argos_sessoes').select('*')),
         todas(() => sb.from('argos_dinamicas').select('*')),
         sb.from('argos_grupos').select('*').order('hora'),
         sb.from('argos_grupo_membros').select('*'),
         sb.from('argos_grupo_profissionais').select('*'),
         todas(() => sb.from('argos_prof_frequencia').select('*')),
-        todas(() => sb.from('argos_locacoes').select('*'))
+        todas(() => sb.from('argos_locacoes').select('*')),
+        todas(() => sb.from('argos_meses_congelados').select('*'))
     ]);
     sessoes = rSes.data || sessoes;
     dinamicas = rDin.data || dinamicas;
@@ -876,6 +880,7 @@ async function recarregarSessoes() {
     grupoProfs = rGP.data || grupoProfs;
     profFreq = rPF.data || profFreq;
     locacoes = (rLoc && rLoc.data) || locacoes;
+    if (rCong && rCong.data) definirMesesCongelados(rCong.data);
     recalcularFimEfetivo();
     renderTudo();
     const modalGrupo = document.getElementById('modal-grupo');
@@ -2047,6 +2052,17 @@ document.getElementById('btn-imes-aplicar').addEventListener('click', async () =
         toast('Erro ao aplicar a importação. Nada mais foi gravado.', true);
         btn.disabled = false; btn.textContent = 'Aplicar as aprovadas';
         return;
+    }
+    // planilha soberana: os meses/pacientes que a importação cobriu ficam
+    // congelados — daqui em diante nenhuma dinâmica projeta sessão-fantasma
+    // ali, mesmo que seja editada depois
+    if (imesAnoMes && imesPlano && imesPlano.pares && imesPlano.pares.length) {
+        const mesCong = `${imesAnoMes.ano}-${String(imesAnoMes.mes).padStart(2, '0')}`;
+        const congs = [...new Set(imesPlano.pares.map(p => p.paciente.id))]
+            .map(id => ({ paciente_id: id, mes: mesCong }));
+        const { error: eC } = await sb.from('argos_meses_congelados')
+            .upsert(congs, { onConflict: 'paciente_id,mes', ignoreDuplicates: true });
+        if (eC) console.error(eC);
     }
     toast(`${escolhidas.length} alteração(ões) aplicada(s).`);
     btn.disabled = false; btn.textContent = 'Aplicar as aprovadas';

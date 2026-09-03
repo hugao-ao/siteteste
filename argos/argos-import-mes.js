@@ -442,7 +442,7 @@ export function planoDoMes({ linhas = [], pacientes = [], profissionais = [],
         for (const x of doMes) {
             respondido.add(`${x.paciente_id}|${x.data}|${x.dinamica_ref || 'h:' + x.hora}`);
         }
-        for (const proj of mesclarSessoes(paraProjecao, corte.sessoes, de, ateNc)) {
+        for (const proj of mesclarSessoes(paraProjecao, corte.sessoes, de, ateNc, false)) {
             if (!proj.projetada || proj.status !== '??') continue;
             if (!pacsCobertos.has(proj.paciente_id)) continue;
             if (proj.profissional_id
