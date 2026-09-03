@@ -262,6 +262,48 @@
     </div>
   </div>
 
+  <!-- ============ MODAL: EDITAR UMA SESSÃO (da frequência) ============ -->
+  <div class="argos-modal-fundo" id="modal-freq-editar">
+    <div class="argos-modal">
+      <div class="argos-modal-topo">
+        <h2>✏️ Editar sessão</h2>
+        <button class="argos-modal-x" data-fechar>×</button>
+      </div>
+      <p class="dica">Muda qualquer característica desta sessão — dia, hora, profissional, espaço,
+        tipo, valor e frequência. Reflete na agenda automaticamente.</p>
+      <form id="form-freq-editar" class="argos-form">
+        <div class="form-grade">
+          <label>Dia <input type="date" id="fe-data" required /></label>
+          <label>Hora <input type="time" id="fe-hora" required /></label>
+          <label>Duração (min) <input type="number" id="fe-duracao" min="10" step="5" /></label>
+        </div>
+        <div class="form-grade">
+          <label>Profissional <select id="fe-prof"></select></label>
+          <label>Espaço <select id="fe-sala"></select></label>
+        </div>
+        <div class="form-grade">
+          <label>Tipo da sessão
+            <select id="fe-tipo"></select>
+          </label>
+          <label id="fe-grupo-wrap" style="display:none">Grupo
+            <select id="fe-grupo"></select>
+          </label>
+          <label>Valor <span class="dim">(vazio = sem valor próprio; a dinâmica define)</span>
+            <span class="campo-moeda"><input type="number" step="0.01" min="0" id="fe-valor" placeholder="R$" /></span>
+          </label>
+        </div>
+        <div class="form-grade">
+          <label>Frequência <select id="fe-status"></select></label>
+          <label>Justificativa / observação <input type="text" id="fe-justificativa" /></label>
+        </div>
+        <div class="argos-modal-acoes">
+          <button type="button" class="argos-btn ghost" data-fechar>Cancelar</button>
+          <button type="submit" class="argos-btn primary">Salvar alterações</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <!-- ============ MODAL: EVOLUÇÃO TERAPÊUTICA (consulta) ============ -->
   <div class="argos-modal-fundo" id="modal-evolucao" data-argos-recurso="evolucao_ver">
     <div class="argos-modal grande">
@@ -566,7 +608,7 @@
     </div>
   </div>
 
-  <script type="module" src="pacientes.js?v=26"></script>
+  <script type="module" src="pacientes.js?v=27"></script>
   <script type="module" src="argos-zoom.js?v=4"></script>
 </body>
 </html>
