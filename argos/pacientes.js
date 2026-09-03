@@ -9,7 +9,7 @@ import {
     fechamentoPaciente, hojeISO, somarDias, formataBR, formataMoeda,
     conflitosDeDinamica, conflitosDeSessao, mesmaAgenda,
     divisaoRepasses, repassesDe, unidadeRepasse, aplicarFimDeProcesso,
-    definirRepassePadrao, tipoSessaoLabel, expandirDinamica, paraData,
+    definirRepassePadrao, tipoSessaoLabel, TIPOS_SESSAO_AVULSA, expandirDinamica, paraData,
     SITUACAO_PROCESSO, situacaoLabel
 } from './argos-recorrencia.js';
 import { gravarFrequencia, avisarMudanca } from './argos-frequencia.js';
@@ -79,6 +79,7 @@ document.getElementById('din-grupo').addEventListener('change', atualizarResumoG
 const nomeSala = id => (salas.find(s => s.id === id) || {}).nome || '—';
 const nomeProf = id => (profissionais.find(p => p.id === id) || {}).nome || '—';
 const nomeServ = id => (servicos.find(s => s.id === id) || {}).nome || '—';
+const nomeGrupoFreq = id => (grupos.find(g => g.id === id) || {}).nome || '';
 
 /** Registra um evento no histórico do paciente (usado pela tela de frequência). */
 async function registrarEvento(pacienteId, tipo, descricao, dados = null, justificativa = null) {
@@ -1299,11 +1300,13 @@ function renderFrequencia() {
             const dup = conta.get(`${s.data}|${s.hora}`) > 1;
             const sel = freqSel.has(s.id);
             const dow = DOW_NOMES[paraData(s.data).getDay()];
+            const tipo = s.modalidade ? tipoSessaoLabel(s.modalidade, nomeGrupoFreq(s.grupo_id)) : '';
             return `<tr class="freq-linha${sel ? ' sel' : ''}" data-freq-idx="${i}" data-freq-id="${s.id}">
               <td class="freq-check"><input type="checkbox" ${sel ? 'checked' : ''} data-freq-check="${s.id}"></td>
               <td>${formataBR(s.data)} <span class="dim">${dow}</span>${dup ? ' <span class="badge vermelho">duplicada</span>' : ''}</td>
               <td>${esc(s.hora || '')}</td>
-              <td>${esc(dinamicaDaSessao(s))}<br><span class="dim">${esc(nomeProf(s.profissional_id))}</span></td>
+              <td>${esc(dinamicaDaSessao(s))}<br><span class="dim">${esc(nomeProf(s.profissional_id))}${
+                tipo ? ' · ' + esc(tipo) : ''}${s.valor != null ? ' · ' + formataMoeda(s.valor) : ''}</span></td>
               <td>
                 <select class="argos-input freq-status-sel" data-freq-uma="${s.id}">
                   ${['??', 'ok', 'fj', 'fc', 'nc'].map(st =>
@@ -1311,13 +1314,14 @@ function renderFrequencia() {
                 </select>
               </td>
               <td class="dim">${esc(s.justificativa || '')}</td>
+              <td><button class="argos-btn small ghost" data-freq-editar="${s.id}" title="Editar esta sessão">✏️</button></td>
             </tr>`;
         }).join('');
         fEl('freq-tabela').innerHTML = `<table class="argos-tabela compacta freq-tabela">
           <thead><tr>
             <th class="freq-check"><input type="checkbox" id="freq-check-todas"
               title="Selecionar/limpar todas as visíveis"></th>
-            <th>Dia</th><th>Hora</th><th>Dinâmica / profissional</th><th>Frequência</th><th>Observação</th>
+            <th>Dia</th><th>Hora</th><th>Dinâmica / profissional</th><th>Frequência</th><th>Observação</th><th></th>
           </tr></thead><tbody>${linhas}</tbody></table>`;
         const todasCheck = fEl('freq-check-todas');
         if (todasCheck) todasCheck.checked = visiveis.every(s => freqSel.has(s.id));
@@ -1397,6 +1401,8 @@ document.addEventListener('mouseup', (e) => {
 
 // caixas de seleção (clique e Shift+clique), e "todas"
 fEl('freq-tabela').addEventListener('click', (e) => {
+    const edt = e.target.closest('[data-freq-editar]');
+    if (edt) { abrirEditarSessao(edt.dataset.freqEditar); return; }
     const todas = e.target.closest('#freq-check-todas');
     if (todas) {
         const vis = freqVisiveis();
@@ -1507,6 +1513,86 @@ fEl('btn-freq-add-gerar').addEventListener('click', async () => {
     avisarMudanca({ origem: 'pacientes', quantas: novas.length });
     toast(`${novas.length} sessão(ões) adicionada(s).`);
     fEl('freq-form-add').style.display = 'none';
+    await recarregarFrequencia();
+});
+
+// ---- editar uma sessão inteira (dia, hora, prof, sala, tipo, valor…) ----
+let freqEditId = null;
+
+function abrirEditarSessao(id) {
+    const s = freqSessoes.find(x => x.id === id);
+    if (!s) return;
+    freqEditId = id;
+    fEl('fe-data').value = s.data || '';
+    fEl('fe-hora').value = s.hora || '';
+    fEl('fe-duracao').value = s.duracao_min || 60;
+    fEl('fe-prof').innerHTML = '<option value="">— sem profissional —</option>'
+        + profissionais.map(p => `<option value="${p.id}">${esc(p.nome)}</option>`).join('');
+    fEl('fe-prof').value = s.profissional_id || '';
+    fEl('fe-sala').innerHTML = '<option value="">— sem espaço —</option>'
+        + salas.map(x => `<option value="${x.id}">${esc(x.nome)}</option>`).join('');
+    fEl('fe-sala').value = s.sala_id || '';
+    fEl('fe-tipo').innerHTML = '<option value="">— não definido —</option>'
+        + Object.entries(TIPOS_SESSAO_AVULSA).map(([k, t]) =>
+            `<option value="${k}">${t.icone} ${t.rotulo}</option>`).join('');
+    fEl('fe-tipo').value = s.modalidade || '';
+    fEl('fe-grupo').innerHTML = grupos.map(g =>
+        `<option value="${g.id}">${esc(g.nome)} — ${DOW_NOMES[g.dow]} ${g.hora}</option>`).join('');
+    fEl('fe-grupo').value = s.grupo_id || '';
+    fEl('fe-status').innerHTML = ['??', 'ok', 'fj', 'fc', 'nc'].map(st =>
+        `<option value="${st}">${STATUS_SESSAO[st].label} — ${STATUS_SESSAO[st].desc || ''}</option>`).join('');
+    fEl('fe-status').value = s.status || '??';
+    fEl('fe-valor').value = s.valor != null ? s.valor : '';
+    fEl('fe-justificativa').value = s.justificativa || '';
+    atualizarGrupoWrapFreq();
+    abrirModal('modal-freq-editar');
+}
+
+function atualizarGrupoWrapFreq() {
+    fEl('fe-grupo-wrap').style.display = fEl('fe-tipo').value === 'grupo' ? '' : 'none';
+}
+fEl('fe-tipo').addEventListener('change', atualizarGrupoWrapFreq);
+
+fEl('form-freq-editar').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const s = freqSessoes.find(x => x.id === freqEditId);
+    if (!s) return;
+    const modalidade = fEl('fe-tipo').value || null;
+    const upd = {
+        data: fEl('fe-data').value,
+        hora: fEl('fe-hora').value,
+        duracao_min: Number(fEl('fe-duracao').value) || 60,
+        profissional_id: fEl('fe-prof').value || null,
+        sala_id: fEl('fe-sala').value || null,
+        modalidade,
+        grupo_id: modalidade === 'grupo' ? (fEl('fe-grupo').value || null) : null,
+        status: fEl('fe-status').value,
+        valor: fEl('fe-valor').value === '' ? null : Number(fEl('fe-valor').value),
+        justificativa: fEl('fe-justificativa').value.trim() || null
+    };
+    if (!upd.data || !upd.hora) { toast('Informe dia e hora.', true); return; }
+    if (modalidade === 'grupo' && !upd.grupo_id) { toast('Escolha o grupo.', true); return; }
+    // choque de agenda no destino (mesma régua da agenda: individual não divide
+    // espaço/profissional; grupo com grupo pode). Confere contra TODAS as
+    // sessões e dinâmicas — o conflito é com outros pacientes também
+    const candidata = { ...s, ...upd };
+    const { data: todasSes } = await todas(() => sb.from('argos_sessoes').select('*'));
+    const outras = (todasSes || []).filter(x => x.id !== s.id);
+    const conflitos = conflitosDeSessao(candidata, dinamicas.filter(d => d.ativo !== false), outras);
+    if (conflitos.length) {
+        const c = conflitos[0];
+        if (!confirm(`⚠️ Já há sessão no mesmo espaço/profissional em ${formataBR(c.data || upd.data)} às ${upd.hora}.\n`
+            + 'Salvar mesmo assim?')) return;
+    }
+    const { error } = await sb.from('argos_sessoes').update(upd).eq('id', s.id);
+    if (error) { console.error(error); toast('Erro ao salvar a sessão.', true); return; }
+    Object.assign(s, upd);
+    await registrarEvento(freqPac.id, 'sessao_editada',
+        `Sessão de ${formataBR(upd.data)} ${upd.hora} editada pela tela de frequência.`,
+        { data: upd.data, hora: upd.hora, status: upd.status });
+    avisarMudanca({ origem: 'pacientes', quantas: 1 });
+    toast('Sessão atualizada.');
+    fecharModal('modal-freq-editar');
     await recarregarFrequencia();
 });
 
