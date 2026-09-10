@@ -2277,12 +2277,14 @@ async function showDiagnosticoModal(clientId, clientName) {
             }
         } else {
             const diag = diagData[0];
-            const diagLink = `${window.location.origin}/diagnostico-financeiro.html?link=${diag.link_unico}`;
+            // Roteamento por versao: 1 (ou nulo) abre a v1 na raiz; 2+ abre a v2 em /diagnostico/
+            const diagPath = (Number(diag.versao_diagnostico) || 1) >= 2 ? '/diagnostico/diagnostico-financeiro.html' : '/diagnostico-financeiro.html';
+            const diagLink = `${window.location.origin}${diagPath}?link=${diag.link_unico}`;
             const diagDate = new Date(diag.created_at).toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
 
             html = `
                 <div style="background:rgba(96,165,250,0.1);border:1px solid rgba(96,165,250,0.3);border-radius:6px;padding:0.8rem;margin-bottom:1rem;">
-                    <span style="color:#60a5fa;font-weight:bold;"><i class="fas fa-stethoscope"></i> Diagn\u00f3stico Ativo</span>
+                    <span style="color:#60a5fa;font-weight:bold;"><i class="fas fa-stethoscope"></i> Diagn\u00f3stico Ativo (v${diag.versao_diagnostico || 1})</span>
                     <span style="color:var(--theme-text-muted);font-size:0.85rem;margin-left:0.5rem;">Criado em ${diagDate}</span>
                 </div>
                 <p style="font-size:0.85rem;margin-bottom:0.5rem;">Link do diagn\u00f3stico:</p>
@@ -2352,7 +2354,8 @@ async function dashGenerateDiagnostico(clientId, clientName) {
                 link_unico: linkUnico,
                 nome_principal: cliente?.nome || clientName || '',
                 nomes_outras_pessoas_renda: outrasPersonasRenda,
-                created_by_id: sessionStorage.getItem('user_id')
+                created_by_id: sessionStorage.getItem('user_id'),
+                versao_diagnostico: 2
             });
 
         if (createError) throw createError;

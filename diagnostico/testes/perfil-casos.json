@@ -1,0 +1,339 @@
+{
+  "versao_regras": "2.1.0",
+  "referencia": "2026-09-10",
+  "descricao": "Seis clientes ficticios para conferir PerfilFinanceiro.calcular(dados). Memoria de calculo em diagnostico/TESTES-perfil.md.",
+  "casos": [
+    {
+      "id": "caso1",
+      "nome": "Carlos Andrade - P1 pela Etapa 1 (deficit estrutural)",
+      "dados": {
+        "referencia": "2026-09-10",
+        "titular": { "nome": "Carlos Andrade", "data_nascimento": "1990-05-20", "estado_civil": "Solteiro(a)", "renda_mes_fraco": 0 },
+        "conjuge": null,
+        "pessoas_renda": [],
+        "dependentes": [
+          { "nome": "Miguel Andrade", "data_nascimento": "2016-03-10", "parentesco": "filho", "responsavel": "titular" }
+        ],
+        "patrimonios_fisicos": [
+          { "tipo": "Moto", "detalhes": "Honda CG 160 2019", "valor": 8000, "quitado": true, "saldo_devedor": 0, "imovel_unico_moradia": false, "gera_renda": false }
+        ],
+        "patrimonios_liquidos": [],
+        "dividas": [
+          { "id": 1, "motivo": "Cartão de crédito rotativo", "credor": "Banco Norte", "saldo_devedor": 12000, "valor_parcela": 600, "prazo": 24, "parcelas_pagas": 2, "taxa_juros": 12, "taxa_juros_tipo": "mensal", "situacao_divida": "em_negociacao", "divida_estruturada": false, "proposta_em_vigor": "nao", "parcela_proposta": 0, "responsaveis": ["titular"] }
+        ],
+        "receitas": [
+          { "id": 1, "nome": "Salário", "valor": 4000, "tipo": "clt", "qtd_recorrencia": 1, "und_recorrencia": "mes", "titular": "titular", "automatica": false }
+        ],
+        "despesas": [
+          { "id": 1, "nome": "Aluguel", "valor": 1500, "tipo": "fixa", "qtd_recorrencia": 1, "und_recorrencia": "mes", "titular": "titular", "categoria_comportamental": "sobrevivencia", "nivel_importancia": "1", "nivel_conforto": "3", "alteravel": "nao", "disposto": "nao", "automatica": false, "origem": null },
+          { "id": 2, "nome": "Alimentação", "valor": 1200, "tipo": "variavel", "qtd_recorrencia": 1, "und_recorrencia": "mes", "titular": "titular", "categoria_comportamental": "sobrevivencia", "nivel_importancia": "1", "nivel_conforto": "3", "alteravel": "sim", "disposto": "nao", "automatica": false, "origem": null },
+          { "id": 3, "nome": "Energia, água e gás", "valor": 300, "tipo": "fixa", "qtd_recorrencia": 1, "und_recorrencia": "mes", "titular": "titular", "categoria_comportamental": "sobrevivencia", "nivel_importancia": "2", "nivel_conforto": "3", "alteravel": "nao", "disposto": "nao", "automatica": false, "origem": null },
+          { "id": 4, "nome": "Transporte", "valor": 500, "tipo": "variavel", "qtd_recorrencia": 1, "und_recorrencia": "mes", "titular": "titular", "categoria_comportamental": "necessidades", "nivel_importancia": "2", "nivel_conforto": "3", "alteravel": "sim", "disposto": "nao", "automatica": false, "origem": null },
+          { "id": 5, "nome": "Escola do Miguel", "valor": 800, "tipo": "fixa", "qtd_recorrencia": 1, "und_recorrencia": "mes", "titular": "titular", "categoria_comportamental": "necessidades", "nivel_importancia": "1", "nivel_conforto": "3", "alteravel": "nao", "disposto": "nao", "automatica": false, "origem": null },
+          { "id": 6, "nome": "Celular e internet", "valor": 200, "tipo": "fixa", "qtd_recorrencia": 1, "und_recorrencia": "mes", "titular": "titular", "categoria_comportamental": "necessidades", "nivel_importancia": "3", "nivel_conforto": "3", "alteravel": "sim", "disposto": "nao", "automatica": false, "origem": null },
+          { "id": 7, "nome": "Farmácia", "valor": 300, "tipo": "variavel", "qtd_recorrencia": 1, "und_recorrencia": "mes", "titular": "titular", "categoria_comportamental": "necessidades", "nivel_importancia": "2", "nivel_conforto": "3", "alteravel": "nao", "disposto": "nao", "automatica": false, "origem": null },
+          { "id": 8, "nome": "Lanches fora de casa", "valor": 200, "tipo": "variavel", "qtd_recorrencia": 1, "und_recorrencia": "mes", "titular": "titular", "categoria_comportamental": "conforto", "nivel_importancia": "5", "nivel_conforto": "3", "alteravel": "sim", "disposto": "cancelaria", "automatica": false, "origem": null },
+          { "id": 9, "nome": "Dívida: Cartão de crédito rotativo - Banco Norte", "valor": 600, "tipo": "fixa", "qtd_recorrencia": 1, "und_recorrencia": "mes", "titular": "titular", "categoria_comportamental": "", "nivel_importancia": "", "nivel_conforto": "", "alteravel": "", "disposto": "", "automatica": true, "origem": "divida" }
+        ],
+        "produtos_protecao": [],
+        "objetivos": [
+          { "id": 1, "tipo": "aposentadoria", "descricao": "Aposentadoria de Carlos Andrade", "prazo_tipo": "idade", "prazo_idade": 65, "prazo_meses": 360, "prazo_data": null, "prazo_pessoa": "titular", "renda_anual": 48000, "meta_acumulo": 0, "valor_final": 0, "responsaveis": ["titular"] }
+        ],
+        "declaracoes_ir": [
+          { "pessoa_key": "cliente", "tipo_declaracao": "simplificada", "renda_bruta_anual": 48000, "resultado_tipo": "", "resultado_valor": 0 }
+        ],
+        "complementares": { "custeio_moradia": "integral", "decide_pelo_objetivo": "" },
+        "override": { "perfil_selecionado": "", "observacoes": "" }
+      },
+      "esperado": {
+        "calculado": "dividas_impagaveis",
+        "subtipo": null,
+        "subtipo_latente": null,
+        "subjacente": "zero_a_zero_obrigatorio",
+        "reclassificavel_apos_pesquisa": false,
+        "codigo": "B-T2-M2-P4-F2-B4-R0"
+      }
+    },
+    {
+      "id": "caso2",
+      "nome": "Fernanda Lopes - P1 reclassificavel (juros altos sem oferta em maos)",
+      "dados": {
+        "referencia": "2026-09-10",
+        "titular": { "nome": "Fernanda Lopes", "data_nascimento": "1994-02-10", "estado_civil": "Solteiro(a)", "renda_mes_fraco": 0 },
+        "conjuge": null,
+        "pessoas_renda": [],
+        "dependentes": [],
+        "patrimonios_fisicos": [
+          { "tipo": "Automóvel", "detalhes": "Fiat Argo 2021", "valor": 25000, "quitado": true, "saldo_devedor": 0, "imovel_unico_moradia": false, "gera_renda": false }
+        ],
+        "patrimonios_liquidos": [
+          { "id": 1, "valor_atual": 5000, "tipo_produto_nome": "Poupança", "classificacao_risco": "RISCO_MUITO_BAIXO", "finalidade": "RESERVA_EMERGENCIA", "aporte_valor": 0, "aporte_frequencia": "NENHUM", "donos": ["Fernanda Lopes"], "reserva_emergencia": true }
+        ],
+        "dividas": [
+          { "id": 1, "motivo": "Rotativo do cartão", "credor": "Banco Azul", "saldo_devedor": 40000, "valor_parcela": 1200, "prazo": 48, "parcelas_pagas": 6, "taxa_juros": 8, "taxa_juros_tipo": "mensal", "situacao_divida": "em_dia", "divida_estruturada": false, "proposta_em_vigor": "nao", "parcela_proposta": 0, "responsaveis": ["titular"] }
+        ],
+        "receitas": [
+          { "id": 1, "nome": "Salário", "valor": 6000, "tipo": "clt", "qtd_recorrencia": 1, "und_recorrencia": "mes", "titular": "titular", "automatica": false }
+        ],
+        "despesas": [
+          { "id": 1, "nome": "Aluguel", "valor": 1800, "tipo": "fixa", "qtd_recorrencia": 1, "und_recorrencia": "mes", "titular": "titular", "categoria_comportamental": "sobrevivencia", "nivel_importancia": "1", "nivel_conforto": "3", "alteravel": "nao", "disposto": "nao", "automatica": false, "origem": null },
+          { "id": 2, "nome": "Alimentação", "valor": 900, "tipo": "variavel", "qtd_recorrencia": 1, "und_recorrencia": "mes", "titular": "titular", "categoria_comportamental": "sobrevivencia", "nivel_importancia": "1", "nivel_conforto": "3", "alteravel": "sim", "disposto": "nao", "automatica": false, "origem": null },
+          { "id": 3, "nome": "Energia, água e gás", "valor": 300, "tipo": "fixa", "qtd_recorrencia": 1, "und_recorrencia": "mes", "titular": "titular", "categoria_comportamental": "sobrevivencia", "nivel_importancia": "2", "nivel_conforto": "3", "alteravel": "nao", "disposto": "nao", "automatica": false, "origem": null },
+          { "id": 4, "nome": "Transporte", "valor": 400, "tipo": "variavel", "qtd_recorrencia": 1, "und_recorrencia": "mes", "titular": "titular", "categoria_comportamental": "necessidades", "nivel_importancia": "2", "nivel_conforto": "3", "alteravel": "sim", "disposto": "nao", "automatica": false, "origem": null },
+          { "id": 5, "nome": "Celular e internet", "valor": 200, "tipo": "fixa", "qtd_recorrencia": 1, "und_recorrencia": "mes", "titular": "titular", "categoria_comportamental": "necessidades", "nivel_importancia": "3", "nivel_conforto": "3", "alteravel": "sim", "disposto": "nao", "automatica": false, "origem": null },
+          { "id": 6, "nome": "Academia", "valor": 150, "tipo": "fixa", "qtd_recorrencia": 1, "und_recorrencia": "mes", "titular": "titular", "categoria_comportamental": "aperfeicoamento", "nivel_importancia": "4", "nivel_conforto": "3", "alteravel": "sim", "disposto": "alteraria", "automatica": false, "origem": null },
+          { "id": 7, "nome": "Streaming", "valor": 100, "tipo": "fixa", "qtd_recorrencia": 1, "und_recorrencia": "mes", "titular": "titular", "categoria_comportamental": "conforto", "nivel_importancia": "5", "nivel_conforto": "3", "alteravel": "sim", "disposto": "cancelaria", "automatica": false, "origem": null },
+          { "id": 8, "nome": "Dívida: Rotativo do cartão - Banco Azul", "valor": 1200, "tipo": "fixa", "qtd_recorrencia": 1, "und_recorrencia": "mes", "titular": "titular", "categoria_comportamental": "", "nivel_importancia": "", "nivel_conforto": "", "alteravel": "", "disposto": "", "automatica": true, "origem": "divida" }
+        ],
+        "produtos_protecao": [],
+        "objetivos": [
+          { "id": 1, "tipo": "aposentadoria", "descricao": "Aposentadoria de Fernanda Lopes", "prazo_tipo": "idade", "prazo_idade": 65, "prazo_meses": 360, "prazo_data": null, "prazo_pessoa": "titular", "renda_anual": 72000, "meta_acumulo": 0, "valor_final": 0, "responsaveis": ["titular"] }
+        ],
+        "declaracoes_ir": [
+          { "pessoa_key": "cliente", "tipo_declaracao": "simplificada", "renda_bruta_anual": 72000, "resultado_tipo": "", "resultado_valor": 0 }
+        ],
+        "complementares": { "custeio_moradia": "integral", "decide_pelo_objetivo": "" },
+        "override": { "perfil_selecionado": "", "observacoes": "" }
+      },
+      "esperado": {
+        "calculado": "dividas_impagaveis",
+        "subtipo": null,
+        "subtipo_latente": null,
+        "subjacente": "fluxo_positivo",
+        "reclassificavel_apos_pesquisa": true,
+        "codigo": "A-T1-M2-P4-F2-B4-R1"
+      }
+    },
+    {
+      "id": "caso3",
+      "nome": "Paulo e Renata Moreira - 2A (passa no cenario atual), renda variavel da conjuge",
+      "dados": {
+        "referencia": "2026-09-10",
+        "titular": { "nome": "Paulo Moreira", "data_nascimento": "1983-06-15", "estado_civil": "Casado(a)", "renda_mes_fraco": 0 },
+        "conjuge": { "nome": "Renata Moreira", "data_nascimento": "1986-09-25", "renda_mes_fraco": 3500 },
+        "pessoas_renda": [],
+        "dependentes": [],
+        "patrimonios_fisicos": [
+          { "tipo": "Imóvel", "detalhes": "Apartamento onde moram", "valor": 400000, "quitado": false, "saldo_devedor": 250000, "imovel_unico_moradia": true, "gera_renda": false },
+          { "tipo": "Automóvel", "detalhes": "Jeep Renegade 2023", "valor": 45000, "quitado": false, "saldo_devedor": 30000, "imovel_unico_moradia": false, "gera_renda": false }
+        ],
+        "patrimonios_liquidos": [
+          { "id": 1, "valor_atual": 20000, "tipo_produto_nome": "CDB", "classificacao_risco": "RISCO_BAIXO", "finalidade": "RESERVA_EMERGENCIA", "aporte_valor": 0, "aporte_frequencia": "NENHUM", "donos": ["Paulo Moreira", "Renata Moreira"], "reserva_emergencia": true },
+          { "id": 2, "valor_atual": 10000, "tipo_produto_nome": "Ações", "classificacao_risco": "RISCO_ALTO", "finalidade": "SEM_FINALIDADE", "aporte_valor": 1500, "aporte_frequencia": "MENSAL", "donos": ["Paulo Moreira"], "reserva_emergencia": false }
+        ],
+        "dividas": [
+          { "id": 1, "motivo": "Financiamento do apartamento", "credor": "Caixa", "saldo_devedor": 250000, "valor_parcela": 2200, "prazo": 360, "parcelas_pagas": 60, "taxa_juros": 10, "taxa_juros_tipo": "anual", "situacao_divida": "em_dia", "divida_estruturada": true, "proposta_em_vigor": "nao", "parcela_proposta": 0, "responsaveis": ["titular"] },
+          { "id": 2, "motivo": "Financiamento do carro", "credor": "Banco Verde", "saldo_devedor": 30000, "valor_parcela": 1000, "prazo": 48, "parcelas_pagas": 12, "taxa_juros": 18, "taxa_juros_tipo": "anual", "situacao_divida": "em_dia", "divida_estruturada": false, "proposta_em_vigor": "nao", "parcela_proposta": 0, "responsaveis": ["conjuge"] }
+        ],
+        "receitas": [
+          { "id": 1, "nome": "Salário (servidor)", "valor": 9000, "tipo": "concurso", "qtd_recorrencia": 1, "und_recorrencia": "mes", "titular": "titular", "automatica": false },
+          { "id": 2, "nome": "Consultoria autônoma", "valor": 5000, "tipo": "autonomo", "qtd_recorrencia": 1, "und_recorrencia": "mes", "titular": "conjuge", "automatica": false },
+          { "id": 3, "nome": "Restituição IR - Paulo Moreira", "valor": 2400, "tipo": "restituicao", "qtd_recorrencia": 1, "und_recorrencia": "ano", "titular": "titular", "automatica": true }
+        ],
+        "despesas": [
+          { "id": 1, "nome": "Condomínio e IPTU", "valor": 900, "tipo": "fixa", "qtd_recorrencia": 1, "und_recorrencia": "mes", "titular": "titular", "categoria_comportamental": "sobrevivencia", "nivel_importancia": "1", "nivel_conforto": "3", "alteravel": "nao", "disposto": "nao", "automatica": false, "origem": null },
+          { "id": 2, "nome": "Alimentação", "valor": 2000, "tipo": "variavel", "qtd_recorrencia": 1, "und_recorrencia": "mes", "titular": "titular", "categoria_comportamental": "sobrevivencia", "nivel_importancia": "1", "nivel_conforto": "4", "alteravel": "sim", "disposto": "alteraria", "automatica": false, "origem": null },
+          { "id": 3, "nome": "Energia, água e gás", "valor": 500, "tipo": "fixa", "qtd_recorrencia": 1, "und_recorrencia": "mes", "titular": "titular", "categoria_comportamental": "sobrevivencia", "nivel_importancia": "2", "nivel_conforto": "3", "alteravel": "nao", "disposto": "nao", "automatica": false, "origem": null },
+          { "id": 4, "nome": "Transporte e combustível", "valor": 800, "tipo": "variavel", "qtd_recorrencia": 1, "und_recorrencia": "mes", "titular": "titular", "categoria_comportamental": "necessidades", "nivel_importancia": "2", "nivel_conforto": "3", "alteravel": "sim", "disposto": "nao", "automatica": false, "origem": null },
+          { "id": 5, "nome": "Farmácia e consultas", "valor": 400, "tipo": "variavel", "qtd_recorrencia": 1, "und_recorrencia": "mes", "titular": "titular", "categoria_comportamental": "necessidades", "nivel_importancia": "2", "nivel_conforto": "3", "alteravel": "sim", "disposto": "nao", "automatica": false, "origem": null },
+          { "id": 6, "nome": "Internet e celulares", "valor": 300, "tipo": "fixa", "qtd_recorrencia": 1, "und_recorrencia": "mes", "titular": "titular", "categoria_comportamental": "necessidades", "nivel_importancia": "3", "nivel_conforto": "3", "alteravel": "sim", "disposto": "nao", "automatica": false, "origem": null },
+          { "id": 7, "nome": "Faxina e manutenção do apartamento", "valor": 700, "tipo": "fixa", "qtd_recorrencia": 1, "und_recorrencia": "mes", "titular": "titular", "categoria_comportamental": "necessidades", "nivel_importancia": "3", "nivel_conforto": "3", "alteravel": "sim", "disposto": "nao", "automatica": false, "origem": null },
+          { "id": 8, "nome": "Vestuário", "valor": 800, "tipo": "variavel", "qtd_recorrencia": 1, "und_recorrencia": "mes", "titular": "titular", "categoria_comportamental": "necessidades", "nivel_importancia": "3", "nivel_conforto": "3", "alteravel": "sim", "disposto": "alteraria", "automatica": false, "origem": null },
+          { "id": 9, "nome": "Restaurantes e lazer", "valor": 1200, "tipo": "variavel", "qtd_recorrencia": 1, "und_recorrencia": "mes", "titular": "titular", "categoria_comportamental": "conforto", "nivel_importancia": "5", "nivel_conforto": "4", "alteravel": "sim", "disposto": "alteraria", "automatica": false, "origem": null },
+          { "id": 10, "nome": "Curso de inglês", "valor": 400, "tipo": "fixa", "qtd_recorrencia": 1, "und_recorrencia": "mes", "titular": "titular", "categoria_comportamental": "aperfeicoamento", "nivel_importancia": "4", "nivel_conforto": "3", "alteravel": "sim", "disposto": "nao", "automatica": false, "origem": null },
+          { "id": 11, "nome": "Assinaturas e streaming", "valor": 150, "tipo": "fixa", "qtd_recorrencia": 1, "und_recorrencia": "mes", "titular": "titular", "categoria_comportamental": "conforto", "nivel_importancia": "6", "nivel_conforto": "3", "alteravel": "sim", "disposto": "cancelaria", "automatica": false, "origem": null },
+          { "id": 12, "nome": "Dívida: Financiamento do apartamento - Caixa", "valor": 2200, "tipo": "fixa", "qtd_recorrencia": 1, "und_recorrencia": "mes", "titular": "titular", "categoria_comportamental": "", "nivel_importancia": "", "nivel_conforto": "", "alteravel": "", "disposto": "", "automatica": true, "origem": "divida" },
+          { "id": 13, "nome": "Dívida: Financiamento do carro - Banco Verde", "valor": 1000, "tipo": "fixa", "qtd_recorrencia": 1, "und_recorrencia": "mes", "titular": "conjuge", "categoria_comportamental": "", "nivel_importancia": "", "nivel_conforto": "", "alteravel": "", "disposto": "", "automatica": true, "origem": "divida" }
+        ],
+        "produtos_protecao": [],
+        "objetivos": [
+          { "id": 1, "tipo": "aposentadoria", "descricao": "Aposentadoria de Paulo Moreira", "prazo_tipo": "idade", "prazo_idade": 65, "prazo_meses": 360, "prazo_data": null, "prazo_pessoa": "titular", "renda_anual": 108000, "meta_acumulo": 0, "valor_final": 0, "responsaveis": ["titular"] }
+        ],
+        "declaracoes_ir": [
+          { "pessoa_key": "cliente", "tipo_declaracao": "completa", "renda_bruta_anual": 108000, "resultado_tipo": "restitui", "resultado_valor": 2400 },
+          { "pessoa_key": "conjuge_cliente", "tipo_declaracao": "simplificada", "renda_bruta_anual": 60000, "resultado_tipo": "", "resultado_valor": 0 }
+        ],
+        "complementares": { "custeio_moradia": "parcial", "decide_pelo_objetivo": "" },
+        "override": { "perfil_selecionado": "", "observacoes": "" }
+      },
+      "esperado": {
+        "calculado": "dividas_pagaveis",
+        "subtipo": "2A",
+        "subtipo_latente": "2A",
+        "subjacente": "investidor_amador",
+        "reclassificavel_apos_pesquisa": false,
+        "codigo": "C-T2-M1-P3-F1-B4-R1"
+      }
+    },
+    {
+      "id": "caso4",
+      "nome": "Marta Ribeiro - 2C com subjacente Poupadora",
+      "dados": {
+        "referencia": "2026-09-10",
+        "titular": { "nome": "Marta Ribeiro", "data_nascimento": "1980-03-05", "estado_civil": "Divorciado(a)", "renda_mes_fraco": 0 },
+        "conjuge": null,
+        "pessoas_renda": [],
+        "dependentes": [
+          { "nome": "Lucas Ribeiro", "data_nascimento": "2014-08-15", "parentesco": "filho", "responsavel": "titular" }
+        ],
+        "patrimonios_fisicos": [
+          { "tipo": "Automóvel", "detalhes": "Hyundai HB20 2020", "valor": 20000, "quitado": true, "saldo_devedor": 0, "imovel_unico_moradia": false, "gera_renda": false }
+        ],
+        "patrimonios_liquidos": [
+          { "id": 1, "valor_atual": 6000, "tipo_produto_nome": "Poupança", "classificacao_risco": "RISCO_MUITO_BAIXO", "finalidade": "RESERVA_EMERGENCIA", "aporte_valor": 500, "aporte_frequencia": "MENSAL", "donos": ["Marta Ribeiro"], "reserva_emergencia": true },
+          { "id": 2, "valor_atual": 4000, "tipo_produto_nome": "CDB", "classificacao_risco": "RISCO_BAIXO", "finalidade": "RESERVA_OBJETIVOS", "aporte_valor": 0, "aporte_frequencia": "NENHUM", "donos": ["Marta Ribeiro"], "reserva_emergencia": false }
+        ],
+        "dividas": [
+          { "id": 1, "motivo": "Fatura do cartão atrasada", "credor": "Banco Sul", "saldo_devedor": 12000, "valor_parcela": 0, "prazo": 0, "parcelas_pagas": 0, "taxa_juros": 14, "taxa_juros_tipo": "mensal", "situacao_divida": "em_atraso", "divida_estruturada": false, "proposta_em_vigor": "nao", "parcela_proposta": 0, "responsaveis": ["titular"] }
+        ],
+        "receitas": [
+          { "id": 1, "nome": "Salário", "valor": 7000, "tipo": "clt", "qtd_recorrencia": 1, "und_recorrencia": "mes", "titular": "titular", "automatica": false }
+        ],
+        "despesas": [
+          { "id": 1, "nome": "Aluguel", "valor": 1600, "tipo": "fixa", "qtd_recorrencia": 1, "und_recorrencia": "mes", "titular": "titular", "categoria_comportamental": "sobrevivencia", "nivel_importancia": "1", "nivel_conforto": "3", "alteravel": "nao", "disposto": "nao", "automatica": false, "origem": null },
+          { "id": 2, "nome": "Alimentação", "valor": 1100, "tipo": "variavel", "qtd_recorrencia": 1, "und_recorrencia": "mes", "titular": "titular", "categoria_comportamental": "sobrevivencia", "nivel_importancia": "1", "nivel_conforto": "3", "alteravel": "sim", "disposto": "nao", "automatica": false, "origem": null },
+          { "id": 3, "nome": "Energia, água e gás", "valor": 350, "tipo": "fixa", "qtd_recorrencia": 1, "und_recorrencia": "mes", "titular": "titular", "categoria_comportamental": "sobrevivencia", "nivel_importancia": "2", "nivel_conforto": "3", "alteravel": "nao", "disposto": "nao", "automatica": false, "origem": null },
+          { "id": 4, "nome": "Escola do Lucas", "valor": 700, "tipo": "fixa", "qtd_recorrencia": 1, "und_recorrencia": "mes", "titular": "titular", "categoria_comportamental": "necessidades", "nivel_importancia": "1", "nivel_conforto": "3", "alteravel": "nao", "disposto": "nao", "automatica": false, "origem": null },
+          { "id": 5, "nome": "Transporte", "valor": 450, "tipo": "variavel", "qtd_recorrencia": 1, "und_recorrencia": "mes", "titular": "titular", "categoria_comportamental": "necessidades", "nivel_importancia": "2", "nivel_conforto": "3", "alteravel": "sim", "disposto": "nao", "automatica": false, "origem": null },
+          { "id": 6, "nome": "Celular e internet", "valor": 200, "tipo": "fixa", "qtd_recorrencia": 1, "und_recorrencia": "mes", "titular": "titular", "categoria_comportamental": "necessidades", "nivel_importancia": "3", "nivel_conforto": "3", "alteravel": "sim", "disposto": "nao", "automatica": false, "origem": null },
+          { "id": 7, "nome": "Farmácia", "valor": 100, "tipo": "variavel", "qtd_recorrencia": 1, "und_recorrencia": "mes", "titular": "titular", "categoria_comportamental": "necessidades", "nivel_importancia": "2", "nivel_conforto": "3", "alteravel": "sim", "disposto": "nao", "automatica": false, "origem": null },
+          { "id": 8, "nome": "Lazer com o Lucas", "valor": 400, "tipo": "variavel", "qtd_recorrencia": 1, "und_recorrencia": "mes", "titular": "titular", "categoria_comportamental": "conforto", "nivel_importancia": "4", "nivel_conforto": "3", "alteravel": "sim", "disposto": "alteraria", "automatica": false, "origem": null },
+          { "id": 9, "nome": "Salão e cuidados pessoais", "valor": 200, "tipo": "variavel", "qtd_recorrencia": 1, "und_recorrencia": "mes", "titular": "titular", "categoria_comportamental": "conforto", "nivel_importancia": "5", "nivel_conforto": "3", "alteravel": "sim", "disposto": "alteraria", "automatica": false, "origem": null }
+        ],
+        "produtos_protecao": [],
+        "objetivos": [
+          { "id": 1, "tipo": "aposentadoria", "descricao": "Aposentadoria de Marta Ribeiro", "prazo_tipo": "idade", "prazo_idade": 65, "prazo_meses": 360, "prazo_data": null, "prazo_pessoa": "titular", "renda_anual": 84000, "meta_acumulo": 0, "valor_final": 0, "responsaveis": ["titular"] }
+        ],
+        "declaracoes_ir": [
+          { "pessoa_key": "cliente", "tipo_declaracao": "simplificada", "renda_bruta_anual": 84000, "resultado_tipo": "", "resultado_valor": 0 }
+        ],
+        "complementares": { "custeio_moradia": "integral", "decide_pelo_objetivo": "" },
+        "override": { "perfil_selecionado": "", "observacoes": "" }
+      },
+      "esperado": {
+        "calculado": "dividas_pagaveis",
+        "subtipo": "2C",
+        "subtipo_latente": "2A",
+        "subjacente": "poupador",
+        "reclassificavel_apos_pesquisa": false,
+        "codigo": "B-T3-M2-P4-F2-B3-R1"
+      }
+    },
+    {
+      "id": "caso5",
+      "nome": "Bruno Carvalho - Perfil 4 que a compressao revela (parecia 3)",
+      "dados": {
+        "referencia": "2026-09-10",
+        "titular": { "nome": "Bruno Carvalho", "data_nascimento": "1998-07-22", "estado_civil": "Solteiro(a)", "renda_mes_fraco": 0 },
+        "conjuge": null,
+        "pessoas_renda": [],
+        "dependentes": [],
+        "patrimonios_fisicos": [
+          { "tipo": "Automóvel", "detalhes": "Chevrolet Onix 2022", "valor": 30000, "quitado": true, "saldo_devedor": 0, "imovel_unico_moradia": false, "gera_renda": false }
+        ],
+        "patrimonios_liquidos": [
+          { "id": 1, "valor_atual": 800, "tipo_produto_nome": "Poupança", "classificacao_risco": "RISCO_MUITO_BAIXO", "finalidade": "RESERVA_EMERGENCIA", "aporte_valor": 0, "aporte_frequencia": "NENHUM", "donos": ["Bruno Carvalho"], "reserva_emergencia": true }
+        ],
+        "dividas": [
+          { "id": 1, "motivo": "Celular parcelado", "credor": "Loja Tech", "saldo_devedor": 300, "valor_parcela": 100, "prazo": 12, "parcelas_pagas": 9, "taxa_juros": 0, "taxa_juros_tipo": "mensal", "situacao_divida": "em_dia", "divida_estruturada": false, "proposta_em_vigor": "nao", "parcela_proposta": 0, "responsaveis": ["titular"] }
+        ],
+        "receitas": [
+          { "id": 1, "nome": "Salário", "valor": 5000, "tipo": "clt", "qtd_recorrencia": 1, "und_recorrencia": "mes", "titular": "titular", "automatica": false }
+        ],
+        "despesas": [
+          { "id": 1, "nome": "Aluguel", "valor": 1500, "tipo": "fixa", "qtd_recorrencia": 1, "und_recorrencia": "mes", "titular": "titular", "categoria_comportamental": "sobrevivencia", "nivel_importancia": "1", "nivel_conforto": "3", "alteravel": "nao", "disposto": "nao", "automatica": false, "origem": null },
+          { "id": 2, "nome": "Alimentação", "valor": 900, "tipo": "variavel", "qtd_recorrencia": 1, "und_recorrencia": "mes", "titular": "titular", "categoria_comportamental": "sobrevivencia", "nivel_importancia": "1", "nivel_conforto": "3", "alteravel": "sim", "disposto": "nao", "automatica": false, "origem": null },
+          { "id": 3, "nome": "Energia, água e gás", "valor": 300, "tipo": "fixa", "qtd_recorrencia": 1, "und_recorrencia": "mes", "titular": "titular", "categoria_comportamental": "sobrevivencia", "nivel_importancia": "2", "nivel_conforto": "3", "alteravel": "nao", "disposto": "nao", "automatica": false, "origem": null },
+          { "id": 4, "nome": "Carro (combustível, seguro, manutenção)", "valor": 1400, "tipo": "variavel", "qtd_recorrencia": 1, "und_recorrencia": "mes", "titular": "titular", "categoria_comportamental": "necessidades", "nivel_importancia": "2", "nivel_conforto": "5", "alteravel": "sim", "disposto": "alteraria", "automatica": false, "origem": null },
+          { "id": 5, "nome": "Roupas e calçados", "valor": 500, "tipo": "variavel", "qtd_recorrencia": 1, "und_recorrencia": "mes", "titular": "titular", "categoria_comportamental": "necessidades", "nivel_importancia": "3", "nivel_conforto": "5", "alteravel": "sim", "disposto": "alteraria", "automatica": false, "origem": null },
+          { "id": 6, "nome": "Celular e internet", "valor": 200, "tipo": "fixa", "qtd_recorrencia": 1, "und_recorrencia": "mes", "titular": "titular", "categoria_comportamental": "necessidades", "nivel_importancia": "3", "nivel_conforto": "3", "alteravel": "sim", "disposto": "nao", "automatica": false, "origem": null },
+          { "id": 7, "nome": "Farmácia", "valor": 100, "tipo": "variavel", "qtd_recorrencia": 1, "und_recorrencia": "mes", "titular": "titular", "categoria_comportamental": "necessidades", "nivel_importancia": "2", "nivel_conforto": "3", "alteravel": "sim", "disposto": "nao", "automatica": false, "origem": null },
+          { "id": 8, "nome": "Restaurantes e delivery", "valor": 300, "tipo": "variavel", "qtd_recorrencia": 1, "und_recorrencia": "mes", "titular": "titular", "categoria_comportamental": "conforto", "nivel_importancia": "5", "nivel_conforto": "3", "alteravel": "sim", "disposto": "alteraria", "automatica": false, "origem": null },
+          { "id": 9, "nome": "Dívida: Celular parcelado - Loja Tech", "valor": 100, "tipo": "fixa", "qtd_recorrencia": 1, "und_recorrencia": "mes", "titular": "titular", "categoria_comportamental": "", "nivel_importancia": "", "nivel_conforto": "", "alteravel": "", "disposto": "", "automatica": true, "origem": "divida" }
+        ],
+        "produtos_protecao": [],
+        "objetivos": [
+          { "id": 1, "tipo": "aposentadoria", "descricao": "Aposentadoria de Bruno Carvalho", "prazo_tipo": "idade", "prazo_idade": 65, "prazo_meses": 360, "prazo_data": null, "prazo_pessoa": "titular", "renda_anual": 60000, "meta_acumulo": 0, "valor_final": 0, "responsaveis": ["titular"] }
+        ],
+        "declaracoes_ir": [
+          { "pessoa_key": "cliente", "tipo_declaracao": "isento", "renda_bruta_anual": 60000, "resultado_tipo": "", "resultado_valor": 0 }
+        ],
+        "complementares": { "custeio_moradia": "integral", "decide_pelo_objetivo": "" },
+        "override": { "perfil_selecionado": "", "observacoes": "" }
+      },
+      "esperado": {
+        "calculado": "zero_a_zero_opcional",
+        "subtipo": null,
+        "subtipo_latente": null,
+        "subjacente": null,
+        "reclassificavel_apos_pesquisa": false,
+        "codigo": "A-T1-M2-P4-F2-B4-R1"
+      }
+    },
+    {
+      "id": "caso6",
+      "nome": "Helena e Marcos Tavares - Perfil 8 completo com codigo da matriz",
+      "dados": {
+        "referencia": "2026-09-10",
+        "titular": { "nome": "Helena Tavares", "data_nascimento": "1978-11-02", "estado_civil": "Casado(a)", "renda_mes_fraco": 0 },
+        "conjuge": { "nome": "Marcos Tavares", "data_nascimento": "1976-04-18", "renda_mes_fraco": 0 },
+        "pessoas_renda": [],
+        "dependentes": [
+          { "nome": "Pedro Tavares", "data_nascimento": "2015-02-20", "parentesco": "filho", "responsavel": "titular" },
+          { "nome": "Thor", "data_nascimento": "2021-06-01", "parentesco": "cachorro", "responsavel": "titular" }
+        ],
+        "patrimonios_fisicos": [
+          { "tipo": "Imóvel", "detalhes": "Apartamento onde moram", "valor": 600000, "quitado": true, "saldo_devedor": 0, "imovel_unico_moradia": true, "gera_renda": false },
+          { "tipo": "Automóvel", "detalhes": "Toyota Corolla 2024", "valor": 80000, "quitado": true, "saldo_devedor": 0, "imovel_unico_moradia": false, "gera_renda": false }
+        ],
+        "patrimonios_liquidos": [
+          { "id": 1, "valor_atual": 60000, "tipo_produto_nome": "Tesouro Selic", "classificacao_risco": "RISCO_MUITO_BAIXO", "finalidade": "RESERVA_EMERGENCIA", "aporte_valor": 0, "aporte_frequencia": "NENHUM", "donos": ["Helena Tavares", "Marcos Tavares"], "reserva_emergencia": true },
+          { "id": 2, "valor_atual": 150000, "tipo_produto_nome": "Fundo multimercado", "classificacao_risco": "RISCO_MEDIO", "finalidade": "RESERVA_OBJETIVOS", "aporte_valor": 2000, "aporte_frequencia": "MENSAL", "donos": ["Helena Tavares", "Marcos Tavares"], "reserva_emergencia": false },
+          { "id": 3, "valor_atual": 200000, "tipo_produto_nome": "Previdência PGBL", "classificacao_risco": "RISCO_MEDIO_ALTO", "finalidade": "APOSENTADORIA", "aporte_valor": 1500, "aporte_frequencia": "MENSAL", "donos": ["Helena Tavares"], "reserva_emergencia": false },
+          { "id": 4, "valor_atual": 90000, "tipo_produto_nome": "Ações", "classificacao_risco": "RISCO_ALTO", "finalidade": "RESERVA_OBJETIVOS", "aporte_valor": 12000, "aporte_frequencia": "ANUAL", "donos": ["Marcos Tavares"], "reserva_emergencia": false }
+        ],
+        "dividas": [],
+        "receitas": [
+          { "id": 1, "nome": "Salário (servidora)", "valor": 12000, "tipo": "concurso", "qtd_recorrencia": 1, "und_recorrencia": "mes", "titular": "titular", "automatica": false },
+          { "id": 2, "nome": "Pró-labore", "valor": 8000, "tipo": "empresario", "qtd_recorrencia": 1, "und_recorrencia": "mes", "titular": "conjuge", "automatica": false }
+        ],
+        "despesas": [
+          { "id": 1, "nome": "Condomínio e IPTU", "valor": 1200, "tipo": "fixa", "qtd_recorrencia": 1, "und_recorrencia": "mes", "titular": "titular", "categoria_comportamental": "sobrevivencia", "nivel_importancia": "1", "nivel_conforto": "3", "alteravel": "nao", "disposto": "nao", "automatica": false, "origem": null },
+          { "id": 2, "nome": "Alimentação", "valor": 2500, "tipo": "variavel", "qtd_recorrencia": 1, "und_recorrencia": "mes", "titular": "titular", "categoria_comportamental": "sobrevivencia", "nivel_importancia": "1", "nivel_conforto": "4", "alteravel": "sim", "disposto": "nao", "automatica": false, "origem": null },
+          { "id": 3, "nome": "Energia, água e gás", "valor": 600, "tipo": "fixa", "qtd_recorrencia": 1, "und_recorrencia": "mes", "titular": "titular", "categoria_comportamental": "sobrevivencia", "nivel_importancia": "2", "nivel_conforto": "3", "alteravel": "nao", "disposto": "nao", "automatica": false, "origem": null },
+          { "id": 4, "nome": "Escola do Pedro", "valor": 2000, "tipo": "fixa", "qtd_recorrencia": 1, "und_recorrencia": "mes", "titular": "titular", "categoria_comportamental": "necessidades", "nivel_importancia": "1", "nivel_conforto": "3", "alteravel": "nao", "disposto": "nao", "automatica": false, "origem": null },
+          { "id": 5, "nome": "Transporte e combustível", "valor": 900, "tipo": "variavel", "qtd_recorrencia": 1, "und_recorrencia": "mes", "titular": "titular", "categoria_comportamental": "necessidades", "nivel_importancia": "2", "nivel_conforto": "3", "alteravel": "sim", "disposto": "nao", "automatica": false, "origem": null },
+          { "id": 6, "nome": "Internet e celulares", "valor": 300, "tipo": "fixa", "qtd_recorrencia": 1, "und_recorrencia": "mes", "titular": "titular", "categoria_comportamental": "necessidades", "nivel_importancia": "3", "nivel_conforto": "3", "alteravel": "sim", "disposto": "nao", "automatica": false, "origem": null },
+          { "id": 7, "nome": "Veterinário e ração do Thor", "valor": 200, "tipo": "variavel", "qtd_recorrencia": 1, "und_recorrencia": "mes", "titular": "titular", "categoria_comportamental": "necessidades", "nivel_importancia": "3", "nivel_conforto": "3", "alteravel": "sim", "disposto": "nao", "automatica": false, "origem": null },
+          { "id": 8, "nome": "Cursos e livros", "valor": 500, "tipo": "variavel", "qtd_recorrencia": 1, "und_recorrencia": "mes", "titular": "titular", "categoria_comportamental": "aperfeicoamento", "nivel_importancia": "3", "nivel_conforto": "3", "alteravel": "sim", "disposto": "nao", "automatica": false, "origem": null },
+          { "id": 9, "nome": "Viagens e lazer", "valor": 1500, "tipo": "variavel", "qtd_recorrencia": 1, "und_recorrencia": "mes", "titular": "titular", "categoria_comportamental": "conforto", "nivel_importancia": "4", "nivel_conforto": "4", "alteravel": "sim", "disposto": "alteraria", "automatica": false, "origem": null },
+          { "id": 10, "nome": "Restaurantes", "valor": 800, "tipo": "variavel", "qtd_recorrencia": 1, "und_recorrencia": "mes", "titular": "titular", "categoria_comportamental": "conforto", "nivel_importancia": "5", "nivel_conforto": "3", "alteravel": "sim", "disposto": "alteraria", "automatica": false, "origem": null },
+          { "id": 11, "nome": "Plano de Saúde - Saúde Total", "valor": 1800, "tipo": "fixa", "qtd_recorrencia": 1, "und_recorrencia": "mes", "titular": "titular", "categoria_comportamental": "", "nivel_importancia": "", "nivel_conforto": "", "alteravel": "", "disposto": "", "automatica": true, "origem": "produto_protecao" },
+          { "id": 12, "nome": "Seguro Automóvel - Porto Seguro", "valor": 3600, "tipo": "fixa", "qtd_recorrencia": 1, "und_recorrencia": "ano", "titular": "titular", "categoria_comportamental": "", "nivel_importancia": "", "nivel_conforto": "", "alteravel": "", "disposto": "", "automatica": true, "origem": "produto_protecao" }
+        ],
+        "produtos_protecao": [
+          { "tipo_produto": "Plano de Saúde", "custo": 1800, "periodicidade": "mensal" },
+          { "tipo_produto": "Seguro Automóvel", "custo": 3600, "periodicidade": "anual" }
+        ],
+        "objetivos": [
+          { "id": 1, "tipo": "aposentadoria", "descricao": "Aposentadoria de Helena Tavares", "prazo_tipo": "idade", "prazo_idade": 65, "prazo_meses": 360, "prazo_data": null, "prazo_pessoa": "titular", "renda_anual": 144000, "meta_acumulo": 0, "valor_final": 0, "responsaveis": ["titular"] },
+          { "id": 2, "tipo": "objetivo", "descricao": "Casa de praia", "prazo_tipo": "anos", "prazo_idade": 65, "prazo_meses": 96, "prazo_data": null, "prazo_pessoa": null, "renda_anual": 0, "meta_acumulo": 400000, "valor_final": 400000, "responsaveis": ["titular"] }
+        ],
+        "declaracoes_ir": [
+          { "pessoa_key": "cliente", "tipo_declaracao": "completa", "renda_bruta_anual": 144000, "resultado_tipo": "", "resultado_valor": 0 },
+          { "pessoa_key": "conjuge_cliente", "tipo_declaracao": "simplificada", "renda_bruta_anual": 96000, "resultado_tipo": "", "resultado_valor": 0 }
+        ],
+        "complementares": { "custeio_moradia": "parcial", "decide_pelo_objetivo": "sim" },
+        "override": { "perfil_selecionado": "", "observacoes": "" }
+      },
+      "esperado": {
+        "calculado": "investidor_planejador",
+        "subtipo": null,
+        "subtipo_latente": null,
+        "subjacente": null,
+        "reclassificavel_apos_pesquisa": false,
+        "codigo": "D-T3-M1-P1-F1-B3-R2"
+      }
+    }
+  ]
+}

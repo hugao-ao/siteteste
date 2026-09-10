@@ -1299,7 +1299,9 @@
         // Função para exibir link do diagnóstico
         function displayDiagnosticoLink(diagnostico) {
             const diagnosticoContent = document.getElementById('diagnostico-info-content');
-            const diagnosticoUrl = `${window.location.origin}/diagnostico-financeiro.html?link=${diagnostico.link_unico}`;
+            // Roteamento por versão: 1 (ou nulo) abre a v1 na raiz; 2+ abre a v2 em /diagnostico/
+            const diagPath = (Number(diagnostico.versao_diagnostico) || 1) >= 2 ? '/diagnostico/diagnostico-financeiro.html' : '/diagnostico-financeiro.html';
+            const diagnosticoUrl = `${window.location.origin}${diagPath}?link=${diagnostico.link_unico}`;
             
             let html = `
                 <p>Este cliente possui um diagnóstico financeiro.</p>
@@ -1312,6 +1314,7 @@
                     <strong>Informações do Diagnóstico:</strong>
                     <ul>
                         <li><strong>Status:</strong> ${diagnostico.status === 'finalizado' ? 'Finalizado' : 'Em Andamento'}</li>
+                        <li><strong>Versão:</strong> ${diagnostico.versao_diagnostico || 1}</li>
                         <li><strong>Criado em:</strong> ${new Date(diagnostico.created_at).toLocaleDateString('pt-BR')}</li>
                         <li><strong>Última atualização:</strong> ${new Date(diagnostico.updated_at).toLocaleDateString('pt-BR')}</li>
                     </ul>
@@ -1976,7 +1979,8 @@
                         link_unico: linkUnico,
                         nome_principal: cliente.nome || '',
                        nomes_outras_pessoas_renda: outrasPersonasRenda,
-                       created_by_id: sessionStorage.getItem('user_id')
+                       created_by_id: sessionStorage.getItem('user_id'),
+                       versao_diagnostico: 2
                     });
                 
                 if (createError) throw createError;
