@@ -9,8 +9,10 @@ import {
     fechamentoPaciente, hojeISO, somarDias, formataBR, formataMoeda,
     conflitosDeDinamica, conflitosDeSessao, mesmaAgenda,
     divisaoRepasses, repassesDe, unidadeRepasse, aplicarFimDeProcesso,
+    definirRepassePadrao, tipoSessaoLabel, TIPOS_SESSAO_AVULSA, expandirDinamica, paraData,
     SITUACAO_PROCESSO, situacaoLabel
 } from './argos-recorrencia.js';
+import { gravarFrequencia, avisarMudanca } from './argos-frequencia.js';
 import {
     indexarRespostas, calcularAvaliacao, radarSVG, limiteProxima,
     avaliacaoTravada, COMPETENCIA_MAX, FOCO_MAX, formataNota
@@ -25,6 +27,11 @@ let pacienteAtual = null;    // paciente aberto no modal de dinâmicas/exclusão
 let editandoPacienteId = null;
 let editandoDinamicaId = null;
 let cobUI = null;            // modais de contatos, detalhes financeiros e extrato
+
+// modo embarcado: a página abre dentro de um iframe (ex.: modal de
+// atendimentos do profissional) focada num único paciente. Mostra só o card
+// dele, sem a barra de topo, os filtros nem o cabeçalho da página.
+const FOCO_CARTAO = new URLSearchParams(location.search).get('cartao');
 
 // ============================================================
 // CARGA
@@ -48,6 +55,7 @@ async function carregarTudo() {
     profServ = rPS.data || [];
     dinamicas = rDin.data || [];
     grupos = rGru.data || [];
+    definirRepassePadrao(profissionais);
     renderLista();
 }
 
@@ -71,6 +79,14 @@ document.getElementById('din-grupo').addEventListener('change', atualizarResumoG
 const nomeSala = id => (salas.find(s => s.id === id) || {}).nome || '—';
 const nomeProf = id => (profissionais.find(p => p.id === id) || {}).nome || '—';
 const nomeServ = id => (servicos.find(s => s.id === id) || {}).nome || '—';
+const nomeGrupoFreq = id => (grupos.find(g => g.id === id) || {}).nome || '';
+
+/** Registra um evento no histórico do paciente (usado pela tela de frequência). */
+async function registrarEvento(pacienteId, tipo, descricao, dados = null, justificativa = null) {
+    const { error } = await sb.from('argos_paciente_eventos')
+        .insert({ paciente_id: pacienteId, tipo, descricao, dados, justificativa });
+    if (error) console.error(error);
+}
 
 function idade(nasc) {
     if (!nasc) return '';
@@ -90,6 +106,7 @@ function renderLista() {
     const ordem = document.getElementById('ordenar').value;
 
     let lista = pacientes.filter(p => {
+        if (FOCO_CARTAO) return p.id === FOCO_CARTAO;   // embarcado: só este paciente
         if (situacao === 'ativos' && (!p.ativo || p.cadastro_removido)) return false;
         if (situacao === 'inativos' && p.ativo && !p.cadastro_removido) return false;
         if (!busca) return true;
@@ -129,6 +146,7 @@ function renderLista() {
             ${podeDinamicas ? `<button class="argos-btn small" data-acao="dinamicas" data-id="${p.id}">💰 Dinâmicas</button>` : ''}
             ${podeFinanceiro ? `<button class="argos-btn small" data-acao="financeiro" data-id="${p.id}">📱 Cobrança</button>` : ''}
             ${podeExtrato ? `<button class="argos-btn small" data-acao="extrato" data-id="${p.id}">📊 Extrato</button>` : ''}
+            ${perm.pode('paciente_frequencia') ? `<button class="argos-btn small" data-acao="frequencia" data-id="${p.id}">🗓️ Frequência</button>` : ''}
             ${perm.pode('evolucao_ver') ? `<button class="argos-btn small" data-acao="evolucao" data-id="${p.id}">📈 Evolução</button>` : ''}
             ${perm.pode('anamnese_ficha') ? `<a class="argos-btn small" href="anamnese.html?paciente=${p.id}">📋 Anamnese</a>` : ''}
             ${podeEditar ? `<button class="argos-btn small" data-acao="editar" data-id="${p.id}">✏️ Editar</button>` : ''}
@@ -153,6 +171,7 @@ document.getElementById('lista-pacientes').addEventListener('click', (e) => {
     if (btn.dataset.acao === 'financeiro') cobUI.abrirFinanceiro(p);
     if (btn.dataset.acao === 'extrato') cobUI.abrirExtrato(p, {
         dinamicas: dinamicas.filter(d => d.paciente_id === p.id) });
+    if (btn.dataset.acao === 'frequencia') abrirModalFrequencia(p);
     if (btn.dataset.acao === 'excluir') { pacienteAtual = p; document.getElementById('modal-excluir-titulo').textContent = `Excluir: ${p.nome}`; abrirModal('modal-excluir'); }
 });
 
@@ -455,11 +474,13 @@ function profissionaisDaDinamicaHTML(d) {
 // resumo da divisão do acordo com os profissionais, para o bloco da dinâmica
 function resumoRepassesHTML(d) {
     const div = divisaoRepasses(d);
-    const comValor = div.itens.filter(r => Number(r.valor) > 0);
+    const comValor = div.itens.filter(r => r.pct > 0);
     if (!comValor.length) return '';
-    const partes = comValor.map(r => r.tipo === 'valor'
-        ? `${esc(nomeProf(r.profissional_id))} ${formataMoeda(r.valor)} (${pctFmt(r.pct)}%)`
-        : `${esc(nomeProf(r.profissional_id))} ${pctFmt(r.pct)}%`);
+    const partes = comValor.map(r => r.valor == null
+        ? `${esc(nomeProf(r.profissional_id))} ${pctFmt(r.pct)}% (padrão)`
+        : r.tipo === 'valor'
+            ? `${esc(nomeProf(r.profissional_id))} ${formataMoeda(r.valor)} (${pctFmt(r.pct)}%)`
+            : `${esc(nomeProf(r.profissional_id))} ${pctFmt(r.pct)}%`);
     return `<br>💼 Repasses: <b>${partes.join(' + ')}</b> · clínica fica com <b>${pctFmt(div.pctClinica)}%</b> (${formataMoeda(div.valorClinica)} ${unidadeRepasse(d)})`;
 }
 
@@ -540,7 +561,7 @@ async function renderDinamicas() {
           <h3 class="form-secao">Sessões avulsas futuras</h3>
           ${avulsas.map(s => `
             <div class="argos-bloco">
-              <div class="bloco-info">🗓️ ${formataBR(s.data)} ${s.hora} · 🚪 ${esc(nomeSala(s.sala_id))} · 🧑‍⚕️ ${esc(nomeProf(s.profissional_id))}${s.valor != null ? ' · ' + formataMoeda(s.valor) : ''}</div>
+              <div class="bloco-info">🗓️ ${formataBR(s.data)} ${s.hora} · 🚪 ${esc(nomeSala(s.sala_id))} · 🧑‍⚕️ ${esc(nomeProf(s.profissional_id))}${s.valor != null ? ' · ' + formataMoeda(s.valor) : ''}${s.modalidade ? ' · ' + esc(tipoSessaoLabel(s.modalidade, nomeGrupo(s.grupo_id))) : ''}</div>
               <div class="mini-acoes"><button class="argos-btn small danger" data-avulsa-del="${s.id}">🗑️ Remover</button></div>
             </div>`).join('')}` : '')
         + ((eventos || []).length && perm.pode('paciente_historico') ? `
@@ -551,6 +572,9 @@ async function renderDinamicas() {
                 ${ev.justificativa ? `<br>📝 <i>${esc(ev.justificativa)}</i>` : ''}</div>
               <div class="mini-acoes">
                 <button class="argos-btn small" data-evento-just="${ev.id}">${ev.justificativa ? '✏️ Editar justificativa' : '📝 Justificar'}</button>
+                ${perm.master || perm.pode('historico_editar') ? `
+                <button class="argos-btn small" data-evento-editar="${ev.id}" title="Reescrever o texto deste registro">✏️ Editar texto</button>
+                <button class="argos-btn small danger" data-evento-del="${ev.id}" title="Apagar este registro do histórico">🗑️</button>` : ''}
               </div>
             </div>`).join('')}` : '');
 }
@@ -566,6 +590,31 @@ document.getElementById('lista-dinamicas').addEventListener('click', async (e) =
             .update({ justificativa: j.trim() || null }).eq('id', id);
         if (error) { toast('Erro ao salvar a justificativa.', true); return; }
         toast('Justificativa registrada.');
+        renderDinamicas();
+        return;
+    }
+    // editar o texto de um registro do histórico (não mexe na alteração em si)
+    const ebtn = e.target.closest('[data-evento-editar]');
+    if (ebtn) {
+        const { data: ev } = await sb.from('argos_paciente_eventos')
+            .select('*').eq('id', ebtn.dataset.eventoEditar).single();
+        const d = prompt('Texto deste registro do histórico:', (ev && ev.descricao) || '');
+        if (d === null) return;
+        if (!d.trim()) { toast('O texto não pode ficar vazio — para apagar o registro, use o 🗑️.', true); return; }
+        const { error } = await sb.from('argos_paciente_eventos')
+            .update({ descricao: d.trim() }).eq('id', ebtn.dataset.eventoEditar);
+        if (error) { toast('Erro ao salvar o registro.', true); return; }
+        toast('Registro do histórico atualizado.');
+        renderDinamicas();
+        return;
+    }
+    const evDel = e.target.closest('[data-evento-del]');
+    if (evDel) {
+        if (!confirm('Apagar este registro do histórico?\nIsso não desfaz a alteração em si — só remove a anotação.')) return;
+        const { error } = await sb.from('argos_paciente_eventos')
+            .delete().eq('id', evDel.dataset.eventoDel);
+        if (error) { toast('Erro ao apagar o registro.', true); return; }
+        toast('Registro apagado do histórico.');
         renderDinamicas();
         return;
     }
@@ -653,7 +702,7 @@ function linhaRepasse(r) {
         <option value="valor">R$ (valor nominal)</option>
       </select>
       <input type="number" class="rep-valor" min="0" step="0.01" placeholder="Repasse"
-        title="Valor do repasse (vazio = sem repasse por produção)" value="${r && r.valor != null ? r.valor : ''}" />
+        title="Valor do repasse (vazio = usa o repasse padrão do profissional; 0 = sem repasse por produção)" value="${r && r.valor != null ? r.valor : ''}" />
       <button type="button" class="argos-btn small danger dia-remover">×</button>`;
     if (r && r.profissional_id) el.querySelector('.rep-prof').value = r.profissional_id;
     selectServicosDoProf(el.querySelector('.rep-servico'), (r && r.profissional_id) || null, (r && r.servico_id) || null);
@@ -684,7 +733,8 @@ function dinamicaParaResumo() {
         acordo_tipo: g('din-acordo'),
         valor: g('din-valor') === '' ? null : Number(g('din-valor')),
         pacote_valor: g('din-pacote-valor') === '' ? null : Number(g('din-pacote-valor')),
-        repasses: repassesDoFormulario().filter(r => r.profissional_id && r.valor > 0)
+        // valor null fica na lista: é a linha que herda o padrão do profissional
+        repasses: repassesDoFormulario().filter(r => r.profissional_id && (r.valor == null || r.valor > 0))
     };
 }
 
@@ -694,7 +744,7 @@ function atualizarResumoRepasses() {
     const d = dinamicaParaResumo();
     if (!d.repasses.length) { el.textContent = ''; el.style.color = ''; return; }
     const div = divisaoRepasses(d);
-    if (!div.base && d.repasses.some(r => r.tipo === 'valor')) {
+    if (!div.base && d.repasses.some(r => r.tipo === 'valor' && r.valor != null)) {
         el.style.color = '#e05555';
         el.textContent = '⚠️ Para usar repasse em R$, informe antes o valor do acordo financeiro.';
         return;
@@ -843,8 +893,11 @@ document.getElementById('form-dinamica').addEventListener('submit', async (e) =>
         freq_periodo: g('din-freq-periodo'),
         data_inicio: g('din-inicio') || null,
         fim_tipo: g('din-fim-tipo'),
-        fim_ocorrencias: num('din-fim-ocorrencias'),
-        fim_data: g('din-fim-data') || null,
+        // só guarda o fim que combina com o tipo escolhido: um fim_data que
+        // sobrou de um tipo 'indeterminado' faz o motor ignorá-lo e a dinâmica
+        // nunca encerra (foi o que deixou duas dinâmicas vivas no mesmo horário)
+        fim_ocorrencias: g('din-fim-tipo') === 'apos_ocorrencias' ? num('din-fim-ocorrencias') : null,
+        fim_data: g('din-fim-tipo') === 'data' ? (g('din-fim-data') || null) : null,
         modalidade: g('din-modalidade'),
         sala_id: g('din-sala') || null,
         // o profissional/serviço "principal" da dinâmica é o da primeira linha
@@ -866,7 +919,7 @@ document.getElementById('form-dinamica').addEventListener('submit', async (e) =>
     // soma dos repasses (% + nominais convertidos) nunca pode passar de 100% do acordo
     if (repasses.length) {
         const div = divisaoRepasses(registro);
-        if (!div.base && repasses.some(r => r.tipo === 'valor')) {
+        if (!div.base && repasses.some(r => r.tipo === 'valor' && r.valor != null)) {
             toast('Para repasse em R$, informe antes o valor do acordo financeiro.', true);
             return;
         }
@@ -982,7 +1035,21 @@ document.getElementById('btn-nova-avulsa').addEventListener('click', () => {
     selectSalas(document.getElementById('avu-sala'), null);
     selectProfissionais(document.getElementById('avu-profissional'), null);
     selectServicosDoProf(document.getElementById('avu-servico'), null, null);
+    document.getElementById('avu-tipo').value = 'individual';
+    document.getElementById('avu-rotulo-grupo').style.display = 'none';
     abrirModal('modal-avulsa');
+});
+
+// tipo «em grupo» pede qual grupo — só os grupos ativos entram na lista
+document.getElementById('avu-tipo').addEventListener('change', () => {
+    const emGrupo = document.getElementById('avu-tipo').value === 'grupo';
+    document.getElementById('avu-rotulo-grupo').style.display = emGrupo ? '' : 'none';
+    if (emGrupo) {
+        document.getElementById('avu-grupo').innerHTML =
+            '<option value="">— Escolher grupo —</option>'
+            + grupos.filter(g => g.ativo !== false).map(g =>
+                `<option value="${g.id}">👥 ${esc(g.nome)} — ${DOW_NOMES[g.dow]} ${g.hora}</option>`).join('');
+    }
 });
 document.getElementById('avu-profissional').addEventListener('change', () =>
     selectServicosDoProf(document.getElementById('avu-servico'), document.getElementById('avu-profissional').value, null));
@@ -998,8 +1065,14 @@ document.getElementById('form-avulsa').addEventListener('submit', async (e) => {
         sala_id: g('avu-sala') || null,
         profissional_id: g('avu-profissional') || null,
         servico_id: g('avu-servico') || null,
+        modalidade: g('avu-tipo') || 'individual',
+        grupo_id: g('avu-tipo') === 'grupo' ? (g('avu-grupo') || null) : null,
         status: '??'
     };
+    if (registro.modalidade === 'grupo' && !registro.grupo_id) {
+        toast('Diga em qual grupo a sessão aconteceu.', true);
+        return;
+    }
     // Sessão avulsa é individual: não pode cair em cima de outra sessão
     const { data: sessTodas } = await todas(() => sb.from('argos_sessoes').select('*'));
     const ca = aplicarFimDeProcesso(dinamicas.filter(d => d.ativo !== false), sessTodas || [], pacientes);
@@ -1150,12 +1223,397 @@ document.getElementById('btn-confirmar-exclusao').addEventListener('click', asyn
 });
 
 // ============================================================
+// FREQUÊNCIA — todas as sessões do paciente, em tabela editável
+// ============================================================
+// A mesma tabela argos_sessoes que a agenda lê: editar aqui é editar a
+// agenda. Serve para arrumar de vez casos bagunçados (sessões duplicadas de
+// dinâmicas que se sobrepõem, frequências trocadas) com clique-e-arrasta,
+// seleção múltipla e adição em lote.
+let freqPac = null;             // paciente aberto na frequência
+let freqSessoes = [];           // sessões gravadas dele (linhas de verdade)
+let freqSel = new Set();        // ids das sessões selecionadas
+let freqMes = 'todos';          // filtro de mês
+let freqArrastando = false;     // clique-e-arrasta em andamento
+let freqAncora = -1;            // índice inicial do arrasto
+
+const fEl = id => document.getElementById(id);
+
+function dinamicaDaSessao(s) {
+    const d = dinamicas.find(x => x.id === (s.dinamica_ref || s.dinamica_id));
+    if (d) return d.rotulo || 'Dinâmica';
+    if (!s.dinamica_ref && !s.dinamica_id) return 'avulsa';
+    return '⚠️ dinâmica apagada';
+}
+
+async function abrirModalFrequencia(p) {
+    freqPac = p;
+    freqSel = new Set();
+    freqMes = 'todos';
+    fEl('modal-freq-titulo').textContent = `🗓️ Frequência — ${p.nome}`;
+    fEl('freq-form-add').style.display = 'none';
+    fEl('freq-tabela').innerHTML = '<p class="dim">Carregando…</p>';
+    abrirModal('modal-frequencia');
+    await recarregarFrequencia();
+}
+
+async function recarregarFrequencia() {
+    if (!freqPac) return;
+    const { data } = await todas(() => sb.from('argos_sessoes').select('*')
+        .eq('paciente_id', freqPac.id));
+    freqSessoes = (data || []).slice().sort((a, b) =>
+        String(a.data).localeCompare(String(b.data))
+        || String(a.hora || '').localeCompare(String(b.hora || '')));
+    // ids que sumiram (excluídos) saem da seleção
+    const vivos = new Set(freqSessoes.map(s => s.id));
+    freqSel = new Set([...freqSel].filter(id => vivos.has(id)));
+    renderFrequencia();
+}
+
+function freqStatusBotoesHTML() {
+    return ['??', 'ok', 'fj', 'fc', 'nc'].map(st =>
+        `<button class="btn-status" style="--c:${STATUS_SESSAO[st].cor}" data-freq-status="${st}"
+            title="${STATUS_SESSAO[st].desc || ''}">${STATUS_SESSAO[st].label}</button>`).join(' ');
+}
+
+function renderFrequencia() {
+    // seletor de mês
+    const meses = [...new Set(freqSessoes.map(s => String(s.data).slice(0, 7)))].sort().reverse();
+    fEl('freq-mes').innerHTML = `<option value="todos">Todos os meses</option>`
+        + meses.map(m => `<option value="${m}">${m.split('-').reverse().join('/')}</option>`).join('');
+    fEl('freq-mes').value = freqMes;
+
+    const visiveis = freqSessoes.filter(s => freqMes === 'todos' || String(s.data).slice(0, 7) === freqMes);
+    fEl('freq-contagem').textContent = `${visiveis.length} sessão(ões)`
+        + (freqSessoes.length !== visiveis.length ? ` de ${freqSessoes.length}` : '');
+
+    // duplicadas: mesma data+hora aparecendo mais de uma vez
+    const conta = new Map();
+    for (const s of freqSessoes) {
+        const k = `${s.data}|${s.hora}`;
+        conta.set(k, (conta.get(k) || 0) + 1);
+    }
+
+    if (!visiveis.length) {
+        fEl('freq-tabela').innerHTML = '<p class="dim">Nenhuma sessão neste filtro.</p>';
+    } else {
+        const linhas = visiveis.map((s, i) => {
+            const dup = conta.get(`${s.data}|${s.hora}`) > 1;
+            const sel = freqSel.has(s.id);
+            const dow = DOW_NOMES[paraData(s.data).getDay()];
+            const tipo = s.modalidade ? tipoSessaoLabel(s.modalidade, nomeGrupoFreq(s.grupo_id)) : '';
+            return `<tr class="freq-linha${sel ? ' sel' : ''}" data-freq-idx="${i}" data-freq-id="${s.id}">
+              <td class="freq-check"><input type="checkbox" ${sel ? 'checked' : ''} data-freq-check="${s.id}"></td>
+              <td>${formataBR(s.data)} <span class="dim">${dow}</span>${dup ? ' <span class="badge vermelho">duplicada</span>' : ''}</td>
+              <td>${esc(s.hora || '')}</td>
+              <td>${esc(dinamicaDaSessao(s))}<br><span class="dim">${esc(nomeProf(s.profissional_id))}${
+                tipo ? ' · ' + esc(tipo) : ''}${s.valor != null ? ' · ' + formataMoeda(s.valor) : ''}</span></td>
+              <td>
+                <select class="argos-input freq-status-sel" data-freq-uma="${s.id}">
+                  ${['??', 'ok', 'fj', 'fc', 'nc'].map(st =>
+                    `<option value="${st}"${st === (s.status || '??') ? ' selected' : ''}>${STATUS_SESSAO[st].label}</option>`).join('')}
+                </select>
+              </td>
+              <td class="dim">${esc(s.justificativa || '')}</td>
+              <td><button class="argos-btn small ghost" data-freq-editar="${s.id}" title="Editar esta sessão">✏️</button></td>
+            </tr>`;
+        }).join('');
+        fEl('freq-tabela').innerHTML = `<table class="argos-tabela compacta freq-tabela">
+          <thead><tr>
+            <th class="freq-check"><input type="checkbox" id="freq-check-todas"
+              title="Selecionar/limpar todas as visíveis"></th>
+            <th>Dia</th><th>Hora</th><th>Dinâmica / profissional</th><th>Frequência</th><th>Observação</th><th></th>
+          </tr></thead><tbody>${linhas}</tbody></table>`;
+        const todasCheck = fEl('freq-check-todas');
+        if (todasCheck) todasCheck.checked = visiveis.every(s => freqSel.has(s.id));
+    }
+
+    // barra de ações da seleção
+    fEl('freq-status-botoes').innerHTML = freqStatusBotoesHTML();
+    fEl('freq-acoes').style.display = freqSel.size ? '' : 'none';
+    fEl('freq-sel-contagem').textContent = `${freqSel.size} selecionada(s)`;
+}
+
+// índices visíveis (para o arrasto e o Shift+clique respeitarem o filtro de mês)
+function freqVisiveis() {
+    return freqSessoes.filter(s => freqMes === 'todos' || String(s.data).slice(0, 7) === freqMes);
+}
+function freqSelecionarIntervalo(a, b) {
+    const vis = freqVisiveis();
+    const [de, ate] = a <= b ? [a, b] : [b, a];
+    for (let i = de; i <= ate && i < vis.length; i++) if (i >= 0) freqSel.add(vis[i].id);
+}
+// pinta a seleção nas linhas SEM reconstruir a tabela (reconstruir durante o
+// arrasto mataria os eventos de mouseover nas linhas trocadas)
+function pintarSelecao() {
+    fEl('freq-tabela').querySelectorAll('.freq-linha').forEach(tr => {
+        const on = freqSel.has(tr.dataset.freqId);
+        tr.classList.toggle('sel', on);
+        const chk = tr.querySelector('[data-freq-check]');
+        if (chk) chk.checked = on;
+    });
+    const acoes = fEl('freq-acoes');
+    if (acoes) acoes.style.display = freqSel.size ? '' : 'none';
+    const cont = fEl('freq-sel-contagem');
+    if (cont) cont.textContent = `${freqSel.size} selecionada(s)`;
+    const todas = fEl('freq-check-todas');
+    if (todas) { const vis = freqVisiveis(); todas.checked = vis.length > 0 && vis.every(s => freqSel.has(s.id)); }
+}
+
+// clique-e-arrasta sobre as linhas: seleciona um intervalo
+fEl('freq-tabela').addEventListener('mousedown', (e) => {
+    if (e.target.closest('select, option, input, button, a')) return; // controles próprios
+    const tr = e.target.closest('.freq-linha');
+    if (!tr) return;
+    e.preventDefault();
+    freqArrastando = true;
+    freqAncora = Number(tr.dataset.freqIdx);
+    if (!e.shiftKey && !e.ctrlKey && !e.metaKey) freqSel = new Set();
+    freqSelecionarIntervalo(freqAncora, freqAncora);
+    pintarSelecao();
+});
+// durante o arrasto o alvo do mousemove fica preso à linha inicial (pointer
+// capture), então descobrimos a linha sob o cursor por elementFromPoint
+document.addEventListener('mousemove', (e) => {
+    if (!freqArrastando) return;
+    const tr = document.elementFromPoint(e.clientX, e.clientY);
+    const linha = tr && tr.closest('.freq-linha');
+    if (!linha || !fEl('freq-tabela').contains(linha)) return;
+    const vis = freqVisiveis();
+    const base = new Set();               // mantém o que está fora do mês + o intervalo atual
+    freqSel.forEach(id => { if (!vis.some(s => s.id === id)) base.add(id); });
+    freqSel = base;
+    freqSelecionarIntervalo(freqAncora, Number(linha.dataset.freqIdx));
+    pintarSelecao();
+});
+document.addEventListener('mouseup', (e) => {
+    // fecha o intervalo pela linha onde o arrasto terminou (garante o alvo
+    // final mesmo se algum mousemove intermediário não registrou)
+    if (freqArrastando) {
+        const el = document.elementFromPoint(e.clientX, e.clientY);
+        const linha = el && el.closest('.freq-linha');
+        if (linha && fEl('freq-tabela').contains(linha)) {
+            freqSelecionarIntervalo(freqAncora, Number(linha.dataset.freqIdx));
+            pintarSelecao();
+        }
+    }
+    freqArrastando = false;
+});
+
+// caixas de seleção (clique e Shift+clique), e "todas"
+fEl('freq-tabela').addEventListener('click', (e) => {
+    const edt = e.target.closest('[data-freq-editar]');
+    if (edt) { abrirEditarSessao(edt.dataset.freqEditar); return; }
+    const todas = e.target.closest('#freq-check-todas');
+    if (todas) {
+        const vis = freqVisiveis();
+        if (todas.checked) vis.forEach(s => freqSel.add(s.id));
+        else vis.forEach(s => freqSel.delete(s.id));
+        pintarSelecao();
+        return;
+    }
+    const chk = e.target.closest('[data-freq-check]');
+    if (!chk) return;
+    const id = chk.dataset.freqCheck;
+    const vis = freqVisiveis();
+    const idx = vis.findIndex(s => s.id === id);
+    if (e.shiftKey && freqAncora >= 0) freqSelecionarIntervalo(freqAncora, idx);
+    else { if (freqSel.has(id)) freqSel.delete(id); else freqSel.add(id); freqAncora = idx; }
+    pintarSelecao();
+});
+
+// filtro de mês
+fEl('freq-mes').addEventListener('change', () => { freqMes = fEl('freq-mes').value; renderFrequencia(); });
+fEl('btn-freq-limpar').addEventListener('click', () => { freqSel = new Set(); pintarSelecao(); });
+
+// mudar a frequência de UMA sessão pelo seletor da linha
+fEl('freq-tabela').addEventListener('change', async (e) => {
+    const uma = e.target.closest('[data-freq-uma]');
+    if (!uma) return;
+    const s = freqSessoes.find(x => x.id === uma.dataset.freqUma);
+    if (!s) return;
+    const status = uma.value;
+    const { erro } = await gravarFrequencia(sb, [s], status, s.justificativa || null);
+    if (erro) { console.error(erro); toast('Erro ao gravar a frequência.', true); return; }
+    s.status = status;
+    avisarMudanca({ origem: 'pacientes', quantas: 1 });
+    toast(`Frequência de ${formataBR(s.data)} → ${STATUS_SESSAO[status].label}.`);
+    renderFrequencia();
+});
+
+// marcar a frequência de TODAS as selecionadas de uma vez
+fEl('freq-status-botoes').addEventListener('click', async (e) => {
+    const b = e.target.closest('[data-freq-status]');
+    if (!b || !freqSel.size) return;
+    const status = b.dataset.freqStatus;
+    const alvos = freqSessoes.filter(s => freqSel.has(s.id));
+    const { erro } = await gravarFrequencia(sb, alvos, status, null);
+    if (erro) { console.error(erro); toast('Erro ao gravar a frequência.', true); return; }
+    alvos.forEach(s => { s.status = status; });
+    avisarMudanca({ origem: 'pacientes', quantas: alvos.length });
+    toast(`${alvos.length} sessão(ões) → ${STATUS_SESSAO[status].label}.`);
+    renderFrequencia();
+});
+
+// excluir as selecionadas (com as conferências dos profissionais junto)
+fEl('btn-freq-excluir').addEventListener('click', async () => {
+    if (!freqSel.size || !perm.pode('sessao_excluir')) return;
+    const ids = [...freqSel];
+    if (!confirm(`Excluir ${ids.length} sessão(ões) selecionada(s)?\n`
+        + 'Elas saem da agenda e das finanças. As que vinham de horário fixo voltam a valer como pendentes.')) return;
+    await sb.from('argos_sessao_validacao').delete().in('sessao_id', ids);
+    const { error } = await sb.from('argos_sessoes').delete().in('id', ids);
+    if (error) { console.error(error); toast('Erro ao excluir as sessões.', true); return; }
+    await registrarEvento(freqPac.id, 'sessoes_excluidas',
+        `${ids.length} sessão(ões) excluída(s) pela tela de frequência.`, { quantas: ids.length });
+    freqSel = new Set();
+    avisarMudanca({ origem: 'pacientes', quantas: ids.length });
+    toast(`${ids.length} sessão(ões) excluída(s).`);
+    await recarregarFrequencia();
+});
+
+// ---- adicionar várias sessões de uma dinâmica num período ----
+fEl('btn-freq-add').addEventListener('click', () => {
+    const dins = dinamicas.filter(d => d.paciente_id === freqPac.id && d.recorrencia_tipo === 'recorrente');
+    fEl('freq-add-dinamica').innerHTML = dins.length
+        ? dins.map(d => `<option value="${d.id}">${esc(d.rotulo || 'Dinâmica')} — ${(d.dias || [])
+            .map(x => `${DOW_NOMES[x.dow]} ${x.hora}`).join(', ')}</option>`).join('')
+        : '<option value="">— sem dinâmica recorrente —</option>';
+    fEl('freq-add-status').innerHTML = ['ok', '??', 'fj', 'fc', 'nc'].map(st =>
+        `<option value="${st}">${STATUS_SESSAO[st].label} — ${STATUS_SESSAO[st].desc || ''}</option>`).join('');
+    fEl('freq-add-de').value = freqMes !== 'todos' ? `${freqMes}-01` : '';
+    fEl('freq-add-ate').value = '';
+    fEl('freq-form-add').style.display = '';
+});
+fEl('btn-freq-add-cancelar').addEventListener('click', () => { fEl('freq-form-add').style.display = 'none'; });
+
+fEl('btn-freq-add-gerar').addEventListener('click', async () => {
+    const d = dinamicas.find(x => x.id === fEl('freq-add-dinamica').value);
+    const de = fEl('freq-add-de').value, ate = fEl('freq-add-ate').value;
+    const status = fEl('freq-add-status').value;
+    if (!d) { toast('Escolha uma dinâmica.', true); return; }
+    if (!de || !ate || de > ate) { toast('Informe um período válido (de/até).', true); return; }
+    // ocorrências projetadas do horário fixo no intervalo
+    const proj = expandirDinamica({ ...d, ativo: true }, de, ate);
+    if (!proj.length) { toast('A dinâmica não tem ocorrências nesse período.', true); return; }
+    // não recriar as que já existem (mesma data+hora)
+    const jaTem = new Set(freqSessoes.map(s => `${s.data}|${s.hora}`));
+    const novas = proj.filter(o => !jaTem.has(`${o.data}|${o.hora}`)).map(o => ({
+        paciente_id: freqPac.id, profissional_id: d.profissional_id || null,
+        dinamica_id: d.id, dinamica_ref: d.id, sala_id: d.sala_id || null,
+        servico_id: d.servico_id || null, data: o.data, hora: o.hora,
+        duracao_min: d.duracao_min || 60, modalidade: d.modalidade || null,
+        grupo_id: d.grupo_id || null, status
+    }));
+    if (!novas.length) { toast('Todas as ocorrências desse período já existem.'); return; }
+    const { error } = await sb.from('argos_sessoes').insert(novas);
+    if (error) { console.error(error); toast('Erro ao adicionar as sessões.', true); return; }
+    await registrarEvento(freqPac.id, 'sessoes_adicionadas',
+        `${novas.length} sessão(ões) adicionada(s) pela tela de frequência (${d.rotulo || 'dinâmica'}, `
+        + `${formataBR(de)}–${formataBR(ate)}, ${STATUS_SESSAO[status].label}).`, { quantas: novas.length });
+    avisarMudanca({ origem: 'pacientes', quantas: novas.length });
+    toast(`${novas.length} sessão(ões) adicionada(s).`);
+    fEl('freq-form-add').style.display = 'none';
+    await recarregarFrequencia();
+});
+
+// ---- editar uma sessão inteira (dia, hora, prof, sala, tipo, valor…) ----
+let freqEditId = null;
+
+function abrirEditarSessao(id) {
+    const s = freqSessoes.find(x => x.id === id);
+    if (!s) return;
+    freqEditId = id;
+    fEl('fe-data').value = s.data || '';
+    fEl('fe-hora').value = s.hora || '';
+    fEl('fe-duracao').value = s.duracao_min || 60;
+    fEl('fe-prof').innerHTML = '<option value="">— sem profissional —</option>'
+        + profissionais.map(p => `<option value="${p.id}">${esc(p.nome)}</option>`).join('');
+    fEl('fe-prof').value = s.profissional_id || '';
+    fEl('fe-sala').innerHTML = '<option value="">— sem espaço —</option>'
+        + salas.map(x => `<option value="${x.id}">${esc(x.nome)}</option>`).join('');
+    fEl('fe-sala').value = s.sala_id || '';
+    fEl('fe-tipo').innerHTML = '<option value="">— não definido —</option>'
+        + Object.entries(TIPOS_SESSAO_AVULSA).map(([k, t]) =>
+            `<option value="${k}">${t.icone} ${t.rotulo}</option>`).join('');
+    fEl('fe-tipo').value = s.modalidade || '';
+    fEl('fe-grupo').innerHTML = grupos.map(g =>
+        `<option value="${g.id}">${esc(g.nome)} — ${DOW_NOMES[g.dow]} ${g.hora}</option>`).join('');
+    fEl('fe-grupo').value = s.grupo_id || '';
+    fEl('fe-status').innerHTML = ['??', 'ok', 'fj', 'fc', 'nc'].map(st =>
+        `<option value="${st}">${STATUS_SESSAO[st].label} — ${STATUS_SESSAO[st].desc || ''}</option>`).join('');
+    fEl('fe-status').value = s.status || '??';
+    fEl('fe-valor').value = s.valor != null ? s.valor : '';
+    fEl('fe-justificativa').value = s.justificativa || '';
+    atualizarGrupoWrapFreq();
+    abrirModal('modal-freq-editar');
+}
+
+function atualizarGrupoWrapFreq() {
+    fEl('fe-grupo-wrap').style.display = fEl('fe-tipo').value === 'grupo' ? '' : 'none';
+}
+fEl('fe-tipo').addEventListener('change', atualizarGrupoWrapFreq);
+
+fEl('form-freq-editar').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const s = freqSessoes.find(x => x.id === freqEditId);
+    if (!s) return;
+    const modalidade = fEl('fe-tipo').value || null;
+    const upd = {
+        data: fEl('fe-data').value,
+        hora: fEl('fe-hora').value,
+        duracao_min: Number(fEl('fe-duracao').value) || 60,
+        profissional_id: fEl('fe-prof').value || null,
+        sala_id: fEl('fe-sala').value || null,
+        modalidade,
+        grupo_id: modalidade === 'grupo' ? (fEl('fe-grupo').value || null) : null,
+        status: fEl('fe-status').value,
+        valor: fEl('fe-valor').value === '' ? null : Number(fEl('fe-valor').value),
+        justificativa: fEl('fe-justificativa').value.trim() || null
+    };
+    if (!upd.data || !upd.hora) { toast('Informe dia e hora.', true); return; }
+    if (modalidade === 'grupo' && !upd.grupo_id) { toast('Escolha o grupo.', true); return; }
+    // choque de agenda no destino (mesma régua da agenda: individual não divide
+    // espaço/profissional; grupo com grupo pode). Confere contra TODAS as
+    // sessões e dinâmicas — o conflito é com outros pacientes também
+    const candidata = { ...s, ...upd };
+    const { data: todasSes } = await todas(() => sb.from('argos_sessoes').select('*'));
+    const outras = (todasSes || []).filter(x => x.id !== s.id);
+    const conflitos = conflitosDeSessao(candidata, dinamicas.filter(d => d.ativo !== false), outras);
+    if (conflitos.length) {
+        const c = conflitos[0];
+        if (!confirm(`⚠️ Já há sessão no mesmo espaço/profissional em ${formataBR(c.data || upd.data)} às ${upd.hora}.\n`
+            + 'Salvar mesmo assim?')) return;
+    }
+    const { error } = await sb.from('argos_sessoes').update(upd).eq('id', s.id);
+    if (error) { console.error(error); toast('Erro ao salvar a sessão.', true); return; }
+    Object.assign(s, upd);
+    await registrarEvento(freqPac.id, 'sessao_editada',
+        `Sessão de ${formataBR(upd.data)} ${upd.hora} editada pela tela de frequência.`,
+        { data: upd.data, hora: upd.hora, status: upd.status });
+    avisarMudanca({ origem: 'pacientes', quantas: 1 });
+    toast('Sessão atualizada.');
+    fecharModal('modal-freq-editar');
+    await recarregarFrequencia();
+});
+
+// ============================================================
 // INÍCIO
 // ============================================================
 (async function init() {
     perm = await carregarPermissoes();
     perm.aplicarVisibilidade();
     cobUI = montarCobrancaUI(perm);
+    // embarcado num iframe, focado num paciente: enxuga o cromo da página e
+    // mostra só o card dele — é "o mesmo card" aberto de dentro de outra tela
+    if (FOCO_CARTAO) {
+        document.body.classList.add('embarcado');
+        ['argos-topbar'].forEach(c => document.querySelectorAll('.' + c).forEach(el => el.style.display = 'none'));
+        const main = document.querySelector('main.argos-pagina');
+        if (main) {
+            main.querySelectorAll('h1, .sub, .argos-filtros').forEach(el => el.style.display = 'none');
+            main.style.padding = '10px';
+        }
+    }
     await carregarTudo();
     // voltar da Evolução/Anamnese reabre o painel daquele paciente
     const alvo = new URLSearchParams(location.search).get('paciente');

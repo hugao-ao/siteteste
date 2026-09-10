@@ -16,7 +16,7 @@
 import {
     lerFrequencia, chaveNome, STATUS_PLANILHA, DIA_SEMANA, somarHoras
 } from './argos-import-freq.js';
-import { mesclarSessoes, aplicarFimDeProcesso, hojeISO, somarDias }
+import { mesclarSessoes, aplicarFimDeProcesso, hojeISO, somarDias, reconduzirSessoesOrfas }
     from './argos-recorrencia.js';
 
 export { lerFrequencia };
@@ -143,6 +143,11 @@ export function planoDoMes({ linhas = [], pacientes = [], profissionais = [],
     const de = `${ano}-${String(mes).padStart(2, '0')}-01`;
     const ate = `${ano}-${String(mes).padStart(2, '0')}-${String(ultimoDia(ano, mes)).padStart(2, '0')}`;
 
+    // sessão órfã (dinâmica apagada e recriada) volta para a dinâmica ativa do
+    // mesmo slot: senão a projeção da dinâmica nova não a reconhece e a
+    // planilha, mesmo trazendo o dia, propõe um «não houve» indevido
+    sessoes = reconduzirSessoesOrfas(dinamicas, sessoes);
+
     const pacPorChave = new Map();
     for (const p of pacientes) {
         if (p.cadastro_removido) continue;
@@ -264,10 +269,15 @@ export function planoDoMes({ linhas = [], pacientes = [], profissionais = [],
         for (const s of sessoesDaPlanilha(l)) {
             const candidatas = (porPacDia.get(`${pac.id}|${s.data}`) || [])
                 .filter(x => !casadas.has(x.id));
-            // primeiro tenta a mesma dupla paciente×profissional; se não houver,
-            // aceita a sessão do dia com outro profissional — é o caso de
-            // "quem atendeu foi outro", que vira uma mudança à parte
-            const existente = candidatas.find(x => x.profissional_id === prof.id)
+            // a HORA decide primeiro: com duas sessões no dia, casar pela
+            // dupla paciente×profissional escolhia a recém-criada e deixava a
+            // sessão original invisível. Só depois vem o profissional — e a
+            // sessão do dia com outro profissional ainda casa, virando a
+            // mudança de "quem atendeu foi outro"
+            const existente = candidatas.find(x => x.hora === s.hora && x.profissional_id === prof.id)
+                || candidatas.find(x => x.hora === s.hora && !x.profissional_id)
+                || candidatas.find(x => x.hora === s.hora)
+                || candidatas.find(x => x.profissional_id === prof.id)
                 || candidatas.find(x => !x.profissional_id) || candidatas[0] || null;
 
             if (!existente) {
@@ -337,27 +347,42 @@ export function planoDoMes({ linhas = [], pacientes = [], profissionais = [],
     // só para os pares que a planilha cobre: cada arquivo é a aba de um
     // profissional, e propor apagar o mês de quem não está ali seria errado
     const paresIds = new Set(pares.map(p => `${p.paciente.id}|${p.profissional.id}`));
+    const dinPorId = new Map((dinamicas || []).map(d => [d.id, d]));
+    const pacsDaPlanilha = new Set(pares.map(p => p.paciente.id));
     for (const s of doMes) {
         if (casadas.has(s.id)) continue;
-        if (!s.profissional_id || !paresIds.has(`${s.paciente_id}|${s.profissional_id}`)) continue;
+        // as sessões históricas vieram sem profissional gravado: o dono real é
+        // o da dinâmica delas. Só é intocável a sessão de um par que a
+        // planilha NÃO cobre — o mês dos outros profissionais não é daqui.
+        const dinDaSessao = s.dinamica_ref ? dinPorId.get(s.dinamica_ref) : null;
+        const profDaSessao = s.profissional_id
+            || (dinDaSessao && dinDaSessao.profissional_id) || null;
+        if (profDaSessao) {
+            if (!paresIds.has(`${s.paciente_id}|${profDaSessao}`)) continue;
+        } else if (!pacsDaPlanilha.has(s.paciente_id)) continue;
         const pac = pacientes.find(p => p.id === s.paciente_id);
-        const prof = profissionais.find(p => p.id === s.profissional_id);
+        const prof = profissionais.find(p => p.id === profDaSessao);
         // «não houve» é ausência de registro — a planilha sem a célula está
         // CONCORDANDO com ele. Propor excluir esses nc a cada importação seria
         // desfazer o próprio "sem registro" das importações passadas.
         if ((s.status || '') === 'nc') continue;
-        // «??» de horário fixo não some: excluí-la faria a projeção da dinâmica
-        // renascer pendente no mesmo lugar. Ela vira «não houve», que é o que
-        // a planilha vazia está dizendo — o mesmo que as importações grandes
-        // sempre fizeram.
-        if ((s.status || '??') === '??' && s.dinamica_ref) {
+        // o horário fixo que sumiu da planilha vira «não houve», seja ele
+        // «??» ou um Ok antigo que a planilha corrigida nega: excluir a
+        // sessão faria a projeção da dinâmica renascer pendente no mesmo
+        // lugar. A exclusão fica para o que nenhum horário fixo projeta.
+        const horaProjetada = !!(dinDaSessao
+            && Array.isArray(dinDaSessao.dias)
+            && dinDaSessao.dias.some(x =>
+                Number(x.dow) === new Date(s.data + 'T12:00:00').getDay()
+                && x.hora === s.hora));
+        if (horaProjetada) {
             mudancas.push({
                 id: `nc|${s.id}`, tipo: 'sem_registro', aplicavel: true,
                 paciente: (pac || {}).nome || '?', profissional: (prof || {}).nome || '?',
                 data: s.data, hora: s.hora || '',
                 rotulo: `${(pac || {}).nome || '?'} — ${dm(s.data)} ${s.hora || ''}`.trim(),
-                detalhe: 'A planilha não trouxe este dia — a sessão pendente vira «não houve».',
-                antes: '??', depois: 'nc',
+                detalhe: 'A planilha não trouxe este dia — a sessão vira «não houve».',
+                antes: s.status || '??', depois: 'nc',
                 acao: { op: 'atualizar', tabela: 'argos_sessoes', id: s.id,
                         campos: { status: 'nc', justificativa: 'Sem registro na planilha de frequência' } }
             });
@@ -383,25 +408,47 @@ export function planoDoMes({ linhas = [], pacientes = [], profissionais = [],
     const ontem = somarDias(hojeISO(), -1);
     const ateNc = ate < ontem ? ate : ontem;
     if (ateNc >= de) {
-        const corte = aplicarFimDeProcesso(dinamicas || [], sessoes, pacientes);
+        // o fim efetivo precisa enxergar também o que ESTA importação propõe:
+        // uma sessão real da planilha depois do encerramento empurra o fim,
+        // e os buracos ressuscitados entre o fim antigo e ela viram «nc» já
+        // neste mesmo plano (senão ficariam como «??» eternos nas pendências)
+        const porId = new Map((sessoes || []).map(s => [s.id, s]));
+        const propostas = [];
+        for (const m of mudancas) {
+            const a = m.acao;
+            if (!a) continue;
+            if (a.op === 'inserir' && a.registro && a.registro.data) propostas.push(a.registro);
+            else if (a.op === 'atualizar' && a.tabela === 'argos_sessoes' && a.campos && a.campos.status) {
+                const s0 = porId.get(a.id);
+                if (s0) propostas.push({ paciente_id: s0.paciente_id, data: s0.data, status: a.campos.status });
+            }
+        }
+        const corte = aplicarFimDeProcesso(dinamicas || [], (sessoes || []).concat(propostas), pacientes);
         // dinâmica desligada encerra o futuro, não o passado: para o buraco
         // vencido ela ainda conta (mesma regra do aviso de pendências)
         const paraProjecao = corte.dinamicas.map(d => d.ativo === false ? { ...d, ativo: true } : d);
         const pacsCobertos = new Set(pares.map(p => p.paciente.id));
-        const diaTemPlanilha = new Set();
-        for (const l of linhas) {
-            const pac = pacPorChave.get(l.chave);
-            if (!pac) continue;
-            for (const sp of l.sessoes || []) diaTemPlanilha.add(`${pac.id}|${sp.data}`);
+        // o que já responde por cada dinâmica em cada dia: uma sessão nova que
+        // esta importação propõe, ou uma sessão gravada (em qualquer hora — as
+        // antigas às vezes ficaram na hora deslocada). Um paciente com DUAS
+        // linhas na planilha pode ter registro numa dinâmica e buraco na
+        // outra no mesmo dia — e o buraco da outra continua sendo buraco.
+        const respondido = new Set();
+        for (const m of mudancas) {
+            if (m.tipo !== 'nova' || !m.acao) continue;
+            const r = m.acao.registro;
+            respondido.add(`${r.paciente_id}|${r.data}|${r.dinamica_ref || 'h:' + r.hora}`);
         }
-        const diaTemGravada = new Set(doMes.map(x => `${x.paciente_id}|${x.data}`));
-        for (const proj of mesclarSessoes(paraProjecao, corte.sessoes, de, ateNc)) {
+        for (const x of doMes) {
+            respondido.add(`${x.paciente_id}|${x.data}|${x.dinamica_ref || 'h:' + x.hora}`);
+        }
+        for (const proj of mesclarSessoes(paraProjecao, corte.sessoes, de, ateNc, false)) {
             if (!proj.projetada || proj.status !== '??') continue;
             if (!pacsCobertos.has(proj.paciente_id)) continue;
             if (proj.profissional_id
                 && !paresIds.has(`${proj.paciente_id}|${proj.profissional_id}`)) continue;
-            if (diaTemPlanilha.has(`${proj.paciente_id}|${proj.data}`)) continue;
-            if (diaTemGravada.has(`${proj.paciente_id}|${proj.data}`)) continue;
+            if (respondido.has(`${proj.paciente_id}|${proj.data}|${proj.dinamica_ref}`)) continue;
+            if (respondido.has(`${proj.paciente_id}|${proj.data}|h:${proj.hora}`)) continue;
             const pac = pacientes.find(x => x.id === proj.paciente_id);
             const prof = profissionais.find(x => x.id === proj.profissional_id);
             mudancas.push({

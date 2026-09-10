@@ -46,6 +46,21 @@ export function situacaoLabel(tipo) {
     return s ? s.rotulo : tipo;
 }
 
+/** Tipo de uma sessão avulsa — como ela aconteceu. */
+export const TIPOS_SESSAO_AVULSA = {
+    individual: { rotulo: 'Individual', icone: '👤' },
+    online:     { rotulo: 'Online',     icone: '🌐' },
+    familiar:   { rotulo: 'Familiar',   icone: '👨‍👩‍👧' },
+    grupo:      { rotulo: 'Em grupo',   icone: '👥' }
+};
+
+/** Rótulo curto do tipo de uma sessão avulsa ('' quando não marcado). */
+export function tipoSessaoLabel(modalidade, nomeGrupo) {
+    const t = TIPOS_SESSAO_AVULSA[modalidade];
+    if (!t) return '';
+    return `${t.icone} ${t.rotulo}${modalidade === 'grupo' && nomeGrupo ? `: ${nomeGrupo}` : ''}`;
+}
+
 // ---------- datas (sempre em strings 'YYYY-MM-DD', sem fuso) ----------
 export function hojeISO() {
     const d = new Date();
@@ -133,12 +148,32 @@ export function expandirDinamica(d, de, ate) {
     return out;
 }
 
+// ---- meses soberanos da planilha (congelados) ----------------------------
+// Uma vez importada a planilha de um mês para um paciente, aquele mês é a
+// palavra final: nenhuma dinâmica projeta sessão-fantasma ali, mesmo que
+// depois a dinâmica seja alterada (datas/horário). Só as sessões REAIS
+// (gravadas pela planilha) aparecem. Registro global, no estilo do repasse
+// padrão — cada página carrega e chama definirMesesCongelados.
+let MESES_CONGELADOS = new Set(); // `${paciente_id}|${YYYY-MM}`
+export function definirMesesCongelados(lista) {
+    MESES_CONGELADOS = new Set((lista || [])
+        .filter(x => x && x.paciente_id && x.mes)
+        .map(x => `${x.paciente_id}|${x.mes}`));
+}
+export function mesCongelado(paciente_id, mes) {
+    return MESES_CONGELADOS.has(`${paciente_id}|${mes}`);
+}
+
 /**
  * Mescla projeções com sessões materializadas: a materializada (mesma
  * dinâmica+data+hora) substitui a projeção. Sessões avulsas/manuais entram
  * como estão. Retorna lista ordenada por data+hora com campo status.
+ *
+ * Num mês congelado (planilha soberana) a projeção NÃO nasce: só o que está
+ * gravado aparece. `respeitarCongelamento=false` ignora isso — é o que a
+ * própria importação usa, já que a planilha é quem define o mês naquele ato.
  */
-export function mesclarSessoes(dinamicas, sessoesMaterializadas, de, ate) {
+export function mesclarSessoes(dinamicas, sessoesMaterializadas, de, ate, respeitarCongelamento = true) {
     // sessões remarcadas casam com a projeção da ocorrência ORIGINAL
     // (remarcada_de_*), mas são exibidas na data/hora nova
     const mat = new Map();
@@ -164,6 +199,8 @@ export function mesclarSessoes(dinamicas, sessoesMaterializadas, de, ate) {
                     sala_id: m.sala_id || p.sala_id,
                     profissional_id: m.profissional_id || p.profissional_id });
             } else {
+                // mês congelado: a planilha é soberana, a dinâmica não projeta
+                if (respeitarCongelamento && mesCongelado(p.paciente_id, p.data.slice(0, 7))) continue;
                 out.push({ ...p, id: null, status: '??', projetada: true });
             }
         }
@@ -173,6 +210,33 @@ export function mesclarSessoes(dinamicas, sessoesMaterializadas, de, ate) {
     for (const m of mat.values()) if (noIntervalo(m)) out.push({ ...m, projetada: false });
     out.sort((a, b) => (a.data + a.hora).localeCompare(b.data + b.hora));
     return out;
+}
+
+/**
+ * Reconduz sessões órfãs: quando o dinamica_ref de uma sessão aponta para uma
+ * dinâmica que não existe mais (uma dinâmica apagada e recriada deixa as
+ * sessões antigas apontando para o vazio), a sessão volta, em memória, para a
+ * dinâmica ATIVA do mesmo paciente que projeta o mesmo dia da semana e hora.
+ *
+ * Sem isto a sessão real fica invisível: não casa com a projeção da dinâmica
+ * nova (ref diferente), some do repasse do profissional (não se acha o dono),
+ * some da cobrança (não entra em nenhuma dinâmica) e a importação a trata como
+ * "sem registro". Só reconduz quando há EXATAMENTE uma candidata no slot, para
+ * nunca chutar entre dois acordos no mesmo horário.
+ */
+export function reconduzirSessoesOrfas(dinamicas, sessoes) {
+    const ids = new Set((dinamicas || []).map(d => d.id));
+    const ativas = (dinamicas || []).filter(d => d.ativo !== false);
+    return (sessoes || []).map(s => {
+        const ref = s.dinamica_ref || s.dinamica_id;
+        if (!ref || ids.has(ref)) return s;
+        const dow = paraData(s.data).getDay();
+        const hora = s.remarcada_de_hora || s.hora;
+        const cand = ativas.filter(d => d.paciente_id === s.paciente_id
+            && (d.dias || []).some(x => Number(x.dow) === dow && x.hora === hora));
+        if (cand.length !== 1) return s;
+        return { ...s, dinamica_ref: cand[0].id, dinamica_id: cand[0].id };
+    });
 }
 
 // ---------- Acordo financeiro ----------
@@ -223,13 +287,63 @@ export function repassesDe(d) {
     return [];
 }
 
+// ---------- Repasse padrão do profissional ----------
+// A % combinada com cada profissional vive no cadastro dele; a dinâmica só
+// precisa dizer algo quando o combinado daquele paciente é diferente. Linha
+// de repasse com valor VAZIO (null) herda o padrão; valor 0 é a escolha
+// explícita de não repassar por aquela dinâmica.
+let REPASSE_PADRAO = new Map(); // profissional_id → % (0–100)
+
+/** Registra os padrões a partir da lista de profissionais carregada da página. */
+export function definirRepassePadrao(profissionais) {
+    REPASSE_PADRAO = new Map();
+    for (const p of profissionais || []) {
+        if (p && p.id && p.repasse_padrao != null && p.repasse_padrao !== '') {
+            REPASSE_PADRAO.set(p.id, Number(p.repasse_padrao) || 0);
+        }
+    }
+}
+
+/** A % padrão de um profissional, ou null se ele não tem uma definida. */
+export function repassePadraoDe(profissional_id) {
+    return REPASSE_PADRAO.has(profissional_id) ? REPASSE_PADRAO.get(profissional_id) : null;
+}
+
 /** Fração (0–1) da base do acordo que um repasse representa. */
 export function fracaoRepasse(d, r) {
+    if (r.valor == null) { // a dinâmica não definiu: vale o padrão do profissional
+        const padrao = repassePadraoDe(r.profissional_id);
+        return padrao != null ? padrao / 100 : 0;
+    }
     if (r.tipo === 'valor') {
         const base = baseRepasse(d);
         return base > 0 ? (Number(r.valor) || 0) / base : 0;
     }
     return (Number(r.valor) || 0) / 100;
+}
+
+/**
+ * Fração (0–1) que um profissional recebe de um paciente numa data qualquer —
+ * para lançamentos sem dinâmica (sessões avulsas). Vale o combinado do PAR:
+ * a % dele na dinâmica do paciente vigente na data (senão, a mais recente);
+ * só sem dinâmica nenhuma com ele é que o padrão do cadastro decide.
+ */
+export function fracaoDoPar(dinamicas, profissional_id, data) {
+    if (!profissional_id) return 0;
+    const porInicio = (a, b) => String(b.data_inicio || '').localeCompare(String(a.data_inicio || ''));
+    const minhas = (dinamicas || []).filter(d =>
+        repassesDe(d).some(r => r.profissional_id === profissional_id));
+    const vigente = d => d.ativo !== false
+        && (!d.data_inicio || d.data_inicio <= data)
+        && !(d.fim_tipo === 'data' && d.fim_data && d.fim_data < data);
+    const escolhida = minhas.filter(vigente).sort(porInicio)[0]
+        || minhas.sort(porInicio)[0];
+    if (escolhida) {
+        const r = repassesDe(escolhida).find(x => x.profissional_id === profissional_id);
+        return fracaoRepasse(escolhida, r);
+    }
+    const padrao = repassePadraoDe(profissional_id);
+    return padrao != null ? padrao / 100 : 0;
 }
 
 /** Resumo da divisão do acordo: itens com % equivalente e a parte da clínica.
@@ -384,7 +498,7 @@ export function mesmaAgenda(a, b) {
 /**
  * Conflitos que uma dinâmica NOVA/EDITADA criaria: sessões de OUTROS
  * pacientes no mesmo espaço ou com o mesmo profissional, em horário
- * sobreposto, quando qualquer um dos lados é INDIVIDUAL (grupo+grupo pode).
+ * sobreposto, quando qualquer um dos lados NÃO é grupo (grupo+grupo pode).
  * Retorna até 5 conflitos [{minha, outra}].
  *
  * Só o que ainda vai acontecer conta. Sobreposição no passado é registro do
@@ -405,7 +519,9 @@ export function conflitosDeDinamica(nova, outrasDinamicas, sessoes, horizonteDia
     for (const m of minhas) {
         for (const s of existentes) {
             if (!mesmoLugar(m, s) || !sobrepoe(m, s)) continue;
-            const temIndividual = nova.modalidade === 'individual' || modalidadeDe(s) === 'individual';
+            // online/familiar ocupam o horário como individual: só grupo+grupo convive
+            const temIndividual = (nova.modalidade || 'individual') !== 'grupo'
+                || modalidadeDe(s) !== 'grupo';
             if (temIndividual) { out.push({ minha: m, outra: s }); if (out.length >= 5) return out; }
         }
     }
@@ -418,7 +534,7 @@ export function conflitosDeSessao(sessao, dinamicas, sessoes) {
         .filter(s => s.paciente_id !== sessao.paciente_id && s.status !== 'nc'
             && (!sessao.id || s.id !== sessao.id)
             && mesmoLugar(sessao, s) && sobrepoe(sessao, s)
-            && (modalidadeDe(sessao) === 'individual' || modalidadeDe(s) === 'individual'))
+            && (modalidadeDe(sessao) !== 'grupo' || modalidadeDe(s) !== 'grupo'))
         .slice(0, 5);
 }
 
@@ -449,8 +565,34 @@ export function ocorrenciasDaCadeia(root, dinamicas, ateISO) {
     return occ;
 }
 
+/** Situações de sessão que valem como registro real de atendimento. */
+const REGISTRO_REAL = new Set(['ok', 'fj', 'fc']);
+
 /**
- * Encerramento/interrupção do processo: a partir de paciente.processo_fim_data
+ * O fim EFETIVO do processo de um paciente: a data registrada, empurrada
+ * para a frente pelo registro real. Se a planilha do mês (ou a agenda)
+ * trouxe sessão com frequência de verdade (ok/fj/fc) em data posterior ao
+ * encerramento, o encerramento passa a valer depois da última dessas datas —
+ * o que aconteceu ganha do que estava programado.
+ * Devolve a data de corte em ISO, ou null quando o processo está aberto.
+ */
+export function fimEfetivoDoProcesso(paciente, sessoes) {
+    if (!paciente) return null;
+    // sem data informada o corte vale de hoje: não se projeta mais nada
+    // para quem já não vem, e o histórico até aqui fica de pé
+    let fim = paciente.processo_fim_data
+        || (paciente.processo_fim_tipo ? hojeISO() : null);
+    if (!fim) return null;
+    for (const s of sessoes || []) {
+        if (s.paciente_id !== paciente.id) continue;
+        if (s.data >= fim && REGISTRO_REAL.has(s.status)) fim = somarDias(s.data, 1);
+    }
+    return fim;
+}
+
+/**
+ * Encerramento/interrupção do processo: a partir do fim EFETIVO (o
+ * registrado, empurrado por sessões reais posteriores — fimEfetivoDoProcesso)
  * o paciente não consta mais na agenda nem nas finanças, não importa o que
  * esteja programado. Devolve cópias com o corte aplicado:
  * dinâmicas ganham corte_data (véspera) e sessões a partir da data somem.
@@ -458,11 +600,8 @@ export function ocorrenciasDaCadeia(root, dinamicas, ateISO) {
 export function aplicarFimDeProcesso(dinamicas, sessoes, pacientes) {
     const fimDe = {};
     (pacientes || []).forEach(p => {
-        if (!p) return;
-        // sem data informada o corte vale de hoje: não se projeta mais nada
-        // para quem já não vem, e o histórico até aqui fica de pé
-        if (p.processo_fim_data) fimDe[p.id] = p.processo_fim_data;
-        else if (p.processo_fim_tipo) fimDe[p.id] = hojeISO();
+        const fim = fimEfetivoDoProcesso(p, sessoes);
+        if (fim) fimDe[p.id] = fim;
     });
     if (!Object.keys(fimDe).length) return { dinamicas: dinamicas || [], sessoes: sessoes || [] };
     const dins = (dinamicas || []).map(d => {
@@ -492,8 +631,12 @@ export function fechamentoPaciente(paciente, dinamicas, sessoes, mes) {
     const de = mes + '-01';
     const ate = fimDoMes(mes);
     const hoje = hojeISO();
-    // processo encerrado/interrompido: nada conta a partir da data informada
-    if (paciente && paciente.processo_fim_data) {
+    // sessão órfã (dinâmica apagada e recriada) volta para a dinâmica ativa do
+    // mesmo slot, senão não casa com projeção nenhuma e some das contas
+    sessoes = reconduzirSessoesOrfas(dinamicas, sessoes);
+    // processo encerrado/interrompido: nada conta a partir do fim efetivo
+    // (tipo sem data corta a partir de hoje — a mesma régua da agenda)
+    if (paciente && (paciente.processo_fim_data || paciente.processo_fim_tipo)) {
         const c = aplicarFimDeProcesso(dinamicas, sessoes, [paciente]);
         dinamicas = c.dinamicas;
         sessoes = c.sessoes;
@@ -557,13 +700,24 @@ export function fechamentoPaciente(paciente, dinamicas, sessoes, mes) {
         }
     }
 
-    // sessões avulsas/manuais (sem dinâmica): valor próprio de cada sessão
-    // (sem % de repasse definido, o valor fica integralmente com a clínica)
+    // sessões avulsas/manuais (sem dinâmica): valor próprio de cada sessão.
+    // Quem atendeu recebe pelo combinado do PAR (a % dele nas dinâmicas deste
+    // paciente; sem dinâmica, o padrão do cadastro). Sem profissional ou sem
+    // % nenhuma, o valor fica integralmente com a clínica.
     for (const s of sess.filter(x => !x.dinamica_ref)) {
         if (cobraSessao(s) && s.valor != null) {
-            valor += Number(s.valor) || 0;
-            detalhes.push(`Sessão avulsa ${formataBR(s.data)} ${s.hora}: ${formataMoeda(s.valor)}`);
-            porDinamica.push({ dinamica_id: null, profissional_id: s.profissional_id, valor: Number(s.valor) || 0, repasses: [] });
+            const v = Number(s.valor) || 0;
+            valor += v;
+            detalhes.push(`Sessão avulsa${s.modalidade
+                ? ` (${tipoSessaoLabel(s.modalidade)})` : ''} ${formataBR(s.data)} ${s.hora}: ${formataMoeda(s.valor)}`);
+            const frac = fracaoDoPar(dinamicas || [], s.profissional_id, s.data);
+            porDinamica.push({
+                dinamica_id: null, profissional_id: s.profissional_id, valor: v,
+                repasses: frac > 0 ? [{
+                    profissional_id: s.profissional_id, tipo: 'percentual',
+                    valor_config: frac * 100, pct: frac * 100, valor: v * frac
+                }] : []
+            });
         }
     }
 

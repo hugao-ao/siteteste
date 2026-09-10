@@ -107,6 +107,26 @@ export function retencoesSugeridas({ producaoPorMes = {}, aberto = new Map(),
 }
 
 /**
+ * O que deveria ser LIBERADO no acerto de `mes`: retenções ainda seguradas
+ * cujo mês de origem o paciente já regularizou (não deve mais nada dele).
+ * É o «MAIS» da lógica da clínica — reteve abril; o paciente pagou abril em
+ * junho; o acerto de junho devolve abril.
+ *
+ * Devolve as próprias linhas de retenção que devem virar «liberado».
+ */
+export function liberacoesSugeridas({ retencoes = [], aberto = new Map(),
+    tolerancia = 0.01 } = {}) {
+    const saida = [];
+    for (const r of retencoes) {
+        if (r.status !== 'retido') continue;
+        const linhas = aberto.get(r.paciente_id) || [];
+        const l = linhas.find(x => x.mes === r.mes_producao);
+        if (!l || l.aberto <= tolerancia) saida.push(r);
+    }
+    return saida;
+}
+
+/**
  * Fecha a conta do mês para um profissional.
  * `retencoes` são as linhas já guardadas: as retidas NESTE mês saem, as
  * liberadas NESTE mês entram, e as retidas em meses anteriores que ainda

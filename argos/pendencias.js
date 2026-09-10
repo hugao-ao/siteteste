@@ -13,7 +13,7 @@ import { sb, todas, toast, esc } from './argos-common.js';
 import { carregarPermissoes } from './argos-permissoes.js';
 import {
     STATUS_SESSAO, DOW_NOMES, mesclarSessoes, hojeISO, somarDias, paraData,
-    formataBR, aplicarFimDeProcesso
+    formataBR, aplicarFimDeProcesso, definirMesesCongelados
 } from './argos-recorrencia.js';
 import { conferirFone, linkWhatsApp, mensagemPendencias } from './argos-cobranca.js';
 import { AGRUPAMENTOS, ORDENS, agrupamento, agruparPendencias, contarPendencias }
@@ -40,13 +40,14 @@ const nomeProf = id => (profissionais.find(p => p.id === id) || {}).nome || '—
 // CARGA
 // ===========================================================================
 async function carregarTudo() {
-    const [rPac, rSalas, rProf, rDin, rSes] = await Promise.all([
+    const [rPac, rSalas, rProf, rDin, rSes, rCong] = await Promise.all([
         sb.from('argos_pacientes')
           .select('id, nome, ativo, cadastro_removido, processo_fim_data, processo_fim_tipo').order('nome'),
         sb.from('argos_salas').select('*').order('nome'),
         sb.from('argos_profissionais').select('*').order('nome'),
         todas(() => sb.from('argos_dinamicas').select('*')),
-        todas(() => sb.from('argos_sessoes').select('*'))
+        todas(() => sb.from('argos_sessoes').select('*')),
+        todas(() => sb.from('argos_meses_congelados').select('*'))
     ]);
     const erro = rPac.error || rSalas.error || rProf.error || rDin.error || rSes.error;
     if (erro) { console.error(erro); toast('Erro ao carregar as pendências.', true); return; }
@@ -55,6 +56,7 @@ async function carregarTudo() {
     profissionais = rProf.data || [];
     dinamicas = rDin.data || [];
     sessoes = rSes.data || [];
+    definirMesesCongelados((rCong && rCong.data) || []);
     render();
 }
 

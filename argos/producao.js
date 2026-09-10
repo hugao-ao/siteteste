@@ -6,11 +6,14 @@
 
 import { sb, todas, toast, esc, abrirModal, fecharModal } from './argos-common.js';
 import { carregarPermissoes } from './argos-permissoes.js';
-import { formataMoeda, formataBR, hojeISO, fechamentoPaciente } from './argos-recorrencia.js';
-import { producaoDoMes, STATUS_PROF, ORDEM_STATUS_PROF } from './argos-producao.js';
-import { mesBR } from './argos-cobranca.js';
 import {
-    usarFechamento, abertoPorPaciente, retencoesSugeridas,
+    formataMoeda, formataBR, hojeISO, fechamentoPaciente, definirRepassePadrao
+} from './argos-recorrencia.js';
+import { producaoDoMes, STATUS_PROF, ORDEM_STATUS_PROF } from './argos-producao.js';
+import { mesBR, fatorNFDoMes } from './argos-cobranca.js';
+import { cobradoPorPaciente } from './argos-fechamento.js';
+import {
+    usarFechamento, abertoPorPaciente, retencoesSugeridas, liberacoesSugeridas,
     acertoDoMes, mensagemAcerto, mesCurto
 } from './argos-repasses.js';
 
@@ -18,7 +21,7 @@ usarFechamento(fechamentoPaciente);
 
 let perm = { pode: () => true, aplicarVisibilidade: () => {}, master: true };
 let pacientes = [], dinamicas = [], sessoes = [], profissionais = [], presencas = [];
-let alocacoes = [], retencoes = [], acertos = [];
+let alocacoes = [], retencoes = [], acertos = [], mensagens = [], notasMes = [], ajustesCobranca = [];
 let mesAtual = hojeISO().slice(0, 7);
 let resultado = null, repasses = [];
 const producaoCache = new Map();   // 'YYYY-MM' → resultado de producaoDoMes
@@ -33,7 +36,7 @@ const REMUNERACAO = {
 };
 
 async function carregarTudo() {
-    const [rPac, rDin, rSes, rProf, rPF, rAloc, rRet, rAc] = await Promise.all([
+    const [rPac, rDin, rSes, rProf, rPF, rAloc, rRet, rAc, rMsg, rNM, rCM] = await Promise.all([
         sb.from('argos_pacientes').select('*').order('nome'),
         todas(() => sb.from('argos_dinamicas').select('*')),
         todas(() => sb.from('argos_sessoes').select('*')),
@@ -41,10 +44,13 @@ async function carregarTudo() {
         todas(() => sb.from('argos_prof_frequencia').select('*')),
         todas(() => sb.from('argos_mov_alocacoes').select('*')),
         sb.from('argos_repasse_retencoes').select('*'),
-        sb.from('argos_repasse_acertos').select('*')
+        sb.from('argos_repasse_acertos').select('*'),
+        sb.from('argos_repasse_mensagens').select('*'),
+        todas(() => sb.from('argos_nota_mes').select('*')),
+        todas(() => sb.from('argos_cobranca_mes').select('*'))
     ]);
     const erro = rPac.error || rDin.error || rSes.error || rProf.error || rPF.error
-        || rAloc.error || rRet.error || rAc.error;
+        || rAloc.error || rRet.error || rAc.error || rMsg.error;
     if (erro) { console.error(erro); toast('Erro ao carregar a produção.', true); return; }
     pacientes = rPac.data || [];
     dinamicas = rDin.data || [];
@@ -54,6 +60,10 @@ async function carregarTudo() {
     alocacoes = rAloc.data || [];
     retencoes = rRet.data || [];
     acertos = rAc.data || [];
+    mensagens = rMsg.data || [];
+    notasMes = (rNM && rNM.data) || [];
+    ajustesCobranca = (rCM && rCM.data) || [];
+    definirRepassePadrao(profissionais);
     render();
 }
 
@@ -71,7 +81,12 @@ function render() {
 function producaoDe(mes) {
     if (!producaoCache.has(mes)) {
         producaoCache.set(mes, producaoDoMes({
-            pacientes, dinamicas, sessoes, profissionais, presencas, mes }));
+            pacientes, dinamicas, sessoes, profissionais, presencas, mes,
+            // paciente com nota fiscal no mês repassa sobre o total − 10%;
+            // cobrança ajustada/enviada muda a base do repasse junto
+            notaFator: fatorNFDoMes({ pacientes, dinamicas, excecoes: notasMes, mes }),
+            cobrado: cobradoPorPaciente(ajustesCobranca, mes)
+        }));
     }
     return producaoCache.get(mes);
 }
@@ -196,6 +211,17 @@ function renderRepasses() {
         <b>${fechados}/${repasses.length}</b></span>`
       : '<span>Nada a repassar neste mês.</span>';
 
+    // sem a % padrão o profissional calcula R$ 0,00 e pode nem aparecer aqui —
+    // este é o lugar onde a ausência dela precisa gritar
+    const semPadrao = profissionais.filter(p =>
+        (p.remuneracao_tipo || 'producao') !== 'fixo' && p.repasse_padrao == null);
+    if (semPadrao.length) {
+        document.getElementById('rp-resumo').innerHTML += `
+          <span class="alerta">⚠ Sem repasse padrão definido:
+            <b>${semPadrao.map(p => esc(p.nome)).join(', ')}</b> — a produção deles sai
+            R$ 0,00 até a % ser preenchida no <a href="profissionais.html">cadastro de profissionais</a>.</span>`;
+    }
+
     document.getElementById('rp-cards').innerHTML = repasses.map(cartaoAcerto).join('');
     document.getElementById('rp-vazio').style.display = repasses.length ? 'none' : '';
 }
@@ -212,6 +238,8 @@ function cartaoAcerto(a) {
             : `${esc(nomePac(r.paciente_id))} regularizou ${esc(mesCurto(r.mes_producao))}`;
         return `
       <div class="rp-item">
+        ${menos && podeReter ? `<input type="checkbox" class="rp-sel" value="${r.id}"
+            title="Marcar para tirar em lote" />` : ''}
         <span class="quem">${quem}
           ${menos && r.observacao ? `<span class="obs">${esc(r.observacao)}</span>` : ''}</span>
         <span class="valor ${menos ? 'menos' : 'mais'}">${sinal} ${formataMoeda(r.valor)}</span>
@@ -239,7 +267,12 @@ function cartaoAcerto(a) {
           <span>${formataMoeda(a.producao)}</span></div>
 
         <div class="rp-bloco">
-          <div class="titulo">Menos — ${formataMoeda(a.retido)}</div>
+          <div class="titulo">Menos — ${formataMoeda(a.retido)}
+            ${podeReter && a.retidasAgora.length > 1 ? `
+              <button class="argos-btn ghost" data-rp="desfazer-sel" data-prof="${a.profissional.id}"
+                title="Tirar as retenções marcadas de uma vez">✕ tirar marcadas</button>
+              <button class="argos-btn ghost" data-rp="desfazer-todas" data-prof="${a.profissional.id}"
+                title="Tirar todas as retenções deste mês">✕ todas</button>` : ''}</div>
           ${a.retidasAgora.length ? a.retidasAgora.map(r => linha(r, '−')).join('')
             : '<div class="rp-item"><span class="quem dim">Nada retido neste mês.</span></div>'}
         </div>
@@ -271,6 +304,11 @@ function cartaoAcerto(a) {
             ${Math.abs(Number(fechado.total) - a.total) > 0.01
                 ? `<b style="color:var(--argos-warn)">· a conta mudou depois disso
                    (hoje daria ${formataMoeda(a.total)})</b>` : ''}</div>` : ''}
+        ${(() => {
+            const env = enviosDe(a.profissional.id, mesAtual);
+            return env.length ? `<div class="rp-fechado">📨 Mensagem registrada em
+                ${quandoBR(env[0].enviado_em)}${env.length > 1 ? ` (+${env.length - 1} anterior(es))` : ''}</div>` : '';
+        })()}
       </div>`;
 }
 
@@ -290,27 +328,42 @@ async function sugerirRetencoes() {
         const chave = r => `${r.profissional_id}|${r.paciente_id}|${r.mes_producao}`;
         const jaTem = new Set(retencoes.map(chave));
         const novas = sug.filter(r => !jaTem.has(chave(r)));
-        if (!novas.length) {
-            toast('Nenhuma retenção nova: tudo que estava em aberto já está registrado.');
+        // e o caminho de volta: retenções seguradas cujo mês já foi pago
+        const liberar = liberacoesSugeridas({ retencoes, aberto });
+        if (!novas.length && !liberar.length) {
+            toast('Nada a fazer: o que está em aberto já está retido, e nada retido foi pago.');
             return;
         }
         const total = novas.reduce((s, r) => s + r.valor, 0);
-        if (!confirm(`Reter ${novas.length} valor(es), somando ${formataMoeda(total)}, `
-            + `no acerto de ${mesBR(mesAtual)}?`)) return;
+        const totalLib = liberar.reduce((s, r) => s + (Number(r.valor) || 0), 0);
+        const partes = [];
+        if (novas.length) partes.push(`RETER ${novas.length} valor(es) — ${formataMoeda(total)}`);
+        if (liberar.length) partes.push(`LIBERAR ${liberar.length} valor(es) já regularizados — `
+            + formataMoeda(totalLib) + ' (entram como «MAIS»)');
+        if (!confirm(`No acerto de ${mesBR(mesAtual)}:\n• ${partes.join('\n• ')}\n\nConfirmar?`)) return;
 
-        const linhas = novas.map(r => ({
-            profissional_id: r.profissional_id, paciente_id: r.paciente_id,
-            mes_producao: r.mes_producao, valor: Number(r.valor.toFixed(2)),
-            motivo: r.motivo, origem: 'inadimplencia', status: 'retido', retido_em: mesAtual
-        }));
-        const { data, error } = await sb.from('argos_repasse_retencoes').insert(linhas).select();
-        if (error) { console.error(error); toast('Não consegui gravar as retenções.', true); return; }
-        retencoes = retencoes.concat(data || []);
+        if (novas.length) {
+            const linhas = novas.map(r => ({
+                profissional_id: r.profissional_id, paciente_id: r.paciente_id,
+                mes_producao: r.mes_producao, valor: Number(r.valor.toFixed(2)),
+                motivo: r.motivo, origem: 'inadimplencia', status: 'retido', retido_em: mesAtual
+            }));
+            const { data, error } = await sb.from('argos_repasse_retencoes').insert(linhas).select();
+            if (error) { console.error(error); toast('Não consegui gravar as retenções.', true); return; }
+            retencoes = retencoes.concat(data || []);
+        }
+        for (const r of liberar) {
+            const dados = { status: 'liberado', liberado_em: mesAtual,
+                atualizado_em: new Date().toISOString() };
+            const { error } = await sb.from('argos_repasse_retencoes').update(dados).eq('id', r.id);
+            if (error) { console.error(error); toast('Não consegui liberar uma retenção.', true); return; }
+            Object.assign(retencoes.find(x => x.id === r.id) || {}, dados);
+        }
         renderRepasses();
-        toast(`${linhas.length} retenção(ões) registrada(s).`);
+        toast(`${novas.length} retida(s) · ${liberar.length} liberada(s).`);
     } finally {
         btn.disabled = false;
-        btn.textContent = '🔎 Sugerir retenções pela inadimplência';
+        btn.textContent = '🔎 Conferir inadimplência (reter e liberar)';
     }
 }
 
@@ -372,8 +425,45 @@ async function desfazerRetencao(id) {
     renderRepasses();
 }
 
+/** Tira várias retenções de uma vez (as marcadas de um card, ou todas). */
+async function desfazerVarias(ids) {
+    if (!ids.length) { toast('Marque as retenções que quer tirar.', true); return; }
+    const soma = retencoes.filter(r => ids.includes(r.id))
+        .reduce((s, r) => s + (Number(r.valor) || 0), 0);
+    if (!confirm(`Tirar ${ids.length} retenção(ões), devolvendo ${formataMoeda(soma)} ao acerto?`)) return;
+    const { error } = await sb.from('argos_repasse_retencoes').delete().in('id', ids);
+    if (error) { console.error(error); toast('Não consegui desfazer.', true); return; }
+    retencoes = retencoes.filter(x => !ids.includes(x.id));
+    renderRepasses();
+    toast(`${ids.length} retenção(ões) desfeita(s).`);
+}
+
 // --- mensagem e fechamento do acerto ---------------------------------------
 let acertoAberto = null;
+
+const enviosDe = (profId, mes) => mensagens
+    .filter(m => m.profissional_id === profId && m.mes === mes)
+    .sort((a, b) => String(b.enviado_em).localeCompare(String(a.enviado_em)));
+
+const quandoBR = ts => {
+    const t = String(ts || '');
+    return `${formataBR(t.slice(0, 10))} ${t.slice(11, 16)}`;
+};
+
+function renderEnvios() {
+    const el = document.getElementById('ac-envios');
+    if (!el || !acertoAberto) return;
+    const lista = enviosDe(acertoAberto.profissional.id, mesAtual);
+    el.innerHTML = lista.length
+        ? `<div class="titulo">Mensagens já registradas neste mês</div>`
+          + lista.map(m => `
+            <div class="rp-item">
+              <span class="quem">📨 ${quandoBR(m.enviado_em)}${m.quem ? ` — ${esc(m.quem)}` : ''}</span>
+              <button class="argos-btn ghost small" data-envio-ver="${m.id}"
+                title="Colocar esta mensagem no campo acima">👁 Ver</button>
+            </div>`).join('')
+        : '<span class="dim">Nenhum envio registrado neste mês ainda.</span>';
+}
 
 function abrirMensagem(profId) {
     acertoAberto = repasses.find(a => a.profissional.id === profId);
@@ -383,7 +473,24 @@ function abrirMensagem(profId) {
     const jaFechado = fechamentoDe(profId, mesAtual);
     document.getElementById('ac-texto').value = (jaFechado && jaFechado.mensagem)
         || mensagemAcerto(acertoAberto, { nomePaciente: nomePac });
+    renderEnvios();
     abrirModal('modal-acerto');
+}
+
+/** Guarda a mensagem do campo como "enviada ao profissional" agora. */
+async function registrarEnvio() {
+    if (!acertoAberto) return;
+    const texto = document.getElementById('ac-texto').value.trim();
+    if (!texto) { toast('A mensagem está vazia.', true); return; }
+    const { data, error } = await sb.from('argos_repasse_mensagens').insert({
+        profissional_id: acertoAberto.profissional.id, mes: mesAtual, texto,
+        quem: sessionStorage.getItem('usuario') || null
+    }).select();
+    if (error) { console.error(error); toast('Não consegui registrar o envio.', true); return; }
+    mensagens = mensagens.concat(data || []);
+    renderEnvios();
+    renderRepasses();
+    toast('Envio registrado — fica no histórico do profissional.');
 }
 
 async function fecharAcerto() {
@@ -413,11 +520,26 @@ document.getElementById('rp-cards').addEventListener('click', e => {
     if (b.dataset.rp === 'mensagem') abrirMensagem(b.dataset.prof);
     if (b.dataset.rp === 'liberar') liberarRetencao(b.dataset.id);
     if (b.dataset.rp === 'desfazer') desfazerRetencao(b.dataset.id);
+    if (b.dataset.rp === 'desfazer-sel' || b.dataset.rp === 'desfazer-todas') {
+        const a = repasses.find(x => x.profissional.id === b.dataset.prof);
+        if (!a) return;
+        const ids = b.dataset.rp === 'desfazer-todas'
+            ? a.retidasAgora.map(r => r.id)
+            : [...b.closest('.rp-card').querySelectorAll('.rp-sel:checked')].map(x => x.value);
+        desfazerVarias(ids);
+    }
 });
 document.getElementById('btn-rp-sugerir').addEventListener('click', sugerirRetencoes);
 document.getElementById('btn-rp-reter').addEventListener('click', abrirReter);
 document.getElementById('btn-ret-salvar').addEventListener('click', salvarRetencao);
 document.getElementById('btn-ac-fechar').addEventListener('click', fecharAcerto);
+document.getElementById('btn-ac-registrar').addEventListener('click', registrarEnvio);
+document.getElementById('ac-envios').addEventListener('click', e => {
+    const b = e.target.closest('[data-envio-ver]');
+    if (!b) return;
+    const m = mensagens.find(x => x.id === b.dataset.envioVer);
+    if (m) document.getElementById('ac-texto').value = m.texto;
+});
 document.getElementById('btn-ac-copiar').addEventListener('click', async () => {
     try {
         await navigator.clipboard.writeText(document.getElementById('ac-texto').value);
@@ -479,4 +601,10 @@ document.getElementById('btn-imprimir').addEventListener('click', () => window.p
     perm.aplicarVisibilidade();
     document.getElementById('mes-ref').value = mesAtual;
     await carregarTudo();
+    // producao.html#repasses abre direto no acerto do mês (o link vem da
+    // página de profissionais); só se a aba estiver visível para o usuário
+    if (location.hash === '#repasses') {
+        const aba = document.querySelector('#pr-abas [data-aba="repasses"]');
+        if (aba && aba.style.display !== 'none') aba.click();
+    }
 })();

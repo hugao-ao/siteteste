@@ -408,6 +408,42 @@ export function notaEfetiva({ dinamicas = [], excecao = null } = {}) {
     return { valor: escolha, origem: 'dinamica', observacao: '' };
 }
 
+/** Dinâmicas que estavam de pé naquele mês (para saber o regime de nota). */
+export function dinamicasDoMes(dinamicas = [], mes) {
+    const de = mes + '-01';
+    const ate = mes + '-31';
+    const vivas = (dinamicas || []).filter(d => {
+        if (d.data_inicio && d.data_inicio > ate) return false;
+        if (d.fim_tipo === 'data' && d.fim_data && d.fim_data < de) return false;
+        return true;
+    });
+    return vivas.length ? vivas : (dinamicas || []);
+}
+
+/** A fatia do faturamento que a nota fiscal leva. */
+export const NF_FRACAO = 0.10;
+
+/**
+ * Quanto da produção de cada paciente sobra como base de repasse no mês.
+ *
+ * Mês que emite nota fiscal: o percentual do profissional incide sobre o
+ * total MENOS os 10% da nota (R$ 1.000 com nota → 50% sobre R$ 900).
+ * Devolve Map(paciente_id → fator), só com quem emite (fator 0.9);
+ * quem não está no mapa repassa sobre o valor cheio.
+ */
+export function fatorNFDoMes({ pacientes = [], dinamicas = [], excecoes = [], mes } = {}) {
+    const mapa = new Map();
+    for (const p of pacientes) {
+        const dins = (dinamicas || []).filter(d => d.paciente_id === p.id);
+        if (!dins.length) continue;
+        const exc = (excecoes || []).find(e =>
+            e.paciente_id === p.id && e.mes === mes) || null;
+        const regime = notaEfetiva({ dinamicas: dinamicasDoMes(dins, mes), excecao: exc });
+        if (situacaoNota(regime.valor).emite) mapa.set(p.id, 1 - NF_FRACAO);
+    }
+    return mapa;
+}
+
 /**
  * Retrato do mês para a nota: é isto que se congela na emissão e é contra
  * isto que o fechamento vivo é comparado depois.

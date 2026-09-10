@@ -56,11 +56,15 @@ export function valorDaSessao(valorDoMes, sessoesCobradas) {
  *
  * pacientes, dinamicas, sessoes, profissionais — as tabelas inteiras
  * presencas — linhas de argos_prof_frequencia (só as do mês bastam)
+ * notaFator — Map(paciente_id → fator) de fatorNFDoMes: mês com nota fiscal
+ *             repassa sobre o total menos os 10% da nota
+ * cobrado   — Map(paciente_id → valor) de cobradoPorPaciente: cobrança
+ *             ajustada/enviada no mês; o repasse acompanha esse valor
  *
  * Devolve { porProfissional, faturamento, totalRepasses, clinica, substituicoes }.
  */
 export function producaoDoMes({ pacientes = [], dinamicas = [], sessoes = [],
-    profissionais = [], presencas = [], mes } = {}) {
+    profissionais = [], presencas = [], mes, notaFator = null, cobrado = null } = {}) {
     const de = mes + '-01';
     const ate = fimDoMes(mes);
     const hoje = hojeISO();
@@ -93,17 +97,25 @@ export function producaoDoMes({ pacientes = [], dinamicas = [], sessoes = [],
         const dinsP = dinamicas.filter(d => d.paciente_id === p.id);
         const sessP = sessoes.filter(s => s.paciente_id === p.id);
         const fech = fechamentoPaciente(p, dinsP, sessP, mes);
-        faturamento += fech.valor;
+        // cobrança ajustada/enviada manda no que o mês vale — e o repasse
+        // é proporcional a ela; a nota fiscal tira os 10% dela por cima
+        const vCobrado = cobrado && cobrado.has(p.id) ? cobrado.get(p.id) : null;
+        const fatorAjuste = vCobrado != null && fech.valor > 0 ? vCobrado / fech.valor : 1;
+        faturamento += vCobrado != null ? vCobrado : fech.valor;
+        const fator = (((notaFator && notaFator.get(p.id)) ?? 1)) * fatorAjuste;
 
         for (const pd of (fech.porDinamica || [])) {
-            const repasses = pd.repasses || [];
+            const repasses = (pd.repasses || []).map(r => ({ ...r, valor: r.valor * fator }));
             if (!repasses.length) continue;
             const d = dinsP.find(x => x.id === pd.dinamica_id);
 
             // sessões daquela dinâmica que entraram no valor do mês
             const doMes = fech.sessoes.filter(s => s.dinamica_ref === pd.dinamica_id
                 && (s.status === 'ok' || s.status === 'fc' || (s.status === '??' && s.data >= hoje)));
-            const redirecionadas = doMes.filter(s => s.repasse_profissional_id);
+            // avulsa (dinamica_id null) é um lançamento por sessão: credita
+            // direto a quem atendeu, sem a aritmética de redirecionamento
+            const redirecionadas = pd.dinamica_id == null ? []
+                : doMes.filter(s => s.repasse_profissional_id);
 
             if (!redirecionadas.length) {
                 repasses.forEach(r => {

@@ -14,7 +14,10 @@
 // que o profissional valida — confirmando o que reconhece e contestando o
 // que não reconhece, sem precisar mexer na frequência de ninguém.
 
-import { repassesDe, fechamentoPaciente, fimDoMes, hojeISO } from './argos-recorrencia.js';
+import {
+    repassesDe, fechamentoPaciente, fimDoMes, hojeISO, fracaoDoPar,
+    fimEfetivoDoProcesso, reconduzirSessoesOrfas
+} from './argos-recorrencia.js';
 
 /** Por que esta sessão está na lista do profissional. */
 export const MOTIVOS = {
@@ -46,8 +49,13 @@ const CONTABILIZA = new Set(['ok', 'fc']);
  * dele tanto quanto a presença.
  */
 export function atendimentosDoProfissional({ profissional_id, mes, pacientes = [],
-    dinamicas = [], sessoes = [], profissionais = [], validacoes = [] } = {}) {
+    dinamicas = [], sessoes = [], profissionais = [], validacoes = [],
+    notaFator = null, cobrado = null } = {}) {
     if (!profissional_id || !mes) return [];
+
+    // sessão órfã (dinâmica apagada e recriada) volta para a dinâmica ativa do
+    // mesmo slot — senão o dono não é encontrado e a sessão some da lista
+    sessoes = reconduzirSessoesOrfas(dinamicas, sessoes);
 
     const de = `${mes}-01`, ate = fimDoMes(mes);
     const hoje = hojeISO();
@@ -64,10 +72,21 @@ export function atendimentosDoProfissional({ profissional_id, mes, pacientes = [
         if (!sessP.length) continue;
 
         // quanto cada sessão daquela dinâmica vale para este profissional,
-        // pela mesma conta que o fechamento faz — nada de regra paralela
+        // pela mesma conta que o fechamento faz — nada de regra paralela.
+        // Mês que emite nota fiscal repassa sobre o total menos os 10% dela.
         const fech = fechamentoPaciente(p, dinsP, sessoes.filter(s => s.paciente_id === p.id), mes);
+        // cobrança ajustada/enviada manda: o repasse é proporcional a ela,
+        // e a nota fiscal tira os 10% já do valor cobrado
+        const vCobrado = cobrado && cobrado.has(p.id) ? cobrado.get(p.id) : null;
+        const fatorAjuste = vCobrado != null && fech.valor > 0 ? vCobrado / fech.valor : 1;
+        const fatorNF = (notaFator && notaFator.get(p.id)) ?? 1;
+        const fator = fatorNF * fatorAjuste;
+        const baseDoMes = vCobrado != null ? vCobrado : fech.valor;
+        const nf = baseDoMes * (1 - fatorNF);
+        const ajustadoPara = fatorAjuste !== 1 ? vCobrado : null;
         const valorPorDinamica = new Map();
         for (const pd of (fech.porDinamica || [])) {
+            if (pd.dinamica_id == null) continue; // avulsas se resolvem por sessão, abaixo
             const meu = (pd.repasses || []).find(r => r.profissional_id === profissional_id);
             const contadas = (fech.sessoes || []).filter(s => s.dinamica_ref === pd.dinamica_id
                 && (CONTABILIZA.has(s.status) || (s.status === '??' && s.data >= hoje)));
@@ -75,15 +94,24 @@ export function atendimentosDoProfissional({ profissional_id, mes, pacientes = [
             valorPorDinamica.set(pd.dinamica_id, {
                 // a minha parte por sessão, e a parte de TODOS os profissionais
                 // por sessão: quem cobre uma sessão leva a segunda, não a primeira
-                minha: meu && contadas.length ? meu.valor / contadas.length : 0,
-                pool: contadas.length ? pool / contadas.length : 0
+                minha: meu && contadas.length ? (meu.valor * fator) / contadas.length : 0,
+                pool: contadas.length ? (pool * fator) / contadas.length : 0
             });
         }
+
+        // processo encerrado/interrompido: o corte é o fim EFETIVO — registro
+        // real (ok/fj/fc) depois do encerramento empurra o fim para a frente,
+        // então essas sessões cobram e repassam normalmente. Só o que sobra
+        // além disso (nc/?? soltos) aparece marcado e vale 0 — a mesma régua
+        // do fechamento e da produção.
+        const fimProcesso = fimEfetivoDoProcesso(p,
+            sessoes.filter(s => s.paciente_id === p.id));
 
         for (const s of sessP) {
             const din = dinsP.find(d => d.id === (s.dinamica_ref || s.dinamica_id));
             const donos = din ? repassesDe(din).map(r => r.profissional_id) : [];
             const redirecionada = s.repasse_profissional_id || null;
+            const aposFim = !!(fimProcesso && s.data >= fimProcesso);
 
             let motivo = null;
             if (redirecionada === profissional_id) motivo = 'cobriu';
@@ -94,8 +122,17 @@ export function atendimentosDoProfissional({ profissional_id, mes, pacientes = [
 
             // uma sessão redirecionada deixa de pagar o dono e passa a pagar
             // quem cobriu: a lista mostra as duas pontas, com o valor certo
-            const v = valorPorDinamica.get(s.dinamica_ref || s.dinamica_id) || { minha: 0, pool: 0 };
-            const contabiliza = CONTABILIZA.has(s.status);
+            let v = valorPorDinamica.get(s.dinamica_ref || s.dinamica_id) || { minha: 0, pool: 0 };
+            if (!din && s.valor != null) {
+                // avulsa: o valor da própria sessão, repassado pelo combinado
+                // do PAR de quem a recebe — a % dele nas dinâmicas deste
+                // paciente; sem dinâmica, o padrão do cadastro dele
+                const alvo = redirecionada || s.profissional_id;
+                const parte = (Number(s.valor) || 0) * fracaoDoPar(dinsP, alvo, s.data) * fator;
+                v = { minha: !redirecionada && s.profissional_id === profissional_id
+                        ? parte : 0, pool: parte };
+            }
+            const contabiliza = CONTABILIZA.has(s.status) && !aposFim;
             const meu = redirecionada
                 ? (redirecionada === profissional_id ? v.pool : 0)
                 : v.minha;
@@ -105,6 +142,9 @@ export function atendimentosDoProfissional({ profissional_id, mes, pacientes = [
                 atendidoPor: s.profissional_id ? nomeProf(s.profissional_id) : '—',
                 data: s.data, hora: s.hora || '', status: s.status || '??',
                 contabiliza, valor: contabiliza ? meu : 0,
+                nf, // valor da nota fiscal do mês deste paciente (0 = sem nota)
+                ajustadoPara, // cobrança do mês alterada na página de cobrança
+                aposFim, // registrada depois do encerramento do processo
                 validacao: validacaoDe(s.id)
             });
         }
@@ -114,6 +154,47 @@ export function atendimentosDoProfissional({ profissional_id, mes, pacientes = [
         || String(a.hora).localeCompare(String(b.hora))
         || String(a.paciente.nome).localeCompare(String(b.paciente.nome)));
     return linhas;
+}
+
+/**
+ * Pacientes deste profissional COBRADOS no mês sem nenhuma sessão na lista —
+ * o caso clássico é o fixo mensal de quem não veio: a cobrança sai mesmo
+ * assim, e o repasse correspondente também. Eles não têm sessão para
+ * conferir, mas precisam aparecer para a conta do modal bater com o acerto.
+ *
+ * Devolve [{ paciente, valor, base, nf, ajustadoPara }] — `valor` é a parte
+ * deste profissional, já com cobrança ajustada e nota fiscal descontada.
+ */
+export function cobradosSemSessao({ profissional_id, mes, pacientes = [],
+    dinamicas = [], sessoes = [], notaFator = null, cobrado = null } = {}) {
+    if (!profissional_id || !mes) return [];
+    const de = `${mes}-01`, ate = fimDoMes(mes);
+    const saida = [];
+    for (const p of pacientes) {
+        const dinsP = dinamicas.filter(d => d.paciente_id === p.id);
+        if (!dinsP.length) continue;
+        const sessP = sessoes.filter(s => s.paciente_id === p.id
+            && s.data >= de && s.data <= ate);
+        if (sessP.length) continue;    // tem sessão: já está na lista normal
+        const fech = fechamentoPaciente(p, dinsP,
+            sessoes.filter(s => s.paciente_id === p.id), mes);
+        if (!(fech.valor > 0)) continue;   // nada cobrado, nada a repassar
+        const meu = (fech.porDinamica || []).reduce((t, pd) =>
+            t + ((pd.repasses || []).find(r => r.profissional_id === profissional_id)
+                || { valor: 0 }).valor, 0);
+        if (!(meu > 0)) continue;          // a cobrança não é deste profissional
+        const vCobrado = cobrado && cobrado.has(p.id) ? cobrado.get(p.id) : null;
+        const fatorAjuste = vCobrado != null && fech.valor > 0 ? vCobrado / fech.valor : 1;
+        const fatorNF = (notaFator && notaFator.get(p.id)) ?? 1;
+        const base = vCobrado != null ? vCobrado : fech.valor;
+        saida.push({
+            paciente: p, base,
+            nf: base * (1 - fatorNF),
+            ajustadoPara: fatorAjuste !== 1 ? vCobrado : null,
+            valor: meu * fatorAjuste * fatorNF
+        });
+    }
+    return saida.sort((a, b) => a.paciente.nome.localeCompare(b.paciente.nome));
 }
 
 /** O placar da conferência: quanto já foi olhado e quanto falta. */
@@ -163,6 +244,32 @@ export function filtrar(linhas = [], filtro = 'todas', busca = '') {
             .normalize('NFD').replace(/[\u0300-\u036f]/g, '');
         return alvo.includes(termo);
     });
+}
+
+/**
+ * Ordena as linhas para a tela mantendo as sessões do MESMO paciente juntas.
+ *
+ * modo 'paciente' — grupos em ordem alfabética do nome;
+ * modo 'horario'  — grupos pela hora mais cedo do paciente no mês.
+ * Dentro do grupo, sempre por data e hora.
+ */
+export function ordenarValidacao(linhas = [], modo = 'paciente') {
+    const grupos = new Map();
+    for (const l of linhas) {
+        const k = l.paciente.id || l.paciente.nome;
+        if (!grupos.has(k)) grupos.set(k, []);
+        grupos.get(k).push(l);
+    }
+    const gs = [...grupos.values()];
+    for (const g of gs) {
+        g.sort((a, b) => (a.data + a.hora).localeCompare(b.data + b.hora));
+    }
+    const horaDoGrupo = g => g.reduce((m, l) => !m || l.hora < m ? l.hora : m, '');
+    gs.sort(modo === 'horario'
+        ? (a, b) => horaDoGrupo(a).localeCompare(horaDoGrupo(b))
+            || a[0].paciente.nome.localeCompare(b[0].paciente.nome)
+        : (a, b) => a[0].paciente.nome.localeCompare(b[0].paciente.nome));
+    return gs.flat();
 }
 
 /** O texto que o profissional recebe para conferir fora do sistema. */

@@ -6,8 +6,10 @@ import { sb, todas, toast, esc, abrirModal, fecharModal } from './argos-common.j
 import { carregarPermissoes } from './argos-permissoes.js';
 import {
     STATUS_SESSAO, DOW_NOMES, mesclarSessoes, hojeISO, somarDias, paraData,
-    paraISO, formataBR, fimDoMes, expandirDinamica, conflitosDeSessao,
-    conflitosDeDinamica, repassesDe, aplicarFimDeProcesso
+    paraISO, formataBR, formataMoeda, fimDoMes, expandirDinamica, conflitosDeSessao,
+    conflitosDeDinamica, repassesDe, aplicarFimDeProcesso, fimEfetivoDoProcesso,
+    definirRepassePadrao, fracaoRepasse, tipoSessaoLabel, TIPOS_SESSAO_AVULSA,
+    definirMesesCongelados
 } from './argos-recorrencia.js';
 import { gravarFrequencia, registrarFaltasJustificadas, avisarMudanca, ouvirMudancas }
     from './argos-frequencia.js';
@@ -32,7 +34,7 @@ const nomeSala = id => (salas.find(s => s.id === id) || {}).nome || 'Sem espaço
 const nomeProf = id => (profissionais.find(p => p.id === id) || {}).nome || '—';
 
 async function carregarTudo() {
-    const [rPac, rSalas, rProf, rDin, rSes, rGru, rMem, rGP, rPF, rLoc] = await Promise.all([
+    const [rPac, rSalas, rProf, rDin, rSes, rGru, rMem, rGP, rPF, rLoc, rCong] = await Promise.all([
         sb.from('argos_pacientes').select('id, nome, ativo, cadastro_removido, processo_fim_data, processo_fim_tipo').order('nome'),
         sb.from('argos_salas').select('*').order('nome'),
         sb.from('argos_profissionais').select('*').order('nome'),
@@ -42,13 +44,16 @@ async function carregarTudo() {
         sb.from('argos_grupo_membros').select('*'),
         sb.from('argos_grupo_profissionais').select('*'),
         todas(() => sb.from('argos_prof_frequencia').select('*')),
-        todas(() => sb.from('argos_locacoes').select('*'))
+        todas(() => sb.from('argos_locacoes').select('*')),
+        todas(() => sb.from('argos_meses_congelados').select('*'))
     ]);
     const erro = rPac.error || rSalas.error || rProf.error || rDin.error || rSes.error || rGru.error || rMem.error || rGP.error;
     if (erro) { console.error(erro); toast('Erro ao carregar a agenda.', true); return; }
     pacientes = rPac.data || [];
     salas = rSalas.data || [];
     profissionais = rProf.data || [];
+    definirRepassePadrao(profissionais);
+    definirMesesCongelados((rCong && rCong.data) || []);
     dinamicas = rDin.data || [];
     sessoes = rSes.data || [];
     grupos = rGru.data || [];
@@ -56,6 +61,7 @@ async function carregarTudo() {
     grupoProfs = rGP.data || [];
     profFreq = rPF.data || [];
     locacoes = (rLoc && rLoc.data) || [];
+    recalcularFimEfetivo();
     montarFiltroSalas();
     renderTudo();
 }
@@ -312,12 +318,26 @@ function sessaoMovidaDaOcorrencia(pacId, g, iso) {
         && !(s.data === iso && s.hora === g.hora)) || null;
 }
 
+// fim efetivo do processo por paciente (o registrado, empurrado por sessões
+// com frequência real posterior) — recalculado a cada carga de sessões, para
+// a agenda inteira consultar barato
+let fimEfetivo = new Map();
+function recalcularFimEfetivo() {
+    fimEfetivo = new Map();
+    for (const p of pacientes) {
+        const fim = fimEfetivoDoProcesso(p, sessoes);
+        if (fim) fimEfetivo.set(p.id, fim);
+    }
+}
+
 // O membro participa da ocorrência do grupo naquele dia? Dinâmicas encerradas
 // (ex.: continuação por novo horário fixo) tiram o paciente das ocorrências
 // seguintes, mas as anteriores e as já registradas continuam aparecendo.
 function participaDaOcorrencia(pacId, g, iso) {
-    const pac = pacientes.find(p => p.id === pacId);
-    if (pac && pac.processo_fim_data && iso >= pac.processo_fim_data) return false;
+    // o corte é o fim EFETIVO: sessão real registrada depois do encerramento
+    // mantém o paciente na ocorrência (senão ela cobraria invisível)
+    const fimPac = fimEfetivo.get(pacId);
+    if (fimPac && iso >= fimPac) return false;
     if (sessoes.some(s => s.paciente_id === pacId
         && (s.grupo_ref === g.id || s.grupo_id === g.id)
         && (s.data === iso || s.remarcada_de_data === iso))) return true;
@@ -541,7 +561,14 @@ function abrirModalSessaoPara(s) {
          <span class="dim">${esc(nomeSala(s.sala_id))} · ${esc(nomeProf(s.profissional_id))} · situação atual:
          <span class="chip-status" style="--c:${STATUS_SESSAO[s.status].cor}">${STATUS_SESSAO[s.status].label}</span></span>
          ${s.remarcada_de_data ? `<br><span class="dim">↪️ Sessão remarcada: era ${DOW_NOMES[paraData(s.remarcada_de_data).getDay()]} ${formataBR(s.remarcada_de_data)} às ${s.remarcada_de_hora}</span>` : ''}
-         ${s.justificativa ? `<br><span class="dim">📝 Justificativa: ${esc(s.justificativa)}</span>` : ''}`;
+         ${s.justificativa ? `<br><span class="dim">📝 Justificativa: ${esc(s.justificativa)}</span>` : ''}
+         ${s.id && !s.dinamica_ref ? `<br><span class="dim">💰 Sessão avulsa${s.valor != null
+             ? ` — valor: <b>${formataMoeda(s.valor)}</b>`
+             : ' — sem valor (não entra na cobrança)'}${s.modalidade
+             ? ` · ${esc(tipoSessaoLabel(s.modalidade,
+                 (grupos.find(x => x.id === s.grupo_id) || {}).nome))}` : ''}</span>` : ''}
+         ${s.dinamica_ref && s.modalidade && s.modalidade !== 'grupo'
+             ? `<br><span class="dim">🏷️ Tipo: ${esc(tipoSessaoLabel(s.modalidade))}</span>` : ''}`;
     document.getElementById('botoes-status').innerHTML =
         ['??', 'ok', 'fj', 'fc', 'nc'].map(st => `
           <button class="btn-status" style="--c:${STATUS_SESSAO[st].cor}" data-marcar="${st}">
@@ -571,6 +598,27 @@ function abrirModalSessaoPara(s) {
         document.getElementById('proc-tipo').value = 'interrompido';
         document.getElementById('proc-data').value = s.data;
         document.getElementById('proc-motivo').value = '';
+    }
+    // tipo da sessão (individual/online/familiar): só fora de grupo
+    const ehGrupo = !!(s.grupo_id || s.grupo_ref || s.modalidade === 'grupo');
+    const podeTipo = !ehGrupo && perm.pode('sessao_tipo_editar');
+    document.getElementById('bloco-tipo').style.display = podeTipo ? '' : 'none';
+    if (podeTipo) {
+        document.getElementById('st-tipo').innerHTML = Object.entries(TIPOS_SESSAO_AVULSA)
+            .filter(([k]) => k !== 'grupo')
+            .map(([k, t]) => `<option value="${k}">${t.icone} ${t.rotulo}</option>`).join('');
+        document.getElementById('st-tipo').value = s.modalidade || 'individual';
+    }
+    // excluir: só sessão gravada de verdade — projeção não tem o que apagar
+    const podeExcluir = !!s.id && perm.pode('sessao_excluir');
+    document.getElementById('bloco-excluir').style.display = podeExcluir ? '' : 'none';
+    if (podeExcluir) {
+        document.getElementById('excluir-texto').textContent = s.dinamica_ref
+            ? 'Esta sessão pertence a um horário fixo: excluir apaga o registro dela '
+              + '(frequência, justificativa e conferências) e o horário volta a aparecer '
+              + 'como pendente («??») na agenda e nas contas.'
+            : 'Sessão avulsa: excluir tira esta sessão da agenda e das finanças. '
+              + 'As conferências dela somem junto.';
     }
     abrirModal('modal-sessao');
 }
@@ -761,7 +809,7 @@ function renderRepasseSessao(s) {
     const bloco = document.getElementById('bloco-repasse-sessao');
     // só faz sentido em sessão que existe de verdade e tem dinâmica com divisão
     const d = dinamicas.find(x => x.id === s.dinamica_ref);
-    const temDivisao = d && repassesDe(d).some(r => r.valor);
+    const temDivisao = d && repassesDe(d).some(r => fracaoRepasse(d, r) > 0);
     if (!perm.pode('sessao_repasse_avulso') || !s.id || !temDivisao) {
         bloco.style.display = 'none';
         return;
@@ -775,8 +823,10 @@ function renderRepasseSessao(s) {
     document.getElementById('repasse-atual').innerHTML = s.repasse_profissional_id
         ? `💸 Hoje esta sessão é paga a <b>${esc(nomeProf(s.repasse_profissional_id))}</b>`
           + `${s.repasse_motivo ? ` — ${esc(s.repasse_motivo)}` : ''}.`
-        : `Divisão atual: ${repassesDe(d).filter(r => r.valor)
-            .map(r => `${esc(nomeProf(r.profissional_id))} ${r.tipo === 'valor' ? 'R$ ' + r.valor : r.valor + '%'}`)
+        : `Divisão atual: ${repassesDe(d).filter(r => fracaoRepasse(d, r) > 0)
+            .map(r => `${esc(nomeProf(r.profissional_id))} ${r.valor == null
+                ? (Math.round(fracaoRepasse(d, r) * 10000) / 100) + '% (padrão)'
+                : r.tipo === 'valor' ? 'R$ ' + r.valor : r.valor + '%'}`)
             .join(' · ')}.`;
 }
 
@@ -813,14 +863,15 @@ async function registrarEvento(pacienteId, tipo, descricao, dados, justificativa
 }
 
 async function recarregarSessoes() {
-    const [rSes, rDin, rGru, rMem, rGP, rPF, rLoc] = await Promise.all([
+    const [rSes, rDin, rGru, rMem, rGP, rPF, rLoc, rCong] = await Promise.all([
         todas(() => sb.from('argos_sessoes').select('*')),
         todas(() => sb.from('argos_dinamicas').select('*')),
         sb.from('argos_grupos').select('*').order('hora'),
         sb.from('argos_grupo_membros').select('*'),
         sb.from('argos_grupo_profissionais').select('*'),
         todas(() => sb.from('argos_prof_frequencia').select('*')),
-        todas(() => sb.from('argos_locacoes').select('*'))
+        todas(() => sb.from('argos_locacoes').select('*')),
+        todas(() => sb.from('argos_meses_congelados').select('*'))
     ]);
     sessoes = rSes.data || sessoes;
     dinamicas = rDin.data || dinamicas;
@@ -829,6 +880,8 @@ async function recarregarSessoes() {
     grupoProfs = rGP.data || grupoProfs;
     profFreq = rPF.data || profFreq;
     locacoes = (rLoc && rLoc.data) || locacoes;
+    if (rCong && rCong.data) definirMesesCongelados(rCong.data);
+    recalcularFimEfetivo();
     renderTudo();
     const modalGrupo = document.getElementById('modal-grupo');
     if (modalGrupo && modalGrupo.classList.contains('aberto') && grupoAberto) renderModalGrupo();
@@ -891,6 +944,15 @@ document.getElementById('btn-horario-fixo').addEventListener('click', async () =
 // (remarcada_de_*), então a projeção antiga não reaparece e o financeiro
 // passa a contar pela data nova.
 async function moverSessaoUnica(s, novaData, novaHora, motivo) {
+    // mover para depois do fim efetivo esconderia a sessão da agenda inteira
+    // («??» não empurra o encerramento) — barra e explica o caminho certo
+    const fimMov = fimEfetivo.get(s.paciente_id);
+    if (fimMov && novaData >= fimMov) {
+        toast(`⛔ O processo de ${nomePac(s.paciente_id)} termina em ${formataBR(fimMov)} — `
+            + 'não dá para remarcar para depois disso. Reative o processo no card do '
+            + 'paciente, ou registre a vinda direto com a frequência real.', true);
+        return;
+    }
     let error, voltar;
     if (s.id) {
         // o inverso é escrito ANTES de gravar, com os valores que a linha tinha
@@ -1991,10 +2053,211 @@ document.getElementById('btn-imes-aplicar').addEventListener('click', async () =
         btn.disabled = false; btn.textContent = 'Aplicar as aprovadas';
         return;
     }
+    // planilha soberana: os meses/pacientes que a importação cobriu ficam
+    // congelados — daqui em diante nenhuma dinâmica projeta sessão-fantasma
+    // ali, mesmo que seja editada depois
+    if (imesAnoMes && imesPlano && imesPlano.pares && imesPlano.pares.length) {
+        const mesCong = `${imesAnoMes.ano}-${String(imesAnoMes.mes).padStart(2, '0')}`;
+        const congs = [...new Set(imesPlano.pares.map(p => p.paciente.id))]
+            .map(id => ({ paciente_id: id, mes: mesCong }));
+        const { error: eC } = await sb.from('argos_meses_congelados')
+            .upsert(congs, { onConflict: 'paciente_id,mes', ignoreDuplicates: true });
+        if (eC) console.error(eC);
+    }
     toast(`${escolhidas.length} alteração(ões) aplicada(s).`);
     btn.disabled = false; btn.textContent = 'Aplicar as aprovadas';
     fecharModal('modal-imp-mes');
     imesPlano = null; imesLinhas = null; imesAprovadas.clear();
     avisarMudanca({ origem: 'importacao-mes' });
+    await carregarTudo();
+});
+
+// ---------------------------------------------------------------------------
+// Excluir sessão e criar pela própria agenda (avulsa e horário fixo)
+// ---------------------------------------------------------------------------
+// A agenda sabia mexer em tudo, menos nascer e morrer: sessão só aparecia
+// vinda de dinâmica ou de grupo, e não havia como apagar um registro errado.
+
+document.getElementById('btn-sessao-excluir').addEventListener('click', async () => {
+    const s = sessaoAberta;
+    if (!s || !s.id || !perm.pode('sessao_excluir')) return;
+    const aviso = s.dinamica_ref
+        ? 'O horário fixo volta a aparecer como pendente («??»).'
+        : 'Ela sai da agenda e das finanças.';
+    if (!confirm(`Excluir a sessão de ${nomePac(s.paciente_id)} em ${formataBR(s.data)} às ${s.hora}?\n${aviso}`)) return;
+    // as conferências dos profissionais sobre esta sessão morrem junto
+    await sb.from('argos_sessao_validacao').delete().eq('sessao_id', s.id);
+    const { error } = await sb.from('argos_sessoes').delete().eq('id', s.id);
+    if (error) { console.error(error); toast('Erro ao excluir a sessão.', true); return; }
+    await registrarEvento(s.paciente_id, 'sessao_excluida',
+        `Sessão de ${formataBR(s.data)} às ${s.hora} excluída pela agenda`
+        + (s.dinamica_ref ? ' — o horário fixo volta a valer como pendente.' : ' (sessão avulsa).'),
+        { data: s.data, hora: s.hora, status: s.status || '??' }, null);
+    toast('Sessão excluída.');
+    fecharModal('modal-sessao');
+    voltarAoGrupo = null;
+    retornarAoDiaSePreciso();
+    await recarregarSessoes();
+    avisarMudanca({ origem: 'agenda', quantas: 1 });
+});
+
+// tipo da sessão (individual/online/familiar) — grava na hora ao escolher
+document.getElementById('st-tipo').addEventListener('change', async () => {
+    const s = sessaoAberta;
+    if (!s || !perm.pode('sessao_tipo_editar')) return;
+    const novo = document.getElementById('st-tipo').value;
+    if (s.id) {
+        const { error } = await sb.from('argos_sessoes')
+            .update({ modalidade: novo }).eq('id', s.id);
+        if (error) { console.error(error); toast('Erro ao gravar o tipo da sessão.', true); return; }
+    } else {
+        // projeção do horário fixo: a sessão nasce agora, ainda pendente,
+        // só para o tipo ter onde morar — a frequência continua «??»
+        const { data, error } = await sb.from('argos_sessoes').insert({
+            paciente_id: s.paciente_id, dinamica_id: s.dinamica_ref, dinamica_ref: s.dinamica_ref,
+            data: s.data, hora: s.hora, duracao_min: s.duracao_min || 60,
+            sala_id: s.sala_id || null, profissional_id: s.profissional_id || null,
+            servico_id: s.servico_id || null, status: s.status || '??',
+            grupo_id: s.grupo_id || null, grupo_ref: s.grupo_ref || null,
+            modalidade: novo
+        }).select('id').single();
+        if (error) { console.error(error); toast('Erro ao gravar o tipo da sessão.', true); return; }
+        s.id = (data || {}).id || s.id;
+    }
+    s.modalidade = novo;
+    toast(`Tipo da sessão: ${tipoSessaoLabel(novo)}.`);
+    avisarMudanca({ origem: 'agenda', quantas: 1 });
+    await recarregarSessoes();
+});
+
+// ---- selects compartilhados dos dois formulários de criação ----
+function encherSelecoesDeCriacao(prefixo) {
+    const ativos = pacientes.filter(p => p.ativo && !p.cadastro_removido && !p.processo_fim_tipo);
+    document.getElementById(prefixo + '-paciente').innerHTML =
+        '<option value="">— Paciente —</option>'
+        + ativos.map(p => `<option value="${p.id}">${esc(p.nome)}</option>`).join('');
+    document.getElementById(prefixo + '-prof').innerHTML =
+        '<option value="">— Profissional —</option>'
+        + profissionais.map(p => `<option value="${p.id}">${esc(p.nome)}</option>`).join('');
+    document.getElementById(prefixo + '-sala').innerHTML =
+        '<option value="">— Espaço —</option>'
+        + salas.map(s => `<option value="${s.id}">${esc(s.nome)}</option>`).join('');
+}
+
+// ---- sessão avulsa ----
+document.getElementById('btn-nova-sessao').addEventListener('click', () => {
+    encherSelecoesDeCriacao('ns');
+    document.getElementById('ns-data').value = hojeISO();
+    document.getElementById('ns-hora').value = '';
+    document.getElementById('ns-duracao').value = 60;
+    document.getElementById('ns-valor').value = '';
+    document.getElementById('ns-tipo').value = 'individual';
+    document.getElementById('ns-rotulo-grupo').style.display = 'none';
+    abrirModal('modal-nova-sessao');
+});
+
+// tipo «em grupo» pede qual grupo foi — só os grupos ativos entram na lista
+document.getElementById('ns-tipo').addEventListener('change', () => {
+    const emGrupo = document.getElementById('ns-tipo').value === 'grupo';
+    document.getElementById('ns-rotulo-grupo').style.display = emGrupo ? '' : 'none';
+    if (emGrupo) {
+        document.getElementById('ns-grupo').innerHTML =
+            '<option value="">— Escolher grupo —</option>'
+            + grupos.filter(g => g.ativo !== false).map(g =>
+                `<option value="${g.id}">👥 ${esc(g.nome)} — ${DOW_NOMES[g.dow]} ${g.hora}</option>`).join('');
+    }
+});
+
+document.getElementById('form-nova-sessao').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const g = id => document.getElementById(id).value;
+    const registro = {
+        paciente_id: g('ns-paciente'), data: g('ns-data'), hora: g('ns-hora'),
+        duracao_min: Number(g('ns-duracao')) || 60,
+        profissional_id: g('ns-prof') || null, sala_id: g('ns-sala') || null,
+        valor: g('ns-valor') === '' ? null : Number(g('ns-valor')),
+        modalidade: g('ns-tipo') || 'individual',
+        grupo_id: g('ns-tipo') === 'grupo' ? (g('ns-grupo') || null) : null,
+        status: '??', dinamica_id: null, dinamica_ref: null
+    };
+    if (!registro.paciente_id || !registro.data || !registro.hora) {
+        toast('Paciente, dia e hora são obrigatórios.', true);
+        return;
+    }
+    if (registro.modalidade === 'grupo' && !registro.grupo_id) {
+        toast('Diga em qual grupo a sessão aconteceu.', true);
+        return;
+    }
+    const conflitos = conflitosDeSessao(registro,
+        dinamicas.filter(d => d.ativo !== false), sessoes);
+    if (conflitos.length && !confirm('⚠ Choque de agenda: '
+        + `${nomePac(conflitos[0].paciente_id)} já ocupa esse horário no mesmo espaço/profissional.`
+        + '\nCriar mesmo assim?')) return;
+    const { error } = await sb.from('argos_sessoes').insert(registro);
+    if (error) { console.error(error); toast('Erro ao criar a sessão.', true); return; }
+    await registrarEvento(registro.paciente_id, 'sessao_avulsa_criada',
+        `Sessão avulsa criada pela agenda para ${formataBR(registro.data)} às ${registro.hora}`
+        + (registro.valor != null ? ` — ${formataMoeda(registro.valor)}.`
+            : ' — sem valor (não entra na cobrança).'),
+        { data: registro.data, hora: registro.hora, valor: registro.valor }, null);
+    toast(registro.valor != null
+        ? `Sessão avulsa criada — ${formataMoeda(registro.valor)} entram na cobrança do mês.`
+        : 'Sessão avulsa criada, sem valor: não entra na cobrança.');
+    fecharModal('modal-nova-sessao');
+    await recarregarSessoes();
+    avisarMudanca({ origem: 'agenda', quantas: 1 });
+});
+
+// ---- horário fixo individual (a dinâmica nasce enxuta) ----
+document.getElementById('btn-novo-horario').addEventListener('click', () => {
+    encherSelecoesDeCriacao('nh');
+    document.getElementById('nh-dow').innerHTML = [1, 2, 3, 4, 5, 6, 0]
+        .map(d => `<option value="${d}">${DOW_NOMES[d]}</option>`).join('');
+    document.getElementById('nh-hora').value = '';
+    document.getElementById('nh-duracao').value = 60;
+    document.getElementById('nh-inicio').value = hojeISO();
+    document.getElementById('nh-valor').value = '';
+    abrirModal('modal-novo-horario');
+});
+
+document.getElementById('form-novo-horario').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const g = id => document.getElementById(id).value;
+    const dow = Number(g('nh-dow'));
+    const prof = g('nh-prof');
+    if (!g('nh-paciente') || !g('nh-hora') || !g('nh-inicio') || !prof) {
+        toast('Paciente, profissional, dia da semana, hora e início são obrigatórios.', true);
+        return;
+    }
+    const registro = {
+        paciente_id: g('nh-paciente'),
+        rotulo: `${nomeProf(prof)} — ${DOW_NOMES[dow]} ${g('nh-hora')}`,
+        recorrencia_tipo: 'recorrente', dias: [{ dow, hora: g('nh-hora') }],
+        data_inicio: g('nh-inicio'), fim_tipo: 'indeterminado',
+        duracao_min: Number(g('nh-duracao')) || 60, modalidade: 'individual',
+        sala_id: g('nh-sala') || null, profissional_id: prof, servico_id: null,
+        acordo_tipo: 'por_sessao',
+        valor: g('nh-valor') === '' ? null : Number(g('nh-valor')),
+        nota_tipo: null, grupo_id: null, ativo: true,
+        // o repasse fica vazio de propósito: herda o padrão do profissional
+        repasses: [{ profissional_id: prof, servico_id: null, tipo: 'percentual', valor: null }]
+    };
+    const conflitos = conflitosDeDinamica(registro,
+        dinamicas.filter(d => d.ativo !== false), sessoes);
+    if (conflitos.length && !confirm('⚠ Choque de agenda: '
+        + `${nomePac(conflitos[0].outra.paciente_id)} já ocupa `
+        + `${formataBR(conflitos[0].minha.data)} às ${conflitos[0].minha.hora} `
+        + 'no mesmo espaço/profissional.\nCriar mesmo assim?')) return;
+    const { error } = await sb.from('argos_dinamicas').insert(registro);
+    if (error) { console.error(error); toast('Erro ao criar o horário.', true); return; }
+    await registrarEvento(registro.paciente_id, 'horario_criado',
+        `Horário fixo criado pela agenda: ${DOW_NOMES[dow]} às ${g('nh-hora')} com ${nomeProf(prof)}`
+        + (registro.valor != null ? ` — ${formataMoeda(registro.valor)} por sessão.`
+            : ' — acordo financeiro a definir na página de pacientes.'),
+        { dow, hora: g('nh-hora'), inicio: registro.data_inicio, valor: registro.valor }, null);
+    toast(registro.valor != null
+        ? 'Horário criado — complete o restante do acordo na página de pacientes quando quiser.'
+        : 'Horário criado sem valor: defina o acordo financeiro na página de pacientes.');
+    fecharModal('modal-novo-horario');
     await carregarTudo();
 });

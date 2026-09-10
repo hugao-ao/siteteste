@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=0.1, maximum-scale=10, user-scalable=yes" />
   <title>Argos Gestão — Pacientes</title>
   <script src="argos-guard.js"></script>
-  <link rel="stylesheet" href="argos-style.css?v=12" />
+  <link rel="stylesheet" href="argos-style.css?v=13" />
   <style>
     #ev-graficos { align-items: start; }
     #ev-graficos svg { background: var(--argos-bg); border: 1px solid var(--argos-border);
@@ -199,7 +199,7 @@
       <div id="lista-dinamicas"></div>
       <div id="bloco-processo-pac" data-argos-recurso="processo_encerrar">
         <h3 class="form-secao">🏁 Situação do processo</h3>
-        <p class="dica">Marcando qualquer situação diferente de "Em andamento", o paciente deixa de constar na agenda, nos grupos e nas finanças a partir da data — não importa o que esteja programado. <b>Sem data, o corte vale a partir de hoje.</b> Voltar para "Em andamento" desfaz o corte e reativa o paciente.</p>
+        <p class="dica">Marcando qualquer situação diferente de "Em andamento", o paciente deixa de constar na agenda, nos grupos e nas finanças a partir da data — não importa o que esteja programado. <b>Sem data, o corte vale a partir de hoje.</b> Frequência real (Ok/Fj/Fc) registrada em data posterior — pela planilha do mês, por exemplo — empurra o corte para depois da última dessas sessões. Voltar para "Em andamento" desfaz o corte e reativa o paciente.</p>
         <div class="agenda-nav" style="flex-wrap:wrap; gap:8px">
           <select id="pac-proc-tipo" class="argos-input"></select>
           <input type="date" id="pac-proc-data" class="argos-input" title="A partir de (opcional)" />
@@ -211,6 +211,96 @@
         <button type="button" class="argos-btn" id="btn-nova-avulsa" data-argos-recurso="sessao_avulsa_criar">+ Sessão avulsa</button>
         <button type="button" class="argos-btn primary" id="btn-nova-dinamica" data-argos-recurso="dinamicas_gerenciar">+ Nova dinâmica</button>
       </div>
+    </div>
+  </div>
+
+  <!-- ============ MODAL: FREQUÊNCIA (todas as sessões, em tabela) ============ -->
+  <div class="argos-modal-fundo" id="modal-frequencia" data-argos-recurso="paciente_frequencia">
+    <div class="argos-modal grande">
+      <div class="argos-modal-topo">
+        <h2 id="modal-freq-titulo">🗓️ Frequência</h2>
+        <button class="argos-modal-x" data-fechar>×</button>
+      </div>
+      <p class="dica">Todas as sessões do paciente, em tabela. <b>Clique e arraste</b> sobre as linhas
+        para selecionar várias (ou use as caixas — clique, ou Shift+clique para um intervalo). Com a
+        seleção, dá para marcar a frequência de todas de uma vez ou excluí-las. Também dá para
+        <b>adicionar várias sessões</b> de uma vez. Tudo aqui reflete na agenda automaticamente.
+        Linhas com <span class="badge vermelho">duplicada</span> têm outra sessão no mesmo dia e hora.</p>
+
+      <div class="pend-barra">
+        <label class="rotulo-inline">Mês
+          <select id="freq-mes" class="argos-input"></select></label>
+        <button class="argos-btn small" id="btn-freq-add" data-argos-recurso="sessao_avulsa_criar">➕ Adicionar sessões</button>
+        <span class="dim" id="freq-contagem"></span>
+      </div>
+
+      <!-- barra de ações da seleção (aparece quando há linhas selecionadas) -->
+      <div class="pend-barra freq-acoes" id="freq-acoes" style="display:none">
+        <b id="freq-sel-contagem"></b>
+        <span class="dim">marcar como:</span>
+        <span id="freq-status-botoes"></span>
+        <button class="argos-btn small danger" id="btn-freq-excluir" data-argos-recurso="sessao_excluir">🗑️ Excluir selecionadas</button>
+        <button class="argos-btn small ghost" id="btn-freq-limpar">Limpar seleção</button>
+      </div>
+
+      <!-- formulário de adicionar várias (escondido até clicar em Adicionar) -->
+      <div id="freq-form-add" style="display:none; margin:8px 0; padding:12px; border:1px solid #22314f; border-radius:10px">
+        <h3 class="form-secao">➕ Adicionar sessões de uma dinâmica</h3>
+        <p class="dica">Escolha a dinâmica e um período: o sistema gera as ocorrências do horário fixo
+          nesse intervalo e cria as que ainda não existem, com a frequência escolhida.</p>
+        <div class="agenda-nav" style="flex-wrap:wrap; gap:8px">
+          <select id="freq-add-dinamica" class="argos-input" style="min-width:200px"></select>
+          <label class="rotulo-inline">De <input type="date" id="freq-add-de" class="argos-input" /></label>
+          <label class="rotulo-inline">Até <input type="date" id="freq-add-ate" class="argos-input" /></label>
+          <select id="freq-add-status" class="argos-input"></select>
+          <button class="argos-btn small primary" id="btn-freq-add-gerar">Gerar e adicionar</button>
+          <button class="argos-btn small ghost" id="btn-freq-add-cancelar">Cancelar</button>
+        </div>
+      </div>
+
+      <div class="tabela-rolagem" id="freq-tabela"></div>
+    </div>
+  </div>
+
+  <!-- ============ MODAL: EDITAR UMA SESSÃO (da frequência) ============ -->
+  <div class="argos-modal-fundo" id="modal-freq-editar">
+    <div class="argos-modal">
+      <div class="argos-modal-topo">
+        <h2>✏️ Editar sessão</h2>
+        <button class="argos-modal-x" data-fechar>×</button>
+      </div>
+      <p class="dica">Muda qualquer característica desta sessão — dia, hora, profissional, espaço,
+        tipo, valor e frequência. Reflete na agenda automaticamente.</p>
+      <form id="form-freq-editar" class="argos-form">
+        <div class="form-grade">
+          <label>Dia <input type="date" id="fe-data" required /></label>
+          <label>Hora <input type="time" id="fe-hora" required /></label>
+          <label>Duração (min) <input type="number" id="fe-duracao" min="10" step="5" /></label>
+        </div>
+        <div class="form-grade">
+          <label>Profissional <select id="fe-prof"></select></label>
+          <label>Espaço <select id="fe-sala"></select></label>
+        </div>
+        <div class="form-grade">
+          <label>Tipo da sessão
+            <select id="fe-tipo"></select>
+          </label>
+          <label id="fe-grupo-wrap" style="display:none">Grupo
+            <select id="fe-grupo"></select>
+          </label>
+          <label>Valor <span class="dim">(vazio = sem valor próprio; a dinâmica define)</span>
+            <span class="campo-moeda"><input type="number" step="0.01" min="0" id="fe-valor" placeholder="R$" /></span>
+          </label>
+        </div>
+        <div class="form-grade">
+          <label>Frequência <select id="fe-status"></select></label>
+          <label>Justificativa / observação <input type="text" id="fe-justificativa" /></label>
+        </div>
+        <div class="argos-modal-acoes">
+          <button type="button" class="argos-btn ghost" data-fechar>Cancelar</button>
+          <button type="submit" class="argos-btn primary">Salvar alterações</button>
+        </div>
+      </form>
     </div>
   </div>
 
@@ -457,6 +547,17 @@
           <label>Atividade/serviço
             <select id="avu-servico"><option value="">—</option></select>
           </label>
+          <label>Tipo da sessão
+            <select id="avu-tipo">
+              <option value="individual">👤 Individual</option>
+              <option value="online">🌐 Online</option>
+              <option value="familiar">👨‍👩‍👧 Familiar</option>
+              <option value="grupo">👥 Em grupo</option>
+            </select>
+          </label>
+          <label id="avu-rotulo-grupo" style="display:none">Qual grupo
+            <select id="avu-grupo"></select>
+          </label>
         </div>
         <div class="argos-modal-acoes">
           <button type="button" class="argos-btn ghost" data-fechar>Cancelar</button>
@@ -507,7 +608,7 @@
     </div>
   </div>
 
-  <script type="module" src="pacientes.js?v=20"></script>
+  <script type="module" src="pacientes.js?v=27"></script>
   <script type="module" src="argos-zoom.js?v=4"></script>
 </body>
 </html>
