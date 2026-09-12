@@ -3219,6 +3219,10 @@ body.hub-imprimindo.hub-modal-aberto {
   min-height: 0 !important;
   max-height: none !important;
   overflow: visible !important;
+  /* a folha é toda verde (margem da página = 0); o respiro das bordas
+     vem daqui, para o papel não ficar com moldura branca */
+  padding: 2mm !important;
+  margin: 0 !important;
   background: var(--dark-bg, #0f2e1f) !important;
   color: var(--text-light, #f0f8f0) !important;
 }
@@ -3441,14 +3445,20 @@ body.hub-imprimindo #painel-faltantes-chevron {
 
 /* ----- 20.6 o que só vale no papel: margens e impressão das cores ----- */
 @media print {
+  /* margem zero: a folha inteira fica verde, sem moldura branca.
+     O recuo de 2 mm do conteúdo vem do padding do body (bloco 20.1) */
   @page {
-    margin: 10mm;
+    margin: 0;
   }
 
-  /* o fundo do <html> se propaga para a página inteira, inclusive as
-     margens — é o que dá o verde escuro no PDF todo */
+  /* fundo do documento inteiro, página a página */
   html {
     background: var(--dark-bg, #0f2e1f) !important;
+  }
+
+  html,
+  body.hub-imprimindo {
+    min-height: 100% !important;
   }
 
   /* imprime as cores de fundo como na tela (Chrome respeita sem depender
