@@ -1302,13 +1302,27 @@
             // Roteamento por versão: 1 (ou nulo) abre a v1 na raiz; 2+ abre a v2 em /diagnostico/
             const diagPath = (Number(diagnostico.versao_diagnostico) || 1) >= 2 ? '/diagnostico/diagnostico-financeiro.html' : '/diagnostico-financeiro.html';
             const diagnosticoUrl = `${window.location.origin}${diagPath}?link=${diagnostico.link_unico}`;
-            
+            // Escolha de formato: o mesmo diagnóstico pode ser aberto na v1 (raiz) ou na v2 (/diagnostico/)
+            const diagPadraoNovo = diagPath === '/diagnostico/diagnostico-financeiro.html';
+            const diagUrlAntigo = `${window.location.origin}/diagnostico-financeiro.html?link=${diagnostico.link_unico}`;
+            const diagUrlNovo = `${window.location.origin}/diagnostico/diagnostico-financeiro.html?link=${diagnostico.link_unico}`;
+            const seloPadrao = '<span style="margin-left:0.4rem;font-size:0.65rem;font-weight:bold;text-transform:uppercase;background:var(--theme-secondary);color:var(--theme-bg-dark);padding:0.1rem 0.4rem;border-radius:8px;vertical-align:middle;">padrão</span>';
+
             let html = `
                 <p>Este cliente possui um diagnóstico financeiro.</p>
                 <p><strong>Compartilhe o link abaixo com o cliente:</strong></p>
                 <div class="form-link-container">
                     <a href="${diagnosticoUrl}" target="_self">${diagnosticoUrl}</a>
                 </div>
+                <div style="display:flex;flex-wrap:wrap;gap:0.5rem;margin-bottom:0.5rem;">
+                    <a class="generate-link-btn" href="${diagUrlAntigo}" target="_self" style="text-decoration:none;display:inline-flex;align-items:center;">
+                        <i class="fas fa-list" style="margin-right:0.4rem;"></i> Abrir no formato antigo${diagPadraoNovo ? '' : seloPadrao}
+                    </a>
+                    <a class="generate-link-btn" href="${diagUrlNovo}" target="_self" style="text-decoration:none;display:inline-flex;align-items:center;">
+                        <i class="fas fa-wand-magic-sparkles" style="margin-right:0.4rem;"></i> Abrir no formato novo${diagPadraoNovo ? seloPadrao : ''}
+                    </a>
+                </div>
+                <p style="font-size:0.78rem;color:var(--theme-text-muted);margin-top:0;">Salvar pelo formato antigo descarta os campos exclusivos do novo (renda no mês fraco, moradia e gera-renda do patrimônio físico; a classificação das despesas fica preservada).</p>
                 <p><em>(Este link é único e pode ser usado várias vezes)</em></p>
                 <div class="form-data-display">
                     <strong>Informações do Diagnóstico:</strong>

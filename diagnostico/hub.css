@@ -1,0 +1,3695 @@
+/* =====================================================================
+   HUB DO DIAGNÓSTICO v2 — hub.css
+   ---------------------------------------------------------------------
+   Estiliza o hub (avatar + anel de cards + modais + relatório vivo).
+   Tudo age SOMENTE sob body.hub-ativo (classe que hub.js adiciona ao
+   iniciar); a única exceção é o bloco @media print, que usa
+   body.hub-imprimindo. Remover este arquivo devolve o layout linear.
+
+   Paleta (variáveis já definidas no <style> da página, com fallbacks):
+     --dark-bg #0f2e1f · --primary-color #1a4d3a · --accent-color #ffd700
+     --border-color #2e8b57 · --text-light #f0f8f0 · dourado quente #d4af37
+     estados: #28a745 (ok) · #dc3545 (erro)
+
+   Camadas (z-index): palco 1 · topbar 800 · overlays 900 · toasts 950.
+   Os modais dos módulos (suitability, contas, objetivos…) usam 10000+
+   e por isso continuam por cima de tudo isto.
+
+   Breakpoints (desenho, seção 12): ≥1200 anel raio 300 · 900–1199 raio 250
+   · <900 grade · <600 telefone · <400 telefone estreito · <360 uma coluna.
+   Estrutura do palco (hub.js): #hub-particulas, #hub-anel (15 .hub-card),
+   #hub-avatar e #hub-gerar são IRMÃOS dentro de #hub-palco — por isso as
+   regras de #hub-gerar usam o combinador "~" a partir de #hub-anel.
+   ===================================================================== */
+
+
+/* =====================================================================
+   1. BASE — esconder o layout linear e preparar a página
+   ===================================================================== */
+body.hub-ativo {
+  overflow-x: hidden;
+}
+
+/* trava o scroll do fundo enquanto um overlay está aberto
+   (abaixo de 900px vira position:fixed — ver bloco 16 — para o iOS) */
+body.hub-ativo.hub-modal-aberto {
+  overflow: hidden;
+}
+
+/* a .container da página tem padding 1.2rem; o palco precisa da tela toda */
+body.hub-ativo > .container {
+  padding: 0;
+}
+
+/* elementos do layout linear que a topbar/os modais substituem */
+body.hub-ativo #main-content > .header,
+body.hub-ativo #main-content > .form-container,
+body.hub-ativo #main-content > .save-btn-container,
+body.hub-ativo #main-content > .canva-container,
+body.hub-ativo #main-content > #painel-info-faltantes,
+body.hub-ativo #main-content > #gabarito-questoes-container,
+body.hub-ativo #save-btn,
+body.hub-ativo #btn-gerar-pdf {
+  display: none !important;
+}
+
+/* fase 2: o gabarito detalhado das questões não é mais mostrado em lugar
+   nenhum do hub (o módulo continua criando o container; só fica oculto) */
+body.hub-ativo #gabarito-questoes-container {
+  display: none !important;
+}
+
+/* armazém das seções fechadas */
+body.hub-ativo #hub-armazem {
+  display: none !important;
+}
+
+/* raiz do hub: deixa espaço para a topbar fixa */
+body.hub-ativo #hub-root {
+  padding-top: 60px;
+  min-height: 100vh;
+}
+
+/* botões e cards do hub herdam a fonte da página */
+body.hub-ativo #hub-root button {
+  font-family: inherit;
+}
+
+body.hub-ativo #hub-root button:focus-visible,
+body.hub-ativo #hub-root [tabindex]:focus-visible {
+  outline: 2px solid var(--accent-color, #ffd700);
+  outline-offset: 2px;
+}
+
+/* toque: feedback de :active em todos os botões do hub (não depende de hover) */
+body.hub-ativo #hub-root button:active {
+  filter: brightness(1.12);
+}
+
+
+/* =====================================================================
+   2. TOPBAR — fixa, 60px, vidro escuro com borda dourada fina
+   ===================================================================== */
+body.hub-ativo #hub-topbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 60px;
+  z-index: 800;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0 1rem;
+  background: rgba(15, 46, 31, 0.85);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(212, 175, 55, 0.45);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.35);
+}
+
+body.hub-ativo #hub-topbar-esq,
+body.hub-ativo #hub-topbar-dir {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex: none;
+  min-width: 0;
+}
+
+body.hub-ativo #hub-topbar-centro {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+}
+
+/* nome do cliente (texto de #diagnostico-title) */
+body.hub-ativo #hub-cliente {
+  color: var(--accent-color, #ffd700);
+  font-weight: 700;
+  font-size: 0.95rem;
+  letter-spacing: 0.01em;
+  max-width: 34vw;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* badge de status (movido do header original) */
+body.hub-ativo #hub-topbar #status-badge {
+  margin-left: 0;
+  padding: 0.2rem 0.6rem;
+  font-size: 0.7rem;
+  line-height: 1.3;
+  white-space: nowrap;
+}
+
+body.hub-ativo #hub-topbar #status-badge:empty {
+  display: none;
+}
+
+/* botão voltar (era fixo no canto; aqui vira um botão redondo da barra) */
+body.hub-ativo #hub-topbar-esq .btn-voltar {
+  position: relative;
+  top: auto;
+  left: auto;
+  z-index: auto;
+  width: 36px;
+  height: 36px;
+  font-size: 16px;
+  background: rgba(26, 77, 58, 0.6);
+  border: 1px solid rgba(46, 139, 87, 0.7);
+  box-shadow: none;
+  color: var(--text-light, #f0f8f0);
+}
+
+body.hub-ativo #hub-topbar-esq .btn-voltar:hover {
+  background: rgba(26, 77, 58, 0.9);
+  border-color: var(--accent-color, #ffd700);
+  transform: none;
+}
+
+/* botão "puxar dados" (era bolinha fixa roxa; aqui segue a paleta da barra) */
+body.hub-ativo #hub-topbar-dir #btn-prefill-cadastro {
+  position: relative;
+  top: auto;
+  right: auto;
+  z-index: auto;
+  width: 36px;
+  height: 36px;
+  font-size: 15px;
+  background: rgba(26, 77, 58, 0.6);
+  border: 1px solid rgba(46, 139, 87, 0.7);
+  box-shadow: none;
+  color: var(--text-light, #f0f8f0);
+}
+
+body.hub-ativo #hub-topbar-dir #btn-prefill-cadastro:hover {
+  background: rgba(26, 77, 58, 0.9);
+  border-color: var(--accent-color, #ffd700);
+  transform: none;
+  box-shadow: 0 0 12px rgba(255, 215, 0, 0.25);
+}
+
+body.hub-ativo #hub-topbar-dir #btn-prefill-cadastro .tooltip {
+  right: calc(100% + 8px);
+  top: 50%;
+}
+
+/* progresso: trilho + preenchimento dourado + texto */
+body.hub-ativo #hub-progresso {
+  width: min(220px, 100%);
+}
+
+body.hub-ativo .hub-progresso-track {
+  width: 100%;
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  overflow: hidden;
+}
+
+body.hub-ativo .hub-progresso-fill {
+  display: block;
+  height: 100%;
+  width: 0;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #d4af37, var(--accent-color, #ffd700));
+  box-shadow: 0 0 8px rgba(255, 215, 0, 0.5);
+  transition: width 0.6s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+body.hub-ativo #hub-progresso-txt {
+  font-size: 0.68rem;
+  color: var(--text-light, #f0f8f0);
+  opacity: 0.85;
+  white-space: nowrap;
+}
+
+
+/* =====================================================================
+   3. BOTÕES DO HUB — base compartilhada e variantes
+   ---------------------------------------------------------------------
+   verde (padrão): topbar Relatório, modal Anterior/Próxima, chips
+   ouro: Salvar (topbar e modal), Começar o diagnóstico, Imprimir
+   fechar: os três "x" redondos dos overlays
+   (hub.js também marca os botões com .hub-btn / .hub-btn-ouro / .hub-fechar;
+   as classes entram como sinônimos dos ids)
+   ===================================================================== */
+body.hub-ativo .hub-btn,
+body.hub-ativo #hub-btn-relatorio,
+body.hub-ativo #hub-btn-salvar,
+body.hub-ativo #hub-modal-anterior,
+body.hub-ativo #hub-modal-proximo,
+body.hub-ativo #hub-modal-salvar,
+body.hub-ativo #hub-teatro-comecar,
+body.hub-ativo #hub-relatorio-imprimir {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.5rem 0.9rem;
+  border-radius: 8px;
+  border: 1px solid rgba(46, 139, 87, 0.7);
+  background: rgba(26, 77, 58, 0.6);
+  color: var(--text-light, #f0f8f0);
+  font-size: 0.82rem;
+  font-weight: 600;
+  line-height: 1.2;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.2s ease, border-color 0.2s ease,
+              box-shadow 0.2s ease, transform 0.2s ease, filter 0.2s ease;
+}
+
+body.hub-ativo #hub-btn-relatorio:hover,
+body.hub-ativo #hub-modal-anterior:hover,
+body.hub-ativo #hub-modal-proximo:hover {
+  background: rgba(26, 77, 58, 0.95);
+  border-color: var(--accent-color, #ffd700);
+  box-shadow: 0 0 12px rgba(255, 215, 0, 0.2);
+}
+
+/* variante ouro */
+body.hub-ativo .hub-btn-ouro,
+body.hub-ativo #hub-btn-salvar,
+body.hub-ativo #hub-modal-salvar,
+body.hub-ativo #hub-teatro-comecar,
+body.hub-ativo #hub-relatorio-imprimir {
+  background: linear-gradient(135deg, #d4af37, var(--accent-color, #ffd700));
+  border-color: transparent;
+  color: var(--dark-bg, #0f2e1f);
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.25);
+  box-shadow: 0 4px 14px rgba(212, 175, 55, 0.3);
+}
+
+body.hub-ativo #hub-btn-salvar:hover,
+body.hub-ativo #hub-modal-salvar:hover,
+body.hub-ativo #hub-teatro-comecar:hover,
+body.hub-ativo #hub-relatorio-imprimir:hover {
+  filter: brightness(1.08);
+  transform: translateY(-1px);
+  box-shadow: 0 8px 22px rgba(212, 175, 55, 0.4);
+}
+
+body.hub-ativo #hub-btn-relatorio:disabled,
+body.hub-ativo #hub-btn-salvar:disabled,
+body.hub-ativo #hub-modal-anterior:disabled,
+body.hub-ativo #hub-modal-proximo:disabled,
+body.hub-ativo #hub-modal-salvar:disabled,
+body.hub-ativo #hub-teatro-comecar:disabled,
+body.hub-ativo #hub-relatorio-imprimir:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none;
+  filter: none;
+  box-shadow: none;
+}
+
+/* botões de fechar (redondos) */
+body.hub-ativo .hub-fechar,
+body.hub-ativo #hub-modal-fechar,
+body.hub-ativo #hub-teatro-fechar,
+body.hub-ativo #hub-relatorio-fechar {
+  flex: none;
+  width: 36px;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: 1px solid rgba(240, 248, 240, 0.25);
+  background: rgba(0, 0, 0, 0.25);
+  color: var(--text-light, #f0f8f0);
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+
+body.hub-ativo #hub-modal-fechar:hover,
+body.hub-ativo #hub-teatro-fechar:hover,
+body.hub-ativo #hub-relatorio-fechar:hover {
+  background: rgba(0, 0, 0, 0.45);
+  border-color: var(--accent-color, #ffd700);
+  color: var(--accent-color, #ffd700);
+}
+
+
+/* =====================================================================
+   4. PALCO — cena central com fundo radial verde e vinheta
+   ===================================================================== */
+body.hub-ativo #hub-palco {
+  position: relative;
+  z-index: 1;
+  min-height: calc(100vh - 60px);
+  overflow: hidden;
+  background: radial-gradient(ellipse at center, #0f2e1f 0%, #0a2418 45%, #061a10 100%);
+  color: var(--text-light, #f0f8f0);
+}
+
+/* vinheta nas bordas */
+body.hub-ativo #hub-palco::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(ellipse at center, transparent 50%, rgba(0, 0, 0, 0.55) 100%);
+  z-index: 0;
+}
+
+/* brilho dourado difuso que gira devagar atrás de tudo (deriva de repouso) */
+body.hub-ativo #hub-palco::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 1100px;
+  height: 1100px;
+  margin: -550px 0 0 -550px;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 0;
+  background: conic-gradient(from 0deg,
+    transparent 0%, rgba(212, 175, 55, 0.05) 12%, transparent 24%,
+    transparent 50%, rgba(46, 139, 87, 0.06) 62%, transparent 74%, transparent 100%);
+  animation: hub-girar 48s linear infinite;
+}
+
+
+/* =====================================================================
+   5. PARTÍCULAS — 24 pontos subindo lentamente
+   hub.js define inline: --i (índice), --x (0–99, posição horizontal em %)
+   e --dur (18–30s). Os fallbacks derivam tudo de --i.
+   ===================================================================== */
+body.hub-ativo #hub-particulas {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+}
+
+body.hub-ativo .hub-particula {
+  position: absolute;
+  bottom: -12px;
+  left: calc(var(--x, calc(2 + var(--i, 0) * 4.1)) * 1%);
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: rgba(212, 175, 55, 0.55);
+  box-shadow: 0 0 6px rgba(255, 215, 0, 0.5);
+  opacity: 0;
+  animation: hub-particula var(--dur, calc(18s + var(--i, 0) * 0.5s)) linear infinite;
+  animation-delay: calc(var(--i, 0) * -1.25s);
+}
+
+/* variações para não parecer uma fila */
+body.hub-ativo .hub-particula:nth-child(3n) {
+  width: 3px;
+  height: 3px;
+  background: rgba(46, 139, 87, 0.7);
+  box-shadow: 0 0 5px rgba(46, 139, 87, 0.6);
+}
+
+body.hub-ativo .hub-particula:nth-child(4n + 1) {
+  width: 5px;
+  height: 5px;
+}
+
+body.hub-ativo .hub-particula:nth-child(5n + 2) {
+  margin-left: 1.5vw;
+  animation-timing-function: ease-in-out;
+}
+
+body.hub-ativo .hub-particula:nth-child(7n + 3) {
+  margin-left: -1.2vw;
+}
+
+
+/* =====================================================================
+   6. ANEL DE CARDS
+   ---------------------------------------------------------------------
+   Cada card é posicionado pela fórmula do desenho:
+     rotate(var(--ang)) translate(var(--raio)) rotate(calc(-1 * var(--ang)))
+   Como 15 cards num círculo de 300px teriam passo de arco menor que a
+   largura do card, a fórmula é envolvida por scale(ex, ey) … e o inverso:
+   o anel fica alongado (ex) e, em telas baixas, achatado (ey), sem
+   distorcer o card nem seu texto. O centro do card i fica em
+   (ex·raio·cos θ, ey·raio·sin θ), θ = −90° + 24°·i.
+   Geometria verificada par a par (vizinhos não se tocam quando
+   dx ≥ largura OU dy ≥ altura):
+     ≥1200 · raio 300 · ex 1.45 · ey 1    · cards 136×80 → folga mínima 12 px
+     ≥1200 · alt ≤ 760 · ey .9           · cards 128×76 → folga mínima 7 px
+     ≥1200 · alt ≤ 700 · ey .82          · cards 120×72 → folga mínima 4 px
+     900–1199 · raio 250 · ex 1.45 · ey 1 · cards 120×72 → folga mínima 2 px
+   (156×88 do desenho não cabe: o perímetro da elipse dá ~148 px por card.)
+   O crescimento no hover NÃO usa a propriedade `scale`: ela compõe por
+   fora da cadeia de transform e multiplicaria o deslocamento do raio
+   (o card saltaria ~20 px). Hover = borda, brilho e sombra.
+   ===================================================================== */
+body.hub-ativo #hub-anel {
+  --hub-ex: 1.45;   /* alongamento horizontal do anel */
+  --hub-ey: 1;      /* achatamento vertical (bloco 15 ajusta por altura;
+                       um --hub-ey inline vindo do hub.js prevalece) */
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  transform-origin: center center;
+  transition: filter 0.4s ease, opacity 0.4s ease;
+}
+
+/* ----- card: base ----- */
+body.hub-ativo .hub-card {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 136px;
+  height: 80px;
+  padding: 0.4rem 0.6rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  text-align: center;
+  color: var(--text-light, #f0f8f0);
+  background: rgba(26, 77, 58, 0.55);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  border: 1px solid rgba(46, 139, 87, 0.6);
+  border-radius: 14px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  cursor: pointer;
+  pointer-events: auto;
+  -webkit-appearance: none;
+  appearance: none;
+  transform-origin: center center;
+  /* posição aberta (o estado fechado sobrescreve abaixo) */
+  transform: translate(-50%, -50%)
+             scale(var(--hub-ex, 1), var(--hub-ey, 1))
+             rotate(var(--ang, 0deg)) translate(var(--raio, 280px)) rotate(calc(-1 * var(--ang, 0deg)))
+             scale(calc(1 / var(--hub-ex, 1)), calc(1 / var(--hub-ey, 1)));
+  opacity: 1;
+  visibility: visible;
+  /* cascata: cada card sai do centro com atraso proporcional a --i */
+  transition-property: transform, opacity, visibility, scale, border-color, box-shadow, filter;
+  transition-duration: 600ms, 450ms, 0s, 200ms, 200ms, 200ms, 200ms;
+  transition-timing-function: cubic-bezier(0.2, 0.9, 0.3, 1.2), ease, linear, ease, ease, ease, ease;
+  transition-delay: calc(var(--i, 0) * 40ms), calc(var(--i, 0) * 40ms), 0s, 0s, 0s, 0s, 0s;
+}
+
+/* ----- card: fechado (recolhido no centro, atrás do avatar) ----- */
+body.hub-ativo #hub-anel:not(.aberto) .hub-card {
+  transform: translate(-50%, -50%) scale(0.2);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition-duration: 350ms, 250ms, 0s, 200ms, 200ms, 200ms, 200ms;
+  transition-timing-function: ease-in, ease, linear, ease, ease, ease, ease;
+  transition-delay: 0s, 0s, 350ms, 0s, 0s, 0s, 0s;
+}
+
+/* ----- card: hover / ativo / foco -----
+   (sem `scale`: ver cabeçalho do bloco; a elevação vem da sombra) */
+body.hub-ativo .hub-card:hover {
+  z-index: 1;
+  border-color: var(--accent-color, #ffd700);
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.5), 0 0 22px rgba(255, 215, 0, 0.28);
+  filter: brightness(1.1);
+}
+
+body.hub-ativo .hub-card.ativo {
+  border: 1px solid var(--accent-color, #ffd700);
+  box-shadow: 0 0 0 2px rgba(255, 215, 0, 0.35), 0 0 22px rgba(255, 215, 0, 0.3);
+}
+
+/* ----- card: conteúdo ----- */
+body.hub-ativo .hub-card-icone {
+  color: var(--accent-color, #ffd700);
+  font-size: 1.05rem;
+  line-height: 1;
+  filter: drop-shadow(0 0 4px rgba(255, 215, 0, 0.35));
+}
+
+body.hub-ativo .hub-card-titulo {
+  font-size: 0.72rem;
+  font-weight: 600;
+  line-height: 1.15;
+  max-width: 100%;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+body.hub-ativo .hub-card-sub {
+  font-size: 0.64rem;
+  line-height: 1.2;
+  opacity: 0.8;
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ≥1200: tipografia um pouco maior (cabe em 136×80 com título de 2 linhas:
+   17,6 + 3 + 28 + 3 + 12,7 + 12,8 de padding = 77 px ≤ 78 px internos) */
+@media (min-width: 1200px) {
+  body.hub-ativo .hub-card-icone { font-size: 1.1rem; }
+  body.hub-ativo .hub-card-titulo { font-size: 0.76rem; }
+  body.hub-ativo .hub-card-sub { font-size: 0.66rem; }
+}
+
+/* ponto de estado no canto superior direito */
+body.hub-ativo .hub-card-ponto {
+  position: absolute;
+  top: 7px;
+  right: 7px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(240, 248, 240, 0.25);
+  transition: background 0.3s ease, box-shadow 0.3s ease;
+}
+
+body.hub-ativo .hub-card-ponto.vazio {
+  background: rgba(240, 248, 240, 0.25);
+  box-shadow: none;
+}
+
+body.hub-ativo .hub-card-ponto.parcial {
+  background: var(--accent-color, #ffd700);
+  box-shadow: 0 0 6px rgba(255, 215, 0, 0.6);
+}
+
+body.hub-ativo .hub-card-ponto.ok {
+  background: #28a745;
+  box-shadow: 0 0 6px rgba(40, 167, 69, 0.8);
+}
+
+/* card especial da apresentação: play num disco dourado */
+body.hub-ativo .hub-card-apresentacao {
+  border-color: rgba(212, 175, 55, 0.5);
+  background: linear-gradient(160deg, rgba(212, 175, 55, 0.16), rgba(26, 77, 58, 0.6));
+}
+
+body.hub-ativo .hub-card-apresentacao .hub-card-icone {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  color: var(--dark-bg, #0f2e1f);
+  background: linear-gradient(135deg, #d4af37, var(--accent-color, #ffd700));
+  filter: none;
+  box-shadow: 0 0 10px rgba(255, 215, 0, 0.4);
+}
+
+/* ----- flutuação individual dos cards abertos (±3px, 5–7 s) ----- */
+body.hub-ativo #hub-anel.aberto .hub-card {
+  animation: hub-flutuar calc(5s + var(--i, 0) * 0.15s) ease-in-out infinite;
+  animation-delay: calc(var(--i, 0) * -0.7s);
+}
+
+/* ----- anel em segundo plano (apresentação aberta no teatro) ----- */
+body.hub-ativo #hub-anel.em-fundo {
+  filter: blur(4px);
+  opacity: 0.35;
+  animation: hub-girar 60s linear infinite;
+}
+
+
+/* =====================================================================
+   7. #hub-gerar — card dourado docado abaixo do avatar
+   ---------------------------------------------------------------------
+   É IRMÃO de #hub-anel dentro de #hub-palco (hub.js), não filho: herda só
+   a base de .hub-card; posição, abre/fecha e grade vêm de regras próprias
+   ligadas ao estado do anel pelo combinador "~".
+   Layout interno: ícone à esquerda ocupando duas linhas; título e sub
+   ("Relatório ao vivo") empilhados à direita.
+   ===================================================================== */
+body.hub-ativo #hub-gerar {
+  top: calc(50% + 120px);
+  z-index: 3;
+  width: 210px;
+  height: 64px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-rows: auto auto;
+  align-items: center;
+  column-gap: 0.6rem;
+  row-gap: 1px;
+  padding: 0.4rem 1rem;
+  text-align: left;
+  overflow: hidden;
+  background: linear-gradient(135deg, #d4af37, var(--accent-color, #ffd700));
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  color: var(--dark-bg, #0f2e1f);
+  box-shadow: 0 10px 28px rgba(212, 175, 55, 0.35), 0 4px 10px rgba(0, 0, 0, 0.35);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  /* aberto: centraliza só no eixo x (o top já o põe abaixo do avatar) */
+  transform: translate(-50%, 0);
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  animation: none;
+  /* entra por último na cascata (15 cards × 40 ms) */
+  transition-delay: 600ms, 600ms, 0s, 0s, 0s, 0s, 0s;
+}
+
+/* fechado: recolhe para dentro do avatar, como os outros cards */
+body.hub-ativo #hub-anel:not(.aberto) ~ #hub-gerar {
+  transform: translate(-50%, -110px) scale(0.2);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition-duration: 350ms, 250ms, 0s, 200ms, 200ms, 200ms, 200ms;
+  transition-timing-function: ease-in, ease, linear, ease, ease, ease, ease;
+  transition-delay: 0s, 0s, 350ms, 0s, 0s, 0s, 0s;
+}
+
+/* apresentação aberta no teatro: acompanha o anel para o fundo */
+body.hub-ativo #hub-anel.em-fundo ~ #hub-gerar {
+  filter: blur(4px);
+  opacity: 0.35;
+  pointer-events: none;
+}
+
+body.hub-ativo #hub-gerar .hub-card-icone {
+  grid-row: 1 / 3;
+  color: var(--dark-bg, #0f2e1f);
+  font-size: 1.35rem;
+  filter: none;
+}
+
+body.hub-ativo #hub-gerar .hub-card-titulo {
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  -webkit-line-clamp: 1;
+}
+
+body.hub-ativo #hub-gerar .hub-card-sub {
+  font-size: 0.68rem;
+  font-weight: 600;
+  opacity: 0.85;
+}
+
+body.hub-ativo #hub-gerar .hub-card-ponto {
+  display: none;
+}
+
+body.hub-ativo #hub-gerar:hover {
+  border-color: rgba(255, 255, 255, 0.6);
+  filter: brightness(1.06);
+  box-shadow: 0 14px 34px rgba(212, 175, 55, 0.5), 0 4px 10px rgba(0, 0, 0, 0.35);
+}
+
+/* varredura de brilho a cada 8 s */
+body.hub-ativo #hub-gerar::after {
+  content: '';
+  position: absolute;
+  top: -30%;
+  bottom: -30%;
+  left: -10%;
+  width: 35%;
+  pointer-events: none;
+  background: linear-gradient(105deg, transparent 0%, rgba(255, 255, 255, 0.6) 50%, transparent 100%);
+  transform: translateX(-140%) skewX(-18deg);
+  animation: hub-brilho 8s ease-in-out infinite;
+}
+
+
+/* =====================================================================
+   8. AVATAR — 180px no centro, com halo, arcos, silhueta, iniciais,
+      badge do perfil, dica e check de apresentação vista
+   ===================================================================== */
+body.hub-ativo #hub-avatar {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 180px;
+  height: 180px;
+  margin: -90px 0 0 -90px;
+  z-index: 5;
+  padding: 0;
+  border-radius: 50%;
+  border: 2px solid rgba(212, 175, 55, 0.5);
+  background: radial-gradient(circle at 35% 30%, #1f5c45 0%, var(--primary-color, #1a4d3a) 45%, var(--dark-bg, #0f2e1f) 100%);
+  color: var(--text-light, #f0f8f0);
+  cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
+  box-shadow: inset 0 0 30px rgba(0, 0, 0, 0.45), 0 12px 34px rgba(0, 0, 0, 0.5);
+  transform-origin: center center;
+  animation: hub-respirar 6s ease-in-out infinite;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+body.hub-ativo #hub-avatar:hover {
+  border-color: var(--accent-color, #ffd700);
+  box-shadow: inset 0 0 30px rgba(0, 0, 0, 0.45), 0 12px 40px rgba(0, 0, 0, 0.55), 0 0 26px rgba(255, 215, 0, 0.25);
+}
+
+/* halo dourado difuso e pulsante */
+body.hub-ativo #hub-avatar-halo {
+  position: absolute;
+  inset: -14px;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 0;
+  background: radial-gradient(circle, rgba(212, 175, 55, 0.14) 0%, transparent 70%);
+  box-shadow: 0 0 40px 10px rgba(212, 175, 55, 0.28), 0 0 90px 30px rgba(212, 175, 55, 0.12);
+  animation: hub-halo 4s ease-in-out infinite;
+}
+
+/* anel de arcos (svg criado pelo hub.js; 14 arcos, um por seção) */
+body.hub-ativo #hub-avatar-anel {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+  z-index: 2;
+}
+
+body.hub-ativo .hub-arco {
+  fill: none;
+  stroke: rgba(46, 139, 87, 0.45);
+  stroke-width: 4;
+  stroke-linecap: round;
+  transition: stroke 0.4s ease, opacity 0.4s ease;
+}
+
+body.hub-ativo .hub-arco.aceso {
+  stroke: var(--accent-color, #ffd700);
+  filter: drop-shadow(0 0 3px rgba(255, 215, 0, 0.6));
+  animation: hub-arco-pulso 3s ease-in-out infinite;
+}
+
+/* silhueta neutra (cabeça + ombros) — a transparência de 35% vem do
+   fill-opacity que o próprio svg traz (hub.js); sem opacity duplicada aqui */
+body.hub-ativo #hub-avatar-silhueta {
+  position: absolute;
+  left: 50%;
+  top: 52%;
+  width: 62%;
+  height: 62%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  z-index: 1;
+  fill: var(--text-light, #f0f8f0);
+  color: var(--text-light, #f0f8f0);
+  transition: opacity 0.3s ease;
+}
+
+body.hub-ativo #hub-avatar-silhueta path,
+body.hub-ativo #hub-avatar-silhueta circle,
+body.hub-ativo #hub-avatar-silhueta ellipse {
+  fill: var(--text-light, #f0f8f0);
+}
+
+/* com iniciais por cima, a silhueta recua para não disputar com o texto */
+body.hub-ativo #hub-avatar.com-iniciais #hub-avatar-silhueta {
+  opacity: 0.12;
+}
+
+/* iniciais do cliente por cima da silhueta */
+body.hub-ativo #hub-avatar-iniciais {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  color: var(--accent-color, #ffd700);
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.6);
+  pointer-events: none;
+  z-index: 3;
+}
+
+/* badge com o emoji do perfil (borda na cor do perfil vem inline) */
+body.hub-ativo #hub-avatar-badge {
+  position: absolute;
+  right: 4px;   /* sobre a borda do círculo, a 45° */
+  bottom: 4px;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  line-height: 1;
+  background: var(--dark-bg, #0f2e1f);
+  border: 2px solid var(--accent-color, #ffd700);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+  z-index: 4;
+}
+
+body.hub-ativo #hub-avatar-badge:empty,
+body.hub-ativo #hub-avatar-badge[hidden] {
+  display: none;
+}
+
+/* dica abaixo do avatar (some no primeiro clique) */
+body.hub-ativo #hub-avatar-dica {
+  position: absolute;
+  top: calc(100% + 14px);
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  font-size: 0.75rem;
+  color: var(--text-light, #f0f8f0);
+  opacity: 0.85;
+  pointer-events: none;
+  z-index: 3;
+  animation: hub-dica 2.4s ease-in-out infinite;
+}
+
+body.hub-ativo #hub-avatar-dica[hidden],
+body.hub-ativo #hub-anel.aberto ~ #hub-avatar #hub-avatar-dica {
+  display: none;
+}
+
+/* apresentação vista: check dourado no canto superior */
+body.hub-ativo #hub-avatar.visto-apresentacao::after {
+  content: '\2713';
+  position: absolute;
+  top: 12px;    /* sobre a borda do círculo, a 45° */
+  right: 12px;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.85rem;
+  font-weight: 900;
+  color: var(--dark-bg, #0f2e1f);
+  background: linear-gradient(135deg, #d4af37, var(--accent-color, #ffd700));
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+  z-index: 4;
+}
+
+
+/* =====================================================================
+   9. OVERLAYS — fundo escuro com desfoque; janelas modal/teatro/relatório
+   ===================================================================== */
+body.hub-ativo .hub-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 900;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: rgba(3, 14, 8, 0.72);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 200ms ease, visibility 0s linear 200ms;
+}
+
+body.hub-ativo .hub-overlay.aberto {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transition: opacity 200ms ease, visibility 0s;
+}
+
+/* janelas: base compartilhada */
+body.hub-ativo .hub-janela,
+body.hub-ativo .hub-janela-teatro,
+body.hub-ativo .hub-janela-relatorio {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  max-width: 100%;
+  max-height: 100%;
+  background: var(--dark-bg, #0f2e1f);
+  color: var(--text-light, #f0f8f0);
+  border: 1px solid rgba(212, 175, 55, 0.35);
+  border-radius: 16px;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(0, 0, 0, 0.4);
+  overflow: hidden;
+  transform: translateY(12px) scale(0.98);
+  transition: transform 240ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+body.hub-ativo .hub-overlay.aberto .hub-janela,
+body.hub-ativo .hub-overlay.aberto .hub-janela-teatro,
+body.hub-ativo .hub-overlay.aberto .hub-janela-relatorio {
+  transform: none;
+}
+
+/* tamanhos */
+body.hub-ativo .hub-janela {
+  width: min(1200px, 96vw);
+  height: 90vh;
+}
+
+body.hub-ativo .hub-janela-teatro {
+  /* 16:9 até 1400px, limitado pela altura (cabeçalho + rodapé ≈ 116px) */
+  width: min(1400px, 96vw, calc((92vh - 116px) * 16 / 9));
+  max-height: 92vh;
+}
+
+body.hub-ativo .hub-janela-relatorio {
+  width: min(1000px, 96vw);
+  height: 92vh;
+  display: block;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* cabeçalhos */
+body.hub-ativo #hub-modal-cabecalho,
+body.hub-ativo #hub-teatro-cabecalho,
+body.hub-ativo #hub-relatorio-cabecalho {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.6rem 1rem;
+  background: rgba(26, 77, 58, 0.35);
+  border-bottom: 1px solid rgba(212, 175, 55, 0.3);
+  color: var(--accent-color, #ffd700);
+}
+
+body.hub-ativo #hub-teatro-cabecalho h2,
+body.hub-ativo #hub-teatro-cabecalho h3,
+body.hub-ativo #hub-teatro-cabecalho .hub-teatro-titulo,
+body.hub-ativo #hub-relatorio-cabecalho h2,
+body.hub-ativo #hub-relatorio-cabecalho h3,
+body.hub-ativo #hub-relatorio-cabecalho .hub-relatorio-titulo {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--accent-color, #ffd700);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* modal: ícone, título, chip, fechar */
+body.hub-ativo .hub-modal-icone {
+  flex: none;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  color: var(--accent-color, #ffd700);
+  background: rgba(212, 175, 55, 0.12);
+  border: 1px solid rgba(212, 175, 55, 0.4);
+}
+
+body.hub-ativo .hub-modal-titulo {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--accent-color, #ffd700);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+body.hub-ativo .hub-modal-chip {
+  flex: none;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--text-light, #f0f8f0);
+  background: rgba(26, 77, 58, 0.7);
+  border: 1px solid rgba(46, 139, 87, 0.7);
+  white-space: nowrap;
+}
+
+body.hub-ativo .hub-modal-chip:empty {
+  display: none;
+}
+
+/* corpos roláveis (rolagem com inércia no iOS) */
+body.hub-ativo #hub-modal-corpo,
+body.hub-ativo #hub-teatro-corpo {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+body.hub-ativo #hub-modal-corpo {
+  padding: 1rem;
+}
+
+/* teatro: o Canva fica centralizado verticalmente na área disponível */
+body.hub-ativo #hub-teatro-corpo {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 0.6rem;
+  background: #061a10;
+}
+
+/* rodapés */
+body.hub-ativo #hub-modal-rodape,
+body.hub-ativo #hub-teatro-rodape {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  padding: 0.6rem 1rem;
+  background: rgba(26, 77, 58, 0.35);
+  border-top: 1px solid rgba(212, 175, 55, 0.3);
+}
+
+body.hub-ativo #hub-modal-anterior {
+  margin-right: auto;
+}
+
+
+/* =====================================================================
+   10. SEÇÕES DENTRO DO MODAL
+   ---------------------------------------------------------------------
+   Os estilos originais (form-container, tabelas, cards) seguem valendo;
+   aqui só se ajusta margem/largura, some o toggle e o conteúdo fica
+   sempre visível (o cabeçalho da seção deixa de ser clicável).
+   ===================================================================== */
+body.hub-ativo #hub-modal-corpo > .form-container {
+  margin: 0 !important;
+  max-width: 100%;
+  width: 100%;
+}
+
+/* o toggle está escondido; sem pointer-events o clique no título não
+   dispara toggleSection (que colapsava a seção dentro do modal) */
+body.hub-ativo #hub-modal-corpo .section-header {
+  cursor: default;
+  pointer-events: none;
+}
+
+body.hub-ativo #hub-modal-corpo .section-header:hover {
+  opacity: 1;
+}
+
+body.hub-ativo #hub-modal-corpo .section-toggle-btn {
+  display: none;
+}
+
+body.hub-ativo #hub-modal-corpo > .form-container > .section-content {
+  max-height: none !important;
+  opacity: 1 !important;
+  overflow: visible;
+  padding-top: 0.6rem !important;
+  padding-bottom: 0 !important;
+}
+
+/* apresentação dentro do teatro: o Canva ocupa a janela sem moldura dupla,
+   sempre em 16:9 (o inline da página muda o padding-top em telas pequenas;
+   aqui a especificidade maior devolve 56.25%) */
+body.hub-ativo #hub-teatro-corpo .canva-container {
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+body.hub-ativo #hub-teatro-corpo .canva-embed {
+  position: relative;
+  width: 100%;
+  height: 0;
+  margin: 0;
+  padding-top: 56.25%;
+  padding-bottom: 0;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+}
+
+body.hub-ativo #hub-teatro-corpo .canva-embed iframe {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+
+
+/* =====================================================================
+   11. RELATÓRIO — janela, cabeçalho fixo, chips, painéis adotados
+   ===================================================================== */
+body.hub-ativo #hub-relatorio-cabecalho {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  flex-wrap: wrap;
+  row-gap: 0.45rem;
+  background: rgba(15, 46, 31, 0.96);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+}
+
+body.hub-ativo #hub-relatorio-imprimir {
+  order: 1;
+}
+
+body.hub-ativo #hub-relatorio-fechar {
+  order: 2;
+}
+
+/* chips: um por seção, em linha própria abaixo do título */
+body.hub-ativo #hub-relatorio-chips {
+  order: 10;
+  flex-basis: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+body.hub-ativo #hub-relatorio-chips > * {
+  -webkit-appearance: none;
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.22rem 0.6rem;
+  border-radius: 999px;
+  border: 1px solid rgba(46, 139, 87, 0.6);
+  background: rgba(26, 77, 58, 0.5);
+  color: var(--text-light, #f0f8f0);
+  font: inherit;
+  font-size: 0.7rem;
+  font-weight: 600;
+  line-height: 1.2;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: border-color 0.2s ease, background 0.2s ease, color 0.2s ease;
+}
+
+body.hub-ativo #hub-relatorio-chips > *:hover,
+body.hub-ativo #hub-relatorio-chips > .ativo {
+  border-color: var(--accent-color, #ffd700);
+  background: rgba(212, 175, 55, 0.15);
+  color: var(--accent-color, #ffd700);
+}
+
+body.hub-ativo #hub-relatorio-corpo {
+  padding: 1rem 1.4rem 1.2rem;
+}
+
+/* painéis do validador e do gabarito adotados pelo relatório */
+body.hub-ativo #hub-relatorio-paineis {
+  padding: 0 1.4rem 1.4rem;
+}
+
+body.hub-ativo #hub-relatorio-paineis:empty {
+  display: none;
+}
+
+body.hub-ativo #hub-relatorio-paineis > * {
+  max-width: 100% !important;
+  margin: 0 0 1rem !important;
+}
+
+
+/* =====================================================================
+   12. RELATÓRIO — conteúdo gerado (.rel-*)
+   ===================================================================== */
+body.hub-ativo .rel {
+  font-size: 0.85rem;
+  line-height: 1.45;
+  color: var(--text-light, #f0f8f0);
+}
+
+body.hub-ativo .rel strong,
+body.hub-ativo .rel b {
+  color: var(--accent-color, #ffd700);
+  font-weight: 600;
+}
+
+body.hub-ativo .rel p {
+  margin: 0.25rem 0;
+}
+
+body.hub-ativo .rel ul,
+body.hub-ativo .rel ol {
+  margin: 0.3rem 0;
+  padding-left: 1.2rem;
+}
+
+body.hub-ativo .rel li {
+  margin: 0.15rem 0;
+}
+
+/* ----- blocos genéricos que o relatório gera ----- */
+/* subtítulo dentro de uma seção ("Justificativas", "Código da matriz"…) */
+body.hub-ativo .rel-sub {
+  margin: 0.7rem 0 0.3rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--accent-color, #ffd700);
+}
+
+body.hub-ativo .rel-dados > .rel-sub:first-child {
+  margin-top: 0;
+}
+
+/* linha "Rótulo: valor" */
+body.hub-ativo .rel-linha {
+  margin: 0.2rem 0;
+}
+
+body.hub-ativo .rel-linha strong {
+  margin-right: 0.15rem;
+}
+
+/* texto secundário (unidades, parênteses, "a calcular") — mínimo 0.8 (AA) */
+body.hub-ativo .rel-mudo {
+  opacity: 0.8;
+  font-weight: 400;
+}
+
+/* listas simples */
+body.hub-ativo .rel-lista {
+  margin: 0.3rem 0;
+  padding-left: 1.1rem;
+}
+
+body.hub-ativo .rel-lista-faltantes li::marker {
+  color: var(--accent-color, #ffd700);
+}
+
+/* total de uma tabela ou lista */
+body.hub-ativo p.rel-total {
+  margin: 0.4rem 0 0.2rem;
+  padding-top: 0.3rem;
+  border-top: 1px solid rgba(212, 175, 55, 0.35);
+  font-weight: 700;
+  color: var(--accent-color, #ffd700);
+}
+
+/* código da matriz em monoespaçada */
+body.hub-ativo .rel-codigo {
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, 'Courier New', monospace;
+  letter-spacing: 0.08em;
+  padding: 0.05rem 0.4rem;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(212, 175, 55, 0.3);
+}
+
+/* perfil vigente na seção do perfil (a cor vem inline) */
+body.hub-ativo .rel-perfil-rotulo {
+  font-weight: 800;
+  font-size: 1rem;
+}
+
+/* pares inline separados por "·" */
+body.hub-ativo .rel-inline {
+  line-height: 1.7;
+}
+
+/* chip genérico (respostas das questões, perfil de investidor) */
+body.hub-ativo .rel-chip {
+  display: inline-block;
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  border: 1px solid rgba(46, 139, 87, 0.6);
+  background: rgba(26, 77, 58, 0.5);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  line-height: 1.5;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+body.hub-ativo .rel-chip-neutro {
+  color: var(--text-light, #f0f8f0);
+}
+
+/* tabelas geradas: mesmo visual de .rel-dados table, com rolagem própria */
+body.hub-ativo .rel-tabela-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  margin: 0.4rem 0;
+}
+
+body.hub-ativo .rel-tabela-wrap table {
+  margin: 0;
+}
+
+/* ----- fase 2: gráficos (Chart.js) e barras CSS de fallback -----
+   As regras de .rel-grafico / .rel-graficos-grade / .rel-barra vivem no
+   bloco 21 (depois dos blocos responsivos), para a altura do canvas ser
+   governada por --rel-grafico-alt em todas as faixas. */
+
+/* ----- capa ----- */
+body.hub-ativo .rel-capa {
+  display: grid;
+  gap: 0.5rem;
+  margin-bottom: 1.2rem;
+  padding: 1.2rem 1.4rem;
+  border-radius: 14px;
+  border: 1px solid rgba(212, 175, 55, 0.35);
+  background: linear-gradient(135deg, rgba(26, 77, 58, 0.7), rgba(15, 46, 31, 0.9));
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+}
+
+body.hub-ativo .rel-capa-nome {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--accent-color, #ffd700);
+  letter-spacing: 0.01em;
+}
+
+body.hub-ativo .rel-capa-meta {
+  font-size: 0.75rem;
+  opacity: 0.85;
+}
+
+/* rótulo grosso do perfil (a cor vem inline do relatório) */
+body.hub-ativo .rel-capa-perfil {
+  display: inline-block;
+  width: fit-content;
+  padding: 0.4rem 0.8rem;
+  border-radius: 8px;
+  border: 1px solid currentColor;
+  background: rgba(0, 0, 0, 0.25);
+  font-size: 1.1rem;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+}
+
+/* "a calcular": sem cor de perfil, borda tracejada */
+body.hub-ativo .rel-capa-perfil-vazio {
+  border-style: dashed;
+  font-weight: 600;
+  opacity: 0.85;
+}
+
+body.hub-ativo .rel-capa-codigo {
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, 'Courier New', monospace;
+  font-size: 0.9rem;
+  letter-spacing: 0.08em;
+  color: var(--text-light, #f0f8f0);
+  opacity: 0.9;
+}
+
+/* grade de 3 números */
+body.hub-ativo .rel-capa-resumo {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.6rem;
+  margin-top: 0.4rem;
+}
+
+body.hub-ativo .rel-capa-resumo > * {
+  text-align: left;
+  padding: 0.6rem 0.7rem;
+  border-radius: 10px;
+  border: 1px solid rgba(46, 139, 87, 0.4);
+  background: rgba(0, 0, 0, 0.25);
+  font-size: 0.75rem;
+  opacity: 0.95;
+}
+
+body.hub-ativo .rel-capa-resumo strong,
+body.hub-ativo .rel-capa-resumo b,
+body.hub-ativo .rel-capa-resumo .rel-num,
+body.hub-ativo .rel-capa-num-valor {
+  display: block;
+  font-size: 1.4rem;
+  font-weight: 800;
+  line-height: 1.1;
+  margin-bottom: 0.15rem;
+  color: var(--accent-color, #ffd700);
+}
+
+/* "/14" ao lado do número grande (o relatório gera .rel-num > .rel-mudo) */
+body.hub-ativo .rel-capa-num-valor .rel-mudo,
+body.hub-ativo .rel-capa-resumo .rel-num .rel-mudo {
+  font-size: 0.55em;
+  font-weight: 600;
+}
+
+body.hub-ativo .rel-capa-num-rotulo {
+  display: block;
+}
+
+/* ----- seções ----- */
+body.hub-ativo .rel-secao {
+  margin-bottom: 1.2rem;
+  padding-bottom: 0.8rem;
+  border-bottom: 1px solid rgba(46, 139, 87, 0.3);
+  scroll-margin-top: 130px; /* altura do cabeçalho fixo com os chips */
+}
+
+body.hub-ativo .rel-secao:last-child {
+  border-bottom: 0;
+}
+
+body.hub-ativo .rel-secao-titulo {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0 0 0.6rem;
+  padding-bottom: 0.3rem;
+  border-bottom: 1px solid rgba(212, 175, 55, 0.4);
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--accent-color, #ffd700);
+}
+
+body.hub-ativo .rel-secao-titulo i {
+  width: 1.3em;
+  text-align: center;
+  opacity: 0.9;
+}
+
+/* fechamento do plano com destaque dourado */
+body.hub-ativo #rel-secao-fechamento,
+body.hub-ativo .rel-secao-fechamento {
+  padding: 0.8rem 1rem;
+  border: 1px solid rgba(212, 175, 55, 0.4);
+  border-radius: 12px;
+  background: rgba(212, 175, 55, 0.06);
+}
+
+/* ----- dados: tabelas compactas zebra e listas ----- */
+body.hub-ativo .rel-dados {
+  overflow-x: auto;
+}
+
+body.hub-ativo .rel-dados table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0.4rem 0;
+  font-size: 0.78rem;
+}
+
+body.hub-ativo .rel-dados th {
+  text-align: left;
+  padding: 0.3rem 0.5rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--accent-color, #ffd700);
+  border-bottom: 1px solid rgba(212, 175, 55, 0.35);
+  white-space: nowrap;
+}
+
+body.hub-ativo .rel-dados td {
+  padding: 0.3rem 0.5rem;
+  vertical-align: top;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+body.hub-ativo .rel-dados tbody tr:nth-child(even) {
+  background: rgba(255, 255, 255, 0.035);
+}
+
+body.hub-ativo .rel-dados tbody tr:hover {
+  background: rgba(212, 175, 55, 0.07);
+}
+
+body.hub-ativo .rel-dados tfoot td,
+body.hub-ativo .rel-dados tr.rel-total td,
+body.hub-ativo .rel-dados .rel-total {
+  font-weight: 700;
+  color: var(--accent-color, #ffd700);
+  border-top: 1px solid rgba(212, 175, 55, 0.35);
+  border-bottom: 0;
+}
+
+/* colunas numéricas: mesma esquerda das demais (pedido do dono), só
+   ganham dígitos tabulares e não quebram */
+body.hub-ativo .rel-dados td.rel-num,
+body.hub-ativo .rel-dados th.rel-num {
+  text-align: left;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+/* dl (se algum bloco usar): "rótulo: valor" em texto corrido, uma dupla
+   por linha — nada de grade com o valor jogado para a direita */
+body.hub-ativo .rel-dados dl {
+  display: block;
+  margin: 0.3rem 0;
+}
+
+body.hub-ativo .rel-dados dt {
+  display: inline;
+  margin-right: 0.25rem;
+  color: var(--accent-color, #ffd700);
+  font-weight: 600;
+}
+
+body.hub-ativo .rel-dados dd {
+  display: inline;
+  margin: 0;
+}
+
+body.hub-ativo .rel-dados dd::after {
+  content: '';
+  display: block;
+  height: 0.2rem;
+}
+
+/* ----- nada informado ----- */
+body.hub-ativo .rel-vazio {
+  margin: 0.2rem 0;
+  font-size: 0.8rem;
+  font-style: italic;
+  opacity: 0.8;
+}
+
+/* ----- questões: mesmo formato das linhas de dados ("Pergunta? SIM"),
+   uma por linha, chip pequeno logo após o texto, tudo à esquerda ----- */
+body.hub-ativo .rel-questoes {
+  margin-top: 0.5rem;
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
+  text-align: left;
+}
+
+body.hub-ativo .rel-questoes > strong:first-child,
+body.hub-ativo .rel-questoes > b:first-child,
+body.hub-ativo .rel-questoes h4 {
+  display: block;
+  margin: 0 0 0.3rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--accent-color, #ffd700);
+}
+
+body.hub-ativo .rel-questoes ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+/* cada questão é uma linha de texto corrido (li ou p.rel-questao) */
+body.hub-ativo .rel-questoes li,
+body.hub-ativo .rel-questao {
+  display: block;
+  margin: 0.2rem 0;
+  padding: 0;
+  border: 0;
+  text-align: left;
+}
+
+body.hub-ativo .rel-questoes li:last-child {
+  border-bottom: 0;
+}
+
+/* texto da pergunta = rótulo em negrito dourado, como o strong das linhas */
+body.hub-ativo .rel-questao-texto {
+  flex: none;
+  display: inline;
+  min-width: 0;
+  margin-right: 0.25rem;
+  font-weight: 600;
+  color: var(--accent-color, #ffd700);
+}
+
+/* chip da resposta (span dentro da questão ou .rel-chip em qualquer lugar) */
+body.hub-ativo .rel-questoes span.rel-sim,
+body.hub-ativo .rel-questoes span.rel-nao,
+body.hub-ativo .rel-questoes span.rel-na,
+body.hub-ativo .rel-questoes span.rel-pendente,
+body.hub-ativo .rel-chip.rel-sim,
+body.hub-ativo .rel-chip.rel-nao,
+body.hub-ativo .rel-chip.rel-na,
+body.hub-ativo .rel-chip.rel-pendente {
+  flex: none;
+  display: inline-block;
+  min-width: 2.6em;
+  margin-left: 0.1rem;
+  padding: 0.05rem 0.5rem;
+  border-radius: 999px;
+  border: 1px solid;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  line-height: 1.45;
+  text-align: center;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+/* verde e vermelho da paleta, preenchidos (texto com contraste AA) */
+body.hub-ativo .rel-questoes span.rel-sim,
+body.hub-ativo .rel-chip.rel-sim {
+  color: var(--dark-bg, #0f2e1f);
+  border-color: #28a745;
+  background: #28a745;
+}
+
+body.hub-ativo .rel-questoes span.rel-nao,
+body.hub-ativo .rel-chip.rel-nao {
+  color: #fff;
+  border-color: #dc3545;
+  background: #dc3545;
+}
+
+/* N/A cinza; pendente cinza claro tracejado (opacidade mínima .85) */
+body.hub-ativo .rel-questoes span.rel-na,
+body.hub-ativo .rel-chip.rel-na {
+  color: rgba(240, 248, 240, 0.85);
+  border-color: rgba(240, 248, 240, 0.35);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+body.hub-ativo .rel-questoes span.rel-pendente,
+body.hub-ativo .rel-chip.rel-pendente {
+  color: rgba(240, 248, 240, 0.85);
+  border-color: rgba(240, 248, 240, 0.35);
+  border-style: dashed;
+  background: transparent;
+}
+
+/* a classe de resposta no próprio li não muda o formato da linha
+   (sem barra lateral: é uma linha de dados como as outras) */
+body.hub-ativo .rel-questoes li.rel-sim,
+body.hub-ativo .rel-questoes li.rel-nao,
+body.hub-ativo .rel-questoes li.rel-na,
+body.hub-ativo .rel-questoes li.rel-pendente {
+  padding-left: 0;
+  border-left: 0;
+}
+
+/* ----- plano: "O plano financeiro precisa conter" com marcador dourado ----- */
+body.hub-ativo .rel-plano {
+  margin-top: 0.6rem;
+  padding: 0.6rem 0.8rem;
+  border-left: 3px solid #d4af37;
+  border-radius: 0 8px 8px 0;
+  background: rgba(212, 175, 55, 0.08);
+}
+
+body.hub-ativo .rel-plano > strong:first-child,
+body.hub-ativo .rel-plano > b:first-child,
+body.hub-ativo .rel-plano h4,
+body.hub-ativo .rel-plano > p:first-child {
+  display: block;
+  margin: 0 0 0.3rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--accent-color, #ffd700);
+}
+
+body.hub-ativo .rel-plano ul {
+  list-style: none;
+  margin: 0.3rem 0 0;
+  padding: 0;
+}
+
+body.hub-ativo .rel-plano li {
+  position: relative;
+  margin: 0.22rem 0;
+  padding-left: 1.1rem;
+}
+
+body.hub-ativo .rel-plano li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0.5em;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #d4af37, var(--accent-color, #ffd700));
+  box-shadow: 0 0 5px rgba(255, 215, 0, 0.5);
+}
+
+/* ----- observação da seção ----- */
+body.hub-ativo .rel-obs {
+  margin-top: 0.5rem;
+  padding: 0.5rem 0.7rem;
+  border-left: 2px solid rgba(46, 139, 87, 0.6);
+  border-radius: 0 8px 8px 0;
+  background: rgba(0, 0, 0, 0.2);
+  font-size: 0.8rem;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+body.hub-ativo .rel-obs > strong:first-child,
+body.hub-ativo .rel-obs > b:first-child {
+  display: block;
+  margin-bottom: 0.15rem;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+
+/* =====================================================================
+   13. TOASTS — #error-container / #success-container no canto inferior
+   ===================================================================== */
+body.hub-ativo #hub-toasts {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 950;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.5rem;
+  width: min(380px, calc(100vw - 32px));
+  pointer-events: none;
+}
+
+body.hub-ativo #hub-toasts > * {
+  width: 100%;
+  pointer-events: auto;
+}
+
+body.hub-ativo #hub-toasts > :empty {
+  display: none;
+}
+
+body.hub-ativo #hub-toasts .error-message,
+body.hub-ativo #hub-toasts .success-message {
+  margin: 0;
+  padding: 0.75rem 0.9rem;
+  border-radius: 10px;
+  font-size: 0.85rem;
+  line-height: 1.35;
+  background: rgba(15, 46, 31, 0.96);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5);
+  animation: hub-toast-entrar 0.25s ease;
+}
+
+body.hub-ativo #hub-toasts .error-message {
+  border: 1px solid #dc3545;
+  border-left-width: 4px;
+}
+
+body.hub-ativo #hub-toasts .success-message {
+  border: 1px solid #28a745;
+  border-left-width: 4px;
+}
+
+
+/* =====================================================================
+   14. ANIMAÇÕES DE REPOUSO (keyframes)
+   ===================================================================== */
+@keyframes hub-respirar {
+  0%, 100% { transform: scale(1); }
+  50%      { transform: scale(1.03); }
+}
+
+@keyframes hub-halo {
+  0%, 100% { opacity: 0.55; transform: scale(1); }
+  50%      { opacity: 0.95; transform: scale(1.08); }
+}
+
+@keyframes hub-flutuar {
+  0%, 100% { translate: 0 3px; }
+  50%      { translate: 0 -3px; }
+}
+
+/* variante ±2 px para a faixa 900–1199 (folga vertical menor entre cards) */
+@keyframes hub-flutuar-suave {
+  0%, 100% { translate: 0 2px; }
+  50%      { translate: 0 -2px; }
+}
+
+@keyframes hub-particula {
+  0%   { transform: translate(0, 0);          opacity: 0; }
+  8%   { opacity: 0.75; }
+  30%  { transform: translate(12px, -30vh); }
+  60%  { transform: translate(-10px, -62vh); }
+  90%  { opacity: 0.45; }
+  100% { transform: translate(6px, -112vh);  opacity: 0; }
+}
+
+@keyframes hub-brilho {
+  0%   { transform: translateX(-140%) skewX(-18deg); }
+  16%  { transform: translateX(420%)  skewX(-18deg); }
+  100% { transform: translateX(420%)  skewX(-18deg); }
+}
+
+@keyframes hub-arco-pulso {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.65; }
+}
+
+@keyframes hub-girar {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+@keyframes hub-dica {
+  0%, 100% { opacity: 0.55; transform: translate(-50%, 0); }
+  50%      { opacity: 0.95; transform: translate(-50%, 2px); }
+}
+
+@keyframes hub-toast-entrar {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* cards surgindo na grade (< 900px): só opacidade e scale, porque o
+   transform dos cards em grade é fixo (!important) */
+@keyframes hub-surgir {
+  from { opacity: 0; scale: 0.94; }
+  to   { opacity: 1; scale: 1; }
+}
+
+/* com um overlay aberto, as animações de fundo pausam (economia).
+   Cada seletor precisa vencer o shorthand `animation` da regra de base
+   (que também define play-state: running): os cards do anel exigem
+   (1,4,1) contra body.hub-ativo #hub-anel.aberto .hub-card (1,3,1);
+   a grade fica de fora porque só tem a animação única hub-surgir. */
+body.hub-ativo.hub-modal-aberto .hub-particula,
+body.hub-ativo.hub-modal-aberto #hub-palco::after,
+body.hub-ativo.hub-modal-aberto #hub-avatar,
+body.hub-ativo.hub-modal-aberto #hub-avatar-halo,
+body.hub-ativo.hub-modal-aberto #hub-avatar-dica,
+body.hub-ativo.hub-modal-aberto #hub-anel.aberto:not(.hub-grade) .hub-card,
+body.hub-ativo.hub-modal-aberto #hub-gerar::after,
+body.hub-ativo.hub-modal-aberto .hub-arco.aceso {
+  animation-play-state: paused;
+}
+
+/* preferência do sistema: sem animações de repouso, transições curtas */
+@media (prefers-reduced-motion: reduce) {
+  body.hub-ativo .hub-particula,
+  body.hub-ativo #hub-palco::after,
+  body.hub-ativo #hub-avatar,
+  body.hub-ativo #hub-avatar-halo,
+  body.hub-ativo #hub-avatar-dica,
+  body.hub-ativo .hub-card,
+  body.hub-ativo #hub-gerar::after,
+  body.hub-ativo .hub-arco.aceso,
+  body.hub-ativo #hub-anel.em-fundo,
+  body.hub-ativo #hub-toasts .error-message,
+  body.hub-ativo #hub-toasts .success-message {
+    animation: none !important;
+  }
+
+  body.hub-ativo .hub-particula {
+    display: none;
+  }
+
+  body.hub-ativo .hub-card {
+    transition-duration: 150ms, 150ms, 0s, 0s, 0s, 0s, 0s !important;
+    transition-delay: 0s, 0s, 0s, 0s, 0s, 0s, 0s !important;
+  }
+
+  body.hub-ativo #hub-anel:not(.aberto) .hub-card {
+    transition-delay: 0s, 0s, 150ms, 0s, 0s, 0s, 0s !important;
+  }
+
+  body.hub-ativo .hub-overlay,
+  body.hub-ativo .hub-janela,
+  body.hub-ativo .hub-janela-teatro,
+  body.hub-ativo .hub-janela-relatorio,
+  body.hub-ativo #hub-anel {
+    transition: none !important;
+  }
+}
+
+
+/* =====================================================================
+   15. AJUSTE POR FAIXA E ALTURA — o --raio vem do hub.js (300/250 px);
+       aqui entram o tamanho dos cards, o achatamento vertical (--hub-ey)
+       e a altura mínima do palco para o anel nunca ser recortado.
+       Regra: o palco precisa de 2 × (raio·ey + altura/2 + 8) de altura;
+       quando a tela não tem isso, o palco cresce e a página rola um
+       pouco — nunca se achata o anel a ponto de os cards se cobrirem.
+   ===================================================================== */
+
+/* ≥1200 e altura ≤ 760px: ey .9, cards 128×76 (folga 7 px no par 30°/54°) */
+@media (min-width: 1200px) and (max-height: 760px) {
+  body.hub-ativo #hub-anel { --hub-ey: 0.9; }
+
+  body.hub-ativo #hub-anel .hub-card {
+    width: 128px;
+    height: 76px;
+    padding: 0.35rem 0.55rem;
+  }
+
+  /* 16,8 + 3 + 26,5 (2 linhas) + 3 + 13,1 + 11,2 de padding = 73,6 px ≤ 74 */
+  body.hub-ativo #hub-anel .hub-card-icone { font-size: 1.05rem; }
+  body.hub-ativo #hub-anel .hub-card-titulo { font-size: 0.72rem; }
+  body.hub-ativo #hub-anel .hub-card-sub { font-size: 0.68rem; }
+
+  body.hub-ativo #hub-gerar { top: calc(50% + 110px); height: 58px; }
+
+  /* 2 × (270 + 38 + 8) = 632 */
+  body.hub-ativo #hub-palco { min-height: max(calc(100vh - 60px), 632px); }
+}
+
+/* cards compactos 120×72: faixa 900–1199 e telas ≥1200 baixas (≤700px).
+   Vem DEPOIS do bloco ≤760px acima (mesma especificidade) para vencer. */
+@media (min-width: 900px) and (max-width: 1199px), (min-width: 1200px) and (max-height: 700px) {
+  body.hub-ativo #hub-anel .hub-card {
+    width: 120px;
+    height: 72px;
+    padding: 0.3rem 0.5rem;
+    gap: 2px;
+    border-radius: 12px;
+  }
+
+  /* 15,2 + 2 + 25 (2 linhas) + 2 + 13,1 + 9,6 de padding = 66,9 px ≤ 70 */
+  body.hub-ativo #hub-anel .hub-card-icone { font-size: 0.95rem; }
+  body.hub-ativo #hub-anel .hub-card-titulo { font-size: 0.68rem; }
+  body.hub-ativo #hub-anel .hub-card-sub { font-size: 0.68rem; }
+
+  body.hub-ativo #hub-anel .hub-card-apresentacao .hub-card-icone {
+    width: 24px;
+    height: 24px;
+    font-size: 0.68rem;
+  }
+
+  body.hub-ativo #hub-anel .hub-card-ponto {
+    top: 6px;
+    right: 6px;
+    width: 7px;
+    height: 7px;
+  }
+}
+
+/* ≥1200 e altura ≤ 700px: ey .82, cards 120×72 (regra compacta acima),
+   avatar 150 — abaixo de 640px de viewport o palco passa a rolar */
+@media (min-width: 1200px) and (max-height: 700px) {
+  body.hub-ativo #hub-anel { --hub-ey: 0.82; }
+
+  body.hub-ativo #hub-avatar {
+    width: 150px;
+    height: 150px;
+    margin: -75px 0 0 -75px;
+  }
+
+  body.hub-ativo #hub-gerar { top: calc(50% + 100px); height: 54px; }
+
+  /* 2 × (246 + 36 + 8) = 580 */
+  body.hub-ativo #hub-palco { min-height: max(calc(100vh - 60px), 580px); }
+}
+
+/* faixa 900–1199px: raio 250, ey sempre 1 (achatar cobriria os cards);
+   flutuação mais suave (±2 px) porque a folga vertical do par 30°/54°
+   é de 5 px; abaixo de 648px de viewport o palco rola */
+@media (min-width: 900px) and (max-width: 1199px) {
+  body.hub-ativo #hub-anel { --hub-ex: 1.45; --hub-ey: 1; }
+
+  body.hub-ativo #hub-anel.aberto .hub-card {
+    animation-name: hub-flutuar-suave;
+  }
+
+  body.hub-ativo #hub-gerar { top: calc(50% + 100px); height: 56px; }
+
+  /* 2 × (250 + 36 + 8) = 588 */
+  body.hub-ativo #hub-palco { min-height: max(calc(100vh - 60px), 588px); }
+}
+
+@media (min-width: 900px) and (max-width: 1199px) and (max-height: 700px) {
+  body.hub-ativo #hub-avatar {
+    width: 150px;
+    height: 150px;
+    margin: -75px 0 0 -75px;
+  }
+}
+
+
+/* =====================================================================
+   16. RESPONSIVO < 900px — anel vira grade, avatar 140px,
+       overlays em tela cheia
+   ===================================================================== */
+@media (max-width: 899px) {
+  body.hub-ativo #hub-topbar {
+    gap: 0.6rem;
+    padding: 0 0.7rem;
+  }
+
+  body.hub-ativo #hub-cliente {
+    max-width: 30vw;
+    font-size: 0.85rem;
+  }
+
+  body.hub-ativo #hub-progresso {
+    width: min(150px, 100%);
+  }
+
+  /* palco em coluna: avatar em cima, grade embaixo */
+  body.hub-ativo #hub-palco {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    padding: 2.2rem 1rem 2rem;
+  }
+
+  body.hub-ativo #hub-palco::after {
+    width: 700px;
+    height: 700px;
+    margin: -350px 0 0 -350px;
+  }
+
+  body.hub-ativo #hub-avatar {
+    position: relative;
+    left: auto;
+    top: auto;
+    order: 1;
+    width: 140px;
+    height: 140px;
+    margin: 0.5rem auto 2.4rem;
+  }
+
+  body.hub-ativo #hub-avatar-iniciais {
+    font-size: 1.6rem;
+  }
+
+  body.hub-ativo #hub-avatar-badge {
+    right: 2px;
+    bottom: 2px;
+    width: 32px;
+    height: 32px;
+    font-size: 1rem;
+  }
+
+  body.hub-ativo #hub-avatar.visto-apresentacao::after {
+    top: 8px;
+    right: 8px;
+  }
+
+  body.hub-ativo #hub-avatar-dica {
+    font-size: 0.7rem;
+  }
+
+  /* anel em grade de 2 colunas (hub.js adiciona .hub-grade); ordem no
+     palco em coluna: avatar (1) → #hub-gerar (2) → grade (3) */
+  body.hub-ativo #hub-anel.hub-grade {
+    position: static;
+    order: 3;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.6rem;
+    width: 100%;
+    max-width: 560px;
+    pointer-events: auto;
+    filter: none;
+    animation: none;
+  }
+
+  body.hub-ativo #hub-anel.hub-grade:not(.aberto) {
+    display: none;
+  }
+
+  /* `relative` (não static) para o card continuar sendo o bloco de
+     contenção do seu .hub-card-ponto (absoluto); left/top voltam a auto
+     porque os 50% da base deslocariam o card dentro da célula da grade */
+  body.hub-ativo #hub-anel.hub-grade .hub-card {
+    position: relative;
+    left: auto;
+    top: auto;
+    width: 100%;
+    height: auto;
+    min-height: 74px;
+    transform: none !important;
+    translate: none !important;
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+    transition-delay: 0s, 0s, 0s, 0s, 0s, 0s, 0s;
+    /* surge em cascata ao abrir (substitui a flutuação do anel);
+       "backwards": invisível durante o atraso e, ao terminar, devolve
+       opacity/scale à cascata (hover/active voltam a valer) */
+    animation: hub-surgir 0.35s ease backwards;
+    animation-delay: calc(var(--i, 0) * 40ms);
+  }
+
+  /* "Gerar Diagnóstico" sai do posicionamento absoluto e fica logo
+     abaixo do avatar, com a largura da grade (relative: o ::after da
+     varredura de brilho continua contido e recortado pelo overflow) */
+  body.hub-ativo #hub-anel.hub-grade ~ #hub-gerar {
+    position: relative;
+    left: auto;
+    top: auto;
+    order: 2;
+    width: 100%;
+    max-width: 560px;
+    height: 56px;
+    margin: 0 auto 0.9rem;
+    /* colunas automáticas centralizadas (ícone + textos no meio do botão) */
+    grid-template-columns: auto auto;
+    justify-content: center;
+    column-gap: 0.8rem;
+    transform: none !important;
+    translate: none !important;
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+    filter: none;
+    transition-delay: 0s, 0s, 0s, 0s, 0s, 0s, 0s;
+  }
+
+  body.hub-ativo #hub-anel.hub-grade:not(.aberto) ~ #hub-gerar {
+    display: none;
+  }
+
+  /* overlays em tela cheia */
+  body.hub-ativo .hub-overlay {
+    padding: 0;
+  }
+
+  body.hub-ativo .hub-janela,
+  body.hub-ativo .hub-janela-teatro,
+  body.hub-ativo .hub-janela-relatorio {
+    width: 100vw;
+    max-width: 100vw;
+    height: 100vh;
+    height: 100dvh;
+    max-height: none;
+    border: 0;
+    border-radius: 0;
+  }
+
+  body.hub-ativo #hub-modal-corpo,
+  body.hub-ativo #hub-relatorio-corpo {
+    padding: 0.7rem;
+  }
+
+  body.hub-ativo #hub-relatorio-paineis {
+    padding: 0 0.7rem 0.7rem;
+  }
+
+  /* trava o fundo no iOS enquanto um overlay está aberto.
+     O position:fixed só entra quando o hub.js escreveu, ao abrir,
+     body.style.top = -scrollY + 'px' (e restaura com scrollTo ao fechar):
+     é esse top inline que mantém a posição visual. Sem ele, fixar o body
+     faria a página saltar para o topo a cada seção — então fica só o
+     overflow:hidden da base (bloco 1). */
+  body.hub-ativo.hub-modal-aberto[style*="top"] {
+    position: fixed;
+    left: 0;
+    right: 0;
+    width: 100%;
+  }
+
+  /* botões de fechar com área de toque de 44px */
+  body.hub-ativo .hub-fechar,
+  body.hub-ativo #hub-modal-fechar,
+  body.hub-ativo #hub-teatro-fechar,
+  body.hub-ativo #hub-relatorio-fechar {
+    width: 44px;
+    height: 44px;
+    font-size: 1.1rem;
+  }
+
+  /* botões dos rodapés com altura de toque */
+  body.hub-ativo #hub-modal-anterior,
+  body.hub-ativo #hub-modal-proximo,
+  body.hub-ativo #hub-modal-salvar,
+  body.hub-ativo #hub-teatro-comecar,
+  body.hub-ativo #hub-relatorio-imprimir {
+    min-height: 44px;
+  }
+
+  /* --- seções dentro do modal --- */
+  /* grids das seções em 1 coluna (o inline da página já faz < 768px; garante) */
+  body.hub-ativo #hub-modal-corpo .form-grid-3,
+  body.hub-ativo #hub-modal-corpo .form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  /* inputs a 16px: o iOS não dá zoom ao focar */
+  body.hub-ativo #hub-modal-corpo input,
+  body.hub-ativo #hub-modal-corpo select,
+  body.hub-ativo #hub-modal-corpo textarea {
+    font-size: 16px;
+  }
+
+  /* tabelas largas rolam para o lado dentro da seção */
+  body.hub-ativo #hub-modal-corpo > .form-container > .section-content {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  body.hub-ativo #hub-modal-corpo #fluxo-caixa-container,
+  body.hub-ativo #hub-modal-corpo #patrimonios-liquidos-container {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  body.hub-ativo #hub-modal-corpo #fluxo-caixa-container table,
+  body.hub-ativo #hub-modal-corpo #patrimonios-liquidos-container table {
+    min-width: 720px;
+  }
+
+  /* dica "deslize para o lado →" abaixo das tabelas largas
+     (sticky à esquerda para continuar visível durante a rolagem) */
+  body.hub-ativo #hub-modal-corpo #fluxo-caixa-container::after,
+  body.hub-ativo #hub-modal-corpo #patrimonios-liquidos-container::after {
+    content: 'deslize para o lado \2192';
+    display: block;
+    position: sticky;
+    left: 0;
+    padding: 0.3rem 0 0;
+    font-size: 0.7rem;
+    text-align: right;
+    color: var(--accent-color, #ffd700);
+    opacity: 0.8;
+  }
+
+  /* --- relatório: chips em linha rolável --- */
+  body.hub-ativo #hub-relatorio-chips {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    white-space: nowrap;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+    padding-bottom: 2px;
+  }
+
+  body.hub-ativo #hub-relatorio-chips > * {
+    flex: none;
+    min-height: 44px;
+  }
+
+  body.hub-ativo .rel-capa {
+    padding: 0.9rem 1rem;
+  }
+
+  body.hub-ativo .rel-secao {
+    scroll-margin-top: 120px;
+  }
+
+  /* tabelas do relatório: largura mínima por coluna → rolam quando há
+     muitas colunas e ocupam 100% quando há poucas */
+  body.hub-ativo .rel-dados th,
+  body.hub-ativo .rel-dados td {
+    min-width: 6em;
+  }
+
+  body.hub-ativo .rel-grafico {
+    height: 200px;
+  }
+
+  body.hub-ativo #hub-toasts {
+    right: 12px;
+    bottom: 12px;
+    width: calc(100vw - 24px);
+  }
+}
+
+
+/* =====================================================================
+   17. TELEFONE < 600px — topbar 52px só com ícones e barra fina,
+       avatar 120px, "Gerar" em largura total, cards leves (sem blur),
+       8 partículas, rodapés com ícones, capa do relatório em 1 coluna
+   ===================================================================== */
+@media (max-width: 599px) {
+  body.hub-ativo #hub-root {
+    padding-top: 52px;
+  }
+
+  body.hub-ativo #hub-topbar {
+    height: 52px;
+    gap: 0.4rem;
+    padding: 0 0.5rem;
+  }
+
+  body.hub-ativo #hub-palco {
+    min-height: calc(100vh - 52px);
+    padding: 1.4rem 1rem 1.6rem;
+  }
+
+  /* a esquerda ocupa o espaço; nome truncado; badge some (está na capa) */
+  body.hub-ativo #hub-topbar-esq {
+    flex: 1;
+  }
+
+  body.hub-ativo #hub-cliente {
+    max-width: none;
+    font-size: 0.82rem;
+  }
+
+  body.hub-ativo #hub-topbar #status-badge {
+    display: none;
+  }
+
+  /* progresso vira uma linha fina colada à base da barra */
+  body.hub-ativo #hub-topbar-centro {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 3px;
+    display: block;
+  }
+
+  body.hub-ativo #hub-progresso {
+    width: 100%;
+  }
+
+  body.hub-ativo .hub-progresso-track {
+    height: 3px;
+    border-radius: 0;
+    background: rgba(255, 255, 255, 0.08);
+  }
+
+  body.hub-ativo #hub-progresso-txt {
+    display: none;
+  }
+
+  /* botões da barra só com ícone, 44×44 */
+  body.hub-ativo #hub-btn-relatorio,
+  body.hub-ativo #hub-btn-salvar {
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    gap: 0;
+    justify-content: center;
+    font-size: 1rem;
+  }
+
+  body.hub-ativo #hub-btn-relatorio > span,
+  body.hub-ativo #hub-btn-salvar > span {
+    display: none;
+  }
+
+  /* área de toque mínima de 44×44 no telefone */
+  body.hub-ativo #hub-topbar-esq .btn-voltar,
+  body.hub-ativo #hub-topbar-dir #btn-prefill-cadastro {
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+    min-height: 44px;
+    font-size: 15px;
+  }
+
+  /* avatar 120px com a dica abaixo */
+  body.hub-ativo #hub-avatar {
+    width: 120px;
+    height: 120px;
+    margin: 0.4rem auto 2.2rem;
+  }
+
+  body.hub-ativo #hub-avatar-halo {
+    inset: -10px;
+  }
+
+  body.hub-ativo #hub-avatar-iniciais {
+    font-size: 1.4rem;
+  }
+
+  body.hub-ativo #hub-avatar-badge {
+    width: 30px;
+    height: 30px;
+    font-size: 0.95rem;
+  }
+
+  body.hub-ativo #hub-avatar.visto-apresentacao::after {
+    top: 6px;
+    right: 6px;
+    width: 22px;
+    height: 22px;
+    font-size: 0.75rem;
+  }
+
+  body.hub-ativo #hub-avatar-dica {
+    top: calc(100% + 10px);
+    font-size: 0.72rem;
+  }
+
+  /* "Gerar" em largura total (100% − 32px = o padding do palco) */
+  body.hub-ativo #hub-anel.hub-grade ~ #hub-gerar {
+    max-width: none;
+    height: 56px;
+    margin-bottom: 0.8rem;
+  }
+
+  /* cards: sem blur (custa no celular), fundo sólido translúcido */
+  body.hub-ativo .hub-card {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    background: rgba(26, 77, 58, 0.82);
+  }
+
+  body.hub-ativo .hub-card-apresentacao {
+    background: linear-gradient(160deg, rgba(212, 175, 55, 0.22), rgba(26, 77, 58, 0.85));
+  }
+
+  body.hub-ativo #hub-anel.hub-grade {
+    gap: 0.5rem;
+    max-width: none;
+  }
+
+  body.hub-ativo #hub-anel.hub-grade .hub-card {
+    min-height: 72px;
+    padding: 0.4rem 0.5rem;
+    border-radius: 12px;
+  }
+
+  body.hub-ativo .hub-card-titulo {
+    font-size: 0.8rem;
+  }
+
+  body.hub-ativo .hub-card-sub {
+    font-size: 0.68rem;
+  }
+
+  /* menos partículas e brilho de fundo menor */
+  body.hub-ativo .hub-particula:nth-child(n + 9) {
+    display: none;
+  }
+
+  body.hub-ativo #hub-palco::after {
+    width: 480px;
+    height: 480px;
+    margin: -240px 0 0 -240px;
+  }
+
+  /* overlays: cabeçalhos/rodapés compactos; anterior/próxima só com ícone */
+  body.hub-ativo #hub-modal-cabecalho,
+  body.hub-ativo #hub-teatro-cabecalho,
+  body.hub-ativo #hub-relatorio-cabecalho,
+  body.hub-ativo #hub-modal-rodape,
+  body.hub-ativo #hub-teatro-rodape {
+    padding: 0.45rem 0.6rem;
+    gap: 0.45rem;
+  }
+
+  body.hub-ativo .hub-modal-titulo {
+    font-size: 0.9rem;
+  }
+
+  body.hub-ativo .hub-modal-chip {
+    display: none;
+  }
+
+  body.hub-ativo #hub-modal-anterior,
+  body.hub-ativo #hub-modal-proximo {
+    width: 44px;
+    padding: 0;
+    gap: 0;
+    justify-content: center;
+    font-size: 1rem;
+  }
+
+  body.hub-ativo #hub-modal-anterior > span,
+  body.hub-ativo #hub-modal-proximo > span {
+    display: none;
+  }
+
+  body.hub-ativo #hub-modal-salvar {
+    flex: 1;
+    justify-content: center;
+  }
+
+  body.hub-ativo #hub-teatro-comecar {
+    width: 100%;
+    justify-content: center;
+  }
+
+  body.hub-ativo #hub-relatorio-imprimir {
+    padding: 0.45rem 0.65rem;
+    font-size: 0.75rem;
+  }
+
+  body.hub-ativo #hub-modal-corpo {
+    padding: 0.6rem;
+  }
+
+  /* teatro: Canva de borda a borda, 16:9, com "Começar" abaixo */
+  body.hub-ativo #hub-teatro-corpo {
+    padding: 0;
+  }
+
+  body.hub-ativo #hub-teatro-corpo .canva-embed {
+    border-radius: 0;
+  }
+
+  /* relatório: capa em 1 coluna, cada número numa linha "rótulo valor"
+     (texto corrido à esquerda, sem jogar o valor para a direita) */
+  body.hub-ativo .rel-capa-resumo {
+    grid-template-columns: 1fr;
+  }
+
+  body.hub-ativo .rel-capa-resumo > * {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: flex-start;
+    gap: 0.4rem;
+    text-align: left;
+    padding: 0.5rem 0.7rem;
+  }
+
+  body.hub-ativo .rel-capa-resumo strong,
+  body.hub-ativo .rel-capa-resumo b,
+  body.hub-ativo .rel-capa-resumo .rel-num,
+  body.hub-ativo .rel-capa-num-valor {
+    display: inline;
+    margin: 0;
+    font-size: 1.2rem;
+  }
+
+  body.hub-ativo .rel-capa-num-rotulo {
+    display: inline;
+    order: -1;
+  }
+
+  body.hub-ativo .rel-capa-nome {
+    font-size: 1.15rem;
+  }
+
+  body.hub-ativo .rel-secao {
+    scroll-margin-top: 110px;
+  }
+
+  body.hub-ativo .rel-dados table {
+    font-size: 0.74rem;
+  }
+
+  body.hub-ativo .rel-dados th,
+  body.hub-ativo .rel-dados td {
+    padding: 0.25rem 0.35rem;
+  }
+}
+
+
+/* =====================================================================
+   18. TELEFONE ESTREITO < 400px — respiros menores; < 360px uma coluna
+   ===================================================================== */
+@media (max-width: 399px) {
+  body.hub-ativo #hub-topbar {
+    gap: 0.3rem;
+    padding: 0 0.4rem;
+  }
+
+  body.hub-ativo #hub-cliente {
+    font-size: 0.78rem;
+  }
+
+  body.hub-ativo #hub-anel.hub-grade {
+    gap: 0.45rem;
+  }
+
+  body.hub-ativo #hub-anel.hub-grade .hub-card {
+    padding: 0.35rem 0.4rem;
+  }
+
+  body.hub-ativo .hub-card-titulo {
+    font-size: 0.76rem;
+  }
+
+  body.hub-ativo #hub-modal-corpo,
+  body.hub-ativo #hub-relatorio-corpo {
+    padding: 0.5rem;
+  }
+
+  body.hub-ativo .rel-capa {
+    padding: 0.8rem;
+  }
+
+  body.hub-ativo .rel {
+    font-size: 0.82rem;
+  }
+}
+
+@media (max-width: 359px) {
+  body.hub-ativo #hub-anel.hub-grade {
+    grid-template-columns: 1fr;
+  }
+
+  body.hub-ativo #hub-anel.hub-grade .hub-card {
+    min-height: 64px;
+  }
+}
+
+
+/* =====================================================================
+   19. TOQUE (sem mouse) — nada depende de hover; feedback só por :active
+   ===================================================================== */
+@media (hover: none) {
+  body.hub-ativo .hub-card:hover {
+    z-index: auto;
+    border-color: rgba(46, 139, 87, 0.6);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+    filter: none;
+  }
+
+  body.hub-ativo .hub-card-apresentacao:hover {
+    border-color: rgba(212, 175, 55, 0.5);
+  }
+
+  body.hub-ativo .hub-card.ativo:hover {
+    border-color: var(--accent-color, #ffd700);
+    box-shadow: 0 0 0 2px rgba(255, 215, 0, 0.35), 0 0 22px rgba(255, 215, 0, 0.3);
+  }
+
+  body.hub-ativo #hub-gerar:hover {
+    border-color: rgba(255, 255, 255, 0.35);
+    filter: none;
+    box-shadow: 0 10px 28px rgba(212, 175, 55, 0.35), 0 4px 10px rgba(0, 0, 0, 0.35);
+  }
+
+  body.hub-ativo #hub-avatar:hover {
+    border-color: rgba(212, 175, 55, 0.5);
+    box-shadow: inset 0 0 30px rgba(0, 0, 0, 0.45), 0 12px 34px rgba(0, 0, 0, 0.5);
+  }
+
+  body.hub-ativo #hub-btn-salvar:hover,
+  body.hub-ativo #hub-modal-salvar:hover,
+  body.hub-ativo #hub-teatro-comecar:hover,
+  body.hub-ativo #hub-relatorio-imprimir:hover {
+    filter: none;
+    transform: none;
+    box-shadow: 0 4px 14px rgba(212, 175, 55, 0.3);
+  }
+
+  body.hub-ativo .rel-dados tbody tr:hover {
+    background: transparent;
+  }
+
+  body.hub-ativo .rel-dados tbody tr:nth-child(even):hover {
+    background: rgba(255, 255, 255, 0.035);
+  }
+
+  /* feedback de toque. No ANEL (tablets ≥900px) não se usa `scale`:
+     ela compõe por fora do transform e deslocaria o card ~12 px ao tocar;
+     fica borda dourada + brilho. Na GRADE o transform é none, então o
+     encolhimento de 3% acontece no lugar. */
+  body.hub-ativo #hub-anel .hub-card:active,
+  body.hub-ativo #hub-anel ~ #hub-gerar:active {
+    border-color: var(--accent-color, #ffd700);
+    filter: brightness(1.12);
+  }
+
+  body.hub-ativo #hub-anel.hub-grade .hub-card:active,
+  body.hub-ativo #hub-anel.hub-grade ~ #hub-gerar:active {
+    scale: 0.97;
+  }
+
+  body.hub-ativo #hub-avatar:active {
+    border-color: var(--accent-color, #ffd700);
+  }
+}
+
+
+/* =====================================================================
+   21. FASE 2 — RELATÓRIO: tudo à esquerda, gráficos, seções novas
+       (código da matriz, plano, faltantes) e ajustes finos dos revisores.
+       Vem DEPOIS dos blocos responsivos 16–18 de propósito: as regras
+       daqui, de mesma especificidade, prevalecem em todas as faixas
+       (a altura do canvas é governada por --rel-grafico-alt, 240/200 px).
+   ===================================================================== */
+
+/* ----- (A) alinhamento à esquerda em todo o relatório ----- */
+body.hub-ativo .rel,
+body.hub-ativo .rel-dados,
+body.hub-ativo .rel-linha,
+body.hub-ativo p.rel-total,
+body.hub-ativo .rel-questoes,
+body.hub-ativo .rel-obs,
+body.hub-ativo .rel-capa-resumo > * {
+  text-align: left;
+}
+
+body.hub-ativo .rel-tabela th,
+body.hub-ativo .rel-tabela td,
+body.hub-ativo .rel-dados th,
+body.hub-ativo .rel-dados td,
+body.hub-ativo .rel-dados th.rel-num,
+body.hub-ativo .rel-dados td.rel-num {
+  text-align: left;
+}
+
+/* células de valor (R$, percentuais): esquerda como as demais, mas sem
+   quebrar entre o "R$" e os dígitos nas tabelas de muitas colunas */
+body.hub-ativo .rel-dados th.rel-valor,
+body.hub-ativo .rel-dados td.rel-valor,
+body.hub-ativo .rel-tabela th.rel-valor,
+body.hub-ativo .rel-tabela td.rel-valor {
+  text-align: left;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+/* suitability: um bloco por pessoa, separados por um filete verde */
+body.hub-ativo .rel-suit-pessoa {
+  margin: 0.4rem 0 0.7rem;
+  padding: 0.35rem 0 0.35rem 0.6rem;
+  border-left: 2px solid rgba(46, 139, 87, 0.5);
+  border-radius: 0 6px 6px 0;
+  background: rgba(0, 0, 0, 0.15);
+}
+
+body.hub-ativo .rel-tabela {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+/* ----- (D) classes sem estilo apontadas pelos revisores ----- */
+body.hub-ativo .rel-negativo {
+  color: #dc3545;
+  font-weight: 700;
+}
+
+body.hub-ativo .rel-positivo {
+  color: #28a745;
+  font-weight: 700;
+}
+
+/* sobra mensal em destaque (caixa dourada, mesma linha à esquerda) */
+body.hub-ativo p.rel-total.rel-total-destaque,
+body.hub-ativo .rel-total-destaque {
+  margin: 0.6rem 0 0.2rem;
+  padding: 0.5rem 0.8rem;
+  border: 1px solid rgba(212, 175, 55, 0.45);
+  border-radius: 8px;
+  background: rgba(212, 175, 55, 0.08);
+  font-size: 0.9rem;
+}
+
+/* aviso do hub dentro do relatório (relatório indisponível/quebrado) */
+body.hub-ativo .hub-aviso {
+  margin: 1rem 0;
+  padding: 0.7rem 0.9rem;
+  border: 1px solid rgba(220, 53, 69, 0.6);
+  border-left-width: 4px;
+  border-radius: 8px;
+  background: rgba(220, 53, 69, 0.1);
+  color: var(--text-light, #f0f8f0);
+  font-size: 0.85rem;
+  line-height: 1.4;
+}
+
+/* sub dos cards a 0.68rem em todas as faixas (vence as variantes por
+   faixa dos blocos 6 e 15 por vir depois com a mesma especificidade) */
+body.hub-ativo .hub-card-sub,
+body.hub-ativo #hub-anel .hub-card-sub {
+  font-size: 0.68rem;
+}
+
+/* ----- (B) gráficos ----- */
+body.hub-ativo .rel-graficos-grade {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.8rem;
+  margin: 0.4rem 0;
+}
+
+@media (min-width: 900px) {
+  body.hub-ativo .rel-graficos-grade {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* Cada .rel-grafico tem ALTURA FIXA (canvas + faixa do título + faixa da
+   legenda). O título e a legenda ficam fora do fluxo (absolutos, dentro
+   das faixas de padding) para o canvas ser o único conteúdo do miolo:
+   o Chart.js mede o pai do canvas (conteúdo = rect − padding − borda) e
+   um título no fluxo faria o gráfico crescer sem parar (laço do resize). */
+body.hub-ativo .rel-grafico {
+  --rel-grafico-alt: 240px;   /* altura útil do canvas */
+  --rel-grafico-topo: 2.1rem; /* faixa reservada ao título */
+  --rel-grafico-base: 0.6rem; /* faixa da legenda (cresce quando há legenda) */
+  position: relative;
+  box-sizing: border-box;
+  height: calc(var(--rel-grafico-alt) + var(--rel-grafico-topo) + var(--rel-grafico-base) + 2px);
+  min-width: 0;
+  margin: 0;
+  padding: var(--rel-grafico-topo) 0.7rem var(--rel-grafico-base);
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(46, 139, 87, 0.3);
+  overflow: hidden;
+}
+
+/* gráfico solto (fora da grade) mantém respiro vertical */
+body.hub-ativo .rel-dados > .rel-grafico {
+  margin: 0.6rem 0;
+}
+
+/* com legenda: reserva ~2 linhas abaixo do canvas (classe ou :has) */
+body.hub-ativo .rel-grafico.com-legenda {
+  --rel-grafico-base: 2.2rem;
+}
+
+body.hub-ativo .rel-grafico:has(> .rel-grafico-legenda) {
+  --rel-grafico-base: 2.2rem;
+}
+
+body.hub-ativo .rel-grafico-titulo {
+  position: absolute;
+  top: 0.55rem;
+  left: 0.7rem;
+  right: 0.7rem;
+  margin: 0;
+  font-size: 0.8rem;
+  font-weight: 700;
+  line-height: 1.3;
+  color: var(--accent-color, #ffd700);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+body.hub-ativo .rel-grafico-legenda {
+  position: absolute;
+  left: 0.7rem;
+  right: 0.7rem;
+  bottom: 0.4rem;
+  margin: 0;
+  font-size: 0.7rem;
+  line-height: 1.3;
+  color: var(--text-light, #f0f8f0);
+  opacity: 0.85;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+body.hub-ativo .rel-grafico canvas {
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
+  max-width: 100%;
+}
+
+/* se o canvas vier num wrapper próprio, o wrapper assume o miolo */
+body.hub-ativo .rel-grafico-canvas,
+body.hub-ativo .rel-grafico-area {
+  position: relative;
+  height: 100%;
+  min-width: 0;
+}
+
+body.hub-ativo .rel-grafico > div:has(> canvas) {
+  position: relative;
+  height: 100%;
+  min-width: 0;
+}
+
+/* fallback sem Chart.js: barras CSS em fluxo, altura livre */
+body.hub-ativo .rel-grafico.rel-grafico-fallback {
+  height: auto;
+  min-height: 0;
+  overflow: visible;
+  padding-bottom: 0.6rem;
+}
+
+body.hub-ativo .rel-grafico:has(.rel-barra) {
+  height: auto;
+  min-height: 0;
+  overflow: visible;
+  padding-bottom: 0.6rem;
+}
+
+body.hub-ativo .rel-barra-item {
+  margin: 0.3rem 0 0.45rem;
+}
+
+body.hub-ativo .rel-barra-rotulo {
+  display: block;
+  font-size: 0.72rem;
+  line-height: 1.3;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+body.hub-ativo .rel-barra-valor {
+  margin-left: 0.3rem;
+  font-weight: 600;
+  color: var(--accent-color, #ffd700);
+  font-variant-numeric: tabular-nums;
+}
+
+body.hub-ativo .rel-barra {
+  position: relative;
+  height: 10px;
+  margin: 0.2rem 0 0.5rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+  overflow: hidden;
+}
+
+body.hub-ativo .rel-barra-fill {
+  display: block;
+  height: 100%;
+  max-width: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #2e8b57, var(--accent-color, #ffd700));
+  transition: width 0.5s ease;
+}
+
+/* dívidas e valores negativos em vermelho */
+body.hub-ativo .rel-barra-fill.rel-negativo,
+body.hub-ativo .rel-barra.rel-negativo .rel-barra-fill,
+body.hub-ativo .rel-barra-item.rel-negativo .rel-barra-fill {
+  background: #dc3545;
+}
+
+/* ----- (C) código da matriz: código grande em destaque + tabela ----- */
+body.hub-ativo #rel-secao-codigo-matriz .rel-matriz-codigo .rel-codigo,
+body.hub-ativo .rel-codigo-destaque {
+  display: inline-block;
+  max-width: 100%;
+  margin: 0.2rem 0 0.5rem;
+  padding: 0.4rem 0.9rem;
+  font-size: 1.3rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  color: var(--accent-color, #ffd700);
+  background: rgba(0, 0, 0, 0.32);
+  border: 1px solid rgba(212, 175, 55, 0.55);
+  border-radius: 10px;
+  box-shadow: 0 0 18px rgba(255, 215, 0, 0.12);
+  word-break: break-all;
+}
+
+body.hub-ativo #rel-secao-codigo-matriz .rel-tabela th:first-child,
+body.hub-ativo #rel-secao-codigo-matriz .rel-tabela td:first-child {
+  white-space: nowrap;
+}
+
+body.hub-ativo #rel-secao-codigo-matriz .rel-tabela td:first-child {
+  font-weight: 600;
+  color: var(--accent-color, #ffd700);
+}
+
+/* ----- (C) plano: tópicos "Com relação a…" e "Para fechar o plano" ----- */
+body.hub-ativo #rel-secao-plano .rel-dados {
+  overflow: visible;
+}
+
+body.hub-ativo .rel-plano-topico {
+  margin: 0.6rem 0;
+  padding: 0.55rem 0.8rem;
+  border-left: 3px solid #d4af37;
+  border-radius: 0 8px 8px 0;
+  background: rgba(212, 175, 55, 0.06);
+}
+
+body.hub-ativo .rel-plano-topico > h4,
+body.hub-ativo .rel-plano-topico > .rel-sub,
+body.hub-ativo .rel-plano-topico-titulo,
+body.hub-ativo .rel-plano-topico > strong:first-child,
+body.hub-ativo .rel-plano-topico > p:first-child {
+  display: block;
+  margin: 0 0 0.3rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--accent-color, #ffd700);
+}
+
+body.hub-ativo .rel-plano-topico ul,
+body.hub-ativo ul.rel-plano-lista {
+  list-style: none;
+  margin: 0.3rem 0 0;
+  padding: 0;
+}
+
+body.hub-ativo .rel-plano-topico li,
+body.hub-ativo ul.rel-plano-lista > li {
+  position: relative;
+  margin: 0.22rem 0;
+  padding-left: 1.1rem;
+}
+
+body.hub-ativo .rel-plano-topico li::before,
+body.hub-ativo ul.rel-plano-lista > li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0.5em;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #d4af37, var(--accent-color, #ffd700));
+  box-shadow: 0 0 5px rgba(255, 215, 0, 0.5);
+}
+
+/* último tópico, em destaque com borda dourada */
+body.hub-ativo .rel-plano-fechar {
+  margin: 0.9rem 0 0;
+  padding: 0.7rem 0.9rem;
+  border: 1px solid rgba(212, 175, 55, 0.6);
+  border-left-width: 3px;
+  border-radius: 10px;
+  background: rgba(212, 175, 55, 0.1);
+  box-shadow: 0 0 0 1px rgba(212, 175, 55, 0.12), 0 6px 18px rgba(0, 0, 0, 0.25);
+}
+
+body.hub-ativo .rel-plano-fechar > h4,
+body.hub-ativo .rel-plano-fechar > .rel-sub,
+body.hub-ativo .rel-plano-fechar .rel-plano-topico-titulo,
+body.hub-ativo .rel-plano-fechar > strong:first-child,
+body.hub-ativo .rel-plano-fechar > p:first-child {
+  font-size: 0.9rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+/* ----- (C) informações faltantes: painel do validador adotado ----- */
+body.hub-ativo #rel-secao-faltantes .rel-dados {
+  overflow: visible;
+}
+
+body.hub-ativo #rel-faltantes-slot {
+  margin-top: 0.3rem;
+  min-width: 0;
+}
+
+body.hub-ativo #rel-faltantes-slot #hub-relatorio-paineis {
+  padding: 0;
+}
+
+/* aviso só enquanto o painel do validador não for adotado no slot */
+body.hub-ativo #rel-faltantes-slot:has(#painel-info-faltantes) .rel-faltantes-vazio {
+  display: none;
+}
+
+/* o painel traz o próprio título, igual ao h3 da seção — fica só o contador */
+body.hub-ativo #rel-faltantes-slot #painel-info-faltantes h3 {
+  display: none;
+}
+
+/* o validador escreve margin/max-width/fundo/borda inline — daí o !important */
+body.hub-ativo #rel-faltantes-slot #painel-info-faltantes,
+body.hub-ativo #rel-secao-faltantes #painel-info-faltantes,
+body.hub-ativo #hub-relatorio-paineis #painel-info-faltantes {
+  margin: 0 !important;
+  max-width: 100% !important;
+  padding: 0.9rem 1rem !important;
+  background: rgba(0, 0, 0, 0.22) !important;
+  border: 1px solid rgba(46, 139, 87, 0.45) !important;
+  border-radius: 10px !important;
+  color: var(--text-light, #f0f8f0);
+  font-size: 0.85rem;
+}
+
+body.hub-ativo #painel-info-faltantes h3 {
+  font-size: 0.95rem;
+  line-height: 1.3;
+}
+
+body.hub-ativo #painel-info-faltantes h4 {
+  font-size: 0.9rem !important;
+}
+
+/* cabeçalho do painel (título + contagem) quebra linha em telas estreitas */
+body.hub-ativo #painel-info-faltantes > div:first-child {
+  flex-wrap: wrap;
+  gap: 0.3rem 0.6rem;
+  margin-bottom: 0.8rem !important;
+}
+
+body.hub-ativo #painel-info-faltantes > div:first-child > span {
+  font-size: 0.78rem !important;
+}
+
+body.hub-ativo #painel-faltantes-body > p {
+  margin-bottom: 0.8rem !important;
+  font-size: 0.82rem !important;
+}
+
+/* ----- (D) progresso: reticências na faixa 600–899px ----- */
+@media (min-width: 600px) and (max-width: 899px) {
+  body.hub-ativo #hub-progresso-txt {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
+
+/* ----- telefone: canvas 200px, código e tópicos mais compactos ----- */
+@media (max-width: 599px) {
+  body.hub-ativo .rel-grafico {
+    --rel-grafico-alt: 200px;
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+  }
+
+  body.hub-ativo .rel-grafico-titulo,
+  body.hub-ativo .rel-grafico-legenda {
+    left: 0.5rem;
+    right: 0.5rem;
+  }
+
+  body.hub-ativo #rel-secao-codigo-matriz .rel-matriz-codigo .rel-codigo,
+  body.hub-ativo .rel-codigo-destaque {
+    padding: 0.3rem 0.6rem;
+    font-size: 1.05rem;
+    letter-spacing: 0.1em;
+  }
+
+  body.hub-ativo .rel-plano-topico,
+  body.hub-ativo .rel-plano-fechar {
+    padding: 0.5rem 0.6rem;
+  }
+
+  body.hub-ativo #rel-faltantes-slot #painel-info-faltantes,
+  body.hub-ativo #rel-secao-faltantes #painel-info-faltantes,
+  body.hub-ativo #hub-relatorio-paineis #painel-info-faltantes {
+    padding: 0.7rem !important;
+  }
+
+  body.hub-ativo p.rel-total.rel-total-destaque,
+  body.hub-ativo .rel-total-destaque {
+    padding: 0.45rem 0.6rem;
+    font-size: 0.85rem;
+  }
+}
+
+
+/* =====================================================================
+   20. IMPRESSÃO — só o relatório, fundo branco e texto escuro
+       (hub.js adiciona body.hub-imprimindo antes de window.print())
+   ===================================================================== */
+@media print {
+  @page {
+    margin: 12mm;
+  }
+
+  body.hub-imprimindo {
+    position: static !important;
+    top: auto !important;
+    width: auto !important;
+    background: #fff !important;
+    color: #111 !important;
+    overflow: visible !important;
+    height: auto !important;
+  }
+
+  body.hub-imprimindo > .container,
+  body.hub-imprimindo #main-content,
+  body.hub-imprimindo #hub-root {
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: visible !important;
+    min-height: 0 !important;
+  }
+
+  /* tudo invisível… */
+  body.hub-imprimindo * {
+    visibility: hidden;
+  }
+
+  /* …exceto o relatório */
+  body.hub-imprimindo #hub-relatorio,
+  body.hub-imprimindo #hub-relatorio * {
+    visibility: visible;
+  }
+
+  /* o resto do hub sai do fluxo para o relatório começar no topo */
+  body.hub-imprimindo .btn-voltar,
+  body.hub-imprimindo #loading,
+  body.hub-imprimindo #main-content > .header,
+  body.hub-imprimindo #main-content > .canva-container,
+  body.hub-imprimindo #main-content > .form-container,
+  body.hub-imprimindo #main-content > .save-btn-container,
+  body.hub-imprimindo #btn-prefill-cadastro,
+  body.hub-imprimindo #btn-gerar-pdf,
+  body.hub-imprimindo #hub-topbar,
+  body.hub-imprimindo #hub-palco,
+  body.hub-imprimindo #hub-armazem,
+  body.hub-imprimindo #hub-modal,
+  body.hub-imprimindo #hub-teatro,
+  body.hub-imprimindo #hub-toasts,
+  body.hub-imprimindo #hub-relatorio-chips,
+  body.hub-imprimindo #hub-relatorio-imprimir,
+  body.hub-imprimindo #hub-relatorio-fechar {
+    display: none !important;
+  }
+
+  body.hub-imprimindo #hub-relatorio {
+    position: static !important;
+    inset: auto !important;
+    display: block !important;
+    padding: 0 !important;
+    height: auto !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    pointer-events: auto !important;
+    background: #fff !important;
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+    transition: none !important;
+  }
+
+  body.hub-imprimindo .hub-janela-relatorio {
+    position: static !important;
+    display: block !important;
+    width: 100% !important;
+    max-width: none !important;
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    background: #fff !important;
+    color: #111 !important;
+    transform: none !important;
+    transition: none !important;
+  }
+
+  body.hub-imprimindo #hub-relatorio-cabecalho {
+    position: static !important;
+    display: block !important;
+    padding: 0 0 0.5rem !important;
+    margin-bottom: 0.8rem !important;
+    background: #fff !important;
+    border-bottom: 2px solid #1a4d3a !important;
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+  }
+
+  body.hub-imprimindo #hub-relatorio-cabecalho,
+  body.hub-imprimindo #hub-relatorio-cabecalho * {
+    color: #1a4d3a !important;
+    white-space: normal !important;
+    font-size: 1.15rem !important;
+  }
+
+  body.hub-imprimindo #hub-relatorio-corpo {
+    padding: 0 !important;
+  }
+
+  /* conteúdo do relatório em cores de papel */
+  body.hub-imprimindo .rel {
+    color: #111 !important;
+    font-size: 10.5pt;
+    line-height: 1.4;
+  }
+
+  body.hub-imprimindo .rel strong,
+  body.hub-imprimindo .rel b,
+  body.hub-imprimindo .rel-dados dt,
+  body.hub-imprimindo .rel-capa-nome,
+  body.hub-imprimindo .rel-secao-titulo,
+  body.hub-imprimindo .rel-dados th,
+  body.hub-imprimindo .rel-dados tfoot td,
+  body.hub-imprimindo .rel-dados tr.rel-total td,
+  body.hub-imprimindo .rel-capa-resumo strong,
+  body.hub-imprimindo .rel-capa-resumo b,
+  body.hub-imprimindo .rel-capa-resumo .rel-num,
+  body.hub-imprimindo .rel-capa-num-valor,
+  body.hub-imprimindo .rel-sub,
+  body.hub-imprimindo p.rel-total,
+  body.hub-imprimindo .rel-questao-texto,
+  body.hub-imprimindo .rel-plano-topico > h4,
+  body.hub-imprimindo .rel-plano-topico > .rel-sub,
+  body.hub-imprimindo .rel-plano-topico-titulo,
+  body.hub-imprimindo .rel-plano-topico > strong:first-child,
+  body.hub-imprimindo .rel-plano-topico > p:first-child,
+  body.hub-imprimindo #rel-secao-codigo-matriz .rel-tabela td:first-child,
+  body.hub-imprimindo .rel-questoes > strong:first-child,
+  body.hub-imprimindo .rel-questoes > b:first-child,
+  body.hub-imprimindo .rel-questoes h4,
+  body.hub-imprimindo .rel-plano > strong:first-child,
+  body.hub-imprimindo .rel-plano > b:first-child,
+  body.hub-imprimindo .rel-plano h4,
+  body.hub-imprimindo .rel-plano > p:first-child {
+    color: #1a4d3a !important;
+  }
+
+  body.hub-imprimindo .rel-capa {
+    background: #fff !important;
+    border: 1px solid #1a4d3a !important;
+    box-shadow: none !important;
+    break-inside: avoid;
+  }
+
+  body.hub-imprimindo .rel-capa-meta,
+  body.hub-imprimindo .rel-capa-codigo {
+    color: #333 !important;
+    opacity: 1 !important;
+  }
+
+  /* o rótulo do perfil chega com style="color:<cor do perfil>" inline
+     (#ffc107, #d4af37, #fd7e14… têm contraste < 3:1 sobre papel);
+     na impressão o texto e a borda vão para o verde escuro */
+  body.hub-imprimindo .rel-capa-perfil,
+  body.hub-imprimindo .rel-perfil-rotulo {
+    color: #1a4d3a !important;
+    border-color: #1a4d3a !important;
+    background: transparent !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  body.hub-imprimindo .rel-capa-resumo > * {
+    background: transparent !important;
+    border-color: #1a4d3a !important;
+    color: #333 !important;
+    opacity: 1 !important;
+  }
+
+  body.hub-imprimindo .rel-secao {
+    border-bottom-color: rgba(0, 0, 0, 0.15) !important;
+  }
+
+  body.hub-imprimindo .rel-secao-titulo {
+    border-bottom-color: #d4af37 !important;
+    break-after: avoid;
+  }
+
+  body.hub-imprimindo #rel-secao-fechamento,
+  body.hub-imprimindo .rel-secao-fechamento {
+    background: transparent !important;
+    border-color: #d4af37 !important;
+  }
+
+  body.hub-imprimindo .rel-dados,
+  body.hub-imprimindo .rel-tabela-wrap {
+    overflow: visible !important;
+  }
+
+  body.hub-imprimindo .rel-mudo {
+    color: #555 !important;
+    opacity: 1 !important;
+  }
+
+  body.hub-imprimindo .rel-codigo {
+    background: transparent !important;
+    border-color: #999 !important;
+    color: #111 !important;
+  }
+
+  body.hub-imprimindo .rel-chip {
+    background: transparent !important;
+  }
+
+  body.hub-imprimindo .rel-chip-neutro {
+    color: #333 !important;
+    border-color: #999 !important;
+  }
+
+  body.hub-imprimindo .rel-capa-perfil-vazio {
+    color: #333 !important;
+    opacity: 1 !important;
+  }
+
+  /* gráficos: o canvas mantém a paleta escura (legendas/eixos claros),
+     então o painel do gráfico imprime escuro para o texto continuar
+     legível; título e legenda ficam em fluxo e o canvas em altura
+     automática (proporção do bitmap), sem recorte */
+  body.hub-imprimindo .rel-graficos-grade {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 5mm;
+  }
+
+  body.hub-imprimindo .rel-grafico {
+    height: auto !important;
+    min-height: 0 !important;
+    padding: 0.5rem 0.6rem !important;
+    overflow: visible !important;
+    background: #0f2e1f !important;
+    border-color: #1a4d3a !important;
+    color: #f0f8f0 !important;
+    break-inside: avoid;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  body.hub-imprimindo .rel-grafico-titulo {
+    position: static !important;
+    margin: 0 0 0.3rem !important;
+    white-space: normal !important;
+    color: #ffd700 !important;
+  }
+
+  body.hub-imprimindo .rel-grafico-legenda {
+    position: static !important;
+    display: block !important;
+    margin: 0.3rem 0 0 !important;
+    color: #f0f8f0 !important;
+    opacity: 1 !important;
+  }
+
+  body.hub-imprimindo .rel-grafico canvas {
+    display: block;
+    width: 100% !important;
+    height: auto !important;
+    max-width: 100%;
+  }
+
+  body.hub-imprimindo .rel-grafico-canvas,
+  body.hub-imprimindo .rel-grafico-area {
+    height: auto !important;
+  }
+
+  /* regra separada: sem suporte a :has() só esta é descartada */
+  body.hub-imprimindo .rel-grafico > div:has(> canvas) {
+    height: auto !important;
+  }
+
+  body.hub-imprimindo .rel-grafico strong,
+  body.hub-imprimindo .rel-grafico b,
+  body.hub-imprimindo .rel-grafico .rel-barra-valor {
+    color: #ffd700 !important;
+  }
+
+  body.hub-imprimindo .rel-grafico .rel-mudo,
+  body.hub-imprimindo .rel-grafico .rel-barra-rotulo {
+    color: #f0f8f0 !important;
+    opacity: 1 !important;
+  }
+
+  body.hub-imprimindo .rel-grafico .rel-barra {
+    background: rgba(255, 255, 255, 0.18) !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  body.hub-imprimindo .rel-grafico .rel-barra-fill {
+    background: #ffd700 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  body.hub-imprimindo .rel-grafico .rel-barra-fill.rel-negativo,
+  body.hub-imprimindo .rel-grafico .rel-barra.rel-negativo .rel-barra-fill,
+  body.hub-imprimindo .rel-grafico .rel-barra-item.rel-negativo .rel-barra-fill {
+    background: #dc3545 !important;
+  }
+
+  /* barras fora de um painel de gráfico: sobre papel branco */
+  body.hub-imprimindo .rel-barra {
+    background: #eee !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  body.hub-imprimindo .rel-barra-fill {
+    background: #2e8b57 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  body.hub-imprimindo .rel-dados th {
+    border-bottom-color: #1a4d3a !important;
+  }
+
+  body.hub-imprimindo .rel-dados td {
+    border-bottom-color: rgba(0, 0, 0, 0.1) !important;
+  }
+
+  body.hub-imprimindo .rel-dados tbody tr:nth-child(even) {
+    background: rgba(0, 0, 0, 0.04) !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  body.hub-imprimindo .rel-dados tbody tr:hover {
+    background: transparent !important;
+  }
+
+  body.hub-imprimindo .rel-dados tr,
+  body.hub-imprimindo .rel li {
+    break-inside: avoid;
+  }
+
+  body.hub-imprimindo .rel-vazio {
+    color: #666 !important;
+    opacity: 1 !important;
+  }
+
+  /* questões: linhas de texto corrido, sem caixa; chips contornados */
+  body.hub-imprimindo .rel-questoes {
+    background: transparent !important;
+    border: 0 !important;
+    padding: 0 !important;
+  }
+
+  body.hub-imprimindo .rel-questoes li {
+    border: 0 !important;
+  }
+
+  body.hub-imprimindo .rel-questoes span.rel-sim,
+  body.hub-imprimindo .rel-questoes span.rel-nao,
+  body.hub-imprimindo .rel-questoes span.rel-na,
+  body.hub-imprimindo .rel-questoes span.rel-pendente,
+  body.hub-imprimindo .rel-chip.rel-sim,
+  body.hub-imprimindo .rel-chip.rel-nao,
+  body.hub-imprimindo .rel-chip.rel-na,
+  body.hub-imprimindo .rel-chip.rel-pendente {
+    background: transparent !important;
+  }
+
+  body.hub-imprimindo .rel-questoes span.rel-sim,
+  body.hub-imprimindo .rel-chip.rel-sim { color: #1e7e34 !important; border-color: #28a745 !important; }
+  body.hub-imprimindo .rel-questoes span.rel-nao,
+  body.hub-imprimindo .rel-chip.rel-nao { color: #b02a37 !important; border-color: #dc3545 !important; }
+  body.hub-imprimindo .rel-questoes span.rel-na,
+  body.hub-imprimindo .rel-chip.rel-na { color: #555 !important; border-color: #999 !important; }
+  body.hub-imprimindo .rel-questoes span.rel-pendente,
+  body.hub-imprimindo .rel-chip.rel-pendente { color: #888 !important; border-color: #bbb !important; }
+
+  body.hub-imprimindo .rel-questoes li.rel-sim,
+  body.hub-imprimindo .rel-questoes li.rel-nao,
+  body.hub-imprimindo .rel-questoes li.rel-na,
+  body.hub-imprimindo .rel-questoes li.rel-pendente { border-left: 0 !important; }
+
+  body.hub-imprimindo .rel-plano {
+    background: transparent !important;
+    border-left-color: #d4af37 !important;
+  }
+
+  body.hub-imprimindo .rel-plano li::before {
+    background: #d4af37 !important;
+    box-shadow: none !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  body.hub-imprimindo .rel-obs {
+    background: transparent !important;
+    border: 1px solid rgba(0, 0, 0, 0.15) !important;
+    border-left: 3px solid #2e8b57 !important;
+  }
+
+  /* ----- fase 2: seções novas e classes de estado ----- */
+  body.hub-imprimindo .rel-negativo { color: #b02a37 !important; }
+  body.hub-imprimindo .rel-positivo { color: #1e7e34 !important; }
+
+  body.hub-imprimindo p.rel-total.rel-total-destaque,
+  body.hub-imprimindo .rel-total-destaque {
+    background: transparent !important;
+    border-color: #1a4d3a !important;
+    break-inside: avoid;
+  }
+
+  body.hub-imprimindo .hub-aviso {
+    color: #111 !important;
+    background: transparent !important;
+    border-color: #dc3545 !important;
+  }
+
+  body.hub-imprimindo #rel-secao-codigo-matriz .rel-matriz-codigo .rel-codigo,
+  body.hub-imprimindo .rel-codigo-destaque {
+    color: #1a4d3a !important;
+    background: transparent !important;
+    border-color: #1a4d3a !important;
+    box-shadow: none !important;
+  }
+
+  body.hub-imprimindo .rel-plano-topico,
+  body.hub-imprimindo .rel-plano-fechar {
+    background: transparent !important;
+    border-color: #d4af37 !important;
+    box-shadow: none !important;
+    break-inside: avoid;
+  }
+
+  body.hub-imprimindo .rel-plano-fechar > h4,
+  body.hub-imprimindo .rel-plano-fechar > .rel-sub,
+  body.hub-imprimindo .rel-plano-fechar .rel-plano-topico-titulo,
+  body.hub-imprimindo .rel-plano-fechar > strong:first-child,
+  body.hub-imprimindo .rel-plano-fechar > p:first-child {
+    color: #1a4d3a !important;
+  }
+
+  body.hub-imprimindo .rel-plano-topico li::before,
+  body.hub-imprimindo ul.rel-plano-lista > li::before {
+    background: #d4af37 !important;
+    box-shadow: none !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* painel de informações faltantes: papel branco, texto escuro
+     (as cores inline do validador usam var(--text-light) etc. — as
+     variáveis são redefinidas aqui; o corpo imprime sempre expandido) */
+  body.hub-imprimindo #hub-relatorio-paineis {
+    display: block !important;
+    padding: 0 !important;
+  }
+
+  body.hub-imprimindo #painel-info-faltantes {
+    --text-light: #222;
+    --accent-color: #1a4d3a;
+    --dark-bg: #fff;
+    --border-color: #1a4d3a;
+    margin: 0 !important;
+    max-width: 100% !important;
+    padding: 0.8rem 1rem !important;
+    background: #fff !important;
+    border: 1px solid #1a4d3a !important;
+    color: #111 !important;
+    break-inside: avoid;
+  }
+
+  body.hub-imprimindo #painel-info-faltantes h3,
+  body.hub-imprimindo #painel-info-faltantes h4 {
+    color: #1a4d3a !important;
+  }
+
+  body.hub-imprimindo #painel-info-faltantes [style*="background"] {
+    background: transparent !important;
+  }
+
+  body.hub-imprimindo #painel-faltantes-body {
+    display: block !important;
+  }
+
+  body.hub-imprimindo #painel-faltantes-chevron {
+    display: none !important;
+  }
+}

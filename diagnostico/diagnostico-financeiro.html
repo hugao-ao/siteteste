@@ -1672,8 +1672,8 @@
     
   </style>
 
-  <!-- Camada visual do diagnóstico. Remover esta linha reverte a aparência. -->
-  <link rel="stylesheet" href="../diagnostico-painel.css">
+  <!-- Hub v2 (avatar + anel de cards + modais). Remover esta linha reverte a aparência ao layout linear. -->
+  <link rel="stylesheet" href="hub.css">
   <!-- v2: estilos do card de Perfil Financeiro automático -->
   <link rel="stylesheet" href="perfil-financeiro.css">
 </head>
@@ -1727,6 +1727,8 @@
       <!-- Formulário do diagnóstico -->
       <div class="form-container">
         <form id="diagnostico-form">
+          <!-- hub v2: wrapper da seção Dados Pessoais (nada dentro muda) -->
+          <div class="form-container hub-secao-raiz" id="secao-dados-pessoais">
           <div class="form-grid-3">
             <div class="form-group">
               <label for="nome_diagnostico">
@@ -1935,9 +1937,11 @@
             </label>
             <textarea id="obs_dados_pessoais" name="obs_dados_pessoais" rows="3" placeholder="Observações sobre os dados pessoais..."></textarea>
           </div>
+          </div>
+          <!-- /hub v2: fim do wrapper #secao-dados-pessoais -->
 
           <!-- Sistema de Múltiplas Pessoas com Renda -->
-          <div class="form-container" style="margin-top: 1.5rem;">
+          <div class="form-container" id="secao-pessoas-renda" style="margin-top: 1.5rem;">
             <div class="section-header" onclick="toggleSection('pessoas-renda')">
               <h3 style="color: var(--accent-color); margin: 0; flex-grow: 1;">
                 <i class="fas fa-users"></i> Outras Pessoas com Renda no Planejamento
@@ -1965,7 +1969,7 @@
           </div>
 
           <!-- Sistema de Dependentes -->
-          <div class="form-container" style="margin-top: 1.5rem;">
+          <div class="form-container" id="secao-dependentes" style="margin-top: 1.5rem;">
             <div class="section-header" onclick="toggleSection('dependentes')">
               <h3 style="color: var(--accent-color); margin: 0; flex-grow: 1;">
                 <i class="fas fa-baby"></i> Dependentes
@@ -1993,7 +1997,7 @@
           </div>
 
           <!-- Sistema de Patrimônio Físico -->
-          <div class="form-container" style="margin-top: 1.5rem;">
+          <div class="form-container" id="secao-patrimonio-fisico" style="margin-top: 1.5rem;">
             <div class="section-header" onclick="toggleSection('patrimonio-fisico')">
               <h3 style="color: var(--accent-color); margin: 0; flex-grow: 1;">
                 <i class="fas fa-home"></i> Patrimônio Físico
@@ -5459,14 +5463,16 @@ async function gerarPdfDiagnostico() {
   <script type="module" src="../ir-module.js"></script>
   <script type="module" src="fluxo-caixa-module.js"></script>
   <script type="module" src="../objetivos-module.js"></script>
-  <script src="../questoes-module.js"></script>
-
-  <!-- Modelo B "Painel" — índice lateral. Remover esta linha reverte o comportamento. -->
-  <script src="../diagnostico-painel.js"></script>
+  <!-- v2: cópia local das questões (acrescenta getPlanoPorSecao / getQuestoesPorSecao) -->
+  <script src="questoes-module.js"></script>
 
   <!-- v2: validador (cópia editada) e motor de Perfil Financeiro automático — scripts clássicos, sem type=module -->
   <script src="diagnostico-validador.js"></script>
   <script src="perfil-financeiro.js"></script>
+
+  <!-- Hub v2: relatório vivo e hub (avatar + anel). Remover estas duas linhas + hub.css devolve o layout linear. -->
+  <script src="relatorio-diagnostico.js"></script>
+  <script src="hub.js"></script>
 
 </body>
 </html>

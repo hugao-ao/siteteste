@@ -2280,6 +2280,9 @@ async function showDiagnosticoModal(clientId, clientName) {
             // Roteamento por versao: 1 (ou nulo) abre a v1 na raiz; 2+ abre a v2 em /diagnostico/
             const diagPath = (Number(diag.versao_diagnostico) || 1) >= 2 ? '/diagnostico/diagnostico-financeiro.html' : '/diagnostico-financeiro.html';
             const diagLink = `${window.location.origin}${diagPath}?link=${diag.link_unico}`;
+            // Escolha de formato: o mesmo diagnóstico pode ser aberto na v1 (raiz) ou na v2 (/diagnostico/)
+            const diagLinkAntigo = `${window.location.origin}/diagnostico-financeiro.html?link=${diag.link_unico}`;
+            const diagLinkNovo = `${window.location.origin}/diagnostico/diagnostico-financeiro.html?link=${diag.link_unico}`;
             const diagDate = new Date(diag.created_at).toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
 
             html = `
@@ -2291,6 +2294,8 @@ async function showDiagnosticoModal(clientId, clientName) {
                 <div style="background:rgba(0,0,0,0.3);border:1px solid var(--theme-border-color);border-radius:6px;padding:0.6rem;word-break:break-all;font-size:0.82rem;display:flex;align-items:center;gap:0.5rem;margin-bottom:1rem;">
                     <a href="javascript:void(0)" onclick="openDiagIframeModal('${diagLink}','${clientName || ''}')" style="color:var(--theme-secondary-lighter);flex:1;cursor:pointer;">${diagLink}</a>
                     <button onclick="openDiagIframeModal('${diagLink}','${clientName || ''}')" style="background:none;border:1px solid rgba(96,165,250,0.5);color:#60a5fa;padding:0.3rem 0.6rem;border-radius:4px;cursor:pointer;font-size:0.75rem;" title="Abrir diagn\u00f3stico"><i class="fas fa-external-link-alt"></i> Abrir</button>
+                    <button onclick="openDiagIframeModal('${diagLinkAntigo}','${clientName || ''}')" style="background:none;border:1px solid var(--theme-border-color);color:var(--theme-text-muted);padding:0.3rem 0.6rem;border-radius:4px;cursor:pointer;font-size:0.75rem;" title="Abrir no formato antigo (v1)"><i class="fas fa-list"></i> Antigo</button>
+                    <button onclick="openDiagIframeModal('${diagLinkNovo}','${clientName || ''}')" style="background:none;border:1px solid var(--theme-border-color);color:var(--theme-text-muted);padding:0.3rem 0.6rem;border-radius:4px;cursor:pointer;font-size:0.75rem;" title="Abrir no formato novo (v2)"><i class="fas fa-wand-magic-sparkles"></i> Novo</button>
                     <button onclick="navigator.clipboard.writeText('${diagLink}');this.innerHTML='<i class=\\'fas fa-check\\'></i>';setTimeout(()=>{this.innerHTML='<i class=\\'fas fa-copy\\'></i>'},2000)" style="background:none;border:1px solid var(--theme-border-color);color:var(--theme-text-muted);padding:0.3rem 0.5rem;border-radius:4px;cursor:pointer;" title="Copiar link"><i class="fas fa-copy"></i></button>
                 </div>
             `;
