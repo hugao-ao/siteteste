@@ -1136,13 +1136,48 @@
     function limpar() {
       document.body.classList.remove('hub-imprimindo');
       window.removeEventListener('afterprint', limpar);
+      // devolve os gráficos ao tamanho da tela
+      redimensionarGraficos();
     }
     window.addEventListener('afterprint', limpar);
+    // a classe troca o relatório de overlay rolável para documento em fluxo:
+    // os canvases mudam de largura e o Chart.js redesenha de forma assíncrona,
+    // por isso a impressão espera dois quadros + um respiro antes de disparar
     document.body.classList.add('hub-imprimindo');
+    redimensionarGraficos();
+    requestAnimationFrame(function () {
+      requestAnimationFrame(function () {
+        setTimeout(function () {
+          redimensionarGraficos();
+          try {
+            window.print();
+          } catch (e) {
+            limpar();
+          }
+        }, 250);
+      });
+    });
+  }
+
+  // Pede ao Chart.js para remedir os canvases do relatório (a troca de
+  // layout da impressão muda a largura deles)
+  function redimensionarGraficos() {
+    if (!window.Chart) return;
+    var instancias = window.Chart.instances || (window.Chart.registry && window.Chart.instances);
     try {
-      window.print();
+      if (instancias) {
+        Object.keys(instancias).forEach(function (k) {
+          var c = instancias[k];
+          if (c && typeof c.resize === 'function') c.resize();
+        });
+      } else if (typeof window.Chart.getChart === 'function' && refs.relatorioCorpo) {
+        Array.prototype.forEach.call(refs.relatorioCorpo.querySelectorAll('canvas'), function (cv) {
+          var c = window.Chart.getChart(cv);
+          if (c && typeof c.resize === 'function') c.resize();
+        });
+      }
     } catch (e) {
-      limpar();
+      /* gráfico sem instância ativa: nada a fazer */
     }
   }
 
@@ -1439,6 +1474,20 @@
   // Eventos e observadores
   // ------------------------------------------------------------
   function ligarEventos() {
+    // Ctrl+P / "imprimir" do navegador com o relatório aberto sai igual ao
+    // botão: o mesmo layout de documento, sem o resto do hub
+    window.addEventListener('beforeprint', function () {
+      if (!estado.relatorioAberto) return;
+      if (document.body.classList.contains('hub-imprimindo')) return;
+      document.body.classList.add('hub-imprimindo');
+      redimensionarGraficos();
+    });
+    window.addEventListener('afterprint', function () {
+      if (!document.body.classList.contains('hub-imprimindo')) return;
+      document.body.classList.remove('hub-imprimindo');
+      redimensionarGraficos();
+    });
+
     var progressoDebounced = debounce(atualizarProgresso, 300);
     var relatorioDebounced = debounce(renderizarRelatorio, 500);
     var responsivoDebounced = debounce(ajustarResponsivo, 150);

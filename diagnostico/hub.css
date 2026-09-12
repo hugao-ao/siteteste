@@ -3197,499 +3197,282 @@ body.hub-ativo #painel-faltantes-body > p {
 
 
 /* =====================================================================
-   20. IMPRESSÃO — só o relatório, fundo branco e texto escuro
-       (hub.js adiciona body.hub-imprimindo antes de window.print())
+   20. IMPRESSÃO / PDF — o relatório impresso é a MESMA tela do modal
+       "Gerar Diagnóstico": mesma paleta escura, mesmos blocos, só que
+       em fluxo de documento (sem overlay, sem rolagem interna) para
+       nada ser truncado nem cortado ao meio.
+       hub.js adiciona body.hub-imprimindo antes de window.print().
+
+       As regras de ESTRUTURA ficam FORA do @media print (valem também
+       na tela): assim dá para conferir o resultado exato do PDF só
+       ativando a classe, e o que se vê é o que sai impresso.
    ===================================================================== */
+
+/* ----- 20.1 o documento inteiro sai do modo "aplicativo" ----- */
+body.hub-imprimindo,
+body.hub-imprimindo.hub-modal-aberto {
+  position: static !important;
+  top: auto !important;
+  left: auto !important;
+  width: auto !important;
+  height: auto !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  overflow: visible !important;
+  background: var(--dark-bg, #0f2e1f) !important;
+  color: var(--text-light, #f0f8f0) !important;
+}
+
+/* ----- 20.2 só o relatório fica no fluxo; o resto sai ----- */
+body.hub-imprimindo .btn-voltar,
+body.hub-imprimindo #loading,
+body.hub-imprimindo #error-container,
+body.hub-imprimindo #success-container,
+body.hub-imprimindo #btn-prefill-cadastro,
+body.hub-imprimindo #btn-gerar-pdf,
+body.hub-imprimindo #hub-topbar,
+body.hub-imprimindo #hub-palco,
+body.hub-imprimindo #hub-armazem,
+body.hub-imprimindo #hub-modal,
+body.hub-imprimindo #hub-teatro,
+body.hub-imprimindo #hub-toasts,
+body.hub-imprimindo #main-content > .header,
+body.hub-imprimindo #main-content > .canva-container,
+body.hub-imprimindo #main-content > .form-container,
+body.hub-imprimindo #gabarito-questoes-container,
+body.hub-imprimindo #hub-relatorio-chips,
+body.hub-imprimindo #hub-relatorio-imprimir,
+body.hub-imprimindo #hub-relatorio-fechar {
+  display: none !important;
+}
+
+/* a cadeia até o relatório vira bloco simples, sem altura nem recorte */
+body.hub-imprimindo > .container,
+body.hub-imprimindo #main-content,
+body.hub-imprimindo #hub-root {
+  display: block !important;
+  position: static !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  width: auto !important;
+  max-width: none !important;
+  height: auto !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  overflow: visible !important;
+  background: transparent !important;
+}
+
+/* o overlay deixa de ser overlay */
+body.hub-imprimindo #hub-relatorio {
+  position: static !important;
+  inset: auto !important;
+  display: block !important;
+  z-index: auto !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  width: auto !important;
+  height: auto !important;
+  max-height: none !important;
+  overflow: visible !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  pointer-events: auto !important;
+  background: transparent !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+  transition: none !important;
+}
+
+/* a janela deixa de ser a caixa rolável (era ela que truncava o PDF) */
+body.hub-imprimindo .hub-janela-relatorio {
+  position: static !important;
+  display: block !important;
+  width: auto !important;
+  max-width: none !important;
+  height: auto !important;
+  max-height: none !important;
+  overflow: visible !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  transform: none !important;
+  transition: none !important;
+  background: transparent !important;
+}
+
+body.hub-imprimindo #hub-relatorio-cabecalho {
+  position: static !important;
+  display: block !important;
+  padding: 0 0 0.5rem !important;
+  margin: 0 0 0.9rem !important;
+  background: transparent !important;
+  border-bottom: 2px solid var(--border-color, #2e8b57) !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+
+body.hub-imprimindo #hub-relatorio-titulo,
+body.hub-imprimindo .hub-relatorio-titulo {
+  white-space: normal !important;
+  font-size: 1.2rem !important;
+  color: var(--accent-color, #ffd700) !important;
+}
+
+body.hub-imprimindo #hub-relatorio-corpo {
+  padding: 0 !important;
+  overflow: visible !important;
+  max-height: none !important;
+}
+
+body.hub-imprimindo .rel,
+body.hub-imprimindo .rel-secao,
+body.hub-imprimindo .rel-dados,
+body.hub-imprimindo .rel-tabela-wrap,
+body.hub-imprimindo #rel-faltantes-slot,
+body.hub-imprimindo #hub-relatorio-paineis {
+  overflow: visible !important;
+  max-height: none !important;
+}
+
+/* o estoque de painéis só aparece se estiver com conteúdo adotado */
+body.hub-imprimindo #hub-relatorio-paineis:empty {
+  display: none !important;
+}
+
+/* ----- 20.3 gráficos: canvas em fluxo, proporção preservada ----- */
+/* uma coluna: o canvas fica com a largura da página (perto do tamanho em
+   que foi desenhado), então rótulos e eixos continuam legíveis no papel */
+body.hub-imprimindo .rel-graficos-grade {
+  display: grid !important;
+  grid-template-columns: 1fr !important;
+  gap: 0.8rem !important;
+}
+
+body.hub-imprimindo .rel-grafico {
+  height: auto !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  overflow: visible !important;
+}
+
+body.hub-imprimindo .rel-grafico-canvas,
+body.hub-imprimindo .rel-grafico-area {
+  position: static !important;
+  height: auto !important;
+  min-height: 0 !important;
+  max-height: none !important;
+}
+
+body.hub-imprimindo .rel-grafico canvas {
+  display: block !important;
+  width: 100% !important;
+  height: auto !important;
+  max-width: 100% !important;
+}
+
+body.hub-imprimindo .rel-grafico-titulo {
+  position: static !important;
+  white-space: normal !important;
+  text-overflow: clip !important;
+  margin: 0 0 0.35rem !important;
+}
+
+body.hub-imprimindo .rel-grafico-legenda {
+  position: static !important;
+  display: block !important;
+  margin: 0.35rem 0 0 !important;
+}
+
+/* ----- 20.4 nada cortado ao meio: o bloco inteiro vai para a página
+         seguinte quando não couber ----- */
+body.hub-imprimindo .rel-capa,
+body.hub-imprimindo .rel-grafico,
+body.hub-imprimindo .rel-obs,
+body.hub-imprimindo .rel-suit-pessoa,
+body.hub-imprimindo .rel-plano-topico,
+body.hub-imprimindo .rel-plano-fechar,
+body.hub-imprimindo .rel-total-destaque,
+body.hub-imprimindo .rel-linha,
+body.hub-imprimindo .rel-questao,
+body.hub-imprimindo .rel-barra-item,
+body.hub-imprimindo .rel-dados tr,
+body.hub-imprimindo .rel li,
+body.hub-imprimindo #painel-info-faltantes > div > div {
+  break-inside: avoid !important;
+  page-break-inside: avoid !important;
+}
+
+/* título nunca fica órfão no pé da página */
+body.hub-imprimindo .rel-secao-titulo,
+body.hub-imprimindo .rel-sub,
+body.hub-imprimindo .rel-grafico-titulo,
+body.hub-imprimindo .rel-plano-topico > h4,
+body.hub-imprimindo #painel-info-faltantes h4 {
+  break-after: avoid !important;
+  page-break-after: avoid !important;
+}
+
+/* seções longas podem atravessar páginas (só os blocos internos é que
+   não se partem); a de gráficos começa em página nova */
+body.hub-imprimindo .rel-secao {
+  break-inside: auto !important;
+  page-break-inside: auto !important;
+}
+
+body.hub-imprimindo #rel-secao-graficos {
+  break-before: page !important;
+  page-break-before: always !important;
+}
+
+/* ----- 20.5 painel de informações faltantes: sempre expandido ----- */
+body.hub-imprimindo #painel-info-faltantes {
+  break-inside: auto !important;
+}
+
+body.hub-imprimindo #painel-faltantes-body {
+  display: block !important;
+}
+
+body.hub-imprimindo #painel-faltantes-chevron {
+  display: none !important;
+}
+
+
+/* ----- 20.6 o que só vale no papel: margens e impressão das cores ----- */
 @media print {
   @page {
-    margin: 12mm;
+    margin: 10mm;
   }
 
-  body.hub-imprimindo {
-    position: static !important;
-    top: auto !important;
-    width: auto !important;
-    background: #fff !important;
-    color: #111 !important;
-    overflow: visible !important;
-    height: auto !important;
+  /* o fundo do <html> se propaga para a página inteira, inclusive as
+     margens — é o que dá o verde escuro no PDF todo */
+  html {
+    background: var(--dark-bg, #0f2e1f) !important;
   }
 
-  body.hub-imprimindo > .container,
-  body.hub-imprimindo #main-content,
-  body.hub-imprimindo #hub-root {
-    padding: 0 !important;
-    margin: 0 !important;
-    overflow: visible !important;
-    min-height: 0 !important;
-  }
-
-  /* tudo invisível… */
+  /* imprime as cores de fundo como na tela (Chrome respeita sem depender
+     da opção "gráficos de plano de fundo") */
+  html,
+  body.hub-imprimindo,
   body.hub-imprimindo * {
-    visibility: hidden;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
 
-  /* …exceto o relatório */
-  body.hub-imprimindo #hub-relatorio,
-  body.hub-imprimindo #hub-relatorio * {
-    visibility: visible;
-  }
-
-  /* o resto do hub sai do fluxo para o relatório começar no topo */
-  body.hub-imprimindo .btn-voltar,
-  body.hub-imprimindo #loading,
-  body.hub-imprimindo #main-content > .header,
-  body.hub-imprimindo #main-content > .canva-container,
-  body.hub-imprimindo #main-content > .form-container,
-  body.hub-imprimindo #main-content > .save-btn-container,
-  body.hub-imprimindo #btn-prefill-cadastro,
-  body.hub-imprimindo #btn-gerar-pdf,
-  body.hub-imprimindo #hub-topbar,
-  body.hub-imprimindo #hub-palco,
-  body.hub-imprimindo #hub-armazem,
-  body.hub-imprimindo #hub-modal,
-  body.hub-imprimindo #hub-teatro,
-  body.hub-imprimindo #hub-toasts,
-  body.hub-imprimindo #hub-relatorio-chips,
-  body.hub-imprimindo #hub-relatorio-imprimir,
-  body.hub-imprimindo #hub-relatorio-fechar {
-    display: none !important;
-  }
-
-  body.hub-imprimindo #hub-relatorio {
-    position: static !important;
-    inset: auto !important;
-    display: block !important;
-    padding: 0 !important;
-    height: auto !important;
-    opacity: 1 !important;
-    visibility: visible !important;
-    pointer-events: auto !important;
-    background: #fff !important;
+  /* o desfoque de vidro fica pesado e desnecessário no papel */
+  body.hub-imprimindo * {
     -webkit-backdrop-filter: none !important;
     backdrop-filter: none !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+  }
+
+  /* nenhuma animação durante a captura da página */
+  body.hub-imprimindo *,
+  body.hub-imprimindo *::before,
+  body.hub-imprimindo *::after {
+    animation: none !important;
     transition: none !important;
-  }
-
-  body.hub-imprimindo .hub-janela-relatorio {
-    position: static !important;
-    display: block !important;
-    width: 100% !important;
-    max-width: none !important;
-    height: auto !important;
-    max-height: none !important;
-    overflow: visible !important;
-    border: 0 !important;
-    border-radius: 0 !important;
-    box-shadow: none !important;
-    background: #fff !important;
-    color: #111 !important;
-    transform: none !important;
-    transition: none !important;
-  }
-
-  body.hub-imprimindo #hub-relatorio-cabecalho {
-    position: static !important;
-    display: block !important;
-    padding: 0 0 0.5rem !important;
-    margin-bottom: 0.8rem !important;
-    background: #fff !important;
-    border-bottom: 2px solid #1a4d3a !important;
-    -webkit-backdrop-filter: none !important;
-    backdrop-filter: none !important;
-  }
-
-  body.hub-imprimindo #hub-relatorio-cabecalho,
-  body.hub-imprimindo #hub-relatorio-cabecalho * {
-    color: #1a4d3a !important;
-    white-space: normal !important;
-    font-size: 1.15rem !important;
-  }
-
-  body.hub-imprimindo #hub-relatorio-corpo {
-    padding: 0 !important;
-  }
-
-  /* conteúdo do relatório em cores de papel */
-  body.hub-imprimindo .rel {
-    color: #111 !important;
-    font-size: 10.5pt;
-    line-height: 1.4;
-  }
-
-  body.hub-imprimindo .rel strong,
-  body.hub-imprimindo .rel b,
-  body.hub-imprimindo .rel-dados dt,
-  body.hub-imprimindo .rel-capa-nome,
-  body.hub-imprimindo .rel-secao-titulo,
-  body.hub-imprimindo .rel-dados th,
-  body.hub-imprimindo .rel-dados tfoot td,
-  body.hub-imprimindo .rel-dados tr.rel-total td,
-  body.hub-imprimindo .rel-capa-resumo strong,
-  body.hub-imprimindo .rel-capa-resumo b,
-  body.hub-imprimindo .rel-capa-resumo .rel-num,
-  body.hub-imprimindo .rel-capa-num-valor,
-  body.hub-imprimindo .rel-sub,
-  body.hub-imprimindo p.rel-total,
-  body.hub-imprimindo .rel-questao-texto,
-  body.hub-imprimindo .rel-plano-topico > h4,
-  body.hub-imprimindo .rel-plano-topico > .rel-sub,
-  body.hub-imprimindo .rel-plano-topico-titulo,
-  body.hub-imprimindo .rel-plano-topico > strong:first-child,
-  body.hub-imprimindo .rel-plano-topico > p:first-child,
-  body.hub-imprimindo #rel-secao-codigo-matriz .rel-tabela td:first-child,
-  body.hub-imprimindo .rel-questoes > strong:first-child,
-  body.hub-imprimindo .rel-questoes > b:first-child,
-  body.hub-imprimindo .rel-questoes h4,
-  body.hub-imprimindo .rel-plano > strong:first-child,
-  body.hub-imprimindo .rel-plano > b:first-child,
-  body.hub-imprimindo .rel-plano h4,
-  body.hub-imprimindo .rel-plano > p:first-child {
-    color: #1a4d3a !important;
-  }
-
-  body.hub-imprimindo .rel-capa {
-    background: #fff !important;
-    border: 1px solid #1a4d3a !important;
-    box-shadow: none !important;
-    break-inside: avoid;
-  }
-
-  body.hub-imprimindo .rel-capa-meta,
-  body.hub-imprimindo .rel-capa-codigo {
-    color: #333 !important;
-    opacity: 1 !important;
-  }
-
-  /* o rótulo do perfil chega com style="color:<cor do perfil>" inline
-     (#ffc107, #d4af37, #fd7e14… têm contraste < 3:1 sobre papel);
-     na impressão o texto e a borda vão para o verde escuro */
-  body.hub-imprimindo .rel-capa-perfil,
-  body.hub-imprimindo .rel-perfil-rotulo {
-    color: #1a4d3a !important;
-    border-color: #1a4d3a !important;
-    background: transparent !important;
-    -webkit-print-color-adjust: exact;
-    print-color-adjust: exact;
-  }
-
-  body.hub-imprimindo .rel-capa-resumo > * {
-    background: transparent !important;
-    border-color: #1a4d3a !important;
-    color: #333 !important;
-    opacity: 1 !important;
-  }
-
-  body.hub-imprimindo .rel-secao {
-    border-bottom-color: rgba(0, 0, 0, 0.15) !important;
-  }
-
-  body.hub-imprimindo .rel-secao-titulo {
-    border-bottom-color: #d4af37 !important;
-    break-after: avoid;
-  }
-
-  body.hub-imprimindo #rel-secao-fechamento,
-  body.hub-imprimindo .rel-secao-fechamento {
-    background: transparent !important;
-    border-color: #d4af37 !important;
-  }
-
-  body.hub-imprimindo .rel-dados,
-  body.hub-imprimindo .rel-tabela-wrap {
-    overflow: visible !important;
-  }
-
-  body.hub-imprimindo .rel-mudo {
-    color: #555 !important;
-    opacity: 1 !important;
-  }
-
-  body.hub-imprimindo .rel-codigo {
-    background: transparent !important;
-    border-color: #999 !important;
-    color: #111 !important;
-  }
-
-  body.hub-imprimindo .rel-chip {
-    background: transparent !important;
-  }
-
-  body.hub-imprimindo .rel-chip-neutro {
-    color: #333 !important;
-    border-color: #999 !important;
-  }
-
-  body.hub-imprimindo .rel-capa-perfil-vazio {
-    color: #333 !important;
-    opacity: 1 !important;
-  }
-
-  /* gráficos: o canvas mantém a paleta escura (legendas/eixos claros),
-     então o painel do gráfico imprime escuro para o texto continuar
-     legível; título e legenda ficam em fluxo e o canvas em altura
-     automática (proporção do bitmap), sem recorte */
-  body.hub-imprimindo .rel-graficos-grade {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 5mm;
-  }
-
-  body.hub-imprimindo .rel-grafico {
-    height: auto !important;
-    min-height: 0 !important;
-    padding: 0.5rem 0.6rem !important;
-    overflow: visible !important;
-    background: #0f2e1f !important;
-    border-color: #1a4d3a !important;
-    color: #f0f8f0 !important;
-    break-inside: avoid;
-    -webkit-print-color-adjust: exact;
-    print-color-adjust: exact;
-  }
-
-  body.hub-imprimindo .rel-grafico-titulo {
-    position: static !important;
-    margin: 0 0 0.3rem !important;
-    white-space: normal !important;
-    color: #ffd700 !important;
-  }
-
-  body.hub-imprimindo .rel-grafico-legenda {
-    position: static !important;
-    display: block !important;
-    margin: 0.3rem 0 0 !important;
-    color: #f0f8f0 !important;
-    opacity: 1 !important;
-  }
-
-  body.hub-imprimindo .rel-grafico canvas {
-    display: block;
-    width: 100% !important;
-    height: auto !important;
-    max-width: 100%;
-  }
-
-  body.hub-imprimindo .rel-grafico-canvas,
-  body.hub-imprimindo .rel-grafico-area {
-    height: auto !important;
-  }
-
-  /* regra separada: sem suporte a :has() só esta é descartada */
-  body.hub-imprimindo .rel-grafico > div:has(> canvas) {
-    height: auto !important;
-  }
-
-  body.hub-imprimindo .rel-grafico strong,
-  body.hub-imprimindo .rel-grafico b,
-  body.hub-imprimindo .rel-grafico .rel-barra-valor {
-    color: #ffd700 !important;
-  }
-
-  body.hub-imprimindo .rel-grafico .rel-mudo,
-  body.hub-imprimindo .rel-grafico .rel-barra-rotulo {
-    color: #f0f8f0 !important;
-    opacity: 1 !important;
-  }
-
-  body.hub-imprimindo .rel-grafico .rel-barra {
-    background: rgba(255, 255, 255, 0.18) !important;
-    -webkit-print-color-adjust: exact;
-    print-color-adjust: exact;
-  }
-
-  body.hub-imprimindo .rel-grafico .rel-barra-fill {
-    background: #ffd700 !important;
-    -webkit-print-color-adjust: exact;
-    print-color-adjust: exact;
-  }
-
-  body.hub-imprimindo .rel-grafico .rel-barra-fill.rel-negativo,
-  body.hub-imprimindo .rel-grafico .rel-barra.rel-negativo .rel-barra-fill,
-  body.hub-imprimindo .rel-grafico .rel-barra-item.rel-negativo .rel-barra-fill {
-    background: #dc3545 !important;
-  }
-
-  /* barras fora de um painel de gráfico: sobre papel branco */
-  body.hub-imprimindo .rel-barra {
-    background: #eee !important;
-    -webkit-print-color-adjust: exact;
-    print-color-adjust: exact;
-  }
-
-  body.hub-imprimindo .rel-barra-fill {
-    background: #2e8b57 !important;
-    -webkit-print-color-adjust: exact;
-    print-color-adjust: exact;
-  }
-
-  body.hub-imprimindo .rel-dados th {
-    border-bottom-color: #1a4d3a !important;
-  }
-
-  body.hub-imprimindo .rel-dados td {
-    border-bottom-color: rgba(0, 0, 0, 0.1) !important;
-  }
-
-  body.hub-imprimindo .rel-dados tbody tr:nth-child(even) {
-    background: rgba(0, 0, 0, 0.04) !important;
-    -webkit-print-color-adjust: exact;
-    print-color-adjust: exact;
-  }
-
-  body.hub-imprimindo .rel-dados tbody tr:hover {
-    background: transparent !important;
-  }
-
-  body.hub-imprimindo .rel-dados tr,
-  body.hub-imprimindo .rel li {
-    break-inside: avoid;
-  }
-
-  body.hub-imprimindo .rel-vazio {
-    color: #666 !important;
-    opacity: 1 !important;
-  }
-
-  /* questões: linhas de texto corrido, sem caixa; chips contornados */
-  body.hub-imprimindo .rel-questoes {
-    background: transparent !important;
-    border: 0 !important;
-    padding: 0 !important;
-  }
-
-  body.hub-imprimindo .rel-questoes li {
-    border: 0 !important;
-  }
-
-  body.hub-imprimindo .rel-questoes span.rel-sim,
-  body.hub-imprimindo .rel-questoes span.rel-nao,
-  body.hub-imprimindo .rel-questoes span.rel-na,
-  body.hub-imprimindo .rel-questoes span.rel-pendente,
-  body.hub-imprimindo .rel-chip.rel-sim,
-  body.hub-imprimindo .rel-chip.rel-nao,
-  body.hub-imprimindo .rel-chip.rel-na,
-  body.hub-imprimindo .rel-chip.rel-pendente {
-    background: transparent !important;
-  }
-
-  body.hub-imprimindo .rel-questoes span.rel-sim,
-  body.hub-imprimindo .rel-chip.rel-sim { color: #1e7e34 !important; border-color: #28a745 !important; }
-  body.hub-imprimindo .rel-questoes span.rel-nao,
-  body.hub-imprimindo .rel-chip.rel-nao { color: #b02a37 !important; border-color: #dc3545 !important; }
-  body.hub-imprimindo .rel-questoes span.rel-na,
-  body.hub-imprimindo .rel-chip.rel-na { color: #555 !important; border-color: #999 !important; }
-  body.hub-imprimindo .rel-questoes span.rel-pendente,
-  body.hub-imprimindo .rel-chip.rel-pendente { color: #888 !important; border-color: #bbb !important; }
-
-  body.hub-imprimindo .rel-questoes li.rel-sim,
-  body.hub-imprimindo .rel-questoes li.rel-nao,
-  body.hub-imprimindo .rel-questoes li.rel-na,
-  body.hub-imprimindo .rel-questoes li.rel-pendente { border-left: 0 !important; }
-
-  body.hub-imprimindo .rel-plano {
-    background: transparent !important;
-    border-left-color: #d4af37 !important;
-  }
-
-  body.hub-imprimindo .rel-plano li::before {
-    background: #d4af37 !important;
-    box-shadow: none !important;
-    -webkit-print-color-adjust: exact;
-    print-color-adjust: exact;
-  }
-
-  body.hub-imprimindo .rel-obs {
-    background: transparent !important;
-    border: 1px solid rgba(0, 0, 0, 0.15) !important;
-    border-left: 3px solid #2e8b57 !important;
-  }
-
-  /* ----- fase 2: seções novas e classes de estado ----- */
-  body.hub-imprimindo .rel-negativo { color: #b02a37 !important; }
-  body.hub-imprimindo .rel-positivo { color: #1e7e34 !important; }
-
-  body.hub-imprimindo p.rel-total.rel-total-destaque,
-  body.hub-imprimindo .rel-total-destaque {
-    background: transparent !important;
-    border-color: #1a4d3a !important;
-    break-inside: avoid;
-  }
-
-  body.hub-imprimindo .hub-aviso {
-    color: #111 !important;
-    background: transparent !important;
-    border-color: #dc3545 !important;
-  }
-
-  body.hub-imprimindo #rel-secao-codigo-matriz .rel-matriz-codigo .rel-codigo,
-  body.hub-imprimindo .rel-codigo-destaque {
-    color: #1a4d3a !important;
-    background: transparent !important;
-    border-color: #1a4d3a !important;
-    box-shadow: none !important;
-  }
-
-  body.hub-imprimindo .rel-plano-topico,
-  body.hub-imprimindo .rel-plano-fechar {
-    background: transparent !important;
-    border-color: #d4af37 !important;
-    box-shadow: none !important;
-    break-inside: avoid;
-  }
-
-  body.hub-imprimindo .rel-plano-fechar > h4,
-  body.hub-imprimindo .rel-plano-fechar > .rel-sub,
-  body.hub-imprimindo .rel-plano-fechar .rel-plano-topico-titulo,
-  body.hub-imprimindo .rel-plano-fechar > strong:first-child,
-  body.hub-imprimindo .rel-plano-fechar > p:first-child {
-    color: #1a4d3a !important;
-  }
-
-  body.hub-imprimindo .rel-plano-topico li::before,
-  body.hub-imprimindo ul.rel-plano-lista > li::before {
-    background: #d4af37 !important;
-    box-shadow: none !important;
-    -webkit-print-color-adjust: exact;
-    print-color-adjust: exact;
-  }
-
-  /* painel de informações faltantes: papel branco, texto escuro
-     (as cores inline do validador usam var(--text-light) etc. — as
-     variáveis são redefinidas aqui; o corpo imprime sempre expandido) */
-  body.hub-imprimindo #hub-relatorio-paineis {
-    display: block !important;
-    padding: 0 !important;
-  }
-
-  body.hub-imprimindo #painel-info-faltantes {
-    --text-light: #222;
-    --accent-color: #1a4d3a;
-    --dark-bg: #fff;
-    --border-color: #1a4d3a;
-    margin: 0 !important;
-    max-width: 100% !important;
-    padding: 0.8rem 1rem !important;
-    background: #fff !important;
-    border: 1px solid #1a4d3a !important;
-    color: #111 !important;
-    break-inside: avoid;
-  }
-
-  body.hub-imprimindo #painel-info-faltantes h3,
-  body.hub-imprimindo #painel-info-faltantes h4 {
-    color: #1a4d3a !important;
-  }
-
-  body.hub-imprimindo #painel-info-faltantes [style*="background"] {
-    background: transparent !important;
-  }
-
-  body.hub-imprimindo #painel-faltantes-body {
-    display: block !important;
-  }
-
-  body.hub-imprimindo #painel-faltantes-chevron {
-    display: none !important;
   }
 }
