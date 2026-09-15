@@ -121,6 +121,10 @@
   // focar o campo, mas o campo está oculto no armazém quando a seção não é a aberta — o hub leva
   // o consultor até a seção certa. Ordem importa (cônjuge antes do titular).
   var ERROS_INLINE = [
+    // v3 (validarPerfilFinanceiroAntesDeSalvar): "Perfil de investidor de <nome>: …", termo de
+    // desenquadramento e selo da reserva — foco no card do motor. Fica primeiro porque o nome
+    // da pessoa entra no texto e não pode cair numa das regras de dados pessoais abaixo.
+    { re: /perfil de investidor|desenquadramento|selo da reserva/i, slug: 'perfil-financeiro', id: 'perfil-financeiro-auto' },
     { re: /cpf do c[oô]njuge/i, slug: 'dados-pessoais', id: 'conjuge_cpf' },
     { re: /e-?mail do c[oô]njuge/i, slug: 'dados-pessoais', id: 'conjuge_email' },
     { re: /nome do c[oô]njuge/i, slug: 'dados-pessoais', id: 'conjuge_nome' },

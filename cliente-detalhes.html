@@ -1365,13 +1365,37 @@
             const C = (v) => fmtCurrency(v);
             const pct = (v) => { const n = parseFloat(v); return isNaN(n) ? '0,00%' : n.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2}) + '%'; };
             const RISCO_LABELS = {
+                // classes de risco em 9 degraus (formato novo); as 7 chaves da escala atual têm o mesmo nome
+                'RISCO_SOBERANO': 'Risco Soberano',
+                'RISCO_MUITO_BAIXO': 'Risco Muito Baixo',
+                'RISCO_BAIXO': 'Risco Baixo',
+                'RISCO_MEDIO_BAIXO': 'Risco Médio-Baixo',
+                'RISCO_MEDIO': 'Risco Médio',
+                'RISCO_MEDIO_ALTO': 'Risco Médio-Alto',
+                'RISCO_ALTO': 'Risco Alto',
+                'RISCO_MUITO_ALTO': 'Risco Muito Alto',
+                'RISCO_MAXIMO': 'Risco Máximo',
+                // escala de 7 "com GARANTIA" (gravada até 06/2026)
                 'RISCO_MUITO_BAIXO_GARANTIA_SOBERANA': 'Risco Muito Baixo (Garantia Soberana)',
                 'RISCO_MUITO_BAIXO_GARANTIA_FGC': 'Risco Muito Baixo (Garantia FGC)',
                 'RISCO_BAIXO_GARANTIA_FGC': 'Risco Baixo (Garantia FGC)',
                 'RISCO_MEDIO_SEM_GARANTIA': 'Risco Médio',
                 'RISCO_ALTO_SEM_GARANTIA': 'Risco Alto',
                 'RISCO_MUITO_ALTO_SEM_GARANTIA': 'Risco Muito Alto',
-                'RISCO_ABSOLUTO_SEM_GARANTIA': 'Risco Absoluto'
+                'RISCO_ABSOLUTO_SEM_GARANTIA': 'Risco Absoluto',
+                // escala de 10 (out/2025): chaves extras
+                'RISCO_BAIXO_SEM_GARANTIA': 'Risco Baixo (Sem Garantia)',
+                'RISCO_ALTO_PROTECAO_MRP': 'Risco Alto (Proteção MRP)',
+                'RISCO_MUITO_ALTO_PROTECAO_MRP': 'Risco Muito Alto (Proteção MRP)'
+            };
+            // liquidez do item (formato novo)
+            const LIQUIDEZ_LABELS = {
+                'D0': 'Mesmo dia, valor cheio',
+                'D1': '1 dia útil',
+                'D1_MERCADO': '1 dia útil, a preço de mercado',
+                'ATE_D30': 'Até 30 dias',
+                'SO_VENCIMENTO': 'Só no vencimento',
+                'ILIQUIDO': 'Ilíquido'
             };
             const PERFIS_FIN = {
                 'dividas_impagaveis': 'Dívidas Impagáveis', 'dividas_pagaveis': 'Dívidas Pagáveis',
@@ -1510,7 +1534,7 @@
                         h += ` | Valor: ${C(val)}`;
                         if (riscoLabel) h += ` | Risco: ${S(riscoLabel)}`;
                         if (inv.instituicao_nome) h += ` | Instituição: ${S(inv.instituicao_nome)}`;
-                        if (inv.liquidez) h += ` | Liquidez: ${S(inv.liquidez)}`;
+                        if (inv.liquidez) h += ` | Liquidez: ${S(Object.prototype.hasOwnProperty.call(LIQUIDEZ_LABELS, inv.liquidez) ? LIQUIDEZ_LABELS[inv.liquidez] : inv.liquidez)}`;
                         if (inv.rentabilidade_esperada) h += ` | Rent.: ${pct(inv.rentabilidade_esperada)}`;
                         if (inv.indexador) h += ` | Indexador: ${S(inv.indexador)}`;
                         if (inv.vencimento) h += ` | Vencimento: ${S(inv.vencimento)}`;

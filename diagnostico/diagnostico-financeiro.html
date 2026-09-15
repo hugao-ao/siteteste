@@ -12,6 +12,8 @@
   <link rel="stylesheet" href="../patrimonio-liquido-modals.css" />
   <!-- SISTEMA DE SEGURANÇA - Importar middleware de autenticação -->
   <script src="auth-middleware.js"></script>
+  <!-- v3: classes de risco (9 degraus), liquidez, matriz 7×9 e regras de degrau — antes de qualquer consumidor -->
+  <script src="riscos-v3.js"></script>
   <style>
     /* Paleta de cores verde esmeralda escuro + dourado */
     :root {
@@ -2057,11 +2059,14 @@
               <!-- Teste de Suitability -->
               <div style="margin-top: 2rem; padding-top: 2rem; border-top: 3px solid var(--border-color);">
                 <h4 style="color: var(--accent-color); margin: 0 0 1.5rem 0; text-align: center;">
-                  <i class="fas fa-clipboard-check"></i> Teste de Perfil de Investidor (Suitability)
+                  <i class="fas fa-clipboard-check"></i> Teste de Perfil de Investidor
                 </h4>
-                <div id="teste-suitability-container">
+                <!-- teste antigo (respostas_suitability): escondido, não removido — os dados continuam carregados e salvos intactos -->
+                <div id="teste-suitability-container" hidden>
                   <!-- Tabela será inserida aqui dinamicamente -->
                 </div>
+                <!-- v3: teste novo (suitability-v3.js; coluna suitability_v3) -->
+                <div id="teste-suitability-v3-container"></div>
               </div>
               
               <!-- Distribuição por Risco e Proprietário -->
@@ -4105,7 +4110,16 @@ console.log('=== FIM DEBUG PESSOAS COM RENDA ===');
             console.log('Erro ao carregar respostas do suitability:', e);
           }
         }
-        
+
+        // v3: teste de perfil novo (coluna suitability_v3, jsonb — só existe depois do SQL
+        // investimentos-v3). Sem a coluna, o teste responde e calcula, mas não é salvo.
+        window.SUITABILITY_V3_COLUNA_OK = ('suitability_v3' in diagnostico);
+        try {
+          if (window.setSuitabilityV3Data) window.setSuitabilityV3Data(diagnostico.suitability_v3 || null);
+        } catch (e) {
+          console.log('Erro ao carregar o teste de perfil (formato novo):', e);
+        }
+
         // Carregar produtos de proteção se existirem
         if (diagnostico.produtos_protecao) {
           try {
@@ -4485,6 +4499,10 @@ console.log('=== FIM DEBUG PESSOAS COM RENDA ===');
           obs_perfil_financeiro: document.getElementById('obs_perfil_financeiro')?.value.trim() || '',
           obs_adesao_plano: document.getElementById('obs_adesao_plano')?.value.trim() || ''
         };
+
+        // v3: respostas do teste de perfil novo — objeto cru (jsonb). Só vai se a coluna existe no
+        // banco (detectada na carga); sem ela, enviar derrubaria o salvamento inteiro.
+        if (window.SUITABILITY_V3_COLUNA_OK && window.getSuitabilityV3Data) dataToSave.suitability_v3 = window.getSuitabilityV3Data();
 
         // v2: resultado do Perfil Financeiro (perfil_financeiro, perfil_investidor, codigo_matriz,
         // versao_regras, calculado_em) — objetos vão crus para as colunas jsonb, sem JSON.stringify
@@ -5468,6 +5486,8 @@ async function gerarPdfDiagnostico() {
 
   <!-- v2: validador (cópia editada) e motor de Perfil Financeiro automático — scripts clássicos, sem type=module -->
   <script src="diagnostico-validador.js"></script>
+  <!-- v3: teste de perfil de investidor novo — ANTES do motor, que lê getSuitabilityV3Data -->
+  <script src="suitability-v3.js"></script>
   <script src="perfil-financeiro.js"></script>
 
   <!-- Hub v2: relatório vivo e hub (avatar + anel). Remover estas duas linhas + hub.css devolve o layout linear. -->

@@ -15,12 +15,18 @@
 // curtas, faltantes, complementares, investidor e matriz. Subtipos,
 // subjacente, alertas, alavancas e marcadores ficam apenas no JSON salvo
 // (chave "analise" de perfil_financeiro).
+//
+// v3 (investimentos): classes de risco, liquidez e elegibilidade vêm de
+// window.RiscosV3 (diagnostico/riscos-v3.js), com fallback seguro se ele
+// não carregar. A reserva só conta itens elegíveis; o selo da reserva e o
+// perfil de investidor por pessoa são calculados DEPOIS da matriz e da
+// camada de dívida. Referência por CLASSE de risco, nunca por produto.
 // ============================================================
 
 (function () {
   'use strict';
 
-  const VERSAO_REGRAS = '2.1.0';
+  const VERSAO_REGRAS = '3.0.0';
 
   // ------------------------------------------------------------
   // PERFIL_CONFIG — parâmetros que o consultor pode ajustar
@@ -55,8 +61,25 @@
     micro_reserva_meses: 0.5,
     // Janela (meses) considerada para "investe recorrentemente"
     recorrencia_investimento_meses: 12,
-    // Classificações de risco que caracterizam instrumento de GUARDA (poupança, CDB, Tesouro Selic...)
-    riscos_guarda: ['RISCO_MUITO_BAIXO', 'RISCO_BAIXO'],
+    // Classes de risco que caracterizam instrumento de GUARDA (poupança, CDB, Tesouro Selic...).
+    // Documental: a regra usa RiscosV3.ehGuarda (ordem do degrau <= 3; sem classe = guarda).
+    riscos_guarda: ['RISCO_SOBERANO', 'RISCO_MUITO_BAIXO', 'RISCO_BAIXO'],
+    // Perfil de investidor (v3) e selo da reserva
+    investidor: {
+      // Régua nota (0-100) -> perfil: < limite devolve o id; >= 95 -> '7'
+      regua: [[15, '1'], [30, '2'], [45, '3'], [60, '4'], [75, '5'], [95, '6']],
+      // B4 · pontos de capacidade (0-4)
+      b4_divida: { perfil_1: 0, '2C': 1, '2B': 2, '2A': 3, sem_dividas_relevantes: 4 },
+      b4_reserva: { R0: 0, R1: 1, R2: 2, R3: 3, R4: 4 },
+      b4_fonte: { F1: 4, F2: 3, F3: 2 },
+      b4_poupanca: { P1: 4, P2: 3, P3: 2, P4: 0 },
+      // Colchão patrimonial em rendas mensais: >= 60 -> 4 ... < 6 -> 0
+      colchao_faixas: [[60, 4], [24, 3], [12, 2], [6, 1]],
+      // A6: ordem mínima do degrau para contar como ativo que oscila
+      a6_classe_min_oscilante: 6,
+      // Selo: exposição a mercado (degrau >= 4) acima de 10% do alvo torna a reserva inadequada
+      selo_relevancia_exposicao: 0.10
+    },
     // Situações de dívida que saem do estoque de dívidas-problema
     situacoes_fora_do_estoque: ['prescrita'],
     // Parentesco de dependente que NÃO conta como pessoa do domicílio
@@ -108,6 +131,45 @@
   ];
 
   const ROTULO_INCALCULAVEL = 'Perfil incalculável';
+
+  // ------------------------------------------------------------
+  // v3 — tabelas do teste de perfil de investidor e do selo da reserva
+  // (textos das alternativas iguais aos do teste; nunca citam produto)
+  // ------------------------------------------------------------
+  const TETO_A1 = { tudo_qualquer_momento: '2', grande_parte_2anos: '3', parte_2anos: '4', so_2a5anos: '6', sem_retirada_5anos: null };
+  const TEXTO_A1 = {
+    tudo_qualquer_momento: 'Posso precisar de tudo a qualquer momento',
+    grande_parte_2anos: 'Grande parte em até 2 anos',
+    parte_2anos: 'Uma parte em até 2 anos',
+    so_2a5anos: 'Só entre 2 e 5 anos',
+    sem_retirada_5anos: 'Sem retirada prevista em 5+ anos'
+  };
+  const TETO_A2 = { preservar: '2', renda_estavel: '4', acumular_longo_prazo: null, multiplicar: null };
+  const TEXTO_A2 = {
+    preservar: 'Preservar o que já tenho',
+    renda_estavel: 'Gerar renda estável',
+    acumular_longo_prazo: 'Acumular para objetivos de longo prazo',
+    multiplicar: 'Multiplicar aceitando risco'
+  };
+  const TEXTO_B3 = { ate_2_anos: 'Sim, em até 2 anos', entre_2_e_5_anos: 'Sim, entre 2 e 5 anos', nao_prevista: 'Não prevista' };
+  // Gabarito da bateria C6 (8 afirmações V/F) — não aparece na tela do cliente
+  const GABARITO_C6 = [false, false, false, true, false, true, false, true];
+  const CHAVES_A = ['A3', 'A4', 'A5', 'A6', 'A7', 'A8', 'A9', 'A10'];
+  const CHAVES_C = ['C1', 'C2', 'C3', 'C4', 'C5'];
+  // Prioridade do limitante: trava T1 > T5 > T2 > teto B3 > teto A1 > teto A2 > nota C > nota B > nota A
+  const PRIORIDADE_LIMITANTE = ['T1', 'T5', 'T2', 'B3', 'A1', 'A2', 'C', 'B', 'A'];
+  const NOME_BLOCO_NOTA = { A: 'preferências de risco', B: 'capacidade', C: 'conhecimento' };
+  const ROTULOS_SELO = { adequada: 'Adequada', em_formacao: 'Em formação', inadequada: 'Inadequada' };
+  const SEPARADOR_MEMORIA = '──────────────────────────────';
+  const FALTANTE_RISCOS_V3 = 'RiscosV3 não carregado';
+
+  function nomePerfilInvestidor(id) {
+    const s = str(id);
+    for (let i = 0; i < PERFIS_INVESTIDOR.length; i++) {
+      if (PERFIS_INVESTIDOR[i].id === s) return PERFIS_INVESTIDOR[i].nome;
+    }
+    return '';
+  }
 
   function perfilPorId(id) {
     for (let i = 0; i < PERFIS.length; i++) {
@@ -287,6 +349,97 @@
     return faixas[faixas.length - 1][0];
   }
 
+  function tem(obj, chave) {
+    return !!obj && typeof obj === 'object' && Object.prototype.hasOwnProperty.call(obj, chave);
+  }
+
+  // ------------------------------------------------------------
+  // v3 — acesso seguro a window.RiscosV3 (classe, ordem, guarda, reserva).
+  // Sem RiscosV3: classe vazia, guarda pela regra antiga, reserva conta
+  // como hoje e o motor registra o faltante técnico "RiscosV3 não carregado".
+  // ------------------------------------------------------------
+  function riscosV3() {
+    const R = typeof window !== 'undefined' ? window.RiscosV3 : null;
+    if (R && typeof R.classeDoItem === 'function' && typeof R.ordemRisco === 'function' &&
+        typeof R.ehGuarda === 'function' && typeof R.elegibilidadeReserva === 'function') {
+      return R;
+    }
+    return null;
+  }
+
+  function classeItem(rv3, pl) {
+    if (!rv3) return '';
+    try { return str(rv3.classeDoItem(pl)); } catch (e) { return ''; }
+  }
+
+  function ordemClasse(rv3, classe) {
+    if (!rv3 || !classe) return 0;
+    try { return Number(rv3.ordemRisco(classe)) || 0; } catch (e) { return 0; }
+  }
+
+  function ordemItem(rv3, pl) {
+    return ordemClasse(rv3, classeItem(rv3, pl));
+  }
+
+  function guardaLegado(pl) {
+    // regra da v2: sem classificação -> guarda; senão pela lista
+    return !pl.classificacao_risco || CFG.riscos_guarda.indexOf(str(pl.classificacao_risco)) !== -1;
+  }
+
+  function ehGuardaItem(rv3, pl) {
+    if (!rv3) return guardaLegado(pl);
+    try { return !!rv3.ehGuarda(pl); } catch (e) { return guardaLegado(pl); }
+  }
+
+  function elegibilidadeItem(rv3, pl) {
+    const fora = { elegivel: false, legado: false, motivo: 'produto fora da matriz (não elegível)' };
+    if (!rv3) return pl.elegivel === false ? fora : { elegivel: true, legado: false, motivo: '' };
+    try {
+      const e = rv3.elegibilidadeReserva(pl) || {};
+      return { elegivel: e.elegivel !== false, legado: e.legado === true, motivo: str(e.motivo) };
+    } catch (err) {
+      return pl.elegivel === false ? fora : { elegivel: true, legado: false, motivo: '' };
+    }
+  }
+
+  function nomeInvestimento(pl) {
+    return str(pl.nome_produto_customizado).trim() || str(pl.tipo_produto_nome).trim() || ('Investimento #' + str(pl.id));
+  }
+
+  // Régua nota (0-100) -> '1'..'7' (RiscosV3.regua, com a régua do CONFIG como fallback)
+  function reguaInvestidor(nota) {
+    if (nota === null || nota === undefined || !isFinite(nota)) return null;
+    const R = typeof window !== 'undefined' ? window.RiscosV3 : null;
+    if (R && typeof R.regua === 'function') {
+      try {
+        const x = str(R.regua(nota));
+        if (nomePerfilInvestidor(x)) return x;
+      } catch (e) {
+        // segue com a régua local
+      }
+    }
+    const faixas = CFG.investidor.regua;
+    for (let i = 0; i < faixas.length; i++) {
+      if (nota < faixas[i][0]) return faixas[i][1];
+    }
+    return '7';
+  }
+
+  // Limite inferior da faixa da régua para o perfil id ('1' -> 0, '2' -> 15 ... '7' -> 95)
+  function limiarFaixa(id) {
+    const n = Number(id);
+    const faixas = CFG.investidor.regua;
+    if (!(n > 1)) return 0;
+    const f = faixas[Math.min(n - 2, faixas.length - 1)];
+    return f ? f[0] : 0;
+  }
+
+  function respostaNum(v) {
+    if (v === null || v === undefined || v === '') return null;
+    const n = Number(v);
+    return isFinite(n) ? n : null;
+  }
+
   // ------------------------------------------------------------
   // Contexto: 8.2 pessoas/renda, 8.3 despesas, 8.4 dívidas, 8.7 números de fluxo
   // Montado UMA vez por cálculo e compartilhado por todos os detectores.
@@ -307,7 +460,15 @@
     const declaracoesIR = arr(d.declaracoes_ir);
     const complementares = Object.assign({ custeio_moradia: '', decide_pelo_objetivo: '' }, d.complementares || {});
     const override = Object.assign({ perfil_selecionado: '', observacoes: '' }, d.override || {});
-    const investidor = Object.assign({ ajustado: '', justificativa_consultor: '' }, d.investidor || {});
+    const investidor = Object.assign({ ajustado: '', justificativa_consultor: '', termo_colhido: false }, d.investidor || {});
+    const investidor_ui = (d.investidor_ui && typeof d.investidor_ui === 'object') ? d.investidor_ui : {};
+    const selo_ui = Object.assign({ ajustado: '', justificativa_consultor: '' }, d.selo_ui || {});
+    let suitability_v3 = d.suitability_v3 === undefined ? null : d.suitability_v3;
+    if (typeof suitability_v3 === 'string') {
+      try { suitability_v3 = JSON.parse(suitability_v3); } catch (e) { suitability_v3 = null; }
+    }
+    if (!suitability_v3 || typeof suitability_v3 !== 'object') suitability_v3 = null;
+    const rv3 = riscosV3();
     const referencia = parseDataLocal(d.referencia) || new Date();
 
     const faltantesBase = [];     // renda + classificação das despesas (bloqueiam as duas camadas)
@@ -456,8 +617,8 @@
     }, 0);
     const compromisso_de_guardar = renda > 0 && aportes_mensais >= CFG.piso_compromisso * renda;
     function guarda(pl) {
-      // sem classificação -> tratar como guarda, não inventar investimento
-      return !pl.classificacao_risco || CFG.riscos_guarda.indexOf(str(pl.classificacao_risco)) !== -1;
+      // v3: por ordem do degrau (RiscosV3.ehGuarda) — sem classe -> guarda, não inventar investimento
+      return ehGuardaItem(rv3, pl);
     }
     function aporteRecorrente(pl) {
       return num(pl.aporte_valor) > 0 && (str(pl.aporte_frequencia) || 'NENHUM') !== 'NENHUM';
@@ -488,7 +649,37 @@
     function ehReserva(pl) {
       return typeof pl.reserva_emergencia === 'boolean' ? pl.reserva_emergencia : str(pl.finalidade) === 'RESERVA_EMERGENCIA';
     }
-    const reserva_atual = liquidos.filter(ehReserva).reduce(function (s, pl) { return s + num(pl.valor_atual); }, 0);
+    // v3: só conta item marcado como reserva E elegível (RiscosV3.elegibilidadeReserva).
+    // legado (classe/liquidez não informada) conta como hoje e gera pendência.
+    const reserva_desconsiderada = [];
+    const reserva_legado = [];
+    const faltantesInvestimentos = [];
+    if (!rv3) faltantesInvestimentos.push(FALTANTE_RISCOS_V3);
+    let reserva_atual = 0;
+    liquidos.forEach(function (pl) {
+      if (!ehReserva(pl)) return;
+      const v = num(pl.valor_atual);
+      const eleg = elegibilidadeItem(rv3, pl);
+      const nome = nomeInvestimento(pl);
+      if (!eleg.elegivel) {
+        if (v > 0) reserva_desconsiderada.push({ nome: nome, motivo: eleg.motivo, valor: r2(v) });
+        return;
+      }
+      reserva_atual += v;
+      if (eleg.legado && v > 0) {
+        reserva_legado.push({ nome: nome, motivo: eleg.motivo });
+        faltantesInvestimentos.push('Confirmar ' + eleg.motivo + ' de «' + nome + '» (conta como reserva até lá)');
+      }
+    });
+    liquidos.forEach(function (pl) {
+      if (!(pl.revisao_item === true && str(pl.classe_risco_origem) !== 'item')) return;
+      const nome = nomeInvestimento(pl);
+      if (!classeItem(rv3, pl)) {
+        faltantesInvestimentos.push('Classificar o risco de «' + nome + '» (produto genérico)');
+      } else {
+        faltantesInvestimentos.push('Revisar a classe de risco de «' + nome + '» no item (o risco é do papel)');
+      }
+    });
     const protecao_mensal = protecao.reduce(function (s, p) {
       return s + (str(p.periodicidade) === 'anual' ? num(p.custo) / 12 : num(p.custo));
     }, 0);
@@ -548,6 +739,13 @@
         declaracao_coerente: declaracao_coerente
       },
       reserva_atual: reserva_atual,
+      reserva_desconsiderada: reserva_desconsiderada,
+      reserva_legado: reserva_legado,
+      faltantes_investimentos: unicos(faltantesInvestimentos),
+      rv3: rv3,
+      investidor_ui: investidor_ui,
+      selo_ui: selo_ui,
+      suitability_v3: suitability_v3,
       protecao_mensal: protecao_mensal,
       aperf_mensal: aperf_mensal,
       idade_titular: idade_titular,
@@ -864,7 +1062,9 @@
       nome: 'Perfil de investidor',
       camada: 'investidor',
       detectar: function () {
-        return { ativo: false, evidencias: ['não definido nesta versão'], faltantes: [], extras: {} };
+        // v3: o perfil de investidor depende da matriz e da camada de dívida; é calculado
+        // depois delas em montarCamadaInvestidor e gravado de volta em resultados.investidor
+        return { ativo: false, evidencias: ['calculado depois da matriz e da camada de dívida'], faltantes: [], extras: {} };
       }
     }
   ];
@@ -1208,6 +1408,578 @@
   }
 
   // ------------------------------------------------------------
+  // v3 — Selo de adequação da reserva (Parte 4). Só rótulo + override:
+  // não realimenta a posição R nem as travas. Análise só no JSON.
+  // ------------------------------------------------------------
+  function montarSeloReserva(ctx, matriz) {
+    const rv3 = ctx.rv3;
+    const alvo = num(matriz.alvo_reserva);
+    const R = matriz.por_posicao && matriz.por_posicao.reserva ? str(matriz.por_posicao.reserva.valor) : '?';
+    const reserva = ctx.reserva_atual;
+    let exposicao = 0;
+    const expostos = [];
+    ctx.liquidos.forEach(function (pl) {
+      const v = num(pl.valor_atual);
+      if (v <= 0) return;
+      const classe = classeItem(rv3, pl);
+      if (ordemClasse(rv3, classe) >= 4) {
+        exposicao += v;
+        expostos.push({ nome: nomeInvestimento(pl), classe: classe, valor: r2(v) });
+      }
+    });
+    const limite = CFG.investidor.selo_relevancia_exposicao * alvo;
+    const faltantes = [];
+    let calculado = null;
+    if (!rv3) {
+      faltantes.push('Selo da reserva: ' + FALTANTE_RISCOS_V3);
+    } else if (alvo <= 0 || R === '?') {
+      faltantes.push('Selo da reserva: alvo da reserva incalculável');
+    } else if (reserva >= alvo) {
+      calculado = 'adequada';
+    } else if (exposicao > limite) {
+      calculado = 'inadequada';
+    } else {
+      calculado = 'em_formacao';
+    }
+    const ajustadoBruto = str(ctx.selo_ui.ajustado).trim();
+    const ajustado = tem(ROTULOS_SELO, ajustadoBruto) ? ajustadoBruto : '';
+    return {
+      calculado: calculado,
+      rotulo: calculado ? ROTULOS_SELO[calculado] : null,
+      ajustado: ajustado,
+      justificativa_consultor: str(ctx.selo_ui.justificativa_consultor),
+      vigente: ajustado || calculado || null,
+      analise: {
+        alvo: r2(alvo),
+        reserva_valida: r2(reserva),
+        falta: r2(Math.max(0, alvo - reserva)),
+        exposicao_acima_do_baixo: r2(exposicao),
+        limite_relevancia: r2(limite),
+        itens_desconsiderados: ctx.reserva_desconsiderada.slice(),
+        itens_expostos: expostos
+      },
+      faltantes: faltantes
+    };
+  }
+
+  // ------------------------------------------------------------
+  // v3 — Perfil de investidor por pessoa (Partes 3 e 5)
+  // Roda DEPOIS da matriz e da camada de dívida. Bloco B e travas são do
+  // domicílio e leem o perfil financeiro VIGENTE. Dado ausente: nenhuma
+  // trava daquele tipo + faltante (nunca inventar trava).
+  // ------------------------------------------------------------
+  const ROTULO_SUBTIPO_DIVIDA = { '2C': 'Perfil 2 não tratada', '2B': 'Perfil 2 readequação', '2A': 'Perfil 2 adequada' };
+
+  function linhaMemoria(rotulo, valor) {
+    let r = str(rotulo);
+    while (r.length < 24) r += '.';
+    return r + ' ' + valor;
+  }
+
+  function padDireita(s, n) {
+    let x = str(s);
+    while (x.length < n) x += ' ';
+    return x;
+  }
+
+  function valorNotaMemoria(nota, fracao) {
+    if (nota === null || nota === undefined) return '— (' + fracao + ')';
+    return Math.round(nota) + '/100 → ' + padDireita(nomePerfilInvestidor(reguaInvestidor(nota)), 17) + ' (' + fracao + ')';
+  }
+
+  function nomeMaiusculo(id) {
+    return nomePerfilInvestidor(id).toUpperCase();
+  }
+
+  function textoLimitante(x) {
+    switch (x.tipo) {
+      case 'T1': return 'trava T1 — sem reserva imediata';
+      case 'T5': return 'trava T5 — ' + (x.variante === 'P2'
+        ? 'dívidas pagáveis: formar a reserva imediata antes de acelerar a quitação'
+        : 'dívidas impagáveis sem capacidade de poupar');
+      case 'T2': return 'trava T2 — reserva de emergência incompleta';
+      case 'B3': return 'teto B3 — necessidade prevista de recursos em até 2 anos';
+      case 'A1': return 'teto A1 — ' + x.texto;
+      case 'A2': return 'teto A2 — ' + x.texto;
+      default: return 'nota ' + x.tipo + ' — ' + (NOME_BLOCO_NOTA[x.tipo] || '');
+    }
+  }
+
+  function textoDestrava(x, nivel) {
+    const alvo = nomePerfilInvestidor(nivel);
+    switch (x.tipo) {
+      case 'T1': return 'ao formar a reserva imediata (sair de R0), sobe para ' + alvo;
+      case 'T2': return 'ao atingir R4, sobe para ' + alvo;
+      case 'T5': return x.variante === 'P2'
+        ? 'ao sair da camada de dívidas pagáveis, sobe para ' + alvo
+        : 'ao conseguir poupar ao menos ' + fmtPct(CFG.piso_sobra, 0) + ' da renda, sobe para ' + alvo;
+      case 'A1': return 'com horizonte de retirada mais longo (A1), sobe para ' + alvo;
+      case 'A2': return 'se a finalidade do dinheiro mudar (A2), sobe para ' + alvo;
+      case 'B3': return 'passada a necessidade prevista em até 2 anos (B3), sobe para ' + alvo;
+      default: return 'com ' + (NOME_BLOCO_NOTA[x.tipo] || '') + ' ≥ ' + limiarFaixa(nivel) + ', sobe para ' + alvo;
+    }
+  }
+
+  // C2: nível de conhecimento que o patrimônio atual comprova (0-4)
+  function nivelComprovadoC2(rv3, itens) {
+    let nivel = 0;
+    itens.forEach(function (pl) {
+      const n = str(pl.tipo_produto_nome);
+      let nv;
+      if (/a[çc][õo]es|fii|fundo imobili|etf|bdr/i.test(n)) nv = 4;
+      else if (/fundo|pgbl|vgbl|previd|coe/i.test(n)) nv = 3;
+      else if (/tesouro/i.test(n)) nv = 2;
+      else if (/cdb|rdb|lc[ai]?\b|lci|lca|lh|lcd|poupan|conta/i.test(n)) nv = 1;
+      else {
+        const o = ordemItem(rv3, pl);
+        nv = o >= 6 ? 4 : (o >= 4 ? 3 : (o >= 1 ? 1 : 0));
+      }
+      if (nv > nivel) nivel = nv;
+    });
+    return nivel;
+  }
+
+  function montarDomicilioInvestidor(ctx, camada_divida, camada_fluxo, matriz, perfilFinVigente, perfilFinCalculado) {
+    const IC = CFG.investidor;
+    const sv3 = ctx.suitability_v3 || {};
+    const sv3dom = (sv3.domicilio && typeof sv3.domicilio === 'object') ? sv3.domicilio : {};
+    const pos = matriz.por_posicao || {};
+    const faltantes = [];   // tornam o perfil de investidor incalculável
+    const pendencias = [];  // não bloqueiam
+    const notas = [];       // notas de memória do domicílio
+    if (!ctx.rv3) faltantes.push(FALTANTE_RISCOS_V3);
+
+    // B4.1 reserva
+    const R = pos.reserva ? str(pos.reserva.valor) : '?';
+    const reserva = { posicao: R, pontos: tem(IC.b4_reserva, R) ? IC.b4_reserva[R] : null };
+    reserva.rotulo = R + '=' + (reserva.pontos === null ? '—' : reserva.pontos);
+    if (reserva.pontos === null) faltantes.push('Capacidade: posição R da reserva incalculável');
+
+    // B4.2 dívida (pelo perfil financeiro VIGENTE)
+    const divida = { perfil: perfilFinVigente || null, subtipo: camada_divida ? (camada_divida.subtipo || null) : null, pontos: null, rotulo: '' };
+    if (perfilFinVigente === 'dividas_impagaveis') {
+      divida.pontos = IC.b4_divida.perfil_1;
+      divida.rotulo = 'Perfil 1';
+    } else if (perfilFinVigente === 'dividas_pagaveis') {
+      const sub = str(divida.subtipo);
+      if (camada_divida && camada_divida.status === 'perfil_2' && tem(ROTULO_SUBTIPO_DIVIDA, sub)) {
+        divida.pontos = IC.b4_divida[sub];
+        divida.rotulo = ROTULO_SUBTIPO_DIVIDA[sub];
+      } else {
+        divida.pontos = IC.b4_divida['2C'];
+        divida.rotulo = 'Perfil 2 não tratada';
+        notas.push('subtipo não calculado; considerado não tratada');
+      }
+    } else if (perfilFinVigente && perfilPorId(perfilFinVigente)) {
+      divida.pontos = IC.b4_divida.sem_dividas_relevantes;
+      divida.rotulo = 'sem dívida';
+    } else {
+      faltantes.push('Capacidade: situação de dívida incalculável');
+    }
+    divida.rotulo_memoria = (divida.rotulo || 'dívida') + '=' + (divida.pontos === null ? '—' : divida.pontos);
+
+    // B4.3 fonte
+    const F = pos.fonte ? str(pos.fonte.valor) : '?';
+    const fonte = { posicao: F, pontos: tem(IC.b4_fonte, F) ? IC.b4_fonte[F] : null };
+    fonte.rotulo = F + '=' + (fonte.pontos === null ? '—' : fonte.pontos);
+    if (fonte.pontos === null) faltantes.push('Capacidade: fonte da renda (F) incalculável');
+
+    // B4.4 poupança
+    const P = pos.poupanca ? str(pos.poupanca.valor) : '?';
+    const poupanca = { posicao: P, pontos: tem(IC.b4_poupanca, P) ? IC.b4_poupanca[P] : null };
+    poupanca.rotulo = P + '=' + (poupanca.pontos === null ? '—' : poupanca.pontos);
+    if (poupanca.pontos === null) faltantes.push('Capacidade: poder de poupança (P) incalculável');
+
+    // B4.5 colchão patrimonial (todos os investimentos ÷ renda mensal do domicílio)
+    const totalLiquido = ctx.liquidos.reduce(function (s, pl) { return s + num(pl.valor_atual); }, 0);
+    const colchao = { patrimonio_liquido: r2(totalLiquido), renda_mensal: r2(ctx.renda_media), rendas: null, pontos: null, rotulo: '' };
+    if (ctx.renda_media > 0) {
+      const rendas = totalLiquido / ctx.renda_media;
+      colchao.rendas = r2(rendas);
+      colchao.pontos = 0;
+      const faixas = IC.colchao_faixas;
+      for (let i = 0; i < faixas.length; i++) {
+        if (rendas >= faixas[i][0]) { colchao.pontos = faixas[i][1]; break; }
+      }
+    } else {
+      faltantes.push('Capacidade: renda mensal do domicílio não informada (colchão patrimonial)');
+    }
+    colchao.rotulo = 'colchão=' + (colchao.pontos === null ? '—' : colchao.pontos);
+
+    const partes = [reserva, divida, fonte, poupanca, colchao];
+    const completo = partes.every(function (p) { return p.pontos !== null; });
+    const somaB = completo ? partes.reduce(function (s, p) { return s + p.pontos; }, 0) : null;
+    const nota_B = completo ? somaB * 5 : null;
+
+    // B3 necessidade futura
+    const B3 = str(sv3dom.B3);
+    let tetoB3 = null;
+    if (B3 === 'ate_2_anos') {
+      tetoB3 = { tipo: 'B3', nivel: '3', texto: 'necessidade prevista de recursos em até 2 anos' };
+    } else if (B3 === 'entre_2_e_5_anos') {
+      notas.push('necessidade entre 2 e 5 anos: vincular pote');
+    } else if (B3 !== 'nao_prevista') {
+      faltantes.push('Teste de perfil: responder B3 (necessidade futura de recursos)');
+    }
+
+    // B1/B2 confirmação (pendência, não bloqueia)
+    const conf = (sv3dom.confirmacao_b1b2 && typeof sv3dom.confirmacao_b1b2 === 'object') ? sv3dom.confirmacao_b1b2 : {};
+    if (conf.confirmado !== true) {
+      pendencias.push('Teste de perfil: cliente ainda não confirmou receitas e patrimônio (B1/B2)');
+    } else if (Math.abs(num(conf.renda_mensal) - ctx.renda_media) > 1 || Math.abs(num(conf.patrimonio_liquido) - totalLiquido) > 1) {
+      const dt = parseDataLocal(conf.em);
+      pendencias.push('dados de receitas/patrimônio mudaram desde a confirmação de ' + (dt ? dt.toLocaleDateString('pt-BR') : 'data não registrada'));
+    }
+
+    // Travas (domicílio)
+    const travas = [];
+    if (R === 'R0') {
+      travas.push({ tipo: 'T1', nivel: '1', texto: 'sem reserva imediata', detalhe: 'reserva em R0' });
+    } else if (R === 'R1' || R === 'R2' || R === 'R3') {
+      travas.push({ tipo: 'T2', nivel: '3', texto: 'reserva de emergência incompleta (' + R + ')', detalhe: 'reserva em ' + R });
+    }
+    if (perfilFinVigente === 'dividas_pagaveis') {
+      travas.push({ tipo: 'T5', variante: 'P2', nivel: '1', texto: 'dívidas pagáveis: formar a reserva imediata antes de acelerar a quitação', detalhe: 'dívidas pagáveis' });
+    } else if (perfilFinVigente === 'dividas_impagaveis') {
+      const sobra = (camada_fluxo && camada_fluxo.numeros) ? num(camada_fluxo.numeros.sobra_real) : ctx.sobra_real;
+      if (sobra >= CFG.piso_sobra * ctx.renda) {
+        notas.push('Perfil 1 com capacidade de poupar: perfil normal — o dinheiro acumulado é o pote do acordo (prazo curto e incerto); a trava de horizonte T4 mantém cada pote nos degraus baixos');
+      } else {
+        travas.push({ tipo: 'T5', variante: 'P1', nivel: '1', texto: 'dívidas impagáveis sem capacidade de poupar', detalhe: 'dívidas impagáveis sem capacidade de poupar' });
+      }
+    }
+
+    const divergente = !!perfilFinVigente && perfilFinVigente !== perfilFinCalculado;
+    if (divergente) {
+      notas.push('trava aplicada a partir do perfil ajustado pelo consultor (calculado era ' +
+        (perfilFinCalculado ? rotuloPerfil(perfilFinCalculado) : 'incalculável') + ')');
+    }
+
+    return {
+      nota_B: nota_B,
+      B4: { reserva: reserva, divida: divida, fonte: fonte, poupanca: poupanca, colchao: colchao, soma: somaB, max: 20 },
+      B3: B3,
+      teto_B3: tetoB3,
+      confirmacao_b1b2: {
+        confirmado: conf.confirmado === true,
+        em: conf.em || null
+      },
+      travas: travas,
+      perfil_financeiro_base: { vigente: perfilFinVigente || null, calculado: perfilFinCalculado || null, divergente: divergente },
+      notas: notas,
+      faltantes: unicos(faltantes),
+      pendencias: unicos(pendencias)
+    };
+  }
+
+  function montarPessoaInvestidor(nome, indice, ctx, dom, titularNome) {
+    const rv3 = ctx.rv3;
+    const sv3 = ctx.suitability_v3 || {};
+    const sv3pessoas = (sv3.pessoas && typeof sv3.pessoas === 'object') ? sv3.pessoas : {};
+    const r = (tem(sv3pessoas, nome) && sv3pessoas[nome] && typeof sv3pessoas[nome] === 'object') ? sv3pessoas[nome] : {};
+
+    // ---- Respostas e faltantes ----
+    const faltaCod = [];
+    const A1 = str(r.A1);
+    const A2 = str(r.A2);
+    if (!tem(TETO_A1, A1)) faltaCod.push('A1');
+    if (!tem(TETO_A2, A2)) faltaCod.push('A2');
+    const A = {};
+    CHAVES_A.forEach(function (k) {
+      A[k] = respostaNum(r[k]);
+      if (A[k] === null) faltaCod.push(k);
+    });
+    const C = {};
+    CHAVES_C.forEach(function (k) {
+      C[k] = respostaNum(r[k]);
+      if (C[k] === null) faltaCod.push(k);
+    });
+    const c6 = arr(r.C6);
+    const c6Resp = [];
+    let c6Falta = 0;
+    let acertos = 0;
+    for (let i = 0; i < GABARITO_C6.length; i++) {
+      const v = c6[i];
+      if (v !== true && v !== false) {
+        c6Falta++;
+        c6Resp.push(null);
+      } else {
+        c6Resp.push(v);
+        if (v === GABARITO_C6[i]) acertos++;
+      }
+    }
+    if (c6Falta) faltaCod.push('C6 (' + c6Falta + (c6Falta === 1 ? ' afirmação' : ' afirmações') + ')');
+    const faltantes = faltaCod.length ? ['responder ' + faltaCod.join(', ')] : [];
+
+    // ---- Itens da pessoa (item sem donos conta para o titular) ----
+    const ehTitular = !!titularNome && nome === titularNome;
+    const itens = ctx.liquidos.filter(function (pl) {
+      if (num(pl.valor_atual) <= 0) return false;
+      const donos = arr(pl.donos).map(function (dn) { return str(dn).trim(); }).filter(Boolean);
+      return donos.length ? donos.indexOf(nome) !== -1 : ehTitular;
+    });
+
+    // ---- Verificações cruzadas ----
+    const verificacoes = [];
+    let A6ef = A.A6;
+    if (A.A6 !== null && A.A6 >= 3 && rv3) {
+      const temOscilante = itens.some(function (pl) { return ordemItem(rv3, pl) >= CFG.investidor.a6_classe_min_oscilante; });
+      if (!temOscilante) {
+        A6ef = 2;
+        verificacoes.push('A6 declarado ' + A.A6 + ', sem ativo oscilante no patrimônio de ' + nome + ': vale 2');
+      }
+    }
+    const comprovado = nivelComprovadoC2(rv3, itens);
+    let C2ef = C.C2;
+    if (C.C2 !== null && rv3 && C.C2 > comprovado) {
+      C2ef = comprovado;
+      verificacoes.push('C2 declarado ' + C.C2 + ', patrimônio atual comprova ' + comprovado);
+    }
+
+    // ---- Notas ----
+    const temA = CHAVES_A.every(function (k) { return A[k] !== null; });
+    const somaA = temA ? (A.A3 + A.A4 + A.A5 + A6ef + A.A7 + A.A8 + A.A9 + A.A10) : null;
+    const notaA = temA ? somaA * 100 / 32 : null;
+    const notaC6 = acertos / 2;
+    const temC = CHAVES_C.every(function (k) { return C[k] !== null; }) && c6Falta === 0;
+    const somaC = temC ? (C.C1 + C2ef + C.C3 + C.C4 + C.C5 + notaC6) : null;
+    const notaC = temC ? somaC * 100 / 24 : null;
+    const notaB = dom.nota_B;
+
+    // ---- Tetos (pessoa + B3 do domicílio) e travas (domicílio) ----
+    const tetos = [];
+    if (tem(TETO_A1, A1) && TETO_A1[A1]) tetos.push({ tipo: 'A1', nivel: TETO_A1[A1], texto: 'horizonte de retirada: ' + TEXTO_A1[A1] });
+    if (tem(TETO_A2, A2) && TETO_A2[A2]) tetos.push({ tipo: 'A2', nivel: TETO_A2[A2], texto: 'finalidade: ' + TEXTO_A2[A2] });
+    if (dom.teto_B3) tetos.push(Object.assign({}, dom.teto_B3));
+    const travas = dom.travas.map(function (t) { return Object.assign({}, t); });
+
+    const calculavel = !faltaCod.length && !dom.faltantes.length && notaA !== null && notaB !== null && notaC !== null;
+
+    let bruto = null;
+    let tetado = null;
+    let final = null;
+    let limitante = { tipos: [], texto: '' };
+    let destrava = '';
+    let destravaNivel = null;
+    if (calculavel) {
+      bruto = reguaInvestidor(Math.min(notaA, notaB, notaC));
+      tetado = bruto;
+      tetos.forEach(function (t) { if (Number(t.nivel) < Number(tetado)) tetado = t.nivel; });
+      final = tetado;
+      travas.forEach(function (t) { if (Number(t.nivel) < Number(final)) final = t.nivel; });
+
+      const restricoes = [];
+      travas.forEach(function (t) { restricoes.push({ tipo: t.tipo, nivel: t.nivel, variante: t.variante || '', texto: t.texto }); });
+      tetos.forEach(function (t) { restricoes.push({ tipo: t.tipo, nivel: t.nivel, variante: '', texto: t.texto }); });
+      restricoes.push({ tipo: 'C', nivel: reguaInvestidor(notaC), variante: '', texto: '' });
+      restricoes.push({ tipo: 'B', nivel: reguaInvestidor(notaB), variante: '', texto: '' });
+      restricoes.push({ tipo: 'A', nivel: reguaInvestidor(notaA), variante: '', texto: '' });
+
+      const empatados = restricoes
+        .filter(function (x) { return Number(x.nivel) === Number(final); })
+        .sort(function (a, b) { return PRIORIDADE_LIMITANTE.indexOf(a.tipo) - PRIORIDADE_LIMITANTE.indexOf(b.tipo); });
+      const restantes = restricoes.filter(function (x) { return Number(x.nivel) !== Number(final); });
+      destravaNivel = '7';
+      restantes.forEach(function (x) { if (Number(x.nivel) < Number(destravaNivel)) destravaNivel = x.nivel; });
+      limitante = {
+        tipos: empatados.map(function (x) { return x.tipo; }),
+        texto: empatados.map(textoLimitante).join(' e ')
+      };
+      destrava = (Number(destravaNivel) === Number(final) || !empatados.length) ? '—' : textoDestrava(empatados[0], destravaNivel);
+    }
+
+    // ---- Memória de cálculo ----
+    const linhas = [];
+    const fracA = 'A3-A10: ' + (somaA === null ? 'faltam respostas' : fmtNum(somaA, 1) + '/32');
+    const fracC = 'C1-C6: ' + (somaC === null ? 'faltam respostas' : fmtNum(somaC, 1) + '/24');
+    const b4 = dom.B4;
+    const fracB = [b4.reserva.rotulo, b4.divida.rotulo_memoria, b4.fonte.rotulo, b4.poupanca.rotulo, b4.colchao.rotulo].join(' · ');
+    linhas.push(linhaMemoria('Preferências de risco', valorNotaMemoria(notaA, fracA)));
+    linhas.push(linhaMemoria('Conhecimento', valorNotaMemoria(notaC, fracC)));
+    linhas.push(linhaMemoria('Capacidade', valorNotaMemoria(notaB, fracB)));
+    linhas.push(linhaMemoria('Teto de liquidez', !tem(TETO_A1, A1) ? '— (responder A1)'
+      : (TETO_A1[A1] ? 'teto ' + nomePerfilInvestidor(TETO_A1[A1]) + ' (A1: ' + TEXTO_A1[A1] + ')' : 'sem teto')));
+    linhas.push(linhaMemoria('Teto de finalidade', !tem(TETO_A2, A2) ? '— (responder A2)'
+      : (TETO_A2[A2] ? 'teto ' + nomePerfilInvestidor(TETO_A2[A2]) + ' (A2: ' + TEXTO_A2[A2] + ')' : 'sem teto')));
+    let necessidade;
+    if (dom.B3 === 'ate_2_anos') necessidade = 'teto ' + nomePerfilInvestidor('3') + ' (B3: ' + TEXTO_B3.ate_2_anos + ')';
+    else if (dom.B3 === 'entre_2_e_5_anos') necessidade = 'sem teto (B3: ' + TEXTO_B3.entre_2_e_5_anos + ' — vincular pote)';
+    else if (dom.B3 === 'nao_prevista') necessidade = 'sem efeito';
+    else necessidade = '— (responder B3)';
+    linhas.push(linhaMemoria('Necessidade futura', necessidade));
+    linhas.push(SEPARADOR_MEMORIA);
+    linhas.push('Menor das notas → ' + (calculavel ? nomePerfilInvestidor(bruto) : '—'));
+    if (calculavel) {
+      tetos.forEach(function (t) {
+        if (Number(t.nivel) < Number(bruto)) linhas.push('Teto ' + t.tipo + ' (' + t.texto + ') → teto ' + nomeMaiusculo(t.nivel));
+      });
+    }
+    verificacoes.forEach(function (v) { linhas.push(v); });
+    if (!c6Falta) linhas.push('C6: ' + acertos + '/8 acertos = ' + fmtNum(notaC6, 1));
+    travas.forEach(function (t) {
+      if (!calculavel || Number(t.nivel) <= Number(tetado)) {
+        linhas.push('Trava ' + t.tipo + ' (' + t.detalhe + ') → teto ' + nomeMaiusculo(t.nivel));
+      }
+    });
+    dom.notas.forEach(function (n) { linhas.push('Nota: ' + n); });
+    if (calculavel) {
+      linhas.push('PERFIL FINAL: ' + nomeMaiusculo(final));
+      linhas.push('LIMITANTE: ' + limitante.texto);
+      linhas.push('DESTRAVA: ' + destrava);
+    } else {
+      linhas.push('PERFIL FINAL: INCALCULÁVEL');
+      linhas.push('FALTAM: ' + faltantes.concat(dom.faltantes).join('; '));
+    }
+
+    // ---- Ajuste do consultor (lido do card; 1ª pessoa aceita a chave antiga "investidor") ----
+    let ui = tem(ctx.investidor_ui, nome) ? ctx.investidor_ui[nome] : null;
+    if (!ui && indice === 0) ui = ctx.investidor;
+    ui = ui || {};
+    const ajustadoBruto = str(ui.ajustado).trim();
+    const ajustado = nomePerfilInvestidor(ajustadoBruto) ? ajustadoBruto : '';
+    const calculado = calculavel ? final : null;
+
+    const respostas = { A1: A1, A2: A2 };
+    CHAVES_A.forEach(function (k) { respostas[k] = A[k]; });
+    CHAVES_C.forEach(function (k) { respostas[k] = C[k]; });
+    respostas.C6 = c6Resp;
+    respostas.A6_efetivo = A6ef;
+    respostas.C2_efetivo = C2ef;
+    respostas.C2_comprovado = comprovado;
+    respostas.C6_acertos = c6Falta ? null : acertos;
+
+    return {
+      calculado: calculado,
+      rotulo: calculado ? nomePerfilInvestidor(calculado) : 'Incalculável',
+      notas: {
+        A: { soma: somaA, max: 32, valor: r2(notaA) },
+        B: { soma: dom.B4.soma, max: 20, valor: r2(notaB) },
+        C: { soma: somaC, max: 24, valor: r2(notaC) }
+      },
+      respostas: respostas,
+      tetos: tetos,
+      travas: travas,
+      verificacoes: verificacoes,
+      perfil_bruto: bruto,
+      perfil_tetado: tetado,
+      limitante: limitante,
+      destrava: destrava,
+      destrava_nivel: calculavel && destrava !== '—' ? destravaNivel : null,
+      memoria_calculo: { linhas: linhas },
+      ajustado: ajustado,
+      justificativa_consultor: str(ui.justificativa_consultor),
+      desenquadramento: { termo_colhido: ui.termo_colhido === true },
+      vigente: ajustado || calculado || null,
+      faltantes: faltantes
+    };
+  }
+
+  // Devolve no formato dos detectores: { ativo, evidencias, faltantes, extras: { perfil_investidor, status, resumo } }
+  function montarCamadaInvestidor(ctx, camada_divida, camada_fluxo, matriz, perfilFinVigente, perfilFinCalculado) {
+    // Pessoas: titular (se preenchido) + donos dos investimentos, sem repetição, titular primeiro e os demais em ordem alfabética
+    const titularNome = str(ctx.titular && ctx.titular.nome).trim();
+    const outros = [];
+    ctx.liquidos.forEach(function (pl) {
+      arr(pl.donos).forEach(function (dn) {
+        const n = str(dn).trim();
+        if (n && n !== titularNome && outros.indexOf(n) === -1) outros.push(n);
+      });
+    });
+    outros.sort(function (a, b) { return a.localeCompare(b, 'pt-BR'); });
+    const pessoas = (titularNome ? [titularNome] : []).concat(outros);
+
+    const dom = montarDomicilioInvestidor(ctx, camada_divida, camada_fluxo, matriz, perfilFinVigente, perfilFinCalculado);
+    const por_pessoa = {};
+    pessoas.forEach(function (nome, i) {
+      por_pessoa[nome] = montarPessoaInvestidor(nome, i, ctx, dom, titularNome);
+    });
+
+    const primeira = pessoas.length ? por_pessoa[pessoas[0]] : null;
+    const ajustadoLegado = str(ctx.investidor.ajustado).trim();
+    const perfil_investidor = {
+      versao: 3,
+      pessoas_ordem: pessoas,
+      domicilio: {
+        nota_B: dom.nota_B,
+        B4: dom.B4,
+        B3: dom.B3,
+        teto_B3: dom.teto_B3,
+        confirmacao_b1b2: dom.confirmacao_b1b2,
+        travas: dom.travas,
+        perfil_financeiro_base: dom.perfil_financeiro_base,
+        notas: dom.notas,
+        faltantes: dom.faltantes,
+        pendencias: dom.pendencias
+      },
+      por_pessoa: por_pessoa,
+      // chaves de topo (compatibilidade) espelham a PRIMEIRA pessoa de pessoas_ordem
+      calculado: primeira ? primeira.calculado : null,
+      ajustado: primeira ? primeira.ajustado : ajustadoLegado,
+      justificativa_consultor: primeira ? primeira.justificativa_consultor : str(ctx.investidor.justificativa_consultor),
+      desenquadramento: primeira ? primeira.desenquadramento : { termo_colhido: ctx.investidor.termo_colhido === true },
+      vigente: primeira ? primeira.vigente : (ajustadoLegado || null),
+      notas: primeira ? primeira.notas : null,
+      limitante: primeira ? primeira.limitante : { tipos: [], texto: '' },
+      destrava: primeira ? primeira.destrava : '',
+      memoria_calculo: primeira ? primeira.memoria_calculo : { linhas: [] }
+    };
+
+    let status;
+    if (!pessoas.length) status = 'sem_pessoas';
+    else if (pessoas.some(function (n) { return por_pessoa[n].calculado; })) status = 'calculado';
+    else status = 'incalculavel';
+
+    const evidencias = pessoas.map(function (n) {
+      const p = por_pessoa[n];
+      return n + ': ' + (p.calculado ? nomePerfilInvestidor(p.calculado) + ' — limitante: ' + p.limitante.texto : 'incalculável');
+    });
+    const resumo = pessoas.length
+      ? evidencias.join(' · ')
+      : 'Sem pessoas: informe o nome do titular ou os donos dos investimentos';
+
+    const faltantes = [];
+    pessoas.forEach(function (n) {
+      por_pessoa[n].faltantes.forEach(function (f) { faltantes.push('Perfil de investidor — ' + n + ': ' + f); });
+    });
+    dom.faltantes.concat(dom.pendencias).forEach(function (f) { faltantes.push('Perfil de investidor — domicílio: ' + f); });
+
+    return {
+      ativo: status === 'calculado',
+      evidencias: pessoas.length ? evidencias : [resumo],
+      faltantes: faltantes,
+      extras: { perfil_investidor: perfil_investidor, status: status, resumo: resumo }
+    };
+  }
+
+  // Resultado mínimo quando o cálculo do investidor falha (não derruba o perfil financeiro)
+  function investidorComErro(ctx, erro) {
+    const msg = String(erro && erro.message ? erro.message : erro);
+    const ajustadoLegado = str(ctx.investidor.ajustado).trim();
+    const perfil_investidor = {
+      versao: 3,
+      pessoas_ordem: [],
+      domicilio: null,
+      por_pessoa: {},
+      calculado: null,
+      ajustado: ajustadoLegado,
+      justificativa_consultor: str(ctx.investidor.justificativa_consultor),
+      desenquadramento: { termo_colhido: ctx.investidor.termo_colhido === true },
+      vigente: ajustadoLegado || null,
+      notas: null,
+      limitante: { tipos: [], texto: '' },
+      destrava: '',
+      memoria_calculo: { linhas: [] },
+      erro: msg
+    };
+    return {
+      ativo: false,
+      evidencias: ['erro no cálculo do perfil de investidor'],
+      faltantes: [],
+      extras: { perfil_investidor: perfil_investidor, status: 'incalculavel', resumo: 'Erro no cálculo do perfil de investidor: ' + msg, erro: msg }
+    };
+  }
+
+  // ------------------------------------------------------------
   // Orquestrador — PURO (sem DOM, sem getters)
   // ------------------------------------------------------------
   function calcular(dados) {
@@ -1240,6 +2012,9 @@
         opcionalidade: ctx.opcionalidade,
         reserva_atual: r2(ctx.reserva_atual)
       },
+      // v3: itens marcados como reserva que não contam (inelegíveis) e os que contam com pendência (legado)
+      reserva_desconsiderada: ctx.reserva_desconsiderada,
+      reserva_legado: ctx.reserva_legado,
       amarras_p8: ctx.amarras_p8,
       marcadores: {
         micro_reserva: ctx.reserva_atual < CFG.micro_reserva_meses * (ctx.despesas_totais + ctx.parcelas_atual),
@@ -1285,6 +2060,26 @@
 
     const ajustado = str(ctx.override.perfil_selecionado);
     const rotulo = calculado ? rotuloPerfil(calculado) : ROTULO_INCALCULAVEL;
+    const perfilFinVigente = ajustado || calculado || null;
+
+    // v3: selo da reserva (só rótulo) e perfil de investidor — depois da matriz e da camada de dívida
+    let reserva_selo;
+    try {
+      reserva_selo = montarSeloReserva(ctx, matriz);
+    } catch (e) {
+      reserva_selo = {
+        calculado: null, rotulo: null, ajustado: '', justificativa_consultor: '', vigente: null, analise: null,
+        faltantes: ['Selo da reserva: erro no cálculo (' + String(e && e.message ? e.message : e) + ')']
+      };
+    }
+    let camadaInvestidor;
+    try {
+      camadaInvestidor = montarCamadaInvestidor(ctx, camada_divida, camada_fluxo, matriz, perfilFinVigente, calculado);
+    } catch (e) {
+      camadaInvestidor = investidorComErro(ctx, e);
+    }
+    resultados.investidor = camadaInvestidor;
+    const perfil_investidor = camadaInvestidor.extras.perfil_investidor;
 
     return {
       perfil_financeiro: {
@@ -1294,7 +2089,10 @@
         faltantes: faltantes,
         ajustado: ajustado,
         justificativa_consultor: str(ctx.override.observacoes),
-        vigente: ajustado || calculado || null,
+        vigente: perfilFinVigente,
+        // v3: pendências de classe/liquidez/revisão dos investimentos (não tornam o perfil incalculável)
+        faltantes_investimentos: ctx.faltantes_investimentos,
+        reserva_selo: reserva_selo,
         dados_complementares: {
           custeio_moradia: str(ctx.complementares.custeio_moradia),
           decide_pelo_objetivo: str(ctx.complementares.decide_pelo_objetivo)
@@ -1303,18 +2101,15 @@
           camada_divida: camada_divida,
           camada_fluxo: camada_fluxo,
           subjacente: subjacente,
-          camada_investidor: { status: 'nao_definido_nesta_versao' }
+          camada_investidor: { status: camadaInvestidor.extras.status, resumo: camadaInvestidor.extras.resumo }
         }
       },
-      perfil_investidor: {
-        calculado: null,
-        ajustado: str(ctx.investidor.ajustado),
-        justificativa_consultor: str(ctx.investidor.justificativa_consultor)
-      },
+      perfil_investidor: perfil_investidor,
       codigo_matriz: {
         codigo: matriz.codigo,
         por_posicao: matriz.por_posicao,
-        faltantes: matriz.faltantes
+        faltantes: matriz.faltantes,
+        alvo_reserva: matriz.alvo_reserva
       },
       versao_regras: VERSAO_REGRAS,
       calculado_em: new Date().toISOString()
@@ -1339,6 +2134,65 @@
       // getter indisponível ou com erro: segue com o padrão
     }
     return padrao;
+  }
+
+  function marcadoDom(id) {
+    const el = document.getElementById(id);
+    return !!(el && el.checked);
+  }
+
+  function copiaProfunda(obj) {
+    if (obj === null || obj === undefined) return null;
+    try {
+      return JSON.parse(JSON.stringify(obj));
+    } catch (e) {
+      return null;
+    }
+  }
+
+  // Blocos .pfa-inv-pessoa do card -> { nome: { ajustado, justificativa_consultor, termo_colhido } } (valores crus)
+  function lerBlocosInvestidor() {
+    const saida = {};
+    const card = document.getElementById(ID_CARD);
+    if (!card) return saida;
+    const blocos = card.querySelectorAll('.pfa-inv-pessoa');
+    for (let i = 0; i < blocos.length; i++) {
+      const bloco = blocos[i];
+      const nome = bloco.getAttribute('data-pessoa') || '';
+      const sel = bloco.querySelector('.pfa-inv-select');
+      const just = bloco.querySelector('.pfa-inv-just');
+      const termo = bloco.querySelector('.pfa-inv-termo-check');
+      saida[nome] = {
+        ajustado: sel ? str(sel.value) : '',
+        justificativa_consultor: just ? str(just.value) : '',
+        termo_colhido: !!(termo && termo.checked)
+      };
+    }
+    return saida;
+  }
+
+  // investidor_ui: ajustes por pessoa lidos do card; pessoas cujo bloco ainda não existe usam o salvo pendente
+  function coletarInvestidorUi() {
+    const blocos = lerBlocosInvestidor();
+    const ui = {};
+    Object.keys(blocos).forEach(function (nome) {
+      if (!nome) return; // bloco genérico (sem pessoas): vale a chave "investidor"
+      ui[nome] = {
+        ajustado: str(blocos[nome].ajustado).trim(),
+        justificativa_consultor: str(blocos[nome].justificativa_consultor).trim(),
+        termo_colhido: blocos[nome].termo_colhido === true
+      };
+    });
+    Object.keys(pendentesInvestidor).forEach(function (nome) {
+      if (tem(ui, nome)) return;
+      const p = pendentesInvestidor[nome] || {};
+      ui[nome] = {
+        ajustado: str(p.ajustado).trim(),
+        justificativa_consultor: str(p.justificativa_consultor).trim(),
+        termo_colhido: p.termo_colhido === true
+      };
+    });
+    return ui;
   }
 
   function coletarDados() {
@@ -1396,9 +2250,22 @@
         aporte_valor: num(pl.aporte_valor),
         aporte_frequencia: str(pl.aporte_frequencia) || 'NENHUM',
         donos: arr(pl.donos).slice(),
-        reserva_emergencia: typeof pl.reserva_emergencia === 'boolean' ? pl.reserva_emergencia : str(pl.finalidade) === 'RESERVA_EMERGENCIA'
+        reserva_emergencia: typeof pl.reserva_emergencia === 'boolean' ? pl.reserva_emergencia : str(pl.finalidade) === 'RESERVA_EMERGENCIA',
+        // v3: classe de 9 degraus, liquidez e elegibilidade (copiadas no item; ver RiscosV3.classeDoItem)
+        tipo_produto: pl.tipo_produto === undefined || pl.tipo_produto === '' ? null : pl.tipo_produto,
+        classe_risco: pl.classe_risco === undefined || pl.classe_risco === null || pl.classe_risco === '' ? null : str(pl.classe_risco),
+        classe_risco_origem: str(pl.classe_risco_origem),
+        classe_risco_justificativa: str(pl.classe_risco_justificativa),
+        liquidez: pl.liquidez === undefined || pl.liquidez === null || pl.liquidez === '' ? null : str(pl.liquidez),
+        elegivel: pl.elegivel !== false,
+        revisao_item: pl.revisao_item === true,
+        nome_produto_customizado: str(pl.nome_produto_customizado),
+        instituicao_nome: str(pl.instituicao_nome)
       };
     });
+
+    // v3: teste de perfil de investidor (cópia profunda — calcular continua puro)
+    const suitability_v3 = copiaProfunda(chamar('getSuitabilityV3Data', null));
 
     const dividas = arr(chamar('getDividasData', [])).map(function (x) {
       return {
@@ -1490,10 +2357,18 @@
         perfil_selecionado: str(perfilManual.perfil_selecionado),
         observacoes: valorDom('obs_perfil_financeiro')
       },
-      // chave extra (aditiva): ajuste manual do perfil de investidor, lido do card
+      // chave extra (aditiva): ajuste manual do perfil de investidor, lido do card (primeira pessoa)
       investidor: {
         ajustado: valorDom('pfa-investidor-select'),
-        justificativa_consultor: valorDom('pfa-investidor-just')
+        justificativa_consultor: valorDom('pfa-investidor-just'),
+        termo_colhido: marcadoDom('pfa-investidor-termo')
+      },
+      // v3: teste novo, ajustes por pessoa e ajuste do selo da reserva
+      suitability_v3: suitability_v3,
+      investidor_ui: coletarInvestidorUi(),
+      selo_ui: {
+        ajustado: valorDom('pfa-reserva-selo-select'),
+        justificativa_consultor: valorDom('pfa-reserva-selo-just')
       }
     };
   }
@@ -1506,6 +2381,126 @@
   let ultimoResultado = null;  // último resultado calculado nesta sessão
   let gatilhosLigados = false;
   let temporizador = null;
+  let pendentesInvestidor = {};   // ajustes salvos por nome, aguardando o bloco da pessoa existir
+  let pessoasRenderizadas = [];   // lista de pessoas dos blocos atuais ([] = bloco genérico)
+  let assinaturaEvento = null;    // última assinatura publicada em 'perfil-financeiro:calculado'
+
+  const ID_ESTILOS_V3 = 'pfa-v3-estilos';
+
+  function injetarEstilosV3() {
+    if (document.getElementById(ID_ESTILOS_V3)) return;
+    const st = document.createElement('style');
+    st.id = ID_ESTILOS_V3;
+    st.textContent =
+      '.pfa-reserva-selo{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:.6rem .9rem;margin-top:.8rem;padding:.7rem .8rem;background:rgba(255,255,255,.03);border-radius:8px;}' +
+      '.pfa-reserva-selo-rotulo{grid-column:1/-1;font-weight:600;color:var(--accent-color,#ffd700);}' +
+      '.pfa-investidor-pessoas{grid-column:1/-1;display:flex;flex-direction:column;gap:.6rem;min-width:0;}' +
+      '.pfa-inv-pessoa{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:.5rem .9rem;padding:.6rem .7rem;border:1px solid var(--border-color,#2e8b57);border-radius:8px;background:rgba(0,0,0,.15);min-width:0;}' +
+      '.pfa-inv-calculado{grid-column:1/-1;font-weight:600;color:var(--text-light,#f0f8f0);overflow-wrap:anywhere;}' +
+      '.pfa-inv-termo{grid-column:1/-1;display:flex;align-items:center;gap:.5rem;min-height:44px;cursor:pointer;font-size:.8rem;}' +
+      '.pfa-inv-termo input{width:20px;height:20px;flex:0 0 auto;accent-color:var(--accent-color,#ffd700);}' +
+      '@media (max-width:600px){.pfa-reserva-selo,.pfa-inv-pessoa{grid-template-columns:1fr;}.pfa-reserva-selo select,.pfa-reserva-selo textarea,.pfa-inv-pessoa select,.pfa-inv-pessoa textarea{font-size:16px;}}';
+    (document.head || document.documentElement).appendChild(st);
+  }
+
+  function idsBlocoPessoa(k) {
+    const suf = k === 0 ? '' : '-' + k;
+    return {
+      select: 'pfa-investidor-select' + suf,
+      just: 'pfa-investidor-just' + suf,
+      termo: 'pfa-investidor-termo' + suf
+    };
+  }
+
+  // Um bloco por pessoa; a PRIMEIRA usa os ids existentes (#pfa-investidor-select/-just) e #pfa-investidor-termo
+  function htmlBlocoPessoa(nome, k) {
+    const ids = idsBlocoPessoa(k);
+    return '<div class="pfa-inv-pessoa" data-pessoa="' + escapar(nome) + '">' +
+        '<div class="pfa-inv-calculado">' +
+          (nome ? escapar(nome) + ': calculando...' : 'Perfil de investidor: informe o titular ou os donos dos investimentos') +
+        '</div>' +
+        '<div class="pfa-campo">' +
+          '<label for="' + ids.select + '">Ajuste do consultor' + (nome ? ' — ' + escapar(nome) : ' (perfil de investidor)') + '</label>' +
+          '<select id="' + ids.select + '" name="' + ids.select + '" class="pfa-inv-select">' +
+            opcoesHtml([{ id: '', nome: '-- Selecione --' }].concat(PERFIS_INVESTIDOR), '') +
+          '</select>' +
+        '</div>' +
+        '<div class="pfa-campo pfa-campo-largo">' +
+          '<label for="' + ids.just + '">Justificativa do consultor</label>' +
+          '<textarea id="' + ids.just + '" name="' + ids.just + '" class="pfa-inv-just" rows="2" placeholder="Por que este perfil de investidor?"></textarea>' +
+        '</div>' +
+        '<label class="pfa-inv-termo pfa-oculto" for="' + ids.termo + '">' +
+          '<input type="checkbox" id="' + ids.termo + '" name="' + ids.termo + '" class="pfa-inv-termo-check">' +
+          '<span>Termo de desenquadramento colhido e arquivado</span>' +
+        '</label>' +
+      '</div>';
+  }
+
+  function blocoDaPessoa(nome) {
+    const card = document.getElementById(ID_CARD);
+    if (!card) return null;
+    const blocos = card.querySelectorAll('.pfa-inv-pessoa');
+    for (let i = 0; i < blocos.length; i++) {
+      if ((blocos[i].getAttribute('data-pessoa') || '') === nome) return blocos[i];
+    }
+    return null;
+  }
+
+  function aplicarValoresBloco(bloco, v) {
+    if (!bloco || !v) return;
+    const sel = bloco.querySelector('.pfa-inv-select');
+    const just = bloco.querySelector('.pfa-inv-just');
+    const termo = bloco.querySelector('.pfa-inv-termo-check');
+    if (sel && v.ajustado !== undefined) sel.value = str(v.ajustado);
+    if (just && v.justificativa_consultor !== undefined) just.value = str(v.justificativa_consultor);
+    if (termo && v.termo_colhido !== undefined) termo.checked = v.termo_colhido === true;
+  }
+
+  // Recria os blocos só quando a lista de pessoas muda, preservando valores por nome.
+  // Devolve true se aplicou algum ajuste salvo pendente (o chamador agenda um recálculo).
+  function sincronizarBlocosInvestidor(pessoas) {
+    const cont = document.getElementById('pfa-investidor-pessoas');
+    if (!cont) return false;
+    const lista = arr(pessoas).map(function (n) { return str(n); });
+    const temBloco = !!cont.querySelector('.pfa-inv-pessoa');
+    if (temBloco && JSON.stringify(lista) === JSON.stringify(pessoasRenderizadas)) return false;
+
+    const atuais = lerBlocosInvestidor();
+    const primeiraAnterior = pessoasRenderizadas.length ? pessoasRenderizadas[0] : '';
+    const nomesBlocos = lista.length ? lista : [''];
+    // primeira pessoa renomeada (ou saída do bloco genérico): a nova primeira herda os valores da anterior
+    const herdaPrimeira = !tem(atuais, nomesBlocos[0]) && tem(atuais, primeiraAnterior) &&
+      nomesBlocos.indexOf(primeiraAnterior) === -1;
+    // quem sai da lista (titular apagado, dono retirado dos investimentos) guarda o ajuste por nome
+    // em pendentesInvestidor; o laço abaixo reaplica quando o nome voltar. A primeira anterior que
+    // foi herdada pela nova primeira não é guardada (os valores seguiram com a renomeação).
+    Object.keys(atuais).forEach(function (n) {
+      if (!n || nomesBlocos.indexOf(n) !== -1) return;
+      if (herdaPrimeira && n === primeiraAnterior) return;
+      const a = atuais[n] || {};
+      if (str(a.ajustado) || str(a.justificativa_consultor).trim() || a.termo_colhido === true) {
+        pendentesInvestidor[n] = a;
+      }
+    });
+    cont.innerHTML = nomesBlocos.map(function (nome, k) { return htmlBlocoPessoa(nome, k); }).join('');
+
+    let aplicouPendente = false;
+    nomesBlocos.forEach(function (nome, k) {
+      const bloco = blocoDaPessoa(nome);
+      let v = tem(atuais, nome) ? atuais[nome] : null;
+      if (!v && k === 0 && herdaPrimeira) {
+        v = atuais[primeiraAnterior];
+      }
+      if (v) aplicarValoresBloco(bloco, v);
+      if (nome && tem(pendentesInvestidor, nome)) {
+        aplicarValoresBloco(bloco, pendentesInvestidor[nome]);
+        delete pendentesInvestidor[nome];
+        aplicouPendente = true;
+      }
+    });
+    pessoasRenderizadas = lista.slice();
+    return aplicouPendente;
+  }
 
   function opcoesHtml(lista, selecionado) {
     return lista.map(function (o) {
@@ -1518,6 +2513,8 @@
     const container = document.getElementById('perfil-financeiro-container');
     if (!container || !container.parentNode) return null;
 
+    injetarEstilosV3();
+    pessoasRenderizadas = []; // card novo nasce com o bloco genérico
     const card = document.createElement('div');
     card.id = ID_CARD;
     card.className = 'pfa';
@@ -1549,15 +2546,26 @@
       '</div>' +
       '<div class="pfa-investidor" id="pfa-investidor">' +
         '<div class="pfa-investidor-linha" id="pfa-investidor-linha">Perfil de investidor: a definir</div>' +
+        '<div class="pfa-investidor-pessoas" id="pfa-investidor-pessoas">' +
+          htmlBlocoPessoa('', 0) +
+        '</div>' +
+      '</div>' +
+      '<div class="pfa-reserva-selo" id="pfa-reserva-selo">' +
+        '<div class="pfa-reserva-selo-rotulo" id="pfa-reserva-selo-rotulo">Reserva de emergência: —</div>' +
         '<div class="pfa-campo">' +
-          '<label for="pfa-investidor-select">Ajuste do consultor (perfil de investidor)</label>' +
-          '<select id="pfa-investidor-select" name="pfa-investidor-select">' +
-            opcoesHtml([{ id: '', nome: '-- Selecione --' }].concat(PERFIS_INVESTIDOR), '') +
+          '<label for="pfa-reserva-selo-select">Ajuste do consultor (selo da reserva)</label>' +
+          '<select id="pfa-reserva-selo-select" name="pfa-reserva-selo-select">' +
+            opcoesHtml([
+              { id: '', nome: '— manter o calculado —' },
+              { id: 'adequada', nome: ROTULOS_SELO.adequada },
+              { id: 'em_formacao', nome: ROTULOS_SELO.em_formacao },
+              { id: 'inadequada', nome: ROTULOS_SELO.inadequada }
+            ], '') +
           '</select>' +
         '</div>' +
         '<div class="pfa-campo pfa-campo-largo">' +
-          '<label for="pfa-investidor-just">Justificativa do consultor</label>' +
-          '<textarea id="pfa-investidor-just" name="pfa-investidor-just" rows="2" placeholder="Por que este perfil de investidor?"></textarea>' +
+          '<label for="pfa-reserva-selo-just">Justificativa do ajuste</label>' +
+          '<textarea id="pfa-reserva-selo-just" name="pfa-reserva-selo-just" rows="2" placeholder="Justificativa do ajuste"></textarea>' +
         '</div>' +
       '</div>' +
       '<div class="pfa-matriz" id="pfa-matriz">' +
@@ -1584,10 +2592,40 @@
     const dc = pf.dados_complementares || {};
     if (dc.custeio_moradia !== undefined) setValor('pfa-custeio-moradia', dc.custeio_moradia);
     if (dc.decide_pelo_objetivo !== undefined) setValor('pfa-decide-objetivo', dc.decide_pelo_objetivo);
+    // v3: selo da reserva
+    const rs = pf.reserva_selo && typeof pf.reserva_selo === 'object' ? pf.reserva_selo : null;
+    if (rs) {
+      if (rs.ajustado !== undefined) setValor('pfa-reserva-selo-select', rs.ajustado || '');
+      if (rs.justificativa_consultor !== undefined) setValor('pfa-reserva-selo-just', rs.justificativa_consultor || '');
+    }
+    // v3: perfil de investidor por pessoa (por nome). Pessoas cujo bloco ainda não existe
+    // ficam em pendentesInvestidor e são aplicadas quando o bloco for criado.
     const pi = salvo.perfil_investidor || {};
-    if (pi.ajustado !== undefined) setValor('pfa-investidor-select', pi.ajustado);
-    if (pi.justificativa_consultor !== undefined) setValor('pfa-investidor-just', pi.justificativa_consultor);
-    salvo = null; // aplicado uma vez; daqui em diante valem os inputs do card
+    pendentesInvestidor = {};
+    // por_pessoa vazio (salvo sem pessoas ou com erro no cálculo) cai no formato antigo:
+    // o ajuste do consultor está nas chaves de topo
+    if (pi.por_pessoa && typeof pi.por_pessoa === 'object' && Object.keys(pi.por_pessoa).length) {
+      Object.keys(pi.por_pessoa).forEach(function (nome) {
+        const p = pi.por_pessoa[nome] || {};
+        const v = {
+          ajustado: str(p.ajustado),
+          justificativa_consultor: str(p.justificativa_consultor),
+          termo_colhido: !!(p.desenquadramento && p.desenquadramento.termo_colhido === true)
+        };
+        const bloco = blocoDaPessoa(nome);
+        if (bloco && nome) aplicarValoresBloco(bloco, v);
+        else if (nome) pendentesInvestidor[nome] = v;
+      });
+    } else {
+      // formato antigo (sem por_pessoa): restaura na primeira pessoa (ids originais)
+      if (pi.ajustado !== undefined) setValor('pfa-investidor-select', pi.ajustado);
+      if (pi.justificativa_consultor !== undefined) setValor('pfa-investidor-just', pi.justificativa_consultor);
+      const termo = document.getElementById('pfa-investidor-termo');
+      if (termo && pi.desenquadramento && typeof pi.desenquadramento === 'object') {
+        termo.checked = pi.desenquadramento.termo_colhido === true;
+      }
+    }
+    salvo = null; // aplicado; daqui em diante valem os inputs do card (e os pendentes por nome)
   }
 
   function preencherLista(id, itens) {
@@ -1641,16 +2679,66 @@
       }
     }
 
+    // v3: perfil de investidor por pessoa
+    const pi = resultado.perfil_investidor || {};
+    const pessoasInv = arr(pi.pessoas_ordem);
+    const porPessoa = (pi.por_pessoa && typeof pi.por_pessoa === 'object') ? pi.por_pessoa : {};
+    const domInv = (pi.domicilio && typeof pi.domicilio === 'object') ? pi.domicilio : {};
+    if (sincronizarBlocosInvestidor(pessoasInv)) agendarRecalculo();
+
     const elInv = document.getElementById('pfa-investidor-linha');
     if (elInv) {
-      const pi = resultado.perfil_investidor || {};
-      let nomeInv = null;
-      for (let i = 0; i < PERFIS_INVESTIDOR.length; i++) {
-        if (PERFIS_INVESTIDOR[i].id === str(pi.ajustado)) { nomeInv = PERFIS_INVESTIDOR[i].nome; break; }
+      if (pessoasInv.length) {
+        elInv.textContent = 'Perfil de investidor: ' + pessoasInv.map(function (nome) {
+          const p = porPessoa[nome] || {};
+          if (!p.vigente) return nome + ' — incalculável';
+          return nome + ' — ' + nomePerfilInvestidor(p.vigente) + (p.ajustado ? ' (ajustado pelo consultor)' : '');
+        }).join(' · ');
+      } else {
+        const nomeInv = nomePerfilInvestidor(pi.ajustado);
+        elInv.textContent = nomeInv
+          ? 'Perfil de investidor: ' + nomeInv + ' (ajustado pelo consultor)'
+          : 'Perfil de investidor: a definir';
       }
-      elInv.textContent = nomeInv
-        ? 'Perfil de investidor: ' + nomeInv + ' (ajustado pelo consultor)'
-        : 'Perfil de investidor: a definir';
+    }
+    const blocosInv = card.querySelectorAll('.pfa-inv-pessoa');
+    for (let b = 0; b < blocosInv.length; b++) {
+      const bloco = blocosInv[b];
+      const nome = bloco.getAttribute('data-pessoa') || '';
+      const p = nome && tem(porPessoa, nome) ? porPessoa[nome] : null;
+      const elCalc = bloco.querySelector('.pfa-inv-calculado');
+      if (elCalc) {
+        if (!nome) {
+          elCalc.textContent = 'Perfil de investidor: informe o titular ou os donos dos investimentos';
+        } else if (!p) {
+          elCalc.textContent = nome + ': calculando...';
+        } else if (p.calculado) {
+          elCalc.textContent = nome + ': ' + nomePerfilInvestidor(p.calculado) +
+            ' — limitante: ' + ((p.limitante && p.limitante.texto) || '—');
+        } else {
+          const faltas = arr(p.faltantes).concat(arr(domInv.faltantes));
+          elCalc.textContent = nome + ': incalculável' + (faltas.length ? ' — faltam ' + faltas.join('; ') : '');
+        }
+      }
+      const elTermo = bloco.querySelector('.pfa-inv-termo');
+      if (elTermo) {
+        const acima = !!(p && p.calculado && p.ajustado && Number(p.ajustado) > Number(p.calculado));
+        elTermo.classList.toggle('pfa-oculto', !acima);
+      }
+    }
+
+    // v3: selo da reserva (só rótulo; análise fica no JSON)
+    const elSelo = document.getElementById('pfa-reserva-selo-rotulo');
+    if (elSelo) {
+      const rs = pf.reserva_selo || {};
+      if (rs.vigente && tem(ROTULOS_SELO, rs.vigente)) {
+        elSelo.textContent = 'Reserva de emergência: ' + ROTULOS_SELO[rs.vigente] + (rs.ajustado ? ' (ajustado pelo consultor)' : '');
+      } else {
+        const motivoSelo = arr(rs.faltantes).length
+          ? str(rs.faltantes[0]).replace(/^Selo da reserva:\s*/, '')
+          : 'alvo da reserva incalculável';
+        elSelo.textContent = 'Reserva de emergência: — (' + motivoSelo + ')';
+      }
     }
 
     const cm = resultado.codigo_matriz || {};
@@ -1672,10 +2760,62 @@
       resultado = calcular(coletarDados());
       ultimoResultado = resultado;
       atualizarCard(resultado);
+      publicarCalculado(resultado);
     } catch (e) {
       if (window.console && console.error) console.error('[PerfilFinanceiro] erro ao recalcular:', e);
     }
     return resultado;
+  }
+
+  // Evento 'perfil-financeiro:calculado' só quando o resultado relevante muda
+  // (perfil de investidor vigente/calculado por pessoa + selo + código da matriz).
+  // Inclui também o que as telas de exibição desenham a partir do motor e que pode mudar
+  // sem mudar o perfil final: memória de cálculo e faltantes por pessoa, B4/nota B,
+  // faltantes e pendências do domicílio e a renda mensal do resumo B do teste novo.
+  // Não cria laço: os ouvintes comparam a própria assinatura antes de redesenhar e
+  // os containers deles são ignorados pelo MutationObserver.
+  function assinaturaResultado(r) {
+    const pi = (r && r.perfil_investidor) || {};
+    const pp = {};
+    const porPessoa = (pi.por_pessoa && typeof pi.por_pessoa === 'object') ? pi.por_pessoa : {};
+    Object.keys(porPessoa).forEach(function (nome) {
+      const p = porPessoa[nome] || {};
+      pp[nome] = {
+        v: p.vigente || null,
+        c: p.calculado || null,
+        m: arr(p.memoria_calculo && p.memoria_calculo.linhas),
+        f: arr(p.faltantes)
+      };
+    });
+    const dom = (pi.domicilio && typeof pi.domicilio === 'object') ? pi.domicilio : null;
+    const pf = (r && r.perfil_financeiro) || {};
+    const rs = pf.reserva_selo || {};
+    const cdiv = (pf.analise && pf.analise.camada_divida) || {};
+    return JSON.stringify({
+      pessoas: arr(pi.pessoas_ordem),
+      por_pessoa: pp,
+      domicilio: dom ? {
+        nota_B: dom.nota_B === undefined ? null : dom.nota_B,
+        B4: dom.B4 === undefined ? null : dom.B4,
+        faltantes: arr(dom.faltantes),
+        pendencias: arr(dom.pendencias)
+      } : null,
+      renda: (cdiv.numeros && cdiv.numeros.renda_media !== undefined) ? cdiv.numeros.renda_media : null,
+      selo: { c: rs.calculado || null, v: rs.vigente || null },
+      codigo: (r && r.codigo_matriz && r.codigo_matriz.codigo) || null
+    });
+  }
+
+  function publicarCalculado(r) {
+    if (!r) return;
+    const assinatura = assinaturaResultado(r);
+    if (assinatura === assinaturaEvento) return;
+    assinaturaEvento = assinatura;
+    try {
+      document.dispatchEvent(new CustomEvent('perfil-financeiro:calculado', { detail: { versao_regras: VERSAO_REGRAS } }));
+    } catch (e) {
+      if (window.console && console.warn) console.warn('[PerfilFinanceiro] evento perfil-financeiro:calculado não publicado:', e);
+    }
   }
 
   function agendarRecalculo() {
@@ -1691,6 +2831,19 @@
     return !!(card && alvo && card.contains(alvo));
   }
 
+  // Containers de exibição que re-renderizam no evento 'perfil-financeiro:calculado' (evita laço)
+  const IDS_IGNORADOS_OBSERVADOR = ['graficos-patrimonio-liquido', 'teste-suitability-v3-container'];
+
+  function mutacaoIgnorada(alvo) {
+    if (!alvo) return true;
+    if (dentroDoCard(alvo)) return true;
+    for (let i = 0; i < IDS_IGNORADOS_OBSERVADOR.length; i++) {
+      const el = document.getElementById(IDS_IGNORADOS_OBSERVADOR[i]);
+      if (el && el.contains(alvo)) return true;
+    }
+    return false;
+  }
+
   function ligarGatilhos() {
     if (gatilhosLigados) return;
     gatilhosLigados = true;
@@ -1703,7 +2856,7 @@
     if (conteudo && typeof MutationObserver !== 'undefined') {
       const observador = new MutationObserver(function (mutacoes) {
         for (let i = 0; i < mutacoes.length; i++) {
-          if (!dentroDoCard(mutacoes[i].target)) { agendarRecalculo(); return; }
+          if (!mutacaoIgnorada(mutacoes[i].target)) { agendarRecalculo(); return; }
         }
       });
       observador.observe(conteudo, { childList: true, subtree: true });
@@ -1782,6 +2935,31 @@
     arr(r.codigo_matriz.faltantes).forEach(function (f) {
       lista.push({ item: 'Código da matriz', campo: f });
     });
+    // v3: pendências dos investimentos (classe/liquidez/revisão) — não bloqueiam o perfil financeiro
+    const jaListados = {};
+    arr(r.perfil_financeiro.faltantes_investimentos).forEach(function (f) {
+      jaListados[f] = true;
+      lista.push({ item: 'Investimentos', campo: f });
+    });
+    // v3: selo da reserva
+    const rs = r.perfil_financeiro.reserva_selo || {};
+    arr(rs.faltantes).forEach(function (f) {
+      lista.push({ item: 'Perfil financeiro', campo: f });
+    });
+    // v3: perfil de investidor por pessoa e do domicílio
+    const pi = r.perfil_investidor || {};
+    const porPessoa = (pi.por_pessoa && typeof pi.por_pessoa === 'object') ? pi.por_pessoa : {};
+    arr(pi.pessoas_ordem).forEach(function (nome) {
+      const p = porPessoa[nome] || {};
+      arr(p.faltantes).forEach(function (f) {
+        lista.push({ item: 'Perfil de investidor — ' + nome, campo: f });
+      });
+    });
+    const dom = (pi.domicilio && typeof pi.domicilio === 'object') ? pi.domicilio : {};
+    arr(dom.faltantes).concat(arr(dom.pendencias)).forEach(function (f) {
+      if (jaListados[f]) return; // ex.: "RiscosV3 não carregado" já listado em Investimentos
+      lista.push({ item: 'Perfil de investidor — domicílio', campo: f });
+    });
     return lista;
   }
 
@@ -1790,10 +2968,36 @@
     if (!r) return null;
     const pf = r.perfil_financeiro;
     const ajustado = str(pf.ajustado);
-    if (!ajustado) return null;
-    if (ajustado === pf.calculado) return null;
-    if (str(pf.justificativa_consultor).trim()) return null;
-    return 'Você ajustou o perfil financeiro para «' + rotuloPerfil(ajustado) + "». Justifique o ajuste em 'Observações - Perfil Financeiro' antes de salvar.";
+    if (ajustado && ajustado !== pf.calculado && !str(pf.justificativa_consultor).trim()) {
+      return 'Você ajustou o perfil financeiro para «' + rotuloPerfil(ajustado) + "». Justifique o ajuste em 'Observações - Perfil Financeiro' antes de salvar.";
+    }
+
+    // v3: perfil de investidor por pessoa (só quando há calculado)
+    const pi = r.perfil_investidor || {};
+    const porPessoa = (pi.por_pessoa && typeof pi.por_pessoa === 'object') ? pi.por_pessoa : {};
+    const pessoas = arr(pi.pessoas_ordem);
+    for (let i = 0; i < pessoas.length; i++) {
+      const nome = pessoas[i];
+      const p = porPessoa[nome] || {};
+      const calc = str(p.calculado);
+      const aj = str(p.ajustado);
+      if (!calc || !aj) continue;
+      if (Number(aj) > Number(calc) && !(p.desenquadramento && p.desenquadramento.termo_colhido === true)) {
+        return 'Perfil de investidor de ' + nome + ': o ajuste para ' + nomePerfilInvestidor(aj) +
+          ' é mais arrojado que o calculado (' + nomePerfilInvestidor(calc) +
+          '). Marque «termo de desenquadramento colhido e arquivado» antes de salvar.';
+      }
+      if (aj !== calc && !str(p.justificativa_consultor).trim()) {
+        return 'Perfil de investidor de ' + nome + ': justifique o ajuste para ' + nomePerfilInvestidor(aj) + ' antes de salvar.';
+      }
+    }
+
+    // v3: selo da reserva (só quando há calculado)
+    const rs = pf.reserva_selo || {};
+    if (rs.calculado && rs.ajustado && rs.ajustado !== rs.calculado && !str(rs.justificativa_consultor).trim()) {
+      return 'Selo da reserva de emergência: justifique o ajuste para ' + (ROTULOS_SELO[rs.ajustado] || rs.ajustado) + ' antes de salvar.';
+    }
+    return null;
   }
 
   window.PerfilFinanceiro = {

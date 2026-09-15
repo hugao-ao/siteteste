@@ -1326,6 +1326,23 @@ body.hub-ativo .rel-codigo {
   border: 1px solid rgba(212, 175, 55, 0.3);
 }
 
+/* memória de cálculo do perfil de investidor (linhas prontas do motor, com
+   pontilhado alinhado por coluna: monoespaçada; linha longa quebra ou rola) */
+body.hub-ativo .rel-memoria {
+  margin: 0.4rem 0;
+  padding: 0.55rem 0.7rem;
+  max-width: 100%;
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, 'Courier New', monospace;
+  font-size: 0.78rem;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  overflow-x: auto;
+  color: var(--text-light, #f0f8f0);
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(46, 139, 87, 0.45);
+  border-radius: 6px;
+}
+
 /* perfil vigente na seção do perfil (a cor vem inline) */
 body.hub-ativo .rel-perfil-rotulo {
   font-weight: 800;
@@ -3339,6 +3356,19 @@ body.hub-imprimindo #hub-relatorio-paineis {
   max-height: none !important;
 }
 
+/* memória de cálculo do perfil de investidor: fundo escuro mantido no papel
+   e sem rolagem (a linha longa quebra em vez de ser cortada) */
+body.hub-imprimindo .rel-memoria {
+  overflow: visible !important;
+  max-height: none !important;
+  white-space: pre-wrap !important;
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, 'Courier New', monospace !important;
+  font-size: 0.78rem !important;
+  color: var(--text-light, #f0f8f0) !important;
+  background: rgba(0, 0, 0, 0.35) !important;
+  border: 1px solid rgba(46, 139, 87, 0.45) !important;
+}
+
 /* o estoque de painéis só aparece se estiver com conteúdo adotado */
 body.hub-imprimindo #hub-relatorio-paineis:empty {
   display: none !important;
@@ -3394,6 +3424,7 @@ body.hub-imprimindo .rel-capa,
 body.hub-imprimindo .rel-grafico,
 body.hub-imprimindo .rel-obs,
 body.hub-imprimindo .rel-suit-pessoa,
+body.hub-imprimindo .rel-memoria,
 body.hub-imprimindo .rel-plano-topico,
 body.hub-imprimindo .rel-plano-fechar,
 body.hub-imprimindo .rel-total-destaque,

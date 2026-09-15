@@ -82,7 +82,7 @@
     { slug: 'faltantes',         titulo: 'Informações faltantes para as ferramentas',   icone: 'fa-triangle-exclamation', chip: 'Faltantes' }
   ]).filter(Boolean);
 
-  const VERSAO_REGRAS_PADRAO = '2.1.0';
+  const VERSAO_REGRAS_PADRAO = '3.0.0';
 
   // Paleta dos gráficos (seção 11 do desenho)
   const CORES_GRAFICO = ['#ffd700', '#2e8b57', '#d4af37', '#1a4d3a', '#28a745', '#8fbc8f', '#f0f8f0'];
@@ -130,6 +130,8 @@
     APOSENTADORIA: 'Aposentadoria'
   };
 
+  // Escala de 7 — só FALLBACK quando window.RiscosV3 não carregou (v3: a
+  // classe do item vem de RiscosV3.rotuloRisco(RiscosV3.classeDoItem(pl)))
   const RISCO = {
     RISCO_MUITO_BAIXO: 'Risco muito baixo',
     RISCO_BAIXO: 'Risco baixo',
@@ -139,6 +141,19 @@
     RISCO_ALTO: 'Risco alto',
     RISCO_MUITO_ALTO: 'Risco muito alto'
   };
+
+  // v3: liquidez do item — mesmos rótulos de RiscosV3.LIQUIDEZ (fallback)
+  const LIQUIDEZ_FALLBACK = {
+    D0: 'Mesmo dia, valor cheio',
+    D1: '1 dia útil',
+    D1_MERCADO: '1 dia útil, a preço de mercado',
+    ATE_D30: 'Até 30 dias',
+    SO_VENCIMENTO: 'Só no vencimento',
+    ILIQUIDO: 'Ilíquido'
+  };
+
+  // v3: selo de adequação da reserva de emergência (perfil_financeiro.reserva_selo)
+  const SELO_RESERVA = { adequada: 'Adequada', em_formacao: 'Em formação', inadequada: 'Inadequada' };
 
   const APORTE_FREQ = { NENHUM: '', MENSAL: 'mensal', ANUAL: 'anual' };
 
@@ -586,6 +601,80 @@
   }
 
   // ------------------------------------------------------------
+  // v3: classe de risco, liquidez e reserva do item — via window.RiscosV3,
+  // com fallback nos mapas locais se o script não carregou
+  // ------------------------------------------------------------
+  function riscosV3() {
+    const R = window.RiscosV3;
+    return R && typeof R.rotuloRisco === 'function' && typeof R.classeDoItem === 'function' ? R : null;
+  }
+
+  function rotuloClasseItem(pl) {
+    const R = riscosV3();
+    if (R) return seguro(function () { return R.rotuloRisco(R.classeDoItem(pl)); }, '');
+    return rotulo(RISCO, pl.classificacao_risco, '');
+  }
+
+  function rotuloLiquidezItem(pl) {
+    const R = riscosV3();
+    if (R && typeof R.rotuloLiquidez === 'function') {
+      return seguro(function () { return R.rotuloLiquidez(pl.liquidez); }, str(pl.liquidez));
+    }
+    return rotulo(LIQUIDEZ_FALLBACK, pl.liquidez, '');
+  }
+
+  // { elegivel, legado, motivo } — sem RiscosV3, vale só a marcação "fora da matriz" do item
+  function elegibilidadeReservaItem(pl) {
+    const R = riscosV3();
+    if (R && typeof R.elegibilidadeReserva === 'function') {
+      const e = seguro(function () { return R.elegibilidadeReserva(pl); }, null);
+      if (e && typeof e === 'object') return e;
+    }
+    if (pl.elegivel === false) return { elegivel: false, legado: false, motivo: 'produto fora da matriz (não elegível)' };
+    return { elegivel: true, legado: false, motivo: '' };
+  }
+
+  // v3: um bloco por pessoa do perfil de investidor — perfil vigente e origem,
+  // limitante, destrava, memória de cálculo (linhas prontas do motor, nada é
+  // recalculado aqui), justificativa do consultor e termo de desenquadramento.
+  function blocoPerfilInvestidorPessoa(nome, p) {
+    const calculado = str(p.calculado);
+    const ajustado = str(p.ajustado);
+    const vigente = str(p.vigente) || ajustado || calculado;
+    let b = '<div class="rel-suit-pessoa rel-inv-pessoa">';
+    if (vigente) {
+      const origem = ajustado
+        ? 'ajustado pelo consultor; calculado era ' + (calculado ? rotulo(PERFIL_INVESTIDOR, calculado, calculado) : 'incalculável')
+        : 'calculado';
+      b += '<p class="rel-linha"><strong>' + esc(nome) + ':</strong> <span class="rel-perfil-rotulo">' +
+        esc(rotulo(PERFIL_INVESTIDOR, vigente, vigente)) + '</span> <span class="rel-mudo">(' + esc(origem) + ')</span></p>';
+    } else {
+      b += '<p class="rel-linha"><strong>' + esc(nome) + ':</strong> <span class="rel-mudo">incalculável</span></p>';
+    }
+    if (!calculado) {
+      const falt = lista(p.faltantes).map(function (f) {
+        if (f && typeof f === 'object') return str(f.campo) || str(f.item);
+        return str(f);
+      }).filter(Boolean);
+      if (falt.length) b += linha('Faltam', esc(falt.join('; ')));
+    }
+    const lim = p.limitante && typeof p.limitante === 'object' ? str(p.limitante.texto) : str(p.limitante);
+    if (lim) b += linha('Limitante', esc(lim));
+    if (str(p.destrava)) b += linha('Destrava', esc(str(p.destrava)));
+    const mem = p.memoria_calculo && typeof p.memoria_calculo === 'object' ? p.memoria_calculo.linhas : null;
+    const linhasMem = lista(mem)
+      .filter(function (l) { return l !== null && l !== undefined; })
+      .map(function (l) { return esc(String(l)); });
+    if (linhasMem.length) b += '<pre class="rel-memoria">' + linhasMem.join('\n') + '</pre>';
+    if (str(p.justificativa_consultor)) b += linha('Justificativa do consultor', escMultilinha(p.justificativa_consultor));
+    if (p.desenquadramento && typeof p.desenquadramento === 'object' && p.desenquadramento.termo_colhido === true) {
+      b += '<p class="rel-linha"><strong>Termo de desenquadramento colhido</strong></p>';
+    }
+    b += '</div>';
+    return b;
+  }
+
+  // ------------------------------------------------------------
   // Seções — cada uma devolve o HTML de .rel-dados ('' = nada informado)
   // ------------------------------------------------------------
   function secDadosPessoais() {
@@ -727,25 +816,44 @@
         const freq = rotulo(APORTE_FREQ, pl.aporte_frequencia, '');
         const aporteTxt = aporte > 0 && freq ? moeda(aporte) + ' ' + freq : '';
         const reserva = typeof pl.reserva_emergencia === 'boolean' ? pl.reserva_emergencia : str(pl.finalidade) === 'RESERVA_EMERGENCIA';
+        // v3: item marcado como reserva em degrau/liquidez inelegível não conta como reserva
+        let reservaTxt = 'Não';
+        if (reserva) {
+          const elig = elegibilidadeReservaItem(pl);
+          reservaTxt = 'Sim';
+          if (elig.elegivel === false) {
+            reservaTxt += ' <span class="rel-mudo">(não conta: ' + esc(str(elig.motivo) || 'não elegível') + ')</span>';
+          }
+        }
         return [
           '<strong>' + esc(produto) + '</strong>' + tipoExtra,
           esc(str(pl.instituicao_nome)),
           moeda(valor),
           esc(rotulo(FINALIDADE, pl.finalidade, '')),
           aporteTxt,
-          esc(rotulo(RISCO, pl.classificacao_risco, '')),
+          esc(rotuloClasseItem(pl)),
+          esc(rotuloLiquidezItem(pl)),
+          pl.elegivel === false ? 'Não' : 'Sim',
           nomesPessoas(pl.donos),
-          reserva ? 'Sim' : '—'
+          reservaTxt
         ];
       });
-      h += tabela(['Produto', 'Instituição', 'Valor atual', 'Finalidade', 'Aporte', 'Risco', 'Dono(s)', 'Reserva de emergência'], linhas, [2, 4]);
+      // Colunas de valor: 2 (Valor atual) e 4 (Aporte) — as colunas v3 (classe,
+      // liquidez, na matriz) entram depois do Aporte, então os índices seguem [2, 4].
+      h += tabela(['Produto', 'Instituição', 'Valor atual', 'Finalidade', 'Aporte', 'Classe de risco', 'Liquidez', 'Na matriz', 'Dono(s)', 'Reserva de emergência'], linhas, [2, 4]);
       h += total('Total do patrimônio líquido', moeda(soma));
     }
 
-    // Suitability: por pessoa, uma linha por pergunta respondida ("Pergunta? Resposta"),
-    // no mesmo formato das linhas de dados; o perfil só aparece se
-    // window.calcularPerfilInvestidor existir (o módulo não a expõe hoje).
-    const suit = getter('getRespostasSuitabilityData', null);
+    // Teste de perfil ANTIGO (respostas_suitability, escala 1–5): por pessoa, uma
+    // linha por pergunta respondida ("Pergunta? Resposta"), no mesmo formato das
+    // linhas de dados; o perfil só aparece se window.calcularPerfilInvestidor
+    // existir (o módulo não a expõe hoje). v3: só aparece quando o teste novo
+    // (suitability_v3) ainda não tem pessoas — o perfil de investidor novo sai na
+    // seção de perfil financeiro, pronto do motor.
+    const suitV3 = getter('getSuitabilityV3Data', null);
+    const temSuitV3 = !!(suitV3 && typeof suitV3 === 'object' && suitV3.pessoas && typeof suitV3.pessoas === 'object' &&
+      Object.keys(suitV3.pessoas).length);
+    const suit = temSuitV3 ? null : getter('getRespostasSuitabilityData', null);
     if (suit && typeof suit === 'object') {
       const calc = typeof window.calcularPerfilInvestidor === 'function' ? window.calcularPerfilInvestidor : null;
       let blocos = '';
@@ -772,7 +880,7 @@
         blocos += b;
       });
       if (blocos) {
-        h += subtitulo('Teste de perfil de investidor (suitability)');
+        h += subtitulo('Teste de perfil (formato anterior)');
         h += blocos;
       }
     }
@@ -1105,9 +1213,15 @@
     const vigente = str(pf.vigente);
     const calculado = str(pf.calculado);
     const ajustado = str(pf.ajustado);
+    // v3: selo da reserva e perfil de investidor por pessoa (prontos do motor)
+    const selo = pf.reserva_selo && typeof pf.reserva_selo === 'object' ? pf.reserva_selo : null;
+    const porPessoa = pi.por_pessoa && typeof pi.por_pessoa === 'object' ? pi.por_pessoa : null;
+    const temPorPessoa = !!(porPessoa && Object.keys(porPessoa).length);
 
     // (o código da matriz — cm — tem capítulo próprio: secCodigoMatriz)
-    if (!vigente && !justificativas.length && !faltantes.length && !str(pi.ajustado)) return '';
+    // v3: o perfil de investidor pode existir só CALCULADO (por_pessoa), sem ajuste
+    if (!vigente && !justificativas.length && !faltantes.length && !temPorPessoa && !str(pi.ajustado) &&
+      !(selo && str(selo.vigente))) return '';
 
     let h = '';
     if (vigente) {
@@ -1122,6 +1236,27 @@
       }
     } else {
       h += '<p class="rel-linha rel-perfil-vigente"><strong>Perfil vigente:</strong> <span class="rel-perfil-rotulo rel-mudo">a calcular</span></p>';
+    }
+
+    // v3: selo de adequação da reserva de emergência (o card mostra só o rótulo + ajuste)
+    if (selo) {
+      const seloVigente = str(selo.vigente);
+      const seloAjustado = str(selo.ajustado);
+      const seloCalculado = str(selo.calculado);
+      if (seloVigente) {
+        let origemSelo = '';
+        if (seloAjustado) {
+          origemSelo = 'ajustado pelo consultor' +
+            (seloCalculado && seloCalculado !== seloAjustado ? '; calculado era ' + rotulo(SELO_RESERVA, seloCalculado, seloCalculado) : '');
+        }
+        h += '<p class="rel-linha"><strong>Reserva de emergência:</strong> ' + esc(rotulo(SELO_RESERVA, seloVigente, seloVigente)) +
+          (origemSelo ? ' <span class="rel-mudo">(' + esc(origemSelo) + ')</span>' : '') + '</p>';
+        if (seloAjustado && str(selo.justificativa_consultor)) {
+          h += linha('Justificativa do ajuste do selo', escMultilinha(selo.justificativa_consultor));
+        }
+      } else {
+        h += '<p class="rel-linha"><strong>Reserva de emergência:</strong> <span class="rel-mudo">a calcular</span></p>';
+      }
     }
 
     if (justificativas.length) {
@@ -1139,11 +1274,29 @@
     if (str(dc.custeio_moradia)) h += linha('Custeio da moradia', esc(rotulo(CUSTEIO_MORADIA, dc.custeio_moradia, dc.custeio_moradia)));
     if (str(dc.decide_pelo_objetivo)) h += linha('Decide onde investir pelo objetivo', esc(rotulo(SIM_NAO, dc.decide_pelo_objetivo, dc.decide_pelo_objetivo)));
 
-    const invAjustado = str(pi.ajustado);
-    if (invAjustado) {
-      h += subtitulo('Perfil de investidor');
-      h += linha('Ajustado pelo consultor', esc(rotulo(PERFIL_INVESTIDOR, invAjustado, invAjustado)));
-      if (str(pi.justificativa_consultor)) h += linha('Justificativa', escMultilinha(pi.justificativa_consultor));
+    // Perfil de investidor. v3: um bloco por pessoa de pessoas_ordem (por_pessoa
+    // pronto do motor). Sem por_pessoa (resultado antigo), vale o ajuste de topo.
+    if (temPorPessoa) {
+      let ordem = lista(pi.pessoas_ordem).filter(function (n) {
+        return Object.prototype.hasOwnProperty.call(porPessoa, n);
+      });
+      if (!ordem.length) ordem = Object.keys(porPessoa);
+      let blocosInv = '';
+      ordem.forEach(function (nome) {
+        const p = porPessoa[nome] && typeof porPessoa[nome] === 'object' ? porPessoa[nome] : {};
+        blocosInv += blocoPerfilInvestidorPessoa(nome, p);
+      });
+      if (blocosInv) {
+        h += subtitulo('Perfil de investidor');
+        h += blocosInv;
+      }
+    } else {
+      const invAjustado = str(pi.ajustado);
+      if (invAjustado) {
+        h += subtitulo('Perfil de investidor');
+        h += linha('Ajustado pelo consultor', esc(rotulo(PERFIL_INVESTIDOR, invAjustado, invAjustado)));
+        if (str(pi.justificativa_consultor)) h += linha('Justificativa', escMultilinha(pi.justificativa_consultor));
+      }
     }
     return h;
   }
