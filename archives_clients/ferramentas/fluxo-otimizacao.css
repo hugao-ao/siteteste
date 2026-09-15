@@ -1,0 +1,303 @@
+/* ============================================================
+   Cenário otimizado nos itens — interface (dono U)
+   Tudo com prefixo fo- ou escopado. Tokens de fluxo.html (:root).
+   Regras de :hover ficam no bloco @media (hover: hover) no fim.
+   ============================================================ */
+
+/* ---------- Nome clicável na tabela de itens ---------- */
+#items-table .item-nome {
+  cursor: pointer;
+  border-bottom: 1px dotted var(--primary);
+}
+#items-table .item-nome:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; border-radius: 2px; }
+
+/* ---------- Célula Otimização ---------- */
+#items-table .td-otimizacao { white-space: nowrap; vertical-align: middle; }
+/* flex-wrap: numa tela estreita a célula desce o excedente para uma 2ª linha em vez de
+   forçar rolagem horizontal (as outras colunas são nowrap; esta é a única que cede) */
+.fo-cel { display: inline-flex; align-items: center; gap: .1rem .35rem; flex-wrap: wrap; }
+.fo-cat {
+  font-size: .64rem; color: var(--muted); white-space: nowrap; font-weight: 600;
+  padding: 0 .3rem; border: 1px solid rgba(160,184,166,.25); border-radius: 4px; line-height: 1.45;
+}
+.fo-btn-otimizar {
+  background: transparent; border: 1px solid var(--border); color: var(--muted);
+  border-radius: 20px; padding: .05rem .5rem; font-size: .68rem; font-weight: 600;
+  cursor: pointer; line-height: 1.4; font-family: inherit;
+}
+.fo-btn-otimizar:disabled { opacity: .5; cursor: not-allowed; }
+
+.fo-selo {
+  display: inline-block; padding: .03rem .45rem; border-radius: 20px;
+  font-size: .66rem; font-weight: 700; line-height: 1.45; white-space: nowrap;
+  border: 1px solid transparent;
+}
+.fo-selo-ok { background: rgba(34,197,94,.15); color: var(--green); border-color: rgba(34,197,94,.45); }
+.fo-selo-rascunho { background: rgba(251,146,60,.08); color: var(--orange); border: 1px dashed var(--orange); }
+.fo-selo-nenhum { background: rgba(160,184,166,.1); color: var(--muted); }
+
+.fo-econ { font-size: .7rem; font-weight: 600; white-space: normal; }
+.fo-econ-val, .fo-econ-desde { white-space: nowrap; }
+.fo-econ-pos { color: var(--green); }
+.fo-econ-neg { color: var(--red); }
+.fo-econ-zero { color: var(--muted); }
+.fo-econ-previa { border-bottom: 1px dashed var(--orange); }
+
+/* ---------- Mesa (modo otimização) ---------- */
+/* Categoria + controles numa linha; sugestão, selo e economia descem quando falta largura */
+.fo-mesa { display: inline-flex; align-items: center; gap: .1rem .4rem; flex-wrap: wrap; }
+.fo-mesa-ctl { display: inline-flex; align-items: center; gap: .4rem; flex-wrap: nowrap; }
+.fo-mesa > span:empty { display: none; }
+/* 'Otimizado' e '+ rascunho' separados também dentro do slot */
+.fo-slot-estado { display: inline-flex; align-items: center; gap: .25rem; }
+/* assets/style.css dá padding/borda/fundo a todo input (o range ficava com 42px e engordava a linha) */
+.fo-slider {
+  width: 100px; height: 16px; padding: 0; border: 0; background: transparent; box-shadow: none;
+  accent-color: var(--primary); cursor: pointer; vertical-align: middle; margin: 0;
+}
+.fo-slider:focus { border: 0; box-shadow: none; }
+.fo-slider:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+.fo-slider:disabled { cursor: not-allowed; opacity: .5; }
+.fo-pct-wrap { display: inline-flex; align-items: center; gap: .1rem; font-size: .72rem; color: var(--muted); }
+.fo-pct-num {
+  width: 3.4rem; background: var(--card2); border: 1px solid var(--border); border-radius: 4px;
+  color: var(--fg); padding: .08rem .25rem; font-size: .72rem; text-align: right; font-family: inherit;
+}
+.fo-pct-num:focus { outline: none; border-color: var(--primary); }
+.fo-sugestao {
+  background: rgba(212,175,55,.12); color: var(--primary); border: 1px solid rgba(212,175,55,.35);
+  border-radius: 20px; padding: .02rem .45rem; font-size: .66rem; font-weight: 700; cursor: pointer; font-family: inherit;
+}
+.fo-sugestao:disabled { opacity: .5; cursor: not-allowed; }
+.fo-score { font-size: .7rem; font-weight: 700; min-width: 1.8rem; text-align: right; }
+.fo-mesa-vazia td { text-align: center; color: var(--muted); font-size: .8rem; padding: .8rem !important; white-space: normal !important; }
+
+/* ---------- Faixa-resumo ---------- */
+#fo-faixa {
+  background: var(--card2); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: .4rem .65rem; margin-bottom: .5rem; font-size: .78rem;
+}
+#fo-faixa .fo-faixa-linha { display: flex; align-items: center; gap: .35rem .75rem; flex-wrap: wrap; }
+#fo-faixa .fo-faixa-linha + .fo-faixa-linha { margin-top: .3rem; padding-top: .3rem; border-top: 1px solid rgba(212,175,55,.1); }
+#fo-faixa .fo-faixa-titulo { font-weight: 700; color: var(--primary); font-size: .74rem; text-transform: uppercase; letter-spacing: .04em; }
+#fo-faixa .fo-interruptor { display: inline-flex; align-items: center; gap: .3rem; color: var(--fg); cursor: pointer; font-size: .75rem; }
+#fo-faixa .fo-interruptor input { accent-color: var(--primary); width: 14px; height: 14px; cursor: pointer; }
+/* frases longas (modo otimização) quebram quando não cabem; números e prévia ficam inteiros */
+#fo-faixa .fo-num { color: var(--muted); white-space: normal; overflow-wrap: anywhere; max-width: 100%; }
+#fo-faixa .fo-num b, #fo-faixa .fo-num .fo-previa { white-space: nowrap; }
+#fo-faixa .fo-num b { color: var(--fg); font-weight: 700; }
+#fo-faixa .fo-num .fo-seta { color: var(--muted); margin: 0 .15rem; }
+#fo-faixa .fo-num .fo-previa { color: var(--orange); border-bottom: 1px dashed var(--orange); font-weight: 700; }
+#fo-faixa .fo-sep { color: rgba(160,184,166,.4); }
+#fo-faixa .fo-faixa-acoes { margin-left: auto; display: inline-flex; gap: .35rem; flex-wrap: wrap; }
+#fo-faixa .fo-aviso { color: var(--muted); font-style: italic; }
+.fo-btn {
+  display: inline-flex; align-items: center; gap: .3rem; background: transparent;
+  border: 1px solid var(--border); color: var(--fg); border-radius: 6px;
+  padding: .18rem .55rem; font-size: .72rem; font-weight: 600; cursor: pointer; font-family: inherit; line-height: 1.4;
+}
+.fo-btn:disabled { opacity: .45; cursor: not-allowed; }
+.fo-btn[aria-pressed="true"] { background: var(--primary-dim); border-color: var(--primary); color: var(--primary); }
+.fo-btn-primario { background: var(--primary); border-color: var(--primary); color: #021C0E; }
+.fo-btn-perigo { border-color: rgba(239,68,68,.35); color: var(--red); }
+
+/* Simulação bloqueada para o cliente: controles que só mudam a visualização continuam ativos
+   (vence o ".client-locked button { pointer-events:none !important }" do fluxo.html) */
+.client-locked #items-table .grupo-toggle,
+.client-locked #fo-faixa [data-fo-acao="modo"],
+.client-locked #fo-faixa [data-fo-acao="mostrar-todos"],
+.client-locked #items-tbody .fo-btn-otimizar { pointer-events: auto !important; opacity: 1 !important; }
+
+/* ---------- Nota na barra "Simular cenário otimizado" ---------- */
+#scenario-adj-wrapper { display: none !important; }
+#fo-cenario-nota { display: flex; align-items: center; gap: .5rem .75rem; flex-wrap: wrap; font-size: .75rem; color: var(--muted); flex-basis: 100%; }
+#fo-cenario-nota .fo-legenda-previa { display: flex; gap: .75rem; flex-wrap: wrap; }
+#fo-cenario-nota .fo-legenda-previa span { display: inline-flex; align-items: center; gap: .3rem; }
+.fo-traco { display: inline-block; width: 18px; height: 0; border-top: 2px dashed; vertical-align: middle; }
+
+/* Atributo hidden vence os display declarados acima */
+#fo-faixa[hidden], #fo-painel-overlay[hidden], #fo-cenario-nota .fo-legenda-previa[hidden] { display: none !important; }
+#fo-cenario-nota a.fo-btn { text-decoration: none; }
+
+/* ---------- Painel do item (gaveta) ---------- */
+body.fo-painel-aberto { position: fixed; left: 0; right: 0; overflow: hidden; }
+body.fo-painel-aberto .btn-save-global { display: none !important; }
+
+#fo-painel-overlay {
+  position: fixed; inset: 0; z-index: 10000; background: rgba(0,0,0,.6);
+  display: flex; justify-content: flex-end; align-items: stretch;
+  opacity: 0; transition: opacity .18s ease;
+}
+#fo-painel-overlay.fo-aberto { opacity: 1; }
+#fo-painel {
+  width: min(600px, 100vw); height: 100%; max-height: 100vh; background: var(--card);
+  border-left: 1px solid var(--border); border-radius: 14px 0 0 14px;
+  display: flex; flex-direction: column; color: var(--fg); font-size: .82rem;
+  transform: translateX(24px); transition: transform .2s ease; box-shadow: -8px 0 30px rgba(0,0,0,.45);
+}
+#fo-painel-overlay.fo-aberto #fo-painel { transform: translateX(0); }
+/* style.css dá margin-bottom:1rem a todo <p>; na gaveta o espaçamento é das seções */
+#fo-painel p { margin: 0; }
+#fo-painel .fo-p-cabecalho {
+  flex: 0 0 auto; padding: .7rem 1rem .6rem; border-bottom: 1px solid var(--border);
+  display: flex; gap: .6rem; align-items: flex-start;
+}
+#fo-painel .fo-p-cab-info { flex: 1; min-width: 0; }
+#fo-painel .fo-p-titulo { font-size: 1rem; font-weight: 700; color: #fff; margin: 0 0 .2rem; overflow-wrap: anywhere; }
+#fo-painel .fo-p-meta { display: flex; flex-wrap: wrap; gap: .3rem .6rem; align-items: center; font-size: .74rem; color: var(--muted); }
+#fo-painel .fo-p-cab-acoes { display: flex; gap: .35rem; align-items: center; flex: 0 0 auto; }
+#fo-painel .fo-p-fechar {
+  background: transparent; border: 1px solid transparent; color: var(--muted); font-size: 1.05rem;
+  width: 30px; height: 30px; border-radius: 6px; cursor: pointer; line-height: 1; font-family: inherit;
+}
+#fo-painel .fo-p-fechar:focus-visible, #fo-painel .fo-btn:focus-visible, #fo-painel .fo-seg button:focus-visible { outline: 2px solid var(--primary); outline-offset: 1px; }
+
+#fo-painel .fo-p-corpo { flex: 1 1 auto; overflow-y: auto; padding: .4rem 1rem .8rem; overscroll-behavior: contain; }
+#fo-painel .fo-p-secao { padding: .6rem 0; border-bottom: 1px solid rgba(212,175,55,.12); }
+#fo-painel .fo-p-secao:last-child { border-bottom: none; }
+#fo-painel .fo-p-secao[hidden] { display: none !important; }
+#fo-painel .fo-p-sec-titulo {
+  font-size: .68rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em;
+  color: var(--muted); margin: 0 0 .4rem; display: flex; align-items: center; gap: .5rem;
+}
+#fo-painel .fo-p-nota { font-size: .7rem; color: var(--muted); font-style: italic; }
+#fo-painel .fo-p-aviso { font-size: .74rem; color: var(--orange); background: rgba(251,146,60,.08); border: 1px dashed rgba(251,146,60,.5); border-radius: 6px; padding: .3rem .5rem; margin-top: .4rem; }
+#fo-painel .fo-p-bloqueio { font-size: .76rem; color: var(--red); background: rgba(239,68,68,.08); border: 1px solid rgba(239,68,68,.3); border-radius: 6px; padding: .35rem .55rem; margin: .5rem 0 0; }
+
+/* Estado */
+#fo-painel .fo-p-estado { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; font-size: .8rem; }
+
+/* Sugestão */
+#fo-painel .fo-p-score { display: flex; align-items: center; gap: .6rem; }
+#fo-painel .fo-p-score-trilho { flex: 1; height: 7px; background: rgba(255,255,255,.08); border-radius: 4px; overflow: hidden; }
+#fo-painel .fo-p-score-barra { height: 100%; border-radius: 4px; }
+#fo-painel .fo-p-score-num { font-weight: 700; min-width: 2.6rem; text-align: right; }
+#fo-painel .fo-p-sug-linha { display: flex; flex-wrap: wrap; gap: .3rem .9rem; align-items: center; margin-top: .4rem; font-size: .78rem; }
+#fo-painel .fo-p-sug-rec { font-weight: 700; color: var(--primary); }
+
+/* Alteração */
+#fo-painel .fo-seg { display: inline-flex; flex-wrap: wrap; gap: 0; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
+#fo-painel .fo-seg button {
+  background: transparent; border: none; border-right: 1px solid var(--border); color: var(--muted);
+  padding: .28rem .6rem; font-size: .74rem; font-weight: 600; cursor: pointer; font-family: inherit;
+}
+#fo-painel .fo-seg button:last-child { border-right: none; }
+#fo-painel .fo-seg button[aria-pressed="true"] { background: var(--primary-dim); color: var(--primary); }
+#fo-painel .fo-seg button:disabled { cursor: not-allowed; opacity: .55; }
+#fo-painel .fo-campos { display: flex; flex-wrap: wrap; gap: .5rem .75rem; align-items: flex-end; margin-top: .5rem; }
+#fo-painel .fo-campo { display: flex; flex-direction: column; gap: .18rem; }
+#fo-painel .fo-campo label { font-size: .72rem; color: var(--muted); font-weight: 600; }
+#fo-painel .fo-campo input, #fo-painel .fo-campo select {
+  background: var(--card2); border: 1px solid var(--border); border-radius: 5px; color: var(--fg);
+  padding: .28rem .45rem; font-size: .8rem; font-family: inherit; outline: none; min-width: 0;
+}
+#fo-painel .fo-campo input:focus, #fo-painel .fo-campo select:focus { border-color: var(--primary); }
+#fo-painel .fo-campo input:disabled, #fo-painel .fo-campo select:disabled { opacity: .55; cursor: not-allowed; }
+#fo-painel .fo-campo select option { background: var(--card); }
+#fo-painel .fo-campo-moeda input { width: 8.5rem; text-align: right; }
+#fo-painel .fo-campo-pct input { width: 5.2rem; text-align: right; }
+#fo-painel .fo-campo-atual { font-size: .72rem; color: var(--muted); padding-bottom: .35rem; }
+
+#fo-painel .fo-grade-manual { margin-top: .5rem; max-height: 220px; overflow: auto; border: 1px solid var(--border); border-radius: 6px; }
+#fo-painel .fo-grade-manual table { width: 100%; border-collapse: collapse; font-size: .75rem; }
+#fo-painel .fo-grade-manual th { position: sticky; top: 0; background: var(--card2); color: var(--muted); font-size: .64rem; text-transform: uppercase; padding: .25rem .45rem; text-align: left; }
+#fo-painel .fo-grade-manual td { padding: .15rem .45rem; border-top: 1px solid rgba(212,175,55,.08); }
+#fo-painel .fo-grade-manual tr.fo-editado td:first-child { color: var(--primary); font-weight: 700; }
+#fo-painel .fo-grade-manual input {
+  width: 7rem; background: var(--card2); border: 1px solid var(--border); border-radius: 4px; color: var(--fg);
+  padding: .12rem .35rem; font-size: .75rem; text-align: right; font-family: inherit;
+}
+#fo-painel .fo-grade-manual tr:not(.fo-editado) input { color: var(--muted); border-style: dashed; }
+#fo-painel .fo-grade-manual input:focus { outline: none; border-color: var(--primary); color: var(--fg); }
+#fo-painel .fo-limpar-mes { background: transparent; border: none; color: var(--muted); cursor: pointer; font-size: .75rem; padding: 0 .2rem; }
+
+/* Evolução */
+#fo-painel .fo-grafico-box { position: relative; height: 220px; }
+#fo-painel .fo-detalhes { margin-top: .45rem; }
+#fo-painel .fo-detalhes summary { cursor: pointer; font-size: .74rem; color: var(--muted); }
+#fo-painel .fo-tab-mini { width: 100%; border-collapse: collapse; font-size: .74rem; margin-top: .3rem; }
+#fo-painel .fo-tab-mini th { background: var(--card2); color: var(--muted); font-size: .64rem; text-transform: uppercase; padding: .22rem .45rem; text-align: right; white-space: nowrap; }
+#fo-painel .fo-tab-mini th:first-child, #fo-painel .fo-tab-mini td:first-child { text-align: left; }
+#fo-painel .fo-tab-mini td { padding: .16rem .45rem; border-top: 1px solid rgba(212,175,55,.08); text-align: right; white-space: nowrap; }
+#fo-painel .fo-tab-wrap { max-height: 240px; overflow: auto; }
+
+/* Impacto */
+#fo-painel .fo-kpis { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: .4rem; }
+#fo-painel .fo-kpi { background: var(--card2); border-radius: 6px; padding: .35rem .5rem; min-width: 0; }
+#fo-painel .fo-kpi-rot { font-size: .7rem; color: var(--muted); }
+#fo-painel .fo-kpi-val { font-weight: 700; font-size: .85rem; margin-top: .08rem; overflow-wrap: anywhere; }
+#fo-painel .fo-tab-impacto { margin-top: .45rem; }
+#fo-painel .fo-tab-impacto td.fo-col-previa, #fo-painel .fo-tab-impacto th.fo-col-previa { color: var(--orange); }
+
+/* Outras seções */
+#fo-painel .fo-outros-bloco { margin-bottom: .45rem; }
+#fo-painel .fo-outros-bloco:last-child { margin-bottom: 0; }
+#fo-painel .fo-outros-rot { font-size: .7rem; color: var(--primary); font-weight: 700; margin-bottom: .12rem; }
+#fo-painel .fo-outros-lista { list-style: none; margin: 0; padding: 0; font-size: .76rem; }
+#fo-painel .fo-outros-lista li { display: flex; justify-content: space-between; gap: .75rem; padding: .08rem 0; }
+#fo-painel .fo-outros-lista li span:last-child { white-space: nowrap; color: var(--fg); }
+#fo-painel .fo-outros-lista li span:first-child { color: var(--muted); }
+
+/* Rodapé */
+#fo-painel .fo-p-rodape {
+  flex: 0 0 auto; border-top: 1px solid var(--border); padding: .55rem 1rem;
+  display: flex; flex-wrap: wrap; gap: .4rem; align-items: center; justify-content: flex-end; background: var(--card);
+  border-radius: 0 0 0 14px;
+}
+#fo-painel .fo-p-rodape .fo-btn { padding: .35rem .8rem; font-size: .78rem; }
+#fo-painel .fo-p-rodape .fo-p-rodape-info { margin-right: auto; font-size: .72rem; color: var(--muted); }
+
+/* ---------- Hover só onde existe mouse ----------
+   Em tela de toque o :hover fica preso depois do toque; aqui ele simplesmente não existe,
+   então botão pressionado e botão de perigo mantêm as próprias cores. */
+@media (hover: hover) {
+  #items-table .item-nome:hover { color: var(--primary); }
+  .fo-btn-otimizar:hover { border-color: var(--primary); color: var(--primary); }
+  .fo-sugestao:hover { background: rgba(212,175,55,.25); }
+  .fo-btn:hover { border-color: var(--primary); color: var(--primary); }
+  .fo-btn-primario:hover { background: #c9a227; color: #021C0E; }
+  .fo-btn-perigo:hover { border-color: var(--red); color: var(--red); background: rgba(239,68,68,.08); }
+  #fo-painel .fo-p-fechar:hover { color: var(--fg); border-color: var(--border); }
+  #fo-painel .fo-limpar-mes:hover { color: var(--red); }
+  #fo-painel .fo-detalhes summary:hover { color: var(--fg); }
+}
+
+/* ---------- Responsivo ---------- */
+@media (max-width: 700px) {
+  #fo-painel { width: 100vw; border-radius: 0; border-left: none; }
+  #fo-painel .fo-p-rodape { border-radius: 0; }
+  #fo-painel .fo-grafico-box { height: 180px; }
+  #fo-painel .fo-kpis { grid-template-columns: 1fr 1fr; }
+  #fo-faixa .fo-faixa-linha { flex-direction: column; align-items: flex-start; }
+  #fo-faixa .fo-sep { display: none; }
+  #fo-faixa .fo-faixa-acoes { margin-left: 0; }
+  /* textos longos da faixa quebram em vez de alargar a página */
+  #fo-faixa .fo-num { white-space: normal; max-width: 100%; overflow-wrap: anywhere; }
+  #fo-faixa .fo-num b, #fo-faixa .fo-previa { white-space: nowrap; }
+  .fo-slider { width: 90px; }
+  /* 16px evita o zoom automático do Safari do iPhone ao focar o campo */
+  #fo-painel .fo-campo input, #fo-painel .fo-campo select, #fo-painel .fo-grade-manual input, .fo-pct-num { font-size: 16px; }
+}
+/* Ponteiro grosso (toque): alvos de pelo menos 44px nos controles desta interface */
+@media (pointer: coarse) {
+  .fo-btn, .fo-btn-otimizar, .fo-sugestao,
+  #fo-painel .fo-seg button, #fo-painel .fo-limpar-mes { min-height: 44px; min-width: 44px; }
+  #fo-painel .fo-p-fechar { width: 44px; height: 44px; }
+  .fo-slider { height: 44px; }
+  .fo-pct-num, #fo-painel .fo-campo input, #fo-painel .fo-campo select, #fo-painel .fo-grade-manual input { min-height: 44px; }
+  #fo-faixa .fo-interruptor { min-height: 44px; }
+  #fo-faixa .fo-interruptor input { width: 22px; height: 22px; }
+  #fo-painel .fo-detalhes summary { padding: .7rem 0; }
+  /* alvo mais alto; o pontilhado vira sublinhado de texto para não descer com a altura */
+  #items-table .item-nome {
+    line-height: 44px; border-bottom: none;
+    -webkit-text-decoration: underline dotted var(--primary);
+    text-decoration: underline dotted var(--primary); text-underline-offset: 3px;
+  }
+  /* botões da própria tabela (✏️ 🗑 e recolher grupo) */
+  #items-table .btn-icon, #items-table .grupo-toggle { min-height: 44px; min-width: 36px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  #fo-painel-overlay, #fo-painel { transition: none !important; }
+  #fo-painel { transform: none !important; }
+}

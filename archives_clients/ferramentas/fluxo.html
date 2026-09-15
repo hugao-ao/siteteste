@@ -26,23 +26,24 @@
     --purple: #a78bfa;
     --orange: #fb923c;
     --radius: 10px;
+    --gold-dim: rgba(212,175,55,0.35);
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { background: var(--bg); color: var(--fg); font-family: 'Inter', system-ui, sans-serif; font-size: 14px; min-height: 100vh; }
   h1 { font-size: 1.6rem; font-weight: 700; color: #fff; }
-  h2 { font-size: 1.1rem; font-weight: 600; color: var(--primary); margin-bottom: 1rem; }
+  h2 { font-size: 1.1rem; font-weight: 600; color: var(--primary); margin-bottom: 0.6rem; }
   h3 { font-size: 0.95rem; font-weight: 600; color: #fff; }
 
-  .page { max-width: 1200px; margin: 0 auto; padding: 2rem 1rem 4rem; }
+  .page { max-width: 1200px; margin: 0 auto; padding: 1rem 1rem 4rem; }
   .page-header { margin-bottom: 2rem; }
   .page-header p { color: var(--muted); margin-top: 0.3rem; font-size: 0.9rem; }
 
-  .card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.5rem; margin-bottom: 1.5rem; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem 1.15rem; margin-bottom: 1rem; }
   .card-grid { display: grid; gap: 1.5rem; }
   .card-grid.cols2 { grid-template-columns: 1fr 1fr; }
   .card-grid.cols3 { grid-template-columns: 1fr 1fr 1fr; }
 
-  .field { display: flex; flex-direction: column; gap: 0.4rem; }
+  .field { display: flex; flex-direction: column; gap: 0.25rem; }
   .field label { font-size: 0.8rem; color: var(--muted); font-weight: 500; }
   .field input, .field select { background: var(--card2); border: 1px solid var(--border); border-radius: 6px; color: var(--fg); padding: 0.5rem 0.75rem; font-size: 0.9rem; outline: none; width: 100%; transition: border-color 0.2s; }
   .field input:focus, .field select:focus { border-color: var(--primary); }
@@ -81,7 +82,7 @@
   .btn-clear-badges:hover { border-color: var(--primary); color: var(--primary); }
 
   /* === CENÁRIO OTIMIZADO === */
-  .scenario-toggle-bar { display:flex; align-items:center; gap:1rem; flex-wrap:wrap; margin:1.5rem 0 1rem; padding:1rem; background:var(--card2); border:1px solid var(--border); border-radius:var(--radius); }
+  .scenario-toggle-bar { display:flex; align-items:center; gap:1rem; flex-wrap:wrap; margin:0.75rem 0 0.5rem; padding:0.5rem 0.75rem; background:var(--card2); border:1px solid var(--border); border-radius:var(--radius); }
   .scenario-toggle-bar label { font-size:0.85rem; color:var(--fg); font-weight:600; cursor:pointer; display:flex; align-items:center; gap:0.5rem; }
   .scenario-toggle-bar input[type="checkbox"] { accent-color:var(--primary); width:18px; height:18px; }
   .scenario-legend { display:flex; gap:1rem; flex-wrap:wrap; font-size:0.75rem; color:var(--muted); }
@@ -106,8 +107,8 @@
   .ajuste-manual-grid input { width:80px; background:var(--card); border:1px solid var(--border); border-radius:3px; color:var(--fg); padding:0.2rem 0.4rem; font-size:0.75rem; text-align:right; }
 
   /* === ACOMPANHAMENTO MENSAL === */
-  .tracking-section { margin-top:2rem; border-top:2px solid var(--border); padding-top:1.5rem; }
-  .tracking-header { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem; margin-bottom:1rem; }
+  .tracking-section { margin-top:1rem; border-top:2px solid var(--border); padding-top:0.75rem; }
+  .tracking-header { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem; margin-bottom:0.5rem; }
   .tracking-tabs { display:flex; gap:0.3rem; background:var(--card2); border-radius:6px; padding:0.25rem; }
   .tracking-tab { padding:0.4rem 0.8rem; border-radius:4px; font-size:0.8rem; font-weight:600; cursor:pointer; border:none; background:transparent; color:var(--muted); transition:all 0.15s; }
   .tracking-tab.active { background:var(--primary); color:#021C0E; }
@@ -121,9 +122,9 @@
   .tracking-bar { width:18px; border-radius:3px 3px 0 0; transition:height 0.3s; position:relative; }
   .tracking-bar:hover::after { content:attr(data-tooltip); position:absolute; bottom:100%; left:50%; transform:translateX(-50%); background:#052614; border:1px solid var(--border); border-radius:4px; padding:2px 6px; font-size:0.65rem; color:var(--fg); white-space:nowrap; }
   .tracking-bar-label { font-size:0.65rem; color:var(--muted); text-align:center; max-width:60px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-  .tracking-table { width:100%; border-collapse:collapse; font-size:0.8rem; margin-top:1rem; }
-  .tracking-table th { background:var(--card2); color:var(--primary); padding:0.5rem; text-align:left; font-size:0.72rem; text-transform:uppercase; }
-  .tracking-table td { padding:0.4rem 0.5rem; border-bottom:1px solid rgba(212,175,55,0.08); }
+  .tracking-table { width:100%; border-collapse:collapse; font-size:0.8rem; margin-top:0.5rem; }
+  .tracking-table th { background:var(--card2); color:var(--primary); padding:0.3rem 0.45rem; text-align:left; font-size:0.72rem; text-transform:uppercase; }
+  .tracking-table td { padding:0.22rem 0.45rem; border-bottom:1px solid rgba(212,175,55,0.08); font-size:0.78rem; }
   .tracking-indicator { display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:0.4rem; }
   .tracking-indicator.ok { background:var(--green); }
   .tracking-indicator.warn { background:var(--orange); }
@@ -166,14 +167,14 @@
   .import-edit:focus { outline:none; background:rgba(212,175,55,0.1); }
   .table-wrap { overflow-x: auto; border-radius: var(--radius); border: 1px solid var(--border); }
   /* === LANCAMENTOS TABLE ENHANCEMENTS === */
-  .lanc-table-wrap { overflow-x:auto; border:1px solid var(--border); border-radius:6px; margin-top:0.75rem; max-width:100%; }
+  .lanc-table-wrap { overflow:auto; max-height:360px; border:1px solid var(--border); border-radius:6px; margin-top:0.4rem; max-width:100%; }
   .lanc-table { width:max-content; min-width:100%; border-collapse:collapse; font-size:0.8rem; table-layout:auto; }
-  .lanc-table th { background:var(--card2); color:var(--primary); padding:0.5rem; text-align:left; font-size:0.72rem; text-transform:uppercase; position:relative; white-space:nowrap; }
-  .lanc-table td { padding:0.4rem 0.5rem; border-bottom:1px solid rgba(212,175,55,0.08); white-space:nowrap; }
+  .lanc-table th { background:var(--card2); color:var(--primary); padding:0.32rem 0.45rem; text-align:left; font-size:0.72rem; text-transform:uppercase; position:sticky; top:0; z-index:2; white-space:nowrap; }
+  .lanc-table td { padding:0.2rem 0.45rem; border-bottom:1px solid rgba(212,175,55,0.08); white-space:nowrap; font-size:0.78rem; }
   .lanc-table .col-resize-handle { position:absolute; right:0; top:0; bottom:0; width:4px; cursor:col-resize; background:transparent; z-index:10; user-select:none; }
   .lanc-table .col-resize-handle:hover, .lanc-table .col-resize-handle.resizing { background:var(--gold-dim); opacity:0.7; }
   .lanc-check { width:16px; height:16px; accent-color:var(--primary); cursor:pointer; }
-  .lanc-bulk-actions { display:flex; align-items:center; gap:0.5rem; margin-bottom:0.5rem; }
+  .lanc-bulk-actions { display:flex; align-items:center; gap:0.5rem; margin-bottom:0; }
   table { width: 100%; border-collapse: collapse; }
   thead th { background: var(--card2); color: var(--primary); font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; padding: 0.65rem 0.75rem; text-align: left; border-bottom: 1px solid var(--border); white-space: nowrap; position: relative; }
   #items-table .col-resize-handle { position:absolute; right:0; top:0; bottom:0; width:4px; cursor:col-resize; background:transparent; z-index:10; user-select:none; }
@@ -188,19 +189,50 @@
   .td-actions { display: flex; gap: 0.3rem; }
   .group-header td { background: rgba(212,175,55,0.06); color: var(--primary); font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; padding: 0.4rem 0.75rem; }
 
+  /* === TABELA DE ITENS: 8 colunas e densidade (tudo escopado em #items-table; "thead th" e "tbody td" globais intocados) === */
+  #items-table { overflow: auto; max-height: calc(100vh - 240px); max-height: max(200px, calc(100vh - 240px)); }
+  #items-table thead th { padding: 0.38rem 0.5rem; font-size: 0.68rem; position: sticky; top: 0; z-index: 3; }
+  #items-table thead th.col-cb { width: 32px; text-align: center; }
+  #items-table tbody td { padding: 0.28rem 0.5rem; font-size: 0.8rem; white-space: nowrap; vertical-align: middle; }
+  #items-table .group-header td { padding: 0.18rem 0.5rem; font-size: 0.7rem; letter-spacing: 0.04em; position: sticky; top: var(--items-thead-h, 27px); z-index: 2; background: linear-gradient(rgba(212,175,55,0.06), rgba(212,175,55,0.06)), var(--card); }
+  #items-table tr.item-row-oculta { display: none; }
+  #items-table .grupo-toggle { background: transparent; border: none; color: inherit; cursor: pointer; font-size: 0.85rem; line-height: 1; padding: 0 0.15rem; transition: transform 0.15s; }
+  #items-table .grupo-toggle[aria-expanded="false"] { transform: rotate(-90deg); }
+  #items-table .grupo-toggle:focus-visible { outline: 1px solid var(--primary); outline-offset: 1px; }
+  #items-table .grupo-contagem { color: var(--muted); font-weight: 600; letter-spacing: 0; }
+  /* Célula do nome: o nome tem reticências; NOVO e os selos de vínculo ficam inteiros e, sem espaço, descem para baixo do nome (nunca são cortados) */
+  #items-table td.td-name { max-width: none; white-space: normal; }
+  #items-table .item-nome { display: inline-block; max-width: var(--items-nome-max, 210px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: middle; }
+  #items-table .td-name .linkage-indicator, #items-table .td-name .linkage-badge-deleted { white-space: nowrap; vertical-align: middle; }
+  #items-table .badge { padding: 0.05rem 0.4rem; font-size: 0.68rem; white-space: nowrap; vertical-align: middle; }
+  #items-table .badge-pag { display: inline-flex; align-items: center; gap: 0.2rem; max-width: 110px; }
+  #items-table .badge-pag .pag-nome { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+  /* Recorrência sempre inteira (sem reticências): a largura é contida pelo texto curto de _itensRecCurta/_itensFimCurto */
+  #items-table .rec-linha { display: inline-block; white-space: nowrap; vertical-align: middle; font-size: 0.72rem; color: var(--muted); }
+  #items-table .chips-class { display: inline-flex; align-items: center; gap: 0.2rem; }
+  #items-table .chip-class { display: inline-block; padding: 0 0.3rem; border-radius: 4px; font-size: 0.66rem; font-weight: 600; line-height: 1.45; white-space: nowrap; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.03); cursor: default; }
+  #items-table .chip-class.chip-green { color: var(--green); background: rgba(34,197,94,0.12); border-color: rgba(34,197,94,0.25); }
+  #items-table .chip-class.chip-red { color: var(--red); background: rgba(239,68,68,0.12); border-color: rgba(239,68,68,0.25); }
+  #items-table .chip-class.chip-orange { color: var(--orange); background: rgba(251,146,60,0.12); border-color: rgba(251,146,60,0.25); }
+  #items-table .chip-class.chip-muted, #items-table .chip-class.chip-vazio { color: var(--muted); }
+  #items-table .chip-class.chip-vazio { border-style: dashed; }
+  #items-table td.td-acoes { width: 1%; text-align: right; }
+  #items-table .td-actions { gap: 0.15rem; justify-content: flex-end; }
+  #items-table .btn-icon { padding: 0.1rem 0.25rem; font-size: 0.75rem; }
+
   .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 1000; display: flex; align-items: center; justify-content: center; padding: 1rem; opacity: 0; pointer-events: none; transition: opacity 0.2s; }
   .modal-overlay.open { opacity: 1; pointer-events: all; }
-  .modal { background: var(--card); border: 1px solid var(--border); border-radius: 14px; width: 100%; max-width: 700px; max-height: 90vh; overflow-y: auto; padding: 2rem; }
-  .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
+  .modal { background: var(--card); border: 1px solid var(--border); border-radius: 14px; width: 100%; max-width: 700px; max-height: 90vh; overflow-y: auto; padding: 1.25rem; }
+  .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; }
   .modal-header h2 { margin: 0; }
-  .modal-section { margin-bottom: 1.5rem; padding-bottom: 1.5rem; border-bottom: 1px solid var(--border); }
+  .modal-section { margin-bottom: 0.9rem; padding-bottom: 0.9rem; border-bottom: 1px solid var(--border); }
   .modal-section:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
-  .modal-section-title { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin-bottom: 0.75rem; }
+  .modal-section-title { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin-bottom: 0.4rem; }
 
   .sub-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
   .sub-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.75rem; }
-  .radio-group { display: flex; flex-wrap: wrap; gap: 0.4rem; }
-  .radio-btn { padding: 0.3rem 0.7rem; border-radius: 20px; font-size: 0.78rem; font-weight: 600; cursor: pointer; border: 1px solid var(--border); background: transparent; color: var(--muted); transition: all 0.15s; }
+  .radio-group { display: flex; flex-wrap: wrap; gap: 0.3rem; }
+  .radio-btn { padding: 0.2rem 0.55rem; border-radius: 20px; font-size: 0.74rem; font-weight: 600; cursor: pointer; border: 1px solid var(--border); background: transparent; color: var(--muted); transition: all 0.15s; }
   .radio-btn.active { border-color: var(--primary); background: var(--primary-dim); color: var(--primary); }
   .radio-btn.active-green { border-color: var(--green); background: rgba(34,197,94,0.1); color: var(--green); }
   .radio-btn.active-red { border-color: var(--red); background: rgba(239,68,68,0.1); color: var(--red); }
@@ -217,10 +249,10 @@
   #chart-tooltip .tooltip-section { margin-top: 6px; padding-top: 4px; border-top: 1px solid rgba(212,175,55,0.15); color: #A0B8A6; font-weight: 600; font-size: 0.72rem; }
   #chart-tooltip .tooltip-item { color: #F2E8C9; font-size: 0.72rem; }
 
-  .summary-bar { display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.5rem; }
-  .summary-item { flex: 1; min-width: 140px; background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem; }
-  .summary-item .label { font-size: 0.75rem; color: var(--muted); margin-bottom: 0.3rem; }
-  .summary-item .value { font-size: 1.2rem; font-weight: 700; }
+  .summary-bar { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 0.75rem; }
+  .summary-item { flex: 1; min-width: 140px; background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 0.5rem 0.75rem; }
+  .summary-item .label { font-size: 0.75rem; color: var(--muted); margin-bottom: 0.1rem; }
+  .summary-item .value { font-size: 1.05rem; font-weight: 700; }
 
   .divider { border: none; border-top: 1px solid var(--border); margin: 1rem 0; }
 
@@ -228,8 +260,8 @@
   .empty svg { opacity: 0.3; margin-bottom: 0.75rem; }
 
   /* Análise */
-  .analise-section { margin-top: 2rem; }
-  .analise-title { font-size: 1rem; font-weight: 700; color: var(--primary); margin-bottom: 1rem; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; }
+  .analise-section { margin-top: 1rem; }
+  .analise-title { font-size: 1rem; font-weight: 700; color: var(--primary); margin-bottom: 0.5rem; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; }
   .analise-block { background: var(--card2); border-radius: var(--radius); padding: 1rem 1.25rem; margin-bottom: 1rem; border-left: 3px solid var(--border); }
   .analise-block.alert-high { border-left-color: var(--red); }
   .analise-block.alert-med { border-left-color: var(--orange); }
@@ -280,19 +312,19 @@
   /* Lista de simulações */
   .sim-list-view { }
   .sim-editor-view { display: none; }
-  .sim-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem; }
+  .sim-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem; }
   .sim-header h2 { margin:0; color:var(--primary); }
   .btn-new { background: linear-gradient(135deg, var(--primary), #b8962e); color:#000; border:none; border-radius:8px; padding:0.6rem 1.2rem; font-size:0.85rem; font-weight:700; cursor:pointer; transition:all 0.2s; }
   .btn-new:hover { transform:translateY(-1px); box-shadow:0 4px 16px rgba(212,175,55,0.4); }
-  .sim-card { background:var(--card); border:1px solid var(--border); border-radius:var(--radius); margin-bottom:0.75rem; overflow:hidden; transition:border-color 0.2s; }
+  .sim-card { background:var(--card); border:1px solid var(--border); border-radius:var(--radius); margin-bottom:0.4rem; overflow:hidden; transition:border-color 0.2s; }
   .sim-card:hover { border-color:var(--primary); }
-  .sim-card-header { display:flex; align-items:center; gap:1rem; padding:1rem 1.25rem; cursor:pointer; }
+  .sim-card-header { display:flex; align-items:center; gap:0.6rem; padding:0.5rem 0.9rem; cursor:pointer; }
   .sim-card-header .chevron { color:var(--muted); font-size:0.7rem; transition:transform 0.2s; }
   .sim-card.open .sim-card-header .chevron { transform:rotate(180deg); }
-  .sim-card-title { font-weight:700; color:#fff; font-size:0.95rem; flex:1; }
+  .sim-card-title { font-weight:700; color:#fff; font-size:0.88rem; flex:1; }
   .sim-card-meta { font-size:0.75rem; color:var(--muted); }
   .sim-card-actions { display:flex; gap:0.4rem; }
-  .sim-card-actions button { background:transparent; border:1px solid var(--border); color:var(--muted); border-radius:6px; padding:0.3rem 0.6rem; font-size:0.75rem; cursor:pointer; transition:all 0.15s; }
+  .sim-card-actions button { background:transparent; border:1px solid var(--border); color:var(--muted); border-radius:6px; padding:0.15rem 0.45rem; font-size:0.75rem; cursor:pointer; transition:all 0.15s; }
   .sim-card-actions button:hover { border-color:var(--primary); color:var(--primary); }
   .sim-card-actions button.danger { border-color:rgba(239,68,68,0.3); color:var(--red); }
   .sim-card-actions button.danger:hover { background:rgba(239,68,68,0.1); }
@@ -302,7 +334,7 @@
   .sim-card-summary .stat { background:var(--card2); border-radius:6px; padding:0.5rem 0.8rem; }
   .sim-card-summary .stat-label { font-size:0.7rem; color:var(--muted); }
   .sim-card-summary .stat-value { font-weight:700; margin-top:0.15rem; }
-  .empty-state { text-align:center; padding:4rem 2rem; color:var(--muted); }
+  .empty-state { text-align:center; padding:2rem; color:var(--muted); }
   .empty-state .icon { font-size:3rem; margin-bottom:0.75rem; opacity:0.5; }
   .empty-state p { font-size:0.9rem; line-height:1.5; }
   .btn-back { background:transparent; border:1px solid var(--border); color:var(--muted); border-radius:6px; padding:0.4rem 0.8rem; font-size:0.82rem; cursor:pointer; transition:all 0.15s; margin-right:1rem; }
@@ -344,10 +376,16 @@
   .section-collapse-icon.collapsed { transform:rotate(-90deg); }
   .section-body-collapsible { overflow:hidden; transition:max-height 0.4s ease, opacity 0.3s ease; max-height:9999px; opacity:1; }
   .section-body-collapsible.collapsed { max-height:0 !important; opacity:0; padding-top:0 !important; padding-bottom:0 !important; margin-top:0 !important; }
+  /* Aberta: sem teto de altura (o 9999px cortava listas longas) e sem overflow oculto (permite cabeçalhos fixos nas rolagens internas) */
+  .section-body-collapsible:not(.collapsed) { max-height:none; overflow:visible; }
+  /* Tabelas largas do acompanhamento rolam na própria área (no celular antes eram cortadas; sem isso alargariam a página) */
+  #tracking-content { overflow-x:auto; }
+  /* Idem na análise: caixas largas (ex.: "Equivalente anual" num celular de 360px) rolam dentro da seção */
+  #analise-section { overflow-x:auto; }
 
   /* === EVOLUTION REDESIGN === */
   /* Orc item rows - aligned layout */
-  .orc-item-row { display:flex; justify-content:space-between; align-items:center; padding:0.25rem 0; font-size:0.75rem; color:var(--muted); gap:0.5rem; }
+  .orc-item-row { display:flex; justify-content:space-between; align-items:center; padding:0.1rem 0; font-size:0.75rem; color:var(--muted); gap:0.5rem; }
   .orc-item-left { display:flex; align-items:center; gap:0.4rem; flex:1; min-width:0; }
   .orc-item-left label { display:flex; align-items:center; gap:0.4rem; cursor:pointer; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .orc-item-right { text-align:right; white-space:nowrap; flex-shrink:0; color:var(--fg); }
@@ -356,7 +394,54 @@
   .tracking-table .cat-expand-btn { cursor:pointer; user-select:none; }
   .tracking-table .cat-expand-btn:hover { opacity:0.8; }
   .tracking-table .item-detail-row td { padding-left:2rem; font-size:0.75rem; color:var(--muted); border-bottom:1px solid rgba(255,255,255,0.03); }
+
+  /* === DENSIDADE DO RESTANTE: regras novas e escopadas (.analise-block*, .analise-memo, "thead th" e "tbody td" intocados) === */
+  /* Orçamento mensal: cartões em grade responsiva; nenhum cartão escondido; canvas 200x200 intocado */
+  .orc-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(460px, 1fr)); grid-template-columns:repeat(auto-fit, minmax(min(460px, 100%), 1fr)); gap:0.75rem; margin-bottom:0.75rem; }
+
+  /* Análise, Bloco 1 (Distribuição das Entradas): uma linha por grupo, frase de apoio na mesma linha */
+  .analise-distribuicao .dist-grade { display:grid; grid-template-columns:max-content max-content minmax(80px, 180px) minmax(0, 1fr); align-items:center; gap:0.3rem 0.75rem; margin-top:0.45rem; font-size:0.8rem; }
+  .analise-distribuicao .dist-valor { font-weight:700; white-space:nowrap; }
+  .analise-distribuicao .dist-apoio { font-size:0.72rem; color:var(--muted); }
+  .analise-distribuicao .dist-apoio-largo { grid-column:3 / -1; }
+
+  /* Análise, Bloco 2 (Despesas: participação): uma linha de grade por despesa, cabeçalho fixo e rolagem interna.
+     Só classes próprias (al-*) e as flag-* exclusivas deste bloco; nada aqui é usado pelo bloco Candidatos. */
+  .analise-lista .al-tabela { max-height:440px; overflow:auto; border-top:1px solid rgba(212,175,55,0.1); }
+  .analise-lista .al-grade { min-width:840px; }
+  .analise-lista .al-linha { display:grid; grid-template-columns:minmax(150px, 1fr) 118px 96px 62px 62px 104px 180px; align-items:center; column-gap:0.6rem; padding:0.18rem 0.25rem; font-size:0.78rem; border-bottom:1px solid rgba(212,175,55,0.06); }
+  .analise-lista .al-linha:last-child { border-bottom:none; }
+  .analise-lista .al-cab { position:sticky; top:0; z-index:1; background:var(--card2); font-size:0.64rem; font-weight:700; text-transform:uppercase; letter-spacing:0.04em; color:var(--muted); padding-top:0.3rem; padding-bottom:0.3rem; border-bottom:1px solid rgba(212,175,55,0.15); }
+  .analise-lista .al-nome { color:var(--fg); min-width:0; overflow-wrap:anywhere; }
+  .analise-lista .al-cat { font-size:0.72rem; color:var(--muted); }
+  .analise-lista .al-num { text-align:right; white-space:nowrap; }
+  .analise-lista .al-mult { color:var(--muted); }
+  .analise-lista .al-pot { display:flex; align-items:center; gap:0.35rem; }
+  .analise-lista .al-pot .score-bar-track { flex:1; height:6px; }
+  .analise-lista .al-pot .score-label { min-width:24px; font-size:0.74rem; }
+  .analise-lista .al-marcas { display:flex; flex-wrap:wrap; gap:0.2rem; }
+  .analise-lista .al-marcas span { padding:0 0.3rem; font-size:0.64rem; line-height:1.5; white-space:nowrap; cursor:default; }
+
+  /* Aba Faturas do acompanhamento: itens da fatura dentro da célula "Itens" (sem linha extra por fatura) */
+  .tracking-table tr.fat-linha td { vertical-align:top; }
+  .fat-itens-det summary { cursor:pointer; white-space:nowrap; }
+  .fat-itens-det summary .fat-ver { font-size:0.72rem; color:var(--muted); }
+  .fat-itens-lista { max-height:150px; overflow-y:auto; margin-top:0.3rem; min-width:240px; }
+
+  /* Modais de importação: tabela com rolagem interna e cabeçalho fixo; instruções recolhidas */
+  .import-tabela-wrap { overflow:auto; max-height:60vh; }
+  .import-tabela-wrap .tracking-table { margin-top:0; }
+  .import-tabela-wrap .tracking-table td { font-size:inherit; }
+  .import-tabela-wrap .tracking-table th { position:sticky; top:0; z-index:2; }
+  .sheets-instrucoes { margin-top:0.75rem; }
+  .sheets-instrucoes > summary { font-size:0.78rem; font-weight:600; color:var(--primary); cursor:pointer; }
+
+  @media (max-width: 700px) {
+    .analise-distribuicao .dist-grade { grid-template-columns:minmax(0, 1fr) auto; }
+    .analise-distribuicao .dist-grade .score-bar-track, .analise-distribuicao .dist-apoio { grid-column:1 / -1; }
+  }
 </style>
+<link rel="stylesheet" href="fluxo-otimizacao.css">
 </head>
 <body>
   <!-- Sidebar Container (Injected by layout.js) -->
@@ -365,7 +450,7 @@
   <main class="main-content">
 <div class="page">
 
-  <header class="flex items-center gap-4 mb-8">
+  <header class="flex items-center gap-4 mb-8" style="margin-bottom:1rem;">
     <a href="../ferramentas.html" class="text-gray-400 hover:text-white text-xl">←</a>
     <div>
       <div class="flex items-center gap-2">
@@ -408,7 +493,7 @@
   <!-- Seção 1: Período -->
   <div class="card">
     <h2>1. Período Analisado</h2>
-    <div class="row" style="margin-bottom:1rem;">
+    <div class="row" style="margin-bottom:0.5rem;">
       <div class="toggle-group" id="period-mode-toggle">
         <button class="toggle-btn active" onclick="setPeriodMode('relative')">A partir de hoje</button>
         <button class="toggle-btn" onclick="setPeriodMode('custom')">Datas específicas</button>
@@ -468,7 +553,7 @@
       <div class="field" style="max-width:260px;">
         <label>Poupança intocável (R$)</label>
         <input type="text" id="poupanca-intocavel" placeholder="0,00" oninput="formatCurrencyInput(this)" value="0,00">
-        <p style="font-size:0.7rem; color:var(--muted); margin-top:0.2rem;">Valor da poupança que NÃO deve ser usado para cobrir déficit.</p>
+        <p style="font-size:0.7rem; color:var(--muted); margin-top:0.2rem; margin-bottom:0;">Valor da poupança que NÃO deve ser usado para cobrir déficit.</p>
       </div>
     </div>
   </div>
@@ -488,7 +573,7 @@
       <div class="empty" id="accounts-empty" style="padding:1.5rem; text-align:center; color:var(--muted); font-size:0.85rem;">
         Nenhuma conta ou cartão cadastrado. Adicione para vincular despesas à forma de pagamento.
       </div>
-      <div id="accounts-grid" style="display:none; display:grid; grid-template-columns:repeat(auto-fill, minmax(280px, 1fr)); gap:1rem;"></div>
+      <div id="accounts-grid" style="display:none; display:grid; grid-template-columns:repeat(auto-fill, minmax(230px, 1fr)); gap:0.5rem;"></div>
     </div>
     </div>
   </div>
@@ -501,7 +586,7 @@
         <button class="btn-clear-badges" id="btn-clear-all-badges" onclick="event.stopPropagation(); clearAllNewBadges()" style="display:none;">Limpar Badges</button>
          <button class="btn btn-outline btn-sm" id="btn-delete-selected" onclick="event.stopPropagation(); deleteSelectedItems()" style="display:none; color:var(--red); border-color:var(--red);"><i class="fas fa-trash"></i> Excluir Selecionados (<span id="delete-selected-count">0</span>)</button>
          <div onclick="event.stopPropagation(); openImportPlanilhaModal()" class="btn btn-outline btn-sm" title="Importar itens de uma planilha Google Sheets"><i class="fas fa-file-import"></i> Importar Planilha</div>
-         <div onclick="event.stopPropagation(); openModal()" class="btn btn-primary">+ Adicionar Item</div>
+         <div onclick="event.stopPropagation(); openModal()" class="btn btn-primary btn-sm">+ Adicionar Item</div>
         <span class="section-collapse-icon" id="collapse-icon-items">▼</span>
       </div>
     </div>
@@ -516,20 +601,14 @@
         <table>
           <thead>
             <tr>
-              <th style="width:32px;"><input type="checkbox" id="items-check-all" onchange="toggleAllItemsCheck(this.checked)" title="Selecionar todos"></th>
-              <th>Nome</th>
-              <th>Tipo</th>
-              <th>Categoria</th>
-              <th>Valor</th>
-              <th>Pagamento</th>
-              <th>Recorrência</th>
-              <th>Início</th>
-              <th>Fim</th>
-              <th>Alterável</th>
-              <th>Disposição</th>
-              <th>Importância</th>
-              <th>Conforto</th>
-              <th></th>
+              <th class="col-cb" style="width:32px;"><input type="checkbox" id="items-check-all" onchange="toggleAllItemsCheck(this.checked)" title="Selecionar todos"></th>
+              <th class="col-nome">Nome</th>
+              <th class="col-valor">Valor</th>
+              <th class="col-pagamento">Pagamento</th>
+              <th class="col-recorrencia">Recorrência</th>
+              <th class="col-classificacao">Classificação</th>
+              <th class="col-otimizacao">Otimização</th>
+              <th class="col-acoes"></th>
             </tr>
           </thead>
           <tbody id="items-tbody"></tbody>
@@ -540,8 +619,8 @@
   </div>
 
   <!-- Botão calcular -->
-  <div style="text-align:center; margin: 1.5rem 0; display:flex; justify-content:center; gap:1rem; flex-wrap:wrap;">
-    <button class="btn btn-primary" style="padding:0.75rem 2.5rem; font-size:1rem;" onclick="calcular()">Calcular Projeção</button>
+  <div style="text-align:center; margin: 0.75rem 0; display:flex; justify-content:center; gap:1rem; flex-wrap:wrap;">
+    <button class="btn btn-primary" style="padding:0.55rem 2rem; font-size:1rem;" onclick="calcular()">Calcular Projeção</button>
   </div>
 
   <!-- Seção 5: Resultado -->
@@ -664,7 +743,7 @@
     <!-- Classificação -->
     <div class="modal-section">
       <div class="modal-section-title">Classificação</div>
-      <div class="row" style="margin-bottom:0.75rem;">
+      <div class="row" style="margin-bottom:0.5rem;">
         <div class="field">
           <label>Tipo</label>
           <div class="radio-group" id="rg-tipo">
@@ -675,7 +754,7 @@
       </div>
 
       <div id="saida-sub" style="display:none;">
-        <div class="row" style="margin-bottom:0.75rem;">
+        <div class="row" style="margin-bottom:0.5rem;">
           <div class="field">
             <label>Subtipo de saída</label>
             <div class="radio-group" id="rg-subtipo">
@@ -686,18 +765,18 @@
         </div>
 
         <div id="poupanca-sub" style="display:none;">
-          <div style="margin-bottom:0.75rem; padding:0.75rem; background:var(--card2); border-radius:8px; border:1px solid var(--border);">
+          <div style="margin-bottom:0.5rem; padding:0.6rem 0.75rem; background:var(--card2); border-radius:8px; border:1px solid var(--border);">
             <label style="display:flex; align-items:center; gap:0.6rem; cursor:pointer; font-size:0.85rem; color:var(--fg);">
               <input type="checkbox" id="item-poup-complemento" style="width:18px; height:18px; accent-color:var(--primary); cursor:pointer;">
               Usar como complemento de renda (cobrir déficit)
             </label>
-            <p style="font-size:0.7rem; color:var(--muted); margin-top:0.3rem; margin-left:2.1rem;">Se marcado, este valor poderá ser usado automaticamente para cobrir saldo negativo. Se desmarcado, este valor fica protegido e não será tocado.</p>
+            <p style="font-size:0.7rem; color:var(--muted); margin-top:0.3rem; margin-left:2.1rem; margin-bottom:0;">Se marcado, este valor poderá ser usado automaticamente para cobrir saldo negativo. Se desmarcado, este valor fica protegido e não será tocado.</p>
           </div>
         </div>
 
         <div id="despesa-sub" style="display:none;">
-          <div style="margin-bottom:0.75rem;">
-            <div class="modal-section-title" style="margin-bottom:0.5rem;">Categoria da Despesa</div>
+          <div style="margin-bottom:0.5rem;">
+            <div class="modal-section-title" style="margin-bottom:0.3rem;">Categoria da Despesa</div>
             <div class="radio-group" id="rg-categoria">
               <button class="radio-btn" data-val="sobrevivencia" onclick="setRadio('categoria','sobrevivencia',this)">Sobrevivência</button>
               <button class="radio-btn" data-val="necessidades" onclick="setRadio('categoria','necessidades',this)">Necessidades/Prioridades</button>
@@ -707,16 +786,16 @@
             </div>
           </div>
 
-          <div class="sub-grid" style="margin-bottom:0.75rem;">
+          <div class="sub-grid" style="margin-bottom:0.5rem;">
             <div>
-              <div class="modal-section-title" style="margin-bottom:0.5rem;">É alterável?</div>
+              <div class="modal-section-title" style="margin-bottom:0.3rem;">É alterável?</div>
               <div class="radio-group" id="rg-alteravel">
                 <button class="radio-btn" data-val="sim" onclick="setRadio('alteravel','sim',this)">Sim</button>
                 <button class="radio-btn" data-val="nao" onclick="setRadio('alteravel','nao',this)">Não</button>
               </div>
             </div>
             <div>
-              <div class="modal-section-title" style="margin-bottom:0.5rem;">Disposição</div>
+              <div class="modal-section-title" style="margin-bottom:0.3rem;">Disposição</div>
               <div class="radio-group" id="rg-disposto">
                 <button class="radio-btn" id="btn-disp-alteraria" data-val="alteraria" onclick="setRadio('disposto','alteraria',this)">Alteraria</button>
                 <button class="radio-btn" data-val="cancelaria" onclick="setRadio('disposto','cancelaria',this)">Cancelaria</button>
@@ -725,38 +804,41 @@
             </div>
           </div>
 
-          <div style="margin-bottom:0.75rem;">
-            <div class="modal-section-title" style="margin-bottom:0.5rem;">Importância</div>
-            <div class="radio-group" id="rg-importancia">
-              <button class="radio-btn imp-1" data-val="1" onclick="setRadio('importancia','1',this)">★ Mais importante de todos</button>
-              <button class="radio-btn imp-2" data-val="2" onclick="setRadio('importancia','2',this)">Muito importante</button>
-              <button class="radio-btn imp-3" data-val="3" onclick="setRadio('importancia','3',this)">Importante</button>
-              <button class="radio-btn imp-4" data-val="4" onclick="setRadio('importancia','4',this)">Preferível ter</button>
-              <button class="radio-btn imp-5" data-val="5" onclick="setRadio('importancia','5',this)">Indiferente</button>
-              <button class="radio-btn imp-6" data-val="6" onclick="setRadio('importancia','6',this)">Preferível não ter</button>
-              <button class="radio-btn imp-7" data-val="7" onclick="setRadio('importancia','7',this)">Inaceitável</button>
+          <!-- Importância e Conforto lado a lado (empilham abaixo de 700px pela media query existente de .sub-grid) -->
+          <div class="sub-grid">
+            <div>
+              <div class="modal-section-title" style="margin-bottom:0.3rem;">Importância</div>
+              <div class="radio-group" id="rg-importancia">
+                <button class="radio-btn imp-1" data-val="1" onclick="setRadio('importancia','1',this)">★ Mais importante de todos</button>
+                <button class="radio-btn imp-2" data-val="2" onclick="setRadio('importancia','2',this)">Muito importante</button>
+                <button class="radio-btn imp-3" data-val="3" onclick="setRadio('importancia','3',this)">Importante</button>
+                <button class="radio-btn imp-4" data-val="4" onclick="setRadio('importancia','4',this)">Preferível ter</button>
+                <button class="radio-btn imp-5" data-val="5" onclick="setRadio('importancia','5',this)">Indiferente</button>
+                <button class="radio-btn imp-6" data-val="6" onclick="setRadio('importancia','6',this)">Preferível não ter</button>
+                <button class="radio-btn imp-7" data-val="7" onclick="setRadio('importancia','7',this)">Inaceitável</button>
+              </div>
             </div>
-          </div>
 
-          <!-- NOVO: Nível de Conforto -->
-          <div>
-            <div class="modal-section-title" style="margin-bottom:0.5rem;">Nível de Conforto desta despesa</div>
-            <div class="radio-group" id="rg-conforto">
-              <button class="radio-btn conforto-1" data-val="1" onclick="setRadio('conforto','1',this)">Muito abaixo do básico</button>
-              <button class="radio-btn conforto-2" data-val="2" onclick="setRadio('conforto','2',this)">Menos que básico</button>
-              <button class="radio-btn conforto-3" data-val="3" onclick="setRadio('conforto','3',this)">Apenas básico</button>
-              <button class="radio-btn conforto-4" data-val="4" onclick="setRadio('conforto','4',this)">Mais que básico</button>
-              <button class="radio-btn conforto-5" data-val="5" onclick="setRadio('conforto','5',this)">Muito acima do básico</button>
+            <!-- NOVO: Nível de Conforto -->
+            <div>
+              <div class="modal-section-title" style="margin-bottom:0.3rem;">Nível de Conforto desta despesa</div>
+              <div class="radio-group" id="rg-conforto">
+                <button class="radio-btn conforto-1" data-val="1" onclick="setRadio('conforto','1',this)">Muito abaixo do básico</button>
+                <button class="radio-btn conforto-2" data-val="2" onclick="setRadio('conforto','2',this)">Menos que básico</button>
+                <button class="radio-btn conforto-3" data-val="3" onclick="setRadio('conforto','3',this)">Apenas básico</button>
+                <button class="radio-btn conforto-4" data-val="4" onclick="setRadio('conforto','4',this)">Mais que básico</button>
+                <button class="radio-btn conforto-5" data-val="5" onclick="setRadio('conforto','5',this)">Muito acima do básico</button>
+              </div>
             </div>
           </div>
 
           <!-- Forma de Pagamento -->
-          <div style="margin-top:0.75rem;">
-            <div class="modal-section-title" style="margin-bottom:0.5rem;">Forma de Pagamento</div>
+          <div style="margin-top:0.5rem;">
+            <div class="modal-section-title" style="margin-bottom:0.3rem;">Forma de Pagamento</div>
             <select id="item-forma-pagamento" style="background:var(--card2); border:1px solid var(--border); border-radius:6px; color:var(--fg); padding:0.5rem 0.75rem; font-size:0.9rem; width:100%; outline:none;">
               <option value="">Direto (sem conta/cartão)</option>
             </select>
-            <p style="font-size:0.72rem; color:var(--muted); margin-top:0.3rem;">Se pago com cartão, a despesa entrará na fatura correspondente.</p>
+            <p style="font-size:0.72rem; color:var(--muted); margin-top:0.3rem; margin-bottom:0;">Se pago com cartão, a despesa entrará na fatura correspondente.</p>
           </div>
         </div>
       </div>
@@ -765,7 +847,7 @@
     <!-- Recorrência -->
     <div class="modal-section">
       <div class="modal-section-title">Recorrência</div>
-      <div class="row" style="margin-bottom:0.75rem;">
+      <div class="row" style="margin-bottom:0.5rem;">
         <div class="field">
           <label>Tipo de repetição</label>
           <select id="rec-tipo" onchange="updateRecFields()">
@@ -806,7 +888,7 @@
       </div>
     </div>
 
-    <div style="display:flex; justify-content:flex-end; gap:0.75rem; margin-top:1.5rem;">
+    <div style="display:flex; justify-content:flex-end; gap:0.75rem; margin-top:1rem;">
       <button class="btn btn-outline" onclick="closeModal()">Cancelar</button>
       <button class="btn btn-primary" onclick="saveItem()">Salvar Item</button>
     </div>
@@ -832,12 +914,12 @@
           <div class="field" style="max-width:180px;">
             <label>Dia de fechamento</label>
             <input type="number" id="acc-fechamento" min="1" max="31" value="25" placeholder="1-31">
-            <p style="font-size:0.7rem; color:var(--muted); margin-top:0.2rem;">Dia que a fatura "vira"</p>
+            <p style="font-size:0.7rem; color:var(--muted); margin-top:0.2rem; margin-bottom:0;">Dia que a fatura "vira"</p>
           </div>
           <div class="field" style="max-width:180px;">
             <label>Dia de vencimento</label>
             <input type="number" id="acc-vencimento" min="1" max="31" value="5" placeholder="1-31">
-            <p style="font-size:0.7rem; color:var(--muted); margin-top:0.2rem;">Dia de pagar a fatura</p>
+            <p style="font-size:0.7rem; color:var(--muted); margin-top:0.2rem; margin-bottom:0;">Dia de pagar a fatura</p>
           </div>
         </div>
         <div class="field" style="margin-bottom:0.75rem;">
@@ -1033,7 +1115,7 @@ function renderAccountsGrid() {
     var icon = acc.tipo === 'cartao' ? '💳' : '🏦';
     var details = '';
     if (acc.tipo === 'cartao') {
-      details = '<div style="font-size:0.75rem; color:var(--muted); margin-top:0.4rem;">' +
+      details = '<div style="font-size:0.7rem; color:var(--muted); margin-top:0;">' +
         'Fecha dia <strong style="color:var(--primary)">' + acc.fechamento + '</strong> | ' +
         'Vence dia <strong style="color:var(--primary)">' + acc.vencimento + '</strong>' +
         (acc.bandeira ? ' | ' + acc.bandeira.charAt(0).toUpperCase() + acc.bandeira.slice(1) : '') +
@@ -1047,11 +1129,15 @@ function renderAccountsGrid() {
       var accBadges = FerramentasLinkage.getBadgesForItem('fluxo', { simId: editingSimId, accountId: acc.id });
       accBadges.forEach(function(b) { accLinkBadges += FerramentasLinkage.renderBadgeHtml(b); });
     }
-    html += '<div style="background:var(--card2); border:1px solid var(--border); border-radius:8px; padding:0.8rem 1rem; display:flex; align-items:center; gap:0.8rem;">' +
-      '<span style="font-size:1.4rem;">' + icon + '</span>' +
-      '<div style="flex:1;">' +
-        '<div style="font-weight:600; color:var(--fg); font-size:0.9rem;">' + acc.nome + accNewBadge + accLinkBadges + '</div>' +
-        '<span class="badge ' + (acc.tipo==='cartao'?'badge-purple':'badge-blue') + '">' + (acc.tipo==='cartao'?'Cartão':'Conta') + '</span>' +
+    // Cartão compacto: o selo Conta/Cartão fica na mesma linha do nome
+    html += '<div style="background:var(--card2); border:1px solid var(--border); border-radius:8px; padding:0.4rem 0.65rem; display:flex; align-items:center; gap:0.5rem;">' +
+      '<span style="font-size:1.05rem;">' + icon + '</span>' +
+      '<div style="flex:1; min-width:0;">' +
+        '<div style="font-weight:600; color:var(--fg); font-size:0.9rem; display:flex; align-items:center; flex-wrap:wrap; gap:0.35rem;">' +
+          '<span>' + _densEsc(acc.nome) + '</span>' +
+          '<span class="badge ' + (acc.tipo==='cartao'?'badge-purple':'badge-blue') + '">' + (acc.tipo==='cartao'?'Cartão':'Conta') + '</span>' +
+          accNewBadge + accLinkBadges +
+        '</div>' +
         details +
       '</div>' +
       '<div style="display:flex; gap:0.3rem;">' +
@@ -1110,6 +1196,16 @@ function fmtCurrency(n) {
 
 function fmtPct(n) {
   return n.toFixed(1) + '%';
+}
+
+// Escape de texto vindo de dados (conteúdo e atributos) usado pelos templates compactados
+function _densEsc(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
 // ============================================================
@@ -1370,118 +1466,255 @@ function renderItemsTable() {
   var despesas = items.filter(function(i) { return i.subtipo === 'despesa'; });
 
   var html = '';
-
-  var _groupIdx = 0;
-  function groupRow(label, color, catKey) {
-    _groupIdx++;
-    var gid = 'grp-' + _groupIdx;
-    return '<tr class="group-header" data-group="' + gid + '" data-cat-key="' + (catKey || '') + '">' +
-      '<td style="text-align:center;"><input type="checkbox" class="cat-select-all-cb" onchange="toggleCategoryCheck(this,\'' + gid + '\')" title="Selecionar/Desmarcar todos desta categoria"></td>' +
-      '<td colspan="13" style="color:' + color + ';">' +
-        '<span style="display:inline-flex;align-items:center;gap:0.5rem;width:100%;">' + label +
-        ' <span class="cat-sort-btns" style="margin-left:auto;display:inline-flex;gap:0.2rem;">' +
-          '<button class="btn btn-ghost btn-sm" style="font-size:0.65rem;padding:0.1rem 0.3rem;" onclick="sortCategoryGroup(this,\'' + gid + '\',\'nome\')" title="Ordenar por Nome">Nome ↕</button>' +
-          '<button class="btn btn-ghost btn-sm" style="font-size:0.65rem;padding:0.1rem 0.3rem;" onclick="sortCategoryGroup(this,\'' + gid + '\',\'valor\')" title="Ordenar por Valor">Valor ↕</button>' +
-          '<button class="btn btn-ghost btn-sm" style="font-size:0.65rem;padding:0.1rem 0.3rem;" onclick="sortCategoryGroup(this,\'' + gid + '\',\'importancia\')" title="Ordenar por Importância">Imp ↕</button>' +
-          '<button class="btn btn-ghost btn-sm" style="font-size:0.65rem;padding:0.1rem 0.3rem;" onclick="sortCategoryGroup(this,\'' + gid + '\',\'conforto\')" title="Ordenar por Conforto">Conf ↕</button>' +
-        '</span>' +
-        '</span>' +
-      '</td></tr>';
-  }
-
-  function itemRow(it, index) {
-    var tipoB = it.tipo === 'entrada'
-      ? '<span class="badge badge-green">ENTRADA</span>'
-      : it.subtipo === 'poupanca'
-      ? '<span class="badge badge-blue">POUPANÇA</span>'
-      : '<span class="badge badge-red">DESPESA</span>';
-
-    var catB = it.categoria ? '<span class="badge badge-muted">' + CATEGORIA_LABELS[it.categoria] + '</span>' : '—';
-    var valClass = it.tipo === 'entrada' ? 'td-val-pos' : 'td-val-neg';
-    var valSign = it.tipo === 'entrada' ? '+' : '-';
-    var altB = it.alteravel ? '<span class="badge ' + (it.alteravel==='sim'?'badge-green':'badge-muted') + '">' + (it.alteravel==='sim'?'Sim':'Não') + '</span>' : '—';
-    var dispLabels = { alteraria: 'Alteraria', cancelaria: 'Cancelaria', nao: 'Não mexe', sim: 'Alteraria' };
-    var dispColors = { alteraria: 'badge-green', cancelaria: 'badge-red', nao: 'badge-orange', sim: 'badge-green' };
-    var dispB = it.disposto ? '<span class="badge ' + (dispColors[it.disposto] || 'badge-muted') + '">' + (dispLabels[it.disposto] || it.disposto) + '</span>' : '—';
-    var impB = it.importancia ? '<span class="' + IMPORTANCIA_CLASSES[it.importancia] + '" style="font-size:0.78rem;font-weight:600;">' + IMPORTANCIA_LABELS[it.importancia] + '</span>' : '—';
-    var confB = it.conforto ? '<span class="' + CONFORTO_CLASSES[it.conforto] + '" style="font-size:0.78rem;font-weight:600;">' + CONFORTO_LABELS[it.conforto] + '</span>' : '—';
-    var inicioFmt = it.recInicio ? new Date(it.recInicio+'T00:00').toLocaleDateString('pt-BR') : '—';
-    var pagB = '—';
-    if (it.formaPagamento) {
-      var accFound = accounts.find(function(a) { return a.id === it.formaPagamento; });
-      if (accFound) {
-        var accIcon = accFound.tipo === 'cartao' ? '💳' : '🏦';
-        pagB = '<span class="badge ' + (accFound.tipo==='cartao'?'badge-purple':'badge-blue') + '">' + accIcon + ' ' + accFound.nome + '</span>';
-      }
-    }
-
-    var newBadge = it._isNew ? '<span class="badge-new">NOVO</span>' : '';
-    // Linkage: indicador de associação e badges de exclusão
-    var linkBadges = '';
-    if (typeof FerramentasLinkage !== 'undefined' && it._linkId && editingSimId) {
-      var itemLinks = FerramentasLinkage.getLinksForFluxoItem(editingSimId, it._linkId);
-      if (itemLinks.length > 0) {
-        linkBadges += FerramentasLinkage.renderLinkIndicatorHtml(itemLinks[0], 'fluxo');
-      }
-      var itemBadges = FerramentasLinkage.getBadgesForItem('fluxo', { simId: editingSimId, itemId: it._linkId });
-      itemBadges.forEach(function(b) { linkBadges += FerramentasLinkage.renderBadgeHtml(b); });
-    }
-    return '<tr>' +
-      '<td style="text-align:center;"><input type="checkbox" class="item-select-cb" data-index="' + index + '" onchange="onItemCheckChange(this)"></td>' +
-      '<td class="td-name">' + it.nome + newBadge + linkBadges + '</td>' +
-      '<td>' + tipoB + '</td>' +
-      '<td>' + catB + '</td>' +
-      '<td class="' + valClass + '">' + valSign + fmtCurrency(it.valor) + '</td>' +
-      '<td>' + pagB + '</td>' +
-      '<td>' + recLabel(it) + '</td>' +
-      '<td>' + inicioFmt + '</td>' +
-      '<td>' + fimLabel(it) + '</td>' +
-      '<td>' + altB + '</td>' +
-      '<td>' + dispB + '</td>' +
-      '<td>' + impB + '</td>' +
-      '<td>' + confB + '</td>' +
-      '<td class="td-actions">' +
-        '<button class="btn btn-ghost btn-icon btn-sm" onclick="openModal(' + index + ')" title="Editar">✏️</button>' +
-        '<button class="btn btn-ghost btn-icon btn-sm" onclick="deleteItem(' + index + ')" title="Excluir" style="color:var(--red)">🗑</button>' +
-      '</td>' +
-    '</tr>';
-  }
+  _itensGrupoSeq = 0;
 
   if (entradas.length) {
-    html += groupRow('↑ Entradas', 'var(--green)', 'entrada');
-    entradas.forEach(function(it) { html += itemRow(it, items.indexOf(it)); });
+    html += renderGroupRowHtml('↑ Entradas', 'var(--green)', 'entrada', entradas.length);
+    entradas.forEach(function(it) { html += renderItemRowHtml(it, items.indexOf(it)); });
   }
   if (poupancas.length) {
-    html += groupRow('⬡ Poupança', 'var(--blue)', 'poupanca');
-    poupancas.forEach(function(it) { html += itemRow(it, items.indexOf(it)); });
+    html += renderGroupRowHtml('⬡ Poupança', 'var(--blue)', 'poupanca', poupancas.length);
+    poupancas.forEach(function(it) { html += renderItemRowHtml(it, items.indexOf(it)); });
   }
   if (despesas.length) {
     var cats = ['sobrevivencia','necessidades','aperfeicoamento','dividas','conforto'];
     cats.forEach(function(cat) {
       var sub = despesas.filter(function(i) { return i.categoria === cat; });
       if (sub.length) {
-        html += groupRow('↓ Despesa — ' + CATEGORIA_LABELS[cat], 'var(--red)', cat);
-        sub.forEach(function(it) { html += itemRow(it, items.indexOf(it)); });
+        html += renderGroupRowHtml('↓ Despesa — ' + CATEGORIA_LABELS[cat], 'var(--red)', cat, sub.length);
+        sub.forEach(function(it) { html += renderItemRowHtml(it, items.indexOf(it)); });
       }
     });
     var semCat = despesas.filter(function(i) { return !i.categoria; });
     if (semCat.length) {
-      html += groupRow('↓ Despesa — Sem categoria', 'var(--red)', 'sem-cat');
-      semCat.forEach(function(it) { html += itemRow(it, items.indexOf(it)); });
+      html += renderGroupRowHtml('↓ Despesa — Sem categoria', 'var(--red)', 'sem-cat', semCat.length);
+      semCat.forEach(function(it) { html += renderItemRowHtml(it, items.indexOf(it)); });
     }
   }
 
   tbody.innerHTML = html;
+  aplicarGruposRecolhidos();
   updateBadgeButtonVisibility();
   initItemsColResize();
+}
+
+// ------------------------------------------------------------
+// Tabela de itens: funções globais (contrato com fluxo-otimizacao-ui.js)
+// renderItemRowHtml(it, index) · renderGroupRowHtml(label, color, catKey, count)
+// aplicarGruposRecolhidos() · toggleGrupoItens(catKey, ev) · ITENS_COLUNAS
+// ------------------------------------------------------------
+var ITENS_COLUNAS = 8;
+var ITENS_GRUPOS_LS_KEY = 'fluxo_grupos_recolhidos';
+var _itensGrupoSeq = 0;
+var _itensGruposMem = null;
+
+function _itensEsc(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function _itensSemTags(html) {
+  return String(html == null ? '' : html).replace(/<[^>]*>/g, '');
+}
+
+// 'YYYY-MM-DD' -> 'dd/mm/aa' (curta) ou 'dd/mm/aaaa' (longa)
+function _itensData(iso, longa) {
+  var p = String(iso || '').split('-');
+  if (p.length < 3 || !p[0] || !p[1] || !p[2]) return '';
+  return p[2].substring(0, 2) + '/' + p[1] + '/' + (longa ? p[0] : p[0].slice(-2));
+}
+
+function _itensRecCurta(it) {
+  if (it.recTipo === 'nao') return 'Único';
+  var q = parseInt(it.recQty, 10) || 1;
+  var tipo = it.recTipo;
+  if (q === 1) {
+    var um = { dias: 'Diário', uteis: 'Dias úteis', semanas: 'Semanal', quinzenas: 'Quinzenal', meses: 'Mensal' };
+    if (um[tipo]) return um[tipo];
+  }
+  if (tipo === 'meses') {
+    var mm = { 2: 'Bimestral', 3: 'Trimestral', 6: 'Semestral', 12: 'Anual' };
+    if (mm[q]) return mm[q];
+  }
+  // Unidades compactas só nesta célula (a célula não corta o texto; o title mantém o rótulo de recLabel)
+  var unid = { dias: 'dias', uteis: 'd. úteis', semanas: 'semanas', quinzenas: 'quinz.', meses: 'meses' };
+  return ('A cada ' + q + ' ' + (unid[tipo] || REC_LABELS[tipo] || tipo || '')).trim();
+}
+
+function _itensFimCurto(it) {
+  if (it.recTipo === 'nao') return '';
+  if (it.recFimTipo === 'nunca') return 'sem fim';
+  if (it.recFimTipo === 'ocorrencias') return (it.recFimQty || '?') + 'x';
+  if (it.recFimTipo === 'data') return _itensData(it.recFimData, false);
+  return '';
+}
+
+function _itensGruposRecolhidos() {
+  if (_itensGruposMem) return _itensGruposMem;
+  var obj = {};
+  try {
+    var raw = localStorage.getItem(ITENS_GRUPOS_LS_KEY || 'fluxo_grupos_recolhidos');
+    if (raw) {
+      var parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) obj = parsed;
+    }
+  } catch (e) {}
+  _itensGruposMem = obj;
+  return obj;
+}
+
+function renderItemRowHtml(it, index) {
+  if (!it) return '';
+  var linkIdEsc = _itensEsc(it._linkId || '');
+  var nomeEsc = _itensEsc(it.nome);
+  var ehEntrada = it.tipo === 'entrada';
+  var valClass = ehEntrada ? 'td-val-pos' : 'td-val-neg';
+  var valSign = ehEntrada ? '+' : '-';
+
+  // Pagamento: badge compacto com nome em reticências
+  var pagB = '—';
+  if (it.formaPagamento) {
+    var accFound = accounts.find(function(a) { return a.id === it.formaPagamento; });
+    if (accFound) {
+      var ehCartao = accFound.tipo === 'cartao';
+      pagB = '<span class="badge badge-pag ' + (ehCartao ? 'badge-purple' : 'badge-blue') + '" title="' + (ehCartao ? 'Cartão: ' : 'Conta: ') + _itensEsc(accFound.nome) + '">' +
+        (ehCartao ? '💳' : '🏦') + ' <span class="pag-nome">' + _itensEsc(accFound.nome) + '</span></span>';
+    }
+  }
+
+  // Recorrência numa linha: rótulo curto · início → fim (title com o texto completo)
+  var recTxt = _itensRecCurta(it);
+  var iniCurta = _itensData(it.recInicio, false);
+  if (iniCurta) recTxt += ' · ' + iniCurta;
+  var fimCurto = _itensFimCurto(it);
+  if (fimCurto) recTxt += ' → ' + fimCurto;
+  var recTitle = _itensSemTags(recLabel(it)) + ' · Início: ' + (_itensData(it.recInicio, true) || '—');
+  if (it.recTipo !== 'nao') recTitle += ' · Fim: ' + _itensSemTags(fimLabel(it));
+  var recB = '<span class="rec-linha" title="' + _itensEsc(recTitle) + '">' + _itensEsc(recTxt) + '</span>';
+
+  // Classificação: 4 chips abreviados (só despesas), rótulo completo no title
+  var classB = '—';
+  if (it.subtipo === 'despesa') {
+    var chip = function(cls, txt, title) {
+      return '<span class="chip-class ' + cls + '" title="' + _itensEsc(title) + '">' + _itensEsc(txt) + '</span>';
+    };
+    var altChip = it.alteravel
+      ? (it.alteravel === 'sim' ? chip('chip-green', 'Alt ✓', 'Alterável: Sim') : chip('chip-muted', 'Alt ✗', 'Alterável: Não'))
+      : chip('chip-vazio', 'Alt —', 'Alterável: não informado');
+    var dispLabels = { alteraria: 'Alteraria', cancelaria: 'Cancelaria', nao: 'Não mexe', sim: 'Alteraria' };
+    var dispColors = { alteraria: 'chip-green', cancelaria: 'chip-red', nao: 'chip-orange', sim: 'chip-green' };
+    var dispTxt = dispLabels[it.disposto] || it.disposto;
+    var dispChip = it.disposto
+      ? chip(dispColors[it.disposto] || 'chip-muted', dispTxt, 'Disposição: ' + dispTxt)
+      : chip('chip-vazio', 'Disp —', 'Disposição: não informada');
+    var impChip = it.importancia
+      ? chip(IMPORTANCIA_CLASSES[it.importancia] || '', (String(it.importancia) === '1' ? '★ ' : '') + 'Imp ' + it.importancia, 'Importância: ' + (IMPORTANCIA_LABELS[it.importancia] || it.importancia))
+      : chip('chip-vazio', 'Imp —', 'Importância: não informada');
+    var confChip = it.conforto
+      ? chip(CONFORTO_CLASSES[it.conforto] || '', 'Conf ' + it.conforto, 'Conforto: ' + (CONFORTO_LABELS[it.conforto] || it.conforto))
+      : chip('chip-vazio', 'Conf —', 'Conforto: não informado');
+    classB = '<span class="chips-class">' + altChip + dispChip + impChip + confChip + '</span>';
+  }
+
+  var newBadge = it._isNew ? '<span class="badge-new">NOVO</span>' : '';
+  // Linkage: indicador de associação e badges de exclusão
+  var linkBadges = '';
+  if (typeof FerramentasLinkage !== 'undefined' && it._linkId && editingSimId) {
+    var itemLinks = FerramentasLinkage.getLinksForFluxoItem(editingSimId, it._linkId);
+    if (itemLinks.length > 0) {
+      linkBadges += FerramentasLinkage.renderLinkIndicatorHtml(itemLinks[0], 'fluxo');
+    }
+    var itemBadges = FerramentasLinkage.getBadgesForItem('fluxo', { simId: editingSimId, itemId: it._linkId });
+    itemBadges.forEach(function(b) { linkBadges += FerramentasLinkage.renderBadgeHtml(b); });
+  }
+
+  return '<tr class="item-row" data-index="' + index + '" data-link-id="' + linkIdEsc + '">' +
+    '<td class="td-cb" style="text-align:center;"><input type="checkbox" class="item-select-cb" data-index="' + index + '" onchange="onItemCheckChange(this)"></td>' +
+    '<td class="td-name"><span class="item-nome" role="button" tabindex="0" data-link-id="' + linkIdEsc + '" title="' + nomeEsc + ' — clique para otimizar">' + nomeEsc + '</span>' + newBadge + linkBadges + '</td>' +
+    '<td class="td-valor ' + valClass + '">' + valSign + fmtCurrency(Number(it.valor) || 0) + '</td>' +
+    '<td class="td-pagamento">' + pagB + '</td>' +
+    '<td class="td-recorrencia">' + recB + '</td>' +
+    '<td class="td-classificacao">' + classB + '</td>' +
+    '<td class="td-otimizacao" data-link-id="' + linkIdEsc + '"></td>' +
+    '<td class="td-acoes"><div class="td-actions">' +
+      '<button class="btn btn-ghost btn-icon btn-sm" onclick="openModal(' + index + ')" title="Editar">✏️</button>' +
+      '<button class="btn btn-ghost btn-icon btn-sm" onclick="deleteItem(' + index + ')" title="Excluir" style="color:var(--red)">🗑</button>' +
+    '</div></td>' +
+  '</tr>';
+}
+
+function renderGroupRowHtml(label, color, catKey, count) {
+  _itensGrupoSeq = (_itensGrupoSeq || 0) + 1;
+  var gid = 'grp-' + _itensGrupoSeq;
+  var key = String(catKey || '');
+  var recolhido = !!_itensGruposRecolhidos()[key];
+  var keyJs = _itensEsc(key.replace(/\\/g, '\\\\').replace(/'/g, "\\'"));
+  var sortBtn = function(field, txt, title) {
+    return '<button class="btn btn-ghost btn-sm" style="font-size:0.65rem;padding:0.1rem 0.3rem;" onclick="sortCategoryGroup(this,\'' + gid + '\',\'' + field + '\')" title="' + title + '">' + txt + '</button>';
+  };
+  return '<tr class="group-header" data-group="' + gid + '" data-cat-key="' + _itensEsc(key) + '">' +
+    '<td style="text-align:center;"><input type="checkbox" class="cat-select-all-cb" onchange="toggleCategoryCheck(this,\'' + gid + '\')" title="Selecionar/Desmarcar todos desta categoria"></td>' +
+    '<td colspan="' + ((ITENS_COLUNAS || 8) - 1) + '" style="color:' + _itensEsc(color) + ';">' +
+      '<span style="display:inline-flex;align-items:center;gap:0.4rem;width:100%;">' +
+        '<button type="button" class="grupo-toggle" aria-expanded="' + (recolhido ? 'false' : 'true') + '" title="' + (recolhido ? 'Expandir grupo' : 'Recolher grupo') + '" onclick="toggleGrupoItens(\'' + keyJs + '\', event)">▾</button>' +
+        '<span class="grupo-rotulo">' + _itensEsc(label) + '</span>' +
+        '<span class="grupo-contagem">(' + (parseInt(count, 10) || 0) + ')</span>' +
+        '<span class="cat-sort-btns" style="margin-left:auto;display:inline-flex;gap:0.2rem;">' +
+          sortBtn('nome', 'Nome ↕', 'Ordenar por Nome') +
+          sortBtn('valor', 'Valor ↕', 'Ordenar por Valor') +
+          sortBtn('importancia', 'Imp ↕', 'Ordenar por Importância') +
+          sortBtn('conforto', 'Conf ↕', 'Ordenar por Conforto') +
+        '</span>' +
+      '</span>' +
+    '</td></tr>';
+}
+
+// Esconde (classe item-row-oculta) as linhas dos grupos recolhidos e sincroniza os botões ▾
+function aplicarGruposRecolhidos() {
+  var tbody = document.getElementById('items-tbody');
+  if (!tbody) return;
+  var estado = _itensGruposRecolhidos();
+  var recolhidoAtual = false;
+  Array.prototype.forEach.call(tbody.rows, function(tr) {
+    if (tr.classList.contains('group-header')) {
+      recolhidoAtual = !!estado[tr.getAttribute('data-cat-key') || ''];
+      tr.classList.toggle('grupo-recolhido', recolhidoAtual);
+      var btn = tr.querySelector('.grupo-toggle');
+      if (btn) {
+        btn.setAttribute('aria-expanded', recolhidoAtual ? 'false' : 'true');
+        btn.title = recolhidoAtual ? 'Expandir grupo' : 'Recolher grupo';
+      }
+    } else {
+      tr.classList.toggle('item-row-oculta', recolhidoAtual);
+    }
+  });
+}
+
+function toggleGrupoItens(catKey, ev) {
+  if (ev && typeof ev.stopPropagation === 'function') ev.stopPropagation();
+  var key = String(catKey || '');
+  var estado = _itensGruposRecolhidos();
+  if (estado[key]) delete estado[key];
+  else estado[key] = true;
+  try { localStorage.setItem(ITENS_GRUPOS_LS_KEY || 'fluxo_grupos_recolhidos', JSON.stringify(estado)); } catch (e) {}
+  aplicarGruposRecolhidos();
 }
 function initItemsColResize() {
   var wrap = document.getElementById('items-table');
   if (!wrap) return;
   var tableEl = wrap.querySelector('table');
   if (!tableEl) return;
+  // Altura do cabeçalho: usada pelo sticky das linhas de grupo (--items-thead-h)
+  var theadEl = tableEl.querySelector('thead');
+  if (theadEl && theadEl.offsetHeight) wrap.style.setProperty('--items-thead-h', theadEl.offsetHeight + 'px');
+  // 8 colunas (ITENS_COLUNAS): checkbox e ações não são redimensionáveis
   var ths = tableEl.querySelectorAll('thead th');
   ths.forEach(function(th, colIdx) {
+    if (th.classList.contains('col-cb') || th.classList.contains('col-acoes')) return;
     if (th.querySelector('.col-resize-handle')) return;
     var handle = document.createElement('div');
     handle.className = 'col-resize-handle';
@@ -1497,7 +1730,10 @@ function initItemsColResize() {
         var newW = Math.max(40, startW + diff);
         th.style.width = newW + 'px';
         th.style.minWidth = newW + 'px';
-        var rows = tableEl.querySelectorAll('tbody tr');
+        // O nome tem largura máxima própria (reticências): acompanha a coluna
+        if (th.classList.contains('col-nome')) wrap.style.setProperty('--items-nome-max', Math.max(60, newW - 24) + 'px');
+        // Só linhas de item: o cabeçalho de grupo tem colspan e não segue os índices das colunas
+        var rows = tableEl.querySelectorAll('tbody tr.item-row');
         rows.forEach(function(row) {
           var cell = row.cells[colIdx];
           if (cell) { cell.style.width = newW + 'px'; cell.style.minWidth = newW + 'px'; }
@@ -1820,8 +2056,8 @@ function renderFaturas() {
   var cartoesMap = {};
   accounts.forEach(function(acc) { if (acc.tipo === 'cartao') cartoesMap[acc.id] = acc; });
 
-  var html = '<div id="faturas-section" style="margin-top:1.5rem; border-top:1px solid var(--border); padding-top:1.5rem;">';
-  html += '<h2 style="color:var(--primary); margin-bottom:1rem; display:flex; align-items:center; gap:0.5rem;">';
+  var html = '<div id="faturas-section" style="margin-top:0.75rem; border-top:1px solid var(--border); padding-top:0.75rem;">';
+  html += '<h2 style="color:var(--primary); margin-bottom:0.5rem; display:flex; align-items:center; gap:0.5rem;">';
   html += '<span style="font-size:1.3rem;">💳</span> Previsão de Faturas dos Cartões</h2>';
 
   Object.keys(faturasCalculadas).forEach(function(cartaoId) {
@@ -1833,8 +2069,8 @@ function renderFaturas() {
 
     var totalGeral = fatKeys.reduce(function(s, k) { return s + faturas[k].total; }, 0);
 
-    html += '<div style="background:var(--card2); border:1px solid var(--border); border-radius:8px; padding:1rem; margin-bottom:1rem;">';
-    html += '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.8rem;">';
+    html += '<div style="background:var(--card2); border:1px solid var(--border); border-radius:8px; padding:0.6rem; margin-bottom:0.6rem;">';
+    html += '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.4rem;">';
     html += '<div style="display:flex; align-items:center; gap:0.6rem;">';
     html += '<span style="font-size:1.2rem;">💳</span>';
     html += '<strong style="color:var(--fg);">' + cartao.nome + '</strong>';
@@ -1852,12 +2088,13 @@ function renderFaturas() {
       var vencLabel = fat.vencDate.toLocaleDateString('pt-BR', { day:'2-digit', month:'short' });
       var mesLabel = fat.vencDate.toLocaleDateString('pt-BR', { month:'long', year:'numeric' });
 
-      html += '<div style="min-width:220px; background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:0.8rem; flex-shrink:0;">';
-      html += '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.6rem;">';
-      html += '<span style="font-size:0.8rem; font-weight:600; color:var(--primary);">' + mesLabel.charAt(0).toUpperCase() + mesLabel.slice(1) + '</span>';
-      html += '<span class="badge badge-red">' + fmtCurrency(fat.total) + '</span>';
+      html += '<div style="min-width:190px; background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:0.5rem; flex-shrink:0;">';
+      // Cabeçalho do mini-cartão: mês e "Vence em" juntos à esquerda, total à direita (sem linha própria para o vencimento)
+      html += '<div style="display:flex; justify-content:space-between; align-items:center; gap:0.5rem; margin-bottom:0.3rem;">';
+      html += '<div><div style="font-size:0.8rem; font-weight:600; color:var(--primary);">' + mesLabel.charAt(0).toUpperCase() + mesLabel.slice(1) + '</div>';
+      html += '<div style="font-size:0.7rem; color:var(--muted);">Vence em ' + vencLabel + '</div></div>';
+      html += '<span class="badge badge-red" style="white-space:nowrap;">' + fmtCurrency(fat.total) + '</span>';
       html += '</div>';
-      html += '<div style="font-size:0.7rem; color:var(--muted); margin-bottom:0.5rem;">Vence em ' + vencLabel + '</div>';
 
       // Lista de itens na fatura
       html += '<div style="max-height:120px; overflow-y:auto;">';
@@ -1922,27 +2159,28 @@ var _orcCheckState = {}; // { chartId: { itemKey: true/false } }
 
 function _buildOrcCard(title, subtitle, entMensal, poupMensal, catTotais, saldoLivreMensal, chartId, catConfig, catOrder, entItens, poupItens) {
   var html = '';
-  html += '<div id="' + chartId + '-card" style="background:var(--card2);border-radius:var(--radius);padding:1.25rem;margin-bottom:1.5rem;border:1px solid var(--border);">';
-  html += '<div style="font-size:1rem;font-weight:700;color:var(--primary);margin-bottom:0.25rem;">' + title + '</div>';
-  html += '<div style="font-size:0.75rem;color:var(--muted);margin-bottom:1rem;">' + subtitle + '</div>';
+  // Cartão compacto (fica numa grade .orc-grid montada em renderOrcamentoMensal; o espaçamento entre cartões vem do gap da grade)
+  html += '<div id="' + chartId + '-card" style="background:var(--card2);border-radius:var(--radius);padding:0.75rem;margin-bottom:0;border:1px solid var(--border);">';
+  html += '<div style="font-size:0.9rem;font-weight:700;color:var(--primary);margin-bottom:0.25rem;">' + title + '</div>';
+  html += '<div style="font-size:0.75rem;color:var(--muted);margin-bottom:0.35rem;">' + subtitle + '</div>';
 
-  html += '<div style="display:flex;gap:1.5rem;flex-wrap:wrap;align-items:flex-start;">';
+  html += '<div style="display:flex;gap:1rem;flex-wrap:wrap;align-items:flex-start;">';
   html += '<div style="flex:0 0 200px;display:flex;flex-direction:column;align-items:center;">';
   html += '<canvas id="' + chartId + '" width="200" height="200"></canvas>';
   html += '<div id="' + chartId + '-base" style="margin-top:0.5rem;font-size:0.72rem;color:var(--muted);text-align:center;">Base: ' + fmtCurrency(entMensal) + '/mês</div>';
   html += '</div>';
 
-  html += '<div style="flex:1;min-width:260px;">';
+  html += '<div style="flex:1;min-width:min(260px,100%);">';
 
   // Entradas (expandível com itens)
   html += '<div style="border-bottom:1px solid rgba(212,175,55,0.08);">';
-  html += '<div style="display:flex;justify-content:space-between;align-items:center;padding:0.4rem 0;cursor:pointer;" onclick="toggleCatDetalhe(\'' + chartId + '-entradas-list\')">'; 
+  html += '<div style="display:flex;justify-content:space-between;align-items:center;padding:0.18rem 0;cursor:pointer;" onclick="toggleCatDetalhe(\'' + chartId + '-entradas-list\')">'; 
   html += '<div style="display:flex;align-items:center;gap:0.5rem;"><div style="width:10px;height:10px;border-radius:50%;background:#10b981;"></div><span style="font-size:0.82rem;color:var(--fg);font-weight:600;">Entradas</span>';
   html += '<span style="font-size:0.65rem;color:var(--muted);opacity:0.6;">&#9660;</span></div>';
   html += '<span id="' + chartId + '-ent-total" style="font-size:0.88rem;font-weight:700;color:#10b981;">' + fmtCurrency(entMensal) + '</span>';
   html += '</div>';
   // Lista de itens de entrada
-  html += '<div id="' + chartId + '-entradas-list" style="display:none;padding-left:1.5rem;padding-bottom:0.3rem;">';
+  html += '<div id="' + chartId + '-entradas-list" style="display:none;padding-left:1rem;padding-bottom:0.3rem;">';
   if (entItens && entItens.length > 0) {
     entItens.forEach(function(it, i) {
       var ck = _getCheckState(chartId, 'ent-' + i);
@@ -1960,12 +2198,12 @@ function _buildOrcCard(title, subtitle, entMensal, poupMensal, catTotais, saldoL
   if (poupMensal > 0 || (poupItens && poupItens.length > 0)) {
     var poupPct = entMensal > 0 ? (poupMensal / entMensal * 100) : 0;
     html += '<div style="border-bottom:1px solid rgba(255,255,255,0.03);">';
-    html += '<div style="display:flex;justify-content:space-between;align-items:center;padding:0.35rem 0 0.35rem 1rem;cursor:pointer;" onclick="toggleCatDetalhe(\'' + chartId + '-poup-list\')">'; 
+    html += '<div style="display:flex;justify-content:space-between;align-items:center;padding:0.18rem 0 0.18rem 1rem;cursor:pointer;" onclick="toggleCatDetalhe(\'' + chartId + '-poup-list\')">'; 
     html += '<div style="display:flex;align-items:center;gap:0.5rem;"><div style="width:8px;height:8px;border-radius:50%;background:#60a5fa;"></div><span style="font-size:0.8rem;color:var(--muted);">Poupança</span>';
     html += '<span style="font-size:0.65rem;color:var(--muted);opacity:0.6;">&#9660;</span></div>';
     html += '<div style="text-align:right;"><span id="' + chartId + '-poup-total" style="font-size:0.82rem;font-weight:600;color:#60a5fa;">' + fmtCurrency(poupMensal) + '</span> <span style="font-size:0.7rem;color:var(--muted);">(' + fmtPct(poupPct) + ')</span></div>';
     html += '</div>';
-    html += '<div id="' + chartId + '-poup-list" style="display:none;padding-left:1.5rem;padding-bottom:0.3rem;">';
+    html += '<div id="' + chartId + '-poup-list" style="display:none;padding-left:1rem;padding-bottom:0.3rem;">';
     if (poupItens && poupItens.length > 0) {
       poupItens.forEach(function(it, i) {
         var ck = _getCheckState(chartId, 'poup-' + i);
@@ -1987,12 +2225,12 @@ function _buildOrcCard(title, subtitle, entMensal, poupMensal, catTotais, saldoL
     var catVal = catTotais[cat].total;
     var catPct = entMensal > 0 ? (catVal / entMensal * 100) : 0;
     html += '<div style="border-bottom:1px solid rgba(255,255,255,0.03);">';
-    html += '<div style="display:flex;justify-content:space-between;align-items:center;padding:0.35rem 0 0.35rem 1rem;cursor:pointer;" onclick="toggleCatDetalhe(\'' + chartId + '-cat-' + cat + '\')">'; 
+    html += '<div style="display:flex;justify-content:space-between;align-items:center;padding:0.18rem 0 0.18rem 1rem;cursor:pointer;" onclick="toggleCatDetalhe(\'' + chartId + '-cat-' + cat + '\')">'; 
     html += '<div style="display:flex;align-items:center;gap:0.5rem;"><div style="width:8px;height:8px;border-radius:50%;background:' + cfg.color + ';"></div><span style="font-size:0.8rem;color:var(--muted);">' + cfg.label + '</span>';
     html += '<span style="font-size:0.65rem;color:var(--muted);opacity:0.6;">&#9660;</span></div>';
     html += '<div style="text-align:right;"><span id="' + chartId + '-cat-' + cat + '-total" style="font-size:0.82rem;font-weight:600;color:' + cfg.color + ';">' + fmtCurrency(catVal) + '</span> <span style="font-size:0.7rem;color:var(--muted);">(' + fmtPct(catPct) + ')</span></div>';
     html += '</div>';
-    html += '<div id="' + chartId + '-cat-' + cat + '" style="display:none;padding-left:1.5rem;padding-bottom:0.3rem;">';
+    html += '<div id="' + chartId + '-cat-' + cat + '" style="display:none;padding-left:1rem;padding-bottom:0.3rem;">';
     catTotais[cat].itens.forEach(function(it, i) {
       var ck = _getCheckState(chartId, 'desp-' + cat + '-' + i);
       var itPct = entMensal > 0 ? (it.valor / entMensal * 100) : 0;
@@ -2008,7 +2246,7 @@ function _buildOrcCard(title, subtitle, entMensal, poupMensal, catTotais, saldoL
   // Saldo livre
   var saldoColor = saldoLivreMensal >= 0 ? '#10b981' : '#ef4444';
   var saldoLabel = saldoLivreMensal >= 0 ? 'Saldo livre não alocado' : 'Déficit mensal';
-  html += '<div id="' + chartId + '-saldo-row" style="display:flex;justify-content:space-between;align-items:center;padding:0.5rem 0;margin-top:0.25rem;border-top:1px solid rgba(212,175,55,0.15);">';
+  html += '<div id="' + chartId + '-saldo-row" style="display:flex;justify-content:space-between;align-items:center;padding:0.28rem 0;margin-top:0.25rem;border-top:1px solid rgba(212,175,55,0.15);">';
   html += '<span style="font-size:0.82rem;font-weight:700;color:' + saldoColor + ';">' + saldoLabel + '</span>';
   html += '<span style="font-size:0.88rem;font-weight:700;color:' + saldoColor + ';">' + fmtCurrency(Math.abs(saldoLivreMensal)) + '</span>';
   html += '</div>';
@@ -2121,8 +2359,8 @@ function renderOrcamentoMensal(totaisPorItem, totalEntradas, totalPoupancaFluxo,
   var calc2 = _calcOrcTotals('orcamento-chart-2', entItens2, poupItens2, despItens2, catOrder);
   var calc3 = _calcOrcTotals('orcamento-chart-3', entItens3, poupItens3, despItens3, catOrder);
 
-  // MONTAR HTML
-  var html = '';
+  // MONTAR HTML (cartões numa grade responsiva interna; nenhum cartão é escondido)
+  var html = '<div class="orc-grid">';
   html += _buildOrcCard(
     'Orçamento Mensal Equivalente',
     'Todos os valores do período convertidos para base diária (÷ ' + numDias + ' dias) × 30. Período analisado: ' + numDias + ' dias.',
@@ -2140,6 +2378,7 @@ function renderOrcamentoMensal(totaisPorItem, totalEntradas, totalPoupancaFluxo,
       calc3.entTotal, calc3.poupTotal, calc3.catTotais, calc3.saldoLivre, 'orcamento-chart-3', catConfig, catOrder, entItens3, poupItens3
     );
   }
+  html += '</div>'; // .orc-grid
 
   sec.innerHTML = html;
   sec.style.display = 'block';
@@ -2533,28 +2772,29 @@ function renderAnalise(totaisPorItem, totalEntradas, totalPoupancaFluxo, totalDe
   var saldoClass = pctSaldo >= 0 ? 'alert-ok' : 'alert-high';
   var poupancaClass = pctPoupanca >= 20 ? 'alert-ok' : pctPoupanca >= 10 ? 'alert-low' : pctPoupanca > 0 ? 'alert-med' : 'alert-high';
 
-  html += '<div class="analise-block ' + poupancaClass + '">';
+  html += '<div class="analise-block analise-distribuicao ' + poupancaClass + '">';
   html += '<div class="analise-block-title">Distribuição das Entradas</div>';
   html += '<div class="analise-memo">Base de cálculo: ' + fmtCurrency(totalEntradas) + ' em entradas no período.</div>';
 
-  html += '<div style="margin-top:0.75rem;">';
+  // Grade compacta: rótulo | valor | barra | frase de apoio (uma linha por grupo; todo o texto continua visível)
+  html += '<div class="dist-grade">';
 
   // Poupança
   var poupancaBarColor = pctPoupanca >= 20 ? 'var(--green)' : pctPoupanca >= 10 ? 'var(--primary)' : 'var(--orange)';
-  html += '<div style="margin-bottom:0.5rem;"><div style="display:flex;justify-content:space-between;font-size:0.82rem;margin-bottom:0.25rem;"><span style="color:var(--blue)">Poupança</span><span style="color:var(--blue);font-weight:700;">' + fmtPct(pctPoupanca) + ' — ' + fmtCurrency(totalPoupancaFluxo) + '</span></div>';
+  html += '<span style="color:var(--blue)">Poupança</span><span class="dist-valor" style="color:var(--blue);">' + fmtPct(pctPoupanca) + ' — ' + fmtCurrency(totalPoupancaFluxo) + '</span>';
   html += '<div class="score-bar-track"><div class="score-bar-fill" style="width:' + Math.min(100,pctPoupanca) + '%;background:' + poupancaBarColor + ';"></div></div>';
-  html += '<div style="font-size:0.72rem;color:var(--muted);margin-top:0.2rem;">' + (pctPoupanca >= 20 ? '✓ Excelente taxa de poupança.' : pctPoupanca >= 10 ? 'Poupança razoável. Ideal: acima de 20%.' : pctPoupanca > 0 ? 'Poupança abaixo do recomendado. Ideal: acima de 20%.' : 'Nenhuma poupança no período.') + '</div></div>';
+  html += '<span class="dist-apoio">' + (pctPoupanca >= 20 ? '✓ Excelente taxa de poupança.' : pctPoupanca >= 10 ? 'Poupança razoável. Ideal: acima de 20%.' : pctPoupanca > 0 ? 'Poupança abaixo do recomendado. Ideal: acima de 20%.' : 'Nenhuma poupança no período.') + '</span>';
 
   // Despesas
   var despBarColor = pctDespesas <= 60 ? 'var(--green)' : pctDespesas <= 80 ? 'var(--primary)' : 'var(--red)';
-  html += '<div style="margin-bottom:0.5rem;"><div style="display:flex;justify-content:space-between;font-size:0.82rem;margin-bottom:0.25rem;"><span style="color:var(--red)">Despesas</span><span style="color:var(--red);font-weight:700;">' + fmtPct(pctDespesas) + ' — ' + fmtCurrency(totalDespesas) + '</span></div>';
+  html += '<span style="color:var(--red)">Despesas</span><span class="dist-valor" style="color:var(--red);">' + fmtPct(pctDespesas) + ' — ' + fmtCurrency(totalDespesas) + '</span>';
   html += '<div class="score-bar-track"><div class="score-bar-fill" style="width:' + Math.min(100,pctDespesas) + '%;background:' + despBarColor + ';"></div></div>';
-  html += '<div style="font-size:0.72rem;color:var(--muted);margin-top:0.2rem;">' + (pctDespesas <= 60 ? '✓ Despesas dentro de um limite saudável.' : pctDespesas <= 80 ? 'Despesas elevadas. Pouco espaço para poupança.' : 'Despesas comprometendo a maior parte da renda.') + '</div></div>';
+  html += '<span class="dist-apoio">' + (pctDespesas <= 60 ? '✓ Despesas dentro de um limite saudável.' : pctDespesas <= 80 ? 'Despesas elevadas. Pouco espaço para poupança.' : 'Despesas comprometendo a maior parte da renda.') + '</span>';
 
-  // Saldo residual
+  // Saldo residual (sem barra: a frase ocupa as colunas da barra e da frase)
   var saldoResColor = pctSaldo >= 0 ? 'var(--green)' : 'var(--red)';
-  html += '<div><div style="display:flex;justify-content:space-between;font-size:0.82rem;margin-bottom:0.25rem;"><span style="color:' + saldoResColor + '">Saldo residual não alocado</span><span style="color:' + saldoResColor + ';font-weight:700;">' + fmtPct(Math.abs(pctSaldo)) + (pctSaldo < 0 ? ' (déficit)' : '') + '</span></div>';
-  html += '<div style="font-size:0.72rem;color:var(--muted);">' + (pctSaldo >= 5 ? 'Sobra não alocada — considere direcionar para poupança.' : pctSaldo >= 0 ? 'Fluxo praticamente equilibrado.' : 'As saídas superam as entradas no período.') + '</div></div>';
+  html += '<span style="color:' + saldoResColor + '">Saldo residual não alocado</span><span class="dist-valor" style="color:' + saldoResColor + ';">' + fmtPct(Math.abs(pctSaldo)) + (pctSaldo < 0 ? ' (déficit)' : '') + '</span>';
+  html += '<span class="dist-apoio dist-apoio-largo">' + (pctSaldo >= 5 ? 'Sobra não alocada — considere direcionar para poupança.' : pctSaldo >= 0 ? 'Fluxo praticamente equilibrado.' : 'As saídas superam as entradas no período.') + '</span>';
 
   html += '</div></div>';
 
@@ -2566,9 +2806,13 @@ function renderAnalise(totaisPorItem, totalEntradas, totalPoupancaFluxo, totalDe
   });
 
   if (despesasItens.length > 0) {
-    html += '<div class="analise-block">';
+    html += '<div class="analise-block analise-lista">';
     html += '<div class="analise-block-title">Despesas — Participação sobre as Entradas e sobre o Total de Despesas</div>';
-    html += '<div class="analise-memo" style="margin-bottom:0.75rem;">Cada item mostra: % das entradas | % das despesas | score de ajustabilidade (0–10, quanto maior = mais candidato a redução)</div>';
+    html += '<div class="analise-memo" style="margin-bottom:0.4rem;">Cada item mostra: % das entradas | % das despesas | score de ajustabilidade (0–10, quanto maior = mais candidato a redução)</div>';
+
+    // Lista em grade (uma linha por despesa), cabeçalho de colunas fixo e rolagem interna
+    html += '<div class="al-tabela"><div class="al-grade">';
+    html += '<div class="al-linha al-cab"><div>Despesa</div><div class="al-num">Valor × ocorr.</div><div class="al-num">Total período</div><div class="al-num">% entradas</div><div class="al-num">% despesas</div><div>Potencial (0–10)</div><div>Marcas</div></div>';
 
     // Ordenar por score de ajuste decrescente
     despesasItens.sort(function(a,b) { return calcPotencialAjuste(b.item, b.total, totalEntradas, totalDespesas) - calcPotencialAjuste(a.item, a.total, totalEntradas, totalDespesas); });
@@ -2580,35 +2824,39 @@ function renderAnalise(totaisPorItem, totalEntradas, totalPoupancaFluxo, totalDe
       var sc = scoreColor(score);
       var ac = alertClass(score);
 
-      html += '<div class="analise-row">';
-      html += '<div class="item-name"><strong>' + d.item.nome + '</strong>';
-      if (d.item.categoria) html += ' <span style="font-size:0.72rem;color:var(--muted);">(' + CATEGORIA_LABELS[d.item.categoria] + ')</span>';
-      html += '<div style="font-size:0.72rem;color:var(--muted);margin-top:0.15rem;">' + fmtCurrency(d.item.valor) + '/ocorrência × ' + d.ocorrencias + ' = ' + fmtCurrency(d.total) + '</div>';
+      var catLabel = d.item.categoria ? (CATEGORIA_LABELS[d.item.categoria] || d.item.categoria) : '';
+      var nomeTitle = d.item.nome + (catLabel ? ' (' + catLabel + ')' : '') + ' — ' + fmtCurrency(d.item.valor) + '/ocorrência × ' + d.ocorrencias + ' = ' + fmtCurrency(d.total);
+
+      html += '<div class="al-linha">';
+      // Nome (+categoria): quebra de linha permitida, nada é cortado
+      html += '<div class="al-nome" title="' + _densEsc(nomeTitle) + '"><strong>' + _densEsc(d.item.nome) + '</strong>';
+      if (d.item.categoria) html += ' <span class="al-cat">(' + _densEsc(catLabel) + ')</span>';
       html += '</div>';
+      // Valor × ocorrências | total do período | % entradas | % despesas
+      html += '<div class="al-num">' + fmtCurrency(d.item.valor) + ' <span class="al-mult">× ' + d.ocorrencias + '</span></div>';
+      html += '<div class="al-num" style="font-weight:600;color:var(--fg);">' + fmtCurrency(d.total) + '</div>';
+      html += '<div class="al-num" style="font-weight:700;color:var(--fg);">' + fmtPct(pctEnt) + '</div>';
+      html += '<div class="al-num" style="font-weight:700;color:var(--fg);">' + fmtPct(pctDesp) + '</div>';
 
-      html += '<div style="text-align:right;min-width:200px;">';
-      html += '<div style="font-size:0.82rem;font-weight:700;color:var(--fg);">' + fmtPct(pctEnt) + ' das entradas &nbsp;|&nbsp; ' + fmtPct(pctDesp) + ' das despesas</div>';
-
-      // Score bar
-      html += '<div style="display:flex;align-items:center;gap:0.5rem;margin-top:0.3rem;">';
-      html += '<div style="font-size:0.7rem;color:var(--muted);white-space:nowrap;">Potencial de ajuste:</div>';
-      html += '<div class="score-bar-track" style="flex:1;"><div class="score-bar-fill" style="width:' + (score*10) + '%;background:' + sc + ';"></div></div>';
+      // Potencial de ajuste: barra + nota
+      html += '<div class="al-pot" title="Potencial de ajuste: ' + score.toFixed(1) + ' de 10">';
+      html += '<div class="score-bar-track"><div class="score-bar-fill" style="width:' + (score*10) + '%;background:' + sc + ';"></div></div>';
       html += '<div class="score-label" style="color:' + sc + ';">' + score.toFixed(1) + '</div>';
       html += '</div>';
 
-      // Flags
-      html += '<div class="item-flags" style="margin-top:0.3rem;justify-content:flex-end;">';
-      if (d.item.alteravel === 'sim') html += '<span class="flag-ajustavel">Alterável</span>';
-      if (d.item.disposto === 'alteraria' || d.item.disposto === 'sim') html += '<span class="flag-disposto">Alteraria</span>';
-      if (d.item.disposto === 'cancelaria') html += '<span class="flag-disposto" style="background:rgba(239,68,68,0.12);color:var(--red);">Cancelaria</span>';
-      if (d.item.conforto && parseInt(d.item.conforto) >= 4) html += '<span class="flag-conforto">Conforto ' + CONFORTO_LABELS[d.item.conforto] + '</span>';
-      if (d.item.importancia && parseInt(d.item.importancia) >= 6) html += '<span class="flag-alerta">' + IMPORTANCIA_LABELS[d.item.importancia] + '</span>';
+      // Marcas abreviadas (rótulo completo no title)
+      html += '<div class="al-marcas">';
+      if (d.item.alteravel === 'sim') html += '<span class="flag-ajustavel" title="Alterável">Alt</span>';
+      if (d.item.disposto === 'alteraria' || d.item.disposto === 'sim') html += '<span class="flag-disposto" title="Alteraria">Alteraria</span>';
+      if (d.item.disposto === 'cancelaria') html += '<span class="flag-disposto" style="background:rgba(239,68,68,0.12);color:var(--red);" title="Cancelaria">Cancelaria</span>';
+      if (d.item.conforto && parseInt(d.item.conforto) >= 4) html += '<span class="flag-conforto" title="' + _densEsc('Conforto ' + CONFORTO_LABELS[d.item.conforto]) + '">Conf ' + parseInt(d.item.conforto) + '</span>';
+      if (d.item.importancia && parseInt(d.item.importancia) >= 6) html += '<span class="flag-alerta" title="' + _densEsc(IMPORTANCIA_LABELS[d.item.importancia]) + '">Imp ' + parseInt(d.item.importancia) + '</span>';
       html += '</div>';
 
-      html += '</div>';
       html += '</div>';
     });
 
+    html += '</div></div>'; // .al-grade, .al-tabela
     html += '</div>';
 
     // ---- Bloco 3: Candidatos a redução ----
@@ -3155,6 +3403,8 @@ function applyClientLockMode(locked) {
       if (el.getAttribute('onclick') && el.getAttribute('onclick').indexOf('voltarParaLista') >= 0) return;
       if (el.classList.contains('btn-save-global')) return;
       if (el.classList.contains('section-header-collapsible')) return;
+      // Controles que só mudam a visualização: recolher grupo, modo otimização, abrir o painel do item
+      if (el.closest('.grupo-toggle, #fo-faixa [data-fo-acao="modo"], #fo-faixa [data-fo-acao="mostrar-todos"], .fo-btn-otimizar')) return;
       // Allow only collapse icon and h2 inside header, not action buttons
       var closestHeader = el.closest('.section-header-collapsible');
       if (closestHeader) {
@@ -3255,9 +3505,12 @@ deleteItem = function(index) {
 
 // === SELEÇÃO MÚLTIPLA DE ITENS ===
 function toggleAllItemsCheck(checked) {
-  document.querySelectorAll('.item-select-cb').forEach(function(cb) { cb.checked = checked; });
+  // Marcar pega só o que está à vista (grupos recolhidos ficam de fora); desmarcar limpa tudo
+  var selItens = checked ? '#items-tbody tr:not(.item-row-oculta) .item-select-cb' : '.item-select-cb';
+  var selCats = checked ? '#items-tbody tr.group-header:not(.grupo-recolhido) .cat-select-all-cb' : '.cat-select-all-cb';
+  document.querySelectorAll(selItens).forEach(function(cb) { cb.checked = checked; });
   // Sync per-category checkboxes too
-  document.querySelectorAll('.cat-select-all-cb').forEach(function(cb) { cb.checked = checked; });
+  document.querySelectorAll(selCats).forEach(function(cb) { cb.checked = checked; });
   updateDeleteSelectedBtn();
 }
 
@@ -3340,8 +3593,7 @@ function sortCategoryGroup(btn, groupId, field) {
   if (rows.length === 0) return;
 
   // Get sort values from each row
-  var IMPORTANCIA_ORDER = { essencial: 1, importante: 2, desejavel: 3, dispensavel: 4 };
-  var CONFORTO_ORDER = { nenhum: 1, pouco: 2, moderado: 3, muito: 4, extremo: 5 };
+  // importancia ('1'..'7') e conforto ('1'..'5') são strings numéricas: 1 = mais importante vem primeiro em "asc"
 
   rows.sort(function(a, b) {
     var valA, valB;
@@ -3361,11 +3613,11 @@ function sortCategoryGroup(btn, groupId, field) {
       valA = itemA.valor || 0;
       valB = itemB.valor || 0;
     } else if (field === 'importancia') {
-      valA = IMPORTANCIA_ORDER[itemA.importancia] || 99;
-      valB = IMPORTANCIA_ORDER[itemB.importancia] || 99;
+      valA = parseInt(itemA.importancia, 10) || 99;
+      valB = parseInt(itemB.importancia, 10) || 99;
     } else if (field === 'conforto') {
-      valA = CONFORTO_ORDER[itemA.conforto] || 99;
-      valB = CONFORTO_ORDER[itemB.conforto] || 99;
+      valA = parseInt(itemA.conforto, 10) || 99;
+      valB = parseInt(itemB.conforto, 10) || 99;
     } else {
       return 0;
     }
@@ -4215,7 +4467,7 @@ function renderTracking() {
   // Month navigation
   var curIdx = monthKeys.indexOf(trackingMonth);
   var monthLabel = new Date(trackingMonth + '-15').toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
-  html += '<div class="tracking-month-nav" style="margin:1rem 0;">';
+  html += '<div class="tracking-month-nav" style="margin:0.5rem 0;">';
   html += '<button onclick="navTrackingMonth(-1)"' + (curIdx <= 0 ? ' disabled' : '') + '>&laquo;</button>';
   html += '<span>' + monthLabel.charAt(0).toUpperCase() + monthLabel.slice(1) + '</span>';
   html += '<button onclick="navTrackingMonth(1)"' + (curIdx >= monthKeys.length - 1 ? ' disabled' : '') + '>&raquo;</button>';
@@ -4471,19 +4723,22 @@ function renderTracking() {
   }
 
   // Lancamentos list with checkboxes, bulk delete, resizable columns, horizontal scroll
-  html += '<div style="margin-top:1.5rem;">';
-  html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.5rem;">';
+  // (template igual ao de renderTrackingFaturas: titulo e acoes em massa na mesma linha)
+  html += '<div style="margin-top:1rem;">';
+  html += '<div style="display:flex;align-items:center;justify-content:space-between;gap:0.5rem;flex-wrap:wrap;">';
   html += '<h3 style="font-size:0.9rem;margin:0;">Lan\u00e7amentos do m\u00eas (' + lancMes.length + ')</h3>';
-  html += '</div>';
   if (lancMes.length > 0) {
     html += '<div class="lanc-bulk-actions">';
     html += '<label style="display:flex;align-items:center;gap:0.3rem;font-size:0.75rem;color:var(--muted);cursor:pointer;"><input type="checkbox" class="lanc-check" id="lanc-select-all" onchange="toggleSelectAllLanc(this)"> Selecionar todos</label>';
-    html += '<button class="btn btn-ghost btn-sm" style="color:var(--red);font-size:0.72rem;" onclick="deleteLancamentosSelecionados()">\u2715 Excluir selecionados</button>';
+    html += '<button class="btn btn-ghost btn-sm" style="color:var(--red);font-size:0.72rem;padding:0.15rem 0.45rem;" onclick="deleteLancamentosSelecionados()">\u2715 Excluir selecionados</button>';
     html += '</div>';
+  }
+  html += '</div>';
+  if (lancMes.length > 0) {
     html += '<div class="lanc-table-wrap">';
     html += '<table class="lanc-table" id="lanc-table-main"><thead><tr>';
     html += '<th style="width:30px;"></th>';
-    html += '<th>Tipo</th><th>Data</th><th>Descri\u00e7\u00e3o</th><th>Valor</th><th>Categoria</th><th>Subcategoria</th><th>Pagamento</th><th>A\u00e7\u00f5es</th>';
+    html += '<th>Tipo</th><th>Data</th><th>Descri\u00e7\u00e3o</th><th>Valor</th><th>Categoria \u203a Item</th><th>Pagamento</th><th>A\u00e7\u00f5es</th>';
     html += '</tr></thead><tbody>';
     lancMes.sort(function(a,b) { return a.data.localeCompare(b.data); }).forEach(function(l) {
       var cfg = catConfig[l.categoria] || { label: l.categoria || '\u2014', color: '#888' };
@@ -4496,15 +4751,17 @@ function renderTracking() {
       html += '<td>' + (l.data ? new Date(l.data + 'T00:00').toLocaleDateString('pt-BR') : '\u2014') + '</td>';
       html += '<td>' + (l.descricao || '\u2014') + '</td>';
       html += '<td style="color:' + valorColor + ';font-weight:600;">' + valorPrefix + fmtCurrency(l.valor) + '</td>';
-      html += '<td style="color:' + cfg.color + ';">' + (l.tipo === 'despesa' ? cfg.label : '\u2014') + '</td>';
-      html += '<td style="font-size:0.75rem;">' + (l.subcategoria || '\u2014') + '</td>';
+      // Categoria e Item (subcategoria) numa coluna; os dois textos continuam visiveis
+      var catTxt = l.tipo === 'despesa' ? '<span style="color:' + cfg.color + ';">' + cfg.label + '</span>' : '';
+      var subTxt = l.subcategoria ? '<span style="font-size:0.75rem;">' + _densEsc(l.subcategoria) + '</span>' : '';
+      html += '<td>' + (catTxt && subTxt ? catTxt + ' <span style="color:var(--muted);">\u203a</span> ' + subTxt : (catTxt || subTxt || '\u2014')) + '</td>';
       html += '<td>' + (l.pagamento || '\u2014') + '</td>';
-      html += '<td><button class="btn btn-ghost btn-sm" onclick="editLancamento(\'' + l.id + '\')">✎</button><button class="btn btn-ghost btn-sm" style="color:var(--red);" onclick="deleteLancamento(\'' + l.id + '\')">✕</button></td>';
+      html += '<td><button class="btn btn-ghost btn-sm" style="padding:0.05rem 0.3rem;font-size:0.75rem;" title="Editar" onclick="editLancamento(\'' + l.id + '\')">✎</button><button class="btn btn-ghost btn-sm" style="color:var(--red);padding:0.05rem 0.3rem;font-size:0.75rem;" title="Excluir" onclick="deleteLancamento(\'' + l.id + '\')">✕</button></td>';
       html += '</tr>';
     });
     html += '</tbody></table></div>';
   } else {
-    html += '<div style="font-size:0.82rem;color:var(--muted);">Nenhum lan\u00e7amento neste m\u00eas.</div>';
+    html += '<div style="font-size:0.82rem;color:var(--muted);margin-top:0.4rem;">Nenhum lan\u00e7amento neste m\u00eas.</div>';
   }
   html += '</div>';
 
@@ -4553,7 +4810,8 @@ function initLancColResize(tableId) {
     if (th.querySelector('.col-resize-handle')) return;
     var handle = document.createElement('div');
     handle.className = 'col-resize-handle';
-    th.style.position = 'relative';
+    // O CSS deixa o th fixo (sticky), que já ancora o puxador; só força relative se o th estiver sem posicionamento
+    if (window.getComputedStyle(th).position === 'static') th.style.position = 'relative';
     th.appendChild(handle);
     var startX, startW;
     handle.addEventListener('mousedown', function(e) {
@@ -4702,8 +4960,11 @@ function openSheetsImport() {
   html += '<div class="field"><label>URL da Planilha (deve estar p\u00fablica)</label>';
   html += '<input type="text" id="sheets-url" value="' + (trackingData.sheetsUrl || '') + '" placeholder="https://docs.google.com/spreadsheets/d/..."></div>';
 
+  // Instruções (passo a passo e formato) recolhidas num <details> fechado
+  html += '<details class="sheets-instrucoes"><summary>Ver passo a passo e formato da planilha</summary>';
+
   // Requisitos atualizados
-  html += '<div style="margin-top:0.75rem;font-size:0.78rem;color:var(--muted);background:rgba(212,175,55,0.05);padding:0.75rem;border-radius:6px;">';
+  html += '<div style="margin-top:0.5rem;font-size:0.78rem;color:var(--muted);background:rgba(212,175,55,0.05);padding:0.75rem;border-radius:6px;">';
   html += '<strong style="color:var(--primary);">Passo a passo:</strong><br>';
   html += '1. Crie ou abra uma planilha no Google Sheets<br>';
   html += '2. Compartilhe como <strong>"Qualquer pessoa com o link pode ver"</strong><br>';
@@ -4713,7 +4974,7 @@ function openSheetsImport() {
   html += '6. Volte aqui e clique em <strong>"Sincronizar"</strong></div>';
 
   // Formato da planilha
-  html += '<div style="margin-top:1rem;font-size:0.78rem;background:var(--card2);padding:0.75rem;border-radius:6px;border:1px solid var(--border);">';
+  html += '<div style="margin-top:0.5rem;font-size:0.78rem;background:var(--card2);padding:0.75rem;border-radius:6px;border:1px solid var(--border);">';
   html += '<strong style="color:var(--primary);">Formato da Planilha Google Sheets</strong><br>';
   html += '<span style="color:var(--muted);">A planilha deve estar compartilhada como "Qualquer pessoa com o link pode ver".</span><br>';
   html += '<span style="color:var(--muted);">Nome da aba: <strong>Lancamentos</strong> (exatamente assim, sem acento)</span><br><br>';
@@ -4733,9 +4994,10 @@ function openSheetsImport() {
   html += '<strong style="color:var(--primary);">Coluna G (Tipo):</strong> Opcional. Se omitida, assume "Despesa".<br>';
   html += '<strong style="color:var(--red);">Importante:</strong> A primeira linha deve ser o cabe\u00e7alho (ser\u00e1 ignorada).';
   html += '</div>';
+  html += '</details>';
 
   // Buttons
-  html += '<div style="margin-top:1.5rem;display:flex;gap:0.75rem;justify-content:flex-end;flex-wrap:wrap;">';
+  html += '<div style="margin-top:1rem;display:flex;gap:0.75rem;justify-content:flex-end;flex-wrap:wrap;">';
   html += '<button class="btn btn-outline" onclick="prepararPlanilha()">Preparar Planilha</button>';
   html += '<button class="btn btn-primary" onclick="importFromSheets()">Sincronizar</button>';
   html += '</div>';
@@ -5003,7 +5265,7 @@ function showImportPreview() {
   html += '<div class="modal-header"><h2>Confirmar Importa\u00e7\u00e3o (' + _pendingImportData.length + ' lan\u00e7amentos)</h2><button class="btn btn-ghost btn-icon" onclick="document.getElementById(\'import-preview-modal\').remove()">\u2715</button></div>';
   html += '<div style="font-size:0.78rem;color:var(--muted);margin-bottom:0.75rem;">Revise os dados abaixo. Voc\u00ea pode corrigir valores clicando nas c\u00e9lulas edit\u00e1veis antes de confirmar.</div>';
 
-  html += '<div style="overflow-x:auto;"><table class="tracking-table" style="font-size:0.75rem;">';
+  html += '<div class="import-tabela-wrap"><table class="tracking-table" style="font-size:0.75rem;">';
   html += '<thead><tr><th>Tipo</th><th>Data</th><th>Descri\u00e7\u00e3o</th><th>Valor</th><th>Categoria</th><th>Subcategoria</th><th>Pagamento</th><th></th></tr></thead><tbody>';
 
   _pendingImportData.forEach(function(row, idx) {
@@ -5088,7 +5350,7 @@ function openImportPlanilhaModal() {
   var html = '<div class="modal-overlay open" id="planilha-import-modal" onclick="if(event.target===this)this.classList.remove(\'open\')">'
     + '<div class="modal" style="max-width:600px; max-height:90vh; overflow-y:auto;">'
     + '<div class="modal-header"><h2><i class="fas fa-file-import"></i> Importar Itens da Planilha</h2><button class="btn btn-ghost btn-icon" onclick="document.getElementById(\'planilha-import-modal\').remove()">✕</button></div>'
-    + '<div style="padding:1rem;">'
+    + '<div>'
     + '<div class="field"><label>URL da Planilha Google Sheets (deve estar pública)</label>'
     + '<input type="text" id="planilha-import-url" placeholder="https://docs.google.com/spreadsheets/d/..."></div>'
     + '<div style="margin-top:0.75rem;font-size:0.78rem;color:var(--muted);background:rgba(212,175,55,0.05);padding:0.75rem;border-radius:6px;">'
@@ -5299,7 +5561,7 @@ function showPlanilhaPreview() {
   var html = '<div class="modal-overlay open" id="planilha-preview-modal" onclick="if(event.target===this)this.classList.remove(\'open\')">'
     + '<div class="modal" style="max-width:1000px; max-height:90vh; overflow-y:auto;">'
     + '<div class="modal-header"><h2>Confirmar Importação</h2><button class="btn btn-ghost btn-icon" onclick="document.getElementById(\'planilha-preview-modal\').remove()">✕</button></div>'
-    + '<div style="padding:1rem;">';
+    + '<div>';
 
   // Contas novas
   if (_pendingPlanilhaAccounts.length > 0) {
@@ -5314,7 +5576,7 @@ function showPlanilhaPreview() {
 
   // Itens
   html += '<div style="font-size:0.78rem;color:var(--muted);margin-bottom:0.5rem;">' + _pendingPlanilhaItems.length + ' item(ns) encontrado(s). Desmarque os que não deseja importar:</div>';
-  html += '<div style="overflow-x:auto;"><table class="tracking-table" style="font-size:0.75rem;">'
+  html += '<div class="import-tabela-wrap"><table class="tracking-table" style="font-size:0.75rem;">'
     + '<thead><tr><th><input type="checkbox" id="planilha-check-all" checked onchange="toggleAllPlanilhaItems(this.checked)"></th><th>Nome</th><th>Tipo</th><th>Valor</th><th>Recorrência</th><th>Início</th><th>Fim</th><th>Pagamento</th></tr></thead><tbody>';
 
   _pendingPlanilhaItems.forEach(function(it, idx) {
@@ -5571,7 +5833,7 @@ function renderTrackingFaturas() {
     if (!trackingMonth || monthKeys.indexOf(trackingMonth) === -1) trackingMonth = monthKeys[0];
     var curIdx = monthKeys.indexOf(trackingMonth);
     var monthLabel = new Date(trackingMonth + '-15').toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
-    html += '<div class="tracking-month-nav" style="margin:1rem 0;">';
+    html += '<div class="tracking-month-nav" style="margin:0.5rem 0;">';
     html += '<button onclick="navTrackingMonthFaturas(-1)"' + (curIdx <= 0 ? ' disabled' : '') + '>&laquo;</button>';
     html += '<span>' + monthLabel.charAt(0).toUpperCase() + monthLabel.slice(1) + '</span>';
     html += '<button onclick="navTrackingMonthFaturas(1)"' + (curIdx >= monthKeys.length - 1 ? ' disabled' : '') + '>&raquo;</button>';
@@ -5630,8 +5892,8 @@ function renderTrackingFaturas() {
     var totalCartao = fatKeys.reduce(function(s, k) { return s + faturas[k].total; }, 0);
     var totalCartaoOpt = fatKeys.reduce(function(s, k) { return s + faturas[k].totalOtimizado; }, 0);
 
-    html += '<div style="background:var(--card2); border:1px solid var(--border); border-radius:8px; padding:1rem; margin-bottom:1rem;">';
-    html += '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.8rem;">';
+    html += '<div style="background:var(--card2); border:1px solid var(--border); border-radius:8px; padding:0.6rem 0.75rem; margin-bottom:0.6rem;">';
+    html += '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.4rem;">';
     html += '<div style="display:flex; align-items:center; gap:0.6rem;">';
     html += '<span style="font-size:1.1rem;">\ud83d\udcb3</span>';
     html += '<strong style="color:var(--fg);">' + cartao.nome + '</strong>';
@@ -5648,7 +5910,7 @@ function renderTrackingFaturas() {
     html += '</div></div>';
 
     // Table of faturas
-    html += '<table class="tracking-table"><thead><tr><th>Fatura</th><th>Vencimento</th><th>Valor Original</th>';
+    html += '<table class="tracking-table"><thead><tr><th>Fatura · Vencimento</th><th>Valor Original</th>';
     if (scenarioEnabled) html += '<th>Valor Otimizado</th><th>Economia</th>';
     html += '<th>Itens</th></tr></thead><tbody>';
 
@@ -5658,25 +5920,21 @@ function renderTrackingFaturas() {
       var mesLabel = fat.vencDate.toLocaleDateString('pt-BR', { month:'long', year:'numeric' });
       var economia = fat.total - fat.totalOtimizado;
 
-      html += '<tr>';
-      html += '<td style="font-weight:600;">' + mesLabel.charAt(0).toUpperCase() + mesLabel.slice(1) + '</td>';
-      html += '<td>' + vencLabel + '</td>';
+      html += '<tr class="fat-linha">';
+      // Fatura e vencimento na mesma célula
+      html += '<td style="font-weight:600;">' + mesLabel.charAt(0).toUpperCase() + mesLabel.slice(1) + ' <span style="font-weight:400; font-size:0.72rem; color:var(--muted); white-space:nowrap;">vence ' + vencLabel + '</span></td>';
       html += '<td style="color:var(--red); font-weight:600;">' + fmtCurrency(fat.total) + '</td>';
       if (scenarioEnabled) {
         html += '<td style="color:' + (economia > 0 ? 'var(--green)' : 'var(--fg)') + '; font-weight:600;">' + fmtCurrency(fat.totalOtimizado) + '</td>';
         html += '<td style="color:var(--green);">' + (economia > 0 ? '-' + fmtCurrency(economia) : '--') + '</td>';
       }
-      html += '<td>' + fat.itens.length + ' itens</td>';
-      html += '</tr>';
-
-      // Expandable items detail
-      html += '<tr><td colspan="' + (scenarioEnabled ? 6 : 4) + '" style="padding:0;">';
-      html += '<details style="padding:0.3rem 0.5rem;"><summary style="font-size:0.72rem; color:var(--muted); cursor:pointer;">Ver itens da fatura</summary>';
-      html += '<div style="max-height:150px; overflow-y:auto; margin-top:0.3rem;">';
+      // Itens da fatura: <details> dentro da própria célula (sem linha extra por fatura, sem colspan)
+      html += '<td><details class="fat-itens-det"><summary>' + fat.itens.length + ' itens <span class="fat-ver">· ver itens</span></summary>';
+      html += '<div class="fat-itens-lista">';
       fat.itens.sort(function(a,b) { return a.data - b.data; }).forEach(function(fi) {
         var dataLabel = fi.data.toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit' });
-        html += '<div style="display:flex; justify-content:space-between; padding:0.15rem 0; font-size:0.72rem; border-bottom:1px solid rgba(212,175,55,0.05);">';
-        html += '<span style="color:var(--fg);">' + fi.nome + '</span>';
+        html += '<div style="display:flex; justify-content:space-between; gap:0.5rem; padding:0.15rem 0; font-size:0.72rem; border-bottom:1px solid rgba(212,175,55,0.05);">';
+        html += '<span style="color:var(--fg);">' + _densEsc(fi.nome) + '</span>';
         html += '<span style="color:var(--muted);">' + dataLabel + '</span>';
         if (scenarioEnabled && fi.valorOtimizado !== fi.valor) {
           html += '<span><span style="text-decoration:line-through; color:var(--muted);">' + fmtCurrency(fi.valor) + '</span> <span style="color:var(--green); font-weight:600;">' + fmtCurrency(fi.valorOtimizado) + '</span></span>';
@@ -5685,7 +5943,8 @@ function renderTrackingFaturas() {
         }
         html += '</div>';
       });
-      html += '</div></details></td></tr>';
+      html += '</div></details></td>';
+      html += '</tr>';
     });
 
     html += '</tbody></table>';
@@ -5698,7 +5957,7 @@ function renderTrackingFaturas() {
         realFatKeys = realFatKeys.filter(function(fk) { return fk.substring(0, 7) === filterMonth; });
       }
       if (realFatKeys.length > 0) {
-        html += '<div style="margin-top:1rem; padding-top:0.8rem; border-top:1px dashed var(--border);">';
+        html += '<div style="margin-top:0.5rem; padding-top:0.5rem; border-top:1px dashed var(--border);">';
         html += '<div style="font-size:0.82rem; font-weight:600; color:#a78bfa; margin-bottom:0.5rem;">\ud83d\udcb3 Fatura Real (Importada)</div>';
         html += '<table class="tracking-table"><thead><tr><th>Fatura</th><th>Total Itens</th><th>Pgto Real</th><th>Status</th><th>Itens</th></tr></thead><tbody>';
         realFatKeys.forEach(function(fatKey) {
@@ -5716,26 +5975,24 @@ function renderTrackingFaturas() {
           } else {
             statusHtml = '<span style="color:var(--muted);font-size:0.72rem;">Pgto n\u00e3o identificado</span>';
           }
-          html += '<tr>';
+          html += '<tr class="fat-linha">';
           html += '<td style="font-weight:600;">' + mesLabel2.charAt(0).toUpperCase() + mesLabel2.slice(1) + '</td>';
           html += '<td style="color:var(--red); font-weight:600;">' + fmtCurrency(rFat.total) + '</td>';
           html += '<td>' + (pgtoReal !== null ? fmtCurrency(pgtoReal) : '\u2014') + '</td>';
           html += '<td>' + statusHtml + '</td>';
-          html += '<td>' + rFat.itens.length + ' itens</td>';
-          html += '</tr>';
-          // Expandable real items
-          html += '<tr><td colspan="5" style="padding:0;">';
-          html += '<details style="padding:0.3rem 0.5rem;"><summary style="font-size:0.72rem; color:var(--muted); cursor:pointer;">Ver itens reais da fatura</summary>';
-          html += '<div style="max-height:150px; overflow-y:auto; margin-top:0.3rem;">';
+          // Itens reais: <details> dentro da propria celula (sem linha extra por fatura, sem colspan)
+          html += '<td><details class="fat-itens-det"><summary>' + rFat.itens.length + ' itens <span class="fat-ver">\u00b7 ver itens reais</span></summary>';
+          html += '<div class="fat-itens-lista">';
           rFat.itens.sort(function(a,b) { return a.data.localeCompare(b.data); }).forEach(function(fi) {
             var dataLabel2 = fi.data ? new Date(fi.data + 'T00:00').toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit' }) : '\u2014';
-            html += '<div style="display:flex; justify-content:space-between; padding:0.15rem 0; font-size:0.72rem; border-bottom:1px solid rgba(167,139,250,0.08);">';
-            html += '<span style="color:var(--fg);">' + (fi.descricao || fi.subcategoria || '\u2014') + '</span>';
+            html += '<div style="display:flex; justify-content:space-between; gap:0.5rem; padding:0.15rem 0; font-size:0.72rem; border-bottom:1px solid rgba(167,139,250,0.08);">';
+            html += '<span style="color:var(--fg);">' + _densEsc(fi.descricao || fi.subcategoria || '\u2014') + '</span>';
             html += '<span style="color:var(--muted);">' + dataLabel2 + '</span>';
             html += '<span style="color:var(--red); font-weight:600;">' + fmtCurrency(fi.valor) + '</span>';
             html += '</div>';
           });
-          html += '</div></details></td></tr>';
+          html += '</div></details></td>';
+          html += '</tr>';
         });
         html += '</tbody></table></div>';
       }
@@ -5761,19 +6018,22 @@ function renderTrackingFaturas() {
     return l.data && l.data.substring(0, 7) === trackingMonth;
   });
 
-  html += '<div style="margin-top:1.5rem;">';
-  html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.5rem;">';
+  // (template igual ao de renderTracking: titulo e acoes em massa na mesma linha)
+  html += '<div style="margin-top:1rem;">';
+  html += '<div style="display:flex;align-items:center;justify-content:space-between;gap:0.5rem;flex-wrap:wrap;">';
   html += '<h3 style="font-size:0.9rem;margin:0;">Lan\u00e7amentos do m\u00eas (' + lancMes.length + ')</h3>';
-  html += '</div>';
   if (lancMes.length > 0) {
     html += '<div class="lanc-bulk-actions">';
     html += '<label style="display:flex;align-items:center;gap:0.3rem;font-size:0.75rem;color:var(--muted);cursor:pointer;"><input type="checkbox" class="lanc-check" id="lanc-select-all-fat" onchange="toggleSelectAllLanc(this)"> Selecionar todos</label>';
-    html += '<button class="btn btn-ghost btn-sm" style="color:var(--red);font-size:0.72rem;" onclick="deleteLancamentosSelecionados()">\u2715 Excluir selecionados</button>';
+    html += '<button class="btn btn-ghost btn-sm" style="color:var(--red);font-size:0.72rem;padding:0.15rem 0.45rem;" onclick="deleteLancamentosSelecionados()">\u2715 Excluir selecionados</button>';
     html += '</div>';
+  }
+  html += '</div>';
+  if (lancMes.length > 0) {
     html += '<div class="lanc-table-wrap">';
     html += '<table class="lanc-table" id="lanc-table-faturas"><thead><tr>';
     html += '<th style="width:30px;"></th>';
-    html += '<th>Tipo</th><th>Data</th><th>Descri\u00e7\u00e3o</th><th>Valor</th><th>Categoria</th><th>Subcategoria</th><th>Pagamento</th><th>A\u00e7\u00f5es</th>';
+    html += '<th>Tipo</th><th>Data</th><th>Descri\u00e7\u00e3o</th><th>Valor</th><th>Categoria \u203a Item</th><th>Pagamento</th><th>A\u00e7\u00f5es</th>';
     html += '</tr></thead><tbody>';
     lancMes.sort(function(a,b) { return a.data.localeCompare(b.data); }).forEach(function(l) {
       var cfg = catConfig[l.categoria] || { label: l.categoria || '\u2014', color: '#888' };
@@ -5786,15 +6046,17 @@ function renderTrackingFaturas() {
       html += '<td>' + (l.data ? new Date(l.data + 'T00:00').toLocaleDateString('pt-BR') : '\u2014') + '</td>';
       html += '<td>' + (l.descricao || '\u2014') + '</td>';
       html += '<td style="color:' + valorColor + ';font-weight:600;">' + valorPrefix + fmtCurrency(l.valor) + '</td>';
-      html += '<td style="color:' + cfg.color + ';">' + (l.tipo === 'despesa' ? cfg.label : '\u2014') + '</td>';
-      html += '<td style="font-size:0.75rem;">' + (l.subcategoria || '\u2014') + '</td>';
+      // Categoria e Item (subcategoria) numa coluna; os dois textos continuam visiveis
+      var catTxt = l.tipo === 'despesa' ? '<span style="color:' + cfg.color + ';">' + cfg.label + '</span>' : '';
+      var subTxt = l.subcategoria ? '<span style="font-size:0.75rem;">' + _densEsc(l.subcategoria) + '</span>' : '';
+      html += '<td>' + (catTxt && subTxt ? catTxt + ' <span style="color:var(--muted);">\u203a</span> ' + subTxt : (catTxt || subTxt || '\u2014')) + '</td>';
       html += '<td>' + (l.pagamento || '\u2014') + '</td>';
-      html += '<td><button class="btn btn-ghost btn-sm" onclick="editLancamento(\'' + l.id + '\')">✎</button><button class="btn btn-ghost btn-sm" style="color:var(--red);" onclick="deleteLancamento(\'' + l.id + '\')">✕</button></td>';
+      html += '<td><button class="btn btn-ghost btn-sm" style="padding:0.05rem 0.3rem;font-size:0.75rem;" title="Editar" onclick="editLancamento(\'' + l.id + '\')">✎</button><button class="btn btn-ghost btn-sm" style="color:var(--red);padding:0.05rem 0.3rem;font-size:0.75rem;" title="Excluir" onclick="deleteLancamento(\'' + l.id + '\')">✕</button></td>';
       html += '</tr>';
     });
     html += '</tbody></table></div>';
   } else {
-    html += '<div style="font-size:0.82rem;color:var(--muted);">Nenhum lan\u00e7amento neste m\u00eas.</div>';
+    html += '<div style="font-size:0.82rem;color:var(--muted);margin-top:0.4rem;">Nenhum lan\u00e7amento neste m\u00eas.</div>';
   }
   html += '</div>';
 
@@ -5920,5 +6182,7 @@ window.addEventListener('storage', function(e) {
 <button class="btn-save-global" id="btnSaveGlobal" onclick="_forceSaveFluxo()" title="Salvar todas as alterações">
   <span id="saveIcon">💾</span> <span id="saveLabel">Salvar Alterações</span>
 </button>
+<script src="fluxo-otimizacao-motor.js"></script>
+<script src="fluxo-otimizacao-ui.js"></script>
 </body>
 </html>
