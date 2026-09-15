@@ -117,9 +117,10 @@ end $$;
 -- 3b) Inserir "<X> com liquidez diária".
 --     classificacao_risco = 'RISCO_BAIXO' (escala antiga de 7, igual ao
 --     tipo original), para a tela antiga continuar entendendo o produto.
---     Idempotente SEM depender de restrição única em "nome" (o levantamento
---     do banco não registra essa restrição; "on conflict (nome)" daria erro
---     e desfaria a migração inteira): só insere o nome que ainda não existe.
+--     Idempotente por "where not exists": só insere o nome que ainda não
+--     existe. A tabela TEM restrição única em "nome"
+--     (tipos_produtos_investimento_nome_key), que serve de segunda rede;
+--     optou-se por "where not exists" para não abortar a transação.
 insert into public.tipos_produtos_investimento (nome, categoria, classificacao_risco, descricao, ativo)
 select v.nome, 'Renda Fixa', 'RISCO_BAIXO', v.descricao, true
   from (values
@@ -380,6 +381,8 @@ select c.nome                                   as cliente,
            then 'Crédito privado: classe padrão Médio-Baixo; ajustar no item pelo rating do papel.'
          when i.produto = 'Outros'
            then 'Outros: produto genérico sem classe; classificar o risco no item.'
+         when i.produto = 'Título de Capitalização'
+           then 'Capitalização: passa a ficar FORA da matriz de alocação e deixa de contar como reserva de emergência. Confirmar com o cliente.'
          else 'Tipo sem liquidez no catálogo (ou não encontrado no catálogo): confirmar a liquidez.'
        end                                      as motivo_da_revisao
   from itens i
@@ -393,7 +396,7 @@ select c.nome                                   as cliente,
           order by case when t.id::text = i.item ->> 'tipo_produto' then 0 else 1 end
           limit 1
        ) cat on true
- where i.produto in ('CDB', 'RDB', 'LC', 'Tesouro Selic', 'COE', 'CRA', 'CRI', 'Debêntures', 'Outros')
+ where i.produto in ('CDB', 'RDB', 'LC', 'Tesouro Selic', 'COE', 'CRA', 'CRI', 'Debêntures', 'Outros', 'Título de Capitalização')
     or i.produto like '% com prazo/carência'
     or cat.liquidez is null
  order by c.nome, i.link_unico, i.produto;
