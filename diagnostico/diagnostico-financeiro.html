@@ -1757,43 +1757,43 @@
 
             <div class="form-group">
               <label for="data_nascimento">
-                <i class="fas fa-calendar"></i> Data de Nascimento *
+                <i class="fas fa-calendar"></i> Data de Nascimento
               </label>
-              <input type="date" 
-                     id="data_nascimento" 
-                     name="data_nascimento" 
-                     required>
+              <input type="date"
+                     id="data_nascimento"
+                     name="data_nascimento">
             </div>
 
             <div class="form-group">
               <label for="profissao">
-                <i class="fas fa-briefcase"></i> Profissão *
+                <i class="fas fa-briefcase"></i> Profissão
               </label>
-              <input type="text" 
-                     id="profissao" 
-                     name="profissao" 
-                     placeholder="Digite sua profissão"
-                     required>
+              <input type="text"
+                     id="profissao"
+                     name="profissao"
+                     placeholder="Digite sua profissão">
             </div>
 
             <div class="form-group">
               <label for="telefone">
-                <i class="fas fa-phone"></i> Telefone de Contato
+                <i class="fab fa-whatsapp"></i> WhatsApp *
               </label>
-              <input type="tel" 
-                     id="telefone" 
-                     name="telefone" 
-                     placeholder="(00) 00000-0000">
+              <input type="tel"
+                     id="telefone"
+                     name="telefone"
+                     placeholder="(00) 00000-0000"
+                     required>
             </div>
 
             <div class="form-group">
               <label for="email">
-                <i class="fas fa-envelope"></i> E-mail
+                <i class="fas fa-envelope"></i> E-mail *
               </label>
               <input type="email"
                      id="email"
                      name="email"
-                     placeholder="seu@email.com">
+                     placeholder="seu@email.com"
+                     required>
             </div>
 
             <!-- v2: renda no mês fraco (só para renda variável) -->
@@ -1811,11 +1811,10 @@
           <div class="form-grid">
             <div class="form-group">
               <label for="estado_civil">
-                <i class="fas fa-heart"></i> Estado Civil *
+                <i class="fas fa-heart"></i> Estado Civil
               </label>
-              <select id="estado_civil" 
-                      name="estado_civil" 
-                      required>
+              <select id="estado_civil"
+                      name="estado_civil">
                 <option value="">Selecione o estado civil</option>
                 <option value="Solteiro(a)">Solteiro(a)</option>
                 <option value="Casado(a)">Casado(a)</option>
@@ -3908,9 +3907,20 @@ console.log('=== FIM DEBUG PESSOAS COM RENDA ===');
         .join(' ');
     }
     
+    // Tira anotações entre parênteses do nome do contato — "Beatriz Braz (rec Pietra)" → "Beatriz Braz".
+    // O cadastro usa os parênteses para indicação/observação, que não fazem parte do nome.
+    function nomeSemAnotacoes(nome) {
+      return String(nome || '')
+        .replace(/\([^)]*\)/g, ' ')   // "(…)" fechado
+        .replace(/\([^)]*$/, ' ')     // "(…" sem fechar
+        .replace(/\s+/g, ' ')
+        .trim();
+    }
+
     function getFirstAndLastName(fullName) {
-      if (!fullName) return '';
-      const names = fullName.trim().split(' ');
+      const limpo = nomeSemAnotacoes(fullName);
+      if (!limpo) return '';
+      const names = limpo.split(' ');
       if (names.length === 1) return formatName(names[0]);
       return formatName(names[0] + ' ' + names[names.length - 1]);
     }
@@ -4013,7 +4023,7 @@ console.log('=== FIM DEBUG PESSOAS COM RENDA ===');
         updateStatusBadge(diagnostico.status);
         
         // Pré-preencher campos (do formulário ou do diagnóstico)
-        nomeInput.value = diagnostico.nome_diagnostico || clienteData.nome || '';
+        nomeInput.value = diagnostico.nome_diagnostico || nomeSemAnotacoes(clienteData.nome) || '';
         cpfInput.value = diagnostico.cpf || '';
         dataNascimentoInput.value = diagnostico.data_nascimento || '';
         profissaoInput.value = diagnostico.profissao || '';
@@ -4276,62 +4286,58 @@ console.log('=== FIM DEBUG PESSOAS COM RENDA ===');
     async function saveDiagnostico(event) {
       event.preventDefault();
       
-      // Validações
+      // Regra de salvamento (v2): o diagnóstico é salvo do jeito que estiver, desde que nome,
+      // CPF, WhatsApp e e-mail do titular estejam preenchidos (CPF e e-mail em formato válido).
+      // Todo o resto vira AVISO depois de salvar: nada bloqueia e nenhum item é descartado.
       clearMessages();
-      
-      // Validar CPF
+      const avisos = [];
+
+      if (!nomeInput.value.trim()) {
+        showError('Informe o nome completo do titular antes de salvar.');
+        nomeInput.focus();
+        return;
+      }
+      if (!cpfInput.value.trim()) {
+        showError('Informe o CPF do titular antes de salvar.');
+        cpfInput.focus();
+        return;
+      }
       if (!validarCPF(cpfInput.value)) {
         showError('CPF inválido. Por favor, digite um CPF válido.');
         cpfInput.focus();
         return;
       }
-      
-      // Validar data de nascimento (não pode ser futura)
-      const dataNasc = new Date(dataNascimentoInput.value);
-      const hoje = new Date();
-      if (dataNasc >= hoje) {
-        showError('Data de nascimento não pode ser futura.');
-        dataNascimentoInput.focus();
+      if (!telefoneInput.value.replace(/\D/g, '')) {
+        showError('Informe o WhatsApp do titular antes de salvar.');
+        telefoneInput.focus();
         return;
       }
-      
-      // Validar idade mínima (18 anos)
-      const idade = hoje.getFullYear() - dataNasc.getFullYear();
-      if (idade < 18) {
-        showError('É necessário ter pelo menos 18 anos.');
-        dataNascimentoInput.focus();
+      if (!emailInput.value.trim()) {
+        showError('Informe o e-mail do titular antes de salvar.');
+        emailInput.focus();
         return;
       }
-      
-      // Validar e-mail se preenchido
-      if (emailInput.value && !validarEmail(emailInput.value)) {
+      if (!validarEmail(emailInput.value)) {
         showError('E-mail inválido. Por favor, digite um e-mail válido.');
         emailInput.focus();
         return;
       }
-      
-      // Validar CPF do cônjuge se preenchido
-      if (conjugeCpfInput.value && !validarCPF(conjugeCpfInput.value)) {
-        showError('CPF do cônjuge inválido. Por favor, digite um CPF válido.');
-        conjugeCpfInput.focus();
-        return;
+
+      // Avisos (não bloqueiam o salvamento)
+      if (dataNascimentoInput.value) {
+        const dataNasc = new Date(dataNascimentoInput.value);
+        const hoje = new Date();
+        if (dataNasc >= hoje) {
+          avisos.push('data de nascimento no futuro');
+        } else if (hoje.getFullYear() - dataNasc.getFullYear() < 18) {
+          avisos.push('titular com menos de 18 anos');
+        }
       }
-      
-      // Validar e-mail do cônjuge se preenchido
-      if (conjugeEmailInput.value && !validarEmail(conjugeEmailInput.value)) {
-        showError('E-mail do cônjuge inválido. Por favor, digite um e-mail válido.');
-        conjugeEmailInput.focus();
-        return;
-      }
-      
-      // Validar nome do cônjuge se campos do cônjuge estão visíveis
+      if (conjugeCpfInput.value && !validarCPF(conjugeCpfInput.value)) avisos.push('CPF do cônjuge inválido');
+      if (conjugeEmailInput.value && !validarEmail(conjugeEmailInput.value)) avisos.push('e-mail do cônjuge inválido');
       const estadoCivil = estadoCivilInput.value;
       const showConjuge = estadoCivil === 'Casado(a)' || estadoCivil === 'União Estável';
-      if (showConjuge && !conjugeNomeInput.value.trim()) {
-        showError('Nome do cônjuge é obrigatório para pessoas casadas ou em união estável.');
-        conjugeNomeInput.focus();
-        return;
-      }
+      if (showConjuge && !conjugeNomeInput.value.trim()) avisos.push('nome do cônjuge em branco');
       
       // Coletar dados das pessoas com renda
       const pessoasRendaData = [];
@@ -4357,13 +4363,9 @@ console.log('=== FIM DEBUG PESSOAS COM RENDA ===');
           renda_mes_fraco: parseMoeda(document.getElementById(`${pessoaId}_renda_mes_fraco`)?.value || '') || 0
         };
 
-        // Validar nome obrigatório para pessoas com renda
-        if (!pessoaData.nome) {
-          showError(`Nome é obrigatório para a Pessoa ${index + 1}.`);
-          document.getElementById(`${pessoaId}_nome`)?.focus();
-          return;
-        }
-        
+        // Pessoa sem nome não bloqueia: vira aviso e o item é salvo como está
+        if (!pessoaData.nome) avisos.push(`Pessoa ${index + 1} sem nome`);
+
         pessoasRendaData.push(pessoaData);
       });
       
@@ -4378,19 +4380,10 @@ console.log('=== FIM DEBUG PESSOAS COM RENDA ===');
           responsavel: document.getElementById(`${dependenteId}_responsavel`)?.value || ''
         };
         
-        // Validar campos obrigatórios para dependentes
-        if (!dependenteData.nome) {
-          showError(`Nome é obrigatório para o Dependente ${index + 1}.`);
-          document.getElementById(`${dependenteId}_nome`)?.focus();
-          return;
-        }
-        
-        if (!dependenteData.data_nascimento) {
-          showError(`Data de nascimento é obrigatória para o Dependente ${index + 1}.`);
-          document.getElementById(`${dependenteId}_data_nascimento`)?.focus();
-          return;
-        }
-        
+        // Dependente incompleto não bloqueia: vira aviso e o item é salvo como está
+        if (!dependenteData.nome) avisos.push(`Dependente ${index + 1} sem nome`);
+        if (!dependenteData.data_nascimento) avisos.push(`Dependente ${index + 1} sem data de nascimento`);
+
         dependentesData.push(dependenteData);
       });
       
@@ -4414,24 +4407,12 @@ console.log('=== FIM DEBUG PESSOAS COM RENDA ===');
           gera_renda: patrimonio.gera_renda || false
         };
         
-        // Validar campos obrigatórios para patrimônios
-        if (!patrimonioData.tipo) {
-          showError(`Tipo de patrimônio é obrigatório para o Patrimônio ${index + 1}.`);
-          document.getElementById(`${patrimonioId}_tipo`)?.focus();
-          return;
-        }
-        
-        if (!patrimonioData.valor || patrimonioData.valor <= 0) {
-          showError(`Valor é obrigatório e deve ser maior que zero para o Patrimônio ${index + 1}.`);
-          document.getElementById(`${patrimonioId}_valor`)?.focus();
-          return;
-        }
-        
-        if (!patrimonioData.proprietarios || patrimonioData.proprietarios.length === 0) {
-          showError(`Pelo menos um proprietário deve ser selecionado para o Patrimônio ${index + 1}.`);
-          return;
-        }
-        
+        // Patrimônio incompleto não bloqueia: vira aviso e o item é salvo como está
+        // (antes, o "return" dentro do forEach descartava o item em silêncio)
+        if (!patrimonioData.tipo) avisos.push(`Patrimônio ${index + 1} sem tipo`);
+        if (!patrimonioData.valor || patrimonioData.valor <= 0) avisos.push(`Patrimônio ${index + 1} sem valor`);
+        if (!patrimonioData.proprietarios || patrimonioData.proprietarios.length === 0) avisos.push(`Patrimônio ${index + 1} sem proprietário`);
+
         patrimoniosData.push(patrimonioData);
       });
 
@@ -4518,7 +4499,9 @@ console.log('=== FIM DEBUG PESSOAS COM RENDA ===');
         
         if (error) throw error;
         
-        showSuccess('Diagnóstico salvo com sucesso!');
+        showSuccess(avisos.length
+          ? 'Diagnóstico salvo. Pendências: ' + avisos.join('; ') + '.'
+          : 'Diagnóstico salvo com sucesso!');
 
         // Atualizar dados locais
         diagnosticoData = { ...diagnosticoData, ...dataToSave };

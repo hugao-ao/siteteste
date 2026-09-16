@@ -3792,9 +3792,19 @@ console.log('=== FIM DEBUG PESSOAS COM RENDA ===');
         .join(' ');
     }
     
+    // Tira anotações entre parênteses do nome do contato — "Beatriz Braz (rec Pietra)" → "Beatriz Braz".
+    function nomeSemAnotacoes(nome) {
+      return String(nome || '')
+        .replace(/\([^)]*\)/g, ' ')
+        .replace(/\([^)]*$/, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+    }
+
     function getFirstAndLastName(fullName) {
-      if (!fullName) return '';
-      const names = fullName.trim().split(' ');
+      const limpo = nomeSemAnotacoes(fullName);
+      if (!limpo) return '';
+      const names = limpo.split(' ');
       if (names.length === 1) return formatName(names[0]);
       return formatName(names[0] + ' ' + names[names.length - 1]);
     }
@@ -3897,7 +3907,7 @@ console.log('=== FIM DEBUG PESSOAS COM RENDA ===');
         updateStatusBadge(diagnostico.status);
         
         // Pré-preencher campos (do formulário ou do diagnóstico)
-        nomeInput.value = diagnostico.nome_diagnostico || clienteData.nome || '';
+        nomeInput.value = diagnostico.nome_diagnostico || nomeSemAnotacoes(clienteData.nome) || '';
         cpfInput.value = diagnostico.cpf || '';
         dataNascimentoInput.value = diagnostico.data_nascimento || '';
         profissaoInput.value = diagnostico.profissao || '';

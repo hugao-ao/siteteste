@@ -128,6 +128,9 @@
     { re: /cpf do c[oô]njuge/i, slug: 'dados-pessoais', id: 'conjuge_cpf' },
     { re: /e-?mail do c[oô]njuge/i, slug: 'dados-pessoais', id: 'conjuge_email' },
     { re: /nome do c[oô]njuge/i, slug: 'dados-pessoais', id: 'conjuge_nome' },
+    // regra de salvamento: nome, CPF, WhatsApp e e-mail do titular (saveDiagnostico)
+    { re: /nome completo/i, slug: 'dados-pessoais', id: 'nome_diagnostico' },
+    { re: /whatsapp|telefone/i, slug: 'dados-pessoais', id: 'telefone' },
     { re: /cpf/i, slug: 'dados-pessoais', id: 'cpf' },
     { re: /data de nascimento|18 anos/i, slug: 'dados-pessoais', id: 'data_nascimento' },
     { re: /e-?mail/i, slug: 'dados-pessoais', id: 'email' },
@@ -322,7 +325,8 @@
   }
 
   function iniciaisDe(nome) {
-    var partes = String(nome || '').trim().split(/\s+/).filter(Boolean);
+    // ignora anotações entre parênteses ("Beatriz Braz (rec Pietra)" → BB)
+    var partes = String(nome || '').replace(/\([^)]*\)?/g, ' ').trim().split(/\s+/).filter(Boolean);
     if (!partes.length) return '';
     if (partes.length === 1) return partes[0].substring(0, 2).toUpperCase();
     return (partes[0].charAt(0) + partes[partes.length - 1].charAt(0)).toUpperCase();
@@ -1215,45 +1219,24 @@
     return txt || campo.name || campo.id || 'campo';
   }
 
-  // As seções saíram do <form> (vivem no armazém): os `required` do titular deixaram de ser
-  // exigidos pelo navegador, e as checagens de lista de saveDiagnostico focam campos ocultos.
-  // Refaz aqui as mesmas regras, devolvendo { slug, campo, msg } da primeira falha.
+  // As seções saíram do <form> (vivem no armazém), então o navegador não exige mais nada.
+  // Regra de salvamento: o diagnóstico é salvo do jeito que estiver, desde que nome, CPF,
+  // WhatsApp e e-mail do titular estejam preenchidos (o formato é checado em saveDiagnostico;
+  // todo o resto vira aviso lá, sem bloquear). Devolve { slug, campo, msg } da primeira falha.
+  var CAMPOS_MINIMOS = [
+    { id: 'nome_diagnostico', rotulo: 'nome completo' },
+    { id: 'cpf', rotulo: 'CPF' },
+    { id: 'telefone', rotulo: 'WhatsApp' },
+    { id: 'email', rotulo: 'e-mail' }
+  ];
   function primeiraFalhaAoSalvar() {
-    var secao = secaoEl('dados-pessoais');
-    if (secao) {
-      var faltando = Array.prototype.filter.call(secao.querySelectorAll('[required]'), function (c) {
-        if (c.closest && c.closest(SELETOR_OCULTO_INLINE)) return false; // cônjuge oculto (solteiro)
-        return !String(c.value || '').trim();
-      });
-      if (faltando.length) {
-        return {
-          slug: 'dados-pessoais',
-          campo: faltando[0],
-          msg: 'Preencha os campos obrigatórios de Dados pessoais: ' + faltando.map(rotuloCampo).join(', ') + '.'
-        };
-      }
-    }
-
-    var i, id;
-    for (i = 0; i < tamanho(window.pessoasRenda); i++) {
-      id = 'pessoa_' + i + '_nome';
-      if (!valorDe(id)) return { slug: 'pessoas-renda', campo: $(id), msg: 'Nome é obrigatório para a Pessoa ' + (i + 1) + '.' };
-    }
-    for (i = 0; i < tamanho(window.dependentes); i++) {
-      id = 'dependente_' + i + '_nome';
-      if (!valorDe(id)) return { slug: 'dependentes', campo: $(id), msg: 'Nome é obrigatório para o Dependente ' + (i + 1) + '.' };
-      id = 'dependente_' + i + '_data_nascimento';
-      if (!valorDe(id)) return { slug: 'dependentes', campo: $(id), msg: 'Data de nascimento é obrigatória para o Dependente ' + (i + 1) + '.' };
-    }
-    for (i = 0; i < tamanho(window.patrimonios); i++) {
-      id = 'patrimonio_' + i + '_tipo';
-      if (!valorDe(id)) return { slug: 'patrimonio-fisico', campo: $(id), msg: 'Tipo de patrimônio é obrigatório para o Patrimônio ' + (i + 1) + '.' };
-      id = 'patrimonio_' + i + '_valor';
-      if (numeroDe(valorDe(id)) <= 0) return { slug: 'patrimonio-fisico', campo: $(id), msg: 'Valor é obrigatório e deve ser maior que zero para o Patrimônio ' + (i + 1) + '.' };
-      var p = window.patrimonios[i] || {};
-      if (!tamanho(p.proprietarios)) return { slug: 'patrimonio-fisico', campo: null, msg: 'Pelo menos um proprietário deve ser selecionado para o Patrimônio ' + (i + 1) + '.' };
-    }
-    return null;
+    var faltando = CAMPOS_MINIMOS.filter(function (c) { return !valorDe(c.id); });
+    if (!faltando.length) return null;
+    return {
+      slug: 'dados-pessoais',
+      campo: $(faltando[0].id),
+      msg: 'Para salvar, preencha em Dados pessoais: ' + faltando.map(function (c) { return c.rotulo; }).join(', ') + '.'
+    };
   }
 
   // Seção/campo a que se refere um erro emitido pelo inline (ver ERROS_INLINE)
