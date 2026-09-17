@@ -903,3 +903,14 @@ td.valor-mes .badge { display: inline-block; margin-top: 3px; }
 .tab-chip:hover { border-color: var(--c, #94a3b8); }
 .tab-chip.vencida { outline: 1px dashed var(--argos-warn); outline-offset: 1px; }
 .tab-chip.conflito { border-color: var(--argos-warn); }
+
+
+/* ---------- Planejamento: células editáveis do bloco de entradas ---------- */
+.planilha td.cel-edit { padding: 2px 4px; }
+.plan-edit { width: 104px; text-align: right; background: transparent; border: 1px dashed var(--argos-border);
+  border-radius: 6px; color: inherit; font: inherit; padding: 3px 6px; }
+.plan-edit::placeholder { color: var(--argos-text-dim); opacity: .75; }
+.plan-edit:focus { outline: none; border-style: solid; border-color: var(--argos-primary); background: var(--argos-surface-2); }
+.planilha td.cel-edit.manual .plan-edit { border-style: solid; border-color: #eab308; }
+.plan-edit:disabled { border-color: transparent; }
+@media print { .plan-edit { border: 0; background: transparent; } }

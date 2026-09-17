@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=0.1, maximum-scale=10, user-scalable=yes" />
   <title>Argos Gestão — Planejamento Financeiro</title>
   <script src="argos-guard.js"></script>
-  <link rel="stylesheet" href="argos-style.css?v=14" />
+  <link rel="stylesheet" href="argos-style.css?v=15" />
 </head>
 <body>
   <header class="argos-topbar">
@@ -58,7 +58,7 @@
       .planilha tr.mes-atual-col td { }
     </style>
     <section id="secao-anual">
-      <p class="dica">Planilha do ano: <b>colunas = meses</b>, <b>linhas = cada entrada e cada saída</b>. Toque no nome de um bloco (▾) para ocultar/mostrar a memória de cálculo; toque no nome de um mês para abrir o detalhe mensal. Valores em R$.</p>
+      <p class="dica">Planilha do ano: <b>colunas = meses</b>. O bloco de <b>Entradas</b> segue a planilha da clínica: <b>entradas estimadas</b> (você digita), <b>produção do mês</b>, <b>recebido relativo ao mês</b> (pelo mês de referência), <b>atrasados do dia 01</b> (calculado, ou digite para fixar), <b>estimativa de recebimentos</b> (produção do mês anterior + atrasados) e <b>entradas reais</b> (o que entrou no caixa). Nos blocos de saída, toque no nome (▾) para ocultar/mostrar a memória de cálculo; toque no nome de um mês para abrir o detalhe mensal. Valores em R$.</p>
       <div class="argos-tabela-wrap">
         <table class="argos-tabela planilha" id="tabela-anual">
           <thead id="thead-anual"></thead>
@@ -275,7 +275,7 @@
     </div>
   </div>
 
-  <script type="module" src="planejamento.js?v=10"></script>
+  <script type="module" src="planejamento.js?v=11"></script>
   <script type="module" src="argos-zoom.js?v=4"></script>
 </body>
 </html>

@@ -7,6 +7,7 @@
 import { sb, todas, toast, esc, abrirModal, fecharModal } from './argos-common.js';
 import { carregarPermissoes } from './argos-permissoes.js';
 import { fechamentoPaciente, formataMoeda, formataBR, hojeISO, fimDoMes } from './argos-recorrencia.js';
+import { cobradoPorPaciente } from './argos-fechamento.js';
 import {
     encontraDePara, saidasSemAssociacao, realizadoPorDespesa, mesesObservados,
     semPrevisaoComHistorico, lerPrevisoes, normalizaChave
@@ -21,7 +22,7 @@ const MES_NOMES = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
 const RECORRENCIA_LABELS = { unica: 'Única', semanal: 'Semanal', mensal: 'Mensal', anual: 'Anual' };
 
 async function carregarTudo() {
-    const [rPac, rDin, rSes, rProf, rDesp, rMov, rAloc, rDp] = await Promise.all([
+    const [rPac, rDin, rSes, rProf, rDesp, rMov, rAloc, rDp, rCob, rPlan] = await Promise.all([
         sb.from('argos_pacientes').select('*').order('nome'),
         todas(() => sb.from('argos_dinamicas').select('*')),
         todas(() => sb.from('argos_sessoes').select('*')),
@@ -29,7 +30,9 @@ async function carregarTudo() {
         sb.from('argos_despesas').select('*').order('created_at'),
         todas(() => sb.from('argos_movimentacoes').select('*').order('data', { ascending: false })),
         todas(() => sb.from('argos_mov_alocacoes').select('*')),
-        todas(() => sb.from('argos_mov_depara').select('*'))
+        todas(() => sb.from('argos_mov_depara').select('*')),
+        todas(() => sb.from('argos_cobranca_mes').select('*')),
+        todas(() => sb.from('argos_planejamento_entradas').select('*'))
     ]);
     const erro = rPac.error || rDin.error || rSes.error || rProf.error || rDesp.error || rMov.error;
     if (erro) { console.error(erro); toast('Erro ao carregar dados.', true); return; }
@@ -41,7 +44,95 @@ async function carregarTudo() {
     movimentacoes = rMov.data || [];
     alocacoes = (rAloc && rAloc.data) || [];
     depara = (rDp && rDp.data) || [];
+    cobrancaMes = (rCob && rCob.data) || [];
+    planoEntradas = (rPlan && rPlan.data) || [];
     render();
+}
+
+// ---------- o bloco de ENTRADAS no formato da planilha da clínica ----------
+// Seis linhas por mês, sem lista de pacientes:
+//   estimadas (digitada) · produção do mês · recebido relativo ao mês ·
+//   atrasados do dia 01 · estimativa de recebimentos · entradas reais.
+// "Relativo ao mês" é pelo MÊS DE REFERÊNCIA da alocação (um pagamento
+// rateado conta em cada mês a que se refere); "reais" é pela DATA em que o
+// dinheiro entrou, com ou sem referência.
+let cobrancaMes = [];        // cobranças ajustadas/congeladas: mandam no valor do mês
+let planoEntradas = [];      // {mes, estimativa, atrasados_manual} digitados
+const fechCache = new Map(); // `${paciente}|${mes}` → { f, valor }
+
+/** Fechamento do paciente no mês, com a cobrança ajustada/congelada por cima. */
+function fechDe(p, mes) {
+    const k = p.id + '|' + mes;
+    if (fechCache.has(k)) return fechCache.get(k);
+    const f = fechamentoPaciente(p,
+        dinamicas.filter(d => d.paciente_id === p.id),
+        sessoes.filter(s => s.paciente_id === p.id), mes);
+    const cob = cobradoPorPaciente(cobrancaMes, mes);
+    const r = { f, valor: cob.has(p.id) ? cob.get(p.id) : (Number(f.valor) || 0) };
+    fechCache.set(k, r);
+    return r;
+}
+const tipoDaMov = () => new Map(movimentacoes.map(m => [m.id, m.tipo]));
+const numOuNull = v => (v == null || v === '' ? null : Number(v));
+
+/** Produção do mês: o que as sessões (e a cobrança) do próprio mês valem. */
+function producaoDoMes(mes) {
+    return pacientes.reduce((s, p) => s + fechDe(p, mes).valor, 0);
+}
+/** Recebido relativo ao mês: alocações de entrada cujo mês de referência é este. */
+function recebidoRefDoMes(mes) {
+    const tipo = tipoDaMov();
+    return alocacoes.filter(a => a.mes_ref === mes && tipo.get(a.movimentacao_id) === 'entrada')
+        .reduce((s, a) => s + (Number(a.valor) || 0), 0);
+}
+/** Entradas reais: tudo que entrou no caixa entre o dia 1 e o último dia. */
+function entradasReaisDoMes(mes) {
+    const de = mes + '-01', ate = fimDoMes(mes);
+    return movimentacoes.filter(m => m.tipo === 'entrada' && m.data >= de && m.data <= ate)
+        .reduce((s, m) => s + (Number(m.valor) || 0), 0);
+}
+/**
+ * Atrasados do dia 01 de cada mês pedido: o que cada paciente ainda deve
+ * somando todos os meses até o último dia do mês anterior (produção − pago
+ * por referência). Quem pagou adiantado não abate a dívida dos outros: só
+ * saldo positivo entra.
+ */
+function atrasadosPorMes(meses) {
+    const ultimo = meses[meses.length - 1];
+    const tipo = tipoDaMov();
+    const out = new Map(meses.map(m => [m, 0]));
+    for (const p of pacientes) {
+        const pagos = alocacoes.filter(a => a.vinculo_tipo === 'paciente' && a.vinculo_id === p.id
+            && tipo.get(a.movimentacao_id) === 'entrada');
+        const dins = dinamicas.filter(d => d.paciente_id === p.id);
+        const sess = sessoes.filter(s => s.paciente_id === p.id);
+        const inicios = [...sess.map(s => s.data), ...dins.map(d => d.data_inicio),
+            ...pagos.map(a => a.mes_ref + '-01')].filter(Boolean).sort();
+        if (!inicios.length) continue;
+        const pagoMes = new Map();
+        pagos.forEach(a => pagoMes.set(a.mes_ref, (pagoMes.get(a.mes_ref) || 0) + (Number(a.valor) || 0)));
+        let saldo = 0;
+        const saldoAte = new Map();
+        for (let m = inicios[0].slice(0, 7); m <= ultimo; m = mesSeguinte(m)) {
+            saldo += fechDe(p, m).valor - (pagoMes.get(m) || 0);
+            saldoAte.set(m, saldo);
+        }
+        for (const m of meses) {
+            const s = saldoAte.get(mesAnterior(m));
+            if (s != null && s > 0.004) out.set(m, out.get(m) + s);
+        }
+    }
+    return out;
+}
+const planoDe = mes => planoEntradas.find(x => x.mes === mes) || {};
+
+/** Lê um valor digitado: "1.234,56", "1234,56" ou "1234.56". */
+function lerNumero(txt) {
+    const t = String(txt || '').trim().replace(/[R$\s]/g, '');
+    if (!t) return null;
+    const n = t.includes(',') ? Number(t.replace(/\./g, '').replace(',', '.'))
+        : (/^\d+\.\d{1,2}$/.test(t) ? Number(t) : Number(t.replace(/\./g, '')));
+    return Number.isFinite(n) ? n : null;
 }
 
 /** Mês anterior de 'YYYY-MM'. */
@@ -135,11 +226,9 @@ function calculaMes(mes) {
     const porPaciente = [];
     const producao = {};
     for (const p of pacientes) {
-        const f = fechamentoPaciente(p,
-            dinamicas.filter(d => d.paciente_id === p.id),
-            sessoes.filter(s => s.paciente_id === p.id), mesProducao);
-        if (f.valor) porPaciente.push({ id: p.id, nome: p.nome, valor: f.valor });
-        faturamento += f.valor;
+        const { f, valor } = fechDe(p, mesProducao);
+        if (valor) porPaciente.push({ id: p.id, nome: p.nome, valor });
+        faturamento += valor;
         for (const pd of (f.porDinamica || [])) {
             for (const r of (pd.repasses || [])) {
                 producao[r.profissional_id] = (producao[r.profissional_id] || 0) + r.valor;
@@ -165,6 +254,7 @@ function calculaMes(mes) {
 
 // ---------- render ----------
 function render() {
+    fechCache.clear();
     const modo = document.getElementById('modo-visao').value;
     document.getElementById('secao-anual').style.display = modo === 'anual' ? '' : 'none';
     document.getElementById('secao-mensal').style.display = modo === 'mensal' ? '' : 'none';
@@ -200,12 +290,22 @@ function renderAnual() {
             { linha(porDesp, x.id, `${x.nome} (${RECORRENCIA_LABELS[x.recorrencia] || x.recorrencia})`).valores[i] += x.valor; });
     });
 
-    const fmt = v => Math.abs(v) < 0.005 ? '—'
-        : v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const fmt2 = v => v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const fmt = v => Math.abs(v) < 0.005 ? '—' : fmt2(v);
     const soma = vs => vs.reduce((s2, v) => s2 + v, 0);
+    const podeEditar = perm.master || perm.pode('planejamento_entradas_editar');
 
     function linhaHTML(rotulo, valores, opts = {}) {
         const total = soma(valores);
+        // célula editável: o que está digitado vale; vazio mostra o automático
+        const celula = (v, i) => {
+            if (!opts.editar) return `<td class="${cor(v)}">${fmt(v)}</td>`;
+            const manual = opts.editar.manuais[i];
+            const auto = opts.editar.autos ? opts.editar.autos[i] : null;
+            return `<td class="cel-edit${manual != null ? ' manual' : ''}"><input class="plan-edit" type="text" inputmode="decimal"
+                data-mes="${meses[i]}" data-campo="${opts.editar.campo}" value="${manual != null ? fmt2(manual) : ''}"
+                placeholder="${auto != null ? fmt2(auto) : '—'}" title="${esc(opts.editar.dica || '')}"${podeEditar ? '' : ' disabled'}></td>`;
+        };
         // sinal: true = positivo bom (verde); 'invertido' = positivo ruim (vermelho)
         const cor = v => !opts.sinal ? ''
             : (opts.sinal === 'invertido' ? (v > 0.004 ? 'neg' : (v < -0.004 ? 'pos' : ''))
@@ -216,7 +316,7 @@ function renderAnual() {
             + (opts.detalheDe && gruposFechados.has(opts.detalheDe) ? ' style="display:none"' : '');
         return `<tr class="${cls}"${attrs}>
           <td>${opts.grupo ? `<span class="chev">${gruposFechados.has(opts.grupo) ? '▸' : '▾'}</span> ` : ''}${rotulo}</td>
-          ${valores.map(v => `<td class="${cor(v)}">${fmt(v)}</td>`).join('')}
+          ${valores.map(celula).join('')}
           <td class="col-total ${cor(total)}">${fmt(total)}</td>
         </tr>`;
     }
@@ -229,12 +329,28 @@ function renderAnual() {
 
     const temMov = movimentacoes.length > 0;
     const linhas = [];
-    linhas.push(linhaHTML('📥 ENTRADAS previstas — produção do mês anterior', dados.map(c => c.faturamento), { grupo: 'entradas' }));
-    if (temMov) {
-        linhas.push(linhaHTML('✔ Entradas realizadas (movimentações)', dados.map(c => c.realizado.entradas), { classeExtra: 'linha-real' }));
-        linhas.push(linhaHTML('Δ diferença (real − previsto)', dados.map(c => c.realizado.entradas - c.faturamento), { classeExtra: 'linha-real', sinal: true }));
-    }
-    ordenado(porPac).forEach(l => linhas.push(linhaHTML(esc(l.nome), l.valores, { detalheDe: 'entradas' })));
+
+    // ---- ENTRADAS, como na planilha da clínica (sem lista de pacientes) ----
+    const atrasos = atrasadosPorMes(meses);
+    const estimadas = meses.map(m => numOuNull(planoDe(m).estimativa));
+    const producao = meses.map(producaoDoMes);
+    const producaoAnt = meses.map(m => producaoDoMes(mesAnterior(m)));
+    const recebidoRef = meses.map(recebidoRefDoMes);
+    const atrasadosAuto = meses.map(m => atrasos.get(m) || 0);
+    const atrasadosManual = meses.map(m => numOuNull(planoDe(m).atrasados_manual));
+    const atrasadosEf = atrasadosManual.map((v, i) => v != null ? v : atrasadosAuto[i]);
+    const estimativaReceb = producaoAnt.map((v, i) => v + atrasadosEf[i]);
+    const entradasReais = meses.map(entradasReaisDoMes);
+    linhas.push(linhaHTML('📥 ENTRADAS', meses.map(() => 0), { classeExtra: 'grupo-linha' }));
+    linhas.push(linhaHTML('✏️ Entradas estimadas para o mês', estimadas.map(v => v || 0),
+        { editar: { campo: 'estimativa', manuais: estimadas, dica: 'Sua expectativa de entradas para o mês — digite e saia da célula para guardar' } }));
+    linhas.push(linhaHTML('Produção do mês <span class="dim">(o que as sessões do mês valem, receba quando for)</span>', producao));
+    linhas.push(linhaHTML('Recebido relativo ao mês <span class="dim">(pelo mês de referência, em qualquer data)</span>', recebidoRef, { classeExtra: 'linha-real' }));
+    linhas.push(linhaHTML('Atrasados do dia 01 <span class="dim">(em aberto até o último dia do mês anterior)</span>', atrasadosEf,
+        { editar: { campo: 'atrasados_manual', manuais: atrasadosManual, autos: atrasadosAuto,
+            dica: 'Vazio = calculado pelas movimentações (produção − recebido por referência, até o mês anterior). Digite para fixar à mão.' } }));
+    linhas.push(linhaHTML('<b>Estimativa de recebimentos do mês</b> <span class="dim">(produção do mês anterior + atrasados do dia 01)</span>', estimativaReceb));
+    linhas.push(linhaHTML('<b>✔ Entradas reais no mês</b> <span class="dim">(tudo que entrou do dia 1 ao último, com ou sem referência)</span>', entradasReais, { classeExtra: 'linha-real' }));
     linhas.push(linhaHTML('💼 SAÍDAS previstas — Repasses aos profissionais', dados.map(c => c.repasses), { grupo: 'repasses' }));
     if (temMov) {
         linhas.push(linhaHTML('✔ Repasses realizados (movimentações)', dados.map(c => c.realizado.repasses), { classeExtra: 'linha-real' }));
@@ -330,6 +446,24 @@ document.getElementById('tbody-anual').addEventListener('click', (e) => {
     document.querySelectorAll(`#tbody-anual tr[data-detalhe-de="${chave}"]`)
         .forEach(tr => tr.style.display = fechado ? 'none' : '');
     g.querySelector('.chev').textContent = fechado ? '▸' : '▾';
+});
+
+// células editáveis do bloco de entradas: grava ao sair da célula
+document.getElementById('tbody-anual').addEventListener('change', async (e) => {
+    const inp = e.target.closest('.plan-edit');
+    if (!inp) return;
+    const mes = inp.dataset.mes, campo = inp.dataset.campo;
+    const txt = inp.value.trim();
+    const v = txt === '' ? null : lerNumero(txt);
+    if (txt !== '' && v == null) { toast('Valor inválido — use números, ex.: 89.000,00', true); return; }
+    const { error } = await sb.from('argos_planejamento_entradas')
+        .upsert({ mes, [campo]: v }, { onConflict: 'mes' });
+    if (error) { console.error(error); toast('Erro ao guardar o valor.', true); return; }
+    let reg = planoEntradas.find(x => x.mes === mes);
+    if (!reg) { reg = { mes }; planoEntradas.push(reg); }
+    reg[campo] = v;
+    toast(v == null ? 'Voltou ao cálculo automático.' : 'Valor guardado.');
+    renderAnual();
 });
 
 // clicar no mês do cabeçalho abre o detalhe mensal daquele mês
