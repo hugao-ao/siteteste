@@ -880,3 +880,26 @@ td.valor-mes .badge { display: inline-block; margin-top: 3px; }
 .freq-acoes { align-items: center; gap: 8px; flex-wrap: wrap; background: #101a30; padding: 8px 10px; border-radius: 10px; }
 .freq-acoes .btn-status { padding: 5px 10px; }
 #modal-frequencia #freq-tabela { max-height: 54vh; overflow: auto; }
+
+
+/* ---------- Agenda: tabela do mês (pacientes × dias) ---------- */
+.agenda-tabela-wrap { overflow: auto; max-height: 76vh; border: 1px solid var(--argos-border); border-radius: var(--argos-radius); }
+.tab-mes { border-collapse: separate; border-spacing: 0; min-width: 100%; }
+.tab-mes th, .tab-mes td { padding: 4px 5px; border-bottom: 1px solid var(--argos-border); vertical-align: middle; white-space: nowrap; }
+.tab-mes thead th { position: sticky; top: 0; z-index: 3; background: #0f1830; text-align: center; font-size: .74rem; }
+.tab-mes thead th.tab-dia { cursor: pointer; }
+.tab-mes thead th.tab-dia small { display: block; font-weight: 500; color: var(--argos-text-dim); }
+.tab-mes th.tab-nome, .tab-mes td.tab-nome { position: sticky; left: 0; z-index: 2; background: #0f1830; text-align: left; min-width: 210px; max-width: 280px; white-space: normal; font-weight: 600; font-size: .8rem; }
+.tab-mes thead th.tab-nome { z-index: 4; }
+.tab-mes td.tab-quem { font-size: .72rem; max-width: 150px; white-space: normal; }
+.tab-mes td.tab-dia { text-align: center; min-width: 38px; }
+.tab-mes .fds { background: rgba(148,163,184,.06); }
+.tab-mes .hoje { box-shadow: inset 0 0 0 1px var(--argos-primary); }
+.tab-mes tr.tab-bloco td { position: sticky; left: 0; background: #131f3b; font-weight: 700; font-size: .78rem; padding: 6px 8px; border-top: 2px solid var(--argos-border); text-align: left; z-index: 1; }
+.tab-mes td.tab-total { font-size: .7rem; white-space: normal; min-width: 120px; }
+.tab-chip { display: inline-block; margin: 1px; padding: 1px 6px; border-radius: 999px; font-size: .7rem; font-weight: 700; cursor: pointer;
+  background: color-mix(in srgb, var(--c, #94a3b8) 18%, transparent); color: var(--c, #94a3b8); border: 1px solid transparent; }
+.tab-chip small { font-weight: 500; opacity: .85; margin-right: 3px; font-size: .62rem; }
+.tab-chip:hover { border-color: var(--c, #94a3b8); }
+.tab-chip.vencida { outline: 1px dashed var(--argos-warn); outline-offset: 1px; }
+.tab-chip.conflito { border-color: var(--argos-warn); }
