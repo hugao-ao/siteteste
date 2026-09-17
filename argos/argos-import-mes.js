@@ -135,7 +135,7 @@ function dinamicaDoSlot(dinamicas, pacienteId, data, hora) {
  * executar o que foi aprovado.
  */
 export function planoDoMes({ linhas = [], pacientes = [], profissionais = [],
-    sessoes = [], dinamicas = [], apelidos = [], ano, mes } = {}) {
+    sessoes = [], dinamicas = [], apelidos = [], mesesImportados = [], ano, mes } = {}) {
 
     const avisos = [];
     if (!ano || !mes) return { mudancas: [], resumo: vazio(), avisos: ['Não sei de que mês é esta planilha.'], pares: [] };
@@ -166,6 +166,20 @@ export function planoDoMes({ linhas = [], pacientes = [], profissionais = [],
     const mudancas = [];
     const pares = [];          // (paciente, profissional) que a planilha cobre
     const vistos = new Set();
+
+    // A coluna SITUAÇÃO da planilha é o retrato DAQUELE mês. Só a planilha do
+    // mês mais recente conhecido de um paciente pode mexer no cadastro dele:
+    // reimportar um mês antigo (sem mudanças) não pode virar ninguém de
+    // ativo para inativo e vice-versa — senão importar, importar outro mês e
+    // voltar ao primeiro deixaria rastro. "Conhecido" = mês já importado
+    // (registro de congelamento) ou mês com sessão real gravada até hoje.
+    const mesPlan = `${ano}-${String(mes).padStart(2, '0')}`;
+    const ultimoMes = new Map();   // paciente_id → 'YYYY-MM' mais recente conhecido
+    const lembrar = (pid, m) => { if (pid && m && (!ultimoMes.has(pid) || m > ultimoMes.get(pid))) ultimoMes.set(pid, m); };
+    for (const x of mesesImportados || []) lembrar(x.paciente_id, x.mes);
+    const hojeIso = hojeISO();
+    for (const s of sessoes || []) if (s.data && s.data <= hojeIso) lembrar(s.paciente_id, String(s.data).slice(0, 7));
+    const situacaoIgnorada = [];
 
     // ---------------- lado da planilha
     for (const l of linhas) {
@@ -215,7 +229,10 @@ export function planoDoMes({ linhas = [], pacientes = [], profissionais = [],
         const sitPlan = norm(l.situacao);
         if (sitPlan === 'ativo' || sitPlan === 'inativo') {
             const querAtivo = sitPlan === 'ativo';
-            if (pac.ativo !== querAtivo) {
+            const ultimo = ultimoMes.get(pac.id);
+            if (ultimo && ultimo > mesPlan) {
+                if (pac.ativo !== querAtivo && !situacaoIgnorada.includes(pac.nome)) situacaoIgnorada.push(pac.nome);
+            } else if (pac.ativo !== querAtivo) {
                 const id = `sit|${pac.id}`;
                 if (!mudancas.some(m => m.id === id)) mudancas.push({
                     id, tipo: 'situacao', aplicavel: true,
@@ -476,6 +493,11 @@ export function planoDoMes({ linhas = [], pacientes = [], profissionais = [],
         || String(a.paciente).localeCompare(String(b.paciente))
         || String(a.data || '').localeCompare(String(b.data || '')));
 
+    if (situacaoIgnorada.length) {
+        avisos.push(`Situação (ativo/inativo) mantida para ${situacaoIgnorada.length} paciente(s): `
+            + 'há mês mais recente já registrado, e a planilha de um mês antigo não muda o cadastro '
+            + `(${situacaoIgnorada.slice(0, 5).join(', ')}${situacaoIgnorada.length > 5 ? '…' : ''}).`);
+    }
     return { mudancas, resumo: contar(mudancas), avisos, pares };
 }
 

@@ -21,6 +21,7 @@ let pacientes = [], salas = [], profissionais = [], dinamicas = [], sessoes = []
 let grupos = [], grupoMembros = [], grupoProfs = [];
 let profFreq = [];                        // presença dos profissionais nos horários
 let locacoes = [];                        // espaços alugados a terceiros
+let mesesCongelados = [];                 // (paciente, mês) já importados da planilha
 let segunda = segundaDaSemana(hojeISO()); // início da semana exibida
 let sessaoAberta = null;                  // sessão do modal de marcação
 
@@ -53,7 +54,8 @@ async function carregarTudo() {
     salas = rSalas.data || [];
     profissionais = rProf.data || [];
     definirRepassePadrao(profissionais);
-    definirMesesCongelados((rCong && rCong.data) || []);
+    mesesCongelados = (rCong && rCong.data) || [];
+    definirMesesCongelados(mesesCongelados);
     dinamicas = rDin.data || [];
     sessoes = rSes.data || [];
     grupos = rGru.data || [];
@@ -1022,7 +1024,7 @@ async function recarregarSessoes() {
     grupoProfs = rGP.data || grupoProfs;
     profFreq = rPF.data || profFreq;
     locacoes = (rLoc && rLoc.data) || locacoes;
-    if (rCong && rCong.data) definirMesesCongelados(rCong.data);
+    if (rCong && rCong.data) { mesesCongelados = rCong.data; definirMesesCongelados(mesesCongelados); }
     recalcularFimEfetivo();
     renderTudo();
     const modalGrupo = document.getElementById('modal-grupo');
@@ -1896,7 +1898,7 @@ async function reconferirImes({ avisos = [], marcarTudo = false, marcarDe = null
     const { data: aps } = await sb.from('argos_paciente_apelidos').select('*');
     imesApelidos = aps || [];
     imesPlano = planoDoMes({ linhas: imesLinhas, pacientes, profissionais,
-        sessoes, dinamicas, apelidos: imesApelidos, ...imesAnoMes });
+        sessoes, dinamicas, apelidos: imesApelidos, mesesImportados: mesesCongelados, ...imesAnoMes });
     imesPlano.avisosLeitura = avisos;
     if (marcarTudo) {
         // o caso comum é aprovar o mês inteiro: tudo já vem marcado, e
