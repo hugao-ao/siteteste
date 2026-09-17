@@ -211,6 +211,8 @@ const marcarSessao = (s, status) => marcarSessoes([s], status);
 let modo = 'semana';
 let mesRef = hojeISO().slice(0, 7);
 let periodo = { de: hojeISO(), ate: somarDias(hojeISO(), 29) };
+let tabelaOrdem = 'horario';               // tabela do mês: 'horario' | 'alfabetica'
+try { tabelaOrdem = localStorage.getItem('argos-agenda-tabela-ordem') || 'horario'; } catch (e) { /* sem storage */ }
 
 const MES_NOMES = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
     'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
@@ -225,6 +227,7 @@ document.getElementById('modo-visao').addEventListener('change', (e) => {
     modo = e.target.value;
     document.getElementById('controles-navegacao').style.display = modo === 'periodo' ? 'none' : '';
     document.getElementById('controles-periodo').style.display = modo === 'periodo' ? '' : 'none';
+    document.getElementById('tabela-ordem').style.display = modo === 'tabela' ? '' : 'none';
     if (modo === 'periodo') {
         document.getElementById('periodo-de').value = periodo.de;
         document.getElementById('periodo-ate').value = periodo.ate;
@@ -233,12 +236,12 @@ document.getElementById('modo-visao').addEventListener('change', (e) => {
 });
 document.getElementById('btn-ant').addEventListener('click', () => {
     if (modo === 'semana') segunda = somarDias(segunda, -7);
-    if (modo === 'mes') mesRef = mudarMes(mesRef, -1);
+    if (modo === 'mes' || modo === 'tabela') mesRef = mudarMes(mesRef, -1);
     renderAgenda();
 });
 document.getElementById('btn-prox').addEventListener('click', () => {
     if (modo === 'semana') segunda = somarDias(segunda, 7);
-    if (modo === 'mes') mesRef = mudarMes(mesRef, 1);
+    if (modo === 'mes' || modo === 'tabela') mesRef = mudarMes(mesRef, 1);
     renderAgenda();
 });
 document.getElementById('btn-hoje').addEventListener('click', () => {
@@ -258,6 +261,11 @@ document.getElementById('btn-aplicar-periodo').addEventListener('click', () => {
 });
 document.getElementById('filtro-sala').addEventListener('change', renderAgenda);
 document.getElementById('filtro-prof').addEventListener('change', renderAgenda);
+document.getElementById('tabela-ordem').addEventListener('change', (e) => {
+    tabelaOrdem = e.target.value;
+    try { localStorage.setItem('argos-agenda-tabela-ordem', tabelaOrdem); } catch (x) { /* sem storage */ }
+    renderAgenda();
+});
 
 function sessoesDoIntervalo(de, ate) {
     const filtro = document.getElementById('filtro-sala').value;
@@ -417,11 +425,144 @@ function alugueisDoDia(iso, compacta) {
 function renderAgenda() {
     const grade = document.getElementById('agenda-grade');
     const listaPer = document.getElementById('agenda-periodo');
-    grade.style.display = modo === 'periodo' ? 'none' : '';
+    const tabela = document.getElementById('agenda-tabela');
+    grade.style.display = (modo === 'periodo' || modo === 'tabela') ? 'none' : '';
     listaPer.style.display = modo === 'periodo' ? '' : 'none';
+    tabela.style.display = modo === 'tabela' ? '' : 'none';
     if (modo === 'semana') renderSemana();
     else if (modo === 'mes') renderMes();
+    else if (modo === 'tabela') renderTabela();
     else renderPeriodo();
+}
+
+// ---------- Tabela do mês: pacientes nas linhas, dias nas colunas ----------
+// A mesma planilha que a clínica usa, dentro do sistema: cada célula é a
+// frequência daquela sessão e abre o mesmo modal da agenda. Nada se perde
+// do formato normal — só muda a forma de olhar o mês inteiro de uma vez.
+function chaveTabela(s) {
+    // a chave normal colide para sessões virtuais de grupo (sem id nem dinâmica)
+    const k = s.id || `t|${s.paciente_id}|${s.dinamica_ref || ('g:' + (s.grupo_ref || s.grupo_id || 'x'))}|${s.data}|${s.hora}`;
+    chaves.set(k, s);
+    return k;
+}
+
+// as ocorrências de grupo do mês, uma "sessão" por membro que ainda não tem
+// sessão própria naquele dia/hora — é o que o modal do grupo mostra
+function sessoesVirtuaisDeGrupo(lista, de, ate) {
+    const extras = [];
+    for (let iso = de; iso <= ate; iso = somarDias(iso, 1)) {
+        for (const g of gruposDoDia(iso)) {
+            for (const m of membrosNaOcorrencia(g, iso)) {
+                const pacId = m.paciente_id;
+                if (lista.some(s => s.paciente_id === pacId && s.data === iso && s.hora === g.hora)) continue;
+                if (sessaoMovidaDaOcorrencia(pacId, g, iso)) continue; // já está no novo dia, na lista
+                extras.push({
+                    id: null, paciente_id: pacId, dinamica_ref: null,
+                    data: iso, hora: g.hora, duracao_min: g.duracao_min || 60,
+                    sala_id: g.sala_id, profissional_id: profsDoGrupo(g.id)[0] || g.profissional_id || null,
+                    servico_id: g.servico_id, status: '??', grupo_id: g.id, grupo_ref: g.id,
+                    modalidade: 'grupo', projetada: true
+                });
+            }
+        }
+    }
+    return extras;
+}
+
+function renderTabela() {
+    const de = mesRef + '-01';
+    const ate = fimDoMes(mesRef);
+    const [a, m] = mesRef.split('-').map(Number);
+    document.getElementById('rotulo-intervalo').textContent = `${MES_NOMES[m - 1]} de ${a}`;
+    const hoje = hojeISO();
+    const alvo = document.getElementById('agenda-tabela');
+
+    const base = sessoesDoIntervalo(de, ate);
+    const lista = base.concat(sessoesVirtuaisDeGrupo(base, de, ate));
+    if (!lista.length) {
+        alvo.innerHTML = '<div class="argos-tabela-vazia">Nenhuma sessão neste mês.</div>';
+        return;
+    }
+    const conflita = detectorConflito(lista);
+    const nDias = Number(ate.slice(8));
+    const dias = Array.from({ length: nDias }, (_, i) => somarDias(de, i));
+    const ordemDow = d => (d + 6) % 7; // segunda primeiro
+    const slotDe = s => `${dowDe(s.data)}|${s.hora}`;
+
+    // linhas: (grupo de horário →) paciente
+    const blocos = new Map(); // chave do bloco → { titulo, sub, linhas: Map(pacId → sessões) }
+    const porAlfa = tabelaOrdem === 'alfabetica';
+    for (const s of lista) {
+        const bk = porAlfa ? 'todos' : slotDe(s);
+        if (!blocos.has(bk)) blocos.set(bk, { chave: bk, linhas: new Map() });
+        const b = blocos.get(bk);
+        if (!b.linhas.has(s.paciente_id)) b.linhas.set(s.paciente_id, []);
+        b.linhas.get(s.paciente_id).push(s);
+    }
+    const blocosOrd = [...blocos.values()].sort((x, y) => {
+        if (porAlfa) return 0;
+        const [dx, hx] = x.chave.split('|'), [dy, hy] = y.chave.split('|');
+        return (ordemDow(Number(dx)) - ordemDow(Number(dy))) || hx.localeCompare(hy);
+    });
+
+    const cabecalhoDias = dias.map(iso => {
+        const dw = dowDe(iso);
+        const fds = dw === 0 || dw === 6;
+        return `<th class="tab-dia ${fds ? 'fds' : ''} ${iso === hoje ? 'hoje' : ''}" data-iso="${iso}"
+            title="${DOW_NOMES[dw]} ${formataBR(iso)} — toque para abrir a agenda do dia">
+            <div>${Number(iso.slice(8))}</div><small>${DOW_NOMES[dw].slice(0, 3)}</small></th>`;
+    }).join('');
+
+    const chipDe = (s) => {
+        const vencida = s.status === '??' && s.data < hoje;
+        const titulo = `${s.hora} · ${nomePac(s.paciente_id)} · ${nomeSala(s.sala_id)} · ${nomeProf(s.profissional_id)}${
+            s.modalidade === 'grupo' || s.grupo_id ? ' · 👥 grupo' : ''}${
+            s.remarcada_de_data ? ` · ↪️ remarcada de ${formataBR(s.remarcada_de_data)} às ${s.remarcada_de_hora}` : ''}${
+            s.justificativa ? ' · 📝 ' + s.justificativa : ''}${conflita(s) ? ' · ⚠️ CONFLITO de espaço/horário' : ''}`;
+        return `<span class="tab-chip ${vencida ? 'vencida' : ''} ${conflita(s) ? 'conflito' : ''}"
+            style="--c:${STATUS_SESSAO[s.status].cor}" data-chave="${chaveTabela(s)}" title="${esc(titulo)}">${
+            porAlfa ? `<small>${s.hora}</small>` : ''}${s.remarcada_de_data ? '↪️' : ''}${STATUS_SESSAO[s.status].label}</span>`;
+    };
+
+    const totaisDe = (sess) => {
+        const c = { ok: 0, fj: 0, fc: 0, nc: 0, '??': 0 };
+        sess.forEach(s => { c[s.status] = (c[s.status] || 0) + 1; });
+        return ['ok', 'fc', 'fj', 'nc', '??'].filter(k => c[k])
+            .map(k => `<span class="chip-status" style="--c:${STATUS_SESSAO[k].cor}" title="${STATUS_SESSAO[k].desc}">${c[k]} ${STATUS_SESSAO[k].label}</span>`)
+            .join(' ');
+    };
+
+    let html = `<table class="argos-tabela compacta tab-mes"><thead><tr>
+        <th class="tab-nome">Paciente</th><th class="tab-quem">Prof. · espaço</th>${cabecalhoDias}<th class="tab-total">Mês</th>
+      </tr></thead><tbody>`;
+    for (const b of blocosOrd) {
+        if (!porAlfa) {
+            const [dw, hora] = b.chave.split('|');
+            const gs = grupos.filter(g => g.ativo !== false && g.dow === Number(dw) && g.hora === hora);
+            const rotuloG = gs.length ? ' · 👥 ' + gs.map(g => esc(g.nome)).join(', ') : '';
+            html += `<tr class="tab-bloco"><td colspan="${nDias + 3}">${DOW_NOMES[Number(dw)]} ${hora}${rotuloG}
+                <span class="dim">· ${b.linhas.size} paciente(s)</span></td></tr>`;
+        }
+        const pacsOrd = [...b.linhas.keys()].sort((x, y) => nomePac(x).localeCompare(nomePac(y)));
+        for (const pacId of pacsOrd) {
+            const sess = b.linhas.get(pacId);
+            const profs = [...new Set(sess.map(s => s.profissional_id).filter(Boolean))].map(nomeProf).join(', ') || '—';
+            const salas = [...new Set(sess.map(s => s.sala_id).filter(Boolean))].map(nomeSala).join(', ') || 'Sem espaço';
+            const porDia = new Map();
+            sess.forEach(s => { if (!porDia.has(s.data)) porDia.set(s.data, []); porDia.get(s.data).push(s); });
+            html += `<tr><td class="tab-nome">${esc(nomePac(pacId))}</td>
+                <td class="tab-quem"><span>${esc(profs)}</span><br><span class="dim">${esc(salas)}</span></td>`;
+            for (const iso of dias) {
+                const dw = dowDe(iso);
+                const fds = dw === 0 || dw === 6;
+                const doDia = (porDia.get(iso) || []).sort((x, y) => x.hora.localeCompare(y.hora));
+                html += `<td class="tab-dia ${fds ? 'fds' : ''} ${iso === hoje ? 'hoje' : ''}">${doDia.map(chipDe).join('')}</td>`;
+            }
+            html += `<td class="tab-total">${totaisDe(sess)}</td></tr>`;
+        }
+    }
+    html += '</tbody></table>';
+    alvo.innerHTML = html;
 }
 
 function renderSemana() {
@@ -671,6 +812,7 @@ document.getElementById('btn-restaurar').addEventListener('click', async () => {
     await recarregarSessoes();
 });
 document.getElementById('agenda-grade').addEventListener('click', aoClicarSessao);
+document.getElementById('agenda-tabela').addEventListener('click', aoClicarSessao);
 document.getElementById('agenda-periodo').addEventListener('click', aoClicarSessao);
 
 // ao sair de um modal aberto pelo modal do dia, volta ao dia
@@ -1641,6 +1783,10 @@ document.getElementById('form-sala').addEventListener('submit', async (e) => {
 (async function init() {
     perm = await carregarPermissoes();
     perm.aplicarVisibilidade();
+    if (!perm.pode('agenda_tabela')) {
+        const op = document.querySelector('#modo-visao option[value="tabela"]');
+        if (op) op.remove();
+    }
     await carregarTudo();
 })();
 

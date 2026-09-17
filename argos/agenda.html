@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=0.1, maximum-scale=10, user-scalable=yes" />
   <title>Argos Gestão — Agenda e Logística</title>
   <script src="argos-guard.js"></script>
-  <link rel="stylesheet" href="argos-style.css?v=13" />
+  <link rel="stylesheet" href="argos-style.css?v=14" />
 </head>
 <body>
   <header class="argos-topbar">
@@ -35,6 +35,12 @@
         <option value="semana">📅 Semana</option>
         <option value="mes">🗓️ Mês</option>
         <option value="periodo">↔️ Período (até 365 dias)</option>
+        <option value="tabela" data-argos-recurso="agenda_tabela">📋 Tabela do mês</option>
+      </select>
+      <select id="tabela-ordem" class="argos-input" style="display:none"
+        title="Como organizar as linhas da tabela">
+        <option value="horario">👥 Por horário (grupos)</option>
+        <option value="alfabetica">🔤 Ordem alfabética</option>
       </select>
       <div class="agenda-nav" id="controles-navegacao">
         <button class="argos-btn ghost" id="btn-ant">‹</button>
@@ -58,6 +64,7 @@
 
     <div class="agenda-grade" id="agenda-grade"></div>
     <div id="agenda-periodo" style="display:none"></div>
+    <div id="agenda-tabela" class="agenda-tabela-wrap" style="display:none"></div>
 
     <p class="dica" style="margin-top:14px">
       Legenda: <span class="chip-status" style="--c:#94a3b8">??</span> pendente/futura ·
@@ -401,7 +408,7 @@
     </div>
   </div>
 
-  <script type="module" src="agenda.js?v=34"></script>
+  <script type="module" src="agenda.js?v=35"></script>
   <script type="module" src="argos-zoom.js?v=4"></script>
 </body>
 </html>
