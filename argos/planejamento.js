@@ -135,6 +135,17 @@ function lerNumero(txt) {
     return Number.isFinite(n) ? n : null;
 }
 
+/**
+ * A que mês um lançamento se refere quando ninguém disse: entrada de
+ * paciente é a mensalidade do MÊS ANTERIOR (a planilha da clínica mostra
+ * isso em 86% dos pagamentos — regra de caixa X→X+1); saída se refere ao
+ * próprio mês em que saiu (100% na planilha).
+ */
+function mesRefPadrao(m) {
+    const mes = String(m.data || '').slice(0, 7);
+    return m.tipo === 'entrada' ? mesAnterior(mes) : mes;
+}
+
 /** Mês anterior de 'YYYY-MM'. */
 function mesAnterior(mes) {
     const [a, m] = mes.split('-').map(Number);
@@ -624,7 +635,7 @@ document.getElementById('clf-opcoes').addEventListener('click', (e) => {
     const alocado = clfAlocacoes.reduce((s2, a) => s2 + a.valor, 0);
     clfAlocacoes.push({
         vinculo_tipo: tipo, vinculo_id: id || null,
-        mes_ref: clfMov.data.slice(0, 7),
+        mes_ref: mesRefPadrao(clfMov),
         valor: Math.max(0, Math.round(((Number(clfMov.valor) || 0) - alocado) * 100) / 100)
     });
     renderAlocacoes();
@@ -914,7 +925,7 @@ async function aplicarDeParaEm(movs) {
         novas.push({
             movimentacao_id: m.id, vinculo_tipo: d.vinculo_tipo,
             vinculo_id: d.vinculo_id || null,
-            mes_ref: m.data.slice(0, 7), valor: Number(m.valor) || 0
+            mes_ref: mesRefPadrao(m), valor: Number(m.valor) || 0
         });
         await sb.from('argos_movimentacoes').update({
             vinculo_tipo: d.vinculo_tipo, vinculo_id: d.vinculo_id || null
