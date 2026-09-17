@@ -539,6 +539,27 @@
       '.sv3-tabela tr,.sv3-b4-tabela tr{display:table-row;margin:0;border:0;border-radius:0;background:none}',
       '.sv3-tabela th,.sv3-tabela td,.sv3-b4-tabela th,.sv3-b4-tabela td{display:table-cell;position:static}',
       '.sv3-tabela td:before,.sv3-b4-tabela td:before{content:none}',
+      '/* Compacto (contrato v2): tipografia/espaçamentos a partir de 600px; altura, padding e fonte dos controles',
+      '   só a partir de 900px (abaixo o hub.css exige 16px nos campos e, abaixo de 600px, vale o toque de 44px). */',
+      '@media (min-width:600px){',
+      '.sv3-check{gap:var(--cp-gap-x,8px);margin:4px 0;font-size:var(--cp-fs,13px)}',
+      '.sv3-memoria{font-size:12px;line-height:var(--cp-lh,1.35);padding:6px 10px}',
+      '}',
+      '@media (min-width:900px){',
+      '.sv3-select{min-height:var(--cp-ctl-h,30px);padding:var(--cp-ctl-pad,4px 8px);font-size:var(--cp-ctl-fs,13px)}',
+      '.sv3-check{min-height:28px}',
+      '}',
+      '/* .sv3-duas (htmlTabela, só com até 2 pessoas): bloco A e bloco C em duas tabelas, lado a lado a partir',
+      '   de 1100px; se não couberem duas colunas de 520px, auto-fit empilha. As larguras mínimas das colunas',
+      '   caem para 220 + 2×150 = 520px por tabela (sem rolagem em ~580px). O seletor repetido com',
+      '   body.hub-ativo #hub-modal-corpo vence, dentro do modal, o compacto-modulos-v2.css (min-width 260 /',
+      '   width 220 — em layout automático o width vira mínimo da coluna, daí width:auto). */',
+      '@media (min-width:1100px){',
+      '.sv3-duas{display:grid;grid-template-columns:repeat(auto-fit,minmax(520px,1fr));gap:0 10px;align-items:start}',
+      '.sv3-duas .sv3-tabela{margin:0}',
+      '.sv3-duas .sv3-tabela th.sv3-q,body.hub-ativo #hub-modal-corpo .sv3-duas .sv3-tabela th.sv3-q{min-width:220px}',
+      '.sv3-duas .sv3-tabela thead th.sv3-p,body.hub-ativo #hub-modal-corpo .sv3-duas .sv3-tabela thead th.sv3-p{min-width:150px;width:auto}',
+      '}',
       '@media (max-width:599px){',
       '.sv3-abas{display:flex}',
       '.sv3-tabela,.sv3-tabela tbody,.sv3-tabela tr{display:block;width:100%}',
@@ -547,7 +568,8 @@
       '.sv3-tabela th.sv3-q{min-width:0}',
       '.sv3-tabela .sv3-p{display:none}',
       '.sv3-tabela .sv3-p.sv3-ativa{display:block}',
-      '.sv3-select{font-size:16px}',
+      '.sv3-select{font-size:16px;min-height:44px}',
+      '.sv3-check{min-height:44px}',
       '.sv3-bloco-b,.sv3-resultados{padding:.75rem}',
       '}'
     ].join('\n');
@@ -625,18 +647,33 @@
     });
     h.push('</div>');
 
-    h.push('<div class="sv3-rolagem"><table class="sv3-tabela"><thead><tr><th scope="col" class="sv3-q">Pergunta</th>');
-    pessoas.forEach(function (nome) {
-      h.push('<th scope="col" class="sv3-p' + clsAtiva(nome) + '" data-pessoa="' + esc(nome) + '">' + esc(nome) +
-        '<span class="sv3-contagem" data-pessoa="' + esc(nome) + '">' + esc(textoContagem(nome)) + '</span></th>');
-    });
-    h.push('</tr></thead><tbody>');
+    // Cabeçalho (Pergunta + uma coluna por pessoa). Com até 2 pessoas o teste sai em DUAS tabelas
+    // (bloco A e bloco C), cada uma com o cabeçalho: a partir de 1100px o CSS injetado (.sv3-duas) põe
+    // as duas lado a lado; abaixo disso empilham. Com 3+ pessoas as duas não caberiam lado a lado
+    // (largura mínima das colunas), então fica UMA tabela, com o cabeçalho uma vez só, como antes.
+    // atualizarContagem/aplicarAtiva e a delegação usam querySelectorAll por data-pessoa no container,
+    // por isso funcionam com o cabeçalho duplicado.
+    var duas = pessoas.length <= 2;
+    function cabecalho() {
+      var t = '<table class="sv3-tabela"><thead><tr><th scope="col" class="sv3-q">Pergunta</th>';
+      pessoas.forEach(function (nome) {
+        t += '<th scope="col" class="sv3-p' + clsAtiva(nome) + '" data-pessoa="' + esc(nome) + '">' + esc(nome) +
+          '<span class="sv3-contagem" data-pessoa="' + esc(nome) + '">' + esc(textoContagem(nome)) + '</span></th>';
+      });
+      return t + '</tr></thead><tbody>';
+    }
+
+    h.push('<div class="sv3-rolagem' + (duas ? ' sv3-duas' : '') + '">');
+    h.push(cabecalho());
 
     h.push('<tr class="sv3-secao"><th scope="colgroup" colspan="' + cols + '">A · Objetivos (Res. CVM 30, art. 2º, §1º)</th></tr>');
     QUESTOES.forEach(function (q) {
       if (q.bloco === 'A') h.push(htmlLinhaQuestao(q, pessoas));
     });
-
+    if (duas) {
+      h.push('</tbody></table>');
+      h.push(cabecalho());
+    }
     h.push('<tr class="sv3-secao"><th scope="colgroup" colspan="' + cols + '">C · Conhecimento (art. 2º, §3º)</th></tr>');
     QUESTOES.forEach(function (q) {
       if (q.bloco !== 'C') return;

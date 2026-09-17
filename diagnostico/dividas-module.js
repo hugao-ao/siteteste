@@ -181,7 +181,7 @@ function renderDividas() {
   
   if (dividas.length === 0) {
     container.innerHTML = `
-      <p style="text-align: center; color: var(--text-light); opacity: 0.7; padding: 1rem;">
+      <p class="dv-vazio">
         <i class="fas fa-info-circle"></i> Nenhuma dívida cadastrada. Clique em "Adicionar Dívida" para começar.
       </p>
     `;
@@ -195,21 +195,20 @@ function renderDividas() {
     }).join(', ');
     
     return `
-      <div class="divida-card" data-divida-id="${divida.id}" style="background: var(--dark-bg); border: 2px solid var(--border-color); border-radius: 10px; padding: 1.2rem; margin-bottom: 1rem;">
-        <div class="divida-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border-color);">
-          <h4 style="color: var(--accent-color); font-size: 1.1rem; font-weight: 600; margin: 0;">
+      <div class="divida-card" data-divida-id="${divida.id}">
+        <div class="divida-header">
+          <h4 class="dv-titulo">
             <i class="fas fa-file-invoice-dollar"></i> ${divida.motivo || `Dívida #${divida.id}`}
-            ${divida.saldo_devedor > 0 ? `<span style="color: #dc3545; font-size: 0.9rem; margin-left: 0.5rem;">R$ ${formatarMoedaDivida(divida.saldo_devedor)}</span>` : ''}
+            ${divida.saldo_devedor > 0 ? `<span class="dv-saldo">R$ ${formatarMoedaDivida(divida.saldo_devedor)}</span>` : ''}
           </h4>
-          <button type="button" onclick="deleteDivida(${divida.id})" 
-                  style="background: #dc3545; color: white; border: none; padding: 0.4rem 0.8rem; border-radius: 6px; cursor: pointer; font-size: 0.85rem;">
+          <button type="button" class="dv-del" onclick="deleteDivida(${divida.id})">
             <i class="fas fa-trash"></i> Excluir
           </button>
         </div>
-        
-        <div class="form-grid-3">
+
+        <div class="form-grid-3 dv-grid">
           <!-- Valor Inicial Contratado -->
-          <div class="form-group">
+          <div class="form-group dv-moeda">
             <label for="divida_${divida.id}_valor_inicial">
               <i class="fas fa-dollar-sign"></i> Valor Inicial Contratado
             </label>
@@ -222,7 +221,7 @@ function renderDividas() {
           </div>
           
           <!-- Prazo (meses) -->
-          <div class="form-group">
+          <div class="form-group dv-num">
             <label for="divida_${divida.id}_prazo">
               <i class="fas fa-calendar-alt"></i> Prazo (meses)
             </label>
@@ -235,7 +234,7 @@ function renderDividas() {
           </div>
           
           <!-- Valor das Parcelas -->
-          <div class="form-group">
+          <div class="form-group dv-moeda">
             <label for="divida_${divida.id}_valor_parcela">
               <i class="fas fa-money-bill-wave"></i> Valor das Parcelas
             </label>
@@ -248,7 +247,7 @@ function renderDividas() {
           </div>
           
           <!-- Total de Parcelas Pagas -->
-          <div class="form-group">
+          <div class="form-group dv-num">
             <label for="divida_${divida.id}_parcelas_pagas">
               <i class="fas fa-check-circle"></i> Parcelas Pagas
             </label>
@@ -261,7 +260,7 @@ function renderDividas() {
           </div>
           
           <!-- Saldo Devedor Atualizado -->
-          <div class="form-group">
+          <div class="form-group dv-moeda">
             <label for="divida_${divida.id}_saldo_devedor">
               <i class="fas fa-exclamation-triangle" style="color: #dc3545;"></i> Saldo Devedor Atualizado
             </label>
@@ -279,16 +278,14 @@ function renderDividas() {
             <label for="divida_${divida.id}_taxa_juros">
               <i class="fas fa-percentage"></i> Taxa de Juros (CET)
             </label>
-            <div style="display: flex; gap: 0.5rem;">
-              <input type="text" 
-                     id="divida_${divida.id}_taxa_juros" 
+            <div class="dv-taxa">
+              <input type="text"
+                     id="divida_${divida.id}_taxa_juros"
                      value="${divida.taxa_juros || ''}"
                      onchange="updateDividaField(${divida.id}, 'taxa_juros', this.value)"
-                     placeholder="Ex: 1,99"
-                     style="flex: 1;">
+                     placeholder="Ex: 1,99">
               <select id="divida_${divida.id}_taxa_juros_tipo"
-                      onchange="updateDividaField(${divida.id}, 'taxa_juros_tipo', this.value)"
-                      style="width: 90px;">
+                      onchange="updateDividaField(${divida.id}, 'taxa_juros_tipo', this.value)">
                 <option value="mensal" ${divida.taxa_juros_tipo === 'mensal' ? 'selected' : ''}>a.m.</option>
                 <option value="anual" ${divida.taxa_juros_tipo === 'anual' ? 'selected' : ''}>a.a.</option>
               </select>
@@ -311,7 +308,7 @@ function renderDividas() {
           </div>
           
           <!-- Reajuste Anual -->
-          <div class="form-group">
+          <div class="form-group dv-pct">
             <label for="divida_${divida.id}_reajuste_anual">
               <i class="fas fa-sync-alt"></i> Reajuste Anual (%)
             </label>
@@ -359,13 +356,13 @@ function renderDividas() {
           </div>
           
           <!-- Inventariável -->
-          <div class="form-group" style="display: flex; align-items: center; gap: 0.5rem; padding-top: 1.5rem;">
-            <input type="checkbox" 
-                   id="divida_${divida.id}_inventariavel" 
+          <div class="form-group dv-check">
+            <input type="checkbox"
+                   id="divida_${divida.id}_inventariavel"
                    ${divida.inventariavel !== false ? 'checked' : ''}
                    onchange="updateDividaField(${divida.id}, 'inventariavel', this.checked)"
-                   style="width: 18px; height: 18px; cursor: pointer;">
-            <label for="divida_${divida.id}_inventariavel" style="cursor: pointer; margin: 0;">
+                   style="width: 18px; height: 18px;">
+            <label for="divida_${divida.id}_inventariavel">
               <i class="fas fa-gavel"></i> Inventariável
             </label>
           </div>
@@ -387,13 +384,13 @@ function renderDividas() {
           </div>
 
           <!-- Dívida estruturada (Perfil Financeiro v2) -->
-          <div class="form-group" style="display: flex; align-items: center; gap: 0.5rem; padding-top: 1.5rem;">
+          <div class="form-group dv-check">
             <input type="checkbox"
                    id="divida_${divida.id}_divida_estruturada"
                    ${divida.divida_estruturada ? 'checked' : ''}
                    onchange="updateDividaField(${divida.id}, 'divida_estruturada', this.checked)"
-                   style="width: 18px; height: 18px; cursor: pointer;">
-            <label for="divida_${divida.id}_divida_estruturada" style="cursor: pointer; margin: 0;">
+                   style="width: 18px; height: 18px;">
+            <label for="divida_${divida.id}_divida_estruturada">
               <i class="fas fa-home"></i> Dívida estruturada (financ. imobiliário / consignado)
             </label>
           </div>
@@ -412,7 +409,7 @@ function renderDividas() {
           </div>
 
           <!-- Parcela proposta (Perfil Financeiro v2) -->
-          <div class="form-group">
+          <div class="form-group dv-moeda">
             <label for="divida_${divida.id}_parcela_proposta">
               <i class="fas fa-file-signature"></i> Parcela proposta (R$)
             </label>
@@ -425,14 +422,13 @@ function renderDividas() {
           </div>
 
           <!-- Quem fez a dívida -->
-          <div class="form-group full-width">
+          <div class="form-group full-width dv-resp">
             <label for="divida_${divida.id}_responsaveis">
               <i class="fas fa-users"></i> Quem fez a dívida
-              <span style="font-size: 0.75rem; font-weight: normal; opacity: 0.8;">(Segure Ctrl/Cmd para selecionar múltiplos)</span>
+              <span class="dv-dica">(Segure Ctrl/Cmd para selecionar múltiplos)</span>
             </label>
-            <select id="divida_${divida.id}_responsaveis" 
-                    multiple 
-                    style="min-height: 80px;"
+            <select id="divida_${divida.id}_responsaveis"
+                    multiple
                     onchange="updateDividaField(${divida.id}, 'responsaveis', this.value)">
               ${pessoasDisponiveis.map(pessoa => `
                 <option value="${pessoa.id}" ${divida.responsaveis.includes(pessoa.id) ? 'selected' : ''}>
@@ -440,7 +436,7 @@ function renderDividas() {
                 </option>
               `).join('')}
             </select>
-            ${responsaveisNomes ? `<div style="margin-top: 0.5rem; font-size: 0.85rem; color: var(--text-light);">Selecionados: ${responsaveisNomes}</div>` : ''}
+            ${responsaveisNomes ? `<div class="dv-sel-nomes">Selecionados: ${responsaveisNomes}</div>` : ''}
           </div>
         </div>
       </div>

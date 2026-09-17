@@ -1,0 +1,1403 @@
+/* =====================================================================
+   compacto-modulos-v2.css — dono B2 (módulos v2 dentro do modal do hub)
+   ---------------------------------------------------------------------
+   Sobrescritas de apresentação para:
+     · Patrimônio Líquido (cards, classe de risco plv3, teste sv3,
+       comparativo plv3-tabela e modais de catálogo .modal-overlay —
+       estes últimos são anexados ao <body>, FORA de #hub-modal-corpo,
+       e vêm de ../patrimonio-liquido-styles.css / -modals.css, da raiz)
+     · Fluxo de Caixa (classes fx-* que o dono E põe nos templates)
+     · Dívidas (classes dv-* que o dono E põe nos templates)
+
+   Carga: DEPOIS de hub.css, perfil-financeiro.css, compacto.css e
+   compacto-modulos-raiz.css. As regras base compartilhadas (.form-container,
+   .form-group label/input/select/textarea, .section-header h3, .add-btn,
+   .patrimonio-total, .form-grid(-3), reset de margem dos controles) ficam
+   em compacto.css (dono A) e NÃO se repetem aqui.
+
+   Tokens: var(--cp-…, fallback). Os tokens são declarados em
+   body.hub-ativo #hub-modal-corpo; dentro de .modal-overlay (fora do
+   corpo) valem os fallbacks, que têm os mesmos valores.
+
+   Faixas:
+     · tipografia, margens, paddings, gaps, grades: @media (min-width: 600px)
+     · altura/padding/fonte de input, select, textarea, button:
+       @media (min-width: 900px) — abaixo disso hub.css §16 mantém 16px
+       nos campos e, < 600px, o toque de 44px.
+     · grades multi-coluna (span 2, colunas de análise): ≥ 900px, porque
+       hub.css §16 empilha .form-grid/.form-grid-3 em 1 coluna abaixo.
+
+   Especificidade: os <style> injetados por patrimonio-liquido-module.js
+   (#plv3-estilos) e suitability-v3.js (#sv3-estilos) entram no <head>
+   em tempo de execução, depois deste arquivo — as regras abaixo só
+   vencem por especificidade, daí o prefixo body.hub-ativo #hub-modal-corpo
+   em todas. Os modais de catálogo do PL não têm id (criarModal); os do
+   módulo de proteção (raiz) têm — por isso o escopo
+   body.hub-ativo .modal-overlay:not([id]).
+   ===================================================================== */
+
+
+/* =====================================================================
+   0. RESET SEM MEDIA QUERY — margem inferior dos controles nos modais
+      de catálogo (../style.css:211-221 dá margin-bottom: 1rem a todo
+      input/select/textarea/button; não afeta toque nem fonte)
+   ===================================================================== */
+body.hub-ativo .modal-overlay:not([id]) :is(input, select, textarea, button) {
+  margin-bottom: 0;
+}
+
+
+/* =====================================================================
+   1. PATRIMÔNIO LÍQUIDO — cards de investimento
+   ===================================================================== */
+@media (min-width: 600px) {
+  /* chip "Total: R$ …" do cabeçalho: o margin-right inline (1rem no
+     html v2, dono C) separava do toggle, que está display:none dentro
+     do modal (hub.css .section-toggle-btn) — a margem é inócua. Sem
+     !important: enquanto o inline existir ele vale nos três totais
+     (PL, Dívidas e Proteção iguais); se o dono C zerar o inline, este
+     é o valor compacto. */
+  body.hub-ativo #hub-modal-corpo #patrimonio-liquido-total,
+  body.hub-ativo #hub-modal-corpo #dividas-total {
+    margin-right: 0;
+  }
+
+  /* moldura do card (.patrimonio-liquido-card): vem inteira do CSS
+     injetado #plv3-estilos (patrimonio-liquido-module.js — base = inline
+     antigo; compacto em @media ≥600 com o mesmo prefixo body.hub-ativo
+     #hub-modal-corpo). Nada aqui, para não competir na mesma especificidade. */
+
+  /* cabeçalho do card: título + selos + lixeira numa linha
+     (.patrimonio-liquido-header/-title/-actions e .badge-finalidade
+     não tinham CSS em lugar nenhum) */
+  body.hub-ativo #hub-modal-corpo .patrimonio-liquido-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--cp-gap-x, 8px);
+    margin-bottom: var(--cp-gap-y, 6px);
+    padding-bottom: 4px;
+    border-bottom: 1px solid rgba(46, 139, 87, 0.45);
+  }
+
+  body.hub-ativo #hub-modal-corpo .patrimonio-liquido-title {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    margin: 0;
+    font-size: var(--cp-h4-fs, 12.5px);
+    font-weight: 700;
+    line-height: 1.2;
+    text-transform: uppercase;
+    color: var(--accent-color);
+  }
+
+  body.hub-ativo #hub-modal-corpo .badge-finalidade {
+    display: inline-flex;
+    align-items: center;
+    height: var(--cp-chip-h, 20px);
+    padding: 0 8px;
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: none;
+    letter-spacing: 0;
+  }
+
+  /* selo de classe de risco no título: o template (patrimonio-liquido-
+     module.js, dono D) já traz inline padding 0 8px, line-height 20px,
+     border-radius 10px, font-size 11px e margin-left 0 — os mesmos
+     valores daqui, que ficam como fallback sem !important. Cor/fundo
+     inline, que dependem da classe, ficam intactos. */
+  body.hub-ativo #hub-modal-corpo .patrimonio-liquido-title .badge-risco {
+    display: inline-flex;
+    align-items: center;
+    height: var(--cp-chip-h, 20px);
+    padding: 0 8px;
+    border-radius: 10px;
+    font-size: 11px;
+    margin-left: 0;
+    letter-spacing: 0;
+  }
+
+  body.hub-ativo #hub-modal-corpo .patrimonio-liquido-actions {
+    display: flex;
+    gap: 4px;
+    flex: none;
+  }
+
+  /* checkboxes (Inventariável / Reserva) na grade do card. São .form-group:
+     o compacto.css (bloco 3) dá flex-direction: column + justify-content:
+     flex-end a todo .form-group sem inline 'display: flex' — aqui volta a
+     linha (caixa + rótulo lado a lado, encostados à esquerda). */
+  body.hub-ativo #hub-modal-corpo .patrimonio-liquido-card .plv-check {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 6px;
+    align-self: end;
+    min-height: var(--cp-ctl-h, 30px);
+  }
+
+  body.hub-ativo #hub-modal-corpo .patrimonio-liquido-card .plv-check input[type="checkbox"] {
+    margin: 0;
+  }
+
+  body.hub-ativo #hub-modal-corpo .patrimonio-liquido-card .plv-check label {
+    margin: 0;
+    font-size: var(--cp-label-fs, 11.5px);
+    font-weight: 600;
+  }
+}
+
+@media (min-width: 900px) {
+  /* grade densa: 7 colunas em ~1160px, 3 linhas por card */
+  body.hub-ativo #hub-modal-corpo .patrimonio-liquido-card .form-grid {
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: var(--cp-gap-y, 6px) var(--cp-gap-x, 8px);
+    margin-bottom: 0;
+  }
+
+  body.hub-ativo #hub-modal-corpo .patrimonio-liquido-card .plv-donos {
+    grid-column: span 2;
+  }
+
+  /* select múltiplo de donos: o template traz size 2-4 e min-height: 0
+     inline; a altura vem do size (compacto.css bloco 4 já dá height: auto
+     a .form-group select[multiple]; repetido aqui por segurança). Linhas
+     de opção justas para 2-4 pessoas ocuparem ~40-75px. */
+  body.hub-ativo #hub-modal-corpo .patrimonio-liquido-card .plv-donos select[multiple] {
+    height: auto;
+    min-height: var(--cp-ctl-h, 30px);
+    padding: 2px 4px;
+    font-size: 12.5px;
+  }
+
+  body.hub-ativo #hub-modal-corpo .patrimonio-liquido-card .plv-donos select[multiple] option {
+    padding: 1px 6px;
+    margin: 0;
+  }
+
+  body.hub-ativo #hub-modal-corpo .patrimonio-liquido-card input[type="number"] {
+    max-width: var(--cp-w-pct, 110px);
+  }
+
+  /* lixeira do card: só ícone, 26px */
+  body.hub-ativo #hub-modal-corpo .patrimonio-liquido-actions .delete-btn {
+    width: var(--cp-btn-icon, 26px);
+    height: var(--cp-btn-icon, 26px);
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+  }
+
+  /* botão "Gerenciar" dentro do rótulo (Tipo de Produto / Instituição —
+     6 no total, um por grupo do catálogo): token de botão pequeno do
+     contrato. Base em ../patrimonio-liquido-styles.css (.btn-gerenciar,
+     0.3rem 0.8rem / 0.75rem, sem inline no template → sem !important). */
+  body.hub-ativo #hub-modal-corpo .patrimonio-liquido-card .btn-gerenciar {
+    display: inline-flex;
+    align-items: center;
+    height: var(--cp-btn-sm-h, 24px);
+    padding: 0 8px;
+    margin: 0 0 0 6px;
+    font-size: var(--cp-btn-sm-fs, 11.5px);
+    line-height: 1;
+    vertical-align: middle;
+    border-radius: 4px;
+  }
+}
+
+
+/* =====================================================================
+   2. PATRIMÔNIO LÍQUIDO — linha "Classe de risco" e bloco
+      "Definir classe neste item" (CSS injetado #plv3-estilos)
+   ===================================================================== */
+@media (min-width: 600px) {
+  body.hub-ativo #hub-modal-corpo .plv3-classe-linha {
+    gap: 4px var(--cp-gap-x, 8px);
+    font-size: 12px;
+  }
+
+  body.hub-ativo #hub-modal-corpo .plv3-selo {
+    padding: 0 8px;
+    line-height: var(--cp-chip-h, 20px);
+    font-size: 11px;
+    border-radius: 10px;
+  }
+
+  body.hub-ativo #hub-modal-corpo .plv3-marcador,
+  body.hub-ativo #hub-modal-corpo .plv3-liq,
+  body.hub-ativo #hub-modal-corpo .plv3-origem,
+  body.hub-ativo #hub-modal-corpo .plv3-just {
+    font-size: 11px;
+  }
+
+  body.hub-ativo #hub-modal-corpo .plv3-aviso {
+    padding: 1px 6px;
+    font-size: 11px;
+    line-height: 1.3;
+  }
+
+  body.hub-ativo #hub-modal-corpo .plv3-classe-bloco {
+    margin-top: var(--cp-gap-y, 6px);
+    padding: var(--cp-card-pad, 8px 10px);
+    gap: 4px var(--cp-gap-x, 8px);
+  }
+
+  body.hub-ativo #hub-modal-corpo .plv3-botoes {
+    gap: 6px;
+  }
+}
+
+@media (min-width: 900px) {
+  body.hub-ativo #hub-modal-corpo .plv3-btn {
+    min-height: var(--cp-btn-sm-h, 24px);
+    height: var(--cp-btn-sm-h, 24px);
+    padding: 0 10px;
+    font-size: var(--cp-btn-sm-fs, 11.5px);
+    line-height: 22px;
+  }
+
+  body.hub-ativo #hub-modal-corpo .plv3-classe-bloco select,
+  body.hub-ativo #hub-modal-corpo .plv3-classe-bloco input {
+    height: var(--cp-ctl-h, 30px);
+    padding: var(--cp-ctl-pad, 4px 8px);
+    font-size: var(--cp-ctl-fs, 13px);
+  }
+
+  /* select + justificativa + botões numa linha — SÓ quando o template
+     embrulhou label+campo em <div> (3 filhos: div, div, div.plv3-botoes).
+     Sem o embrulho, o bloco continua em 1 coluna, apenas mais compacto. */
+  body.hub-ativo #hub-modal-corpo .plv3-classe-bloco:has(> .plv3-botoes:nth-child(3)) {
+    grid-template-columns: minmax(200px, 280px) minmax(220px, 1fr) auto;
+    align-items: end;
+  }
+}
+
+
+/* =====================================================================
+   3. PATRIMÔNIO LÍQUIDO — Teste de Perfil de Investidor v3
+      (CSS injetado #sv3-estilos + th/table de ../style.css)
+   ===================================================================== */
+@media (min-width: 600px) {
+  /* título repete o H4 da marcação: vira subtítulo (nada escondido) */
+  body.hub-ativo #hub-modal-corpo .sv3-titulo {
+    font-size: var(--cp-label-fs, 11.5px);
+    font-weight: 600;
+    margin: 0 0 6px;
+    text-align: left;
+    opacity: 0.85;
+  }
+
+  body.hub-ativo #hub-modal-corpo .sv3-faixa {
+    padding: 6px 10px;
+    margin: 0 0 8px;
+    font-size: 12px;
+    border-left-width: 3px;
+  }
+
+  body.hub-ativo #hub-modal-corpo .sv3-vazio,
+  body.hub-ativo #hub-modal-corpo .sv3-pendente {
+    font-size: 12px;
+    padding: 2px 0;
+  }
+
+  /* tabela do teste: sem os 24px de `table` da raiz; células 4px 8px;
+     as perguntas são <th scope="row"> e recebiam uppercase + tracking
+     do `th` da raiz — aqui voltam a texto normal */
+  body.hub-ativo #hub-modal-corpo .sv3-tabela {
+    margin-top: 0;
+    border-width: 1px;
+  }
+
+  body.hub-ativo #hub-modal-corpo .sv3-tabela th,
+  body.hub-ativo #hub-modal-corpo .sv3-tabela td {
+    padding: var(--cp-cell-pad, 4px 8px);
+    vertical-align: middle;
+  }
+
+  body.hub-ativo #hub-modal-corpo .sv3-tabela thead th {
+    font-size: var(--cp-th-fs, 11px);
+    text-transform: uppercase;
+    letter-spacing: 0;
+    padding: 3px 8px;
+  }
+
+  body.hub-ativo #hub-modal-corpo .sv3-tabela thead th.sv3-p {
+    min-width: 150px;
+    width: 220px;
+  }
+
+  body.hub-ativo #hub-modal-corpo .sv3-tabela th.sv3-q {
+    min-width: 260px;
+    text-transform: none;
+    letter-spacing: 0;
+    font-weight: 400;
+    font-size: 12.5px;
+  }
+
+  body.hub-ativo #hub-modal-corpo .sv3-tabela .sv3-subsecao td {
+    text-transform: none;
+    letter-spacing: 0;
+    padding: var(--cp-cell-pad, 4px 8px);
+  }
+
+  body.hub-ativo #hub-modal-corpo .sv3-secao th {
+    font-size: var(--cp-th-fs, 11px);
+    text-transform: uppercase;
+    padding: 3px 8px;
+  }
+
+  /* enunciado: id e pergunta dividem a linha; ajuda logo abaixo */
+  body.hub-ativo #hub-modal-corpo .sv3-id {
+    display: inline;
+    font-size: 11px;
+    margin-right: 6px;
+  }
+
+  body.hub-ativo #hub-modal-corpo .sv3-nota {
+    font-size: 11px;
+  }
+
+  body.hub-ativo #hub-modal-corpo .sv3-texto {
+    display: inline;
+    font-size: 12.5px;
+    line-height: 1.3;
+    margin: 0;
+  }
+
+  body.hub-ativo #hub-modal-corpo .sv3-ajuda {
+    font-size: 11px;
+    margin-top: 2px;
+  }
+
+  body.hub-ativo #hub-modal-corpo .sv3-contagem {
+    font-size: 10.5px;
+    margin-top: 0;
+  }
+
+  body.hub-ativo #hub-modal-corpo .sv3-select {
+    max-width: 320px;
+  }
+
+  /* Bloco B (situação financeira) e resultados */
+  body.hub-ativo #hub-modal-corpo .sv3-bloco-b,
+  body.hub-ativo #hub-modal-corpo .sv3-resultados {
+    margin-top: var(--cp-hr, 8px);
+    padding: var(--cp-card-pad, 8px 10px);
+    border-width: 1px;
+  }
+
+  body.hub-ativo #hub-modal-corpo .sv3-bloco-titulo {
+    font-size: var(--cp-h4-fs, 12.5px);
+    text-transform: uppercase;
+    margin: 0 0 6px;
+  }
+
+  body.hub-ativo #hub-modal-corpo .sv3-sub {
+    font-size: var(--cp-h5-fs, 12px);
+    margin: 8px 0 4px;
+  }
+
+  body.hub-ativo #hub-modal-corpo .sv3-resumo {
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: var(--cp-gap-y, 6px) var(--cp-gap-x, 8px);
+    margin: 0 0 4px;
+  }
+
+  body.hub-ativo #hub-modal-corpo .sv3-resumo div {
+    padding: 4px 8px;
+  }
+
+  body.hub-ativo #hub-modal-corpo .sv3-resumo dt {
+    font-size: 11px;
+  }
+
+  body.hub-ativo #hub-modal-corpo .sv3-resumo dd {
+    font-size: var(--cp-fs, 13px);
+    margin-top: 0;
+  }
+
+  body.hub-ativo #hub-modal-corpo .sv3-confirmado,
+  body.hub-ativo #hub-modal-corpo .sv3-alerta {
+    font-size: 11px;
+    margin-top: 2px;
+  }
+
+  body.hub-ativo #hub-modal-corpo .sv3-check {
+    min-height: var(--cp-ctl-h, 30px);
+    margin: 4px 0;
+    font-size: 12.5px;
+    gap: var(--cp-gap-x, 8px);
+  }
+
+  body.hub-ativo #hub-modal-corpo .sv3-campo {
+    margin: 6px 0;
+  }
+
+  body.hub-ativo #hub-modal-corpo .sv3-rotulo {
+    margin-bottom: 2px;
+  }
+
+  body.hub-ativo #hub-modal-corpo .sv3-campo .sv3-select {
+    max-width: 360px;
+  }
+
+  /* tabela B4 (capacidade, só leitura): sem margem da raiz e sem o
+     uppercase/fundo do `th` da raiz nos <th scope="row"> */
+  body.hub-ativo #hub-modal-corpo .sv3-b4-tabela {
+    margin-top: 0;
+    font-size: var(--cp-table-fs, 12px);
+  }
+
+  body.hub-ativo #hub-modal-corpo .sv3-b4-tabela th,
+  body.hub-ativo #hub-modal-corpo .sv3-b4-tabela td {
+    padding: 3px 8px;
+  }
+
+  body.hub-ativo #hub-modal-corpo .sv3-b4-tabela th {
+    background: transparent;
+    text-transform: none;
+    letter-spacing: 0;
+    font-size: var(--cp-table-fs, 12px);
+  }
+
+  body.hub-ativo #hub-modal-corpo .sv3-nota-b {
+    margin-top: 4px;
+    font-size: 12.5px;
+  }
+
+  body.hub-ativo #hub-modal-corpo .sv3-faltantes {
+    font-size: 11px;
+    margin-top: 2px;
+  }
+
+  /* resultado por pessoa (memória de cálculo em <pre>) */
+  body.hub-ativo #hub-modal-corpo .sv3-resultado {
+    margin-top: 6px;
+  }
+
+  body.hub-ativo #hub-modal-corpo .sv3-resultado-nome {
+    margin-bottom: 2px;
+    font-size: 12.5px;
+  }
+
+  body.hub-ativo #hub-modal-corpo .sv3-memoria {
+    font-size: 11px;
+    line-height: 1.35;
+    padding: 6px 8px;
+  }
+
+  /* OPCIONAL (decisão do dono do sistema): limitar a memória de cálculo
+     e rolar — nada é escondido, só rola. Fica desligado por padrão.
+  body.hub-ativo #hub-modal-corpo .sv3-memoria { max-height: 240px; overflow: auto; }
+  */
+}
+
+@media (min-width: 900px) {
+  body.hub-ativo #hub-modal-corpo .sv3-select {
+    min-height: var(--cp-ctl-h, 30px);
+    height: var(--cp-ctl-h, 30px);
+    padding: var(--cp-ctl-pad, 4px 8px);
+    font-size: var(--cp-ctl-fs, 13px);
+  }
+
+  body.hub-ativo #hub-modal-corpo .sv3-check input {
+    width: 16px;
+    height: 16px;
+    margin: 0;
+  }
+}
+
+
+/* =====================================================================
+   4. PATRIMÔNIO LÍQUIDO — comparativo por classe de risco (.plv3-tabela)
+      (.plv3-cor, .plv3-num, .plv3-linha-andar, .plv3-linha-extra já no alvo)
+   ===================================================================== */
+@media (min-width: 600px) {
+  body.hub-ativo #hub-modal-corpo .plv3-tabela {
+    margin-top: 0;
+    font-size: var(--cp-table-fs, 12px);
+  }
+
+  body.hub-ativo #hub-modal-corpo .plv3-tabela th,
+  body.hub-ativo #hub-modal-corpo .plv3-tabela td {
+    padding: var(--cp-cell-pad, 4px 8px);
+  }
+
+  body.hub-ativo #hub-modal-corpo .plv3-tabela th {
+    font-size: var(--cp-th-fs, 11px);
+    text-transform: uppercase;
+    letter-spacing: 0;
+  }
+}
+
+
+/* =====================================================================
+   5. PATRIMÔNIO LÍQUIDO — modais de catálogo (Gerenciar Tipos de
+      Produtos / Instituições / Novo / Editar). Anexados ao <body> por
+      criarModal, sem id — fora de #hub-modal-corpo.
+      Origem: ../patrimonio-liquido-styles.css e -modals.css (raiz).
+   ===================================================================== */
+@media (min-width: 600px) {
+  body.hub-ativo .modal-overlay:not([id]) .modal-content {
+    padding: 12px 14px;
+    border-width: 1px;
+    border-radius: 10px;
+  }
+
+  body.hub-ativo .modal-overlay:not([id]) .modal-header {
+    margin-bottom: 8px;
+    padding-bottom: 6px;
+    border-bottom-width: 1px;
+  }
+
+  body.hub-ativo .modal-overlay:not([id]) .modal-title {
+    font-size: var(--cp-h3-fs, 15px);
+  }
+
+  body.hub-ativo .modal-overlay:not([id]) .modal-body {
+    margin-bottom: 8px;
+  }
+
+  body.hub-ativo .modal-overlay:not([id]) .modal-footer {
+    gap: 8px;
+    padding-top: 8px;
+  }
+
+  body.hub-ativo .modal-overlay:not([id]) .item-list + .btn-modal {
+    margin-top: 6px;
+  }
+
+  /* lista de produtos / instituições */
+  body.hub-ativo .modal-overlay:not([id]) .item-list {
+    max-height: 60vh;
+    margin-bottom: 8px;
+  }
+
+  /* título de categoria (h4): o template traz margin inline; sem ele,
+     estes são os valores compactos */
+  body.hub-ativo .modal-overlay:not([id]) .item-list h4 {
+    margin: 8px 0 4px;
+    font-size: var(--cp-h4-fs, 12.5px);
+    text-transform: uppercase;
+  }
+
+  body.hub-ativo .modal-overlay:not([id]) .item-card {
+    padding: 6px 10px;
+    margin-bottom: 4px;
+    border-radius: 6px;
+  }
+
+  body.hub-ativo .modal-overlay:not([id]) .item-card:hover {
+    transform: none;
+  }
+
+  body.hub-ativo .modal-overlay:not([id]) .item-nome {
+    font-size: var(--cp-fs, 13px);
+    margin-bottom: 1px;
+  }
+
+  body.hub-ativo .modal-overlay:not([id]) .item-detalhes {
+    font-size: var(--cp-label-fs, 11.5px);
+  }
+
+  body.hub-ativo .modal-overlay:not([id]) .item-actions {
+    gap: 4px;
+  }
+
+  /* formulários de Novo/Editar Produto e Instituição */
+  body.hub-ativo .modal-overlay:not([id]) .modal-body .form-group {
+    margin-bottom: var(--cp-gap-y, 6px);
+  }
+
+  body.hub-ativo .modal-overlay:not([id]) .modal-body .form-group label {
+    margin-bottom: 2px;
+    font-size: var(--cp-label-fs, 11.5px);
+  }
+
+  body.hub-ativo .modal-overlay:not([id]) .plv3-check input[type="checkbox"] {
+    margin: 0;
+  }
+
+  body.hub-ativo .modal-overlay:not([id]) .plv3-dica {
+    margin-top: 2px;
+  }
+}
+
+@media (min-width: 900px) {
+  body.hub-ativo .modal-overlay:not([id]) .modal-close {
+    font-size: 16px;
+    padding: 4px 6px;
+    margin: 0;
+  }
+
+  body.hub-ativo .modal-overlay:not([id]) .btn-modal {
+    height: var(--cp-btn-h, 30px);
+    padding: 0 12px;
+    font-size: var(--cp-btn-fs, 12.5px);
+    line-height: var(--cp-btn-h, 30px);
+  }
+
+  body.hub-ativo .modal-overlay:not([id]) .btn-icon {
+    width: var(--cp-btn-icon, 26px);
+    height: var(--cp-btn-icon, 26px);
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+  }
+
+  body.hub-ativo .modal-overlay:not([id]) .modal-body .form-control {
+    height: var(--cp-ctl-h, 30px);
+    padding: var(--cp-ctl-pad, 4px 8px);
+    font-size: var(--cp-ctl-fs, 13px);
+    border-width: 1px;
+  }
+
+  body.hub-ativo .modal-overlay:not([id]) .modal-body select.form-control {
+    padding-right: 26px;
+    background-position: right 8px center;
+  }
+}
+
+
+/* =====================================================================
+   6. FLUXO DE CAIXA — classes fx-* (dono E troca os styles inline dos
+      templates de fluxo-caixa-module.js por estas classes)
+
+   6.0 BASE (fora de media): estrutura, cores, bordas, fundos e os
+       respiros que eram style inline no HEAD de fluxo-caixa-module.js.
+       O dono E removeu TODO o inline; sem esta base, abaixo de 600px
+       (celular no modal) as tabelas ficavam sem borda, os controles sem
+       moldura e os botões caíam no gradiente dourado de ../style.css.
+       Valores = inline antigo (não compactos). Não toca altura nem fonte
+       de controle: hub.css §16-17 mantém 16px / toque no celular.
+   6.1 @media ≥600: tipografia, margens, paddings, gaps compactos.
+   6.2 @media ≥900: altura/padding/fonte de controles e botões, grades.
+   ===================================================================== */
+
+/* ---- 6.0 BASE ---- */
+
+/* blocos e cabeçalhos (inline antigo: div mb 2rem; h4 flex space-between) */
+body.hub-ativo #hub-modal-corpo .fx-bloco {
+  margin-bottom: 2rem;
+}
+
+body.hub-ativo #hub-modal-corpo .fx-sync {
+  text-align: center;
+  margin-bottom: 1.5rem;
+}
+
+body.hub-ativo #hub-modal-corpo .fx-hint {
+  display: block;
+  margin-top: 0.5rem;
+  opacity: 0.7;
+}
+
+body.hub-ativo #hub-modal-corpo .fx-h4 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+body.hub-ativo #hub-modal-corpo .fx-h4--rec { color: #28a745; }
+body.hub-ativo #hub-modal-corpo .fx-h4--desp { color: #dc3545; }
+body.hub-ativo #hub-modal-corpo .fx-h4--inv { color: #007bff; }
+
+body.hub-ativo #hub-modal-corpo .fx-h4-sub {
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
+  opacity: 0.7;
+}
+
+/* botões (inline antigo: Sincronizar info 0.6rem 1.2rem; Adicionar
+   verde/vermelho 0.4rem 0.8rem; Excluir vermelho 0.3rem 0.5rem) */
+body.hub-ativo #hub-modal-corpo .fx-btn {
+  border: 0;
+  border-radius: 6px;
+  background: var(--info-color, #17a2b8);
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0.6rem 1.2rem;
+  font-size: 0.9rem;
+}
+
+body.hub-ativo #hub-modal-corpo .fx-btn--info {
+  background: var(--info-color, #17a2b8);
+}
+
+body.hub-ativo #hub-modal-corpo .fx-btn-sm {
+  border: 0;
+  border-radius: 5px;
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  padding: 0.4rem 0.8rem;
+  font-size: 0.85rem;
+}
+
+body.hub-ativo #hub-modal-corpo .fx-btn-sm--rec { background: #28a745; }
+body.hub-ativo #hub-modal-corpo .fx-btn-sm--desp { background: #dc3545; }
+
+body.hub-ativo #hub-modal-corpo .fx-del {
+  border: 0;
+  border-radius: 4px;
+  background: #dc3545;
+  color: #fff;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.3rem 0.5rem;
+}
+
+/* tabelas (inline antigo: wrapper overflow-x auto; table width 100% +
+   border-collapse; th/td com borda 1px; cabeçalhos coloridos por tabela).
+   th: o html dá resize: horizontal + overflow: auto — com overflow: hidden
+   o resize continua e um rótulo que não cabe vira reticências (title no
+   <th>) em vez de barra de rolagem dentro da célula. */
+body.hub-ativo #hub-modal-corpo .fx-wrap {
+  overflow-x: auto;
+}
+
+body.hub-ativo #hub-modal-corpo .fx-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+body.hub-ativo #hub-modal-corpo .fx-table th {
+  text-align: left;
+  border: 1px solid var(--border-color);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+body.hub-ativo #hub-modal-corpo .fx-table td {
+  border: 1px solid var(--border-color);
+  vertical-align: middle;
+}
+
+body.hub-ativo #hub-modal-corpo .fx-table .r { text-align: right; }
+body.hub-ativo #hub-modal-corpo .fx-table .c { text-align: center; }
+body.hub-ativo #hub-modal-corpo .fx-table .fx-b { font-weight: 600; }
+
+body.hub-ativo #hub-modal-corpo .fx-table--rec thead tr { background: rgba(40, 167, 69, 0.2); }
+body.hub-ativo #hub-modal-corpo .fx-table--rec tr.fx-auto { background: rgba(40, 167, 69, 0.05); }
+body.hub-ativo #hub-modal-corpo .fx-table--desp thead tr { background: rgba(220, 53, 69, 0.2); }
+body.hub-ativo #hub-modal-corpo .fx-table--desp tr.fx-auto { background: rgba(220, 53, 69, 0.05); }
+body.hub-ativo #hub-modal-corpo .fx-table--inv thead tr { background: rgba(0, 123, 255, 0.2); }
+body.hub-ativo #hub-modal-corpo .fx-azul { color: #007bff; }
+
+body.hub-ativo #hub-modal-corpo .fx-table--fluxo thead tr,
+body.hub-ativo #hub-modal-corpo .fx-l-saldo { background: rgba(212, 175, 55, 0.2); }
+body.hub-ativo #hub-modal-corpo .fx-l-ent { background: rgba(40, 167, 69, 0.1); color: #28a745; }
+body.hub-ativo #hub-modal-corpo .fx-l-fix { background: rgba(220, 53, 69, 0.1); color: #dc3545; }
+body.hub-ativo #hub-modal-corpo .fx-l-var { background: rgba(255, 193, 7, 0.1); color: #ffc107; }
+body.hub-ativo #hub-modal-corpo .fx-l-inv { background: rgba(0, 123, 255, 0.1); color: #007bff; }
+body.hub-ativo #hub-modal-corpo .fx-l-saldo { color: #fff; font-weight: 700; }
+
+body.hub-ativo #hub-modal-corpo .fx-table--comp thead tr { background: rgba(23, 162, 184, 0.2); }
+body.hub-ativo #hub-modal-corpo .fx-c-fix { color: #dc3545; }
+body.hub-ativo #hub-modal-corpo .fx-c-var { color: #ffc107; }
+body.hub-ativo #hub-modal-corpo .fx-c-inv { color: #007bff; }
+
+body.hub-ativo #hub-modal-corpo .fx-pct { opacity: 0.8; }
+
+/* célula de texto (Dono): quebra em vez de reticências — nenhum nome
+   fica escondido (o overflow: hidden do html não corta texto que quebra) */
+body.hub-ativo #hub-modal-corpo .fx-td-txt {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+body.hub-ativo #hub-modal-corpo .fx-vazio {
+  padding: 1rem;
+  text-align: center;
+  color: var(--text-light);
+  opacity: 0.7;
+  margin: 0;
+}
+
+body.hub-ativo #hub-modal-corpo .fx-chip {
+  display: inline-block;
+  border-radius: 4px;
+  font-weight: 600;
+}
+
+body.hub-ativo #hub-modal-corpo .fx-chip--mensal { background: #28a745; color: #fff; }
+body.hub-ativo #hub-modal-corpo .fx-chip--anual { background: #ffc107; color: #333; }
+
+/* controles dentro das tabelas (inline antigo: width 100%; padding 0.4rem;
+   borda, raio, fundo, cor; recorrência = flex com input 50px + select
+   flex 1 — aqui 44px, decisão do revisor). Sem altura/fonte: no celular
+   valem os 16px do hub.css; em ≥900 o bloco 6.2. */
+body.hub-ativo #hub-modal-corpo .fx-in,
+body.hub-ativo #hub-modal-corpo .fx-sel {
+  width: 100%;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0.4rem;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  background: var(--dark-bg);
+  color: var(--text-light);
+}
+
+body.hub-ativo #hub-modal-corpo .fx-in[readonly],
+body.hub-ativo #hub-modal-corpo .fx-sel:disabled {
+  opacity: 0.75;
+}
+
+body.hub-ativo #hub-modal-corpo .fx-rec {
+  display: flex;
+  gap: 4px;
+}
+
+body.hub-ativo #hub-modal-corpo .fx-rec .fx-in {
+  width: 44px;
+  flex: none;
+}
+
+body.hub-ativo #hub-modal-corpo .fx-rec .fx-sel {
+  flex: 1;
+  min-width: 0;
+}
+
+/* análises (inline antigo: wrapper mt 2rem / pt 1.5rem / border-top 2px;
+   caixas fundo escuro + borda 2px + raio 10 + padding 1.2rem; por
+   integrante fundo rgba(255,255,255,.02) raio 8 padding 1rem) */
+body.hub-ativo #hub-modal-corpo .fx-analises {
+  display: grid;
+  /* minmax(0, 1fr): "1fr" sozinho tem mínimo = conteúdo, e a tabela interna
+     esticava a coluna para 762px no celular (estourava o modal) */
+  grid-template-columns: minmax(0, 1fr);
+  min-width: 0;
+  gap: 1rem;
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 2px solid var(--border-color);
+}
+
+body.hub-ativo #hub-modal-corpo .fx-box {
+  margin: 0;
+  min-width: 0;        /* deixa a caixa encolher; a tabela de dentro rola */
+  overflow-x: auto;
+  padding: 1.2rem;
+  background: var(--dark-bg);
+  border: 2px solid var(--border-color);
+  border-radius: 10px;
+}
+
+body.hub-ativo #hub-modal-corpo .fx-box--geral { border-color: var(--accent-color); }
+body.hub-ativo #hub-modal-corpo .fx-box--info { border-color: var(--info-color, #17a2b8); }
+
+body.hub-ativo #hub-modal-corpo .fx-box .fx-h4 {
+  justify-content: center;
+}
+
+body.hub-ativo #hub-modal-corpo .fx-box--geral .fx-h4,
+body.hub-ativo #hub-modal-corpo .fx-box--int .fx-h4 { color: var(--accent-color); }
+body.hub-ativo #hub-modal-corpo .fx-box--info .fx-h4 { color: var(--info-color, #17a2b8); }
+
+body.hub-ativo #hub-modal-corpo .fx-box .fx-bloco {
+  margin-bottom: 0;
+}
+
+body.hub-ativo #hub-modal-corpo .fx-box--vazio {
+  text-align: center;
+  opacity: 0.7;
+}
+
+body.hub-ativo #hub-modal-corpo .fx-meta,
+body.hub-ativo #hub-modal-corpo .fx-nota {
+  text-align: center;
+}
+
+body.hub-ativo #hub-modal-corpo .fx-int-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+}
+
+body.hub-ativo #hub-modal-corpo .fx-int-item {
+  padding: 1rem;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 8px;
+}
+
+/* ---- 6.1 COMPACTO (≥600) ---- */
+@media (min-width: 600px) {
+  /* blocos e cabeçalhos */
+  body.hub-ativo #hub-modal-corpo .fx-bloco {
+    margin-bottom: var(--cp-hr, 8px);
+  }
+
+  body.hub-ativo #hub-modal-corpo .fx-sync {
+    display: flex;
+    align-items: center;
+    gap: var(--cp-gap-x, 8px);
+    margin-bottom: var(--cp-hr, 8px);
+  }
+
+  body.hub-ativo #hub-modal-corpo .fx-hint {
+    font-size: var(--cp-label-fs, 11.5px);
+    line-height: 1.25;
+    margin: 0;
+  }
+
+  body.hub-ativo #hub-modal-corpo .fx-h4 {
+    gap: var(--cp-gap-x, 8px);
+    margin: 8px 0 6px;
+    font-size: var(--cp-h4-fs, 12.5px);
+    font-weight: 700;
+    line-height: 1.2;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+  }
+
+  body.hub-ativo #hub-modal-corpo .fx-h4-sub {
+    font-size: 11px;
+  }
+
+  body.hub-ativo #hub-modal-corpo .fx-h5 {
+    margin: 0 0 4px;
+    font-size: var(--cp-h5-fs, 12px);
+    font-weight: 700;
+    line-height: 1.2;
+  }
+
+  /* tabelas (margin-top: 0 anula os 24px de `table` da raiz) */
+  body.hub-ativo #hub-modal-corpo .fx-table {
+    margin-top: 0;
+    font-size: var(--cp-table-fs, 12px);
+  }
+
+  /* th: padding lateral 4px (igual ao td) para os rótulos caberem nas
+     colunas fixas de despesas (fluxo-caixa-module.js: "Alterável?" 78px,
+     "Recorrência"/"Importância" 96px a 11px caixa alta negrito) */
+  body.hub-ativo #hub-modal-corpo .fx-table th {
+    padding: 3px 4px;
+    font-size: var(--cp-th-fs, 11px);
+    font-weight: 700;
+    line-height: 1.2;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+  }
+
+  /* coluna "Ações" (th.c, 40px no template de despesas / 44px em
+     receitas): "AÇÕES" em caixa alta e negrito a 11px ocupa ~37px —
+     padding lateral mínimo e sem tracking para caber sem reticências */
+  body.hub-ativo #hub-modal-corpo .fx-table th.c {
+    padding: 3px 1px;
+    letter-spacing: 0;
+  }
+
+  body.hub-ativo #hub-modal-corpo .fx-table td {
+    padding: 3px 4px;
+  }
+
+  body.hub-ativo #hub-modal-corpo .fx-table--ro td {
+    padding: var(--cp-cell-pad, 4px 8px);
+  }
+
+  /* despesas: 11 colunas fixas somam 950px (fluxo-caixa-module.js) e a
+     coluna Nome é elástica; num pai de 1134px (desktop 1366) cabe sem
+     rolagem com Nome ≈ 184px. O min-width garante ≥ 120px para Nome em
+     modal mais estreito: aí o .fx-wrap rola em vez de esmagar a coluna. */
+  body.hub-ativo #hub-modal-corpo .fx-table--desp {
+    min-width: 1070px;
+  }
+
+  body.hub-ativo #hub-modal-corpo .fx-pct {
+    font-size: 11px;
+  }
+
+  body.hub-ativo #hub-modal-corpo .fx-td-txt {
+    font-size: var(--cp-table-fs, 12px);
+  }
+
+  body.hub-ativo #hub-modal-corpo .fx-vazio {
+    padding: 8px;
+    font-size: var(--cp-table-fs, 12px);
+  }
+
+  body.hub-ativo #hub-modal-corpo .fx-chip {
+    height: var(--cp-chip-h, 20px);
+    line-height: var(--cp-chip-h, 20px);
+    padding: 0 8px;
+    font-size: 11px;
+  }
+
+  /* controles dentro das tabelas: forma na base 6.0; altura/padding/
+     fonte em ≥ 900px (abaixo disso hub.css mantém 16px) */
+
+  /* análises (geral, comparação, por integrante) */
+  body.hub-ativo #hub-modal-corpo .fx-analises {
+    margin-top: 10px;
+    padding-top: 8px;
+    border-top-width: 1px;
+    gap: var(--cp-hr, 8px);
+  }
+
+  body.hub-ativo #hub-modal-corpo .fx-box {
+    padding: var(--cp-card-pad, 8px 10px);
+    border-width: 1px;
+    border-radius: var(--cp-radius, 8px);
+  }
+
+  body.hub-ativo #hub-modal-corpo .fx-box .fx-h4 {
+    margin-top: 0;
+  }
+
+  body.hub-ativo #hub-modal-corpo .fx-box--vazio {
+    font-size: 12px;
+  }
+
+  body.hub-ativo #hub-modal-corpo .fx-meta {
+    margin: 0 0 6px;
+    font-size: 11.5px;
+    line-height: 1.3;
+    opacity: 0.85;
+  }
+
+  body.hub-ativo #hub-modal-corpo .fx-nota {
+    margin: 6px 0 0;
+    font-size: 11px;
+    opacity: 0.7;
+  }
+
+  body.hub-ativo #hub-modal-corpo .fx-int-grid {
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: var(--cp-hr, 8px);
+  }
+
+  body.hub-ativo #hub-modal-corpo .fx-int-item {
+    padding: 6px 8px;
+    border-radius: 6px;
+  }
+}
+
+/* ---- 6.2 CONTROLES E BOTÕES (≥900) ---- */
+@media (min-width: 900px) {
+  body.hub-ativo #hub-modal-corpo .fx-btn {
+    height: var(--cp-btn-h, 30px);
+    padding: 0 12px;
+    font-size: var(--cp-btn-fs, 12.5px);
+    line-height: var(--cp-btn-h, 30px);
+  }
+
+  body.hub-ativo #hub-modal-corpo .fx-btn-sm {
+    height: var(--cp-btn-sm-h, 24px);
+    padding: 0 8px;
+    font-size: var(--cp-btn-sm-fs, 11.5px);
+    line-height: var(--cp-btn-sm-h, 24px);
+  }
+
+  body.hub-ativo #hub-modal-corpo .fx-del {
+    width: var(--cp-btn-icon, 26px);
+    height: var(--cp-btn-icon, 26px);
+    padding: 0;
+    font-size: 11px;
+  }
+
+  /* linha de receita/despesa: controle de 30px + célula de 3px.
+     DIVERGÊNCIA DOCUMENTADA do token --cp-ctl-pad (4px 8px): a tabela
+     de despesas tem 11 colunas com largura fixa (table-layout: fixed;
+     "Valor" 90px, "Tipo" 62px, "Alterável?" 78px, "Dono" 92px, "Ações"
+     40px — soma 950px) e os controles ocupam 100% da célula — 8px de
+     cada lado somem com a largura útil do texto, e no select a seta
+     nativa ainda toma ~18px à direita. Altura (30px) e fonte (13px)
+     seguem o token; só o padding lateral é menor:
+       · .fx-in / .fx-sel: 2px 6px
+       · .fx-sel: 2px à direita (a seta já afasta o texto), 4px à esquerda
+       · .fx-rec .fx-in (dia, 44px): 2px 4px para os 2 dígitos + spinner */
+  body.hub-ativo #hub-modal-corpo .fx-in,
+  body.hub-ativo #hub-modal-corpo .fx-sel {
+    height: var(--cp-ctl-h, 30px);
+    padding: 2px 6px;
+    font-size: var(--cp-ctl-fs, 13px);
+    line-height: 24px;
+  }
+
+  body.hub-ativo #hub-modal-corpo .fx-sel {
+    padding: 2px 2px 2px 4px;
+  }
+
+  body.hub-ativo #hub-modal-corpo .fx-rec .fx-in {
+    padding: 2px 4px;
+  }
+
+  /* geral + comparação lado a lado; integrantes em largura total */
+  body.hub-ativo #hub-modal-corpo .fx-analises {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    align-items: start;
+  }
+
+  body.hub-ativo #hub-modal-corpo .fx-box--int {
+    grid-column: 1 / -1;
+  }
+}
+
+
+/* =====================================================================
+   7. DÍVIDAS — .divida-card / .divida-header / classes dv-* (dono E
+      troca os styles inline de dividas-module.js por estas classes)
+
+   7.0 BASE (fora de media): moldura do card, cabeçalho em linha, cores
+       do botão Excluir e estrutura das linhas compostas — tudo o que era
+       style inline no HEAD de dividas-module.js (valores = inline antigo;
+       vale no celular). 7.1 @media ≥600: compacto. 7.2 ≥900: controles.
+   ===================================================================== */
+
+/* ---- 7.0 BASE ---- */
+body.hub-ativo #hub-modal-corpo .dv-vazio {
+  margin: 0;
+  padding: 1rem;
+  text-align: center;
+  color: var(--text-light);
+  opacity: 0.7;
+}
+
+/* inline antigo: background dark-bg; border 2px; radius 10px;
+   padding 1.2rem; margin-bottom 1rem */
+body.hub-ativo #hub-modal-corpo .divida-card {
+  background: var(--dark-bg);
+  border: 2px solid var(--border-color);
+  border-radius: 10px;
+  padding: 1.2rem;
+  margin-bottom: 1rem;
+}
+
+/* inline antigo: flex space-between center; mb 1rem; pb 0.5rem; border-bottom 1px */
+body.hub-ativo #hub-modal-corpo .divida-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+/* título = motivo da dívida (inline antigo: accent, 1.1rem, 600, margin 0):
+   quebra em vez de reticências, para nenhuma informação ficar escondida */
+body.hub-ativo #hub-modal-corpo .dv-titulo {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--accent-color);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+body.hub-ativo #hub-modal-corpo .dv-saldo {
+  margin-left: 0.5rem;
+  color: #dc3545;
+}
+
+/* botão Excluir (inline antigo: #dc3545, branco, sem borda, 0.4rem 0.8rem, raio 6) */
+body.hub-ativo #hub-modal-corpo .dv-del {
+  flex: none;
+  border: 0;
+  border-radius: 5px;
+  background: #dc3545;
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0.4rem 0.8rem;
+}
+
+/* taxa de juros: input + select (a.m./a.a.) numa linha (inline antigo:
+   flex gap 0.5rem; input flex 1; select 90px) */
+body.hub-ativo #hub-modal-corpo .dv-taxa {
+  display: flex;
+  gap: 0.5rem;
+}
+
+body.hub-ativo #hub-modal-corpo .dv-taxa input {
+  flex: 1;
+  min-width: 0;
+}
+
+body.hub-ativo #hub-modal-corpo .dv-taxa select {
+  width: 90px;
+  flex: none;
+}
+
+/* caixa + rótulo numa linha (inline antigo: flex center gap 0.5rem,
+   padding-top 1.5rem). É .form-group: o compacto.css (bloco 3, ≥600) dá
+   flex-direction: column + justify-content: flex-end a todo .form-group
+   sem inline 'display: flex' — row/flex-start aqui vencem pela ordem. */
+body.hub-ativo #hub-modal-corpo .dv-check {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.5rem;
+  padding-top: 1.5rem;
+}
+
+body.hub-ativo #hub-modal-corpo .dv-check input[type="checkbox"] {
+  margin: 0;
+  flex: none;
+  cursor: pointer;
+}
+
+body.hub-ativo #hub-modal-corpo .dv-check label {
+  margin: 0;
+  cursor: pointer;
+}
+
+body.hub-ativo #hub-modal-corpo .dv-dica {
+  font-weight: 400;
+  opacity: 0.8;
+}
+
+body.hub-ativo #hub-modal-corpo .dv-sel-nomes {
+  color: var(--text-light);
+}
+
+/* ---- 7.1 COMPACTO (≥600) ---- */
+@media (min-width: 600px) {
+  body.hub-ativo #hub-modal-corpo .dv-vazio {
+    padding: 6px;
+    font-size: 12.5px;
+  }
+
+  body.hub-ativo #hub-modal-corpo .divida-card {
+    border-width: 1px;
+    border-radius: var(--cp-radius, 8px);
+    padding: var(--cp-card-pad, 8px 10px);
+    margin-bottom: var(--cp-card-mb, 6px);
+  }
+
+  body.hub-ativo #hub-modal-corpo .divida-header {
+    gap: var(--cp-gap-x, 8px);
+    margin-bottom: var(--cp-gap-y, 6px);
+    padding-bottom: 4px;
+  }
+
+  body.hub-ativo #hub-modal-corpo .dv-titulo {
+    font-size: var(--cp-h4-fs, 12.5px);
+    font-weight: 700;
+    line-height: 1.2;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+  }
+
+  body.hub-ativo #hub-modal-corpo .dv-saldo {
+    margin-left: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: none;
+    letter-spacing: 0;
+  }
+
+  /* rótulo longo que quebra não desalinha os campos da linha */
+  body.hub-ativo #hub-modal-corpo .dv-grid {
+    margin-bottom: 0;
+    align-items: end;
+  }
+
+  body.hub-ativo #hub-modal-corpo .dv-grid .form-group label {
+    white-space: normal;
+  }
+
+  body.hub-ativo #hub-modal-corpo .dv-taxa {
+    gap: 4px;
+  }
+
+  body.hub-ativo #hub-modal-corpo .dv-taxa select {
+    width: 64px;
+  }
+
+  body.hub-ativo #hub-modal-corpo .dv-check {
+    gap: 6px;
+    min-height: var(--cp-ctl-h, 30px);
+    padding: 0;
+  }
+
+  body.hub-ativo #hub-modal-corpo .dv-check label {
+    font-size: var(--cp-label-fs, 11.5px);
+    font-weight: 600;
+    line-height: 1.2;
+  }
+
+  body.hub-ativo #hub-modal-corpo .dv-dica {
+    font-size: 10.5px;
+  }
+
+  body.hub-ativo #hub-modal-corpo .dv-sel-nomes {
+    margin-top: 2px;
+    font-size: var(--cp-label-fs, 11.5px);
+    line-height: 1.25;
+  }
+}
+
+/* ---- 7.2 CONTROLES E BOTÕES (≥900) ---- */
+@media (min-width: 900px) {
+  body.hub-ativo #hub-modal-corpo .dv-del {
+    height: var(--cp-btn-sm-h, 24px);
+    padding: 0 8px;
+    font-size: var(--cp-btn-sm-fs, 11.5px);
+    line-height: var(--cp-btn-sm-h, 24px);
+  }
+
+  /* grade densa (6 colunas em ~1150px; 5 abaixo de ~1000px) */
+  body.hub-ativo #hub-modal-corpo .dv-grid {
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: var(--cp-gap-y, 6px) var(--cp-gap-x, 8px);
+  }
+
+  body.hub-ativo #hub-modal-corpo .dv-resp {
+    grid-column: span 2;
+  }
+
+  body.hub-ativo #hub-modal-corpo .dv-moeda input { max-width: var(--cp-w-moeda, 160px); }
+  body.hub-ativo #hub-modal-corpo .dv-num input { max-width: var(--cp-w-num, 100px); }
+  body.hub-ativo #hub-modal-corpo .dv-pct input { max-width: var(--cp-w-pct, 110px); }
+
+  body.hub-ativo #hub-modal-corpo .dv-taxa {
+    max-width: 180px;
+  }
+
+  body.hub-ativo #hub-modal-corpo .dv-taxa select {
+    padding-left: 4px;
+    padding-right: 2px;
+  }
+
+  body.hub-ativo #hub-modal-corpo .dv-check input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+  }
+
+  /* select múltiplo de responsáveis (sem size no template → o navegador
+     mostra até 4 linhas): a altura vem das opções (compacto.css bloco 4
+     já dá height: auto a .form-group select[multiple]; repetido aqui por
+     segurança). Linhas de opção justas. */
+  body.hub-ativo #hub-modal-corpo .dv-resp select[multiple] {
+    height: auto;
+    min-height: var(--cp-ctl-h, 30px);
+    padding: 2px 4px;
+    font-size: 12.5px;
+  }
+
+  body.hub-ativo #hub-modal-corpo .dv-resp select[multiple] option {
+    padding: 1px 6px;
+    margin: 0;
+  }
+}

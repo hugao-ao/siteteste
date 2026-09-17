@@ -1,0 +1,934 @@
+/* =====================================================================
+   compacto.css — Diagnóstico v2: seções compactas dentro do modal do hub
+   ---------------------------------------------------------------------
+   Carregar no <head> DEPOIS de hub.css e perfil-financeiro.css (várias
+   regras têm a mesma especificidade de hub.css e vencem só pela ordem).
+   Ordem: compacto.css → compacto-modulos-raiz.css → compacto-modulos-v2.css.
+
+   Escopo: tudo em body.hub-ativo #hub-modal-corpo (seções) ou
+   body.hub-ativo #hub-modal / .hub-janela (chrome do modal). Nada aqui
+   vale no layout linear (sem hub) nem no teatro/relatório.
+
+   Faixas de tela (contrato):
+   - fora de media:            só o reset de margem dos controles (bloco 1)
+   - @media (min-width: 600px): tipografia, margens, paddings, gaps, cards,
+                                chips e grades compactas
+   - @media (min-width: 900px): altura/padding/fonte de input, select,
+                                textarea e botão, colunas das grades, chrome
+                                do modal — abaixo de 900px o hub.css (§16)
+                                exige 16px nos campos (iOS) e abaixo de
+                                600px vale o toque de 44px
+   - @media (min-width: 769px): células das tabelas da adesão (a raiz
+                                empilha toda tabela em bloco até 768px)
+
+   Regras: nenhum campo, botão, tabela ou texto é escondido; nenhum id,
+   name ou classe consumida por JS muda. Só apresentação.
+
+   Blocos:
+     0. tokens
+     1. reset de margem dos controles
+     2. tipografia (≥600)
+     3. rótulos e .form-group (≥600)
+     4. controles (≥900)
+     5. botões (≥900)
+     6. grades, larguras máximas, cards de item, chips e tabelas (≥600/≥900)
+     7. chrome do modal e cabeçalho da seção
+     8. observações e questões pertinentes
+     9. perfil financeiro (v1) e adesão
+    10. sobrescritas de hub.css
+   ===================================================================== */
+
+
+/* =====================================================================
+   0. TOKENS — contrato compartilhado com os outros donos
+   (declarados também em #hub-modal para o chrome — cabeçalho/rodapé —
+   que fica fora de #hub-modal-corpo; os valores são os mesmos)
+   ===================================================================== */
+body.hub-ativo #hub-modal,
+body.hub-ativo #hub-modal-corpo {
+  /* texto corrido */
+  --cp-fs: 13px;
+  --cp-lh: 1.35;
+
+  /* títulos e rótulos */
+  --cp-label-fs: 11.5px;
+  --cp-h3-fs: 15px;
+  --cp-h4-fs: 12.5px;
+  --cp-h5-fs: 12px;
+
+  /* controles (input/select/textarea) */
+  --cp-ctl-h: 30px;
+  --cp-ctl-pad: 4px 8px;
+  --cp-ctl-fs: 13px;
+  --cp-ta-min: 52px;
+
+  /* botões e chips */
+  --cp-btn-h: 30px;
+  --cp-btn-fs: 12.5px;
+  --cp-btn-sm-h: 24px;
+  --cp-btn-sm-fs: 11.5px;
+  --cp-btn-icon: 26px;
+  --cp-chip-h: 20px;
+
+  /* espaçamentos */
+  --cp-gap-y: 6px;
+  --cp-gap-x: 8px;
+  --cp-sec-pad: 10px 12px;
+  --cp-card-pad: 8px 10px;
+  --cp-card-mb: 6px;
+  --cp-radius: 8px;
+  --cp-hr: 8px;
+
+  /* tabelas */
+  --cp-cell-pad: 4px 8px;
+  --cp-table-fs: 12px;
+  --cp-th-fs: 11px;
+
+  /* larguras máximas de campos curtos */
+  --cp-w-data: 150px;
+  --cp-w-cpf: 150px;
+  --cp-w-tel: 160px;
+  --cp-w-moeda: 160px;
+  --cp-w-pct: 110px;
+  --cp-w-num: 100px;
+}
+
+
+/* =====================================================================
+   1. RESET DE MARGEM DOS CONTROLES (fora de media)
+   ../style.css 211-221 dá margin-bottom: 1rem a TODO button/input/select/
+   textarea; nada na v2 zerava isso dentro do modal. Não afeta toque nem
+   fonte, por isso vale também no celular. Os contêineres repõem gap.
+   ===================================================================== */
+body.hub-ativo #hub-modal-corpo input,
+body.hub-ativo #hub-modal-corpo select,
+body.hub-ativo #hub-modal-corpo textarea,
+body.hub-ativo #hub-modal-corpo button {
+  margin: 0;
+}
+
+
+/* =====================================================================
+   2. TIPOGRAFIA (≥600)
+   ===================================================================== */
+@media (min-width: 600px) {
+  body.hub-ativo #hub-modal-corpo {
+    font-size: var(--cp-fs);
+    line-height: var(--cp-lh);
+  }
+
+  body.hub-ativo #hub-modal-corpo h3 {
+    font-size: var(--cp-h3-fs);
+    font-weight: 700;
+    line-height: 1.2;
+    margin: 0 0 var(--cp-gap-y);
+  }
+
+  /* h4 = subtítulo de bloco (caixa alta). Os títulos de card ficam fora
+     de propósito: são nomes de pessoas/tipos digitados (bloco 6).
+     :where() mantém a especificidade em (1,2,1) para os outros donos
+     poderem sobrescrever por classe sem !important. */
+  body.hub-ativo #hub-modal-corpo h4:where(:not(.pessoa-title):not(.dependente-title):not(.patrimonio-title)) {
+    font-size: var(--cp-h4-fs);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    line-height: 1.2;
+    margin: 8px 0 var(--cp-gap-y);
+    color: var(--accent-color, #ffd700);
+  }
+
+  body.hub-ativo #hub-modal-corpo h5 {
+    font-size: var(--cp-h5-fs);
+    font-weight: 700;
+    line-height: 1.2;
+    margin: var(--cp-gap-y) 0 4px;
+  }
+
+  body.hub-ativo #hub-modal-corpo hr {
+    margin: var(--cp-hr) 0;
+    border: 0;
+    border-top: 1px solid rgba(46, 139, 87, 0.5);
+  }
+}
+
+
+/* =====================================================================
+   3. RÓTULOS E .form-group (≥600)
+   ===================================================================== */
+@media (min-width: 600px) {
+  body.hub-ativo #hub-modal-corpo label {
+    font-size: var(--cp-label-fs);
+    font-weight: 600;
+    line-height: 1.2;
+    margin-bottom: 2px;
+  }
+
+  body.hub-ativo #hub-modal-corpo .form-group label small {
+    font-size: 11px; /* piso de legibilidade dos textos de apoio */
+    font-weight: 400;
+    opacity: 0.75;
+  }
+
+  /* input sempre alinhado pela base da célula, mesmo com rótulo em 2
+     linhas. :where(:not(...)) preserva os .form-group que o template do
+     patrimônio físico já põe em linha (display: flex inline) e mantém a
+     especificidade em (1,2,1). #regime-bens-group recebe display
+     block/none via JS (inline vence) e continua empilhando normalmente. */
+  body.hub-ativo #hub-modal-corpo .form-group:where(:not([style*="display: flex"])) {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    min-width: 0;
+    margin: 0;
+  }
+
+  body.hub-ativo #hub-modal-corpo .checkbox-item label {
+    margin: 0;
+    font-weight: 500;
+  }
+}
+
+
+/* =====================================================================
+   4. CONTROLES (≥900) — abaixo disso hub.css §16 exige 16px nos campos
+   ===================================================================== */
+@media (min-width: 900px) {
+  body.hub-ativo #hub-modal-corpo .form-group input:where(:not([type="checkbox"]):not([type="radio"])),
+  body.hub-ativo #hub-modal-corpo .form-group select {
+    height: var(--cp-ctl-h);
+    padding: var(--cp-ctl-pad);
+    font-size: var(--cp-ctl-fs);
+    line-height: 1.4;
+    border-radius: 6px;
+  }
+
+  body.hub-ativo #hub-modal-corpo .form-group select {
+    padding: 0 8px;
+  }
+
+  /* listbox (select multiple: Dono(s) do PL, Quem fez a dívida): a altura
+     vem do atributo size / das opções, não do token de 30px */
+  body.hub-ativo #hub-modal-corpo .form-group select[multiple] {
+    height: auto;
+  }
+
+  body.hub-ativo #hub-modal-corpo .form-group textarea {
+    padding: var(--cp-ctl-pad);
+    font-size: var(--cp-ctl-fs);
+    line-height: var(--cp-lh);
+    min-height: var(--cp-ta-min);
+  }
+
+  /* o translateY(-2px) do foco fazia a grade densa "pular" */
+  body.hub-ativo #hub-modal-corpo .form-group input:focus,
+  body.hub-ativo #hub-modal-corpo .form-group select:focus {
+    transform: none;
+  }
+
+  /* checkboxes/radios herdavam padding 0.75rem 1rem da raiz.
+     Os que têm width/height inline (18px nos templates) ficam como estão. */
+  body.hub-ativo #hub-modal-corpo input[type="checkbox"],
+  body.hub-ativo #hub-modal-corpo input[type="radio"] {
+    width: 16px;
+    height: 16px;
+    padding: 0;
+    margin: 0;
+    vertical-align: middle;
+    accent-color: var(--secondary-color, #d4af37);
+  }
+
+  /* textareas de Observações (#obs_*, 14 seções): rows="3" → 52px;
+     o usuário continua podendo arrastar (resize: vertical) */
+  body.hub-ativo #hub-modal-corpo textarea[id^="obs_"] {
+    height: var(--cp-ta-min);
+    min-height: var(--cp-ta-min);
+    resize: vertical;
+  }
+}
+
+
+/* =====================================================================
+   5. BOTÕES (≥900)
+   ===================================================================== */
+@media (min-width: 900px) {
+  /* "Adicionar …" */
+  body.hub-ativo #hub-modal-corpo .add-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: var(--cp-btn-h);
+    padding: 0 12px;
+    font-size: var(--cp-btn-fs);
+    border-radius: 6px;
+    box-shadow: none;
+  }
+
+  body.hub-ativo #hub-modal-corpo .add-btn:hover {
+    transform: none;
+    box-shadow: 0 2px 8px rgba(255, 215, 0, 0.3);
+  }
+
+  /* só-ícone editar/excluir dos cards */
+  body.hub-ativo #hub-modal-corpo .edit-btn,
+  body.hub-ativo #hub-modal-corpo .delete-btn {
+    width: var(--cp-btn-icon);
+    height: var(--cp-btn-icon);
+    padding: 0;
+    font-size: 12px;
+    border-radius: 6px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* chips SIM / NÃO / N/A das Questões Pertinentes (bloco 8) */
+  body.hub-ativo #hub-modal-corpo .btn-questao {
+    height: var(--cp-chip-h);
+    padding: 0 8px;
+    font-size: 11px;
+    line-height: 18px;
+    border-radius: 10px;
+  }
+}
+
+
+/* =====================================================================
+   6. GRADES, LARGURAS MÁXIMAS, CARDS DE ITEM, CHIPS E TABELAS
+   ===================================================================== */
+
+/* 6a. gaps das grades, cards, chips e grade de proprietários (≥600) */
+@media (min-width: 600px) {
+  body.hub-ativo #hub-modal-corpo .form-grid-3,
+  body.hub-ativo #hub-modal-corpo .form-grid {
+    gap: var(--cp-gap-y) var(--cp-gap-x);
+    margin-bottom: var(--cp-gap-y);
+  }
+
+  /* cards de item (pessoa / dependente / patrimônio físico) */
+  body.hub-ativo #hub-modal-corpo .pessoa-card,
+  body.hub-ativo #hub-modal-corpo .dependente-card,
+  body.hub-ativo #hub-modal-corpo .patrimonio-card {
+    padding: var(--cp-card-pad);
+    margin-bottom: var(--cp-card-mb);
+    border-width: 1px;
+    border-radius: var(--cp-radius);
+  }
+
+  body.hub-ativo #hub-modal-corpo .pessoa-header,
+  body.hub-ativo #hub-modal-corpo .dependente-header,
+  body.hub-ativo #hub-modal-corpo .patrimonio-header {
+    margin-bottom: var(--cp-gap-y);
+    padding-bottom: 4px;
+    gap: var(--cp-gap-x);
+  }
+
+  /* títulos de card NÃO em caixa alta (nomes de pessoas/tipos digitados) */
+  body.hub-ativo #hub-modal-corpo .pessoa-title,
+  body.hub-ativo #hub-modal-corpo .dependente-title,
+  body.hub-ativo #hub-modal-corpo .patrimonio-title {
+    font-size: var(--cp-h4-fs);
+    font-weight: 700;
+    line-height: 1.2;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+    min-width: 0;
+  }
+
+  body.hub-ativo #hub-modal-corpo .pessoa-actions,
+  body.hub-ativo #hub-modal-corpo .dependente-actions,
+  body.hub-ativo #hub-modal-corpo .patrimonio-actions {
+    gap: 4px;
+    align-items: center;
+  }
+
+  /* chips dentro dos títulos de card e lista de proprietários
+     (margin-left: 0 porque o título virou flex com gap 6px) */
+  body.hub-ativo #hub-modal-corpo .idade-display,
+  body.hub-ativo #hub-modal-corpo .valor-display,
+  body.hub-ativo #hub-modal-corpo .patrimonio-title .status-badge,
+  body.hub-ativo #hub-modal-corpo .proprietario-tag {
+    display: inline-flex;
+    align-items: center;
+    height: var(--cp-chip-h);
+    padding: 0 8px;
+    font-size: 11px;
+    line-height: 1;
+    border-radius: 10px;
+    margin-left: 0;
+  }
+
+  body.hub-ativo #hub-modal-corpo .proprietarios-list {
+    gap: 4px;
+    margin-top: 4px;
+  }
+
+  /* grade de proprietários do patrimônio físico */
+  body.hub-ativo #hub-modal-corpo .checkbox-group {
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 2px var(--cp-gap-x);
+    margin-top: 2px;
+  }
+
+  body.hub-ativo #hub-modal-corpo .checkbox-item {
+    padding: 1px 4px;
+    min-height: 22px;
+    gap: 6px;
+    font-size: 12px;
+  }
+
+  /* --- classes de marcação do HTML v2 (dono C): a base (layout linear e
+     celular) está no <style> do html (1686-1709); aqui só o compacto --- */
+
+  /* wrapper dos 3 marcadores do patrimônio físico (Inventariável /
+     Destinado / Comprometido — template createPatrimonioCard): numa linha */
+  body.hub-ativo #hub-modal-corpo .patrimonio-marcadores {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 18px;
+    margin-top: 6px;
+  }
+
+  body.hub-ativo #hub-modal-corpo .patrimonio-marcadores .form-group {
+    margin: 0;
+  }
+
+  body.hub-ativo #hub-modal-corpo .patrimonio-marcadores label {
+    margin: 0;
+    font-weight: 500;
+  }
+
+  /* subtítulos de bloco (h3 1884, h4 2100/2113/2721): mesmo desenho do h4
+     genérico do bloco 2; (1,2,1) vence o h3/h4 genérico (1,1,2) */
+  body.hub-ativo #hub-modal-corpo .sub-bloco {
+    font-size: var(--cp-h4-fs, 12.5px);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    line-height: 1.2;
+    margin: 8px 0 6px;
+    text-align: left;
+    color: var(--accent-color, #ffd700);
+  }
+
+  /* wrappers do PL (Teste de Perfil / Distribuição): inline
+     'margin-top: 2rem; padding-top: 2rem; border-top: 3px solid' */
+  body.hub-ativo #hub-modal-corpo .sub-bloco-wrap {
+    margin-top: 12px !important;
+    padding-top: 8px !important;
+    border-top-width: 1px !important;
+  }
+
+  body.hub-ativo #hub-modal-corpo .sub-bloco-wrap > h4.sub-bloco {
+    margin-top: 0;
+  }
+}
+
+/* 6b. colunas das grades e larguras máximas (≥900) — hub.css §16 mantém
+   1 coluna até 899px; .campo-largo (span 2) SÓ pode existir aqui: numa
+   grade de 1 coluna o span criaria coluna implícita e estouro horizontal.
+   A classe .campo-largo é aplicada no markup pelo dono do HTML v2. */
+@media (min-width: 900px) {
+  body.hub-ativo #hub-modal-corpo .form-grid-3 {
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  }
+
+  body.hub-ativo #hub-modal-corpo .form-grid {
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  }
+
+  /* campos largos (nome, e-mail, detalhes) ocupam 2 células */
+  body.hub-ativo #hub-modal-corpo .form-grid-3 > .campo-largo,
+  body.hub-ativo #hub-modal-corpo .form-grid > .campo-largo {
+    grid-column: span 2;
+  }
+
+  /* campos curtos não esticam (ganchos: atributos que os campos já têm) */
+  body.hub-ativo #hub-modal-corpo .form-group input[type="date"] {
+    max-width: var(--cp-w-data);
+  }
+
+  body.hub-ativo #hub-modal-corpo .form-group input[maxlength="14"] { /* CPF */
+    max-width: var(--cp-w-cpf);
+  }
+
+  body.hub-ativo #hub-modal-corpo .form-group input[type="tel"] {
+    max-width: var(--cp-w-tel);
+  }
+
+  body.hub-ativo #hub-modal-corpo .form-group input[placeholder="R$ 0,00"] {
+    max-width: var(--cp-w-moeda);
+  }
+
+  body.hub-ativo #hub-modal-corpo .form-group input[placeholder*="%"] {
+    max-width: var(--cp-w-pct);
+  }
+
+  body.hub-ativo #hub-modal-corpo .form-group input[type="number"] {
+    max-width: var(--cp-w-num);
+  }
+}
+
+/* 6c. tabelas — regra base dentro do modal (≥900); os outros donos
+   refinam por módulo. Paddings inline nas células continuam vencendo.
+   Não toca table-layout/resize do fluxo de caixa. Sem border-collapse:
+   ../style.css 306-315 já dá border-spacing: 0 (nada a compactar) e o
+   collapse anularia o border-radius/overflow das tabelas dos módulos. */
+@media (min-width: 900px) {
+  body.hub-ativo #hub-modal-corpo table {
+    font-size: var(--cp-table-fs);
+  }
+
+  body.hub-ativo #hub-modal-corpo th,
+  body.hub-ativo #hub-modal-corpo td {
+    padding: var(--cp-cell-pad);
+  }
+
+  body.hub-ativo #hub-modal-corpo th {
+    font-size: var(--cp-th-fs);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+  }
+
+  body.hub-ativo #hub-modal-corpo td input,
+  body.hub-ativo #hub-modal-corpo td select {
+    height: 28px;
+    padding: 2px 6px;
+    font-size: var(--cp-table-fs);
+    margin: 0;
+  }
+}
+
+
+/* =====================================================================
+   7. CHROME DO MODAL E CABEÇALHO DA SEÇÃO
+   ===================================================================== */
+
+/* 7a. contêiner da seção, cabeçalho da seção e chips "Total: R$" (≥600) */
+@media (min-width: 600px) {
+  /* moldura dupla (borda 2px + sombra + raio 12) dentro da janela do modal */
+  body.hub-ativo #hub-modal-corpo > .form-container {
+    padding: var(--cp-sec-pad);
+    border-width: 1px;
+    border-radius: 10px;
+    box-shadow: none;
+  }
+
+  /* o h3 da seção repete o título do modal; aqui só fica menor (nada some) */
+  body.hub-ativo #hub-modal-corpo .section-header {
+    padding: 0 0 var(--cp-gap-y);
+    gap: var(--cp-gap-x);
+  }
+
+  body.hub-ativo #hub-modal-corpo .section-header h3 {
+    font-size: var(--cp-h3-fs);
+    font-weight: 700;
+    line-height: 1.2;
+  }
+
+  /* chips "Total: R$" (Patrimônio Físico, PL, Dívidas, Proteção) */
+  body.hub-ativo #hub-modal-corpo .patrimonio-total {
+    padding: 2px 8px;
+    font-size: var(--cp-table-fs);
+    line-height: 1.3;
+    min-width: 0;
+    border-radius: 6px;
+    box-shadow: none;
+  }
+
+  body.hub-ativo #hub-modal-corpo .patrimonio-total[style*="margin-right"] {
+    margin-right: var(--cp-gap-x) !important; /* inline margin-right: 1rem */
+  }
+
+  /* Proteção: Mensal/Anual lado a lado em vez de duas linhas */
+  body.hub-ativo #hub-modal-corpo #produtos-protecao-total {
+    display: flex;
+    gap: 10px;
+    align-items: baseline;
+  }
+
+  body.hub-ativo #hub-modal-corpo #produtos-protecao-total > div {
+    font-size: var(--cp-table-fs) !important; /* inline 0.8rem / 1rem */
+  }
+}
+
+/* 7b. janela, cabeçalho, corpo e rodapé do modal (≥900) — abaixo, hub.css
+   §16 impõe 44px de toque em fechar/anterior/próximo e padding próprio
+   no corpo (0.7 / 0.6 / 0.5rem por faixa): nada disso é tocado. */
+@media (min-width: 900px) {
+  body.hub-ativo .hub-janela {
+    height: min(94vh, calc(100vh - 16px));
+  }
+
+  body.hub-ativo #hub-modal-cabecalho {
+    padding: 6px 12px;
+    gap: var(--cp-gap-x);
+  }
+
+  body.hub-ativo #hub-modal-cabecalho .hub-modal-icone {
+    width: 28px;
+    height: 28px;
+    font-size: 13px;
+  }
+
+  body.hub-ativo #hub-modal-cabecalho .hub-modal-titulo {
+    font-size: var(--cp-h3-fs);
+  }
+
+  body.hub-ativo #hub-modal-fechar {
+    width: 28px;
+    height: 28px;
+    font-size: 13px;
+  }
+
+  body.hub-ativo #hub-modal-corpo {
+    padding: var(--cp-sec-pad);
+  }
+
+  body.hub-ativo #hub-modal-rodape {
+    padding: 6px 12px;
+    gap: var(--cp-gap-y);
+  }
+
+  body.hub-ativo #hub-modal-anterior,
+  body.hub-ativo #hub-modal-proximo,
+  body.hub-ativo #hub-modal-salvar {
+    height: var(--cp-btn-h);
+    padding: 0 12px;
+    font-size: var(--cp-btn-fs);
+  }
+}
+
+
+/* =====================================================================
+   8. OBSERVAÇÕES E QUESTÕES PERTINENTES (≥600)
+   (altura do textarea #obs_* → bloco 4; chips .btn-questao → bloco 5)
+   ===================================================================== */
+@media (min-width: 600px) {
+  /* wrapper das 14 Observações: <div class="form-group full-width"
+     style="margin-top: 1.5rem;"> — só reduz a margem (ids/names intocados) */
+  body.hub-ativo #hub-modal-corpo .form-group.full-width[style*="margin-top: 1.5rem"] {
+    margin-top: 8px !important;
+  }
+
+  /* wrapper Proprietário(s) do template do patrimônio físico (html 3584):
+     <div class="form-group full-width" style="margin-top: 1rem;"> — a
+     substring 'margin-top: 1rem' não casa '1.5rem', então não colide */
+  body.hub-ativo #hub-modal-corpo .form-group.full-width[style*="margin-top: 1rem"] {
+    margin-top: var(--cp-gap-y, 6px) !important;
+  }
+
+  /* wrapper do botão "Adicionar …": <div style="text-align: center;
+     margin-top: 1rem;"> (7 seções; só reduz a margem) */
+  body.hub-ativo #hub-modal-corpo div[style*="text-align: center"][style*="margin-top: 1rem"] {
+    margin-top: var(--cp-gap-y) !important;
+  }
+
+  /* Questões Pertinentes (markup e onclick do questoes-module.js intocados;
+     as classes .ativo continuam colorindo) */
+  body.hub-ativo #hub-modal-corpo .questoes-container {
+    margin-top: 8px;
+  }
+
+  body.hub-ativo #hub-modal-corpo .questoes-pertinentes-box {
+    border-width: 1px;
+    border-radius: var(--cp-radius);
+    padding: 6px 10px;
+  }
+
+  /* é um h4: vem depois do h4 genérico (bloco 2) e vence pela ordem */
+  body.hub-ativo #hub-modal-corpo .questoes-titulo {
+    font-size: var(--cp-h4-fs);
+    font-weight: 700;
+    line-height: 1.2;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    text-align: left;
+    margin: 0 0 4px;
+  }
+
+  body.hub-ativo #hub-modal-corpo .questao-item {
+    padding: 2px 6px;
+    min-height: 24px;
+    gap: var(--cp-gap-x);
+  }
+
+  body.hub-ativo #hub-modal-corpo .questao-texto {
+    font-size: var(--cp-table-fs);
+    line-height: 1.25;
+  }
+
+  body.hub-ativo #hub-modal-corpo .questao-botoes {
+    gap: 4px;
+  }
+}
+
+
+/* =====================================================================
+   9. PERFIL FINANCEIRO (bloco v1 de objetivos-module.js) E ADESÃO
+   O markup vem de objetivos-module.js (raiz, congelado) e não tem
+   classes: os ganchos são a estrutura e o próprio style inline
+   ([style*='…']). Se o template mudar, as regras só deixam de casar.
+   As Observações das duas seções já entram pelo bloco 8 (wrapper) e
+   pelo bloco 4 (textarea[id^="obs_"]).
+   ===================================================================== */
+
+/* 9a. espaçamentos e tipografia (≥600) */
+@media (min-width: 600px) {
+  /* --- perfil v1: wrapper, rótulo e select --- */
+  body.hub-ativo #hub-modal-corpo #perfil-financeiro-container > div {
+    padding: var(--cp-card-pad) !important;
+  }
+
+  body.hub-ativo #hub-modal-corpo #perfil-financeiro-container > div > div:first-child {
+    margin-bottom: var(--cp-gap-y) !important;
+  }
+
+  body.hub-ativo #hub-modal-corpo #perfil-financeiro-container label {
+    font-size: var(--cp-label-fs) !important;
+    font-weight: 600;
+    margin-bottom: 2px !important;
+  }
+
+  /* select de 100% (~1150px) para um nome de perfil → 420px */
+  body.hub-ativo #hub-modal-corpo #perfil-financeiro-container select {
+    max-width: 420px !important;
+    margin: 0;
+    min-height: var(--cp-ctl-h);
+    line-height: 1.3;
+  }
+
+  /* --- perfil v1: cartão do perfil selecionado / placeholder --- */
+  body.hub-ativo #hub-modal-corpo #perfil-financeiro-container > div > div:nth-child(2) {
+    padding: var(--cp-card-pad) !important;
+  }
+
+  body.hub-ativo #hub-modal-corpo #perfil-financeiro-container > div > div:nth-child(2) > div:first-child {
+    gap: var(--cp-gap-x) !important;
+    margin-bottom: 4px !important;
+  }
+
+  body.hub-ativo #hub-modal-corpo #perfil-financeiro-container [style*='font-size: 2.5rem'] {
+    font-size: 1.5rem !important; /* emoji do perfil */
+    line-height: 1;
+  }
+
+  body.hub-ativo #hub-modal-corpo #perfil-financeiro-container [style*='font-size: 2rem'] {
+    font-size: 1.4rem !important; /* ícone do placeholder */
+  }
+
+  /* nome do perfil: é um nome, fica fora da caixa alta do h4 genérico */
+  body.hub-ativo #hub-modal-corpo #perfil-financeiro-container h4 {
+    font-size: 13px !important;
+    text-transform: none;
+    letter-spacing: 0;
+  }
+
+  body.hub-ativo #hub-modal-corpo #perfil-financeiro-container p {
+    font-size: var(--cp-btn-fs) !important;
+    line-height: 1.4 !important;
+    margin-top: 4px !important;
+  }
+
+  /* --- adesão: parágrafo de abertura, caixas, linha e cartões --- */
+  body.hub-ativo #hub-modal-corpo #adesao-plano-container > div > p[style] {
+    font-size: var(--cp-label-fs) !important;
+    margin: 0 0 var(--cp-gap-y) !important;
+  }
+
+  body.hub-ativo #hub-modal-corpo #adesao-plano-container > div > div {
+    padding: var(--cp-card-pad) !important;
+    margin-bottom: 8px !important;
+  }
+
+  body.hub-ativo #hub-modal-corpo #adesao-plano-container > div > div:first-of-type > div:first-child {
+    gap: var(--cp-gap-x) !important;
+  }
+
+  /* cartão da Ordinária/Especial: sozinho parava de esticar a tabela de
+     3 colunas por ~1100px; com a Especial aberta, os dois ficam lado a lado */
+  body.hub-ativo #hub-modal-corpo #adesao-plano-container > div > div:first-of-type > div:first-child > div {
+    flex: 1 1 320px !important;
+    max-width: 560px;
+    padding: var(--cp-card-pad) !important;
+  }
+
+  /* --- adesão: subtítulos --- */
+  body.hub-ativo #hub-modal-corpo #adesao-plano-container h5 {
+    font-size: var(--cp-h4-fs) !important;
+    margin: 0 0 4px !important;
+    letter-spacing: 0.02em;
+  }
+
+  /* o onclick do h4 (abre/fecha os planos) não depende de estilo */
+  body.hub-ativo #hub-modal-corpo #adesao-plano-container h4 {
+    font-size: var(--cp-h4-fs) !important;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+  }
+
+  /* --- adesão: tabelas de parcelamento (a raiz dá margin-top 1.5rem,
+     borda, raio e fundo a toda tabela) --- */
+  body.hub-ativo #hub-modal-corpo #adesao-plano-container table {
+    margin-top: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    font-size: var(--cp-table-fs) !important;
+    line-height: 1.25;
+  }
+
+  /* --- adesão: wrappers dos botões --- */
+  body.hub-ativo #hub-modal-corpo #adesao-plano-container div[style*='margin-top: 0.6rem'] {
+    margin-top: var(--cp-gap-y) !important;
+  }
+
+  /* --- adesão: linha "Qtd. Recomendações" (só existe na Especial) --- */
+  body.hub-ativo #hub-modal-corpo #adesao-plano-container div[style*='margin-bottom: 0.6rem'] {
+    margin-bottom: var(--cp-gap-y) !important;
+    padding: 4px 8px !important;
+    gap: var(--cp-gap-x) !important;
+  }
+
+  body.hub-ativo #hub-modal-corpo #adesao-plano-container label {
+    font-size: var(--cp-label-fs) !important;
+    font-weight: 600;
+  }
+
+  body.hub-ativo #hub-modal-corpo #adesao-plano-container input[type='number'] {
+    width: 72px !important; /* inline width: 60px */
+    min-height: var(--cp-ctl-h);
+    margin: 0;
+  }
+
+  /* --- adesão: linha dos 5 planos HV e cada cartão ---
+     NUNCA definir display aqui: o onclick do h4 alterna style.display */
+  body.hub-ativo #hub-modal-corpo #adesao-plano-container h4 + div {
+    gap: var(--cp-gap-x) !important;
+    margin-top: 8px !important;
+  }
+
+  body.hub-ativo #hub-modal-corpo #adesao-plano-container h4 + div > div {
+    flex: 1 1 180px !important;
+    padding: var(--cp-card-pad) !important;
+  }
+
+  body.hub-ativo #hub-modal-corpo #adesao-plano-container h4 + div > div > div:first-of-type {
+    margin-bottom: 4px !important;
+  }
+
+  body.hub-ativo #hub-modal-corpo #adesao-plano-container h4 + div ul {
+    margin: 4px 0 0 !important;
+  }
+
+  body.hub-ativo #hub-modal-corpo #adesao-plano-container h4 + div li {
+    padding: 1px 0 !important;
+    line-height: 1.3;
+  }
+
+  body.hub-ativo #hub-modal-corpo #adesao-plano-container h4 + div > div > div:last-child {
+    margin-top: 4px !important;
+    padding-top: 4px !important;
+  }
+
+  /* --- adesão: mapa de tamanhos mínimos dos textos inline (8–11.2px →
+     ≥11px). '0.5rem' não casa '0.55rem', '0.6rem' não casa '0.65rem',
+     '1rem' não casa '1.1rem'. Os <button> ('Proposta Especial' 0.65rem;
+     'Selecionar esta' e o X 0.7rem) ficam FORA do mapa: fonte de botão
+     só em ≥900 (bloco 9c). :where() mantém a especificidade em (2,2,1). --- */
+  body.hub-ativo #hub-modal-corpo #adesao-plano-container [style*='font-size: 0.5rem'] {
+    font-size: 9px !important; /* ícone check dos itens */
+  }
+
+  body.hub-ativo #hub-modal-corpo #adesao-plano-container [style*='font-size: 0.55rem'],
+  body.hub-ativo #hub-modal-corpo #adesao-plano-container [style*='font-size: 0.6rem'] {
+    font-size: 11px !important;
+  }
+
+  body.hub-ativo #hub-modal-corpo #adesao-plano-container :where(:not(button))[style*='font-size: 0.65rem'] {
+    font-size: var(--cp-label-fs) !important;
+  }
+
+  body.hub-ativo #hub-modal-corpo #adesao-plano-container :where(:not(button))[style*='font-size: 0.7rem'] {
+    font-size: var(--cp-table-fs) !important;
+  }
+
+  body.hub-ativo #hub-modal-corpo #adesao-plano-container [style*='font-size: 1rem'],
+  body.hub-ativo #hub-modal-corpo #adesao-plano-container [style*='font-size: 1.1rem'] {
+    font-size: var(--cp-h3-fs) !important;
+  }
+}
+
+/* 9b. células das tabelas de parcelamento (≥769) — ../style.css 542-594
+   empilha TODA tabela em bloco (td padding-left 50%) até 768px e não se
+   quer brigar com isso. Com 12px/1.25 e 3px de padding as 14 linhas
+   cabem nos 320px inline sem rolagem interna (max-height intocado).
+   td[style] (2,2,2) vence o mapa de tamanhos por atributo (2,2,1). */
+@media (min-width: 769px) {
+  body.hub-ativo #hub-modal-corpo #adesao-plano-container th {
+    padding: var(--cp-cell-pad) !important;
+    font-size: var(--cp-th-fs);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+  }
+
+  body.hub-ativo #hub-modal-corpo #adesao-plano-container td[style] {
+    padding: 3px 8px !important;
+    font-size: var(--cp-table-fs) !important;
+  }
+
+  body.hub-ativo #hub-modal-corpo #adesao-plano-container td span {
+    font-size: 11px !important;
+    padding: 0 4px !important;
+  }
+}
+
+/* 9c. controles e botões da área (≥900) */
+@media (min-width: 900px) {
+  body.hub-ativo #hub-modal-corpo #perfil-financeiro-container select {
+    height: var(--cp-ctl-h);
+    padding: var(--cp-ctl-pad) !important;
+    font-size: var(--cp-ctl-fs) !important;
+  }
+
+  body.hub-ativo #hub-modal-corpo #adesao-plano-container input[type='number'] {
+    height: var(--cp-ctl-h);
+    padding: 4px 6px !important;
+    font-size: var(--cp-ctl-fs) !important;
+  }
+
+  /* "Selecionar esta" / "Proposta Especial" (botão pequeno) */
+  body.hub-ativo #hub-modal-corpo #adesao-plano-container button[style] {
+    height: var(--cp-btn-sm-h);
+    margin: 0;
+    padding: 0 10px !important;
+    font-size: var(--cp-btn-sm-fs) !important;
+    line-height: 22px;
+  }
+
+  /* X de fechar a Especial (só-ícone; só existe no cabeçalho da Especial) */
+  body.hub-ativo #hub-modal-corpo #adesao-plano-container h5 + button {
+    width: var(--cp-btn-icon);
+    height: var(--cp-btn-icon);
+    padding: 0 !important;
+    font-size: 12px !important;
+    line-height: 26px;
+  }
+}
+
+
+/* =====================================================================
+   10. SOBRESCRITAS DE hub.css
+   (o padding do #hub-modal-corpo no desktop está no bloco 7b, ≥900,
+   sem tocar nas faixas 0.7 / 0.6 / 0.5rem de hub.css §16-18)
+   ===================================================================== */
+@media (min-width: 600px) {
+  /* hub.css 1123-1129 dá padding-top: 0.6rem !important ao conteúdo da
+     seção (o !important existe para vencer .section-content.collapsed da
+     v2). Mesma especificidade + !important + carga posterior → vence. */
+  body.hub-ativo #hub-modal-corpo > .form-container > .section-content {
+    padding-top: 4px !important;
+  }
+}

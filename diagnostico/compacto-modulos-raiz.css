@@ -1,0 +1,1027 @@
+/* =====================================================================
+   diagnostico/compacto-modulos-raiz.css  —  dono B1-modulos-raiz
+
+   Sobrescritas SÓ DE APRESENTAÇÃO para o que os módulos da RAIZ renderizam
+   dentro do modal do hub v2 (#hub-modal-corpo):
+     produtos-protecao-module.js, sucessao-module.js, contas-cartoes-module.js,
+     ir-module.js, objetivos-module.js (inclui #analises-objetivos-container e
+     #adesao-plano-container).
+   Os arquivos da raiz são congelados; os seletores por atributo
+   ([style*="…"]) dependem das strings inline exatas indicadas em cada trecho.
+
+   Carga: no <head> do HTML v2, depois de hub.css, perfil-financeiro.css e
+   compacto.css (dono A declara os tokens --cp-* em
+   body.hub-ativo #hub-modal-corpo). Aqui só var(--cp-…, fallback).
+
+   Faixas (contrato):
+     Bloco A  @media (min-width: 600px)  tipografia, margens, paddings, gaps,
+                                          chips e grades compactas
+     Bloco B  @media (min-width: 900px)  altura/padding/fonte de input, select,
+                                          textarea e botão + grid-template-columns
+                                          (abaixo de 900px o hub.css §16 impõe
+                                          16px nos campos e 1 coluna nas grades)
+     Bloco C  @media (min-width: 1200px) templates de linha única
+   Nada vale abaixo de 600px: o toque de 44px da v3 e o empilhamento do HTML v2
+   (<768px) permanecem intactos.
+
+   !important só onde o módulo escreve o mesmo atributo em style="" inline.
+   ===================================================================== */
+
+
+/* =====================================================================
+   1. PRODUTOS DE PROTEÇÃO — produtos-protecao-module.js
+   ===================================================================== */
+
+/* ---- Bloco A (≥600px) ---- */
+@media (min-width: 600px) {
+
+  /* 144 — .produto-protecao-card: inline border 2px / radius 10px / padding 1.2rem / mb 1rem.
+     Vence a regra <768px do HTML v2 (linha 1117, padding !important) por especificidade — intencional. */
+  body.hub-ativo #hub-modal-corpo .produto-protecao-card {
+    padding: var(--cp-card-pad, 8px 10px) !important;
+    margin-bottom: var(--cp-card-mb, 6px) !important;
+    border-radius: var(--cp-radius, 8px) !important;
+    border-width: 1px !important;
+  }
+
+  /* 145 — .produto-protecao-header: inline mb 1rem / pb 0.5rem */
+  body.hub-ativo #hub-modal-corpo .produto-protecao-header {
+    margin-bottom: 6px !important;
+    padding-bottom: 4px !important;
+  }
+
+  /* 146-148 (re-render em 374-376) — h4.produto-protecao-title e chip de custo.
+     Sem text-transform: o h4 exibe o nome do produto digitado. */
+  body.hub-ativo #hub-modal-corpo .produto-protecao-title {
+    font-size: var(--cp-h4-fs, 12.5px) !important;
+    font-weight: 700 !important;
+    line-height: var(--cp-chip-h, 20px);
+  }
+  body.hub-ativo #hub-modal-corpo .produto-protecao-title > span {
+    display: inline-block;
+    font-size: 11px !important;
+    line-height: var(--cp-chip-h, 20px);
+    padding: 0 8px !important;
+    margin-left: 6px !important;
+    vertical-align: top;
+  }
+
+  /* 157 — .form-grid dos 7 campos: gap inline 1rem (colunas nos Blocos B/C) */
+  body.hub-ativo #hub-modal-corpo .produto-protecao-card .form-grid {
+    gap: var(--cp-gap-y, 6px) var(--cp-gap-x, 8px) !important;
+    margin-bottom: 0 !important;
+  }
+
+  /* 159, 180, 192, 205, 217, 228, 240 (0.9rem) e 255 'Contratações' (0.85rem) — rótulos inline */
+  body.hub-ativo #hub-modal-corpo .produto-protecao-card label {
+    font-size: var(--cp-label-fs, 11.5px) !important;
+    margin-bottom: 2px !important;
+    line-height: 1.3;
+  }
+
+  /* 253-262 — .contratacoes-section: inline mt 1rem / pt 0.8rem; cabeçalho mb 0.5rem; lista gap 0.4rem */
+  body.hub-ativo #hub-modal-corpo .contratacoes-section {
+    margin-top: 6px !important;
+    padding-top: 6px !important;
+  }
+  body.hub-ativo #hub-modal-corpo .contratacoes-section > div:first-child {
+    margin-bottom: 4px !important;
+  }
+  body.hub-ativo #hub-modal-corpo .contratacoes-section [id$="_contratacoes"] {
+    gap: 4px !important;
+  }
+
+  /* 281 — <p> 'Nenhuma contratação adicionada.' inline 0.8rem */
+  body.hub-ativo #hub-modal-corpo .contratacoes-section [id$="_contratacoes"] p {
+    font-size: var(--cp-table-fs, 12px) !important;
+  }
+
+  /* 286-290 — faixa 'Vinculado ao patrimônio' (div irmã após .contratacoes-section): inline mt 0.5rem / padding 0.5rem / 0.8rem */
+  body.hub-ativo #hub-modal-corpo .produto-protecao-card > .contratacoes-section ~ div {
+    margin-top: 4px !important;
+    padding: 3px 8px !important;
+    font-size: var(--cp-label-fs, 11.5px) !important;
+  }
+
+  /* 118 — estado vazio: inline padding 1rem */
+  body.hub-ativo #hub-modal-corpo #produtos-protecao-container > p {
+    padding: 6px 0 !important;
+    font-size: 12.5px;
+  }
+
+  /* 312-315 (calcularTotalProtecao reescreve o innerHTML com font-size inline)
+     + HTML v2 2155 (.patrimonio-total, inline margin-right 1rem) — totalizador do cabeçalho */
+  body.hub-ativo #hub-modal-corpo #produtos-protecao-total {
+    padding: 2px 10px !important;
+    min-width: 0;
+    margin-right: 8px !important;
+    line-height: 1.3;
+  }
+  body.hub-ativo #hub-modal-corpo #produtos-protecao-total > div {
+    font-size: var(--cp-label-fs, 11.5px) !important;
+  }
+  body.hub-ativo #hub-modal-corpo #produtos-protecao-total > div + div {
+    font-size: var(--cp-fs, 13px) !important;
+  }
+}
+
+/* ---- Bloco B (≥900px) ---- */
+@media (min-width: 900px) {
+
+  /* 151 — .delete-btn só-ícone: inline padding 0.3rem / 0.9rem */
+  body.hub-ativo #hub-modal-corpo .produto-protecao-actions .delete-btn {
+    width: var(--cp-btn-icon, 26px);
+    height: var(--cp-btn-icon, 26px);
+    padding: 0 !important;
+    font-size: 12px !important;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* 157 — 4 colunas iguais (2 linhas) no fallback 900-1199px */
+  body.hub-ativo #hub-modal-corpo .produto-protecao-card .form-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  }
+
+  /* 167, 187 (readonly: opacity/cursor intactos), 201, 210, 224, 236, 245 —
+     input/select inline: padding 0.7rem / border 2px / radius 8px / 0.9rem */
+  body.hub-ativo #hub-modal-corpo .produto-protecao-card .form-group input,
+  body.hub-ativo #hub-modal-corpo .produto-protecao-card .form-group select {
+    height: var(--cp-ctl-h, 30px) !important;
+    padding: var(--cp-ctl-pad, 4px 8px) !important;
+    font-size: var(--cp-ctl-fs, 13px) !important;
+    border-width: 1.5px !important;
+    border-radius: 6px !important;
+  }
+
+  /* 161-163 — button.btn-gerenciar dentro do rótulo 'Tipo de Produto': inline padding 0.2rem 0.5rem / 0.7rem / ml 0.5rem */
+  body.hub-ativo #hub-modal-corpo .produto-protecao-card .btn-gerenciar {
+    display: inline-flex;
+    align-items: center;
+    height: var(--cp-chip-h, 20px);
+    padding: 0 6px !important;
+    font-size: 11px !important;
+    margin-left: 6px !important;
+    vertical-align: middle;
+  }
+
+  /* 258 — botão 'Adicionar' contratação: inline padding 0.2rem 0.6rem / 0.75rem */
+  body.hub-ativo #hub-modal-corpo .contratacoes-section > div:first-child > button {
+    height: var(--cp-btn-sm-h, 24px);
+    padding: 0 8px !important;
+    font-size: var(--cp-btn-sm-fs, 11.5px) !important;
+  }
+
+  /* 264-279 — linha de contratação: input nome (flex 2), input valor (flex 1), botão remover só-ícone */
+  body.hub-ativo #hub-modal-corpo .contratacoes-section [id$="_contratacoes"] input {
+    height: var(--cp-ctl-h, 30px) !important;
+    padding: var(--cp-ctl-pad, 4px 8px) !important;
+    font-size: var(--cp-ctl-fs, 13px) !important;
+  }
+  body.hub-ativo #hub-modal-corpo .contratacoes-section [id$="_contratacoes"] input + input {
+    flex: 0 0 var(--cp-w-moeda, 160px) !important;
+  }
+  body.hub-ativo #hub-modal-corpo .contratacoes-section [id$="_contratacoes"] button {
+    width: var(--cp-btn-icon, 26px);
+    height: var(--cp-btn-icon, 26px);
+    padding: 0 !important;
+    font-size: 12px !important;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* HTML v2 2170 (#add-produto-protecao-btn) e 2227 (#add-conta-cartao-btn) — .add-btn (592-603) sem inline.
+     Se a Área 1 sobrescrever .add-btn genericamente, fica redundante sem conflito. */
+  body.hub-ativo #hub-modal-corpo #add-produto-protecao-btn,
+  body.hub-ativo #hub-modal-corpo #add-conta-cartao-btn {
+    height: var(--cp-btn-h, 30px);
+    padding: 0 12px;
+    font-size: var(--cp-btn-fs, 12.5px);
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+}
+
+/* ---- Bloco C (≥1200px) ---- */
+@media (min-width: 1200px) {
+
+  /* 157 — os 7 campos numa linha: tipo | objeto | custo | periodicidade | vencimento | seguradora | cotou.
+     Ordem fixa no template (158-249). Colunas fixas nos tokens do contrato (moeda 160 / num 100 / data 150 / num 100
+     = 510px + 6 gaps de 8px = 558px); as 3 colunas flexíveis têm mínimo 0 e repartem a sobra (1.2 : 1.6 : 1.2),
+     por isso a grade nunca estoura na horizontal. Largura útil dentro do card ≈ 1060px a 1200px de viewport
+     (janela 1152 − corpo 24 − seção 26 − card 22 − rolagem 17) → sobra ≈ 500px → ~150 / ~200 / ~150px;
+     a 1366px (janela 1200) → ~165 / ~220 / ~165px. */
+  body.hub-ativo #hub-modal-corpo .produto-protecao-card .form-grid {
+    grid-template-columns:
+      minmax(0, 1.2fr) minmax(0, 1.6fr) var(--cp-w-moeda, 160px) var(--cp-w-num, 100px) var(--cp-w-data, 150px) minmax(0, 1.2fr) var(--cp-w-num, 100px) !important;
+  }
+}
+
+
+/* =====================================================================
+   2. SUCESSÃO — sucessao-module.js
+   Filhos de #sucessao-container (comentários HTML não contam):
+   [div parâmetros, .sucessao-card… ou <p>, div resumo geral]
+   ===================================================================== */
+
+/* ---- Bloco A (≥600px) ---- */
+@media (min-width: 600px) {
+
+  /* 362-365 — caixa 'Parâmetros de Cálculo': inline border 2px / radius 10px / padding 1.2rem / mb 1.5rem; h4 1rem mb 1rem */
+  body.hub-ativo #hub-modal-corpo #sucessao-container > div:first-child {
+    padding: var(--cp-card-pad, 8px 10px) !important;
+    margin-bottom: 8px !important;
+    border-radius: var(--cp-radius, 8px) !important;
+    border-width: 1px !important;
+  }
+  body.hub-ativo #hub-modal-corpo #sucessao-container > div:first-child > h4 {
+    font-size: var(--cp-h4-fs, 12.5px) !important;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .02em;
+    margin: 0 0 6px !important;
+  }
+
+  /* 366-407 — .form-grid-3 / .form-group label (base do HTML v2 150-191, sem inline) */
+  body.hub-ativo #hub-modal-corpo #sucessao-container .form-grid-3 {
+    gap: var(--cp-gap-y, 6px) var(--cp-gap-x, 8px);
+    margin-bottom: 0;
+  }
+  body.hub-ativo #hub-modal-corpo #sucessao-container .form-group label {
+    font-size: var(--cp-label-fs, 11.5px);
+    margin-bottom: 2px;
+    line-height: 1.3;
+  }
+
+  /* 271-278 — .sucessao-card, .sucessao-header, h4 (nome da pessoa, sem text-transform) e chip de tipo — inline */
+  body.hub-ativo #hub-modal-corpo .sucessao-card {
+    padding: var(--cp-card-pad, 8px 10px) !important;
+    margin-bottom: var(--cp-card-mb, 6px) !important;
+    border-radius: var(--cp-radius, 8px) !important;
+    border-width: 1px !important;
+  }
+  body.hub-ativo #hub-modal-corpo .sucessao-header {
+    margin-bottom: 6px !important;
+    padding-bottom: 4px !important;
+  }
+  body.hub-ativo #hub-modal-corpo .sucessao-header h4 {
+    font-size: var(--cp-h4-fs, 12.5px) !important;
+    font-weight: 700 !important;
+    line-height: var(--cp-chip-h, 20px);
+  }
+  body.hub-ativo #hub-modal-corpo .sucessao-header h4 > span {
+    display: inline-block;
+    font-size: 11px !important;
+    line-height: var(--cp-chip-h, 20px);
+    padding: 0 8px !important;
+    margin-left: 6px !important;
+    vertical-align: top;
+  }
+
+  /* 281-331 — grade das 3 caixas (Patrimônio Líquido / Físico / Dívidas):
+     inline 'repeat(auto-fit, minmax(200px, 1fr))' gap 1rem; caixas padding 1rem; h5 0.9rem; texto 0.85rem; linhas mb 0.3rem.
+     Colunas já estão no alvo — só espaçamento e tipografia. */
+  body.hub-ativo #hub-modal-corpo .sucessao-card > div[style*="auto-fit"] {
+    gap: var(--cp-gap-x, 8px) !important;
+  }
+  body.hub-ativo #hub-modal-corpo .sucessao-card > div[style*="auto-fit"] > div {
+    padding: 6px 8px !important;
+  }
+  body.hub-ativo #hub-modal-corpo .sucessao-card > div[style*="auto-fit"] h5 {
+    font-size: var(--cp-h5-fs, 12px) !important;
+    margin: 0 0 3px !important;
+  }
+  body.hub-ativo #hub-modal-corpo .sucessao-card > div[style*="auto-fit"] > div > div {
+    font-size: var(--cp-table-fs, 12px) !important;
+  }
+  body.hub-ativo #hub-modal-corpo .sucessao-card > div[style*="auto-fit"] > div > div > div {
+    margin-bottom: 2px !important;
+  }
+
+  /* 335-348 — resumo do card (Saldo do Patrimônio / Custo Estimado): inline mt 1rem / pt 1rem / gap 1rem; rótulo 0.85rem; valor 1.2rem */
+  body.hub-ativo #hub-modal-corpo .sucessao-card > div:last-child {
+    margin-top: 6px !important;
+    padding-top: 6px !important;
+    gap: var(--cp-gap-x, 8px) !important;
+  }
+  body.hub-ativo #hub-modal-corpo .sucessao-card > div:last-child > div > div:first-child {
+    font-size: var(--cp-label-fs, 11.5px) !important;
+    margin-bottom: 1px !important;
+  }
+  body.hub-ativo #hub-modal-corpo .sucessao-card > div:last-child > div > div:last-child {
+    font-size: var(--cp-h3-fs, 15px) !important;
+  }
+
+  /* 415-418 — caixa 'RESUMO GERAL DA SUCESSÃO' (já em caixa alta): inline padding 1.5rem / mt 1.5rem / border 2px / radius 10px; h4 1.2rem */
+  body.hub-ativo #hub-modal-corpo #sucessao-container > div:last-child {
+    padding: var(--cp-card-pad, 8px 10px) !important;
+    margin-top: 8px !important;
+    border-radius: var(--cp-radius, 8px) !important;
+    border-width: 1px !important;
+  }
+  body.hub-ativo #hub-modal-corpo #sucessao-container > div:last-child > h4 {
+    font-size: var(--cp-h4-fs, 12.5px) !important;
+    font-weight: 700;
+    margin: 0 0 6px !important;
+  }
+
+  /* 420-433 — 1ª grade do resumo geral (3 tiles): inline 'repeat(auto-fit, minmax(180px, 1fr))' gap 1rem mb 1rem; tiles padding 1rem; rótulo 0.8rem; valor 1rem */
+  body.hub-ativo #hub-modal-corpo #sucessao-container > div:last-child > div[style*="auto-fit"] {
+    gap: var(--cp-gap-x, 8px) !important;
+    margin-bottom: 6px !important;
+  }
+  body.hub-ativo #hub-modal-corpo #sucessao-container > div:last-child > div[style*="auto-fit"] > div {
+    padding: 6px 8px !important;
+  }
+  body.hub-ativo #hub-modal-corpo #sucessao-container > div:last-child > div[style*="auto-fit"] > div > div:first-child {
+    font-size: var(--cp-th-fs, 11px) !important;
+    margin-bottom: 1px !important;
+  }
+  body.hub-ativo #hub-modal-corpo #sucessao-container > div:last-child > div[style*="auto-fit"] > div > div:last-child {
+    font-size: var(--cp-fs, 13px) !important;
+  }
+
+  /* 435-452 — 2ª grade do resumo geral (SALDO TOTAL / CUSTO TOTAL): inline '1fr 1fr' gap 1rem pt 1rem; tiles padding 1rem; rótulo 0.9rem; valor 1.4rem.
+     'auto-fit' e '1fr 1fr' não se sobrepõem. */
+  body.hub-ativo #hub-modal-corpo #sucessao-container > div:last-child > div[style*="1fr 1fr"] {
+    gap: var(--cp-gap-x, 8px) !important;
+    padding-top: 6px !important;
+  }
+  body.hub-ativo #hub-modal-corpo #sucessao-container > div:last-child > div[style*="1fr 1fr"] > div {
+    padding: 6px 8px !important;
+  }
+  body.hub-ativo #hub-modal-corpo #sucessao-container > div:last-child > div[style*="1fr 1fr"] > div > div:first-child {
+    font-size: var(--cp-label-fs, 11.5px) !important;
+    margin-bottom: 1px !important;
+  }
+  body.hub-ativo #hub-modal-corpo #sucessao-container > div:last-child > div[style*="1fr 1fr"] > div > div:last-child {
+    font-size: 16px !important;
+  }
+
+  /* 226 e 412 — estados vazios: inline padding 1rem */
+  body.hub-ativo #hub-modal-corpo #sucessao-container > p {
+    padding: 6px 0 !important;
+    font-size: 12.5px;
+  }
+}
+
+/* ---- Bloco B (≥900px) ---- */
+@media (min-width: 900px) {
+
+  /* 366-407 — 3 percentuais (ITCMD / Emolumentos / Honorários): colunas limitadas e input estreito (sem inline) */
+  body.hub-ativo #hub-modal-corpo #sucessao-container .form-grid-3 {
+    grid-template-columns: repeat(3, minmax(150px, 220px));
+  }
+  body.hub-ativo #hub-modal-corpo #sucessao-container .form-group input {
+    height: var(--cp-ctl-h, 30px);
+    padding: var(--cp-ctl-pad, 4px 8px);
+    font-size: var(--cp-ctl-fs, 13px);
+    max-width: var(--cp-w-pct, 110px);
+  }
+}
+
+
+/* =====================================================================
+   3. CONTAS E CARTÕES — contas-cartoes-module.js
+   ===================================================================== */
+
+/* ---- Bloco A (≥600px) ---- */
+@media (min-width: 600px) {
+
+  /* 328 — .conta-cartao-card: inline border 2px / radius 10px / padding 1.2rem / mb 1rem */
+  body.hub-ativo #hub-modal-corpo .conta-cartao-card {
+    padding: var(--cp-card-pad, 8px 10px) !important;
+    margin-bottom: var(--cp-card-mb, 6px) !important;
+    border-radius: var(--cp-radius, 8px) !important;
+    border-width: 1px !important;
+  }
+
+  /* 329-334 — .cc-header, h4 (nome da instituição, sem text-transform) e <span> do tipo — inline */
+  body.hub-ativo #hub-modal-corpo .cc-header {
+    margin-bottom: 6px !important;
+    padding-bottom: 4px !important;
+  }
+  body.hub-ativo #hub-modal-corpo .cc-header h4 {
+    font-size: var(--cp-h4-fs, 12.5px) !important;
+    font-weight: 700 !important;
+    line-height: var(--cp-chip-h, 20px);
+  }
+  body.hub-ativo #hub-modal-corpo .cc-header h4 > span {
+    font-size: var(--cp-label-fs, 11.5px) !important;
+  }
+
+  /* 341-460 — .form-grid-3 (base HTML v2 150-156, sem inline): gap (colunas nos Blocos B/C) */
+  body.hub-ativo #hub-modal-corpo .conta-cartao-card .form-grid-3 {
+    gap: var(--cp-gap-y, 6px) var(--cp-gap-x, 8px);
+    margin-bottom: 0;
+  }
+
+  /* 344-451 — rótulos (base HTML v2 172-178, sem inline) */
+  body.hub-ativo #hub-modal-corpo .conta-cartao-card .form-group label {
+    font-size: var(--cp-label-fs, 11.5px);
+    margin-bottom: 2px;
+    line-height: 1.3;
+  }
+
+  /* 314-318 — estado vazio: inline padding 1rem */
+  body.hub-ativo #hub-modal-corpo #contas-cartoes-container > p {
+    padding: 6px 0 !important;
+    font-size: 12.5px;
+  }
+}
+
+/* ---- Bloco B (≥900px) ---- */
+@media (min-width: 900px) {
+
+  /* 335-338 — botão 'Excluir' do cabeçalho: inline padding 0.4rem 0.8rem / radius 6px / 0.85rem */
+  body.hub-ativo #hub-modal-corpo .cc-header > button {
+    height: var(--cp-btn-sm-h, 24px);
+    padding: 0 8px !important;
+    font-size: var(--cp-btn-sm-fs, 11.5px) !important;
+    border-radius: 4px !important;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  /* 341 — 4 colunas iguais no fallback 900-1199px (sem inline).
+     Especificidade (1,3,1) vence a base (0,1,0) e o @media 1200 do HTML v2. */
+  body.hub-ativo #hub-modal-corpo .conta-cartao-card .form-grid-3 {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  /* 347-446 — input/select (base HTML v2 180-191, sem inline; o 16px do hub.css só vale <900px) */
+  body.hub-ativo #hub-modal-corpo .conta-cartao-card .form-group input,
+  body.hub-ativo #hub-modal-corpo .conta-cartao-card .form-group select {
+    height: var(--cp-ctl-h, 30px);
+    padding: var(--cp-ctl-pad, 4px 8px);
+    font-size: var(--cp-ctl-fs, 13px);
+  }
+
+  /* 453-457 — textarea de Benefícios (cc_N_beneficios, rows=2): inline padding 0.7rem / border 2px / radius 8px / 0.9rem */
+  body.hub-ativo #hub-modal-corpo .conta-cartao-card textarea {
+    padding: var(--cp-ctl-pad, 4px 8px) !important;
+    font-size: var(--cp-ctl-fs, 13px) !important;
+    border-width: 1.5px !important;
+    border-radius: 6px !important;
+    min-height: var(--cp-ta-min, 52px);
+  }
+
+  /* 375-379 — botão engrenagem dentro do rótulo 'Tipo de Cartão': inline 0.8rem / ml 0.3rem */
+  body.hub-ativo #hub-modal-corpo .conta-cartao-card .form-group label > button {
+    font-size: var(--cp-label-fs, 11.5px) !important;
+    padding: 0 !important;
+    margin-left: 4px !important;
+    vertical-align: middle;
+    line-height: 1;
+  }
+
+  /* 410-446 — campos curtos no fallback de 4 colunas (no Bloco C as colunas já são fixas: no-op) */
+  body.hub-ativo #hub-modal-corpo [id^="cc_"][id$="_tarifa_anuidade"] {
+    max-width: var(--cp-w-moeda, 160px);
+  }
+  body.hub-ativo #hub-modal-corpo [id^="cc_"][id$="_pontos_por_dolar"],
+  body.hub-ativo #hub-modal-corpo [id^="cc_"][id$="_cashback"] {
+    max-width: var(--cp-w-pct, 110px);
+  }
+}
+
+/* ---- Bloco C (≥1200px) ---- */
+@media (min-width: 1200px) {
+
+  /* 341 — 7 campos numa linha: tipo | titular | tipo de cartão (ou <div> vazio, 391) | instituição | anuidade | pontos | cashback;
+     Benefícios (.full-width) na 2ª linha. Colunas fixas nos tokens do contrato (tipo 140 / moeda 160 / num 100 / pct 110
+     = 510px + 6 gaps de 8px = 558px); as 3 colunas flexíveis têm mínimo 0 e repartem a sobra (1.2 : 1.2 : 1.4),
+     por isso a grade nunca estoura na horizontal. Sobra ≈ 500px a 1200px de viewport → ~157 / ~157 / ~183px;
+     a 1366px → ~174 / ~174 / ~203px (conta feita como na Proteção, acima).
+     Item tipo 'Conta' gera 5 células → colunas 6-7 vazias (aceitável). */
+  body.hub-ativo #hub-modal-corpo .conta-cartao-card .form-grid-3 {
+    grid-template-columns:
+      140px minmax(0, 1.2fr) minmax(0, 1.2fr) minmax(0, 1.4fr) var(--cp-w-moeda, 160px) var(--cp-w-num, 100px) var(--cp-w-pct, 110px);
+  }
+}
+
+
+/* =====================================================================
+   4. IMPOSTO DE RENDA — ir-module.js
+   ===================================================================== */
+
+/* ---- Bloco A (≥600px) ---- */
+@media (min-width: 600px) {
+
+  /* 250 e 270 — .ir-card (inclui o card de dependente): inline border 2px / radius 10px / padding 1.2rem / mb 1rem */
+  body.hub-ativo #hub-modal-corpo .ir-card {
+    padding: var(--cp-card-pad, 8px 10px) !important;
+    margin-bottom: var(--cp-card-mb, 6px) !important;
+    border-radius: var(--cp-radius, 8px) !important;
+    border-width: 1px !important;
+  }
+
+  /* 251 e 271 — .ir-header: inline gap 1rem / mb 1rem (0.5rem no dependente) / pb 0.5rem */
+  body.hub-ativo #hub-modal-corpo .ir-header {
+    gap: var(--cp-gap-x, 8px) !important;
+    margin-bottom: 6px !important;
+    padding-bottom: 4px !important;
+  }
+
+  /* 252-257 e 272-277 — h4 (nome da pessoa, sem text-transform) e chip de tipo — inline */
+  body.hub-ativo #hub-modal-corpo .ir-header h4 {
+    font-size: var(--cp-h4-fs, 12.5px) !important;
+    font-weight: 700 !important;
+    line-height: var(--cp-chip-h, 20px);
+  }
+  body.hub-ativo #hub-modal-corpo .ir-header h4 > span {
+    display: inline-block;
+    font-size: 11px !important;
+    line-height: var(--cp-chip-h, 20px);
+    padding: 0 8px !important;
+    margin-left: 6px !important;
+    vertical-align: top;
+  }
+
+  /* 281 — label 'Tipo:' do cabeçalho: inline 0.9rem */
+  body.hub-ativo #hub-modal-corpo .ir-header label {
+    font-size: var(--cp-label-fs, 11.5px) !important;
+    font-weight: 600;
+  }
+
+  /* 298 — .form-grid-3 (base, sem inline): gap (colunas nos Blocos B/C) */
+  body.hub-ativo #hub-modal-corpo .ir-card .form-grid-3 {
+    gap: var(--cp-gap-y, 6px) var(--cp-gap-x, 8px);
+    margin-bottom: 0;
+  }
+
+  /* 301-448 — rótulos (base, sem inline). Rótulos longos quebram em 2 linhas a ~176px (Bloco C) — aceitável com line-height 1.3 */
+  body.hub-ativo #hub-modal-corpo .ir-card .form-group label {
+    font-size: var(--cp-label-fs, 11.5px);
+    margin-bottom: 2px;
+    line-height: 1.3;
+  }
+
+  /* 259-261 — aviso de dependente (inline padding 1rem) e 132-136 — estado vazio (#ir-container > p) */
+  body.hub-ativo #hub-modal-corpo .ir-card > p {
+    padding: 4px 0 !important;
+    font-size: 12.5px;
+  }
+  body.hub-ativo #hub-modal-corpo #ir-container > p {
+    padding: 6px 0 !important;
+    font-size: 12.5px;
+  }
+}
+
+/* ---- Bloco B (≥900px) ---- */
+@media (min-width: 900px) {
+
+  /* 284-286 — select ir_<key>_tipo_declaracao do cabeçalho: inline padding 0.4rem 0.8rem / border 2px / radius 8px / 0.9rem */
+  body.hub-ativo #hub-modal-corpo .ir-header select {
+    height: var(--cp-ctl-h, 30px) !important;
+    padding: var(--cp-ctl-pad, 4px 8px) !important;
+    font-size: var(--cp-ctl-fs, 13px) !important;
+    border-width: 1.5px !important;
+    border-radius: 6px !important;
+  }
+
+  /* 298 — 12 campos em 3 linhas de 4 (sem inline) */
+  body.hub-ativo #hub-modal-corpo .ir-card .form-grid-3 {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  /* 304-457 — inputs (base, sem inline; o border-color inline de resultado_valor, linha 456, não é tocado) */
+  body.hub-ativo #hub-modal-corpo .ir-card .form-group input {
+    height: var(--cp-ctl-h, 30px);
+    padding: var(--cp-ctl-pad, 4px 8px);
+    font-size: var(--cp-ctl-fs, 13px);
+  }
+
+  /* 434-436 — select 'Resultado' (ir_<key>_resultado_tipo): inline padding 0.7rem / border 2px / radius 8px / 0.9rem */
+  body.hub-ativo #hub-modal-corpo .ir-card .form-group select {
+    height: var(--cp-ctl-h, 30px) !important;
+    padding: var(--cp-ctl-pad, 4px 8px) !important;
+    font-size: var(--cp-ctl-fs, 13px) !important;
+    border-width: 1.5px !important;
+    border-radius: 6px !important;
+  }
+}
+
+/* ---- Bloco C (≥1200px) ---- */
+@media (min-width: 1200px) {
+
+  /* 298 — 2 linhas de 6 (~176px por coluna) */
+  body.hub-ativo #hub-modal-corpo .ir-card .form-grid-3 {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+}
+
+
+/* =====================================================================
+   5. OBJETIVOS — objetivos-module.js
+   Filhos de #objetivos-container (comentários HTML não contam):
+   [div painel, div Metas de Aposentadoria, div Outros Objetivos, #analises-objetivos-container]
+   #analises-objetivos-container fica DENTRO de #objetivos-container: os seletores
+   por atributo abaixo foram conferidos contra 1552-3130 (nenhuma colisão).
+   ===================================================================== */
+
+/* ---- Bloco A (≥600px) ---- */
+@media (min-width: 600px) {
+
+  /* 1556-1627 — painel Mercado / Aportes / Patrim. Aposent.: inline padding 0.8rem / mb 1.5rem; linhas mb/pb 0.6rem */
+  body.hub-ativo #hub-modal-corpo #objetivos-container > div:first-child {
+    padding: 6px 10px !important;
+    margin-bottom: 8px !important;
+  }
+  body.hub-ativo #hub-modal-corpo #objetivos-container > div:first-child > div {
+    margin-bottom: 4px !important;
+    padding-bottom: 4px !important;
+  }
+  body.hub-ativo #hub-modal-corpo #objetivos-container > div:first-child > div:last-child {
+    margin-bottom: 0 !important;
+    padding-bottom: 0 !important;
+    border-bottom: 0 !important;
+  }
+
+  /* 1559-1624 — chips e rótulos internos do painel: inline 0.75rem / 0.7rem / 0.6rem */
+  body.hub-ativo #hub-modal-corpo #objetivos-container > div:first-child span {
+    font-size: var(--cp-h5-fs, 12px) !important;
+  }
+  body.hub-ativo #hub-modal-corpo #objetivos-container > div:first-child span > span:first-child {
+    font-size: var(--cp-th-fs, 11px) !important;
+  }
+
+  /* 1630-1657 — blocos 'Metas de Aposentadoria' (nth-child(2)) e 'Outros Objetivos' (nth-child(3)):
+     inline wrapper mb 2rem; cabeçalhos mb 1rem; h3 1rem (botões no Bloco B) */
+  body.hub-ativo #hub-modal-corpo #objetivos-container > div:nth-child(2) {
+    margin-bottom: 8px !important;
+  }
+  body.hub-ativo #hub-modal-corpo #objetivos-container > div:nth-child(2) > div:first-child,
+  body.hub-ativo #hub-modal-corpo #objetivos-container > div:nth-child(3) > div:first-child {
+    margin-bottom: 6px !important;
+  }
+  body.hub-ativo #hub-modal-corpo #objetivos-container > div:nth-child(2) h3,
+  body.hub-ativo #hub-modal-corpo #objetivos-container > div:nth-child(3) h3 {
+    font-size: var(--cp-h3-fs, 15px) !important;
+    font-weight: 700;
+  }
+
+  /* 1662-1665 — wrapper 'Objetivos Intangíveis' (inline 'border-top: 1px dashed rgba(153, 102, 255, 0.4)'): mt/pt 1rem; h4 0.9rem mb 0.8rem */
+  body.hub-ativo #hub-modal-corpo #objetivos-container div[style*="border-top: 1px dashed"] {
+    margin-top: 8px !important;
+    padding-top: 8px !important;
+  }
+  body.hub-ativo #hub-modal-corpo #objetivos-container div[style*="border-top: 1px dashed"] > h4 {
+    font-size: var(--cp-h4-fs, 12.5px) !important;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .02em;
+    margin: 0 0 6px !important;
+  }
+
+  /* 1700, 1768, 1877 — os 3 cards de objetivo (inline 'padding: 0.5rem 0.8rem; margin-bottom: 0.5rem'):
+     card, linha de cabeçalho (mb 0.4rem/0.3rem), h4 / 'Prioridade' / 'Intangível' (0.8rem). Lixeira no Bloco B. */
+  body.hub-ativo #hub-modal-corpo #objetivos-container div[style*="padding: 0.5rem 0.8rem"] {
+    padding: var(--cp-card-pad, 8px 10px) !important;
+    margin-bottom: var(--cp-card-mb, 6px) !important;
+  }
+  body.hub-ativo #hub-modal-corpo #objetivos-container div[style*="padding: 0.5rem 0.8rem"] > div:first-child {
+    margin-bottom: 4px !important;
+  }
+  body.hub-ativo #hub-modal-corpo #objetivos-container div[style*="padding: 0.5rem 0.8rem"] > div:first-child h4,
+  body.hub-ativo #hub-modal-corpo #objetivos-container div[style*="padding: 0.5rem 0.8rem"] > div:first-child > div > span:first-of-type {
+    font-size: var(--cp-h4-fs, 12.5px) !important;
+    font-weight: 700 !important;
+  }
+
+  /* 1712 … 1898 (15 rótulos, inline 'font-size: 0.6rem; display: block; margin-bottom: 0.1rem') */
+  body.hub-ativo #hub-modal-corpo #objetivos-container label[style*="font-size: 0.6rem"] {
+    font-size: var(--cp-label-fs, 11.5px) !important;
+    font-weight: 600;
+    margin-bottom: 2px !important;
+    line-height: 1.3;
+  }
+
+  /* 1710, 1780, 1811, 1888 — as 4 grades dos cards: inline gap 0.5rem / mb 0.3-0.4rem (colunas no Bloco B).
+     O prefixo 'columns: ' é obrigatório: '1fr 1fr 1fr 140px' contém a substring '1fr 1fr 140px'. */
+  body.hub-ativo #hub-modal-corpo #objetivos-container div[style*="columns: 1fr 130px 150px 150px"],
+  body.hub-ativo #hub-modal-corpo #objetivos-container div[style*="columns: 1fr 1fr 130px 140px"],
+  body.hub-ativo #hub-modal-corpo #objetivos-container div[style*="columns: 1fr 1fr 1fr 140px"],
+  body.hub-ativo #hub-modal-corpo #objetivos-container div[style*="columns: 1fr 1fr 140px"] {
+    gap: var(--cp-gap-y, 6px) var(--cp-gap-x, 8px) !important;
+    margin-bottom: 4px !important;
+  }
+
+  /* 1742 e 1815 — 'Disponível: R$ …' (inline 'font-size: 0.55rem; … margin-top: 0.1rem') */
+  body.hub-ativo #hub-modal-corpo #objetivos-container div[style*="font-size: 0.55rem"] {
+    font-size: var(--cp-th-fs, 11px) !important;
+    margin-top: 2px !important;
+  }
+
+  /* 1746-1752 e 1836 — chips de resultado (inline 'padding: 0.15rem 0.5rem; … font-size: 0.7rem');
+     1835 — linha 'Aporte Mensal Nec.' (inline 'padding: 0.25rem 0.5rem; margin-bottom: 0.3rem') */
+  body.hub-ativo #hub-modal-corpo #objetivos-container div[style*="padding: 0.5rem 0.8rem"] span[style*="padding: 0.15rem 0.5rem"] {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    height: var(--cp-chip-h, 20px);
+    padding: 0 8px !important;
+    font-size: var(--cp-label-fs, 11.5px) !important;
+  }
+  body.hub-ativo #hub-modal-corpo #objetivos-container div[style*="padding: 0.25rem 0.5rem; margin-bottom: 0.3rem"] {
+    padding: 0 !important;
+    margin-bottom: 4px !important;
+  }
+
+  /* 1840-1858 — faixa Recorrência + Acumulável (div inline 'background: rgba(212, 175, 55, 0.1); border-radius: 4px'):
+     padding 0.25rem 0.5rem / gap 0.8rem; spans 0.6-0.7rem. Os <span> do painel (1567/1599/1602) têm string parecida mas são span, não div. */
+  body.hub-ativo #hub-modal-corpo #objetivos-container div[style*="background: rgba(212, 175, 55, 0.1); border-radius: 4px"] {
+    padding: 3px 8px !important;
+    gap: 12px !important;
+  }
+  body.hub-ativo #hub-modal-corpo #objetivos-container div[style*="background: rgba(212, 175, 55, 0.1); border-radius: 4px"] span {
+    font-size: var(--cp-label-fs, 11.5px) !important;
+  }
+
+  /* 1913-1929 — caixa de Marcos do intangível (inline 'border: 1px solid rgba(153, 102, 255, 0.2)'): padding 0.4rem 0.6rem / mt 0.3rem; título 0.7rem */
+  body.hub-ativo #hub-modal-corpo #objetivos-container div[style*="border: 1px solid rgba(153, 102, 255, 0.2)"] {
+    padding: 4px 8px !important;
+    margin-top: 4px !important;
+  }
+  body.hub-ativo #hub-modal-corpo #objetivos-container div[style*="border: 1px solid rgba(153, 102, 255, 0.2)"] > div:first-child > span {
+    font-size: var(--cp-label-fs, 11.5px) !important;
+  }
+
+  /* 1998-2046 — #analises-objetivos-container: filhos do wrapper = [h3, div perfil, div gráfico, div resumos].
+     Inline: wrapper mt 2rem / pt 1.5rem; h3 1rem mb 1rem; perfil mb 1rem; gráfico padding 1rem mb 1.5rem; caixas padding 1rem;
+     h4 0.85rem mb 0.8rem; h5 (2702, 2903, 3046) 0.8rem mb 0.5rem. O canvas height=300 e o botão de atualizar (já 26px) não são tocados. */
+  body.hub-ativo #hub-modal-corpo #analises-objetivos-container > div {
+    margin-top: 10px !important;
+    padding-top: 8px !important;
+  }
+  body.hub-ativo #hub-modal-corpo #analises-objetivos-container > div > h3 {
+    font-size: var(--cp-h3-fs, 15px) !important;
+    margin: 0 0 6px !important;
+  }
+  body.hub-ativo #hub-modal-corpo #analises-objetivos-container > div > div:nth-child(2) {
+    margin-bottom: 6px !important;
+  }
+  body.hub-ativo #hub-modal-corpo #analises-objetivos-container > div > div:nth-child(3) {
+    padding: var(--cp-card-pad, 8px 10px) !important;
+    margin-bottom: 8px !important;
+  }
+  body.hub-ativo #hub-modal-corpo #analises-objetivos-container > div > div:nth-child(4) > div {
+    padding: var(--cp-card-pad, 8px 10px) !important;
+  }
+  body.hub-ativo #hub-modal-corpo #analises-objetivos-container h4 {
+    font-size: var(--cp-h4-fs, 12.5px) !important;
+    margin: 0 0 6px !important;
+  }
+  body.hub-ativo #hub-modal-corpo #analises-objetivos-container h5 {
+    font-size: var(--cp-h5-fs, 12px) !important;
+    margin: 0 0 4px !important;
+  }
+}
+
+/* ---- Bloco B (≥900px) ---- */
+@media (min-width: 900px) {
+
+  /* 1562-1585 — mini-inputs do painel (inline width 42px / padding 0.1rem 0.2rem / 0.7rem; date width 110px / 0.65rem) e botão sync (0.15rem 0.4rem / 0.6rem).
+     Inputs no token de CONTROLE do contrato (--cp-ctl-h / --cp-ctl-fs / --cp-ctl-pad), larguras estreitas mantidas
+     (50px decimais / 124px data — não esticar). Nos decimais de 50px o padding lateral fica em 4px: com 8px de cada
+     lado sobrariam 32px para '13,25' a 13px (~35px) e o texto centralizado cortaria. O botão sync segue 'pequeno'. */
+  body.hub-ativo #hub-modal-corpo #objetivos-container > div:first-child input {
+    height: var(--cp-ctl-h, 30px) !important;
+    font-size: var(--cp-ctl-fs, 13px) !important;
+    padding: var(--cp-ctl-pad, 4px 8px) !important;
+  }
+  body.hub-ativo #hub-modal-corpo #objetivos-container > div:first-child input[inputmode="decimal"] {
+    width: 50px !important;
+    padding: 4px !important;
+  }
+  body.hub-ativo #hub-modal-corpo #objetivos-container > div:first-child input[type="date"] {
+    width: 124px !important;
+  }
+  body.hub-ativo #hub-modal-corpo #objetivos-container > div:first-child button {
+    height: var(--cp-btn-sm-h, 24px);
+    padding: 0 8px !important;
+    font-size: var(--cp-btn-sm-fs, 11.5px) !important;
+  }
+
+  /* 1635, 1650, 1653 — botões '+ Adicionar …' dos cabeçalhos: inline padding 0.5rem 1rem / radius 4px / 0.8rem */
+  body.hub-ativo #hub-modal-corpo #objetivos-container > div:nth-child(2) > div:first-child button,
+  body.hub-ativo #hub-modal-corpo #objetivos-container > div:nth-child(3) > div:first-child button {
+    height: var(--cp-btn-h, 30px);
+    padding: 0 12px !important;
+    font-size: var(--cp-btn-fs, 12.5px) !important;
+    font-weight: 600;
+    border-radius: 6px !important;
+  }
+
+  /* 1705, 1776, 1884 — lixeira dos cards: inline 0.8rem sem tamanho fixo */
+  body.hub-ativo #hub-modal-corpo #objetivos-container div[style*="padding: 0.5rem 0.8rem"] > div:first-child > button {
+    width: var(--cp-btn-icon, 26px);
+    height: var(--cp-btn-icon, 26px);
+    padding: 0 !important;
+    font-size: 12px !important;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* 1714 … 1907 (22 controles com inline 'padding: 0.3rem;' — não casa com '0.15rem 0.3rem' nem '0.2rem 0.3rem')
+     e 1730 — input de idade (inline width 50px) */
+  body.hub-ativo #hub-modal-corpo #objetivos-container input[style*="padding: 0.3rem;"],
+  body.hub-ativo #hub-modal-corpo #objetivos-container select[style*="padding: 0.3rem;"] {
+    height: var(--cp-ctl-h, 30px) !important;
+    padding: var(--cp-ctl-pad, 4px 8px) !important;
+    font-size: var(--cp-ctl-fs, 13px) !important;
+    border-radius: 6px !important;
+  }
+  body.hub-ativo #hub-modal-corpo #objetivos-container input[style*="width: 50px"] {
+    width: 64px !important;
+  }
+
+  /* 1710, 1780, 1811, 1888 — colunas das grades: prazo com 240px (select + data lado a lado), moeda 160px */
+  body.hub-ativo #hub-modal-corpo #objetivos-container div[style*="columns: 1fr 130px 150px 150px"] {
+    grid-template-columns: minmax(160px, 1fr) 240px var(--cp-w-moeda, 160px) var(--cp-w-moeda, 160px) !important;
+  }
+  body.hub-ativo #hub-modal-corpo #objetivos-container div[style*="columns: 1fr 1fr 130px 140px"] {
+    grid-template-columns: 1.2fr 1fr 180px 240px !important;
+  }
+  body.hub-ativo #hub-modal-corpo #objetivos-container div[style*="columns: 1fr 1fr 1fr 140px"] {
+    grid-template-columns: repeat(3, var(--cp-w-moeda, 160px)) minmax(180px, 320px) !important;
+  }
+  body.hub-ativo #hub-modal-corpo #objetivos-container div[style*="columns: 1fr 1fr 140px"] {
+    grid-template-columns: 1.2fr 1fr 240px !important;
+  }
+
+  /* 1719-1734 (aposentadoria: 2ª célula), 1795-1807 e 1897-1909 (objetivo/intangível: última célula) —
+     célula 'Prazo': select e input (ou o <div> de idade) lado a lado dentro dos 240px; o rótulo ocupa a linha inteira.
+     Split 92px + sobra (144px): o select só tem Idade/Meses/Anos/Data (cabe em 92px a 13px) e o input type="date"
+     em Chrome/Windows precisa de ~120-130px com o ícone do calendário — com 1fr 1fr (118px cada) o 'dd/mm/aaaa' cortava.
+     Opcional: se o dono não gostar, remover estas 3 regras e aceitar o prazo em 2 linhas. */
+  body.hub-ativo #hub-modal-corpo #objetivos-container div[style*="columns: 1fr 130px 150px 150px"] > div:nth-child(2),
+  body.hub-ativo #hub-modal-corpo #objetivos-container div[style*="columns: 1fr 1fr 130px 140px"] > div:last-child,
+  body.hub-ativo #hub-modal-corpo #objetivos-container div[style*="columns: 1fr 1fr 140px"] > div:last-child {
+    display: grid;
+    grid-template-columns: 92px minmax(0, 1fr);
+    gap: 0 4px;
+    align-items: end;
+  }
+  body.hub-ativo #hub-modal-corpo #objetivos-container div[style*="columns: 1fr 130px 150px 150px"] > div:nth-child(2) > label,
+  body.hub-ativo #hub-modal-corpo #objetivos-container div[style*="columns: 1fr 1fr 130px 140px"] > div:last-child > label,
+  body.hub-ativo #hub-modal-corpo #objetivos-container div[style*="columns: 1fr 1fr 140px"] > div:last-child > label {
+    grid-column: 1 / -1;
+  }
+  body.hub-ativo #hub-modal-corpo #objetivos-container div[style*="columns: 1fr 130px 150px 150px"] > div:nth-child(2) > :not(label),
+  body.hub-ativo #hub-modal-corpo #objetivos-container div[style*="columns: 1fr 1fr 130px 140px"] > div:last-child > :not(label),
+  body.hub-ativo #hub-modal-corpo #objetivos-container div[style*="columns: 1fr 1fr 140px"] > div:last-child > :not(label) {
+    margin-top: 0 !important;
+  }
+
+  /* 1843-1849 — select/input da faixa Recorrência (inline 0.15rem 0.3rem / 0.7rem; input width 45px): tamanho 'pequeno' de propósito */
+  body.hub-ativo #hub-modal-corpo #objetivos-container div[style*="background: rgba(212, 175, 55, 0.1); border-radius: 4px"] select,
+  body.hub-ativo #hub-modal-corpo #objetivos-container div[style*="background: rgba(212, 175, 55, 0.1); border-radius: 4px"] input[type="number"] {
+    height: var(--cp-btn-sm-h, 24px) !important;
+    padding: 0 6px !important;
+    font-size: var(--cp-btn-sm-fs, 11.5px) !important;
+  }
+  body.hub-ativo #hub-modal-corpo #objetivos-container div[style*="background: rgba(212, 175, 55, 0.1); border-radius: 4px"] input[type="number"] {
+    width: 52px !important;
+  }
+
+  /* 1771-1774 — select de prioridade (inline 'font-weight: 600; font-size: 0.75rem') */
+  body.hub-ativo #hub-modal-corpo #objetivos-container select[style*="font-weight: 600; font-size: 0.75rem"] {
+    height: var(--cp-btn-sm-h, 24px) !important;
+    padding: 0 6px !important;
+    font-size: var(--cp-h5-fs, 12px) !important;
+  }
+
+  /* 1916, 1926, 1927 — Marcos: botão '+ Marco' (0.15rem 0.4rem / 0.6rem), inputs de marco (0.2rem 0.3rem / 0.7rem), botão × (0.65rem).
+     Tamanhos do contrato: chip (20) para '+ Marco', 'pequeno' (24) para o texto do marco, ícone (26) para o ×;
+     a linha do marco (1924) é flex com align-items: center, então 24 e 26 ficam alinhados. */
+  body.hub-ativo #hub-modal-corpo #objetivos-container div[style*="border: 1px solid rgba(153, 102, 255, 0.2)"] > div:first-child > button {
+    height: var(--cp-chip-h, 20px);
+    padding: 0 8px !important;
+    font-size: var(--cp-th-fs, 11px) !important;
+  }
+  body.hub-ativo #hub-modal-corpo #objetivos-container div[style*="border: 1px solid rgba(153, 102, 255, 0.2)"] input[type="text"] {
+    height: var(--cp-btn-sm-h, 24px) !important;
+    padding: 0 8px !important;
+    font-size: var(--cp-btn-sm-fs, 11.5px) !important;
+  }
+  body.hub-ativo #hub-modal-corpo #objetivos-container div[style*="border: 1px solid rgba(153, 102, 255, 0.2)"] > div:not(:first-child) > button {
+    width: var(--cp-btn-icon, 26px);
+    height: var(--cp-btn-icon, 26px);
+    padding: 0 !important;
+    font-size: 12px !important;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* 2012-2017 — linha de perfil das análises: select (inline 0.3rem 0.5rem / 0.75rem) e botões Comparar / remover (0.2rem 0.5rem / 0.7rem).
+     Select e botões no mesmo tamanho 'pequeno' do contrato, para alinharem na linha. */
+  body.hub-ativo #hub-modal-corpo #analises-objetivos-container select {
+    height: var(--cp-btn-sm-h, 24px) !important;
+    padding: 0 8px !important;
+    font-size: var(--cp-btn-sm-fs, 11.5px) !important;
+  }
+  body.hub-ativo #hub-modal-corpo #analises-objetivos-container > div > div:nth-child(2) button {
+    height: var(--cp-btn-sm-h, 24px);
+    padding: 0 8px !important;
+    font-size: var(--cp-btn-sm-fs, 11.5px) !important;
+  }
+}
+
+
+/* =====================================================================
+   6. ADESÃO AO PLANO — objetivos-module.js (renderAdesaoSection → #adesao-plano-container)
+   ===================================================================== */
+
+/* ---- Bloco A (≥600px) ---- */
+@media (min-width: 600px) {
+
+  /* 3247 — parágrafo introdutório (inline 0.7rem / mb 1rem); 3252 e 3378 — caixas Propostas / Planos (inline padding 1rem / mb 1rem) */
+  body.hub-ativo #hub-modal-corpo #adesao-plano-container > div > p {
+    font-size: var(--cp-h5-fs, 12px) !important;
+    margin: 0 0 6px !important;
+  }
+  body.hub-ativo #hub-modal-corpo #adesao-plano-container > div > div {
+    padding: var(--cp-card-pad, 8px 10px) !important;
+    margin-bottom: 8px !important;
+  }
+  body.hub-ativo #hub-modal-corpo #adesao-plano-container > div > div:last-child {
+    margin-bottom: 0 !important;
+  }
+
+  /* 3257 e 3305 — cards Oferta Ordinária / Especial (inline 'min-width: 280px'; padding 0.8rem); 3259/3308 — h5 0.85rem; 3319 — label 0.65rem */
+  body.hub-ativo #hub-modal-corpo #adesao-plano-container div[style*="min-width: 280px"] {
+    padding: var(--cp-card-pad, 8px 10px) !important;
+  }
+  body.hub-ativo #hub-modal-corpo #adesao-plano-container h5 {
+    font-size: var(--cp-h5-fs, 12px) !important;
+    margin: 0 0 4px !important;
+  }
+  body.hub-ativo #hub-modal-corpo #adesao-plano-container div[style*="min-width: 280px"] label {
+    font-size: var(--cp-label-fs, 11.5px) !important;
+    font-weight: 600;
+  }
+
+  /* 3270-3289 e 3332-3351 — tabelas de parcelamento (inline table 0.7rem; th padding 0.3rem; td 0.25rem 0.3rem / 0.65rem).
+     O wrapper max-height 320px com rolagem (3269/3331) fica como está. */
+  body.hub-ativo #hub-modal-corpo #adesao-plano-container table {
+    font-size: var(--cp-table-fs, 12px) !important;
+  }
+  body.hub-ativo #hub-modal-corpo #adesao-plano-container th {
+    padding: var(--cp-cell-pad, 4px 8px) !important;
+    font-size: var(--cp-th-fs, 11px);
+    text-transform: uppercase;
+    letter-spacing: .02em;
+  }
+  body.hub-ativo #hub-modal-corpo #adesao-plano-container td {
+    padding: var(--cp-cell-pad, 4px 8px) !important;
+    font-size: var(--cp-table-fs, 12px) !important;
+  }
+
+  /* 3379 — h4 'Planos de Acompanhamento Financeiro' (inline 0.9rem); 3386 — cards de plano (inline 'min-width: 180px'; padding 0.8rem);
+     3399 — <li> 0.6rem e 3405 — rodapé 0.55rem (ilegíveis) */
+  body.hub-ativo #hub-modal-corpo #adesao-plano-container h4 {
+    font-size: var(--cp-h4-fs, 12.5px) !important;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .02em;
+  }
+  body.hub-ativo #hub-modal-corpo #adesao-plano-container div[style*="min-width: 180px"] {
+    padding: var(--cp-card-pad, 8px 10px) !important;
+  }
+  body.hub-ativo #hub-modal-corpo #adesao-plano-container div[style*="min-width: 180px"] li,
+  body.hub-ativo #hub-modal-corpo #adesao-plano-container div[style*="min-width: 180px"] div[style*="font-size: 0.55rem"] {
+    font-size: var(--cp-th-fs, 11px) !important;
+  }
+}
+
+/* ---- Bloco B (≥900px) ---- */
+@media (min-width: 900px) {
+
+  /* 3320-3322 — input 'Qtd. Recomendações' (inline width 60px / padding 0.25rem / 0.8rem) */
+  body.hub-ativo #hub-modal-corpo #adesao-plano-container input[type="number"] {
+    height: var(--cp-ctl-h, 30px) !important;
+    padding: var(--cp-ctl-pad, 4px 8px) !important;
+    font-size: var(--cp-ctl-fs, 13px) !important;
+    width: 72px !important;
+  }
+
+  /* 3291-3292 e 3353-3354 — 'Selecionar esta' (inline 0.3rem 1rem / 0.7rem); 3369-3370 — 'Proposta Especial' discreto (0.3rem 0.8rem / 0.65rem) */
+  body.hub-ativo #hub-modal-corpo #adesao-plano-container div[style*="text-align: center; margin-top: 0.6rem"] > button {
+    height: var(--cp-btn-h, 30px);
+    padding: 0 12px !important;
+    font-size: var(--cp-btn-fs, 12.5px) !important;
+    font-weight: 600;
+  }
+  body.hub-ativo #hub-modal-corpo #adesao-plano-container div[style*="text-align: right; margin-top: 0.6rem"] > button {
+    height: var(--cp-btn-sm-h, 24px);
+    padding: 0 8px !important;
+    font-size: var(--cp-btn-sm-fs, 11.5px) !important;
+  }
+}

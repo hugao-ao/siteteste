@@ -1148,6 +1148,11 @@
         grid-template-columns: 1fr !important;
       }
 
+      /* v2: grade da aposentadoria (objetivos-module.js: '1fr 130px 150px 150px') também empilha */
+      #content-objetivos [style*="grid-template-columns: 1fr 130px"] {
+        grid-template-columns: 1fr !important;
+      }
+
       /* Fluxo de caixa - tabelas responsivas */
       #content-fluxo-caixa table {
         font-size: 0.75rem !important;
@@ -1669,15 +1674,51 @@
     #content-fluxo-caixa th {
       resize: horizontal;
       overflow: auto;
-      min-width: 60px;
+      min-width: 32px;
     }
-    
+
+    /* v2 compacto: classes de marcação usadas por compacto.css dentro do modal.
+       Aqui só o comportamento BASE (layout linear e celular), replicando o visual que os
+       styles inline tinham antes; compacto.css (body.hub-ativo #hub-modal-corpo …) sobrescreve >= 600px.
+       Os respiros inline (Observações 1.5rem, "Adicionar" 1rem, .patrimonio-total 1rem, wrappers do PL
+       2rem/2rem/3px, Proprietário(s) 1rem) ficam com os valores originais no markup: quem os compacta
+       é compacto.css, por atributo ([style*="…"]) ou pela classe .sub-bloco-wrap, só >= 600px. */
+    .sub-bloco {
+      color: var(--accent-color);
+      margin: 1rem 0 0.5rem 0;
+    }
+    h3.sub-bloco {
+      margin: 1.5rem 0 0.8rem 0;
+      text-align: center;
+    }
+    h4.sub-bloco {
+      font-size: 1rem;
+    }
+    /* h4 dos dois wrappers do PL (Teste de Perfil / Distribuição): o inline original era
+       "margin: 0 0 1.5rem 0; text-align: center" sem font-size (padrão do navegador, 1em) */
+    .sub-bloco-wrap > h4.sub-bloco {
+      margin: 0 0 1.5rem 0;
+      text-align: center;
+      font-size: 1em;
+    }
+    .patrimonio-marcadores {
+      margin-top: 1rem;
+    }
+    .patrimonio-marcadores .form-group + .form-group {
+      margin-top: 0.5rem;
+    }
+
   </style>
 
   <!-- Hub v2 (avatar + anel de cards + modais). Remover esta linha reverte a aparência ao layout linear. -->
   <link rel="stylesheet" href="hub.css">
   <!-- v2: estilos do card de Perfil Financeiro automático -->
   <link rel="stylesheet" href="perfil-financeiro.css">
+  <!-- v2: densidade compacta dos modais (só body.hub-ativo #hub-modal-corpo, >= 600px; celular < 600px intocado).
+       Precisam vir DEPOIS de hub.css e perfil-financeiro.css, nesta ordem. Remover as três linhas devolve os respiros originais. -->
+  <link rel="stylesheet" href="compacto.css">
+  <link rel="stylesheet" href="compacto-modulos-raiz.css">
+  <link rel="stylesheet" href="compacto-modulos-v2.css">
 </head>
 <body>
 
@@ -1732,7 +1773,7 @@
           <!-- hub v2: wrapper da seção Dados Pessoais (nada dentro muda) -->
           <div class="form-container hub-secao-raiz" id="secao-dados-pessoais">
           <div class="form-grid-3">
-            <div class="form-group">
+            <div class="form-group campo-largo">
               <label for="nome_diagnostico">
                 <i class="fas fa-user"></i> Nome Completo *
               </label>
@@ -1785,7 +1826,7 @@
                      required>
             </div>
 
-            <div class="form-group">
+            <div class="form-group campo-largo">
               <label for="email">
                 <i class="fas fa-envelope"></i> E-mail *
               </label>
@@ -1799,16 +1840,15 @@
             <!-- v2: renda no mês fraco (só para renda variável) -->
             <div class="form-group">
               <label for="renda_mes_fraco">
-                <i class="fas fa-chart-line"></i> Renda no mês fraco <small style="color: var(--text-light); font-weight: 400;">(opcional — só para renda variável)</small>
+                <i class="fas fa-chart-line"></i> Renda no mês fraco <small style="color: var(--text-light); font-weight: 400;">(opcional; só renda variável)</small>
               </label>
               <input type="text"
                      id="renda_mes_fraco"
                      name="renda_mes_fraco"
                      placeholder="R$ 0,00">
             </div>
-          </div>
 
-          <div class="form-grid">
+            <!-- v2 compacto: Estado Civil e Regime de Bens na mesma grade (.form-grid-3); antes ficavam numa .form-grid própria -->
             <div class="form-group">
               <label for="estado_civil">
                 <i class="fas fa-heart"></i> Estado Civil
@@ -1841,12 +1881,12 @@
 
           <!-- Dados do Cônjuge (aparece quando casado/união estável) -->
           <div id="conjuge-section" style="display: none;">
-            <h3 style="color: var(--accent-color); margin: 1.5rem 0 0.8rem 0; text-align: center;">
+            <h3 class="sub-bloco">
               <i class="fas fa-users"></i> Dados do Cônjuge
             </h3>
             
             <div class="form-grid-3">
-              <div class="form-group">
+              <div class="form-group campo-largo">
                 <label for="conjuge_nome">
                   <i class="fas fa-user"></i> Nome Completo do Cônjuge *
                 </label>
@@ -1896,7 +1936,7 @@
                        placeholder="(00) 00000-0000">
               </div>
 
-              <div class="form-group">
+              <div class="form-group campo-largo">
                 <label for="conjuge_email">
                   <i class="fas fa-envelope"></i> E-mail do Cônjuge
                 </label>
@@ -1909,7 +1949,7 @@
               <!-- v2: renda do cônjuge no mês fraco (só para renda variável) -->
               <div class="form-group">
                 <label for="conjuge_renda_mes_fraco">
-                  <i class="fas fa-chart-line"></i> Renda no mês fraco <small style="color: var(--text-light); font-weight: 400;">(opcional — só para renda variável)</small>
+                  <i class="fas fa-chart-line"></i> Renda no mês fraco <small style="color: var(--text-light); font-weight: 400;">(opcional; só renda variável)</small>
                 </label>
                 <input type="text"
                        id="conjuge_renda_mes_fraco"
@@ -2056,8 +2096,8 @@
               </div>
               
               <!-- Teste de Suitability -->
-              <div style="margin-top: 2rem; padding-top: 2rem; border-top: 3px solid var(--border-color);">
-                <h4 style="color: var(--accent-color); margin: 0 0 1.5rem 0; text-align: center;">
+              <div class="sub-bloco-wrap" style="margin-top: 2rem; padding-top: 2rem; border-top: 3px solid var(--border-color);">
+                <h4 class="sub-bloco">
                   <i class="fas fa-clipboard-check"></i> Teste de Perfil de Investidor
                 </h4>
                 <!-- teste antigo (respostas_suitability): escondido, não removido — os dados continuam carregados e salvos intactos -->
@@ -2069,8 +2109,8 @@
               </div>
               
               <!-- Distribuição por Risco e Proprietário -->
-              <div style="margin-top: 2rem; padding-top: 2rem; border-top: 3px solid var(--border-color);">
-                <h4 style="color: var(--accent-color); margin: 0 0 1.5rem 0; text-align: center;">
+              <div class="sub-bloco-wrap" style="margin-top: 2rem; padding-top: 2rem; border-top: 3px solid var(--border-color);">
+                <h4 class="sub-bloco">
                   <i class="fas fa-table"></i> Distribuição por Risco e Proprietário
                 </h4>
                 <div id="graficos-patrimonio-liquido">
@@ -2564,7 +2604,7 @@
           </div>
           
           <div class="form-grid-3">
-            <div class="form-group">
+            <div class="form-group campo-largo">
               <label for="${pessoaId}_nome">
                 <i class="fas fa-user"></i> Nome Completo *
               </label>
@@ -2621,7 +2661,7 @@
                      placeholder="(00) 00000-0000">
             </div>
 
-            <div class="form-group">
+            <div class="form-group campo-largo">
               <label for="${pessoaId}_email">
                 <i class="fas fa-envelope"></i> E-mail
               </label>
@@ -2635,7 +2675,7 @@
             <!-- v2: renda no mês fraco (só para renda variável) -->
             <div class="form-group">
               <label for="${pessoaId}_renda_mes_fraco">
-                <i class="fas fa-chart-line"></i> Renda no mês fraco <small style="color: var(--text-light); font-weight: 400;">(opcional — só para renda variável)</small>
+                <i class="fas fa-chart-line"></i> Renda no mês fraco <small style="color: var(--text-light); font-weight: 400;">(opcional; só renda variável)</small>
               </label>
               <input type="text"
                      id="${pessoaId}_renda_mes_fraco"
@@ -2644,9 +2684,8 @@
                      placeholder="R$ 0,00"
                      oninput="updatePessoaRendaMesFraco(${index})">
             </div>
-          </div>
 
-          <div class="form-grid">
+            <!-- v2 compacto: Estado Civil e Regime de Bens na mesma grade (.form-grid-3); antes ficavam numa .form-grid própria -->
             <div class="form-group">
               <label for="${pessoaId}_estado_civil">
                 <i class="fas fa-heart"></i> Estado Civil
@@ -2679,12 +2718,12 @@
 
           <!-- Dados do Cônjuge da Pessoa -->
           <div id="${pessoaId}_conjuge_section" style="display: ${pessoa.estado_civil === 'Casado(a)' || pessoa.estado_civil === 'União Estável' ? 'block' : 'none'};">
-            <h4 style="color: var(--accent-color); margin: 1rem 0 0.5rem 0; font-size: 1rem;">
+            <h4 class="sub-bloco">
               <i class="fas fa-users"></i> Dados do Cônjuge
             </h4>
             
             <div class="form-grid-3">
-              <div class="form-group">
+              <div class="form-group campo-largo">
                 <label for="${pessoaId}_conjuge_nome">
                   <i class="fas fa-user"></i> Nome do Cônjuge
                 </label>
@@ -2740,7 +2779,7 @@
                        placeholder="(00) 00000-0000">
               </div>
 
-              <div class="form-group">
+              <div class="form-group campo-largo">
                 <label for="${pessoaId}_conjuge_email">
                   <i class="fas fa-envelope"></i> E-mail do Cônjuge
                 </label>
@@ -2996,7 +3035,7 @@
           </div>
           
           <div class="form-grid-3">
-            <div class="form-group">
+            <div class="form-group campo-largo">
               <label for="${dependenteId}_nome">
                 <i class="fas fa-user"></i> Nome Completo *
               </label>
@@ -3469,7 +3508,7 @@ console.log('=== FIM DEBUG PESSOAS COM RENDA ===');
                      required>
             </div>
 
-            <div class="form-group">
+            <div class="form-group campo-largo">
               <label for="${patrimonioId}_detalhes">
                 <i class="fas fa-info-circle"></i> Detalhes
               </label>
@@ -3565,7 +3604,9 @@ console.log('=== FIM DEBUG PESSOAS COM RENDA ===');
             }).join('')}</div>` : ''}
           </div>
 
-          <div class="form-group" style="display: flex; align-items: center; gap: 0.5rem; margin-top: 1rem;">
+          <!-- v2 compacto: os três marcadores numa única linha (>= 600px via compacto.css .patrimonio-marcadores); ids/names/onchange intocados -->
+          <div class="patrimonio-marcadores">
+          <div class="form-group" style="display: flex; align-items: center; gap: 0.5rem;">
             <input type="checkbox" 
                    id="${patrimonioId}_inventariavel" 
                    name="${patrimonioId}_inventariavel"
@@ -3578,7 +3619,7 @@ console.log('=== FIM DEBUG PESSOAS COM RENDA ===');
           </div>
 
           <!-- v2: marcadores usados pelo Perfil Financeiro (patrimônio vendável) -->
-          <div class="form-group" style="display: flex; align-items: center; gap: 0.5rem; margin-top: 0.5rem;">
+          <div class="form-group" style="display: flex; align-items: center; gap: 0.5rem;">
             <input type="checkbox"
                    id="${patrimonioId}_imovel_unico_moradia"
                    name="${patrimonioId}_imovel_unico_moradia"
@@ -3590,7 +3631,7 @@ console.log('=== FIM DEBUG PESSOAS COM RENDA ===');
             </label>
           </div>
 
-          <div class="form-group" style="display: flex; align-items: center; gap: 0.5rem; margin-top: 0.5rem;">
+          <div class="form-group" style="display: flex; align-items: center; gap: 0.5rem;">
             <input type="checkbox"
                    id="${patrimonioId}_gera_renda"
                    name="${patrimonioId}_gera_renda"
@@ -3601,6 +3642,8 @@ console.log('=== FIM DEBUG PESSOAS COM RENDA ===');
               <i class="fas fa-briefcase"></i> Necessário para gerar a renda
             </label>
           </div>
+          </div>
+          <!-- /v2 compacto: fim .patrimonio-marcadores -->
 
 
         </div>

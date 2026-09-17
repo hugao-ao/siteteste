@@ -153,6 +153,11 @@ function formatarMoedaFluxo(valor) {
   return 'R$ ' + numero.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
+// Escapa aspas duplas para uso em atributos HTML (title="...")
+function escAttrFluxo(valor) {
+  return String(valor ?? '').replace(/"/g, '&quot;');
+}
+
 // Função para parsear valor monetário
 function parseMoedaFluxo(valor) {
   if (!valor) return 0;
@@ -839,11 +844,11 @@ function calcularDistribuicao(fluxoGeral) {
 function renderTabelaInvestimentos(pessoas) {
   if (!window.getPatrimoniosLiquidosData) {
     return `
-      <div style="margin-bottom: 2rem;">
-        <h4 style="color: #007bff; margin: 0 0 1rem 0;">
-          <i class="fas fa-piggy-bank"></i> INVESTIMENTOS/APORTES
+      <div class="fx-bloco">
+        <h4 class="fx-h4 fx-h4--inv">
+          <span><i class="fas fa-piggy-bank"></i> INVESTIMENTOS/APORTES</span>
         </h4>
-        <p style="text-align: center; color: var(--text-light); opacity: 0.7;">
+        <p class="fx-vazio">
           <i class="fas fa-info-circle"></i> Módulo de patrimônio líquido não carregado.
         </p>
       </div>
@@ -924,45 +929,40 @@ function renderTabelaInvestimentos(pessoas) {
   });
   
   return `
-    <div style="margin-bottom: 2rem;">
-      <h4 style="color: #007bff; margin: 0 0 1rem 0;">
-        <i class="fas fa-piggy-bank"></i> INVESTIMENTOS/APORTES
-        <span style="font-size: 0.8rem; font-weight: normal; opacity: 0.7;">(importados do Patrimônio Líquido)</span>
+    <div class="fx-bloco">
+      <h4 class="fx-h4 fx-h4--inv">
+        <span><i class="fas fa-piggy-bank"></i> INVESTIMENTOS/APORTES <span class="fx-h4-sub">(importados do Patrimônio Líquido)</span></span>
       </h4>
-      
-      <div style="overflow-x: auto;">
-        <table style="width: 100%; border-collapse: collapse; font-size: 0.9rem;">
+
+      <div class="fx-wrap">
+        <table class="fx-table fx-table--ro fx-table--inv">
           <thead>
-            <tr style="background: rgba(0, 123, 255, 0.2);">
-              <th style="padding: 0.6rem; text-align: left; border: 1px solid var(--border-color);">Investimento</th>
-              <th style="padding: 0.6rem; text-align: left; border: 1px solid var(--border-color);">Instituição</th>
-              <th style="padding: 0.6rem; text-align: right; border: 1px solid var(--border-color);">Aporte</th>
-              <th style="padding: 0.6rem; text-align: center; border: 1px solid var(--border-color);">Frequência</th>
-              <th style="padding: 0.6rem; text-align: left; border: 1px solid var(--border-color);">Titular</th>
-              <th style="padding: 0.6rem; text-align: right; border: 1px solid var(--border-color);">Valor/Mês</th>
-              <th style="padding: 0.6rem; text-align: right; border: 1px solid var(--border-color);">Valor/Ano</th>
+            <tr>
+              <th>Investimento</th>
+              <th>Instituição</th>
+              <th class="r" style="width: 120px;">Aporte</th>
+              <th class="c" style="width: 96px;">Frequência</th>
+              <th style="width: 160px;">Titular</th>
+              <th class="r" style="width: 120px;">Valor/Mês</th>
+              <th class="r" style="width: 120px;">Valor/Ano</th>
             </tr>
           </thead>
           <tbody>
             ${investimentos.length === 0 ? `
               <tr>
-                <td colspan="9" style="padding: 1rem; text-align: center; color: var(--text-light); opacity: 0.7; border: 1px solid var(--border-color);">
+                <td colspan="7" class="fx-vazio">
                   Nenhum aporte cadastrado no Patrimônio Líquido.
                 </td>
               </tr>
             ` : investimentos.map(inv => `
               <tr>
-                <td style="padding: 0.4rem; border: 1px solid var(--border-color);">${inv.nome}</td>
-                <td style="padding: 0.4rem; border: 1px solid var(--border-color);">${inv.instituicao}</td>
-                <td style="padding: 0.4rem; text-align: right; border: 1px solid var(--border-color);">${formatarMoedaFluxo(inv.valor)}</td>
-                <td style="padding: 0.4rem; text-align: center; border: 1px solid var(--border-color);">
-                  <span style="background: ${inv.frequencia === 'MENSAL' ? '#28a745' : '#ffc107'}; color: ${inv.frequencia === 'MENSAL' ? 'white' : '#333'}; padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.75rem;">
-                    ${inv.frequencia}
-                  </span>
-                </td>
-                <td style="padding: 0.4rem; border: 1px solid var(--border-color);">${inv.titular}</td>
-                <td style="padding: 0.4rem; text-align: right; border: 1px solid var(--border-color); color: #007bff;">${formatarMoedaFluxo(inv.valorMensal)}</td>
-                <td style="padding: 0.4rem; text-align: right; border: 1px solid var(--border-color); color: #007bff; font-weight: 600;">${formatarMoedaFluxo(inv.valorAnual)}</td>
+                <td>${inv.nome}</td>
+                <td>${inv.instituicao}</td>
+                <td class="r">${formatarMoedaFluxo(inv.valor)}</td>
+                <td class="c"><span class="fx-chip ${inv.frequencia === 'MENSAL' ? 'fx-chip--mensal' : 'fx-chip--anual'}">${inv.frequencia}</span></td>
+                <td>${inv.titular}</td>
+                <td class="r fx-azul">${formatarMoedaFluxo(inv.valorMensal)}</td>
+                <td class="r fx-azul fx-b">${formatarMoedaFluxo(inv.valorAnual)}</td>
               </tr>
             `).join('')}
           </tbody>
@@ -985,99 +985,76 @@ function renderFluxoCaixa() {
   // Renderizar formulário de edição
   container.innerHTML = `
     <!-- Botão de Sincronização -->
-    <div style="text-align: center; margin-bottom: 1.5rem;">
-      <button type="button" onclick="sincronizarDespesasAutomaticas()" 
-              style="background: var(--info-color, #17a2b8); color: white; border: none; padding: 0.6rem 1.2rem; border-radius: 6px; cursor: pointer; font-size: 0.9rem;">
+    <div class="fx-sync">
+      <button type="button" class="fx-btn fx-btn--info" onclick="sincronizarDespesasAutomaticas()">
         <i class="fas fa-sync"></i> Sincronizar Despesas Automáticas
       </button>
-      <p style="font-size: 0.8rem; color: var(--text-light); opacity: 0.7; margin-top: 0.5rem;">
-        Importa automaticamente despesas de Produtos & Proteção, Dívidas e Tarifas de Contas/Cartões
-      </p>
+      <span class="fx-hint">Importa automaticamente despesas de Produtos &amp; Proteção, Dívidas e Tarifas de Contas/Cartões</span>
     </div>
     
     <!-- RECEITAS -->
-    <div style="margin-bottom: 2rem;">
-      <h4 style="color: #28a745; margin: 0 0 1rem 0; display: flex; align-items: center; justify-content: space-between;">
+    <div class="fx-bloco">
+      <h4 class="fx-h4 fx-h4--rec">
         <span><i class="fas fa-arrow-up"></i> RECEITAS</span>
-        <button type="button" onclick="addReceita()" 
-                style="background: #28a745; color: white; border: none; padding: 0.4rem 0.8rem; border-radius: 6px; cursor: pointer; font-size: 0.85rem;">
+        <button type="button" class="fx-btn-sm fx-btn-sm--rec" onclick="addReceita()">
           <i class="fas fa-plus"></i> Adicionar Receita
         </button>
       </h4>
-      
-      <div style="overflow-x: auto;">
-        <table style="width: 100%; border-collapse: collapse; font-size: 0.9rem;">
+
+      <div class="fx-wrap">
+        <table class="fx-table fx-table--rec">
           <thead>
-            <tr style="background: rgba(40, 167, 69, 0.2);">
-              <th style="padding: 0.6rem; text-align: left; border: 1px solid var(--border-color);">Nome</th>
-              <th style="padding: 0.6rem; text-align: left; border: 1px solid var(--border-color);">Valor</th>
-              <th style="padding: 0.6rem; text-align: left; border: 1px solid var(--border-color);">Tipo</th>
-              <th style="padding: 0.6rem; text-align: left; border: 1px solid var(--border-color);">Recorrência</th>
-              <th style="padding: 0.6rem; text-align: left; border: 1px solid var(--border-color);">De quem é</th>
-              <th style="padding: 0.6rem; text-align: center; border: 1px solid var(--border-color); width: 60px;">Ações</th>
+            <tr>
+              <th>Nome</th>
+              <th style="width: 110px;">Valor</th>
+              <th style="width: 124px;">Tipo</th>
+              <th style="width: 124px;">Recorrência</th>
+              <th style="width: 150px;">De quem é</th>
+              <th class="c" style="width: 44px;">Ações</th>
             </tr>
           </thead>
           <tbody>
             ${receitas.length === 0 ? `
               <tr>
-                <td colspan="6" style="padding: 1rem; text-align: center; color: var(--text-light); opacity: 0.7; border: 1px solid var(--border-color);">
+                <td colspan="6" class="fx-vazio">
                   Nenhuma receita cadastrada. Clique em "Adicionar Receita" para começar.
                 </td>
               </tr>
             ` : receitas.map(receita => `
-              <tr style="background: ${receita.automatica ? 'rgba(40, 167, 69, 0.05)' : 'transparent'};">
-                <td style="padding: 0.4rem; border: 1px solid var(--border-color);">
-                  <input type="text" value="${receita.nome || ''}" 
+              <tr${receita.automatica ? ' class="fx-auto"' : ''}>
+                <td><input type="text" class="fx-in" value="${receita.nome || ''}" title="${escAttrFluxo(receita.nome)}"
                          onchange="updateReceitaField(${receita.id}, 'nome', this.value)"
                          placeholder="Nome da receita"
-                         style="width: 100%; padding: 0.4rem; border: 1px solid var(--border-color); border-radius: 4px; background: var(--dark-bg); color: var(--text-light);"
-                         ${receita.automatica ? 'readonly' : ''}>
-                </td>
-                <td style="padding: 0.4rem; border: 1px solid var(--border-color); width: 120px;">
-                  <input type="text" id="receita_${receita.id}_valor" value="${formatarMoedaFluxo(receita.valor)}" 
+                         ${receita.automatica ? 'readonly' : ''}></td>
+                <td><input type="text" class="fx-in" id="receita_${receita.id}_valor" value="${formatarMoedaFluxo(receita.valor)}"
                          oninput="updateReceitaField(${receita.id}, 'valor', this.value)"
-                         style="width: 100%; padding: 0.4rem; border: 1px solid var(--border-color); border-radius: 4px; background: var(--dark-bg); color: var(--text-light);"
-                         ${receita.automatica ? 'readonly' : ''}>
-                </td>
-                <td style="padding: 0.4rem; border: 1px solid var(--border-color); width: 130px;">
-                  <select onchange="updateReceitaField(${receita.id}, 'tipo', this.value)"
-                          style="width: 100%; padding: 0.4rem; border: 1px solid var(--border-color); border-radius: 4px; background: var(--dark-bg); color: var(--text-light);"
+                         ${receita.automatica ? 'readonly' : ''}></td>
+                <td><select class="fx-sel" onchange="updateReceitaField(${receita.id}, 'tipo', this.value)"
                           ${receita.automatica ? 'disabled' : ''}>
                     ${TIPOS_RECEITA.map(tipo => `
                       <option value="${tipo.id}" ${receita.tipo === tipo.id ? 'selected' : ''}>${tipo.nome}</option>
                     `).join('')}
-                  </select>
-                </td>
-                <td style="padding: 0.4rem; border: 1px solid var(--border-color); width: 150px;">
-                  <div style="display: flex; gap: 0.3rem;">
-                    <input type="number" value="${receita.qtd_recorrencia || 1}" 
+                  </select></td>
+                <td><div class="fx-rec">
+                    <input type="number" class="fx-in" value="${receita.qtd_recorrencia || 1}"
                            onchange="updateReceitaField(${receita.id}, 'qtd_recorrencia', this.value)"
-                           min="1" style="width: 50px; padding: 0.4rem; border: 1px solid var(--border-color); border-radius: 4px; background: var(--dark-bg); color: var(--text-light);"
+                           min="1"
                            ${receita.automatica ? 'readonly' : ''}>
-                    <select onchange="updateReceitaField(${receita.id}, 'und_recorrencia', this.value)"
-                            style="flex: 1; padding: 0.4rem; border: 1px solid var(--border-color); border-radius: 4px; background: var(--dark-bg); color: var(--text-light);"
+                    <select class="fx-sel" onchange="updateReceitaField(${receita.id}, 'und_recorrencia', this.value)"
                             ${receita.automatica ? 'disabled' : ''}>
                       ${UNIDADES_RECORRENCIA.map(und => `
                         <option value="${und.id}" ${receita.und_recorrencia === und.id ? 'selected' : ''}>${und.nome}</option>
                       `).join('')}
                     </select>
-                  </div>
-                </td>
-                <td style="padding: 0.4rem; border: 1px solid var(--border-color); width: 150px;">
-                  <select onchange="updateReceitaField(${receita.id}, 'titular', this.value)"
-                          style="width: 100%; padding: 0.4rem; border: 1px solid var(--border-color); border-radius: 4px; background: var(--dark-bg); color: var(--text-light);"
+                  </div></td>
+                <td><select class="fx-sel" onchange="updateReceitaField(${receita.id}, 'titular', this.value)"
                           ${receita.automatica ? 'disabled' : ''}>
                     ${pessoas.map(pessoa => `
                       <option value="${pessoa.id}" ${receita.titular === pessoa.id ? 'selected' : ''}>${pessoa.nome}</option>
                     `).join('')}
-                  </select>
-                </td>
-                <td style="padding: 0.4rem; border: 1px solid var(--border-color); text-align: center;">
-                    <button type="button" onclick="deleteReceita(${receita.id})" 
-                            style="background: #dc3545; color: white; border: none; padding: 0.3rem 0.5rem; border-radius: 4px; cursor: pointer;" title="${receita.automatica ? 'Item sincronizado automaticamente' : 'Excluir'}">
-                      <i class="fas fa-trash"></i>
-                    </button>
-                </td>
+                  </select></td>
+                <td class="c"><button type="button" class="fx-del" onclick="deleteReceita(${receita.id})"
+                            title="${receita.automatica ? 'Item sincronizado automaticamente' : 'Excluir'}"><i class="fas fa-trash"></i></button></td>
               </tr>
             `).join('')}
           </tbody>
@@ -1086,154 +1063,110 @@ function renderFluxoCaixa() {
     </div>
     
     <!-- DESPESAS -->
-    <div style="margin-bottom: 2rem;">
-      <h4 style="color: #dc3545; margin: 0 0 1rem 0; display: flex; align-items: center; justify-content: space-between;">
+    <div class="fx-bloco">
+      <h4 class="fx-h4 fx-h4--desp">
         <span><i class="fas fa-arrow-down"></i> DESPESAS</span>
-        <button type="button" onclick="addDespesa()" 
-                style="background: #dc3545; color: white; border: none; padding: 0.4rem 0.8rem; border-radius: 6px; cursor: pointer; font-size: 0.85rem;">
+        <button type="button" class="fx-btn-sm fx-btn-sm--desp" onclick="addDespesa()">
           <i class="fas fa-plus"></i> Adicionar Despesa
         </button>
       </h4>
-      
-      <div style="overflow-x: auto;">
-        <table style="width: 100%; border-collapse: collapse; font-size: 0.9rem;">
+
+      <div class="fx-wrap">
+        <table class="fx-table fx-table--desp">
           <thead>
-            <tr style="background: rgba(220, 53, 69, 0.2);">
-              <th style="padding: 0.6rem; text-align: left; border: 1px solid var(--border-color);">Nome</th>
-              <th style="padding: 0.6rem; text-align: left; border: 1px solid var(--border-color);">Valor</th>
-              <th style="padding: 0.6rem; text-align: left; border: 1px solid var(--border-color);">Tipo</th>
-              <th style="padding: 0.6rem; text-align: left; border: 1px solid var(--border-color);">Recorrência</th>
-              <th style="padding: 0.6rem; text-align: left; border: 1px solid var(--border-color);">Forma Pgto</th>
-              <th style="padding: 0.6rem; text-align: left; border: 1px solid var(--border-color);">Categoria</th>
-              <th style="padding: 0.6rem; text-align: left; border: 1px solid var(--border-color);">Importância</th>
-              <th style="padding: 0.6rem; text-align: left; border: 1px solid var(--border-color);">Conforto</th>
-              <th style="padding: 0.6rem; text-align: left; border: 1px solid var(--border-color);">Alterável?</th>
-              <th style="padding: 0.6rem; text-align: left; border: 1px solid var(--border-color);">Disposição</th>
-              <th style="padding: 0.6rem; text-align: left; border: 1px solid var(--border-color);">Dono</th>
-              <th style="padding: 0.6rem; text-align: center; border: 1px solid var(--border-color); width: 60px;">Ações</th>
+            <tr>
+              <th>Nome</th>
+              <th style="width: 90px;">Valor</th>
+              <th style="width: 62px;">Tipo</th>
+              <th style="width: 96px;" title="Recorrência">Recorrência</th>
+              <th style="width: 100px;">Forma Pgto</th>
+              <th style="width: 100px;">Categoria</th>
+              <th style="width: 96px;" title="Importância">Importância</th>
+              <th style="width: 96px;">Conforto</th>
+              <th style="width: 78px;" title="Alterável?">Alterável?</th>
+              <th style="width: 100px;">Disposição</th>
+              <th style="width: 92px;">Dono</th>
+              <th class="c" style="width: 40px;" title="Ações">Ações</th>
             </tr>
           </thead>
           <tbody>
             ${despesas.length === 0 ? `
               <tr>
-                <td colspan="12" style="padding: 1rem; text-align: center; color: var(--text-light); opacity: 0.7; border: 1px solid var(--border-color);">
+                <td colspan="12" class="fx-vazio">
                   Nenhuma despesa cadastrada. Clique em "Adicionar Despesa" ou "Sincronizar Despesas Automáticas".
                 </td>
               </tr>
             ` : despesas.map(despesa => {
               const titularNome = pessoas.find(p => p.id === despesa.titular)?.nome || despesa.titular || '-';
-              
+              const off = despesa.automatica ? 'disabled' : '';
+
               return `
-                <tr style="background: ${despesa.automatica ? 'rgba(220, 53, 69, 0.05)' : 'transparent'};">
-                  <td style="padding: 0.4rem; border: 1px solid var(--border-color);">
-                    <input type="text" value="${despesa.nome || ''}" 
+                <tr${despesa.automatica ? ' class="fx-auto"' : ''}>
+                  <td><input type="text" class="fx-in" value="${despesa.nome || ''}" title="${escAttrFluxo(despesa.nome)}"
                            onchange="updateDespesaField(${despesa.id}, 'nome', this.value)"
                            placeholder="Nome da despesa"
-                           style="width: 100%; padding: 0.4rem; border: 1px solid var(--border-color); border-radius: 4px; background: var(--dark-bg); color: var(--text-light);"
-                           ${despesa.automatica ? 'readonly' : ''}>
-                  </td>
-                  <td style="padding: 0.4rem; border: 1px solid var(--border-color); width: 120px;">
-                    <input type="text" id="despesa_${despesa.id}_valor" value="${formatarMoedaFluxo(despesa.valor)}" 
+                           ${despesa.automatica ? 'readonly' : ''}></td>
+                  <td><input type="text" class="fx-in" id="despesa_${despesa.id}_valor" value="${formatarMoedaFluxo(despesa.valor)}"
                            oninput="updateDespesaField(${despesa.id}, 'valor', this.value)"
-                           style="width: 100%; padding: 0.4rem; border: 1px solid var(--border-color); border-radius: 4px; background: var(--dark-bg); color: var(--text-light);"
-                           ${despesa.automatica ? 'readonly' : ''}>
-                  </td>
-                  <td style="padding: 0.4rem; border: 1px solid var(--border-color); width: 100px;">
-                    <select onchange="updateDespesaField(${despesa.id}, 'tipo', this.value)"
-                            style="width: 100%; padding: 0.4rem; border: 1px solid var(--border-color); border-radius: 4px; background: var(--dark-bg); color: var(--text-light);"
-                            ${despesa.automatica ? 'disabled' : ''}>
+                           ${despesa.automatica ? 'readonly' : ''}></td>
+                  <td><select class="fx-sel" onchange="updateDespesaField(${despesa.id}, 'tipo', this.value)" ${off}>
                       ${TIPOS_DESPESA.map(tipo => `
                         <option value="${tipo.id}" ${despesa.tipo === tipo.id ? 'selected' : ''}>${tipo.nome}</option>
                       `).join('')}
-                    </select>
-                  </td>
-                  <td style="padding: 0.4rem; border: 1px solid var(--border-color); width: 150px;">
-                    <div style="display: flex; gap: 0.3rem;">
-                      <input type="number" value="${despesa.qtd_recorrencia || 1}" 
+                    </select></td>
+                  <td><div class="fx-rec">
+                      <input type="number" class="fx-in" value="${despesa.qtd_recorrencia || 1}"
                              onchange="updateDespesaField(${despesa.id}, 'qtd_recorrencia', this.value)"
-                             min="1" style="width: 50px; padding: 0.4rem; border: 1px solid var(--border-color); border-radius: 4px; background: var(--dark-bg); color: var(--text-light);"
+                             min="1"
                              ${despesa.automatica ? 'readonly' : ''}>
-                      <select onchange="updateDespesaField(${despesa.id}, 'und_recorrencia', this.value)"
-                              style="flex: 1; padding: 0.4rem; border: 1px solid var(--border-color); border-radius: 4px; background: var(--dark-bg); color: var(--text-light);"
-                              ${despesa.automatica ? 'disabled' : ''}>
+                      <select class="fx-sel" onchange="updateDespesaField(${despesa.id}, 'und_recorrencia', this.value)" ${off}>
                         ${UNIDADES_RECORRENCIA.map(und => `
                           <option value="${und.id}" ${despesa.und_recorrencia === und.id ? 'selected' : ''}>${und.nome}</option>
                         `).join('')}
                       </select>
-                    </div>
-                  </td>
-                  <td style="padding: 0.4rem; border: 1px solid var(--border-color); width: 150px;">
-                    <select onchange="updateDespesaField(${despesa.id}, 'forma_pagamento', this.value)"
-                            style="width: 100%; padding: 0.4rem; border: 1px solid var(--border-color); border-radius: 4px; background: var(--dark-bg); color: var(--text-light);">
+                    </div></td>
+                  <td><select class="fx-sel" onchange="updateDespesaField(${despesa.id}, 'forma_pagamento', this.value)">
                       <option value="">Selecione...</option>
                       ${contasCartoes.map(cc => `
                         <option value="${cc.id}" ${despesa.forma_pagamento == cc.id ? 'selected' : ''}>${cc.nome}</option>
                       `).join('')}
-                    </select>
-                  </td>
-                  <td style="padding: 0.4rem; border: 1px solid var(--border-color); width: 130px;">
-                    <select onchange="updateDespesaField(${despesa.id}, 'categoria_comportamental', this.value)"
-                            style="width: 100%; padding: 0.4rem; border: 1px solid var(--border-color); border-radius: 4px; background: var(--dark-bg); color: var(--text-light); font-size: 0.8rem;"
-                            ${despesa.automatica ? 'disabled' : ''}>
+                    </select></td>
+                  <td><select class="fx-sel" onchange="updateDespesaField(${despesa.id}, 'categoria_comportamental', this.value)" ${off}>
                       <option value="" ${!despesa.categoria_comportamental ? 'selected' : ''}>Selecione...</option>
                       <option value="sobrevivencia" ${despesa.categoria_comportamental === 'sobrevivencia' ? 'selected' : ''}>Sobrevivência</option>
                       <option value="necessidades" ${despesa.categoria_comportamental === 'necessidades' ? 'selected' : ''}>Necessidades</option>
                       <option value="aperfeicoamento" ${despesa.categoria_comportamental === 'aperfeicoamento' ? 'selected' : ''}>Aperfeiçoamento</option>
                       <option value="dividas" ${despesa.categoria_comportamental === 'dividas' ? 'selected' : ''}>Dívidas</option>
                       <option value="conforto" ${despesa.categoria_comportamental === 'conforto' ? 'selected' : ''}>Conforto/Supérfluo</option>
-                    </select>
-                  </td>
+                    </select></td>
                   <!-- Classificação v2 (Perfil Financeiro): só despesas manuais; automáticas ficam desabilitadas -->
-                  <td style="padding: 0.4rem; border: 1px solid var(--border-color); width: 130px;">
-                    <select onchange="updateDespesaField(${despesa.id}, 'nivel_importancia', this.value)"
-                            style="width: 100%; padding: 0.4rem; border: 1px solid var(--border-color); border-radius: 4px; background: var(--dark-bg); color: var(--text-light); font-size: 0.8rem;"
-                            ${despesa.automatica ? 'disabled' : ''}>
+                  <td><select class="fx-sel" onchange="updateDespesaField(${despesa.id}, 'nivel_importancia', this.value)" ${off}>
                       <option value="" ${!despesa.nivel_importancia ? 'selected' : ''}>Selecione...</option>
                       ${NIVEIS_IMPORTANCIA.map(n => `
                         <option value="${n.id}" ${despesa.nivel_importancia === n.id ? 'selected' : ''}>${n.nome}</option>
                       `).join('')}
-                    </select>
-                  </td>
-                  <td style="padding: 0.4rem; border: 1px solid var(--border-color); width: 130px;">
-                    <select onchange="updateDespesaField(${despesa.id}, 'nivel_conforto', this.value)"
-                            style="width: 100%; padding: 0.4rem; border: 1px solid var(--border-color); border-radius: 4px; background: var(--dark-bg); color: var(--text-light); font-size: 0.8rem;"
-                            ${despesa.automatica ? 'disabled' : ''}>
+                    </select></td>
+                  <td><select class="fx-sel" onchange="updateDespesaField(${despesa.id}, 'nivel_conforto', this.value)" ${off}>
                       <option value="" ${!despesa.nivel_conforto ? 'selected' : ''}>Selecione...</option>
                       ${NIVEIS_CONFORTO.map(n => `
                         <option value="${n.id}" ${despesa.nivel_conforto === n.id ? 'selected' : ''}>${n.nome}</option>
                       `).join('')}
-                    </select>
-                  </td>
-                  <td style="padding: 0.4rem; border: 1px solid var(--border-color); width: 100px;">
-                    <select onchange="updateDespesaField(${despesa.id}, 'alteravel', this.value)"
-                            style="width: 100%; padding: 0.4rem; border: 1px solid var(--border-color); border-radius: 4px; background: var(--dark-bg); color: var(--text-light); font-size: 0.8rem;"
-                            ${despesa.automatica ? 'disabled' : ''}>
+                    </select></td>
+                  <td><select class="fx-sel" onchange="updateDespesaField(${despesa.id}, 'alteravel', this.value)" ${off}>
                       <option value="" ${!despesa.alteravel ? 'selected' : ''}>Selecione...</option>
                       ${OPCOES_ALTERAVEL.map(o => `
                         <option value="${o.id}" ${despesa.alteravel === o.id ? 'selected' : ''}>${o.nome}</option>
                       `).join('')}
-                    </select>
-                  </td>
-                  <td style="padding: 0.4rem; border: 1px solid var(--border-color); width: 130px;">
-                    <select onchange="updateDespesaField(${despesa.id}, 'disposto', this.value)"
-                            style="width: 100%; padding: 0.4rem; border: 1px solid var(--border-color); border-radius: 4px; background: var(--dark-bg); color: var(--text-light); font-size: 0.8rem;"
-                            ${despesa.automatica ? 'disabled' : ''}>
+                    </select></td>
+                  <td><select class="fx-sel" onchange="updateDespesaField(${despesa.id}, 'disposto', this.value)" ${off}>
                       <option value="" ${!despesa.disposto ? 'selected' : ''}>Selecione...</option>
                       ${OPCOES_DISPOSTO.map(o => `
                         <option value="${o.id}" ${despesa.disposto === o.id ? 'selected' : ''}>${o.nome}</option>
                       `).join('')}
-                    </select>
-                  </td>
-
-                  <td style="padding: 0.4rem; border: 1px solid var(--border-color); width: 100px; font-size: 0.85rem;">
-                    ${titularNome}
-                  </td>
-                  <td style="padding: 0.4rem; border: 1px solid var(--border-color); text-align: center;">
-                      <button type="button" onclick="deleteDespesa(${despesa.id})" 
-                              style="background: #dc3545; color: white; border: none; padding: 0.3rem 0.5rem; border-radius: 4px; cursor: pointer;" title="${despesa.automatica ? 'Item sincronizado: ' + despesa.origem : 'Excluir'}">
-                        <i class="fas fa-trash"></i>
-                      </button>
-                  </td>
+                    </select></td>
+                  <td class="fx-td-txt" title="${escAttrFluxo(titularNome)}">${titularNome}</td>
+                  <td class="c"><button type="button" class="fx-del" onclick="deleteDespesa(${despesa.id})"
+                              title="${despesa.automatica ? 'Item sincronizado: ' + despesa.origem : 'Excluir'}"><i class="fas fa-trash"></i></button></td>
                 </tr>
               `;
             }).join('')}
@@ -1265,58 +1198,42 @@ function renderAnalisesFluxo() {
   // Função auxiliar para renderizar tabela de fluxo (apenas MÊS e ANO)
   function renderTabelaFluxo(dados, titulo, corTitulo) {
     return `
-      <div style="margin-bottom: 1.5rem;">
-        ${titulo ? `<h5 style="color: ${corTitulo}; margin: 0 0 0.5rem 0;">${titulo}</h5>` : ''}
-        <div style="overflow-x: auto;">
-          <table style="width: 100%; border-collapse: collapse; font-size: 0.85rem;">
+      <div class="fx-bloco fx-bloco--fluxo">
+        ${titulo ? `<h5 class="fx-h5" style="color: ${corTitulo};">${titulo}</h5>` : ''}
+        <div class="fx-wrap">
+          <table class="fx-table fx-table--ro fx-table--fluxo">
             <thead>
-              <tr style="background: rgba(212, 175, 55, 0.2);">
-                <th style="padding: 0.5rem; text-align: left; border: 1px solid var(--border-color);"></th>
-                <th style="padding: 0.5rem; text-align: right; border: 1px solid var(--border-color);">MÊS</th>
-                <th style="padding: 0.5rem; text-align: right; border: 1px solid var(--border-color);">ANO</th>
+              <tr>
+                <th></th>
+                <th class="r" style="width: 34%;">MÊS</th>
+                <th class="r" style="width: 34%;">ANO</th>
               </tr>
             </thead>
             <tbody>
-              <tr style="background: rgba(40, 167, 69, 0.1);">
-                <td style="padding: 0.5rem; border: 1px solid var(--border-color); font-weight: 600; color: #28a745;">
-                  <i class="fas fa-arrow-up"></i> Entradas
-                </td>
-                <td style="padding: 0.5rem; text-align: right; border: 1px solid var(--border-color); color: #28a745;">${formatarMoedaFluxo(dados.receitas.mes)}</td>
-                <td style="padding: 0.5rem; text-align: right; border: 1px solid var(--border-color); color: #28a745;">${formatarMoedaFluxo(dados.receitas.ano)}</td>
+              <tr class="fx-l-ent">
+                <td class="fx-b"><i class="fas fa-arrow-up"></i> Entradas</td>
+                <td class="r">${formatarMoedaFluxo(dados.receitas.mes)}</td>
+                <td class="r">${formatarMoedaFluxo(dados.receitas.ano)}</td>
               </tr>
-              <tr style="background: rgba(220, 53, 69, 0.1);">
-                <td style="padding: 0.5rem; border: 1px solid var(--border-color); font-weight: 600; color: #dc3545;">
-                  <i class="fas fa-arrow-down"></i> Despesas Fixas
-                </td>
-                <td style="padding: 0.5rem; text-align: right; border: 1px solid var(--border-color); color: #dc3545;">${formatarMoedaFluxo(dados.despesas_fixas.mes)}</td>
-                <td style="padding: 0.5rem; text-align: right; border: 1px solid var(--border-color); color: #dc3545;">${formatarMoedaFluxo(dados.despesas_fixas.ano)}</td>
+              <tr class="fx-l-fix">
+                <td class="fx-b"><i class="fas fa-arrow-down"></i> Despesas Fixas</td>
+                <td class="r">${formatarMoedaFluxo(dados.despesas_fixas.mes)}</td>
+                <td class="r">${formatarMoedaFluxo(dados.despesas_fixas.ano)}</td>
               </tr>
-              <tr style="background: rgba(255, 193, 7, 0.1);">
-                <td style="padding: 0.5rem; border: 1px solid var(--border-color); font-weight: 600; color: #ffc107;">
-                  <i class="fas fa-random"></i> Despesas Variáveis
-                </td>
-                <td style="padding: 0.5rem; text-align: right; border: 1px solid var(--border-color); color: #ffc107;">${formatarMoedaFluxo(dados.despesas_variaveis.mes)}</td>
-                <td style="padding: 0.5rem; text-align: right; border: 1px solid var(--border-color); color: #ffc107;">${formatarMoedaFluxo(dados.despesas_variaveis.ano)}</td>
+              <tr class="fx-l-var">
+                <td class="fx-b"><i class="fas fa-random"></i> Despesas Variáveis</td>
+                <td class="r">${formatarMoedaFluxo(dados.despesas_variaveis.mes)}</td>
+                <td class="r">${formatarMoedaFluxo(dados.despesas_variaveis.ano)}</td>
               </tr>
-              <tr style="background: rgba(0, 123, 255, 0.1);">
-                <td style="padding: 0.5rem; border: 1px solid var(--border-color); font-weight: 600; color: #007bff;">
-                  <i class="fas fa-piggy-bank"></i> Investimentos
-                </td>
-                <td style="padding: 0.5rem; text-align: right; border: 1px solid var(--border-color); color: #007bff;">${formatarMoedaFluxo(dados.investimentos.mes)}</td>
-                <td style="padding: 0.5rem; text-align: right; border: 1px solid var(--border-color); color: #007bff;">${formatarMoedaFluxo(dados.investimentos.ano)}</td>
+              <tr class="fx-l-inv">
+                <td class="fx-b"><i class="fas fa-piggy-bank"></i> Investimentos</td>
+                <td class="r">${formatarMoedaFluxo(dados.investimentos.mes)}</td>
+                <td class="r">${formatarMoedaFluxo(dados.investimentos.ano)}</td>
               </tr>
-              <tr style="background: rgba(212, 175, 55, 0.2);">
-                <td style="padding: 0.5rem; border: 1px solid var(--border-color); font-weight: 700; color: #ffffff;">
-                  <i class="fas fa-wallet"></i> SALDO/SOBRA
-                </td>
-                <td style="padding: 0.5rem; text-align: right; border: 1px solid var(--border-color); font-weight: 700; color: #ffffff;">
-                  ${formatarMoedaFluxo(dados.saldo.mes)} 
-                  <span style="font-size: 0.8rem; opacity: 0.8;">(${dados.receitas.mes > 0 ? ((dados.saldo.mes / dados.receitas.mes) * 100).toFixed(1) : '0.0'}%)</span>
-                </td>
-                <td style="padding: 0.5rem; text-align: right; border: 1px solid var(--border-color); font-weight: 700; color: #ffffff;">
-                  ${formatarMoedaFluxo(dados.saldo.ano)} 
-                  <span style="font-size: 0.8rem; opacity: 0.8;">(${dados.receitas.ano > 0 ? ((dados.saldo.ano / dados.receitas.ano) * 100).toFixed(1) : '0.0'}%)</span>
-                </td>
+              <tr class="fx-l-saldo">
+                <td class="fx-b"><i class="fas fa-wallet"></i> SALDO/SOBRA</td>
+                <td class="r fx-b">${formatarMoedaFluxo(dados.saldo.mes)} <span class="fx-pct">(${dados.receitas.mes > 0 ? ((dados.saldo.mes / dados.receitas.mes) * 100).toFixed(1) : '0.0'}%)</span></td>
+                <td class="r fx-b">${formatarMoedaFluxo(dados.saldo.ano)} <span class="fx-pct">(${dados.receitas.ano > 0 ? ((dados.saldo.ano / dados.receitas.ano) * 100).toFixed(1) : '0.0'}%)</span></td>
               </tr>
             </tbody>
           </table>
@@ -1329,7 +1246,7 @@ function renderAnalisesFluxo() {
   function renderComparacaoDistribuicao() {
     if (!distribuicao) {
       return `
-        <div style="text-align: center; padding: 1rem; color: var(--text-light); opacity: 0.7;">
+        <div class="fx-box fx-box--info fx-box--vazio">
           <i class="fas fa-info-circle"></i> Não há receitas cadastradas para calcular a distribuição.
         </div>
       `;
@@ -1342,81 +1259,48 @@ function renderAnalisesFluxo() {
     };
     
     return `
-      <div style="margin-top: 2rem; padding: 1.2rem; background: var(--dark-bg); border: 2px solid var(--info-color, #17a2b8); border-radius: 10px;">
-        <h4 style="color: var(--info-color, #17a2b8); margin: 0 0 1rem 0; text-align: center;">
-          <i class="fas fa-balance-scale"></i> COMPARAÇÃO COM DISTRIBUIÇÃO IDEAL
+      <div class="fx-box fx-box--info">
+        <h4 class="fx-h4">
+          <span><i class="fas fa-balance-scale"></i> COMPARAÇÃO COM DISTRIBUIÇÃO IDEAL</span>
         </h4>
-        <p style="text-align: center; font-size: 0.85rem; color: var(--text-light); opacity: 0.8; margin-bottom: 1rem;">
-          Baseado nas variáveis de gestão financeira: Despesas Fixas ${variaveisGestao.despesas_fixas}% | Despesas Variáveis ${variaveisGestao.despesas_variaveis}% | Investimentos ${variaveisGestao.investimentos}%
+        <p class="fx-meta">
+          Baseado nas variáveis de gestão financeira: Despesas Fixas ${variaveisGestao.despesas_fixas}% · Despesas Variáveis ${variaveisGestao.despesas_variaveis}% · Investimentos ${variaveisGestao.investimentos}% &nbsp;|&nbsp; <strong>Renda Total Anual:</strong> ${formatarMoedaFluxo(distribuicao.rendaTotal)}
         </p>
-        <p style="text-align: center; font-size: 0.9rem; margin-bottom: 1rem;">
-          <strong>Renda Total Anual:</strong> ${formatarMoedaFluxo(distribuicao.rendaTotal)}
-        </p>
-        
-        <div style="overflow-x: auto;">
-          <table style="width: 100%; border-collapse: collapse; font-size: 0.85rem;">
+
+        <div class="fx-wrap">
+          <table class="fx-table fx-table--ro fx-table--comp">
             <thead>
-              <tr style="background: rgba(23, 162, 184, 0.2);">
-                <th style="padding: 0.5rem; text-align: left; border: 1px solid var(--border-color);">Categoria</th>
-                <th style="padding: 0.5rem; text-align: right; border: 1px solid var(--border-color);">Ideal (Anual)</th>
-                <th style="padding: 0.5rem; text-align: right; border: 1px solid var(--border-color);">Atual (Anual)</th>
-                <th style="padding: 0.5rem; text-align: right; border: 1px solid var(--border-color);">Diferença</th>
+              <tr>
+                <th>Categoria</th>
+                <th class="r">Ideal (Anual)</th>
+                <th class="r">Atual (Anual)</th>
+                <th class="r">Diferença</th>
               </tr>
             </thead>
             <tbody>
               <tr>
-                <td style="padding: 0.5rem; border: 1px solid var(--border-color); font-weight: 600; color: #dc3545;">
-                  <i class="fas fa-arrow-down"></i> Despesas Fixas
-                </td>
-                <td style="padding: 0.5rem; text-align: right; border: 1px solid var(--border-color);">
-                  ${formatarMoedaFluxo(distribuicao.ideal.despesas_fixas.valor)}
-                  <span style="font-size: 0.75rem; opacity: 0.7;"> (${distribuicao.ideal.despesas_fixas.percentual.toFixed(1)}%)</span>
-                </td>
-                <td style="padding: 0.5rem; text-align: right; border: 1px solid var(--border-color);">
-                  ${formatarMoedaFluxo(distribuicao.atual.despesas_fixas.valor)}
-                  <span style="font-size: 0.75rem; opacity: 0.7;"> (${distribuicao.atual.despesas_fixas.percentual.toFixed(1)}%)</span>
-                </td>
-                <td style="padding: 0.5rem; text-align: right; border: 1px solid var(--border-color);">
-                  ${formatarDiferenca(distribuicao.diferenca.despesas_fixas)}
-                </td>
+                <td class="fx-b fx-c-fix"><i class="fas fa-arrow-down"></i> Despesas Fixas</td>
+                <td class="r">${formatarMoedaFluxo(distribuicao.ideal.despesas_fixas.valor)} <span class="fx-pct">(${distribuicao.ideal.despesas_fixas.percentual.toFixed(1)}%)</span></td>
+                <td class="r">${formatarMoedaFluxo(distribuicao.atual.despesas_fixas.valor)} <span class="fx-pct">(${distribuicao.atual.despesas_fixas.percentual.toFixed(1)}%)</span></td>
+                <td class="r">${formatarDiferenca(distribuicao.diferenca.despesas_fixas)}</td>
               </tr>
               <tr>
-                <td style="padding: 0.5rem; border: 1px solid var(--border-color); font-weight: 600; color: #ffc107;">
-                  <i class="fas fa-random"></i> Despesas Variáveis + Saldo
-                </td>
-                <td style="padding: 0.5rem; text-align: right; border: 1px solid var(--border-color);">
-                  ${formatarMoedaFluxo(distribuicao.ideal.despesas_variaveis.valor)}
-                  <span style="font-size: 0.75rem; opacity: 0.7;"> (${distribuicao.ideal.despesas_variaveis.percentual.toFixed(1)}%)</span>
-                </td>
-                <td style="padding: 0.5rem; text-align: right; border: 1px solid var(--border-color);">
-                  ${formatarMoedaFluxo(distribuicao.atual.despesas_variaveis.valor)}
-                  <span style="font-size: 0.75rem; opacity: 0.7;"> (${distribuicao.atual.despesas_variaveis.percentual.toFixed(1)}%)</span>
-                </td>
-                <td style="padding: 0.5rem; text-align: right; border: 1px solid var(--border-color);">
-                  ${formatarDiferenca(distribuicao.diferenca.despesas_variaveis)}
-                </td>
+                <td class="fx-b fx-c-var"><i class="fas fa-random"></i> Despesas Variáveis + Saldo</td>
+                <td class="r">${formatarMoedaFluxo(distribuicao.ideal.despesas_variaveis.valor)} <span class="fx-pct">(${distribuicao.ideal.despesas_variaveis.percentual.toFixed(1)}%)</span></td>
+                <td class="r">${formatarMoedaFluxo(distribuicao.atual.despesas_variaveis.valor)} <span class="fx-pct">(${distribuicao.atual.despesas_variaveis.percentual.toFixed(1)}%)</span></td>
+                <td class="r">${formatarDiferenca(distribuicao.diferenca.despesas_variaveis)}</td>
               </tr>
               <tr>
-                <td style="padding: 0.5rem; border: 1px solid var(--border-color); font-weight: 600; color: #007bff;">
-                  <i class="fas fa-piggy-bank"></i> Investimentos
-                </td>
-                <td style="padding: 0.5rem; text-align: right; border: 1px solid var(--border-color);">
-                  ${formatarMoedaFluxo(distribuicao.ideal.investimentos.valor)}
-                  <span style="font-size: 0.75rem; opacity: 0.7;"> (${distribuicao.ideal.investimentos.percentual.toFixed(1)}%)</span>
-                </td>
-                <td style="padding: 0.5rem; text-align: right; border: 1px solid var(--border-color);">
-                  ${formatarMoedaFluxo(distribuicao.atual.investimentos.valor)}
-                  <span style="font-size: 0.75rem; opacity: 0.7;"> (${distribuicao.atual.investimentos.percentual.toFixed(1)}%)</span>
-                </td>
-                <td style="padding: 0.5rem; text-align: right; border: 1px solid var(--border-color);">
-                  ${formatarDiferenca(distribuicao.diferenca.investimentos)}
-                </td>
+                <td class="fx-b fx-c-inv"><i class="fas fa-piggy-bank"></i> Investimentos</td>
+                <td class="r">${formatarMoedaFluxo(distribuicao.ideal.investimentos.valor)} <span class="fx-pct">(${distribuicao.ideal.investimentos.percentual.toFixed(1)}%)</span></td>
+                <td class="r">${formatarMoedaFluxo(distribuicao.atual.investimentos.valor)} <span class="fx-pct">(${distribuicao.atual.investimentos.percentual.toFixed(1)}%)</span></td>
+                <td class="r">${formatarDiferenca(distribuicao.diferenca.investimentos)}</td>
               </tr>
             </tbody>
           </table>
         </div>
-        
-        <p style="text-align: center; font-size: 0.8rem; color: var(--text-light); opacity: 0.7; margin-top: 1rem;">
+
+        <p class="fx-nota">
           <i class="fas fa-info-circle"></i> Valores negativos na diferença indicam que você está gastando/investindo menos que o ideal.
         </p>
       </div>
@@ -1433,37 +1317,37 @@ function renderAnalisesFluxo() {
   let htmlIntegrantes = '';
   if (pessoasComValores.length > 1) {
     const intItems = pessoasComValores.map(([pessoaId, dados]) => {
-      const titulo = '<i class="fas fa-user"></i> ' + dados.nome + ' <span style="font-size: 0.8rem; opacity: 0.7;">(' + dados.tipo + ')</span>';
-      return '<div style="margin-bottom: 1.5rem; padding: 1rem; background: rgba(255,255,255,0.02); border-radius: 8px;">' + renderTabelaFluxo(dados, titulo, 'var(--text-light)') + '</div>';
+      const titulo = '<i class="fas fa-user"></i> ' + dados.nome + ' <span class="fx-h4-sub">(' + dados.tipo + ')</span>';
+      return '<div class="fx-int-item">' + renderTabelaFluxo(dados, titulo, 'var(--text-light)') + '</div>';
     }).join('');
-    
+
     htmlIntegrantes = `
-    <div style="background: var(--dark-bg); border: 2px solid var(--border-color); border-radius: 10px; padding: 1.2rem; margin-top: 2rem;">
-      <h4 style="color: var(--accent-color); margin: 0 0 1rem 0; text-align: center;">
-        <i class="fas fa-users"></i> ANÁLISE POR INTEGRANTE
+    <div class="fx-box fx-box--int">
+      <h4 class="fx-h4">
+        <span><i class="fas fa-users"></i> ANÁLISE POR INTEGRANTE</span>
       </h4>
-      ${intItems}
+      <div class="fx-int-grid">${intItems}</div>
     </div>`;
   }
-  
+
   // Renderizar análises
   analisesContainer.innerHTML = `
-    <div style="margin-top: 2rem; padding-top: 1.5rem; border-top: 2px solid var(--border-color);">
-    
+    <div class="fx-analises">
+
     <!-- RESULTADO PRINCIPAL (GERAL) -->
-    <div style="background: var(--dark-bg); border: 2px solid var(--accent-color); border-radius: 10px; padding: 1.2rem; margin-bottom: 2rem;">
-      <h4 style="color: var(--accent-color); margin: 0 0 1rem 0; text-align: center;">
-        <i class="fas fa-chart-pie"></i> ANÁLISE GERAL DO FLUXO DE CAIXA
+    <div class="fx-box fx-box--geral">
+      <h4 class="fx-h4">
+        <span><i class="fas fa-chart-pie"></i> ANÁLISE GERAL DO FLUXO DE CAIXA</span>
       </h4>
       ${renderTabelaFluxo(fluxoGeral, null, null)}
     </div>
-    
+
     <!-- COMPARAÇÃO COM DISTRIBUIÇÃO IDEAL -->
     ${renderComparacaoDistribuicao()}
-    
+
     <!-- RESULTADOS SECUNDÁRIOS (POR PESSOA) - só aparece com 2+ pessoas com valores -->
     ${htmlIntegrantes}
-    
+
     </div>
   `;
 }

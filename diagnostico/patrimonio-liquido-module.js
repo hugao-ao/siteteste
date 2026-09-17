@@ -285,6 +285,9 @@ function garantirEstilosPlv3() {
     .plv3-check { display: flex; align-items: center; gap: 0.5rem; }
     .plv3-check input[type="checkbox"] { width: 18px; height: 18px; cursor: pointer; }
     .plv3-check label { margin: 0; cursor: pointer; }
+    /* .plv-check: grupos de checkbox do card (Inventariável / Reserva). Base igual ao antigo style inline;
+       o compacto.css (body.hub-ativo #hub-modal-corpo .plv-check) refina a altura/alinhamento no modal. */
+    .plv-check { display: flex; align-items: center; gap: 0.5rem; }
     .plv3-classe-linha { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem 0.6rem; }
     .plv3-origem { font-size: 0.75rem; opacity: 0.8; }
     .plv3-just { font-size: 0.75rem; opacity: 0.8; font-style: italic; flex-basis: 100%; overflow-wrap: anywhere; }
@@ -307,6 +310,21 @@ function garantirEstilosPlv3() {
     .plv3-legenda { text-align: center; color: var(--text-light, #f0f8f0); margin: 0 0 0.75rem; font-size: 0.9rem; }
     .plv3-nota { text-align: center; font-size: 0.75rem; color: var(--text-light, #f0f8f0); opacity: 0.75; margin-top: 0.5rem; }
     .plv3-faixa { margin: 0.5rem 0 1rem; }
+    /* Classes de apresentação dos templates (card, estado vazio, dica do Dono(s), selo de risco,
+       h5 e cabeçalho do grupo do comparativo). Base = antigo style inline (vale no celular);
+       o bloco @media (min-width: 600px) mais abaixo aplica o compacto do contrato v2. */
+    .patrimonio-liquido-card { margin-bottom: 2rem; padding-bottom: 1.5rem; border-bottom: 3px solid var(--border-color, #2e8b57); }
+    .patrimonio-liquido-title .badge-risco { padding: 0.3rem 0.8rem; border-radius: 15px; font-size: 0.75rem; margin-left: 0.5rem; }
+    .plv-vazio { text-align: center; padding: 2rem; color: var(--text-light, #f0f8f0); opacity: 0.7; }
+    .plv-vazio i { font-size: 3rem; color: var(--secondary-color); opacity: 0.5; margin-bottom: 1rem; }
+    .plv-vazio p + p { font-size: 0.9rem; }
+    .plv-dica { font-size: 0.75rem; font-weight: normal; opacity: 0.8; }
+    .plv-h5 { color: var(--text-light, #f0f8f0); text-align: center; margin-bottom: 0.5rem; }
+    .plv-grupo { background: var(--dark-bg, #0f2e1f); border: 2px solid var(--border-color, #2e8b57); border-radius: 10px; padding: 1.5rem; margin-bottom: 1.5rem; }
+    .plv-cab-grupo h4 { color: var(--accent-color, #ffd700); margin-bottom: 0.5rem; text-align: center; overflow-wrap: anywhere; }
+    .plv-cab-grupo .plv-total { color: var(--accent-color, #ffd700); margin-bottom: 1rem; text-align: center; font-size: 1.2rem; font-weight: bold; }
+    .plv-cab-grupo .plv-total:not(:last-child) { margin-bottom: 0.25rem; }
+    .plv-cab-grupo .plv-base { color: var(--text-light, #f0f8f0); margin-bottom: 1rem; text-align: center; font-size: 0.85rem; opacity: 0.85; }
     /* style.css (raiz), em @media (max-width: 768px), transforma toda tabela em cartões
        (display:block e cabeçalho fora da tela). O comparativo precisa continuar tabela,
        com cabeçalho visível e rolagem horizontal dentro de .plv3-tabela-wrap. */
@@ -317,6 +335,31 @@ function garantirEstilosPlv3() {
       .plv3-tabela tr, .plv3-tabela thead tr { display: table-row; position: static; margin: 0; border: 0; border-radius: 0; background: none; }
       .plv3-tabela th, .plv3-tabela td { display: table-cell; position: static; }
       .plv3-tabela td:before { content: none; }
+    }
+    /* Compacto (contrato v2): tipografia, margens e paddings só a partir de 600px. Onde o seletor
+       vem repetido com body.hub-ativo #hub-modal-corpo é para vencer, dentro do modal, as regras
+       genéricas de h4/h5 do compacto.css e a moldura de fallback do compacto-modulos-v2.css
+       (mesma especificidade, este <style> entra depois); fora do hub vale o seletor simples. */
+    @media (min-width: 600px) {
+      .patrimonio-liquido-card,
+      body.hub-ativo #hub-modal-corpo .patrimonio-liquido-card { margin-bottom: var(--cp-card-mb, 6px); padding: var(--cp-card-pad, 8px 10px); border: 1px solid var(--border-color, #2e8b57); border-radius: var(--cp-radius, 8px); background: rgba(15, 46, 31, 0.35); }
+      .patrimonio-liquido-title .badge-risco { padding: 0 8px; line-height: var(--cp-chip-h, 20px); border-radius: 10px; font-size: 11px; margin-left: 0; text-transform: none; letter-spacing: 0; }
+      .plv-vazio { padding: 10px; font-size: var(--cp-fs, 13px); }
+      .plv-vazio i { font-size: 1.4rem; margin-bottom: 4px; }
+      .plv-vazio p + p { font-size: var(--cp-label-fs, 11.5px); }
+      .plv-dica { font-size: 10.5px; }
+      .plv-h5,
+      body.hub-ativo #hub-modal-corpo .plv-h5 { text-align: left; margin: 4px 0; font-size: var(--cp-h5-fs, 12px); }
+      .plv-grupo { border-width: 1px; border-radius: var(--cp-radius, 8px); padding: var(--cp-card-pad, 8px 10px); margin-bottom: var(--cp-card-mb, 6px); }
+      .plv-cab-grupo { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 12px; margin-bottom: 4px; }
+      .plv-cab-grupo h4,
+      body.hub-ativo #hub-modal-corpo .plv-cab-grupo h4 { margin: 0; text-align: left; font-size: var(--cp-h4-fs, 12.5px); font-weight: 700; text-transform: uppercase; }
+      .plv-cab-grupo .plv-total,
+      .plv-cab-grupo .plv-total:not(:last-child) { margin: 0; text-align: left; font-size: var(--cp-fs, 13px); font-weight: 700; }
+      .plv-cab-grupo .plv-base { margin: 0; text-align: left; font-size: 11px; }
+      .plv3-legenda { font-size: 11px; margin: 0 0 4px; text-align: left; }
+      .plv3-nota { font-size: 11px; margin-top: 4px; text-align: left; line-height: 1.3; }
+      .plv3-faixa { margin: 4px 0 8px; }
     }
   `;
   (document.head || document.documentElement).appendChild(style);
@@ -1468,13 +1511,14 @@ function plv3VoltarClasseCatalogo(id) {
 function renderPatrimoniosLiquidos() {
   const container = document.getElementById('patrimonios-liquidos-container');
   if (!container) return;
-  
+
+  garantirEstilosPlv3(); // antes do estado vazio: .plv-vazio vem do CSS injetado
   if (patrimoniosLiquidos.length === 0) {
     container.innerHTML = `
-      <div style="text-align: center; padding: 2rem; color: var(--text-light); opacity: 0.7;">
-        <i class="fas fa-wallet" style="font-size: 3rem; color: var(--secondary-color); opacity: 0.5; margin-bottom: 1rem;"></i>
+      <div class="plv-vazio">
+        <i class="fas fa-wallet"></i>
         <p>Nenhum investimento cadastrado ainda.</p>
-        <p style="font-size: 0.9rem;">Clique em "Adicionar Investimento" para começar.</p>
+        <p>Clique em "Adicionar Investimento" para começar.</p>
       </div>
     `;
     return;
@@ -1508,7 +1552,7 @@ function renderPatrimoniosLiquidos() {
     const corClasse = riscos.corRisco(classeItem);
 
     return `
-    <div class="patrimonio-liquido-card" data-patrimonio-liquido-id="${pl.id}" style="margin-bottom: 2rem; padding-bottom: 1.5rem; border-bottom: 3px solid var(--border-color);">
+    <div class="patrimonio-liquido-card" data-patrimonio-liquido-id="${pl.id}">
       <div class="patrimonio-liquido-header">
         <h4 class="patrimonio-liquido-title">
           <i class="fas fa-chart-line"></i> Investimento #${pl.id}
@@ -1516,7 +1560,7 @@ function renderPatrimoniosLiquidos() {
             ${getFinalidadeLabel(pl.finalidade)}
           </span>
           ${(classeItem || pl.tipo_produto || pl.classificacao_risco) ? `
-            <span class="badge-risco" style="background-color: ${esc(corClasse)}; color: ${corTextoSobre(corClasse)}; padding: 0.3rem 0.8rem; border-radius: 15px; font-size: 0.75rem; margin-left: 0.5rem;">
+            <span class="badge-risco" style="background-color: ${esc(corClasse)}; color: ${corTextoSobre(corClasse)};">
               ${esc(riscos.rotuloRisco(classeItem))}
             </span>
           ` : ''}
@@ -1563,8 +1607,6 @@ function renderPatrimoniosLiquidos() {
           </select>
         </div>
 
-        ${htmlClasseDoItem(pl)}
-        
         <div class="form-group">
           <label>
             <i class="fas fa-tag"></i> Nome do Produto (opcional)
@@ -1654,15 +1696,16 @@ function renderPatrimoniosLiquidos() {
             placeholder="0.00">
         </div>
         
-        <div class="form-group full-width">
+        <div class="form-group plv-donos">
           <label>
-            <i class="fas fa-users"></i> Dono(s) 
-            <span style="font-size: 0.75rem; font-weight: normal; opacity: 0.8;">(Segure Ctrl/Cmd para selecionar múltiplos)</span>
+            <i class="fas fa-users"></i> Dono(s)
+            <span class="plv-dica">(Segure Ctrl/Cmd para selecionar múltiplos)</span>
           </label>
           <select 
             name="donos"
             multiple 
-            style="min-height: 80px;"
+            size="${Math.min(Math.max(pessoasCasa.length, 2), 4)}"
+            style="min-height: 0;"
             onchange="updatePatrimonioLiquidoField(${pl.id}, 'donos', this.value)"
           >
             ${pessoasCasa.map(pessoa => `
@@ -1673,7 +1716,7 @@ function renderPatrimoniosLiquidos() {
           </select>
         </div>
         
-        <div class="form-group" style="display: flex; align-items: center; gap: 0.5rem;">
+        <div class="form-group plv-check">
           <input type="checkbox" 
                  id="pl_${pl.id}_inventariavel" 
                  ${pl.inventariavel !== false ? 'checked' : ''}
@@ -1685,7 +1728,7 @@ function renderPatrimoniosLiquidos() {
         </div>
 
         <!-- Reserva de emergência (Perfil Financeiro v2) -->
-        <div class="form-group plv3-reserva" style="display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem;">
+        <div class="form-group plv3-reserva plv-check">
           <input type="checkbox"
                  id="pl_${pl.id}_reserva_emergencia"
                  ${pl.reserva_emergencia ? 'checked' : ''}
@@ -1696,6 +1739,8 @@ function renderPatrimoniosLiquidos() {
           </label>
           <span id="plv3-reserva-aviso-${pl.id}">${htmlAvisoReserva(pl)}</span>
         </div>
+
+        ${htmlClasseDoItem(pl)}
       </div>
     </div>
   `;
@@ -2136,7 +2181,7 @@ function htmlGrupoComparativo(chave, g, vigentes) {
     if (g.semClasse > 0) linhas += linhaExtraComparativa('Sem classificação (fora do comparativo)', COR_SEM_CLASSE, g.semClasse);
 
     corpo = `
-        <h5 style="color: var(--text-light); text-align: center; margin-bottom: 0.5rem;">
+        <h5 class="plv-h5">
           <i class="fas fa-balance-scale"></i> Comparação por classe de risco: ideal × atual
         </h5>
         <p class="plv3-legenda">${legenda}</p>
@@ -2182,7 +2227,7 @@ function htmlGrupoComparativo(chave, g, vigentes) {
       : `Responda o teste de perfil de ${esc(listarNomes(faltamPerfil))} para comparar`;
 
     corpo = `
-        <h5 style="color: var(--text-light); text-align: center; margin-bottom: 1rem;">
+        <h5 class="plv-h5">
           <i class="fas fa-table"></i> Distribuição atual por classe de risco
         </h5>
         <div class="plv3-tabela-wrap">
@@ -2198,25 +2243,27 @@ function htmlGrupoComparativo(chave, g, vigentes) {
             </tbody>
           </table>
         </div>
-        <p class="plv3-nota" style="font-size: 0.85rem;">
+        <p class="plv3-nota">
           <i class="fas fa-info-circle"></i> ${motivo}
         </p>
     `;
   }
 
   return `
-      <div style="background: var(--dark-bg); border: 2px solid var(--border-color); border-radius: 10px; padding: 1.5rem; margin-bottom: 1.5rem;">
-        <h4 style="color: var(--accent-color); margin-bottom: 0.5rem; text-align: center; overflow-wrap: anywhere;">
-          <i class="fas fa-user-circle"></i> ${esc(chave)}
-        </h4>
-        <p style="color: var(--accent-color); margin-bottom: ${temExtras ? '0.25rem' : '1rem'}; text-align: center; font-size: 1.2rem; font-weight: bold;">
-          Total: ${formatarMoeda(g.total)}
-        </p>
-        ${temExtras ? `
-        <p style="color: var(--text-light); margin-bottom: 1rem; text-align: center; font-size: 0.85rem; opacity: 0.85;">
-          Base da matriz (itens classificados e elegíveis): ${formatarMoeda(universo)}
-        </p>
-        ` : ''}
+      <div class="plv-grupo">
+        <div class="plv-cab-grupo">
+          <h4>
+            <i class="fas fa-user-circle"></i> ${esc(chave)}
+          </h4>
+          <p class="plv-total">
+            Total: ${formatarMoeda(g.total)}
+          </p>
+          ${temExtras ? `
+          <p class="plv-base">
+            Base da matriz (itens classificados e elegíveis): ${formatarMoeda(universo)}
+          </p>
+          ` : ''}
+        </div>
         ${corpo}
         ${temExtras ? `
         <p class="plv3-nota">

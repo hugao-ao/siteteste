@@ -2398,7 +2398,27 @@
       '.pfa-inv-pessoa{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:.5rem .9rem;padding:.6rem .7rem;border:1px solid var(--border-color,#2e8b57);border-radius:8px;background:rgba(0,0,0,.15);min-width:0;}' +
       '.pfa-inv-calculado{grid-column:1/-1;font-weight:600;color:var(--text-light,#f0f8f0);overflow-wrap:anywhere;}' +
       '.pfa-inv-termo{grid-column:1/-1;display:flex;align-items:center;gap:.5rem;min-height:44px;cursor:pointer;font-size:.8rem;}' +
-      '.pfa-inv-termo input{width:20px;height:20px;flex:0 0 auto;accent-color:var(--accent-color,#ffd700);}' +
+      '.pfa-inv-termo input{width:20px;height:20px;margin:0;padding:0;flex:0 0 auto;accent-color:var(--accent-color,#ffd700);}' +
+      // Compacto (modal do hub): tipografia/espaçamento/grades a partir de 600px,
+      // tamanho do checkbox e do termo só a partir de 900px. Tokens --cp-* de compacto.css.
+      // Fica ANTES do @media (max-width:600px) para que, em 600px exatos, o telefone vença.
+      '@media (min-width:600px){' +
+        '.pfa-reserva-selo{grid-template-columns:minmax(220px,300px) minmax(0,1fr);gap:var(--cp-gap-y,6px) var(--cp-gap-x,8px);margin-top:var(--cp-gap-y,6px);padding:var(--cp-card-pad,8px 10px);}' +
+        '.pfa-reserva-selo .pfa-campo-largo{grid-column:auto;}' +
+        '.pfa-reserva-selo-rotulo{font-size:var(--cp-h4-fs,12.5px);}' +
+        '.pfa-investidor-pessoas{gap:var(--cp-gap-y,6px);}' +
+        '.pfa-inv-pessoa{grid-template-columns:minmax(220px,300px) minmax(0,1fr);gap:var(--cp-gap-y,6px) var(--cp-gap-x,8px);padding:6px 10px;}' +
+        '.pfa-inv-pessoa .pfa-campo-largo{grid-column:auto;}' +
+        '.pfa-inv-calculado{font-size:var(--cp-h4-fs,12.5px);}' +
+        '.pfa-inv-termo{gap:var(--cp-gap-x,8px);font-size:12px;}' +
+        // É um <label>: dentro do modal compacto.css (body.hub-ativo #hub-modal-corpo label, 1,1,2)
+        // impõe 11.5px/600/margin-bottom 2px; o id aqui (1,2,2) faz os 12px valerem no card.
+        'body.hub-ativo #hub-modal-corpo label.pfa-inv-termo{font-size:12px;font-weight:400;margin:0;}' +
+      '}' +
+      '@media (min-width:900px){' +
+        '.pfa-inv-termo{min-height:28px;}' +
+        '.pfa-inv-termo input{width:16px;height:16px;}' +
+      '}' +
       '@media (max-width:600px){.pfa-reserva-selo,.pfa-inv-pessoa{grid-template-columns:1fr;}.pfa-reserva-selo select,.pfa-reserva-selo textarea,.pfa-inv-pessoa select,.pfa-inv-pessoa textarea{font-size:16px;}}';
     (document.head || document.documentElement).appendChild(st);
   }
