@@ -40,7 +40,7 @@
       .planilha th, .planilha td { white-space: nowrap; text-align: right; }
       .planilha th:first-child, .planilha td:first-child {
         text-align: left; position: sticky; left: 0; z-index: 2;
-        background: var(--argos-surface); max-width: 250px; overflow: hidden; text-overflow: ellipsis;
+        background: var(--argos-surface); max-width: 310px; overflow: hidden; text-overflow: ellipsis;
       }
       .planilha thead th { z-index: 3; }
       .planilha thead th[data-mes] { cursor: pointer; }
@@ -56,9 +56,26 @@
       .planilha td.col-total { border-left: 2px solid var(--argos-border); font-weight: 700; }
       .planilha th.col-total { border-left: 2px solid var(--argos-border); }
       .planilha tr.mes-atual-col td { }
+      /* bloco de despesas: cada célula traz o previsto e, embaixo, o realizado */
+      .planilha td.cel-dupla { line-height: 1.15; padding-top: 3px; padding-bottom: 3px; }
+      .planilha td.cel-dupla .prev, .planilha td.cel-dupla .real { display: block; }
+      .planilha td.cel-dupla .real { font-style: italic; font-size: .82em; opacity: .85; }
+      .planilha td.cel-dupla .real.neg { color: var(--argos-danger); opacity: 1; }
+      .planilha tr.linha-despesa td:first-child { white-space: nowrap; }
+      /* a 1ª coluna é fixa: precisa de fundo OPACO para não mostrar os meses por trás ao rolar */
+      .planilha tr.linha-despesa.inativa td { color: var(--argos-text-dim); }
+      .planilha tr.linha-despesa.inativa td:first-child { opacity: 1; }
+      .planilha tr.linha-indef td { background: color-mix(in srgb, var(--argos-surface) 92%, #eab308); }
+      .planilha tr.linha-indef td:first-child { background: color-mix(in srgb, var(--argos-surface) 92%, #eab308); }
+      .planilha tr.grupo-linha td:first-child { white-space: normal; }
+      @media print { .planilha .desp-acoes, .planilha .argos-btn.mini { display: none !important; } }
+      .planilha .desp-acoes { display: inline-flex; gap: 3px; margin-right: 6px; vertical-align: middle; }
+      .planilha .argos-btn.mini { padding: 1px 6px; font-size: .72rem; line-height: 1.4; min-height: 0; }
+      .planilha tr.grupo-linha .argos-btn.mini { margin-right: 6px; }
+      .argos-bloco.bloco-indef { border-color: rgba(234, 179, 8, .5); }
     </style>
     <section id="secao-anual">
-      <p class="dica">Planilha do ano: <b>colunas = meses</b>. O bloco de <b>Entradas</b> segue a planilha da clínica: <b>entradas estimadas</b> (você digita), <b>produção do mês</b>, <b>recebido relativo ao mês</b> (pelo mês de referência), <b>atrasados do dia 01</b> (calculado, ou digite para fixar), <b>estimativa de recebimentos</b> (produção do mês anterior + atrasados) e <b>entradas reais</b> (o que entrou no caixa). Nos blocos de saída, toque no nome (▾) para ocultar/mostrar a memória de cálculo; toque no nome de um mês para abrir o detalhe mensal. Valores em R$.</p>
+      <p class="dica">Planilha do ano: <b>colunas = meses</b>. O bloco de <b>Entradas</b> segue a planilha da clínica: <b>entradas estimadas</b> (você digita), <b>produção do mês</b>, <b>recebido relativo ao mês</b> (pelo mês de referência), <b>atrasados do dia 01</b> (calculado, ou digite para fixar), <b>estimativa de recebimentos</b> (produção do mês anterior + atrasados) e <b>entradas reais</b> (o que entrou no caixa). Nos blocos de saída, toque no nome (▾) para ocultar/mostrar a memória de cálculo; toque no nome de um mês para abrir o detalhe mensal. No bloco de <b>Despesas</b> estão todos os itens do catálogo, cada célula com o <b>previsto</b> e, embaixo, o <b>realizado</b>: use <b>+ nova</b>, ✏️ e 🗑️ na própria linha. O último item, <b>INDEFINIDO</b>, é do sistema: recebe as saídas sem despesa definida, as de despesa excluída e as com referência quebrada. Valores em R$.</p>
       <div class="argos-tabela-wrap">
         <table class="argos-tabela planilha" id="tabela-anual">
           <thead id="thead-anual"></thead>
@@ -237,7 +254,20 @@
         <button type="button" class="argos-btn small" id="btn-desp-adotar" data-argos-recurso="despesas_previsao" style="display:none"></button>
       </div>
       <div id="lista-despesas"></div>
-      <h3 class="form-secao" id="form-despesa-titulo">Nova despesa</h3>
+      <div class="argos-modal-acoes" style="justify-content:flex-start">
+        <button type="button" class="argos-btn primary" id="btn-desp-nova-catalogo" data-argos-recurso="despesas_gerenciar">+ Nova despesa</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ MODAL: FORMULÁRIO DE UMA DESPESA (planilha e catálogo) ============ -->
+  <div class="argos-modal-fundo" id="modal-despesa-form">
+    <div class="argos-modal">
+      <div class="argos-modal-topo">
+        <h2 id="form-despesa-titulo">💸 Nova despesa</h2>
+        <button class="argos-modal-x" data-fechar>×</button>
+      </div>
+      <p class="dica">O nome vale em todo lugar de uma vez: planilha anual, detalhe do mês, movimentações classificadas e De-Para apontam para o item, não para o texto.</p>
       <form id="form-despesa" class="argos-form">
         <div class="form-grade">
           <label>Nome *
@@ -268,14 +298,14 @@
         </div>
         <label class="linha-check"><input type="checkbox" id="desp-ativo" checked /> Despesa ativa</label>
         <div class="argos-modal-acoes">
-          <button type="button" class="argos-btn ghost" id="btn-desp-cancelar" style="display:none">Cancelar edição</button>
+          <button type="button" class="argos-btn ghost" data-fechar>Cancelar</button>
           <button type="submit" class="argos-btn primary">Salvar despesa</button>
         </div>
       </form>
     </div>
   </div>
 
-  <script type="module" src="planejamento.js?v=12"></script>
+  <script type="module" src="planejamento.js?v=13"></script>
   <script type="module" src="argos-zoom.js?v=4"></script>
 </body>
 </html>

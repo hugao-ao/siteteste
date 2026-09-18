@@ -17,6 +17,73 @@ let perm = { pode: () => true, aplicarVisibilidade: () => {}, master: true };
 let pacientes = [], dinamicas = [], sessoes = [], profissionais = [], despesas = [], movimentacoes = [], alocacoes = [], depara = [];
 let editandoDespesaId = null;
 
+// ---------- o item INDEFINIDO do catálogo de despesas ----------
+// Último da lista, do sistema: não sai nem muda de nome. Herda toda saída
+// cuja despesa foi excluída, que veio sem referência ou com referência
+// quebrada — o banco garante isso por gatilho, e a página faz o mesmo
+// para o que aparecer na tela sem esperar recarga.
+const indefinidoId = () => (despesas.find(d => d.sistema) || {}).id || null;
+const despesaExiste = id => !!id && despesas.some(d => d.id === id);
+/** Destino de SAÍDA que na prática é "sem despesa definida": INDEFINIDO, "outro" ou despesa inexistente. */
+const destinoIndef = (tipo, id, tipoMov) => tipoMov === 'saida'
+    && (tipo === 'outro' || (tipo === 'despesa' && (!despesaExiste(id) || id === indefinidoId())));
+/** Alocação de SAÍDA que na prática é "sem despesa definida". */
+const ehAlocIndef = (a, tipoMov) => destinoIndef(a.vinculo_tipo, a.vinculo_id, tipoMov);
+/**
+ * De-Para que serve para uma movimentação deste tipo: associação cujo
+ * destino é o INDEFINIDO (ou uma despesa que não existe mais) não é
+ * associação — o pagador continua "sem destino" e volta para a lista.
+ */
+const deparaUteis = tipoMov => depara.filter(d => !destinoIndef(d.vinculo_tipo, d.vinculo_id, tipoMov));
+/** Alocações que apontam para um destino de verdade (sem as do INDEFINIDO). */
+function alocacoesDefinidas() {
+    const t = tipoDaMov();
+    return alocacoes.filter(a => !ehAlocIndef(a, t.get(a.movimentacao_id)));
+}
+/** Catálogo na ordem da planilha: ativas, inativas e o INDEFINIDO por último. */
+function despesasOrdenadas() {
+    return [...despesas].sort((a, b) => (a.sistema ? 1 : 0) - (b.sistema ? 1 : 0)
+        || (a.ativo === false ? 1 : 0) - (b.ativo === false ? 1 : 0)
+        || String(a.nome).localeCompare(String(b.nome)));
+}
+const OBS_INDEFINIDO = 'Item padrão do sistema: recebe as saídas sem despesa definida, com referência excluída ou com erro.';
+
+/**
+ * Garante o INDEFINIDO e conserta na hora o que já nasceu "com erro":
+ * alocação de saída apontando para despesa inexistente (ou para "outro")
+ * passa a apontar para o INDEFINIDO, no banco e na tela.
+ */
+async function garantirIndefinido() {
+    const podeEscrever = perm.master || perm.pode('despesas_planilha_editar');
+    if (!indefinidoId()) {
+        if (!podeEscrever) {
+            // só para exibir: quem não pode gravar vê o item, e a linha real nasce com quem pode
+            despesas.push({ id: '__indefinido__', nome: 'INDEFINIDO', valor: 0, recorrencia: 'mensal',
+                data_inicio: '2026-01-01', ativo: true, sistema: true, virtual: true });
+            return;
+        }
+        const { data, error } = await sb.from('argos_despesas').insert({
+            nome: 'INDEFINIDO', valor: 0, recorrencia: 'mensal', data_inicio: '2026-01-01',
+            ativo: true, sistema: true, observacoes: OBS_INDEFINIDO
+        }).select().single();
+        if (error || !data) { console.error(error); return; }
+        despesas.push(data);
+    }
+    if (!podeEscrever) return;
+    const indef = indefinidoId();
+    const tipo = tipoDaMov();
+    const ids = new Set(despesas.map(d => d.id));
+    const quebradas = alocacoes.filter(a => tipo.get(a.movimentacao_id) === 'saida'
+        && (a.vinculo_tipo === 'outro'
+            || (a.vinculo_tipo === 'despesa' && (!a.vinculo_id || !ids.has(a.vinculo_id)))));
+    for (const a of quebradas) {
+        const { error } = await sb.from('argos_mov_alocacoes')
+            .update({ vinculo_tipo: 'despesa', vinculo_id: indef }).eq('id', a.id);
+        if (error) { console.error(error); continue; }
+        a.vinculo_tipo = 'despesa'; a.vinculo_id = indef;
+    }
+}
+
 const MES_NOMES = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
     'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
 const RECORRENCIA_LABELS = { unica: 'Única', semanal: 'Semanal', mensal: 'Mensal', anual: 'Anual' };
@@ -46,6 +113,7 @@ async function carregarTudo() {
     depara = (rDp && rDp.data) || [];
     cobrancaMes = (rCob && rCob.data) || [];
     planoEntradas = (rPlan && rPlan.data) || [];
+    await garantirIndefinido();
     render();
 }
 
@@ -181,15 +249,21 @@ function realizadoDoMes(mes) {
             porVinculo[k] = (porVinculo[k] || 0) + (Number(a.valor) || 0);
         }
     });
+    // INDEFINIDO: o que foi alocado nele (ou em "outro") por referência,
+    // mais o que ainda não tem alocação nenhuma, pela data
+    const indef = indefinidoId();
+    const indefAloc = soma(alocMes.filter(a => ehAlocIndef(a, tipoDe[a.movimentacao_id])));
+    const indefinido = indefAloc + saidasNaoClass;
+    if (indef) porVinculo['despesa:' + indef] = indefinido;
     const entradas = entradasClass + entradasNaoClass;
     const saidasTotal = repasses + despesasClass + saidasNaoClass;
     return {
         entradas, entradasNaoClass, repasses,
-        despesas: despesasClass,
+        despesas: despesasClass + saidasNaoClass, // tudo que saiu, INDEFINIDO incluído
         naoClassificadas: saidasNaoClass,
+        indefinido,
         saidasTotal,
         resultado: entradas - saidasTotal,
-        outrasSaidas: soma(alocMes.filter(a => tipoDe[a.movimentacao_id] === 'saida' && a.vinculo_tipo === 'outro')),
         porVinculo
     };
 }
@@ -200,7 +274,7 @@ function despesasDoMes(mes) {
     const ate = fimDoMes(mes);
     const itens = [];
     for (const d of despesas) {
-        if (d.ativo === false || !d.data_inicio) continue;
+        if (d.sistema || d.ativo === false || !d.data_inicio) continue;
         const ini = d.data_inicio;
         const fim = d.fim_data || null;
         const v = Number(d.valor) || 0;
@@ -368,15 +442,41 @@ function renderAnual() {
         linhas.push(linhaHTML('Δ diferença (real − previsto)', dados.map(c => c.realizado.repasses - c.repasses), { classeExtra: 'linha-real', sinal: 'invertido' }));
     }
     ordenado(porRep).forEach(l => linhas.push(linhaHTML(esc(l.nome), l.valores, { detalheDe: 'repasses' })));
-    linhas.push(linhaHTML('💸 SAÍDAS previstas — Despesas', dados.map(c => c.totalDespesas), { grupo: 'despesas' }));
+    // ---- DESPESAS: todos os itens do catálogo, previsto e real em cada mês,
+    // com editar/excluir na própria linha e o INDEFINIDO por último ----
+    const podeDesp = perm.master || perm.pode('despesas_planilha_editar');
+    // (os botões vêm ANTES do texto: a primeira coluna é fixa e corta o que passar da largura)
+    const btnNova = podeDesp
+        ? `<button type="button" class="argos-btn mini primary" data-desp-nova title="Adicionar um item de despesa">+ nova</button> ` : '';
+    linhas.push(linhaHTML(btnNova + '💸 SAÍDAS previstas — Despesas', dados.map(c => c.totalDespesas), { grupo: 'despesas' }));
     if (temMov) {
-        linhas.push(linhaHTML('✔ Despesas realizadas (movimentações)', dados.map(c => c.realizado.despesas), { classeExtra: 'linha-real' }));
+        linhas.push(linhaHTML('✔ Despesas realizadas (movimentações, INDEFINIDO incluído)', dados.map(c => c.realizado.despesas), { classeExtra: 'linha-real' }));
         linhas.push(linhaHTML('Δ diferença (real − previsto)', dados.map(c => c.realizado.despesas - c.totalDespesas), { classeExtra: 'linha-real', sinal: 'invertido' }));
-        if (dados.some(c => c.realizado.naoClassificadas > 0)) {
-            linhas.push(linhaHTML('⚠ Saídas reais ainda não classificadas', dados.map(c => c.realizado.naoClassificadas), { classeExtra: 'linha-real' }));
-        }
     }
-    ordenado(porDesp).forEach(l => linhas.push(linhaHTML(esc(l.nome), l.valores, { detalheDe: 'despesas' })));
+    const celDupla = (p, r) => {
+        const estouro = temMov && p > 0.004 && r > p + 0.004 ? ' neg' : '';
+        return `<td class="cel-dupla"><span class="prev">${fmt(p)}</span>`
+            + (temMov ? `<span class="real${estouro}">${Math.abs(r) < 0.005 ? '—' : '✔ ' + fmt2(r)}</span>` : '')
+            + '</td>';
+    };
+    const escondido = gruposFechados.has('despesas') ? ' style="display:none"' : '';
+    for (const d of despesasOrdenadas()) {
+        const prev = (porDesp.get(d.id) || {}).valores || Array(12).fill(0);
+        const real = dados.map(c => c.realizado.porVinculo['despesa:' + d.id] || 0);
+        const rotulo = d.sistema
+            ? `<b>${esc(d.nome)}</b> <span class="dim">(sem despesa definida)</span>`
+            : `${esc(d.nome)} <span class="dim">(${RECORRENCIA_LABELS[d.recorrencia] || d.recorrencia}${d.ativo === false ? ' · inativa' : ''})</span>`;
+        const acoes = podeDesp && !d.sistema
+            ? `<span class="desp-acoes"><button type="button" class="argos-btn mini" data-desp-editar="${d.id}" title="Editar esta despesa">✏️</button>`
+              + `<button type="button" class="argos-btn mini danger" data-desp-excluir="${d.id}" title="Excluir — as saídas dela passam para INDEFINIDO">🗑️</button></span> `
+            : '';
+        linhas.push(`<tr class="linha-detalhe-plan linha-despesa${d.sistema ? ' linha-indef' : ''}${d.ativo === false ? ' inativa' : ''}"
+            data-detalhe-de="despesas" data-despesa="${d.id}"${escondido}>
+          <td title="${d.sistema ? 'INDEFINIDO — item do sistema: saídas sem despesa definida, de despesa excluída ou com referência quebrada' : esc(d.nome)}">${acoes}${rotulo}</td>
+          ${prev.map((p, i) => celDupla(p, real[i])).join('')}
+          ${celDupla(soma(prev), soma(real)).replace('<td class="cel-dupla"', '<td class="cel-dupla col-total"')}
+        </tr>`);
+    }
     linhas.push(linhaHTML('<b>🟰 RESULTADO previsto (entradas − saídas)</b>', dados.map(c => c.resultado), { classeExtra: 'linha-total', sinal: true }));
     if (temMov) {
         linhas.push(linhaHTML('<b>✔ RESULTADO realizado (movimentações)</b>', dados.map(c => c.realizado.resultado), { classeExtra: 'linha-total linha-real', sinal: true }));
@@ -409,7 +509,7 @@ function renderMensal() {
         <td>${formataMoeda(c.faturamento)}</td><td>${formataMoeda(r.entradas)}</td><td>${difHTML(r.entradas, c.faturamento, false)}</td></tr>
       <tr><td><b>💼 Repasses aos profissionais</b></td>
         <td>− ${formataMoeda(c.repasses)}</td><td>− ${formataMoeda(r.repasses)}</td><td>${difHTML(r.repasses, c.repasses, true)}</td></tr>
-      <tr><td><b>💸 Despesas</b>${r.naoClassificadas ? ` <span class="badge vermelho">+ ${formataMoeda(r.naoClassificadas)} de saídas não classificadas</span>` : ''}</td>
+      <tr><td><b>💸 Despesas</b>${r.indefinido > 0.004 ? ` <span class="badge amarelo">${formataMoeda(r.indefinido)} em INDEFINIDO</span>` : ''}</td>
         <td>− ${formataMoeda(c.totalDespesas)}</td><td>− ${formataMoeda(r.despesas)}</td><td>${difHTML(r.despesas, c.totalDespesas, true)}</td></tr>
       <tr class="linha-total"><td><b>Resultado do mês</b></td>
         <td><b style="color:${corResultado(c.resultado)}">${formataMoeda(c.resultado)}</b></td>
@@ -437,18 +537,30 @@ function renderMensal() {
         }).join('')
         || '<tr><td colspan="6" class="dim">Nenhum repasse neste mês.</td></tr>';
 
-    const linhasDesp = c.itensDespesas.map(x => {
-        const real = r.porVinculo['despesa:' + x.id] || 0;
-        return `<tr><td>${esc(x.nome)}${x.extra ? ` <span class="dim">(${esc(x.extra)})</span>` : ''}</td><td>${RECORRENCIA_LABELS[x.recorrencia]}</td><td>${formataMoeda(x.valor)}</td><td>${real ? formataMoeda(real) : '—'}</td><td>${difHTML(real, x.valor, true)}</td></tr>`;
-    });
-    // saídas reais classificadas como "outro" (fora das despesas previstas)
-    if (r.outrasSaidas) linhasDesp.push(`<tr><td>Outras saídas (classificadas como "outro")</td><td>—</td><td>—</td><td>${formataMoeda(r.outrasSaidas)}</td><td></td></tr>`);
+    // no mês: só os itens com previsto ou realizado, e o INDEFINIDO sempre por último
+    const prevPor = new Map(c.itensDespesas.map(x => [x.id, x]));
+    const linhasDesp = [];
+    for (const d of despesasOrdenadas()) {
+        const x = prevPor.get(d.id);
+        const prev = x ? x.valor : 0;
+        const real = r.porVinculo['despesa:' + d.id] || 0;
+        if (!d.sistema && Math.abs(prev) < 0.005 && Math.abs(real) < 0.005) continue;
+        linhasDesp.push(`<tr${d.sistema ? ' class="linha-indef"' : ''}><td>${esc(d.nome)}${x && x.extra ? ` <span class="dim">(${esc(x.extra)})</span>` : ''}${d.sistema ? ' <span class="dim">(saídas sem despesa definida)</span>' : ''}</td>`
+            + `<td>${d.sistema ? '—' : (RECORRENCIA_LABELS[d.recorrencia] || d.recorrencia)}</td><td>${prev ? formataMoeda(prev) : '—'}</td>`
+            + `<td>${real ? formataMoeda(real) : '—'}</td><td>${d.sistema ? '' : difHTML(real, prev, true)}</td></tr>`);
+    }
     document.getElementById('tbody-mes-despesas').innerHTML = linhasDesp.join('')
         || '<tr><td colspan="5" class="dim">Nenhuma despesa neste mês.</td></tr>';
 }
 
 // ocultar/mostrar a memória de cálculo de um bloco
-document.getElementById('tbody-anual').addEventListener('click', (e) => {
+document.getElementById('tbody-anual').addEventListener('click', async (e) => {
+    // ações de despesa na própria linha
+    if (e.target.closest('[data-desp-nova]')) { abrirFormDespesa(null); return; }
+    const ed = e.target.closest('[data-desp-editar]');
+    if (ed) { abrirFormDespesa(despesas.find(d => d.id === ed.dataset.despEditar)); return; }
+    const del = e.target.closest('[data-desp-excluir]');
+    if (del) { await excluirDespesa(despesas.find(d => d.id === del.dataset.despExcluir)); return; }
     const g = e.target.closest('tr[data-grupo]');
     if (!g) return;
     const chave = g.dataset.grupo;
@@ -507,20 +619,28 @@ const nomeVinculo = (tipo, id) => {
 const mesRefBR = mes => `${mes.slice(5, 7)}/${mes.slice(0, 4)}`;
 
 // resumo da classificação de uma movimentação (célula da tabela)
+/** Quanto da movimentação ainda não tem destino de verdade (INDEFINIDO conta como pendente). */
+const pendenteDaMov = m => restanteDaMov(m)
+    + alocDaMov(m.id).filter(a => ehAlocIndef(a, m.tipo)).reduce((s2, a) => s2 + (Number(a.valor) || 0), 0);
+
 function resumoClassificacao(m) {
     const aloc = alocDaMov(m.id);
-    if (!aloc.length) return '<span class="badge vermelho">não classificada</span>';
+    if (!aloc.length) {
+        return m.tipo === 'saida' ? '<span class="badge amarelo">INDEFINIDO — a classificar</span>'
+            : '<span class="badge vermelho">não classificada</span>';
+    }
     const partes = aloc.map(a =>
         `${esc(nomeVinculo(a.vinculo_tipo, a.vinculo_id))} · ${mesRefBR(a.mes_ref)}: ${formataMoeda(a.valor)}`);
     const resto = restanteDaMov(m);
-    return partes.join('<br>') + (resto > 0.004 ? `<br><span class="badge vermelho">parcial — falta ${formataMoeda(resto)}</span>` : '');
+    return partes.join('<br>') + (resto > 0.004
+        ? `<br><span class="badge ${m.tipo === 'saida' ? 'amarelo' : 'vermelho'}">parcial — ${formataMoeda(resto)} ${m.tipo === 'saida' ? 'em INDEFINIDO' : 'sem destino'}</span>` : '');
 }
 
 function renderMovimentacoes() {
     const { de, ate, rotulo } = periodoMovimentacoes();
     const lista = movimentacoes.filter(m => m.data >= de && m.data <= ate)
         .sort((a, b) => (b.data + b.created_at).localeCompare(a.data + a.created_at));
-    const naoClass = lista.filter(m => restanteDaMov(m) > 0.004).length;
+    const naoClass = lista.filter(m => pendenteDaMov(m) > 0.004).length;
     document.getElementById('mov-periodo').textContent =
         `Movimentações do ${rotulo}: ${lista.length} lançamento(s)` +
         (naoClass ? ` — ⚠️ ${naoClass} sem classificação completa` : '');
@@ -585,10 +705,12 @@ let clfAlocacoes = [];    // cópia de trabalho: [{vinculo_tipo, vinculo_id, mes
 
 function abrirModalClassificar(m) {
     clfMov = m;
-    clfAlocacoes = alocDaMov(m.id).map(a => ({
-        vinculo_tipo: a.vinculo_tipo, vinculo_id: a.vinculo_id || null,
-        mes_ref: a.mes_ref, valor: Number(a.valor) || 0
-    }));
+    // o que está no INDEFINIDO aparece como tal (com o mês de referência que
+    // herdou); "outro"/referência quebrada de saída já entram normalizados
+    const indefReal = (despesas.find(d => d.sistema && !d.virtual) || {}).id || null;
+    clfAlocacoes = alocDaMov(m.id).map(a => ehAlocIndef(a, m.tipo) && indefReal
+        ? { vinculo_tipo: 'despesa', vinculo_id: indefReal, mes_ref: a.mes_ref, valor: Number(a.valor) || 0 }
+        : { vinculo_tipo: a.vinculo_tipo, vinculo_id: a.vinculo_id || null, mes_ref: a.mes_ref, valor: Number(a.valor) || 0 });
     document.getElementById('clf-info').innerHTML =
         `<b>${formataBR(m.data)}</b> — ${esc(m.descricao)} · ${m.tipo === 'entrada' ? '📥 Entrada' : '📤 Saída'} de <b>${formataMoeda(m.valor)}</b>`;
     document.getElementById('clf-busca').value = '';
@@ -605,9 +727,10 @@ function opcoesDoTipo() {
             .map(p => ({ tipo: 'paciente', id: p.id, nome: p.nome, grupo: '🧑 Pagamento de paciente' }))
             .concat([{ tipo: 'outro', id: null, nome: 'Outra entrada (sem vínculo)', grupo: '📦 Outros' }]);
     }
+    // saída sem destino cai no INDEFINIDO (último item), não existe mais "outra saída"
     return profissionais.map(p => ({ tipo: 'profissional', id: p.id, nome: p.nome, grupo: '💼 Repasse a profissional' }))
-        .concat(despesas.map(d => ({ tipo: 'despesa', id: d.id, nome: d.nome, grupo: '💸 Despesa cadastrada' })))
-        .concat([{ tipo: 'outro', id: null, nome: 'Outra saída (sem vínculo)', grupo: '📦 Outros' }]);
+        .concat(despesasOrdenadas().filter(d => (d.ativo !== false || d.sistema) && !d.virtual)
+            .map(d => ({ tipo: 'despesa', id: d.id, nome: d.sistema ? `${d.nome} (sem despesa definida)` : d.nome, grupo: '💸 Despesa cadastrada' })));
 }
 
 const normaliza = normalizaChave;
@@ -632,10 +755,20 @@ document.getElementById('clf-opcoes').addEventListener('click', (e) => {
     const btn = e.target.closest('[data-clf-add]');
     if (!btn || !clfMov) return;
     const [tipo, id] = btn.dataset.clfAdd.split(':');
+    lerAlocacoesDoModal();
+    let mesRef = mesRefPadrao(clfMov);
+    if (!destinoIndef(tipo, id || null, clfMov.tipo)) {
+        // um destino de verdade toma o lugar do que estava no INDEFINIDO,
+        // levando o mês de referência que ele tinha (competência herdada)
+        const noIndef = clfAlocacoes.filter(a => ehAlocIndef(a, clfMov.tipo));
+        const mesesIndef = [...new Set(noIndef.map(a => a.mes_ref).filter(Boolean))];
+        if (mesesIndef.length === 1) mesRef = mesesIndef[0];
+        clfAlocacoes = clfAlocacoes.filter(a => !ehAlocIndef(a, clfMov.tipo));
+    }
     const alocado = clfAlocacoes.reduce((s2, a) => s2 + a.valor, 0);
     clfAlocacoes.push({
         vinculo_tipo: tipo, vinculo_id: id || null,
-        mes_ref: mesRefPadrao(clfMov),
+        mes_ref: mesRef,
         valor: Math.max(0, Math.round(((Number(clfMov.valor) || 0) - alocado) * 100) / 100)
     });
     renderAlocacoes();
@@ -710,12 +843,12 @@ function renderExtratoPaciente() {
 function renderDeParaStatusModal() {
     const el = document.getElementById('clf-depara-status');
     if (!clfMov) { el.innerHTML = ''; return; }
-    const d = encontraDePara(clfMov, depara);
+    const d = encontraDePara(clfMov, deparaUteis(clfMov.tipo));
     if (d) {
         el.innerHTML = `<p class="dica">🔁 Pagador reconhecido pelo De-Para: «${esc(d.chave)}» → <b>${esc(nomeVinculo(d.vinculo_tipo, d.vinculo_id))}</b> — novas movimentações deste pagador entram classificadas sozinhas.</p>`;
         return;
     }
-    const destino = clfAlocacoes.find(a => a.vinculo_tipo && a.vinculo_tipo !== 'outro' && a.vinculo_id);
+    const destino = clfAlocacoes.find(a => a.vinculo_tipo && a.vinculo_tipo !== 'outro' && a.vinculo_id && a.vinculo_id !== indefinidoId());
     el.innerHTML = destino
         ? `<button type="button" class="argos-btn small" id="btn-clf-add-depara">🔁 Adicionar este pagador ao De-Para (${esc(nomeVinculo(destino.vinculo_tipo, destino.vinculo_id))})</button>
            <span class="dica"> para as próximas entrarem classificadas sozinhas</span>`
@@ -724,7 +857,7 @@ function renderDeParaStatusModal() {
 
 document.getElementById('clf-depara-status').addEventListener('click', (e) => {
     if (!e.target.closest('#btn-clf-add-depara') || !clfMov) return;
-    const destino = clfAlocacoes.find(a => a.vinculo_tipo && a.vinculo_tipo !== 'outro' && a.vinculo_id);
+    const destino = clfAlocacoes.find(a => a.vinculo_tipo && a.vinculo_tipo !== 'outro' && a.vinculo_id && a.vinculo_id !== indefinidoId());
     if (!destino) return;
     // abre o CRUD do De-Para por cima, já pré-preenchido (edite a chave e salve lá)
     selectDestinoDePara(document.getElementById('dp-destino'));
@@ -919,9 +1052,16 @@ document.getElementById('btn-imp-confirmar').addEventListener('click', async () 
 async function aplicarDeParaEm(movs) {
     const novas = [];
     for (const m of movs || []) {
-        if (!m || alocDaMov(m.id).length) continue;
-        const d = encontraDePara(m, depara);
+        if (!m) continue;
+        const existentes = alocDaMov(m.id);
+        // só o que não tem destino de verdade (o INDEFINIDO cede a vez ao de-para)
+        if (existentes.some(a => !ehAlocIndef(a, m.tipo))) continue;
+        const d = encontraDePara(m, deparaUteis(m.tipo));
         if (!d) continue;
+        if (existentes.length) {
+            const { error } = await sb.from('argos_mov_alocacoes').delete().eq('movimentacao_id', m.id);
+            if (error) { console.error(error); continue; }
+        }
         novas.push({
             movimentacao_id: m.id, vinculo_tipo: d.vinculo_tipo,
             vinculo_id: d.vinculo_id || null,
@@ -945,8 +1085,8 @@ function selectDestinoDePara(el) {
         + '</optgroup><optgroup label="💼 Repasse a profissional (saídas)">'
         + profissionais.map(p => `<option value="profissional:${p.id}">${esc(p.nome)}</option>`).join('')
         + '</optgroup><optgroup label="💸 Despesa cadastrada (saídas)">'
-        + despesas.map(d => `<option value="despesa:${d.id}">${esc(d.nome)}</option>`).join('')
-        + '</optgroup><option value="outro:">📦 Outro (entrada ou saída)</option>';
+        + despesasOrdenadas().filter(d => !d.sistema).map(d => `<option value="despesa:${d.id}">${esc(d.nome)}${d.ativo === false ? ' · inativa' : ''}</option>`).join('')
+        + '</optgroup><option value="outro:">📦 Outro (entrada sem paciente)</option>';
 }
 
 const TIPO_ICONE = { paciente: '🧑', profissional: '💼', despesa: '💸', outro: '📦' };
@@ -998,7 +1138,7 @@ document.getElementById('dp-busca').addEventListener('input', renderDePara);
 // extrato e ainda não têm para onde ir. Enquanto ela não zera, a linha
 // "saídas reais ainda não classificadas" do planejamento não zera também.
 function renderSemAssociacao() {
-    const sobras = saidasSemAssociacao(movimentacoes, alocacoes, depara);
+    const sobras = saidasSemAssociacao(movimentacoes, alocacoesDefinidas(), deparaUteis('saida'));
     const el = document.getElementById('dp-sem-associacao');
     if (!sobras.length) {
         el.innerHTML = '<p class="dica">✔ Toda saída do extrato já tem associação — nada pendente por aqui.</p>';
@@ -1117,7 +1257,7 @@ document.getElementById('lista-depara').addEventListener('click', async (e) => {
 });
 
 document.getElementById('btn-dp-aplicar').addEventListener('click', async () => {
-    const semClassificacao = movimentacoes.filter(m => !alocDaMov(m.id).length);
+    const semClassificacao = movimentacoes.filter(m => pendenteDaMov(m) > 0.004);
     const n = await aplicarDeParaEm(semClassificacao);
     toast(n ? `${n} movimentação(ões) classificada(s) automaticamente pelo de-para.` : 'Nenhuma movimentação não classificada combina com o de-para.');
     if (n) await carregarTudo();
@@ -1132,15 +1272,35 @@ document.getElementById('btn-dp-aplicar').addEventListener('click', async () => 
 function renderDespesas() {
     const termo = normaliza(document.getElementById('desp-busca').value || '');
     const real = realizadoPorDespesa(despesas, movimentacoes, alocacoes);
+    // o INDEFINIDO também soma as saídas sem alocação nenhuma (pela data),
+    // exatamente como a planilha anual e o detalhe do mês
+    const indef = indefinidoId();
+    const rIndef = real.find(r => r.id === indef);
+    if (rIndef) {
+        const meses = new Set(movimentacoes.filter(m => m.tipo === 'saida').map(m => String(m.data || '').slice(0, 7)));
+        alocacoes.forEach(a => { if (ehAlocIndef(a, (movimentacoes.find(m => m.id === a.movimentacao_id) || {}).tipo)) meses.add(a.mes_ref); });
+        const porMes = new Map();
+        [...meses].filter(Boolean).sort().forEach(mes => {
+            const v = realizadoDoMes(mes).indefinido;
+            if (Math.abs(v) > 0.004) porMes.set(mes, v);
+        });
+        const valores = [...porMes.values()];
+        rIndef.porMes = porMes; rIndef.meses = valores.length;
+        rIndef.total = valores.reduce((s2, v) => s2 + v, 0);
+        rIndef.media = valores.length ? rIndef.total / valores.length : 0;
+        const o = [...valores].sort((a, b) => a - b), mid = Math.floor(o.length / 2);
+        rIndef.tipico = !o.length ? 0 : (o.length % 2 ? o[mid] : (o[mid - 1] + o[mid]) / 2);
+        rIndef.ultimoMes = [...porMes.keys()].sort().pop() || null;
+    }
     const porId = new Map(real.map(r => [r.id, r]));
     const observados = mesesObservados(movimentacoes);
-    const aAdotar = semPrevisaoComHistorico(real);
+    const aAdotar = semPrevisaoComHistorico(real.filter(r => !(despesas.find(d => d.id === r.id) || {}).sistema));
 
     const btnAdotar = document.getElementById('btn-desp-adotar');
     btnAdotar.style.display = aAdotar.length && perm.pode('despesas_previsao') ? '' : 'none';
     btnAdotar.textContent = `📈 Usar o realizado como previsão em ${aAdotar.length} despesa(s) sem previsão`;
 
-    const visiveis = despesas.filter(d => !termo || normaliza(d.nome).includes(termo));
+    const visiveis = despesasOrdenadas().filter(d => !termo || normaliza(d.nome).includes(termo));
     document.getElementById('lista-despesas').innerHTML = visiveis.map(d => {
         const r = porId.get(d.id) || { total: 0, meses: 0, tipico: 0, media: 0, ultimoMes: null };
         const semPrevisao = !(Number(d.valor) > 0.004);
@@ -1151,21 +1311,24 @@ function renderDespesas() {
               + (Math.abs(r.media - r.tipico) > 0.5 ? ` · média ${formataMoeda(r.media)}` : '')
               + `</span>`
             : '<span class="dim">📊 nenhuma saída classificada nesta despesa ainda</span>';
-        const adotar = r.tipico > 0.004 && Math.abs(r.tipico - Number(d.valor)) > 0.004
+        const adotar = !d.sistema && r.tipico > 0.004 && Math.abs(r.tipico - Number(d.valor)) > 0.004
             ? `<button class="argos-btn small" data-desp-adotar="${d.id}" data-valor="${r.tipico}"
                  title="Passa a previsão para o valor típico do realizado">📈 usar ${formataMoeda(r.tipico)}</button>` : '';
+        const acoes = d.sistema
+            ? '<span class="badge amarelo" title="Não pode ser excluído nem renomeado">item do sistema</span>'
+            : `<button class="argos-btn small" data-desp-editar="${d.id}">✏️</button>
+            <button class="argos-btn small danger" data-desp-excluir="${d.id}">🗑️</button>`;
         return `
-      <div class="argos-bloco ${d.ativo === false ? 'inativo' : ''}">
+      <div class="argos-bloco ${d.ativo === false ? 'inativo' : ''}${d.sistema ? ' bloco-indef' : ''}">
         <div class="bloco-topo">
           <b>${esc(d.nome)}</b>
           <span>
             ${adotar}
-            <button class="argos-btn small" data-desp-editar="${d.id}">✏️</button>
-            <button class="argos-btn small danger" data-desp-excluir="${d.id}">🗑️</button>
+            ${acoes}
           </span>
         </div>
         <div class="bloco-info">
-          ${semPrevisao ? '<span class="badge vermelho">previsão a definir</span>' : `<b>${formataMoeda(d.valor)}</b>`}
+          ${d.sistema ? '<span class="dim">sem previsão — recebe o que não tem despesa definida</span>' : (semPrevisao ? '<span class="badge vermelho">previsão a definir</span>' : `<b>${formataMoeda(d.valor)}</b>`)}
           · ${RECORRENCIA_LABELS[d.recorrencia] || d.recorrencia} · a partir de ${formataBR(d.data_inicio)}${d.fim_data ? ` até ${formataBR(d.fim_data)}` : ''}${d.ativo === false ? ' · <span class="badge vermelho">Inativa</span>' : ''}
           <br>${historico}
           ${d.observacoes ? `<br><span class="dim">${esc(d.observacoes)}</span>` : ''}
@@ -1190,7 +1353,7 @@ async function gravarPrevisoes(mudancas) {
 }
 
 document.getElementById('btn-desp-adotar').addEventListener('click', async () => {
-    const alvos = semPrevisaoComHistorico(realizadoPorDespesa(despesas, movimentacoes, alocacoes));
+    const alvos = semPrevisaoComHistorico(realizadoPorDespesa(despesas.filter(d => !d.sistema), movimentacoes, alocacoes));
     if (!alvos.length) return;
     const lista = alvos.slice(0, 8).map(r => `• ${r.nome}: ${formataMoeda(r.tipico)}`).join('\n');
     if (!confirm(`Definir a previsão de ${alvos.length} despesa(s) pelo valor típico do que já foi gasto?\n\n`
@@ -1204,7 +1367,7 @@ document.getElementById('btn-desp-adotar').addEventListener('click', async () =>
 let previsaoLida = null;
 
 document.getElementById('btn-prev-previa').addEventListener('click', () => {
-    previsaoLida = lerPrevisoes(document.getElementById('prev-texto').value, despesas);
+    previsaoLida = lerPrevisoes(document.getElementById('prev-texto').value, despesas.filter(d => !d.sistema));
     const { casadas, semCasar } = previsaoLida;
     const mudam = casadas.filter(c => Math.abs(c.de - c.para) > 0.004);
     document.getElementById('prev-previa').innerHTML = casadas.length ? `
@@ -1237,20 +1400,74 @@ document.getElementById('btn-prev-aplicar').addEventListener('click', async () =
 
 function limparFormDespesa() {
     editandoDespesaId = null;
-    document.getElementById('form-despesa-titulo').textContent = 'Nova despesa';
-    document.getElementById('btn-desp-cancelar').style.display = 'none';
+    document.getElementById('form-despesa-titulo').textContent = '💸 Nova despesa';
     ['desp-nome', 'desp-valor', 'desp-fim', 'desp-obs'].forEach(id => document.getElementById(id).value = '');
     document.getElementById('desp-recorrencia').value = 'mensal';
     document.getElementById('desp-inicio').value = hojeISO();
     document.getElementById('desp-ativo').checked = true;
 }
 
-document.getElementById('btn-despesas').addEventListener('click', () => {
+/** Abre o formulário de despesa (d = null cria; d = despesa edita). */
+function abrirFormDespesa(d) {
     limparFormDespesa();
+    if (d && d.sistema) { toast('INDEFINIDO é o item padrão do sistema: não muda de nome nem sai.', true); return; }
+    if (d) {
+        editandoDespesaId = d.id;
+        document.getElementById('form-despesa-titulo').textContent = `✏️ Editando: ${d.nome}`;
+        document.getElementById('desp-nome').value = d.nome;
+        document.getElementById('desp-valor').value = d.valor;
+        document.getElementById('desp-recorrencia').value = d.recorrencia;
+        document.getElementById('desp-inicio').value = d.data_inicio;
+        document.getElementById('desp-fim').value = d.fim_data || '';
+        document.getElementById('desp-obs').value = d.observacoes || '';
+        document.getElementById('desp-ativo').checked = d.ativo !== false;
+    }
+    abrirModal('modal-despesa-form');
+    setTimeout(() => document.getElementById('desp-nome').focus(), 50);
+}
+
+/**
+ * Exclui uma despesa. Tudo o que apontava para ela (alocações, o vínculo
+ * guardado na movimentação e o de-para) passa na hora para o INDEFINIDO —
+ * a página faz isso explicitamente e o banco repete por gatilho.
+ */
+async function excluirDespesa(d) {
+    if (!d) return;
+    if (d.sistema) { toast('INDEFINIDO é o item padrão do sistema e não pode ser excluído.', true); return; }
+    if (!indefinidoId()) await garantirIndefinido();
+    const indef = indefinidoId();
+    if (!indef) { toast('Não achei o item INDEFINIDO para herdar as saídas.', true); return; }
+    const tipo = tipoDaMov();
+    const herdam = alocacoes.filter(a => a.vinculo_tipo === 'despesa' && a.vinculo_id === d.id
+        && tipo.get(a.movimentacao_id) === 'saida');
+    const total = herdam.reduce((s2, a) => s2 + (Number(a.valor) || 0), 0);
+    const nDp = depara.filter(x => x.vinculo_tipo === 'despesa' && x.vinculo_id === d.id).length;
+    const msg = `Excluir a despesa "${d.nome}"?`
+        + (herdam.length ? `\n\n${herdam.length} saída(s) classificada(s) nela (${formataMoeda(total)}) passam para INDEFINIDO.` : '')
+        + (nDp ? `\n${nDp} associação(ões) do De-Para serão removidas (o pagador volta para a lista de pendências).` : '');
+    if (!confirm(msg)) return;
+    for (const tabela of ['argos_mov_alocacoes', 'argos_movimentacoes']) {
+        const { error } = await sb.from(tabela).update({ vinculo_id: indef })
+            .eq('vinculo_tipo', 'despesa').eq('vinculo_id', d.id);
+        if (error) { console.error(error); toast('Erro ao passar as saídas para INDEFINIDO.', true); return; }
+    }
+    if (nDp) {
+        const { error } = await sb.from('argos_mov_depara').delete().eq('vinculo_tipo', 'despesa').eq('vinculo_id', d.id);
+        if (error) { console.error(error); toast('Erro ao remover as associações do De-Para.', true); return; }
+    }
+    const { error } = await sb.from('argos_despesas').delete().eq('id', d.id);
+    if (error) { console.error(error); toast('Erro ao excluir despesa.', true); return; }
+    toast(herdam.length ? `Despesa excluída — ${herdam.length} saída(s) agora em INDEFINIDO.` : 'Despesa excluída.');
+    if (editandoDespesaId === d.id) { limparFormDespesa(); fecharModal('modal-despesa-form'); }
+    await carregarTudo();
+    renderDespesas();
+}
+
+document.getElementById('btn-despesas').addEventListener('click', () => {
     renderDespesas();
     abrirModal('modal-despesas');
 });
-document.getElementById('btn-desp-cancelar').addEventListener('click', limparFormDespesa);
+document.getElementById('btn-desp-nova-catalogo').addEventListener('click', () => abrirFormDespesa(null));
 
 document.getElementById('lista-despesas').addEventListener('click', async (e) => {
     const ad = e.target.closest('[data-desp-adotar]');
@@ -1263,32 +1480,9 @@ document.getElementById('lista-despesas').addEventListener('click', async (e) =>
         return;
     }
     const ed = e.target.closest('[data-desp-editar]');
-    if (ed) {
-        const d = despesas.find(x => x.id === ed.dataset.despEditar);
-        if (!d) return;
-        editandoDespesaId = d.id;
-        document.getElementById('form-despesa-titulo').textContent = `Editando: ${d.nome}`;
-        document.getElementById('btn-desp-cancelar').style.display = '';
-        document.getElementById('desp-nome').value = d.nome;
-        document.getElementById('desp-valor').value = d.valor;
-        document.getElementById('desp-recorrencia').value = d.recorrencia;
-        document.getElementById('desp-inicio').value = d.data_inicio;
-        document.getElementById('desp-fim').value = d.fim_data || '';
-        document.getElementById('desp-obs').value = d.observacoes || '';
-        document.getElementById('desp-ativo').checked = d.ativo !== false;
-        return;
-    }
+    if (ed) { abrirFormDespesa(despesas.find(x => x.id === ed.dataset.despEditar)); return; }
     const del = e.target.closest('[data-desp-excluir]');
-    if (del) {
-        const d = despesas.find(x => x.id === del.dataset.despExcluir);
-        if (!d || !confirm(`Excluir a despesa "${d.nome}"?`)) return;
-        const { error } = await sb.from('argos_despesas').delete().eq('id', d.id);
-        if (error) { toast('Erro ao excluir despesa.', true); return; }
-        toast('Despesa excluída.');
-        await carregarTudo();
-        renderDespesas();
-        if (editandoDespesaId === d.id) limparFormDespesa();
-    }
+    if (del) await excluirDespesa(despesas.find(x => x.id === del.dataset.despExcluir));
 });
 
 document.getElementById('form-despesa').addEventListener('submit', async (e) => {
@@ -1304,15 +1498,19 @@ document.getElementById('form-despesa').addEventListener('submit', async (e) => 
     };
     if (!registro.nome || !registro.data_inicio) { toast('Informe nome e data de início.', true); return; }
     if (registro.fim_data && registro.fim_data < registro.data_inicio) { toast('A data final não pode ser antes do início.', true); return; }
+    if (normaliza(registro.nome) === 'indefinido') { toast('INDEFINIDO é o item padrão do sistema — escolha outro nome.', true); return; }
+    const repetida = despesas.find(d => d.id !== editandoDespesaId && normaliza(d.nome) === normaliza(registro.nome));
+    if (repetida) { toast(`Já existe a despesa "${repetida.nome}".`, true); return; }
     const q = editandoDespesaId
         ? sb.from('argos_despesas').update(registro).eq('id', editandoDespesaId)
         : sb.from('argos_despesas').insert(registro);
     const { error } = await q;
     if (error) { console.error(error); toast('Erro ao salvar despesa.', true); return; }
-    toast(editandoDespesaId ? 'Despesa atualizada.' : 'Despesa cadastrada.');
-    await carregarTudo();
-    renderDespesas();
+    toast(editandoDespesaId ? 'Despesa atualizada — todas as referências a ela já mostram o novo nome.' : 'Despesa cadastrada.');
+    fecharModal('modal-despesa-form');
     limparFormDespesa();
+    await carregarTudo(); // a planilha, o detalhe do mês e as movimentações refletem na hora
+    renderDespesas();
 });
 
 // ---------- controles ----------
