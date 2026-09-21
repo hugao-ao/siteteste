@@ -25,6 +25,7 @@ import {
     motivoDaDivergenciaDeCobranca, totaisDoMes
 } from './argos-fechamento.js';
 import { montarCobrancaUI, mesesEntre, dinamicasDoMes } from './argos-cobranca-ui.js';
+import { valorNoMes } from './argos-locacoes.js';
 
 let perm = { pode: () => true, aplicarVisibilidade: () => {}, master: true };
 let cobUI = null;
@@ -34,6 +35,7 @@ let contatos = [], detalhes = [], excecoes = [], notas = [], pendencias = [], ev
 let regrasExcecao = [];   // argos_excecoes_cobranca — desdobramento e rateio
 let ajustes = [];         // argos_cobranca_mes — valor editado e congelado
 let envios = [], acompanhamento = [], alocacoes = [], movimentacoes = [];
+let locacoes = [], salas = [];   // locações de sala: entram no fechamento como na planilha
 let config = { bancarios: [], servico: 'Psicomotricidade Relacional', recados: {} };
 
 let mesAtual = hojeISO().slice(0, 7);
@@ -62,7 +64,8 @@ async function carregarTudo() {
         t('argos_nota_pendencias'), t('argos_nota_pendencia_eventos'),
         t('argos_cobranca_envios'), t('argos_cobranca_acompanhamento'),
         t('argos_mov_alocacoes'), t('argos_movimentacoes'), t('argos_config'),
-        t('argos_excecoes_cobranca'), t('argos_cobranca_mes')
+        t('argos_excecoes_cobranca'), t('argos_cobranca_mes'),
+        t('argos_locacoes'), t('argos_salas')
     ]);
     const erro = r.find(x => x.error);
     if (erro) { console.error(erro.error); toast('Erro ao carregar os dados da cobrança.', true); return; }
@@ -72,6 +75,8 @@ async function carregarTudo() {
     lerConfig(d[14]);
     regrasExcecao = d[15] || [];
     ajustes = d[16] || [];
+    locacoes = d[17] || [];
+    salas = d[18] || [];
     await render();
 }
 
@@ -247,6 +252,28 @@ function renderFechamento() {
         linhas.push({ p, f, envio, cob });
     }
 
+    // Locações de sala vigentes no mês: a planilha da clínica lista os
+    // aluguéis junto com os clientes e soma tudo no mês — aqui é igual.
+    const linhasLoc = (perm.master || perm.pode('cobranca_locacoes'))
+        ? locacoes.map(l => ({ l, v: valorNoMes(l, mesAtual) }))
+            .filter(x => x.v.valor > 0.004 && (!busca || String(x.l.locatario || '').toLowerCase().includes(busca)))
+            .sort((a, b) => String(a.l.locatario).localeCompare(String(b.l.locatario)))
+        : [];
+    const totalLoc = linhasLoc.reduce((s2, x) => s2 + x.v.valor, 0);
+    total.valor += totalLoc;
+    const nomeSala = id => (salas.find(x => x.id === id) || {}).nome || '';
+    const htmlLoc = linhasLoc.map(({ l, v }) => `
+      <tr class="linha-locacao">
+        <td class="livre">🏠 ${esc(l.locatario)}
+          <span class="badge amarelo">locação de sala</span>
+          <span class="sub">${esc([nomeSala(l.sala_id), v.base].filter(Boolean).join(' · '))}</span>
+        </td>
+        <td class="num">—</td><td class="num">—</td><td class="num">—</td><td class="num">—</td><td class="num">—</td>
+        <td class="num valor-mes"><b>${formataMoeda(v.valor)}</b></td>
+        <td><a class="argos-btn small ghost" href="locacoes.html" title="Editar a locação na página de locações">🏠 Locações</a></td>
+        <td class="acoes"></td>
+      </tr>`).join('');
+
     document.getElementById('tbody-fechamento').innerHTML = linhas.map(({ p, f, envio, cob }) => {
         const contatosP = contatosParaCobranca(p, contatos.filter(c => c.paciente_id === p.id));
         const anota = detalhesDoMes(detalhes.filter(d => d.paciente_id === p.id), mesAtual);
@@ -288,9 +315,9 @@ function renderFechamento() {
         </td>
       </tr>
       ${abertos.has(p.id) ? linhaDetalhe(p, f) : ''}`;
-    }).join('');
+    }).join('') + htmlLoc;
 
-    document.getElementById('fechamento-vazio').style.display = linhas.length ? 'none' : '';
+    document.getElementById('fechamento-vazio').style.display = linhas.length || linhasLoc.length ? 'none' : '';
     document.getElementById('t-ok').textContent = total.ok;
     document.getElementById('t-fj').textContent = total.fj;
     document.getElementById('t-fc').textContent = total.fc;
@@ -307,7 +334,8 @@ function renderFechamento() {
 
     document.getElementById('resumo-fech').innerHTML = `
       <span>Pacientes <b>${linhas.length}</b></span>
-      <span>Faturamento do mês <b>${formataMoeda(t.valorTotal)}</b></span>
+      ${linhasLoc.length ? `<span>Locações <b>${linhasLoc.length}</b> · <b>${formataMoeda(totalLoc)}</b></span>` : ''}
+      <span>Faturamento do mês <b>${formataMoeda(t.valorTotal + totalLoc)}</b>${linhasLoc.length ? ` <span class="sub">(pacientes ${formataMoeda(t.valorTotal)} + locações ${formataMoeda(totalLoc)})</span>` : ''}</span>
       <span class="${t.enviadas ? 'ok' : ''}">Cobrado <b>${t.enviadas}</b> · <b>${formataMoeda(t.valorEnviado)}</b></span>
       <span class="${t.aEnviar ? 'alerta' : 'ok'}">Falta cobrar <b>${t.aEnviar}</b> · <b>${formataMoeda(t.valorAEnviar)}</b></span>
       ${t.divergentes ? `<span class="erro">Mudaram após o envio <b>${t.divergentes}</b></span>` : ''}
