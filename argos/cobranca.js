@@ -36,6 +36,7 @@ let regrasExcecao = [];   // argos_excecoes_cobranca — desdobramento e rateio
 let ajustes = [];         // argos_cobranca_mes — valor editado e congelado
 let envios = [], acompanhamento = [], alocacoes = [], movimentacoes = [];
 let locacoes = [], salas = [];   // locações de sala: entram no fechamento como na planilha
+let ajustesLoc = [];             // argos_locacao_cobranca_mes — valor editado da locação no mês
 let config = { bancarios: [], servico: 'Psicomotricidade Relacional', recados: {} };
 
 let mesAtual = hojeISO().slice(0, 7);
@@ -65,7 +66,7 @@ async function carregarTudo() {
         t('argos_cobranca_envios'), t('argos_cobranca_acompanhamento'),
         t('argos_mov_alocacoes'), t('argos_movimentacoes'), t('argos_config'),
         t('argos_excecoes_cobranca'), t('argos_cobranca_mes'),
-        t('argos_locacoes'), t('argos_salas')
+        t('argos_locacoes'), t('argos_salas'), t('argos_locacao_cobranca_mes')
     ]);
     const erro = r.find(x => x.error);
     if (erro) { console.error(erro.error); toast('Erro ao carregar os dados da cobrança.', true); return; }
@@ -77,6 +78,7 @@ async function carregarTudo() {
     ajustes = d[16] || [];
     locacoes = d[17] || [];
     salas = d[18] || [];
+    ajustesLoc = d[19] || [];
     await render();
 }
 
@@ -255,8 +257,8 @@ function renderFechamento() {
     // Locações de sala vigentes no mês: a planilha da clínica lista os
     // aluguéis junto com os clientes e soma tudo no mês — aqui é igual.
     const linhasLoc = (perm.master || perm.pode('cobranca_locacoes'))
-        ? locacoes.map(l => ({ l, v: valorNoMes(l, mesAtual) }))
-            .filter(x => x.v.valor > 0.004 && (!busca || String(x.l.locatario || '').toLowerCase().includes(busca)))
+        ? locacoes.map(l => ({ l, v: cobrancaLocacao(l, mesAtual) }))
+            .filter(x => (x.v.valor > 0.004 || x.v.editado) && (!busca || String(x.l.locatario || '').toLowerCase().includes(busca)))
             .sort((a, b) => String(a.l.locatario).localeCompare(String(b.l.locatario)))
         : [];
     const totalLoc = linhasLoc.reduce((s2, x) => s2 + x.v.valor, 0);
@@ -269,7 +271,12 @@ function renderFechamento() {
           <span class="sub">${esc([nomeSala(l.sala_id), v.base].filter(Boolean).join(' · '))}</span>
         </td>
         <td class="num">—</td><td class="num">—</td><td class="num">—</td><td class="num">—</td><td class="num">—</td>
-        <td class="num valor-mes"><b>${formataMoeda(v.valor)}</b></td>
+        <td class="num valor-mes">
+          <b class="${v.editado ? 'valor-mexido' : ''}">${formataMoeda(v.valor)}</b>
+          <button class="argos-btn small ghost" data-valor-loc="${l.id}" title="Editar o valor cobrado neste mês"
+            data-argos-recurso="cobranca_locacao_valor_editar">✏️</button>
+          ${v.editado ? `<span class="sub" title="${esc(v.ajuste.motivo_ajuste || '')}">editado · cadastro ${formataMoeda(v.calculado)}</span>` : ''}
+        </td>
         <td><a class="argos-btn small ghost" href="locacoes.html" title="Editar a locação na página de locações">🏠 Locações</a></td>
         <td class="acoes"></td>
       </tr>`).join('');
@@ -738,9 +745,42 @@ async function desmarcarEnvio(p) {
 // VALOR COBRADO NO MÊS — editar, e recongelar depois de corrigir
 // ===========================================================================
 let valorPaciente = null;
+let valorLocacao = null;   // quando o modal está editando uma locação, não um paciente
+
+/** O valor da locação no mês: o do cadastro, ou o editado para este mês. */
+function cobrancaLocacao(l, mes) {
+    const base = valorNoMes(l, mes);
+    const ajuste = ajustesLoc.find(a => a.locacao_id === l.id && a.mes === mes) || null;
+    const editado = ajuste && ajuste.valor_ajustado != null && ajuste.valor_ajustado !== '';
+    return { ...base, calculado: base.valor, valor: editado ? Number(ajuste.valor_ajustado) : base.valor,
+             editado: !!editado, ajuste };
+}
+
+async function gravarAjusteLocacao(locacaoId, campos) {
+    const registro = { locacao_id: locacaoId, mes: mesAtual, ...campos, atualizado_em: agora() };
+    const { data, error } = await sb.from('argos_locacao_cobranca_mes')
+        .upsert(registro, { onConflict: 'locacao_id,mes' }).select('*').single();
+    if (error) { console.error(error); toast('Erro ao salvar o valor da locação.', true); return null; }
+    ajustesLoc = ajustesLoc.filter(a => !(a.locacao_id === locacaoId && a.mes === mesAtual)).concat(data || registro);
+    return data || registro;
+}
+
+function abrirValorLocacao(l) {
+    valorLocacao = l; valorPaciente = null;
+    const v = cobrancaLocacao(l, mesAtual);
+    document.getElementById('valor-titulo').textContent = `Valor cobrado — 🏠 ${l.locatario} · ${mesBR(mesAtual)}`;
+    document.getElementById('valor-contexto').innerHTML = `
+      <p class="dica">Pelo cadastro da locação: <b>${formataMoeda(v.calculado)}</b> <span class="sub">(${esc(v.base)})</span></p>`;
+    document.getElementById('valor-novo').value = v.valor;
+    document.getElementById('valor-motivo').value = (v.ajuste && v.ajuste.motivo_ajuste) || '';
+    document.getElementById('valor-aviso').textContent = 'O valor editado vale só para este mês; os outros meses seguem o cadastro da locação.';
+    document.getElementById('btn-valor-voltar').textContent = 'Voltar ao cadastro';
+    abrirModal('modal-valor');
+}
 
 function abrirValor(p) {
-    valorPaciente = p;
+    valorPaciente = p; valorLocacao = null;
+    document.getElementById('btn-valor-voltar').textContent = 'Voltar ao calculado';
     const cob = cobrancaDoMes(p, mesAtual);
     document.getElementById('valor-titulo').textContent =
         `Valor cobrado — ${p.nome} · ${mesBR(mesAtual)}`;
@@ -763,11 +803,19 @@ function abrirValor(p) {
 }
 
 async function salvarValor() {
-    const p = valorPaciente;
-    if (!p) return;
     const bruto = document.getElementById('valor-novo').value;
     const valor = Number(String(bruto).replace(',', '.'));
     if (!(valor >= 0) || bruto === '') { toast('Informe um valor válido.', true); return; }
+    if (valorLocacao) {
+        if (!await gravarAjusteLocacao(valorLocacao.id, { valor_ajustado: valor,
+            motivo_ajuste: document.getElementById('valor-motivo').value.trim() || null })) return;
+        fecharModal('modal-valor');
+        renderFechamento();
+        toast('Valor da locação no mês salvo.');
+        return;
+    }
+    const p = valorPaciente;
+    if (!p) return;
     const cob = cobrancaDoMes(p, mesAtual);
     const campos = { valor_ajustado: valor,
         motivo_ajuste: document.getElementById('valor-motivo').value.trim() || null };
@@ -787,6 +835,14 @@ async function salvarValor() {
 }
 
 async function limparValor() {
+    if (valorLocacao) {
+        if (!confirm('Voltar ao valor do cadastro da locação?')) return;
+        if (!await gravarAjusteLocacao(valorLocacao.id, { valor_ajustado: null, motivo_ajuste: null })) return;
+        fecharModal('modal-valor');
+        renderFechamento();
+        toast('O mês voltou ao valor do cadastro.');
+        return;
+    }
     const p = valorPaciente;
     if (!p) return;
     if (!confirm('Voltar ao valor calculado pela frequência?')) return;
@@ -1056,6 +1112,12 @@ document.querySelector('main').addEventListener('click', async e => {
     if (msg) return abrirMensagem(pacDe(msg.dataset.msg));
     const desm = alvo('data-desmarcar');
     if (desm) return desmarcarEnvio(pacDe(desm.dataset.desmarcar));
+    const valLoc = alvo('data-valor-loc');
+    if (valLoc) {
+        if (!perm.pode('cobranca_locacao_valor_editar')) return toast('Sem permissão para editar o valor da locação.', true);
+        const l = locacoes.find(x => x.id === valLoc.dataset.valorLoc);
+        return l ? abrirValorLocacao(l) : undefined;
+    }
     const val = alvo('data-valor');
     if (val) {
         if (!perm.pode('cobranca_valor_editar')) return toast('Sem permissão para editar o valor.', true);
