@@ -23,6 +23,7 @@ import { mesBR, normalizarFone, linkWhatsApp, detalhesDoMes, notaEfetiva,
 
 export { dinamicasDoMes }; // a regra mudou de arquivo; quem importava daqui segue valendo
 import { documento, secao, ficha, abrirDocumento } from './argos-relatorio.js';
+import { valorDoMes } from './argos-fechamento.js';
 
 const CSS = `
 .cob-lista { display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px; }
@@ -510,6 +511,13 @@ export async function calcularExtrato(paciente, cache = {}) {
         } else movimentacoes = [];
     }
     const movPorId = new Map(movimentacoes.map(m => [m.id, m]));
+    // o valor de cada mês é o COBRADO (enviado/congelado, editado), e a baixa
+    // manual conta como recebido — o extrato diz o mesmo que a cobrança
+    let ajustes = cache.ajustes;
+    if (!ajustes) {
+        const { data } = await sb.from('argos_cobranca_mes').select('*').eq('paciente_id', pid);
+        ajustes = data || [];
+    }
 
     // janela: do primeiro sinal de vida até o mês corrente (ou o último sinal)
     const candidatosIni = [
@@ -527,9 +535,14 @@ export async function calcularExtrato(paciente, cache = {}) {
     const total = { valor: 0, pago: 0, sessoes: 0 };
     const hoje = hojeISO();
     for (const mes of meses) {
-        const fech = fechamentoPaciente(paciente, dinamicas, sessoes, mes);
+        const calc = fechamentoPaciente(paciente, dinamicas, sessoes, mes);
+        const ajuste = ajustes.find(a => a.mes === mes) || null;
+        const fech = { ...calc, valor: Number(valorDoMes({ fech: calc, ajuste }).valor) || 0, calculado: calc.valor };
         const pagos = alocacoes.filter(a => a.mes_ref === mes)
             .map(a => ({ valor: Number(a.valor) || 0, mov: movPorId.get(a.movimentacao_id) || {} }));
+        if (ajuste && Number(ajuste.baixa_valor) > 0) {
+            pagos.push({ valor: Number(ajuste.baixa_valor), mov: { descricao: `Baixa manual: ${ajuste.baixa_motivo || ''}`, data: String(ajuste.baixa_em || '').slice(0, 10) } });
+        }
         const pago = pagos.reduce((s, p) => s + p.valor, 0);
         const nota = notas.find(n => n.mes === mes && n.status === 'emitida')
             || notas.filter(n => n.mes === mes).sort((a, b) =>

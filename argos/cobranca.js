@@ -119,22 +119,21 @@ function regimeDe(pacienteId, mes) {
 }
 
 /** Retrato do mês como está agora — é contra isto que a nota emitida é conferida. */
-function retratoAtual(paciente, mes) {
+function retratoAtual(paciente, mes, fech = null) {
+    const f = fech || (mes === mesAtual ? fechDe(paciente.id)
+        : fechamentoPaciente(paciente, dinsDe(paciente.id), sessoes.filter(s => s.paciente_id === paciente.id), mes));
     const r = retratoDaNota({
-        paciente, fech: fechDe(paciente.id), dinamicas: dinsDe(paciente.id),
+        paciente, fech: f, dinamicas: dinsDe(paciente.id),
         mes, servico: config.servico,
         excecao: excecoes.find(e => e.paciente_id === paciente.id && e.mes === mes),
         excecoes: regrasExcecao
     });
-    // A nota segue o valor EDITADO — um desconto combinado precisa sair nela
-    // igual ao que foi cobrado. Mas não segue o congelamento: aquele protege a
-    // conversa já enviada, enquanto a nota é documento fiscal e precisa
-    // continuar acusando que o mês mudou depois de emitida. São duas
-    // proteções diferentes, e amarrá-las cegaria a segunda.
-    const ajuste = ajusteDe(paciente.id, mes);
-    const editado = ajuste && ajuste.valor_ajustado != null ? Number(ajuste.valor_ajustado) : null;
-    return editado == null || editado === r.valor
-        ? r : { ...r, valor: editado, valor_calculado: r.valor };
+    // A nota segue o valor COBRADO: o que foi enviado ao responsável (e
+    // congelado), ou o editado depois, ou o calculado. Uma mudança de
+    // frequência só chega à nota quando for aprovada na cobrança — até lá o
+    // valor cobrado não muda, e a nota não tem por que acusar nada.
+    const cobrado = Number(valorDoMes({ fech: f, ajuste: ajusteDe(paciente.id, mes) }).valor) || 0;
+    return cobrado === r.valor ? r : { ...r, valor: cobrado, valor_calculado: r.valor };
 }
 
 /** O ajuste gravado deste paciente neste mês (valor editado e/ou congelado). */
@@ -194,6 +193,12 @@ async function sincronizarPendencias(mes) {
             descricao: nota.descricao, nota_tipo: nota.nota_tipo
         }, atual);
         if (!mudou.length) continue;
+        // o financeiro já olhou esta diferença e disse que a nota fica como
+        // está: enquanto o mês não mudar de novo, não incomoda
+        if (nota.retrato_ignorado && !compararRetrato({
+            valor: Number(nota.retrato_ignorado.valor), sessoes: nota.retrato_ignorado.sessoes,
+            dias: nota.retrato_ignorado.dias || [], descricao: nota.retrato_ignorado.descricao,
+            nota_tipo: nota.retrato_ignorado.nota_tipo }, atual).length) continue;
         const motivo = motivoDaDivergencia(mudou);
         if (jaAberta(p.id, motivo)) continue;
         novas.push({ paciente_id: p.id, mes, nota_id: nota.id, origem: 'divergencia', motivo, status: 'aberta',
@@ -253,6 +258,8 @@ function renderFechamento() {
         total.valor += cob.valor; total.pendencias += f.pendencias;
         linhas.push({ p, f, envio, cob });
     }
+
+    renderAlteracoes(linhas);
 
     // Locações de sala vigentes no mês: a planilha da clínica lista os
     // aluguéis junto com os clientes e soma tudo no mês — aqui é igual.
@@ -511,7 +518,7 @@ function renderPendencias() {
         const aberta = ['aberta', 'em_andamento'].includes(p.status);
         return `
       <div class="cb-pend ${p.status}">
-        <h3>${esc(pac.nome)} — ${esc(mesBR(p.mes))}
+        <h3>${aberta ? `<input type="checkbox" class="pend-sel" value="${p.id}" data-argos-recurso="nota_pendencias_lote" title="Marcar para resolver/ignorar em lote" /> ` : ''}${esc(pac.nome)} — ${esc(mesBR(p.mes))}
           <span class="badge ${aberta ? 'vermelho' : 'azul'}">${ROTULO[p.status] || p.status}</span>
           ${p.origem === 'indefinido' ? '<span class="badge">dados de nota</span>' : '<span class="badge">nota emitida</span>'}
         </h3>
@@ -537,6 +544,9 @@ function renderPendencias() {
       </div>`;
     }).join('');
     document.getElementById('pend-vazio').style.display = lista.length ? 'none' : '';
+    const abertasNaLista = lista.filter(p => ['aberta', 'em_andamento'].includes(p.status)).length;
+    document.getElementById('pend-lote').style.display = abertasNaLista > 1 ? '' : 'none';
+    document.getElementById('pend-lote-qtd').textContent = abertasNaLista;
 }
 
 function mostrar(campo, v) {
@@ -694,6 +704,89 @@ function renderAberto() {
     }).join('');
     document.getElementById('aberto-vazio').style.display = lista.length ? 'none' : '';
 }
+
+// ------------------------------------------------- alterações após o envio
+// O responsável já viu um número. Se a frequência mudou depois, a cobrança
+// NÃO muda sozinha: fica aqui, esperando alguém dizer se o novo valor vale
+// (aprovar) ou se o que foi enviado continua valendo (recusar). Aprovado,
+// o valor cobrado passa a ser o novo — e a nota, se houver, acusa a
+// diferença na aba de pendências.
+function renderAlteracoes(linhas) {
+    const el = document.getElementById('alteracoes-fech');
+    const itens = linhas.filter(x => x.cob.divergencia.length);
+    if (!itens.length) { el.style.display = 'none'; el.innerHTML = ''; return; }
+    const pode = perm.master || perm.pode('cobranca_alteracoes_aprovar');
+    el.style.display = '';
+    el.innerHTML = `
+      <div class="alt-topo">
+        <b>⚠️ ${itens.length} cobrança(s) mudaram depois do envio</b>
+        <span class="sub">A cobrança continua no valor enviado até você decidir.</span>
+        ${pode ? `<span class="alt-lote">
+          <button class="argos-btn small primary" data-alt-lote="aprovar" data-quais="sel">✅ Aprovar marcadas</button>
+          <button class="argos-btn small" data-alt-lote="recusar" data-quais="sel">🚫 Recusar marcadas</button>
+          <button class="argos-btn small ghost" data-alt-lote="aprovar" data-quais="todas">✅ todas</button>
+          <button class="argos-btn small ghost" data-alt-lote="recusar" data-quais="todas">🚫 todas</button>
+        </span>` : ''}
+      </div>
+      ${itens.map(({ p, cob }) => `
+      <div class="alt-item">
+        ${pode ? `<input type="checkbox" class="alt-sel" value="${p.id}" />` : ''}
+        <span class="quem"><b>${esc(p.nome)}</b>
+          <span class="sub">${esc(cob.motivo)} ${cob.divergencia.map(m => `${esc(m.rotulo)}: ${m.campo === 'valor' ? formataMoeda(m.antes) : m.antes} → ${m.campo === 'valor' ? formataMoeda(m.depois) : m.depois}`).join(' · ')}</span></span>
+        <span class="valores">cobrado <b>${formataMoeda(cob.valor)}</b> → agora <b>${formataMoeda(cob.calculado)}</b></span>
+        ${pode ? `<span class="acoes">
+          <button class="argos-btn small primary" data-alt="aprovar" data-pid="${p.id}" title="A cobrança passa a valer o novo valor">✅ Aprovar</button>
+          <button class="argos-btn small" data-alt="recusar" data-pid="${p.id}" title="Mantém o valor enviado; esta diferença deixa de avisar">🚫 Recusar</button>
+        </span>` : ''}
+      </div>`).join('')}`;
+}
+
+async function decidirAlteracao(p, decisao) {
+    const cob = cobrancaDoMes(p, mesAtual);
+    const retrato = retratoDaCobranca({ fech: cob.fech, valor: cob.calculado });
+    const campos = decisao === 'aprovar'
+        ? { congelado_valor: cob.calculado, congelado_em: agora(), congelado_retrato: retrato,
+            valor_ajustado: null, motivo_ajuste: null }
+        : { congelado_retrato: retrato };
+    return gravarAjuste(p.id, campos);
+}
+
+async function decidirAlteracoes(ids, decisao) {
+    const alvo = pacientes.filter(p => ids.includes(p.id));
+    if (!alvo.length) return toast('Marque as alterações que quer decidir.', true);
+    if (!confirm(`${decisao === 'aprovar' ? 'Aprovar' : 'Recusar'} ${alvo.length} alteração(ões) de ${mesBR(mesAtual)}?\n`
+        + (decisao === 'aprovar' ? 'As cobranças passam a valer o valor calculado agora.' : 'As cobranças continuam no valor enviado.'))) return;
+    for (const p of alvo) await decidirAlteracao(p, decisao);
+    render();
+    toast(`${alvo.length} alteração(ões) ${decisao === 'aprovar' ? 'aprovada(s)' : 'recusada(s)'}.`);
+}
+
+document.getElementById('alteracoes-fech').addEventListener('click', e => {
+    const um = e.target.closest('[data-alt]');
+    if (um) {
+        if (!perm.pode('cobranca_alteracoes_aprovar')) return toast('Sem permissão para decidir alterações.', true);
+        return decidirAlteracoes([um.dataset.pid], um.dataset.alt);
+    }
+    const lote = e.target.closest('[data-alt-lote]');
+    if (!lote) return;
+    if (!perm.pode('cobranca_alteracoes_aprovar')) return toast('Sem permissão para decidir alterações.', true);
+    const ids = lote.dataset.quais === 'todas'
+        ? [...document.querySelectorAll('#alteracoes-fech .alt-sel')].map(x => x.value)
+        : [...document.querySelectorAll('#alteracoes-fech .alt-sel:checked')].map(x => x.value);
+    decidirAlteracoes(ids, lote.dataset.altLote);
+});
+
+document.getElementById('pend-lote').addEventListener('click', e => {
+    const b = e.target.closest('[data-pend-lote]');
+    if (!b) return;
+    if (!perm.pode('nota_pendencias_resolver')) return toast('Sem permissão para mexer nas pendências.', true);
+    const texto = document.getElementById('pend-lote-txt').value.trim();
+    if (!texto) return toast('Escreva o que foi feito antes de fechar em lote.', true);
+    const ids = b.dataset.quais === 'todas'
+        ? [...document.querySelectorAll('#lista-pendencias .pend-sel')].map(x => x.value)
+        : [...document.querySelectorAll('#lista-pendencias .pend-sel:checked')].map(x => x.value);
+    mudarVariasPendencias(ids, b.dataset.pendLote, texto);
+});
 
 // ===========================================================================
 // MENSAGEM DE COBRANÇA
@@ -1123,7 +1216,29 @@ async function mudarPendencia(pend, status, texto, redesenhar = true) {
         texto: texto || `Passou para "${status}".`, quem: sessionStorage.getItem('usuario') || null };
     const { data } = await sb.from('argos_nota_pendencia_eventos').insert(ev).select();
     eventos = eventos.concat(data || [ev]);
+    // ignorar = "a nota emitida fica valendo apesar da diferença": guarda o
+    // retrato de agora na nota, para a mesma diferença não reabrir sozinha
+    if (status === 'ignorada' && pend.nota_id) {
+        const nota = notas.find(n => n.id === pend.nota_id);
+        const pac = pacDe(pend.paciente_id);
+        if (nota && pac) {
+            const r = retratoAtual(pac, pend.mes);
+            const retrato = { valor: r.valor, sessoes: r.sessoes, dias: r.dias, descricao: r.descricao, nota_tipo: r.nota_tipo };
+            const { error: e2 } = await sb.from('argos_notas_fiscais').update({ retrato_ignorado: retrato, atualizado_em: agora() }).eq('id', nota.id);
+            if (!e2) nota.retrato_ignorado = retrato;
+        }
+    }
     if (redesenhar) renderPendencias();
+}
+
+/** Resolve ou ignora várias pendências de uma vez, com o mesmo texto. */
+async function mudarVariasPendencias(ids, status, texto) {
+    const alvo = pendencias.filter(p => ids.includes(p.id) && ['aberta', 'em_andamento'].includes(p.status));
+    if (!alvo.length) return toast('Nenhuma pendência aberta marcada.', true);
+    if (!confirm(`${status === 'resolvida' ? 'Resolver' : 'Ignorar'} ${alvo.length} pendência(s)?`)) return;
+    for (const p of alvo) await mudarPendencia(p, status, texto, false);
+    renderPendencias();
+    toast(`${alvo.length} pendência(s) ${status === 'resolvida' ? 'resolvida(s)' : 'ignorada(s)'}.`);
 }
 
 // ===========================================================================
