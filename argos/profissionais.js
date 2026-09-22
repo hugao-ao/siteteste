@@ -65,7 +65,8 @@ function renderLista() {
     const busca = normalizar(document.getElementById('busca').value);
     const podeGerenciar = perm.pode('profissionais_gerenciar');
     const podeServicos = perm.pode('profissional_servicos_gerenciar');
-    const lista = profissionais.filter(p => !busca || normalizar(p.nome).includes(busca));
+    const lista = profissionais.filter(p => (perm.escopo.geral || p.id === perm.escopo.profissionalId)
+        && (!busca || normalizar(p.nome).includes(busca)));
 
     document.getElementById('lista-profissionais').innerHTML = lista.map(p => {
         const meus = vinculos.filter(v => v.profissional_id === p.id)
@@ -260,6 +261,7 @@ document.getElementById('servico-lista').addEventListener('click', async (e) => 
 // ---------- início ----------
 (async function init() {
     perm = await carregarPermissoes();
+    if (!perm.exigirPagina('profissionais_ver', 'os profissionais')) return;
     perm.aplicarVisibilidade();
     await carregarTudo();
 })();

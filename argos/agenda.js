@@ -4,6 +4,7 @@
 
 import { sb, todas, toast, esc, abrirModal, fecharModal } from './argos-common.js';
 import { carregarPermissoes } from './argos-permissoes.js';
+import { sessaoNoEscopo } from './argos-escopo.js';
 import {
     STATUS_SESSAO, DOW_NOMES, mesclarSessoes, hojeISO, somarDias, paraData,
     paraISO, formataBR, formataMoeda, fimDoMes, expandirDinamica, conflitosDeSessao,
@@ -78,6 +79,14 @@ function montarFiltroSalas() {
     if (!sel.value) sel.value = 'geral';
 
     const selP = document.getElementById('filtro-prof');
+    if (!perm.escopo.geral) {
+        // usuário de um profissional só: a agenda é a dele, sem escolher
+        const eu = profissionais.find(p => p.id === perm.escopo.profissionalId);
+        selP.innerHTML = `<option value="${perm.escopo.profissionalId}">🧑‍⚕️ ${esc(eu ? eu.nome : 'Meus atendimentos')}</option>`;
+        selP.value = perm.escopo.profissionalId;
+        selP.disabled = true;
+        return;
+    }
     const atualP = selP.value || new URLSearchParams(location.search).get('profissional') || '';
     selP.innerHTML = '<option value="todos">🧑‍⚕️ Todos os profissionais</option>' +
         profissionais.map(p => `<option value="${p.id}">🧑‍⚕️ ${esc(p.nome)}</option>`).join('');
@@ -109,8 +118,9 @@ function sessoesPendentes() {
     // sairiam do fechamento sem ninguém ter dito o que aconteceu.
     // O corte por fim de processo do paciente continua valendo por cima.
     const paraPendencia = c.dinamicas.map(d => d.ativo === false ? { ...d, ativo: true } : d);
+    const dinPorId = new Map(dinamicas.map(d => [d.id, d]));
     return mesclarSessoes(paraPendencia, c.sessoes, de, somarDias(hoje, -1))
-        .filter(s => s.status === '??');
+        .filter(s => s.status === '??' && sessaoNoEscopo(perm, s, dinPorId));
 }
 
 function renderAvisoPendentes() {
@@ -705,8 +715,8 @@ function abrirModalSessaoPara(s) {
          <span class="chip-status" style="--c:${STATUS_SESSAO[s.status].cor}">${STATUS_SESSAO[s.status].label}</span></span>
          ${s.remarcada_de_data ? `<br><span class="dim">↪️ Sessão remarcada: era ${DOW_NOMES[paraData(s.remarcada_de_data).getDay()]} ${formataBR(s.remarcada_de_data)} às ${s.remarcada_de_hora}</span>` : ''}
          ${s.justificativa ? `<br><span class="dim">📝 Justificativa: ${esc(s.justificativa)}</span>` : ''}
-         ${s.id && !s.dinamica_ref ? `<br><span class="dim">💰 Sessão avulsa${s.valor != null
-             ? ` — valor: <b>${formataMoeda(s.valor)}</b>`
+         ${s.id && !s.dinamica_ref ? `<br><span class="dim">💰 Sessão avulsa${!perm.pode('agenda_valores') ? ''
+             : s.valor != null ? ` — valor: <b>${formataMoeda(s.valor)}</b>`
              : ' — sem valor (não entra na cobrança)'}${s.modalidade
              ? ` · ${esc(tipoSessaoLabel(s.modalidade,
                  (grupos.find(x => x.id === s.grupo_id) || {}).nome))}` : ''}</span>` : ''}
@@ -1784,6 +1794,7 @@ document.getElementById('form-sala').addEventListener('submit', async (e) => {
 // ---------- início ----------
 (async function init() {
     perm = await carregarPermissoes();
+    if (!perm.exigirPagina('agenda_ver', 'a agenda')) return;
     perm.aplicarVisibilidade();
     if (!perm.pode('agenda_tabela')) {
         const op = document.querySelector('#modo-visao option[value="tabela"]');

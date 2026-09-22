@@ -11,6 +11,7 @@
 
 import { sb, todas, toast, esc } from './argos-common.js';
 import { carregarPermissoes } from './argos-permissoes.js';
+import { sessaoNoEscopo } from './argos-escopo.js';
 import {
     STATUS_SESSAO, DOW_NOMES, mesclarSessoes, hojeISO, somarDias, paraData,
     formataBR, aplicarFimDeProcesso, definirMesesCongelados
@@ -77,8 +78,9 @@ function sessoesPendentes() {
     // já venceu sem classificação continua pendente. O corte por fim de
     // processo do paciente continua valendo por cima.
     const paraPendencia = c.dinamicas.map(d => d.ativo === false ? { ...d, ativo: true } : d);
+    const dinPorId = new Map(dinamicas.map(d => [d.id, d]));
     return mesclarSessoes(paraPendencia, c.sessoes, de, somarDias(hoje, -1))
-        .filter(s => s.status === '??');
+        .filter(s => s.status === '??' && sessaoNoEscopo(perm, s, dinPorId));
 }
 
 function chaveSessao(s) {
@@ -299,6 +301,7 @@ ouvirMudancas(dados => { if (dados.origem !== 'pendencias') carregarTudo(); });
 (async () => {
     try { el('pend-fone').value = localStorage.getItem('argos_pend_fone') || ''; } catch (e) {}
     perm = await carregarPermissoes();
+    if (!perm.exigirPagina('pagina_pendencias', 'as pendências de frequência')) return;
     perm.aplicarVisibilidade(document);
     await carregarTudo();
 })();

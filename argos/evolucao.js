@@ -6,6 +6,7 @@
 
 import { sb, toast, esc, abrirModal, fecharModal } from './argos-common.js';
 import { carregarPermissoes } from './argos-permissoes.js';
+import { pacienteNoEscopo } from './argos-escopo.js';
 import { hojeISO, formataBR, somarDias } from './argos-recorrencia.js';
 import {
     IMPORTANCIAS, NIVEIS, MAX_FUNDAMENTAIS, MEMORIA_GRUPOS, AREA_TEXTOS,
@@ -597,6 +598,10 @@ window.addEventListener('beforeunload', (e) => {
     document.getElementById('btn-voltar2').href = volta;
     if (!pacienteId) {
         document.querySelector('main').innerHTML = '<p class="dim" style="padding:30px">Paciente não informado. Abra pela lista de pacientes.</p>';
+        return;
+    }
+    if (!(await pacienteNoEscopo(perm, pacienteId))) {
+        document.querySelector('main').innerHTML = '<p class="dim" style="padding:30px">Este paciente não está entre os seus atendimentos. <a href="pacientes.html">← Pacientes</a></p>';
         return;
     }
     const { data: p } = await sb.from('argos_pacientes').select('*').eq('id', pacienteId).single();
