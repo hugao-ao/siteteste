@@ -30,6 +30,12 @@
         <select id="pend-agrupar" class="argos-input"></select></label>
       <label class="pend-campo">Ordenar por
         <select id="pend-ordem" class="argos-input"></select></label>
+      <label class="pend-campo" data-argos-recurso="frequencia_ver_oficial">Mostrar
+        <select id="pend-camada" class="argos-input">
+          <option value="sem">Sem preenchimento (falta a recepção marcar)</option>
+          <option value="proposta">Com proposta aguardando validação do profissional</option>
+          <option value="todas">Todas</option>
+        </select></label>
     </div>
     <div class="pend-barra">
       <input type="tel" id="pend-fone" class="argos-input"
@@ -41,7 +47,7 @@
     <div id="lista-pendentes"><p class="dim">Carregando…</p></div>
   </main>
 
-  <script type="module" src="pendencias.js?v=3"></script>
+  <script type="module" src="pendencias.js?v=4"></script>
   <script type="module" src="argos-zoom.js?v=4"></script>
 </body>
 </html>

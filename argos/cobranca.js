@@ -235,6 +235,10 @@ async function render() {
 }
 
 // ---------------------------------------------------------------- fechamento
+// sessões do mês já preenchidas (oficial) mas que o profissional não validou:
+// a cobrança pode sair, mas a frequência ainda não está alinhada
+const semValidar = f => (f.sessoes || []).filter(s => s.id && s.status !== '??' && !s.validado_em).length;
+
 function renderFechamento() {
     const busca = (document.getElementById('busca-fech').value || '').toLowerCase();
     const soMovimento = document.getElementById('so-movimento').checked;
@@ -242,7 +246,7 @@ function renderFechamento() {
 
     const todos = pacientes.map(p => ({ p, f: fechDe(p.id) }));
     const linhas = [];
-    const total = { ok: 0, fj: 0, fc: 0, nc: 0, pd: 0, valor: 0, pendencias: 0 };
+    const total = { ok: 0, fj: 0, fc: 0, nc: 0, pd: 0, valor: 0, pendencias: 0, semValidar: 0 };
     let enviadas = 0;
 
     for (const { p, f } of todos) {
@@ -255,7 +259,7 @@ function renderFechamento() {
         total.ok += f.contagens.ok; total.fj += f.contagens.fj; total.fc += f.contagens.fc;
         total.nc += f.contagens.nc; total.pd += f.contagens['??'];
         const cob = cobrancaDoMes(p, mesAtual);
-        total.valor += cob.valor; total.pendencias += f.pendencias;
+        total.valor += cob.valor; total.pendencias += f.pendencias; total.semValidar += semValidar(f);
         linhas.push({ p, f, envio, cob });
     }
 
@@ -296,6 +300,7 @@ function renderFechamento() {
         <td class="livre">${esc(p.nome)}
           ${p.processo_fim_tipo ? `<span class="badge vermelho">${esc(p.processo_fim_tipo)}${p.processo_fim_data ? ' em ' + formataBR(p.processo_fim_data) : ''}</span>` : ''}
           ${f.pendencias ? `<span class="badge vermelho" title="Sessões vencidas sem preenchimento">${f.pendencias} sem frequência</span>` : ''}
+          ${semValidar(f) ? `<a class="badge amarelo" href="frequencia.html?mes=${mesAtual}&paciente=${p.id}" title="Sessões preenchidas que o profissional ainda não validou">⏳ ${semValidar(f)} sem validar</a>` : ''}
           ${anota.length ? `<span class="sub" title="Detalhes financeiros">📝 ${esc(anota.map(a => a.texto).join(' · '))}</span>` : ''}
         </td>
         <td class="num">${f.contagens.ok}</td><td class="num">${f.contagens.fj}</td>
@@ -357,14 +362,21 @@ function renderFechamento() {
       <span class="${t.aEnviar ? 'alerta' : 'ok'}">Falta cobrar <b>${t.aEnviar}</b> · <b>${formataMoeda(t.valorAEnviar)}</b></span>
       ${t.divergentes ? `<span class="erro">Mudaram após o envio <b>${t.divergentes}</b></span>` : ''}
       ${semContato ? `<span class="erro">Sem contato de cobrança <b>${semContato}</b></span>` : ''}
-      ${total.pendencias ? `<span class="alerta">Sessões sem frequência <b>${total.pendencias}</b></span>` : ''}`;
+      ${total.pendencias ? `<span class="alerta">Sessões sem frequência <b>${total.pendencias}</b></span>` : ''}
+      ${total.semValidar ? `<span class="alerta"><a href="frequencia.html?mes=${mesAtual}" title="Abrir a conferência de frequência">Sem validação do profissional <b>${total.semValidar}</b></a></span>` : ''}`;
 
     const aviso = document.getElementById('aviso-pendencias');
-    if (total.pendencias) {
+    if (total.pendencias || total.semValidar) {
         aviso.style.display = '';
-        aviso.textContent = `⚠️ ${total.pendencias} sessão(ões) vencida(s) sem preenchimento neste mês — `
-            + 'elas contam como presentes na mensagem do fechamento, mas ainda não entram no valor. '
-            + 'Preencha na Agenda para o valor fechar.';
+        aviso.innerHTML = (total.pendencias
+            ? `⚠️ ${total.pendencias} sessão(ões) vencida(s) sem preenchimento neste mês — `
+              + 'elas contam como presentes na mensagem do fechamento, mas ainda não entram no valor. '
+              + 'Preencha na Agenda para o valor fechar. '
+            : '')
+            + (total.semValidar
+            ? `⏳ ${total.semValidar} sessão(ões) preenchida(s) que o profissional ainda não validou — `
+              + `<a href="frequencia.html?mes=${mesAtual}">conferir e cobrar a validação</a>.`
+            : '');
     } else aviso.style.display = 'none';
 
     renderRepasses(todos);

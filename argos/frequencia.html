@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=0.1, maximum-scale=10, user-scalable=yes" />
+  <title>Argos Gestão — Conferência de frequência</title>
+  <script src="argos-guard.js"></script>
+  <link rel="stylesheet" href="argos-style.css?v=15" />
+  <style>
+    .fq-barra { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 12px; }
+    .fq-barra .argos-input { padding: 6px 9px; }
+    .fq-atalhos { display: flex; gap: 6px; flex-wrap: wrap; }
+    .fq-resumo { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 10px; margin: 14px 0 22px; }
+    .fq-prof { background: var(--argos-surface); border: 1px solid var(--argos-border); border-radius: var(--argos-radius); padding: 12px 14px; }
+    .fq-prof h3 { margin: 0 0 6px; font-size: 1rem; display: flex; justify-content: space-between; gap: 8px; align-items: center; }
+    .fq-prof .nums { display: flex; gap: 12px; flex-wrap: wrap; font-size: .85rem; color: var(--argos-text-dim); margin-bottom: 8px; }
+    .fq-prof .nums b { color: var(--argos-text); }
+    .fq-prof .nums .alerta b { color: var(--argos-warn); }
+    .fq-prof .nums .erro b { color: var(--argos-danger); }
+    .fq-prof .nums .ok b { color: var(--argos-success); }
+    .fq-prof .acoes { display: flex; gap: 6px; flex-wrap: wrap; }
+    .fq-dia { margin: 16px 0 6px; font-weight: 700; color: var(--argos-text-dim); font-size: .85rem; border-bottom: 1px solid var(--argos-border); padding-bottom: 4px; }
+    .fq-linha { display: grid; grid-template-columns: 62px minmax(160px, 1.4fr) minmax(220px, 2fr) auto; gap: 10px; align-items: center;
+      padding: 7px 10px; border: 1px solid var(--argos-border); border-radius: 10px; margin-bottom: 6px; background: var(--argos-surface); }
+    .fq-linha.validada { opacity: .6; }
+    .fq-linha .quem { font-weight: 600; }
+    .fq-linha .quem small { display: block; color: var(--argos-text-dim); font-weight: 400; }
+    .fq-linha .estado { font-size: .82rem; color: var(--argos-text-dim); line-height: 1.35; }
+    .fq-linha .estado .chip-status { margin-right: 4px; }
+    .fq-linha .btns { display: flex; gap: 4px; flex-wrap: wrap; justify-content: flex-end; }
+    .fq-linha .btns .btn-status { padding: 3px 8px; font-size: .78rem; }
+    .fq-vazio { color: var(--argos-text-dim); padding: 20px 0; }
+    .fq-topo-acoes { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin: 4px 0 10px; }
+    @media (max-width: 760px) { .fq-linha { grid-template-columns: 1fr; } .fq-linha .btns { justify-content: flex-start; } }
+  </style>
+</head>
+<body>
+  <header class="argos-topbar">
+    <div class="brand">ARGOS <span>GESTÃO</span></div>
+    <div class="actions">
+      <a class="argos-btn ghost" href="index.html">← Início</a>
+      <a class="argos-btn ghost" href="agenda.html">🗓️ Agenda</a>
+      <button class="argos-btn danger" id="btn-logout">Sair</button>
+    </div>
+  </header>
+
+  <main class="argos-pagina larga">
+    <h1>✅ Conferência de frequência</h1>
+    <p class="sub">A recepção preenche, o profissional valida, o financeiro fecha. Aqui aparece o que a recepção
+      propôs e ainda não foi aprovado, o que já está preenchido mas ninguém validou, e o que está sem
+      preenchimento nenhum — por profissional e período.</p>
+
+    <div class="fq-barra">
+      <label class="rotulo-inline">De <input type="date" id="fq-de" class="argos-input" /></label>
+      <label class="rotulo-inline">Até <input type="date" id="fq-ate" class="argos-input" /></label>
+      <div class="fq-atalhos">
+        <button class="argos-btn small ghost" data-periodo="hoje">Hoje</button>
+        <button class="argos-btn small ghost" data-periodo="semana">Esta semana</button>
+        <button class="argos-btn small ghost" data-periodo="mes">Este mês</button>
+        <button class="argos-btn small ghost" data-periodo="anterior">Mês anterior</button>
+      </div>
+    </div>
+    <div class="fq-barra">
+      <select id="fq-prof" class="argos-input"></select>
+      <select id="fq-paciente" class="argos-input"><option value="">🧑‍⚕️ Todos os pacientes</option></select>
+      <label class="rotulo-inline"><input type="checkbox" id="fq-so-pendentes" checked /> só o que falta validar</label>
+      <span class="dim" id="fq-contagem"></span>
+    </div>
+
+    <div class="fq-topo-acoes" id="fq-topo-acoes"></div>
+    <div class="fq-resumo" id="fq-resumo"></div>
+    <div id="fq-lista"><p class="dim">Carregando…</p></div>
+
+    <div class="fq-barra" id="fq-recepcao" data-argos-recurso="frequencia_cobrar" style="margin-top:24px">
+      <input type="tel" id="fq-fone-recepcao" class="argos-input" placeholder="📱 WhatsApp da recepção (país, DDD e número)" style="min-width:280px" />
+      <button class="argos-btn small" id="btn-cobrar-recepcao">📲 Cobrar a recepção pelos «??» do período</button>
+    </div>
+  </main>
+
+  <script type="module" src="frequencia.js?v=1"></script>
+  <script type="module" src="argos-zoom.js?v=4"></script>
+</body>
+</html>

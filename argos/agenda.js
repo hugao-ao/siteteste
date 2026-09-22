@@ -12,7 +12,8 @@ import {
     definirRepassePadrao, fracaoRepasse, tipoSessaoLabel, TIPOS_SESSAO_AVULSA,
     definirMesesCongelados
 } from './argos-recorrencia.js';
-import { gravarFrequencia, registrarFaltasJustificadas, avisarMudanca, ouvirMudancas }
+import { gravarFrequencia, registrarFaltasJustificadas, avisarMudanca, ouvirMudancas,
+    configurarFrequencia, aplicarCamada, validarSessoes, marcaDeCamada, modoFrequencia }
     from './argos-frequencia.js';
 import { STATUS_PROF, ORDEM_STATUS_PROF, responsaveisDe } from './argos-producao.js';
 import { ocupacaoDoDia, TURNO_ROTULO } from './argos-locacoes.js';
@@ -58,7 +59,7 @@ async function carregarTudo() {
     mesesCongelados = (rCong && rCong.data) || [];
     definirMesesCongelados(mesesCongelados);
     dinamicas = rDin.data || [];
-    sessoes = rSes.data || [];
+    sessoes = aplicarCamada(rSes.data || []);
     grupos = rGru.data || [];
     grupoMembros = rMem.data || [];
     grupoProfs = rGP.data || [];
@@ -120,7 +121,13 @@ function sessoesPendentes() {
     const paraPendencia = c.dinamicas.map(d => d.ativo === false ? { ...d, ativo: true } : d);
     const dinPorId = new Map(dinamicas.map(d => [d.id, d]));
     return mesclarSessoes(paraPendencia, c.sessoes, de, somarDias(hoje, -1))
-        .filter(s => s.status === '??' && sessaoNoEscopo(perm, s, dinPorId));
+        .filter(s => s.status === '??' && !s.conferida && sessaoNoEscopo(perm, s, dinPorId));
+}
+
+// marca da camada no chip: 📝 proposta da recepção aguardando, ✔ validada
+function marcaChip(s) {
+    if (perm.pode('frequencia_ver_oficial')) return s.validado_em ? ' ✔' : (s.status_proposto ? ' 📝' : '');
+    return s.conferida ? ' ✔' : '';
 }
 
 function renderAvisoPendentes() {
@@ -205,12 +212,13 @@ async function marcarSessoes(lista, status) {
     }
     if (status === 'fj') await registrarFaltasJustificadas(sb, alvos, justificativa, formataBR);
 
+    const proposta = modoFrequencia() === 'proposta' ? ' (proposta — aguarda a validação do profissional)' : '';
     toast(alvos.length > 1
-        ? `${alvos.length} sessões marcadas: ${STATUS_SESSAO[status].label} — ${STATUS_SESSAO[status].desc}`
-        : `Sessão marcada: ${STATUS_SESSAO[status].label} — ${STATUS_SESSAO[status].desc}`);
+        ? `${alvos.length} sessões marcadas: ${STATUS_SESSAO[status].label} — ${STATUS_SESSAO[status].desc}${proposta}`
+        : `Sessão marcada: ${STATUS_SESSAO[status].label} — ${STATUS_SESSAO[status].desc}${proposta}`);
 
     const { data } = await todas(() => sb.from('argos_sessoes').select('*'));
-    sessoes = data || sessoes;
+    sessoes = data ? aplicarCamada(data) : sessoes;
     renderTudo();
     // a janela de pendências, se estiver aberta, acompanha
     avisarMudanca({ origem: 'agenda', quantas: alvos.length });
@@ -316,13 +324,14 @@ function detectorConflito(lista) {
 function chipSessao(s, conflita, compacta) {
     const hoje = hojeISO();
     const vencida = s.status === '??' && s.data < hoje;
-    const titulo = `${nomePac(s.paciente_id)} · ${nomeSala(s.sala_id)} · ${nomeProf(s.profissional_id)}${s.remarcada_de_data ? ` · ↪️ remarcada de ${formataBR(s.remarcada_de_data)} às ${s.remarcada_de_hora}` : ''}${s.justificativa ? ' · 📝 ' + s.justificativa : ''}${conflita(s) ? ' · ⚠️ CONFLITO de espaço/horário' : ''}`;
+    const camada = perm.pode('frequencia_ver_oficial') ? marcaDeCamada(s, formataBR) : (s.conferida ? '✔ conferida pelo profissional' : '');
+    const titulo = `${nomePac(s.paciente_id)} · ${nomeSala(s.sala_id)} · ${nomeProf(s.profissional_id)}${s.remarcada_de_data ? ` · ↪️ remarcada de ${formataBR(s.remarcada_de_data)} às ${s.remarcada_de_hora}` : ''}${s.justificativa ? ' · 📝 ' + s.justificativa : ''}${camada ? ' · ' + camada : ''}${conflita(s) ? ' · ⚠️ CONFLITO de espaço/horário' : ''}`;
     return `
       <div class="agenda-chip ${compacta ? 'compacta' : ''} ${vencida ? 'vencida' : ''} ${conflita(s) ? 'conflito' : ''}"
            ${s.status === '??' ? 'draggable="true"' : ''}
            style="--c:${STATUS_SESSAO[s.status].cor}" data-chave="${chaveSessao(s)}" title="${esc(titulo)}">
         <b>${s.hora}</b> ${s.remarcada_de_data ? '↪️ ' : ''}${esc(nomePac(s.paciente_id))}
-        ${compacta ? '' : `<div class="chip-sub">${esc(nomeSala(s.sala_id))}${s.modalidade === 'grupo' ? ' · 👥' : ''}${s.remarcada_de_data ? ` · ↪️ de ${formataBR(s.remarcada_de_data).slice(0, 5)}` : ''} · <span class="chip-status" style="--c:${STATUS_SESSAO[s.status].cor}">${STATUS_SESSAO[s.status].label}</span>${conflita(s) ? ' ⚠️' : ''}</div>`}
+        ${compacta ? '' : `<div class="chip-sub">${esc(nomeSala(s.sala_id))}${s.modalidade === 'grupo' ? ' · 👥' : ''}${s.remarcada_de_data ? ` · ↪️ de ${formataBR(s.remarcada_de_data).slice(0, 5)}` : ''} · <span class="chip-status" style="--c:${STATUS_SESSAO[s.status].cor}">${STATUS_SESSAO[s.status].label}</span>${marcaChip(s)}${conflita(s) ? ' ⚠️' : ''}</div>`}
       </div>`;
 }
 
@@ -533,7 +542,7 @@ function renderTabela() {
             s.justificativa ? ' · 📝 ' + s.justificativa : ''}${conflita(s) ? ' · ⚠️ CONFLITO de espaço/horário' : ''}`;
         return `<span class="tab-chip ${vencida ? 'vencida' : ''} ${conflita(s) ? 'conflito' : ''}"
             style="--c:${STATUS_SESSAO[s.status].cor}" data-chave="${chaveTabela(s)}" title="${esc(titulo)}">${
-            porAlfa ? `<small>${s.hora}</small>` : ''}${s.remarcada_de_data ? '↪️' : ''}${STATUS_SESSAO[s.status].label}</span>`;
+            porAlfa ? `<small>${s.hora}</small>` : ''}${s.remarcada_de_data ? '↪️' : ''}${STATUS_SESSAO[s.status].label}${marcaChip(s)}</span>`;
     };
 
     const totaisDe = (sess) => {
@@ -721,7 +730,8 @@ function abrirModalSessaoPara(s) {
              ? ` · ${esc(tipoSessaoLabel(s.modalidade,
                  (grupos.find(x => x.id === s.grupo_id) || {}).nome))}` : ''}</span>` : ''}
          ${s.dinamica_ref && s.modalidade && s.modalidade !== 'grupo'
-             ? `<br><span class="dim">🏷️ Tipo: ${esc(tipoSessaoLabel(s.modalidade))}</span>` : ''}`;
+             ? `<br><span class="dim">🏷️ Tipo: ${esc(tipoSessaoLabel(s.modalidade))}</span>` : ''}
+         ${blocoCamada(s)}`;
     document.getElementById('botoes-status').innerHTML =
         ['??', 'ok', 'fj', 'fc', 'nc'].map(st => `
           <button class="btn-status" style="--c:${STATUS_SESSAO[st].cor}" data-marcar="${st}">
@@ -854,6 +864,35 @@ document.getElementById('botoes-status').addEventListener('click', async (e) => 
     const btn = e.target.closest('[data-marcar]');
     if (!btn || !sessaoAberta) return;
     await marcarSessao(sessaoAberta, btn.dataset.marcar);
+    fecharModal('modal-sessao');
+    retornarAoGrupoSePreciso();
+});
+
+// A camada no detalhe da sessão: quem vê a oficial enxerga a proposta da
+// recepção e a validação; quem pode validar aprova aqui mesmo.
+function blocoCamada(s) {
+    if (!s.id) return '';
+    if (!perm.pode('frequencia_ver_oficial')) {
+        return s.conferida ? '<br><span class="dim">✔ Conferida pelo profissional.</span>' : '';
+    }
+    const marca = marcaDeCamada(s, formataBR);
+    if (!marca) return '';
+    const podeValidar = perm.pode('frequencia_validar') && !s.validado_em && (s.status_proposto || s.status !== '??');
+    return `<br><span class="dim">${esc(marca)}${s.status_proposto && s.justificativa_proposta ? ` — «${esc(s.justificativa_proposta)}»` : ''}</span>
+        ${podeValidar ? `<button class="argos-btn small primary" data-validar="${s.id}" style="margin-left:8px">${s.status_proposto ? '✔ Aprovar a proposta' : '✔ Validar'}</button>` : ''}`;
+}
+
+document.getElementById('sessao-info').addEventListener('click', async (e) => {
+    const btn = e.target.closest('[data-validar]');
+    if (!btn || !sessaoAberta) return;
+    if (!perm.pode('frequencia_validar')) { toast('Sem permissão para validar.', true); return; }
+    const { erro, quantas } = await validarSessoes(sb, [sessaoAberta]);
+    if (erro) { console.error(erro); toast('Erro ao validar a sessão.', true); return; }
+    toast(quantas ? 'Sessão validada.' : 'Nada a validar nesta sessão.');
+    const { data } = await todas(() => sb.from('argos_sessoes').select('*'));
+    sessoes = data ? aplicarCamada(data) : sessoes;
+    renderTudo();
+    avisarMudanca({ origem: 'agenda', quantas: 1 });
     fecharModal('modal-sessao');
     retornarAoGrupoSePreciso();
 });
@@ -1027,7 +1066,7 @@ async function recarregarSessoes() {
         todas(() => sb.from('argos_locacoes').select('*')),
         todas(() => sb.from('argos_meses_congelados').select('*'))
     ]);
-    sessoes = rSes.data || sessoes;
+    sessoes = rSes.data ? aplicarCamada(rSes.data) : sessoes;
     dinamicas = rDin.data || dinamicas;
     grupos = rGru.data || grupos;
     grupoMembros = rMem.data || grupoMembros;
@@ -1795,6 +1834,7 @@ document.getElementById('form-sala').addEventListener('submit', async (e) => {
 (async function init() {
     perm = await carregarPermissoes();
     if (!perm.exigirPagina('agenda_ver', 'a agenda')) return;
+    configurarFrequencia(perm);
     perm.aplicarVisibilidade();
     if (!perm.pode('agenda_tabela')) {
         const op = document.querySelector('#modo-visao option[value="tabela"]');
