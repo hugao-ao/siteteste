@@ -549,7 +549,21 @@ function mostrar(campo, v) {
 
 // ------------------------------------------------------------------ em aberto
 /** Meses com produção não coberta por pagamento associado àquele mês. */
-function abertoDoPaciente(p, ateMes) {
+// O período que a lista de em aberto levanta. Mês em curso não entra por
+// padrão: a parcial dele já aparece no fechamento, e ninguém deve o que ainda
+// não venceu. Fica guardado no navegador para não ter que reescolher.
+function mesAnteriorA(mes) {
+    let [a, m] = String(mes).split('-').map(Number);
+    m -= 1; if (m < 1) { m = 12; a -= 1; }
+    return `${a}-${String(m).padStart(2, '0')}`;
+}
+function periodoAberto() {
+    const de = (document.getElementById('aberto-de').value || '').slice(0, 7) || null;
+    const ate = (document.getElementById('aberto-ate').value || '').slice(0, 7) || mesAnteriorA(hojeISO().slice(0, 7));
+    return { de, ate };
+}
+
+function abertoDoPaciente(p, ateMes, deMes = null) {
     const dins = dinsDe(p.id);
     const sess = sessoes.filter(s => s.paciente_id === p.id);
     const alocP = alocacoes.filter(a => a.vinculo_tipo === 'paciente' && a.vinculo_id === p.id);
@@ -557,7 +571,10 @@ function abertoDoPaciente(p, ateMes) {
         ...alocP.map(a => a.mes_ref + '-01')].filter(Boolean).sort();
     if (!inicios.length) return null;
     const fim = ateMes || hojeISO().slice(0, 7);
-    const meses = mesesEntre(inicios[0].slice(0, 7), fim);
+    let inicio = inicios[0].slice(0, 7);
+    if (deMes && deMes > inicio) inicio = deMes;
+    if (inicio > fim) return null;
+    const meses = mesesEntre(inicio, fim);
     const linhas = [];
     let producao = 0, pago = 0;
     for (const mes of meses) {
@@ -576,8 +593,9 @@ function abertoDoPaciente(p, ateMes) {
 
 function renderAberto() {
     const busca = (document.getElementById('busca-aberto').value || '').toLowerCase();
-    const ate = document.getElementById('aberto-ate-mes').checked ? mesAtual : null;
-    const lista = pacientes.map(p => abertoDoPaciente(p, ate)).filter(Boolean)
+    const { de, ate } = periodoAberto();
+    try { localStorage.setItem('argos_aberto_periodo', JSON.stringify({ de, ate })); } catch (e) {}
+    const lista = pacientes.map(p => abertoDoPaciente(p, ate, de)).filter(Boolean)
         .filter(x => !busca || (x.p.nome || '').toLowerCase().includes(busca))
         .sort((a, b) => b.saldo - a.saldo);
 
@@ -732,7 +750,7 @@ const baixasDe = pacienteId => ajustes.filter(a => a.paciente_id === pacienteId 
 let baixaPaciente = null;
 function abrirBaixa(p) {
     baixaPaciente = p;
-    const ab = abertoDoPaciente(p, null) || { linhas: [] };
+    const ab = abertoDoPaciente(p, periodoAberto().ate, periodoAberto().de) || { linhas: [] };
     const opcoes = ab.linhas.length ? ab.linhas : [{ mes: mesAtual, valor: 0, pago: 0, baixa: 0 }];
     document.getElementById('baixa-titulo').textContent = `Baixa manual — ${p.nome}`;
     const sel = document.getElementById('baixa-mes');
@@ -1145,7 +1163,13 @@ document.getElementById('mes-ref').addEventListener('change', () => { abertos = 
     document.getElementById(id).addEventListener('input', renderNotas));
 ['filtro-pend', 'pend-todos-meses'].forEach(id =>
     document.getElementById(id).addEventListener('input', renderPendencias));
-['busca-aberto', 'aberto-ate-mes'].forEach(id =>
+// período do em aberto: o que ficou guardado, senão do começo até o último mês fechado
+try {
+    const g = JSON.parse(localStorage.getItem('argos_aberto_periodo') || 'null');
+    if (g) { document.getElementById('aberto-de').value = g.de || ''; document.getElementById('aberto-ate').value = g.ate || ''; }
+} catch (e) {}
+if (!document.getElementById('aberto-ate').value) document.getElementById('aberto-ate').value = mesAnteriorA(hojeISO().slice(0, 7));
+['busca-aberto', 'aberto-de', 'aberto-ate'].forEach(id =>
     document.getElementById(id).addEventListener('input', renderAberto));
 document.getElementById('btn-imprimir').addEventListener('click', () => window.print());
 document.getElementById('btn-config').addEventListener('click', abrirConfig);

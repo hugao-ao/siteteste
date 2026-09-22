@@ -218,9 +218,10 @@
     <section data-painel="aberto" style="display:none">
       <div class="argos-filtros">
         <input type="search" id="busca-aberto" class="argos-input" placeholder="🔎 Buscar paciente…" />
-        <label class="linha-check" style="margin:0">
-          <input type="checkbox" id="aberto-ate-mes" /> Só até o mês escolhido
-        </label>
+        <label style="margin:0" data-argos-recurso="cobranca_aberto_periodo">De
+          <input type="month" id="aberto-de" class="argos-input" title="Primeiro mês levantado (vazio = desde o começo)" /></label>
+        <label style="margin:0" data-argos-recurso="cobranca_aberto_periodo">Até
+          <input type="month" id="aberto-ate" class="argos-input" title="Último mês levantado — o mês em curso fica de fora por padrão" /></label>
       </div>
       <div class="cb-resumo" id="resumo-aberto"></div>
       <div class="argos-tabela-wrap">
@@ -447,7 +448,7 @@
     </div>
   </div>
 
-  <script type="module" src="cobranca.js?v=9"></script>
+  <script type="module" src="cobranca.js?v=10"></script>
   <script type="module" src="argos-zoom.js?v=4"></script>
 </body>
 </html>
