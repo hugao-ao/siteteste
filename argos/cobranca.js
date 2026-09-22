@@ -578,15 +578,22 @@ function abertoDoPaciente(p, ateMes, deMes = null) {
     const linhas = [];
     let producao = 0, pago = 0;
     for (const mes of meses) {
+        // o que o paciente deve é o que foi COBRADO (valor editado ou
+        // congelado no envio), o mesmo número do fechamento — não o calculado
+        // cru pela frequência
         const f = mes === mesAtual ? fechDe(p.id) : fechamentoPaciente(p, dins, sess, mes);
+        const valorMes = Number(valorDoMes({ fech: f, ajuste: ajusteDe(p.id, mes) }).valor) || 0;
         const pagoMes = alocP.filter(a => a.mes_ref === mes).reduce((s, a) => s + (Number(a.valor) || 0), 0);
         const bx = baixaDe(p.id, mes);
         const baixaMes = bx ? Number(bx.baixa_valor) || 0 : 0;
-        if (!f.valor && !pagoMes && !baixaMes) continue;
-        producao += f.valor; pago += pagoMes + baixaMes;
-        if (f.valor - pagoMes - baixaMes > 0.009) linhas.push({ mes, valor: f.valor, pago: pagoMes + baixaMes, baixa: baixaMes });
+        if (!valorMes && !pagoMes && !baixaMes) continue;
+        producao += valorMes; pago += pagoMes + baixaMes;
+        if (valorMes - pagoMes - baixaMes > 0.009) linhas.push({ mes, valor: valorMes, pago: pagoMes + baixaMes, baixa: baixaMes });
     }
-    const saldo = producao - pago;
+    // cada mês é uma conta: o que sobrou pago num mês (ou num mês de 2025 que
+    // o site não conhece) não quita um mês que ficou em aberto — é assim que
+    // a planilha de acertos enxerga, mês a mês
+    const saldo = linhas.reduce((s, l) => s + (l.valor - l.pago), 0);
     if (saldo <= 0.009) return null;
     return { p, linhas, producao, pago, saldo };
 }
