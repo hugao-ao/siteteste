@@ -101,6 +101,10 @@
         <label>Tipo de usuário
           <select id="usu-tipo"><option value="">— Sem tipo —</option></select>
         </label>
+        <label>Profissional vinculado
+          <select id="usu-profissional"><option value="">— Nenhum —</option></select>
+          <span class="dica">Quem tem um profissional vinculado e não tem o recurso «Ver todos os pacientes e profissionais» enxerga só os próprios pacientes, sessões e pendências.</span>
+        </label>
         <label class="linha-check">
           <input type="checkbox" id="usu-ativo" checked /> Usuário ativo (pode entrar)
         </label>
@@ -187,7 +191,7 @@
     </div>
   </div>
 
-  <script type="module" src="usuarios.js"></script>
+  <script type="module" src="usuarios.js?v=2"></script>
   <script type="module" src="argos-zoom.js?v=4"></script>
 </body>
 </html>

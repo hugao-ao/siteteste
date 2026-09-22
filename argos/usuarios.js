@@ -12,6 +12,7 @@ let tipos = [];
 let usuarios = [];
 let recursos = [];
 let especiais = []; // acessos da tabela credenciais (ArgosGestao e admins do site)
+let profissionais = [];
 
 let editandoUsuarioId = null;
 let editandoTipoId = null;
@@ -31,10 +32,11 @@ document.getElementById('abas').addEventListener('click', (e) => {
 
 // ---------- Carga inicial ----------
 async function carregarTudo() {
-    const [rTipos, rUsuarios, rRecursos, rMestre, rAdmins] = await Promise.all([
+    const [rTipos, rUsuarios, rRecursos, rMestre, rAdmins, rProfs] = await Promise.all([
         sb.from('argos_tipos_usuario').select('*').order('nome'),
         sb.from('argos_usuarios').select('*').order('created_at'),
         sb.from('argos_recursos').select('*').order('tipo').order('nome'),
+        sb.from('argos_profissionais').select('id, nome').order('nome'),
         // Acessos especiais (somente leitura): login mestre da área e admins gerais do site
         sb.from('credenciais').select('id, usuario, nivel').eq('usuario', 'ArgosGestao'),
         sb.from('credenciais').select('id, usuario, nivel').eq('nivel', 'admin')
@@ -47,6 +49,7 @@ async function carregarTudo() {
     tipos = rTipos.data || [];
     usuarios = rUsuarios.data || [];
     recursos = rRecursos.data || [];
+    profissionais = (rProfs && rProfs.data) || [];
     const vistos = {};
     especiais = [...(rMestre.data || []), ...(rAdmins.data || [])]
         .filter(c => !vistos[c.id] && (vistos[c.id] = true))
@@ -55,6 +58,11 @@ async function carregarTudo() {
     renderTipos();
     renderRecursos();
     preencherSelectTipos();
+}
+
+function nomeDoProfissional(id) {
+    const p = profissionais.find(x => x.id === id);
+    return p ? p.nome : '';
 }
 
 function nomeDoTipo(tipoId) {
@@ -85,8 +93,10 @@ function renderUsuarios() {
         <tr>
           <td>${esc(u.nome) || '<span class="dim">—</span>'}</td>
           <td><code>${esc(u.usuario)}</code></td>
-          <td>${u.tipo_id ? esc(nomeDoTipo(u.tipo_id)) : '<span class="dim">Sem tipo</span>'}</td>
-          <td>${u.ativo ? '<span class="badge verde">Ativo</span>' : '<span class="badge vermelho">Inativo</span>'}</td>
+          <td>${u.tipo_id ? esc(nomeDoTipo(u.tipo_id)) : '<span class="dim">Sem tipo</span>'}${
+              u.profissional_id ? `<br><span class="dim">🧑‍⚕️ ${esc(nomeDoProfissional(u.profissional_id))}</span>` : ''}</td>
+          <td>${u.ativo ? '<span class="badge verde">Ativo</span>' : '<span class="badge vermelho">Inativo</span>'}${
+              u.ultimo_acesso ? `<br><span class="dim">último acesso ${new Date(u.ultimo_acesso).toLocaleDateString('pt-BR')}</span>` : ''}</td>
           <td class="acoes">
             ${podePermissoes ? `<button class="argos-btn small" data-acao="permissoes-usuario" data-id="${u.id}">🔑 Permissões</button>` : ''}
             ${podeEditar ? `<button class="argos-btn small" data-acao="editar-usuario" data-id="${u.id}">✏️ Editar</button>` : ''}
@@ -178,6 +188,10 @@ function abrirModalUsuario(id) {
     document.getElementById('usu-email').value = u ? (u.email || '') : '';
     preencherSelectTipos();
     document.getElementById('usu-tipo').value = u ? (u.tipo_id || '') : '';
+    const selProf = document.getElementById('usu-profissional');
+    selProf.innerHTML = '<option value="">— Nenhum —</option>' +
+        profissionais.map(p => `<option value="${p.id}">${esc(p.nome)}</option>`).join('');
+    selProf.value = u ? (u.profissional_id || '') : '';
     document.getElementById('usu-ativo').checked = u ? !!u.ativo : true;
     abrirModal('modal-usuario');
 }
@@ -190,6 +204,7 @@ document.getElementById('form-usuario').addEventListener('submit', async (e) => 
         senha: document.getElementById('usu-senha').value,
         email: document.getElementById('usu-email').value.trim() || null,
         tipo_id: document.getElementById('usu-tipo').value || null,
+        profissional_id: document.getElementById('usu-profissional').value || null,
         ativo: document.getElementById('usu-ativo').checked
     };
     if (!registro.usuario || !registro.senha) { toast('Login e senha são obrigatórios.', true); return; }
@@ -424,6 +439,7 @@ document.getElementById('btn-salvar-permissoes').addEventListener('click', async
 // ---------- Início ----------
 (async function init() {
     perm = await carregarPermissoes();
+    if (!perm.exigirPagina('usuarios_ver', 'os usuários e permissões')) return;
     perm.aplicarVisibilidade();
     await carregarTudo();
 })();

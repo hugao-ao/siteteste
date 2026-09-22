@@ -19,6 +19,7 @@ import {
 } from './argos-evolucao.js';
 import { SITUACAO_NOTA, situacaoNota } from './argos-cobranca.js';
 import { montarCobrancaUI } from './argos-cobranca-ui.js';
+import { pacientesDoProfissional } from './argos-escopo.js';
 import { valorDoMes } from './argos-fechamento.js';
 
 let perm = { pode: () => true, aplicarVisibilidade: () => {}, master: true };
@@ -57,7 +58,25 @@ async function carregarTudo() {
     dinamicas = rDin.data || [];
     grupos = rGru.data || [];
     definirRepassePadrao(profissionais);
+    await calcularEscopo();
     renderLista();
+}
+
+// Usuário ligado a um profissional e sem escopo geral: só os pacientes dele
+let escopoIds = null;
+async function calcularEscopo() {
+    escopoIds = null;
+    if (perm.escopo.geral) return;
+    const eu = perm.escopo.profissionalId;
+    const [rMem, rGP, rSes] = await Promise.all([
+        sb.from('argos_grupo_membros').select('grupo_id, paciente_id'),
+        sb.from('argos_grupo_profissionais').select('grupo_id, profissional_id'),
+        todas(() => sb.from('argos_sessoes').select('paciente_id, profissional_id, repasse_profissional_id')
+            .or(`profissional_id.eq.${eu},repasse_profissional_id.eq.${eu}`))
+    ]);
+    escopoIds = pacientesDoProfissional(eu, {
+        dinamicas, sessoes: rSes.data || [], grupos, grupoMembros: rMem.data || [], grupoProfs: rGP.data || []
+    });
 }
 
 const nomeGrupo = id => (grupos.find(g => g.id === id) || {}).nome || '—';
@@ -108,6 +127,7 @@ function renderLista() {
 
     let lista = pacientes.filter(p => {
         if (FOCO_CARTAO) return p.id === FOCO_CARTAO;   // embarcado: só este paciente
+        if (escopoIds && !escopoIds.has(p.id)) return false; // fora do escopo do usuário
         if (situacao === 'ativos' && (!p.ativo || p.cadastro_removido)) return false;
         if (situacao === 'inativos' && p.ativo && !p.cadastro_removido) return false;
         if (!busca) return true;
@@ -139,7 +159,7 @@ function renderLista() {
             ${p.nascimento ? `🎂 ${formataBR(p.nascimento)} (${idade(p.nascimento)})<br>` : ''}
             ${p.mae_fone || p.pai_fone ? `📞 ${esc(p.mae_fone || p.pai_fone)}${p.mae_fone ? ' (mãe)' : ' (pai)'}<br>` : ''}
             ${p.colegio ? `🏫 ${esc(p.colegio)}${p.serie ? ' — ' + esc(p.serie) : ''}<br>` : ''}
-            ${p.anamnese_data ? `📋 Anamnese: ${formataBR(p.anamnese_data)}${p.anamnese_cobrar ? ' (cobrada)' : ''}<br>` : ''}
+            ${p.anamnese_data ? `📋 Anamnese: ${formataBR(p.anamnese_data)}${p.anamnese_cobrar && perm.pode('paciente_dados_financeiros') ? ' (cobrada)' : ''}<br>` : ''}
             <span class="badge azul">${dins.length} dinâmica(s) ativa(s)</span>
           </div>
           ${p.cadastro_removido ? '' : `
@@ -1605,6 +1625,7 @@ fEl('form-freq-editar').addEventListener('submit', async (e) => {
 // ============================================================
 (async function init() {
     perm = await carregarPermissoes();
+    if (!perm.exigirPagina('pacientes_ver', 'os pacientes')) return;
     perm.aplicarVisibilidade();
     cobUI = montarCobrancaUI(perm);
     // embarcado num iframe, focado num paciente: enxuga o cromo da página e

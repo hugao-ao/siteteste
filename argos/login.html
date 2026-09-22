@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Entrar — Argos Gestão</title>
+  <link rel="stylesheet" href="argos-style.css?v=15" />
+  <style>
+    body.login { min-height: 100vh; display: flex; align-items: center; justify-content: center; background: var(--argos-bg, #f3f5f8); }
+    .login-caixa { width: min(380px, 92vw); background: #fff; border-radius: 14px; box-shadow: 0 10px 40px rgba(0,0,0,.12); padding: 28px 26px; }
+    .login-caixa .brand { font-weight: 800; letter-spacing: .12em; font-size: 20px; text-align: center; margin-bottom: 4px; }
+    .login-caixa .brand span { font-weight: 400; color: #6b7a90; }
+    .login-caixa .sub { text-align: center; color: #6b7a90; font-size: 13px; margin: 0 0 18px; }
+    .login-caixa label { display: block; font-size: 13px; color: #34405a; margin-bottom: 12px; }
+    .login-caixa input { display: block; width: 100%; margin-top: 4px; padding: 10px 12px; border: 1px solid #cfd6e0; border-radius: 8px; font-size: 15px; box-sizing: border-box; }
+    .login-caixa .argos-btn { width: 100%; padding: 11px; font-size: 15px; margin-top: 6px; }
+    .login-erro { color: #b42318; font-size: 13px; min-height: 18px; margin: 8px 0 0; text-align: center; }
+    .login-rodape { margin-top: 16px; text-align: center; font-size: 12px; color: #8a96a8; }
+    .login-rodape a { color: inherit; }
+  </style>
+</head>
+<body class="login">
+  <form class="login-caixa" id="form-login" autocomplete="on">
+    <div class="brand">ARGOS <span>GESTÃO</span></div>
+    <p class="sub">Entre com o seu usuário da clínica.</p>
+    <label>Usuário
+      <input type="text" id="login-usuario" required autocomplete="username" autofocus />
+    </label>
+    <label>Senha
+      <input type="password" id="login-senha" required autocomplete="current-password" />
+    </label>
+    <button type="submit" class="argos-btn primary" id="login-entrar">Entrar</button>
+    <p class="login-erro" id="login-erro"></p>
+    <p class="login-rodape"><a href="../index.html">← Voltar ao site</a></p>
+  </form>
+  <script type="module" src="login.js?v=1"></script>
+</body>
+</html>

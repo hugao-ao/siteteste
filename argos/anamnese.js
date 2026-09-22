@@ -7,6 +7,7 @@
 
 import { sb, toast, esc, abrirModal, fecharModal } from './argos-common.js';
 import { carregarPermissoes } from './argos-permissoes.js';
+import { pacienteNoEscopo } from './argos-escopo.js';
 import { hojeISO, formataBR, paraData } from './argos-recorrencia.js';
 import { ANAMNESE_BLOCOS, ANAMNESE_TOTAL, ANAMNESE_CHAVES, ANAMNESE_SINTESE } from './argos-anamnese.js';
 import { IMPORTANCIAS } from './argos-evolucao.js';
@@ -464,6 +465,10 @@ window.addEventListener('beforeunload', (e) => { if (sujo) { e.preventDefault();
     perm.aplicarVisibilidade();
     if (!pacienteId) {
         document.querySelector('main').innerHTML = '<p class="dim" style="padding:30px">Paciente não informado. Abra pela lista de pacientes.</p>';
+        return;
+    }
+    if (!(await pacienteNoEscopo(perm, pacienteId))) {
+        document.querySelector('main').innerHTML = '<p class="dim" style="padding:30px">Este paciente não está entre os seus atendimentos. <a href="pacientes.html">← Pacientes</a></p>';
         return;
     }
     document.getElementById('btn-voltar').href = voltarPara();
