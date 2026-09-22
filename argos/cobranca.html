@@ -328,6 +328,32 @@
     </div>
   </div>
 
+  <!-- ============ MODAL: BAIXA MANUAL ============ -->
+  <div class="argos-modal-fundo" id="modal-baixa">
+    <div class="argos-modal">
+      <div class="argos-modal-topo">
+        <h2 id="baixa-titulo">Baixa manual</h2>
+        <button class="argos-modal-x" data-fechar>×</button>
+      </div>
+      <div class="argos-form">
+        <label>Mês<select id="baixa-mes" class="argos-input"></select></label>
+        <label>Valor recebido
+          <input type="number" id="baixa-valor" step="0.01" min="0" /></label>
+        <label>Como foi recebido
+          <textarea id="baixa-motivo" rows="2"
+            placeholder="ex.: cartão (maquininha), pagou na conta da Patrícia, conciliado com a planilha"></textarea></label>
+        <p class="dica">Use quando o dinheiro entrou mas não há lançamento bancário para casar com o
+          paciente — a maquininha deposita tudo junto, ou o pagamento caiu na conta de um profissional.
+          O mês sai da lista de em aberto e a baixa fica registrada com o motivo; dá para desfazer.</p>
+      </div>
+      <div class="argos-modal-acoes">
+        <button class="argos-btn ghost" data-fechar>Cancelar</button>
+        <button class="argos-btn primary" id="btn-baixa-salvar"
+          data-argos-recurso="cobranca_baixa_manual">Dar baixa</button>
+      </div>
+    </div>
+  </div>
+
   <!-- ============ MODAL: EXCEÇÕES DE COBRANÇA ============ -->
   <div class="argos-modal-fundo" id="modal-excecao">
     <div class="argos-modal grande">
@@ -421,7 +447,7 @@
     </div>
   </div>
 
-  <script type="module" src="cobranca.js?v=7"></script>
+  <script type="module" src="cobranca.js?v=8"></script>
   <script type="module" src="argos-zoom.js?v=4"></script>
 </body>
 </html>

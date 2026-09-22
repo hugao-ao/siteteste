@@ -302,6 +302,9 @@ function renderFechamento() {
           ${cob.origem === 'congelado' ? `<span class="sub">🔒 congelado no envio${cob.calculado !== cob.valor ? ` · hoje daria ${formataMoeda(cob.calculado)}` : ''}</span>` : ''}
           ${cob.divergencia.length ? `<span class="badge vermelho" title="${esc(cob.motivo)}">⚠️ mudou depois do envio</span>` : ''}
           ${cob.avisosFixo.length ? `<span class="badge amarelo" title="${esc(cob.avisosFixo.map(a => `${a.rotulo}: ${formataMoeda(a.valor)}`).join(' · '))}">📅 mês sem sessão</span>` : ''}
+          ${baixaDe(p.id, mesAtual) ? `<span class="badge verde" title="${esc(baixaDe(p.id, mesAtual).baixa_motivo || '')}">✔ baixa ${formataMoeda(baixaDe(p.id, mesAtual).baixa_valor)}
+              <button class="argos-btn small ghost" data-baixa-desfazer="${p.id}" data-mes="${mesAtual}"
+                title="Desfazer a baixa" data-argos-recurso="cobranca_baixa_manual">✕</button></span>` : ''}
         </td>
         <td>${contatosP.length
             ? `<button class="argos-btn small ${envio ? '' : 'primary'}" data-msg="${p.id}"
@@ -560,9 +563,11 @@ function abertoDoPaciente(p, ateMes) {
     for (const mes of meses) {
         const f = mes === mesAtual ? fechDe(p.id) : fechamentoPaciente(p, dins, sess, mes);
         const pagoMes = alocP.filter(a => a.mes_ref === mes).reduce((s, a) => s + (Number(a.valor) || 0), 0);
-        if (!f.valor && !pagoMes) continue;
-        producao += f.valor; pago += pagoMes;
-        if (f.valor - pagoMes > 0.009) linhas.push({ mes, valor: f.valor, pago: pagoMes });
+        const bx = baixaDe(p.id, mes);
+        const baixaMes = bx ? Number(bx.baixa_valor) || 0 : 0;
+        if (!f.valor && !pagoMes && !baixaMes) continue;
+        producao += f.valor; pago += pagoMes + baixaMes;
+        if (f.valor - pagoMes - baixaMes > 0.009) linhas.push({ mes, valor: f.valor, pago: pagoMes + baixaMes, baixa: baixaMes });
     }
     const saldo = producao - pago;
     if (saldo <= 0.009) return null;
@@ -594,7 +599,11 @@ function renderAberto() {
         <td class="livre">${linhas.map(l =>
             `<span class="badge vermelho" title="produção ${formataMoeda(l.valor)}, recebido ${formataMoeda(l.pago)}">${esc(mesBR(l.mes))}: ${formataMoeda(l.valor - l.pago)}</span>`).join(' ')}</td>
         <td class="num">${formataMoeda(producao)}</td>
-        <td class="num">${formataMoeda(pago)}</td>
+        <td class="num">${formataMoeda(pago)}
+          ${baixasDe(p.id).length ? `<span class="sub">${baixasDe(p.id).map(b =>
+              `✔ ${esc(mesBR(b.mes))} ${formataMoeda(b.baixa_valor)} <span title="${esc(b.baixa_motivo || '')}">(baixa)</span>
+               <button class="argos-btn small ghost" data-baixa-desfazer="${p.id}" data-mes="${b.mes}"
+                 title="Desfazer esta baixa" data-argos-recurso="cobranca_baixa_manual">✕</button>`).join('<br>')}</span>` : ''}</td>
         <td class="num"><b style="color:var(--argos-danger)">${formataMoeda(saldo)}</b></td>
         <td class="livre">
           <textarea class="argos-input cb-aberto-nota" data-acomp-txt="${p.id}"
@@ -608,6 +617,9 @@ function renderAberto() {
           ${contatosP.length ? `<button class="argos-btn small primary" data-msg="${p.id}"
               title="Mensagem de cobrança no WhatsApp"
               data-argos-recurso="cobranca_enviar">📲</button>` : '<span class="sub">sem contato</span>'}
+          <button class="argos-btn small" data-baixa="${p.id}"
+            title="Baixa manual: recebido no cartão, na conta de um profissional ou conciliado com a planilha"
+            data-argos-recurso="cobranca_baixa_manual">✔ Baixa</button>
           <button class="argos-btn small" data-extrato="${p.id}"
             title="Extrato financeiro do paciente" data-argos-recurso="paciente_extrato">📊</button>
           <button class="argos-btn small" data-financeiro="${p.id}"
@@ -698,13 +710,70 @@ async function marcarEnviada() {
  * — não há por que guardar um envio que não valeu — e o paciente volta para a
  * fila de quem ainda precisa receber o fechamento.
  */
-async function gravarAjuste(pacienteId, campos) {
-    const registro = { paciente_id: pacienteId, mes: mesAtual, ...campos, atualizado_em: agora() };
+async function gravarAjuste(pacienteId, campos, mes = mesAtual) {
+    const registro = { paciente_id: pacienteId, mes, ...campos, atualizado_em: agora() };
     const { data, error } = await sb.from('argos_cobranca_mes')
         .upsert(registro, { onConflict: 'paciente_id,mes' }).select('*').single();
     if (error) { console.error(error); toast('Erro ao salvar o valor do mês.', true); return null; }
-    ajustes = ajustes.filter(a => !(a.paciente_id === pacienteId && a.mes === mesAtual)).concat(data);
+    ajustes = ajustes.filter(a => !(a.paciente_id === pacienteId && a.mes === mes)).concat(data);
     return data;
+}
+
+// ------------------------------------------------------------ baixa manual
+// Recebimento sem lançamento bancário casado: cartão/maquininha (a Lyra
+// deposita tudo junto, sem dizer de quem é), pagamento na conta de um
+// profissional, conciliação com a planilha. Fica no mês do paciente, com
+// motivo, e conta como recebido na lista de em aberto.
+const baixaDe = (pacienteId, mes) => ajustes.find(a => a.paciente_id === pacienteId && a.mes === mes
+    && Number(a.baixa_valor) > 0) || null;
+const baixasDe = pacienteId => ajustes.filter(a => a.paciente_id === pacienteId && Number(a.baixa_valor) > 0)
+    .sort((a, b) => a.mes.localeCompare(b.mes));
+
+let baixaPaciente = null;
+function abrirBaixa(p) {
+    baixaPaciente = p;
+    const ab = abertoDoPaciente(p, null) || { linhas: [] };
+    const opcoes = ab.linhas.length ? ab.linhas : [{ mes: mesAtual, valor: 0, pago: 0, baixa: 0 }];
+    document.getElementById('baixa-titulo').textContent = `Baixa manual — ${p.nome}`;
+    const sel = document.getElementById('baixa-mes');
+    sel.innerHTML = opcoes.map(l => `<option value="${l.mes}" data-aberto="${(l.valor - l.pago).toFixed(2)}">
+        ${esc(mesBR(l.mes))} — em aberto ${formataMoeda(l.valor - l.pago)}</option>`).join('');
+    const preenche = () => {
+        const o = sel.options[sel.selectedIndex];
+        document.getElementById('baixa-valor').value = o ? o.dataset.aberto : '';
+    };
+    sel.onchange = preenche; preenche();
+    document.getElementById('baixa-motivo').value = 'Recebido no cartão (maquininha)';
+    abrirModal('modal-baixa');
+}
+
+async function salvarBaixa() {
+    if (!baixaPaciente) return;
+    const mes = document.getElementById('baixa-mes').value;
+    const valor = Number(document.getElementById('baixa-valor').value);
+    const motivo = document.getElementById('baixa-motivo').value.trim();
+    if (!(valor > 0)) return toast('Informe o valor recebido.', true);
+    if (!motivo) return toast('Diga como esse valor foi recebido.', true);
+    const atual = baixaDe(baixaPaciente.id, mes);
+    const salvo = await gravarAjuste(baixaPaciente.id, {
+        baixa_valor: (atual ? Number(atual.baixa_valor) : 0) + valor,
+        baixa_motivo: atual && atual.baixa_motivo ? `${atual.baixa_motivo}; ${motivo}` : motivo,
+        baixa_em: agora()
+    }, mes);
+    if (!salvo) return;
+    fecharModal('modal-baixa');
+    render();
+    toast(`Baixa de ${formataMoeda(valor)} em ${mesBR(mes)} registrada.`);
+}
+
+async function desfazerBaixa(p, mes) {
+    const b = baixaDe(p.id, mes);
+    if (!b) return;
+    if (!confirm(`Desfazer a baixa de ${formataMoeda(b.baixa_valor)} de ${mesBR(mes)}? O mês volta para a lista de em aberto.`)) return;
+    const salvo = await gravarAjuste(p.id, { baixa_valor: null, baixa_motivo: null, baixa_em: null }, mes);
+    if (!salvo) return;
+    render();
+    toast('Baixa desfeita.');
 }
 
 /**
@@ -853,6 +922,7 @@ async function limparValor() {
 }
 
 document.getElementById('btn-valor-salvar').addEventListener('click', salvarValor);
+document.getElementById('btn-baixa-salvar').addEventListener('click', salvarBaixa);
 document.getElementById('btn-valor-voltar').addEventListener('click', limparValor);
 
 // ===========================================================================
@@ -1122,6 +1192,16 @@ document.querySelector('main').addEventListener('click', async e => {
     if (val) {
         if (!perm.pode('cobranca_valor_editar')) return toast('Sem permissão para editar o valor.', true);
         return abrirValor(pacDe(val.dataset.valor));
+    }
+    const bx = alvo('data-baixa');
+    if (bx) {
+        if (!perm.pode('cobranca_baixa_manual')) return toast('Sem permissão para dar baixa.', true);
+        return abrirBaixa(pacDe(bx.dataset.baixa));
+    }
+    const bxd = alvo('data-baixa-desfazer');
+    if (bxd) {
+        if (!perm.pode('cobranca_baixa_manual')) return toast('Sem permissão para mexer na baixa.', true);
+        return desfazerBaixa(pacDe(bxd.dataset.baixaDesfazer), bxd.dataset.mes);
     }
     const exc = alvo('data-excecao');
     if (exc) {

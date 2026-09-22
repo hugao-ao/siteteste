@@ -11,13 +11,21 @@ import {
 } from './argos-recorrencia.js';
 import { producaoDoMes, STATUS_PROF, ORDEM_STATUS_PROF } from './argos-producao.js';
 import { mesBR, fatorNFDoMes } from './argos-cobranca.js';
-import { cobradoPorPaciente } from './argos-fechamento.js';
+import { cobradoPorPaciente, valorDoMes } from './argos-fechamento.js';
 import {
     usarFechamento, abertoPorPaciente, retencoesSugeridas, liberacoesSugeridas,
     acertoDoMes, mensagemAcerto, mesCurto, ehDesconto
 } from './argos-repasses.js';
 
-usarFechamento(fechamentoPaciente);
+// o "em aberto" que sugere retenções olha o que foi cobrado de fato (valor
+// ajustado/congelado da cobrança), e as baixas manuais contam como recebido
+usarFechamento((p, dins, sess, mes) => {
+    const fech = fechamentoPaciente(p, dins, sess, mes);
+    const ajuste = ajustesCobranca.find(a => a.paciente_id === p.id && a.mes === mes) || null;
+    return { valor: valorDoMes({ fech, ajuste }).valor };
+});
+const baixasComoRecebido = () => ajustesCobranca.filter(a => Number(a.baixa_valor) > 0)
+    .map(a => ({ vinculo_tipo: 'paciente', vinculo_id: a.paciente_id, mes_ref: a.mes, valor: Number(a.baixa_valor) }));
 
 let perm = { pode: () => true, aplicarVisibilidade: () => {}, master: true };
 let pacientes = [], dinamicas = [], sessoes = [], profissionais = [], presencas = [];
@@ -322,7 +330,7 @@ async function sugerirRetencoes() {
     const btn = document.getElementById('btn-rp-sugerir');
     btn.disabled = true; btn.textContent = 'Conferindo quem não pagou…';
     try {
-        const aberto = abertoPorPaciente({ pacientes, dinamicas, sessoes, alocacoes, ate: mesAtual });
+        const aberto = abertoPorPaciente({ pacientes, dinamicas, sessoes, alocacoes: alocacoes.concat(baixasComoRecebido()), ate: mesAtual });
         const meses = new Set();
         for (const linhas of aberto.values()) for (const l of linhas) meses.add(l.mes);
         const producaoPorMes = {};
