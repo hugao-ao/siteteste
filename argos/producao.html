@@ -53,6 +53,9 @@
       font-size: .84rem; padding: 3px 0; }
     .rp-item .quem { flex: 1; }
     .rp-item .obs { display: block; font-size: .76rem; color: var(--argos-text-dim); }
+    .rp-tag { display: inline-block; font-size: .68rem; padding: 0 6px; border-radius: 999px;
+      border: 1px solid var(--argos-border); color: var(--argos-text-dim); vertical-align: middle; }
+    .rp-tag.ok { color: var(--argos-success); border-color: var(--argos-success); }
     .rp-item .valor.menos { color: var(--argos-warn); }
     .rp-item .valor.mais { color: var(--argos-success); }
     .rp-item button { padding: 1px 7px; font-size: .72rem; }
@@ -192,15 +195,24 @@
           placeholder="Ex.: Unimed Evelyn Jul/26" /></label>
         <label>Observação<input type="text" id="ret-obs"
           placeholder="Ex.: aguardar todo o trâmite da Unimed" /></label>
-        <label>Origem
-          <select id="ret-origem">
-            <option value="manual">Manual</option>
-            <option value="inadimplencia">Inadimplência</option>
-            <option value="convenio">Convênio</option>
-          </select>
-        </label>
-        <p class="dica">O valor sai do acerto do mês que está aberto na tela e continua como
-          saldo a receber do profissional até você liberá-lo.</p>
+        <div class="form-grade">
+          <label>Origem
+            <select id="ret-origem">
+              <option value="manual">Manual</option>
+              <option value="inadimplencia">Inadimplência</option>
+              <option value="convenio">Convênio</option>
+            </select>
+          </label>
+          <label data-argos-recurso="repasses_descontar">O que fazer com o valor
+            <select id="ret-tipo">
+              <option value="retido">Reter — volta quando o paciente pagar</option>
+              <option value="descontado">Descontar — definitivo, não volta</option>
+            </select>
+          </label>
+        </div>
+        <p class="dica">Retido: o valor sai do acerto do mês aberto na tela e continua como saldo a
+          receber do profissional até você liberá-lo. Descontado: sai do acerto e pronto — é o caso
+          de adiantamento, valor que o cliente pagou na conta do profissional ou acerto de erro.</p>
       </div>
       <div class="argos-modal-acoes">
         <button class="argos-btn ghost" data-fechar>Cancelar</button>
@@ -234,7 +246,7 @@
     </div>
   </div>
 
-  <script type="module" src="producao.js?v=8"></script>
+  <script type="module" src="producao.js?v=9"></script>
   <script type="module" src="argos-zoom.js?v=4"></script>
 </body>
 </html>

@@ -126,6 +126,16 @@ export function liberacoesSugeridas({ retencoes = [], aberto = new Map(),
     return saida;
 }
 
+/** Como cada status de retenção aparece e o que ele significa. */
+export const STATUS_RETENCAO = {
+    retido:     { label: 'Retido',     desc: 'Segurado até o paciente regularizar; volta como «MAIS» quando liberado.' },
+    liberado:   { label: 'Liberado',   desc: 'O paciente regularizou e o valor voltou no acerto.' },
+    descontado: { label: 'Desconto',   desc: 'Saiu do acerto e não volta (adiantamento, valor recebido na conta do profissional, acerto de erro).' }
+};
+
+/** Desconto definitivo: sai do acerto e não entra no saldo a receber. */
+export const ehDesconto = r => r && r.status === 'descontado';
+
 /**
  * Fecha a conta do mês para um profissional.
  * `retencoes` são as linhas já guardadas: as retidas NESTE mês saem, as
@@ -134,7 +144,10 @@ export function liberacoesSugeridas({ retencoes = [], aberto = new Map(),
  */
 export function acertoDoMes({ profissional, producao = 0, fixo = 0,
     retencoes = [], mes } = {}) {
-    const retidasAgora = retencoes.filter(r => r.retido_em === mes && r.status === 'retido');
+    // o MENOS de um mês é o que saiu NAQUELE mês — o que aconteceu depois com
+    // o valor (foi liberado, era um desconto definitivo) não reescreve a
+    // história; só o saldo a receber olha para o status atual
+    const retidasAgora = retencoes.filter(r => r.retido_em === mes);
     const liberadasAgora = retencoes.filter(r => r.liberado_em === mes && r.status === 'liberado');
     const aindaRetidas = retencoes.filter(r => r.status === 'retido');
 
@@ -169,7 +182,8 @@ export function mensagemAcerto(acerto, { nomePaciente = () => 'paciente' } = {})
         linhas.push(`*MENOS*: ${formataMoeda(acerto.retido)}`);
         for (const r of acerto.retidasAgora) {
             linhas.push(`-${formataMoeda(r.valor)} -> ${r.motivo || nomePaciente(r.paciente_id)}`
-                + `${r.observacao ? ` (${r.observacao})` : ''};`);
+                + `${r.observacao ? ` (${r.observacao})` : ''}`
+                + `${ehDesconto(r) ? ' [desconto]' : ''};`);
         }
     } else {
         linhas.push('Sem *MENOS*');
