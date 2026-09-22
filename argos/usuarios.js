@@ -76,6 +76,7 @@ function renderUsuarios() {
     const podeEditar = perm.pode('usuarios_editar');
     const podeExcluir = perm.pode('usuarios_excluir');
     const podePermissoes = perm.pode('permissoes_gerenciar');
+    const podePersonificar = perm.pode('usuarios_personificar');
     const linhasEspeciais = especiais.map(c => {
         const mestre = c.usuario === 'ArgosGestao';
         return `
@@ -98,6 +99,7 @@ function renderUsuarios() {
           <td>${u.ativo ? '<span class="badge verde">Ativo</span>' : '<span class="badge vermelho">Inativo</span>'}${
               u.ultimo_acesso ? `<br><span class="dim">último acesso ${new Date(u.ultimo_acesso).toLocaleDateString('pt-BR')}</span>` : ''}</td>
           <td class="acoes">
+            ${podePersonificar && u.ativo ? `<button class="argos-btn small ghost" data-acao="entrar-como" data-id="${u.id}" title="Abrir a área como se fosse este usuário">👁️ Entrar como</button>` : ''}
             ${podePermissoes ? `<button class="argos-btn small" data-acao="permissoes-usuario" data-id="${u.id}">🔑 Permissões</button>` : ''}
             ${podeEditar ? `<button class="argos-btn small" data-acao="editar-usuario" data-id="${u.id}">✏️ Editar</button>` : ''}
             ${podeExcluir ? `<button class="argos-btn small danger" data-acao="excluir-usuario" data-id="${u.id}">🗑️ Excluir</button>` : ''}
@@ -111,6 +113,7 @@ function renderTipos() {
     const tb = document.getElementById('tbody-tipos');
     const podeGerenciar = perm.pode('tipos_gerenciar');
     const podePermissoes = perm.pode('permissoes_gerenciar');
+    const podePersonificar = perm.pode('usuarios_personificar');
     tb.innerHTML = tipos.map(t => {
         const qtd = usuarios.filter(u => u.tipo_id === t.id).length;
         return `
@@ -119,6 +122,7 @@ function renderTipos() {
           <td class="quebra">${esc(t.descricao) || '<span class="dim">—</span>'}</td>
           <td>${qtd}</td>
           <td class="acoes">
+            ${podePersonificar ? `<button class="argos-btn small ghost" data-acao="ver-como-tipo" data-id="${t.id}" title="Prévia da área com as permissões deste tipo (sem profissional vinculado)">👁️ Ver como</button>` : ''}
             ${podePermissoes ? `<button class="argos-btn small" data-acao="permissoes-tipo" data-id="${t.id}">🔑 Permissões</button>` : ''}
             ${podeGerenciar ? `<button class="argos-btn small" data-acao="editar-tipo" data-id="${t.id}">✏️ Editar</button>` : ''}
             ${podeGerenciar ? `<button class="argos-btn small danger" data-acao="excluir-tipo" data-id="${t.id}">🗑️ Excluir</button>` : ''}
@@ -168,10 +172,42 @@ document.querySelector('main').addEventListener('click', (e) => {
     if (acao === 'permissoes-usuario') abrirPermissoes('usuario', id);
     if (acao === 'editar-tipo') abrirModalTipo(id);
     if (acao === 'excluir-tipo') excluirTipo(id);
+    if (acao === 'entrar-como') personificar(usuarios.find(u => u.id === id));
+    if (acao === 'ver-como-tipo') personificar(null, tipos.find(t => t.id === id));
     if (acao === 'permissoes-tipo') abrirPermissoes('tipo', id);
     if (acao === 'editar-recurso') abrirModalRecurso(id);
     if (acao === 'excluir-recurso') excluirRecurso(id);
 });
+
+// ============================================================
+// ENTRAR COMO (personificação)
+// ============================================================
+// Guarda a sessão principal, assume a do usuário (ou uma prévia do tipo) e
+// vai para a home. O argos-guard.js mostra a barra de voltar enquanto o
+// backup existir. O que for gravado fica assinado "ArgosGestao como fulano".
+function personificar(u, tipo = null) {
+    if (!perm.pode('usuarios_personificar')) return toast('Sem permissão.', true);
+    if (!u && !tipo) return;
+    if (sessionStorage.getItem('argos_mestre_backup')) return toast('Volte ao seu painel antes de entrar como outra pessoa.', true);
+    const backup = {};
+    ['usuario', 'nivel', 'projeto', 'user_id', 'id', 'argos_user_id', 'argos_tipo_id', 'argos_tipo_nome', 'argos_prof_id', 'argos_nome']
+        .forEach(k => { backup[k] = sessionStorage.getItem(k); });
+    const eu = sessionStorage.getItem('usuario') || 'ArgosGestao';
+    const login = u ? u.usuario : `tipo:${tipo.nome}`;
+    const t = u ? tipos.find(x => x.id === u.tipo_id) : tipo;
+    const sessao = {
+        usuario: `${eu} como ${login}`,
+        argos_user_id: u ? u.id : `previa-${tipo.id}`,
+        argos_tipo_id: t ? t.id : '',
+        argos_tipo_nome: t ? t.nome : '',
+        argos_prof_id: u ? (u.profissional_id || '') : '',
+        argos_nome: u ? (u.nome || u.usuario) : `Prévia do tipo ${tipo.nome}`,
+        argos_mestre_backup: JSON.stringify(backup)
+    };
+    ['nivel', 'projeto', 'user_id', 'id'].forEach(k => sessionStorage.removeItem(k));
+    Object.keys(sessao).forEach(k => sessionStorage.setItem(k, sessao[k]));
+    window.location.href = 'index.html';
+}
 
 // ============================================================
 // USUÁRIOS
