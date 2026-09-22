@@ -469,19 +469,30 @@ export function retratoDaNota({ paciente = {}, fech, dinamicas = [], mes,
                       params: vigentes.desdobrar.params || {} })
         : { aplicou: false, avisos: [] };
 
-    const dias = quebra.aplicou ? quebra.dias : diasCobrados(frequencia);
+    // desdobrar muda a contagem e o valor unitário, mas a nota continua
+    // listando os dias em que o paciente veio (é assim que a casa escreve:
+    // "dia(s): 3, 10 … Total de 4 sessões de 30 (trinta) minutos")
+    const dias = diasCobrados(frequencia);
+    // no texto, cada atendimento é um dia — dois no mesmo dia saem «13, 13»,
+    // como a casa sempre escreveu
+    const diasTexto = frequencia.filter(f => CONTA_COMO_SESSAO.has(f.status))
+        .map(f => Number(f.dia)).sort((a, b) => a - b);
     const sessoes = quebra.aplicou ? quebra.sessoes : contarSessoes(frequencia);
     const acordo = quebra.aplicou ? quebra.acordo : acordoReal;
+    const duracaoMin = quebra.aplicou && Number((vigentes.desdobrar.params || {}).duracao_min) > 0
+        ? Number(vigentes.desdobrar.params.duracao_min) : 60;
 
+    // a nota fala do paciente; o CPF que vai nela é o dele, quando tem —
+    // o do responsável financeiro fica no cadastro, não no texto
     const texto = alvo => descricaoNota({
         servico: servico || 'Psicomotricidade Relacional',
-        paciente: paciente.nome, cpf: paciente.rf_cpf || paciente.cpf,
-        mes, dias: alvo.dias, sessoes: alvo.sessoes, acordo: alvo.acordo
+        paciente: paciente.nome, cpf: paciente.cpf,
+        mes, dias: alvo.dias, sessoes: alvo.sessoes, acordo: alvo.acordo, duracaoMin
     });
 
     const retrato = {
         mes, valor: total, sessoes, dias, nota_tipo: situacao,
-        descricao: texto({ dias, sessoes, acordo }),
+        descricao: texto({ dias: diasTexto, sessoes, acordo }),
         // o que a exceção mudou, para a tela poder mostrar e conferir
         desdobrado: !!quebra.aplicou, acordo_real: acordoReal,
         avisos: [...(quebra.avisos || [])], partes: []
@@ -496,7 +507,7 @@ export function retratoDaNota({ paciente = {}, fech, dinamicas = [], mes,
         retrato.partes = divisao.partes.map(x => ({
             ...x, parte_total: divisao.partes.length,
             // cada nota fala das sessões do mês inteiro, mas do valor da parte
-            descricao: texto({ dias, sessoes,
+            descricao: texto({ dias: diasTexto, sessoes,
                 acordo: { tipo: acordo.tipo,
                           valor: sessoes ? arredondar(x.valor / sessoes) : x.valor } })
         }));
@@ -519,14 +530,33 @@ const mesmoValor = (a, b) => Array.isArray(a) || Array.isArray(b)
     ? JSON.stringify(a || []) === JSON.stringify(b || [])
     : String(a == null ? '' : a) === String(b == null ? '' : b);
 
+/** Dias como conjunto: a ordem e a repetição (duas sessões no mesmo dia) não
+ *  mudam o que a nota diz. */
+const diasNormalizados = d => [...new Set((d || []).map(Number).filter(n => n >= 1 && n <= 31))]
+    .sort((a, b) => a - b);
+
+/** A descrição sem o que é só jeito de escrever: a marca «(Familiar)» que a
+ *  planilha põe ao lado do dia, o zero à esquerda («09») e espaços a mais. */
+export const descricaoNormalizada = s => String(s || '')
+    .replace(/\s*\(Familiar\)/gi, '')
+    .replace(/\b0(\d)\b/g, '$1')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLowerCase();
+
 /**
  * O que mudou entre a nota emitida e o fechamento de agora.
  * Devolve [] quando a nota continua de pé.
+ * Quantidade de sessões sem registro na nota (null) não conta como mudança.
  */
 export function compararRetrato(nota = {}, atual = {}) {
     const mudou = [];
     for (const [campo, texto] of CAMPOS_RETRATO) {
-        if (mesmoValor(nota[campo], atual[campo])) continue;
+        let a = nota[campo], b = atual[campo];
+        if (campo === 'sessoes' && (a == null || a === '')) continue;
+        if (campo === 'dias') { a = diasNormalizados(a); b = diasNormalizados(b); }
+        if (campo === 'descricao') { a = descricaoNormalizada(a); b = descricaoNormalizada(b); }
+        if (mesmoValor(a, b)) continue;
         mudou.push({ campo, texto, antes: nota[campo], depois: atual[campo] });
     }
     return mudou;
