@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=0.1, maximum-scale=10, user-scalable=yes" />
+  <title>Argos Gestão — Meu painel</title>
+  <script src="argos-guard.js"></script>
+  <link rel="stylesheet" href="argos-style.css?v=15" />
+  <style>
+    .pn-barra { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 16px; }
+    .pn-grade { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px; margin-bottom: 18px; }
+    .pn-kpi { background: var(--argos-surface); border: 1px solid var(--argos-border); border-radius: var(--argos-radius); padding: 12px 14px; }
+    .pn-kpi .rot { color: var(--argos-text-dim); font-size: .8rem; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
+    .pn-kpi .val { font-size: 1.45rem; font-weight: 800; margin: 4px 0 2px; }
+    .pn-kpi .sub { color: var(--argos-text-dim); font-size: .8rem; line-height: 1.35; }
+    .pn-kpi.destaque { border-color: var(--argos-primary); }
+    .pn-kpi.alerta .val { color: var(--argos-warn); }
+    .pn-kpi.erro .val { color: var(--argos-danger); }
+    .pn-secao { background: var(--argos-surface); border: 1px solid var(--argos-border); border-radius: var(--argos-radius); padding: 14px 16px; margin-bottom: 16px; }
+    .pn-secao h2 { font-size: 1.05rem; margin: 0 0 8px; display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .pn-secao h2 .badge { font-size: .75rem; }
+    .pn-sim { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+    .pn-sim input { width: 150px; }
+    .pn-sim-res { font-size: 1rem; line-height: 1.5; margin-top: 8px; }
+    .pn-sim-res b.ok { color: var(--argos-success); } .pn-sim-res b.alerta { color: var(--argos-warn); }
+    .pn-lista { display: flex; flex-direction: column; gap: 6px; }
+    .pn-item { display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: center; padding: 8px 10px; border: 1px solid var(--argos-border); border-radius: 10px; }
+    .pn-item .quem { font-weight: 600; } .pn-item .quem small { display: block; color: var(--argos-text-dim); font-weight: 400; }
+    .pn-item .num { font-weight: 700; white-space: nowrap; }
+    .pn-vazio { color: var(--argos-text-dim); font-size: .9rem; }
+    .pn-mini { width: 100%; border-collapse: collapse; font-size: .85rem; }
+    .pn-mini th, .pn-mini td { padding: 5px 8px; border-bottom: 1px solid var(--argos-border); text-align: left; }
+    .pn-mini td.num, .pn-mini th.num { text-align: right; }
+    .pn-duas { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; }
+  </style>
+</head>
+<body>
+  <header class="argos-topbar">
+    <div class="brand">ARGOS <span>GESTÃO</span></div>
+    <div class="actions">
+      <a class="argos-btn ghost" href="index.html">← Início</a>
+      <a class="argos-btn ghost" href="frequencia.html">✅ Frequência</a>
+      <button class="argos-btn danger" id="btn-logout">Sair</button>
+    </div>
+  </header>
+
+  <main class="argos-pagina larga">
+    <h1 id="pn-titulo">📌 Meu painel</h1>
+    <p class="sub">O seu mês em números: o que já rendeu, o que ainda está agendado, quanto falta para a meta, quem está
+      devendo e o que precisa ser preenchido.</p>
+
+    <div class="pn-barra">
+      <select id="pn-prof" class="argos-input"></select>
+      <label class="rotulo-inline">Mês <input type="month" id="pn-mes" class="argos-input" /></label>
+      <span class="dim" id="pn-carregando">Carregando…</span>
+    </div>
+
+    <div id="pn-financeiro" data-argos-recurso="painel_financeiro">
+      <div class="pn-grade" id="pn-kpis"></div>
+
+      <div class="pn-secao">
+        <h2>🎯 Simulador de meta</h2>
+        <div class="pn-sim">
+          <label class="rotulo-inline">Quero receber no próximo acerto
+            <span class="campo-moeda"><input type="number" id="pn-meta" class="argos-input" min="0" step="50" placeholder="R$" /></span></label>
+        </div>
+        <div class="pn-sim-res" id="pn-sim-res"></div>
+      </div>
+
+      <div class="pn-duas">
+        <div class="pn-secao">
+          <h2>⚠️ Pendências financeiras dos seus pacientes <span class="badge amarelo" id="pn-ret-prev-qtd"></span></h2>
+          <p class="dica">Meses vencidos ainda não pagos. Se continuarem em aberto no acerto que vem, a parte deles no seu
+            repasse fica retida até o pagamento.</p>
+          <div id="pn-ret-prev" class="pn-lista"></div>
+        </div>
+        <div class="pn-secao">
+          <h2>🔒 Retido aguardando pagamento <span class="badge azul" id="pn-ret-qtd"></span></h2>
+          <p class="dica">Valores já retidos em acertos anteriores. Voltam no próximo repasse assim que o paciente regularizar.</p>
+          <div id="pn-retidos" class="pn-lista"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="pn-duas">
+      <div class="pn-secao" data-argos-recurso="painel_evolucoes">
+        <h2>📈 Evoluções a fazer <span class="badge vermelho" id="pn-ev-qtd"></span></h2>
+        <p class="dica">Anamneses e avaliações que faltam ou estão vencendo nos seus pacientes em atendimento. O atalho abre direto no preenchimento.</p>
+        <div id="pn-evolucoes" class="pn-lista"></div>
+      </div>
+      <div class="pn-secao">
+        <h2>✅ Frequência a validar <span class="badge amarelo" id="pn-freq-qtd"></span></h2>
+        <p class="dica">Sessões suas que a recepção propôs ou que foram preenchidas e ainda não têm a sua validação.</p>
+        <div id="pn-freq"></div>
+      </div>
+    </div>
+  </main>
+
+  <script type="module" src="painel.js?v=1"></script>
+  <script type="module" src="argos-zoom.js?v=4"></script>
+</body>
+</html>
