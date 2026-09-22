@@ -591,27 +591,67 @@ function abertoDoPaciente(p, ateMes, deMes = null) {
     return { p, linhas, producao, pago, saldo };
 }
 
+// Quem fica de fora da conta do total (um convênio que paga com atraso, uma
+// negociação em curso): a linha continua na lista, só não soma. Guardado no
+// navegador, como o período.
+let foraDoTotal = new Set();
+try { foraDoTotal = new Set(JSON.parse(localStorage.getItem('argos_aberto_fora') || '[]')); } catch (e) {}
+const guardarFora = () => { try { localStorage.setItem('argos_aberto_fora', JSON.stringify([...foraDoTotal])); } catch (e) {} };
+
+// Ordenação da lista: coluna e sentido, clicando no cabeçalho.
+let ordemAberto = { campo: 'saldo', asc: false };
+const ORDENS_ABERTO = {
+    paciente: x => (x.p.nome || '').toLowerCase(),
+    meses: x => x.linhas.length,
+    producao: x => x.producao,
+    pago: x => x.pago,
+    saldo: x => x.saldo,
+    andamento: x => {
+        const n = acompanhamento.filter(a => a.paciente_id === x.p.id)
+            .sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)))[0];
+        return n ? String(n.created_at) : '';
+    }
+};
+
 function renderAberto() {
     const busca = (document.getElementById('busca-aberto').value || '').toLowerCase();
     const { de, ate } = periodoAberto();
     try { localStorage.setItem('argos_aberto_periodo', JSON.stringify({ de, ate })); } catch (e) {}
+    const chave = ORDENS_ABERTO[ordemAberto.campo] || ORDENS_ABERTO.saldo;
     const lista = pacientes.map(p => abertoDoPaciente(p, ate, de)).filter(Boolean)
         .filter(x => !busca || (x.p.nome || '').toLowerCase().includes(busca))
-        .sort((a, b) => b.saldo - a.saldo);
+        .sort((a, b) => {
+            const ka = chave(a), kb = chave(b);
+            const r = typeof ka === 'number' ? ka - kb : String(ka).localeCompare(String(kb));
+            return ordemAberto.asc ? r : -r;
+        });
 
-    const totalAberto = lista.reduce((s, x) => s + x.saldo, 0);
+    const contam = lista.filter(x => !foraDoTotal.has(x.p.id));
+    const fora = lista.filter(x => foraDoTotal.has(x.p.id));
+    const totalAberto = contam.reduce((s, x) => s + x.saldo, 0);
     document.getElementById('resumo-aberto').innerHTML = lista.length ? `
       <span class="erro">Pacientes devendo <b>${lista.length}</b></span>
       <span class="erro">Total em aberto <b>${formataMoeda(totalAberto)}</b></span>
-      <span>Meses em aberto <b>${lista.reduce((s, x) => s + x.linhas.length, 0)}</b></span>`
+      <span>Meses em aberto <b>${contam.reduce((s, x) => s + x.linhas.length, 0)}</b></span>
+      ${fora.length ? `<span title="${esc(fora.map(x => x.p.nome).join(', '))}">Fora do total <b>${fora.length}</b> · ${formataMoeda(fora.reduce((s, x) => s + x.saldo, 0))}
+        <button class="argos-btn small ghost" data-fora-limpar="1" title="Voltar a contar todo mundo">✕ limpar</button></span>` : ''}`
       : '<span class="ok">Nada em aberto. 🎉</span>';
+
+    document.querySelectorAll('#tabela-aberto th[data-ordem]').forEach(th => {
+        const ativa = th.dataset.ordem === ordemAberto.campo;
+        th.classList.toggle('ativa', ativa);
+        th.querySelector('.seta').textContent = ativa ? (ordemAberto.asc ? '▲' : '▼') : '';
+    });
 
     document.getElementById('tbody-aberto').innerHTML = lista.map(({ p, linhas, producao, pago, saldo }) => {
         const notasP = acompanhamento.filter(a => a.paciente_id === p.id)
             .sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)));
         const contatosP = contatosParaCobranca(p, contatos.filter(c => c.paciente_id === p.id));
+        const fora = foraDoTotal.has(p.id);
         return `
-      <tr>
+      <tr class="${fora ? 'fora-do-total' : ''}">
+        <td class="num"><input type="checkbox" data-conta="${p.id}" ${fora ? '' : 'checked'}
+            title="${fora ? 'Fora do total — marque para voltar a contar' : 'Conta no total — desmarque para tirar da conta'}" /></td>
         <td class="livre">${esc(p.nome)}
           <span class="sub">${esc(p.responsavel_financeiro || 'sem responsável financeiro')}</span></td>
         <td class="livre">${linhas.map(l =>
@@ -1169,6 +1209,24 @@ try {
     if (g) { document.getElementById('aberto-de').value = g.de || ''; document.getElementById('aberto-ate').value = g.ate || ''; }
 } catch (e) {}
 if (!document.getElementById('aberto-ate').value) document.getElementById('aberto-ate').value = mesAnteriorA(hojeISO().slice(0, 7));
+document.getElementById('tabela-aberto').addEventListener('change', e => {
+    const cb = e.target.closest('[data-conta]');
+    if (!cb) return;
+    if (cb.checked) foraDoTotal.delete(cb.dataset.conta); else foraDoTotal.add(cb.dataset.conta);
+    guardarFora(); renderAberto();
+});
+document.getElementById('tabela-aberto').addEventListener('click', e => {
+    const th = e.target.closest('th[data-ordem]');
+    if (!th) return;
+    const campo = th.dataset.ordem;
+    ordemAberto = ordemAberto.campo === campo ? { campo, asc: !ordemAberto.asc }
+        : { campo, asc: campo === 'paciente' };
+    renderAberto();
+});
+document.getElementById('resumo-aberto').addEventListener('click', e => {
+    if (!e.target.closest('[data-fora-limpar]')) return;
+    foraDoTotal = new Set(); guardarFora(); renderAberto();
+});
 ['busca-aberto', 'aberto-de', 'aberto-ate'].forEach(id =>
     document.getElementById(id).addEventListener('input', renderAberto));
 document.getElementById('btn-imprimir').addEventListener('click', () => window.print());

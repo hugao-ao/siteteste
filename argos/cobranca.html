@@ -24,6 +24,11 @@
 
     .cb-tabela { min-width: 900px; font-size: .86rem; }
     .cb-tabela td, .cb-tabela th { white-space: nowrap; vertical-align: top; }
+    #tabela-aberto th[data-ordem] { cursor: pointer; user-select: none; }
+    #tabela-aberto th[data-ordem]:hover, #tabela-aberto th.ativa { color: var(--argos-accent, #6366f1); }
+    #tabela-aberto th .seta { font-size: .7rem; }
+    #tabela-aberto tr.fora-do-total td { opacity: .55; }
+    #tabela-aberto tr.fora-do-total td:first-child { opacity: 1; }
     .cb-tabela td.num { text-align: right; }
     .cb-tabela td.livre { white-space: normal; min-width: 240px; }
     .cb-tabela td.acoes { white-space: nowrap; }
@@ -225,11 +230,17 @@
       </div>
       <div class="cb-resumo" id="resumo-aberto"></div>
       <div class="argos-tabela-wrap">
-        <table class="argos-tabela cb-tabela">
+        <table class="argos-tabela cb-tabela" id="tabela-aberto">
           <thead>
             <tr>
-              <th>Paciente</th><th>Meses em aberto</th><th>Produção</th><th>Recebido</th>
-              <th>Em aberto</th><th>Andamento da conversa</th><th class="acoes"></th>
+              <th title="Marcado = conta no total" data-argos-recurso="cobranca_aberto_fora_total">Σ</th>
+              <th data-ordem="paciente" data-argos-recurso="cobranca_aberto_ordenar">Paciente <span class="seta"></span></th>
+              <th data-ordem="meses" data-argos-recurso="cobranca_aberto_ordenar">Meses em aberto <span class="seta"></span></th>
+              <th data-ordem="producao" data-argos-recurso="cobranca_aberto_ordenar">Produção <span class="seta"></span></th>
+              <th data-ordem="pago" data-argos-recurso="cobranca_aberto_ordenar">Recebido <span class="seta"></span></th>
+              <th data-ordem="saldo" data-argos-recurso="cobranca_aberto_ordenar">Em aberto <span class="seta"></span></th>
+              <th data-ordem="andamento" data-argos-recurso="cobranca_aberto_ordenar">Andamento da conversa <span class="seta"></span></th>
+              <th class="acoes"></th>
             </tr>
           </thead>
           <tbody id="tbody-aberto"></tbody>
@@ -448,7 +459,7 @@
     </div>
   </div>
 
-  <script type="module" src="cobranca.js?v=10"></script>
+  <script type="module" src="cobranca.js?v=11"></script>
   <script type="module" src="argos-zoom.js?v=4"></script>
 </body>
 </html>
