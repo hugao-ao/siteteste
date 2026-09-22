@@ -14,7 +14,7 @@ import { mesBR, fatorNFDoMes } from './argos-cobranca.js';
 import { cobradoPorPaciente } from './argos-fechamento.js';
 import {
     usarFechamento, abertoPorPaciente, retencoesSugeridas, liberacoesSugeridas,
-    acertoDoMes, mensagemAcerto, mesCurto
+    acertoDoMes, mensagemAcerto, mesCurto, ehDesconto
 } from './argos-repasses.js';
 
 usarFechamento(fechamentoPaciente);
@@ -236,16 +236,21 @@ function cartaoAcerto(a) {
         const quem = menos
             ? esc(r.motivo || nomePac(r.paciente_id))
             : `${esc(nomePac(r.paciente_id))} regularizou ${esc(mesCurto(r.mes_producao))}`;
+        // no MENOS a história fica: uma retenção já liberada continua aqui,
+        // só com a marca de quando voltou; desconto definitivo também se marca
+        const marca = !menos ? '' : ehDesconto(r) ? '<span class="rp-tag">desconto</span>'
+            : r.status === 'liberado' ? `<span class="rp-tag ok">liberado em ${esc(mesCurto(r.liberado_em))}</span>` : '';
+        const mexe = menos && podeReter && r.status !== 'liberado';
         return `
       <div class="rp-item">
-        ${menos && podeReter ? `<input type="checkbox" class="rp-sel" value="${r.id}"
+        ${mexe ? `<input type="checkbox" class="rp-sel" value="${r.id}"
             title="Marcar para tirar em lote" />` : ''}
-        <span class="quem">${quem}
+        <span class="quem">${quem} ${marca}
           ${menos && r.observacao ? `<span class="obs">${esc(r.observacao)}</span>` : ''}</span>
         <span class="valor ${menos ? 'menos' : 'mais'}">${sinal} ${formataMoeda(r.valor)}</span>
-        ${menos && podeReter
+        ${mexe
             ? `<button class="argos-btn ghost" data-rp="desfazer" data-id="${r.id}"
-                 title="Tirar esta retenção">✕</button>` : ''}
+                 title="${ehDesconto(r) ? 'Tirar este desconto' : 'Tirar esta retenção'}">✕</button>` : ''}
       </div>`;
     };
 
@@ -378,6 +383,7 @@ function abrirReter() {
     document.getElementById('ret-motivo').value = '';
     document.getElementById('ret-obs').value = '';
     document.getElementById('ret-origem').value = 'manual';
+    document.getElementById('ret-tipo').value = 'retido';
     abrirModal('modal-reter');
 }
 
@@ -386,21 +392,24 @@ async function salvarRetencao() {
     if (!(valor > 0)) { toast('Informe o valor a reter.', true); return; }
     const pac = document.getElementById('ret-pac').value || null;
     const motivo = document.getElementById('ret-motivo').value.trim();
+    // desconto definitivo só para quem tem a permissão; sem ela o campo nem aparece
+    const desconto = document.getElementById('ret-tipo').value === 'descontado'
+        && (perm.master || perm.pode('repasses_descontar'));
     const registro = {
         profissional_id: document.getElementById('ret-prof').value,
         paciente_id: pac,
         mes_producao: document.getElementById('ret-mes').value || mesAtual,
-        valor, motivo: motivo || (pac ? nomePac(pac) : 'Retenção'),
+        valor, motivo: motivo || (pac ? nomePac(pac) : (desconto ? 'Desconto' : 'Retenção')),
         observacao: document.getElementById('ret-obs').value.trim() || null,
         origem: document.getElementById('ret-origem').value,
-        status: 'retido', retido_em: mesAtual
+        status: desconto ? 'descontado' : 'retido', retido_em: mesAtual
     };
     const { data, error } = await sb.from('argos_repasse_retencoes').insert(registro).select();
     if (error) { console.error(error); toast('Não consegui reter esse valor.', true); return; }
     retencoes = retencoes.concat(data || []);
     fecharModal('modal-reter');
     renderRepasses();
-    toast('Valor retido.');
+    toast(desconto ? 'Valor descontado do acerto.' : 'Valor retido.');
 }
 
 async function liberarRetencao(id) {
@@ -418,7 +427,7 @@ async function liberarRetencao(id) {
 
 async function desfazerRetencao(id) {
     const r = retencoes.find(x => x.id === id);
-    if (!r || !confirm('Tirar esta retenção? O valor volta inteiro para o acerto.')) return;
+    if (!r || !confirm(`Tirar ${ehDesconto(r) ? 'este desconto' : 'esta retenção'}? O valor volta inteiro para o acerto.`)) return;
     const { error } = await sb.from('argos_repasse_retencoes').delete().eq('id', id);
     if (error) { console.error(error); toast('Não consegui desfazer.', true); return; }
     retencoes = retencoes.filter(x => x.id !== id);
