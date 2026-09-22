@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=0.1, maximum-scale=10, user-scalable=yes" />
+  <title>Argos Gestão — Produção e Assiduidade</title>
+  <script src="argos-guard.js"></script>
+  <link rel="stylesheet" href="argos-style.css?v=15" />
+  <style>
+    .pr-topo { display: flex; gap: 12px; flex-wrap: wrap; align-items: center;
+      justify-content: space-between; margin-bottom: 4px; }
+    .pr-mes { display: flex; gap: 8px; align-items: center; }
+    .pr-mes button { padding: 6px 10px; }
+
+    .pr-resumo { display: flex; gap: 8px; flex-wrap: wrap; margin: 10px 0 14px; font-size: .84rem; }
+    .pr-resumo span { border: 1px solid var(--argos-border); border-radius: 99px; padding: 3px 12px;
+      color: var(--argos-text-dim); }
+    .pr-resumo span b { color: var(--argos-text); }
+    .pr-resumo span.alerta { border-color: var(--argos-warn); color: var(--argos-warn); }
+    .pr-resumo span.ok { border-color: var(--argos-success); color: var(--argos-success); }
+
+    .pr-cards { display: grid; gap: 12px;
+      grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); }
+    .pr-card { border: 1px solid var(--argos-border); border-radius: var(--argos-radius);
+      background: var(--argos-surface); padding: 14px 16px; }
+    .pr-card h3 { margin: 0 0 2px; font-size: 1.02rem; }
+    .pr-card .papel { font-size: .78rem; color: var(--argos-text-dim); }
+    .pr-linha { display: flex; justify-content: space-between; gap: 10px; font-size: .86rem;
+      padding: 3px 0; }
+    .pr-linha.total { border-top: 1px solid var(--argos-border); margin-top: 6px; padding-top: 7px;
+      font-weight: 700; }
+    .pr-linha .dim { color: var(--argos-text-dim); }
+    .pr-barra { height: 8px; border-radius: 99px; background: var(--argos-surface-2);
+      overflow: hidden; margin: 8px 0 4px; }
+    .pr-barra i { display: block; height: 100%; background: var(--argos-success); }
+    .pr-barra.media i { background: var(--argos-warn); }
+    .pr-barra.ruim i { background: var(--argos-danger); }
+    .pr-freq { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; font-size: .76rem; }
+    .pr-freq span { border-radius: 5px; padding: 1px 7px; border: 1px solid var(--c);
+      color: var(--c); }
+    .pr-cobertura { margin: 8px 0 0; padding-left: 16px; font-size: .8rem; color: var(--argos-text-dim); }
+    .pr-cobertura li { margin-bottom: 2px; }
+    .pr-vazio { color: var(--argos-text-dim); font-size: .84rem; }
+
+    .rp-acoes { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 12px; }
+    .rp-card .cabeca { display: flex; justify-content: space-between; align-items: flex-start;
+      gap: 10px; }
+    .rp-card .cabeca .argos-btn { padding: 4px 9px; font-size: .76rem; }
+    .rp-bloco { margin-top: 10px; border-top: 1px dashed var(--argos-border); padding-top: 8px; }
+    .rp-bloco > .titulo { font-size: .78rem; letter-spacing: .04em; text-transform: uppercase;
+      color: var(--argos-text-dim); margin-bottom: 4px; }
+    .rp-item { display: flex; justify-content: space-between; gap: 8px; align-items: baseline;
+      font-size: .84rem; padding: 3px 0; }
+    .rp-item .quem { flex: 1; }
+    .rp-item .obs { display: block; font-size: .76rem; color: var(--argos-text-dim); }
+    .rp-tag { display: inline-block; font-size: .68rem; padding: 0 6px; border-radius: 999px;
+      border: 1px solid var(--argos-border); color: var(--argos-text-dim); vertical-align: middle; }
+    .rp-tag.ok { color: var(--argos-success); border-color: var(--argos-success); }
+    .rp-item .valor.menos { color: var(--argos-warn); }
+    .rp-item .valor.mais { color: var(--argos-success); }
+    .rp-item button { padding: 1px 7px; font-size: .72rem; }
+    .rp-final { display: flex; justify-content: space-between; align-items: baseline;
+      margin-top: 10px; border-top: 1px solid var(--argos-border); padding-top: 8px; }
+    .rp-final b { font-size: 1.15rem; }
+    .rp-saldo { margin-top: 8px; font-size: .8rem; color: var(--argos-text-dim); }
+    .rp-saldo b { color: var(--argos-warn); }
+    .rp-fechado { font-size: .76rem; color: var(--argos-success); margin-top: 6px; }
+    .rp-msg { width: 100%; min-height: 190px; font-family: ui-monospace, monospace;
+      font-size: .82rem; white-space: pre; }
+
+    #tab-sub { min-width: 760px; font-size: .86rem; }
+    #tab-sub td, #tab-sub th { white-space: nowrap; }
+    #tab-sub td.livre { white-space: normal; min-width: 200px; }
+  </style>
+</head>
+<body>
+  <header class="argos-topbar">
+    <div class="brand">ARGOS <span>GESTÃO</span></div>
+    <div class="actions">
+      <a class="argos-btn ghost" href="index.html">← Início</a>
+      <button class="argos-btn danger" id="btn-logout">Sair</button>
+    </div>
+  </header>
+
+  <main class="argos-pagina larga">
+    <div class="pr-topo">
+      <div>
+        <h1>📊 Produção e Assiduidade</h1>
+        <p class="sub">Quanto cada profissional gera de faturamento e custa de repasse no mês, e
+          como está a presença de cada um nos horários pelos quais responde.</p>
+      </div>
+      <div class="pr-mes">
+        <button class="argos-btn ghost" id="btn-mes-ant" title="Mês anterior">‹</button>
+        <input type="month" id="mes-ref" class="argos-input" />
+        <button class="argos-btn ghost" id="btn-mes-prox" title="Próximo mês">›</button>
+        <button class="argos-btn ghost" id="btn-imprimir">🖨️</button>
+      </div>
+    </div>
+
+    <div class="argos-abas" id="pr-abas">
+      <button type="button" class="aba ativa" data-aba="profissionais">🧑‍🏫 Por profissional</button>
+      <button type="button" class="aba" data-aba="substituicoes">🔁 Atendimentos para outros</button>
+      <button type="button" class="aba" data-aba="repasses" data-argos-recurso="repasses_ver">💼 Repasses</button>
+      <button type="button" class="aba" data-aba="pendentes">❓ Horários sem frequência</button>
+    </div>
+
+    <section data-painel="profissionais">
+      <div class="pr-resumo" id="pr-resumo"></div>
+      <div class="pr-cards" id="pr-cards"></div>
+      <div class="argos-tabela-vazia" id="pr-vazio" style="display:none">Nenhum movimento neste mês.</div>
+      <p class="dica" style="margin-top:14px">
+        O <b>dinheiro</b> vem da frequência do paciente: se ele veio, a sessão é contabilizada e vai para
+        quem responde por ela na dinâmica — não importa quem conduziu o grupo naquele dia. A
+        <b>assiduidade</b> vem da frequência do profissional, marcada na Agenda, e não mexe em valor
+        nenhum. A única ponte entre as duas é a exceção «pagar esta sessão a quem atendeu».
+      </p>
+    </section>
+
+    <section data-painel="substituicoes" style="display:none">
+      <div class="pr-resumo" id="sub-resumo"></div>
+      <div class="argos-tabela-wrap">
+        <table class="argos-tabela" id="tab-sub">
+          <thead><tr>
+            <th>Quando</th><th>Paciente</th><th>Dinâmica</th>
+            <th>Quem recebeu</th><th>No lugar de</th><th>Valor</th><th>Motivo</th>
+          </tr></thead>
+          <tbody id="tbody-sub"></tbody>
+        </table>
+        <div class="argos-tabela-vazia" id="sub-vazio" style="display:none">
+          Nenhuma sessão foi redirecionada neste mês.
+        </div>
+      </div>
+      <p class="dica">São as sessões marcadas na Agenda para serem pagas a quem de fato atendeu.
+        A parte da clínica não muda: o que muda é entre quais profissionais o repasse é dividido.</p>
+    </section>
+
+    <section data-painel="repasses" style="display:none" data-argos-recurso="repasses_ver">
+      <div class="pr-resumo" id="rp-resumo"></div>
+      <div class="rp-acoes">
+        <button class="argos-btn" id="btn-rp-sugerir" data-argos-recurso="repasses_reter">
+          🔎 Conferir inadimplência (reter e liberar)</button>
+        <button class="argos-btn ghost" id="btn-rp-reter" data-argos-recurso="repasses_reter">
+          ＋ Reter manualmente</button>
+      </div>
+      <div class="pr-cards" id="rp-cards"></div>
+      <div class="argos-tabela-vazia" id="rp-vazio" style="display:none">
+        Nenhum profissional com produção ou retenção neste mês.
+      </div>
+      <p class="dica" style="margin-top:14px">
+        O repasse sai como se todo paciente já tivesse pago no começo do mês. O que fica
+        <b>retido</b> é a parte dos pacientes que ainda não pagaram um mês já vencido — cada
+        retenção continua sendo <b>saldo a receber</b> do profissional até ele ser
+        <b>liberado</b>, o que acontece no acerto do mês em que o paciente regulariza, e não no
+        mês de origem.
+      </p>
+    </section>
+
+    <section data-painel="pendentes" style="display:none">
+      <div class="pr-resumo" id="pend-resumo"></div>
+      <div class="argos-tabela-wrap">
+        <table class="argos-tabela" id="tab-pend">
+          <thead><tr><th>Profissional</th><th>Horários no mês</th><th>Sem frequência</th><th>Marcados</th></tr></thead>
+          <tbody id="tbody-pend"></tbody>
+        </table>
+        <div class="argos-tabela-vazia" id="pend-vazio" style="display:none">
+          Tudo marcado neste mês. 🎉
+        </div>
+      </div>
+      <p class="dica">A frequência do profissional é preenchida na <b>Agenda</b>, abrindo qualquer
+        sessão do horário. Enquanto estiver «a preencher», o horário não entra no cálculo da
+        assiduidade — nem para bem nem para mal.</p>
+    </section>
+  </main>
+
+  <!-- ============ MODAL: RETER MANUALMENTE ============ -->
+  <div class="argos-modal-fundo" id="modal-reter">
+    <div class="argos-modal">
+      <div class="argos-modal-topo">
+        <h2>Reter um valor do repasse</h2>
+        <button class="argos-modal-x" data-fechar>&times;</button>
+      </div>
+      <div class="argos-form">
+        <div class="form-grade">
+          <label>Profissional<select id="ret-prof"></select></label>
+          <label>Mês da produção<input type="month" id="ret-mes" /></label>
+        </div>
+        <div class="form-grade">
+          <label>Paciente (opcional)<select id="ret-pac"></select></label>
+          <label>Valor a reter
+            <span class="campo-moeda"><input type="number" id="ret-valor" step="0.01"
+              min="0" placeholder="0,00" /></span>
+          </label>
+        </div>
+        <label>Motivo<input type="text" id="ret-motivo"
+          placeholder="Ex.: Unimed Evelyn Jul/26" /></label>
+        <label>Observação<input type="text" id="ret-obs"
+          placeholder="Ex.: aguardar todo o trâmite da Unimed" /></label>
+        <div class="form-grade">
+          <label>Origem
+            <select id="ret-origem">
+              <option value="manual">Manual</option>
+              <option value="inadimplencia">Inadimplência</option>
+              <option value="convenio">Convênio</option>
+            </select>
+          </label>
+          <label data-argos-recurso="repasses_descontar">O que fazer com o valor
+            <select id="ret-tipo">
+              <option value="retido">Reter — volta quando o paciente pagar</option>
+              <option value="descontado">Descontar — definitivo, não volta</option>
+            </select>
+          </label>
+        </div>
+        <p class="dica">Retido: o valor sai do acerto do mês aberto na tela e continua como saldo a
+          receber do profissional até você liberá-lo. Descontado: sai do acerto e pronto — é o caso
+          de adiantamento, valor que o cliente pagou na conta do profissional ou acerto de erro.</p>
+      </div>
+      <div class="argos-modal-acoes">
+        <button class="argos-btn ghost" data-fechar>Cancelar</button>
+        <button class="argos-btn primary" id="btn-ret-salvar">Reter</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ MODAL: MENSAGEM DO ACERTO ============ -->
+  <div class="argos-modal-fundo" id="modal-acerto">
+    <div class="argos-modal grande">
+      <div class="argos-modal-topo">
+        <h2 id="ac-titulo">Acerto do mês</h2>
+        <button class="argos-modal-x" data-fechar>&times;</button>
+      </div>
+      <div class="argos-form">
+        <label>Mensagem<textarea id="ac-texto" class="rp-msg"></textarea></label>
+        <p class="dica">Pode editar antes de enviar — o acerto guarda exatamente este texto.
+          Depois de mandar a mensagem ao profissional (WhatsApp, e-mail…), use
+          «Registrar envio» para o histórico guardar o que foi enviado e quando.</p>
+        <div id="ac-envios" class="rp-bloco"></div>
+      </div>
+      <div class="argos-modal-acoes">
+        <button class="argos-btn ghost" id="btn-ac-copiar">📋 Copiar</button>
+        <button class="argos-btn" id="btn-ac-registrar" data-argos-recurso="repasses_mensagens">
+          📨 Registrar envio</button>
+        <button class="argos-btn primary" id="btn-ac-fechar" data-argos-recurso="repasses_fechar">
+          ✅ Fechar acerto do mês</button>
+        <button class="argos-btn ghost" data-fechar>Fechar</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="producao.js?v=9"></script>
+  <script type="module" src="argos-zoom.js?v=4"></script>
+</body>
+</html>
