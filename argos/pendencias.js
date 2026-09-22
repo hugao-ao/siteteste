@@ -19,7 +19,8 @@ import {
 import { conferirFone, linkWhatsApp, mensagemPendencias } from './argos-cobranca.js';
 import { AGRUPAMENTOS, ORDENS, agrupamento, agruparPendencias, contarPendencias }
     from './argos-pendencias.js';
-import { gravarFrequencia, registrarFaltasJustificadas, avisarMudanca, ouvirMudancas }
+import { gravarFrequencia, registrarFaltasJustificadas, avisarMudanca, ouvirMudancas,
+    configurarFrequencia, aplicarCamada, validarSessoes, marcaDeCamada, modoFrequencia }
     from './argos-frequencia.js';
 
 let perm = { pode: () => true, aplicarVisibilidade: () => {}, master: true };
@@ -56,7 +57,7 @@ async function carregarTudo() {
     salas = rSalas.data || [];
     profissionais = rProf.data || [];
     dinamicas = rDin.data || [];
-    sessoes = rSes.data || [];
+    sessoes = aplicarCamada(rSes.data || []);
     definirMesesCongelados((rCong && rCong.data) || []);
     render();
 }
@@ -80,8 +81,17 @@ function sessoesPendentes() {
     const paraPendencia = c.dinamicas.map(d => d.ativo === false ? { ...d, ativo: true } : d);
     const dinPorId = new Map(dinamicas.map(d => [d.id, d]));
     return mesclarSessoes(paraPendencia, c.sessoes, de, somarDias(hoje, -1))
-        .filter(s => s.status === '??' && sessaoNoEscopo(perm, s, dinPorId));
+        .filter(s => s.status === '??' && !s.conferida && sessaoNoEscopo(perm, s, dinPorId))
+        // quem vê a oficial escolhe: só o que a recepção ainda não propôs
+        // (é dela a pendência) ou só o que já tem proposta esperando validação
+        .filter(s => !perm.pode('frequencia_ver_oficial') || pendCamada === 'todas'
+            || (pendCamada === 'proposta' ? !!s.status_proposto : !s.status_proposto));
 }
+
+// 'sem'      → sem preenchimento nenhum (cobrar a recepção)
+// 'proposta' → com proposta da recepção aguardando validação (cobrar o profissional)
+// 'todas'    → as duas
+let pendCamada = 'sem';
 
 function chaveSessao(s) {
     const k = s.id || `${s.dinamica_ref}|${s.data}|${s.hora}`;
@@ -165,7 +175,10 @@ function render() {
             <div class="bloco-info">
               <b>${esc(linhaDoBloco(i))}</b><br>
               <span class="dim">${esc(subLinhaDoBloco(i))}</span>
+              ${i.ref.status_proposto && perm.pode('frequencia_ver_oficial') ? `<br><span class="dim">${esc(marcaDeCamada(i.ref, formataBR))}${i.ref.justificativa_proposta ? ` — «${esc(i.ref.justificativa_proposta)}»` : ''}</span>` : ''}
             </div>
+            ${i.ref.status_proposto && perm.pode('frequencia_ver_oficial') && perm.pode('frequencia_validar')
+              ? `<button class="argos-btn small primary" data-aprovar="1" title="A proposta vira a frequência oficial">✔ Aprovar ${esc(i.ref.status_proposto.toUpperCase())}</button>` : ''}
             ${botoesStatus('marcar', '')}
           </div>`).join('')}
       </div>`;
@@ -234,12 +247,13 @@ async function marcarSessoes(lista, status) {
     }
     if (status === 'fj') await registrarFaltasJustificadas(sb, alvos, justificativa, formataBR);
 
+    const proposta = modoFrequencia() === 'proposta' ? ' (proposta — aguarda a validação do profissional)' : '';
     toast(alvos.length > 1
-        ? `${alvos.length} sessões marcadas: ${STATUS_SESSAO[status].label} — ${STATUS_SESSAO[status].desc}`
-        : `Sessão marcada: ${STATUS_SESSAO[status].label} — ${STATUS_SESSAO[status].desc}`);
+        ? `${alvos.length} sessões marcadas: ${STATUS_SESSAO[status].label} — ${STATUS_SESSAO[status].desc}${proposta}`
+        : `Sessão marcada: ${STATUS_SESSAO[status].label} — ${STATUS_SESSAO[status].desc}${proposta}`);
 
     const { data } = await todas(() => sb.from('argos_sessoes').select('*'));
-    sessoes = data || sessoes;
+    sessoes = data ? aplicarCamada(data) : sessoes;
     render();
     avisarMudanca({ origem: 'pendencias', quantas: alvos.length });
 }
@@ -257,12 +271,25 @@ el('lista-pendentes').addEventListener('click', async e => {
             + `«${STATUS_SESSAO[st].label} — ${STATUS_SESSAO[st].desc}»?`)) return;
         return marcarSessoes(lista, st);
     }
+    const aprovar = e.target.closest('[data-aprovar]');
+    if (aprovar) {
+        const s = chaves.get(aprovar.closest('[data-chave]').dataset.chave);
+        if (!s) return;
+        const { erro } = await validarSessoes(sb, [s]);
+        if (erro) { console.error(erro); toast('Erro ao aprovar a proposta.', true); return; }
+        toast('Proposta aprovada: a frequência oficial foi gravada.');
+        await carregarTudo();
+        avisarMudanca({ origem: 'pendencias', quantas: 1 });
+        return;
+    }
     const btn = e.target.closest('[data-marcar]');
     if (!btn) return;
     const linha = btn.closest('[data-chave]');
     const s = chaves.get(linha.dataset.chave);
     if (s) await marcarSessoes([s], btn.dataset.status);
 });
+
+el('pend-camada').addEventListener('change', e => { pendCamada = e.target.value; render(); });
 
 el('pend-busca').addEventListener('input', e => { pendBusca = e.target.value; render(); });
 el('pend-agrupar').addEventListener('change', e => { pendAgrupar = e.target.value; render(); });
@@ -302,6 +329,8 @@ ouvirMudancas(dados => { if (dados.origem !== 'pendencias') carregarTudo(); });
     try { el('pend-fone').value = localStorage.getItem('argos_pend_fone') || ''; } catch (e) {}
     perm = await carregarPermissoes();
     if (!perm.exigirPagina('pagina_pendencias', 'as pendências de frequência')) return;
+    configurarFrequencia(perm);
     perm.aplicarVisibilidade(document);
+    if (!perm.pode('frequencia_ver_oficial')) el('pend-camada').closest('label').style.display = 'none';
     await carregarTudo();
 })();

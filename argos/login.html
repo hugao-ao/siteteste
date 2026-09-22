@@ -6,16 +6,17 @@
   <title>Entrar — Argos Gestão</title>
   <link rel="stylesheet" href="argos-style.css?v=15" />
   <style>
-    body.login { min-height: 100vh; display: flex; align-items: center; justify-content: center; background: var(--argos-bg, #f3f5f8); }
-    .login-caixa { width: min(380px, 92vw); background: #fff; border-radius: 14px; box-shadow: 0 10px 40px rgba(0,0,0,.12); padding: 28px 26px; }
-    .login-caixa .brand { font-weight: 800; letter-spacing: .12em; font-size: 20px; text-align: center; margin-bottom: 4px; }
-    .login-caixa .brand span { font-weight: 400; color: #6b7a90; }
-    .login-caixa .sub { text-align: center; color: #6b7a90; font-size: 13px; margin: 0 0 18px; }
-    .login-caixa label { display: block; font-size: 13px; color: #34405a; margin-bottom: 12px; }
-    .login-caixa input { display: block; width: 100%; margin-top: 4px; padding: 10px 12px; border: 1px solid #cfd6e0; border-radius: 8px; font-size: 15px; box-sizing: border-box; }
+    body.login { min-height: 100vh; display: flex; align-items: center; justify-content: center; background: var(--argos-bg); margin: 0; }
+    .login-caixa { width: min(380px, 92vw); background: var(--argos-surface); border: 1px solid var(--argos-border); border-radius: var(--argos-radius); box-shadow: var(--argos-shadow); padding: 28px 26px; }
+    .login-caixa .brand { font-weight: 800; letter-spacing: .12em; font-size: 20px; text-align: center; margin-bottom: 4px; color: var(--argos-text); }
+    .login-caixa .brand span { font-weight: 400; color: var(--argos-primary); }
+    .login-caixa .sub { text-align: center; color: var(--argos-text-dim); font-size: 13px; margin: 0 0 18px; }
+    .login-caixa label { display: block; font-size: 13px; color: var(--argos-text-dim); margin-bottom: 12px; font-weight: 600; }
+    .login-caixa input { display: block; width: 100%; margin-top: 4px; padding: 10px 12px; border: 1px solid var(--argos-border); border-radius: 8px; font-size: 15px; box-sizing: border-box; background: var(--argos-bg); color: var(--argos-text); }
+    .login-caixa input:focus { outline: none; border-color: var(--argos-primary); }
     .login-caixa .argos-btn { width: 100%; padding: 11px; font-size: 15px; margin-top: 6px; }
-    .login-erro { color: #b42318; font-size: 13px; min-height: 18px; margin: 8px 0 0; text-align: center; }
-    .login-rodape { margin-top: 16px; text-align: center; font-size: 12px; color: #8a96a8; }
+    .login-erro { color: var(--argos-danger); font-size: 13px; min-height: 18px; margin: 8px 0 0; text-align: center; }
+    .login-rodape { margin-top: 16px; text-align: center; font-size: 12px; color: var(--argos-text-dim); }
     .login-rodape a { color: inherit; }
   </style>
 </head>

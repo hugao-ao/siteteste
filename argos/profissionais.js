@@ -10,7 +10,7 @@ import {
     definirRepassePadrao, repassePadraoDe, STATUS_SESSAO, tipoSessaoLabel
 } from './argos-recorrencia.js';
 import {
-    gravarFrequencia, registrarFaltasJustificadas, avisarMudanca
+    gravarFrequencia, registrarFaltasJustificadas, avisarMudanca, configurarFrequencia, validarSessoes
 } from './argos-frequencia.js';
 import { fatorNFDoMes } from './argos-cobranca.js';
 import {
@@ -120,6 +120,7 @@ document.getElementById('lista-profissionais').addEventListener('click', async (
         document.getElementById('prof-remuneracao').value = p.remuneracao_tipo || 'producao';
         document.getElementById('prof-fixo').value = p.valor_fixo_mensal != null ? p.valor_fixo_mensal : '';
         document.getElementById('prof-repasse-padrao').value = p.repasse_padrao != null ? p.repasse_padrao : '';
+        document.getElementById('prof-telefone').value = p.telefone || '';
         atualizarCampoFixo();
         abrirModal('modal-prof');
     }
@@ -166,6 +167,7 @@ document.getElementById('btn-novo-prof').addEventListener('click', () => {
     document.getElementById('prof-remuneracao').value = 'producao';
     document.getElementById('prof-fixo').value = '';
     document.getElementById('prof-repasse-padrao').value = '';
+    document.getElementById('prof-telefone').value = '';
     atualizarCampoFixo();
     abrirModal('modal-prof');
 });
@@ -185,7 +187,8 @@ document.getElementById('form-prof').addEventListener('submit', async (e) => {
         nome, remuneracao_tipo,
         valor_fixo_mensal: (remuneracao_tipo === 'fixo' || remuneracao_tipo === 'producao_fixo') && fixoBruto !== ''
             ? Number(fixoBruto) : null,
-        repasse_padrao: remuneracao_tipo !== 'fixo' && padraoBruto !== '' ? Number(padraoBruto) : null
+        repasse_padrao: remuneracao_tipo !== 'fixo' && padraoBruto !== '' ? Number(padraoBruto) : null,
+        telefone: document.getElementById('prof-telefone').value.trim() || null
     };
     const q = editandoProfId
         ? sb.from('argos_profissionais').update(registro).eq('id', editandoProfId)
@@ -262,6 +265,7 @@ document.getElementById('servico-lista').addEventListener('click', async (e) => 
 (async function init() {
     perm = await carregarPermissoes();
     if (!perm.exigirPagina('profissionais_ver', 'os profissionais')) return;
+    configurarFrequencia(perm);
     perm.aplicarVisibilidade();
     await carregarTudo();
 })();
@@ -651,6 +655,11 @@ async function gravarValidacao(itens) {
             atualizado_em: new Date().toISOString()
         })), { onConflict: 'sessao_id,profissional_id' });
     if (error) { console.error(error); toast('Erro ao gravar a conferência.', true); return false; }
+    // confirmar aqui é validar a frequência oficial (mesma coisa que a página
+    // de conferência faz); contestar não valida
+    const confirmadas = itens.filter(i => i.situacao === 'confirmada')
+        .map(i => valSessoes.find(s => s.id === i.sessao_id)).filter(Boolean);
+    if (confirmadas.length && perm.pode('frequencia_validar')) await validarSessoes(sb, confirmadas);
     const { data } = await todas(() => sb.from('argos_sessao_validacao')
         .select('*').eq('profissional_id', valProf.id));
     valValidacoes = data || valValidacoes;

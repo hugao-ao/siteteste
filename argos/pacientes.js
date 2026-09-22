@@ -12,7 +12,7 @@ import {
     definirRepassePadrao, tipoSessaoLabel, TIPOS_SESSAO_AVULSA, expandirDinamica, paraData,
     SITUACAO_PROCESSO, situacaoLabel
 } from './argos-recorrencia.js';
-import { gravarFrequencia, avisarMudanca } from './argos-frequencia.js';
+import { gravarFrequencia, avisarMudanca, configurarFrequencia, aplicarCamada, marcaDeCamada } from './argos-frequencia.js';
 import {
     indexarRespostas, calcularAvaliacao, radarSVG, limiteProxima,
     avaliacaoTravada, COMPETENCIA_MAX, FOCO_MAX, formataNota
@@ -1284,7 +1284,7 @@ async function recarregarFrequencia() {
     if (!freqPac) return;
     const { data } = await todas(() => sb.from('argos_sessoes').select('*')
         .eq('paciente_id', freqPac.id));
-    freqSessoes = (data || []).slice().sort((a, b) =>
+    freqSessoes = aplicarCamada(data || []).slice().sort((a, b) =>
         String(a.data).localeCompare(String(b.data))
         || String(a.hora || '').localeCompare(String(b.hora || '')));
     // ids que sumiram (excluídos) saem da seleção
@@ -1337,7 +1337,9 @@ function renderFrequencia() {
                     `<option value="${st}"${st === (s.status || '??') ? ' selected' : ''}>${STATUS_SESSAO[st].label}</option>`).join('')}
                 </select>
               </td>
-              <td class="dim">${esc(s.justificativa || '')}</td>
+              <td class="dim">${esc(s.justificativa || '')}${perm.pode('frequencia_ver_oficial')
+                ? (marcaDeCamada(s, formataBR) ? `<br><small>${esc(marcaDeCamada(s, formataBR))}</small>` : '')
+                : (s.conferida ? '<br><small>✔ conferida</small>' : '')}</td>
               <td><button class="argos-btn small ghost" data-freq-editar="${s.id}" title="Editar esta sessão">✏️</button></td>
             </tr>`;
         }).join('');
@@ -1626,6 +1628,7 @@ fEl('form-freq-editar').addEventListener('submit', async (e) => {
 (async function init() {
     perm = await carregarPermissoes();
     if (!perm.exigirPagina('pacientes_ver', 'os pacientes')) return;
+    configurarFrequencia(perm);
     perm.aplicarVisibilidade();
     cobUI = montarCobrancaUI(perm);
     // embarcado num iframe, focado num paciente: enxuga o cromo da página e
