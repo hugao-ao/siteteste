@@ -24,6 +24,16 @@
 
     .cb-tabela { min-width: 900px; font-size: .86rem; }
     .cb-tabela td, .cb-tabela th { white-space: nowrap; vertical-align: top; }
+    .cb-alteracoes { border: 1px solid var(--argos-warn, #f59e0b); border-radius: 10px; padding: 10px 12px; margin: 10px 0;
+      background: rgba(245, 158, 11, .07); }
+    .cb-alteracoes .alt-topo { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 6px; }
+    .cb-alteracoes .alt-lote { margin-left: auto; display: flex; gap: 6px; flex-wrap: wrap; }
+    .cb-alteracoes .alt-item { display: flex; gap: 10px; align-items: center; padding: 6px 0; border-top: 1px dashed var(--argos-border); flex-wrap: wrap; }
+    .cb-alteracoes .alt-item .quem { flex: 1; min-width: 240px; }
+    .cb-alteracoes .alt-item .sub { display: block; font-size: .78rem; color: var(--argos-text-dim); }
+    .cb-alteracoes .alt-item .acoes { display: flex; gap: 6px; }
+    .pend-lote { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin: 8px 0; }
+    .pend-lote input[type=text] { flex: 1; min-width: 220px; }
     #tabela-aberto th[data-ordem] { cursor: pointer; user-select: none; }
     #tabela-aberto th[data-ordem]:hover, #tabela-aberto th.ativa { color: var(--argos-accent, #6366f1); }
     #tabela-aberto th .seta { font-size: .7rem; }
@@ -128,6 +138,7 @@
       </div>
       <div class="cb-resumo" id="resumo-fech"></div>
       <div class="argos-aviso" id="aviso-pendencias" style="display:none"></div>
+      <div class="cb-alteracoes" id="alteracoes-fech" style="display:none" data-argos-recurso="cobranca_alteracoes_aprovar"></div>
       <div class="argos-tabela-wrap">
         <table class="argos-tabela cb-tabela">
           <thead>
@@ -212,6 +223,14 @@
         </label>
       </div>
       <div class="cb-resumo" id="resumo-pend"></div>
+      <div class="pend-lote" id="pend-lote" style="display:none" data-argos-recurso="nota_pendencias_lote">
+        <span><b id="pend-lote-qtd">0</b> abertas na lista</span>
+        <input type="text" id="pend-lote-txt" class="argos-input" placeholder="O que foi feito (vale para todas as marcadas)…" />
+        <button class="argos-btn small primary" data-pend-lote="resolvida" data-quais="sel">✅ Resolver marcadas</button>
+        <button class="argos-btn small" data-pend-lote="ignorada" data-quais="sel">🙈 Ignorar marcadas</button>
+        <button class="argos-btn small ghost" data-pend-lote="resolvida" data-quais="todas">✅ todas</button>
+        <button class="argos-btn small ghost" data-pend-lote="ignorada" data-quais="todas">🙈 todas</button>
+      </div>
       <div id="lista-pendencias"></div>
       <div class="argos-tabela-vazia" id="pend-vazio" style="display:none">Nenhuma pendência. 🎉</div>
       <p class="dica">A pendência nasce sozinha quando o fechamento muda depois da nota emitida, ou quando
@@ -459,7 +478,7 @@
     </div>
   </div>
 
-  <script type="module" src="cobranca.js?v=12"></script>
+  <script type="module" src="cobranca.js?v=13"></script>
   <script type="module" src="argos-zoom.js?v=4"></script>
 </body>
 </html>

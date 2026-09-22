@@ -19,6 +19,7 @@ import {
 } from './argos-evolucao.js';
 import { SITUACAO_NOTA, situacaoNota } from './argos-cobranca.js';
 import { montarCobrancaUI } from './argos-cobranca-ui.js';
+import { valorDoMes } from './argos-fechamento.js';
 
 let perm = { pode: () => true, aplicarVisibilidade: () => {}, master: true };
 
@@ -1161,10 +1162,12 @@ async function materializarHistorico(pacId) {
     return mescladas;
 }
 
-function htmlHistorico(p, dins, sessoes) {
+function htmlHistorico(p, dins, sessoes, ajustesCob = []) {
     const meses = [...new Set(sessoes.map(s => s.data.slice(0, 7)))].sort();
     const linhasMes = meses.map(m => {
-        const f = fechamentoPaciente(p, dins, sessoes.filter(s => !s.projetada), m);
+        const calc = fechamentoPaciente(p, dins, sessoes.filter(s => !s.projetada), m);
+        // valor do mês = o cobrado (enviado/congelado ou editado), não só o calculado
+        const f = { ...calc, valor: Number(valorDoMes({ fech: calc, ajuste: ajustesCob.find(a => a.mes === m) || null }).valor) || 0 };
         return `<tr><td>${m.split('-').reverse().join('/')}</td>
           <td>${f.contagens.ok}</td><td>${f.contagens.fj}</td><td>${f.contagens.fc}</td>
           <td>${f.contagens.nc}</td><td>${f.contagens['??']}</td><td>${formataMoeda(f.valor)}</td></tr>`;
@@ -1208,8 +1211,9 @@ document.getElementById('btn-confirmar-exclusao').addEventListener('click', asyn
         if (modo === 'pdf') {
             const todas = await materializarHistorico(p.id);
             const dins = dinamicas.filter(d => d.paciente_id === p.id);
+            const { data: ajustesCob } = await sb.from('argos_cobranca_mes').select('*').eq('paciente_id', p.id);
             const w = window.open('', '_blank');
-            if (w) { w.document.write(htmlHistorico(p, dins, todas)); w.document.close(); }
+            if (w) { w.document.write(htmlHistorico(p, dins, todas, ajustesCob || [])); w.document.close(); }
             if (!confirm('O histórico foi aberto para impressão/PDF em outra aba.\nConfirmar a exclusão DEFINITIVA de tudo?')) return;
         } else {
             if (!confirm(`Apagar DEFINITIVAMENTE "${p.nome}" e todos os históricos?`)) return;
