@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=0.1, maximum-scale=10, user-scalable=yes" />
+  <title>Argos Gestão — Gestão das evoluções</title>
+  <script src="argos-guard.js"></script>
+  <link rel="stylesheet" href="argos-style.css?v=15" />
+  <style>
+    .ev-barra { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 14px; }
+    .ev-resumo { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px; margin-bottom: 18px; }
+    .ev-prof { background: var(--argos-surface); border: 1px solid var(--argos-border); border-radius: var(--argos-radius); padding: 12px 14px; cursor: pointer; }
+    .ev-prof.ativo { border-color: var(--argos-primary); }
+    .ev-prof h3 { margin: 0 0 6px; font-size: 1rem; display: flex; justify-content: space-between; gap: 8px; }
+    .ev-prof .nums { display: flex; gap: 10px; flex-wrap: wrap; font-size: .82rem; color: var(--argos-text-dim); }
+    .ev-prof .nums b { color: var(--argos-text); }
+    .ev-prof .acoes { margin-top: 8px; display: flex; gap: 6px; flex-wrap: wrap; }
+    .ev-item { display: grid; grid-template-columns: 1.4fr 1fr auto; gap: 10px; align-items: center; padding: 8px 10px; border: 1px solid var(--argos-border); border-radius: 10px; margin-bottom: 6px; background: var(--argos-surface); }
+    .ev-item .quem { font-weight: 600; } .ev-item .quem small { display: block; color: var(--argos-text-dim); font-weight: 400; }
+    .ev-item .oque { font-size: .85rem; color: var(--argos-text-dim); }
+    .ev-item .oque b { color: var(--argos-text); }
+    .ev-ok { color: var(--argos-text-dim); padding: 16px 0; }
+    @media (max-width: 720px) { .ev-item { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <header class="argos-topbar">
+    <div class="brand">ARGOS <span>GESTÃO</span></div>
+    <div class="actions">
+      <a class="argos-btn ghost" href="index.html">← Início</a>
+      <button class="argos-btn danger" id="btn-logout">Sair</button>
+    </div>
+  </header>
+
+  <main class="argos-pagina larga">
+    <h1>📈 Gestão das evoluções</h1>
+    <p class="sub">Todos os pacientes em atendimento, profissional por profissional: quem está sem anamnese, sem avaliação
+      inicial, com avaliação parada em rascunho ou com a próxima vencendo. Clique num profissional para filtrar e cobre
+      pelo WhatsApp com a lista pronta.</p>
+
+    <div class="ev-barra">
+      <input type="search" id="ev-busca" class="argos-input" placeholder="🔎 paciente" style="min-width:220px" />
+      <select id="ev-tipo" class="argos-input">
+        <option value="">Todas as pendências</option>
+        <option value="sem_anamnese">Sem anamnese</option>
+        <option value="sem_inicial">Sem avaliação inicial</option>
+        <option value="rascunho">Em rascunho</option>
+        <option value="proxima_vencida">Próxima vencida</option>
+        <option value="proxima_vencendo">Próxima vencendo</option>
+      </select>
+      <label class="rotulo-inline">Avisar com <input type="number" id="ev-janela" class="argos-input" value="15" min="0" max="90" style="width:70px" /> dias de antecedência</label>
+      <span class="dim" id="ev-contagem">Carregando…</span>
+    </div>
+
+    <div class="ev-resumo" id="ev-resumo"></div>
+    <div id="ev-lista"></div>
+  </main>
+
+  <script type="module" src="evolucoes.js?v=1"></script>
+  <script type="module" src="argos-zoom.js?v=4"></script>
+</body>
+</html>

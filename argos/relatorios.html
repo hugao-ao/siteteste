@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=0.1, maximum-scale=10, user-scalable=yes" />
+  <title>Argos Gestão — Relatórios</title>
+  <script src="argos-guard.js"></script>
+  <link rel="stylesheet" href="argos-style.css?v=15" />
+  <style>
+    .rl-grade { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 16px; }
+    .rl-bloco { background: var(--argos-surface); border: 1px solid var(--argos-border); border-radius: var(--argos-radius); padding: 16px 18px; }
+    .rl-bloco h2 { margin: 0 0 6px; font-size: 1.05rem; }
+    .rl-bloco .dica { margin-bottom: 12px; }
+    .rl-linha { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 10px; }
+    .rl-linha .argos-input { padding: 6px 9px; }
+    .rl-saldos { width: 100%; border-collapse: collapse; font-size: .85rem; margin-top: 10px; }
+    .rl-saldos th, .rl-saldos td { padding: 5px 8px; border-bottom: 1px solid var(--argos-border); text-align: left; }
+    .rl-saldos td.num, .rl-saldos th.num { text-align: right; }
+    .rl-prev { margin-top: 12px; font-size: .88rem; color: var(--argos-text-dim); line-height: 1.5; }
+    .rl-prev b { color: var(--argos-text); }
+    textarea.rl-texto { width: 100%; min-height: 220px; font-family: ui-monospace, monospace; font-size: .82rem; margin-top: 10px; }
+  </style>
+</head>
+<body>
+  <header class="argos-topbar">
+    <div class="brand">ARGOS <span>GESTÃO</span></div>
+    <div class="actions">
+      <a class="argos-btn ghost" href="index.html">← Início</a>
+      <button class="argos-btn danger" id="btn-logout">Sair</button>
+    </div>
+  </header>
+
+  <main class="argos-pagina larga">
+    <h1>📑 Relatórios</h1>
+    <p class="sub">O relatório semanal que vai para a gestão e o relatório geral da clínica, montados a partir do que o
+      sistema já sabe: frequência, fechamento, cobranças, notas, repasses, despesas e os saldos informados aqui.</p>
+    <p class="dim" id="rl-carregando">Carregando os dados…</p>
+
+    <div class="rl-grade">
+      <div class="rl-bloco" data-argos-recurso="saldos_caixa_editar">
+        <h2>🏦 Caixa e reserva</h2>
+        <p class="dica">Informe o saldo em conta e o da reserva na data. O relatório usa o último saldo informado até a data dele e mostra a variação em relação ao anterior.</p>
+        <form id="form-saldo" class="rl-linha">
+          <label class="rotulo-inline">Data <input type="date" id="sd-data" class="argos-input" required /></label>
+          <label class="rotulo-inline">Conta <span class="campo-moeda"><input type="number" step="0.01" id="sd-conta" class="argos-input" required style="width:120px" /></span></label>
+          <label class="rotulo-inline">Reserva <span class="campo-moeda"><input type="number" step="0.01" id="sd-reserva" class="argos-input" required style="width:120px" /></span></label>
+          <input type="text" id="sd-obs" class="argos-input" placeholder="Observação (opcional)" style="flex:1;min-width:160px" />
+          <button type="submit" class="argos-btn primary small">Guardar</button>
+        </form>
+        <table class="rl-saldos"><thead><tr><th>Data</th><th class="num">Conta</th><th class="num">Reserva</th><th class="num">Total</th><th>Obs.</th><th></th></tr></thead>
+          <tbody id="sd-lista"></tbody></table>
+      </div>
+
+      <div class="rl-bloco">
+        <h2>🗓️ Relatório semanal</h2>
+        <p class="dica">Expectativa de recebimentos e de saídas, dinheiro em caixa e em reserva, sessões contabilizadas e faltas
+          da semana, frequência dos profissionais, pacientes em atraso e pendências. Abre como documento para PDF ou vira texto de WhatsApp.</p>
+        <div class="rl-linha">
+          <label class="rotulo-inline">De <input type="date" id="rs-de" class="argos-input" /></label>
+          <label class="rotulo-inline">Até <input type="date" id="rs-ate" class="argos-input" /></label>
+          <label class="rotulo-inline">Mês de referência <input type="month" id="rs-mes" class="argos-input" /></label>
+        </div>
+        <div class="rl-linha">
+          <button class="argos-btn primary" id="btn-semanal-doc">📄 Abrir documento</button>
+          <button class="argos-btn" id="btn-semanal-txt">💬 Texto para WhatsApp</button>
+          <button class="argos-btn ghost small" id="btn-semanal-copiar" style="display:none">📋 Copiar</button>
+        </div>
+        <div class="rl-prev" id="rs-previa"></div>
+        <textarea class="rl-texto argos-input" id="rs-texto" style="display:none"></textarea>
+      </div>
+
+      <div class="rl-bloco">
+        <h2>📚 Relatório geral da clínica</h2>
+        <p class="dica">Documento longo do mês: frequência e validação por profissional, evoluções pendentes, fechamento parcial
+          paciente a paciente, produção e repasses, cobranças e notas do mês anterior, em aberto, retenções, saídas previstas e caixa.</p>
+        <div class="rl-linha">
+          <label class="rotulo-inline">Mês <input type="month" id="rg-mes" class="argos-input" /></label>
+          <button class="argos-btn primary" id="btn-geral-doc">📄 Abrir documento</button>
+        </div>
+        <div class="rl-prev" id="rg-previa"></div>
+      </div>
+    </div>
+  </main>
+
+  <script type="module" src="relatorios.js?v=1"></script>
+  <script type="module" src="argos-zoom.js?v=4"></script>
+</body>
+</html>
