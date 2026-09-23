@@ -1367,7 +1367,10 @@ function registerSummaryData(type, value) {
 }
 
 function renderDashboardSummary() {
-    const fmt = (v) => v >= 1000 ? (v/1000).toFixed(1) + 'k' : v.toFixed(0);
+    // Formato brasileiro: "." para milhar e "," para decimal (ex.: 5.664,6k / 17,7k / 850)
+    const fmt = (v) => v >= 1000
+        ? (v/1000).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + 'k'
+        : v.toLocaleString('pt-BR', { maximumFractionDigits: 0 });
     const fmtR = (v) => 'R$ ' + fmt(v);
     const avg = (arr) => arr.length > 0 ? arr.reduce((s,v) => s+v, 0) / arr.length : 0;
     const sum = (arr) => arr.reduce((s,v) => s+v, 0);
