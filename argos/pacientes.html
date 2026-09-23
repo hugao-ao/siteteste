@@ -17,6 +17,21 @@
       font-size: .78rem; letter-spacing: .03em; }
     #ev-tabela .sep { border-left: 2px solid var(--argos-border); }
   </style>
+  <style>
+    .cal-grade { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; margin-top: 8px; }
+    .cal-cab { text-align: center; font-size: .72rem; font-weight: 700; color: var(--argos-text-dim); padding: 2px 0; }
+    .cal-dia { min-height: 64px; border: 1px solid var(--argos-border); border-radius: 8px; padding: 3px 4px; background: var(--argos-bg); font-size: .72rem; }
+    .cal-dia.fora { opacity: .35; } .cal-dia.hoje { border-color: var(--argos-primary); box-shadow: inset 0 0 0 1px var(--argos-primary); }
+    .cal-dia .n { color: var(--argos-text-dim); font-weight: 700; font-size: .7rem; }
+    .cal-chip { display: block; border-left: 3px solid var(--c, #94a3b8); border-radius: 5px; padding: 2px 4px; margin-top: 3px; background: color-mix(in srgb, var(--c, #94a3b8) 14%, transparent); line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: default; }
+    .cal-chip.proj { border-style: dashed; border-left-style: dashed; outline: 1px dashed color-mix(in srgb, var(--c, #94a3b8) 50%, transparent); outline-offset: -1px; background: transparent; }
+    .cal-chip b { font-weight: 700; } .cal-chip small { color: var(--argos-text-dim); }
+    .cal-legenda { display: flex; flex-wrap: wrap; gap: 8px 14px; margin-top: 10px; font-size: .75rem; color: var(--argos-text-dim); }
+    .cal-legenda .chip-status { margin-right: 2px; }
+    .cal-din { display: grid; grid-template-columns: 1fr auto; gap: 6px 12px; padding: 6px 8px; border: 1px solid var(--argos-border); border-radius: 8px; margin-bottom: 6px; font-size: .82rem; color: var(--argos-text); }
+    .cal-din.inativa { opacity: .55; } .cal-din small { display: block; color: var(--argos-text-dim); }
+    @media (max-width: 720px) { .cal-dia { min-height: 44px; } .cal-chip small { display: none; } }
+  </style>
 </head>
 <body>
   <header class="argos-topbar">
@@ -215,6 +230,29 @@
   </div>
 
   <!-- ============ MODAL: FREQUÊNCIA (todas as sessões, em tabela) ============ -->
+  <!-- ============ MODAL: CALENDÁRIO DO PACIENTE ============ -->
+  <div class="argos-modal-fundo" id="modal-calendario" data-argos-recurso="paciente_calendario">
+    <div class="argos-modal grande">
+      <div class="argos-modal-topo">
+        <h2 id="cal-titulo">📅 Calendário</h2>
+        <button class="argos-modal-x" data-fechar>×</button>
+      </div>
+      <p class="dica">Mês a mês: o que já aconteceu (com a frequência marcada) e o que as dinâmicas projetam daqui para frente
+        (tracejado). Cada sessão mostra a hora, quem atende e o tipo. Passe o mouse para o detalhe.</p>
+      <div class="pend-barra" style="align-items:center">
+        <button class="argos-btn small" id="cal-ant">‹</button>
+        <input type="month" id="cal-mes" class="argos-input" />
+        <button class="argos-btn small" id="cal-prox">›</button>
+        <button class="argos-btn small ghost" id="cal-hoje">Hoje</button>
+        <span class="dim" id="cal-resumo"></span>
+      </div>
+      <div class="cal-grade" id="cal-grade"></div>
+      <div class="cal-legenda" id="cal-legenda"></div>
+      <h3 class="form-secao" style="margin-top:14px">Dinâmicas</h3>
+      <div id="cal-dinamicas" class="dim"></div>
+    </div>
+  </div>
+
   <div class="argos-modal-fundo" id="modal-frequencia" data-argos-recurso="paciente_frequencia">
     <div class="argos-modal grande">
       <div class="argos-modal-topo">
@@ -608,7 +646,7 @@
     </div>
   </div>
 
-  <script type="module" src="pacientes.js?v=30"></script>
+  <script type="module" src="pacientes.js?v=31"></script>
   <script type="module" src="argos-zoom.js?v=4"></script>
 </body>
 </html>

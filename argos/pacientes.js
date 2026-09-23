@@ -168,6 +168,7 @@ function renderLista() {
             ${podeFinanceiro ? `<button class="argos-btn small" data-acao="financeiro" data-id="${p.id}">📱 Cobrança</button>` : ''}
             ${podeExtrato ? `<button class="argos-btn small" data-acao="extrato" data-id="${p.id}">📊 Extrato</button>` : ''}
             ${perm.pode('paciente_frequencia') ? `<button class="argos-btn small" data-acao="frequencia" data-id="${p.id}">🗓️ Frequência</button>` : ''}
+            ${perm.pode('paciente_calendario') ? `<button class="argos-btn small" data-acao="calendario" data-id="${p.id}">📅 Calendário</button>` : ''}
             ${perm.pode('evolucao_ver') ? `<button class="argos-btn small" data-acao="evolucao" data-id="${p.id}">📈 Evolução</button>` : ''}
             ${perm.pode('anamnese_ficha') ? `<a class="argos-btn small" href="anamnese.html?paciente=${p.id}">📋 Anamnese</a>` : ''}
             ${podeEditar ? `<button class="argos-btn small" data-acao="editar" data-id="${p.id}">✏️ Editar</button>` : ''}
@@ -193,6 +194,7 @@ document.getElementById('lista-pacientes').addEventListener('click', (e) => {
     if (btn.dataset.acao === 'extrato') cobUI.abrirExtrato(p, {
         dinamicas: dinamicas.filter(d => d.paciente_id === p.id) });
     if (btn.dataset.acao === 'frequencia') abrirModalFrequencia(p);
+    if (btn.dataset.acao === 'calendario') abrirModalCalendario(p);
     if (btn.dataset.acao === 'excluir') { pacienteAtual = p; document.getElementById('modal-excluir-titulo').textContent = `Excluir: ${p.nome}`; abrirModal('modal-excluir'); }
 });
 
@@ -1621,6 +1623,99 @@ fEl('form-freq-editar').addEventListener('submit', async (e) => {
     fecharModal('modal-freq-editar');
     await recarregarFrequencia();
 });
+
+// ============================================================
+// CALENDÁRIO DO PACIENTE
+// ============================================================
+// A agenda de uma pessoa só: o passado com a frequência que ficou, o futuro
+// com o que as dinâmicas projetam. Mesmo motor da agenda (mesclarSessoes),
+// mesmas cores de status; a projeção aparece tracejada.
+let calPac = null, calSessoes = [], calMes = hojeISO().slice(0, 7);
+const cEl = id => document.getElementById(id);
+
+async function abrirModalCalendario(p) {
+    calPac = p; calMes = hojeISO().slice(0, 7);
+    cEl('cal-titulo').textContent = `📅 Calendário — ${p.nome}`;
+    cEl('cal-grade').innerHTML = '<p class="dim" style="grid-column:1/-1">Carregando…</p>';
+    cEl('cal-mes').value = calMes;
+    abrirModal('modal-calendario');
+    const { data } = await todas(() => sb.from('argos_sessoes').select('*').eq('paciente_id', p.id));
+    calSessoes = aplicarCamada(data || []);
+    renderCalendario();
+}
+
+function renderCalendario() {
+    if (!calPac) return;
+    const mes = calMes;
+    const [ano, m] = mes.split('-').map(Number);
+    const primeiro = `${mes}-01`;
+    const ultimo = `${mes}-${String(new Date(ano, m, 0).getDate()).padStart(2, '0')}`;
+    const hoje = hojeISO();
+    const dins = dinamicas.filter(d => d.paciente_id === calPac.id);
+    // o fim de processo corta a projeção como na agenda
+    const c = aplicarFimDeProcesso(dins, calSessoes, [calPac]);
+    const lista = mesclarSessoes(c.dinamicas, c.sessoes, primeiro, ultimo)
+        .sort((a, b) => (a.data + a.hora).localeCompare(b.data + b.hora));
+    const porDia = new Map();
+    lista.forEach(s => { if (!porDia.has(s.data)) porDia.set(s.data, []); porDia.get(s.data).push(s); });
+
+    const tipoDe = s => {
+        const d = dins.find(x => x.id === (s.dinamica_ref || s.dinamica_id));
+        const mod = s.modalidade || (d && d.modalidade) || (s.grupo_id || (d && d.grupo_id) ? 'grupo' : 'individual');
+        const t = TIPOS_SESSAO_AVULSA[mod] || TIPOS_SESSAO_AVULSA.individual;
+        return { mod, icone: t.icone, rotulo: t.rotulo, grupo: (s.grupo_id || (d && d.grupo_id)) ? nomeGrupoFreq(s.grupo_id || (d && d.grupo_id)) : '', dinamica: d ? (d.rotulo || 'Dinâmica') : (s.id ? 'avulsa' : '') };
+    };
+    const curto = n => { const p = String(n || '—').trim().split(/\s+/); return p.length > 1 ? `${p[0]} ${p[1][0]}.` : p[0]; };
+
+    // grade: começa na segunda
+    const dow0 = (new Date(ano, m - 1, 1).getDay() + 6) % 7;
+    const dias = new Date(ano, m, 0).getDate();
+    let html = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'].map(d => `<div class="cal-cab">${d}</div>`).join('');
+    for (let i = 0; i < dow0; i++) html += '<div class="cal-dia fora"></div>';
+    const cont = { ok: 0, fj: 0, fc: 0, nc: 0, pend: 0, proj: 0 };
+    for (let d = 1; d <= dias; d++) {
+        const iso = `${mes}-${String(d).padStart(2, '0')}`;
+        const ss = porDia.get(iso) || [];
+        html += `<div class="cal-dia ${iso === hoje ? 'hoje' : ''}"><div class="n">${d}</div>${ss.map(s => {
+            const st = STATUS_SESSAO[s.status] || STATUS_SESSAO['??'];
+            const t = tipoDe(s);
+            const futura = s.status === '??' && s.data > hoje;
+            if (futura) cont.proj++; else if (s.status === '??') cont.pend++; else cont[s.status]++;
+            const prof = nomeProf(s.profissional_id);
+            const titulo = `${formataBR(s.data)} ${s.hora} · ${prof}${s.repasse_profissional_id && s.repasse_profissional_id !== s.profissional_id ? ` (paga a ${nomeProf(s.repasse_profissional_id)})` : ''} · ${t.icone} ${t.rotulo}${t.grupo && t.mod === 'grupo' ? ': ' + t.grupo : ''}${t.dinamica ? ' · ' + t.dinamica : ''} · ${nomeSala(s.sala_id)} · ${futura ? 'projetada' : st.label + ' — ' + st.desc}${s.justificativa ? ' · 📝 ' + s.justificativa : ''}${s.remarcada_de_data ? ' · ↪️ remarcada de ' + formataBR(s.remarcada_de_data) : ''}${s.conferida ? ' · ✔ conferida' : ''}`;
+            return `<span class="cal-chip ${futura ? 'proj' : ''}" style="--c:${st.cor}" title="${esc(titulo)}"><b>${esc(s.hora)}</b> ${t.icone} ${esc(curto(prof))} <small>${futura ? '' : st.label}${s.remarcada_de_data ? ' ↪️' : ''}</small></span>`;
+        }).join('')}</div>`;
+    }
+    cEl('cal-grade').innerHTML = html;
+    cEl('cal-resumo').textContent = lista.length
+        ? `${lista.length} sessão(ões) · Ok ${cont.ok} · Fj ${cont.fj} · Fc ${cont.fc} · Nc ${cont.nc}${cont.pend ? ` · sem preenchimento ${cont.pend}` : ''}${cont.proj ? ` · projetadas ${cont.proj}` : ''}`
+        : 'Nenhuma sessão neste mês.';
+    cEl('cal-legenda').innerHTML = ['ok', 'fj', 'fc', 'nc', '??'].map(k => `<span><span class="chip-status" style="--c:${STATUS_SESSAO[k].cor}">${STATUS_SESSAO[k].label}</span> ${esc(STATUS_SESSAO[k].desc)}</span>`).join('')
+        + '<span><span class="cal-chip proj" style="--c:#94a3b8;display:inline-block;padding:0 6px">tracejado</span> projetada pela dinâmica</span>'
+        + Object.values(TIPOS_SESSAO_AVULSA).map(t => `<span>${t.icone} ${esc(t.rotulo)}</span>`).join('');
+
+    // dinâmicas do paciente, vigentes primeiro
+    const vig = d => d.ativo !== false && (!d.fim_data || d.fim_data >= hoje);
+    cEl('cal-dinamicas').innerHTML = dins.length ? dins.slice().sort((a, b) => (vig(b) - vig(a)) || String(b.data_inicio || '').localeCompare(String(a.data_inicio || ''))).map(d => {
+        const t = TIPOS_SESSAO_AVULSA[d.modalidade] || (d.grupo_id ? TIPOS_SESSAO_AVULSA.grupo : TIPOS_SESSAO_AVULSA.individual);
+        const dias = Array.isArray(d.dias) ? d.dias.map(x => typeof x === 'object' ? `${DOW_NOMES[x.dow]} ${x.hora || ''}` : DOW_NOMES[x]).join(', ') : '';
+        return `<div class="cal-din ${vig(d) ? '' : 'inativa'}">
+          <span><b>${esc(d.rotulo || 'Dinâmica')}</b> · ${t.icone} ${esc(t.rotulo)}${d.grupo_id && nomeGrupoFreq(d.grupo_id) ? ': ' + esc(nomeGrupoFreq(d.grupo_id)) : ''}
+            <small>🧑‍⚕️ ${esc(nomeProf(d.profissional_id))}${dias ? ' · ' + esc(dias) : ''}${d.sala_id ? ' · 🚪 ' + esc(nomeSala(d.sala_id)) : ''}</small></span>
+          <span><small>${d.data_inicio ? 'desde ' + formataBR(d.data_inicio) : ''}${d.fim_data ? ' até ' + formataBR(d.fim_data) : ''}${vig(d) ? '' : ' · encerrada'}</small></span>
+        </div>`;
+    }).join('') : 'Nenhuma dinâmica cadastrada.';
+}
+
+function calMudar(delta) {
+    let [a, m] = calMes.split('-').map(Number); m += delta;
+    if (m > 12) { m = 1; a++; } if (m < 1) { m = 12; a--; }
+    calMes = `${a}-${String(m).padStart(2, '0')}`; cEl('cal-mes').value = calMes; renderCalendario();
+}
+cEl('cal-ant').addEventListener('click', () => calMudar(-1));
+cEl('cal-prox').addEventListener('click', () => calMudar(1));
+cEl('cal-hoje').addEventListener('click', () => { calMes = hojeISO().slice(0, 7); cEl('cal-mes').value = calMes; renderCalendario(); });
+cEl('cal-mes').addEventListener('change', () => { if (cEl('cal-mes').value) { calMes = cEl('cal-mes').value; renderCalendario(); } });
 
 // ============================================================
 // INÍCIO
