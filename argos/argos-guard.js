@@ -68,7 +68,37 @@
         document.getElementById('btn-voltar-mestre').addEventListener('click', voltarAoMestre);
     }
 
+    // Janelas: os módulos abrem em pop-ups a partir da home. Cada página
+    // ganha um botão 🔄 que a recarrega, e a home avisa por este canal para
+    // TODAS as janelas abertas recarregarem de uma vez.
+    var CANAL_JANELAS = 'argos-janelas';
+    try {
+        var canal = new BroadcastChannel(CANAL_JANELAS);
+        canal.onmessage = function (e) {
+            if (!e.data || e.data.tipo !== 'recarregar') return;
+            if (e.data.origem && e.data.origem === window.name) return; // quem pediu não se recarrega
+            window.location.reload();
+        };
+    } catch (e) {}
+    window.argosRecarregarJanelas = function () {
+        try { new BroadcastChannel(CANAL_JANELAS).postMessage({ tipo: 'recarregar', origem: window.name, quando: Date.now() }); } catch (e) {}
+    };
+
+    function montarBotaoRecarregar() {
+        var acoes = document.querySelector('.argos-topbar .actions');
+        if (!acoes || document.getElementById('btn-recarregar')) return;
+        var b = document.createElement('button');
+        b.id = 'btn-recarregar';
+        b.className = 'argos-btn ghost';
+        b.title = 'Recarregar esta janela com o que está no banco agora';
+        b.textContent = '🔄';
+        b.addEventListener('click', function () { window.location.reload(); });
+        var sair = document.getElementById('btn-logout');
+        acoes.insertBefore(b, sair || null);
+    }
+
     document.addEventListener('DOMContentLoaded', function () {
+        montarBotaoRecarregar();
         // Logout padrão de todas as páginas da área
         var b = document.getElementById('btn-logout');
         if (b) b.addEventListener('click', function () {

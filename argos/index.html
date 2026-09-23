@@ -12,13 +12,15 @@
     <div class="brand">ARGOS <span>GESTÃO</span></div>
     <div class="actions">
       <span class="dim" id="quem-logado" style="margin-right:10px;font-size:13px"></span>
+      <button class="argos-btn ghost" id="btn-recarregar-todas" title="Recarrega todas as janelas abertas a partir daqui">🔄 Atualizar janelas abertas</button>
       <button class="argos-btn danger" id="btn-logout">Sair</button>
     </div>
   </header>
 
   <main class="argos-home">
     <h1>Painel de Gestão</h1>
-    <p class="sub">Selecione um módulo para começar.</p>
+    <p class="sub">Cada módulo abre numa janela própria — dá para deixar vários abertos ao mesmo tempo. Clicar de novo traz a janela para frente;
+      Ctrl+clique abre numa aba. Cada janela tem o 🔄 para recarregar; o botão aqui em cima recarrega todas.</p>
 
     <div class="argos-cards-grid" id="cards-grid">
       <a class="argos-card-nav" data-key="pacientes" data-argos-recurso="card_home_pacientes" href="pacientes.html">
@@ -100,6 +102,41 @@
   const visiveis = Array.from(document.querySelectorAll('.argos-card-nav'))
       .filter(c => c.style.display !== 'none');
   if (!visiveis.length) document.getElementById('home-vazio').style.display = '';
+
+  // ---- módulos em janelas próprias ----
+  // Uma janela nomeada por módulo: clicar de novo foca a que já existe, em
+  // vez de abrir cópia. Ctrl/Cmd/botão do meio mantém o comportamento de aba.
+  const janelas = new Map();
+  let cascata = 0;
+  function abrirModulo(card) {
+      const nome = 'argos_' + card.dataset.key;
+      const existente = janelas.get(nome);
+      if (existente && !existente.closed) { existente.focus(); return; }
+      const larg = Math.min(1440, Math.round(screen.availWidth * 0.92));
+      const alt = Math.min(1000, Math.round(screen.availHeight * 0.9));
+      const desloc = (cascata++ % 6) * 28;
+      const w = window.open(card.href, nome,
+          `popup=yes,width=${larg},height=${alt},left=${Math.max(0, Math.round((screen.availWidth - larg) / 2) + desloc)},top=${Math.max(0, 40 + desloc)},resizable=yes,scrollbars=yes`);
+      if (!w) { window.location.href = card.href; return; } // pop-up bloqueado: navega normal
+      janelas.set(nome, w);
+      w.focus();
+  }
+  document.getElementById('cards-grid').addEventListener('click', e => {
+      const card = e.target.closest('.argos-card-nav');
+      if (!card || e.ctrlKey || e.metaKey || e.shiftKey || e.button === 1) return;
+      e.preventDefault();
+      abrirModulo(card);
+  });
+  document.getElementById('btn-recarregar-todas').addEventListener('click', () => {
+      // as que esta home abriu, direto; as demais (abertas por outra home ou
+      // por outra janela) pelo canal — o argos-guard.js de cada uma escuta
+      let n = 0;
+      for (const [nome, w] of janelas) { if (w.closed) janelas.delete(nome); else { try { w.location.reload(); n++; } catch (x) {} } }
+      if (window.argosRecarregarJanelas) window.argosRecarregarJanelas();
+      const b = document.getElementById('btn-recarregar-todas');
+      const txt = b.textContent; b.textContent = n ? `🔄 ${n} janela(s) recarregada(s)` : '🔄 Aviso enviado às janelas'; b.disabled = true;
+      setTimeout(() => { b.textContent = txt; b.disabled = false; }, 1800);
+  });
   </script>
   <script type="module" src="argos-zoom.js?v=4"></script>
 </body>
