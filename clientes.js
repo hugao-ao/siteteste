@@ -190,7 +190,9 @@ async function initializeDashboard() {
                     whatsapp: whatsapp || null,
                     projeto: projeto,
                     criado_por_id: currentUserId,
-                    status: 'NOVO'
+                    status: 'NOVO',
+                    // A indicação acompanha o cliente quando ele volta a ser lead
+                    indicado_por_cliente_id: row?.dataset.indicadoPorClienteId || null
                 });
                 if (leadErr) throw leadErr;
                 // 2. Delete client (cascade should handle related data, or keep it orphaned)
@@ -333,6 +335,28 @@ async function initializeDashboard() {
     // Pendencias cell click listener (delegated)
     if (clientsTableBody) {
         clientsTableBody.addEventListener('click', (e) => {
+            // Chips de indicação: ir até quem indicou / filtrar quem este cliente indicou
+            const recGoto = e.target.closest('.rec-chip[data-goto]');
+            if (recGoto) {
+                const alvo = clientsTableBody.querySelector(`tr[data-client-id="${recGoto.dataset.goto}"]`);
+                if (alvo) {
+                    alvo.classList.remove('tipo-hidden');
+                    alvo.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    alvo.classList.add('rec-highlight');
+                    setTimeout(() => alvo.classList.remove('rec-highlight'), 2500);
+                }
+                return;
+            }
+            const recFilter = e.target.closest('.rec-chip[data-filter]');
+            if (recFilter) {
+                const filtro = document.getElementById('filter-indicado');
+                if (filtro) {
+                    filtro.value = filtro.value === recFilter.dataset.filter ? 'todos' : recFilter.dataset.filter;
+                    applyAllFilters();
+                }
+                return;
+            }
+
             const pendCell = e.target.closest('.pend-cell.clickable');
             if (pendCell) {
                 const clientId = pendCell.dataset.clientId;
@@ -365,7 +389,7 @@ async function initializeDashboard() {
 
             // Tipo cell click - open CPF/WhatsApp sync modal (only if not clicking the select)
             const tipoCell = e.target.closest('.tipo-cell');
-            if (tipoCell && !e.target.matches('select, option')) {
+            if (tipoCell && !e.target.matches('select, option, input')) {
                 const clientId = tipoCell.dataset.clientId;
                 const row = tipoCell.closest('tr');
                 const clientName = row ? (row.querySelector('.client-name')?.value || row.querySelector('td')?.textContent?.trim() || '') : '';
@@ -519,6 +543,10 @@ async function loadClients(filterProject = null) {
             row.dataset.originalLogin = client.login || '';
             row.dataset.originalSenha = client.senha || '';
             row.dataset.originalSituacao = client.situacao || 'ATIVO';
+            // Indicação (quem indicou este cliente): id de outro cliente ou texto livre
+            row.dataset.indicadoPorClienteId = client.indicado_por_cliente_id || '';
+            row.dataset.originalIndicadoPor = client.indicado_por_cliente_id || '';
+            row.dataset.originalIndicadoNome = client.indicado_por_nome || '';
 
             // Permissões de Edição da Linha
             // Admin pode editar tudo
@@ -569,12 +597,17 @@ async function loadClients(filterProject = null) {
             row.innerHTML = `
                 <td data-label="Nome">
                     <input type="text" class="client-name" value="${sanitizeInput(client.nome)}" ${!canEdit ? 'disabled' : ''}>
+                    <div class="rec-chip-wrap" data-client-id="${client.id}"></div>
                 </td>
                 <td data-label="Tipo" class="tipo-cell" data-client-id="${client.id}" style="cursor:pointer;">
                     <select class="client-tipo-select" data-client-id="${client.id}" style="font-size:0.75rem;padding:0.2rem 0.4rem;border-radius:4px;border:1px solid rgba(34,197,94,0.4);background:rgba(34,197,94,0.15);color:#22c55e;font-weight:600;cursor:pointer;" ${!canEdit ? 'disabled' : ''}>
                         <option value="cliente" selected>CLIENTE</option>
                         <option value="lead">LEAD</option>
                     </select>
+                    <select class="client-indicado-select" data-client-id="${client.id}" title="Indicado por" style="font-size:0.7rem;padding:0.15rem 0.3rem;border-radius:4px;border:1px solid var(--theme-border-color);background:rgba(0,0,0,0.2);color:var(--theme-text-muted);margin-top:3px;max-width:130px;display:block;" ${!canEdit ? 'disabled' : ''}>
+                        <option value="">-- Indicado por --</option>
+                    </select>
+                    <input type="text" class="client-indicado-nome" value="${sanitizeInput(client.indicado_por_nome || '')}" placeholder="Quem indicou" title="Nome de quem indicou (não cadastrado)" style="display:none;font-size:0.7rem;padding:0.15rem 0.3rem;max-width:130px;margin-top:3px;" ${!canEdit ? 'disabled' : ''}>
                 </td>
                 <td data-label="WhatsApp">
                     <div class="whatsapp-cell">
@@ -684,6 +717,8 @@ async function loadClients(filterProject = null) {
 
         // Populate indicado_por filter after clients and leads are loaded
         populateIndicadoFilter();
+        populateClientIndicadoSelects();
+        renderRecChips();
         
         // Carregar dados para mensagens em background (mesma ordem do original)
         await loadMensagens();
@@ -1518,10 +1553,24 @@ function markClientAsModified(event) {
     }
 
     // Verifica se é um campo editável de cliente
-    if (!target.matches('.client-name, .client-whatsapp, .client-project, .client-visibility, .client-assigned-to, .client-login, .client-senha, .situacao-select')) return;
+    if (!target.matches('.client-name, .client-whatsapp, .client-project, .client-visibility, .client-assigned-to, .client-login, .client-senha, .situacao-select, .client-indicado-select, .client-indicado-nome')) return;
 
     const row = target.closest('tr');
     const clientId = row.dataset.clientId;
+
+    // Indicação: mostra o campo de texto só quando "Outro" está escolhido e mantém o chip/filtro em dia
+    const indicadoSelect = row.querySelector('.client-indicado-select');
+    const indicadoNomeInput = row.querySelector('.client-indicado-nome');
+    const currentIndicado = indicadoSelect ? (indicadoSelect.value === '__outro__' ? '' : indicadoSelect.value) : (row.dataset.originalIndicadoPor || '');
+    const currentIndicadoNome = indicadoSelect
+        ? (indicadoSelect.value === '__outro__' ? (indicadoNomeInput?.value.trim() || '') : '')
+        : (row.dataset.originalIndicadoNome || '');
+    if (indicadoSelect && indicadoNomeInput) {
+        indicadoNomeInput.style.display = indicadoSelect.value === '__outro__' ? 'block' : 'none';
+        if (target === indicadoSelect && indicadoSelect.value === '__outro__') indicadoNomeInput.focus();
+    }
+    row.dataset.indicadoPorClienteId = currentIndicado;
+    if (target.matches('.client-indicado-select, .client-indicado-nome')) renderRecChips();
     
     // Verificar se houve mudança real
     const currentNome = row.querySelector('.client-name').value;
@@ -1561,7 +1610,9 @@ function markClientAsModified(event) {
         currentSenha !== originalSenha ||
         currentVisibility !== originalVisibility ||
         currentAssignedTo !== originalAssignedTo ||
-        currentSituacao !== originalSituacao;
+        currentSituacao !== originalSituacao ||
+        currentIndicado !== (row.dataset.originalIndicadoPor || '') ||
+        currentIndicadoNome !== (row.dataset.originalIndicadoNome || '');
 
     if (hasChanged) {
         row.classList.add('modified');
@@ -1624,7 +1675,16 @@ async function saveAllClientChanges() {
         if (visibility !== undefined) clientUpdate.visibility = visibility;
         if (assigned_to_user_id !== undefined) clientUpdate.assigned_to_user_id = assigned_to_user_id;
         if (situacao !== undefined) clientUpdate.situacao = situacao;
-        
+
+        // Indicação: id de outro cliente OU texto livre ("Outro"), nunca os dois
+        const indicadoSel = row.querySelector('.client-indicado-select');
+        if (indicadoSel) {
+            clientUpdate.indicado_por_cliente_id = (indicadoSel.value && indicadoSel.value !== '__outro__') ? indicadoSel.value : null;
+            clientUpdate.indicado_por_nome = indicadoSel.value === '__outro__'
+                ? (row.querySelector('.client-indicado-nome')?.value.trim() || null)
+                : null;
+        }
+
         updates.push(clientUpdate);
 
         // Objeto de atualização para tabela dados_cadastrais (WhatsApp)
@@ -1690,9 +1750,15 @@ async function saveAllClientChanges() {
             if (update.senha !== undefined) row.dataset.originalSenha = update.senha;
             if (update.visibility !== undefined) row.dataset.originalVisibility = update.visibility;
             if (update.assigned_to_user_id !== undefined) row.dataset.originalAssignedTo = update.assigned_to_user_id || '';
-            
+            if (update.indicado_por_cliente_id !== undefined) {
+                row.dataset.originalIndicadoPor = update.indicado_por_cliente_id || '';
+                row.dataset.indicadoPorClienteId = update.indicado_por_cliente_id || '';
+                row.dataset.originalIndicadoNome = update.indicado_por_nome || '';
+            }
+
             row.classList.remove('modified');
         });
+        renderRecChips();
         
         // Atualizar originais de WhatsApp também
         whatsappUpdates.forEach(update => {
@@ -4236,11 +4302,15 @@ async function loadAndRenderLeads(filterProject) {
                             // 1. Create client
                             const { data: newClient, error: clientErr } = await supabase.from('clientes').insert({
                                 nome: leadNome,
+                                whatsapp: leadWhats || '',
                                 projeto: projeto,
                                 login: '',
                                 senha: '',
                                 visibility: 'INDIVIDUAL',
-                                assigned_to_user_id: currentUserId
+                                assigned_to_user_id: currentUserId,
+                                criado_por_id: currentUserId,
+                                // A indicação acompanha o lead quando ele vira cliente
+                                indicado_por_cliente_id: (row.querySelector('.lead-indicado-select')?.value || leadData?.indicado_por_cliente_id || null)
                             }).select().single();
                             if (clientErr) throw clientErr;
                             // 2. Create dados_cadastrais with whatsapp
@@ -5026,6 +5096,70 @@ function applyAllFilters() {
         } else {
             row.classList.add('tipo-hidden');
         }
+    });
+}
+
+// Preenche o seletor "Indicado por" de cada linha de cliente (depois que allClientes existe)
+function populateClientIndicadoSelects() {
+    const rows = clientsTableBody ? clientsTableBody.querySelectorAll('tr[data-client-id]') : [];
+    rows.forEach(row => {
+        const sel = row.querySelector('.client-indicado-select');
+        if (!sel) return;
+        const atual = row.dataset.originalIndicadoPor || '';
+        const nomeTexto = row.dataset.originalIndicadoNome || '';
+        let html = '<option value="">-- Indicado por --</option>';
+        let atualNaLista = false;
+        for (const c of allClientes) {
+            if (c.id === row.dataset.clientId) continue;
+            if (c.id === atual) atualNaLista = true;
+            html += `<option value="${c.id}" ${atual === c.id ? 'selected' : ''}>${sanitizeInput(c.nome)}</option>`;
+        }
+        if (atual && !atualNaLista) html += `<option value="${atual}" selected>Cliente fora deste filtro</option>`;
+        html += `<option value="__outro__" ${!atual && nomeTexto ? 'selected' : ''}>Outro (nome livre)...</option>`;
+        sel.innerHTML = html;
+        const inp = row.querySelector('.client-indicado-nome');
+        if (inp) inp.style.display = sel.value === '__outro__' ? 'block' : 'none';
+    });
+}
+
+// Desenha, sob o nome de cada cliente, os chips "REC quem indicou" e "indicou N"
+function renderRecChips() {
+    if (!clientsTableBody) return;
+    const nomes = {};
+    allClientes.forEach(c => { nomes[c.id] = c.nome; });
+    const indicados = {}; // id de quem indicou -> nomes dos indicados (clientes e leads)
+    const leituraCliente = (row) => {
+        const sel = row.querySelector('.client-indicado-select');
+        const id = sel ? (sel.value === '__outro__' ? '' : sel.value) : (row.dataset.indicadoPorClienteId || '');
+        const texto = sel
+            ? (sel.value === '__outro__' ? (row.querySelector('.client-indicado-nome')?.value.trim() || '') : '')
+            : (id ? '' : (row.dataset.originalIndicadoNome || ''));
+        return { id, texto };
+    };
+    clientsTableBody.querySelectorAll('tr[data-client-id]').forEach(row => {
+        const { id } = leituraCliente(row);
+        if (id) (indicados[id] = indicados[id] || []).push(row.querySelector('.client-name')?.value || '');
+    });
+    clientsTableBody.querySelectorAll('tr.lead-row').forEach(row => {
+        const sel = row.querySelector('.lead-indicado-select');
+        const id = sel ? sel.value : (row.dataset.originalLeadIndicadoPor || '');
+        if (id) (indicados[id] = indicados[id] || []).push((row.querySelector('.lead-name-input')?.value || '') + ' (lead)');
+    });
+    clientsTableBody.querySelectorAll('tr[data-client-id]').forEach(row => {
+        const wrap = row.querySelector('.rec-chip-wrap');
+        if (!wrap) return;
+        const { id, texto } = leituraCliente(row);
+        let html = '';
+        if (id) {
+            html += `<span class="rec-chip" data-goto="${id}" title="Indicado por ${sanitizeInput(nomes[id] || 'cliente')}. Clique para ir até o cliente."><i class="fas fa-share"></i> REC ${sanitizeInput(nomes[id] || 'cliente')}</span>`;
+        } else if (texto) {
+            html += `<span class="rec-chip rec-texto" title="Indicado por ${sanitizeInput(texto)} (não cadastrado no sistema)"><i class="fas fa-share"></i> REC ${sanitizeInput(texto)}</span>`;
+        }
+        const lista = indicados[row.dataset.clientId];
+        if (lista && lista.length) {
+            html += `<span class="rec-chip rec-indicou" data-filter="${row.dataset.clientId}" title="Indicou: ${sanitizeInput(lista.join(', '))}. Clique para filtrar."><i class="fas fa-users"></i> indicou ${lista.length}</span>`;
+        }
+        wrap.innerHTML = html;
     });
 }
 

@@ -180,6 +180,14 @@
     .pend-cell.clickable:hover { background: rgba(218,165,32,0.08); }
     .fin-patrimonio, .fin-dividas, .tipo-cell { cursor: pointer; transition: background 0.2s; border-radius: 4px; }
     .fin-patrimonio:hover, .fin-dividas:hover, .tipo-cell:hover { background: rgba(218,165,32,0.08); }
+    /* Indicações: chips sob o nome do cliente ("REC quem indicou" / "indicou N") */
+    .rec-chip-wrap { display: flex; flex-wrap: wrap; gap: 3px; margin-top: 3px; }
+    .rec-chip { display: inline-flex; align-items: center; gap: 4px; font-size: 0.66rem; line-height: 1.4; padding: 1px 7px; border-radius: 10px; background: rgba(218,165,32,0.12); color: var(--theme-secondary-lighter); border: 1px solid rgba(218,165,32,0.3); cursor: pointer; white-space: nowrap; }
+    .rec-chip:hover { background: rgba(218,165,32,0.25); }
+    .rec-chip.rec-texto { cursor: default; opacity: 0.85; }
+    .rec-chip.rec-indicou { background: rgba(96,165,250,0.12); color: #60a5fa; border-color: rgba(96,165,250,0.3); }
+    .rec-chip.rec-indicou:hover { background: rgba(96,165,250,0.25); }
+    tr.rec-highlight td { background: rgba(218,165,32,0.22) !important; transition: background 0.4s; }
     /* Action buttons for objetivos/particularidades */
     .obj-action-btn, .partic-action-btn {
         background: none; border: none; cursor: pointer; padding: 0.2rem 0.4rem;
@@ -1403,6 +1411,10 @@
           <option value="todos">Todos</option>
           <option value="cliente">Clientes</option>
           <option value="lead">Leads</option>
+        </select>
+        <select id="filter-indicado" title="Filtrar por quem indicou" style="padding:0.5rem 0.8rem;border-radius:6px;border:1px solid var(--theme-border-color);background:rgba(0,0,0,0.2);color:var(--theme-text-light);font-size:0.85rem;max-width:220px;">
+          <option value="todos">Indicado por: todos</option>
+          <option value="nenhum">Sem indicação</option>
         </select>
         <button id="add-lead-btn" style="padding:0.5rem 1rem;border-radius:6px;border:1px solid rgba(96,165,250,0.4);background:rgba(96,165,250,0.1);color:#60a5fa;font-size:0.85rem;font-weight:600;cursor:pointer;transition:all 0.2s;"><i class="fas fa-user-plus"></i> Novo Lead</button>
         <button id="refresh-summary-btn" title="Atualizar resumo" style="padding:0.5rem 0.7rem;border-radius:6px;border:1px solid var(--theme-border-color);background:rgba(0,0,0,0.15);color:var(--theme-text-muted);font-size:0.85rem;cursor:pointer;transition:all 0.2s;" onmouseover="this.style.color='var(--theme-secondary-lighter)';this.style.borderColor='var(--theme-secondary-lighter)'" onmouseout="this.style.color='var(--theme-text-muted)';this.style.borderColor='var(--theme-border-color)'"><i class="fas fa-sync-alt"></i></button>
