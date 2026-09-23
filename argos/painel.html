@@ -32,6 +32,19 @@
     .pn-mini th, .pn-mini td { padding: 5px 8px; border-bottom: 1px solid var(--argos-border); text-align: left; }
     .pn-mini td.num, .pn-mini th.num { text-align: right; }
     .pn-duas { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; }
+    .pg-tab { font-size: .82rem; }
+    .pg-tab th, .pg-tab td { padding: 5px 7px; white-space: nowrap; }
+    .pg-tab td.num, .pg-tab th.num { text-align: right; }
+    .pg-tab td a.nome { font-weight: 700; color: var(--argos-text); text-decoration: none; }
+    .pg-tab td a.nome:hover { color: var(--argos-primary); }
+    .pg-tab .alerta { color: var(--argos-warn); font-weight: 700; } .pg-tab .erro { color: var(--argos-danger); font-weight: 700; }
+    .pg-fila { display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: center; padding: 7px 10px; border: 1px solid var(--argos-border); border-radius: 10px; }
+    .pg-fila .n { font-size: 1.25rem; font-weight: 800; min-width: 44px; text-align: right; }
+    .pg-fila.zero { opacity: .5; } .pg-fila.zero .n { color: var(--argos-success); }
+    .pg-fila.alerta .n { color: var(--argos-warn); } .pg-fila.erro .n { color: var(--argos-danger); }
+    .pg-fila small { display: block; color: var(--argos-text-dim); }
+    .pg-linhas { font-size: .9rem; line-height: 1.7; } .pg-linhas b { float: right; }
+    .pg-linhas div { border-bottom: 1px dashed var(--argos-border); }
   </style>
 </head>
 <body>
@@ -55,6 +68,39 @@
       <span class="dim" id="pn-carregando">Carregando…</span>
     </div>
 
+    <!-- ===== Visão geral da clínica (escopo geral) ===== -->
+    <div id="pn-gestao" data-argos-recurso="painel_gestao" style="display:none">
+      <div class="pn-grade" id="pg-kpis"></div>
+
+      <div class="pn-secao">
+        <h2>🧑‍⚕️ Profissionais lado a lado <span class="dim" style="font-size:.8rem;font-weight:400">clique no nome para abrir o painel dele</span></h2>
+        <div class="argos-tabela-wrap"><table class="argos-tabela compacta pg-tab" id="pg-profs"></table></div>
+      </div>
+
+      <div class="pn-duas">
+        <div class="pn-secao">
+          <h2>📋 O que precisa de ação agora</h2>
+          <div id="pg-filas" class="pn-lista"></div>
+        </div>
+        <div class="pn-secao">
+          <h2>💸 Pacientes em atraso <span class="badge vermelho" id="pg-atraso-qtd"></span></h2>
+          <div id="pg-atrasos" class="pn-lista"></div>
+        </div>
+      </div>
+
+      <div class="pn-duas">
+        <div class="pn-secao">
+          <h2>🏦 Caixa, entradas e saídas</h2>
+          <div id="pg-caixa"></div>
+        </div>
+        <div class="pn-secao">
+          <h2>🧑‍🤝‍🧑 Pacientes</h2>
+          <div id="pg-pacientes"></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="pn-individual">
     <div id="pn-financeiro" data-argos-recurso="painel_financeiro">
       <div class="pn-grade" id="pn-kpis"></div>
 
@@ -94,9 +140,10 @@
         <div id="pn-freq"></div>
       </div>
     </div>
+    </div><!-- /pn-individual -->
   </main>
 
-  <script type="module" src="painel.js?v=1"></script>
+  <script type="module" src="painel.js?v=2"></script>
   <script type="module" src="argos-zoom.js?v=4"></script>
 </body>
 </html>
