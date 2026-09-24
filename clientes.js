@@ -192,7 +192,8 @@ async function initializeDashboard() {
                     criado_por_id: currentUserId,
                     status: 'NOVO',
                     // A indicação acompanha o cliente quando ele volta a ser lead
-                    indicado_por_cliente_id: row?.dataset.indicadoPorClienteId || null
+                    indicado_por_cliente_id: row?.dataset.indicadoPorClienteId || null,
+                    indicado_por_nome: (!row?.dataset.indicadoPorClienteId && row?.dataset.originalIndicadoNome) ? row.dataset.originalIndicadoNome : null
                 });
                 if (leadErr) throw leadErr;
                 // 2. Delete client (cascade should handle related data, or keep it orphaned)
@@ -295,6 +296,9 @@ async function initializeDashboard() {
     // Filter indicado por
     const filterIndicado = document.getElementById('filter-indicado');
     if (filterIndicado) filterIndicado.addEventListener('change', applyAllFilters);
+    // Filter status do lead
+    const filterLeadStatus = document.getElementById('filter-lead-status');
+    if (filterLeadStatus) filterLeadStatus.addEventListener('change', applyAllFilters);
     // Close modals on backdrop click
     window.addEventListener('click', (e) => {
         if (e.target === planoRefModal) planoRefModal.style.display = 'none';
@@ -529,6 +533,8 @@ async function loadClients(filterProject = null) {
             if (!dadosError && dadosCadastrais) {
                 whatsapp = dadosCadastrais.whatsapp || "";
             }
+            // Sem dados cadastrais (ou sem WhatsApp neles): usa o WhatsApp gravado no próprio cliente
+            if (!whatsapp) whatsapp = client.whatsapp || "";
             // Guardar dados_cadastrais no objeto client para uso nas mensagens
             client._dadosCadastrais = dadosCadastrais || {};
 
@@ -719,6 +725,7 @@ async function loadClients(filterProject = null) {
         populateIndicadoFilter();
         populateClientIndicadoSelects();
         renderRecChips();
+        applyAllFilters();
         
         // Carregar dados para mensagens em background (mesma ordem do original)
         await loadMensagens();
@@ -1474,6 +1481,9 @@ async function addClient(event) {
     const whatsapp = newClientWhatsappInput.value.trim();
     const projeto = newClientProjectSelect.value;
     const visibility = newClientVisibilitySelect ? newClientVisibilitySelect.value : 'INDIVIDUAL';
+    const selIndicadoNovo = document.getElementById('new-client-indicado')?.value || '';
+    const indicadoNovoId = selIndicadoNovo && selIndicadoNovo !== '__outro__' ? selIndicadoNovo : null;
+    const indicadoNovoNome = selIndicadoNovo === '__outro__' ? (document.getElementById('new-client-indicado-nome')?.value.trim() || null) : null;
 
     if (!nome || !whatsapp || !projeto) {
         alert("Por favor, preencha todos os campos obrigatórios.");
@@ -1490,7 +1500,9 @@ async function addClient(event) {
                 projeto, 
                 criado_por_id: currentUserId,
                 visibility: visibility,
-                assigned_to_user_id: visibility === 'INDIVIDUAL' ? currentUserId : null // Se individual, atribui a quem criou
+                assigned_to_user_id: visibility === 'INDIVIDUAL' ? currentUserId : null, // Se individual, atribui a quem criou
+                indicado_por_cliente_id: indicadoNovoId,
+                indicado_por_nome: indicadoNovoNome
             }])
             .select()
             .maybeSingle();
@@ -1516,6 +1528,10 @@ async function addClient(event) {
         // Limpar formulário e recarregar
         newClientNameInput.value = "";
         newClientWhatsappInput.value = "";
+        const selIndNovo = document.getElementById('new-client-indicado');
+        const inpIndNovo = document.getElementById('new-client-indicado-nome');
+        if (selIndNovo) selIndNovo.value = '';
+        if (inpIndNovo) { inpIndNovo.value = ''; inpIndNovo.style.display = 'none'; }
         // newClientProjectSelect.value = ""; // Mantém o projeto selecionado para facilitar
         alert("Cliente adicionado com sucesso!");
         loadClients(currentUserProjeto); // Recarrega com o filtro atual
@@ -1531,16 +1547,25 @@ function markClientAsModified(event) {
     const target = event.target;
 
     // Handle lead fields
-    if (target.matches('.lead-name-input, .lead-whatsapp-input, .lead-indicado-select')) {
+    if (target.matches('.lead-name-input, .lead-whatsapp-input, .lead-indicado-select, .lead-indicado-nome')) {
         const row = target.closest('tr');
         if (!row || row.dataset.tipo !== 'lead') return;
         const leadId = row.dataset.leadId;
         const curNome = (row.querySelector('.lead-name-input')?.value || '');
         const curWhats = (row.querySelector('.lead-whatsapp-input')?.value || '');
-        const curIndicado = (row.querySelector('.lead-indicado-select')?.value || '');
+        const selInd = row.querySelector('.lead-indicado-select')?.value || '';
+        const inpInd = row.querySelector('.lead-indicado-nome');
+        const curIndicado = selInd === '__outro__' ? '' : selInd;
+        const curIndicadoNome = selInd === '__outro__' ? (inpInd?.value.trim() || '') : '';
+        if (inpInd) {
+            inpInd.style.display = selInd === '__outro__' ? 'block' : 'none';
+            if (target.matches('.lead-indicado-select') && selInd === '__outro__') inpInd.focus();
+        }
+        if (target.matches('.lead-indicado-select, .lead-indicado-nome')) renderRecChips();
         const hasChanged = curNome !== row.dataset.originalLeadNome ||
                            curWhats !== row.dataset.originalLeadWhatsapp ||
-                           curIndicado !== row.dataset.originalLeadIndicadoPor;
+                           curIndicado !== row.dataset.originalLeadIndicadoPor ||
+                           curIndicadoNome !== (row.dataset.originalLeadIndicadoNome || '');
         if (hasChanged) {
             row.classList.add('modified');
             modifiedClientIds.add('lead_' + leadId);
@@ -1647,8 +1672,10 @@ async function saveAllClientChanges() {
             if (!row) return;
             const nome = row.querySelector('.lead-name-input')?.value.trim() || '';
             const whatsapp = row.querySelector('.lead-whatsapp-input')?.value.trim() || '';
-            const indicadoPor = row.querySelector('.lead-indicado-select')?.value || null;
-            leadUpdates.push({ id: leadId, nome, whatsapp, indicado_por_cliente_id: indicadoPor || null, row });
+            const selInd = row.querySelector('.lead-indicado-select')?.value || '';
+            const indicadoPor = selInd && selInd !== '__outro__' ? selInd : null;
+            const indicadoNome = selInd === '__outro__' ? (row.querySelector('.lead-indicado-nome')?.value.trim() || null) : null;
+            leadUpdates.push({ id: leadId, nome, whatsapp, indicado_por_cliente_id: indicadoPor, indicado_por_nome: indicadoNome, row });
             return;
         }
 
@@ -1670,8 +1697,9 @@ async function saveAllClientChanges() {
         const situacaoSel = row.querySelector('.situacao-select');
         const situacao = situacaoSel ? situacaoSel.value : undefined;
 
-        // Objeto de atualização para tabela clientes
+        // Objeto de atualização para tabela clientes (o WhatsApp também fica no cliente, para quem não tem dados cadastrais)
         const clientUpdate = { id: clientId, nome, projeto, login, senha };
+        if (whatsapp !== row.dataset.originalWhatsapp) clientUpdate.whatsapp = whatsapp || '';
         if (visibility !== undefined) clientUpdate.visibility = visibility;
         if (assigned_to_user_id !== undefined) clientUpdate.assigned_to_user_id = assigned_to_user_id;
         if (situacao !== undefined) clientUpdate.situacao = situacao;
@@ -1689,7 +1717,7 @@ async function saveAllClientChanges() {
 
         // Objeto de atualização para tabela dados_cadastrais (WhatsApp)
         // Nota: Supabase não tem update em lote nativo fácil para tabelas diferentes, faremos loop ou Promise.all
-        whatsappUpdates.push({ cliente_id: clientId, whatsapp });
+        if (whatsapp !== row.dataset.originalWhatsapp) whatsappUpdates.push({ cliente_id: clientId, whatsapp });
     });
 
     try {
@@ -1705,12 +1733,24 @@ async function saveAllClientChanges() {
         // Como não temos certeza da constraint, faremos update. Se não atualizar (count=0), fazemos insert.
         // Melhor abordagem genérica: update.
         const whatsappPromises = whatsappUpdates.map(async (update) => {
-             const { error } = await supabase
+             const { data: atualizados, error } = await supabase
                 .from('dados_cadastrais')
                 .update({ whatsapp: update.whatsapp })
-                .eq('cliente_id', update.cliente_id);
-             
+                .eq('cliente_id', update.cliente_id)
+                .select('id');
+
              if (error) throw error;
+             // Cliente sem dados cadastrais: cria o registro (cpf provisório PEND-, como no cadastro manual)
+             if ((!atualizados || atualizados.length === 0) && update.whatsapp) {
+                 const rowC = clientsTableBody.querySelector(`tr[data-client-id="${update.cliente_id}"]`);
+                 const { error: insErr } = await supabase.from('dados_cadastrais').insert({
+                     cliente_id: update.cliente_id,
+                     whatsapp: update.whatsapp,
+                     nome_completo: rowC?.querySelector('.client-name')?.value || null,
+                     cpf: 'PEND-' + Date.now() + '-' + Math.floor(Math.random() * 9000 + 1000)
+                 });
+                 if (insErr) throw insErr;
+             }
         });
 
         // 3. Atualizar Leads
@@ -1719,6 +1759,7 @@ async function saveAllClientChanges() {
                 nome: update.nome,
                 whatsapp: update.whatsapp || null,
                 indicado_por_cliente_id: update.indicado_por_cliente_id,
+                indicado_por_nome: update.indicado_por_nome,
                 updated_at: new Date().toISOString()
             }).eq('id', update.id);
             if (error) throw error;
@@ -1733,6 +1774,7 @@ async function saveAllClientChanges() {
             row.dataset.originalLeadNome = update.nome;
             row.dataset.originalLeadWhatsapp = update.whatsapp || '';
             row.dataset.originalLeadIndicadoPor = update.indicado_por_cliente_id || '';
+            row.dataset.originalLeadIndicadoNome = update.indicado_por_nome || '';
             row.classList.remove('modified');
         });
 
@@ -4166,40 +4208,48 @@ async function loadAndRenderLeads(filterProject) {
         if (error) { console.warn('Erro ao carregar leads:', error); return; }
         allLeads = leads || [];
         
-        // Renderizar leads na tabela
+        // Renderizar leads na tabela (os convertidos ficam ocultos pelo filtro de status, mas continuam na tabela)
         for (const lead of allLeads) {
-            if (lead.status === 'CONVERTIDO') continue; // Não mostrar leads já convertidos
             const row = document.createElement('tr');
             row.dataset.leadId = lead.id;
             row.dataset.tipo = 'lead';
+            row.dataset.leadStatus = lead.status || 'NOVO';
             row.classList.add('lead-row');
             // Store originals for change detection
             row.dataset.originalLeadNome = lead.nome || '';
             row.dataset.originalLeadWhatsapp = lead.whatsapp || '';
             row.dataset.originalLeadIndicadoPor = lead.indicado_por_cliente_id || '';
+            row.dataset.originalLeadIndicadoNome = lead.indicado_por_nome || '';
             row.dataset.originalLeadTipo = 'lead';
-            
-            // Build indicado_por select options
+
+            // Seletor "Indicado por" leve: só a opção atual; a lista completa entra ao abrir o seletor
+            // (com mais de mil leads, montar a lista inteira em cada linha deixaria a página pesada)
+            const indicadoAtual = allClientes.find(c => c.id === lead.indicado_por_cliente_id);
             let indicadoOptions = `<option value="">-- Nenhum --</option>`;
-            for (const c of allClientes) {
-                indicadoOptions += `<option value="${c.id}" ${lead.indicado_por_cliente_id === c.id ? 'selected' : ''}>${sanitizeInput(c.nome)}</option>`;
+            if (lead.indicado_por_cliente_id) {
+                indicadoOptions += `<option value="${lead.indicado_por_cliente_id}" selected>${sanitizeInput(indicadoAtual ? indicadoAtual.nome : 'Cliente fora deste filtro')}</option>`;
             }
-            
+            indicadoOptions += `<option value="__outro__" ${!lead.indicado_por_cliente_id && lead.indicado_por_nome ? 'selected' : ''}>Outro (nome livre)...</option>`;
+            const etapaTexto = lead.etapa || lead.observacoes || '';
+            const tituloHistorico = [lead.origem ? 'Origem: ' + lead.origem : '', lead.data_recomendacao ? 'Recomendado em ' + new Date(lead.data_recomendacao + 'T12:00:00').toLocaleDateString('pt-BR') : '', lead.historico || lead.observacoes || ''].filter(Boolean).join('\n');
+
             const statusColors = { 'NOVO': '#60a5fa', 'EM_CONTATO': '#f59e0b', 'NEGOCIANDO': '#a78bfa', 'CONVERTIDO': '#22c55e', 'PERDIDO': '#ef4444' };
             const statusColor = statusColors[lead.status] || '#888';
             
             row.innerHTML = `
                 <td data-label="Nome" style="position:sticky;left:0;z-index:2;background:var(--theme-bg-surface);">
                     <input type="text" class="lead-name-input" value="${sanitizeInput(lead.nome)}" style="font-weight:600;">
+                    <div class="rec-chip-wrap"></div>
                 </td>
                 <td data-label="Tipo">
                     <select class="lead-tipo-select" data-lead-id="${lead.id}" style="font-size:0.75rem;padding:0.2rem 0.4rem;border-radius:4px;border:1px solid rgba(96,165,250,0.4);background:rgba(96,165,250,0.15);color:#60a5fa;font-weight:600;cursor:pointer;">
                         <option value="lead" selected>LEAD</option>
                         <option value="cliente">CLIENTE</option>
                     </select>
-                    <select class="lead-indicado-select" data-lead-id="${lead.id}" style="font-size:0.7rem;padding:0.15rem 0.3rem;border-radius:4px;border:1px solid var(--theme-border-color);background:rgba(0,0,0,0.2);color:var(--theme-text-muted);margin-top:3px;max-width:130px;display:block;">
+                    <select class="lead-indicado-select" data-lead-id="${lead.id}" title="Indicado por" style="font-size:0.7rem;padding:0.15rem 0.3rem;border-radius:4px;border:1px solid var(--theme-border-color);background:rgba(0,0,0,0.2);color:var(--theme-text-muted);margin-top:3px;max-width:130px;display:block;">
                         ${indicadoOptions}
                     </select>
+                    <input type="text" class="lead-indicado-nome" value="${sanitizeInput(lead.indicado_por_nome || '')}" placeholder="Quem indicou" title="Nome de quem indicou (não cadastrado)" style="display:${!lead.indicado_por_cliente_id && lead.indicado_por_nome ? 'block' : 'none'};font-size:0.7rem;padding:0.15rem 0.3rem;max-width:130px;margin-top:3px;">
                 </td>
                 <td data-label="WhatsApp">
                     <div class="whatsapp-cell">
@@ -4228,7 +4278,7 @@ async function loadAndRenderLeads(filterProject) {
                 <td data-label="Patrimônio"><span style="color:var(--theme-text-muted);">--</span></td>
                 <td data-label="Dívidas"><span style="color:var(--theme-text-muted);">--</span></td>
                 <td data-label="Fluxo Mensal"><span style="color:var(--theme-text-muted);">--</span></td>
-                <td data-label="Situação"><span style="color:var(--theme-text-muted);font-size:0.8rem;">${lead.observacoes ? sanitizeInput(lead.observacoes.substring(0,30)) + '...' : '--'}</span></td>
+                <td data-label="Situação"><span class="lead-etapa" title="${sanitizeInput(tituloHistorico)}" style="color:var(--theme-text-muted);font-size:0.8rem;cursor:help;">${etapaTexto ? sanitizeInput(etapaTexto.length > 40 ? etapaTexto.substring(0, 40) + '...' : etapaTexto) : '--'}</span></td>
                 <td data-label="Ações">
                     <button class="msg-action-btn delete-lead-btn" data-lead-id="${lead.id}" title="Excluir Lead" style="color:#ef4444;">
                         <i class="fas fa-trash-can"></i>
@@ -4247,6 +4297,7 @@ async function loadAndRenderLeads(filterProject) {
                         await supabase.from('leads').update({ status: newStatus, updated_at: new Date().toISOString() }).eq('id', leadId);
                         const colors = { 'NOVO': '#60a5fa', 'EM_CONTATO': '#f59e0b', 'NEGOCIANDO': '#a78bfa', 'CONVERTIDO': '#22c55e', 'PERDIDO': '#ef4444' };
                         e.target.style.color = colors[newStatus] || '#888';
+                        row.dataset.leadStatus = newStatus;
                         if (newStatus === 'CONVERTIDO') {
                             alert('Lead marcado como Convertido! Crie um novo cliente para ele na seção de cadastro acima.');
                         }
@@ -4272,6 +4323,14 @@ async function loadAndRenderLeads(filterProject) {
                 });
             }
             
+            // Seletor "Indicado por" do lead: monta a lista completa só quando for aberto
+            const leadIndicadoSel = row.querySelector('.lead-indicado-select');
+            if (leadIndicadoSel) {
+                const preencher = () => fillLeadIndicadoOptions(leadIndicadoSel);
+                leadIndicadoSel.addEventListener('focus', preencher);
+                leadIndicadoSel.addEventListener('mousedown', preencher);
+            }
+
             // WhatsApp button for lead
             const whatsBtn = row.querySelector('.whatsapp-btn-lead');
             if (whatsBtn) {
@@ -4310,18 +4369,29 @@ async function loadAndRenderLeads(filterProject) {
                                 assigned_to_user_id: currentUserId,
                                 criado_por_id: currentUserId,
                                 // A indicação acompanha o lead quando ele vira cliente
-                                indicado_por_cliente_id: (row.querySelector('.lead-indicado-select')?.value || leadData?.indicado_por_cliente_id || null)
+                                ...(() => {
+                                    const selInd = row.querySelector('.lead-indicado-select')?.value || '';
+                                    if (selInd && selInd !== '__outro__') return { indicado_por_cliente_id: selInd, indicado_por_nome: null };
+                                    const textoInd = selInd === '__outro__' ? (row.querySelector('.lead-indicado-nome')?.value.trim() || '') : '';
+                                    return {
+                                        indicado_por_cliente_id: selInd ? null : (leadData?.indicado_por_cliente_id || null),
+                                        indicado_por_nome: textoInd || (selInd ? null : (leadData?.indicado_por_nome || null))
+                                    };
+                                })()
                             }).select().single();
                             if (clientErr) throw clientErr;
-                            // 2. Create dados_cadastrais with whatsapp
+                            // 2. Create dados_cadastrais with whatsapp (cpf é obrigatório: usa o provisório PEND-, como o cadastro manual)
                             if (leadWhats) {
-                                await supabase.from('dados_cadastrais').insert({
+                                const { error: dcErr } = await supabase.from('dados_cadastrais').insert({
                                     cliente_id: newClient.id,
-                                    whatsapp: leadWhats
+                                    whatsapp: leadWhats,
+                                    nome_completo: leadNome,
+                                    cpf: 'PEND-' + Date.now() + '-' + Math.floor(Math.random() * 9000 + 1000)
                                 });
+                                if (dcErr) console.warn('Lead convertido, mas dados_cadastrais não foi criado:', dcErr);
                             }
-                            // 3. Mark lead as CONVERTIDO
-                            await supabase.from('leads').update({ status: 'CONVERTIDO', updated_at: new Date().toISOString() }).eq('id', leadId);
+                            // 3. Mark lead as CONVERTIDO (guardando qual cliente ele virou)
+                            await supabase.from('leads').update({ status: 'CONVERTIDO', convertido_cliente_id: newClient.id, updated_at: new Date().toISOString() }).eq('id', leadId);
                             alert('Lead convertido em Cliente com sucesso! Recarregando...');
                             location.reload();
                         } catch (err) {
@@ -4370,11 +4440,17 @@ function openLeadModal() {
     if (!leadModal) return;
     // Preencher dropdown de "Indicado por" com clientes atuais
     const selectIndicado = document.getElementById('lead-indicado-por');
+    const inputIndicadoNome = document.getElementById('lead-indicado-nome');
     if (selectIndicado) {
-        selectIndicado.innerHTML = '<option value="">-- Nenhum (sem indicação) --</option>';
-        allClientes.forEach(c => {
-            selectIndicado.innerHTML += `<option value="${c.id}">${sanitizeInput(c.nome)}</option>`;
-        });
+        let html = '<option value="">-- Nenhum (sem indicação) --</option>';
+        allClientes.forEach(c => { html += `<option value="${c.id}">${sanitizeInput(c.nome)}</option>`; });
+        html += '<option value="__outro__">Outro (nome livre)...</option>';
+        selectIndicado.innerHTML = html;
+        if (inputIndicadoNome) {
+            inputIndicadoNome.value = '';
+            inputIndicadoNome.style.display = 'none';
+            selectIndicado.onchange = () => { inputIndicadoNome.style.display = selectIndicado.value === '__outro__' ? 'block' : 'none'; };
+        }
     }
     // Limpar container de linhas e adicionar header + 1 linha inicial
     const container = document.getElementById('leads-rows-container');
@@ -4399,7 +4475,9 @@ function openLeadModal() {
 async function saveLead() {
     const container = document.getElementById('leads-rows-container');
     if (!container) return;
-    const indicadoPor = document.getElementById('lead-indicado-por')?.value || null;
+    const selIndicado = document.getElementById('lead-indicado-por')?.value || '';
+    const indicadoPor = selIndicado && selIndicado !== '__outro__' ? selIndicado : null;
+    const indicadoNome = selIndicado === '__outro__' ? (document.getElementById('lead-indicado-nome')?.value.trim() || null) : null;
     const rows = container.querySelectorAll('.lead-row-item');
     
     // Coletar dados de todas as linhas
@@ -4421,6 +4499,7 @@ async function saveLead() {
             whatsapp: whats || null,
             observacoes: obs || null,
             indicado_por_cliente_id: indicadoPor || null,
+            indicado_por_nome: indicadoNome,
             projeto: currentUserProjeto || 'Planejamento',
             criado_por_id: currentUserId,
             status: 'NOVO'
@@ -5055,13 +5134,17 @@ async function openSituacaoModal(clienteId, clientName) {
 // ============================================================
 function applyTipoFilter() { applyAllFilters(); }
 
+const LEAD_STATUS_ABERTOS = ['NOVO', 'EM_CONTATO', 'NEGOCIANDO'];
+
 function applyAllFilters() {
     const tipoValue = document.getElementById('filter-tipo')?.value || 'todos';
     const indicadoValue = document.getElementById('filter-indicado')?.value || 'todos';
+    const leadStatusValue = document.getElementById('filter-lead-status')?.value || 'nao_convertidos';
     const rows = clientsTableBody ? clientsTableBody.querySelectorAll('tr') : [];
     rows.forEach(row => {
         let showTipo = true;
         let showIndicado = true;
+        let showStatus = true;
 
         // Tipo filter
         if (tipoValue === 'lead') {
@@ -5070,28 +5153,26 @@ function applyAllFilters() {
             showTipo = row.dataset.tipo !== 'lead';
         }
 
-        // Indicado por filter
+        // Status do lead (convertidos ficam ocultos por padrão: já aparecem como clientes)
+        if (row.dataset.tipo === 'lead') {
+            const st = row.dataset.leadStatus || 'NOVO';
+            if (leadStatusValue === 'nao_convertidos') showStatus = st !== 'CONVERTIDO';
+            else if (leadStatusValue === 'abertos') showStatus = LEAD_STATUS_ABERTOS.includes(st);
+            else if (leadStatusValue !== 'todos') showStatus = st === leadStatusValue;
+        }
+
+        // Indicado por filter (id do cliente que indicou; "nenhum" = sem indicação alguma, nem em texto)
         if (indicadoValue !== 'todos') {
-            if (row.dataset.tipo === 'lead') {
-                const indicadoSelect = row.querySelector('.lead-indicado-select');
-                const indicadoVal = indicadoSelect ? indicadoSelect.value : (row.dataset.originalLeadIndicadoPor || '');
-                if (indicadoValue === 'nenhum') {
-                    showIndicado = !indicadoVal;
-                } else {
-                    showIndicado = indicadoVal === indicadoValue;
-                }
+            const idInd = row.dataset.indicadoPorClienteId || '';
+            const textoInd = row.dataset.indicadoTexto || '';
+            if (indicadoValue === 'nenhum') {
+                showIndicado = !idInd && !textoInd;
             } else {
-                // Clientes: check if this client was indicated by someone (stored in data attribute)
-                const indicadoPorId = row.dataset.indicadoPorClienteId || '';
-                if (indicadoValue === 'nenhum') {
-                    showIndicado = !indicadoPorId;
-                } else {
-                    showIndicado = indicadoPorId === indicadoValue;
-                }
+                showIndicado = idInd === indicadoValue;
             }
         }
 
-        if (showTipo && showIndicado) {
+        if (showTipo && showIndicado && showStatus) {
             row.classList.remove('tipo-hidden');
         } else {
             row.classList.add('tipo-hidden');
@@ -5122,42 +5203,73 @@ function populateClientIndicadoSelects() {
     });
 }
 
-// Desenha, sob o nome de cada cliente, os chips "REC quem indicou" e "indicou N"
+// Nome curto para os chips: tira o "(rec ...)" que alguns nomes carregam
+function nomeSemRec(nome) {
+    return String(nome || '').replace(/\s*\(\s*rec\b[^)]*\)\s*/gi, ' ').replace(/\s+/g, ' ').trim();
+}
+
+// Monta a lista completa do seletor "Indicado por" de um lead (só quando ele é aberto)
+function fillLeadIndicadoOptions(sel) {
+    if (!sel || sel.dataset.cheio === '1') return;
+    const atual = sel.value;
+    let html = '<option value="">-- Nenhum --</option>';
+    let atualNaLista = !atual || atual === '__outro__';
+    for (const c of allClientes) {
+        if (c.id === atual) atualNaLista = true;
+        html += `<option value="${c.id}" ${c.id === atual ? 'selected' : ''}>${sanitizeInput(c.nome)}</option>`;
+    }
+    if (!atualNaLista) html += `<option value="${atual}" selected>Cliente fora deste filtro</option>`;
+    html += `<option value="__outro__" ${atual === '__outro__' ? 'selected' : ''}>Outro (nome livre)...</option>`;
+    sel.innerHTML = html;
+    sel.dataset.cheio = '1';
+}
+
+// Desenha, sob o nome de cada cliente e de cada lead, os chips "REC quem indicou" e "indicou N"
 function renderRecChips() {
     if (!clientsTableBody) return;
     const nomes = {};
     allClientes.forEach(c => { nomes[c.id] = c.nome; });
     const indicados = {}; // id de quem indicou -> nomes dos indicados (clientes e leads)
-    const leituraCliente = (row) => {
-        const sel = row.querySelector('.client-indicado-select');
-        const id = sel ? (sel.value === '__outro__' ? '' : sel.value) : (row.dataset.indicadoPorClienteId || '');
+    const leitura = (row, selSel, inpSel, origId, origTexto) => {
+        const sel = row.querySelector(selSel);
+        const id = sel ? (sel.value === '__outro__' ? '' : sel.value) : (row.dataset[origId] || '');
         const texto = sel
-            ? (sel.value === '__outro__' ? (row.querySelector('.client-indicado-nome')?.value.trim() || '') : '')
-            : (id ? '' : (row.dataset.originalIndicadoNome || ''));
+            ? (sel.value === '__outro__' ? (row.querySelector(inpSel)?.value.trim() || '') : '')
+            : (id ? '' : (row.dataset[origTexto] || ''));
         return { id, texto };
     };
+    const leituraCliente = (row) => leitura(row, '.client-indicado-select', '.client-indicado-nome', 'indicadoPorClienteId', 'originalIndicadoNome');
+    const leituraLead = (row) => leitura(row, '.lead-indicado-select', '.lead-indicado-nome', 'originalLeadIndicadoPor', 'originalLeadIndicadoNome');
+    const chipRec = (id, texto) => {
+        if (id) {
+            const n = nomeSemRec(nomes[id] || 'cliente');
+            return `<span class="rec-chip" data-goto="${id}" title="Indicado por ${sanitizeInput(nomes[id] || 'cliente')}. Clique para ir até o cliente."><i class="fas fa-share"></i> REC ${sanitizeInput(n)}</span>`;
+        }
+        if (texto) return `<span class="rec-chip rec-texto" title="Indicado por ${sanitizeInput(texto)} (não cadastrado como cliente)"><i class="fas fa-share"></i> REC ${sanitizeInput(texto)}</span>`;
+        return '';
+    };
     clientsTableBody.querySelectorAll('tr[data-client-id]').forEach(row => {
-        const { id } = leituraCliente(row);
+        const { id, texto } = leituraCliente(row);
+        row.dataset.indicadoPorClienteId = id;
+        row.dataset.indicadoTexto = texto;
         if (id) (indicados[id] = indicados[id] || []).push(row.querySelector('.client-name')?.value || '');
     });
     clientsTableBody.querySelectorAll('tr.lead-row').forEach(row => {
-        const sel = row.querySelector('.lead-indicado-select');
-        const id = sel ? sel.value : (row.dataset.originalLeadIndicadoPor || '');
+        const { id, texto } = leituraLead(row);
+        row.dataset.indicadoPorClienteId = id;
+        row.dataset.indicadoTexto = texto;
         if (id) (indicados[id] = indicados[id] || []).push((row.querySelector('.lead-name-input')?.value || '') + ' (lead)');
+        const wrap = row.querySelector('.rec-chip-wrap');
+        if (wrap) wrap.innerHTML = chipRec(id, texto);
     });
     clientsTableBody.querySelectorAll('tr[data-client-id]').forEach(row => {
         const wrap = row.querySelector('.rec-chip-wrap');
         if (!wrap) return;
-        const { id, texto } = leituraCliente(row);
-        let html = '';
-        if (id) {
-            html += `<span class="rec-chip" data-goto="${id}" title="Indicado por ${sanitizeInput(nomes[id] || 'cliente')}. Clique para ir até o cliente."><i class="fas fa-share"></i> REC ${sanitizeInput(nomes[id] || 'cliente')}</span>`;
-        } else if (texto) {
-            html += `<span class="rec-chip rec-texto" title="Indicado por ${sanitizeInput(texto)} (não cadastrado no sistema)"><i class="fas fa-share"></i> REC ${sanitizeInput(texto)}</span>`;
-        }
+        let html = chipRec(row.dataset.indicadoPorClienteId, row.dataset.indicadoTexto);
         const lista = indicados[row.dataset.clientId];
         if (lista && lista.length) {
-            html += `<span class="rec-chip rec-indicou" data-filter="${row.dataset.clientId}" title="Indicou: ${sanitizeInput(lista.join(', '))}. Clique para filtrar."><i class="fas fa-users"></i> indicou ${lista.length}</span>`;
+            const resumo = lista.length > 25 ? lista.slice(0, 25).join(', ') + ` e mais ${lista.length - 25}` : lista.join(', ');
+            html += `<span class="rec-chip rec-indicou" data-filter="${row.dataset.clientId}" title="Indicou: ${sanitizeInput(resumo)}. Clique para filtrar."><i class="fas fa-users"></i> indicou ${lista.length}</span>`;
         }
         wrap.innerHTML = html;
     });
@@ -5175,6 +5287,16 @@ function populateIndicadoFilter() {
         opt.value = c.id;
         opt.textContent = c.nome;
         filterIndicado.appendChild(opt);
+    }
+    // Mesmo conjunto no formulário "Adicionar Novo Cliente"
+    const selNovo = document.getElementById('new-client-indicado');
+    const inpNovo = document.getElementById('new-client-indicado-nome');
+    if (selNovo) {
+        let html = '<option value="">Indicado por: ninguém</option>';
+        for (const c of allClientes) html += `<option value="${c.id}">${sanitizeInput(c.nome)}</option>`;
+        html += '<option value="__outro__">Indicado por: outro (nome livre)...</option>';
+        selNovo.innerHTML = html;
+        if (inpNovo) selNovo.onchange = () => { inpNovo.style.display = selNovo.value === '__outro__' ? 'block' : 'none'; };
     }
 }
 

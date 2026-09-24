@@ -1390,6 +1390,13 @@
             <option value="INDIVIDUAL" selected>Individual</option>
             <option value="TODOS">Todos</option>
         </select>
+        <!-- Indicação: cliente que indicou, ou nome livre em "Outro" -->
+        <div>
+          <select id="new-client-indicado" title="Indicado por">
+              <option value="">Indicado por: ninguém</option>
+          </select>
+          <input type="text" id="new-client-indicado-nome" placeholder="Nome de quem indicou" style="display:none;margin-top:0.4rem;" />
+        </div>
         <button type="submit" id="add-client-btn">Adicionar Cliente</button>
       </form>
     </section>
@@ -1415,6 +1422,16 @@
         <select id="filter-indicado" title="Filtrar por quem indicou" style="padding:0.5rem 0.8rem;border-radius:6px;border:1px solid var(--theme-border-color);background:rgba(0,0,0,0.2);color:var(--theme-text-light);font-size:0.85rem;max-width:220px;">
           <option value="todos">Indicado por: todos</option>
           <option value="nenhum">Sem indicação</option>
+        </select>
+        <select id="filter-lead-status" title="Quais leads mostrar" style="padding:0.5rem 0.8rem;border-radius:6px;border:1px solid var(--theme-border-color);background:rgba(0,0,0,0.2);color:var(--theme-text-light);font-size:0.85rem;">
+          <option value="nao_convertidos" selected>Leads: todos (sem convertidos)</option>
+          <option value="abertos">Leads: em aberto</option>
+          <option value="NOVO">Leads: novos</option>
+          <option value="EM_CONTATO">Leads: em contato</option>
+          <option value="NEGOCIANDO">Leads: negociando</option>
+          <option value="PERDIDO">Leads: perdidos</option>
+          <option value="CONVERTIDO">Leads: convertidos</option>
+          <option value="todos">Leads: todos</option>
         </select>
         <button id="add-lead-btn" style="padding:0.5rem 1rem;border-radius:6px;border:1px solid rgba(96,165,250,0.4);background:rgba(96,165,250,0.1);color:#60a5fa;font-size:0.85rem;font-weight:600;cursor:pointer;transition:all 0.2s;"><i class="fas fa-user-plus"></i> Novo Lead</button>
         <button id="refresh-summary-btn" title="Atualizar resumo" style="padding:0.5rem 0.7rem;border-radius:6px;border:1px solid var(--theme-border-color);background:rgba(0,0,0,0.15);color:var(--theme-text-muted);font-size:0.85rem;cursor:pointer;transition:all 0.2s;" onmouseover="this.style.color='var(--theme-secondary-lighter)';this.style.borderColor='var(--theme-secondary-lighter)'" onmouseout="this.style.color='var(--theme-text-muted)';this.style.borderColor='var(--theme-border-color)'"><i class="fas fa-sync-alt"></i></button>
@@ -1567,6 +1584,7 @@
           <select id="lead-indicado-por" style="width:100%;padding:0.5rem;border-radius:4px;border:1px solid var(--theme-border-color);background:rgba(0,0,0,0.2);color:var(--theme-text-light);font-size:0.9rem;">
             <option value="">-- Nenhum (sem indicação) --</option>
           </select>
+          <input type="text" id="lead-indicado-nome" placeholder="Nome de quem indicou (não cadastrado)" style="display:none;width:100%;margin-top:0.4rem;padding:0.5rem;border-radius:4px;border:1px solid var(--theme-border-color);background:rgba(0,0,0,0.2);color:var(--theme-text-light);font-size:0.9rem;">
         </div>
         <div id="leads-rows-container">
           <!-- Linhas de leads serão inseridas aqui via JS -->
@@ -1802,6 +1820,8 @@
       for (var i = 0; i < row.cells.length; i++) {
         parts.push(getCellValue(row.cells[i]));
       }
+      // Chips de indicação ("REC Fulano") e etapa do lead também entram na busca
+      row.querySelectorAll('.rec-chip, .lead-etapa').forEach(function(el) { parts.push(el.textContent); });
       return parts.join(' ');
     }
 
