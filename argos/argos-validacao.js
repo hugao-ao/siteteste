@@ -272,18 +272,32 @@ export function ordenarValidacao(linhas = [], modo = 'paciente') {
     return gs.flat();
 }
 
-/** O texto que o profissional recebe para conferir fora do sistema. */
+/**
+ * O texto que o profissional recebe para conferir fora do sistema.
+ * Sempre no mesmo formato, seja qual for a ordem escolhida na tela:
+ *   NOME DO PACIENTE, dia(s): 07 (Ok), 14 (Fc), 21 (Fj), 28 (??)
+ * Um paciente por linha, em ordem alfabética; os dias em ordem; sessões
+ * «Nc» (não houve) não entram.
+ */
 export function textoDoRelatorio({ profissional, mes, linhas = [], resumo,
     formataBR, formataMoeda }) {
     const cab = `*Atendimentos de ${profissional} — ${mes.slice(5)}/${mes.slice(0, 4)}*`;
-    const corpo = linhas.map(l => {
-        const sit = l.validacao && l.validacao.situacao;
-        const marca = sit === 'confirmada' ? '✔' : sit === 'contestada' ? '⚠' : '·';
-        return `${marca} ${formataBR(l.data)} ${l.hora} — ${l.paciente.nome}`
-            + ` (${l.status.toUpperCase()})`
-            + (l.motivo !== 'atendeu' ? ` [${MOTIVOS[l.motivo].rotulo}: ${l.atendidoPor}]` : '')
-            + (l.valor ? ` — ${formataMoeda(l.valor)}` : '');
-    }).join('\n');
+    const ROTULO = { ok: 'Ok', fj: 'Fj', fc: 'Fc', '??': '??' };
+    const porPaciente = new Map();
+    for (const l of linhas) {
+        if (l.status === 'nc') continue;
+        const k = l.paciente.id || l.paciente.nome;
+        if (!porPaciente.has(k)) porPaciente.set(k, { nome: l.paciente.nome, sessoes: [] });
+        porPaciente.get(k).sessoes.push(l);
+    }
+    const corpo = [...porPaciente.values()]
+        .sort((a, b) => String(a.nome).localeCompare(String(b.nome)))
+        .map(g => {
+            const dias = g.sessoes
+                .sort((a, b) => String(a.data).localeCompare(String(b.data)) || String(a.hora).localeCompare(String(b.hora)))
+                .map(l => `${String(l.data).slice(8, 10)} (${ROTULO[l.status] || String(l.status).toUpperCase()})`);
+            return `${g.nome}, dia(s): ${dias.join(', ')}`;
+        }).join('\n');
     const pe = `\n_${resumo.contabilizadas} sessão(ões) contabilizada(s) · ${formataMoeda(resumo.valor)}_`
         + (resumo.contestadas ? `\n_⚠ ${resumo.contestadas} contestada(s)_` : '');
     return `${cab}\n\n${corpo || '(nenhuma sessão)'}\n${pe}`;
