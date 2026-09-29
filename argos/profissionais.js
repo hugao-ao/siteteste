@@ -7,7 +7,8 @@ import { sb, todas, toast, esc, abrirModal, fecharModal } from './argos-common.j
 import { carregarPermissoes } from './argos-permissoes.js';
 import {
     repassesDe, divisaoRepasses, formataBR, hojeISO,
-    definirRepassePadrao, repassePadraoDe, STATUS_SESSAO, tipoSessaoLabel
+    definirRepassePadrao, repassePadraoDe, STATUS_SESSAO, tipoSessaoLabel,
+    mesclarSessoes, aplicarFimDeProcesso, fimDoMes
 } from './argos-recorrencia.js';
 import {
     gravarFrequencia, registrarFaltasJustificadas, avisarMudanca, configurarFrequencia, validarSessoes
@@ -727,12 +728,26 @@ valEl('btn-val-confirmar-todas').addEventListener('click', async () => {
 
 valEl('btn-val-copiar').addEventListener('click', async () => {
     if (!valProf) return;
+    const mes = valEl('val-mes').value;
+    const hoje = hojeISO();
+    // o que ainda está agendado para este profissional daqui até o fim do
+    // mês: a projeção das dinâmicas em que ele atende ou recebe repasse
+    let previstas = 0;
+    if (fimDoMes(mes) > hoje) {
+        const c = aplicarFimDeProcesso(valDinamicas, valSessoes, valPacientes);
+        const dinsDoProf = new Set(valDinamicas
+            .filter(d => d.profissional_id === valProf.id || repassesDe(d).some(r => r.profissional_id === valProf.id))
+            .map(d => d.id));
+        previstas = mesclarSessoes(c.dinamicas, c.sessoes, hoje > mes + '-01' ? hoje : mes + '-01', fimDoMes(mes))
+            .filter(s => s.status === '??' && s.data > hoje
+                && (s.profissional_id === valProf.id || s.repasse_profissional_id === valProf.id || (s.dinamica_ref && dinsDoProf.has(s.dinamica_ref)))).length;
+    }
     const texto = textoDoRelatorio({
-        profissional: valProf.nome, mes: valEl('val-mes').value,
+        profissional: valProf.nome, mes,
         linhas: ordenarValidacao(
             filtrar(valLinhas, valEl('val-filtro').value, valEl('val-busca').value),
             valEl('val-ordem').value),
-        resumo: resumoDaValidacao(valLinhas), formataBR, formataMoeda
+        resumo: resumoDaValidacao(valLinhas), formataBR, formataMoeda, hoje, previstas
     });
     try {
         await navigator.clipboard.writeText(texto);

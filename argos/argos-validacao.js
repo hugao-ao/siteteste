@@ -280,7 +280,7 @@ export function ordenarValidacao(linhas = [], modo = 'paciente') {
  * «Nc» (não houve) não entram.
  */
 export function textoDoRelatorio({ profissional, mes, linhas = [], resumo,
-    formataBR, formataMoeda }) {
+    formataBR, formataMoeda, hoje = '', previstas = null }) {
     const cab = `*Atendimentos de ${profissional} — ${mes.slice(5)}/${mes.slice(0, 4)}*`;
     const ROTULO = { ok: 'Ok', fj: 'Fj', fc: 'Fc', '??': '??' };
     const porPaciente = new Map();
@@ -296,9 +296,15 @@ export function textoDoRelatorio({ profissional, mes, linhas = [], resumo,
             const dias = g.sessoes
                 .sort((a, b) => String(a.data).localeCompare(String(b.data)) || String(a.hora).localeCompare(String(b.hora)))
                 .map(l => `${String(l.data).slice(8, 10)} (${ROTULO[l.status] || String(l.status).toUpperCase()})`);
-            return `${g.nome}, dia(s): ${dias.join(', ')}`;
+            return `- ${g.nome}, dia(s): ${dias.join(', ')}`;
         }).join('\n');
-    const pe = `\n_${resumo.contabilizadas} sessão(ões) contabilizada(s) · ${formataMoeda(resumo.valor)}_`
-        + (resumo.contestadas ? `\n_⚠ ${resumo.contestadas} contestada(s)_` : '');
-    return `${cab}\n\n${corpo || '(nenhuma sessão)'}\n${pe}`;
+    // resumo: total (sem as Nc), contabilizadas (Ok + Fc) e o percentual
+    const semNc = linhas.filter(l => l.status !== 'nc');
+    const contab = semNc.filter(l => l.status === 'ok' || l.status === 'fc').length;
+    const pct = semNc.length ? Math.round(contab * 100 / semNc.length) : 0;
+    const rodape = [`_${semNc.length} sessão(ões) no total · ${contab} contabilizada(s) (${pct}%)_`];
+    if (previstas != null) rodape.push(`_Previstas até o fim do mês${hoje ? `, a partir de ${formataBR(hoje)}` : ''}: ${previstas}_`);
+    if (resumo && resumo.contestadas) rodape.push(`_⚠ ${resumo.contestadas} contestada(s)_`);
+    if (hoje) rodape.push(`_Relatório gerado em ${formataBR(hoje)}_`);
+    return `${cab}\n\n${corpo || '(nenhuma sessão)'}\n\n${rodape.join('\n')}`;
 }
