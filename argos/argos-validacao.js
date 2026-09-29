@@ -297,7 +297,7 @@ export function textoDoRelatorio({ profissional, mes, linhas = [], resumo,
                 .sort((a, b) => String(a.data).localeCompare(String(b.data)) || String(a.hora).localeCompare(String(b.hora)))
                 .map(l => `${String(l.data).slice(8, 10)}(${ROTULO[l.status] || String(l.status).toUpperCase()})`);
             return `- ${g.nome}, dia(s): ${dias.join(', ')}`;
-        }).join('\n');
+        }).join('\n\n');
     // resumo: total (sem as Nc), contabilizadas (Ok + Fc) e o percentual
     const semNc = linhas.filter(l => l.status !== 'nc');
     const contab = semNc.filter(l => l.status === 'ok' || l.status === 'fc').length;
