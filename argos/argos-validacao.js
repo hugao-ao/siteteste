@@ -275,7 +275,7 @@ export function ordenarValidacao(linhas = [], modo = 'paciente') {
 /**
  * O texto que o profissional recebe para conferir fora do sistema.
  * Sempre no mesmo formato, seja qual for a ordem escolhida na tela:
- *   NOME DO PACIENTE, dia(s): 07 (Ok), 14 (Fc), 21 (Fj), 28 (??)
+ *   - NOME DO PACIENTE, dia(s): 07(Ok), 14(Fc), 21(Fj), 28(??)
  * Um paciente por linha, em ordem alfabética; os dias em ordem; sessões
  * «Nc» (não houve) não entram.
  */
@@ -295,7 +295,7 @@ export function textoDoRelatorio({ profissional, mes, linhas = [], resumo,
         .map(g => {
             const dias = g.sessoes
                 .sort((a, b) => String(a.data).localeCompare(String(b.data)) || String(a.hora).localeCompare(String(b.hora)))
-                .map(l => `${String(l.data).slice(8, 10)} (${ROTULO[l.status] || String(l.status).toUpperCase()})`);
+                .map(l => `${String(l.data).slice(8, 10)}(${ROTULO[l.status] || String(l.status).toUpperCase()})`);
             return `- ${g.nome}, dia(s): ${dias.join(', ')}`;
         }).join('\n');
     // resumo: total (sem as Nc), contabilizadas (Ok + Fc) e o percentual
