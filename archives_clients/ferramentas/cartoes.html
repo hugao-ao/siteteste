@@ -63,13 +63,14 @@
   .ctx-fields { display: flex; gap: 12px; flex-wrap: wrap; flex: 1; }
   .ctx-field { display: flex; flex-direction: column; gap: 4px; min-width: 130px; }
   .ctx-field label { font-size: .72rem; font-weight: 600; color: var(--muted-foreground); text-transform: uppercase; letter-spacing: .04em; }
-  .ctx-field input {
+  .ctx-field input, .ctx-field select {
     background: var(--bg3); border: 1px solid var(--border);
     border-radius: 6px; color: var(--foreground);
     padding: 7px 10px; font-size: .88rem; outline: none;
-    transition: border-color .2s; width: 100%;
+    transition: border-color .2s; width: 100%; box-sizing: border-box;
   }
-  .ctx-field input:focus { border-color: var(--gold); }
+  .ctx-field select { cursor: pointer; }
+  .ctx-field input:focus, .ctx-field select:focus { border-color: var(--gold); }
   .ctx-dolar-badge {
     background: rgba(212,175,55,.1); border: 1px solid var(--gold-dim);
     border-radius: 6px; padding: 6px 12px;
@@ -332,6 +333,50 @@
   .podium-card .pod-name { font-weight: 700; font-size: .88rem; margin-bottom: 4px; color: var(--foreground); word-break: break-word; }
   .podium-card .pod-score { font-size: 1.5rem; font-weight: 800; color: var(--gold); }
   .podium-card .pod-sub { font-size: .7rem; color: var(--muted-foreground); margin-top: 3px; }
+  .podium-card .pod-sub.pod-saldo { font-size: .82rem; font-weight: 700; }
+  .podium-card .pod-saldo.positivo { color: var(--green-lt); }
+  .podium-card .pod-saldo.negativo { color: var(--red-lt); }
+  .podium-card .pod-atual {
+    display: inline-block; font-size: .62rem; font-weight: 600; color: var(--gold);
+    background: rgba(212,175,55,.12); border: 1px solid rgba(212,175,55,.35);
+    border-radius: 10px; padding: 1px 7px; margin-top: 4px;
+  }
+
+  /* ── VEREDITO (uma frase para a cliente) ── */
+  .veredito-box {
+    background: rgba(76,175,80,.08); border: 1px solid rgba(76,175,80,.35);
+    border-left: 4px solid var(--green-lt);
+    border-radius: 0 8px 8px 0; padding: 14px 18px; margin-bottom: 16px;
+    font-size: .95rem; line-height: 1.6; font-weight: 700; color: var(--foreground);
+  }
+  .veredito-box .veredito-title {
+    font-size: .72rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .06em; color: var(--green-lt); margin-bottom: 6px;
+  }
+  .chart-rs-title {
+    font-size: .72rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .06em; color: var(--gold); margin-bottom: 10px;
+  }
+
+  /* ── COMO CHEGAMOS NESSE NÚMERO ── */
+  .mem-details {
+    background: var(--bg3); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 0 16px; margin: 12px 0 16px;
+  }
+  .mem-details summary {
+    cursor: pointer; padding: 12px 0; font-size: .82rem; font-weight: 700;
+    color: var(--gold); text-transform: uppercase; letter-spacing: .06em; list-style: none;
+  }
+  .mem-details summary::-webkit-details-marker { display: none; }
+  .mem-details summary::before { content: '▶ '; font-size: .7rem; }
+  .mem-details[open] summary::before { content: '▼ '; }
+  .passos-card { border-top: 1px solid var(--border); padding: 10px 0 12px; }
+  .passos-card .passos-nome { font-weight: 700; font-size: .88rem; color: var(--foreground); margin-bottom: 6px; }
+  .passos-card ol { margin: 0 0 0 20px; padding: 0; font-size: .84rem; line-height: 1.55; color: var(--foreground); }
+  .passos-card ol li { margin-bottom: 4px; }
+  .passos-nota { font-size: .74rem; color: var(--muted-foreground); padding: 8px 0 12px; border-top: 1px solid var(--border); }
+  .bc-row.bc-dica { white-space: normal; font-size: .74rem; color: var(--muted-foreground); margin-top: 6px; }
+  .bc-row.bc-dica span:first-child { white-space: normal; overflow: visible; text-overflow: clip; }
 
   .parecer-box {
     background: var(--bg3); border-left: 3px solid var(--gold);
@@ -342,6 +387,12 @@
     font-size: .72rem; font-weight: 700; text-transform: uppercase;
     letter-spacing: .06em; color: var(--gold); margin-bottom: 6px;
   }
+  /* Alertas de "Inaceitável" / "Preferia não ter" (item 6) */
+  .parecer-box .parecer-alerta {
+    font-size: .84rem; font-weight: 600; padding: 6px 10px; border-radius: 6px; margin-bottom: 6px;
+  }
+  .parecer-box .parecer-alerta.inac { background: rgba(198,40,40,.12); border: 1px solid var(--red); color: var(--red-lt); }
+  .parecer-box .parecer-alerta.nao  { background: rgba(245,127,23,.1);  border: 1px solid var(--amber); color: var(--amber-lt); }
 
   /* ── BALANÇO FINANCEIRO ── */
   .balanco-section {
@@ -465,6 +516,8 @@
   .val-error.show { display: block; }
   .val-error ul { margin: 6px 0 0 16px; }
   .val-error li { margin-bottom: 3px; }
+  /* Mesmo bloco em estilo informativo (importação do diagnóstico) */
+  .val-error.info { background: rgba(76,175,80,.1); border-color: var(--green-lt); color: var(--foreground); }
 
   /* ── UTILS ── */
   .tip {
@@ -550,6 +603,41 @@
   .client-locked button { pointer-events:none !important; opacity:0.5; }
   .client-locked [onclick*="closeModal"] { pointer-events:auto !important; opacity:1 !important; }
 
+  /* ── IMPRESSÃO / PDF (só a comparação marcada com .print-target) ── */
+  @media print {
+    body.printing #sidebar-container, body.printing .sidebar, body.printing .tool-header,
+    body.printing #mobile-toggle, body.printing #empty-state, body.printing .modal-overlay,
+    body.printing .btn-save-global, body.printing .comp-card:not(.print-target),
+    body.printing .comp-card-actions, body.printing .sim-checkbox-group, body.printing .mem-toggle,
+    body.printing .chevron { display: none !important; }
+    body.printing { background: #fff !important; color: #111 !important; }
+    body.printing .main-content { margin: 0 !important; padding: 0 !important; width: auto !important; max-width: none !important; }
+    body.printing .container { max-width: none !important; padding: 0 !important; }
+    body.printing .print-target { border: none !important; box-shadow: none !important; }
+    body.printing .print-target, body.printing .print-target * {
+      background: transparent !important; color: #111 !important; box-shadow: none !important;
+      text-shadow: none !important; border-color: #bbb !important;
+    }
+    body.printing .print-target .comp-card-header { cursor: default; padding: 0 0 10px; border-bottom: 2px solid #999 !important; }
+    body.printing .print-target .comp-card-header .comp-title { font-size: 1.2rem; }
+    body.printing .print-target .comp-card-body, body.printing .print-target .mem-body { display: block !important; max-height: none !important; padding: 10px 0 0; }
+    body.printing .print-target .mem-details { padding: 0 10px; }
+    body.printing .print-target .pod-score { color: #8a6d1a !important; }
+    body.printing .print-target .positivo, body.printing .print-target .bc-liquido.positivo, body.printing .print-target .bc-row.positivo { color: #2e7d32 !important; }
+    body.printing .print-target .negativo, body.printing .print-target .bc-liquido.negativo, body.printing .print-target .bc-row.negativo { color: #c62828 !important; }
+    body.printing .print-target .winner-badge, body.printing .print-target .pod-atual { border: 1px solid #8a6d1a !important; color: #8a6d1a !important; }
+    body.printing .print-target .veredito-box { border-left: 4px solid #2e7d32 !important; }
+    body.printing .print-target .parecer-box { border-left: 3px solid #8a6d1a !important; }
+    body.printing .print-target .balanco-grid, body.printing .print-target .podium-grid {
+      display: grid !important; grid-template-columns: repeat(2, 1fr) !important; gap: 8px !important;
+    }
+    body.printing .print-target .balanco-card, body.printing .print-target .podium-card,
+    body.printing .print-target .veredito-box, body.printing .print-target .parecer-box,
+    body.printing .print-target .passos-card, body.printing .print-target tr { page-break-inside: avoid; break-inside: avoid; }
+    body.printing .print-target .chart-wrap canvas { max-width: 100% !important; max-height: 220px !important; }
+    body.printing .print-target .mem-table { font-size: .7rem; }
+  }
+
 </style>
 </head>
 <body>
@@ -607,7 +695,7 @@
           <div class="ctx-fields">
             <div class="ctx-field">
               <label>Gasto Nacional (R$/mês)</label>
-              <input type="text" id="modal-ctx-nacional" placeholder="R$ 3.000,00" onblur="fmtCtxBlur(this)"/>
+              <input type="text" id="modal-ctx-nacional" placeholder="R$ 3.000,00" onblur="fmtCtxBlur(this)" oninput="tmpCtxOrigem={fonte:'manual'}"/>
             </div>
             <div class="ctx-field">
               <label>Gasto Exterior (US$/mês)</label>
@@ -621,8 +709,17 @@
               <label>Cotação do Dólar (R$)</label>
               <input type="text" id="modal-ctx-dolar" placeholder="R$ 5,90" onblur="fmtCtxDolarBlur(this)"/>
             </div>
+            <div class="ctx-field">
+              <label>Horizonte</label>
+              <select id="modal-ctx-horizonte" title="Período usado para somar o que o cartão devolve e o que custa (anuidade do 1º ano, bônus de adesão)">
+                <option value="12">12 meses</option>
+                <option value="24">24 meses</option>
+                <option value="36">36 meses</option>
+              </select>
+            </div>
           </div>
           <button class="btn-add" onclick="fetchDolarModal()" title="Buscar cotação atual">🔄 Atualizar cotação</button>
+          <button class="btn-add" onclick="usarGastoDiagnostico()" title="Soma as despesas do diagnóstico pagas no cartão e usa como Gasto Nacional">📥 Usar gasto do diagnóstico</button>
         </div>
 
         <!-- CARTÕES -->
@@ -672,7 +769,7 @@
             <span class="sb-chevron">▼</span>
           </div>
           <div class="section-block-body">
-            <div class="tip"><b>Benefícios qualitativos</b> — marque se o cartão possui o benefício (✓) e classifique entre os que possuem (1º = melhor). Os itens são <b>permanentes</b> e podem ser adicionados, editados ou excluídos.</div>
+            <div class="tip"><b>Benefícios qualitativos</b> — marque se o cartão possui o benefício (✓) e classifique entre os que possuem (1º = melhor). Os itens são <b>permanentes</b> e podem ser adicionados, editados ou excluídos. <b>Vale p/ cliente (R$/ano):</b> informe quanto a cliente economizaria por ano se usasse o benefício (0 = ela não usa). Só conta para os cartões que o possuem (✓).</div>
             <div id="subj-sections"></div>
             <button class="btn-add" onclick="openSubjEdit(null)">＋ Adicionar benefício</button>
           </div>
@@ -1069,7 +1166,7 @@ async function _saveCompsToSupabase(clienteId) {
   var client = _getCartoesSbClient();
   if (!client) return;
   try {
-    var payload = { cliente_id: clienteId, ferramenta: 'cartoes', dados: { comparisons: comparisons } };
+    var payload = { cliente_id: clienteId, ferramenta: 'cartoes', dados: { comparisons: comparisons }, updated_at: new Date().toISOString() };
     var result = await client.from('ferramentas_dados').upsert(payload, { onConflict: 'cliente_id,ferramenta' });
     if (result.error) console.warn('Cartoes: erro ao salvar no Supabase', result.error.message);
   } catch(e) { console.warn('Cartoes: exceção ao salvar', e); }
@@ -1095,6 +1192,8 @@ let tmpObjImps = {};
 let tmpSubjVals = {};
 let tmpPtsGastoMoeda = {}; // { [cardId]: 'R$' | 'US$' }
 let tmpAnuidImp = 'muito'; // importância editável da anuidade
+// Origem do Gasto Nacional (item 7c): { fonte:'manual' } ou { fonte:'diagnostico', ref, itens, valor }. Salvo em ctx.origem.
+let tmpCtxOrigem = { fonte: 'manual' };
 
 let cidCounter = 1;
 
@@ -1115,15 +1214,22 @@ async function fetchDolar() {
   }
 }
 
-async function fetchDolarModal() {
+var _dolarFetchSeq = 0;
+async function fetchDolarModal(silent = false) {
+  // silent=true: usado ao abrir nova comparação — se a API falhar, mantém o valor padrão sem alertar
+  // Proteção contra corrida: se o consultor fechar e abrir outra comparação antes da resposta,
+  // a cotação só é escrita se este ainda for o último pedido E o modal ainda for o mesmo (nova vs. edição).
+  const seq = ++_dolarFetchSeq;
+  const idNaAbertura = editingId;
   try {
     const r = await fetch('https://economia.awesomeapi.com.br/json/last/USD-BRL');
     const d = await r.json();
     const val = parseFloat(d.USDBRL.bid).toFixed(2);
     const fmtVal = 'R$ ' + val.replace('.',',');
+    if (seq !== _dolarFetchSeq || editingId !== idNaAbertura) return;
     document.getElementById('modal-ctx-dolar').value = fmtVal;
   } catch(e) {
-    alert('Erro ao buscar cotação do dólar.');
+    if (!silent) alert('Erro ao buscar cotação do dólar.');
   }
 }
 
@@ -1168,6 +1274,10 @@ function getCtx() {
     exterior: parseUSD('modal-ctx-exterior'),
     bonif:    parseBRL('modal-ctx-bonif'),
     dolar:    parseBRL('modal-ctx-dolar'),
+    // Horizonte da análise em meses (12/24/36). Campo opcional — comparações antigas não o têm (→ 12).
+    horizonteMeses: parseInt(document.getElementById('modal-ctx-horizonte')?.value) || 12,
+    // De onde veio o Gasto Nacional (item 7c). Opcional — comparações antigas não o têm.
+    origem: JSON.parse(JSON.stringify(tmpCtxOrigem || { fonte: 'manual' })),
   };
 }
 
@@ -1204,6 +1314,9 @@ function openModal(id = null) {
     document.getElementById('modal-ctx-exterior').value = savedCtx.exterior ? 'US$ ' + savedCtx.exterior.toLocaleString('pt-BR',{minimumFractionDigits:2}) : '';
     document.getElementById('modal-ctx-bonif').value = savedCtx.bonif ? 'R$ ' + savedCtx.bonif.toLocaleString('pt-BR',{minimumFractionDigits:2}) : '';
     document.getElementById('modal-ctx-dolar').value = savedCtx.dolar ? 'R$ ' + savedCtx.dolar.toLocaleString('pt-BR',{minimumFractionDigits:2}) : '';
+    const hzSel = document.getElementById('modal-ctx-horizonte');
+    if (hzSel) hzSel.value = String(savedCtx.horizonteMeses || 12);
+    tmpCtxOrigem = (savedCtx.origem && typeof savedCtx.origem === 'object') ? JSON.parse(JSON.stringify(savedCtx.origem)) : { fonte: 'manual' };
     document.getElementById('modal-title').textContent = 'Editar Comparação';
   } else {
     tmpName = ''; tmpCards = []; tmpObjVals = {}; tmpObjImps = {}; tmpSubjVals = {};
@@ -1214,7 +1327,12 @@ function openModal(id = null) {
     document.getElementById('modal-ctx-nacional').value = 'R$ 3.000,00';
     document.getElementById('modal-ctx-exterior').value = 'US$ 500,00';
     document.getElementById('modal-ctx-bonif').value = 'R$ 500,00';
-    document.getElementById('modal-ctx-dolar').value = '';
+    // Dólar nasce com o valor padrão e tenta atualizar pela cotação do dia (sem alertar se falhar)
+    document.getElementById('modal-ctx-dolar').value = 'R$ ' + _ctxDefaults.dolar.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+    fetchDolarModal(true);
+    const hzSelNovo = document.getElementById('modal-ctx-horizonte');
+    if (hzSelNovo) hzSelNovo.value = '12';
+    tmpCtxOrigem = { fonte: 'manual' };
     document.getElementById('modal-title').textContent = 'Nova Comparação de Cartões';
   }
   document.getElementById('comp-name').value = tmpName;
@@ -1268,9 +1386,9 @@ function renderAll() {
 /* ═══════════════════════════════════════════════════════
    CARTÕES
 ═══════════════════════════════════════════════════════ */
-function addCard() {
-  const id = cidCounter++;
-  tmpCards.push({ id, name:'', anuidade_mensal:0, bandeira:'' });
+// Inicializa objVals (0) e subjVals (hasParam=false, rank=1) para um cartão recém-criado.
+// Reutilizada por addCard, importarDeFluxo e pela importação do diagnóstico.
+function _initCardVals(id) {
   OBJ_GROUPS.forEach(g => g.params.forEach(p => {
     if (p.tipo === 'desc-combo') {
       if (!tmpObjVals['desc-gasto']) tmpObjVals['desc-gasto'] = {};
@@ -1287,6 +1405,12 @@ function addCard() {
     tmpSubjVals[s.id].hasParam[id] = false;
     tmpSubjVals[s.id].rankings[id] = 1;
   });
+}
+
+function addCard() {
+  const id = cidCounter++;
+  tmpCards.push({ id, name:'', anuidade_mensal:0, bandeira:'' });
+  _initCardVals(id);
   renderAll();
 }
 
@@ -1379,17 +1503,65 @@ function renderCards() {
         <label class="field-label">Anuidade</label>
         <div class="anuid-row">
           <input class="anuid-input" id="anuid-${c.id}"
-            value="${c.anuidade_mensal > 0 ? fmtBRL(c.anuidade_mensal) : ''}"
+            value="${c.anuidade_mensal > 0 ? fmtBRL((c.anuidade_input_tipo||'mensal') === 'anual' ? c.anuidade_mensal*12 : c.anuidade_mensal) : ''}"
             placeholder="R$ 0,00"
             onblur="applyAnuidade(${c.id}, this)"/>
           <select class="anuid-tipo" id="anuid-tipo-${c.id}"
             onchange="applyAnuidade(${c.id}, document.getElementById('anuid-${c.id}'))">
-            <option value="mensal">por mês</option>
-            <option value="anual">por ano</option>
+            <option value="mensal"${(c.anuidade_input_tipo||'mensal')==='anual'?'':' selected'}>por mês</option>
+            <option value="anual"${(c.anuidade_input_tipo||'mensal')==='anual'?' selected':''}>por ano</option>
           </select>
         </div>
-        <div class="anuid-hint" id="anuid-hint-${c.id}"></div>
+        <div class="anuid-hint" id="anuid-hint-${c.id}">${anuidHintText(c)}</div>
       </div>
+      <!-- Ficha da proposta (dados da foto/print da oferta) -->
+      <div class="field-group" style="margin-bottom:8px">
+        <label class="field-label">Anuidade no 1º ano (R$/ano)</label>
+        <input class="field-input" id="anuid-ano1-${c.id}"
+          value="${c.anuidade_ano1 == null ? '' : fmtBRL(c.anuidade_ano1)}"
+          placeholder="vazio = igual à cheia; 0 = 1º ano grátis"
+          onblur="applyAnuidAno1(${c.id}, this)"/>
+      </div>
+      <div class="field-group" style="margin-bottom:8px">
+        <label class="field-label">Bônus de adesão</label>
+        <div style="display:flex;gap:6px">
+          <input class="field-input" id="bonus-pts-${c.id}" style="flex:1;min-width:0"
+            value="${(c.bonus_pts||0) > 0 ? Number(c.bonus_pts).toLocaleString('pt-BR') : ''}"
+            placeholder="pontos" title="Pontos de boas-vindas"
+            onblur="applyCardNum(${c.id}, 'bonus_pts', this, 'int')"/>
+          <input class="field-input" id="bonus-rs-${c.id}" style="flex:1;min-width:0"
+            value="${(c.bonus_rs||0) > 0 ? fmtBRL(c.bonus_rs) : ''}"
+            placeholder="R$" title="Bônus em dinheiro / crédito na fatura"
+            onblur="applyCardNum(${c.id}, 'bonus_rs', this, 'moeda')"/>
+        </div>
+      </div>
+      <div style="display:flex;gap:6px;margin-bottom:8px">
+        <div class="field-group" style="flex:1;min-width:0;margin-bottom:0">
+          <label class="field-label">Limite de crédito (R$)</label>
+          <input class="field-input" id="limite-${c.id}"
+            value="${(c.limite||0) > 0 ? fmtBRL(c.limite) : ''}"
+            placeholder="R$ 0,00"
+            onblur="applyCardNum(${c.id}, 'limite', this, 'moeda')"/>
+        </div>
+        <div class="field-group" style="flex:1;min-width:0;margin-bottom:0">
+          <label class="field-label">Validade da proposta</label>
+          <input class="field-input" type="date" id="validade-${c.id}"
+            value="${escHtml(c.validade||'')}"
+            onchange="setCardField(${c.id}, 'validade', this.value)"/>
+        </div>
+      </div>
+      <div class="field-group" style="margin-bottom:8px">
+        <label class="field-label">Observações</label>
+        <textarea class="field-input" id="obs-${c.id}" rows="2" style="resize:vertical;font-family:inherit"
+          placeholder="Condições, link da imagem no Drive…"
+          oninput="setCardField(${c.id}, 'obs', this.value)">${escHtml(c.obs||'')}</textarea>
+      </div>
+      <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:.78rem;margin-bottom:8px;${c.atual?'color:var(--gold);font-weight:700':'color:var(--muted-foreground)'}">
+        <input type="checkbox" id="atual-${c.id}" ${c.atual?'checked':''}
+          style="accent-color:var(--gold);cursor:pointer"
+          onchange="setCardAtual(${c.id}, this.checked)"/>
+        ⭐ É o cartão atual da cliente
+      </label>
       <div class="prefill-bar">
         <span class="pf-label">🏷️ Bandeira</span>
         <select id="pf-bandeira-${c.id}">
@@ -1436,6 +1608,7 @@ function applyAnuidade(cid, el) {
   const tipoSel = document.getElementById('anuid-tipo-'+cid);
   const tipo = tipoSel ? tipoSel.value : 'mensal';
   c.anuidade_mensal = tipo === 'anual' ? n/12 : n;
+  c.anuidade_input_tipo = tipo; // como o consultor digitou (por mês / por ano) — persiste para reabrir igual
   el.value = n > 0 ? fmtBRL(n) : '';
   const hint = document.getElementById('anuid-hint-'+cid);
   if (hint) {
@@ -1443,6 +1616,71 @@ function applyAnuidade(cid, el) {
     else if (tipo === 'mensal' && n > 0) hint.textContent = '≈ ' + fmtBRL(n*12) + '/ano';
     else hint.textContent = '';
   }
+}
+
+// Texto do hint da anuidade a partir do card salvo (usado no render inicial)
+function anuidHintText(c) {
+  const tipo = c.anuidade_input_tipo || 'mensal';
+  const m = c.anuidade_mensal || 0;
+  if (m <= 0) return '';
+  return tipo === 'anual' ? '≈ ' + fmtBRL(m) + '/mês' : '≈ ' + fmtBRL(m*12) + '/ano';
+}
+
+// Anuidade no 1º ano (R$/ano): vazio = igual à cheia (null); "0" = primeiro ano grátis (0)
+function applyAnuidAno1(cid, el) {
+  const c = tmpCards.find(x=>x.id===cid); if(!c) return;
+  const raw = String(el.value).replace(/R\$\s*/g,'').replace(/\./g,'').replace(',','.').trim();
+  if (raw === '') { c.anuidade_ano1 = null; el.value = ''; return; }
+  const n = parseFloat(raw) || 0;
+  c.anuidade_ano1 = n;
+  el.value = fmtBRL(n); // exibe R$ 0,00 quando for zero (não apaga)
+}
+
+// Campos numéricos simples do card: tipo 'moeda' (R$) ou 'int' (pontos)
+function applyCardNum(cid, key, el, tipo) {
+  const c = tmpCards.find(x=>x.id===cid); if(!c) return;
+  const raw = String(el.value).replace(/R\$\s*/g,'').replace(/\./g,'').replace(',','.').trim();
+  const n = parseFloat(raw) || 0;
+  c[key] = n;
+  if (n === 0) { el.value = ''; return; }
+  el.value = tipo === 'moeda' ? fmtBRL(n) : n.toLocaleString('pt-BR');
+}
+
+// Campos de texto do card (validade, observações)
+function setCardField(cid, key, val) {
+  const c = tmpCards.find(x=>x.id===cid); if(!c) return;
+  c[key] = val;
+}
+
+// ⭐ Cartão atual da cliente: só um pode estar marcado
+function setCardAtual(cid, checked) {
+  syncAllInputs(); // preserva o que já foi digitado antes de re-renderizar
+  tmpCards.forEach(x => { x.atual = checked ? (x.id === cid) : (x.id === cid ? false : !!x.atual); });
+  renderCards();
+}
+
+// Lê os campos novos da ficha da proposta (chamado por syncAllInputs)
+function _syncCardExtras(c) {
+  const ano1El = document.getElementById('anuid-ano1-'+c.id);
+  if (ano1El) {
+    const raw = String(ano1El.value).replace(/R\$\s*/g,'').replace(/\./g,'').replace(',','.').trim();
+    c.anuidade_ano1 = raw === '' ? null : (parseFloat(raw) || 0);
+  }
+  const numField = (elId, key) => {
+    const el = document.getElementById(elId);
+    if (!el) return;
+    const raw = String(el.value).replace(/R\$\s*/g,'').replace(/\./g,'').replace(',','.').trim();
+    c[key] = parseFloat(raw) || 0;
+  };
+  numField('bonus-pts-'+c.id, 'bonus_pts');
+  numField('bonus-rs-'+c.id,  'bonus_rs');
+  numField('limite-'+c.id,    'limite');
+  const valEl = document.getElementById('validade-'+c.id);
+  if (valEl) c.validade = valEl.value || '';
+  const obsEl = document.getElementById('obs-'+c.id);
+  if (obsEl) c.obs = obsEl.value || '';
+  const atualEl = document.getElementById('atual-'+c.id);
+  if (atualEl) c.atual = !!atualEl.checked;
 }
 
 /* ═══════════════════════════════════════════════════════
@@ -1576,6 +1814,7 @@ function renderSubjSections() {
     <thead><tr>
       <th class="td-label">Benefício</th>
       <th class="td-imp">Importância</th>
+      <th class="td-val" title="Quanto a cliente economizaria por ano se usasse este benefício (0 = ela não usa). Entra no balanço só dos cartões que o possuem (✓).">Vale p/ cliente (R$/ano)</th>
       ${tmpCards.map(c=>`<th style="white-space:nowrap">✓ ${escHtml(c.name)||'Cartão'}</th><th class="td-val">Rank</th>`).join('')}
       <th style="width:60px">Ações</th>
     </tr></thead><tbody>`;
@@ -1593,6 +1832,10 @@ function renderSubjSections() {
         <select onchange="tmpSubjVals['${s.id}'].importance=this.value">
           ${IMP_OPTIONS.map(o=>`<option value="${o.value}"${o.value===imp?' selected':''}>${o.label}</option>`).join('')}
         </select>
+      </td>
+      <td class="td-val">
+        <input type="text" id="subj-valor-${s.id}" data-tipo="moeda" placeholder="R$ 0,00" title="Quanto a cliente economizaria por ano usando este benefício"
+          value="${(sv.valorAnoCliente||0) > 0 ? fmtBRL(sv.valorAnoCliente) : ''}" onblur="applySubjValor('${s.id}', this)"/>
       </td>`;
     tmpCards.forEach(c => {
       const has = sv.hasParam[c.id] === true;
@@ -1615,6 +1858,17 @@ function renderSubjSections() {
   });
   html += `</tbody></table></div>`;
   container.innerHTML = html;
+}
+
+// Valor em R$/ano de um benefício para a cliente (item 5). Lê "R$ 1.200,00" / "1200" / "1.200,5"; vazio ou 0 = ela não usa.
+function parseValorBRL(raw) {
+  return parseFloat(String(raw||'').replace(/[^\d,]/g,'').replace(/\./g,'').replace(',','.')) || 0;
+}
+function applySubjValor(sid, el) {
+  if (!tmpSubjVals[sid]) tmpSubjVals[sid] = { importance:'imp', hasParam:{}, rankings:{} };
+  const v = parseValorBRL(el.value);
+  tmpSubjVals[sid].valorAnoCliente = v;
+  el.value = v > 0 ? fmtBRL(v) : '';
 }
 
 /* ═══════════════════════════════════════════════════════
@@ -1690,17 +1944,27 @@ function syncAllInputs() {
       const tipoSel = document.getElementById('anuid-tipo-'+c.id);
       const tipo = tipoSel ? tipoSel.value : 'mensal';
       if (n > 0) c.anuidade_mensal = tipo === 'anual' ? n/12 : n;
+      if (tipoSel) c.anuidade_input_tipo = tipo;
     }
     const pfSel = document.getElementById('pf-bandeira-'+c.id);
     if (pfSel) c.bandeira = pfSel.value;
     // Salvar estado do checkbox de investimento mínimo
     const isentInvestEl = document.getElementById('isent-invest-possui-'+c.id);
     if (isentInvestEl) c.isentInvestPossui = isentInvestEl.checked;
+    // Ficha da proposta (anuidade 1º ano, bônus, limite, validade, obs, cartão atual)
+    _syncCardExtras(c);
   });
   OBJ_GROUPS.forEach(g => {
     // Lê a importância do grupo (select do grupo)
     const gImpEl = document.querySelector(`select[onchange*="tmpObjImps['${g.id}']"]`);
     if (gImpEl) tmpObjImps[g.id] = gImpEl.value;
+  });
+  // Valor em R$/ano de cada benefício para a cliente (item 5) — campo por benefício, não por cartão
+  subjItems.forEach(s => {
+    const vEl = document.getElementById('subj-valor-'+s.id);
+    if (!vEl) return;
+    if (!tmpSubjVals[s.id]) tmpSubjVals[s.id] = { importance:s.importance, hasParam:{}, rankings:{} };
+    tmpSubjVals[s.id].valorAnoCliente = parseValorBRL(vEl.value);
   });
   OBJ_GROUPS.forEach(g => g.params.forEach(p => {
     if (!tmpObjVals[p.id]) tmpObjVals[p.id] = {};
@@ -1737,9 +2001,29 @@ function syncAllInputs() {
 }
 
 /* ═══════════════════════════════════════════════════════
+   VALIDAÇÃO DE RANKING SUBJETIVO (portada de comparador.html)
+   Regra: posições repetidas devem pular as seguintes
+   Ex: [1,1,3] válido; [1,1,2] inválido
+═══════════════════════════════════════════════════════ */
+function validateRanking(ranks) {
+  if (ranks.length === 0) return { valid: true };
+  const sorted = [...ranks].sort((a,b)=>a-b);
+  let i = 0;
+  while (i < sorted.length) {
+    const expectedPos = i + 1;
+    const currentPos = sorted[i];
+    if (currentPos !== expectedPos) {
+      return { valid: false, expected: expectedPos, got: currentPos };
+    }
+    while (i < sorted.length && sorted[i] === currentPos) i++;
+  }
+  return { valid: true };
+}
+
+/* ═══════════════════════════════════════════════════════
    SALVAR
 ═══════════════════════════════════════════════════════ */
-function saveComparison() {
+function saveComparison(forcedId) { // forcedId (opcional): id já usado pelo wrapper de linkage, p/ comp.id == cartoes_comp_id
   syncAllInputs();
   hideError();
   const errors = [];
@@ -1748,9 +2032,25 @@ function saveComparison() {
   tmpCards.forEach(c => { if (!c.name) errors.push('Um cartão está sem nome.'); });
   const allImps = [...Object.values(tmpObjImps), ...subjItems.map(s=>tmpSubjVals[s.id]?.importance||s.importance)];
   if (allImps.filter(v=>v==='top').length > 1) errors.push('Apenas UM parâmetro pode ser "O mais importante de todos".');
+  const ctx = getCtx();
+  if (ctx.exterior > 0 && ctx.dolar <= 0) errors.push('Informe a cotação do dólar (use o botão 🔄 Atualizar cotação).');
+  // Ranking dos subjetivos: só entre os cartões que têm o benefício (✓); após empate, salta-se a posição seguinte
+  subjItems.forEach(s => {
+    const sv = tmpSubjVals[s.id];
+    if (!sv) return;
+    const ranks = tmpCards.filter(c => sv.hasParam?.[c.id] === true).map(c => Number(sv.rankings?.[c.id]) || 1);
+    if (!validateRanking(ranks).valid) {
+      const sorted = [...ranks].sort((a,b)=>a-b);
+      errors.push(`${escHtml(s.name)}: posições ${sorted.join('º, ')}º não formam uma sequência válida — após um empate, salte a posição seguinte (ex.: 1º, 1º, 3º).`);
+    }
+  });
+  // Ficha da proposta
+  if (tmpCards.filter(c=>c.atual).length > 1) errors.push('Marque apenas um cartão como "cartão atual da cliente".');
+  tmpCards.forEach(c => {
+    if ((c.limite||0) < 0 || (c.anuidade_ano1 != null && c.anuidade_ano1 < 0)) errors.push(`Valores negativos não são permitidos em ${escHtml(c.name||'um cartão')}.`);
+  });
   if (errors.length > 0) { showError(errors); return; }
 
-  const ctx = getCtx();
   const result = calcResult(ctx);
 
   // Garantir que desc-gasto e desc-pct sejam incluídos no objVals
@@ -1759,7 +2059,7 @@ function saveComparison() {
   if (tmpObjVals['desc-pct'])   objValsToSave['desc-pct']   = JSON.parse(JSON.stringify(tmpObjVals['desc-pct']));
 
   const comp = {
-    id: editingId || Date.now(),
+    id: editingId || (typeof forcedId === 'number' && forcedId > 0 ? forcedId : Date.now()),
     name: tmpName,
     cards: JSON.parse(JSON.stringify(tmpCards)),
     objVals: objValsToSave,
@@ -1787,10 +2087,47 @@ function saveComparison() {
 /* ═══════════════════════════════════════════════════════
    MOTOR DE CÁLCULO
 ═══════════════════════════════════════════════════════ */
+// CHANGELOG 2026-10: motor único de anuidade (anuidadeEfetiva). Comparações salvas antes desta data
+// mudam de resultado ao serem re-salvas: isenção testada contra a fatura total (nacional + bonificado +
+// exterior em R$), milheiro e desc-gasto não pontuam mais como sub-parâmetros, isent-invest só pontua
+// com "cliente possui" marcado. Comparações antigas renderizam o result salvo sem recálculo (renderList).
+// Fatura total mensal em R$ — base única para isenção/desconto de anuidade
+function faturaBase(ctx){ return (ctx.nacional||0) + (ctx.bonif||0) + (ctx.exterior||0)*(ctx.dolar||0); }
+
+// Única fonte de verdade para isenção/desconto da anuidade (usada no score E no balanço).
+// Prioridade: isenção por investimento (cliente possui) > isenção por fatura > desconto por gasto.
+function anuidadeEfetiva(card, ctx, objVals){
+  const bruta = card.anuidade_mensal || 0;
+  const fat   = faturaBase(ctx);
+  const isentInvest = (objVals['isent-invest']||{})[card.id] || 0;
+  const isentFatura = (objVals['isent-fatura']||{})[card.id] || 0;
+  const descGasto   = (objVals['desc-gasto']||{})[card.id]   || 0;
+  const descPct     = (objVals['desc-pct']||{})[card.id]     || 0;
+  let efetiva = bruta, motivo = '';
+  if (isentInvest > 0 && card.isentInvestPossui)                { efetiva = 0; motivo = 'invest'; }
+  else if (isentFatura > 0 && fat >= isentFatura)               { efetiva = 0; motivo = 'fatura'; }
+  else if (descPct > 0 && (descGasto === 0 || fat >= descGasto)){ efetiva = bruta*(1-descPct/100); motivo = 'desconto'; }
+  return { bruta, efetiva, motivo, faturaBase: fat,
+           faltaIsencao: isentFatura > 0 ? Math.max(0, isentFatura - fat) : null,
+           faltaDesc:    descGasto   > 0 ? Math.max(0, descGasto   - fat) : null,
+           isentInvestSemPossuir: isentInvest > 0 && !card.isentInvestPossui };
+}
+
+// Texto curto do motivo da anuidade efetiva (memória de cálculo)
+function motivoTexto(ae, card, objVals){
+  if (ae.motivo === 'invest')   return `✅ Isento invest. (${fmtBRL((objVals['isent-invest']||{})[card.id] || 0)})`;
+  if (ae.motivo === 'fatura')   return `✅ Isento fatura (${fmtBRL((objVals['isent-fatura']||{})[card.id] || 0)})`;
+  if (ae.motivo === 'desconto') return `Desconto de ${fmtN((objVals['desc-pct']||{})[card.id] || 0)}%`;
+  return '';
+}
+
 function calcResult(ctx) {
   const scores = {};
   tmpCards.forEach(c => { scores[c.id] = 0; });
   const breakdown = [];
+  // Alertas de "Inaceitável"/"Preferia não ter" (item 6). NÃO alteram o score: o sinal/peso continua o mesmo.
+  const alertas = [];
+  const nomeCard = c => (c && c.name) || 'Cartão';
 
   // ── OBJETIVOS (agrupados por grupo na memória de cálculo) ──
   OBJ_GROUPS.forEach(group => {
@@ -1801,8 +2138,9 @@ function calcResult(ctx) {
     const groupNorms    = {}; // soma de normas por cartão
     const groupDetails  = {}; // linhas de detalhe por cartão
     const groupFormulas = {}; // linhas de fórmula por cartão
+    const groupTemRet   = {}; // cartão tem algum retorno > 0 neste grupo (para o alerta de "Inaceitável")
     let   subCount      = 0;  // número de sub-parâmetros com maxRet > 0
-    tmpCards.forEach(c => { groupNorms[c.id]=0; groupDetails[c.id]=[]; groupFormulas[c.id]=[]; });
+    tmpCards.forEach(c => { groupNorms[c.id]=0; groupDetails[c.id]=[]; groupFormulas[c.id]=[]; groupTemRet[c.id]=false; });
 
     group.params.forEach(param => {
       // desc-combo é apenas visual — usa desc-gasto e desc-pct internamente
@@ -1837,28 +2175,26 @@ function calcResult(ctx) {
             ret = ctx.bonif * v * (mil/1000);
           }
           else if (pTipo === 'milheiro') {
-            ret = v;
+            ret = 0; // milheiro já multiplica os pontos — não pontua sozinho (evita dupla contagem)
           }
           else if (pTipo === 'desc-gasto') {
-            ret = v > 0 ? 1/v : 0;
+            ret = 0; // só condiciona o desc-pct — não pontua sozinho
           }
           else if (pTipo === 'desc-pct') {
-            const descGasto = (tmpObjVals['desc-gasto']||{})[c.id] || 0;
-            const card = tmpCards.find(x=>x.id===c.id);
-            if (card && ctx.nacional >= descGasto && descGasto > 0) ret = card.anuidade_mensal * (v/100);
-            else if (card && descGasto === 0 && v > 0) ret = card.anuidade_mensal * (v/100);
+            // R$/mês economizados — só quando o desconto é o que de fato vale (motor único)
+            const ae = anuidadeEfetiva(c, ctx, tmpObjVals);
+            ret = ae.motivo === 'desconto' ? c.anuidade_mensal * (v/100) : 0;
           }
           else if (pTipo === 'isent-fatura') {
-            const card = tmpCards.find(x=>x.id===c.id);
-            if (v > 0 && card) {
-              if (ctx.nacional >= v) ret = card.anuidade_mensal;
-              else ret = 1/v;
-            }
+            // R$/mês economizados se a fatura total atingir o mínimo; senão 0 (nunca mais 1/v)
+            ret = (v > 0 && faturaBase(ctx) >= v) ? c.anuidade_mensal : 0;
           }
           else if (pTipo === 'isent-invest') {
-            ret = v > 0 ? 1/v : 0;
+            // Só vale se o cliente de fato possui o investimento
+            ret = (v > 0 && c.isentInvestPossui) ? c.anuidade_mensal : 0;
           }
           returns[c.id] = ret;
+          if (ret > 0) groupTemRet[c.id] = true;
         });
 
         const maxRet = Math.max(...Object.values(returns));
@@ -1879,10 +2215,12 @@ function calcResult(ctx) {
             else if (pTipo === 'desc-gasto') detail = `Gasto mín: ${fmtBRL(rawV)}`;
             else if (pTipo === 'desc-pct')   detail = `Desc: ${fmtN(rawV)}% → ${fmtBRL(ret)}/mês`;
             else if (pTipo === 'isent-fatura') {
-              const atingiu = rawV > 0 && ctx.nacional >= rawV;
+              const atingiu = rawV > 0 && faturaBase(ctx) >= rawV;
               detail = atingiu ? `✅ Isento fatura (${fmtBRL(rawV)})` : `Isent. fatura mín: ${fmtBRL(rawV)}`;
             }
-            else if (pTipo === 'isent-invest') detail = `Isent. invest. mín: ${fmtBRL(rawV)}`;
+            else if (pTipo === 'isent-invest') {
+              if (rawV > 0) detail = c.isentInvestPossui ? `✅ Isento invest. (${fmtBRL(rawV)})` : `Isent. invest. mín: ${fmtBRL(rawV)} (cliente não possui)`;
+            }
             else if (pTipo === 'pts-gasto') {
               const moeda2 = tmpPtsGastoMoeda[c.id] || 'R$';
               detail = `Pts gasto (${fmtN(rawV)}/${moeda2}): ${fmtBRL(ret)}/mês`;
@@ -1893,9 +2231,18 @@ function calcResult(ctx) {
             else detail = `R$${fmtN(ret)}/mês`;
           } else {
             if (rawV > 0) {
-              if (pTipo === 'milheiro')        detail = `Milheiro: R$${fmtN(rawV)}/mil pts`;
-              else if (pTipo === 'desc-gasto') detail = `Gasto mín: ${fmtBRL(rawV)}`;
-              else                             detail = `R$${fmtN(rawV)}/mês`;
+              if (pTipo === 'milheiro')          detail = `Milheiro: R$${fmtN(rawV)}/mil pts`;
+              else if (pTipo === 'desc-gasto')   detail = `Gasto mín: ${fmtBRL(rawV)}`;
+              else if (pTipo === 'desc-pct') {
+                // Pode ter retorno 0 porque o gasto não foi atingido OU porque uma isenção de prioridade maior venceu
+                const ae = anuidadeEfetiva(c, ctx, tmpObjVals);
+                if (ae.motivo === 'invest' || ae.motivo === 'fatura') detail = `Desc: ${fmtN(rawV)}% (superado pela isenção)`;
+                else if (ae.motivo === 'desconto')                     detail = `Desc: ${fmtN(rawV)}% (anuidade já é R$ 0)`;
+                else                                                   detail = `Desc: ${fmtN(rawV)}% (não atingido)`;
+              }
+              else if (pTipo === 'isent-fatura') detail = `Isent. fatura mín: ${fmtBRL(rawV)}`;
+              else if (pTipo === 'isent-invest') detail = c.isentInvestPossui ? `✅ Isento invest. (${fmtBRL(rawV)})` : `Isent. invest. mín: ${fmtBRL(rawV)} (cliente não possui)`;
+              else                               detail = `R$${fmtN(rawV)}/mês`;
             }
           }
           groupNorms[c.id] += norm;
@@ -1925,6 +2272,10 @@ function calcResult(ctx) {
         ret:     score,
         rawV:    0
       };
+      // Grupo objetivo marcado como Inaceitável e o cartão tem retorno nele → alerta (score inalterado)
+      if (gImp === 'inac' && groupTemRet[c.id]) {
+        alertas.push({ cardId: c.id, nivel: 'inac', texto: `${nomeCard(c)} tem ${group.label}, marcado como Inaceitável.` });
+      }
     });
     breakdown.push({
       paramName:  group.label,
@@ -1942,28 +2293,10 @@ function calcResult(ctx) {
   const anuidadesEfetivas = {};
   const anuidMotivo = {}; // motivo da isenção para exibir no detalhe
   tmpCards.forEach(c => {
-    const anuidBruta = c.anuidade_mensal;
-    const isentFaturaV  = (tmpObjVals['isent-fatura']||{})[c.id] || 0;
-    const isentInvestV  = (tmpObjVals['isent-invest']||{})[c.id] || 0;
-    const descGastoV    = (tmpObjVals['desc-gasto']||{})[c.id]   || 0;
-    const descPctV      = (tmpObjVals['desc-pct']||{})[c.id]     || 0;
-    const possuiInvest  = !!c.isentInvestPossui;
-    let anuidEfetiva = anuidBruta;
-    let motivo = '';
-    // Isenção por investimento mínimo (cliente marcou que possui)
-    if (isentInvestV > 0 && possuiInvest) {
-      anuidEfetiva = 0;
-      motivo = `✅ Isento invest. (${fmtBRL(isentInvestV)})`;
-    }
-    // Isenção total por fatura tem prioridade sobre desconto
-    else if (isentFaturaV > 0 && ctx.nacional >= isentFaturaV) {
-      anuidEfetiva = 0;
-      motivo = `✅ Isento fatura (${fmtBRL(isentFaturaV)})`;
-    } else if (descPctV > 0 && (descGastoV === 0 || ctx.nacional >= descGastoV)) {
-      anuidEfetiva = anuidBruta * (1 - descPctV/100);
-    }
-    anuidadesEfetivas[c.id] = anuidEfetiva;
-    anuidMotivo[c.id] = motivo;
+    // Motor único (mesma regra do balanço): isenção por investimento > por fatura total > desconto
+    const ae = anuidadeEfetiva(c, ctx, tmpObjVals);
+    anuidadesEfetivas[c.id] = ae.efetiva;
+    anuidMotivo[c.id] = motivoTexto(ae, c, tmpObjVals);
   });
   const maxAnuid = Math.max(...Object.values(anuidadesEfetivas));
   const anuidW = impWeight(tmpAnuidImp);
@@ -1978,6 +2311,9 @@ function calcResult(ctx) {
       scores[c.id] += score;
       const motivoStr = anuidMotivo[c.id] ? ` | ${anuidMotivo[c.id]}` : '';
       const detalheEfetiva = a !== aBruta ? ` (efetiva: ${fmtBRL(a)}/mês)` : '';
+      if (tmpAnuidImp === 'inac' && a > 0) {
+        alertas.push({ cardId: c.id, nivel: 'inac', texto: `${nomeCard(c)} cobra anuidade efetiva de ${fmtBRL(a)}/mês — você marcou anuidade como Inaceitável.` });
+      }
       perProduct[c.id] = {
         score,
         detail: `Bruta: ${fmtBRL(aBruta)}/mês${detalheEfetiva}${motivoStr}`,
@@ -2008,6 +2344,8 @@ function calcResult(ctx) {
       const has = sv.hasParam[c.id] === true;
       const rank = sv.rankings[c.id] || 1;
       let score = 0, detail = '—', formula = '—';
+      if (has && imp === 'inac')     alertas.push({ cardId: c.id, nivel: 'inac', texto: `${nomeCard(c)} possui "${s.name}", que você marcou como Inaceitável.` });
+      else if (has && imp === 'nao') alertas.push({ cardId: c.id, nivel: 'nao',  texto: `${nomeCard(c)} possui "${s.name}", que você preferia não ter.` });
       if (!has) {
         if (w > 0) { score = 0; detail = '⚠️ Não tem'; formula = `ausente × ${w} = 0`; }
         else if (w < 0) { score = Math.abs(w)*10; detail = '✅ Não tem (bônus)'; formula = `ausente × |${w}| × 10 = ${score.toFixed(2)}`; }
@@ -2048,32 +2386,119 @@ function calcResult(ctx) {
     const pts_ext = ctx.exterior * ptsExtV * (mil/1000);
     // Pontos por R$1 (bonificado): adicional específico para compras bonificadas
     const pts_bon = ctx.bonif * ((tmpObjVals['pts-bonif']||{})[c.id]||0) * (mil/1000);
-    const descGasto = (tmpObjVals['desc-gasto']||{})[c.id] || 0;
-    const descPct   = (tmpObjVals['desc-pct']||{})[c.id]   || 0;
-    const isentFatura = (tmpObjVals['isent-fatura']||{})[c.id] || 0;
-    let desconto = 0;
-    let isentTotal = false;
-    // Isenção total por fatura tem prioridade
-    if (isentFatura > 0 && ctx.nacional >= isentFatura) {
-      desconto = c.anuidade_mensal; // isenção total
-      isentTotal = true;
-    } else if (descPct > 0 && (descGasto === 0 || ctx.nacional >= descGasto)) {
-      desconto = c.anuidade_mensal * (descPct/100);
-    }
-    const entradas = cb_nac + cb_ext + cb_bon + pts_gasto + pts_ext + pts_bon + desconto;
+    // Anuidade: mesmo motor do score (isenção por investimento / fatura total / desconto)
+    const ae = anuidadeEfetiva(c, ctx, tmpObjVals);
+    const desconto   = ae.bruta - ae.efetiva;           // R$/mês economizados na anuidade
+    const isentTotal = ae.efetiva === 0 && ae.bruta > 0; // isenção total (qualquer motivo)
+    // Benefícios com valor em R$ para a cliente (item 5): só os que o cartão possui (✓) e com valor/ano > 0.
+    // Não entra no score subjetivo (presença + rank continuam iguais) nem no break-even (dinheiro puro).
+    const beneficios_detalhe = subjItems
+      .filter(s => tmpSubjVals[s.id]?.hasParam?.[c.id] === true && (tmpSubjVals[s.id].valorAnoCliente||0) > 0)
+      .map(s => { const v = tmpSubjVals[s.id].valorAnoCliente; return { nome: s.name, anual: v, mensal: v/12 }; });
+    const beneficios_rs = beneficios_detalhe.reduce((s, d) => s + d.mensal, 0);
+    const entradas = cb_nac + cb_ext + cb_bon + pts_gasto + pts_ext + pts_bon + desconto + beneficios_rs;
     const saidas   = c.anuidade_mensal;
+    // Ponto de equilíbrio de gasto ("vale a pena a partir de R$ X/mês"): só retorno em dinheiro, sem benefícios.
+    // Aproximação linear (retorno proporcional ao gasto); a isenção por fatura é um degrau, por isso o teto em isent-fatura.
+    const Gtot  = ae.faturaBase;
+    const Ecash = cb_nac + cb_ext + cb_bon + pts_gasto + pts_ext + pts_bon;
+    const taxa  = Gtot > 0 ? Ecash / Gtot : 0;            // R$ devolvidos por R$ 1 gasto
+    const isentFaturaBE = (tmpObjVals['isent-fatura']||{})[c.id] || 0;
+    let gastoBE;
+    if (ae.efetiva === 0)  gastoBE = 0;
+    else if (taxa > 0)     gastoBE = Math.min(ae.efetiva / taxa, isentFaturaBE > 0 ? isentFaturaBE : Infinity);
+    else                   gastoBE = isentFaturaBE > 0 ? isentFaturaBE : null;
+    const cobre = gastoBE !== null && Gtot >= gastoBE;
     balanco[c.id] = {
       cb_nac, cb_ext, cb_bon,
       pts_gasto, pts_ext, pts_bon,
       ptsGastoMoeda, ptsGastoV, ptsExtV,
       desconto, isentTotal,
       entradas, saidas,
-      liquido: entradas - saidas
+      liquido: entradas - saidas,
+      // Novas chaves (opcionais; comparações antigas não as têm)
+      anuidEfetiva: ae.efetiva,
+      motivoAnuid: ae.motivo,
+      faturaBase: ae.faturaBase,
+      faltaIsencao: ae.faltaIsencao,
+      faltaDesc: ae.faltaDesc,
+      isentInvestSemPossuir: ae.isentInvestSemPossuir,
+      anual: (entradas - saidas) * 12,
+      breakEven: { gastoMensal: gastoBE, taxaRetorno: taxa, cobre },
+      beneficios_rs,
+      beneficios_detalhe
     };
   });
 
+  // ── HORIZONTE (12/24/36 meses): anuidade do 1º ano, bônus de adesão e retorno mensal × meses ──
+  const H    = ctx.horizonteMeses || 12;
+  const anos = Math.ceil(H / 12);
+  const horizontePorCartao = {};
+  tmpCards.forEach(c => {
+    const b   = balanco[c.id];
+    const mil = (tmpObjVals['milheiro']||{})[c.id] || 0;
+    const A   = (c.anuidade_mensal || 0) * 12;                       // anuidade cheia anual
+    const A1  = (c.anuidade_ano1 == null) ? A : c.anuidade_ano1;     // anuidade do 1º ano (R$/ano)
+    // Anuidade efetiva anual para um valor cheio X (R$/ano), aplicando o mesmo motor de isenção/desconto
+    const efAnual = X => X === 0 ? 0 : anuidadeEfetiva({ ...c, anuidade_mensal: X / 12 }, ctx, tmpObjVals).efetiva * 12;
+    const fracao  = k => Math.min(1, (H - 12 * (k - 1)) / 12);       // parte do ano k dentro do horizonte
+    let anuidH = efAnual(A1) * fracao(1);
+    for (let k = 2; k <= anos; k++) anuidH += efAnual(A) * fracao(k);
+    // Entradas mensais SEM o desconto da anuidade (já está dentro de anuidH); benefícios em R$ (item 5) entram quando existirem
+    const entradasMes = b.cb_nac + b.cb_ext + b.cb_bon + b.pts_gasto + b.pts_ext + b.pts_bon + (b.beneficios_rs || 0);
+    const entradasH   = entradasMes * H;
+    const bonusAdesao = (c.bonus_rs || 0) + (c.bonus_pts || 0) * mil / 1000;
+    const liquidoH    = entradasH - anuidH + bonusAdesao;
+    const ganhoAnual  = liquidoH * 12 / H;
+    const custoEfetivoAnual = (anuidH - bonusAdesao) * 12 / H;
+    const ano1 = { anuidEf: efAnual(A1), liquido: entradasMes * 12 - efAnual(A1) + bonusAdesao };
+    horizontePorCartao[c.id] = { entradasH, anuidH, bonusAdesao, liquidoH, ganhoAnual, custoEfetivoAnual, ano1 };
+  });
+
+  // ── VS CARTÃO ATUAL ──
+  const atualId = tmpCards.find(c => c.atual)?.id ?? null;
+  const vsAtual = { atualId, delta: {} };
+  if (atualId != null && horizontePorCartao[atualId]) {
+    tmpCards.forEach(c => { vsAtual.delta[c.id] = horizontePorCartao[c.id].liquidoH - horizontePorCartao[atualId].liquidoH; });
+  }
+
   const ranking = tmpCards.map(c => ({ ...c, score:scores[c.id] })).sort((a,b)=>b.score-a.score);
-  return { scores, ranking, breakdown, balanco };
+
+  // ── VEREDITO EM UMA FRASE (linguagem da cliente) ──
+  const nomeDe = c => (c && c.name) || 'Cartão';
+  const porSaldo = tmpCards.slice().sort((a, b) =>
+    (horizontePorCartao[b.id].liquidoH - horizontePorCartao[a.id].liquidoH) || (scores[b.id] - scores[a.id]));
+  const B = porSaldo[0], R = porSaldo[1], S = ranking[0];
+  let veredito = '';
+  if (B) {
+    const hB = horizontePorCartao[B.id];
+    const atualCard = atualId != null ? tmpCards.find(c => c.id === atualId) : null;
+    // Regra: todos com liquidoH <= 0 (o plano dizia "< 0"; "<= 0" é necessário para um cartão sem anuidade e sem retorno — saldo 0 — cair nesta frase)
+    if (tmpCards.every(c => horizontePorCartao[c.id].liquidoH <= 0)) {
+      veredito = `Com o que você gasta hoje, nenhum cartão se paga em dinheiro; o que custa menos é o ${nomeDe(B)} (${fmtSinal(hB.ganhoAnual)}/ano).`;
+    } else if (atualCard && B.id !== atualId) {
+      const hA = horizontePorCartao[atualId];
+      veredito = `Trocar o ${nomeDe(atualCard)} pelo ${nomeDe(B)}: +${fmtBRL((vsAtual.delta[B.id] || 0) * 12 / H)} por ano em relação ao seu cartão hoje (${fmtSinal(hB.ganhoAnual)}/ano contra ${fmtSinal(hA.ganhoAnual)}/ano).`;
+    } else if (atualCard && B.id === atualId) {
+      veredito = `Manter o ${nomeDe(atualCard)}: nenhuma proposta supera o seu cartão hoje (${fmtSinal(hB.ganhoAnual)}/ano).`;
+    } else {
+      veredito = `Para o seu padrão de gasto, o ${nomeDe(B)} é o melhor: ${fmtSinal(hB.ganhoAnual)}/ano`
+        + (R ? `, ${fmtBRL(hB.ganhoAnual - horizontePorCartao[R.id].ganhoAnual)} a mais que o ${nomeDe(R)}.` : '.');
+    }
+    if (S && S.id !== B.id) veredito += ` Pela pontuação (que inclui benefícios e preferências), o ${nomeDe(S)} lidera; pelo dinheiro, o ${nomeDe(B)}.`;
+    const temAno1OuBonus = tmpCards.some(c => c.anuidade_ano1 != null || (c.bonus_rs || 0) > 0 || (c.bonus_pts || 0) > 0);
+    if (H > 12 || temAno1OuBonus) {
+      veredito += ` Em ${H} meses: ${porSaldo.map(c => `${nomeDe(c)}: ${fmtSinal(horizontePorCartao[c.id].liquidoH)}`).join('; ')}.`;
+    }
+  }
+
+  return {
+    scores, ranking, breakdown, balanco, faturaBase: faturaBase(ctx),
+    horizonte: { meses: H, porCartao: horizontePorCartao },
+    vsAtual,
+    veredito,
+    alertas
+  };
 }
 
 function fmtN(n) {
@@ -2082,6 +2507,193 @@ function fmtN(n) {
 }
 function fmtBRL(n) {
   return Number(n).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+}
+// Saldo com sinal para a cliente: "+R$ 800,00" / "R$ 0,00" / "-R$ 240,00" (zero nunca vira "-R$ 0,00")
+function fmtSinal(n) {
+  let v = Number(n) || 0;
+  if (Math.abs(v) < 0.005) v = 0;
+  return (v > 0 ? '+' : '') + fmtBRL(v);
+}
+
+/* ═══════════════════════════════════════════════════════
+   TEXTOS PARA A CLIENTE (break-even, passo a passo, WhatsApp, impressão)
+   Todos leem SOMENTE o result salvo da comparação (sem recalcular).
+═══════════════════════════════════════════════════════ */
+// Linhas de break-even / isenção de um cartão (item 4). Retorna [] para comparações antigas (sem breakEven).
+// Texto puro (sem HTML) — usado no card do balanço e no texto do WhatsApp.
+function breakEvenLinhas(b, objV, cid) {
+  const linhas = [];
+  if (!b || !b.breakEven || typeof b.breakEven !== 'object') return linhas;
+  const g = pid => ((objV||{})[pid]||{})[cid] || 0;
+  const be   = b.breakEven;
+  const gBE  = be.gastoMensal;
+  const gTot = (b.faturaBase != null) ? b.faturaBase : 0;
+  if (gBE === 0)                 linhas.push({ txt: '✅ Vale a pena desde o primeiro real: não há anuidade a cobrir.', cls: 'green-lt' });
+  else if (gBE > 0 && be.cobre)  linhas.push({ txt: `✅ Vale a pena a partir de ${fmtBRL(gBE)}/mês de gasto — você gasta ${fmtBRL(gTot)}.`, cls: 'green-lt' });
+  else if (gBE > 0 && !be.cobre) linhas.push({ txt: `⚠️ Vale a pena a partir de ${fmtBRL(gBE)}/mês de gasto — você gasta ${fmtBRL(gTot)} (faltam ${fmtBRL(gBE - gTot)}).`, cls: 'amber-lt' });
+  else if (gBE === null)         linhas.push({ txt: 'Este cartão não se paga pelo retorno em dinheiro — só compensa pelos benefícios.', cls: '' });
+  if ((b.faltaIsencao || 0) > 0)  linhas.push({ txt: `Faltam ${fmtBRL(b.faltaIsencao)}/mês de fatura para a anuidade ser isenta (exige ${fmtBRL(g('isent-fatura'))}).`, cls: '' });
+  if (b.motivoAnuid === 'fatura') linhas.push({ txt: `✅ Anuidade isenta com o seu gasto (fatura ≥ ${fmtBRL(g('isent-fatura'))}).`, cls: 'green-lt' });
+  if (b.isentInvestSemPossuir)    linhas.push({ txt: `A isenção exige ${fmtBRL(g('isent-invest'))} investidos no banco — a cliente não possui.`, cls: '' });
+  if ((b.faltaDesc || 0) > 0)     linhas.push({ txt: `Faltam ${fmtBRL(b.faltaDesc)}/mês para o desconto de ${fmtN(g('desc-pct'))}% na anuidade.`, cls: '' });
+  return linhas;
+}
+
+// Motivo curto da isenção (texto do WhatsApp)
+function motivoCurto(b, objV, cid) {
+  const g = pid => ((objV||{})[pid]||{})[cid] || 0;
+  if (b.motivoAnuid === 'invest')   return 'investimento';
+  if (b.motivoAnuid === 'fatura')   return `fatura ≥ ${fmtBRL(g('isent-fatura'))}`;
+  if (b.motivoAnuid === 'desconto') return `desconto de ${fmtN(g('desc-pct'))}%`;
+  return 'fatura atingida'; // comparação antiga (sem motivoAnuid)
+}
+
+// "Como chegamos nesse número" — passo a passo em português por cartão (render puro)
+function passosCalculoHtml(comp, ranking) {
+  const bal = comp.result?.balanco || {};
+  if (!Object.keys(bal).length) return '';
+  const ctx  = comp.ctx || {};
+  const objV = comp.objVals || {};
+  const hzPor = comp.result?.horizonte?.porCartao || {};
+  const H = comp.result?.horizonte?.meses || 12;
+  let html = '';
+  ranking.forEach(c => {
+    const b = bal[c.id];
+    if (!b) return;
+    const g = pid => (objV[pid]||{})[c.id] || 0;
+    const cardData = comp.cards?.find(x => x.id === c.id) || c;
+    const passos = [];
+    const nac = ctx.nacional || 0, bon = ctx.bonif || 0, ext = ctx.exterior || 0, dol = ctx.dolar || 0;
+    if ((b.cb_nac||0) > 0) passos.push(`Você gasta ${fmtBRL(nac)}/mês no Brasil → ${fmtN(g('cb-nacional'))}% de cashback = ${fmtBRL(b.cb_nac)}/mês (${fmtBRL(b.cb_nac*12)}/ano).`);
+    if ((b.cb_bon||0) > 0) passos.push(`Gasto bonificado ${fmtBRL(bon)}/mês → ${fmtN(g('cb-bonif'))}% = ${fmtBRL(b.cb_bon)}/mês.`);
+    if ((b.cb_ext||0) > 0) passos.push(`Gasto fora: US$ ${fmtN(ext)} × R$ ${fmtN(dol)} = ${fmtBRL(ext*dol)} → ${fmtN(g('cb-exterior'))}% = ${fmtBRL(b.cb_ext)}/mês.`);
+    const mil = g('milheiro');
+    if ((b.pts_gasto||0) > 0) {
+      const moeda = b.ptsGastoMoeda || (comp.ptsGastoMoeda||{})[c.id] || 'R$';
+      const ptsV  = (b.ptsGastoV != null) ? b.ptsGastoV : g('pts-gasto');
+      const base  = moeda === 'US$' ? (nac + bon) / (dol || 1) : (nac + bon);
+      passos.push(`Pontos: ${moeda === 'US$' ? 'US$ ' + fmtN(base) : fmtBRL(base)} × ${fmtN(ptsV)} pts = ${fmtN(base*ptsV)} pts/mês × R$ ${fmtN(mil)}/mil = ${fmtBRL(b.pts_gasto)}/mês.`);
+    }
+    if ((b.pts_ext||0) > 0) {
+      const ptsExtV = (b.ptsExtV != null) ? b.ptsExtV : g('pts-exterior');
+      passos.push(`Pontos no exterior: US$ ${fmtN(ext)} × ${fmtN(ptsExtV)} pts/US$ = ${fmtN(ext*ptsExtV)} pts × R$ ${fmtN(mil)}/mil = ${fmtBRL(b.pts_ext)}/mês.`);
+    }
+    if ((b.pts_bon||0) > 0) passos.push(`Pontos no gasto bonificado: ${fmtBRL(bon)} × ${fmtN(g('pts-bonif'))} pts/R$ = ${fmtN(bon*g('pts-bonif'))} pts × R$ ${fmtN(mil)}/mil = ${fmtBRL(b.pts_bon)}/mês.`);
+    if ((b.beneficios_rs||0) > 0) {
+      const lista = (b.beneficios_detalhe||[]).map(d => `${escHtml(d.nome)}: ${fmtBRL(d.anual)}/ano`).join(', ');
+      passos.push(`Benefícios que você usa: ${fmtBRL(b.beneficios_rs)}/mês${lista ? ` (${lista})` : ''}.`);
+    }
+    // Anuidade
+    const bruta = b.saidas || 0;
+    const aeM = (b.anuidEfetiva !== undefined) ? b.anuidEfetiva : bruta - (b.desconto || 0);
+    let motivoFrase;
+    if (b.motivoAnuid === 'invest')        motivoFrase = `Isenta por investimento de ${fmtBRL(g('isent-invest'))}.`;
+    else if (b.motivoAnuid === 'fatura')   motivoFrase = `Como sua fatura é ≥ ${fmtBRL(g('isent-fatura'))}, fica isenta.`;
+    else if (b.motivoAnuid === 'desconto') motivoFrase = `Desconto de ${fmtN(g('desc-pct'))}%${g('desc-gasto') > 0 ? ` por gasto ≥ ${fmtBRL(g('desc-gasto'))}` : ' (sem exigência de gasto)'}.`;
+    else if (b.motivoAnuid === undefined && (b.desconto||0) > 0) motivoFrase = b.isentTotal ? 'Isenta (fatura atingida).' : `Desconto de ${fmtN(g('desc-pct'))}%.`; // comparação antiga
+    else                                    motivoFrase = 'Sem isenção ou desconto.';
+    if (bruta > 0) passos.push(`Anuidade cheia: ${fmtBRL(bruta*12)}/ano (${fmtBRL(bruta)}/mês). ${motivoFrase} → efetiva ${fmtBRL(aeM)}/mês.`);
+    else           passos.push('Anuidade: R$ 0,00 — este cartão não cobra anuidade.');
+    // Saldo
+    const entradasSemDesc = (b.entradas || 0) - (b.desconto || 0);
+    passos.push(`Saldo: ${fmtBRL(entradasSemDesc)} − ${fmtBRL(aeM)} = ${fmtSinal(b.liquido)}/mês = ${fmtSinal((b.liquido||0)*12)}/ano.`);
+    const hz = hzPor[c.id];
+    if (hz) passos.push(`Em ${H} meses: entradas ${fmtBRL(hz.entradasH)} − anuidade ${fmtBRL(hz.anuidH)} + bônus ${fmtBRL(hz.bonusAdesao)} = ${fmtSinal(hz.liquidoH)}.`);
+    html += `<div class="passos-card"><div class="passos-nome">${escHtml(c.name)}${cardData.atual ? ' <span class="pod-atual">👤 seu cartão hoje</span>' : ''}</div><ol>${passos.map(p => `<li>${p}</li>`).join('')}</ol></div>`;
+  });
+  html += `<div class="passos-nota">Os valores de "vale a pena a partir de R$ X" são uma aproximação: consideram que o retorno cresce na mesma proporção do gasto. Descontos e isenções que dependem de um gasto mínimo funcionam em degraus — por isso, quando existe gasto mínimo para isenção, ele é o teto desse número.</div>`;
+  return html;
+}
+
+// Texto para WhatsApp (sem HTML) — lê só o comp salvo
+function textoWhatsApp(comp) {
+  const res  = comp.result || {};
+  const bal  = res.balanco || {};
+  const ctx  = comp.ctx || {};
+  const objV = comp.objVals || {};
+  const hzPor = res.horizonte?.porCartao || {};
+  const medals = ['🥇','🥈','🥉','4️⃣','5️⃣','6️⃣','7️⃣','8️⃣','9️⃣','🔟'];
+  const subjLista = (Array.isArray(comp.subjSnapshot) && comp.subjSnapshot.length) ? comp.subjSnapshot : subjItems;
+  const ganho = c => hzPor[c.id] ? hzPor[c.id].ganhoAnual : ((bal[c.id]||{}).anual != null ? bal[c.id].anual : ((bal[c.id]||{}).liquido || 0) * 12);
+  const cards = (comp.cards || []).slice().sort((a, b) => ganho(b) - ganho(a));
+
+  let gasto = `R$ ${fmtN(ctx.nacional||0)}/mês no Brasil`;
+  if ((ctx.exterior||0) > 0) gasto += `, US$ ${fmtN(ctx.exterior)}/mês fora (dólar R$ ${fmtN(ctx.dolar||0)})`;
+  if ((ctx.bonif||0) > 0)    gasto += `, R$ ${fmtN(ctx.bonif)}/mês em categorias bonificadas`;
+  let txt = `💳 *Comparação de cartões — ${comp.name || ''}*\n`;
+  txt += `Considerando o que você gasta: ${gasto}.${res.horizonte?.meses ? ` Horizonte: ${res.horizonte.meses} meses.` : ''}\n\n`;
+
+  cards.forEach((c, i) => {
+    const b  = bal[c.id] || {};
+    const hz = hzPor[c.id];
+    const bruta = b.saidas || 0;
+    const aeM = (b.anuidEfetiva !== undefined) ? b.anuidEfetiva : bruta - (b.desconto || 0);
+    txt += `${medals[i] || `${i+1}º`} *${c.name}*${c.atual ? ' 👤 seu cartão hoje' : ''} → ${fmtSinal(ganho(c))}/ano\n`;
+    let anu = (aeM === 0 && bruta > 0) ? `isenta (${motivoCurto(b, objV, c.id)})` : `${fmtBRL(aeM*12)}/ano`;
+    if (hz && c.anuidade_ano1 != null) anu += ` · 1º ano: ${fmtBRL(hz.ano1?.anuidEf || 0)}`;
+    if (hz && (hz.bonusAdesao||0) > 0) anu += ` · bônus de adesão ${fmtBRL(hz.bonusAdesao)}`;
+    txt += `   anuidade: ${anu}\n`;
+    const cb  = (b.cb_nac||0) + (b.cb_ext||0) + (b.cb_bon||0);
+    const pts = (b.pts_gasto||0) + (b.pts_ext||0) + (b.pts_bon||0);
+    const Ecash = cb + pts;
+    const em = cb > 0 && pts > 0 ? 'cashback e pontos' : pts > 0 ? 'pontos' : 'cashback';
+    const benTxt = (b.beneficios_rs||0) > 0 ? `${fmtBRL(b.beneficios_rs*12)}/ano em benefícios que você usa` : '';
+    if (Ecash > 0) txt += `   devolve ${fmtBRL(Ecash*12)}/ano em ${em}${benTxt ? ` + ${benTxt}` : ''}\n`;
+    else           txt += `   não devolve dinheiro (sem cashback ou pontos)${benTxt ? `, mas vale ${benTxt}` : ''}\n`;
+    const bens = subjLista.filter(s => (comp.subjVals||{})[s.id]?.hasParam?.[c.id] === true).map(s => s.name);
+    txt += `   benefícios: ${bens.length ? bens.join(', ') : '—'}\n`;
+    breakEvenLinhas(b, objV, c.id).slice(0, 1).forEach(l => { txt += `   ${l.txt}\n`; });
+    txt += '\n';
+  });
+
+  if (res.veredito) txt += `✅ *Veredito:* ${res.veredito}\n`;
+  (res.alertas || []).forEach(a => { if (a && a.texto) txt += `${a.nivel === 'inac' ? '⛔' : '⚠️'} ${a.texto}\n`; });
+  return txt.trim();
+}
+
+async function copiarWhatsApp(id, btn) {
+  const comp = comparisons.find(c => c.id === id);
+  if (!comp || !comp.result) { alert('Comparação sem resultado calculado.'); return; }
+  const txt = textoWhatsApp(comp);
+  let ok = false;
+  try {
+    if (navigator.clipboard && window.isSecureContext) { await navigator.clipboard.writeText(txt); ok = true; }
+  } catch(e) { ok = false; }
+  if (!ok) { prompt('Copie o texto abaixo:', txt); return; }
+  if (btn) {
+    const orig = btn.textContent;
+    btn.textContent = '✅ Copiado!';
+    setTimeout(() => { btn.textContent = orig; }, 2000);
+  }
+}
+
+// Imprimir / salvar em PDF (nativo) só a comparação escolhida; restaura a tela ao fechar a impressão
+function imprimirComp(id) {
+  const card = document.getElementById('card-' + id);
+  if (!card) return;
+  const mems = Array.from(card.querySelectorAll('.mem-body'));
+  const memAbertas  = mems.map(m => m.classList.contains('open'));
+  const estavaAberto = card.classList.contains('open');
+  document.body.classList.add('printing');
+  card.classList.add('print-target', 'open');
+  mems.forEach(m => m.classList.add('open'));
+  const limpar = () => {
+    document.body.classList.remove('printing');
+    card.classList.remove('print-target');
+    if (!estavaAberto) card.classList.remove('open');
+    mems.forEach((m, i) => { if (!memAbertas[i]) m.classList.remove('open'); });
+  };
+  window.addEventListener('afterprint', limpar, { once: true });
+  // Espera o navegador aplicar as classes e força o Chart.js a redimensionar os gráficos do card
+  // (canvases criados com o card fechado/display:none podem sair vazios na impressão sem isso)
+  setTimeout(() => {
+    try {
+      if (window.Chart && typeof Chart.getChart === 'function') {
+        card.querySelectorAll('canvas').forEach(cv => { try { Chart.getChart(cv)?.resize(); } catch(e) {} });
+      }
+    } catch(e) {}
+    setTimeout(() => { try { window.print(); } catch(e) { limpar(); } }, 150);
+  }, 150);
 }
 
 
@@ -2116,12 +2728,13 @@ function renderList() {
     card.id = 'card-'+comp.id;
     const winner = comp.result?.ranking?.[0];
     const date = new Date(comp.updatedAt).toLocaleDateString('pt-BR');
+    const atualCard = (comp.cards||[]).find(c => c.atual);
     card.innerHTML = `
       <div class="comp-card-header" onclick="toggleCard(${comp.id})">
         <div class="chevron">▼</div>
         <div>
           <div class="comp-title">${escHtml(comp.name)}</div>
-          <div class="comp-meta">${comp.cards.length} cartões · ${date}</div>
+          <div class="comp-meta">${comp.cards.length} cartões · ${date}${atualCard ? ` · atual: ${escHtml(atualCard.name)}` : ''}</div>
         </div>
         ${winner ? `<div class="winner-badge">🏆 ${escHtml(winner.name)}</div>` : ''}
         <div class="sim-checkbox-group" onclick="event.stopPropagation()">
@@ -2131,6 +2744,8 @@ function renderList() {
         <div class="comp-card-actions" onclick="event.stopPropagation()">
           <button class="btn-icon" onclick="openModal(${comp.id})">✏️ ${comp.locked && !_isCartEquipeMode() ? 'Visualizar' : 'Editar'}</button>
           <button class="btn-icon" onclick="duplicarComp(${comp.id})">📋 Duplicar</button>
+          <button class="btn-icon" onclick="imprimirComp(${comp.id})" title="Imprimir ou salvar em PDF só esta comparação">🖨️ Imprimir / PDF</button>
+          <button class="btn-icon" onclick="copiarWhatsApp(${comp.id}, this)" title="Copiar um resumo em texto para enviar à cliente">📱 Copiar p/ WhatsApp</button>
           ${comp.locked && !_isCartEquipeMode() ? '' : '<button class="btn-icon danger" onclick="deleteComp(' + comp.id + ')">🗑️ Excluir</button>'}
         </div>
       </div>
@@ -2171,18 +2786,48 @@ function renderResult(comp) {
   if (!ranking || ranking.length === 0) return '<p class="text-dim">Sem cartões.</p>';
   const medals = ['🥇','🥈','🥉','4️⃣','5️⃣','6️⃣','7️⃣','8️⃣','9️⃣','🔟'];
 
+  // Horizonte (item 3) — opcional: comparações antigas não o têm e mantêm o render anterior
+  const hzRes = comp.result.horizonte || null;
+  const hzPor = (hzRes && hzRes.porCartao) || {};
+  const temHz = !!hzRes && ranking.some(c => !!hzPor[c.id]);
+  const balRef = comp.result.balanco || {};
+
   let podium = '<div class="podium-grid">';
   ranking.forEach((c,i) => {
     const bandLabel = c.bandeira ? (BANDEIRAS_DB[c.bandeira]?.label || c.bandeira) : '';
+    const cardRef = comp.cards?.find(x => x.id === c.id) || c;
+    const hz = hzPor[c.id];
+    let subLinhas;
+    if (hz) {
+      const bR = balRef[c.id] || {};
+      const bruta = bR.saidas !== undefined ? bR.saidas : (c.anuidade_mensal || 0);
+      const aeM = bR.anuidEfetiva !== undefined ? bR.anuidEfetiva : (bruta - (bR.desconto || 0));
+      const anuidTxt = aeM === 0 ? (bruta > 0 ? 'isenta' : 'sem anuidade') : fmtBRL(aeM * 12) + '/ano';
+      const saldoCls = hz.ganhoAnual >= 0 ? 'positivo' : 'negativo';
+      subLinhas = `<div class="pod-sub pod-saldo ${saldoCls}">${fmtSinal(hz.ganhoAnual)}/ano</div>
+      <div class="pod-sub">anuidade ${anuidTxt}</div>`;
+    } else {
+      subLinhas = `<div class="pod-sub">${fmtBRL(c.anuidade_mensal)}/mês</div>`;
+    }
     podium += `<div class="podium-card ${i===0?'first':''}">
       <div class="pod-rank">${medals[i]||`${i+1}º`}</div>
       <div class="pod-name">${escHtml(c.name)}</div>
       <div class="pod-score">${c.score.toFixed(1)}</div>
-      <div class="pod-sub">${fmtBRL(c.anuidade_mensal)}/mês</div>
+      ${subLinhas}
       ${bandLabel?`<div class="pod-sub">${escHtml(bandLabel)}</div>`:''}
+      ${cardRef.atual ? '<div class="pod-atual">👤 seu cartão hoje</div>' : ''}
     </div>`;
   });
   podium += '</div>';
+
+  // Veredito em uma frase (item 3) + gráfico em R$ (visível sem abrir a memória)
+  const vereditoBox = comp.result.veredito
+    ? `<div class="veredito-box">✅ <b>Veredito:</b> ${escHtml(comp.result.veredito)}</div>`
+    : '';
+  const chartRsId = 'chart-rs-' + comp.id;
+  const chartRsHtml = temHz
+    ? `<div class="chart-wrap"><div class="chart-rs-title">Quanto cada cartão te devolve por ano (R$)</div><canvas id="${chartRsId}"></canvas></div>`
+    : '';
 
   const best = ranking[0];
   const second = ranking[1];
@@ -2227,10 +2872,31 @@ function renderResult(comp) {
   }
   let parecerBalanco = ''; // mantido para compatibilidade (não usado mais)
 
+  // Benefícios em R$ que a cliente usa (item 5) — uma frase por cartão com valor > 0 (comparações antigas: nada)
+  const benFrases = ranking
+    .filter(c => ((balanco0[c.id]||{}).beneficios_rs||0) > 0)
+    .map(c => `Os benefícios que você usa somam ${fmtBRL(balanco0[c.id].beneficios_rs)}/mês no <b>${escHtml(c.name)}</b>.`);
+  // Alertas de "Inaceitável" (⛔) e "Preferia não ter" (⚠️) — item 6; comparações antigas não têm result.alertas
+  const alertasHtml = (Array.isArray(comp.result?.alertas) ? comp.result.alertas : [])
+    .filter(a => a && a.texto)
+    .map(a => `<div class="parecer-alerta ${a.nivel === 'inac' ? 'inac' : 'nao'}">${a.nivel === 'inac' ? '⛔' : '⚠️'} ${escHtml(a.texto)}</div>`)
+    .join('');
+  // Gasto nacional vindo do diagnóstico (item 7c) — rodapé só quando ctx.origem.fonte === 'diagnostico'
+  const origemCtx = comp.ctx?.origem;
+  let origemHtml = '';
+  if (origemCtx && origemCtx.fonte === 'diagnostico') {
+    const dRef = origemCtx.ref ? new Date(origemCtx.ref) : null;
+    const dTxt = (dRef && !isNaN(dRef.getTime())) ? dRef.toLocaleDateString('pt-BR') : 'data não informada';
+    origemHtml = `<p class="text-dim" style="margin-top:4px;font-size:.78rem">Baseado no que você realmente gasta (diagnóstico de ${dTxt}, ${origemCtx.itens||0} despesa${(origemCtx.itens||0) === 1 ? '' : 's'}): ${fmtBRL(origemCtx.valor||0)}/mês.</p>`;
+  }
+
   const parecerBox = `<div class="parecer-box">
     <div class="parecer-title">Parecer</div>
+    ${alertasHtml}
     <p>${parecerFinal}</p>
-    ${comp.ctx?`<p class="text-dim" style="margin-top:6px;font-size:.78rem">Contexto: Nacional R$${fmtN(comp.ctx.nacional)}/mês · Exterior US$${fmtN(comp.ctx.exterior)}/mês · Dólar R$${fmtN(comp.ctx.dolar)}</p>`:''}
+    ${benFrases.length ? `<p style="margin-top:6px">${benFrases.join(' ')}</p>` : ''}
+    ${comp.ctx?`<p class="text-dim" style="margin-top:6px;font-size:.78rem">Contexto: Nacional R$${fmtN(comp.ctx.nacional)}/mês · Exterior US$${fmtN(comp.ctx.exterior)}/mês · Dólar R$${fmtN(comp.ctx.dolar)} · Bonificado R$${fmtN(comp.ctx.bonif||0)}/mês${comp.result?.faturaBase != null ? ` · Fatura total R$${fmtN(comp.result.faturaBase)}/mês` : ''}</p>`:''}
+    ${origemHtml}
   </div>`;
 
   // ── BALANÇO FINANCEIRO MENSAL ──
@@ -2258,6 +2924,7 @@ function renderResult(comp) {
       const hasCb   = (b.cb_nac + b.cb_ext + b.cb_bon) > 0;
       const hasPts = (b.pts_gasto||0) > 0 || (b.pts_ext||0) > 0 || (b.pts_bon||0) > 0;
       const hasDesc = b.desconto > 0;
+      const hasBen  = (b.beneficios_rs||0) > 0; // item 5 — comparações antigas: undefined → false
       const totalEntradas = b.entradas;
       // Busca dados do cartão para exibir sub-parâmetros
       const cardData = comp.cards?.find(x=>x.id===c.id) || c;
@@ -2272,9 +2939,35 @@ function renderResult(comp) {
       const ptsGastoMoedaComp = (comp.ptsGastoMoeda||{})[c.id] || 'R$';
       const descGasto = (objV['desc-gasto']||{})[c.id] || 0;
       const descPct   = (objV['desc-pct']||{})[c.id] || 0;
+      const isentFaturaV = (objV['isent-fatura']||{})[c.id] || 0;
+      const isentInvestV = (objV['isent-invest']||{})[c.id] || 0;
       const ctx2 = comp.ctx || {};
+      // Ficha da proposta (campos opcionais — comparações antigas não os têm)
+      const fatBase = (b.faturaBase != null) ? b.faturaBase : (comp.result?.faturaBase ?? null);
+      const limite  = cardData.limite || 0;
+      const kLimite = (limite > 0 && fatBase > 0) ? limite / fatBase : null;
+      let fichaHtml = '';
+      if (limite > 0) {
+        fichaHtml += `<div class="bc-row" style="color:var(--muted-foreground)"><span>Limite</span><span>${fmtBRL(limite)}</span></div>`;
+        if (kLimite !== null && kLimite < 1.5) fichaHtml += `<div class="bc-row" style="color:var(--gold);font-size:.74rem"><span>⚠️ cobre só ${kLimite.toLocaleString('pt-BR',{maximumFractionDigits:1})}× a fatura média de ${fmtBRL(fatBase)}</span></div>`;
+      }
+      if (cardData.validade && /^\d{4}-\d{2}-\d{2}$/.test(String(cardData.validade))) {
+        const [vy, vm, vd] = String(cardData.validade).split('-');
+        const hojeD = new Date();
+        const hojeIso = hojeD.getFullYear() + '-' + String(hojeD.getMonth()+1).padStart(2,'0') + '-' + String(hojeD.getDate()).padStart(2,'0');
+        const vencida = cardData.validade < hojeIso;
+        fichaHtml += `<div class="bc-row" style="color:${vencida?'var(--red-lt)':'var(--muted-foreground)'}"><span>Proposta válida até ${vd}/${vm}/${vy}${vencida?' — vencida':''}</span></div>`;
+      } else if (cardData.validade) {
+        // Formato fora de AAAA-MM-DD (dado antigo/editado à mão): mostra o texto bruto escapado, sem comparar com hoje
+        fichaHtml += `<div class="bc-row" style="color:var(--muted-foreground)"><span>Proposta válida até ${escHtml(String(cardData.validade))}</span></div>`;
+      }
+      if (cardData.obs) fichaHtml += `<div class="bc-row" style="color:var(--muted-foreground);font-size:.74rem;white-space:normal"><span>Obs.: ${escHtml(cardData.obs)}</span></div>`;
+      // Break-even e dicas de isenção (item 4) — só quando o result salvo tem breakEven (comparações antigas: nada)
+      const beHtml = breakEvenLinhas(b, objV, c.id)
+        .map(l => `<div class="bc-row bc-dica"${l.cls ? ` style="color:var(--${l.cls})"` : ''}><span>${l.txt}</span></div>`)
+        .join('');
       cards += `<div class="balanco-card${isWinner?' winner':''}">
-        <div class="bc-name">${isWinner?'🏆 ':''}${escHtml(c.name)}</div>
+        <div class="bc-name">${isWinner?'🏆 ':''}${escHtml(c.name)}${cardData.atual?' <span style="font-size:.68rem;font-weight:600;color:var(--gold);background:rgba(212,175,55,.12);border:1px solid rgba(212,175,55,.35);border-radius:10px;padding:1px 7px;vertical-align:middle">👤 seu cartão hoje</span>':''}</div>
         ${hasCb ? `
           <div class="bc-subtitulo">💰 Cashback</div>
           ${b.cb_nac > 0 ? `<div class="bc-row positivo"><span>Nacional (${fmtN(cbNacPct)}%)</span><span>+${fmtBRL(b.cb_nac)}</span></div>` : ''}
@@ -2289,16 +2982,27 @@ function renderResult(comp) {
         ${hasDesc ? `
           <div class="bc-subtitulo">🏷️ ${b.isentTotal?'Isenção Total':'Desconto'}</div>
           ${b.isentTotal
-            ? `<div class="bc-row positivo"><span>✅ Anuidade isenta (fatura atingida)</span><span>+${fmtBRL(b.desconto)}</span></div>`
+            ? (b.motivoAnuid === 'invest'
+                ? `<div class="bc-row positivo"><span>✅ Anuidade isenta (investimento de ${fmtBRL(isentInvestV)} no banco)</span><span>+${fmtBRL(b.desconto)}</span></div>`
+                : b.motivoAnuid === 'fatura'
+                  ? `<div class="bc-row positivo"><span>✅ Anuidade isenta (fatura ≥ ${fmtBRL(isentFaturaV)})</span><span>+${fmtBRL(b.desconto)}</span></div>`
+                  : `<div class="bc-row positivo"><span>✅ Anuidade isenta (fatura atingida)</span><span>+${fmtBRL(b.desconto)}</span></div>`)
             : `<div class="bc-row" style="color:var(--muted-foreground)"><span>Gasto mín. exigido</span><span>${fmtBRL(descGasto)}</span></div>
                <div class="bc-row positivo"><span>Desconto (${fmtN(descPct)}%)</span><span>+${fmtBRL(b.desconto)}</span></div>`
           }` : ''}
-        ${(!hasCb && !hasPts && !hasDesc) ? `<div class="bc-row"><span>Sem retorno financeiro</span><span>R$ 0,00</span></div>` : ''}
+        ${hasBen ? `
+          <div class="bc-subtitulo">🎁 Benefícios que você usa</div>
+          ${(b.beneficios_detalhe||[]).map(d => `<div class="bc-row positivo"><span>${escHtml(d.nome)} (${fmtBRL(d.anual)}/ano)</span><span>+${fmtBRL(d.mensal)}</span></div>`).join('')}` : ''}
+        ${(!hasCb && !hasPts && !hasDesc && !hasBen) ? `<div class="bc-row"><span>Sem retorno financeiro</span><span>R$ 0,00</span></div>` : ''}
         <hr class="bc-divider"/>
         <div class="bc-row positivo" style="font-weight:700"><span>Total entradas</span><span>+${fmtBRL(totalEntradas)}</span></div>
         <div class="bc-row negativo"><span>Anuidade mensal</span><span>-${fmtBRL(b.saidas)}</span></div>
+        ${(b.anuidEfetiva !== undefined && b.anuidEfetiva !== b.saidas) ? `<div class="bc-row" style="color:var(--muted-foreground)"><span>Anuidade efetiva</span><span>-${fmtBRL(b.anuidEfetiva)}</span></div>` : ''}
         <hr class="bc-divider"/>
         <div class="bc-liquido ${liqCls}"><span>Saldo líquido/mês</span><span>${liqSinal}${fmtBRL(b.liquido)}</span></div>
+        ${hasBen ? `<div class="bc-row" style="color:var(--muted-foreground);font-size:.76rem"><span>Saldo só em dinheiro (sem benefícios)</span><span>${fmtSinal(b.liquido - b.beneficios_rs)}</span></div>` : ''}
+        ${beHtml}
+        ${fichaHtml}
       </div>`;
     });
     const balWinnerName = balWinner ? escHtml(balWinner.name) : '';
@@ -2343,6 +3047,7 @@ function renderResult(comp) {
   const mem = `
     <button class="mem-toggle" onclick="toggleMem('${memId}',this)">▶ Ver memória de cálculo</button>
     <div class="mem-body" id="${memId}">
+      ${(() => { const p = passosCalculoHtml(comp, ranking); return p ? `<details class="mem-details" open><summary>Como chegamos nesse número</summary>${p}</details>` : ''; })()}
       <div class="mem-section-title">Gráfico comparativo</div>
       <div class="chart-wrap"><canvas id="${chartId}"></canvas></div>
       <div class="mem-section-title">Detalhamento por parâmetro</div>
@@ -2359,8 +3064,10 @@ function renderResult(comp) {
             { label:'Cashback exterior', key:'cb_ext', fmt:'brl' },
             { label:'Cashback bonificado', key:'cb_bon', fmt:'brl' },
             { label:'Pontos por gasto (em R$)', key:'pts_gasto', fmt:'brl' },
+            { label:'Pontos exterior (em R$)', key:'pts_ext', fmt:'brl' },
             { label:'Pontos bonificado (em R$)', key:'pts_bon', fmt:'brl' },
             { label:'Desconto / Isenção anuidade', key:'desconto', fmt:'brl' },
+            { label:'Benefícios usados (em R$)', key:'beneficios_rs', fmt:'brl' },
           ];
           let t = '';
           rows.forEach(r => {
@@ -2388,11 +3095,60 @@ function renderResult(comp) {
           return t;
         })()}
         </tbody></table></div>
+      ${temHz ? `
+      <div class="mem-section-title">Horizonte de ${hzRes.meses || 12} meses — anuidade do 1º ano, bônus de adesão e retorno acumulado</div>
+      <div style="overflow-x:auto"><table class="mem-table">
+        <thead><tr>
+          <th>Componente</th>
+          ${ranking.map(c=>`<th>${escHtml(c.name)}</th>`).join('')}
+        </tr></thead><tbody>
+        ${(() => {
+          const Hm = hzRes.meses || 12;
+          const vsA = comp.result.vsAtual || null;
+          const temAtual = !!(vsA && vsA.atualId != null && vsA.delta && Object.keys(vsA.delta).length);
+          const atualNome = temAtual ? escHtml((comp.cards||[]).find(x => x.id === vsA.atualId)?.name || 'cartão atual') : '';
+          const rows = [
+            { label:`Entradas em ${Hm} meses`, key:'entradasH', tipo:'pos' },
+            { label:'Anuidade paga no período', key:'anuidH', tipo:'neg' },
+            { label:'Bônus de adesão', key:'bonusAdesao', tipo:'pos' },
+            { label:`Saldo em ${Hm} meses`, key:'liquidoH', tipo:'saldo' },
+            { label:'Custo efetivo anual', key:'custoEfetivoAnual', tipo:'neg' },
+            { label:'Ganho anual', key:'ganhoAnual', tipo:'saldo' },
+          ];
+          let t = '';
+          rows.forEach(r => {
+            const vals = ranking.map(c => (hzPor[c.id]||{})[r.key] || 0);
+            if (r.key === 'bonusAdesao' && vals.every(v => v === 0)) return;
+            const forte = r.tipo === 'saldo';
+            t += `<tr${r.key === 'ganhoAnual' ? ' class="total-row"' : ''}><td><b>${r.label}</b></td>${ranking.map(c => {
+              const v = (hzPor[c.id]||{})[r.key] || 0;
+              let cor, txt, titulo = '';
+              if (r.tipo === 'pos')      { cor = v > 0 ? 'var(--green-lt)' : 'var(--muted-foreground)'; txt = (v > 0 ? '+' : '') + fmtBRL(v); }
+              else if (r.tipo === 'neg') {
+                // Custo negativo = o bônus de adesão superou a anuidade do período: mostrar como ganho (+, verde), não como cobrança
+                if (v < 0) { cor = 'var(--green-lt)'; txt = '+' + fmtBRL(-v); titulo = ' title="O bônus de adesão supera a anuidade do período"'; }
+                else       { cor = v > 0 ? 'var(--red-lt)' : 'var(--muted-foreground)'; txt = (v > 0 ? '-' : '') + fmtBRL(v); }
+              }
+              else                       { cor = v >= 0 ? 'var(--green-lt)' : 'var(--red-lt)'; txt = fmtSinal(v); }
+              return `<td><div class="score-cell"${titulo} style="color:${cor}${forte ? ';font-weight:800' : ''}">${txt}</div></td>`;
+            }).join('')}</tr>`;
+          });
+          if (temAtual) {
+            t += `<tr><td><b>Diferença vs. ${atualNome} (seu cartão hoje)</b></td>${ranking.map(c => {
+              if (c.id === vsA.atualId) return '<td><div class="score-cell" style="color:var(--muted-foreground)">—</div></td>';
+              const v = vsA.delta[c.id] || 0;
+              return `<td><div class="score-cell" style="color:${v >= 0 ? 'var(--green-lt)' : 'var(--red-lt)'}">${fmtSinal(v)} em ${Hm} meses</div></td>`;
+            }).join('')}</tr>`;
+          }
+          return t;
+        })()}
+        </tbody></table></div>` : ''}
       <div class="mem-section-title">Como o cálculo funciona</div>
       <div class="tip">
-        <b>Objetivos:</b> calcula o retorno financeiro mensal (cashback, pontos×milheiro, desconto) e normaliza pelo maior valor. A importância é definida por grupo (Cashback, Pontos/Milhas, Desconto).<br>
-        <b>Anuidade:</b> quem paga menos recebe maior pontuação (peso 5 fixo).<br>
-        <b>Subjetivos:</b> normaliza pelo ranking — 1º lugar recebe pontuação máxima. Ausência penaliza se grau positivo, bonifica se negativo.
+        <b>Objetivos:</b> calcula o retorno financeiro mensal (cashback, pontos×milheiro, desconto) e normaliza pelo maior valor. A importância é definida por grupo (Cashback, Pontos/Milhas, Desconto). A base da isenção é a fatura total (nacional + bonificado + exterior em R$).<br>
+        <b>Anuidade:</b> quem paga menos (anuidade efetiva, após isenção/desconto) recebe maior pontuação — importância "${impLabel(comp.anuidImp||'muito')}".<br>
+        <b>Subjetivos:</b> normaliza pelo ranking — 1º lugar recebe pontuação máxima. Ausência penaliza se grau positivo, bonifica se negativo. Marcar "Inaceitável" gera um alerta no parecer e pontua ao máximo quem NÃO tem o item.<br>
+        <b>Benefícios em R$:</b> o valor por ano que você informou em "Vale p/ cliente" entra no balanço só dos cartões que têm o benefício (✓); não altera a pontuação nem o "vale a pena a partir de".
       </div>
     </div>`;
 
@@ -2418,9 +3174,40 @@ function renderResult(comp) {
         }
       });
     }
+    // Gráfico em R$ (item 3): quanto cada cartão devolve por ano. Barras horizontais; verde ≥ 0, vermelho < 0.
+    // Falha aqui não pode derrubar o render — por isso o try/catch separado.
+    try {
+      const ctxRs = temHz ? document.getElementById(chartRsId) : null;
+      if (ctxRs && !ctxRs._chartInitialized) {
+        ctxRs._chartInitialized = true;
+        const ganhos = ranking.map(c => (hzPor[c.id] ? hzPor[c.id].ganhoAnual : 0));
+        new Chart(ctxRs, {
+          type: 'bar',
+          data: {
+            labels: ranking.map(c => c.name),
+            datasets: [{ label:'Ganho por ano (R$)', data: ganhos,
+              backgroundColor: ganhos.map(v => v >= 0 ? 'rgba(76,175,80,.85)' : 'rgba(239,83,80,.85)'),
+              borderRadius: 6 }]
+          },
+          options: {
+            indexAxis: 'y',
+            responsive: true,
+            plugins: {
+              legend: { display:false },
+              title: { display:false },
+              tooltip: { callbacks: { label: item => ' ' + fmtSinal(item.raw) + '/ano' } }
+            },
+            scales: {
+              x: { ticks:{ color:'#A0B8A6', callback: v => fmtBRL(v) }, grid:{ color:'rgba(212,175,55,0.1)' }, beginAtZero:true },
+              y: { ticks:{ color:'#A0B8A6' }, grid:{ display:false } }
+            }
+          }
+        });
+      }
+    } catch (e) { console.warn('Gráfico em R$ não renderizado:', e); }
   }, 100);
 
-  return `<div>${podium}${parecerBox}${balHtml}${mem}</div>`;
+  return `<div>${podium}${chartRsHtml}${vereditoBox}${parecerBox}${balHtml}${mem}</div>`;
 }
 
 function toggleMem(id, btn) {
@@ -2435,10 +3222,18 @@ function toggleMem(id, btn) {
 function showError(errors) {
   const el = document.getElementById('val-error');
   el.innerHTML = `<b>Não foi possível salvar:</b><ul>${errors.map(e=>`<li>${e}</li>`).join('')}</ul>`;
+  el.classList.remove('info');
   el.classList.add('show');
   el.scrollIntoView({ behavior:'smooth', block:'nearest' });
 }
-function hideError() { document.getElementById('val-error').classList.remove('show'); }
+// Mesmo bloco, em estilo informativo (não é erro) — usado pela importação do diagnóstico
+function showInfo(html) {
+  const el = document.getElementById('val-error');
+  el.innerHTML = html;
+  el.classList.add('show', 'info');
+  el.scrollIntoView({ behavior:'smooth', block:'nearest' });
+}
+function hideError() { document.getElementById('val-error').classList.remove('show', 'info'); }
 function escHtml(s) {
   if (!s) return '';
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
@@ -2684,20 +3479,133 @@ function _forceSaveCartoes() {
 }
 
 // === HANDLER IMPORTAR DIAGNÓSTICO ===
+// Limite de crédito citado no texto de benefícios do diagnóstico (ex.: "Limite: R$ 14.800,00") → number
+function parseLimite(txt) {
+  var m = /limite:?\s*R\$\s*([\d\.]+(?:,\d{1,2})?)/i.exec(String(txt || ''));
+  return m ? (parseFloat(m[1].replace(/\./g, '').replace(',', '.')) || 0) : 0;
+}
+// Número tolerante: aceita number, "1.5" e texto pt-BR ("1,5" / "1.200,50"); inválido → 0
+function _numTol(v) {
+  if (v == null || v === '') return 0;
+  var n = typeof v === 'number' ? v
+        : (String(v).indexOf(',') >= 0 ? parseFloat(String(v).replace(/\./g, '').replace(',', '.')) : parseFloat(v));
+  return isFinite(n) ? n : 0;
+}
+// Texto normalizado para comparação: minúsculas, sem acento, "_" e "-" viram espaço
+function _normTxt(s) {
+  // Remove os acentos (marcas combinantes U+0300..U+036F) sem escapes \u no fonte
+  var acentos = new RegExp('[' + String.fromCharCode(0x300) + '-' + String.fromCharCode(0x36f) + ']', 'g');
+  return String(s || '').toLowerCase().normalize('NFD').replace(acentos, '').replace(/[_\-]+/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
 document.addEventListener('importarDiagnostico', function(e) {
-  var itens = e.detail.items || [];
+  var itens = (e.detail && e.detail.items) || [];
+  if (!itens.length) return;
+  // Só abre (e zera) o modal se estiver fechado — aberto, os cartões entram na comparação em edição
+  var overlay = document.getElementById('modal-overlay');
+  if (!overlay.classList.contains('open')) openModal(null);
+  var novos = [];
   itens.forEach(function(item) {
-    var id = Date.now() + Math.random();
+    var id = cidCounter++;
+    var anual = _numTol(item.tarifa_anuidade_anual); // convenção: tarifa do diagnóstico é R$/ano (aceita "1.200,50")
     tmpCards.push({
       id: id,
       name: item.name || 'Cartão importado',
-      anuidade_mensal: item.anuidade_mensal || 0,
-      bandeira: item.bandeira || ''
+      anuidade_mensal: anual > 0 ? anual / 12 : (item.anuidade_mensal || 0),
+      anuidade_input_tipo: 'anual',
+      bandeira: '',
+      obs: item.beneficios || '',
+      limite: parseLimite(item.beneficios),
+      atual: (itens.length === 1 && !tmpCards.some(function(c) { return c.atual; })),
+      origem: 'diagnostico'
+    });
+    _initCardVals(id); // objVals[*][id]=0, subjVals[*].hasParam[id]=false, rankings[id]=1
+    novos.push({ id: id, item: item });
+  });
+  renderAll(); // prefillCard precisa do <select> da bandeira no DOM
+  // Passo 1 — Bandeira: match pelo label normalizado → prefill (milheiro/pontos/benefícios padrão da bandeira)
+  novos.forEach(function(n) {
+    var alvo = _normTxt(n.item.tipo_cartao);
+    if (!alvo) return;
+    var uuid = Object.keys(BANDEIRAS_DB).find(function(k) { return _normTxt((BANDEIRAS_DB[k] || {}).label) === alvo; });
+    if (!uuid) return;
+    var sel = document.getElementById('pf-bandeira-' + n.id);
+    if (sel) { sel.value = uuid; prefillCard(n.id); }
+  });
+  // Passo 2 — DEPOIS do prefill de todos: os dados do diagnóstico vencem os defaults da bandeira
+  //    (feito num passo separado porque prefillCard → syncAllInputs relê o DOM de todos os cartões)
+  novos.forEach(function(n) {
+    var item = n.item, id = n.id;
+    var cb  = _numTol(item.cashback);         // aceita "1,5"
+    var ppd = _numTol(item.pontos_por_dolar); // aceita "2,2"
+    if (cb > 0) { if (!tmpObjVals['cb-nacional']) tmpObjVals['cb-nacional'] = {}; tmpObjVals['cb-nacional'][id] = cb; }
+    if (ppd > 0) {
+      if (!tmpObjVals['pts-exterior']) tmpObjVals['pts-exterior'] = {};
+      if (!tmpObjVals['pts-gasto'])    tmpObjVals['pts-gasto']    = {};
+      tmpObjVals['pts-exterior'][id] = ppd;
+      tmpObjVals['pts-gasto'][id]    = ppd;
+      tmpPtsGastoMoeda[id] = 'US$';
+    }
+    // Passo 3 — Benefícios citados no texto do diagnóstico → ✓ no benefício subjetivo de mesmo nome
+    var benTxt = _normTxt(item.beneficios);
+    if (benTxt) subjItems.forEach(function(s) {
+      var ns = _normTxt(s.name);
+      if (!ns || !benTxt.includes(ns)) return;
+      if (!tmpSubjVals[s.id]) tmpSubjVals[s.id] = { importance: s.importance, hasParam: {}, rankings: {} };
+      tmpSubjVals[s.id].hasParam[id] = true;
     });
   });
-  renderCards();
-  alert(itens.length + ' cartão(ões) importado(s)! Clique em "Salvar Comparação" para persistir.');
+  renderAll();
+  var lista = novos.map(function(n) {
+    var c = tmpCards.find(function(x) { return x.id === n.id; }) || {};
+    return escHtml(c.name) + ': ' + fmtBRL((c.anuidade_mensal || 0) * 12) + '/ano ≈ ' + fmtBRL(c.anuidade_mensal || 0) + '/mês';
+  }).join('; ');
+  showInfo('<b>' + novos.length + ' cartão(ões) importado(s) do diagnóstico.</b> Confira a anuidade (importada como R$/ano — ' + lista + ') e os parâmetros, depois clique em "Salvar e Calcular".');
 });
+
+// === USAR GASTO DO DIAGNÓSTICO (item 7c) ===
+// contas_cartoes do diagnóstico pode vir como array, {contasCartoes:[…], tiposCartao:[…]} ou objeto indexado
+function _normContasCartoes(cc) {
+  var x = cc || [];
+  if (!Array.isArray(x)) x = x.contasCartoes || Object.values(x);
+  return (Array.isArray(x) ? x : []).filter(Boolean);
+}
+// Valor mensal de uma despesa do diagnóstico: dia ×30/qtd · semana ×4/qtd · mês /qtd · ano /12/qtd
+// (o módulo do diagnóstico devolve 0 para anuais no cálculo mensal; aqui o ÷12 é decisão do plano)
+function _mensalDespesaDiag(d) {
+  var v = parseFloat(d.valor) || 0;
+  var q = parseInt(d.qtd_recorrencia) || 1;
+  var u = d.und_recorrencia || 'mes';
+  if (u === 'dia')    return v * 30 / q;
+  if (u === 'semana') return v * 4 / q;
+  if (u === 'ano')    return v / 12 / q;
+  return v / q; // 'mes' (e qualquer outro valor)
+}
+async function usarGastoDiagnostico() {
+  if (typeof window.buscarDiagnostico !== 'function') { alert('Módulo de importação do diagnóstico não carregado.'); return; }
+  var diag = await window.buscarDiagnostico();
+  if (!diag) { alert('Nenhum diagnóstico financeiro encontrado para este cliente.'); return; }
+  var cartoes = _normContasCartoes(diag.contas_cartoes).filter(function(c) { return c.tipo === 'cartao'; });
+  if (!cartoes.length) { alert('O diagnóstico não tem cartões cadastrados em Contas & Cartões.'); return; }
+  var cardIds = cartoes.map(function(c) { return String(c.id); });
+  var despesas = (diag.fluxo_caixa && diag.fluxo_caixa.despesas) || [];
+  if (!Array.isArray(despesas)) despesas = Object.values(despesas);
+  var noCartao = despesas.filter(function(d) {
+    if (!d || d.forma_pagamento === undefined || d.forma_pagamento === null || d.forma_pagamento === '') return false;
+    if (d.origem === 'conta_cartao') return false; // anuidade/tarifa lançada automaticamente pelo diagnóstico não é gasto
+    return cardIds.indexOf(String(d.forma_pagamento)) >= 0;
+  });
+  if (!noCartao.length) { alert('Nenhuma despesa do diagnóstico está marcada como paga no cartão.'); return; }
+  var total = noCartao.reduce(function(s, d) { return s + _mensalDespesaDiag(d); }, 0);
+  var n = noCartao.length;
+  var dRef = diag.updated_at ? new Date(diag.updated_at) : null;
+  var dataTxt = (dRef && !isNaN(dRef.getTime())) ? dRef.toLocaleDateString('pt-BR') : 'data não informada';
+  var nomes = cartoes.map(function(c) { return ((c.instituicao || ('#' + c.id)) + (c.tipo_cartao ? ' ' + c.tipo_cartao : '')).trim(); }).join(', ');
+  if (!confirm('Diagnóstico de ' + dataTxt + ': ' + fmtBRL(total) + '/mês em ' + n + ' despesa(s) paga(s) no(s) cartão(ões) ' + nomes + '. Aplicar como Gasto Nacional?')) return;
+  var el = document.getElementById('modal-ctx-nacional');
+  if (el) el.value = total > 0 ? fmtBRL(total) : '';
+  tmpCtxOrigem = { fonte: 'diagnostico', ref: diag.updated_at || null, itens: n, valor: total };
+}
 
 // ═══════════════════════════════════════════════════════════════════════
 //  INTEGRAÇÃO LINKAGE: CARTÕES ↔ FLUXO (CONTAS/CARTÕES)
@@ -2748,18 +3656,8 @@ function importarDeFluxo() {
         fluxo_account_id: fluxoCard.id
       }
     });
-    // Inicializar objVals para o novo cartão
-    OBJ_GROUPS.forEach(function(g) { g.params.forEach(function(p) {
-      if (p.tipo === 'desc-combo') {
-        if (!tmpObjVals['desc-gasto']) tmpObjVals['desc-gasto'] = {};
-        if (!tmpObjVals['desc-pct']) tmpObjVals['desc-pct'] = {};
-        tmpObjVals['desc-gasto'][newId] = 0;
-        tmpObjVals['desc-pct'][newId] = 0;
-      } else {
-        if (!tmpObjVals[p.id]) tmpObjVals[p.id] = {};
-        tmpObjVals[p.id][newId] = 0;
-      }
-    }); });
+    // Inicializar objVals e subjVals para o novo cartão
+    _initCardVals(newId);
   });
   renderCards();
   alert(indices.length + ' cartão(ões) importado(s) do Fluxo! Preencha os parâmetros e salve a comparação.');
@@ -2768,8 +3666,8 @@ function importarDeFluxo() {
 // Resolver _pendingLink ao salvar
 var _origSaveCompCartoes = saveComparison;
 saveComparison = function() {
+  var compId = editingId || Date.now(); // mesmo id vai para o link E para comp.id (ver _origSaveCompCartoes(compId))
   if (typeof FerramentasLinkage !== 'undefined') {
-    var compId = editingId || Date.now();
     tmpCards.forEach(function(card) {
       if (card._pendingLink) {
         card._pendingLink.cartoes_comp_id = compId;
@@ -2791,7 +3689,7 @@ saveComparison = function() {
       });
     }
   }
-  _origSaveCompCartoes();
+  _origSaveCompCartoes(compId);
 };
 
 // Registrar deleção de cartão no linkage

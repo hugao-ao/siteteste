@@ -295,8 +295,9 @@
 
     // CARTÕES: Importa cartões do diagnóstico
     cartoes: function(diag) {
-      const contasCartoes = diag.contas_cartoes || [];
-      const cartoes = contasCartoes.filter(c => c.tipo === 'cartao');
+      let contasCartoes = diag.contas_cartoes || [];
+      if (!Array.isArray(contasCartoes)) contasCartoes = contasCartoes.contasCartoes || Object.values(contasCartoes); // igual ao mapeador fluxo ({contasCartoes:[…], tiposCartao:[…]})
+      const cartoes = contasCartoes.filter(c => c && c.tipo === 'cartao');
 
       if (cartoes.length === 0) {
         return { items: [], mensagem: 'Nenhum cartão encontrado no diagnóstico.' };
@@ -308,7 +309,10 @@
         bandeira: c.bandeira || '',
         pontos_por_dolar: c.pontos_por_dolar || 0,
         cashback: c.cashback || 0,
-        beneficios: c.beneficios || ''
+        beneficios: c.beneficios || '',
+        tipo_cartao: c.tipo_cartao || '',
+        tarifa_anuidade_anual: c.tarifa_anuidade || 0,
+        diag_item_id: c.id
       }));
 
       return { items, mensagem: `${items.length} cartão(ões) encontrado(s) no diagnóstico.` };
